@@ -116,27 +116,45 @@ report_error_undef_pred(ClauseContext, Context, SymNameArity) = Spec :-
             PFSymNameArity, PredFormArities)
     ;
         OtherIds = [],
-        report_error_undef_pred(ClauseContext, Context,
-            PFSymNameArity, UndefMsg, MissingImportModules),
-        predicate_table_lookup_pf_sym(PredicateTable,
-            may_be_partially_qualified, pf_function, SymName, FuncOtherIds),
+        InClauseForPieces = in_clause_for_pieces(ClauseContext),
+        InClauseForComponent = always(InClauseForPieces),
+
+        is_undef_pred_reference_special(ClauseContext, PFSymNameArity,
+            UndefClass),
         (
-            FuncOtherIds = [_ | _],
-            KindMsg = report_error_func_instead_of_pred(Context),
-            KindMsgs = [KindMsg]
+            UndefClass = undef_special(SpecialComponents),
+            UndefMsg = simple_msg(Context,
+                [InClauseForComponent | SpecialComponents]),
+            Msgs = [UndefMsg]
         ;
-            FuncOtherIds = [],
-            KindMsgs = []
+            UndefClass = undef_ordinary(MissingImportModules, AddeddumPieces),
+            MainPieces = [words("error: undefined"),
+                qual_pf_sym_name_pred_form_arity(PFSymNameArity),
+                suffix("."), nl],
+            UndefMsg = simple_msg(Context,
+                [InClauseForComponent, always(MainPieces ++ AddeddumPieces)]),
+
+            predicate_table_lookup_pf_sym(PredicateTable,
+                may_be_partially_qualified, pf_function, SymName,
+                FuncOtherIds),
+            (
+                FuncOtherIds = [_ | _],
+                KindMsg = report_error_func_instead_of_pred(Context),
+                KindMsgs = [KindMsg]
+            ;
+                FuncOtherIds = [],
+                KindMsgs = []
+            ),
+            PossibleModuleQuals =
+                find_possible_pf_missing_module_qualifiers(PredicateTable,
+                    pf_predicate, SymName),
+            set.list_to_set(PossibleModuleQuals, PossibleModuleQualsSet0),
+            set.delete_list(MissingImportModules,
+                PossibleModuleQualsSet0, PossibleModuleQualsSet),
+            QualMsgs = report_any_missing_module_qualifiers(ClauseContext,
+                Context, "predicate", PossibleModuleQualsSet),
+            Msgs = [UndefMsg] ++ KindMsgs ++ QualMsgs
         ),
-        PossibleModuleQuals =
-            find_possible_pf_missing_module_qualifiers(PredicateTable,
-                pf_predicate, SymName),
-        set.list_to_set(PossibleModuleQuals, PossibleModuleQualsSet0),
-        set.delete_list(MissingImportModules,
-            PossibleModuleQualsSet0, PossibleModuleQualsSet),
-        QualMsgs = report_any_missing_module_qualifiers(ClauseContext, Context,
-            "predicate", PossibleModuleQualsSet),
-        Msgs = [UndefMsg] ++ KindMsgs ++ QualMsgs,
         Spec = error_spec($pred, severity_error, phase_type_check, Msgs)
     ).
 
@@ -195,16 +213,22 @@ report_error_pred_num_args(ClauseContext, Context, PFSymNameArity,
 
 %---------------------%
 
-:- pred report_error_undef_pred(type_error_clause_context::in,
-    prog_context::in, pf_sym_name_arity::in,
-    error_msg::out, list(module_name)::out) is det.
+:- type undef_class
+    --->    undef_special(list(error_msg_component))
+            % This is not a reference to an undefined predicate,
+            % but a badly-executed attempt at using Mercury's "keywords".
+    ;       undef_ordinary(list(module_name), list(format_piece)).
+            % This is an ordinary reference to an undefined predicate.
+            % The first argument lists modules whose import may fix
+            % the reference, and the second may contain an addendum
+            % to be printed after the usual diagnostic messages.
 
-report_error_undef_pred(ClauseContext, Context, PFSymNameArity,
-        Msg, MissingImportModules) :-
+:- pred is_undef_pred_reference_special(type_error_clause_context::in,
+    pf_sym_name_arity::in, undef_class::out) is det.
+
+is_undef_pred_reference_special(ClauseContext, PFSymNameArity, UndefClass) :-
     PFSymNameArity =
         pf_sym_name_arity(_PredOrFunc, PredSymName, PredFormArity),
-    InClauseForPieces = in_clause_for_pieces(ClauseContext),
-    InClauseForComponent = always(InClauseForPieces),
     PredFormArity = pred_form_arity(PredFormArityInt),
     ( if
         PredSymName = unqualified("->"),
@@ -218,22 +242,21 @@ report_error_undef_pred(ClauseContext, Context, PFSymNameArity,
             words("Every if-then must have an else."), nl],
         VerboseComponent = verbose_only(verbose_once, VerbosePieces),
         Components = [MainComponent, VerboseComponent],
-        MissingImportModules = []
+        UndefClass = undef_special(Components)
     else if
         PredSymName = unqualified("else"),
         ( PredFormArityInt = 2 ; PredFormArityInt = 4 )
     then
         Components = [always([words("error: unmatched"), quote("else"),
             suffix("."), nl])],
-        MissingImportModules = []
+        UndefClass = undef_special(Components)
     else if
         PredSymName = unqualified("if"),
         ( PredFormArityInt = 2 ; PredFormArityInt = 4 )
     then
         Pieces = [words("error:"), quote("if"), words("without"),
             quote("then"), words("or"), quote("else"), suffix("."), nl],
-        Components = [always(Pieces)],
-        MissingImportModules = []
+        UndefClass = undef_special([always(Pieces)])
     else if
         PredSymName = unqualified("then"),
         ( PredFormArityInt = 2 ; PredFormArityInt = 4 )
@@ -246,14 +269,12 @@ report_error_undef_pred(ClauseContext, Context, PFSymNameArity,
             nl, words("Every if-then must have an"),
             quote("else"), suffix("."), nl],
         VerboseComponent = verbose_only(verbose_once, VerbosePieces),
-        Components = [MainComponent, VerboseComponent],
-        MissingImportModules = []
+        UndefClass = undef_special([MainComponent, VerboseComponent])
     else if
         PredSymName = unqualified("apply"),
         PredFormArityInt >= 1
     then
-        Components = report_apply_instead_of_pred,
-        MissingImportModules = []
+        UndefClass = undef_special(report_apply_instead_of_pred)
     else if
         PredSymName = unqualified(PurityString),
         PredFormArityInt = 1,
@@ -265,8 +286,7 @@ report_error_undef_pred(ClauseContext, Context, PFSymNameArity,
         VerbosePieces =
             [words("Such markers only belong before predicate calls."), nl],
         VerboseComponent = verbose_only(verbose_once, VerbosePieces),
-        Components = [MainComponent, VerboseComponent],
-        MissingImportModules = []
+        UndefClass = undef_special([MainComponent, VerboseComponent])
     else if
         PredSymName = unqualified("some"),
         PredFormArityInt = 2
@@ -274,19 +294,16 @@ report_error_undef_pred(ClauseContext, Context, PFSymNameArity,
         Pieces = [words("syntax error in existential quantification:"),
             words("first argument of"), quote("some"),
             words("should be a list of variables."), nl],
-        Components = [always(Pieces)],
-        MissingImportModules = []
+        UndefClass = undef_special([always(Pieces)])
     else
-        MainPieces = [words("error: undefined"),
-            qual_pf_sym_name_pred_form_arity(PFSymNameArity), suffix("."), nl],
         (
             PredSymName = qualified(ModuleQualifier, _),
             maybe_report_missing_import_addendum(ClauseContext,
-                ModuleQualifier, AddeddumPices, MissingImportModules),
-            OrdinaryPieces = MainPieces ++ AddeddumPices
+                ModuleQualifier,
+                MissingImportAddeddumPieces, MissingImportModules)
         ;
             PredSymName = unqualified(_),
-            OrdinaryPieces = MainPieces,
+            MissingImportAddeddumPieces = [],
             MissingImportModules = []
         ),
         ( if
@@ -307,7 +324,7 @@ report_error_undef_pred(ClauseContext, Context, PFSymNameArity,
             % We add SpecialPieces if these predicates are called
             % with (one of) their old arities. (If they are called
             % with any other arity, then the caller didn't work
-            % with the old contents of the getopt modules either.
+            % with the old contents of the getopt modules either.)
             (
                 PredName = "process_options_se",
                 ( PredFormArityInt = 4 ; PredFormArityInt = 5 ;
@@ -319,17 +336,17 @@ report_error_undef_pred(ClauseContext, Context, PFSymNameArity,
                 NewPredName = "process_options_track"
             )
         then
-            SpecialPieces =
+            GetoptPieces =
                 [words("One possible reason for the error is that"),
                 words("the predicate"), quote(PredName),
                 words("in the Mercury standard library has been renamed to"),
                 quote(NewPredName), suffix("."), nl]
         else
-            SpecialPieces = []
+            GetoptPieces = []
         ),
-        Components = [always(OrdinaryPieces ++ SpecialPieces)]
-    ),
-    Msg = simple_msg(Context, [InClauseForComponent | Components]).
+        AddeddumPieces = MissingImportAddeddumPieces ++ GetoptPieces,
+        UndefClass = undef_ordinary(MissingImportModules, AddeddumPieces)
+    ).
 
 :- func report_apply_instead_of_pred = list(error_msg_component).
 
