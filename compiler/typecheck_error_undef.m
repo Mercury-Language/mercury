@@ -396,12 +396,9 @@ report_error_pred_wrong_full_name(ClauseContext, Context, PredicateTable,
         % Note: name_is_close_enough below depends on all costs here
         % except for case changes being 2u.
         Params = edit_params(2u, 2u, case_sensitive_replacement_cost, 2u),
-        string.to_char_list(BaseName, BaseNameChars),
-        list.map(string.to_char_list, KnownPredNames, KnownPredNamesChars),
-        find_closest_seqs(Params, BaseNameChars, KnownPredNamesChars,
-            Cost, HeadBestNameChars, TailBestNamesChars),
-        BestNamesChars = [HeadBestNameChars | TailBestNamesChars],
-        list.map(string.from_char_list, BestNamesChars, BestNames),
+        find_closest_strings(Params, BaseName, KnownPredNames,
+            Cost, HeadBestName, TailBestNames),
+        BestNames = [HeadBestName | TailBestNames],
         ( if
             % Don't offer a string as a replacement for itself.
             Cost > 0u,
@@ -411,7 +408,25 @@ report_error_pred_wrong_full_name(ClauseContext, Context, PredicateTable,
                 BestNames, CloseEnoughBestNames),
             CloseEnoughBestNames = [_ | _]
         then
-            SuggestionPieces = list_to_quoted_pieces_or(CloseEnoughBestNames),
+            % For hand-written code, having more than ten names
+            % equally close to BaseName should be vanishingly rare,
+            % so the limit we impose here should not matter.
+            % But programs that automatically generate Mercury code
+            % may use naming schemes that make such occurrences
+            % much more likely, and for these, avoiding the generation
+            % of far-too-long error messages may be important.
+            list.split_upto(10, CloseEnoughBestNames,
+                SuggestedNames0, NonSuggestedNames),
+            (
+                NonSuggestedNames = [],
+                SuggestedNames = SuggestedNames0
+            ;
+                NonSuggestedNames = [_ | _],
+                % This should make cause the message we create below
+                % to end with "or `...'?".
+                SuggestedNames = SuggestedNames0 ++ ["..."]
+            ),
+            SuggestionPieces = list_to_quoted_pieces_or(SuggestedNames),
             SuggestedNamePieces =
                 [words("(Did you mean")] ++ SuggestionPieces ++
                 [suffix("?)"), nl],
