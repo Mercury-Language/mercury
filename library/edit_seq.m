@@ -19,6 +19,16 @@
 % Given two lists of length M and N, its time complexity is O(MN),
 % so it is suitable for use only on reasonably short lists.
 %
+% The operations in this module are intended to generate diffs to be displayed.
+% Since diff traditionally have no way to display a transposition as
+% anything other than an insertion/deletion pair, this module does not
+% consider transpositions to be a separate kind of operation, which means
+% that the distances it computes are Levenshtein distances.
+% If you are after Damerau-Levenshtein distances, which *do* consider
+% transpositions to be separate operations with their own costs,
+% or if you want to know which of several candidate sequences is closest
+% to a specific query sequence, then have a look at the edit_distance module.
+%
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
