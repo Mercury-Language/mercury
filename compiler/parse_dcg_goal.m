@@ -121,8 +121,6 @@ parse_dcg_pred_goal(GoalTerm, ContextPieces, MaybeGoal,
     prog_var::in, prog_var::out) is det.
 
 parse_dcg_goal(Term, ContextPieces, MaybeGoal, !VarSet, !Counter, !DCGVar) :-
-    Context = get_term_context(Term),
-    term.coerce(Term, ProgTerm),
     ( if
          % Check for builtins...
         Term = term.functor(term.atom(Functor), ArgTerms, Context),
@@ -132,6 +130,8 @@ parse_dcg_goal(Term, ContextPieces, MaybeGoal, !VarSet, !Counter, !DCGVar) :-
             MaybeGoal, !VarSet, !Counter, !DCGVar)
     else
         % It is not a builtin.
+        Context = get_term_context(Term),
+        term.coerce(Term, ProgTerm),
         ( if try_parse_sym_name_and_args(ProgTerm, SymName, ArgTerms0) then
             % It is the ordinary case of a nonterminal. Turn the term
             % into a call, and add the current and next DCG variables

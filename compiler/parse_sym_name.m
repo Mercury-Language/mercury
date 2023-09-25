@@ -213,9 +213,9 @@ try_parse_sym_name_and_args_from_f_args(Functor, FunctorArgs, SymName, Args) :-
         FunctorName = ".",
         FunctorArgs = [ModuleTerm, NameArgsTerm]
     then
-        NameArgsTerm = term.functor(term.atom(Name), Args, _),
-        try_parse_symbol_name(ModuleTerm, Module),
-        SymName = qualified(Module, Name)
+        try_parse_symbol_name(ModuleTerm, ModuleSymName),
+        try_parse_sym_name_and_args(NameArgsTerm, SubSymName, Args),
+        SymName = glue_sym_names(ModuleSymName, SubSymName)
     else
         SymName = string_to_sym_name_sep(FunctorName, "__"),
         Args = FunctorArgs
@@ -410,9 +410,7 @@ parse_symbol_name(VarSet, Term, MaybeSymName) :-
     ( if
         Term = term.functor(term.atom(FunctorName), [ModuleTerm, NameTerm],
             TermContext),
-        ( FunctorName = ":"
-        ; FunctorName = "."
-        )
+        FunctorName = "."
     then
         ( if NameTerm = term.functor(term.atom(Name), [], _) then
             parse_symbol_name(VarSet, ModuleTerm, MaybeModule),
@@ -452,19 +450,38 @@ parse_symbol_name(VarSet, Term, MaybeSymName) :-
     ).
 
 try_parse_symbol_name(Term, SymName) :-
-    ( if
-        Term = term.functor(term.atom(FunctorName), [ModuleTerm, NameTerm],
-            _TermContext),
-        ( FunctorName = ":"
-        ; FunctorName = "."
-        )
-    then
-        NameTerm = term.functor(term.atom(Name), [], _),
-        try_parse_symbol_name(ModuleTerm, Module),
-        SymName = qualified(Module, Name)
+    ( if Term = term.functor(term.atom("."), [ModuleTerm, NameTerm], _) then
+        try_parse_symbol_name(ModuleTerm, ModuleSymName),
+        try_parse_symbol_name(NameTerm, SubSymName),
+        SymName = glue_sym_names(ModuleSymName, SubSymName)
     else
         Term = term.functor(term.atom(Name), [], _),
         SymName = string_to_sym_name_sep(Name, "__")
+    ).
+
+    % Given two terms T1 and T2, that came from that appeared in 
+    % This function is used to help implement a rare form of
+    % module qualification which mixes the "." module qualifier,
+    % which shows up in the structures of terms, and the "__" module qualifier,
+    % which does not. A string such as "a__b.c__d" contains three qualifiers,
+    % but only one shows up as a function symbol. When its two args,
+    % "a__b" and "c__d" are parsed as function symbols, we need to glue
+    % the resulting qualifiers together. This function does that.
+    % 
+:- func glue_sym_names(module_name, sym_name) = sym_name.
+
+glue_sym_names(ModuleSymName, SubSymName) = SymName :-
+    (
+        SubSymName = unqualified(BaseName),
+        % This is the overwhelmingly more likely path, so optimize it.
+        SymName = qualified(ModuleSymName, BaseName)
+    ;
+        SubSymName = qualified(_, _),
+        ModuleNameList = sym_name_to_list(ModuleSymName),
+        sym_name_to_qualifier_list_and_name(SubSymName, SubModuleNameList,
+            BaseName),
+        det_list_to_sym_name(ModuleNameList ++ SubModuleNameList ++
+            [BaseName], SymName)
     ).
 
 %-----------------------------------------------------------------------------e

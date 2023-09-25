@@ -2,7 +2,7 @@
 % vim: ts=4 sw=4 et ft=mercury
 %---------------------------------------------------------------------------%
 
-:- module test_nested_helper_1:test_nested_helper_3.
+:- module test_nested_helper_1.test_nested_helper_3.
 :- interface.
 :- import_module io.
 
@@ -15,4 +15,4 @@
 :- implementation.
 
 hello(!IO) :-
-    io.write_string("test_nested_helper_1:test_nested_helper_3:hello\n", !IO).
+    io.write_string("test_nested_helper_1.test_nested_helper_3.hello\n", !IO).

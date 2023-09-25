@@ -110,7 +110,7 @@ parse_goal(Term, ContextPieces, MaybeGoal, !VarSet) :-
         parse_non_call_goal(GoalKind, ArgTerms, Context, ContextPieces,
             MaybeGoal, !VarSet)
     else
-        % It's not a builtin.
+        % It is not a builtin.
         Context = get_term_context(Term),
         term.coerce(Term, ProgTerm),
         % Check for predicate calls.

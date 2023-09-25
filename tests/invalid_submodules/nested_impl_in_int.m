@@ -28,7 +28,7 @@
     hello(!IO) :-
         io.write_string("nested_impl_in_int.child.hello\n", !IO).
 
-    :- end_module nested_impl_in_int:child.
+    :- end_module nested_impl_in_int.child.
 
 %---------------------------------------------------------------------------%
 
@@ -98,7 +98,7 @@ has_type_t1 = nested_impl_in_int.child.bar.
 has_type_t2 = child.bar.
 has_type_t3 = bar.
 has_type_t4 = nested_impl_in_int.child2.bar.
-% has_type_t5 = child2:bar.  % XXX mixing of use_module and import_module
+% has_type_t5 = child2.bar.  % XXX mixing of use_module and import_module
                             % is not yet supported.
 has_type_t5 = nested_impl_in_int.child2.bar.
 
