@@ -1,5 +1,6 @@
 undef_symbol.m:018: In clause for predicate `main'/2:
 undef_symbol.m:018:   error: undefined predicate `undef_symbol.r'/2.
+undef_symbol.m:018:   (Did you mean `p' or `q'?)
 undef_symbol.m:023: In clause for predicate `p'/2:
 undef_symbol.m:023:   error: undefined predicate `string.append'/3.
 undef_symbol.m:023:   (The module `string' has not been imported.)

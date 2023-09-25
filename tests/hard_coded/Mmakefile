@@ -117,6 +117,8 @@ ORDINARY_PROGS = \
 	dup_vars_in_trace_scopes_only \
 	dupcall_impurity \
 	dupcall_types_bug \
+	edit_distance_test_closest \
+	edit_distance_test_cost \
 	edit_seq_test \
 	ee_dummy \
 	ee_valid_test \

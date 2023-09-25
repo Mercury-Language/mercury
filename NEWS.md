@@ -172,6 +172,13 @@ Changes to the Mercury standard library
 * We have improved the implementations of transitive closure and reflexive
   transitive closure.
 
+### New `edit_distance` module
+
+* This new module defines operations that, when given a query sequence
+  and a set of candidate sequences, finds out which candidate sequence
+  is closest to the query sequence, in terms of the configurable `distances`
+  added by operations such as inserting or replacing elements in sequences.
+
 ### Changes to the `enum` module
 
 * The following typeclass has been added:

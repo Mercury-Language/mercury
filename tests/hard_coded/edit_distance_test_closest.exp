@@ -1,0 +1,45 @@
+among candidates
+    <apple>
+    <banana>
+    <cherry>
+query <app> yields cost 4 matches
+    <apple>
+
+among candidates
+    <apple>
+    <banana>
+    <cherry>
+query <banyan> yields cost 4 matches
+    <banana>
+
+among candidates
+    <apple>
+    <banana>
+    <cherry>
+query <berry> yields cost 4 matches
+    <cherry>
+
+among candidates
+    <coordx>
+    <coordy>
+    <coordz>
+    <coordx1>
+    <coordy1>
+    <coordz1>
+query <coorzd1> yields cost 2 matches
+    <coordz1>
+
+among candidates
+    <DWARF_GNAT_ENCODINGS_GDB>
+    <DWARF_GNAT_ENCODINGS_ALL>
+    <DWARF_GNAT_ENCODINGS_MINIMAL>
+query <DWARF_GNAT_ENCODINGS_all> yields cost 3 matches
+    <DWARF_GNAT_ENCODINGS_ALL>
+
+among candidates
+    <-Wtrivial-auto-var-init>
+    <-ftrivial-auto-var-init=>
+query <-ftrivial-auto-var-init> yields cost 2 matches
+    <-Wtrivial-auto-var-init>
+    <-ftrivial-auto-var-init=>
+

@@ -20,10 +20,12 @@ types2.m:023:   Gap in clauses of predicate `r'/0 starts after this clause.
 types2.m:029:   Gap in clauses of predicate `r'/0 ends with this clause.
 types2.m:024: In clause for predicate `r'/0:
 types2.m:024:   error: undefined predicate `s'/0.
+types2.m:024:   (Did you mean `<', `>', `a', `p', `q', `r' or `z'?)
 types2.m:026: Error: clause for predicate `a'/1
 types2.m:026:   without corresponding `:- pred' declaration.
 types2.m:027: In clause for predicate `a'/1:
 types2.m:027:   error: undefined predicate `b'/1.
+types2.m:027:   (Did you mean `<', `>', `a', `p', `q', `r' or `z'?)
 types2.m:046: In clause for predicate `bar'/1:
 types2.m:046:   type error in unification of variable `X'
 types2.m:046:   and constant `0'.

@@ -115,6 +115,7 @@
 :- import_module diet.
 :- import_module digraph.
 :- import_module dir.
+:- import_module edit_distance.
 :- import_module edit_seq.
 :- import_module enum.
 :- import_module eqvclass.
@@ -364,6 +365,7 @@ stdlib_module_doc_undoc("deconstruct",                  doc).
 stdlib_module_doc_undoc("diet",                         doc).
 stdlib_module_doc_undoc("digraph",                      doc).
 stdlib_module_doc_undoc("dir",                          doc).
+stdlib_module_doc_undoc("edit_distance",                doc).
 stdlib_module_doc_undoc("edit_seq",                     doc).
 stdlib_module_doc_undoc("enum",                         doc).
 stdlib_module_doc_undoc("eqvclass",                     doc).

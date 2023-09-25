@@ -85,12 +85,15 @@
 :- import_module parse_tree.prog_util.
 
 :- import_module bool.
+:- import_module char.
+:- import_module edit_distance.
 :- import_module int.
 :- import_module map.
 :- import_module require.
 :- import_module set.
 :- import_module string.
 :- import_module term.
+:- import_module uint.
 :- import_module varset.
 
 %---------------------------------------------------------------------------%
@@ -127,7 +130,7 @@ report_error_undef_pred(ClauseContext, Context, SymNameArity) = Spec :-
             Spec = error_spec($pred, severity_error, phase_type_check, [Msg])
         ;
             UndefClass = undef_ordinary(MissingImportModules, AddeddumPieces),
-            Spec = report_error_pred_wrong_name(ClauseContext, Context,
+            Spec = report_error_pred_wrong_full_name(ClauseContext, Context,
                 PredicateTable, PFSymNameArity, MissingImportModules,
                 AddeddumPieces)
         )
@@ -346,11 +349,11 @@ report_apply_instead_of_pred = Components :-
 
 %---------------------%
 
-:- func report_error_pred_wrong_name(type_error_clause_context, prog_context,
-    predicate_table, pf_sym_name_arity, list(module_name), list(format_piece))
-    = error_spec.
+:- func report_error_pred_wrong_full_name(type_error_clause_context,
+    prog_context, predicate_table, pf_sym_name_arity, list(module_name),
+    list(format_piece)) = error_spec.
 
-report_error_pred_wrong_name(ClauseContext, Context, PredicateTable,
+report_error_pred_wrong_full_name(ClauseContext, Context, PredicateTable,
         PFSymNameArity, MissingImportModules, AddeddumPieces) = Spec :-
     InClauseForPieces = in_clause_for_pieces(ClauseContext),
     InClauseForComponent = always(InClauseForPieces),
@@ -379,7 +382,51 @@ report_error_pred_wrong_name(ClauseContext, Context, PredicateTable,
         PossibleModuleQualsSet0, PossibleModuleQualsSet),
     QualMsgs = report_any_missing_module_qualifiers(ClauseContext,
         Context, "predicate", PossibleModuleQualsSet),
-    Msgs = [UndefMsg] ++ KindMsgs ++ QualMsgs,
+    KindQualMsgs = KindMsgs ++ QualMsgs,
+    ( if
+        AddeddumPieces = [],
+        KindQualMsgs = []
+    then
+        KindQualMsgs = [],
+        % It seems that regardless of missing qualifications or equal signs,
+        % the reference is to the wrong name. See if we can mention some
+        % similar names that could be the one they intended.
+        get_known_pred_names(PredicateTable, KnownPredNames),
+        BaseName = unqualify_name(SymName),
+        % Note: name_is_close_enough below depends on all costs here
+        % except for case changes being 2u.
+        Params = edit_params(2u, 2u, case_sensitive_replacement_cost, 2u),
+        string.to_char_list(BaseName, BaseNameChars),
+        list.map(string.to_char_list, KnownPredNames, KnownPredNamesChars),
+        find_closest_seqs(Params, BaseNameChars, KnownPredNamesChars,
+            Cost, HeadBestNameChars, TailBestNamesChars),
+        BestNamesChars = [HeadBestNameChars | TailBestNamesChars],
+        list.map(string.from_char_list, BestNamesChars, BestNames),
+        ( if
+            % Don't offer a string as a replacement for itself.
+            Cost > 0u,
+            % Don't offer a string as a replacement if it is too far
+            % from the original, either.
+            list.filter(name_is_close_enough(Cost, BaseName),
+                BestNames, CloseEnoughBestNames),
+            CloseEnoughBestNames = [_ | _]
+        then
+            SuggestionPieces = list_to_quoted_pieces_or(CloseEnoughBestNames),
+            SuggestedNamePieces =
+                [words("(Did you mean")] ++ SuggestionPieces ++
+                [suffix("?)"), nl],
+            SuggestedNamesMsg = simplest_msg(Context, SuggestedNamePieces),
+            Msgs = [UndefMsg, SuggestedNamesMsg]
+        else
+            Msgs = [UndefMsg]
+        )
+    else
+        % The AddeddumPieces part of UndefMsg and/or KindQualMsgs
+        % offer hints about the error that allow for the base name being right.
+        % Print just those.
+        % XXX Should we print SuggestedNamesMsg as well even in this case?
+        Msgs = [UndefMsg] ++ KindQualMsgs
+    ),
     Spec = error_spec($pred, severity_error, phase_type_check, Msgs).
 
 %---------------------%
@@ -390,6 +437,81 @@ report_error_func_instead_of_pred(Context) = Msg :-
     Pieces = [words("(There is a *function* with that name, however."), nl,
         words("Perhaps you forgot to add"), quote(" = ..."), suffix("?)"), nl],
     Msg = simplest_msg(Context, Pieces).
+
+%---------------------%
+
+:- pred get_known_pred_names(predicate_table::in, list(string)::out) is det.
+
+get_known_pred_names(PredTable, KnownPredNames) :-
+    predicate_table_get_pred_id_table(PredTable, PredIdTable),
+    map.values(PredIdTable, PredInfos),
+    list.foldl(acc_known_pred_names, PredInfos, [], KnownPredNames0),
+    list.sort_and_remove_dups(KnownPredNames0, KnownPredNames).
+
+:- pred acc_known_pred_names(pred_info::in,
+    list(string)::in, list(string)::out) is det.
+
+acc_known_pred_names(PredInfo, !KnownPredNames) :-
+    pred_info_get_is_pred_or_func(PredInfo, PredOrFunc),
+    % Note that we don't care whether PredInfo contains a valid predicate or
+    % not; even if it is invalid, it could be the one the programmer intended
+    % to reference.
+    (
+        PredOrFunc = pf_function
+    ;
+        PredOrFunc = pf_predicate,
+        pred_info_get_name(PredInfo, Name),
+        !:KnownPredNames = [Name | !.KnownPredNames]
+    ).
+
+%---------------------%
+
+:- func case_sensitive_replacement_cost(char, char) = uint.
+
+case_sensitive_replacement_cost(CharA, CharB) = ReplacementCost :-
+    char.to_lower(CharA, LowerCharA),
+    char.to_lower(CharB, LowerCharB),
+    ( if LowerCharA = LowerCharB then
+        % CharA and CharB differ only in case.
+        ReplacementCost = 1u
+    else
+        ReplacementCost = 2u
+    ).
+
+%---------------------%
+
+:- pred name_is_close_enough(uint::in, string::in, string::in)
+    is semidet.
+
+name_is_close_enough(Cost, Query, Name) :-
+    require_det (
+        % Note that 2u below represents the cost of edits other than
+        % case transformations.
+        string.count_code_points(Query, QueryLen),
+        string.count_code_points(Name, NameLen),
+        QueryLenU = uint.cast_from_int(QueryLen),
+        NameLenU = uint.cast_from_int(NameLen),
+        MinLenU = uint.min(QueryLenU, NameLenU),
+        MaxLenU = uint.max(QueryLenU, NameLenU),
+        % If the lengths are close, then round down ...
+        ( if MaxLenU - MinLenU =< 1u then
+            % ... but allow an edit distance of at least one base
+            % insert/delete/replace cost.
+            MaxAcceptableCost = 2u * uint.max(MaxLenU / 3u, 1u)
+        else
+            % Otherwise, round up, thus giving a little extra leeway
+            % to some cases involving insertions/deletions.
+            MaxAcceptableCost = 2u * ((MaxLenU + 2u) / 3u)
+        ),
+        trace [compile_time(flag("debug_close_enough")), io(!IO)] (
+            io.output_stream(Stream, !IO),
+            io.format(Stream, "%s vs %s: cost %u, max acceptable cost %u\n",
+                [s(Query), s(Name), u(Cost), u(MaxAcceptableCost)], !IO),
+            io.format(Stream, "%srecommended\n",
+                [s(if Cost =< MaxAcceptableCost then "" else "not ")], !IO)
+        )
+    ),
+    Cost =< MaxAcceptableCost.
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%

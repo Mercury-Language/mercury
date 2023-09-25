@@ -1,0 +1,180 @@
+
+testing <> vs <nonempty>
+smash_no_transpose_no    match
+smash_no_transpose_yes   match
+smash_yes_transpose_no   match
+smash_yes_transpose_yes  match
+
+testing <saturday> vs <sunday>
+smash_no_transpose_no    match
+smash_no_transpose_yes   match
+smash_yes_transpose_no   match
+smash_yes_transpose_yes  match
+
+testing <foo> vs <m_foo>
+smash_no_transpose_no    match
+smash_no_transpose_yes   match
+smash_yes_transpose_no   match
+smash_yes_transpose_yes  match
+
+testing <hello_world> vs <HelloWorld>
+smash_no_transpose_no    match
+smash_no_transpose_yes   match
+smash_yes_transpose_no   match
+smash_yes_transpose_yes  match
+
+testing <the quick brown fox jumps over the lazy dog> vs <dog>
+smash_no_transpose_no    match
+smash_no_transpose_yes   match
+smash_yes_transpose_no   match
+smash_yes_transpose_yes  match
+
+testing <the quick brown fox jumps over the lazy dog> vs <the quick brown dog jumps over the lazy fox>
+smash_no_transpose_no    match
+smash_no_transpose_yes   match
+smash_yes_transpose_no   match
+smash_yes_transpose_yes  match
+
+testing <Lorem ipsum dolor sit amet, consectetur adipiscing elit,> vs <All your base are belong to us>
+smash_no_transpose_no    match
+smash_no_transpose_yes   match
+smash_yes_transpose_no   match
+smash_yes_transpose_yes  match
+
+testing <foo> vs <FOO>
+smash_no_transpose_no    match
+smash_no_transpose_yes   match
+smash_yes_transpose_no   match
+smash_yes_transpose_yes  match
+
+testing <fee> vs <deed>
+smash_no_transpose_no    match
+smash_no_transpose_yes   match
+smash_yes_transpose_no   match
+smash_yes_transpose_yes  match
+
+testing <coorzd1> vs <coordx1>
+smash_no_transpose_no    match
+smash_no_transpose_yes   match
+smash_yes_transpose_no   match
+smash_yes_transpose_yes  match
+
+testing <assert> vs <sqrt>
+smash_no_transpose_no    match
+smash_no_transpose_yes   match
+smash_yes_transpose_no   match
+smash_yes_transpose_yes  match
+
+testing <PATH_MAX> vs <INT8_MAX>
+smash_no_transpose_no    match
+smash_no_transpose_yes   match
+smash_yes_transpose_no   match
+smash_yes_transpose_yes  match
+
+testing <time> vs <nice>
+smash_no_transpose_no    match
+smash_no_transpose_yes   match
+smash_yes_transpose_no   match
+smash_yes_transpose_yes  match
+
+testing <bar> vs <carg>
+smash_no_transpose_no    match
+smash_no_transpose_yes   match
+smash_yes_transpose_no   match
+smash_yes_transpose_yes  match
+
+testing <gtk_widget_show_all> vs <GtkWidgetShowAll>
+smash_no_transpose_no    match
+smash_no_transpose_yes   match
+smash_yes_transpose_no   match
+smash_yes_transpose_yes  match
+
+testing <m_bar> vs <bar>
+smash_no_transpose_no    match
+smash_no_transpose_yes   match
+smash_yes_transpose_no   match
+smash_yes_transpose_yes  match
+
+testing <MACRO> vs <MACRAME>
+smash_no_transpose_no    match
+smash_no_transpose_yes   match
+smash_yes_transpose_no   match
+smash_yes_transpose_yes  match
+
+testing <ab> vs <ac>
+smash_no_transpose_no    match
+smash_no_transpose_yes   match
+smash_yes_transpose_no   match
+smash_yes_transpose_yes  match
+
+testing <ab> vs <a>
+smash_no_transpose_no    match
+smash_no_transpose_yes   match
+smash_yes_transpose_no   match
+smash_yes_transpose_yes  match
+
+testing <a> vs <b>
+smash_no_transpose_no    match
+smash_no_transpose_yes   match
+smash_yes_transpose_no   match
+smash_yes_transpose_yes  match
+
+testing <nanl> vs <name>
+smash_no_transpose_no    match
+smash_no_transpose_yes   match
+smash_yes_transpose_no   match
+smash_yes_transpose_yes  match
+
+testing <char> vs <bar>
+smash_no_transpose_no    match
+smash_no_transpose_yes   match
+smash_yes_transpose_no   match
+smash_yes_transpose_yes  match
+
+testing <-optimize> vs <fsanitize>
+smash_no_transpose_no    match
+smash_no_transpose_yes   match
+smash_yes_transpose_no   match
+smash_yes_transpose_yes  match
+
+testing <__DATE__> vs <__i386__>
+smash_no_transpose_no    match
+smash_no_transpose_yes   match
+smash_yes_transpose_no   match
+smash_yes_transpose_yes  match
+
+testing <ab> vs <ba>
+smash_no_transpose_no    match
+smash_no_transpose_yes   match
+smash_yes_transpose_no   match
+smash_yes_transpose_yes  match
+
+testing <ba> vs <abc>
+smash_no_transpose_no    match
+smash_no_transpose_yes   match
+smash_yes_transpose_no   match
+smash_yes_transpose_yes  match
+
+testing <coorzd1> vs <coordz1>
+smash_no_transpose_no    match
+smash_no_transpose_yes   match
+smash_yes_transpose_no   match
+smash_yes_transpose_yes  match
+
+testing <abcdefghijklmnopqrstuvwxyz> vs <bacdefghijklmnopqrstuvwxzy>
+smash_no_transpose_no    match
+smash_no_transpose_yes   match
+smash_yes_transpose_no   match
+smash_yes_transpose_yes  match
+
+testing <saturday> vs <sundya>
+smash_no_transpose_no    match
+smash_no_transpose_yes   match
+smash_yes_transpose_no   match
+smash_yes_transpose_yes  match
+
+testing <signed> vs <singed>
+smash_no_transpose_no    match
+smash_no_transpose_yes   match
+smash_yes_transpose_no   match
+smash_yes_transpose_yes  match

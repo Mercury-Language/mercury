@@ -1,2 +1,3 @@
 qual_basic_test2.m:019: In clause for predicate `main'/2:
 qual_basic_test2.m:019:   error: undefined predicate `io.io__write_string'/3.
+qual_basic_test2.m:019:   (Did you mean `write_string'?)
