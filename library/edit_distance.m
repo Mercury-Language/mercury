@@ -43,6 +43,7 @@
 :- interface.
 
 :- import_module list.
+:- import_module char.
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -94,6 +95,15 @@
     %
 :- pred find_closest_seqs(edit_params(T)::in, list(T)::in, list(list(T))::in,
     uint::out, list(T)::out, list(list(T))::out) is det.
+
+    % find_closest_strings(Params, SourceStr, TargetStrs,
+    %    BestEditDistance, HeadBestCloseStr, TailBestCloseStrs):
+    %
+    % This is an instance of find_closest_seqs that takes care of the
+    % necessary conversions between strings and sequences of characters.
+    %
+:- pred find_closest_strings(edit_params(char)::in, string::in,
+    list(string)::in, uint::out, string::out, list(string)::out) is det.
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -353,6 +363,17 @@ find_closest_seqs_loop(Params, SourceSeq, [HeadTargetSeq | TailTargetSeqs],
         find_closest_seqs_loop(Params, SourceSeq, TailTargetSeqs,
             !Cost, !CostSeqCord)
     ).
+
+%---------------------------------------------------------------------------%
+
+find_closest_strings(Params, SourceStr, TargetStrs,
+        BestCost, HeadBestStr, TailBestStrs) :-
+    string.to_char_list(SourceStr, SourceCharSeq),
+    list.map(string.to_char_list, TargetStrs, TargetCharSeqs),
+    find_closest_seqs(Params, SourceCharSeq, TargetCharSeqs,
+        BestCost, HeadBestCharSeq, TailBestCharSeqs),
+    string.from_char_list(HeadBestCharSeq, HeadBestStr),
+    list.map(string.from_char_list, TailBestCharSeqs, TailBestStrs).
 
 %---------------------------------------------------------------------------%
 %
