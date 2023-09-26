@@ -27,6 +27,7 @@
 :- import_module assoc_list.
 :- import_module list.
 :- import_module map.
+:- import_module set.
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -163,6 +164,10 @@
     %
 :- pred get_all_cons_defns(cons_table::in,
     assoc_list(cons_id, hlds_cons_defn)::out) is det.
+
+    % Return all the names in the cons_table.
+    %
+:- pred cons_table_names(cons_table::in, set(string)::out) is det.
 
 %---------------------------------------------------------------------------%
 %
@@ -478,6 +483,11 @@ accumulate_all_inner_cons_defns(InnerConsTable, !AllConsDefns) :-
 project_inner_cons_entry(Entry, Pair) :-
     Entry = inner_cons_entry(MainConsId, _OtherConsIds, ConsDefn),
     Pair = MainConsId - ConsDefn.
+
+%---------------------%
+
+cons_table_names(ConsTable, Names) :-
+    map.keys_as_set(ConsTable, Names).
 
 %---------------------------------------------------------------------------%
 :- end_module hlds.hlds_cons.

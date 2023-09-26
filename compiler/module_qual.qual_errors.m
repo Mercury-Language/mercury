@@ -297,8 +297,40 @@ report_undefined_mq_id(Info, ErrorContext, Id, IdType, ThisModuleName,
     else
         OtherArityPieces = []
     ),
+    % Don't suggest any other names instead of IdBaseName if there are
+    % plausible ways that IdBaseName could actually be a correct name.
+    ( if
+        ThisIntPieces = [],
+        OtherIntPieces = [],
+        QualPieces = [],
+        NonImportedPieces = [],
+        OtherArityPieces = []
+    then
+        (
+            IdType = qual_id_type,
+            mq_info_get_types(Info, IdSet),
+            get_names_in_id_set(IdSet, KnownNames)
+        ;
+            IdType = qual_id_inst,
+            mq_info_get_insts(Info, IdSet),
+            get_names_in_id_set(IdSet, KnownNames)
+        ;
+            IdType = qual_id_mode,
+            mq_info_get_modes(Info, IdSet),
+            get_names_in_id_set(IdSet, KnownNames)
+        ;
+            IdType = qual_id_class,
+            mq_info_get_classes(Info, IdSet),
+            get_names_in_id_set(IdSet, KnownNames)
+        ),
+        maybe_construct_did_you_mean_pieces(IdBaseName, KnownNames,
+            DidYouMeanPieces)
+    else
+        DidYouMeanPieces = []
+    ),
     AllPieces = InPieces ++ UndefPieces ++ ThisIntPieces ++ OtherIntPieces ++
-        QualPieces ++ NonImportedPieces ++ OtherArityPieces,
+        QualPieces ++ NonImportedPieces ++ OtherArityPieces ++
+        DidYouMeanPieces,
     Spec = simplest_spec($pred, severity_error, phase_parse_tree_to_hlds,
         Context, AllPieces),
     !:Specs = [Spec | !.Specs].

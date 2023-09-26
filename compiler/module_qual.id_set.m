@@ -102,6 +102,8 @@
 :- pred id_set_insert(module_permissions::in, mq_id::in,
     id_set::in, id_set::out) is det.
 
+:- pred get_names_in_id_set(id_set::in, list(string)::out) is det.
+
     % Find the unique match in the current name space for a given mq_id
     % from a list of ids. If none exists, either because no match was found
     % or multiple matches were found, report an error.
@@ -133,11 +135,24 @@
 :- import_module require.
 :- import_module set.
 
-% This want efficient retrieval of all the modules which define an id
-% with a certain name and arity. We therefore implement an id_set as a
-% staged map from the base name of an entity, to its arity, to the
-% permissions map which records which modules define an entity of that
-% name and arity and with what permissions.
+% We want efficient retrieval of all the modules which define an id
+% with a certain name and arity. We therefore implement an id_set
+% as a three stage map from
+%
+% - first the base name of an entity,
+% - and then its arity,
+% - and then its module name,
+%
+% to the permissions for the sym_name_arity we can contruct for these. 
+%
+% Going through just the first two stages allows us to see which modules
+% define an entity with the given base name and arity.
+%
+% Going through just the first stage allows us to see which arities
+% have definitions for the given base name.
+%
+% Going through none of the stages allow us to see which names exist
+% for this kind of entity.
 
 :- type id_set == map(string, map(arity, permissions_map)).
 :- type permissions_map == map(module_name, module_permissions).
@@ -232,6 +247,11 @@ need_qual_only_if_both(NeedQualA, NeedQualB, NeedQual) :-
     else
         NeedQual = may_be_unqualified
     ).
+
+%---------------------------------------------------------------------------%
+
+get_names_in_id_set(IdSet, Names) :-
+    map.sorted_keys(IdSet, Names).
 
 %---------------------------------------------------------------------------%
 

@@ -8,6 +8,7 @@ bug113.m:034: Error: clause for function `new'/2
 bug113.m:034:   without corresponding `:- func' declaration.
 bug113.m:036: In clause for function `new'/2:
 bug113.m:036:   error: undefined symbol `throw_bitmap_error'/1.
+bug113.m:036:   (Did you mean `bitmap_error'?)
 bug113.m:038: In clause for function `new'/2:
 bug113.m:038:   error: undefined symbol `initializer'/1.
 bug113.m:039: In clause for function `new'/2:

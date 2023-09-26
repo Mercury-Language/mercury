@@ -607,6 +607,11 @@
 
 %---------------------------------------------------------------------------%
 
+:- pred maybe_construct_did_you_mean_pieces(string::in, list(string)::in,
+    list(format_piece)::out) is det.
+
+%---------------------------------------------------------------------------%
+
 :- pred extract_spec_phase(error_spec::in, error_phase::out) is det.
 
 :- pred extract_spec_msgs(globals::in, error_spec::in,
@@ -622,10 +627,13 @@
 
 :- implementation.
 
+:- import_module char.
+:- import_module edit_distance.
 :- import_module getopt.
 :- import_module require.
 :- import_module string.
 :- import_module term_context.
+:- import_module uint.
 
 %---------------------------------------------------------------------------%
 
@@ -736,6 +744,99 @@ describe_sym_name_arity(sym_name_arity(SymName, Arity)) =
     string.format("`%s'/%d", [s(sym_name_to_string(SymName)), i(Arity)]).
 
 add_quotes(Str) = "`" ++ Str ++ "'".
+
+%---------------------------------------------------------------------------%
+
+maybe_construct_did_you_mean_pieces(BaseName, CandidateNames,
+        DidYouMeanPieces) :-
+    % Note: name_is_close_enough below depends on all costs here
+    % except for case changes being 2u.
+    Params = edit_params(2u, 2u, case_sensitive_replacement_cost, 2u),
+    find_closest_strings(Params, BaseName, CandidateNames,
+        Cost, HeadBestName, TailBestNames),
+    BestNames = [HeadBestName | TailBestNames],
+    ( if
+        % Don't offer a string as a replacement for itself.
+        Cost > 0u,
+        % Don't offer a string as a replacement if it is too far
+        % from the original, either.
+        list.filter(name_is_close_enough(Cost, BaseName),
+            BestNames, CloseEnoughBestNames),
+        CloseEnoughBestNames = [_ | _]
+    then
+        % For hand-written code, having more than ten names
+        % equally close to BaseName should be vanishingly rare,
+        % so the limit we impose here should not matter.
+        % But programs that automatically generate Mercury code
+        % may use naming schemes that make such occurrences
+        % much more likely, and for these, avoiding the generation
+        % of far-too-long error messages may be important.
+        list.split_upto(10, CloseEnoughBestNames,
+            SuggestedNames0, NonSuggestedNames),
+        (
+            NonSuggestedNames = [],
+            SuggestedNames = SuggestedNames0
+        ;
+            NonSuggestedNames = [_ | _],
+            % This should cause the message we create below
+            % to end with "or `...'?".
+            SuggestedNames = SuggestedNames0 ++ ["..."]
+        ),
+        SuggestionPieces = list_to_quoted_pieces_or(SuggestedNames),
+        DidYouMeanPieces =
+            [words("(Did you mean")] ++ SuggestionPieces ++
+            [suffix("?)"), nl]
+    else
+        DidYouMeanPieces = []
+    ).
+
+:- pred name_is_close_enough(uint::in, string::in, string::in) is semidet.
+
+name_is_close_enough(Cost, Query, Name) :-
+    % This heuristic for when a name is "close enough"
+    % is from spellcheck.cc in the gcc source code.
+    require_det (
+        string.count_code_points(Query, QueryLen),
+        string.count_code_points(Name, NameLen),
+        QueryLenU = uint.cast_from_int(QueryLen),
+        NameLenU = uint.cast_from_int(NameLen),
+        MinLenU = uint.min(QueryLenU, NameLenU),
+        MaxLenU = uint.max(QueryLenU, NameLenU),
+        % Accept a candidate as "close enough" if the number of changes
+        % is at most one third of the length of the longer of the two strings.
+        %
+        % If the lengths are close, then ...
+        ( if MaxLenU - MinLenU =< 1u then
+            % ... round down, but allow at least one change.
+            MaxAcceptableLen = uint.max(MaxLenU / 3u, 1u)
+        else
+            % Otherwise, round up, thus giving a little extra leeway
+            % to some cases involving insertions/deletions.
+            MaxAcceptableLen = (MaxLenU + 2u) / 3u
+        ),
+        % The 2u represents the cost of edits other than case transformations.
+        MaxAcceptableCost = 2u * MaxAcceptableLen,
+        trace [compile_time(flag("debug_close_enough")), io(!IO)] (
+            io.output_stream(Stream, !IO),
+            io.format(Stream, "%s vs %s: cost %u, max acceptable cost %u\n",
+                [s(Query), s(Name), u(Cost), u(MaxAcceptableCost)], !IO),
+            io.format(Stream, "%srecommended\n",
+                [s(if Cost =< MaxAcceptableCost then "" else "not ")], !IO)
+        )
+    ),
+    Cost =< MaxAcceptableCost.
+
+:- func case_sensitive_replacement_cost(char, char) = uint.
+
+case_sensitive_replacement_cost(CharA, CharB) = ReplacementCost :-
+    char.to_lower(CharA, LowerCharA),
+    char.to_lower(CharB, LowerCharB),
+    ( if LowerCharA = LowerCharB then
+        % CharA and CharB differ only in case.
+        ReplacementCost = 1u
+    else
+        ReplacementCost = 2u
+    ).
 
 %---------------------------------------------------------------------------%
 

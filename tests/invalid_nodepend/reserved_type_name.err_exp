@@ -64,3 +64,4 @@ reserved_type_name.m:069: In clause for predicate `main'/2:
 reserved_type_name.m:069:   in argument 1 of call to predicate
 reserved_type_name.m:069:   `io.write_line'/3:
 reserved_type_name.m:069:   error: undefined symbol `float_a'/0.
+reserved_type_name.m:069:   (Did you mean `float'?)

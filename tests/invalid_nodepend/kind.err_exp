@@ -16,7 +16,10 @@ kind.m:021: In the definition of the mode `u': error: a variable such as `K7'
 kind.m:021:   is not a valid mode.
 kind.m:022: In definition of mode `v'/0:
 kind.m:022:   error: undefined inst `q'/0.
+kind.m:022:   (Did you mean `i'?)
 kind.m:022: In definition of mode `v'/0:
 kind.m:022:   error: undefined mode `p'/0.
+kind.m:022:   (Did you mean `m' or `v'?)
 kind.m:027: In definition of inst `fi'/0:
 kind.m:027:   error: undefined inst `f9'/0.
+kind.m:027:   (Did you mean `fi'?)

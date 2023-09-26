@@ -85,15 +85,12 @@
 :- import_module parse_tree.prog_util.
 
 :- import_module bool.
-:- import_module char.
-:- import_module edit_distance.
 :- import_module int.
 :- import_module map.
 :- import_module require.
 :- import_module set.
 :- import_module string.
 :- import_module term.
-:- import_module uint.
 :- import_module varset.
 
 %---------------------------------------------------------------------------%
@@ -391,49 +388,18 @@ report_error_pred_wrong_full_name(ClauseContext, Context, PredicateTable,
         % It seems that regardless of missing qualifications or equal signs,
         % the reference is to the wrong name. See if we can mention some
         % similar names that could be the one they intended.
-        get_known_pred_names(PredicateTable, KnownPredNames),
+        get_known_pred_info_names(PredicateTable, pf_predicate,
+            KnownPredNames),
         BaseName = unqualify_name(SymName),
-        % Note: name_is_close_enough below depends on all costs here
-        % except for case changes being 2u.
-        Params = edit_params(2u, 2u, case_sensitive_replacement_cost, 2u),
-        find_closest_strings(Params, BaseName, KnownPredNames,
-            Cost, HeadBestName, TailBestNames),
-        BestNames = [HeadBestName | TailBestNames],
-        ( if
-            % Don't offer a string as a replacement for itself.
-            Cost > 0u,
-            % Don't offer a string as a replacement if it is too far
-            % from the original, either.
-            list.filter(name_is_close_enough(Cost, BaseName),
-                BestNames, CloseEnoughBestNames),
-            CloseEnoughBestNames = [_ | _]
-        then
-            % For hand-written code, having more than ten names
-            % equally close to BaseName should be vanishingly rare,
-            % so the limit we impose here should not matter.
-            % But programs that automatically generate Mercury code
-            % may use naming schemes that make such occurrences
-            % much more likely, and for these, avoiding the generation
-            % of far-too-long error messages may be important.
-            list.split_upto(10, CloseEnoughBestNames,
-                SuggestedNames0, NonSuggestedNames),
-            (
-                NonSuggestedNames = [],
-                SuggestedNames = SuggestedNames0
-            ;
-                NonSuggestedNames = [_ | _],
-                % This should make cause the message we create below
-                % to end with "or `...'?".
-                SuggestedNames = SuggestedNames0 ++ ["..."]
-            ),
-            SuggestionPieces = list_to_quoted_pieces_or(SuggestedNames),
-            SuggestedNamePieces =
-                [words("(Did you mean")] ++ SuggestionPieces ++
-                [suffix("?)"), nl],
-            SuggestedNamesMsg = simplest_msg(Context, SuggestedNamePieces),
-            Msgs = [UndefMsg, SuggestedNamesMsg]
-        else
+        maybe_construct_did_you_mean_pieces(BaseName, KnownPredNames,
+            DidYouMeanPieces),
+        (
+            DidYouMeanPieces = [],
             Msgs = [UndefMsg]
+        ;
+            DidYouMeanPieces = [_ | _],
+            DidyouMeanMsg = simplest_msg(Context, DidYouMeanPieces),
+            Msgs = [UndefMsg, DidyouMeanMsg]
         )
     else
         % The AddeddumPieces part of UndefMsg and/or KindQualMsgs
@@ -452,81 +418,6 @@ report_error_func_instead_of_pred(Context) = Msg :-
     Pieces = [words("(There is a *function* with that name, however."), nl,
         words("Perhaps you forgot to add"), quote(" = ..."), suffix("?)"), nl],
     Msg = simplest_msg(Context, Pieces).
-
-%---------------------%
-
-:- pred get_known_pred_names(predicate_table::in, list(string)::out) is det.
-
-get_known_pred_names(PredTable, KnownPredNames) :-
-    predicate_table_get_pred_id_table(PredTable, PredIdTable),
-    map.values(PredIdTable, PredInfos),
-    list.foldl(acc_known_pred_names, PredInfos, [], KnownPredNames0),
-    list.sort_and_remove_dups(KnownPredNames0, KnownPredNames).
-
-:- pred acc_known_pred_names(pred_info::in,
-    list(string)::in, list(string)::out) is det.
-
-acc_known_pred_names(PredInfo, !KnownPredNames) :-
-    pred_info_get_is_pred_or_func(PredInfo, PredOrFunc),
-    % Note that we don't care whether PredInfo contains a valid predicate or
-    % not; even if it is invalid, it could be the one the programmer intended
-    % to reference.
-    (
-        PredOrFunc = pf_function
-    ;
-        PredOrFunc = pf_predicate,
-        pred_info_get_name(PredInfo, Name),
-        !:KnownPredNames = [Name | !.KnownPredNames]
-    ).
-
-%---------------------%
-
-:- func case_sensitive_replacement_cost(char, char) = uint.
-
-case_sensitive_replacement_cost(CharA, CharB) = ReplacementCost :-
-    char.to_lower(CharA, LowerCharA),
-    char.to_lower(CharB, LowerCharB),
-    ( if LowerCharA = LowerCharB then
-        % CharA and CharB differ only in case.
-        ReplacementCost = 1u
-    else
-        ReplacementCost = 2u
-    ).
-
-%---------------------%
-
-:- pred name_is_close_enough(uint::in, string::in, string::in)
-    is semidet.
-
-name_is_close_enough(Cost, Query, Name) :-
-    require_det (
-        % Note that 2u below represents the cost of edits other than
-        % case transformations.
-        string.count_code_points(Query, QueryLen),
-        string.count_code_points(Name, NameLen),
-        QueryLenU = uint.cast_from_int(QueryLen),
-        NameLenU = uint.cast_from_int(NameLen),
-        MinLenU = uint.min(QueryLenU, NameLenU),
-        MaxLenU = uint.max(QueryLenU, NameLenU),
-        % If the lengths are close, then round down ...
-        ( if MaxLenU - MinLenU =< 1u then
-            % ... but allow an edit distance of at least one base
-            % insert/delete/replace cost.
-            MaxAcceptableCost = 2u * uint.max(MaxLenU / 3u, 1u)
-        else
-            % Otherwise, round up, thus giving a little extra leeway
-            % to some cases involving insertions/deletions.
-            MaxAcceptableCost = 2u * ((MaxLenU + 2u) / 3u)
-        ),
-        trace [compile_time(flag("debug_close_enough")), io(!IO)] (
-            io.output_stream(Stream, !IO),
-            io.format(Stream, "%s vs %s: cost %u, max acceptable cost %u\n",
-                [s(Query), s(Name), u(Cost), u(MaxAcceptableCost)], !IO),
-            io.format(Stream, "%srecommended\n",
-                [s(if Cost =< MaxAcceptableCost then "" else "not ")], !IO)
-        )
-    ),
-    Cost =< MaxAcceptableCost.
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -683,16 +574,24 @@ syntax_functor_components("!", 1, Components) :-
 
 report_error_undef_cons_std(ClauseContext, Context, InitComp, ConsErrors,
         Functor, Arity, Spec) :-
+    (
+        ConsErrors = [],
+        ConsMsgs = []
+    ;
+        ConsErrors = [_ | _],
+        ConsMsgLists = list.map(report_cons_error(Context), ConsErrors),
+        list.condense(ConsMsgLists, ConsMsgs)
+    ),
     ModuleInfo = ClauseContext ^ tecc_module_info,
     module_info_get_cons_table(ModuleInfo, ConsTable),
+    module_info_get_predicate_table(ModuleInfo, PredicateTable),
     ( if
         Functor = cons(Constructor, FunctorArity, _),
         expect(unify(Arity, FunctorArity), $pred, "arity mismatch"),
 
         return_cons_arities(ConsTable, Constructor, ConsArities),
 
-        module_info_get_predicate_table(ModuleInfo, PredTable),
-        predicate_table_lookup_sym(PredTable, may_be_partially_qualified,
+        predicate_table_lookup_sym(PredicateTable, may_be_partially_qualified,
             Constructor, PredIds),
         return_function_arities(ModuleInfo, PredIds, [], FuncArities),
 
@@ -705,32 +604,31 @@ report_error_undef_cons_std(ClauseContext, Context, InitComp, ConsErrors,
         FunctorComps = [always(FunctorPieces)],
         % The code that constructs QualMsgs below uses wording that
         % can be misleading in the presence of arity mismatches.
-        QualMsgs = []
+        QualSuggestionMsgs = []
     else
-        Pieces1 = [words("error: undefined symbol"),
+        UndefSymbolPieces = [words("error: undefined symbol"),
             qual_cons_id_and_maybe_arity(Functor), suffix("."), nl],
         ( if
             Functor = cons(Constructor, _, _),
             Constructor = qualified(ModQual, _)
         then
             maybe_report_missing_import_addendum(ClauseContext, ModQual,
-                Pieces2, MissingImportModules)
+                MissingImportPieces, MissingImportModules)
         else if
             Functor = cons(unqualified("[|]"), 2, _)
         then
             maybe_report_missing_import_addendum(ClauseContext,
-                unqualified("list"), Pieces2, MissingImportModules)
+                unqualified("list"), MissingImportPieces, MissingImportModules)
         else
-            Pieces2 = [],
+            MissingImportPieces = [],
             MissingImportModules = []
         ),
-        FunctorComps = [always(Pieces1 ++ Pieces2)],
+        FunctorComps = [always(UndefSymbolPieces ++ MissingImportPieces)],
         ( if Functor = cons(FunctorName, _, _) then
-            return_cons_defns_with_given_name(ConsTable,
-                unqualify_name(FunctorName), ConsDefns),
+            BaseName = unqualify_name(FunctorName),
+            return_cons_defns_with_given_name(ConsTable, BaseName, ConsDefns),
             list.foldl(accumulate_matching_cons_module_names(FunctorName),
                 ConsDefns, [], ConsModuleNames),
-            module_info_get_predicate_table(ModuleInfo, PredicateTable),
             PredModuleNames =
                 find_possible_pf_missing_module_qualifiers(PredicateTable,
                     pf_predicate, FunctorName),
@@ -743,22 +641,41 @@ report_error_undef_cons_std(ClauseContext, Context, InitComp, ConsErrors,
             set.delete_list(MissingImportModules,
                 ModuleNamesSet0, ModuleNamesSet),
             QualMsgs = report_any_missing_module_qualifiers(ClauseContext,
-                Context, "symbol", ModuleNamesSet)
+                Context, "symbol", ModuleNamesSet),
+            ( if
+                ConsMsgs = [],
+                QualMsgs = []
+            then
+                % It seems that the reference is to the wrong name.
+                % See if we can mention some similar names that could be
+                % the one they intended.
+                cons_table_names(ConsTable, ConsTableNameSet),
+                get_known_pred_info_names(PredicateTable, pf_function,
+                    KnownFuncNames0),
+                set.sorted_list_to_set(KnownFuncNames0, KnownFuncNamesSet0),
+                set.union(ConsTableNameSet,
+                    KnownFuncNamesSet0, KnownFuncNamesSet),
+                set.to_sorted_list(KnownFuncNamesSet, KnownFuncNames),
+                maybe_construct_did_you_mean_pieces(BaseName, KnownFuncNames,
+                    DidYouMeanPieces),
+                (
+                    DidYouMeanPieces = [],
+                    QualSuggestionMsgs = []
+                ;
+                    DidYouMeanPieces = [_ | _],
+                    DidyouMeanMsg = simplest_msg(Context, DidYouMeanPieces),
+                    QualSuggestionMsgs = [DidyouMeanMsg]
+                )
+            else
+                QualSuggestionMsgs = QualMsgs
+            )
         else
-            QualMsgs = []
+            QualSuggestionMsgs = []
         )
-    ),
-    (
-        ConsErrors = [],
-        ConsMsgs = []
-    ;
-        ConsErrors = [_ | _],
-        ConsMsgLists = list.map(report_cons_error(Context), ConsErrors),
-        list.condense(ConsMsgLists, ConsMsgs)
     ),
     Spec = error_spec($pred, severity_error, phase_type_check,
         [simple_msg(Context,
-            [InitComp | FunctorComps]) | ConsMsgs] ++ QualMsgs).
+            [InitComp | FunctorComps]) | ConsMsgs] ++ QualSuggestionMsgs).
 
 :- pred return_function_arities(module_info::in, list(pred_id)::in,
     list(int)::in, list(int)::out) is det.
@@ -783,9 +700,9 @@ return_function_arities(ModuleInfo, [PredId | PredIds], !FuncArities) :-
 
 wrong_arity_constructor_to_pieces(Name, Arity, ActualArities) = Pieces :-
     % Constructors' arities should be treated the same way as
-    % predicates' ariries.
-    NumArgsPieces =
-        arity_error_to_pieces(pf_predicate, Arity, ActualArities),
+    % predicates' arities, in that neither has a distinguished "return value"
+    % argument.
+    NumArgsPieces = arity_error_to_pieces(pf_predicate, Arity, ActualArities),
     Pieces = [words("error: ")] ++ NumArgsPieces ++
         [words("in use of constructor"), qual_sym_name(Name), suffix(".")].
 
@@ -825,9 +742,9 @@ report_cons_error(Context, ConsError) = Msgs :-
         Msgs = [simplest_msg(Context, Pieces)]
     ;
         ConsError = abstract_imported_type,
-        % For `abstract_imported_type' errors, the "undefined symbol"
-        % error written by `report_error_undef_cons' is sufficient so
-        % we do not print an additional error message here.
+        % For `abstract_imported_type' errors, the "undefined symbol" error
+        % written by `report_error_undef_cons' is sufficient, so we do not
+        % print an additional error message here.
         Msgs = []
     ;
         ConsError = invalid_field_update(FieldName, FieldDefn, TVarSet, TVars),
@@ -1170,6 +1087,32 @@ arities_to_pieces([Arity | Arities]) = Pieces :-
     ;
         Arities = [_, _ | _],
         Pieces = [ArityPiece, suffix(",") | TailPieces]
+    ).
+
+%---------------------------------------------------------------------------%
+
+:- pred get_known_pred_info_names(predicate_table::in, pred_or_func::in,
+    list(string)::out) is det.
+
+get_known_pred_info_names(PredicateTable, RequiredPredOrFunc, KnownNames) :-
+    predicate_table_get_pred_id_table(PredicateTable, PredIdTable),
+    map.values(PredIdTable, PredInfos),
+    list.foldl(acc_known_pred_info_names(RequiredPredOrFunc), PredInfos,
+        [], KnownNames0),
+    list.sort_and_remove_dups(KnownNames0, KnownNames).
+
+:- pred acc_known_pred_info_names(pred_or_func::in, pred_info::in,
+    list(string)::in, list(string)::out) is det.
+
+acc_known_pred_info_names(RequiredPredOrFunc, PredInfo, !KnownNames) :-
+    pred_info_get_is_pred_or_func(PredInfo, PredOrFunc),
+    % Note that we don't care whether PredInfo is valid or not; even if
+    % it is invalid, it could be the one the programmer intended to reference.
+    ( if PredOrFunc = RequiredPredOrFunc then
+        pred_info_get_name(PredInfo, Name),
+        !:KnownNames = [Name | !.KnownNames]
+    else
+        true
     ).
 
 %---------------------------------------------------------------------------%
