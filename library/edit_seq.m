@@ -20,7 +20,7 @@
 % so it is suitable for use only on reasonably short lists.
 %
 % The operations in this module are intended to generate diffs to be displayed.
-% Since diff traditionally have no way to display a transposition as
+% Since diff traditionally has no way to display a transposition as
 % anything other than an insertion/deletion pair, this module does not
 % consider transpositions to be a separate kind of operation, which means
 % that the distances it computes are Levenshtein distances.
