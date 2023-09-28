@@ -235,14 +235,9 @@
     %
     %   deps_map.m
     %   generate_dep_d_files.m
-    %   make.module_dep_file.m
+    %   make.get_module_dep_info.m
     %
-    % for building dependency maps between modules. The aug_compilation_units
-    % it builds have only one field filled in, the one containing
-    % the parse_tree_module_src.
-    %
-    % XXX Do the callers fill in the other fields, or do they need *only*
-    % the parse_tree_module_src? If the latter, we should return only *that*.
+    % for building dependency maps between modules.
     %
 :- pred parse_tree_src_to_burdened_module_list(globals::in,
     file_name::in, parse_tree_src::in, read_module_errors::in,

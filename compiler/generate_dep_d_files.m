@@ -113,24 +113,26 @@
 generate_dep_file_for_module(ProgressStream, Globals, ModuleName,
         Specs, !IO) :-
     map.init(DepsMap),
-    generate_dependencies(ProgressStream, Globals, output_all_dependencies,
-        do_not_search, ModuleName, DepsMap, Specs, !IO).
+    generate_dot_dx_files(ProgressStream, Globals,
+        output_all_program_dot_dx_files, do_not_search,
+        ModuleName, DepsMap, Specs, !IO).
 
 generate_dep_file_for_file(ProgressStream, Globals, FileName, Specs, !IO) :-
     build_initial_deps_map_for_file(ProgressStream, Globals, FileName,
         ModuleName, DepsMap0, !IO),
-    generate_dependencies(ProgressStream, Globals, output_all_dependencies,
-        do_not_search, ModuleName, DepsMap0, Specs, !IO).
+    generate_dot_dx_files(ProgressStream, Globals,
+        output_all_program_dot_dx_files, do_not_search,
+        ModuleName, DepsMap0, Specs, !IO).
 
 generate_d_file_for_module(ProgressStream, Globals, ModuleName, Specs, !IO) :-
     map.init(DepsMap),
-    generate_dependencies(ProgressStream, Globals, output_d_file_only,
+    generate_dot_dx_files(ProgressStream, Globals, output_module_dot_d_file,
         do_search, ModuleName, DepsMap, Specs, !IO).
 
 generate_d_file_for_file(ProgressStream, Globals, FileName, Specs, !IO) :-
     build_initial_deps_map_for_file(ProgressStream, Globals, FileName,
         ModuleName, DepsMap0, !IO),
-    generate_dependencies(ProgressStream, Globals, output_d_file_only,
+    generate_dot_dx_files(ProgressStream, Globals, output_module_dot_d_file,
         do_search, ModuleName, DepsMap0, Specs, !IO).
 
 %---------------------------------------------------------------------------%
@@ -166,15 +168,19 @@ build_initial_deps_map_for_file(ProgressStream, Globals, FileName, ModuleName,
 
 %---------------------------------------------------------------------------%
 
-:- type generate_dependencies_mode
-    --->    output_d_file_only
-    ;       output_all_dependencies.
+:- type which_dot_dx_files
+    --->    output_module_dot_d_file
+            % Output the given module's .d file.
+    ;       output_all_program_dot_dx_files.
+            % The given module is (or should be!) the main module of a program.
+            % Output the program's .dep and .gv files, and the .d file
+            % of every module in the program.
 
-:- pred generate_dependencies(io.text_output_stream::in, globals::in,
-    generate_dependencies_mode::in, maybe_search::in, module_name::in,
+:- pred generate_dot_dx_files(io.text_output_stream::in, globals::in,
+    which_dot_dx_files::in, maybe_search::in, module_name::in,
     deps_map::in, list(error_spec)::out, io::di, io::uo) is det.
 
-generate_dependencies(ProgressStream, Globals, Mode, Search, ModuleName,
+generate_dot_dx_files(ProgressStream, Globals, Mode, Search, ModuleName,
         DepsMap0, !:Specs, !IO) :-
     % First, build up a map of the dependencies.
     generate_deps_map(ProgressStream, Globals, Search, ModuleName,
@@ -199,9 +205,9 @@ generate_dependencies(ProgressStream, Globals, Mode, Search, ModuleName,
         )
     else
         (
-            Mode = output_d_file_only
+            Mode = output_module_dot_d_file
         ;
-            Mode = output_all_dependencies,
+            Mode = output_all_program_dot_dx_files,
             SourceFileName = Baggage ^ mb_source_file_name,
             generate_dependencies_write_dv_file(Globals, SourceFileName,
                 ModuleName, DepsMap, !IO),
@@ -327,10 +333,10 @@ generate_dependencies(ProgressStream, Globals, Mode, Search, ModuleName,
             ext_cur_ngs_gs_max_ngs(ext_cur_ngs_gs_max_ngs_opt_trans),
             TransOptDepsOrdering, TransOptOrder, !IO),
         (
-            Mode = output_d_file_only,
+            Mode = output_module_dot_d_file,
             DFilesToWrite = [ModuleDep]
         ;
-            Mode = output_all_dependencies,
+            Mode = output_all_program_dot_dx_files,
             DFilesToWrite = DepsList
         ),
         generate_dependencies_write_d_files(Globals, DFilesToWrite,
@@ -348,7 +354,7 @@ generate_dependencies(ProgressStream, Globals, Mode, Search, ModuleName,
     globals.get_target(Globals, Target),
     ( if
         Target = target_java,
-        Mode = output_all_dependencies
+        Mode = output_all_program_dot_dx_files
     then
         create_java_shell_script(Globals, ModuleName, _Succeeded, !IO)
     else

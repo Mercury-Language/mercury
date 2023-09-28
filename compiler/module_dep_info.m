@@ -31,7 +31,7 @@
     % a given module depends on may be either
     %
     % - the contents of that module' source file (this is represented
-    %   by module_dep_info_imports), or
+    %   by module_dep_info_full), or
     %
     % - the contents of the module's .module_dep file (this is represented
     %   by module_dep_info_summary).
@@ -42,6 +42,10 @@
 
 :- type module_dep_summary
     --->    module_dep_summary(
+                % Note that unlike the mb_source_file_dir field in
+                % module_baggage structures, which is always set to the current
+                % directory, the mds_source_file_dir field here *can* refer
+                % to other directories.
                 mds_source_file_name        :: string,
                 mds_source_file_dir         :: string,
                 mds_source_file_module_name :: module_name,

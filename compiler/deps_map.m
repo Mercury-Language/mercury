@@ -194,7 +194,7 @@ generate_deps_map_step(ProgressStream, Globals, Search,
         !ModuleExpCs, !DepsMap, !Specs, !IO) :-
     % Look up the module's dependencies, and determine whether
     % it has been processed yet.
-    lookup_or_find_dependencies(ProgressStream, Globals, Search,
+    lookup_or_find_dependency_info_for_module(ProgressStream, Globals, Search,
         Module, ExpectationContexts, MaybeDeps0, !DepsMap, !Specs, !IO),
 
     % If the module hadn't been processed yet, then add its imports, parents,
@@ -325,18 +325,18 @@ add_module_name_and_context(SeenModules0, Context, ModuleName, !ModuleExpCs) :-
     % If we don't know its dependencies, read the module and
     % save the dependencies in the dependency map.
     %
-:- pred lookup_or_find_dependencies(io.text_output_stream::in, globals::in,
-    maybe_search::in, module_name::in, expectation_contexts::in,
+:- pred lookup_or_find_dependency_info_for_module(io.text_output_stream::in,
+    globals::in, maybe_search::in, module_name::in, expectation_contexts::in,
     maybe(deps)::out, deps_map::in, deps_map::out,
     list(error_spec)::in, list(error_spec)::out, io::di, io::uo) is det.
 
-lookup_or_find_dependencies(ProgressStream, Globals, Search,
+lookup_or_find_dependency_info_for_module(ProgressStream, Globals, Search,
         ModuleName, ExpectationContexts, MaybeDeps, !DepsMap, !Specs, !IO) :-
     ( if map.search(!.DepsMap, ModuleName, Deps) then
         MaybeDeps = yes(Deps)
     else
-        read_dependencies(ProgressStream, Globals, Search, ModuleName,
-            ExpectationContexts, BurdenedModules, !Specs, !IO),
+        read_src_file_for_dependency_info(ProgressStream, Globals, Search,
+            ModuleName, ExpectationContexts, BurdenedModules, !Specs, !IO),
         (
             BurdenedModules = [_ | _],
             list.foldl(insert_into_deps_map, BurdenedModules, !DepsMap),
@@ -370,12 +370,12 @@ insert_into_deps_map(BurdenedModule, !DepsMap) :-
     % and any nested submodules it contains. Return the burdened_module
     % structure for both the named module and each of its nested submodules.
     %
-:- pred read_dependencies(io.text_output_stream::in, globals::in,
-    maybe_search::in, module_name::in, expectation_contexts::in,
+:- pred read_src_file_for_dependency_info(io.text_output_stream::in,
+    globals::in, maybe_search::in, module_name::in, expectation_contexts::in,
     list(burdened_module)::out,
     list(error_spec)::in, list(error_spec)::out, io::di, io::uo) is det.
 
-read_dependencies(ProgressStream, Globals, Search, ModuleName,
+read_src_file_for_dependency_info(ProgressStream, Globals, Search, ModuleName,
         ExpectationContexts, BurdenedModules, !Specs, !IO) :-
     % XXX If HaveReadModuleSrc contains error messages, any parse tree
     % it may also contain may not be complete, and the rest of this predicate

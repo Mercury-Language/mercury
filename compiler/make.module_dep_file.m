@@ -77,13 +77,16 @@
 
     % The version 1 module_dep file format is the same as version 2 except that
     % it does not include a list of files included by `pragma foreign_decl' and
-    % `pragma foreign_code'. We continue to write version 1 files when
-    % possible.
+    % `pragma foreign_code'. We stopped generating version 1 .module_dep files
+    % on 2021 Jul 31.
     %
     % XXX We should consider
     %
     % - adding a version 3 that differs from 2 in deleting the field
-    %   that now *always* contains "no_main", and
+    %   that now *always* contains "no_main",
+    % - replacing the braces that wrap the contents of each structured field
+    %   with a function symbol that explicitly specifies the meaning of
+    %   that contents, and
     % - switching to always generating version 3.
     %
     % XXX The precise on-disk representation of each (current) .module_dep
