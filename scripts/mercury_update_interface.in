@@ -24,13 +24,13 @@
 
 verbose=false
 
-if test $# -ge 1 -a "$1" = "-v"
+if test "$#" -ge 1 -a "$1" = "-v"
 then
     verbose=true
     shift
 fi
 
-if test $# -ne 1
+if test "$#" -ne 1
 then
     echo "Usage: `basename $0` filename" 1>&2
     exit 1
@@ -38,19 +38,19 @@ fi
 
 filename="$1"
     
-if test ! -f "$filename"
+if test ! -f "${filename}"
 then
-    $verbose && echo "creating \`${filename}'." 1>&2
+    ${verbose} && echo "creating \`${filename}'." 1>&2
     mv -f "${filename}.tmp" "${filename}"
     # Work-around for a parallel gmake problem
     exit 0
 elif cmp -s "${filename}.tmp" "${filename}"
 then
-    $verbose && echo "\`${filename}' has not changed." 1>&2
+    ${verbose} && echo "\`${filename}' has not changed." 1>&2
     rm -f "${filename}.tmp"
 else
     echo "\`${filename}' has CHANGED." 1>&2
     mv -f "${filename}.tmp" "${filename}"
-    # Work-around for a parallel gmake problem
+    # Work-around for a parallel gmake problem.
     exit 0
 fi

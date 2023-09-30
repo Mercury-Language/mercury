@@ -163,7 +163,8 @@ Files:
     compiler search paths.
 "
 
-while : ; do
+while true
+do
     case "$1" in
         -h|--help|"-?")
             echo "${Help}"
@@ -318,7 +319,8 @@ esac
 
 # Set the correct flags if we're to use the MS Visual C runtime.
 use_msvcrt=@USE_MSVCRT@
-if test ${use_msvcrt} = "yes"; then
+if test ${use_msvcrt} = "yes"
+then
     case ${thread_safe} in
         # -MD states that we will use the MSVC runtime, the boehm_gc collector
         # assumes that the collector has been built as a DLL if we are using

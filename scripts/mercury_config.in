@@ -14,30 +14,30 @@ Help="\
 Name:   mercury_config - generate new configurations for a Mercury installation
 Usage:  mercury_config [<options>] [-- <configure options>]
 Options:
-	--rebase
-		Use this option after moving a Mercury installation to
-		regenerate the scripts and configuration files so that
-		the Mercury installation will work from the new location.
+    --rebase
+        Use this option after moving a Mercury installation to
+        regenerate the scripts and configuration files so that
+        the Mercury installation will work from the new location.
 
-	--output-prefix <dir>
-		Generate the new copies of the Mercury scripts and
-		configuration files into the given directory.
-		By default mercury_config overwrites the configuration in
-		the installation hierarchy containing the mercury_config
-		script.
+    --output-prefix <dir>
+        Generate the new copies of the Mercury scripts and
+        configuration files into the given directory.
+        By default mercury_config overwrites the configuration in
+        the installation hierarchy containing the mercury_config
+        script.
 
 Description:
-	Generates an alternative configuration for a Mercury
-	installation, for example to use a different C compiler.
+    Generates an alternative configuration for a Mercury
+    installation, for example to use a different C compiler.
 
-	The <configure options> must result in a configuration
-	which is compatible with the configuration used to build
-	the installed libraries, or else linking using the new
-	configuration will fail.  For example, both configurations
-	must agree on the use of boxed or unboxed floats.
+    The <configure options> must result in a configuration
+    which is compatible with the configuration used to build
+    the installed libraries, or else linking using the new
+    configuration will fail.  For example, both configurations
+    must agree on the use of boxed or unboxed floats.
 
-	To use the new configuration, put \`<dir>/bin' at the
-	beginning of your PATH.
+    To use the new configuration, put \`<dir>/bin' at the
+    beginning of your PATH.
 
 Environment variables:
         MERCURY_DEFAULT_GRADE.
@@ -58,183 +58,188 @@ recursive=no
 
 orig_arity=$#
 
-while : ; do
-	case $1 in 
-		--rebase)
-			input_prefix=$(readlink -f $0)
-			input_prefix=${input_prefix%/bin/mercury_config}
-			output_prefix=${input_prefix}
-			;;
+while true
+do
+    case "$1" in 
+        --rebase)
+            input_prefix=$(readlink -f $0)
+            input_prefix=${input_prefix%/bin/mercury_config}
+            output_prefix=${input_prefix}
+            ;;
 
-		# This option is only for use by
-		# bindist/bindist.INSTALL.in
-		--input-prefix=*)
-			input_prefix=`echo "$1" | sed 's/[-_a-zA-Z0-9]*=//'`
-			;;
-		--input-prefix)
-			input_prefix="$2"
-			shift
-			;;
+        # This option is only for use by
+        # bindist/bindist.INSTALL.in
+        --input-prefix=*)
+            input_prefix=`echo "$1" | sed 's/[-_a-zA-Z0-9]*=//'`
+            ;;
+        --input-prefix)
+            input_prefix="$2"
+            shift
+            ;;
 
-		--output-prefix=*)
-			output_prefix=`echo "$1" | sed 's/[-_a-zA-Z0-9]*=//'`
-			;;
-		--output-prefix)
-			output_prefix="$2"
-			shift
-			;;
+        --output-prefix=*)
+            output_prefix=`echo "$1" | sed 's/[-_a-zA-Z0-9]*=//'`
+            ;;
+        --output-prefix)
+            output_prefix="$2"
+            shift
+            ;;
 
-		--recursive)
-			recursive=yes
-			;;
+        --recursive)
+            recursive=yes
+            ;;
 
-		-h|--help|"-?")
-			echo "$Help"
-			exit 0
-			;;
+        -h|--help|"-?")
+            echo "${Help}"
+            exit 0
+            ;;
 
-		--)
-			shift
-			break
-			;;
+        --)
+            shift
+            break
+            ;;
 
-		*)
-			break
-			;;
-	esac
-	shift
+        *)
+            break
+            ;;
+    esac
+    shift
 done
 
-input_libdir="$input_prefix/lib/mercury"
-output_libdir="$output_prefix/lib/mercury"
+input_libdir="${input_prefix}/lib/mercury"
+output_libdir="${output_prefix}/lib/mercury"
 
-if test "$orig_arity" -eq 0 && ! test -d "$input_prefix"
+if test "${orig_arity}" -eq 0 && ! test -d "${input_prefix}"
 then
-	echo "Input directory \`$input_prefix' not found."
-	echo "Did you mean \`$0 --rebase'?"
-	exit 1
+    echo "Input directory \`${input_prefix}' not found."
+    echo "Did you mean \`$0 --rebase'?"
+    exit 1
 fi
 
 # mercury_config regenerates itself, so we can't just execute it in place.
-case $recursive in
+case "${recursive}" in
     no)
-	if [ -d "$TMPDIR" ]; then
-		:
-	elif [ -d /tmp ]; then
-		TMPDIR="/tmp"
-	else
-		TMPDIR="."
-	fi
-	TMPDIR=$TMPDIR/mercury_config.$$
-	trap 'rm -rf $TMPDIR; exit 1' 1 2 3 13 15 
-	[ -d $TMPDIR ] || mkdir -p $TMPDIR || \
-		{ echo mercury_config: invalid TMPDIR: $TMPDIR; exit 1; }
-	export TMPDIR
+    if test -d "${TMPDIR}"
+    then
+        :
+    elif test -d /tmp
+    then
+        TMPDIR="/tmp"
+    else
+        TMPDIR="."
+    fi
+    TMPDIR=${TMPDIR}/mercury_config.$$
+    trap 'rm -rf ${TMPDIR}; exit 1' 1 2 3 13 15 
+    test -d ${TMPDIR} || mkdir -p ${TMPDIR} || \
+        { echo mercury_config: invalid TMPDIR: ${TMPDIR}; exit 1; }
+    export TMPDIR
 
-	cp $input_prefix/bin/mercury_config $TMPDIR
-	case $# in
-	0)
-		exec $TMPDIR/mercury_config --recursive \
-			--input-prefix "$input_prefix" \
-			--output-prefix "$output_prefix" ;;
-	*)
-		exec $TMPDIR/mercury_config --recursive \
-			--input-prefix "$input_prefix" \
-			--output-prefix "$output_prefix" "$@" ;;
-	esac
+    cp ${input_prefix}/bin/mercury_config ${TMPDIR}
+    case "$#" in
+    0)
+        exec ${TMPDIR}/mercury_config --recursive \
+            --input-prefix "${input_prefix}" \
+            --output-prefix "${output_prefix}"
+        ;;
+    *)
+        exec ${TMPDIR}/mercury_config --recursive \
+            --input-prefix "${input_prefix}" \
+            --output-prefix "${output_prefix}" "$@"
+        ;;
+    esac
 esac
 
-cp -r $input_libdir/reconf/* $TMPDIR || exit 1
-mkdir $TMPDIR/bindist || exit 1
+cp -r ${input_libdir}/reconf/* ${TMPDIR} || exit 1
+mkdir ${TMPDIR}/bindist || exit 1
 
 # The configure script tries to process these files, but they won't be used.
-touch $TMPDIR/scripts/Mercury.config.bootstrap.in || exit 1
-touch $TMPDIR/Mmake.common.in $TMPDIR/bindist/bindist.INSTALL.in || exit 1
-touch $TMPDIR/bindist/bindist.Makefile.in || exit 1
-mkdir $TMPDIR/tools || exit 1
-touch $TMPDIR/tools/lmc.in || exit 1
-touch $TMPDIR/tools/dotime.in || exit 1
-touch $TMPDIR/runtime/mercury_dotnet.cs.in || exit 1
-mkdir $TMPDIR/java || exit 1
-mkdir $TMPDIR/java/runtime || exit 1
-touch $TMPDIR/java/runtime/Constants.java.in || exit 1
-touch $TMPDIR/java/runtime/Native.java.in || exit 1
-mkdir $TMPDIR/compiler || exit 1
-touch $TMPDIR/compiler/COMP_FLAGS.in || exit 1
-mkdir $TMPDIR/grade_lib || exit 1
-touch $TMPDIR/grade_lib/GRADE_LIB_FLAGS.in || exit 1
-mkdir $TMPDIR/library || exit 1
-touch $TMPDIR/library/LIB_FLAGS.in || exit 1
-mkdir $TMPDIR/mdbcomp || exit 1
-touch $TMPDIR/mdbcomp/MDBCOMP_FLAGS.in || exit 1
-mkdir $TMPDIR/browser || exit 1
-touch $TMPDIR/browser/MDB_FLAGS.in || exit 1
-mkdir $TMPDIR/slice || exit 1
-touch $TMPDIR/slice/SLICE_FLAGS.in || exit 1
-mkdir $TMPDIR/ssdb || exit 1
-touch $TMPDIR/ssdb/SSDB_FLAGS.in || exit 1
-mkdir $TMPDIR/profiler || exit 1
-touch $TMPDIR/profiler/PROF_FLAGS.in || exit 1
-mkdir $TMPDIR/deep_profiler || exit 1
-touch $TMPDIR/deep_profiler/DEEP_FLAGS.in || exit 1
-mkdir $TMPDIR/tests || exit 1
-touch $TMPDIR/tests/TESTS_FLAGS.in || exit 1
-touch $TMPDIR/tests/DEFNS_FOR_TESTS.in || exit 1
-mkdir $TMPDIR/mfilterjavac || exit 1
-touch $TMPDIR/mfilterjavac/MFILTERJAVAC_FLAGS.in || exit 1
+touch ${TMPDIR}/scripts/Mercury.config.bootstrap.in || exit 1
+touch ${TMPDIR}/Mmake.common.in ${TMPDIR}/bindist/bindist.INSTALL.in || exit 1
+touch ${TMPDIR}/bindist/bindist.Makefile.in || exit 1
+mkdir ${TMPDIR}/tools || exit 1
+touch ${TMPDIR}/tools/lmc.in || exit 1
+touch ${TMPDIR}/tools/dotime.in || exit 1
+touch ${TMPDIR}/runtime/mercury_dotnet.cs.in || exit 1
+mkdir ${TMPDIR}/java || exit 1
+mkdir ${TMPDIR}/java/runtime || exit 1
+touch ${TMPDIR}/java/runtime/Constants.java.in || exit 1
+touch ${TMPDIR}/java/runtime/Native.java.in || exit 1
+mkdir ${TMPDIR}/compiler || exit 1
+touch ${TMPDIR}/compiler/COMP_FLAGS.in || exit 1
+mkdir ${TMPDIR}/grade_lib || exit 1
+touch ${TMPDIR}/grade_lib/GRADE_LIB_FLAGS.in || exit 1
+mkdir ${TMPDIR}/library || exit 1
+touch ${TMPDIR}/library/LIB_FLAGS.in || exit 1
+mkdir ${TMPDIR}/mdbcomp || exit 1
+touch ${TMPDIR}/mdbcomp/MDBCOMP_FLAGS.in || exit 1
+mkdir ${TMPDIR}/browser || exit 1
+touch ${TMPDIR}/browser/MDB_FLAGS.in || exit 1
+mkdir ${TMPDIR}/slice || exit 1
+touch ${TMPDIR}/slice/SLICE_FLAGS.in || exit 1
+mkdir ${TMPDIR}/ssdb || exit 1
+touch ${TMPDIR}/ssdb/SSDB_FLAGS.in || exit 1
+mkdir ${TMPDIR}/profiler || exit 1
+touch ${TMPDIR}/profiler/PROF_FLAGS.in || exit 1
+mkdir ${TMPDIR}/deep_profiler || exit 1
+touch ${TMPDIR}/deep_profiler/DEEP_FLAGS.in || exit 1
+mkdir ${TMPDIR}/tests || exit 1
+touch ${TMPDIR}/tests/TESTS_FLAGS.in || exit 1
+touch ${TMPDIR}/tests/DEFNS_FOR_TESTS.in || exit 1
+mkdir ${TMPDIR}/mfilterjavac || exit 1
+touch ${TMPDIR}/mfilterjavac/MFILTERJAVAC_FLAGS.in || exit 1
 
-enable_libgrades=`echo $libgrades | sed 's/ /,/g'`
+enable_libgrades=`echo ${libgrades} | sed 's/ /,/g'`
 
-cd $TMPDIR
-case $# in
-	0)
-		./configure @RECONFIGURE_ARGS@ \
-			--with-default-grade="$default_grade" \
-			--enable-libgrades="$enable_libgrades" \
-			--cache-file=/dev/null \
-			--prefix="$input_prefix" \
-			--enable-reconfigure="$output_prefix" || exit 1
-		;;
-	*)
-		./configure @RECONFIGURE_ARGS@ "$@" \
-			--with-default-grade="$default_grade" \
-			--enable-libgrades="$enable_libgrades" \
-			--cache-file=/dev/null \
-			--prefix="$input_prefix" \
-			--enable-reconfigure="$output_prefix" || exit 1
-		;;
+cd ${TMPDIR}
+case "$#" in
+    0)
+        ./configure @RECONFIGURE_ARGS@ \
+            --with-default-grade="${default_grade}" \
+            --enable-libgrades="${enable_libgrades}" \
+            --cache-file=/dev/null \
+            --prefix="${input_prefix}" \
+            --enable-reconfigure="${output_prefix}" || exit 1
+        ;;
+    *)
+        ./configure @RECONFIGURE_ARGS@ "$@" \
+            --with-default-grade="${default_grade}" \
+            --enable-libgrades="${enable_libgrades}" \
+            --cache-file=/dev/null \
+            --prefix="${input_prefix}" \
+            --enable-reconfigure="${output_prefix}" || exit 1
+        ;;
 esac
 
-[ -d $output_libdir/conf ] || mkdir -p $output_libdir/conf || exit 1
-[ -d $output_libdir/mmake ] || mkdir -p $output_libdir/mmake || exit 1
-[ -d $output_libdir/mdb ] || mkdir -p $output_libdir/mdb || exit 1
-[ -d $output_prefix/bin ] || mkdir -p $output_prefix/bin || exit 1
+test -d ${output_libdir}/conf  || mkdir -p ${output_libdir}/conf  || exit 1
+test -d ${output_libdir}/mmake || mkdir -p ${output_libdir}/mmake || exit 1
+test -d ${output_libdir}/mdb   || mkdir -p ${output_libdir}/mdb   || exit 1
+test -d ${output_prefix}/bin   || mkdir -p ${output_prefix}/bin   || exit 1
 
-#
 # Copy the new configuration into place.
-#
-cp runtime/mercury_conf.h $output_libdir/conf || exit 1
-cp scripts/Mercury.config $output_libdir/conf || exit 1
-cp scripts/Mmake.vars $output_libdir/mmake || exit 1
-if [ "$input_prefix" != "$output_prefix" ]; then
-	cp $input_prefix/bin/mdemangle${exe_ext} \
-		$input_prefix/bin/mfiltercc${exe_ext} \
-		$input_prefix/bin/mkinit${exe_ext} \
-		$input_prefix/bin/info_to_mdb${exe_ext} $output_prefix/bin
-	cp $input_libdir/mmake/Mmake.rules $output_libdir/mmake
+cp runtime/mercury_conf.h ${output_libdir}/conf || exit 1
+cp scripts/Mercury.config ${output_libdir}/conf || exit 1
+cp scripts/Mmake.vars ${output_libdir}/mmake || exit 1
+if test "${input_prefix}" != "${output_prefix}"
+then
+    cp ${input_prefix}/bin/mdemangle${exe_ext} \
+        ${input_prefix}/bin/mfiltercc${exe_ext} \
+        ${input_prefix}/bin/mkinit${exe_ext} \
+        ${input_prefix}/bin/info_to_mdb${exe_ext} ${output_prefix}/bin
+    cp ${input_libdir}/mmake/Mmake.rules ${output_libdir}/mmake
 fi
 cd scripts
 echo *
 for file in *; do
-	case "$file" in
-		*.in|Mmake.*|Mercury.config*|*.sh-subr) ;;
-		mdbrc)
-			cp $file $output_libdir/mdb || exit 1
-			;;
-		*)
-			cp $file $output_prefix/bin || exit 1
-			chmod u+wx $output_prefix/bin/$file || exit 1
-			;;
-	esac
+    case "${file}" in
+        *.in|Mmake.*|Mercury.config*|*.sh-subr)
+            ;;
+        mdbrc)
+            cp ${file} ${output_libdir}/mdb || exit 1
+            ;;
+        *)
+            cp ${file} ${output_prefix}/bin || exit 1
+            chmod u+wx ${output_prefix}/bin/${file} || exit 1
+            ;;
+    esac
 done
-rm -rf $TMPDIR
+rm -rf ${TMPDIR}

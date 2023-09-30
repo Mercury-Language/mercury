@@ -8,11 +8,11 @@
 #---------------------------------------------------------------------------#
 #
 # init_grade_options.sh-subr:
-#	An `sh' subroutine for initializing grade-related options.
-#	Used by the `ml', `mgnuc' and `c2init' scripts.
+#   An `sh' subroutine for initializing grade-related options.
+#   Used by the `ml', `mgnuc' and `c2init' scripts.
 #
-#	The code here should be inserted before a script's option-parsing
-#	loop.  The invoking script must define a DEFAULT_GRADE option.
+#   The code here should be inserted before a script's option-parsing
+#   loop.  The invoking script must define a DEFAULT_GRADE option.
 #
 # IMPORTANT: any changes to the handling of grades here may also require
 # changes to all the files indicated by runtime/mercury_grade.h.
@@ -25,41 +25,41 @@
 
 grade_usage="\
 Grade options:
-	-s <grade>, --grade <grade>
-	--target {c, csharp, java}
-	--asm-labels
-	--gcc-non-local-gotos
-	--gcc-global-registers
-	-H, --high-level-code
-	--parallel
-	--gc {boehm, boehm_debug, hgc, accurate, none}
-	-p, --profiling
-	--profile-calls
-	--profile-time
-	--profile-memory
-	--profile-deep
-	--record-term-sizes-as-words
-	--record-term-sizes-as-cells
-	--use-trail
-	--reserve-tag
-	--use-minimal-model-stack-copy
-	--use-minimal-model-own-stacks
-	--minimal-model-debug
-	--single-prec-float
-	--pic-reg
-	--no-stack-trace
-	--debug
-	--decl-debug
-	--ss-debug
-	--c-debug-grade
-	--extend-stacks-when-needed
-	--stack-segments
-	--use-regions
-		See the documentation in the \"Invocation\" section
-		of the Mercury User's Guide."
+    -s <grade>, --grade <grade>
+    --target {c, csharp, java}
+    --asm-labels
+    --gcc-non-local-gotos
+    --gcc-global-registers
+    -H, --high-level-code
+    --parallel
+    --gc {boehm, boehm_debug, hgc, accurate, none}
+    -p, --profiling
+    --profile-calls
+    --profile-time
+    --profile-memory
+    --profile-deep
+    --record-term-sizes-as-words
+    --record-term-sizes-as-cells
+    --use-trail
+    --reserve-tag
+    --use-minimal-model-stack-copy
+    --use-minimal-model-own-stacks
+    --minimal-model-debug
+    --single-prec-float
+    --pic-reg
+    --no-stack-trace
+    --debug
+    --decl-debug
+    --ss-debug
+    --c-debug-grade
+    --extend-stacks-when-needed
+    --stack-segments
+    --use-regions
+        See the documentation in the \"Invocation\" section
+        of the Mercury User's Guide."
 
 # --use-regions-debug and --use-regions-profiling are not yet documented
-#		since they are not yet stable
+# since they are not yet stable
 
 target=c
 highlevel_code=false
@@ -91,12 +91,12 @@ use_regions=false
 use_regions_debug=false
 use_regions_profiling=false
 
-case $# in
-	0)
-        set - --grade "$DEFAULT_GRADE"
+case "$#" in
+    0)
+        set - --grade "${DEFAULT_GRADE}"
         ;;
-	*)
-        set - --grade "$DEFAULT_GRADE" "$@"
+    *)
+        set - --grade "${DEFAULT_GRADE}" "$@"
         ;;
 esac
 

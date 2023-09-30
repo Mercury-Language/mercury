@@ -9,54 +9,52 @@
 # message, so if you change the help message, don't forget to check
 # that the manpage still looks OK.
 Help="\
-Name:	mdb - Mercury debugger
-Usage:	mdb [<options>] <executable> [<args>]...
+Name:   mdb - Mercury debugger
+Usage:  mdb [<options>] <executable> [<args>]...
 Description:
-	\`mdb' invokes the specified command \`<executable> <args>...'
-	with Mercury debugging enabled.  If that command is a Mercury
-	program that was compiled with debugging enabled (e.g. using
-	the \`--debug' option), or if that command invokes such a
-	program, then mdb will cause the program to be executed under
-	the supervision of the Mercury internal debugger.  Otherwise,
-	mdb will execute the command line as if the mdb prefix weren't
-	there.
+    \`mdb' invokes the specified command \`<executable> <args>...' with
+    Mercury debugging enabled. If that command is a Mercury program that was
+    compiled with debugging enabled (e.g. using the \`--debug' option),
+    or if that command invokes such a program, then mdb will cause the program
+    to be executed under the supervision of the Mercury internal debugger.
+    Otherwise, mdb will execute the command line as if the mdb prefix
+    were not there.
 
-	By default, all the output of the debugger and the output of the
-	program being debugged will be interleaved on the same terminal
-	window.  This can be avoided using the \`--tty' or \`--window'
-	options described below.
+    By default, all the output of the debugger and the output of the program
+    being debugged will be interleaved on the same terminal window.
+    This can be avoided using the \`--tty' or \`--window' options
+    described below.
 
 Options:
-	-t <file-name>, --tty <file-name>
-		Redirect all of the I/O for the debugger to the device
-		specified by <file-name>.  The I/O for the program
-		being debugged will not be redirected.
+    -t <file-name>, --tty <file-name>
+        Redirect all of the I/O for the debugger to the device specified
+        by <file-name>. The I/O for the program being debugged will not be
+        redirected.
 
-	-w, --window, --mdb-in-window
-		Run mdb in a new window, with mdb's I/O going to that
-		window, but with the program's I/O going to the current
-		terminal.  Note that this will not work on all systems.
+    -w, --window, --mdb-in-window
+        Run mdb in a new window, with mdb's I/O going to that window,
+        but with the program's I/O going to the current terminal.
+        Note that this will not work on all systems.
 
-	--program-in-window
-		Run the program in a new window, with the program's I/O
-		going to that window, but with mdb's I/O going to the
-		current terminal.  Note that input and output redirection
-		will not work with the \`--program-in-window' option.
-		\`--program-in-window' will work on most UNIX systems
-		running the X Window System, even those for which
-		\`--mdb-in-window' is not supported.
+    --program-in-window
+        Run the program in a new window, with the program's I/O going to
+        that window, but with mdb's I/O going to the current terminal.
+        Note that input and output redirection will not work with
+        the \`--program-in-window' option. \`--program-in-window' will work
+        on most UNIX systems running the X Window System, even those for which
+        \`--mdb-in-window' is not supported.
 
-	-c <window-command>, --window-command <window-command>
-		Specify the command used by the \`--program-in-window'
-		option for executing a command in a new window.
-		The default such command is \`xterm -e'.
+    -c <window-command>, --window-command <window-command>
+        Specify the command used by the \`--program-in-window' option
+        for executing a command in a new window.
+        The default such command is \`xterm -e'.
 
 Environment variables:
-	MERCURY_OPTIONS, MERCURY_DEBUGGER_INIT.
+    MERCURY_OPTIONS, MERCURY_DEBUGGER_INIT.
 "
 
 tty=
-# Possible values "none", "program", "mdb".
+# Possible values are "none", "program", "mdb".
 window=none
 window_cmd="xterm -e"
 
@@ -66,130 +64,149 @@ window_cmd="xterm -e"
 #
 
 case $# in
-	0)	echo "Usage: mdb [<options>] <executable> [<arg> ...]" 1>&2
-		exit 1 ;;
+    0)
+        echo "Usage: mdb [<options>] <executable> [<arg> ...]" 1>&2
+        exit 1 ;;
 esac
 
-while : ; do
-	case "$1" in
-		--help)
-			echo "$Help"
-			exit 0 ;;
-		-t|--tty)
-			tty="$2";
-			shift; shift ;;
-		-t*)
-			tty="` expr $1 : '-t\(.*\)' `"
-			shift ;;
-		-w|--window|--mdb-in-window)
-			window=mdb
-			shift ;;
-		-w-|--no-window|--no-mdb-in-window)
-			window=none
-			shift ;;
-		--program-in-window)
-			window=program
-			shift ;;
-		--no-program-in-window)
-			window=none
-			shift ;;
-		-c|--window-command)
-			window_cmd="$2"
-			shift; shift ;;
-		--)
-			shift; break ;;
-		-*)
-			echo "$0: unknown option \`$1'" 1>&2
-			exit 1 ;;
-		*)
-			break ;;
-	esac
+while true
+do
+    case "$1" in
+        --help)
+            echo "${Help}"
+            exit 0
+            ;;
+        -t|--tty)
+            tty="$2"
+            shift
+            shift
+            ;;
+        -t*)
+            tty="` expr $1 : '-t\(.*\)' `"
+            shift
+            ;;
+        -w|--window|--mdb-in-window)
+            window=mdb
+            shift
+            ;;
+        -w-|--no-window|--no-mdb-in-window)
+            window=none
+            shift
+            ;;
+        --program-in-window)
+            window=program
+            shift
+            ;;
+        --no-program-in-window)
+            window=none
+            shift
+            ;;
+        -c|--window-command)
+            window_cmd="$2"
+            shift
+            shift
+            ;;
+        --)
+            shift
+            break
+            ;;
+        -*)
+            echo "$0: unknown option \`$1'" 1>&2
+            exit 1
+            ;;
+        *)
+            break
+            ;;
+    esac
 done
 
 #-----------------------------------------------------------------------------#
 #
-# Figure out how we should invoke the command
+# Figure out how we should invoke the command.
 #
 
 invoke_cmd=
-case "$window" in program)
-	invoke_cmd="$window_cmd"
+case "${window}" in
+    program)
+        invoke_cmd="${window_cmd}"
+        ;;
 esac
 
-case "$window" in
+case "${window}" in
     program|mdb)
-	#
-	# If windowing is enabled, check that DISPLAY is set, and if not,
-	# issue a warning message.  This is needed because the default error
-	# message from xterm is very poor.
-	#
-	case "$DISPLAY" in "")
-	    echo "$0: warning: environment variable \`DISPLAY' not set" 1>&2 ;;
-	esac ;;
+        # If windowing is enabled, check that DISPLAY is set, and if not,
+        # issue a warning. This is needed because the default error message
+        # from xterm is very poor.
+        case "${DISPLAY}" in
+            "")
+                echo "$0: warning: environment variable \`DISPLAY' not set" 1>&2
+                ;;
+        esac
+        ;;
 esac
 
 #-----------------------------------------------------------------------------#
 #
-# Figure out if/how we should redirect the mdb I/O streams
+# Figure out if we should redirect the mdb I/O streams, and if so, how.
 #
 
 mdb_in_window_opt=""
 
-case "$tty" in
+case "${tty}" in
     "")
-	case "$window" in
-	    mdb)
-	    	mdb_in_window_opt="--mdb-in-window"
-	    	;;
-	    program)
-		#
-		# On Linux, we can use special files in /proc
-		# that refer to the file descriptors for a
-		# particular process.
-		#
-		stdin=/proc/$$/fd/0
-		stdout=/proc/$$/fd/1
-		stderr=/proc/$$/fd/2
-		if [ -f $stdin -a -f $stdout -a -f $stderr ]; then
-			redirect_opts="
-				--mdb-in $stdin
-				--mdb-out $stdout
-				--mdb-err $stderr
-			"
-		else
-			# In the general case, we can use the `tty' command.
-			# But that will only work if we're actually running
-			# on a terminal.
-			tty="`tty`"
-			case "$tty" in ""|"not a tty")
-				echo "$0: standard input stream is not a tty" 1>&2
-				exit 1
-				;;
-			esac
-			redirect_opts="--mdb-tty $tty"
-		fi
-		;;
-	    none)
-		redirect_opts=""
-		;;
-	esac ;;
+        case "${window}" in
+            mdb)
+                mdb_in_window_opt="--mdb-in-window"
+                ;;
+            program)
+                # On Linux, we can use special files in /proc that refer
+                # to the file descriptors for a particular process.
+                stdin=/proc/$$/fd/0
+                stdout=/proc/$$/fd/1
+                stderr=/proc/$$/fd/2
+                if test -f ${stdin} -a -f ${stdout} -a -f ${stderr}
+                then
+                    redirect_opts="
+                        --mdb-in ${stdin}
+                        --mdb-out ${stdout}
+                        --mdb-err ${stderr}
+                    "
+                else
+                    # In the general case, we can use the `tty' command.
+                    # But that will only work if we're actually running
+                    # on a terminal.
+                    tty="`tty`"
+                    case "${tty}" in
+                        ""|"not a tty")
+                            echo "$0: standard input stream is not a tty" 1>&2
+                            exit 1
+                            ;;
+                    esac
+                    redirect_opts="--mdb-tty ${tty}"
+                fi
+                ;;
+            none)
+                redirect_opts=""
+                ;;
+        esac
+        ;;
     *)
-	redirect_opts="--mdb-tty $tty"
-	;;
+        redirect_opts="--mdb-tty ${tty}"
+        ;;
 esac
 
 #-----------------------------------------------------------------------------#
 #
 # Set the environment variables used by the Mercury runtime to the
-# the appropriate values to enable debugging and to redirect mdb I/O,
-# and then finally use $invoke_cmd to invoke the command.
+# appropriate values to enable debugging and to redirect mdb I/O,
+# and then finally use ${invoke_cmd} to invoke the command.
 #
 
 enable_mdb_opt="-Di"
-MERCURY_OPTIONS="$MERCURY_OPTIONS $redirect_opts $enable_mdb_opt $mdb_in_window_opt"
+MERCURY_OPTIONS="${MERCURY_OPTIONS} ${redirect_opts} ${enable_mdb_opt} ${mdb_in_window_opt}"
 export MERCURY_OPTIONS
 MERCURY_DEBUGGER_INIT=${MERCURY_DEBUGGER_INIT-@DEFAULT_MERCURY_DEBUGGER_INIT_DIR@/mdbrc}
 export MERCURY_DEBUGGER_INIT
-exec $invoke_cmd "$@"
+exec ${invoke_cmd} "$@"
 
 #-----------------------------------------------------------------------------#
