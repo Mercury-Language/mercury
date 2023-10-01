@@ -55,7 +55,8 @@ main(!IO) :-
         else if lookup_bool_option(OptionTable, version, yes) then
             display_version(StdOutStream, !IO)
         else
-            main_2(StdOutStream, StdErrStream, OptionTable, Args, !IO)
+            compute_and_output_union(StdOutStream, StdErrStream, OptionTable,
+                Args, !IO)
         )
     ;
         GetoptResult = error(GetoptError),
@@ -64,10 +65,11 @@ main(!IO) :-
         io.set_exit_status(1, !IO)
     ).
 
-:- pred main_2(io.text_output_stream::in, io.text_output_stream::in,
-    option_table::in, list(string)::in, io::di, io::uo) is det.
+:- pred compute_and_output_union(io.text_output_stream::in,
+    io.text_output_stream::in, option_table::in, list(string)::in,
+    io::di, io::uo) is det.
 
-main_2(StdOutStream, StdErrStream, OptionTable, Args, !IO) :-
+compute_and_output_union(StdOutStream, StdErrStream, OptionTable, Args, !IO) :-
     lookup_string_option(OptionTable, output_filename, OutputFile),
     ( if
         Args = [_ | _],
@@ -85,8 +87,8 @@ main_2(StdOutStream, StdErrStream, OptionTable, Args, !IO) :-
             TraceCounts, MaybeReadError, !IO),
         (
             MaybeReadError = yes(ReadErrorMsg),
-            io.write_string(StdErrStream, ReadErrorMsg, !IO),
-            io.nl(StdErrStream, !IO)
+            io.format(StdErrStream, "%s\n", [s(ReadErrorMsg)], !IO),
+            io.set_exit_status(1, !IO)
         ;
             MaybeReadError = no,
             Type = union_file(NumTests, set.to_sorted_list(Kinds)),

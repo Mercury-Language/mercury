@@ -53,7 +53,7 @@ main(!IO) :-
         else if lookup_bool_option(OptionTable, version, yes) then
             display_version(StdOutStream, !IO)
         else
-            main_2(StdErrStream, OptionTable, Args, !IO)
+            compute_and_output_diff(StdErrStream, OptionTable, Args, !IO)
         )
     ;
         GetoptResult = error(GetoptError),
@@ -62,10 +62,10 @@ main(!IO) :-
         io.set_exit_status(1, !IO)
     ).
 
-:- pred main_2(io.text_output_stream::in, option_table::in,
+:- pred compute_and_output_diff(io.text_output_stream::in, option_table::in,
     list(string)::in, io::di, io::uo) is det.
 
-main_2(StdErrStream, OptionTable, Args, !IO) :-
+compute_and_output_diff(StdErrStream, OptionTable, Args, !IO) :-
     lookup_string_option(OptionTable, output_filename, OutputFile),
     ( if
         Args = [Arg1, Arg2],
@@ -84,8 +84,8 @@ main_2(StdErrStream, OptionTable, Args, !IO) :-
             MaybeTraceCounts2 = list_ok(_, _)
         ;
             MaybeTraceCounts2 = list_error_message(Msg2),
-            io.write_string(StdErrStream, Msg2, !IO),
-            io.nl(StdErrStream, !IO)
+            io.format(StdErrStream, "%s\n", [s(Msg2)], !IO),
+            io.set_exit_status(1, !IO)
         ),
         ( if
             MaybeTraceCounts1 = list_ok(Type1, TraceCounts1),
@@ -134,7 +134,7 @@ display_version(OutStream, !IO) :-
 short_usage(OutStream, !IO) :-
     io.progname_base("mtc_diff", ProgName, !IO),
     io.format(OutStream,
-        "Usage: %s [<options>] -o <outputfile> <tracecountfile1> <tracecountfile2>]\n",
+        "Usage: %s [<options>] -o <outputfile> <tracecountfile1> <tracecountfile2>\n",
         [s(ProgName)], !IO),
     io.format(OutStream, "Use `%s --help' for more information.\n",
         [s(ProgName)], !IO).

@@ -106,8 +106,8 @@ compute_and_output_dice(StdOutStream, OptionTable, PassFileName, FailFileName,
     ( if Problem = "" then
         io.write_string(StdOutStream, DiceStr, !IO)
     else
-        io.write_string(StdOutStream, Problem, !IO),
-        io.nl(StdOutStream, !IO),
+        io.stderr_stream(StdErrStream, !IO),
+        io.format(StdErrStream, "%s\n", [s(Problem)], !IO),
         io.set_exit_status(1, !IO)
     ).
 

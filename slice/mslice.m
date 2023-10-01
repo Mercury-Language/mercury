@@ -65,7 +65,8 @@ main(!IO) :-
     ;
         GetoptResult = error(GetoptError),
         GetoptErrorMsg = option_error_to_string(GetoptError),
-        io.format(StdOutStream, "%s\n", [s(GetoptErrorMsg)], !IO),
+        io.stderr_stream(StdErrStream, !IO),
+        io.format(StdErrStream, "%s\n", [s(GetoptErrorMsg)], !IO),
         io.set_exit_status(1, !IO)
     ).
 
@@ -100,8 +101,8 @@ compute_and_output_slice(StdOutStream, OptionTable, FileName, !IO) :-
     ( if Problem = "" then
         io.write_string(StdOutStream, SliceStr, !IO)
     else
-        io.write_string(StdOutStream, Problem, !IO),
-        io.nl(StdOutStream, !IO),
+        io.stderr_stream(StdErrStream, !IO),
+        io.format(StdErrStream, "%s\n", [s(Problem)], !IO),
         io.set_exit_status(1, !IO)
     ).
 
