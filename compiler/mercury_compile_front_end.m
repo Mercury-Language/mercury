@@ -1197,7 +1197,7 @@ maybe_write_call_tree(ProgressStream, ErrorStream, Verbose, Stats,
         HLDS, !Specs, !IO) :-
     module_info_get_globals(HLDS, Globals),
     globals.lookup_bool_option(Globals, show_local_call_tree, ShowCallTree),
-    globals.lookup_accumulating_option(Globals, show_movability,
+    globals.lookup_accumulating_option(Globals, show_pred_movability,
         ShowMovability),
     ( if
         ( ShowCallTree = yes

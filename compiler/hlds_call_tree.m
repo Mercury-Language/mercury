@@ -729,7 +729,7 @@ construct_movability_report(ModuleInfo, Report, InfoSpec) :-
             words("one of the two modules, old and new, they would"),
             words("need to be exported from the module they end up in"),
             words("to be accessible from the other module."),
-            words("Neither options is usually a good idea.")] ++
+            words("Neither option is usually a good idea.")] ++
                 MovingStayingPredPieces
     ),
 

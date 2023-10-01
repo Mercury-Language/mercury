@@ -1202,6 +1202,14 @@ Changes to the Mercury compiler
   of those predicates and functions. This can suggest a good order
   for the positions of those predicates and functions in the source code.
 
+* We have added a new option `--show-pred-movability`. If a user specifies
+  this option one or more times, each time with the name of a predicate or
+  function as the option's argument, then the compiler will generate a report
+  about the effect of moving the named predicates and/or functions to a new
+  module. This report will list all the other predicates and/or functions
+  that should be moved with them, and will warn about any unwanted coupling
+  the move would create between the old module and the new.
+
 * The deprecated option `--trail-segments` has been deleted and the grade
   component `trseg` is no longer accepted as a synonym for `tr`.
 

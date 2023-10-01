@@ -7756,6 +7756,19 @@ visible in the module being compiled to @file{@var{module}.type_repns}.
 Write out the dependency graph to @file{@var{module}.dependency_graph}.
 
 @sp 1
+@item --show-pred-movability @var{name}
+@findex --show-pred-movability
+Write out a short report on the effect of
+moving the code of the named predicate or function
+(or the named several predicates and/or functions,
+if the option is given several times)
+to a new module.
+This includes listing the other predicates and/or functions
+that would have to be moved with them,
+and whether the move would cause unwanted coupling
+between the new module and the old.
+
+@sp 1
 @item --imports-graph
 @findex --imports-graph
 Write out the imports graph to @file{@var{module}.imports_graph}.
