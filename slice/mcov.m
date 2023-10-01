@@ -140,7 +140,8 @@ do_coverage_testing(OptionTable, Args, !IO) :-
         )
     ;
         Args = [],
-        short_usage(StdOutStream, !IO)
+        short_usage(StdErrStream, !IO),
+        io.set_exit_status(1, !IO)
     ).
 
 :- func kind_warning = string.
@@ -439,7 +440,7 @@ write_path_port_for_user(OutStream, port_and_path(Port, Path), !IO) :-
 display_version(OutStream, !IO) :-
     Version = library.mercury_version,
     io.format(OutStream,
-        "Mercury Coverage Testing Tool, version %s",
+        "Mercury coverage testing tool, version %s",
         [s(Version)], !IO),
     Package = library.package_version,
     ( if Package = "" then
@@ -462,13 +463,18 @@ short_usage(OutStream, !IO) :-
 
 long_usage(OutStream, !IO) :-
     io.write_string(OutStream,
-        "Name: mcov - Mercury Coverage Testing Tool\n", !IO),
+        "Name: mcov - Mercury coverage testing tool\n", !IO),
     write_copyright_notice(OutStream, !IO),
     io.write_string(OutStream, "Usage: mcov [<options>] <arguments>\n", !IO),
-    io.write_string(OutStream, "Arguments:\n", !IO),
-    io.write_string(OutStream,
-        "\tArguments are assumed to Mercury trace count files.\n", !IO),
-    io.write_string(OutStream, "Options:\n", !IO),
+    io.write_string(OutStream, "\nDescription:\n", !IO),
+    io.write_prefixed_lines(OutStream, "\t", [
+        "`mcov' outputs a test coverage report."
+    ], !IO),
+    io.write_string(OutStream, "\nArguments:\n", !IO),
+    io.write_prefixed_lines(OutStream, "\t", [
+        "Arguments are assumed to Mercury trace count files."
+    ], !IO),
+    io.write_string(OutStream, "\nOptions:\n", !IO),
     io.write_prefixed_lines(OutStream, "\t", [
         "-?, -h, --help",
         "\tPrint help about using mcov (on the standard output) and exit",
@@ -476,7 +482,7 @@ long_usage(OutStream, !IO) :-
         "--version",
         "\tPrint version information.",
         "-v, --verbose",
-        "\tPrint the name of each trace count file as it is added to the union",
+        "\tPrint the name of each trace count file as it is added to the union.",
         "-d, --detailed",
         "\tPrint a report for each label that has not been executed, even",
         "\tif some other code has been executed in the same procedure.",
