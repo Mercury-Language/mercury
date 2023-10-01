@@ -5638,16 +5638,16 @@ The @samp{-l} or @samp{--limit} option limits the output to @samp{N} lines.
 The @samp{-m} or @samp{--module} option limits the output
 to events only from the given module.
 @sp 1
-The @samp{-n} or @samp{--max-name-column} option's argument
-gives the maximum width of the column containing predicate names.
+The @samp{-n} or @samp{--max-name-column-width} option's argument gives the
+maximum width of the column containing predicate and function names.
 If the argument is zero, there is no maximum width.
 @sp 1
-The @samp{-p} or @samp{--max-path-column} option's argument
-gives the maximum width of the column containing ports and goal paths.
+The @samp{-p} or @samp{--max-path-column-width} option's argument gives the
+maximum width of the column containing ports and goal paths.
 If the argument is zero, there is no maximum width.
 @sp 1
-The @samp{-f} or @samp{--max-file-column} option's argument
-gives the maximum width of the column containing file names and line numbers.
+The @samp{-f} or @samp{--max-file-column-width} option's argument gives the
+maximum width of the column containing file names and line numbers.
 If the argument is zero, there is no maximum width.
 @sp 1
 
@@ -5752,16 +5752,16 @@ can be used to limit the number of lines displayed.
 The @samp{-m} or @samp{--module} option
 limits the output to the given module and any submodules.
 @sp 1
-The @samp{-n} or @samp{--max-name-column} option's argument
-gives the maximum width of the column containing predicate names.
+The @samp{-n} or @samp{--max-name-column-width} option's argument gives the
+maximum width of the column containing predicate and function names.
 If the argument is zero, there is no maximum width.
 @sp 1
-The @samp{-p} or @samp{--max-path-column} option's argument
-gives the maximum width of the column containing ports and goal paths.
+The @samp{-p} or @samp{--max-path-column-width} option's argument gives the
+maximum width of the column containing ports and goal paths.
 If the argument is zero, there is no maximum width.
 @sp 1
-The @samp{-f} or @samp{--max-file-column} option's argument
-gives the maximum width of the column containing file names and line numbers.
+The @samp{-f} or @samp{--max-file-column-width} option's argument gives the
+maximum width of the column containing file names and line numbers.
 If the argument is zero, there is no maximum width.
 @sp 1
 

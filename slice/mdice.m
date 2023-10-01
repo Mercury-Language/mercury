@@ -82,27 +82,27 @@ compute_and_output_dice(StdOutStream, OptionTable, PassFileName, FailFileName,
     lookup_string_option(OptionTable, sort, SortStr),
     lookup_string_option(OptionTable, modulename, Module),
     lookup_int_option(OptionTable, max_row, MaxRow),
-    lookup_int_option(OptionTable, max_pred_column, MaxPredColumn),
-    lookup_int_option(OptionTable, max_path_column, MaxPathColumn),
-    lookup_int_option(OptionTable, max_file_column, MaxFileColumn),
-    ( if MaxPredColumn = 0 then
-        MaybeMaxPredColumn = no
+    lookup_int_option(OptionTable, max_name_column_width, MaxNameColumnWidth),
+    lookup_int_option(OptionTable, max_path_column_width, MaxPathColumnWidth),
+    lookup_int_option(OptionTable, max_file_column_width, MaxFileColumnWidth),
+    ( if MaxNameColumnWidth = 0 then
+        MaybeMaxNameColumnWidth = no
     else
-        MaybeMaxPredColumn = yes(MaxPredColumn)
+        MaybeMaxNameColumnWidth = yes(MaxNameColumnWidth)
     ),
-    ( if MaxPathColumn = 0 then
-        MaybeMaxPathColumn = no
+    ( if MaxPathColumnWidth = 0 then
+        MaybeMaxPathColumnWidth = no
     else
-        MaybeMaxPathColumn = yes(MaxPathColumn)
+        MaybeMaxPathColumnWidth = yes(MaxPathColumnWidth)
     ),
-    ( if MaxFileColumn = 0 then
-        MaybeMaxFileColumn = no
+    ( if MaxFileColumnWidth = 0 then
+        MaybeMaxFileColumnWidth = no
     else
-        MaybeMaxFileColumn = yes(MaxFileColumn)
+        MaybeMaxFileColumnWidth = yes(MaxFileColumnWidth)
     ),
     read_dice_to_string(PassFileName, FailFileName, SortStr, MaxRow,
-        MaybeMaxPredColumn, MaybeMaxPathColumn, MaybeMaxFileColumn,
-        Module, DiceStr, Problem, !IO),
+        MaybeMaxNameColumnWidth, MaybeMaxPathColumnWidth,
+        MaybeMaxFileColumnWidth, Module, DiceStr, Problem, !IO),
     ( if Problem = "" then
         io.write_string(StdOutStream, DiceStr, !IO)
     else
@@ -163,13 +163,13 @@ long_usage(OutStream, !IO) :-
         "\tLimit the output to at most N lines.",
         "-m <module>, --module <module>",
         "\tRestrict the output to the given module and its submodules (if any).",
-        "-n <N>, --max-name-column <N>",
-        "\tThe maximum width of the column containing predicate names.",
-        "\tA value of zero means there is no maximum width.",
-        "-p <N>, --max-path-column <N>",
+        "-n <N>, --max-name-column-width <N>",
+        "\tThe maximum width of the column containing predicate and function",
+        "\tnames. A value of zero means there is no maximum width.",
+        "-p <N>, --max-path-column-width <N>",
         "\tThe maximum width of the column containing ports and goal paths.",
         "\tA value of zero means there is no maximum width.",
-        "-f <N>, --max-file-column <N>",
+        "-f <N>, --max-file-column-width <N>",
         "\tThe maximum width of the column containing file names and line numbers.",
         "\tA value of zero means there is no maximum width."
     ], !IO).
@@ -190,10 +190,9 @@ write_copyright_notice(OutStream, !IO) :-
     ;       version
     ;       sort
     ;       max_row
-    % XXX the following options should have "_width" in their name.
-    ;       max_pred_column
-    ;       max_path_column
-    ;       max_file_column
+    ;       max_name_column_width
+    ;       max_path_column_width
+    ;       max_file_column_width
     ;       modulename.
 
 :- type option_table == option_table(option).
@@ -204,9 +203,9 @@ short_option('?', help).
 short_option('h', help).
 short_option('s', sort).
 short_option('l', max_row).
-short_option('n', max_pred_column).
-short_option('p', max_path_column).
-short_option('f', max_file_column).
+short_option('n', max_name_column_width).
+short_option('p', max_path_column_width).
+short_option('f', max_file_column_width).
 short_option('m', modulename).
 
 :- pred long_option(string::in, option::out) is semidet.
@@ -215,9 +214,14 @@ long_option("help",            help).
 long_option("version",         version).
 long_option("sort",            sort).
 long_option("limit",           max_row).
-long_option("max-name-column", max_pred_column).
-long_option("max-path-column", max_path_column).
-long_option("max-file-column", max_file_column).
+% The names without the _width suffix are for backwards
+% compatibility.
+long_option("max-name-column", max_name_column_width).
+long_option("max-path-column", max_path_column_width).
+long_option("max-file-column", max_file_column_width).
+long_option("max-name-column-width", max_name_column_width).
+long_option("max-path-column-width", max_path_column_width).
+long_option("max-file-column-width", max_file_column_width).
 long_option("module",          modulename).
 
 :- pred option_default(option::out, option_data::out) is multi.
@@ -226,9 +230,9 @@ option_default(help,            bool(no)).
 option_default(version,         bool(no)).
 option_default(sort,            string("S")).
 option_default(max_row,         int(100)).
-option_default(max_pred_column, int(35)).
-option_default(max_path_column, int(12)).
-option_default(max_file_column, int(20)).
+option_default(max_name_column_width, int(35)).
+option_default(max_path_column_width, int(12)).
+option_default(max_file_column_width, int(20)).
 option_default(modulename,      string("")).
 
 %---------------------------------------------------------------------------%
