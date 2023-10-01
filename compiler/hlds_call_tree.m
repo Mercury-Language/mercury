@@ -79,8 +79,21 @@
 :- interface.
 
 :- import_module hlds.hlds_module.
+:- import_module parse_tree.
+:- import_module parse_tree.error_spec.
 
 :- import_module io.
+:- import_module list.
+
+%---------------------%
+
+:- type call_tree_info.
+
+    % Compute a representation of the local call tree.
+    % The caller can give this representation to either or both of two
+    % predicates below: write_local_call_tree and generate_movability_report.
+    %
+:- pred compute_local_call_tree(module_info::in, call_tree_info::out) is det.
 
     % Write out the pieces of the depth-first left-to-right traversal
     % (such as the first example above) of the given module to the first
@@ -88,7 +101,13 @@
     % output stream.
     %
 :- pred write_local_call_tree(io.text_output_stream::in,
-    io.text_output_stream::in, module_info::in, io::di, io::uo) is det.
+    io.text_output_stream::in, module_info::in, call_tree_info::in,
+    io::di, io::uo) is det.
+
+%---------------------%
+
+:- pred generate_movability_report(module_info::in, call_tree_info::in,
+    list(string)::in, list(error_spec)::out) is det.
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -103,13 +122,11 @@
 :- import_module hlds.status.
 :- import_module mdbcomp.
 :- import_module mdbcomp.sym_name.
-:- import_module parse_tree.
 :- import_module parse_tree.prog_data.
 
 :- import_module assoc_list.
 :- import_module bool.
 :- import_module cord.
-:- import_module list.
 :- import_module map.
 :- import_module one_or_more_map.
 :- import_module pair.
@@ -120,7 +137,33 @@
 
 %---------------------------------------------------------------------------%
 
-write_local_call_tree(TreeStream, OrderStream, ModuleInfo, !IO) :-
+:- type call_tree_info
+    --->    call_tree_info(
+                cti_local_pred_set      :: set_tree234(pred_id),
+                cti_exported_preds      :: list(pred_id),
+                cti_pred_callee_list    :: list(pred_callees),
+                cti_pred_callee_map     :: pred_callees_map
+            ).
+
+:- type pred_callees_map == map(pred_id, pred_callees).
+
+:- type pred_callees
+    --->    pred_callees(
+                % The local predicate described by these two fields ...
+                pred_id,
+                pred_info,
+
+                % ... calls these local predicates. Each callee is present
+                % in the list just once. The order of the list is given
+                % by the order in which the first occurrence of each callee
+                % is encountered in a depth-first left-to-right traversal
+                % of the first valid procedure of the predicate.
+                list(pred_id)
+            ).
+
+%---------------------------------------------------------------------------%
+
+compute_local_call_tree(ModuleInfo, CallTreeInfo) :-
     module_info_get_pred_id_table(ModuleInfo, PredIdTable),
     map.to_sorted_assoc_list(PredIdTable, PredIdsInfos),
     find_local_preds_exports(PredIdsInfos,
@@ -129,12 +172,21 @@ write_local_call_tree(TreeStream, OrderStream, ModuleInfo, !IO) :-
     assoc_list.values(ExportLineList, ExportList),
 
     gather_pred_callees(PredIdTable, LocalPredIds, ExportList,
-        set_tree234.init, cord.init, PredCallesCord, map.init, PredCalleeMap),
-    PredCallesList = cord.list(PredCallesCord),
-    list.foldl2(write_pred_callees_entry(TreeStream, ModuleInfo),
-        PredCallesList, yes, _First, !IO),
+        set_tree234.init, cord.init, PredCalleesCord, map.init, PredCalleeMap),
+    PredCalleesList = cord.list(PredCalleesCord),
 
-    construct_depth_first_left_right_order(PredCalleeMap, PredCallesList,
+    CallTreeInfo = call_tree_info(LocalPredIds, ExportList,
+        PredCalleesList, PredCalleeMap).
+
+write_local_call_tree(TreeStream, OrderStream, ModuleInfo,
+        CallTreeInfo, !IO) :-
+    CallTreeInfo = call_tree_info(_LocalPredIds, _ExportList,
+        PredCalleesList, PredCalleeMap),
+
+    list.foldl2(write_pred_callees_entry(TreeStream, ModuleInfo),
+        PredCalleesList, yes, _First, !IO),
+
+    construct_depth_first_left_right_order(PredCalleeMap, PredCalleesList,
         set_tree234.init, cord.init, PredIdCord),
     PredIdList = cord.list(PredIdCord),
     list.foldl(write_pred_order_entry(OrderStream, ModuleInfo),
@@ -179,20 +231,6 @@ find_local_preds_exports([PredId - PredInfo | PredIdsInfos],
     find_local_preds_exports(PredIdsInfos, !LocalPredIds, !ExportMap).
 
 %---------------------------------------------------------------------------%
-
-:- type pred_callees
-    --->    pred_callees(
-                % The local predicate described by these two fields ...
-                pred_id,
-                pred_info,
-
-                % ... calls these local predicates. Each callee is present
-                % in the list just once. The order of the list is given
-                % by the order in which the first occurrence of each callee
-                % is encountered in a depth-first left-to-right traversal
-                % of the first valid procedure of the predicate.
-                list(pred_id)
-            ).
 
 :- pred gather_pred_callees(pred_id_table::in, set_tree234(pred_id)::in,
     list(pred_id)::in, set_tree234(pred_id)::in,
@@ -436,6 +474,286 @@ write_pred_order_entry(Stream, ModuleInfo, PredId, !IO) :-
     PredDesc = describe_pred_from_id(do_not_include_module_name,
         ModuleInfo, PredId),
     io.format(Stream, "%s\n", [s(PredDesc)], !IO).
+
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+
+:- type movability_report
+    --->    movability_report(
+                % The ids of the predicates that the user wants to move
+                % to a new module.
+                mr_want_to_move     :: set_tree234(pred_id),
+
+                % The set of exported predicates that are not in the
+                % want_to_move set that are reachable from the want_to_move
+                % predicates.
+                %
+                % If this set is not empty, then the new module would
+                % have to import the old. This would represent unwanted
+                % coupling.
+                mr_new_coupling     :: set_tree234(pred_id),
+
+                % The set of predicates reachable from the want_to_move
+                % predicates, which we would need to move to the new module.
+                % This set will contain the want_to_move set.
+                mr_all_to_move      :: set_tree234(pred_id),
+
+                % The set of predicates that are reachable BOTH
+                %
+                % - from the want_to_move predicates, AND
+                % - from the non-want_to_move exported predicates.
+                %
+                % The first says that the predicate should be moved;
+                % the second says that it should stay.
+                %
+                % The main use case for the --show-movability option
+                % is the automated computation of this set, because
+                % if this set is not empty, then the programmer should
+                %
+                % - either reconsidet the set of predicates that should be
+                %   moved to the new module being carved out of this one,
+                % - or abandon the carving-out process altogether.
+                mr_moving_staying   :: set_tree234(pred_id)
+            ).
+
+generate_movability_report(ModuleInfo, CallTreeInfo, WantToMovePredNames,
+        Specs) :-
+    list.foldl3(acc_moving_pred_name(ModuleInfo), WantToMovePredNames,
+        set_tree234.init, WantToMovePredIdSet,
+        set_tree234.init, UnknownNameSet, set_tree234.init, AmbigNameSet),
+    set_tree234.to_sorted_list(UnknownNameSet, UnknownNames),
+    set_tree234.to_sorted_list(AmbigNameSet, AmbigNames),
+    (
+        UnknownNames = [],
+        UnknownSpecs = []
+    ;
+        UnknownNames = [_ | _],
+        UnknownPieces = [words("Error in the arguments"),
+            words("of the --show-movability option: the"),
+            words(choose_number(UnknownNames,
+                "name", "names"))] ++
+            list_to_pieces(UnknownNames) ++
+            [words(choose_number(UnknownNames,
+                "does not", "do not")),
+            words("don't name any predicate or function."), nl],
+        UnknownSpec = simplest_no_context_spec($pred, severity_error,
+            phase_style, UnknownPieces),
+        UnknownSpecs = [UnknownSpec]
+    ),
+    (
+        AmbigNames = [],
+        AmbigSpecs = []
+    ;
+        AmbigNames = [_ | _],
+        AmbigPieces = [words("Error in the arguments"),
+            words("of the --show-movability option: the"),
+            words(choose_number(AmbigNames,
+                "name", "names"))] ++
+            list_to_pieces(AmbigNames) ++
+            [words(choose_number(AmbigNames,
+                "is ambiguous.", "are ambiguous.")), nl],
+        AmbigSpec = simplest_no_context_spec($pred, severity_error,
+            phase_style, AmbigPieces),
+        AmbigSpecs = [AmbigSpec]
+    ),
+    ( if
+        UnknownSpecs = [],
+        AmbigSpecs = []
+    then
+        CallTreeInfo = call_tree_info(_LocalPredIds, ExportPredIds,
+            _PredCalleesList, PredCalleeMap),
+        set_tree234.list_to_set(ExportPredIds, ExportPredIdSet),
+        set_tree234.difference(ExportPredIdSet, WantToMovePredIdSet,
+            NonMovingExportPredIdSet),
+        set_tree234.to_sorted_list(WantToMovePredIdSet, WantToMovePredIds),
+        find_moving_pred_ids(PredCalleeMap,
+            NonMovingExportPredIdSet, WantToMovePredIds,
+            set_tree234.init, MovingPredIdSet),
+        set_tree234.intersect(NonMovingExportPredIdSet, MovingPredIdSet,
+            ConflictExportedPredIdSet),
+        set_tree234.to_sorted_list(NonMovingExportPredIdSet,
+            NonMovingExportPredIds),
+        find_staying_pred_ids(PredCalleeMap, WantToMovePredIdSet,
+            NonMovingExportPredIds, set_tree234.init, StayingPredIdSet),
+        set_tree234.intersect(MovingPredIdSet, StayingPredIdSet,
+            MovingStayingPredIdSet),
+        Report = movability_report(WantToMovePredIdSet,
+            ConflictExportedPredIdSet, MovingPredIdSet,
+            MovingStayingPredIdSet),
+        construct_movability_report(ModuleInfo, Report, InfoSpec),
+        Specs = [InfoSpec]
+    else
+        Specs = UnknownSpecs ++ AmbigSpecs
+    ).
+
+:- pred acc_moving_pred_name(module_info::in, string::in,
+    set_tree234(pred_id)::in, set_tree234(pred_id)::out,
+    set_tree234(string)::in, set_tree234(string)::out,
+    set_tree234(string)::in, set_tree234(string)::out) is det.
+
+acc_moving_pred_name(ModuleInfo, PredName,
+        !MovingPredIdSet, !UnknownNameSet, !AmbigNameSet) :-
+    module_info_get_predicate_table(ModuleInfo, PredTable),
+    module_info_get_name(ModuleInfo, ModuleName),
+    SymName = qualified(ModuleName, PredName),
+    predicate_table_lookup_sym(PredTable, is_fully_qualified,
+        SymName, PredIds),
+    (
+        PredIds = [],
+        set_tree234.insert(PredName, !UnknownNameSet)
+    ;
+        PredIds = [PredId],
+        set_tree234.insert(PredId, !MovingPredIdSet)
+    ;
+        PredIds = [_, _ | _],
+        set_tree234.insert(PredName, !AmbigNameSet)
+    ).
+
+:- pred find_moving_pred_ids(pred_callees_map::in,
+    set_tree234(pred_id)::in, list(pred_id)::in,
+    set_tree234(pred_id)::in, set_tree234(pred_id)::out) is det.
+
+find_moving_pred_ids(_, _, [], !ReachablePredIdSet).
+find_moving_pred_ids(PredCalleeMap, NonMovingExportPredIdSet,
+        [HeadPredId | TailPredIds], !ReachablePredIdSet) :-
+    ( if set_tree234.insert_new(HeadPredId, !ReachablePredIdSet) then
+        ( if set_tree234.contains(NonMovingExportPredIdSet, HeadPredId) then
+            % If any of the NonMovingExportPredIdSet is reachable
+            % from a pred_id that we want to move to a new module,
+            % this would requre the both of the old and the new modules
+            % to import each other, which is presumably what the user
+            % of the --show-movability option is trying to avoid.
+            % So just stop here, but only *after* adding HeadPredId
+            % to !ReachablePredIdSet, thereby signaling the problem
+            % to our caller.
+            NextPredIds = TailPredIds
+        else
+            map.lookup(PredCalleeMap, HeadPredId, PredCallees),
+            PredCallees = pred_callees(_, _, LocalCalleesList),
+            % Depth-first traversal: traverse the callees of HeadPredId
+            % before traversing TailPredIds.
+            %
+            % We have to filter out the callees that have already been handled.
+            % We don't have to do it *here*; we could leave it for the
+            % recursive call. However, doing it here substantially reduces
+            % the maximum depth of the recursion.
+            list.filter(set_tree234.contains(!.ReachablePredIdSet),
+                LocalCalleesList, _OldLocalCalleesList, NewLocalCalleesList),
+            NextPredIds = NewLocalCalleesList ++ TailPredIds
+        )
+    else
+        NextPredIds = TailPredIds
+    ),
+    find_moving_pred_ids(PredCalleeMap, NonMovingExportPredIdSet,
+        NextPredIds, !ReachablePredIdSet).
+
+:- pred find_staying_pred_ids(pred_callees_map::in,
+    set_tree234(pred_id)::in, list(pred_id)::in,
+    set_tree234(pred_id)::in, set_tree234(pred_id)::out) is det.
+
+find_staying_pred_ids(_, _, [], !StayingPredIdSet).
+find_staying_pred_ids(PredCalleeMap, WantToMovePredIdSet,
+        [HeadPredId | TailPredIds], !StayingPredIdSet) :-
+    ( if set_tree234.contains(WantToMovePredIdSet, HeadPredId) then
+        % HeadPredId is moving to a new module.
+        NextPredIds = TailPredIds
+    else
+        ( if set_tree234.insert_new(HeadPredId, !StayingPredIdSet) then
+            map.lookup(PredCalleeMap, HeadPredId, PredCallees),
+            PredCallees = pred_callees(_, _, LocalCalleesList),
+            % Depth-first traversal: traverse the callees of HeadPredId
+            % before traversing TailPredIds.
+            %
+            % We have to filter out the callees that have already been handled.
+            % We don't have to do it *here*; we could leave it for the
+            % recursive call. However, doing it here substantially reduces
+            % the maximum depth of the recursion.
+            list.filter(set_tree234.contains(!.StayingPredIdSet),
+                LocalCalleesList, _OldLocalCalleesList, NewLocalCalleesList),
+            NextPredIds = NewLocalCalleesList ++ TailPredIds
+        else
+            NextPredIds = TailPredIds
+        )
+    ),
+    find_staying_pred_ids(PredCalleeMap, WantToMovePredIdSet, NextPredIds,
+        !StayingPredIdSet).
+
+%---------------------------------------------------------------------------%
+
+:- pred construct_movability_report(module_info::in, movability_report::in,
+    error_spec::out) is det.
+
+construct_movability_report(ModuleInfo, Report, InfoSpec) :-
+    Report = movability_report(WantToMovePredIdSet, ConflictExportedPredIdSet,
+        MovingPredIdSet, MovingStayingPredIdSet),
+
+    WantToMovePredPieces = name_set_to_line_pieces(ModuleInfo,
+        WantToMovePredIdSet),
+    MovingPredPieces = name_set_to_line_pieces(ModuleInfo,
+        MovingPredIdSet),
+
+    WantToMovePieces =
+        [words("Report for the proposed move of")] ++
+            WantToMovePredPieces ++
+        [words("to a new module:"), nl, blank_line],
+
+    ( if set_tree234.is_empty(ConflictExportedPredIdSet) then
+        ConflictExportedPieces = []
+    else
+        ConflictExportedPredPieces = name_set_to_line_pieces(ModuleInfo,
+            ConflictExportedPredIdSet),
+        ConflictExportedPieces =
+            [words("Moving these predicates and/or functions to a new module"),
+            words("would require the new module to import the current module"),
+            words("to get access to")] ++
+                ConflictExportedPredPieces
+    ),
+
+    MovingPieces =
+        [words("The set of predicates and/or functions reachable from"),
+        words("the proposed-to-be-moved predicates and/or functions,"),
+        words("which should therefore be moved to the new module,"),
+        words("would be")] ++
+            MovingPredPieces,
+
+    ( if set_tree234.is_empty(MovingStayingPredIdSet) then
+        MovingStayingPieces = []
+    else
+        MovingStayingPredPieces = name_set_to_line_pieces(ModuleInfo,
+            MovingStayingPredIdSet),
+        MovingStayingPieces =
+            [words("However, the following local predicates and/or functions"),
+            words("are reachable both from code being moved and"),
+            words("code that is staying, which means that they would"),
+            words("need to be either duplicated, or, if included in only"),
+            words("one of the two modules, old and new, they would"),
+            words("need to be exported from the module they end up in"),
+            words("to be accessible from the other module."),
+            words("Neither options is usually a good idea.")] ++
+                MovingStayingPredPieces
+    ),
+
+    InfoPieces = WantToMovePieces ++ ConflictExportedPieces ++
+        MovingPieces ++ MovingStayingPieces,
+    InfoSpec = simplest_no_context_spec($pred, severity_informational,
+        phase_style, InfoPieces).
+
+:- func name_set_to_line_pieces(module_info, set_tree234(pred_id)) =
+    list(format_piece).
+
+name_set_to_line_pieces(ModuleInfo, PredIdSet) = Pieces :-
+    PredDescSet = set_tree234.map(
+        describe_pred_from_id(do_not_include_module_name, ModuleInfo),
+        PredIdSet),
+    set_tree234.to_sorted_list(PredDescSet, PredDescs),
+    list.det_split_last(PredDescs, AllButLastPredDescs, LastPredDesc),
+    AllButLastPredDescPieceLists =
+        list.map((func(PD) = [fixed(PD), nl]), AllButLastPredDescs),
+    list.condense(AllButLastPredDescPieceLists, AllButLastPredDescPieces),
+
+    Pieces = [nl_indent_delta(1), blank_line] ++
+        AllButLastPredDescPieces ++
+        [fixed(LastPredDesc), nl_indent_delta(-1), blank_line].
 
 %---------------------------------------------------------------------------%
 :- end_module hlds.hlds_call_tree.

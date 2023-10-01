@@ -747,7 +747,7 @@ frontend_pass_by_phases(ProgressStream, ErrorStream, !HLDS, FoundError,
                 !DumpInfo, !IO),
 
             maybe_write_call_tree(ProgressStream, ErrorStream, Verbose, Stats,
-                !.HLDS, !IO),
+                !.HLDS, !Specs, !IO),
 
             check_stratification(ProgressStream, ErrorStream, Verbose, Stats,
                 !HLDS, FoundStratError, !Specs, !IO),
@@ -1191,48 +1191,69 @@ check_unique_modes(ProgressStream, ErrorStream, Verbose, Stats,
 
 :- pred maybe_write_call_tree(io.text_output_stream::in,
     io.text_output_stream::in, bool::in, bool::in, module_info::in,
-    io::di, io::uo) is det.
+    list(error_spec)::in, list(error_spec)::out, io::di, io::uo) is det.
 
 maybe_write_call_tree(ProgressStream, ErrorStream, Verbose, Stats,
-        HLDS, !IO) :-
+        HLDS, !Specs, !IO) :-
     module_info_get_globals(HLDS, Globals),
     globals.lookup_bool_option(Globals, show_local_call_tree, ShowCallTree),
-    (
-        ShowCallTree = yes,
-        maybe_write_string(ProgressStream, Verbose,
-            "% Writing call_tree...", !IO),
-        module_info_get_name(HLDS, ModuleName),
-        module_name_to_file_name_create_dirs(Globals, $pred,
-            ext_cur(ext_cur_user_lct), ModuleName, TreeFileName, !IO),
-        module_name_to_file_name_create_dirs(Globals, $pred,
-            ext_cur(ext_cur_user_lct_order), ModuleName, OrderFileName, !IO),
-        io.open_output(TreeFileName, TreeResult, !IO),
+    globals.lookup_accumulating_option(Globals, show_movability,
+        ShowMovability),
+    ( if
+        ( ShowCallTree = yes
+        ; ShowMovability = [_ | _]
+        )
+    then
+        hlds.hlds_call_tree.compute_local_call_tree(HLDS, CallTreeInfo),
         (
-            TreeResult = ok(TreeFileStream),
-            io.open_output(OrderFileName, OrderResult, !IO),
+            ShowCallTree = yes,
+            maybe_write_string(ProgressStream, Verbose,
+                "% Writing call_tree...", !IO),
+            module_info_get_name(HLDS, ModuleName),
+            module_name_to_file_name_create_dirs(Globals, $pred,
+                ext_cur(ext_cur_user_lct), ModuleName, TreeFileName, !IO),
+            module_name_to_file_name_create_dirs(Globals, $pred,
+                ext_cur(ext_cur_user_lct_order),
+                ModuleName, OrderFileName, !IO),
+            io.open_output(TreeFileName, TreeResult, !IO),
             (
-                OrderResult = ok(OrderFileStream),
-                hlds.hlds_call_tree.write_local_call_tree(TreeFileStream,
-                    OrderFileStream, HLDS, !IO),
-                io.close_output(TreeFileStream, !IO),
-                io.close_output(OrderFileStream, !IO),
-                maybe_write_string(ProgressStream, Verbose, " done.\n", !IO)
+                TreeResult = ok(TreeFileStream),
+                io.open_output(OrderFileName, OrderResult, !IO),
+                (
+                    OrderResult = ok(OrderFileStream),
+                    hlds.hlds_call_tree.write_local_call_tree(TreeFileStream,
+                        OrderFileStream, HLDS, CallTreeInfo, !IO),
+                    io.close_output(TreeFileStream, !IO),
+                    io.close_output(OrderFileStream, !IO),
+                    maybe_write_string(ProgressStream, Verbose,
+                        " done.\n", !IO)
+                ;
+                    OrderResult = error(IOError),
+                    io.close_output(TreeFileStream, !IO),
+                    ErrorMsg = "unable to write local call tree order: " ++
+                        io.error_message(IOError),
+                    report_error(ErrorStream, ErrorMsg, !IO)
+                )
             ;
-                OrderResult = error(IOError),
-                io.close_output(TreeFileStream, !IO),
-                ErrorMsg = "unable to write local call tree order: " ++
+                TreeResult = error(IOError),
+                ErrorMsg = "unable to write local call tree: " ++
                     io.error_message(IOError),
                 report_error(ErrorStream, ErrorMsg, !IO)
             )
         ;
-            TreeResult = error(IOError),
-            ErrorMsg = "unable to write local call tree: " ++
-                io.error_message(IOError),
-            report_error(ErrorStream, ErrorMsg, !IO)
+            ShowCallTree = no
+        ),
+        (
+            ShowMovability = [_ | _],
+            hlds.hlds_call_tree.generate_movability_report(HLDS, CallTreeInfo,
+                ShowMovability, MovabilitySpecs),
+            !:Specs = MovabilitySpecs ++ !.Specs
+        ;
+            ShowMovability = []
         ),
         maybe_report_stats(ProgressStream, Stats, !IO)
-    ;
-        ShowCallTree = no
+    else
+        true
     ).
 
 %---------------------------------------------------------------------------%

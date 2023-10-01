@@ -387,6 +387,7 @@
     ;       show_all_type_repns
     ;       show_developer_type_repns
     ;       show_dependency_graph
+    ;       show_movability
     ;       imports_graph
     ;       trans_opt_deps_spec
     ;       dump_trace_counts
@@ -1439,6 +1440,7 @@ optdef(oc_aux_output, show_local_type_repns,            bool(no)).
 optdef(oc_aux_output, show_all_type_repns,              bool(no)).
 optdef(oc_aux_output, show_developer_type_repns,        bool(no)).
 optdef(oc_aux_output, show_dependency_graph,            bool(no)).
+optdef(oc_aux_output, show_movability,                  accumulating([])).
 optdef(oc_aux_output, imports_graph,                    bool(no)).
 optdef(oc_aux_output, trans_opt_deps_spec,              maybe_string(no)).
 optdef(oc_aux_output, dump_trace_counts,                accumulating([])).
@@ -2397,6 +2399,7 @@ long_option("show-local-type-representations",  show_local_type_repns).
 long_option("show-developer-type-repns",            show_developer_type_repns).
 long_option("show-developer-type-representations",  show_developer_type_repns).
 long_option("show-dependency-graph",    show_dependency_graph).
+long_option("show-movability",          show_movability).
 long_option("imports-graph",            imports_graph).
 long_option("trans-opt-deps-spec",      trans_opt_deps_spec).
 long_option("dump-trace-counts",        dump_trace_counts).
@@ -4915,6 +4918,14 @@ options_help_aux_output(Stream, !IO) :-
 %       "\tinclude information that is of interest to mmc developers only.",
         "--show-dependency-graph",
         "\tWrite out the dependency graph to `<module>.dependency_graph'.",
+        "--show-movability <pred_or_func_name>",
+        "\tWrite out a short report on the effect of moving the code of",
+        "\the named predicate or function (or the named several predicates",
+        "\tand/or functions, if the option is given several times)",
+        "\tto a new module. This includes listing the other predicates",
+        "\tand/or functions that would have to be moved with them, and",
+        "\twhether the move would cause unwanted coupling between",
+        "\tthe new module and the old.",
         "--imports-graph",
         "\tWrite out the imports graph to `<module>.imports_graph'.",
         "\tThe imports graph contains the directed graph module A",
