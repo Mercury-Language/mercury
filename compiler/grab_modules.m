@@ -305,11 +305,11 @@ grab_qual_imported_modules_augment(ProgressStream, Globals, SourceFileName,
             % ancestors (if any). For representation information for these
             % types, it must read its *own* .int file, and the .int file(s)
             % of its ancestors.
-            process_module_int1(ProgressStream, Globals, rwi1_type_repn,
+            grab_module_int1_file(ProgressStream, Globals, rwi1_type_repn,
                 ModuleName, _IntUses, _ImpUses,
                 !HaveReadModuleMaps, !Baggage, !AugCompUnit, !IO),
             list.map2_foldl4(
-                process_module_int1(ProgressStream, Globals, rwi1_type_repn),
+                grab_module_int1_file(ProgressStream, Globals, rwi1_type_repn),
                 get_ancestors(ModuleName), _IntUsesList, _ImpUsesList,
                 !HaveReadModuleMaps, !Baggage, !AugCompUnit, !IO)
         ),
@@ -683,7 +683,7 @@ grab_module_int0_files_for_acu(ProgressStream, Globals, Why, ReadWhy0,
     ( if should_read_interface(!.Baggage, ModuleName, ifk_int0) then
         maybe_log_augment_decision(ProgressStream, Why, ifk_int0, ReadWhy0,
             ModuleName, decided_to_read, !IO),
-        process_module_int0_for_acu(ProgressStream, Globals, ReadWhy0,
+        grab_module_int0_file_for_acu(ProgressStream, Globals, ReadWhy0,
             ModuleName, IntImports, ImpImports, IntUses, ImpUses,
             !HaveReadModuleMaps, !Baggage, !AugCompUnit, !IO),
         set.union(IntImports, !DirectImports),
@@ -717,7 +717,7 @@ grab_module_int0_files_for_amiu(ProgressStream, Globals, Why,
     ( if should_read_interface(!.Baggage, ModuleName, ifk_int0) then
         maybe_log_augment_decision(ProgressStream, Why, ifk_int0, ReadWhy0,
             ModuleName, decided_to_read, !IO),
-        process_module_int0_for_amiu(ProgressStream, Globals, ModuleName,
+        grab_module_int0_file_for_amiu(ProgressStream, Globals, ModuleName,
             IntImports, ImpImports, IntUses, ImpUses,
             !HaveReadModuleMaps, !Baggage, !AugMakeIntUnit, !IO),
         set.union(IntImports, !DirectImports),
@@ -750,7 +750,7 @@ grab_module_int1_files(ProgressStream, Globals, Why, ReadWhy1,
     ( if should_read_interface(!.Baggage, ModuleName, ifk_int1) then
         maybe_log_augment_decision(ProgressStream, Why, ifk_int1, ReadWhy1,
             ModuleName, decided_to_read, !IO),
-        process_module_int1(ProgressStream, Globals, ReadWhy1, ModuleName,
+        grab_module_int1_file(ProgressStream, Globals, ReadWhy1, ModuleName,
             IntUses, ImpUses, !HaveReadModuleMaps,
             !Baggage, !AugCompUnit, !IO),
         set.union(IntUses, !IntIndirectImports),
@@ -781,7 +781,7 @@ grab_module_int2_files(ProgressStream, Globals, Why, ReadWhy2,
     ( if should_read_interface(!.Baggage, ModuleName, ifk_int2) then
         maybe_log_augment_decision(ProgressStream, Why, ifk_int2, ReadWhy2,
             ModuleName, decided_to_read, !IO),
-        process_module_int2(ProgressStream, Globals, ReadWhy2, ModuleName,
+        grab_module_int2_file(ProgressStream, Globals, ReadWhy2, ModuleName,
             IntUses, ImpUses,
             !HaveReadModuleMaps, !Baggage, !AugCompUnit, !IO),
         set.union(IntUses, !IntIndirectImports),
@@ -810,7 +810,7 @@ grab_module_int3_files(ProgressStream, Globals, Why, ReadWhy3,
     ( if should_read_interface(!.Baggage, ModuleName, ifk_int3) then
         maybe_log_augment_decision(ProgressStream, Why, ifk_int3, ReadWhy3,
             ModuleName, decided_to_read, !IO),
-        process_module_int3(ProgressStream, Globals, ReadWhy3, ModuleName,
+        grab_module_int3_file(ProgressStream, Globals, ReadWhy3, ModuleName,
             IntImports, !HaveReadModuleMaps, !Baggage, !AugMakeIntUnit, !IO),
         set.union(IntImports, !IntIndirectImports)
     else
@@ -849,7 +849,7 @@ grabbed_file_to_file_kind(GrabbedWhy) = FileKind :-
 
 %---------------------------------------------------------------------------%
 
-:- pred process_module_int0_for_acu(io.text_output_stream::in, globals::in,
+:- pred grab_module_int0_file_for_acu(io.text_output_stream::in, globals::in,
     read_why_int0::in, module_name::in,
     set(module_name)::out, set(module_name)::out,
     set(module_name)::out, set(module_name)::out,
@@ -858,7 +858,7 @@ grabbed_file_to_file_kind(GrabbedWhy) = FileKind :-
     aug_compilation_unit::in, aug_compilation_unit::out,
     io::di, io::uo) is det.
 
-process_module_int0_for_acu(ProgressStream, Globals, ReadWhy0, ModuleName,
+grab_module_int0_file_for_acu(ProgressStream, Globals, ReadWhy0, ModuleName,
         IntImports, ImpImports, IntUses, ImpUses,
         !HaveReadModuleMaps, !Baggage, !AugCompUnit, !IO) :-
     do_we_need_timestamps(!.Baggage, ReturnTimestamp),
@@ -896,7 +896,7 @@ process_module_int0_for_acu(ProgressStream, Globals, ReadWhy0, ModuleName,
     ),
     module_baggage_add_errors(Errors, !Baggage).
 
-:- pred process_module_int0_for_amiu(io.text_output_stream::in,
+:- pred grab_module_int0_file_for_amiu(io.text_output_stream::in,
     globals::in, module_name::in,
     set(module_name)::out, set(module_name)::out,
     set(module_name)::out, set(module_name)::out,
@@ -905,7 +905,7 @@ process_module_int0_for_acu(ProgressStream, Globals, ReadWhy0, ModuleName,
     aug_make_int_unit::in, aug_make_int_unit::out,
     io::di, io::uo) is det.
 
-process_module_int0_for_amiu(ProgressStream, Globals, ModuleName,
+grab_module_int0_file_for_amiu(ProgressStream, Globals, ModuleName,
         IntImports, ImpImports, IntUses, ImpUses,
         !HaveReadModuleMaps, !Baggage, !AugMakeIntUnit, !IO) :-
     do_we_need_timestamps(!.Baggage, ReturnTimestamp),
@@ -933,7 +933,7 @@ process_module_int0_for_amiu(ProgressStream, Globals, ModuleName,
     ),
     module_baggage_add_errors(Errors, !Baggage).
 
-:- pred process_module_int1(io.text_output_stream::in, globals::in,
+:- pred grab_module_int1_file(io.text_output_stream::in, globals::in,
     read_why_int1::in, module_name::in,
     set(module_name)::out, set(module_name)::out,
     have_read_module_maps::in, have_read_module_maps::out,
@@ -941,7 +941,7 @@ process_module_int0_for_amiu(ProgressStream, Globals, ModuleName,
     aug_compilation_unit::in, aug_compilation_unit::out,
     io::di, io::uo) is det.
 
-process_module_int1(ProgressStream, Globals, ReadWhy1, ModuleName,
+grab_module_int1_file(ProgressStream, Globals, ReadWhy1, ModuleName,
         IntUses, ImpUses, !HaveReadModuleMaps, !Baggage, !AugCompUnit, !IO) :-
     do_we_need_timestamps(!.Baggage, ReturnTimestamp),
     maybe_read_module_int1(ProgressStream, Globals, do_search, ModuleName,
@@ -1001,7 +1001,7 @@ process_module_int1(ProgressStream, Globals, ReadWhy1, ModuleName,
         module_baggage_add_errors(Errors, !Baggage)
     ).
 
-:- pred process_module_int2(io.text_output_stream::in, globals::in,
+:- pred grab_module_int2_file(io.text_output_stream::in, globals::in,
     read_why_int2::in, module_name::in,
     set(module_name)::out, set(module_name)::out,
     have_read_module_maps::in, have_read_module_maps::out,
@@ -1009,7 +1009,7 @@ process_module_int1(ProgressStream, Globals, ReadWhy1, ModuleName,
     aug_compilation_unit::in, aug_compilation_unit::out,
     io::di, io::uo) is det.
 
-process_module_int2(ProgressStream, Globals, ReadWhy2, ModuleName,
+grab_module_int2_file(ProgressStream, Globals, ReadWhy2, ModuleName,
         IntUses, ImpUses, !HaveReadModuleMaps, !Baggage, !AugCompUnit, !IO) :-
     do_we_need_timestamps(!.Baggage, ReturnTimestamp),
     maybe_read_module_int2(ProgressStream, Globals, do_search, ModuleName,
@@ -1046,13 +1046,13 @@ process_module_int2(ProgressStream, Globals, ReadWhy2, ModuleName,
     ),
     module_baggage_add_errors(Errors, !Baggage).
 
-:- pred process_module_int3(io.text_output_stream::in, globals::in,
+:- pred grab_module_int3_file(io.text_output_stream::in, globals::in,
     read_why_int3::in, module_name::in, set(module_name)::out,
     have_read_module_maps::in, have_read_module_maps::out,
     module_baggage::in, module_baggage::out,
     aug_make_int_unit::in, aug_make_int_unit::out, io::di, io::uo) is det.
 
-process_module_int3(ProgressStream, Globals, ReadWhy3, ModuleName, IntImports,
+grab_module_int3_file(ProgressStream, Globals, ReadWhy3, ModuleName, IntImports,
         !HaveReadModuleMaps, !Baggage, !AugMakeIntUnit, !IO) :-
     do_we_need_timestamps(!.Baggage, ReturnTimestamp),
     maybe_read_module_int3(ProgressStream, Globals, do_search, ModuleName,
