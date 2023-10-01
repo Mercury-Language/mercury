@@ -107,6 +107,7 @@
 % Transformations that act on the parse tree,
 % and stuff relating to the module system.
 :- include_module canonicalize_interface.
+:- include_module check_import_accessibility.
 :- include_module check_module_interface.
 :- include_module comp_unit_interface.
 :- include_module convert_parse_tree.

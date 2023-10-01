@@ -506,8 +506,12 @@ This is done by the following modules.
 
 <ul>
 <li>
-grab_modules.m figures out what interface files to read,
-and also does a bunch of other semi-related things.
+grab_modules.m figures out what interface files to read, and reads them.
+It also does a bunch of other semi-related things.
+<li>
+check_import_accessibility.m checks whether imported (and used) modules
+are actually accessible (by having imports of all their ancestor modules),
+and generates error messages if the answer is "no".
 <li>
 read_module.m has code to read in source, interface and optimization files.
 <li>
