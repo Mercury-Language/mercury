@@ -27,11 +27,11 @@ export MERCURY_COMPILER MERCURY_CONFIG_DIR
 # Set the MACOSX_DEPLOYMENT_TARGET environment variable if needed.
 @SET_MACOSX_DEPLOYMENT_TARGET@
 
-case $# in
-	0)
+case "$#" in
+    0)
         @MMC_INVOKE_CMD@ ${MERCURY_COMPILER}
         ;;
-	*)
+    *)
         @MMC_INVOKE_CMD@ ${MERCURY_COMPILER} "$@"
         ;;
 esac

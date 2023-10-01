@@ -61,86 +61,83 @@ SSDB_LIB_NAME=mer_ssdb
 
 MKINIT=${MERCURY_MKINIT=mkinit}
 
-case $debug in
+case "${debug}" in
     true)
         trace_opt="-t"
+        init_opt="-i"
         ;;
 esac
 
-case $debug in
+case "${profile_deep}" in
     true)
         init_opt="-i"
         ;;
 esac
 
-case $profile_deep in
-    true)
-        init_opt="-i"
-        ;;
-esac
-
-if test "$experimental_complexity" != ""
+if test "${experimental_complexity}" != ""
 then
-    experimental_complexity_opt="-X $experimental_complexity"
+    experimental_complexity_opt="-X ${experimental_complexity}"
 else
     experimental_complexity_opt=""
 fi
 
-if test "$mercury_stdlib_dir" != ""
+if test "${mercury_stdlib_dir}" != ""
 then
     MERCURY_MOD_LIB_MODS="\
-        $mercury_stdlib_dir/modules/$GRADE/$RT_LIB_NAME.init \
-        $mercury_stdlib_dir/modules/$GRADE/$STD_LIB_NAME.init"
+        ${mercury_stdlib_dir}/modules/${GRADE}/${RT_LIB_NAME}.init \
+        ${mercury_stdlib_dir}/modules/${GRADE}/${STD_LIB_NAME}.init"
     MERCURY_TRACE_LIB_MODS="\
-        $mercury_stdlib_dir/modules/$GRADE/$BROWSER_LIB_NAME.init \
-        $mercury_stdlib_dir/modules/$GRADE/$MDBCOMP_LIB_NAME.init"
+        ${mercury_stdlib_dir}/modules/${GRADE}/${BROWSER_LIB_NAME}.init \
+        ${mercury_stdlib_dir}/modules/${GRADE}/${MDBCOMP_LIB_NAME}.init"
     MERCURY_SSDB_LIB_MODS="\
-        $mercury_stdlib_dir/modules/$GRADE/$SSDB_LIB_NAME.init"
+        ${mercury_stdlib_dir}/modules/${GRADE}/${SSDB_LIB_NAME}.init"
 fi
-MERCURY_TRACE_LIB_MODS="$MERCURY_TRACE_LIB_MODS $trace_init_files"
-MERCURY_SSDB_LIB_MODS="$MERCURY_SSDB_LIB_MODS $ssdb_init_files"
+MERCURY_TRACE_LIB_MODS="${MERCURY_TRACE_LIB_MODS} ${trace_init_files}"
+MERCURY_SSDB_LIB_MODS="${MERCURY_SSDB_LIB_MODS} ${ssdb_init_files}"
 
-MERCURY_ALL_LIB_MODS="$MERCURY_MOD_LIB_MODS"
+MERCURY_ALL_LIB_MODS="${MERCURY_MOD_LIB_MODS}"
 
-# XXX why does this test $trace_opt instead of $trace?
-case "$trace_opt" in
+# XXX why does this test ${trace_opt} instead of ${trace}?
+case "${trace_opt}" in
     -t)
         init_opt="-i"
-        MERCURY_ALL_LIB_MODS="$MERCURY_ALL_LIB_MODS\
-            $MERCURY_TRACE_LIB_MODS"
+        MERCURY_ALL_LIB_MODS="${MERCURY_ALL_LIB_MODS}\
+            ${MERCURY_TRACE_LIB_MODS}"
         ;;
 esac
 
-case $ss_debug in
+case "${ss_debug}" in
     true)
         ssdb=true
         ;;
 esac
 
-case $ssdb in
+case "${ssdb}" in
     true)
-        MERCURY_ALL_LIB_MODS="$MERCURY_ALL_LIB_MODS\
-            $MERCURY_SSDB_LIB_MODS"
+        MERCURY_ALL_LIB_MODS="${MERCURY_ALL_LIB_MODS}\
+            ${MERCURY_SSDB_LIB_MODS}"
         ;;
 esac
 
-# XXX: $EXTRA_INIT_FILES is not set or used anywhere by our code, and users
-# can't set it since it is not documented anywhere, so its value should
-# always be the empty string.
+# XXX: ${EXTRA_INIT_FILES} is not set or used anywhere by our code,
+# and users can't set it since it is not documented anywhere,
+# so its value should always be the empty string.
 
-case $# in
-    0) exec $MKINIT -c"$maxcalls" $init_opt $trace_opt \
-        $library_opt $defentry_opt $extra_inits_opt \
-        -g "$GRADE" -o "$init_c_file" $experimental_complexity_opt \
-        $extra_init_dirs $always_exec_init_opts \
-        $EXTRA_INIT_FILES $MERCURY_ALL_LIB_MODS
+case "$#" in
+    0)
+        exec ${MKINIT} -c"${maxcalls}" ${init_opt} ${trace_opt} \
+            ${library_opt} ${defentry_opt} ${extra_inits_opt} \
+            -g "${GRADE}" -o "${init_c_file}" ${experimental_complexity_opt} \
+            ${extra_init_dirs} ${always_exec_init_opts} \
+            ${EXTRA_INIT_FILES} ${MERCURY_ALL_LIB_MODS}
        ;;
-    *) exec $MKINIT -c"$maxcalls" $init_opt $trace_opt \
-        $library_opt $defentry_opt $extra_inits_opt \
-        -g "$GRADE" -o "$init_c_file" $experimental_complexity_opt \
-        -r "$runtime_flags" \
-        $extra_init_dirs $always_exec_init_opts \
-        "$@" \
-        $EXTRA_INIT_FILES $MERCURY_ALL_LIB_MODS
+    *)
+        exec ${MKINIT} -c"${maxcalls}" ${init_opt} ${trace_opt} \
+            ${library_opt} ${defentry_opt} ${extra_inits_opt} \
+            -g "${GRADE}" -o "${init_c_file}" ${experimental_complexity_opt} \
+            -r "${runtime_flags}" \
+            ${extra_init_dirs} ${always_exec_init_opts} \
+            "$@" \
+            ${EXTRA_INIT_FILES} ${MERCURY_ALL_LIB_MODS}
        ;;
 esac

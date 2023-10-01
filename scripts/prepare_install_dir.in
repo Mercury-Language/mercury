@@ -17,7 +17,7 @@ fi
 installdir=$1;
 
 ln_s="@LN_S@"
-if test "$ln_s" = "false"
+if test "${ln_s}" = "false"
 then
     ln_s="cp -r"
 fi
@@ -36,9 +36,9 @@ mkdir ${installdir}/scripts
 cp scripts/* ${installdir}/scripts
 mkdir ${installdir}/tools
 cp tools/* ${installdir}/tools
-$ln_s $wd/compiler ${installdir}
-$ln_s $wd/robdd ${installdir}
-$ln_s $wd/util ${installdir}
+${ln_s} ${wd}/compiler ${installdir}
+${ln_s} ${wd}/robdd ${installdir}
+${ln_s} ${wd}/util ${installdir}
 
 mkdir ${installdir}/boehm_gc
 mkdir ${installdir}/boehm_gc/Mac_files
