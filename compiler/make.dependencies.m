@@ -1516,17 +1516,16 @@ eqv_states(Id, SucceededA, SucceededB, Succeeded, DepsA, DepsB, Deps,
             Deps = DepsB,
             Info = InfoB
         else
-            % XXX MDNEW Deleting the percent signs from in front of
-            % the comments in the rest of this predicate disables the
-            % requirement that the old and new machineries match.
-            % This results in a bootcheck that has exactly the same results
-            % (248 failed tests) as a compiler using only the old machinery.
+            % XXX MDNEW Without enforcing a requirement that the
+            % new machinery generate the same updated make_info structure
+            % as the old machinery results in a bootcheck that has exactly
+            % the same results (248 failed tests) as a compiler using only
+            % the old machinery.
             %
-            % Enforcing a requirement that the new machinery generate
-            % the same updated make_info structure as the old machinery
-            % yields a bootcheck that still builds the right stage 3,
-            % but causes some extra test case failures, all of which
-            % come from the exception thrown below. These failures are
+            % Enforcing a requirement yields a bootcheck that still builds
+            % the right stage 3, but causes some extra test case failures,
+            % all of which come from the exception thrown below.
+            % These failures are
             %
             % valid_make_int/bug506
             % valid_make_int/test_repn
@@ -1537,21 +1536,19 @@ eqv_states(Id, SucceededA, SucceededB, Succeeded, DepsA, DepsB, Deps,
             % warnings/unused_interface_import
             %
             % Several of these test cases include submodules, but not all.
-
-%           trace [
-%               compile_time(flag("make_dep_compare")),
-%               run_time(env("MAKE_DEP_COMPARE")),
-%               io(!TIO)
-%           ]
-            (
+            trace [
+                compile_time(flag("make_dep_compare")),
+                run_time(env("MAKE_DEP_COMPARE")),
+                io(!TIO)
+            ] (
                 Msg = "\neqv_state(" ++ Id ++ ")\n" ++
                     string.join_list("\n", cord.list(!.Msgs)) ++ "\n",
                 unexpected($pred, Msg)
-            )
+            ),
 
-%           Succeeded = SucceededB,
-%           Deps = DepsB,
-%           Info = InfoB
+            Succeeded = SucceededB,
+            Deps = DepsB,
+            Info = InfoB
         )
     ).
 
