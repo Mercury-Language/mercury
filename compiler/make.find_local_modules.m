@@ -62,6 +62,7 @@
 :- import_module maybe.
 :- import_module require.
 :- import_module sparse_bitset.
+:- import_module string.
 
 %---------------------------------------------------------------------------%
 
@@ -137,6 +138,9 @@ find_transitive_module_dependencies_uncached(ProgressStream, KeepGoing,
                     ModuleDir = dir.this_directory
                 )
             then
+                % XXX MDNEW Pass ModuleDir to this call, and don't allow
+                % later searches to look in the part of the search path
+                % *before* ModuleDir.
                 do_find_transitive_module_dependencies_uncached(ProgressStream,
                     KeepGoing, DependenciesType, ProcessModulesWhere, Globals,
                     ModuleIndex, ModuleName, ModuleDepInfo, Succeeded,
@@ -161,8 +165,9 @@ find_transitive_module_dependencies_uncached(ProgressStream, KeepGoing,
     make_info::in, make_info::out, io::di, io::uo) is det.
 
 do_find_transitive_module_dependencies_uncached(ProgressStream, KeepGoing,
-        DependenciesType, ProcessModulesWhere, Globals, ModuleIndex, ModuleName,
-        ModuleDepInfo, Succeeded, Modules0, Modules, !Info, !IO) :-
+        DependenciesType, ProcessModulesWhere, Globals,
+        ModuleIndex, ModuleName, ModuleDepInfo, Succeeded,
+        Modules0, Modules, !Info, !IO) :-
     module_dep_info_get_fims(ModuleDepInfo, FIMSpecs),
     module_dep_info_get_module_name(ModuleDepInfo, MDI_ModuleName),
     expect(unify(ModuleName, MDI_ModuleName), $pred,
@@ -193,6 +198,25 @@ do_find_transitive_module_dependencies_uncached(ProgressStream, KeepGoing,
             DependenciesType = all_imports,
             IncludesToCheck = set.init
         )
+    ),
+    trace [
+        compile_time(flag("find_trans_deps")),
+        run_time(env("FIND_TRANS_DEPS")),
+        io(!TIO)
+    ] (
+        PrintIndentedModuleName =
+            ( pred(MN::in, TIO0::di, TIO::uo) is det :-
+                io.format(ProgressStream, "    %s\n",
+                    [s(sym_name_to_string(MN))], TIO0, TIO)
+            ),
+        ModuleNameStr = sym_name_to_string(ModuleName),
+        io.format(ProgressStream, "imports by %s:\n",
+            [s(ModuleNameStr)], !TIO),
+        set.foldl(PrintIndentedModuleName, ImportsToCheck, !TIO),
+        io.format(ProgressStream, "includes by %s:\n",
+            [s(ModuleNameStr)], !TIO),
+        set.foldl(PrintIndentedModuleName, IncludesToCheck, !TIO),
+        io.nl(ProgressStream, !TIO)
     ),
     module_names_to_index_set(set.to_sorted_list(ImportsToCheck),
         ImportsToCheckSet, !Info),

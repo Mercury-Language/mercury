@@ -2194,6 +2194,7 @@ then
         do
             cp tests/.mgnuc_copts tests/"${d}"
             cp tests/.mgnuc_opts tests/"${d}"
+            /bin/rm -fr tests/"${d}"/Mercury
         done
 
         WORKSPACE_FLAGS=yes
@@ -2528,7 +2529,7 @@ then
 
     if test -d TEST_FAILS
     then
-        datestr=$(date +%F_%2H:%2M)
+        datestr=$(date +%F_time_%2H_%2M)
         cp "${tests_dir}"/UNEXPECTED_FAILED_TESTS \
             TEST_FAILS/"${test_grade}_${datestr}"
     fi

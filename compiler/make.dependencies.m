@@ -62,10 +62,17 @@
 :- import_module parse_tree.module_dep_info.
 :- import_module parse_tree.prog_data_foreign.
 
+:- import_module assoc_list.
 :- import_module bool.
+:- import_module cord.
 :- import_module map.
+:- import_module pair.
+:- import_module require.
 :- import_module set.
 :- import_module sparse_bitset.
+:- import_module string.
+:- import_module version_array.
+:- import_module version_hash_table.
 
 %---------------------------------------------------------------------------%
 
@@ -73,6 +80,27 @@ find_target_dependencies_of_modules(_KeepGoing, _Globals, _TargetType,
         [], !Succeeded, !Deps, !Info, !IO).
 find_target_dependencies_of_modules(KeepGoing, Globals, TargetType,
         [ModuleIndex | ModuleIndexes], !Succeeded, !Deps, !Info, !IO) :-
+    find_target_dependencies_of_module(KeepGoing, Globals,
+        TargetType, ModuleIndex, NewSucceeded, !Deps, !Info, !IO),
+    ( if
+        ( NewSucceeded = succeeded
+        ; KeepGoing = do_keep_going
+        )
+    then
+        !:Succeeded = !.Succeeded `and` NewSucceeded,
+        find_target_dependencies_of_modules(KeepGoing, Globals, TargetType,
+            ModuleIndexes, !Succeeded, !Deps, !Info, !IO)
+    else
+        !:Succeeded = did_not_succeed
+    ).
+
+:- pred find_target_dependencies_of_module(maybe_keep_going::in, globals::in,
+    module_target_type::in, module_index::in, maybe_succeeded::out,
+    deps_set(dependency_file_index)::in, deps_set(dependency_file_index)::out,
+    make_info::in, make_info::out, io::di, io::uo) is det.
+
+find_target_dependencies_of_module(_KeepGoing, Globals,
+        TargetType, ModuleIndex, NewSucceeded, !Deps, !Info, !IO) :-
     (
         ( TargetType = module_target_source
         ; TargetType = module_target_track_flags
@@ -81,16 +109,36 @@ find_target_dependencies_of_modules(KeepGoing, Globals, TargetType,
     ;
         TargetType = module_target_int3,
         % module_target_source of self
+        Deps0 = !.Deps,
+        Info0 = !.Info,
+
+        DepSpecs = [self(module_target_source)],
+        find_dep_specs(Globals, ModuleIndex, DepSpecs, NewSucceededB, NewDepsB,
+            Info0, InfoB, !IO),
+        deps_set_union(NewDepsB, Deps0, DepsB),
+
         add_targets_of_modules_as_deps(module_target_source,
-            [ModuleIndex], !Deps, !Info),
-        NewSucceeded = succeeded
+            [ModuleIndex], Deps0, DepsA, Info0, InfoA),
+        NewSucceededA = succeeded,
+
+        eqv_states("src_tf", NewSucceededA, NewSucceededB, NewSucceeded,
+            DepsA, DepsB, !:Deps, InfoA, InfoB, !:Info)
     ;
         ( TargetType = module_target_int0
         ; TargetType = module_target_int1
         ; TargetType = module_target_int2
         ),
-        FindDeps = interface_file_dependencies,
-        FindDeps(Globals, ModuleIndex, NewSucceeded, NewDeps, !Info, !IO),
+        interface_file_dependencies(FindDeps, DepSpecs),
+        Info0 = !.Info,
+
+        find_dep_specs(Globals, ModuleIndex, DepSpecs, NewSucceededB, NewDepsB,
+            Info0, InfoB, !IO),
+
+        FindDeps(Globals, ModuleIndex, NewSucceededA, NewDepsA,
+            Info0, InfoA, !IO),
+
+        eqv_states("int012", NewSucceededA, NewSucceededB, NewSucceeded,
+            NewDepsA, NewDepsB, NewDeps, InfoA, InfoB, !:Info),
         deps_set_union(NewDeps, !Deps)
     ;
         ( TargetType = module_target_c_code
@@ -99,29 +147,86 @@ find_target_dependencies_of_modules(KeepGoing, Globals, TargetType,
         ; TargetType = module_target_java_code
         ; TargetType = module_target_errors
         ),
-        FindDeps = compiled_code_dependencies(Globals),
-        FindDeps(Globals, ModuleIndex, NewSucceeded, NewDeps, !Info, !IO),
+        compiled_code_dependencies(Globals, FindDeps, DepSpecs),
+        Info0 = !.Info,
+
+        find_dep_specs(Globals, ModuleIndex, DepSpecs,
+            NewSucceededB, NewDepsB, Info0, InfoB, !IO),
+
+        FindDeps(Globals, ModuleIndex,
+            NewSucceededA, NewDepsA, Info0, InfoA, !IO),
+
+        eqv_states("target", NewSucceededA, NewSucceededB, NewSucceeded,
+            NewDepsA, NewDepsB, NewDeps, InfoA, InfoB, !:Info),
         deps_set_union(NewDeps, !Deps)
     ;
         TargetType = module_target_java_class_code,
+        Info0 = !.Info,
+        Deps0 = !.Deps,
+
+        DepSpec = self(module_target_java_code),
+        find_dep_spec(Globals, ModuleIndex, DepSpec,
+            NewSucceededB, NewDepsB, Info0, InfoB, !IO),
+        deps_set_union(Deps0, NewDepsB, DepsB),
+
         % module_target_java_code of self
         add_targets_of_modules_as_deps(module_target_java_code,
-            [ModuleIndex], !Deps, !Info),
-        NewSucceeded = succeeded
+            [ModuleIndex], Deps0, DepsA, Info0, InfoA),
+        NewSucceededA = succeeded,
+
+        eqv_states("class", NewSucceededA, NewSucceededB, NewSucceeded,
+            DepsA, DepsB, !:Deps, InfoA, InfoB, !:Info)
     ;
         ( TargetType = module_target_foreign_object(PIC, _)
         ; TargetType = module_target_fact_table_object(PIC, _)
         ),
+        Info0 = !.Info,
+        Deps0 = !.Deps,
+
+        globals.get_target(Globals, CompilationTarget),
+        TargetCodeType = target_to_module_target_code(CompilationTarget, PIC),
+        DepSpec = self(TargetCodeType),
+        find_dep_spec(Globals, ModuleIndex, DepSpec,
+            NewSucceededB, NewDepsB, Info0, InfoB, !IO),
+        deps_set_union(Deps0, NewDepsB, DepsB),
+
         add_compilation_targets_of_module_as_deps(Globals, PIC, ModuleIndex,
-            !Deps, !Info),
-        NewSucceeded = succeeded
+            Deps0, DepsA, Info0, InfoA),
+        NewSucceededA = succeeded,
+
+        eqv_states("java", NewSucceededA, NewSucceededB, NewSucceeded,
+            DepsA, DepsB, !:Deps, InfoA, InfoB, !:Info)
     ;
         TargetType = module_target_object_code(PIC),
-        add_compilation_targets_of_module_as_deps(Globals, PIC, ModuleIndex,
-            !Deps, !Info),
         globals.get_target(Globals, CompilationTarget),
+        TargetCodeType = target_to_module_target_code(CompilationTarget, PIC),
         globals.lookup_bool_option(Globals, highlevel_code, HighLevelCode),
-        % For --highlevel-code, the `.c' file will #include the header file
+        Deps0 = !.Deps,
+        Info0 = !.Info,
+
+        DepSpecSelf = self(TargetCodeType),
+        DepSpecMh = foreign_imports(module_target_c_header(header_mh)),
+        ( if
+            CompilationTarget = target_c,
+            HighLevelCode = yes
+        then
+            DepSpecs = [DepSpecSelf, DepSpecMh,
+                direct_imports(module_target_c_header(header_mih)),
+                indirect_imports(module_target_c_header(header_mih)),
+                ancestors(module_target_c_header(header_mih)),
+                intermod_imports(module_target_c_header(header_mih))
+            ]
+        else
+            DepSpecs = [DepSpecSelf, DepSpecMh]
+        ),
+        find_dep_specs(Globals, ModuleIndex, DepSpecs,
+            NewSucceededB, NewDepsB, Info0, InfoB, !IO),
+        deps_set_union(NewDepsB, Deps0, DepsB),
+
+        % TargetCodeType of self
+        add_targets_of_modules_as_deps(TargetCodeType, [ModuleIndex],
+            Deps0, Deps1A, Info0, Info1A),
+        % For --highlevel-code, the `.c' file will #include the .mih file
         % for all imported modules.
         ( if
             CompilationTarget = target_c,
@@ -140,32 +245,70 @@ find_target_dependencies_of_modules(KeepGoing, Globals, TargetType,
             module_target_c_header(header_mh) `of` foreign_imports,
             HeaderDeps
         ]),
-        FindDeps(Globals, ModuleIndex, NewSucceeded, NewDeps, !Info, !IO),
-        deps_set_union(NewDeps, !Deps)
+        FindDeps(Globals, ModuleIndex, NewSucceededA, NewDepsA,
+            Info1A, InfoA, !IO),
+        deps_set_union(NewDepsA, Deps1A, DepsA),
+
+        eqv_states("c_object", NewSucceededA, NewSucceededB, NewSucceeded,
+            DepsA, DepsB, !:Deps, InfoA, InfoB, !:Info)
     ;
         ( TargetType = module_target_opt
         ; TargetType = module_target_xml_doc
         ),
-        % module_target_java_code of self
+        Deps0 = !.Deps,
+        Info0 = !.Info,
+
+        DepSpecs = [
+            self(module_target_source),
+            % XXX Should we cache the remaining dep_specs as a whole?
+            ancestors(module_target_int0),
+            non_intermod_direct_imports(module_target_int1),
+            non_intermod_indirect_imports(module_target_int2)
+        ],
+        find_dep_specs(Globals, ModuleIndex, DepSpecs,
+            NewSucceededB, NewDepsB, Info0, InfoB, !IO),
+        deps_set_union(NewDepsB, Deps0, DepsB),
+
+        % module_target_source of self
         add_targets_of_modules_as_deps(module_target_source, [ModuleIndex],
-            !Deps, !Info),
+            Deps0, Deps1A, Info0, Info1A),
         % module_target_int0 of ancestors
         add_targets_of_ancestors_as_deps(module_target_int0, ModuleIndex,
-            !Deps, !Info),
+            Deps1A, Deps2A, Info1A, Info2A),
         FindDeps = combine_deps_list([
             module_target_int1 `of` non_intermod_direct_imports,
             module_target_int2 `of` non_intermod_indirect_imports
         ]),
-        FindDeps(Globals, ModuleIndex, NewSucceeded, NewDeps, !Info, !IO),
-        deps_set_union(NewDeps, !Deps)
+        FindDeps(Globals, ModuleIndex, NewSucceededA, NewDepsA,
+            Info2A, InfoA, !IO),
+        deps_set_union(NewDepsA, Deps2A, DepsA),
+
+        eqv_states("opt_xml", NewSucceededA, NewSucceededB, NewSucceeded,
+            DepsA, DepsB, !:Deps, InfoA, InfoB, !:Info)
     ;
         TargetType = module_target_analysis_registry,
-        % module_target_java_code of self
+        Deps0 = !.Deps,
+        Info0 = !.Info,
+
+        DepSpecs = [
+            self(module_target_source),
+            ancestors(module_target_int0),
+            non_intermod_direct_imports(module_target_int1),
+            non_intermod_indirect_imports(module_target_int2),
+            direct_imports(module_target_opt),
+            indirect_imports(module_target_opt),
+            intermod_imports(module_target_opt)
+        ],
+        find_dep_specs(Globals, ModuleIndex, DepSpecs,
+            NewSucceededB, NewDepsB, Info0, InfoB, !IO),
+        deps_set_union(NewDepsB, Deps0, DepsB),
+
+        % module_target_source of self
         add_targets_of_modules_as_deps(module_target_source, [ModuleIndex],
-            !Deps, !Info),
+            Deps0, Deps1A, Info0, Info1A),
         % module_target_int0 of ancestors
         add_targets_of_ancestors_as_deps(module_target_int0, ModuleIndex,
-            !Deps, !Info),
+            Deps1A, Deps2A, Info1A, Info2A),
         FindDeps = combine_deps_list([
             module_target_int1 `of` non_intermod_direct_imports,
             module_target_int2 `of` non_intermod_indirect_imports,
@@ -173,19 +316,12 @@ find_target_dependencies_of_modules(KeepGoing, Globals, TargetType,
             module_target_opt `of` indirect_imports,
             module_target_opt `of` intermod_imports
         ]),
-        FindDeps(Globals, ModuleIndex, NewSucceeded, NewDeps, !Info, !IO),
-        deps_set_union(NewDeps, !Deps)
-    ),
-    ( if
-        ( NewSucceeded = succeeded
-        ; KeepGoing = do_keep_going
-        )
-    then
-        !:Succeeded = !.Succeeded `and` NewSucceeded,
-        find_target_dependencies_of_modules(KeepGoing, Globals, TargetType,
-            ModuleIndexes, !Succeeded, !Deps, !Info, !IO)
-    else
-        !:Succeeded = did_not_succeed
+        FindDeps(Globals, ModuleIndex, NewSucceededA, NewDepsA,
+            Info2A, InfoA, !IO),
+        deps_set_union(NewDepsA, Deps2A, DepsA),
+
+        eqv_states("registry", NewSucceededA, NewSucceededB, NewSucceeded,
+            DepsA, DepsB, !:Deps, InfoA, InfoB, !:Info)
     ).
 
 :- pred add_compilation_targets_of_module_as_deps(globals::in, pic::in,
@@ -196,9 +332,9 @@ find_target_dependencies_of_modules(KeepGoing, Globals, TargetType,
 add_compilation_targets_of_module_as_deps(Globals, PIC, ModuleIndex,
         !Deps, !Info) :-
     globals.get_target(Globals, CompilationTarget),
-    TargetCode = target_to_module_target_code(CompilationTarget, PIC),
+    TargetCodeType = target_to_module_target_code(CompilationTarget, PIC),
     % TargetCode of self
-    add_targets_of_modules_as_deps(TargetCode, [ModuleIndex], !Deps, !Info).
+    add_targets_of_modules_as_deps(TargetCodeType, [ModuleIndex], !Deps, !Info).
 
 :- func target_to_module_target_code(compilation_target, pic)
     = module_target_type.
@@ -208,31 +344,41 @@ target_to_module_target_code(_CompilationTarget, _PIC) = TargetCode :-
     % all compilation targets.
     TargetCode = module_target_c_code.
 
-:- func interface_file_dependencies =
-    (find_module_deps(dependency_file_index)::out(find_module_deps)) is det.
+:- pred interface_file_dependencies(
+    find_module_deps(dependency_file_index)::out(find_module_deps),
+    list(dep_spec)::out) is det.
 
-interface_file_dependencies =
-    combine_deps_list([
+interface_file_dependencies(Deps, DepSpecs) :-
+    Deps = combine_deps_list([
         module_target_source `of` self,
         module_target_int0 `of` ancestors,
         module_target_int3 `of` direct_imports,
         module_target_int3 `of` indirect_imports
-    ]).
+    ]),
+    DepSpecs = [
+        self(module_target_source),
+        ancestors(module_target_int0),
+        direct_imports(module_target_int3),
+        indirect_imports(module_target_int3)
+    ].
 
-:- func compiled_code_dependencies(globals::in) =
-    (find_module_deps(dependency_file_index)::out(find_module_deps)) is det.
+:- pred compiled_code_dependencies(globals::in,
+    find_module_deps(dependency_file_index)::out(find_module_deps),
+    list(dep_spec)::out) is det.
 
-compiled_code_dependencies(Globals) = Deps :-
+compiled_code_dependencies(Globals, Deps, DepSpecs) :-
     % We build up Deps in stages.
 
     % Stage 0: dependencies on flags.
     globals.lookup_bool_option(Globals, track_flags, TrackFlags),
     (
         TrackFlags = yes,
-        DepsTracks = [module_target_track_flags `of` self]
+        DepsTracks = [module_target_track_flags `of` self],
+        DepSpecsTracks = [self(module_target_track_flags)]
     ;
         TrackFlags = no,
-        DepsTracks = []
+        DepsTracks = [],
+        DepSpecsTracks = []
     ),
 
     % Stage 1: dependencies on the source file, and on the fact table files,
@@ -243,6 +389,14 @@ compiled_code_dependencies(Globals) = Deps :-
         foreign_include_files `files_of` self,
         module_target_int1 `of` self,
         module_target_int1 `of` ancestors,
+        imports_012
+    ],
+    DepSpecsSrcInts = [
+        self(module_target_source),
+        self_fact_table_files,
+        self_foreign_include_files,
+        self(module_target_int1),
+        ancestors(module_target_int1),
         imports_012
     ],
 
@@ -258,10 +412,16 @@ compiled_code_dependencies(Globals) = Deps :-
             module_target_opt `of` self,
             module_target_opt `of` intermod_imports,
             get_intermod_imports_their_ancestors_and_012
+        ],
+        DepSpecsOpts = [
+            self(module_target_opt),
+            intermod_imports(module_target_opt),
+            intermod_imports_their_ancestors_and_012
         ]
     ;
         AnyIntermod = no,
-        DepsOpts = []
+        DepsOpts = [],
+        DepSpecsOpts = []
     ),
 
     % Stage 3: dependencies on analysis result files.
@@ -270,15 +430,22 @@ compiled_code_dependencies(Globals) = Deps :-
         DepsRegistries = [
             module_target_analysis_registry `of` self,
             module_target_analysis_registry `of` direct_imports
+        ],
+        DepSpecsRegistries = [
+            self(module_target_analysis_registry),
+            direct_imports(module_target_analysis_registry)
         ]
     ;
         IntermodAnalysis = no,
-        DepsRegistries = []
+        DepsRegistries = [],
+        DepSpecsRegistries = []
     ),
 
     DepsAll = inst_preserving_condense(
         [DepsTracks, DepsSrcInts, DepsOpts, DepsRegistries]),
-    Deps = combine_deps_list(DepsAll).
+    Deps = combine_deps_list(DepsAll),
+    DepSpecs = DepSpecsTracks ++ DepSpecsSrcInts ++
+        DepSpecsOpts ++ DepSpecsRegistries.
 
 :- func imports_012 =
     (find_module_deps(dependency_file_index)::out(find_module_deps)) is det.
@@ -359,8 +526,9 @@ get_intermod_imports_their_ancestors_and_012(Globals, ModuleIndex,
         Succeeded = did_not_succeed,
         Result = deps_set_init
     else
+        ModulesList1 = deps_set_to_sorted_list(Modules1),
         deps_set_foldl3_maybe_stop_at_error_find_union_fi(KeepGoing,
-            imports_012, Globals, to_sorted_list(Modules1),
+            imports_012, Globals, ModulesList1,
             succeeded, Succeeded2, deps_set_init, Result, !Info, !IO),
         Succeeded = Succeeded1 `and` Succeeded2
     ).
@@ -530,6 +698,7 @@ non_intermod_indirect_imports(Globals, ModuleIndex, Succeeded, Modules,
 
 indirect_imports_uncached(ProgressStream, Globals, FindDirectImports,
         ModuleIndex, Succeeded, IndirectImports, !Info, !IO) :-
+    % XXX MDNEW Caller may know DirectImports already.
     FindDirectImports(Globals, ModuleIndex, DirectSucceeded, DirectImports,
         !Info, !IO),
     % XXX The original version of this code by stayl had the line assigning
@@ -545,7 +714,8 @@ indirect_imports_uncached(ProgressStream, Globals, FindDirectImports,
     else
         deps_set_foldl3_maybe_stop_at_error_find_union_mi(KeepGoing,
             find_transitive_implementation_imports(ProgressStream), Globals,
-            to_sorted_list(DirectImports), succeeded, IndirectSucceeded,
+            deps_set_to_sorted_list(DirectImports),
+            succeeded, IndirectSucceeded,
             deps_set_init, IndirectImports0, !Info, !IO),
         deps_set_delete(ModuleIndex, IndirectImports0, IndirectImports1),
         IndirectImports = deps_set_difference(IndirectImports1, DirectImports),
@@ -595,15 +765,16 @@ foreign_imports(Globals, ModuleIndex, Succeeded, Modules, !Info, !IO) :-
     % in the current module and the `.opt' files it imports.
 
     globals.get_backend_foreign_languages(Globals, Languages),
+    LanguagesSet = set.list_to_set(Languages),
     intermod_imports(Globals, ModuleIndex, IntermodSucceeded, IntermodModules,
         !Info, !IO),
     KeepGoing = make_info_get_keep_going(!.Info),
     % XXX MAKE_STREAM
     io.output_stream(ProgressStream, !IO),
+    deps_set_insert(ModuleIndex, IntermodModules, IntermodSelfModules),
     deps_set_foldl3_maybe_stop_at_error_find_union_mi(KeepGoing,
-        find_module_foreign_imports(ProgressStream,
-            set.list_to_set(Languages)),
-        Globals, to_sorted_list(insert(IntermodModules, ModuleIndex)),
+        find_module_foreign_imports(ProgressStream, LanguagesSet),
+        Globals, to_sorted_list(IntermodSelfModules),
         succeeded, ForeignSucceeded, deps_set_init, Modules, !Info, !IO),
     Succeeded = IntermodSucceeded `and` ForeignSucceeded.
 
@@ -615,7 +786,7 @@ foreign_imports(Globals, ModuleIndex, Succeeded, Modules, !Info, !IO) :-
 find_module_foreign_imports(ProgressStream, Languages, Globals, ModuleIndex,
         Succeeded, ForeignModules, !Info, !IO) :-
     % Languages should be constant for the duration of the process,
-    % so is unnecessary to include in the cache key.
+    % which means that it is unnecessary to include it in the cache key.
     CachedForeignImports0 =
         make_info_get_cached_transitive_foreign_imports(!.Info),
     ( if map.search(CachedForeignImports0, ModuleIndex, CachedResult) then
@@ -661,6 +832,8 @@ find_module_foreign_imports_uncached(ProgressStream, Languages, Globals,
         module_dep_info_get_fims(ModuleDepInfo, FIMSpecs),
         ForLangsPred =
             ( pred(fim_spec(Lang, Module)::in, Module::out) is semidet :-
+                % XXX MDNEW Instead of returning Module,
+                % we should add its index to a deps_set (in a fold).
                 set.contains(Languages, Lang)
             ),
         set.filter_map(ForLangsPred, FIMSpecs, ForeignModuleNameSet),
@@ -682,10 +855,34 @@ find_module_foreign_imports_uncached(ProgressStream, Languages, Globals,
 
 find_transitive_implementation_imports(ProgressStream, Globals, ModuleIndex,
         Succeeded, Modules, !Info, !IO) :-
+    % XXX MDNEW process_modules_anywhere allows a .module_dep file
+    % from a directory far down a search path to create a reference
+    % to a module that exists in the *current* directory, if its name
+    % duplicates the name of a module in the .module_dep file's directory.
+    % This causes the failure of e.g. the warnings/bug311 test case,
+    % with the module in the current directory being time.m.
     find_transitive_module_dependencies(ProgressStream, Globals, all_imports,
         process_modules_anywhere, ModuleIndex, Succeeded, Modules0,
         !Info, !IO),
-    Modules = insert(Modules0, ModuleIndex).
+    deps_set_insert(ModuleIndex, Modules0, Modules),
+    trace [
+        compile_time(flag("find_trans_impl_imports")),
+        run_time(env("FIND_TRANS_IMPL_IMPORTS")),
+        io(!TIO)
+    ] (
+        io.output_stream(OutputStream, !TIO),
+        module_index_to_name(!.Info, ModuleIndex, IndexModuleName),
+        IndexModuleNameStr = sym_name_to_string(IndexModuleName),
+        module_index_set_to_plain_set(!.Info, Modules, ModuleSet),
+        ModuleList = set.to_sorted_list(ModuleSet),
+        ModuleNlStrs = list.map(
+            (func(M) = "    " ++ sym_name_to_string(M) ++ "\n"),
+            ModuleList),
+        io.format(OutputStream, "trans impl imports for %s:\n",
+            [s(IndexModuleNameStr)], !TIO),
+        list.foldl(io.write_string(OutputStream), ModuleNlStrs, !TIO),
+        io.write_string(OutputStream, "trans impl imports list ends\n\n", !TIO)
+    ).
 
 %---------------------------------------------------------------------------%
 
@@ -757,6 +954,661 @@ get_foreign_include_files_2(Languages, SourceFileName, ForeignInclude, File) :-
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
+%
+% NEW DEPENDENCY SPECIFICATION MACHINERY
+%
+% The code in this section is intended to replace the code in the
+% section named OLD DEPENDENCY SPECIFICATION MACHINERY.
+%
+% The old machinery specified the set of dependency_files that a "mmc --make"
+% target depends on using closures containing closures containing closures.
+%
+% - The top layer of closures contained one of the "combine_deps" and
+%   "combine_deps_list" predicates.
+%
+% - The middle layer of closures contained one of the "of" and "files_of"
+%   predicates.
+%
+% - The bottom layer of closures contained one of the predicates mentioned
+%   in the right arguments of the `of` and "files_of" infix operators in the
+%   rest of the module.
+%
+% The new machinery replaces the two top layers of closures with explicit
+% data structures. It replaces the closures constructed by "of" and "files_of"
+% with values of the dep_spec type, and it replaces combine_deps and
+% combine_deps_list closures with lists of dep_specs. The deletion of these
+% top two layers of closures then turns the calls to the bottom layers from 
+% being higher order calls to being first order calls, which thus deletes
+% the bottom layer of closures as well.
+%
+% This approach is
+%
+% - much more readable and understandable (because the logic is explicit),
+%
+% - more debuggable (again, because the tasks are explicit), and
+%
+% - it is more flexible, in that it does not require the predicates used
+%   in each layer to have exactly the same argument list in its usual
+%   curried form.
+%
+% the main motivation for this change is this last advantage, since
+% should make it possible to pass a progress stream to every predicate
+% that needs it *without* modifying "of", "files_of", "combine_deps", and
+% "combine_deps_list", which would also require a bunch of predicates
+% that don't do I/O to take that argument.
+%
+
+    % The dependency specification type.
+    %
+    % Values of this type indirectly represent the specification of
+    % a set of dependency_files (actually, dependency_file_indexes).
+    % The "indirect" part is there because they actually represent 
+    % a specification of a task for find_dep_spec, which will compute
+    % that set of dependencys when given a dep_spec.
+    %
+    % XXX MDNEW Resolve ambiguities between these function symbols
+    % and the predicates whose names they share by renaming the predicates.
+    %
+:- type dep_spec
+    --->    self(module_target_type)
+    ;       self_fact_table_files
+    ;       self_foreign_include_files
+    ;       ancestors(module_target_type)
+    ;       direct_imports(module_target_type)
+    ;       indirect_imports(module_target_type)
+    ;       non_intermod_direct_imports(module_target_type)
+    ;       non_intermod_indirect_imports(module_target_type)
+    ;       intermod_imports(module_target_type)
+    ;       foreign_imports(module_target_type)
+
+    ;       imports_012
+            % XXX MDNEW Get a better name.
+    ;       intermod_imports_their_ancestors_and_012.
+            % XXX MDNEW See the other XXX MDNEWs below.
+
+:- pred find_dep_specs(globals::in, module_index::in, list(dep_spec)::in,
+    maybe_succeeded::out, deps_set(dependency_file_index)::out,
+    make_info::in, make_info::out, io::di, io::uo) is det.
+
+find_dep_specs(_, _, [], succeeded, deps_set_init, !Info, !IO).
+find_dep_specs(Globals, ModuleIndex, [HeadDepSpec | TailDepSpecs],
+        Succeeded, DepFileIndexSet, !Info, !IO) :-
+    find_dep_spec(Globals, ModuleIndex, HeadDepSpec,
+        HeadSucceeded, HeadDepFileIndexSet, !Info, !IO),
+    % XXX MDNEW Pass KeepGoing as a separate arg to make clear
+    % that its value is constant throughout the entire process.
+    ( if
+        HeadSucceeded = did_not_succeed,
+        make_info_get_keep_going(!.Info) = do_not_keep_going
+    then
+        Succeeded = did_not_succeed,
+        DepFileIndexSet = HeadDepFileIndexSet
+    else
+        find_dep_specs(Globals, ModuleIndex, TailDepSpecs,
+            TailSucceeded, TailDepFileIndexSet, !Info, !IO),
+        Succeeded = HeadSucceeded `and` TailSucceeded,
+        deps_set_union(HeadDepFileIndexSet, TailDepFileIndexSet,
+            DepFileIndexSet)
+    ).
+
+:- pred find_dep_spec(globals::in, module_index::in, dep_spec::in,
+    maybe_succeeded::out, deps_set(dependency_file_index)::out,
+    make_info::in, make_info::out, io::di, io::uo) is det.
+
+find_dep_spec(Globals, ModuleIndex, DepSpec, Succeeded, DepFileIndexSet,
+        !Info, !IO) :-
+    trace [
+        compile_time(flag("find_dep_spec")),
+        run_time(env("FIND_DEP_SPEC")),
+        io(!TIO)
+    ] (
+        io.output_stream(OutputStream, !TIO),
+        module_index_to_name(!.Info, ModuleIndex, IndexModuleName),
+        IndexModuleNameStr = sym_name_to_string(IndexModuleName),
+        io.format(OutputStream, "starting dep_spec %s for %s\n",
+            [s(string.string(DepSpec)), s(IndexModuleNameStr)], !TIO)
+    ),
+    % XXX Some of these alternatives don't need I/O.
+    % We can wrap caching code around the code of any set of switch arms.
+    (
+        DepSpec = self(TargetType),
+        Succeeded = succeeded,
+        acc_rev_dfmi_target(TargetType, ModuleIndex,
+            deps_set_init, DepFileIndexSet, !Info)
+    ;
+        DepSpec = self_fact_table_files,
+        fact_table_files(Globals, ModuleIndex,
+            Succeeded, FactTableDepFiles, !Info, !IO),
+        % XXX MDNEW Push this call into fact_table_files
+        % when the old machinery is deleted.
+        dependency_files_to_index_set(set.to_sorted_list(FactTableDepFiles),
+            DepFileIndexSet, !Info)
+    ;
+        DepSpec = self_foreign_include_files,
+        foreign_include_files(Globals, ModuleIndex,
+            Succeeded, ForeignDepFiles, !Info, !IO),
+        % XXX MDNEW Push this call into foreign_include_files
+        % when the old machinery is deleted.
+        dependency_files_to_index_set(set.to_sorted_list(ForeignDepFiles),
+            DepFileIndexSet, !Info)
+    ;
+        DepSpec = ancestors(TargetType),
+        Succeeded = succeeded,
+        module_index_to_name(!.Info, ModuleIndex, ModuleName),
+        Ancestors = get_ancestors(ModuleName),
+        module_names_to_index_set(Ancestors, ModuleIndexSet, !Info),
+        dfmi_targets(ModuleIndexSet, TargetType, DepFileIndexSet, !Info)
+    ;
+        DepSpec = direct_imports(TargetType),
+        direct_imports(Globals, ModuleIndex,
+            Succeeded, ModuleIndexSet, !Info, !IO),
+        dfmi_targets(ModuleIndexSet, TargetType, DepFileIndexSet, !Info)
+    ;
+        DepSpec = indirect_imports(TargetType),
+        indirect_imports(Globals, ModuleIndex,
+            Succeeded, ModuleIndexSet, !Info, !IO),
+        dfmi_targets(ModuleIndexSet, TargetType, DepFileIndexSet, !Info)
+    ;
+        DepSpec = non_intermod_direct_imports(TargetType),
+        non_intermod_direct_imports(Globals, ModuleIndex,
+            Succeeded, ModuleIndexSet, !Info, !IO),
+        dfmi_targets(ModuleIndexSet, TargetType, DepFileIndexSet, !Info)
+    ;
+        DepSpec = non_intermod_indirect_imports(TargetType),
+        non_intermod_indirect_imports(Globals, ModuleIndex,
+            Succeeded, ModuleIndexSet, !Info, !IO),
+        dfmi_targets(ModuleIndexSet, TargetType, DepFileIndexSet, !Info)
+    ;
+        DepSpec = intermod_imports(TargetType),
+        intermod_imports(Globals, ModuleIndex,
+            Succeeded, ModuleIndexSet, !Info, !IO),
+        dfmi_targets(ModuleIndexSet, TargetType, DepFileIndexSet, !Info)
+    ;
+        DepSpec = foreign_imports(TargetType),
+        % XXX not yet used
+        foreign_imports(Globals, ModuleIndex,
+            Succeeded, ModuleIndexSet, !Info, !IO),
+        dfmi_targets(ModuleIndexSet, TargetType, DepFileIndexSet, !Info)
+    ;
+        DepSpec = imports_012,
+        % XXX cache
+        SubDepSpecs = [
+            ancestors(module_target_int0),
+            direct_imports(module_target_int1),
+            indirect_imports(module_target_int2)
+        ],
+        trace [
+            compile_time(flag("find_dep_spec")),
+            run_time(env("FIND_DEP_SPEC")),
+            io(!TIO)
+        ] (
+            io.output_stream(OutputStream, !TIO),
+            module_index_to_name(!.Info, ModuleIndex, IndexModuleName),
+            IndexModuleNameStr = sym_name_to_string(IndexModuleName),
+            io.format(OutputStream, "dep_spec %s for %s starts\n\n",
+                [s(string.string(DepSpec)), s(IndexModuleNameStr)], !TIO)
+        ),
+        find_dep_specs(Globals, ModuleIndex, SubDepSpecs, Succeeded,
+            DepFileIndexSet, !Info, !IO),
+        trace [
+            compile_time(flag("find_dep_spec")),
+            run_time(env("FIND_DEP_SPEC")),
+            io(!TIO)
+        ] (
+            io.output_stream(OutputStream, !TIO),
+            module_index_to_name(!.Info, ModuleIndex, IndexModuleName),
+            IndexModuleNameStr = sym_name_to_string(IndexModuleName),
+            io.format(OutputStream, "dep_spec %s for %s ends\n",
+                [s(string.string(DepSpec)), s(IndexModuleNameStr)], !TIO)
+        )
+    ;
+        DepSpec = intermod_imports_their_ancestors_and_012,
+        trace [
+            compile_time(flag("find_dep_spec")),
+            run_time(env("FIND_DEP_SPEC")),
+            io(!TIO)
+        ] (
+            io.output_stream(OutputStream, !TIO),
+            module_index_to_name(!.Info, ModuleIndex, IndexModuleName),
+            IndexModuleNameStr = sym_name_to_string(IndexModuleName),
+            io.format(OutputStream, "dep_spec %s for %s starts\n\n",
+                [s(string.string(DepSpec)), s(IndexModuleNameStr)], !TIO)
+        ),
+        new_get_intermod_imports_their_ancestors_and_012(Globals, ModuleIndex,
+            Succeeded, DepFileIndexSet, !Info, !IO),
+        trace [
+            compile_time(flag("find_dep_spec")),
+            run_time(env("FIND_DEP_SPEC")),
+            io(!TIO)
+        ] (
+            io.output_stream(OutputStream, !TIO),
+            module_index_to_name(!.Info, ModuleIndex, IndexModuleName),
+            IndexModuleNameStr = sym_name_to_string(IndexModuleName),
+            io.format(OutputStream, "dep_spec %s for %s ends\n",
+                [s(string.string(DepSpec)), s(IndexModuleNameStr)], !TIO)
+        )
+    ),
+    trace [
+        compile_time(flag("find_dep_spec")),
+        run_time(env("FIND_DEP_SPEC")),
+        io(!TIO)
+    ] (
+        io.output_stream(OutputStream, !TIO),
+        module_index_to_name(!.Info, ModuleIndex, IndexModuleName),
+        IndexModuleNameStr = sym_name_to_string(IndexModuleName),
+        dependency_file_index_set_to_plain_set(!.Info, DepFileIndexSet,
+            DepFileSet),
+        DepFiles = set.to_sorted_list(DepFileSet),
+        (
+            DepFiles = [],
+            io.format(OutputStream, "dep_spec %s for %s yields no deps\n\n",
+                [s(string.string(DepSpec)), s(IndexModuleNameStr)], !TIO)
+        ;
+            DepFiles = [_ | _],
+            DepFileNlStrs = list.map(
+                dependency_file_to_debug_string("    ", "\n"), DepFiles),
+            io.format(OutputStream, "dep_spec %s for %s yields these deps:\n",
+                [s(string.string(DepSpec)), s(IndexModuleNameStr)], !TIO),
+            list.foldl(io.write_string(OutputStream), DepFileNlStrs, !TIO),
+            io.write_string(OutputStream, "dep list ends\n\n", !TIO)
+        )
+    ).
+
+:- pred dfmi_targets(deps_set(module_index)::in, module_target_type::in,
+    deps_set(dependency_file_index)::out,
+    make_info::in, make_info::out) is det.
+
+dfmi_targets(ModuleIndexSet, TargetType, DepFileIndexSet, !Info) :-
+    deps_set_foldl2(acc_rev_dfmi_target(TargetType), ModuleIndexSet,
+        deps_set_init, DepFileIndexSet, !Info).
+
+% XXX MDNEW This predicate would be better named something like
+% get_ancestors_of_intermod_imports.
+:- pred new_get_intermod_imports_and_their_ancestors(
+    globals::in, module_index::in, maybe_succeeded::out,
+    deps_set(module_index)::out,
+    make_info::in, make_info::out, io::di, io::uo) is det.
+
+new_get_intermod_imports_and_their_ancestors(Globals, ModuleIndex, Succeeded,
+        ModuleIndexSet, !Info, !IO) :-
+    KeepGoing = make_info_get_keep_going(!.Info),
+    intermod_imports(Globals, ModuleIndex, Succeeded1, Modules1, !Info, !IO),
+    ( if
+        Succeeded1 = did_not_succeed,
+        KeepGoing = do_not_keep_going
+    then
+        Succeeded = did_not_succeed,
+        ModuleIndexSet = deps_set_init
+    else
+        ModuleList1 = deps_set_to_sorted_list(Modules1),
+        list.map_foldl(index_get_ancestors, ModuleList1,
+            AncestorModuleIndexSets, !Info),
+        ModuleIndexSet = deps_set_union_list(AncestorModuleIndexSets),
+        Succeeded = Succeeded1
+    ).
+
+% XXX MDNEW This predicate would be better named something like
+% get_int012_of_ancestors_of_intermod_imports.
+:- pred new_get_intermod_imports_their_ancestors_and_012(
+    globals::in, module_index::in, maybe_succeeded::out,
+    deps_set(dependency_file_index)::out,
+    make_info::in, make_info::out, io::di, io::uo) is det.
+
+new_get_intermod_imports_their_ancestors_and_012(Globals, ModuleIndex,
+        Succeeded, DepFileIndexSet, !Info, !IO) :-
+    KeepGoing = make_info_get_keep_going(!.Info),
+    new_get_intermod_imports_and_their_ancestors(Globals, ModuleIndex,
+        Succeeded1, Modules1, !Info, !IO),
+    ( if
+        Succeeded1 = did_not_succeed,
+        KeepGoing = do_not_keep_going
+    then
+        Succeeded = did_not_succeed,
+        DepFileIndexSet = deps_set_init
+    else
+        ModuleList1 = deps_set_to_sorted_list(Modules1),
+        fold_dep_spec_over_modules_stop_at_error_fi(KeepGoing, Globals,
+            imports_012, ModuleList1,
+            succeeded, Succeeded2, deps_set_init, DepFileIndexSet, !Info, !IO),
+        Succeeded = Succeeded1 `and` Succeeded2
+    ).
+
+:- pred index_get_ancestors(module_index::in, deps_set(module_index)::out,
+    make_info::in, make_info::out) is det.
+
+index_get_ancestors(ModuleIndex, AncestorModuleIndexSet, !Info) :-
+    module_index_to_name(!.Info, ModuleIndex, ModuleName),
+    AncestorModuleNames = get_ancestors(ModuleName),
+    module_names_to_index_set(AncestorModuleNames, AncestorModuleIndexSet,
+        !Info).
+
+%---------------------------------------------------------------------------%
+
+    % Check the equivalence of results generated by the old and new
+    % machineries. The results from the old and new machineries
+    % are represented by the variables ending in A and B respectively.
+    %
+    % Note that for some kinds of dep_specs, Deps[AB] represent
+    % the files *added* as dependencies by processing that dep_spec,
+    % while for the other kinds of dep_specs, Deps[AB] represent
+    % the files *we end up with* as dependencies after processing
+    % that dep_spec. The difference is that the latter also includes
+    % the files that were already known to be dependencies *before*
+    % processing the dep_spec.
+    %
+:- pred eqv_states(string::in,
+    maybe_succeeded::in, maybe_succeeded::in, maybe_succeeded::out,
+    deps_set(dependency_file_index)::in, deps_set(dependency_file_index)::in,
+    deps_set(dependency_file_index)::out,
+    make_info::in, make_info::in, make_info::out) is det.
+
+eqv_states(Id, SucceededA, SucceededB, Succeeded, DepsA, DepsB, Deps,
+        InfoA, InfoB, Info) :-
+    some [!Msgs]
+    (
+        !:Msgs = cord.init,
+        ( if SucceededA = SucceededB then
+            true
+        else
+            cord.snoc("succeeded mismatch", !Msgs),
+            cord.snoc(string.string(SucceededA), !Msgs),
+            cord.snoc(string.string(SucceededB), !Msgs)
+        ),
+
+        DepsALA = deps_set_to_sorted_list(DepsA),
+        DepsALB = deps_set_to_sorted_list(DepsB),
+        ( if DepsALA = DepsALB then
+            true
+        else
+            cord.snoc("deps mismatch", !Msgs),
+            report_list_mismatch(DepsALA, DepsALB, !Msgs)
+        ),
+
+        OptionArgsA = make_info_get_option_args(InfoA),
+        OptionArgsB = make_info_get_option_args(InfoB),
+        ( if OptionArgsA = OptionArgsB then
+            true
+        else
+            cord.snoc("option args mismatch", !Msgs),
+            report_list_mismatch(OptionArgsA, OptionArgsB, !Msgs)
+        ),
+
+        CmdLineTargetSetA = make_info_get_command_line_targets(InfoA),
+        CmdLineTargetSetB = make_info_get_command_line_targets(InfoB),
+        set.to_sorted_list(CmdLineTargetSetA, CmdLineTargetsA),
+        set.to_sorted_list(CmdLineTargetSetB, CmdLineTargetsB),
+        ( if CmdLineTargetsA = CmdLineTargetsB then
+            true
+        else
+            cord.snoc("command line targets mismatch", !Msgs),
+            report_list_mismatch(CmdLineTargetsA, CmdLineTargetsB, !Msgs)
+        ),
+
+        RebuildDepsA = make_info_get_rebuild_module_deps(InfoA),
+        RebuildDepsB = make_info_get_rebuild_module_deps(InfoB),
+        ( if RebuildDepsA = RebuildDepsB then
+            true
+        else
+            cord.snoc("rebuild deps mismatch", !Msgs),
+            cord.snoc(string.string(RebuildDepsA), !Msgs),
+            cord.snoc(string.string(RebuildDepsB), !Msgs)
+        ),
+
+        ReanalysisPassesA = make_info_get_reanalysis_passes(InfoA),
+        ReanalysisPassesB = make_info_get_reanalysis_passes(InfoB),
+        ( if ReanalysisPassesA = ReanalysisPassesB then
+            true
+        else
+            cord.snoc("reanalysis passes mismatch", !Msgs),
+            cord.snoc(string.string(ReanalysisPassesA), !Msgs),
+            cord.snoc(string.string(ReanalysisPassesB), !Msgs)
+        ),
+
+        ModuleDepsMapA = make_info_get_module_dependencies(InfoA),
+        ModuleDepsMapB = make_info_get_module_dependencies(InfoB),
+        map.to_sorted_assoc_list(ModuleDepsMapA, ModuleDepsALA),
+        map.to_sorted_assoc_list(ModuleDepsMapB, ModuleDepsALB),
+        ( if ModuleDepsALA = ModuleDepsALB then
+            true
+        else
+            cord.snoc("module dependencies mismatch", !Msgs),
+            report_assoc_list_mismatch(ModuleDepsALA, ModuleDepsALB, !Msgs)
+        ),
+
+        FileTimestampsMapA = make_info_get_file_timestamps(InfoA),
+        FileTimestampsMapB = make_info_get_file_timestamps(InfoB),
+        map.to_sorted_assoc_list(FileTimestampsMapA, FileTimestampsA),
+        map.to_sorted_assoc_list(FileTimestampsMapB, FileTimestampsB),
+        ( if FileTimestampsA = FileTimestampsB then
+            true
+        else
+            cord.snoc("file timestamps mismatch", !Msgs),
+            report_assoc_list_mismatch(FileTimestampsA, FileTimestampsB, !Msgs)
+        ),
+
+        TargetFileTimestampHashA = make_info_get_target_file_timestamps(InfoA),
+        TargetFileTimestampHashB = make_info_get_target_file_timestamps(InfoB),
+        TargetFileTimestampsA =
+            version_hash_table.to_assoc_list(TargetFileTimestampHashA),
+        TargetFileTimestampsB =
+            version_hash_table.to_assoc_list(TargetFileTimestampHashB),
+        list.sort(TargetFileTimestampsA, SortedTargetFileTimestampsA),
+        list.sort(TargetFileTimestampsB, SortedTargetFileTimestampsB),
+        ( if SortedTargetFileTimestampsA = SortedTargetFileTimestampsB then
+            true
+        else
+            cord.snoc("target file timestamps mismatch", !Msgs),
+            report_assoc_list_mismatch(SortedTargetFileTimestampsA,
+                SortedTargetFileTimestampsB, !Msgs)
+        ),
+
+        ModuleIndexMapA = make_info_get_module_index_map(InfoA),
+        ModuleIndexMapB = make_info_get_module_index_map(InfoB),
+        ModuleIndexMapA =
+            module_index_map(ModuleForwardHashA, ModuleReverseA, ModuleCntA),
+        ModuleIndexMapB =
+            module_index_map(ModuleForwardHashB, ModuleReverseB, ModuleCntB),
+        ( if ModuleCntA = ModuleCntB then
+            true
+        else
+            cord.snoc("module index count mismatch", !Msgs),
+            cord.snoc(string.string(ModuleCntA), !Msgs),
+            cord.snoc(string.string(ModuleCntB), !Msgs)
+        ),
+        ModuleForwardALA = version_hash_table.to_assoc_list(ModuleForwardHashA),
+        ModuleForwardALB = version_hash_table.to_assoc_list(ModuleForwardHashB),
+        list.sort(ModuleForwardALA, SortedModuleForwardALA),
+        list.sort(ModuleForwardALB, SortedModuleForwardALB),
+        ( if SortedModuleForwardALA = SortedModuleForwardALB then
+            true
+        else
+            cord.snoc("module index forward mismatch", !Msgs),
+            report_assoc_list_mismatch(SortedModuleForwardALA,
+                SortedModuleForwardALB, !Msgs)
+        ),
+        ModuleReverseListA = version_array.to_list(ModuleReverseA),
+        ModuleReverseListB = version_array.to_list(ModuleReverseB),
+        list.sort(ModuleReverseListA, SortedModuleReverseListA),
+        list.sort(ModuleReverseListB, SortedModuleReverseListB),
+        ( if SortedModuleReverseListA = SortedModuleReverseListB then
+            true
+        else
+            cord.snoc("module index reverse mismatch", !Msgs),
+            report_list_mismatch(SortedModuleReverseListA,
+                SortedModuleReverseListB, !Msgs)
+        ),
+
+        DepIndexMapA = make_info_get_dep_file_index_map(InfoA),
+        DepIndexMapB = make_info_get_dep_file_index_map(InfoB),
+        DepIndexMapA =
+            dependency_file_index_map(DepForwardHashA, DepReverseA,
+                DepCntA),
+        DepIndexMapB =
+            dependency_file_index_map(DepForwardHashB, DepReverseB,
+                DepCntB),
+        ( if DepCntA = DepCntB then
+            true
+        else
+            cord.snoc("dep file index count mismatch", !Msgs),
+            cord.snoc(string.string(DepCntA), !Msgs),
+            cord.snoc(string.string(DepCntB), !Msgs)
+        ),
+        DepForwardALA = version_hash_table.to_assoc_list(DepForwardHashA),
+        DepForwardALB = version_hash_table.to_assoc_list(DepForwardHashB),
+        list.sort(DepForwardALA, SortedDepForwardALA),
+        list.sort(DepForwardALB, SortedDepForwardALB),
+        ( if SortedDepForwardALA = SortedDepForwardALB then
+            true
+        else
+            cord.snoc("dep file index forward mismatch", !Msgs),
+            report_assoc_list_mismatch(SortedDepForwardALA,
+                SortedDepForwardALB, !Msgs)
+        ),
+        DepReverseListA = version_array.to_list(DepReverseA),
+        DepReverseListB = version_array.to_list(DepReverseB),
+        list.sort(DepReverseListA, SortedDepReverseListA),
+        list.sort(DepReverseListB, SortedDepReverseListB),
+        ( if SortedDepReverseListA = SortedDepReverseListB then
+            true
+        else
+            cord.snoc("dep file index reverse mismatch", !Msgs),
+            report_list_mismatch(SortedDepReverseListA,
+                SortedDepReverseListB, !Msgs)
+        ),
+
+        DepStatusHashA = make_info_get_dependency_status(InfoA),
+        DepStatusHashB = make_info_get_dependency_status(InfoB),
+        DepStatusALA = version_hash_table.to_assoc_list(DepStatusHashA),
+        DepStatusALB = version_hash_table.to_assoc_list(DepStatusHashB),
+        list.sort(DepStatusALA, SortedDepStatusALA),
+        list.sort(DepStatusALB, SortedDepStatusALB),
+        ( if SortedDepStatusALA = SortedDepStatusALB then
+            true
+        else
+            cord.snoc("dep status mismatch", !Msgs),
+            report_assoc_list_mismatch(SortedDepStatusALA, SortedDepStatusALB,
+                !Msgs)
+        ),
+
+        ErrorModuleSetA = make_info_get_error_file_modules(InfoA),
+        ErrorModuleSetB = make_info_get_error_file_modules(InfoB),
+        set.to_sorted_list(ErrorModuleSetA, ErrorModulesA),
+        set.to_sorted_list(ErrorModuleSetB, ErrorModulesB),
+        ( if ErrorModulesA = ErrorModulesB then
+            true
+        else
+            cord.snoc("error file modules mismatch", !Msgs),
+            report_list_mismatch(ErrorModulesA, ErrorModulesB, !Msgs)
+        ),
+
+        ImportingModuleA = make_info_get_importing_module(InfoA),
+        ImportingModuleB = make_info_get_importing_module(InfoB),
+        ( if ImportingModuleA = ImportingModuleB then
+            true
+        else
+            cord.snoc("importing module mismatch", !Msgs),
+            cord.snoc(string.string(ImportingModuleA), !Msgs),
+            cord.snoc(string.string(ImportingModuleB), !Msgs)
+        ),
+
+        ( if cord.is_empty(!.Msgs) then
+            Succeeded = SucceededB,
+            Deps = DepsB,
+            Info = InfoB
+        else
+            % XXX MDNEW Deleting the percent signs from in front of
+            % the comments in the rest of this predicate disables the
+            % requirement that the old and new machineries match.
+            % This results in a bootcheck that has exactly the same results
+            % (248 failed tests) as a compiler using only the old machinery.
+            %
+            % Enforcing a requirement that the new machinery generate
+            % the same updated make_info structure as the old machinery
+            % yields a bootcheck that still builds the right stage 3,
+            % but causes some extra test case failures, all of which
+            % come from the exception thrown below. These failures are
+            %
+            % valid_make_int/bug506
+            % valid_make_int/test_repn
+            % warnings/arg_order_arrangement    ???
+            % warnings/format_call_multi
+            % warnings/format_call_warning
+            % warnings/inst_with_no_type
+            % warnings/unused_interface_import
+            %
+            % Several of these test cases include submodules, but not all.
+
+%           trace [
+%               compile_time(flag("make_dep_compare")),
+%               run_time(env("MAKE_DEP_COMPARE")),
+%               io(!TIO)
+%           ]
+            (
+                Msg = "\neqv_state(" ++ Id ++ ")\n" ++
+                    string.join_list("\n", cord.list(!.Msgs)) ++ "\n",
+                unexpected($pred, Msg)
+            )
+
+%           Succeeded = SucceededB,
+%           Deps = DepsB,
+%           Info = InfoB
+        )
+    ).
+
+:- pred report_list_mismatch(list(T)::in, list(T)::in,
+    cord(string)::in, cord(string)::out) is det.
+
+report_list_mismatch(ListA, ListB, !Msgs) :-
+    cord.snoc("version A:", !Msgs),
+    list.foldl(report_list_element, ListA, !Msgs),
+    cord.snoc("version B:", !Msgs),
+    list.foldl(report_list_element, ListB, !Msgs).
+
+:- pred report_assoc_list_mismatch(assoc_list(K, V)::in, assoc_list(K, V)::in,
+    cord(string)::in, cord(string)::out) is det.
+
+report_assoc_list_mismatch(AssocListA, AssocListB, !Msgs) :-
+    map_to_diffs(AssocListA, AssocListB, KeysBoth,
+        PairListOnlyA, PairListOnlyB),
+    cord.snoc("common keys:", !Msgs),
+    list.foldl(report_list_element, KeysBoth, !Msgs),
+    cord.snoc("version A only:", !Msgs),
+    list.foldl(report_assoc_list_element, PairListOnlyA, !Msgs),
+    cord.snoc("version B only:", !Msgs),
+    list.foldl(report_assoc_list_element, PairListOnlyB, !Msgs).
+
+:- pred report_list_element(T::in,
+    cord(string)::in, cord(string)::out) is det.
+
+report_list_element(X, !Msgs) :-
+    cord.snoc(string.string(X), !Msgs).
+
+:- pred report_assoc_list_element(pair(K, V)::in,
+    cord(string)::in, cord(string)::out) is det.
+
+report_assoc_list_element(K - V, !Msgs) :-
+    cord.snoc(string.string(K), !Msgs),
+    cord.snoc("    " ++ string.string(V), !Msgs).
+
+:- pred map_to_diffs(assoc_list(K, V)::in, assoc_list(K, V)::in,
+    list(K)::out, assoc_list(K, V)::out, assoc_list(K, V)::out) is det.
+
+map_to_diffs(AssocListA, AssocListB, KeysBoth, PairListOnlyA, PairListOnlyB) :-
+    PairSetA = set.from_sorted_list(AssocListA),
+    PairSetB = set.from_sorted_list(AssocListB),
+    set.intersect(PairSetA, PairSetB, PairSetBoth),
+    set.to_sorted_list(PairSetBoth, KeySetBoth),
+    assoc_list.keys(KeySetBoth, KeysBoth),
+    set.difference(PairSetA, PairSetBoth, PairSetOnlyA),
+    set.difference(PairSetB, PairSetBoth, PairSetOnlyB),
+    set.to_sorted_list(PairSetOnlyA, PairListOnlyA),
+    set.to_sorted_list(PairSetOnlyB, PairListOnlyB).
+
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%
+% OLD DEPENDENCY SPECIFICATION MACHINERY
+%
 
     % find_module_deps(Globals, ModuleIndex, Succeeded, Deps, !Info, !IO).
     %
@@ -904,18 +1756,18 @@ of(FileType, FindDeps) =
     deps_set(dependency_file_index)::out,
     make_info::in, make_info::out, io::di, io::uo) is det.
 
-of_2(FileType, FindDeps, Globals, ModuleIndex, Succeeded,
-        TargetDepFileIndexSet, !Info, !IO) :-
+of_2(TargetType, FindDeps, Globals, ModuleIndex, Succeeded,
+        DepFileIndexSet, !Info, !IO) :-
     FindDeps(Globals, ModuleIndex, Succeeded, ModuleIndexes, !Info, !IO),
-    deps_set_foldl2(acc_rev_dfmi_target(FileType), ModuleIndexes,
-        deps_set_init, TargetDepFileIndexSet, !Info).
+    deps_set_foldl2(acc_rev_dfmi_target(TargetType), ModuleIndexes,
+        deps_set_init, DepFileIndexSet, !Info).
 
 :- pred acc_rev_dfmi_target(module_target_type::in, module_index::in,
     deps_set(dependency_file_index)::in, deps_set(dependency_file_index)::out,
     make_info::in, make_info::out) is det.
 
-acc_rev_dfmi_target(FileType, ModuleIndex, !DepFileIndexSet, !Info) :-
-    TargetFile = dfmi_target(ModuleIndex, FileType),
+acc_rev_dfmi_target(TargetType, ModuleIndex, !DepFileIndexSet, !Info) :-
+    TargetFile = dfmi_target(ModuleIndex, TargetType),
     dependency_file_to_index(TargetFile, TargetFileIndex, !Info),
     deps_set_insert(TargetFileIndex, !DepFileIndexSet).
 
@@ -1056,6 +1908,51 @@ deps_set_foldl3_maybe_stop_at_error_find_union_fi(KeepGoing,
     else
         !:Succeeded = did_not_succeed
     ).
+
+:- pred fold_dep_spec_over_modules_stop_at_error_fi(maybe_keep_going::in,
+    globals::in, dep_spec::in, list(module_index)::in,
+    maybe_succeeded::in, maybe_succeeded::out,
+    deps_set(dependency_file_index)::in, deps_set(dependency_file_index)::out,
+    make_info::in, make_info::out, io::di, io::uo) is det.
+
+fold_dep_spec_over_modules_stop_at_error_fi(_, _,
+        _, [], !Succeeded, !DepFileIndexSet, !Info, !IO).
+fold_dep_spec_over_modules_stop_at_error_fi(KeepGoing, Globals,
+        DepSpec, [MI | MIs], !Succeeded, !DepFileIndexSet, !Info, !IO) :-
+    find_dep_spec(Globals, MI, DepSpec, HeadSucceeded, HeadDepFileIndexSet,
+        !Info, !IO),
+    deps_set_union(HeadDepFileIndexSet, !DepFileIndexSet),
+    ( if
+        ( HeadSucceeded = succeeded
+        ; KeepGoing = do_keep_going
+        )
+    then
+        !:Succeeded = !.Succeeded `and` HeadSucceeded,
+        fold_dep_spec_over_modules_stop_at_error_fi(KeepGoing, Globals,
+            DepSpec, MIs, !Succeeded, !DepFileIndexSet, !Info, !IO)
+    else
+        !:Succeeded = did_not_succeed
+    ).
+
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+
+:- func dependency_file_to_debug_string(string, string, dependency_file)
+    = string.
+
+dependency_file_to_debug_string(Prefix, Suffix, DepFile) = Str :-
+    (
+        DepFile = dep_target(TargetFile),
+        TargetFile = target_file(ModuleName, TargetType),
+        ModuleNameStr = sym_name_to_string(ModuleName),
+        TargetTypeStr = string.string(TargetType),
+        string.format("dep_target %s of %s",
+            [s(TargetTypeStr), s(ModuleNameStr)], Str0)
+    ;
+        DepFile = dep_file(FileName),
+        string.format("dep_file %s", [s(FileName)], Str0)
+    ),
+    Str = Prefix ++ Str0 ++ Suffix.
 
 %---------------------------------------------------------------------------%
 :- end_module make.dependencies.
