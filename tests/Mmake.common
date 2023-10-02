@@ -406,7 +406,7 @@ runtests_local:
 	touch DUMMY.log; \
 	cat *.log > $(ERROR_OUTPUT_FILE); \
 	rm -f DUMMY.log; \
-	if [ ! -s $(ERROR_OUTPUT_FILE) ]; then \
+	if test ! -s $(ERROR_OUTPUT_FILE); then \
 		echo "PASSED ALL TESTS in $(THIS_DIR) $(PARAMS_MSG)"; \
 		echo cleaning up the directory after the tests; \
 		mmake $(RM_JFACTOR) realclean_local > /dev/null 2>&1; \

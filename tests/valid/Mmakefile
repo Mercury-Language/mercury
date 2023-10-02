@@ -20,6 +20,56 @@ AGC_PROGS = \
 	agc_unbound_typevars2 \
 	agc_unused_in
 
+C_INTERFACE_PROGS =
+
+C_PROGS = \
+	bug109 \
+	bug485
+
+CONSTRAINT_TYPECHECK_PROGS = \
+	ambig_functor \
+	ambiguity_stress_test
+
+CTGC_PROGS = \
+	reuse_static \
+	reuse_static2 \
+	sharing_exist \
+	sharing_loop \
+	sharing_loop2 \
+	sharing_loop3 \
+	table_no_attr
+
+DEEP_PROF_CAPABLE_PROGS = \
+	impure_detism
+
+LLDS_PROGS = \
+	exists_cast_bug \
+	fzn_debug_abort \
+	liveness_disagree \
+	liveness_ite \
+	livevars_shallow \
+	livevars_shallow2
+
+# bug50 and bug50_full are compiled with --trace deep,
+# and that is not compatible with --decl-debug.
+NON_DECLDEBUG_PROGS = \
+	bug50 \
+	bug50_full
+
+PAR_CONJ_PROGS = \
+	par_dummy \
+	par_dupelim \
+	par_saved_const
+
+SOLVER_PROGS = \
+	ho_any_inst \
+	solv \
+
+TABLE_PROGS = \
+	bug36 \
+	table_wrong_func_arity \
+	mercury_java_parser_follow_code_bug
+
 TRAIL_PROGS = \
 	complex_failure \
 	semi_fail_in_non_ite
@@ -59,10 +109,6 @@ TYPECLASS_PROGS = \
 	typeclass_det_warning \
 	undetermined_mode_lambda \
 	use_import_only_for_instance
-
-C_PROGS = \
-	bug109 \
-	bug485
 
 OTHER_PROGS = \
 	any_inst_merge \
@@ -271,53 +317,6 @@ OTHER_PROGS = \
 	vn_float \
 	wrapper_arg_lvals \
 	zero_arity
-
-C_INTERFACE_PROGS =
-
-SOLVER_PROGS = \
-	ho_any_inst \
-	solv \
-
-DEEP_PROF_CAPABLE_PROGS = \
-	impure_detism
-
-LLDS_PROGS = \
-	exists_cast_bug \
-	fzn_debug_abort \
-	liveness_disagree \
-	liveness_ite \
-	livevars_shallow \
-	livevars_shallow2
-
-TABLE_PROGS = \
-	bug36 \
-	table_wrong_func_arity \
-	mercury_java_parser_follow_code_bug
-
-PAR_CONJ_PROGS = \
-	par_dummy \
-	par_dupelim \
-	par_saved_const
-
-CTGC_PROGS = \
-	reuse_static \
-	reuse_static2 \
-	sharing_exist \
-	sharing_loop \
-	sharing_loop2 \
-	sharing_loop3 \
-	table_no_attr
-
-CONSTRAINT_TYPECHECK_PROGS = \
-	ambig_functor \
-	ambiguity_stress_test
-
-# bug50 and bug50_full are compiled with --trace deep and that
-# is not compatible with --decl-debug.
-#
-NON_DECLDEBUG_PROGS = \
-	bug50 \
-	bug50_full
 
 # XXX The quantification pass can't properly handle the following test case:
 #	bad_singleton_warning

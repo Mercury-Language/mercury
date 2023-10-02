@@ -14,35 +14,35 @@ MAYBE_J1 = -j1
 
 AGC_PROGS =
 
-TRAIL_PROGS =
-
-TYPECLASS_PROGS = \
-	func_class \
-	tc_map_lookup
-
-C_PROGS =
-
 C_INTERFACE_PROGS = \
 	foreign_proc_import \
 	xmlreader
 
-SOLVER_PROGS =
-
-DEEP_PROF_CAPABLE_PROGS =
-
-LLDS_PROGS =
-
-TABLE_PROGS =
-
-PAR_CONJ_PROGS =
-
-CTGC_PROGS =
+C_PROGS =
 
 CONSTRAINT_TYPECHECK_PROGS = \
 	ambig_high_level \
 	ambig_pred
 
+CTGC_PROGS =
+
+DEEP_PROF_CAPABLE_PROGS =
+
+LLDS_PROGS =
+
 NON_DECLDEBUG_PROGS =
+
+PAR_CONJ_PROGS =
+
+SOLVER_PROGS =
+
+TABLE_PROGS =
+
+TRAIL_PROGS =
+
+TYPECLASS_PROGS = \
+	func_class \
+	tc_map_lookup
 
 OTHER_PROGS = \
 	bug100 \

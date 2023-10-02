@@ -15,34 +15,47 @@
 #
 # AGC_PROGS:
 #   The test cases testing the accurate gc system.
-# TRAIL_PROGS:
-#   The test cases that only work in trailing grades.
-# TYPECLASS_PROGS:
-#   The test cases testing the handling of typeclasses.
-# C_PROGS:
-#   The test cases for which we should only produce a `.c' file.
+#
 # C_INTERFACE_PROGS:
 #   The test cases that test the operation of the foreign language interface
 #   with C.
-# SOLVER_PROGS:
-#   The test cases that test the handling of solver type variables.
-# DEEP_PROF_CAPABLE_PROGS:
-#   The test cases that test compilation with deep profiling enabled.
-# LLDS_PROGS:
-#   The test cases that require debugging, which hasn't been implemented
-#   for the MLDS backend.
-# TABLE_PROGS:
-#   The test cases that only work in grades that support tabling.
-# PAR_CONJ_PROGS:
-#   The test cases that only work in grades that support parallel conjunction.
-# CTGC_PROGS:
-#   The test cases that only work in grades that support compile-time
-#   garbage collection. Debugging is incompatible with ctgc.
+#
+# C_PROGS:
+#   The test cases for which we should only produce a `.c' file.
+#
 # CONSTRAINT_TYPECHECK_PROGS:
 #   Tests that use constraint based type checking.
 #   XXX These are never enabled.
+#
+# CTGC_PROGS:
+#   The test cases that only work in grades that support compile-time
+#   garbage collection. Debugging is incompatible with ctgc.
+#
+# DEEP_PROF_CAPABLE_PROGS:
+#   The test cases that test compilation with deep profiling enabled.
+#
+# LLDS_PROGS:
+#   The test cases that require debugging, which hasn't been implemented
+#   for the MLDS backend.
+#
 # NON_DECLDEBUG_PROGS:
 #   Test that do not work in .decldebug grades
+#
+# PAR_CONJ_PROGS:
+#   The test cases that only work in grades that support parallel conjunction.
+#
+# SOLVER_PROGS:
+#   The test cases that test the handling of solver type variables.
+#
+# TABLE_PROGS:
+#   The test cases that only work in grades that support tabling.
+#
+# TRAIL_PROGS:
+#   The test cases that only work in trailing grades.
+#
+# TYPECLASS_PROGS:
+#   The test cases testing the handling of typeclasses.
+#
 # OTHER_PROGS:
 #   All the other test cases.
 
@@ -129,8 +142,11 @@ CLASSES_SUBDIR = $(classes_subdir)
 endif
 
 ifeq ($(findstring csharp,$(GRADE)),csharp)
-	# XXX We should produce DLLs but currently that invokes the IL backend.
-	# XXX The above comment is long obsolete.
+	# XXX Setting TARGET_OBJ_EXT to "cs" DOES NOT WORK.
+	# This is because the default interpretation of make targets
+	# of the form <modulename.cs> is not "build the .cs target file
+	# for the named module", but "build all the .c target files
+	# for the named module".
 	TARGET_OBJ_EXT = cs
 	TARGET_OBJ_SUBDIR = $(DLLS_SUBDIR)
 else
@@ -166,11 +182,19 @@ include ../Mmake.common
 # by `mmc --make'.
 include Mercury.options
 
+# $(OBJ_PROGS:%=%.runtest): %.runtest: %.$(TARGET_OBJ_EXT) ;
+
 $(OBJ_PROGS:%=%.runtest): %.runtest: %.$(TARGET_OBJ_EXT) ;
 
 $(C_PROGS:%=%.runtest): %.runtest: %.c ;
 
 #-----------------------------------------------------------------------------#
+
+print_test_params:
+	@echo TARGET_OBJ_EXT is set to =$(TARGET_OBJ_EXT)=
+	@echo TARGET_OBJ_SUBDIR is set to =$(TARGET_OBJ_SUBDIR)=
+	@echo OBJ_PROGS is set to =$(OBJ_PROGS)=
+	@echo C_PROGS is set to =$(C_PROGS)=
 
 objs:	$(OBJS)
 
