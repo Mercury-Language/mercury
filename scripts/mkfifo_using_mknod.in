@@ -16,9 +16,9 @@
 # ENVIRONMENT VARIABLES: MERCURY_MKNOD
 
 MKNOD=${MERCURY_MKNOD=@MKNOD@}
-if test $# -ne 1
+if test "$#" -ne 1
 then
 	echo "Usage: `basename $0` filename" 1>&2
 	exit 1
 fi
-exec $MKNOD "$1" p
+exec ${MKNOD} "$1" p

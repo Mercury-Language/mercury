@@ -20,7 +20,7 @@
 
 prefix=@prefix@
 exec_prefix=@exec_prefix@
-PATH=@bindir@:$PATH
+PATH=@bindir@:${PATH}
 export PATH
 
 # Use less heap at the expense of increased time spent in the GC.
@@ -28,7 +28,7 @@ export PATH
 if false
 then
     MERCURY_OPTIONS_mdprof_cgi="--boehm-gc-free-space-divisor 10 \
-	${MERCURY_OPTIONS_mdprof_cgi}"
+        ${MERCURY_OPTIONS_mdprof_cgi}"
     export MERCURY_OPTIONS_mdprof_cgi
 fi
 

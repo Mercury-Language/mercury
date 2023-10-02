@@ -21,7 +21,7 @@
 
 usage="Usage: canonical_grade --grade <actual>"
 
-while :
+while true
 do
     case "$1" in
     # include the file `parse_grade_options.sh-subr'
@@ -38,9 +38,9 @@ do
     shift
 done
 
-if test $# -ne 0
+if test "$#" -ne 0
 then
-    echo "$usage"
+    echo "${usage}"
     exit 1
 fi
 
@@ -50,5 +50,5 @@ fi
 # include the file `canonical_grade.sh-subr'
 @CANONICAL_GRADE@
 
-echo $GRADE
+echo ${GRADE}
 exit 0
