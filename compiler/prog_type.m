@@ -450,9 +450,9 @@
     %
 :- pred type_subsumes_det(mer_type::in, mer_type::in, tsubst::out) is det.
 
-    % type_list_subsumes(TypesA, TypesB, Subst) succeeds iff the list
-    % TypesA subsumes (is more general than) TypesB, producing a
-    % type substitution which when applied to TypesA will give TypesB.
+    % type_list_subsumes(TypesA, TypesB, Subst) succeeds iff the list TypesA
+    % subsumes (is more general than) TypesB, producing a type substitution
+    % which, when applied to TypesA, will give TypesB.
     %
 :- pred type_list_subsumes(list(mer_type)::in, list(mer_type)::in, tsubst::out)
     is semidet.
@@ -474,6 +474,11 @@
 :- pred arg_type_list_subsumes(tvarset::in, existq_tvars::in,
     list(mer_type)::in, list(tvar)::in,
     tvarset::in, tvar_kind_map::in, existq_tvars::in, list(mer_type)::in)
+    is semidet.
+
+    % Check whether two lists of types are identical up to renaming.
+    %
+:- pred identical_up_to_renaming(list(mer_type)::in, list(mer_type)::in)
     is semidet.
 
 %---------------------------------------------------------------------------%
@@ -1523,6 +1528,11 @@ arg_type_list_subsumes(TVarSet, ExistQVars, ActualArgTypes, HeadTypeParams,
         % did not bind any existentially typed variables to universally
         % quantified type variables in the caller's argument types.
     ).
+
+identical_up_to_renaming(TypesList1, TypesList2) :-
+    % They are identical up to renaming if they subsume each other.
+    type_list_subsumes(TypesList1, TypesList2, _),
+    type_list_subsumes(TypesList2, TypesList1, _).
 
 %---------------------------------------------------------------------------%
 

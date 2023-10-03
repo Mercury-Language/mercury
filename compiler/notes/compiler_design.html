@@ -995,11 +995,16 @@ The type checker consists of several modules.
     that need to be done before typechecking
     and which cannot be done earlier.
     <li>
-    typecheck.m handles type checking, overloading resolution and
-    module name resolution,
+    typecheck.m handles the top level management of typechecking,
+    including managing the type inference process,
+    and handling stubs.
+    <li>
+    typecheck.m handles the type checking
+    of predicate and function definitions,
+    including overloading resolution and module name resolution,
     and almost fully qualifies all predicate and functor names.
     It sets the map(var, type) field in the pred_info.
-    However, typecheck.m doesn't figure out the pred_id for function calls
+    However, it doesn't figure out the pred_id for function calls
     or calls to overloaded predicates.
     That can't be done in a single pass of typechecking,
     and so it is done later on
