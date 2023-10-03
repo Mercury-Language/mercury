@@ -51,6 +51,11 @@
     %
 :- pred type_is_nonvar(mer_type::in) is semidet.
 
+    % Succeed if the given type is a tuple type, returning
+    % the argument types.
+    %
+:- pred type_is_tuple(mer_type::in, list(mer_type)::out) is semidet.
+
     % Succeeds iff the given type is a higher-order predicate or function type.
     %
 :- pred type_is_higher_order(mer_type::in) is semidet.
@@ -70,10 +75,7 @@
     pred_or_func::out, lambda_eval_method::out, list(mer_type)::out)
     is det.
 
-    % Succeed if the given type is a tuple type, returning
-    % the argument types.
-    %
-:- pred type_is_tuple(mer_type::in, list(mer_type)::out) is semidet.
+%---------------------------------------------------------------------------%
 
 :- type non_kinded_type =< mer_type
     --->    type_variable(tvar, kind)
@@ -114,14 +116,7 @@
     %
 :- pred subst_type_is_nonground(mer_type::in, tsubst::in) is semidet.
 
-    % type_has_variable_arity_ctor(Type, TypeCtor, ArgTypes):
-    %
-    % Check if the principal type constructor of Type is of variable arity.
-    % If yes, return the type constructor as TypeCtor and its args as
-    % ArgTypes. If not, fail.
-    %
-:- pred type_has_variable_arity_ctor(mer_type::in, type_ctor::out,
-    list(mer_type)::out) is semidet.
+%---------------------------------------------------------------------------%
 
     % Given a non-variable type, return its type_ctor and argument types.
     % Fail if the type is a variable.
@@ -145,6 +140,17 @@
     %
 :- pred type_to_ctor_det(mer_type::in, type_ctor::out) is det.
 
+    % type_has_variable_arity_ctor(Type, TypeCtor, ArgTypes):
+    %
+    % Check if the principal type constructor of Type is of variable arity.
+    % If yes, return the type constructor as TypeCtor and its args as
+    % ArgTypes. If not, fail.
+    %
+:- pred type_has_variable_arity_ctor(mer_type::in, type_ctor::out,
+    list(mer_type)::out) is semidet.
+
+%---------------------------------------------------------------------------%
+
     % type_ctor_is_higher_order(TypeCtor, PredOrFunc) succeeds iff
     % TypeCtor is a higher-order predicate or function type.
     %
@@ -154,6 +160,8 @@
     % type_ctor_is_tuple(TypeCtor) succeeds iff TypeCtor is a tuple type.
     %
 :- pred type_ctor_is_tuple(type_ctor::in) is semidet.
+
+%---------------------------------------------------------------------------%
 
     % Convert a list of types to a list of vars. Fail if any of the type are
     % not variables.
@@ -168,6 +176,8 @@
     %
 :- pred var_list_to_type_list(tvar_kind_map::in, list(tvar)::in,
     list(mer_type)::out) is det.
+
+%---------------------------------------------------------------------------%
 
     % Return a list of the type variables of a type, or a list of types,
     % in order of their first occurrence in a depth-first, left-right
@@ -188,6 +198,17 @@
     % Nondeterministically return the variables in a list of types.
     %
 :- pred type_list_contains_var(list(mer_type)::in, tvar::out) is nondet.
+
+%---------------------------------------------------------------------------%
+
+    % Given a constant and an arity, return a type_ctor.
+    % Fails if the constant is not an atom.
+    %
+    % This really ought to take a name and an arity -
+    % use of integers/floats/strings as type names should be rejected
+    % by the parser, not by module_qual.m.
+    %
+:- pred make_type_ctor(const::in, int::in, type_ctor::out) is semidet.
 
     % Given a type_ctor and a list of argument types,
     % construct a type.
@@ -212,6 +233,8 @@
     list(mer_type)::in, mer_type::in, list(mer_mode)::in, mer_mode::in,
     determinism::in, mer_type::out) is det.
 
+%---------------------------------------------------------------------------%
+
     % Make error messages more readable by removing some or all
     % module qualifiers from type and mode names contained in the given type
     % or types, regardless of how deeply they are nested.
@@ -220,6 +243,8 @@
     mer_type::in, mer_type::out) is det.
 :- pred strip_module_names_from_type_list(strip_what_module_names::in,
     list(mer_type)::in, list(mer_type)::out) is det.
+
+%---------------------------------------------------------------------------%
 
     % Return the list of type variables contained in a list of constraints.
     %
@@ -240,57 +265,21 @@
 
 %---------------------------------------------------------------------------%
 
-:- type is_dummy_type
-    --->    is_dummy_type
-    ;       is_not_dummy_type.
-
     % The list of type_ctors which are builtins which do not have a
     % hlds_type_defn.
     %
 :- func builtin_type_ctors_with_no_hlds_type_defn = list(type_ctor).
 
+%---------------------------------------------------------------------------%
+
+:- type is_dummy_type
+    --->    is_dummy_type
+    ;       is_not_dummy_type.
+
 :- type is_builtin_dummy_type_ctor
     --->    is_builtin_dummy_type_ctor
     ;       is_builtin_non_dummy_type_ctor
     ;       is_not_builtin_dummy_type_ctor.
-
-    % is_builtin_dummy_type_ctor(type_ctor):
-    %
-    % Is the given type constructor a dummy type irrespective
-    % of its definition?
-    %
-:- func is_type_ctor_a_builtin_dummy(type_ctor) = is_builtin_dummy_type_ctor.
-
-:- pred type_is_io_state(mer_type::in) is semidet.
-
-:- pred type_ctor_is_array(type_ctor::in) is semidet.
-
-:- pred type_ctor_is_bitmap(type_ctor::in) is semidet.
-
-    % A test for type_info-related types that are introduced by
-    % polymorphism.m.  These need to be handled specially in certain
-    % places.  For example, mode inference never infers unique modes
-    % for these types, since it would not be useful, and since we
-    % want to minimize the number of different modes that we infer.
-    %
-:- pred is_introduced_type_info_type(mer_type::in) is semidet.
-
-:- pred is_introduced_type_info_type_ctor(type_ctor::in) is semidet.
-
-:- func is_introduced_type_info_type_category(type_ctor_category) = bool.
-
-    % Check for a "new " prefix at the start of the functor name,
-    % and remove it if present; if there is no such prefix, fail.
-    % (These prefixes are used for construction unifications
-    % with existentially typed functors.)
-    %
-:- pred remove_new_prefix(sym_name::in, sym_name::out) is semidet.
-
-    % Prepend a "new " prefix at the start of the given functor name.
-    % (These prefixes are used for construction unifications
-    % with existentially typed functors.)
-    %
-:- pred add_new_prefix(sym_name::in, sym_name::out) is det.
 
 :- type type_ctor_category
     --->    ctor_cat_builtin(type_ctor_cat_builtin)
@@ -338,14 +327,49 @@
     ;       cat_user_abstract_notag
     ;       cat_user_general.
 
-    % Given a constant and an arity, return a type_ctor.
-    % Fails if the constant is not an atom.
+%---------------------------------------------------------------------------%
+
+    % is_builtin_dummy_type_ctor(type_ctor):
     %
-    % This really ought to take a name and an arity -
-    % use of integers/floats/strings as type names should be rejected
-    % by the parser, not by module_qual.m.
+    % Is the given type constructor a dummy type irrespective
+    % of its definition?
     %
-:- pred make_type_ctor(const::in, int::in, type_ctor::out) is semidet.
+:- func is_type_ctor_a_builtin_dummy(type_ctor) = is_builtin_dummy_type_ctor.
+
+:- pred type_is_io_state(mer_type::in) is semidet.
+
+:- pred type_ctor_is_array(type_ctor::in) is semidet.
+
+:- pred type_ctor_is_bitmap(type_ctor::in) is semidet.
+
+    % A test for type_info-related types that are introduced by
+    % polymorphism.m.  These need to be handled specially in certain
+    % places.  For example, mode inference never infers unique modes
+    % for these types, since it would not be useful, and since we
+    % want to minimize the number of different modes that we infer.
+    %
+:- pred is_introduced_type_info_type(mer_type::in) is semidet.
+
+:- pred is_introduced_type_info_type_ctor(type_ctor::in) is semidet.
+
+:- func is_introduced_type_info_type_category(type_ctor_category) = bool.
+
+%---------------------------------------------------------------------------%
+
+    % Check for a "new " prefix at the start of the functor name,
+    % and remove it if present; if there is no such prefix, fail.
+    % (These prefixes are used for construction unifications
+    % with existentially typed functors.)
+    %
+:- pred remove_new_prefix(sym_name::in, sym_name::out) is semidet.
+
+    % Prepend a "new " prefix at the start of the given functor name.
+    % (These prefixes are used for construction unifications
+    % with existentially typed functors.)
+    %
+:- pred add_new_prefix(sym_name::in, sym_name::out) is det.
+
+%---------------------------------------------------------------------------%
 
 :- type polymorphism_cell
     --->    type_info_cell(type_ctor)
@@ -364,6 +388,8 @@
     %
 :- pred qualify_cons_id(list(prog_var)::in, cons_id::in,
     cons_id::out, cons_id::out) is det.
+
+%---------------------------------------------------------------------------%
 
     % Given a list of constructors for a type, check whether that type
     % is a private_builtin.type_info/0 or similar type.
@@ -391,6 +417,11 @@
     %
 :- pred non_sub_du_type_is_dummy(type_details_du::in) is semidet.
 
+%---------------------------------------------------------------------------%
+%
+% Type unification.
+%
+
     % Unify (with occurs check) two types with respect to a type substitution
     % and update the type bindings. The third argument is a list of type
     % variables which cannot be bound (i.e. head type variables).
@@ -403,6 +434,11 @@
 
 :- pred type_unify_list(list(mer_type)::in, list(mer_type)::in, list(tvar)::in,
     tsubst::in, tsubst::out) is semidet.
+
+%---------------------------------------------------------------------------%
+%
+% Type subsumption.
+%
 
     % type_subsumes(TypeA, TypeB, Subst) succeeds iff TypeA subsumes
     % (is more general than) TypeB, producing a type substitution
@@ -428,6 +464,7 @@
 
     % arg_type_list_subsumes(TVarSet, ExistQVars, ArgTypes, HeadTypeParams,
     %   CalleeTVarSet, CalleeExistQVars, CalleeArgTypes):
+    % XXX This comment has suffered bit rot.
     %
     % Check that the argument types of the called predicate, function or
     % constructor subsume the types of the arguments of the call. This checks
@@ -439,6 +476,8 @@
     tvarset::in, tvar_kind_map::in, existq_tvars::in, list(mer_type)::in)
     is semidet.
 
+%---------------------------------------------------------------------------%
+
     % compute_caller_callee_type_substitution(CalleeArgTypes, CallerArgTypes,
     %   ExternalTypeParams, CalleeExistQTVars, TypeSubn):
     %
@@ -447,6 +486,8 @@
     %
 :- pred compute_caller_callee_type_substitution(list(mer_type)::in,
     list(mer_type)::in, list(tvar)::in, list(tvar)::in, tsubst::out) is det.
+
+%---------------------------------------------------------------------------%
 
     % Apply a renaming (partial map) to a list.
     % Useful for applying a variable renaming to a list of variables.
@@ -477,6 +518,9 @@ type_is_var(Type) :-
 type_is_nonvar(Type) :-
     not type_is_var(Type).
 
+type_is_tuple(Type, ArgTypes) :-
+    strip_kind_annotation(Type) = tuple_type(ArgTypes, _).
+
 type_is_higher_order(Type) :-
     strip_kind_annotation(Type) = higher_order_type(_, _, _, _, _).
 
@@ -496,8 +540,7 @@ type_is_higher_order_details_det(Type, !:Purity, !:PredOrFunc, !:EvalMethod,
         unexpected($pred, "type is not higher-order")
     ).
 
-type_is_tuple(Type, ArgTypes) :-
-    strip_kind_annotation(Type) = tuple_type(ArgTypes, _).
+%---------------------------------------------------------------------------%
 
 strip_kind_annotation(Type0) = Type :-
     (
@@ -540,22 +583,7 @@ subst_type_is_nonground(Type, TSubst) :-
         true
     ).
 
-type_has_variable_arity_ctor(Type, TypeCtor, ArgTypes) :-
-    ( if
-        type_is_higher_order_details(Type, _Purity, PredOrFunc, _, ArgTypes0)
-    then
-        ArgTypes = ArgTypes0,
-        PredOrFuncStr = parse_tree_out_misc.pred_or_func_to_str(PredOrFunc),
-        TypeCtor = type_ctor(unqualified(PredOrFuncStr), 0)
-    else if
-        type_is_tuple(Type, ArgTypes1)
-    then
-        ArgTypes = ArgTypes1,
-        % XXX why tuple/0 and not {}/N ?
-        TypeCtor = type_ctor(unqualified("tuple"), 0)
-    else
-        fail
-    ).
+%---------------------------------------------------------------------------%
 
 type_to_ctor_and_args(Type, TypeCtor, ArgTypes) :-
     require_complete_switch [Type]
@@ -626,6 +654,25 @@ type_to_ctor_det(Type, TypeCtor) :-
     % This should be subject to unused argument elimination.
     type_to_ctor_and_args_det(Type, TypeCtor, _ArgTypes).
 
+type_has_variable_arity_ctor(Type, TypeCtor, ArgTypes) :-
+    ( if
+        type_is_higher_order_details(Type, _Purity, PredOrFunc, _, ArgTypes0)
+    then
+        ArgTypes = ArgTypes0,
+        PredOrFuncStr = parse_tree_out_misc.pred_or_func_to_str(PredOrFunc),
+        TypeCtor = type_ctor(unqualified(PredOrFuncStr), 0)
+    else if
+        type_is_tuple(Type, ArgTypes1)
+    then
+        ArgTypes = ArgTypes1,
+        % XXX why tuple/0 and not {}/N ?
+        TypeCtor = type_ctor(unqualified("tuple"), 0)
+    else
+        fail
+    ).
+
+%---------------------------------------------------------------------------%
+
 type_ctor_is_higher_order(TypeCtor, Purity, PredOrFunc, EvalMethod) :-
     % Please keep this code in sync with classify_type_ctor_if_special.
     % XXX Unlike classify_type_ctor_if_special, this code here does NOT test
@@ -661,6 +708,8 @@ type_ctor_is_higher_order(TypeCtor, Purity, PredOrFunc, EvalMethod) :-
 % Please keep this code in sync with classify_type_ctor_if_special.
 type_ctor_is_tuple(type_ctor(unqualified("{}"), _)).
 
+%---------------------------------------------------------------------------%
+
 type_list_to_var_list([], []).
 type_list_to_var_list([Type | Types], [Var | Vars]) :-
     Type = type_variable(Var, _),
@@ -675,7 +724,7 @@ var_list_to_type_list(KindMap, [Var | Vars], [Type | Types]) :-
     var_to_type(KindMap, Var, Type),
     var_list_to_type_list(KindMap, Vars, Types).
 
-%---------------------%
+%---------------------------------------------------------------------------%
 
 type_vars_in_type(Type, TVars) :-
     type_vars_in_type_acc(Type, [], RevTVars),
@@ -743,6 +792,10 @@ type_list_contains_var([Type | _], Var) :-
 type_list_contains_var([_ | Types], Var) :-
     type_list_contains_var(Types, Var).
 
+%---------------------------------------------------------------------------%
+
+make_type_ctor(term.atom(Name), Arity, type_ctor(unqualified(Name), Arity)).
+
 construct_type(TypeCtor, ArgTypes, Type) :-
     ( if
         TypeCtor = type_ctor(unqualified(Name), 0),
@@ -799,7 +852,7 @@ construct_higher_order_func_type(Purity, EvalMethod, ArgTypes, RetType,
     Type = higher_order_type(pf_function, ArgTypes ++ [RetType],
         higher_order(PredInstInfo), Purity, EvalMethod).
 
-%---------------------%
+%---------------------------------------------------------------------------%
 
 strip_module_names_from_type(StripWhat, Type0, Type) :-
     (
@@ -877,6 +930,8 @@ builtin_type_ctors_with_no_hlds_type_defn =
       type_ctor(qualified(mercury_public_builtin_module, "void"), 0),
       type_ctor(qualified(mercury_public_builtin_module, "tuple"), 0)
     ].
+
+%---------------------------------------------------------------------------%
 
 is_type_ctor_a_builtin_dummy(TypeCtor) = IsBuiltinDummy :-
     % Please keep the set of type_ctors for which we return
@@ -969,10 +1024,6 @@ add_new_prefix(qualified(Module, Name0), qualified(Module, Name)) :-
 
 %---------------------------------------------------------------------------%
 
-make_type_ctor(term.atom(Name), Arity, type_ctor(unqualified(Name), Arity)).
-
-%---------------------------------------------------------------------------%
-
 cell_cons_id(type_info_cell(Ctor)) = type_info_cell_constructor(Ctor).
 cell_cons_id(typeclass_info_cell) = typeclass_info_cell_constructor.
 
@@ -1061,7 +1112,7 @@ name_is_type_info("type_ctor_info").
 name_is_type_info("typeclass_info").
 name_is_type_info("base_typeclass_info").
 
-%---------------------------------------------------------------------------%
+%---------------------%
 
 non_sub_du_type_is_notag(OoMCtors, MaybeCanonical) :-
     OoMCtors = one_or_more(Ctor, []),
@@ -1101,9 +1152,6 @@ non_sub_du_type_is_dummy(DuDetails) :-
     MaybeDirectArgCtors = no.
 
 %---------------------------------------------------------------------------%
-%
-% Type unification.
-%
 
 type_unify(X, Y, HeadTypeParams, !Bindings) :-
     ( if X = type_variable(VarX, _) then
