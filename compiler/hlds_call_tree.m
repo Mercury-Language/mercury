@@ -114,6 +114,7 @@
 
 :- implementation.
 
+:- import_module hlds.hlds_data.
 :- import_module hlds.hlds_desc.
 :- import_module hlds.hlds_goal.
 :- import_module hlds.hlds_pred.
@@ -123,10 +124,12 @@
 :- import_module mdbcomp.
 :- import_module mdbcomp.sym_name.
 :- import_module parse_tree.prog_data.
+:- import_module parse_tree.var_table.
 
 :- import_module assoc_list.
 :- import_module bool.
 :- import_module cord.
+:- import_module int.
 :- import_module map.
 :- import_module one_or_more_map.
 :- import_module pair.
@@ -482,7 +485,7 @@ write_pred_order_entry(Stream, ModuleInfo, PredId, !IO) :-
     --->    movability_report(
                 % The ids of the predicates that the user wants to move
                 % to a new module.
-                mr_want_to_move     :: set_tree234(pred_id),
+                mr_want_to_move         :: set_tree234(pred_id),
 
                 % The set of exported predicates that are not in the
                 % want_to_move set that are reachable from the want_to_move
@@ -491,12 +494,12 @@ write_pred_order_entry(Stream, ModuleInfo, PredId, !IO) :-
                 % If this set is not empty, then the new module would
                 % have to import the old. This would represent unwanted
                 % coupling.
-                mr_new_coupling     :: set_tree234(pred_id),
+                mr_new_coupling         :: set_tree234(pred_id),
 
                 % The set of predicates reachable from the want_to_move
                 % predicates, which we would need to move to the new module.
                 % This set will contain the want_to_move set.
-                mr_all_to_move      :: set_tree234(pred_id),
+                mr_all_to_move          :: set_tree234(pred_id),
 
                 % The set of predicates that are reachable BOTH
                 %
@@ -513,7 +516,19 @@ write_pred_order_entry(Stream, ModuleInfo, PredId, !IO) :-
                 % - either reconsidet the set of predicates that should be
                 %   moved to the new module being carved out of this one,
                 % - or abandon the carving-out process altogether.
-                mr_moving_staying   :: set_tree234(pred_id)
+                mr_moving_staying       :: set_tree234(pred_id),
+
+                % The set of locally-defined type_ctors that are used
+                % in the interface of the current module.
+                mr_ltcs_in_interface    :: set_tree234(name_arity),
+
+                % The set of locally-defined type_ctors that are used
+                % in moving predicates.
+                mr_ltcs_moving_pred     :: set_tree234(name_arity),
+
+                % The set of locally-defined type_ctors that are used
+                % in staying predicates.
+                mr_ltcs_staying_pred    :: set_tree234(name_arity)
             ).
 
 generate_movability_report(ModuleInfo, CallTreeInfo, WantToMovePredNames,
@@ -571,15 +586,26 @@ generate_movability_report(ModuleInfo, CallTreeInfo, WantToMovePredNames,
             set_tree234.init, MovingPredIdSet),
         set_tree234.intersect(NonMovingExportPredIdSet, MovingPredIdSet,
             ConflictExportedPredIdSet),
+
         set_tree234.to_sorted_list(NonMovingExportPredIdSet,
             NonMovingExportPredIds),
         find_staying_pred_ids(PredCalleeMap, WantToMovePredIdSet,
             NonMovingExportPredIds, set_tree234.init, StayingPredIdSet),
         set_tree234.intersect(MovingPredIdSet, StayingPredIdSet,
             MovingStayingPredIdSet),
+
+        set_tree234.foldl(acc_local_type_ctors_in_pred_arg_list(ModuleInfo),
+            ExportPredIdSet, set_tree234.init, InInterfaceTypeCtorSet),
+        set_tree234.foldl(acc_local_type_ctors_in_pred(ModuleInfo),
+            StayingPredIdSet, set_tree234.init, StayingPredTypeCtorSet),
+        set_tree234.foldl(acc_local_type_ctors_in_pred(ModuleInfo),
+            MovingPredIdSet, set_tree234.init, MovingPredTypeCtorSet),
+
         Report = movability_report(WantToMovePredIdSet,
             ConflictExportedPredIdSet, MovingPredIdSet,
-            MovingStayingPredIdSet),
+            MovingStayingPredIdSet,
+            InInterfaceTypeCtorSet,
+            MovingPredTypeCtorSet, StayingPredTypeCtorSet),
         construct_movability_report(ModuleInfo, Report, InfoSpec),
         Specs = [InfoSpec]
     else
@@ -680,27 +706,123 @@ find_staying_pred_ids(PredCalleeMap, WantToMovePredIdSet,
 
 %---------------------------------------------------------------------------%
 
+:- pred acc_local_type_ctors_in_pred_arg_list(module_info::in, pred_id::in,
+    set_tree234(name_arity)::in, set_tree234(name_arity)::out) is det.
+
+acc_local_type_ctors_in_pred_arg_list(ModuleInfo, PredId,
+        !TypeCtorNameArities) :-
+    module_info_get_name(ModuleInfo, ModuleName),
+    module_info_pred_info(ModuleInfo, PredId, PredInfo),
+    pred_info_get_arg_types(PredInfo, ArgTypes),
+    list.foldl(acc_local_type_ctors_in_type(ModuleName), ArgTypes,
+        !TypeCtorNameArities).
+
+:- pred acc_local_type_ctors_in_pred(module_info::in, pred_id::in,
+    set_tree234(name_arity)::in, set_tree234(name_arity)::out) is det.
+
+acc_local_type_ctors_in_pred(ModuleInfo, PredId, !TypeCtorNameArities) :-
+    module_info_get_name(ModuleInfo, ModuleName),
+    module_info_pred_info(ModuleInfo, PredId, PredInfo),
+    pred_info_get_proc_table(PredInfo, ProcTable),
+    map.values(ProcTable, ProcInfos),
+    list.foldl(acc_local_type_ctors_in_proc(ModuleName), ProcInfos,
+        !TypeCtorNameArities).
+
+:- pred acc_local_type_ctors_in_proc(module_name::in, proc_info::in,
+    set_tree234(name_arity)::in, set_tree234(name_arity)::out) is det.
+
+acc_local_type_ctors_in_proc(ModuleName, ProcInfo, !TypeCtorNameArities) :-
+    proc_info_get_var_table(ProcInfo, VarTable),
+    var_table_entries(VarTable, VarTableEntries),
+    list.foldl(acc_local_type_ctors_in_var_table_entry(ModuleName),
+        VarTableEntries, !TypeCtorNameArities).
+
+:- pred acc_local_type_ctors_in_var_table_entry(module_name::in,
+    var_table_entry::in,
+    set_tree234(name_arity)::in, set_tree234(name_arity)::out) is det.
+
+acc_local_type_ctors_in_var_table_entry(ModuleName, VarTableEntry,
+        !TypeCtorNameArities) :-
+    VarTableEntry = vte(_, Type, _),
+    acc_local_type_ctors_in_type(ModuleName, Type, !TypeCtorNameArities).
+
+%---------------------%
+
+:- pred acc_local_type_ctors_in_type(module_name::in, mer_type::in,
+    set_tree234(name_arity)::in, set_tree234(name_arity)::out) is det.
+
+acc_local_type_ctors_in_type(ModuleName, Type, !TypeCtorNameArities) :-
+     (
+        ( Type = type_variable(_, _)
+        ; Type = builtin_type(_)
+        )
+    ;
+        Type = defined_type(SymName, ArgTypes, _),
+        ( if SymName = qualified(ModuleName, Name) then
+            list.length(ArgTypes, Arity),
+            NameArity = name_arity(Name, Arity),
+            set_tree234.insert(NameArity, !TypeCtorNameArities)
+        else
+            true
+        ),
+        acc_local_type_ctors_in_types(ModuleName, ArgTypes,
+            !TypeCtorNameArities)
+    ;
+        ( Type = apply_n_type(_, ArgTypes, _)
+        ; Type = higher_order_type(_, ArgTypes, _, _, _)
+        ; Type = tuple_type(ArgTypes, _)
+        ),
+        acc_local_type_ctors_in_types(ModuleName, ArgTypes,
+            !TypeCtorNameArities)
+    ;
+        Type = kinded_type(SubType, _),
+        acc_local_type_ctors_in_type(ModuleName, SubType, !TypeCtorNameArities)
+    ).
+
+:- pred acc_local_type_ctors_in_types(module_name::in, list(mer_type)::in,
+    set_tree234(name_arity)::in, set_tree234(name_arity)::out) is det.
+
+acc_local_type_ctors_in_types(_, [], !TypeCtorNameArities).
+acc_local_type_ctors_in_types(ModuleName, [Type | Types],
+        !TypeCtorNameArities) :-
+    acc_local_type_ctors_in_type(ModuleName, Type, !TypeCtorNameArities),
+    acc_local_type_ctors_in_types(ModuleName, Types, !TypeCtorNameArities).
+
+%---------------------------------------------------------------------------%
+
 :- pred construct_movability_report(module_info::in, movability_report::in,
     error_spec::out) is det.
 
 construct_movability_report(ModuleInfo, Report, InfoSpec) :-
     Report = movability_report(WantToMovePredIdSet, ConflictExportedPredIdSet,
-        MovingPredIdSet, MovingStayingPredIdSet),
+        MovingPredIdSet, MovingStayingPredIdSet,
+        InInterfaceTypeCtorSet, MovingPredTypeCtorSet, StayingPredTypeCtorSet),
 
-    WantToMovePredPieces = name_set_to_line_pieces(ModuleInfo,
+    WantToMovePredPieces = pred_name_set_to_line_pieces(ModuleInfo,
         WantToMovePredIdSet),
-    MovingPredPieces = name_set_to_line_pieces(ModuleInfo,
-        MovingPredIdSet),
-
     WantToMovePieces =
         [words("Report for the proposed move of")] ++
             WantToMovePredPieces ++
         [words("to a new module:"), nl, blank_line],
 
+    MovingPredLinesAndDescs = set_tree234.map(
+        make_line_number_and_desc_for_pred(ModuleInfo), MovingPredIdSet),
+    MovingTypeLinesAndDescs = set_tree234.map(
+        make_line_number_and_desc_for_type(ModuleInfo), MovingPredTypeCtorSet),
+    MovingPredTypePieces = line_number_and_descs_to_format_pieces(
+        set_tree234.union(MovingPredLinesAndDescs, MovingTypeLinesAndDescs)),
+
+    MovingPieces =
+        [words("The set of predicates, functions and/or types reachable from"),
+        words("the proposed-to-be-moved predicates and/or functions,"),
+        words("which should therefore be moved to the new module,"),
+        words("would be")] ++
+            MovingPredTypePieces,
+
     ( if set_tree234.is_empty(ConflictExportedPredIdSet) then
         ConflictExportedPieces = []
     else
-        ConflictExportedPredPieces = name_set_to_line_pieces(ModuleInfo,
+        ConflictExportedPredPieces = pred_name_set_to_line_pieces(ModuleInfo,
             ConflictExportedPredIdSet),
         ConflictExportedPieces =
             [words("Moving these predicates and/or functions to a new module"),
@@ -709,17 +831,37 @@ construct_movability_report(ModuleInfo, Report, InfoSpec) :-
                 ConflictExportedPredPieces
     ),
 
-    MovingPieces =
-        [words("The set of predicates and/or functions reachable from"),
-        words("the proposed-to-be-moved predicates and/or functions,"),
-        words("which should therefore be moved to the new module,"),
-        words("would be")] ++
-            MovingPredPieces,
+    ( if set_tree234.is_empty(InInterfaceTypeCtorSet) then
+        set_tree234.intersect(MovingPredTypeCtorSet, StayingPredTypeCtorSet,
+            MovingStayingPredTypeCtorSet),
+        ( if set_tree234.is_empty(MovingStayingPredTypeCtorSet) then
+            MovingTypePieces =
+                [words("All of the moved types can be private"),
+                words("in the new module."), nl, blank_line]
+        else
+            ExportedTypeCtorPieces =
+                type_name_set_to_line_pieces(MovingStayingPredTypeCtorSet),
+            MovingTypePieces =
+                [words("The following moved types are used by code"),
+                words("that is staying in the current module,"),
+                words("and would therefore need to be exported"),
+                words("from the new module:")] ++
+                    ExportedTypeCtorPieces
+        )
+    else
+        InInterfaceTypeCtorPieces =
+            type_name_set_to_line_pieces(InInterfaceTypeCtorSet),
+        MovingTypePieces =
+            [words("Moving these types to a new module would require"),
+            words("current module to import the new module in its interface"),
+            words("to get access to")] ++
+                InInterfaceTypeCtorPieces
+    ),
 
     ( if set_tree234.is_empty(MovingStayingPredIdSet) then
         MovingStayingPieces = []
     else
-        MovingStayingPredPieces = name_set_to_line_pieces(ModuleInfo,
+        MovingStayingPredPieces = pred_name_set_to_line_pieces(ModuleInfo,
             MovingStayingPredIdSet),
         MovingStayingPieces =
             [words("However, the following local predicates and/or functions"),
@@ -733,27 +875,148 @@ construct_movability_report(ModuleInfo, Report, InfoSpec) :-
                 MovingStayingPredPieces
     ),
 
-    InfoPieces = WantToMovePieces ++ ConflictExportedPieces ++
-        MovingPieces ++ MovingStayingPieces,
+    InfoPieces = WantToMovePieces ++ ConflictExportedPieces ++ MovingPieces ++
+        MovingTypePieces ++ MovingStayingPieces,
     InfoSpec = simplest_no_context_spec($pred, severity_informational,
         phase_style, InfoPieces).
 
-:- func name_set_to_line_pieces(module_info, set_tree234(pred_id)) =
-    list(format_piece).
+%---------------------------------------------------------------------------%
 
-name_set_to_line_pieces(ModuleInfo, PredIdSet) = Pieces :-
+:- type line_number_and_desc
+    --->    line_number_and_desc(
+                % The line number and ...
+                int,
+                % ... the description of the entity at that line.
+                string
+            ).
+
+:- func make_line_number_and_desc_for_pred(module_info, pred_id)
+    = line_number_and_desc.
+
+make_line_number_and_desc_for_pred(ModuleInfo, PredId) = LineNumberDesc :-
+    module_info_pred_info(ModuleInfo, PredId, PredInfo),
+    pred_info_get_context(PredInfo, Context),
+    Context = context(_FileName, LineNumber),
+    Desc = describe_pred_from_id(do_not_include_module_name,
+        ModuleInfo, PredId),
+    LineNumberDesc = line_number_and_desc(LineNumber, Desc).
+
+:- func make_line_number_and_desc_for_type(module_info, name_arity)
+    = line_number_and_desc.
+
+make_line_number_and_desc_for_type(ModuleInfo, NameArity) = LineNumberDesc :-
+    module_info_get_type_table(ModuleInfo, TypeTable),
+    module_info_get_name(ModuleInfo, ModuleName),
+    NameArity = name_arity(Name, Arity),
+    TypeCtor = type_ctor(qualified(ModuleName, Name), Arity),
+    lookup_type_ctor_defn(TypeTable, TypeCtor, TypeDefn),
+    get_type_defn_context(TypeDefn, Context),
+    Context = context(_FileName, LineNumber),
+    string.format("type constructor %s/%d", [s(Name), i(Arity)], Desc),
+    LineNumberDesc = line_number_and_desc(LineNumber, Desc).
+
+:- func line_number_and_descs_to_format_pieces(
+    set_tree234(line_number_and_desc)) = list(format_piece).
+
+line_number_and_descs_to_format_pieces(LineNumberDescSet) = Pieces :-
+    set_tree234.to_sorted_list(LineNumberDescSet, LineNumberDescs),
+    % LineNumberDescs is sorted in line number.
+    % It cannot be empty, because it contains the description
+    % of at least one want-to-move predicate or function.
+    list.det_split_last(LineNumberDescs, _, LastLineNumberDesc),
+    LastLineNumberDesc = line_number_and_desc(LastLineNumber, _),
+    ( if LastLineNumber >= 100_000 then
+        % People don't usually create modules which contain lines
+        % whose line numbers contain seven digits. If they don't create them,
+        % they can't want to split them up.
+        NumDigits = digits_6
+    else if LastLineNumber >= 10_000 then
+        NumDigits = digits_5
+    else if LastLineNumber >= 1_000 then
+        NumDigits = digits_4
+    else
+        % People don't usually want to split up a module in which
+        % all the entities mentioned in a report like this
+        % all have one- or two-digit line numbers.
+        NumDigits = digits_3
+    ),
+    list.map(line_number_and_desc_to_string(NumDigits), LineNumberDescs,
+        LineNumberDescStrs),
+    Pieces = line_list_to_line_pieces(LineNumberDescStrs).
+        
+:- type num_digits
+    --->    digits_3
+    ;       digits_4
+    ;       digits_5
+    ;       digits_6.
+
+:- pred line_number_and_desc_to_string(num_digits::in,
+    line_number_and_desc::in, string::out) is det.
+
+line_number_and_desc_to_string(NumDigits, LineNumberDesc, LineNumberDescStr) :-
+    LineNumberDesc = line_number_and_desc(LineNumber, Desc),
+    % It would be nice if string.format allowed the specification
+    % of the width to be supplied by a parameter, as e.g. printf in C does.
+    %
+    % We could construct the format string here, but format_call.m
+    % does not (yet) know how to handle a situation where part of
+    % ZZZ
+    (
+        NumDigits = digits_3,
+        string.format("line %3d: %s", [i(LineNumber), s(Desc)],
+            LineNumberDescStr)
+    ;
+        NumDigits = digits_4,
+        string.format("line %4d: %s", [i(LineNumber), s(Desc)],
+            LineNumberDescStr)
+    ;
+        NumDigits = digits_5,
+        string.format("line %5d: %s", [i(LineNumber), s(Desc)],
+            LineNumberDescStr)
+    ;
+        NumDigits = digits_6,
+        string.format("line %6d: %s", [i(LineNumber), s(Desc)],
+            LineNumberDescStr)
+    ).
+
+%---------------------%
+
+:- func pred_name_set_to_line_pieces(module_info,
+    set_tree234(pred_id)) = list(format_piece).
+
+pred_name_set_to_line_pieces(ModuleInfo, PredIdSet) = Pieces :-
     PredDescSet = set_tree234.map(
         describe_pred_from_id(do_not_include_module_name, ModuleInfo),
         PredIdSet),
     set_tree234.to_sorted_list(PredDescSet, PredDescs),
-    list.det_split_last(PredDescs, AllButLastPredDescs, LastPredDesc),
-    AllButLastPredDescPieceLists =
-        list.map((func(PD) = [fixed(PD), nl]), AllButLastPredDescs),
-    list.condense(AllButLastPredDescPieceLists, AllButLastPredDescPieces),
+    Pieces = line_list_to_line_pieces(PredDescs).
+
+:- func type_name_set_to_line_pieces(set_tree234(name_arity))
+    = list(format_piece).
+
+type_name_set_to_line_pieces(NameAritySet) = Pieces :-
+    PredDescSet = set_tree234.map( name_arity_to_string, NameAritySet),
+    set_tree234.to_sorted_list(PredDescSet, PredDescs),
+    Pieces = line_list_to_line_pieces(PredDescs).
+
+:- func name_arity_to_string(name_arity) = string.
+
+name_arity_to_string(name_arity(Name, Arity)) = Str :-
+    string.format("%s/%d", [s(Name), i(Arity)], Str).
+
+%---------------------%
+
+:- func line_list_to_line_pieces(list(string)) = list(format_piece).
+
+line_list_to_line_pieces(Lines) = Pieces :-
+    list.det_split_last(Lines, AllButLastLines, LastLine),
+    AllButLastLinePieceLists =
+        list.map((func(PD) = [fixed(PD), nl]), AllButLastLines),
+    list.condense(AllButLastLinePieceLists, AllButLastLinePieces),
 
     Pieces = [nl_indent_delta(1), blank_line] ++
-        AllButLastPredDescPieces ++
-        [fixed(LastPredDesc), nl_indent_delta(-1), blank_line].
+        AllButLastLinePieces ++
+        [fixed(LastLine), nl_indent_delta(-1), blank_line].
 
 %---------------------------------------------------------------------------%
 :- end_module hlds.hlds_call_tree.
