@@ -560,18 +560,21 @@ esac
 case ${target} in
     c)
         target_ext=c
+        collective_target=all_cs
         target_subdir=${cs_subdir}
         target_opt=
         ;;
 
     csharp)
         target_ext=cs
+        collective_target=all_css
         target_subdir=${css_subdir}
         target_opt=
         ;;
 
     java)
         target_ext=java
+        collective_target=all_javas
         target_subdir=${javas_subdir}
         target_opt=
         ;;
@@ -1329,6 +1332,7 @@ then
     check_namespace_status=0
     if ${check_namespace}
     then
+        echo "starting namespace checks at $(date)"
         cd "${root}"/${stage2dir}/runtime
         mmake ${mmake_opts} check_namespace || {
             echo '** mmake check_namespace failed in runtime!'
@@ -1366,6 +1370,7 @@ then
         }
         mmake ${mmake_opts} clean_check
         cd "${root}"
+        echo "namespace checks done at $(date)"
     fi
 
     check_stdlib_modules_status=0
@@ -1378,7 +1383,7 @@ then
 
     if ${stop_after_stage_2}
     then
-        echo "stopping after building stage 2"
+        echo "stopping after building stage 2 at $(date)"
         exit 0
     fi
 
@@ -1673,7 +1678,7 @@ EOF
 
     if (cd ${stage3dir}/library &&
         ${MMAKE} ${mmake_opts} ${mmake_jobs} all-ints &&
-        ${MMAKE} ${mmake_opts} ${mmake_jobs} ${target_ext}s)
+        ${MMAKE} ${mmake_opts} ${mmake_jobs} ${collective_target})
     then
         echo "building of stage 3 library successful"
     else
@@ -1682,7 +1687,7 @@ EOF
         # Try again, in case the failure cause was transient.
         if (cd ${stage3dir}/library &&
             ${MMAKE} ${mmake_opts} ${mmake_jobs} all-ints &&
-            ${MMAKE} ${mmake_opts} ${mmake_jobs} ${target_ext}s)
+            ${MMAKE} ${mmake_opts} ${mmake_jobs} ${collective_target})
         then
             echo "building of stage 3 library successful"
         else
@@ -1707,7 +1712,7 @@ EOF
 
     if (cd ${stage3dir}/mdbcomp &&
         ${MMAKE} ${mmake_opts} ${mmake_jobs} all-ints &&
-        ${MMAKE} ${mmake_opts} ${mmake_jobs} ${target_ext}s)
+        ${MMAKE} ${mmake_opts} ${mmake_jobs} ${collective_target})
     then
         echo "building of stage 3 mdbcomp successful"
     else
@@ -1715,7 +1720,7 @@ EOF
         df .
         # Try again, in case the failure cause was transient.
         if (cd ${stage3dir}/mdbcomp && \
-            ${MMAKE} ${mmake_opts} ${mmake_jobs} ${target_ext}s)
+            ${MMAKE} ${mmake_opts} ${mmake_jobs} ${collective_target})
         then
             echo "building of stage 3 mdbcomp successful"
         else
@@ -1726,7 +1731,7 @@ EOF
 
     if (cd ${stage3dir}/browser &&
         ${MMAKE} ${mmake_opts} ${mmake_jobs} all-ints &&
-        ${MMAKE} ${mmake_opts} ${mmake_jobs} ${target_ext}s)
+        ${MMAKE} ${mmake_opts} ${mmake_jobs} ${collective_target})
     then
         echo "building of stage 3 browser successful"
     else
@@ -1734,7 +1739,7 @@ EOF
         df .
         # Try again, in case the failure cause was transient.
         if (cd ${stage3dir}/browser && \
-            ${MMAKE} ${mmake_opts} ${mmake_jobs} ${target_ext}s)
+            ${MMAKE} ${mmake_opts} ${mmake_jobs} ${collective_target})
         then
             echo "building of stage 3 browser successful"
         else
@@ -1745,7 +1750,7 @@ EOF
 
     if (cd ${stage3dir}/ssdb &&
         ${MMAKE} ${mmake_opts} ${mmake_jobs} all-ints &&
-        ${MMAKE} ${mmake_opts} ${mmake_jobs} ${target_ext}s)
+        ${MMAKE} ${mmake_opts} ${mmake_jobs} ${collective_target})
     then
         echo "building of stage 3 ssdb successful"
     else
@@ -1753,7 +1758,7 @@ EOF
         df .
         # Try again, in case the failure cause was transient.
         if (cd ${stage3dir}/ssdb && \
-            ${MMAKE} ${mmake_opts} ${mmake_jobs} ${target_ext}s)
+            ${MMAKE} ${mmake_opts} ${mmake_jobs} ${collective_target})
         then
             echo "building of stage 3 ssdb successful"
         else
@@ -1763,7 +1768,7 @@ EOF
     fi
 
     if (cd ${stage3dir}/compiler && \
-        ${MMAKE} ${mmake_opts} ${mmake_jobs} ${target_ext}s)
+        ${MMAKE} ${mmake_opts} ${mmake_jobs} ${collective_target})
     then
         echo "building of stage 3 compiler successful"
     else
@@ -1771,7 +1776,7 @@ EOF
         df .
         # Try again, in case the failure cause was transient.
         if (cd ${stage3dir}/compiler && \
-            ${MMAKE} ${mmake_opts} ${mmake_jobs} ${target_ext}s)
+            ${MMAKE} ${mmake_opts} ${mmake_jobs} ${collective_target})
         then
             echo "building of stage 3 compiler successful"
         else
@@ -1786,7 +1791,7 @@ EOF
         unset MMAKE_DIR && \
         unset MERCURY_CONFIG_DIR && \
         unset MERCURY_STDLIB_DIR && \
-        mmake ${mmake_opts} ${mmake_jobs} ${target_ext}s)
+        mmake ${mmake_opts} ${mmake_jobs} ${collective_target})
     then
         echo "building of stage 3 grade_lib successful"
     else
@@ -1800,7 +1805,7 @@ EOF
         unset MMAKE_DIR && \
         unset MERCURY_CONFIG_DIR && \
         unset MERCURY_STDLIB_DIR && \
-        mmake ${mmake_opts} ${mmake_jobs} ${target_ext}s)
+        mmake ${mmake_opts} ${mmake_jobs} ${collective_target})
     then
         echo "building of stage 3 slice successful"
     else
@@ -1814,7 +1819,7 @@ EOF
         unset MMAKE_DIR && \
         unset MERCURY_CONFIG_DIR && \
         unset MERCURY_STDLIB_DIR && \
-        mmake ${mmake_opts} ${mmake_jobs} ${target_ext}s)
+        mmake ${mmake_opts} ${mmake_jobs} ${collective_target})
     then
         echo "building of stage 3 profiler successful"
     else
@@ -1828,7 +1833,7 @@ EOF
         unset MMAKE_DIR && \
         unset MERCURY_CONFIG_DIR && \
         unset MERCURY_STDLIB_DIR && \
-        mmake ${mmake_opts} ${mmake_jobs} ${target_ext}s)
+        mmake ${mmake_opts} ${mmake_jobs} ${collective_target})
     then
         echo "building of stage 3 deep profiler successful"
     else
@@ -1842,7 +1847,7 @@ EOF
         unset MMAKE_DIR && \
         unset MERCURY_CONFIG_DIR && \
         unset MERCURY_STDLIB_DIR && \
-        mmake ${mmake_opts} ${mmake_jobs} ${target_ext}s)
+        mmake ${mmake_opts} ${mmake_jobs} ${collective_target})
     then
         echo "building of stage 3 mfilterjavac successful"
     else
@@ -1865,10 +1870,19 @@ EOF
         exec > "${outfile}"   # redirect stdout to ${outfile}
     fi
 
-    for dir in library mdbcomp browser ssdb compiler \
-        grade_lib slice profiler deep_profiler mfilterjavac
+    for dir in \
+        library \
+        mdbcomp \
+        browser \
+        ssdb \
+        compiler \
+        grade_lib \
+        slice \
+        profiler \
+        deep_profiler \
+        mfilterjavac
     do
-        # `mmake cs' in the compiler directory doesn't build
+        # `mmake all_cs' in the compiler directory doesn't build
         # `mercury_compile_init.c', so we only compare the `.c'
         # files present in the stage 3 directory.
         for file in ${stage3dir}/${dir}/${target_subdir}*.${target_ext}

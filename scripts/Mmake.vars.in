@@ -1,4 +1,6 @@
 #-----------------------------------------------------------------------------#
+# vim: ts=8 sw=8 noexpandtab ft=make
+#-----------------------------------------------------------------------------#
 # Copyright (C) 1996-2008, 2010-2011 The University of Melbourne.
 # Copyright (C) 2013, 2015, 2017, 2020, 2023 The Mercury team.
 # This file may only be copied under the terms of the GNU General
@@ -214,7 +216,7 @@ LIB_CFLAGS	= $(patsubst %,-I %,$(EXTRA_C_INCL_DIRS))
 
 #-----------------------------------------------------------------------------#
 #
-# Stuff for the .NET back-end
+# Stuff for the C# back-end.
 #
 
 CSC		= @CSC@
@@ -226,7 +228,7 @@ LIB_CSCFLAGS	=
 
 #-----------------------------------------------------------------------------#
 #
-# Stuff for the Java back-end
+# Stuff for the Java back-end.
 #
 
 # JAVAC is the command line java compiler;
@@ -515,6 +517,10 @@ maybe-base-JAVACFLAGS-undefined =
 GRADE_SUBDIR_EXTS = \
 	mih optdate trans_opt trans_opt_date c c_date java java_date \
 	class dll s s_date pic_s pic_s_date o pic_o
+GRADE_SUBDIR_MVEXTS = \
+	mihs optdates trans_opts trans_opt_dates all_cs c_dates \
+	all_javas java_dates \
+	classs dlls ss s_dates pic_ss pic_s_dates all_os all_pic_os
 
 ifeq ($(MMAKE_USE_SUBDIRS),yes)
 
@@ -745,7 +751,3 @@ ERR_REDIRECT = > $(*F).err 2>&1
 # If this variable is set to no, then mmake doesn't automatically include
 # the ".d" files in the current directory in the Mmakefile.
 MMAKE_AUTO_INCLUDE_DS = yes
-
-#-----------------------------------------------------------------------------#
-# vim: ts=8 sw=8 noexpandtab ft=make
-#-----------------------------------------------------------------------------#

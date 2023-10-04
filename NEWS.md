@@ -58,6 +58,77 @@ Changes that may break compatibility
 
 * We have dropped support for the x86 (32-bit) version of Cygwin.
 
+* We have changed the meaning of `mmc --make name.cs`.
+
+  We have long had two conventions for the names of mmc --make targets
+  for building all the files of a particular kind needed by a program.
+  The original convention was
+
+  - target `program.cs` builds the .c files of all the modules of `program`
+  - target `program.os` builds the .o files of all the modules of `program`
+
+  A later convention added some synonyms:
+
+  - target `program.all_cs` builds the .c files of all the modules of `program`
+  - target `program.all_os` builds the .o files of all the modules of `program`
+
+  We added this second convention when we added C# as a target language,
+  because, due to the suffix for C# files being `.cs`, targets of the form
+  `name.cs` became possibly ambiguous, with the new possible meaning being
+  "build the .cs file for the named module". At the time, we kept the old
+  meaning of target `name.cs`, adding target `csharp` to mean "build the
+  .cs file of the named module".
+
+  We have now changed the meaning of target `name.cs` to mean
+  "build the .cs file of the named module". If you want to build
+  all the .c files of a program, you can specify `program.all_cs`
+  as the target.
+
+* For similar reasons, the compiler has stopped putting into
+  `program.dep` files (where `program` is the name of any program)
+  the definitions of mmake variables with the following names:
+  
+    `program.cs`
+    `program.os`
+    `program.pic_os`
+    `program.javas`
+    `program.css`
+
+  which list the names the names of the `.c`, `.o`, `.pic_o`, `.java` and
+  `.cs` files of all the modules of the program. All references of these
+  mmake variables should be replaced to refer to one of the following
+  mmake variables:
+
+    `program.all_cs`
+    `program.all_os`
+    `program.all_pic_os`
+    `program.all_javas`
+    `program.all_css`
+
+* We have deprecated the names of three more mmake variables in favor of
+  newly introduced replacements. These variables are
+
+    `program.all_mhs`
+    `program.all_mihs`
+    `program.all_int0s`
+
+  Their values were defined as the set of files with suffixes `.mh`, `.mih`
+  and `.int0` that MAY, or MAY NOT, exist for modules of the named program.
+
+  We are deprecating these variable names because their meaning conflicts
+  with the meaning of the other mmake variables mentioned above,
+  whose values all contain the names of the files that definitely MUST
+  exist during the building of the program.
+
+  Since the only intended purpose of these three variable names
+  was to specify a set of files that should be deleted during cleanup,
+  we recommend that all references of these three mmake variables should be
+  replaced by references to the newly defined mmake variables
+
+    `program.mhs_to_clean`
+    `program.mihs_to_clean`
+    `program.int0s_to_clean`
+
 Changes to the Mercury standard library
 ---------------------------------------
 

@@ -82,9 +82,6 @@
 :- import_module parse_tree.module_dep_info.
 :- import_module parse_tree.prog_foreign.
 
-:- import_module list.
-
-%---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
 % XXX MAKE Give this predicate a more descriptive name.
@@ -170,8 +167,8 @@ module_target_to_file_name(Globals, From, TargetType, ModuleName,
     ;
         TargetExt = fact_table_obj(PIC, FactFile),
         maybe_pic_object_file_extension(PIC, ObjExt, _),
-        fact_table_file_name_return_dirs(Globals, $pred,
-            ext_cur_ngs_gs(ObjExt), FactFile, _FactDirs, FileName)
+        fact_table_file_name(Globals, $pred, ext_cur_ngs_gs(ObjExt),
+            FactFile, FileName)
     ).
 
 :- pred module_target_to_search_file_name(globals::in, string::in,
@@ -198,8 +195,8 @@ module_target_to_search_file_name(Globals, From, TargetType, ModuleName,
         TargetExt = fact_table_obj(PIC, FactFile),
         maybe_pic_object_file_extension(PIC, ObjExt, _),
         % XXX This call ignores the implicit for_search setting.
-        fact_table_file_name_return_dirs(Globals, $pred,
-            ext_cur_ngs_gs(ObjExt), FactFile, _FactDirs, FileName)
+        fact_table_file_name(Globals, $pred, ext_cur_ngs_gs(ObjExt),
+            FactFile, FileName)
     ).
 
 %---------------------------------------------------------------------------%

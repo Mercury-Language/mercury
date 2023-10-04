@@ -566,14 +566,18 @@
     string::in, string::in, ext::in, module_name::in,
     file_name::out, file_name::out, io::di, io::uo) is det.
 
+    % fact_table_file_name(Globals, Ext, FactTableFileName,
+    %   FullPathName):
     % fact_table_file_name_return_dirs(Globals, Ext, FactTableFileName,
-    %   DirNames, FileName):
+    %   DirNames, FullPathName):
     %
-    % Returns the filename to use when compiling fact table files.
-    % Return the directory pathname in FileName as DirNames. The caller
-    % can then create those directories (with create_any_dirs_on_path below),
-    % or not, as they wish.
+    % Returns the full path name to use when compiling fact table files.
+    % The second version returns the directory path in FullPathName
+    % as DirNames. The caller can then create those directories
+    % (with create_any_dirs_on_path below), or not, as they wish.
     %
+:- pred fact_table_file_name(globals::in, string::in,
+    ext::in, file_name::in, file_name::out) is det.
 :- pred fact_table_file_name_return_dirs(globals::in, string::in,
     ext::in, file_name::in, list(dir_name)::out, file_name::out) is det.
 
@@ -1076,6 +1080,11 @@ make_fake_module_name(Prefix, ModuleName) = FakeModuleName :-
     FakeModuleName = unqualified(BaseNameNoExt).
 
 %---------------------%
+
+fact_table_file_name(Globals, From, Ext,
+        FactTableFileName, FullFileName) :-
+    fact_table_file_name_return_dirs(Globals, From, Ext,
+        FactTableFileName, _DirNames, FullFileName).
 
 fact_table_file_name_return_dirs(Globals, From, Ext,
         FactTableFileName, DirNames, FullFileName) :-

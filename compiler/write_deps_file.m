@@ -81,8 +81,7 @@
     %
 :- pred write_dependency_file(globals::in, burdened_aug_comp_unit::in,
     maybe_intermod_deps::in, set(module_name)::in,
-    maybe_include_trans_opt_rule::in,
-    io::di, io::uo) is det.
+    maybe_include_trans_opt_rule::in, io::di, io::uo) is det.
 
     % generate_dependencies_write_d_files(Globals, Modules,
     %   IntDepsGraph, ImplDepsGraph, IndirectDepsGraph, IndirectOptDepsGraph,
@@ -551,22 +550,14 @@ construct_fact_tables_entries(ModuleMakeVarName, SourceFileName, ObjFileName,
         MmakeVarFactTables = mmake_var_defn_list(
             ModuleMakeVarName ++ ".fact_tables",
             FactTableFileNames),
-        MmakeVarFactTablesOs = mmake_var_defn(
-            ModuleMakeVarName ++ ".fact_tables.os",
-            "$(" ++ ModuleMakeVarName ++ ".fact_tables:%=$(os_subdir)%.$O)"),
         MmakeVarFactTablesAllOs = mmake_var_defn(
             ModuleMakeVarName ++ ".fact_tables.all_os",
             "$(" ++ ModuleMakeVarName ++ ".fact_tables:%=$(os_subdir)%.$O)"),
-        MmakeVarFactTablesCs = mmake_var_defn(
-            ModuleMakeVarName ++ ".fact_tables.cs",
-            "$(" ++ ModuleMakeVarName ++ ".fact_tables:%=$(cs_subdir)%.c)"),
         MmakeVarFactTablesAllCs = mmake_var_defn(
             ModuleMakeVarName ++ ".fact_tables.all_cs",
             "$(" ++ ModuleMakeVarName ++ ".fact_tables:%=$(cs_subdir)%.c)"),
-        MmakeVarsFactTables =
-            [MmakeVarFactTables,
-            MmakeVarFactTablesOs, MmakeVarFactTablesAllOs,
-            MmakeVarFactTablesCs, MmakeVarFactTablesAllCs],
+        MmakeVarsFactTables = [MmakeVarFactTables,
+            MmakeVarFactTablesAllOs, MmakeVarFactTablesAllCs],
 
         FactTableSourceGroup = mmake_file_name_group("fact tables",
             one_or_more("$(" ++ ModuleMakeVarName ++ ".fact_tables)", [])),
@@ -575,12 +566,12 @@ construct_fact_tables_entries(ModuleMakeVarName, SourceFileName, ObjFileName,
         % XXX These rules seem wrong to me. -zs
         MmakeRuleFactOs = mmake_simple_rule("fact_table_os",
             mmake_rule_is_not_phony,
-            "$(" ++ ModuleMakeVarName ++ ".fact_tables.os)",
+            "$(" ++ ModuleMakeVarName ++ ".fact_tables.all_os)",
             ["$(" ++ ModuleMakeVarName ++  ".fact_tables)", SourceFileName],
             []),
         MmakeRuleFactCs = mmake_simple_rule("fact_table_cs",
             mmake_rule_is_not_phony,
-            "$(" ++ ModuleMakeVarName ++ ".fact_tables.cs)",
+            "$(" ++ ModuleMakeVarName ++ ".fact_tables.all_cs)",
             [ObjFileName],
             []),
         MmakeRulesFactTables = [MmakeRuleFactOs, MmakeRuleFactCs]
@@ -861,7 +852,7 @@ construct_c_header_rules(Globals, ModuleName, AllDeps,
 %---------------------%
 
     % The `.module_dep' file is made as a side effect of
-    % creating the `.c' or `.java'.
+    % creating the `.c' or `.java' file.
     % XXX What about C#?
     % (See the main comment on generate_d_file above.
     %
@@ -894,9 +885,10 @@ construct_module_dep_fragment(Globals, ModuleName, CFileName,
 
 %---------------------%
 
-    % The .date and .date0 files depend on the .int0 files for the parent
-    % modules, and the .int3 files for the directly and indirectly imported
-    % modules.
+    % The .date and .date0 files depend on
+    %
+    % - the .int0 files for the parent modules, and
+    % - the .int3 files for the directly and indirectly imported modules.
     %
     % For nested submodules, the `.date' files for the parent modules
     % also depend on the same things as the `.date' files for this module,
@@ -1327,16 +1319,6 @@ foreign_include_file_path_name(SourceFileName, IncludeFile) = IncludePath :-
     IncludeFile = foreign_include_file_info(_Lang, IncludeFileName),
     make_include_file_path(SourceFileName, IncludeFileName, IncludePath).
 
-:- pred get_fact_table_dependencies(globals::in, ext::in,
-    list(file_name)::in, list(string)::out, io::di, io::uo) is det.
-
-get_fact_table_dependencies(_, _, [], [], !IO).
-get_fact_table_dependencies(Globals, Ext,
-        [ExtraLink | ExtraLinks], [FileName | FileNames], !IO) :-
-    fact_table_file_name_return_dirs(Globals, $pred, Ext, ExtraLink,
-        _Dirs, FileName),
-    get_fact_table_dependencies(Globals, Ext, ExtraLinks, FileNames, !IO).
-
     % With `--use-subdirs', allow users to type `mmake module.c'
     % rather than `mmake Mercury/cs/module.c'.
     %
@@ -1600,6 +1582,16 @@ generate_dv_file(Globals, SourceFileName, ModuleName, DepsMap,
         mmake_var_defn_list(ModuleMakeVarName ++ ".foreign_cs",
             ForeignFileNames),
 
+    get_fact_table_file_names(DepsMap, Modules, FactTableFileNames),
+    list.map(
+        fact_table_file_name(Globals, $pred,
+            ext_cur_ngs_gs(ext_cur_ngs_gs_obj_dollar_o)),
+        FactTableFileNames, FactTableFileNamesOs),
+    list.map(
+        fact_table_file_name(Globals, $pred,
+            ext_cur_ngs_gs(ext_cur_ngs_gs_obj_dollar_efpo)),
+        FactTableFileNames, FactTableFileNamesPicOs),
+
     % The dlls that contain the foreign_code.
     MmakeVarForeignDlls = mmake_var_defn(ModuleMakeVarName ++ ".foreign_dlls",
         string.format("$(%s.foreign:%%=$(dlls_subdir)%%.dll)",
@@ -1610,23 +1602,6 @@ generate_dv_file(Globals, SourceFileName, ModuleName, DepsMap,
     MmakeVarAllCs = mmake_var_defn(ModuleMakeVarName ++ ".all_cs",
         string.format("$(%s.mods:%%=$(cs_subdir)%%.c)",
             [s(ModuleMakeVarName)])),
-
-    get_fact_table_file_names(DepsMap, Modules, FactTableFileNames),
-    % XXX EXT
-    % We should just be able to append ".c", ".$O" and the pic extension
-    % to each string in FactTableFileNames.
-    get_fact_table_dependencies(Globals,
-        ext_cur_ngs_gs(ext_cur_ngs_gs_target_c),
-        FactTableFileNames, FactTableFileNamesC, !IO),
-    get_fact_table_dependencies(Globals,
-        ext_cur_ngs_gs(ext_cur_ngs_gs_obj_dollar_o),
-        FactTableFileNames, FactTableFileNamesOs, !IO),
-    get_fact_table_dependencies(Globals,
-        ext_cur_ngs_gs(ext_cur_ngs_gs_obj_dollar_efpo),
-        FactTableFileNames, FactTableFileNamesPicOs, !IO),
-
-    MmakeVarCs = mmake_var_defn_list(ModuleMakeVarName ++ ".cs",
-        ["$(" ++ ModuleMakeVarName ++ ".init_cs)" | FactTableFileNamesC]),
     MmakeVarDlls = mmake_var_defn(ModuleMakeVarName ++ ".dlls",
         string.format("$(%s.mods:%%=$(dlls_subdir)%%.dll)",
             [s(ModuleMakeVarName)])),
@@ -1638,15 +1613,8 @@ generate_dv_file(Globals, SourceFileName, ModuleName, DepsMap,
         [string.format("$(%s.mods:%%=$(os_subdir)%%.$(EXT_FOR_PIC_OBJECTS))",
             [s(ModuleMakeVarName)]) |
         FactTableFileNamesPicOs]),
-    MmakeVarOs = mmake_var_defn(ModuleMakeVarName ++ ".os",
-        string.format("$(%s.all_os)", [s(ModuleMakeVarName)])),
-    MmakeVarPicOs = mmake_var_defn(ModuleMakeVarName ++ ".pic_os",
-        string.format("$(%s.all_pic_os)", [s(ModuleMakeVarName)])),
     MmakeVarUseds = mmake_var_defn(ModuleMakeVarName ++ ".useds",
         string.format("$(%s.mods:%%=$(useds_subdir)%%.used)",
-            [s(ModuleMakeVarName)])),
-    MmakeVarJavas = mmake_var_defn(ModuleMakeVarName ++ ".javas",
-        string.format("$(%s.mods:%%=$(javas_subdir)%%.java)",
             [s(ModuleMakeVarName)])),
     MmakeVarAllJavas = mmake_var_defn(ModuleMakeVarName ++ ".all_javas",
         string.format("$(%s.mods:%%=$(javas_subdir)%%.java)",
@@ -1657,8 +1625,9 @@ generate_dv_file(Globals, SourceFileName, ModuleName, DepsMap,
     % `module\$*.class', hence the "\\$$*.class" below.
     % If no such files exist, Make will use the pattern verbatim,
     % so we enclose the pattern in a `wildcard' function to prevent this.
-    % Evaluating the .classes variable can be slow, so we make it conditional
-    % on the grade.
+    %
+    % Evaluating the .classes variable can be slow, so we make its definition
+    % conditional on the grade.
     MmakeVarClassesJava = mmake_var_defn_list(ModuleMakeVarName ++ ".classes",
         [string.format("$(%s.mods:%%=$(classes_subdir)%%.class)",
             [s(ModuleMakeVarName)]),
@@ -1671,9 +1640,8 @@ generate_dv_file(Globals, SourceFileName, ModuleName, DepsMap,
         mmake_cond_grade_has_component("java"),
         MmakeVarClassesJava, MmakeVarClassesNonJava),
 
-    MmakeVarCss = mmake_var_defn(ModuleMakeVarName ++ ".css",
-        string.format("$(%s.mods:%%=$(css_subdir)%%.cs)",
-            [s(ModuleMakeVarName)])),
+    % XXX Probably not needed, since we don't support building C# executables
+    % using mmake.
     MmakeVarAllCss = mmake_var_defn(ModuleMakeVarName ++ ".all_css",
         string.format("$(%s.mods:%%=$(css_subdir)%%.cs)",
             [s(ModuleMakeVarName)])),
@@ -1746,13 +1714,18 @@ generate_dv_file(Globals, SourceFileName, ModuleName, DepsMap,
     ),
     MmakeVarMihs =
         mmake_var_defn_list(ModuleMakeVarName ++ ".mihs", MihSources),
-    MmakeVarMhs = mmake_var_defn_list(ModuleMakeVarName ++ ".mhs", MhSources),
+    MmakeVarMhs =
+        mmake_var_defn_list(ModuleMakeVarName ++ ".mhs", MhSources),
 
-    % The `<module>.all_mihs' variable is like `<module>.mihs' except that
+    % The `<module>.mihs_to_clean' variable is like `<module>.mihs' except that
     % it contains header files for all the modules, regardless of the grade
     % or --target option. It is used by the rule for `mmake realclean',
     % which should remove anything that could have been automatically
     % generated, even if the grade or --target option has changed.
+    MmakeVarMihsToClean = mmake_var_defn(ModuleMakeVarName ++ ".mihs_to_clean",
+        string.format("$(%s.mods:%%=$(mihs_subdir)%%.mih)",
+            [s(ModuleMakeVarName)])),
+    % The deprecated old version of .mihs_to_clean.
     MmakeVarAllMihs = mmake_var_defn(ModuleMakeVarName ++ ".all_mihs",
         string.format("$(%s.mods:%%=$(mihs_subdir)%%.mih)",
             [s(ModuleMakeVarName)])),
@@ -1760,6 +1733,10 @@ generate_dv_file(Globals, SourceFileName, ModuleName, DepsMap,
     % The `<module>.all_mhs' variable is like `<module>.mhs' except that
     % it contains header files for all the modules, as for `<module>.all_mihs'
     % above.
+    MmakeVarMhsToClean = mmake_var_defn(ModuleMakeVarName ++ ".mhs_to_clean",
+        string.format("$(%s.mods:%%=%%.mh)",
+            [s(ModuleMakeVarName)])),
+    % The deprecated old version of .mhs_to_clean.
     MmakeVarAllMhs = mmake_var_defn(ModuleMakeVarName ++ ".all_mhs",
         string.format("$(%s.mods:%%=%%.mh)",
             [s(ModuleMakeVarName)])),
@@ -1776,21 +1753,35 @@ generate_dv_file(Globals, SourceFileName, ModuleName, DepsMap,
     MmakeVarInt0s = mmake_var_defn(ModuleMakeVarName ++ ".int0s",
         string.format("$(%s.parent_mods:%%=$(int0s_subdir)%%.int0)",
             [s(ModuleMakeVarName)])),
-    % XXX The `<module>.all_int0s' variables is like `<module>.int0s' except
-    % that it contains .int0 files for all modules, regardless of whether
-    % they should have been created or not. It is used by the rule for
+    % XXX The `<module>.int0s_to_clean' variable is like `<module>.int0s'
+    % except that it contains .int0 files for all modules, regardless of
+    % whether they should have been created or not. It is used by the rule for
     % `mmake realclean' to ensure that we clean up all the .int0 files,
     % including the ones that were accidentally created by the bug described
     % above.
+    MmakeVarInt0sToClean = mmake_var_defn(
+        ModuleMakeVarName ++ ".int0s_to_clean",
+        string.format("$(%s.mods:%%=$(int0s_subdir)%%.int0)",
+            [s(ModuleMakeVarName)])),
+    % The deprecated old version of .int0s_to_clean.
     MmakeVarAllInt0s = mmake_var_defn(ModuleMakeVarName ++ ".all_int0s",
         string.format("$(%s.mods:%%=$(int0s_subdir)%%.int0)",
             [s(ModuleMakeVarName)])),
     MmakeVarInt3s = mmake_var_defn(ModuleMakeVarName ++ ".int3s",
         string.format("$(%s.mods:%%=$(int3s_subdir)%%.int3)",
             [s(ModuleMakeVarName)])),
+    MmakeVarAllOpts = mmake_var_defn(ModuleMakeVarName ++ ".all_opts",
+        string.format("$(%s.mods:%%=$(opts_subdir)%%.opt)",
+            [s(ModuleMakeVarName)])),
+    % The deprecated old version of .all_opts.
     MmakeVarOpts = mmake_var_defn(ModuleMakeVarName ++ ".opts",
         string.format("$(%s.mods:%%=$(opts_subdir)%%.opt)",
             [s(ModuleMakeVarName)])),
+    MmakeVarAllTransOpts = mmake_var_defn(
+        ModuleMakeVarName ++ ".all_trans_opts",
+        string.format("$(%s.mods:%%=$(trans_opts_subdir)%%.trans_opt)",
+            [s(ModuleMakeVarName)])),
+    % The deprecated old version of .all_opts.
     MmakeVarTransOpts = mmake_var_defn(ModuleMakeVarName ++ ".trans_opts",
         string.format("$(%s.mods:%%=$(trans_opts_subdir)%%.trans_opt)",
             [s(ModuleMakeVarName)])),
@@ -1812,20 +1803,23 @@ generate_dv_file(Globals, SourceFileName, ModuleName, DepsMap,
         MmakeVarModuleDepErrs, MmakeVarModuleErrs,
         MmakeVarModuleMods, MmakeVarModuleParentMods,
         MmakeVarForeignModules, MmakeVarForeignFileNames, MmakeVarForeignDlls,
-        MmakeVarInitCs, MmakeVarAllCs, MmakeVarCs, MmakeVarDlls,
-        MmakeVarAllOs, MmakeVarAllPicOs, MmakeVarOs, MmakeVarPicOs,
+        MmakeVarInitCs, MmakeVarAllCs, MmakeVarDlls,
+        MmakeVarAllOs, MmakeVarAllPicOs,
         MmakeVarUseds,
-        MmakeVarJavas, MmakeVarAllJavas]),
+        MmakeVarAllJavas]),
     MmakeFragmentsB = list.map(mmake_entry_to_fragment,
-        [MmakeVarCss, MmakeVarAllCss,
+        [MmakeVarAllCss,
         MmakeVarDirs, MmakeVarDirOs,
         MmakeVarDates, MmakeVarDate0s, MmakeVarDate3s,
         MmakeVarOptDates, MmakeVarTransOptDates,
         MmakeVarCDates, MmakeVarJavaDates, MmakeVarCsDates,
         MmakeVarDs, MmakeVarModuleDeps, MmakeVarMihs,
-        MmakeVarMhs, MmakeVarAllMihs, MmakeVarAllMhs,
-        MmakeVarInts, MmakeVarInt0s, MmakeVarAllInt0s, MmakeVarInt3s,
-        MmakeVarOpts, MmakeVarTransOpts,
+        MmakeVarMhs,
+        MmakeVarMihsToClean, MmakeVarAllMihs,
+        MmakeVarMhsToClean, MmakeVarAllMhs,
+        MmakeVarInts, MmakeVarInt0s, MmakeVarInt0sToClean, MmakeVarAllInt0s,
+        MmakeVarInt3s,
+        MmakeVarAllOpts, MmakeVarOpts, MmakeVarAllTransOpts, MmakeVarTransOpts,
         MmakeVarAnalysiss, MmakeVarRequests, MmakeVarImdgs, MmakeVarProfs]),
     MmakeFile =
         cord.from_list(MmakeFragmentsA) ++
@@ -1958,7 +1952,7 @@ generate_dep_file(Globals, SourceFileName, ModuleName, DepsMap,
     ),
     (
         Intermod = yes,
-        OptsVar = "$(" ++ ModuleMakeVarName ++ ".opts)",
+        OptsVar = "$(" ++ ModuleMakeVarName ++ ".all_opts)",
         MaybeOptsVar = [OptsVar],
         MaybeOptsVarSpace = OptsVar ++ " "
     ;
@@ -1968,7 +1962,7 @@ generate_dep_file(Globals, SourceFileName, ModuleName, DepsMap,
     ),
     (
         TransOpt = yes,
-        TransOptsVar = "$(" ++ ModuleMakeVarName ++ ".trans_opts)",
+        TransOptsVar = "$(" ++ ModuleMakeVarName ++ ".all_trans_opts)",
         MaybeTransOptsVar = [TransOptsVar],
         MaybeTransOptsVarSpace = TransOptsVar ++ " "
     ;
@@ -2042,10 +2036,11 @@ generate_dep_file_exec_library_targets(Globals, ModuleName,
     % create all the C files first, thus detecting errors early,
     % rather than first spending time compiling C files to .$O,
     % which could be a waste of time if the program contains errors.
+    % XXX The above comment seems to have suffered bit rot.
 
     ModuleMakeVarNameClasses = "$(" ++ ModuleMakeVarName ++ ".classes)",
 
-    ModuleMakeVarNameOs = "$(" ++ ModuleMakeVarName ++ ".os)",
+    ModuleMakeVarNameOs = "$(" ++ ModuleMakeVarName ++ ".all_os)",
     NonJavaMainRuleAction1Line1 =
         "$(ML) $(ALL_GRADEFLAGS) $(ALL_MLFLAGS) -- $(ALL_LDFLAGS) " ++
             "$(EXEFILE_OPT)" ++ ExeFileName ++ "$(EXT_FOR_EXE) " ++
@@ -2110,7 +2105,7 @@ generate_dep_file_exec_library_targets(Globals, ModuleName,
         mmake_cond_grade_has_component("java"),
         MmakeRuleLibTargetJava, MmakeRuleLibTargetNonJava),
 
-    ModuleMakeVarNamePicOs = "$(" ++ ModuleMakeVarName ++ ".pic_os)",
+    ModuleMakeVarNamePicOs = "$(" ++ ModuleMakeVarName ++ ".all_pic_os)",
     SharedLibAction1Line1 =
         "$(ML) --make-shared-lib $(ALL_GRADEFLAGS) $(ALL_MLFLAGS) " ++
         "-- " ++ InstallNameOpt ++ " $(ALL_LD_LIBFLAGS) " ++
@@ -2167,7 +2162,7 @@ generate_dep_file_init_targets(Globals, ModuleName, ModuleMakeVarName,
     module_name_to_file_name(Globals, $pred,
         ext_cur_ngs(ext_cur_ngs_mf_dv), ModuleName, DvFileName),
 
-    ModuleMakeVarNameCs = "$(" ++ ModuleMakeVarName ++ ".cs)",
+    ModuleMakeVarNameCs = "$(" ++ ModuleMakeVarName ++ ".all_cs)",
     InitAction1 = "echo > " ++ InitFileName,
     InitAction2 = "$(MKLIBINIT) " ++ ModuleMakeVarNameCs ++
         " >> " ++ InitFileName,
@@ -2455,7 +2450,7 @@ generate_dep_file_collective_targets(Globals, ModuleName,
         {ext_cur(ext_cur_pmt_int3s), ".date3s"},
         {ext_cur(ext_cur_pmt_opts), ".optdates"},
         {ext_cur(ext_cur_pmt_trans_opts), ".trans_opt_dates"},
-        {ext_cur(ext_cur_pmt_javas), ".javas"},
+        {ext_cur(ext_cur_pmt_javas), ".all_javas"},
         {ext_cur(ext_cur_pmt_classes), ".classes"},
         {ext_cur(ext_cur_pmt_all_ints), ".dates"},
         {ext_cur(ext_cur_pmt_all_int3s), ".date3s"},
@@ -2496,8 +2491,9 @@ generate_dep_file_clean_targets(Globals, ModuleName, ModuleMakeVarName,
         ModuleName, RealCleanTargetName),
 
     % XXX Put these into a logical order.
-    CleanSuffixes = [".dirs", ".cs", ".mihs", ".all_os", ".all_pic_os",
-        ".c_dates", ".java_dates", ".useds", ".javas", ".profs",
+    % XXX Why not clean up C# files?
+    CleanSuffixes = [".dirs", ".all_cs", ".mihs", ".all_os", ".all_pic_os",
+        ".c_dates", ".java_dates", ".useds", ".all_javas", ".profs",
         ".dep_errs", ".errs", ".foreign_cs"],
     CleanFiles = [InitCFileName, InitObjFileName, InitPicObjFileName],
     MmakeRulesClean =
@@ -2516,9 +2512,9 @@ generate_dep_file_clean_targets(Globals, ModuleName, ModuleMakeVarName,
     % any spurious .int0 files created for nested submodules.
     % For further details, see the XXX comments above.
     RealCleanSuffixes = [".dates", ".date0s", ".date3s",
-        ".optdates", ".trans_opt_dates", ".ints", ".all_int0s", ".int3s",
+        ".optdates", ".trans_opt_dates", ".ints", ".int0s_to_clean", ".int3s",
         ".opts", ".trans_opts", ".analyses", ".requests", ".imdgs",
-        ".ds", ".module_deps", ".all_mhs", ".all_mihs", ".dlls",
+        ".ds", ".module_deps", ".mhs_to_clean", ".mihs_to_clean", ".dlls",
         ".foreign_dlls", ".classes"],
     RealCleanFiles = [ExeFileName ++ "$(EXT_FOR_EXE) ", InitFileName,
         LibFileName, SharedLibFileName, JarFileName, DepFileName, DvFileName],

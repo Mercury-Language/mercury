@@ -1045,8 +1045,8 @@ find_files_maybe_touched_by_task(ProgressStream, Globals, TargetFile, Task,
         TouchedTargetFiles = [TargetFile],
         get_object_extension(Globals, PIC, ObjExt),
         fact_table_file_name_return_dirs(Globals, $pred,
-            ext_cur_ngs_gs(ObjExt),
-            FactTableName, FactTableDirs, FactTableObjectFile),
+            ext_cur_ngs_gs(ObjExt), FactTableName,
+            FactTableDirs, FactTableObjectFile),
         create_any_dirs_on_path(FactTableDirs, !IO),
         TouchedFileNames = [FactTableObjectFile]
     ).
@@ -1214,11 +1214,11 @@ get_fact_table_foreign_code_file(Globals, Mkdir, ObjExt,
         FactTableFileName, ForeignCodeFile, !IO) :-
     % XXX EXT Neither of these calls should be needed.
     fact_table_file_name_return_dirs(Globals, $pred,
-        ext_cur_ngs_gs(ext_cur_ngs_gs_target_c),
-        FactTableFileName, FactTableDirsC, FactTableCFileName),
+        ext_cur_ngs_gs(ext_cur_ngs_gs_target_c), FactTableFileName,
+        FactTableDirsC, FactTableCFileName),
     maybe_create_any_dirs_on_path(Mkdir, FactTableDirsC, !IO),
-    fact_table_file_name_return_dirs(Globals, $pred, ObjExt,
-        FactTableFileName, FactTableDirsO, FactTableObjFileName),
+    fact_table_file_name_return_dirs(Globals, $pred, ObjExt, FactTableFileName,
+        FactTableDirsO, FactTableObjFileName),
     maybe_create_any_dirs_on_path(Mkdir, FactTableDirsO, !IO),
     ForeignCodeFile =
         foreign_code_file(lang_c, FactTableCFileName, FactTableObjFileName).

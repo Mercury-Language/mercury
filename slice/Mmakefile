@@ -209,78 +209,78 @@ dates:
 # The documentation of the reason for this set of rules
 # can be found in library/Mmakefile.
 
-.PHONY: os cs css javas
+.PHONY: all_os all_cs all_css all_javas
 
 ifeq ($(MMAKE_USE_MMC_MAKE),yes)
 
-os: \
-	mslice.os \
-	mdice.os \
-	mcov.os \
-	mtc_union.os \
-	mtc_diff.os 
+all_os: \
+	mslice.all_os \
+	mdice.all_os \
+	mcov.all_os \
+	mtc_union.all_os \
+	mtc_diff.all_os 
 
-cs: \
-	mslice.cs \
-	mdice.cs \
-	mcov.cs \
-	mtc_union.cs \
-	mtc_diff.cs 
-css: \
-	mslice.css \
-	mdice.css \
-	mcov.css \
-	mtc_union.css \
-	mtc_diff.css 
-javas: \
-	mslice.javas \
-	mdice.javas \
-	mcov.javas \
-	mtc_union.javas \
-	mtc_diff.javas 
-
-else
-ifneq ($(origin mslice.os),undefined)
-
-os: \
-	$(mslice.os) \
-	$(mdice.os) \
-	$(mcov.os) \
-	$(mtc_union.os) \
-	$(mtc_diff.os) 
-
-cs: \
-	$(mslice.cs) \
-	$(mdice.cs) \
-	$(mcov.cs) \
-	$(mtc_union.cs) \
-	$(mtc_diff.cs) 
-css: \
-	$(mslice.css) \
-	$(mdice.css) \
-	$(mcov.css) \
-	$(mtc_union.css) \
-	$(mtc_diff.css) 
-javas: \
-	$(mslice.javas) \
-	$(mdice.javas) \
-	$(mcov.javas) \
-	$(mtc_union.javas) \
-	$(mtc_diff.javas) 
+all_cs: \
+	mslice.all_cs \
+	mdice.all_cs \
+	mcov.all_cs \
+	mtc_union.all_cs \
+	mtc_diff.all_cs 
+all_css: \
+	mslice.all_css \
+	mdice.all_css \
+	mcov.all_css \
+	mtc_union.all_css \
+	mtc_diff.all_css 
+all_javas: \
+	mslice.all_javas \
+	mdice.all_javas \
+	mcov.all_javas \
+	mtc_union.all_javas \
+	mtc_diff.all_javas 
 
 else
+ifneq ($(origin mslice.all_os),undefined)
 
-os:
-	mmake depend; mmake os
+all_os: \
+	$(mslice.all_os) \
+	$(mdice.all_os) \
+	$(mcov.all_os) \
+	$(mtc_union.all_os) \
+	$(mtc_diff.all_os) 
 
-cs:
-	mmake depend; mmake cs
+all_cs: \
+	$(mslice.all_cs) \
+	$(mdice.all_cs) \
+	$(mcov.all_cs) \
+	$(mtc_union.all_cs) \
+	$(mtc_diff.all_cs) 
+all_css: \
+	$(mslice.all_css) \
+	$(mdice.all_css) \
+	$(mcov.all_css) \
+	$(mtc_union.all_css) \
+	$(mtc_diff.all_css) 
+all_javas: \
+	$(mslice.all_javas) \
+	$(mdice.all_javas) \
+	$(mcov.all_javas) \
+	$(mtc_union.all_javas) \
+	$(mtc_diff.all_javas) 
 
-css:
-	mmake depend; mmake css
+else
 
-javas:
-	mmake depend; mmake javas
+all_os:
+	mmake depend; mmake all_os
+
+all_cs:
+	mmake depend; mmake all_cs
+
+all_css:
+	mmake depend; mmake all_css
+
+all_javas:
+	mmake depend; mmake all_javas
 
 endif
 endif
@@ -301,7 +301,7 @@ install: install_slicer
 
 .PHONY: install_slicer
 install_slicer: mslice mdice mtc_union mcov mtc_diff
-	-[ -d $(INSTALL_MERC_BIN_DIR) ] || mkdir -p $(INSTALL_MERC_BIN_DIR)
+	-test -d $(INSTALL_MERC_BIN_DIR) || mkdir -p $(INSTALL_MERC_BIN_DIR)
 	cp `vpath_find mslice$(EXT_FOR_EXE)` \
 		$(INSTALL_MERC_BIN_DIR)/mslice$(EXT_FOR_EXE)
 	cp `vpath_find mdice$(EXT_FOR_EXE)` \

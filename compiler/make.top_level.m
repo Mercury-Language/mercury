@@ -70,7 +70,6 @@
 :- import_module dir.
 :- import_module pair.
 :- import_module set.
-:- import_module solutions.
 :- import_module string.
 :- import_module version_array.
 :- import_module version_hash_table.
@@ -107,10 +106,10 @@ make_process_compiler_args(ProgressStream, Globals, DetectedGradeFlags,
         % Accept and ignore `.depend' targets. `mmc --make' does not need
         % a separate make depend step. The dependencies for each module
         % are regenerated on demand.
-        NonDependTargets = list.filter(
+        list.filter(
             ( pred(Target::in) is semidet :-
                 not string.suffix(Target, ".depend")
-            ), Targets),
+            ), Targets, NonDependTargets),
         % Classify the remaining targets.
         list.map(classify_target(Globals), NonDependTargets,
             ClassifiedTargets),
@@ -248,12 +247,12 @@ classify_target(Globals, FileName, TopTargetFile) :-
         string.length(FileName, NameLength),
         search_backwards_for_dot(FileName, NameLength, DotLocn),
         string.split(FileName, DotLocn, ModuleNameStr0, Suffix),
-        solutions(classify_target_2(Globals, ModuleNameStr0, Suffix),
-            TopTargetFiles),
-        TopTargetFiles = [OnlyTopTargetFile]
+        classify_target_2(Globals, ModuleNameStr0, Suffix, TopTargetFilePrime)
     then
-        TopTargetFile = OnlyTopTargetFile
+        TopTargetFile = TopTargetFilePrime
     else if
+        % XXX This possibility should also be handled together with the
+        % rest of classify_target_2.
         string.append("lib", ModuleNameStr, FileName)
     then
         file_name_to_module_name(ModuleNameStr, ModuleName),
@@ -267,21 +266,24 @@ classify_target(Globals, FileName, TopTargetFile) :-
     ).
 
 :- pred classify_target_2(globals::in, string::in, string::in,
-    top_target_file::out) is nondet.
+    top_target_file::out) is semidet.
 
 classify_target_2(Globals, ModuleNameStr0, ExtStr, TopTargetFile) :-
+    % XXX This if-then-else chain cries out for conversion of most of it
+    % to a switch.
     ( if
-        extension_to_target_type(Globals, ExtStr, ModuleTargetType),
+        extension_to_target_type(Globals, ExtStr, ModuleTargetType)
         % The .cs extension was used to build all C target files, but .cs is
         % also the file name extension for a C# file. The former use is being
         % migrated over to the .all_cs target but we still accept it for now.
         % NOTE This workaround is still in use as of 2020 may 23, even though
         % it was added in 2010,
-        ExtStr \= ".cs"
+        % ZZZ ExtStr \= ".cs"
     then
         ModuleNameStr = ModuleNameStr0,
         TargetType = module_target(ModuleTargetType)
     else if
+        % ZZZ This is probably not needed anymore.
         target_extension_synonym(ExtStr, ModuleTargetType)
     then
         ModuleNameStr = ModuleNameStr0,
@@ -307,17 +309,24 @@ classify_target_2(Globals, ModuleNameStr0, ExtStr, TopTargetFile) :-
         ExecutableType = get_executable_type(Globals),
         TargetType = linked_target(ExecutableType)
     else if
-        (
-            string.append(".all_", Rest, ExtStr),
-            string.append(DotlessExtStr1, "s", Rest),
-            ExtStr1 = "." ++ DotlessExtStr1
-        ;
+        ( if
+            % string.append(".all_", DotAllLessExtStr, ExtStr),
+            % string.append(DotAllSlessExtStr, "s", DotAllLessExtStr),
+            string.remove_prefix(".all_", ExtStr, DotAllLessExtStr),
+            string.remove_suffix(DotAllLessExtStr, "s", DotAllSLessExtStr)
+        then
+            ExtStr1 = "." ++ DotAllSLessExtStr
+        else if
             % Deprecated.
-            string.append(ExtStr1, "s", ExtStr)
+            string.remove_suffix(ExtStr, "s", SLessExtStr)
+        then
+            ExtStr1 = SLessExtStr
+        else
+            fail
         ),
-        (
-            extension_to_target_type(Globals, ExtStr1, ModuleTargetType)
-        ;
+        ( if extension_to_target_type(Globals, ExtStr1, ModuleTargetType0) then
+            ModuleTargetType = ModuleTargetType0
+        else
             target_extension_synonym(ExtStr1, ModuleTargetType)
         ),
         % Not yet implemented. `build_all' targets are only used by

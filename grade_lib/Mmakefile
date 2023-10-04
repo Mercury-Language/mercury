@@ -107,62 +107,62 @@ tags_file_exists:
 # The documentation of the reason for this set of rules
 # can be found in library/Mmakefile.
 
-.PHONY: os cs css javas
+.PHONY: all_os all_cs all_css all_javas
 ifeq ($(MMAKE_USE_MMC_MAKE),yes)
-os: \
-	choose_grade.os \
-	test_grades.os \
-	try_all_grade_structs.os
+all_os: \
+	choose_grade.all_os \
+	test_grades.all_os \
+	try_all_grade_structs.all_os
 
-cs: \
-	choose_grade.cs \
-	test_grades.cs \
-	try_all_grade_structs.cs
+all_cs: \
+	choose_grade.all_cs \
+	test_grades.all_cs \
+	try_all_grade_structs.all_cs
 
-css: \
-	choose_grade.css \
-	test_grades.css \
-	try_all_grade_structs.css
+all_css: \
+	choose_grade.all_css \
+	test_grades.all_css \
+	try_all_grade_structs.all_css
 
-javas: \
-	choose_grade.javas \
-	test_grades.javas \
-	try_all_grade_structs.javas
-
-else
-ifneq ($(origin choose_grade.os),undefined)
-os: \
-	$(choose_grade.os) \
-	$(test_grades.os) \
-	$(try_all_grade_structs.os)
-
-cs: \
-	$(choose_grade.cs) \
-	$(test_grades.cs) \
-	$(try_all_grade_structs.cs)
-
-css: \
-	$(choose_grade.css) \
-	$(test_grades.css) \
-	$(try_all_grade_structs.css)
-
-javas: \
-	$(choose_grade.javas) \
-	$(test_grades.javas) \
-	$(try_all_grade_structs.javas)
+all_javas: \
+	choose_grade.all_javas \
+	test_grades.all_javas \
+	try_all_grade_structs.all_javas
 
 else
-os:
-	mmake depend; mmake os
+ifneq ($(origin choose_grade.all_os),undefined)
+all_os: \
+	$(choose_grade.all_os) \
+	$(test_grades.all_os) \
+	$(try_all_grade_structs.all_os)
 
-cs:
-	mmake depend; mmake cs
+all_cs: \
+	$(choose_grade.all_cs) \
+	$(test_grades.all_cs) \
+	$(try_all_grade_structs.all_cs)
 
-css:
-	mmake depend; mmake css
+all_css: \
+	$(choose_grade.all_css) \
+	$(test_grades.all_css) \
+	$(try_all_grade_structs.all_css)
 
-javas:
-	mmake depend; mmake javas
+all_javas: \
+	$(choose_grade.all_javas) \
+	$(test_grades.all_javas) \
+	$(try_all_grade_structs.all_javas)
+
+else
+all_os:
+	mmake depend; mmake all_os
+
+all_cs:
+	mmake depend; mmake all_cs
+
+all_css:
+	mmake depend; mmake all_css
+
+all_javas:
+	mmake depend; mmake all_javas
 endif
 endif
 

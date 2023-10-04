@@ -22,7 +22,7 @@
 
 CHECK_HDRS  =
 CHECK_MHDRS = $(mer_browser.mhs)
-CHECK_OBJS  = $(mer_browser.os)
+CHECK_OBJS  = $(mer_browser.all_os)
 ALLOW_LIB_PREFIX=yes
 ALLOW_BROWSER_PREFIX=yes
 ALLOW_MDBCOMP_PREFIX=yes
@@ -232,28 +232,28 @@ dates:
 
 .PHONY: os cs css javas
 ifeq ($(MMAKE_USE_MMC_MAKE),yes)
-os:	$(BROWSER_LIB_NAME).os
-cs:	$(BROWSER_LIB_NAME).cs
-css:	$(BROWSER_LIB_NAME).css
-javas:	$(BROWSER_LIB_NAME).javas
+all_os:		$(BROWSER_LIB_NAME).all_os
+all_cs:		$(BROWSER_LIB_NAME).all_cs
+all_css:	$(BROWSER_LIB_NAME).all_css
+all_javas:	$(BROWSER_LIB_NAME).all_javas
 else
-ifneq ($(origin $(BROWSER_LIB_NAME).os),undefined)
-os:	$($(BROWSER_LIB_NAME).os)
-cs:	$($(BROWSER_LIB_NAME).cs)
-css:	$($(BROWSER_LIB_NAME).css)
-javas:	$($(BROWSER_LIB_NAME).javas)
+ifneq ($(origin $(BROWSER_LIB_NAME).all_os),undefined)
+all_os:		$($(BROWSER_LIB_NAME).all_os)
+all_cs:		$($(BROWSER_LIB_NAME).all_cs)
+all_css:	$($(BROWSER_LIB_NAME).all_css)
+all_javas:	$($(BROWSER_LIB_NAME).all_javas)
 else
-os:
+all_os:
 	mmake depend; mmake os
 
-cs:
-	mmake depend; mmake cs
+all_cs:
+	mmake depend; mmake all_cs
 
-css:
-	mmake depend; mmake css
+all_css:
+	mmake depend; mmake all_css
 
-javas:
-	mmake depend; mmake javas
+all_javas:
+	mmake depend; mmake all_javas
 endif
 endif
 

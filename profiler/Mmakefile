@@ -110,30 +110,30 @@ dates:
 # The documentation of the reason for this set of rules
 # can be found in library/Mmakefile.
 
-.PHONY: os cs css javas
+.PHONY: all_os all_cs all_css all_javas
 ifeq ($(MMAKE_USE_MMC_MAKE),yes)
-os:	mercury_profile.os
-cs:	mercury_profile.cs
-css:	mercury_profile.css
-javas:	mercury_profile.javas
+all_os:		mercury_profile.all_os
+all_cs:		mercury_profile.all_cs
+all_css:	mercury_profile.all_css
+all_javas:	mercury_profile.all_javas
 else
-ifneq ($(origin mercury_profile.os),undefined)
-os:	$(mercury_profile.os)
-cs:	$(mercury_profile.cs)
-css:	$(mercury_profile.css)
-javas:	$(mercury_profile.javas)
+ifneq ($(origin mercury_profile.all_os),undefined)
+all_os:		$(mercury_profile.all_os)
+all_cs:		$(mercury_profile.all_cs)
+all_css:	$(mercury_profile.all_css)
+all_javas:	$(mercury_profile.all_javas)
 else
-os:
-	mmake depend; mmake os
+all_os:
+	mmake depend; mmake all_os
 
-cs:
-	mmake depend; mmake cs
+all_cs:
+	mmake depend; mmake all_cs
 
-css:
-	mmake depend; mmake css
+all_css:
+	mmake depend; mmake all_css
 
-javas:
-	mmake depend; mmake javas
+all_javas:
+	mmake depend; mmake all_javas
 endif
 endif
 
@@ -152,7 +152,7 @@ install: install_profiler
 
 .PHONY: install_profiler
 install_profiler: mercury_profile
-	-[ -d $(INSTALL_MERC_BIN_DIR) ] || mkdir -p $(INSTALL_MERC_BIN_DIR)
+	-test -d $(INSTALL_MERC_BIN_DIR) || mkdir -p $(INSTALL_MERC_BIN_DIR)
 	cp `vpath_find mercury_profile$(EXT_FOR_EXE)` $(INSTALL_MERC_BIN_DIR)
 ifeq ($(findstring java,$(GRADE)),java)
 	cp `vpath_find mercury_profile.jar` $(INSTALL_MERC_BIN_DIR)

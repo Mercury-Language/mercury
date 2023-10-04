@@ -125,28 +125,28 @@ dates:
 
 .PHONY: os cs css javas
 ifeq ($(MMAKE_USE_MMC_MAKE),yes)
-os:     mfilterjavac.os
-cs:     mfilterjavac.cs
-css:    mfilterjavac.css
-javas:  mfilterjavac.javas
+all_os:     mfilterjavac.all_os
+all_cs:     mfilterjavac.all_cs
+all_css:    mfilterjavac.all_css
+all_javas:  mfilterjavac.all_javas
 else
-ifneq ($(origin mfilterjavac.os),undefined)
-os:     $(mfilterjavac.os)
-cs:     $(mfilterjavac.cs)
-css:    $(mfilterjavac.css)
-javas:  $(mfilterjavac.javas)
+ifneq ($(origin mfilterjavac.all_os),undefined)
+all_os:     $(mfilterjavac.all_os)
+all_cs:     $(mfilterjavac.all_cs)
+all_css:    $(mfilterjavac.all_css)
+all_javas:  $(mfilterjavac.all_javas)
 else
-os:
-	mmake depend; mmake os
+all_os:
+	mmake depend; mmake all_os
 
-cs:
-	mmake depend; mmake cs
+all_cs:
+	mmake depend; mmake all_cs
 
-css:
-	mmake depend; mmake css
+all_css:
+	mmake depend; mmake all_css
 
-javas:
-	mmake depend; mmake javas
+all_javas:
+	mmake depend; mmake all_javas
 endif
 endif
 
@@ -170,7 +170,7 @@ INSTALL_PROGRAM=mfilterjavac$(EXT_FOR_EXE)
 endif
 
 install: mfilterjavac
-	-[ -d $(INSTALL_MERC_BIN_DIR) ] || mkdir -p $(INSTALL_MERC_BIN_DIR)
+	-test -d $(INSTALL_MERC_BIN_DIR) || mkdir -p $(INSTALL_MERC_BIN_DIR)
 	cp `vpath_find $(INSTALL_PROGRAM)` $(INSTALL_MERC_BIN_DIR)/$(INSTALL_PROGRAM)
 
 #-----------------------------------------------------------------------------#

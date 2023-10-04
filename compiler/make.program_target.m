@@ -1600,30 +1600,31 @@ install_ints_and_headers(ProgressStream, Globals, SubdirLinkSucceeded,
         % find the `.int0' file.
         module_dep_info_get_children(ModuleDepInfo, Children),
         ( if set.is_empty(Children) then
-            Exts0 = []
+            ExtExtDirs0 = []
         else
-            Exts0 = [{ext_cur_ngs(ext_cur_ngs_int_int0), "int0s"}]
+            ExtExtDirs0 = [{ext_cur_ngs(ext_cur_ngs_int_int0), "int0s"}]
         ),
         globals.get_any_intermod(Globals, AnyIntermod),
         (
             AnyIntermod = yes,
-            Exts1 = [{ext_cur_ngs_gs_max_ngs(ext_cur_ngs_gs_max_ngs_opt_plain),
-                "opts"} | Exts0]
+            ExtExtDirs1 =
+                [{ext_cur_ngs_gs_max_ngs(ext_cur_ngs_gs_max_ngs_opt_plain),
+                "opts"} | ExtExtDirs0]
         ;
             AnyIntermod = no,
-            Exts1 = Exts0
+            ExtExtDirs1 = ExtExtDirs0
         ),
-        Exts = [{ext_cur_ngs(ext_cur_ngs_int_int1), "ints"},
+        ExtExtDirs = [{ext_cur_ngs(ext_cur_ngs_int_int1), "ints"},
             {ext_cur_ngs(ext_cur_ngs_int_int2), "int2s"},
             {ext_cur_ngs(ext_cur_ngs_int_int3), "int3s"},
             {ext_cur_ngs(ext_cur_ngs_misc_module_dep), "module_deps"}
-            | Exts1],
+            | ExtExtDirs1],
         globals.lookup_string_option(Globals, install_prefix, Prefix),
         LibDir = Prefix/"lib"/"mercury",
         list.map_foldl(
             install_subdir_file(ProgressStream, Globals, SubdirLinkSucceeded,
                 LibDir/"ints", ModuleName),
-            Exts, Results, !IO),
+            ExtExtDirs, Results, !IO),
 
         globals.get_target(Globals, Target),
         (
@@ -1957,14 +1958,14 @@ install_grade_ints_and_headers(ProgressStream, Globals, LinkSucceeded,
     maybe_succeeded::out, io::di, io::uo) is det.
 
 install_subdir_file(ProgressStream, Globals, SubdirLinkSucceeded, InstallDir,
-        ModuleName, {Ext, Exts}, Succeeded, !IO) :-
+        ModuleName, {Ext, ExtDir}, Succeeded, !IO) :-
     module_name_to_file_name(Globals, $pred, Ext, ModuleName, FileName),
     install_file(ProgressStream, Globals, FileName, InstallDir,
         Succeeded1, !IO),
     (
         SubdirLinkSucceeded = did_not_succeed,
         install_file(ProgressStream, Globals, FileName,
-            InstallDir/"Mercury"/Exts, Succeeded2, !IO),
+            InstallDir/"Mercury"/ExtDir, Succeeded2, !IO),
         Succeeded = Succeeded1 `and` Succeeded2
     ;
         SubdirLinkSucceeded = succeeded,

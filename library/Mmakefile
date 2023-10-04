@@ -21,7 +21,7 @@ EXTRA_LDLIBS =
 
 CHECK_HDRS  =
 CHECK_MHDRS = $(mer_std.mhs)
-CHECK_OBJS  = $(mer_std.os)
+CHECK_OBJS  = $(mer_std.all_os)
 ALLOW_LIB_PREFIX=yes
 ALLOW_BROWSER_PREFIX=no
 ALLOW_MDBCOMP_PREFIX=no
@@ -305,8 +305,8 @@ dates:
 
 #-----------------------------------------------------------------------------#
 
-# We have three separate rules for each of the os, cs, css, javas and
-# opts targets, because no single rule can get the job done.
+# We have three separate rules for each of the all_os, all_cs, all_css,
+# all_javas and all_opts targets, because no single rule can get the job done.
 #
 # 1.	When we are using mmake merely as a wrapper around mmc --make,
 #	we get mmc --make compute the set of .o, .c, .cs, .java or .opt files
@@ -321,10 +321,10 @@ dates:
 #	so it is mmake's job to decide which files to ask mmc to (re)build.
 #	Mmake gets this information from the .dv files it reads. These files
 #	are created by "mmake depend" on an executable or library, and will
-#	define the make variables x.os, x.cs, x.css, x.javas and x.opts
-#	(if the executable or library is named x).
+#	define the make variables x.all_os, x.all_cs, x.all_css, x.all_javas
+#	and x.opts (if the executable or library is named x).
 #
-# 2a.	If e.g. x.os is defined (which we test for as "not undefined"),
+# 2a.	If e.g. x.all_os is defined (which we test for as "not undefined"),
 #	that means that "mmake depend" has been run at least on x, and since
 #	we just about always just run "mmake depend" in a directory instead of
 #	running "mmake x.depend" on its executables/libraries individually,
@@ -332,54 +332,54 @@ dates:
 #	we get the set of .o, .c, .cs, .java or .opt files to (re)build
 #	from these variables defined in the .dv files.
 #
-# 2b.	Conversely, if x.os is undefined, we assume that all the related
+# 2b.	Conversely, if x.all_os is undefined, we assume that all the related
 #	make variables are also undefined. In this case, we invoke mmake
 #	depend to build the .dv files, and then invoke mmake again to do
 #	the job we were asked to do. We need two separate mmake invocations,
 #	because mmake can read .dv files only when it starts up. And while
 #	the second invocation of mmake looks like a case of infinite tail
 #	recursion, it isn't, because after the mmake depend step, the
-#	recursive invocation will end up using the 2a rule, not the 2b.
+#	recursive invocation will end up using the 2a rule, not the 2b rule.
 #
 # An additional reason why we want to handle 2a separately from 2b is that
 # the mere existence of an mmake rule such as
 #
-#	os:	$(mslice.os)
+#	all_os:	$(mslice.all_os)
 #
-# in the Mmakefile will generate a warning about mslice.os being undefined
+# in the Mmakefile will generate a warning about mslice.all_os being undefined
 # (if in fact it is undefined) *even if* the mmake invocation does not
-# involve the "os" target in any way, which can be confusing, and even
+# involve the "all_os" target in any way, which can be confusing, and even
 # to those to whom it isn't confusing, it *is* annoying.
 
-.PHONY: os cs css javas opts
+.PHONY: all_os all_cs all_css all_javas all_opts
 ifeq ($(MMAKE_USE_MMC_MAKE),yes)
-os:	$(STD_LIB_NAME).os
-cs:	$(STD_LIB_NAME).cs
-css:	$(STD_LIB_NAME).css
-javas:	$(STD_LIB_NAME).javas
-opts:	$(STD_LIB_NAME).opts
+all_os:		$(STD_LIB_NAME).all_os
+all_cs:		$(STD_LIB_NAME).all_cs
+all_css:	$(STD_LIB_NAME).all_css
+all_javas:	$(STD_LIB_NAME).all_javas
+all_opts:	$(STD_LIB_NAME).all_opts
 else
-ifneq ($(origin $(STD_LIB_NAME).os),undefined)
-os:	$($(STD_LIB_NAME).os)
-cs:	$($(STD_LIB_NAME).cs)
-css:	$($(STD_LIB_NAME).css)
-javas:	$($(STD_LIB_NAME).javas)
-opts:	$($(STD_LIB_NAME).opts)
+ifneq ($(origin $(STD_LIB_NAME).all_os),undefined)
+all_os:		$($(STD_LIB_NAME).all_os)
+all_cs:		$($(STD_LIB_NAME).all_cs)
+all_css:	$($(STD_LIB_NAME).all_css)
+all_javas:	$($(STD_LIB_NAME).all_javas)
+all_opts:	$($(STD_LIB_NAME).all_opts)
 else
-os:
-	mmake depend; mmake os
+all_os:
+	mmake depend; mmake all_os
 
-cs:
-	mmake depend; mmake cs
+all_cs:
+	mmake depend; mmake all_cs
 
-css:
-	mmake depend; mmake css
+all_css:
+	mmake depend; mmake all_css
 
-javas:
-	mmake depend; mmake javas
+all_javas:
+	mmake depend; mmake all_javas
 
-opts:
-	mmake depend; mmake opts
+all_opts:
+	mmake depend; mmake all_opts
 endif
 endif
 
@@ -395,8 +395,8 @@ endif
 ifeq ("$(findstring java,$(GRADE))","java")
 
 copy_java_runtime_files:
-	[ -d jmercury ] || mkdir jmercury
-	[ -d jmercury/runtime ] || cp -r ../java/runtime jmercury
+	test -d jmercury || mkdir jmercury
+	test -d jmercury/runtime || cp -r ../java/runtime jmercury
 
 install_mer_rt: $(RT_LIB_NAME).jar
 	mkdir -p $(INSTALL_PREFIX)/lib/mercury/lib/$(GRADE)
@@ -473,7 +473,7 @@ endif	# GRADE != csharp && GRADE != java
 # have changed. Only some source files use the configuration macros,
 # but these uses may leak into other object files with inter-module
 # optimization.
-$(mer_std.os): $(RUNTIME_DIR)/mercury_conf.h
+$(mer_std.all_os): $(RUNTIME_DIR)/mercury_conf.h
 
 # The object files in this directory depend on many of the header files
 # in the runtime. However, changes to many of these header files require

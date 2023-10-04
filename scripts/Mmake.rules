@@ -19,7 +19,7 @@ main_target: $(MAIN_TARGET)
 
 #-----------------------------------------------------------------------------#
 
-# Beware that the order of suffixes is significant.
+# Note that the order of suffixes is significant.
 .SUFFIXES: .m .err \
 		.int0 .int .int2 .int3 .opt .trans_opt \
 		.dep .depend .dv .doit .ugly \
@@ -379,9 +379,9 @@ lib%.install_library: lib%.$A lib%.$(EXT_FOR_SHARED_LIB) \
 lib%.install_grades:
 	rm -rf tmp_dir && \
 	mkdir tmp_dir && \
-	grade_files="$(foreach ext,$(GRADE_SUBDIR_EXTS),$($*.$(ext)s))" && \
+	grade_files="$(foreach mve,$(GRADE_SUBDIR_MVEXTS),$($*.$(mve)))" && \
 	for file in x $$grade_files; do \
-		if [ "$$file" != "x" ]; then \
+		if test "$$file" != "x"; then \
 			mv -f $$file tmp_dir > /dev/null 2>&1; \
 			true; \
 		fi; \
@@ -389,13 +389,13 @@ lib%.install_grades:
 	{ mv -f $(deps_subdir)$*.dep $(deps_subdir)$*.dv \
 		*.a *.so tmp_dir || true; } && \
 	for grade in $(ALL_LIBGRADES); do \
-		if [ "$$grade" != "$(GRADE)" ]; then \
+		if test "$$grade" != "$(GRADE)"; then \
 			$(MMAKE) GRADE=$$grade $*.depend || \
 				exit 1; \
 			$(MMAKE) GRADE=$$grade lib$*.install_library || \
 				exit 1; \
 			for file in x $$grade_files; do \
-				if [ "$$file" != "x" ]; then \
+				if test "$$file" != "x"; then \
 					rm -f $$file; \
 				fi; \
 			done; \
@@ -404,7 +404,7 @@ lib%.install_grades:
 		fi; \
 	done && \
 	for file in x $$grade_files; do \
-		if [ "$$file" != "x" ]; then \
+		if test "$$file" != "x"; then \
 		    mv -f tmp_dir/`basename $$file` $$file > /dev/null 2>&1; \
 		    true; \
 		fi; \
@@ -414,25 +414,26 @@ lib%.install_grades:
 
 .PHONY: install_lib_dirs
 install_lib_dirs:
-	-[ -d $(INSTALL_INT_DIR) ] || $(INSTALL_MKDIR) $(INSTALL_INT_DIR)
-	-[ -d $(INSTALL_INC_DIR) ] || $(INSTALL_MKDIR) $(INSTALL_INC_DIR)
-	-[ -d $(INSTALL_MODULE_DIR) ] || $(INSTALL_MKDIR) $(INSTALL_MODULE_DIR)
+	-test -d $(INSTALL_INT_DIR) || $(INSTALL_MKDIR) $(INSTALL_INT_DIR)
+	-test -d $(INSTALL_INC_DIR) || $(INSTALL_MKDIR) $(INSTALL_INC_DIR)
+	-test -d $(INSTALL_MODULE_DIR) || \
+		$(INSTALL_MKDIR) $(INSTALL_MODULE_DIR)
 	# The following is needed to support the `--use-subdirs' option.
-	-[ -d $(INSTALL_INT_DIR)/Mercury ] || \
+	-test -d $(INSTALL_INT_DIR)/Mercury || \
 		$(INSTALL_MKDIR) $(INSTALL_INT_DIR)/Mercury
 
 .PHONY: install_grade_dirs
 install_grade_dirs: #install_lib_dirs
-	-[ -d $(INSTALL_MERC_LIB_DIR) ] || \
+	-test -d $(INSTALL_MERC_LIB_DIR) || \
 		$(INSTALL_MKDIR) $(INSTALL_MERC_LIB_DIR)
-	-[ -d $(INSTALL_GRADE_INC_DIR) ] || \
+	-test -d $(INSTALL_GRADE_INC_DIR) || \
 		$(INSTALL_MKDIR) $(INSTALL_GRADE_INC_DIR)
-	-[ -d $(INSTALL_GRADE_INT_DIR) ] || \
+	-test -d $(INSTALL_GRADE_INT_DIR) || \
 		$(INSTALL_MKDIR) $(INSTALL_GRADE_INT_DIR)
-	-[ -d $(INSTALL_GRADE_MODULE_DIR) ] || \
+	-test -d $(INSTALL_GRADE_MODULE_DIR) || \
 		$(INSTALL_MKDIR) $(INSTALL_GRADE_MODULE_DIR)
 	# The following is needed to support the `--use-subdirs' option.
-	-[ -d $(INSTALL_GRADE_INC_DIR)/Mercury ] || \
+	-test -d $(INSTALL_GRADE_INC_DIR)/Mercury || \
 		$(INSTALL_MKDIR) $(INSTALL_GRADE_INC_DIR)/Mercury
-	-[ -d $(INSTALL_GRADE_INT_DIR)/Mercury ] || \
+	-test -d $(INSTALL_GRADE_INT_DIR)/Mercury || \
 		$(INSTALL_MKDIR) $(INSTALL_GRADE_INT_DIR)/Mercury

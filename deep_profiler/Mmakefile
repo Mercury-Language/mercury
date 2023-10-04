@@ -229,88 +229,88 @@ dates:
 # The documentation of the reason for this set of rules
 # can be found in library/Mmakefile.
 
-.PHONY: os cs css javas
+.PHONY: all_os all_cs all_css all_javas
 
 ifeq ($(MMAKE_USE_MMC_MAKE),yes)
 
-os: \
-	mdprof_cgi.os \
-	mdprof_test.os \
-	mdprof_dump.os \
-	mdprof_create_feedback.os \
-	mdprof_report_feedback.os \
-	mdprof_procrep.os
+all_os: \
+	mdprof_cgi.all_os \
+	mdprof_test.all_os \
+	mdprof_dump.all_os \
+	mdprof_create_feedback.all_os \
+	mdprof_report_feedback.all_os \
+	mdprof_procrep.all_os
 
-cs: \
-	mdprof_cgi.cs \
-	mdprof_test.cs \
-	mdprof_dump.cs \
-	mdprof_create_feedback.cs \
-	mdprof_report_feedback.cs \
-	mdprof_procrep.cs
+all_cs: \
+	mdprof_cgi.all_cs \
+	mdprof_test.all_cs \
+	mdprof_dump.all_cs \
+	mdprof_create_feedback.all_cs \
+	mdprof_report_feedback.all_cs \
+	mdprof_procrep.all_cs
 
-css:  \
-	mdprof_cgi.css \
-	mdprof_test.css \
-	mdprof_dump.css \
-	mdprof_create_feedback.css \
-	mdprof_report_feedback.css \
-	mdprof_procrep.css
+all_css:  \
+	mdprof_cgi.all_css \
+	mdprof_test.all_css \
+	mdprof_dump.all_css \
+	mdprof_create_feedback.all_css \
+	mdprof_report_feedback.all_css \
+	mdprof_procrep.all_css
 
-javas: \
-	mdprof_cgi.javas \
-	mdprof_test.javas \
-	mdprof_dump.javas \
-	mdprof_create_feedback.javas \
-	mdprof_report_feedback.javas \
-	mdprof_procrep.javas
+all_javas: \
+	mdprof_cgi.all_javas \
+	mdprof_test.all_javas \
+	mdprof_dump.all_javas \
+	mdprof_create_feedback.all_javas \
+	mdprof_report_feedback.all_javas \
+	mdprof_procrep.all_javas
 
 else
-ifneq ($(origin mdprof_cgi.os),undefined)
+ifneq ($(origin mdprof_cgi.all_os),undefined)
 
-os: \
-	$(mdprof_cgi.os) \
-	$(mdprof_test.os) \
-	$(mdprof_dump.os) \
-	$(mdprof_create_feedback.os) \
-	$(mdprof_report_feedback.os) \
-	$(mdprof_procrep.os)
+all_os: \
+	$(mdprof_cgi.all_os) \
+	$(mdprof_test.all_os) \
+	$(mdprof_dump.all_os) \
+	$(mdprof_create_feedback.all_os) \
+	$(mdprof_report_feedback.all_os) \
+	$(mdprof_procrep.all_os)
 
-cs: \
-	$(mdprof_cgi.cs) \
-	$(mdprof_test.cs) \
-	$(mdprof_dump.cs) \
-	$(mdprof_create_feedback.cs) \
-	$(mdprof_report_feedback.cs) \
-	$(mdprof_procrep.cs)
+all_cs: \
+	$(mdprof_cgi.all_cs) \
+	$(mdprof_test.all_cs) \
+	$(mdprof_dump.all_cs) \
+	$(mdprof_create_feedback.all_cs) \
+	$(mdprof_report_feedback.all_cs) \
+	$(mdprof_procrep.all_cs)
 
-css: \
-	$(mdprof_cgi.css) \
-	$(mdprof_test.css) \
-	$(mdprof_dump.css) \
-	$(mdprof_create_feedback.css) \
-	$(mdprof_report_feedback.css) \
-	$(mdprof_procrep.css)
+all_css: \
+	$(mdprof_cgi.all_css) \
+	$(mdprof_test.all_css) \
+	$(mdprof_dump.all_css) \
+	$(mdprof_create_feedback.all_css) \
+	$(mdprof_report_feedback.all_css) \
+	$(mdprof_procrep.all_css)
 
-javas: \
-	$(mdprof_cgi.javas) \
-	$(mdprof_test.javas) \
-	$(mdprof_dump.javas) \
-	$(mdprof_create_feedback.javas) \
-	$(mdprof_report_feedback.javas) \
-	$(mdprof_procrep.javas)
+all_javas: \
+	$(mdprof_cgi.all_javas) \
+	$(mdprof_test.all_javas) \
+	$(mdprof_dump.all_javas) \
+	$(mdprof_create_feedback.all_javas) \
+	$(mdprof_report_feedback.all_javas) \
+	$(mdprof_procrep.all_javas)
 else
-os:
-	mmake depend; mmake os
+all_os:
+	mmake depend; mmake all_os
 
-cs:
-	mmake depend; mmake cs
+all_cs:
+	mmake depend; mmake all_cs
 
-css:
-	mmake depend; mmake css
+all_css:
+	mmake depend; mmake all_css
 
-javas:
-	mmake depend; mmake javas
+all_javas:
+	mmake depend; mmake all_javas
 endif
 endif
 
@@ -363,7 +363,7 @@ install_cgi_progs: mdprof_cgi mdprof_dump mdprof_test \
 	# distribution (even if the step above failed). It is useful for
 	# mdprof_test and mdprof_dump to be available when debugging problems
 	# with the deep profiler, so we install them as well.
-	-[ -d $(INSTALL_MERC_BIN_DIR) ] || mkdir -p $(INSTALL_MERC_BIN_DIR)
+	-test -d $(INSTALL_MERC_BIN_DIR) || mkdir -p $(INSTALL_MERC_BIN_DIR)
 	cp `vpath_find mdprof_cgi$(EXT_FOR_EXE)` \
 		$(INSTALL_MERC_BIN_DIR)/mdprof_cgi$(EXT_FOR_EXE)
 	cp `vpath_find mdprof_test$(EXT_FOR_EXE)` \

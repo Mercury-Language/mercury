@@ -181,37 +181,38 @@ dates:
 # The documentation of the reason for this set of rules
 # can be found in library/Mmakefile.
 
-# Note that the cs and os targets don't build mercury_compile_init.{c,o}.
+# Note that the all_cs and all_os targets don't build
+# mercury_compile_init.{c,o}.
 
-.PHONY: os cs css javas opts
+.PHONY: all_os all_cs all_css all_javas all_opts
 ifeq ($(MMAKE_USE_MMC_MAKE),yes)
-os:	$(MC_PROG).os
-cs:	$(MC_PROG).cs
-css:	$(MC_PROG).css
-javas:	$(MC_PROG).javas
-opts:	$(MC_PROG).opts
+all_os:		$(MC_PROG).all_os
+all_cs:		$(MC_PROG).all_cs
+all_css:	$(MC_PROG).all_css
+all_javas:	$(MC_PROG).all_javas
+all_opts:	$(MC_PROG).all_opts
 else
-ifneq ($(origin $(MC_PROG).os),undefined)
-os:	$($(MC_PROG).os)
-cs:	$($(MC_PROG).cs)
-css:	$($(MC_PROG).css)
-javas:	$($(MC_PROG).javas)
-opts:	$($(MC_PROG).opts)
+ifneq ($(origin $(MC_PROG).all_os),undefined)
+all_os:		$($(MC_PROG).all_os)
+all_cs:		$($(MC_PROG).all_cs)
+all_css:	$($(MC_PROG).all_css)
+all_javas:	$($(MC_PROG).all_javas)
+all_opts:	$($(MC_PROG).all_opts)
 else
-os:
-	mmake depend; mmake os
+all_os:
+	mmake depend; mmake all_os
 
-cs:
-	mmake depend; mmake cs
+all_cs:
+	mmake depend; mmake all_cs
 
-css:
-	mmake depend; mmake css
+all_css:
+	mmake depend; mmake all_css
 
-javas:
-	mmake depend; mmake javas
+all_javas:
+	mmake depend; mmake all_javas
 
-opts:
-	mmake depend; mmake opts
+all_opts:
+	mmake depend; mmake all_opts
 endif
 endif
 
@@ -241,7 +242,7 @@ install_mercury: install_compiler
 
 .PHONY: install_dirs
 install_dirs:
-	-[ -d $(INSTALL_MERC_BIN_DIR) ] || mkdir -p $(INSTALL_MERC_BIN_DIR)
+	-test -d $(INSTALL_MERC_BIN_DIR) || mkdir -p $(INSTALL_MERC_BIN_DIR)
 
 # If the compiler is built in the Java grade then we need to install Java
 # archive containing its class files, 'mercury_compiler.jar', but

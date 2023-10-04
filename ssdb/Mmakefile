@@ -22,7 +22,7 @@
 
 CHECK_HDRS  =
 CHECK_MHDRS = $(mer_ssdb.mhs)
-CHECK_OBJS  = $(mer_ssdb.os)
+CHECK_OBJS  = $(mer_ssdb.all_os)
 ALLOW_LIB_PREFIX=yes
 ALLOW_BROWSER_PREFIX=yes
 ALLOW_MDBCOMP_PREFIX=yes
@@ -110,13 +110,15 @@ LN	= ln
 # complete, so we need to pass `--allow-stubs' to get them to compile.
 # Since the standard library is compiled with `--halt-at-warn',
 # we also need `--no-warn-stubs'.
+# XXX That comment seems out of place: this is not the directory
+# of the standard library.
 ifneq ("$(filter csharp% java%,$(GRADE))","")
 MCFLAGS += --allow-stubs --no-warn-stubs
 endif
 
 #-----------------------------------------------------------------------------#
 
-# Stuff for Windows DLLS using gnu-win32
+# Stuff for Windows DLLS using gnu-win32.
 
 ifeq ($(USE_DLLS),yes)
 
@@ -201,37 +203,30 @@ dates:
 
 .PHONY: os cs css javas
 ifeq ($(MMAKE_USE_MMC_MAKE),yes)
-os:	$(SSDB_LIB_NAME).os
-cs:	$(SSDB_LIB_NAME).cs
-css:	$(SSDB_LIB_NAME).css
-javas:	$(SSDB_LIB_NAME).javas
+all_os:		$(SSDB_LIB_NAME).all_os
+all_cs:		$(SSDB_LIB_NAME).all_cs
+all_css:	$(SSDB_LIB_NAME).all_css
+all_javas:	$(SSDB_LIB_NAME).all_javas
 else
-ifneq ($(origin $(SSDB_LIB_NAME).os),undefined)
-os:	$($(SSDB_LIB_NAME).os)
-cs:	$($(SSDB_LIB_NAME).cs)
-css:	$($(SSDB_LIB_NAME).css)
-javas:	$($(SSDB_LIB_NAME).javas)
+ifneq ($(origin $(SSDB_LIB_NAME).all_os),undefined)
+all_os:		$($(SSDB_LIB_NAME).all_os)
+all_cs:		$($(SSDB_LIB_NAME).all_cs)
+all_css:	$($(SSDB_LIB_NAME).all_css)
+all_javas:	$($(SSDB_LIB_NAME).all_javas)
 else
-os:
-	mmake depend; mmake os
+all_os:
+	mmake depend; mmake all_os
 
-cs:
-	mmake depend; mmake cs
+all_cs:
+	mmake depend; mmake all_cs
 
-css:
-	mmake depend; mmake css
+all_css:
+	mmake depend; mmake all_css
 
-javas:
-	mmake depend; mmake javas
+all_javas:
+	mmake depend; mmake all_javas
 endif
 endif
-
-#-----------------------------------------------------------------------------#
-
-# Ensure we recompile mdb__version if VERSION is changed.
-$(os_subdir)mdb.o \
-$(os_subdir)mdb.pic_o \
-        : $(RUNTIME_DIR)/mercury_conf.h
 
 #-----------------------------------------------------------------------------#
 
