@@ -213,119 +213,124 @@ do_test(Term, !IO) :-
     io.write_string("\ntest input <", !IO),
     io.print(Term, !IO),
     io.write_string(">\n", !IO),
-    % The code of do_test_2 itself does not throw any exceptions (anymore),
-    % but the implementations of io.write_binary and io.read_binary in the
-    % Mercury standard library *may* throw exceptions. We catch them here.
-    try_io(do_test_2(Term), TryResult, !IO),
-    (
-        TryResult = succeeded(MaybeTestErrorMsg),
-        (
-            MaybeTestErrorMsg = no,
-            io.print("test passed\n", !IO)
-        ;
-            MaybeTestErrorMsg = yes(ErrorMsg),
-            io.format("test failed with this error:\n%s\n", [s(ErrorMsg)], !IO)
-        )
-    ;
-        TryResult = exception(Univ),
-        io.write_string("test threw this exception:\n", !IO),
-        io.print_line(Univ, !IO)
-    ).
-
-:- pred do_test_2(T::in, maybe(string)::out, io::di, io::uo) is det.
-
-do_test_2(Term, MaybeTestErrorMsg, !IO) :-
     io.file.make_temp_file(FileNameRes, !IO),
-    ( if FileNameRes = ok(FileName) then
-        io.open_binary_output(FileName, OutputResult, !IO),
+    (
+        FileNameRes = ok(FileName),
+        % The code of do_test_2 itself does not throw any exceptions (anymore),
+        % but the implementations of io.write_binary and io.read_binary in the
+        % Mercury standard library *may* throw exceptions. We catch them here.
+        try_io(do_test_2(FileName, Term), TryResult, !IO),
         (
-            OutputResult = ok(OutputStream),
-            io.write_byte(OutputStream, 42, !IO),
-            io.write_binary(OutputStream, Term, !IO),
-            io.write_byte(OutputStream, 43, !IO),
-            io.close_binary_output(OutputStream, !IO),
-            io.open_binary_input(FileName, InputResult, !IO),
+            TryResult = succeeded(MaybeTestErrorMsg),
             (
-                InputResult = ok(InputStream),
-                io.read_byte(InputStream, Result42, !IO),
-                io.read_binary(InputStream, ResultTerm, !IO),
-                io.read_byte(InputStream, Result43, !IO),
-                io.close_binary_input(InputStream, !IO),
-                ( if
-                    Result42 = ok(42),
-                    ResultTerm = ok(Term),
-                    Result43 = ok(43)
-                then
-                    MaybeTestErrorMsg = no
-                else
-                    ( if
-                        Result42 = ok(42),
-                        ResultTerm = ok(Term)
-                    then
-                        (
-                            Result43 = ok(ReadBack43),
-                            BackStr = string.string(ReadBack43),
-                            string.format("orig 43, readback <%s>",
-                                [s(BackStr)], Msg)
-                        ;
-                            Result43 = error(IOError),
-                            io.error_message(IOError, IOErrorMsg),
-                            string.format("orig 43, readback error\n<%s>",
-                                [s(IOErrorMsg)], Msg)
-                        ;
-                            Result43 = eof,
-                            Msg = "orig 43, readback eof"
-                        )
-                    else if
-                        Result42 = ok(42)
-                    then
-                        OrigStr = string.string(Term),
-                        (
-                            ResultTerm = ok(ReadBackTerm),
-                            BackStr = string.string(ReadBackTerm),
-                            string.format("orig %s, readback <%s>",
-                                [s(OrigStr), s(BackStr)], Msg)
-                        ;
-                            ResultTerm = error(IOError),
-                            io.error_message(IOError, IOErrorMsg),
-                            string.format("orig %s, readback error\n<%s>",
-                                [s(OrigStr), s(IOErrorMsg)], Msg)
-                        ;
-                            ResultTerm = eof,
-                            string.format("orig %s, readback eof",
-                                [s(OrigStr)], Msg)
-                        )
-                    else
-                        (
-                            Result42 = ok(ReadBack42),
-                            BackStr = string.string(ReadBack42),
-                            string.format("orig 42, readback <%s>",
-                                [s(BackStr)], Msg)
-                        ;
-                            Result42 = error(IOError),
-                            io.error_message(IOError, IOErrorMsg),
-                            string.format("orig 42, readback error\n<%s>",
-                                [s(IOErrorMsg)], Msg)
-                        ;
-                            Result42 = eof,
-                            Msg = "orig 42, readback eof"
-                        )
-                    ),
-                    MaybeTestErrorMsg = yes(Msg)
-                )
+                MaybeTestErrorMsg = no,
+                io.print("test passed\n", !IO)
             ;
-                InputResult = error(IOError),
-                io.error_message(IOError, IOErrorMsg),
-                MaybeTestErrorMsg = yes(IOErrorMsg)
+                MaybeTestErrorMsg = yes(ErrorMsg),
+                io.format("test failed with this error:\n%s\n",
+                    [s(ErrorMsg)], !IO)
             )
         ;
-            OutputResult = error(IOError),
-            io.error_message(IOError, IOErrorMsg),
-            MaybeTestErrorMsg = yes(IOErrorMsg)
+            TryResult = exception(Univ),
+            io.write_string("test threw this exception:\n", !IO),
+            io.print_line(Univ, !IO)
         ),
         io.file.remove_file(FileName, _, !IO)
-    else
-        MaybeTestErrorMsg = yes("cannot create a temp file")
+    ;
+        FileNameRes = error(_IOError),
+        ErrorMsg = "cannot create a temp file",
+        io.format("test failed with this error:\n%s\n", [s(ErrorMsg)], !IO)
+    ).
+
+:- pred do_test_2(string::in, T::in, maybe(string)::out,
+    io::di, io::uo) is det.
+
+do_test_2(FileName, Term, MaybeTestErrorMsg, !IO) :-
+    io.open_binary_output(FileName, OutputResult, !IO),
+    (
+        OutputResult = ok(OutputStream),
+        io.write_byte(OutputStream, 42, !IO),
+        io.write_binary(OutputStream, Term, !IO),
+        io.write_byte(OutputStream, 43, !IO),
+        io.close_binary_output(OutputStream, !IO),
+        io.open_binary_input(FileName, InputResult, !IO),
+        (
+            InputResult = ok(InputStream),
+            io.read_byte(InputStream, Result42, !IO),
+            io.read_binary(InputStream, ResultTerm, !IO),
+            io.read_byte(InputStream, Result43, !IO),
+            io.close_binary_input(InputStream, !IO),
+            ( if
+                Result42 = ok(42),
+                ResultTerm = ok(Term),
+                Result43 = ok(43)
+            then
+                MaybeTestErrorMsg = no
+            else
+                ( if
+                    Result42 = ok(42),
+                    ResultTerm = ok(Term)
+                then
+                    (
+                        Result43 = ok(ReadBack43),
+                        BackStr = string.string(ReadBack43),
+                        string.format("orig 43, readback <%s>",
+                            [s(BackStr)], Msg)
+                    ;
+                        Result43 = error(IOError),
+                        io.error_message(IOError, IOErrorMsg),
+                        string.format("orig 43, readback error\n<%s>",
+                            [s(IOErrorMsg)], Msg)
+                    ;
+                        Result43 = eof,
+                        Msg = "orig 43, readback eof"
+                    )
+                else if
+                    Result42 = ok(42)
+                then
+                    OrigStr = string.string(Term),
+                    (
+                        ResultTerm = ok(ReadBackTerm),
+                        BackStr = string.string(ReadBackTerm),
+                        string.format("orig %s, readback <%s>",
+                            [s(OrigStr), s(BackStr)], Msg)
+                    ;
+                        ResultTerm = error(IOError),
+                        io.error_message(IOError, IOErrorMsg),
+                        string.format("orig %s, readback error\n<%s>",
+                            [s(OrigStr), s(IOErrorMsg)], Msg)
+                    ;
+                        ResultTerm = eof,
+                        string.format("orig %s, readback eof",
+                            [s(OrigStr)], Msg)
+                    )
+                else
+                    (
+                        Result42 = ok(ReadBack42),
+                        BackStr = string.string(ReadBack42),
+                        string.format("orig 42, readback <%s>",
+                            [s(BackStr)], Msg)
+                    ;
+                        Result42 = error(IOError),
+                        io.error_message(IOError, IOErrorMsg),
+                        string.format("orig 42, readback error\n<%s>",
+                            [s(IOErrorMsg)], Msg)
+                    ;
+                        Result42 = eof,
+                        Msg = "orig 42, readback eof"
+                    )
+                ),
+                MaybeTestErrorMsg = yes(Msg)
+            )
+        ;
+            InputResult = error(IOError),
+            io.error_message(IOError, IOErrorMsg),
+            MaybeTestErrorMsg = yes(IOErrorMsg)
+        )
+    ;
+        OutputResult = error(IOError),
+        io.error_message(IOError, IOErrorMsg),
+        MaybeTestErrorMsg = yes(IOErrorMsg)
     ).
 
 %---------------------------------------------------------------------------%
