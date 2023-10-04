@@ -61,6 +61,7 @@ MCFLAGS-missing_det_decls       = --no-infer-det --verbose-error-messages
 MCFLAGS-missing_interface_import2 = --no-intermodule-optimization
 MCFLAGS-mode_inf                = --infer-all --verbose-error-messages
 MCFLAGS-mpj1                    = --infer-all --verbose-error-messages
+MCFLAGS-multiply_star           = --verbose-error-messages
 MCFLAGS-multisoln_func          = --infer-types --verbose-error-messages
 MCFLAGS-nonexistent_import      = --no-verbose-make --make nonexistent_import
 MCFLAGS-overloading             = --no-intermodule-optimization

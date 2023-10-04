@@ -1,7 +1,9 @@
-multiply_star.m:022: In clause for predicate `p'/2:
-multiply_star.m:022:   error: undefined symbol `*'/2.
-multiply_star.m:022:   That symbol is defined in modules `int', `int16',
-multiply_star.m:022:   `int32', `int64', `int8', `uint', `uint16', `uint32',
-multiply_star.m:022:   `uint64' and `uint8', none of which have
-multiply_star.m:022:   `:- import_module' declarations.
-For more information, recompile with `-E'.
+multiply_star.m:031: In clause for predicate `p'/2:
+multiply_star.m:031:   error: undefined symbol `*'/2.
+multiply_star.m:031:   That symbol is defined in modules `int', `int16',
+multiply_star.m:031:   `int32', `int64', `int8', `uint', `uint16', `uint32',
+multiply_star.m:031:   `uint64' and `uint8', none of which have
+multiply_star.m:031:   `:- import_module' declarations.
+multiply_star.m:031:   Note that symbols defined in modules accessed via
+multiply_star.m:031:   `:- use_module' declarations must always be fully module
+multiply_star.m:031:   qualified.

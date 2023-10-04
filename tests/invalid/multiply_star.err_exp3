@@ -1,0 +1,4 @@
+multiply_star.m:031: In clause for predicate `p'/2:
+multiply_star.m:031:   error: undefined symbol `*'/2.
+multiply_star.m:031:   (Did you mean `-', `<', `=', `>', `c', `f', `i', `s' or
+multiply_star.m:031:   `u'?)

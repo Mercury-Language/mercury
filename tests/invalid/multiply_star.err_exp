@@ -1,3 +1,3 @@
-multiply_star.m:022: In clause for predicate `p'/2:
-multiply_star.m:022:   error: undefined symbol `*'/2.
-multiply_star.m:022:   (Did you mean `<', `=' or `>'?)
+multiply_star.m:031: In clause for predicate `p'/2:
+multiply_star.m:031:   error: undefined symbol `*'/2.
+multiply_star.m:031:   (Did you mean `<', `=' or `>'?)
