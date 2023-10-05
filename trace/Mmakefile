@@ -299,8 +299,8 @@ lib$(EVENTSPEC_LIB_NAME).dylib: $(EVENTSPEC_PIC_OBJS)
 		$(EVENTSPEC_LDLIBS) $(THREADLIBS)			\
 		$(SHARED_LIBS)
 
-.PHONY: cs
-cs:	$(SRCS)
+.PHONY: all_cs
+all_cs:	$(SRCS)
 
 tags:	$(HAND_SRCS) $(HAND_HDRS)
 	ctags $(HAND_SRCS) $(HAND_HDRS) $(RUNTIME_DIR)/*.c $(RUNTIME_DIR)/*.h
