@@ -292,15 +292,15 @@ generate_goal_expr(GoalExpr, GoalInfo, CodeModel, ForwardLiveVarsBeforeGoal,
         call_gen.generate_generic_call(CodeModel, GenericCall, Args,
             Modes, MaybeRegTypes, Det, GoalInfo, Code, !CI, !CLD)
     ;
-        GoalExpr = plain_call(PredId, ProcId, Args, BuiltinState, _, _),
+        GoalExpr = plain_call(PredId, ProcId, ArgVars, BuiltinState, _, _),
         (
             BuiltinState = not_builtin,
-            call_gen.generate_call(CodeModel, PredId, ProcId, Args, GoalInfo,
-                Code, !CI, !CLD)
+            call_gen.generate_call(CodeModel, PredId, ProcId, ArgVars,
+                GoalInfo, Code, !CI, !CLD)
         ;
             BuiltinState = inline_builtin,
-            call_gen.generate_builtin(CodeModel, PredId, ProcId, Args,
-                Code, !CI, !CLD)
+            call_gen.generate_builtin(CodeModel, PredId, ProcId, ArgVars,
+                GoalInfo, Code, !CI, !CLD)
         )
     ;
         GoalExpr = call_foreign_proc(Attributes, PredId, ProcId,

@@ -156,6 +156,7 @@ OTHER_PROGS = \
 	constructor_arg_names \
 	cse_unique \
 	dcg_test \
+	dead_get_io_state \
 	deforest_bug \
 	deforest_loop \
 	deforest_rerun_det \

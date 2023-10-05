@@ -56,7 +56,7 @@
     known_call_variant::out) is det.
 
 :- pred generate_builtin(code_model::in, pred_id::in, proc_id::in,
-    list(prog_var)::in, llds_code::out,
+    list(prog_var)::in, hlds_goal_info::in, llds_code::out,
     code_info::in, code_info::out, code_loc_dep::in, code_loc_dep::out) is det.
 
 :- pred input_arg_locs(assoc_list(prog_var, arg_info)::in,
@@ -687,7 +687,7 @@ rebuild_registers([Var - arg_info(ArgLoc, Mode) | Args], Liveness,
 
 %---------------------------------------------------------------------------%
 
-generate_builtin(CodeModel, PredId, ProcId, Args, Code, !CI, !CLD) :-
+generate_builtin(CodeModel, PredId, ProcId, Args, GoalInfo, Code, !CI, !CLD) :-
     get_module_info(!.CI, ModuleInfo),
     ModuleName = predicate_module(ModuleInfo, PredId),
     PredName = predicate_name(ModuleInfo, PredId),
@@ -697,7 +697,13 @@ generate_builtin(CodeModel, PredId, ProcId, Args, Code, !CI, !CLD) :-
         CodeModel = model_det,
         (
             SimpleCode = assign(Var, AssignExpr),
-            generate_assign_builtin(Var, AssignExpr, Code, !CLD)
+            NonLocals = goal_info_get_nonlocals(GoalInfo),
+            ( if set_of_var.contains(NonLocals, Var) then
+                generate_assign_builtin(Var, AssignExpr, Code, !CLD)
+            else
+                % The output of this builtin is unused.
+                Code = empty
+            )
         ;
             SimpleCode = ref_assign(AddrVar, ValueVar),
             produce_variable(AddrVar, AddrVarCode, AddrRval, !CLD),
@@ -710,7 +716,10 @@ generate_builtin(CodeModel, PredId, ProcId, Args, Code, !CI, !CLD) :-
             unexpected($pred, "malformed model_det builtin predicate")
         ;
             SimpleCode = noop(DefinedVars),
-            list.foldl(magically_put_var_in_unused_reg, DefinedVars, !CLD),
+            NonLocals = goal_info_get_nonlocals(GoalInfo),
+            list.filter(set_of_var.contains(NonLocals),
+                DefinedVars, UsedDefinedVars),
+            list.foldl(magically_put_var_in_unused_reg, UsedDefinedVars, !CLD),
             Code = empty
         )
     ;
