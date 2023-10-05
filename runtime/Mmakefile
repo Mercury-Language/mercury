@@ -422,8 +422,8 @@ mercury_conf.h.date: $(MERCURY_DIR)/config.status mercury_conf.h.in
 mercury_conf.h: mercury_conf.h.date
 	@true
 
-.PHONY: cs
-cs:	$(CFILES)
+.PHONY: all_cs
+all_cs:	$(CFILES)
 
 .PHONY: tags
 tags:	$(CFILES) $(HDRS) $(BODY_HDRS) $(LIB_DLL_H)
