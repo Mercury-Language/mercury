@@ -1551,8 +1551,7 @@ eqv_states(Id, SucceededA, SucceededB, Succeeded, DepsA, DepsB, Deps,
             % Several of these test cases include submodules, but not all.
             trace [
                 compile_time(flag("make_dep_compare")),
-                run_time(env("MAKE_DEP_COMPARE")),
-                io(!TIO)
+                run_time(env("MAKE_DEP_COMPARE"))
             ] (
                 Msg = "\neqv_state(" ++ Id ++ ")\n" ++
                     string.join_list("\n", cord.list(!.Msgs)) ++ "\n",
