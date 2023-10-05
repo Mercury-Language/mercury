@@ -107,15 +107,6 @@
     %
 :- pred type_is_nonground(mer_type::in) is semidet.
 
-    % Succeeds iff the given type with the substitution applied is ground.
-    %
-:- pred subst_type_is_ground(mer_type::in, tsubst::in) is semidet.
-
-    % Succeeds iff the given type with the substitution applied is not
-    % ground.
-    %
-:- pred subst_type_is_nonground(mer_type::in, tsubst::in) is semidet.
-
 %---------------------------------------------------------------------------%
 
     % Given a non-variable type, return its type_ctor and argument types.
@@ -200,15 +191,6 @@
 :- pred type_list_contains_var(list(mer_type)::in, tvar::out) is nondet.
 
 %---------------------------------------------------------------------------%
-
-    % Given a constant and an arity, return a type_ctor.
-    % Fails if the constant is not an atom.
-    %
-    % This really ought to take a name and an arity -
-    % use of integers/floats/strings as type names should be rejected
-    % by the parser, not by module_qual.m.
-    %
-:- pred make_type_ctor(const::in, int::in, type_ctor::out) is semidet.
 
     % Given a type_ctor and a list of argument types,
     % construct a type.
@@ -391,11 +373,6 @@
 
 %---------------------------------------------------------------------------%
 
-    % Given a list of constructors for a type, check whether that type
-    % is a private_builtin.type_info/0 or similar type.
-    %
-:- pred type_constructors_are_type_info(list(constructor)::in) is semidet.
-
     % Is the discriminated union type (not a subtype) with the given list of
     % constructors a notag type?
     %
@@ -576,17 +553,6 @@ type_is_ground_except_vars(Type, Except) :-
 
 type_is_nonground(Type) :-
     type_contains_var(Type, _).
-
-subst_type_is_ground(Type, TSubst) :-
-    not subst_type_is_nonground(Type, TSubst).
-
-subst_type_is_nonground(Type, TSubst) :-
-    type_contains_var(Type, TVar),
-    ( if map.search(TSubst, TVar, Binding) then
-        subst_type_is_nonground(Binding, TSubst)
-    else
-        true
-    ).
 
 %---------------------------------------------------------------------------%
 
@@ -798,8 +764,6 @@ type_list_contains_var([_ | Types], Var) :-
     type_list_contains_var(Types, Var).
 
 %---------------------------------------------------------------------------%
-
-make_type_ctor(term.atom(Name), Arity, type_ctor(unqualified(Name), Arity)).
 
 construct_type(TypeCtor, ArgTypes, Type) :-
     ( if
@@ -1090,34 +1054,6 @@ qualify_cons_id(Args, ConsId0, ConsId, InstConsId) :-
     ).
 
 %---------------------------------------------------------------------------%
-
-type_constructors_are_type_info(Ctors) :-
-    Ctors = [Ctor],
-    Ctor = ctor(_Ordinal, MaybeExistConstraints, FunctorName,
-        [_CtorArg], 1, _Context),
-    unqualify_private_builtin(FunctorName, Name),
-    name_is_type_info(Name),
-    MaybeExistConstraints = no_exist_constraints.
-
-    % If the sym_name is in the private_builtin module, unqualify it,
-    % otherwise fail. All, user-defined types should be module-qualified
-    % by the time this predicate is called, so we assume that any unqualified
-    % names are in private_builtin.
-    %
-:- pred unqualify_private_builtin(sym_name::in, string::out) is semidet.
-
-unqualify_private_builtin(unqualified(Name), Name).
-unqualify_private_builtin(qualified(ModuleName, Name), Name) :-
-    ModuleName = mercury_private_builtin_module.
-
-:- pred name_is_type_info(string::in) is semidet.
-
-name_is_type_info("type_info").
-name_is_type_info("type_ctor_info").
-name_is_type_info("typeclass_info").
-name_is_type_info("base_typeclass_info").
-
-%---------------------%
 
 non_sub_du_type_is_notag(OoMCtors, MaybeCanonical) :-
     OoMCtors = one_or_more(Ctor, []),
