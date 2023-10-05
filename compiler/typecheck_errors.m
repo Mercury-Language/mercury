@@ -129,6 +129,8 @@
 :- import_module parse_tree.parse_tree_out_type.
 :- import_module parse_tree.prog_type.
 :- import_module parse_tree.prog_type_subst.
+:- import_module parse_tree.prog_type_test.
+:- import_module parse_tree.prog_type_unify.
 :- import_module parse_tree.prog_util.
 :- import_module parse_tree.var_db.
 

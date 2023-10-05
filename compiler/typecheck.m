@@ -143,7 +143,9 @@
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_data_foreign.
 :- import_module parse_tree.prog_type.
+:- import_module parse_tree.prog_type_scan.
 :- import_module parse_tree.prog_type_subst.
+:- import_module parse_tree.prog_type_unify.
 :- import_module parse_tree.var_table.
 :- import_module parse_tree.vartypes.
 :- import_module parse_tree.write_error_spec.
@@ -929,7 +931,7 @@ restrict_constraints_to_head_vars_2(HeadTypeVars, ClassConstraints,
 is_head_class_constraint(HeadTypeVars, Constraint) :-
     Constraint = constraint(_ClassName, ArgTypes),
     all [TVar] (
-            prog_type.type_list_contains_var(ArgTypes, TVar)
+            type_list_contains_var(ArgTypes, TVar)
         =>
             list.member(TVar, HeadTypeVars)
     ).

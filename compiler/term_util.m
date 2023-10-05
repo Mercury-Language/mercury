@@ -214,7 +214,7 @@
 :- import_module libs.
 :- import_module libs.globals.
 :- import_module libs.op_mode.
-:- import_module parse_tree.prog_type.
+:- import_module parse_tree.prog_type_test.
 
 :- import_module require.
 :- import_module set.

@@ -499,6 +499,7 @@
 :- import_module parse_tree.prog_detism.
 :- import_module parse_tree.prog_mode.
 :- import_module parse_tree.prog_type.
+:- import_module parse_tree.prog_type_scan.
 :- import_module parse_tree.prog_util.
 
 :- import_module assoc_list.

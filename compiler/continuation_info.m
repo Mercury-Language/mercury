@@ -419,6 +419,8 @@
 :- import_module ll_backend.code_util.
 :- import_module parse_tree.builtin_lib_types.
 :- import_module parse_tree.prog_type.
+:- import_module parse_tree.prog_type_scan.
+:- import_module parse_tree.prog_type_test.
 
 :- import_module int.
 :- import_module require.

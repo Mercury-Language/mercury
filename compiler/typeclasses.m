@@ -90,8 +90,9 @@
 :- import_module check_hlds.typecheck_debug.
 :- import_module check_hlds.typecheck_errors.
 :- import_module hlds.hlds_module.
-:- import_module parse_tree.prog_type.
+:- import_module parse_tree.prog_type_scan.
 :- import_module parse_tree.prog_type_subst.
+:- import_module parse_tree.prog_type_unify.
 
 :- import_module bool.
 :- import_module cord.

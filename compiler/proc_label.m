@@ -49,7 +49,7 @@
 :- import_module hlds.pred_name.
 :- import_module mdbcomp.builtin_modules.
 :- import_module mdbcomp.sym_name.
-:- import_module parse_tree.prog_type.
+:- import_module parse_tree.prog_type_test.
 
 :- import_module bool.
 :- import_module require.

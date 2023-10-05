@@ -156,7 +156,9 @@
 :- import_module parse_tree.parse_tree_out_term.
 :- import_module parse_tree.parse_tree_out_type.
 :- import_module parse_tree.prog_type.
+:- import_module parse_tree.prog_type_scan.
 :- import_module parse_tree.prog_type_subst.
+:- import_module parse_tree.prog_type_unify.
 :- import_module parse_tree.prog_util.
 
 :- import_module assoc_list.
@@ -1736,13 +1738,13 @@ check_constraint_quant(PredInfo, !Specs) :-
     pred_info_get_exist_quant_tvars(PredInfo, ExistQVars),
     pred_info_get_class_context(PredInfo, Constraints),
     Constraints = constraints(UnivCs, ExistCs),
-    prog_type.constraint_list_get_tvars(UnivCs, UnivTVars),
+    constraint_list_get_tvars(UnivCs, UnivTVars),
     set.list_to_set(ExistQVars, ExistQVarsSet),
     set.list_to_set(UnivTVars, UnivTVarsSet),
     set.intersect(ExistQVarsSet, UnivTVarsSet, BadUnivTVarsSet),
     maybe_report_badly_quantified_vars(PredInfo, universal_constraint,
         set.to_sorted_list(BadUnivTVarsSet), !Specs),
-    prog_type.constraint_list_get_tvars(ExistCs, ExistTVars),
+    constraint_list_get_tvars(ExistCs, ExistTVars),
     list.delete_elems(ExistTVars, ExistQVars, BadExistTVars),
     maybe_report_badly_quantified_vars(PredInfo, existential_constraint,
         BadExistTVars, !Specs).

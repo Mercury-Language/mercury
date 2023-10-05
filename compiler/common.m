@@ -177,6 +177,7 @@
 :- import_module libs.options.
 :- import_module parse_tree.error_spec.
 :- import_module parse_tree.prog_type.
+:- import_module parse_tree.prog_type_unify.
 :- import_module parse_tree.set_of_var.
 :- import_module parse_tree.var_table.
 :- import_module transform_hlds.

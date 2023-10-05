@@ -113,7 +113,7 @@
 :- import_module mdbcomp.
 :- import_module mdbcomp.prim_data.
 :- import_module mdbcomp.sym_name.
-:- import_module parse_tree.prog_type.
+:- import_module parse_tree.prog_type_unify.
 
 :- import_module map.
 :- import_module require.

@@ -257,6 +257,7 @@
 :- import_module mdbcomp.prim_data.
 :- import_module parse_tree.prog_data_foreign.
 :- import_module parse_tree.prog_type.
+:- import_module parse_tree.prog_type_scan.
 :- import_module parse_tree.var_table.
 
 :- import_module bool.

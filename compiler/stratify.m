@@ -65,7 +65,7 @@
 :- import_module mdbcomp.sym_name.
 :- import_module parse_tree.parse_tree_out_info.
 :- import_module parse_tree.prog_data.
-:- import_module parse_tree.prog_type.
+:- import_module parse_tree.prog_type_test.
 
 :- import_module assoc_list.
 :- import_module bool.

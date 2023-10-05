@@ -86,6 +86,8 @@
 :- import_module parse_tree.prog_item_stats.
 :- import_module parse_tree.prog_mode.
 :- import_module parse_tree.prog_type.
+:- import_module parse_tree.prog_type_construct.
+:- import_module parse_tree.prog_type_test.
 :- import_module parse_tree.prog_util.
 :- import_module recompilation.
 

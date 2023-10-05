@@ -92,7 +92,9 @@
 :- import_module mdbcomp.sym_name.
 :- import_module parse_tree.builtin_lib_types.
 :- import_module parse_tree.prog_type.
+:- import_module parse_tree.prog_type_scan.
 :- import_module parse_tree.prog_type_subst.
+:- import_module parse_tree.prog_type_unify.
 :- import_module parse_tree.set_of_var.
 :- import_module parse_tree.var_table.
 

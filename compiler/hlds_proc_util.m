@@ -135,6 +135,7 @@
 :- import_module check_hlds.mode_test.
 :- import_module check_hlds.mode_util.
 :- import_module check_hlds.type_util.
+:- import_module parse_tree.prog_type_test.
 
 :- import_module assoc_list.
 :- import_module int.

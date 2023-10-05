@@ -52,7 +52,7 @@
 :- import_module parse_tree.parse_tree_out_misc.
 :- import_module parse_tree.parse_tree_out_term.
 :- import_module parse_tree.parse_tree_to_term.
-:- import_module parse_tree.prog_type.
+:- import_module parse_tree.prog_type_scan.
 :- import_module parse_tree.prog_util.
 
 :- import_module assoc_list.

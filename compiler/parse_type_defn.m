@@ -84,6 +84,7 @@
 :- import_module parse_tree.prog_item.
 :- import_module parse_tree.prog_mode.
 :- import_module parse_tree.prog_type.
+:- import_module parse_tree.prog_type_scan.
 
 :- import_module bag.
 :- import_module maybe.

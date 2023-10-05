@@ -78,6 +78,7 @@
 :- import_module hlds.const_struct.
 :- import_module hlds.hlds_data.
 :- import_module parse_tree.prog_type.
+:- import_module parse_tree.prog_type_test.
 
 :- import_module bool.
 :- import_module int.

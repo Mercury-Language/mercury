@@ -23,8 +23,8 @@
 :- import_module hlds.hlds_module.
 :- import_module parse_tree.
 :- import_module parse_tree.prog_data.
-:- import_module parse_tree.vartypes.
 :- import_module parse_tree.var_table.
+:- import_module parse_tree.vartypes.
 
 :- import_module assoc_list.
 :- import_module list.

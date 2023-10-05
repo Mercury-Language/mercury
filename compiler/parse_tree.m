@@ -98,7 +98,12 @@
 :- include_module prog_mutable.
 :- include_module prog_rename.
 :- include_module prog_type.
+:- include_module prog_type_construct.
+:- include_module prog_type_repn.
+:- include_module prog_type_scan.
 :- include_module prog_type_subst.
+:- include_module prog_type_test.
+:- include_module prog_type_unify.
 :- include_module prog_util.
 
 % Type representation.

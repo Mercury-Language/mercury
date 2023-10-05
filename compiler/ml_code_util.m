@@ -472,6 +472,8 @@
 :- import_module parse_tree.builtin_lib_types.
 :- import_module parse_tree.java_names.
 :- import_module parse_tree.prog_type.
+:- import_module parse_tree.prog_type_test.
+:- import_module parse_tree.prog_type_unify.
 :- import_module parse_tree.prog_util.
 :- import_module parse_tree.set_of_var.
 

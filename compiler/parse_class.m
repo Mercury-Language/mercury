@@ -69,7 +69,8 @@
 :- import_module parse_tree.parse_type_name.
 :- import_module parse_tree.parse_util.
 :- import_module parse_tree.prog_item.
-:- import_module parse_tree.prog_type.
+:- import_module parse_tree.prog_type_scan.
+:- import_module parse_tree.prog_type_test.
 :- import_module parse_tree.prog_util.
 
 :- import_module cord.
@@ -594,7 +595,7 @@ check_tvars_in_instance_constraint(ItemInstanceInfo, NameTerm, MaybeSpec) :-
     % declaration also occur in the type class argument types in the instance
     % declaration.
     ( if
-        prog_type.constraint_list_get_tvars(Constraints, TVars),
+        constraint_list_get_tvars(Constraints, TVars),
         set_of_type_vars_in_types(Types, TypesVars),
         list.filter(set.contains(TypesVars), TVars, _BoundTVars, UnboundTVars),
         UnboundTVars = [_ | _]

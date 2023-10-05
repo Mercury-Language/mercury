@@ -44,6 +44,7 @@
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_item.
 :- import_module parse_tree.prog_type.
+:- import_module parse_tree.prog_type_test.
 :- import_module parse_tree.prog_util.
 
 :- import_module assoc_list.

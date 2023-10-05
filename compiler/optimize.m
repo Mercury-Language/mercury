@@ -59,8 +59,8 @@
 :- import_module ll_backend.wrap_blocks.
 :- import_module mdbcomp.prim_data.
 :- import_module parse_tree.
-:- import_module parse_tree.prog_data.
 :- import_module parse_tree.parse_tree_out_misc.
+:- import_module parse_tree.prog_data.
 
 :- import_module bool.
 :- import_module char.

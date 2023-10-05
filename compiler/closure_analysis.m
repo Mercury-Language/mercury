@@ -50,7 +50,7 @@
 :- import_module parse_tree.parse_tree_out_misc.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_data_foreign.
-:- import_module parse_tree.prog_type.
+:- import_module parse_tree.prog_type_test.
 :- import_module parse_tree.set_of_var.
 :- import_module parse_tree.var_table.
 

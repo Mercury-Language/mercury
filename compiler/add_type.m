@@ -70,7 +70,9 @@
 :- import_module parse_tree.parse_tree_out_sym_name.
 :- import_module parse_tree.parse_tree_out_type.
 :- import_module parse_tree.prog_type.
+:- import_module parse_tree.prog_type_scan.
 :- import_module parse_tree.prog_type_subst.
+:- import_module parse_tree.prog_type_test.
 
 :- import_module bool.
 :- import_module edit_seq.

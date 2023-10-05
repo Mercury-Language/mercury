@@ -116,7 +116,9 @@
 :- import_module parse_tree.prog_foreign.
 :- import_module parse_tree.prog_mutable.
 :- import_module parse_tree.prog_type.
+:- import_module parse_tree.prog_type_repn.
 :- import_module parse_tree.prog_type_subst.
+:- import_module parse_tree.prog_type_test.
 
 :- import_module bool.
 :- import_module cord.

@@ -101,6 +101,7 @@
 :- import_module ml_backend.rtti_to_mlds.
 :- import_module parse_tree.builtin_lib_types.
 :- import_module parse_tree.prog_type.
+:- import_module parse_tree.prog_type_construct.
 :- import_module parse_tree.var_table.
 
 :- import_module assoc_list.

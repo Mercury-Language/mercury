@@ -236,6 +236,7 @@
 :- import_module parse_tree.prog_detism.
 :- import_module parse_tree.prog_rename.
 :- import_module parse_tree.prog_type.
+:- import_module parse_tree.prog_type_construct.
 :- import_module parse_tree.var_table.
 
 :- import_module int.

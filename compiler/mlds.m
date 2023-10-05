@@ -2707,6 +2707,7 @@
 :- import_module parse_tree.builtin_lib_types.
 :- import_module parse_tree.file_names.
 :- import_module parse_tree.java_names.
+:- import_module parse_tree.prog_type_construct.
 
 :- import_module require.
 :- import_module string.

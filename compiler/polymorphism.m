@@ -172,7 +172,7 @@
 :- import_module mdbcomp.sym_name.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_data_pragma.
-:- import_module parse_tree.prog_type.
+:- import_module parse_tree.prog_type_unify.
 :- import_module parse_tree.var_table.
 
 :- import_module int.

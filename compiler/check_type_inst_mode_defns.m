@@ -86,6 +86,7 @@
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_foreign_enum.
 :- import_module parse_tree.prog_type.
+:- import_module parse_tree.prog_type_repn.
 
 :- import_module bimap.
 :- import_module map.

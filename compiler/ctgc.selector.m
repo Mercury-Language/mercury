@@ -92,6 +92,7 @@
 :- import_module check_hlds.
 :- import_module check_hlds.type_util.
 :- import_module parse_tree.prog_type.
+:- import_module parse_tree.prog_type_unify.
 
 :- import_module assoc_list.
 :- import_module bool.

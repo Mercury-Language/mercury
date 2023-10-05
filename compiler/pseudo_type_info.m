@@ -67,6 +67,7 @@
 :- import_module mdbcomp.prim_data.
 :- import_module mdbcomp.sym_name.
 :- import_module parse_tree.prog_type.
+:- import_module parse_tree.prog_type_test.
 
 :- import_module int.
 :- import_module list.

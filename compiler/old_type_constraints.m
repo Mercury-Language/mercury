@@ -58,6 +58,8 @@
 :- import_module parse_tree.prog_data_event.
 :- import_module parse_tree.prog_event.
 :- import_module parse_tree.prog_type.
+:- import_module parse_tree.prog_type_construct.
+:- import_module parse_tree.prog_type_scan.
 :- import_module parse_tree.prog_type_subst.
 :- import_module parse_tree.vartypes.
 
@@ -718,7 +720,7 @@ functor_unif_constraint(LTVar, ArgTVars, Info, ConsDefn, Constraints,
     prog_type_subst.apply_variable_renaming_to_type_list(TVarRenaming,
         FuncArgTypes0, FuncArgTypes),
     Params = list.map(tvar_to_type, TypeParams),
-    prog_type.construct_type(TypeCtor, Params, ResultType),
+    construct_type(TypeCtor, Params, ResultType),
     LHS_Constraint = stconstr(LTVar, ResultType),
     RHS_Constraints = list.map_corresponding(create_stconstr,
         ArgTVars, FuncArgTypes),

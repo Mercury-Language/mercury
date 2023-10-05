@@ -180,7 +180,7 @@
 :- import_module libs.options.
 :- import_module parse_tree.error_spec.
 :- import_module parse_tree.error_util.
-:- import_module parse_tree.prog_type.
+:- import_module parse_tree.prog_type_unify.
 :- import_module parse_tree.write_error_spec.
 :- import_module transform_hlds.constraint.
 :- import_module transform_hlds.pd_debug.
