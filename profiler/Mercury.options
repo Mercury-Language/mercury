@@ -8,5 +8,5 @@
 # Mercury.options - module-specific flags for Mmake and `mmc --make'.
 #-----------------------------------------------------------------------------#
 
-MCFLAGS-snapshots               = --optimise-constructor-last-call
-MCFLAGS-demangle_test           = --no-warn-implicit-stream-calls
+MCFLAGS-snapshots               += --optimise-constructor-last-call
+MCFLAGS-demangle_test           += --no-warn-implicit-stream-calls

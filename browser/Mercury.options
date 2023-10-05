@@ -8,24 +8,23 @@
 # Mercury.options - module-specific flags for Mmake and `mmc --make'.
 #-----------------------------------------------------------------------------#
 
-MCFLAGS-mer_browser     = --no-warn-nothing-exported --no-warn-unused-imports
-MCFLAGS-mdb             = --no-warn-unused-imports
+MCFLAGS-mer_browser     += --no-warn-unused-imports --no-warn-nothing-exported
+MCFLAGS-mdb             += --no-warn-unused-imports
 
 # XXX Disable higher order specialization for declarative_edt since this
 # optimization has a suspected bug that mdb.declarative_edt.revise_root/3
 # exposes.
-MCFLAGS-mdb.declarative_edt         = --no-optimize-higher-order
+MCFLAGS-mdb.declarative_edt         += --no-optimize-higher-order
 
 # This is for bootstrapping rotd-2005-10-17.
-#
-MCFLAGS-mdb.declarative_analyser    = --no-optimize-unused-args
-MCFLAGS-mdb.declarative_execution   = --no-optimize-unused-args
+MCFLAGS-mdb.declarative_analyser    += --no-optimize-unused-args
+MCFLAGS-mdb.declarative_execution   += --no-optimize-unused-args
 
 # The affected predicates are far from speed-critical.
-MCFLAGS-mdb.help                    = --no-optimize-constructor-last-call
-MCFLAGS-mdb.interactive_query       = --no-optimize-constructor-last-call
-MCFLAGS-mdb.parse                   = --no-optimize-constructor-last-call
-MCFLAGS-mdb.sized_pretty            = --no-optimize-constructor-last-call
+MCFLAGS-mdb.help                    += --no-optimize-constructor-last-call
+MCFLAGS-mdb.interactive_query       += --no-optimize-constructor-last-call
+MCFLAGS-mdb.parse                   += --no-optimize-constructor-last-call
+MCFLAGS-mdb.sized_pretty            += --no-optimize-constructor-last-call
 
 # XXX This line is needed so that `mmake --use-mmc-make libmer_browser'
 # passes `-lmer_mdbcomp' to `mmc --make' in the MLLIBS variable.
@@ -34,4 +33,3 @@ LIBRARIES-mer_browser                   = mer_mdbcomp
 # Whereas these lines are needed for plain `mmake'.
 EXTRA_LIBRARIES-libmer_browser.so       = mer_mdbcomp
 EXTRA_LIBRARIES-libmer_browser.dylib    = mer_mdbcomp
-

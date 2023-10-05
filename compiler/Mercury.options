@@ -11,87 +11,89 @@
 # llds_out.m contains some sanity checking code that is usually turned off.
 # However, the cost of checking whether they are turned off exceeds the cost of
 # performing them, unless inlining is enabled.
-MCFLAGS-ll_backend.llds_out = --inlining
+MCFLAGS-ll_backend.llds_out              += --inlining
 
 # Several predicates in quantification.m contain an argument which is needed
 # only to select the right mode. We want to make sure that we don't take up
 # code space or execution time to pass these arguments.
-MCFLAGS-hlds.quantification = --optimize-unused-args
+MCFLAGS-hlds.quantification              += --optimize-unused-args
 
 # Delete the code that computes information needed only in trace goals
 # in the common case that the trace goals are not enabled.
 # typecheck_module_one_iteration should be tail recursive.
-MCFLAGS-check_hlds.typecheck = --unneeded-code --optimize-constructor-last-call
+MCFLAGS-check_hlds.typecheck             += --optimize-constructor-last-call \
+                                            --unneeded-code 
 
 # compute_goals_purity should be tail recursive.
-MCFLAGS-check_hlds.purity = --optimize-constructor-last-call
+MCFLAGS-check_hlds.purity                += --optimize-constructor-last-call
 
 # module_qualify_items_loop should be tail recursive.
-MCFLAGS-parse_tree.module_qual.qualify_items = --optimize-constructor-last-call
+MCFLAGS-parse_tree.module_qual.qualify_items \
+                                         += --optimize-constructor-last-call
 
 # The predicates in these modules that could be transformed by lcmc
 # are not speed-critical.
-MCFLAGS-backend_libs.base_typeclass_info  = --no-optimize-constructor-last-call
-MCFLAGS-backend_libs.compile_target_code  = --no-optimize-constructor-last-call
-MCFLAGS-backend_libs.export               = --no-optimize-constructor-last-call
-MCFLAGS-backend_libs.interval             = --no-optimize-constructor-last-call
-MCFLAGS-backend_libs.matching             = --no-optimize-constructor-last-call
-MCFLAGS-backend_libs.saved_vars           = --no-optimize-constructor-last-call
-MCFLAGS-bytecode_backend.bytecode_gen     = --no-optimize-constructor-last-call
+MCFLAGS-backend_libs.base_typeclass_info += --no-optimize-constructor-last-call
+MCFLAGS-backend_libs.compile_target_code += --no-optimize-constructor-last-call
+MCFLAGS-backend_libs.export              += --no-optimize-constructor-last-call
+MCFLAGS-backend_libs.interval            += --no-optimize-constructor-last-call
+MCFLAGS-backend_libs.matching            += --no-optimize-constructor-last-call
+MCFLAGS-backend_libs.saved_vars          += --no-optimize-constructor-last-call
+MCFLAGS-bytecode_backend.bytecode_gen    += --no-optimize-constructor-last-call
 MCFLAGS-check_hlds.ordering_mode_constraints \
-                                          = --no-optimize-constructor-last-call
-MCFLAGS-check_hlds.post_typecheck         = --no-optimize-constructor-last-call
-MCFLAGS-check_hlds.type_constraints       = --no-optimize-constructor-last-call
-MCFLAGS-hlds.assertion                    = --no-optimize-constructor-last-call
-MCFLAGS-hlds.error_msg_inst               = --no-optimize-constructor-last-call
-MCFLAGS-hlds.hhf                          = --no-optimize-constructor-last-call
-MCFLAGS-parse_tree.error_util             = --no-optimize-constructor-last-call
-MCFLAGS-parse_tree.prog_ctgc              = --no-optimize-constructor-last-call
-MCFLAGS-parse_tree.prog_data_foreign      = --no-optimize-constructor-last-call
+                                         += --no-optimize-constructor-last-call
+MCFLAGS-check_hlds.post_typecheck        += --no-optimize-constructor-last-call
+MCFLAGS-check_hlds.type_constraints      += --no-optimize-constructor-last-call
+MCFLAGS-hlds.assertion                   += --no-optimize-constructor-last-call
+MCFLAGS-hlds.error_msg_inst              += --no-optimize-constructor-last-call
+MCFLAGS-hlds.hhf                         += --no-optimize-constructor-last-call
+MCFLAGS-parse_tree.error_util            += --no-optimize-constructor-last-call
+MCFLAGS-parse_tree.prog_ctgc             += --no-optimize-constructor-last-call
+MCFLAGS-parse_tree.prog_data_foreign     += --no-optimize-constructor-last-call
 MCFLAGS-transform_hlds.ctgc.structure_reuse.analysis \
-                                          = --no-optimize-constructor-last-call
+                                         += --no-optimize-constructor-last-call
 MCFLAGS-transform_hlds.ctgc.structure_reuse.direct.choose_reuse \
-                                          = --no-optimize-constructor-last-call
+                                         += --no-optimize-constructor-last-call
 MCFLAGS-transform_hlds.ctgc.structure_reuse.indirect \
-                                          = --no-optimize-constructor-last-call
+                                         += --no-optimize-constructor-last-call
 MCFLAGS-transform_hlds.ctgc.structure_reuse.lbu \
-                                          = --no-optimize-constructor-last-call
+                                         += --no-optimize-constructor-last-call
 MCFLAGS-transform_hlds.ctgc.structure_reuse.lfu \
-                                          = --no-optimize-constructor-last-call
+                                         += --no-optimize-constructor-last-call
 MCFLAGS-transform_hlds.ctgc.structure_reuse.versions \
-                                          = --no-optimize-constructor-last-call
+                                         += --no-optimize-constructor-last-call
 MCFLAGS-transform_hlds.rbmm.condition_renaming \
-                                          = --no-optimize-constructor-last-call
+                                         += --no-optimize-constructor-last-call
 MCFLAGS-transform_hlds.rbmm.execution_path \
-                                          = --no-optimize-constructor-last-call
-MCFLAGS-transform_hlds.size_prof          = --no-optimize-constructor-last-call
-MCFLAGS-transform_hlds.stm_expand         = --no-optimize-constructor-last-call
-MCFLAGS-transform_hlds.table_gen          = --no-optimize-constructor-last-call
+                                         += --no-optimize-constructor-last-call
+MCFLAGS-transform_hlds.size_prof         += --no-optimize-constructor-last-call
+MCFLAGS-transform_hlds.stm_expand        += --no-optimize-constructor-last-call
+MCFLAGS-transform_hlds.table_gen         += --no-optimize-constructor-last-call
 
 # In these files, some imports are needed only in some grades.
 # Until unused_imports.m can avoid generating messages about these,
 # disable the pass on these files.
-MCFLAGS-libs.md5                          = --no-warn-unused-imports
-MCFLAGS-libs.process_util                 = --no-warn-unused-imports
-MCFLAGS-make.build                        = --no-warn-unused-imports
+MCFLAGS-libs.md5                         += --no-warn-unused-imports
+MCFLAGS-libs.process_util                += --no-warn-unused-imports
+MCFLAGS-make.build                       += --no-warn-unused-imports
 
-MCFLAGS-check_hlds.modes                  = --inline-vars-threshold 10000
-MCFLAGS-check_hlds.unique_modes           = --inline-vars-threshold 10000
+MCFLAGS-check_hlds.modes                 += --inline-vars-threshold 10000
+MCFLAGS-check_hlds.unique_modes          += --inline-vars-threshold 10000
 
-MCFLAGS-make.util                         += --no-halt-at-warn
+MCFLAGS-make.util                        += --no-halt-at-warn
 
-MCFLAGS-make.module_target                   += --no-warn-implicit-stream-calls
-MCFLAGS-top_level.mercury_compile_main       += --no-warn-implicit-stream-calls
+MCFLAGS-make.module_target               += --no-warn-implicit-stream-calls
+MCFLAGS-top_level.mercury_compile_main   += --no-warn-implicit-stream-calls
 
 # Bug workarounds.
 
 # XXX work around a bug that sometimes appears at -O4 and above.
 # mmc -r analysis.file.c -s asm_fast.gc -O4 --intermodule-optimisation
-MCFLAGS-analysis.file                       += --no-optimise-higher-order
+MCFLAGS-analysis.file                    += --no-optimise-higher-order
 
 # This works around bug 32 in Mantis.
-MCFLAGS-check_hlds.check_typeclass          += --no-loop-invariants
+MCFLAGS-check_hlds.check_typeclass       += --no-loop-invariants
 
 # This is the same bug as tests/valid/ho_and_type_spec_bug2.
-MCFLAGS-mode_robdd.tfeirn                   += -O3
-MCFLAGS-mode_robdd.implications             += -O0
+MCFLAGS-mode_robdd.tfeirn                += -O3
+MCFLAGS-mode_robdd.implications          += -O0

@@ -8,7 +8,7 @@
 # Mercury.options - module-specific flags for Mmake and `mmc --make'.
 #-----------------------------------------------------------------------------#
 
-MCFLAGS-mer_ssdb        = --no-warn-nothing-exported --no-warn-unused-imports
+MCFLAGS-mer_ssdb        += --no-warn-nothing-exported --no-warn-unused-imports
 
 # XXX This line is needed so that `mmake --use-mmc-make libmer_ssdb'
 # passes `-lmer_mdbcomp' to `mmc --make' in the MLLIBS variable.
