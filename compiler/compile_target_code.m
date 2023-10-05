@@ -1,18 +1,18 @@
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % Copyright (C) 2002-2012 The University of Melbourne.
 % Copyright (C) 2013-2022 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % File: compile_target_code.m.
 % Main authors: fjh, stayl.
 %
 % Code to compile the generated `.c', `.java', etc files.
 %
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- module backend_libs.compile_target_code.
 :- interface.
@@ -32,7 +32,7 @@
 :- import_module list.
 :- import_module maybe.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % Are we generating position independent code (for use in a shared
     % library)? On some architectures, pic and non-pic code are incompatible,
@@ -165,7 +165,7 @@
     %
 :- pred get_linked_target_type(globals::in, linked_target_type::out) is det.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % make_all_module_command(CommandName, MainModule, AllModuleNames,
     %   CommandString, !IO):
@@ -176,7 +176,7 @@
 :- pred make_all_module_command(string::in, module_name::in,
     list(module_name)::in, string::out, io::di, io::uo) is det.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % maybe_pic_object_file_extension(PIC, ExtObj, ExtInitObj):
     %
@@ -201,7 +201,7 @@
 :- pred is_maybe_pic_object_file_extension(globals::in, string::in, pic::out)
     is semidet.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Stuff used for standalone interfaces.
 %
@@ -245,8 +245,8 @@
 :- pred output_library_link_flags(globals::in, io.text_output_stream::in,
     io::di, io::uo) is det.
 
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- implementation.
 
@@ -268,7 +268,39 @@
 :- import_module set.
 :- import_module string.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+
+:- inst c_linked_target_type for linked_target_type/0
+    --->    executable
+    ;       static_library
+    ;       shared_library.
+
+:- inst c_exe_or_shared_lib for linked_target_type/0
+    --->    executable
+    ;       shared_library.
+
+:- inst csharp_linked_target_type for linked_target_type/0
+    --->    csharp_executable
+    ;       csharp_library.
+
+:- inst java_linked_target_type for linked_target_type/0
+    --->    java_executable
+    ;       java_archive.
+
+:- inst c_or_csharp_linked_target_type for linked_target_type/0
+    --->    executable
+    ;       static_library
+    ;       shared_library
+    ;       csharp_executable
+    ;       csharp_library.
+
+:- inst c_or_csharp_exe_or_lib for linked_target_type/0
+    --->    executable
+    ;       shared_library
+    ;       csharp_executable
+    ;       csharp_library.
+
+%---------------------------------------------------------------------------%
 
 % WARNING: The code here duplicates the functionality of scripts/mgnuc.in.
 % Any changes there may also require changes here, and vice versa.
@@ -517,7 +549,7 @@ gather_c_compiler_flags(Globals, PIC, AllCFlags) :-
         CC_Specific_CFLAGS, " ",
         OverrideOpts], AllCFlags).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred gather_c_grade_defines(globals::in, string::out) is det.
 
@@ -820,7 +852,7 @@ gather_c_grade_defines(Globals, GradeDefines) :-
         SinglePrecFloatOpt,
         UseRegionsOpt], GradeDefines).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred gather_c_include_dir_flags(globals::in, string::out) is det.
 
@@ -831,7 +863,7 @@ gather_c_include_dir_flags(Globals, InclOpt) :-
         (func(C_INCL) = ["-I", quote_shell_cmd_arg(C_INCL), " "]),
         C_Incl_Dirs))).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred gather_compiler_specific_flags(globals::in, string::out) is det.
 
@@ -870,7 +902,7 @@ get_maybe_filtercc_command(Globals, MaybeFilterCmd) :-
         MaybeFilterCmd = no
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 compile_java_files(Globals, ProgressStream, ErrorStream,
         HeadJavaFile, TailJavaFiles, Succeeded, !IO) :-
@@ -995,7 +1027,7 @@ java_classpath_separator = PathSeparator :-
 is_minus_j_flag(FlagStr) :-
     string.prefix(FlagStr, "-J").
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 compile_csharp_file(Globals, ProgressStream, ErrorStream, ModuleAndImports,
         CSharpFileName0, DLLFileName, Succeeded, !IO) :-
@@ -1101,7 +1133,7 @@ referenced_dlls(Module, DepModules0) = Modules :-
         Modules = set.map(F, DepModules)
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 make_library_init_file(Globals, ProgressStream, ErrorStream,
         MainModuleName, AllModules, Succeeded, !IO) :-
@@ -1205,7 +1237,7 @@ invoke_mkinit(Globals, ProgressStream, ErrorStream, InitFileStream, Verbosity,
         MkInitSucceeded = did_not_succeed
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 make_init_obj_file(Globals, ProgressStream, ErrorStream,
         ModuleName, ModuleNames, Result, !IO) :-
@@ -1483,7 +1515,7 @@ compare_file_timestamps(FileNameA, FileNameB, MaybeCompare, !IO) :-
         MaybeCompare = no
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 link_module_list(ProgressStream, ErrorStream, Modules, ExtraObjFiles,
         Globals, Succeeded, !IO) :-
@@ -1547,7 +1579,7 @@ link_module_list(ProgressStream, ErrorStream, Modules, ExtraObjFiles,
         Succeeded = did_not_succeed
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 % WARNING: The code here duplicates the functionality of scripts/ml.in.
 % Any changes there may also require changes here, and vice versa.
@@ -1691,9 +1723,9 @@ get_launcher_script_extension(Globals, Ext) :-
 
 :- pred link_exe_or_shared_lib(globals::in,
     io.text_output_stream::in, io.text_output_stream::in,
-    linked_target_type::in(bound(executable ; shared_library)),
-    module_name::in, file_name::in, list(string)::in, maybe_succeeded::out,
-    io::di, io::uo) is det.
+    linked_target_type::in(c_exe_or_shared_lib),
+    module_name::in, file_name::in, list(string)::in,
+    maybe_succeeded::out, io::di, io::uo) is det.
 
 link_exe_or_shared_lib(Globals, ProgressStream, ErrorStream, LinkTargetType,
         ModuleName, FullOutputFileName, ObjectsList, Succeeded, !IO) :-
@@ -1992,8 +2024,8 @@ link_exe_or_shared_lib(Globals, ProgressStream, ErrorStream, LinkTargetType,
     % is not set.
     % NOTE: changes here may require changes to get_mercury_std_libs_for_java.
     %
-:- pred get_mercury_std_libs(globals::in, linked_target_type::in, string::out)
-    is det.
+:- pred get_mercury_std_libs(globals::in,
+    linked_target_type::in(c_or_csharp_exe_or_lib), string::out) is det.
 
 get_mercury_std_libs(Globals, TargetType, StdLibs) :-
     globals.lookup_maybe_string_option(Globals,
@@ -2003,7 +2035,6 @@ get_mercury_std_libs(Globals, TargetType, StdLibs) :-
         globals.get_gc_method(Globals, GCMethod),
         (
             ( TargetType = executable
-            ; TargetType = static_library
             ; TargetType = shared_library
             ),
             LibExt = ext_cur_gs(ext_cur_gs_lib_lib_opt),
@@ -2015,11 +2046,6 @@ get_mercury_std_libs(Globals, TargetType, StdLibs) :-
             ),
             LibExt = ext_cur_gs(ext_cur_gs_lib_dll),
             MercuryOrCsharpLinkage = "csharp"
-        ;
-            ( TargetType = java_executable
-            ; TargetType = java_archive
-            ),
-            unexpected($pred, string(TargetType))
         ),
         grade_directory_component(Globals, GradeDir),
 
@@ -2158,7 +2184,8 @@ get_mercury_std_libs(Globals, TargetType, StdLibs) :-
         StdLibs = ""
     ).
 
-:- pred link_lib_args(globals::in, linked_target_type::in, string::in,
+:- pred link_lib_args(globals::in,
+    linked_target_type::in(c_or_csharp_exe_or_lib), string::in,
     string::in, ext::in, string::in, string::out, string::out) is det.
 
 link_lib_args(Globals, TargetType, StdLibDir, GradeDir, Ext,
@@ -2166,7 +2193,6 @@ link_lib_args(Globals, TargetType, StdLibDir, GradeDir, Ext,
     (
         ( TargetType = executable
         ; TargetType = shared_library
-        ; TargetType = static_library
         ),
         LibPrefix = "lib"
     ;
@@ -2174,11 +2200,6 @@ link_lib_args(Globals, TargetType, StdLibDir, GradeDir, Ext,
         ; TargetType = csharp_library
         ),
         LibPrefix = ""
-    ;
-        ( TargetType = java_executable
-        ; TargetType = java_archive
-        ),
-        unexpected($pred, string(TargetType))
     ),
     StaticLibName = LibPrefix ++ Name ++ extension_to_string(Globals, Ext),
     StaticArg = quote_shell_cmd_arg(StdLibDir/"lib"/GradeDir/StaticLibName),
@@ -2209,7 +2230,8 @@ get_link_libraries(Globals, MaybeLinkLibraries, !IO) :-
         MaybeLinkLibraries = no
     ).
 
-:- pred make_link_lib(globals::in, linked_target_type::in,
+:- pred make_link_lib(globals::in,
+    linked_target_type::in(c_or_csharp_exe_or_lib),
     string::in, string::out) is det.
 
 make_link_lib(Globals, TargetType, LibName, LinkOpt) :-
@@ -2233,12 +2255,6 @@ make_link_lib(Globals, TargetType, LibName, LinkOpt) :-
         LinkLibOpt = "-r:",
         Suffix = ".dll",
         LinkOpt = quote_shell_cmd_arg(LinkLibOpt ++ LibName ++ Suffix)
-    ;
-        ( TargetType = static_library
-        ; TargetType = java_executable
-        ; TargetType = java_archive
-        ),
-        unexpected($pred, string(TargetType))
     ).
 
 :- pred get_runtime_library_path_opts(globals::in, linked_target_type::in,
@@ -2276,8 +2292,8 @@ get_runtime_library_path_opts(Globals, LinkTargetType,
         RpathOpts = ""
     ).
 
-:- pred get_system_libs(globals::in, linked_target_type::in, string::out)
-    is det.
+:- pred get_system_libs(globals::in,
+    linked_target_type::in(c_exe_or_shared_lib), string::out) is det.
 
 get_system_libs(Globals, TargetType, SystemLibs) :-
     % System libraries used when tracing.
@@ -2299,7 +2315,6 @@ get_system_libs(Globals, TargetType, SystemLibs) :-
             SystemTraceLibs = SystemTraceLibs0
         )
     ),
-
     % Thread libraries
     use_thread_libs(Globals, UseThreadLibs),
     (
@@ -2309,7 +2324,6 @@ get_system_libs(Globals, TargetType, SystemLibs) :-
         UseThreadLibs = no,
         ThreadLibs = ""
     ),
-
     % Other system libraries.
     (
         TargetType = shared_library,
@@ -2317,16 +2331,7 @@ get_system_libs(Globals, TargetType, SystemLibs) :-
     ;
         TargetType = executable,
         globals.lookup_string_option(Globals, math_lib, OtherSystemLibs)
-    ;
-        ( TargetType = static_library
-        ; TargetType = csharp_executable
-        ; TargetType = csharp_library
-        ; TargetType = java_executable
-        ; TargetType = java_archive
-        ),
-        unexpected($pred, string(TargetType))
     ),
-
     SystemLibs = string.join_list(" ",
         [SystemTraceLibs, OtherSystemLibs, ThreadLibs]).
 
@@ -2343,7 +2348,7 @@ use_thread_libs(Globals, UseThreadLibs) :-
     % target machine type.
     %
 :- pred get_restricted_command_line_link_opts(globals::in,
-    linked_target_type::in, string::out) is det.
+    linked_target_type::in(c_exe_or_shared_lib), string::out) is det.
 
 get_restricted_command_line_link_opts(Globals, LinkTargetType,
         ResCmdLinkOpts) :-
@@ -2382,13 +2387,7 @@ get_restricted_command_line_link_opts(Globals, LinkTargetType,
                 ResCmdLinkOpts = ""
             )
         ;
-            ( LinkTargetType = static_library
-            ; LinkTargetType = shared_library
-            ; LinkTargetType = csharp_executable
-            ; LinkTargetType = csharp_library
-            ; LinkTargetType = java_executable
-            ; LinkTargetType = java_archive
-            ),
+            LinkTargetType = shared_library,
             ResCmdLinkOpts = ""
         )
     ;
@@ -2509,8 +2508,8 @@ shared_libraries_supported(Globals, Supported) :-
         SharedLibExt),
     Supported = (if LibExt \= SharedLibExt then yes else no).
 
-:- pred get_linker_output_option(globals::in, linked_target_type::in,
-    string::out) is det.
+:- pred get_linker_output_option(globals::in,
+    linked_target_type::in(c_exe_or_shared_lib), string::out) is det.
 
 get_linker_output_option(Globals, LinkTargetType, OutputOpt) :-
     get_c_compiler_type(Globals, C_CompilerType),
@@ -2563,7 +2562,7 @@ reserve_stack_size_flags(Globals) = Flags :-
         )
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred process_link_library(globals::in, list(dir_name)::in, string::in,
     string::out, maybe_succeeded::in, maybe_succeeded::out,
@@ -2701,8 +2700,9 @@ create_archive(Globals, ProgressStream, ErrorStream, FullLibFileName, Quote,
 
 :- pred create_csharp_exe_or_lib(globals::in,
     io.text_output_stream::in, io.text_output_stream::in,
-    linked_target_type::in, module_name::in, file_name::in,
-    list(file_name)::in, maybe_succeeded::out, io::di, io::uo) is det.
+    linked_target_type::in(csharp_linked_target_type),
+    module_name::in, file_name::in, list(file_name)::in,
+    maybe_succeeded::out, io::di, io::uo) is det.
 
 create_csharp_exe_or_lib(Globals, ProgressStream, ErrorStream, LinkTargetType,
         MainModuleName, FullOutputFileName0, SourceList0, Succeeded, !IO) :-
@@ -2740,7 +2740,6 @@ create_csharp_exe_or_lib(Globals, ProgressStream, ErrorStream, LinkTargetType,
 
     % NOTE: we use the -option style options in preference to the /option
     % style in order to avoid problems with POSIX style shells.
-    globals.lookup_string_option(Globals, csharp_compiler, CSharpCompiler),
     globals.lookup_bool_option(Globals, target_debug, Debug),
     (
         Debug = yes,
@@ -2749,7 +2748,6 @@ create_csharp_exe_or_lib(Globals, ProgressStream, ErrorStream, LinkTargetType,
         Debug = no,
         DebugOpt = ""
     ),
-    globals.lookup_accumulating_option(Globals, csharp_flags, CSCFlagsList),
     (
         LinkTargetType = csharp_executable,
         TargetOption = "-target:exe",
@@ -2758,18 +2756,11 @@ create_csharp_exe_or_lib(Globals, ProgressStream, ErrorStream, LinkTargetType,
         LinkTargetType = csharp_library,
         TargetOption = "-target:library",
         globals.lookup_string_option(Globals, sign_assembly, KeyFile),
-        ( if KeyFile = ""
-        then SignAssemblyOpt = ""
-        else SignAssemblyOpt = "-keyfile:" ++ KeyFile ++ " "
+        ( if KeyFile = "" then
+            SignAssemblyOpt = ""
+        else
+            SignAssemblyOpt = "-keyfile:" ++ KeyFile ++ " "
         )
-    ;
-        ( LinkTargetType = executable
-        ; LinkTargetType = static_library
-        ; LinkTargetType = shared_library
-        ; LinkTargetType = java_executable
-        ; LinkTargetType = java_archive
-        ),
-        unexpected($pred, "wrong target type")
     ),
 
     globals.lookup_accumulating_option(Globals, link_library_directories,
@@ -2794,9 +2785,9 @@ create_csharp_exe_or_lib(Globals, ProgressStream, ErrorStream, LinkTargetType,
         LinkLibraries = ""
     ),
 
+    globals.lookup_string_option(Globals, csharp_compiler, CSharpCompilerCmd),
     get_mercury_std_libs(Globals, LinkTargetType, MercuryStdLibs),
-
-    Cmd = CSharpCompiler,
+    globals.lookup_accumulating_option(Globals, csharp_flags, CSCFlagsList),
     CmdArgs = string.join_list(" ", [
         NoLogoOpt,
         NoWarnLineNumberOpt,
@@ -2810,7 +2801,8 @@ create_csharp_exe_or_lib(Globals, ProgressStream, ErrorStream, LinkTargetType,
         CSCFlagsList ++
         SourceList),
     invoke_long_system_command(Globals, ProgressStream, ErrorStream,
-        ErrorStream, cmd_verbose_commands, Cmd, CmdArgs, Succeeded0, !IO),
+        ErrorStream, cmd_verbose_commands, CSharpCompilerCmd, CmdArgs,
+        Succeeded0, !IO),
 
     % Also create a shell script to launch it if necessary.
     globals.get_target_env_type(Globals, TargetEnvType),
@@ -2836,31 +2828,36 @@ create_csharp_exe_or_lib(Globals, ProgressStream, ErrorStream, LinkTargetType,
 :- func csharp_file_name(env_type, csharp_compiler_type, file_name)
     = file_name.
 
-csharp_file_name(env_type_posix, csharp_microsoft, FileName) = FileName.
-csharp_file_name(env_type_posix, csharp_mono, Filename) = Filename.
-csharp_file_name(env_type_posix, csharp_unknown, Filename) = Filename.
-
-csharp_file_name(env_type_cygwin, csharp_microsoft, Filename) =
-    convert_to_windows_path_format(Filename).
-csharp_file_name(env_type_cygwin, csharp_mono, Filename) = Filename.
-csharp_file_name(env_type_cygwin, csharp_unknown, Filename) = Filename.
-
-csharp_file_name(env_type_msys, csharp_microsoft, Filename) =
-    convert_to_windows_path_format(Filename).
-csharp_file_name(env_type_msys, csharp_mono, Filename) = Filename.
-csharp_file_name(env_type_msys, csharp_unknown, Filename) = Filename.
-
-csharp_file_name(env_type_win_cmd, csharp_microsoft, Filename) =
-    convert_to_windows_path_format(Filename).
-csharp_file_name(env_type_win_cmd, csharp_mono, Filename) = Filename.
-csharp_file_name(env_type_win_cmd, csharp_unknown, Filename) =
-    convert_to_windows_path_format(Filename).
-
-csharp_file_name(env_type_powershell, csharp_microsoft, Filename) =
-    convert_to_windows_path_format(Filename).
-csharp_file_name(env_type_powershell, csharp_mono, Filename) = Filename.
-csharp_file_name(env_type_powershell, csharp_unknown, Filename) =
-    convert_to_windows_path_format(Filename).
+csharp_file_name(EnvType, CSharpCompiler, FileName0) = FileName :-
+    (
+        EnvType = env_type_posix,
+        FileName = FileName0
+    ;
+        ( EnvType = env_type_cygwin
+        ; EnvType = env_type_win_cmd
+        ; EnvType = env_type_powershell
+        ),
+        (
+            ( CSharpCompiler = csharp_microsoft
+            ; CSharpCompiler = csharp_unknown
+            ),
+            FileName = convert_to_windows_path_format(FileName0)
+        ;
+            CSharpCompiler = csharp_mono,
+            FileName = FileName0
+        )
+    ;
+        EnvType = env_type_msys,
+        (
+            CSharpCompiler = csharp_microsoft,
+            FileName = convert_to_windows_path_format(FileName0)
+        ;
+            ( CSharpCompiler = csharp_mono
+            ; CSharpCompiler = csharp_unknown
+            ),
+            FileName = FileName0
+        )
+    ).
 
 :- func convert_to_windows_path_format(file_name) = file_name.
 
@@ -2885,15 +2882,16 @@ write_cli_shell_script(Globals, ExeFileName, Stream, !IO) :-
         "exec \"$CLI_INTERPRETER\" \"$DIR/", ExeFileName, "\" \"$@\"\n"
     ], !IO).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Create Java "executables" or archives.
 %
 
 :- pred create_java_exe_or_lib(globals::in,
     io.text_output_stream::in, io.text_output_stream::in,
-    linked_target_type::in, module_name::in, file_name::in,
-    list(file_name)::in, maybe_succeeded::out, io::di, io::uo) is det.
+    linked_target_type::in(java_linked_target_type),
+    module_name::in, file_name::in, list(file_name)::in,
+    maybe_succeeded::out, io::di, io::uo) is det.
 
 create_java_exe_or_lib(Globals, ProgressStream, ErrorStream, LinkTargetType,
         MainModuleName, FullJarFileName, ObjectList, Succeeded, !IO) :-
@@ -2957,7 +2955,7 @@ write_jar_class_argument(Stream, ClassSubDir, ClassFileName, !IO) :-
             [s(ClassSubDir), s(ClassFileName)], !IO)
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 get_object_code_type(Globals, FileType, ObjectCodeType) :-
     (
@@ -2987,7 +2985,7 @@ get_linked_target_type(Globals, LinkedTargetType) :-
         LinkedTargetType = executable
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % join_string_list(Strings, Prefix, Suffix, Separator, Result):
     %
@@ -3038,7 +3036,7 @@ join_module_list(Globals, Ext,
     module_name_to_file_name(Globals, $pred, Ext, ModuleName, FileName),
     join_module_list(Globals, Ext, Modules, FileNames, !IO).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 make_all_module_command(Command0, MainModule, AllModules, Command, !IO) :-
     % Pass the main module first.
@@ -3048,7 +3046,7 @@ make_all_module_command(Command0, MainModule, AllModules, Command, !IO) :-
     Command = string.join_list(" ",
         list.map(quote_shell_cmd_arg, [Command0 | ModuleNameStrings])).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 maybe_pic_object_file_extension(PIC, ExtObj, ExtInitObj) :-
     (
@@ -3078,7 +3076,7 @@ is_maybe_pic_object_file_extension(Globals, ExtStr, PIC) :-
         fail
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Standalone interfaces.
 %
@@ -3250,7 +3248,7 @@ make_standalone_int_body(Globals, ProgressStream, ErrorStream,
             "standalone interface in `%s'\n", [s(CFileName)], !IO)
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % invoke_long_system_command attempts to use the @file style of
     % calling to avoid command line length arguments on various systems.
@@ -3362,7 +3360,7 @@ at_file_name(Globals, FileName) = AtFileName :-
         AtFileName = "@" ++ FileName
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % C compiler flags.
 %
@@ -3372,7 +3370,7 @@ output_c_compiler_flags(Globals, Stream, !IO) :-
     gather_c_compiler_flags(Globals, PIC, CFlags),
     io.write_string(Stream, CFlags, !IO).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Grade defines flags.
 %
@@ -3383,7 +3381,7 @@ output_c_grade_defines(Globals, Stream, !IO) :-
     io.write_string(Stream, GradeDefines, !IO),
     io.nl(Stream, !IO).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % C include directory flags.
 %
@@ -3393,7 +3391,7 @@ output_c_include_directory_flags(Globals, Stream, !IO) :-
     io.write_string(Stream, InclOpts, !IO),
     io.nl(Stream, !IO).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Library link flags.
 %
@@ -3427,7 +3425,7 @@ output_library_link_flags(Globals, Stream, !IO) :-
         [s(LinkLibraryDirectories), s(RpathOpts), s(LinkLibraries),
         s(MercuryStdLibs), s(SystemLibs)], !IO).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % Succeeds if the configuration name for this machine matches
     % *-apple-darwin*, i.e. its an x86 / x86_64 / ppc machine with Mac OS X.
@@ -3442,6 +3440,6 @@ arch_is_apple_darwin(FullArch) :-
     Mfr = "apple",
     string.prefix(OS, "darwin").
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 :- end_module backend_libs.compile_target_code.
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
