@@ -497,31 +497,31 @@ TAR = tar
 tar: 	$(GENERATED_DOCS)
 	touch Mmake.params
 	cd util && mmake
-	+cd runtime && $(SUBDIR_MMAKE) cs $(RT_LIB_NAME).init
+	+cd runtime && $(SUBDIR_MMAKE) all_cs $(RT_LIB_NAME).init
 	+cd library && $(SUBDIR_MMAKE) depend
-	+cd library && $(SUBDIR_MMAKE) all-ints cs $(STD_LIB_NAME).init tags
+	+cd library && $(SUBDIR_MMAKE) all-ints all_cs $(STD_LIB_NAME).init tags
 	+cd mdbcomp && $(SUBDIR_MMAKE) depend
-	+cd mdbcomp && $(SUBDIR_MMAKE) all-ints cs \
+	+cd mdbcomp && $(SUBDIR_MMAKE) all-ints all_cs \
 		$(MDBCOMP_LIB_NAME).init tags
 	+cd browser && $(SUBDIR_MMAKE) depend
-	+cd browser && $(SUBDIR_MMAKE) all-ints cs \
+	+cd browser && $(SUBDIR_MMAKE) all-ints all_cs \
 		$(BROWSER_LIB_NAME).init tags
 	+cd ssdb && $(SUBDIR_MMAKE) depend
-	+cd ssdb && $(SUBDIR_MMAKE) all-ints cs \
+	+cd ssdb && $(SUBDIR_MMAKE) all-ints all_cs \
 		$(SSDB_LIB_NAME).init tags
-	+cd trace && $(SUBDIR_MMAKE) cs
+	+cd trace && $(SUBDIR_MMAKE) all_cs
 	+cd compiler && $(SUBDIR_MMAKE) depend
-	+cd compiler && $(SUBDIR_MMAKE) cs tags
+	+cd compiler && $(SUBDIR_MMAKE) all_cs tags
 	+cd slice && $(SUBDIR_MMAKE) depend
-	+cd slice && $(SUBDIR_MMAKE) cs tags
+	+cd slice && $(SUBDIR_MMAKE) all_cs tags
 	+cd profiler && $(SUBDIR_MMAKE) depend
-	+cd profiler && $(SUBDIR_MMAKE) cs tags
+	+cd profiler && $(SUBDIR_MMAKE) all_cs tags
 	+cd deep_profiler && $(SUBDIR_MMAKE) depend
-	+cd deep_profiler && $(SUBDIR_MMAKE) cs tags
+	+cd deep_profiler && $(SUBDIR_MMAKE) all_cs tags
 	+cd mfilterjavac && $(SUBDIR_MMAKE) depend
-	+cd mfilterjavac && $(SUBDIR_MMAKE) cs tags
+	+cd mfilterjavac && $(SUBDIR_MMAKE) all_cs tags
 	+cd grade_lib && $(SUBDIR_MMAKE) depend
-	+cd grade_lib && $(SUBDIR_MMAKE) cs tags
+	+cd grade_lib && $(SUBDIR_MMAKE) all_cs tags
 	+cd doc && $(SUBDIR_MMAKE) info html dvi mdb_doc
 	# the following commands might fail on Windows?
 	-cd bindist && $(SUBDIR_MMAKE) bindist.Makefile
