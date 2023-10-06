@@ -9,16 +9,37 @@
 % File: grab_modules.m.
 % Main author: fjh (original), zs (current).
 %
-% Given a module_and_imports structure initialized for a raw_comp_unit,
-% this module has the task of figuring out which interface files the
-% raw_comp_unit needs either directly or indirectly, and reading them in,
-% adding them to the module_and_imports structure. If intermodule optimization
-% is enabled, then calls to grab_plain_opt_and_int_for_opt_files and maybe
-% grab_trans_opt_files will figure out what .opt and .trans_opt files
-% the compilation unit can use, again either directly or indirectly,
-% and add those, and the interface files they need, to the module_and_imports
-% structure. When all this is done, the module_and_imports structure
-% will contain an augmented version of the original compilation unit.
+% When the compiler is processing a module, it uses the code in this module
+% to grab files that earlier compiler invocations have automatically generated
+% for some of the *other* modules of the program.
+%
+% This module does this in four circumstances, each of which requires it
+% to perform a different set of files from a different set of modules.
+%
+% 1     grab_unqual_imported_modules_make_int performs the task that is
+%       chronologically first in the build-system lifecycle of a module,
+%       named (say) module A. This task is to grab all the .int3 files needed
+%       for the creation of A.int0, A.int, and A.int2. This task returns
+%       its results as an aug_make_int_unit structure.
+%
+% 2     grab_qual_imported_modules_augment performs the next task
+%       chronologically, which is to grab all the .int0, .int and .int2 files
+%       needed for the creation of A.c, A.cs, A.java, A.opt, A.trans_opt,
+%       and for all the other tasks described by op_mode_augment.
+%       (Hence the suffix on the name.) This task returns its results
+%       as an aug_compilation_unit structure.
+%
+% 3     grab_plain_opt_and_int_for_opt_files performs the third task
+%       chronologically, which is to grab all the .opt files needed
+%       for applying intermodule optimization to module A, together
+%       with any .int0 and/or .int files needed to make sense of their
+%       contents. This task records its results by updating an existing
+%       aug_compilation_unit structure.
+%
+% 4     grab_trans_opt_files performs the fourth task chronologically,
+%       which is to grab all the .trans_opt files needed for applying
+%       *transitive* intermodule optimization to module A. It also records
+%       its results by updating an existing aug_compilation_unit structure.
 %
 % The roles of the interface files (.int0, .int3, .int2 and .int) that
 % this module reads in are documented (to the extent that they are documented
@@ -51,27 +72,22 @@
 %---------------------------------------------------------------------------%
 
     % grab_qual_imported_modules_augment(ProgressStream, Globals,
-    %   SourceFileName, SourceFileModuleName, MaybeTimestamp, NestedSubModules,
-    %   ParseTreeModuleSrc, AugCompUnit, !HaveReadModuleMaps, !IO):
+    %   SourceFileName, SourceFileModuleName, MaybeTimestamp, MaybeTopModule,
+    %   ParseTreeModuleSrc, Baggage, AugCompUnit, !HaveReadModuleMaps, !IO):
     %
     % Given ParseTreeModuleSrc, one of the modules stored in SourceFileName,
-    % read in the private interface files (.int0) for all the parent modules,
-    % the long interface files (.int) for all the imported modules, and the
-    % short interface files (.in2) for all the indirectly imported modules.
-    % Return the `module_and_imports' structure containing all the information
-    % gathered this way, from which we will compute the augmented version
-    % of ParseTreeModuleSrc.
-    % XXX ITEM_LIST Move the actual computation of the AugCompUnit together
-    % with this code, preferably in a new module, perhaps named something like
-    % "augment_comp_unit.m".
+    % read in
+    %
+    % - the private interface files (.int0) for all the parent modules,
+    % - the long interface files (.int) for all the imported modules, and
+    % - the qualified short interface files (.in2) for all the indirectly
+    %   imported modules.
+    %
+    % Return the aug_compilation_unit structure containing all the information
+    % gathered this way.
     %
     % SourceFileModuleName is the top-level module name in SourceFileName.
-    % ModuleTimestamp is the timestamp of the SourceFileName. NestedSubModules
-    % is the list of the names of the nested submodules in SourceFileName
-    % if ParseTreeModuleSrc is the toplevel module in SourceFileName
-    % (i.e. if it is the compilation unit of SourceFileModuleName).
-    % (XXX ITEM_LIST document exactly what NestedSubModules is if
-    % ParseTreeModuleSrc is NOT the toplevel module in SourceFileName.)
+    % ModuleTimestamp is the timestamp of the SourceFileName.
     % HaveReadModuleMaps contains the interface files read during
     % recompilation checking.
     %
@@ -89,14 +105,12 @@
 
     % grab_unqual_imported_modules_make_int(ProgressStream, Globals,
     %   SourceFileName, SourceFileModuleName, ParseTreeModuleSrc,
-    %   AugCompUnit, !HaveReadModuleMaps, !IO):
+    %   Baggage, AugMakeIntUnit, !HaveReadModuleMaps, !IO):
     %
     % Similar to grab_imported_modules_augment, but only reads in the
     % unqualified short interfaces (.int3s), and the .int0 files for
     % parent modules, instead of reading the long interfaces and
-    % qualified short interfaces (.int and int2s). Does not set
-    % the `PublicChildren', `FactDeps' and `ForeignIncludeFiles' fields
-    % of the module_and_imports structure.
+    % qualified short interfaces (.int and int2s).
     %
     % Used when generating .int0 files, and when generating .int/.int2 files.
     %
