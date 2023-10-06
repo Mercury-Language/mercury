@@ -14,7 +14,7 @@
 % for some of the *other* modules of the program.
 %
 % This module does this in four circumstances, each of which requires it
-% to perform a different set of files from a different set of modules.
+% to grab a different set of files from a different set of modules.
 %
 % 1     grab_unqual_imported_modules_make_int performs the task that is
 %       chronologically first in the build-system lifecycle of a module,
@@ -80,7 +80,7 @@
     %
     % - the private interface files (.int0) for all the parent modules,
     % - the long interface files (.int) for all the imported modules, and
-    % - the qualified short interface files (.in2) for all the indirectly
+    % - the qualified short interface files (.int2) for all the indirectly
     %   imported modules.
     %
     % Return the aug_compilation_unit structure containing all the information
