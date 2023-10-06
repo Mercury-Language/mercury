@@ -397,8 +397,10 @@ compiled_code_dependencies(Globals, Deps, DepSpecs) :-
         self_fact_table_files,
         self_foreign_include_files,
         self(module_target_int1),
+        % XXX MDNEW The next two dep_specs should be a single
+        % combined dep_spec, anc01_dir1_indir2.
         ancestors(module_target_int1),
-        imports_012
+        anc0_dir1_indir2
     ],
 
     globals.lookup_bool_option(Globals, intermodule_optimization, IntermodOpt),
@@ -416,8 +418,17 @@ compiled_code_dependencies(Globals, Deps, DepSpecs) :-
         ],
         DepSpecsOpts = [
             self(module_target_opt),
+            % XXX MDNEW Given that we compute the set of intermod imports
+            % for this dep_spec ...
             intermod_imports(module_target_opt),
-            intermod_imports_their_ancestors_and_012
+            % ... why do we have to compute it AGAIN, as part of this
+            % dep_spec as well?
+            %
+            % We should replace both of these dep_specs with one that
+            % does the job of both but computes the set of intermod_imports
+            % modules set just once. This would save even the cost of a
+            % cache hit.
+            anc0_dir1_indir2_of_ancestors_of_intermod_imports
         ]
     ;
         AnyIntermod = no,
@@ -537,7 +548,7 @@ get_intermod_imports_their_ancestors_and_012(Globals, ModuleIndex,
 %           imports_012, Globals, ModulesList1,
 %           succeeded, Succeeded2A, deps_set_init, ResultA, Info0, InfoA, !IO),
         fold_dep_spec_over_modules(KeepGoing, Globals,
-            imports_012, ModulesList1,
+            anc0_dir1_indir2, ModulesList1,
             succeeded, Succeeded2, deps_set_init, Result, Info0, !:Info, !IO),
 %       eqv_states("get_intermod_imports_and_their_ancestors",
 %           Succeeded2A, Succeeded2B, Succeeded2,
@@ -1003,7 +1014,7 @@ get_foreign_include_files_2(LanguageSet, SourceFileName, ForeignInclude,
 %   in each layer to have exactly the same argument list in its usual
 %   curried form.
 %
-% the main motivation for this change is this last advantage, since
+% The main motivation for this change is this last advantage, since
 % should make it possible to pass a progress stream to every predicate
 % that needs it *without* modifying "of", "files_of", "combine_deps", and
 % "combine_deps_list", which would also require a bunch of predicates
@@ -1033,10 +1044,15 @@ get_foreign_include_files_2(LanguageSet, SourceFileName, ForeignInclude,
     ;       intermod_imports(module_target_type)
     ;       foreign_imports(module_target_type)
 
-    ;       imports_012
-            % XXX MDNEW Get a better name.
-    ;       intermod_imports_their_ancestors_and_012.
-            % XXX MDNEW See the other XXX MDNEWs below.
+    ;       anc0_dir1_indir2
+            % Get the .int0 files of ancestors, the .int files of direct
+            % imports, and the .int2 files of indirect imports.
+
+    ;       anc0_dir1_indir2_of_ancestors_of_intermod_imports.
+            % Get the .int0 files of ancestors, the .int files of direct
+            % imports, and the .int2 files of indirect imports, but not
+            % of the specified module, but of the ancestors of its intermod
+            % imports.
 
 :- pred find_dep_specs(maybe_keep_going::in, globals::in, module_index::in,
     list(dep_spec)::in,
@@ -1141,7 +1157,7 @@ find_dep_spec(KeepGoing, Globals, ModuleIndex, DepSpec,
             !Info, !IO),
         dfmi_targets(ModuleIndexSet, TargetType, DepFileIndexSet, !Info)
     ;
-        DepSpec = imports_012,
+        DepSpec = anc0_dir1_indir2,
         % XXX cache
         SubDepSpecs = [
             ancestors(module_target_int0),
@@ -1173,7 +1189,7 @@ find_dep_spec(KeepGoing, Globals, ModuleIndex, DepSpec,
                 [s(string.string(DepSpec)), s(IndexModuleNameStr)], !TIO)
         )
     ;
-        DepSpec = intermod_imports_their_ancestors_and_012,
+        DepSpec = anc0_dir1_indir2_of_ancestors_of_intermod_imports,
         trace [
             compile_time(flag("find_dep_spec")),
             run_time(env("FIND_DEP_SPEC")),
@@ -1185,8 +1201,8 @@ find_dep_spec(KeepGoing, Globals, ModuleIndex, DepSpec,
             io.format(OutputStream, "dep_spec %s for %s starts\n\n",
                 [s(string.string(DepSpec)), s(IndexModuleNameStr)], !TIO)
         ),
-        new_get_intermod_imports_their_ancestors_and_012(Globals, ModuleIndex,
-            Succeeded, DepFileIndexSet, !Info, !IO),
+        new_get_anc0_dir1_indir2_of_ancestors_of_intermod_imports(Globals,
+            ModuleIndex, Succeeded, DepFileIndexSet, !Info, !IO),
         trace [
             compile_time(flag("find_dep_spec")),
             run_time(env("FIND_DEP_SPEC")),
@@ -1233,14 +1249,15 @@ dfmi_targets(ModuleIndexSet, TargetType, DepFileIndexSet, !Info) :-
     deps_set_foldl2(acc_rev_dfmi_target(TargetType), ModuleIndexSet,
         deps_set_init, DepFileIndexSet, !Info).
 
-% XXX MDNEW This predicate would be better named something like
-% get_ancestors_of_intermod_imports.
-:- pred new_get_intermod_imports_and_their_ancestors(
+% XXX MDNEW This predicate was renamed
+% from new_get_intermod_imports_and_their_ancestors
+% to new_get_ancestors_of_intermod_imports
+:- pred new_get_ancestors_of_intermod_imports(
     globals::in, module_index::in, maybe_succeeded::out,
     deps_set(module_index)::out,
     make_info::in, make_info::out, io::di, io::uo) is det.
 
-new_get_intermod_imports_and_their_ancestors(Globals, ModuleIndex, Succeeded,
+new_get_ancestors_of_intermod_imports(Globals, ModuleIndex, Succeeded,
         ModuleIndexSet, !Info, !IO) :-
     KeepGoing = make_info_get_keep_going(!.Info),
     intermod_imports(Globals, ModuleIndex, Succeeded1, Modules1, !Info, !IO),
@@ -1258,17 +1275,18 @@ new_get_intermod_imports_and_their_ancestors(Globals, ModuleIndex, Succeeded,
         Succeeded = Succeeded1
     ).
 
-% XXX MDNEW This predicate would be better named something like
-% get_int012_of_ancestors_of_intermod_imports.
-:- pred new_get_intermod_imports_their_ancestors_and_012(
+% XXX MDNEW This predicate was renamed
+% from new_get_intermod_imports_their_ancestors_and_012
+% to new_get_anc0_dir1_indir2_of_ancestors_of_intermod_imports.
+:- pred new_get_anc0_dir1_indir2_of_ancestors_of_intermod_imports(
     globals::in, module_index::in, maybe_succeeded::out,
     deps_set(dependency_file_index)::out,
     make_info::in, make_info::out, io::di, io::uo) is det.
 
-new_get_intermod_imports_their_ancestors_and_012(Globals, ModuleIndex,
+new_get_anc0_dir1_indir2_of_ancestors_of_intermod_imports(Globals, ModuleIndex,
         Succeeded, DepFileIndexSet, !Info, !IO) :-
     KeepGoing = make_info_get_keep_going(!.Info),
-    new_get_intermod_imports_and_their_ancestors(Globals, ModuleIndex,
+    new_get_ancestors_of_intermod_imports(Globals, ModuleIndex,
         Succeeded1, Modules1, !Info, !IO),
     ( if
         Succeeded1 = did_not_succeed,
@@ -1279,7 +1297,7 @@ new_get_intermod_imports_their_ancestors_and_012(Globals, ModuleIndex,
     else
         ModuleList1 = deps_set_to_sorted_list(Modules1),
         fold_dep_spec_over_modules(KeepGoing, Globals,
-            imports_012, ModuleList1,
+            anc0_dir1_indir2, ModuleList1,
             succeeded, Succeeded2, deps_set_init, DepFileIndexSet, !Info, !IO),
         Succeeded = Succeeded1 `and` Succeeded2
     ).
