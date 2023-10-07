@@ -685,9 +685,10 @@ make_info_add_burdened_module_as_dep(BurdenedModule, !Info) :-
 
 make_int3_files(ProgressStream, ErrorStream, Globals,
         ParseTreeModuleSrcs, Succeeded, !Info, !IO) :-
-    list.map_foldl(
+    list.map2_foldl(
         write_short_interface_file_int3(ProgressStream, ErrorStream, Globals),
-        ParseTreeModuleSrcs, Succeededs, !IO),
+        ParseTreeModuleSrcs, Succeededs, SpecsList, !IO),
+    list.foldl(write_error_specs(ErrorStream, Globals), SpecsList, !IO),
     Succeeded = and_list(Succeededs).
 
 :- pred cleanup_int3_files(io.text_output_stream::in, globals::in,

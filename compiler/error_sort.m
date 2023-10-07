@@ -147,16 +147,16 @@ remove_conditionals_in_msg(OptionTable, Msg0, Msg) :-
     require_det (
         (
             Msg0 = simplest_msg(Context, Pieces0),
-            Components0 = [always(Pieces0)],
             MaybeContext = yes(Context),
             TreatAsFirst = treat_based_on_posn,
-            ExtraIndent = 0
+            ExtraIndent = 0,
+            Components0 = [always(Pieces0)]
         ;
             Msg0 = simplest_no_context_msg(Pieces0),
-            Components0 = [always(Pieces0)],
             MaybeContext = no,
             TreatAsFirst = treat_based_on_posn,
-            ExtraIndent = 0
+            ExtraIndent = 0,
+            Components0 = [always(Pieces0)]
         ;
             Msg0 = simple_msg(Context, Components0),
             MaybeContext = yes(Context),
@@ -272,7 +272,16 @@ sort_error_msgs(Msgs0, Msgs) :-
 compare_error_msgs(ReverseErrorOrder, MsgA, MsgB, Result) :-
     MaybeContextA = project_msg_context(MsgA),
     MaybeContextB = project_msg_context(MsgB),
-    compare(ContextResult, MaybeContextA, MaybeContextB),
+    % The context comparison makes sense only if both Msgs have a context.
+    % If one or both Msgs lack a context, then go on to compare the components.
+    ( if
+        MaybeContextA = yes(ContextA),
+        MaybeContextB = yes(ContextB)
+    then
+        compare(ContextResult, ContextA, ContextB)
+    else
+        ContextResult = (=)
+    ),
     (
         ContextResult = (=),
         ComponentsA = project_msg_components(MsgA),

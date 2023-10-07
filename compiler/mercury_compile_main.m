@@ -1279,24 +1279,28 @@ do_process_compiler_arg_make_interface(ProgressStream, ErrorStream, Globals0,
             maybe_print_delayed_error_messages(ErrorStream, Globals, !IO),
             (
                 InterfaceFile = omif_int0,
-                list.map_foldl2(
+                list.map2_foldl2(
                     write_private_interface_file_int0(ProgressStream,
                         ErrorStream, Globals0, FileName, ModuleName,
                         MaybeTimestamp),
-                    ParseTreeModuleSrcs, _Succeededs, !HaveReadModuleMaps, !IO)
+                    ParseTreeModuleSrcs, _Succeededs, SpecsList,
+                    !HaveReadModuleMaps, !IO)
             ;
                 InterfaceFile = omif_int1_int2,
-                list.map_foldl2(
+                list.map2_foldl2(
                     write_interface_file_int1_int2(ProgressStream, ErrorStream,
                         Globals0, FileName, ModuleName, MaybeTimestamp),
-                    ParseTreeModuleSrcs, _Succeededs, !HaveReadModuleMaps, !IO)
+                    ParseTreeModuleSrcs, _Succeededs, SpecsList,
+                    !HaveReadModuleMaps, !IO)
             ;
                 InterfaceFile = omif_int3,
-                list.map_foldl(
+                list.map2_foldl(
                     write_short_interface_file_int3(ProgressStream,
                         ErrorStream, Globals0),
-                    ParseTreeModuleSrcs, _Succeededs, !IO)
-            )
+                    ParseTreeModuleSrcs, _Succeededs, SpecsList, !IO)
+            ),
+            list.foldl(write_error_specs(ErrorStream, Globals0),
+                SpecsList, !IO)
         )
     ).
 
