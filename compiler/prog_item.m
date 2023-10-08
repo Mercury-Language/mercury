@@ -330,7 +330,7 @@
                 ptms_type_specs             :: list(error_spec),
                 % The error messages generated during the construction
                 % of ptms_inst_defns and ptms_mode_defns. We have found
-                % some invalid insts and/or more if some of these error_specs
+                % some invalid insts and/or modes if some of these error_specs
                 % (a) are severity_error, and (b) are
                 % phase_type_inst_mode_check_invalid_inst_mode.
                 ptms_inst_mode_specs        :: list(error_spec),
