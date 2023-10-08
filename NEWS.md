@@ -1275,6 +1275,13 @@ Changes to the extras distribution
 
 * We have deleted the `old_term_parser` library.
 
+Other changes
+-------------
+
+* We have added a new option, `--with-pkgversion`, to the configure script.
+  This option lets you specify an identifying string that will be included in
+  the version information displayed by programs in the Mercury system.
+
 NEWS for Mercury 22.01.8
 ========================
 

@@ -109,8 +109,8 @@ AC_PREFIX_DEFAULT(/usr/local/mercury-`. ./VERSION; echo $VERSION`)
 #
 
 AC_ARG_WITH(pkgversion,
-    AS_HELP_STRING([--with-pkgversion],
-    [Specify the package version for version and usage messages.]),
+    AS_HELP_STRING([--with-pkgversion=<pkgversion>],
+    [Specify the package version for version messages.]),
     [PACKAGE="$withval"], [PACKAGE=])
 
 case "$PACKAGE" in
