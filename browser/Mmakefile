@@ -176,7 +176,7 @@ Mercury.modules: MDB_FLAGS
 check:	$(CHECKS)
 
 .PHONY: all-ints
-all-ints: ints int3s
+all-ints: int3s ints
 
 .PHONY: ints
 ints:	$(INTS_TARGETS)
