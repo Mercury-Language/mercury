@@ -1588,91 +1588,62 @@ file_or_module_to_module_name(fm_module(ModuleName)) = ModuleName.
 
 read_module_or_file(ProgressStream, Globals0, Globals, FileOrModuleName,
         ReturnTimestamp, HaveReadSrc, !HaveReadModuleMaps, !IO) :-
+    globals.lookup_bool_option(Globals0, verbose, Verbose),
     (
         FileOrModuleName = fm_module(ModuleName),
-        globals.lookup_bool_option(Globals0, verbose, Verbose),
         ModuleNameStr = sym_name_to_string(ModuleName),
-        string.format("%% Parsing file `%s' and imported interfaces...\n",
-            [s(ModuleNameStr)], ParsingMsg),
-        maybe_write_string(ProgressStream, Verbose, ParsingMsg, !IO),
-        ( if
-            % Avoid rereading the module if it was already read
-            % by recompilation_version.m.
-            map.search(!.HaveReadModuleMaps ^ hrmm_src, ModuleName,
-                HaveReadSrc0),
-            HaveReadSrc0 = have_read_module(FN, MaybeTimestamp0, PT, E),
-            return_timestamp_if_needed(ReturnTimestamp,
-                MaybeTimestamp0, MaybeTimestamp),
-            HaveReadSrc1 = have_read_module(FN, MaybeTimestamp, PT, E)
-        then
-            Globals = Globals0,
-            HaveReadSrc = HaveReadSrc1,
-            % XXX When we have read the module before, it *could* have had
-            % problems that should cause smart recompilation to be disabled.
-            HaveReadModuleMapSrc0 = !.HaveReadModuleMaps ^ hrmm_src,
-            map.delete(ModuleName,
-                HaveReadModuleMapSrc0, HaveReadModuleMapSrc),
-            !HaveReadModuleMaps ^ hrmm_src := HaveReadModuleMapSrc
-        else
-            % We don't search `--search-directories' for source files
-            % because that can result in the generated interface files
-            % being created in the wrong directory.
+        string.format("%% Parsing file `%s'.m and imported interfaces...\n",
+            [s(ModuleNameStr)], ParsingMsg)
+    ;
+        FileOrModuleName = fm_file(FileName0),
+        string.format("%% Parsing file `%s'.m and imported interfaces...\n",
+            [s(FileName0)], ParsingMsg),
+        % This is only the *default* module name, but it is the only one
+        % we can use until we actually read the file.
+        file_name_to_module_name(FileName0, ModuleName)
+    ),
+    maybe_write_string(ProgressStream, Verbose, ParsingMsg, !IO),
+    ( if
+        % Avoid rereading the module if it was already read
+        % by recompilation.version.m.
+        map.search(!.HaveReadModuleMaps ^ hrmm_src, ModuleName,
+            HaveReadSrc0),
+        HaveReadSrc0 = have_read_module(FN, MaybeTimestamp0, PT, E),
+        return_timestamp_if_needed(ReturnTimestamp,
+            MaybeTimestamp0, MaybeTimestamp),
+        HaveReadSrc1 = have_read_module(FN, MaybeTimestamp, PT, E)
+    then
+        Globals = Globals0,
+        HaveReadSrc = HaveReadSrc1,
+        % XXX When we have read the module before, it *could* have had
+        % problems that should cause smart recompilation to be disabled.
+        HaveReadModuleMapSrc0 = !.HaveReadModuleMaps ^ hrmm_src,
+        map.delete(ModuleName, HaveReadModuleMapSrc0, HaveReadModuleMapSrc),
+        !HaveReadModuleMaps ^ hrmm_src := HaveReadModuleMapSrc
+    else
+        % We don't search `--search-directories' for source files
+        % because that can result in the generated interface files
+        % being created in the wrong directory.
+        (
+            FileOrModuleName = fm_module(_),
             read_module_src(ProgressStream, Globals0, rrm_std,
                 do_not_ignore_errors, do_not_search, ModuleName, [],
-                always_read_module(ReturnTimestamp), HaveReadSrc, !IO),
-            io_get_disable_smart_recompilation(DisableSmart, !IO),
-            (
-                DisableSmart = disable_smart_recompilation,
-                globals.set_option(smart_recompilation, bool(no),
-                    Globals0, Globals)
-            ;
-                DisableSmart = do_not_disable_smart_recompilation,
-                Globals = Globals0
-            )
-        )
-    ;
-        FileOrModuleName = fm_file(FileName),
-        FileNameDotM = FileName ++ ".m",
-        globals.lookup_bool_option(Globals0, verbose, Verbose),
-        string.format("%% Parsing file `%s' and imported interfaces...\n",
-            [s(FileNameDotM)], ParsingMsg),
-        maybe_write_string(ProgressStream, Verbose, ParsingMsg, !IO),
-
-        file_name_to_module_name(FileName, DefaultModuleName),
-        ( if
-            % Avoid rereading the module if it was already read
-            % by recompilation_version.m.
-            map.search(!.HaveReadModuleMaps ^ hrmm_src, DefaultModuleName,
-                HaveReadSrc0),
-            HaveReadSrc0 = have_read_module(FN, MaybeTimestamp0, PT, E),
-            return_timestamp_if_needed(ReturnTimestamp,
-                MaybeTimestamp0, MaybeTimestamp),
-            HaveReadSrc1 = have_read_module(FN, MaybeTimestamp, PT, E)
-        then
-            Globals = Globals0,
-            HaveReadSrc = HaveReadSrc1,
-            % XXX When we have read the module before, it *could* have had
-            % problems that should cause smart recompilation to be disabled.
-            HaveReadModuleMapSrc0 = !.HaveReadModuleMaps ^ hrmm_src,
-            map.delete(DefaultModuleName,
-                HaveReadModuleMapSrc0, HaveReadModuleMapSrc),
-            !HaveReadModuleMaps ^ hrmm_src := HaveReadModuleMapSrc
-        else
-            % We don't search `--search-directories' for source files
-            % because that can result in the generated interface files
-            % being created in the wrong directory.
+                always_read_module(ReturnTimestamp), HaveReadSrc, !IO)
+        ;
+            FileOrModuleName = fm_file(FileName),
+            FileNameDotM = FileName ++ ".m",
             read_module_src_from_file(ProgressStream, Globals0,
                 FileName, FileNameDotM, rrm_file, do_not_search,
-                always_read_module(ReturnTimestamp), HaveReadSrc, !IO),
-            io_get_disable_smart_recompilation(DisableSmart, !IO),
-            (
-                DisableSmart = disable_smart_recompilation,
-                globals.set_option(smart_recompilation, bool(no),
-                    Globals0, Globals)
-            ;
-                DisableSmart = do_not_disable_smart_recompilation,
-                Globals = Globals0
-            )
+                always_read_module(ReturnTimestamp), HaveReadSrc, !IO)
+        ),
+        io_get_disable_smart_recompilation(DisableSmart, !IO),
+        (
+            DisableSmart = disable_smart_recompilation,
+            globals.set_option(smart_recompilation, bool(no),
+                Globals0, Globals)
+        ;
+            DisableSmart = do_not_disable_smart_recompilation,
+            Globals = Globals0
         )
     ),
     globals.lookup_bool_option(Globals, detailed_statistics, Stats),
