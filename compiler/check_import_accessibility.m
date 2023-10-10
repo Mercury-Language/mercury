@@ -38,8 +38,6 @@
 :- module parse_tree.check_import_accessibility.
 :- interface.
 
-:- import_module mdbcomp.
-:- import_module mdbcomp.sym_name.
 :- import_module parse_tree.error_spec.
 :- import_module parse_tree.prog_item.
 
@@ -78,6 +76,8 @@
 
 :- import_module libs.
 :- import_module libs.globals.
+:- import_module mdbcomp.
+:- import_module mdbcomp.sym_name.
 :- import_module parse_tree.item_util.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_data_foreign.

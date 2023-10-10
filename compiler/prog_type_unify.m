@@ -18,8 +18,6 @@
 :- import_module parse_tree.prog_data.
 
 :- import_module list.
-:- import_module map.
-:- import_module term.
 
 %---------------------------------------------------------------------------%
 %
@@ -108,7 +106,9 @@
 :- import_module parse_tree.prog_type_scan.
 :- import_module parse_tree.prog_type_subst.
 
+:- import_module map.
 :- import_module require.
+:- import_module term.
 
 %---------------------------------------------------------------------------%
 
