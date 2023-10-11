@@ -83,29 +83,28 @@
     maybe_intermod_deps::in, set(module_name)::in,
     maybe_include_trans_opt_rule::in, io::di, io::uo) is det.
 
-    % generate_dependencies_write_d_files(Globals, Modules,
+    % generate_dependencies_write_d_files(Globals, BurdenedModules,
     %   IntDepsGraph, ImplDepsGraph, IndirectDepsGraph, IndirectOptDepsGraph,
-    %   TransOptDepsGraph, TransOptOrder, DepsMap, !IO):
+    %   TransOptDepsGraph, TransOptOrder, !IO):
     %
     % This predicate writes out the .d files for all the modules in the
-    % Modules list.
+    % BurdenedModules list.
     % IntDepsGraph gives the interface dependency graph.
     % ImplDepsGraph gives the implementation dependency graph.
     % IndirectDepsGraph gives the indirect dependency graph
     % (this includes dependencies on `*.int2' files).
     % IndirectOptDepsGraph gives the indirect optimization dependencies
     % (this includes dependencies via `.opt' and `.trans_opt' files).
-    % These are all computed from the DepsMap.
     %
     % TransOptDepsGraph gives the trans-opt dependency graph for the
     % purpose of making `.trans_opt' files.
     % TransOptOrder gives the ordering that is used to determine
     % which other modules the .trans_opt files may depend on.
     %
-:- pred generate_dependencies_write_d_files(globals::in, list(deps)::in,
+:- pred generate_dependencies_write_d_files(globals::in,
+    list(burdened_module)::in,
     deps_graph::in, deps_graph::in, deps_graph::in, deps_graph::in,
-    deps_graph::in, list(module_name)::in, deps_map::in, io::di, io::uo)
-    is det.
+    deps_graph::in, list(module_name)::in, io::di, io::uo) is det.
 
     % Write out the `.dv' file, using the information collected in the
     % deps_map data structure.
@@ -1339,43 +1338,43 @@ construct_subdirs_shorthand_rule(Globals, ModuleName, Ext,
 
 %---------------------------------------------------------------------------%
 
-generate_dependencies_write_d_files(Globals, Deps,
+generate_dependencies_write_d_files(Globals, BurdenedModules,
         IntDepsGraph, ImpDepsGraph, IndirectDepsGraph, IndirectOptDepsGraph,
-        TransOptDepsGraph, TransOptOrder, DepsMap, !IO) :-
+        TransOptDepsGraph, TransOptOrder, !IO) :-
     map.init(Cache0),
-    generate_dependencies_write_d_files_loop(Globals, Deps,
+    generate_dependencies_write_d_files_loop(Globals, BurdenedModules,
         IntDepsGraph, ImpDepsGraph, IndirectDepsGraph, IndirectOptDepsGraph,
-        TransOptDepsGraph, TransOptOrder, DepsMap, Cache0, _Cache, !IO).
+        TransOptDepsGraph, TransOptOrder, Cache0, _Cache, !IO).
 
-:- pred generate_dependencies_write_d_files_loop(globals::in, list(deps)::in,
+:- pred generate_dependencies_write_d_files_loop(globals::in,
+    list(burdened_module)::in,
     deps_graph::in, deps_graph::in, deps_graph::in, deps_graph::in,
-    deps_graph::in, list(module_name)::in, deps_map::in,
+    deps_graph::in, list(module_name)::in,
     module_file_name_cache::in, module_file_name_cache::out,
     io::di, io::uo) is det.
 
-generate_dependencies_write_d_files_loop(_, [], _, _, _, _, _, _, _,
+generate_dependencies_write_d_files_loop(_, [], _, _, _, _, _, _,
         !Cache, !IO).
-generate_dependencies_write_d_files_loop(Globals, [Dep | Deps],
+generate_dependencies_write_d_files_loop(Globals,
+        [BurdenedModule | BurdenedModules],
         IntDepsGraph, ImpDepsGraph, IndirectDepsGraph, IndirectOptDepsGraph,
-        TransOptDepsGraph, TransOptOrder, DepsMap, !Cache, !IO) :-
-    generate_dependencies_write_d_file(Globals, Dep,
+        TransOptDepsGraph, TransOptOrder, !Cache, !IO) :-
+    generate_dependencies_write_d_file(Globals, BurdenedModule,
         IntDepsGraph, ImpDepsGraph, IndirectDepsGraph, IndirectOptDepsGraph,
-        TransOptDepsGraph, TransOptOrder, DepsMap, !Cache, !IO),
-    generate_dependencies_write_d_files_loop(Globals, Deps,
+        TransOptDepsGraph, TransOptOrder, !Cache, !IO),
+    generate_dependencies_write_d_files_loop(Globals, BurdenedModules,
         IntDepsGraph, ImpDepsGraph, IndirectDepsGraph, IndirectOptDepsGraph,
-        TransOptDepsGraph, TransOptOrder, DepsMap, !Cache, !IO).
+        TransOptDepsGraph, TransOptOrder, !Cache, !IO).
 
-:- pred generate_dependencies_write_d_file(globals::in, deps::in,
+:- pred generate_dependencies_write_d_file(globals::in, burdened_module::in,
     deps_graph::in, deps_graph::in, deps_graph::in, deps_graph::in,
-    deps_graph::in, list(module_name)::in, deps_map::in,
+    deps_graph::in, list(module_name)::in,
     module_file_name_cache::in, module_file_name_cache::out,
     io::di, io::uo) is det.
 
-generate_dependencies_write_d_file(Globals, Dep,
+generate_dependencies_write_d_file(Globals, BurdenedModule,
         IntDepsGraph, ImpDepsGraph, IndirectDepsGraph, IndirectOptDepsGraph,
-        TransOptDepsGraph, FullTransOptOrder, _DepsMap, !Cache, !IO) :-
-    % XXX The fact that _DepsMap is unused here may be a bug.
-    Dep = deps(_, _, BurdenedModule),
+        TransOptDepsGraph, FullTransOptOrder, !Cache, !IO) :-
     BurdenedModule = burdened_module(Baggage, ParseTreeModuleSrc),
 
     % Look up the interface/implementation/indirect dependencies
@@ -2562,7 +2561,7 @@ get_source_file(DepsMap, ModuleName, FileName) :-
 
 %---------------------------------------------------------------------------%
 
-    % get_both_opt_deps(Globals, BuildOptFiles, Deps, IntermodDirs,
+    % get_both_opt_deps(Globals, BuildOptFiles, IntermodDirs, Deps,
     %   OptDeps, TransOptDeps, !Cache, !IO):
     %
     % For each dependency, search intermod_directories for a .m file.

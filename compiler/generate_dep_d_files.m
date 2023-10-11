@@ -221,7 +221,20 @@ generate_dot_dx_files(ProgressStream, Globals, Mode, Search, ModuleName,
             generate_dependencies_write_dv_file(Globals, SourceFileName,
                 ModuleName, DepsMap, !IO),
             generate_dependencies_write_dep_file(Globals, SourceFileName,
-                ModuleName, DepsMap, !IO)
+                ModuleName, DepsMap, !IO),
+
+            % For Java, the main target is actually a shell script
+            % which will set CLASSPATH appropriately, and then invoke java
+            % on the appropriate .class file. Rather than generating
+            % an Mmake rule to build this file when it is needed,
+            % we just generate this file at "mmake depend" time, since
+            % that is simpler and probably more efficient anyway.
+            globals.get_target(Globals, Target),
+            ( if Target = target_java then
+                create_java_shell_script(Globals, ModuleName, _Succeeded, !IO)
+            else
+                true
+            )
         ),
 
         % Compute the interface deps graph and the implementation deps
@@ -229,8 +242,8 @@ generate_dot_dx_files(ProgressStream, Globals, Mode, Search, ModuleName,
         digraph.init(IntDepsGraph0),
         digraph.init(ImpDepsGraph0),
         map.values(DepsMap, DepsList),
-        deps_list_to_deps_graph(DepsList, DepsMap, IntDepsGraph0, IntDepsGraph,
-            ImpDepsGraph0, ImpDepsGraph),
+        deps_list_to_deps_graph(DepsMap, DepsList, BurdenedModules,
+            IntDepsGraph0, IntDepsGraph, ImpDepsGraph0, ImpDepsGraph),
         maybe_output_imports_graph(ProgressStream, Globals, ModuleName,
             IntDepsGraph, ImpDepsGraph, !IO),
 
@@ -343,41 +356,27 @@ generate_dot_dx_files(ProgressStream, Globals, Mode, Search, ModuleName,
             TransOptDepsOrdering, TransOptOrder, !IO),
         (
             Mode = output_module_dot_d_file,
-            DFilesToWrite = [ModuleDep]
+            DFilesToWrite = [BurdenedModule]
         ;
             Mode = output_all_program_dot_dx_files,
-            DFilesToWrite = DepsList
+            DFilesToWrite = BurdenedModules
         ),
         generate_dependencies_write_d_files(Globals, DFilesToWrite,
             IntDepsGraph, ImpDepsGraph,
             IndirectDepsGraph, IndirectOptDepsGraph,
-            TransOptDepsGraph, TransOptOrder, DepsMap, !IO)
-    ),
-
-    % For Java, the main target is actually a shell script which will set
-    % CLASSPATH appropriately and invoke java on the appropriate .class file.
-    % Rather than generating an Mmake rule to build this file when it is
-    % needed, we just generate this file "mmake depend" time, since that is
-    % simpler and probably more efficient anyway.
-
-    globals.get_target(Globals, Target),
-    ( if
-        Target = target_java,
-        Mode = output_all_program_dot_dx_files
-    then
-        create_java_shell_script(Globals, ModuleName, _Succeeded, !IO)
-    else
-        true
+            TransOptDepsGraph, TransOptOrder, !IO)
     ).
 
     % Construct a pair of dependency graphs (the interface dependencies
     % and the implementation dependencies) for all the modules in the program.
     %
-:- pred deps_list_to_deps_graph(list(deps)::in, deps_map::in,
+:- pred deps_list_to_deps_graph(deps_map::in,
+    list(deps)::in, list(burdened_module)::out,
     deps_graph::in, deps_graph::out, deps_graph::in, deps_graph::out) is det.
 
-deps_list_to_deps_graph([], _, !IntDepsGraph, !ImpDepsGraph).
-deps_list_to_deps_graph([Deps | DepsList], DepsMap,
+deps_list_to_deps_graph(_, [], [], !IntDepsGraph, !ImpDepsGraph).
+deps_list_to_deps_graph(DepsMap,
+        [Deps | DepsList], [BurdenedModule | BurdenedModules],
         !IntDepsGraph, !ImpDepsGraph) :-
     Deps = deps(_, _, BurdenedModule),
     Baggage = BurdenedModule ^ bm_baggage,
@@ -386,17 +385,18 @@ deps_list_to_deps_graph([Deps | DepsList], DepsMap,
     ( if set.is_empty(FatalErrors) then
         ModuleDepInfo = module_dep_info_full(BurdenedModule),
         add_module_dep_info_to_deps_graph(ModuleDepInfo,
-            lookup_module_and_imports_in_deps_map(DepsMap),
+            lookup_burdened_module_in_deps_map(DepsMap),
             !IntDepsGraph, !ImpDepsGraph)
     else
         true
     ),
-    deps_list_to_deps_graph(DepsList, DepsMap, !IntDepsGraph, !ImpDepsGraph).
+    deps_list_to_deps_graph(DepsMap, DepsList, BurdenedModules,
+        !IntDepsGraph, !ImpDepsGraph).
 
-:- func lookup_module_and_imports_in_deps_map(deps_map, module_name)
+:- func lookup_burdened_module_in_deps_map(deps_map, module_name)
     = module_dep_info.
 
-lookup_module_and_imports_in_deps_map(DepsMap, ModuleName) = ModuleDepInfo :-
+lookup_burdened_module_in_deps_map(DepsMap, ModuleName) = ModuleDepInfo :-
     map.lookup(DepsMap, ModuleName, deps(_, _, BurdenedModule)),
     ModuleDepInfo = module_dep_info_full(BurdenedModule).
 
