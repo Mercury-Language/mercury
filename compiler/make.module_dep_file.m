@@ -115,16 +115,17 @@ version_number(module_dep_file_v2, 2).
 write_module_dep_file(ProgressStream, Globals, BurdenedModule0, !IO) :-
     BurdenedModule0 = burdened_module(Baggage0, ParseTreeModuleSrc),
     Baggage0 = module_baggage(SourceFileName, _SourceFileDir,
-        SourceFileModuleName, MaybeTopModule, _MaybeTimestampMap,
-        _GrabbedFileMap, _Errors),
+        SourceFileModuleName, MaybeTopModule,
+        _MaybeTimestamp, _MaybeTimestampMap, _GrabbedFileMap, _Errors),
 
+    MaybeTimestamp = maybe.no,
     MaybeTimestampMap = maybe.no,
     ModuleName = ParseTreeModuleSrc ^ ptms_module_name,
     GrabbedFileMap = map.singleton(ModuleName, gf_src(ParseTreeModuleSrc)),
     Errors = init_read_module_errors,
     Baggage = module_baggage(SourceFileName, dir.this_directory,
-        SourceFileModuleName, MaybeTopModule, MaybeTimestampMap,
-        GrabbedFileMap, Errors),
+        SourceFileModuleName, MaybeTopModule,
+        MaybeTimestamp, MaybeTimestampMap, GrabbedFileMap, Errors),
 
     BurdenedModule = burdened_module(Baggage, ParseTreeModuleSrc),
     do_write_module_dep_file(ProgressStream, Globals, BurdenedModule, !IO).

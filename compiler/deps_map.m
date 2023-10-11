@@ -37,12 +37,17 @@
 :- type deps
     --->    deps(
                 have_processed,
+                maybe_dummy_burdened_module,
                 burdened_module
             ).
 
 :- type have_processed
     --->    not_yet_processed
     ;       already_processed.
+
+:- type maybe_dummy_burdened_module
+    --->    non_dummy_burdened_module
+    ;       dummy_burdened_module.
 
 %---------------------------------------------------------------------------%
 
@@ -83,8 +88,8 @@
     %
     % XXX This shouldn't need to be exported.
     %
-:- pred insert_into_deps_map(burdened_module::in,
-    deps_map::in, deps_map::out) is det.
+:- pred insert_into_deps_map(maybe_dummy_burdened_module::in,
+    burdened_module::in, deps_map::in, deps_map::out) is det.
 
 %---------------------------------------------------------------------------%
 
@@ -107,8 +112,8 @@
 get_submodule_kind(ModuleName, DepsMap) = Kind :-
     (
         ModuleName = qualified(Parent, _),
-        map.lookup(DepsMap, ModuleName, deps(_, BurdenedModule)),
-        map.lookup(DepsMap, Parent, deps(_, ParentBurdenedModule)),
+        map.lookup(DepsMap, ModuleName, deps(_, _, BurdenedModule)),
+        map.lookup(DepsMap, Parent, deps(_, _, ParentBurdenedModule)),
         ModuleBaggage = BurdenedModule ^ bm_baggage,
         ParentBaggage = ParentBurdenedModule ^ bm_baggage,
         ModuleFileName = ModuleBaggage ^ mb_source_file_name,
@@ -203,10 +208,10 @@ generate_deps_map_step(ProgressStream, Globals, Search,
     % XXX Why only the *public* children?
     ( if
         MaybeDeps0 = yes(Deps0),
-        Deps0 = deps(Done0, BurdenedModule),
+        Deps0 = deps(Done0, MaybeDummy, BurdenedModule),
         Done0 = not_yet_processed
     then
-        Deps = deps(already_processed, BurdenedModule),
+        Deps = deps(already_processed, MaybeDummy, BurdenedModule),
         map.det_update(Module, Deps, !DepsMap),
         ParseTreeModuleSrc = BurdenedModule ^ bm_module,
 
@@ -336,10 +341,12 @@ lookup_or_find_dependency_info_for_module(ProgressStream, Globals, Search,
         MaybeDeps = yes(Deps)
     else
         read_src_file_for_dependency_info(ProgressStream, Globals, Search,
-            ModuleName, ExpectationContexts, BurdenedModules, !Specs, !IO),
+            ModuleName, ExpectationContexts, MaybeDummy, BurdenedModules,
+            !Specs, !IO),
         (
             BurdenedModules = [_ | _],
-            list.foldl(insert_into_deps_map, BurdenedModules, !DepsMap),
+            list.foldl(insert_into_deps_map(MaybeDummy),
+                BurdenedModules, !DepsMap),
             % We can do a map.lookup here even though a map.search above
             % failed because ModuleName should be one of the BurdenedModules
             % the call above just added to !DepsMap.
@@ -351,10 +358,10 @@ lookup_or_find_dependency_info_for_module(ProgressStream, Globals, Search,
         )
     ).
 
-insert_into_deps_map(BurdenedModule, !DepsMap) :-
+insert_into_deps_map(MaybeDummy, BurdenedModule, !DepsMap) :-
     ParseTreeModuleSrc = BurdenedModule ^ bm_module,
     ModuleName = ParseTreeModuleSrc ^ ptms_module_name,
-    Deps = deps(not_yet_processed, BurdenedModule),
+    Deps = deps(not_yet_processed, MaybeDummy, BurdenedModule),
     % NOTE Redirecting this call to map.det_insert leads to a clean bootcheck
     % with one exception: it causes the failure of the invalid_make_int/sub_c
     % test case, with this message:
@@ -372,11 +379,11 @@ insert_into_deps_map(BurdenedModule, !DepsMap) :-
     %
 :- pred read_src_file_for_dependency_info(io.text_output_stream::in,
     globals::in, maybe_search::in, module_name::in, expectation_contexts::in,
-    list(burdened_module)::out,
+    maybe_dummy_burdened_module::out, list(burdened_module)::out,
     list(error_spec)::in, list(error_spec)::out, io::di, io::uo) is det.
 
 read_src_file_for_dependency_info(ProgressStream, Globals, Search, ModuleName,
-        ExpectationContexts, BurdenedModules, !Specs, !IO) :-
+        ExpectationContexts, MaybeDummy, BurdenedModules, !Specs, !IO) :-
     % XXX If HaveReadModuleSrc contains error messages, any parse tree
     % it may also contain may not be complete, and the rest of this predicate
     % may work on incorrect data.
@@ -384,8 +391,9 @@ read_src_file_for_dependency_info(ProgressStream, Globals, Search, ModuleName,
         ignore_errors, Search, ModuleName, ExpectationContexts,
         always_read_module(dont_return_timestamp), HaveReadModuleSrc, !IO),
     (
-        HaveReadModuleSrc = have_read_module(SourceFileName, _MaybeTimestamp,
-            ParseTreeSrc, ReadModuleErrors)
+        HaveReadModuleSrc = have_read_module(SourceFileName, MaybeTimestamp,
+            ParseTreeSrc, ReadModuleErrors),
+        MaybeDummy = non_dummy_burdened_module
     ;
         HaveReadModuleSrc = have_not_read_module(SourceFileName,
             ReadModuleErrors),
@@ -432,10 +440,13 @@ read_src_file_for_dependency_info(ProgressStream, Globals, Search, ModuleName,
         %   module :-( However, these dependencies should not drag into
         %   the deps_map any module that other, nondummy modules' dependencies
         %   wouldn't drag in anyway.
-        ParseTreeSrc = parse_tree_src(ModuleName, dummy_context, cord.init)
+        MaybeTimestamp = maybe.no,
+        ParseTreeSrc = parse_tree_src(ModuleName, dummy_context, cord.init),
+        MaybeDummy = dummy_burdened_module
     ),
     parse_tree_src_to_burdened_module_list(Globals, SourceFileName,
-        ParseTreeSrc, ReadModuleErrors, Specs, BurdenedModules),
+        ReadModuleErrors, MaybeTimestamp, ParseTreeSrc,
+        Specs, BurdenedModules),
 %   (
 %       HaveReadModuleSrc = have_read_module(SourceFileName, _MaybeTimestamp,
 %           ParseTreeSrc, ReadModuleErrors),

@@ -1375,7 +1375,7 @@ generate_dependencies_write_d_file(Globals, Dep,
         IntDepsGraph, ImpDepsGraph, IndirectDepsGraph, IndirectOptDepsGraph,
         TransOptDepsGraph, FullTransOptOrder, _DepsMap, !Cache, !IO) :-
     % XXX The fact that _DepsMap is unused here may be a bug.
-    Dep = deps(_, BurdenedModule),
+    Dep = deps(_, _, BurdenedModule),
     BurdenedModule = burdened_module(Baggage, ParseTreeModuleSrc),
 
     % Look up the interface/implementation/indirect dependencies
@@ -1531,7 +1531,7 @@ generate_dv_file(Globals, SourceFileName, ModuleName, DepsMap,
     % The modules for which we need to generate .int0 files.
     HasSubmodules =
         ( pred(Module::in) is semidet :-
-            map.lookup(DepsMap, Module, deps(_, BurdenedModule)),
+            map.lookup(DepsMap, Module, deps(_, _, BurdenedModule)),
             ParseTreeModuleSrc = BurdenedModule ^ bm_module,
             IncludeMap = ParseTreeModuleSrc ^ ptms_include_map,
             not map.is_empty(IncludeMap)
@@ -1827,7 +1827,7 @@ generate_dv_file(Globals, SourceFileName, ModuleName, DepsMap,
 select_ok_modules(_, [], []).
 select_ok_modules(DepsMap, [ModuleName | ModuleNames0], ModuleNames) :-
     select_ok_modules(DepsMap, ModuleNames0, ModuleNamesTail),
-    map.lookup(DepsMap, ModuleName, deps(_, BurdenedModule)),
+    map.lookup(DepsMap, ModuleName, deps(_, _, BurdenedModule)),
     Baggage = BurdenedModule ^ bm_baggage,
     ModuleErrors = Baggage ^ mb_errors,
     FatalErrors = ModuleErrors ^ rm_fatal_errors,
@@ -1862,7 +1862,7 @@ get_fact_table_file_names(DepsMap, Modules, FactTableFileNames) :-
 
 get_fact_table_file_names(_DepsMap, [], !FactTableFileNames).
 get_fact_table_file_names(DepsMap, [Module | Modules], !FactTableFileNames) :-
-    map.lookup(DepsMap, Module, deps(_, BurdenedModule)),
+    map.lookup(DepsMap, Module, deps(_, _, BurdenedModule)),
     ParseTreeModuleSrc = BurdenedModule ^ bm_module,
     get_fact_tables(ParseTreeModuleSrc, FactTableFileNames),
     % Handle object files for foreign code.
@@ -2242,7 +2242,7 @@ generate_dep_file_install_targets(Globals, ModuleName, DepsMap,
     ),
     ( if
         some [BurdenedModule] (
-            map.member(DepsMap, _, deps(_, BurdenedModule)),
+            map.member(DepsMap, _, deps(_, _, BurdenedModule)),
             ParseTreeModuleSrc = BurdenedModule ^ bm_module,
             IncludeMap = ParseTreeModuleSrc ^ ptms_include_map,
             not map.is_empty(IncludeMap)
@@ -2551,7 +2551,7 @@ remove_files_cmd(Files) =
 
 get_source_file(DepsMap, ModuleName, FileName) :-
     map.lookup(DepsMap, ModuleName, Deps),
-    Deps = deps(_, BurdenedModule),
+    Deps = deps(_, _, BurdenedModule),
     Baggage = BurdenedModule ^ bm_baggage,
     SourceFileName = Baggage ^ mb_source_file_name,
     ( if string.remove_suffix(SourceFileName, ".m", SourceFileBase) then

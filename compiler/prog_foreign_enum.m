@@ -130,7 +130,7 @@ build_ctor_name_to_foreign_name_map(ForWhat, Context, ContextPieces,
             NamesOrValues = "values"
         ),
         MainPieces = ContextPieces ++
-            [invis_order_default_start(3), words("error: "),
+            [invis_order_default_start(3, ""), words("error: "),
             words("the specified mapping between"),
             words("the names of Mercury constructors"),
             words("and the corresponding foreign"), words(NamesOrValues),
@@ -248,7 +248,7 @@ build_ctor_name_to_foreign_name_map_loop(TypeModuleName, ValidCtorNames,
 
 add_bad_qual_ctors_error(Context, ContextPieces, Ctors, !Specs) :-
     HasOrHave = choose_number(Ctors, "symbol has", "symbols have"),
-    ErrorPieces = [invis_order_default_start(2),
+    ErrorPieces = [invis_order_default_start(2, ""),
         words("error: the following"),
         words(HasOrHave), words("a module qualification"),
         words("that is not compatible with the type definition:"),
@@ -285,7 +285,7 @@ qual_ctor_to_format_piece(SymName) = [qual_sym_name(SymName)].
 add_unknown_ctors_error(Context, ContextPieces, Ctors, !Specs) :-
     IsOrAre = choose_number(Ctors, "symbol is not a constructor",
         "symbols are not constructors"),
-    ErrorPieces = [invis_order_default_start(1),
+    ErrorPieces = [invis_order_default_start(1, ""),
         words("error: the following"), words(IsOrAre),
         words("of the type:"), nl_indent_delta(2)] ++
         unqual_ctors_to_line_pieces(Ctors, [suffix("."), nl]),

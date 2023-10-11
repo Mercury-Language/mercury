@@ -73,11 +73,15 @@
     % The modes of operation that must be performed on each file or module
     % named in the argument list.
 :- type op_mode_args
-    --->    opma_generate_dependencies
+    --->    opma_generate_dependencies(maybe_make_ints)
     ;       opma_generate_dependency_file
     ;       opma_make_interface(op_mode_interface_file)
     ;       opma_convert_to_mercury
     ;       opma_augment(op_mode_augment).
+
+:- type maybe_make_ints
+    --->    do_not_make_ints
+    ;       do_make_ints.
 
 :- type op_mode_interface_file
     --->    omif_int0
@@ -247,7 +251,7 @@ may_be_together_with_check_only(OpMode) = MayBeTogether :-
     ;
         OpMode = opm_top_args(OpModeArgs, _),
         (
-            ( OpModeArgs = opma_generate_dependencies
+            ( OpModeArgs = opma_generate_dependencies(_)
             ; OpModeArgs = opma_generate_dependency_file
             ; OpModeArgs = opma_make_interface(_)
             ; OpModeArgs = opma_convert_to_mercury
@@ -345,7 +349,11 @@ bool_op_modes(InvokedByMMCMake) = [
         opm_top_query(opmq_output_target_arch),
 
     only_opmode_generate_dependencies -
-        opm_top_args(opma_generate_dependencies, InvokedByMMCMake),
+        opm_top_args(opma_generate_dependencies(do_not_make_ints),
+        InvokedByMMCMake),
+    only_opmode_generate_dependencies_ints -
+        opm_top_args(opma_generate_dependencies(do_make_ints),
+        InvokedByMMCMake),
     only_opmode_generate_dependency_file -
         opm_top_args(opma_generate_dependency_file, InvokedByMMCMake),
     only_opmode_make_private_interface -
@@ -457,8 +465,14 @@ op_mode_to_option_string(OptionTable, MOP) = Str :-
     ;
         MOP = opm_top_args(MOPA, _),
         (
-            MOPA = opma_generate_dependencies,
-            Str = "--generate-dependencies"
+            MOPA = opma_generate_dependencies(MaybeMakeInts),
+            (
+                MaybeMakeInts = do_not_make_ints,
+                Str = "--generate-dependencies"
+            ;
+                MaybeMakeInts = do_make_ints,
+                Str = "--generate-dependencies-ints"
+            )
         ;
             MOPA = opma_generate_dependency_file,
             Str = "--generate-dependency_file"

@@ -1198,7 +1198,7 @@ generate_missing_start_section_warning_src(CurModuleName,
             have_not_given_missing_section_start_warning,
         !:MissingStartSectionWarning =
             have_given_missing_section_start_warning,
-        Pieces = [invis_order_default_start(1),
+        Pieces = [invis_order_default_start(1, ""),
             words("Error: module"),
             qual_sym_name(CurModuleName), words("should start with"),
             words("either an"), decl("interface"), words("or an"),
@@ -1733,7 +1733,7 @@ read_term_to_iom_result(ModuleName, FileName, ReadTermResult, ReadIOMResult,
 :- func report_missing_module_start(prog_context) = error_spec.
 
 report_missing_module_start(FirstContext) = Spec :-
-    Pieces = [invis_order_default_start(0),
+    Pieces = [invis_order_default_start(0, ""),
         words("Error: module must start with a"),
         decl("module"), words("declaration."), nl],
     Spec = simplest_spec($pred, severity_error, phase_term_to_parse_tree,

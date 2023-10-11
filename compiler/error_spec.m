@@ -292,14 +292,14 @@
 %---------------------------------------------------------------------------%
 
 :- type format_piece
-    --->    invis_order_default_start(int)
+    --->    invis_order_default_start(int, string)
             % Prints nothing. If the compiler generates two different specs
             % for the same context that we intend to appear in a specific
             % order, even though it may not be the order that sorting those
             % specs would normally give, we can add one of these to the
             % start of each error_spec, with the order of the numbers
-            % inside these invis orders controlling the final order
-            % of the error_specs.
+            % and/or strings inside these invis orders controlling
+            % the final order of the error_specs.
             %
             % This component sorts before other components that do not
             % specify such an ordinal number. The invis_order_default_end
@@ -491,7 +491,7 @@
     ;       blank_line
             % Create a blank line.
 
-    ;       invis_order_default_end(int).
+    ;       invis_order_default_end(int, string).
             % See the documentation of invis_order_default_start above.
 
 :- type lp_piece_kind

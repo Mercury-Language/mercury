@@ -124,7 +124,7 @@ construct_type_inference_message(ModuleInfo, PredId, PredInfo) = Spec :-
             UnqualPredSymName, ArgTypes, ReturnType, MaybeDet, Purity,
             ClassContext)
     ),
-    InferredPieces = [invis_order_default_start(2),
+    InferredPieces = [invis_order_default_start(2, ""),
         words("Inferred"), words(TypeStr), nl],
 
     module_info_get_predicate_table(ModuleInfo, PredicateTable),
@@ -150,7 +150,7 @@ construct_type_inference_message(ModuleInfo, PredId, PredInfo) = Spec :-
         list.map(
             construct_pred_decl_diff(ModuleInfo, ArgTypes, MaybeReturnType),
             AllOtherDeclaredPredIds, DiffPieceLists),
-        Pieces = [invis_order_default_start(2)] ++ InferredPieces ++
+        Pieces = [invis_order_default_start(2, "")] ++ InferredPieces ++
             list.condense(DiffPieceLists),
         Spec = simplest_spec($pred, severity_informational, phase_type_check,
             Context, Pieces)

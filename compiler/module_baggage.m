@@ -72,6 +72,9 @@
                 % source_file_name = source_file_module_name.
                 mb_maybe_top_module         :: maybe_top_module,
 
+                % The timestamp of the source file, if requested.
+                mb_maybe_timestamp          :: maybe(timestamp),
+
                 % If we are doing smart recompilation, we need to keep
                 % the timestamps of the modules read in.
                 mb_maybe_timestamp_map      :: maybe(module_timestamp_map),
@@ -240,7 +243,8 @@
     % for building dependency maps between modules.
     %
 :- pred parse_tree_src_to_burdened_module_list(globals::in,
-    file_name::in, parse_tree_src::in, read_module_errors::in,
+    file_name::in, read_module_errors::in, maybe(timestamp)::in,
+    parse_tree_src::in,
     list(error_spec)::out, list(burdened_module)::out) is det.
 
 %---------------------------------------------------------------------------%
@@ -287,7 +291,8 @@ get_nested_children_list_of_top_module(MaybeTopModule) = Modules :-
 %---------------------------------------------------------------------------%
 
 parse_tree_src_to_burdened_module_list(Globals, SourceFileName,
-        ParseTreeSrc, ReadModuleErrors, !:Specs, BurdenedModules) :-
+        ReadModuleErrors, MaybeTimestampMap, ParseTreeSrc,
+        !:Specs, BurdenedModules) :-
     !:Specs = get_read_module_specs(ReadModuleErrors),
     split_into_compilation_units_perform_checks(Globals, ParseTreeSrc,
         ParseTreeModuleSrcs, !Specs),
@@ -318,15 +323,17 @@ parse_tree_src_to_burdened_module_list(Globals, SourceFileName,
         read_module_errors(FatalErrors, [], NonFatalErrors, [], []),
     list.map(
         maybe_nested_init_burdened_module(SourceFileName,
-            TopModuleName, AllModuleNames, NoSpecReadModuleErrors),
+            TopModuleName, AllModuleNames,
+            NoSpecReadModuleErrors, MaybeTimestampMap),
         ParseTreeModuleSrcs, BurdenedModules).
 
 :- pred maybe_nested_init_burdened_module(file_name::in,
     module_name::in, set(module_name)::in, read_module_errors::in,
-    parse_tree_module_src::in, burdened_module::out) is det.
+    maybe(timestamp)::in, parse_tree_module_src::in, burdened_module::out)
+    is det.
 
 maybe_nested_init_burdened_module(SourceFileName,
-        SourceFileModuleName, AllModuleNames, ReadModuleErrors,
+        SourceFileModuleName, AllModuleNames, ReadModuleErrors, MaybeTimestamp,
         ParseTreeModuleSrc, BurdenedModule) :-
     ModuleName = ParseTreeModuleSrc ^ ptms_module_name,
     ( if ModuleName = SourceFileModuleName then
@@ -338,8 +345,8 @@ maybe_nested_init_burdened_module(SourceFileName,
     MaybeTimestampMap = maybe.no,
     GrabbedFileMap = map.singleton(ModuleName, gf_src(ParseTreeModuleSrc)),
     Baggage = module_baggage(SourceFileName, dir.this_directory,
-        SourceFileModuleName, MaybeTopModule, MaybeTimestampMap,
-        GrabbedFileMap, ReadModuleErrors),
+        SourceFileModuleName, MaybeTopModule,
+        MaybeTimestamp, MaybeTimestampMap, GrabbedFileMap, ReadModuleErrors),
     BurdenedModule = burdened_module(Baggage, ParseTreeModuleSrc).
 
 %---------------------------------------------------------------------------%

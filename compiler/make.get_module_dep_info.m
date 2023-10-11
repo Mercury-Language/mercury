@@ -504,7 +504,7 @@ try_to_write_module_dep_files_for_top_module(ProgressStream, Globals,
         % Since that is a possibility, why write to ModuleName.err
         % *unconditionally*?
         (
-            HaveReadSrc = have_read_module(SourceFileName, _MaybeTimestamp,
+            HaveReadSrc = have_read_module(SourceFileName, MaybeTimestamp,
                 ParseTreeSrc, ReadModuleErrors),
             FatalErrorSpecs0 = ReadModuleErrors ^ rm_fatal_error_specs,
             NonFatalErrorSpecs0 = ReadModuleErrors ^ rm_nonfatal_error_specs,
@@ -532,7 +532,8 @@ try_to_write_module_dep_files_for_top_module(ProgressStream, Globals,
             else
                 write_module_dep_files_for_source_file(Globals,
                     ProgressStream, MESI, ErrorStream, SourceFileName,
-                    ModuleName, ParseTreeSrc, ReadModuleErrors, !Info, !IO)
+                    ModuleName, ReadModuleErrors, MaybeTimestamp,
+                    ParseTreeSrc, !Info, !IO)
             )
         ;
             HaveReadSrc = have_not_read_module(SourceFileName,
@@ -591,15 +592,16 @@ cannot_write_module_dep_files(Globals, ProgressStream, MESI, ErrorStream,
 :- pred write_module_dep_files_for_source_file(globals::in,
     io.text_output_stream::in,
     module_error_stream_info::in, io.text_output_stream::in,
-    file_name::in, module_name::in, parse_tree_src::in,
-    read_module_errors::in,
+    file_name::in, module_name::in, read_module_errors::in,
+    maybe(timestamp)::in, parse_tree_src::in,
     make_info::in, make_info::out, io::di, io::uo) is det.
 
 write_module_dep_files_for_source_file(Globals, ProgressStream,
-        MESI, ErrorStream, SourceFileName, ModuleName, ParseTreeSrc,
-        ReadModuleErrors, !Info, !IO) :-
+        MESI, ErrorStream, SourceFileName, ModuleName, ReadModuleErrors,
+        MaybeTimestamp, ParseTreeSrc, !Info, !IO) :-
     parse_tree_src_to_burdened_module_list(Globals, SourceFileName,
-        ParseTreeSrc, ReadModuleErrors, Specs, BurdenedModules),
+        ReadModuleErrors, MaybeTimestamp, ParseTreeSrc,
+        Specs, BurdenedModules),
     ParseTreeModuleSrcs = list.map((func(burdened_module(_, PTMS)) = PTMS),
         BurdenedModules),
     SubModuleNames = list.map(parse_tree_module_src_project_name,
@@ -685,9 +687,12 @@ make_info_add_burdened_module_as_dep(BurdenedModule, !Info) :-
 
 make_int3_files(ProgressStream, ErrorStream, Globals,
         ParseTreeModuleSrcs, Succeeded, !Info, !IO) :-
-    list.map2_foldl(
-        write_short_interface_file_int3(ProgressStream, ErrorStream, Globals),
-        ParseTreeModuleSrcs, Succeededs, SpecsList, !IO),
+    % XXX MAKE We should probably add to, and keep, HaveReadModuleMaps.
+    list.map2_foldl2(
+        write_short_interface_file_int3(ProgressStream, ErrorStream,
+            Globals, do_not_add_new_to_hrmm),
+        ParseTreeModuleSrcs, Succeededs, SpecsList,
+        init_have_read_module_maps, _HaveReadModuleMaps, !IO),
     list.foldl(write_error_specs(ErrorStream, Globals), SpecsList, !IO),
     Succeeded = and_list(Succeededs).
 

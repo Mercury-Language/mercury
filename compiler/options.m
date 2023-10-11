@@ -297,6 +297,7 @@
     ;       only_opmode_generate_source_file_mapping
     ;       only_opmode_generate_dependency_file
     ;       only_opmode_generate_dependencies
+    ;       only_opmode_generate_dependencies_ints
     ;       generate_module_order
     ;       generate_standalone_interface
     ;       only_opmode_convert_to_mercury
@@ -1369,6 +1370,7 @@ optdef(oc_verbosity, debug_type_rep,                    bool(no)).
 optdef(oc_opmode, only_opmode_generate_source_file_mapping, bool(no)).
 optdef(oc_opmode, only_opmode_generate_dependency_file, bool(no)).
 optdef(oc_opmode, only_opmode_generate_dependencies,    bool(no)).
+optdef(oc_opmode, only_opmode_generate_dependencies_ints, bool(no)).
 optdef(oc_opmode, generate_module_order,                bool(no)).
 optdef(oc_opmode, generate_standalone_interface,        maybe_string(no)).
 optdef(oc_opmode, only_opmode_make_short_interface,     bool(no)).
@@ -2293,6 +2295,8 @@ long_option("generate-source-file-mapping",
     only_opmode_generate_source_file_mapping).
 long_option("generate-dependency-file", only_opmode_generate_dependency_file).
 long_option("generate-dependencies",    only_opmode_generate_dependencies).
+long_option("generate-dependencies-ints",
+                                    only_opmode_generate_dependencies_ints).
 long_option("generate-module-order",    generate_module_order).
 long_option("generate-standalone-interface", generate_standalone_interface).
 long_option("make-short-interface",     only_opmode_make_short_interface).
@@ -4601,8 +4605,13 @@ options_help_output(Stream, !IO) :-
         "\tIf there are no such modules the mapping need not be",
         "\tgenerated.",
         "-M, --generate-dependencies",
+        "--generate-dependencies-ints",
+        % XXX This leaves out important details, such as .dv and .d files.
         "\tOutput `Make'-style dependencies for the module",
         "\tand all of its dependencies to `<module>.dep'.",
+        "\tThe --generate-dependencies-ints version also outputs",
+        "\t.int3, .int0, .int and .int2 files for all the modules",
+        "\tin the program.",
         "--generate-dependency-file",
         "\tOutput `Make'-style dependencies for the module",
         "\tto `<module>.d'.",

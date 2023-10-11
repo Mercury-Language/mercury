@@ -22,6 +22,7 @@
 :- import_module libs.globals.
 :- import_module mdbcomp.
 :- import_module mdbcomp.sym_name.
+:- import_module parse_tree.deps_map.
 :- import_module parse_tree.error_spec.
 
 :- import_module io.
@@ -38,7 +39,8 @@
     % to be printed in Specs.
     %
 :- pred generate_dep_file_for_module(io.text_output_stream::in, globals::in,
-    module_name::in, list(error_spec)::out, io::di, io::uo) is det.
+    module_name::in, deps_map::out, list(error_spec)::out,
+    io::di, io::uo) is det.
 
     % generate_dep_file_for_file(ProgressStream, Globals, FileName,
     %   Specs, !IO):
@@ -47,7 +49,8 @@
     % instead of a module name.
     %
 :- pred generate_dep_file_for_file(io.text_output_stream::in, globals::in,
-    file_name::in, list(error_spec)::out, io::di, io::uo) is det.
+    file_name::in, deps_map::out, list(error_spec)::out,
+    io::di, io::uo) is det.
 
     % generate_d_file_for_module(ProgressStream, Globals, ModuleName,
     %   Specs, !IO):
@@ -56,7 +59,8 @@
     % for the given module.
     %
 :- pred generate_d_file_for_module(io.text_output_stream::in, globals::in,
-    module_name::in, list(error_spec)::out, io::di, io::uo) is det.
+    module_name::in, deps_map::out, list(error_spec)::out,
+    io::di, io::uo) is det.
 
     % generate_d_file_for_file(ProgressStream, Globals, FileName, Specs, !IO):
     %
@@ -64,7 +68,8 @@
     % instead of a module name.
     %
 :- pred generate_d_file_for_file(io.text_output_stream::in, globals::in,
-    file_name::in, list(error_spec)::out, io::di, io::uo) is det.
+    file_name::in, deps_map::out, list(error_spec)::out,
+    io::di, io::uo) is det.
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -74,7 +79,6 @@
 :- import_module libs.options.
 :- import_module libs.timestamp.
 :- import_module mdbcomp.builtin_modules.
-:- import_module parse_tree.deps_map.
 :- import_module parse_tree.file_names.
 :- import_module parse_tree.maybe_error.
 :- import_module parse_tree.module_baggage.
@@ -111,29 +115,32 @@
 %---------------------------------------------------------------------------%
 
 generate_dep_file_for_module(ProgressStream, Globals, ModuleName,
-        Specs, !IO) :-
-    map.init(DepsMap),
+        DepsMap, Specs, !IO) :-
+    map.init(DepsMap0),
     generate_dot_dx_files(ProgressStream, Globals,
         output_all_program_dot_dx_files, do_not_search,
-        ModuleName, DepsMap, Specs, !IO).
+        ModuleName, DepsMap0, DepsMap, Specs, !IO).
 
-generate_dep_file_for_file(ProgressStream, Globals, FileName, Specs, !IO) :-
+generate_dep_file_for_file(ProgressStream, Globals, FileName,
+        DepsMap, Specs, !IO) :-
     build_initial_deps_map_for_file(ProgressStream, Globals, FileName,
         ModuleName, DepsMap0, !IO),
     generate_dot_dx_files(ProgressStream, Globals,
         output_all_program_dot_dx_files, do_not_search,
-        ModuleName, DepsMap0, Specs, !IO).
+        ModuleName, DepsMap0, DepsMap, Specs, !IO).
 
-generate_d_file_for_module(ProgressStream, Globals, ModuleName, Specs, !IO) :-
-    map.init(DepsMap),
+generate_d_file_for_module(ProgressStream, Globals, ModuleName,
+        DepsMap, Specs, !IO) :-
+    map.init(DepsMap0),
     generate_dot_dx_files(ProgressStream, Globals, output_module_dot_d_file,
-        do_search, ModuleName, DepsMap, Specs, !IO).
+        do_search, ModuleName, DepsMap0, DepsMap, Specs, !IO).
 
-generate_d_file_for_file(ProgressStream, Globals, FileName, Specs, !IO) :-
+generate_d_file_for_file(ProgressStream, Globals, FileName,
+        DepsMap, Specs, !IO) :-
     build_initial_deps_map_for_file(ProgressStream, Globals, FileName,
         ModuleName, DepsMap0, !IO),
     generate_dot_dx_files(ProgressStream, Globals, output_module_dot_d_file,
-        do_search, ModuleName, DepsMap0, Specs, !IO).
+        do_search, ModuleName, DepsMap0, DepsMap, Specs, !IO).
 
 %---------------------------------------------------------------------------%
 
@@ -148,11 +155,12 @@ build_initial_deps_map_for_file(ProgressStream, Globals, FileName, ModuleName,
         rrm_file, do_not_search, always_read_module(dont_return_timestamp),
         HaveReadModuleSrc, !IO),
     (
-        HaveReadModuleSrc = have_read_module(_FN, _MTS,
+        HaveReadModuleSrc = have_read_module(_FN, MaybeTimestamp,
             ParseTreeSrc, ReadModuleErrors),
         ParseTreeSrc = parse_tree_src(ModuleName, _, _),
         parse_tree_src_to_burdened_module_list(Globals, FileNameDotM,
-            ParseTreeSrc, ReadModuleErrors, Specs, BurdenedModules)
+            ReadModuleErrors, MaybeTimestamp, ParseTreeSrc,
+            Specs, BurdenedModules)
     ;
         HaveReadModuleSrc = have_not_read_module(_, ReadModuleErrors),
         get_default_module_name_for_file(FileName, FileNameDotM,
@@ -164,7 +172,8 @@ build_initial_deps_map_for_file(ProgressStream, Globals, FileName, ModuleName,
     get_error_output_stream(Globals, ModuleName, ErrorStream, !IO),
     write_error_specs(ErrorStream, Globals, Specs, !IO),
     map.init(DepsMap0),
-    list.foldl(insert_into_deps_map, BurdenedModules, DepsMap0, DepsMap).
+    list.foldl(insert_into_deps_map(non_dummy_burdened_module),
+        BurdenedModules, DepsMap0, DepsMap).
 
 %---------------------------------------------------------------------------%
 
@@ -178,17 +187,17 @@ build_initial_deps_map_for_file(ProgressStream, Globals, FileName, ModuleName,
 
 :- pred generate_dot_dx_files(io.text_output_stream::in, globals::in,
     which_dot_dx_files::in, maybe_search::in, module_name::in,
-    deps_map::in, list(error_spec)::out, io::di, io::uo) is det.
+    deps_map::in, deps_map::out, list(error_spec)::out, io::di, io::uo) is det.
 
 generate_dot_dx_files(ProgressStream, Globals, Mode, Search, ModuleName,
-        DepsMap0, !:Specs, !IO) :-
+        DepsMap0, DepsMap, !:Specs, !IO) :-
     % First, build up a map of the dependencies.
     generate_deps_map(ProgressStream, Globals, Search, ModuleName,
         DepsMap0, DepsMap, [], !:Specs, !IO),
 
     % Check whether we could read the main `.m' file.
     map.lookup(DepsMap, ModuleName, ModuleDep),
-    ModuleDep = deps(_, BurdenedModule),
+    ModuleDep = deps(_, _, BurdenedModule),
     BurdenedModule = burdened_module(Baggage, _ParseTreeModuleSrc),
     Errors = Baggage ^ mb_errors,
     FatalErrors = Errors ^ rm_fatal_errors,
@@ -370,7 +379,7 @@ generate_dot_dx_files(ProgressStream, Globals, Mode, Search, ModuleName,
 deps_list_to_deps_graph([], _, !IntDepsGraph, !ImpDepsGraph).
 deps_list_to_deps_graph([Deps | DepsList], DepsMap,
         !IntDepsGraph, !ImpDepsGraph) :-
-    Deps = deps(_, BurdenedModule),
+    Deps = deps(_, _, BurdenedModule),
     Baggage = BurdenedModule ^ bm_baggage,
     Errors = Baggage ^ mb_errors,
     FatalErrors = Errors ^ rm_fatal_errors,
@@ -388,7 +397,7 @@ deps_list_to_deps_graph([Deps | DepsList], DepsMap,
     = module_dep_info.
 
 lookup_module_and_imports_in_deps_map(DepsMap, ModuleName) = ModuleDepInfo :-
-    map.lookup(DepsMap, ModuleName, deps(_, BurdenedModule)),
+    map.lookup(DepsMap, ModuleName, deps(_, _, BurdenedModule)),
     ModuleDepInfo = module_dep_info_full(BurdenedModule).
 
 %---------------------------------------------------------------------------%
@@ -620,7 +629,7 @@ read_trans_opt_deps_spec_file(FileName, Result, !IO) :-
             ;
                 RevFileSpecContexts = [LastContext | _]
             ),
-            IgnorePieces = [invis_order_default_end(0),
+            IgnorePieces = [invis_order_default_end(0, ""),
                 words("Ignoring"), quote(FileName),
                 words("due to the presence of errors."), nl],
             IgnoreSpec = simplest_spec($pred, severity_error, phase_read_files,

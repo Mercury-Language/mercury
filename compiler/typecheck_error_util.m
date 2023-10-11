@@ -203,7 +203,7 @@ goal_context_to_pieces(ClauseContext, GoalContext) = Pieces :-
             (
                 ArgVectorKind = arg_vector_clause_head,
                 Pieces = [words("in argument"),
-                    invis_order_default_end(ArgNum),
+                    invis_order_default_end(ArgNum, ""),
                     int_fixed(ArgNum), words("of the clause head:"), nl]
             ;
                 (
@@ -245,22 +245,22 @@ goal_context_to_pieces(ClauseContext, GoalContext) = Pieces :-
             ;
                 ArgVectorKind = arg_vector_event(EventName),
                 Pieces = [words("in argument"),
-                    invis_order_default_end(ArgNum), int_fixed(ArgNum),
+                    invis_order_default_end(ArgNum, ""), int_fixed(ArgNum),
                     words("of event"), fixed(EventName), suffix(":"), nl]
             )
         ;
             VarVectorKind = var_vector_cond_quant,
-            Pieces = [words("in the"), invis_order_default_end(ArgNum),
+            Pieces = [words("in the"), invis_order_default_end(ArgNum, ""),
                 nth_fixed(ArgNum),
                 words("quantified variable in if-then-else condition:"), nl]
         ;
             VarVectorKind = var_vector_exist_quant,
-            Pieces = [words("in the"), invis_order_default_end(ArgNum),
+            Pieces = [words("in the"), invis_order_default_end(ArgNum, ""),
                 nth_fixed(ArgNum),
                 words("variable of quantification scope:"), nl]
         ;
             VarVectorKind = var_vector_promise_solutions,
-            Pieces = [words("in the"), invis_order_default_end(ArgNum),
+            Pieces = [words("in the"), invis_order_default_end(ArgNum, ""),
                 nth_fixed(ArgNum),
                 words("variable of promise_solutions scope:"), nl]
         ;
@@ -273,33 +273,33 @@ goal_context_to_pieces(ClauseContext, GoalContext) = Pieces :-
                 words("variable of require_switch_arm_detism scope:"), nl]
         ;
             VarVectorKind = var_vector_loop_control,
-            Pieces = [words("in the"), invis_order_default_end(ArgNum),
+            Pieces = [words("in the"), invis_order_default_end(ArgNum, ""),
                 nth_fixed(ArgNum),
                 words("variable of loop control scope:"), nl]
         ;
             VarVectorKind = var_vector_try_io,
             ( if ArgNum = 1 then
-                Pieces = [invis_order_default_end(1),
+                Pieces = [invis_order_default_end(1, ""),
                     words("in initial I/O state variable of try goal:"), nl]
             else if ArgNum = 2 then
-                Pieces = [invis_order_default_end(2),
+                Pieces = [invis_order_default_end(2, ""),
                     words("in final I/O state variable of try goal:"), nl]
             else
                 unexpected($pred, "try io variable not arg 1 or 2")
             )
         ;
             VarVectorKind = var_vector_atomic_output,
-            Pieces = [words("in the"), invis_order_default_end(ArgNum),
+            Pieces = [words("in the"), invis_order_default_end(ArgNum, ""),
                 nth_fixed(ArgNum), words("output variable of atomic goal:"),
                 nl]
         ;
             VarVectorKind = var_vector_atomic_outer,
             ( if ArgNum = 1 then
-                Pieces = [invis_order_default_end(1),
+                Pieces = [invis_order_default_end(1, ""),
                     words("in the first outer variable"),
                     words("of atomic goal:"), nl]
             else if ArgNum = 2 then
-                Pieces = [invis_order_default_end(2),
+                Pieces = [invis_order_default_end(2, ""),
                     words("in the second outer variable"),
                     words("of atomic goal:"), nl]
             else

@@ -74,6 +74,7 @@
 :- import_module mdbcomp.sym_name.
 :- import_module parse_tree.
 :- import_module parse_tree.check_module_interface.
+:- import_module parse_tree.deps_map.
 :- import_module parse_tree.error_spec.
 :- import_module parse_tree.error_util.
 :- import_module parse_tree.file_names.
@@ -103,6 +104,7 @@
 :- import_module top_level.mercury_compile_middle_passes.
 :- import_module top_level.mercury_compile_mlds_back_end.
 
+:- import_module assoc_list.
 :- import_module benchmarking.
 :- import_module bool.
 :- import_module cord.
@@ -114,6 +116,7 @@
 :- import_module library.
 :- import_module map.
 :- import_module maybe.
+:- import_module pair.
 :- import_module require.
 :- import_module set.
 :- import_module solutions.
@@ -359,14 +362,14 @@ process_options_arg_file(ProgressStream, DefaultOptionTable, ArgFile,
             Result = opr_failure([Spec])
         ;
             MaybeError = no_option_error,
-            Result = opr_success(DetectedGradeFlags, OptionsVariables, [], 
+            Result = opr_success(DetectedGradeFlags, OptionsVariables, [],
                 OptionArgs, NonOptionArgs, Specs)
         )
     ;
         MaybeArgs1 = no,
         OptionArgs = [],
         NonOptionArgs = [],
-        Result = opr_success(DetectedGradeFlags, OptionsVariables, [], 
+        Result = opr_success(DetectedGradeFlags, OptionsVariables, [],
             OptionArgs, NonOptionArgs, Specs)
     ).
 
@@ -1158,17 +1161,26 @@ do_process_compiler_arg(ProgressStream, ErrorStream, Globals0,
     %   Globals0, effectively undoing the disabling of smart recompilation,
 
     (
-        OpModeArgs = opma_generate_dependencies,
+        OpModeArgs = opma_generate_dependencies(MaybeMakeInts),
         (
             FileOrModule = fm_file(FileName),
             generate_dep_file_for_file(ProgressStream, Globals0, FileName,
-                DepSpecs, !IO)
+                DepsMap, DepSpecs, !IO)
         ;
             FileOrModule = fm_module(ModuleName),
             generate_dep_file_for_module(ProgressStream, Globals0, ModuleName,
-                DepSpecs, !IO)
+                DepsMap, DepSpecs, !IO)
         ),
-        write_error_specs(ErrorStream, Globals0, DepSpecs, !IO),
+        ( if
+            MaybeMakeInts = do_make_ints,
+            contains_errors(Globals0, DepSpecs) = no
+        then
+            deps_make_ints(ProgressStream, ErrorStream, Globals0, DepsMap,
+                DepSpecs, Specs, !HaveReadModuleMaps, !IO)
+        else
+            Specs = DepSpecs
+        ),
+        write_error_specs(ErrorStream, Globals0, Specs, !IO),
         ModulesToLink = [],
         ExtraObjFiles = []
     ;
@@ -1176,11 +1188,11 @@ do_process_compiler_arg(ProgressStream, ErrorStream, Globals0,
         (
             FileOrModule = fm_file(FileName),
             generate_d_file_for_file(ProgressStream, Globals0, FileName,
-                DepSpecs, !IO)
+                _DepsMap, DepSpecs, !IO)
         ;
             FileOrModule = fm_module(ModuleName),
             generate_d_file_for_module(ProgressStream, Globals0, ModuleName,
-                DepSpecs, !IO)
+                _DepsMap, DepSpecs, !IO)
         ),
         write_error_specs(ErrorStream, Globals0, DepSpecs, !IO),
         ModulesToLink = [],
@@ -1235,6 +1247,73 @@ do_process_compiler_arg(ProgressStream, ErrorStream, Globals0,
         )
     ).
 
+:- pred deps_make_ints(io.text_output_stream::in, io.text_output_stream::in,
+    globals::in, deps_map::in, list(error_spec)::in, list(error_spec)::out,
+    have_read_module_maps::in, have_read_module_maps::out,
+    io::di, io::uo) is det.
+
+deps_make_ints(ProgressStream, ErrorStream, Globals, DepsMap,
+        !Specs, !HaveReadModuleMaps, !IO) :-
+    map.values(DepsMap, DepsList),
+    list.filter_map_foldl(gather_local_parse_tree_module_srcs,
+        DepsList, BurdenedModules, [], Ancestors),
+    ParseTreeModuleSrcs =
+        list.map((func(burdened_module(_, PTMS)) = PTMS), BurdenedModules),
+    list.map2_foldl2(
+        write_short_interface_file_int3(ProgressStream, ErrorStream,
+            Globals, do_add_new_to_hrmm),
+        ParseTreeModuleSrcs, _Succeededs3, SpecsList3,
+        !HaveReadModuleMaps, !IO),
+    list.condense(SpecsList3, Specs3),
+    !:Specs = Specs3 ++ !.Specs,
+    Errors3 = contains_errors(Globals, Specs3),
+    (
+        Errors3 = yes
+    ;
+        Errors3 = no,
+        list.sort(Ancestors, SortedAncestors),
+        assoc_list.values(SortedAncestors, AncestorBurdenedModules),
+        list.map2_foldl2(
+            write_private_interface_file_int0_burdened_module(
+                ProgressStream, ErrorStream, Globals, do_add_new_to_hrmm),
+            AncestorBurdenedModules, _Succeededs0, SpecsList0,
+            !HaveReadModuleMaps, !IO),
+        list.condense(SpecsList0, Specs0),
+        !:Specs = Specs0 ++ !.Specs,
+        Errors0 = contains_errors(Globals, Specs0),
+        (
+            Errors0 = yes
+        ;
+            Errors0 = no,
+            list.map2_foldl2(
+                write_interface_file_int1_int2_burdened_module(
+                    ProgressStream, ErrorStream, Globals, do_add_new_to_hrmm),
+                BurdenedModules, _Succeededs12, SpecsList12,
+                !HaveReadModuleMaps, !IO),
+            list.condense(SpecsList12, Specs12),
+            !:Specs = Specs12 ++ !.Specs
+        )
+    ).
+
+:- pred gather_local_parse_tree_module_srcs(deps::in,
+    burdened_module::out,
+    assoc_list(list(string), burdened_module)::in,
+    assoc_list(list(string), burdened_module)::out) is semidet.
+
+gather_local_parse_tree_module_srcs(Deps, BurdenedModule, !Ancestors) :-
+    Deps = deps(_HaveProcessed, MaybeDummy, BurdenedModule),
+    BurdenedModule =
+        burdened_module(_Baggage, ParseTreeModuleSrc),
+    MaybeDummy = non_dummy_burdened_module,
+    IncludeMap = ParseTreeModuleSrc ^ ptms_include_map,
+    ( if map.is_empty(IncludeMap) then
+        true
+    else
+        ModuleName = ParseTreeModuleSrc ^ ptms_module_name,
+        ModuleNameComponents = sym_name_to_list(ModuleName),
+        !:Ancestors = [ModuleNameComponents - BurdenedModule | !.Ancestors]
+    ).
+
 :- pred do_process_compiler_arg_make_interface(io.text_output_stream::in,
     io.text_output_stream::in, globals::in, op_mode_interface_file::in,
     file_or_module::in, have_read_module_maps::in, have_read_module_maps::out,
@@ -1279,25 +1358,34 @@ do_process_compiler_arg_make_interface(ProgressStream, ErrorStream, Globals0,
             maybe_print_delayed_error_messages(ErrorStream, Globals, !IO),
             (
                 InterfaceFile = omif_int0,
+                IsAncestor =
+                    ( pred(PTMS::in) is semidet :-
+                        IncludeMap = PTMS ^ ptms_include_map,
+                        not map.is_empty(IncludeMap)
+                    ),
+                list.filter(IsAncestor,
+                    ParseTreeModuleSrcs, AncestorParseTreeModuleSrcs),
                 list.map2_foldl2(
                     write_private_interface_file_int0(ProgressStream,
-                        ErrorStream, Globals0, FileName, ModuleName,
-                        MaybeTimestamp),
-                    ParseTreeModuleSrcs, _Succeededs, SpecsList,
+                        ErrorStream, Globals0, do_not_add_new_to_hrmm,
+                        FileName, ModuleName, MaybeTimestamp),
+                    AncestorParseTreeModuleSrcs, _Succeededs, SpecsList,
                     !HaveReadModuleMaps, !IO)
             ;
                 InterfaceFile = omif_int1_int2,
                 list.map2_foldl2(
-                    write_interface_file_int1_int2(ProgressStream, ErrorStream,
-                        Globals0, FileName, ModuleName, MaybeTimestamp),
+                    write_interface_file_int1_int2(ProgressStream,
+                        ErrorStream, Globals0, do_not_add_new_to_hrmm,
+                        FileName, ModuleName, MaybeTimestamp),
                     ParseTreeModuleSrcs, _Succeededs, SpecsList,
                     !HaveReadModuleMaps, !IO)
             ;
                 InterfaceFile = omif_int3,
-                list.map2_foldl(
+                list.map2_foldl2(
                     write_short_interface_file_int3(ProgressStream,
-                        ErrorStream, Globals0),
-                    ParseTreeModuleSrcs, _Succeededs, SpecsList, !IO)
+                        ErrorStream, Globals0, do_not_add_new_to_hrmm),
+                    ParseTreeModuleSrcs, _Succeededs, SpecsList,
+                    !HaveReadModuleMaps, !IO)
             ),
             list.foldl(write_error_specs(ErrorStream, Globals0),
                 SpecsList, !IO)

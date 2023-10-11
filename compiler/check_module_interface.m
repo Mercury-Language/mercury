@@ -149,7 +149,7 @@ check_module_interface_for_no_exports(Globals, ParseTreeModuleSrc, !Specs) :-
 
 generate_no_exports_warning(ModuleName, Context, NumIntIncls, !Specs) :-
     MainMsg = simple_msg(Context,
-        [always([invis_order_default_start(2),
+        [always([invis_order_default_start(2, ""),
             words("Warning: the interface of module"),
             qual_sym_name(ModuleName),
             words("does not export anything."), nl]),

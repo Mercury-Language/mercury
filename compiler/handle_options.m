@@ -2220,7 +2220,7 @@ handle_opmode_implications(OpMode, !Globals) :-
                 Smart = Smart0
             )
         ;
-            ( OpModeArgs = opma_generate_dependencies
+            ( OpModeArgs = opma_generate_dependencies(_)
             ; OpModeArgs = opma_generate_dependency_file
             ; OpModeArgs = opma_convert_to_mercury
             ),

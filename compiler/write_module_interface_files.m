@@ -58,6 +58,7 @@
 :- import_module mdbcomp.
 :- import_module mdbcomp.sym_name.
 :- import_module parse_tree.error_spec.
+:- import_module parse_tree.module_baggage.
 :- import_module parse_tree.prog_item.
 :- import_module parse_tree.read_modules.
 
@@ -67,18 +68,46 @@
 
 %---------------------------------------------------------------------------%
 
+    % Each of the predicates
+    %
+    %   write_short_interface_file_int3
+    %   write_private_interface_file_int0
+    %   write_interface_file_int1_int2
+    %
+    % has an argument of this type. Their callers can set this argument to
+    % do_add_new_to_hrmm to tell the predicate to add the interface file(s)
+    % it has constructed to !HaveReadModuleMaps.
+    %
+:- type maybe_add_to_hrmm
+    --->    do_not_add_new_to_hrmm
+    ;       do_add_new_to_hrmm.
+
     % write_short_interface_file_int3(ProgressStream, ErrorStream, Globals,
-    %   ParseTreeModuleSrc, Succeeded, Specs, !IO):
+    %   AddToHrmm, ParseTreeModuleSrc, Succeeded, Specs,
+    %   !HaveReadModuleMaps, !IO):
     %
     % Output the unqualified short interface file to <module>.int3.
     %
+    % Specs will contain any error and/or warning messages resulting
+    % - from the process of constructing the contents of the .int3 file,
+    % - from the process of writing it out, and
+    % - updating the associated timestamp file.
+    %
+    % We bind Succeeded to "succeeded" only if all three of those processes
+    % succeeded without errors. (Specs may contain warnings even then.)
+    %
+    % We add the contents of the .int3 file to !HaveReadModuleMaps if we could
+    % construct it without any errors, *and* AddToHrmm says we should.
+    %
 :- pred write_short_interface_file_int3(
     io.text_output_stream::in, io.text_output_stream::in, globals::in,
-    parse_tree_module_src::in, maybe_succeeded::out, list(error_spec)::out,
+    maybe_add_to_hrmm::in, parse_tree_module_src::in,
+    maybe_succeeded::out, list(error_spec)::out,
+    have_read_module_maps::in, have_read_module_maps::out,
     io::di, io::uo) is det.
 
     % write_private_interface_file_int0(ProgressStream, ErrorStream, Globals,
-    %   SourceFileName, SourceFileModuleName, MaybeTimestamp,
+    %   AddToHrmm, SourceFileName, SourceFileModuleName, MaybeTimestamp,
     %   ParseTreeModuleSrc0, Succeeded, Specs, !HaveReadModuleMaps, !IO):
     %
     % Given a source file name, the timestamp of the source file, and the
@@ -89,13 +118,20 @@
     %
 :- pred write_private_interface_file_int0(
     io.text_output_stream::in, io.text_output_stream::in, globals::in,
-    file_name::in, module_name::in, maybe(timestamp)::in,
-    parse_tree_module_src::in, maybe_succeeded::out, list(error_spec)::out,
+    maybe_add_to_hrmm::in, file_name::in, module_name::in,
+    maybe(timestamp)::in, parse_tree_module_src::in,
+    maybe_succeeded::out, list(error_spec)::out,
+    have_read_module_maps::in, have_read_module_maps::out,
+    io::di, io::uo) is det.
+:- pred write_private_interface_file_int0_burdened_module(
+    io.text_output_stream::in, io.text_output_stream::in, globals::in,
+    maybe_add_to_hrmm::in, burdened_module::in,
+    maybe_succeeded::out, list(error_spec)::out,
     have_read_module_maps::in, have_read_module_maps::out,
     io::di, io::uo) is det.
 
     % write_interface_file_int1_int2(ProgressStream, ErrorStream, Globals,
-    %   SourceFileName, SourceFileModuleName, MaybeTimestamp,
+    %   AddToHrmm, SourceFileName, SourceFileModuleName, MaybeTimestamp,
     %   ParseTreeModuleSrc0, Succeeded, Specs, !HaveReadModuleMaps, !IO):
     %
     % Given a source file name, the timestamp of the source file, and the
@@ -104,8 +140,15 @@
     %
 :- pred write_interface_file_int1_int2(
     io.text_output_stream::in, io.text_output_stream::in, globals::in,
-    file_name::in, module_name::in, maybe(timestamp)::in,
-    parse_tree_module_src::in, maybe_succeeded::out, list(error_spec)::out,
+    maybe_add_to_hrmm::in, file_name::in, module_name::in,
+    maybe(timestamp)::in, parse_tree_module_src::in,
+    maybe_succeeded::out, list(error_spec)::out,
+    have_read_module_maps::in, have_read_module_maps::out,
+    io::di, io::uo) is det.
+:- pred write_interface_file_int1_int2_burdened_module(
+    io.text_output_stream::in, io.text_output_stream::in, globals::in,
+    maybe_add_to_hrmm::in, burdened_module::in,
+    maybe_succeeded::out, list(error_spec)::out,
     have_read_module_maps::in, have_read_module_maps::out,
     io::di, io::uo) is det.
 
@@ -120,7 +163,6 @@
 :- import_module parse_tree.file_kind.
 :- import_module parse_tree.file_names.
 :- import_module parse_tree.grab_modules.           % undesirable dependency
-:- import_module parse_tree.module_baggage.
 :- import_module parse_tree.module_cmds.
 :- import_module parse_tree.module_qual.
 :- import_module parse_tree.parse_error.
@@ -131,7 +173,9 @@
 :- import_module bool.
 :- import_module getopt.
 :- import_module io.file.
+:- import_module map.
 :- import_module require.
+:- import_module set.
 :- import_module string.
 
 %---------------------------------------------------------------------------%
@@ -140,7 +184,8 @@
 %
 
 write_short_interface_file_int3(ProgressStream, ErrorStream, Globals,
-        ParseTreeModuleSrc, Succeeded, Specs, !IO) :-
+        AddToHrmm, ParseTreeModuleSrc, Succeeded, Specs,
+        !HaveReadModuleMaps, !IO) :-
     % This qualifies everything as much as it can given the information
     % in the current module and writes out the .int3 file.
     generate_short_interface_int3(Globals, ParseTreeModuleSrc, ParseTreeInt3,
@@ -151,13 +196,33 @@ write_short_interface_file_int3(ProgressStream, ErrorStream, Globals,
     ModuleName = ParseTreeModuleSrc ^ ptms_module_name,
     (
         EffectivelyErrors = no,
+        ExtraSuffix = "",
+        construct_int_file_name(Globals, ModuleName, ifk_int3, ExtraSuffix,
+            FileName, TmpFileName, !IO),
         actually_write_interface_file3(ProgressStream, ErrorStream,
-            Globals, ParseTreeInt3, "", no, OutputSucceeded, !IO),
+            Globals, ParseTreeInt3, FileName, TmpFileName, no,
+            OutputSucceeded, !IO),
         touch_module_ext_datestamp(Globals, ProgressStream,
             ModuleName, ext_cur_ngs(ext_cur_ngs_int_date_int3),
             TouchSucceeded, !IO),
         Succeeded = OutputSucceeded `and` TouchSucceeded,
-        Specs = Specs1
+        Specs = Specs1,
+        (
+            AddToHrmm = do_not_add_new_to_hrmm
+        ;
+            AddToHrmm = do_add_new_to_hrmm,
+            Int3Map0 = !.HaveReadModuleMaps ^ hrmm_int3,
+            % XXX If needed for smart recompilation, we could get
+            % the actual timestamp of the int0 file.
+            MaybeTimestampInt = maybe.no,
+            % XXX ReadModuleErrors
+            ReadModuleErrors = read_module_errors(set.init, [],
+                set.init, [], []),
+            HRM = have_read_module(FileName, MaybeTimestampInt,
+                ParseTreeInt3, ReadModuleErrors),
+            map.set(ModuleName, HRM, Int3Map0, Int3Map),
+            !HaveReadModuleMaps ^ hrmm_int3 := Int3Map
+        )
     ;
         EffectivelyErrors = yes,
         report_file_not_written(Globals, [], ModuleName,
@@ -172,7 +237,7 @@ write_short_interface_file_int3(ProgressStream, ErrorStream, Globals,
 %
 
 write_private_interface_file_int0(ProgressStream, ErrorStream, Globals,
-        SourceFileName, SourceFileModuleName, MaybeTimestamp,
+        AddToHrmm, SourceFileName, SourceFileModuleName, MaybeTimestamp,
         ParseTreeModuleSrc0, Succeeded, Specs, !HaveReadModuleMaps, !IO) :-
     ModuleName = ParseTreeModuleSrc0 ^ ptms_module_name,
     grab_unqual_imported_modules_make_int(ProgressStream, Globals,
@@ -206,13 +271,32 @@ write_private_interface_file_int0(ProgressStream, ErrorStream, Globals,
             filter_interface_generation_specs(Globals,
                 EffectiveGetQualSpecs ++ GenerateSpecs, Specs),
             % Write out the `.int0' file.
+            ExtraSuffix = "",
+            construct_int_file_name(Globals, ModuleName, ifk_int0, ExtraSuffix,
+                FileName, TmpFileName, !IO),
             actually_write_interface_file0(ProgressStream, ErrorStream,
-                Globals, ParseTreeInt0, "", MaybeTimestamp,
+                Globals, ParseTreeInt0, FileName, TmpFileName, MaybeTimestamp,
                 OutputSucceeded, !IO),
             touch_module_ext_datestamp(Globals, ProgressStream,
                 ModuleName, ext_cur_ngs(ext_cur_ngs_int_date_int0),
                 TouchSucceeded, !IO),
-            Succeeded = OutputSucceeded `and` TouchSucceeded
+            Succeeded = OutputSucceeded `and` TouchSucceeded,
+            (
+                AddToHrmm = do_not_add_new_to_hrmm
+            ;
+                AddToHrmm = do_add_new_to_hrmm,
+                Int0Map0 = !.HaveReadModuleMaps ^ hrmm_int0,
+                % XXX If needed for smart recompilation, we could get
+                % the actual timestamp of the int0 file.
+                MaybeTimestampInt = maybe.no,
+                % XXX ReadModuleErrors
+                ReadModuleErrors = read_module_errors(set.init, [],
+                    set.init, [], []),
+                HRM = have_read_module(FileName, MaybeTimestampInt,
+                    ParseTreeInt0, ReadModuleErrors),
+                map.set(ModuleName, HRM, Int0Map0, Int0Map),
+                !HaveReadModuleMaps ^ hrmm_int0 := Int0Map
+            )
         ;
             EffectiveGetQualSpecs = [_ | _],
             report_file_not_written(Globals, [], ModuleName,
@@ -232,13 +316,24 @@ write_private_interface_file_int0(ProgressStream, ErrorStream, Globals,
         Succeeded = did_not_succeed
     ).
 
+write_private_interface_file_int0_burdened_module(ProgressStream, ErrorStream,
+        Globals, AddToHrmm, BurdenedModule, Succeeded, Specs,
+        !HaveReadModuleMaps, !IO) :-
+    BurdenedModule = burdened_module(Baggage, ParseTreeModuleSrc),
+    SourceFileName = Baggage ^ mb_source_file_name,
+    SourceFileModuleName = Baggage ^ mb_source_file_module_name,
+    MaybeTimestamp = Baggage ^ mb_maybe_timestamp,
+    write_private_interface_file_int0(ProgressStream, ErrorStream, Globals,
+        AddToHrmm, SourceFileName, SourceFileModuleName, MaybeTimestamp,
+        ParseTreeModuleSrc, Succeeded, Specs, !HaveReadModuleMaps, !IO).
+
 %---------------------------------------------------------------------------%
 %
 % Write out .int and .int2 files.
 %
 
 write_interface_file_int1_int2(ProgressStream, ErrorStream, Globals,
-        SourceFileName, SourceFileModuleName, MaybeTimestamp,
+        AddToHrmm, SourceFileName, SourceFileModuleName, MaybeTimestamp,
         ParseTreeModuleSrc0, Succeeded, Specs, !HaveReadModuleMaps, !IO) :-
     ModuleName = ParseTreeModuleSrc0 ^ ptms_module_name,
     generate_pre_grab_pre_qual_interface_for_int1_int2(ParseTreeModuleSrc0,
@@ -283,17 +378,43 @@ write_interface_file_int1_int2(ProgressStream, ErrorStream, Globals,
             filter_interface_generation_specs(Globals,
                 EffectiveGetQualSpecs ++ GenerateSpecs, Specs),
             % Write out the `.int' and `.int2' files.
+            ExtraSuffix = "",
+            construct_int_file_name(Globals, ModuleName, ifk_int1, ExtraSuffix,
+                FileName1, TmpFileName1, !IO),
+            construct_int_file_name(Globals, ModuleName, ifk_int2, ExtraSuffix,
+                FileName2, TmpFileName2, !IO),
             actually_write_interface_file1(ProgressStream, ErrorStream,
-                Globals, ParseTreeInt1, "", MaybeTimestamp,
-                OutputSucceeded1, !IO),
+                Globals, ParseTreeInt1, FileName1, TmpFileName1,
+                MaybeTimestamp, OutputSucceeded1, !IO),
             actually_write_interface_file2(ProgressStream, ErrorStream,
-                Globals, ParseTreeInt2, "", MaybeTimestamp,
-                OutputSucceeded2, !IO),
+                Globals, ParseTreeInt2, FileName2, TmpFileName2,
+                MaybeTimestamp, OutputSucceeded2, !IO),
             touch_module_ext_datestamp(Globals, ProgressStream,
                 ModuleName, ext_cur_ngs(ext_cur_ngs_int_date_int12),
                 TouchSucceeded, !IO),
-            Succeeded = and_list([OutputSucceeded1, OutputSucceeded2,
-                TouchSucceeded])
+            Succeeded = OutputSucceeded1 `and` OutputSucceeded2 `and`
+                TouchSucceeded,
+            (
+                AddToHrmm = do_not_add_new_to_hrmm
+            ;
+                AddToHrmm = do_add_new_to_hrmm,
+                Int1Map0 = !.HaveReadModuleMaps ^ hrmm_int1,
+                Int2Map0 = !.HaveReadModuleMaps ^ hrmm_int2,
+                % XXX If needed for smart recompilation, we could get
+                % the actual timestamps of the .int and .int2 files.
+                MaybeTimestampInt = maybe.no,
+                % XXX ReadModuleErrors
+                ReadModuleErrors = read_module_errors(set.init, [],
+                    set.init, [], []),
+                HRM1 = have_read_module(FileName1, MaybeTimestampInt,
+                    ParseTreeInt1, ReadModuleErrors),
+                HRM2 = have_read_module(FileName2, MaybeTimestampInt,
+                    ParseTreeInt2, ReadModuleErrors),
+                map.set(ModuleName, HRM1, Int1Map0, Int1Map),
+                map.set(ModuleName, HRM2, Int2Map0, Int2Map),
+                !HaveReadModuleMaps ^ hrmm_int1 := Int1Map,
+                !HaveReadModuleMaps ^ hrmm_int2 := Int2Map
+            )
         ;
             EffectiveGetQualSpecs = [_ | _],
             report_file_not_written(Globals, [], ModuleName,
@@ -316,18 +437,28 @@ write_interface_file_int1_int2(ProgressStream, ErrorStream, Globals,
         Succeeded = did_not_succeed
     ).
 
+write_interface_file_int1_int2_burdened_module(ProgressStream, ErrorStream,
+        Globals, AddToHrmm, BurdenedModule, Succeeded, Specs,
+        !HaveReadModuleMaps, !IO) :-
+    BurdenedModule = burdened_module(Baggage, ParseTreeModuleSrc),
+    SourceFileName = Baggage ^ mb_source_file_name,
+    SourceFileModuleName = Baggage ^ mb_source_file_module_name,
+    MaybeTimestamp = Baggage ^ mb_maybe_timestamp,
+    write_interface_file_int1_int2(ProgressStream, ErrorStream, Globals,
+        AddToHrmm, SourceFileName, SourceFileModuleName, MaybeTimestamp,
+        ParseTreeModuleSrc, Succeeded, Specs, !HaveReadModuleMaps, !IO).
+
 %---------------------------------------------------------------------------%
 
 :- pred actually_write_interface_file0(
     io.text_output_stream::in, io.text_output_stream::in, globals::in,
-    parse_tree_int0::in, string::in, maybe(timestamp)::in,
+    parse_tree_int0::in, string::in, string::in, maybe(timestamp)::in,
     maybe_succeeded::out, io::di, io::uo) is det.
 
 actually_write_interface_file0(ProgressStream, ErrorStream, Globals,
-        ParseTreeInt0, ExtraSuffix, MaybeTimestamp, Succeeded, !IO) :-
+        ParseTreeInt0, FileName, TmpFileName, MaybeTimestamp,
+        Succeeded, !IO) :-
     ModuleName = ParseTreeInt0 ^ pti0_module_name,
-    construct_int_file_name(Globals, ModuleName, ifk_int0, ExtraSuffix,
-        OutputFileName, TmpOutputFileName, !IO),
     disable_all_line_numbers(Globals, NoLineNumGlobals),
     % We handle any failure to read in the old interface version as
     % every item in the module source being brand new.
@@ -337,21 +468,20 @@ actually_write_interface_file0(ProgressStream, ErrorStream, Globals,
     ParseTreeInt0V = ParseTreeInt0 ^ pti0_maybe_version_numbers
         := MaybeVersionNumbers,
     output_parse_tree_int0(ProgressStream, ErrorStream, NoLineNumGlobals,
-        TmpOutputFileName, ParseTreeInt0V, OutputSucceeded, !IO),
+        TmpFileName, ParseTreeInt0V, OutputSucceeded, !IO),
     copy_dot_tmp_to_base_file_report_any_error(Globals, ".int0",
-        ModuleName, OutputFileName, UpdateSucceeded, !IO),
+        ModuleName, FileName, UpdateSucceeded, !IO),
     Succeeded = OutputSucceeded `and` UpdateSucceeded.
 
 :- pred actually_write_interface_file1(
     io.text_output_stream::in, io.text_output_stream::in, globals::in,
-    parse_tree_int1::in, string::in, maybe(timestamp)::in,
+    parse_tree_int1::in, string::in, string::in, maybe(timestamp)::in,
     maybe_succeeded::out, io::di, io::uo) is det.
 
 actually_write_interface_file1(ProgressStream, ErrorStream, Globals,
-        ParseTreeInt1, ExtraSuffix, MaybeTimestamp, Succeeded, !IO) :-
+        ParseTreeInt1, FileName, TmpFileName, MaybeTimestamp,
+        Succeeded, !IO) :-
     ModuleName = ParseTreeInt1 ^ pti1_module_name,
-    construct_int_file_name(Globals, ModuleName, ifk_int1, ExtraSuffix,
-        OutputFileName, TmpOutputFileName, !IO),
     disable_all_line_numbers(Globals, NoLineNumGlobals),
     % We handle any failure to read in the old interface version as
     % every item in the module source being brand new.
@@ -361,21 +491,20 @@ actually_write_interface_file1(ProgressStream, ErrorStream, Globals,
     ParseTreeInt1V = ParseTreeInt1 ^ pti1_maybe_version_numbers
         := MaybeVersionNumbers,
     output_parse_tree_int1(ProgressStream, ErrorStream, NoLineNumGlobals,
-        TmpOutputFileName, ParseTreeInt1V, OutputSucceeded, !IO),
+        TmpFileName, ParseTreeInt1V, OutputSucceeded, !IO),
     copy_dot_tmp_to_base_file_report_any_error(Globals, ".int",
-        ModuleName, OutputFileName, UpdateSucceeded, !IO),
+        ModuleName, FileName, UpdateSucceeded, !IO),
     Succeeded = OutputSucceeded `and` UpdateSucceeded.
 
 :- pred actually_write_interface_file2(
     io.text_output_stream::in, io.text_output_stream::in, globals::in,
-    parse_tree_int2::in, string::in, maybe(timestamp)::in,
+    parse_tree_int2::in, string::in, string::in, maybe(timestamp)::in,
     maybe_succeeded::out, io::di, io::uo) is det.
 
 actually_write_interface_file2(ProgressStream, ErrorStream, Globals,
-        ParseTreeInt2, ExtraSuffix, MaybeTimestamp, Succeeded, !IO) :-
+        ParseTreeInt2, FileName, TmpFileName, MaybeTimestamp,
+        Succeeded, !IO) :-
     ModuleName = ParseTreeInt2 ^ pti2_module_name,
-    construct_int_file_name(Globals, ModuleName, ifk_int2, ExtraSuffix,
-        OutputFileName, TmpOutputFileName, !IO),
     disable_all_line_numbers(Globals, NoLineNumGlobals),
     maybe_read_old_int2_and_compare_for_smart_recomp(ProgressStream,
         NoLineNumGlobals, ParseTreeInt2, MaybeTimestamp,
@@ -383,26 +512,25 @@ actually_write_interface_file2(ProgressStream, ErrorStream, Globals,
     ParseTreeInt2V = ParseTreeInt2 ^ pti2_maybe_version_numbers
         := MaybeVersionNumbers,
     output_parse_tree_int2(ProgressStream, ErrorStream, NoLineNumGlobals,
-        TmpOutputFileName, ParseTreeInt2V, OutputSucceeded, !IO),
+        TmpFileName, ParseTreeInt2V, OutputSucceeded, !IO),
     copy_dot_tmp_to_base_file_report_any_error(Globals, ".int2",
-        ModuleName, OutputFileName, UpdateSucceeded, !IO),
+        ModuleName, FileName, UpdateSucceeded, !IO),
     Succeeded = OutputSucceeded `and` UpdateSucceeded.
 
 :- pred actually_write_interface_file3(
     io.text_output_stream::in, io.text_output_stream::in, globals::in,
-    parse_tree_int3::in, string::in, maybe(timestamp)::in,
+    parse_tree_int3::in, string::in, string::in, maybe(timestamp)::in,
     maybe_succeeded::out, io::di, io::uo) is det.
 
 actually_write_interface_file3(ProgressStream, ErrorStream, Globals,
-        ParseTreeInt3, ExtraSuffix, _MaybeTimestamp, Succeeded, !IO) :-
+        ParseTreeInt3, FileName, TmpFileName, _MaybeTimestamp,
+        Succeeded, !IO) :-
     ModuleName = ParseTreeInt3 ^ pti3_module_name,
-    construct_int_file_name(Globals, ModuleName, ifk_int3, ExtraSuffix,
-        OutputFileName, TmpOutputFileName, !IO),
     disable_all_line_numbers(Globals, NoLineNumGlobals),
     output_parse_tree_int3(ProgressStream, ErrorStream, NoLineNumGlobals,
-        TmpOutputFileName, ParseTreeInt3, OutputSucceeded, !IO),
+        TmpFileName, ParseTreeInt3, OutputSucceeded, !IO),
     copy_dot_tmp_to_base_file_report_any_error(Globals, ".int3",
-        ModuleName, OutputFileName, UpdateSucceeded, !IO),
+        ModuleName, FileName, UpdateSucceeded, !IO),
     Succeeded = OutputSucceeded `and` UpdateSucceeded.
 
 %---------------------------------------------------------------------------%
@@ -609,7 +737,8 @@ report_file_not_written(Globals, PrefixPieces, ModuleName,
             quote(IntBFileName), words("not written."), nl],
         ToRemoveFileNames = [IntAFileName, IntBFileName, DateFileName]
     ),
-    InvisPiece = invis_order_default_end(0),
+    ModuleNameStr = sym_name_to_string(ModuleName),
+    InvisPiece = invis_order_default_end(0, ModuleNameStr),
     NotWrittenSpec = simplest_no_context_spec($pred, severity_informational,
         phase_read_files, [InvisPiece | PrefixPieces] ++ NotWrittenPieces),
     Specs = [NotWrittenSpec | Specs0],

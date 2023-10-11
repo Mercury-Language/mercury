@@ -255,7 +255,7 @@ maybe_report_undefined_pred_error(ModuleInfo, PredOrFunc, SymName,
     else
         PFSymNameArity = pf_sym_name_arity(PredOrFunc, SymName, PredFormArity),
         PredOrFuncStr = pred_or_func_to_str(PredOrFunc),
-        MainPieces = [invis_order_default_start(1),
+        MainPieces = [invis_order_default_start(1, ""),
             words("Error:") | DescPieces] ++ [words("for"),
             unqual_pf_sym_name_pred_form_arity(PFSymNameArity), nl,
             words("without corresponding"),

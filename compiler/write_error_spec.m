@@ -906,8 +906,8 @@ convert_pieces_to_paragraphs_acc(FirstInMsg, [Piece | Pieces],
         ),
         RevWords1 = [RPWord]
     ;
-        ( Piece = invis_order_default_start(_)
-        ; Piece = invis_order_default_end(_)
+        ( Piece = invis_order_default_start(_, _)
+        ; Piece = invis_order_default_end(_, _)
         ; Piece = treat_next_as_first
         ),
         RevWords1 = RevWords0
@@ -1557,8 +1557,8 @@ first_in_msg_after_piece(Piece, FirstInMsg, TailFirstInMsg) :-
         ( Piece = lower_case_next_if_not_first
         ; Piece = nl
         ; Piece = nl_indent_delta(_)
-        ; Piece = invis_order_default_start(_)
-        ; Piece = invis_order_default_end(_)
+        ; Piece = invis_order_default_start(_, _)
+        ; Piece = invis_order_default_end(_, _)
         ),
         TailFirstInMsg = FirstInMsg
     ;

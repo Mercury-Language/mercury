@@ -219,8 +219,8 @@ grab_qual_imported_modules_augment(ProgressStream, Globals, SourceFileName,
         GrabbedFileMap0 =
             map.singleton(ModuleName, gf_src(ParseTreeModuleSrc)),
         !:Baggage = module_baggage(SourceFileName, dir.this_directory,
-            SourceFileModuleName, MaybeTopModule, MaybeTimestampMap,
-            GrabbedFileMap0, Errors0),
+            SourceFileModuleName, MaybeTopModule,
+            MaybeTimestamp, MaybeTimestampMap, GrabbedFileMap0, Errors0),
 
         SrcMap0 = !.HaveReadModuleMaps ^ hrmm_module_src,
         % XXX Should be map.det_insert.
@@ -366,15 +366,19 @@ grab_unqual_imported_modules_make_int(ProgressStream, Globals, SourceFileName,
         else
             MaybeTopModule = not_top_module
         ),
-        MaybeTimestampMap = no,
+        % We need timestamps only for smart recompilation, which does not
+        % apply to the interface files that this compiler invocation
+        % is creating.
+        MaybeTimestamp = maybe.no,
+        MaybeTimestampMap = maybe.no,
 
         Errors0 = init_read_module_errors,
         init_aug_make_int_unit(ParseTreeModuleSrc, !:AugMakeIntUnit),
         GrabbedFileMap0 =
             map.singleton(ModuleName, gf_src(ParseTreeModuleSrc)),
         !:Baggage = module_baggage(SourceFileName, dir.this_directory,
-            SourceFileModuleName, MaybeTopModule, MaybeTimestampMap,
-            GrabbedFileMap0, Errors0),
+            SourceFileModuleName, MaybeTopModule,
+            MaybeTimestamp, MaybeTimestampMap, GrabbedFileMap0, Errors0),
 
         ModuleName = ParseTreeModuleSrc ^ ptms_module_name,
         SrcMap0 = !.HaveReadModuleMaps ^ hrmm_module_src,
