@@ -341,14 +341,6 @@ case "$@" in
         ;;
 esac
 
-# For backwards compatibility/bootstrapping:
-# if no `.dv' files exist, use the `.dep' files instead.
-if test "${dvs}" = ""
-then
-    dvs=${deps}
-    deps=
-fi
-
 if "${verbose}"
 then
     echo MMAKE=${MMAKE}
@@ -379,6 +371,10 @@ export MMAKEFILE
 # file names contain any special characters.
 # If this is fixed, then that fix needs to be replicated in one of the modules
 # that has been carved out of modules.m over the years.
+# XXX There should only be one .dv file per program, just like there should be
+# just one .dep file per program, so the value of ${dvs} should NOT overflow
+# any limits. However, since there should be one .d file per MODULE,
+# ${ds} definitely CAN overflow command line length limits.
 {
 cat ${MMAKE_VARS}
 echo ${dvs} | xargs cat

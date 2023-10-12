@@ -10,7 +10,31 @@
 % Original author: fjh (when this code was in modules.m)
 %
 % This module figures out the information from which write_deps_file.m
-% creates dependency files (.dep and .d files) for mmake.
+% creates dependency files (.dv, .dep and .d files) for mmake.
+%
+% We generate one .dep and one .dv file for each program, with those files
+% being named prog.dep and prog.dv (if the name of the program is "prog").
+% We generate one .d file for each module in the program, with the file
+% being named mod.d (if the name of the module is "mod").
+%
+% The .dv file contains the definitions of all the mmake variable definitions
+% relating to the program, while the .dep file contains all the rules
+% relating to the program. The reason for this split is that we want mmake
+% to glue all these mmakefile fragments together in the following order:
+%
+% - the program's .dv file
+% - the Mmakefile in the current directory
+% - the .d files of the program's modules
+% - the program's .dep file
+% - the standard Mmake.rules file
+%
+% This arrangement gives the Mmakefile access to the values of the
+% variables defined in the program's .dv file, for example as lists
+% of files on which a target depends. On the other hand, by including
+% the automatically generated .dep file *after* the Mmakefile, we allow
+% the rules in the .dep file to refer to variables defined in the Mmakefile
+% (Usually the rules allow, but do not require, the Mmakefile to define
+% these variables.)
 %
 %---------------------------------------------------------------------------%
 
@@ -182,7 +206,7 @@ build_initial_deps_map_for_file(ProgressStream, Globals, FileName, ModuleName,
             % Output the given module's .d file.
     ;       output_all_program_dot_dx_files.
             % The given module is (or should be!) the main module of a program.
-            % Output the program's .dep and .gv files, and the .d file
+            % Output the program's .dep and .dv files, and the .d file
             % of every module in the program.
 
 :- pred generate_dot_dx_files(io.text_output_stream::in, globals::in,
