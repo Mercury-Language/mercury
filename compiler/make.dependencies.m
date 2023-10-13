@@ -280,17 +280,17 @@ compiled_code_dependencies(Globals, DepSpecs) :-
 
 %---------------------------------------------------------------------------%
 
-:- pred direct_imports(globals::in, module_index::in,
+:- pred get_direct_imports(globals::in, module_index::in,
     maybe_succeeded::out, deps_set(module_index)::out,
     make_info::in, make_info::out, io::di, io::uo) is det.
 
-direct_imports(Globals, ModuleIndex, Succeeded, Modules, !Info, !IO) :-
+get_direct_imports(Globals, ModuleIndex, Succeeded, Modules, !Info, !IO) :-
     ( if search_direct_imports_cache(!.Info, ModuleIndex, Result0) then
         Result0 = deps_result(Succeeded, Modules)
     else
         KeepGoing = make_info_get_keep_going(!.Info),
-        non_intermod_direct_imports(Globals, ModuleIndex, Succeeded0, Modules0,
-            !Info, !IO),
+        get_non_intermod_direct_imports(Globals, ModuleIndex,
+            Succeeded0, Modules0, !Info, !IO),
         ( if
             Succeeded0 = did_not_succeed,
             KeepGoing = do_not_keep_going
@@ -300,8 +300,8 @@ direct_imports(Globals, ModuleIndex, Succeeded, Modules, !Info, !IO) :-
         else
             % We also read `.int' files for the modules for which we read
             % `.opt' files, and for the modules imported by those modules.
-            intermod_imports(Globals, ModuleIndex, Succeeded1, IntermodModules,
-                !Info, !IO),
+            get_intermod_imports(Globals, ModuleIndex,
+                Succeeded1, IntermodModules, !Info, !IO),
             ( if
                 Succeeded1 = did_not_succeed,
                 KeepGoing = do_not_keep_going
@@ -311,7 +311,7 @@ direct_imports(Globals, ModuleIndex, Succeeded, Modules, !Info, !IO) :-
             else
                 deps_set_union(IntermodModules, Modules0, Modules1),
                 fold_find_modules_over_modules(KeepGoing, Globals,
-                    non_intermod_direct_imports,
+                    get_non_intermod_direct_imports,
                     deps_set_to_sorted_list(IntermodModules),
                     succeeded, Succeeded2, Modules1, Modules2, !Info, !IO),
                 Succeeded = Succeeded0 `and` Succeeded1 `and` Succeeded2,
@@ -325,11 +325,11 @@ direct_imports(Globals, ModuleIndex, Succeeded, Modules, !Info, !IO) :-
     % Return the modules for which `.int' files are read in a compilation
     % which does not use `--intermodule-optimization'.
     %
-:- pred non_intermod_direct_imports(globals::in, module_index::in,
+:- pred get_non_intermod_direct_imports(globals::in, module_index::in,
     maybe_succeeded::out, deps_set(module_index)::out,
     make_info::in, make_info::out, io::di, io::uo) is det.
 
-non_intermod_direct_imports(Globals, ModuleIndex, Succeeded, Modules,
+get_non_intermod_direct_imports(Globals, ModuleIndex, Succeeded, Modules,
         !Info, !IO) :-
     ( if
         search_non_intermod_direct_imports_cache(!.Info, ModuleIndex, Result0)
@@ -338,18 +338,18 @@ non_intermod_direct_imports(Globals, ModuleIndex, Succeeded, Modules,
     else
         % XXX MAKE_STREAM
         io.output_stream(ProgressStream, !IO),
-        non_intermod_direct_imports_uncached(ProgressStream, Globals,
+        get_non_intermod_direct_imports_uncached(ProgressStream, Globals,
             ModuleIndex, Succeeded, Modules, !Info, !IO),
         Result = deps_result(Succeeded, Modules),
         add_to_non_intermod_direct_imports_cache(ModuleIndex, Result, !Info)
     ).
 
-:- pred non_intermod_direct_imports_uncached(io.text_output_stream::in,
+:- pred get_non_intermod_direct_imports_uncached(io.text_output_stream::in,
     globals::in, module_index::in,
     maybe_succeeded::out, deps_set(module_index)::out,
     make_info::in, make_info::out, io::di, io::uo) is det.
 
-non_intermod_direct_imports_uncached(ProgressStream, Globals, ModuleIndex,
+get_non_intermod_direct_imports_uncached(ProgressStream, Globals, ModuleIndex,
         Succeeded, Modules, !Info, !IO) :-
     module_index_to_name(!.Info, ModuleIndex, ModuleName),
     get_maybe_module_dep_info(ProgressStream, Globals,
@@ -372,8 +372,8 @@ non_intermod_direct_imports_uncached(ProgressStream, Globals, ModuleIndex,
         (
             ModuleName = qualified(ParentModule, _),
             module_name_to_index(ParentModule, ParentIndex, !Info),
-            non_intermod_direct_imports(Globals, ParentIndex, Succeeded,
-                ParentImports, !Info, !IO),
+            get_non_intermod_direct_imports(Globals, ParentIndex,
+                Succeeded, ParentImports, !Info, !IO),
             deps_set_union(ParentImports, Modules0, Modules)
         ;
             ModuleName = unqualified(_),
@@ -390,18 +390,18 @@ non_intermod_direct_imports_uncached(ProgressStream, Globals, ModuleIndex,
 
     % Return the list of modules for which we should read `.int2' files.
     %
-:- pred indirect_imports(globals::in, module_index::in,
+:- pred get_indirect_imports(globals::in, module_index::in,
     maybe_succeeded::out, deps_set(module_index)::out,
     make_info::in, make_info::out, io::di, io::uo) is det.
 
-indirect_imports(Globals, ModuleIndex, Succeeded, Modules, !Info, !IO) :-
+get_indirect_imports(Globals, ModuleIndex, Succeeded, Modules, !Info, !IO) :-
     ( if search_indirect_imports_cache(!.Info, ModuleIndex, Result0) then
         Result0 = deps_result(Succeeded, Modules)
     else
         % XXX MAKE_STREAM
         io.output_stream(ProgressStream, !IO),
-        indirect_imports_uncached(ProgressStream, Globals, direct_imports,
-            ModuleIndex, Succeeded, Modules, !Info, !IO),
+        get_indirect_imports_uncached(ProgressStream, Globals,
+            get_direct_imports, ModuleIndex, Succeeded, Modules, !Info, !IO),
         Result = deps_result(Succeeded, Modules),
         add_to_indirect_imports_cache(ModuleIndex, Result, !Info)
     ).
@@ -410,24 +410,24 @@ indirect_imports(Globals, ModuleIndex, Succeeded, Modules, !Info, !IO) :-
     % ignoring those which need to be read as a result of importing modules
     % imported by a `.opt' file.
     %
-:- pred non_intermod_indirect_imports(globals::in, module_index::in,
+:- pred get_non_intermod_indirect_imports(globals::in, module_index::in,
     maybe_succeeded::out, deps_set(module_index)::out,
     make_info::in, make_info::out, io::di, io::uo) is det.
 
-non_intermod_indirect_imports(Globals, ModuleIndex, Succeeded, Modules,
+get_non_intermod_indirect_imports(Globals, ModuleIndex, Succeeded, Modules,
         !Info, !IO) :-
     % XXX MAKE_STREAM
     io.output_stream(ProgressStream, !IO),
-    indirect_imports_uncached(ProgressStream, Globals,
-        non_intermod_direct_imports, ModuleIndex, Succeeded, Modules,
+    get_indirect_imports_uncached(ProgressStream, Globals,
+        get_non_intermod_direct_imports, ModuleIndex, Succeeded, Modules,
         !Info, !IO).
 
-:- pred indirect_imports_uncached(io.text_output_stream::in, globals::in,
+:- pred get_indirect_imports_uncached(io.text_output_stream::in, globals::in,
     find_module_deps(module_index)::in(find_module_deps),
     module_index::in, maybe_succeeded::out, deps_set(module_index)::out,
     make_info::in, make_info::out, io::di, io::uo) is det.
 
-indirect_imports_uncached(ProgressStream, Globals, FindDirectImports,
+get_indirect_imports_uncached(ProgressStream, Globals, FindDirectImports,
         ModuleIndex, Succeeded, IndirectImports, !Info, !IO) :-
     % XXX MDNEW Caller may know DirectImports already.
     FindDirectImports(Globals, ModuleIndex, DirectSucceeded, DirectImports,
@@ -457,11 +457,11 @@ indirect_imports_uncached(ProgressStream, Globals, FindDirectImports,
 
     % Return the list of modules for which we should read `.opt' files.
     %
-:- pred intermod_imports(globals::in, module_index::in,
+:- pred get_intermod_imports(globals::in, module_index::in,
     maybe_succeeded::out, deps_set(module_index)::out,
     make_info::in, make_info::out, io::di, io::uo) is det.
 
-intermod_imports(Globals, ModuleIndex, Succeeded, Modules, !Info, !IO) :-
+get_intermod_imports(Globals, ModuleIndex, Succeeded, Modules, !Info, !IO) :-
     globals.get_any_intermod(Globals, AnyIntermod),
     (
         AnyIntermod = yes,
@@ -475,8 +475,8 @@ intermod_imports(Globals, ModuleIndex, Succeeded, Modules, !Info, !IO) :-
                 ModuleIndex, Succeeded, Modules, !Info, !IO)
         ;
             Transitive = no,
-            non_intermod_direct_imports(Globals, ModuleIndex, Succeeded,
-                Modules, !Info, !IO)
+            get_non_intermod_direct_imports(Globals, ModuleIndex,
+                Succeeded, Modules, !Info, !IO)
         )
     ;
         AnyIntermod = no,
@@ -486,19 +486,19 @@ intermod_imports(Globals, ModuleIndex, Succeeded, Modules, !Info, !IO) :-
 
 %---------------------------------------------------------------------------%
 
-:- pred foreign_imports(globals::in, module_index::in,
+:- pred get_foreign_imports(globals::in, module_index::in,
     maybe_succeeded::out, deps_set(module_index)::out,
     make_info::in, make_info::out, io::di, io::uo) is det.
 
-foreign_imports(Globals, ModuleIndex, Succeeded, Modules, !Info, !IO) :-
+get_foreign_imports(Globals, ModuleIndex, Succeeded, Modules, !Info, !IO) :-
     % The object file depends on the header files for the modules
     % mentioned in `:- pragma foreign_import_module' declarations
     % in the current module and the `.opt' files it imports.
 
     globals.get_backend_foreign_languages(Globals, Languages),
     LanguagesSet = set.list_to_set(Languages),
-    intermod_imports(Globals, ModuleIndex, IntermodSucceeded, IntermodModules,
-        !Info, !IO),
+    get_intermod_imports(Globals, ModuleIndex,
+        IntermodSucceeded, IntermodModules, !Info, !IO),
     KeepGoing = make_info_get_keep_going(!.Info),
     % XXX MAKE_STREAM
     io.output_stream(ProgressStream, !IO),
@@ -612,11 +612,11 @@ find_transitive_implementation_imports(ProgressStream, Globals, ModuleIndex,
 
 %---------------------------------------------------------------------------%
 
-:- pred fact_table_files(globals::in, module_index::in,
+:- pred get_fact_table_files(globals::in, module_index::in,
     maybe_succeeded::out, set(dependency_file)::out,
     make_info::in, make_info::out, io::di, io::uo) is det.
 
-fact_table_files(Globals, ModuleIndex, Succeeded, Files, !Info, !IO) :-
+get_fact_table_files(Globals, ModuleIndex, Succeeded, Files, !Info, !IO) :-
     module_index_to_name(!.Info, ModuleIndex, ModuleName),
     % XXX MAKE_STREAM
     io.output_stream(ProgressStream, !IO),
@@ -635,11 +635,12 @@ fact_table_files(Globals, ModuleIndex, Succeeded, Files, !Info, !IO) :-
 
 %---------------------------------------------------------------------------%
 
-:- pred foreign_include_files(globals::in, module_index::in,
+:- pred get_foreign_include_files(globals::in, module_index::in,
     maybe_succeeded::out, set(dependency_file)::out,
     make_info::in, make_info::out, io::di, io::uo) is det.
 
-foreign_include_files(Globals, ModuleIndex, Succeeded, Files, !Info, !IO) :-
+get_foreign_include_files(Globals, ModuleIndex, Succeeded, DepFiles,
+        !Info, !IO) :-
     globals.get_backend_foreign_languages(Globals, Languages),
     module_index_to_name(!.Info, ModuleIndex, ModuleName),
     % XXX MAKE_STREAM
@@ -652,32 +653,35 @@ foreign_include_files(Globals, ModuleIndex, Succeeded, Files, !Info, !IO) :-
         module_dep_info_get_source_file_name(ModuleDepInfo, SourceFileName),
         module_dep_info_get_foreign_include_files(ModuleDepInfo,
             ForeignIncludeFiles),
-        FilesList = get_foreign_include_files(set.list_to_set(Languages),
-            SourceFileName, set.to_sorted_list(ForeignIncludeFiles)),
-        Files = set.list_to_set(FilesList)
+        LangSet = set.list_to_set(Languages),
+        dep_files_for_foreign_includes_if_in_langset(LangSet, SourceFileName,
+            ForeignIncludeFiles, DepFiles)
     ;
         MaybeModuleDepInfo = no_module_dep_info,
         Succeeded = did_not_succeed,
-        Files = set.init
+        DepFiles = set.init
     ).
 
-:- func get_foreign_include_files(set(foreign_language), file_name,
-    list(foreign_include_file_info)) = list(dependency_file).
+:- pred dep_files_for_foreign_includes_if_in_langset(set(foreign_language)::in,
+    file_name::in, set(foreign_include_file_info)::in,
+    set(dependency_file)::out) is det.
 
-get_foreign_include_files(LanguageSet, SourceFileName, ForeignIncludes)
-        = Files :-
-    list.filter_map(get_foreign_include_files_2(LanguageSet, SourceFileName),
-        ForeignIncludes, Files).
+dep_files_for_foreign_includes_if_in_langset(LangSet, SourceFileName,
+        ForeignIncludes, DepFiles) :-
+    set.filter_map(
+        dep_file_for_foreign_include_if_in_langset(LangSet, SourceFileName),
+        ForeignIncludes, DepFiles).
 
-:- pred get_foreign_include_files_2(set(foreign_language)::in, file_name::in,
-    foreign_include_file_info::in, dependency_file::out) is semidet.
+:- pred dep_file_for_foreign_include_if_in_langset(set(foreign_language)::in,
+    file_name::in, foreign_include_file_info::in, dependency_file::out)
+    is semidet.
 
-get_foreign_include_files_2(LanguageSet, SourceFileName, ForeignInclude,
-        File) :-
-    ForeignInclude = foreign_include_file_info(Language, IncludeFileName),
-    set.member(Language, LanguageSet),
+dep_file_for_foreign_include_if_in_langset(LangSet, SourceFileName,
+        ForeignInclude, DepFile) :-
+    ForeignInclude = foreign_include_file_info(Lang, IncludeFileName),
+    set.member(Lang, LangSet),
     make_include_file_path(SourceFileName, IncludeFileName, IncludePath),
-    File = dep_file(IncludePath).
+    DepFile = dep_file(IncludePath).
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -809,7 +813,7 @@ find_dep_spec(KeepGoing, Globals, ModuleIndex, DepSpec,
             deps_set_init, DepFileIndexSet, !Info)
     ;
         DepSpec = self_fact_table_files,
-        fact_table_files(Globals, ModuleIndex,
+        get_fact_table_files(Globals, ModuleIndex,
             Succeeded, FactTableDepFiles, !Info, !IO),
         % XXX MDNEW Push this call into fact_table_files
         % when the old machinery is deleted.
@@ -817,7 +821,7 @@ find_dep_spec(KeepGoing, Globals, ModuleIndex, DepSpec,
             DepFileIndexSet, !Info)
     ;
         DepSpec = self_foreign_include_files,
-        foreign_include_files(Globals, ModuleIndex,
+        get_foreign_include_files(Globals, ModuleIndex,
             Succeeded, ForeignDepFiles, !Info, !IO),
         % XXX MDNEW Push this call into foreign_include_files
         % when the old machinery is deleted.
@@ -832,32 +836,32 @@ find_dep_spec(KeepGoing, Globals, ModuleIndex, DepSpec,
         dfmi_targets(ModuleIndexSet, TargetType, DepFileIndexSet, !Info)
     ;
         DepSpec = direct_imports(TargetType),
-        direct_imports(Globals, ModuleIndex,
+        get_direct_imports(Globals, ModuleIndex,
             Succeeded, ModuleIndexSet, !Info, !IO),
         dfmi_targets(ModuleIndexSet, TargetType, DepFileIndexSet, !Info)
     ;
         DepSpec = indirect_imports(TargetType),
-        indirect_imports(Globals, ModuleIndex,
+        get_indirect_imports(Globals, ModuleIndex,
             Succeeded, ModuleIndexSet, !Info, !IO),
         dfmi_targets(ModuleIndexSet, TargetType, DepFileIndexSet, !Info)
     ;
         DepSpec = non_intermod_direct_imports(TargetType),
-        non_intermod_direct_imports(Globals, ModuleIndex,
+        get_non_intermod_direct_imports(Globals, ModuleIndex,
             Succeeded, ModuleIndexSet, !Info, !IO),
         dfmi_targets(ModuleIndexSet, TargetType, DepFileIndexSet, !Info)
     ;
         DepSpec = non_intermod_indirect_imports(TargetType),
-        non_intermod_indirect_imports(Globals, ModuleIndex,
+        get_non_intermod_indirect_imports(Globals, ModuleIndex,
             Succeeded, ModuleIndexSet, !Info, !IO),
         dfmi_targets(ModuleIndexSet, TargetType, DepFileIndexSet, !Info)
     ;
         DepSpec = intermod_imports(TargetType),
-        intermod_imports(Globals, ModuleIndex,
+        get_intermod_imports(Globals, ModuleIndex,
             Succeeded, ModuleIndexSet, !Info, !IO),
         dfmi_targets(ModuleIndexSet, TargetType, DepFileIndexSet, !Info)
     ;
         DepSpec = foreign_imports(TargetType),
-        foreign_imports(Globals, ModuleIndex, Succeeded, ModuleIndexSet,
+        get_foreign_imports(Globals, ModuleIndex, Succeeded, ModuleIndexSet,
             !Info, !IO),
         dfmi_targets(ModuleIndexSet, TargetType, DepFileIndexSet, !Info)
     ;
@@ -973,7 +977,8 @@ dfmi_targets(ModuleIndexSet, TargetType, DepFileIndexSet, !Info) :-
 new_get_ancestors_of_intermod_imports(Globals, ModuleIndex, Succeeded,
         ModuleIndexSet, !Info, !IO) :-
     KeepGoing = make_info_get_keep_going(!.Info),
-    intermod_imports(Globals, ModuleIndex, Succeeded1, Modules1, !Info, !IO),
+    get_intermod_imports(Globals, ModuleIndex, Succeeded1, Modules1,
+        !Info, !IO),
     ( if
         Succeeded1 = did_not_succeed,
         KeepGoing = do_not_keep_going
