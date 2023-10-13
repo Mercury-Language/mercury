@@ -30,9 +30,6 @@
 
 %---------------------------------------------------------------------------%
 
-:- type cached_transitive_dependencies.
-:- func init_cached_transitive_dependencies = cached_transitive_dependencies.
-
     % Find all modules in the current directory which are reachable
     % (by import or include) from the given module.
     %
@@ -63,13 +60,6 @@
 :- import_module require.
 :- import_module sparse_bitset.
 :- import_module string.
-
-%---------------------------------------------------------------------------%
-
-:- type cached_transitive_dependencies ==
-    map(transitive_dependencies_root, deps_result(module_index)).
-
-init_cached_transitive_dependencies = map.init.
 
 %---------------------------------------------------------------------------%
 

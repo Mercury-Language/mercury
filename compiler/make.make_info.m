@@ -24,7 +24,6 @@
 :- import_module make.build.
 :- import_module make.deps_cache.
 :- import_module make.deps_set.
-:- import_module make.find_local_modules.
 :- import_module make.options_file.
 :- import_module mdbcomp.
 :- import_module mdbcomp.sym_name.

@@ -24,6 +24,17 @@
 
 %---------------------------------------------------------------------------%
 
+:- type deps_result(T)
+    --->    deps_result(
+                dr_success  :: maybe_succeeded,
+                dr_set      :: deps_set(T)
+            ).
+
+:- type module_deps_result == deps_result(module_index).
+:- type dependency_file_deps_result == deps_result(dependency_file_index).
+
+%---------------------------------------------------------------------------%
+
 :- type transitive_dependencies_root
     --->    transitive_dependencies_root(
                 module_index,
@@ -41,15 +52,10 @@
             % The source file for the module is in the current directory.
     ;       process_modules_anywhere.
 
-%---------------------------------------------------------------------------%
+:- type cached_transitive_dependencies ==
+    map(transitive_dependencies_root, module_deps_result).
 
-:- type deps_result(T)
-    --->    deps_result(
-                dr_success  :: maybe_succeeded,
-                dr_set      :: deps_set(T)
-            ).
-
-:- type module_deps_result == deps_result(module_index).
+:- func init_cached_transitive_dependencies = cached_transitive_dependencies.
 
 %---------------------------------------------------------------------------%
 
@@ -74,7 +80,7 @@
 %---------------------%
 
 :- type cached_computed_module_deps ==
-    map(computed_module_deps_key, deps_result(dependency_file_index)).
+    map(computed_module_deps_key, dependency_file_deps_result).
 
 :- type computed_module_deps_key
     --->    computed_module_deps_key(
@@ -93,6 +99,8 @@
 :- implementation.
 
 %---------------------------------------------------------------------------%
+
+init_cached_transitive_dependencies = map.init.
 
 init_cached_direct_imports = map.init.
 
