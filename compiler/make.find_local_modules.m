@@ -55,7 +55,6 @@
 
 :- import_module dir.
 :- import_module list.
-:- import_module map.
 :- import_module maybe.
 :- import_module require.
 :- import_module sparse_bitset.
@@ -73,10 +72,8 @@ find_reachable_local_modules(ProgressStream, Globals, ModuleName, Succeeded,
 
 find_transitive_module_dependencies(ProgressStream, Globals, DependenciesType,
         ProcessModulesWhere, ModuleIndex, Succeeded, Modules, !Info, !IO) :-
-    DepsRoot = transitive_dependencies_root(ModuleIndex, DependenciesType,
-        ProcessModulesWhere),
-    CachedTransDeps0 = make_info_get_cached_transitive_dependencies(!.Info),
-    ( if map.search(CachedTransDeps0, DepsRoot, Result0) then
+    Key = trans_deps_key(ModuleIndex, DependenciesType, ProcessModulesWhere),
+    ( if search_transitive_deps_cache(!.Info, Key, Result0) then
         Result0 = deps_result(Succeeded, Modules)
     else
         KeepGoing = make_info_get_keep_going(!.Info),
@@ -84,10 +81,7 @@ find_transitive_module_dependencies(ProgressStream, Globals, DependenciesType,
             DependenciesType, ProcessModulesWhere, Globals, ModuleIndex,
             Succeeded, deps_set_init, Modules, !Info, !IO),
         Result = deps_result(Succeeded, Modules),
-        CachedTransDeps1 =
-            make_info_get_cached_transitive_dependencies(!.Info),
-        map.det_insert(DepsRoot, Result, CachedTransDeps1, CachedTransDeps),
-        make_info_set_cached_transitive_dependencies(CachedTransDeps, !Info)
+        add_to_transitive_deps_cache(Key, Result, !Info)
     ).
 
 :- pred find_transitive_module_dependencies_uncached(io.text_output_stream::in,
@@ -106,10 +100,9 @@ find_transitive_module_dependencies_uncached(ProgressStream, KeepGoing,
         Succeeded = succeeded,
         Modules = Modules0
     else if
-        DepsRoot = transitive_dependencies_root(ModuleIndex,
-            DependenciesType, ProcessModulesWhere),
-        map.search(make_info_get_cached_transitive_dependencies(!.Info),
-            DepsRoot, Result0)
+        Key = trans_deps_key(ModuleIndex, DependenciesType,
+            ProcessModulesWhere),
+        search_transitive_deps_cache(!.Info, Key, Result0)
     then
         Result0 = deps_result(Succeeded, Modules1),
         deps_set_union(Modules0, Modules1, Modules)

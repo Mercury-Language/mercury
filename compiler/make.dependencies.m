@@ -563,8 +563,7 @@ get_intermod_imports_their_ancestors_and_012(Globals, ModuleIndex,
     make_info::in, make_info::out, io::di, io::uo) is det.
 
 direct_imports(Globals, ModuleIndex, Succeeded, Modules, !Info, !IO) :-
-    CachedDirectImports0 = make_info_get_cached_direct_imports(!.Info),
-    ( if map.search(CachedDirectImports0, ModuleIndex, Result0) then
+    ( if search_direct_imports_cache(!.Info, ModuleIndex, Result0) then
         Result0 = deps_result(Succeeded, Modules)
     else
         KeepGoing = make_info_get_keep_going(!.Info),
@@ -598,10 +597,7 @@ direct_imports(Globals, ModuleIndex, Succeeded, Modules, !Info, !IO) :-
             )
         ),
         Result = deps_result(Succeeded, Modules),
-        CachedDirectImports1 = make_info_get_cached_direct_imports(!.Info),
-        map.det_insert(ModuleIndex, Result,
-            CachedDirectImports1, CachedDirectImports),
-        make_info_set_cached_direct_imports(CachedDirectImports, !Info)
+        add_to_direct_imports_cache(ModuleIndex, Result, !Info)
     ).
 
     % Return the modules for which `.int' files are read in a compilation
@@ -613,9 +609,9 @@ direct_imports(Globals, ModuleIndex, Succeeded, Modules, !Info, !IO) :-
 
 non_intermod_direct_imports(Globals, ModuleIndex, Succeeded, Modules,
         !Info, !IO) :-
-    CachedNonIntermodDirectImports0 =
-        make_info_get_cached_non_intermod_direct_imports(!.Info),
-    ( if map.search(CachedNonIntermodDirectImports0, ModuleIndex, Result0) then
+    ( if
+        search_non_intermod_direct_imports_cache(!.Info, ModuleIndex, Result0)
+    then
         Result0 = deps_result(Succeeded, Modules)
     else
         % XXX MAKE_STREAM
@@ -623,12 +619,7 @@ non_intermod_direct_imports(Globals, ModuleIndex, Succeeded, Modules,
         non_intermod_direct_imports_uncached(ProgressStream, Globals,
             ModuleIndex, Succeeded, Modules, !Info, !IO),
         Result = deps_result(Succeeded, Modules),
-        CachedNonIntermodDirectImports1 =
-            make_info_get_cached_non_intermod_direct_imports(!.Info),
-        map.det_insert(ModuleIndex, Result,
-            CachedNonIntermodDirectImports1, CachedNonIntermodDirectImports),
-        make_info_set_cached_non_intermod_direct_imports(
-            CachedNonIntermodDirectImports, !Info)
+        add_to_non_intermod_direct_imports_cache(ModuleIndex, Result, !Info)
     ).
 
 :- pred non_intermod_direct_imports_uncached(io.text_output_stream::in,
@@ -682,19 +673,15 @@ non_intermod_direct_imports_uncached(ProgressStream, Globals, ModuleIndex,
     make_info::in, make_info::out, io::di, io::uo) is det.
 
 indirect_imports(Globals, ModuleIndex, Succeeded, Modules, !Info, !IO) :-
-    CachedIndirectImports0 = make_info_get_cached_indirect_imports(!.Info),
-    ( if map.search(CachedIndirectImports0, ModuleIndex, CachedResult) then
-        CachedResult = deps_result(Succeeded, Modules)
+    ( if search_indirect_imports_cache(!.Info, ModuleIndex, Result0) then
+        Result0 = deps_result(Succeeded, Modules)
     else
         % XXX MAKE_STREAM
         io.output_stream(ProgressStream, !IO),
         indirect_imports_uncached(ProgressStream, Globals, direct_imports,
             ModuleIndex, Succeeded, Modules, !Info, !IO),
         Result = deps_result(Succeeded, Modules),
-        CachedIndirectImports1 = make_info_get_cached_indirect_imports(!.Info),
-        map.det_insert(ModuleIndex, Result,
-            CachedIndirectImports1, CachedIndirectImports),
-        make_info_set_cached_indirect_imports(CachedIndirectImports, !Info)
+        add_to_indirect_imports_cache(ModuleIndex, Result, !Info)
     ).
 
     % Return the list of modules for which we should read `.int2' files,
@@ -809,10 +796,10 @@ find_module_foreign_imports(ProgressStream, LanguageSet, Globals, ModuleIndex,
         Succeeded, ForeignModules, !Info, !IO) :-
     % LanguageSet should be constant for the duration of the process,
     % which means that it is unnecessary to include it in the cache key.
-    CachedForeignImports0 =
-        make_info_get_cached_transitive_foreign_imports(!.Info),
-    ( if map.search(CachedForeignImports0, ModuleIndex, CachedResult) then
-        CachedResult = deps_result(Succeeded, ForeignModules)
+    ( if
+        search_transitive_foreign_imports_cache(!.Info, ModuleIndex, Result0)
+    then
+        Result0 = deps_result(Succeeded, ForeignModules)
     else
         find_transitive_implementation_imports(ProgressStream, Globals,
             ModuleIndex, Succeeded0, ImportedModules, !Info, !IO),
@@ -826,12 +813,7 @@ find_module_foreign_imports(ProgressStream, LanguageSet, Globals, ModuleIndex,
                 succeeded, Succeeded, deps_set_init, ForeignModules,
                 !Info, !IO),
             Result = deps_result(Succeeded, ForeignModules),
-            CachedForeignImports1 =
-                make_info_get_cached_transitive_foreign_imports(!.Info),
-            map.det_insert(ModuleIndex, Result,
-                CachedForeignImports1, CachedForeignImports),
-            make_info_set_cached_transitive_foreign_imports(
-                CachedForeignImports, !Info)
+            add_to_transitive_foreign_imports_cache(ModuleIndex, Result, !Info)
         ;
             Succeeded0 = did_not_succeed,
             Succeeded = did_not_succeed,
@@ -1158,7 +1140,6 @@ find_dep_spec(KeepGoing, Globals, ModuleIndex, DepSpec,
         dfmi_targets(ModuleIndexSet, TargetType, DepFileIndexSet, !Info)
     ;
         DepSpec = anc0_dir1_indir2,
-        % XXX cache
         SubDepSpecs = [
             ancestors(module_target_int0),
             direct_imports(module_target_int1),
@@ -1175,8 +1156,18 @@ find_dep_spec(KeepGoing, Globals, ModuleIndex, DepSpec,
             io.format(OutputStream, "dep_spec %s for %s starts\n\n",
                 [s(string.string(DepSpec)), s(IndexModuleNameStr)], !TIO)
         ),
-        find_dep_specs(KeepGoing, Globals, ModuleIndex, SubDepSpecs, Succeeded,
-            DepFileIndexSet, !Info, !IO),
+
+        Key = computed_module_deps_key(ModuleIndex,
+            computed_module_deps_import_012),
+        ( if search_computed_module_deps_cache(!.Info, Key, Result0) then
+            Result0 = deps_result(Succeeded, DepFileIndexSet)
+        else
+            find_dep_specs(KeepGoing, Globals, ModuleIndex, SubDepSpecs,
+                Succeeded, DepFileIndexSet, !Info, !IO),
+            Result = deps_result(Succeeded, DepFileIndexSet),
+            add_to_computed_module_deps_cache(Key, Result, !Info)
+        ),
+
         trace [
             compile_time(flag("find_dep_spec")),
             run_time(env("FIND_DEP_SPEC")),
@@ -1702,18 +1693,15 @@ add_targets_of_ancestors_as_deps(TargetType, ModuleIndex, !Deps, !Info) :-
     deps_set(dependency_file_index)::out, make_info::in, make_info::out,
     io::di, io::uo) is det.
 
-cache_computed_module_deps(Label, FindDeps, Globals, ModuleIndex, Succeeded,
-        Deps, !Info, !IO) :-
-    Cache0 = make_info_get_cached_computed_module_deps(!.Info),
+cache_computed_module_deps(Label, FindDeps, Globals, ModuleIndex,
+        Succeeded, Deps, !Info, !IO) :-
     Key = computed_module_deps_key(ModuleIndex, Label),
-    ( if map.search(Cache0, Key, CachedResult) then
-        CachedResult = deps_result(Succeeded, Deps)
+    ( if search_computed_module_deps_cache(!.Info, Key, Result0) then
+        Result0 = deps_result(Succeeded, Deps)
     else
         FindDeps(Globals, ModuleIndex, Succeeded, Deps, !Info, !IO),
-        Cache1 = make_info_get_cached_computed_module_deps(!.Info),
         Result = deps_result(Succeeded, Deps),
-        map.det_insert(Key, Result, Cache1, Cache),
-        make_info_set_cached_computed_module_deps(Cache, !Info)
+        add_to_computed_module_deps_cache(Key, Result, !Info)
     ).
 
 %---------------------------------------------------------------------------%
