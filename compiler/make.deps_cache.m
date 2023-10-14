@@ -67,28 +67,28 @@
 
 %---------------------------------------------------------------------------%
 
-:- pred search_direct_imports_cache(make_info::in,
+:- pred search_direct_imports_intermod_cache(make_info::in,
     module_index::in, module_deps_result::out) is semidet.
-:- pred add_to_direct_imports_cache(module_index::in,
+:- pred add_to_direct_imports_intermod_cache(module_index::in,
     module_deps_result::in, make_info::in, make_info::out) is det.
 
-:- pred search_non_intermod_direct_imports_cache(make_info::in,
+:- pred search_direct_imports_non_intermod_cache(make_info::in,
     module_index::in, module_deps_result::out) is semidet.
-:- pred add_to_non_intermod_direct_imports_cache(module_index::in,
-    module_deps_result::in, make_info::in, make_info::out) is det.
-
-%---------------------%
-
-:- pred search_indirect_imports_cache(make_info::in,
-    module_index::in, module_deps_result::out) is semidet.
-:- pred add_to_indirect_imports_cache(module_index::in,
+:- pred add_to_direct_imports_non_intermod_cache(module_index::in,
     module_deps_result::in, make_info::in, make_info::out) is det.
 
 %---------------------%
 
-:- pred search_trans_foreign_imports_cache(make_info::in,
+:- pred search_indirect_imports_intermod_cache(make_info::in,
     module_index::in, module_deps_result::out) is semidet.
-:- pred add_to_trans_foreign_imports_cache(module_index::in,
+:- pred add_to_indirect_imports_intermod_cache(module_index::in,
+    module_deps_result::in, make_info::in, make_info::out) is det.
+
+%---------------------%
+
+:- pred search_foreign_imports_non_intermod_trans_cache(make_info::in,
+    module_index::in, module_deps_result::out) is semidet.
+:- pred add_to_foreign_imports_non_intermod_trans_cache(module_index::in,
     module_deps_result::in, make_info::in, make_info::out) is det.
 
 %---------------------%
@@ -120,45 +120,45 @@ init_trans_deps_cache = map.init.
 
 %---------------------------------------------------------------------------%
 
-search_direct_imports_cache(Info, ModuleIndex, Result) :-
-    CacheMap = make_info_get_direct_imports_cache(Info),
+search_direct_imports_intermod_cache(Info, ModuleIndex, Result) :-
+    CacheMap = make_info_get_direct_imports_intermod_cache(Info),
     map.search(CacheMap, ModuleIndex, Result).
 
-add_to_direct_imports_cache(ModuleIndex, Result, !Info) :-
-    CacheMap0 = make_info_get_direct_imports_cache(!.Info),
+add_to_direct_imports_intermod_cache(ModuleIndex, Result, !Info) :-
+    CacheMap0 = make_info_get_direct_imports_intermod_cache(!.Info),
     map.det_insert(ModuleIndex, Result, CacheMap0, CacheMap),
-    make_info_set_direct_imports_cache(CacheMap, !Info).
+    make_info_set_direct_imports_intermod_cache(CacheMap, !Info).
 
-search_non_intermod_direct_imports_cache(Info, ModuleIndex, Result) :-
-    CacheMap = make_info_get_non_intermod_direct_imports_cache(Info),
+search_direct_imports_non_intermod_cache(Info, ModuleIndex, Result) :-
+    CacheMap = make_info_get_direct_imports_non_intermod_cache(Info),
     map.search(CacheMap, ModuleIndex, Result).
 
-add_to_non_intermod_direct_imports_cache(ModuleIndex, Result, !Info) :-
-    CacheMap0 = make_info_get_non_intermod_direct_imports_cache(!.Info),
+add_to_direct_imports_non_intermod_cache(ModuleIndex, Result, !Info) :-
+    CacheMap0 = make_info_get_direct_imports_non_intermod_cache(!.Info),
     map.det_insert(ModuleIndex, Result, CacheMap0, CacheMap),
-    make_info_set_non_intermod_direct_imports_cache(CacheMap, !Info).
+    make_info_set_direct_imports_non_intermod_cache(CacheMap, !Info).
 
 %---------------------%
 
-search_indirect_imports_cache(Info, ModuleIndex, Result) :-
-    CacheMap = make_info_get_indirect_imports_cache(Info),
+search_indirect_imports_intermod_cache(Info, ModuleIndex, Result) :-
+    CacheMap = make_info_get_indirect_imports_intermod_cache(Info),
     map.search(CacheMap, ModuleIndex, Result).
 
-add_to_indirect_imports_cache(ModuleIndex, Result, !Info) :-
-    CacheMap0 = make_info_get_indirect_imports_cache(!.Info),
+add_to_indirect_imports_intermod_cache(ModuleIndex, Result, !Info) :-
+    CacheMap0 = make_info_get_indirect_imports_intermod_cache(!.Info),
     map.det_insert(ModuleIndex, Result, CacheMap0, CacheMap),
-    make_info_set_indirect_imports_cache(CacheMap, !Info).
+    make_info_set_indirect_imports_intermod_cache(CacheMap, !Info).
 
 %---------------------%
 
-search_trans_foreign_imports_cache(Info, ModuleIndex, Result) :-
-    CacheMap = make_info_get_trans_foreign_imports_cache(Info),
+search_foreign_imports_non_intermod_trans_cache(Info, ModuleIndex, Result) :-
+    CacheMap = make_info_get_foreign_imports_non_intermod_trans_cache(Info),
     map.search(CacheMap, ModuleIndex, Result).
 
-add_to_trans_foreign_imports_cache(ModuleIndex, Result, !Info) :-
-    CacheMap0 = make_info_get_trans_foreign_imports_cache(!.Info),
+add_to_foreign_imports_non_intermod_trans_cache(ModuleIndex, Result, !Info) :-
+    CacheMap0 = make_info_get_foreign_imports_non_intermod_trans_cache(!.Info),
     map.det_insert(ModuleIndex, Result, CacheMap0, CacheMap),
-    make_info_set_trans_foreign_imports_cache(CacheMap, !Info).
+    make_info_set_foreign_imports_non_intermod_trans_cache(CacheMap, !Info).
 
 %---------------------------------------------------------------------------%
 
