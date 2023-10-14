@@ -73,7 +73,7 @@ find_reachable_local_modules(ProgressStream, Globals, ModuleName, Succeeded,
 find_transitive_module_dependencies(ProgressStream, Globals, DependenciesType,
         ProcessModulesWhere, ModuleIndex, Succeeded, Modules, !Info, !IO) :-
     Key = trans_deps_key(ModuleIndex, DependenciesType, ProcessModulesWhere),
-    ( if search_transitive_deps_cache(!.Info, Key, Result0) then
+    ( if search_trans_deps_cache(!.Info, Key, Result0) then
         Result0 = deps_result(Succeeded, Modules)
     else
         KeepGoing = make_info_get_keep_going(!.Info),
@@ -81,7 +81,7 @@ find_transitive_module_dependencies(ProgressStream, Globals, DependenciesType,
             DependenciesType, ProcessModulesWhere, Globals, ModuleIndex,
             Succeeded, deps_set_init, Modules, !Info, !IO),
         Result = deps_result(Succeeded, Modules),
-        add_to_transitive_deps_cache(Key, Result, !Info)
+        add_to_trans_deps_cache(Key, Result, !Info)
     ).
 
 :- pred find_transitive_module_dependencies_uncached(io.text_output_stream::in,
@@ -102,7 +102,7 @@ find_transitive_module_dependencies_uncached(ProgressStream, KeepGoing,
     else if
         Key = trans_deps_key(ModuleIndex, DependenciesType,
             ProcessModulesWhere),
-        search_transitive_deps_cache(!.Info, Key, Result0)
+        search_trans_deps_cache(!.Info, Key, Result0)
     then
         Result0 = deps_result(Succeeded, Modules1),
         deps_set_union(Modules0, Modules1, Modules)

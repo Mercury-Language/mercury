@@ -518,9 +518,7 @@ find_module_foreign_imports(ProgressStream, LanguageSet, Globals, ModuleIndex,
         Succeeded, ForeignModules, !Info, !IO) :-
     % LanguageSet should be constant for the duration of the process,
     % which means that it is unnecessary to include it in the cache key.
-    ( if
-        search_transitive_foreign_imports_cache(!.Info, ModuleIndex, Result0)
-    then
+    ( if search_trans_foreign_imports_cache(!.Info, ModuleIndex, Result0) then
         Result0 = deps_result(Succeeded, ForeignModules)
     else
         find_transitive_implementation_imports(ProgressStream, Globals,
@@ -535,7 +533,7 @@ find_module_foreign_imports(ProgressStream, LanguageSet, Globals, ModuleIndex,
                 succeeded, Succeeded, deps_set_init, ForeignModules,
                 !Info, !IO),
             Result = deps_result(Succeeded, ForeignModules),
-            add_to_transitive_foreign_imports_cache(ModuleIndex, Result, !Info)
+            add_to_trans_foreign_imports_cache(ModuleIndex, Result, !Info)
         ;
             Succeeded0 = did_not_succeed,
             Succeeded = did_not_succeed,
@@ -883,15 +881,13 @@ find_dep_spec(KeepGoing, Globals, ModuleIndex, DepSpec,
                 [s(string.string(DepSpec)), s(IndexModuleNameStr)], !TIO)
         ),
 
-        Key = computed_module_deps_key(ModuleIndex,
-            computed_module_deps_import_012),
-        ( if search_computed_module_deps_cache(!.Info, Key, Result0) then
+        ( if search_anc0_dir1_indir2_cache(!.Info, ModuleIndex, Result0) then
             Result0 = deps_result(Succeeded, DepFileIndexSet)
         else
             find_dep_specs(KeepGoing, Globals, ModuleIndex, SubDepSpecs,
                 Succeeded, DepFileIndexSet, !Info, !IO),
             Result = deps_result(Succeeded, DepFileIndexSet),
-            add_to_computed_module_deps_cache(Key, Result, !Info)
+            add_to_anc0_dir1_indir2_cache(ModuleIndex, Result, !Info)
         ),
 
         trace [

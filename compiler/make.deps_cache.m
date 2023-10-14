@@ -34,6 +34,14 @@
 :- type module_deps_result == deps_result(module_index).
 :- type dependency_file_deps_result == deps_result(dependency_file_index).
 
+:- type module_to_module_set_cache
+    == map(module_index, module_deps_result).
+:- type module_to_dep_file_set_cache
+    == map(module_index, dependency_file_deps_result).
+
+:- func init_module_to_module_set_cache = module_to_module_set_cache.
+:- func init_module_to_dep_file_set_cache = module_to_dep_file_set_cache.
+
 %---------------------------------------------------------------------------%
 
 :- type trans_deps_key
@@ -53,21 +61,11 @@
             % The source file for the module is in the current directory.
     ;       process_modules_anywhere.
 
-:- type cached_transitive_dependencies ==
-    map(trans_deps_key, module_deps_result).
+:- type trans_deps_cache == map(trans_deps_key, module_deps_result).
 
-:- func init_cached_transitive_dependencies = cached_transitive_dependencies.
-
-:- pred search_transitive_deps_cache(make_info::in, trans_deps_key::in,
-    module_deps_result::out) is semidet.
-:- pred add_to_transitive_deps_cache(trans_deps_key::in,
-    module_deps_result::in, make_info::in, make_info::out) is det.
+:- func init_trans_deps_cache = trans_deps_cache.
 
 %---------------------------------------------------------------------------%
-
-:- type cached_direct_imports == map(module_index, module_deps_result).
-
-:- func init_cached_direct_imports = cached_direct_imports.
 
 :- pred search_direct_imports_cache(make_info::in,
     module_index::in, module_deps_result::out) is semidet.
@@ -81,10 +79,6 @@
 
 %---------------------%
 
-:- type cached_indirect_imports == map(module_index, module_deps_result).
-
-:- func init_cached_indirect_imports = cached_indirect_imports.
-
 :- pred search_indirect_imports_cache(make_info::in,
     module_index::in, module_deps_result::out) is semidet.
 :- pred add_to_indirect_imports_cache(module_index::in,
@@ -92,37 +86,24 @@
 
 %---------------------%
 
-:- type cached_transitive_foreign_imports
-    == map(module_index, module_deps_result).
-
-:- func init_cached_transitive_foreign_imports =
-    cached_transitive_foreign_imports.
-
-:- pred search_transitive_foreign_imports_cache(make_info::in,
+:- pred search_trans_foreign_imports_cache(make_info::in,
     module_index::in, module_deps_result::out) is semidet.
-:- pred add_to_transitive_foreign_imports_cache(module_index::in,
+:- pred add_to_trans_foreign_imports_cache(module_index::in,
     module_deps_result::in, make_info::in, make_info::out) is det.
 
 %---------------------%
 
-:- type cached_computed_module_deps ==
-    map(computed_module_deps_key, dependency_file_deps_result).
-
-:- type computed_module_deps_key
-    --->    computed_module_deps_key(
-                module_index,
-                computed_module_deps_label
-            ).
-
-:- type computed_module_deps_label
-    --->    computed_module_deps_import_012.
-
-:- func init_cached_computed_module_deps = cached_computed_module_deps.
-
-:- pred search_computed_module_deps_cache(make_info::in,
-    computed_module_deps_key::in, dependency_file_deps_result::out) is semidet.
-:- pred add_to_computed_module_deps_cache(computed_module_deps_key::in,
+:- pred search_anc0_dir1_indir2_cache(make_info::in,
+    module_index::in, dependency_file_deps_result::out) is semidet.
+:- pred add_to_anc0_dir1_indir2_cache(module_index::in,
     dependency_file_deps_result::in, make_info::in, make_info::out) is det.
+
+%---------------------%
+
+:- pred search_trans_deps_cache(make_info::in,
+    trans_deps_key::in, module_deps_result::out) is semidet.
+:- pred add_to_trans_deps_cache(trans_deps_key::in,
+    module_deps_result::in, make_info::in, make_info::out) is det.
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -131,77 +112,75 @@
 
 %---------------------------------------------------------------------------%
 
-init_cached_transitive_dependencies = map.init.
+init_module_to_module_set_cache = map.init.
 
-search_transitive_deps_cache(Info, DepsRoot, Result) :-
-    CacheMap = make_info_get_cached_transitive_dependencies(Info),
-    map.search(CacheMap, DepsRoot, Result).
+init_module_to_dep_file_set_cache = map.init.
 
-add_to_transitive_deps_cache(DepsRoot, Result, !Info) :-
-    CacheMap0 = make_info_get_cached_transitive_dependencies(!.Info),
-    map.det_insert(DepsRoot, Result, CacheMap0, CacheMap),
-    make_info_set_cached_transitive_dependencies(CacheMap, !Info).
+init_trans_deps_cache = map.init.
 
-%---------------------%
-
-init_cached_direct_imports = map.init.
+%---------------------------------------------------------------------------%
 
 search_direct_imports_cache(Info, ModuleIndex, Result) :-
-    CacheMap = make_info_get_cached_direct_imports(Info),
+    CacheMap = make_info_get_direct_imports_cache(Info),
     map.search(CacheMap, ModuleIndex, Result).
 
 add_to_direct_imports_cache(ModuleIndex, Result, !Info) :-
-    CacheMap0 = make_info_get_cached_direct_imports(!.Info),
+    CacheMap0 = make_info_get_direct_imports_cache(!.Info),
     map.det_insert(ModuleIndex, Result, CacheMap0, CacheMap),
-    make_info_set_cached_direct_imports(CacheMap, !Info).
+    make_info_set_direct_imports_cache(CacheMap, !Info).
 
 search_non_intermod_direct_imports_cache(Info, ModuleIndex, Result) :-
-    CacheMap = make_info_get_cached_non_intermod_direct_imports(Info),
+    CacheMap = make_info_get_non_intermod_direct_imports_cache(Info),
     map.search(CacheMap, ModuleIndex, Result).
 
 add_to_non_intermod_direct_imports_cache(ModuleIndex, Result, !Info) :-
-    CacheMap0 = make_info_get_cached_non_intermod_direct_imports(!.Info),
+    CacheMap0 = make_info_get_non_intermod_direct_imports_cache(!.Info),
     map.det_insert(ModuleIndex, Result, CacheMap0, CacheMap),
-    make_info_set_cached_non_intermod_direct_imports(CacheMap, !Info).
+    make_info_set_non_intermod_direct_imports_cache(CacheMap, !Info).
 
 %---------------------%
 
-init_cached_indirect_imports = map.init.
-
 search_indirect_imports_cache(Info, ModuleIndex, Result) :-
-    CacheMap = make_info_get_cached_indirect_imports(Info),
+    CacheMap = make_info_get_indirect_imports_cache(Info),
     map.search(CacheMap, ModuleIndex, Result).
 
 add_to_indirect_imports_cache(ModuleIndex, Result, !Info) :-
-    CacheMap0 = make_info_get_cached_indirect_imports(!.Info),
+    CacheMap0 = make_info_get_indirect_imports_cache(!.Info),
     map.det_insert(ModuleIndex, Result, CacheMap0, CacheMap),
-    make_info_set_cached_indirect_imports(CacheMap, !Info).
+    make_info_set_indirect_imports_cache(CacheMap, !Info).
 
 %---------------------%
 
-init_cached_transitive_foreign_imports = map.init.
-
-search_transitive_foreign_imports_cache(Info, ModuleIndex, Result) :-
-    CacheMap = make_info_get_cached_transitive_foreign_imports(Info),
+search_trans_foreign_imports_cache(Info, ModuleIndex, Result) :-
+    CacheMap = make_info_get_trans_foreign_imports_cache(Info),
     map.search(CacheMap, ModuleIndex, Result).
 
-add_to_transitive_foreign_imports_cache(ModuleIndex, Result, !Info) :-
-    CacheMap0 = make_info_get_cached_transitive_foreign_imports(!.Info),
+add_to_trans_foreign_imports_cache(ModuleIndex, Result, !Info) :-
+    CacheMap0 = make_info_get_trans_foreign_imports_cache(!.Info),
     map.det_insert(ModuleIndex, Result, CacheMap0, CacheMap),
-    make_info_set_cached_transitive_foreign_imports(CacheMap, !Info).
+    make_info_set_trans_foreign_imports_cache(CacheMap, !Info).
 
-%---------------------%
+%---------------------------------------------------------------------------%
 
-init_cached_computed_module_deps = map.init.
-
-search_computed_module_deps_cache(Info, Key, Result) :-
-    CacheMap = make_info_get_cached_computed_module_deps(Info),
+search_anc0_dir1_indir2_cache(Info, Key, Result) :-
+    CacheMap = make_info_get_anc0_dir1_indir2_cache(Info),
     map.search(CacheMap, Key, Result).
 
-add_to_computed_module_deps_cache(Key, Result, !Info) :-
-    CacheMap0 = make_info_get_cached_computed_module_deps(!.Info),
+add_to_anc0_dir1_indir2_cache(Key, Result, !Info) :-
+    CacheMap0 = make_info_get_anc0_dir1_indir2_cache(!.Info),
     map.det_insert(Key, Result, CacheMap0, CacheMap),
-    make_info_set_cached_computed_module_deps(CacheMap, !Info).
+    make_info_set_anc0_dir1_indir2_cache(CacheMap, !Info).
+
+%---------------------------------------------------------------------------%
+
+search_trans_deps_cache(Info, DepsRoot, Result) :-
+    CacheMap = make_info_get_trans_deps_cache(Info),
+    map.search(CacheMap, DepsRoot, Result).
+
+add_to_trans_deps_cache(DepsRoot, Result, !Info) :-
+    CacheMap0 = make_info_get_trans_deps_cache(!.Info),
+    map.det_insert(DepsRoot, Result, CacheMap0, CacheMap),
+    make_info_set_trans_deps_cache(CacheMap, !Info).
 
 %---------------------------------------------------------------------------%
 :- end_module make.deps_cache.
