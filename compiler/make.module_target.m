@@ -224,8 +224,8 @@ make_module_target_file_main_path(ExtraOptions, ProgressStream, Globals,
     ModuleIndexesToCheck = to_sorted_list(ModuleIndexesToCheckSet),
 
     KeepGoing = make_info_get_keep_going(!.Info),
-    find_target_dependencies_of_modules(KeepGoing, Globals, TargetType,
-        ModuleIndexesToCheck, succeeded, DepsSucceeded,
+    find_target_dependencies_of_modules(ProgressStream, KeepGoing, Globals,
+        TargetType, ModuleIndexesToCheck, succeeded, DepsSucceeded,
         sparse_bitset.init, DepFiles0, !Info, !IO),
     % NOTE: converting the dep_set to a plain set is relatively expensive,
     % so it would be better to avoid it. Also, there should be a definite
