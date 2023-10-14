@@ -44,6 +44,166 @@
     --->    ioi_import(module_name)
     ;       ioi_include(module_name).
 
+%---------------------%
+
+:- type maybe_module_dep_info
+    --->    no_module_dep_info
+    ;       some_module_dep_info(module_dep_info).
+
+%---------------------%
+
+:- type file_timestamps == map(string, maybe_error(timestamp)).
+
+:- type target_file_timestamps == version_hash_table(target_file, timestamp).
+
+%---------------------%
+
+% NOTE Having version_arrays be indexed by uints, not ints
+% that just happen to never be negative, would avoid some casts
+% from uint to int when accessing the reverse maps in the next two types.
+
+:- type module_index_map
+    --->    module_index_map(
+                mim_forward_map         :: version_hash_table(module_name,
+                                            module_index),
+                mim_reverse_map         :: version_array(module_name),
+                mim_counter             :: uint
+            ).
+
+%---------------------%
+
+:- type dependency_file
+    --->    dep_target(target_file)
+            % A target which could be made.
+
+    ;       dep_file(file_name).
+            % An ordinary file which `mmc --make' does not know how to rebuild.
+
+    % Like dependency_file but refers to a module by index instead of by name,
+    % which is more efficient when the name is not required.
+    %
+:- type dependency_file_with_module_index
+    --->    dfmi_target(module_index, module_target_type)
+    ;       dfmi_file(file_name).
+
+:- type dependency_file_index_map
+    --->    dependency_file_index_map(
+                dfim_forward_map        :: version_hash_table(
+                                            dependency_file_with_module_index,
+                                            dependency_file_index),
+                dfim_reverse_map        :: version_array(
+                                            dependency_file_with_module_index),
+                dfim_counter            :: uint
+            ).
+
+%---------------------%
+
+:- type dependency_status
+    --->    deps_status_not_considered
+    ;       deps_status_being_built
+    ;       deps_status_up_to_date
+    ;       deps_status_error.
+
+%---------------------%
+
+:- type maybe_rebuild_module_deps
+    --->    do_rebuild_module_deps
+    ;       do_not_rebuild_module_deps.
+
+%---------------------%
+
+:- type maybe_keep_going
+    --->    do_not_keep_going
+    ;       do_keep_going.
+
+%---------------------%
+
+:- type target_type
+    --->    module_target(module_target_type)
+    ;       linked_target(linked_target_type)
+    ;       misc_target(misc_target_type).
+
+:- type module_target_type
+    --->    module_target_source
+    ;       module_target_errors
+    ;       module_target_int0
+    ;       module_target_int1
+    ;       module_target_int2
+    ;       module_target_int3
+    ;       module_target_opt
+    ;       module_target_analysis_registry
+    ;       module_target_track_flags
+    ;       module_target_c_header(c_header_type)
+    ;       module_target_c_code
+    ;       module_target_csharp_code
+    ;       module_target_java_code
+    ;       module_target_java_class_code
+    ;       module_target_object_code(pic)
+    ;       module_target_foreign_object(pic, foreign_language)
+    ;       module_target_fact_table_object(pic, file_name)
+    ;       module_target_xml_doc.
+
+:- type c_header_type
+    --->    header_mh    % For `:- pragma foreign_export' declarations.
+    ;       header_mih.  % Declarations for hlc grades, for compiler use only.
+
+% :- type linked_target_type is in compile_target_code.m.
+
+:- type misc_target_type
+    --->    misc_target_clean
+    ;       misc_target_realclean
+    ;       misc_target_build_all(module_target_type)
+    ;       misc_target_build_analyses
+    ;       misc_target_build_library
+    ;       misc_target_install_library
+    ;       misc_target_build_xml_docs.
+
+:- type compilation_task_type
+    --->    process_module(module_compilation_task_type)
+            % The `pic' argument is only used for `--target c'.
+    ;       target_code_to_object_code(pic)
+    ;       foreign_code_to_object_code(pic, foreign_language)
+    ;       fact_table_code_to_object_code(pic, file_name).
+
+:- type module_compilation_task_type
+    --->    task_errorcheck
+    ;       task_make_int0
+    ;       task_make_int12     % makes both .int and .int2
+    ;       task_make_int3
+    ;       task_make_opt
+    ;       task_make_analysis_registry
+    ;       task_compile_to_target_code
+    ;       task_make_xml_doc.
+
+%---------------------------------------------------------------------------%
+
+:- type target_file
+    --->    target_file(
+                target_file_name    :: module_name,
+                target_file_type    :: module_target_type
+            ).
+
+:- type linked_target_file
+    --->    linked_target_file(
+                linked_tf_name      :: module_name,
+                linked_tf_type      :: linked_target_type
+            ).
+
+:- type top_target_file
+    --->    top_target_file(
+                ttf_name            :: module_name,
+                ttf_type            :: target_type
+            ).
+
+%---------------------------------------------------------------------------%
+
+:- type make_error
+    --->    make_error_target(target_file)
+    ;       make_error_dependencies(module_name)
+    ;       make_error_other(string).
+
+%---------------------------------------------------------------------------%
+
 :- type make_info.
 
 :- func init_make_info(options_variables, list(string), maybe_keep_going,
@@ -128,152 +288,6 @@
     make_info::in, make_info::out) is det.
 :- pred make_info_set_trans_deps_cache(trans_deps_cache::in,
     make_info::in, make_info::out) is det.
-
-%---------------------------------------------------------------------------%
-
-:- type maybe_module_dep_info
-    --->    no_module_dep_info
-    ;       some_module_dep_info(module_dep_info).
-
-:- type file_timestamps == map(string, maybe_error(timestamp)).
-
-:- type target_file_timestamps == version_hash_table(target_file, timestamp).
-
-% NOTE Having version_arrays be indexed by uints, not ints
-% that just happen to never be negative, would avoid some casts
-% from uint to int when accessing the reverse maps in the next two types.
-
-:- type module_index_map
-    --->    module_index_map(
-                mim_forward_map         :: version_hash_table(module_name,
-                                            module_index),
-                mim_reverse_map         :: version_array(module_name),
-                mim_counter             :: uint
-            ).
-
-:- type dependency_file
-    --->    dep_target(target_file)
-            % A target which could be made.
-
-    ;       dep_file(file_name).
-            % An ordinary file which `mmc --make' does not know how to rebuild.
-
-    % Like dependency_file but refers to a module by index instead of by name,
-    % which is more efficient when the name is not required.
-    %
-:- type dependency_file_with_module_index
-    --->    dfmi_target(module_index, module_target_type)
-    ;       dfmi_file(file_name).
-
-:- type dependency_file_index_map
-    --->    dependency_file_index_map(
-                dfim_forward_map        :: version_hash_table(
-                                            dependency_file_with_module_index,
-                                            dependency_file_index),
-                dfim_reverse_map        :: version_array(
-                                            dependency_file_with_module_index),
-                dfim_counter            :: uint
-            ).
-
-:- type dependency_status
-    --->    deps_status_not_considered
-    ;       deps_status_being_built
-    ;       deps_status_up_to_date
-    ;       deps_status_error.
-
-:- type maybe_rebuild_module_deps
-    --->    do_rebuild_module_deps
-    ;       do_not_rebuild_module_deps.
-
-:- type maybe_keep_going
-    --->    do_not_keep_going
-    ;       do_keep_going.
-
-:- type target_type
-    --->    module_target(module_target_type)
-    ;       linked_target(linked_target_type)
-    ;       misc_target(misc_target_type).
-
-:- type module_target_type
-    --->    module_target_source
-    ;       module_target_errors
-    ;       module_target_int0
-    ;       module_target_int1
-    ;       module_target_int2
-    ;       module_target_int3
-    ;       module_target_opt
-    ;       module_target_analysis_registry
-    ;       module_target_track_flags
-    ;       module_target_c_header(c_header_type)
-    ;       module_target_c_code
-    ;       module_target_csharp_code
-    ;       module_target_java_code
-    ;       module_target_java_class_code
-    ;       module_target_object_code(pic)
-    ;       module_target_foreign_object(pic, foreign_language)
-    ;       module_target_fact_table_object(pic, file_name)
-    ;       module_target_xml_doc.
-
-:- type c_header_type
-    --->    header_mh    % For `:- pragma foreign_export' declarations.
-    ;       header_mih.  % Declarations for hlc grades, for compiler use only.
-
-% :- type linked_target_type is in compile_target_code.m.
-
-:- type misc_target_type
-    --->    misc_target_clean
-    ;       misc_target_realclean
-    ;       misc_target_build_all(module_target_type)
-    ;       misc_target_build_analyses
-    ;       misc_target_build_library
-    ;       misc_target_install_library
-    ;       misc_target_build_xml_docs.
-
-%---------------------------------------------------------------------------%
-
-:- type compilation_task_type
-    --->    process_module(module_compilation_task_type)
-            % The `pic' argument is only used for `--target c'.
-    ;       target_code_to_object_code(pic)
-    ;       foreign_code_to_object_code(pic, foreign_language)
-    ;       fact_table_code_to_object_code(pic, file_name).
-
-:- type module_compilation_task_type
-    --->    task_errorcheck
-    ;       task_make_int0
-    ;       task_make_int12     % makes both .int and .int2
-    ;       task_make_int3
-    ;       task_make_opt
-    ;       task_make_analysis_registry
-    ;       task_compile_to_target_code
-    ;       task_make_xml_doc.
-
-%---------------------------------------------------------------------------%
-
-:- type target_file
-    --->    target_file(
-                target_file_name    :: module_name,
-                target_file_type    :: module_target_type
-            ).
-
-:- type linked_target_file
-    --->    linked_target_file(
-                linked_tf_name      :: module_name,
-                linked_tf_type      :: linked_target_type
-            ).
-
-:- type top_target_file
-    --->    top_target_file(
-                ttf_name            :: module_name,
-                ttf_type            :: target_type
-            ).
-
-%---------------------------------------------------------------------------%
-
-:- type make_error
-    --->    make_error_target(target_file)
-    ;       make_error_dependencies(module_name)
-    ;       make_error_other(string).
 
 %---------------------------------------------------------------------------%
 :- implementation.
