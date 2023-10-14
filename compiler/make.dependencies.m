@@ -650,13 +650,15 @@ get_direct_imports_intermod(Globals, ModuleIndex, Succeeded, Modules,
     maybe_succeeded::out, deps_set(module_index)::out,
     make_info::in, make_info::out, io::di, io::uo) is det.
 
-get_indirect_imports_non_intermod(Globals, ModuleIndex, Succeeded, Modules,
-        !Info, !IO) :-
+get_indirect_imports_non_intermod(Globals, ModuleIndex,
+        Succeeded, IndirectNonIntermodImportModules, !Info, !IO) :-
     % XXX MAKE_STREAM
     io.output_stream(ProgressStream, !IO),
+    get_direct_imports_non_intermod(Globals, ModuleIndex,
+        DirectSucceeded, DirectImportModules, !Info, !IO),
     get_indirect_imports_uncached(ProgressStream, Globals,
-        get_direct_imports_non_intermod, ModuleIndex, Succeeded, Modules,
-        !Info, !IO).
+        ModuleIndex, DirectSucceeded, DirectImportModules,
+        Succeeded, IndirectNonIntermodImportModules, !Info, !IO).
 
     % Return the list of modules for which we should read `.int2' files.
     %
@@ -664,43 +666,33 @@ get_indirect_imports_non_intermod(Globals, ModuleIndex, Succeeded, Modules,
     maybe_succeeded::out, deps_set(module_index)::out,
     make_info::in, make_info::out, io::di, io::uo) is det.
 
-get_indirect_imports_intermod(Globals, ModuleIndex, Succeeded, Modules,
-        !Info, !IO) :-
+get_indirect_imports_intermod(Globals, ModuleIndex,
+        Succeeded, IndirectIntermodImportModules, !Info, !IO) :-
     ( if
         search_indirect_imports_intermod_cache(!.Info, ModuleIndex, Result0)
     then
-        Result0 = deps_result(Succeeded, Modules)
+        Result0 = deps_result(Succeeded, IndirectIntermodImportModules)
     else
         % XXX MAKE_STREAM
         io.output_stream(ProgressStream, !IO),
+        get_direct_imports_intermod(Globals, ModuleIndex,
+            DirectSucceeded, DirectImportModules, !Info, !IO),
         get_indirect_imports_uncached(ProgressStream, Globals,
-            get_direct_imports_intermod, ModuleIndex,
-            Succeeded, Modules, !Info, !IO),
-        Result = deps_result(Succeeded, Modules),
+            ModuleIndex, DirectSucceeded, DirectImportModules,
+            Succeeded, IndirectIntermodImportModules, !Info, !IO),
+        Result = deps_result(Succeeded, IndirectIntermodImportModules),
         add_to_indirect_imports_intermod_cache(ModuleIndex, Result, !Info)
     ).
 
-    % find_module_deps(Globals, ModuleIndex, Succeeded, Deps, !Info, !IO).
-    %
-    % The reason we don't return maybe(Deps) is that with `--keep-going'
-    % we want to do as much work as possible.
-    %
-:- type find_module_deps(T) ==
-    pred(globals, module_index, maybe_succeeded, deps_set(T),
-        make_info, make_info, io, io).
-:- inst find_module_deps ==
-    (pred(in, in, out, out, in, out, di, uo) is det).
-
 :- pred get_indirect_imports_uncached(io.text_output_stream::in, globals::in,
-    find_module_deps(module_index)::in(find_module_deps),
-    module_index::in, maybe_succeeded::out, deps_set(module_index)::out,
+    module_index::in,
+    maybe_succeeded::in, deps_set(module_index)::in,
+    maybe_succeeded::out, deps_set(module_index)::out,
     make_info::in, make_info::out, io::di, io::uo) is det.
 
-get_indirect_imports_uncached(ProgressStream, Globals, FindDirectImports,
-        ModuleIndex, Succeeded, IndirectImports, !Info, !IO) :-
-    % XXX MDNEW Caller may know DirectImports already.
-    FindDirectImports(Globals, ModuleIndex, DirectSucceeded, DirectImports,
-        !Info, !IO),
+get_indirect_imports_uncached(ProgressStream, Globals, ModuleIndex,
+        DirectSucceeded, DirectImports, Succeeded, IndirectImports,
+        !Info, !IO) :-
     % XXX The original version of this code by stayl had the line assigning
     % to KeepGoing textually *before* the call to FindDirectImports, but
     % looked up the keep_going in the version of !Info *after* that call.
@@ -1017,6 +1009,17 @@ find_transitive_implementation_imports(ProgressStream, Globals, ModuleIndex,
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
+
+    % find_module_deps(Globals, ModuleIndex, Succeeded, Deps, !Info, !IO).
+    %
+    % The reason we don't return maybe(Deps) is that with `--keep-going'
+    % we want to do as much work as possible.
+    %
+:- type find_module_deps(T) ==
+    pred(globals, module_index, maybe_succeeded, deps_set(T),
+        make_info, make_info, io, io).
+:- inst find_module_deps ==
+    (pred(in, in, out, out, in, out, di, uo) is det).
 
     % fold_find_modules_over_modules(KeepGoing, Globals, FindDeps,
     %   ModuleIndexes, !Succeeded, !ModuleIndexSet, !Info, !IO):
