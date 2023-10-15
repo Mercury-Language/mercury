@@ -20,8 +20,18 @@ include $(MERCURY_DIR)/Mmake.common
 # which runs the program with `--help' and then munges the result.
 # This variable specifies which programs to create man pages for.
 
-MANPAGE_PROGS = c2init mmc mgnuc ml mmake mdb mprof \
-		mprof_merge_runs mtags mtc mercury_config
+MANPAGE_PROGS = \
+	c2init			\
+	mdb			\
+	mercury_config		\
+	mgnuc			\
+	ml			\
+	mmc			\
+	mmake			\
+	mprof			\
+	mprof_merge_runs	\
+	mtags			\
+	mtc
 
 mmc.1: ../compiler/handle_options.m ../compiler/options.m
 
