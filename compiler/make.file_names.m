@@ -60,12 +60,6 @@
 % Extensions on file names.
 %
 
-:- pred extension_to_target_type(globals::in, string::in,
-    module_target_type::out) is semidet.
-
-:- pred target_extension_synonym(string::in, module_target_type::out)
-    is semidet.
-
     % Find the extension for the timestamp file for the given target type,
     % if one exists.
     %
@@ -211,9 +205,13 @@ module_target_to_search_file_name(Globals, From, TargetType, ModuleName,
     target_extension::out) is det.
 
 target_type_to_target_extension(Target, TargetExt) :-
-    % target_type_to_extension and extension_to_target_type represent
-    % the same relationship between targets and suffixes, but in different
-    % directions. Their codes should be kept in sync.
+    % target_type_to_extension and part of the implementation of
+    % classify_target_2 in make.top_level.m represent the same relationship
+    % between targets and suffixes, but in different directions, and for
+    % slightly different sets of targets. (For example, there is no extension
+    % that generates module_target_fact_table_object as a target.)
+    % Where they talk about the same targets, their codes should be
+    % kept in sync.
     require_complete_switch [Target]
     (
         Target = module_target_source,
@@ -278,74 +276,6 @@ target_type_to_target_extension(Target, TargetExt) :-
         Target = module_target_fact_table_object(PIC, FactFile),
         TargetExt = fact_table_obj(PIC, FactFile)
     ).
-
-extension_to_target_type(Globals, ExtStr, Target) :-
-    % target_type_to_extension and extension_to_target_type represent
-    % the same relationship between targets and suffixes, but in different
-    % directions. Their codes should be kept in sync.
-    ( if
-        (
-            ExtStr = ".m",
-            TargetPrime = module_target_source
-        ;
-            ExtStr = ".err",
-            TargetPrime = module_target_errors
-        ;
-            ExtStr = ".int0",
-            TargetPrime = module_target_int0
-        ;
-            ExtStr = ".int",
-            TargetPrime = module_target_int1
-        ;
-            ExtStr = ".int2",
-            TargetPrime = module_target_int2
-        ;
-            ExtStr = ".int3",
-            TargetPrime = module_target_int3
-        ;
-            ExtStr = ".opt",
-            TargetPrime = module_target_opt
-        ;
-            ExtStr = ".mih",
-            TargetPrime = module_target_c_header(header_mih)
-        ;
-            ExtStr = ".mh",
-            TargetPrime = module_target_c_header(header_mh)
-        ;
-            ExtStr = ".c",
-            TargetPrime = module_target_c_code
-        ;
-            ExtStr = ".cs",
-            TargetPrime = module_target_csharp_code
-        ;
-            ExtStr = ".java",
-            TargetPrime = module_target_java_code
-        ;
-            ExtStr = ".class",
-            TargetPrime = module_target_java_class_code
-        ;
-            ExtStr = ".track_flags",
-            TargetPrime = module_target_track_flags
-        ;
-            ExtStr = ".xml",
-            TargetPrime = module_target_xml_doc
-        ;
-            ExtStr = ".analysis",
-            TargetPrime = module_target_analysis_registry
-        )
-    then
-        Target = TargetPrime
-    else if
-        is_maybe_pic_object_file_extension(Globals, ExtStr, PIC)
-    then
-        Target = module_target_object_code(PIC)
-    else
-        fail
-    ).
-
-target_extension_synonym(".csharp", module_target_csharp_code).
-    % Currently the ".cs" extension is still treated as the build-all target
-    % for C files, so we accept ".csharp" for C# files.
 
 timestamp_extension(ModuleTargetType, Ext) :-
     % XXX EXT The absence of code handling .trans_opt_date files

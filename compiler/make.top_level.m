@@ -51,7 +51,6 @@
 :- import_module libs.timestamp.
 :- import_module make.build.
 :- import_module make.deps_set.
-:- import_module make.file_names.
 :- import_module make.hash.
 :- import_module make.module_target.
 :- import_module make.program_target.
@@ -272,21 +271,15 @@ classify_target_2(Globals, ModuleNameStr0, ExtStr, TopTargetFile) :-
     % XXX This if-then-else chain cries out for conversion of most of it
     % to a switch.
     ( if
-        extension_to_target_type(Globals, ExtStr, ModuleTargetType)
-        % The .cs extension was used to build all C target files, but .cs is
-        % also the file name extension for a C# file. The former use is being
-        % migrated over to the .all_cs target but we still accept it for now.
-        % NOTE This workaround is still in use as of 2020 may 23, even though
-        % it was added in 2010,
-        % ZZZ ExtStr \= ".cs"
+        just_ext_to_module_target_type(ExtStr, ModuleTargetType)
     then
         ModuleNameStr = ModuleNameStr0,
         TargetType = module_target(ModuleTargetType)
     else if
-        % ZZZ This is probably not needed anymore.
-        target_extension_synonym(ExtStr, ModuleTargetType)
+        is_maybe_pic_object_file_extension(Globals, ExtStr, PIC)
     then
         ModuleNameStr = ModuleNameStr0,
+        ModuleTargetType = module_target_object_code(PIC),
         TargetType = module_target(ModuleTargetType)
     else if
         globals.lookup_string_option(Globals, library_extension, ExtStr),
@@ -324,10 +317,14 @@ classify_target_2(Globals, ModuleNameStr0, ExtStr, TopTargetFile) :-
         else
             fail
         ),
-        ( if extension_to_target_type(Globals, ExtStr1, ModuleTargetType0) then
+        ( if just_ext_to_module_target_type(ExtStr1, ModuleTargetType0) then
             ModuleTargetType = ModuleTargetType0
+        else if
+            is_maybe_pic_object_file_extension(Globals, ExtStr1, PIC)
+        then
+            ModuleTargetType = module_target_object_code(PIC)
         else
-            target_extension_synonym(ExtStr1, ModuleTargetType)
+            fail
         ),
         % Not yet implemented. `build_all' targets are only used by
         % tools/bootcheck, so it doesn't really matter.
@@ -336,36 +333,31 @@ classify_target_2(Globals, ModuleNameStr0, ExtStr, TopTargetFile) :-
         ModuleNameStr = ModuleNameStr0,
         TargetType = misc_target(misc_target_build_all(ModuleTargetType))
     else if
-        ExtStr = ".check"
+        (
+            ExtStr = ".check",
+            MiscTarget = misc_target_build_all(module_target_errors)
+        ;
+            ExtStr = ".doc",
+            MiscTarget = misc_target_build_xml_docs
+        ;
+            ExtStr = ".analyse",
+            MiscTarget = misc_target_build_analyses
+        ;
+            ExtStr = ".clean",
+            MiscTarget = misc_target_clean
+        ;
+            ExtStr = ".realclean",
+            MiscTarget = misc_target_realclean
+        )
     then
         ModuleNameStr = ModuleNameStr0,
-        TargetType = misc_target(misc_target_build_all(module_target_errors))
-    else if
-        ExtStr = ".analyse"
-    then
-        ModuleNameStr = ModuleNameStr0,
-        TargetType = misc_target(misc_target_build_analyses)
-    else if
-        ExtStr = ".clean"
-    then
-        ModuleNameStr = ModuleNameStr0,
-        TargetType = misc_target(misc_target_clean)
-    else if
-        ExtStr = ".realclean"
-    then
-        ModuleNameStr = ModuleNameStr0,
-        TargetType = misc_target(misc_target_realclean)
+        TargetType = misc_target(MiscTarget)
     else if
         ExtStr = ".install",
         string.append("lib", ModuleNameStr1, ModuleNameStr0)
     then
         ModuleNameStr = ModuleNameStr1,
         TargetType = misc_target(misc_target_install_library)
-    else if
-        ExtStr = ".doc"
-    then
-        ModuleNameStr = ModuleNameStr0,
-        TargetType = misc_target(misc_target_build_xml_docs)
     else
         fail
     ),
@@ -380,6 +372,67 @@ search_backwards_for_dot(String, Index, DotIndex) :-
         DotIndex = CharIndex
     else
         search_backwards_for_dot(String, CharIndex, DotIndex)
+    ).
+
+:- pred just_ext_to_module_target_type(string, module_target_type).
+:- mode just_ext_to_module_target_type(in, out) is semidet.
+
+just_ext_to_module_target_type(ExtStr, ModuleTarget) :-
+    (
+        ExtStr = ".m",
+        ModuleTarget = module_target_source
+    ;
+        ExtStr = ".err",
+        ModuleTarget = module_target_errors
+    ;
+        ExtStr = ".int0",
+        ModuleTarget = module_target_int0
+    ;
+        ExtStr = ".int",
+        ModuleTarget = module_target_int1
+    ;
+        ExtStr = ".int2",
+        ModuleTarget = module_target_int2
+    ;
+        ExtStr = ".int3",
+        ModuleTarget = module_target_int3
+    ;
+        ExtStr = ".opt",
+        ModuleTarget = module_target_opt
+    ;
+        ExtStr = ".mih",
+        ModuleTarget = module_target_c_header(header_mih)
+    ;
+        ExtStr = ".mh",
+        ModuleTarget = module_target_c_header(header_mh)
+    ;
+        ExtStr = ".c",
+        ModuleTarget = module_target_c_code
+    ;
+        ExtStr = ".cs",
+        ModuleTarget = module_target_csharp_code
+    ;
+        ExtStr = ".csharp",
+        % For a long time, until 2023 oct 5, we treated the ".cs" target name
+        % as the build-all target for C files, so we accepted ".csharp" as
+        % the target for C# files. Keep the synonym for a while longer
+        % to give people time to update their projects and habits.
+        ModuleTarget = module_target_csharp_code
+    ;
+        ExtStr = ".java",
+        ModuleTarget = module_target_java_code
+    ;
+        ExtStr = ".class",
+        ModuleTarget = module_target_java_class_code
+    ;
+        ExtStr = ".track_flags",
+        ModuleTarget = module_target_track_flags
+    ;
+        ExtStr = ".xml",
+        ModuleTarget = module_target_xml_doc
+    ;
+        ExtStr = ".analysis",
+        ModuleTarget = module_target_analysis_registry
     ).
 
 :- func get_executable_type(globals) = linked_target_type.
