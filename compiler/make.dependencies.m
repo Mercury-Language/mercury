@@ -237,9 +237,9 @@ compiled_code_dependencies(Globals, DepSpecs) :-
         self_foreign_include_files,
         self(module_target_int1),
         % XXX MDNEW The next two dep_specs should be a single
-        % combined dep_spec, anc01_dir1_indir2.
+        % combined dep_spec, anc01_dir1_indir2_intermod.
         ancestors(module_target_int1),
-        anc0_dir1_indir2
+        anc0_dir1_indir2_intermod
     ],
 
     globals.lookup_bool_option(Globals, intermodule_optimization, IntermodOpt),
@@ -262,7 +262,7 @@ compiled_code_dependencies(Globals, DepSpecs) :-
             % does the job of both but computes the set of intermod_imports
             % modules set just once. This would save even the cost of a
             % cache hit.
-            anc0_dir1_indir2_of_ancestors_of_intermod_imports
+            anc0_dir1_indir2_intermod_of_ancestors_of_intermod_imports
         ]
     ;
         AnyIntermod = no,
@@ -304,11 +304,11 @@ compiled_code_dependencies(Globals, DepSpecs) :-
     ;       intermod_imports(module_target_type)
     ;       foreign_imports_intermod_trans(module_target_type)
 
-    ;       anc0_dir1_indir2
+    ;       anc0_dir1_indir2_intermod
             % Get the .int0 files of ancestors, the .int files of direct
             % imports, and the .int2 files of indirect imports.
 
-    ;       anc0_dir1_indir2_of_ancestors_of_intermod_imports
+    ;       anc0_dir1_indir2_intermod_of_ancestors_of_intermod_imports
             % Get the .int0 files of ancestors, the .int files of direct
             % imports, and the .int2 files of indirect imports, but not
             % of the specified module, but of the ancestors of its intermod
@@ -405,7 +405,7 @@ find_dep_spec(ProgressStream, KeepGoing, Globals, ModuleIndex, DepSpec,
             ModuleIndex, Succeeded, ModuleIndexSet, !Info, !IO),
         dfmi_targets(ModuleIndexSet, TargetType, DepFileIndexSet, !Info)
     ;
-        DepSpec = anc0_dir1_indir2,
+        DepSpec = anc0_dir1_indir2_intermod,
         SubDepSpecs = [
             ancestors(module_target_int0),
             direct_imports_intermod(module_target_int1),
@@ -422,14 +422,17 @@ find_dep_spec(ProgressStream, KeepGoing, Globals, ModuleIndex, DepSpec,
                 [s(string.string(DepSpec)), s(IndexModuleNameStr)], !TIO)
         ),
 
-        ( if search_anc0_dir1_indir2_cache(!.Info, ModuleIndex, Result0) then
+        ( if
+            search_anc0_dir1_indir2_intermod_cache(!.Info, ModuleIndex,
+                Result0)
+        then
             Result0 = deps_result(Succeeded, DepFileIndexSet)
         else
             find_dep_specs(ProgressStream, KeepGoing, Globals,
                 ModuleIndex, SubDepSpecs, Succeeded, DepFileIndexSet,
                 !Info, !IO),
             Result = deps_result(Succeeded, DepFileIndexSet),
-            add_to_anc0_dir1_indir2_cache(ModuleIndex, Result, !Info)
+            add_to_anc0_dir1_indir2_intermod_cache(ModuleIndex, Result, !Info)
         ),
 
         trace [
@@ -443,7 +446,7 @@ find_dep_spec(ProgressStream, KeepGoing, Globals, ModuleIndex, DepSpec,
                 [s(string.string(DepSpec)), s(IndexModuleNameStr)], !TIO)
         )
     ;
-        DepSpec = anc0_dir1_indir2_of_ancestors_of_intermod_imports,
+        DepSpec = anc0_dir1_indir2_intermod_of_ancestors_of_intermod_imports,
         trace [
             compile_time(flag("find_dep_spec")),
             run_time(env("FIND_DEP_SPEC")),
@@ -455,7 +458,7 @@ find_dep_spec(ProgressStream, KeepGoing, Globals, ModuleIndex, DepSpec,
                 [s(string.string(DepSpec)), s(IndexModuleNameStr)], !TIO)
         ),
 
-        get_anc0_dir1_indir2_of_ancestors_of_intermod_imports(ProgressStream,
+        get_anc0_dir1_indir2_intermod_of_ancestors_of_intermod_imports(ProgressStream,
             KeepGoing, Globals, ModuleIndex, Succeeded, DepFileIndexSet,
             !Info, !IO),
 
@@ -828,13 +831,13 @@ get_foreign_imports_non_intermod_uncached(LangSet, ProgressStream, _KeepGoing,
 
 %---------------------------------------------------------------------------%
 
-:- pred get_anc0_dir1_indir2_of_ancestors_of_intermod_imports(
+:- pred get_anc0_dir1_indir2_intermod_of_ancestors_of_intermod_imports(
     io.text_output_stream::in, maybe_keep_going::in, globals::in,
     module_index::in,
     maybe_succeeded::out, deps_set(dependency_file_index)::out,
     make_info::in, make_info::out, io::di, io::uo) is det.
 
-get_anc0_dir1_indir2_of_ancestors_of_intermod_imports(ProgressStream,
+get_anc0_dir1_indir2_intermod_of_ancestors_of_intermod_imports(ProgressStream,
         KeepGoing, Globals, ModuleIndex, Succeeded, DepFileIndexSet,
         !Info, !IO) :-
     get_ancestors_of_intermod_imports(ProgressStream, KeepGoing, Globals,
@@ -848,7 +851,7 @@ get_anc0_dir1_indir2_of_ancestors_of_intermod_imports(ProgressStream,
     else
         ModuleList1 = deps_set_to_sorted_list(Modules1),
         fold_dep_spec_over_modules(ProgressStream, KeepGoing, Globals,
-            anc0_dir1_indir2, ModuleList1,
+            anc0_dir1_indir2_intermod, ModuleList1,
             succeeded, Succeeded2, deps_set_init, DepFileIndexSet, !Info, !IO),
         Succeeded = Succeeded1 `and` Succeeded2
     ).

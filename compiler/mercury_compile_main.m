@@ -66,6 +66,7 @@
 :- import_module libs.timestamp.
 :- import_module make.
 :- import_module make.build.
+:- import_module make.deps_cache.
 :- import_module make.options_file.
 :- import_module make.top_level.
 :- import_module mdbcomp.
@@ -156,6 +157,7 @@ real_main(!IO) :-
         io.format(ErrorStream, "%s\n", [s(io.error_message(E))], !IO),
         io.set_exit_status(1, !IO)
     ),
+    record_make_deps_cache_stats(!IO),
     record_write_deps_file_cache_stats(!IO),
     record_instmap_delta_restrict_stats(!IO),
     close_any_specific_compiler_streams(!IO).

@@ -233,15 +233,19 @@
 :- func make_info_get_importing_module(make_info) = maybe(import_or_include).
 :- func make_info_get_maybe_stdout_lock(make_info) = maybe(stdout_lock).
 :- func make_info_get_mi_read_module_maps(make_info) = have_read_module_maps.
+:- func make_info_get_direct_imports_non_intermod_cache(make_info) =
+    module_to_module_set_cache.
 :- func make_info_get_direct_imports_intermod_cache(make_info) =
     module_to_module_set_cache.
-:- func make_info_get_direct_imports_non_intermod_cache(make_info) =
+:- func make_info_get_indirect_imports_non_intermod_cache(make_info) =
     module_to_module_set_cache.
 :- func make_info_get_indirect_imports_intermod_cache(make_info) =
     module_to_module_set_cache.
 :- func make_info_get_foreign_imports_non_intermod_trans_cache(make_info) =
     module_to_module_set_cache.
-:- func make_info_get_anc0_dir1_indir2_cache(make_info) =
+:- func make_info_get_anc0_dir1_indir2_non_intermod_cache(make_info) =
+    module_to_dep_file_set_cache.
+:- func make_info_get_anc0_dir1_indir2_intermod_cache(make_info) =
     module_to_dep_file_set_cache.
 :- func make_info_get_trans_deps_cache(make_info) = trans_deps_cache.
 
@@ -273,17 +277,25 @@
     make_info::in, make_info::out) is det.
 :- pred make_info_set_maybe_stdout_lock(maybe(stdout_lock)::in,
     make_info::in, make_info::out) is det.
-:- pred make_info_set_direct_imports_intermod_cache(module_to_module_set_cache::in,
-    make_info::in, make_info::out) is det.
 :- pred make_info_set_direct_imports_non_intermod_cache(
     module_to_module_set_cache::in,
     make_info::in, make_info::out) is det.
-:- pred make_info_set_indirect_imports_intermod_cache(module_to_module_set_cache::in,
+:- pred make_info_set_direct_imports_intermod_cache(
+    module_to_module_set_cache::in,
+    make_info::in, make_info::out) is det.
+:- pred make_info_set_indirect_imports_non_intermod_cache(
+    module_to_module_set_cache::in,
+    make_info::in, make_info::out) is det.
+:- pred make_info_set_indirect_imports_intermod_cache(
+    module_to_module_set_cache::in,
     make_info::in, make_info::out) is det.
 :- pred make_info_set_foreign_imports_non_intermod_trans_cache(
     module_to_module_set_cache::in,
     make_info::in, make_info::out) is det.
-:- pred make_info_set_anc0_dir1_indir2_cache(
+:- pred make_info_set_anc0_dir1_indir2_non_intermod_cache(
+    module_to_dep_file_set_cache::in,
+    make_info::in, make_info::out) is det.
+:- pred make_info_set_anc0_dir1_indir2_intermod_cache(
     module_to_dep_file_set_cache::in,
     make_info::in, make_info::out) is det.
 :- pred make_info_set_trans_deps_cache(trans_deps_cache::in,
@@ -401,12 +413,13 @@
                 % in the dependencies.
                 % XXX Use a better representation for the sets.
                 % XXX zs: What bool? What sets?
+                mki_direct_imports_non_intermod_cache
+                                        :: module_to_module_set_cache,
                 mki_direct_imports_intermod_cache
                                         :: module_to_module_set_cache,
 
-                mki_direct_imports_non_intermod_cache
+                mki_indirect_imports_non_intermod_cache
                                         :: module_to_module_set_cache,
-
                 mki_indirect_imports_intermod_cache
                                         :: module_to_module_set_cache,
 
@@ -415,7 +428,9 @@
 
                 % This cache holds dependency sets that are a simple
                 % computation (union) on other dependency sets.
-                mki_anc0_dir1_indir2_cache
+                mki_anc0_dir1_indir2_intermod_cache
+                                        :: module_to_dep_file_set_cache,
+                mki_anc0_dir1_indir2_non_intermod_cache
                                         :: module_to_dep_file_set_cache,
 
                 % The boolean is `yes' if the result is complete.
@@ -455,6 +470,8 @@ init_make_info(OptionsVariables, DetectedGradeFlags, KeepGoing, OptionArgs,
         init_module_to_module_set_cache,
         init_module_to_module_set_cache,
         init_module_to_module_set_cache,
+        init_module_to_module_set_cache,
+        init_module_to_dep_file_set_cache,
         init_module_to_dep_file_set_cache,
         init_trans_deps_cache
     ).
@@ -493,16 +510,20 @@ make_info_get_maybe_stdout_lock(Info) = X :-
     X = Info ^ mki_maybe_stdout_lock.
 make_info_get_mi_read_module_maps(Info) = X :-
     X = Info ^ mki_mi_read_module_maps.
-make_info_get_direct_imports_intermod_cache(Info) = X :-
-    X = Info ^ mki_direct_imports_intermod_cache.
 make_info_get_direct_imports_non_intermod_cache(Info) = X :-
     X = Info ^ mki_direct_imports_non_intermod_cache.
+make_info_get_direct_imports_intermod_cache(Info) = X :-
+    X = Info ^ mki_direct_imports_intermod_cache.
+make_info_get_indirect_imports_non_intermod_cache(Info) = X :-
+    X = Info ^ mki_indirect_imports_non_intermod_cache.
 make_info_get_indirect_imports_intermod_cache(Info) = X :-
     X = Info ^ mki_indirect_imports_intermod_cache.
 make_info_get_foreign_imports_non_intermod_trans_cache(Info) = X :-
     X = Info ^ mki_foreign_imports_non_intermod_trans_cache.
-make_info_get_anc0_dir1_indir2_cache(Info) = X :-
-    X = Info ^ mki_anc0_dir1_indir2_cache.
+make_info_get_anc0_dir1_indir2_non_intermod_cache(Info) = X :-
+    X = Info ^ mki_anc0_dir1_indir2_non_intermod_cache.
+make_info_get_anc0_dir1_indir2_intermod_cache(Info) = X :-
+    X = Info ^ mki_anc0_dir1_indir2_intermod_cache.
 make_info_get_trans_deps_cache(Info) = X :-
     X = Info ^ mki_trans_deps_cache.
 
@@ -532,16 +553,20 @@ make_info_set_importing_module(X, !Info) :-
     !Info ^ mki_importing_module := X.
 make_info_set_maybe_stdout_lock(X, !Info) :-
     !Info ^ mki_maybe_stdout_lock := X.
-make_info_set_direct_imports_intermod_cache(X, !Info) :-
-    !Info ^ mki_direct_imports_intermod_cache := X.
 make_info_set_direct_imports_non_intermod_cache(X, !Info) :-
     !Info ^ mki_direct_imports_non_intermod_cache := X.
+make_info_set_direct_imports_intermod_cache(X, !Info) :-
+    !Info ^ mki_direct_imports_intermod_cache := X.
+make_info_set_indirect_imports_non_intermod_cache(X, !Info) :-
+    !Info ^ mki_indirect_imports_non_intermod_cache := X.
 make_info_set_indirect_imports_intermod_cache(X, !Info) :-
     !Info ^ mki_indirect_imports_intermod_cache := X.
 make_info_set_foreign_imports_non_intermod_trans_cache(X, !Info) :-
     !Info ^ mki_foreign_imports_non_intermod_trans_cache := X.
-make_info_set_anc0_dir1_indir2_cache(X, !Info) :-
-    !Info ^ mki_anc0_dir1_indir2_cache := X.
+make_info_set_anc0_dir1_indir2_non_intermod_cache(X, !Info) :-
+    !Info ^ mki_anc0_dir1_indir2_non_intermod_cache := X.
+make_info_set_anc0_dir1_indir2_intermod_cache(X, !Info) :-
+    !Info ^ mki_anc0_dir1_indir2_intermod_cache := X.
 make_info_set_trans_deps_cache(X, !Info) :-
     !Info ^ mki_trans_deps_cache := X.
 

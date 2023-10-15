@@ -18,6 +18,7 @@
 :- interface.
 
 :- include_module build.
+:- include_module deps_cache.
 :- include_module get_module_dep_info.
 :- include_module module_dep_file.
 :- include_module options_file.
@@ -30,7 +31,6 @@
 
 :- include_module check_up_to_date.
 :- include_module dependencies.
-:- include_module deps_cache.
 :- include_module deps_set.
 :- include_module file_names.
 :- include_module find_local_modules.
