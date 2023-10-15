@@ -1077,6 +1077,10 @@ MR_process_environment_options(void)
     }
 
     // Find out the program's name, stripping off any directory names.
+    // XXX WINDOWS: the path separator is incorrect for non-Cygwin Windows.
+    // It also does not handle drive qualified paths. And presumably the
+    // name of the program-specific options should not include the .exe
+    // extension.
     progname = MR_progname;
     for (s = progname; *s != '\0'; s++) {
         if (*s == '/') {
