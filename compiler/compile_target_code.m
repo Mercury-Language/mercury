@@ -2621,7 +2621,7 @@ process_link_library(Globals, MercuryLibDirs, LibName, LinkerOpt,
             LinkerOpt = "",
             Pieces = [words(Error), suffix("."), nl],
             Spec = simplest_no_context_spec($pred, severity_error,
-                phase_read_files, Pieces),
+                phase_find_files(LibFileName), Pieces),
             io.stderr_stream(StdErr, !IO),
             write_error_spec(StdErr, Globals, Spec, !IO),
             !:Succeeded = did_not_succeed

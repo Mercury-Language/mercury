@@ -520,10 +520,12 @@ grab_plain_opt_and_int_for_opt_files(ProgressStream, ErrorStream, Globals,
             update_opt_error_status_on_success(OwnOptModuleErrors,
                 OptSpecs0, OptSpecs1, OptError0, OptError)
         ;
-            HaveReadOwnPlainOpt0 = have_not_read_module(OwnOptFileName, _),
+            HaveReadOwnPlainOpt0 =
+                have_not_read_module(OwnOptFileName, OwnOptModuleErrors),
             ParseTreePlainOpts = ParseTreePlainOpts0,
             update_opt_error_status_on_failure(Globals, warn_missing_opt_files,
-                OwnOptFileName, OptSpecs0, OptSpecs1, OptError0, OptError)
+                OwnOptFileName, OwnOptModuleErrors,
+                OptSpecs0, OptSpecs1, OptError0, OptError)
         ),
         pre_hlds_maybe_write_out_errors(ErrorStream, VeryVerbose, Globals,
             OptSpecs1, OptSpecs, !IO)
@@ -1311,9 +1313,9 @@ read_plain_opt_files(ProgressStream, Globals, VeryVerbose,
             DontQueueOptModules1 = DontQueueOptModules0
         )
     ;
-        HaveReadPlainOpt = have_not_read_module(FileName, _ModuleErrors),
+        HaveReadPlainOpt = have_not_read_module(FileName, ModuleErrors),
         update_opt_error_status_on_failure(Globals, warn_missing_opt_files,
-            FileName, !Specs, !OptError),
+            FileName, ModuleErrors, !Specs, !OptError),
         ModuleNames1 = ModuleNames0,
         DontQueueOptModules1 = DontQueueOptModules0
     ),
@@ -1346,9 +1348,9 @@ read_trans_opt_files(ProgressStream, Globals, VeryVerbose,
         cord.snoc(ParseTreeTransOpt, !ParseTreeTransOptsCord),
         update_opt_error_status_on_success(ModuleErrors, !Specs, !OptError)
     ;
-        HaveReadTransOpt = have_not_read_module(FileName, _Errors),
+        HaveReadTransOpt = have_not_read_module(FileName, Errors),
         update_opt_error_status_on_failure(Globals,
-            warn_missing_trans_opt_files, FileName, !Specs, !OptError)
+            warn_missing_trans_opt_files, FileName, Errors, !Specs, !OptError)
     ),
     pre_hlds_maybe_write_out_errors(ProgressStream, VeryVerbose, Globals,
         !Specs, !IO),
@@ -1373,11 +1375,12 @@ read_trans_opt_files(ProgressStream, Globals, VeryVerbose,
     % respectively.
     %
 :- pred update_opt_error_status_on_failure(globals::in, option::in,
-    file_name::in, list(error_spec)::in, list(error_spec)::out,
+    file_name::in, read_module_errors::in,
+    list(error_spec)::in, list(error_spec)::out,
     maybe_opt_file_error::in, maybe_opt_file_error::out) is det.
 
 update_opt_error_status_on_failure(Globals, WarnOption, FileName,
-        !Specs, !Error) :-
+        ReadModuleErrors, !Specs, !Error) :-
     % We get here if we couldn't find and/or open the file.
     % ModuleErrors ^ rm_fatal_error_specs will already contain
     % an error_severity error_spec about that, with more details
@@ -1396,8 +1399,14 @@ update_opt_error_status_on_failure(Globals, WarnOption, FileName,
         WarnOptionValue = yes,
         Pieces = [words("Warning: cannot open"), quote(FileName),
             suffix("."), nl],
+        FatalErrors = ReadModuleErrors ^ rm_fatal_errors,
+        ( if set.contains(FatalErrors, frme_could_not_find_file) then
+            Phase = phase_find_files(FileName)
+        else
+            Phase = phase_read_files
+        ),
         Spec = simplest_no_context_spec($pred, severity_warning,
-            phase_read_files, Pieces),
+            Phase, Pieces),
         !:Specs = [Spec | !.Specs]
     ).
     % NOTE: We do NOT update !Error, since a missing optimization

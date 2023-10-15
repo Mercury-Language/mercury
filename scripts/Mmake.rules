@@ -22,7 +22,7 @@ main_target: $(MAIN_TARGET)
 # Note that the order of suffixes is significant.
 .SUFFIXES: .m .err \
 		.int0 .int .int2 .int3 .opt .trans_opt \
-		.dep .depend .dv .doit .ugly \
+		.dep .depend .depend_ints .dv .doit .ugly \
 		.date0 .date .date3 .optdate .trans_opt_date \
 		.c .$O .pic_o \
 		.i .s .pic_s \
@@ -80,11 +80,44 @@ endif
 
 ifneq ($(MMAKE_USE_MMC_MAKE),yes)
 
-# Beware: the code for `%.depend' and `%.dep'/`%.dv' is duplicated,
-# with each copy having two variants that differ only by a @.
-# javac doesn't create the destination directory for class files
-# so we must create it manually.
-# The following mkdirs work around a bug in GNU Make.
+# NOTE The next three blocks specify the rules for the targets
+#
+#	%.dep and %.dv
+#	%.depend
+#	%.depend_ints
+#
+# respectively.
+#
+# The reason why the first two blocks were initially duplicated was that
+# making %.dep (which is a real file) the source for the phony target %.depend,
+# which would have avoided the duplication, does not work, for two separate
+# reasons. The first reason is that with this setup, invoking mmake with
+# the .depend target would result in mmake *deleting* the .dep file after
+# making it, considering it to be an "intermediate" file. The second reason
+# is that "mmake depend" won't rebuild the .dep file if it already exists.
+#
+# The reason why the third block is separate from the first is the same as
+# the reason above. The third block is separate from the second because
+# it wants to invoke the Mercury compiler with different arguments.
+#
+# The bulk of each block is actually code for creating directories.
+# The comments on the original versions of these rules say that
+#
+# - the code for creating the classes_subdir is there because javac
+#   does not create the destination directory for .class files, while
+#
+# - the code for creating the *other* directories is there to work around
+#   a bug in GNU make.
+#
+# The *last* of these comments is from 2005; others are from earlier.
+# I (zs) don't know to what extent, if any, the issues they complain about
+# still exist.
+#
+# This code for creating directories is duplicated *within* each block
+# as well as *across* the blocks. The two copies within each block
+# differ only by a @. I (zs) don't why that is, but it was done intentionally.
+
+# NEARLY-IDENTICAL BLOCK 1
 $(deps_subdir)%.dep $(deps_subdir)%.dv:
 	$(MCD) $(ALL_GRADEFLAGS) $(ALL_MCDFLAGS) $* > $(*F).dep_err 2>&1
 ifeq ($(MMAKE_USE_SUBDIRS),yes)
@@ -103,14 +136,30 @@ else
 endif
 endif
 
-# Beware: the code for `%.depend' and `%.dep'/`%.dv' is duplicated,
-# with each copy having two variants that differ only by a @.
-# javac doesn't create the destination directory for class files
-# so we must create it manually.
-# The following mkdirs work around a bug in GNU Make.
+# NEARLY-IDENTICAL BLOCK 2
 .PHONY: %.depend
 %.depend:
 	$(MCD) $(ALL_GRADEFLAGS) $(ALL_MCDFLAGS) $* > $(*F).dep_err 2>&1
+ifeq ($(MMAKE_USE_SUBDIRS),yes)
+ifeq ($(MMAKE_USE_SUBDIRS_EXPLICIT),yes)
+	-mkdir -p $(classes_subdir) \
+		Mercury/dates Mercury/date0s Mercury/date3s \
+		Mercury/optdates Mercury/trans_opt_dates \
+		Mercury/c_dates \
+		Mercury/s_dates Mercury/pic_s_dates
+else
+	@-mkdir -p $(classes_subdir) \
+		Mercury/dates Mercury/date0s Mercury/date3s \
+		Mercury/optdates Mercury/trans_opt_dates \
+		Mercury/c_dates \
+		Mercury/s_dates Mercury/pic_s_dates
+endif
+endif
+
+# NEARLY-IDENTICAL BLOCK 3
+.PHONY: %.depend_ints
+%.depend_ints:
+	$(MCDI) $(ALL_GRADEFLAGS) $(ALL_MCDIFLAGS) $* > $(*F).dep_err 2>&1
 ifeq ($(MMAKE_USE_SUBDIRS),yes)
 ifeq ($(MMAKE_USE_SUBDIRS_EXPLICIT),yes)
 	-mkdir -p $(classes_subdir) \

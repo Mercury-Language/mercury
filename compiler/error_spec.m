@@ -165,6 +165,12 @@
     --->    phase_options
     ;       phase_check_libs
     ;       phase_make_target
+    ;       phase_make_int
+    ;       phase_find_files(string)
+            % The name of the file we tried to find, but failed.
+            % The intention is to make it possible to use this info
+            % to replace several messages that all report failures
+            % to find files with a single, shorter message to that effect.
     ;       phase_read_files
     ;       phase_module_name
     ;       phase_term_to_parse_tree
@@ -575,6 +581,15 @@
 :- func component_list_to_line_pieces(list(list(format_piece)),
     list(format_piece)) = list(format_piece).
 
+    % indented_list(Lines):
+    %
+    % Format Lines, a list of lines each given by a single format_piece,
+    % by putting newlines between them, and by adding nl_indent_deltas
+    % before and after the list to first increase and then decrease
+    % the indent level.
+    %
+:- func indented_list(list(format_piece)) = list(format_piece).
+
     % choose_number(List, Singular, Plural) = Form
     %
     % Choose between a singular version and a plural version of something,
@@ -699,6 +714,16 @@ component_list_to_line_pieces([Comps], Final) = Comps ++ Final.
 component_list_to_line_pieces([Comps1, Comps2 | CompLists], Final) =
     Comps1 ++ [suffix(","), nl]
     ++ component_list_to_line_pieces([Comps2 | CompLists], Final).
+
+indented_list(Comps) =
+    [nl_indent_delta(1)] ++ indented_list_loop(Comps) ++ [nl_indent_delta(-1)].
+
+:- func indented_list_loop(list(format_piece)) = list(format_piece).
+
+indented_list_loop([]) = [].
+indented_list_loop([Comp]) = [Comp].
+indented_list_loop([Comp1, Comp2 | CompLists]) =
+    [Comp1, nl] ++ indented_list_loop([Comp2 | CompLists]).
 
 choose_number([], _Singular, Plural) = Plural.
 choose_number([_], Singular, _Plural) = Singular.

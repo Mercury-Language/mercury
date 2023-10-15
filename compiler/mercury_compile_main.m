@@ -1249,6 +1249,8 @@ do_process_compiler_arg(ProgressStream, ErrorStream, Globals0,
         )
     ).
 
+%---------------------%
+
 :- pred deps_make_ints(io.text_output_stream::in, io.text_output_stream::in,
     globals::in, deps_map::in, list(error_spec)::in, list(error_spec)::out,
     have_read_module_maps::in, have_read_module_maps::out,
@@ -1278,22 +1280,33 @@ deps_make_ints(ProgressStream, ErrorStream, Globals, DepsMap,
         list.map2_foldl2(
             write_private_interface_file_int0_burdened_module(
                 ProgressStream, ErrorStream, Globals, do_add_new_to_hrmm),
-            AncestorBurdenedModules, _Succeededs0, SpecsList0,
+            AncestorBurdenedModules, _Succeededs0, RawSpecsList0,
             !HaveReadModuleMaps, !IO),
-        list.condense(SpecsList0, Specs0),
+        % The code above created a .int3 file for every module in
+        % ParseTreeModuleSrcs, but some of those modules may import
+        % modules that are NOT in ParseTreeModuleSrcs. These modules
+        % may be in other directories in which we have not yet created
+        % .int3 files. If this is the case, then mention this fact
+        % in a message that won't (by itself) prevent the compiler
+        % from exiting with a successful exit status.
+        list.condense(RawSpecsList0, RawSpecs0),
+        handle_not_found_files(RawSpecs0, Specs0, Continue0),
         !:Specs = Specs0 ++ !.Specs,
         Errors0 = contains_errors(Globals, Specs0),
-        (
-            Errors0 = yes
-        ;
+        ( if
             Errors0 = no,
+            Continue0 = yes
+        then
             list.map2_foldl2(
                 write_interface_file_int1_int2_burdened_module(
                     ProgressStream, ErrorStream, Globals, do_add_new_to_hrmm),
-                BurdenedModules, _Succeededs12, SpecsList12,
+                BurdenedModules, _Succeededs12, RawSpecsList12,
                 !HaveReadModuleMaps, !IO),
-            list.condense(SpecsList12, Specs12),
+            list.condense(RawSpecsList12, RawSpecs12),
+            handle_not_found_files(RawSpecs12, Specs12, _Continue12),
             !:Specs = Specs12 ++ !.Specs
+        else
+            true
         )
     ).
 
@@ -1315,6 +1328,54 @@ gather_local_parse_tree_module_srcs(Deps, BurdenedModule, !Ancestors) :-
         ModuleNameComponents = sym_name_to_list(ModuleName),
         !:Ancestors = [ModuleNameComponents - BurdenedModule | !.Ancestors]
     ).
+
+:- pred handle_not_found_files(list(error_spec)::in, list(error_spec)::out,
+    bool::out) is det.
+
+handle_not_found_files(Specs0, Specs, Continue) :-
+    list.foldl2(acc_not_found_files, Specs0,
+        [], NotFoundFiles, [], OtherSpecs),
+    (
+        NotFoundFiles = [],
+        Specs = OtherSpecs,
+        % Continue if OtherSpecs allows it; our caller will test that.
+        Continue = yes
+    ;
+        NotFoundFiles = [_ | _],
+        list.sort(NotFoundFiles, SortedNotFoundFiles),
+        list.split_upto(10, SortedNotFoundFiles, FilesToShow, FilesNotToShow),
+        (
+            FilesNotToShow = [],
+            NotFoundPieces = [invis_order_default_end(999, ""),
+                words("Could not find the following files:")] ++
+                indented_list(FilesToShow)
+        ;
+            FilesNotToShow = [_ | _],
+            NotFoundPieces = [invis_order_default_end(999, ""),
+                words("Could not find many files, including these:")] ++
+                indented_list(FilesToShow)
+        ),
+        Pieces = NotFoundPieces ++
+            [words("and thus could not create some interface files."), nl],
+        Spec = simplest_no_context_spec($pred, severity_informational,
+            phase_read_files, Pieces),
+        Specs = [Spec | OtherSpecs],
+        Continue = no
+    ).
+
+:- pred acc_not_found_files(error_spec::in,
+    list(format_piece)::in, list(format_piece)::out,
+    list(error_spec)::in, list(error_spec)::out) is det.
+
+acc_not_found_files(Spec, !NotFoundFiles, !OtherSpecs) :-
+    extract_spec_phase(Spec, Phase),
+    ( if Phase = phase_find_files(FileName) then
+        !:NotFoundFiles = [fixed(FileName) | !.NotFoundFiles]
+    else
+        !:OtherSpecs = [Spec | !.OtherSpecs]
+    ).
+
+%---------------------%
 
 :- pred do_process_compiler_arg_make_interface(io.text_output_stream::in,
     io.text_output_stream::in, globals::in, op_mode_interface_file::in,
@@ -1398,6 +1459,8 @@ do_process_compiler_arg_make_interface(ProgressStream, ErrorStream, Globals0,
 
 version_numbers_return_timestamp(no) = dont_return_timestamp.
 version_numbers_return_timestamp(yes) = do_return_timestamp.
+
+%---------------------%
 
 :- pred find_modules_to_recompile(io.text_output_stream::in, globals::in,
     globals::out, file_or_module::in, modules_to_recompile::out,

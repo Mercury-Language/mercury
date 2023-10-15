@@ -245,7 +245,7 @@ peek_at_file(FileStream, DefaultModuleName, DefaultExpectationContexts,
         ModuleName = DefaultModuleName,
         io.error_message(ErrorCode, ErrorMsg0),
         ErrorMsg = "I/O error: " ++ ErrorMsg0,
-        io_error_to_error_spec(ErrorMsg, Spec, !IO),
+        io_error_to_error_spec(phase_read_files, ErrorMsg, Spec, !IO),
         Specs = [Spec]
     ).
 
@@ -527,8 +527,8 @@ do_actually_read_module(FileNameAndStream,
             MaybeParseTree = no,
             io.error_message(ErrorCode, ErrorMsg0),
             ErrorMsg = "I/O error: " ++ ErrorMsg0,
-            io_error_to_read_module_errors(ErrorMsg,
-                frme_could_not_read_file, Errors, !IO)
+            io_error_to_read_module_errors(frme_could_not_read_file,
+                phase_read_files, ErrorMsg, Errors, !IO)
         )
     ),
     % XXX This should be moved next to the code that opens FileStream,

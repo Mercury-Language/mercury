@@ -36,7 +36,10 @@
     % that is not trivial to do.
     %
 :- type fatal_read_module_error
-    --->    frme_could_not_open_file
+    --->    frme_could_not_find_file
+            % We could not find the specified file.
+
+    ;       frme_could_not_open_file
             % We could not open the specified file.
 
     ;       frme_could_not_read_file
@@ -188,11 +191,12 @@
 
 %---------------------%
 
-:- pred io_error_to_error_spec(string::in, error_spec::out,
+:- pred io_error_to_error_spec(error_phase::in, string::in, error_spec::out,
     io::di, io::uo) is det.
 
-:- pred io_error_to_read_module_errors(string::in, fatal_read_module_error::in,
-    read_module_errors::out, io::di, io::uo) is det.
+:- pred io_error_to_read_module_errors(fatal_read_module_error::in,
+    error_phase::in, string::in, read_module_errors::out,
+    io::di, io::uo) is det.
 
 %---------------------------------------------------------------------------%
 :- implementation.
@@ -255,14 +259,13 @@ get_read_module_specs(Errors) = Specs :-
 
 %---------------------%
 
-io_error_to_error_spec(ErrorMsg, Spec, !IO) :-
+io_error_to_error_spec(Phase, ErrorMsg, Spec, !IO) :-
     io.progname_base("mercury_compile", ProgName, !IO),
     Pieces = [fixed(ProgName), suffix(":"), words(ErrorMsg), nl],
-    Spec = simplest_no_context_spec($pred, severity_error, phase_read_files,
-        Pieces).
+    Spec = simplest_no_context_spec($pred, severity_error, Phase, Pieces).
 
-io_error_to_read_module_errors(ErrorMsg, FatalError, Errors, !IO) :-
-    io_error_to_error_spec(ErrorMsg, Spec, !IO),
+io_error_to_read_module_errors(FatalError, Phase, ErrorMsg, Errors, !IO) :-
+    io_error_to_error_spec(Phase, ErrorMsg, Spec, !IO),
     Errors0 = init_read_module_errors,
     add_fatal_error(FatalError, [Spec], Errors0, Errors).
 

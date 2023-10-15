@@ -425,8 +425,8 @@ read_module_src(ProgressStream, Globals, ReadReasonMsg, IgnoreErrors,
         )
     ;
         MaybeFileNameAndStream = error(ErrorMsg),
-        io_error_to_read_module_errors(ErrorMsg, frme_could_not_open_file,
-            Errors0, !IO),
+        io_error_to_read_module_errors(frme_could_not_open_file,
+            phase_find_files(FileName0), ErrorMsg, Errors0, !IO),
         read_module_end_module(ProgressStream, Globals, mfas_error(Errors0),
             IgnoreErrors, fk_src, ReadDoneMsg, FileName0, FileName,
             no, _MaybeTimestamp, Errors0, Errors1, !IO),
@@ -458,8 +458,8 @@ read_module_src_from_file(ProgressStream, Globals, FileName, FileNameDotM,
         )
     ;
         MaybeFileNameAndStream = error(ErrorMsg),
-        io_error_to_read_module_errors(ErrorMsg, frme_could_not_open_file,
-            Errors0, !IO),
+        io_error_to_read_module_errors(frme_could_not_open_file,
+            phase_find_files(FileNameDotM), ErrorMsg, Errors0, !IO),
         read_module_end_file(Globals, fk_src, ReadDoneMsg, FileNameDotM,
             no, _MaybeTimestamp, Errors0, Errors, !IO),
         HaveReadModule = have_not_read_module(FileNameDotM, Errors)
@@ -775,8 +775,8 @@ search_for_file_and_stream_or_error(SearchDirs, FileName0,
         MaybeFileNameAndStream = mfas_ok(FileNameAndStream)
     ;
         RawMaybeFileNameAndStream = error(ErrorMsg),
-        io_error_to_read_module_errors(ErrorMsg,
-            frme_could_not_open_file, Errors, !IO),
+        io_error_to_read_module_errors(frme_could_not_find_file,
+            phase_find_files(FileName0), ErrorMsg, Errors, !IO),
         MaybeFileNameAndStream = mfas_error(Errors)
     ).
 
@@ -944,7 +944,13 @@ no_file_errors(IgnoreErrors, Errors0) = Errors :-
         Errors = Errors0
     ;
         IgnoreErrors = ignore_errors,
-        Errors = no_file_errors_ignored
+        FatalErrors0 = Errors0 ^ rm_fatal_errors,
+        ( if set.contains(FatalErrors0, frme_could_not_find_file) then
+            FatalError = frme_could_not_find_file
+        else
+            FatalError = frme_could_not_open_file
+        ),
+        Errors = no_file_errors_ignored(FatalError)
     ).
 
     % According to IgnoreErrors = ignore_errors, being unable to
@@ -957,11 +963,11 @@ no_file_errors(IgnoreErrors, Errors0) = Errors :-
     % XXX Why not add a field to read_module_errors that specifically
     % says whether the module should be put into deps_maps?
     %
-:- func no_file_errors_ignored = read_module_errors.
+:- func no_file_errors_ignored(fatal_read_module_error) = read_module_errors.
 
-no_file_errors_ignored = Errors :-
+no_file_errors_ignored(FatalError) = Errors :-
     Errors = read_module_errors(
-        set.make_singleton_set(frme_could_not_open_file), [],
+        set.make_singleton_set(FatalError), [],
         set.init, [], []).
 
 %---------------------%
@@ -977,7 +983,7 @@ handle_any_read_module_errors(FileKind, ReadDoneMsg, IgnoreErrors,
         FatalErrors0 = Errors0 ^ rm_fatal_errors,
         ( if set.contains(FatalErrors0, frme_could_not_open_file) then
             output_read_done_msg(ReadDoneMsg, "not found.\n", !IO),
-            Errors = no_file_errors_ignored
+            Errors = no_file_errors_ignored(frme_could_not_open_file)
         else
             % XXX CLEANUP we should not print "done" if Errors is nonempty.
             output_read_done_msg(ReadDoneMsg, "done.\n", !IO),
@@ -1026,10 +1032,7 @@ handle_any_read_module_errors(FileKind, ReadDoneMsg, IgnoreErrors,
                 ( FileKind = fk_src
                 ; FileKind = fk_int(_)
                 ),
-                Errors = Errors0,
-                % XXX This *may* be unnecessary; the exit status should be set
-                % when the error specs are written out.
-                io.set_exit_status(1, !IO)
+                Errors = Errors0
             )
         else
             Errors = Errors0,

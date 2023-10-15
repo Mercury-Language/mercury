@@ -210,7 +210,6 @@ write_used_file_error(Globals, ModuleName, UsedFileError, Stream, !IO) :-
         suffix(":"), nl],
     (
         UsedFileError = uf_read_error(FileName, _IOError),
-        % ZZZ _IOError
         Pieces = [words("file"), quote(FileName), words("not found."), nl],
         Spec = simplest_no_context_spec($pred, severity_informational,
             phase_read_files, PrefixPieces ++ Pieces)
