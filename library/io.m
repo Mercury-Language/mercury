@@ -6035,11 +6035,6 @@ extern MR_Word          ML_io_user_globals;
 
 void                    mercury_init_io(void);
 
-#ifdef MR_WIN32
-    wchar_t             *ML_utf8_to_wide(const char *s);
-    char                *ML_wide_to_utf8(const wchar_t *ws,
-                            MR_AllocSiteInfoPtr alloc_id);
-#endif
 ").
 
 :- pragma foreign_code("C", "
@@ -6116,46 +6111,6 @@ mercury_init_io(void)
     pthread_mutex_init(&ML_io_next_stream_id_lock, MR_MUTEX_ATTR);
 #endif
 }
-
-#ifdef MR_WIN32
-
-// Accessing Unicode file names on Windows requires that we use the functions
-// taking wide character strings.
-wchar_t *
-ML_utf8_to_wide(const char *s)
-{
-    int     wslen;
-    wchar_t *ws;
-
-    wslen = MultiByteToWideChar(CP_UTF8, 0, s, -1, NULL, 0);
-    if (wslen == 0) {
-        MR_fatal_error(""ML_utf8_to_wide: MultiByteToWideChar failed"");
-    }
-    ws = MR_GC_NEW_ARRAY(wchar_t, wslen);
-    if (0 == MultiByteToWideChar(CP_UTF8, 0, s, -1, ws, wslen)) {
-        MR_fatal_error(""ML_utf8_to_wide: MultiByteToWideChar failed"");
-    }
-    return ws;
-}
-
-char *
-ML_wide_to_utf8(const wchar_t *ws, MR_AllocSiteInfoPtr alloc_id)
-{
-    char    *s;
-    int     bytes;
-
-    bytes = WideCharToMultiByte(CP_UTF8, 0, ws, -1, NULL, 0, NULL, NULL);
-    if (bytes == 0) {
-        MR_fatal_error(""ML_wide_to_utf8: WideCharToMultiByte failed"");
-    }
-    MR_allocate_aligned_string_msg(s, bytes, alloc_id);
-    if (0 == WideCharToMultiByte(CP_UTF8, 0, ws, -1, s, bytes, NULL, NULL)) {
-        MR_fatal_error(""ML_wide_to_utf8: WideCharToMultiByte failed"");
-    }
-    return s;
-}
-
-#endif // MR_WIN32
 ").
 
 %---------------------%

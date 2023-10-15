@@ -1,13 +1,14 @@
 // vim: ts=4 sw=4 expandtab ft=c
 
 // Copyright (C) 2000-2002, 2006, 2011-2012 The University of Melbourne.
-// Copyright (C) 2015-2016, 2018-2019 The Mercury team.
+// Copyright (C) 2015-2016, 2018-2019, 2023 The Mercury team.
 // This file is distributed under the terms specified in COPYING.LIB.
 
 // mercury_string.c - string handling
 
 #include "mercury_imp.h"
 #include "mercury_string.h"
+#include "mercury_windows.h"
 
 #ifdef _MSC_VER
     // Disable warnings about using _vsnprintf being deprecated.
@@ -574,3 +575,39 @@ MR_utf8_find_ill_formed_char(const MR_String s)
         }
     }
 }
+
+#if defined(MR_WIN32)
+wchar_t *
+MR_utf8_to_wide(const char *s)
+{
+    int     wslen;
+    wchar_t *ws;
+
+    wslen = MultiByteToWideChar(CP_UTF8, 0, s, -1, NULL, 0);
+    if (wslen == 0) {
+        MR_fatal_error("ML_utf8_to_wide: MultiByteToWideChar failed");
+    }
+    ws = MR_GC_NEW_ARRAY(wchar_t, wslen);
+    if (0 == MultiByteToWideChar(CP_UTF8, 0, s, -1, ws, wslen)) {
+        MR_fatal_error("ML_utf8_to_wide: MultiByteToWideChar failed");
+    }
+    return ws;
+}
+
+char *
+MR_wide_to_utf8(const wchar_t *ws, MR_AllocSiteInfoPtr alloc_id)
+{
+    char    *s;
+    int     bytes;
+
+    bytes = WideCharToMultiByte(CP_UTF8, 0, ws, -1, NULL, 0, NULL, NULL);
+    if (bytes == 0) {
+        MR_fatal_error("ML_wide_to_utf8: WideCharToMultiByte failed");
+    }
+    MR_allocate_aligned_string_msg(s, bytes, alloc_id);
+    if (0 == WideCharToMultiByte(CP_UTF8, 0, ws, -1, s, bytes, NULL, NULL)) {
+        MR_fatal_error("ML_wide_to_utf8: WideCharToMultiByte failed");
+    }
+    return s;
+}
+#endif // MR_WIN32

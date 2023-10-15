@@ -240,7 +240,7 @@ remove_file(FileName, Result, !IO) :-
     int rc;
 #ifdef MR_WIN32
     // XXX _wremove will not delete an empty directory; _wrmdir does that.
-    rc = _wremove(ML_utf8_to_wide(FileName));
+    rc = _wremove(MR_utf8_to_wide(FileName));
 #else
     rc = remove(FileName);
 #endif
@@ -375,8 +375,8 @@ rename_file(OldFileName, NewFileName, Result, !IO) :-
 "
     int rc;
 #ifdef MR_WIN32
-    rc = _wrename(ML_utf8_to_wide(OldFileName),
-        ML_utf8_to_wide(NewFileName));
+    rc = _wrename(MR_utf8_to_wide(OldFileName),
+        MR_utf8_to_wide(NewFileName));
 #else
     rc = rename(OldFileName, NewFileName);
 #endif
@@ -661,7 +661,7 @@ check_file_accessibility(FileName, AccessTypes, Result, !IO) :-
     }
 
   #ifdef MR_WIN32
-    access_result = _waccess(ML_utf8_to_wide(FileName), mode);
+    access_result = _waccess(MR_utf8_to_wide(FileName), mode);
   #else
     access_result = access(FileName, mode);
   #endif
@@ -848,7 +848,7 @@ file_type(FollowSymLinks, FileName, Result, !IO) :-
 #ifdef MR_HAVE_STAT
   #ifdef MR_WIN32
     struct _stat s;
-    int stat_result = _wstat(ML_utf8_to_wide(FileName), &s);
+    int stat_result = _wstat(MR_utf8_to_wide(FileName), &s);
   #else
     struct stat s;
     int stat_result;
@@ -1064,7 +1064,7 @@ file_modification_time(File, Result, !IO) :-
 #ifdef MR_HAVE_STAT
   #ifdef MR_WIN32
     struct _stat s;
-    int stat_result = _wstat(ML_utf8_to_wide(FileName), &s);
+    int stat_result = _wstat(MR_utf8_to_wide(FileName), &s);
   #else
     struct stat s;
     int stat_result = stat(FileName, &s);
@@ -1215,7 +1215,7 @@ make_temp_file(Dir, Prefix, Suffix, Result, !IO) :-
         flags = O_WRONLY | O_CREAT | O_EXCL;
         do {
             #ifdef MR_WIN32
-                fd = _wopen(ML_utf8_to_wide(FileName), flags, 0600);
+                fd = _wopen(MR_utf8_to_wide(FileName), flags, 0600);
             #else
                 fd = open(FileName, flags, 0600);
             #endif
@@ -1435,6 +1435,9 @@ make_temp_directory(ParentDirName, Prefix, Suffix, Result, !IO) :-
 %---------------------%
 
 :- pragma foreign_decl("C", "
+#ifdef MR_WIN32
+    #include ""mercury_string.h"" // For MR_ut8_to_wide.
+#endif
 #ifdef MR_HAVE_UNISTD_H
     #include <unistd.h>
 #endif

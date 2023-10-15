@@ -875,6 +875,11 @@ stderr_stream_2(Stream, !IO) :-
 %---------------------------------------------------------------------------%
 
 :- pragma foreign_decl("C", "
+
+#if defined(MR_WIN32)
+  #include ""mercury_string.h"" // For MR_utf8_to_wide.
+#endif
+
 extern MercuryFile      mercury_stdin;
 extern MercuryFile      mercury_stdout;
 extern MercuryFile      mercury_stderr;
@@ -976,7 +981,7 @@ mercury_open(const char *filename, const char *openmode,
     FILE            *f;
 
 #ifdef MR_WIN32
-    f = _wfopen(ML_utf8_to_wide(filename), ML_utf8_to_wide(openmode));
+    f = _wfopen(MR_utf8_to_wide(filename), MR_utf8_to_wide(openmode));
 #else
     f = fopen(filename, openmode);
 #endif

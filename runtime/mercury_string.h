@@ -1,7 +1,7 @@
 // vim: ts=4 sw=4 expandtab ft=c
 
 // Copyright (C) 1995-2005, 2007, 2011-2012 The University of Melbourne.
-// Copyright (C) 2015-2016, 2018 The Mercury team.
+// Copyright (C) 2015-2016, 2018-2019, 2021, 2023 The Mercury team.
 // This file is distributed under the terms specified in COPYING.LIB.
 
 // mercury_string.h - string handling
@@ -14,6 +14,9 @@
 #include <string.h>             // for strcmp() etc.
 #include <stdarg.h>
 #include <stdio.h>
+#if defined(MR_WIN32)
+   #include <wchar.h>
+#endif
 
 // On Windows, snprintf/vsnprintf may be synonyms for _snprintf/_vsnprintf and
 // thus not conform to the C99 specification. Since it is next to impossible to
@@ -504,5 +507,13 @@ extern MR_bool          MR_utf8_verify(const MR_String s);
 // If `s' contains a valid UTF-8 encoded string, return a negative value.
 
 extern MR_Integer       MR_utf8_find_ill_formed_char(const MR_String s);
+
+// Accessing Unicode file names on Windows requires that we use the functions
+// taking wide character strings. The following functions handle the
+// conversions.
+#if defined(MR_WIN32)
+extern wchar_t          *MR_utf8_to_wide(const char *s);
+extern char             *MR_wide_to_utf8(const wchar_t *ws,
+#endif
 
 #endif // not MERCURY_STRING_H

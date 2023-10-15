@@ -1034,7 +1034,7 @@ current_directory(Result, !IO) :-
 
     wbuf = _wgetcwd(NULL, 1);
     if (wbuf != NULL) {
-        CurDir = ML_wide_to_utf8(wbuf, MR_ALLOC_ID);
+        CurDir = MR_wide_to_utf8(wbuf, MR_ALLOC_ID);
         Error = 0;
         free(wbuf);
     } else {
@@ -1306,7 +1306,7 @@ make_single_directory(DirName, Result, !IO) :-
         will_not_modify_trail, does_not_affect_liveness, may_not_duplicate],
 "
 #if defined(MR_WIN32)
-    if (CreateDirectoryW(ML_utf8_to_wide(DirName), NULL)) {
+    if (CreateDirectoryW(MR_utf8_to_wide(DirName), NULL)) {
         Status = ML_MAKE_SINGLE_DIRECTORY_OK;
         Error = 0;
     } else {
@@ -1777,7 +1777,7 @@ open_2(DirName, DirPattern, Result, !IO) :-
 
     DirStream = MR_GC_NEW_ATTRIB(struct ML_DIR_STREAM, MR_ALLOC_ID);
 
-    DirStream->handle = FindFirstFileW(ML_utf8_to_wide(DirPattern), &file_data);
+    DirStream->handle = FindFirstFileW(MR_utf8_to_wide(DirPattern), &file_data);
     if (DirStream->handle == INVALID_HANDLE_VALUE) {
         Error = GetLastError();
         if (Error == ERROR_NO_MORE_FILES) {
@@ -1786,7 +1786,7 @@ open_2(DirName, DirPattern, Result, !IO) :-
         DirStream->pending_entry = NULL;
     } else {
         Error = 0;
-        DirStream->pending_entry = ML_wide_to_utf8(file_data.cFileName, MR_ALLOC_ID);
+        DirStream->pending_entry = MR_wide_to_utf8(file_data.cFileName, MR_ALLOC_ID);
     }
     IsWin32Error = MR_YES;
 
@@ -2031,7 +2031,7 @@ read_entry(DirStream, Result, !IO) :-
         Error = 0;
         IsWin32Error = MR_YES;
         HaveFileName = MR_YES;
-        FileName = ML_wide_to_utf8(file_data.cFileName, MR_ALLOC_ID);
+        FileName = MR_wide_to_utf8(file_data.cFileName, MR_ALLOC_ID);
     } else {
         Error = GetLastError();
         IsWin32Error = MR_YES;

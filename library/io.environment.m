@@ -70,6 +70,14 @@
 
 %---------------------------------------------------------------------------%
 
+:- pragma foreign_decl("C", "
+#if defined(MR_WIN32)
+   #include ""mercury_string.h"" // For MR_utf8_to_wide.
+#endif
+").
+
+%---------------------------------------------------------------------------%
+
 get_environment_var(Var, OptValue, !IO) :-
     promise_pure (
         ( if semipure getenv(Var, Value) then
@@ -272,9 +280,9 @@ record_env_var_and_value(EnvVarName, EnvVarValue, !EnvVarAL) :-
         does_not_affect_liveness, no_sharing],
 "
 #ifdef MR_WIN32
-    wchar_t *ValueW = _wgetenv(ML_utf8_to_wide(Var));
+    wchar_t *ValueW = _wgetenv(MR_utf8_to_wide(Var));
     if (ValueW != NULL) {
-        Value = ML_wide_to_utf8(ValueW, MR_ALLOC_ID);
+        Value = MR_wide_to_utf8(ValueW, MR_ALLOC_ID);
     } else {
         Value = NULL;
     }
@@ -315,7 +323,7 @@ record_env_var_and_value(EnvVarName, EnvVarValue, !EnvVarAL) :-
 "
 #ifdef MR_WIN32
     SUCCESS_INDICATOR =
-        (_wputenv_s(ML_utf8_to_wide(Var), ML_utf8_to_wide(Value)) == 0);
+        (_wputenv_s(MR_utf8_to_wide(Var), MR_utf8_to_wide(Value)) == 0);
 #else
     SUCCESS_INDICATOR = (setenv(Var, Value, 1) == 0);
 #endif

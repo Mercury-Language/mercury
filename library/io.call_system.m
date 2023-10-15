@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1993-2012 The University of Melbourne.
-% Copyright (C) 2013-2022 The Mercury team.
+% Copyright (C) 2013-2023 The Mercury team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %---------------------------------------------------------------------------%
 %
@@ -50,6 +50,14 @@
 
 :- import_module io.error_util.
 :- import_module string.
+
+%---------------------------------------------------------------------------%
+
+:- pragma foreign_decl("C", "
+#if defined(MR_WIN32)
+   #include ""mercury_string.h"" // For MR_utf8_to_wide.
+#endif
+").
 
 %---------------------------------------------------------------------------%
 
@@ -143,7 +151,7 @@ call_system_return_signal(Command, Result, !IO) :-
 #else   // !MR_THREAD_SAFE || !MR_HAVE_POSIX_SPAWN || !MR_HAVE_ENVIRON
 
   #ifdef MR_WIN32
-    Status = _wsystem(ML_utf8_to_wide(Command));
+    Status = _wsystem(MR_utf8_to_wide(Command));
   #else
     Status = system(Command);
   #endif
