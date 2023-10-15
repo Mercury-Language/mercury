@@ -356,6 +356,8 @@ MR_trace_record_label_exec_counts(void *dummy)
 
     free(name);
 
+    // XXX WINDOWS: the following assumes the use of a POSIX-style shell.
+    // It will not work on non-Cygwin Windows.
     if (summarize) {
         char        *cmd;
         unsigned    cmd_len;
