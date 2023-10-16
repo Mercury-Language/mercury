@@ -21,23 +21,23 @@ EXTRA_LIBRARIES =
 
 ifneq ($(MMAKE_USE_MMC_MAKE),yes)
 EXTRA_INT_DIRS		= $(patsubst %,%/ints,$(EXTRA_LIB_DIRS))
-MERCURY_EXTRA_INT_DIRS	= $(EXTRA_INT_DIRS)
 EXTRA_C_LIB_DIRS	= \
 	$(patsubst %,%/lib/$(GRADESTRING),$(EXTRA_LIB_DIRS)) \
 	$(patsubst %,%/lib,$(EXTRA_LIB_DIRS))
 EXTRA_C_INCL_DIRS	= \
 	$(patsubst %,%/lib/$(GRADESTRING)/inc,$(EXTRA_LIB_DIRS)) \
 	$(patsubst %,%/inc,$(EXTRA_LIB_DIRS))
-EXTRA_INIT_DIRS = $(patsubst %,%/modules/$(GRADESTRING),$(EXTRA_LIB_DIRS))
-MERCURY_EXTRA_INIT_DIRS = $(EXTRA_INIT_DIRS)
+EXTRA_INIT_DIRS		= \
+	$(patsubst %,%/modules/$(GRADESTRING),$(EXTRA_LIB_DIRS))
+EXTRA_INIT_DIRS_NO_TARGET = \
+	$(patsubst %,%/modules/$(GRADESTRING_NO_TARGET),$(EXTRA_LIB_DIRS))
 else
 # mmc handles these itself when invoked with `--make'.
 EXTRA_INT_DIRS =
-MERCURY_EXTRA_INT_DIRS =
 EXTRA_C_LIB_DIRS =
 EXTRA_C_INCL_DIRS =
 EXTRA_INIT_DIRS =
-MERCURY_EXTRA_INIT_DIRS =
+EXTRA_INIT_DIRS_NO_TARGET =
 endif
 
 # Set the directory search path.
@@ -47,20 +47,31 @@ endif
 # function is problematic; hence the `$(nullstring)' hack.
 # As VPATH uses colon as the separator we also need to convert all the
 # directories into cygwin unix format if they are in windows format.
+# XXX VPATH also allows space separators since 1992.
 # XXX Note that directory names with spaces in them (e.g. under Windows)
 # will cause problems for the VPATH settings below, as well as every
 # occurrence of $(patsubst ...), since GNU Make does not respect quotes.
-UNIX_MERCURY_EXTRA_INT_DIRS = $(foreach dir, $(MERCURY_EXTRA_INT_DIRS),\
+#
+# VPATH is evaluated before any targets are considered. At that time, the
+# automatic variables $@ and $* will be undefined, so the calculation of VPATH
+# cannot take into account any target-specific variables, e.g. GRADEFLAGS-prog.
+# Changing the grade with target-specific variables is therefore discouraged,
+# as the VPATH will not reflect the grade that a particular target is being
+# built in. Not to mention, changing the grade on a module-specific basis will
+# result in attempts to link together object files compiled in non-matching and
+# therefore inconsistent grades.
+EXTRA_INT_DIRS_FOR_VPATH = $(foreach dir, $(EXTRA_INT_DIRS),\
 				$(shell @CYGPATHU@ "$(dir)"))
 
-UNIX_MERC_INT_DIR = $(shell @CYGPATHU@ "$(MERC_INT_DIR)")
-UNIX_MERCURY_EXTRA_INIT_DIRS = $(foreach dir, $(MERCURY_EXTRA_INIT_DIRS),\
+MERC_INT_DIR_FOR_VPATH = $(shell @CYGPATHU@ "$(MERC_INT_DIR)")
+EXTRA_INIT_DIRS_FOR_VPATH = $(foreach dir, $(EXTRA_INIT_DIRS_NO_TARGET),\
 				$(shell @CYGPATHU@ "$(dir)"))
 
 nullstring =
 MMAKE_VPATH	= $(subst $(nullstring) ,:,$(strip \
-			$(UNIX_MERCURY_EXTRA_INT_DIRS) $(UNIX_MERC_INT_DIR)\
-			$(UNIX_MERCURY_EXTRA_INIT_DIRS)))
+			$(EXTRA_INT_DIRS_FOR_VPATH) \
+			$(MERC_INT_DIR_FOR_VPATH)\
+			$(EXTRA_INIT_DIRS_FOR_VPATH)))
 VPATH		= $(MMAKE_VPATH) # do not remove the `:' from this comment!!!
 #			 the above comment works around a misfeature of
 #			 autoconf which causes it to delete assignments to
@@ -69,7 +80,9 @@ GPATH		= $(VPATH)
 
 DEFAULT_GRADE	= $(MERCURY_DEFAULT_GRADE)
 GRADE		= $(DEFAULT_GRADE)
-GRADESTRING	= $(shell $(MCOGS) $(ALL_GRADEFLAGS) $(ALL_MCFLAGS))
+GRADESTRING	=	$(shell $(MCOGS) $(ALL_GRADEFLAGS) $(ALL_MCFLAGS))
+GRADESTRING_NO_TARGET = $(shell $(MCOGS) $(ALL_GRADEFLAGS_NO_TARGET) \
+			  $(ALL_MCFLAGS_NO_TARGET))
 
 MERCURY_MAIN_MODULES =
 
@@ -105,13 +118,17 @@ endif
 # Stuff which is not specific to any back-end.
 #
 
-ALL_GRADEFLAGS  = $(USUAL_GRADEFLAGS)
-USUAL_GRADEFLAGS = $(GRADEFLAGS) $(EXTRA_GRADEFLAGS) $(TARGET_GRADEFLAGS)
+ALL_GRADEFLAGS	=		$(USUAL_GRADEFLAGS)
+ALL_GRADEFLAGS_NO_TARGET =	$(USUAL_GRADEFLAGS_NO_TARGET)
+USUAL_GRADEFLAGS =		$(GRADEFLAGS) $(EXTRA_GRADEFLAGS) \
+				$(TARGET_GRADEFLAGS)
+USUAL_GRADEFLAGS_NO_TARGET =	$(GRADEFLAGS) $(EXTRA_GRADEFLAGS)
 GRADEFLAGS	= --grade $(GRADE)
 EXTRA_GRADEFLAGS =
 
 MC		= mmc
 ALL_MCFLAGS	= $(MCFLAGS) $(EXTRA_MCFLAGS) $(TARGET_MCFLAGS) $(LIB_MCFLAGS)
+ALL_MCFLAGS_NO_TARGET = $(MCFLAGS) $(EXTRA_MCFLAGS) $(LIB_MCFLAGS)
 MCFLAGS		=
 EXTRA_MCFLAGS	=
 LIB_MCFLAGS	= $(patsubst %,--mld %,$(EXTRA_LIB_DIRS)) \
@@ -397,7 +414,7 @@ TARGET_GRADEFLAGS = \
   $(maybe-base-GRADEFLAGS-$(findstring undefined,\
 		$(origin GRADEFLAGS-$(patsubst %_init,%,$*)))) \
   $(maybe-target-GRADEFLAGS-$(findstring undefined,\
-  		$(origin GRADEFLAGS-$(patsubst $(cs_subdir)%_init.c,%,$@))))
+		$(origin GRADEFLAGS-$(patsubst $(cs_subdir)%_init.c,%,$@))))
 maybe-base-GRADEFLAGS- = $(GRADEFLAGS-$(patsubst %_init,%,$*))
 maybe-base-GRADEFLAGS-undefined =
 maybe-target-GRADEFLAGS- = $(GRADEFLAGS-$(patsubst $(cs_subdir)%_init.c,%,$@))
@@ -405,7 +422,7 @@ maybe-target-GRADEFLAGS-undefined =
 
 TARGET_MCFLAGS = \
   $(maybe-target-MCFLAGS-$(findstring undefined,\
-  		$(origin MCFLAGS-$(notdir $(basename $@)))))
+		$(origin MCFLAGS-$(notdir $(basename $@)))))
 maybe-target-MCFLAGS- = $(MCFLAGS-$(notdir $(basename $@)))
 maybe-target-MCFLAGS-undefined =
 
