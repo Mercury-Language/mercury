@@ -32,14 +32,15 @@
 % File names.
 %
 
-    % get_file_name(Globals, From, Search, TargetFile, FileName, !IO):
+    % get_file_name_for_target_file(Globals, From, Search, TargetFile,
+    %   FileName, !IO):
     %
     % Compute a file name for the given target file.
     % `Search' should be `for_search' if the file could be part of an
     % installed library.
     %
-:- pred get_file_name(io.text_output_stream::in, globals::in, string::in,
-    maybe_for_search::in, target_file::in, file_name::out,
+:- pred get_file_name_for_target_file(io.text_output_stream::in, globals::in,
+    string::in, maybe_for_search::in, target_file::in, file_name::out,
     make_info::in, make_info::out, io::di, io::uo) is det.
 
 :- pred dependency_file_to_file_name(globals::in, dependency_file::in,
@@ -78,9 +79,8 @@
 
 %---------------------------------------------------------------------------%
 
-% XXX MAKE Give this predicate a more descriptive name.
-get_file_name(ProgressStream, Globals, From, Search, TargetFile, FileName,
-        !Info, !IO) :-
+get_file_name_for_target_file(ProgressStream, Globals, From, Search,
+        TargetFile, FileName, !Info, !IO) :-
     TargetFile = target_file(ModuleName, TargetType),
     ( if TargetType = module_target_source then
         % In some cases the module name won't match the file name

@@ -400,8 +400,8 @@ make_dependency_files(ProgressStream, Globals, TargetFile, TargetFileName,
                 % The fact that a hlc.gc bootcheck does not cause the
                 % call to expect below to throw an exception seems to argue
                 % against the last alternative above.
-                get_file_name(ProgressStream, Globals, $pred, not_for_search,
-                    TargetFile, TargetFileNameB, !Info, !IO),
+                get_file_name_for_target_file(ProgressStream, Globals, $pred,
+                    not_for_search, TargetFile, TargetFileNameB, !Info, !IO),
                 expect(unify(TargetFileName, TargetFileNameB), $pred,
                     "TargetFileName mismatch"),
                 check_dependencies(ProgressStream, Globals, TargetFileNameB,
@@ -875,7 +875,8 @@ record_made_target_given_maybe_touched_files(ProgressStream, Globals,
     list.foldl(update_target_status(TargetStatus), TouchedTargetFiles, !Info),
 
     list.map_foldl2(
-        get_file_name(ProgressStream, Globals, $pred, not_for_search),
+        get_file_name_for_target_file(ProgressStream, Globals, $pred,
+            not_for_search),
         TouchedTargetFiles, TouchedTargetFileNames, !Info, !IO),
 
     some [!FileTimestamps] (
