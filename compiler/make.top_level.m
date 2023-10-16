@@ -40,6 +40,8 @@
     top_target_file::in, maybe_succeeded::out,
     make_info::in, make_info::out, io::di, io::uo) is det.
 
+:- pred test_build_all_targets(io::di, io::uo) is det.
+
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
@@ -67,6 +69,7 @@
 
 :- import_module bool.
 :- import_module dir.
+:- import_module maybe.
 :- import_module pair.
 :- import_module set.
 :- import_module string.
@@ -374,8 +377,8 @@ search_backwards_for_dot(String, Index, DotIndex) :-
         search_backwards_for_dot(String, CharIndex, DotIndex)
     ).
 
-:- pred just_ext_to_module_target_type(string, module_target_type).
-:- mode just_ext_to_module_target_type(in, out) is semidet.
+:- pred just_ext_to_module_target_type(string::in, module_target_type::out)
+    is semidet.
 
 just_ext_to_module_target_type(ExtStr, ModuleTarget) :-
     (
@@ -432,6 +435,156 @@ just_ext_to_module_target_type(ExtStr, ModuleTarget) :-
         ModuleTarget = module_target_xml_doc
     ;
         ExtStr = ".analysis",
+        ModuleTarget = module_target_analysis_registry
+    ).
+
+test_build_all_targets(!IO) :-
+    io.stdout_stream(StdOut, !IO),
+    io.write_string(StdOut, "test_build_all_targets\n", !IO),
+    Exts = [".all_ms", ".ms", ".all_errs", ".errs", ".all_int0s", ".int0s",
+        ".all_ints", ".ints", ".all_int2s", ".int2s", ".all_int3s", ".int3s",
+        ".all_opts", ".opts", ".all_mihs", ".mihs", ".all_mhs", ".mhs",
+        ".all_cs", ".cs", ".all_css", ".css", ".all_csharps", ".csharps",
+        ".all_javas", ".javas", ".all_classs", ".classs",
+        ".all_track_flagss", ".track_flagss", ".all_xmls", ".xmls",
+        ".all_analysiss", ".analysiss", ".xyz", ".m", ".", ".s"],
+    list.foldl(test_one_build_all_target(StdOut), Exts, !IO).
+
+:- pred test_one_build_all_target(io.text_output_stream::in, string::in,
+    io::di, io::uo) is det.
+
+test_one_build_all_target(StdOut, ExtStr, !IO) :-
+    ( if old_ext_to_module_target_type(ExtStr, OldModuleTarget) then
+        MaybeOldModuleTarget = yes(OldModuleTarget)
+    else
+        MaybeOldModuleTarget = no
+    ),
+    ( if just_ext_to_build_all_target_type(ExtStr, NewModuleTarget) then
+        MaybeNewModuleTarget = yes(NewModuleTarget)
+    else
+        MaybeNewModuleTarget = no
+    ),
+    ( if MaybeOldModuleTarget = MaybeNewModuleTarget then
+        io.format(StdOut, "match for %s\n", [s(ExtStr)], !IO)
+    else
+        io.format(StdOut, "mismatch for %s\n", [s(ExtStr)], !IO),
+        io.format(StdOut, "old: %s\n", [s(string(MaybeOldModuleTarget))], !IO),
+        io.format(StdOut, "new: %s\n", [s(string(MaybeNewModuleTarget))], !IO)
+    ).
+
+:- pred old_ext_to_module_target_type(string::in, module_target_type::out)
+    is semidet.
+
+old_ext_to_module_target_type(ExtStr, ModuleTarget) :-
+    ( if
+        % string.append(".all_", DotAllLessExtStr, ExtStr),
+        % string.append(DotAllSlessExtStr, "s", DotAllLessExtStr),
+        string.remove_prefix(".all_", ExtStr, DotAllLessExtStr),
+        string.remove_suffix(DotAllLessExtStr, "s", DotAllSLessExtStr)
+    then
+        ExtStr1 = "." ++ DotAllSLessExtStr
+    else if
+        % Deprecated.
+        string.remove_suffix(ExtStr, "s", SLessExtStr)
+    then
+        ExtStr1 = SLessExtStr
+    else
+        fail
+    ),
+    just_ext_to_module_target_type(ExtStr1, ModuleTarget).
+
+:- pred just_ext_to_build_all_target_type(string::in, module_target_type::out)
+    is semidet.
+
+just_ext_to_build_all_target_type(ExtStr, ModuleTarget) :-
+    (
+        ( ExtStr = ".all_ms"
+        ; ExtStr = ".ms"
+        ),
+        ModuleTarget = module_target_source
+    ;
+        ( ExtStr = ".all_errs"
+        ; ExtStr = ".errs"
+        ),
+        ModuleTarget = module_target_errors
+    ;
+        ( ExtStr = ".all_int0s"
+        ; ExtStr = ".int0s"
+        ),
+        ModuleTarget = module_target_int0
+    ;
+        ( ExtStr = ".all_ints"
+        ; ExtStr = ".ints"
+        ),
+        ModuleTarget = module_target_int1
+    ;
+        ( ExtStr = ".all_int2s"
+        ; ExtStr = ".int2s"
+        ),
+        ModuleTarget = module_target_int2
+    ;
+        ( ExtStr = ".all_int3s"
+        ; ExtStr = ".int3s"
+        ),
+        ModuleTarget = module_target_int3
+    ;
+        ( ExtStr = ".all_opts"
+        ; ExtStr = ".opts"
+        ),
+        ModuleTarget = module_target_opt
+    ;
+        ( ExtStr = ".all_mihs"
+        ; ExtStr = ".mihs"
+        ),
+        ModuleTarget = module_target_c_header(header_mih)
+    ;
+        ( ExtStr = ".all_mhs"
+        ; ExtStr = ".mhs"
+        ),
+        ModuleTarget = module_target_c_header(header_mh)
+    ;
+        ( ExtStr = ".all_cs"
+        ; ExtStr = ".cs"
+        ),
+        ModuleTarget = module_target_c_code
+    ;
+        ( ExtStr = ".all_css"
+        ; ExtStr = ".css"
+        ),
+        ModuleTarget = module_target_csharp_code
+    ;
+        ( ExtStr = ".all_csharps"
+        ; ExtStr = ".csharps"
+        ),
+        % For a long time, until 2023 oct 5, we treated the ".cs" target name
+        % as the build-all target for C files, so we accepted ".csharp" as
+        % the target for C# files. Keep the synonym for a while longer
+        % to give people time to update their projects and habits.
+        ModuleTarget = module_target_csharp_code
+    ;
+        ( ExtStr = ".all_javas"
+        ; ExtStr = ".javas"
+        ),
+        ModuleTarget = module_target_java_code
+    ;
+        ( ExtStr = ".all_classs"
+        ; ExtStr = ".classs"
+        ),
+        ModuleTarget = module_target_java_class_code
+    ;
+        ( ExtStr = ".all_track_flagss"
+        ; ExtStr = ".track_flagss"
+        ),
+        ModuleTarget = module_target_track_flags
+    ;
+        ( ExtStr = ".all_xmls"
+        ; ExtStr = ".xmls"
+        ),
+        ModuleTarget = module_target_xml_doc
+    ;
+        ( ExtStr = ".all_analysiss"
+        ; ExtStr = ".analysiss"
+        ),
         ModuleTarget = module_target_analysis_registry
     ).
 
