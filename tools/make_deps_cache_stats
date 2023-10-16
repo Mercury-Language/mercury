@@ -9,13 +9,13 @@
 NF == 3 {
         cache = $1;
         cur_lookups = $2;
-        cur_hits = $3;
-        cur_misses = cur_lookups - cur_hits;
+        cur_misses = $3;
+        cur_hits =  cur_lookups - cur_misses;
 
         caches[cache] += 1;
         lookups[cache] += cur_lookups;
-        hits[cache] += cur_hits;
         misses[cache] += cur_misses;
+        hits[cache] += cur_hits;
 
         overall_lookups += cur_lookups;
         overall_hits += cur_hits;
@@ -32,11 +32,12 @@ END {
 
         printf "----------------------------------------------------------\n\n";
 
-        printf "%-36s %10s %10s %6s\n\n",
-            "cache", "#exec", "#lookup", "hit%";
+        printf "%-30s %6s %8s %8s %8s %6s\n\n",
+            "cache", "#exec", "#lookup", "#hit", "#miss", "hit%";
         for (cache in caches) {
             hit_rate[cache] = (100 * hits[cache]) / lookups[cache];
-            printf "%-36s %10d %10d %6.2f\n",
-                cache, caches[cache], lookups[cache], hit_rate[cache];
+            printf "%-30s %6d %8d %8d %8d %6.2f\n",
+                cache, caches[cache], lookups[cache],
+                hits[cache], misses[cache], hit_rate[cache];
         }
     }

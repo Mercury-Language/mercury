@@ -182,10 +182,7 @@ find_target_dependencies_of_module(ProgressStream, KeepGoing, Globals,
         ),
         DepSpecs = [
             self(module_target_source),
-            % XXX Should we cache the remaining dep_specs as a whole?
-            ancestors(module_target_int0),
-            direct_imports_non_intermod(module_target_int1),
-            indirect_imports_non_intermod(module_target_int2)
+            anc0_dir1_indir2_non_intermod
         ],
         find_dep_specs(ProgressStream, KeepGoing, Globals,
             ModuleIndex, DepSpecs, NewSucceeded, NewDeps, !Info, !IO),
@@ -194,9 +191,7 @@ find_target_dependencies_of_module(ProgressStream, KeepGoing, Globals,
         TargetType = module_target_analysis_registry,
         DepSpecs = [
             self(module_target_source),
-            ancestors(module_target_int0),
-            direct_imports_non_intermod(module_target_int1),
-            indirect_imports_non_intermod(module_target_int2),
+            anc0_dir1_indir2_non_intermod,
             direct_imports_intermod(module_target_opt),
             indirect_imports_intermod(module_target_opt),
             intermod_imports(module_target_opt)
@@ -304,6 +299,7 @@ compiled_code_dependencies(Globals, DepSpecs) :-
     ;       intermod_imports(module_target_type)
     ;       foreign_imports_intermod_trans(module_target_type)
 
+    ;       anc0_dir1_indir2_non_intermod
     ;       anc0_dir1_indir2_intermod
             % Get the .int0 files of ancestors, the .int files of direct
             % imports, and the .int2 files of indirect imports.
@@ -405,6 +401,49 @@ find_dep_spec(ProgressStream, KeepGoing, Globals, ModuleIndex, DepSpec,
             ModuleIndex, Succeeded, ModuleIndexSet, !Info, !IO),
         dfmi_targets(ModuleIndexSet, TargetType, DepFileIndexSet, !Info)
     ;
+        DepSpec = anc0_dir1_indir2_non_intermod,
+        SubDepSpecs = [
+            ancestors(module_target_int0),
+            direct_imports_non_intermod(module_target_int1),
+            indirect_imports_non_intermod(module_target_int2)
+        ],
+        trace [
+            compile_time(flag("find_dep_spec")),
+            run_time(env("FIND_DEP_SPEC")),
+            io(!TIO)
+        ] (
+            module_index_to_name(!.Info, ModuleIndex, IndexModuleName),
+            IndexModuleNameStr = sym_name_to_string(IndexModuleName),
+            io.format(ProgressStream, "dep_spec %s for %s starts\n\n",
+                [s(string.string(DepSpec)), s(IndexModuleNameStr)], !TIO)
+        ),
+
+% This cache is disabled, because it is ineffective.
+%       ( if
+%           search_anc0_dir1_indir2_non_intermod_cache(!.Info, ModuleIndex,
+%               Result0)
+%       then
+%           Result0 = deps_result(Succeeded, DepFileIndexSet)
+%       else
+            find_dep_specs(ProgressStream, KeepGoing, Globals,
+                ModuleIndex, SubDepSpecs, Succeeded, DepFileIndexSet,
+                !Info, !IO),
+%           Result = deps_result(Succeeded, DepFileIndexSet),
+%           add_to_anc0_dir1_indir2_non_intermod_cache(ModuleIndex, Result,
+%               !Info)
+%       ),
+
+        trace [
+            compile_time(flag("find_dep_spec")),
+            run_time(env("FIND_DEP_SPEC")),
+            io(!TIO)
+        ] (
+            module_index_to_name(!.Info, ModuleIndex, IndexModuleName),
+            IndexModuleNameStr = sym_name_to_string(IndexModuleName),
+            io.format(ProgressStream, "dep_spec %s for %s ends\n",
+                [s(string.string(DepSpec)), s(IndexModuleNameStr)], !TIO)
+        )
+    ;
         DepSpec = anc0_dir1_indir2_intermod,
         SubDepSpecs = [
             ancestors(module_target_int0),
@@ -458,9 +497,9 @@ find_dep_spec(ProgressStream, KeepGoing, Globals, ModuleIndex, DepSpec,
                 [s(string.string(DepSpec)), s(IndexModuleNameStr)], !TIO)
         ),
 
-        get_anc0_dir1_indir2_intermod_of_ancestors_of_intermod_imports(ProgressStream,
-            KeepGoing, Globals, ModuleIndex, Succeeded, DepFileIndexSet,
-            !Info, !IO),
+        get_anc0_dir1_indir2_intermod_of_ancestors_of_intermod_imports(
+            ProgressStream, KeepGoing, Globals, ModuleIndex,
+            Succeeded, DepFileIndexSet, !Info, !IO),
 
         trace [
             compile_time(flag("find_dep_spec")),
@@ -507,7 +546,8 @@ find_dep_spec(ProgressStream, KeepGoing, Globals, ModuleIndex, DepSpec,
             DepFiles = [_ | _],
             DepFileNlStrs = list.map(
                 dependency_file_to_debug_string("    ", "\n"), DepFiles),
-            io.format(ProgressStream, "dep_spec %s for %s yields these deps:\n",
+            io.format(ProgressStream,
+                "dep_spec %s for %s yields these deps:\n",
                 [s(string.string(DepSpec)), s(IndexModuleNameStr)], !TIO),
             list.foldl(io.write_string(ProgressStream), DepFileNlStrs, !TIO),
             io.write_string(ProgressStream, "dep list ends\n\n", !TIO)
@@ -657,11 +697,21 @@ get_direct_imports_intermod(ProgressStream, KeepGoing, Globals, ModuleIndex,
 get_indirect_imports_non_intermod(ProgressStream, KeepGoing, Globals,
         ModuleIndex, Succeeded, IndirectNonIntermodImportModules,
         !Info, !IO) :-
-    get_direct_imports_non_intermod(ProgressStream, KeepGoing, Globals,
-        ModuleIndex, DirectSucceeded, DirectImportModules, !Info, !IO),
-    get_indirect_imports_uncached(ProgressStream, KeepGoing, Globals,
-        ModuleIndex, DirectSucceeded, DirectImportModules,
-        Succeeded, IndirectNonIntermodImportModules, !Info, !IO).
+% This cache is disabled, because it is ineffective.
+%   ( if
+%       search_indirect_imports_non_intermod_cache(!.Info, ModuleIndex,
+%           Result0)
+%   then
+%       Result0 = deps_result(Succeeded, IndirectNonIntermodImportModules)
+%   else
+        get_direct_imports_non_intermod(ProgressStream, KeepGoing, Globals,
+            ModuleIndex, DirectSucceeded, DirectImportModules, !Info, !IO),
+        get_indirect_imports_uncached(ProgressStream, KeepGoing, Globals,
+            ModuleIndex, DirectSucceeded, DirectImportModules,
+            Succeeded, IndirectNonIntermodImportModules, !Info, !IO).
+%       Result = deps_result(Succeeded, IndirectNonIntermodImportModules),
+%       add_to_indirect_imports_non_intermod_cache(ModuleIndex, Result, !Info)
+%   ).
 
     % Return the list of modules for which we should read `.int2' files.
     %
