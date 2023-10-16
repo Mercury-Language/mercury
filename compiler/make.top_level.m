@@ -40,8 +40,6 @@
     top_target_file::in, maybe_succeeded::out,
     make_info::in, make_info::out, io::di, io::uo) is det.
 
-:- pred test_build_all_targets(io::di, io::uo) is det.
-
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
@@ -69,7 +67,6 @@
 
 :- import_module bool.
 :- import_module dir.
-:- import_module maybe.
 :- import_module pair.
 :- import_module set.
 :- import_module string.
@@ -274,36 +271,16 @@ classify_target_2(Globals, ModuleNameStr0, ExtStr, TopTargetFile) :-
     % XXX This if-then-else chain cries out for conversion of most of it
     % to a switch.
     ( if
-        just_ext_to_module_target_type(ExtStr, ModuleTargetType)
+        fixed_extension_target_type(ExtStr, TargetTypePrime)
     then
         ModuleNameStr = ModuleNameStr0,
-        TargetType = module_target(ModuleTargetType)
+        TargetType = TargetTypePrime
     else if
         is_maybe_pic_object_file_extension(Globals, ExtStr, PIC)
     then
         ModuleNameStr = ModuleNameStr0,
         ModuleTargetType = module_target_object_code(PIC),
         TargetType = module_target(ModuleTargetType)
-    else if
-        globals.lookup_string_option(Globals, library_extension, ExtStr),
-        string.append("lib", ModuleNameStr1, ModuleNameStr0)
-    then
-        ModuleNameStr = ModuleNameStr1,
-        TargetType = linked_target(static_library)
-    else if
-        globals.lookup_string_option(Globals, shared_library_extension,
-            ExtStr),
-        string.append("lib", ModuleNameStr1, ModuleNameStr0)
-    then
-        ModuleNameStr = ModuleNameStr1,
-        TargetType = linked_target(shared_library)
-    else if
-        globals.lookup_string_option(Globals, executable_file_extension,
-            ExtStr)
-    then
-        ModuleNameStr = ModuleNameStr0,
-        ExecutableType = get_executable_type(Globals),
-        TargetType = linked_target(ExecutableType)
     else if
         ( if
             % string.append(".all_", DotAllLessExtStr, ExtStr),
@@ -320,41 +297,31 @@ classify_target_2(Globals, ModuleNameStr0, ExtStr, TopTargetFile) :-
         else
             fail
         ),
-        ( if just_ext_to_module_target_type(ExtStr1, ModuleTargetType0) then
-            ModuleTargetType = ModuleTargetType0
-        else if
-            is_maybe_pic_object_file_extension(Globals, ExtStr1, PIC)
-        then
-            ModuleTargetType = module_target_object_code(PIC)
-        else
-            fail
-        ),
-        % Not yet implemented. `build_all' targets are only used by
-        % tools/bootcheck, so it doesn't really matter.
-        ModuleTargetType \= module_target_c_header(_)
+        is_maybe_pic_object_file_extension(Globals, ExtStr1, PIC)
     then
         ModuleNameStr = ModuleNameStr0,
+        ModuleTargetType = module_target_object_code(PIC),
         TargetType = misc_target(misc_target_build_all(ModuleTargetType))
     else if
-        (
-            ExtStr = ".check",
-            MiscTarget = misc_target_build_all(module_target_errors)
-        ;
-            ExtStr = ".doc",
-            MiscTarget = misc_target_build_xml_docs
-        ;
-            ExtStr = ".analyse",
-            MiscTarget = misc_target_build_analyses
-        ;
-            ExtStr = ".clean",
-            MiscTarget = misc_target_clean
-        ;
-            ExtStr = ".realclean",
-            MiscTarget = misc_target_realclean
-        )
+        globals.lookup_string_option(Globals, executable_file_extension,
+            ExtStr)
     then
         ModuleNameStr = ModuleNameStr0,
-        TargetType = misc_target(MiscTarget)
+        ExecutableType = get_executable_type(Globals),
+        TargetType = linked_target(ExecutableType)
+    else if
+        globals.lookup_string_option(Globals, library_extension, ExtStr),
+        string.append("lib", ModuleNameStr1, ModuleNameStr0)
+    then
+        ModuleNameStr = ModuleNameStr1,
+        TargetType = linked_target(static_library)
+    else if
+        globals.lookup_string_option(Globals, shared_library_extension,
+            ExtStr),
+        string.append("lib", ModuleNameStr1, ModuleNameStr0)
+    then
+        ModuleNameStr = ModuleNameStr1,
+        TargetType = linked_target(shared_library)
     else if
         ExtStr = ".install",
         string.append("lib", ModuleNameStr1, ModuleNameStr0)
@@ -377,215 +344,213 @@ search_backwards_for_dot(String, Index, DotIndex) :-
         search_backwards_for_dot(String, CharIndex, DotIndex)
     ).
 
-:- pred just_ext_to_module_target_type(string::in, module_target_type::out)
-    is semidet.
+:- pred fixed_extension_target_type(string::in, target_type::out) is semidet.
 
-just_ext_to_module_target_type(ExtStr, ModuleTarget) :-
+fixed_extension_target_type(ExtStr, TargetType) :-
     (
-        ExtStr = ".m",
-        ModuleTarget = module_target_source
+        (
+            ExtStr = ".m",
+            ModuleTarget = module_target_source
+        ;
+            ExtStr = ".err",
+            ModuleTarget = module_target_errors
+        ;
+            ExtStr = ".int0",
+            ModuleTarget = module_target_int0
+        ;
+            ExtStr = ".int",
+            ModuleTarget = module_target_int1
+        ;
+            ExtStr = ".int2",
+            ModuleTarget = module_target_int2
+        ;
+            ExtStr = ".int3",
+            ModuleTarget = module_target_int3
+        ;
+            ExtStr = ".opt",
+            ModuleTarget = module_target_opt
+        ;
+            ExtStr = ".mih",
+            ModuleTarget = module_target_c_header(header_mih)
+        ;
+            ExtStr = ".mh",
+            ModuleTarget = module_target_c_header(header_mh)
+        ;
+            ExtStr = ".c",
+            ModuleTarget = module_target_c_code
+        ;
+            ExtStr = ".cs",
+            ModuleTarget = module_target_csharp_code
+        ;
+            ExtStr = ".csharp",
+            % For a long time, until 2023 oct 5, we treated the ".cs" target
+            % name as the build-all target for C files, so we accepted
+            % ".csharp" as the target name for C# files. Keep the synonym
+            % for a while longer to give people time to update their
+            % projects and habits.
+            ModuleTarget = module_target_csharp_code
+        ;
+            ExtStr = ".java",
+            ModuleTarget = module_target_java_code
+        ;
+            ExtStr = ".class",
+            ModuleTarget = module_target_java_class_code
+        ;
+            ExtStr = ".track_flags",
+            ModuleTarget = module_target_track_flags
+        ;
+            ExtStr = ".xml",
+            ModuleTarget = module_target_xml_doc
+        ;
+            ExtStr = ".analysis",
+            ModuleTarget = module_target_analysis_registry
+        ),
+        TargetType = module_target(ModuleTarget)
     ;
-        ExtStr = ".err",
-        ModuleTarget = module_target_errors
-    ;
-        ExtStr = ".int0",
-        ModuleTarget = module_target_int0
-    ;
-        ExtStr = ".int",
-        ModuleTarget = module_target_int1
-    ;
-        ExtStr = ".int2",
-        ModuleTarget = module_target_int2
-    ;
-        ExtStr = ".int3",
-        ModuleTarget = module_target_int3
-    ;
-        ExtStr = ".opt",
-        ModuleTarget = module_target_opt
-    ;
-        ExtStr = ".mih",
-        ModuleTarget = module_target_c_header(header_mih)
-    ;
-        ExtStr = ".mh",
-        ModuleTarget = module_target_c_header(header_mh)
-    ;
-        ExtStr = ".c",
-        ModuleTarget = module_target_c_code
-    ;
-        ExtStr = ".cs",
-        ModuleTarget = module_target_csharp_code
-    ;
-        ExtStr = ".csharp",
-        % For a long time, until 2023 oct 5, we treated the ".cs" target name
-        % as the build-all target for C files, so we accepted ".csharp" as
-        % the target for C# files. Keep the synonym for a while longer
-        % to give people time to update their projects and habits.
-        ModuleTarget = module_target_csharp_code
-    ;
-        ExtStr = ".java",
-        ModuleTarget = module_target_java_code
-    ;
-        ExtStr = ".class",
-        ModuleTarget = module_target_java_class_code
-    ;
-        ExtStr = ".track_flags",
-        ModuleTarget = module_target_track_flags
-    ;
-        ExtStr = ".xml",
-        ModuleTarget = module_target_xml_doc
-    ;
-        ExtStr = ".analysis",
-        ModuleTarget = module_target_analysis_registry
-    ).
-
-test_build_all_targets(!IO) :-
-    io.stdout_stream(StdOut, !IO),
-    io.write_string(StdOut, "test_build_all_targets\n", !IO),
-    Exts = [".all_ms", ".ms", ".all_errs", ".errs", ".all_int0s", ".int0s",
-        ".all_ints", ".ints", ".all_int2s", ".int2s", ".all_int3s", ".int3s",
-        ".all_opts", ".opts", ".all_mihs", ".mihs", ".all_mhs", ".mhs",
-        ".all_cs", ".cs", ".all_css", ".css", ".all_csharps", ".csharps",
-        ".all_javas", ".javas", ".all_classs", ".classs",
-        ".all_track_flagss", ".track_flagss", ".all_xmls", ".xmls",
-        ".all_analysiss", ".analysiss", ".xyz", ".m", ".", ".s"],
-    list.foldl(test_one_build_all_target(StdOut), Exts, !IO).
-
-:- pred test_one_build_all_target(io.text_output_stream::in, string::in,
-    io::di, io::uo) is det.
-
-test_one_build_all_target(StdOut, ExtStr, !IO) :-
-    ( if old_ext_to_module_target_type(ExtStr, OldModuleTarget) then
-        MaybeOldModuleTarget = yes(OldModuleTarget)
-    else
-        MaybeOldModuleTarget = no
-    ),
-    ( if just_ext_to_build_all_target_type(ExtStr, NewModuleTarget) then
-        MaybeNewModuleTarget = yes(NewModuleTarget)
-    else
-        MaybeNewModuleTarget = no
-    ),
-    ( if MaybeOldModuleTarget = MaybeNewModuleTarget then
-        io.format(StdOut, "match for %s\n", [s(ExtStr)], !IO)
-    else
-        io.format(StdOut, "mismatch for %s\n", [s(ExtStr)], !IO),
-        io.format(StdOut, "old: %s\n", [s(string(MaybeOldModuleTarget))], !IO),
-        io.format(StdOut, "new: %s\n", [s(string(MaybeNewModuleTarget))], !IO)
-    ).
-
-:- pred old_ext_to_module_target_type(string::in, module_target_type::out)
-    is semidet.
-
-old_ext_to_module_target_type(ExtStr, ModuleTarget) :-
-    ( if
-        % string.append(".all_", DotAllLessExtStr, ExtStr),
-        % string.append(DotAllSlessExtStr, "s", DotAllLessExtStr),
-        string.remove_prefix(".all_", ExtStr, DotAllLessExtStr),
-        string.remove_suffix(DotAllLessExtStr, "s", DotAllSLessExtStr)
-    then
-        ExtStr1 = "." ++ DotAllSLessExtStr
-    else if
-        % Deprecated.
-        string.remove_suffix(ExtStr, "s", SLessExtStr)
-    then
-        ExtStr1 = SLessExtStr
-    else
-        fail
-    ),
-    just_ext_to_module_target_type(ExtStr1, ModuleTarget).
-
-:- pred just_ext_to_build_all_target_type(string::in, module_target_type::out)
-    is semidet.
-
-just_ext_to_build_all_target_type(ExtStr, ModuleTarget) :-
-    (
+        % This block of unifications is required by the fact that
+        % switch detection looks into two levels of disjunctions.
         ( ExtStr = ".all_ms"
         ; ExtStr = ".ms"
-        ),
-        ModuleTarget = module_target_source
-    ;
-        ( ExtStr = ".all_errs"
+        ; ExtStr = ".all_errs"
         ; ExtStr = ".errs"
-        ),
-        ModuleTarget = module_target_errors
-    ;
-        ( ExtStr = ".all_int0s"
+        ; ExtStr = ".all_int0s"
         ; ExtStr = ".int0s"
-        ),
-        ModuleTarget = module_target_int0
-    ;
-        ( ExtStr = ".all_ints"
+        ; ExtStr = ".all_ints"
         ; ExtStr = ".ints"
-        ),
-        ModuleTarget = module_target_int1
-    ;
-        ( ExtStr = ".all_int2s"
+        ; ExtStr = ".all_int2s"
         ; ExtStr = ".int2s"
-        ),
-        ModuleTarget = module_target_int2
-    ;
-        ( ExtStr = ".all_int3s"
+        ; ExtStr = ".all_int3s"
         ; ExtStr = ".int3s"
-        ),
-        ModuleTarget = module_target_int3
-    ;
-        ( ExtStr = ".all_opts"
+        ; ExtStr = ".all_opts"
         ; ExtStr = ".opts"
-        ),
-        ModuleTarget = module_target_opt
-    ;
-        ( ExtStr = ".all_mihs"
-        ; ExtStr = ".mihs"
-        ),
-        ModuleTarget = module_target_c_header(header_mih)
-    ;
-        ( ExtStr = ".all_mhs"
-        ; ExtStr = ".mhs"
-        ),
-        ModuleTarget = module_target_c_header(header_mh)
-    ;
-        ( ExtStr = ".all_cs"
-        ; ExtStr = ".cs"
-        ),
-        ModuleTarget = module_target_c_code
-    ;
-        ( ExtStr = ".all_css"
+        ; ExtStr = ".all_cs"
+        ; ExtStr = ".all_css"
         ; ExtStr = ".css"
-        ),
-        ModuleTarget = module_target_csharp_code
-    ;
-        ( ExtStr = ".all_csharps"
+        ; ExtStr = ".all_csharps"
         ; ExtStr = ".csharps"
-        ),
-        % For a long time, until 2023 oct 5, we treated the ".cs" target name
-        % as the build-all target for C files, so we accepted ".csharp" as
-        % the target for C# files. Keep the synonym for a while longer
-        % to give people time to update their projects and habits.
-        ModuleTarget = module_target_csharp_code
-    ;
-        ( ExtStr = ".all_javas"
+        ; ExtStr = ".all_javas"
         ; ExtStr = ".javas"
-        ),
-        ModuleTarget = module_target_java_code
-    ;
-        ( ExtStr = ".all_classs"
+        ; ExtStr = ".all_classs"
         ; ExtStr = ".classs"
-        ),
-        ModuleTarget = module_target_java_class_code
-    ;
-        ( ExtStr = ".all_track_flagss"
+        ; ExtStr = ".all_track_flagss"
         ; ExtStr = ".track_flagss"
-        ),
-        ModuleTarget = module_target_track_flags
-    ;
-        ( ExtStr = ".all_xmls"
+        ; ExtStr = ".all_xmls"
         ; ExtStr = ".xmls"
-        ),
-        ModuleTarget = module_target_xml_doc
-    ;
-        ( ExtStr = ".all_analysiss"
+        ; ExtStr = ".all_analysiss"
         ; ExtStr = ".analysiss"
         ),
-        ModuleTarget = module_target_analysis_registry
+        (
+            ( ExtStr = ".all_ms"
+            ; ExtStr = ".ms"
+            ),
+            ModuleTarget = module_target_source
+        ;
+            ( ExtStr = ".all_errs"
+            ; ExtStr = ".errs"
+            ),
+            ModuleTarget = module_target_errors
+        ;
+            ( ExtStr = ".all_int0s"
+            ; ExtStr = ".int0s"
+            ),
+            ModuleTarget = module_target_int0
+        ;
+            ( ExtStr = ".all_ints"
+            ; ExtStr = ".ints"
+            ),
+            ModuleTarget = module_target_int1
+        ;
+            ( ExtStr = ".all_int2s"
+            ; ExtStr = ".int2s"
+            ),
+            ModuleTarget = module_target_int2
+        ;
+            ( ExtStr = ".all_int3s"
+            ; ExtStr = ".int3s"
+            ),
+            ModuleTarget = module_target_int3
+        ;
+            ( ExtStr = ".all_opts"
+            ; ExtStr = ".opts"
+            ),
+            ModuleTarget = module_target_opt
+    % Not yet implemented. `build_all' targets are only used by
+    % tools/bootcheck, so it doesn't really matter.
+    %   ;
+    %       ( ExtStr = ".all_mihs"
+    %       ; ExtStr = ".mihs"
+    %       ),
+    %       ModuleTarget = module_target_c_header(header_mih)
+    %   ;
+    %       ( ExtStr = ".all_mhs"
+    %       ; ExtStr = ".mhs"
+    %       ),
+    %       ModuleTarget = module_target_c_header(header_mh)
+        ;
+            ( ExtStr = ".all_cs"
+            % ; ExtStr = ".cs"              % Duplicates C# target.
+            ),
+            ModuleTarget = module_target_c_code
+        ;
+            ( ExtStr = ".all_css"
+            ; ExtStr = ".css"
+            ),
+            ModuleTarget = module_target_csharp_code
+        ;
+            ( ExtStr = ".all_csharps"
+            ; ExtStr = ".csharps"
+            ),
+            % For a long time, until 2023 oct 5, we treated the ".cs" target
+            % name as the build-all target for C files, so we accepted
+            % ".csharp" as the target name for C# files. Keep the synonym
+            % for a while longer to give people time to update their
+            % projects and habits.
+            ModuleTarget = module_target_csharp_code
+        ;
+            ( ExtStr = ".all_javas"
+            ; ExtStr = ".javas"
+            ),
+            ModuleTarget = module_target_java_code
+        ;
+            ( ExtStr = ".all_classs"
+            ; ExtStr = ".classs"
+            ),
+            ModuleTarget = module_target_java_class_code
+        ;
+            ( ExtStr = ".all_track_flagss"
+            ; ExtStr = ".track_flagss"
+            ),
+            ModuleTarget = module_target_track_flags
+        ;
+            ( ExtStr = ".all_xmls"
+            ; ExtStr = ".xmls"
+            ),
+            ModuleTarget = module_target_xml_doc
+        ;
+            ( ExtStr = ".all_analysiss"
+            ; ExtStr = ".analysiss"
+            ),
+            ModuleTarget = module_target_analysis_registry
+        ),
+        TargetType = misc_target(misc_target_build_all(ModuleTarget))
+    ;
+        (
+            ExtStr = ".check",
+            MiscTarget = misc_target_build_all(module_target_errors)
+        ;
+            ExtStr = ".doc",
+            MiscTarget = misc_target_build_xml_docs
+        ;
+            ExtStr = ".analyse",
+            MiscTarget = misc_target_build_analyses
+        ;
+            ExtStr = ".clean",
+            MiscTarget = misc_target_clean
+        ;
+            ExtStr = ".realclean",
+            MiscTarget = misc_target_realclean
+        ),
+        TargetType = misc_target(MiscTarget)
     ).
 
 :- func get_executable_type(globals) = linked_target_type.
