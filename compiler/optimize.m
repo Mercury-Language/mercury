@@ -23,15 +23,16 @@
 :- import_module mdbcomp.
 :- import_module mdbcomp.sym_name.
 
+:- import_module io.
 :- import_module list.
 
 %-----------------------------------------------------------------------------%
 
-:- pred optimize_procs(globals::in, module_name::in, global_data::in,
-    list(c_procedure)::in, list(c_procedure)::out) is det.
+:- pred optimize_procs(io.text_output_stream::in, globals::in, module_name::in,
+    global_data::in, list(c_procedure)::in, list(c_procedure)::out) is det.
 
-:- pred optimize_proc(globals::in, module_name::in, global_data::in,
-    c_procedure::in, c_procedure::out) is det.
+:- pred optimize_proc(io.text_output_stream::in, globals::in, module_name::in,
+    global_data::in, c_procedure::in, c_procedure::out) is det.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -67,7 +68,6 @@
 :- import_module counter.
 :- import_module dir.
 :- import_module int.
-:- import_module io.
 :- import_module io.call_system.
 :- import_module map.
 :- import_module maybe.
@@ -77,14 +77,17 @@
 
 %-----------------------------------------------------------------------------%
 
-optimize_procs(_, _, _, [], []).
-optimize_procs(Globals, ModuleName, GlobalData,
+optimize_procs(_, _, _, _, [], []).
+optimize_procs(ProgressStream, Globals, ModuleName, GlobalData,
         [Proc0 | Procs0], [Proc | Procs]) :-
-    optimize_proc(Globals, ModuleName, GlobalData, Proc0, Proc),
-    optimize_procs(Globals, ModuleName, GlobalData, Procs0, Procs).
+    optimize_proc(ProgressStream, Globals, ModuleName, GlobalData,
+        Proc0, Proc),
+    optimize_procs(ProgressStream, Globals, ModuleName, GlobalData,
+        Procs0, Procs).
 
-optimize_proc(Globals, ModuleName, GlobalData, CProc0, CProc) :-
-    Info = init_llds_opt_info(Globals, ModuleName),
+optimize_proc(ProgressStream, Globals, ModuleName, GlobalData,
+        CProc0, CProc) :-
+    Info = init_llds_opt_info(ProgressStream, Globals, ModuleName),
     some [!OptDebugInfo, !LabelNumCounter, !Instrs] (
         CProc0 = c_procedure(PorF, Name, UserArity, PredProcId, ProcLabel,
             CodeModel, EffTraceLevel, !:Instrs, !:LabelNumCounter,
@@ -124,19 +127,16 @@ optimize_proc(Globals, ModuleName, GlobalData, CProc0, CProc) :-
         optimize_repeat(Info, Repeat, LayoutLabelSet, ProcLabel,
             MayAlterRtti, !LabelNumCounter, !OptDebugInfo, !Instrs),
         trace [io(!IO)] (
-            get_opt_progress_output_stream(Info, ProgressStream, !IO),
             maybe_report_stats(ProgressStream, Statistics, !IO)
         ),
         optimize_middle(Info, yes, LayoutLabelSet, ProcLabel, CodeModel,
             MayAlterRtti, !LabelNumCounter, !OptDebugInfo, !Instrs),
         trace [io(!IO)] (
-            get_opt_progress_output_stream(Info, ProgressStream, !IO),
             maybe_report_stats(ProgressStream, Statistics, !IO)
         ),
         optimize_last(Info, LayoutLabelSet, ProcLabel,
             !LabelNumCounter, !.OptDebugInfo, !Instrs),
         trace [io(!IO)] (
-            get_opt_progress_output_stream(Info, ProgressStream, !IO),
             maybe_report_stats(ProgressStream, Statistics, !IO)
         ),
         CProc = c_procedure(PorF, Name, UserArity, PredProcId, ProcLabel,
@@ -785,6 +785,7 @@ escape_dir_char(Char, !Str) :-
                 lopt_num_real_r_regs            :: int,
                 lopt_local_vars_access_threshold :: int,
                 lopt_opt_repeat                 :: int,
+                lopt_progress_stream            :: io.text_output_stream,
                 lopt_globals                    :: globals,
                 lopt_module_name                :: module_name,
 
@@ -813,9 +814,10 @@ escape_dir_char(Char, !Str) :-
                 lopt_use_local_vars             :: maybe_use_local_vars
             ).
 
-:- func init_llds_opt_info(globals, module_name) = llds_opt_info.
+:- func init_llds_opt_info(io.text_output_stream, globals, module_name)
+    = llds_opt_info.
 
-init_llds_opt_info(Globals, ModuleName) = Info :-
+init_llds_opt_info(ProgressStream, Globals, ModuleName) = Info :-
     globals.lookup_accumulating_option(Globals, debug_opt_pred_id,
         DebugOptPredIdStrs),
     globals.lookup_accumulating_option(Globals, debug_opt_pred_name,
@@ -853,7 +855,8 @@ init_llds_opt_info(Globals, ModuleName) = Info :-
     UseLocalVars = OptTuple ^ ot_use_local_vars,
 
     Info = llds_opt_info(DebugOptPredIdStrs, DebugOptPredNames,
-        NumRealRRegs, LocalVarAccessThreshold, OptRepeat, Globals, ModuleName,
+        NumRealRRegs, LocalVarAccessThreshold, OptRepeat,
+        ProgressStream, Globals, ModuleName,
         GCMethod, DebugOpt, AutoComments, FrameOptComments,
         DetailedStatistics, VeryVerbose,
         CheckedNondetTailCalls, OptDelaySlots, OptDups, OptFrames,
@@ -864,9 +867,7 @@ init_llds_opt_info(Globals, ModuleName) = Info :-
     io.text_output_stream::out, io::di, io::uo) is det.
 
 get_opt_progress_output_stream(Info, ProgressStream, !IO) :-
-    Globals = Info ^ lopt_globals,
-    ModuleName = Info ^ lopt_module_name,
-    get_progress_output_stream(Globals, ModuleName, ProgressStream, !IO).
+    ProgressStream = Info ^ lopt_progress_stream.
 
 %-----------------------------------------------------------------------------%
 :- end_module ll_backend.optimize.

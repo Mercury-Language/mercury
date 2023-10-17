@@ -75,8 +75,8 @@
 
 %---------------------------------------------------------------------------%
 
-:- pred output_java_mlds(module_info::in, mlds::in, maybe_succeeded::out,
-    io::di, io::uo) is det.
+:- pred output_java_mlds(io.text_output_stream::in, module_info::in,
+    mlds::in, maybe_succeeded::out, io::di, io::uo) is det.
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -123,7 +123,7 @@
 
 %---------------------------------------------------------------------------%
 
-output_java_mlds(ModuleInfo, MLDS, Succeeded, !IO) :-
+output_java_mlds(ProgressStream, ModuleInfo, MLDS, Succeeded, !IO) :-
     % Note that the Java file name that we use for modules in the
     % Mercury standard library do not include a "mercury." prefix;
     % that is why we don't call mercury_module_name_to_mlds here.
@@ -132,7 +132,7 @@ output_java_mlds(ModuleInfo, MLDS, Succeeded, !IO) :-
     module_name_to_file_name_create_dirs(Globals, $pred,
         ext_cur_ngs_gs_java(ext_cur_ngs_gs_java_java),
         ModuleName, JavaSourceFileName, !IO),
-    output_to_file_stream(Globals, ModuleName, JavaSourceFileName,
+    output_to_file_stream(ProgressStream, Globals, JavaSourceFileName,
         output_java_src_file(ModuleInfo, MLDS), Succeeded, !IO).
 
 :- pred output_java_src_file(module_info::in, mlds::in,

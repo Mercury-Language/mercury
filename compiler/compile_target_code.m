@@ -42,32 +42,27 @@
     --->    pic
     ;       non_pic.
 
-    % compile_c_file(Globals, ProgressStream, ErrorStream, PIC, ModuleName,
-    %   Succeeded, !IO)
+    % compile_c_file(Globals, ProgressStream, PIC, ModuleName, Succeeded, !IO)
     %
-:- pred compile_c_file(globals::in,
-    io.text_output_stream::in, io.text_output_stream::in, pic::in,
+:- pred compile_c_file(globals::in, io.text_output_stream::in, pic::in,
     module_name::in, maybe_succeeded::out, io::di, io::uo) is det.
 
-    % do_compile_c_file(Globals, ProgressStream, ErrorStream,
-    %   PIC, CFile, ObjFile, Succeeded, !IO)
+    % do_compile_c_file(Globals, ProgressStream, PIC, CFile, ObjFile,
+    %   Succeeded, !IO)
     %
-:- pred do_compile_c_file(globals::in,
-    io.text_output_stream::in, io.text_output_stream::in, pic::in,
+:- pred do_compile_c_file(globals::in, io.text_output_stream::in, pic::in,
     string::in, string::in, maybe_succeeded::out, io::di, io::uo) is det.
 
-    % compile_java_files(Globals, ProgressStream, ErrorStream,
-    %   HeadJavaFile, TailJavaFiles, Succeeded, !IO)
+    % compile_java_files(Globals, ProgressStream, HeadJavaFile, TailJavaFiles,
+    %   Succeeded, !IO)
     %
-:- pred compile_java_files(globals::in,
-    io.text_output_stream::in, io.text_output_stream::in,
+:- pred compile_java_files(globals::in, io.text_output_stream::in,
     string::in, list(string)::in, maybe_succeeded::out, io::di, io::uo) is det.
 
     % compile_csharp_file(Globals, ProgressStream, ErrorStream,
     %   CSharpFile, DLLFile, Succeeded, !IO)
     %
-:- pred compile_csharp_file(globals::in,
-    io.text_output_stream::in, io.text_output_stream::in,
+:- pred compile_csharp_file(globals::in, io.text_output_stream::in,
     module_dep_info::in, file_name::in, file_name::in, maybe_succeeded::out,
     io::di, io::uo) is det.
 
@@ -81,16 +76,16 @@
     module_name::in, list(module_name)::in, maybe_succeeded::out,
     io::di, io::uo) is det.
 
-    % make_init_obj_file(Globals, ProgressStream, ErrorStream,
-    %   MainModuleName, AllModuleNames, MaybeInitObjFileName)
+    % make_init_obj_file(Globals, ProgressStream,
+    %   MainModuleName, AllModuleNames, MaybeInitObjFileName, !IO)
     %
 :- pred make_init_obj_file(globals::in,
-    io.text_output_stream::in, io.text_output_stream::in,
+    io.text_output_stream::in,
     module_name::in, list(module_name)::in, maybe(file_name)::out,
     io::di, io::uo) is det.
 
-    % link_module_list(ProgressStream, ErrorStream,
-    %   ModulesToLink, ExtraObjFiles, Globals, Succeeded, !IO):
+    % link_module_list(ProgressStream, ModulesToLink, ExtraObjFiles,
+    %   Globals, Succeeded, !IO):
     %
     % The elements of ModulesToLink are the output of
     % `module_name_to_filename(ModuleName, "", no, ModuleToLink)'
@@ -99,7 +94,7 @@
     % The Globals are supplied late to allow mercury_compile.m to
     % partially apply the preceding arguments.
     %
-:- pred link_module_list( io.text_output_stream::in, io.text_output_stream::in,
+:- pred link_module_list(io.text_output_stream::in,
     list(string)::in, list(string)::in, globals::in, maybe_succeeded::out,
     io::di, io::uo) is det.
 
@@ -112,11 +107,10 @@
     ;       java_executable
     ;       java_archive.
 
-    % link(Globals, ProgressStream, ErrorStream, TargetType,
-    %   MainModuleName, ObjectFileNames, Succeeded, !IO)
+    % link(Globals, ProgressStream, TargetType, MainModuleName,
+    %   ObjectFileNames, Succeeded, !IO)
     %
-:- pred link(globals::in,
-    io.text_output_stream::in, io.text_output_stream::in,
+:- pred link(globals::in, io.text_output_stream::in,
     linked_target_type::in, module_name::in, list(string)::in,
     maybe_succeeded::out, io::di, io::uo) is det.
 
@@ -128,7 +122,7 @@
     io::di, io::uo) is det.
 
     % post_link_maybe_make_symlink_or_copy(Globals,
-    %   ProgressStream, ErrorStream, FullFileName, CurDirFileName,
+    %   ProgressStream, FullFileName, CurDirFileName,
     %   ModuleName, LinkTargetType, Succeeded, MadeSymlinkOrCopy, !IO):
     %
     % If FullFileName, which results from converting MainModuleName
@@ -138,8 +132,7 @@
     % successfully built it, if the target does not exist or is not up-to-date.
     %
 :- pred post_link_maybe_make_symlink_or_copy(globals::in,
-    io.text_output_stream::in, io.text_output_stream::in,
-    file_name::in, file_name::in,
+    io.text_output_stream::in, file_name::in, file_name::in,
     module_name::in, linked_target_type::in, maybe_succeeded::out, bool::out,
     io::di, io::uo) is det.
 
@@ -206,13 +199,11 @@
 % Stuff used for standalone interfaces.
 %
 
-    % make_standalone_interface(Globals, ProgressStream, ErrorStream,
-    %   BaseName, !IO):
+    % make_standalone_interface(Globals, ProgressStream, BaseName, !IO):
     %
     % Create a standalone interface in the current directory.
     %
-:- pred make_standalone_interface(globals::in,
-    io.text_output_stream::in, io.text_output_stream::in,
+:- pred make_standalone_interface(globals::in, io.text_output_stream::in,
     string::in, io::di, io::uo) is det.
 
     % Output the C compiler flags to the given stream.
@@ -305,17 +296,16 @@
 % WARNING: The code here duplicates the functionality of scripts/mgnuc.in.
 % Any changes there may also require changes here, and vice versa.
 
-compile_c_file(Globals, ProgressStream, ErrorStream, PIC, ModuleName,
-        Succeeded, !IO) :-
+compile_c_file(Globals, ProgressStream, PIC, ModuleName, Succeeded, !IO) :-
     module_name_to_file_name_create_dirs(Globals, $pred,
         ext_cur_ngs_gs(ext_cur_ngs_gs_target_c), ModuleName, C_File, !IO),
     maybe_pic_object_file_extension(PIC, ExtObj, _),
     module_name_to_file_name_create_dirs(Globals, $pred,
         ext_cur_ngs_gs(ExtObj), ModuleName, O_File, !IO),
-    do_compile_c_file(Globals, ProgressStream, ErrorStream, PIC,
-        C_File, O_File, Succeeded, !IO).
+    do_compile_c_file(Globals, ProgressStream, PIC, C_File, O_File,
+        Succeeded, !IO).
 
-do_compile_c_file(Globals, ProgressStream, ErrorStream, PIC, C_File, O_File,
+do_compile_c_file(Globals, ProgressStream, PIC, C_File, O_File,
         Succeeded, !IO) :-
     globals.lookup_bool_option(Globals, verbose, Verbose),
     globals.lookup_string_option(Globals, c_flag_to_name_object_file,
@@ -334,8 +324,8 @@ do_compile_c_file(Globals, ProgressStream, ErrorStream, PIC, C_File, O_File,
         " -c ", quote_shell_cmd_arg(C_File), " ",
         NameObjectFile, quote_shell_cmd_arg(O_File)], Command),
     get_maybe_filtercc_command(Globals, MaybeFilterCmd),
-    invoke_system_command_maybe_filter_output(Globals, ProgressStream,
-        ErrorStream, ErrorStream, cmd_verbose_commands,
+    invoke_system_command_maybe_filter_output(Globals,
+        ProgressStream, ProgressStream, cmd_verbose_commands,
         Command, MaybeFilterCmd, Succeeded, !IO),
     globals.lookup_bool_option(Globals, statistics, Stats),
     maybe_report_stats(ProgressStream, Stats, !IO).
@@ -904,8 +894,8 @@ get_maybe_filtercc_command(Globals, MaybeFilterCmd) :-
 
 %---------------------------------------------------------------------------%
 
-compile_java_files(Globals, ProgressStream, ErrorStream,
-        HeadJavaFile, TailJavaFiles, Succeeded, !IO) :-
+compile_java_files(Globals, ProgressStream, HeadJavaFile, TailJavaFiles,
+        Succeeded, !IO) :-
     globals.lookup_bool_option(Globals, verbose, Verbose),
     (
         Verbose = yes,
@@ -1005,7 +995,7 @@ compile_java_files(Globals, ProgressStream, ErrorStream,
     string.append_list([InclOpt, DirOpts,
         TargetDebugOpt, JAVAFLAGS, " ", JoinedJavaFiles], CommandArgs),
     invoke_long_system_command_maybe_filter_output(Globals,
-        ProgressStream, ErrorStream, ErrorStream, cmd_verbose_commands,
+        ProgressStream, ProgressStream, cmd_verbose_commands,
         JavaCompiler, NonAtFileCommandArgs, CommandArgs, MaybeMFilterJavac,
         Succeeded, !IO).
 
@@ -1029,7 +1019,7 @@ is_minus_j_flag(FlagStr) :-
 
 %---------------------------------------------------------------------------%
 
-compile_csharp_file(Globals, ProgressStream, ErrorStream, ModuleAndImports,
+compile_csharp_file(Globals, ProgressStream, ModuleDepInfo,
         CSharpFileName0, DLLFileName, Succeeded, !IO) :-
     globals.lookup_bool_option(Globals, verbose, Verbose),
     (
@@ -1069,20 +1059,20 @@ compile_csharp_file(Globals, ProgressStream, ErrorStream, ModuleAndImports,
         string.append_list(list.condense(list.map(
             (func(DLLDir) = ["-lib:", DLLDir, " "]), DLLDirs))),
 
-    module_dep_info_get_module_name(ModuleAndImports, ModuleName),
+    module_dep_info_get_module_name(ModuleDepInfo, ModuleName),
     ( if mercury_std_library_module_name(ModuleName) then
         Prefix = "-addmodule:"
     else
         Prefix = "-r:"
     ),
-    module_dep_info_get_fims(ModuleAndImports, FIMSpes),
+    module_dep_info_get_fims(ModuleDepInfo, FIMSpes),
     list.filter_map(
         ( pred(FS::in, M::out) is semidet :-
             FS = fim_spec(lang_csharp, _),
             M = fim_spec_module_name_from_module(FS, ModuleName)
         ), set.to_sorted_list(FIMSpes), ForeignDeps),
-    module_dep_info_get_int_deps(ModuleAndImports, IntDeps),
-    module_dep_info_get_imp_deps(ModuleAndImports, ImpDeps),
+    module_dep_info_get_int_deps(ModuleDepInfo, IntDeps),
+    module_dep_info_get_imp_deps(ModuleDepInfo, ImpDeps),
     set.union(IntDeps, ImpDeps, IntImpDeps),
     set.insert_list(ForeignDeps, IntImpDeps, IntImpForeignDeps),
     ReferencedDlls = referenced_dlls(ModuleName, IntImpForeignDeps),
@@ -1098,7 +1088,7 @@ compile_csharp_file(Globals, ProgressStream, ErrorStream, ModuleAndImports,
     string.append_list([CSC, DebugOpt,
         " -t:library ", DLLDirOpts, CSCFlags, ReferencedDllsStr,
         " -out:", DLLFileName, " ", CSharpFileName], Command),
-    invoke_system_command(Globals, ProgressStream, ErrorStream, ErrorStream,
+    invoke_system_command(Globals, ProgressStream, ProgressStream,
         cmd_verbose_commands, Command, Succeeded, !IO).
 
     % Generate the list of .NET DLLs which could be referred to by this module
@@ -1149,7 +1139,7 @@ make_library_init_file(Globals, ProgressStream, ErrorStream,
             module_name_to_file_name(Globals, $pred,
                 ext_cur_ngs_gs(ext_cur_ngs_gs_target_c)),
             AllModules, AllTargetFilesList),
-        invoke_mkinit(Globals, ProgressStream, ErrorStream, InitFileStream,
+        invoke_mkinit(Globals, ProgressStream, InitFileStream,
             cmd_verbose_commands, MkInit, " -k ", AllTargetFilesList,
             MkInitSucceeded, !IO),
         (
@@ -1160,9 +1150,8 @@ make_library_init_file(Globals, ProgressStream, ErrorStream,
                 MaybeInitFileCommand = yes(InitFileCommand),
                 make_all_module_command(InitFileCommand,
                     MainModuleName, AllModules, CommandString, !IO),
-                invoke_system_command(Globals, ProgressStream, ErrorStream,
-                    InitFileStream, cmd_verbose_commands, CommandString,
-                    Succeeded0, !IO)
+                invoke_system_command(Globals, ProgressStream, InitFileStream,
+                    cmd_verbose_commands, CommandString, Succeeded0, !IO)
             ;
                 MaybeInitFileCommand = no,
                 Succeeded0 = succeeded
@@ -1173,7 +1162,7 @@ make_library_init_file(Globals, ProgressStream, ErrorStream,
         ),
 
         io.close_output(InitFileStream, !IO),
-        copy_dot_tmp_to_base_file_return_succeeded(Globals, MainModuleName,
+        copy_dot_tmp_to_base_file_return_succeeded(ProgressStream, Globals,
             FullInitFileName, Succeeded1, !IO),
         Succeeded2 = Succeeded0 `and` Succeeded1,
         (
@@ -1186,7 +1175,7 @@ make_library_init_file(Globals, ProgressStream, ErrorStream,
                 % Remove the target of the symlink/copy in case it already
                 % exists.
                 io.file.remove_file(CurDirInitFileName, _, !IO),
-                make_symlink_or_copy_file(Globals, ProgressStream, ErrorStream,
+                make_symlink_or_copy_file(Globals, ProgressStream,
                     FullInitFileName, CurDirInitFileName, Succeeded, !IO)
             )
         ;
@@ -1203,11 +1192,11 @@ make_library_init_file(Globals, ProgressStream, ErrorStream,
     ).
 
 :- pred invoke_mkinit(globals::in, io.text_output_stream::in,
-    io.text_output_stream::in, io.text_output_stream::in,
-    command_verbosity::in, string::in, string::in, list(file_name)::in,
-    maybe_succeeded::out, io::di, io::uo) is det.
+    io.text_output_stream::in, command_verbosity::in,
+    string::in, string::in, list(file_name)::in, maybe_succeeded::out,
+    io::di, io::uo) is det.
 
-invoke_mkinit(Globals, ProgressStream, ErrorStream, InitFileStream, Verbosity,
+invoke_mkinit(Globals, ProgressStream, InitFileStream, Verbosity,
         MkInit, Args, FileNames, MkInitSucceeded, !IO) :-
     % mkinit expects unquoted file names.
     join_string_list(FileNames, "", "\n", "", TargetFileNames),
@@ -1220,8 +1209,8 @@ invoke_mkinit(Globals, ProgressStream, ErrorStream, InitFileStream, Verbosity,
 
         string.format("%s %s -f %s", [s(MkInit), s(Args), s(TmpFile)],
             MkInitCmd),
-        invoke_system_command(Globals, ProgressStream, ErrorStream,
-            InitFileStream, Verbosity, MkInitCmd, MkInitSucceeded0, !IO),
+        invoke_system_command(Globals, ProgressStream, InitFileStream,
+            Verbosity, MkInitCmd, MkInitSucceeded0, !IO),
 
         io.file.remove_file(TmpFile, RemoveResult, !IO),
         (
@@ -1233,28 +1222,27 @@ invoke_mkinit(Globals, ProgressStream, ErrorStream, InitFileStream, Verbosity,
         )
     ;
         TmpFileResult = error(ErrorMessage),
-        io.format(ErrorStream, "%s\n", [s(ErrorMessage)], !IO),
+        io.format(ProgressStream, "%s\n", [s(ErrorMessage)], !IO),
         MkInitSucceeded = did_not_succeed
     ).
 
 %---------------------------------------------------------------------------%
 
-make_init_obj_file(Globals, ProgressStream, ErrorStream,
-        ModuleName, ModuleNames, Result, !IO) :-
+make_init_obj_file(Globals, ProgressStream, ModuleName, ModuleNames,
+        Result, !IO) :-
     globals.lookup_bool_option(Globals, rebuild, MustCompile),
-    do_make_init_obj_file(Globals, ProgressStream, ErrorStream,
+    do_make_init_obj_file(Globals, ProgressStream,
         MustCompile, ModuleName, ModuleNames, Result, !IO).
 
 % WARNING: The code here duplicates the functionality of scripts/c2init.in.
 % Any changes there may also require changes here, and vice versa.
 % The code of make_standalone_interface/5 may also require updating.
 
-:- pred do_make_init_obj_file(globals::in,
-    io.text_output_stream::in, io.text_output_stream::in, bool::in,
+:- pred do_make_init_obj_file(globals::in, io.text_output_stream::in, bool::in,
     module_name::in, list(module_name)::in, maybe(file_name)::out,
     io::di, io::uo) is det.
 
-do_make_init_obj_file(Globals, ProgressStream, ErrorStream, MustCompile,
+do_make_init_obj_file(Globals, ProgressStream, MustCompile,
         ModuleName, ModuleNames, Result, !IO) :-
     globals.lookup_maybe_string_option(Globals,
         mercury_standard_library_directory, MaybeStdLibDir),
@@ -1281,7 +1269,7 @@ do_make_init_obj_file(Globals, ProgressStream, ErrorStream, MustCompile,
     ),
 
     globals.lookup_string_option(Globals, mkinit_command, MkInit),
-    make_init_target_file(Globals, ProgressStream, ErrorStream, MkInit,
+    make_init_target_file(Globals, ProgressStream, MkInit,
         ModuleName, ModuleNames,
         ext_cur_ngs_gs(ext_cur_ngs_gs_target_c),
         ext_cur_ngs_gs(ext_cur_ngs_gs_init_c),
@@ -1295,19 +1283,18 @@ do_make_init_obj_file(Globals, ProgressStream, ErrorStream, MustCompile,
         ext_cur_ngs_gs(ExtInitObj), ModuleName, InitObjFileName, !IO),
     CompileCInitFile =
         ( pred(InitTargetFileName::in, Res::out, IO0::di, IO::uo) is det :-
-            do_compile_c_file(Globals, ProgressStream, ErrorStream, PIC,
+            do_compile_c_file(Globals, ProgressStream, PIC,
                 InitTargetFileName, InitObjFileName, Res, IO0, IO)
         ),
     maybe_compile_init_obj_file(Globals, ProgressStream, MaybeInitTargetFile,
         MustCompile, CompileCInitFile, InitObjFileName, Result, !IO).
 
-:- pred make_init_target_file(globals::in,
-    io.text_output_stream::in, io.text_output_stream::in,
+:- pred make_init_target_file(globals::in, io.text_output_stream::in,
     string::in, module_name::in, list(module_name)::in, ext::in, ext::in,
     list(file_name)::in, list(file_name)::in, list(file_name)::in,
     maybe(file_name)::out, io::di, io::uo) is det.
 
-make_init_target_file(Globals, ProgressStream, ErrorStream, MkInit,
+make_init_target_file(Globals, ProgressStream, MkInit,
         ModuleName, ModuleNames, TargetOtherExt, InitTargetOtherExt,
         StdInitFileNames, StdTraceInitFileNames, SourceDebugInitFileNames,
         MaybeInitTargetFile, !IO) :-
@@ -1408,15 +1395,16 @@ make_init_target_file(Globals, ProgressStream, ErrorStream, MkInit,
 
     % XXX STREAM Setting CmdOutputStream from ErrorStream looks VERY wrong,
     % but it preserves old behavior (or at least, it attempts to preserve it).
-    CmdOutputStream = ErrorStream,
-    invoke_mkinit(Globals, ProgressStream, ErrorStream, CmdOutputStream,
+    % XXX ErrorStream has now been replaced by ProgressStream.
+    CmdOutputStream = ProgressStream,
+    invoke_mkinit(Globals, ProgressStream, CmdOutputStream,
         cmd_verbose_commands, MkInit, MkInitArgs,
         TargetFileNameList ++ InitFileNamesList, MkInitSucceeded, !IO),
 
     maybe_report_stats(ProgressStream, Stats, !IO),
     (
         MkInitSucceeded = succeeded,
-        copy_dot_tmp_to_base_file_return_succeeded(Globals, ModuleName,
+        copy_dot_tmp_to_base_file_return_succeeded(ProgressStream, Globals,
             InitTargetFileName, UpdateResult, !IO),
         (
             UpdateResult = succeeded,
@@ -1517,8 +1505,8 @@ compare_file_timestamps(FileNameA, FileNameB, MaybeCompare, !IO) :-
 
 %---------------------------------------------------------------------------%
 
-link_module_list(ProgressStream, ErrorStream, Modules, ExtraObjFiles,
-        Globals, Succeeded, !IO) :-
+link_module_list(ProgressStream, Modules, ExtraObjFiles, Globals,
+        Succeeded, !IO) :-
     globals.lookup_string_option(Globals, output_file_name, OutputFileName0),
     ( if OutputFileName0 = "" then
         (
@@ -1556,8 +1544,8 @@ link_module_list(ProgressStream, ErrorStream, Modules, ExtraObjFiles,
                     ModuleName)
             ), Modules, ModuleNames),
         MustCompile = yes,
-        do_make_init_obj_file(Globals, ProgressStream, ErrorStream,
-            MustCompile, MainModuleName, ModuleNames, InitObjResult, !IO)
+        do_make_init_obj_file(Globals, ProgressStream, MustCompile,
+            MainModuleName, ModuleNames, InitObjResult, !IO)
     ;
         TargetType = shared_library,
         InitObjResult = yes("")
@@ -1572,8 +1560,8 @@ link_module_list(ProgressStream, ErrorStream, Modules, ExtraObjFiles,
         else
             AllObjects = [InitObjFileName | AllObjects0]
         ),
-        link(Globals, ProgressStream, ErrorStream, TargetType,
-            MainModuleName, AllObjects, Succeeded, !IO)
+        link(Globals, ProgressStream, TargetType, MainModuleName,
+            AllObjects, Succeeded, !IO)
     ;
         InitObjResult = no,
         Succeeded = did_not_succeed
@@ -1584,8 +1572,8 @@ link_module_list(ProgressStream, ErrorStream, Modules, ExtraObjFiles,
 % WARNING: The code here duplicates the functionality of scripts/ml.in.
 % Any changes there may also require changes here, and vice versa.
 
-link(Globals, ProgressStream, ErrorStream, LinkTargetType,
-        ModuleName, ObjectsList, Succeeded, !IO) :-
+link(Globals, ProgressStream, LinkTargetType, ModuleName, ObjectsList,
+        Succeeded, !IO) :-
     globals.lookup_bool_option(Globals, verbose, Verbose),
     globals.lookup_bool_option(Globals, statistics, Stats),
 
@@ -1594,16 +1582,16 @@ link(Globals, ProgressStream, ErrorStream, LinkTargetType,
         FullOutputFileName, CurDirOutputFileName, !IO),
     (
         LinkTargetType = executable,
-        link_exe_or_shared_lib(Globals, ProgressStream, ErrorStream,
+        link_exe_or_shared_lib(Globals, ProgressStream,
             LinkTargetType, ModuleName, FullOutputFileName, ObjectsList,
             LinkSucceeded, !IO)
     ;
         LinkTargetType = static_library,
-        create_archive(Globals, ProgressStream, ErrorStream,
+        create_archive(Globals, ProgressStream,
             FullOutputFileName, yes, ObjectsList, LinkSucceeded, !IO)
     ;
         LinkTargetType = shared_library,
-        link_exe_or_shared_lib(Globals, ProgressStream, ErrorStream,
+        link_exe_or_shared_lib(Globals, ProgressStream,
             LinkTargetType, ModuleName, FullOutputFileName, ObjectsList,
             LinkSucceeded, !IO)
     ;
@@ -1611,22 +1599,21 @@ link(Globals, ProgressStream, ErrorStream, LinkTargetType,
         ; LinkTargetType = csharp_library
         ),
         % XXX C# see also older predicate compile_csharp_file
-        create_csharp_exe_or_lib(Globals, ProgressStream, ErrorStream,
+        create_csharp_exe_or_lib(Globals, ProgressStream,
             LinkTargetType, ModuleName, FullOutputFileName, ObjectsList,
             LinkSucceeded, !IO)
     ;
         ( LinkTargetType = java_executable
         ; LinkTargetType = java_archive
         ),
-        create_java_exe_or_lib(Globals, ProgressStream, ErrorStream,
+        create_java_exe_or_lib(Globals, ProgressStream,
             LinkTargetType, ModuleName, FullOutputFileName, ObjectsList,
             LinkSucceeded, !IO)
     ),
     maybe_report_stats(ProgressStream, Stats, !IO),
     (
         LinkSucceeded = succeeded,
-        post_link_maybe_make_symlink_or_copy(Globals,
-            ProgressStream, ErrorStream,
+        post_link_maybe_make_symlink_or_copy(Globals, ProgressStream, 
             FullOutputFileName, CurDirOutputFileName,
             ModuleName, LinkTargetType, Succeeded, _MadeSymlinkOrCopy, !IO)
     ;
@@ -1721,13 +1708,12 @@ get_launcher_script_extension(Globals, Ext) :-
         Ext = ext_cur_gs(ext_cur_gs_exec_noext)
     ).
 
-:- pred link_exe_or_shared_lib(globals::in,
-    io.text_output_stream::in, io.text_output_stream::in,
+:- pred link_exe_or_shared_lib(globals::in, io.text_output_stream::in,
     linked_target_type::in(c_exe_or_shared_lib),
     module_name::in, file_name::in, list(string)::in,
     maybe_succeeded::out, io::di, io::uo) is det.
 
-link_exe_or_shared_lib(Globals, ProgressStream, ErrorStream, LinkTargetType,
+link_exe_or_shared_lib(Globals, ProgressStream, LinkTargetType,
         ModuleName, FullOutputFileName, ObjectsList, Succeeded, !IO) :-
     (
         LinkTargetType = shared_library,
@@ -1920,14 +1906,14 @@ link_exe_or_shared_lib(Globals, ProgressStream, ErrorStream, LinkTargetType,
                 % Delete the currently empty output file first, otherwise ar
                 % will fail to recognise its file format.
                 io.file.remove_file(TmpArchive, _, !IO),
-                create_archive(Globals, ProgressStream, ErrorStream,
-                    TmpArchive, yes, ProperObjectFiles, ArchiveSucceeded, !IO),
+                create_archive(Globals, ProgressStream, TmpArchive, yes,
+                    ProperObjectFiles, ArchiveSucceeded, !IO),
                 MaybeDeleteTmpArchive = yes(TmpArchive),
                 join_quoted_string_list([TmpArchive | NonObjectFiles],
                     "", "", " ", Objects)
             ;
                 TmpArchiveResult = error(Error),
-                io.format(ErrorStream,
+                io.format(ProgressStream,
                     "Could not create temporary file: %s\n",
                     [s(error_message(Error))], !IO),
                 ArchiveSucceeded = did_not_succeed,
@@ -1986,7 +1972,7 @@ link_exe_or_shared_lib(Globals, ProgressStream, ErrorStream, LinkTargetType,
             ),
 
             invoke_system_command_maybe_filter_output(Globals,
-                ProgressStream, ErrorStream, ErrorStream, cmd_verbose_commands,
+                ProgressStream, ProgressStream, cmd_verbose_commands,
                 LinkCmd, MaybeDemangleCmd, LinkSucceeded, !IO),
             % Invoke strip utility separately if required.
             ( if
@@ -1998,8 +1984,8 @@ link_exe_or_shared_lib(Globals, ProgressStream, ErrorStream, LinkTargetType,
                     [s(StripExeCommand), s(StripExeFlags),
                     s(quote_shell_cmd_arg(FullOutputFileName))], StripCmd),
                 invoke_system_command_maybe_filter_output(Globals,
-                    ProgressStream, ErrorStream, ErrorStream,
-                    cmd_verbose_commands, StripCmd, no, Succeeded, !IO)
+                    ProgressStream, ProgressStream, cmd_verbose_commands,
+                    StripCmd, no, Succeeded, !IO)
             else
                 Succeeded = LinkSucceeded
             )
@@ -2416,7 +2402,7 @@ has_object_file_extension(ObjExt, PicObjExt, FileName) :-
     ; string.suffix(FileName, PicObjExt)
     ).
 
-post_link_maybe_make_symlink_or_copy(Globals, ProgressStream, ErrorStream,
+post_link_maybe_make_symlink_or_copy(Globals, ProgressStream,
         FullFileName, CurDirFileName, ModuleName, LinkTargetType,
         Succeeded, MadeSymlinkOrCopy, !IO) :-
     ( if FullFileName = CurDirFileName then
@@ -2434,7 +2420,7 @@ post_link_maybe_make_symlink_or_copy(Globals, ProgressStream, ErrorStream,
             % Remove the target of the symlink/copy in case it already exists.
             io.file.remove_file_recursively(CurDirFileName, _, !IO),
 
-            make_symlink_or_copy_file(Globals, ProgressStream, ErrorStream,
+            make_symlink_or_copy_file(Globals, ProgressStream,
                 FullFileName, CurDirFileName, Succeeded0, !IO),
             MadeSymlinkOrCopy = yes
         ),
@@ -2468,7 +2454,7 @@ post_link_maybe_make_symlink_or_copy(Globals, ProgressStream, ErrorStream,
                 % Remove the target of the symlink/copy in case
                 % it already exists.
                 io.file.remove_file_recursively(CurDirLauncherName, _, !IO),
-                make_symlink_or_copy_file(Globals, ProgressStream, ErrorStream,
+                make_symlink_or_copy_file(Globals, ProgressStream,
                     FullLauncherName, CurDirLauncherName, Succeeded, !IO)
             )
         else
@@ -2630,12 +2616,11 @@ process_link_library(Globals, MercuryLibDirs, LibName, LinkerOpt,
         LinkerOpt = LinkOpt ++ LibName ++ LibSuffix
     ).
 
-:- pred create_archive(globals::in,
-    io.text_output_stream::in, io.text_output_stream::in, file_name::in,
+:- pred create_archive(globals::in, io.text_output_stream::in, file_name::in,
     bool::in, list(file_name)::in, maybe_succeeded::out,
     io::di, io::uo) is det.
 
-create_archive(Globals, ProgressStream, ErrorStream, FullLibFileName, Quote,
+create_archive(Globals, ProgressStream, FullLibFileName, Quote,
         ObjectList, Succeeded, !IO) :-
     globals.lookup_string_option(Globals, create_archive_command, ArCmd),
     globals.lookup_accumulating_option(Globals, create_archive_command_flags,
@@ -2682,9 +2667,8 @@ create_archive(Globals, ProgressStream, ErrorStream, FullLibFileName, Quote,
         Objects]
     ),
 
-    invoke_long_system_command(Globals, ProgressStream, ErrorStream,
-        ErrorStream, cmd_verbose_commands, ArCmd, MakeLibCmdArgs,
-        MakeLibCmdSucceeded, !IO),
+    invoke_long_system_command(Globals, ProgressStream, ProgressStream,
+        cmd_verbose_commands, ArCmd, MakeLibCmdArgs, MakeLibCmdSucceeded, !IO),
 
     ( if
         ( RanLib = ""
@@ -2694,17 +2678,16 @@ create_archive(Globals, ProgressStream, ErrorStream, FullLibFileName, Quote,
         Succeeded = MakeLibCmdSucceeded
     else
         RanLibCmd = string.append_list([RanLib, " ", FullLibFileName]),
-        invoke_system_command(Globals, ProgressStream, ErrorStream,
-            ErrorStream, cmd_verbose_commands, RanLibCmd, Succeeded, !IO)
+        invoke_system_command(Globals, ProgressStream, ProgressStream,
+            cmd_verbose_commands, RanLibCmd, Succeeded, !IO)
     ).
 
-:- pred create_csharp_exe_or_lib(globals::in,
-    io.text_output_stream::in, io.text_output_stream::in,
+:- pred create_csharp_exe_or_lib(globals::in, io.text_output_stream::in,
     linked_target_type::in(csharp_linked_target_type),
     module_name::in, file_name::in, list(file_name)::in,
     maybe_succeeded::out, io::di, io::uo) is det.
 
-create_csharp_exe_or_lib(Globals, ProgressStream, ErrorStream, LinkTargetType,
+create_csharp_exe_or_lib(Globals, ProgressStream, LinkTargetType,
         MainModuleName, FullOutputFileName0, SourceList0, Succeeded, !IO) :-
     get_system_env_type(Globals, EnvType),
     get_csharp_compiler_type(Globals, CSharpCompilerType),
@@ -2800,9 +2783,8 @@ create_csharp_exe_or_lib(Globals, ProgressStream, ErrorStream, LinkTargetType,
         MercuryStdLibs] ++
         CSCFlagsList ++
         SourceList),
-    invoke_long_system_command(Globals, ProgressStream, ErrorStream,
-        ErrorStream, cmd_verbose_commands, CSharpCompilerCmd, CmdArgs,
-        Succeeded0, !IO),
+    invoke_long_system_command(Globals, ProgressStream, ProgressStream,
+        cmd_verbose_commands, CSharpCompilerCmd, CmdArgs, Succeeded0, !IO),
 
     % Also create a shell script to launch it if necessary.
     globals.get_target_env_type(Globals, TargetEnvType),
@@ -2813,7 +2795,7 @@ create_csharp_exe_or_lib(Globals, ProgressStream, ErrorStream, LinkTargetType,
         CLI \= "",
         TargetEnvType = env_type_posix
     then
-        create_launcher_shell_script(Globals, MainModuleName,
+        create_launcher_shell_script(ProgressStream, Globals, MainModuleName,
             write_cli_shell_script(Globals, FullOutputFileName),
             Succeeded, !IO)
     else
@@ -2887,13 +2869,12 @@ write_cli_shell_script(Globals, ExeFileName, Stream, !IO) :-
 % Create Java "executables" or archives.
 %
 
-:- pred create_java_exe_or_lib(globals::in,
-    io.text_output_stream::in, io.text_output_stream::in,
+:- pred create_java_exe_or_lib(globals::in, io.text_output_stream::in,
     linked_target_type::in(java_linked_target_type),
     module_name::in, file_name::in, list(file_name)::in,
     maybe_succeeded::out, io::di, io::uo) is det.
 
-create_java_exe_or_lib(Globals, ProgressStream, ErrorStream, LinkTargetType,
+create_java_exe_or_lib(Globals, ProgressStream, LinkTargetType,
         MainModuleName, FullJarFileName, ObjectList, Succeeded, !IO) :-
     globals.lookup_string_option(Globals, java_archive_command, Jar),
 
@@ -2920,8 +2901,8 @@ create_java_exe_or_lib(Globals, ProgressStream, ErrorStream, LinkTargetType,
 
         Cmd = string.append_list(
             [Jar, " cf ", FullJarFileName, " @", TempFileName]),
-        invoke_system_command(Globals, ProgressStream, ErrorStream,
-            ErrorStream, cmd_verbose_commands, Cmd, Succeeded0, !IO),
+        invoke_system_command(Globals, ProgressStream, ProgressStream,
+            cmd_verbose_commands, Cmd, Succeeded0, !IO),
         io.file.remove_file(TempFileName, _, !IO),
         (
             Succeeded0 = succeeded
@@ -2931,14 +2912,14 @@ create_java_exe_or_lib(Globals, ProgressStream, ErrorStream, LinkTargetType,
         )
     ;
         TempFileResult = error(ErrorMessage),
-        io.format(ErrorStream, "%s\n", [s(ErrorMessage)], !IO),
+        io.format(ProgressStream, "%s\n", [s(ErrorMessage)], !IO),
         Succeeded0 = did_not_succeed
     ),
     ( if
         Succeeded0 = succeeded,
         LinkTargetType = java_executable
     then
-        create_java_shell_script(Globals, MainModuleName,
+        create_java_shell_script(ProgressStream, Globals, MainModuleName,
             Succeeded, !IO)
     else
         Succeeded = Succeeded0
@@ -3084,12 +3065,11 @@ is_maybe_pic_object_file_extension(Globals, ExtStr, PIC) :-
 % NOTE: the following code is similar to that of make_init_obj/7.
 % Any changes here may need to be reflected there.
 
-make_standalone_interface(Globals, ProgressStream, ErrorStream,
-        BaseName, !IO) :-
-    make_standalone_int_header(ErrorStream, BaseName, HdrSucceeded, !IO),
+make_standalone_interface(Globals, ProgressStream, BaseName, !IO) :-
+    make_standalone_int_header(ProgressStream, BaseName, HdrSucceeded, !IO),
     (
         HdrSucceeded = succeeded,
-        make_standalone_int_body(Globals, ProgressStream, ErrorStream,
+        make_standalone_int_body(Globals, ProgressStream,
             BaseName, !IO)
     ;
         HdrSucceeded = did_not_succeed
@@ -3098,7 +3078,7 @@ make_standalone_interface(Globals, ProgressStream, ErrorStream,
 :- pred make_standalone_int_header(io.text_output_stream::in,
     string::in, maybe_succeeded::out, io::di, io::uo) is det.
 
-make_standalone_int_header(ErrorStream, BaseName, Succeeded, !IO) :-
+make_standalone_int_header(ProgressStream, BaseName, Succeeded, !IO) :-
     HdrFileName = BaseName ++ ".h",
     io.open_output(HdrFileName, OpenResult, !IO),
     (
@@ -3127,16 +3107,14 @@ make_standalone_int_header(ErrorStream, BaseName, Succeeded, !IO) :-
         Succeeded = succeeded
     ;
         OpenResult = error(Error),
-        unable_to_open_file(ErrorStream, HdrFileName, Error, !IO),
+        unable_to_open_file(ProgressStream, HdrFileName, Error, !IO),
         Succeeded = did_not_succeed
     ).
 
-:- pred make_standalone_int_body(globals::in,
-    io.text_output_stream::in, io.text_output_stream::in,
+:- pred make_standalone_int_body(globals::in, io.text_output_stream::in,
     string::in, io::di, io::uo) is det.
 
-make_standalone_int_body(Globals, ProgressStream, ErrorStream,
-        BaseName, !IO) :-
+make_standalone_int_body(Globals, ProgressStream, BaseName, !IO) :-
     globals.lookup_accumulating_option(Globals, init_files, InitFiles0),
     % See the similar code in make_init_target_file for an explanation
     % of why we must remove duplicates from this list.
@@ -3217,8 +3195,9 @@ make_standalone_int_body(Globals, ProgressStream, ErrorStream,
 
     % XXX STREAM Setting CmdOutputStream from ErrorStream looks VERY wrong,
     % but it preserves old behavior (or at least, it attempts to preserve it).
-    CmdOutputStream = ErrorStream,
-    invoke_mkinit(Globals, ProgressStream, ErrorStream, CmdOutputStream,
+    % XXX ErrorStream has now been replaced by ProgressStream.
+    CmdOutputStream = ProgressStream,
+    invoke_mkinit(Globals, ProgressStream, CmdOutputStream,
         cmd_verbose_commands, MkInit, MkInitArgs, InitFiles,
         MkInitCmdSucceeded, !IO),
     (
@@ -3227,24 +3206,24 @@ make_standalone_int_body(Globals, ProgressStream, ErrorStream,
         maybe_pic_object_file_extension(PIC, ExtObj, _),
         Ext = ext_cur_ngs_gs(ExtObj),
         ObjFileName = BaseName ++ extension_to_string(Globals, Ext),
-        do_compile_c_file(Globals, ProgressStream, ErrorStream, PIC,
+        do_compile_c_file(Globals, ProgressStream, PIC,
             CFileName, ObjFileName, CompileSucceeded, !IO),
         (
             CompileSucceeded = succeeded
         ;
             CompileSucceeded = did_not_succeed,
             io.set_exit_status(1, !IO),
-            io.write_string(ErrorStream,
+            io.write_string(ProgressStream,
                 "mercury_compile: error while compiling", !IO),
-            io.format(ErrorStream,
+            io.format(ProgressStream,
                 "standalone interface in `%s'\n", [s(CFileName)], !IO)
         )
     ;
         MkInitCmdSucceeded = did_not_succeed,
         io.set_exit_status(1, !IO),
-        io.write_string(ErrorStream,
+        io.write_string(ProgressStream,
             "mercury_compile: error while creating ", !IO),
-        io.format(ErrorStream,
+        io.format(ProgressStream,
             "standalone interface in `%s'\n", [s(CFileName)], !IO)
     ).
 
@@ -3257,25 +3236,23 @@ make_standalone_int_body(Globals, ProgressStream, ErrorStream,
     % long.
     %
 :- pred invoke_long_system_command(globals::in, io.text_output_stream::in,
-    io.text_output_stream::in, io.text_output_stream::in,
-    command_verbosity::in, string::in, string::in,
+    io.text_output_stream::in, command_verbosity::in, string::in, string::in,
     maybe_succeeded::out, io::di, io::uo) is det.
 
 invoke_long_system_command(Globals,
-        ProgressStream, ErrorStream, CmdOutputStream, Verbosity,
+        ProgressStream, CmdOutputStream, Verbosity,
         Cmd, Args, Succeeded, !IO) :-
     invoke_long_system_command_maybe_filter_output(Globals,
-        ProgressStream, ErrorStream, CmdOutputStream, Verbosity,
+        ProgressStream, CmdOutputStream, Verbosity,
         Cmd, "", Args, no, Succeeded, !IO).
 
 :- pred invoke_long_system_command_maybe_filter_output(globals::in,
     io.text_output_stream::in, io.text_output_stream::in,
-    io.text_output_stream::in, command_verbosity::in,
-    string::in, string::in, string::in, maybe(string)::in,
-    maybe_succeeded::out, io::di, io::uo) is det.
+    command_verbosity::in, string::in, string::in, string::in,
+    maybe(string)::in, maybe_succeeded::out, io::di, io::uo) is det.
 
 invoke_long_system_command_maybe_filter_output(Globals,
-        ProgressStream, ErrorStream, CmdOutputStream, Verbosity,
+        ProgressStream, CmdOutputStream, Verbosity,
         Cmd, NonAtArgs, Args, MaybeProcessOutput, Succeeded, !IO) :-
     globals.lookup_bool_option(Globals, restricted_command_line,
         RestrictedCommandLine),
@@ -3312,7 +3289,7 @@ invoke_long_system_command_maybe_filter_output(Globals,
                     [s(Cmd), s(NonAtArgs), s(AtFileName)], FullCmd)
             ),
             invoke_system_command_maybe_filter_output(Globals,
-                ProgressStream, ErrorStream, CmdOutputStream, Verbosity,
+                ProgressStream, CmdOutputStream, Verbosity,
                 FullCmd, MaybeProcessOutput, Succeeded0, !IO),
 
             io.file.remove_file(TmpFile, RemoveResult, !IO),
@@ -3325,8 +3302,7 @@ invoke_long_system_command_maybe_filter_output(Globals,
             )
         ;
             TmpFileResult = error(ErrorMessage),
-            io.write_string(ErrorStream, ErrorMessage, !IO),
-            io.nl(ErrorStream, !IO),
+            io.format(ProgressStream, "%s\n", [s(ErrorMessage)], !IO),
             Succeeded = did_not_succeed
         )
     ;
@@ -3337,7 +3313,7 @@ invoke_long_system_command_maybe_filter_output(Globals,
             string.format("%s %s %s", [s(Cmd), s(NonAtArgs), s(Args)], FullCmd)
         ),
         invoke_system_command_maybe_filter_output(Globals,
-            ProgressStream, ErrorStream, CmdOutputStream, Verbosity,
+            ProgressStream, CmdOutputStream, Verbosity,
             FullCmd, MaybeProcessOutput, Succeeded, !IO)
     ).
 

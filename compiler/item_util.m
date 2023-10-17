@@ -211,7 +211,8 @@
 :- func decl_marker_desc_pieces(item_decl_marker_info) = list(format_piece).
 :- func impl_pragma_desc_pieces(item_impl_pragma_info) = list(format_piece).
 :- func impl_marker_desc_pieces(item_impl_marker_info) = list(format_piece).
-:- func gen_pragma_desc_pieces(item_generated_pragma_info) = list(format_piece).
+:- func gen_pragma_desc_pieces(item_generated_pragma_info)
+    = list(format_piece).
 
 %---------------------------------------------------------------------------%
 %

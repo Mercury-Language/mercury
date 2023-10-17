@@ -26,13 +26,14 @@
 :- import_module parse_tree.prog_data_used_modules.
 :- import_module parse_tree.prog_item.
 
+:- import_module io.
 :- import_module list.
 
 %---------------------------------------------------------------------------%
 
-    % parse_tree_to_hlds(AugCompUnit, Globals, DumpBaseFileName, MQInfo,
-    %   TypeEqvMap, UsedModules, QualInfo, InvalidTypes, InvalidModes,
-    %   HLDS, Specs):
+    % parse_tree_to_hlds(ProgressStream, AugCompUnit, Globals,
+    %   DumpBaseFileName, MQInfo, TypeEqvMap, UsedModules, QualInfo,
+    %   InvalidTypes, InvalidModes, HLDS, Specs):
     %
     % Given MQInfo (returned by module_qual.m) and TypeEqvMap and UsedModules
     % (both returned by equiv_type.m), convert AugCompUnit to HLDS.
@@ -42,8 +43,8 @@
     % QualInfo is an abstract type that check_typeclass.m will later pass
     % to produce_instance_method_clauses.
     %
-:- pred parse_tree_to_hlds(aug_compilation_unit::in, globals::in,
-    string::in, mq_info::in, type_eqv_map::in, used_modules::in,
+:- pred parse_tree_to_hlds(io.text_output_stream::in, aug_compilation_unit::in,
+    globals::in, string::in, mq_info::in, type_eqv_map::in, used_modules::in,
     qual_info::out, found_invalid_type::out, found_invalid_inst_or_mode::out,
     module_info::out, list(error_spec)::out) is det.
 
@@ -93,7 +94,6 @@
 
 :- import_module bool.
 :- import_module cord.
-:- import_module io.
 :- import_module map.
 :- import_module maybe.
 :- import_module require.
@@ -105,8 +105,8 @@
 
 %---------------------------------------------------------------------------%
 
-parse_tree_to_hlds(AugCompUnit, Globals, DumpBaseFileName, MQInfo0,
-        TypeEqvMap, UsedModules, !:QualInfo,
+parse_tree_to_hlds(ProgressStream, AugCompUnit, Globals, DumpBaseFileName,
+        MQInfo0, TypeEqvMap, UsedModules, !:QualInfo,
         !:FoundInvalidType, !:FoundInvalidInstOrMode, !:ModuleInfo, !:Specs) :-
     ParseTreeModuleSrc = AugCompUnit ^ acu_module_src,
     ModuleName = ParseTreeModuleSrc ^ ptms_module_name,
@@ -437,14 +437,14 @@ parse_tree_to_hlds(AugCompUnit, Globals, DumpBaseFileName, MQInfo0,
     init_qual_info(MQInfo0, TypeEqvMap, !:QualInfo),
 
     % Add clauses to their predicates.
-    add_clauses(Clauses,
+    add_clauses(ProgressStream, Clauses,
         !ModuleInfo, !QualInfo, !Specs),
     % Add clauses that define the auxiliary predicates
     % that implement some of the auxiliary predicates of mutables.
-    add_clauses(MutableClauses,
+    add_clauses(ProgressStream, MutableClauses,
         !ModuleInfo, !QualInfo, !Specs),
     % Add clauses that record promises.
-    add_promises(Promises,
+    add_promises(ProgressStream, Promises,
         !ModuleInfo, !QualInfo, !Specs),
 
     % Remember attempts to define predicates in the interface.
@@ -474,11 +474,11 @@ parse_tree_to_hlds(AugCompUnit, Globals, DumpBaseFileName, MQInfo0,
     % problem there is that the pred_status type has no way to denote
     % a predicate/function that is local for one backend and external
     % for the other.
-    add_foreign_procs(ForeignProcs,
+    add_foreign_procs(ProgressStream, ForeignProcs,
         !ModuleInfo, !Specs),
-    add_foreign_procs(SolverForeignProcs,
+    add_foreign_procs(ProgressStream, SolverForeignProcs,
         !ModuleInfo, !Specs),
-    add_foreign_procs(MutableForeignProcs,
+    add_foreign_procs(ProgressStream, MutableForeignProcs,
         !ModuleInfo, !Specs),
 
     % Check that the predicates listed in `:- initialise' and `:- finalise'
@@ -554,10 +554,10 @@ parse_tree_to_hlds(AugCompUnit, Globals, DumpBaseFileName, MQInfo0,
     % to the HLDS can simplify detecting this fact. However, at the moment,
     % pred_infos don't have a marker to say "defined using a fact table".
     % and without this, we cannot know when to generate such a warning.
-    add_impl_pragmas(ImplPragmas, cord.init, PragmaTabledCord,
+    add_impl_pragmas(ProgressStream, ImplPragmas, cord.init, PragmaTabledCord,
         !ModuleInfo, !QualInfo, !Specs),
     PragmasTabled = cord.list(PragmaTabledCord),
-    add_impl_pragmas_tabled(PragmasTabled,
+    add_impl_pragmas_tabled(ProgressStream, PragmasTabled,
         !ModuleInfo, !QualInfo, !Specs),
 
     FPEInfos = cord.list(FPEInfosCord),
@@ -909,38 +909,44 @@ maybe_add_default_mode(PredDecl, !ModuleInfo) :-
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
-:- pred add_clauses(ims_list(item_clause_info)::in,
+:- pred add_clauses(io.text_output_stream::in, ims_list(item_clause_info)::in,
     module_info::in, module_info::out, qual_info::in, qual_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-add_clauses([], !ModuleInfo, !QualInfo, !Specs).
-add_clauses([ImsList | ImsLists], !ModuleInfo, !QualInfo, !Specs) :-
+add_clauses(_, [], !ModuleInfo, !QualInfo, !Specs).
+add_clauses(ProgressStream, [ImsList | ImsLists],
+        !ModuleInfo, !QualInfo, !Specs) :-
     ImsList = ims_sub_list(ItemMercuryStatus, Items),
     ClauseType = clause_not_for_promise,
     item_mercury_status_to_pred_status(ItemMercuryStatus, PredStatus),
-    list.foldl3(module_add_clause(PredStatus, ClauseType), Items,
+    list.foldl3(
+        module_add_clause(ProgressStream, PredStatus, ClauseType), Items,
         !ModuleInfo, !QualInfo, !Specs),
-    add_clauses(ImsLists, !ModuleInfo, !QualInfo, !Specs).
+    add_clauses(ProgressStream, ImsLists, !ModuleInfo, !QualInfo, !Specs).
 
 %---------------------------------------------------------------------------%
 
-:- pred add_promises(ims_list(item_promise_info)::in,
+:- pred add_promises(io.text_output_stream::in,
+    ims_list(item_promise_info)::in,
     module_info::in, module_info::out, qual_info::in, qual_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-add_promises([], !ModuleInfo, !QualInfo, !Specs).
-add_promises([ImsList | ImsLists], !ModuleInfo, !QualInfo, !Specs) :-
+add_promises(_, [], !ModuleInfo, !QualInfo, !Specs).
+add_promises(ProgressStream, [ImsList | ImsLists],
+        !ModuleInfo, !QualInfo, !Specs) :-
     ImsList = ims_sub_list(ItemMercuryStatus, Items),
     item_mercury_status_to_pred_status(ItemMercuryStatus, PredStatus),
-    list.foldl3(add_promise(PredStatus), Items,
+    list.foldl3(add_promise(ProgressStream, PredStatus), Items,
         !ModuleInfo, !QualInfo, !Specs),
-    add_promises(ImsLists, !ModuleInfo, !QualInfo, !Specs).
+    add_promises(ProgressStream, ImsLists, !ModuleInfo, !QualInfo, !Specs).
 
-:- pred add_promise(pred_status::in, item_promise_info::in,
+:- pred add_promise(io.text_output_stream::in,
+    pred_status::in, item_promise_info::in,
     module_info::in, module_info::out, qual_info::in, qual_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-add_promise(PredStatus, PromiseInfo, !ModuleInfo, !QualInfo, !Specs) :-
+add_promise(ProgressStream, PredStatus, PromiseInfo,
+        !ModuleInfo, !QualInfo, !Specs) :-
     PromiseInfo = item_promise_info(PromiseType, Goal, VarSet, UnivVars,
         Context, SeqNum),
     % Promise declarations are recorded as a predicate with a goal_type
@@ -999,7 +1005,7 @@ add_promise(PredStatus, PromiseInfo, !ModuleInfo, !QualInfo, !Specs) :-
     term_subst.var_list_to_term_list(HeadVars, HeadVarTerms),
     ClauseInfo = item_clause_info(pf_predicate, PromisePredSymName,
         HeadVarTerms, VarSet, ok2(Goal, []), Context, SeqNum),
-    module_add_clause(PredStatus, ClauseType, ClauseInfo,
+    module_add_clause(ProgressStream, PredStatus, ClauseType, ClauseInfo,
         !ModuleInfo, !QualInfo, !Specs).
 
 %---------------------------------------------------------------------------%

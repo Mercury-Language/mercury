@@ -492,8 +492,8 @@ frontend_pass_after_typecheck(ProgressStream, ErrorStream, OpModeAugment,
                 MakeOptIntEnabled = no
             ;
                 MakeOptIntEnabled = yes,
-                mark_entities_in_opt_file_as_opt_exported(IntermodAnalysis,
-                    Globals, !HLDS, !IO)
+                mark_entities_in_opt_file_as_opt_exported(ProgressStream,
+                    IntermodAnalysis, Globals, !HLDS, !IO)
             ),
             % Now go ahead and do the rest of the front end passes.
             frontend_pass_by_phases(ProgressStream, ErrorStream,
@@ -564,8 +564,8 @@ create_and_write_opt_file(ProgressStream, ErrorStream, IntermodAnalysis,
         ),
         io.close_output(TmpOptStream, !IO),
 
-        copy_dot_tmp_to_base_file_report_any_error(Globals, ".opt",
-            ModuleName, OptFileName, _UpdateSucceeded, !IO),
+        copy_dot_tmp_to_base_file_report_any_error(ProgressStream, Globals,
+            ".opt", OptFileName, _UpdateSucceeded, !IO),
         touch_module_ext_datestamp(Globals, ProgressStream,
             ModuleName, ext_cur_ngs_gs(ext_cur_ngs_gs_opt_date_plain),
             _TouchSucceeded, !IO),
@@ -593,10 +593,11 @@ create_and_write_opt_file(ProgressStream, ErrorStream, IntermodAnalysis,
     % the items that would be in the .opt file as opt_exported
     % even if we are not writing to the .opt file now.
     %
-:- pred mark_entities_in_opt_file_as_opt_exported(bool::in,
-    globals::in, module_info::in, module_info::out, io::di, io::uo) is det.
+:- pred mark_entities_in_opt_file_as_opt_exported(io.text_output_stream::in,
+    bool::in, globals::in, module_info::in, module_info::out,
+    io::di, io::uo) is det.
 
-mark_entities_in_opt_file_as_opt_exported(IntermodAnalysis,
+mark_entities_in_opt_file_as_opt_exported(ProgressStream, IntermodAnalysis,
         Globals, !HLDS, !IO) :-
     globals.lookup_bool_option(Globals, intermodule_optimization,
         IntermodOpt),
@@ -632,7 +633,7 @@ mark_entities_in_opt_file_as_opt_exported(IntermodAnalysis,
     ),
     (
         UpdateStatus = yes,
-        intermod_mark_exported.maybe_opt_export_entities(!HLDS)
+        intermod_mark_exported.maybe_opt_export_entities(ProgressStream, !HLDS)
     ;
         UpdateStatus = no
     ).
@@ -1143,7 +1144,7 @@ detect_cse(ProgressStream, Verbose, Stats, !HLDS, !IO) :-
 
 check_determinism(ProgressStream, ErrorStream, Verbose, Stats,
         !HLDS, !Specs, !IO) :-
-    determinism_pass(!HLDS, DetismSpecs),
+    determinism_pass(ProgressStream, DetismSpecs, !HLDS),
     !:Specs = DetismSpecs ++ !.Specs,
     module_info_get_globals(!.HLDS, Globals),
     FoundError = contains_errors(Globals, DetismSpecs),
@@ -1351,7 +1352,7 @@ process_try_goals(ProgressStream, ErrorStream, Verbose, Stats,
     maybe_write_out_errors(ErrorStream, Verbose, Globals, !Specs, !IO),
     maybe_write_string(ProgressStream, Verbose,
         "% Transforming try goals...\n", !IO),
-    expand_try_goals_in_module(!HLDS, [], TryExpandSpecs),
+    expand_try_goals_in_module(ProgressStream, !HLDS, [], TryExpandSpecs),
     !:Specs = TryExpandSpecs ++ !.Specs,
     FoundError = contains_errors(Globals, TryExpandSpecs),
     maybe_write_out_errors(ErrorStream, Verbose, Globals, !Specs, !IO),

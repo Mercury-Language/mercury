@@ -28,11 +28,12 @@
 :- import_module parse_tree.var_table.
 
 :- import_module bool.
+:- import_module io.
 :- import_module list.
 :- import_module maybe.
 
-:- pred apply_deep_profiling_transform(module_info::in, module_info::out)
-    is det.
+:- pred apply_deep_profiling_transform(io.text_output_stream::in,
+    module_info::in, module_info::out) is det.
 
 :- pred generate_deep_call(module_info::in, string::in, int::in,
     list(prog_var)::in, maybe(list(prog_var))::in, determinism::in,
@@ -76,7 +77,6 @@
 :- import_module hlds.hlds_rtti.
 :- import_module hlds.instmap.
 :- import_module hlds.make_goal.
-:- import_module hlds.passes_aux.
 :- import_module hlds.pred_name.
 :- import_module hlds.pred_table.
 :- import_module libs.
@@ -111,7 +111,7 @@
 
 %-----------------------------------------------------------------------------%
 
-apply_deep_profiling_transform(!ModuleInfo) :-
+apply_deep_profiling_transform(ProgressStream, !ModuleInfo) :-
     % XXX The dead proc elimination pass changes the status of opt_imported
     % predicates, which changes what labels they get generated. The
     % call_site_static structures we generate must match the labels created
@@ -128,7 +128,7 @@ apply_deep_profiling_transform(!ModuleInfo) :-
     ),
     module_info_get_valid_pred_ids(!.ModuleInfo, PredIds),
     module_info_get_pred_id_table(!.ModuleInfo, PredIdTable0),
-    list.foldl(deep_prof_transform_pred(!.ModuleInfo), PredIds,
+    list.foldl(deep_prof_transform_pred(ProgressStream, !.ModuleInfo), PredIds,
         PredIdTable0, PredIdTable),
     module_info_set_pred_id_table(PredIdTable, !ModuleInfo).
 
@@ -594,22 +594,25 @@ figure_out_rec_call_numbers_in_case_list([Case|Cases], !N, !TailCallSites) :-
 
 %-----------------------------------------------------------------------------%
 
-:- pred deep_prof_transform_pred(module_info::in, pred_id::in,
-    pred_id_table::in, pred_id_table::out) is det.
+:- pred deep_prof_transform_pred(io.text_output_stream::in, module_info::in,
+    pred_id::in, pred_id_table::in, pred_id_table::out) is det.
 
-deep_prof_transform_pred(ModuleInfo, PredId, !PredMap) :-
+deep_prof_transform_pred(ProgressStream, ModuleInfo, PredId, !PredMap) :-
     map.lookup(!.PredMap, PredId, PredInfo0),
     ProcIds = pred_info_all_non_imported_procids(PredInfo0),
     pred_info_get_proc_table(PredInfo0, ProcTable0),
-    list.foldl(deep_prof_maybe_transform_proc(ModuleInfo, PredId),
+    list.foldl(
+        deep_prof_maybe_transform_proc(ProgressStream, ModuleInfo, PredId),
         ProcIds, ProcTable0, ProcTable),
     pred_info_set_proc_table(ProcTable, PredInfo0, PredInfo),
     map.det_update(PredId, PredInfo, !PredMap).
 
-:- pred deep_prof_maybe_transform_proc(module_info::in,
-    pred_id::in, proc_id::in, proc_table::in, proc_table::out) is det.
+:- pred deep_prof_maybe_transform_proc(io.text_output_stream::in,
+    module_info::in, pred_id::in, proc_id::in,
+    proc_table::in, proc_table::out) is det.
 
-deep_prof_maybe_transform_proc(ModuleInfo, PredId, ProcId, !ProcTable) :-
+deep_prof_maybe_transform_proc(ProgressStream, ModuleInfo, PredId, ProcId,
+        !ProcTable) :-
     map.lookup(!.ProcTable, ProcId, ProcInfo0),
     PredModuleName = predicate_module(ModuleInfo, PredId),
     ( if
@@ -624,7 +627,6 @@ deep_prof_maybe_transform_proc(ModuleInfo, PredId, ProcId, !ProcTable) :-
             globals.lookup_bool_option(Globals, very_verbose, VeryVerbose),
             ProcName = pred_proc_id_pair_to_user_string(ModuleInfo,
                 PredId, ProcId),
-            get_progress_output_stream(ModuleInfo, ProgressStream, !IO),
             maybe_write_string(ProgressStream, VeryVerbose,
                 string.format("%% Deep profiling: %s\n", [s(ProcName)]), !IO)
         ),

@@ -333,11 +333,11 @@ make_linked_target_2(ProgressStream, Globals, LinkedTargetFile, Succeeded,
                 Succeeded0 = did_not_succeed
             ;
                 MaybeErrorStream = es_ok(MESI, ErrorStream),
-                build_linked_target(MainModuleName, FileType,
-                    FullMainModuleLinkedFileName,
+                build_linked_target(ProgressStream, Globals,
+                    MainModuleName, FileType, FullMainModuleLinkedFileName,
                     CurDirMainModuleLinkedFileName, MaybeTimestamp, AllModules,
                     ObjModules, CompilationTarget, PIC, DepsSucceeded,
-                    BuildDepsResult, ProgressStream, ErrorStream, Globals,
+                    BuildDepsResult,
                     Succeeded0, !Info, !IO),
                 close_module_error_stream_handle_errors(Globals,
                     MainModuleName, ProgressStream, MESI, ErrorStream,
@@ -460,18 +460,17 @@ get_foreign_object_targets(ProgressStream, Globals, PIC,
         ObjectTargets = []
     ).
 
-:- pred build_linked_target(module_name::in, linked_target_type::in,
-    file_name::in, file_name::in, maybe_error(timestamp)::in,
-    set(module_name)::in, list(module_name)::in, compilation_target::in,
-    pic::in, maybe_succeeded::in, dependencies_result::in,
-    io.text_output_stream::in, io.text_output_stream::in,
-    globals::in, maybe_succeeded::out,
+:- pred build_linked_target(io.text_output_stream::in, globals::in,
+    module_name::in, linked_target_type::in, file_name::in, file_name::in,
+    maybe_error(timestamp)::in, set(module_name)::in, list(module_name)::in,
+    compilation_target::in, pic::in, maybe_succeeded::in,
+    dependencies_result::in, maybe_succeeded::out,
     make_info::in, make_info::out, io::di, io::uo) is det.
 
-build_linked_target(MainModuleName, FileType, FullMainModuleLinkedFileName,
-        CurDirMainModuleLinkedFileName, MaybeTimestamp, AllModules, ObjModules,
-        CompilationTarget, PIC, DepsSucceeded, BuildDepsResult,
-        ProgressStream, ErrorStream, Globals, Succeeded, !Info, !IO) :-
+build_linked_target(ProgressStream, Globals, MainModuleName, FileType,
+        FullMainModuleLinkedFileName, CurDirMainModuleLinkedFileName,
+        MaybeTimestamp, AllModules, ObjModules, CompilationTarget, PIC,
+        DepsSucceeded, BuildDepsResult, Succeeded, !Info, !IO) :-
     globals.lookup_maybe_string_option(Globals, pre_link_command,
         MaybePreLinkCommand),
     (
@@ -479,8 +478,8 @@ build_linked_target(MainModuleName, FileType, FullMainModuleLinkedFileName,
         make_all_module_command(PreLinkCommand, MainModuleName,
             set.to_sorted_list(AllModules), CommandString, !IO),
         OutputStream = ProgressStream,
-        invoke_system_command(Globals, ProgressStream, ErrorStream,
-            OutputStream, cmd_verbose, CommandString, PreLinkSucceeded, !IO)
+        invoke_system_command(Globals, ProgressStream, OutputStream,
+            cmd_verbose, CommandString, PreLinkSucceeded, !IO)
     ;
         MaybePreLinkCommand = no,
         PreLinkSucceeded = succeeded
@@ -491,7 +490,7 @@ build_linked_target(MainModuleName, FileType, FullMainModuleLinkedFileName,
             MainModuleName, FileType,
             FullMainModuleLinkedFileName, CurDirMainModuleLinkedFileName,
             MaybeTimestamp, AllModules, ObjModules, CompilationTarget, PIC,
-            DepsSucceeded, BuildDepsResult, ErrorStream, Succeeded, !Info, !IO)
+            DepsSucceeded, BuildDepsResult, Succeeded, !Info, !IO)
     ;
         PreLinkSucceeded = did_not_succeed,
         Succeeded = did_not_succeed
@@ -501,13 +500,13 @@ build_linked_target(MainModuleName, FileType, FullMainModuleLinkedFileName,
     module_name::in, linked_target_type::in, file_name::in, file_name::in,
     maybe_error(timestamp)::in, set(module_name)::in, list(module_name)::in,
     compilation_target::in, pic::in, maybe_succeeded::in,
-    dependencies_result::in, io.text_output_stream::in, maybe_succeeded::out,
+    dependencies_result::in, maybe_succeeded::out,
     make_info::in, make_info::out, io::di, io::uo) is det.
 
 build_linked_target_2(ProgressStream, Globals, MainModuleName, FileType,
         FullMainModuleLinkedFileName, CurDirMainModuleLinkedFileName,
         MaybeTimestamp, AllModules, ObjModules, CompilationTarget, PIC,
-        DepsSucceeded, BuildDepsResult, ErrorStream, Succeeded, !Info, !IO) :-
+        DepsSucceeded, BuildDepsResult, Succeeded, !Info, !IO) :-
     % Clear the option -- we will pass the list of files directly.
     globals.lookup_accumulating_option(Globals, link_objects, LinkObjects),
     globals.set_option(link_objects, accumulating([]),
@@ -519,7 +518,7 @@ build_linked_target_2(ProgressStream, Globals, MainModuleName, FileType,
     AllModulesList = set.to_sorted_list(AllModules),
     (
         FileType = executable,
-        make_init_obj_file(NoLinkObjsGlobals, ProgressStream, ErrorStream,
+        make_init_obj_file(NoLinkObjsGlobals, ProgressStream,
             MainModuleName, AllModulesList, InitObjectResult, !IO),
         MaybeInitObjectResult = yes(InitObjectResult)
     ;
@@ -608,7 +607,7 @@ build_linked_target_2(ProgressStream, Globals, MainModuleName, FileType,
             Succeeded = succeeded
         else
             post_link_maybe_make_symlink_or_copy(NoLinkObjsGlobals,
-                ProgressStream, ErrorStream,
+                ProgressStream,
                 FullMainModuleLinkedFileName, CurDirMainModuleLinkedFileName,
                 MainModuleName, FileType, Succeeded, MadeSymlinkOrCopy, !IO),
             (
@@ -666,9 +665,8 @@ build_linked_target_2(ProgressStream, Globals, MainModuleName, FileType,
             % Run the link in a separate process so it can be killed
             % if an interrupt is received.
             call_in_forked_process(
-                compile_target_code.link(NoLinkObjsGlobals,
-                    ProgressStream, ErrorStream, FileType,
-                    MainModuleName, AllObjects),
+                compile_target_code.link(NoLinkObjsGlobals, ProgressStream,
+                    FileType, MainModuleName, AllObjects),
                 Succeeded, !IO)
         ),
         CmdLineTargets0 = make_info_get_command_line_targets(!.Info),
@@ -825,22 +823,21 @@ build_java_files(ProgressStream, Globals, MainModuleName, ModuleNames,
         Succeeded = did_not_succeed
     ;
         MaybeErrorStream = es_ok(MESI, ErrorStream),
-        build_java_files_2(ProgressStream, ErrorStream, Globals, JavaFiles,
-            Succeeded, !Info, !IO),
+        build_java_files_2(ProgressStream, Globals, JavaFiles, Succeeded,
+            !Info, !IO),
         close_module_error_stream_handle_errors(Globals, MainModuleName,
             ProgressStream, MESI, ErrorStream, !Info, !IO)
     ).
 
-:- pred build_java_files_2(io.text_output_stream::in,
-    io.text_output_stream::in, globals::in,
+:- pred build_java_files_2(io.text_output_stream::in, globals::in,
     list(string)::in, maybe_succeeded::out,
     make_info::in, make_info::out, io::di, io::uo) is det.
 
-build_java_files_2(ProgressStream, ErrorStream, Globals, JavaFiles,
-        Succeeded, !Info, !IO) :-
+build_java_files_2(ProgressStream, Globals, JavaFiles, Succeeded,
+        !Info, !IO) :-
     list.det_head_tail(JavaFiles, HeadJavaFile, TailJavaFiles),
     call_in_forked_process(
-        compile_java_files(Globals, ProgressStream, ErrorStream,
+        compile_java_files(Globals, ProgressStream,
             HeadJavaFile, TailJavaFiles),
         Succeeded, !IO).
 
@@ -1722,8 +1719,7 @@ install_library_grade(LinkSucceeded0, ModuleName, AllModules,
 
     (
         OptionsSpecs = [_ | _],
-        get_error_output_stream(Globals, ModuleName, ErrorStream, !IO),
-        usage_errors(ErrorStream, Globals, OptionsSpecs, !IO),
+        usage_errors(ProgressStream, Globals, OptionsSpecs, !IO),
         Succeeded = did_not_succeed
     ;
         OptionsSpecs = [],
@@ -2009,13 +2005,12 @@ maybe_install_library_file(ProgressStream, Globals, Linkage,
 
 install_file(ProgressStream, Globals, FileName, InstallDir, Succeeded, !IO) :-
     % XXX MAKE_STREAM
-    ErrorStream = ProgressStream,
     OutputStream = ProgressStream,
     verbose_make_four_part_msg(Globals, "Installing file", FileName,
         "in", InstallDir, InstallMsg),
     maybe_write_msg(ProgressStream, InstallMsg, !IO),
     Command = make_install_file_command(Globals, FileName, InstallDir),
-    invoke_system_command(Globals, ProgressStream, ErrorStream, OutputStream,
+    invoke_system_command(Globals, ProgressStream, OutputStream,
         cmd_verbose, Command, Succeeded, !IO).
 
 :- pred install_directory(io.text_output_stream::in, globals::in,
@@ -2025,13 +2020,12 @@ install_file(ProgressStream, Globals, FileName, InstallDir, Succeeded, !IO) :-
 install_directory(ProgressStream, Globals, SourceDirName, InstallDir,
         Succeeded, !IO) :-
     % XXX MAKE_STREAM
-    ErrorStream = ProgressStream,
     OutputStream = ProgressStream,
     verbose_make_four_part_msg(Globals, "Installing directory", SourceDirName,
         "in", InstallDir, InstallMsg),
     maybe_write_msg(ProgressStream, InstallMsg, !IO),
     Command = make_install_dir_command(Globals, SourceDirName, InstallDir),
-    invoke_system_command(Globals, ProgressStream, ErrorStream, OutputStream,
+    invoke_system_command(Globals, ProgressStream, OutputStream,
         cmd_verbose, Command, Succeeded, !IO).
 
 :- pred make_install_dirs(io.text_output_stream::in, globals::in,
@@ -2146,9 +2140,8 @@ generate_archive_index(ProgressStream, Globals, FileName, InstallDir,
         quote_shell_cmd_arg(InstallDir / FileName)
     ]),
     % XXX MAKE_STREAM
-    ErrorStream = ProgressStream,
     CmdOutputStream = ProgressStream,
-    invoke_system_command(Globals, ProgressStream, ErrorStream,
+    invoke_system_command(Globals, ProgressStream,
         CmdOutputStream, cmd_verbose, Command, Succeeded, !IO).
 
 %---------------------------------------------------------------------------%
@@ -2173,7 +2166,8 @@ maybe_make_grade_clean(ProgressStream, Globals, Clean, ModuleName, AllModules,
     module_name::in, list(module_name)::in,
     make_info::in, make_info::out, io::di, io::uo) is det.
 
-make_grade_clean(ProgressStream, Globals, ModuleName, AllModules, !Info, !IO) :-
+make_grade_clean(ProgressStream, Globals, ModuleName, AllModules,
+        !Info, !IO) :-
     grade_directory_component(Globals, Grade),
     % XXX MAKE_EXTRA_PERIOD
     string.format("Cleaning up grade-dependent files for `%s' in grade %s.",

@@ -197,11 +197,13 @@
 :- import_module parse_tree.
 :- import_module parse_tree.error_spec.
 
+:- import_module io.
 :- import_module list.
 
 %-----------------------------------------------------------------------------%
 
-:- pred expand_try_goals_in_module(module_info::in, module_info::out,
+:- pred expand_try_goals_in_module(io.text_output_stream::in,
+    module_info::in, module_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
 %-----------------------------------------------------------------------------%
@@ -243,7 +245,7 @@
 
 %-----------------------------------------------------------------------------%
 
-expand_try_goals_in_module(!ModuleInfo, !Specs) :-
+expand_try_goals_in_module(ProgressStream, !ModuleInfo, !Specs) :-
     % The exception module is implicitly imported if any try goals were seen,
     % so if the exception module is not imported, then we know there are
     % no try goals to be expanded.
@@ -255,7 +257,7 @@ expand_try_goals_in_module(!ModuleInfo, !Specs) :-
             module_info_set_globals(!.Globals, !ModuleInfo),
 
             module_info_get_valid_pred_ids(!.ModuleInfo, PredIds),
-            list.foldl2(expand_try_goals_in_pred, PredIds,
+            list.foldl2(expand_try_goals_in_pred(ProgressStream), PredIds,
                 !ModuleInfo, !Specs),
 
             module_info_get_globals(!.ModuleInfo, !:Globals),
@@ -266,21 +268,22 @@ expand_try_goals_in_module(!ModuleInfo, !Specs) :-
         true
     ).
 
-:- pred expand_try_goals_in_pred(pred_id::in,
+:- pred expand_try_goals_in_pred(io.text_output_stream::in, pred_id::in,
     module_info::in, module_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-expand_try_goals_in_pred(PredId, !ModuleInfo, !Specs) :-
+expand_try_goals_in_pred(ProgressStream, PredId, !ModuleInfo, !Specs) :-
     module_info_pred_info(!.ModuleInfo, PredId, PredInfo),
     ProcIds = pred_info_all_non_imported_procids(PredInfo),
-    list.foldl2(expand_try_goals_in_proc(PredId), ProcIds,
+    list.foldl2(expand_try_goals_in_proc(ProgressStream, PredId), ProcIds,
         !ModuleInfo, !Specs).
 
-:- pred expand_try_goals_in_proc(pred_id::in, proc_id::in,
-    module_info::in, module_info::out,
+:- pred expand_try_goals_in_proc(io.text_output_stream::in,
+    pred_id::in, proc_id::in, module_info::in, module_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-expand_try_goals_in_proc(PredId, ProcId, !ModuleInfo, !Specs) :-
+expand_try_goals_in_proc(ProgressStream, PredId, ProcId,
+        !ModuleInfo, !Specs) :-
     some [!PredInfo, !ProcInfo] (
         module_info_pred_proc_info(!.ModuleInfo, PredId, ProcId,
             !:PredInfo, !:ProcInfo),
@@ -293,20 +296,21 @@ expand_try_goals_in_proc(PredId, ProcId, !ModuleInfo, !Specs) :-
 
         (
             Changed = yes,
-            update_changed_proc(Goal, PredId, ProcId, !.PredInfo, !.ProcInfo,
-                !ModuleInfo, !Specs),
+            update_changed_proc(ProgressStream, Goal, PredId, ProcId,
+                !.PredInfo, !.ProcInfo, !ModuleInfo, !Specs),
             module_info_clobber_dependency_info(!ModuleInfo)
         ;
             Changed = no
         )
     ).
 
-:- pred update_changed_proc(hlds_goal::in, pred_id::in, proc_id::in,
+:- pred update_changed_proc(io.text_output_stream::in, hlds_goal::in,
+    pred_id::in, proc_id::in,
     pred_info::in, proc_info::in, module_info::in, module_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-update_changed_proc(Goal, PredId, ProcId, PredInfo, !.ProcInfo, !ModuleInfo,
-        !Specs) :-
+update_changed_proc(ProgressStream, Goal, PredId, ProcId, PredInfo,
+        !.ProcInfo, !ModuleInfo, !Specs) :-
     proc_info_set_goal(Goal, !ProcInfo),
     requantify_proc_general(ord_nl_maybe_lambda, !ProcInfo),
     module_info_set_pred_proc_info(PredId, ProcId, PredInfo, !.ProcInfo,
@@ -337,7 +341,8 @@ update_changed_proc(Goal, PredId, ProcId, PredInfo, !.ProcInfo, !ModuleInfo,
         % XXX It would be nice to replace any pre-expansion determinism error
         % messages (which mention the hidden predicate magic_exception_result)
         % with these error messages.
-        determinism_check_proc(PredId, ProcId, !ModuleInfo, _DetismSpecs)
+        determinism_check_proc(ProgressStream, PredId, ProcId, _DetismSpecs,
+            !ModuleInfo)
     ).
 
 %-----------------------------------------------------------------------------%

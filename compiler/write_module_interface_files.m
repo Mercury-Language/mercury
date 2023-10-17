@@ -458,7 +458,6 @@ write_interface_file_int1_int2_burdened_module(ProgressStream, ErrorStream,
 actually_write_interface_file0(ProgressStream, ErrorStream, Globals,
         ParseTreeInt0, FileName, TmpFileName, MaybeTimestamp,
         Succeeded, !IO) :-
-    ModuleName = ParseTreeInt0 ^ pti0_module_name,
     disable_all_line_numbers(Globals, NoLineNumGlobals),
     % We handle any failure to read in the old interface version as
     % every item in the module source being brand new.
@@ -469,8 +468,8 @@ actually_write_interface_file0(ProgressStream, ErrorStream, Globals,
         := MaybeVersionNumbers,
     output_parse_tree_int0(ProgressStream, ErrorStream, NoLineNumGlobals,
         TmpFileName, ParseTreeInt0V, OutputSucceeded, !IO),
-    copy_dot_tmp_to_base_file_report_any_error(Globals, ".int0",
-        ModuleName, FileName, UpdateSucceeded, !IO),
+    copy_dot_tmp_to_base_file_report_any_error(ProgressStream, Globals,
+        ".int0", FileName, UpdateSucceeded, !IO),
     Succeeded = OutputSucceeded `and` UpdateSucceeded.
 
 :- pred actually_write_interface_file1(
@@ -481,7 +480,6 @@ actually_write_interface_file0(ProgressStream, ErrorStream, Globals,
 actually_write_interface_file1(ProgressStream, ErrorStream, Globals,
         ParseTreeInt1, FileName, TmpFileName, MaybeTimestamp,
         Succeeded, !IO) :-
-    ModuleName = ParseTreeInt1 ^ pti1_module_name,
     disable_all_line_numbers(Globals, NoLineNumGlobals),
     % We handle any failure to read in the old interface version as
     % every item in the module source being brand new.
@@ -492,8 +490,8 @@ actually_write_interface_file1(ProgressStream, ErrorStream, Globals,
         := MaybeVersionNumbers,
     output_parse_tree_int1(ProgressStream, ErrorStream, NoLineNumGlobals,
         TmpFileName, ParseTreeInt1V, OutputSucceeded, !IO),
-    copy_dot_tmp_to_base_file_report_any_error(Globals, ".int",
-        ModuleName, FileName, UpdateSucceeded, !IO),
+    copy_dot_tmp_to_base_file_report_any_error(ProgressStream, Globals,
+        ".int", FileName, UpdateSucceeded, !IO),
     Succeeded = OutputSucceeded `and` UpdateSucceeded.
 
 :- pred actually_write_interface_file2(
@@ -504,7 +502,6 @@ actually_write_interface_file1(ProgressStream, ErrorStream, Globals,
 actually_write_interface_file2(ProgressStream, ErrorStream, Globals,
         ParseTreeInt2, FileName, TmpFileName, MaybeTimestamp,
         Succeeded, !IO) :-
-    ModuleName = ParseTreeInt2 ^ pti2_module_name,
     disable_all_line_numbers(Globals, NoLineNumGlobals),
     maybe_read_old_int2_and_compare_for_smart_recomp(ProgressStream,
         NoLineNumGlobals, ParseTreeInt2, MaybeTimestamp,
@@ -513,8 +510,8 @@ actually_write_interface_file2(ProgressStream, ErrorStream, Globals,
         := MaybeVersionNumbers,
     output_parse_tree_int2(ProgressStream, ErrorStream, NoLineNumGlobals,
         TmpFileName, ParseTreeInt2V, OutputSucceeded, !IO),
-    copy_dot_tmp_to_base_file_report_any_error(Globals, ".int2",
-        ModuleName, FileName, UpdateSucceeded, !IO),
+    copy_dot_tmp_to_base_file_report_any_error(ProgressStream, Globals,
+        ".int2", FileName, UpdateSucceeded, !IO),
     Succeeded = OutputSucceeded `and` UpdateSucceeded.
 
 :- pred actually_write_interface_file3(
@@ -525,12 +522,11 @@ actually_write_interface_file2(ProgressStream, ErrorStream, Globals,
 actually_write_interface_file3(ProgressStream, ErrorStream, Globals,
         ParseTreeInt3, FileName, TmpFileName, _MaybeTimestamp,
         Succeeded, !IO) :-
-    ModuleName = ParseTreeInt3 ^ pti3_module_name,
     disable_all_line_numbers(Globals, NoLineNumGlobals),
     output_parse_tree_int3(ProgressStream, ErrorStream, NoLineNumGlobals,
         TmpFileName, ParseTreeInt3, OutputSucceeded, !IO),
-    copy_dot_tmp_to_base_file_report_any_error(Globals, ".int3",
-        ModuleName, FileName, UpdateSucceeded, !IO),
+    copy_dot_tmp_to_base_file_report_any_error(ProgressStream, Globals,
+        ".int3", FileName, UpdateSucceeded, !IO),
     Succeeded = OutputSucceeded `and` UpdateSucceeded.
 
 %---------------------------------------------------------------------------%

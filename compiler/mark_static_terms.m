@@ -29,7 +29,7 @@
 
 %-----------------------------------------------------------------------------%
 
-:- pred maybe_mark_static_terms(bool::in, bool::in,
+:- pred maybe_mark_static_terms(io.text_output_stream::in, bool::in, bool::in,
     module_info::in, module_info::out, io::di, io::uo) is det.
 
 %-----------------------------------------------------------------------------%
@@ -53,14 +53,12 @@
 
 %-----------------------------------------------------------------------------%
 
-maybe_mark_static_terms(Verbose, Stats, !HLDS, !IO) :-
+maybe_mark_static_terms(ProgressStream, Verbose, Stats, !HLDS, !IO) :-
     module_info_get_globals(!.HLDS, Globals),
     globals.get_opt_tuple(Globals, OptTuple),
     SGCells = OptTuple ^ ot_use_static_ground_cells,
     (
         SGCells = use_static_ground_cells,
-        module_info_get_name(!.HLDS, ModuleName),
-        get_progress_output_stream(Globals, ModuleName, ProgressStream, !IO),
         maybe_write_string(ProgressStream, Verbose,
             "% Marking static ground terms...\n", !IO),
         maybe_flush_output(ProgressStream, Verbose, !IO),

@@ -39,7 +39,8 @@
 
 %---------------------------------------------------------------------------%
 
-    % output_c_mlds(MLDS, Globals, TargetOrDump, Suffix, Succeeded, !IO):
+    % output_c_mlds(ProgressStream, MLDS, Globals, TargetOrDump, Suffix,
+    %   Succeeded, !IO):
     %
     % Output C code to the appropriate C file and C declarations to the
     % appropriate header file. The file names are determined by the module
@@ -47,8 +48,9 @@
     % for debugging dumps. For normal output, the suffix should be the empty
     % string.)
     %
-:- pred output_c_mlds(mlds::in, globals::in, target_or_dump::in,
-    string::in, maybe_succeeded::out, io::di, io::uo) is det.
+:- pred output_c_mlds(io.text_output_stream::in, mlds::in, globals::in,
+    target_or_dump::in, string::in, maybe_succeeded::out,
+    io::di, io::uo) is det.
 
     % output_c_dump_preds(MLDS, Globals, TargetOrDump, Suffix, DumpPreds, !IO):
     %
@@ -56,8 +58,8 @@
     % occurs in DumpPreds. The file name to write to is determined similarly
     % to how output_c_mlds does it, but with ".mlds_dump" replacing ".c".
     %
-:- pred output_c_dump_preds(mlds::in, globals::in, target_or_dump::in,
-    string::in, list(string)::in, io::di, io::uo) is det.
+:- pred output_c_dump_preds(io.text_output_stream::in, mlds::in, globals::in,
+    target_or_dump::in, string::in, list(string)::in, io::di, io::uo) is det.
 
 :- pred func_defn_has_name_in_list(list(string)::in, mlds_function_defn::in)
     is semidet.
@@ -104,7 +106,8 @@
 :- import_module set.
 :- import_module string.
 
-output_c_mlds(MLDS, Globals, TargetOrDump, Suffix, Succeeded, !IO) :-
+output_c_mlds(ProgressStream, MLDS, Globals, TargetOrDump, Suffix,
+        Succeeded, !IO) :-
     % We output the source file before we output the header.
     % The reason why we need this order is that the mmake dependencies
     % we generate say that the header file depends on the source file.
@@ -113,19 +116,21 @@ output_c_mlds(MLDS, Globals, TargetOrDump, Suffix, Succeeded, !IO) :-
     ModuleName = mlds_get_module_name(MLDS),
     module_name_to_source_file_name(ModuleName, SourceFileName, !IO),
     Opts = init_mlds_to_c_opts(Globals, SourceFileName, TargetOrDump),
-    output_c_file_opts(MLDS, Opts, Suffix, Succeeded0, !IO),
+    output_c_file_opts(ProgressStream, MLDS, Opts, Suffix, Succeeded0, !IO),
     (
         Succeeded0 = succeeded,
-        output_c_header_file_opts(MLDS, Opts, Suffix, Succeeded, !IO)
+        output_c_header_file_opts(ProgressStream, MLDS, Opts, Suffix,
+            Succeeded, !IO)
     ;
         Succeeded0 = did_not_succeed,
         Succeeded = did_not_succeed
     ).
 
-:- pred output_c_file_opts(mlds::in, mlds_to_c_opts::in, string::in,
-    maybe_succeeded::out, io::di, io::uo) is det.
+:- pred output_c_file_opts(io.text_output_stream::in, mlds::in,
+    mlds_to_c_opts::in, string::in, maybe_succeeded::out,
+    io::di, io::uo) is det.
 
-output_c_file_opts(MLDS, Opts, Suffix, Succeeded, !IO) :-
+output_c_file_opts(ProgressStream, MLDS, Opts, Suffix, Succeeded, !IO) :-
     ModuleName = mlds_get_module_name(MLDS),
     Globals = Opts ^ m2co_all_globals,
     module_name_to_file_name_create_dirs(Globals, $pred,
@@ -133,13 +138,15 @@ output_c_file_opts(MLDS, Opts, Suffix, Succeeded, !IO) :-
         ModuleName, SourceFileName0, !IO),
     SourceFileName = SourceFileName0 ++ Suffix,
     Indent = 0,
-    output_to_file_stream(Globals, ModuleName, SourceFileName,
+    output_to_file_stream(ProgressStream, Globals, SourceFileName,
         mlds_output_src_file(Opts, Indent, MLDS), Succeeded, !IO).
 
-:- pred output_c_header_file_opts(mlds::in, mlds_to_c_opts::in, string::in,
-    maybe_succeeded::out, io::di, io::uo) is det.
+:- pred output_c_header_file_opts(io.text_output_stream::in, mlds::in,
+    mlds_to_c_opts::in, string::in, maybe_succeeded::out,
+    io::di, io::uo) is det.
 
-output_c_header_file_opts(MLDS, Opts, Suffix, !:Succeeded, !IO) :-
+output_c_header_file_opts(ProgressStream, MLDS, Opts, Suffix,
+        !:Succeeded, !IO) :-
     % We write the header file out to <module>.mih.tmp and then call
     % `update_interface' to move the <module>.mih.tmp file to <module>.mih.
     % This avoids updating the timestamp on the `.mih' file if it has not
@@ -157,19 +164,20 @@ output_c_header_file_opts(MLDS, Opts, Suffix, !:Succeeded, !IO) :-
         ^ m2co_line_numbers := LineNumbersForCHdrs)
         ^ m2co_foreign_line_numbers := LineNumbersForCHdrs),
     Indent = 0,
-    output_to_file_stream(Globals, ModuleName, TmpHeaderFileName,
+    output_to_file_stream(ProgressStream, Globals, TmpHeaderFileName,
         mlds_output_hdr_file(HdrOpts, Indent, MLDS), !:Succeeded, !IO),
     (
         !.Succeeded = succeeded,
-        copy_dot_tmp_to_base_file_report_any_error(Globals, ".mih",
-            ModuleName, HeaderFileName, !:Succeeded, !IO)
+        copy_dot_tmp_to_base_file_report_any_error(ProgressStream, Globals,
+            ".mih", HeaderFileName, !:Succeeded, !IO)
     ;
         !.Succeeded = did_not_succeed
     ).
 
 %---------------------------------------------------------------------------%
 
-output_c_dump_preds(MLDS, Globals, TargetOrDump, Suffix, DumpPredNames, !IO) :-
+output_c_dump_preds(ProgressStream, MLDS, Globals, TargetOrDump, Suffix,
+        DumpPredNames, !IO) :-
     ModuleName = mlds_get_module_name(MLDS),
     module_name_to_source_file_name(ModuleName, SourceFileName, !IO),
     Opts = init_mlds_to_c_opts(Globals, SourceFileName, TargetOrDump),
@@ -181,7 +189,7 @@ output_c_dump_preds(MLDS, Globals, TargetOrDump, Suffix, DumpPredNames, !IO) :-
     list.filter(func_defn_has_name_in_list(DumpPredNames), ProcDefns,
         SelectedProcDefns),
     list.sort(SelectedProcDefns, SortedSelectedProcDefns),
-    output_to_file_stream(Globals, ModuleName, DumpFileName,
+    output_to_file_stream(ProgressStream, Globals, DumpFileName,
         output_c_dump_func_defns(Opts, MLDS_ModuleName,
             SortedSelectedProcDefns),
         _Succeeded, !IO).

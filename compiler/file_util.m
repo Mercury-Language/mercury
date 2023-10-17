@@ -19,8 +19,6 @@
 
 :- import_module libs.globals.
 :- import_module libs.maybe_util.
-:- import_module mdbcomp.
-:- import_module mdbcomp.sym_name.
 
 :- import_module bool.
 :- import_module io.
@@ -37,7 +35,8 @@
     % Write to a given filename, giving appropriate status messages
     % and error messages if the file cannot be opened.
     %
-:- pred output_to_file_stream(globals::in, module_name::in, string::in,
+:- pred output_to_file_stream(io.text_output_stream::in, globals::in,
+    string::in,
     pred(io.text_output_stream, list(string), io, io)::
         in(pred(in, out, di, uo) is det),
     maybe_succeeded::out, io::di, io::uo) is det.
@@ -137,12 +136,11 @@
 
 %---------------------------------------------------------------------------%
 
-output_to_file_stream(Globals, ModuleName, FileName, Action0,
+output_to_file_stream(ProgressStream, Globals, FileName, Action0,
         Succeeded, !IO) :-
     globals.lookup_bool_option(Globals, verbose, Verbose),
     globals.lookup_bool_option(Globals, statistics, Stats),
 
-    get_progress_output_stream(Globals, ModuleName, ProgressStream, !IO),
     string.format("%% Writing to file `%s'...\n", [s(FileName)], WritingMsg),
     maybe_write_string(ProgressStream, Verbose, WritingMsg, !IO),
     maybe_flush_output(ProgressStream, Verbose, !IO),
@@ -168,8 +166,7 @@ output_to_file_stream(Globals, ModuleName, FileName, Action0,
             ;
                 Errors = [_ | _],
                 maybe_write_string(ProgressStream, Verbose, "\n", !IO),
-                get_error_output_stream(Globals, ModuleName, ErrorStream, !IO),
-                list.foldl(report_error(ErrorStream), Errors, !IO),
+                list.foldl(report_error(ProgressStream), Errors, !IO),
                 Succeeded = did_not_succeed
             )
         ;
@@ -179,10 +176,9 @@ output_to_file_stream(Globals, ModuleName, FileName, Action0,
     ;
         Res = error(_),
         maybe_write_string(ProgressStream, Verbose, "\n", !IO),
-        get_error_output_stream(Globals, ModuleName, ErrorStream, !IO),
         ErrorMessage =
             string.format("can't open file `%s' for output.", [s(FileName)]),
-        report_error(ErrorStream, ErrorMessage, !IO),
+        report_error(ProgressStream, ErrorMessage, !IO),
         Succeeded = did_not_succeed
     ).
 

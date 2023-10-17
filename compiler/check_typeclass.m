@@ -238,7 +238,8 @@ check_typeclasses(ProgressStream, !ModuleInfo, !QualInfo, !:Specs) :-
             maybe_write_string(ProgressStream, Verbose,
                 "% Checking typeclass constraints on predicates...\n", !IO)
         ),
-        check_typeclass_constraints_on_preds(!.ModuleInfo, !Specs),
+        check_typeclass_constraints_on_preds(ProgressStream, !.ModuleInfo,
+            !Specs),
 
         % Pass 7.
         trace [io(!IO)] (
@@ -1604,18 +1605,21 @@ check_consistency_pair_2(ClassId, ClassDefn, InstanceA, InstanceB, FunDep,
     % the constraints are not all determined by the type variables in the type
     % and the functional dependencies.
     %
-:- pred check_typeclass_constraints_on_preds(module_info::in,
+:- pred check_typeclass_constraints_on_preds(io.text_output_stream::in,
+    module_info::in,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-check_typeclass_constraints_on_preds(ModuleInfo, !Specs) :-
+check_typeclass_constraints_on_preds(ProgressStream, ModuleInfo, !Specs) :-
     module_info_get_valid_pred_ids(ModuleInfo, PredIds),
-    list.foldl(check_typeclass_constraints_on_pred(ModuleInfo),
+    list.foldl(check_typeclass_constraints_on_pred(ProgressStream, ModuleInfo),
         PredIds, !Specs).
 
-:- pred check_typeclass_constraints_on_pred(module_info::in, pred_id::in,
+:- pred check_typeclass_constraints_on_pred(io.text_output_stream::in,
+    module_info::in, pred_id::in,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-check_typeclass_constraints_on_pred(ModuleInfo, PredId, !Specs) :-
+check_typeclass_constraints_on_pred(ProgressStream, ModuleInfo, PredId,
+        !Specs) :-
     module_info_pred_info(ModuleInfo, PredId, PredInfo),
     pred_info_get_class_context(PredInfo, Constraints),
     Constraints = constraints(UnivConstraints, ExistConstraints),
@@ -1629,7 +1633,6 @@ check_typeclass_constraints_on_pred(ModuleInfo, PredId, !Specs) :-
         % constraints does not matter.
         AllConstraints = UnivConstraints ++ ExistConstraints,
         trace [io(!IO)] (
-            get_progress_output_stream(ModuleInfo, ProgressStream, !IO),
             maybe_write_pred_progress_message(ProgressStream, ModuleInfo,
                 "Checking typeclass constraints on", PredId, !IO)
         ),

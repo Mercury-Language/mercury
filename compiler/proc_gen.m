@@ -38,14 +38,15 @@
 :- import_module ll_backend.global_data.
 :- import_module ll_backend.llds.
 
+:- import_module io.
 :- import_module list.
 
 %---------------------------------------------------------------------------%
 
     % Translate a HLDS module to LLDS.
     %
-:- pred generate_module_code(module_info::in, list(c_procedure)::out,
-    global_data::in, global_data::out) is det.
+:- pred generate_module_code(io.text_output_stream::in, module_info::in,
+    list(c_procedure)::out, global_data::in, global_data::out) is det.
 
     % Translate a HLDS procedure to LLDS, threading through the data structure
     % that records information about layout structures.
@@ -86,7 +87,6 @@
 :- import_module hlds.hlds_proc_util.
 :- import_module hlds.hlds_rtti.
 :- import_module hlds.instmap.
-:- import_module hlds.passes_aux.
 :- import_module hlds.pred_name.
 :- import_module libs.
 :- import_module libs.file_util.
@@ -120,7 +120,6 @@
 :- import_module cord.
 :- import_module counter.
 :- import_module int.
-:- import_module io.
 :- import_module map.
 :- import_module maybe.
 :- import_module pair.
@@ -131,7 +130,7 @@
 
 %---------------------------------------------------------------------------%
 
-generate_module_code(ModuleInfo, CProcs, !GlobalData) :-
+generate_module_code(ProgressStream, ModuleInfo, CProcs, !GlobalData) :-
     % Get a list of all the predicate ids for which we will generate code.
     module_info_get_valid_pred_ids(ModuleInfo, PredIds),
     % Check if we want to use parallel code generation.
@@ -143,13 +142,11 @@ generate_module_code(ModuleInfo, CProcs, !GlobalData) :-
     (
         VeryVerbose = yes,
         trace [io(!IO)] (
-            get_progress_output_stream(ModuleInfo, ProgressStream, !IO),
             io.write_string(ProgressStream,
                 "% Generating constant structures\n", !IO)
         ),
         generate_const_structs(ModuleInfo, ConstStructMap, !GlobalData),
         trace [io(!IO)] (
-            get_progress_output_stream(ModuleInfo, ProgressStream, !IO),
             maybe_report_stats(ProgressStream, Statistics, !IO)
         )
     ;
@@ -163,33 +160,33 @@ generate_module_code(ModuleInfo, CProcs, !GlobalData) :-
         VeryVerbose = no,
         Statistics = no
     then
-        generate_module_code_par(ModuleInfo, ConstStructMap,
+        generate_module_code_par(ProgressStream, ModuleInfo, ConstStructMap,
             PredIds, CProcsCord, !GlobalData)
     else
-        generate_module_code_seq(ModuleInfo, ConstStructMap,
-            VeryVerbose, Statistics, PredIds, CProcsCord, !GlobalData)
+        generate_module_code_seq(ProgressStream, VeryVerbose, Statistics,
+            ModuleInfo, ConstStructMap, PredIds, CProcsCord, !GlobalData)
     ),
     CProcs = cord.list(CProcsCord).
 
 %---------------------%
 
-:- pred generate_module_code_seq(module_info::in, const_struct_map::in,
-    bool::in, bool::in, list(pred_id)::in, cord(c_procedure)::out,
-    global_data::in, global_data::out) is det.
+:- pred generate_module_code_seq(io.text_output_stream::in, bool::in, bool::in,
+    module_info::in, const_struct_map::in, list(pred_id)::in,
+    cord(c_procedure)::out, global_data::in, global_data::out) is det.
 
-generate_module_code_seq(ModuleInfo, ConstStructMap, VeryVerbose, Statistics,
-        PredIds, CProcsCord, !GlobalData) :-
+generate_module_code_seq(ProgressStream, VeryVerbose, Statistics,
+        ModuleInfo, ConstStructMap, PredIds, CProcsCord, !GlobalData) :-
     list.foldl2(
-        generate_code_for_pred(ModuleInfo, ConstStructMap,
-            VeryVerbose, Statistics),
+        generate_code_for_pred(ProgressStream, VeryVerbose, Statistics,
+            ModuleInfo, ConstStructMap),
         PredIds, cord.init, CProcsCord, !GlobalData).
 
-:- pred generate_module_code_par(module_info::in, const_struct_map::in,
-    list(pred_id)::in, cord(c_procedure)::out,
+:- pred generate_module_code_par(io.text_output_stream::in, module_info::in,
+    const_struct_map::in, list(pred_id)::in, cord(c_procedure)::out,
     global_data::in, global_data::out) is det.
 
-generate_module_code_par(ModuleInfo, ConstStructMap, PredIds, CProcsCord,
-        !GlobalData) :-
+generate_module_code_par(ProgressStream, ModuleInfo, ConstStructMap,
+        PredIds, CProcsCord, !GlobalData) :-
     % Split up the list of predicates into pieces for processing in parallel.
     % Splitting the list in the middle does not work well as the load will be
     % unbalanced. Splitting the list in any other way (as we do) does mean
@@ -222,13 +219,17 @@ generate_module_code_par(ModuleInfo, ConstStructMap, PredIds, CProcsCord,
     GlobalData0 = !.GlobalData,
     (
         list.condense(ListsOfPredIdsA, PredIdsA),
-        list.foldl2(generate_code_for_pred(ModuleInfo, ConstStructMap, no, no),
+        list.foldl2(
+            generate_code_for_pred(ProgressStream, no, no,
+                ModuleInfo, ConstStructMap),
             PredIdsA, cord.init, CProcsCordA, GlobalData0, GlobalDataA)
     % XXX the following should be a parallel conjunction
     ,
         list.condense(ListsOfPredIdsB, PredIdsB),
         bump_type_num_counter(type_num_skip, GlobalData0, GlobalData1),
-        list.foldl2(generate_code_for_pred(ModuleInfo, ConstStructMap, no, no),
+        list.foldl2(
+            generate_code_for_pred(ProgressStream, no, no,
+                ModuleInfo, ConstStructMap),
             PredIdsB, cord.init, CProcsCordB0, GlobalData1, GlobalDataB)
     ),
     merge_global_datas(GlobalDataA, GlobalDataB, !:GlobalData, Remap),
@@ -260,13 +261,13 @@ interleave_loop([H | T], RevAs0, RevAs, RevBs0, RevBs) :-
 
 %---------------------------------------------------------------------------%
 
-:- pred generate_code_for_pred(module_info::in, const_struct_map::in,
-    bool::in, bool::in, pred_id::in,
+:- pred generate_code_for_pred(io.text_output_stream::in, bool::in, bool::in,
+    module_info::in, const_struct_map::in, pred_id::in,
     cord(c_procedure)::in, cord(c_procedure)::out,
     global_data::in, global_data::out) is det.
 
-generate_code_for_pred(ModuleInfo, ConstStructMap, VeryVerbose, Statistics,
-        PredId, !CProcsCord, !GlobalData) :-
+generate_code_for_pred(ProgressStream, VeryVerbose, Statistics, ModuleInfo,
+        ConstStructMap, PredId, !CProcsCord, !GlobalData) :-
     module_info_pred_info(ModuleInfo, PredId, PredInfo),
     ProcIds = pred_info_all_non_imported_procids(PredInfo),
     (
@@ -276,7 +277,6 @@ generate_code_for_pred(ModuleInfo, ConstStructMap, VeryVerbose, Statistics,
         (
             VeryVerbose = yes,
             trace [io(!IO)] (
-                get_progress_output_stream(ModuleInfo, ProgressStream, !IO),
                 io.format(ProgressStream, "%% Generating code for %s\n",
                     [s(pred_id_to_user_string(ModuleInfo, PredId))], !IO)
             ),
@@ -287,36 +287,36 @@ generate_code_for_pred(ModuleInfo, ConstStructMap, VeryVerbose, Statistics,
                 TailProcIds = [_ | _],
                 PrintProcProgress = yes
             ),
-            generate_code_for_procs(ModuleInfo, ConstStructMap,
-                PredId, PredInfo, ProcIds, PrintProcProgress,
+            generate_code_for_procs(ProgressStream, PrintProcProgress,
+                ModuleInfo, ConstStructMap, PredId, PredInfo, ProcIds,
                 !CProcsCord, !GlobalData),
             trace [io(!IO)] (
-                get_progress_output_stream(ModuleInfo, ProgressStream, !IO),
                 maybe_report_stats(ProgressStream, Statistics, !IO)
             )
         ;
             VeryVerbose = no,
             DontPrintProcProgress = no,
-            generate_code_for_procs(ModuleInfo, ConstStructMap,
-                PredId, PredInfo, ProcIds, DontPrintProcProgress,
+            generate_code_for_procs(ProgressStream, DontPrintProcProgress,
+                ModuleInfo, ConstStructMap, PredId, PredInfo, ProcIds,
                 !CProcsCord, !GlobalData)
         )
     ).
 
     % Translate all the procedures of a HLDS predicate to LLDS.
     %
-:- pred generate_code_for_procs(module_info::in, const_struct_map::in,
-    pred_id::in, pred_info::in, list(proc_id)::in, bool::in,
+:- pred generate_code_for_procs(io.text_output_stream::in, bool::in,
+    module_info::in, const_struct_map::in,
+    pred_id::in, pred_info::in, list(proc_id)::in,
     cord(c_procedure)::in, cord(c_procedure)::out,
     global_data::in, global_data::out) is det.
 
-generate_code_for_procs(_, _, _, _, [], _, !CProcsCord, !GlobalData).
-generate_code_for_procs(ModuleInfo, ConstStructMap, PredId, PredInfo,
-        [ProcId | ProcIds], PrintProcProgress, !CProcsCord, !GlobalData) :-
+generate_code_for_procs(_, _, _, _, _, _, [], !CProcsCord, !GlobalData).
+generate_code_for_procs(ProgressStream, PrintProcProgress,
+        ModuleInfo, ConstStructMap, PredId, PredInfo, [ProcId | ProcIds],
+        !CProcsCord, !GlobalData) :-
     (
         PrintProcProgress = yes,
         trace [io(!IO)] (
-            get_progress_output_stream(ModuleInfo, ProgressStream, !IO),
             ProcIdInt = proc_id_to_int(ProcId),
             io.format(ProgressStream, "%% Generating code for %s proc %d\n",
                 [s(pred_id_to_user_string(ModuleInfo, PredId)), i(ProcIdInt)],
@@ -330,8 +330,9 @@ generate_code_for_procs(ModuleInfo, ConstStructMap, PredId, PredInfo,
     generate_proc_code(ModuleInfo, ConstStructMap, PredId, PredInfo,
         ProcId, ProcInfo, CProc, !GlobalData),
     !:CProcsCord = cord.snoc(!.CProcsCord, CProc),
-    generate_code_for_procs(ModuleInfo, ConstStructMap, PredId, PredInfo,
-        ProcIds, PrintProcProgress, !CProcsCord, !GlobalData).
+    generate_code_for_procs(ProgressStream, PrintProcProgress,
+        ModuleInfo, ConstStructMap, PredId, PredInfo, ProcIds,
+        !CProcsCord, !GlobalData).
 
 %---------------------------------------------------------------------------%
 

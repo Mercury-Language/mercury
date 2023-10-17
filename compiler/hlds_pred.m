@@ -1315,9 +1315,9 @@ pred_info_create(PredOrFunc, PredModuleName, PredName,
         Origin, Status, Markers, ArgTypes, TypeVarSet, TypeVarSet,
         ExistQVars, ClassContext, ClausesInfo, ProcTable, PredSubInfo).
 
-pred_prepare_to_clone(PredInfo, ModuleName, PredOrFunc, PredName, PredFormArity,
-        Origin, Status, Markers, ArgTypes, DeclTypeVarSet, TypeVarSet,
-        ExistQVars, PolymorphismAddedArgs,
+pred_prepare_to_clone(PredInfo, ModuleName, PredOrFunc, PredName,
+        PredFormArity, Origin, Status, Markers, ArgTypes,
+        DeclTypeVarSet, TypeVarSet, ExistQVars, PolymorphismAddedArgs,
         ClassContext, ClausesInfo, ProcTable, Context,
         CurUserDecl, GoalType, Kinds, ExistQVarBindings, HeadTypeParams,
         ClassProofs, ClassConstraintMap, UnprovenBodyConstraints,

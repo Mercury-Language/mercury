@@ -1550,8 +1550,8 @@ match_modes_by_higher_order_insts_2(ModuleInfo, VarTable, InstMap, ArgVars,
     else
         pred_info_proc_info(CalleePredInfo, ProcId, CalleeProcInfo),
         proc_info_get_argmodes(CalleeProcInfo, ArgModes),
-        match_mode_by_higher_order_insts(ModuleInfo, VarTable, InstMap, ArgVars,
-            ArgModes, ProcNonGroundNonLocals, ProcResult),
+        match_mode_by_higher_order_insts(ModuleInfo, VarTable, InstMap,
+            ArgVars, ArgModes, ProcNonGroundNonLocals, ProcResult),
         !:NonGroundNonLocals = ProcNonGroundNonLocals ++ !.NonGroundNonLocals,
         (
             ProcResult = ho_insts_match,

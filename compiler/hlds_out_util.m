@@ -568,7 +568,8 @@ arg_number_to_string(CallId, ArgNum) = Str :-
                 % Make error messages for higher-order calls
                 % such as `P(A, B)' clearer.
                 Main = "argument " ++ int_to_string(ArgNum),
-                PredOrFuncStr = parse_tree_out_misc.pred_or_func_to_full_str(PredOrFunc),
+                PredOrFuncStr =
+                    parse_tree_out_misc.pred_or_func_to_full_str(PredOrFunc),
                 ( if ArgNum = 1 then
                     Expl = "the " ++ PredOrFuncStr ++ " term"
                 else

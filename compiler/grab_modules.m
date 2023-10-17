@@ -1072,8 +1072,8 @@ grab_module_int2_file(ProgressStream, Globals, ReadWhy2, ModuleName,
     module_baggage::in, module_baggage::out,
     aug_make_int_unit::in, aug_make_int_unit::out, io::di, io::uo) is det.
 
-grab_module_int3_file(ProgressStream, Globals, ReadWhy3, ModuleName, IntImports,
-        !HaveReadModuleMaps, !Baggage, !AugMakeIntUnit, !IO) :-
+grab_module_int3_file(ProgressStream, Globals, ReadWhy3, ModuleName,
+        IntImports, !HaveReadModuleMaps, !Baggage, !AugMakeIntUnit, !IO) :-
     do_we_need_timestamps(!.Baggage, ReturnTimestamp),
     maybe_read_module_int3(ProgressStream, Globals, do_search, ModuleName,
         ReturnTimestamp, HaveReadInt3, !HaveReadModuleMaps, !IO),

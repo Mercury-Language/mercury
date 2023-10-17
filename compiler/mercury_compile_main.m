@@ -691,7 +691,7 @@ do_op_mode_standalone_interface(ProgressStream, ErrorStream, Globals,
         write_error_spec(ErrorStream, Globals, Spec, !IO)
     ;
         Target = target_c,
-        make_standalone_interface(Globals, ProgressStream, ErrorStream,
+        make_standalone_interface(Globals, ProgressStream,
             StandaloneIntBasename, !IO)
     ).
 
@@ -899,8 +899,8 @@ do_op_mode_args(ProgressStream, ErrorStream, Globals,
                 % For Java, at the "link" step we just generate a shell script;
                 % the actual linking will be done at runtime by
                 % the Java interpreter.
-                create_java_shell_script(Globals, MainModuleName,
-                    Succeeded, !IO)
+                create_java_shell_script(ProgressStream, Globals,
+                    MainModuleName, Succeeded, !IO)
             ;
                 ( Target = target_c
                 ; Target = target_csharp
@@ -911,8 +911,8 @@ do_op_mode_args(ProgressStream, ErrorStream, Globals,
                 (
                     InvokedByMmcMake = op_mode_invoked_by_mmc_make,
                     % `mmc --make' has already set up the options.
-                    link_module_list(ProgressStream, ErrorStream,
-                        ModulesToLink, ExtraObjFiles, Globals, Succeeded, !IO)
+                    link_module_list(ProgressStream, ModulesToLink,
+                        ExtraObjFiles, Globals, Succeeded, !IO)
                 ;
                     InvokedByMmcMake = op_mode_not_invoked_by_mmc_make,
                     get_default_options(Globals, DefaultOptionTable),
@@ -927,9 +927,8 @@ do_op_mode_args(ProgressStream, ErrorStream, Globals,
                         Succeeded = did_not_succeed
                     ;
                         MayBuild = may_build(_AllOptionArgs, BuildGlobals),
-                        link_module_list(ProgressStream, ErrorStream,
-                            ModulesToLink, ExtraObjFiles, BuildGlobals,
-                            Succeeded, !IO)
+                        link_module_list(ProgressStream, ModulesToLink,
+                            ExtraObjFiles, BuildGlobals, Succeeded, !IO)
                     )
                 )
             ),
@@ -1989,7 +1988,7 @@ process_augmented_module(ProgressStream, ErrorStream, Globals0,
             ExtraObjFiles = []
         ;
             OpModeAugment = opmau_make_trans_opt,
-            output_trans_opt_file(ProgressStream, ErrorStream, HLDS21, !Specs,
+            output_trans_opt_file(ProgressStream, HLDS21, !Specs,
                 !DumpInfo, !IO),
             ExtraObjFiles = []
         ;
@@ -2007,7 +2006,7 @@ process_augmented_module(ProgressStream, ErrorStream, Globals0,
             ExtraObjFiles = []
         ;
             OpModeAugment = opmau_make_xml_documentation,
-            xml_documentation(HLDS21, !IO),
+            xml_documentation(ProgressStream, HLDS21, !IO),
             ExtraObjFiles = []
         ;
             OpModeAugment = opmau_generate_code(OpModeCodeGen),
@@ -2117,8 +2116,8 @@ prepare_for_intermodule_analysis(ProgressStream, Globals,
     LocalModuleNames = set.list_to_set(SymNames),
 
     module_info_get_analysis_info(!.HLDS, AnalysisInfo0),
-    prepare_intermodule_analysis(Globals, ModuleNames, LocalModuleNames,
-        Specs, AnalysisInfo0, AnalysisInfo, !IO),
+    prepare_intermodule_analysis(ProgressStream, Globals, ModuleNames,
+        LocalModuleNames, Specs, AnalysisInfo0, AnalysisInfo, !IO),
     module_info_set_analysis_info(AnalysisInfo, !HLDS),
 
     maybe_write_string(ProgressStream, Verbose, "% done.\n", !IO),
@@ -2192,7 +2191,7 @@ after_front_end_passes(ProgressStream, ErrorStream, Globals, OpModeCodeGen,
                     module_name_to_file_name(Globals, $pred,
                         ext_cur_ngs_gs_java(ext_cur_ngs_gs_java_java),
                         ModuleName, JavaFile),
-                    compile_java_files(Globals, ProgressStream, ErrorStream,
+                    compile_java_files(Globals, ProgressStream,
                         JavaFile, [], Succeeded, !IO),
                     maybe_set_exit_status(Succeeded, !IO)
                 )
@@ -2204,7 +2203,8 @@ after_front_end_passes(ProgressStream, ErrorStream, Globals, OpModeCodeGen,
             % containing function prototypes for the procedures referred to
             % by foreign_export pragmas.
             export.get_foreign_export_decls(!.HLDS, ExportDecls),
-            export.produce_header_file(!.HLDS, ExportDecls, ModuleName, !IO),
+            export.produce_header_file(ProgressStream, !.HLDS, ExportDecls,
+                ModuleName, !IO),
             (
                 HighLevelCode = yes,
                 mlds_backend(ProgressStream, ErrorStream, !.HLDS, _, MLDS,
@@ -2233,8 +2233,8 @@ after_front_end_passes(ProgressStream, ErrorStream, Globals, OpModeCodeGen,
                         maybe_pic_object_file_extension(PIC, ObjExt, _),
                         module_name_to_file_name_create_dirs(Globals, $pred,
                             ext_cur_ngs_gs(ObjExt), ModuleName, O_File, !IO),
-                        do_compile_c_file(Globals, ProgressStream, ErrorStream,
-                            PIC, C_File, O_File, Succeeded, !IO),
+                        do_compile_c_file(Globals, ProgressStream, PIC,
+                            C_File, O_File, Succeeded, !IO),
                         maybe_set_exit_status(Succeeded, !IO)
                     )
                 ),
@@ -2247,7 +2247,7 @@ after_front_end_passes(ProgressStream, ErrorStream, Globals, OpModeCodeGen,
                 % to see whether it should generate object code, using the
                 % same logic as the HighLevelCode = yes case above.
                 % XXX Move that logic here, for symmetry.
-                llds_output_pass(ProgressStream, ErrorStream, OpModeCodeGen,
+                llds_output_pass(ProgressStream, OpModeCodeGen,
                     !.HLDS, GlobalData, LLDS, ModuleName, Succeeded,
                     ExtraObjFiles, !IO)
             )

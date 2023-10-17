@@ -150,7 +150,7 @@ deforest_module(ProgressStream, !ModuleInfo) :-
 
         disable_det_warnings(_OptionsToRestore, Globals, NoWarnGlobals),
         module_info_set_globals(NoWarnGlobals, !ModuleInfo),
-        determinism_pass(!ModuleInfo, Specs),
+        determinism_pass(ProgressStream, Specs, !ModuleInfo),
         module_info_set_globals(Globals, !ModuleInfo),
 
         FoundErrors = contains_errors(Globals, Specs),
@@ -255,7 +255,8 @@ deforest_proc_deltas(PredProcId, CostDelta, SizeDelta, !PDInfo) :-
                 % If the determinism of some sub-goals has changed,
                 % then we re-run determinism analysis. As with inlining.m,
                 % this avoids problems with inlining erroneous procedures.
-                det_infer_proc_ignore_msgs(PredId, ProcId, !ModuleInfo)
+                det_infer_proc_ignore_msgs(ProgressStream, PredId, ProcId,
+                    !ModuleInfo)
             ;
                 RerunDet = no
             ),

@@ -22,6 +22,7 @@
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_item.
 
+:- import_module io.
 :- import_module list.
 
 %-----------------------------------------------------------------------------%
@@ -30,8 +31,8 @@
     --->    clause_not_for_promise
     ;       clause_for_promise(promise_type).
 
-:- pred module_add_clause(pred_status::in, clause_type::in,
-    item_clause_info::in,
+:- pred module_add_clause(io.text_output_stream::in, pred_status::in,
+    clause_type::in, item_clause_info::in,
     module_info::in, module_info::out, qual_info::in, qual_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
@@ -65,7 +66,6 @@
 :- import_module hlds.make_hlds.state_var.
 :- import_module hlds.make_hlds.superhomogeneous.
 :- import_module hlds.make_hlds_error.
-:- import_module hlds.passes_aux.
 :- import_module hlds.pre_quantification.
 :- import_module hlds.pred_name.
 :- import_module hlds.pred_table.
@@ -87,7 +87,6 @@
 :- import_module bool.
 :- import_module cord.
 :- import_module int.
-:- import_module io.
 :- import_module map.
 :- import_module maybe.
 :- import_module require.
@@ -97,7 +96,7 @@
 
 %-----------------------------------------------------------------------------%
 
-module_add_clause(PredStatus, ClauseType, ClauseInfo,
+module_add_clause(ProgressStream, PredStatus, ClauseType, ClauseInfo,
         !ModuleInfo, !QualInfo, !Specs) :-
     ClauseInfo = item_clause_info(PredOrFunc, PredSymName, ArgTerms0,
         ClauseVarSet, MaybeBodyGoal, Context, SeqNum),
@@ -132,7 +131,7 @@ module_add_clause(PredStatus, ClauseType, ClauseInfo,
         predicate_table_lookup_pf_sym_arity(PredicateTable, is_fully_qualified,
             PredOrFunc, PredSymName, PredFormArity, PredIds),
         ( if PredIds = [PredId] then
-            module_add_clause_2(PredStatus, ClauseType, PredId,
+            module_add_clause_2(ProgressStream, PredStatus, ClauseType, PredId,
                 PredOrFunc, PredSymName, ArgTerms, PredFormArity,
                 ClauseVarSet, MaybeBodyGoal, Context, SeqNum,
                 IllegalSVarResult, !ModuleInfo, !QualInfo, !Specs)
@@ -164,23 +163,24 @@ module_add_clause(PredStatus, ClauseType, ClauseInfo,
                     is_not_a_class_method, Context, Origin,
                     [words("clause")], PredId, !ModuleInfo, !Specs)
             ),
-            module_add_clause_2(PredStatus, ClauseType, PredId,
+            module_add_clause_2(ProgressStream, PredStatus, ClauseType, PredId,
                 PredOrFunc, PredSymName, ArgTerms, PredFormArity,
                 ClauseVarSet, MaybeBodyGoal, Context, SeqNum,
                 IllegalSVarResult, !ModuleInfo, !QualInfo, !Specs)
         )
     ).
 
-:- pred module_add_clause_2(pred_status::in, clause_type::in, pred_id::in,
+:- pred module_add_clause_2(io.text_output_stream::in,
+    pred_status::in, clause_type::in, pred_id::in,
     pred_or_func::in, sym_name::in, list(prog_term)::in, pred_form_arity::in,
     prog_varset::in, maybe2(goal, list(warning_spec))::in, prog_context::in,
     item_seq_num::in, maybe({prog_var, prog_context})::in,
     module_info::in, module_info::out, qual_info::in, qual_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-module_add_clause_2(PredStatus, ClauseType, PredId, PredOrFunc, PredSymName,
-        MaybeAnnotatedArgTerms, PredFormArity, ClauseVarSet,
-        MaybeBodyGoal, Context, SeqNum, IllegalSVarResult,
+module_add_clause_2(ProgressStream, PredStatus, ClauseType, PredId,
+        PredOrFunc, PredSymName, MaybeAnnotatedArgTerms, PredFormArity,
+        ClauseVarSet, MaybeBodyGoal, Context, SeqNum, IllegalSVarResult,
         !ModuleInfo, !QualInfo, !Specs) :-
     some [!PredInfo, !PredSpecs] (
         % Lookup the pred_info for this pred, add the clause to the
@@ -189,8 +189,8 @@ module_add_clause_2(PredStatus, ClauseType, PredId, PredOrFunc, PredSymName,
         module_info_pred_info(!.ModuleInfo, PredId, !:PredInfo),
 
         trace [io(!IO)] (
-            add_clause_progress_msg(!.ModuleInfo, !.PredInfo, PredOrFunc,
-                PredSymName, PredFormArity, !IO)
+            add_clause_progress_msg(ProgressStream, !.ModuleInfo, !.PredInfo,
+                PredOrFunc, PredSymName, PredFormArity, !IO)
         ),
 
         % Opt_imported preds are initially tagged as imported, and are tagged
@@ -283,12 +283,12 @@ module_add_clause_2(PredStatus, ClauseType, PredId, PredOrFunc, PredSymName,
 
 %-----------------%
 
-:- pred add_clause_progress_msg(module_info::in, pred_info::in,
-    pred_or_func::in, sym_name::in, pred_form_arity::in,
+:- pred add_clause_progress_msg(io.text_output_stream::in, module_info::in,
+    pred_info::in, pred_or_func::in, sym_name::in, pred_form_arity::in,
     io::di, io::uo) is det.
 
-add_clause_progress_msg(ModuleInfo, PredInfo, PredOrFunc, PredName,
-        PredFormArity, !IO) :-
+add_clause_progress_msg(ProgressStream, ModuleInfo, PredInfo,
+        PredOrFunc, PredName, PredFormArity, !IO) :-
     module_info_get_globals(ModuleInfo, Globals),
     globals.lookup_bool_option(Globals, very_verbose, VeryVerbose),
     (
@@ -300,7 +300,6 @@ add_clause_progress_msg(ModuleInfo, PredInfo, PredOrFunc, PredName,
             PredFormArity),
         SNA = sym_name_arity(PredName, Arity),
         SNAStr = unescaped_sym_name_arity_to_string(SNA),
-        get_progress_output_stream(ModuleInfo, ProgressStream, !IO),
         io.format(ProgressStream, "%% Processing clause %d for %s `%s'...\n",
             [i(NumClauses + 1), s(PredOrFuncStr), s(SNAStr)], !IO)
     ;

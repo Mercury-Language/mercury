@@ -103,7 +103,7 @@ mlds_backend(ProgressStream, ErrorStream, !HLDS, !:MLDS, !:Specs,
     maybe_dump_hlds(ProgressStream, !.HLDS, 415, "add_heap_ops",
         !DumpInfo, !IO),
 
-    maybe_mark_static_terms(Verbose, Stats, !HLDS, !IO),
+    maybe_mark_static_terms(ProgressStream, Verbose, Stats, !HLDS, !IO),
     maybe_dump_hlds(ProgressStream, !.HLDS, 420, "mark_static",
         !DumpInfo, !IO),
 
@@ -363,7 +363,8 @@ mlds_to_high_level_c(ProgressStream, Globals, MLDS, Succeeded, !IO) :-
 
     maybe_write_string(ProgressStream, Verbose,
         "% Converting MLDS to C...\n", !IO),
-    output_c_mlds(MLDS, Globals, tod_target, "", Succeeded, !IO),
+    output_c_mlds(ProgressStream, MLDS, Globals, tod_target,
+        "", Succeeded, !IO),
     maybe_write_string(ProgressStream, Verbose,
         "% Finished converting MLDS to C.\n", !IO),
     maybe_report_stats(ProgressStream, Stats, !IO).
@@ -375,7 +376,7 @@ mlds_to_java(ProgressStream, HLDS, MLDS, Succeeded, !IO) :-
 
     maybe_write_string(ProgressStream, Verbose,
         "% Converting MLDS to Java...\n", !IO),
-    output_java_mlds(HLDS, MLDS, Succeeded, !IO),
+    output_java_mlds(ProgressStream, HLDS, MLDS, Succeeded, !IO),
     maybe_write_string(ProgressStream, Verbose,
         "% Finished converting MLDS to Java.\n", !IO),
     maybe_report_stats(ProgressStream, Stats, !IO).
@@ -387,7 +388,7 @@ mlds_to_csharp(ProgressStream, HLDS, MLDS, Succeeded, !IO) :-
 
     maybe_write_string(ProgressStream, Verbose,
         "% Converting MLDS to C#...\n", !IO),
-    output_csharp_mlds(HLDS, MLDS, Succeeded, !IO),
+    output_csharp_mlds(ProgressStream, HLDS, MLDS, Succeeded, !IO),
     maybe_write_string(ProgressStream, Verbose,
         "% Finished converting MLDS to C#.\n", !IO),
     maybe_report_stats(ProgressStream, Stats, !IO).
@@ -417,11 +418,12 @@ maybe_dump_mlds(ProgressStream, Globals, MLDS, StageNum, StageName, !IO) :-
         DumpSuffix = "_dump." ++ StageNumStr ++ "-" ++ StageName,
         (
             DumpPredNames = [],
-            output_c_mlds(MLDS, Globals, tod_dump, DumpSuffix, _Succeeded, !IO)
+            output_c_mlds(ProgressStream, MLDS, Globals, tod_dump,
+                DumpSuffix, _Succeeded, !IO)
         ;
             DumpPredNames = [_ | _],
-            output_c_dump_preds(MLDS, Globals, tod_dump, DumpSuffix,
-                DumpPredNames, !IO)
+            output_c_dump_preds(ProgressStream, MLDS, Globals, tod_dump,
+                DumpSuffix, DumpPredNames, !IO)
         ),
         maybe_write_string(ProgressStream, Verbose, "% done.\n", !IO)
     else
@@ -450,7 +452,8 @@ maybe_dump_mlds(ProgressStream, Globals, MLDS, StageNum, StageName, !IO) :-
             "% Dumping out raw MLDS...\n", !IO),
         ModuleName = mlds_get_module_name(MLDS),
         module_name_to_file_name_create_dirs(Globals, $pred,
-            ext_cur(ext_cur_user_mlds_dump), ModuleName, DumpBaseFileName, !IO),
+            ext_cur(ext_cur_user_mlds_dump),
+            ModuleName, DumpBaseFileName, !IO),
         string.format("%s.%s-%s",
             [s(DumpBaseFileName), s(StageNumStr), s(StageName)], DumpFileName),
         dump_mlds_doc(ProgressStream, Globals, DumpFileName, Doc, !IO),

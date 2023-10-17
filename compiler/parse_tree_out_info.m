@@ -215,8 +215,14 @@ init_merc_out_info(Globals, MaybeQualifiedItemNames, Lang) = Info :-
     ( LineNumbersOpt = no, LineNumbers = dont_output_line_numbers
     ; LineNumbersOpt = yes, LineNumbers = do_output_line_numbers
     ),
-    ( TypeRepnsForHumans = no, For = type_repn_for_machines, CommaSep = ", "
-    ; TypeRepnsForHumans = yes, For = type_repn_for_humans, CommaSep = ",\n    "
+    (
+        TypeRepnsForHumans = no,
+        For = type_repn_for_machines,
+        CommaSep = ", "
+    ;
+        TypeRepnsForHumans = yes,
+        For = type_repn_for_humans,
+        CommaSep = ",\n    "
     ),
     Info = merc_out_info(MaybeQualifiedItemNames, LineNumbers, Lang,
         For, CommaSep).

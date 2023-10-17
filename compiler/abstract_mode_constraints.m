@@ -1,10 +1,10 @@
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % Copyright (C) 2004-2006, 2009-2010 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % File: abstract_mode_constraints.m.
 % Main author: richardf.
@@ -13,7 +13,7 @@
 % based mode analysis. It deals specifically with constraints for
 % determining producing and consuming goals for program variables.
 %
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- module check_hlds.abstract_mode_constraints.
 :- interface.
@@ -34,7 +34,7 @@
 :- import_module term.
 :- import_module varset.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % `unit'-like type used to distinguish mode constraint variables.
     %
@@ -42,7 +42,7 @@
 :- type mc_var == var(mc_type).         % Constraint variable.
 :- type mc_varset == varset(mc_type).   % Source of constraint variables.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Abstract Constraints
 %
@@ -102,7 +102,7 @@
     %
 :- type mc_bindings == map(mc_var, bool).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Constraint collection structures.
 %
@@ -140,7 +140,7 @@
                 ppcc_mode_infer_callees     ::  set(pred_id)
             ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % Return a representation of the empty set of constraints.
     %
@@ -208,7 +208,7 @@
 :- func proc_specific_annotated_constraints(proc_id, pred_p_c_constraints)
     = list(mc_ann_constraint).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % equiv_no(MCVarSet, Context, MCVar, !Constraints) constrains MCVar to `no'
     % in Constraints. Context should be the context of the goal or declaration
@@ -264,7 +264,7 @@
 :- pred xor(mc_varset::in, prog_context::in, mc_var::in, mc_var::in,
     pred_p_c_constraints::in, pred_p_c_constraints::out) is det.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % Print the mc_constraints it is passed in a human readable format.
     %
@@ -287,8 +287,8 @@
 :- pred pretty_print_solutions(io.text_output_stream::in, mc_varset::in,
     list(mc_bindings)::in, io::di, io::uo) is det.
 
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- implementation.
 
@@ -298,7 +298,7 @@
 :- import_module int.
 :- import_module string.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % Dummy type used to distinguish mode constraint variables.
     %
@@ -308,7 +308,7 @@
 project_mc_constraint(mc_ann_constraint(Constraint, _)) = Constraint.
 project_mc_annotation(mc_ann_constraint(_, Annotation)) = Annotation.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % Initialises all the parts of a mode_constraints_info type.
     %
@@ -357,7 +357,7 @@ add_mode_infer_callee(PredId, !PredPCConstraints) :-
     !PredPCConstraints ^ ppcc_mode_infer_callees :=
         set.insert(ModeInferCallees, PredId).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 allproc_constraints(PredPCConstraints) = Constraints :-
     AnnotatedConstraints = allproc_annotated_constraints(PredPCConstraints),
@@ -381,7 +381,7 @@ all_annotated_constraints_for_proc(ProcId, PredPCConstraints)
 proc_specific_annotated_constraints(ProcId, PredPCConstraints) =
     multi_map.lookup(PredPCConstraints ^ ppcc_procspec_constraints, ProcId).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Predicates to allow easy adding of var_constraints.
 %
@@ -414,7 +414,7 @@ xor(MCVarSet, Context, A, B, !Constraints) :-
     add_constraint(MCVarSet, Context,
         mc_atomic(exactly_one([A, B])), !Constraints).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Dumping constraints for --debug-mode-constraints.
 %
@@ -429,7 +429,8 @@ dump_constraints_and_annotations(OutputStream, Globals, VarSet,
     % at indent level indicated by the int.
     %
 :- pred dump_constraints(io.text_output_stream::in, globals::in, mc_varset::in,
-    int::in, mc_annotation::in, list(mc_constraint)::in, io::di, io::uo) is det.
+    int::in, mc_annotation::in, list(mc_constraint)::in,
+    io::di, io::uo) is det.
 
 dump_constraints(OutputStream, Globals, VarSet, Indent, Annotation,
         Constraints, !IO) :-
@@ -548,7 +549,7 @@ mc_var_list_to_string(VarSet, [MCVar1, MCVar2 | MCVars],
 mc_var_val_to_string(yes, "yes").
 mc_var_val_to_string(no, "no").
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Pretty printing predicates for the formulae type, and others
 %
@@ -674,7 +675,7 @@ pretty_print_mc_vars(OutputStream, VarSet, [Var | Vars], !IO) :-
         pretty_print_mc_vars(OutputStream, VarSet, Vars, !IO)
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % Prints a list of models for the constraint system.
     %
@@ -704,6 +705,6 @@ pretty_print_binding(OutputStream, VarSet, Bindings, Var, !IO) :-
     ValueStr = string.string(Value),
     io.format(OutputStream, "    %s = %s\n", [s(VarName), s(ValueStr)], !IO).
 
-%----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 :- end_module check_hlds.abstract_mode_constraints.
-%----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%

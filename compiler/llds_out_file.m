@@ -31,8 +31,8 @@
 
     % Given a c_file structure, output the LLDS code inside it into a .c file.
     %
-:- pred output_llds(globals::in, c_file::in, maybe_succeeded::out,
-    io::di, io::uo) is det.
+:- pred output_llds(io.text_output_stream::in, globals::in, c_file::in,
+    maybe_succeeded::out, io::di, io::uo) is det.
 
 %----------------------------------------------------------------------------%
 
@@ -116,11 +116,11 @@
 
 %----------------------------------------------------------------------------%
 
-output_llds(Globals, CFile, Succeeded, !IO) :-
+output_llds(ProgressStream, Globals, CFile, Succeeded, !IO) :-
     ModuleName = CFile ^ cfile_modulename,
     module_name_to_file_name_create_dirs(Globals, $pred,
         ext_cur_ngs_gs(ext_cur_ngs_gs_target_c), ModuleName, FileName, !IO),
-    output_to_file_stream(Globals, ModuleName, FileName,
+    output_to_file_stream(ProgressStream, Globals, FileName,
         output_llds_2(Globals, CFile), Succeeded, !IO).
 
 :- pred output_llds_2(globals::in, c_file::in, io.text_output_stream::in,

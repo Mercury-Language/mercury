@@ -51,8 +51,8 @@
     %
     % This procedure is used for both the MLDS and LLDS back-ends.
     %
-:- pred produce_header_file(module_info::in, foreign_export_decls::in,
-    module_name::in, io::di, io::uo) is det.
+:- pred produce_header_file(io.text_output_stream::in, module_info::in,
+    foreign_export_decls::in, module_name::in, io::di, io::uo) is det.
 
 %-----------------------------------------------------------------------------%
 
@@ -641,7 +641,8 @@ arg_loc_to_string(reg(RegType, RegNum), RegName) :-
 % Code to create the .mh files.
 %
 
-produce_header_file(ModuleInfo, ForeignExportDecls, ModuleName, !IO) :-
+produce_header_file(ProgressStream, ModuleInfo, ForeignExportDecls,
+        ModuleName, !IO) :-
     % We always produce a .mh file because with intermodule optimization
     % enabled, the .o file depends on all the .mh files of the imported
     % modules. so we need to produce a .mh file even if it contains nothing.
@@ -732,20 +733,18 @@ produce_header_file(ModuleInfo, ForeignExportDecls, ModuleName, !IO) :-
         (
             Errors = [],
             % Rename "<ModuleName>.mh.tmp" to "<ModuleName>.mh".
-            copy_dot_tmp_to_base_file_report_any_error(Globals, ".mh",
-                ModuleName, FileName, _Succeeded, !IO)
+            copy_dot_tmp_to_base_file_report_any_error(ProgressStream,
+                Globals, ".mh", FileName, _Succeeded, !IO)
         ;
             Errors = [_ | _],
             io.file.remove_file(TmpFileName, _, !IO),
             % report_error sets the exit status.
-            get_error_output_stream(Globals, ModuleName, ErrorStream, !IO),
-            list.foldl(report_error(ErrorStream), Errors, !IO)
+            list.foldl(report_error(ProgressStream), Errors, !IO)
         )
     ;
         Result = error(_),
-        get_error_output_stream(Globals, ModuleName, ErrorStream, !IO),
         io.progname_base("export.m", ProgName, !IO),
-        io.format(ErrorStream, "\n%s: can't open `%s' for output\n",
+        io.format(ProgressStream, "\n%s: can't open `%s' for output\n",
             [s(ProgName), s(TmpFileName)], !IO),
         io.set_exit_status(1, !IO)
     ).

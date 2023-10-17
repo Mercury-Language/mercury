@@ -185,8 +185,8 @@ perform_structure_reuse_analysis(ProgressStream, !ModuleInfo):-
             maybe_write_string(ProgressStream, VeryVerbose, "done.\n", !IO),
             maybe_write_string(ProgressStream, VeryVerbose,
                 "% Reuse table before intermediate reuse:\n", !IO),
-            reuse_as_table_maybe_dump(ProgressStream, VeryVerbose, !.ModuleInfo,
-                !.ReuseTable, !IO)
+            reuse_as_table_maybe_dump(ProgressStream, VeryVerbose,
+                !.ModuleInfo, !.ReuseTable, !IO)
         ),
 
 
@@ -200,8 +200,8 @@ perform_structure_reuse_analysis(ProgressStream, !ModuleInfo):-
         trace [io(!IO)] (
             maybe_write_string(ProgressStream, VeryVerbose,
                 "% Reuse table after intermediate reuse:\n", !IO),
-            reuse_as_table_maybe_dump(ProgressStream, VeryVerbose, !.ModuleInfo,
-                !.ReuseTable, !IO),
+            reuse_as_table_maybe_dump(ProgressStream, VeryVerbose,
+                !.ModuleInfo, !.ReuseTable, !IO),
             maybe_write_string(ProgressStream, VeryVerbose,
                 "% Direct reuse...\n", !IO)
         ),
@@ -210,8 +210,8 @@ perform_structure_reuse_analysis(ProgressStream, !ModuleInfo):-
         trace [io(!IO)] (
             maybe_write_string(ProgressStream, VeryVerbose,
                 "% Direct reuse: done.\n", !IO),
-            reuse_as_table_maybe_dump(ProgressStream, VeryVerbose, !.ModuleInfo,
-                !.ReuseTable, !IO)
+            reuse_as_table_maybe_dump(ProgressStream, VeryVerbose,
+                !.ModuleInfo, !.ReuseTable, !IO)
         ),
 
         % Determine information about possible indirect reuses.
@@ -224,8 +224,8 @@ perform_structure_reuse_analysis(ProgressStream, !ModuleInfo):-
         trace [io(!IO)] (
             maybe_write_string(ProgressStream, VeryVerbose,
                 "% Indirect reuse: done.\n", !IO),
-            reuse_as_table_maybe_dump(ProgressStream, VeryVerbose, !.ModuleInfo,
-                !.ReuseTable, !IO)
+            reuse_as_table_maybe_dump(ProgressStream, VeryVerbose,
+                !.ModuleInfo, !.ReuseTable, !IO)
         ),
 
         % Handle requests for "intermediate" reuse versions of procedures

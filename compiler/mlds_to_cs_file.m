@@ -27,8 +27,8 @@
 
 %---------------------------------------------------------------------------%
 
-:- pred output_csharp_mlds(module_info::in, mlds::in, maybe_succeeded::out,
-    io::di, io::uo) is det.
+:- pred output_csharp_mlds(io.text_output_stream::in, module_info::in,
+    mlds::in, maybe_succeeded::out, io::di, io::uo) is det.
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -74,13 +74,13 @@
 
 %---------------------------------------------------------------------------%
 
-output_csharp_mlds(ModuleInfo, MLDS, Succeeded, !IO) :-
+output_csharp_mlds(ProgressStream, ModuleInfo, MLDS, Succeeded, !IO) :-
     module_info_get_globals(ModuleInfo, Globals),
     ModuleName = mlds_get_module_name(MLDS),
     module_name_to_file_name_create_dirs(Globals, $pred,
         ext_cur_ngs_gs(ext_cur_ngs_gs_target_cs),
         ModuleName, SourceFileName, !IO),
-    output_to_file_stream(Globals, ModuleName, SourceFileName,
+    output_to_file_stream(ProgressStream, Globals, SourceFileName,
         output_csharp_src_file(ModuleInfo, MLDS), Succeeded, !IO).
 
 :- pred output_csharp_src_file(module_info::in, mlds::in,

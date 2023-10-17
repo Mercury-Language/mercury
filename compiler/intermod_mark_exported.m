@@ -23,13 +23,16 @@
 :- import_module hlds.hlds_module.
 :- import_module transform_hlds.intermod_info.
 
+:- import_module io.
+
 %---------------------------------------------------------------------------%
 
     % Find out which predicates would be opt-exported, and mark them
     % accordingly. (See the comment on do_maybe_opt_export_entities
     % for why we do this.)
     %
-:- pred maybe_opt_export_entities(module_info::in, module_info::out) is det.
+:- pred maybe_opt_export_entities(io.text_output_stream::in,
+    module_info::in, module_info::out) is det.
 
     % Change the status of the entities (predicates, types, insts, modes,
     % classes and instances) listed as opt-exported in the given intermod_info
@@ -57,7 +60,6 @@
 :- import_module hlds.hlds_class.
 :- import_module hlds.hlds_data.
 :- import_module hlds.hlds_pred.
-:- import_module hlds.passes_aux.
 :- import_module hlds.pred_name.
 :- import_module hlds.pred_table.
 :- import_module hlds.special_pred.
@@ -75,7 +77,6 @@
 :- import_module transform_hlds.intermod_status.
 
 :- import_module bool.
-:- import_module io.
 :- import_module list.
 :- import_module map.
 :- import_module maybe.
@@ -87,11 +88,10 @@
 
 %---------------------------------------------------------------------------%
 
-maybe_opt_export_entities(!ModuleInfo) :-
+maybe_opt_export_entities(ProgressStream, !ModuleInfo) :-
     module_info_get_globals(!.ModuleInfo, Globals),
     globals.lookup_bool_option(Globals, very_verbose, VeryVerbose),
     trace [io(!IO)] (
-        get_progress_output_stream(!.ModuleInfo, ProgressStream, !IO),
         maybe_write_string(ProgressStream, VeryVerbose,
             "% Adjusting import status of predicates in the `.opt' file...",
             !IO)
@@ -99,7 +99,6 @@ maybe_opt_export_entities(!ModuleInfo) :-
     decide_what_to_opt_export(!.ModuleInfo, IntermodInfo),
     maybe_opt_export_listed_entities(IntermodInfo, !ModuleInfo),
     trace [io(!IO)] (
-        get_progress_output_stream(!.ModuleInfo, ProgressStream, !IO),
         maybe_write_string(ProgressStream, VeryVerbose, " done\n", !IO)
     ).
 

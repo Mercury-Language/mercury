@@ -149,6 +149,7 @@
 :- import_module hlds.hlds_module.
 :- import_module hlds.hlds_pred.
 
+:- import_module io.
 :- import_module univ.
 
     % Attempt to transform a procedure into accumulator recursive form.
@@ -156,9 +157,9 @@
     % to the module_info. However, we may also encounter errors, which
     % we will add to the list of error_specs in the univ accumulator.
     %
-:- pred accu_transform_proc(pred_proc_id::in, pred_info::in,
-    proc_info::in, proc_info::out, module_info::in, module_info::out,
-    univ::in, univ::out) is det.
+:- pred accu_transform_proc(io.text_output_stream::in, pred_proc_id::in,
+    pred_info::in, proc_info::in, proc_info::out,
+    module_info::in, module_info::out, univ::in, univ::out) is det.
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -195,7 +196,6 @@
 :- import_module assoc_list.
 :- import_module bool.
 :- import_module int.
-:- import_module io.
 :- import_module list.
 :- import_module map.
 :- import_module maybe.
@@ -247,8 +247,8 @@
 
 %---------------------------------------------------------------------------%
 
-accu_transform_proc(proc(PredId, ProcId), PredInfo, !ProcInfo, !ModuleInfo,
-        !Cookie) :-
+accu_transform_proc(ProgressStream, proc(PredId, ProcId), PredInfo,
+        !ProcInfo, !ModuleInfo, !Cookie) :-
     module_info_get_globals(!.ModuleInfo, Globals),
     globals.get_opt_tuple(Globals, OptTuple),
     DoLCMC = OptTuple ^ ot_opt_lcmc_accumulator,
@@ -261,9 +261,6 @@ accu_transform_proc(proc(PredId, ProcId), PredInfo, !ProcInfo, !ModuleInfo,
         (
             VeryVerbose = yes,
             trace [io(!IO)] (
-                module_info_get_name(!.ModuleInfo, ModuleName),
-                get_progress_output_stream(Globals, ModuleName,
-                    ProgressStream, !IO),
                 PredStr = pred_id_to_user_string(!.ModuleInfo, PredId),
                 io.format(ProgressStream,
                     "%% Accumulators introduced into %s\n", [s(PredStr)], !IO)

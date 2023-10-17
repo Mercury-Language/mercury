@@ -16,6 +16,7 @@
 :- import_module parse_tree.error_spec.
 :- import_module parse_tree.prog_item.
 
+:- import_module io.
 :- import_module list.
 
 %---------------------------------------------------------------------------%
@@ -52,13 +53,15 @@
 
 %---------------------%
 
-:- pred add_impl_pragmas(ims_list(item_impl_pragma_info)::in,
+:- pred add_impl_pragmas(io.text_output_stream::in,
+    ims_list(item_impl_pragma_info)::in,
     ims_cord(impl_pragma_tabled_info)::in,
         ims_cord(impl_pragma_tabled_info)::out,
     module_info::in, module_info::out, qual_info::in, qual_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-:- pred add_impl_pragmas_tabled(ims_list(impl_pragma_tabled_info)::in,
+:- pred add_impl_pragmas_tabled(io.text_output_stream::in,
+    ims_list(impl_pragma_tabled_info)::in,
     module_info::in, module_info::out, qual_info::in, qual_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
@@ -134,7 +137,6 @@
 :- import_module bool.
 :- import_module cord.
 :- import_module int.
-:- import_module io.
 :- import_module map.
 :- import_module maybe.
 :- import_module one_or_more.
@@ -744,11 +746,11 @@ add_decl_marker(ItemMercuryStatus, DeclMarker, !ModuleInfo, !Specs) :-
 % Adding impl pragmas to the HLDS.
 %
 
-add_impl_pragmas([], !PragmaTabledListCord, !ModuleInfo, !QualInfo, !Specs).
-add_impl_pragmas([ImsList | ImsLists],
+add_impl_pragmas(_, [], !PragmaTabledListCord, !ModuleInfo, !QualInfo, !Specs).
+add_impl_pragmas(ProgressStream, [ImsList | ImsLists],
         !PragmaTabledListCord, !ModuleInfo, !QualInfo, !Specs) :-
     ImsList = ims_sub_list(ItemMercuryStatus, Items),
-    list.foldl4(add_impl_pragma(ItemMercuryStatus), Items,
+    list.foldl4(add_impl_pragma(ProgressStream, ItemMercuryStatus), Items,
         cord.init, PragmaTabledCord, !ModuleInfo, !QualInfo, !Specs),
     PragmaTabledList = cord.list(PragmaTabledCord),
     (
@@ -758,25 +760,28 @@ add_impl_pragmas([ImsList | ImsLists],
         SubList = ims_sub_list(ItemMercuryStatus, PragmaTabledList),
         cord.snoc(SubList, !PragmaTabledListCord)
     ),
-    add_impl_pragmas(ImsLists,
+    add_impl_pragmas(ProgressStream, ImsLists,
         !PragmaTabledListCord, !ModuleInfo, !QualInfo, !Specs).
 
-add_impl_pragmas_tabled([], !ModuleInfo, !QualInfo, !Specs).
-add_impl_pragmas_tabled([ImsList | ImsLists],
+add_impl_pragmas_tabled(_, [], !ModuleInfo, !QualInfo, !Specs).
+add_impl_pragmas_tabled(ProgressStream, [ImsList | ImsLists],
         !ModuleInfo, !QualInfo, !Specs) :-
     ImsList = ims_sub_list(ItemMercuryStatus, Items),
-    list.foldl3(add_impl_pragma_tabled(ItemMercuryStatus), Items,
+    list.foldl3(
+        add_impl_pragma_tabled(ProgressStream, ItemMercuryStatus), Items,
         !ModuleInfo, !QualInfo, !Specs),
-    add_impl_pragmas_tabled(ImsLists, !ModuleInfo, !QualInfo, !Specs).
+    add_impl_pragmas_tabled(ProgressStream, ImsLists,
+        !ModuleInfo, !QualInfo, !Specs).
 
 %---------------------%
 
-:- pred add_impl_pragma(item_mercury_status::in, item_impl_pragma_info::in,
+:- pred add_impl_pragma(io.text_output_stream::in, item_mercury_status::in,
+    item_impl_pragma_info::in,
     cord(impl_pragma_tabled_info)::in, cord(impl_pragma_tabled_info)::out,
     module_info::in, module_info::out, qual_info::in, qual_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-add_impl_pragma(ItemMercuryStatus, Pragma, !PragmaTabledCord,
+add_impl_pragma(ProgressStream, ItemMercuryStatus, Pragma, !PragmaTabledCord,
         !ModuleInfo, !QualInfo, !Specs) :-
     (
         Pragma = impl_pragma_foreign_decl(FDInfo),
@@ -801,8 +806,8 @@ add_impl_pragma(ItemMercuryStatus, Pragma, !PragmaTabledCord,
     ;
         Pragma = impl_pragma_fact_table(FTInfo),
         item_mercury_status_to_pred_status(ItemMercuryStatus, PredStatus),
-        add_pragma_fact_table(ItemMercuryStatus, PredStatus, FTInfo,
-            !ModuleInfo, !Specs)
+        add_pragma_fact_table(ProgressStream, ItemMercuryStatus, PredStatus,
+            FTInfo, !ModuleInfo, !Specs)
     ;
         Pragma = impl_pragma_tabled(TabledInfo),
         cord.snoc(TabledInfo, !PragmaTabledCord)
@@ -998,7 +1003,8 @@ mark_pred_as_external(Context, PredId, !ModuleInfo, !Specs) :-
 
 %---------------------%
 
-    % add_pragma_fact_table(IMS, Status, FTInfo, Context, !ModuleInfo, !Info):
+    % add_pragma_fact_table(ProgressStream, IMS, Status, FTInfo, Context,
+    %   !ModuleInfo, !Info):
     %
     % Add a `pragma fact_table' declaration to the HLDS. This predicate calls
     % the fact table compiler (fact_table_compile_facts) to create a separate
@@ -1006,12 +1012,12 @@ mark_pred_as_external(Context, PredId, !ModuleInfo, !Specs) :-
     % `pragma c_code' to access the table in each mode of the fact table
     % predicate.
     %
-:- pred add_pragma_fact_table(item_mercury_status::in, pred_status::in,
-    impl_pragma_fact_table_info::in,
+:- pred add_pragma_fact_table(io.text_output_stream::in,
+    item_mercury_status::in, pred_status::in, impl_pragma_fact_table_info::in,
     module_info::in, module_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-add_pragma_fact_table(ItemMercuryStatus, PredStatus, FTInfo,
+add_pragma_fact_table(ProgressStream, ItemMercuryStatus, PredStatus, FTInfo,
         !ModuleInfo, !Specs) :-
     FTInfo = impl_pragma_fact_table_info(PredSpec, FileName, Context, _),
     PredSpec = pred_pfu_name_arity(PFU, PredSymName, UserArity),
@@ -1041,9 +1047,9 @@ add_pragma_fact_table(ItemMercuryStatus, PredStatus, FTInfo,
             some [!IO] (
                 promise_pure (
                     semipure io.unsafe_get_io_state(!:IO),
-                    fact_table_compile_facts(!.ModuleInfo, FileName,
-                        Context, GenInfo, C_HeaderCode, PrimaryProcId,
-                        PredInfo0, PredInfo1, !Specs, !IO),
+                    fact_table_compile_facts(ProgressStream, !.ModuleInfo,
+                        FileName, Context, GenInfo, C_HeaderCode,
+                        PrimaryProcId, PredInfo0, PredInfo1, !Specs, !IO),
                     impure io.unsafe_set_io_state(!.IO)
                 )
             ),
@@ -1068,7 +1074,7 @@ add_pragma_fact_table(ItemMercuryStatus, PredStatus, FTInfo,
             module_add_fact_table_file(FileName, !ModuleInfo),
 
             % Create foreign_procs to access the table in each mode.
-            add_fact_table_procs(PredOrFunc, PredSymName,
+            add_fact_table_procs(ProgressStream, PredOrFunc, PredSymName,
                 ItemMercuryStatus, PredStatus, ProcTable,  PrimaryProcId,
                 Context, GenInfo, ProcIds, !ModuleInfo, !Specs)
         )
@@ -1083,32 +1089,33 @@ add_pragma_fact_table(ItemMercuryStatus, PredStatus, FTInfo,
     % `pragma fact_table's are represented in the HLDS by a
     % `pragma foreign_proc' for each mode of the predicate.
     %
-:- pred add_fact_table_procs(pred_or_func::in, sym_name::in,
-    item_mercury_status::in, pred_status::in, proc_table::in, proc_id::in,
-    prog_context::in, fact_table_gen_info::in, list(proc_id)::in,
-    module_info::in, module_info::out,
+:- pred add_fact_table_procs(io.text_output_stream::in, pred_or_func::in,
+    sym_name::in, item_mercury_status::in, pred_status::in,
+    proc_table::in, proc_id::in, prog_context::in, fact_table_gen_info::in,
+    list(proc_id)::in, module_info::in, module_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-add_fact_table_procs(_, _, _, _, _, _, _, _, [], !ModuleInfo, !Specs).
-add_fact_table_procs(PredOrFunc, SymName, ItemMercuryStatus, PredStatus,
-        ProcTable, PrimaryProcId, Context, GenInfo, [ProcId | ProcIds],
-        !ModuleInfo, !Specs) :-
-    add_fact_table_proc(PredOrFunc, SymName, ItemMercuryStatus, PredStatus,
-        ProcTable, PrimaryProcId, Context, GenInfo, ProcId,
-        !ModuleInfo, !Specs),
-    add_fact_table_procs(PredOrFunc, SymName, ItemMercuryStatus, PredStatus,
-        ProcTable, PrimaryProcId, Context, GenInfo, ProcIds,
-        !ModuleInfo, !Specs).
+add_fact_table_procs(_, _, _, _, _, _, _, _, _, [], !ModuleInfo, !Specs).
+add_fact_table_procs(ProgressStream, PredOrFunc, SymName,
+        ItemMercuryStatus, PredStatus, ProcTable, PrimaryProcId, Context,
+        GenInfo, [ProcId | ProcIds], !ModuleInfo, !Specs) :-
+    add_fact_table_proc(ProgressStream, PredOrFunc, SymName,
+        ItemMercuryStatus, PredStatus, ProcTable, PrimaryProcId, Context,
+        GenInfo, ProcId, !ModuleInfo, !Specs),
+    add_fact_table_procs(ProgressStream, PredOrFunc, SymName,
+        ItemMercuryStatus, PredStatus, ProcTable, PrimaryProcId, Context,
+        GenInfo, ProcIds, !ModuleInfo, !Specs).
 
-:- pred add_fact_table_proc(pred_or_func::in, sym_name::in,
+:- pred add_fact_table_proc(io.text_output_stream::in,
+    pred_or_func::in, sym_name::in,
     item_mercury_status::in, pred_status::in, proc_table::in, proc_id::in,
     prog_context::in, fact_table_gen_info::in, proc_id::in,
     module_info::in, module_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-add_fact_table_proc(PredOrFunc, SymName, ItemMercuryStatus, PredStatus,
-        ProcTable, PrimaryProcId, Context, GenInfo, ProcId,
-        !ModuleInfo, !Specs) :-
+add_fact_table_proc(ProgressStream, PredOrFunc, SymName,
+        ItemMercuryStatus, PredStatus, ProcTable, PrimaryProcId, Context,
+        GenInfo, ProcId, !ModuleInfo, !Specs) :-
     map.lookup(ProcTable, ProcId, ProcInfo),
     proc_info_get_inst_varset(ProcInfo, InstVarSet),
 
@@ -1126,7 +1133,7 @@ add_fact_table_proc(PredOrFunc, SymName, ItemMercuryStatus, PredStatus,
         ProgVarSet, InstVarSet, fp_impl_ordinary(C_ProcCode, no),
         Context, item_no_seq_num),
     % XXX Should return this instead.
-    add_foreign_proc(ItemMercuryStatus, PredStatus, FCInfo,
+    add_foreign_proc(ProgressStream, ItemMercuryStatus, PredStatus, FCInfo,
         !ModuleInfo, !Specs),
     ( if C_ExtraCode = "" then
         true
@@ -1410,20 +1417,20 @@ check_required_feature(Globals, Context, Feature, !Specs) :-
 
 %---------------------%
 
-:- pred add_impl_pragma_tabled(item_mercury_status::in,
-    impl_pragma_tabled_info::in,
+:- pred add_impl_pragma_tabled(io.text_output_stream::in,
+    item_mercury_status::in, impl_pragma_tabled_info::in,
     module_info::in, module_info::out, qual_info::in, qual_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-add_impl_pragma_tabled(ItemMercuryStatus, Tabled,
+add_impl_pragma_tabled(ProgressStream, ItemMercuryStatus, Tabled,
         !ModuleInfo, !QualInfo, !Specs) :-
     module_info_get_globals(!.ModuleInfo, Globals),
     globals.lookup_bool_option(Globals, type_layout, TypeLayout),
     (
         TypeLayout = yes,
         item_mercury_status_to_pred_status(ItemMercuryStatus, PredStatus),
-        module_add_pragma_tabled(Tabled, ItemMercuryStatus, PredStatus,
-            !ModuleInfo, !QualInfo, !Specs)
+        module_add_pragma_tabled(ProgressStream, Tabled,
+            ItemMercuryStatus, PredStatus, !ModuleInfo, !QualInfo, !Specs)
     ;
         TypeLayout = no,
         Tabled = impl_pragma_tabled_info(TabledMethod, _, _, Context, _),

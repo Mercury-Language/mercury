@@ -189,8 +189,9 @@ output_lval_for_csharp(Info, Lval, Stream, !IO) :-
         io.write_string(Stream, LocalVarNameStr, !IO)
     ;
         Lval = ml_global_var(GlobalVarName, _),
-        GlobalVarNameStr = maybe_qualified_global_var_name_to_string_for_csharp(
-            Info, GlobalVarName),
+        GlobalVarNameStr =
+            maybe_qualified_global_var_name_to_string_for_csharp(Info,
+                GlobalVarName),
         io.write_string(Stream, GlobalVarNameStr, !IO)
     ).
 

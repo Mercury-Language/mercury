@@ -961,7 +961,8 @@ gather_decl_pragma_for_what_pf_id(DeclPragma, MaybePredOrFuncId) :-
         MaybePredOrFuncId = yes(MaybePredOrFunc - sym_name_arity(Name, Arity))
     ;
         DeclPragma = decl_pragma_obsolete_proc(ObsoleteProc),
-        ObsoleteProc = decl_pragma_obsolete_proc_info(PredNameModesPF, _, _, _),
+        ObsoleteProc =
+            decl_pragma_obsolete_proc_info(PredNameModesPF, _, _, _),
         PredNameModesPF = proc_pf_name_modes(PredOrFunc, Name, Modes),
         adjust_func_arity(PredOrFunc, Arity, list.length(Modes)),
         MaybePredOrFuncId = yes(yes(PredOrFunc) - sym_name_arity(Name, Arity))

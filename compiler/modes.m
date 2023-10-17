@@ -211,9 +211,9 @@ check_pred_modes(ProgressStream, WhatToCheck, MayChangeCalledProc,
     globals.lookup_int_option(Globals, mode_inference_iteration_limit,
         MaxIterations),
     map.init(ProcModeErrorMap0),
-    modecheck_to_fixpoint(ProgressStream, PredIds, MaxIterations, WhatToCheck,
-        MayChangeCalledProc, !ModuleInfo, ProcModeErrorMap0, ProcModeErrorMap1,
-        SafeToContinue0, !:Specs),
+    modecheck_to_fixpoint(ProgressStream, WhatToCheck, MayChangeCalledProc,
+        MaxIterations, PredIds, SafeToContinue0, !:Specs,
+        ProcModeErrorMap0, ProcModeErrorMap1, !ModuleInfo),
     (
         WhatToCheck = check_unique_modes,
         ProcModeErrorMap = ProcModeErrorMap1,
@@ -245,11 +245,11 @@ check_pred_modes(ProgressStream, WhatToCheck, MayChangeCalledProc,
                     !ModuleInfo),
                 % --delay-partial-instantiations requires mode checking to be
                 % run again.
-                modecheck_to_fixpoint(ProgressStream, ChangedPreds,
-                    MaxIterations, WhatToCheck, MayChangeCalledProc,
-                    !.ModuleInfo, AfterDPIModuleInfo,
+                modecheck_to_fixpoint(ProgressStream, WhatToCheck,
+                    MayChangeCalledProc, MaxIterations, ChangedPreds,
+                    AfterDPISafeToContinue, AfterDPISpecs,
                     ProcModeErrorMap1, AfterDPIProcModeErrorMap,
-                    AfterDPISafeToContinue, AfterDPISpecs),
+                    !.ModuleInfo, AfterDPIModuleInfo),
                 MaybeBeforeDPISeverity =
                     worst_severity_in_specs(Globals, BeforeDPISpecs),
                 MaybeAfterDPISeverity =
@@ -445,15 +445,15 @@ delete_invalid_procs_from_pred(PredId, ProcMap, !ModuleInfo) :-
     % will end up not being called from anywhere at all during this compiler
     % invocation.
     %
-:- pred modecheck_to_fixpoint(io.text_output_stream::in, list(pred_id)::in,
-    int::in, how_to_check_goal::in, may_change_called_proc::in,
-    module_info::in, module_info::out,
+:- pred modecheck_to_fixpoint(io.text_output_stream::in, how_to_check_goal::in,
+    may_change_called_proc::in, int::in, list(pred_id)::in,
+    maybe_safe_to_continue::out, list(error_spec)::out,
     proc_mode_error_map::in, proc_mode_error_map::out,
-    maybe_safe_to_continue::out, list(error_spec)::out) is det.
+    module_info::in, module_info::out) is det.
 
-modecheck_to_fixpoint(ProgressStream, PredIds, NumIterationsLeft, WhatToCheck,
-        MayChangeCalledProc, !ModuleInfo, !ProcModeErrorMap,
-        SafeToContinue, !:Specs) :-
+modecheck_to_fixpoint(ProgressStream, WhatToCheck, MayChangeCalledProc,
+        NumIterationsLeft, PredIds, SafeToContinue, !:Specs,
+        !ProcModeErrorMap, !ModuleInfo) :-
     % Save the old procedure bodies, so that we can restore any procedure body 
     % for the next pass if necessary.
     module_info_get_pred_id_table(!.ModuleInfo, OldPredIdTable0),
@@ -465,8 +465,9 @@ modecheck_to_fixpoint(ProgressStream, PredIds, NumIterationsLeft, WhatToCheck,
 
     % Analyze the procedures whose "CanProcess" flag was cannot_process_yet;
     % those procedures were inserted into the unify requests queue.
-    modecheck_queued_procs(WhatToCheck, OldPredIdTable0, OldPredIdTable,
-        !ModuleInfo, !ProcModeErrorMap, Changed1, Changed, !Specs),
+    modecheck_queued_procs(ProgressStream, WhatToCheck,
+        Changed1, Changed, !Specs, OldPredIdTable0, OldPredIdTable,
+        !ProcModeErrorMap, !ModuleInfo),
 
     module_info_get_globals(!.ModuleInfo, Globals),
     ErrorsSoFar = contains_errors(Globals, !.Specs),
@@ -534,9 +535,9 @@ modecheck_to_fixpoint(ProgressStream, PredIds, NumIterationsLeft, WhatToCheck,
                     copy_pred_bodies(OldPredIdTable, PredIds, !ModuleInfo)
                 ),
 
-                modecheck_to_fixpoint(ProgressStream, PredIds,
-                    NumIterationsLeft - 1, WhatToCheck, MayChangeCalledProc,
-                    !ModuleInfo, !ProcModeErrorMap, SafeToContinue, !:Specs)
+                modecheck_to_fixpoint(ProgressStream, WhatToCheck,
+                    MayChangeCalledProc, NumIterationsLeft - 1, PredIds,
+                    SafeToContinue, !:Specs, !ProcModeErrorMap, !ModuleInfo)
             )
         )
     ).
@@ -1220,13 +1221,15 @@ do_modecheck_proc_body(ModuleInfo, WhatToCheck, InferModes, IsUnifyPred,
     % analysis, so that we can restore them before doing the next analysis
     % pass.
     %
-:- pred modecheck_queued_procs(how_to_check_goal::in,
-    pred_id_table::in, pred_id_table::out, module_info::in, module_info::out,
+:- pred modecheck_queued_procs(io.text_output_stream::in,
+    how_to_check_goal::in,
+    bool::in, bool::out, list(error_spec)::in, list(error_spec)::out,
+    pred_id_table::in, pred_id_table::out,
     proc_mode_error_map::in, proc_mode_error_map::out,
-    bool::in, bool::out, list(error_spec)::in, list(error_spec)::out) is det.
+    module_info::in, module_info::out) is det.
 
-modecheck_queued_procs(HowToCheckGoal, !OldPredIdTable, !ModuleInfo,
-        !ProcModeErrorMap, !Changed, !Specs) :-
+modecheck_queued_procs(ProgressStream, HowToCheckGoal,
+        !Changed, !Specs, !OldPredIdTable, !ProcModeErrorMap, !ModuleInfo) :-
     module_info_get_proc_requests(!.ModuleInfo, Requests0),
     get_req_queue(Requests0, RequestQueue0),
     ( if queue.get(PredProcId, RequestQueue0, RequestQueue1) then
@@ -1244,35 +1247,36 @@ modecheck_queued_procs(HowToCheckGoal, !OldPredIdTable, !ModuleInfo,
         module_info_get_valid_pred_id_set(!.ModuleInfo, ValidPredIds),
         ( if set_tree234.member(PredId, ValidPredIds) then
             trace [io(!IO)] (
-                queued_proc_progress_message(!.ModuleInfo, PredProcId,
-                    HowToCheckGoal, !IO)
+                queued_proc_progress_message(ProgressStream, HowToCheckGoal,
+                    !.ModuleInfo, PredProcId, !IO)
             ),
-            modecheck_queued_proc(HowToCheckGoal, PredProcId,
-                !OldPredIdTable, !ModuleInfo, !ProcModeErrorMap,
-                HeadChanged, HeadSpecs),
+            modecheck_queued_proc(ProgressStream, HowToCheckGoal, PredProcId,
+                HeadChanged, HeadSpecs,
+                !OldPredIdTable, !ProcModeErrorMap, !ModuleInfo),
             bool.or(HeadChanged, !Changed),
             !:Specs = HeadSpecs ++ !.Specs
         else
             true
         ),
         disable_warning [suspicious_recursion] (
-            modecheck_queued_procs(HowToCheckGoal, !OldPredIdTable,
-                !ModuleInfo, !ProcModeErrorMap, !Changed, !Specs)
+            modecheck_queued_procs(ProgressStream, HowToCheckGoal,
+                !Changed, !Specs,
+                !OldPredIdTable, !ProcModeErrorMap, !ModuleInfo)
         )
     else
         true
     ).
 
-:- pred queued_proc_progress_message(module_info::in, pred_proc_id::in,
-    how_to_check_goal::in, io::di, io::uo) is det.
+:- pred queued_proc_progress_message(io.text_output_stream::in,
+    how_to_check_goal::in, module_info::in, pred_proc_id::in,
+    io::di, io::uo) is det.
 
-queued_proc_progress_message(ModuleInfo, PredProcId, HowToCheckGoal, !IO) :-
+queued_proc_progress_message(ProgressStream, HowToCheckGoal,
+        ModuleInfo, PredProcId, !IO) :-
     module_info_get_globals(ModuleInfo, Globals),
     globals.lookup_bool_option(Globals, very_verbose, VeryVerbose),
     (
         VeryVerbose = yes,
-        module_info_get_name(ModuleInfo, ModuleName),
-        get_progress_output_stream(Globals, ModuleName, ProgressStream, !IO),
         ProcStr = pred_proc_id_to_user_string(ModuleInfo, PredProcId),
         (
             HowToCheckGoal = check_modes,
@@ -1287,14 +1291,14 @@ queued_proc_progress_message(ModuleInfo, PredProcId, HowToCheckGoal, !IO) :-
         VeryVerbose = no
     ).
 
-:- pred modecheck_queued_proc(how_to_check_goal::in, pred_proc_id::in,
+:- pred modecheck_queued_proc(io.text_output_stream::in, how_to_check_goal::in,
+    pred_proc_id::in, bool::out, list(error_spec)::out,
     pred_id_table::in, pred_id_table::out,
-    module_info::in, module_info::out,
     proc_mode_error_map::in, proc_mode_error_map::out,
-    bool::out, list(error_spec)::out) is det.
+    module_info::in, module_info::out) is det.
 
-modecheck_queued_proc(HowToCheckGoal, PredProcId, !OldPredIdTable,
-        !ModuleInfo, !ProcModeErrorMap, !:Changed, Specs) :-
+modecheck_queued_proc(ProgressStream, HowToCheckGoal, PredProcId,
+        !:Changed, Specs, !OldPredIdTable, !ProcModeErrorMap, !ModuleInfo) :-
     PredProcId = proc(PredId, ProcId),
 
     module_info_pred_info(!.ModuleInfo, PredId, PredInfo0),
@@ -1332,7 +1336,8 @@ modecheck_queued_proc(HowToCheckGoal, PredProcId, !OldPredIdTable,
             module_info_set_pred_info(PredId, PredInfo3, !ModuleInfo),
 
             detect_cse_in_proc(maybe.no, PredId, ProcId, !ModuleInfo),
-            determinism_check_proc(PredId, ProcId, !ModuleInfo, DetismSpecs),
+            determinism_check_proc(ProgressStream, PredId, ProcId,
+                DetismSpecs, !ModuleInfo),
             expect(unify(DetismSpecs, []), $pred, "found detism error"),
             save_proc_info(!.ModuleInfo, ProcId, PredId, !OldPredIdTable),
             modecheck_proc_general(check_unique_modes, may_change_called_proc,

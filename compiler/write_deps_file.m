@@ -57,8 +57,8 @@
     --->    trans_opt_deps_from_order(set(module_name))
     ;       trans_opt_deps_from_d_file(set(module_name)).
 
-    % write_dependency_file(Globals, BurdenedAugCompUnit, MaybeIntermodDeps,
-    %   AllDeps, MaybeInclTransOptRule, !IO):
+    % write_dependency_file(ProgressStream, Globals, BurdenedAugCompUnit,
+    %   MaybeIntermodDeps, AllDeps, MaybeInclTransOptRule, !IO):
     %
     % Write out the per-module makefile dependencies (`.d') file for the
     % specified module. AllDeps is the set of all module names which the
@@ -79,12 +79,14 @@
     % I am pretty sure that the original author (fjh) does not know anymore
     % either :-(
     %
-:- pred write_dependency_file(globals::in, burdened_aug_comp_unit::in,
+:- pred write_dependency_file(io.text_output_stream::in,
+    globals::in, burdened_aug_comp_unit::in,
     maybe_intermod_deps::in, set(module_name)::in,
     maybe_include_trans_opt_rule::in, io::di, io::uo) is det.
 
-    % generate_dependencies_write_d_files(Globals, BurdenedModules,
-    %   IntDepsGraph, ImplDepsGraph, IndirectDepsGraph, IndirectOptDepsGraph,
+    % generate_dependencies_write_d_files(ProgressStream, Globals,
+    %   BurdenedModules, IntDepsGraph, ImplDepsGraph,
+    %   IndirectDepsGraph, IndirectOptDepsGraph,
     %   TransOptDepsGraph, TransOptOrder, !IO):
     %
     % This predicate writes out the .d files for all the modules in the
@@ -101,22 +103,24 @@
     % TransOptOrder gives the ordering that is used to determine
     % which other modules the .trans_opt files may depend on.
     %
-:- pred generate_dependencies_write_d_files(globals::in,
-    list(burdened_module)::in,
+:- pred generate_dependencies_write_d_files(io.text_output_stream::in,
+    globals::in, list(burdened_module)::in,
     deps_graph::in, deps_graph::in, deps_graph::in, deps_graph::in,
     deps_graph::in, list(module_name)::in, io::di, io::uo) is det.
 
     % Write out the `.dv' file, using the information collected in the
     % deps_map data structure.
     %
-:- pred generate_dependencies_write_dv_file(globals::in, file_name::in,
-    module_name::in, deps_map::in, io::di, io::uo) is det.
+:- pred generate_dependencies_write_dv_file(io.text_output_stream::in,
+    globals::in, file_name::in, module_name::in, deps_map::in,
+    io::di, io::uo) is det.
 
     % Write out the `.dep' file, using the information collected in the
     % deps_map data structure.
     %
-:- pred generate_dependencies_write_dep_file(globals::in, file_name::in,
-    module_name::in, deps_map::in, io::di, io::uo) is det.
+:- pred generate_dependencies_write_dep_file(io.text_output_stream::in,
+    globals::in, file_name::in, module_name::in, deps_map::in,
+    io::di, io::uo) is det.
 
 %---------------------------------------------------------------------------%
 
@@ -173,20 +177,22 @@
 
 %---------------------------------------------------------------------------%
 
-write_dependency_file(Globals, BurdenedAugCompUnit, IntermodDeps, AllDeps,
-        MaybeInclTransOptRule, !IO) :-
+write_dependency_file(ProgressStream, Globals, BurdenedAugCompUnit,
+        IntermodDeps, AllDeps, MaybeInclTransOptRule, !IO) :-
     map.init(Cache0),
-    write_dependency_file_fn_cache(Globals, BurdenedAugCompUnit, IntermodDeps,
-        AllDeps, MaybeInclTransOptRule, Cache0, _Cache, !IO).
+    write_dependency_file_fn_cache(ProgressStream, Globals,
+        BurdenedAugCompUnit, IntermodDeps, AllDeps, MaybeInclTransOptRule,
+        Cache0, _Cache, !IO).
 
-:- pred write_dependency_file_fn_cache(globals::in,
-    burdened_aug_comp_unit::in, maybe_intermod_deps::in, set(module_name)::in,
+:- pred write_dependency_file_fn_cache(io.text_output_stream::in,
+    globals::in, burdened_aug_comp_unit::in,
+    maybe_intermod_deps::in, set(module_name)::in,
     maybe_include_trans_opt_rule::in,
     module_file_name_cache::in, module_file_name_cache::out,
     io::di, io::uo) is det.
 
-write_dependency_file_fn_cache(Globals, BurdenedAugCompUnit, IntermodDeps,
-        AllDeps, MaybeInclTransOptRule, !Cache, !IO) :-
+write_dependency_file_fn_cache(ProgressStream, Globals, BurdenedAugCompUnit,
+        IntermodDeps, AllDeps, MaybeInclTransOptRule, !Cache, !IO) :-
     % To avoid problems with concurrent updates of `.d' files during
     % parallel makes, we first create the file with a temporary name,
     % and then rename it to the desired name when we have finished.
@@ -197,12 +203,10 @@ write_dependency_file_fn_cache(Globals, BurdenedAugCompUnit, IntermodDeps,
         ext_cur_ngs(ext_cur_ngs_mf_d), ModuleName, DependencyFileName, !IO),
     io.file.make_temp_file(dir.dirname(DependencyFileName), "tmp_d", "",
         TmpDependencyFileNameRes, !IO),
-    get_error_output_stream(Globals, ModuleName, ErrorStream, !IO),
-    get_progress_output_stream(Globals, ModuleName, ProgressStream, !IO),
     (
         TmpDependencyFileNameRes = error(Error),
         Message = "Could not create temporary file: " ++ error_message(Error),
-        report_error(ErrorStream, Message, !IO)
+        report_error(ProgressStream, Message, !IO)
     ;
         TmpDependencyFileNameRes = ok(TmpDependencyFileName),
         globals.lookup_bool_option(Globals, verbose, Verbose),
@@ -223,7 +227,7 @@ write_dependency_file_fn_cache(Globals, BurdenedAugCompUnit, IntermodDeps,
             io.error_message(IOError, IOErrorMessage),
             string.format("error opening temporary file `%s' for output: %s",
                 [s(TmpDependencyFileName), s(IOErrorMessage)], Message),
-            report_error(ErrorStream, Message, !IO)
+            report_error(ProgressStream, Message, !IO)
         ;
             Result = ok(DepStream),
             generate_d_file(Globals, BurdenedAugCompUnit, IntermodDeps,
@@ -246,7 +250,7 @@ write_dependency_file_fn_cache(Globals, BurdenedAugCompUnit, IntermodDeps,
                     io.error_message(Error4, ErrorMsg),
                     string.format("can't remove file `%s': %s",
                         [s(DependencyFileName), s(ErrorMsg)], Message),
-                    report_error(ErrorStream, Message, !IO)
+                    report_error(ProgressStream, Message, !IO)
                 ;
                     RemoveResult = ok,
                     io.file.rename_file(TmpDependencyFileName,
@@ -260,7 +264,7 @@ write_dependency_file_fn_cache(Globals, BurdenedAugCompUnit, IntermodDeps,
                         string.format("can't rename file `%s' as `%s': %s",
                             [s(TmpDependencyFileName), s(DependencyFileName),
                             s(ErrorMsg)], Message),
-                        report_error(ErrorStream, Message, !IO)
+                        report_error(ProgressStream, Message, !IO)
                     ;
                         SecondRenameResult = ok,
                         maybe_write_string(ProgressStream, Verbose,
@@ -1338,42 +1342,47 @@ construct_subdirs_shorthand_rule(Globals, ModuleName, Ext,
 
 %---------------------------------------------------------------------------%
 
-generate_dependencies_write_d_files(Globals, BurdenedModules,
-        IntDepsGraph, ImpDepsGraph, IndirectDepsGraph, IndirectOptDepsGraph,
+generate_dependencies_write_d_files(ProgressStream,
+        Globals, BurdenedModules, IntDepsGraph, ImpDepsGraph,
+        IndirectDepsGraph, IndirectOptDepsGraph,
         TransOptDepsGraph, TransOptOrder, !IO) :-
     map.init(Cache0),
-    generate_dependencies_write_d_files_loop(Globals, BurdenedModules,
-        IntDepsGraph, ImpDepsGraph, IndirectDepsGraph, IndirectOptDepsGraph,
+    generate_dependencies_write_d_files_loop(ProgressStream,
+        Globals, BurdenedModules, IntDepsGraph, ImpDepsGraph,
+        IndirectDepsGraph, IndirectOptDepsGraph,
         TransOptDepsGraph, TransOptOrder, Cache0, _Cache, !IO).
 
-:- pred generate_dependencies_write_d_files_loop(globals::in,
-    list(burdened_module)::in,
+:- pred generate_dependencies_write_d_files_loop(io.text_output_stream::in,
+    globals::in, list(burdened_module)::in,
     deps_graph::in, deps_graph::in, deps_graph::in, deps_graph::in,
     deps_graph::in, list(module_name)::in,
     module_file_name_cache::in, module_file_name_cache::out,
     io::di, io::uo) is det.
 
-generate_dependencies_write_d_files_loop(_, [], _, _, _, _, _, _,
+generate_dependencies_write_d_files_loop(_, _, [], _, _, _, _, _, _,
         !Cache, !IO).
-generate_dependencies_write_d_files_loop(Globals,
+generate_dependencies_write_d_files_loop(ProgressStream, Globals,
         [BurdenedModule | BurdenedModules],
         IntDepsGraph, ImpDepsGraph, IndirectDepsGraph, IndirectOptDepsGraph,
         TransOptDepsGraph, TransOptOrder, !Cache, !IO) :-
-    generate_dependencies_write_d_file(Globals, BurdenedModule,
-        IntDepsGraph, ImpDepsGraph, IndirectDepsGraph, IndirectOptDepsGraph,
+    generate_dependencies_write_d_file(ProgressStream, Globals,
+        BurdenedModule, IntDepsGraph, ImpDepsGraph,
+        IndirectDepsGraph, IndirectOptDepsGraph,
         TransOptDepsGraph, TransOptOrder, !Cache, !IO),
-    generate_dependencies_write_d_files_loop(Globals, BurdenedModules,
-        IntDepsGraph, ImpDepsGraph, IndirectDepsGraph, IndirectOptDepsGraph,
+    generate_dependencies_write_d_files_loop(ProgressStream, Globals,
+        BurdenedModules, IntDepsGraph, ImpDepsGraph,
+        IndirectDepsGraph, IndirectOptDepsGraph,
         TransOptDepsGraph, TransOptOrder, !Cache, !IO).
 
-:- pred generate_dependencies_write_d_file(globals::in, burdened_module::in,
-    deps_graph::in, deps_graph::in, deps_graph::in, deps_graph::in,
-    deps_graph::in, list(module_name)::in,
+:- pred generate_dependencies_write_d_file(io.text_output_stream::in,
+    globals::in, burdened_module::in, deps_graph::in, deps_graph::in,
+    deps_graph::in, deps_graph::in, deps_graph::in, list(module_name)::in,
     module_file_name_cache::in, module_file_name_cache::out,
     io::di, io::uo) is det.
 
-generate_dependencies_write_d_file(Globals, BurdenedModule,
-        IntDepsGraph, ImpDepsGraph, IndirectDepsGraph, IndirectOptDepsGraph,
+generate_dependencies_write_d_file(ProgressStream, Globals,
+        BurdenedModule, IntDepsGraph, ImpDepsGraph,
+        IndirectDepsGraph, IndirectOptDepsGraph,
         TransOptDepsGraph, FullTransOptOrder, !Cache, !IO) :-
     BurdenedModule = burdened_module(Baggage, ParseTreeModuleSrc),
 
@@ -1435,8 +1444,9 @@ generate_dependencies_write_d_file(Globals, BurdenedModule,
     ( if set.is_empty(FatalErrors) then
         init_aug_compilation_unit(ParseTreeModuleSrc, AugCompUnit),
         BurdenedAugCompUnit = burdened_aug_comp_unit(Baggage, AugCompUnit),
-        write_dependency_file_fn_cache(Globals, BurdenedAugCompUnit,
-            IntermodDeps, IndirectOptDeps, MaybeInclTransOptRule, !Cache, !IO)
+        write_dependency_file_fn_cache(ProgressStream, Globals,
+            BurdenedAugCompUnit, IntermodDeps, IndirectOptDeps,
+            MaybeInclTransOptRule, !Cache, !IO)
     else
         true
     ).
@@ -1460,12 +1470,11 @@ get_dependencies_from_graph(DepsGraph, ModuleName, Dependencies) :-
 
 %---------------------------------------------------------------------------%
 
-generate_dependencies_write_dv_file(Globals, SourceFileName, ModuleName,
-        DepsMap, !IO) :-
+generate_dependencies_write_dv_file(ProgressStream, Globals,
+        SourceFileName, ModuleName, DepsMap, !IO) :-
     globals.lookup_bool_option(Globals, verbose, Verbose),
     module_name_to_file_name_create_dirs(Globals, $pred,
         ext_cur_ngs(ext_cur_ngs_mf_dv), ModuleName, DvFileName, !IO),
-    get_progress_output_stream(Globals, ModuleName, ProgressStream, !IO),
     string.format("%% Creating auto-dependency file `%s'...\n",
         [s(DvFileName)], CreatingMsg),
     maybe_write_string(ProgressStream, Verbose, CreatingMsg, !IO),
@@ -1482,11 +1491,10 @@ generate_dependencies_write_dv_file(Globals, SourceFileName, ModuleName,
         DvResult = error(IOError),
         maybe_write_string(ProgressStream, Verbose, " failed.\n", !IO),
         maybe_flush_output(ProgressStream, Verbose, !IO),
-        get_error_output_stream(Globals, ModuleName, ErrorStream, !IO),
         io.error_message(IOError, IOErrorMessage),
         string.format("error opening file `%s' for output: %s",
             [s(DvFileName), s(IOErrorMessage)], DepMessage),
-        report_error(ErrorStream, DepMessage, !IO)
+        report_error(ProgressStream, DepMessage, !IO)
     ).
 
 %---------------------------------------------------------------------------%
@@ -1872,12 +1880,11 @@ get_fact_table_file_names(DepsMap, [Module | Modules], !FactTableFileNames) :-
 
 %---------------------------------------------------------------------------%
 
-generate_dependencies_write_dep_file(Globals, SourceFileName, ModuleName,
-        DepsMap, !IO) :-
+generate_dependencies_write_dep_file(ProgressStream, Globals,
+        SourceFileName, ModuleName, DepsMap, !IO) :-
     globals.lookup_bool_option(Globals, verbose, Verbose),
     module_name_to_file_name_create_dirs(Globals, $pred,
         ext_cur_ngs(ext_cur_ngs_mf_dep), ModuleName, DepFileName, !IO),
-    get_progress_output_stream(Globals, ModuleName, ProgressStream, !IO),
     string.format("%% Creating auto-dependency file `%s'...\n",
         [s(DepFileName)], CreatingMsg),
     maybe_write_string(ProgressStream, Verbose, CreatingMsg, !IO),
@@ -1893,11 +1900,10 @@ generate_dependencies_write_dep_file(Globals, SourceFileName, ModuleName,
         DepResult = error(IOError),
         maybe_write_string(ProgressStream, Verbose, " failed.\n", !IO),
         maybe_flush_output(ProgressStream, Verbose, !IO),
-        get_error_output_stream(Globals, ModuleName, ErrorStream, !IO),
         io.error_message(IOError, IOErrorMessage),
         string.format("error opening file `%s' for output: %s",
             [s(DepFileName), s(IOErrorMessage)], DepMessage),
-        report_error(ErrorStream, DepMessage, !IO)
+        report_error(ProgressStream, DepMessage, !IO)
     ).
 
 %---------------------------------------------------------------------------%

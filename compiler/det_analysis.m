@@ -72,6 +72,7 @@
 :- import_module parse_tree.error_spec.
 :- import_module parse_tree.prog_data.
 
+:- import_module io.
 :- import_module list.
 :- import_module maybe.
 
@@ -80,19 +81,20 @@
     % Perform determinism inference for local predicates with no determinism
     % declarations, and determinism checking for all other predicates.
     %
-:- pred determinism_pass(module_info::in, module_info::out,
-    list(error_spec)::out) is det.
+:- pred determinism_pass(io.text_output_stream::in,
+    list(error_spec)::out, module_info::in, module_info::out) is det.
 
     % Check the determinism of a single procedure. Works only if the
     % determinisms of the procedures it calls have already been inferred.
     %
-:- pred determinism_check_proc(pred_id::in, proc_id::in,
-    module_info::in, module_info::out, list(error_spec)::out) is det.
+:- pred determinism_check_proc(io.text_output_stream::in,
+    pred_id::in, proc_id::in, list(error_spec)::out,
+    module_info::in, module_info::out) is det.
 
     % Infer the determinism of a procedure.
     %
-:- pred det_infer_proc_ignore_msgs(pred_id::in, proc_id::in,
-    module_info::in, module_info::out) is det.
+:- pred det_infer_proc_ignore_msgs(io.text_output_stream::in,
+    pred_id::in, proc_id::in, module_info::in, module_info::out) is det.
 
 :- type pess_info
     --->    pess_info(prog_vars, prog_context).
@@ -178,7 +180,6 @@
 
 :- import_module assoc_list.
 :- import_module bool.
-:- import_module io.
 :- import_module map.
 :- import_module pair.
 :- import_module require.
@@ -187,7 +188,7 @@
 
 %---------------------------------------------------------------------------%
 
-determinism_pass(!ModuleInfo, Specs) :-
+determinism_pass(ProgressStream, Specs, !ModuleInfo) :-
     module_info_get_pred_id_table(!.ModuleInfo, PredIdTable0),
     module_info_get_valid_pred_ids(!.ModuleInfo, ValidPredIds0),
     determinism_declarations(PredIdTable0, ValidPredIds0,
@@ -203,55 +204,53 @@ determinism_pass(!ModuleInfo, Specs) :-
     ;
         UndeclaredProcs = [_ | _],
         trace [io(!IO)] (
-            get_progress_output_stream(!.ModuleInfo,  ProgressStream, !IO),
             maybe_write_string(ProgressStream, Verbose,
                 "% Doing determinism inference...\n", !IO)
         ),
-        determinism_inference_to_fixpoint(!ModuleInfo, UndeclaredProcs, Debug,
-            InferenceSpecs),
+        determinism_inference_to_fixpoint(ProgressStream, Debug,
+            UndeclaredProcs, InferenceSpecs, !ModuleInfo),
         trace [io(!IO)] (
-            get_progress_output_stream(!.ModuleInfo,  ProgressStream, !IO),
             maybe_write_string(ProgressStream, Verbose, "% done.\n", !IO)
         )
     ),
     trace [io(!IO)] (
-        get_progress_output_stream(!.ModuleInfo,  ProgressStream, !IO),
         maybe_write_string(ProgressStream, Verbose,
             "% Doing determinism checking...\n", !IO)
     ),
-    determinism_final_pass(!ModuleInfo, DeclaredProcs, UndeclaredProcs,
-        ImportedProcs, Debug, FinalSpecs),
+    determinism_final_pass(ProgressStream, Debug,
+        DeclaredProcs, UndeclaredProcs, ImportedProcs,
+        FinalSpecs, !ModuleInfo),
     Specs = InferenceSpecs ++ FinalSpecs,
     trace [io(!IO)] (
-        get_progress_output_stream(!.ModuleInfo,  ProgressStream, !IO),
         maybe_write_string(ProgressStream, Verbose, "% done.\n", !IO)
     ).
 
-determinism_check_proc(PredId, ProcId, !ModuleInfo, !:Specs) :-
+determinism_check_proc(ProgressStream, PredId, ProcId, !:Specs, !ModuleInfo) :-
     % Does for one procedure what determinism_final_pass does
     % for all determinism-checked procedures.
     PredProcId = proc(PredId, ProcId),
     module_info_get_globals(!.ModuleInfo, Globals),
     globals.lookup_bool_option(Globals, debug_det, Debug),
-    det_infer_proc(proc(PredId, ProcId), Debug,
-        !ModuleInfo, [], !:Specs, unchanged, _),
-    check_determinism_of_proc(PredProcId, !ModuleInfo, !Specs).
+    det_infer_proc(ProgressStream, Debug, proc(PredId, ProcId),
+        [], !:Specs, unchanged, _, !ModuleInfo),
+    check_determinism_of_proc(ProgressStream, PredProcId, !ModuleInfo, !Specs).
 
 %---------------------------------------------------------------------------%
 
-:- pred determinism_inference_to_fixpoint(module_info::in, module_info::out,
-    list(pred_proc_id)::in, bool::in, list(error_spec)::out) is det.
+:- pred determinism_inference_to_fixpoint(io.text_output_stream::in, bool::in,
+    list(pred_proc_id)::in, list(error_spec)::out,
+    module_info::in, module_info::out) is det.
 
-determinism_inference_to_fixpoint(!ModuleInfo, PredProcIds, Debug, Specs) :-
+determinism_inference_to_fixpoint(ProgressStream, Debug, PredProcIds, Specs,
+        !ModuleInfo) :-
     % Iterate until a fixpoint is reached. This can be expensive if a module
     % has many predicates with undeclared determinisms. If this ever becomes
     % a problem, we should switch to doing iterations only on strongly
     % connected components of the dependency graph.
-    determinism_inference_one_pass(PredProcIds, Debug, !ModuleInfo, [], Specs1,
-        unchanged, Changed),
+    determinism_inference_one_pass(ProgressStream, Debug, PredProcIds,
+        [], Specs1, unchanged, Changed, !ModuleInfo),
     trace [io(!IO)] (
-        get_debug_output_stream(!.ModuleInfo,  DebugStream, !IO),
-        maybe_write_string(DebugStream, Debug,
+        maybe_write_string(ProgressStream, Debug,
             "% Inference pass complete\n", !IO)
     ),
     (
@@ -262,8 +261,8 @@ determinism_inference_to_fixpoint(!ModuleInfo, PredProcIds, Debug, Specs) :-
         % to be printed. Instead, we will compute them again from more
         % up-to-date determinism information.
         disable_warning [suspicious_recursion] (
-            determinism_inference_to_fixpoint(!ModuleInfo, PredProcIds,
-                Debug, Specs)
+            determinism_inference_to_fixpoint(ProgressStream, Debug,
+                PredProcIds, Specs, !ModuleInfo)
         )
     ;
         Changed = unchanged,
@@ -273,45 +272,50 @@ determinism_inference_to_fixpoint(!ModuleInfo, PredProcIds, Debug, Specs) :-
         Specs = Specs1
     ).
 
-:- pred determinism_inference_one_pass(list(pred_proc_id)::in, bool::in,
-    module_info::in, module_info::out,
-    list(error_spec)::in, list(error_spec)::out,
-    maybe_changed::in, maybe_changed::out) is det.
+:- pred determinism_inference_one_pass(io.text_output_stream::in, bool::in,
+    list(pred_proc_id)::in, list(error_spec)::in, list(error_spec)::out,
+    maybe_changed::in, maybe_changed::out,
+    module_info::in, module_info::out) is det.
 
-determinism_inference_one_pass([], _, !ModuleInfo, !Specs, !Changed).
-determinism_inference_one_pass([PredProcId | PredProcIds], Debug,
-        !ModuleInfo, !Specs, !Changed) :-
-    det_infer_proc(PredProcId, Debug, !ModuleInfo, !Specs, !Changed),
-    determinism_inference_one_pass(PredProcIds, Debug, !ModuleInfo, !Specs,
-        !Changed).
+determinism_inference_one_pass(_, _, [], !Specs, !Changed, !ModuleInfo).
+determinism_inference_one_pass(ProgressStream, Debug,
+        [PredProcId | PredProcIds], !Specs, !Changed, !ModuleInfo) :-
+    det_infer_proc(ProgressStream, Debug, PredProcId,
+        !Specs, !Changed, !ModuleInfo),
+    determinism_inference_one_pass(ProgressStream, Debug, PredProcIds,
+        !Specs, !Changed, !ModuleInfo).
 
-:- pred determinism_final_pass(module_info::in, module_info::out,
+:- pred determinism_final_pass(io.text_output_stream::in, bool::in,
     list(pred_proc_id)::in, list(pred_proc_id)::in, list(pred_proc_id)::in,
-    bool::in, list(error_spec)::out) is det.
+    list(error_spec)::out, module_info::in, module_info::out) is det.
 
-determinism_final_pass(!ModuleInfo, DeclaredProcs, UndeclaredProcs,
-        ImportedProcs, Debug, !:Specs) :-
+determinism_final_pass(ProgressStream, Debug,
+        DeclaredProcs, UndeclaredProcs, ImportedProcs, !:Specs, !ModuleInfo) :-
     % We have already iterated determinism_inference_one_pass to a fixpoint
     % on the undeclared procs.
-    determinism_inference_one_pass(DeclaredProcs, Debug, !ModuleInfo,
-        [], !:Specs, unchanged, _),
+    determinism_inference_one_pass(ProgressStream, Debug, DeclaredProcs,
+        [], !:Specs, unchanged, _, !ModuleInfo),
     % This is the second, checking pass.
-    check_determinism_of_procs(DeclaredProcs, !ModuleInfo, !Specs),
-    check_determinism_of_procs(UndeclaredProcs, !ModuleInfo, !Specs),
-    check_determinism_of_imported_procs(!.ModuleInfo, ImportedProcs, !Specs).
+    check_determinism_of_procs(ProgressStream, DeclaredProcs,
+        !ModuleInfo, !Specs),
+    check_determinism_of_procs(ProgressStream, UndeclaredProcs,
+        !ModuleInfo, !Specs),
+    check_determinism_of_imported_procs(ProgressStream, !.ModuleInfo,
+        ImportedProcs, !Specs).
 
 %---------------------------------------------------------------------------%
 
-det_infer_proc_ignore_msgs(PredId, ProcId, !ModuleInfo) :-
-    det_infer_proc(proc(PredId, ProcId), no,
-        !ModuleInfo, [], _Specs, unchanged, _).
+det_infer_proc_ignore_msgs(ProgressStream, PredId, ProcId, !ModuleInfo) :-
+    det_infer_proc(ProgressStream, no, proc(PredId, ProcId),
+        [], _Specs, unchanged, _, !ModuleInfo).
 
-:- pred det_infer_proc(pred_proc_id::in, bool::in,
-    module_info::in, module_info::out,
+:- pred det_infer_proc(io.text_output_stream::in, bool::in, pred_proc_id::in,
     list(error_spec)::in, list(error_spec)::out,
-    maybe_changed::in, maybe_changed::out) is det.
+    maybe_changed::in, maybe_changed::out,
+    module_info::in, module_info::out) is det.
 
-det_infer_proc(PredProcId, Debug, !ModuleInfo, !Specs, !Changed) :-
+det_infer_proc(ProgressStream, Debug, PredProcId,
+        !Specs, !Changed, !ModuleInfo) :-
     % Get the proc_info structure for this procedure.
     PredProcId = proc(PredId, ProcId),
     module_info_pred_info(!.ModuleInfo, PredId, PredInfo0),
@@ -343,7 +347,6 @@ det_infer_proc(PredProcId, Debug, !ModuleInfo, !Specs, !Changed) :-
     ),
 
     trace [compiletime(flag("debug-det-analysis-progress")), io(!IO)] (
-        get_progress_output_stream(!.ModuleInfo,  ProgressStream, !IO),
         PredIdInt = pred_id_to_int(PredId),
         ProcIdInt = proc_id_to_int(ProcId),
         io.format(ProgressStream, "inferring predicate %d proc %d\n",

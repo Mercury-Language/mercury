@@ -32,6 +32,7 @@
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.var_table.
 
+:- import_module io.
 :- import_module list.
 
 %---------------------------------------------------------------------------%
@@ -71,8 +72,8 @@
     %
     % This is the main predicate exported by this module.
     %
-:- pred check_determinism_of_procs(list(pred_proc_id)::in,
-    module_info::in, module_info::out,
+:- pred check_determinism_of_procs(io.text_output_stream::in,
+    list(pred_proc_id)::in, module_info::in, module_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
     % As above, but for just a single procedure. Used when a change in
@@ -80,8 +81,8 @@
     % the procedure's mode- and determinism-analysis, in order to update
     % the relevant fields of hlds_goal_infos.
     %
-:- pred check_determinism_of_proc(pred_proc_id::in,
-    module_info::in, module_info::out,
+:- pred check_determinism_of_proc(io.text_output_stream::in,
+    pred_proc_id::in, module_info::in, module_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
     % Check the determinism declarations of the specified procedures
@@ -97,8 +98,8 @@
     % invocation being given data that violates our rules of static semantics.
     % (See tests/invalid_manual/gh118.m for an example.)
     %
-:- pred check_determinism_of_imported_procs(module_info::in,
-    list(pred_proc_id)::in,
+:- pred check_determinism_of_imported_procs(io.text_output_stream::in,
+    module_info::in, list(pred_proc_id)::in,
     list(error_spec)::in, list(error_spec)::out) is det.
 
     % Check a lambda goal with the specified declared and inferred
@@ -163,7 +164,6 @@
 :- import_module hlds.hlds_out.hlds_out_goal.
 :- import_module hlds.hlds_out.hlds_out_util.
 :- import_module hlds.hlds_proc_util.
-:- import_module hlds.passes_aux.
 :- import_module hlds.pred_name.
 :- import_module hlds.status.
 :- import_module libs.options.
@@ -202,16 +202,17 @@
 
 %---------------------------------------------------------------------------%
 
-check_determinism_of_procs([], !ModuleInfo, !Specs).
-check_determinism_of_procs([PredProcId | PredProcIds], !ModuleInfo, !Specs) :-
-    check_determinism_of_proc(PredProcId, !ModuleInfo, !Specs),
-    check_determinism_of_procs(PredProcIds, !ModuleInfo, !Specs).
+check_determinism_of_procs(_, [], !ModuleInfo, !Specs).
+check_determinism_of_procs(ProgressStream, [PredProcId | PredProcIds],
+        !ModuleInfo, !Specs) :-
+    check_determinism_of_proc(ProgressStream, PredProcId, !ModuleInfo, !Specs),
+    check_determinism_of_procs(ProgressStream, PredProcIds,
+        !ModuleInfo, !Specs).
 
-check_determinism_of_proc(PredProcId, !ModuleInfo, !Specs) :-
+check_determinism_of_proc(ProgressStream, PredProcId, !ModuleInfo, !Specs) :-
     module_info_pred_proc_info(!.ModuleInfo, PredProcId, PredInfo, ProcInfo),
 
     trace [compiletime(flag("debug-check-detism-progress")), io(!IO)] (
-        get_progress_output_stream(!.ModuleInfo,  ProgressStream, !IO),
         proc_info_get_argmodes(ProcInfo, PredArgModes),
         proc_info_get_inst_varset(ProcInfo, InstVarSet),
         PredProcId = proc(PredId, _ProcId),
@@ -242,20 +243,23 @@ check_determinism_of_proc(PredProcId, !ModuleInfo, !Specs) :-
 
 %---------------------------------------------------------------------------%
 
-check_determinism_of_imported_procs(_, [], !Specs).
-check_determinism_of_imported_procs(ModuleInfo, [PredProcId | PredProcIds],
-        !Specs) :-
-    check_determinism_of_imported_proc(ModuleInfo, PredProcId, !Specs),
-    check_determinism_of_imported_procs(ModuleInfo, PredProcIds, !Specs).
+check_determinism_of_imported_procs(_, _, [], !Specs).
+check_determinism_of_imported_procs(ProgressStream, ModuleInfo,
+        [PredProcId | PredProcIds], !Specs) :-
+    check_determinism_of_imported_proc(ProgressStream, ModuleInfo,
+        PredProcId, !Specs),
+    check_determinism_of_imported_procs(ProgressStream, ModuleInfo,
+        PredProcIds, !Specs).
 
-:- pred check_determinism_of_imported_proc(module_info::in, pred_proc_id::in,
+:- pred check_determinism_of_imported_proc(io.text_output_stream::in,
+    module_info::in, pred_proc_id::in,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-check_determinism_of_imported_proc(ModuleInfo, PredProcId, !Specs) :-
+check_determinism_of_imported_proc(ProgressStream, ModuleInfo, PredProcId,
+        !Specs) :-
     module_info_pred_proc_info(ModuleInfo, PredProcId, PredInfo, ProcInfo),
 
     trace [compiletime(flag("debug-check-detism-progress")), io(!IO)] (
-        get_progress_output_stream(ModuleInfo,  ProgressStream, !IO),
         proc_info_get_argmodes(ProcInfo, PredArgModes),
         proc_info_get_inst_varset(ProcInfo, InstVarSet),
         PredProcId = proc(PredId, _ProcId),

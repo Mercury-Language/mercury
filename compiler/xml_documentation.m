@@ -26,7 +26,8 @@
     % Output a representation of the module in XML which can be used
     % to document the module.
     %
-:- pred xml_documentation(module_info::in, io::di, io::uo) is det.
+:- pred xml_documentation(io.text_output_stream::in, module_info::in,
+    io::di, io::uo) is det.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -37,7 +38,6 @@
 :- import_module hlds.hlds_data.
 :- import_module hlds.hlds_pred.
 :- import_module hlds.hlds_proc_util.
-:- import_module hlds.passes_aux.
 :- import_module hlds.pred_name.
 :- import_module hlds.pred_table.
 :- import_module hlds.status.
@@ -91,7 +91,7 @@
 
 %-----------------------------------------------------------------------------%
 
-xml_documentation(ModuleInfo, !IO) :-
+xml_documentation(ProgressStream, ModuleInfo, !IO) :-
     module_info_get_globals(ModuleInfo, Globals),
     module_info_get_name(ModuleInfo, ModuleName),
     module_name_to_file_name_create_dirs(Globals, $pred,
@@ -117,13 +117,11 @@ xml_documentation(ModuleInfo, !IO) :-
                 write_xml_doc(Stream, MIXmlDoc, !IO)
             ;
                 OpenResult = error(Err),
-                get_error_output_stream(ModuleInfo, ErrorStream, !IO),
-                unable_to_open_file(ErrorStream, FileName, Err, !IO)
+                unable_to_open_file(ProgressStream, FileName, Err, !IO)
             )
         ;
             SrcResult = error(SrcErr),
-            get_error_output_stream(ModuleInfo, ErrorStream, !IO),
-            unable_to_open_file(ErrorStream, SrcFileName, SrcErr, !IO)
+            unable_to_open_file(ProgressStream, SrcFileName, SrcErr, !IO)
         )
     ;
         MaybeSrcFileName = no,

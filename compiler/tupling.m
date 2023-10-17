@@ -90,8 +90,8 @@
 
 :- import_module io.
 
-:- pred tuple_arguments(module_info::in, module_info::out, io::di, io::uo)
-    is det.
+:- pred tuple_arguments(io.text_output_stream::in,
+    module_info::in, module_info::out, io::di, io::uo) is det.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -114,7 +114,6 @@
 :- import_module hlds.hlds_proc_util.
 :- import_module hlds.hlds_rtti.
 :- import_module hlds.make_goal.
-:- import_module hlds.passes_aux.
 :- import_module hlds.pred_name.
 :- import_module hlds.quantification.
 :- import_module libs.
@@ -164,7 +163,7 @@
 % The top level.
 %
 
-tuple_arguments(!ModuleInfo, !IO) :-
+tuple_arguments(ProgressStream, !ModuleInfo, !IO) :-
     % XXX We should add a mechanism that would allow us to check whether
     % we have already read in this file, and if we have, then avoid reading
     % it in again.
@@ -172,29 +171,28 @@ tuple_arguments(!ModuleInfo, !IO) :-
     globals.get_opt_tuple(Globals, OptTuple),
     TraceCountsFile = OptTuple ^ ot_tuple_trace_counts_file,
     ( if TraceCountsFile = "" then
-        get_error_output_stream(!.ModuleInfo, ErrorStream, !IO),
-        report_warning(ErrorStream, Globals,
+        report_warning(ProgressStream, Globals,
             "Warning: --tuple requires --tuple-trace-counts-file to work.\n",
             !IO)
     else
         read_trace_counts_source(TraceCountsFile, Result, !IO),
         (
             Result = list_ok(_, TraceCounts),
-            tuple_arguments_with_trace_counts(!ModuleInfo, TraceCounts)
+            tuple_arguments_with_trace_counts(ProgressStream,
+                !ModuleInfo, TraceCounts)
         ;
             Result = list_error_message(Reason),
-            get_error_output_stream(!.ModuleInfo, ErrorStream, !IO),
             string.format(
                 "Warning: unable to read trace count summary from %s (%s)\n",
                 [s(TraceCountsFile), s(Reason)], Message),
-            report_warning(ErrorStream, Globals, Message, !IO)
+            report_warning(ProgressStream, Globals, Message, !IO)
         )
     ).
 
-:- pred tuple_arguments_with_trace_counts(module_info::in, module_info::out,
-    trace_counts::in) is det.
+:- pred tuple_arguments_with_trace_counts(io.text_output_stream::in,
+    module_info::in, module_info::out, trace_counts::in) is det.
 
-tuple_arguments_with_trace_counts(!ModuleInfo, TraceCounts0) :-
+tuple_arguments_with_trace_counts(ProgressStream, !ModuleInfo, TraceCounts0) :-
     module_info_get_globals(!.ModuleInfo, Globals),
     % We use the same cost options as for the stack optimisation.
     globals.get_opt_tuple(Globals, OptTuple),
@@ -224,7 +222,8 @@ tuple_arguments_with_trace_counts(!ModuleInfo, TraceCounts0) :-
 
     % Add transformed versions of procedures that we think would be
     % beneficial.
-    list.foldl3(maybe_tuple_scc(TraceCounts, TuningParams, DepGraph),
+    list.foldl3(
+        maybe_tuple_scc(ProgressStream, TuningParams, TraceCounts, DepGraph),
         SCCs, !ModuleInfo, counter.init(0), _, map.init, TransformMap),
 
     % Update the callers of the original procedures to call their
@@ -240,27 +239,28 @@ tuple_arguments_with_trace_counts(!ModuleInfo, TraceCounts0) :-
     % the behaviour from an earlier version of this file. It is currently
     % unused, but might be useful for debugging.
     %
-:- pred maybe_tuple_scc_individual_procs(trace_counts::in, tuning_params::in,
+:- pred maybe_tuple_scc_individual_procs(io.text_output_stream::in,
+    tuning_params::in, trace_counts::in,
     hlds_dependency_graph::in, list(pred_proc_id)::in,
     module_info::in, module_info::out, counter::in, counter::out,
     transform_map::in, transform_map::out) is det.
-:- pragma consider_used(pred(maybe_tuple_scc_individual_procs/10)).
+:- pragma consider_used(pred(maybe_tuple_scc_individual_procs/11)).
 
-maybe_tuple_scc_individual_procs(_TraceCounts, _TuningParams, _DepGraph,
+maybe_tuple_scc_individual_procs(_, _, _, _,
         [], !ModuleInfo, !Counter, !TransformMap).
-maybe_tuple_scc_individual_procs(TraceCounts, TuningParams, DepGraph,
-        [Proc | Procs], !ModuleInfo, !Counter, !TransformMap) :-
-    maybe_tuple_scc(TraceCounts, TuningParams, DepGraph,
+maybe_tuple_scc_individual_procs(ProgressStream, TuningParams, TraceCounts,
+        DepGraph, [Proc | Procs], !ModuleInfo, !Counter, !TransformMap) :-
+    maybe_tuple_scc(ProgressStream, TuningParams, TraceCounts, DepGraph,
         set.make_singleton_set(Proc), !ModuleInfo, !Counter, !TransformMap),
-    maybe_tuple_scc_individual_procs(TraceCounts, TuningParams, DepGraph,
-        Procs, !ModuleInfo, !Counter, !TransformMap).
+    maybe_tuple_scc_individual_procs(ProgressStream, TuningParams, TraceCounts,
+        DepGraph, Procs, !ModuleInfo, !Counter, !TransformMap).
 
-:- pred maybe_tuple_scc(trace_counts::in, tuning_params::in,
-    hlds_dependency_graph::in, scc::in,
+:- pred maybe_tuple_scc(io.text_output_stream::in, tuning_params::in,
+    trace_counts::in, hlds_dependency_graph::in, scc::in,
     module_info::in, module_info::out, counter::in, counter::out,
     transform_map::in, transform_map::out) is det.
 
-maybe_tuple_scc(TraceCounts, TuningParams, DepGraph, SCC,
+maybe_tuple_scc(ProgressStream, TuningParams, TraceCounts, DepGraph, SCC,
         !ModuleInfo, !Counter, !TransformMap) :-
     module_info_get_globals(!.ModuleInfo, Globals),
     globals.lookup_bool_option(Globals, very_verbose, VeryVerbose),
@@ -274,7 +274,6 @@ maybe_tuple_scc(TraceCounts, TuningParams, DepGraph, SCC,
             % seems to fall in the overlap between progress messages
             % and debug messages. They mostly report progress, but much
             % of the info they print is of interest only to developers.
-            get_progress_output_stream(!.ModuleInfo, ProgressStream, !IO),
             io.format(ProgressStream,
                 "%% Considering tupling in %s...\n", [s(SccStr)], !IO)
         )
@@ -294,8 +293,6 @@ maybe_tuple_scc(TraceCounts, TuningParams, DepGraph, SCC,
             (
                 VeryVerbose = yes,
                 trace [io(!IO)] (
-                    get_progress_output_stream(!.ModuleInfo,
-                        ProgressStream, !IO),
                     io.write_string(ProgressStream,
                         "% Too few candidate headvars.\n", !IO)
                 )
@@ -303,9 +300,9 @@ maybe_tuple_scc(TraceCounts, TuningParams, DepGraph, SCC,
                 VeryVerbose = no
             )
         else
-            maybe_tuple_scc_2(TraceCounts, TuningParams,
-                SCC, CandidateHeadVars, !ModuleInfo,
-                !Counter, !TransformMap, VeryVerbose)
+            maybe_tuple_scc_2(ProgressStream, VeryVerbose, TuningParams,
+                TraceCounts, SCC, CandidateHeadVars,
+                !ModuleInfo, !Counter, !TransformMap)
         )
     else
         % No need to work on this SCC if there are no callers to it
@@ -316,7 +313,6 @@ maybe_tuple_scc(TraceCounts, TuningParams, DepGraph, SCC,
         (
             VeryVerbose = yes,
             trace [io(!IO)] (
-                get_progress_output_stream(!.ModuleInfo, ProgressStream, !IO),
                 io.write_string(ProgressStream,
                     "% SCC has no local callers.\n", !IO)
             )
@@ -344,13 +340,14 @@ proc_has_local_callers(CalleeProc, DepGraph) :-
 
 %-----------------------------------------------------------------------------%
 
-:- pred maybe_tuple_scc_2(trace_counts::in, tuning_params::in, scc::in,
-    candidate_headvars::in,
+:- pred maybe_tuple_scc_2(io.text_output_stream::in, bool::in,
+    tuning_params::in, trace_counts::in, scc::in, candidate_headvars::in,
     module_info::in, module_info::out, counter::in, counter::out,
-    transform_map::in, transform_map::out, bool::in) is det.
+    transform_map::in, transform_map::out) is det.
 
-maybe_tuple_scc_2(TraceCounts, TuningParams, PredProcIds, CandidateHeadVars,
-        !ModuleInfo, !Counter, !TransformMap, VeryVerbose) :-
+maybe_tuple_scc_2(ProgressStream, VeryVerbose, TuningParams, TraceCounts,
+        PredProcIds, CandidateHeadVars,
+        !ModuleInfo, !Counter, !TransformMap) :-
     set.foldl2(prepare_proc_for_counting, PredProcIds,
         map.init, ReverseGoalPathMapMap, !ModuleInfo),
     % Count the average number of loads/stores without any transformation.
@@ -360,7 +357,6 @@ maybe_tuple_scc_2(TraceCounts, TuningParams, PredProcIds, CandidateHeadVars,
         VeryVerbose = yes,
         CostsWithoutTupling = costs(LoadsWoTupling, StoresWoTupling),
         trace [io(!IO)] (
-            get_progress_output_stream(!.ModuleInfo, ProgressStream, !IO),
             io.format(ProgressStream,
                 "%% SCC costs without tupling = {%g, %g}\n",
                 [f(LoadsWoTupling), f(StoresWoTupling)], !IO)
@@ -372,20 +368,21 @@ maybe_tuple_scc_2(TraceCounts, TuningParams, PredProcIds, CandidateHeadVars,
         % Don't bother continuing.
         true
     else
-        maybe_tuple_scc_3(TraceCounts, TuningParams, ReverseGoalPathMapMap,
-            PredProcIds, CandidateHeadVars, CostsWithoutTupling,
-            !ModuleInfo, !Counter, !TransformMap, VeryVerbose)
+        maybe_tuple_scc_3(ProgressStream, VeryVerbose, TuningParams,
+            TraceCounts, ReverseGoalPathMapMap, PredProcIds,
+            CandidateHeadVars, CostsWithoutTupling,
+            !ModuleInfo, !Counter, !TransformMap)
     ).
 
-:- pred maybe_tuple_scc_3(trace_counts::in, tuning_params::in,
+:- pred maybe_tuple_scc_3(io.text_output_stream::in, bool::in,
+    tuning_params::in, trace_counts::in,
     map(pred_proc_id, goal_reverse_path_map)::in, scc::in,
     candidate_headvars::in, costs::in, module_info::in, module_info::out,
-    counter::in, counter::out, transform_map::in, transform_map::out,
-    bool::in) is det.
+    counter::in, counter::out, transform_map::in, transform_map::out) is det.
 
-maybe_tuple_scc_3(TraceCounts, TuningParams, ReverseGoalPathMapMap,
-        SCC, CandidateHeadVars, CostsWithoutTupling,
-        !ModuleInfo, !Counter, !TransformMap, VeryVerbose) :-
+maybe_tuple_scc_3(ProgressStream, VeryVerbose, TuningParams, TraceCounts,
+        ReverseGoalPathMapMap, SCC, CandidateHeadVars, CostsWithoutTupling,
+        !ModuleInfo, !Counter, !TransformMap) :-
     find_best_tupling_scheme(TraceCounts, TuningParams, !.ModuleInfo,
         ReverseGoalPathMapMap, SCC, CandidateHeadVars, MaybeBestScheme),
     (
@@ -396,7 +393,6 @@ maybe_tuple_scc_3(TraceCounts, TuningParams, ReverseGoalPathMapMap,
         (
             VeryVerbose = yes,
             trace [io(!IO)] (
-                get_progress_output_stream(!.ModuleInfo, ProgressStream, !IO),
                 io.format(ProgressStream,
                     "%% SCC costs with tupling = {%g, %g}\n",
                     [f(LoadsWithTupling), f(StoresWithTupling)], !IO)
@@ -411,8 +407,6 @@ maybe_tuple_scc_3(TraceCounts, TuningParams, ReverseGoalPathMapMap,
             (
                 VeryVerbose = yes,
                 trace [io(!IO)] (
-                    get_progress_output_stream(!.ModuleInfo,
-                        ProgressStream, !IO),
                     io.write_string(ProgressStream,
                         "% Proceeding with tupling\n", !IO)
                 )

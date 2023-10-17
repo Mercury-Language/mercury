@@ -41,7 +41,7 @@
 :- pred map_args_to_regs(io.text_output_stream::in, bool::in, bool::in,
     module_info::in, module_info::out, io::di, io::uo) is det.
 
-:- pred llds_output_pass(io.text_output_stream::in, io.text_output_stream::in,
+:- pred llds_output_pass(io.text_output_stream::in,
     op_mode_codegen::in, module_info::in, global_data::in,
     list(c_procedure)::in, module_name::in,
     maybe_succeeded::out, list(string)::out, io::di, io::uo) is det.
@@ -467,7 +467,8 @@ llds_backend_pass_for_proc(ProgressStream, ConstStructMap, SCCMap,
     (
         Optimize = optimize,
         module_info_get_name(!.HLDS, ModuleName),
-        optimize_proc(Globals, ModuleName, !.GlobalData, CProc0, CProc)
+        optimize_proc(ProgressStream, Globals, ModuleName, !.GlobalData,
+            CProc0, CProc)
     ;
         Optimize = do_not_optimize,
         CProc = CProc0
@@ -623,7 +624,7 @@ generate_llds_code_for_module(ProgressStream, HLDS, Verbose, Stats,
         !GlobalData, LLDS, !IO) :-
     maybe_write_string(ProgressStream, Verbose, "% Generating code...\n", !IO),
     maybe_flush_output(ProgressStream, Verbose, !IO),
-    generate_module_code(HLDS, LLDS, !GlobalData),
+    generate_module_code(ProgressStream, HLDS, LLDS, !GlobalData),
     maybe_write_string(ProgressStream, Verbose, "% done.\n", !IO),
     maybe_report_stats(ProgressStream, Stats, !IO).
 
@@ -642,7 +643,7 @@ maybe_optimize_llds(ProgressStream, HLDS, GlobalData, Verbose, Stats,
             "% Doing optimizations...\n", !IO),
         maybe_flush_output(ProgressStream, Verbose, !IO),
         module_info_get_name(HLDS, ModuleName),
-        optimize_procs(Globals, ModuleName, GlobalData, !LLDS),
+        optimize_procs(ProgressStream, Globals, ModuleName, GlobalData, !LLDS),
         maybe_write_string(ProgressStream, Verbose, "% done.\n", !IO),
         maybe_report_stats(ProgressStream, Stats, !IO)
     ;
@@ -665,7 +666,7 @@ maybe_generate_stack_layouts(ProgressStream, HLDS, LLDS, Verbose, Stats,
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
-llds_output_pass(ProgressStream, ErrorStream, OpModeCodeGen, HLDS,
+llds_output_pass(ProgressStream, OpModeCodeGen, HLDS,
         GlobalData0, Procs, ModuleName, Succeeded, FactTableObjFiles, !IO) :-
     module_info_get_globals(HLDS, Globals),
     globals.lookup_bool_option(Globals, verbose, Verbose),
@@ -766,12 +767,13 @@ llds_output_pass(ProgressStream, ErrorStream, OpModeCodeGen, HLDS,
         AllocSites, AllocIdMap, ChunkedModules,
         UserInitPredCNames, UserFinalPredCNames, ComplexityProcs),
 
-    output_llds_file(Globals, CFile, TargetCodeSucceeded, !IO),
+    output_llds_file(ProgressStream, Globals, CFile, TargetCodeSucceeded, !IO),
     (
         TargetCodeSucceeded = succeeded,
 
         C_InterfaceInfo = foreign_interface_info(_, _, _, _, C_ExportDecls, _),
-        export.produce_header_file(HLDS, C_ExportDecls, ModuleName, !IO),
+        export.produce_header_file(ProgressStream, HLDS, C_ExportDecls,
+            ModuleName, !IO),
 
         % Finally we invoke the C compiler on the generated C files,
         % if we were asked to do so.
@@ -779,11 +781,11 @@ llds_output_pass(ProgressStream, ErrorStream, OpModeCodeGen, HLDS,
             ( OpModeCodeGen = opmcg_target_and_object_code_only
             ; OpModeCodeGen = opmcg_target_object_and_executable
             ),
-            llds_c_to_obj(Globals, ProgressStream, ErrorStream, ModuleName,
+            llds_c_to_obj(Globals, ProgressStream, ModuleName,
                 CompileSucceeded, !IO),
             module_info_get_fact_table_file_names(HLDS, FactTableBaseFiles),
             list.map2_foldl(
-                compile_fact_table_file(Globals, ProgressStream, ErrorStream),
+                compile_fact_table_file(Globals, ProgressStream),
                 FactTableBaseFiles, FactTableObjFiles,
                 FactTableCompileSucceededs, !IO),
             Succeeded =
@@ -916,19 +918,17 @@ proc_chunks_to_c_modules_loop(CModuleName, Num,
     Module = comp_gen_c_module(CModuleName ++ NumString, Chunk),
     proc_chunks_to_c_modules_loop(CModuleName, Num + 1, Chunks, Modules).
 
-:- pred output_llds_file(globals::in, c_file::in, maybe_succeeded::out,
-    io::di, io::uo) is det.
-
-output_llds_file(Globals, LLDS0, Succeeded, !IO) :-
-    transform_llds(Globals, LLDS0, LLDS),
-    output_llds(Globals, LLDS, Succeeded, !IO).
-
-:- pred llds_c_to_obj(globals::in,
-    io.text_output_stream::in, io.text_output_stream::in, module_name::in,
+:- pred output_llds_file(io.text_output_stream::in, globals::in, c_file::in,
     maybe_succeeded::out, io::di, io::uo) is det.
 
-llds_c_to_obj(Globals, ProgressStream, ErrorStream, ModuleName,
-        Succeeded, !IO) :-
+output_llds_file(ProgressStream, Globals, LLDS0, Succeeded, !IO) :-
+    transform_llds(Globals, LLDS0, LLDS),
+    output_llds(ProgressStream, Globals, LLDS, Succeeded, !IO).
+
+:- pred llds_c_to_obj(globals::in, io.text_output_stream::in, module_name::in,
+    maybe_succeeded::out, io::di, io::uo) is det.
+
+llds_c_to_obj(Globals, ProgressStream, ModuleName, Succeeded, !IO) :-
     get_linked_target_type(Globals, LinkedTargetType),
     get_object_code_type(Globals, LinkedTargetType, PIC),
     maybe_pic_object_file_extension(PIC, ObjExt, _),
@@ -937,15 +937,14 @@ llds_c_to_obj(Globals, ProgressStream, ErrorStream, ModuleName,
         ext_cur_ngs_gs(ext_cur_ngs_gs_target_c), ModuleName, C_File),
     module_name_to_file_name_create_dirs(Globals, $pred,
         ext_cur_ngs_gs(ObjExt), ModuleName, O_File, !IO),
-    compile_target_code.do_compile_c_file(Globals, ProgressStream, ErrorStream,
+    compile_target_code.do_compile_c_file(Globals, ProgressStream,
         PIC, C_File, O_File, Succeeded, !IO).
 
-:- pred compile_fact_table_file(globals::in,
-    io.text_output_stream::in, io.text_output_stream::in, string::in,
-    string::out, maybe_succeeded::out, io::di, io::uo) is det.
+:- pred compile_fact_table_file(globals::in, io.text_output_stream::in,
+    string::in, string::out, maybe_succeeded::out, io::di, io::uo) is det.
 
-compile_fact_table_file(Globals, ProgressStream, ErrorStream,
-        BaseName, O_FileName, Succeeded, !IO) :-
+compile_fact_table_file(Globals, ProgressStream, BaseName, O_FileName,
+        Succeeded, !IO) :-
     get_linked_target_type(Globals, LinkedTargetType),
     get_object_code_type(Globals, LinkedTargetType, PIC),
     maybe_pic_object_file_extension(PIC, ExtObj, _),
@@ -953,7 +952,7 @@ compile_fact_table_file(Globals, ProgressStream, ErrorStream,
     C_FileName = BaseName ++ ".c",
     O_FileName = BaseName ++ extension_to_string(Globals,
         ext_cur_ngs_gs(ExtObj)),
-    compile_target_code.do_compile_c_file(Globals, ProgressStream, ErrorStream,
+    compile_target_code.do_compile_c_file(Globals, ProgressStream,
         PIC, C_FileName, O_FileName, Succeeded, !IO).
 
 %---------------------------------------------------------------------------%

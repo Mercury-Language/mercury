@@ -440,8 +440,6 @@
 
 :- pred get_error_output_stream(globals::in, module_name::in,
     io.text_output_stream::out, io::di, io::uo) is det.
-:- pred get_progress_output_stream(globals::in, module_name::in,
-    io.text_output_stream::out, io::di, io::uo) is det.
 :- pred get_inference_output_stream(globals::in, module_name::in,
     io.text_output_stream::out, io::di, io::uo) is det.
 :- pred get_debug_output_stream(globals::in, module_name::in,
@@ -1135,8 +1133,6 @@ io_set_disable_generate_item_version_numbers(DisableItemVerions, !IO) :-
 
 :- mutable(output_stream_error, compiler_output_stream, no_stream, ground,
     [untrailed, attach_to_io_state]).
-:- mutable(output_stream_progress, compiler_output_stream, no_stream, ground,
-    [untrailed, attach_to_io_state]).
 :- mutable(output_stream_inference, compiler_output_stream, no_stream, ground,
     [untrailed, attach_to_io_state]).
 :- mutable(output_stream_debug, compiler_output_stream, no_stream, ground,
@@ -1147,10 +1143,6 @@ io_set_disable_generate_item_version_numbers(DisableItemVerions, !IO) :-
 get_error_output_stream(Globals, ModuleName, Stream, !IO) :-
     get_output_stream(Globals, ModuleName, error_output_suffix,
         get_output_stream_error, set_output_stream_error, Stream, !IO).
-
-get_progress_output_stream(Globals, ModuleName, Stream, !IO) :-
-    get_output_stream(Globals, ModuleName, progress_output_suffix,
-        get_output_stream_progress, set_output_stream_progress, Stream, !IO).
 
 get_inference_output_stream(Globals, ModuleName, Stream, !IO) :-
     get_output_stream(Globals, ModuleName, inference_output_suffix,
@@ -1214,12 +1206,10 @@ get_output_stream(Globals, ModuleName, Option, Get, Set, Stream, !IO) :-
 
 close_any_specific_compiler_streams(!IO) :-
     get_output_stream_error(ErrorStream, !IO),
-    get_output_stream_progress(ProgresStream, !IO),
     get_output_stream_inference(InferenceStream, !IO),
     get_output_stream_debug(DebugStream, !IO),
     get_output_stream_recompile(RecompileStream, !IO),
     close_compiler_output_stream(ErrorStream, !IO),
-    close_compiler_output_stream(ProgresStream, !IO),
     close_compiler_output_stream(InferenceStream, !IO),
     close_compiler_output_stream(DebugStream, !IO),
     close_compiler_output_stream(RecompileStream, !IO).

@@ -506,16 +506,15 @@ build_target(ProgressStream, Globals, CompilationTask, TargetFile,
                 Succeeded0 = did_not_succeed
             ;
                 MaybeErrorStream = es_ok(MESI, ErrorStream),
-                build_target_2(ModuleName, Task, MaybeArgFileName,
-                    ModuleDepInfo, BuildGlobals, AllOptionArgs,
-                    ProgressStream, ErrorStream, Succeeded0, !Info, !IO),
+                build_target_2(ProgressStream, ErrorStream, BuildGlobals,
+                    Task, ModuleName, ModuleDepInfo,
+                    MaybeArgFileName, AllOptionArgs, Succeeded0, !Info, !IO),
                 close_module_error_stream_handle_errors(Globals, ModuleName,
                     ProgressStream, MESI, ErrorStream, !Info, !IO)
             )
         ;
             MayBuild = may_not_build(Specs),
-            get_error_output_stream(Globals, ModuleName, ErrorStream, !IO),
-            write_error_specs(ErrorStream, Globals, Specs, !IO),
+            write_error_specs(ProgressStream, Globals, Specs, !IO),
             Succeeded0 = did_not_succeed
         ),
         teardown_checking_for_interrupt(VeryVerbose, Cookie, Cleanup,
@@ -564,14 +563,14 @@ cleanup_files(ProgressStream, Globals, MaybeArgFileName,
         MaybeArgFileName = no
     ).
 
-:- pred build_target_2(module_name::in, compilation_task_type::in,
-    maybe(file_name)::in, module_dep_info::in, globals::in,
-    list(string)::in, io.text_output_stream::in, io.text_output_stream::in,
+:- pred build_target_2( io.text_output_stream::in, io.text_output_stream::in,
+    globals::in, compilation_task_type::in, module_name::in,
+    module_dep_info::in, maybe(file_name)::in, list(string)::in,
     maybe_succeeded::out, make_info::in, make_info::out,
     io::di, io::uo) is det.
 
-build_target_2(ModuleName, Task, ArgFileName, ModuleDepInfo, Globals,
-        AllOptionArgs, ProgressStream, ErrorStream, Succeeded, !Info, !IO) :-
+build_target_2(ProgressStream, ErrorStream, Globals, Task, ModuleName,
+        ModuleDepInfo, ArgFileName, AllOptionArgs, Succeeded, !Info, !IO) :-
     (
         Task = process_module(ModuleTask),
         ModuleArg = sym_name_to_string(ModuleName),
@@ -601,7 +600,7 @@ build_target_2(ModuleName, Task, ArgFileName, ModuleDepInfo, Globals,
             CallInSeparateProcess = yes,
             call_in_forked_process_with_backup(
                 call_mercury_compile_main(Globals, [ModuleArg]),
-                invoke_mmc(Globals, ProgressStream, ErrorStream,
+                invoke_mmc(Globals, ProgressStream,
                     ArgFileName, AllOptionArgs ++ [ModuleArg]),
                 CompileSucceeded, !IO)
         ;
@@ -632,8 +631,8 @@ build_target_2(ModuleName, Task, ArgFileName, ModuleDepInfo, Globals,
         % Run the compilation in a child process so it can be killed
         % if an interrupt arrives.
         call_in_forked_process(
-            build_object_code(Globals, ModuleName, CompilationTarget, PIC,
-                ProgressStream, ErrorStream, ModuleDepInfo),
+            build_object_code(ProgressStream, Globals, CompilationTarget, PIC,
+                ModuleName, ModuleDepInfo),
             Succeeded, !IO)
     ;
         Task = foreign_code_to_object_code(PIC, Lang),
@@ -643,8 +642,8 @@ build_target_2(ModuleName, Task, ArgFileName, ModuleDepInfo, Globals,
         % Run the compilation in a child process so it can be killed
         % if an interrupt arrives.
         call_in_forked_process(
-            compile_foreign_code_file(Globals, ProgressStream, ErrorStream,
-                PIC, ModuleDepInfo, ForeignCodeFile),
+            compile_foreign_code_file(Globals, ProgressStream, PIC,
+                ModuleDepInfo, ForeignCodeFile),
             Succeeded, !IO)
     ;
         Task = fact_table_code_to_object_code(PIC, FactTableFileName),
@@ -656,56 +655,55 @@ build_target_2(ModuleName, Task, ArgFileName, ModuleDepInfo, Globals,
         % Run the compilation in a child process so it can be killed
         % if an interrupt arrives.
         call_in_forked_process(
-            compile_foreign_code_file(Globals, ProgressStream, ErrorStream,
-                PIC, ModuleDepInfo, FactTableForeignCode),
+            compile_foreign_code_file(Globals, ProgressStream, PIC,
+                ModuleDepInfo, FactTableForeignCode),
             Succeeded, !IO)
     ).
 
-:- pred build_object_code(globals::in, module_name::in, compilation_target::in,
-    pic::in, io.text_output_stream::in, io.text_output_stream::in,
-    module_dep_info::in, maybe_succeeded::out, io::di, io::uo) is det.
+:- pred build_object_code(io.text_output_stream::in, globals::in,
+    compilation_target::in, pic::in, module_name::in, module_dep_info::in,
+    maybe_succeeded::out, io::di, io::uo) is det.
 
-build_object_code(Globals, ModuleName, Target, PIC,
-        ProgressStream, ErrorStream, _ModuleDepInfo, Succeeded, !IO) :-
+build_object_code(ProgressStream, Globals, Target, PIC,
+        ModuleName, _ModuleDepInfo, Succeeded, !IO) :-
     (
         Target = target_c,
-        compile_c_file(Globals, ProgressStream, ErrorStream, PIC,
-            ModuleName, Succeeded, !IO)
+        compile_c_file(Globals, ProgressStream, PIC, ModuleName,
+            Succeeded, !IO)
     ;
         Target = target_java,
         module_name_to_file_name_create_dirs(Globals, $pred,
             ext_cur_ngs_gs_java(ext_cur_ngs_gs_java_java),
             ModuleName, JavaFile, !IO),
-        compile_java_files(Globals, ProgressStream, ErrorStream,
-            JavaFile, [], Succeeded, !IO)
+        compile_java_files(Globals, ProgressStream, JavaFile, [],
+            Succeeded, !IO)
     ;
         Target = target_csharp,
         module_name_to_file_name_create_dirs(Globals, $pred,
             ext_cur_ngs_gs(ext_cur_ngs_gs_target_cs),
             ModuleName, CsharpFile, !IO),
-        compile_target_code.link(Globals, ProgressStream, ErrorStream,
-            csharp_library, ModuleName, [CsharpFile], Succeeded, !IO)
+        compile_target_code.link(Globals, ProgressStream, csharp_library,
+            ModuleName, [CsharpFile], Succeeded, !IO)
     ).
 
-:- pred compile_foreign_code_file(globals::in,
-    io.text_output_stream::in, io.text_output_stream::in, pic::in,
-    module_dep_info::in, foreign_code_file::in, maybe_succeeded::out,
+:- pred compile_foreign_code_file(globals::in, io.text_output_stream::in,
+    pic::in, module_dep_info::in, foreign_code_file::in, maybe_succeeded::out,
     io::di, io::uo) is det.
 
-compile_foreign_code_file(Globals, ProgressStream, ErrorStream, PIC,
-        ModuleDepInfo, ForeignCodeFile, Succeeded, !IO) :-
+compile_foreign_code_file(Globals, ProgressStream, PIC, ModuleDepInfo,
+        ForeignCodeFile, Succeeded, !IO) :-
     (
         ForeignCodeFile = foreign_code_file(lang_c, CFile, ObjFile),
-        do_compile_c_file(Globals, ProgressStream, ErrorStream, PIC,
+        do_compile_c_file(Globals, ProgressStream, PIC,
             CFile, ObjFile, Succeeded, !IO)
     ;
         ForeignCodeFile = foreign_code_file(lang_java, JavaFile, _ClassFile),
-        compile_java_files(Globals, ProgressStream, ErrorStream, JavaFile, [],
+        compile_java_files(Globals, ProgressStream, JavaFile, [],
             Succeeded, !IO)
     ;
         ForeignCodeFile = foreign_code_file(lang_csharp, CSharpFile, DLLFile),
-        compile_csharp_file(Globals, ProgressStream, ErrorStream,
-            ModuleDepInfo, CSharpFile, DLLFile, Succeeded, !IO)
+        compile_csharp_file(Globals, ProgressStream, ModuleDepInfo,
+            CSharpFile, DLLFile, Succeeded, !IO)
     ).
 
 :- func do_task_in_separate_process(module_compilation_task_type) = bool.
@@ -762,12 +760,11 @@ call_mercury_compile_main(Globals, Args, Succeeded, !IO) :-
     Succeeded = ( if Status = 0 then succeeded else did_not_succeed ),
     io.set_exit_status(Status0, !IO).
 
-:- pred invoke_mmc(globals::in,
-    io.text_output_stream::in, io.text_output_stream::in, maybe(file_name)::in,
-    list(string)::in, maybe_succeeded::out, io::di, io::uo) is det.
+:- pred invoke_mmc(globals::in, io.text_output_stream::in,
+    maybe(file_name)::in, list(string)::in, maybe_succeeded::out,
+    io::di, io::uo) is det.
 
-invoke_mmc(Globals, ProgressStream, ErrorStream,
-        MaybeArgFileName, Args, Succeeded, !IO) :-
+invoke_mmc(Globals, ProgressStream, MaybeArgFileName, Args, Succeeded, !IO) :-
     io.progname("", ProgName, !IO),
     ( if
         % NOTE: If the compiler is built in the Java grade, then ProgName will
@@ -821,8 +818,8 @@ invoke_mmc(Globals, ProgressStream, ErrorStream,
 
         % We have already written the command.
         CommandVerbosity = cmd_verbose,
-        invoke_system_command(Globals, ProgressStream, ErrorStream,
-            ErrorStream, CommandVerbosity, Command, Succeeded, !IO)
+        invoke_system_command(Globals, ProgressStream, ProgressStream,
+            CommandVerbosity, Command, Succeeded, !IO)
     ;
         ArgFileOpenRes = error(Error),
         Succeeded = did_not_succeed,

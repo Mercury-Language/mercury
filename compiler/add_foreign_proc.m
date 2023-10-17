@@ -16,14 +16,16 @@
 :- import_module parse_tree.error_spec.
 :- import_module parse_tree.prog_item.
 
+:- import_module io.
 :- import_module list.
 
-:- pred add_foreign_procs(ims_list(item_foreign_proc_info)::in,
-    module_info::in, module_info::out,
+:- pred add_foreign_procs(io.text_output_stream::in,
+    ims_list(item_foreign_proc_info)::in, module_info::in, module_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-:- pred add_foreign_proc(item_mercury_status::in, pred_status::in,
-    item_foreign_proc_info::in, module_info::in, module_info::out,
+:- pred add_foreign_proc(io.text_output_stream::in, item_mercury_status::in,
+    pred_status::in, item_foreign_proc_info::in,
+    module_info::in, module_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
 %-----------------------------------------------------------------------------%
@@ -38,7 +40,6 @@
 :- import_module hlds.hlds_pred.
 :- import_module hlds.hlds_rtti.
 :- import_module hlds.make_hlds.make_hlds_warn.
-:- import_module hlds.passes_aux.
 :- import_module hlds.pred_name.
 :- import_module hlds.pred_table.
 :- import_module hlds.quantification.
@@ -69,17 +70,19 @@
 
 %-----------------------------------------------------------------------------%
 
-add_foreign_procs([], !ModuleInfo, !Specs).
-add_foreign_procs([ImsSubList | ImsSubLists], !ModuleInfo, !Specs) :-
+add_foreign_procs(_, [], !ModuleInfo, !Specs).
+add_foreign_procs(ProgressStream, [ImsSubList | ImsSubLists],
+        !ModuleInfo, !Specs) :-
     ImsSubList = ims_sub_list(ItemMercuryStatus, PragmaFPInfos),
     item_mercury_status_to_pred_status(ItemMercuryStatus, PredStatus),
-    list.foldl2(add_foreign_proc(ItemMercuryStatus, PredStatus),
+    list.foldl2(
+        add_foreign_proc(ProgressStream, ItemMercuryStatus, PredStatus),
         PragmaFPInfos, !ModuleInfo, !Specs),
-    add_foreign_procs(ImsSubLists, !ModuleInfo, !Specs).
+    add_foreign_procs(ProgressStream, ImsSubLists, !ModuleInfo, !Specs).
 
 %-----------------------------------------------------------------------------%
 
-add_foreign_proc(ItemMercurystatus, PredStatus, FPInfo,
+add_foreign_proc(ProgressStream, ItemMercurystatus, PredStatus, FPInfo,
         !ModuleInfo, !Specs) :-
     FPInfo = item_foreign_proc_info(Attributes0, PredSymName, PredOrFunc,
         PragmaVars, ProgVarSet, _InstVarset, PragmaImpl, Context, SeqNum),
@@ -98,7 +101,6 @@ add_foreign_proc(ItemMercurystatus, PredStatus, FPInfo,
         VeryVerbose = yes,
         trace [io(!IO)] (
             IdStr = pf_sym_name_pred_form_arity_to_string(PFSymNameArity),
-            get_progress_output_stream(!.ModuleInfo, ProgressStream, !IO),
             io.format(ProgressStream,
                 "%% Processing `:- pragma foreign_proc' for %s...\n",
                 [s(IdStr)], !IO)

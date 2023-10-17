@@ -269,8 +269,8 @@
 
 %---------------------------------------------------------------------------%
 
-    % prepare_intermodule_analysis(Globals, ImportedModuleNames,
-    %   LocalModuleNames, !Info, !IO)
+    % prepare_intermodule_analysis(ProgressStream, Globals,
+    %   ImportedModuleNames, LocalModuleNames, !Info, !IO)
     %
     % This predicate should be called before any pass begins to use the
     % analysis framework. It ensures that all the analysis files
@@ -279,8 +279,8 @@
     % module being analysed. LocalModuleNames is the set of non-"library"
     % modules.
     %
-:- pred prepare_intermodule_analysis(globals::in, set(module_name)::in,
-    set(module_name)::in, list(error_spec)::out,
+:- pred prepare_intermodule_analysis(io.text_output_stream::in, globals::in,
+    set(module_name)::in, set(module_name)::in, list(error_spec)::out,
     analysis_info::in, analysis_info::out, io::di, io::uo) is det.
 
      % module_is_local(Info, ModuleName, IsLocal).
@@ -295,9 +295,9 @@
     % requests and results for the current compilation to the
     % analysis files.
     %
-:- pred write_analysis_files(Compiler::in, module_info::in,
-    set(module_name)::in, analysis_info::in, list(error_spec)::out,
-    io::di, io::uo) is det <= compiler(Compiler).
+:- pred write_analysis_files(io.text_output_stream::in, Compiler::in,
+    module_info::in, set(module_name)::in, analysis_info::in,
+    list(error_spec)::out, io::di, io::uo) is det <= compiler(Compiler).
 
     % do_read_module_overall_status(Compiler, Globals, ModuleName,
     %   MaybeModuleStatus, !IO)
@@ -327,7 +327,6 @@
 :- include_module analysis.file.
 
 :- import_module analysis.file.
-:- import_module hlds.passes_aux.
 :- import_module parse_tree.module_cmds.    % XXX unwanted dependency
 
 :- import_module map.
@@ -1255,8 +1254,8 @@ combine_imdg_lists(ArcsA, ArcsB, ArcsA ++ ArcsB).
 
 %---------------------------------------------------------------------------%
 
-prepare_intermodule_analysis(Globals, ImportedModuleNames0, LocalModuleNames,
-        Specs, !Info, !IO) :-
+prepare_intermodule_analysis(ProgressStream, Globals,
+        ImportedModuleNames0, LocalModuleNames, Specs, !Info, !IO) :-
     % NOTE The original code of the analysis package threw exceptions
     % when it found version number mismatches or syntax errors in the files
     % it tried to read. There was no recovery from these exceptions,
@@ -1279,11 +1278,11 @@ prepare_intermodule_analysis(Globals, ImportedModuleNames0, LocalModuleNames,
     !Info ^ local_module_names := LocalModuleNames,
 
     % Read in results for imported modules.
-    set.fold3(load_module_analysis_results(Globals), ImportedModuleNames,
-        !Info, [], Specs0, !IO),
+    set.fold3(load_module_analysis_results(ProgressStream, Globals),
+        ImportedModuleNames, !Info, [], Specs0, !IO),
 
     % Read in results and requests for the module being analysed.
-    load_module_analysis_results(Globals, ThisModule, !Info,
+    load_module_analysis_results(ProgressStream, Globals, ThisModule, !Info,
         Specs0, Specs1, !IO),
     read_module_analysis_requests(!.Info, Globals, ThisModule,
         ThisModuleRequests, Specs1, Specs, !IO),
@@ -1296,11 +1295,12 @@ prepare_intermodule_analysis(Globals, ImportedModuleNames0, LocalModuleNames,
         Specs = [_ | _]
     ).
 
-:- pred load_module_analysis_results(globals::in, module_name::in,
-    analysis_info::in, analysis_info::out,
+:- pred load_module_analysis_results(io.text_output_stream::in, globals::in,
+    module_name::in, analysis_info::in, analysis_info::out,
     list(error_spec)::in, list(error_spec)::out, io::di, io::uo) is det.
 
-load_module_analysis_results(Globals, ModuleName, !Info, !Specs, !IO) :-
+load_module_analysis_results(ProgressStream, Globals, ModuleName,
+        !Info, !Specs, !IO) :-
     OldResultsMap0 = !.Info ^ old_analysis_results,
     ModuleStatusMap0 = !.Info ^ module_status_map,
     ( if
@@ -1312,8 +1312,8 @@ load_module_analysis_results(Globals, ModuleName, !Info, !Specs, !IO) :-
     else
         do_read_module_overall_status(!.Info ^ compiler, Globals, ModuleName,
             ModuleStatus, !IO),
-        read_module_analysis_results(!.Info, Globals, ModuleName,
-            ModuleResults, ModuleSpecs, !IO),
+        read_module_analysis_results(ProgressStream, !.Info, Globals,
+            ModuleName, ModuleResults, ModuleSpecs, !IO),
         (
             ModuleSpecs = [],
             map.det_insert(ModuleName, ModuleStatus,
@@ -1337,7 +1337,7 @@ module_is_local(Info, ModuleName, IsLocal) :-
 
 %---------------------------------------------------------------------------%
 
-write_analysis_files(Compiler, ModuleInfo, ImportedModules0,
+write_analysis_files(ProgressStream, Compiler, ModuleInfo, ImportedModules0,
         !.Info, Specs, !IO) :-
     % In this procedure we have just finished compiling module ModuleName
     % and will write out data currently cached in the analysis_info structure
@@ -1384,8 +1384,8 @@ write_analysis_files(Compiler, ModuleInfo, ImportedModules0,
 
         % Write the analysis results for the current module.
         map.lookup(!.Info ^ old_analysis_results, ThisModule, ModuleResults),
-        write_module_analysis_results(!.Info, Globals, ThisModule,
-            ModuleResults, !IO),
+        write_module_analysis_results(ProgressStream, !.Info, Globals,
+            ThisModule, ModuleResults, !IO),
 
         % Write the requests for imported local modules.
         set.fold(maybe_write_module_requests(!.Info, Globals),
@@ -1404,7 +1404,6 @@ write_analysis_files(Compiler, ModuleInfo, ImportedModules0,
         module_name_to_write_file_name(Compiler, Globals,
             ext_cur_ngs_gs(ext_cur_ngs_gs_an_ds_date), ThisModule,
             TimestampFileName, !IO),
-        get_progress_output_stream(ModuleInfo, ProgressStream, !IO),
         touch_file_datestamp(Globals, ProgressStream, TimestampFileName,
             _Succeeded, !IO)
     ).

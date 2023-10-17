@@ -35,8 +35,7 @@
     module_info::in, module_info::out, set(gen_pragma_unused_args_info)::out,
     list(error_spec)::in, list(error_spec)::out, io::di, io::uo) is det.
 
-:- pred output_trans_opt_file(io.text_output_stream::in,
-    io.text_output_stream::in, module_info::in,
+:- pred output_trans_opt_file(io.text_output_stream::in, module_info::in,
     list(error_spec)::in, list(error_spec)::out,
     dump_info::in, dump_info::out, io::di, io::uo) is det.
 
@@ -59,6 +58,7 @@
 :- import_module bytecode_backend.
 :- import_module bytecode_backend.bytecode.
 :- import_module bytecode_backend.bytecode_gen.
+:- import_module hlds.hlds_error_util.
 :- import_module hlds.hlds_pred.
 :- import_module hlds.mark_static_terms.
 :- import_module libs.
@@ -72,7 +72,6 @@
 :- import_module parse_tree.module_cmds.
 :- import_module parse_tree.parse_tree_out.
 :- import_module parse_tree.parse_tree_out_info.
-:- import_module parse_tree.write_error_spec.
 :- import_module top_level.mercury_compile_front_end.
 :- import_module top_level.mercury_compile_llds_back_end.
 :- import_module transform_hlds.
@@ -267,7 +266,7 @@ middle_pass(ProgressStream, ErrorStream, !HLDS, !DumpInfo, !Specs, !IO) :-
         "pre_implicit_parallelism_simplify", !DumpInfo, !IO),
 
     maybe_implicit_parallelism(ProgressStream, ErrorStream, Verbose, Stats,
-        !HLDS, !IO),
+        !HLDS, !Specs, !IO),
     maybe_dump_hlds(ProgressStream, !.HLDS, 173, "implicit_parallelism",
         !DumpInfo, !IO),
 
@@ -386,8 +385,7 @@ middle_pass_for_opt_file(ProgressStream, !HLDS, UnusedArgsInfos,
 
 %---------------------------------------------------------------------------%
 
-output_trans_opt_file(ProgressStream, ErrorStream, !.HLDS, !Specs,
-        !DumpInfo, !IO) :-
+output_trans_opt_file(ProgressStream, !.HLDS, !Specs, !DumpInfo, !IO) :-
     module_info_get_globals(!.HLDS, Globals),
     globals.lookup_bool_option(Globals, verbose, Verbose),
     globals.lookup_bool_option(Globals, statistics, Stats),
@@ -462,7 +460,7 @@ output_trans_opt_file(ProgressStream, ErrorStream, !.HLDS, !Specs,
         TmpOptResult = error(Error),
         io.progname_base("mmc", ProgName, !IO),
         io.error_message(Error, ErrorMsg),
-        io.format(ErrorStream, "%s: cannot open `%s' for output: %s\n",
+        io.format(ProgressStream, "%s: cannot open `%s' for output: %s\n",
             [s(ProgName), s(TmpOptFileName), s(ErrorMsg)], !IO),
         io.set_exit_status(1, !IO)
     ;
@@ -470,8 +468,8 @@ output_trans_opt_file(ProgressStream, ErrorStream, !.HLDS, !Specs,
         write_trans_opt_file(TmpOptStream, !.HLDS, ParseTreeTransOpt, !IO),
         io.close_output(TmpOptStream, !IO),
 
-        copy_dot_tmp_to_base_file_report_any_error(Globals, ".trans_opt",
-            ModuleName, OptFileName, _UpdateSucceeded, !IO),
+        copy_dot_tmp_to_base_file_report_any_error(ProgressStream, Globals,
+            ".trans_opt", OptFileName, _UpdateSucceeded, !IO),
         touch_module_ext_datestamp(Globals, ProgressStream,
             ModuleName, ext_cur_ngs_gs(ext_cur_ngs_gs_opt_date_trans),
             _TouchSucceeded, !IO),
@@ -568,7 +566,7 @@ output_analysis_file(ProgressStream, !.HLDS, !Specs, !DumpInfo, !IO) :-
 
     module_info_get_analysis_info(!.HLDS, AnalysisInfo),
     module_info_get_all_deps(!.HLDS, ImportedModules),
-    analysis.write_analysis_files(mmc, !.HLDS, ImportedModules,
+    analysis.write_analysis_files(ProgressStream, mmc, !.HLDS, ImportedModules,
         AnalysisInfo, AnalysisSpecs, !IO),
     !:Specs = AnalysisSpecs ++ !.Specs.
 
@@ -906,7 +904,7 @@ maybe_tuple_arguments(ProgressStream, Verbose, Stats, !HLDS, !IO) :-
         Tuple = tuple,
         maybe_write_string(ProgressStream, Verbose, "% Tupling...\n", !IO),
         maybe_flush_output(ProgressStream, Verbose, !IO),
-        tuple_arguments(!HLDS, !IO),
+        tuple_arguments(ProgressStream, !HLDS, !IO),
         maybe_write_string(ProgressStream, Verbose, "% done.\n", !IO),
         maybe_report_stats(ProgressStream, Stats, !IO)
     ;
@@ -941,7 +939,7 @@ maybe_higher_order(ProgressStream, Verbose, Stats, !HLDS, !IO) :-
             !IO),
         maybe_flush_output(ProgressStream, Verbose, !IO),
 
-        specialize_higher_order(!HLDS, !IO),
+        specialize_higher_order(ProgressStream, !HLDS, !IO),
         maybe_write_string(ProgressStream, Verbose, "% done.\n", !IO),
         maybe_report_stats(ProgressStream, Stats, !IO)
     else
@@ -981,10 +979,11 @@ maybe_ssdb(ProgressStream, Verbose, Stats, !HLDS, !IO) :-
 
 :- pred maybe_implicit_parallelism(io.text_output_stream::in,
     io.text_output_stream::in, bool::in, bool::in,
-    module_info::in, module_info::out, io::di, io::uo) is det.
+    module_info::in, module_info::out,
+    list(error_spec)::in, list(error_spec)::out, io::di, io::uo) is det.
 
 maybe_implicit_parallelism(ProgressStream, ErrorStream, Verbose, Stats,
-        !HLDS, !IO) :-
+        !HLDS, !Specs, !IO) :-
     module_info_get_globals(!.HLDS, Globals),
     globals.lookup_bool_option(Globals, implicit_parallelism,
         ImplicitParallelism),
@@ -993,10 +992,11 @@ maybe_implicit_parallelism(ProgressStream, ErrorStream, Verbose, Stats,
         maybe_write_string(ProgressStream, Verbose,
             "% Applying implicit parallelism...\n", !IO),
         maybe_flush_output(ProgressStream, Verbose, !IO),
-        apply_implicit_parallelism_transformation(Specs, !HLDS),
+        apply_implicit_parallelism_transformation(ParSpecs, !HLDS),
         maybe_write_string(ProgressStream, Verbose, "% done.\n", !IO),
         % XXX This is a bit late for printing errors.
-        write_error_specs(ErrorStream, Globals, Specs, !IO),
+        !:Specs = ParSpecs ++ !.Specs,
+        maybe_write_out_errors(ErrorStream, Verbose, Globals, !Specs, !IO),
         maybe_report_stats(ProgressStream, Stats, !IO)
     ;
         % The user hasn't asked for implicit parallelism.
@@ -1020,7 +1020,8 @@ maybe_introduce_accumulators(ProgressStream, Verbose, Stats,
             "% Attempting to introduce accumulators...\n", !IO),
         maybe_flush_output(ProgressStream, Verbose, !IO),
         type_to_univ([] : list(error_spec), Cookie0),
-        Task0 = update_module_pred_cookie(accu_transform_proc, Cookie0),
+        Task0 = update_module_pred_cookie(
+            accu_transform_proc(ProgressStream), Cookie0),
         process_valid_nonimported_procs_update(Task0, Task, !HLDS),
         ( if
             Task = update_module_pred_cookie(_, Cookie),
@@ -1080,7 +1081,7 @@ maybe_loop_inv(ProgressStream, Verbose, Stats, !HLDS, !DumpInfo, !IO) :-
         LoopInv = opt_loop_invariants,
         % We run the mark_static pass because we need the construct_how flag
         % to be valid.
-        maybe_mark_static_terms(Verbose, Stats, !HLDS, !IO),
+        maybe_mark_static_terms(ProgressStream, Verbose, Stats, !HLDS, !IO),
         maybe_dump_hlds(ProgressStream, !.HLDS, 148, "mark_static",
             !DumpInfo, !IO),
 
@@ -1523,7 +1524,7 @@ maybe_deep_profiling(ProgressStream, Verbose, Stats, !HLDS, !IO) :-
         maybe_write_string(ProgressStream, Verbose,
             "% Applying deep profiling transformation...\n", !IO),
         maybe_flush_output(ProgressStream, Verbose, !IO),
-        apply_deep_profiling_transform(!HLDS),
+        apply_deep_profiling_transform(ProgressStream, !HLDS),
         maybe_write_string(ProgressStream, Verbose, "% done.\n", !IO),
         maybe_report_stats(ProgressStream, Stats, !IO)
     ;

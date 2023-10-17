@@ -49,24 +49,26 @@
 
 %---------------------%
 
-    % read_module_analysis_results(AnalysisInfo, Globals, ModuleName,
-    %   AnalysisResults, !IO)
+    % read_module_analysis_results(ProgressStream, AnalysisInfo, Globals,
+    %   ModuleName, AnalysisResults, !IO)
     %
     % Read the analysis results from a `.analysis' file,
     % or from the analysis file cache (if enabled, and the cache file is
     % up-to-date).
     %
-:- pred read_module_analysis_results(analysis_info::in, globals::in,
+:- pred read_module_analysis_results(io.text_output_stream::in,
+    analysis_info::in, globals::in,
     module_name::in, module_analysis_map(some_analysis_result)::out,
     list(error_spec)::out, io::di, io::uo) is det.
 
-    % write_module_analysis_results(AnalysisInfo, Globals, ModuleName,
-    %   AnalysisResults, !IO)
+    % write_module_analysis_results(ProgressStream, AnalysisInfo, Globals,
+    %   ModuleName, AnalysisResults, !IO)
     %
     % Write the analysis results for a module to its `.analysis' file.
     % Optionally, also write the cache copy of the analysis file.
     %
-:- pred write_module_analysis_results(analysis_info::in, globals::in,
+:- pred write_module_analysis_results(io.text_output_stream::in,
+    analysis_info::in, globals::in,
     module_name::in, module_analysis_map(some_analysis_result)::in,
     io::di, io::uo) is det.
 
@@ -298,8 +300,8 @@ write_module_overall_status(Info, Globals, ModuleName, Status, !IO) :-
 % Reading and writing analysis results.
 %
 
-read_module_analysis_results(Info, Globals, ModuleName, ModuleResults,
-        Specs, !IO) :-
+read_module_analysis_results(ProgressStream, Info, Globals,
+        ModuleName, ModuleResults, Specs, !IO) :-
     % If the module's overall status is `invalid', then at least one of its
     % results is invalid. However, we can't just discard the results,
     % as we want to know which results change after we reanalyse the module.
@@ -336,10 +338,8 @@ read_module_analysis_results(Info, Globals, ModuleName, ModuleResults,
                     Specs = []
                 ;
                     UnpickleResult = error(Error),
-                    get_error_output_stream(Globals, ModuleName,
-                        ErrorStream, !IO),
                     io.error_message(Error, ErrorMsg),
-                    io.format(ErrorStream, "Error reading %s: %s\n",
+                    io.format(ProgressStream, "Error reading %s: %s\n",
                         [s(CacheFileName), s(ErrorMsg)], !IO),
                     do_read_module_analysis_results(Compiler, AnalysisFileName,
                         ModuleResults, Specs, !IO),
@@ -457,7 +457,8 @@ parse_result_entry(Compiler, VarSet, Term, !Results, !Specs) :-
 
 %---------------------%
 
-write_module_analysis_results(Info, Globals, ModuleName, ModuleResults, !IO) :-
+write_module_analysis_results(ProgressStream, Info, Globals,
+        ModuleName, ModuleResults, !IO) :-
     get_debug_analysis_stream(MaybeDebugStream, !IO),
     (
         MaybeDebugStream = no
@@ -470,7 +471,7 @@ write_module_analysis_results(Info, Globals, ModuleName, ModuleResults, !IO) :-
         add_dot_temp, write_result_entry,
         ext_cur_ngs_gs_max_ngs(ext_cur_ngs_gs_max_ngs_an_analysis),
         ModuleName, ModuleResults, FileName, !IO),
-    copy_dot_tmp_to_base_file_return_changed(Globals, ModuleName, FileName,
+    copy_dot_tmp_to_base_file_return_changed(ProgressStream, Globals, FileName,
         UpdateResult, !IO),
 
     % If analysis file caching is turned on, write the internal represention

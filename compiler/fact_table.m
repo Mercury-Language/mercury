@@ -82,8 +82,8 @@
 :- pred fact_table_check_args(module_info::in, prog_context::in,
     pred_id::in, pred_info::in, fact_table_arg_check_result::out) is det.
 
-    % fact_table_compile_facts(ModuleInfo, FileName, Context, GenInfo,
-    %   HeaderCode, PrimaryProcId, !PredInfo, !Specs, !IO):
+    % fact_table_compile_facts(ProgressStream, ModuleInfo, FileName, Context,
+    %   GenInfo, HeaderCode, PrimaryProcId, !PredInfo, !Specs, !IO):
     %
     % Compile the fact table in FileName for PredInfo into a separate .c file.
     % Return error specs for any errors discovered while processing the
@@ -93,9 +93,9 @@
     % (expected int, found float) and mode errors (expected int,
     % found variable).
     %
-:- pred fact_table_compile_facts(module_info::in, string::in, prog_context::in,
-    fact_table_gen_info::in, string::out, proc_id::out,
-    pred_info::in, pred_info::out,
+:- pred fact_table_compile_facts(io.text_output_stream::in, module_info::in,
+    string::in, prog_context::in, fact_table_gen_info::in, string::out,
+    proc_id::out, pred_info::in, pred_info::out,
     list(error_spec)::in, list(error_spec)::out, io::di, io::uo) is det.
 
     % fact_table_generate_c_code_for_proc(ModuleInfo, PredName,
@@ -136,7 +136,6 @@
 :- import_module hlds.hlds_error_util.
 :- import_module hlds.hlds_llds.
 :- import_module hlds.hlds_proc_util.
-:- import_module hlds.passes_aux.
 :- import_module libs.
 :- import_module libs.file_util.
 :- import_module libs.globals.
@@ -572,8 +571,8 @@ fill_in_fact_arg_infos([FactTableMode | FactTableModes],
 
 %---------------------------------------------------------------------------%
 
-fact_table_compile_facts(ModuleInfo, FileName, Context, GenInfo,
-        HeaderCode, PrimaryProcId, !PredInfo, !Specs, !IO) :-
+fact_table_compile_facts(ProgressStream, ModuleInfo, FileName, Context,
+        GenInfo, HeaderCode, PrimaryProcId, !PredInfo, !Specs, !IO) :-
     module_info_get_globals(ModuleInfo, Globals),
     io.open_input(FileName, FileResult, !IO),
     (
@@ -589,7 +588,10 @@ fact_table_compile_facts(ModuleInfo, FileName, Context, GenInfo,
             pred_info_get_name(!.PredInfo, PredName),
             PredSymName = qualified(ModuleName, PredName),
             fact_table_size(Globals, FactTableSize),
-            compile_fact_table_in_file(FileStream, FileName, OutputStream,
+            get_maybe_progress_output_stream(ModuleInfo, ProgressStream,
+                MaybeProgressStream),
+            compile_fact_table_in_file(MaybeProgressStream,
+                FileStream, FileName, OutputStream,
                 FactTableSize, ModuleInfo, PredSymName, GenInfo,
                 HeaderCode, PrimaryProcId, MaybeDataFileName,
                 !PredInfo, !Specs, !IO),
@@ -598,8 +600,8 @@ fact_table_compile_facts(ModuleInfo, FileName, Context, GenInfo,
                 MaybeDataFileName = no
             ;
                 MaybeDataFileName = yes(DataFileName),
-                append_data_table(ModuleInfo, OutputFileName, DataFileName,
-                    !Specs, !IO)
+                append_data_table(MaybeProgressStream,
+                    OutputFileName, DataFileName, !Specs, !IO)
             )
         ;
             OpenResult = error(Error),
@@ -617,15 +619,15 @@ fact_table_compile_facts(ModuleInfo, FileName, Context, GenInfo,
         PrimaryProcId = invalid_proc_id
     ).
 
-:- pred compile_fact_table_in_file(io.text_input_stream::in, string::in,
-    io.text_output_stream::in, int::in, module_info::in,
-    sym_name::in, fact_table_gen_info::in,
+:- pred compile_fact_table_in_file(maybe(io.text_output_stream)::in,
+    io.text_input_stream::in, string::in, io.text_output_stream::in,
+    int::in, module_info::in, sym_name::in, fact_table_gen_info::in,
     string::out, proc_id::out, maybe(string)::out,
     pred_info::in, pred_info::out,
     list(error_spec)::in, list(error_spec)::out, io::di, io::uo) is det.
 
-compile_fact_table_in_file(FileStream, FileName, OutputStream, FactTableSize,
-        ModuleInfo, PredSymName, GenInfo,
+compile_fact_table_in_file(MaybeProgressStream, FileStream, FileName,
+        OutputStream, FactTableSize, ModuleInfo, PredSymName, GenInfo,
         HeaderCode, PrimaryProcId, MaybeDataFileName,
         !PredInfo, !Specs, !IO) :-
     infer_determinism_pass_1(GenInfo, WriteHashTables, WriteDataTable,
@@ -700,7 +702,6 @@ compile_fact_table_in_file(FileStream, FileName, OutputStream, FactTableSize,
         MaybeOutput = no,
         WriteDataAfterSorting = do_not_write_data_table
     ),
-    get_maybe_progress_output_stream(ModuleInfo, MaybeProgressStream, !IO),
     list.length(FactArgInfos, NumFactArgInfos),
     FactNum0 = 0,
     CompileSpecs0 = [],
@@ -731,9 +732,9 @@ compile_fact_table_in_file(FileStream, FileName, OutputStream, FactTableSize,
         io.file.make_temp_file(DataFileNameResult, !IO),
         (
             DataFileNameResult = ok(DataFileName),
-            write_fact_table_arrays(OutputStream, FactTableSize, ModuleInfo,
-                ProcFiles, DataFileName, FactTableProcMap,
-                StructName, NumFacts, FactArgInfos,
+            write_fact_table_arrays(MaybeProgressStream, OutputStream,
+                FactTableSize, ModuleInfo, ProcFiles, DataFileName,
+                FactTableProcMap, StructName, NumFacts, FactArgInfos,
                 WriteHashTables, WriteDataAfterSorting,
                 HeaderCode1, PrimaryProcId, !Specs, !IO),
             write_fact_table_numfacts(OutputStream, PredSymName, NumFacts,
@@ -1486,15 +1487,16 @@ infer_determinism_pass_2(MaybeProgressStream, GenInfo,
 
     % Write out the fact table data arrays and hash tables.
     %
-:- pred write_fact_table_arrays(io.text_output_stream::in, int::in,
+:- pred write_fact_table_arrays(maybe(io.text_output_stream)::in,
+    io.text_output_stream::in, int::in,
     module_info::in, assoc_list(proc_id, string)::in, string::in,
     fact_table_proc_map::in, string::in, int::in, list(fact_arg_info)::in,
     maybe_write_hash_tables::in, maybe_write_data_table::in,
     string::out, proc_id::out,
     list(error_spec)::in, list(error_spec)::out, io::di, io::uo) is det.
 
-write_fact_table_arrays(OutputStream, FactTableSize, ModuleInfo,
-        ProcFiles, DataFileName, FactTableProcMap,
+write_fact_table_arrays(MaybeProgressStream, OutputStream, FactTableSize,
+        ModuleInfo, ProcFiles, DataFileName, FactTableProcMap,
         StructName, NumFacts, FactArgInfos, WriteHashTables, WriteDataTable,
         HeaderCode, PrimaryProcId, !Specs, !IO) :-
     (
@@ -1518,14 +1520,15 @@ write_fact_table_arrays(OutputStream, FactTableSize, ModuleInfo,
                 TailProcFiles = [_ | _],
                 CreateFactMap = create_fact_map
             ),
-            write_primary_hash_table(OutputStream, FactTableSize, ModuleInfo,
-                FactTableProcMap, PrimaryProcId, FileName, DataFileName,
-                StructName, FactArgInfos, WriteDataTable,
-                NumFacts, CreateFactMap, PrimaryResult, !Specs, !IO),
+            write_primary_hash_table(MaybeProgressStream, OutputStream,
+                FactTableSize, ModuleInfo, FactTableProcMap, PrimaryProcId,
+                FileName, DataFileName, StructName, FactArgInfos,
+                WriteDataTable, NumFacts, CreateFactMap, PrimaryResult,
+                !Specs, !IO),
             (
                 PrimaryResult = ok(FactMap, PrimaryHeaderCode),
-                write_secondary_hash_tables(OutputStream, FactTableSize,
-                    ModuleInfo, FactTableProcMap, StructName,
+                write_secondary_hash_tables(MaybeProgressStream, OutputStream,
+                    FactTableSize, ModuleInfo, FactTableProcMap, StructName,
                     FactArgInfos, FactMap, TailProcFiles,
                     "", SecondaryHeadCode, !Specs, !IO),
                 HeaderCode = PrimaryHeaderCode ++ SecondaryHeadCode
@@ -1624,13 +1627,14 @@ write_fact_args(OutputStream, [FactArg | FactArgs], !IO) :-
     % If a data table has been created in a separate file, append it to the
     % end of the main output file and then delete it.
     %
-:- pred append_data_table(module_info::in, string::in, string::in,
-    list(error_spec)::in, list(error_spec)::out, io::di, io::uo) is det.
+:- pred append_data_table(maybe(io.text_output_stream)::in,
+    string::in, string::in, list(error_spec)::in, list(error_spec)::out,
+    io::di, io::uo) is det.
 
-append_data_table(ModuleInfo, OutputFileName, DataFileName, !Specs, !IO) :-
+append_data_table(MaybeProgressStream, OutputFileName, DataFileName,
+        !Specs, !IO) :-
     make_command_string(string.format("cat %s >>%s",
         [s(DataFileName), s(OutputFileName)]), forward, Command),
-    get_maybe_progress_output_stream(ModuleInfo, MaybeProgressStream, !IO),
     (
         MaybeProgressStream = no,
         io.call_system.call_system(Command, Result, !IO)
@@ -1666,15 +1670,16 @@ append_data_table(ModuleInfo, OutputFileName, DataFileName, !Specs, !IO) :-
     % original input table to the table sorted on the primary key.
     % Write out the data table if required.
     %
-:- pred write_primary_hash_table(io.text_output_stream::in, int::in,
+:- pred write_primary_hash_table(maybe(io.text_output_stream)::in,
+    io.text_output_stream::in, int::in,
     module_info::in, fact_table_proc_map::in, proc_id::in,
     string::in, string::in, string::in, list(fact_arg_info)::in,
     maybe_write_data_table::in, int::in, maybe_create_fact_map::in,
     fact_result::out,
     list(error_spec)::in, list(error_spec)::out, io::di, io::uo) is det.
 
-write_primary_hash_table(OutputStream, FactTableSize, ModuleInfo,
-        FactTableProcMap, ProcId, FileName, DataFileName,
+write_primary_hash_table(MaybeProgressStream, OutputStream, FactTableSize,
+        ModuleInfo, FactTableProcMap, ProcId, FileName, DataFileName,
         StructName, FactArgInfos, WriteDataTable, NumFacts,
         CreateFactMap, Result, !Specs, !IO) :-
     io.open_input(FileName, FileResult, !IO),
@@ -1690,7 +1695,8 @@ write_primary_hash_table(OutputStream, FactTableSize, ModuleInfo,
                     [s(StructName), i(ProcIdInt)], HashTableName),
                 % Note: the type declared here is not necessarily correct.
                 % We declare it just to stop the C compiler emitting warnings.
-                string.format("extern struct MR_fact_table_hash_table_i %s0;\n",
+                string.format(
+                    "extern struct MR_fact_table_hash_table_i %s0;\n",
                     [s(HashTableName)], HeaderCode0),
                 map.lookup(FactTableProcMap, ProcId, FactTableProcInfo),
                 FactTableProcInfo = fact_table_proc_info(FactTableVars, _, _),
@@ -1705,9 +1711,9 @@ write_primary_hash_table(OutputStream, FactTableSize, ModuleInfo,
                     0, !IO),
                 (
                     MaybeFirstFact = yes(FirstFact),
-                    build_hash_table(FileStream, FileName, OutputStream,
-                        yes(DataStream), FactTableSize, ModuleInfo,
-                        primary_table, StructName, FactArgInfos,
+                    build_hash_table(MaybeProgressStream, FileStream, FileName,
+                        OutputStream, yes(DataStream), FactTableSize,
+                        ModuleInfo, primary_table, StructName, FactArgInfos,
                         FactTableModes, 0, HashTableName, 0, FirstFact, 0,
                         CreateFactMap, map.init, FactMap1, !Specs, !IO),
                     MaybeFactMap = yes(FactMap1)
@@ -1748,17 +1754,18 @@ write_primary_hash_table(OutputStream, FactTableSize, ModuleInfo,
 
     % Build hash tables for non-primary input procs.
     %
-:- pred write_secondary_hash_tables(io.text_output_stream::in, int::in,
+:- pred write_secondary_hash_tables(maybe(io.text_output_stream)::in,
+    io.text_output_stream::in, int::in,
     module_info::in, fact_table_proc_map::in, string::in,
     list(fact_arg_info)::in, map(int, int)::in,
     assoc_list(proc_id, string)::in,
     string::in, string::out,
     list(error_spec)::in, list(error_spec)::out, io::di, io::uo) is det.
 
-write_secondary_hash_tables(_, _, _, _, _, _, _, [],
+write_secondary_hash_tables(_, _, _, _, _, _, _, _, [],
         !HeaderCode, !Specs, !IO).
-write_secondary_hash_tables(OutputStream, FactTableSize, ModuleInfo,
-        FactTableProcMap, StructName, FactArgInfos, FactMap,
+write_secondary_hash_tables(MaybeProgressStream, OutputStream, FactTableSize,
+        ModuleInfo, FactTableProcMap, StructName, FactArgInfos, FactMap,
         [ProcId - FileName | ProcFiles], !HeaderCode, !Specs, !IO) :-
     io.open_input(FileName, FileResult, !IO),
     (
@@ -1780,14 +1787,14 @@ write_secondary_hash_tables(OutputStream, FactTableSize, ModuleInfo,
             FactArgInfos, FactTableModes, MaybeFirstFact, !Specs, !IO),
         (
             MaybeFirstFact = yes(FirstFact),
-            build_hash_table(FileStream, FileName, OutputStream, no,
-                FactTableSize, ModuleInfo, not_primary_table,
+            build_hash_table(MaybeProgressStream, FileStream, FileName,
+                OutputStream, no, FactTableSize, ModuleInfo, not_primary_table,
                 StructName, FactArgInfos, FactTableModes, 0, HashTableName, 0,
                 FirstFact, 0, do_not_create_fact_map, FactMap, _, !Specs, !IO),
             io.close_input(FileStream, !IO),
             delete_temporary_file(FileName, !Specs, !IO),
-            write_secondary_hash_tables(OutputStream, FactTableSize,
-                ModuleInfo, FactTableProcMap, StructName,
+            write_secondary_hash_tables(MaybeProgressStream, OutputStream,
+                FactTableSize, ModuleInfo, FactTableProcMap, StructName,
                 FactArgInfos, FactMap, ProcFiles, !HeaderCode, !Specs, !IO)
         ;
             MaybeFirstFact = no,
@@ -2006,7 +2013,8 @@ remove_sort_file_escapes([C0 | Cs0], !RevChars) :-
     % Build and write out a top level hash table and all the lower level
     % tables connected to it.
     %
-:- pred build_hash_table(io.text_input_stream::in, string::in,
+:- pred build_hash_table(maybe(io.text_output_stream)::in,
+    io.text_input_stream::in, string::in,
     io.text_output_stream::in, maybe(io.text_output_stream)::in, int::in,
     module_info::in, maybe_primary_table::in, string::in,
     list(fact_arg_info)::in, list(fact_table_mode)::in,
@@ -2014,15 +2022,15 @@ remove_sort_file_escapes([C0 | Cs0], !RevChars) :-
     maybe_create_fact_map::in, map(int, int)::in, map(int, int)::out,
     list(error_spec)::in, list(error_spec)::out, io::di, io::uo) is det.
 
-build_hash_table(InputStream, InputFileName, OutputStream, MaybeDataStream,
-        FactTableSize, ModuleInfo, IsPrimaryTable, StructName, Infos, Modes,
-        InputArgNum, HashTableName, TableNum,
-        FirstFact, FactNum, CreateFactMap, !FactMap, !Specs, !IO) :-
-    build_hash_table_loop(InputStream, InputFileName, OutputStream,
+build_hash_table(MaybeProgressStream, InputStream, InputFileName, OutputStream,
         MaybeDataStream, FactTableSize, ModuleInfo, IsPrimaryTable,
         StructName, Infos, Modes, InputArgNum, HashTableName, TableNum,
-        FirstFact, FactNum, CreateFactMap, !FactMap, [], HashList,
-        !Specs, !IO),
+        FirstFact, FactNum, CreateFactMap, !FactMap, !Specs, !IO) :-
+    build_hash_table_loop(MaybeProgressStream, InputStream, InputFileName,
+        OutputStream, MaybeDataStream, FactTableSize, ModuleInfo,
+        IsPrimaryTable, StructName, Infos, Modes, InputArgNum,
+        HashTableName, TableNum, FirstFact, FactNum, CreateFactMap,
+        !FactMap, [], HashList, !Specs, !IO),
     list.length(HashList, Len),
     module_info_get_globals(ModuleInfo, Globals),
     calculate_hash_table_size(Globals, Len, HashSize),
@@ -2030,7 +2038,8 @@ build_hash_table(InputStream, InputFileName, OutputStream, MaybeDataStream,
     hash_table_from_list(HashList, HashSize, HashTable0, HashTable),
     write_hash_table(OutputStream, HashTableName, TableNum, HashTable, !IO).
 
-:- pred build_hash_table_loop(io.text_input_stream::in, string::in,
+:- pred build_hash_table_loop(maybe(io.text_output_stream)::in,
+    io.text_input_stream::in, string::in,
     io.text_output_stream::in, maybe(io.text_output_stream)::in, int::in,
     module_info::in, maybe_primary_table::in, string::in,
     list(fact_arg_info)::in, list(fact_table_mode)::in,
@@ -2039,10 +2048,11 @@ build_hash_table(InputStream, InputFileName, OutputStream, MaybeDataStream,
     list(hash_entry)::in, list(hash_entry)::out,
     list(error_spec)::in, list(error_spec)::out, io::di, io::uo) is det.
 
-build_hash_table_loop(InputStream, InputFileName, OutputStream,
-        MaybeDataStream, FactTableSize, ModuleInfo, IsPrimaryTable,
-        StructName, Infos, Modes, InputArgNum, HashTableName, !.TableNum,
-        FirstFact, FactNum, CreateFactMap, !FactMap, !HashList, !Specs, !IO) :-
+build_hash_table_loop(MaybeProgressStream, InputStream, InputFileName,
+        OutputStream, MaybeDataStream, FactTableSize, ModuleInfo,
+        IsPrimaryTable, StructName, Infos, Modes, InputArgNum,
+        HashTableName, !.TableNum, FirstFact, FactNum, CreateFactMap,
+        !FactMap, !HashList, !Specs, !IO) :-
     top_level_collect_matching_facts(InputStream, InputFileName,
         Infos, Modes, FirstFact, MatchingFacts, MaybeNextFact, !Specs, !IO),
     (
@@ -2056,8 +2066,6 @@ build_hash_table_loop(InputStream, InputFileName, OutputStream,
         OutputData = list.map(
             (func(sort_file_line(_, _, OutArgs)) = OutArgs),
             MatchingFacts),
-        get_maybe_progress_output_stream(ModuleInfo, MaybeProgressStream,
-            !IO),
         write_fact_table_data(DataStream, MaybeProgressStream, FactTableSize,
             StructName, OutputData, FactNum, !IO)
     ;
@@ -2073,11 +2081,11 @@ build_hash_table_loop(InputStream, InputFileName, OutputStream,
         MaybeNextFact = yes(NextFact),
         list.length(MatchingFacts, Len),
         NextFactNum = FactNum + Len,
-        build_hash_table_loop(InputStream, InputFileName, OutputStream,
-            MaybeDataStream, FactTableSize, ModuleInfo, IsPrimaryTable,
-            StructName, Infos, Modes, InputArgNum, HashTableName,
-            !.TableNum, NextFact, NextFactNum,
-            CreateFactMap, !FactMap, !HashList, !Specs, !IO)
+        build_hash_table_loop(MaybeProgressStream, InputStream, InputFileName,
+            OutputStream, MaybeDataStream, FactTableSize, ModuleInfo,
+            IsPrimaryTable, StructName, Infos, Modes, InputArgNum,
+            HashTableName, !.TableNum, NextFact, NextFactNum, CreateFactMap,
+            !FactMap, !HashList, !Specs, !IO)
     ).
 
     % Build a lower level hash table. The main difference to build_hash_table
@@ -3879,9 +3887,10 @@ add_error_pieces(Pieces, !Specs) :-
 %---------------------------------------------------------------------------%
 
 :- pred get_maybe_progress_output_stream(module_info::in,
-    maybe(io.text_output_stream)::out, io::di, io::uo) is det.
+    io.text_output_stream::in, maybe(io.text_output_stream)::out) is det.
 
-get_maybe_progress_output_stream(ModuleInfo, MaybeProgressStream, !IO) :-
+get_maybe_progress_output_stream(ModuleInfo, ProgressStream,
+        MaybeProgressStream) :-
     module_info_get_globals(ModuleInfo, Globals),
     globals.lookup_bool_option(Globals, very_verbose, VeryVerbose),
     (
@@ -3889,7 +3898,6 @@ get_maybe_progress_output_stream(ModuleInfo, MaybeProgressStream, !IO) :-
         MaybeProgressStream = no
     ;
         VeryVerbose = yes,
-        get_progress_output_stream(ModuleInfo, ProgressStream, !IO),
         MaybeProgressStream = yes(ProgressStream)
     ).
 

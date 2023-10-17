@@ -40,8 +40,8 @@
 
 %-----------------------------------------------------------------------------%
 
-:- pred specialize_higher_order(module_info::in, module_info::out,
-    io::di, io::uo) is det.
+:- pred specialize_higher_order(io.text_output_stream::in,
+    module_info::in, module_info::out, io::di, io::uo) is det.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -65,7 +65,6 @@
 :- import_module hlds.hlds_rtti.
 :- import_module hlds.instmap.
 :- import_module hlds.make_goal.
-:- import_module hlds.passes_aux.
 :- import_module hlds.pred_name.
 :- import_module hlds.pred_table.
 :- import_module hlds.quantification.
@@ -113,7 +112,7 @@
 
 %-----------------------------------------------------------------------------%
 
-specialize_higher_order(!ModuleInfo, !IO) :-
+specialize_higher_order(ProgressStream, !ModuleInfo, !IO) :-
     % Iterate collecting requests and process them until there are no more
     % requests remaining.
 
@@ -145,7 +144,6 @@ specialize_higher_order(!ModuleInfo, !IO) :-
             MaybeProgressStream = no
         ;
             DebugSpec = yes,
-            get_progress_output_stream(!.ModuleInfo, ProgressStream, !IO),
             MaybeProgressStream = yes(ProgressStream)
         ),
 

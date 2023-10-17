@@ -1242,7 +1242,8 @@ dump_origin(TVarSet, VarNamePrint, Prefix, Origin) = Str :-
         ;
             OriginUser = user_made_assertion(PromiseType,
                 FileName, LineNumber),
-            PromiseTypeStr = parse_tree_out_misc.promise_to_string(PromiseType),
+            PromiseTypeStr =
+                parse_tree_out_misc.promise_to_string(PromiseType),
             string.format("%s %s declaration at %s:%d",
                 [s(Prefix), s(PromiseTypeStr), s(FileName), i(LineNumber)],
                 Str)

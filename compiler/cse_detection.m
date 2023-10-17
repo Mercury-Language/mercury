@@ -191,8 +191,12 @@ detect_cse_in_proc(MaybeProgressStream, PredId, ProcId, !ModuleInfo) :-
 
     globals.lookup_bool_option(Globals, detailed_statistics, Statistics),
     trace [io(!IO)] (
-        get_progress_output_stream(!.ModuleInfo, ProgressStream, !IO),
-        maybe_report_stats(ProgressStream, Statistics, !IO)
+        (
+            MaybeProgressStream = no
+        ;
+            MaybeProgressStream = yes(ProgressStream),
+            maybe_report_stats(ProgressStream, Statistics, !IO)
+        )
     ),
     (
         Redo = no
@@ -265,8 +269,12 @@ detect_cse_in_proc(MaybeProgressStream, PredId, ProcId, !ModuleInfo) :-
         module_info_set_pred_info(PredId, PredInfo3, !ModuleInfo),
 
         trace [io(!IO)] (
-            get_progress_output_stream(!.ModuleInfo, ProgressStream, !IO),
-            maybe_report_stats(ProgressStream, Statistics, !IO)
+            (
+                MaybeProgressStream = no
+            ;
+                MaybeProgressStream = yes(ProgressStream),
+                maybe_report_stats(ProgressStream, Statistics, !IO)
+            )
         ),
         trace [io(!IO)] (
             ( if

@@ -117,7 +117,6 @@
 :- import_module parse_tree.prog_item.
 :- import_module parse_tree.read_modules.
 :- import_module parse_tree.write_deps_file.
-:- import_module parse_tree.write_error_spec.
 
 :- import_module assoc_list.
 :- import_module bool.
@@ -148,10 +147,11 @@ generate_dep_file_for_module(ProgressStream, Globals, ModuleName,
 generate_dep_file_for_file(ProgressStream, Globals, FileName,
         DepsMap, Specs, !IO) :-
     build_initial_deps_map_for_file(ProgressStream, Globals, FileName,
-        ModuleName, DepsMap0, !IO),
+        ModuleName, DepsMap0, InitialSpecs, !IO),
     generate_dot_dx_files(ProgressStream, Globals,
         output_all_program_dot_dx_files, do_not_search,
-        ModuleName, DepsMap0, DepsMap, Specs, !IO).
+        ModuleName, DepsMap0, DepsMap, LaterSpecs, !IO),
+    Specs = InitialSpecs ++ LaterSpecs.
 
 generate_d_file_for_module(ProgressStream, Globals, ModuleName,
         DepsMap, Specs, !IO) :-
@@ -162,17 +162,19 @@ generate_d_file_for_module(ProgressStream, Globals, ModuleName,
 generate_d_file_for_file(ProgressStream, Globals, FileName,
         DepsMap, Specs, !IO) :-
     build_initial_deps_map_for_file(ProgressStream, Globals, FileName,
-        ModuleName, DepsMap0, !IO),
+        ModuleName, DepsMap0, InitialSpecs, !IO),
     generate_dot_dx_files(ProgressStream, Globals, output_module_dot_d_file,
-        do_search, ModuleName, DepsMap0, DepsMap, Specs, !IO).
+        do_search, ModuleName, DepsMap0, DepsMap, LaterSpecs, !IO),
+    Specs = InitialSpecs ++ LaterSpecs.
 
 %---------------------------------------------------------------------------%
 
 :- pred build_initial_deps_map_for_file(io.text_output_stream::in, globals::in,
-    file_name::in, module_name::out, deps_map::out, io::di, io::uo) is det.
+    file_name::in, module_name::out, deps_map::out, list(error_spec)::out,
+    io::di, io::uo) is det.
 
 build_initial_deps_map_for_file(ProgressStream, Globals, FileName, ModuleName,
-        DepsMap, !IO) :-
+        DepsMap, Specs, !IO) :-
     % Read in the top-level file (to figure out its module name).
     FileNameDotM = FileName ++ ".m",
     read_module_src_from_file(ProgressStream, Globals, FileName, FileNameDotM,
@@ -193,8 +195,6 @@ build_initial_deps_map_for_file(ProgressStream, Globals, FileName, ModuleName,
         Specs = get_read_module_specs(ReadModuleErrors),
         BurdenedModules = []
     ),
-    get_error_output_stream(Globals, ModuleName, ErrorStream, !IO),
-    write_error_specs(ErrorStream, Globals, Specs, !IO),
     map.init(DepsMap0),
     list.foldl(insert_into_deps_map(non_dummy_burdened_module),
         BurdenedModules, DepsMap0, DepsMap).
@@ -242,10 +242,10 @@ generate_dot_dx_files(ProgressStream, Globals, Mode, Search, ModuleName,
         ;
             Mode = output_all_program_dot_dx_files,
             SourceFileName = Baggage ^ mb_source_file_name,
-            generate_dependencies_write_dv_file(Globals, SourceFileName,
-                ModuleName, DepsMap, !IO),
-            generate_dependencies_write_dep_file(Globals, SourceFileName,
-                ModuleName, DepsMap, !IO),
+            generate_dependencies_write_dv_file(ProgressStream,
+                Globals, SourceFileName, ModuleName, DepsMap, !IO),
+            generate_dependencies_write_dep_file(ProgressStream,
+                Globals, SourceFileName, ModuleName, DepsMap, !IO),
 
             % For Java, the main target is actually a shell script
             % which will set CLASSPATH appropriately, and then invoke java
@@ -255,7 +255,8 @@ generate_dot_dx_files(ProgressStream, Globals, Mode, Search, ModuleName,
             % that is simpler and probably more efficient anyway.
             globals.get_target(Globals, Target),
             ( if Target = target_java then
-                create_java_shell_script(Globals, ModuleName, _Succeeded, !IO)
+                create_java_shell_script(ProgressStream, Globals, ModuleName,
+                    _Succeeded, !IO)
             else
                 true
             )
@@ -385,8 +386,8 @@ generate_dot_dx_files(ProgressStream, Globals, Mode, Search, ModuleName,
             Mode = output_all_program_dot_dx_files,
             DFilesToWrite = BurdenedModules
         ),
-        generate_dependencies_write_d_files(Globals, DFilesToWrite,
-            IntDepsGraph, ImpDepsGraph,
+        generate_dependencies_write_d_files(ProgressStream, Globals,
+            DFilesToWrite, IntDepsGraph, ImpDepsGraph,
             IndirectDepsGraph, IndirectOptDepsGraph,
             TransOptDepsGraph, TransOptOrder, !IO)
     ).

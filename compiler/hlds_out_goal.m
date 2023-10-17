@@ -909,10 +909,12 @@ write_goal_expr(InfoGoal, Stream, Indent, Follow, GoalExpr, !IO) :-
         write_goal_plain_call(InfoGoal, Stream, Indent, Follow, GoalExpr, !IO)
     ;
         GoalExpr = generic_call(_, _, _, _, _),
-        write_goal_generic_call(InfoGoal, Stream, Indent, Follow, GoalExpr, !IO)
+        write_goal_generic_call(InfoGoal, Stream, Indent, Follow,
+            GoalExpr, !IO)
     ;
         GoalExpr = call_foreign_proc(_, _, _, _, _, _, _),
-        write_goal_foreign_proc(InfoGoal, Stream, Indent, Follow, GoalExpr, !IO)
+        write_goal_foreign_proc(InfoGoal, Stream, Indent, Follow,
+            GoalExpr, !IO)
     ;
         GoalExpr = conj(_, _),
         write_goal_conj(InfoGoal, Stream, Indent, Follow, GoalExpr, !IO)
@@ -927,7 +929,8 @@ write_goal_expr(InfoGoal, Stream, Indent, Follow, GoalExpr, !IO) :-
         write_goal_scope(InfoGoal, Stream, Indent, Follow, GoalExpr, !IO)
     ;
         GoalExpr = if_then_else(_, _, _, _),
-        write_goal_if_then_else(InfoGoal, Stream, Indent, Follow, GoalExpr, !IO)
+        write_goal_if_then_else(InfoGoal, Stream, Indent, Follow,
+            GoalExpr, !IO)
     ;
         GoalExpr = negation(_),
         write_goal_negation(InfoGoal, Stream, Indent, Follow, GoalExpr, !IO)
@@ -1444,9 +1447,9 @@ limit_size_of_bound_insts(Levels,
 % Write out ordinary first-order calls.
 %
 
-:- pred write_goal_plain_call(hlds_out_info_goal::in, io.text_output_stream::in,
-    int::in, string::in, hlds_goal_expr::in(goal_expr_plain_call),
-    io::di, io::uo) is det.
+:- pred write_goal_plain_call(hlds_out_info_goal::in,
+    io.text_output_stream::in, int::in, string::in,
+    hlds_goal_expr::in(goal_expr_plain_call), io::di, io::uo) is det.
 
 write_goal_plain_call(InfoGoal, Stream, Indent, Follow, GoalExpr, !IO) :-
     GoalExpr = plain_call(PredId, ProcId, ArgVars, Builtin,
@@ -2435,8 +2438,8 @@ write_goal_shorthand(InfoGoal, Stream, Indent, Follow, GoalExpr, !IO) :-
         io.format(Stream, "%s)%s", [s(IndentStr), s(Follow)], !IO)
     ).
 
-:- func atomic_interface_vars_to_string(var_name_source, var_name_print, string,
-    atomic_interface_vars) = string.
+:- func atomic_interface_vars_to_string(var_name_source, var_name_print,
+    string, atomic_interface_vars) = string.
 
 atomic_interface_vars_to_string(VarNameSrc, VarNamePrint,
         CompName, CompState) = Str :-

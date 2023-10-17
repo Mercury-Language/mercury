@@ -195,6 +195,7 @@
     %
 :- type inline_params
     --->    inline_params(
+                ip_progress_stream              :: io.text_output_stream,
                 ip_simple                       :: maybe_inline_simple,
                 ip_single_use                   :: maybe_inline_single_use,
                 ip_linear_tail_rec              ::
@@ -328,8 +329,8 @@ inline_in_module(ProgressStream, !ModuleInfo) :-
     else
         map.init(NeededMap)
     ),
-    Params = inline_params(Simple, SingleUse, LinearTailRec, HighLevelCode,
-        LinearTailRecMaxExtra, CallCost,
+    Params = inline_params(ProgressStream, Simple, SingleUse, LinearTailRec,
+        HighLevelCode, LinearTailRecMaxExtra, CallCost,
         CompoundThreshold, SimpleThreshold, VarThreshold, NeededMap),
 
     % Build the call graph and extract the list of SCCs. We process
@@ -773,7 +774,9 @@ inline_in_proc(Params, ShouldInlineProcs, ShouldInlineTailProcs, PredProcId,
         % through the procedure may lead to more efficient code.
         (
             DetChanged = may_have_changed_detism,
-            det_infer_proc_ignore_msgs(PredId, ProcId, !ModuleInfo)
+            ProgressStream = Params ^ ip_progress_stream,
+            det_infer_proc_ignore_msgs(ProgressStream, PredId, ProcId,
+                !ModuleInfo)
         ;
             DetChanged = have_not_changed_detism
         )

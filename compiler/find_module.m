@@ -249,8 +249,8 @@ search_for_file_returning_dir_and_contents(Dirs, FileName,
         MaybeDirPathNameAndContents, !IO).
 
 :- pred search_for_file_returning_dir_and_contents_loop(list(dir_name)::in,
-    list(dir_name)::in, file_name::in, maybe_error(path_name_and_contents)::out,
-    io::di, io::uo) is det.
+    list(dir_name)::in, file_name::in,
+    maybe_error(path_name_and_contents)::out, io::di, io::uo) is det.
 
 search_for_file_returning_dir_and_contents_loop(AllDirs, Dirs, FileName,
         MaybeDirNameAndContents, !IO) :-

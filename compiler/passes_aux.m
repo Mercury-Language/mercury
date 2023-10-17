@@ -145,21 +145,15 @@
 
 %---------------------------------------------------------------------------%
 
-:- pred maybe_write_pred_progress_message(
-    module_info::in, string::in, pred_id::in, io::di, io::uo) is det.
 :- pred maybe_write_pred_progress_message(io.text_output_stream::in,
     module_info::in, string::in, pred_id::in, io::di, io::uo) is det.
 
-:- pred maybe_write_proc_progress_message(
-    module_info::in, string::in, pred_proc_id::in, io::di, io::uo) is det.
 :- pred maybe_write_proc_progress_message(io.text_output_stream::in,
     module_info::in, string::in, pred_proc_id::in, io::di, io::uo) is det.
 
 :- pred maybe_report_sizes(module_info::in, io::di, io::uo) is det.
 
 :- pred get_error_output_stream(module_info::in,
-    io.text_output_stream::out, io::di, io::uo) is det.
-:- pred get_progress_output_stream(module_info::in,
     io.text_output_stream::out, io::di, io::uo) is det.
 :- pred get_debug_output_stream(module_info::in,
     io.text_output_stream::out, io::di, io::uo) is det.
@@ -389,21 +383,6 @@ seq_process_valid_nonimported_procs(PredId, [ProcId | ProcIds], !Task,
 
 %---------------------------------------------------------------------------%
 
-maybe_write_pred_progress_message(ModuleInfo, Message, PredId, !IO) :-
-    module_info_get_globals(ModuleInfo, Globals),
-    globals.lookup_bool_option(Globals, very_verbose, VeryVerbose),
-    (
-        VeryVerbose = yes,
-        module_info_get_name(ModuleInfo, ModuleName),
-        globals.get_progress_output_stream(Globals, ModuleName,
-            ProgressStream, !IO),
-        PredStr = pred_id_to_user_string(ModuleInfo, PredId),
-        io.format(ProgressStream, "%% %s %s\n", [s(Message), s(PredStr)], !IO),
-        io.flush_output(ProgressStream, !IO)
-    ;
-        VeryVerbose = no
-    ).
-
 maybe_write_pred_progress_message(ProgressStream, ModuleInfo, Message, PredId,
         !IO) :-
     module_info_get_globals(ModuleInfo, Globals),
@@ -412,21 +391,6 @@ maybe_write_pred_progress_message(ProgressStream, ModuleInfo, Message, PredId,
         VeryVerbose = yes,
         PredStr = pred_id_to_user_string(ModuleInfo, PredId),
         io.format(ProgressStream, "%% %s %s\n", [s(Message), s(PredStr)], !IO),
-        io.flush_output(ProgressStream, !IO)
-    ;
-        VeryVerbose = no
-    ).
-
-maybe_write_proc_progress_message(ModuleInfo, Message, PredProcId, !IO) :-
-    module_info_get_globals(ModuleInfo, Globals),
-    globals.lookup_bool_option(Globals, very_verbose, VeryVerbose),
-    (
-        VeryVerbose = yes,
-        module_info_get_name(ModuleInfo, ModuleName),
-        globals.get_progress_output_stream(Globals, ModuleName,
-            ProgressStream, !IO),
-        ProcStr = pred_proc_id_to_user_string(ModuleInfo, PredProcId),
-        io.format(ProgressStream, "%% %s %s\n", [s(Message), s(ProcStr)], !IO),
         io.flush_output(ProgressStream, !IO)
     ;
         VeryVerbose = no
@@ -482,11 +446,6 @@ get_error_output_stream(ModuleInfo, Stream, !IO) :-
     module_info_get_globals(ModuleInfo, Globals),
     module_info_get_name(ModuleInfo, ModuleName),
     globals.get_error_output_stream(Globals, ModuleName, Stream, !IO).
-
-get_progress_output_stream(ModuleInfo, Stream, !IO) :-
-    module_info_get_globals(ModuleInfo, Globals),
-    module_info_get_name(ModuleInfo, ModuleName),
-    globals.get_progress_output_stream(Globals, ModuleName, Stream, !IO).
 
 get_debug_output_stream(ModuleInfo, Stream, !IO) :-
     module_info_get_globals(ModuleInfo, Globals),
@@ -573,13 +532,12 @@ maybe_dump_hlds(ProgressStream, HLDS, StageNum, StageName, !DumpInfo, !IO) :-
                     IOErrorMsg = io.error_message(IOError),
                     string.format("can't open file `%s' for output: %s\n",
                         [s(DumpFileName), s(IOErrorMsg)], Msg),
-                    get_error_output_stream(HLDS, ErrorStream, !IO),
-                    report_error(ErrorStream, Msg, !IO)
+                    report_error(ProgressStream, Msg, !IO)
                 ),
                 !:DumpInfo = prev_dumped_hlds(CurDumpFileName, HLDS)
             )
         else
-            dump_hlds(DumpFileName, HLDS, !IO),
+            dump_hlds(ProgressStream, DumpFileName, HLDS, !IO),
             CurDumpFileName = DumpFileName,
             !:DumpInfo = prev_dumped_hlds(CurDumpFileName, HLDS)
         )
@@ -610,13 +568,13 @@ maybe_dump_hlds(ProgressStream, HLDS, StageNum, StageName, !DumpInfo, !IO) :-
         true
     ).
 
-:- pred dump_hlds(string::in, module_info::in, io::di, io::uo) is det.
+:- pred dump_hlds(io.text_output_stream::in, string::in, module_info::in,
+    io::di, io::uo) is det.
 
-dump_hlds(DumpFile, HLDS, !IO) :-
+dump_hlds(ProgressStream, DumpFile, HLDS, !IO) :-
     module_info_get_globals(HLDS, Globals),
     globals.lookup_bool_option(Globals, verbose, Verbose),
     globals.lookup_bool_option(Globals, statistics, Stats),
-    get_progress_output_stream(HLDS, ProgressStream, !IO),
     (
         Verbose = no
     ;
@@ -635,10 +593,9 @@ dump_hlds(DumpFile, HLDS, !IO) :-
     ;
         DumpFileResult = error(IOError),
         maybe_write_string(ProgressStream, Verbose, "\n", !IO),
-        get_error_output_stream(HLDS, ErrorStream, !IO),
         string.format("can't open file `%s' for output: %s",
             [s(DumpFile), s(io.error_message(IOError))], Msg),
-        report_error(ErrorStream, Msg, !IO)
+        report_error(ProgressStream, Msg, !IO)
     ).
 
 %---------------------------------------------------------------------------%

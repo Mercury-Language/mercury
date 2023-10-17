@@ -1723,7 +1723,8 @@ mercury_output_item_mode_defn(Info, Stream, ItemModeDefn, !IO) :-
     %
 :- pred mercury_format_mode_defn(output_lang::in, inst_varset::in,
     prog_context::in, sym_name::in, list(inst_var)::in,
-    maybe_abstract_mode_defn::in, S::in, U::di, U::uo) is det <= pt_output(S, U).
+    maybe_abstract_mode_defn::in, S::in, U::di, U::uo) is det
+    <= pt_output(S, U).
 
 mercury_format_mode_defn(Lang, InstVarSet, Context, Name, Args,
         MaybeAbstractModeDefn, S, !U) :-
