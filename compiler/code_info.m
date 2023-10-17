@@ -51,6 +51,7 @@
 
 :- import_module bool.
 :- import_module counter.
+:- import_module io.
 :- import_module list.
 :- import_module map.
 :- import_module maybe.
@@ -104,8 +105,9 @@
     %
 :- pred code_info_init(module_info::in, pred_id::in, proc_id::in,
     pred_info::in, proc_info::in, var_table::in, bool::in,
-    static_cell_info::in, const_struct_map::in, maybe(containing_goal_map)::in,
-    list(string)::in, int::in, trace_slot_info::out, code_info::out) is det.
+    static_cell_info::in, const_struct_map::in, io.text_output_stream::in,
+    maybe(containing_goal_map)::in, list(string)::in, int::in,
+    trace_slot_info::out, code_info::out) is det.
 
 :- pred get_module_info(code_info::in, module_info::out) is det.
 :- pred get_globals(code_info::in, globals::out) is det.
@@ -134,6 +136,7 @@
 :- pred get_maybe_containing_goal_map(code_info::in,
     maybe(containing_goal_map)::out) is det.
 :- pred get_const_struct_map(code_info::in, const_struct_map::out) is det.
+% get_progress_stream is not exported.
 
 :- pred get_label_counter(code_info::in, counter::out) is det.
 :- pred get_succip_used(code_info::in, bool::out) is det.
@@ -189,6 +192,7 @@
 :- pred init_maybe_trace_info(globals::in, proc_info::in, eff_trace_level::in,
     trace_slot_info::out, code_info::in, code_info::out) is det.
 
+:- pred get_progress_stream(code_info::in, io.text_output_stream::out) is det.
 :- pred get_closure_seq_counter(code_info::in, counter::out) is det.
 
 :- pred set_maybe_trace_info(maybe(trace_info)::in,
@@ -295,7 +299,10 @@
 
                 % Maps the number of an entry in the module's const_struct_db
                 % to its rval.
-                cis_const_struct_map    :: const_struct_map
+                cis_const_struct_map    :: const_struct_map,
+
+                % The stream to write any debugging output to.
+                cis_progress_stream         :: io.text_output_stream
             ).
 
 :- type code_info_persistent
@@ -372,8 +379,9 @@
 %---------------------------------------------------------------------------%
 
 code_info_init(ModuleInfo, PredId, ProcId, PredInfo, ProcInfo, VarTable,
-        SaveSuccip, StaticCellInfo, ConstStructMap, MaybeContainingGoalMap,
-        TSRevStringTable, TSStringTableSize, TraceSlotInfo, CodeInfo) :-
+        SaveSuccip, StaticCellInfo, ConstStructMap, ProgressStream,
+        MaybeContainingGoalMap, TSRevStringTable, TSStringTableSize,
+        TraceSlotInfo, CodeInfo) :-
     % argument ModuleInfo
     module_info_get_globals(ModuleInfo, Globals),
     ExprnOpts = init_exprn_opts(Globals),
@@ -454,7 +462,8 @@ code_info_init(ModuleInfo, PredId, ProcId, PredInfo, ProcInfo, VarTable,
         NumPtagBits,
         GCMethod,
         MaybeContainingGoalMap,
-        ConstStructMap
+        ConstStructMap,
+        ProgressStream
     ),
 
     LabelNumCounter0 = counter.init(1),
@@ -658,6 +667,8 @@ get_maybe_containing_goal_map(CI, X) :-
     X = CI ^ code_info_static ^ cis_containing_goal_map.
 get_const_struct_map(CI, X) :-
     X = CI ^ code_info_static ^ cis_const_struct_map.
+get_progress_stream(CI, X) :-
+    X = CI ^ code_info_static ^ cis_progress_stream.
 
 get_label_counter(CI, X) :-
     X = CI ^ code_info_persistent ^ cip_label_num_src.
@@ -876,6 +887,11 @@ max_var_slot_loop([Slot | Slots], !Max) :-
     is det.
 
 :- pred add_out_of_line_code(llds_code::in, code_info::in, code_info::out)
+    is det.
+
+    % Should we trace the operation of the code generator?
+    %
+:- pred should_trace_code_gen(code_info::in, maybe(io.text_output_stream)::out)
     is det.
 
 %---------------------------------------------------------------------------%
@@ -1117,6 +1133,21 @@ add_out_of_line_code(NewCode, !CI) :-
     Code0 = !.CI ^ code_info_persistent ^ cip_out_of_line_code,
     Code = Code0 ++ NewCode,
     !CI ^ code_info_persistent ^ cip_out_of_line_code := Code.
+
+%---------------------------------------------------------------------------%
+
+should_trace_code_gen(CI, ShouldDebug) :-
+    get_pred_id(CI, PredId),
+    pred_id_to_int(PredId, PredIdInt),
+    get_module_info(CI, ModuleInfo),
+    module_info_get_globals(ModuleInfo, Globals),
+    globals.lookup_int_option(Globals, debug_code_gen_pred_id, DebugPredIdInt),
+    ( if PredIdInt = DebugPredIdInt then
+        get_progress_stream(CI, ProgressStream),
+        ShouldDebug = yes(ProgressStream)
+    else
+        ShouldDebug = no
+    ).
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%

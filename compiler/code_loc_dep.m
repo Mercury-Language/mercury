@@ -1855,15 +1855,16 @@ generate_failure(Code, !CI, !.CLD) :-
         Code = singleton(llds_instr(goto(do_redo), "fail"))
     ),
     trace [compiletime(flag("codegen_goal")), io(!IO)] (
-        ( if should_trace_code_gen(!.CI) then
-            io.output_stream(Stream, !IO),
+        should_trace_code_gen(!.CI, ShouldTrace),
+        (
+            ShouldTrace = yes(Stream),
             io.write_string(Stream, "failure code\n", !IO),
             Instrs = cord.list(Code),
             write_instrs(Stream, Instrs, no, auto_comments, !IO),
             io.write_string(Stream, "end failure code\n", !IO),
             io.flush_output(Stream, !IO)
-        else
-            true
+        ;
+            ShouldTrace = no
         )
     ).
 
@@ -2121,15 +2122,16 @@ make_resume_point(ResumeVars, ResumeLocs, FullMap, ResumePoint, !CI) :-
         OrigAddr = code_label(OrigLabel),
         ResumePoint = orig_only(OrigMap, OrigAddr),
         trace [compiletime(flag("codegen_goal")), io(!IO)] (
-            ( if should_trace_code_gen(!.CI) then
-                io.output_stream(Stream, !IO),
+            should_trace_code_gen(!.CI, ShouldTrace),
+            (
+                ShouldTrace = yes(Stream),
                 code_info.get_var_table(!.CI, VarTable),
                 io.write_string(Stream, "make_resume_point orig_only\n", !IO),
                 output_resume_map(Stream, VarTable, "orig:",
                     OrigMap, OrigLabel, !IO),
                 io.flush_output(Stream, !IO)
-            else
-                true
+            ;
+                ShouldTrace = no
             )
         )
     ;
@@ -2139,16 +2141,17 @@ make_resume_point(ResumeVars, ResumeLocs, FullMap, ResumePoint, !CI) :-
         StackAddr = code_label(StackLabel),
         ResumePoint = stack_only(StackMap, StackAddr),
         trace [compiletime(flag("codegen_goal")), io(!IO)] (
-            ( if should_trace_code_gen(!.CI) then
-                io.output_stream(Stream, !IO),
+            should_trace_code_gen(!.CI, ShouldTrace),
+            (
+                ShouldTrace = yes(Stream),
                 code_info.get_var_table(!.CI, VarTable),
                 io.write_string(Stream,
                     "make_resume_point stack_only\n", !IO),
                 output_resume_map(Stream, VarTable, "stack:",
                     StackMap, StackLabel, !IO),
                 io.flush_output(Stream, !IO)
-            else
-                true
+            ;
+                ShouldTrace = no
             )
         )
     ;
@@ -2160,8 +2163,9 @@ make_resume_point(ResumeVars, ResumeLocs, FullMap, ResumePoint, !CI) :-
         StackAddr = code_label(StackLabel),
         ResumePoint = orig_then_stack(OrigMap, OrigAddr, StackMap, StackAddr),
         trace [compiletime(flag("codegen_goal")), io(!IO)] (
-            ( if should_trace_code_gen(!.CI) then
-                io.output_stream(Stream, !IO),
+            should_trace_code_gen(!.CI, ShouldTrace),
+            (
+                ShouldTrace = yes(Stream),
                 code_info.get_var_table(!.CI, VarTable),
                 io.write_string(Stream,
                     "make_resume_point orig_then_stack\n", !IO),
@@ -2170,8 +2174,8 @@ make_resume_point(ResumeVars, ResumeLocs, FullMap, ResumePoint, !CI) :-
                 output_resume_map(Stream, VarTable, "stack:",
                     StackMap, StackLabel, !IO),
                 io.flush_output(Stream, !IO)
-            else
-                true
+            ;
+                ShouldTrace = no
             )
         )
     ;
@@ -2183,9 +2187,10 @@ make_resume_point(ResumeVars, ResumeLocs, FullMap, ResumePoint, !CI) :-
         OrigAddr = code_label(OrigLabel),
         ResumePoint = stack_then_orig(StackMap, StackAddr, OrigMap, OrigAddr),
         trace [compiletime(flag("codegen_goal")), io(!IO)] (
-            ( if should_trace_code_gen(!.CI) then
+            should_trace_code_gen(!.CI, ShouldTrace),
+            (
+                ShouldTrace = yes(Stream),
                 code_info.get_var_table(!.CI, VarTable),
-                io.output_stream(Stream, !IO),
                 io.write_string(Stream,
                     "make_resume_point stack_then_orig\n", !IO),
                 output_resume_map(Stream, VarTable, "stack:",
@@ -2193,8 +2198,8 @@ make_resume_point(ResumeVars, ResumeLocs, FullMap, ResumePoint, !CI) :-
                 output_resume_map(Stream, VarTable, "orig:",
                     OrigMap, OrigLabel, !IO),
                 io.flush_output(Stream, !IO)
-            else
-                true
+            ;
+                ShouldTrace = no
             )
         )
     ).
@@ -3870,10 +3875,6 @@ release_several_temp_slots([StackVar | StackVars], Persistence, !CI, !CLD) :-
 
 :- interface.
 
-    % Should we trace the operation of the code generator?
-    %
-:- pred should_trace_code_gen(code_info::in) is semidet.
-
 :- type code_info_component
     --->    cic_forward_live_vars
     ;       cic_zombies
@@ -3890,14 +3891,6 @@ release_several_temp_slots([StackVar | StackVars], Persistence, !CI, !CLD) :-
     code_info::in, code_loc_dep::in, io::di, io::uo) is det.
 
 :- implementation.
-
-should_trace_code_gen(CI) :-
-    get_pred_id(CI, PredId),
-    pred_id_to_int(PredId, PredIdInt),
-    get_module_info(CI, ModuleInfo),
-    module_info_get_globals(ModuleInfo, Globals),
-    globals.lookup_int_option(Globals, debug_code_gen_pred_id, DebugPredIdInt),
-    PredIdInt = DebugPredIdInt.
 
 output_code_info(Stream, Components, CI, CLD, !IO) :-
     get_var_table(CI, VarTable),

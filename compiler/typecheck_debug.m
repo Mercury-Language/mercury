@@ -53,8 +53,7 @@
 type_checkpoint(Msg, Info, VarSet, TypeAssignSet, !IO) :-
     typecheck_info_get_debug_info(Info, Debug),
     (
-        Debug = typecheck_debug(DetailedStats),
-        io.output_stream(Stream, !IO),
+        Debug = typecheck_debug(DetailedStats, Stream),
         do_type_checkpoint(Stream, Msg, DetailedStats, VarSet,
             TypeAssignSet, !IO)
     ;

@@ -75,9 +75,12 @@
 :- import_module hlds.hlds_module.
 :- import_module hlds.hlds_pred.
 
+:- import_module io.
+
 %-----------------------------------------------------------------------------%
 
-:- pred stack_opt_cell(pred_proc_id::in, proc_info::in, proc_info::out,
+:- pred stack_opt_cell(io.text_output_stream::in,
+    pred_proc_id::in, proc_info::in, proc_info::out,
     module_info::in, module_info::out) is det.
 
 %-----------------------------------------------------------------------------%
@@ -126,7 +129,6 @@
 :- import_module bool.
 :- import_module counter.
 :- import_module int.
-:- import_module io.
 :- import_module list.
 :- import_module map.
 :- import_module maybe.
@@ -189,7 +191,7 @@
                 soi_matching_results    :: list(matching_result)
             ).
 
-stack_opt_cell(PredProcId, !ProcInfo, !ModuleInfo) :-
+stack_opt_cell(ProgressStream, PredProcId, !ProcInfo, !ModuleInfo) :-
     PredProcId = proc(PredId, ProcId),
     % This simplication is necessary to fix some bad inputs from
     % getting to the liveness computation.
@@ -218,27 +220,30 @@ stack_opt_cell(PredProcId, !ProcInfo, !ModuleInfo) :-
     allocate_store_maps(for_stack_opt, !.ModuleInfo, PredProcId, !ProcInfo),
     globals.lookup_int_option(Globals, debug_stack_opt, DebugStackOpt),
     trace [io(!IO)] (
-        maybe_write_progress_message(!.ModuleInfo, DebugStackOpt,
-            PredId, !.ProcInfo, "\nbefore stack opt cell", !IO)
+        maybe_write_progress_message(ProgressStream, !.ModuleInfo,
+            DebugStackOpt, PredId, !.ProcInfo,
+            "\nbefore stack opt cell", !IO)
     ),
     optimize_live_sets(!.ModuleInfo, OptStackAlloc, !ProcInfo,
         Changed, DebugStackOpt, PredId),
     (
         Changed = yes,
         trace [io(!IO)] (
-            maybe_write_progress_message(!.ModuleInfo, DebugStackOpt,
-                PredId, !.ProcInfo, "\nafter stack opt transformation", !IO)
+            maybe_write_progress_message(ProgressStream, !.ModuleInfo,
+                DebugStackOpt, PredId, !.ProcInfo,
+                "\nafter stack opt transformation", !IO)
         ),
         requantify_proc_general(ord_nl_no_lambda, !ProcInfo),
         trace [io(!IO)] (
-            maybe_write_progress_message(!.ModuleInfo, DebugStackOpt,
-                PredId, !.ProcInfo, "\nafter stack opt requantify", !IO)
+            maybe_write_progress_message(ProgressStream, !.ModuleInfo,
+                DebugStackOpt, PredId, !.ProcInfo,
+                "\nafter stack opt requantify", !IO)
         ),
         recompute_instmap_delta_proc(recomp_atomics, !ProcInfo, !ModuleInfo),
         trace [io(!IO)] (
-            maybe_write_progress_message(!.ModuleInfo, DebugStackOpt,
-                PredId, !.ProcInfo, "\nafter stack opt recompute instmaps",
-                !IO)
+            maybe_write_progress_message(ProgressStream, !.ModuleInfo,
+                DebugStackOpt, PredId, !.ProcInfo,
+                "\nafter stack opt recompute instmaps", !IO)
         )
     ;
         Changed = no
@@ -1039,11 +1044,12 @@ compress_paths(Paths) = Paths.
 
 % This predicate can help debug the correctness of the transformation.
 
-:- pred maybe_write_progress_message(module_info::in, int::in, pred_id::in,
-    proc_info::in, string::in, io::di, io::uo) is det.
+:- pred maybe_write_progress_message(io.text_output_stream::in,
+    module_info::in, int::in, pred_id::in, proc_info::in, string::in,
+    io::di, io::uo) is det.
 
-maybe_write_progress_message(ModuleInfo, DebugStackOpt, PredId, ProcInfo,
-        Message, !IO) :-
+maybe_write_progress_message(ProgressStream, ModuleInfo, DebugStackOpt,
+        PredId, ProcInfo, Message, !IO) :-
     pred_id_to_int(PredId, PredIdInt),
     ( if DebugStackOpt = PredIdInt then
         module_info_get_globals(ModuleInfo, Globals),
@@ -1054,11 +1060,11 @@ maybe_write_progress_message(ModuleInfo, DebugStackOpt, PredId, ProcInfo,
         proc_info_get_inst_varset(ProcInfo, InstVarSet),
         proc_info_get_goal(ProcInfo, Goal),
 
-        io.output_stream(Stream, !IO),
-        io.write_string(Stream, Message, !IO),
-        io.write_string(Stream, ":\n", !IO),
-        write_goal_nl(OutInfo, Stream, ModuleInfo, vns_var_table(VarTable),
-            print_name_and_num, TVarSet, InstVarSet, 0, "\n", Goal, !IO)
+        io.write_string(ProgressStream, Message, !IO),
+        io.write_string(ProgressStream, ":\n", !IO),
+        write_goal_nl(OutInfo, ProgressStream, ModuleInfo,
+            vns_var_table(VarTable), print_name_and_num,
+            TVarSet, InstVarSet, 0, "\n", Goal, !IO)
     else
         true
     ).

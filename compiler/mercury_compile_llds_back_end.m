@@ -391,7 +391,7 @@ llds_backend_pass_for_proc(ProgressStream, ConstStructMap, SCCMap,
     SavedVarsCell = OptTuple ^ ot_opt_svcell,
     (
         SavedVarsCell = opt_svcell,
-        stack_opt_cell(PredProcId, !ProcInfo, !HLDS)
+        stack_opt_cell(ProgressStream, PredProcId, !ProcInfo, !HLDS)
     ;
         SavedVarsCell = do_not_opt_svcell
     ),
@@ -461,8 +461,8 @@ llds_backend_pass_for_proc(ProgressStream, ConstStructMap, SCCMap,
         maybe_write_proc_progress_message(ProgressStream, !.HLDS,
             "Generating low-level (LLDS) code for", PredProcId, !IO)
     ),
-    generate_proc_code(!.HLDS, ConstStructMap, PredId, PredInfo,
-         ProcId, !.ProcInfo, CProc0, !GlobalData),
+    generate_proc_code(ProgressStream, !.HLDS, ConstStructMap,
+        PredId, PredInfo, ProcId, !.ProcInfo, CProc0, !GlobalData),
     Optimize = OptTuple ^ ot_optimize,
     (
         Optimize = optimize,
@@ -525,7 +525,8 @@ maybe_stack_opt(ProgressStream, Verbose, Stats, !HLDS, !IO) :-
         maybe_write_string(ProgressStream, Verbose,
             "% Minimizing variable saves using cells...\n", !IO),
         maybe_flush_output(ProgressStream, Verbose, !IO),
-        process_valid_nonimported_procs(update_module(stack_opt_cell), !HLDS),
+        process_valid_nonimported_procs(
+            update_module(stack_opt_cell(ProgressStream)), !HLDS),
         maybe_write_string(ProgressStream, Verbose, "% done.\n", !IO),
         maybe_report_stats(ProgressStream, Stats, !IO)
     ;

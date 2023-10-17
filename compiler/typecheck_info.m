@@ -32,6 +32,7 @@
 :- import_module parse_tree.prog_data.
 
 :- import_module bool.
+:- import_module io.
 :- import_module list.
 :- import_module map.
 :- import_module maybe.
@@ -44,9 +45,9 @@
 
 :- type typecheck_info.
 
-:- pred typecheck_info_init(module_info::in, pred_id::in, pred_info::in,
-    prog_varset::in, pred_status::in, pred_markers::in, list(error_spec)::in,
-    typecheck_info::out) is det.
+:- pred typecheck_info_init(io.text_output_stream::in, module_info::in,
+    pred_id::in, pred_info::in, prog_varset::in, pred_status::in,
+    pred_markers::in, list(error_spec)::in, typecheck_info::out) is det.
 
 %-----------------------------------------------------------------------------%
 %
@@ -106,7 +107,8 @@
     --->    no_typecheck_debug
     ;       typecheck_debug(
                 % The value of the detailed_statistics option.
-                td_detailed_statistics          :: bool
+                td_detailed_statistics          :: bool,
+                td_progress_stream              :: io.text_output_stream
             ).
 
 %-----------------------------------------------------------------------------%
@@ -264,8 +266,8 @@
 
 %-----------------------------------------------------------------------------%
 
-typecheck_info_init(ModuleInfo, PredId, PredInfo, ClauseVarSet, Status,
-        PredMarkers, NonOverloadErrors, Info) :-
+typecheck_info_init(ProgressStream, ModuleInfo, PredId, PredInfo, ClauseVarSet,
+        Status, PredMarkers, NonOverloadErrors, Info) :-
     CallsAreFullyQualified = calls_are_fully_qualified(PredMarkers),
     ( if pred_info_is_field_access_function(ModuleInfo, PredInfo) then
         MaybeFieldAccessFunctionStatus = yes(Status)
@@ -285,7 +287,7 @@ typecheck_info_init(ModuleInfo, PredId, PredInfo, ClauseVarSet, Status,
         Name = pred_info_name(PredInfo),
         ( if list.member(Name, DebugTypesPredNames) then
             globals.lookup_bool_option(Globals, detailed_statistics, Stats),
-            DebugInfo = typecheck_debug(Stats)
+            DebugInfo = typecheck_debug(Stats, ProgressStream)
         else
             DebugInfo = no_typecheck_debug
         )
@@ -295,7 +297,7 @@ typecheck_info_init(ModuleInfo, PredId, PredInfo, ClauseVarSet, Status,
         (
             DebugTypes = yes,
             globals.lookup_bool_option(Globals, detailed_statistics, Stats),
-            DebugInfo = typecheck_debug(Stats)
+            DebugInfo = typecheck_debug(Stats, ProgressStream)
         ;
             DebugTypes = no,
             DebugInfo = no_typecheck_debug

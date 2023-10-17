@@ -1419,7 +1419,7 @@ maybe_impl_dependent_par_conjs(ProgressStream, Verbose, Stats, !HLDS, !IO) :-
             maybe_write_string(ProgressStream, Verbose,
                 "% Dependent parallel conjunction transformation...\n", !IO),
             maybe_flush_output(ProgressStream, Verbose, !IO),
-            impl_dep_par_conjs_in_module(!HLDS),
+            impl_dep_par_conjs_in_module(ProgressStream, !HLDS),
             dead_proc_elim(do_not_elim_opt_imported, _, _, !HLDS),
             maybe_write_string(ProgressStream, Verbose, "% done.\n", !IO),
             maybe_report_stats(ProgressStream, Stats, !IO)

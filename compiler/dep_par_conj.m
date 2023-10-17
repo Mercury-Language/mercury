@@ -114,13 +114,15 @@
 :- import_module hlds.
 :- import_module hlds.hlds_module.
 
+:- import_module io.
+
 %---------------------------------------------------------------------------%
 
     % Transform all the parallel conjunctions in the procedures of this module
     % according to the scheme shown above.
     %
-:- pred impl_dep_par_conjs_in_module(module_info::in, module_info::out)
-    is det.
+:- pred impl_dep_par_conjs_in_module(io.text_output_stream::in,
+    module_info::in, module_info::out) is det.
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -168,7 +170,6 @@
 :- import_module assoc_list.
 :- import_module bool.
 :- import_module int.
-:- import_module io.
 :- import_module list.
 :- import_module map.
 :- import_module maybe.
@@ -182,7 +183,7 @@
 
 %---------------------------------------------------------------------------%
 
-impl_dep_par_conjs_in_module(!ModuleInfo) :-
+impl_dep_par_conjs_in_module(ProgressStream, !ModuleInfo) :-
     InitialModuleInfo = !.ModuleInfo,
 
     % Phase one: insert synchronization code into all parallel conjunctions
@@ -190,7 +191,7 @@ impl_dep_par_conjs_in_module(!ModuleInfo) :-
     module_info_get_valid_pred_ids(!.ModuleInfo, PredIds),
     module_info_get_ts_rev_string_table(!.ModuleInfo, _, RevTable0),
     make_ts_string_table(RevTable0, TSStringTable0),
-    list.foldl3(maybe_sync_dep_par_conjs_in_pred, PredIds,
+    list.foldl3(maybe_sync_dep_par_conjs_in_pred(ProgressStream), PredIds,
         !ModuleInfo, [], ProcsToScan, TSStringTable0, TSStringTable1),
 
     % Phase two: attempt to push the synchronization code inside procedures
@@ -207,9 +208,9 @@ impl_dep_par_conjs_in_module(!ModuleInfo) :-
         find_specialization_requests_in_proc(DoneParProcs0, InitialModuleInfo),
         ProcsToScan, !ModuleInfo, PendingParProcs0, PendingParProcs,
         Pushability0, Pushability, RevProcMap0, RevProcMap),
-    add_requested_specialized_par_procs(PendingParProcs, Pushability,
-        DoneParProcs0, InitialModuleInfo, !ModuleInfo, RevProcMap, _,
-        TSStringTable1, TSStringTable),
+    add_requested_specialized_par_procs(ProgressStream, PendingParProcs,
+        Pushability, DoneParProcs0, InitialModuleInfo, !ModuleInfo,
+        RevProcMap, _, TSStringTable1, TSStringTable),
     module_info_set_ts_rev_string_table(TSStringTable ^ st_size,
         TSStringTable ^ st_rev_table, !ModuleInfo).
 
@@ -249,42 +250,44 @@ impl_dep_par_conjs_in_module(!ModuleInfo) :-
                 sync_ts_string_table        :: ts_string_table
             ).
 
-:- pred maybe_sync_dep_par_conjs_in_pred(pred_id::in,
-    module_info::in, module_info::out,
+:- pred maybe_sync_dep_par_conjs_in_pred(io.text_output_stream::in,
+    pred_id::in, module_info::in, module_info::out,
     list(pred_proc_id)::in, list(pred_proc_id)::out,
     ts_string_table::in, ts_string_table::out) is det.
 
-maybe_sync_dep_par_conjs_in_pred(PredId, !ModuleInfo, !ProcsToScan,
-        !TSStringTable) :-
+maybe_sync_dep_par_conjs_in_pred(ProgressStream, PredId,
+        !ModuleInfo, !ProcsToScan, !TSStringTable) :-
     module_info_pred_info(!.ModuleInfo, PredId, PredInfo),
     ProcIds = pred_info_all_non_imported_procids(PredInfo),
-    list.foldl3(maybe_sync_dep_par_conjs_in_proc(PredId), ProcIds,
-        !ModuleInfo, !ProcsToScan, !TSStringTable).
+    list.foldl3(maybe_sync_dep_par_conjs_in_proc(ProgressStream, PredId),
+        ProcIds, !ModuleInfo, !ProcsToScan, !TSStringTable).
 
-:- pred maybe_sync_dep_par_conjs_in_proc(pred_id::in, proc_id::in,
+:- pred maybe_sync_dep_par_conjs_in_proc(io.text_output_stream::in,
+    pred_id::in, proc_id::in,
     module_info::in, module_info::out,
     list(pred_proc_id)::in, list(pred_proc_id)::out,
     ts_string_table::in, ts_string_table::out) is det.
 
-maybe_sync_dep_par_conjs_in_proc(PredId, ProcId, !ModuleInfo, !ProcsToScan,
-        !TSStringTable) :-
+maybe_sync_dep_par_conjs_in_proc(ProgressStream, PredId, ProcId,
+        !ModuleInfo, !ProcsToScan, !TSStringTable) :-
     module_info_proc_info(!.ModuleInfo, PredId, ProcId, ProcInfo),
     proc_info_get_has_parallel_conj(ProcInfo, HasParallelConj),
     (
         HasParallelConj = has_no_parallel_conj
     ;
         HasParallelConj = has_parallel_conj,
-        sync_dep_par_conjs_in_proc(PredId, ProcId, set_of_var.init,
-            !ModuleInfo, !ProcsToScan, !TSStringTable)
+        sync_dep_par_conjs_in_proc(ProgressStream, PredId, ProcId,
+            set_of_var.init, !ModuleInfo, !ProcsToScan, !TSStringTable)
     ).
 
-:- pred sync_dep_par_conjs_in_proc(pred_id::in, proc_id::in,
-    set_of_progvar::in, module_info::in, module_info::out,
+:- pred sync_dep_par_conjs_in_proc(io.text_output_stream::in,
+    pred_id::in, proc_id::in, set_of_progvar::in,
+    module_info::in, module_info::out,
     list(pred_proc_id)::in, list(pred_proc_id)::out,
     ts_string_table::in, ts_string_table::out) is det.
 
-sync_dep_par_conjs_in_proc(PredId, ProcId, IgnoreVars, !ModuleInfo,
-        !ProcsToScan, !TSStringTable) :-
+sync_dep_par_conjs_in_proc(ProgressStream, PredId, ProcId, IgnoreVars,
+        !ModuleInfo, !ProcsToScan, !TSStringTable) :-
     some [!PredInfo, !ProcInfo, !Goal, !VarTable, !SyncInfo] (
         module_info_pred_proc_info(!.ModuleInfo, PredId, ProcId,
             !:PredInfo, !:ProcInfo),
@@ -321,15 +324,15 @@ sync_dep_par_conjs_in_proc(PredId, ProcId, IgnoreVars, !ModuleInfo,
                 OutInfo = init_hlds_out_info(Globals, output_debug),
                 pred_info_get_typevarset(!.PredInfo, TVarSet),
                 proc_info_get_inst_varset(!.ProcInfo, InstVarSet),
-                io.output_stream(Stream, !IO),
-                io.format(Stream, "Pred/Proc: %s/%s before dep-par-conj:\n",
+                io.format(ProgressStream,
+                    "Pred/Proc: %s/%s before dep-par-conj:\n",
                     [s(string(PredId)), s(string(ProcId))], !IO),
-                write_goal_nl(OutInfo, Stream, !.ModuleInfo,
+                write_goal_nl(OutInfo, ProgressStream, !.ModuleInfo,
                     vns_var_table(!.VarTable), print_name_and_num,
                     TVarSet, InstVarSet, 0, "", GoalBeforeDepParConj, !IO),
-                io.nl(Stream, !IO),
-                io.write_string(Stream, "After dep-par-conj:\n", !IO),
-                write_goal_nl(OutInfo, Stream, !.ModuleInfo,
+                io.nl(ProgressStream, !IO),
+                io.write_string(ProgressStream, "After dep-par-conj:\n", !IO),
+                write_goal_nl(OutInfo, ProgressStream, !.ModuleInfo,
                     vns_var_table(!.VarTable), print_name_and_num,
                     TVarSet, InstVarSet, 0, "", !.Goal, !IO)
             else
@@ -1593,12 +1596,13 @@ find_specialization_requests_in_proc(DoneProcs, InitialModuleInfo, PredProcId,
             !ModuleInfo)
     ).
 
-:- pred add_requested_specialized_par_procs(pending_par_procs::in,
-    pushable_args_map::in, done_par_procs::in, module_info::in,
-    module_info::in, module_info::out, rev_proc_map::in, rev_proc_map::out,
+:- pred add_requested_specialized_par_procs(io.text_output_stream::in,
+    pending_par_procs::in, pushable_args_map::in, done_par_procs::in,
+    module_info::in, module_info::in, module_info::out,
+    rev_proc_map::in, rev_proc_map::out,
     ts_string_table::in, ts_string_table::out) is det.
 
-add_requested_specialized_par_procs(!.PendingParProcs,
+add_requested_specialized_par_procs(ProgressStream, !.PendingParProcs,
         !.Pushability, !.DoneParProcs, InitialModuleInfo,
         !ModuleInfo, !RevProcMap, !TSStringTable) :-
     (
@@ -1608,26 +1612,27 @@ add_requested_specialized_par_procs(!.PendingParProcs,
         % Move the procedure we are about to parallelise into the list of
         % done procedures, in case of recursive calls.
         map.det_insert(CallPattern, NewProc, !DoneParProcs),
-        add_requested_specialized_par_proc(CallPattern, NewProc,
-            !PendingParProcs, !Pushability, !.DoneParProcs, InitialModuleInfo,
-            !ModuleInfo, !RevProcMap, !TSStringTable),
+        add_requested_specialized_par_proc(ProgressStream, CallPattern,
+            NewProc, !PendingParProcs, !Pushability, !.DoneParProcs,
+            InitialModuleInfo, !ModuleInfo, !RevProcMap, !TSStringTable),
         disable_warning [suspicious_recursion] (
-            add_requested_specialized_par_procs(!.PendingParProcs,
-                !.Pushability, !.DoneParProcs, InitialModuleInfo,
-                !ModuleInfo, !RevProcMap, !TSStringTable)
+            add_requested_specialized_par_procs(ProgressStream,
+                !.PendingParProcs, !.Pushability, !.DoneParProcs,
+                InitialModuleInfo, !ModuleInfo, !RevProcMap, !TSStringTable)
         )
     ).
 
-:- pred add_requested_specialized_par_proc(par_proc_call_pattern::in,
-    new_par_proc::in, pending_par_procs::in, pending_par_procs::out,
+:- pred add_requested_specialized_par_proc(io.text_output_stream::in,
+    par_proc_call_pattern::in, new_par_proc::in,
+    pending_par_procs::in, pending_par_procs::out,
     pushable_args_map::in, pushable_args_map::out, done_par_procs::in,
     module_info::in, module_info::in, module_info::out,
     rev_proc_map::in, rev_proc_map::out,
     ts_string_table::in, ts_string_table::out) is det.
 
-add_requested_specialized_par_proc(CallPattern, NewProc, !PendingParProcs,
-        !Pushability, DoneParProcs, InitialModuleInfo, !ModuleInfo,
-        !RevProcMap, !TSStringTable) :-
+add_requested_specialized_par_proc(ProgressStream, CallPattern, NewProc,
+        !PendingParProcs, !Pushability, DoneParProcs, InitialModuleInfo,
+        !ModuleInfo, !RevProcMap, !TSStringTable) :-
     CallPattern = par_proc_call_pattern(OldPredProcId, FutureArgs),
     NewProc = new_par_proc(NewPredProcId, _Name),
     OldPredProcId = proc(OldPredId, OldProcId),
@@ -1689,8 +1694,8 @@ add_requested_specialized_par_proc(CallPattern, NewProc, !PendingParProcs,
         % the newly created (sort of; the previous version was only a
         % placeholder) specialized procedure.
         IgnoreVars = set_of_var.sorted_list_to_set(map.keys(FutureMap)),
-        sync_dep_par_conjs_in_proc(NewPredId, NewProcId, IgnoreVars,
-            !ModuleInfo, [], _ProcsToScan, !TSStringTable),
+        sync_dep_par_conjs_in_proc(ProgressStream, NewPredId, NewProcId,
+            IgnoreVars, !ModuleInfo, [], _ProcsToScan, !TSStringTable),
         find_specialization_requests_in_proc(DoneParProcs, InitialModuleInfo,
             NewPredProcId, !ModuleInfo, !PendingParProcs, !Pushability,
             !RevProcMap)

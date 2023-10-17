@@ -51,9 +51,10 @@
     % Translate a HLDS procedure to LLDS, threading through the data structure
     % that records information about layout structures.
     %
-:- pred generate_proc_code(module_info::in, const_struct_map::in,
-    pred_id::in, pred_info::in, proc_id::in, proc_info::in,
-    c_procedure::out, global_data::in, global_data::out) is det.
+:- pred generate_proc_code(io.text_output_stream::in, module_info::in,
+    const_struct_map::in, pred_id::in, pred_info::in,
+    proc_id::in, proc_info::in, c_procedure::out,
+    global_data::in, global_data::out) is det.
 
     % Return the message that identifies the procedure to pass to
     % the incr_sp_push_msg macro in the generated C code.
@@ -327,8 +328,8 @@ generate_code_for_procs(ProgressStream, PrintProcProgress,
     ),
     pred_info_get_proc_table(PredInfo, ProcInfos),
     map.lookup(ProcInfos, ProcId, ProcInfo),
-    generate_proc_code(ModuleInfo, ConstStructMap, PredId, PredInfo,
-        ProcId, ProcInfo, CProc, !GlobalData),
+    generate_proc_code(ProgressStream, ModuleInfo, ConstStructMap,
+        PredId, PredInfo, ProcId, ProcInfo, CProc, !GlobalData),
     !:CProcsCord = cord.snoc(!.CProcsCord, CProc),
     generate_code_for_procs(ProgressStream, PrintProcProgress,
         ModuleInfo, ConstStructMap, PredId, PredInfo, ProcIds,
@@ -351,8 +352,8 @@ generate_code_for_procs(ProgressStream, PrintProcProgress,
                 maybe(int)
             ).
 
-generate_proc_code(ModuleInfo0, ConstStructMap, PredId, PredInfo,
-        ProcId, ProcInfo0, CProc, !GlobalData) :-
+generate_proc_code(ProgressStream, ModuleInfo0, ConstStructMap,
+        PredId, PredInfo, ProcId, ProcInfo0, CProc, !GlobalData) :-
     % Note that some of the logic of generate_proc_code is duplicated
     % by mercury_compile.backend_pass_by_preds, so modifications here may
     % also need to be repeated there.
@@ -430,8 +431,9 @@ generate_proc_code(ModuleInfo0, ConstStructMap, PredId, PredInfo,
 
     proc_info_get_var_table(ProcInfo, VarTable),
     code_info_init(ModuleInfo, PredId, ProcId, PredInfo, ProcInfo, VarTable,
-        SaveSuccip, StaticCellInfo0, ConstStructMap, MaybeContainingGoalMap,
-        TSRevStringTable0, TSStringTableSize0, TraceSlotInfo, CodeInfo0),
+        SaveSuccip, StaticCellInfo0, ConstStructMap, ProgressStream,
+        MaybeContainingGoalMap, TSRevStringTable0, TSStringTableSize0,
+        TraceSlotInfo, CodeInfo0),
     code_loc_dep_init(FollowVars, OutsideResumePoint,
         CodeInfo0, CodeInfo1, CodeLocDep0),
 

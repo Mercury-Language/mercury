@@ -108,6 +108,7 @@
 :- import_module int.
 :- import_module list.
 :- import_module map.
+:- import_module maybe.
 :- import_module pair.
 :- import_module require.
 :- import_module set.
@@ -289,7 +290,7 @@ unneeded_pre_process_proc(!ProcInfo) :-
     --->    uc_option_values(
                 uc_fully_strict         :: bool,
                 uc_reorder_conj         :: bool,
-                uc_debug                :: bool,
+                uc_debug                :: maybe(io.text_output_stream),
                 uc_copy_limit           :: int
             ).
 
@@ -328,7 +329,15 @@ unneeded_process_proc(ProgressStream, PredId, Pass, Successful,
     globals.get_opt_tuple(Globals, OptTuple),
     Limit = OptTuple ^ ot_opt_unneeded_code_copy_limit,
     globals.lookup_bool_option(Globals, unneeded_code_debug, Debug),
-    Options = uc_option_values(FullyStrict, ReorderConj, Debug, Limit),
+    (
+        Debug = no,
+        MaybeDebugStream = no
+    ;
+        Debug = yes,
+        MaybeDebugStream = yes(ProgressStream)
+    ),
+    Options =
+        uc_option_values(FullyStrict, ReorderConj, MaybeDebugStream, Limit),
     (
         Debug = no
     ;
@@ -425,11 +434,10 @@ unneeded_process_goal(UnneededInfo, Goal0, Goal, InitInstMap, FinalInstMap,
         (
             Debug = no
         ;
-            Debug = yes,
+            Debug = yes(Stream),
             Goal0 = hlds_goal(_GoalExpr0, GoalInfo0),
             goal_info_get_goal_id(GoalInfo0) = goal_id(GoalIdNum0),
             trace [io(!IO)] (
-                io.output_stream(Stream, !IO),
                 io.format(Stream, "unneeded code at goal id %d\n",
                     [i(GoalIdNum0)], !IO)
             )

@@ -48,7 +48,6 @@
 :- import_module hlds.hlds_module.
 :- import_module hlds.hlds_pred.
 :- import_module hlds.instmap.
-:- import_module hlds.passes_aux.
 :- import_module libs.
 :- import_module libs.globals.
 :- import_module libs.optimization_options.
@@ -152,17 +151,17 @@ generate_ite(CodeModel, CondGoal0, ThenGoal, ElseGoal, IteGoalInfo, Code,
     effect_resume_point(ResumePoint, EffCodeModel, EffectResumeCode, !CLD),
 
     trace [compiletime(flag("codegen_goal")), io(!IO)] (
-        ( if should_trace_code_gen(!.CI) then
-            get_module_info(!.CI, ModuleInfo),
-            get_debug_output_stream(ModuleInfo, DebugStream, !IO),
+        should_trace_code_gen(!.CI, ShouldTrace),
+        (
+            ShouldTrace = yes(Stream),
             EffectResumeInstrs = cord.list(EffectResumeCode),
-            io.write_string(DebugStream, "\nEFFECT RESUME INSTRS:\n", !IO),
+            io.write_string(Stream, "\nEFFECT RESUME INSTRS:\n", !IO),
             MaybeProcLabel = no,
-            write_instrs(DebugStream, EffectResumeInstrs, MaybeProcLabel,
+            write_instrs(Stream, EffectResumeInstrs, MaybeProcLabel,
                 auto_comments, !IO),
-            io.flush_output(DebugStream, !IO)
-        else
-            true
+            io.flush_output(Stream, !IO)
+        ;
+            ShouldTrace = no
         )
     ),
 
@@ -224,15 +223,15 @@ generate_ite(CodeModel, CondGoal0, ThenGoal, ElseGoal, IteGoalInfo, Code,
     generate_resume_point(ResumePoint, ResumeCode, !CI, !CLD),
 
     trace [compiletime(flag("codegen_goal")), io(!IO)] (
-        ( if should_trace_code_gen(!.CI) then
-            get_module_info(!.CI, ModuleInfo),
-            get_debug_output_stream(ModuleInfo, DebugStream, !IO),
+        should_trace_code_gen(!.CI, ShouldTrace),
+        (
+            ShouldTrace = yes(Stream),
             ResumeInstrs = cord.list(ResumeCode),
-            io.write_string(DebugStream, "\nRESUME INSTRS:\n", !IO),
-            write_instrs(DebugStream, ResumeInstrs, no, auto_comments, !IO),
-            io.flush_output(DebugStream, !IO)
-        else
-            true
+            io.write_string(Stream, "\nRESUME INSTRS:\n", !IO),
+            write_instrs(Stream, ResumeInstrs, no, auto_comments, !IO),
+            io.flush_output(Stream, !IO)
+        ;
+            ShouldTrace = no
         )
     ),
 
@@ -248,15 +247,15 @@ generate_ite(CodeModel, CondGoal0, ThenGoal, ElseGoal, IteGoalInfo, Code,
     generate_branch_end(StoreMap, MaybeEnd0, MaybeEnd, ElseSaveCode, !.CLD),
 
     trace [compiletime(flag("codegen_goal")), io(!IO)] (
-        ( if should_trace_code_gen(!.CI) then
-            get_module_info(!.CI, ModuleInfo),
-            get_debug_output_stream(ModuleInfo, DebugStream, !IO),
+        should_trace_code_gen(!.CI, ShouldTrace),
+        (
+            ShouldTrace = yes(Stream),
             ElseSaveInstrs = cord.list(ElseSaveCode),
-            io.write_string(DebugStream, "\nBRANCH END INSTRS:\n", !IO),
-            write_instrs(DebugStream, ElseSaveInstrs, no, auto_comments, !IO),
-            io.flush_output(DebugStream, !IO)
-        else
-            true
+            io.write_string(Stream, "\nBRANCH END INSTRS:\n", !IO),
+            write_instrs(Stream, ElseSaveInstrs, no, auto_comments, !IO),
+            io.flush_output(Stream, !IO)
+        ;
+            ShouldTrace = no
         )
     ),
 
