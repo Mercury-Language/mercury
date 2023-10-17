@@ -15,6 +15,14 @@
 # Ensure that commands use /bin/sh not the user's shell
 SHELL = /bin/sh
 
+# The directory containing the interface files for the standard library.
+ifdef MERCURY_STDLIB_DIR
+    export MERCURY_STDLIB_DIR
+    MERC_INT_DIR = $(MERCURY_STDLIB_DIR)/ints
+else
+    MERC_INT_DIR =
+endif
+
 ALL_EXTRA_LIBRARIES = $(TARGET_EXTRA_LIBRARIES) $(EXTRA_LIBRARIES)
 EXTRA_LIB_DIRS =
 EXTRA_LIBRARIES =
