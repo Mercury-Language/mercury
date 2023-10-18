@@ -480,7 +480,7 @@ error_and_maybe_rebuilding_msg(RebuildModuleDeps, ModuleDepsFile,
 
 try_to_write_module_dep_files_for_top_module(ProgressStream, Globals,
         ModuleName, !Info, !IO) :-
-    open_module_error_stream(Globals, ModuleName, ProgressStream,
+    open_module_error_stream(ProgressStream, Globals, ModuleName,
         MaybeErrorStream, !Info, !IO),
     (
         MaybeErrorStream = es_ok(MESI, ErrorStream),
@@ -578,8 +578,8 @@ cannot_write_module_dep_files(Globals, ProgressStream, MESI, ErrorStream,
     % so we don't leave `.err' files lying around for nonexistent modules.
     globals.set_option(output_compile_error_lines, maybe_int(no),
         Globals, UnredirectGlobals),
-    close_module_error_stream_handle_errors(UnredirectGlobals, ModuleName,
-        ProgressStream, MESI, ErrorStream, !Info, !IO),
+    close_module_error_stream_handle_errors(ProgressStream, UnredirectGlobals,
+        ModuleName, MESI, ErrorStream, !Info, !IO),
     module_name_to_file_name(Globals, $pred, ext_cur(ext_cur_user_err),
         ModuleName, ErrFileName),
     io.file.remove_file(ErrFileName, _, !IO),
@@ -665,8 +665,8 @@ write_module_dep_files_for_source_file(Globals, ProgressStream,
 
     record_made_target(ProgressStream, Globals, MadeTarget, MadeTargetFileName,
         process_module(task_make_int3), Succeeded, !Info, !IO),
-    close_module_error_stream_handle_errors(Globals, ModuleName,
-        ProgressStream, MESI, ErrorStream, !Info, !IO).
+    close_module_error_stream_handle_errors(ProgressStream, Globals,
+        ModuleName, MESI, ErrorStream, !Info, !IO).
 
 :- pred make_info_add_burdened_module_as_dep(burdened_module::in,
     make_info::in, make_info::out) is det.

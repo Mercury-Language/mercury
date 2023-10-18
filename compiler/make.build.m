@@ -79,25 +79,32 @@
     --->    es_ok(module_error_stream_info, io.text_output_stream)
     ;       es_error_already_reported.
 
+    % open_module_error_stream(ProgressStream, Globals, ModuleName,
+    %   MaybeMESIErrorStream, !Info, !IO):
+    %
     % Produce an output stream which writes to the error file
     % for the given module.
     %
-    % If we return es_ok(MESI, ErrorStream), then the caller should call
-    % close_module_error_stream_handle_errors, specifying MESI and ErrorStream,
-    % once it has finished writing to ErrorStream.
+    % If we return es_ok(MESI, ErrorStream) as MaybeMESIErrorStream, then
+    % the caller should call close_module_error_stream_handle_errors,
+    % specifying MESI and ErrorStream, once it has finished writing
+    % to ErrorStream.
     %
-:- pred open_module_error_stream(globals::in, module_name::in,
-    io.text_output_stream::in, error_stream_result::out,
+:- pred open_module_error_stream(io.text_output_stream::in, globals::in,
+    module_name::in, error_stream_result::out,
     make_info::in, make_info::out, io::di, io::uo) is det.
 
+    % close_module_error_stream_handle_errors(ProgressStream, Globals,
+    %   ModuleName, MESI, ErrorOutputStream, !Info, !IO):
+    %
     % Close the module error output stream, and
     %
     % - ensure its contents end up in the module's .err file, and
     % - echo its contents on the progress output stream, to the extent
     %   allowed by the options.
     %
-:- pred close_module_error_stream_handle_errors(globals::in, module_name::in,
-    io.text_output_stream::in,
+:- pred close_module_error_stream_handle_errors(io.text_output_stream::in,
+    globals::in, module_name::in,
     module_error_stream_info::in, io.text_output_stream::in,
     make_info::in, make_info::out, io::di, io::uo) is det.
 
@@ -263,7 +270,7 @@ setup_for_build_with_module_options(ProgressStream, DefaultOptionTable,
     ;       mesi_err_file(string).
             % The name of the .err file.
 
-open_module_error_stream(Globals, ModuleName, ProgressStream, MaybeErrorStream,
+open_module_error_stream(ProgressStream, Globals, ModuleName, MaybeErrorStream,
         !Info, !IO) :-
     module_name_to_file_name_create_dirs(Globals, $pred,
         ext_cur(ext_cur_user_err), ModuleName, ErrorFileName, !IO),
@@ -332,11 +339,9 @@ open_module_error_stream(Globals, ModuleName, ProgressStream, MaybeErrorStream,
         )
     ).
 
-close_module_error_stream_handle_errors(Globals, ModuleName,
-        ProgressStream, MESI, ErrorOutputStream, !Info, !IO) :-
+close_module_error_stream_handle_errors(ProgressStream, Globals, ModuleName,
+        MESI, ErrorOutputStream, !Info, !IO) :-
     io.close_output(ErrorOutputStream, !IO),
-    % XXX MAKE_STREAM
-    io.output_stream(CurrentOutputStream, !IO),
     (
         MESI = mesi_temp_file(TmpErrorFileName, ErrorFileName),
         io.read_named_file_as_lines(TmpErrorFileName,
@@ -355,7 +360,7 @@ close_module_error_stream_handle_errors(Globals, ModuleName,
                     ErrorLines, !IO),
                 with_locked_stdout(!.Info,
                     copy_selected_output_lines(ErrorLines, MaybeLinesToWrite,
-                        ErrorFileName, CurrentOutputStream),
+                        ErrorFileName, ProgressStream),
                     !IO),
                 io.close_output(ErrorFileOutputStream, !IO)
             ;
@@ -388,7 +393,7 @@ close_module_error_stream_handle_errors(Globals, ModuleName,
                 output_compile_error_lines, MaybeLinesToWrite),
             with_locked_stdout(!.Info,
                 copy_selected_output_lines(ErrorLines, MaybeLinesToWrite,
-                    ErrorFileName, CurrentOutputStream),
+                    ErrorFileName, ProgressStream),
                 !IO),
             % XXX Consider adding ModuleName to ErrorFileModules0
             % only if ErrorLines is not [], since having the next call

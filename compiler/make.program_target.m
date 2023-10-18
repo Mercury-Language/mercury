@@ -326,7 +326,7 @@ make_linked_target_2(ProgressStream, Globals, LinkedTargetFile, Succeeded,
         then
             globals.lookup_bool_option(Globals, very_verbose, VeryVerbose),
             setup_checking_for_interrupt(Cookie, !IO),
-            open_module_error_stream(Globals, MainModuleName, ProgressStream,
+            open_module_error_stream(ProgressStream, Globals, MainModuleName,
                 MaybeErrorStream, !Info, !IO),
             (
                 MaybeErrorStream = es_error_already_reported,
@@ -339,9 +339,8 @@ make_linked_target_2(ProgressStream, Globals, LinkedTargetFile, Succeeded,
                     ObjModules, CompilationTarget, PIC, DepsSucceeded,
                     BuildDepsResult,
                     Succeeded0, !Info, !IO),
-                close_module_error_stream_handle_errors(Globals,
-                    MainModuleName, ProgressStream, MESI, ErrorStream,
-                    !Info, !IO)
+                close_module_error_stream_handle_errors(ProgressStream,
+                    Globals, MainModuleName, MESI, ErrorStream, !Info, !IO)
             ),
             Cleanup = linked_target_cleanup(ProgressStream, Globals,
                 MainModuleName, FileType,
@@ -816,7 +815,7 @@ build_java_files(ProgressStream, Globals, MainModuleName, ModuleNames,
             ext_cur_ngs_gs_java(ext_cur_ngs_gs_java_java)),
         ModuleNames, JavaFiles, !IO),
     % We redirect errors to a file named after the main module.
-    open_module_error_stream(Globals, MainModuleName, ProgressStream,
+    open_module_error_stream(ProgressStream, Globals, MainModuleName,
         MaybeErrorStream, !Info, !IO),
     (
         MaybeErrorStream = es_error_already_reported,
@@ -825,8 +824,8 @@ build_java_files(ProgressStream, Globals, MainModuleName, ModuleNames,
         MaybeErrorStream = es_ok(MESI, ErrorStream),
         build_java_files_2(ProgressStream, Globals, JavaFiles, Succeeded,
             !Info, !IO),
-        close_module_error_stream_handle_errors(Globals, MainModuleName,
-            ProgressStream, MESI, ErrorStream, !Info, !IO)
+        close_module_error_stream_handle_errors(ProgressStream, Globals,
+            MainModuleName, MESI, ErrorStream, !Info, !IO)
     ).
 
 :- pred build_java_files_2(io.text_output_stream::in, globals::in,

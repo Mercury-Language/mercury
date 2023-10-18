@@ -480,7 +480,7 @@ build_target(ProgressStream, Globals, CompilationTask, TargetFile,
 
     (
         ArgFileNameRes = ok,
-        get_real_milliseconds(Time0, !IO),
+        get_real_milliseconds(StartTimeMs, !IO),
         globals.lookup_bool_option(Globals, very_verbose, VeryVerbose),
         Cleanup = cleanup_files(ProgressStream, Globals, MaybeArgFileName,
             TouchedTargetFiles, TouchedFiles),
@@ -499,7 +499,7 @@ build_target(ProgressStream, Globals, CompilationTask, TargetFile,
         % calling maybe_print_delayed_error_messages here should fix this.
         (
             MayBuild = may_build(AllOptionArgs, BuildGlobals),
-            open_module_error_stream(Globals, ModuleName, ProgressStream,
+            open_module_error_stream(ProgressStream, Globals, ModuleName,
                 MaybeErrorStream, !Info, !IO),
             (
                 MaybeErrorStream = es_error_already_reported,
@@ -509,8 +509,8 @@ build_target(ProgressStream, Globals, CompilationTask, TargetFile,
                 build_target_2(ProgressStream, ErrorStream, BuildGlobals,
                     Task, ModuleName, ModuleDepInfo,
                     MaybeArgFileName, AllOptionArgs, Succeeded0, !Info, !IO),
-                close_module_error_stream_handle_errors(Globals, ModuleName,
-                    ProgressStream, MESI, ErrorStream, !Info, !IO)
+                close_module_error_stream_handle_errors(ProgressStream,
+                    Globals, ModuleName, MESI, ErrorStream, !Info, !IO)
             )
         ;
             MayBuild = may_not_build(Specs),
@@ -522,12 +522,12 @@ build_target(ProgressStream, Globals, CompilationTask, TargetFile,
         record_made_target_given_maybe_touched_files(ProgressStream, Globals,
             Succeeded, TargetFile, TargetFileName,
             TouchedTargetFiles, TouchedFiles, !Info, !IO),
-        get_real_milliseconds(Time, !IO),
+        get_real_milliseconds(EndTimeMs, !IO),
 
         globals.lookup_bool_option(Globals, show_make_times, ShowMakeTimes),
         (
             ShowMakeTimes = yes,
-            DiffSecs = float(Time - Time0) / 1000.0,
+            DiffSecs = float(EndTimeMs - StartTimeMs) / 1000.0,
             % Avoid cluttering the screen with short running times.
             ( if DiffSecs >= 0.5 then
                 io.format(ProgressStream, "Making %s took %.2fs\n",
