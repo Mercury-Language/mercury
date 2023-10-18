@@ -27,6 +27,13 @@ ALL_EXTRA_LIBRARIES = $(TARGET_EXTRA_LIBRARIES) $(EXTRA_LIBRARIES)
 EXTRA_LIB_DIRS =
 EXTRA_LIBRARIES =
 
+EXTRA_INT_DIRS =
+EXTRA_C_LIB_DIRS =
+EXTRA_C_INCL_DIRS =
+EXTRA_INIT_DIRS =
+EXTRA_INIT_DIRS_NO_TARGET =
+
+# `mmc --make' handles these paths itself.
 ifneq ($(MMAKE_USE_MMC_MAKE),yes)
 EXTRA_INT_DIRS		= $(patsubst %,%/ints,$(EXTRA_LIB_DIRS))
 EXTRA_C_LIB_DIRS	= \
@@ -37,15 +44,16 @@ EXTRA_C_INCL_DIRS	= \
 	$(patsubst %,%/inc,$(EXTRA_LIB_DIRS))
 EXTRA_INIT_DIRS		= \
 	$(patsubst %,%/modules/$(GRADESTRING),$(EXTRA_LIB_DIRS))
+# EXTRA_INIT_DIRS_NO_TARGET is referenced by VPATH so it will always be
+# expanded after the makefile is read. The occurrence of GRADESTRING_NO_TARGET
+# in the pattern substitution causes make to run $(MC) in a shell command, but
+# we may not have a working Mercury compiler yet. Therefore, leave
+# EXTRA_INIT_DIRS_NO_TARGET empty unless EXTRA_LIB_DIRS is actually used;
+# it is not used while building the Mercury system itself.
+ifneq ($(EXTRA_LIB_DIRS),)
 EXTRA_INIT_DIRS_NO_TARGET = \
 	$(patsubst %,%/modules/$(GRADESTRING_NO_TARGET),$(EXTRA_LIB_DIRS))
-else
-# mmc handles these itself when invoked with `--make'.
-EXTRA_INT_DIRS =
-EXTRA_C_LIB_DIRS =
-EXTRA_C_INCL_DIRS =
-EXTRA_INIT_DIRS =
-EXTRA_INIT_DIRS_NO_TARGET =
+endif
 endif
 
 # Set the directory search path.
