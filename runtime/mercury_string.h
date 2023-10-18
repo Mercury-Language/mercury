@@ -514,6 +514,7 @@ extern MR_Integer       MR_utf8_find_ill_formed_char(const MR_String s);
 #if defined(MR_WIN32)
 extern wchar_t          *MR_utf8_to_wide(const char *s);
 extern char             *MR_wide_to_utf8(const wchar_t *ws,
+                            MR_AllocSiteInfoPtr alloc_id);
 #endif
 
 #endif // not MERCURY_STRING_H
