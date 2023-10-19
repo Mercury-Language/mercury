@@ -1,4 +1,5 @@
-Mercury/ints/exported_mode.int:003: Error: mode declaration for predicate
-Mercury/ints/exported_mode.int:003:   `exported_mode.p/2'
-Mercury/ints/exported_mode.int:003:   without preceding `pred' declaration.
-Mercury/ints/exported_mode.int:003: Inferred :- pred p(T1, T2).
+Mercury/ints/bad_exported_mode_helper_1.int:003: Error: `:- mode' declaration
+Mercury/ints/bad_exported_mode_helper_1.int:003:   for predicate `p'/2
+Mercury/ints/bad_exported_mode_helper_1.int:003:   without corresponding
+Mercury/ints/bad_exported_mode_helper_1.int:003:   `:- pred' declaration.
+Mercury/ints/bad_exported_mode_helper_1.int:003: Inferred :- pred p(T1, T2).
