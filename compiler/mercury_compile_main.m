@@ -1173,7 +1173,7 @@ do_process_compiler_arg(ProgressStream, ErrorStream, Globals0,
             MaybeMakeInts = do_make_ints,
             contains_errors(Globals0, DepSpecs) = no
         then
-            deps_make_ints(ProgressStream, ErrorStream, Globals0, DepsMap,
+            deps_make_ints(ProgressStream, Globals0, DepsMap,
                 DepSpecs, Specs, !HaveReadModuleMaps, !IO)
         else
             Specs = DepSpecs
@@ -1215,7 +1215,7 @@ do_process_compiler_arg(ProgressStream, ErrorStream, Globals0,
                 module_name_to_file_name_create_dirs(Globals, $pred,
                     ext_cur(ext_cur_user_ugly),
                     ModuleName, UglyFileName, !IO),
-                output_parse_tree_src(ProgressStream, ErrorStream, Globals,
+                output_parse_tree_src(ProgressStream, Globals,
                     UglyFileName, ParseTreeSrc, _Succeeded, !IO)
             )
         ),
@@ -1247,12 +1247,12 @@ do_process_compiler_arg(ProgressStream, ErrorStream, Globals0,
 
 %---------------------%
 
-:- pred deps_make_ints(io.text_output_stream::in, io.text_output_stream::in,
-    globals::in, deps_map::in, list(error_spec)::in, list(error_spec)::out,
+:- pred deps_make_ints(io.text_output_stream::in, globals::in, deps_map::in,
+    list(error_spec)::in, list(error_spec)::out,
     have_read_module_maps::in, have_read_module_maps::out,
     io::di, io::uo) is det.
 
-deps_make_ints(ProgressStream, ErrorStream, Globals, DepsMap,
+deps_make_ints(ProgressStream, Globals, DepsMap,
         !Specs, !HaveReadModuleMaps, !IO) :-
     map.values(DepsMap, DepsList),
     list.filter_map_foldl(gather_local_parse_tree_module_srcs,
@@ -1260,8 +1260,8 @@ deps_make_ints(ProgressStream, ErrorStream, Globals, DepsMap,
     ParseTreeModuleSrcs =
         list.map((func(burdened_module(_, PTMS)) = PTMS), BurdenedModules),
     list.map2_foldl2(
-        write_short_interface_file_int3(ProgressStream, ErrorStream,
-            Globals, do_add_new_to_hrmm),
+        write_short_interface_file_int3(ProgressStream, Globals,
+            do_add_new_to_hrmm),
         ParseTreeModuleSrcs, _Succeededs3, SpecsList3,
         !HaveReadModuleMaps, !IO),
     list.condense(SpecsList3, Specs3),
@@ -1274,8 +1274,8 @@ deps_make_ints(ProgressStream, ErrorStream, Globals, DepsMap,
         list.sort(Ancestors, SortedAncestors),
         assoc_list.values(SortedAncestors, AncestorBurdenedModules),
         list.map2_foldl2(
-            write_private_interface_file_int0_burdened_module(
-                ProgressStream, ErrorStream, Globals, do_add_new_to_hrmm),
+            write_private_interface_file_int0_burdened_module(ProgressStream,
+                Globals, do_add_new_to_hrmm),
             AncestorBurdenedModules, _Succeededs0, RawSpecsList0,
             !HaveReadModuleMaps, !IO),
         % The code above created a .int3 file for every module in
@@ -1294,8 +1294,8 @@ deps_make_ints(ProgressStream, ErrorStream, Globals, DepsMap,
             Continue0 = yes
         then
             list.map2_foldl2(
-                write_interface_file_int1_int2_burdened_module(
-                    ProgressStream, ErrorStream, Globals, do_add_new_to_hrmm),
+                write_interface_file_int1_int2_burdened_module(ProgressStream,
+                    Globals, do_add_new_to_hrmm),
                 BurdenedModules, _Succeededs12, RawSpecsList12,
                 !HaveReadModuleMaps, !IO),
             list.condense(RawSpecsList12, RawSpecs12),
@@ -1426,7 +1426,7 @@ do_process_compiler_arg_make_interface(ProgressStream, ErrorStream, Globals0,
                     ParseTreeModuleSrcs, AncestorParseTreeModuleSrcs),
                 list.map2_foldl2(
                     write_private_interface_file_int0(ProgressStream,
-                        ErrorStream, Globals0, do_not_add_new_to_hrmm,
+                        Globals0, do_not_add_new_to_hrmm,
                         FileName, ModuleName, MaybeTimestamp),
                     AncestorParseTreeModuleSrcs, _Succeededs, SpecsList,
                     !HaveReadModuleMaps, !IO)
@@ -1434,7 +1434,7 @@ do_process_compiler_arg_make_interface(ProgressStream, ErrorStream, Globals0,
                 InterfaceFile = omif_int1_int2,
                 list.map2_foldl2(
                     write_interface_file_int1_int2(ProgressStream,
-                        ErrorStream, Globals0, do_not_add_new_to_hrmm,
+                        Globals0, do_not_add_new_to_hrmm,
                         FileName, ModuleName, MaybeTimestamp),
                     ParseTreeModuleSrcs, _Succeededs, SpecsList,
                     !HaveReadModuleMaps, !IO)
@@ -1442,7 +1442,7 @@ do_process_compiler_arg_make_interface(ProgressStream, ErrorStream, Globals0,
                 InterfaceFile = omif_int3,
                 list.map2_foldl2(
                     write_short_interface_file_int3(ProgressStream,
-                        ErrorStream, Globals0, do_not_add_new_to_hrmm),
+                        Globals0, do_not_add_new_to_hrmm),
                     ParseTreeModuleSrcs, _Succeededs, SpecsList,
                     !HaveReadModuleMaps, !IO)
             ),

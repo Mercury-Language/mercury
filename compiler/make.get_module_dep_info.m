@@ -689,7 +689,7 @@ make_int3_files(ProgressStream, ErrorStream, Globals,
         ParseTreeModuleSrcs, Succeeded, !Info, !IO) :-
     % XXX MAKE We should probably add to, and keep, HaveReadModuleMaps.
     list.map2_foldl2(
-        write_short_interface_file_int3(ProgressStream, ErrorStream,
+        write_short_interface_file_int3(ProgressStream,
             Globals, do_not_add_new_to_hrmm),
         ParseTreeModuleSrcs, Succeededs, SpecsList,
         init_have_read_module_maps, _HaveReadModuleMaps, !IO),
