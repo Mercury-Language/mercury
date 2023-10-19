@@ -1718,14 +1718,14 @@ report_warning(Stream, Globals, Context, Indent, Pieces, !IO) :-
     %
 :- mutable(extra_error_info,
     maybe_extra_error_info, no_extra_error_info, ground,
-    [untrailed, attach_to_io_state]).
+    [thread_local, untrailed, attach_to_io_state]).
 
     % Is there extra information about errors available that could be printed
     % if the values of --limit-error-contexts options allowed it?
     %
 :- mutable(some_errors_were_context_limited,
     context_limited_errors, no_errors_were_context_limited, ground,
-    [untrailed, attach_to_io_state]).
+    [thread_local, untrailed, attach_to_io_state]).
 
 maybe_print_delayed_error_messages(ErrorStream, Globals, !IO) :-
     % Pick up the values of these flags, and then reset them

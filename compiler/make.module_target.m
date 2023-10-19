@@ -493,10 +493,6 @@ build_target(ProgressStream, Globals, CompilationTask, TargetFile,
             invoked_by_mmc_make, ModuleName,
             DetectedGradeFlags, OptionVariables, OptionArgs,
             ExtraAndTaskOptions, MayBuild, !IO),
-        % XXX MAKE A significant number of test case failures in the
-        % tests/invalid directory are caused by a missing final line,
-        % "For more information, recompile with `-E'.". I (zs) think that
-        % calling maybe_print_delayed_error_messages here should fix this.
         (
             MayBuild = may_build(AllOptionArgs, BuildGlobals),
             open_module_error_stream(ProgressStream, Globals, ModuleName,
@@ -509,6 +505,14 @@ build_target(ProgressStream, Globals, CompilationTask, TargetFile,
                 build_target_2(ProgressStream, ErrorStream, BuildGlobals,
                     Task, ModuleName, ModuleDepInfo,
                     MaybeArgFileName, AllOptionArgs, Succeeded0, !Info, !IO),
+                % XXX For many tests/invalid test cases, this does not print
+                % the "For more information, recompile with `-E'" messages
+                % it *should* print, either because something interferes
+                % with the mutable that this call uses to test whether
+                % it should print this message, or because the printed
+                % message gets lost somehow.
+                maybe_print_delayed_error_messages(ErrorStream,
+                    BuildGlobals, !IO),
                 close_module_error_stream_handle_errors(ProgressStream,
                     Globals, ModuleName, MESI, ErrorStream, !Info, !IO)
             )
@@ -594,21 +598,20 @@ build_target_2(ProgressStream, ErrorStream, Globals, Task, ModuleName,
         % in a separate process, it is also easier to kill if an interrupt
         % arrives.
         % XXX The above comment is likely to be quite out-of-date.
-        io.set_output_stream(ErrorStream, OldOutputStream, !IO),
         CallInSeparateProcess = do_task_in_separate_process(ModuleTask),
         (
             CallInSeparateProcess = yes,
             call_in_forked_process_with_backup(
-                call_mercury_compile_main(Globals, [ModuleArg]),
-                invoke_mmc(Globals, ProgressStream,
+                call_mercury_compile_main(ProgressStream, ErrorStream, Globals,
+                    [ModuleArg]),
+                invoke_mmc(Globals, ProgressStream, ErrorStream,
                     ArgFileName, AllOptionArgs ++ [ModuleArg]),
                 CompileSucceeded, !IO)
         ;
             CallInSeparateProcess = no,
-            call_mercury_compile_main(Globals, [ModuleArg],
-                CompileSucceeded, !IO)
+            call_mercury_compile_main(ProgressStream, ErrorStream, Globals,
+                [ModuleArg], CompileSucceeded, !IO)
         ),
-        io.set_output_stream(OldOutputStream, _, !IO),
 
         ( if
             ( ModuleTask = task_compile_to_target_code
@@ -749,22 +752,27 @@ get_object_extension(Globals, PIC, ExtObj) :-
 
 %---------------------------------------------------------------------------%
 
-:- pred call_mercury_compile_main(globals::in, list(string)::in,
+:- pred call_mercury_compile_main(io.text_output_stream::in,
+    io.text_output_stream::in, globals::in, list(string)::in,
     maybe_succeeded::out, io::di, io::uo) is det.
 
-call_mercury_compile_main(Globals, Args, Succeeded, !IO) :-
+call_mercury_compile_main(ProgressStream, ErrorStream, Globals, Args,
+        Succeeded, !IO) :-
     io.get_exit_status(Status0, !IO),
     io.set_exit_status(0, !IO),
-    mercury_compile_main.main_for_make(Globals, Args, !IO),
+    mercury_compile_main.main_for_make(ProgressStream, ErrorStream, Globals,
+        Args, !IO),
     io.get_exit_status(Status, !IO),
     Succeeded = ( if Status = 0 then succeeded else did_not_succeed ),
     io.set_exit_status(Status0, !IO).
 
-:- pred invoke_mmc(globals::in, io.text_output_stream::in,
+:- pred invoke_mmc(globals::in,
+    io.text_output_stream::in, io.text_output_stream::in,
     maybe(file_name)::in, list(string)::in, maybe_succeeded::out,
     io::di, io::uo) is det.
 
-invoke_mmc(Globals, ProgressStream, MaybeArgFileName, Args, Succeeded, !IO) :-
+invoke_mmc(Globals, ProgressStream, ErrorStream, MaybeArgFileName, Args,
+        Succeeded, !IO) :-
     io.progname("", ProgName, !IO),
     ( if
         % NOTE: If the compiler is built in the Java grade, then ProgName will
@@ -818,7 +826,7 @@ invoke_mmc(Globals, ProgressStream, MaybeArgFileName, Args, Succeeded, !IO) :-
 
         % We have already written the command.
         CommandVerbosity = cmd_verbose,
-        invoke_system_command(Globals, ProgressStream, ProgressStream,
+        invoke_system_command(Globals, ProgressStream, ErrorStream,
             CommandVerbosity, Command, Succeeded, !IO)
     ;
         ArgFileOpenRes = error(Error),

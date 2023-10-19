@@ -32,10 +32,11 @@
     %
 :- pred real_main(io::di, io::uo) is det.
 
-    % main_for_make(Globals, Args, !IO) is called from
-    % make.module_target.call_mercury_compile_main.
+    % main_for_make(ProgressStream, ErrorStream, Globals, Args, !IO)
+    % is called from make.module_target.call_mercury_compile_main.
     %
-:- pred main_for_make(globals::in, list(string)::in, io::di, io::uo) is det.
+:- pred main_for_make(io.text_output_stream::in, io.text_output_stream::in,
+    globals::in, list(string)::in, io::di, io::uo) is det.
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -576,15 +577,11 @@ maybe_dump_options_file(OutStream, ArgsOptionTable, OptionsVariables, !IO) :-
 
 %---------------------------------------------------------------------------%
 
-main_for_make(Globals, Args, !IO) :-
+main_for_make(ProgressStream, ErrorStream, Globals, Args, !IO) :-
     DetectedGradeFlags = [],
     io.environment.get_environment_var_map(EnvVarMap, !IO),
     OptionsVariables = options_variables_init(EnvVarMap),
     OptionArgs = [],
-    % XXX STREAM
-    io.output_stream(OutStream, !IO),
-    ProgressStream = OutStream,
-    ErrorStream = OutStream,
     main_after_setup(ProgressStream, ErrorStream, Globals, DetectedGradeFlags,
         OptionsVariables, OptionArgs, Args, !IO).
 
