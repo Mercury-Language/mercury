@@ -23,4 +23,3 @@ invalid_instance_declarations.m:019:   arguments of the type constructor `t'/2
 invalid_instance_declarations.m:019:   are not type variables, but should be.
 invalid_instance_declarations.m:019:   These are the first argument, `int' and
 invalid_instance_declarations.m:019:   the second argument, `string'.
-For more information, recompile with `-E'.

@@ -2131,21 +2131,8 @@ report_bad_type_in_instance(ClassId, InstanceDefn, EndPieces, Kind, !Specs) :-
     ),
     PrefixPieces = in_instance_decl_pieces(WhichTypes, ClassId, InstanceDefn),
     InstanceContext = InstanceDefn ^ instdefn_context,
-    (
-        Kind = abstract_exported_eqv,
-        HeadingMsg = simple_msg(InstanceContext,
-            [always(PrefixPieces), always(EndPieces)])
-    ;
-        Kind = badly_formed,
-        VerbosePieces =
-            [words("(Every type in an instance declaration must consist of"),
-            words("a type constructor applied to zero or more type variables"),
-            words("as arguments.)"), nl],
-        HeadingMsg = simple_msg(InstanceContext,
-            [always(PrefixPieces), always(EndPieces),
-            verbose_only(verbose_once, VerbosePieces)])
-    ),
-    Spec = error_spec($pred, severity_error, phase_type_check, [HeadingMsg]),
+    Spec = simplest_spec($pred, severity_error, phase_type_check,
+        InstanceContext, PrefixPieces ++ EndPieces),
     !:Specs = [Spec | !.Specs].
 
 %---------------------------------------------------------------------------%
