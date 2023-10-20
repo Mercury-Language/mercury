@@ -505,14 +505,6 @@ build_target(ProgressStream, Globals, CompilationTask, TargetFile,
                 build_target_2(ProgressStream, ErrorStream, BuildGlobals,
                     Task, ModuleName, ModuleDepInfo,
                     MaybeArgFileName, AllOptionArgs, Succeeded0, !Info, !IO),
-                % XXX For many tests/invalid test cases, this does not print
-                % the "For more information, recompile with `-E'" messages
-                % it *should* print, either because something interferes
-                % with the mutable that this call uses to test whether
-                % it should print this message, or because the printed
-                % message gets lost somehow.
-                maybe_print_delayed_error_messages(ErrorStream,
-                    BuildGlobals, !IO),
                 close_module_error_stream_handle_errors(ProgressStream,
                     Globals, ModuleName, MESI, ErrorStream, !Info, !IO)
             )

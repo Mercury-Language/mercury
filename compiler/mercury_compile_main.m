@@ -697,8 +697,7 @@ do_op_mode_standalone_interface(ProgressStream, ErrorStream, Globals,
 :- pred do_op_mode_query(io.text_output_stream::in, globals::in,
     op_mode_query::in, options_variables::in, io::di, io::uo) is det.
 
-do_op_mode_query(ErrorStream, Globals, OpModeQuery,
-        OptionVariables, !IO) :-
+do_op_mode_query(ErrorStream, Globals, OpModeQuery, OptionVariables, !IO) :-
     io.stdout_stream(StdOutStream, !IO),
     (
         OpModeQuery = opmq_output_cc,
@@ -1178,7 +1177,7 @@ do_process_compiler_arg(ProgressStream, ErrorStream, Globals0,
         else
             Specs = DepSpecs
         ),
-        write_error_specs(ErrorStream, Globals0, Specs, !IO),
+        SpecsList = [Specs],
         ModulesToLink = [],
         ExtraObjFiles = []
     ;
@@ -1192,7 +1191,7 @@ do_process_compiler_arg(ProgressStream, ErrorStream, Globals0,
             generate_d_file_for_module(ProgressStream, Globals0, ModuleName,
                 _DepsMap, DepSpecs, !IO)
         ),
-        write_error_specs(ErrorStream, Globals0, DepSpecs, !IO),
+        SpecsList = [DepSpecs],
         ModulesToLink = [],
         ExtraObjFiles = []
     ;
@@ -1200,31 +1199,28 @@ do_process_compiler_arg(ProgressStream, ErrorStream, Globals0,
         read_module_or_file(ProgressStream, Globals0, Globals, FileOrModule,
             dont_return_timestamp, HaveReadSrc, !HaveReadModuleMaps, !IO),
         (
-            HaveReadSrc = have_not_read_module(_FileName, Errors),
-            Specs = get_read_module_specs(Errors),
-            write_error_specs(ErrorStream, Globals, Specs, !IO)
+            HaveReadSrc = have_not_read_module(_FileName, Errors)
         ;
             HaveReadSrc = have_read_module(_FileName, _MaybeTimestamp,
                 ParseTreeSrc, Errors),
-            Specs = get_read_module_specs(Errors),
-            write_error_specs(ErrorStream, Globals, Specs, !IO),
             ( if halt_at_module_error(Globals, Errors) then
                 true
             else
                 ModuleName = ParseTreeSrc ^ pts_module_name,
                 module_name_to_file_name_create_dirs(Globals, $pred,
-                    ext_cur(ext_cur_user_ugly),
-                    ModuleName, UglyFileName, !IO),
-                output_parse_tree_src(ProgressStream, Globals,
-                    UglyFileName, ParseTreeSrc, _Succeeded, !IO)
+                    ext_cur(ext_cur_user_ugly), ModuleName, UglyFileName, !IO),
+                output_parse_tree_src(ProgressStream, Globals, UglyFileName,
+                    ParseTreeSrc, _Succeeded, !IO)
             )
         ),
+        Specs = get_read_module_specs(Errors),
+        SpecsList = [Specs],
         ModulesToLink = [],
         ExtraObjFiles = []
     ;
         OpModeArgs = opma_make_interface(InterfaceFile),
-        do_process_compiler_arg_make_interface(ProgressStream, ErrorStream,
-            Globals0, InterfaceFile, FileOrModule, !HaveReadModuleMaps, !IO),
+        do_process_compiler_arg_make_interface(ProgressStream, Globals0,
+            InterfaceFile, FileOrModule, SpecsList, !HaveReadModuleMaps, !IO),
         ModulesToLink = [],
         ExtraObjFiles = []
     ;
@@ -1235,15 +1231,19 @@ do_process_compiler_arg(ProgressStream, ErrorStream, Globals0,
             % XXX Currently smart recompilation is disabled if mmc is linking
             % the executable, because it doesn't know how to check whether
             % all the necessary intermediate files are present and up-to-date.
+            SpecsList = [],
             ModulesToLink = [],
             ExtraObjFiles = []
         else
             read_augment_and_process_module(ProgressStream, ErrorStream,
                 Globals, OpModeAugment, InvokedByMmcMake, OptionArgs,
                 FileOrModule, ModulesToRecompile, ModulesToLink, ExtraObjFiles,
-                !HaveReadModuleMaps, !IO)
+                Specs, !HaveReadModuleMaps, !IO),
+            SpecsList = [Specs]
         )
-    ).
+    ),
+    list.foldl(write_error_specs(ErrorStream, Globals0), SpecsList, !IO),
+    maybe_print_delayed_error_messages(ErrorStream, Globals0, !IO).
 
 %---------------------%
 
@@ -1374,12 +1374,13 @@ acc_not_found_files(Spec, !NotFoundFiles, !OtherSpecs) :-
 %---------------------%
 
 :- pred do_process_compiler_arg_make_interface(io.text_output_stream::in,
-    io.text_output_stream::in, globals::in, op_mode_interface_file::in,
-    file_or_module::in, have_read_module_maps::in, have_read_module_maps::out,
+    globals::in, op_mode_interface_file::in, file_or_module::in,
+    list(list(error_spec))::out,
+    have_read_module_maps::in, have_read_module_maps::out,
     io::di, io::uo) is det.
 
-do_process_compiler_arg_make_interface(ProgressStream, ErrorStream, Globals0,
-        InterfaceFile, FileOrModule, !HaveReadModuleMaps, !IO) :-
+do_process_compiler_arg_make_interface(ProgressStream, Globals0,
+        InterfaceFile, FileOrModule, SpecLists, !HaveReadModuleMaps, !IO) :-
     (
         InterfaceFile = omif_int3,
         ReturnTimestamp = dont_return_timestamp
@@ -1401,20 +1402,19 @@ do_process_compiler_arg_make_interface(ProgressStream, ErrorStream, Globals0,
     (
         HaveReadSrc = have_not_read_module(_FileName, ReadErrors),
         ReadSpecs = get_read_module_specs(ReadErrors),
-        write_error_specs(ErrorStream, Globals, ReadSpecs, !IO)
+        SpecLists = [ReadSpecs]
     ;
         HaveReadSrc = have_read_module(FileName, MaybeTimestamp, ParseTreeSrc,
             ReadErrors),
         ReadSpecs = get_read_module_specs(ReadErrors),
         ( if halt_at_module_error(Globals, ReadErrors) then
-            write_error_specs(ErrorStream, Globals, ReadSpecs, !IO)
+            SpecLists = [ReadSpecs]
         else
             ModuleName = ParseTreeSrc ^ pts_module_name,
             split_into_compilation_units_perform_checks(Globals, ParseTreeSrc,
-                ParseTreeModuleSrcs, ReadSpecs, ReadSplitSpecs),
-            filter_interface_generation_specs(Globals, ReadSplitSpecs, Specs),
-            write_error_specs(ErrorStream, Globals, Specs, !IO),
-            maybe_print_delayed_error_messages(ErrorStream, Globals, !IO),
+                ParseTreeModuleSrcs, ReadSpecs, ReadSplitSpecs0),
+            filter_interface_generation_specs(Globals, ReadSplitSpecs0,
+                ReadSplitSpecs),
             (
                 InterfaceFile = omif_int0,
                 IsAncestor =
@@ -1428,7 +1428,7 @@ do_process_compiler_arg_make_interface(ProgressStream, ErrorStream, Globals0,
                     write_private_interface_file_int0(ProgressStream,
                         Globals0, do_not_add_new_to_hrmm,
                         FileName, ModuleName, MaybeTimestamp),
-                    AncestorParseTreeModuleSrcs, _Succeededs, SpecsList,
+                    AncestorParseTreeModuleSrcs, _Succeededs, WriteSpecsList,
                     !HaveReadModuleMaps, !IO)
             ;
                 InterfaceFile = omif_int1_int2,
@@ -1436,18 +1436,17 @@ do_process_compiler_arg_make_interface(ProgressStream, ErrorStream, Globals0,
                     write_interface_file_int1_int2(ProgressStream,
                         Globals0, do_not_add_new_to_hrmm,
                         FileName, ModuleName, MaybeTimestamp),
-                    ParseTreeModuleSrcs, _Succeededs, SpecsList,
+                    ParseTreeModuleSrcs, _Succeededs, WriteSpecsList,
                     !HaveReadModuleMaps, !IO)
             ;
                 InterfaceFile = omif_int3,
                 list.map2_foldl2(
                     write_short_interface_file_int3(ProgressStream,
                         Globals0, do_not_add_new_to_hrmm),
-                    ParseTreeModuleSrcs, _Succeededs, SpecsList,
+                    ParseTreeModuleSrcs, _Succeededs, WriteSpecsList,
                     !HaveReadModuleMaps, !IO)
             ),
-            list.foldl(write_error_specs(ErrorStream, Globals0),
-                SpecsList, !IO)
+            SpecLists = [ReadSplitSpecs | WriteSpecsList]
         )
     ).
 
@@ -1579,12 +1578,13 @@ find_timestamp_files_2(Globals, TimestampExt,
     io.text_output_stream::in, globals::in, op_mode_augment::in,
     op_mode_invoked_by_mmc_make::in, list(string)::in, file_or_module::in,
     modules_to_recompile::in, list(string)::out, list(string)::out,
+    list(error_spec)::out,
     have_read_module_maps::in, have_read_module_maps::out,
     io::di, io::uo) is det.
 
 read_augment_and_process_module(ProgressStream, ErrorStream, Globals0,
         OpModeAugment, InvokedByMmcMake, OptionArgs, FileOrModule,
-        MaybeModulesToRecompile, ModulesToLink, ExtraObjFiles,
+        MaybeModulesToRecompile, ModulesToLink, ExtraObjFiles, Specs,
         !HaveReadModuleMaps, !IO) :-
     (
         ( OpModeAugment = opmau_make_plain_opt
@@ -1607,8 +1607,7 @@ read_augment_and_process_module(ProgressStream, ErrorStream, Globals0,
         do_return_timestamp, HaveReadSrc, !HaveReadModuleMaps, !IO),
     (
         HaveReadSrc = have_not_read_module(_, Errors),
-        Specs0 = get_read_module_specs(Errors),
-        write_error_specs(ErrorStream, Globals, Specs0, !IO),
+        Specs = get_read_module_specs(Errors),
         ModulesToLink = [],
         ExtraObjFiles = []
     ;
@@ -1616,7 +1615,7 @@ read_augment_and_process_module(ProgressStream, ErrorStream, Globals0,
             Errors),
         Specs0 = get_read_module_specs(Errors),
         ( if halt_at_module_error(Globals, Errors) then
-            write_error_specs(ErrorStream, Globals, Specs0, !IO),
+            Specs = Specs0,
             ModulesToLink = [],
             ExtraObjFiles = []
         else
@@ -1625,27 +1624,28 @@ read_augment_and_process_module(ProgressStream, ErrorStream, Globals0,
             % progress and error streams to module-specific streams.
             read_augment_and_process_module_ok(ProgressStream, ErrorStream,
                 Globals, OpModeAugment, InvokedByMmcMake, FileName,
-                MaybeTimestamp, ParseTreeSrc, Errors, MaybeModulesToRecompile,
-                ModulesToLink, ExtraObjFiles, !HaveReadModuleMaps, !IO)
+                MaybeTimestamp, ParseTreeSrc, MaybeModulesToRecompile,
+                ModulesToLink, ExtraObjFiles, Specs0, Specs,
+                !HaveReadModuleMaps, !IO)
         )
     ).
 
 :- pred read_augment_and_process_module_ok(io.text_output_stream::in,
     io.text_output_stream::in, globals::in, op_mode_augment::in,
     op_mode_invoked_by_mmc_make::in, file_name::in, maybe(timestamp)::in,
-    parse_tree_src::in, read_module_errors::in, modules_to_recompile::in,
-    list(string)::out, list(string)::out,
+    parse_tree_src::in,
+    modules_to_recompile::in, list(string)::out, list(string)::out,
+    list(error_spec)::in, list(error_spec)::out,
     have_read_module_maps::in, have_read_module_maps::out,
     io::di, io::uo) is det.
 
 read_augment_and_process_module_ok(ProgressStream, ErrorStream, Globals,
         OpModeAugment, InvokedByMmcMake, FileName, MaybeTimestamp,
-        ParseTreeSrc, Errors, MaybeModulesToRecompile,
-        ModulesToLink, ExtraObjFiles, !HaveReadModuleMaps, !IO) :-
-    Specs0 = get_read_module_specs(Errors),
+        ParseTreeSrc, MaybeModulesToRecompile, ModulesToLink, ExtraObjFiles,
+        !Specs, !HaveReadModuleMaps, !IO) :-
     ModuleName = ParseTreeSrc ^ pts_module_name,
     split_into_compilation_units_perform_checks(Globals, ParseTreeSrc,
-        ParseTreeModuleSrcs0, Specs0, Specs1),
+        ParseTreeModuleSrcs0, !Specs),
     (
         MaybeModulesToRecompile = some_modules(ModulesToRecompile),
         ToRecompile =
@@ -1685,8 +1685,8 @@ read_augment_and_process_module_ok(ProgressStream, ErrorStream, Globals,
     augment_and_process_all_submodules(ProgressStream, ErrorStream,
         GlobalsToUse, OpModeAugment, InvokedByMmcMake, FileName,
         MaybeTimestamp, ModuleName, NestedModuleNames, FindTimestampFiles,
-        ParseTreeModuleSrcsToRecompile, Specs1, ModulesToLink, ExtraObjFiles,
-        !HaveReadModuleMaps, !IO).
+        ParseTreeModuleSrcsToRecompile, ModulesToLink, ExtraObjFiles,
+        !Specs, !HaveReadModuleMaps, !IO).
 
 :- pred maybe_report_cmd_line(io.text_output_stream::in, bool::in,
     list(string)::in, list(string)::in, io::di, io::uo) is det.
@@ -1815,23 +1815,22 @@ read_module_or_file(ProgressStream, Globals0, Globals, FileOrModuleName,
     op_mode_augment::in, op_mode_invoked_by_mmc_make::in, string::in,
     maybe(timestamp)::in, module_name::in, set(module_name)::in,
     find_timestamp_file_names::in(find_timestamp_file_names),
-    list(parse_tree_module_src)::in, list(error_spec)::in,
-    list(string)::out, list(string)::out,
+    list(parse_tree_module_src)::in, list(string)::out, list(string)::out,
+    list(error_spec)::in, list(error_spec)::out,
     have_read_module_maps::in, have_read_module_maps::out,
     io::di, io::uo) is det.
 
 augment_and_process_all_submodules(ProgressStream, ErrorStream, Globals,
         OpModeAugment, InvokedByMmcMake, FileName, MaybeTimestamp,
         SourceFileModuleName, NestedSubModules, FindTimestampFiles,
-        ParseTreeModuleSrcs, !.Specs, ModulesToLink, ExtraObjFiles,
-        !HaveReadModuleMaps, !IO) :-
+        ParseTreeModuleSrcs, ModulesToLink, ExtraObjFiles,
+        !Specs, !HaveReadModuleMaps, !IO) :-
     list.map_foldl3(
         augment_and_process_module(ProgressStream, ErrorStream, Globals,
             OpModeAugment, InvokedByMmcMake, FileName, MaybeTimestamp,
             SourceFileModuleName, NestedSubModules, FindTimestampFiles),
         ParseTreeModuleSrcs, ExtraObjFileLists,
         !Specs, !HaveReadModuleMaps, !IO),
-    write_error_specs(ErrorStream, Globals, !.Specs, !IO),
     list.map(module_to_link, ParseTreeModuleSrcs, ModulesToLink),
     list.condense(ExtraObjFileLists, ExtraObjFiles).
 
