@@ -24,10 +24,11 @@
 main(!IO) :-
     i(X),
     promise_pure (
-        if p(X) then
+        ( if p(X) then
             io.write_string("aye\n", !IO)
         else
             io.write_string("nay\n", !IO)
+        )
     ).
 
 :- pred i(st::oa) is det.
@@ -44,6 +45,18 @@ i(X) :-
     [promise_pure],
 "
     SUCCESS_INDICATOR = MR_TRUE;
+").
+:- pragma foreign_proc("Java",
+    p(_X::(any >> ground)),
+    [promise_pure],
+"
+    SUCCESS_INDICATOR = true;
+").
+:- pragma foreign_proc("C#",
+    p(_X::(any >> ground)),
+    [promise_pure],
+"
+    SUCCESS_INDICATOR = true;
 ").
 
 %---------------------------------------------------------------------------%
