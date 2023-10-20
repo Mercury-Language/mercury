@@ -39,6 +39,7 @@ MERCURY_MAIN_LIB_MODULES=$(MDBCOMP_LIB_NAME)
 MERCURY_MAIN_MODULES=$(MERCURY_MAIN_LIB_MODULES)
 
 DEPENDS =	$(patsubst %,%.depend,$(MERCURY_MAIN_MODULES))
+DEPEND_INTS =	$(patsubst %,%.depend_ints,$(MERCURY_MAIN_MODULES))
 INTS_TARGETS =	$(patsubst %,%.ints,$(MERCURY_MAIN_MODULES))
 INT3S_TARGETS =	$(patsubst %,%.int3s,$(MERCURY_MAIN_MODULES))
 LIBS =		$(patsubst %,lib%,$(MERCURY_MAIN_LIB_MODULES))
@@ -136,15 +137,16 @@ library: $(LIBS)
 all-ints: $(MDBCOMP_LIB_NAME).int3s $(MDBCOMP_LIB_NAME).ints
 
 .PHONY: depend
-depend:	MDBCOMP_FLAGS $(DEPENDS)
-$(DEPENDS): Mercury.modules
+depend:	MDBCOMP_FLAGS $(DEPEND_INTS)
+$(DEPENDS):     Mercury.modules
+$(DEPEND_INTS): Mercury.modules
 
 # $(BROWSER_LIB_NAME).dep $(BROWSER_LIB_NAME).depend:
 # 	$(MCD) $(ALL_GRADEFLAGS) $(ALL_MCDFLAGS) $*
 
-# This directory contains source files for which the module
-# name doesn't match the file name, so smart recompilation
-# won't work without the Mercury.modules file.
+# This directory contains source files for which the module name
+# does not match the file name, so smart recompilation won't work
+# without the Mercury.modules file.
 Mercury.modules: MDBCOMP_FLAGS
 	$(MC) $(ALL_GRADEFLAGS) $(ALL_MCFLAGS) -f *.m
 

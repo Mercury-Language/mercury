@@ -49,6 +49,7 @@ MERCURY_MAIN_MODULES=$(MERCURY_MAIN_LIB_MODULES)
 VPATH = $(LIBRARY_DIR) $(MDBCOMP_DIR) $(BROWSER_DIR)
 
 DEPENDS =	$(patsubst %,%.depend,$(MERCURY_MAIN_MODULES))
+DEPEND_INTS =	$(patsubst %,%.depend_ints,$(MERCURY_MAIN_MODULES))
 INTS_TARGETS =	$(patsubst %,%.ints,$(MERCURY_MAIN_MODULES))
 INT3S_TARGETS =	$(patsubst %,%.int3s,$(MERCURY_MAIN_MODULES))
 LIBS =		$(patsubst %,lib%,$(MERCURY_MAIN_LIB_MODULES))
@@ -148,8 +149,10 @@ all:	library $(TAGS_FILE_EXISTS) browse_test declarative_test
 library: $(LIBS)
 
 .PHONY: depend
-depend:	$(DEPENDS)
-$(DEPENDS): SSDB_FLAGS Mercury.modules
+depend:	$(DEPEND_INTS)
+
+$(DEPENDS):     SSDB_FLAGS Mercury.modules
+$(DEPEND_INTS): SSDB_FLAGS Mercury.modules
 
 # This directory contains source files for which the module
 # name doesn't match the file name, so smart recompilation

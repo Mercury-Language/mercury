@@ -604,7 +604,7 @@ EOF
         $BOOTSTRAP_MC \
             --verbose \
             $link_static_opt conftest \
-            --warn-obsolete-transform-2023-07-03 \
+            --gen-dep-ints-2023-10-15 \
             --allow-ho-insts-as-modes \
             --no-ssdb \
             </dev/null >&AS_MESSAGE_LOG_FD 2>&1 &&

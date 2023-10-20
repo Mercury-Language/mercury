@@ -84,12 +84,11 @@ endif
 # Specify the name of the top-level module to build.
 MC_PROG = mercury_compile
 
-# mercury_compile
-
 .PHONY: depend
-depend:		$(MC_PROG).depend
+depend:		$(MC_PROG).depend_ints
 
-$(MC_PROG).depend: Mercury.modules COMP_FLAGS
+$(MC_PROG).depend:      Mercury.modules COMP_FLAGS
+$(MC_PROG).depend_ints: Mercury.modules COMP_FLAGS
 
 # This directory contains source files for which the module
 # name doesn't match the file name, so smart recompilation

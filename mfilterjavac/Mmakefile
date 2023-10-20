@@ -31,7 +31,8 @@ ALL_MODULES = mfilterjavac
 
 MAIN_TARGET=all
 MERCURY_MAIN_MODULES=$(ALL_MODULES)
-DEPEND=$(patsubst %,%.depend,$(ALL_MODULES))
+DEPENDS=$(patsubst %,%.depends,$(ALL_MODULES))
+DEPEND_INTS=$(patsubst %,%.depend_ints,$(ALL_MODULES))
 PDBS=$(patsubst %,%.pdb,$(ALL_MODULES))
 
 VPATH = $(LIBRARY_DIR) $(SSDB_DIR)
@@ -61,9 +62,10 @@ endif
 nothing:
 
 .PHONY: depend
-depend:	$(DEPEND)
+depend:	$(DEPEND_INTS)
 
-$(DEPEND): MFILTERJAVAC_FLAGS
+$(DEPENDS):     MFILTERJAVAC_FLAGS
+$(DEPEND_INTS): MFILTERJAVAC_FLAGS
 
 .PHONY: all
 all:	$(ALL_MODULES) $(TAGS_FILE_EXISTS)
@@ -84,10 +86,10 @@ $(cs_subdir)mfilterjavac.c:	$(UTIL_DIR)/mkinit$(EXT_FOR_EXE)
 #-----------------------------------------------------------------------------#
 
 .PHONY: check
-check:	DEPEND=$(patsubst %,%.check,$(ALL_MODULES))
+check:	depend $(patsubst %,%.check,$(ALL_MODULES))
 
 .PHONY: ints
-ints:	DEPEND=$(patsubst %,%.ints,$(ALL_MODULES))
+ints:	depend $(patsubst %,%.ints,$(ALL_MODULES))
 
 #-----------------------------------------------------------------------------#
 

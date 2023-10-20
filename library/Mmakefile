@@ -188,7 +188,7 @@ mercury: lib_std
 #-----------------------------------------------------------------------------#
 
 .PHONY: depend
-depend:	LIB_FLAGS getopt.m copy_java_runtime_files $(STD_LIB_NAME).depend
+depend:	LIB_FLAGS getopt.m copy_java_runtime_files $(STD_LIB_NAME).depend_ints
 
 .PHONY: check
 check:	$(STD_LIB_NAME).check
