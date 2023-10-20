@@ -107,7 +107,8 @@ make_process_compiler_args(ProgressStream, Globals, DetectedGradeFlags,
         % are regenerated on demand.
         list.filter(
             ( pred(Target::in) is semidet :-
-                not string.suffix(Target, ".depend")
+                not string.suffix(Target, ".depend"),
+                not string.suffix(Target, ".depend_ints")
             ), Targets, NonDependTargets),
         % Classify the remaining targets.
         list.map(classify_target(Globals), NonDependTargets,
