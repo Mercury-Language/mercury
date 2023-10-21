@@ -1260,7 +1260,8 @@ build_analysis_files_1(ProgressStream, Globals, MainModuleName, AllModules,
     get_target_modules(ProgressStream, Globals,
         module_target_analysis_registry, AllModules, TargetModules0,
         !Info, !IO),
-    get_reverse_ordered_modules(make_info_get_module_dependencies(!.Info),
+    get_reverse_ordered_modules(
+        make_info_get_maybe_module_dep_info_map(!.Info),
         TargetModules0, TargetModules1),
     % Filter out the non-local modules so we don't try to reanalyse them.
     list.filter(list.contains(AllModules), TargetModules1, TargetModules),

@@ -100,7 +100,7 @@ get_maybe_module_dep_info(ProgressStream, Globals, ModuleName,
         maybe_record_modules_maybe_module_dep_infos(ProgressStream, Globals,
             RebuildModuleDeps, AncestorsAndSelf, Error0, !Info, !IO),
 
-        ModuleDepMap = make_info_get_module_dependencies(!.Info),
+        ModuleDepMap = make_info_get_maybe_module_dep_info_map(!.Info),
         map.lookup(ModuleDepMap, ModuleName, MaybeModuleDepInfo)
     ).
 
@@ -125,10 +125,10 @@ maybe_record_modules_maybe_module_dep_infos(ProgressStream, Globals,
         !.Error = yes,
         % If we found a problem when processing an ancestor, don't even try
         % to process the later modules.
-        ModuleDepMap0 = make_info_get_module_dependencies(!.Info),
+        ModuleDepMap0 = make_info_get_maybe_module_dep_info_map(!.Info),
         % XXX Could this be map.det_update or map.det_insert?
         map.set(ModuleName, no_module_dep_info, ModuleDepMap0, ModuleDepMap),
-        make_info_set_module_dependencies(ModuleDepMap, !Info)
+        make_info_set_maybe_module_dep_info_map(ModuleDepMap, !Info)
     ),
     maybe_record_modules_maybe_module_dep_infos(ProgressStream, Globals,
         RebuildModuleDeps, ModuleNames, !.Error, !Info, !IO).
@@ -139,7 +139,7 @@ maybe_record_modules_maybe_module_dep_infos(ProgressStream, Globals,
 
 maybe_get_maybe_module_dep_info(ProgressStream, Globals, RebuildModuleDeps,
         ModuleName, MaybeModuleDepInfo, !Info, !IO) :-
-    ModuleDepMap0 = make_info_get_module_dependencies(!.Info),
+    ModuleDepMap0 = make_info_get_maybe_module_dep_info_map(!.Info),
     ( if map.search(ModuleDepMap0, ModuleName, MaybeModuleDepInfo0) then
         MaybeModuleDepInfo = MaybeModuleDepInfo0
     else
@@ -202,8 +202,8 @@ do_get_maybe_module_dep_info(ProgressStream, Globals, RebuildModuleDeps,
             % source file name (e.g. parse.m contains module mdb.parse).
             % Get the correct source file name from the module dependency file,
             % then check whether the module dependency file is up to date.
-            map.lookup(make_info_get_module_dependencies(!.Info), ModuleName,
-                !:MaybeModuleDepInfo),
+            map.lookup(make_info_get_maybe_module_dep_info_map(!.Info),
+                ModuleName, !:MaybeModuleDepInfo),
             ( if
                 !.MaybeModuleDepInfo = some_module_dep_info(ModuleDepInfo0),
                 module_dep_info_get_source_file_dir(ModuleDepInfo0,
@@ -281,21 +281,21 @@ do_get_maybe_module_dep_info(ProgressStream, Globals, RebuildModuleDeps,
                 Globals, ModuleName, !Info, !IO)
         ;
             RebuildModuleDeps = do_not_rebuild_module_deps,
-            ModuleDepMap0 = make_info_get_module_dependencies(!.Info),
+            ModuleDepMap0 = make_info_get_maybe_module_dep_info_map(!.Info),
             % XXX Could this be map.det_update or map.det_insert?
             map.set(ModuleName, no_module_dep_info,
                 ModuleDepMap0, ModuleDepMap1),
-            make_info_set_module_dependencies(ModuleDepMap1, !Info)
+            make_info_set_maybe_module_dep_info_map(ModuleDepMap1, !Info)
         )
     ),
-    ModuleDepMap2 = make_info_get_module_dependencies(!.Info),
+    ModuleDepMap2 = make_info_get_maybe_module_dep_info_map(!.Info),
     ( if map.search(ModuleDepMap2, ModuleName, MaybeModuleDepInfo0) then
         !:MaybeModuleDepInfo = MaybeModuleDepInfo0
     else
         !:MaybeModuleDepInfo = no_module_dep_info,
         map.det_insert(ModuleName, no_module_dep_info,
             ModuleDepMap2, ModuleDepMap),
-        make_info_set_module_dependencies(ModuleDepMap, !Info)
+        make_info_set_maybe_module_dep_info_map(ModuleDepMap, !Info)
     ).
 
 %---------------------------------------------------------------------------%
@@ -384,11 +384,11 @@ handle_parsed_module_dep_file(ProgressStream, Globals, SearchDirs, ModuleName,
     ),
     (
         SourceFileExists = ok,
-        ModuleDepMap0 = make_info_get_module_dependencies(!.Info),
+        ModuleDepMap0 = make_info_get_maybe_module_dep_info_map(!.Info),
         % XXX Could this be map.det_insert?
         map.set(ModuleName, MaybeModuleDepInfo,
             ModuleDepMap0, ModuleDepMap),
-        make_info_set_module_dependencies(ModuleDepMap, !Info),
+        make_info_set_maybe_module_dep_info_map(ModuleDepMap, !Info),
 
         % Read the dependencies for any nested children. If something
         % goes wrong (for example one of the files was removed), the
@@ -419,7 +419,7 @@ handle_parsed_module_dep_file(ProgressStream, Globals, SearchDirs, ModuleName,
 
 some_bad_module_dependency(Info, ModuleNames) :-
     list.member(ModuleName, ModuleNames),
-    map.search(make_info_get_module_dependencies(Info), ModuleName,
+    map.search(make_info_get_maybe_module_dep_info_map(Info), ModuleName,
         no_module_dep_info).
 
 :- pred check_regular_file_exists(file_name::in, maybe_error::out,
@@ -591,10 +591,10 @@ cannot_write_module_dep_files(Globals, ProgressStream, MESI, ErrorStream,
         ModuleName, ErrFileName),
     io.file.remove_file(ErrFileName, _, !IO),
 
-    ModuleDepMap0 = make_info_get_module_dependencies(!.Info),
+    ModuleDepMap0 = make_info_get_maybe_module_dep_info_map(!.Info),
     % XXX Could this be map.det_update?
     map.set(ModuleName, no_module_dep_info, ModuleDepMap0, ModuleDepMap),
-    make_info_set_module_dependencies(ModuleDepMap, !Info).
+    make_info_set_maybe_module_dep_info_map(ModuleDepMap, !Info).
 
 :- pred write_module_dep_files_for_source_file(globals::in,
     io.text_output_stream::in,
@@ -683,10 +683,10 @@ make_info_add_burdened_module_as_dep(BurdenedModule, !Info) :-
     ModuleName = ParseTreeModuleSrc ^ ptms_module_name,
     ModuleDepInfo = module_dep_info_full(BurdenedModule),
     MaybeModuleDepInfo = some_module_dep_info(ModuleDepInfo),
-    ModuleDepMap0 = make_info_get_module_dependencies(!.Info),
+    ModuleDepMap0 = make_info_get_maybe_module_dep_info_map(!.Info),
     % XXX Could this be map.det_insert?
     map.set(ModuleName, MaybeModuleDepInfo, ModuleDepMap0, ModuleDepMap),
-    make_info_set_module_dependencies(ModuleDepMap, !Info).
+    make_info_set_maybe_module_dep_info_map(ModuleDepMap, !Info).
 
 :- pred make_int3_files(io.text_output_stream::in, io.text_output_stream::in,
     globals::in, list(parse_tree_module_src)::in, maybe_succeeded::out,

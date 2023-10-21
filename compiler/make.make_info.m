@@ -219,7 +219,7 @@
 :- func make_info_get_rebuild_module_deps(make_info) =
     maybe_rebuild_module_deps.
 :- func make_info_get_reanalysis_passes(make_info) = int.
-:- func make_info_get_module_dependencies(make_info) =
+:- func make_info_get_maybe_module_dep_info_map(make_info) =
     map(module_name, maybe_module_dep_info).
 :- func make_info_get_file_timestamps(make_info) = file_timestamps.
 :- func make_info_get_target_file_timestamps(make_info) =
@@ -257,7 +257,7 @@
     make_info::in, make_info::out) is det.
 :- pred make_info_set_reanalysis_passes(int::in,
     make_info::in, make_info::out) is det.
-:- pred make_info_set_module_dependencies(
+:- pred make_info_set_maybe_module_dep_info_map(
     map(module_name, maybe_module_dep_info)::in,
     make_info::in, make_info::out) is det.
 :- pred make_info_set_file_timestamps(file_timestamps::in,
@@ -352,7 +352,7 @@
                 % but I (zs) don't whether that is actually true.
                 % (The burdened_module structure replaced the old
                 % module_and_imports structure.)
-                mki_module_dependencies :: map(module_name,
+                mki_maybe_module_dep_info_map :: map(module_name,
                                             maybe_module_dep_info),
 
                 % A map of last known timestamps by file name. This assumes
@@ -490,8 +490,8 @@ make_info_get_rebuild_module_deps(Info) = X :-
     X = Info ^ mki_rebuild_module_deps.
 make_info_get_reanalysis_passes(Info) = X :-
     X = Info ^ mki_reanalysis_passes.
-make_info_get_module_dependencies(Info) = X :-
-    X = Info ^ mki_module_dependencies.
+make_info_get_maybe_module_dep_info_map(Info) = X :-
+    X = Info ^ mki_maybe_module_dep_info_map.
 make_info_get_file_timestamps(Info) = X :-
     X = Info ^ mki_file_timestamps.
 make_info_get_target_file_timestamps(Info) = X :-
@@ -535,8 +535,8 @@ make_info_set_rebuild_module_deps(X, !Info) :-
     !Info ^ mki_rebuild_module_deps := X.
 make_info_set_reanalysis_passes(X, !Info) :-
     !Info ^ mki_reanalysis_passes := X.
-make_info_set_module_dependencies(X, !Info) :-
-    !Info ^ mki_module_dependencies := X.
+make_info_set_maybe_module_dep_info_map(X, !Info) :-
+    !Info ^ mki_maybe_module_dep_info_map := X.
 make_info_set_file_timestamps(X, !Info) :-
     !Info ^ mki_file_timestamps := X.
 make_info_set_target_file_timestamps(X, !Info) :-
