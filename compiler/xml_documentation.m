@@ -117,11 +117,12 @@ xml_documentation(ProgressStream, ModuleInfo, !IO) :-
                 write_xml_doc(Stream, MIXmlDoc, !IO)
             ;
                 OpenResult = error(Err),
-                unable_to_open_file(ProgressStream, FileName, Err, !IO)
+                report_unable_to_open_file(ProgressStream, FileName, Err, !IO)
             )
         ;
             SrcResult = error(SrcErr),
-            unable_to_open_file(ProgressStream, SrcFileName, SrcErr, !IO)
+            report_unable_to_open_file(ProgressStream, SrcFileName,
+                SrcErr, !IO)
         )
     ;
         MaybeSrcFileName = no,

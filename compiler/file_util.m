@@ -80,7 +80,7 @@
     % Report why the file is not able to be opened to the specified stream,
     % set the exit status to 1.
     %
-:- pred unable_to_open_file(io.text_output_stream::in, string::in,
+:- pred report_unable_to_open_file(io.text_output_stream::in, string::in,
     io.error::in, io::di, io::uo) is det.
 
 %---------------------------------------------------------------------------%
@@ -312,8 +312,8 @@ maybe_flush_output_to_stream(no, !IO).
 
 %---------------------------------------------------------------------------%
 
-unable_to_open_file(ErrorStream, FileName, IOErr, !IO) :-
-    io.format(ErrorStream, "Unable to open file '%s': %s\n",
+report_unable_to_open_file(ProgressStream, FileName, IOErr, !IO) :-
+    io.format(ProgressStream, "Unable to open file '%s': %s\n",
         [s(FileName), s(io.error_message(IOErr))], !IO),
     io.set_exit_status(1, !IO).
 

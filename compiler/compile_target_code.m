@@ -66,13 +66,12 @@
     module_dep_info::in, file_name::in, file_name::in, maybe_succeeded::out,
     io::di, io::uo) is det.
 
-    % make_library_init_file(Globals, ProgressStream, ErrorStream,
+    % make_library_init_file(Globals, ProgressStream,
     %   MainModuleName, ModuleNames, Succeeded, !IO):
     %
     % Make the `.init' file for a library containing the given modules.
     %
-:- pred make_library_init_file(globals::in,
-    io.text_output_stream::in, io.text_output_stream::in,
+:- pred make_library_init_file(globals::in, io.text_output_stream::in,
     module_name::in, list(module_name)::in, maybe_succeeded::out,
     io::di, io::uo) is det.
 
@@ -1125,8 +1124,8 @@ referenced_dlls(Module, DepModules0) = Modules :-
 
 %---------------------------------------------------------------------------%
 
-make_library_init_file(Globals, ProgressStream, ErrorStream,
-        MainModuleName, AllModules, Succeeded, !IO) :-
+make_library_init_file(Globals, ProgressStream, MainModuleName, AllModules,
+        Succeeded, !IO) :-
     globals.lookup_string_option(Globals, mkinit_command, MkInit),
     module_name_to_file_name_full_curdir_create_dirs(Globals, $pred,
         ext_cur_gs(ext_cur_gs_lib_init), MainModuleName,
@@ -1185,7 +1184,7 @@ make_library_init_file(Globals, ProgressStream, ErrorStream,
     ;
         InitFileRes = error(Error),
         io.progname_base("mercury_compile", ProgName, !IO),
-        io.format(ErrorStream, "%s: can't open `%s' for output: %s\n",
+        io.format(ProgressStream, "%s: can't open `%s' for output: %s\n",
             [s(ProgName), s(TmpFullInitFileName), s(io.error_message(Error))],
             !IO),
         Succeeded = did_not_succeed
@@ -3107,7 +3106,7 @@ make_standalone_int_header(ProgressStream, BaseName, Succeeded, !IO) :-
         Succeeded = succeeded
     ;
         OpenResult = error(Error),
-        unable_to_open_file(ProgressStream, HdrFileName, Error, !IO),
+        report_unable_to_open_file(ProgressStream, HdrFileName, Error, !IO),
         Succeeded = did_not_succeed
     ).
 

@@ -155,7 +155,7 @@ real_main(!IO) :-
             ExpandedCmdLineArgs, !IO)
     ;
         Res = error(E),
-        io.format(ErrorStream, "%s\n", [s(io.error_message(E))], !IO),
+        io.format(ProgressStream, "%s\n", [s(io.error_message(E))], !IO),
         io.set_exit_status(1, !IO)
     ),
     record_make_deps_cache_stats(!IO),
@@ -310,7 +310,7 @@ real_main_after_expansion(ProgressStream, ErrorStream, CmdLineArgs, !IO) :-
         % the command-line arguments, not the contents of DEFAULT_MCFLAGS.
         (
             Specs = [_ | _],
-            usage_errors(ErrorStream, ActualGlobals, Specs, !IO)
+            usage_errors(ProgressStream, ActualGlobals, Specs, !IO)
         ;
             Specs = [],
             main_after_setup(ProgressStream, ErrorStream, ActualGlobals,

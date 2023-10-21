@@ -522,7 +522,7 @@ create_and_write_opt_file(ProgressStream, ErrorStream, IntermodAnalysis,
         OpenResult = error(Error),
         io.progname_base("mmc", ProgName, !IO),
         io.error_message(Error, ErrorMsg),
-        io.format(ErrorStream, "%s: cannot open `%s' for output: %s\n",
+        io.format(ProgressStream, "%s: cannot open `%s' for output: %s\n",
             [s(ProgName), s(TmpOptFileName), s(ErrorMsg)], !IO),
         io.set_exit_status(1, !IO)
     ;

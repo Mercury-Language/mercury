@@ -1499,10 +1499,7 @@ build_c_library(ProgressStream, Globals, MainModuleName, AllModules, Succeeded,
         (
             SharedLibsSucceeded = succeeded,
             % Errors while making the .init file should be very rare.
-            % XXX MAKE_STREAM This preserves old behavior, but our caller
-            % should pass to us a progress stream *explicitly*.
-            ErrorStream = ProgressStream,
-            make_library_init_file(Globals, ProgressStream, ErrorStream,
+            make_library_init_file(Globals, ProgressStream,
                 MainModuleName, AllModules, Succeeded, !IO)
         ;
             SharedLibsSucceeded = did_not_succeed,
