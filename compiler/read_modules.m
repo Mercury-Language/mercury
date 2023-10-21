@@ -43,53 +43,53 @@
 % to the parse tree we got for that file.
 %
 % XXX ITEM_LIST The code that reads in optimization files does not
-% record its results in hrmm_opt. I (zs) don't know whether that is
+% record its results in hptm_opt. I (zs) don't know whether that is
 % a bug (leading to duplicate reads of optimization files) or a feature
 % (keeping files that are by construction read exactly once out of a map
 % where they won't be needed again).
 %
 
-:- type have_read_module_maps
-    --->    have_read_module_maps(
-                hrmm_src                :: have_read_module_src_map,
+:- type have_parse_tree_maps
+    --->    have_parse_tree_maps(
+                hptm_src                :: have_parse_tree_src_map,
 
-                hrmm_module_src         :: have_read_module_msrc_map,
+                hptm_module_src         :: have_parse_tree_msrc_map,
 
-                hrmm_int0               :: have_read_module_int0_map,
-                hrmm_int1               :: have_read_module_int1_map,
-                hrmm_int2               :: have_read_module_int2_map,
-                hrmm_int3               :: have_read_module_int3_map,
+                hptm_int0               :: have_parse_tree_int0_map,
+                hptm_int1               :: have_parse_tree_int1_map,
+                hptm_int2               :: have_parse_tree_int2_map,
+                hptm_int3               :: have_parse_tree_int3_map,
 
-                hrmm_plain_opt          :: have_read_module_plain_opt_map,
-                hrmm_trans_opt          :: have_read_module_trans_opt_map
+                hptm_plain_opt          :: have_parse_tree_plain_opt_map,
+                hptm_trans_opt          :: have_parse_tree_trans_opt_map
             ).
 
-:- func init_have_read_module_maps = have_read_module_maps.
+:- func init_have_parse_tree_maps = have_parse_tree_maps.
 
-:- type have_read_module_src_map ==
-    have_read_module_map(parse_tree_src).
+:- type have_parse_tree_src_map ==
+    have_parse_tree_map(parse_tree_src).
 
-:- type have_read_module_key(Kind)
-    --->    have_read_module_key(module_name, Kind).
+:- type have_parse_tree_key(Kind)
+    --->    have_parse_tree_key(module_name, Kind).
 
-:- type have_read_module_msrc_map ==
+:- type have_parse_tree_msrc_map ==
     map(module_name, parse_tree_module_src).
 
-:- type have_read_module_int0_map ==
-    have_read_module_map(parse_tree_int0).
-:- type have_read_module_int1_map ==
-    have_read_module_map(parse_tree_int1).
-:- type have_read_module_int2_map ==
-    have_read_module_map(parse_tree_int2).
-:- type have_read_module_int3_map ==
-    have_read_module_map(parse_tree_int3).
+:- type have_parse_tree_int0_map ==
+    have_parse_tree_map(parse_tree_int0).
+:- type have_parse_tree_int1_map ==
+    have_parse_tree_map(parse_tree_int1).
+:- type have_parse_tree_int2_map ==
+    have_parse_tree_map(parse_tree_int2).
+:- type have_parse_tree_int3_map ==
+    have_parse_tree_map(parse_tree_int3).
 
-:- type have_read_module_plain_opt_map ==
-    have_read_module_map(parse_tree_plain_opt).
-:- type have_read_module_trans_opt_map ==
-    have_read_module_map(parse_tree_trans_opt).
+:- type have_parse_tree_plain_opt_map ==
+    have_parse_tree_map(parse_tree_plain_opt).
+:- type have_parse_tree_trans_opt_map ==
+    have_parse_tree_map(parse_tree_trans_opt).
 
-:- type have_read_module_map(PT) == map(module_name, have_read_module(PT)).
+:- type have_parse_tree_map(PT) == map(module_name, have_module(PT)).
 
     % This type records the result of one of the read_module_<filekind>
     % predicates below. There are three possible outcomes:
@@ -98,7 +98,7 @@
     % - We have tried to read the module and failed.
     % - We have not tried to read the module.
     %
-    % The first will return have_read_module(...), while the second and
+    % The first will return have_module(...), while the second and
     % third will return have_not_read_module(...).
     %
     % The reason for not having a separate function symbol for the third
@@ -106,27 +106,25 @@
     % that ask that the file not be read in the event of a timestamp match,
     % but a third function symbol would force *all* calls to handle a situation
     % that cannot arise for them.
-:- type have_read_module(PT)
-    --->    have_read_module(
-                % We have read the module.
+:- type have_module(PT)
+    --->    have_module(
+                % We have read, or constructed, the module.
 
-                % The name of the file that we have read.
+                % The name of the file that either
+                % - we read the parse tree from, or
+                % - we have written the parse tree to.
                 file_name,
 
-                % The timestamp of the file, if the caller requested
-                % that it be returned. Not all do.
-                maybe(timestamp),
-
-                % The parse tree of the file we have read.
+                % The parse tree of the file.
                 PT,
 
-                % Any errors we found during parsing. It should contain
-                % neither frme_could_not_open_file or frme_could_not_read_file,
-                % but may contain any other errors.
-                read_module_errors
+                % Where did we get the parse tree from? And what other info,
+                % if any, did the "getting" process give us?
+                have_parse_tree_source
+
             )
     ;       have_not_read_module(
-                % We have not read the module.
+                % We have tried to read the module, but did not do so.
 
                 % The name of the file that we have either tried to read,
                 % or whose timestamp indicated we did not have to read it.
@@ -138,6 +136,29 @@
                 % apart.)
                 read_module_errors
             ).
+
+:- type have_read_module(PT) =< have_module(PT)
+    --->    have_module(file_name, PT, have_parse_tree_read)
+    ;       have_not_read_module(file_name, read_module_errors).
+
+    % How did we get access to this parse tree: did we read it in
+    % from the file system, or did we construct it? If we read it in,
+    % then record any errors we found during parsing. The read_module_errors
+    % field should contain neither frme_could_not_open_file nor
+    % frme_could_not_read_file, but may contain any other errors.
+    % In addition, we record the timestamp of the file we read in,
+    % *if* the compiler component that decided to read the file
+    % requested that the timestamp be returned. Not all do.
+:- type have_parse_tree_source
+    --->    was_read(maybe(timestamp), read_module_errors)
+    ;       was_constructed.
+
+:- type have_parse_tree_read =< have_parse_tree_source
+    --->    was_read(maybe(timestamp), read_module_errors).
+
+:- pred have_parse_tree_source_get_maybe_timestamp_errors(
+    have_parse_tree_source::in,
+    maybe(timestamp)::out, read_module_errors::out) is det.
 
 %---------------------------------------------------------------------------%
 
@@ -171,7 +192,7 @@
 
     % read_module_src(ProgressStream, Globals, ReadReasonMsg,
     %   IgnoreErrors, Search, ModuleName, FileName, ReadModuleAndTimestamps,
-    %   HaveReadModule, !IO):
+    %   HaveModule, !IO):
     %
     % Given a module name, read in and parse the source code of that file,
     % printing progress messages along the way if the verbosity level
@@ -180,7 +201,7 @@
     % If Search is do_search, search all directories given by the option
     % search_directories for the module;
     % otherwise, search for those filenames only in the current directory.
-    % Return in the FileName part of HaveReadModule the actual source file
+    % Return in the FileName part of HaveModule the actual source file
     % name found (excluding the directory part). If the actual module name
     % (as determined by the `:- module' declaration) does not match
     % the specified module name, then report an error message,
@@ -199,11 +220,11 @@
     % a module given the FILE name, use `read_module_src_from_file'.
     %
     % If ReadModuleAndTimestamps is always_read_module(dont_return_timestamp),
-    % return `no' in the MaybeTimestamp field of HaveReadModule.
+    % return `no' in the MaybeTimestamp field of HaveModule.
     %
     % If ReadModuleAndTimestamps is always_read_module(do_return_timestamp),
     % attempt to return the modification time of the file in the MaybeTimestamp
-    % field of HaveReadModule.
+    % field of HaveModule.
     %
     % If ReadModuleAndTimestamps is dont_read_module_if_match(OldTimeStamp),
     % then
@@ -223,7 +244,7 @@
 
     % read_module_src_from_file(ProgressStream, Globals,
     %   FileName, FileNameDotM, ReadReasonMsg, Search, ReadModuleAndTimestamps,
-    %   HaveReadModule, !IO):
+    %   HaveModule, !IO):
     %
     % Does pretty much the same job as read_module_src, but its job is
     % to read the module stored in a specified file (FileNameDotM),
@@ -243,41 +264,41 @@
 %---------------------------------------------------------------------------%
 
     % maybe_read_module_intN(ProgressStream, Globals, ReadReasonMsg, Search,
-    %   ModuleName, IntFileKind, ReturnTimestamp, HaveReadModule,
-    %   !HaveReadModuleMaps, !IO):
+    %   ModuleName, IntFileKind, ReturnTimestamp, HaveModule,
+    %   !HaveParseTreeMaps, !IO):
     %
-    % If HaveReadModuleMap contains the already-read contents of the
+    % If !.HaveParseTreeMaps contains the already-read contents of the
     % relevant kind of interface file for ModuleName, then return
-    % the information stored in HaveReadModuleMap for that file.
+    % the information stored in !.HaveParseTreeMaps for that file.
     % If it is not there, read that interface file using read_module_intN,
     % regardless of its timestamp.
     %
 :- pred maybe_read_module_int0(io.text_output_stream::in, globals::in,
     maybe_search::in, module_name::in, maybe_return_timestamp::in,
-    have_read_module(parse_tree_int0)::out,
-    have_read_module_maps::in, have_read_module_maps::out,
+    have_module(parse_tree_int0)::out,
+    have_parse_tree_maps::in, have_parse_tree_maps::out,
     io::di, io::uo) is det.
 :- pred maybe_read_module_int1(io.text_output_stream::in, globals::in,
     maybe_search::in, module_name::in, maybe_return_timestamp::in,
-    have_read_module(parse_tree_int1)::out,
-    have_read_module_maps::in, have_read_module_maps::out,
+    have_module(parse_tree_int1)::out,
+    have_parse_tree_maps::in, have_parse_tree_maps::out,
     io::di, io::uo) is det.
 :- pred maybe_read_module_int2(io.text_output_stream::in, globals::in,
     maybe_search::in, module_name::in, maybe_return_timestamp::in,
-    have_read_module(parse_tree_int2)::out,
-    have_read_module_maps::in, have_read_module_maps::out,
+    have_module(parse_tree_int2)::out,
+    have_parse_tree_maps::in, have_parse_tree_maps::out,
     io::di, io::uo) is det.
 :- pred maybe_read_module_int3(io.text_output_stream::in, globals::in,
     maybe_search::in, module_name::in, maybe_return_timestamp::in,
-    have_read_module(parse_tree_int3)::out,
-    have_read_module_maps::in, have_read_module_maps::out,
+    have_module(parse_tree_int3)::out,
+    have_parse_tree_maps::in, have_parse_tree_maps::out,
     io::di, io::uo) is det.
 
 %---------------------------------------------------------------------------%
 
     % read_module_intN(ProgressStream, Globals, ReadReasonMsg,
     %   IgnoreErrors, Search, ModuleName, FileName, ReadModuleAndTimestamps,
-    %   HaveReadModule, !IO):
+    %   HaveModule, !IO):
     %
     % Given a module name, read in and parse the specified kind of interface
     % file for that module, printing progress messages along the way
@@ -294,24 +315,24 @@
 :- pred read_module_int0(io.text_output_stream::in, globals::in,
     read_reason_msg::in, maybe_ignore_errors::in, maybe_search::in,
     module_name::in, read_module_and_timestamps::in,
-    have_read_module(parse_tree_int0)::out, io::di, io::uo) is det.
+    have_module(parse_tree_int0)::out, io::di, io::uo) is det.
 :- pred read_module_int1(io.text_output_stream::in, globals::in,
     read_reason_msg::in, maybe_ignore_errors::in, maybe_search::in,
     module_name::in, read_module_and_timestamps::in,
-    have_read_module(parse_tree_int1)::out, io::di, io::uo) is det.
+    have_module(parse_tree_int1)::out, io::di, io::uo) is det.
 :- pred read_module_int2(io.text_output_stream::in, globals::in,
     read_reason_msg::in, maybe_ignore_errors::in, maybe_search::in,
     module_name::in, read_module_and_timestamps::in,
-    have_read_module(parse_tree_int2)::out, io::di, io::uo) is det.
+    have_module(parse_tree_int2)::out, io::di, io::uo) is det.
 :- pred read_module_int3(io.text_output_stream::in, globals::in,
     read_reason_msg::in, maybe_ignore_errors::in, maybe_search::in,
     module_name::in, read_module_and_timestamps::in,
-    have_read_module(parse_tree_int3)::out, io::di, io::uo) is det.
+    have_module(parse_tree_int3)::out, io::di, io::uo) is det.
 
 %---------------------------------------------------------------------------%
 
     % read_module_{plain,trans}_opt(ProgressStream, Globals, ModuleName,
-    %   FileName, HaveReadModule, !IO):
+    %   FileName, HaveModule, !IO):
     %
     % Given a module name, read in and parse the specified kind of optimization
     % file for that module, printing progress messages along the way
@@ -332,10 +353,10 @@
     %   so these predicates never return them.
     %
 :- pred read_module_plain_opt(io.text_output_stream::in, globals::in,
-    module_name::in, have_read_module(parse_tree_plain_opt)::out,
+    module_name::in, have_module(parse_tree_plain_opt)::out,
     io::di, io::uo) is det.
 :- pred read_module_trans_opt(io.text_output_stream::in, globals::in,
-    module_name::in, have_read_module(parse_tree_trans_opt)::out,
+    module_name::in, have_module(parse_tree_trans_opt)::out,
     io::di, io::uo) is det.
 
 %---------------------------------------------------------------------------%
@@ -381,15 +402,27 @@
 
 %---------------------------------------------------------------------------%
 
-init_have_read_module_maps = 
-    have_read_module_maps(map.init, map.init, map.init,
+init_have_parse_tree_maps = 
+    have_parse_tree_maps(map.init, map.init, map.init,
         map.init, map.init, map.init, map.init, map.init).
+
+%---------------------------------------------------------------------------%
+
+have_parse_tree_source_get_maybe_timestamp_errors(Source,
+        MaybeTimestamp, Errors) :-
+    (
+        Source = was_read(MaybeTimestamp, Errors)
+    ;
+        Source = was_constructed,
+        MaybeTimestamp = no,
+        Errors = read_module_errors(set.init, [], set.init, [], [])
+    ).
 
 %---------------------------------------------------------------------------%
 
 read_module_src(ProgressStream, Globals, ReadReasonMsg, IgnoreErrors,
         Search, ModuleName, ExpectationContexts, ReadModuleAndTimestamps,
-        HaveReadModule, !IO) :-
+        HaveModule, !IO) :-
     read_module_begin(ProgressStream, Globals, ReadReasonMsg, Search,
         ModuleName, fk_src, FileName0, ReadDoneMsg, SearchDirs, !IO),
     % For `.m' files, we need to deal with the case where the module name
@@ -416,12 +449,12 @@ read_module_src(ProgressStream, Globals, ReadReasonMsg, IgnoreErrors,
             % who reads the error spec (which should be in Errors0) about
             % the unexpected module name.
             ParseTreeSrc = ParseTreeSrc0 ^ pts_module_name := ModuleName,
-            HaveReadModule = have_read_module(FileName, MaybeTimestamp,
-                ParseTreeSrc, Errors1)
+            HaveModule = have_module(FileName, ParseTreeSrc,
+                was_read(MaybeTimestamp, Errors1))
         ;
             MaybeParseTreeSrc0 = no,
             Errors = no_file_errors(IgnoreErrors, Errors1),
-            HaveReadModule = have_not_read_module(FileName, Errors)
+            HaveModule = have_not_read_module(FileName, Errors)
         )
     ;
         MaybeFileNameAndStream = error(ErrorMsg),
@@ -431,11 +464,11 @@ read_module_src(ProgressStream, Globals, ReadReasonMsg, IgnoreErrors,
             IgnoreErrors, fk_src, ReadDoneMsg, FileName0, FileName,
             no, _MaybeTimestamp, Errors0, Errors1, !IO),
         Errors = no_file_errors(IgnoreErrors, Errors1),
-        HaveReadModule = have_not_read_module(FileName, Errors)
+        HaveModule = have_not_read_module(FileName, Errors)
     ).
 
 read_module_src_from_file(ProgressStream, Globals, FileName, FileNameDotM,
-        ReadReasonMsg, Search, ReadModuleAndTimestamps, HaveReadModule, !IO) :-
+        ReadReasonMsg, Search, ReadModuleAndTimestamps, HaveModule, !IO) :-
     read_module_begin_from_file(ProgressStream, Globals, ReadReasonMsg, Search,
         FileName, FileNameDotM, DefaultModuleName,
         ReadDoneMsg, SearchDirs, !IO),
@@ -450,11 +483,11 @@ read_module_src_from_file(ProgressStream, Globals, FileName, FileNameDotM,
             MaybeTimestampRes, MaybeTimestamp, Errors0, Errors1, !IO),
         (
             MaybeParseTreeSrc = yes(ParseTreeSrc),
-            HaveReadModule = have_read_module(FileNameDotM, MaybeTimestamp,
-                ParseTreeSrc, Errors1)
+            HaveModule = have_module(FileNameDotM, ParseTreeSrc,
+                was_read(MaybeTimestamp, Errors1))
         ;
             MaybeParseTreeSrc = no,
-            HaveReadModule = have_not_read_module(FileNameDotM, Errors1)
+            HaveModule = have_not_read_module(FileNameDotM, Errors1)
         )
     ;
         MaybeFileNameAndStream = error(ErrorMsg),
@@ -462,91 +495,104 @@ read_module_src_from_file(ProgressStream, Globals, FileName, FileNameDotM,
             phase_find_files(FileNameDotM), ErrorMsg, Errors0, !IO),
         read_module_end_file(Globals, fk_src, ReadDoneMsg, FileNameDotM,
             no, _MaybeTimestamp, Errors0, Errors, !IO),
-        HaveReadModule = have_not_read_module(FileNameDotM, Errors)
+        HaveModule = have_not_read_module(FileNameDotM, Errors)
     ).
 
 %---------------------------------------------------------------------------%
 
 maybe_read_module_int0(ProgressStream, Globals, Search, ModuleName,
-        ReturnTimestamp, HaveReadModule, !HaveReadModuleMaps, !IO) :-
-    OrigHRMM = !.HaveReadModuleMaps ^ hrmm_int0,
+        ReturnTimestamp, HaveModule, !HaveParseTreeMaps, !IO) :-
+    OrigHPTM = !.HaveParseTreeMaps ^ hptm_int0,
     ( if
-        search_module_name_timestamp_if_needed(OrigHRMM, ModuleName,
+        search_module_name_timestamp_if_needed(OrigHPTM, ModuleName,
             ReturnTimestamp, HaveReadModulePrime)
     then
-        HaveReadModule = HaveReadModulePrime
+        HaveModule = HaveReadModulePrime
     else
         read_module_int0(ProgressStream, Globals, rrm_std,
             do_not_ignore_errors, Search, ModuleName,
-            always_read_module(ReturnTimestamp), HaveReadModule, !IO),
-        map.set(ModuleName, HaveReadModule, OrigHRMM, HRMM),
-        !HaveReadModuleMaps ^ hrmm_int0 := HRMM
+            always_read_module(ReturnTimestamp), HaveModule, !IO),
+        map.set(ModuleName, HaveModule, OrigHPTM, HPTM),
+        !HaveParseTreeMaps ^ hptm_int0 := HPTM
     ).
 
 maybe_read_module_int1(ProgressStream, Globals, Search, ModuleName,
-        ReturnTimestamp, HaveReadModule, !HaveReadModuleMaps, !IO) :-
-    OrigHRMM = !.HaveReadModuleMaps ^ hrmm_int1,
+        ReturnTimestamp, HaveModule, !HaveParseTreeMaps, !IO) :-
+    OrigHPTM = !.HaveParseTreeMaps ^ hptm_int1,
     ( if
-        search_module_name_timestamp_if_needed(OrigHRMM, ModuleName,
+        search_module_name_timestamp_if_needed(OrigHPTM, ModuleName,
             ReturnTimestamp, HaveReadModulePrime)
     then
-        HaveReadModule = HaveReadModulePrime
+        HaveModule = HaveReadModulePrime
     else
         read_module_int1(ProgressStream, Globals, rrm_std,
             do_not_ignore_errors, Search, ModuleName,
-            always_read_module(ReturnTimestamp), HaveReadModule, !IO),
-        map.set(ModuleName, HaveReadModule, OrigHRMM, HRMM),
-        !HaveReadModuleMaps ^ hrmm_int1 := HRMM
+            always_read_module(ReturnTimestamp), HaveModule, !IO),
+        map.set(ModuleName, HaveModule, OrigHPTM, HPTM),
+        !HaveParseTreeMaps ^ hptm_int1 := HPTM
     ).
 
 maybe_read_module_int2(ProgressStream, Globals, Search, ModuleName,
-        ReturnTimestamp, HaveReadModule, !HaveReadModuleMaps, !IO) :-
-    OrigHRMM = !.HaveReadModuleMaps ^ hrmm_int2,
+        ReturnTimestamp, HaveModule, !HaveParseTreeMaps, !IO) :-
+    OrigHPTM = !.HaveParseTreeMaps ^ hptm_int2,
     ( if
-        search_module_name_timestamp_if_needed(OrigHRMM, ModuleName,
+        search_module_name_timestamp_if_needed(OrigHPTM, ModuleName,
             ReturnTimestamp, HaveReadModulePrime)
     then
-        HaveReadModule = HaveReadModulePrime
+        HaveModule = HaveReadModulePrime
     else
         read_module_int2(ProgressStream, Globals, rrm_std,
             do_not_ignore_errors, Search, ModuleName,
-            always_read_module(ReturnTimestamp), HaveReadModule, !IO),
-        map.set(ModuleName, HaveReadModule, OrigHRMM, HRMM),
-        !HaveReadModuleMaps ^ hrmm_int2 := HRMM
+            always_read_module(ReturnTimestamp), HaveModule, !IO),
+        map.set(ModuleName, HaveModule, OrigHPTM, HPTM),
+        !HaveParseTreeMaps ^ hptm_int2 := HPTM
     ).
 
 maybe_read_module_int3(ProgressStream, Globals, Search, ModuleName,
-        ReturnTimestamp, HaveReadModule, !HaveReadModuleMaps, !IO) :-
-    OrigHRMM = !.HaveReadModuleMaps ^ hrmm_int3,
+        ReturnTimestamp, HaveModule, !HaveParseTreeMaps, !IO) :-
+    OrigHPTM = !.HaveParseTreeMaps ^ hptm_int3,
     ( if
-        search_module_name_timestamp_if_needed(OrigHRMM, ModuleName,
+        search_module_name_timestamp_if_needed(OrigHPTM, ModuleName,
             ReturnTimestamp, HaveReadModulePrime)
     then
-        HaveReadModule = HaveReadModulePrime
+        HaveModule = HaveReadModulePrime
     else
         read_module_int3(ProgressStream, Globals, rrm_std,
             do_not_ignore_errors, Search, ModuleName,
-            always_read_module(ReturnTimestamp), HaveReadModule, !IO),
-        map.set(ModuleName, HaveReadModule, OrigHRMM, HRMM),
-        !HaveReadModuleMaps ^ hrmm_int3 := HRMM
+            always_read_module(ReturnTimestamp), HaveModule, !IO),
+        map.set(ModuleName, HaveModule, OrigHPTM, HPTM),
+        !HaveParseTreeMaps ^ hptm_int3 := HPTM
     ).
 
-:- pred search_module_name_timestamp_if_needed(have_read_module_map(PT)::in,
-    module_name::in, maybe_return_timestamp::in, have_read_module(PT)::out)
+:- pred search_module_name_timestamp_if_needed(have_parse_tree_map(PT)::in,
+    module_name::in, maybe_return_timestamp::in, have_module(PT)::out)
     is semidet.
 
-search_module_name_timestamp_if_needed(HRMM, ModuleName, ReturnTimestamp,
-        HaveReadModule) :-
-    map.search(HRMM, ModuleName, HaveReadModule0),
-    HaveReadModule0 = have_read_module(FN, MaybeTimeStamp0, PT, E),
-    return_timestamp_if_needed(ReturnTimestamp,
-        MaybeTimeStamp0, MaybeTimeStamp),
-    HaveReadModule = have_read_module(FN, MaybeTimeStamp, PT, E).
+search_module_name_timestamp_if_needed(HPTM, ModuleName, ReturnTimestamp,
+        HaveModule) :-
+    map.search(HPTM, ModuleName, HaveReadModule0),
+    HaveReadModule0 = have_module(FN, PT, Source0),
+    (
+        Source0 = was_read(MaybeTimeStamp0, E),
+        return_timestamp_if_needed(ReturnTimestamp,
+            MaybeTimeStamp0, MaybeTimeStamp),
+        Source = was_read(MaybeTimeStamp, E)
+    ;
+        Source0 = was_constructed,
+        (
+            ReturnTimestamp = dont_return_timestamp,
+            Source = Source0
+        ;
+            ReturnTimestamp = do_return_timestamp,
+            unexpected($pred, "was_constructed")
+        )
+    ),
+    HaveModule = have_module(FN, PT, Source).
 
 %---------------------%
 
 read_module_int0(ProgressStream, Globals, ReadReasonMsg, IgnoreErrors, Search,
-        ModuleName, ReadModuleAndTimestamps, HaveReadModule, !IO) :-
+        ModuleName, ReadModuleAndTimestamps, HaveModule, !IO) :-
     read_module_begin(ProgressStream, Globals, ReadReasonMsg, Search,
         ModuleName, fk_int(ifk_int0), FileName0, ReadDoneMsg, SearchDirs, !IO),
     search_for_file_and_stream_or_error(SearchDirs, FileName0,
@@ -557,28 +603,28 @@ read_module_int0(ProgressStream, Globals, ReadReasonMsg, IgnoreErrors, Search,
             ReadModuleAndTimestamps, MaybeTimestampRes,
             MaybeParseTreeInt0, Errors0, !IO),
         read_module_end_module(ProgressStream, Globals, MaybeFileNameAndStream,
-            IgnoreErrors, fk_int(ifk_int3), ReadDoneMsg, FileName0, FileName,
+            IgnoreErrors, fk_int(ifk_int0), ReadDoneMsg, FileName0, FileName,
             MaybeTimestampRes, MaybeTimestamp, Errors0, Errors1, !IO),
         (
             MaybeParseTreeInt0 = yes(ParseTreeInt0),
-            HaveReadModule = have_read_module(FileName, MaybeTimestamp,
-                ParseTreeInt0, Errors1)
+            HaveModule = have_module(FileName, ParseTreeInt0,
+                was_read(MaybeTimestamp, Errors1))
         ;
             MaybeParseTreeInt0 = no,
             Errors = no_file_errors(IgnoreErrors, Errors1),
-            HaveReadModule = have_not_read_module(FileName, Errors)
+            HaveModule = have_not_read_module(FileName, Errors)
         )
     ;
         MaybeFileNameAndStream = mfas_error(Errors0),
         read_module_end_module(ProgressStream, Globals, MaybeFileNameAndStream,
-            IgnoreErrors, fk_int(ifk_int3), ReadDoneMsg, FileName0, FileName,
+            IgnoreErrors, fk_int(ifk_int0), ReadDoneMsg, FileName0, FileName,
             no, _MaybeTimestamp, Errors0, Errors1, !IO),
         Errors = no_file_errors(IgnoreErrors, Errors1),
-        HaveReadModule = have_not_read_module(FileName, Errors)
+        HaveModule = have_not_read_module(FileName, Errors)
     ).
 
 read_module_int1(ProgressStream, Globals, ReadReasonMsg, IgnoreErrors, Search,
-        ModuleName, ReadModuleAndTimestamps, HaveReadModule, !IO) :-
+        ModuleName, ReadModuleAndTimestamps, HaveModule, !IO) :-
     read_module_begin(ProgressStream, Globals, ReadReasonMsg, Search,
         ModuleName, fk_int(ifk_int1), FileName0, ReadDoneMsg, SearchDirs, !IO),
     search_for_file_and_stream_or_error(SearchDirs, FileName0,
@@ -589,28 +635,28 @@ read_module_int1(ProgressStream, Globals, ReadReasonMsg, IgnoreErrors, Search,
             ReadModuleAndTimestamps, MaybeTimestampRes,
             MaybeParseTreeInt1, Errors0, !IO),
         read_module_end_module(ProgressStream, Globals, MaybeFileNameAndStream,
-            IgnoreErrors, fk_int(ifk_int3), ReadDoneMsg, FileName0, FileName,
+            IgnoreErrors, fk_int(ifk_int1), ReadDoneMsg, FileName0, FileName,
             MaybeTimestampRes, MaybeTimestamp, Errors0, Errors1, !IO),
         (
             MaybeParseTreeInt1 = yes(ParseTreeInt1),
-            HaveReadModule = have_read_module(FileName, MaybeTimestamp,
-                ParseTreeInt1, Errors1)
+            HaveModule = have_module(FileName, ParseTreeInt1,
+                was_read(MaybeTimestamp, Errors1))
         ;
             MaybeParseTreeInt1 = no,
             Errors = no_file_errors(IgnoreErrors, Errors1),
-            HaveReadModule = have_not_read_module(FileName, Errors)
+            HaveModule = have_not_read_module(FileName, Errors)
         )
     ;
         MaybeFileNameAndStream = mfas_error(Errors0),
         read_module_end_module(ProgressStream, Globals, MaybeFileNameAndStream,
-            IgnoreErrors, fk_int(ifk_int3), ReadDoneMsg, FileName0, FileName,
+            IgnoreErrors, fk_int(ifk_int1), ReadDoneMsg, FileName0, FileName,
             no, _MaybeTimestamp, Errors0, Errors1, !IO),
         Errors = no_file_errors(IgnoreErrors, Errors1),
-        HaveReadModule = have_not_read_module(FileName, Errors)
+        HaveModule = have_not_read_module(FileName, Errors)
     ).
 
 read_module_int2(ProgressStream, Globals, ReadReasonMsg, IgnoreErrors, Search,
-        ModuleName, ReadModuleAndTimestamps, HaveReadModule, !IO) :-
+        ModuleName, ReadModuleAndTimestamps, HaveModule, !IO) :-
     read_module_begin(ProgressStream, Globals, ReadReasonMsg, Search,
         ModuleName, fk_int(ifk_int2), FileName0, ReadDoneMsg, SearchDirs, !IO),
     search_for_file_and_stream_or_error(SearchDirs, FileName0,
@@ -621,28 +667,28 @@ read_module_int2(ProgressStream, Globals, ReadReasonMsg, IgnoreErrors, Search,
             ReadModuleAndTimestamps, MaybeTimestampRes,
             MaybeParseTreeInt2, Errors0, !IO),
         read_module_end_module(ProgressStream, Globals, MaybeFileNameAndStream,
-            IgnoreErrors, fk_int(ifk_int3), ReadDoneMsg, FileName0, FileName,
+            IgnoreErrors, fk_int(ifk_int2), ReadDoneMsg, FileName0, FileName,
             MaybeTimestampRes, MaybeTimestamp, Errors0, Errors1, !IO),
         (
             MaybeParseTreeInt2 = yes(ParseTreeInt2),
-            HaveReadModule = have_read_module(FileName, MaybeTimestamp,
-                ParseTreeInt2, Errors1)
+            HaveModule = have_module(FileName, ParseTreeInt2,
+                was_read(MaybeTimestamp, Errors1))
         ;
             MaybeParseTreeInt2 = no,
             Errors = no_file_errors(IgnoreErrors, Errors1),
-            HaveReadModule = have_not_read_module(FileName, Errors)
+            HaveModule = have_not_read_module(FileName, Errors)
         )
     ;
         MaybeFileNameAndStream = mfas_error(Errors0),
         read_module_end_module(ProgressStream, Globals, MaybeFileNameAndStream,
-            IgnoreErrors, fk_int(ifk_int3), ReadDoneMsg, FileName0, FileName,
+            IgnoreErrors, fk_int(ifk_int2), ReadDoneMsg, FileName0, FileName,
             no, _MaybeTimestamp, Errors0, Errors1, !IO),
         Errors = no_file_errors(IgnoreErrors, Errors1),
-        HaveReadModule = have_not_read_module(FileName, Errors)
+        HaveModule = have_not_read_module(FileName, Errors)
     ).
 
 read_module_int3(ProgressStream, Globals, ReadReasonMsg, IgnoreErrors, Search,
-        ModuleName, ReadModuleAndTimestamps, HaveReadModule, !IO) :-
+        ModuleName, ReadModuleAndTimestamps, HaveModule, !IO) :-
     read_module_begin(ProgressStream, Globals, ReadReasonMsg, Search,
         ModuleName, fk_int(ifk_int3), FileName0, ReadDoneMsg, SearchDirs, !IO),
     search_for_file_and_stream_or_error(SearchDirs, FileName0,
@@ -657,12 +703,12 @@ read_module_int3(ProgressStream, Globals, ReadReasonMsg, IgnoreErrors, Search,
             MaybeTimestampRes, MaybeTimestamp, Errors0, Errors1, !IO),
         (
             MaybeParseTreeInt3 = yes(ParseTreeInt3),
-            HaveReadModule = have_read_module(FileName, MaybeTimestamp,
-                ParseTreeInt3, Errors1)
+            HaveModule = have_module(FileName, ParseTreeInt3,
+                was_read(MaybeTimestamp, Errors1))
         ;
             MaybeParseTreeInt3 = no,
             Errors = no_file_errors(IgnoreErrors, Errors1),
-            HaveReadModule = have_not_read_module(FileName, Errors)
+            HaveModule = have_not_read_module(FileName, Errors)
         )
     ;
         MaybeFileNameAndStream = mfas_error(Errors0),
@@ -670,13 +716,13 @@ read_module_int3(ProgressStream, Globals, ReadReasonMsg, IgnoreErrors, Search,
             IgnoreErrors, fk_int(ifk_int3), ReadDoneMsg, FileName0, FileName,
             no, _MaybeTimestamp, Errors0, Errors1, !IO),
         Errors = no_file_errors(IgnoreErrors, Errors1),
-        HaveReadModule = have_not_read_module(FileName, Errors)
+        HaveModule = have_not_read_module(FileName, Errors)
     ).
 
 %---------------------%
 
 read_module_plain_opt(ProgressStream, Globals, ModuleName,
-        HaveReadModule, !IO) :-
+        HaveModule, !IO) :-
     ReadReasonMsg = rrm_std,
     Search = do_search,
     IgnoreErrors = do_not_ignore_errors,
@@ -696,11 +742,11 @@ read_module_plain_opt(ProgressStream, Globals, ModuleName,
             Errors0, Errors, !IO),
         (
             MaybeParseTreePlainOpt = yes(ParseTreePlainOpt),
-            HaveReadModule = have_read_module(FileName, no,
-                ParseTreePlainOpt, Errors)
+            HaveModule = have_module(FileName, ParseTreePlainOpt,
+                was_read(no, Errors))
         ;
             MaybeParseTreePlainOpt = no,
-            HaveReadModule = have_not_read_module(FileName, Errors)
+            HaveModule = have_not_read_module(FileName, Errors)
         )
     ;
         MaybeFileNameAndStream = mfas_error(Errors0),
@@ -708,11 +754,11 @@ read_module_plain_opt(ProgressStream, Globals, ModuleName,
             MaybeFileNameAndStream, IgnoreErrors, fk_opt(ofk_opt), ReadDoneMsg,
             FileName0, FileName, MaybeTimestampRes, _MaybeTimestamp,
             Errors0, Errors, !IO),
-        HaveReadModule = have_not_read_module(FileName, Errors)
+        HaveModule = have_not_read_module(FileName, Errors)
     ).
 
 read_module_trans_opt(ProgressStream, Globals, ModuleName,
-        HaveReadModule, !IO) :-
+        HaveModule, !IO) :-
     ReadReasonMsg = rrm_std,
     Search = do_search,
     IgnoreErrors = do_not_ignore_errors,
@@ -733,11 +779,11 @@ read_module_trans_opt(ProgressStream, Globals, ModuleName,
             MaybeTimestampRes, _MaybeTimestamp, Errors0, Errors, !IO),
         (
             MaybeParseTreeTransOpt = yes(ParseTreeTransOpt),
-            HaveReadModule = have_read_module(FileName, no,
-                ParseTreeTransOpt, Errors)
+            HaveModule = have_module(FileName, ParseTreeTransOpt,
+                was_read(no, Errors))
         ;
             MaybeParseTreeTransOpt = no,
-            HaveReadModule = have_not_read_module(FileName, Errors)
+            HaveModule = have_not_read_module(FileName, Errors)
         )
     ;
         MaybeFileNameAndStream = mfas_error(Errors0),
@@ -745,7 +791,7 @@ read_module_trans_opt(ProgressStream, Globals, ModuleName,
             MaybeFileNameAndStream, IgnoreErrors, fk_opt(ofk_trans_opt),
             ReadDoneMsg, FileName0, FileName,
             MaybeTimestampRes, _MaybeTimestamp, Errors0, Errors, !IO),
-        HaveReadModule = have_not_read_module(FileName, Errors)
+        HaveModule = have_not_read_module(FileName, Errors)
     ).
 
 %---------------------------------------------------------------------------%
@@ -1097,20 +1143,20 @@ return_timestamp_if_needed(ReturnTimestamp, MaybeTimestamp0, MaybeTimestamp) :-
             % This can happen if
             %
             % - code that does not need a timestamp enters a parse tree
-            %   into the have_read_module_map, and then later
+            %   into the have_module_map, and then later
             %
             % - code that does need a timestamp finds the parse tree there.
             %
             % We abort because I (zs) don't think this should happen:
-            % the use of have_read_module_maps in module_imports.m never
+            % the use of have_parse_tree_maps in module_imports.m never
             % needs timestamps, the smart recompilation modules always
-            % need timestamps, but the have_read_module_maps they use
+            % need timestamps, but the have_parse_tree_maps they use
             % are completely separate (for now). If it turns out I am wrong,
             % or we *do* want these two subsystems to use the same
-            % have_read_module_maps, then there are two obvious possibilities:
+            % have_parse_tree_maps, then there are two obvious possibilities:
             % either *always* store the timestamp of a file we read in, or
             % get the timestamp from the OS the first time it is needed
-            % (have_read_module_maps entries include the filename, so this
+            % (have_parse_tree_maps entries include the filename, so this
             % is possible). The first solution is simpler, the second can
             % execute fewer system calls.
             unexpected($pred, "do_return_timestamp but no timestamp")

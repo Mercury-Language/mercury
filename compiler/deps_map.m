@@ -391,8 +391,8 @@ read_src_file_for_dependency_info(ProgressStream, Globals, Search, ModuleName,
         ignore_errors, Search, ModuleName, ExpectationContexts,
         always_read_module(dont_return_timestamp), HaveReadModuleSrc, !IO),
     (
-        HaveReadModuleSrc = have_read_module(SourceFileName, MaybeTimestamp,
-            ParseTreeSrc, ReadModuleErrors),
+        HaveReadModuleSrc = have_module(SourceFileName, ParseTreeSrc, Source),
+        Source = was_read(MaybeTimestamp, ReadModuleErrors),
         MaybeDummy = non_dummy_burdened_module
     ;
         HaveReadModuleSrc = have_not_read_module(SourceFileName,
@@ -448,7 +448,7 @@ read_src_file_for_dependency_info(ProgressStream, Globals, Search, ModuleName,
         ReadModuleErrors, MaybeTimestamp, ParseTreeSrc,
         Specs, BurdenedModules),
 %   (
-%       HaveReadModuleSrc = have_read_module(SourceFileName, _MaybeTimestamp,
+%       HaveReadModuleSrc = have_module(SourceFileName, _MaybeTimestamp,
 %           ParseTreeSrc, ReadModuleErrors),
 %       parse_tree_src_to_burdened_module_list(Globals, SourceFileName,
 %           ParseTreeSrc, ReadModuleErrors, Specs, BurdenedModules)

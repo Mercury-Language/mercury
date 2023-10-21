@@ -610,7 +610,7 @@ main_after_setup(ProgressStream, ErrorStream, Globals, DetectedGradeFlags,
         display_compiler_version(StdOutStream, !IO)
     else
         globals.get_op_mode(Globals, OpMode),
-        HaveReadModuleMaps0 = init_have_read_module_maps,
+        HaveReadModuleMaps0 = init_have_parse_tree_maps,
         Specs0 = [],
         do_op_mode(ProgressStream, ErrorStream, Globals, OpMode,
             DetectedGradeFlags, OptionVariables, OptionArgs, Args,
@@ -623,7 +623,7 @@ main_after_setup(ProgressStream, ErrorStream, Globals, DetectedGradeFlags,
 :- pred do_op_mode(io.text_output_stream::in, io.text_output_stream::in,
     globals::in, op_mode::in, list(string)::in, options_variables::in,
     list(string)::in, list(string)::in,
-    have_read_module_maps::in, have_read_module_maps::out,
+    have_parse_tree_maps::in, have_parse_tree_maps::out,
     list(error_spec)::in, list(error_spec)::out, io::di, io::uo) is det.
 
 do_op_mode(ProgressStream, ErrorStream, Globals, OpMode, DetectedGradeFlags,
@@ -797,7 +797,7 @@ do_op_mode_query(ErrorStream, Globals, OpModeQuery, OptionVariables, !IO) :-
     globals::in, op_mode_args::in, op_mode_invoked_by_mmc_make::in,
     bool::in, list(string)::in, options_variables::in,
     list(string)::in, list(string)::in,
-    have_read_module_maps::in, have_read_module_maps::out,
+    have_parse_tree_maps::in, have_parse_tree_maps::out,
     list(error_spec)::in, list(error_spec)::out, io::di, io::uo) is det.
 
 do_op_mode_args(ProgressStream, ErrorStream, Globals,
@@ -956,7 +956,7 @@ do_op_mode_args(ProgressStream, ErrorStream, Globals,
     options_variables::in, list(string)::in,
     cord(string)::in, cord(string)::out,
     cord(string)::in, cord(string)::out,
-    have_read_module_maps::in, have_read_module_maps::out,
+    have_parse_tree_maps::in, have_parse_tree_maps::out,
     list(error_spec)::in, list(error_spec)::out, io::di, io::uo) is det.
 
 setup_and_process_compiler_stdin_args(ProgressStream, ErrorStream, StdIn,
@@ -1002,7 +1002,7 @@ setup_and_process_compiler_stdin_args(ProgressStream, ErrorStream, StdIn,
     list(string)::in, options_variables::in,
     list(string)::in, list(string)::in,
     cord(string)::in, cord(string)::out, cord(string)::in, cord(string)::out,
-    have_read_module_maps::in, have_read_module_maps::out,
+    have_parse_tree_maps::in, have_parse_tree_maps::out,
     list(error_spec)::in, list(error_spec)::out, io::di, io::uo) is det.
 
 setup_and_process_compiler_cmd_line_args(_, _, _, _, _, _, _, _, [],
@@ -1033,7 +1033,7 @@ setup_and_process_compiler_cmd_line_args(ProgressStream, ErrorStream, Globals,
     op_mode_args::in, op_mode_invoked_by_mmc_make::in,
     list(string)::in, list(string)::in,
     cord(string)::in, cord(string)::out, cord(string)::in, cord(string)::out,
-    have_read_module_maps::in, have_read_module_maps::out,
+    have_parse_tree_maps::in, have_parse_tree_maps::out,
     io::di, io::uo) is det.
 
 do_process_compiler_cmd_line_args(_, _, _, _, _, _, [],
@@ -1077,7 +1077,7 @@ do_process_compiler_cmd_line_args(ProgressStream, ErrorStream, Globals,
     op_mode_args::in, op_mode_invoked_by_mmc_make::in,
     list(string)::in, options_variables::in, list(string)::in, string::in,
     list(string)::out, list(string)::out,
-    have_read_module_maps::in, have_read_module_maps::out,
+    have_parse_tree_maps::in, have_parse_tree_maps::out,
     list(error_spec)::in, list(error_spec)::out, io::di, io::uo) is det.
 
 setup_and_process_compiler_arg(ProgressStream, ErrorStream, Globals,
@@ -1111,7 +1111,7 @@ setup_and_process_compiler_arg(ProgressStream, ErrorStream, Globals,
     io.text_output_stream::in, globals::in,
     op_mode_args::in, op_mode_invoked_by_mmc_make::in,
     list(string)::in, file_or_module::in, list(string)::out, list(string)::out,
-    have_read_module_maps::in, have_read_module_maps::out,
+    have_parse_tree_maps::in, have_parse_tree_maps::out,
     io::di, io::uo) is det.
 
 do_process_compiler_arg(ProgressStream, ErrorStream, Globals0,
@@ -1201,8 +1201,9 @@ do_process_compiler_arg(ProgressStream, ErrorStream, Globals0,
         (
             HaveReadSrc = have_not_read_module(_FileName, Errors)
         ;
-            HaveReadSrc = have_read_module(_FileName, _MaybeTimestamp,
-                ParseTreeSrc, Errors),
+            HaveReadSrc = have_module(_FileName, ParseTreeSrc, Source),
+            have_parse_tree_source_get_maybe_timestamp_errors(Source,
+                _MaybeTimestamp, Errors),
             ( if halt_at_module_error(Globals, Errors) then
                 true
             else
@@ -1249,7 +1250,7 @@ do_process_compiler_arg(ProgressStream, ErrorStream, Globals0,
 
 :- pred deps_make_ints(io.text_output_stream::in, globals::in, deps_map::in,
     list(error_spec)::in, list(error_spec)::out,
-    have_read_module_maps::in, have_read_module_maps::out,
+    have_parse_tree_maps::in, have_parse_tree_maps::out,
     io::di, io::uo) is det.
 
 deps_make_ints(ProgressStream, Globals, DepsMap,
@@ -1261,7 +1262,7 @@ deps_make_ints(ProgressStream, Globals, DepsMap,
         list.map((func(burdened_module(_, PTMS)) = PTMS), BurdenedModules),
     list.map2_foldl2(
         write_short_interface_file_int3(ProgressStream, Globals,
-            do_add_new_to_hrmm),
+            do_add_new_to_hptm),
         ParseTreeModuleSrcs, _Succeededs3, SpecsList3,
         !HaveReadModuleMaps, !IO),
     list.condense(SpecsList3, Specs3),
@@ -1275,7 +1276,7 @@ deps_make_ints(ProgressStream, Globals, DepsMap,
         assoc_list.values(SortedAncestors, AncestorBurdenedModules),
         list.map2_foldl2(
             write_private_interface_file_int0_burdened_module(ProgressStream,
-                Globals, do_add_new_to_hrmm),
+                Globals, do_add_new_to_hptm),
             AncestorBurdenedModules, _Succeededs0, RawSpecsList0,
             !HaveReadModuleMaps, !IO),
         % The code above created a .int3 file for every module in
@@ -1295,7 +1296,7 @@ deps_make_ints(ProgressStream, Globals, DepsMap,
         then
             list.map2_foldl2(
                 write_interface_file_int1_int2_burdened_module(ProgressStream,
-                    Globals, do_add_new_to_hrmm),
+                    Globals, do_add_new_to_hptm),
                 BurdenedModules, _Succeededs12, RawSpecsList12,
                 !HaveReadModuleMaps, !IO),
             list.condense(RawSpecsList12, RawSpecs12),
@@ -1376,7 +1377,7 @@ acc_not_found_files(Spec, !NotFoundFiles, !OtherSpecs) :-
 :- pred do_process_compiler_arg_make_interface(io.text_output_stream::in,
     globals::in, op_mode_interface_file::in, file_or_module::in,
     list(list(error_spec))::out,
-    have_read_module_maps::in, have_read_module_maps::out,
+    have_parse_tree_maps::in, have_parse_tree_maps::out,
     io::di, io::uo) is det.
 
 do_process_compiler_arg_make_interface(ProgressStream, Globals0,
@@ -1404,8 +1405,9 @@ do_process_compiler_arg_make_interface(ProgressStream, Globals0,
         ReadSpecs = get_read_module_specs(ReadErrors),
         SpecLists = [ReadSpecs]
     ;
-        HaveReadSrc = have_read_module(FileName, MaybeTimestamp, ParseTreeSrc,
-            ReadErrors),
+        HaveReadSrc = have_module(FileName, ParseTreeSrc, Source),
+        have_parse_tree_source_get_maybe_timestamp_errors(Source,
+            MaybeTimestamp, ReadErrors),
         ReadSpecs = get_read_module_specs(ReadErrors),
         ( if halt_at_module_error(Globals, ReadErrors) then
             SpecLists = [ReadSpecs]
@@ -1426,7 +1428,7 @@ do_process_compiler_arg_make_interface(ProgressStream, Globals0,
                     ParseTreeModuleSrcs, AncestorParseTreeModuleSrcs),
                 list.map2_foldl2(
                     write_private_interface_file_int0(ProgressStream,
-                        Globals0, do_not_add_new_to_hrmm,
+                        Globals0, do_not_add_new_to_hptm,
                         FileName, ModuleName, MaybeTimestamp),
                     AncestorParseTreeModuleSrcs, _Succeededs, WriteSpecsList,
                     !HaveReadModuleMaps, !IO)
@@ -1434,7 +1436,7 @@ do_process_compiler_arg_make_interface(ProgressStream, Globals0,
                 InterfaceFile = omif_int1_int2,
                 list.map2_foldl2(
                     write_interface_file_int1_int2(ProgressStream,
-                        Globals0, do_not_add_new_to_hrmm,
+                        Globals0, do_not_add_new_to_hptm,
                         FileName, ModuleName, MaybeTimestamp),
                     ParseTreeModuleSrcs, _Succeededs, WriteSpecsList,
                     !HaveReadModuleMaps, !IO)
@@ -1442,7 +1444,7 @@ do_process_compiler_arg_make_interface(ProgressStream, Globals0,
                 InterfaceFile = omif_int3,
                 list.map2_foldl2(
                     write_short_interface_file_int3(ProgressStream,
-                        Globals0, do_not_add_new_to_hrmm),
+                        Globals0, do_not_add_new_to_hptm),
                     ParseTreeModuleSrcs, _Succeededs, WriteSpecsList,
                     !HaveReadModuleMaps, !IO)
             ),
@@ -1459,7 +1461,7 @@ version_numbers_return_timestamp(yes) = do_return_timestamp.
 
 :- pred find_modules_to_recompile(io.text_output_stream::in, globals::in,
     globals::out, file_or_module::in, modules_to_recompile::out,
-    have_read_module_maps::in, have_read_module_maps::out,
+    have_parse_tree_maps::in, have_parse_tree_maps::out,
     io::di, io::uo) is det.
 
 find_modules_to_recompile(ProgressStream, Globals0, Globals, FileOrModule,
@@ -1579,7 +1581,7 @@ find_timestamp_files_2(Globals, TimestampExt,
     op_mode_invoked_by_mmc_make::in, list(string)::in, file_or_module::in,
     modules_to_recompile::in, list(string)::out, list(string)::out,
     list(error_spec)::out,
-    have_read_module_maps::in, have_read_module_maps::out,
+    have_parse_tree_maps::in, have_parse_tree_maps::out,
     io::di, io::uo) is det.
 
 read_augment_and_process_module(ProgressStream, ErrorStream, Globals0,
@@ -1611,8 +1613,9 @@ read_augment_and_process_module(ProgressStream, ErrorStream, Globals0,
         ModulesToLink = [],
         ExtraObjFiles = []
     ;
-        HaveReadSrc = have_read_module(FileName, MaybeTimestamp, ParseTreeSrc,
-            Errors),
+        HaveReadSrc = have_module(FileName, ParseTreeSrc, Source),
+        have_parse_tree_source_get_maybe_timestamp_errors(Source,
+            MaybeTimestamp, Errors),
         Specs0 = get_read_module_specs(Errors),
         ( if halt_at_module_error(Globals, Errors) then
             Specs = Specs0,
@@ -1636,7 +1639,7 @@ read_augment_and_process_module(ProgressStream, ErrorStream, Globals0,
     parse_tree_src::in,
     modules_to_recompile::in, list(string)::out, list(string)::out,
     list(error_spec)::in, list(error_spec)::out,
-    have_read_module_maps::in, have_read_module_maps::out,
+    have_parse_tree_maps::in, have_parse_tree_maps::out,
     io::di, io::uo) is det.
 
 read_augment_and_process_module_ok(ProgressStream, ErrorStream, Globals,
@@ -1731,12 +1734,12 @@ file_or_module_to_module_name(fm_module(ModuleName)) = ModuleName.
 
 :- pred read_module_or_file(io.text_output_stream::in,
     globals::in, globals::out, file_or_module::in, maybe_return_timestamp::in,
-    have_read_module(parse_tree_src)::out,
-    have_read_module_maps::in, have_read_module_maps::out,
+    have_module(parse_tree_src)::out,
+    have_parse_tree_maps::in, have_parse_tree_maps::out,
     io::di, io::uo) is det.
 
 read_module_or_file(ProgressStream, Globals0, Globals, FileOrModuleName,
-        ReturnTimestamp, HaveReadSrc, !HaveReadModuleMaps, !IO) :-
+        ReturnTimestamp, HaveSrc, !HaveReadModuleMaps, !IO) :-
     globals.lookup_bool_option(Globals0, verbose, Verbose),
     (
         FileOrModuleName = fm_module(ModuleName),
@@ -1755,20 +1758,22 @@ read_module_or_file(ProgressStream, Globals0, Globals, FileOrModuleName,
     ( if
         % Avoid rereading the module if it was already read
         % by recompilation.version.m.
-        map.search(!.HaveReadModuleMaps ^ hrmm_src, ModuleName,
-            HaveReadSrc0),
-        HaveReadSrc0 = have_read_module(FN, MaybeTimestamp0, PT, E),
+        map.search(!.HaveReadModuleMaps ^ hptm_src, ModuleName,
+            HaveSrc0),
+        HaveSrc0 = have_module(FN, PT, Source0),
+        Source0 = was_read(MaybeTimestamp0, E),
         return_timestamp_if_needed(ReturnTimestamp,
             MaybeTimestamp0, MaybeTimestamp),
-        HaveReadSrc1 = have_read_module(FN, MaybeTimestamp, PT, E)
+        Source = was_read(MaybeTimestamp, E),
+        HaveSrc1 = have_module(FN, PT, Source)
     then
         Globals = Globals0,
-        HaveReadSrc = HaveReadSrc1,
+        HaveSrc = HaveSrc1,
         % XXX When we have read the module before, it *could* have had
         % problems that should cause smart recompilation to be disabled.
-        HaveReadModuleMapSrc0 = !.HaveReadModuleMaps ^ hrmm_src,
+        HaveReadModuleMapSrc0 = !.HaveReadModuleMaps ^ hptm_src,
         map.delete(ModuleName, HaveReadModuleMapSrc0, HaveReadModuleMapSrc),
-        !HaveReadModuleMaps ^ hrmm_src := HaveReadModuleMapSrc
+        !HaveReadModuleMaps ^ hptm_src := HaveReadModuleMapSrc
     else
         % We don't search `--search-directories' for source files
         % because that can result in the generated interface files
@@ -1785,6 +1790,7 @@ read_module_or_file(ProgressStream, Globals0, Globals, FileOrModuleName,
                 FileName, FileNameDotM, rrm_file, do_not_search,
                 always_read_module(ReturnTimestamp), HaveReadSrc, !IO)
         ),
+        HaveSrc = coerce(HaveReadSrc),
         io_get_disable_smart_recompilation(DisableSmart, !IO),
         (
             DisableSmart = disable_smart_recompilation,
@@ -1817,7 +1823,7 @@ read_module_or_file(ProgressStream, Globals0, Globals, FileOrModuleName,
     find_timestamp_file_names::in(find_timestamp_file_names),
     list(parse_tree_module_src)::in, list(string)::out, list(string)::out,
     list(error_spec)::in, list(error_spec)::out,
-    have_read_module_maps::in, have_read_module_maps::out,
+    have_parse_tree_maps::in, have_parse_tree_maps::out,
     io::di, io::uo) is det.
 
 augment_and_process_all_submodules(ProgressStream, ErrorStream, Globals,
@@ -1863,7 +1869,7 @@ module_to_link(ParseTreeModuleSrc, ModuleToLink) :-
     find_timestamp_file_names::in(find_timestamp_file_names),
     parse_tree_module_src::in, list(string)::out,
     list(error_spec)::in, list(error_spec)::out,
-    have_read_module_maps::in, have_read_module_maps::out,
+    have_parse_tree_maps::in, have_parse_tree_maps::out,
     io::di, io::uo) is det.
 
 augment_and_process_module(ProgressStream, ErrorStream, Globals,
@@ -1900,7 +1906,7 @@ augment_and_process_module(ProgressStream, ErrorStream, Globals,
     find_timestamp_file_names::in(find_timestamp_file_names),
     list(string)::out, dump_info::in, dump_info::out,
     list(error_spec)::in, list(error_spec)::out,
-    have_read_module_maps::in, have_read_module_maps::out,
+    have_parse_tree_maps::in, have_parse_tree_maps::out,
     io::di, io::uo) is det.
 
 process_augmented_module(ProgressStream, ErrorStream, Globals0,

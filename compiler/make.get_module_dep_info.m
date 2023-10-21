@@ -471,8 +471,15 @@ error_and_maybe_rebuilding_msg(RebuildModuleDeps, ModuleDepsFile,
         [s(ModuleDepsFile), s(ErrorMsg), s(RebuildSuffix)], Msg).
 
     % The module_name given must be the top level module in the source file.
-    % get_module_dependencies ensures this by making the dependencies
-    % for all parent modules of the requested module first.
+    % get_maybe_module_dep_info ensures this by making the dependencies
+    % for all ancestor modules of the requested module first.
+    % XXX But even though get_maybe_module_dep_info calls
+    % maybe_record_modules_maybe_module_dep_infos with a module list
+    % in which, for every parent/child pair, the parent is listed first,
+    % maybe_record_modules_maybe_module_dep_infos *does* eventually process
+    % the children later as well, and that processing may include a call
+    % to this predicate. I (zs) see no correctness argument for guaranteeing
+    % the absence of such calls.
     %
 :- pred try_to_write_module_dep_files_for_top_module(io.text_output_stream::in,
     globals::in, module_name::in,
@@ -492,9 +499,9 @@ try_to_write_module_dep_files_for_top_module(ProgressStream, Globals,
         % machinery with the use of explicit streams.
         % XXX Why ask for the timestamp if we then ignore it?
         % NOTE: Asking for a timestamp and then ignoring it *could* make sense
-        % if we recorded HaveReadSrc in a have_read_module_map, because
+        % if we recorded HaveReadSrc in a have_module_map, because
         % it would make the timestamp available for a later lookup,
-        % However, we do not record HaveReadSrc in a have_read_module_map.
+        % However, we do not record HaveReadSrc in a have_module_map.
         read_module_src(ProgressStream, Globals, rrm_get_deps,
             do_not_ignore_errors, do_not_search, ModuleName, [],
             always_read_module(do_return_timestamp), HaveReadSrc, !IO),
@@ -504,8 +511,8 @@ try_to_write_module_dep_files_for_top_module(ProgressStream, Globals,
         % Since that is a possibility, why write to ModuleName.err
         % *unconditionally*?
         (
-            HaveReadSrc = have_read_module(SourceFileName, MaybeTimestamp,
-                ParseTreeSrc, ReadModuleErrors),
+            HaveReadSrc = have_module(SourceFileName, ParseTreeSrc, Source),
+            Source = was_read(MaybeTimestamp, ReadModuleErrors),
             FatalErrorSpecs0 = ReadModuleErrors ^ rm_fatal_error_specs,
             NonFatalErrorSpecs0 = ReadModuleErrors ^ rm_nonfatal_error_specs,
             write_error_specs(ErrorStream, Globals,
@@ -690,9 +697,9 @@ make_int3_files(ProgressStream, ErrorStream, Globals,
     % XXX MAKE We should probably add to, and keep, HaveReadModuleMaps.
     list.map2_foldl2(
         write_short_interface_file_int3(ProgressStream,
-            Globals, do_not_add_new_to_hrmm),
+            Globals, do_not_add_new_to_hptm),
         ParseTreeModuleSrcs, Succeededs, SpecsList,
-        init_have_read_module_maps, _HaveReadModuleMaps, !IO),
+        init_have_parse_tree_maps, _HaveReadModuleMaps, !IO),
     list.foldl(write_error_specs(ErrorStream, Globals), SpecsList, !IO),
     Succeeded = and_list(Succeededs).
 

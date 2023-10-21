@@ -42,7 +42,7 @@
    (pred(in, out, di, uo) is det).
 
     % should_recompile(ProgressStream, Globals, ModuleName, FindTargetFiles,
-    %   FindTimestampFiles, ModulesToRecompile, HaveReadModuleMaps)
+    %   FindTimestampFiles, ModulesToRecompile, HaveParseTreeMaps)
     %
     % Process the `.used'  files for the given module and all its
     % inline submodules to find out which modules need to be recompiled.
@@ -59,7 +59,7 @@
     module_name::in, find_target_file_names::in(find_target_file_names),
     find_timestamp_file_names::in(find_timestamp_file_names),
     modules_to_recompile::out,
-    have_read_module_maps::in, have_read_module_maps::out,
+    have_parse_tree_maps::in, have_parse_tree_maps::out,
     io::di, io::uo) is det.
 
 %---------------------------------------------------------------------------%
@@ -104,17 +104,17 @@
 
 should_recompile(ProgressStream, Globals, ModuleName,
         FindTargetFiles, FindTimestampFiles, ModulesToRecompile,
-        HaveReadModuleMaps0, HaveReadModuleMaps, !IO) :-
+        HaveParseTreeMaps0, HaveParseTreeMaps, !IO) :-
     globals.lookup_bool_option(Globals, find_all_recompilation_reasons,
         FindAll),
     ResolvedUsedItems0 = init_resolved_used_items,
-    Info0 = recompilation_check_info(ModuleName, no, [], HaveReadModuleMaps0,
+    Info0 = recompilation_check_info(ModuleName, no, [], HaveParseTreeMaps0,
         ResolvedUsedItems0, set.init, some_modules([]), FindAll, []),
     % XXX How do we know ModuleName is not an inline submodule?
     should_recompile_2(ProgressStream, Globals, is_not_inline_submodule,
         FindTargetFiles, FindTimestampFiles, ModuleName, Info0, Info, !IO),
     ModulesToRecompile = Info ^ rci_modules_to_recompile,
-    HaveReadModuleMaps = Info ^ rci_have_read_module_maps.
+    HaveParseTreeMaps = Info ^ rci_have_parse_tree_maps.
 
 :- type maybe_is_inline_submodule
     --->    is_not_inline_submodule
@@ -277,8 +277,8 @@ should_recompile_3(ProgressStream, Globals, UsedFile, IsSubModule,
                 MaybeStoppingReason0 = no
             )
         ;
-            HaveReadSrc = have_read_module(FileName, MaybeNewTimestamp,
-                ParseTreeSrc, Errors),
+            HaveReadSrc = have_module(FileName, ParseTreeSrc, Source),
+            Source = was_read(MaybeNewTimestamp, Errors),
             ( if
                 MaybeNewTimestamp = yes(NewTimestamp),
                 NewTimestamp \= RecordedTimestamp
@@ -382,12 +382,12 @@ check_imported_modules(ProgressStream, Globals,
 %---------------------------------------------------------------------------%
 
 :- typeclass check_imported_module_int_file(PT) where [
-    pred cim_search_mapN(have_read_module_map(PT)::in,
-        module_name::in, have_read_module(PT)::out) is semidet,
+    pred cim_search_mapN(have_parse_tree_map(PT)::in,
+        module_name::in, have_module(PT)::out) is semidet,
     pred cim_read_module_intN(io.text_output_stream::in, globals::in,
         read_reason_msg::in, maybe_ignore_errors::in, maybe_search::in,
         module_name::in, read_module_and_timestamps::in,
-        have_read_module(PT)::out, io::di, io::uo) is det,
+        have_module(PT)::out, io::di, io::uo) is det,
     pred cim_record_read_file_intN(module_name::in, file_name::in,
         module_timestamp::in, PT::in, read_module_errors::in,
         recompilation_check_info::in, recompilation_check_info::out) is det,
@@ -398,8 +398,8 @@ check_imported_modules(ProgressStream, Globals,
 ].
 
 :- instance check_imported_module_int_file(parse_tree_int0) where [
-    ( cim_search_mapN(HRMM, ModuleName, HaveReadModule) :-
-        map.search(HRMM, ModuleName, HaveReadModule)
+    ( cim_search_mapN(HPTM, ModuleName, HaveReadModule) :-
+        map.search(HPTM, ModuleName, HaveReadModule)
     ),
     pred(cim_read_module_intN/10) is read_module_int0,
     pred(cim_record_read_file_intN/7) is record_read_file_int0,
@@ -410,8 +410,8 @@ check_imported_modules(ProgressStream, Globals,
 ].
 
 :- instance check_imported_module_int_file(parse_tree_int1) where [
-    ( cim_search_mapN(HRMM, ModuleName, HaveReadModule) :-
-        map.search(HRMM, ModuleName, HaveReadModule)
+    ( cim_search_mapN(HPTM, ModuleName, HaveReadModule) :-
+        map.search(HPTM, ModuleName, HaveReadModule)
     ),
     pred(cim_read_module_intN/10) is read_module_int1,
     pred(cim_record_read_file_intN/7) is record_read_file_int1,
@@ -422,8 +422,8 @@ check_imported_modules(ProgressStream, Globals,
 ].
 
 :- instance check_imported_module_int_file(parse_tree_int2) where [
-    ( cim_search_mapN(HRMM, ModuleName, HaveReadModule) :-
-        map.search(HRMM, ModuleName, HaveReadModule)
+    ( cim_search_mapN(HPTM, ModuleName, HaveReadModule) :-
+        map.search(HPTM, ModuleName, HaveReadModule)
     ),
     pred(cim_read_module_intN/10) is read_module_int2,
     pred(cim_record_read_file_intN/7) is record_read_file_int2,
@@ -434,8 +434,8 @@ check_imported_modules(ProgressStream, Globals,
 ].
 
 :- instance check_imported_module_int_file(parse_tree_int3) where [
-    ( cim_search_mapN(HRMM, ModuleName, HaveReadModule) :-
-        map.search(HRMM, ModuleName, HaveReadModule)
+    ( cim_search_mapN(HPTM, ModuleName, HaveReadModule) :-
+        map.search(HPTM, ModuleName, HaveReadModule)
     ),
     pred(cim_read_module_intN/10) is read_module_int3,
     pred(cim_record_read_file_intN/7) is record_read_file_int3,
@@ -471,38 +471,38 @@ check_imported_module(ProgressStream, Globals, UsedModule, MaybeStoppingReason,
         FileKind = fk_opt(_),
         unexpected($pred, "fk_opt")
     ),
-    HaveReadModuleMaps = !.Info ^ rci_have_read_module_maps,
+    HaveParseTreeMaps = !.Info ^ rci_have_parse_tree_maps,
     (
         IntFileKind = ifk_int0,
         check_imported_module_intN(ProgressStream, Globals, ImportedModuleName,
             ModuleTimestamp, MaybeUsedVersionNumbers,
-            HaveReadModuleMaps ^ hrmm_int0, MaybeStoppingReason, !Info, !IO)
+            HaveParseTreeMaps ^ hptm_int0, MaybeStoppingReason, !Info, !IO)
     ;
         IntFileKind = ifk_int1,
         check_imported_module_intN(ProgressStream, Globals, ImportedModuleName,
             ModuleTimestamp, MaybeUsedVersionNumbers,
-            HaveReadModuleMaps ^ hrmm_int1, MaybeStoppingReason, !Info, !IO)
+            HaveParseTreeMaps ^ hptm_int1, MaybeStoppingReason, !Info, !IO)
     ;
         IntFileKind = ifk_int2,
         check_imported_module_intN(ProgressStream, Globals, ImportedModuleName,
             ModuleTimestamp, MaybeUsedVersionNumbers,
-            HaveReadModuleMaps ^ hrmm_int2, MaybeStoppingReason, !Info, !IO)
+            HaveParseTreeMaps ^ hptm_int2, MaybeStoppingReason, !Info, !IO)
     ;
         IntFileKind = ifk_int3,
         check_imported_module_intN(ProgressStream, Globals, ImportedModuleName,
             ModuleTimestamp, MaybeUsedVersionNumbers,
-            HaveReadModuleMaps ^ hrmm_int3, MaybeStoppingReason, !Info, !IO)
+            HaveParseTreeMaps ^ hptm_int3, MaybeStoppingReason, !Info, !IO)
     ).
 
 :- pred check_imported_module_intN(io.text_output_stream::in, globals::in,
     module_name::in, module_timestamp::in,
     maybe(module_item_version_numbers)::in,
-    have_read_module_map(PT)::in, maybe(recompile_reason)::out,
+    have_parse_tree_map(PT)::in, maybe(recompile_reason)::out,
     recompilation_check_info::in, recompilation_check_info::out,
     io::di, io::uo) is det <= check_imported_module_int_file(PT).
 
 check_imported_module_intN(ProgressStream, Globals, ImportedModuleName,
-        ModuleTimestamp, MaybeUsedVersionNumbers, HRMM, MaybeStoppingReason,
+        ModuleTimestamp, MaybeUsedVersionNumbers, HPTM, MaybeStoppingReason,
         !Info, !IO) :-
     ModuleTimestamp =
         module_timestamp(_FileKind, RecordedTimestamp, _RecompAvail),
@@ -511,7 +511,7 @@ check_imported_module_intN(ProgressStream, Globals, ImportedModuleName,
         % read for other modules checked during this compilation.
         % XXX We restrict this optimization to nested submodules?
         !.Info ^ rci_is_inline_sub_module = yes,
-        cim_search_mapN(HRMM, ImportedModuleName, HaveReadModuleIntNPrime)
+        cim_search_mapN(HPTM, ImportedModuleName, HaveReadModuleIntNPrime)
     then
         Recorded = bool.yes,
         HaveReadModuleIntN = HaveReadModuleIntNPrime
@@ -533,8 +533,9 @@ check_imported_module_intN(ProgressStream, Globals, ImportedModuleName,
             MaybeStoppingReason = no
         )
     ;
-        HaveReadModuleIntN = have_read_module(FileName, MaybeNewTimestamp,
-            ParseTreeIntN, Errors),
+        HaveReadModuleIntN = have_module(FileName, ParseTreeIntN, Source),
+        have_parse_tree_source_get_maybe_timestamp_errors(Source,
+            MaybeNewTimestamp, Errors),
         ( if there_are_some_errors(Errors) then
             % We are throwing away Specs, even though some of its elements
             % could illuminate the cause of the problem. XXX Is this OK?
@@ -1368,7 +1369,7 @@ check_functor_ambiguity(RecompAvail, SymName, Arity, ResolvedCtor,
                 rci_module_name             :: module_name,
                 rci_is_inline_sub_module    :: bool,
                 rci_sub_modules             :: list(module_name),
-                rci_have_read_module_maps   :: have_read_module_maps,
+                rci_have_parse_tree_maps   :: have_parse_tree_maps,
                 rci_used_items              :: resolved_used_items,
                 rci_used_typeclasses        :: set(recomp_item_name),
                 rci_modules_to_recompile    :: modules_to_recompile,
@@ -1430,15 +1431,15 @@ add_module_to_recompile(Module, !Info) :-
 
 record_read_file_src(ModuleName, FileName, ModuleTimestamp,
         ParseTree, Errors, !Info) :-
-    HaveReadModuleMaps0 = !.Info ^ rci_have_read_module_maps,
-    HaveReadModuleMapSrc0 = HaveReadModuleMaps0 ^ hrmm_src,
+    HaveParseTreeMaps0 = !.Info ^ rci_have_parse_tree_maps,
+    HaveParseTreeMapSrc0 = HaveParseTreeMaps0 ^ hptm_src,
     ModuleTimestamp = module_timestamp(_, Timestamp, _),
     map.set(ModuleName,
-        have_read_module(FileName, yes(Timestamp), ParseTree, Errors),
-        HaveReadModuleMapSrc0, HaveReadModuleMapSrc),
-    HaveReadModuleMaps =
-        HaveReadModuleMaps0 ^ hrmm_src := HaveReadModuleMapSrc,
-    !Info ^ rci_have_read_module_maps := HaveReadModuleMaps.
+        have_module(FileName, ParseTree, was_read(yes(Timestamp), Errors)),
+        HaveParseTreeMapSrc0, HaveParseTreeMapSrc),
+    HaveParseTreeMaps =
+        HaveParseTreeMaps0 ^ hptm_src := HaveParseTreeMapSrc,
+    !Info ^ rci_have_parse_tree_maps := HaveParseTreeMaps.
 
 :- pred record_read_file_int0(module_name::in, file_name::in,
     module_timestamp::in, parse_tree_int0::in, read_module_errors::in,
@@ -1447,13 +1448,13 @@ record_read_file_src(ModuleName, FileName, ModuleTimestamp,
 record_read_file_int0(ModuleName, FileName, ModuleTimestamp, ParseTreeInt0,
         Errors, !Info) :-
     ModuleTimestamp = module_timestamp(_, Timestamp, _),
-    HaveReadModuleMaps0 = !.Info ^ rci_have_read_module_maps,
-    HRMM0 = HaveReadModuleMaps0 ^ hrmm_int0,
-    ReadResult = have_read_module(FileName, yes(Timestamp),
-        ParseTreeInt0, Errors),
-    map.set(ModuleName, ReadResult, HRMM0, HRMM),
-    HaveReadModuleMaps = HaveReadModuleMaps0 ^ hrmm_int0 := HRMM,
-    !Info ^ rci_have_read_module_maps := HaveReadModuleMaps.
+    HaveParseTreeMaps0 = !.Info ^ rci_have_parse_tree_maps,
+    HPTM0 = HaveParseTreeMaps0 ^ hptm_int0,
+    ReadResult = have_module(FileName, ParseTreeInt0,
+        was_read(yes(Timestamp), Errors)),
+    map.set(ModuleName, ReadResult, HPTM0, HPTM),
+    HaveParseTreeMaps = HaveParseTreeMaps0 ^ hptm_int0 := HPTM,
+    !Info ^ rci_have_parse_tree_maps := HaveParseTreeMaps.
 
 :- pred record_read_file_int1(module_name::in, file_name::in,
     module_timestamp::in, parse_tree_int1::in, read_module_errors::in,
@@ -1462,13 +1463,13 @@ record_read_file_int0(ModuleName, FileName, ModuleTimestamp, ParseTreeInt0,
 record_read_file_int1(ModuleName, FileName, ModuleTimestamp, ParseTreeInt1,
         Errors, !Info) :-
     ModuleTimestamp = module_timestamp(_, Timestamp, _),
-    HaveReadModuleMaps1 = !.Info ^ rci_have_read_module_maps,
-    HRMM1 = HaveReadModuleMaps1 ^ hrmm_int1,
-    ReadResult = have_read_module(FileName, yes(Timestamp),
-        ParseTreeInt1, Errors),
-    map.set(ModuleName, ReadResult, HRMM1, HRMM),
-    HaveReadModuleMaps = HaveReadModuleMaps1 ^ hrmm_int1 := HRMM,
-    !Info ^ rci_have_read_module_maps := HaveReadModuleMaps.
+    HaveParseTreeMaps1 = !.Info ^ rci_have_parse_tree_maps,
+    HPTM1 = HaveParseTreeMaps1 ^ hptm_int1,
+    ReadResult = have_module(FileName, ParseTreeInt1,
+        was_read(yes(Timestamp), Errors)),
+    map.set(ModuleName, ReadResult, HPTM1, HPTM),
+    HaveParseTreeMaps = HaveParseTreeMaps1 ^ hptm_int1 := HPTM,
+    !Info ^ rci_have_parse_tree_maps := HaveParseTreeMaps.
 
 :- pred record_read_file_int2(module_name::in, file_name::in,
     module_timestamp::in, parse_tree_int2::in, read_module_errors::in,
@@ -1477,13 +1478,13 @@ record_read_file_int1(ModuleName, FileName, ModuleTimestamp, ParseTreeInt1,
 record_read_file_int2(ModuleName, FileName, ModuleTimestamp, ParseTreeInt2,
         Errors, !Info) :-
     ModuleTimestamp = module_timestamp(_, Timestamp, _),
-    HaveReadModuleMaps2 = !.Info ^ rci_have_read_module_maps,
-    HRMM2 = HaveReadModuleMaps2 ^ hrmm_int2,
-    ReadResult = have_read_module(FileName, yes(Timestamp),
-        ParseTreeInt2, Errors),
-    map.set(ModuleName, ReadResult, HRMM2, HRMM),
-    HaveReadModuleMaps = HaveReadModuleMaps2 ^ hrmm_int2 := HRMM,
-    !Info ^ rci_have_read_module_maps := HaveReadModuleMaps.
+    HaveParseTreeMaps2 = !.Info ^ rci_have_parse_tree_maps,
+    HPTM2 = HaveParseTreeMaps2 ^ hptm_int2,
+    ReadResult = have_module(FileName, ParseTreeInt2,
+        was_read(yes(Timestamp), Errors)),
+    map.set(ModuleName, ReadResult, HPTM2, HPTM),
+    HaveParseTreeMaps = HaveParseTreeMaps2 ^ hptm_int2 := HPTM,
+    !Info ^ rci_have_parse_tree_maps := HaveParseTreeMaps.
 
 :- pred record_read_file_int3(module_name::in, file_name::in,
     module_timestamp::in, parse_tree_int3::in, read_module_errors::in,
@@ -1492,13 +1493,13 @@ record_read_file_int2(ModuleName, FileName, ModuleTimestamp, ParseTreeInt2,
 record_read_file_int3(ModuleName, FileName, ModuleTimestamp, ParseTreeInt3,
         Errors, !Info) :-
     ModuleTimestamp = module_timestamp(_, Timestamp, _),
-    HaveReadModuleMaps3 = !.Info ^ rci_have_read_module_maps,
-    HRMM3 = HaveReadModuleMaps3 ^ hrmm_int3,
-    ReadResult = have_read_module(FileName, yes(Timestamp),
-        ParseTreeInt3, Errors),
-    map.set(ModuleName, ReadResult, HRMM3, HRMM),
-    HaveReadModuleMaps = HaveReadModuleMaps3 ^ hrmm_int3 := HRMM,
-    !Info ^ rci_have_read_module_maps := HaveReadModuleMaps.
+    HaveParseTreeMaps3 = !.Info ^ rci_have_parse_tree_maps,
+    HPTM3 = HaveParseTreeMaps3 ^ hptm_int3,
+    ReadResult = have_module(FileName, ParseTreeInt3,
+        was_read(yes(Timestamp), Errors)),
+    map.set(ModuleName, ReadResult, HPTM3, HPTM),
+    HaveParseTreeMaps = HaveParseTreeMaps3 ^ hptm_int3 := HPTM,
+    !Info ^ rci_have_parse_tree_maps := HaveParseTreeMaps.
 
 %---------------------------------------------------------------------------%
 

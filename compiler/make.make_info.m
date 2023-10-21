@@ -232,7 +232,7 @@
 :- func make_info_get_error_file_modules(make_info) = set(module_name).
 :- func make_info_get_importing_module(make_info) = maybe(import_or_include).
 :- func make_info_get_maybe_stdout_lock(make_info) = maybe(stdout_lock).
-:- func make_info_get_mi_read_module_maps(make_info) = have_read_module_maps.
+:- func make_info_get_mi_read_module_maps(make_info) = have_parse_tree_maps.
 :- func make_info_get_direct_imports_non_intermod_cache(make_info) =
     module_to_module_set_cache.
 :- func make_info_get_direct_imports_intermod_cache(make_info) =
@@ -405,7 +405,7 @@
                 % so we never have to read and parse each file more than once.
                 %
                 % XXX This field is not actually used yet.
-                mki_mi_read_module_maps :: have_read_module_maps,
+                mki_mi_read_module_maps :: have_parse_tree_maps,
 
                 % For each module, the set of modules for which the `.int'
                 % files are read, excluding those read as a result of reading
@@ -465,7 +465,7 @@ init_make_info(OptionsVariables, DetectedGradeFlags, KeepGoing, OptionArgs,
         ErrorFileModules,
         MaybeImportingModule,
         MaybeStdoutLock,
-        init_have_read_module_maps,
+        init_have_parse_tree_maps,
         init_module_to_module_set_cache,
         init_module_to_module_set_cache,
 %       init_module_to_module_set_cache,

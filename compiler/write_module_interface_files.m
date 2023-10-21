@@ -75,12 +75,12 @@
     %   write_interface_file_int1_int2
     %
     % has an argument of this type. Their callers can set this argument to
-    % do_add_new_to_hrmm to tell the predicate to add the interface file(s)
+    % do_add_new_to_hptm to tell the predicate to add the interface file(s)
     % it has constructed to !HaveReadModuleMaps.
     %
-:- type maybe_add_to_hrmm
-    --->    do_not_add_new_to_hrmm
-    ;       do_add_new_to_hrmm.
+:- type maybe_add_to_hptm
+    --->    do_not_add_new_to_hptm
+    ;       do_add_new_to_hptm.
 
     % write_short_interface_file_int3(ProgressStream, Globals, AddToHrmm,
     %   ParseTreeModuleSrc, Succeeded, Specs, !HaveReadModuleMaps, !IO):
@@ -99,9 +99,9 @@
     % construct it without any errors, *and* AddToHrmm says we should.
     %
 :- pred write_short_interface_file_int3(io.text_output_stream::in, globals::in,
-    maybe_add_to_hrmm::in, parse_tree_module_src::in,
+    maybe_add_to_hptm::in, parse_tree_module_src::in,
     maybe_succeeded::out, list(error_spec)::out,
-    have_read_module_maps::in, have_read_module_maps::out,
+    have_parse_tree_maps::in, have_parse_tree_maps::out,
     io::di, io::uo) is det.
 
     % write_private_interface_file_int0(ProgressStream, Globals, AddToHrmm,
@@ -115,16 +115,16 @@
     % section; it is used when compiling submodules.)
     %
 :- pred write_private_interface_file_int0(io.text_output_stream::in,
-    globals::in, maybe_add_to_hrmm::in, file_name::in, module_name::in,
+    globals::in, maybe_add_to_hptm::in, file_name::in, module_name::in,
     maybe(timestamp)::in, parse_tree_module_src::in,
     maybe_succeeded::out, list(error_spec)::out,
-    have_read_module_maps::in, have_read_module_maps::out,
+    have_parse_tree_maps::in, have_parse_tree_maps::out,
     io::di, io::uo) is det.
 :- pred write_private_interface_file_int0_burdened_module(
     io.text_output_stream::in, globals::in,
-    maybe_add_to_hrmm::in, burdened_module::in,
+    maybe_add_to_hptm::in, burdened_module::in,
     maybe_succeeded::out, list(error_spec)::out,
-    have_read_module_maps::in, have_read_module_maps::out,
+    have_parse_tree_maps::in, have_parse_tree_maps::out,
     io::di, io::uo) is det.
 
     % write_interface_file_int1_int2(ProgressStream, Globals,
@@ -136,16 +136,16 @@
     % and short (`.int2') interface files for the module.
     %
 :- pred write_interface_file_int1_int2(io.text_output_stream::in, globals::in,
-    maybe_add_to_hrmm::in, file_name::in, module_name::in,
+    maybe_add_to_hptm::in, file_name::in, module_name::in,
     maybe(timestamp)::in, parse_tree_module_src::in,
     maybe_succeeded::out, list(error_spec)::out,
-    have_read_module_maps::in, have_read_module_maps::out,
+    have_parse_tree_maps::in, have_parse_tree_maps::out,
     io::di, io::uo) is det.
 :- pred write_interface_file_int1_int2_burdened_module(
     io.text_output_stream::in, globals::in,
-    maybe_add_to_hrmm::in, burdened_module::in,
+    maybe_add_to_hptm::in, burdened_module::in,
     maybe_succeeded::out, list(error_spec)::out,
-    have_read_module_maps::in, have_read_module_maps::out,
+    have_parse_tree_maps::in, have_parse_tree_maps::out,
     io::di, io::uo) is det.
 
 %---------------------------------------------------------------------------%
@@ -171,7 +171,6 @@
 :- import_module io.file.
 :- import_module map.
 :- import_module require.
-:- import_module set.
 :- import_module string.
 
 %---------------------------------------------------------------------------%
@@ -202,20 +201,13 @@ write_short_interface_file_int3(ProgressStream, Globals, AddToHrmm,
         Succeeded = OutputSucceeded `and` TouchSucceeded,
         Specs = Specs1,
         (
-            AddToHrmm = do_not_add_new_to_hrmm
+            AddToHrmm = do_not_add_new_to_hptm
         ;
-            AddToHrmm = do_add_new_to_hrmm,
-            Int3Map0 = !.HaveReadModuleMaps ^ hrmm_int3,
-            % XXX If needed for smart recompilation, we could get
-            % the actual timestamp of the int0 file.
-            MaybeTimestampInt = maybe.no,
-            % XXX ReadModuleErrors
-            ReadModuleErrors = read_module_errors(set.init, [],
-                set.init, [], []),
-            HRM = have_read_module(FileName, MaybeTimestampInt,
-                ParseTreeInt3, ReadModuleErrors),
+            AddToHrmm = do_add_new_to_hptm,
+            Int3Map0 = !.HaveReadModuleMaps ^ hptm_int3,
+            HRM = have_module(FileName, ParseTreeInt3, was_constructed),
             map.set(ModuleName, HRM, Int3Map0, Int3Map),
-            !HaveReadModuleMaps ^ hrmm_int3 := Int3Map
+            !HaveReadModuleMaps ^ hptm_int3 := Int3Map
         )
     ;
         EffectivelyErrors = yes,
@@ -276,20 +268,13 @@ write_private_interface_file_int0(ProgressStream, Globals, AddToHrmm,
                 TouchSucceeded, !IO),
             Succeeded = OutputSucceeded `and` TouchSucceeded,
             (
-                AddToHrmm = do_not_add_new_to_hrmm
+                AddToHrmm = do_not_add_new_to_hptm
             ;
-                AddToHrmm = do_add_new_to_hrmm,
-                Int0Map0 = !.HaveReadModuleMaps ^ hrmm_int0,
-                % XXX If needed for smart recompilation, we could get
-                % the actual timestamp of the int0 file.
-                MaybeTimestampInt = maybe.no,
-                % XXX ReadModuleErrors
-                ReadModuleErrors = read_module_errors(set.init, [],
-                    set.init, [], []),
-                HRM = have_read_module(FileName, MaybeTimestampInt,
-                    ParseTreeInt0, ReadModuleErrors),
+                AddToHrmm = do_add_new_to_hptm,
+                Int0Map0 = !.HaveReadModuleMaps ^ hptm_int0,
+                HRM = have_module(FileName, ParseTreeInt0, was_constructed),
                 map.set(ModuleName, HRM, Int0Map0, Int0Map),
-                !HaveReadModuleMaps ^ hrmm_int0 := Int0Map
+                !HaveReadModuleMaps ^ hptm_int0 := Int0Map
             )
         ;
             EffectiveGetQualSpecs = [_ | _],
@@ -389,25 +374,17 @@ write_interface_file_int1_int2(ProgressStream, Globals, AddToHrmm,
             Succeeded = OutputSucceeded1 `and` OutputSucceeded2 `and`
                 TouchSucceeded,
             (
-                AddToHrmm = do_not_add_new_to_hrmm
+                AddToHrmm = do_not_add_new_to_hptm
             ;
-                AddToHrmm = do_add_new_to_hrmm,
-                Int1Map0 = !.HaveReadModuleMaps ^ hrmm_int1,
-                Int2Map0 = !.HaveReadModuleMaps ^ hrmm_int2,
-                % XXX If needed for smart recompilation, we could get
-                % the actual timestamps of the .int and .int2 files.
-                MaybeTimestampInt = maybe.no,
-                % XXX ReadModuleErrors
-                ReadModuleErrors = read_module_errors(set.init, [],
-                    set.init, [], []),
-                HRM1 = have_read_module(FileName1, MaybeTimestampInt,
-                    ParseTreeInt1, ReadModuleErrors),
-                HRM2 = have_read_module(FileName2, MaybeTimestampInt,
-                    ParseTreeInt2, ReadModuleErrors),
+                AddToHrmm = do_add_new_to_hptm,
+                Int1Map0 = !.HaveReadModuleMaps ^ hptm_int1,
+                Int2Map0 = !.HaveReadModuleMaps ^ hptm_int2,
+                HRM1 = have_module(FileName1, ParseTreeInt1, was_constructed),
+                HRM2 = have_module(FileName2, ParseTreeInt2, was_constructed),
                 map.set(ModuleName, HRM1, Int1Map0, Int1Map),
                 map.set(ModuleName, HRM2, Int2Map0, Int2Map),
-                !HaveReadModuleMaps ^ hrmm_int1 := Int1Map,
-                !HaveReadModuleMaps ^ hrmm_int2 := Int2Map
+                !HaveReadModuleMaps ^ hptm_int1 := Int1Map,
+                !HaveReadModuleMaps ^ hptm_int2 := Int2Map
             )
         ;
             EffectiveGetQualSpecs = [_ | _],
@@ -558,8 +535,9 @@ maybe_read_old_int0_and_compare_for_smart_recomp(ProgressStream,
             rrm_old, ignore_errors, do_search, ModuleName,
             always_read_module(dont_return_timestamp), HaveReadInt0, !IO),
         (
-            HaveReadInt0 = have_read_module(_FN, _MTS,
-                OldParseTreeInt0, OldModuleErrors),
+            HaveReadInt0 = have_module(_FN, OldParseTreeInt0, Source),
+            have_parse_tree_source_get_maybe_timestamp_errors(Source,
+                _, OldModuleErrors),
             ( if there_are_no_errors(OldModuleErrors) then
                 MaybeOldParseTreeInt0 = yes(OldParseTreeInt0)
             else
@@ -598,8 +576,9 @@ maybe_read_old_int1_and_compare_for_smart_recomp(ProgressStream,
             rrm_old, ignore_errors, do_search, ModuleName,
             always_read_module(dont_return_timestamp), HaveReadInt1, !IO),
         (
-            HaveReadInt1 = have_read_module(_FN, _MTS,
-                OldParseTreeInt1, OldModuleErrors),
+            HaveReadInt1 = have_module(_FN, OldParseTreeInt1, Source),
+            have_parse_tree_source_get_maybe_timestamp_errors(Source,
+                _, OldModuleErrors),
             ( if there_are_no_errors(OldModuleErrors) then
                 MaybeOldParseTreeInt1 = yes(OldParseTreeInt1)
             else
@@ -638,8 +617,9 @@ maybe_read_old_int2_and_compare_for_smart_recomp(ProgressStream,
             rrm_old, ignore_errors, do_search, ModuleName,
             always_read_module(dont_return_timestamp), HaveReadInt2, !IO),
         (
-            HaveReadInt2 = have_read_module(_FN, _MTS,
-                OldParseTreeInt2, OldModuleErrors),
+            HaveReadInt2 = have_module(_FN, OldParseTreeInt2, Source),
+            have_parse_tree_source_get_maybe_timestamp_errors(Source,
+                _, OldModuleErrors),
             ( if there_are_no_errors(OldModuleErrors) then
                 MaybeOldParseTreeInt2 = yes(OldParseTreeInt2)
             else

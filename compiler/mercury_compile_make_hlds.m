@@ -47,7 +47,7 @@
     module_info::out, qual_info::out, maybe(module_timestamp_map)::out,
     bool::out, bool::out, bool::out,
     dump_info::in, dump_info::out, list(error_spec)::in, list(error_spec)::out,
-    have_read_module_maps::in, have_read_module_maps::out,
+    have_parse_tree_maps::in, have_parse_tree_maps::out,
     io::di, io::uo) is det.
 
 %---------------------------------------------------------------------------%
@@ -467,7 +467,7 @@ read_dependency_file_get_modules(InStream, TransOptDeps, !IO) :-
     bool::in, maybe(list(module_name))::in, bool::out,
     module_baggage::in, module_baggage::out,
     aug_compilation_unit::in, aug_compilation_unit::out,
-    have_read_module_maps::in, have_read_module_maps::out,
+    have_parse_tree_maps::in, have_parse_tree_maps::out,
     io::di, io::uo) is det.
 
 maybe_grab_plain_and_trans_opt_files(ProgressStream, ErrorStream, Globals,
