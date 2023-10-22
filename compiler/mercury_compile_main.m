@@ -610,11 +610,11 @@ main_after_setup(ProgressStream, ErrorStream, Globals, DetectedGradeFlags,
         display_compiler_version(StdOutStream, !IO)
     else
         globals.get_op_mode(Globals, OpMode),
-        HaveReadModuleMaps0 = init_have_parse_tree_maps,
+        HaveParseTreeMaps0 = init_have_parse_tree_maps,
         Specs0 = [],
         do_op_mode(ProgressStream, ErrorStream, Globals, OpMode,
             DetectedGradeFlags, OptionVariables, OptionArgs, Args,
-            HaveReadModuleMaps0, _HaveReadModuleMaps, Specs0, Specs, !IO),
+            HaveParseTreeMaps0, _HaveParseTreeMaps, Specs0, Specs, !IO),
         write_error_specs(ErrorStream, Globals, Specs, !IO)
     ).
 
@@ -627,7 +627,7 @@ main_after_setup(ProgressStream, ErrorStream, Globals, DetectedGradeFlags,
     list(error_spec)::in, list(error_spec)::out, io::di, io::uo) is det.
 
 do_op_mode(ProgressStream, ErrorStream, Globals, OpMode, DetectedGradeFlags,
-        OptionVariables, OptionArgs, Args, !HaveReadModuleMaps, !Specs, !IO) :-
+        OptionVariables, OptionArgs, Args, !HaveParseTreeMaps, !Specs, !IO) :-
     (
         OpMode = opm_top_make,
         % make_process_compiler_args itself does not pay attention to the
@@ -663,7 +663,7 @@ do_op_mode(ProgressStream, ErrorStream, Globals, OpMode, DetectedGradeFlags,
             do_op_mode_args(ProgressStream, ErrorStream, Globals,
                 OpModeArgs, InvokedByMmcMake, FileNamesFromStdin,
                 DetectedGradeFlags, OptionVariables, OptionArgs, Args,
-                !HaveReadModuleMaps, !Specs, !IO)
+                !HaveParseTreeMaps, !Specs, !IO)
         )
     ).
 
@@ -802,7 +802,7 @@ do_op_mode_query(ErrorStream, Globals, OpModeQuery, OptionVariables, !IO) :-
 
 do_op_mode_args(ProgressStream, ErrorStream, Globals,
         OpModeArgs, InvokedByMmcMake, FileNamesFromStdin, DetectedGradeFlags,
-        OptionVariables, OptionArgs, Args, !HaveReadModuleMaps, !Specs, !IO) :-
+        OptionVariables, OptionArgs, Args, !HaveParseTreeMaps, !Specs, !IO) :-
     (
         InvokedByMmcMake = op_mode_not_invoked_by_mmc_make,
         % We used to do this check once per compiler arg, which was
@@ -852,7 +852,7 @@ do_op_mode_args(ProgressStream, ErrorStream, Globals,
                 StdIn, Globals, OpModeArgs, InvokedByMmcMake,
                 DetectedGradeFlags, OptionVariables, OptionArgs,
                 cord.empty, ModulesToLinkCord, cord.empty, ExtraObjFilesCord,
-                !HaveReadModuleMaps, !Specs, !IO)
+                !HaveParseTreeMaps, !Specs, !IO)
         ;
             FileNamesFromStdin = no,
             (
@@ -862,14 +862,14 @@ do_op_mode_args(ProgressStream, ErrorStream, Globals,
                     DetectedGradeFlags, OptionVariables, OptionArgs, Args,
                     cord.empty, ModulesToLinkCord,
                     cord.empty, ExtraObjFilesCord,
-                    !HaveReadModuleMaps, !Specs, !IO)
+                    !HaveParseTreeMaps, !Specs, !IO)
             ;
                 InvokedByMmcMake = op_mode_invoked_by_mmc_make,
                 % `mmc --make' has already set up the options.
                 do_process_compiler_cmd_line_args(ProgressStream, ErrorStream,
                     Globals, OpModeArgs, InvokedByMmcMake, OptionArgs, Args,
                     cord.empty, ModulesToLinkCord,
-                    cord.empty, ExtraObjFilesCord, !HaveReadModuleMaps, !IO)
+                    cord.empty, ExtraObjFilesCord, !HaveParseTreeMaps, !IO)
             )
         ),
         ModulesToLink = cord.list(ModulesToLinkCord),
@@ -962,7 +962,7 @@ do_op_mode_args(ProgressStream, ErrorStream, Globals,
 setup_and_process_compiler_stdin_args(ProgressStream, ErrorStream, StdIn,
         Globals, OpModeArgs, InvokedByMmcMake, DetectedGradeFlags,
         OptionVariables, OptionArgs, !Modules, !ExtraObjFiles,
-        !HaveReadModuleMaps, !Specs, !IO) :-
+        !HaveParseTreeMaps, !Specs, !IO) :-
     ( if cord.is_empty(!.Modules) then
         true
     else
@@ -975,13 +975,13 @@ setup_and_process_compiler_stdin_args(ProgressStream, ErrorStream, StdIn,
         setup_and_process_compiler_arg(ProgressStream, ErrorStream, Globals,
             OpModeArgs, InvokedByMmcMake, DetectedGradeFlags, OptionVariables,
             OptionArgs, Arg, ArgModules, ArgExtraObjFiles,
-            !HaveReadModuleMaps, !Specs, !IO),
+            !HaveParseTreeMaps, !Specs, !IO),
         !:Modules = !.Modules ++ cord.from_list(ArgModules),
         !:ExtraObjFiles = !.ExtraObjFiles ++ cord.from_list(ArgExtraObjFiles),
         setup_and_process_compiler_stdin_args(ProgressStream, ErrorStream,
             StdIn, Globals, OpModeArgs, InvokedByMmcMake, DetectedGradeFlags,
             OptionVariables, OptionArgs, !Modules, !ExtraObjFiles,
-            !HaveReadModuleMaps, !Specs, !IO)
+            !HaveParseTreeMaps, !Specs, !IO)
     ;
         LineResult = eof
     ;
@@ -1006,15 +1006,15 @@ setup_and_process_compiler_stdin_args(ProgressStream, ErrorStream, StdIn,
     list(error_spec)::in, list(error_spec)::out, io::di, io::uo) is det.
 
 setup_and_process_compiler_cmd_line_args(_, _, _, _, _, _, _, _, [],
-        !Modules, !ExtraObjFiles, !HaveReadModuleMaps, !Specs, !IO).
+        !Modules, !ExtraObjFiles, !HaveParseTreeMaps, !Specs, !IO).
 setup_and_process_compiler_cmd_line_args(ProgressStream, ErrorStream, Globals,
         OpModeArgs, InvokedByMmcMake, DetectedGradeFlags,
         OptionVariables, OptionArgs, [Arg | Args], !Modules, !ExtraObjFiles,
-        !HaveReadModuleMaps, !Specs, !IO) :-
+        !HaveParseTreeMaps, !Specs, !IO) :-
     setup_and_process_compiler_arg(ProgressStream, ErrorStream, Globals,
         OpModeArgs, InvokedByMmcMake, DetectedGradeFlags,
         OptionVariables, OptionArgs, Arg, ArgModules, ArgExtraObjFiles,
-        !HaveReadModuleMaps, !Specs, !IO),
+        !HaveParseTreeMaps, !Specs, !IO),
     (
         Args = []
     ;
@@ -1026,7 +1026,7 @@ setup_and_process_compiler_cmd_line_args(ProgressStream, ErrorStream, Globals,
     setup_and_process_compiler_cmd_line_args(ProgressStream, ErrorStream,
         Globals, OpModeArgs, InvokedByMmcMake, DetectedGradeFlags,
         OptionVariables, OptionArgs, Args, !Modules, !ExtraObjFiles,
-        !HaveReadModuleMaps, !Specs, !IO).
+        !HaveParseTreeMaps, !Specs, !IO).
 
 :- pred do_process_compiler_cmd_line_args(io.text_output_stream::in,
     io.text_output_stream::in, globals::in,
@@ -1037,15 +1037,15 @@ setup_and_process_compiler_cmd_line_args(ProgressStream, ErrorStream, Globals,
     io::di, io::uo) is det.
 
 do_process_compiler_cmd_line_args(_, _, _, _, _, _, [],
-        !Modules, !ExtraObjFiles, !HaveReadModuleMaps, !IO).
+        !Modules, !ExtraObjFiles, !HaveParseTreeMaps, !IO).
 do_process_compiler_cmd_line_args(ProgressStream, ErrorStream, Globals,
         OpModeArgs, InvokedByMmcMake, OptionArgs, [Arg | Args],
-        !Modules, !ExtraObjFiles, !HaveReadModuleMaps, !IO) :-
+        !Modules, !ExtraObjFiles, !HaveParseTreeMaps, !IO) :-
     % `mmc --make' has already set up the options.
     FileOrModule = string_to_file_or_module(Arg),
     do_process_compiler_arg(ProgressStream, ErrorStream, Globals,
         OpModeArgs, InvokedByMmcMake, OptionArgs, FileOrModule,
-        ArgModules, ArgExtraObjFiles, !HaveReadModuleMaps, !IO),
+        ArgModules, ArgExtraObjFiles, !HaveParseTreeMaps, !IO),
     (
         Args = []
     ;
@@ -1056,7 +1056,7 @@ do_process_compiler_cmd_line_args(ProgressStream, ErrorStream, Globals,
     !:ExtraObjFiles = !.ExtraObjFiles ++ cord.from_list(ArgExtraObjFiles),
     do_process_compiler_cmd_line_args(ProgressStream, ErrorStream, Globals,
         OpModeArgs, InvokedByMmcMake, OptionArgs, Args,
-        !Modules, !ExtraObjFiles, !HaveReadModuleMaps, !IO).
+        !Modules, !ExtraObjFiles, !HaveParseTreeMaps, !IO).
 
 %---------------------%
 
@@ -1083,7 +1083,7 @@ do_process_compiler_cmd_line_args(ProgressStream, ErrorStream, Globals,
 setup_and_process_compiler_arg(ProgressStream, ErrorStream, Globals,
         OpModeArgs, InvokedByMmcMake, DetectedGradeFlags,
         OptionVariables, OptionArgs, Arg, ModulesToLink, ExtraObjFiles,
-        !HaveReadModuleMaps, !Specs, !IO) :-
+        !HaveParseTreeMaps, !Specs, !IO) :-
     get_default_options(Globals, DefaultOptionTable),
     FileOrModule = string_to_file_or_module(Arg),
     ModuleName = file_or_module_to_module_name(FileOrModule),
@@ -1102,7 +1102,7 @@ setup_and_process_compiler_arg(ProgressStream, ErrorStream, Globals,
         MayBuild = may_build(_AllOptionArgs, BuildGlobals),
         do_process_compiler_arg(ProgressStream, ErrorStream, BuildGlobals,
             OpModeArgs, InvokedByMmcMake, OptionArgs, FileOrModule,
-            ModulesToLink, ExtraObjFiles, !HaveReadModuleMaps, !IO)
+            ModulesToLink, ExtraObjFiles, !HaveParseTreeMaps, !IO)
     ).
 
 %---------------------%
@@ -1116,7 +1116,7 @@ setup_and_process_compiler_arg(ProgressStream, ErrorStream, Globals,
 
 do_process_compiler_arg(ProgressStream, ErrorStream, Globals0,
         OpModeArgs, InvokedByMmcMake, OptionArgs, FileOrModule,
-        ModulesToLink, ExtraObjFiles, !HaveReadModuleMaps, !IO) :-
+        ModulesToLink, ExtraObjFiles, !HaveParseTreeMaps, !IO) :-
     % XXX ITEM_LIST There is an inconsistency between the various OpModeArgs
     % that construct a module_and_imports structure in how they do it.
     %
@@ -1173,7 +1173,7 @@ do_process_compiler_arg(ProgressStream, ErrorStream, Globals0,
             contains_errors(Globals0, DepSpecs) = no
         then
             deps_make_ints(ProgressStream, Globals0, DepsMap,
-                DepSpecs, Specs, !HaveReadModuleMaps, !IO)
+                DepSpecs, Specs, !HaveParseTreeMaps, !IO)
         else
             Specs = DepSpecs
         ),
@@ -1197,7 +1197,7 @@ do_process_compiler_arg(ProgressStream, ErrorStream, Globals0,
     ;
         OpModeArgs = opma_convert_to_mercury,
         read_module_or_file(ProgressStream, Globals0, Globals, FileOrModule,
-            dont_return_timestamp, HaveReadSrc, !HaveReadModuleMaps, !IO),
+            dont_return_timestamp, HaveReadSrc, !HaveParseTreeMaps, !IO),
         (
             HaveReadSrc = have_not_read_module(_FileName, Errors)
         ;
@@ -1221,13 +1221,13 @@ do_process_compiler_arg(ProgressStream, ErrorStream, Globals0,
     ;
         OpModeArgs = opma_make_interface(InterfaceFile),
         do_process_compiler_arg_make_interface(ProgressStream, Globals0,
-            InterfaceFile, FileOrModule, SpecsList, !HaveReadModuleMaps, !IO),
+            InterfaceFile, FileOrModule, SpecsList, !HaveParseTreeMaps, !IO),
         ModulesToLink = [],
         ExtraObjFiles = []
     ;
         OpModeArgs = opma_augment(OpModeAugment),
         find_modules_to_recompile(ProgressStream, Globals0, Globals,
-            FileOrModule, ModulesToRecompile, !HaveReadModuleMaps, !IO),
+            FileOrModule, ModulesToRecompile, !HaveParseTreeMaps, !IO),
         ( if ModulesToRecompile = some_modules([]) then
             % XXX Currently smart recompilation is disabled if mmc is linking
             % the executable, because it doesn't know how to check whether
@@ -1239,7 +1239,7 @@ do_process_compiler_arg(ProgressStream, ErrorStream, Globals0,
             read_augment_and_process_module(ProgressStream, ErrorStream,
                 Globals, OpModeAugment, InvokedByMmcMake, OptionArgs,
                 FileOrModule, ModulesToRecompile, ModulesToLink, ExtraObjFiles,
-                Specs, !HaveReadModuleMaps, !IO),
+                Specs, !HaveParseTreeMaps, !IO),
             SpecsList = [Specs]
         )
     ),
@@ -1254,7 +1254,7 @@ do_process_compiler_arg(ProgressStream, ErrorStream, Globals0,
     io::di, io::uo) is det.
 
 deps_make_ints(ProgressStream, Globals, DepsMap,
-        !Specs, !HaveReadModuleMaps, !IO) :-
+        !Specs, !HaveParseTreeMaps, !IO) :-
     map.values(DepsMap, DepsList),
     list.filter_map_foldl(gather_local_parse_tree_module_srcs,
         DepsList, BurdenedModules, [], Ancestors),
@@ -1264,7 +1264,7 @@ deps_make_ints(ProgressStream, Globals, DepsMap,
         write_short_interface_file_int3(ProgressStream, Globals,
             do_add_new_to_hptm),
         ParseTreeModuleSrcs, _Succeededs3, SpecsList3,
-        !HaveReadModuleMaps, !IO),
+        !HaveParseTreeMaps, !IO),
     list.condense(SpecsList3, Specs3),
     !:Specs = Specs3 ++ !.Specs,
     Errors3 = contains_errors(Globals, Specs3),
@@ -1278,7 +1278,7 @@ deps_make_ints(ProgressStream, Globals, DepsMap,
             write_private_interface_file_int0_burdened_module(ProgressStream,
                 Globals, do_add_new_to_hptm),
             AncestorBurdenedModules, _Succeededs0, RawSpecsList0,
-            !HaveReadModuleMaps, !IO),
+            !HaveParseTreeMaps, !IO),
         % The code above created a .int3 file for every module in
         % ParseTreeModuleSrcs, but some of those modules may import
         % modules that are NOT in ParseTreeModuleSrcs. These modules
@@ -1298,7 +1298,7 @@ deps_make_ints(ProgressStream, Globals, DepsMap,
                 write_interface_file_int1_int2_burdened_module(ProgressStream,
                     Globals, do_add_new_to_hptm),
                 BurdenedModules, _Succeededs12, RawSpecsList12,
-                !HaveReadModuleMaps, !IO),
+                !HaveParseTreeMaps, !IO),
             list.condense(RawSpecsList12, RawSpecs12),
             handle_not_found_files(RawSpecs12, Specs12, _Continue12),
             !:Specs = Specs12 ++ !.Specs
@@ -1381,7 +1381,7 @@ acc_not_found_files(Spec, !NotFoundFiles, !OtherSpecs) :-
     io::di, io::uo) is det.
 
 do_process_compiler_arg_make_interface(ProgressStream, Globals0,
-        InterfaceFile, FileOrModule, SpecLists, !HaveReadModuleMaps, !IO) :-
+        InterfaceFile, FileOrModule, SpecLists, !HaveParseTreeMaps, !IO) :-
     (
         InterfaceFile = omif_int3,
         ReturnTimestamp = dont_return_timestamp
@@ -1399,7 +1399,7 @@ do_process_compiler_arg_make_interface(ProgressStream, Globals0,
             version_numbers_return_timestamp(GenerateVersionNumbers)
     ),
     read_module_or_file(ProgressStream, Globals0, Globals, FileOrModule,
-        ReturnTimestamp, HaveReadSrc, !HaveReadModuleMaps, !IO),
+        ReturnTimestamp, HaveReadSrc, !HaveParseTreeMaps, !IO),
     (
         HaveReadSrc = have_not_read_module(_FileName, ReadErrors),
         ReadSpecs = get_read_module_specs(ReadErrors),
@@ -1431,7 +1431,7 @@ do_process_compiler_arg_make_interface(ProgressStream, Globals0,
                         Globals0, do_not_add_new_to_hptm,
                         FileName, ModuleName, MaybeTimestamp),
                     AncestorParseTreeModuleSrcs, _Succeededs, WriteSpecsList,
-                    !HaveReadModuleMaps, !IO)
+                    !HaveParseTreeMaps, !IO)
             ;
                 InterfaceFile = omif_int1_int2,
                 list.map2_foldl2(
@@ -1439,14 +1439,14 @@ do_process_compiler_arg_make_interface(ProgressStream, Globals0,
                         Globals0, do_not_add_new_to_hptm,
                         FileName, ModuleName, MaybeTimestamp),
                     ParseTreeModuleSrcs, _Succeededs, WriteSpecsList,
-                    !HaveReadModuleMaps, !IO)
+                    !HaveParseTreeMaps, !IO)
             ;
                 InterfaceFile = omif_int3,
                 list.map2_foldl2(
                     write_short_interface_file_int3(ProgressStream,
                         Globals0, do_not_add_new_to_hptm),
                     ParseTreeModuleSrcs, _Succeededs, WriteSpecsList,
-                    !HaveReadModuleMaps, !IO)
+                    !HaveParseTreeMaps, !IO)
             ),
             SpecLists = [ReadSplitSpecs | WriteSpecsList]
         )
@@ -1465,7 +1465,7 @@ version_numbers_return_timestamp(yes) = do_return_timestamp.
     io::di, io::uo) is det.
 
 find_modules_to_recompile(ProgressStream, Globals0, Globals, FileOrModule,
-        ModulesToRecompile, !HaveReadModuleMaps, !IO) :-
+        ModulesToRecompile, !HaveParseTreeMaps, !IO) :-
     globals.lookup_bool_option(Globals0, smart_recompilation, Smart0),
     io_get_disable_smart_recompilation(DisableSmart, !IO),
     (
@@ -1502,7 +1502,7 @@ find_modules_to_recompile(ProgressStream, Globals0, Globals, FileOrModule,
         find_timestamp_files(Globals, FindTimestampFiles),
         recompilation.check.should_recompile(ProgressStream, Globals,
             ModuleName, FindTargetFiles, FindTimestampFiles,
-            ModulesToRecompile, !HaveReadModuleMaps, !IO)
+            ModulesToRecompile, !HaveParseTreeMaps, !IO)
     ;
         Smart = no,
         ModulesToRecompile = all_modules
@@ -1587,7 +1587,7 @@ find_timestamp_files_2(Globals, TimestampExt,
 read_augment_and_process_module(ProgressStream, ErrorStream, Globals0,
         OpModeAugment, InvokedByMmcMake, OptionArgs, FileOrModule,
         MaybeModulesToRecompile, ModulesToLink, ExtraObjFiles, Specs,
-        !HaveReadModuleMaps, !IO) :-
+        !HaveParseTreeMaps, !IO) :-
     (
         ( OpModeAugment = opmau_make_plain_opt
         ; OpModeAugment = opmau_make_trans_opt
@@ -1606,7 +1606,7 @@ read_augment_and_process_module(ProgressStream, ErrorStream, Globals0,
             OptionArgs, [], !IO)
     ),
     read_module_or_file(ProgressStream, Globals0, Globals, FileOrModule,
-        do_return_timestamp, HaveReadSrc, !HaveReadModuleMaps, !IO),
+        do_return_timestamp, HaveReadSrc, !HaveParseTreeMaps, !IO),
     (
         HaveReadSrc = have_not_read_module(_, Errors),
         Specs = get_read_module_specs(Errors),
@@ -1629,7 +1629,7 @@ read_augment_and_process_module(ProgressStream, ErrorStream, Globals0,
                 Globals, OpModeAugment, InvokedByMmcMake, FileName,
                 MaybeTimestamp, ParseTreeSrc, MaybeModulesToRecompile,
                 ModulesToLink, ExtraObjFiles, Specs0, Specs,
-                !HaveReadModuleMaps, !IO)
+                !HaveParseTreeMaps, !IO)
         )
     ).
 
@@ -1645,7 +1645,7 @@ read_augment_and_process_module(ProgressStream, ErrorStream, Globals0,
 read_augment_and_process_module_ok(ProgressStream, ErrorStream, Globals,
         OpModeAugment, InvokedByMmcMake, FileName, MaybeTimestamp,
         ParseTreeSrc, MaybeModulesToRecompile, ModulesToLink, ExtraObjFiles,
-        !Specs, !HaveReadModuleMaps, !IO) :-
+        !Specs, !HaveParseTreeMaps, !IO) :-
     ModuleName = ParseTreeSrc ^ pts_module_name,
     split_into_component_modules_perform_checks(Globals, ParseTreeSrc,
         ParseTreeModuleSrcs0, !Specs),
@@ -1689,7 +1689,7 @@ read_augment_and_process_module_ok(ProgressStream, ErrorStream, Globals,
         GlobalsToUse, OpModeAugment, InvokedByMmcMake, FileName,
         MaybeTimestamp, ModuleName, NestedModuleNames, FindTimestampFiles,
         ParseTreeModuleSrcsToRecompile, ModulesToLink, ExtraObjFiles,
-        !Specs, !HaveReadModuleMaps, !IO).
+        !Specs, !HaveParseTreeMaps, !IO).
 
 :- pred maybe_report_cmd_line(io.text_output_stream::in, bool::in,
     list(string)::in, list(string)::in, io::di, io::uo) is det.
@@ -1739,7 +1739,7 @@ file_or_module_to_module_name(fm_module(ModuleName)) = ModuleName.
     io::di, io::uo) is det.
 
 read_module_or_file(ProgressStream, Globals0, Globals, FileOrModuleName,
-        ReturnTimestamp, HaveSrc, !HaveReadModuleMaps, !IO) :-
+        ReturnTimestamp, HaveSrc, !HaveParseTreeMaps, !IO) :-
     globals.lookup_bool_option(Globals0, verbose, Verbose),
     (
         FileOrModuleName = fm_module(ModuleName),
@@ -1758,7 +1758,7 @@ read_module_or_file(ProgressStream, Globals0, Globals, FileOrModuleName,
     ( if
         % Avoid rereading the module if it was already read
         % by recompilation.version.m.
-        map.search(!.HaveReadModuleMaps ^ hptm_src, ModuleName, HaveSrc0),
+        map.search(!.HaveParseTreeMaps ^ hptm_src, ModuleName, HaveSrc0),
         HaveSrc0 = have_module(FN, PT, Source0),
         Source0 = was_read(MaybeTimestamp0, E),
         return_timestamp_if_needed(ReturnTimestamp,
@@ -1770,9 +1770,9 @@ read_module_or_file(ProgressStream, Globals0, Globals, FileOrModuleName,
         HaveSrc = HaveSrc1,
         % XXX When we have read the module before, it *could* have had
         % problems that should cause smart recompilation to be disabled.
-        HaveReadModuleMapSrc0 = !.HaveReadModuleMaps ^ hptm_src,
+        HaveReadModuleMapSrc0 = !.HaveParseTreeMaps ^ hptm_src,
         map.delete(ModuleName, HaveReadModuleMapSrc0, HaveReadModuleMapSrc),
-        !HaveReadModuleMaps ^ hptm_src := HaveReadModuleMapSrc
+        !HaveParseTreeMaps ^ hptm_src := HaveReadModuleMapSrc
     else
         % We don't search `--search-directories' for source files
         % because that can result in the generated interface files
@@ -1829,13 +1829,13 @@ augment_and_process_all_submodules(ProgressStream, ErrorStream, Globals,
         OpModeAugment, InvokedByMmcMake, FileName, MaybeTimestamp,
         SourceFileModuleName, NestedSubModules, FindTimestampFiles,
         ParseTreeModuleSrcs, ModulesToLink, ExtraObjFiles,
-        !Specs, !HaveReadModuleMaps, !IO) :-
+        !Specs, !HaveParseTreeMaps, !IO) :-
     list.map_foldl3(
         augment_and_process_module(ProgressStream, ErrorStream, Globals,
             OpModeAugment, InvokedByMmcMake, FileName, MaybeTimestamp,
             SourceFileModuleName, NestedSubModules, FindTimestampFiles),
         ParseTreeModuleSrcs, ExtraObjFileLists,
-        !Specs, !HaveReadModuleMaps, !IO),
+        !Specs, !HaveParseTreeMaps, !IO),
     list.map(module_to_link, ParseTreeModuleSrcs, ModulesToLink),
     list.condense(ExtraObjFileLists, ExtraObjFiles).
 
@@ -1874,7 +1874,7 @@ module_to_link(ParseTreeModuleSrc, ModuleToLink) :-
 augment_and_process_module(ProgressStream, ErrorStream, Globals,
         OpModeAugment, InvokedByMmcMake, SourceFileName, MaybeTimestamp,
         SourceFileModuleName, NestedSubModules, FindTimestampFiles,
-        ParseTreeModuleSrc, ExtraObjFiles, !Specs, !HaveReadModuleMaps, !IO) :-
+        ParseTreeModuleSrc, ExtraObjFiles, !Specs, !HaveParseTreeMaps, !IO) :-
     check_module_interface_for_no_exports(Globals, ParseTreeModuleSrc, !Specs),
     ModuleName = ParseTreeModuleSrc ^ ptms_module_name,
     ( if ModuleName = SourceFileModuleName then
@@ -1886,14 +1886,14 @@ augment_and_process_module(ProgressStream, ErrorStream, Globals,
     % to a module-specific progress stream.
     grab_qual_imported_modules_augment(ProgressStream, Globals, SourceFileName,
         SourceFileModuleName, MaybeTimestamp, MaybeTopModule,
-        ParseTreeModuleSrc, Baggage, AugCompUnit, !HaveReadModuleMaps, !IO),
+        ParseTreeModuleSrc, Baggage, AugCompUnit, !HaveParseTreeMaps, !IO),
     Errors = Baggage ^ mb_errors,
     !:Specs = get_read_module_specs(Errors) ++ !.Specs,
     ( if set.is_empty(Errors ^ rm_fatal_errors) then
         process_augmented_module(ProgressStream, ErrorStream, Globals,
             OpModeAugment, InvokedByMmcMake, Baggage, AugCompUnit,
             FindTimestampFiles, ExtraObjFiles, no_prev_dump, _,
-            !Specs, !HaveReadModuleMaps, !IO)
+            !Specs, !HaveParseTreeMaps, !IO)
     else
         ExtraObjFiles = []
     ).
@@ -1911,7 +1911,7 @@ augment_and_process_module(ProgressStream, ErrorStream, Globals,
 process_augmented_module(ProgressStream, ErrorStream, Globals0,
         OpModeAugment, InvokedByMmcMake, Baggage, AugCompUnit,
         FindTimestampFiles, ExtraObjFiles, !DumpInfo, !Specs,
-        !HaveReadModuleMaps, !IO) :-
+        !HaveParseTreeMaps, !IO) :-
     (
         ( OpModeAugment = opmau_typecheck_only
         ; OpModeAugment = opmau_errorcheck_only
@@ -1945,7 +1945,7 @@ process_augmented_module(ProgressStream, ErrorStream, Globals0,
     make_hlds_pass(ProgressStream, ErrorStream, Globals,
         OpModeAugment, InvokedByMmcMake, WriteDFile, Baggage, AugCompUnit,
         HLDS1, QualInfo, MaybeTimestampMap, UndefTypes, UndefModes,
-        PreHLDSErrors, !DumpInfo, !Specs, !HaveReadModuleMaps, !IO),
+        PreHLDSErrors, !DumpInfo, !Specs, !HaveParseTreeMaps, !IO),
     frontend_pass(ProgressStream, ErrorStream, OpModeAugment, QualInfo,
         UndefTypes, UndefModes, PreHLDSErrors, FrontEndErrors,
         HLDS1, HLDS20, !DumpInfo, !Specs, !IO),
