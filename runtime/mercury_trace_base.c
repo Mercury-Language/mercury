@@ -329,8 +329,11 @@ MR_trace_record_label_exec_counts(void *dummy)
         }
     }
 
-    // XXX WINDOWS: probably wants to be _wfopen on Windows.
-    fp = fopen(name, "w");
+    #if defined(MR_WIN32) && !defined(MR_CYGWIN)
+        fp = _wfopen(MR_utf8_to_wide(name), L"w");
+    #else
+        fp = fopen(name, "w");
+    #endif
     if (fp != NULL) {
         unsigned    num_written;
 
