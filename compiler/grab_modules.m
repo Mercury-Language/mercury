@@ -71,14 +71,47 @@
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
+    % grab_unqual_imported_modules_make_int(ProgressStream, Globals,
+    %   SourceFileName, SourceFileModuleName, ParseTreeModuleSrc,
+    %   Baggage, AugMakeIntUnit, !HaveParseTreeMaps, !IO):
+    %
+    % Given ParseTreeModuleSrc, one of the modules stored in SourceFileName,
+    % read in all the interface files needed to generate its .int0, .int and
+    % .int2 files. (We can generate .int3 files without reading anything.)
+    %
+    % Specifically, this predicate will read in
+    %
+    % - the private interface files (.int0) files for all ancestor modules,
+    %   and
+    % - the unqualified short interface files (.int3) for all the directly
+    %   and indirectly imported modules.
+    %
+    % Return the aug_make_int_unit structure containing all the information
+    % gathered this way.
+    %
+    % SourceFileModuleName is the top-level module name in SourceFileName.
+    % ModuleTimestamp is the timestamp of the SourceFileName.
+    % !HaveParseTreeMaps records the parse trees we have gained access to.
+    %
+:- pred grab_unqual_imported_modules_make_int(io.text_output_stream::in,
+    globals::in, file_name::in, module_name::in,
+    parse_tree_module_src::in, module_baggage::out, aug_make_int_unit::out,
+    have_parse_tree_maps::in, have_parse_tree_maps::out,
+    io::di, io::uo) is det.
+
     % grab_qual_imported_modules_augment(ProgressStream, Globals,
     %   SourceFileName, SourceFileModuleName, MaybeTimestamp, MaybeTopModule,
     %   ParseTreeModuleSrc, Baggage, AugCompUnit, !HaveParseTreeMaps, !IO):
     %
     % Given ParseTreeModuleSrc, one of the modules stored in SourceFileName,
-    % read in
+    % read in all the interface files needed to generate target language
+    % code for that module, or to perform a related task that requires
+    % the same information, such as creating .opt or .trans_opt files.
+    % These tasks are all op_mode_augment tasks.
     %
-    % - the private interface files (.int0) for all the parent modules,
+    % Specifically, this predicate will read in
+    %
+    % - the private interface files (.int0) for all ancestor modules,
     % - the long interface files (.int) for all the imported modules, and
     % - the qualified short interface files (.int2) for all the indirectly
     %   imported modules.
@@ -88,35 +121,12 @@
     %
     % SourceFileModuleName is the top-level module name in SourceFileName.
     % ModuleTimestamp is the timestamp of the SourceFileName.
-    % HaveParseTreeMaps contains the interface files read during
-    % recompilation checking.
-    %
-    % Used when augmenting a module, which we do when asked to do
-    % the tasks described by op_mode_augment. Most of the time, this is
-    % generating target language code, but sometimes it may be e.g.
-    % generating .opt and .trans_opt files.
+    % !HaveParseTreeMaps records the parse trees we have gained access to.
     %
 :- pred grab_qual_imported_modules_augment(io.text_output_stream::in,
     globals::in, file_name::in, module_name::in, maybe(timestamp)::in,
     maybe_top_module::in, parse_tree_module_src::in,
     module_baggage::out, aug_compilation_unit::out,
-    have_parse_tree_maps::in, have_parse_tree_maps::out,
-    io::di, io::uo) is det.
-
-    % grab_unqual_imported_modules_make_int(ProgressStream, Globals,
-    %   SourceFileName, SourceFileModuleName, ParseTreeModuleSrc,
-    %   Baggage, AugMakeIntUnit, !HaveParseTreeMaps, !IO):
-    %
-    % Similar to grab_imported_modules_augment, but only reads in the
-    % unqualified short interfaces (.int3s), and the .int0 files for
-    % parent modules, instead of reading the long interfaces and
-    % qualified short interfaces (.int and int2s).
-    %
-    % Used when generating .int0 files, and when generating .int/.int2 files.
-    %
-:- pred grab_unqual_imported_modules_make_int(io.text_output_stream::in,
-    globals::in, file_name::in, module_name::in,
-    parse_tree_module_src::in, module_baggage::out, aug_make_int_unit::out,
     have_parse_tree_maps::in, have_parse_tree_maps::out,
     io::di, io::uo) is det.
 
@@ -179,6 +189,124 @@
 :- import_module term_context.
 
 %---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+
+grab_unqual_imported_modules_make_int(ProgressStream, Globals, SourceFileName,
+        SourceFileModuleName, ParseTreeModuleSrc,
+        !:Baggage, !:AugMakeIntUnit, !HaveParseTreeMaps, !IO) :-
+    % The predicates grab_imported_modules_augment and
+    % grab_unqual_imported_modules_make_int have quite similar tasks.
+    % Please keep the corresponding parts of these two predicates in sync.
+    %
+    % XXX ITEM_LIST Why aren't we updating !HaveParseTreeMaps?
+
+    some [!IntIndirectImported, !ImpIndirectImported]
+    (
+        ImportAndOrUseMap = ParseTreeModuleSrc ^ ptms_import_use_map,
+        import_and_or_use_map_to_module_name_contexts(ImportAndOrUseMap,
+            IntImportMap, IntUseMap, ImpImportMap, ImpUseMap,
+            IntUseImpImportMap),
+        map.keys_as_set(IntImportMap, IntImports0),
+        map.keys_as_set(IntUseMap, IntUses),
+        map.keys_as_set(ImpImportMap, ImpImports),
+        map.keys_as_set(ImpUseMap, ImpUses),
+        map.keys_as_set(IntUseImpImportMap, IntUsesImpImports),
+        set.insert(mercury_public_builtin_module, IntImports0, IntImports),
+
+        ( if ParseTreeModuleSrc ^ ptms_module_name = SourceFileModuleName then
+            % We lie about the set of modules nested inside this one;
+            % the lie will be correct only by accident.
+            MaybeTopModule = top_module(set.init)
+        else
+            MaybeTopModule = not_top_module
+        ),
+        % We need timestamps only for smart recompilation, which does not
+        % apply to the interface files that this compiler invocation
+        % is creating.
+        MaybeTimestamp = maybe.no,
+        MaybeTimestampMap = maybe.no,
+
+        Errors0 = init_read_module_errors,
+        init_aug_make_int_unit(ParseTreeModuleSrc, !:AugMakeIntUnit),
+        GrabbedFileMap0 =
+            map.singleton(ModuleName, gf_src(ParseTreeModuleSrc)),
+        !:Baggage = module_baggage(SourceFileName, dir.this_directory,
+            SourceFileModuleName, MaybeTopModule,
+            MaybeTimestamp, MaybeTimestampMap, GrabbedFileMap0, Errors0),
+
+        ModuleName = ParseTreeModuleSrc ^ ptms_module_name,
+        SrcMap0 = !.HaveParseTreeMaps ^ hptm_module_src,
+        map.set(ModuleName, ParseTreeModuleSrc, SrcMap0, SrcMap),
+        !HaveParseTreeMaps ^ hptm_module_src := SrcMap,
+
+        % Get the .int0 files of the ancestor modules.
+        Ancestors = get_ancestors(ModuleName),
+        grab_module_int0_files_for_amiu(ProgressStream, Globals,
+            "unqual_ancestors",
+            Ancestors, set.init, AncestorImports, set.init, AncestorUses,
+            !HaveParseTreeMaps, !Baggage, !AugMakeIntUnit, !IO),
+
+        % Get the .int3 files of the modules imported using `import_module'.
+        set.init(!:IntIndirectImported),
+        set.init(!:ImpIndirectImported),
+        grab_module_int3_files(ProgressStream, Globals,
+            "unqual_parent_imported", rwi3_direct_ancestor_import,
+            set.to_sorted_list(AncestorImports),
+            !IntIndirectImported, !HaveParseTreeMaps,
+            !Baggage, !AugMakeIntUnit, !IO),
+        grab_module_int3_files(ProgressStream, Globals,
+            "unqual_int_imported", rwi3_direct_int_import,
+            set.to_sorted_list(IntImports),
+            !IntIndirectImported, !HaveParseTreeMaps,
+            !Baggage, !AugMakeIntUnit, !IO),
+        grab_module_int3_files(ProgressStream, Globals,
+            "unqual_imp_imported", rwi3_direct_imp_import,
+            set.to_sorted_list(ImpImports),
+            !ImpIndirectImported, !HaveParseTreeMaps,
+            !Baggage, !AugMakeIntUnit, !IO),
+
+        % Get the .int3 files of the modules imported using `use_module'.
+        grab_module_int3_files(ProgressStream, Globals,
+            "unqual_parent_used", rwi3_direct_ancestor_use,
+            set.to_sorted_list(AncestorUses),
+            !IntIndirectImported, !HaveParseTreeMaps,
+            !Baggage, !AugMakeIntUnit, !IO),
+        grab_module_int3_files(ProgressStream, Globals,
+            "unqual_int_used", rwi3_direct_int_use,
+            set.to_sorted_list(IntUses),
+            !IntIndirectImported, !HaveParseTreeMaps,
+            !Baggage, !AugMakeIntUnit, !IO),
+        grab_module_int3_files(ProgressStream, Globals,
+            "unqual_imp_used", rwi3_direct_imp_use,
+            set.to_sorted_list(ImpUses),
+            !ImpIndirectImported, !HaveParseTreeMaps,
+            !Baggage, !AugMakeIntUnit, !IO),
+
+        % Get the .int3 files of the modules imported using `use_module'
+        % in the interface and `import_module' in the implementation.
+        grab_module_int3_files(ProgressStream, Globals,
+            "unqual_int_used_imp_imported", rwi3_direct_int_use_imp_import,
+            set.to_sorted_list(IntUsesImpImports),
+            !IntIndirectImported, !HaveParseTreeMaps,
+            !Baggage, !AugMakeIntUnit, !IO),
+
+        % Get the .int3 files of the modules imported in .int3 files.
+        grab_module_int3_files_transitively(ProgressStream, Globals,
+            "unqual_int_indirect_imported", rwi3_indirect_int_use,
+            !.IntIndirectImported, !HaveParseTreeMaps,
+            !Baggage, !AugMakeIntUnit, !IO),
+        grab_module_int3_files_transitively(ProgressStream, Globals,
+            "unqual_imp_indirect_imported", rwi3_indirect_imp_use,
+            !.ImpIndirectImported, !HaveParseTreeMaps,
+            !Baggage, !AugMakeIntUnit, !IO),
+
+        aug_make_int_unit_get_import_accessibility_info(!.AugMakeIntUnit,
+            ImportAccessibilityInfo),
+        check_import_accessibility(ParseTreeModuleSrc,
+            ImportAccessibilityInfo, AccessSpecs),
+        module_baggage_add_nonfatal_specs(AccessSpecs, !Baggage)
+    ).
+
 %---------------------------------------------------------------------------%
 
 grab_qual_imported_modules_augment(ProgressStream, Globals, SourceFileName,
@@ -334,133 +462,6 @@ grab_qual_imported_modules_augment(ProgressStream, Globals, SourceFileName,
             ImportAccessibilityInfo, AccessSpecs),
         module_baggage_add_nonfatal_specs(AccessSpecs, !Baggage)
     ).
-
-%---------------------------------------------------------------------------%
-
-grab_unqual_imported_modules_make_int(ProgressStream, Globals, SourceFileName,
-        SourceFileModuleName, ParseTreeModuleSrc,
-        !:Baggage, !:AugMakeIntUnit, !HaveParseTreeMaps, !IO) :-
-    % The predicates grab_imported_modules_augment and
-    % grab_unqual_imported_modules_make_int have quite similar tasks.
-    % Please keep the corresponding parts of these two predicates in sync.
-    %
-    % XXX ITEM_LIST Why aren't we updating !HaveParseTreeMaps?
-
-    some [!IntIndirectImported, !ImpIndirectImported]
-    (
-        ImportAndOrUseMap = ParseTreeModuleSrc ^ ptms_import_use_map,
-        import_and_or_use_map_to_module_name_contexts(ImportAndOrUseMap,
-            IntImportMap, IntUseMap, ImpImportMap, ImpUseMap,
-            IntUseImpImportMap),
-        map.keys_as_set(IntImportMap, IntImports0),
-        map.keys_as_set(IntUseMap, IntUses),
-        map.keys_as_set(ImpImportMap, ImpImports),
-        map.keys_as_set(ImpUseMap, ImpUses),
-        map.keys_as_set(IntUseImpImportMap, IntUsesImpImports),
-        set.insert(mercury_public_builtin_module, IntImports0, IntImports),
-
-        ( if ParseTreeModuleSrc ^ ptms_module_name = SourceFileModuleName then
-            % We lie about the set of modules nested inside this one;
-            % the lie will be correct only by accident.
-            MaybeTopModule = top_module(set.init)
-        else
-            MaybeTopModule = not_top_module
-        ),
-        % We need timestamps only for smart recompilation, which does not
-        % apply to the interface files that this compiler invocation
-        % is creating.
-        MaybeTimestamp = maybe.no,
-        MaybeTimestampMap = maybe.no,
-
-        Errors0 = init_read_module_errors,
-        init_aug_make_int_unit(ParseTreeModuleSrc, !:AugMakeIntUnit),
-        GrabbedFileMap0 =
-            map.singleton(ModuleName, gf_src(ParseTreeModuleSrc)),
-        !:Baggage = module_baggage(SourceFileName, dir.this_directory,
-            SourceFileModuleName, MaybeTopModule,
-            MaybeTimestamp, MaybeTimestampMap, GrabbedFileMap0, Errors0),
-
-        ModuleName = ParseTreeModuleSrc ^ ptms_module_name,
-        SrcMap0 = !.HaveParseTreeMaps ^ hptm_module_src,
-        map.set(ModuleName, ParseTreeModuleSrc, SrcMap0, SrcMap),
-        !HaveParseTreeMaps ^ hptm_module_src := SrcMap,
-
-        % Get the .int0 files of the ancestor modules.
-        Ancestors = get_ancestors(ModuleName),
-        grab_module_int0_files_for_amiu(ProgressStream, Globals,
-            "unqual_ancestors",
-            Ancestors, set.init, AncestorImports, set.init, AncestorUses,
-            !HaveParseTreeMaps, !Baggage, !AugMakeIntUnit, !IO),
-
-        % Get the .int3 files of the modules imported using `import_module'.
-        set.init(!:IntIndirectImported),
-        set.init(!:ImpIndirectImported),
-        grab_module_int3_files(ProgressStream, Globals,
-            "unqual_parent_imported", rwi3_direct_ancestor_import,
-            set.to_sorted_list(AncestorImports),
-            !IntIndirectImported, !HaveParseTreeMaps,
-            !Baggage, !AugMakeIntUnit, !IO),
-        grab_module_int3_files(ProgressStream, Globals,
-            "unqual_int_imported", rwi3_direct_int_import,
-            set.to_sorted_list(IntImports),
-            !IntIndirectImported, !HaveParseTreeMaps,
-            !Baggage, !AugMakeIntUnit, !IO),
-        grab_module_int3_files(ProgressStream, Globals,
-            "unqual_imp_imported", rwi3_direct_imp_import,
-            set.to_sorted_list(ImpImports),
-            !ImpIndirectImported, !HaveParseTreeMaps,
-            !Baggage, !AugMakeIntUnit, !IO),
-
-        % Get the .int3 files of the modules imported using `use_module'.
-        grab_module_int3_files(ProgressStream, Globals,
-            "unqual_parent_used", rwi3_direct_ancestor_use,
-            set.to_sorted_list(AncestorUses),
-            !IntIndirectImported, !HaveParseTreeMaps,
-            !Baggage, !AugMakeIntUnit, !IO),
-        grab_module_int3_files(ProgressStream, Globals,
-            "unqual_int_used", rwi3_direct_int_use,
-            set.to_sorted_list(IntUses),
-            !IntIndirectImported, !HaveParseTreeMaps,
-            !Baggage, !AugMakeIntUnit, !IO),
-        grab_module_int3_files(ProgressStream, Globals,
-            "unqual_imp_used", rwi3_direct_imp_use,
-            set.to_sorted_list(ImpUses),
-            !ImpIndirectImported, !HaveParseTreeMaps,
-            !Baggage, !AugMakeIntUnit, !IO),
-
-        % Get the .int3 files of the modules imported using `use_module'
-        % in the interface and `import_module' in the implementation.
-        grab_module_int3_files(ProgressStream, Globals,
-            "unqual_int_used_imp_imported", rwi3_direct_int_use_imp_import,
-            set.to_sorted_list(IntUsesImpImports),
-            !IntIndirectImported, !HaveParseTreeMaps,
-            !Baggage, !AugMakeIntUnit, !IO),
-
-        % Get the .int3 files of the modules imported in .int3 files.
-        grab_module_int3_files_transitively(ProgressStream, Globals,
-            "unqual_int_indirect_imported", rwi3_indirect_int_use,
-            !.IntIndirectImported, !HaveParseTreeMaps,
-            !Baggage, !AugMakeIntUnit, !IO),
-        grab_module_int3_files_transitively(ProgressStream, Globals,
-            "unqual_imp_indirect_imported", rwi3_indirect_imp_use,
-            !.ImpIndirectImported, !HaveParseTreeMaps,
-            !Baggage, !AugMakeIntUnit, !IO),
-
-        aug_make_int_unit_get_import_accessibility_info(!.AugMakeIntUnit,
-            ImportAccessibilityInfo),
-        check_import_accessibility(ParseTreeModuleSrc,
-            ImportAccessibilityInfo, AccessSpecs),
-        module_baggage_add_nonfatal_specs(AccessSpecs, !Baggage)
-    ).
-
-:- pred dump_modules(io.text_output_stream::in, set(module_name)::in,
-    io::di, io::uo) is det.
-:- pragma consider_used(pred(dump_modules/4)).
-
-dump_modules(Stream, ModuleNames, !IO) :-
-    ModuleNameStrs =
-        set.to_sorted_list(set.map(sym_name_to_string, ModuleNames)),
-    list.foldl(io.write_line(Stream), ModuleNameStrs, !IO).
 
 %---------------------------------------------------------------------------%
 
@@ -1601,6 +1602,17 @@ aug_make_int_unit_maybe_add_module_version_numbers(ModuleName,
         !AugMakeIntUnit ^ amiu_module_item_version_numbers_map :=
             ModuleVersionNumbersMap
     ).
+
+%---------------------------------------------------------------------------%
+
+:- pred dump_modules(io.text_output_stream::in, set(module_name)::in,
+    io::di, io::uo) is det.
+:- pragma consider_used(pred(dump_modules/4)).
+
+dump_modules(Stream, ModuleNames, !IO) :-
+    ModuleNameStrs =
+        set.to_sorted_list(set.map(sym_name_to_string, ModuleNames)),
+    list.foldl(io.write_line(Stream), ModuleNameStrs, !IO).
 
 %---------------------------------------------------------------------------%
 :- end_module parse_tree.grab_modules.
