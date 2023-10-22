@@ -154,7 +154,6 @@ MR_setenv(const char *name, const char *value, int overwrite)
 #endif
 }
 
-// XXX TODO: Cygwin -- strip .exe extension if present.
 const char *
 MR_get_program_basename(const char *program_name)
 {
@@ -176,6 +175,9 @@ MR_get_program_basename(const char *program_name)
         basename = MR_wide_to_utf8(wname, NULL);
 
     #else
+
+        // NOTE: on Cygwin, the .exe extension, if present, will not be
+        // included in argv[0], so we do not need to strip it here.
 
         char    *slash;
 
