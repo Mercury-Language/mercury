@@ -55,6 +55,7 @@ ENDINIT
 #include    "mercury_deep_profiling.h"
 #include    "mercury_memory.h"          // for MR_copy_string()
 #include    "mercury_memory_handlers.h" // for MR_default_handler
+#include    "mercury_runtime_util.h"    // for MR_get_program_basename()
 #include    "mercury_thread.h"          // for MR_debug_threads
 #include    "mercury_threadscope.h"
 
@@ -1076,17 +1077,9 @@ MR_process_environment_options(void)
         gen_env_options = (char *) "";
     }
 
-    // Find out the program's name, stripping off any directory names.
-    // XXX WINDOWS: the path separator is incorrect for non-Cygwin Windows.
-    // It also does not handle drive qualified paths. And presumably the
-    // name of the program-specific options should not include the .exe
-    // extension.
-    progname = MR_progname;
-    for (s = progname; *s != '\0'; s++) {
-        if (*s == '/') {
-            progname = s + 1;
-        }
-    }
+    // Find out the program's name, stripping off any directory names and the
+    // .exe extension on those systems that use it.
+    progname = MR_get_program_basename(MR_progname);
 
     // Build the program-specific option's name: MERCURY_OPTIONS_progname.
     mercury_options_len = strlen(MERCURY_OPTIONS);
@@ -1406,6 +1399,7 @@ struct MR_option MR_long_opts[] = {
     // This needs to be kept at the end.
     { NULL,                             0, 0, 0 }
 };
+
 
 static void
 MR_process_options(int argc, char **argv)
@@ -2341,12 +2335,7 @@ MR_matches_exec_name(const char *option)
     char        *s;
     const char  *exec_name;
 
-    s = strrchr(MR_progname, '/');
-    if (s == NULL) {
-        exec_name = MR_progname;
-    } else {
-        exec_name = s + 1;
-    }
+    exec_name = MR_get_program_basename(MR_progname);
 
     if (MR_streq(option, exec_name)) {
         return MR_TRUE;

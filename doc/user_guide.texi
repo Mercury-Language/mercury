@@ -10803,6 +10803,8 @@ The options given in this environment variable apply to every program;
 the options given in an environment variable
 whose name is of the form @env{MERCURY_OPTIONS_@var{progname}}
 apply only to programs named @var{progname}.
+Note that @var{progname} does @emph{not} include the @file{.exe} extension
+on those systems (e.g. Windows) that use it.
 Options may also be set for a particular executable at compile time
 by passing @samp{--runtime-flags} options
 to the invocations of @samp{ml} and @samp{c2init} which create that executable.
@@ -11253,7 +11255,7 @@ events in the output, even the ones that were not executed.
 @item --trace-count-if-exec @var{prog}
 @findex --trace-count-if-exec (runtime option)
 Act as the @samp{--trace-count} option, but only if the executable is named
-@var{prog}.
+@var{prog} (excluding any @file{.exe} extension on Windows).
 This is to allow the collection of trace count information from only one
 Mercury program even if several Mercury programs are executed with the same
 setting of @env{MERCURY_OPTIONS}.
@@ -11262,7 +11264,7 @@ setting of @env{MERCURY_OPTIONS}.
 @item --coverage-test-if-exec @var{prog}
 @findex --coverage-test-if-exec (runtime option)
 Act as the @samp{--coverage-test} option, but only if the executable is named
-@var{prog}.
+@var{prog} (excluding any @file{.exe} extension on Windows).
 This is to allow the collection of coverage test information from only one
 Mercury program even if several Mercury programs are executed with the same
 setting of @env{MERCURY_OPTIONS}.

@@ -27,4 +27,9 @@ extern  void        MR_checked_atexit(void (*func)(void));
 extern  int         MR_setenv(const char *name, const char *value,
                         int overwrite);
 
+// Strip any directory components from the argument.
+// On Windows, this will also strip the ".exe" extension.
+// A ".exe" extension on other systems (e.g. Linux) will be left alone.
+extern const char   *MR_get_program_basename(const char *);
+
 #endif  // MERCURY_RUNTIME_UTIL_H

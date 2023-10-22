@@ -1,7 +1,7 @@
 // vim: ts=4 sw=4 expandtab ft=c
 
 // Copyright (C) 2001-2002, 2006 The University of Melbourne.
-// Copyright (C) 2014, 2016, 2018 The Mercury team.
+// Copyright (C) 2014, 2016, 2018, 2023 The Mercury team.
 // This file is distributed under the terms specified in COPYING.LIB.
 
 // This module contains utility functions for the rest of the Mercury runtime.
@@ -10,9 +10,14 @@
 
 #include    "mercury_imp.h"
 #include    "mercury_runtime_util.h"
+#include    "mercury_string.h"
+#include    "mercury_windows.h"
 
 #include    <stdio.h>
 #include    <string.h>
+#if defined(MR_WIN32) && !defined(MR_CYGWIN)
+   #include <wchar.h>
+#endif
 
 #ifdef MR_HAVE_UNISTD_H
   #include  <unistd.h>
@@ -147,4 +152,40 @@ MR_setenv(const char *name, const char *value, int overwrite)
 #else
   #error "MR_setenv: unable to define"
 #endif
+}
+
+// XXX TODO: Cygwin -- strip .exe extension if present.
+const char *
+MR_get_program_basename(const char *program_name)
+{
+    const char  *basename;
+
+    #if defined(MR_WIN32) && !defined(MR_CYGWIN)
+
+        wchar_t wname[_MAX_FNAME];
+
+        errno_t err = _wsplitpath_s(MR_utf8_to_wide(program_name),
+            NULL, 0,  // Ignore drive.
+            NULL, 0,  // Ignore directories.
+            wname, _MAX_FNAME,
+            NULL, 0   // Ignore .exe extension.
+        );
+        if (err != 0) {
+            MR_fatal_error("Could not split path");
+        }
+        basename = MR_wide_to_utf8(wname, NULL);
+
+    #else
+
+        char    *slash;
+
+        basename = MR_copy_string(program_name);
+        slash = strrchr(basename, '/');
+        if (slash != NULL) {
+            basename = slash + 1;
+        }
+
+    #endif
+
+    return basename;
 }
