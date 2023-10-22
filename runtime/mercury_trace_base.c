@@ -1,7 +1,7 @@
 // vim: ts=4 sw=4 expandtab ft=c
 
 // Copyright (C) 1997-2008, 2011 The University of Melbourne.
-// Copyright (C) 2014-2016, 2018 The Mercury team.
+// Copyright (C) 2014-2016, 2018, 2022-2023 The Mercury team.
 // This file is distributed under the terms specified in COPYING.LIB.
 
 // mercury_trace_base.c implements the interface between the main part
@@ -274,11 +274,7 @@ MR_trace_record_label_exec_counts(void *dummy)
     const char  *program_name;
     char        errbuf[MR_STRERROR_BUF_SIZE];
 
-    program_name = MR_copy_string(MR_progname);
-    slash = strrchr(program_name, '/');
-    if (slash != NULL) {
-        program_name = slash + 1;
-    }
+    program_name = MR_get_program_basename(MR_progname);
 
     summarize = MR_FALSE;
     keep = MR_FALSE;
@@ -325,6 +321,7 @@ MR_trace_record_label_exec_counts(void *dummy)
             program_name, getpid());
 
         // Make sure name is an acceptable filename.
+        // XXX WINDOWS: this is not the right thing to do on Windows.
         for (s = name; *s != '\0'; s++) {
             if (*s == '/') {
                 *s = '_';
@@ -332,6 +329,7 @@ MR_trace_record_label_exec_counts(void *dummy)
         }
     }
 
+    // XXX WINDOWS: probably wants to be _wfopen on Windows.
     fp = fopen(name, "w");
     if (fp != NULL) {
         unsigned    num_written;

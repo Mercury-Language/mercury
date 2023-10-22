@@ -171,7 +171,7 @@ MR_get_program_basename(const char *program_name)
             NULL, 0   // Ignore .exe extension.
         );
         if (err != 0) {
-            MR_fatal_error("Could not split path");
+            MR_fatal_error("MR_get_program_basename: could not split path");
         }
         basename = MR_wide_to_utf8(wname, NULL);
 
