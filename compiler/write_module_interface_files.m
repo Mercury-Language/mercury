@@ -76,14 +76,14 @@
     %
     % has an argument of this type. Their callers can set this argument to
     % do_add_new_to_hptm to tell the predicate to add the interface file(s)
-    % it has constructed to !HaveReadModuleMaps.
+    % it has constructed to !HaveParseTreeMaps.
     %
 :- type maybe_add_to_hptm
     --->    do_not_add_new_to_hptm
     ;       do_add_new_to_hptm.
 
     % write_short_interface_file_int3(ProgressStream, Globals, AddToHrmm,
-    %   ParseTreeModuleSrc, Succeeded, Specs, !HaveReadModuleMaps, !IO):
+    %   ParseTreeModuleSrc, Succeeded, Specs, !HaveParseTreeMaps, !IO):
     %
     % Output the unqualified short interface file to <module>.int3.
     %
@@ -95,7 +95,7 @@
     % We bind Succeeded to "succeeded" only if all three of those processes
     % succeeded without errors. (Specs may contain warnings even then.)
     %
-    % We add the contents of the .int3 file to !HaveReadModuleMaps if we could
+    % We add the contents of the .int3 file to !HaveParseTreeMaps if we could
     % construct it without any errors, *and* AddToHrmm says we should.
     %
 :- pred write_short_interface_file_int3(io.text_output_stream::in, globals::in,
@@ -106,7 +106,7 @@
 
     % write_private_interface_file_int0(ProgressStream, Globals, AddToHrmm,
     %   SourceFileName, SourceFileModuleName, MaybeTimestamp,
-    %   ParseTreeModuleSrc0, Succeeded, Specs, !HaveReadModuleMaps, !IO):
+    %   ParseTreeModuleSrc0, Succeeded, Specs, !HaveParseTreeMaps, !IO):
     %
     % Given a source file name, the timestamp of the source file, and the
     % representation of a module in that file, output the private (`.int0')
@@ -129,7 +129,7 @@
 
     % write_interface_file_int1_int2(ProgressStream, Globals,
     %   AddToHrmm, SourceFileName, SourceFileModuleName, MaybeTimestamp,
-    %   ParseTreeModuleSrc0, Succeeded, Specs, !HaveReadModuleMaps, !IO):
+    %   ParseTreeModuleSrc0, Succeeded, Specs, !HaveParseTreeMaps, !IO):
     %
     % Given a source file name, the timestamp of the source file, and the
     % representation of a module in that file, output the long (`.int')
@@ -179,7 +179,7 @@
 %
 
 write_short_interface_file_int3(ProgressStream, Globals, AddToHrmm,
-        ParseTreeModuleSrc, Succeeded, Specs, !HaveReadModuleMaps, !IO) :-
+        ParseTreeModuleSrc, Succeeded, Specs, !HaveParseTreeMaps, !IO) :-
     % This qualifies everything as much as it can given the information
     % in the current module and writes out the .int3 file.
     generate_short_interface_int3(Globals, ParseTreeModuleSrc, ParseTreeInt3,
@@ -204,16 +204,17 @@ write_short_interface_file_int3(ProgressStream, Globals, AddToHrmm,
             AddToHrmm = do_not_add_new_to_hptm
         ;
             AddToHrmm = do_add_new_to_hptm,
-            Int3Map0 = !.HaveReadModuleMaps ^ hptm_int3,
-            HRM = have_module(FileName, ParseTreeInt3, was_constructed),
-            map.set(ModuleName, HRM, Int3Map0, Int3Map),
-            !HaveReadModuleMaps ^ hptm_int3 := Int3Map
+            Int3Map0 = !.HaveParseTreeMaps ^ hptm_int3,
+            HM = have_module(FileName, ParseTreeInt3, was_constructed),
+            map.set(ModuleName, HM, Int3Map0, Int3Map),
+            !HaveParseTreeMaps ^ hptm_int3 := Int3Map
         )
     ;
         EffectivelyErrors = yes,
-        report_file_not_written(Globals, [], ModuleName,
-            ext_cur_ngs(ext_cur_ngs_int_int3), no,
-            ext_cur_ngs(ext_cur_ngs_int_date_int3), Specs1, Specs, !IO),
+        ExtInt3 = ext_cur_ngs(ext_cur_ngs_int_int3),
+        ExtDate3 = ext_cur_ngs(ext_cur_ngs_int_date_int3),
+        report_file_not_written(Globals, [], ModuleName, ExtInt3, no, ExtDate3,
+            Specs1, Specs, !IO),
         Succeeded = did_not_succeed
     ).
 
@@ -224,11 +225,11 @@ write_short_interface_file_int3(ProgressStream, Globals, AddToHrmm,
 
 write_private_interface_file_int0(ProgressStream, Globals, AddToHrmm,
         SourceFileName, SourceFileModuleName, MaybeTimestamp,
-        ParseTreeModuleSrc0, Succeeded, Specs, !HaveReadModuleMaps, !IO) :-
+        ParseTreeModuleSrc0, Succeeded, Specs, !HaveParseTreeMaps, !IO) :-
     ModuleName = ParseTreeModuleSrc0 ^ ptms_module_name,
     grab_unqual_imported_modules_make_int(ProgressStream, Globals,
         SourceFileName, SourceFileModuleName, ParseTreeModuleSrc0,
-        Baggage, AugMakeIntUnit1, !HaveReadModuleMaps, !IO),
+        Baggage, AugMakeIntUnit1, !HaveParseTreeMaps, !IO),
 
     % Check whether we succeeded.
     GetErrors = Baggage ^ mb_errors,
@@ -239,12 +240,13 @@ write_private_interface_file_int0(ProgressStream, Globals, AddToHrmm,
         GetSpecsEffectivelyErrors = no,
         there_are_no_errors(GetErrors)
     then
-        % Module-qualify all items.
+        % Module-qualify the aug_make_int_unit.
+        %
         % XXX ITEM_LIST We don't need grab_unqual_imported_modules
-        % to include in ModuleAndImports and thus in AugMakeIntUnit1
-        % any items that (a) generate_private_interface_int0 below
-        % will throw away, and (b) which don't help the module qualification
-        % of the items that it keeps.
+        % to include in AugMakeIntUnit1 any items that
+        % (a) generate_private_interface_int0 below will throw away, and
+        % (b) which don't help the module qualification of the items
+        % that it keeps.
         module_qualify_aug_make_int_unit(Globals,
             AugMakeIntUnit1, AugMakeIntUnit, [], QualSpecs),
         filter_interface_generation_specs(Globals,
@@ -271,17 +273,17 @@ write_private_interface_file_int0(ProgressStream, Globals, AddToHrmm,
                 AddToHrmm = do_not_add_new_to_hptm
             ;
                 AddToHrmm = do_add_new_to_hptm,
-                Int0Map0 = !.HaveReadModuleMaps ^ hptm_int0,
-                HRM = have_module(FileName, ParseTreeInt0, was_constructed),
-                map.set(ModuleName, HRM, Int0Map0, Int0Map),
-                !HaveReadModuleMaps ^ hptm_int0 := Int0Map
+                Int0Map0 = !.HaveParseTreeMaps ^ hptm_int0,
+                HM = have_module(FileName, ParseTreeInt0, was_constructed),
+                map.set(ModuleName, HM, Int0Map0, Int0Map),
+                !HaveParseTreeMaps ^ hptm_int0 := Int0Map
             )
         ;
             EffectiveGetQualSpecs = [_ | _],
-            report_file_not_written(Globals, [], ModuleName,
-                ext_cur_ngs(ext_cur_ngs_int_int0), no,
-                ext_cur_ngs(ext_cur_ngs_int_date_int0),
-                EffectiveGetQualSpecs, Specs, !IO),
+            ExtInt0 = ext_cur_ngs(ext_cur_ngs_int_int0),
+            ExtDate0 = ext_cur_ngs(ext_cur_ngs_int_date_int0),
+            report_file_not_written(Globals, [], ModuleName, ExtInt0, no,
+                ExtDate0, EffectiveGetQualSpecs, Specs, !IO),
             Succeeded = did_not_succeed
         )
     else
@@ -289,22 +291,23 @@ write_private_interface_file_int0(ProgressStream, Globals, AddToHrmm,
         % start at the left margin.
         PrefixPieces = [words("Error reading interface files."),
             nl_indent_delta(-1)],
+        ExtInt0 = ext_cur_ngs(ext_cur_ngs_int_int0),
+        ExtDate0 = ext_cur_ngs(ext_cur_ngs_int_date_int0),
         report_file_not_written(Globals, PrefixPieces, ModuleName,
-            ext_cur_ngs(ext_cur_ngs_int_int0), no,
-            ext_cur_ngs(ext_cur_ngs_int_date_int0), GetSpecs, Specs, !IO),
+            ExtInt0, no, ExtDate0, GetSpecs, Specs, !IO),
         Succeeded = did_not_succeed
     ).
 
 write_private_interface_file_int0_burdened_module(ProgressStream,
         Globals, AddToHrmm, BurdenedModule, Succeeded, Specs,
-        !HaveReadModuleMaps, !IO) :-
+        !HaveParseTreeMaps, !IO) :-
     BurdenedModule = burdened_module(Baggage, ParseTreeModuleSrc),
     SourceFileName = Baggage ^ mb_source_file_name,
     SourceFileModuleName = Baggage ^ mb_source_file_module_name,
     MaybeTimestamp = Baggage ^ mb_maybe_timestamp,
     write_private_interface_file_int0(ProgressStream, Globals,
         AddToHrmm, SourceFileName, SourceFileModuleName, MaybeTimestamp,
-        ParseTreeModuleSrc, Succeeded, Specs, !HaveReadModuleMaps, !IO).
+        ParseTreeModuleSrc, Succeeded, Specs, !HaveParseTreeMaps, !IO).
 
 %---------------------------------------------------------------------------%
 %
@@ -313,7 +316,7 @@ write_private_interface_file_int0_burdened_module(ProgressStream,
 
 write_interface_file_int1_int2(ProgressStream, Globals, AddToHrmm,
         SourceFileName, SourceFileModuleName, MaybeTimestamp,
-        ParseTreeModuleSrc0, Succeeded, Specs, !HaveReadModuleMaps, !IO) :-
+        ParseTreeModuleSrc0, Succeeded, Specs, !HaveParseTreeMaps, !IO) :-
     ModuleName = ParseTreeModuleSrc0 ^ ptms_module_name,
     generate_pre_grab_pre_qual_interface_for_int1_int2(ParseTreeModuleSrc0,
         IntParseTreeModuleSrc),
@@ -321,7 +324,7 @@ write_interface_file_int1_int2(ProgressStream, Globals, AddToHrmm,
     % Get the .int3 files for imported modules.
     grab_unqual_imported_modules_make_int(ProgressStream, Globals,
         SourceFileName, SourceFileModuleName, IntParseTreeModuleSrc,
-        Baggage, AugMakeIntUnit1, !HaveReadModuleMaps, !IO),
+        Baggage, AugMakeIntUnit1, !HaveParseTreeMaps, !IO),
 
     % Check whether we succeeded.
     GetErrors = Baggage ^ mb_errors,
@@ -377,21 +380,22 @@ write_interface_file_int1_int2(ProgressStream, Globals, AddToHrmm,
                 AddToHrmm = do_not_add_new_to_hptm
             ;
                 AddToHrmm = do_add_new_to_hptm,
-                Int1Map0 = !.HaveReadModuleMaps ^ hptm_int1,
-                Int2Map0 = !.HaveReadModuleMaps ^ hptm_int2,
-                HRM1 = have_module(FileName1, ParseTreeInt1, was_constructed),
-                HRM2 = have_module(FileName2, ParseTreeInt2, was_constructed),
-                map.set(ModuleName, HRM1, Int1Map0, Int1Map),
-                map.set(ModuleName, HRM2, Int2Map0, Int2Map),
-                !HaveReadModuleMaps ^ hptm_int1 := Int1Map,
-                !HaveReadModuleMaps ^ hptm_int2 := Int2Map
+                Int1Map0 = !.HaveParseTreeMaps ^ hptm_int1,
+                Int2Map0 = !.HaveParseTreeMaps ^ hptm_int2,
+                HM1 = have_module(FileName1, ParseTreeInt1, was_constructed),
+                HM2 = have_module(FileName2, ParseTreeInt2, was_constructed),
+                map.set(ModuleName, HM1, Int1Map0, Int1Map),
+                map.set(ModuleName, HM2, Int2Map0, Int2Map),
+                !HaveParseTreeMaps ^ hptm_int1 := Int1Map,
+                !HaveParseTreeMaps ^ hptm_int2 := Int2Map
             )
         ;
             EffectiveGetQualSpecs = [_ | _],
+            ExtInt1 = ext_cur_ngs(ext_cur_ngs_int_int1),
+            ExtInt2 = ext_cur_ngs(ext_cur_ngs_int_int2),
+            ExtDate12 = ext_cur_ngs(ext_cur_ngs_int_date_int12),
             report_file_not_written(Globals, [], ModuleName,
-                ext_cur_ngs(ext_cur_ngs_int_int1),
-                yes(ext_cur_ngs(ext_cur_ngs_int_int2)),
-                ext_cur_ngs(ext_cur_ngs_int_date_int12),
+                ExtInt1, yes(ExtInt2), ExtDate12,
                 EffectiveGetQualSpecs, Specs, !IO),
             Succeeded = did_not_succeed
         )
@@ -400,24 +404,24 @@ write_interface_file_int1_int2(ProgressStream, Globals, AddToHrmm,
         % start at the left margin.
         PrefixPieces = [words("Error reading .int3 files."),
             nl_indent_delta(-1)],
+        ExtInt1 = ext_cur_ngs(ext_cur_ngs_int_int1),
+        ExtInt2 = ext_cur_ngs(ext_cur_ngs_int_int2),
+        ExtDate12 = ext_cur_ngs(ext_cur_ngs_int_date_int12),
         report_file_not_written(Globals, PrefixPieces, ModuleName,
-            ext_cur_ngs(ext_cur_ngs_int_int1),
-            yes(ext_cur_ngs(ext_cur_ngs_int_int2)),
-            ext_cur_ngs(ext_cur_ngs_int_date_int12),
-            GetSpecs, Specs, !IO),
+            ExtInt1, yes(ExtInt2), ExtDate12, GetSpecs, Specs, !IO),
         Succeeded = did_not_succeed
     ).
 
 write_interface_file_int1_int2_burdened_module(ProgressStream, Globals,
         AddToHrmm, BurdenedModule, Succeeded, Specs,
-        !HaveReadModuleMaps, !IO) :-
+        !HaveParseTreeMaps, !IO) :-
     BurdenedModule = burdened_module(Baggage, ParseTreeModuleSrc),
     SourceFileName = Baggage ^ mb_source_file_name,
     SourceFileModuleName = Baggage ^ mb_source_file_module_name,
     MaybeTimestamp = Baggage ^ mb_maybe_timestamp,
     write_interface_file_int1_int2(ProgressStream, Globals,
         AddToHrmm, SourceFileName, SourceFileModuleName, MaybeTimestamp,
-        ParseTreeModuleSrc, Succeeded, Specs, !HaveReadModuleMaps, !IO).
+        ParseTreeModuleSrc, Succeeded, Specs, !HaveParseTreeMaps, !IO).
 
 %---------------------------------------------------------------------------%
 
