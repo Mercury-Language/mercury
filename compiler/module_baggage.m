@@ -294,7 +294,7 @@ parse_tree_src_to_burdened_module_list(Globals, SourceFileName,
         ReadModuleErrors, MaybeTimestampMap, ParseTreeSrc,
         !:Specs, BurdenedModules) :-
     !:Specs = get_read_module_specs(ReadModuleErrors),
-    split_into_compilation_units_perform_checks(Globals, ParseTreeSrc,
+    split_into_component_modules_perform_checks(Globals, ParseTreeSrc,
         ParseTreeModuleSrcs, !Specs),
     ParseTreeSrc = parse_tree_src(TopModuleName, _, _),
     AllModuleNames = set.list_to_set(

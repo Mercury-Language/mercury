@@ -1413,7 +1413,7 @@ do_process_compiler_arg_make_interface(ProgressStream, Globals0,
             SpecLists = [ReadSpecs]
         else
             ModuleName = ParseTreeSrc ^ pts_module_name,
-            split_into_compilation_units_perform_checks(Globals, ParseTreeSrc,
+            split_into_component_modules_perform_checks(Globals, ParseTreeSrc,
                 ParseTreeModuleSrcs, ReadSpecs, ReadSplitSpecs0),
             filter_interface_generation_specs(Globals, ReadSplitSpecs0,
                 ReadSplitSpecs),
@@ -1647,7 +1647,7 @@ read_augment_and_process_module_ok(ProgressStream, ErrorStream, Globals,
         ParseTreeSrc, MaybeModulesToRecompile, ModulesToLink, ExtraObjFiles,
         !Specs, !HaveReadModuleMaps, !IO) :-
     ModuleName = ParseTreeSrc ^ pts_module_name,
-    split_into_compilation_units_perform_checks(Globals, ParseTreeSrc,
+    split_into_component_modules_perform_checks(Globals, ParseTreeSrc,
         ParseTreeModuleSrcs0, !Specs),
     (
         MaybeModulesToRecompile = some_modules(ModulesToRecompile),
@@ -1758,8 +1758,7 @@ read_module_or_file(ProgressStream, Globals0, Globals, FileOrModuleName,
     ( if
         % Avoid rereading the module if it was already read
         % by recompilation.version.m.
-        map.search(!.HaveReadModuleMaps ^ hptm_src, ModuleName,
-            HaveSrc0),
+        map.search(!.HaveReadModuleMaps ^ hptm_src, ModuleName, HaveSrc0),
         HaveSrc0 = have_module(FN, PT, Source0),
         Source0 = was_read(MaybeTimestamp0, E),
         return_timestamp_if_needed(ReturnTimestamp,

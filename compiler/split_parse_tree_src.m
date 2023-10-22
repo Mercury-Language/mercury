@@ -22,9 +22,9 @@
 :- import_module list.
 
     % Given the parse tree of a source module that may contain submodules,
-    % split it into a list of one or more compilation units; one for the
+    % split it into a list of one or more parse_tree_module_srcs; one for the
     % top level module, and one for each nested submodule. Return these
-    % compilation units in top-down order of the submodule's inclusions.
+    % parse_tree_module_srcs in top-down order of the submodule's inclusions.
     %
     % Also do some error checking:
     %
@@ -36,7 +36,7 @@
     % - check for non-abstract typeclass instance declarations in module
     %   interfaces.
     %
-:- pred split_into_compilation_units_perform_checks(globals::in,
+:- pred split_into_component_modules_perform_checks(globals::in,
     parse_tree_src::in, list(parse_tree_module_src)::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
@@ -61,19 +61,20 @@
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
-split_into_compilation_units_perform_checks(Globals, ParseTreeSrc,
+split_into_component_modules_perform_checks(Globals, ParseTreeSrc,
         ParseTreeModuleSrcs, !Specs) :-
     % This algorithm has two phases.
     %
     % The first phase, split_parse_tree_discover_submodules, builds up
-    % a data structure recording what submodules (if any) the top module
-    % contains.
+    % the split_module_map and the module_to_submodules_map, two data
+    % structures that together record what submodules (if any) are nested
+    % within the top module.
     %
-    % The second phase, create_split_compilation_units_depth_first,
-    % converts that data structure into the list of parse_tree_module_srcs
+    % The second phase, create_component_modules_depth_first,
+    % converts those data structures into the list of parse_tree_module_srcs
     % that our caller expects us to return.
     %
-    % The job is done in two phases because the two parts (interface and
+    % We do the job in two phases because the two parts (interface and
     % implementation) of a submodule may be in widely separated parts of
     % of ParseTreeSrc, interspersed with parts of *other* submodules.
     % Going from ParseTreeSrc to directly to ParseTreeModuleSrcs would
@@ -81,7 +82,7 @@ split_into_compilation_units_perform_checks(Globals, ParseTreeSrc,
     split_parse_tree_discover_submodules(ParseTreeSrc, ma_no_parent,
         map.init, SplitModuleMap, map.init, SubModulesMap, !Specs),
     ParseTreeSrc = parse_tree_src(TopModuleName, _, _),
-    create_split_compilation_units_depth_first(Globals, TopModuleName,
+    create_component_modules_depth_first(Globals, TopModuleName,
         SplitModuleMap, LeftOverSplitModuleMap,
         SubModulesMap, LeftOverSubModulesMap,
         cord.init, ParseTreeModuleSrcCord, !Specs),
@@ -111,7 +112,7 @@ split_into_compilation_units_perform_checks(Globals, ParseTreeSrc,
 
 :- type submodule_include_info
     --->    submodule_include_info(
-                % Should this submodule be include in its parent's interface
+                % Should this submodule be included in its parent's interface
                 % section, or in its implementation section? If it is included
                 % in both, we generate an item_include for it only in the
                 % interface section. This reflects the fact that the submodule
@@ -140,9 +141,14 @@ split_into_compilation_units_perform_checks(Globals, ParseTreeSrc,
 :- type module_ancestors
     --->    ma_no_parent
     ;       ma_parent(
-                module_section,     % Which section of its parent module
-                                    % does this module appear in?
-                prog_context,       % The context of the section.
+                % Which section of its parent module does this module
+                % appear in?
+                module_section,
+
+                % The context of the section.
+                prog_context,
+
+                % That section's ancestors.
                 section_ancestors
             ).
 
@@ -166,7 +172,7 @@ split_into_compilation_units_perform_checks(Globals, ParseTreeSrc,
 
     ;       split_nested_empty(prog_context)
             % This module is not the top level module, and we have seen
-            % neither its interface section, not its implementation section.
+            % neither its interface section, nor its implementation section.
             % We have seen only an empty module, and have generated a warning
             % about this fact. The context is the context of the module
             % declaration of the empty module.
@@ -681,13 +687,13 @@ split_nested_info_get_context(SplitNested) = Context :-
 % which constructs the final list of parse_tree_module_srcs.
 %---------------------------------------------------------------------------%
 
-:- pred create_split_compilation_units_depth_first(globals::in,
+:- pred create_component_modules_depth_first(globals::in,
     module_name::in, split_module_map::in, split_module_map::out,
     module_to_submodules_map::in, module_to_submodules_map::out,
     cord(parse_tree_module_src)::in, cord(parse_tree_module_src)::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-create_split_compilation_units_depth_first(Globals, ModuleName,
+create_component_modules_depth_first(Globals, ModuleName,
         !SplitModuleMap, !SubModulesMap, !ParseTreeModuleSrcCord, !Specs) :-
     map.det_remove(ModuleName, Entry, !SplitModuleMap),
     (
@@ -702,20 +708,14 @@ create_split_compilation_units_depth_first(Globals, ModuleName,
             ( NestedInfo = split_nested_top_module(Context)
             ; NestedInfo = split_nested_only_int(Context)
             ; NestedInfo = split_nested_int_imp(Context, _)
+            ; NestedInfo = split_nested_empty(Context)
             ),
-            RawCompUnit = raw_compilation_unit(ModuleName, Context,
-                RawItemBlocks),
-            check_convert_raw_comp_unit_to_module_src(Globals, RawCompUnit,
-                ParseTreeModuleSrc, !Specs),
-            cord.snoc(ParseTreeModuleSrc, !ParseTreeModuleSrcCord)
-        ;
-            NestedInfo = split_nested_empty(Context),
-            % This module may contain include declarations (added by
-            % add_includes_for_nested_submodules above) even though
-            % it contains no other kinds of declarations, or code.
-            % If we don't return this empty raw compilation unit, the
-            % rest of the compiler won't know that e.g. it needs to create
-            % interface files for the empty module. That would lead to
+            % The reason why we do this even for split_nested_empty is that
+            % if we don't create and return ParseTreeModuleSrc (which will
+            % be empty in this case, except for whatever may have been added
+            % by the call to add_includes_for_nested_submodules above),
+            % then the rest of the compiler won't know that e.g. it needs to
+            % create interface files for the empty module. That would lead to
             % the failure of the submodule/deeply_nested test case.
             RawCompUnit = raw_compilation_unit(ModuleName, Context,
                 RawItemBlocks),
@@ -733,10 +733,11 @@ create_split_compilation_units_depth_first(Globals, ModuleName,
         ( if map.remove(ModuleName, SubModulesCord, !SubModulesMap) then
             list.sort_and_remove_dups(cord.list(SubModulesCord), SubModules),
             list.foldl4(
-                create_split_compilation_units_depth_first(Globals),
+                create_component_modules_depth_first(Globals),
                 SubModules, !SplitModuleMap, !SubModulesMap,
                 !ParseTreeModuleSrcCord, !Specs)
         else
+            % ModuleName has no submodules for us to process.
             true
         )
     ).
