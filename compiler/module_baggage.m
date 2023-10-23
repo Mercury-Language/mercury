@@ -291,7 +291,7 @@ get_nested_children_list_of_top_module(MaybeTopModule) = Modules :-
 %---------------------------------------------------------------------------%
 
 parse_tree_src_to_burdened_module_list(Globals, SourceFileName,
-        ReadModuleErrors, MaybeTimestampMap, ParseTreeSrc,
+        ReadModuleErrors, MaybeTimestamp, ParseTreeSrc,
         !:Specs, BurdenedModules) :-
     !:Specs = get_read_module_specs(ReadModuleErrors),
     split_into_component_modules_perform_checks(Globals, ParseTreeSrc,
@@ -324,7 +324,7 @@ parse_tree_src_to_burdened_module_list(Globals, SourceFileName,
     list.map(
         maybe_nested_init_burdened_module(SourceFileName,
             TopModuleName, AllModuleNames,
-            NoSpecReadModuleErrors, MaybeTimestampMap),
+            NoSpecReadModuleErrors, MaybeTimestamp),
         ParseTreeModuleSrcs, BurdenedModules).
 
 :- pred maybe_nested_init_burdened_module(file_name::in,

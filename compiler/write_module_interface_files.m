@@ -51,20 +51,14 @@
 :- interface.
 
 :- import_module libs.
-:- import_module libs.file_util.
 :- import_module libs.globals.
 :- import_module libs.maybe_util.
-:- import_module libs.timestamp.
-:- import_module mdbcomp.
-:- import_module mdbcomp.sym_name.
 :- import_module parse_tree.error_spec.
 :- import_module parse_tree.module_baggage.
-:- import_module parse_tree.prog_item.
 :- import_module parse_tree.read_modules.
 
 :- import_module io.
 :- import_module list.
-:- import_module maybe.
 
 %---------------------------------------------------------------------------%
 
@@ -83,7 +77,7 @@
     ;       do_add_new_to_hptm.
 
     % write_short_interface_file_int3(ProgressStream, Globals, AddToHrmm,
-    %   ParseTreeModuleSrc, Succeeded, Specs, !HaveParseTreeMaps, !IO):
+    %   BurdenedModule, Succeeded, Specs, !HaveParseTreeMaps, !IO):
     %
     % Output the unqualified short interface file to <module>.int3.
     %
@@ -98,52 +92,34 @@
     % We add the contents of the .int3 file to !HaveParseTreeMaps if we could
     % construct it without any errors, *and* AddToHrmm says we should.
     %
-:- pred write_short_interface_file_int3(io.text_output_stream::in, globals::in,
-    maybe_add_to_hptm::in, parse_tree_module_src::in,
+:- pred write_short_interface_file_int3(io.text_output_stream::in,
+    globals::in, maybe_add_to_hptm::in, burdened_module::in,
     maybe_succeeded::out, list(error_spec)::out,
     have_parse_tree_maps::in, have_parse_tree_maps::out,
     io::di, io::uo) is det.
 
     % write_private_interface_file_int0(ProgressStream, Globals, AddToHrmm,
-    %   SourceFileName, SourceFileModuleName, MaybeTimestamp,
-    %   ParseTreeModuleSrc0, Succeeded, Specs, !HaveParseTreeMaps, !IO):
+    %   BurdenedModule, Succeeded, Specs, !HaveParseTreeMaps, !IO):
     %
-    % Given a source file name, the timestamp of the source file, and the
-    % representation of a module in that file, output the private (`.int0')
-    % interface file for the module. (The private interface contains all the
-    % declarations in the module, including those in the `implementation'
-    % section; it is used when compiling submodules.)
+    % Given a burdened_module, output the private (`.int0') interface file
+    % for the module. (The private interface contains all the declarations
+    % in the module, including those in the `implementation' section;
+    % it is used when compiling submodules.)
     %
 :- pred write_private_interface_file_int0(io.text_output_stream::in,
-    globals::in, maybe_add_to_hptm::in, file_name::in, module_name::in,
-    maybe(timestamp)::in, parse_tree_module_src::in,
-    maybe_succeeded::out, list(error_spec)::out,
-    have_parse_tree_maps::in, have_parse_tree_maps::out,
-    io::di, io::uo) is det.
-:- pred write_private_interface_file_int0_burdened_module(
-    io.text_output_stream::in, globals::in,
-    maybe_add_to_hptm::in, burdened_module::in,
+    globals::in, maybe_add_to_hptm::in, burdened_module::in,
     maybe_succeeded::out, list(error_spec)::out,
     have_parse_tree_maps::in, have_parse_tree_maps::out,
     io::di, io::uo) is det.
 
-    % write_interface_file_int1_int2(ProgressStream, Globals,
-    %   AddToHrmm, SourceFileName, SourceFileModuleName, MaybeTimestamp,
-    %   ParseTreeModuleSrc0, Succeeded, Specs, !HaveParseTreeMaps, !IO):
+    % write_interface_file_int1_int2(ProgressStream, Globals, AddToHrmm,
+    %   BurdenedModule, Succeeded, Specs, !HaveParseTreeMaps, !IO):
     %
-    % Given a source file name, the timestamp of the source file, and the
-    % representation of a module in that file, output the long (`.int')
-    % and short (`.int2') interface files for the module.
+    % Given a burdened_module, output the long (`.int') and short (`.int2')
+    % interface files for the module.
     %
-:- pred write_interface_file_int1_int2(io.text_output_stream::in, globals::in,
-    maybe_add_to_hptm::in, file_name::in, module_name::in,
-    maybe(timestamp)::in, parse_tree_module_src::in,
-    maybe_succeeded::out, list(error_spec)::out,
-    have_parse_tree_maps::in, have_parse_tree_maps::out,
-    io::di, io::uo) is det.
-:- pred write_interface_file_int1_int2_burdened_module(
-    io.text_output_stream::in, globals::in,
-    maybe_add_to_hptm::in, burdened_module::in,
+:- pred write_interface_file_int1_int2(io.text_output_stream::in,
+    globals::in, maybe_add_to_hptm::in, burdened_module::in,
     maybe_succeeded::out, list(error_spec)::out,
     have_parse_tree_maps::in, have_parse_tree_maps::out,
     io::di, io::uo) is det.
@@ -154,6 +130,9 @@
 :- implementation.
 
 :- import_module libs.options.
+:- import_module libs.timestamp.
+:- import_module mdbcomp.
+:- import_module mdbcomp.sym_name.
 :- import_module parse_tree.comp_unit_interface.
 :- import_module parse_tree.error_util.
 :- import_module parse_tree.file_kind.
@@ -163,6 +142,7 @@
 :- import_module parse_tree.module_qual.
 :- import_module parse_tree.parse_error.
 :- import_module parse_tree.parse_tree_out.
+:- import_module parse_tree.prog_item.
 :- import_module recompilation.
 :- import_module recompilation.version.
 
@@ -170,6 +150,7 @@
 :- import_module getopt.
 :- import_module io.file.
 :- import_module map.
+:- import_module maybe.
 :- import_module require.
 :- import_module string.
 
@@ -179,7 +160,8 @@
 %
 
 write_short_interface_file_int3(ProgressStream, Globals, AddToHrmm,
-        ParseTreeModuleSrc, Succeeded, Specs, !HaveParseTreeMaps, !IO) :-
+        BurdenedModule, Succeeded, Specs, !HaveParseTreeMaps, !IO) :-
+    BurdenedModule = burdened_module(_Baggage, ParseTreeModuleSrc),
     % This qualifies everything as much as it can given the information
     % in the current module and writes out the .int3 file.
     generate_short_interface_int3(Globals, ParseTreeModuleSrc, ParseTreeInt3,
@@ -224,12 +206,14 @@ write_short_interface_file_int3(ProgressStream, Globals, AddToHrmm,
 %
 
 write_private_interface_file_int0(ProgressStream, Globals, AddToHrmm,
-        SourceFileName, SourceFileModuleName, MaybeTimestamp,
-        ParseTreeModuleSrc0, Succeeded, Specs, !HaveParseTreeMaps, !IO) :-
+        BurdenedModule, Succeeded, Specs, !HaveParseTreeMaps, !IO) :-
+    BurdenedModule = burdened_module(Baggage0, ParseTreeModuleSrc0),
+    MaybeTimestamp = Baggage0 ^ mb_maybe_timestamp,
     ModuleName = ParseTreeModuleSrc0 ^ ptms_module_name,
+
     grab_unqual_imported_modules_make_int(ProgressStream, Globals,
-        SourceFileName, SourceFileModuleName, ParseTreeModuleSrc0,
-        Baggage, AugMakeIntUnit1, !HaveParseTreeMaps, !IO),
+        ParseTreeModuleSrc0, AugMakeIntUnit1, Baggage0, Baggage,
+        !HaveParseTreeMaps, !IO),
 
     % Check whether we succeeded.
     GetErrors = Baggage ^ mb_errors,
@@ -298,33 +282,24 @@ write_private_interface_file_int0(ProgressStream, Globals, AddToHrmm,
         Succeeded = did_not_succeed
     ).
 
-write_private_interface_file_int0_burdened_module(ProgressStream,
-        Globals, AddToHrmm, BurdenedModule, Succeeded, Specs,
-        !HaveParseTreeMaps, !IO) :-
-    BurdenedModule = burdened_module(Baggage, ParseTreeModuleSrc),
-    SourceFileName = Baggage ^ mb_source_file_name,
-    SourceFileModuleName = Baggage ^ mb_source_file_module_name,
-    MaybeTimestamp = Baggage ^ mb_maybe_timestamp,
-    write_private_interface_file_int0(ProgressStream, Globals,
-        AddToHrmm, SourceFileName, SourceFileModuleName, MaybeTimestamp,
-        ParseTreeModuleSrc, Succeeded, Specs, !HaveParseTreeMaps, !IO).
-
 %---------------------------------------------------------------------------%
 %
 % Write out .int and .int2 files.
 %
 
 write_interface_file_int1_int2(ProgressStream, Globals, AddToHrmm,
-        SourceFileName, SourceFileModuleName, MaybeTimestamp,
-        ParseTreeModuleSrc0, Succeeded, Specs, !HaveParseTreeMaps, !IO) :-
+        BurdenedModule, Succeeded, Specs, !HaveParseTreeMaps, !IO) :-
+    BurdenedModule = burdened_module(Baggage0, ParseTreeModuleSrc0),
+    MaybeTimestamp = Baggage0 ^ mb_maybe_timestamp,
     ModuleName = ParseTreeModuleSrc0 ^ ptms_module_name,
+
     generate_pre_grab_pre_qual_interface_for_int1_int2(ParseTreeModuleSrc0,
         IntParseTreeModuleSrc),
 
     % Get the .int3 files for imported modules.
     grab_unqual_imported_modules_make_int(ProgressStream, Globals,
-        SourceFileName, SourceFileModuleName, IntParseTreeModuleSrc,
-        Baggage, AugMakeIntUnit1, !HaveParseTreeMaps, !IO),
+        IntParseTreeModuleSrc, AugMakeIntUnit1, Baggage0, Baggage,
+        !HaveParseTreeMaps, !IO),
 
     % Check whether we succeeded.
     GetErrors = Baggage ^ mb_errors,
@@ -411,17 +386,6 @@ write_interface_file_int1_int2(ProgressStream, Globals, AddToHrmm,
             ExtInt1, yes(ExtInt2), ExtDate12, GetSpecs, Specs, !IO),
         Succeeded = did_not_succeed
     ).
-
-write_interface_file_int1_int2_burdened_module(ProgressStream, Globals,
-        AddToHrmm, BurdenedModule, Succeeded, Specs,
-        !HaveParseTreeMaps, !IO) :-
-    BurdenedModule = burdened_module(Baggage, ParseTreeModuleSrc),
-    SourceFileName = Baggage ^ mb_source_file_name,
-    SourceFileModuleName = Baggage ^ mb_source_file_module_name,
-    MaybeTimestamp = Baggage ^ mb_maybe_timestamp,
-    write_interface_file_int1_int2(ProgressStream, Globals,
-        AddToHrmm, SourceFileName, SourceFileModuleName, MaybeTimestamp,
-        ParseTreeModuleSrc, Succeeded, Specs, !HaveParseTreeMaps, !IO).
 
 %---------------------------------------------------------------------------%
 

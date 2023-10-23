@@ -651,7 +651,7 @@ write_module_dep_files_for_source_file(Globals, ProgressStream,
         ;
             MayBuild = may_build(_AllOptions, BuildGlobals),
             make_int3_files(ProgressStream, ErrorStream, BuildGlobals,
-                ParseTreeModuleSrcs, Succeeded0, !Info, !IO)
+                BurdenedModules, Succeeded0, !Info, !IO)
         ),
 
         CleanupMSI =
@@ -689,17 +689,17 @@ make_info_add_burdened_module_as_dep(BurdenedModule, !Info) :-
     make_info_set_maybe_module_dep_info_map(ModuleDepMap, !Info).
 
 :- pred make_int3_files(io.text_output_stream::in, io.text_output_stream::in,
-    globals::in, list(parse_tree_module_src)::in, maybe_succeeded::out,
+    globals::in, list(burdened_module)::in, maybe_succeeded::out,
     make_info::in, make_info::out, io::di, io::uo) is det.
 
 make_int3_files(ProgressStream, ErrorStream, Globals,
-        ParseTreeModuleSrcs, Succeeded, !Info, !IO) :-
-    % XXX MAKE We should probably add to, and keep, HaveReadModuleMaps.
+        BurdenedModules, Succeeded, !Info, !IO) :-
+    % XXX MAKE We should probably add to, and keep, HaveParseTreeMaps.
     list.map2_foldl2(
-        write_short_interface_file_int3(ProgressStream,
-            Globals, do_not_add_new_to_hptm),
-        ParseTreeModuleSrcs, Succeededs, SpecsList,
-        init_have_parse_tree_maps, _HaveReadModuleMaps, !IO),
+        write_short_interface_file_int3(ProgressStream, Globals,
+            do_not_add_new_to_hptm),
+        BurdenedModules, Succeededs, SpecsList,
+        init_have_parse_tree_maps, _HaveParseTreeMaps, !IO),
     list.foldl(write_error_specs(ErrorStream, Globals), SpecsList, !IO),
     Succeeded = and_list(Succeededs).
 

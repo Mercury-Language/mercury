@@ -82,7 +82,6 @@
 :- import_module parse_tree.file_names.
 :- import_module parse_tree.generate_dep_d_files.
 :- import_module parse_tree.grab_modules.
-:- import_module parse_tree.item_util.
 :- import_module parse_tree.maybe_error.
 :- import_module parse_tree.module_baggage.
 :- import_module parse_tree.module_cmds.
@@ -92,7 +91,6 @@
 :- import_module parse_tree.prog_item.
 :- import_module parse_tree.read_modules.
 :- import_module parse_tree.source_file_map.
-:- import_module parse_tree.split_parse_tree_src.
 :- import_module parse_tree.write_deps_file.
 :- import_module parse_tree.write_error_spec.
 :- import_module parse_tree.write_module_interface_files.
@@ -1256,14 +1254,12 @@ do_process_compiler_arg(ProgressStream, ErrorStream, Globals0,
 deps_make_ints(ProgressStream, Globals, DepsMap,
         !Specs, !HaveParseTreeMaps, !IO) :-
     map.values(DepsMap, DepsList),
-    list.filter_map_foldl(gather_local_parse_tree_module_srcs,
+    list.filter_map_foldl(gather_local_burdened_modules,
         DepsList, BurdenedModules, [], Ancestors),
-    ParseTreeModuleSrcs =
-        list.map((func(burdened_module(_, PTMS)) = PTMS), BurdenedModules),
     list.map2_foldl2(
         write_short_interface_file_int3(ProgressStream, Globals,
             do_add_new_to_hptm),
-        ParseTreeModuleSrcs, _Succeededs3, SpecsList3,
+        BurdenedModules, _Succeededs3, SpecsList3,
         !HaveParseTreeMaps, !IO),
     list.condense(SpecsList3, Specs3),
     !:Specs = Specs3 ++ !.Specs,
@@ -1275,17 +1271,17 @@ deps_make_ints(ProgressStream, Globals, DepsMap,
         list.sort(Ancestors, SortedAncestors),
         assoc_list.values(SortedAncestors, AncestorBurdenedModules),
         list.map2_foldl2(
-            write_private_interface_file_int0_burdened_module(ProgressStream,
-                Globals, do_add_new_to_hptm),
+            write_private_interface_file_int0(ProgressStream, Globals,
+                do_add_new_to_hptm),
             AncestorBurdenedModules, _Succeededs0, RawSpecsList0,
             !HaveParseTreeMaps, !IO),
         % The code above created a .int3 file for every module in
-        % ParseTreeModuleSrcs, but some of those modules may import
-        % modules that are NOT in ParseTreeModuleSrcs. These modules
-        % may be in other directories in which we have not yet created
-        % .int3 files. If this is the case, then mention this fact
-        % in a message that won't (by itself) prevent the compiler
-        % from exiting with a successful exit status.
+        % BurdenedModules, but some of those modules may import modules
+        % that are NOT in BurdenedModules. These modules may be in
+        % other directories in which we have not yet created .int3 files.
+        % If this is the case, then mention this fact in a message
+        % that won't (by itself) prevent the compiler from exiting
+        % with a successful exit status.
         list.condense(RawSpecsList0, RawSpecs0),
         handle_not_found_files(RawSpecs0, Specs0, Continue0),
         !:Specs = Specs0 ++ !.Specs,
@@ -1295,8 +1291,8 @@ deps_make_ints(ProgressStream, Globals, DepsMap,
             Continue0 = yes
         then
             list.map2_foldl2(
-                write_interface_file_int1_int2_burdened_module(ProgressStream,
-                    Globals, do_add_new_to_hptm),
+                write_interface_file_int1_int2(ProgressStream, Globals,
+                    do_add_new_to_hptm),
                 BurdenedModules, _Succeededs12, RawSpecsList12,
                 !HaveParseTreeMaps, !IO),
             list.condense(RawSpecsList12, RawSpecs12),
@@ -1307,15 +1303,14 @@ deps_make_ints(ProgressStream, Globals, DepsMap,
         )
     ).
 
-:- pred gather_local_parse_tree_module_srcs(deps::in,
+:- pred gather_local_burdened_modules(deps::in,
     burdened_module::out,
     assoc_list(list(string), burdened_module)::in,
     assoc_list(list(string), burdened_module)::out) is semidet.
 
-gather_local_parse_tree_module_srcs(Deps, BurdenedModule, !Ancestors) :-
+gather_local_burdened_modules(Deps, BurdenedModule, !Ancestors) :-
     Deps = deps(_HaveProcessed, MaybeDummy, BurdenedModule),
-    BurdenedModule =
-        burdened_module(_Baggage, ParseTreeModuleSrc),
+    BurdenedModule = burdened_module(_Baggage, ParseTreeModuleSrc),
     MaybeDummy = non_dummy_burdened_module,
     IncludeMap = ParseTreeModuleSrc ^ ptms_include_map,
     ( if map.is_empty(IncludeMap) then
@@ -1412,40 +1407,40 @@ do_process_compiler_arg_make_interface(ProgressStream, Globals0,
         ( if halt_at_module_error(Globals, ReadErrors) then
             SpecLists = [ReadSpecs]
         else
-            ModuleName = ParseTreeSrc ^ pts_module_name,
-            split_into_component_modules_perform_checks(Globals, ParseTreeSrc,
-                ParseTreeModuleSrcs, ReadSpecs, ReadSplitSpecs0),
+            parse_tree_src_to_burdened_module_list(Globals, FileName,
+                ReadErrors, MaybeTimestamp, ParseTreeSrc,
+                SplitSpecs, BurdenedModules),
+            ReadSplitSpecs0 = ReadSpecs ++ SplitSpecs,
             filter_interface_generation_specs(Globals, ReadSplitSpecs0,
                 ReadSplitSpecs),
             (
                 InterfaceFile = omif_int0,
                 IsAncestor =
-                    ( pred(PTMS::in) is semidet :-
+                    ( pred(BM::in) is semidet :-
+                        BM = burdened_module(_, PTMS),
                         IncludeMap = PTMS ^ ptms_include_map,
                         not map.is_empty(IncludeMap)
                     ),
                 list.filter(IsAncestor,
-                    ParseTreeModuleSrcs, AncestorParseTreeModuleSrcs),
+                    BurdenedModules, AncestorBurdenedModules),
                 list.map2_foldl2(
-                    write_private_interface_file_int0(ProgressStream,
-                        Globals0, do_not_add_new_to_hptm,
-                        FileName, ModuleName, MaybeTimestamp),
-                    AncestorParseTreeModuleSrcs, _Succeededs, WriteSpecsList,
+                    write_private_interface_file_int0(ProgressStream, Globals0,
+                        do_not_add_new_to_hptm),
+                    AncestorBurdenedModules, _Succeededs, WriteSpecsList,
                     !HaveParseTreeMaps, !IO)
             ;
                 InterfaceFile = omif_int1_int2,
                 list.map2_foldl2(
-                    write_interface_file_int1_int2(ProgressStream,
-                        Globals0, do_not_add_new_to_hptm,
-                        FileName, ModuleName, MaybeTimestamp),
-                    ParseTreeModuleSrcs, _Succeededs, WriteSpecsList,
+                    write_interface_file_int1_int2(ProgressStream, Globals0,
+                        do_not_add_new_to_hptm),
+                    BurdenedModules, _Succeededs, WriteSpecsList,
                     !HaveParseTreeMaps, !IO)
             ;
                 InterfaceFile = omif_int3,
                 list.map2_foldl2(
-                    write_short_interface_file_int3(ProgressStream,
-                        Globals0, do_not_add_new_to_hptm),
-                    ParseTreeModuleSrcs, _Succeededs, WriteSpecsList,
+                    write_short_interface_file_int3(ProgressStream, Globals0,
+                        do_not_add_new_to_hptm),
+                    BurdenedModules, _Succeededs, WriteSpecsList,
                     !HaveParseTreeMaps, !IO)
             ),
             SpecLists = [ReadSplitSpecs | WriteSpecsList]
@@ -1613,12 +1608,11 @@ read_augment_and_process_module(ProgressStream, ErrorStream, Globals0,
         ModulesToLink = [],
         ExtraObjFiles = []
     ;
-        HaveReadSrc = have_module(FileName, ParseTreeSrc, Source),
+        HaveReadSrc = have_module(SourceFileName, ParseTreeSrc, Source),
         have_parse_tree_source_get_maybe_timestamp_errors(Source,
-            MaybeTimestamp, Errors),
-        Specs0 = get_read_module_specs(Errors),
-        ( if halt_at_module_error(Globals, Errors) then
-            Specs = Specs0,
+            MaybeTimestamp, ReadModuleErrors),
+        ( if halt_at_module_error(Globals, ReadModuleErrors) then
+            Specs = get_read_module_specs(ReadModuleErrors),
             ModulesToLink = [],
             ExtraObjFiles = []
         else
@@ -1626,45 +1620,43 @@ read_augment_and_process_module(ProgressStream, ErrorStream, Globals0,
             % We should test whether to go from non-module-specific
             % progress and error streams to module-specific streams.
             read_augment_and_process_module_ok(ProgressStream, ErrorStream,
-                Globals, OpModeAugment, InvokedByMmcMake, FileName,
-                MaybeTimestamp, ParseTreeSrc, MaybeModulesToRecompile,
-                ModulesToLink, ExtraObjFiles, Specs0, Specs,
-                !HaveParseTreeMaps, !IO)
+                Globals, OpModeAugment, InvokedByMmcMake, SourceFileName,
+                MaybeTimestamp, ReadModuleErrors, ParseTreeSrc,
+                MaybeModulesToRecompile, ModulesToLink, ExtraObjFiles,
+                Specs, !HaveParseTreeMaps, !IO)
         )
     ).
 
 :- pred read_augment_and_process_module_ok(io.text_output_stream::in,
     io.text_output_stream::in, globals::in, op_mode_augment::in,
     op_mode_invoked_by_mmc_make::in, file_name::in, maybe(timestamp)::in,
-    parse_tree_src::in,
+    read_module_errors::in, parse_tree_src::in,
     modules_to_recompile::in, list(string)::out, list(string)::out,
-    list(error_spec)::in, list(error_spec)::out,
+    list(error_spec)::out,
     have_parse_tree_maps::in, have_parse_tree_maps::out,
     io::di, io::uo) is det.
 
 read_augment_and_process_module_ok(ProgressStream, ErrorStream, Globals,
-        OpModeAugment, InvokedByMmcMake, FileName, MaybeTimestamp,
-        ParseTreeSrc, MaybeModulesToRecompile, ModulesToLink, ExtraObjFiles,
-        !Specs, !HaveParseTreeMaps, !IO) :-
+        OpModeAugment, InvokedByMmcMake, SourceFileName, MaybeTimestamp,
+        ReadModuleErrors, ParseTreeSrc, MaybeModulesToRecompile,
+        ModulesToLink, ExtraObjFiles, !:Specs, !HaveParseTreeMaps, !IO) :-
     ModuleName = ParseTreeSrc ^ pts_module_name,
-    split_into_component_modules_perform_checks(Globals, ParseTreeSrc,
-        ParseTreeModuleSrcs0, !Specs),
+    parse_tree_src_to_burdened_module_list(Globals, SourceFileName,
+        ReadModuleErrors, MaybeTimestamp, ParseTreeSrc,
+        !:Specs, BurdenedModules0),
     (
         MaybeModulesToRecompile = some_modules(ModulesToRecompile),
         ToRecompile =
-            ( pred(PTMS::in) is semidet :-
+            ( pred(BM::in) is semidet :-
+                BM = burdened_module(_, PTMS),
                 list.member(PTMS ^ ptms_module_name, ModulesToRecompile)
             ),
-        list.filter(ToRecompile, ParseTreeModuleSrcs0,
-            ParseTreeModuleSrcsToRecompile)
+        list.filter(ToRecompile, BurdenedModules0,
+            BurdenedModulesToRecompile)
     ;
         MaybeModulesToRecompile = all_modules,
-        ParseTreeModuleSrcsToRecompile = ParseTreeModuleSrcs0
+        BurdenedModulesToRecompile = BurdenedModules0
     ),
-    ParseTreeModuleNames = set.list_to_set(
-        list.map(parse_tree_module_src_project_name,
-            ParseTreeModuleSrcs0)),
-    set.delete(ModuleName, ParseTreeModuleNames, NestedModuleNames),
 
     find_timestamp_files(Globals, FindTimestampFiles),
     globals.lookup_bool_option(Globals, trace_prof, TraceProf),
@@ -1686,10 +1678,9 @@ read_augment_and_process_module_ok(ProgressStream, ErrorStream, Globals,
         GlobalsToUse = Globals
     ),
     augment_and_process_all_submodules(ProgressStream, ErrorStream,
-        GlobalsToUse, OpModeAugment, InvokedByMmcMake, FileName,
-        MaybeTimestamp, ModuleName, NestedModuleNames, FindTimestampFiles,
-        ParseTreeModuleSrcsToRecompile, ModulesToLink, ExtraObjFiles,
-        !Specs, !HaveParseTreeMaps, !IO).
+        GlobalsToUse, OpModeAugment, InvokedByMmcMake, MaybeTimestamp,
+        FindTimestampFiles, BurdenedModulesToRecompile,
+        ModulesToLink, ExtraObjFiles, !Specs, !HaveParseTreeMaps, !IO).
 
 :- pred maybe_report_cmd_line(io.text_output_stream::in, bool::in,
     list(string)::in, list(string)::in, io::di, io::uo) is det.
@@ -1816,32 +1807,31 @@ read_module_or_file(ProgressStream, Globals0, Globals, FileOrModuleName,
     %   output_pass(LLDS_FragmentList)
     %
 :- pred augment_and_process_all_submodules(io.text_output_stream::in,
-    io.text_output_stream::in, globals::in,
-    op_mode_augment::in, op_mode_invoked_by_mmc_make::in, string::in,
-    maybe(timestamp)::in, module_name::in, set(module_name)::in,
+    io.text_output_stream::in, globals::in, op_mode_augment::in,
+    op_mode_invoked_by_mmc_make::in, maybe(timestamp)::in,
     find_timestamp_file_names::in(find_timestamp_file_names),
-    list(parse_tree_module_src)::in, list(string)::out, list(string)::out,
+    list(burdened_module)::in, list(string)::out, list(string)::out,
     list(error_spec)::in, list(error_spec)::out,
     have_parse_tree_maps::in, have_parse_tree_maps::out,
     io::di, io::uo) is det.
 
 augment_and_process_all_submodules(ProgressStream, ErrorStream, Globals,
-        OpModeAugment, InvokedByMmcMake, FileName, MaybeTimestamp,
-        SourceFileModuleName, NestedSubModules, FindTimestampFiles,
-        ParseTreeModuleSrcs, ModulesToLink, ExtraObjFiles,
+        OpModeAugment, InvokedByMmcMake, MaybeTimestamp, FindTimestampFiles,
+        BurdenedModules, ModulesToLink, ExtraObjFiles,
         !Specs, !HaveParseTreeMaps, !IO) :-
     list.map_foldl3(
         augment_and_process_module(ProgressStream, ErrorStream, Globals,
-            OpModeAugment, InvokedByMmcMake, FileName, MaybeTimestamp,
-            SourceFileModuleName, NestedSubModules, FindTimestampFiles),
-        ParseTreeModuleSrcs, ExtraObjFileLists,
+            OpModeAugment, InvokedByMmcMake, MaybeTimestamp,
+            FindTimestampFiles),
+        BurdenedModules, ExtraObjFileLists,
         !Specs, !HaveParseTreeMaps, !IO),
-    list.map(module_to_link, ParseTreeModuleSrcs, ModulesToLink),
+    list.map(module_to_link, BurdenedModules, ModulesToLink),
     list.condense(ExtraObjFileLists, ExtraObjFiles).
 
-:- pred module_to_link(parse_tree_module_src::in, string::out) is det.
+:- pred module_to_link(burdened_module::in, string::out) is det.
 
-module_to_link(ParseTreeModuleSrc, ModuleToLink) :-
+module_to_link(BurdenedModule, ModuleToLink) :-
+    BurdenedModule = burdened_module(_, ParseTreeModuleSrc),
     ModuleName = ParseTreeModuleSrc ^ ptms_module_name,
     module_name_to_file_name_stem(ModuleName, ModuleToLink).
 
@@ -1863,30 +1853,23 @@ module_to_link(ParseTreeModuleSrc, ModuleToLink) :-
     %
 :- pred augment_and_process_module(io.text_output_stream::in,
     io.text_output_stream::in, globals::in, op_mode_augment::in,
-    op_mode_invoked_by_mmc_make::in, file_name::in, maybe(timestamp)::in,
-    module_name::in, set(module_name)::in,
+    op_mode_invoked_by_mmc_make::in, maybe(timestamp)::in,
     find_timestamp_file_names::in(find_timestamp_file_names),
-    parse_tree_module_src::in, list(string)::out,
+    burdened_module::in, list(string)::out,
     list(error_spec)::in, list(error_spec)::out,
     have_parse_tree_maps::in, have_parse_tree_maps::out,
     io::di, io::uo) is det.
 
 augment_and_process_module(ProgressStream, ErrorStream, Globals,
-        OpModeAugment, InvokedByMmcMake, SourceFileName, MaybeTimestamp,
-        SourceFileModuleName, NestedSubModules, FindTimestampFiles,
-        ParseTreeModuleSrc, ExtraObjFiles, !Specs, !HaveParseTreeMaps, !IO) :-
+        OpModeAugment, InvokedByMmcMake, MaybeTimestamp, FindTimestampFiles,
+        BurdenedModule, ExtraObjFiles, !Specs, !HaveParseTreeMaps, !IO) :-
+    BurdenedModule = burdened_module(Baggage0, ParseTreeModuleSrc),
     check_module_interface_for_no_exports(Globals, ParseTreeModuleSrc, !Specs),
-    ModuleName = ParseTreeModuleSrc ^ ptms_module_name,
-    ( if ModuleName = SourceFileModuleName then
-        MaybeTopModule = top_module(NestedSubModules)
-    else
-        MaybeTopModule = not_top_module
-    ),
     % XXX STREAM We could switch from a general progress stream
     % to a module-specific progress stream.
-    grab_qual_imported_modules_augment(ProgressStream, Globals, SourceFileName,
-        SourceFileModuleName, MaybeTimestamp, MaybeTopModule,
-        ParseTreeModuleSrc, Baggage, AugCompUnit, !HaveParseTreeMaps, !IO),
+    grab_qual_imported_modules_augment(ProgressStream, Globals,
+        MaybeTimestamp, ParseTreeModuleSrc, AugCompUnit,
+        Baggage0, Baggage, !HaveParseTreeMaps, !IO),
     Errors = Baggage ^ mb_errors,
     !:Specs = get_read_module_specs(Errors) ++ !.Specs,
     ( if set.is_empty(Errors ^ rm_fatal_errors) then

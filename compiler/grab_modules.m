@@ -55,7 +55,6 @@
 :- interface.
 
 :- import_module libs.
-:- import_module libs.file_util.
 :- import_module libs.globals.
 :- import_module libs.timestamp.
 :- import_module mdbcomp.
@@ -72,8 +71,7 @@
 %---------------------------------------------------------------------------%
 
     % grab_unqual_imported_modules_make_int(ProgressStream, Globals,
-    %   SourceFileName, SourceFileModuleName, ParseTreeModuleSrc,
-    %   Baggage, AugMakeIntUnit, !HaveParseTreeMaps, !IO):
+    %   ParseTreeModuleSrc, AugMakeIntUnit, !Baggage, !HaveParseTreeMaps, !IO):
     %
     % Given ParseTreeModuleSrc, one of the modules stored in SourceFileName,
     % read in all the interface files needed to generate its .int0, .int and
@@ -89,19 +87,17 @@
     % Return the aug_make_int_unit structure containing all the information
     % gathered this way.
     %
-    % SourceFileModuleName is the top-level module name in SourceFileName.
-    % ModuleTimestamp is the timestamp of the SourceFileName.
     % !HaveParseTreeMaps records the parse trees we have gained access to.
     %
 :- pred grab_unqual_imported_modules_make_int(io.text_output_stream::in,
-    globals::in, file_name::in, module_name::in,
-    parse_tree_module_src::in, module_baggage::out, aug_make_int_unit::out,
+    globals::in, parse_tree_module_src::in, aug_make_int_unit::out,
+    module_baggage::in, module_baggage::out,
     have_parse_tree_maps::in, have_parse_tree_maps::out,
     io::di, io::uo) is det.
 
     % grab_qual_imported_modules_augment(ProgressStream, Globals,
-    %   SourceFileName, SourceFileModuleName, MaybeTimestamp, MaybeTopModule,
-    %   ParseTreeModuleSrc, Baggage, AugCompUnit, !HaveParseTreeMaps, !IO):
+    %   MaybeTimestamp, ParseTreeModuleSrc, !AugCompUnit, !Baggage,
+    %   !HaveParseTreeMaps, !IO):
     %
     % Given ParseTreeModuleSrc, one of the modules stored in SourceFileName,
     % read in all the interface files needed to generate target language
@@ -124,9 +120,8 @@
     % !HaveParseTreeMaps records the parse trees we have gained access to.
     %
 :- pred grab_qual_imported_modules_augment(io.text_output_stream::in,
-    globals::in, file_name::in, module_name::in, maybe(timestamp)::in,
-    maybe_top_module::in, parse_tree_module_src::in,
-    module_baggage::out, aug_compilation_unit::out,
+    globals::in, maybe(timestamp)::in, parse_tree_module_src::in,
+    aug_compilation_unit::out, module_baggage::in, module_baggage::out,
     have_parse_tree_maps::in, have_parse_tree_maps::out,
     io::di, io::uo) is det.
 
@@ -165,6 +160,7 @@
 
 :- implementation.
 
+:- import_module libs.file_util.
 :- import_module libs.optimization_options.
 :- import_module libs.options.
 :- import_module mdbcomp.builtin_modules.
@@ -181,7 +177,6 @@
 
 :- import_module bool.
 :- import_module cord.
-:- import_module dir.
 :- import_module map.
 :- import_module one_or_more.
 :- import_module set.
@@ -191,9 +186,9 @@
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
-grab_unqual_imported_modules_make_int(ProgressStream, Globals, SourceFileName,
-        SourceFileModuleName, ParseTreeModuleSrc,
-        !:Baggage, !:AugMakeIntUnit, !HaveParseTreeMaps, !IO) :-
+grab_unqual_imported_modules_make_int(ProgressStream, Globals,
+        ParseTreeModuleSrc, !:AugMakeIntUnit,
+        !Baggage, !HaveParseTreeMaps, !IO) :-
     % The predicates grab_imported_modules_augment and
     % grab_unqual_imported_modules_make_int have quite similar tasks.
     % Please keep the corresponding parts of these two predicates in sync.
@@ -202,6 +197,30 @@ grab_unqual_imported_modules_make_int(ProgressStream, Globals, SourceFileName,
 
     some [!IntIndirectImported, !ImpIndirectImported]
     (
+        GrabbedFileMap0 = !.Baggage ^ mb_grabbed_file_map,
+        map.set(ModuleName, gf_src(ParseTreeModuleSrc),
+            GrabbedFileMap0, GrabbedFileMap1),
+        !Baggage ^ mb_grabbed_file_map := GrabbedFileMap1,
+        % XXX For most of Mercury's existence, we have not looked for
+        % or reported any errors when creating interface files. This means
+        % that some parts of the compiler cannot properly handle any errors
+        % being reported at such times. We have been changing this slowly
+        % since 2015, starting with the replacement of item lists with
+        % proper structured ASTs as the representations of interface files.
+        % However, the process has not finished yet. This next line shouldn't
+        % be there, since it prevents us from reporting some errors during
+        % the creation of .int/.int2/.int0 files, but without it, we get
+        % about 25 more test case failures during a C# bootcheck
+        % (going from 170 test failures to 195 on 2023 oct 22).
+        !Baggage ^ mb_errors := init_read_module_errors,
+
+        ModuleName = ParseTreeModuleSrc ^ ptms_module_name,
+        SrcMap0 = !.HaveParseTreeMaps ^ hptm_module_src,
+        map.set(ModuleName, ParseTreeModuleSrc, SrcMap0, SrcMap),
+        !HaveParseTreeMaps ^ hptm_module_src := SrcMap,
+
+        init_aug_make_int_unit(ParseTreeModuleSrc, !:AugMakeIntUnit),
+
         ImportAndOrUseMap = ParseTreeModuleSrc ^ ptms_import_use_map,
         import_and_or_use_map_to_module_name_contexts(ImportAndOrUseMap,
             IntImportMap, IntUseMap, ImpImportMap, ImpUseMap,
@@ -212,32 +231,6 @@ grab_unqual_imported_modules_make_int(ProgressStream, Globals, SourceFileName,
         map.keys_as_set(ImpUseMap, ImpUses),
         map.keys_as_set(IntUseImpImportMap, IntUsesImpImports),
         set.insert(mercury_public_builtin_module, IntImports0, IntImports),
-
-        ( if ParseTreeModuleSrc ^ ptms_module_name = SourceFileModuleName then
-            % We lie about the set of modules nested inside this one;
-            % the lie will be correct only by accident.
-            MaybeTopModule = top_module(set.init)
-        else
-            MaybeTopModule = not_top_module
-        ),
-        % We need timestamps only for smart recompilation, which does not
-        % apply to the interface files that this compiler invocation
-        % is creating.
-        MaybeTimestamp = maybe.no,
-        MaybeTimestampMap = maybe.no,
-
-        Errors0 = init_read_module_errors,
-        init_aug_make_int_unit(ParseTreeModuleSrc, !:AugMakeIntUnit),
-        GrabbedFileMap0 =
-            map.singleton(ModuleName, gf_src(ParseTreeModuleSrc)),
-        !:Baggage = module_baggage(SourceFileName, dir.this_directory,
-            SourceFileModuleName, MaybeTopModule,
-            MaybeTimestamp, MaybeTimestampMap, GrabbedFileMap0, Errors0),
-
-        ModuleName = ParseTreeModuleSrc ^ ptms_module_name,
-        SrcMap0 = !.HaveParseTreeMaps ^ hptm_module_src,
-        map.set(ModuleName, ParseTreeModuleSrc, SrcMap0, SrcMap),
-        !HaveParseTreeMaps ^ hptm_module_src := SrcMap,
 
         % Get the .int0 files of the ancestor modules.
         Ancestors = get_ancestors(ModuleName),
@@ -309,9 +302,8 @@ grab_unqual_imported_modules_make_int(ProgressStream, Globals, SourceFileName,
 
 %---------------------------------------------------------------------------%
 
-grab_qual_imported_modules_augment(ProgressStream, Globals, SourceFileName,
-        SourceFileModuleName, MaybeTimestamp, MaybeTopModule,
-        ParseTreeModuleSrc0, !:Baggage, !:AugCompUnit,
+grab_qual_imported_modules_augment(ProgressStream, Globals, MaybeTimestamp,
+        ParseTreeModuleSrc0, !:AugCompUnit, !Baggage,
         !HaveParseTreeMaps, !IO) :-
     % The predicates grab_imported_modules_augment and
     % grab_unqual_imported_modules_make_int have quite similar tasks.
@@ -321,8 +313,16 @@ grab_qual_imported_modules_augment(ProgressStream, Globals, SourceFileName,
     some [!IntIndirectImported, !ImpIndirectImported,
         !IntImpIndirectImported, !ImpImpIndirectImported]
     (
-        % Construct the initial module import structure.
         ModuleName = ParseTreeModuleSrc0 ^ ptms_module_name,
+        (
+            MaybeTimestamp = yes(Timestamp),
+            MaybeTimestampMap0 = yes(map.singleton(ModuleName,
+                module_timestamp(fk_src, Timestamp, recomp_avail_src)))
+        ;
+            MaybeTimestamp = no,
+            MaybeTimestampMap0 = no
+        ),
+        !Baggage ^ mb_maybe_timestamp_map := MaybeTimestampMap0,
 
         IntFIMs0 = ParseTreeModuleSrc0 ^ ptms_int_fims,
         ImpFIMs0 = ParseTreeModuleSrc0 ^ ptms_imp_fims,
@@ -333,27 +333,22 @@ grab_qual_imported_modules_augment(ProgressStream, Globals, SourceFileName,
         ParseTreeModuleSrc1 = ParseTreeModuleSrc0 ^ ptms_int_fims := IntFIMs,
         ParseTreeModuleSrc  = ParseTreeModuleSrc1 ^ ptms_imp_fims := ImpFIMs,
 
-        (
-            MaybeTimestamp = yes(Timestamp),
-            MaybeTimestampMap = yes(map.singleton(ModuleName,
-                module_timestamp(fk_src, Timestamp, recomp_avail_src)))
-        ;
-            MaybeTimestamp = no,
-            MaybeTimestampMap = no
-        ),
+        % The parse_tree_module_src we want to put into the grabbed file map,
+        % !HaveParseTreeMaps and !:AugCompUnit is the one that has had
+        % implicit foreign_import_modules added to it by the block of code
+        % just above.
 
-        Errors0 = init_read_module_errors,
-        init_aug_compilation_unit(ParseTreeModuleSrc, !:AugCompUnit),
-        GrabbedFileMap0 =
-            map.singleton(ModuleName, gf_src(ParseTreeModuleSrc)),
-        !:Baggage = module_baggage(SourceFileName, dir.this_directory,
-            SourceFileModuleName, MaybeTopModule,
-            MaybeTimestamp, MaybeTimestampMap, GrabbedFileMap0, Errors0),
+        GrabbedFileMap0 = !.Baggage ^ mb_grabbed_file_map,
+        map.set(ModuleName, gf_src(ParseTreeModuleSrc),
+            GrabbedFileMap0, GrabbedFileMap1),
+        !Baggage ^ mb_grabbed_file_map := GrabbedFileMap1,
 
         SrcMap0 = !.HaveParseTreeMaps ^ hptm_module_src,
         % XXX Should be map.det_insert.
         map.set(ModuleName, ParseTreeModuleSrc, SrcMap0, SrcMap),
         !HaveParseTreeMaps ^ hptm_module_src := SrcMap,
+
+        init_aug_compilation_unit(ParseTreeModuleSrc, !:AugCompUnit),
 
         ImportUseMap = ParseTreeModuleSrc ^ ptms_import_use_map,
         import_and_or_use_map_to_module_name_contexts(ImportUseMap,
