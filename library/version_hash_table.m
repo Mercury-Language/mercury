@@ -287,26 +287,6 @@ num_occupants(HT) = NumOccupants :-
 
 %---------------------------------------------------------------------------%
 
-:- func find_slot(version_hash_table(K, V), K) = int.
-:- pragma inline(func(find_slot/2)).
-
-find_slot(HT, K) = H :-
-    promise_equivalent_solutions [HashPred] (
-        HashPred = HT ^ ht_hash_pred
-    ),
-    find_slot_2(HashPred, K, HT ^ num_buckets, H).
-
-:- pred find_slot_2(hash_pred(K)::in(hash_pred), K::in, int::in, int::out)
-    is det.
-:- pragma inline(pred(find_slot_2/4)).
-
-find_slot_2(HashPred, K, NumBuckets, H) :-
-    HashPred(K, Hash),
-    % Since NumBuckets is a power of two, we can avoid mod.
-    H = Hash /\ (NumBuckets - 1).
-
-%---------------------------------------------------------------------------%
-
 copy(HT0) = HT :-
     promise_equivalent_solutions [HT] (
         HT0 = ht(NumOccupants, MaxOccupants, HashPred, Buckets0),
@@ -632,7 +612,7 @@ reinsert_alist(AL, HashPred, NumBuckets, !Buckets) :-
     buckets(K, V)::in, buckets(K, V)::out) is det.
 
 unsafe_insert(K, V, HashPred, NumBuckets, Buckets0, Buckets) :-
-    find_slot_2(HashPred, K, NumBuckets, H),
+    compute_slot_number(HashPred, NumBuckets, K, H),
     version_array.lookup(Buckets0, H, AL0),
     (
         AL0 = ht_nil,
@@ -695,6 +675,26 @@ fold_p(P, List, !A) :-
         P(K, V, !A),
         fold_p(P, KVs, !A)
     ).
+
+%---------------------------------------------------------------------------%
+
+:- func find_slot(version_hash_table(K, V), K) = int.
+:- pragma inline(func(find_slot/2)).
+
+find_slot(HT, K) = H :-
+    promise_equivalent_solutions [HashPred] (
+        HashPred = HT ^ ht_hash_pred
+    ),
+    compute_slot_number(HashPred, HT ^ num_buckets, K, H).
+
+:- pred compute_slot_number(hash_pred(K)::in(hash_pred), int::in, K::in,
+    int::out) is det.
+:- pragma inline(pred(compute_slot_number/4)).
+
+compute_slot_number(HashPred, NumBuckets, K, H) :-
+    HashPred(K, Hash),
+    % Since NumBuckets is a power of two, we can avoid mod.
+    H = Hash /\ (NumBuckets - 1).
 
 %---------------------------------------------------------------------------%
 
