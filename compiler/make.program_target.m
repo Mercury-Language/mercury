@@ -519,21 +519,8 @@ build_linked_target_2(ProgressStream, Globals, MainModuleName, FileType,
         FileType = executable,
         make_init_obj_file(NoLinkObjsGlobals, ProgressStream,
             MainModuleName, AllModulesList, InitObjectResult, !IO),
-        MaybeInitObjectResult = yes(InitObjectResult)
-    ;
-        ( FileType = static_library
-        ; FileType = shared_library
-        ; FileType = csharp_executable
-        ; FileType = csharp_library
-        ; FileType = java_executable
-        ; FileType = java_archive
-        ),
-        MaybeInitObjectResult = no
-    ),
-    (
-        MaybeInitObjectResult = yes(InitObjectResult1),
         (
-            InitObjectResult1 = yes(InitObject),
+            InitObjectResult = yes(InitObject),
             % We may need to update the timestamp of the `_init.o' file.
             FileTimestamps0 = make_info_get_file_timestamps(!.Info),
             map.delete(InitObject, FileTimestamps0, FileTimestamps1),
@@ -544,12 +531,18 @@ build_linked_target_2(ProgressStream, Globals, MainModuleName, FileType,
             InitObjects = [InitObject],
             DepsResult2 = BuildDepsResult
         ;
-            InitObjectResult1 = no,
+            InitObjectResult = no,
             DepsResult2 = deps_error,
             InitObjects = []
         )
     ;
-        MaybeInitObjectResult = no,
+        ( FileType = static_library
+        ; FileType = shared_library
+        ; FileType = csharp_executable
+        ; FileType = csharp_library
+        ; FileType = java_executable
+        ; FileType = java_archive
+        ),
         DepsResult2 = BuildDepsResult,
         InitObjects = []
     ),
@@ -558,7 +551,8 @@ build_linked_target_2(ProgressStream, Globals, MainModuleName, FileType,
 
     % Report errors if any of the extra objects aren't present.
     ObjectsToCheckDepFiles = list.map((func(F) = dep_file(F)), ObjectsToCheck),
-    list.map_foldl2(get_dependency_status(ProgressStream, NoLinkObjsGlobals),
+    list.map_foldl2(
+        get_dependency_file_status(ProgressStream, NoLinkObjsGlobals),
         ObjectsToCheckDepFiles, ExtraObjTuples, !Info, !IO),
     ( if
         some [ExtraObjTuple] (
@@ -580,15 +574,15 @@ build_linked_target_2(ProgressStream, Globals, MainModuleName, FileType,
 
     (
         DepsSucceeded = succeeded,
-        DepsResult4 = DepsResult3
+        ( DepsResult3 = deps_error,       DepsResult = DepsResult3
+        ; DepsResult3 = deps_out_of_date, DepsResult = DepsResult3
+        ; DepsResult3 = deps_up_to_date,  DepsResult = ExtraObjectDepsResult
+        )
     ;
         DepsSucceeded = did_not_succeed,
-        DepsResult4 = deps_error
+        DepsResult = deps_error
     ),
-    ( DepsResult4 = deps_error, DepsResult = DepsResult4
-    ; DepsResult4 = deps_out_of_date, DepsResult = DepsResult4
-    ; DepsResult4 = deps_up_to_date, DepsResult = ExtraObjectDepsResult
-    ),
+
     (
         DepsResult = deps_error,
         file_error_msg(FullMainModuleLinkedFileName, ErrorMsg),
@@ -1442,10 +1436,10 @@ modules_needing_reanalysis(ReanalyseSuboptimal, Globals, [Module | Modules],
 
 reset_analysis_registry_dependency_status(ModuleName, !Info) :-
     Dep = dep_target(target_file(ModuleName, module_target_analysis_registry)),
-    DepStatusMap0 = make_info_get_dependency_status(!.Info),
+    DepStatusMap0 = make_info_get_dep_file_status_map(!.Info),
     version_hash_table.set(Dep, deps_status_not_considered,
         DepStatusMap0, DepStatusMap),
-    make_info_set_dependency_status(DepStatusMap, !Info).
+    make_info_set_dep_file_status_map(DepStatusMap, !Info).
 
 %---------------------------------------------------------------------------%
 
@@ -1732,7 +1726,7 @@ install_library_grade(LinkSucceeded0, ModuleName, AllModules,
         %     StatusMap0, StatusMap0),
         StatusMap = version_hash_table.init_default(dependency_file_hash),
 
-        make_info_set_dependency_status(StatusMap, !Info),
+        make_info_set_dep_file_status_map(StatusMap, !Info),
         make_info_set_option_args(OptionArgs, !Info),
 
         % Building the library in the new grade is done in a separate process

@@ -289,12 +289,14 @@ do_get_maybe_module_dep_info(ProgressStream, Globals, RebuildModuleDeps,
         )
     ),
     ModuleDepMap2 = make_info_get_maybe_module_dep_info_map(!.Info),
-    ( if map.search(ModuleDepMap2, ModuleName, MaybeModuleDepInfo0) then
-        !:MaybeModuleDepInfo = MaybeModuleDepInfo0
-    else
+    map.search_insert(ModuleName, no_module_dep_info,
+        MaybeOldMaybeModuleDepInfo, ModuleDepMap2, ModuleDepMap),
+    (
+        MaybeOldMaybeModuleDepInfo = yes(OldMaybeModuleDepInfo),
+        !:MaybeModuleDepInfo = OldMaybeModuleDepInfo
+    ;
+        MaybeOldMaybeModuleDepInfo = no,
         !:MaybeModuleDepInfo = no_module_dep_info,
-        map.det_insert(ModuleName, no_module_dep_info,
-            ModuleDepMap2, ModuleDepMap),
         make_info_set_maybe_module_dep_info_map(ModuleDepMap, !Info)
     ).
 
@@ -386,8 +388,7 @@ handle_parsed_module_dep_file(ProgressStream, Globals, SearchDirs, ModuleName,
         SourceFileExists = ok,
         ModuleDepMap0 = make_info_get_maybe_module_dep_info_map(!.Info),
         % XXX Could this be map.det_insert?
-        map.set(ModuleName, MaybeModuleDepInfo,
-            ModuleDepMap0, ModuleDepMap),
+        map.set(ModuleName, MaybeModuleDepInfo, ModuleDepMap0, ModuleDepMap),
         make_info_set_maybe_module_dep_info_map(ModuleDepMap, !Info),
 
         % Read the dependencies for any nested children. If something
@@ -499,9 +500,9 @@ try_to_write_module_dep_files_for_top_module(ProgressStream, Globals,
         % machinery with the use of explicit streams.
         % XXX Why ask for the timestamp if we then ignore it?
         % NOTE: Asking for a timestamp and then ignoring it *could* make sense
-        % if we recorded HaveReadSrc in a have_module_map, because
+        % if we recorded HaveReadSrc in a have_parse_tree_map, because
         % it would make the timestamp available for a later lookup,
-        % However, we do not record HaveReadSrc in a have_module_map.
+        % However, we do not record HaveReadSrc in a have_parse_tree_map.
         read_module_src(ProgressStream, Globals, rrm_get_deps,
             do_not_ignore_errors, do_not_search, ModuleName, [],
             always_read_module(do_return_timestamp), HaveReadSrc, !IO),
@@ -513,11 +514,6 @@ try_to_write_module_dep_files_for_top_module(ProgressStream, Globals,
         (
             HaveReadSrc = have_module(SourceFileName, ParseTreeSrc, Source),
             Source = was_read(MaybeTimestamp, ReadModuleErrors),
-            FatalErrorSpecs0 = ReadModuleErrors ^ rm_fatal_error_specs,
-            NonFatalErrorSpecs0 = ReadModuleErrors ^ rm_nonfatal_error_specs,
-            write_error_specs(ErrorStream, Globals,
-                FatalErrorSpecs0 ++ NonFatalErrorSpecs0, !IO),
-
             Fatal = ReadModuleErrors ^ rm_fatal_errors,
             NonFatal = ReadModuleErrors ^ rm_nonfatal_errors,
             ( if set.is_non_empty(Fatal) then

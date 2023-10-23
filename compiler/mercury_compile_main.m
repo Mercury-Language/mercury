@@ -1410,7 +1410,9 @@ do_process_compiler_arg_make_interface(ProgressStream, Globals0,
             parse_tree_src_to_burdened_module_list(Globals, FileName,
                 ReadErrors, MaybeTimestamp, ParseTreeSrc,
                 SplitSpecs, BurdenedModules),
-            ReadSplitSpecs0 = ReadSpecs ++ SplitSpecs,
+            % parse_tree_src_to_burdened_module_list includes in SplitSpecs
+            % the errors it gets from ReadErrors.
+            ReadSplitSpecs0 = SplitSpecs,
             filter_interface_generation_specs(Globals, ReadSplitSpecs0,
                 ReadSplitSpecs),
             (

@@ -35,7 +35,7 @@
                 dependency_status
             ).
 
-:- pred get_dependency_status(io.text_output_stream::in, globals::in,
+:- pred get_dependency_file_status(io.text_output_stream::in, globals::in,
     dependency_file::in, dependency_status_result::out,
     make_info::in, make_info::out, io::di, io::uo) is det.
 
@@ -93,11 +93,10 @@
 
 %---------------------------------------------------------------------------%
 
-get_dependency_status(ProgressStream, Globals, Dep, Result, !Info, !IO) :-
+get_dependency_file_status(ProgressStream, Globals, Dep, Result, !Info, !IO) :-
     (
         Dep = dep_file(TargetFileName),
-        MaybeTargetFileName = yes(TargetFileName),
-        DepStatusMap0 = make_info_get_dependency_status(!.Info),
+        DepStatusMap0 = make_info_get_dep_file_status_map(!.Info),
         ( if version_hash_table.search(DepStatusMap0, Dep, StatusPrime) then
             Status = StatusPrime
         else
@@ -113,16 +112,16 @@ get_dependency_status(ProgressStream, Globals, Dep, Result, !Info, !IO) :-
             ),
             version_hash_table.det_insert(Dep, Status,
                 DepStatusMap0, DepStatusMap),
-            make_info_set_dependency_status(DepStatusMap, !Info)
-        )
+            make_info_set_dep_file_status_map(DepStatusMap, !Info)
+        ),
+        Result = dependency_status_result(Dep, yes(TargetFileName), Status)
     ;
         Dep = dep_target(Target),
         Target = target_file(ModuleName, FileType),
-        ( if
+        (
             ( FileType = module_target_source
             ; FileType = module_target_track_flags
-            )
-        then
+            ),
             % Source files are always up-to-date.
             % .track_flags should already have been made, if required,
             % so are also up-to-date.
@@ -135,55 +134,108 @@ get_dependency_status(ProgressStream, Globals, Dep, Result, !Info, !IO) :-
                 TargetFileName, !Info, UpToDateMsg),
             maybe_write_msg(ProgressStream, UpToDateMsg, !IO),
             Status = deps_status_up_to_date
-        else if
-            DepStatusMap0 = make_info_get_dependency_status(!.Info),
-            version_hash_table.search(DepStatusMap0, Dep, StatusPrime)
-        then
-            Status = StatusPrime,
-            % Avoid calling get_make_target_file_name in this common case --
-            % it makes a big difference to performance.
-            MaybeTargetFileName = no
-        else
-            get_make_target_file_name(Globals, $pred, Target, TargetFileName,
-                !IO),
-            MaybeTargetFileName = yes(TargetFileName),
-            get_maybe_module_dep_info(ProgressStream, Globals,
-                ModuleName, MaybeModuleDepInfo, !Info, !IO),
-            (
-                MaybeModuleDepInfo = no_module_dep_info,
-                Status = deps_status_error
-            ;
-                MaybeModuleDepInfo = some_module_dep_info(ModuleDepInfo),
-                module_dep_info_get_source_file_dir(ModuleDepInfo, ModuleDir),
-                ( if ModuleDir = dir.this_directory then
-                    Status = deps_status_not_considered
-                else
-                    % Targets from libraries are always considered to be
-                    % up-to-date if they exist.
-                    get_target_timestamp(ProgressStream, Globals, do_search,
-                        Target, MaybeTimestamp, !Info, !IO),
-                    (
-                        MaybeTimestamp = ok(_),
-                        Status = deps_status_up_to_date
-                    ;
-                        MaybeTimestamp = error(Error),
-                        Status = deps_status_error,
-                        string.format("** Error: file `%s' not found: %s\n",
-                            [s(TargetFileName), s(Error)], ErrorMsg),
-                        % XXX MAKE_STREAM
-                        % Try to write this with one call to avoid
-                        % interleaved output when doing parallel builds.
-                        io.write_string(ProgressStream, ErrorMsg, !IO)
-                    )
-                )
+        ;
+            ( FileType = module_target_errors
+            ; FileType = module_target_int0
+            ; FileType = module_target_int1
+            ; FileType = module_target_int2
+            ; FileType = module_target_int3
+            ; FileType = module_target_opt
+            ; FileType = module_target_analysis_registry
+            ; FileType = module_target_c_header(_)
+            ; FileType = module_target_c_code
+            ; FileType = module_target_csharp_code
+            ; FileType = module_target_java_code
+            ; FileType = module_target_java_class_code
+            ; FileType = module_target_object_code(_)
+            ; FileType = module_target_foreign_object(_, _)
+            ; FileType = module_target_fact_table_object(_, _)
+            ; FileType = module_target_xml_doc
             ),
-            DepStatusMap1 = make_info_get_dependency_status(!.Info),
-            version_hash_table.det_insert(Dep, Status,
-                DepStatusMap1, DepStatusMap),
-            make_info_set_dependency_status(DepStatusMap, !Info)
-        )
-    ),
-    Result = dependency_status_result(Dep, MaybeTargetFileName, Status).
+            DepStatusMap0 = make_info_get_dep_file_status_map(!.Info),
+            % XXX The management of dependency file status map here
+            % is incorrect.
+            %
+            % The code here checks whether Dep is in DepStatusMap0,
+            % and if it is not there, it computes its Status, and then
+            % inserts that Status into DepStatusMap. So far so good.
+            % The problem is that
+            %
+            % - the code of the else-part calls get_maybe_module_dep_info
+            % - which calls maybe_get_maybe_module_dep_info
+            % - which calls do_get_maybe_module_dep_info
+            % - which calls write_module_dep_files_for_source_file
+            % - which calls record_made_target
+            % - which calls record_made_target_given_maybe_touched_files
+            % - which calls update_target_status
+            %
+            % which adds an entry to the dependency file status map.
+            % This entry CAN be for Dep, and if it is, then the call to
+            % version_hash_table.det_insert at the end of the else-part
+            % will throw an exception that leads to a compiler abort.
+            % The command "mmc --make --options-file xyz after_end_module.int3"
+            % in tests/invalid_nodepend exhibits this behavior as of
+            % 2023 oct 23, provided the given options file sets things up
+            % properly for mmc --make.
+            %
+            % Unfortunately, the right way to fix this is not clear.
+            % For example, replacing the version_hash_table.det_insert below
+            % with version_hash_table.set would fix this symptom, but I (zs)
+            % think that is unlikely to fix the underlying problem.
+            ( if
+                version_hash_table.search(DepStatusMap0, Dep, StatusPrime)
+            then
+                Status = StatusPrime,
+                % In this common case, our caller does not need
+                % the target file name. Calling get_make_target_file_name
+                % to construct the target file name would therefore be
+                % an unnecessary cost, and as it happens, it would be
+                % an unnecessary LARGE cost in execution time.
+                MaybeTargetFileName = no
+            else
+                get_make_target_file_name(Globals, $pred,
+                    Target, TargetFileName, !IO),
+                MaybeTargetFileName = yes(TargetFileName),
+                get_maybe_module_dep_info(ProgressStream, Globals,
+                    ModuleName, MaybeModuleDepInfo, !Info, !IO),
+                (
+                    MaybeModuleDepInfo = no_module_dep_info,
+                    Status = deps_status_error
+                ;
+                    MaybeModuleDepInfo = some_module_dep_info(ModuleDepInfo),
+                    module_dep_info_get_source_file_dir(ModuleDepInfo,
+                        ModuleDir),
+                    ( if ModuleDir = dir.this_directory then
+                        Status = deps_status_not_considered
+                    else
+                        % Targets from libraries are always considered to be
+                        % up-to-date if they exist.
+                        get_target_timestamp(ProgressStream, Globals,
+                            do_search, Target, MaybeTimestamp, !Info, !IO),
+                        (
+                            MaybeTimestamp = ok(_),
+                            Status = deps_status_up_to_date
+                        ;
+                            MaybeTimestamp = error(Error),
+                            Status = deps_status_error,
+                            string.format(
+                                "** Error: file `%s' not found: %s\n",
+                                [s(TargetFileName), s(Error)], ErrorMsg),
+                            % XXX MAKE_STREAM
+                            % Try to write this with one call to avoid
+                            % interleaved output when doing parallel builds.
+                            io.write_string(ProgressStream, ErrorMsg, !IO)
+                        )
+                    )
+                ),
+                DepStatusMap1 = make_info_get_dep_file_status_map(!.Info),
+                version_hash_table.det_insert(Dep, Status,
+                    DepStatusMap1, DepStatusMap),
+                make_info_set_dep_file_status_map(DepStatusMap, !Info)
+            )
+        ),
+        Result = dependency_status_result(Dep, MaybeTargetFileName, Status)
+    ).
 
     % This type is similar to dependency_status_result, but its second argument
     % has type file_name, not maybe(file_name).
@@ -218,7 +270,7 @@ get_dependency_file_name(Globals, Tuple0, Tuple, !IO) :-
 
 check_dependencies(ProgressStream, Globals, TargetFileName, MaybeTimestamp,
         BuildDepsSucceeded, DepFiles, DepsResult, !Info, !IO) :-
-    list.map_foldl2(get_dependency_status(ProgressStream, Globals),
+    list.map_foldl2(get_dependency_file_status(ProgressStream, Globals),
         DepFiles, DepStatusTuples, !Info, !IO),
     list.filter(
         ( pred(dependency_status_result(_, _, DepStatus)::in) is semidet :-

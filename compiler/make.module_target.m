@@ -125,8 +125,8 @@
 
 make_module_target(ExtraOptions, ProgressStream, Globals, Dep, Succeeded,
         !Info, !IO) :-
-    get_dependency_status(ProgressStream, Globals,
-        Dep, StatusResult, !Info, !IO),
+    get_dependency_file_status(ProgressStream, Globals, Dep, StatusResult,
+        !Info, !IO),
     StatusResult = dependency_status_result(_Dep, _DepFileName, Status),
     (
         Status = deps_status_error,
@@ -147,10 +147,10 @@ make_module_target(ExtraOptions, ProgressStream, Globals, Dep, Succeeded,
             (
                 MaybeModuleDepInfo = no_module_dep_info,
                 Succeeded = did_not_succeed,
-                DepStatusMap0 = make_info_get_dependency_status(!.Info),
+                DepStatusMap0 = make_info_get_dep_file_status_map(!.Info),
                 version_hash_table.set(Dep, deps_status_error,
                     DepStatusMap0, DepStatusMap),
-                make_info_set_dependency_status(DepStatusMap, !Info)
+                make_info_set_dep_file_status_map(DepStatusMap, !Info)
             ;
                 MaybeModuleDepInfo = some_module_dep_info(ModuleDepInfo),
                 get_compilation_task_and_options(TargetType,
@@ -908,9 +908,9 @@ record_made_target_given_maybe_touched_files(ProgressStream, Globals,
 
 update_target_status(TargetStatus, TargetFile, !Info) :-
     Dep = dep_target(TargetFile),
-    DepStatusMap0 = make_info_get_dependency_status(!.Info),
+    DepStatusMap0 = make_info_get_dep_file_status_map(!.Info),
     version_hash_table.set(Dep, TargetStatus, DepStatusMap0, DepStatusMap),
-    make_info_set_dependency_status(DepStatusMap, !Info).
+    make_info_set_dep_file_status_map(DepStatusMap, !Info).
 
 :- pred delete_analysis_registry_timestamps(io.text_output_stream::in,
     globals::in, string::in, maybe_error(timestamp)::in,

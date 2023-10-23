@@ -104,6 +104,9 @@
     ;       deps_status_up_to_date
     ;       deps_status_error.
 
+:- type dep_file_status_map ==
+    version_hash_table(dependency_file, dependency_status).
+
 %---------------------%
 
 :- type maybe_rebuild_module_deps
@@ -208,8 +211,8 @@
 
 :- func init_make_info(options_variables, list(string), maybe_keep_going,
     list(string), set(top_target_file), int, target_file_timestamps,
-    module_index_map, dependency_file_index_map,
-    version_hash_table(dependency_file, dependency_status)) = make_info.
+    module_index_map, dependency_file_index_map, dep_file_status_map)
+    = make_info.
 
 :- func make_info_get_options_variables(make_info) = options_variables.
 :- func make_info_get_detected_grade_flags(make_info) = list(string).
@@ -227,8 +230,7 @@
 :- func make_info_get_module_index_map(make_info) = module_index_map.
 :- func make_info_get_dep_file_index_map(make_info) =
     dependency_file_index_map.
-:- func make_info_get_dependency_status(make_info) =
-    version_hash_table(dependency_file, dependency_status).
+:- func make_info_get_dep_file_status_map(make_info) = dep_file_status_map.
 :- func make_info_get_error_file_modules(make_info) = set(module_name).
 :- func make_info_get_importing_module(make_info) = maybe(import_or_include).
 :- func make_info_get_maybe_stdout_lock(make_info) = maybe(stdout_lock).
@@ -268,8 +270,7 @@
     make_info::in, make_info::out) is det.
 :- pred make_info_set_dep_file_index_map(dependency_file_index_map::in,
     make_info::in, make_info::out) is det.
-:- pred make_info_set_dependency_status(
-    version_hash_table(dependency_file, dependency_status)::in,
+:- pred make_info_set_dep_file_status_map(dep_file_status_map::in,
     make_info::in, make_info::out) is det.
 :- pred make_info_set_error_file_modules(set(module_name)::in,
     make_info::in, make_info::out) is det.
@@ -376,8 +377,7 @@
                 % The mapping between dependency_files and indices.
                 mki_dep_file_index_map  :: dependency_file_index_map,
 
-                mki_dependency_status   :: version_hash_table(dependency_file,
-                                            dependency_status),
+                mki_dep_file_status_map :: dep_file_status_map,
 
                 % Modules for which we have redirected output
                 % to a `.err' file during this invocation of mmc.
@@ -500,8 +500,8 @@ make_info_get_module_index_map(Info) = X :-
     X = Info ^ mki_module_index_map.
 make_info_get_dep_file_index_map(Info) = X :-
     X = Info ^ mki_dep_file_index_map.
-make_info_get_dependency_status(Info) = X :-
-    X = Info ^ mki_dependency_status.
+make_info_get_dep_file_status_map(Info) = X :-
+    X = Info ^ mki_dep_file_status_map.
 make_info_get_error_file_modules(Info) = X :-
     X = Info ^ mki_error_file_modules.
 make_info_get_importing_module(Info) = X :-
@@ -545,8 +545,8 @@ make_info_set_module_index_map(X, !Info) :-
     !Info ^ mki_module_index_map := X.
 make_info_set_dep_file_index_map(X, !Info) :-
     !Info ^ mki_dep_file_index_map := X.
-make_info_set_dependency_status(X, !Info) :-
-    !Info ^ mki_dependency_status := X.
+make_info_set_dep_file_status_map(X, !Info) :-
+    !Info ^ mki_dep_file_status_map := X.
 make_info_set_error_file_modules(X, !Info) :-
     !Info ^ mki_error_file_modules := X.
 make_info_set_importing_module(X, !Info) :-
