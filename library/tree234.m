@@ -97,10 +97,13 @@
 
     % search_insert(K, V, MaybeOldV, !Tree):
     %
-    % Search for the key K in the tree. If the key is already in the tree,
-    % with corresponding value OldV, set MaybeOldV to yes(OldV). If it is
-    % not in the tree, then insert it into the tree with value V, and set
-    % MaybeOldV to no.
+    % Search for the key K in the tree.
+    %
+    % If the key is already in !.Tree, with corresponding value OldV,
+    % then set MaybeOldV to yes(OldV), and leave !Tree unchanged.
+    %
+    % If the key is not already in !.tree, then insert it into !Tree
+    % with value V, and set MaybeOldV to no.
     %
 :- pred search_insert(K::in, V::in, maybe(V)::out,
     tree234(K, V)::in, tree234(K, V)::out) is det.

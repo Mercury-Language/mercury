@@ -176,10 +176,13 @@
 
     % search_insert(K, V, MaybeOldV, !Map):
     %
-    % Search for the key K in the map. If the key is already in the map,
-    % with corresponding value OldV, set MaybeOldV to yes(OldV). If it
-    % is not in the map, then insert it into the map with value V,
-    % and set MaybeOldV to no.
+    % Search for the key K in the map.
+    %
+    % If the key is already in !.Map, with corresponding value OldV,
+    % then set MaybeOldV to yes(OldV), and leave !Map unchanged.
+    %
+    % If the key is not already in !.Map, then insert it into !Map
+    % with value V, and set MaybeOldV to no.
     %
 :- pred search_insert(K::in, V::in, maybe(V)::out,
     map(K, V)::in, map(K, V)::out) is det.
