@@ -67,6 +67,7 @@
 
 :- import_module bool.
 :- import_module dir.
+:- import_module map.
 :- import_module pair.
 :- import_module set.
 :- import_module string.
@@ -242,26 +243,22 @@ make_top_target(ProgressStream, Globals, Target, Succeeded, !Info, !IO) :-
 
 :- pred classify_target(globals::in, string::in, top_target_file::out) is det.
 
-classify_target(Globals, FileName, TopTargetFile) :-
+classify_target(Globals, TargetName, TopTargetFile) :-
     ( if
-        string.length(FileName, NameLength),
-        search_backwards_for_dot(FileName, NameLength, DotLocn),
-        string.split(FileName, DotLocn, ModuleNameStr0, Suffix),
+        string.length(TargetName, NameLength),
+        search_backwards_for_dot(TargetName, NameLength, DotLocn),
+        string.split(TargetName, DotLocn, ModuleNameStr0, Suffix),
         classify_target_2(Globals, ModuleNameStr0, Suffix, TopTargetFilePrime)
     then
         TopTargetFile = TopTargetFilePrime
-    else if
-        % XXX This possibility should also be handled together with the
-        % rest of classify_target_2.
-        string.append("lib", ModuleNameStr, FileName)
-    then
-        file_name_to_module_name(ModuleNameStr, ModuleName),
-        TargetType = misc_target(misc_target_build_library),
-        TopTargetFile = top_target_file(ModuleName, TargetType)
     else
-        file_name_to_module_name(FileName, ModuleName),
-        ExecutableType = get_executable_type(Globals),
-        TargetType = linked_target(ExecutableType),
+        ( if string.remove_prefix("lib", TargetName, ModuleNameStr) then
+            file_name_to_module_name(ModuleNameStr, ModuleName),
+            TargetType = misc_target(misc_target_build_library)
+        else
+            file_name_to_module_name(TargetName, ModuleName),
+            TargetType = linked_target(get_executable_type(Globals))
+        ),
         TopTargetFile = top_target_file(ModuleName, TargetType)
     ).
 
@@ -271,66 +268,50 @@ classify_target(Globals, FileName, TopTargetFile) :-
 classify_target_2(Globals, ModuleNameStr0, ExtStr, TopTargetFile) :-
     % XXX This if-then-else chain cries out for conversion of most of it
     % to a switch.
-    ( if
-        fixed_extension_target_type(ExtStr, TargetTypePrime)
-    then
+    ( if fixed_extension_target_type(ExtStr, TargetTypePrime) then
         ModuleNameStr = ModuleNameStr0,
         TargetType = TargetTypePrime
-    else if
-        is_maybe_pic_object_file_extension(Globals, ExtStr, PIC)
-    then
-        ModuleNameStr = ModuleNameStr0,
-        ModuleTargetType = module_target_object_code(PIC),
-        TargetType = module_target(ModuleTargetType)
-    else if
-        ( if
-            % string.append(".all_", DotAllLessExtStr, ExtStr),
-            % string.append(DotAllSlessExtStr, "s", DotAllLessExtStr),
-            string.remove_prefix(".all_", ExtStr, DotAllLessExtStr),
-            string.remove_suffix(DotAllLessExtStr, "s", DotAllSLessExtStr)
-        then
-            ExtStr1 = "." ++ DotAllSLessExtStr
-        else if
-            % Deprecated.
-            string.remove_suffix(ExtStr, "s", SLessExtStr)
-        then
-            ExtStr1 = SLessExtStr
-        else
-            fail
-        ),
-        is_maybe_pic_object_file_extension(Globals, ExtStr1, PIC)
-    then
-        ModuleNameStr = ModuleNameStr0,
-        ModuleTargetType = module_target_object_code(PIC),
-        TargetType = misc_target(misc_target_build_all(ModuleTargetType))
-    else if
-        globals.lookup_string_option(Globals, executable_file_extension,
-            ExtStr)
-    then
-        ModuleNameStr = ModuleNameStr0,
-        ExecutableType = get_executable_type(Globals),
-        TargetType = linked_target(ExecutableType)
-    else if
-        globals.lookup_string_option(Globals, library_extension, ExtStr),
-        string.append("lib", ModuleNameStr1, ModuleNameStr0)
-    then
-        ModuleNameStr = ModuleNameStr1,
-        TargetType = linked_target(static_library)
-    else if
-        globals.lookup_string_option(Globals, shared_library_extension,
-            ExtStr),
-        string.append("lib", ModuleNameStr1, ModuleNameStr0)
-    then
-        ModuleNameStr = ModuleNameStr1,
-        TargetType = linked_target(shared_library)
-    else if
-        ExtStr = ".install",
-        string.append("lib", ModuleNameStr1, ModuleNameStr0)
-    then
-        ModuleNameStr = ModuleNameStr1,
-        TargetType = misc_target(misc_target_install_library)
     else
-        fail
+        get_linked_target_ext_map(Globals, LinkedtargetExtMap),
+        map.search(LinkedtargetExtMap, ExtStr, LinkedTargetExtInfo),
+        LinkedTargetExtInfo = linked_target_ext_info(_, LinkedTargetKind),
+        (
+            (
+                LinkedTargetKind = ltk_object_file,
+                ModuleTargetType = module_target_object_code(non_pic)
+            ;
+                LinkedTargetKind = ltk_pic_object_file,
+                ModuleTargetType = module_target_object_code(pic)
+            ),
+            ModuleNameStr = ModuleNameStr0,
+            TargetType = module_target(ModuleTargetType)
+        ;
+            (
+                LinkedTargetKind = ltk_all_object_file,
+                ModuleTargetType = module_target_object_code(non_pic)
+            ;
+                LinkedTargetKind = ltk_all_pic_object_file,
+                ModuleTargetType = module_target_object_code(pic)
+            ),
+            ModuleNameStr = ModuleNameStr0,
+            TargetType = misc_target(misc_target_build_all(ModuleTargetType))
+        ;
+            LinkedTargetKind = ltk_executable,
+            ModuleNameStr = ModuleNameStr0,
+            TargetType = linked_target(get_executable_type(Globals))
+        ;
+            (
+                LinkedTargetKind = ltk_static_library,
+                TargetType = linked_target(static_library)
+            ;
+                LinkedTargetKind = ltk_shared_library,
+                TargetType = linked_target(shared_library)
+            ;
+                LinkedTargetKind = ltk_library_install,
+                TargetType = misc_target(misc_target_install_library)
+            ),
+            string.remove_prefix("lib", ModuleNameStr0, ModuleNameStr)
+        )
     ),
     file_name_to_module_name(ModuleNameStr, ModuleName),
     TopTargetFile = top_target_file(ModuleName, TargetType).

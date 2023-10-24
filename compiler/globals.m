@@ -295,6 +295,29 @@
 :- pred convert_limit_error_contexts(list(string)::in, list(string)::out,
     limit_error_contexts_map::out) is det.
 
+%---------------------%
+
+:- type linked_target_ext_info_map == map(string, linked_target_ext_info).
+
+:- type linked_target_ext_info
+    --->    linked_target_ext_info(
+                % The user-visible name of the option.
+                string,
+
+                % What kind of linked target does the option specify?
+                linked_target_kind
+            ).
+
+:- type linked_target_kind
+    --->    ltk_object_file
+    ;       ltk_pic_object_file
+    ;       ltk_all_object_file
+    ;       ltk_all_pic_object_file
+    ;       ltk_executable
+    ;       ltk_static_library
+    ;       ltk_shared_library
+    ;       ltk_library_install.
+
 %---------------------------------------------------------------------------%
 %
 % Access predicates for the `globals' structure.
@@ -307,7 +330,8 @@
     may_be_thread_safe::in, c_compiler_type::in, csharp_compiler_type::in,
     subdir_setting::in, reuse_strategy::in, maybe(feedback_info)::in,
     env_type::in, env_type::in, env_type::in, file_install_cmd::in,
-    limit_error_contexts_map::in, globals::out) is det.
+    limit_error_contexts_map::in, linked_target_ext_info_map::in,
+    globals::out) is det.
 
 :- pred get_default_options(globals::in, option_table::out) is det.
 :- pred get_options(globals::in, option_table::out) is det.
@@ -334,6 +358,8 @@
 :- pred get_file_install_cmd(globals::in, file_install_cmd::out) is det.
 :- pred get_limit_error_contexts_map(globals::in,
     limit_error_contexts_map::out) is det.
+:- pred get_linked_target_ext_map(globals::in,
+    linked_target_ext_info_map::out) is det.
 :- pred get_backend_foreign_languages(globals::in,
     list(foreign_language)::out) is det.
 
@@ -781,6 +807,7 @@ convert_line_number_range(RangeStr, line_number_range(MaybeMin, MaybeMax)) :-
                 g_maybe_feedback            :: maybe(feedback_info),
                 g_file_install_cmd          :: file_install_cmd,
                 g_limit_error_contexts_map  :: limit_error_contexts_map,
+                g_linked_target_ext_map     :: linked_target_ext_info_map,
                 g_c_compiler_type           :: c_compiler_type,
 
                 % The sub-word-sized arguments, clustered together
@@ -805,11 +832,13 @@ globals_init(DefaultOptions, Options, OptTuple, OpMode,
         TraceLevel, TraceSuppress, SSTraceLevel, MaybeThreadSafe,
         C_CompilerType, CSharp_CompilerType, SubdirSetting,
         ReuseStrategy, MaybeFeedback, HostEnvType, SystemEnvType,
-        TargetEnvType, FileInstallCmd, LimitErrorContextsMap, Globals) :-
+        TargetEnvType, FileInstallCmd, LimitErrorContextsMap,
+        LinkedTargetExtInfoMap, Globals) :-
     Globals = globals(DefaultOptions, Options, OptTuple, OpMode, TraceSuppress,
         ReuseStrategy, MaybeFeedback, FileInstallCmd, LimitErrorContextsMap,
-        C_CompilerType, CSharp_CompilerType, Target, SubdirSetting, WordSize,
-        GC_Method, TerminationNorm, Termination2Norm, TraceLevel, SSTraceLevel,
+        LinkedTargetExtInfoMap, C_CompilerType, CSharp_CompilerType,
+        Target, SubdirSetting, WordSize, GC_Method,
+        TerminationNorm, Termination2Norm, TraceLevel, SSTraceLevel,
         MaybeThreadSafe, HostEnvType, SystemEnvType, TargetEnvType).
 
 get_default_options(Globals, Globals ^ g_default_options).
@@ -835,6 +864,7 @@ get_system_env_type(Globals, Globals ^ g_system_env_type).
 get_target_env_type(Globals, Globals ^ g_target_env_type).
 get_file_install_cmd(Globals, Globals ^ g_file_install_cmd).
 get_limit_error_contexts_map(Globals, Globals ^ g_limit_error_contexts_map).
+get_linked_target_ext_map(Globals, Globals ^ g_linked_target_ext_map).
 
 get_backend_foreign_languages(Globals, ForeignLangs) :-
     lookup_accumulating_option(Globals, backend_foreign_languages, LangStrs),

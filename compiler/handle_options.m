@@ -196,7 +196,7 @@ convert_option_table_result_to_globals(ProgressStream, DefaultOptionTable,
             MaybeThreadSafe, C_CompilerType, CSharp_CompilerType,
             ReuseStrategy, MaybeFeedbackInfo,
             HostEnvType, SystemEnvType, TargetEnvType, LimitErrorContextsMap,
-            !:Specs, !IO),
+            LinkExtMap, !:Specs, !IO),
         decide_op_mode(OptionTable, OpMode, OtherOpModes),
         (
             OtherOpModes = []
@@ -218,7 +218,7 @@ convert_option_table_result_to_globals(ProgressStream, DefaultOptionTable,
                 C_CompilerType, CSharp_CompilerType,
                 ReuseStrategy, MaybeFeedbackInfo,
                 HostEnvType, SystemEnvType, TargetEnvType,
-                LimitErrorContextsMap, !Specs, Globals, !IO)
+                LimitErrorContextsMap, LinkExtMap, !Specs, Globals, !IO)
         ;
             !.Specs = [_ | _],
             generate_default_globals(ProgressStream, DefaultOptionTable,
@@ -233,7 +233,7 @@ convert_option_table_result_to_globals(ProgressStream, DefaultOptionTable,
     c_compiler_type::out, csharp_compiler_type::out,
     reuse_strategy::out,
     maybe(feedback_info)::out, env_type::out, env_type::out, env_type::out,
-    limit_error_contexts_map::out,
+    limit_error_contexts_map::out, linked_target_ext_info_map::out,
     list(error_spec)::out, io::di, io::uo) is det.
 
 check_option_values(!OptionTable, Target, WordSize, GC_Method,
@@ -241,7 +241,7 @@ check_option_values(!OptionTable, Target, WordSize, GC_Method,
         MaybeThreadSafe,
         C_CompilerType, CSharp_CompilerType, ReuseStrategy, MaybeFeedbackInfo,
         HostEnvType, SystemEnvType, TargetEnvType, LimitErrorContextsMap,
-        !:Specs, !IO) :-
+        LinkExtMap, !:Specs, !IO) :-
     !:Specs = [],
     raw_lookup_string_option(!.OptionTable, target, TargetStr),
     ( if convert_target(TargetStr, TargetPrime) then
@@ -658,6 +658,136 @@ check_option_values(!OptionTable, Target, WordSize, GC_Method,
             [words("to the"), quote("--limit-error-contexts"),
             words("option."), nl],
         add_error(phase_options, LECSpec, !Specs)
+    ),
+
+    check_linked_target_extensions(!.OptionTable, LinkExtMap, !Specs).
+
+:- pred check_linked_target_extensions(option_table::in,
+    linked_target_ext_info_map::out,
+    list(error_spec)::in, list(error_spec)::out) is det.
+
+check_linked_target_extensions(OptionTable, !:LinkExtMap, !Specs) :-
+    map.init(!:LinkExtMap),
+    raw_lookup_string_option(OptionTable,
+        object_file_extension, ObjExt),
+    raw_lookup_string_option(OptionTable,
+        pic_object_file_extension, PicObjExt),
+    raw_lookup_string_option(OptionTable,
+        executable_file_extension, ExecExt),
+    raw_lookup_string_option(OptionTable,
+        library_extension, LibExt),
+    raw_lookup_string_option(OptionTable,
+        shared_library_extension, SharedLibExt),
+
+    map.det_insert(".install",
+        linked_target_ext_info("", ltk_library_install), !LinkExtMap),
+
+    record_linked_target_extension(ObjExt,
+        "the --object-file-extension option",
+        ltk_object_file, !LinkExtMap, !Specs),
+    ( if ObjExt = PicObjExt then
+        true
+    else
+        record_linked_target_extension(PicObjExt,
+            "the --pic-object-file-extension",
+            ltk_pic_object_file, !LinkExtMap, !Specs)
+    ),
+
+    record_linked_target_extension(ExecExt,
+        "the --executable-file-extension option",
+        ltk_executable, !LinkExtMap, !Specs),
+
+    record_linked_target_extension(LibExt,
+        "the --library-extension option",
+        ltk_static_library, !LinkExtMap, !Specs),
+    ( if LibExt = SharedLibExt then
+        true
+    else
+        record_linked_target_extension(SharedLibExt,
+            "the --shared-library-extension option",
+            ltk_shared_library, !LinkExtMap, !Specs)
+    ),
+
+    get_all_obj_extensions(ObjExt, AllObjExtA, MaybeAllObjExtB),
+    record_linked_target_extension(AllObjExtA,
+        "the build-all version of the --object-file-extension option",
+        ltk_all_object_file, !LinkExtMap, !Specs),
+    (
+        MaybeAllObjExtB = no
+    ;
+        MaybeAllObjExtB = yes(AllObjExtB),
+        record_linked_target_extension(AllObjExtB,
+            "the build-all version of the --object-file-extension option",
+            ltk_all_object_file, !LinkExtMap, !Specs)
+    ),
+    ( if ObjExt = PicObjExt then
+        true
+    else
+        get_all_obj_extensions(PicObjExt, AllPicObjExtA, MaybeAllPicObjExtB),
+        record_linked_target_extension(AllPicObjExtA,
+            "the build-all version of the --pic-object-file-extension option",
+            ltk_all_pic_object_file, !LinkExtMap, !Specs),
+        (
+            MaybeAllPicObjExtB = no
+        ;
+            MaybeAllPicObjExtB = yes(AllPicObjExtB),
+            record_linked_target_extension(AllPicObjExtB,
+                "the build-all version of the " ++
+                    "--pic-object-file-extension option",
+                ltk_all_pic_object_file, !LinkExtMap, !Specs)
+        )
+    ).
+
+:- pred record_linked_target_extension(string::in, string::in,
+    linked_target_kind::in,
+    linked_target_ext_info_map::in, linked_target_ext_info_map::out,
+    list(error_spec)::in, list(error_spec)::out) is det.
+
+record_linked_target_extension(OptionExt, OptionName, LinkedTargetKind,
+        !LinkExtMap, !Specs) :-
+    OptionInfo = linked_target_ext_info(OptionName, LinkedTargetKind),
+    map.search_insert(OptionExt, OptionInfo, MaybeOldOptionInfo, !LinkExtMap),
+    (
+        MaybeOldOptionInfo = no
+    ;
+        MaybeOldOptionInfo = yes(OldOptionInfo),
+        OldOptionInfo =
+            linked_target_ext_info(OldOptionName, OldLinkedTargetKind),
+        ( if
+            ( LinkedTargetKind = ltk_all_object_file
+            ; LinkedTargetKind = ltk_all_pic_object_file
+            )
+        then
+            true
+        else
+            ( if OldLinkedTargetKind = ltk_library_install then
+                Pieces = [words("Error:"), quote(OptionExt),
+                    words("may not be specified as the value of"),
+                    quote(OptionName), suffix(","),
+                    words("because that extension is reserved"),
+                    words("for other purposes."), nl]
+            else
+                Pieces = [words("Error: the extension"), quote(OptionExt),
+                    words("is specified as the value of both"),
+                    quote(OldOptionName), words("and"),
+                    quote(OptionName), suffix("."), nl]
+            ),
+            Spec = simplest_no_context_spec($pred, severity_error,
+                phase_options, Pieces),
+            !:Specs = [Spec | !.Specs]
+        )
+    ).
+
+:- pred get_all_obj_extensions(string::in, string::out, maybe(string)::out)
+    is det.
+
+get_all_obj_extensions(Ext, AllExtA, MaybeAllExtB) :-
+    AllExtA = Ext ++ "s",
+    ( if string.remove_prefix(".", Ext, NoDotExt) then
+        AllExtB = ".all_" ++ NoDotExt ++ "s",
+        MaybeAllExtB = yes(AllExtB)
+    else
+        MaybeAllExtB = no
     ).
 
     % NOTE: We take two termination_norm arguments because each
@@ -671,6 +801,7 @@ check_option_values(!OptionTable, Target, WordSize, GC_Method,
     may_be_thread_safe::in, c_compiler_type::in, csharp_compiler_type::in,
     reuse_strategy::in, maybe(feedback_info)::in,
     env_type::in, env_type::in, env_type::in, limit_error_contexts_map::in,
+    linked_target_ext_info_map::in,
     list(error_spec)::in, list(error_spec)::out,
     globals::out, io::di, io::uo) is det.
 
@@ -680,7 +811,7 @@ convert_options_to_globals(ProgressStream, DefaultOptionTable, OptionTable0,
         MaybeThreadSafe, C_CompilerType, CSharp_CompilerType,
         ReuseStrategy, MaybeFeedbackInfo,
         HostEnvType, SystemEnvType, TargetEnvType, LimitErrorContextsMap,
-        !Specs, !:Globals, !IO) :-
+        LinkExtMap, !Specs, !:Globals, !IO) :-
     OptTuple0 = !.OptTuple,
     OT_AllowInlining0 = OptTuple0 ^ ot_allow_inlining,
     OT_EnableConstStructPoly0 = OptTuple0 ^ ot_enable_const_struct_poly,
@@ -736,7 +867,7 @@ convert_options_to_globals(ProgressStream, DefaultOptionTable, OptionTable0,
         MaybeThreadSafe, C_CompilerType, CSharp_CompilerType, use_cur_dir,
         ReuseStrategy, MaybeFeedbackInfo,
         HostEnvType, SystemEnvType, TargetEnvType, FileInstallCmd,
-        LimitErrorContextsMap, !:Globals),
+        LimitErrorContextsMap, LinkExtMap, !:Globals),
 
     globals.lookup_bool_option(!.Globals, experiment2, Experiment2),
     (
