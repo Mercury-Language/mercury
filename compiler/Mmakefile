@@ -84,8 +84,16 @@ endif
 # Specify the name of the top-level module to build.
 MC_PROG = mercury_compile
 
+# XXX Don't use depend_ints on Windows as it is very slow on that platform.
+#
+ifneq ("$(findstring x86_64-w64-mingw32,$(FULLARCH))","")
+DEPEND_TARGET=depend
+else
+DEPEND_TARGET=depend_ints
+endif
+
 .PHONY: depend
-depend:		$(MC_PROG).depend_ints
+depend:		$(MC_PROG).$(DEPEND_TARGET)
 
 $(MC_PROG).depend:      Mercury.modules COMP_FLAGS
 $(MC_PROG).depend_ints: Mercury.modules COMP_FLAGS
