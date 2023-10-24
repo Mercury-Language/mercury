@@ -76,7 +76,7 @@
     --->    do_not_add_new_to_hptm
     ;       do_add_new_to_hptm.
 
-    % write_short_interface_file_int3(ProgressStream, Globals, AddToHrmm,
+    % write_short_interface_file_int3(ProgressStream, Globals, AddToHptm,
     %   BurdenedModule, Succeeded, Specs, !HaveParseTreeMaps, !IO):
     %
     % Output the unqualified short interface file to <module>.int3.
@@ -90,7 +90,7 @@
     % succeeded without errors. (Specs may contain warnings even then.)
     %
     % We add the contents of the .int3 file to !HaveParseTreeMaps if we could
-    % construct it without any errors, *and* AddToHrmm says we should.
+    % construct it without any errors, *and* AddToHptm says we should.
     %
 :- pred write_short_interface_file_int3(io.text_output_stream::in,
     globals::in, maybe_add_to_hptm::in, burdened_module::in,
@@ -98,7 +98,7 @@
     have_parse_tree_maps::in, have_parse_tree_maps::out,
     io::di, io::uo) is det.
 
-    % write_private_interface_file_int0(ProgressStream, Globals, AddToHrmm,
+    % write_private_interface_file_int0(ProgressStream, Globals, AddToHptm,
     %   BurdenedModule, Succeeded, Specs, !HaveParseTreeMaps, !IO):
     %
     % Given a burdened_module, output the private (`.int0') interface file
@@ -112,7 +112,7 @@
     have_parse_tree_maps::in, have_parse_tree_maps::out,
     io::di, io::uo) is det.
 
-    % write_interface_file_int1_int2(ProgressStream, Globals, AddToHrmm,
+    % write_interface_file_int1_int2(ProgressStream, Globals, AddToHptm,
     %   BurdenedModule, Succeeded, Specs, !HaveParseTreeMaps, !IO):
     %
     % Given a burdened_module, output the long (`.int') and short (`.int2')
@@ -129,6 +129,7 @@
 
 :- implementation.
 
+:- import_module libs.file_util.
 :- import_module libs.options.
 :- import_module libs.timestamp.
 :- import_module mdbcomp.
@@ -159,8 +160,33 @@
 % Write out .int3 files.
 %
 
-write_short_interface_file_int3(ProgressStream, Globals, AddToHrmm,
+write_short_interface_file_int3(ProgressStream, Globals, AddToHptm,
         BurdenedModule, Succeeded, Specs, !HaveParseTreeMaps, !IO) :-
+    generate_parse_tree_int3(Globals, AddToHptm,
+        BurdenedModule, GenerateResult, !HaveParseTreeMaps, !IO),
+    write_parse_tree_int3(ProgressStream, Globals, GenerateResult,
+        Specs, Succeeded, !IO).
+
+:- type generate_int3_result
+    --->    gpti3_ok(
+                parse_tree_int3,
+                file_name,
+                file_name,
+                list(error_spec)
+            )
+    ;       gpti3_error(
+                module_name,
+                list(format_piece),
+                list(error_spec)
+            ).
+
+:- pred generate_parse_tree_int3(globals::in,
+    maybe_add_to_hptm::in, burdened_module::in, generate_int3_result::out,
+    have_parse_tree_maps::in, have_parse_tree_maps::out,
+    io::di, io::uo) is det.
+
+generate_parse_tree_int3(Globals, AddToHptm, BurdenedModule,
+        GenerateResult, !HaveParseTreeMaps, !IO) :-
     BurdenedModule = burdened_module(_Baggage, ParseTreeModuleSrc),
     % This qualifies everything as much as it can given the information
     % in the current module and writes out the .int3 file.
@@ -175,28 +201,41 @@ write_short_interface_file_int3(ProgressStream, Globals, AddToHrmm,
         ExtraSuffix = "",
         construct_int_file_name(Globals, ModuleName, ifk_int3, ExtraSuffix,
             FileName, TmpFileName, !IO),
-        actually_write_interface_file3(ProgressStream, Globals, ParseTreeInt3,
-            FileName, TmpFileName, no, OutputSucceeded, !IO),
-        touch_module_ext_datestamp(Globals, ProgressStream,
-            ModuleName, ext_cur_ngs(ext_cur_ngs_int_date_int3),
-            TouchSucceeded, !IO),
-        Succeeded = OutputSucceeded `and` TouchSucceeded,
-        Specs = Specs1,
         (
-            AddToHrmm = do_not_add_new_to_hptm
+            AddToHptm = do_not_add_new_to_hptm
         ;
-            AddToHrmm = do_add_new_to_hptm,
+            AddToHptm = do_add_new_to_hptm,
             Int3Map0 = !.HaveParseTreeMaps ^ hptm_int3,
             HM = have_module(FileName, ParseTreeInt3, was_constructed),
             map.set(ModuleName, HM, Int3Map0, Int3Map),
             !HaveParseTreeMaps ^ hptm_int3 := Int3Map
-        )
+        ),
+        GenerateResult = gpti3_ok(ParseTreeInt3, FileName, TmpFileName, Specs1)
     ;
         EffectivelyErrors = yes,
+        GenerateResult = gpti3_error(ModuleName, [], Specs1)
+    ).
+
+:- pred write_parse_tree_int3(io.text_output_stream::in, globals::in,
+    generate_int3_result::in, list(error_spec)::out, maybe_succeeded::out,
+    io::di, io::uo) is det.
+
+write_parse_tree_int3(ProgressStream, Globals, GenerateResult,
+        Specs, Succeeded, !IO) :-
+    (
+        GenerateResult = gpti3_ok(ParseTreeInt3, FileName, TmpFileName, Specs),
+        ModuleName = ParseTreeInt3 ^ pti3_module_name,
+        actually_write_interface_file3(ProgressStream, Globals, ParseTreeInt3,
+            FileName, TmpFileName, no, OutputSucceeded, !IO),
+        touch_module_ext_datestamp(Globals, ProgressStream, ModuleName,
+            ext_cur_ngs(ext_cur_ngs_int_date_int3), TouchSucceeded, !IO),
+        Succeeded = OutputSucceeded `and` TouchSucceeded
+    ;
+        GenerateResult = gpti3_error(ModuleName, PrefixPieces, GenerateSpecs),
         ExtInt3 = ext_cur_ngs(ext_cur_ngs_int_int3),
         ExtDate3 = ext_cur_ngs(ext_cur_ngs_int_date_int3),
-        report_file_not_written(Globals, [], ModuleName, ExtInt3, no, ExtDate3,
-            Specs1, Specs, !IO),
+        report_file_not_written(Globals, PrefixPieces, ModuleName,
+            ExtInt3, no, ExtDate3, GenerateSpecs, Specs, !IO),
         Succeeded = did_not_succeed
     ).
 
@@ -205,10 +244,35 @@ write_short_interface_file_int3(ProgressStream, Globals, AddToHrmm,
 % Write out .int0 files.
 %
 
-write_private_interface_file_int0(ProgressStream, Globals, AddToHrmm,
+write_private_interface_file_int0(ProgressStream, Globals, AddToHptm,
         BurdenedModule, Succeeded, Specs, !HaveParseTreeMaps, !IO) :-
+    generate_parse_tree_int0(ProgressStream, Globals, AddToHptm,
+        BurdenedModule, GenerateResult, !HaveParseTreeMaps, !IO),
+    write_parse_tree_int0(ProgressStream, Globals, GenerateResult,
+        Specs, Succeeded, !IO).
+
+:- type generate_int0_result
+    --->    gpti0_ok(
+                parse_tree_int0,
+                maybe(timestamp),
+                file_name,
+                file_name,
+                list(error_spec)
+            )
+    ;       gpti0_error(
+                module_name,
+                list(format_piece),
+                list(error_spec)
+            ).
+
+:- pred generate_parse_tree_int0(io.text_output_stream::in, globals::in,
+    maybe_add_to_hptm::in, burdened_module::in, generate_int0_result::out,
+    have_parse_tree_maps::in, have_parse_tree_maps::out,
+    io::di, io::uo) is det.
+
+generate_parse_tree_int0(ProgressStream, Globals, AddToHptm, BurdenedModule,
+        GenerateResult, !HaveParseTreeMaps, !IO) :-
     BurdenedModule = burdened_module(Baggage0, ParseTreeModuleSrc0),
-    MaybeTimestamp = Baggage0 ^ mb_maybe_timestamp,
     ModuleName = ParseTreeModuleSrc0 ^ ptms_module_name,
 
     grab_unqual_imported_modules_make_int(ProgressStream, Globals,
@@ -240,45 +304,55 @@ write_private_interface_file_int0(ProgressStream, Globals, AddToHrmm,
             % Construct the `.int0' file.
             generate_private_interface_int0(AugMakeIntUnit, ParseTreeInt0,
                 [], GenerateSpecs),
-            filter_interface_generation_specs(Globals,
-                EffectiveGetQualSpecs ++ GenerateSpecs, Specs),
-            % Write out the `.int0' file.
+            filter_interface_generation_specs(Globals, GenerateSpecs, Specs),
             ExtraSuffix = "",
             construct_int_file_name(Globals, ModuleName, ifk_int0, ExtraSuffix,
                 FileName, TmpFileName, !IO),
-            actually_write_interface_file0(ProgressStream, Globals,
-                ParseTreeInt0, FileName, TmpFileName, MaybeTimestamp,
-                OutputSucceeded, !IO),
-            touch_module_ext_datestamp(Globals, ProgressStream,
-                ModuleName, ext_cur_ngs(ext_cur_ngs_int_date_int0),
-                TouchSucceeded, !IO),
-            Succeeded = OutputSucceeded `and` TouchSucceeded,
             (
-                AddToHrmm = do_not_add_new_to_hptm
+                AddToHptm = do_not_add_new_to_hptm
             ;
-                AddToHrmm = do_add_new_to_hptm,
+                AddToHptm = do_add_new_to_hptm,
                 Int0Map0 = !.HaveParseTreeMaps ^ hptm_int0,
                 HM = have_module(FileName, ParseTreeInt0, was_constructed),
                 map.set(ModuleName, HM, Int0Map0, Int0Map),
                 !HaveParseTreeMaps ^ hptm_int0 := Int0Map
-            )
+            ),
+            MaybeTimestamp = Baggage0 ^ mb_maybe_timestamp,
+            GenerateResult = gpti0_ok(ParseTreeInt0, MaybeTimestamp,
+                FileName, TmpFileName, Specs)
         ;
             EffectiveGetQualSpecs = [_ | _],
-            ExtInt0 = ext_cur_ngs(ext_cur_ngs_int_int0),
-            ExtDate0 = ext_cur_ngs(ext_cur_ngs_int_date_int0),
-            report_file_not_written(Globals, [], ModuleName, ExtInt0, no,
-                ExtDate0, EffectiveGetQualSpecs, Specs, !IO),
-            Succeeded = did_not_succeed
+            GenerateResult = gpti0_error(ModuleName, [], EffectiveGetQualSpecs)
         )
     else
         % The negative indent is to let the rest of the error_spec
         % start at the left margin.
         PrefixPieces = [words("Error reading interface files."),
             nl_indent_delta(-1)],
+        GenerateResult = gpti0_error(ModuleName, PrefixPieces, GetSpecs)
+    ).
+
+:- pred write_parse_tree_int0(io.text_output_stream::in, globals::in,
+    generate_int0_result::in, list(error_spec)::out, maybe_succeeded::out,
+    io::di, io::uo) is det.
+
+write_parse_tree_int0(ProgressStream, Globals, GenerateResult,
+        Specs, Succeeded, !IO) :-
+    (
+        GenerateResult = gpti0_ok(ParseTreeInt0, MaybeTimestamp,
+            FileName, TmpFileName, Specs),
+        ModuleName = ParseTreeInt0 ^ pti0_module_name,
+        actually_write_interface_file0(ProgressStream, Globals, ParseTreeInt0,
+            FileName, TmpFileName, MaybeTimestamp, OutputSucceeded, !IO),
+        touch_module_ext_datestamp(Globals, ProgressStream, ModuleName,
+            ext_cur_ngs(ext_cur_ngs_int_date_int0), TouchSucceeded, !IO),
+        Succeeded = OutputSucceeded `and` TouchSucceeded
+    ;
+        GenerateResult = gpti0_error(ModuleName, PrefixPieces, GenerateSpecs),
         ExtInt0 = ext_cur_ngs(ext_cur_ngs_int_int0),
         ExtDate0 = ext_cur_ngs(ext_cur_ngs_int_date_int0),
         report_file_not_written(Globals, PrefixPieces, ModuleName,
-            ExtInt0, no, ExtDate0, GetSpecs, Specs, !IO),
+            ExtInt0, no, ExtDate0, GenerateSpecs, Specs, !IO),
         Succeeded = did_not_succeed
     ).
 
@@ -287,10 +361,38 @@ write_private_interface_file_int0(ProgressStream, Globals, AddToHrmm,
 % Write out .int and .int2 files.
 %
 
-write_interface_file_int1_int2(ProgressStream, Globals, AddToHrmm,
+write_interface_file_int1_int2(ProgressStream, Globals, AddToHptm,
         BurdenedModule, Succeeded, Specs, !HaveParseTreeMaps, !IO) :-
+    generate_parse_tree_int12(ProgressStream, Globals, AddToHptm,
+        BurdenedModule, GenerateResult, !HaveParseTreeMaps, !IO),
+    write_parse_tree_int12(ProgressStream, Globals, GenerateResult,
+        Specs, Succeeded, !IO).
+
+:- type generate_int12_result
+    --->    gpti12_ok(
+                parse_tree_int1,
+                parse_tree_int2,
+                maybe(timestamp),
+                file_name,
+                file_name,
+                file_name,
+                file_name,
+                list(error_spec)
+            )
+    ;       gpti12_error(
+                module_name,
+                list(format_piece),
+                list(error_spec)
+            ).
+
+:- pred generate_parse_tree_int12(io.text_output_stream::in, globals::in,
+    maybe_add_to_hptm::in, burdened_module::in, generate_int12_result::out,
+    have_parse_tree_maps::in, have_parse_tree_maps::out,
+    io::di, io::uo) is det.
+
+generate_parse_tree_int12(ProgressStream, Globals, AddToHptm,
+        BurdenedModule, GenerateResult, !HaveParseTreeMaps, !IO) :-
     BurdenedModule = burdened_module(Baggage0, ParseTreeModuleSrc0),
-    MaybeTimestamp = Baggage0 ^ mb_maybe_timestamp,
     ModuleName = ParseTreeModuleSrc0 ^ ptms_module_name,
 
     generate_pre_grab_pre_qual_interface_for_int1_int2(ParseTreeModuleSrc0,
@@ -329,32 +431,18 @@ write_interface_file_int1_int2(ProgressStream, Globals, AddToHrmm,
             GetSpecs ++ QualSpecs, EffectiveGetQualSpecs),
         (
             EffectiveGetQualSpecs = [],
-            % Construct the `.int' and `.int2' files.
             generate_interfaces_int1_int2(Globals, AugMakeIntUnit,
                 ParseTreeInt1, ParseTreeInt2, [], GenerateSpecs),
-            filter_interface_generation_specs(Globals,
-                EffectiveGetQualSpecs ++ GenerateSpecs, Specs),
-            % Write out the `.int' and `.int2' files.
+            filter_interface_generation_specs(Globals, GenerateSpecs, Specs),
             ExtraSuffix = "",
             construct_int_file_name(Globals, ModuleName, ifk_int1, ExtraSuffix,
                 FileName1, TmpFileName1, !IO),
             construct_int_file_name(Globals, ModuleName, ifk_int2, ExtraSuffix,
                 FileName2, TmpFileName2, !IO),
-            actually_write_interface_file1(ProgressStream, Globals,
-                ParseTreeInt1, FileName1, TmpFileName1, MaybeTimestamp,
-                OutputSucceeded1, !IO),
-            actually_write_interface_file2(ProgressStream, Globals,
-                ParseTreeInt2, FileName2, TmpFileName2, MaybeTimestamp,
-                OutputSucceeded2, !IO),
-            touch_module_ext_datestamp(Globals, ProgressStream,
-                ModuleName, ext_cur_ngs(ext_cur_ngs_int_date_int12),
-                TouchSucceeded, !IO),
-            Succeeded = OutputSucceeded1 `and` OutputSucceeded2 `and`
-                TouchSucceeded,
             (
-                AddToHrmm = do_not_add_new_to_hptm
+                AddToHptm = do_not_add_new_to_hptm
             ;
-                AddToHrmm = do_add_new_to_hptm,
+                AddToHptm = do_add_new_to_hptm,
                 Int1Map0 = !.HaveParseTreeMaps ^ hptm_int1,
                 Int2Map0 = !.HaveParseTreeMaps ^ hptm_int2,
                 HM1 = have_module(FileName1, ParseTreeInt1, was_constructed),
@@ -363,27 +451,52 @@ write_interface_file_int1_int2(ProgressStream, Globals, AddToHrmm,
                 map.set(ModuleName, HM2, Int2Map0, Int2Map),
                 !HaveParseTreeMaps ^ hptm_int1 := Int1Map,
                 !HaveParseTreeMaps ^ hptm_int2 := Int2Map
-            )
+            ),
+            MaybeTimestamp = Baggage0 ^ mb_maybe_timestamp,
+            GenerateResult = gpti12_ok(ParseTreeInt1, ParseTreeInt2,
+                MaybeTimestamp, FileName1, TmpFileName1,
+                FileName2, TmpFileName2, Specs)
         ;
             EffectiveGetQualSpecs = [_ | _],
-            ExtInt1 = ext_cur_ngs(ext_cur_ngs_int_int1),
-            ExtInt2 = ext_cur_ngs(ext_cur_ngs_int_int2),
-            ExtDate12 = ext_cur_ngs(ext_cur_ngs_int_date_int12),
-            report_file_not_written(Globals, [], ModuleName,
-                ExtInt1, yes(ExtInt2), ExtDate12,
-                EffectiveGetQualSpecs, Specs, !IO),
-            Succeeded = did_not_succeed
+            GenerateResult =
+                gpti12_error(ModuleName, [], EffectiveGetQualSpecs)
         )
     else
         % The negative indent is to let the rest of the error_spec
         % start at the left margin.
         PrefixPieces = [words("Error reading .int3 files."),
             nl_indent_delta(-1)],
+        GenerateResult = gpti12_error(ModuleName, PrefixPieces, GetSpecs)
+    ).
+
+:- pred write_parse_tree_int12(io.text_output_stream::in, globals::in,
+    generate_int12_result::in, list(error_spec)::out, maybe_succeeded::out,
+    io::di, io::uo) is det.
+
+write_parse_tree_int12(ProgressStream, Globals, GenerateResult,
+        Specs, Succeeded, !IO) :-
+    (
+        GenerateResult = gpti12_ok(ParseTreeInt1, ParseTreeInt2,
+            MaybeTimestamp, FileName1, TmpFileName1, FileName2, TmpFileName2,
+            Specs),
+        ModuleName = ParseTreeInt1 ^ pti1_module_name,
+        actually_write_interface_file1(ProgressStream, Globals,
+            ParseTreeInt1, FileName1, TmpFileName1, MaybeTimestamp,
+            OutputSucceeded1, !IO),
+        actually_write_interface_file2(ProgressStream, Globals,
+            ParseTreeInt2, FileName2, TmpFileName2, MaybeTimestamp,
+            OutputSucceeded2, !IO),
+        touch_module_ext_datestamp(Globals, ProgressStream, ModuleName,
+            ext_cur_ngs(ext_cur_ngs_int_date_int12), TouchSucceeded, !IO),
+        Succeeded = OutputSucceeded1 `and` OutputSucceeded2 `and`
+            TouchSucceeded
+    ;
+        GenerateResult = gpti12_error(ModuleName, PrefixPieces, GenerateSpecs),
         ExtInt1 = ext_cur_ngs(ext_cur_ngs_int_int1),
         ExtInt2 = ext_cur_ngs(ext_cur_ngs_int_int2),
         ExtDate12 = ext_cur_ngs(ext_cur_ngs_int_date_int12),
         report_file_not_written(Globals, PrefixPieces, ModuleName,
-            ExtInt1, yes(ExtInt2), ExtDate12, GetSpecs, Specs, !IO),
+            ExtInt1, yes(ExtInt2), ExtDate12, GenerateSpecs, Specs, !IO),
         Succeeded = did_not_succeed
     ).
 
