@@ -1,6 +1,13 @@
 %---------------------------------------------------------------------------%
 % vim: ts=4 sw=4 et ft=mercury
 %---------------------------------------------------------------------------%
+%
+% We expect to match .err_exp file when targeting C,
+% which supports fact tables.
+% We expect to match .err_exp file when targeting Java or C#,
+% which do not support fact tables.
+%
+%---------------------------------------------------------------------------%
 
 :- module bad_fact_table_data.
 :- interface.
@@ -26,8 +33,8 @@ main(!IO) :-
 
 %---------------------------------------------------------------------------%
 
-:- pred table_x(int, float, string).
-:- mode table_x(in, in, in) is semidet.
+:- pred table_x(int::in, float::in, string::in) is semidet.
+
 :- pragma fact_table(pred(table_x/3), "fact_table_data_file_x").
 
 %---------------------------------------------------------------------------%

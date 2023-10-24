@@ -52,5 +52,17 @@ i(X) :-
 "
     SUCCESS_INDICATOR = MR_TRUE;
 ").
+:- pragma foreign_proc("Java",
+    p(_X::(any >> ground)),
+    [promise_pure],
+"
+    SUCCESS_INDICATOR = true;
+").
+:- pragma foreign_proc("C#",
+    p(_X::(any >> ground)),
+    [promise_pure],
+"
+    SUCCESS_INDICATOR = true;
+").
 
 %---------------------------------------------------------------------------%
