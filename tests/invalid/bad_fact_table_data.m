@@ -4,7 +4,7 @@
 %
 % We expect to match .err_exp file when targeting C,
 % which supports fact tables.
-% We expect to match .err_exp file when targeting Java or C#,
+% We expect to match .err_exp2 file when targeting Java or C#,
 % which do not support fact tables.
 %
 %---------------------------------------------------------------------------%
