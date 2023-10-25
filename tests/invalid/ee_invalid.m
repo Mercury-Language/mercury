@@ -13,11 +13,11 @@
 :- type bar == int.
 
 :- implementation.
-
 :- type baz
     --->    baz.
-:- pragma foreign_type("C", baz, "int *").
-
+:- pragma foreign_type("C",    baz, "int").
+:- pragma foreign_type("Java", baz, "int").
+:- pragma foreign_type("C#",   baz, "int").
 :- type alphabet
     --->    abc
     ;       def

@@ -1,2 +1,3 @@
 builtin_int.m:013: In declaration of predicate `foo'/1:
 builtin_int.m:013:   error: undefined type `builtin.ints'/0.
+`builtin_int.int' and `builtin_int.int2' not written.

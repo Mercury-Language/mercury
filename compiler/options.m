@@ -1095,6 +1095,7 @@
     ;       options_search_directories
     ;       setting_only_use_subdirs
     ;       setting_only_use_grade_subdirs
+    ;       std_int_file_not_written_msgs
     ;       search_directories
     ;       intermod_directories
     ;       use_search_directories_for_intermod
@@ -2059,6 +2060,7 @@ optdef(oc_buildsys, config_file,                        maybe_string(yes(""))).
 optdef(oc_buildsys, options_search_directories,         accumulating(["."])).
 optdef(oc_buildsys, setting_only_use_subdirs,           bool(no)).
 optdef(oc_buildsys, setting_only_use_grade_subdirs,     bool(no)).
+optdef(oc_buildsys, std_int_file_not_written_msgs,      bool(no)).
 optdef(oc_buildsys, search_directories,                 accumulating(["."])).
 optdef(oc_buildsys, intermod_directories,               accumulating([])).
 optdef(oc_buildsys, use_search_directories_for_intermod, bool(yes)).
@@ -3128,6 +3130,7 @@ long_option("config-file",          config_file).
 long_option("options-search-directory", options_search_directories).
 long_option("use-subdirs",          setting_only_use_subdirs).
 long_option("use-grade-subdirs",    setting_only_use_grade_subdirs).
+long_option("std-int-file-not-written-msgs",    std_int_file_not_written_msgs).
 long_option("search-directory",     search_directories).
 long_option("intermod-directory",   intermod_directories).
 long_option("use-search-directories-for-intermod",
@@ -6761,6 +6764,11 @@ options_help_build_system(Stream, !IO) :-
         "\tthe current directory.",
         "\t`--use-grade-subdirs' does not work with Mmake (it does",
         "\twork with `mmc --make').",
+% This is used to eliminate the need for a .int_err_exp file for the
+% -use-subdir case for every test in the tests/invalid_make_int directory.
+%       "--std-int-file-not-written-msgs",
+%       "\tStandardize messages about interface files not being written",
+%       "\tby omitting any directory name components from file names.",
         "--no-libgrade-install-check",
         "\tDo not check that libraries have been installed before",
         "\tattempting to use them. (This option is only meaningful with",

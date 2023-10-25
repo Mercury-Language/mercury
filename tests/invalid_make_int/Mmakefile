@@ -18,8 +18,10 @@ MAYBE_J1 = -j1
 
 SINGLE_MODULE_PROGS = \
 	bad_type_class_constraint_intermodule \
+	bug17 \
 	bug499 \
 	bug521 \
+	builtin_int \
 	missing_interface_import
 
 MULTI_MODULE_PROGS = \
@@ -30,7 +32,7 @@ MULTI_MODULE_PROGS = \
 	test_nested \
 	transitive_import
 
-# while the following tests were in ../invalid, they were included among
+# While the following tests were in ../invalid, they were included among
 # the modules listed in the definition of the REDIRECT_OPT_ERROR_MODULES
 # make variable. However, they seem to be working just fine when moved
 # to this direct, which has no such list.

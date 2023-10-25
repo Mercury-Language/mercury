@@ -10574,6 +10574,12 @@ Append @var{dir} to the list of directories to be searched for
 Append the arguments of all -I options to the list of directories
 to be searched for @samp{.opt} files.
 
+@c @sp 1
+@c @item --std-int-file-not-written-msg
+@c @findex --std-int-file-not-written-msg
+@c Standardize messages about interface files not being written
+@c by omitting any directory name components from file names.
+
 @sp 1
 @item --no-libgrade-install-check
 @findex --no-libgrade-install-check

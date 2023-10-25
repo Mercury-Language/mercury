@@ -1,3 +1,4 @@
 bug17.m:008: In declaration of function `init_foo'/2:
 bug17.m:008:   error: the type `foo'/0 is not exported, and thus it may not be
 bug17.m:008:   used in the interface.
+`bug17.int' and `bug17.int2' not written.

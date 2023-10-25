@@ -87,7 +87,6 @@ BORING_SINGLEMODULE_PROGS = \
 	bug113 \
 	bug117 \
 	bug150 \
-	bug17 \
 	bug184 \
 	bug191 \
 	bug197 \
@@ -100,7 +99,6 @@ BORING_SINGLEMODULE_PROGS = \
 	bug487 \
 	bug496 \
 	bug83 \
-	builtin_int \
 	builtin_proc \
 	char_inst \
 	circ_inst \

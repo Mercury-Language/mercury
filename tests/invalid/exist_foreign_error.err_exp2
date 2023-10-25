@@ -1,0 +1,3 @@
+exist_foreign_error.m:024: The foreign language code for function
+exist_foreign_error.m:024:   `exist_foreign_error.get_pti_from_arg_types'/2
+exist_foreign_error.m:024:   should define the variable `TypeInfo_for_T'.

@@ -129,6 +129,7 @@
 :- import_module recompilation.version.
 
 :- import_module bool.
+:- import_module dir.
 :- import_module getopt.
 :- import_module io.file.
 :- import_module maybe.
@@ -504,16 +505,18 @@ report_file_not_written(Globals, PrefixPieces, ModuleName,
         ExtA, ModuleName, IntAFileName),
     module_name_to_file_name(Globals, $pred,
         ExtDate, ModuleName, DateFileName),
+    StdIntAFileName = standardize_filename_if_asked(Globals, IntAFileName),
     (
         MaybeExtB = no,
-        NotWrittenPieces = [quote(IntAFileName), words("not written."), nl],
+        NotWrittenPieces = [quote(StdIntAFileName), words("not written."), nl],
         ToRemoveFileNames = [IntAFileName, DateFileName]
     ;
         MaybeExtB = yes(ExtB),
         module_name_to_file_name(Globals, $pred,
             ExtB, ModuleName, IntBFileName),
-        NotWrittenPieces = [quote(IntAFileName), words("and"),
-            quote(IntBFileName), words("not written."), nl],
+        StdIntBFileName = standardize_filename_if_asked(Globals, IntBFileName),
+        NotWrittenPieces = [quote(StdIntAFileName), words("and"),
+            quote(StdIntBFileName), words("not written."), nl],
         ToRemoveFileNames = [IntAFileName, IntBFileName, DateFileName]
     ),
     ModuleNameStr = sym_name_to_string(ModuleName),
@@ -530,6 +533,22 @@ report_file_not_written(Globals, PrefixPieces, ModuleName,
     % errors that do not now exist in the source files at all.
     list.map_foldl(io.file.remove_file,
         ToRemoveFileNames, _RemoveResults, !IO).
+
+:- func standardize_filename_if_asked(globals, string) = string.
+
+standardize_filename_if_asked(Globals, FileName) = StdFileName :-
+    globals.lookup_bool_option(Globals, std_int_file_not_written_msgs, Std),
+    (
+        Std = no,
+        StdFileName = FileName
+    ;
+        Std = yes,
+        ( if dir.basename(FileName, BaseName) then
+            StdFileName = BaseName
+        else
+            StdFileName = FileName
+        )
+    ).
 
 %---------------------------------------------------------------------------%
 :- end_module parse_tree.write_module_interface_files.

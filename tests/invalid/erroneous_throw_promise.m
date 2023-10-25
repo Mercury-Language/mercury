@@ -39,3 +39,17 @@
 "
     /* Do something with X */
 ").
+
+:- pragma foreign_proc("C#",
+    foo(X::in),
+    [will_not_call_mercury, promise_pure, will_not_throw_exception],
+"
+    /* Do something with X */
+").
+
+:- pragma foreign_proc("C#",
+    bar(X::in),
+    [may_call_mercury, promise_pure, will_not_throw_exception],
+"
+    /* Do something with X */
+").
