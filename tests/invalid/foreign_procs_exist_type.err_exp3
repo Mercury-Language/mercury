@@ -1,0 +1,18 @@
+foreign_procs_exist_type.m:054: In clause for predicate `mercury_test'/2:
+foreign_procs_exist_type.m:054:   in argument 1 of call to predicate
+foreign_procs_exist_type.m:054:   `foreign_procs_exist_type.make_t'/1:
+foreign_procs_exist_type.m:054:   type error: variable `T2' has type
+foreign_procs_exist_type.m:054:     some [T_2] (T_2);
+foreign_procs_exist_type.m:054:   expected type was
+foreign_procs_exist_type.m:054:     some [T_3] (T_3).
+foreign_procs_exist_type.m:090: In clause for predicate `foreign_pred_test'/2:
+foreign_procs_exist_type.m:090:   type error: variable `HeadVar__2' has type
+foreign_procs_exist_type.m:090:     some [T_2] (T_2);
+foreign_procs_exist_type.m:090:   expected type was
+foreign_procs_exist_type.m:090:     some [T_3] (T_3).
+foreign_procs_exist_type.m:134: In clause for function `foreign_func_test'/1:
+foreign_procs_exist_type.m:134:   type error: variable `HeadVar__2' has type
+foreign_procs_exist_type.m:134:     some [T_2] (T_2);
+foreign_procs_exist_type.m:134:   expected type was
+foreign_procs_exist_type.m:134:     some [T_3] (T_3).
+For more information, recompile with `-E'.

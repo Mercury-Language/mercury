@@ -16,6 +16,8 @@
 % We test the wording of that error message for both a predicate and a
 % function.
 %
+% The .err_exp{,2,3} files are for C, Java and C# grades respectively.
+%
 %---------------------------------------------------------------------------%
 
 :- module foreign_procs_exist_type.

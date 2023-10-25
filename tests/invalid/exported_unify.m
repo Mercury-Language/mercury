@@ -10,6 +10,6 @@
 
 :- implementation.
 
-:- import_module exported_unify2.
+:- import_module exported_unify_helper_1.
 
 unify_foo(A, A).

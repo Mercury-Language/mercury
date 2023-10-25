@@ -1,29 +1,29 @@
-foreign_purity_mismatch.m:008: In predicate `pure_with_impure'/1:
-foreign_purity_mismatch.m:008:   purity error: predicate is impure.
-foreign_purity_mismatch.m:008:   It must be declared `impure' or promised pure.
-foreign_purity_mismatch.m:009: In predicate `pure_with_semipure'/1:
-foreign_purity_mismatch.m:009:   purity error: predicate is semipure.
-foreign_purity_mismatch.m:009:   It must be declared `semipure' or promised
-foreign_purity_mismatch.m:009:   pure.
-foreign_purity_mismatch.m:011: In predicate `semipure_with_impure'/1:
-foreign_purity_mismatch.m:011:   purity error: predicate is impure.
-foreign_purity_mismatch.m:011:   It must be declared `impure' or promised
-foreign_purity_mismatch.m:011:   semipure.
-foreign_purity_mismatch.m:022: Error: foreign clause for predicate
-foreign_purity_mismatch.m:022:   `pure_with_impure'/1 has purity impure but
-foreign_purity_mismatch.m:022:   that predicate has been declared pure.
-foreign_purity_mismatch.m:029: Error: foreign clause for predicate
-foreign_purity_mismatch.m:029:   `pure_with_semipure'/1 has purity semipure but
-foreign_purity_mismatch.m:029:   that predicate has been declared pure.
-foreign_purity_mismatch.m:036: Error: foreign clause for predicate
-foreign_purity_mismatch.m:036:   `semipure_with_impure'/1 has purity impure but
-foreign_purity_mismatch.m:036:   that predicate has been declared semipure.
-foreign_purity_mismatch.m:043: Error: foreign clause for predicate
-foreign_purity_mismatch.m:043:   `semipure_with_pure'/1 has purity pure but
-foreign_purity_mismatch.m:043:   that predicate has been declared semipure.
-foreign_purity_mismatch.m:050: Error: foreign clause for predicate
-foreign_purity_mismatch.m:050:   `impure_with_pure'/1 has purity pure but that
-foreign_purity_mismatch.m:050:   predicate has been declared impure.
-foreign_purity_mismatch.m:057: Error: foreign clause for predicate
-foreign_purity_mismatch.m:057:   `impure_with_semipure'/1 has purity semipure
-foreign_purity_mismatch.m:057:   but that predicate has been declared impure.
+foreign_purity_mismatch.m:010: In predicate `pure_with_impure'/1:
+foreign_purity_mismatch.m:010:   purity error: predicate is impure.
+foreign_purity_mismatch.m:010:   It must be declared `impure' or promised pure.
+foreign_purity_mismatch.m:011: In predicate `pure_with_semipure'/1:
+foreign_purity_mismatch.m:011:   purity error: predicate is semipure.
+foreign_purity_mismatch.m:011:   It must be declared `semipure' or promised
+foreign_purity_mismatch.m:011:   pure.
+foreign_purity_mismatch.m:013: In predicate `semipure_with_impure'/1:
+foreign_purity_mismatch.m:013:   purity error: predicate is impure.
+foreign_purity_mismatch.m:013:   It must be declared `impure' or promised
+foreign_purity_mismatch.m:013:   semipure.
+foreign_purity_mismatch.m:026: Error: foreign clause for predicate
+foreign_purity_mismatch.m:026:   `pure_with_impure'/1 has purity impure but
+foreign_purity_mismatch.m:026:   that predicate has been declared pure.
+foreign_purity_mismatch.m:047: Error: foreign clause for predicate
+foreign_purity_mismatch.m:047:   `pure_with_semipure'/1 has purity semipure but
+foreign_purity_mismatch.m:047:   that predicate has been declared pure.
+foreign_purity_mismatch.m:068: Error: foreign clause for predicate
+foreign_purity_mismatch.m:068:   `semipure_with_impure'/1 has purity impure but
+foreign_purity_mismatch.m:068:   that predicate has been declared semipure.
+foreign_purity_mismatch.m:089: Error: foreign clause for predicate
+foreign_purity_mismatch.m:089:   `semipure_with_pure'/1 has purity pure but
+foreign_purity_mismatch.m:089:   that predicate has been declared semipure.
+foreign_purity_mismatch.m:110: Error: foreign clause for predicate
+foreign_purity_mismatch.m:110:   `impure_with_pure'/1 has purity pure but that
+foreign_purity_mismatch.m:110:   predicate has been declared impure.
+foreign_purity_mismatch.m:131: Error: foreign clause for predicate
+foreign_purity_mismatch.m:131:   `impure_with_semipure'/1 has purity semipure
+foreign_purity_mismatch.m:131:   but that predicate has been declared impure.

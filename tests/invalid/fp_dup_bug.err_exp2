@@ -1,0 +1,6 @@
+fp_dup_bug.m:048: Error: duplicate `:- pragma foreign_proc' declaration for
+fp_dup_bug.m:048:   this mode of predicate `foo'/2 in Java.
+fp_dup_bug.m:042: The first one was here.
+fp_dup_bug.m:054: Error: duplicate `:- pragma foreign_proc' declaration for
+fp_dup_bug.m:054:   this mode of predicate `foo'/2 in Java.
+fp_dup_bug.m:042: The first one was here.

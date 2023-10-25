@@ -1,2 +1,4 @@
-Mercury/ints/exported_unify2.int:003: In clause for unification predicate for type exported_unify2.foo:
-Mercury/ints/exported_unify2.int:003:   error: undefined predicate `exported_unify2.unify_foo/2'.
+Mercury/ints/exported_unify_helper_1.int:003: In clause for unification
+Mercury/ints/exported_unify_helper_1.int:003:   predicate for type `foo':
+Mercury/ints/exported_unify_helper_1.int:003:   error: undefined predicate
+Mercury/ints/exported_unify_helper_1.int:003:   `exported_unify_helper_1.unify_foo'/2.

@@ -1,26 +1,26 @@
-gh72_errors.m:043: Error: the C code for predicate `test_export_1'/3 cannot be
-gh72_errors.m:043:   exported to C as `exported_test_export_1', because
-gh72_errors.m:043:   predicate `test_export_1'/3 has a nonstandard and
-gh72_errors.m:043:   undocumented calling convention due to interactions
-gh72_errors.m:043:   between its use of partially instantiated data structures
-gh72_errors.m:043:   and the `direct_arg' data representation optimization.
-gh72_errors.m:055: Error: the C code for predicate `test_export_2'/5 cannot be
-gh72_errors.m:055:   exported to C as `exported_test_export_2', because
-gh72_errors.m:055:   predicate `test_export_2'/5 has a nonstandard and
-gh72_errors.m:055:   undocumented calling convention due to interactions
-gh72_errors.m:055:   between its use of partially instantiated data structures
-gh72_errors.m:055:   and the `direct_arg' data representation optimization.
-gh72_errors.m:082: Error: a procedure implemented using a
-gh72_errors.m:082:   `:- pragma foreign_proc' declaration may not have any
-gh72_errors.m:082:   arguments whose types use the `direct_arg' data
-gh72_errors.m:082:   representations optimization, and whose modes indicate
-gh72_errors.m:082:   that they fill in partially instantiated terms. Argument 1
-gh72_errors.m:082:   of predicate `direct_arg_in_out_0_test_fproc_1'/3 mode 0
-gh72_errors.m:082:   violates this prohibition.
-gh72_errors.m:093: Error: a procedure implemented using a
-gh72_errors.m:093:   `:- pragma foreign_proc' declaration may not have any
-gh72_errors.m:093:   arguments whose types use the `direct_arg' data
-gh72_errors.m:093:   representations optimization, and whose modes indicate
-gh72_errors.m:093:   that they fill in partially instantiated terms. Arguments
-gh72_errors.m:093:   2 and 3 of predicate `direct_arg_in_out_0_test_fproc_2'/5
-gh72_errors.m:093:   mode 0 violate this prohibition.
+gh72_errors.m:051: Error: the C code for predicate `test_export_1'/3 cannot be
+gh72_errors.m:051:   exported to C as `exported_test_export_1', because
+gh72_errors.m:051:   predicate `test_export_1'/3 has a nonstandard and
+gh72_errors.m:051:   undocumented calling convention due to interactions
+gh72_errors.m:051:   between its use of partially instantiated data structures
+gh72_errors.m:051:   and the `direct_arg' data representation optimization.
+gh72_errors.m:069: Error: the C code for predicate `test_export_2'/5 cannot be
+gh72_errors.m:069:   exported to C as `exported_test_export_2', because
+gh72_errors.m:069:   predicate `test_export_2'/5 has a nonstandard and
+gh72_errors.m:069:   undocumented calling convention due to interactions
+gh72_errors.m:069:   between its use of partially instantiated data structures
+gh72_errors.m:069:   and the `direct_arg' data representation optimization.
+gh72_errors.m:102: Error: a procedure implemented using a
+gh72_errors.m:102:   `:- pragma foreign_proc' declaration may not have any
+gh72_errors.m:102:   arguments whose types use the `direct_arg' data
+gh72_errors.m:102:   representations optimization, and whose modes indicate
+gh72_errors.m:102:   that they fill in partially instantiated terms. Argument 1
+gh72_errors.m:102:   of predicate `direct_arg_in_out_0_test_fproc_1'/3 mode 0
+gh72_errors.m:102:   violates this prohibition.
+gh72_errors.m:127: Error: a procedure implemented using a
+gh72_errors.m:127:   `:- pragma foreign_proc' declaration may not have any
+gh72_errors.m:127:   arguments whose types use the `direct_arg' data
+gh72_errors.m:127:   representations optimization, and whose modes indicate
+gh72_errors.m:127:   that they fill in partially instantiated terms. Arguments
+gh72_errors.m:127:   2 and 3 of predicate `direct_arg_in_out_0_test_fproc_2'/5
+gh72_errors.m:127:   mode 0 violate this prohibition.

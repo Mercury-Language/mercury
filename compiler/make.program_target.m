@@ -263,8 +263,8 @@ make_linked_target_2(ProgressStream, Globals, LinkedTargetFile, Succeeded,
         % This prevents a problem when two parallel branches try to generate
         % the same missing interface file later.
 
-        make_all_interface_files(ProgressStream, Globals, AllModulesList,
-            IntsSucceeded, !Info, !IO),
+        make_all_interface_files(ProgressStream, Globals, do_not_stop,
+            AllModulesList, IntsSucceeded, !Info, !IO),
         ( if
             IntsSucceeded = did_not_succeed,
             KeepGoing = do_not_keep_going
@@ -912,11 +912,47 @@ make_misc_target_builder(ProgressStream, Globals, MainModuleName, TargetType,
         ( if Succeeded0 = did_not_succeed, KeepGoing = do_not_keep_going then
             Succeeded = did_not_succeed
         else
-            % Ensure all interface files are present before continuing.
+            % Ensure all interface files EARLIER THAN ModuleTargetType
+            % are present before continuing.
             % This prevents a problem when two parallel branches
             % try to generate the same missing interface file later.
-            make_all_interface_files(ProgressStream, Globals, AllModules,
-                Succeeded1, !Info, !IO),
+            (
+                ( ModuleTargetType = module_target_source
+                ; ModuleTargetType = module_target_track_flags
+                ; ModuleTargetType = module_target_int3
+                ),
+                % There are no earlier interface files.
+                Succeeded1 = succeeded
+            ;
+                ModuleTargetType = module_target_int0,
+                make_all_interface_files(ProgressStream, Globals,
+                    stop_after_int3s, AllModules, Succeeded1, !Info, !IO)
+            ;
+                ( ModuleTargetType = module_target_int1
+                ; ModuleTargetType = module_target_int2
+                ),
+                make_all_interface_files(ProgressStream, Globals,
+                    stop_after_int0s, AllModules, Succeeded1, !Info, !IO)
+            ;
+                ModuleTargetType = module_target_opt,
+                make_all_interface_files(ProgressStream, Globals,
+                    stop_after_int12s, AllModules, Succeeded1, !Info, !IO)
+            ;
+                ( ModuleTargetType = module_target_errors
+                ; ModuleTargetType = module_target_analysis_registry
+                ; ModuleTargetType = module_target_c_header(_)
+                ; ModuleTargetType = module_target_c_code
+                ; ModuleTargetType = module_target_csharp_code
+                ; ModuleTargetType = module_target_java_code
+                ; ModuleTargetType = module_target_java_class_code
+                ; ModuleTargetType = module_target_object_code(_)
+                ; ModuleTargetType = module_target_foreign_object(_, _)
+                ; ModuleTargetType = module_target_fact_table_object(_, _)
+                ; ModuleTargetType = module_target_xml_doc
+                ),
+                make_all_interface_files(ProgressStream, Globals, do_not_stop,
+                    AllModules, Succeeded1, !Info, !IO)
+            ),
             ( if
                 Succeeded1 = did_not_succeed,
                 KeepGoing = do_not_keep_going
@@ -939,8 +975,8 @@ make_misc_target_builder(ProgressStream, Globals, MainModuleName, TargetType,
             Succeeded, !Info, !IO)
     ;
         TargetType = misc_target_build_library,
-        make_all_interface_files(ProgressStream, Globals, AllModules,
-            IntSucceeded, !Info, !IO),
+        make_all_interface_files(ProgressStream, Globals, do_not_stop,
+            AllModules, IntSucceeded, !Info, !IO),
         (
             IntSucceeded = succeeded,
             maybe_with_analysis_cache_dir_3(ProgressStream, Globals,
@@ -981,12 +1017,18 @@ make_misc_target_builder(ProgressStream, Globals, MainModuleName, TargetType,
 
 %---------------------------------------------------------------------------%
 
+:- type stop_when
+    --->    stop_after_int3s
+    ;       stop_after_int0s
+    ;       stop_after_int12s
+    ;       do_not_stop.
+
 :- pred make_all_interface_files(io.text_output_stream::in, globals::in,
-    list(module_name)::in, maybe_succeeded::out,
+    stop_when::in, list(module_name)::in, maybe_succeeded::out,
     make_info::in, make_info::out, io::di, io::uo) is det.
 
-make_all_interface_files(ProgressStream, Globals, AllModules0, Succeeded,
-        !Info, !IO) :-
+make_all_interface_files(ProgressStream, Globals, StopWhen, AllModules0,
+        Succeeded, !Info, !IO) :-
     filter_out_nested_modules(ProgressStream, Globals,
         AllModules0, NonnestedModules, !Info, !IO),
     list.foldl3(collect_modules_with_children(ProgressStream, Globals),
@@ -1008,29 +1050,35 @@ make_all_interface_files(ProgressStream, Globals, AllModules0, Succeeded,
     % private interface file.
     foldl2_make_module_targets_maybe_parallel(KeepGoing, [],
         ProgressStream, Globals, Int3s, Succeeded0, !Info, !IO),
-    (
-        Succeeded0 = succeeded,
+    ( if
+        ( Succeeded0 = did_not_succeed
+        ; StopWhen = stop_after_int3s
+        )
+    then
+        Succeeded = Succeeded0
+    else
         foldl2_make_module_targets(KeepGoing, [],
             ProgressStream, Globals, Int0s, Succeeded1, !Info, !IO),
-        (
-            Succeeded1 = succeeded,
+        ( if
+            ( Succeeded1 = did_not_succeed
+            ; StopWhen = stop_after_int0s
+            )
+        then
+            Succeeded = Succeeded1
+        else
             foldl2_make_module_targets_maybe_parallel(KeepGoing, [],
                 ProgressStream, Globals, Int1s, Succeeded2, !Info, !IO),
-            (
-                Succeeded2 = succeeded,
+            ( if
+                ( Succeeded2 = did_not_succeed
+                ; StopWhen = stop_after_int12s
+                )
+            then
+                Succeeded = Succeeded2
+            else
                 foldl2_make_module_targets_maybe_parallel(KeepGoing, [],
                     ProgressStream, Globals, Opts, Succeeded, !Info, !IO)
-            ;
-                Succeeded2 = did_not_succeed,
-                Succeeded = did_not_succeed
             )
-        ;
-            Succeeded1 = did_not_succeed,
-            Succeeded = did_not_succeed
         )
-    ;
-        Succeeded0 = did_not_succeed,
-        Succeeded = did_not_succeed
     ).
 
 :- pred collect_modules_with_children(io.text_output_stream::in, globals::in,
@@ -1232,8 +1280,8 @@ build_analysis_files(Globals, MainModuleName, AllModules,
         % This prevents a problem when two parallel branches try to generate
         % the same missing interface file later.
         % (Although we can't actually build analysis files in parallel yet.)
-        make_all_interface_files(ProgressStream, Globals, AllModules,
-            Succeeded1, !Info, !IO),
+        make_all_interface_files(ProgressStream, Globals, do_not_stop,
+            AllModules, Succeeded1, !Info, !IO),
         ( if
             Succeeded1 = did_not_succeed,
             KeepGoing = do_not_keep_going

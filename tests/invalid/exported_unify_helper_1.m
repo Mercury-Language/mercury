@@ -2,7 +2,7 @@
 % vim: ts=4 sw=4 et ft=mercury
 %---------------------------------------------------------------------------%
 
-:- module exported_unify2.
+:- module exported_unify_helper_1.
 
 :- interface.
 

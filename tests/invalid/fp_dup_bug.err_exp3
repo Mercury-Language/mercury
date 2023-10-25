@@ -1,0 +1,6 @@
+fp_dup_bug.m:069: Error: duplicate `:- pragma foreign_proc' declaration for
+fp_dup_bug.m:069:   this mode of predicate `foo'/2 in C#.
+fp_dup_bug.m:063: The first one was here.
+fp_dup_bug.m:075: Error: duplicate `:- pragma foreign_proc' declaration for
+fp_dup_bug.m:075:   this mode of predicate `foo'/2 in C#.
+fp_dup_bug.m:063: The first one was here.

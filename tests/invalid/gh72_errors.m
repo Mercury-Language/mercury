@@ -5,6 +5,14 @@
 % This test exercises the situations which compiler/direct_arg_in_out.m
 % cannot handle, each of which should result in an error message.
 %
+% The .err_exp{,2,3} files are for targeting C, Java and C# respectively.
+% Since the direct arg optimization does not apply when we generate code
+% for Java and C#, .err_exp[23] don't contain the errors that .err_exp does.
+% However, reporting no errors would mean that the test case failed (because
+% it failed to detect the problem the test case is for), so we add another
+% problem for these backend: duplicate foreign_procs.
+%
+%-----------------------------------------------------------------------------%
 
 :- module gh72_errors.
 :- interface.
@@ -43,6 +51,12 @@ test_exports(!IO) :-
 :- pragma foreign_export("C",
     test_export_1(t4 >> ground, di, uo),
     "exported_test_export_1").
+:- pragma foreign_export("Java",
+    test_export_1(t4 >> ground, di, uo),
+    "exported_test_export_1").
+:- pragma foreign_export("C#",
+    test_export_1(t4 >> ground, di, uo),
+    "exported_test_export_1").
 
 test_export_1(A, !IO) :-
     fill3("c", A),
@@ -53,6 +67,12 @@ test_export_1(A, !IO) :-
 :- pred test_export_2(int, t, t, io, io).
 :- mode test_export_2(in, t4 >> ground, t4 >> ground, di, uo) is det.
 :- pragma foreign_export("C",
+    test_export_2(in, t4 >> ground, t4 >> ground, di, uo),
+    "exported_test_export_2").
+:- pragma foreign_export("Java",
+    test_export_2(in, t4 >> ground, t4 >> ground, di, uo),
+    "exported_test_export_2").
+:- pragma foreign_export("C#",
     test_export_2(in, t4 >> ground, t4 >> ground, di, uo),
     "exported_test_export_2").
 
@@ -88,11 +108,55 @@ test_fprocs(!IO) :-
     // A
     IO = IO0;
 ").
+:- pragma foreign_proc("Java",
+    test_fproc_1(A::(t4 >> ground), IO0::di, IO::uo),
+    [promise_pure, may_call_mercury],
+"
+    // A
+    IO = IO0;
+").
+:- pragma foreign_proc("C#",
+    test_fproc_1(A::(t4 >> ground), IO0::di, IO::uo),
+    [promise_pure, may_call_mercury],
+"
+    // A
+    IO = IO0;
+").
 
 :- pred test_fproc_2(int, t, t, io, io).
 :- mode test_fproc_2(in, t4 >> ground, t4 >> ground, di, uo) is det.
 
 :- pragma foreign_proc("C",
+    test_fproc_2(N::in, A::(t4 >> ground), B::(t4 >> ground), IO0::di, IO::uo),
+    [promise_pure, may_call_mercury],
+"
+    // N, A, B
+    IO = IO0;
+").
+:- pragma foreign_proc("Java",
+    test_fproc_2(N::in, A::(t4 >> ground), B::(t4 >> ground), IO0::di, IO::uo),
+    [promise_pure, may_call_mercury],
+"
+    // N, A, B
+    IO = IO0;
+").
+:- pragma foreign_proc("C#",
+    test_fproc_2(N::in, A::(t4 >> ground), B::(t4 >> ground), IO0::di, IO::uo),
+    [promise_pure, may_call_mercury],
+"
+    // N, A, B
+    IO = IO0;
+").
+
+% These foreign_procs are the deliberate duplicates referred to at the top.
+:- pragma foreign_proc("Java",
+    test_fproc_2(N::in, A::(t4 >> ground), B::(t4 >> ground), IO0::di, IO::uo),
+    [promise_pure, may_call_mercury],
+"
+    // N, A, B
+    IO = IO0;
+").
+:- pragma foreign_proc("C#",
     test_fproc_2(N::in, A::(t4 >> ground), B::(t4 >> ground), IO0::di, IO::uo),
     [promise_pure, may_call_mercury],
 "

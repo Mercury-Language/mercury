@@ -1,0 +1,3 @@
+gh72_errors.m:159: Error: duplicate `:- pragma foreign_proc' declaration for
+gh72_errors.m:159:   this mode of predicate `test_fproc_2'/5 in C#.
+gh72_errors.m:143: The first one was here.
