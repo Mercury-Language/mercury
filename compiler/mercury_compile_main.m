@@ -76,6 +76,7 @@
 :- import_module mdbcomp.sym_name.
 :- import_module parse_tree.
 :- import_module parse_tree.check_module_interface.
+:- import_module parse_tree.comp_unit_interface.
 :- import_module parse_tree.deps_map.
 :- import_module parse_tree.error_spec.
 :- import_module parse_tree.error_util.
@@ -1257,7 +1258,7 @@ deps_make_ints(ProgressStream, Globals, DepsMap,
     list.filter_map_foldl(gather_local_burdened_modules,
         DepsList, BurdenedModules, [], Ancestors),
     list.map2_foldl2(
-        write_short_interface_file_int3(ProgressStream, Globals,
+        generate_and_write_interface_file_int3(ProgressStream, Globals,
             do_add_new_to_hptm),
         BurdenedModules, _Succeededs3, SpecsList3,
         !HaveParseTreeMaps, !IO),
@@ -1271,7 +1272,7 @@ deps_make_ints(ProgressStream, Globals, DepsMap,
         list.sort(Ancestors, SortedAncestors),
         assoc_list.values(SortedAncestors, AncestorBurdenedModules),
         list.map2_foldl2(
-            write_private_interface_file_int0(ProgressStream, Globals,
+            generate_and_write_interface_file_int0(ProgressStream, Globals,
                 do_add_new_to_hptm),
             AncestorBurdenedModules, _Succeededs0, RawSpecsList0,
             !HaveParseTreeMaps, !IO),
@@ -1291,8 +1292,8 @@ deps_make_ints(ProgressStream, Globals, DepsMap,
             Continue0 = yes
         then
             list.map2_foldl2(
-                write_interface_file_int1_int2(ProgressStream, Globals,
-                    do_add_new_to_hptm),
+                generate_and_write_interface_file_int1_int2(ProgressStream,
+                    Globals, do_add_new_to_hptm),
                 BurdenedModules, _Succeededs12, RawSpecsList12,
                 !HaveParseTreeMaps, !IO),
             list.condense(RawSpecsList12, RawSpecs12),
@@ -1426,22 +1427,22 @@ do_process_compiler_arg_make_interface(ProgressStream, Globals0,
                 list.filter(IsAncestor,
                     BurdenedModules, AncestorBurdenedModules),
                 list.map2_foldl2(
-                    write_private_interface_file_int0(ProgressStream, Globals0,
-                        do_not_add_new_to_hptm),
+                    generate_and_write_interface_file_int0(ProgressStream,
+                        Globals0, do_not_add_new_to_hptm),
                     AncestorBurdenedModules, _Succeededs, WriteSpecsList,
                     !HaveParseTreeMaps, !IO)
             ;
                 InterfaceFile = omif_int1_int2,
                 list.map2_foldl2(
-                    write_interface_file_int1_int2(ProgressStream, Globals0,
-                        do_not_add_new_to_hptm),
+                    generate_and_write_interface_file_int1_int2(ProgressStream,
+                        Globals0, do_not_add_new_to_hptm),
                     BurdenedModules, _Succeededs, WriteSpecsList,
                     !HaveParseTreeMaps, !IO)
             ;
                 InterfaceFile = omif_int3,
                 list.map2_foldl2(
-                    write_short_interface_file_int3(ProgressStream, Globals0,
-                        do_not_add_new_to_hptm),
+                    generate_and_write_interface_file_int3(ProgressStream,
+                        Globals0, do_not_add_new_to_hptm),
                     BurdenedModules, _Succeededs, WriteSpecsList,
                     !HaveParseTreeMaps, !IO)
             ),

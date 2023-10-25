@@ -55,6 +55,7 @@
 :- import_module make.timestamp.
 :- import_module make.util.
 :- import_module parse_tree.
+:- import_module parse_tree.comp_unit_interface.
 :- import_module parse_tree.file_names.
 :- import_module parse_tree.find_module.
 :- import_module parse_tree.item_util.
@@ -692,7 +693,7 @@ make_int3_files(ProgressStream, ErrorStream, Globals,
         BurdenedModules, Succeeded, !Info, !IO) :-
     % XXX MAKE We should probably add to, and keep, HaveParseTreeMaps.
     list.map2_foldl2(
-        write_short_interface_file_int3(ProgressStream, Globals,
+        generate_and_write_interface_file_int3(ProgressStream, Globals,
             do_not_add_new_to_hptm),
         BurdenedModules, Succeededs, SpecsList,
         init_have_parse_tree_maps, _HaveParseTreeMaps, !IO),

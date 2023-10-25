@@ -53,6 +53,7 @@
 :- import_module libs.
 :- import_module libs.globals.
 :- import_module libs.maybe_util.
+:- import_module parse_tree.comp_unit_interface.
 :- import_module parse_tree.error_spec.
 :- import_module parse_tree.module_baggage.
 :- import_module parse_tree.read_modules.
@@ -61,20 +62,6 @@
 :- import_module list.
 
 %---------------------------------------------------------------------------%
-
-    % Each of the predicates
-    %
-    %   write_short_interface_file_int3
-    %   write_private_interface_file_int0
-    %   write_interface_file_int1_int2
-    %
-    % has an argument of this type. Their callers can set this argument to
-    % do_add_new_to_hptm to tell the predicate to add the interface file(s)
-    % it has constructed to !HaveParseTreeMaps.
-    %
-:- type maybe_add_to_hptm
-    --->    do_not_add_new_to_hptm
-    ;       do_add_new_to_hptm.
 
     % write_short_interface_file_int3(ProgressStream, Globals, AddToHptm,
     %   BurdenedModule, Succeeded, Specs, !HaveParseTreeMaps, !IO):
@@ -92,7 +79,7 @@
     % We add the contents of the .int3 file to !HaveParseTreeMaps if we could
     % construct it without any errors, *and* AddToHptm says we should.
     %
-:- pred write_short_interface_file_int3(io.text_output_stream::in,
+:- pred generate_and_write_interface_file_int3(io.text_output_stream::in,
     globals::in, maybe_add_to_hptm::in, burdened_module::in,
     maybe_succeeded::out, list(error_spec)::out,
     have_parse_tree_maps::in, have_parse_tree_maps::out,
@@ -106,7 +93,7 @@
     % in the module, including those in the `implementation' section;
     % it is used when compiling submodules.)
     %
-:- pred write_private_interface_file_int0(io.text_output_stream::in,
+:- pred generate_and_write_interface_file_int0(io.text_output_stream::in,
     globals::in, maybe_add_to_hptm::in, burdened_module::in,
     maybe_succeeded::out, list(error_spec)::out,
     have_parse_tree_maps::in, have_parse_tree_maps::out,
@@ -118,7 +105,7 @@
     % Given a burdened_module, output the long (`.int') and short (`.int2')
     % interface files for the module.
     %
-:- pred write_interface_file_int1_int2(io.text_output_stream::in,
+:- pred generate_and_write_interface_file_int1_int2(io.text_output_stream::in,
     globals::in, maybe_add_to_hptm::in, burdened_module::in,
     maybe_succeeded::out, list(error_spec)::out,
     have_parse_tree_maps::in, have_parse_tree_maps::out,
@@ -129,18 +116,12 @@
 
 :- implementation.
 
-:- import_module libs.file_util.
 :- import_module libs.options.
 :- import_module libs.timestamp.
 :- import_module mdbcomp.
 :- import_module mdbcomp.sym_name.
-:- import_module parse_tree.comp_unit_interface.
-:- import_module parse_tree.error_util.
-:- import_module parse_tree.file_kind.
 :- import_module parse_tree.file_names.
-:- import_module parse_tree.grab_modules.           % undesirable dependency
 :- import_module parse_tree.module_cmds.
-:- import_module parse_tree.module_qual.
 :- import_module parse_tree.parse_error.
 :- import_module parse_tree.parse_tree_out.
 :- import_module parse_tree.prog_item.
@@ -150,71 +131,20 @@
 :- import_module bool.
 :- import_module getopt.
 :- import_module io.file.
-:- import_module map.
 :- import_module maybe.
 :- import_module require.
-:- import_module string.
 
 %---------------------------------------------------------------------------%
 %
 % Write out .int3 files.
 %
 
-write_short_interface_file_int3(ProgressStream, Globals, AddToHptm,
+generate_and_write_interface_file_int3(ProgressStream, Globals, AddToHptm,
         BurdenedModule, Succeeded, Specs, !HaveParseTreeMaps, !IO) :-
     generate_parse_tree_int3(Globals, AddToHptm,
         BurdenedModule, GenerateResult, !HaveParseTreeMaps, !IO),
     write_parse_tree_int3(ProgressStream, Globals, GenerateResult,
         Specs, Succeeded, !IO).
-
-:- type generate_int3_result
-    --->    gpti3_ok(
-                parse_tree_int3,
-                file_name,
-                file_name,
-                list(error_spec)
-            )
-    ;       gpti3_error(
-                module_name,
-                list(format_piece),
-                list(error_spec)
-            ).
-
-:- pred generate_parse_tree_int3(globals::in,
-    maybe_add_to_hptm::in, burdened_module::in, generate_int3_result::out,
-    have_parse_tree_maps::in, have_parse_tree_maps::out,
-    io::di, io::uo) is det.
-
-generate_parse_tree_int3(Globals, AddToHptm, BurdenedModule,
-        GenerateResult, !HaveParseTreeMaps, !IO) :-
-    BurdenedModule = burdened_module(_Baggage, ParseTreeModuleSrc),
-    % This qualifies everything as much as it can given the information
-    % in the current module and writes out the .int3 file.
-    generate_short_interface_int3(Globals, ParseTreeModuleSrc, ParseTreeInt3,
-        [], Specs0),
-    filter_interface_generation_specs(Globals, Specs0, Specs1),
-    EffectivelyErrors =
-        contains_errors_or_warnings_treated_as_errors(Globals, Specs1),
-    ModuleName = ParseTreeModuleSrc ^ ptms_module_name,
-    (
-        EffectivelyErrors = no,
-        ExtraSuffix = "",
-        construct_int_file_name(Globals, ModuleName, ifk_int3, ExtraSuffix,
-            FileName, TmpFileName, !IO),
-        (
-            AddToHptm = do_not_add_new_to_hptm
-        ;
-            AddToHptm = do_add_new_to_hptm,
-            Int3Map0 = !.HaveParseTreeMaps ^ hptm_int3,
-            HM = have_module(FileName, ParseTreeInt3, was_constructed),
-            map.set(ModuleName, HM, Int3Map0, Int3Map),
-            !HaveParseTreeMaps ^ hptm_int3 := Int3Map
-        ),
-        GenerateResult = gpti3_ok(ParseTreeInt3, FileName, TmpFileName, Specs1)
-    ;
-        EffectivelyErrors = yes,
-        GenerateResult = gpti3_error(ModuleName, [], Specs1)
-    ).
 
 :- pred write_parse_tree_int3(io.text_output_stream::in, globals::in,
     generate_int3_result::in, list(error_spec)::out, maybe_succeeded::out,
@@ -244,93 +174,12 @@ write_parse_tree_int3(ProgressStream, Globals, GenerateResult,
 % Write out .int0 files.
 %
 
-write_private_interface_file_int0(ProgressStream, Globals, AddToHptm,
+generate_and_write_interface_file_int0(ProgressStream, Globals, AddToHptm,
         BurdenedModule, Succeeded, Specs, !HaveParseTreeMaps, !IO) :-
     generate_parse_tree_int0(ProgressStream, Globals, AddToHptm,
         BurdenedModule, GenerateResult, !HaveParseTreeMaps, !IO),
     write_parse_tree_int0(ProgressStream, Globals, GenerateResult,
         Specs, Succeeded, !IO).
-
-:- type generate_int0_result
-    --->    gpti0_ok(
-                parse_tree_int0,
-                maybe(timestamp),
-                file_name,
-                file_name,
-                list(error_spec)
-            )
-    ;       gpti0_error(
-                module_name,
-                list(format_piece),
-                list(error_spec)
-            ).
-
-:- pred generate_parse_tree_int0(io.text_output_stream::in, globals::in,
-    maybe_add_to_hptm::in, burdened_module::in, generate_int0_result::out,
-    have_parse_tree_maps::in, have_parse_tree_maps::out,
-    io::di, io::uo) is det.
-
-generate_parse_tree_int0(ProgressStream, Globals, AddToHptm, BurdenedModule,
-        GenerateResult, !HaveParseTreeMaps, !IO) :-
-    BurdenedModule = burdened_module(Baggage0, ParseTreeModuleSrc0),
-    ModuleName = ParseTreeModuleSrc0 ^ ptms_module_name,
-
-    grab_unqual_imported_modules_make_int(ProgressStream, Globals,
-        ParseTreeModuleSrc0, AugMakeIntUnit1, Baggage0, Baggage,
-        !HaveParseTreeMaps, !IO),
-
-    % Check whether we succeeded.
-    GetErrors = Baggage ^ mb_errors,
-    GetSpecs = get_read_module_specs(GetErrors),
-    GetSpecsEffectivelyErrors =
-        contains_errors_or_warnings_treated_as_errors(Globals, GetSpecs),
-    ( if
-        GetSpecsEffectivelyErrors = no,
-        there_are_no_errors(GetErrors)
-    then
-        % Module-qualify the aug_make_int_unit.
-        %
-        % XXX ITEM_LIST We don't need grab_unqual_imported_modules
-        % to include in AugMakeIntUnit1 any items that
-        % (a) generate_private_interface_int0 below will throw away, and
-        % (b) which don't help the module qualification of the items
-        % that it keeps.
-        module_qualify_aug_make_int_unit(Globals,
-            AugMakeIntUnit1, AugMakeIntUnit, [], QualSpecs),
-        filter_interface_generation_specs(Globals,
-            GetSpecs ++ QualSpecs, EffectiveGetQualSpecs),
-        (
-            EffectiveGetQualSpecs = [],
-            % Construct the `.int0' file.
-            generate_private_interface_int0(AugMakeIntUnit, ParseTreeInt0,
-                [], GenerateSpecs),
-            filter_interface_generation_specs(Globals, GenerateSpecs, Specs),
-            ExtraSuffix = "",
-            construct_int_file_name(Globals, ModuleName, ifk_int0, ExtraSuffix,
-                FileName, TmpFileName, !IO),
-            (
-                AddToHptm = do_not_add_new_to_hptm
-            ;
-                AddToHptm = do_add_new_to_hptm,
-                Int0Map0 = !.HaveParseTreeMaps ^ hptm_int0,
-                HM = have_module(FileName, ParseTreeInt0, was_constructed),
-                map.set(ModuleName, HM, Int0Map0, Int0Map),
-                !HaveParseTreeMaps ^ hptm_int0 := Int0Map
-            ),
-            MaybeTimestamp = Baggage0 ^ mb_maybe_timestamp,
-            GenerateResult = gpti0_ok(ParseTreeInt0, MaybeTimestamp,
-                FileName, TmpFileName, Specs)
-        ;
-            EffectiveGetQualSpecs = [_ | _],
-            GenerateResult = gpti0_error(ModuleName, [], EffectiveGetQualSpecs)
-        )
-    else
-        % The negative indent is to let the rest of the error_spec
-        % start at the left margin.
-        PrefixPieces = [words("Error reading interface files."),
-            nl_indent_delta(-1)],
-        GenerateResult = gpti0_error(ModuleName, PrefixPieces, GetSpecs)
-    ).
 
 :- pred write_parse_tree_int0(io.text_output_stream::in, globals::in,
     generate_int0_result::in, list(error_spec)::out, maybe_succeeded::out,
@@ -361,113 +210,12 @@ write_parse_tree_int0(ProgressStream, Globals, GenerateResult,
 % Write out .int and .int2 files.
 %
 
-write_interface_file_int1_int2(ProgressStream, Globals, AddToHptm,
+generate_and_write_interface_file_int1_int2(ProgressStream, Globals, AddToHptm,
         BurdenedModule, Succeeded, Specs, !HaveParseTreeMaps, !IO) :-
     generate_parse_tree_int12(ProgressStream, Globals, AddToHptm,
         BurdenedModule, GenerateResult, !HaveParseTreeMaps, !IO),
     write_parse_tree_int12(ProgressStream, Globals, GenerateResult,
         Specs, Succeeded, !IO).
-
-:- type generate_int12_result
-    --->    gpti12_ok(
-                parse_tree_int1,
-                parse_tree_int2,
-                maybe(timestamp),
-                file_name,
-                file_name,
-                file_name,
-                file_name,
-                list(error_spec)
-            )
-    ;       gpti12_error(
-                module_name,
-                list(format_piece),
-                list(error_spec)
-            ).
-
-:- pred generate_parse_tree_int12(io.text_output_stream::in, globals::in,
-    maybe_add_to_hptm::in, burdened_module::in, generate_int12_result::out,
-    have_parse_tree_maps::in, have_parse_tree_maps::out,
-    io::di, io::uo) is det.
-
-generate_parse_tree_int12(ProgressStream, Globals, AddToHptm,
-        BurdenedModule, GenerateResult, !HaveParseTreeMaps, !IO) :-
-    BurdenedModule = burdened_module(Baggage0, ParseTreeModuleSrc0),
-    ModuleName = ParseTreeModuleSrc0 ^ ptms_module_name,
-
-    generate_pre_grab_pre_qual_interface_for_int1_int2(ParseTreeModuleSrc0,
-        IntParseTreeModuleSrc),
-
-    % Get the .int3 files for imported modules.
-    grab_unqual_imported_modules_make_int(ProgressStream, Globals,
-        IntParseTreeModuleSrc, AugMakeIntUnit1, Baggage0, Baggage,
-        !HaveParseTreeMaps, !IO),
-
-    % Check whether we succeeded.
-    GetErrors = Baggage ^ mb_errors,
-    GetSpecs = get_read_module_specs(GetErrors),
-    GetSpecsEffectivelyErrors =
-        contains_errors_or_warnings_treated_as_errors(Globals, GetSpecs),
-    ( if
-        GetSpecsEffectivelyErrors = no,
-        there_are_no_errors(GetErrors)
-    then
-        % Module-qualify the aug_make_int_unit.
-        %
-        % Note that doing this only if the condition above succeeds avoids
-        % the generation of avalanche error messages, which is good,
-        % but it also prevents us from generating useful, non-avalanche
-        % error messages, e.g. in tests/invalid_make_int/test_nested.m,
-        % we would be able to report that the fourth argument of predicate
-        % "foo" refers to a nonexistent type.
-        %
-        % In the absence of a sure way to filter out all avalanche errors
-        % from QualSpecs, we have to decide between generating some avalanche
-        % error messages or foregoing the generation of some non-avalanche
-        % error messages. This position of this call makes the latter choice.
-        module_qualify_aug_make_int_unit(Globals,
-            AugMakeIntUnit1, AugMakeIntUnit, [], QualSpecs),
-        filter_interface_generation_specs(Globals,
-            GetSpecs ++ QualSpecs, EffectiveGetQualSpecs),
-        (
-            EffectiveGetQualSpecs = [],
-            generate_interfaces_int1_int2(Globals, AugMakeIntUnit,
-                ParseTreeInt1, ParseTreeInt2, [], GenerateSpecs),
-            filter_interface_generation_specs(Globals, GenerateSpecs, Specs),
-            ExtraSuffix = "",
-            construct_int_file_name(Globals, ModuleName, ifk_int1, ExtraSuffix,
-                FileName1, TmpFileName1, !IO),
-            construct_int_file_name(Globals, ModuleName, ifk_int2, ExtraSuffix,
-                FileName2, TmpFileName2, !IO),
-            (
-                AddToHptm = do_not_add_new_to_hptm
-            ;
-                AddToHptm = do_add_new_to_hptm,
-                Int1Map0 = !.HaveParseTreeMaps ^ hptm_int1,
-                Int2Map0 = !.HaveParseTreeMaps ^ hptm_int2,
-                HM1 = have_module(FileName1, ParseTreeInt1, was_constructed),
-                HM2 = have_module(FileName2, ParseTreeInt2, was_constructed),
-                map.set(ModuleName, HM1, Int1Map0, Int1Map),
-                map.set(ModuleName, HM2, Int2Map0, Int2Map),
-                !HaveParseTreeMaps ^ hptm_int1 := Int1Map,
-                !HaveParseTreeMaps ^ hptm_int2 := Int2Map
-            ),
-            MaybeTimestamp = Baggage0 ^ mb_maybe_timestamp,
-            GenerateResult = gpti12_ok(ParseTreeInt1, ParseTreeInt2,
-                MaybeTimestamp, FileName1, TmpFileName1,
-                FileName2, TmpFileName2, Specs)
-        ;
-            EffectiveGetQualSpecs = [_ | _],
-            GenerateResult =
-                gpti12_error(ModuleName, [], EffectiveGetQualSpecs)
-        )
-    else
-        % The negative indent is to let the rest of the error_spec
-        % start at the left margin.
-        PrefixPieces = [words("Error reading .int3 files."),
-            nl_indent_delta(-1)],
-        GenerateResult = gpti12_error(ModuleName, PrefixPieces, GetSpecs)
-    ).
 
 :- pred write_parse_tree_int12(io.text_output_stream::in, globals::in,
     generate_int12_result::in, list(error_spec)::out, maybe_succeeded::out,
@@ -574,18 +322,6 @@ actually_write_interface_file3(ProgressStream, Globals, ParseTreeInt3,
     Succeeded = OutputSucceeded `and` UpdateSucceeded.
 
 %---------------------------------------------------------------------------%
-
-:- pred construct_int_file_name(globals::in,
-    module_name::in, int_file_kind::in, string::in,
-    string::out, string::out, io::di, io::uo) is det.
-
-construct_int_file_name(Globals, ModuleName, IntFileKind, ExtraSuffix,
-        OutputFileName, TmpOutputFileName, !IO) :-
-    int_file_kind_to_extension(IntFileKind, _ExtStr, Ext),
-    module_name_to_file_name_create_dirs(Globals, $pred, Ext,
-        ModuleName, OutputFileName0, !IO),
-    OutputFileName = OutputFileName0 ++ ExtraSuffix,
-    TmpOutputFileName = OutputFileName ++ ".tmp".
 
 :- pred disable_all_line_numbers(globals::in, globals::out) is det.
 

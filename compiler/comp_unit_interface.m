@@ -18,83 +18,126 @@
 :- interface.
 
 :- import_module libs.
+:- import_module libs.file_util.
 :- import_module libs.globals.
+:- import_module libs.timestamp.
+:- import_module mdbcomp.
+:- import_module mdbcomp.sym_name.
 :- import_module parse_tree.error_spec.
+:- import_module parse_tree.module_baggage.
 :- import_module parse_tree.prog_item.
+:- import_module parse_tree.read_modules.   % ZZZ for have_parse_tree_maps
 
+:- import_module io.
 :- import_module list.
+:- import_module maybe.
+
+    % Each of the predicates
+    %
+    %   generate_parse_tree_int3
+    %   generate_parse_tree_int0
+    %   generate_parse_tree_int12
+    %
+    % has an argument of this type. Their callers can set this argument to
+    % do_add_new_to_hptm to tell the predicate to add the interface file(s)
+    % it has constructed to !HaveParseTreeMaps.
+    %
+:- type maybe_add_to_hptm
+    --->    do_not_add_new_to_hptm
+    ;       do_add_new_to_hptm.
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
-    % This qualifies everything as much as it can given the information
-    % in the current module and writes out the .int3 file.
-    % XXX document me better
+:- type generate_int3_result
+    --->    gpti3_ok(
+                % We successfully generated this parse tree.
+                parse_tree_int3,
+
+                % The file names of the .int3 file, and its temp version.
+                file_name,  % .int3 file name
+                file_name,  % .int3 file name, tmp version
+
+                % The messages we created for (non-fatal) errors
+                % while generating the parse tree.
+                list(error_spec)
+            )
+    ;       gpti3_error(
+                % We couldn't generate the .int3 file of this module.
+                module_name,
+
+                % The format pieces, if any, to include in any error message
+                % that reports the .int3 file not being written.
+                list(format_piece),
+
+                % The messages describing the reason(s) for the failure.
+                list(error_spec)
+            ).
+
+    % Given the parse tree of a module's source code and its baggage,
+    % generate the parse tree of the module's .int3 file.
     %
-:- pred generate_short_interface_int3(globals::in, parse_tree_module_src::in,
-    parse_tree_int3::out, list(error_spec)::in, list(error_spec)::out) is det.
+:- pred generate_parse_tree_int3(globals::in, maybe_add_to_hptm::in,
+    burdened_module::in, generate_int3_result::out,
+    have_parse_tree_maps::in, have_parse_tree_maps::out,
+    io::di, io::uo) is det.
 
 %---------------------------------------------------------------------------%
 
-    % generate_private_interface_int0(AugMakeIntUnit, ParseTreeInt0):
+    % This type is similar to generate_int3_result, with its one difference
+    % being the inclusion of the maybe(timestamp) field from the source file's
+    % module_baggage structure, which we need when writing out the .int0 file.
+:- type generate_int0_result
+    --->    gpti0_ok(
+                parse_tree_int0,
+                maybe(timestamp),
+                file_name,
+                file_name,
+                list(error_spec)
+            )
+    ;       gpti0_error(
+                module_name,
+                list(format_piece),
+                list(error_spec)
+            ).
+
+    % Given the parse tree of a module's source code and its baggage,
+    % generate the parse tree of the module's .int0 file.
     %
-    % Generate the private interface of a module (its .int0 file), which
-    % makes available some not-generally-available items to the other modules
-    % nested inside it.
-    %
-:- pred generate_private_interface_int0(aug_make_int_unit::in,
-    parse_tree_int0::out, list(error_spec)::in, list(error_spec)::out) is det.
+:- pred generate_parse_tree_int0(io.text_output_stream::in, globals::in,
+    maybe_add_to_hptm::in, burdened_module::in, generate_int0_result::out,
+    have_parse_tree_maps::in, have_parse_tree_maps::out,
+    io::di, io::uo) is det.
 
 %---------------------------------------------------------------------------%
 
-    % generate_pre_grab_pre_qual_interface_for_int1_int2(ParseTreeModuleSrc,
-    %   IntParseTreeModuleSrc):
-    %
-    % Prepare for the generation of .int and .int2 files by generating
-    % the part of the module's parse tree that needs to be module qualified
-    % before the invocation of generate_interfaces_int1_int2.
-    %
-    % We return interface sections almost intact, changing them only by
-    % making instance declarations abstract. We delete most kinds of items
-    % from implementation sections, keeping only
-    %
-    % - Module includes.
-    %
-    % - Module imports and uses.
-    %
-    % - Type definitions, in a possibly changed form. Specifically,
-    %   we replace the definitions (a) solver types and (b) noncanonical
-    %   du and foreign types with their abstract forms. We leave the
-    %   definitions of all other types (canonical du and foreign types,
-    %   equivalence types, and already abtract types) unchanged.
-    %
-    % - Typeclass declarations in their abstract from.
-    %
-    % - Foreign_enum pragmas.
-    %
-    % - Foreign_import_module declarations.
-    %
-    % XXX ITEM_LIST Document why we do all this *before* module qualification.
-    %
-    % XXX ITEM_LIST The original comment on this predicate,
-    % when it was conjoined with the code of get_interface above, was:
-    % "Given the raw compilation unit of a module, extract and return
-    % the part of that module that will go into the .int file of the module.
-    % This will typically mostly be the interface section of the module,
-    % but it may also contain parts of the implementation section as well.
-    % Both parts may be somewhat modified; for example, we may remove
-    % the bodies of instance definitions in an interface section,
-    % but put the original, non-abstract instance definition in the
-    % implementation section."
-    %
-:- pred generate_pre_grab_pre_qual_interface_for_int1_int2(
-    parse_tree_module_src::in, parse_tree_module_src::out) is det.
+    % This type is similar to generate_int0_result, with its differences
+    % being the inclusion of two parse trees, and two pairs of file names, 
+    % instead of one.
+:- type generate_int12_result
+    --->    gpti12_ok(
+                parse_tree_int1,
+                parse_tree_int2,
+                maybe(timestamp),
+                file_name,  % .int file name
+                file_name,  % .int file name, tmp version
+                file_name,  % .int2 file name
+                file_name,  % .int2 file name, tmp version
+                list(error_spec)
+            )
+    ;       gpti12_error(
+                module_name,
+                list(format_piece),
+                list(error_spec)
+            ).
 
-    % Generate the contents for the .int and .int2 files.
+    % Given the parse tree of a module's source code and its baggage,
+    % generate the parse trees of the module's .int and .int3 files.
     %
-:- pred generate_interfaces_int1_int2(globals::in, aug_make_int_unit::in,
-    parse_tree_int1::out, parse_tree_int2::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+:- pred generate_parse_tree_int12(io.text_output_stream::in, globals::in,
+    maybe_add_to_hptm::in, burdened_module::in, generate_int12_result::out,
+    have_parse_tree_maps::in, have_parse_tree_maps::out,
+    io::di, io::uo) is det.
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -102,13 +145,16 @@
 :- implementation.
 
 :- import_module libs.options.
-:- import_module mdbcomp.
-:- import_module mdbcomp.sym_name.
 :- import_module parse_tree.check_type_inst_mode_defns.
 :- import_module parse_tree.convert_parse_tree.
 :- import_module parse_tree.decide_type_repn.
+:- import_module parse_tree.error_util.
+:- import_module parse_tree.file_kind.
+:- import_module parse_tree.file_names.
+:- import_module parse_tree.grab_modules.
 :- import_module parse_tree.item_util.
 :- import_module parse_tree.module_qual.
+:- import_module parse_tree.parse_error.
 :- import_module parse_tree.parse_tree_out.
 :- import_module parse_tree.parse_tree_out_info.
 :- import_module parse_tree.prog_data.
@@ -123,20 +169,66 @@
 :- import_module bool.
 :- import_module cord.
 :- import_module map.
-:- import_module maybe.
 :- import_module one_or_more.
 :- import_module one_or_more_map.
 :- import_module pair.
 :- import_module require.
 :- import_module set.
 :- import_module set_tree234.
+:- import_module string.
 :- import_module term.
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
-generate_short_interface_int3(Globals, ParseTreeModuleSrc, ParseTreeInt3,
-        !Specs) :-
+generate_parse_tree_int3(Globals, AddToHptm, BurdenedModule,
+        GenerateResult, !HaveParseTreeMaps, !IO) :-
+    BurdenedModule = burdened_module(_Baggage, ParseTreeModuleSrc),
+    create_parse_tree_int3(ParseTreeModuleSrc, UnQualParseTreeInt3,
+        [], CreateSpecs0),
+    module_qualify_parse_tree_int3(Globals, UnQualParseTreeInt3, ParseTreeInt3,
+        [], _QualSpecs),
+    % We ignore _QualSpecs. The original comment about this was:
+    %   Any Specs this can generate would be better reported
+    %   when the module is being compiled to target language code.
+    % And create_parse_tree_int3 always returns CreateSpecs0 = [].
+    % This means that EffectivelyErrors is guaranteed to be "no".
+    % The error handling code here is therefore has no job to do.
+    % It is here it *may* get a job later, if we ever decide
+    % we want to look for and report error when creating .int3 files.
+    Specs0 = CreateSpecs0,
+    filter_interface_generation_specs(Globals, Specs0, Specs1),
+    EffectivelyErrors =
+        contains_errors_or_warnings_treated_as_errors(Globals, Specs1),
+    ModuleName = ParseTreeModuleSrc ^ ptms_module_name,
+    (
+        EffectivelyErrors = no,
+        ExtraSuffix = "",
+        construct_int_file_name(Globals, ModuleName, ifk_int3, ExtraSuffix,
+            FileName, TmpFileName, !IO),
+        (
+            AddToHptm = do_not_add_new_to_hptm
+        ;
+            AddToHptm = do_add_new_to_hptm,
+            Int3Map0 = !.HaveParseTreeMaps ^ hptm_int3,
+            HM = have_module(FileName, ParseTreeInt3, was_constructed),
+            map.set(ModuleName, HM, Int3Map0, Int3Map),
+            !HaveParseTreeMaps ^ hptm_int3 := Int3Map
+        ),
+        GenerateResult = gpti3_ok(ParseTreeInt3, FileName, TmpFileName, Specs1)
+    ;
+        EffectivelyErrors = yes,
+        GenerateResult = gpti3_error(ModuleName, [], Specs1)
+    ).
+
+    % This qualifies everything as much as it can given the information
+    % in the current module and writes out the .int3 file.
+    % XXX document me better
+    %
+:- pred create_parse_tree_int3(parse_tree_module_src::in, parse_tree_int3::out,
+    list(error_spec)::in, list(error_spec)::out) is det.
+
+create_parse_tree_int3(ParseTreeModuleSrc, ParseTreeInt3, !Specs) :-
     ParseTreeModuleSrc = parse_tree_module_src(ModuleName, ModuleNameContext,
         OrigInclMap, OrigImportUseMap,
         _IntFIMSpecMap, _ImpFIMSpecMap, _IntSelfFIMLangs, _ImpSelfFIMLangs,
@@ -172,14 +264,10 @@ generate_short_interface_int3(Globals, ParseTreeModuleSrc, ParseTreeInt3,
 
     decide_repns_for_simple_types_for_int3(ModuleName, TypeCtorCheckedMap,
         IntTypeRepnMap),
-    OrigParseTreeInt3 = parse_tree_int3(ModuleName, ModuleNameContext,
+    ParseTreeInt3 = parse_tree_int3(ModuleName, ModuleNameContext,
         IntInclMap, IntImportMap,
         IntTypeCtorCheckedMap, IntInstCtorCheckedMap, IntModeCtorCheckedMap,
-        IntTypeClasses, IntInstances, IntTypeRepnMap),
-    % Any Specs this can generate would be better reported
-    % when the module is being compiled to target language code.
-    module_qualify_parse_tree_int3(Globals, OrigParseTreeInt3, ParseTreeInt3,
-        [], _Specs).
+        IntTypeClasses, IntInstances, IntTypeRepnMap).
 
 :- pred acc_int_imports(module_name::in, maybe_implicit_import_and_or_use::in,
     int_import_map::in, int_import_map::out) is det.
@@ -410,6 +498,8 @@ get_c_j_cs_defns(CJCsMaybeDefn, CJCsDefns) :-
     MaybeToList(MaybeDefnCsharp, DefnsCsharp),
     CJCsDefns = DefnsC ++ DefnsJava ++ DefnsCsharp.
 
+%---------------------%
+
 :- pred make_inst_ctor_checked_defn_abstract_for_int3(
     inst_ctor::in, inst_ctor_checked_defn::in,
     inst_ctor_checked_map::in, inst_ctor_checked_map::out) is det.
@@ -433,6 +523,8 @@ make_inst_ctor_checked_defn_abstract_for_int3(InstCtor, CheckedInstDefn0,
     ;
         Status0 = std_inst_all_private
     ).
+
+%---------------------%
 
 :- pred make_mode_ctor_checked_defn_abstract_for_int3(
     mode_ctor::in, mode_ctor_checked_defn::in,
@@ -458,7 +550,7 @@ make_mode_ctor_checked_defn_abstract_for_int3(ModeCtor, CheckedModeDefn0,
         Status0 = std_mode_all_private
     ).
 
-%---------------------------------------------------------------------------%
+%---------------------%
 
 :- func make_typeclass_abstract_for_int3(item_typeclass_info)
     = item_abstract_typeclass_info.
@@ -472,7 +564,78 @@ make_typeclass_abstract_for_int3(TypeClass) = AbstractTypeClass :-
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
-generate_private_interface_int0(AugMakeIntUnit, ParseTreeInt0, !Specs) :-
+generate_parse_tree_int0(ProgressStream, Globals, AddToHptm, BurdenedModule,
+        GenerateResult, !HaveParseTreeMaps, !IO) :-
+    BurdenedModule = burdened_module(Baggage0, ParseTreeModuleSrc0),
+    ModuleName = ParseTreeModuleSrc0 ^ ptms_module_name,
+
+    grab_unqual_imported_modules_make_int(ProgressStream, Globals,
+        ParseTreeModuleSrc0, AugMakeIntUnit1, Baggage0, Baggage,
+        !HaveParseTreeMaps, !IO),
+
+    % Check whether we succeeded.
+    GetErrors = Baggage ^ mb_errors,
+    GetSpecs = get_read_module_specs(GetErrors),
+    GetSpecsEffectivelyErrors =
+        contains_errors_or_warnings_treated_as_errors(Globals, GetSpecs),
+    ( if
+        GetSpecsEffectivelyErrors = no,
+        there_are_no_errors(GetErrors)
+    then
+        % Module-qualify the aug_make_int_unit.
+        %
+        % XXX ITEM_LIST We don't need grab_unqual_imported_modules
+        % to include in AugMakeIntUnit1 any items that
+        % (a) create_parse_tree_int0 below will throw away, and
+        % (b) which don't help the module qualification of the items
+        % that it keeps.
+        module_qualify_aug_make_int_unit(Globals,
+            AugMakeIntUnit1, AugMakeIntUnit, [], QualSpecs),
+        filter_interface_generation_specs(Globals,
+            GetSpecs ++ QualSpecs, EffectiveGetQualSpecs),
+        (
+            EffectiveGetQualSpecs = [],
+            % Construct the `.int0' file.
+            create_parse_tree_int0(AugMakeIntUnit, ParseTreeInt0,
+                [], GenerateSpecs),
+            filter_interface_generation_specs(Globals, GenerateSpecs, Specs),
+            ExtraSuffix = "",
+            construct_int_file_name(Globals, ModuleName, ifk_int0, ExtraSuffix,
+                FileName, TmpFileName, !IO),
+            (
+                AddToHptm = do_not_add_new_to_hptm
+            ;
+                AddToHptm = do_add_new_to_hptm,
+                Int0Map0 = !.HaveParseTreeMaps ^ hptm_int0,
+                HM = have_module(FileName, ParseTreeInt0, was_constructed),
+                map.set(ModuleName, HM, Int0Map0, Int0Map),
+                !HaveParseTreeMaps ^ hptm_int0 := Int0Map
+            ),
+            MaybeTimestamp = Baggage0 ^ mb_maybe_timestamp,
+            GenerateResult = gpti0_ok(ParseTreeInt0, MaybeTimestamp,
+                FileName, TmpFileName, Specs)
+        ;
+            EffectiveGetQualSpecs = [_ | _],
+            GenerateResult = gpti0_error(ModuleName, [], EffectiveGetQualSpecs)
+        )
+    else
+        % The negative indent is to let the rest of the error_spec
+        % start at the left margin.
+        PrefixPieces = [words("Error reading interface files."),
+            nl_indent_delta(-1)],
+        GenerateResult = gpti0_error(ModuleName, PrefixPieces, GetSpecs)
+    ).
+
+    % create_parse_tree_int0(AugMakeIntUnit, ParseTreeInt0, !Specs):
+    %
+    % Generate the private interface of a module (its .int0 file), which
+    % makes available some not-generally-available items to the other modules
+    % nested inside it.
+    %
+:- pred create_parse_tree_int0(aug_make_int_unit::in, parse_tree_int0::out,
+    list(error_spec)::in, list(error_spec)::out) is det.
+
+create_parse_tree_int0(AugMakeIntUnit, ParseTreeInt0, !Specs) :-
     AugMakeIntUnit = aug_make_int_unit(ParseTreeModuleSrc, _, _, _,
         ModuleItemVersionNumbersMap),
 
@@ -539,6 +702,130 @@ generate_private_interface_int0(AugMakeIntUnit, ParseTreeInt0, !Specs) :-
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
+
+generate_parse_tree_int12(ProgressStream, Globals, AddToHptm,
+        BurdenedModule, GenerateResult, !HaveParseTreeMaps, !IO) :-
+    BurdenedModule = burdened_module(Baggage0, ParseTreeModuleSrc0),
+    ModuleName = ParseTreeModuleSrc0 ^ ptms_module_name,
+
+    generate_pre_grab_pre_qual_interface_for_int1_int2(ParseTreeModuleSrc0,
+        IntParseTreeModuleSrc),
+
+    % Get the .int3 files for imported modules.
+    grab_unqual_imported_modules_make_int(ProgressStream, Globals,
+        IntParseTreeModuleSrc, AugMakeIntUnit1, Baggage0, Baggage,
+        !HaveParseTreeMaps, !IO),
+
+    % Check whether we succeeded.
+    GetErrors = Baggage ^ mb_errors,
+    GetSpecs = get_read_module_specs(GetErrors),
+    GetSpecsEffectivelyErrors =
+        contains_errors_or_warnings_treated_as_errors(Globals, GetSpecs),
+    ( if
+        GetSpecsEffectivelyErrors = no,
+        there_are_no_errors(GetErrors)
+    then
+        % Module-qualify the aug_make_int_unit.
+        %
+        % Note that doing this only if the condition above succeeds avoids
+        % the generation of avalanche error messages, which is good,
+        % but it also prevents us from generating useful, non-avalanche
+        % error messages, e.g. in tests/invalid_make_int/test_nested.m,
+        % we would be able to report that the fourth argument of predicate
+        % "foo" refers to a nonexistent type.
+        %
+        % In the absence of a sure way to filter out all avalanche errors
+        % from QualSpecs, we have to decide between generating some avalanche
+        % error messages or foregoing the generation of some non-avalanche
+        % error messages. This position of this call makes the latter choice.
+        module_qualify_aug_make_int_unit(Globals,
+            AugMakeIntUnit1, AugMakeIntUnit, [], QualSpecs),
+        filter_interface_generation_specs(Globals,
+            GetSpecs ++ QualSpecs, EffectiveGetQualSpecs),
+        (
+            EffectiveGetQualSpecs = [],
+            create_parse_trees_int1_int2(Globals, AugMakeIntUnit,
+                ParseTreeInt1, ParseTreeInt2, [], GenerateSpecs),
+            filter_interface_generation_specs(Globals, GenerateSpecs, Specs),
+            ExtraSuffix = "",
+            construct_int_file_name(Globals, ModuleName, ifk_int1, ExtraSuffix,
+                FileName1, TmpFileName1, !IO),
+            construct_int_file_name(Globals, ModuleName, ifk_int2, ExtraSuffix,
+                FileName2, TmpFileName2, !IO),
+            (
+                AddToHptm = do_not_add_new_to_hptm
+            ;
+                AddToHptm = do_add_new_to_hptm,
+                Int1Map0 = !.HaveParseTreeMaps ^ hptm_int1,
+                Int2Map0 = !.HaveParseTreeMaps ^ hptm_int2,
+                HM1 = have_module(FileName1, ParseTreeInt1, was_constructed),
+                HM2 = have_module(FileName2, ParseTreeInt2, was_constructed),
+                map.set(ModuleName, HM1, Int1Map0, Int1Map),
+                map.set(ModuleName, HM2, Int2Map0, Int2Map),
+                !HaveParseTreeMaps ^ hptm_int1 := Int1Map,
+                !HaveParseTreeMaps ^ hptm_int2 := Int2Map
+            ),
+            MaybeTimestamp = Baggage0 ^ mb_maybe_timestamp,
+            GenerateResult = gpti12_ok(ParseTreeInt1, ParseTreeInt2,
+                MaybeTimestamp, FileName1, TmpFileName1,
+                FileName2, TmpFileName2, Specs)
+        ;
+            EffectiveGetQualSpecs = [_ | _],
+            GenerateResult =
+                gpti12_error(ModuleName, [], EffectiveGetQualSpecs)
+        )
+    else
+        % The negative indent is to let the rest of the error_spec
+        % start at the left margin.
+        PrefixPieces = [words("Error reading .int3 files."),
+            nl_indent_delta(-1)],
+        GenerateResult = gpti12_error(ModuleName, PrefixPieces, GetSpecs)
+    ).
+
+%---------------------------------------------------------------------------%
+
+    % generate_pre_grab_pre_qual_interface_for_int1_int2(ParseTreeModuleSrc,
+    %   IntParseTreeModuleSrc):
+    %
+    % Prepare for the generation of .int and .int2 files by generating
+    % the part of the module's parse tree that needs to be module qualified
+    % before the invocation of create_parse_trees_int1_int2.
+    %
+    % We return interface sections almost intact, changing them only by
+    % making instance declarations abstract. We delete most kinds of items
+    % from implementation sections, keeping only
+    %
+    % - Module includes.
+    %
+    % - Module imports and uses.
+    %
+    % - Type definitions, in a possibly changed form. Specifically,
+    %   we replace the definitions (a) solver types and (b) noncanonical
+    %   du and foreign types with their abstract forms. We leave the
+    %   definitions of all other types (canonical du and foreign types,
+    %   equivalence types, and already abtract types) unchanged.
+    %
+    % - Typeclass declarations in their abstract from.
+    %
+    % - Foreign_enum pragmas.
+    %
+    % - Foreign_import_module declarations.
+    %
+    % XXX ITEM_LIST Document why we do all this *before* module qualification.
+    %
+    % XXX ITEM_LIST The original comment on this predicate,
+    % when it was conjoined with the code of get_interface above, was:
+    % "Given the raw compilation unit of a module, extract and return
+    % the part of that module that will go into the .int file of the module.
+    % This will typically mostly be the interface section of the module,
+    % but it may also contain parts of the implementation section as well.
+    % Both parts may be somewhat modified; for example, we may remove
+    % the bodies of instance definitions in an interface section,
+    % but put the original, non-abstract instance definition in the
+    % implementation section."
+    %
+:- pred generate_pre_grab_pre_qual_interface_for_int1_int2(
+    parse_tree_module_src::in, parse_tree_module_src::out) is det.
 
 generate_pre_grab_pre_qual_interface_for_int1_int2(ParseTreeModuleSrc,
         IntParseTreeModuleSrc) :-
@@ -799,25 +1086,31 @@ pre_grab_pre_qual_mode_ctor_checked_defn(ModeCtor, CheckedDefn0,
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
-generate_interfaces_int1_int2(Globals, AugMakeIntUnit,
+    % Generate the contents for the .int and .int2 files.
+    %
+:- pred create_parse_trees_int1_int2(globals::in, aug_make_int_unit::in,
+    parse_tree_int1::out, parse_tree_int2::out,
+    list(error_spec)::in, list(error_spec)::out) is det.
+
+create_parse_trees_int1_int2(Globals, AugMakeIntUnit,
         ParseTreeInt1, ParseTreeInt2, !Specs) :-
-    generate_interface_int1(Globals, AugMakeIntUnit,
+    create_parse_tree_int1(Globals, AugMakeIntUnit,
         IntExplicitFIMSpecs, ImpExplicitFIMSpecs,
         TypeCtorCheckedMap, InstCtorCheckedMap, ModeCtorCheckedMap,
         TypeCtorRepnMap, ParseTreeInt1, !Specs),
-    generate_interface_int2(AugMakeIntUnit,
+    create_parse_tree_int2(AugMakeIntUnit,
         IntExplicitFIMSpecs, ImpExplicitFIMSpecs,
         TypeCtorCheckedMap, InstCtorCheckedMap, ModeCtorCheckedMap,
         TypeCtorRepnMap, ParseTreeInt2).
 
-:- pred generate_interface_int1(globals::in, aug_make_int_unit::in,
+:- pred create_parse_tree_int1(globals::in, aug_make_int_unit::in,
     set(fim_spec)::out, set(fim_spec)::out,
     type_ctor_checked_map::out,
     inst_ctor_checked_map::out, mode_ctor_checked_map::out,
     type_ctor_repn_map::out, parse_tree_int1::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-generate_interface_int1(Globals, AugMakeIntUnit,
+create_parse_tree_int1(Globals, AugMakeIntUnit,
         IntExplicitFIMSpecs, ImpExplicitFIMSpecs,
         IntTypeCtorCheckedMap, IntInstCtorCheckedMap, IntModeCtorCheckedMap,
         TypeCtorRepnMap, ParseTreeInt1, !Specs) :-
@@ -2177,7 +2470,7 @@ make_subtype_defn_abstract(SubDefn) = AbstractDefn :-
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
-    % generate_interface_int2(AugMakeIntUnit,
+    % create_parse_tree_int2(AugMakeIntUnit,
     %   IntExplicitFIMSpecs, ImpExplicitFIMSpecs,
     %   TypeCtorCheckedMap, InstCtorCheckedMap, ModeCtorCheckedMap,
     %   TypeCtorRepnMap, ParseTreeInt2):
@@ -2185,13 +2478,13 @@ make_subtype_defn_abstract(SubDefn) = AbstractDefn :-
     % The input arguments should be the relevant parts of the .int1 file
     % computed by our parent.
     %
-:- pred generate_interface_int2(aug_make_int_unit::in,
+:- pred create_parse_tree_int2(aug_make_int_unit::in,
     set(fim_spec)::in, set(fim_spec)::in,
     type_ctor_checked_map::in, inst_ctor_checked_map::in,
     mode_ctor_checked_map::in, type_ctor_repn_map::in,
     parse_tree_int2::out) is det.
 
-generate_interface_int2(AugMakeIntUnit,
+create_parse_tree_int2(AugMakeIntUnit,
         IntExplicitFIMSpecs, ImpExplicitFIMSpecs,
         TypeCtorCheckedMap, InstCtorCheckedMap, ModeCtorCheckedMap,
         TypeCtorRepnMap, ParseTreeInt2) :-
@@ -3166,14 +3459,14 @@ accumulate_modules_in_qual_type_ctor(TypeCtor, !ModuleNames) :-
         set.insert(ModuleName, !ModuleNames)
     ;
         SymName = unqualified(_)
-        % Our ancestor generate_interfaces_int1_int2 should be invoked
+        % Our ancestor create_parse_trees_int1_int2 should be invoked
         % only *after* the module qualification of the augmented compilation
         % unit whose contents we are now processing, and the module
         % qualification pass would have generated an error message
         % for this cannot-be-uniquely-qualified name. However, if the
         % user has turned off the halt_at_invalid_interface option,
         % which is on by default, then the compiler ignores that error,
-        % and proceeds to call generate_interfaces_int1_int2 above,
+        % and proceeds to call create_parse_trees_int1_int2 above,
         % which calls us indirectly.
     ).
 
@@ -3305,6 +3598,20 @@ accumulate_module(SymName, !MaybeUnqual, !ModuleNames) :-
         SymName = qualified(ModuleName, _),
         set.insert(ModuleName, !ModuleNames)
     ).
+
+%---------------------------------------------------------------------------%
+
+:- pred construct_int_file_name(globals::in,
+    module_name::in, int_file_kind::in, string::in,
+    string::out, string::out, io::di, io::uo) is det.
+
+construct_int_file_name(Globals, ModuleName, IntFileKind, ExtraSuffix,
+        OutputFileName, TmpOutputFileName, !IO) :-
+    int_file_kind_to_extension(IntFileKind, _ExtStr, Ext),
+    module_name_to_file_name_create_dirs(Globals, $pred, Ext,
+        ModuleName, OutputFileName0, !IO),
+    OutputFileName = OutputFileName0 ++ ExtraSuffix,
+    TmpOutputFileName = OutputFileName ++ ".tmp".
 
 %---------------------------------------------------------------------------%
 :- end_module parse_tree.comp_unit_interface.
