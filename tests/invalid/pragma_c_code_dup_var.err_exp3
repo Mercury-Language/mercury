@@ -1,0 +1,5 @@
+pragma_c_code_dup_var.m:025: Error: no clauses for function `bread_impl'/7.
+pragma_c_code_dup_var.m:050: In `:- pragma foreign_proc' declaration for
+pragma_c_code_dup_var.m:050:   function `bread_impl'/7:
+pragma_c_code_dup_var.m:050:   error: variable `Buf' occurs more than once in
+pragma_c_code_dup_var.m:050:   the argument list.

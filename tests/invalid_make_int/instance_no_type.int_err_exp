@@ -7,3 +7,4 @@ instance_no_type.m:030:   thus it may not be used in the interface.
 instance_no_type.m:030: In declaration of instance of typeclass `tc2'/2:
 instance_no_type.m:030:   error: the type `no_such_type2'/0 is not exported,
 instance_no_type.m:030:   and thus it may not be used in the interface.
+`instance_no_type.int' and `instance_no_type.int2' not written.

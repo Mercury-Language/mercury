@@ -192,7 +192,6 @@ BORING_SINGLEMODULE_PROGS = \
 	inline_conflict_warn \
 	inst_for_eqv_type \
 	inst_matches_final_bug \
-	instance_no_type \
 	instance_var_bug \
 	integral_constant_no_suffix \
 	invalid_event \
@@ -241,7 +240,6 @@ BORING_SINGLEMODULE_PROGS = \
 	polymorphic_unification \
 	pragma_c_code_dup_var \
 	pragma_c_code_no_det \
-	pragma_export \
 	promise_equivalent_solutions_test \
 	promise_equivalent_solutions_test_2 \
 	qual_basic_test2 \

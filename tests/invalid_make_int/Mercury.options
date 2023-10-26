@@ -11,6 +11,8 @@ MCFLAGS-bug521                                  \
     += --halt-at-invalid-interface --std-int-file-not-written-msgs
 MCFLAGS-builtin_int                             \
     += --halt-at-invalid-interface --std-int-file-not-written-msgs
+MCFLAGS-instance_no_type                        \
+    += --halt-at-invalid-interface --std-int-file-not-written-msgs
 MCFLAGS-int_impl_imports                        \
     += --halt-at-invalid-interface --std-int-file-not-written-msgs
 MCFLAGS-missing_interface_import                \
@@ -18,6 +20,8 @@ MCFLAGS-missing_interface_import                \
 MCFLAGS-missing_interface_import_test_2         \
     += --halt-at-invalid-interface --std-int-file-not-written-msgs
 MCFLAGS-missing_parent_import                   \
+    += --halt-at-invalid-interface --std-int-file-not-written-msgs
+MCFLAGS-pragma_export_int                       \
     += --halt-at-invalid-interface --std-int-file-not-written-msgs
 MCFLAGS-sub_c                                   \
     += --halt-at-invalid-interface --std-int-file-not-written-msgs

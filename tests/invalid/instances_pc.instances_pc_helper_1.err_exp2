@@ -1,0 +1,4 @@
+Mercury/int0s/instances_pc.int0:005: Inconsistent instance declaration for
+Mercury/int0s/instances_pc.int0:005:   typeclass `instances_pc.foo'/2 with
+Mercury/int0s/instances_pc.int0:005:   functional dependency `(A -> B)'.
+instances_pc.instances_pc_helper_1.m:019: Here is the conflicting instance.

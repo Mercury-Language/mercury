@@ -1,0 +1,4 @@
+pragma_export_int.m:013: Error: `:- pragma memo' declaration in module
+pragma_export_int.m:013:   interface.
+pragma_export_int.m:014: Error: `:- pragma consider_used' declaration in module
+pragma_export_int.m:014:   interface.

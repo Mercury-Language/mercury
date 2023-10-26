@@ -5,8 +5,12 @@
 % rotd-2009-04-03 and before failed to detect the overlapping instance
 % between this parent module and its child module unless the option
 % --intermodule-optimization was enabled, despite the fact that the
-% information needed for doing that check contained in the parent module's
+% information needed for doing that check is contained in the parent module's
 % private interface (.int0) file.
+%
+% The .err_exp file is for C, the .err_exp2 file is for Java and C#.
+%
+%---------------------------------------------------------------------------%
 
 :- module instances_pc.
 :- interface.

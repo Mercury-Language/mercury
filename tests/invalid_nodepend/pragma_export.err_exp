@@ -1,0 +1,3 @@
+pragma_export.m:012: Error: since the predicate `memoproc2'/3 is not exported,
+pragma_export.m:012:   the `:- pragma obsolete' declaration for it may not be
+pragma_export.m:012:   exported either.

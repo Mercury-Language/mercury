@@ -458,19 +458,19 @@ clauses_info_do_add_foreign_proc(PredOrFunc, PredModuleName, PredName,
             pred_pf_name_arity(PredOrFunc, PredSymName, UserArity),
         Pieces1 = [words("In"), pragma_decl("foreign_proc"),
             words("declaration for"),
-            qual_pf_sym_name_user_arity(PFSymNameArity), suffix(":"), nl],
+            unqual_pf_sym_name_user_arity(PFSymNameArity), suffix(":"), nl],
         (
             MultiplyOccurringArgVars = [MultiplyOccurringArgVar],
             BadVarStr = mercury_var_to_name_only_vs(PVarSet,
                 MultiplyOccurringArgVar),
             Pieces2 = [words("error: variable"), quote(BadVarStr),
-                words("occurs multiple times in the argument list."), nl]
+                words("occurs more than once in the argument list."), nl]
         ;
             MultiplyOccurringArgVars = [_, _ | _],
             BadVarsStr = mercury_vars_to_name_only_vs(PVarSet,
                 MultiplyOccurringArgVars),
             Pieces2 = [words("error: variables"), quote(BadVarsStr),
-                words("occur multiple times in the argument list."), nl]
+                words("each occur more than once in the argument list."), nl]
         ),
         Spec = simplest_spec($pred, severity_error, phase_parse_tree_to_hlds,
             Context, Pieces1 ++ Pieces2),

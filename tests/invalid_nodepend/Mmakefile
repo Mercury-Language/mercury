@@ -70,6 +70,7 @@ PROGS = \
 	no_exports \
 	null_char \
 	occurs \
+	pragma_export \
 	pragma_source_file \
 	predmode \
 	prog_io_erroneous \

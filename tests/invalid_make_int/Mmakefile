@@ -22,7 +22,9 @@ SINGLE_MODULE_PROGS = \
 	bug499 \
 	bug521 \
 	builtin_int \
-	missing_interface_import
+	instance_no_type \
+	missing_interface_import \
+	pragma_export_int
 
 MULTI_MODULE_PROGS = \
 	int_impl_imports \

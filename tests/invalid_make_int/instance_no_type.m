@@ -2,9 +2,9 @@
 % vim: ts=4 sw=4 et ft=mercury
 %---------------------------------------------------------------------------%
 %
-% rotd-2007-10-19 and before would not emit an error if you used a type
-% that was only visible in the implementation section of a module in
-% an abstract instance declaration in the interface of the module.
+% rotd-2007-10-19 and before would not emit an error if you referred to
+% a type in an abstract instance declaration in the interface section,
+% BUT that type was visible ONLY in the implementation section.
 %
 %---------------------------------------------------------------------------%
 
