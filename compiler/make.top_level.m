@@ -266,8 +266,6 @@ classify_target(Globals, TargetName, TopTargetFile) :-
     top_target_file::out) is semidet.
 
 classify_target_2(Globals, ModuleNameStr0, ExtStr, TopTargetFile) :-
-    % XXX This if-then-else chain cries out for conversion of most of it
-    % to a switch.
     ( if fixed_extension_target_type(ExtStr, TargetTypePrime) then
         ModuleNameStr = ModuleNameStr0,
         TargetType = TargetTypePrime
