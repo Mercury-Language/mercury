@@ -106,9 +106,7 @@
 
 % Values of the "ext" type partition the set of filename extensions
 % that the Mercury compiler cares about into several categories.
-% Generally speaking, the extensions in each category are treated
-% the same by the module_name_to_* predicates below. (There are exceptions,
-% but they should be eliminated soon).
+% The extensions in each category are treated the same by the predicates below.
 %
 % The two considerations that control which category a given extension
 % belongs to are
@@ -155,26 +153,23 @@
 % on these themes.
 %
 % One common variation is that when constructing a filename to search for,
-% we never include any directory name component in the filename we return.
-% XXX There are extension classes for which we *do* return directory name
-% components even when constructing a filename to be searched for.
+% we omit either some, or (usually) all directory name components from
+% the filename we return.
+%
+% (Yes, there are extension classes for which we *do* return some directory
+% name components even when constructing a filename to be searched for.
 % It is not (yet) clear to me (zs) whether this is an intentional choice,
 % or whether what we do with for_search is immaterial because we *always*
-% translate those extensions with not_for_search.
+% translate those extensions with not_for_search.)
 %
 % In the function symbols below,
 % - the "gs" suffix stands for the use of a grade-specific directory, while
 % - the "ngs" suffix stands for the use of a non-grade-specific directory.
 %
-% XXX We should probably invert the classification scheme.
-% Instead of making the role (interface file, target file, object file, etc)
-% be the primary division point, and the directory treatment the second
-% division point, we should make the directory treatment the first one.
-% However, there is no point in doing that until we have firmly, and
-% *explicitly*, decided the directory treatment we want for each and every
-% extension. (The current system was arrived at by piling patch upon patch
-% on a large piece of over-complex code, and cannot be considered to
-% represent the result of explicit deliberation.)
+% NOTE The current decisions on what algorithm we use to decide the directory
+% we use to store the files of any given extension were made when the code
+% here an over-complex mess, piling patch upon patch. Those decisions
+% cannot be considered to represent the result of explicit deliberation.
 
 :- type ext
 %   --->    ext_src
@@ -239,7 +234,7 @@
 :- type ext_cur
             % Compiler-generated C header file for a module that is intended
             % for inclusion by user-written C source files.
-    --->    ext_cur_mh                      % ".mh"
+    --->    ext_cur_mh                          % ".mh"
 
             % These extensions are used not to create filenames, but to
             % create mmake target names. Some do refer to real files,
@@ -247,73 +242,73 @@
             % strings that can contain references to make variables.
             % Some of the other generated make targets are phony targets,
             % meaning that they never correspond to real files at all.
-    ;       ext_cur_pmt_all_int3s           % ".all_int3s"
-    ;       ext_cur_pmt_all_ints            % ".all_int3"
-    ;       ext_cur_pmt_all_opts            % ".all_opts"
-    ;       ext_cur_pmt_all_trans_opts      % ".all_trans_opts"
-    ;       ext_cur_pmt_check               % ".check"
-    ;       ext_cur_pmt_classes             % ".classes"
-    ;       ext_cur_pmt_clean               % ".clean"
-    ;       ext_cur_pmt_depend              % ".depend"
-    ;       ext_cur_pmt_install_grade_hdrs  % ".install_grade_hdrs"
-    ;       ext_cur_pmt_install_hdrs        % ".install_hdrs"
-    ;       ext_cur_pmt_install_ints        % ".install_ints"
-    ;       ext_cur_pmt_install_opts        % ".install_opts"
-    ;       ext_cur_pmt_int3s               % ".int3s"
-    ;       ext_cur_pmt_ints                % ".ints"
-    ;       ext_cur_pmt_javas               % ".javas"
-    ;       ext_cur_pmt_opts                % ".opts"
-    ;       ext_cur_pmt_realclean           % ".realclean"
-    ;       ext_cur_pmt_trans_opts          % ".trans_opts"
+    ;       ext_cur_pmt_all_int3s               % ".all_int3s"
+    ;       ext_cur_pmt_all_ints                % ".all_int3"
+    ;       ext_cur_pmt_all_opts                % ".all_opts"
+    ;       ext_cur_pmt_all_trans_opts          % ".all_trans_opts"
+    ;       ext_cur_pmt_check                   % ".check"
+    ;       ext_cur_pmt_classes                 % ".classes"
+    ;       ext_cur_pmt_clean                   % ".clean"
+    ;       ext_cur_pmt_depend                  % ".depend"
+    ;       ext_cur_pmt_install_grade_hdrs      % ".install_grade_hdrs"
+    ;       ext_cur_pmt_install_hdrs            % ".install_hdrs"
+    ;       ext_cur_pmt_install_ints            % ".install_ints"
+    ;       ext_cur_pmt_install_opts            % ".install_opts"
+    ;       ext_cur_pmt_int3s                   % ".int3s"
+    ;       ext_cur_pmt_ints                    % ".ints"
+    ;       ext_cur_pmt_javas                   % ".javas"
+    ;       ext_cur_pmt_opts                    % ".opts"
+    ;       ext_cur_pmt_realclean               % ".realclean"
+    ;       ext_cur_pmt_trans_opts              % ".trans_opts"
 
             % Compiler-generated files that are intended to be read
             % by the programmer.
-    ;       ext_cur_user_defn_ext           % ".defn_extents"
-    ;       ext_cur_user_defn_lc            % ".defn_line_counts"
-    ;       ext_cur_user_defns              % ".defns"
-    ;       ext_cur_user_depgraph           % ".dependency_graph"
-    ;       ext_cur_user_err                % ".err"
-    ;       ext_cur_user_hlds_dump          % ".hlds_dump"
-    ;       ext_cur_user_imports_graph      % ".imports_graph"
-    ;       ext_cur_user_lct                % ".local_call_tree"
-    ;       ext_cur_user_lct_order          % ".local_call_tree_order"
-    ;       ext_cur_user_mlds_dump          % ".mlds_dump"
-    ;       ext_cur_user_mode_constr        % ".mode_constraints"
-    ;       ext_cur_user_order              % ".order"
-    ;       ext_cur_user_order_to           % ".order_trans_opt"
-    ;       ext_cur_user_type_repns         % ".type_repns"
-    ;       ext_cur_user_ugly               % ".ugly"
-    ;       ext_cur_user_xml.               % ".xml"
+    ;       ext_cur_user_defn_ext               % ".defn_extents"
+    ;       ext_cur_user_defn_lc                % ".defn_line_counts"
+    ;       ext_cur_user_defns                  % ".defns"
+    ;       ext_cur_user_depgraph               % ".dependency_graph"
+    ;       ext_cur_user_err                    % ".err"
+    ;       ext_cur_user_hlds_dump              % ".hlds_dump"
+    ;       ext_cur_user_imports_graph          % ".imports_graph"
+    ;       ext_cur_user_lct                    % ".local_call_tree"
+    ;       ext_cur_user_lct_order              % ".local_call_tree_order"
+    ;       ext_cur_user_mlds_dump              % ".mlds_dump"
+    ;       ext_cur_user_mode_constr            % ".mode_constraints"
+    ;       ext_cur_user_order                  % ".order"
+    ;       ext_cur_user_order_to               % ".order_trans_opt"
+    ;       ext_cur_user_type_repns             % ".type_repns"
+    ;       ext_cur_user_ugly                   % ".ugly"
+    ;       ext_cur_user_xml.                   % ".xml"
 
 :- type ext_cur_ngs
             % Compiler-generated interface files, and the timestamp files
             % showing when they were last checked.
-    --->    ext_cur_ngs_int_int0            % ".int0"
-    ;       ext_cur_ngs_int_int1            % ".int"
-    ;       ext_cur_ngs_int_int2            % ".int2"
-    ;       ext_cur_ngs_int_int3            % ".int3"
-    ;       ext_cur_ngs_int_date_int0       % ".date0"
-    ;       ext_cur_ngs_int_date_int12      % ".date"
-    ;       ext_cur_ngs_int_date_int3       % ".date3"
+    --->    ext_cur_ngs_int_int0                % ".int0"
+    ;       ext_cur_ngs_int_int1                % ".int"
+    ;       ext_cur_ngs_int_int2                % ".int2"
+    ;       ext_cur_ngs_int_int3                % ".int3"
+    ;       ext_cur_ngs_int_date_int0           % ".date0"
+    ;       ext_cur_ngs_int_date_int12          % ".date"
+    ;       ext_cur_ngs_int_date_int3           % ".date3"
 
             % Compiler-generated files that are designed to be bodily included
             % in Mmakefiles.
-    ;       ext_cur_ngs_mf_d                % ".d"
-    ;       ext_cur_ngs_mf_dv               % ".dv"
-    ;       ext_cur_ngs_mf_dep              % ".dep"
+    ;       ext_cur_ngs_mf_d                    % ".d"
+    ;       ext_cur_ngs_mf_dv                   % ".dv"
+    ;       ext_cur_ngs_mf_dep                  % ".dep"
 
             % Compiler-generated files that represent bytecode
             % for a long-ago attempt at a bytecode based Mercury debugger.
-    ;       ext_cur_ngs_bc_mbc              % ".bc"
-    ;       ext_cur_ngs_bc_bytedebug        % ".bytedebug"
+    ;       ext_cur_ngs_bc_mbc                  % ".bc"
+    ;       ext_cur_ngs_bc_bytedebug            % ".bytedebug"
 
             % Misc extensions.
-    ;       ext_cur_ngs_misc_module_dep     % ".module_dep"
+    ;       ext_cur_ngs_misc_module_dep         % ".module_dep"
             % XXX DODGY What is the correctness argument for making this
             % a NON-grade-specific extension? If *anything* in a .module_dep
             % file can *ever* be grade dependent, this should be a
             % grade-specific extension.
-    ;       ext_cur_ngs_misc_err_date       % ".err_date"
+    ;       ext_cur_ngs_misc_err_date           % ".err_date"
             % XXX DODGY If you recompile a module in a different grade,
             % the contents of the .err file may change, for example
             % because one grade satisfies the requirements of a
@@ -324,7 +319,7 @@
             % is not relevant, since people shouldn't *have* to find
             % .err_date files.
             % XXX zs and juliensf agree on this.
-    ;       ext_cur_ngs_misc_prof.          % ".prof"
+    ;       ext_cur_ngs_misc_prof.              % ".prof"
             % XXX DODGY Given that different profiling grades generate
             % different profiles (specifically, they produce different subsets
             % of the whole set of kinds of info that the non-deep profiler can
@@ -341,67 +336,67 @@
             % option, *all* executables and libraries *should* be put
             % into a grade subdir if that option is specified, not just some.
             % They should then be copied or linked to the current directory.
-    --->    ext_cur_gs_exec_noext           % ""
+    --->    ext_cur_gs_exec_noext               % ""
             % XXX While an empty extension *usually means we are building
             % the name of an executable, it can also mean we are building
             % the name of a phony Mmakefile target for a library, such as
             % libmer_std in the library directory.
 
-    ;       ext_cur_gs_exec_exe             % ".exe"
-    ;       ext_cur_gs_exec_bat             % ".bat"
-    ;       ext_cur_gs_exec_exec_opt        % executable_file_extension
+    ;       ext_cur_gs_exec_exe                 % ".exe"
+    ;       ext_cur_gs_exec_bat                 % ".bat"
+    ;       ext_cur_gs_exec_exec_opt            % executable_file_extension
 
             % Libraries, which may be statically or dynamically linked,
             % generated for a set of modules.
             %
             % Most of these extensions are intended to name real files,
             % but some are intended to name mmake targets.
-    ;       ext_cur_gs_lib_dollar_efsl      % ".(EXT_FOR_SHARED_LIB)"
-%   ;       ext_cur_gs_lib_lib              % ".lib"
-%   ;       ext_cur_gs_lib_so               % ".so"
+    ;       ext_cur_gs_lib_dollar_efsl          % ".(EXT_FOR_SHARED_LIB)"
+%   ;       ext_cur_gs_lib_lib                  % ".lib"
+%   ;       ext_cur_gs_lib_so                   % ".so"
             % NOTE Neither ext_cur_gs_lib_lib nor ext_cur_gs_lib_so are
             % ever referred to by that name. All references to files with
             % those extensions use ext_cur_gs_lib_lib_opt and
             % ext_cur_gs_lib_sh_lib_opt.
-    ;       ext_cur_gs_lib_dollar_a         % ".$A"
-    ;       ext_cur_gs_lib_archive          % ".a"
-    ;       ext_cur_gs_lib_dll              % ".dll"
-    ;       ext_cur_gs_lib_init             % ".init"
-    ;       ext_cur_gs_lib_jar              % ".jar"
-    ;       ext_cur_gs_lib_lib_opt          % library_extension
-    ;       ext_cur_gs_lib_sh_lib_opt.      % shared_library_extension
+    ;       ext_cur_gs_lib_dollar_a             % ".$A"
+    ;       ext_cur_gs_lib_archive              % ".a"
+    ;       ext_cur_gs_lib_dll                  % ".dll"
+    ;       ext_cur_gs_lib_init                 % ".init"
+    ;       ext_cur_gs_lib_jar                  % ".jar"
+    ;       ext_cur_gs_lib_lib_opt              % library_extension
+    ;       ext_cur_gs_lib_sh_lib_opt.          % shared_library_extension
 
 :- type ext_cur_ngs_gs
             % Timestamp files showing when their corresponding .*opt files
             % were last checked.
-    --->    ext_cur_ngs_gs_opt_date_plain   % ".optdate"
-    ;       ext_cur_ngs_gs_opt_date_trans   % ".trace_opt_date"
+    --->    ext_cur_ngs_gs_opt_date_plain       % ".optdate"
+    ;       ext_cur_ngs_gs_opt_date_trans       % ".trace_opt_date"
 
             % C and C# source files generated by the Mercury compiler.
-    ;       ext_cur_ngs_gs_target_c         % ".c"
-    ;       ext_cur_ngs_gs_target_cs        % ".cs"
+    ;       ext_cur_ngs_gs_target_c             % ".c"
+    ;       ext_cur_ngs_gs_target_cs            % ".cs"
 
             % Timestamp files that record the date and time when a target
             % language (C, C# or Java) source files was last logically remade.
             % (The "logically" parts means that if the new, up-to-date version
             % is bit-for-bit identical to the old version, then we update
             % the timestamp file, but not the file it refers to.)
-    ;       ext_cur_ngs_gs_target_date_c    % ".c_date"
-    ;       ext_cur_ngs_gs_target_date_cs   % ".cs_date"
-    ;       ext_cur_ngs_gs_target_date_java % ".java_date"
+    ;       ext_cur_ngs_gs_target_date_c        % ".c_date"
+    ;       ext_cur_ngs_gs_target_date_cs       % ".cs_date"
+    ;       ext_cur_ngs_gs_target_date_java     % ".java_date"
 
             % C files associated not with a module but with a whole program,
             % containing the code needed to initialize various tables for
             % the runtime system.
-    ;       ext_cur_ngs_gs_init_c           % ".init_c"
+    ;       ext_cur_ngs_gs_init_c               % ".init_c"
 
             % Object files generated for C source files generated for a module
             % by the Mercury compiler.
-    ;       ext_cur_ngs_gs_obj_dollar_o     % ".$O"
-    ;       ext_cur_ngs_gs_obj_dollar_efpo  % ".$(EXT_FOR_PIC_OBJECTS)"
-    ;       ext_cur_ngs_gs_obj_o            % ".o"
-    ;       ext_cur_ngs_gs_obj_pic_o        % ".pic_o"
-    ;       ext_cur_ngs_gs_obj_obj_opt      % object_file_extension option
+    ;       ext_cur_ngs_gs_obj_dollar_o         % ".$O"
+    ;       ext_cur_ngs_gs_obj_dollar_efpo      % ".$(EXT_FOR_PIC_OBJECTS)"
+    ;       ext_cur_ngs_gs_obj_o                % ".o"
+    ;       ext_cur_ngs_gs_obj_pic_o            % ".pic_o"
+    ;       ext_cur_ngs_gs_obj_obj_opt          % object_file_extension option
     ;       ext_cur_ngs_gs_obj_pic_obj_opt  % pic_object_file_extension option
 
             % Object files associated not with a module but with
