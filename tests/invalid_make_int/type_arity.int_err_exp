@@ -2,3 +2,4 @@ type_arity.m:013: In the first argument of function symbol `t1_3f' of the type
 type_arity.m:013:   `t1'/0:
 type_arity.m:013:   error: undefined type `t2'/1.
 type_arity.m:013:   (There is a type named `t2' with arity 2.)
+`type_arity.int' and `type_arity.int2' not written.

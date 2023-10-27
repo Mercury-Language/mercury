@@ -1,6 +1,8 @@
 # vim: ts=4 sw=4 expandtab
 # (please keep these lists sorted)
 
+MCFLAGS-bad_instance                            \
+    += --halt-at-invalid-interface --std-int-file-not-written-msgs
 MCFLAGS-bad_type_class_constraint_intermodule   \
     += --halt-at-invalid-interface --std-int-file-not-written-msgs
 MCFLAGS-bug17                                   \
@@ -27,5 +29,17 @@ MCFLAGS-sub_c                                   \
     += --halt-at-invalid-interface --std-int-file-not-written-msgs
 MCFLAGS-test_nested                             \
     += --halt-at-invalid-interface --std-int-file-not-written-msgs
+MCFLAGS-test_type_spec_int                      \
+    += --halt-at-invalid-interface --std-int-file-not-written-msgs
 MCFLAGS-transitive_import                       \
+    += --halt-at-invalid-interface --std-int-file-not-written-msgs
+MCFLAGS-type_arity                              \
+    += --halt-at-invalid-interface --std-int-file-not-written-msgs
+MCFLAGS-undef_inst                              \
+    += --halt-at-invalid-interface --std-int-file-not-written-msgs
+MCFLAGS-undef_mode                              \
+    += --halt-at-invalid-interface --std-int-file-not-written-msgs
+MCFLAGS-undef_type_int                          \
+    += --halt-at-invalid-interface --std-int-file-not-written-msgs
+MCFLAGS-undef_type_mod_qual                     \
     += --halt-at-invalid-interface --std-int-file-not-written-msgs

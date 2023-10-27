@@ -1,2 +1,8 @@
-pragma_c_code_no_det.m:016: Error: no clauses for
-pragma_c_code_no_det.m:016:   predicate `pragma_c_code_no_det.c_code/1'.
+pragma_c_code_no_det.m:011: In `test'(out):
+pragma_c_code_no_det.m:011:   warning: determinism declaration could be
+pragma_c_code_no_det.m:011:   tighter.
+pragma_c_code_no_det.m:011:   Declared `det', inferred `erroneous'.
+pragma_c_code_no_det.m:026: In `fproc'(out):
+pragma_c_code_no_det.m:026:   error: the procedure specification in this
+pragma_c_code_no_det.m:026:   `:- pragma foreign_proc' declaration is missing
+pragma_c_code_no_det.m:026:   the final `is <determinism>' part.

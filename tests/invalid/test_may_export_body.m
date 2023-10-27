@@ -1,6 +1,8 @@
 %---------------------------------------------------------------------------%
 % vim:ts=4 sw=4 expandtab ft=mercury
 %---------------------------------------------------------------------------%
+% The .err_exp{,2,3} files are for targeting C, Java and C# respectively.
+%---------------------------------------------------------------------------%
 
 :- module test_may_export_body.
 
@@ -28,11 +30,35 @@ main(!IO) :-
 "
     M = N + 1;
 ").
+:- pragma foreign_proc("Java",
+    p1(N::in, M::out),
+    [will_not_call_mercury, promise_pure, may_export_body],
+"
+    M = N + 1;
+").
+:- pragma foreign_proc("C#",
+    p1(N::in, M::out),
+    [will_not_call_mercury, promise_pure, may_export_body],
+"
+    M = N + 1;
+").
 
 :- pred p2(int::in, int::out) is det.
 :- pragma inline(p2/2).
 
 :- pragma foreign_proc("C",
+    p2(N::in, M::out),
+    [will_not_call_mercury, promise_pure, may_not_export_body],
+"
+    M = N + 10;
+").
+:- pragma foreign_proc("Java",
+    p2(N::in, M::out),
+    [will_not_call_mercury, promise_pure, may_not_export_body],
+"
+    M = N + 10;
+").
+:- pragma foreign_proc("C#",
     p2(N::in, M::out),
     [will_not_call_mercury, promise_pure, may_not_export_body],
 "

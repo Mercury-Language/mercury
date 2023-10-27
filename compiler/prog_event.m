@@ -173,7 +173,6 @@ make_temp_file_and_open_it(WritePred, Result, !IO) :-
             [s(error_message(Error))]))
     ).
 
-
 :- pred read_specs_file(string::in, string::in, maybe_error::out,
     io::di, io::uo) is det.
 
@@ -217,8 +216,9 @@ MR_String   read_specs_file_4(MR_AllocSiteInfoPtr alloc_id,
     MR_restore_transient_hp();
 ").
 
-read_specs_file_2(_, _, _, _, _) :-
-    unexpected($file, $pred, "non-C backend").
+read_specs_file_2(_, _, Problem, !IO) :-
+    Problem = "mmc can read event set specifications only when it itself " ++
+        "is compiled in a grade that targets C code.".
 
 :- pragma foreign_code("C", "
 

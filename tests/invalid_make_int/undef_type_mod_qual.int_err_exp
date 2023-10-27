@@ -1,5 +1,4 @@
-undef_type_mod_qual.m:009: Error: predicate `blah'/1 declares a determinism
-undef_type_mod_qual.m:009:   without declaring the modes of its arguments.
 undef_type_mod_qual.m:009: In declaration of predicate `blah'/1:
 undef_type_mod_qual.m:009:   error: undefined type
 undef_type_mod_qual.m:009:   `undef_type_mod_qual.undefined_type'/0.
+`undef_type_mod_qual.int' and `undef_type_mod_qual.int2' not written.

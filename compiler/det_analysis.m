@@ -1199,8 +1199,7 @@ det_infer_generic_call(GenericCall, CallDetism, GoalInfo,
 det_infer_foreign_proc(Attributes, PredId, ProcId, _PragmaCode,
         GoalInfo, SolnContext, RightFailingContexts,
         Detism, GoalFailingContexts, !DetInfo) :-
-    % Foreign_procs are handled in the same way as predicate calls.
-
+    % We handle foreign_procs pretty much the same way as predicate calls.
     det_info_get_module_info(!.DetInfo, ModuleInfo),
     module_info_pred_proc_info(ModuleInfo, PredId, ProcId, _, ProcInfo),
     proc_info_get_declared_determinism(ProcInfo, MaybeDetism),
@@ -1265,12 +1264,17 @@ det_infer_foreign_proc(Attributes, PredId, ProcId, _PragmaCode,
         )
     ;
         MaybeDetism = no,
-        proc_info_get_context(ProcInfo, Context),
+        % The context in ProcInfo gives the location predicate declaration;
+        % the context in the goal gives the location of the foreign_proc
+        % pragma.
+        Context = goal_info_get_context(GoalInfo),
         ProcPieces = describe_one_proc_name_mode(ModuleInfo,
             output_mercury, should_not_module_qualify, proc(PredId, ProcId)),
         Pieces = [words("In")] ++ ProcPieces ++ [suffix(":"), nl,
-            words("error:"), pragma_decl("foreign_proc(...)"),
-            words("for a procedure without a determinism declaration."), nl],
+            words("error: the procedure specification in this"),
+            pragma_decl("foreign_proc"), words("declaration"),
+            words("is missing the final"),
+            quote("is <determinism>"), words("part."), nl],
         Spec = simplest_spec($pred, severity_error, phase_detism_check,
             Context, Pieces),
         det_info_add_error_spec(Spec, !DetInfo),

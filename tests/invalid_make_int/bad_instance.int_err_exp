@@ -1,3 +1,4 @@
 bad_instance.m:009: In declaration of instance of typeclass `foo'/2:
 bad_instance.m:009:   error: the type `bar'/1 is not exported, and thus it may
 bad_instance.m:009:   not be used in the interface.
+`bad_instance.int' and `bad_instance.int2' not written.

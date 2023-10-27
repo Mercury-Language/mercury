@@ -1,0 +1,8 @@
+pragma_c_code_no_det.m:011: In `test'(out):
+pragma_c_code_no_det.m:011:   warning: determinism declaration could be
+pragma_c_code_no_det.m:011:   tighter.
+pragma_c_code_no_det.m:011:   Declared `det', inferred `erroneous'.
+pragma_c_code_no_det.m:032: In `fproc'(out):
+pragma_c_code_no_det.m:032:   error: the procedure specification in this
+pragma_c_code_no_det.m:032:   `:- pragma foreign_proc' declaration is missing
+pragma_c_code_no_det.m:032:   the final `is <determinism>' part.

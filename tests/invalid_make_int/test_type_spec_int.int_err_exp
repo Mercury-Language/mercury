@@ -1,0 +1,7 @@
+test_type_spec_int.m:013: Error: `:- pragma external_pred' declaration in
+test_type_spec_int.m:013:   module interface.
+test_type_spec_int.m:014: Error: the module qualifier in
+test_type_spec_int.m:014:   `bad_module_name.type_spec1' does not match the
+test_type_spec_int.m:014:   preceding `:- module' declaration.
+test_type_spec_int.m:017: Error: `:- pragma external_pred' declaration in
+test_type_spec_int.m:017:   module interface.

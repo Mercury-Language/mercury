@@ -1,6 +1,12 @@
 %---------------------------------------------------------------------------%
 % vim: ts=4 sw=4 et ft=mercury
 %---------------------------------------------------------------------------%
+% The difference between the .err_exp{,2} files is caused by the different
+% data representation schemes used by the C and Java backends on the one hand
+% and the C# backend on the other hand. These affect the number of variables
+% required to construct a typeinfo needed by the transformation that
+% implements try goals.
+%---------------------------------------------------------------------------%
 
 :- module try_detism.
 :- interface.

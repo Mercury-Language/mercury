@@ -108,6 +108,7 @@ MCFLAGS-multimode_syntax        = --verbose-error-messages
 MCFLAGS-nullary_ho_func_error   = --verbose-error-messages
 MCFLAGS-one_member              = --verbose-error-messages
 MCFLAGS-polymorphic_unification = --verbose-error-messages
+MCFLAGS-test_type_spec          = --verbose-error-messages
 
 MCFLAGS-require_tailrec_1       = -O0 --optimise-tailcalls \
                                     --no-warn-non-tail-recursion

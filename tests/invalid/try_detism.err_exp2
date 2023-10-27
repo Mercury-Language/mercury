@@ -13,7 +13,7 @@ try_detism.m:023:   unification with `X' can fail.
 try_detism.m:022: Error: call to predicate `exception.magic_exception_result'/1
 try_detism.m:022:   with determinism `cc_multi' occurs in a context which
 try_detism.m:022:   requires all solutions.
-try_detism.m:023:   Unification of X and V_17 can fail.
+try_detism.m:023:   Unification of X and V_19 can fail.
 try_detism.m:022: In clause for `p(out, di, uo)':
 try_detism.m:022:   in call to predicate `exception.try_io'/4:
 try_detism.m:022:   mode error: arguments

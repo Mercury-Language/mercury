@@ -1,6 +1,6 @@
-test_may_duplicate.m:025: Error: the `may_duplicate' attribute on the
-test_may_duplicate.m:025:   foreign_proc contradicts the `no_inline' pragma on
-test_may_duplicate.m:025:   the predicate.
-test_may_duplicate.m:035: Error: the `may_not_duplicate' attribute on the
-test_may_duplicate.m:035:   foreign_proc contradicts the `inline' pragma on the
-test_may_duplicate.m:035:   predicate.
+test_may_duplicate.m:027: Error: the `may_duplicate' attribute on the
+test_may_duplicate.m:027:   foreign_proc contradicts the `no_inline' pragma on
+test_may_duplicate.m:027:   the predicate.
+test_may_duplicate.m:049: Error: the `may_not_duplicate' attribute on the
+test_may_duplicate.m:049:   foreign_proc contradicts the `inline' pragma on the
+test_may_duplicate.m:049:   predicate.

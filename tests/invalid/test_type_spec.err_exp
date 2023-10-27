@@ -1,31 +1,27 @@
-test_type_spec.m:012: Error: `:- pragma external_pred' declaration in module
-test_type_spec.m:012:   interface.
+test_type_spec.m:011: Error: no clauses for predicate `type_spec1'/1.
+test_type_spec.m:013: In `:- pragma type_spec' declaration for predicate
+test_type_spec.m:013:   `test_type_spec.type_spec1'/1:
+test_type_spec.m:013:   error: variable `U' does not occur in the `:- pred'
+test_type_spec.m:013:   declaration.
 test_type_spec.m:014: In `:- pragma type_spec' declaration for predicate
-test_type_spec.m:014:   `test_type_spec.type_spec1'/1:
-test_type_spec.m:014:   error: variable `U' does not occur in the `:- pred'
-test_type_spec.m:014:   declaration.
-test_type_spec.m:015: In `:- pragma type_spec' declaration for predicate
-test_type_spec.m:015:   `type_spec1'/1:
-test_type_spec.m:015:   error: mode annotation specifies undeclared mode
-test_type_spec.m:015:   `type_spec1(out)'.
-test_type_spec.m:017: Error: `:- pragma type_spec' declaration for
-test_type_spec.m:017:   `type_spec1'/2 without corresponding `:- pred' or
-test_type_spec.m:017:   `:- func' declaration.
-test_type_spec.m:017:   `type_spec1' does exist with arity 1.
-test_type_spec.m:026: Error: `:- pragma external_pred' declaration in module
-test_type_spec.m:026:   interface.
+test_type_spec.m:014:   `type_spec1'/1:
+test_type_spec.m:014:   error: mode annotation specifies undeclared mode
+test_type_spec.m:014:   `type_spec1(out)'.
+test_type_spec.m:014:   The declared mode for this predicate is:
+test_type_spec.m:014:     :- mode type_spec1(in) is semidet.
+test_type_spec.m:016: Error: `:- pragma type_spec' declaration for
+test_type_spec.m:016:   `type_spec1'/2 without corresponding `:- pred' or
+test_type_spec.m:016:   `:- func' declaration.
+test_type_spec.m:016:   `type_spec1' does exist with arity 1.
+test_type_spec.m:024: Error: no clauses for predicate `type_spec2'/1.
+test_type_spec.m:026: In `:- pragma type_spec' declaration for predicate
+test_type_spec.m:026:   `test_type_spec.type_spec2'/1:
+test_type_spec.m:026:   error: the substitution includes the existentially
+test_type_spec.m:026:   quantified type variable `U'.
 test_type_spec.m:028: In `:- pragma type_spec' declaration for predicate
 test_type_spec.m:028:   `test_type_spec.type_spec2'/1:
-test_type_spec.m:028:   error: the substitution includes the existentially
-test_type_spec.m:028:   quantified type variable `U'.
+test_type_spec.m:028:   error: variable `U' occurs on both sides of the
+test_type_spec.m:028:   substitution.
 test_type_spec.m:030: In `:- pragma type_spec' declaration for predicate
 test_type_spec.m:030:   `test_type_spec.type_spec2'/1:
-test_type_spec.m:030:   error: variable `U' occurs on both sides of the
-test_type_spec.m:030:   substitution.
-test_type_spec.m:032: In `:- pragma type_spec' declaration for predicate
-test_type_spec.m:032:   `test_type_spec.type_spec2'/1:
-test_type_spec.m:032:   error: variable `U' has multiple replacement types.
-test_type_spec.m:034: Error: the module qualifier in
-test_type_spec.m:034:   `bad_module_name.type_spec1' does not match the
-test_type_spec.m:034:   preceding `:- module' declaration.
-For more information, recompile with `-E'.
+test_type_spec.m:030:   error: variable `U' has multiple replacement types.

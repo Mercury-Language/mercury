@@ -1,0 +1,3 @@
+test_may_export_body.m:033: Error: the `may_export_body' attribute on the
+test_may_export_body.m:033:   foreign_proc contradicts the `no_inline' pragma
+test_may_export_body.m:033:   on the predicate.

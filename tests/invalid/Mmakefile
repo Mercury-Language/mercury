@@ -74,7 +74,6 @@ BORING_SINGLEMODULE_PROGS = \
 	bad_fact_table_decls \
 	bad_format_call \
 	bad_inst_for_type \
-	bad_instance \
 	bad_instance2 \
 	bad_item_in_interface \
 	bad_pred_arity \
@@ -194,7 +193,6 @@ BORING_SINGLEMODULE_PROGS = \
 	inst_matches_final_bug \
 	instance_var_bug \
 	integral_constant_no_suffix \
-	invalid_event \
 	invalid_export_detism \
 	invalid_instance_declarations \
 	invalid_int \
@@ -277,7 +275,6 @@ BORING_SINGLEMODULE_PROGS = \
 	subtype_not_subset \
 	subtype_user_compare \
 	switch_arm_multi_not_det \
-	synth_attr_error \
 	tc_err1 \
 	tc_err2 \
 	test_may_duplicate \
@@ -287,7 +284,6 @@ BORING_SINGLEMODULE_PROGS = \
 	try_bad_params \
 	try_detism \
 	try_io_else \
-	type_arity \
 	type_diff \
 	type_error_ambiguous \
 	type_error_in_arg \
@@ -320,13 +316,9 @@ BORING_SINGLEMODULE_PROGS = \
 	types2	\
 	undeclared_mode \
 	undef_impl_def_literal \
-	undef_inst \
 	undef_lambda_mode \
-	undef_mode \
 	undef_mode_and_no_clauses \
 	undef_symbol \
-	undef_type \
-	undef_type_mod_qual \
 	unify_mode_error \
 	uniq_modes \
 	uniq_mutable \
@@ -372,10 +364,15 @@ endif
 #-----------------------------------------------------------------------------#
 
 # The following require that the back-end support the C interface.
+# For invalid_event and synth_attr_error, what we need for the *compiler*
+# to be compiled to C, but there is no way to test for that directly,
+# and listing those two modules here is nearest approximation we can get.
 C_INTERFACE_MODULES = \
 	fe_unmapped_nonverbose \
 	fe_unmapped_verbose \
+	invalid_event \
 	pragma_qual_error \
+	synth_attr_error \
 	trace_goal_env
 
 SPECIAL_RULE_C_INTERFACE_MODULES = \

@@ -2,3 +2,4 @@ undef_inst.m:009: In mode declaration for predicate `x'/1:
 undef_inst.m:009:   error: undefined inst `bar'/0.
 undef_inst.m:009: In mode declaration for predicate `x'/1:
 undef_inst.m:009:   error: undefined inst `foo'/0.
+`undef_inst.int' and `undef_inst.int2' not written.

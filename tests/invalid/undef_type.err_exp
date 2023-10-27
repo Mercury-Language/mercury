@@ -1,6 +1,3 @@
-undef_type.m:012: In the first argument of function symbol `d' of the type
-undef_type.m:012:   `t1'/0:
-undef_type.m:012:   error: undefined type `undef1'/0.
 undef_type.m:021: In declaration of predicate `q'/1:
 undef_type.m:021:   error: undefined type `undef2'/0.
 undef_type.m:024: In declaration of predicate `r'/1:

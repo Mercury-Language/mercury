@@ -17,6 +17,7 @@ MAYBE_J1 = -j1
 # Multi-module tests should use *separate* modules, not *nested* modules.
 
 SINGLE_MODULE_PROGS = \
+	bad_instance \
 	bad_type_class_constraint_intermodule \
 	bug17 \
 	bug499 \
@@ -24,7 +25,13 @@ SINGLE_MODULE_PROGS = \
 	builtin_int \
 	instance_no_type \
 	missing_interface_import \
-	pragma_export_int
+	pragma_export_int \
+	test_type_spec_int \
+	type_arity \
+	undef_inst \
+	undef_mode \
+	undef_type_int \
+	undef_type_mod_qual
 
 MULTI_MODULE_PROGS = \
 	int_impl_imports \
