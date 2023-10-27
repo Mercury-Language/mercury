@@ -1,0 +1,20 @@
+bad_mutable_int.m:009: Error: `:- mutable' declaration in module interface.
+bad_mutable_int.m:017: Error in `:- mutable' declaration:
+bad_mutable_int.m:017:   unrecognised attribute `bad_attrib'.
+bad_mutable_int.m:019: Error: the type in a `:- mutable' declaration may not
+bad_mutable_int.m:019:   contain variables, but `list(T)' does.
+bad_mutable_int.m:021: Error: attributes `untrailed' and `trailed' conflict.
+bad_mutable_int.m:024: Error: attributes `foreign_name("C", "one")' and
+bad_mutable_int.m:024:   `foreign_name("C", "two")' conflict.
+bad_mutable_int.m:026: Error: attributes `thread_local' and `trailed' conflict.
+bad_mutable_int.m:028: Error: attributes `constant' and `thread_local'
+bad_mutable_int.m:028:   conflict.
+bad_mutable_int.m:030: In fifth argument of `:- mutable' declaration: error:
+bad_mutable_int.m:030:   expected a list of attributes, got `thread_local'.
+bad_mutable_int.m:032: Error: attributes `constant' and `trailed' conflict.
+bad_mutable_int.m:034: Error: attribute `untrailed' is repeated.
+bad_mutable_int.m:038: Error: attribute `constant' is repeated.
+bad_mutable_int.m:039: Error: attribute `constant' is repeated.
+bad_mutable_int.m:041: Error: attribute `thread_local' conflicts with the
+bad_mutable_int.m:041:   default, which is that updates are trailed. You need
+bad_mutable_int.m:041:   to specify the `untrailed' attribute explicitly.

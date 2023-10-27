@@ -1,0 +1,91 @@
+bad_foreign_type_int.m:017: Error: a `:- pragma foreign_type' declaration must
+bad_foreign_type_int.m:017:   have three or four arguments.
+bad_foreign_type_int.m:021: Error: a `:- pragma foreign_type' declaration must
+bad_foreign_type_int.m:021:   have three or four arguments.
+bad_foreign_type_int.m:025: In the first argument of `:- pragma foreign_type'
+bad_foreign_type_int.m:025:   declaration:
+bad_foreign_type_int.m:025:   error: expected the name of a foreign language,
+bad_foreign_type_int.m:025:   got `"InvalidLanguage"'.
+bad_foreign_type_int.m:025:   The valid languages are c, C, csharp, C#, java
+bad_foreign_type_int.m:025:   and Java.
+bad_foreign_type_int.m:029: In the second argument of `:- pragma foreign_type'
+bad_foreign_type_int.m:029:   declaration:
+bad_foreign_type_int.m:029:   error: expected a symbol name, got `1111'.
+bad_foreign_type_int.m:033: In the third argument of `:- pragma foreign_type'
+bad_foreign_type_int.m:033:   declaration:
+bad_foreign_type_int.m:033:   error: expected a string specifying the foreign
+bad_foreign_type_int.m:033:   type descriptor, got `2222'.
+bad_foreign_type_int.m:037: In the fourth argument of `:- pragma foreign_type'
+bad_foreign_type_int.m:037:   declaration:
+bad_foreign_type_int.m:037:   error: expected a list of foreign type
+bad_foreign_type_int.m:037:   assertions, got `5555'.
+bad_foreign_type_int.m:041: In the fourth argument of `:- pragma foreign_type'
+bad_foreign_type_int.m:041:   declaration:
+bad_foreign_type_int.m:041:   error: expected a foreign type assertion, got
+bad_foreign_type_int.m:041:   `[not_an_assertion]'.
+bad_foreign_type_int.m:045: In the fourth argument of `:- pragma foreign_type'
+bad_foreign_type_int.m:045:   declaration:
+bad_foreign_type_int.m:045:   error: expected a foreign type assertion, got
+bad_foreign_type_int.m:045:   `["I\'m a string"]'.
+bad_foreign_type_int.m:045: In the fourth argument of `:- pragma foreign_type'
+bad_foreign_type_int.m:045:   declaration:
+bad_foreign_type_int.m:045:   error: expected a foreign type assertion, got
+bad_foreign_type_int.m:045:   `[3333, "I\'m a string"]'.
+bad_foreign_type_int.m:050: Error: expected `is'.
+bad_foreign_type_int.m:055: In `:- pragma foreign_type' declaration: error:
+bad_foreign_type_int.m:055:   unrecognized `where' attribute `(foo is bar)'.
+bad_foreign_type_int.m:055:   Recognized `where' attributes have the form
+bad_foreign_type_int.m:055:   `equality is <<equality pred name>>' and
+bad_foreign_type_int.m:055:   `comparison is <<comparison pred name>>'.
+bad_foreign_type_int.m:060: In the first argument of `:- pragma foreign_type'
+bad_foreign_type_int.m:060:   declaration:
+bad_foreign_type_int.m:060:   error: expected the name of a foreign language,
+bad_foreign_type_int.m:060:   got `"InvalidLanguage"'.
+bad_foreign_type_int.m:060:   The valid languages are c, C, csharp, C#, java
+bad_foreign_type_int.m:060:   and Java.
+bad_foreign_type_int.m:061: In the second argument of `:- pragma foreign_type'
+bad_foreign_type_int.m:061:   declaration:
+bad_foreign_type_int.m:061:   error: expected a symbol name, got `9999'.
+bad_foreign_type_int.m:062: In the third argument of `:- pragma foreign_type'
+bad_foreign_type_int.m:062:   declaration:
+bad_foreign_type_int.m:062:   error: expected a string specifying the foreign
+bad_foreign_type_int.m:062:   type descriptor, got `[not_an_assertion]'.
+bad_foreign_type_int.m:066: In `:- pragma foreign_type' declaration: error:
+bad_foreign_type_int.m:066:   unrecognized `where' attribute `(bar is baaz)'.
+bad_foreign_type_int.m:066:   Recognized `where' attributes have the form
+bad_foreign_type_int.m:066:   `equality is <<equality pred name>>' and
+bad_foreign_type_int.m:066:   `comparison is <<comparison pred name>>'.
+bad_foreign_type_int.m:076: In the second argument of `:- pragma foreign_type'
+bad_foreign_type_int.m:076:   declaration:
+bad_foreign_type_int.m:076:   error: expected a type constructor and zero or
+bad_foreign_type_int.m:076:   more type variables as arguments, got `T'.
+bad_foreign_type_int.m:081: In the third argument of `:- pragma foreign_type'
+bad_foreign_type_int.m:081:   declaration:
+bad_foreign_type_int.m:081:   error: foreign type descriptor for language `C'
+bad_foreign_type_int.m:081:   must be a non-empty string.
+bad_foreign_type_int.m:082: In the third argument of `:- pragma foreign_type'
+bad_foreign_type_int.m:082:   declaration:
+bad_foreign_type_int.m:082:   error: foreign type descriptor for language `C#'
+bad_foreign_type_int.m:082:   must be a non-empty string.
+bad_foreign_type_int.m:083: In the third argument of `:- pragma foreign_type'
+bad_foreign_type_int.m:083:   declaration:
+bad_foreign_type_int.m:083:   error: foreign type descriptor for language
+bad_foreign_type_int.m:083:   `Java' must be a non-empty string.
+bad_foreign_type_int.m:088: In the fourth argument of `:- pragma foreign_type'
+bad_foreign_type_int.m:088:   declaration:
+bad_foreign_type_int.m:088:   error: foreign type assertion
+bad_foreign_type_int.m:088:   `can_pass_as_mercury_type' is repeated.
+bad_foreign_type_int.m:090: In the first argument of `:- pragma foreign_type'
+bad_foreign_type_int.m:090:   declaration:
+bad_foreign_type_int.m:090:   error: expected the name of a foreign language,
+bad_foreign_type_int.m:090:   got `"Erlang"'.
+bad_foreign_type_int.m:090:   The valid languages are c, C, csharp, C#, java
+bad_foreign_type_int.m:090:   and Java.
+bad_foreign_type_int.m:090:   Support for Erlang has been discontinued.
+bad_foreign_type_int.m:091: In the first argument of `:- pragma foreign_type'
+bad_foreign_type_int.m:091:   declaration:
+bad_foreign_type_int.m:091:   error: expected the name of a foreign language,
+bad_foreign_type_int.m:091:   got `"erlang"'.
+bad_foreign_type_int.m:091:   The valid languages are c, C, csharp, C#, java
+bad_foreign_type_int.m:091:   and Java.
+bad_foreign_type_int.m:091:   Support for Erlang has been discontinued.

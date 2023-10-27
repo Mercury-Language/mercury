@@ -1,0 +1,6 @@
+missing_initial_section.m:007: Error: module `missing_initial_section' should
+missing_initial_section.m:007:   start with either an `:- interface' or an
+missing_initial_section.m:007:   `:- implementation' declaration.
+missing_initial_section.m:007:   The following assumes that the missing
+missing_initial_section.m:007:   declaration is an `:- implementation'
+missing_initial_section.m:007:   declaration.

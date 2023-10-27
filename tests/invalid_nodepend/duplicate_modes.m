@@ -3,7 +3,7 @@
 %---------------------------------------------------------------------------%
 
 :- module duplicate_modes.
-
+:- implementation.
 :- pred p.
 :- mode p is det.
 p.

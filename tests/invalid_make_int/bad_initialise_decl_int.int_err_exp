@@ -1,0 +1,7 @@
+bad_initialise_decl_int.m:015: Error: `:- initialise' declaration in module
+bad_initialise_decl_int.m:015:   interface.
+bad_initialise_decl_int.m:021: Error in `:- initialise' declaration: expected
+bad_initialise_decl_int.m:021:   `predname/arity', got `i4'.
+bad_initialise_decl_int.m:022: Error: `:- initialise' declaration specifies a
+bad_initialise_decl_int.m:022:   predicate, `(i5 / 6)', whose arity is not zero
+bad_initialise_decl_int.m:022:   or two.

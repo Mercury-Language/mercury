@@ -8,85 +8,25 @@
 :- module bad_foreign_type.
 :- interface.
 
+% Originally, this test case had several foreign_type definitions
+% for foo, with all those definitions having errors of one kind or another.
+% All those errors are now diagnosed when creating .int files, so they are
+% now tested in tests/invalid_make_int/bad_foreign_type_int.m.
+%
+% Any bad foreign_type declarations in a test in *this* directory
+% would cause bootcheck in C# and Java grades (which use mmc --make)
+% to stop after generating bad_foreign_type.int, not proceeding to
+% the errors we want to test here, which are the ones discovered
+% during compilation to target language code.
 :- type foo.
 
 :- implementation.
-
-    % Too few arguments.
-    %
-:- pragma foreign_type("C").
-
-    % Too many arguments.
-    %
-:- pragma foreign_type("C", foo, "int", [can_pass_as_mercury_type], "").
-
-    % Invalid foreign language.
-    %
-:- pragma foreign_type("InvalidLanguage", foo, "int").
-
-    % Second arg is not an atom.
-    %
-:- pragma foreign_type("C", 1111, "int").
-
-    % Third arg is not a string.
-    %
-:- pragma foreign_type("C", foo, 2222).
-
-    % Fourth argument is not list of assertions.
-    %
-:- pragma foreign_type("C", foo, "int", 5555).
-
-    % Unrecognised assertion.
-    %
-:- pragma foreign_type("C", foo, "int", [not_an_assertion]).
-
-    % Assertion is not an atom.
-    %
-:- pragma foreign_type("C", foo, "int", [3333, "I'm a string"]).
-
-    % Bad where clause.
-    %
-:- pragma foreign_type("C", foo, "int")
-    where 7777.
-
-    % Another bad where clause.
-    %
-:- pragma foreign_type("C", foo, "int")
-    where foo is bar.
-
-    % Check contexts on different arguments are correct.
-    %
-:- pragma foreign_type(
-    "InvalidLanguage",
-    9999,
-    [not_an_assertion]
-)
-    where
-         bar
-    is
-         baaz.
 
     % No corresponding `:- type' declaration present.
     %
 :- pragma foreign_type("C", bar, "int").
 
-    % Second argument is a type variable.
-    %
-:- pragma foreign_type("C", T, "int").
-
-    % Empty foreign type descriptor (C, C# , Java).
-    %
-:- type quux.
-:- pragma foreign_type("C", quux, "").
-:- pragma foreign_type("C#", quux, "").
-:- pragma foreign_type("Java", quux, "").
-
-    % Repeated foreign type assertion.
-    %
-:- pragma foreign_type("C", foo, "int",
-    [can_pass_as_mercury_type, can_pass_as_mercury_type]).
-
+    % Same issue as with foo above, but in the implementation section.
 :- type quux.
 
-:- pragma foreign_type("Erlang", quux, "").
-:- pragma foreign_type("erlang", quux, "").
+:- type quux.

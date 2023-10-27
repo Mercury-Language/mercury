@@ -1,21 +1,16 @@
-bad_finalise_decl.m:015: Error: `i2'/2 used in `:- finalise' declaration has an
-bad_finalise_decl.m:015:   invalid signature.
-bad_finalise_decl.m:015:   A signature is valid only if it has one of these two
-bad_finalise_decl.m:015:   forms:
-bad_finalise_decl.m:015:     `:- pred <predname>(io::di, io::uo) is <detism>.'
-bad_finalise_decl.m:015:     `:- impure pred <predname> is <detism>.'
-bad_finalise_decl.m:015:   where `<detism>' is either `det' or `cc_multi'.
-bad_finalise_decl.m:015: Error: `:- finalise' declaration in module interface.
-bad_finalise_decl.m:021: Error: `i1'/2 used in `:- finalise' declaration has an
-bad_finalise_decl.m:021:   invalid signature.
-bad_finalise_decl.m:021:   A signature is valid only if it has one of these two
-bad_finalise_decl.m:021:   forms:
-bad_finalise_decl.m:021:     `:- pred <predname>(io::di, io::uo) is <detism>.'
-bad_finalise_decl.m:021:     `:- impure pred <predname> is <detism>.'
-bad_finalise_decl.m:021:   where `<detism>' is either `det' or `cc_multi'.
-bad_finalise_decl.m:022: Error: `i3'/2 used in `:- finalise' declaration does
-bad_finalise_decl.m:022:   not have a corresponding `:- pred' declaration.
-bad_finalise_decl.m:023: Error in `:- finalise' declaration: expected
-bad_finalise_decl.m:023:   `predname/arity', got `i4'.
-bad_finalise_decl.m:024: Error: `:- finalise' declaration specifies a predicate
-bad_finalise_decl.m:024:   whose arity is not zero or two: `(i5 / 6)'.
+bad_finalise_decl.m:019: Error: `i1'/2 used in `:- finalise' declaration has an
+bad_finalise_decl.m:019:   invalid signature.
+bad_finalise_decl.m:019:   A signature is valid only if it has one of these two
+bad_finalise_decl.m:019:   forms:
+bad_finalise_decl.m:019:     `:- pred <predname>(io::di, io::uo) is <detism>.'
+bad_finalise_decl.m:019:     `:- impure pred <predname> is <detism>.'
+bad_finalise_decl.m:019:   where `<detism>' is either `det' or `cc_multi'.
+bad_finalise_decl.m:020: Error: `i2'/2 used in `:- finalise' declaration has an
+bad_finalise_decl.m:020:   invalid signature.
+bad_finalise_decl.m:020:   A signature is valid only if it has one of these two
+bad_finalise_decl.m:020:   forms:
+bad_finalise_decl.m:020:     `:- pred <predname>(io::di, io::uo) is <detism>.'
+bad_finalise_decl.m:020:     `:- impure pred <predname> is <detism>.'
+bad_finalise_decl.m:020:   where `<detism>' is either `det' or `cc_multi'.
+bad_finalise_decl.m:021: Error: `i3'/2 used in `:- finalise' declaration does
+bad_finalise_decl.m:021:   not have a corresponding `:- pred' declaration.

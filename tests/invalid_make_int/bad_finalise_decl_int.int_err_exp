@@ -1,0 +1,7 @@
+bad_finalise_decl_int.m:015: Error: `:- finalise' declaration in module
+bad_finalise_decl_int.m:015:   interface.
+bad_finalise_decl_int.m:023: Error in `:- finalise' declaration: expected
+bad_finalise_decl_int.m:023:   `predname/arity', got `i4'.
+bad_finalise_decl_int.m:024: Error: `:- finalise' declaration specifies a
+bad_finalise_decl_int.m:024:   predicate whose arity is not zero or two:
+bad_finalise_decl_int.m:024:   `(i5 / 6)'.

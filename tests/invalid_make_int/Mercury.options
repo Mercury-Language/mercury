@@ -7,7 +7,15 @@ MCFLAGS-bad_end_module                          \
     += --halt-at-invalid-interface --std-int-file-not-written-msgs
 MCFLAGS-bad_existential_data_type               \
     += --halt-at-invalid-interface --std-int-file-not-written-msgs
+MCFLAGS-bad_finalise_decl_int                   \
+    += --halt-at-invalid-interface --std-int-file-not-written-msgs
+MCFLAGS-bad_foreign_type_int                    \
+    += --halt-at-invalid-interface --std-int-file-not-written-msgs -E
+MCFLAGS-bad_initialise_decl_int                 \
+    += --halt-at-invalid-interface --std-int-file-not-written-msgs
 MCFLAGS-bad_instance                            \
+    += --halt-at-invalid-interface --std-int-file-not-written-msgs
+MCFLAGS-bad_mutable_int                         \
     += --halt-at-invalid-interface --std-int-file-not-written-msgs
 MCFLAGS-bad_type_class_constraint_intermodule   \
     += --halt-at-invalid-interface --std-int-file-not-written-msgs
@@ -22,6 +30,8 @@ MCFLAGS-builtin_int                             \
 MCFLAGS-instance_no_type                        \
     += --halt-at-invalid-interface --std-int-file-not-written-msgs
 MCFLAGS-int_impl_imports                        \
+    += --halt-at-invalid-interface --std-int-file-not-written-msgs
+MCFLAGS-missing_initial_section                 \
     += --halt-at-invalid-interface --std-int-file-not-written-msgs
 MCFLAGS-missing_interface_import                \
     += --halt-at-invalid-interface --std-int-file-not-written-msgs

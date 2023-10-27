@@ -20,13 +20,18 @@ SINGLE_MODULE_PROGS = \
 	bad_detism_category \
 	bad_end_module \
 	bad_existential_data_type \
+	bad_finalise_decl_int \
+	bad_foreign_type_int \
+	bad_initialise_decl_int \
 	bad_instance \
+	bad_mutable_int \
 	bad_type_class_constraint_intermodule \
 	bug17 \
 	bug499 \
 	bug521 \
 	builtin_int \
 	instance_no_type \
+	missing_initial_section \
 	missing_interface_import \
 	pragma_export_int \
 	test_type_spec_int \

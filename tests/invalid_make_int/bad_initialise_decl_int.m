@@ -4,7 +4,7 @@
 %
 % Test error messages for the `:- initialise initpred' directive.
 
-:- module bad_initialise_decl.
+:- module bad_initialise_decl_int.
 
 :- interface.
 
@@ -12,13 +12,14 @@
 
 :- pred main(io::di, io::uo) is det.
 
+:- initialise i2/2.
+
 %---------------------------------------------------------------------------%
 
 :- implementation.
 
-:- initialise i1/2.
-:- initialise i2/2.
-:- initialise i3/2.
+:- initialise i4.
+:- initialise i5/6.
 
 main(!IO) :-
     io.print("This is main/2.\n", !IO).
