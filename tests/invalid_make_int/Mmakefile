@@ -17,6 +17,9 @@ MAYBE_J1 = -j1
 # Multi-module tests should use *separate* modules, not *nested* modules.
 
 SINGLE_MODULE_PROGS = \
+	bad_detism_category \
+	bad_end_module \
+	bad_existential_data_type \
 	bad_instance \
 	bad_type_class_constraint_intermodule \
 	bug17 \

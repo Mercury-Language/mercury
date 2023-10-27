@@ -45,11 +45,8 @@
 :- type bad_quant_7
     --->    some [T] f7(T) => fooable(T, U, V).
 
-:- type bad_quant_8
-    --->    some [T, U] f8(T) => (fooable(T), fooable(U)).
-
-:- type bad_constraint_9
-    --->    some [T] f9(T) => fooable(list(T)).
+:- type bad_constraint_8
+    --->    some [T] f8(T) => fooable(list(T)).
 
 :- typeclass barable(T, U) <= (T -> U) where [
     pred bar(T::in, U::in, int::out) is det
@@ -59,8 +56,8 @@
     pred(bar/3) is int_bar
 ].
 
-:- type ok_10
-    --->    some [T, U] f10(T) => barable(T, U).
+:- type ok_9
+    --->    some [T, U] f9(T) => barable(T, U).
 
 :- pred int_foo(int::in, int::out) is det.
 

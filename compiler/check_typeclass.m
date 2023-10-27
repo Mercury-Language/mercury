@@ -2573,8 +2573,8 @@ report_unbound_tvars_in_ctor_context(Vars, TypeCtor, TypeDefn, !Specs) :-
     get_type_defn_tvarset(TypeDefn, TVarSet),
     VarsStrs = list.map(mercury_var_to_name_only_vs(TVarSet), Vars),
 
-    Pieces = [words("In declaration for type"), qual_type_ctor(TypeCtor),
-        suffix(":"), nl,
+    Pieces = [words("In declaration for type"),
+        unqual_type_ctor(TypeCtor), suffix(":"), nl,
         words("error in type class constraints:"),
         words(choose_number(Vars, "type variable", "type variables"))]
         ++ list_to_quoted_pieces(VarsStrs) ++

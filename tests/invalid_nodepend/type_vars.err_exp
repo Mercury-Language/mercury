@@ -1,4 +1,4 @@
-type_vars.m:010: In declaration for type `type_vars.t1'/0:
+type_vars.m:010: In declaration for type `t1'/0:
 type_vars.m:010:   error in type class constraints: type variable `T2' occurs
 type_vars.m:010:   in the constraints, but is not determined by the
 type_vars.m:010:   constructor's argument types.

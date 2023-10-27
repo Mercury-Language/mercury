@@ -17,9 +17,6 @@ MAYBE_J1 =
 
 PROGS = \
 	after_end_module \
-	bad_detism_category \
-	bad_end_module \
-	bad_existential_data_type \
 	bad_finalise_decl \
 	bad_foreign_code \
 	bad_foreign_decl \
@@ -89,6 +86,7 @@ PROGS = \
 	typeclass_test_3 \
 	types	\
 	unbound_type_vars \
+	undetermined_existential_data_type \
 	unicode1 \
 	unicode2 \
 	unrecognized_pragma \

@@ -1,0 +1,8 @@
+undetermined_existential_data_type.m:023: In declaration for type
+undetermined_existential_data_type.m:023:   `bad_quant'/0:
+undetermined_existential_data_type.m:023:   error in type class constraints:
+undetermined_existential_data_type.m:023:   type variable `U' occurs in the
+undetermined_existential_data_type.m:023:   constraints, but is not determined
+undetermined_existential_data_type.m:023:   by the constructor's argument
+undetermined_existential_data_type.m:023:   types.
+For more information, recompile with `-E'.

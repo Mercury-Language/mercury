@@ -25,12 +25,5 @@ bad_existential_data_type.m:043:   existentially quantified using `some'.
 bad_existential_data_type.m:046: Error: the type variables `U' and `V' occur in
 bad_existential_data_type.m:046:   a class constraint without being explicitly
 bad_existential_data_type.m:046:   existentially quantified using `some'.
-bad_existential_data_type.m:048: In declaration for type
-bad_existential_data_type.m:048:   `bad_existential_data_type.bad_quant_8'/0:
-bad_existential_data_type.m:048:   error in type class constraints: type
-bad_existential_data_type.m:048:   variable `U' occurs in the constraints, but
-bad_existential_data_type.m:048:   is not determined by the constructor's
-bad_existential_data_type.m:048:   argument types.
-bad_existential_data_type.m:052: Sorry, not implemented: constraints may only
-bad_existential_data_type.m:052:   constrain type variables and ground types.
-For more information, recompile with `-E'.
+bad_existential_data_type.m:049: Sorry, not implemented: constraints may only
+bad_existential_data_type.m:049:   constrain type variables and ground types.

@@ -1,5 +1,4 @@
-fundeps_unbound_in_ctor.m:012: In declaration for type
-fundeps_unbound_in_ctor.m:012:   `fundeps_unbound_in_ctor.bar'/0:
+fundeps_unbound_in_ctor.m:012: In declaration for type `bar'/0:
 fundeps_unbound_in_ctor.m:012:   error in type class constraints: type variable
 fundeps_unbound_in_ctor.m:012:   `C' occurs in the constraints, but is not
 fundeps_unbound_in_ctor.m:012:   determined by the constructor's argument

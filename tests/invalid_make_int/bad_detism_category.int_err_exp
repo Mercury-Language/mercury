@@ -2,8 +2,6 @@ bad_detism_category.m:015: In predicate declaration:
 bad_detism_category.m:015:   error: invalid determinism category `et'.
 bad_detism_category.m:017: In function declaration:
 bad_detism_category.m:017:   error: invalid determinism category `et'.
-bad_detism_category.m:019: Error: no clauses for predicate
-bad_detism_category.m:019:   `report_usage_message2'/2.
 bad_detism_category.m:020: In mode declaration: error: invalid determinism
 bad_detism_category.m:020:   category `et'.
 bad_detism_category.m:022: In predicate declaration:

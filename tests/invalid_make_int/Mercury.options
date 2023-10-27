@@ -1,6 +1,12 @@
 # vim: ts=4 sw=4 expandtab
 # (please keep these lists sorted)
 
+MCFLAGS-bad_detism_category                     \
+    += --halt-at-invalid-interface --std-int-file-not-written-msgs
+MCFLAGS-bad_end_module                          \
+    += --halt-at-invalid-interface --std-int-file-not-written-msgs
+MCFLAGS-bad_existential_data_type               \
+    += --halt-at-invalid-interface --std-int-file-not-written-msgs
 MCFLAGS-bad_instance                            \
     += --halt-at-invalid-interface --std-int-file-not-written-msgs
 MCFLAGS-bad_type_class_constraint_intermodule   \
