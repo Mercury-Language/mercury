@@ -13,6 +13,8 @@ MCFLAGS-bad_foreign_type_int                    \
     += --halt-at-invalid-interface --std-int-file-not-written-msgs -E
 MCFLAGS-bad_initialise_decl_int                 \
     += --halt-at-invalid-interface --std-int-file-not-written-msgs
+MCFLAGS-bad_in_interface                        \
+    += --halt-at-invalid-interface --std-int-file-not-written-msgs
 MCFLAGS-bad_instance                            \
     += --halt-at-invalid-interface --std-int-file-not-written-msgs
 MCFLAGS-bad_mutable_int                         \
@@ -50,6 +52,10 @@ MCFLAGS-test_type_spec_int                      \
 MCFLAGS-transitive_import                       \
     += --halt-at-invalid-interface --std-int-file-not-written-msgs
 MCFLAGS-type_arity                              \
+    += --halt-at-invalid-interface --std-int-file-not-written-msgs
+MCFLAGS-type_vars_int                           \
+    += --halt-at-invalid-interface --std-int-file-not-written-msgs
+MCFLAGS-unbound_type_vars_int                   \
     += --halt-at-invalid-interface --std-int-file-not-written-msgs
 MCFLAGS-undef_inst                              \
     += --halt-at-invalid-interface --std-int-file-not-written-msgs

@@ -1,0 +1,5 @@
+unbound_type_vars_int.m:022: Error: type variable T2 in the superclass
+unbound_type_vars_int.m:022:   constraint is not a parameter of this type
+unbound_type_vars_int.m:022:   class.
+unbound_type_vars_int.m:025: Error: unbound type variable T1 in constraints on
+unbound_type_vars_int.m:025:   instance declaration.

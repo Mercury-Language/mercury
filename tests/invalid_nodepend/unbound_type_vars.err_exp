@@ -1,7 +1,3 @@
-unbound_type_vars.m:018: Error: type variable T2 in the superclass constraint
-unbound_type_vars.m:018:   is not a parameter of this type class.
-unbound_type_vars.m:022: Error: unbound type variable T1 in constraints on
-unbound_type_vars.m:022:   instance declaration.
 unbound_type_vars.m:025: In declaration for predicate `p1'/1:
 unbound_type_vars.m:025:   error in type class constraints: type variable `T2'
 unbound_type_vars.m:025:   occurs in the constraints, but is not determined by

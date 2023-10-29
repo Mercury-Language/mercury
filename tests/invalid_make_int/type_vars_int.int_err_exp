@@ -1,0 +1,10 @@
+type_vars_int.m:012: Error: the existentially quantified type variable `T2'
+type_vars_int.m:012:   does not occur either in the arguments or in the
+type_vars_int.m:012:   constraints of the constructor.
+type_vars_int.m:013: Error: type variable `T1' has overlapping scopes (the
+type_vars_int.m:013:   explicit existential type quantifier shadows the
+type_vars_int.m:013:   universal quantification implicit in it being a type
+type_vars_int.m:013:   parameter).
+type_vars_int.m:014: Error: the type variable `T2' occurs in a class constraint
+type_vars_int.m:014:   without being explicitly existentially quantified using
+type_vars_int.m:014:   `some'.

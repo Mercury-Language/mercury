@@ -22,6 +22,7 @@ SINGLE_MODULE_PROGS = \
 	bad_existential_data_type \
 	bad_finalise_decl_int \
 	bad_foreign_type_int \
+	bad_in_interface \
 	bad_initialise_decl_int \
 	bad_instance \
 	bad_mutable_int \
@@ -36,6 +37,8 @@ SINGLE_MODULE_PROGS = \
 	pragma_export_int \
 	test_type_spec_int \
 	type_arity \
+	type_vars_int \
+	unbound_type_vars_int \
 	undef_inst \
 	undef_mode \
 	undef_type_int \

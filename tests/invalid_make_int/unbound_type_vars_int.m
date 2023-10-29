@@ -15,31 +15,11 @@
 % tests/invalid_nodepend/type_vars.m test case.
 %
 
-:- module unbound_type_vars.
+:- module unbound_type_vars_int.
 :- interface.
 
 :- typeclass c1(T1, T2) where [].
+:- typeclass c2(T1) <= c1(T1, T2) where [].     % T2 unbound (typeclass decl)
 :- typeclass c3(T1) where [].
 
-:- typeclass c3(T1, T2) where [
-    pred p1(T1),                            % T2 unbound (method decl,
-    mode p1(in) is det,                     % type var from typeclass decl)
-
-    pred p2(T1, T2) <= c1(T1, T3),          % T3 unbound (method decl,
-    mode p2(in, in) is det                  % type var from method decl)
-].
-
-:- pred p3(T1) <= c1(T1, T2).               % T2 unbound (pred decl)
-:- mode p3(in) is det.
-
-:- all [T1, T2] pred p4(T1) <= c1(T1, T2).  % T2 still unbound (pred decl
-:- mode p4(in) is det.                      % with universal quantifier)
-
-:- some [T2] pred p5(T1) <= c1(T1, T2).     % T2 still unbound (pred decl
-:- mode p5(in) is det.                      % with existential quantifier)
-
-:- implementation.
-
-p3(_).
-p4(_).
-p5(_).
+:- instance c1(int, float) <= c3(T1) where [].  % T1 unbound (instance decl)

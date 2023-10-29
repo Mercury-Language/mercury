@@ -46,11 +46,11 @@ main(!IO) :-
 :- type generator == pred(maybe(string), list(string), list(string)).
 :- inst generator == (pred(out, in, out) is det).
 
-    % There is a closing parenthesis missing here.
-    % -------------------------------------+
-    %                                      v
-:- pred make_titles(generator::in(generator,
-    list(string)::in, list(string)::out) is det.
+    % There was a closing parenthesis missing here.
+    % ---------------------------------------+
+    %                                        v
+% :- pred make_titles(generator::in(generator,
+%   list(string)::in, list(string)::out) is det.
 
 make_titles(GenPred, !Used) :-
     GenPred(_MaybeTitle, !Used),

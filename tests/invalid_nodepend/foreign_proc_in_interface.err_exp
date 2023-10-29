@@ -1,6 +1,0 @@
-foreign_proc_in_interface.m:015: Error: no clauses for function `foo'/1.
-foreign_proc_in_interface.m:016: Error: no clauses for predicate `bar'/2.
-foreign_proc_in_interface.m:019: Error: `:- pragma foreign_proc' declaration in
-foreign_proc_in_interface.m:019:   module interface.
-foreign_proc_in_interface.m:026: Error: `:- pragma foreign_proc' declaration in
-foreign_proc_in_interface.m:026:   module interface.

@@ -1,0 +1,13 @@
+bad_fact_table.m:018: Error: no clauses for function `foo'/1.
+bad_fact_table.m:019: Error: no clauses for predicate `bar'/2.
+bad_fact_table.m:021: Error: no clauses for predicate `baz'/2.
+bad_fact_table.m:022: Error: no clauses for function `baz'/2.
+bad_fact_table.m:026: mercury_compile.exe: error opening file `nonexistent_foo'
+bad_fact_table.m:026:   for input:
+bad_fact_table.m:026:   can't open input file: No such file or directory
+bad_fact_table.m:027: mercury_compile.exe: error opening file `nonexistent_bar'
+bad_fact_table.m:027:   for input:
+bad_fact_table.m:027:   can't open input file: No such file or directory
+bad_fact_table.m:028: In `:- pragma fact_table' declaration for `baz'/2:
+bad_fact_table.m:028:   error: ambiguous name could refer to either a predicate
+bad_fact_table.m:028:   or a function.

@@ -1,0 +1,14 @@
+bad_in_interface.m:030: Error: `:- pragma external_pred' declaration in module
+bad_in_interface.m:030:   interface.
+bad_in_interface.m:031: Error: `:- pragma external_func' declaration in module
+bad_in_interface.m:031:   interface.
+bad_in_interface.m:033: Error: `:- pragma fact_table' declaration in module
+bad_in_interface.m:033:   interface.
+bad_in_interface.m:034: Error: `:- pragma fact_table' declaration in module
+bad_in_interface.m:034:   interface.
+bad_in_interface.m:035: Error: `:- pragma fact_table' declaration in module
+bad_in_interface.m:035:   interface.
+bad_in_interface.m:037: Error: `:- pragma foreign_proc' declaration in module
+bad_in_interface.m:037:   interface.
+bad_in_interface.m:044: Error: `:- pragma foreign_proc' declaration in module
+bad_in_interface.m:044:   interface.

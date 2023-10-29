@@ -1,4 +1,3 @@
-bug410.m:053: Syntax error at token `. ': expected `,', `)', or operator.
 bug410.m:055: Error: clause for predicate `make_titles'/3
 bug410.m:055:   without corresponding `:- pred' declaration.
 bug410.m:055: Inferred :- pred make_titles(pred(V_1, V_2, V_2), V_2, T3).
