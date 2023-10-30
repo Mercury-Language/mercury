@@ -1,0 +1,2 @@
+ft_foo(ft_a, 42).
+ft_foo(ft_b, 43).
