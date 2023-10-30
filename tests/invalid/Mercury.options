@@ -107,6 +107,7 @@ MCFLAGS-mpj4                    = --verbose-error-messages
 MCFLAGS-multimode_syntax        = --verbose-error-messages
 MCFLAGS-nullary_ho_func_error   = --verbose-error-messages
 MCFLAGS-one_member              = --verbose-error-messages
+MCFLAGS-oisu_check_add_pragma_errors = --no-halt-at-invalid-interface
 MCFLAGS-polymorphic_unification = --verbose-error-messages
 MCFLAGS-test_type_spec          = --verbose-error-messages
 

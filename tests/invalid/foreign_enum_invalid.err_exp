@@ -1,5 +1,3 @@
-foreign_enum_invalid.m:021: Error: `:- pragma foreign_enum' declaration in
-foreign_enum_invalid.m:021:   module interface.
 foreign_enum_invalid.m:027: In `:- pragma foreign_enum' declaration for type
 foreign_enum_invalid.m:027:   `incomplete'/0:
 foreign_enum_invalid.m:027:   error: the following constructor does not have a

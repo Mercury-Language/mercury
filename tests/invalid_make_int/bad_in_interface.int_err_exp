@@ -12,3 +12,9 @@ bad_in_interface.m:037: Error: `:- pragma foreign_proc' declaration in module
 bad_in_interface.m:037:   interface.
 bad_in_interface.m:044: Error: `:- pragma foreign_proc' declaration in module
 bad_in_interface.m:044:   interface.
+bad_in_interface.m:051: Error: `:- pragma foreign_enum' declaration in module
+bad_in_interface.m:051:   interface.
+bad_in_interface.m:052: Error: `:- pragma foreign_enum' declaration in module
+bad_in_interface.m:052:   interface.
+bad_in_interface.m:053: Error: `:- pragma foreign_enum' declaration in module
+bad_in_interface.m:053:   interface.

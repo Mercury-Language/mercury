@@ -4,9 +4,9 @@ foreign_type_visibility.m:022:   any foreign type definition for it must be in
 foreign_type_visibility.m:022:   the implementation section as well.
 foreign_type_visibility.m:018:   That Mercury declaration is here.
 foreign_type_visibility.m:026: Error: the type `foreign2'/0 has no definition
-foreign_type_visibility.m:026:   that is valid when targeting C; neither a
+foreign_type_visibility.m:026:   that is valid when targeting C#; neither a
 foreign_type_visibility.m:026:   Mercury definition, nor a
-foreign_type_visibility.m:026:   `:- pragma foreign_type' declaration for C.
+foreign_type_visibility.m:026:   `:- pragma foreign_type' declaration for C#.
 foreign_type_visibility.m:033: Error: since some foreign language definition of
 foreign_type_visibility.m:033:   `foreign2'/0 is in the interface section, all
 foreign_type_visibility.m:033:   other foreign language definitions for it must

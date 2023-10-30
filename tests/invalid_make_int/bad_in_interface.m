@@ -47,3 +47,7 @@
 "
     Out = In;
 ").
+
+:- pragma foreign_enum("C",    ft_t/0, [ft_a - "300", ft_b - "400"]).
+:- pragma foreign_enum("Java", ft_t/0, [ft_a - "300", ft_b - "400"]).
+:- pragma foreign_enum("C#",   ft_t/0, [ft_a - "300", ft_b - "400"]).

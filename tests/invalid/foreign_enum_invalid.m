@@ -18,11 +18,11 @@
 :- type in_int
     --->    in_int.
 
-:- pragma foreign_enum("C", in_int/0, [in_int - "300"]).
-
 :- type dup_foreign_enum ---> dup_foreign_enum.
 
 :- implementation.
+
+:- pragma foreign_enum("C", in_int/0, [in_int - "300"]).
 
 :- pragma foreign_enum("C", incomplete/0, [
     foo - "3",
