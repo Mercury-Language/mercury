@@ -621,7 +621,7 @@ generate_parse_tree_int0(ProgressStream, Globals, AddToHptm, BurdenedModule,
     else
         % The negative indent is to let the rest of the error_spec
         % start at the left margin.
-        PrefixPieces = [words("Error reading interface files."),
+        PrefixPieces = [words("Error reading .int3 and/or .int0 files."),
             nl_indent_delta(-1)],
         GenerateResult = gpti0_error(ModuleName, PrefixPieces, GetSpecs)
     ).
@@ -777,7 +777,7 @@ generate_parse_tree_int12(ProgressStream, Globals, AddToHptm,
     else
         % The negative indent is to let the rest of the error_spec
         % start at the left margin.
-        PrefixPieces = [words("Error reading .int3 files."),
+        PrefixPieces = [words("Error reading .int3 and/or .int0 files."),
             nl_indent_delta(-1)],
         GenerateResult = gpti12_error(ModuleName, PrefixPieces, GetSpecs)
     ).

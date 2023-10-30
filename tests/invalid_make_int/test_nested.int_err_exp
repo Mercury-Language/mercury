@@ -7,5 +7,5 @@ test_nested.m:017:   the absence of an `:- import_module' or `:- use_module'
 test_nested.m:017:   declaration for `test_nested_helper_2' prevents access to
 test_nested.m:017:   the `:- use_module' declaration for its child module
 test_nested.m:017:   `test_nested_helper_2.test_nested_helper_6'.
-Error reading .int3 files.
+Error reading .int3 and/or .int0 files.
 `test_nested.int' and `test_nested.int2' not written.

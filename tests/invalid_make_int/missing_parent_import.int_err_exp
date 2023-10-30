@@ -6,5 +6,5 @@ missing_parent_import.m:028:   to the `:- import_module' and `:- use_module'
 missing_parent_import.m:028:   declarations for its child modules
 missing_parent_import.m:028:   `missing_parent_import_helper_1.child' and
 missing_parent_import.m:028:   `missing_parent_import_helper_1.child2'.
-Error reading .int3 files.
+Error reading .int3 and/or .int0 files.
 `missing_parent_import.int' and `missing_parent_import.int2' not written.
