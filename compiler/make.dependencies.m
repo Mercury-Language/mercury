@@ -77,17 +77,16 @@ find_target_dependencies_of_modules(ProgressStream, KeepGoing, Globals,
         TargetType, [ModuleIndex | ModuleIndexes],
         !Succeeded, !Deps, !Info, !IO) :-
     find_target_dependencies_of_module(ProgressStream, KeepGoing, Globals,
-        TargetType, ModuleIndex, NewSucceeded, !Deps, !Info, !IO),
+        TargetType, ModuleIndex, HeadSucceeded, !Deps, !Info, !IO),
     ( if
-        ( NewSucceeded = succeeded
-        ; KeepGoing = do_keep_going
-        )
+        HeadSucceeded = did_not_succeed,
+        KeepGoing = do_not_keep_going
     then
-        !:Succeeded = !.Succeeded `and` NewSucceeded,
+        !:Succeeded = did_not_succeed
+    else
+        !:Succeeded = !.Succeeded `and` HeadSucceeded,
         find_target_dependencies_of_modules(ProgressStream, KeepGoing, Globals,
             TargetType, ModuleIndexes, !Succeeded, !Deps, !Info, !IO)
-    else
-        !:Succeeded = did_not_succeed
     ).
 
 :- pred find_target_dependencies_of_module(io.text_output_stream::in,
@@ -97,17 +96,17 @@ find_target_dependencies_of_modules(ProgressStream, KeepGoing, Globals,
     make_info::in, make_info::out, io::di, io::uo) is det.
 
 find_target_dependencies_of_module(ProgressStream, KeepGoing, Globals,
-        TargetType, ModuleIndex, NewSucceeded, !Deps, !Info, !IO) :-
+        TargetType, ModuleIndex, Succeeded, !Deps, !Info, !IO) :-
     (
         ( TargetType = module_target_source
         ; TargetType = module_target_track_flags
         ),
-        NewSucceeded = succeeded
+        Succeeded = succeeded
     ;
         TargetType = module_target_int3,
         DepSpecs = [self(module_target_source)],
         find_dep_specs(ProgressStream, KeepGoing, Globals,
-            ModuleIndex, DepSpecs, NewSucceeded, NewDeps, !Info, !IO),
+            ModuleIndex, DepSpecs, Succeeded, NewDeps, !Info, !IO),
         deps_set_union(NewDeps, !Deps)
     ;
         ( TargetType = module_target_int0
@@ -121,7 +120,7 @@ find_target_dependencies_of_module(ProgressStream, KeepGoing, Globals,
             indirect_imports_intermod(module_target_int3)
         ],
         find_dep_specs(ProgressStream, KeepGoing, Globals,
-            ModuleIndex, DepSpecs, NewSucceeded, NewDeps, !Info, !IO),
+            ModuleIndex, DepSpecs, Succeeded, NewDeps, !Info, !IO),
         deps_set_union(NewDeps, !Deps)
     ;
         ( TargetType = module_target_c_code
@@ -132,13 +131,13 @@ find_target_dependencies_of_module(ProgressStream, KeepGoing, Globals,
         ),
         compiled_code_dependencies(Globals, DepSpecs),
         find_dep_specs(ProgressStream, KeepGoing, Globals,
-            ModuleIndex, DepSpecs, NewSucceeded, NewDeps, !Info, !IO),
+            ModuleIndex, DepSpecs, Succeeded, NewDeps, !Info, !IO),
         deps_set_union(NewDeps, !Deps)
     ;
         TargetType = module_target_java_class_code,
         DepSpec = self(module_target_java_code),
         find_dep_spec(ProgressStream, KeepGoing, Globals,
-            ModuleIndex, DepSpec, NewSucceeded, NewDeps, !Info, !IO),
+            ModuleIndex, DepSpec, Succeeded, NewDeps, !Info, !IO),
         deps_set_union(NewDeps, !Deps)
     ;
         ( TargetType = module_target_foreign_object(PIC, _)
@@ -148,7 +147,7 @@ find_target_dependencies_of_module(ProgressStream, KeepGoing, Globals,
         TargetCodeType = target_to_module_target_code(CompilationTarget, PIC),
         DepSpec = self(TargetCodeType),
         find_dep_spec(ProgressStream, KeepGoing, Globals,
-            ModuleIndex, DepSpec, NewSucceeded, NewDeps, !Info, !IO),
+            ModuleIndex, DepSpec, Succeeded, NewDeps, !Info, !IO),
         deps_set_union(NewDeps, !Deps)
     ;
         TargetType = module_target_object_code(PIC),
@@ -174,7 +173,7 @@ find_target_dependencies_of_module(ProgressStream, KeepGoing, Globals,
             DepSpecs = [DepSpecSelf, DepSpecMh]
         ),
         find_dep_specs(ProgressStream, KeepGoing, Globals,
-            ModuleIndex, DepSpecs, NewSucceeded, NewDeps, !Info, !IO),
+            ModuleIndex, DepSpecs, Succeeded, NewDeps, !Info, !IO),
         deps_set_union(NewDeps, !Deps)
     ;
         ( TargetType = module_target_opt
@@ -185,7 +184,7 @@ find_target_dependencies_of_module(ProgressStream, KeepGoing, Globals,
             anc0_dir1_indir2_non_intermod
         ],
         find_dep_specs(ProgressStream, KeepGoing, Globals,
-            ModuleIndex, DepSpecs, NewSucceeded, NewDeps, !Info, !IO),
+            ModuleIndex, DepSpecs, Succeeded, NewDeps, !Info, !IO),
         deps_set_union(NewDeps, !Deps)
     ;
         TargetType = module_target_analysis_registry,
@@ -197,7 +196,7 @@ find_target_dependencies_of_module(ProgressStream, KeepGoing, Globals,
             intermod_imports(module_target_opt)
         ],
         find_dep_specs(ProgressStream, KeepGoing, Globals,
-            ModuleIndex, DepSpecs, NewSucceeded, NewDeps, !Info, !IO),
+            ModuleIndex, DepSpecs, Succeeded, NewDeps, !Info, !IO),
         deps_set_union(NewDeps, !Deps)
     ).
 
@@ -325,18 +324,17 @@ find_dep_specs(ProgressStream, KeepGoing, Globals, ModuleIndex,
     find_dep_spec(ProgressStream, KeepGoing, Globals, ModuleIndex, HeadDepSpec,
         HeadSucceeded, HeadDepFileIndexSet, !Info, !IO),
     ( if
-        ( HeadSucceeded = succeeded
-        ; KeepGoing = do_keep_going
-        )
+        HeadSucceeded = did_not_succeed,
+        KeepGoing = do_not_keep_going
     then
+        Succeeded = did_not_succeed,
+        DepFileIndexSet = HeadDepFileIndexSet
+    else
         find_dep_specs(ProgressStream, KeepGoing, Globals, ModuleIndex,
             TailDepSpecs, TailSucceeded, TailDepFileIndexSet, !Info, !IO),
         Succeeded = HeadSucceeded `and` TailSucceeded,
         deps_set_union(HeadDepFileIndexSet, TailDepFileIndexSet,
             DepFileIndexSet)
-    else
-        Succeeded = did_not_succeed,
-        DepFileIndexSet = HeadDepFileIndexSet
     ).
 
 :- pred find_dep_spec(io.text_output_stream::in, maybe_keep_going::in,
@@ -1086,15 +1084,14 @@ fold_find_modules_over_modules(ProgressStream, KeepGoing, Globals, FindDeps,
         HeadSucceeded, HeadModuleIndexSet, !Info, !IO),
     deps_set_union(HeadModuleIndexSet, !ModuleIndexSet),
     ( if
-        ( HeadSucceeded = succeeded
-        ; KeepGoing = do_keep_going
-        )
+        HeadSucceeded = did_not_succeed,
+        KeepGoing = do_not_keep_going
     then
+        !:Succeeded = did_not_succeed
+    else
         !:Succeeded = !.Succeeded `and` HeadSucceeded,
         fold_find_modules_over_modules(ProgressStream, KeepGoing, Globals,
             FindDeps, MIs, !Succeeded, !ModuleIndexSet, !Info, !IO)
-    else
-        !:Succeeded = did_not_succeed
     ).
 
 %---------------------%
@@ -1123,15 +1120,14 @@ fold_dep_spec_over_modules(ProgressStream, KeepGoing, Globals, DepSpec,
         HeadSucceeded, HeadDepFileIndexSet, !Info, !IO),
     deps_set_union(HeadDepFileIndexSet, !DepFileIndexSet),
     ( if
-        ( HeadSucceeded = succeeded
-        ; KeepGoing = do_keep_going
-        )
+        HeadSucceeded = did_not_succeed,
+        KeepGoing = do_not_keep_going
     then
+        !:Succeeded = did_not_succeed
+    else
         !:Succeeded = !.Succeeded `and` HeadSucceeded,
         fold_dep_spec_over_modules(ProgressStream, KeepGoing, Globals,
             DepSpec, MIs, !Succeeded, !DepFileIndexSet, !Info, !IO)
-    else
-        !:Succeeded = did_not_succeed
     ).
 
 %---------------------------------------------------------------------------%
