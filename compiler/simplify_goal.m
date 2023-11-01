@@ -86,10 +86,12 @@
 :- import_module check_hlds.simplify.simplify_goal_unify.
 :- import_module hlds.goal_form.
 :- import_module hlds.goal_util.
+:- import_module hlds.hlds_module.
 :- import_module hlds.hlds_out.
 :- import_module hlds.hlds_out.hlds_out_goal.
 :- import_module hlds.make_goal.
 :- import_module libs.
+:- import_module libs.globals.
 :- import_module libs.options.
 :- import_module mdbcomp.
 :- import_module mdbcomp.builtin_modules.
@@ -374,6 +376,23 @@ simplify_goal_expr(!GoalExpr, !GoalInfo, NestedContext0,
         (
             ShortHand0 = atomic_goal(GoalType, Outer, Inner,
                 MaybeOutputVars, MainGoal, OrElseGoals, OrElseInners),
+            simplify_info_get_module_info(!.Info, ModuleInfo),
+            module_info_get_globals(ModuleInfo, Globals),
+            globals.get_target(Globals, Target),
+            (
+                Target = target_c
+            ;
+                ( Target = target_csharp, TargetStr = "C#"
+                ; Target = target_java,   TargetStr = "Java"
+                ),
+                Phase = phase_simplify(report_in_any_mode),
+                StmPieces = [words("Error: atomic goals are"),
+                    words("not implemented yet when targeting"),
+                    words(TargetStr), suffix("."), nl],
+                StmSpec = simplest_spec($pred, severity_error, Phase,
+                    goal_info_get_context(!.GoalInfo), StmPieces),
+                simplify_info_add_message(StmSpec, !Info)
+            ),
             simplify_goal_atomic_goal(GoalType, Outer, Inner,
                 MaybeOutputVars, MainGoal, OrElseGoals, OrElseInners,
                 !:GoalExpr, !GoalInfo,

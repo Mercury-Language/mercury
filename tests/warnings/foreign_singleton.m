@@ -1,6 +1,8 @@
 %---------------------------------------------------------------------------%
 % vim: ts=4 sw=4 et ft=mercury
 %---------------------------------------------------------------------------%
+% The .exp{,2,3} files are for C, Java and C# respectively.
+%---------------------------------------------------------------------------%
 
 :- module foreign_singleton.
 
@@ -28,6 +30,18 @@ main(!IO) :-
 "
     X = 5;
 ").
+:- pragma foreign_proc("Java",
+    f(X::out, IO0::di, _IO::uo),
+    [will_not_call_mercury, promise_pure],
+"
+    X = 5;
+").
+:- pragma foreign_proc("C#",
+    f(X::out, IO0::di, _IO::uo),
+    [will_not_call_mercury, promise_pure],
+"
+    X = 5;
+").
 
 f(X, !IO).
 
@@ -36,6 +50,18 @@ f(X, !IO).
 g(X, !IO).
 
 :- pragma foreign_proc("C",
+    g(X::out, IO0::di, _IO::uo),
+    [will_not_call_mercury, promise_pure],
+"
+    X = 5;
+").
+:- pragma foreign_proc("Java",
+    g(X::out, IO0::di, _IO::uo),
+    [will_not_call_mercury, promise_pure],
+"
+    X = 5;
+").
+:- pragma foreign_proc("C#",
     g(X::out, IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure],
 "

@@ -107,10 +107,11 @@ $(COMPILE_PROGS:%=%.runtest): %.runtest: %.res_compile ;
 
 $(ERRORCHECK_PROGS:%=%.runtest): %.runtest: %.res_error ;
 
-# Build the `.analysis' file for unused_args_analysis2
+# Build the `.analysis' file for unused_args_analysis_helper_1
 # before building unused_args_analysis.c.
-unused_args_analysis.c: unused_args_analysis2.c
-unused_args_analysis.err: unused_args_analysis.c
+# XXX These dependencies are only for C.
+unused_args_analysis.c:   unused_args_analysis_helper_1.c
+unused_args_analysis.err: unused_args_analysis_helper_1.c
 
 # Check that `mmc --make up_to_date.m' generates a warning.
 up_to_date.runtest:

@@ -1,0 +1,12 @@
+foreign_singleton.m:033: In the Java code for predicate `f'/3:
+foreign_singleton.m:033:   warning: variable `IO0' does not occur in the Java
+foreign_singleton.m:033:   code.
+foreign_singleton.m:046: In clause for predicate `f'/3:
+foreign_singleton.m:046:   warning: variable `X' occurs only once in this
+foreign_singleton.m:046:   scope.
+foreign_singleton.m:050: In clause for predicate `g'/3:
+foreign_singleton.m:050:   warning: variable `X' occurs only once in this
+foreign_singleton.m:050:   scope.
+foreign_singleton.m:058: In the Java code for predicate `g'/3:
+foreign_singleton.m:058:   warning: variable `IO0' does not occur in the Java
+foreign_singleton.m:058:   code.

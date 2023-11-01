@@ -10,18 +10,22 @@
 
 :- type foo.
 :- pragma foreign_type(c, foo, "struct Foo").
+:- pragma foreign_type(csharp, foo, "Foo").
 :- pragma foreign_type(java, foo, "Foo").
 
 :- type foo2.
 :- pragma foreign_type(c, foo2, "char").
+:- pragma foreign_type(csharp, foo2, "Character").
 :- pragma foreign_type(java, foo2, "Character").
 
 :- type foo3.
 :- pragma foreign_type(c, foo3, "double").
+:- pragma foreign_type(csharp, foo3, "Double").
 :- pragma foreign_type(java, foo3, "Double").
 
 :- type foo4.
 :- pragma foreign_type(c, foo4, "enum e").
+:- pragma foreign_type(csharp, foo4, "e").
 :- pragma foreign_type(java, foo4, "e").
 
 :- func bar(foo) = foo.
@@ -96,3 +100,13 @@ baz4(X) = X.
 :- pragma foreign_export("C", baz2(in) = out, "baz2").
 :- pragma foreign_export("C", baz3(in) = out, "baz3").
 :- pragma foreign_export("C", baz4(in) = out, "baz4").
+
+:- pragma foreign_export("C#", baz(in) = out, "baz").
+:- pragma foreign_export("C#", baz2(in) = out, "baz2").
+:- pragma foreign_export("C#", baz3(in) = out, "baz3").
+:- pragma foreign_export("C#", baz4(in) = out, "baz4").
+
+:- pragma foreign_export("Java", baz(in) = out, "baz").
+:- pragma foreign_export("Java", baz2(in) = out, "baz2").
+:- pragma foreign_export("Java", baz3(in) = out, "baz3").
+:- pragma foreign_export("Java", baz4(in) = out, "baz4").

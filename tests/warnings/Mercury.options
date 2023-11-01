@@ -24,7 +24,7 @@ MCFLAGS-format_call_warning     = --warn-unknown-format-calls
 MCFLAGS-unused_args_analysis    = --intermodule-analysis \
                                     --optimize-unused-args \
                                     --warn-unused-args
-MCFLAGS-unused_args_analysis2   = --intermodule-analysis \
+MCFLAGS-unused_args_analysis_helper_1 = --intermodule-analysis \
                                     --optimize-unused-args \
                                     --trace-optimized
 MCFLAGS-unused_args_test        = --warn-unused-args

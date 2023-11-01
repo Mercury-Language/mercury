@@ -1,0 +1,12 @@
+foreign_singleton.m:039: In the C# code for predicate `f'/3:
+foreign_singleton.m:039:   warning: variable `IO0' does not occur in the C#
+foreign_singleton.m:039:   code.
+foreign_singleton.m:046: In clause for predicate `f'/3:
+foreign_singleton.m:046:   warning: variable `X' occurs only once in this
+foreign_singleton.m:046:   scope.
+foreign_singleton.m:050: In clause for predicate `g'/3:
+foreign_singleton.m:050:   warning: variable `X' occurs only once in this
+foreign_singleton.m:050:   scope.
+foreign_singleton.m:064: In the C# code for predicate `g'/3:
+foreign_singleton.m:064:   warning: variable `IO0' does not occur in the C#
+foreign_singleton.m:064:   code.

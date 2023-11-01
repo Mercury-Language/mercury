@@ -1,12 +1,12 @@
-foreign_singleton.m:025: In the C code for predicate `f'/3:
-foreign_singleton.m:025:   warning: variable `IO0' does not occur in the C
-foreign_singleton.m:025:   code.
-foreign_singleton.m:032: In clause for predicate `f'/3:
-foreign_singleton.m:032:   warning: variable `X' occurs only once in this
-foreign_singleton.m:032:   scope.
-foreign_singleton.m:036: In clause for predicate `g'/3:
-foreign_singleton.m:036:   warning: variable `X' occurs only once in this
-foreign_singleton.m:036:   scope.
-foreign_singleton.m:038: In the C code for predicate `g'/3:
-foreign_singleton.m:038:   warning: variable `IO0' does not occur in the C
-foreign_singleton.m:038:   code.
+foreign_singleton.m:027: In the C code for predicate `f'/3:
+foreign_singleton.m:027:   warning: variable `IO0' does not occur in the C
+foreign_singleton.m:027:   code.
+foreign_singleton.m:046: In clause for predicate `f'/3:
+foreign_singleton.m:046:   warning: variable `X' occurs only once in this
+foreign_singleton.m:046:   scope.
+foreign_singleton.m:050: In clause for predicate `g'/3:
+foreign_singleton.m:050:   warning: variable `X' occurs only once in this
+foreign_singleton.m:050:   scope.
+foreign_singleton.m:052: In the C code for predicate `g'/3:
+foreign_singleton.m:052:   warning: variable `IO0' does not occur in the C
+foreign_singleton.m:052:   code.
