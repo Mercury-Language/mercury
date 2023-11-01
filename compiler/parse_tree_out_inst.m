@@ -33,6 +33,8 @@
     = string.
 :- pred mercury_output_inst_list(io.text_output_stream::in, output_lang::in,
     inst_varset::in, list(mer_inst)::in, io::di, io::uo) is det.
+:- pred mercury_format_inst_list(output_lang::in, inst_varset::in,
+    list(mer_inst)::in, S::in, U::di, U::uo) is det <= pt_output(S, U).
 
 %---------------------------------------------------------------------------%
 
@@ -125,9 +127,6 @@ mercury_inst_list_to_string(Lang, InstVarSet, Insts) = Str :-
 
 mercury_output_inst_list(Stream, Lang, InstVarSet, Insts, !IO) :-
     mercury_format_inst_list(Lang, InstVarSet, Insts, Stream, !IO).
-
-:- pred mercury_format_inst_list(output_lang::in, inst_varset::in,
-    list(mer_inst)::in, S::in, U::di, U::uo) is det <= pt_output(S, U).
 
 mercury_format_inst_list(_, _, [], _S, !U).
 mercury_format_inst_list(Lang, InstVarSet, [Inst | Insts], S, !U) :-

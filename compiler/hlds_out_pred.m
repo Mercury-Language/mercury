@@ -1202,7 +1202,7 @@ write_proc_opt_info(Stream, DumpOptions, VarTable, TVarSet, VarNamePrint,
         io.write_string(Stream, "% structure sharing: \n", !IO),
         StructureSharing =
             structure_sharing_domain_and_status(SharingAs, _Status),
-        dump_structure_sharing_domain(Stream, VarTable, TVarSet,
+        dump_structure_sharing_domain(Stream, vns_var_table(VarTable), TVarSet,
             SharingAs, !IO)
     else
         true
@@ -1214,7 +1214,8 @@ write_proc_opt_info(Stream, DumpOptions, VarTable, TVarSet, VarNamePrint,
         io.write_string(Stream, "% structure reuse: \n", !IO),
         StructureReuse =
             structure_reuse_domain_and_status(ReuseAs, _ReuseStatus),
-        dump_structure_reuse_domain(Stream, VarTable, TVarSet, ReuseAs, !IO)
+        dump_structure_reuse_domain(Stream, vns_var_table(VarTable), TVarSet,
+            ReuseAs, !IO)
     else
         true
     ),

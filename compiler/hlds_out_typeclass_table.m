@@ -236,7 +236,7 @@ write_instance_methods(Stream, IndentStr, [Method | Methods],
     % Specifically, only the first line in the printout of the clause
     % will start with a percent sign (the one printed just above); all
     % the others will lack this sign. I (zs) see no simple way of fixing this.
-    mercury_output_instance_method(Method, Stream, !IO),
+    mercury_format_instance_method(Method, Stream, !IO),
     io.nl(Stream, !IO),
     write_instance_methods(Stream, IndentStr, Methods, CurMethodNum + 1, !IO).
 

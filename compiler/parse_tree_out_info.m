@@ -120,8 +120,8 @@
 :- func get_type_repn_for(merc_out_info) = type_repn_for.
 :- func get_human_comma_sep(merc_out_info) = string.
 
-:- pred maybe_output_line_number(merc_out_info::in, prog_context::in,
-    io.text_output_stream::in, io::di, io::uo) is det.
+:- pred maybe_format_line_number(merc_out_info::in, prog_context::in,
+    S::in, U::di, U::uo) is det <= pt_output(S, U).
 
 :- pred maybe_unqualify_sym_name(merc_out_info::in,
     sym_name::in, sym_name::out) is det.
@@ -238,13 +238,13 @@ get_human_comma_sep(Info) = Info ^ moi_human_comma_sep.
 
 %---------------------------------------------------------------------------%
 
-maybe_output_line_number(Info, Context, Stream, !IO) :-
+maybe_format_line_number(Info, Context, S, !U) :-
     LineNumbers = get_output_line_numbers(Info),
     (
         LineNumbers = do_output_line_numbers,
-        io.write_string(Stream, "\t% ", !IO),
-        parse_tree_out_misc.write_context(Stream, Context, !IO),
-        io.write_string(Stream, "\n", !IO)
+        add_string("\t% ", S, !U),
+        parse_tree_out_misc.format_context(S, Context, !U),
+        add_string("\n", S, !U)
     ;
         LineNumbers = dont_output_line_numbers
     ).

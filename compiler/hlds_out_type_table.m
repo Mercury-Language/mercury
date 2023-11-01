@@ -167,7 +167,7 @@ write_type_body(Info, Stream, _TypeCtor, TypeBody, TVarSet, !IO) :-
             Ctors = one_or_more(HeadCtor, TailCtors),
             write_constructors(Stream, TVarSet, HeadCtor, TailCtors, !IO),
             MaybeDirectArgCtors = no,
-            mercury_output_where_attributes(MercInfo, TVarSet,
+            mercury_format_where_attributes(MercInfo, TVarSet,
                 MaybeSolverTypeDetails, MaybeUserEqComp, MaybeDirectArgCtors,
                 Stream, !IO),
             io.format(Stream, "%s%% no type representation information yet\n",
@@ -230,7 +230,7 @@ write_type_body(Info, Stream, _TypeCtor, TypeBody, TVarSet, !IO) :-
                 io.format(Stream, "%s%% KIND general\n",
                     [s(IndentStr)], !IO)
             ),
-            mercury_output_where_attributes(MercInfo, TVarSet,
+            mercury_format_where_attributes(MercInfo, TVarSet,
                 MaybeSolverTypeDetails, MaybeUserEqComp, MaybeDirectArgCtors,
                 Stream, !IO),
             (
@@ -314,7 +314,7 @@ write_type_body(Info, Stream, _TypeCtor, TypeBody, TVarSet, !IO) :-
         DetailsSolver =
             type_details_solver(SolverTypeDetails, MaybeUserEqComp),
         MercInfo = Info ^ hoi_merc_out_info,
-        mercury_output_where_attributes(MercInfo, TVarSet,
+        mercury_format_where_attributes(MercInfo, TVarSet,
             yes(SolverTypeDetails), MaybeUserEqComp, no, Stream, !IO),
         io.write_string(Stream, ".\n", !IO)
     ).

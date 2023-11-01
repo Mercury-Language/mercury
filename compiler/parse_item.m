@@ -967,7 +967,7 @@ parse_clause(MaybeModuleName, VarSet0, HeadTerm, BodyTerm0, Context, SeqNum,
                     io.format(StdErr, "parsed %s/%d:\n",
                         [s(sym_name_to_string(SymName)),
                         i(list.length(ProgArgTerms))], !IO),
-                    mercury_output_goal(StdErr, ProgVarSet, 0, Goal, !IO),
+                    mercury_format_goal(StdErr, ProgVarSet, 0, Goal, !IO),
                     io.nl(StdErr, !IO)
                 ;
                     MaybeBodyGoal = error2(_),

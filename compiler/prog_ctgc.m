@@ -18,13 +18,11 @@
 :- module parse_tree.prog_ctgc.
 :- interface.
 
+:- import_module parse_tree.parse_tree_out_info.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_data_pragma.
 :- import_module parse_tree.var_db.
-:- import_module parse_tree.var_table.
 
-:- import_module bool.
-:- import_module io.
 :- import_module list.
 :- import_module map.
 :- import_module maybe.
@@ -62,82 +60,25 @@
 % Printing routines.
 %
 
-:- pred print_selector(io.text_output_stream::in, tvarset::in, selector::in,
-    io::di, io::uo) is det.
-
-:- pred print_datastruct(io.text_output_stream::in,
-    var_name_source::in, tvarset::in, datastruct::in, io::di, io::uo) is det.
-
-:- pred print_datastructs(io.text_output_stream::in,
-    var_name_source::in, tvarset::in, list(datastruct)::in,
-    io::di, io::uo) is det.
-
-:- pred print_structure_sharing_pair(io.text_output_stream::in,
-    var_name_source::in, tvarset::in, structure_sharing_pair::in,
-    io::di, io::uo) is det.
-
-    % Print list of structure sharing pairs.
-    %
-    % print_structure_sharing(Varset, TVarset, MaybeThreshold,
-    %   StartingString, Separator, EndingString, SharingPairs, !IO):
-    %
-    % Print the list of sharing pairs using StartString to precede the
-    % list, using EndString to end the list, using Separator to separate
-    % each of the sharing pairs occurring in the list. If a threshold, say
-    % N, is given, then only the first N pairs are printed (and "..."
-    % is shown if there are more than N pairs).
-    %
-:- pred print_structure_sharing(io.text_output_stream::in,
-    var_name_source::in, tvarset::in, maybe(int)::in,
-    string::in, string::in, string::in, structure_sharing::in,
-    io::di, io::uo) is det.
-
-    % Print complete list of structure sharing pairs as a list (using "[",
-    % ",", and "]"). This can later be parsed automatically.
-    %
-:- pred print_structure_sharing_as_list(io.text_output_stream::in,
-    var_table::in, tvarset::in, structure_sharing::in,
-    io::di, io::uo) is det.
-
-    % Print structure sharing domain.
-    %
-    % print_structure_sharing_domain(P, T, VerboseTop, MaybeThreshold,
-    %   Sharing, !IO):
-    %
-    % If VerboseTop = yes, then the full list of reasons why sharing is
-    % top is printed as "top([ ... Messages ... ])". If VerboseTop = no,
-    % then top is printed as "top".
-    % If a threshold is given, say N, then only the first N structure
-    % sharing pairs are printed.
-    %
-    % The output can later be parsed again only if VerboseTop = no and
-    % MaybeThreshold = no.
-    %
-:- pred print_structure_sharing_domain(io.text_output_stream::in,
-    var_name_source::in, tvarset::in, bool::in, maybe(int)::in,
-    structure_sharing_domain::in, io::di, io::uo) is det.
-
     % Print structure sharing or reuse information as a Mercury comment.
     % This is used in HLDS dumps.
     %
-:- pred dump_structure_sharing_domain(io.text_output_stream::in,
-    var_table::in, tvarset::in, structure_sharing_domain::in,
-    io::di, io::uo) is det.
+:- pred dump_structure_sharing_domain(S::in, var_name_source::in, tvarset::in,
+    structure_sharing_domain::in, U::di, U::uo) is det <= pt_output(S, U).
 
-:- pred print_interface_structure_sharing_domain(io.text_output_stream::in,
+:- pred format_interface_structure_sharing_domain(S::in,
     var_name_source::in, tvarset::in, maybe(structure_sharing_domain)::in,
-    io::di, io::uo) is det.
+    U::di, U::uo) is det <= pt_output(S, U).
 
     % Print structure sharing or reuse information as a Mercury comment.
     % This is used in HLDS dumps.
     %
-:- pred dump_structure_reuse_domain(io.text_output_stream::in,
-    var_table::in, tvarset::in, structure_reuse_domain::in,
-    io::di, io::uo) is det.
+:- pred dump_structure_reuse_domain(S::in, var_name_source::in, tvarset::in,
+    structure_reuse_domain::in, U::di, U::uo) is det <= pt_output(S, U).
 
-:- pred print_interface_maybe_structure_reuse_domain(io.text_output_stream::in,
+:- pred format_interface_maybe_structure_reuse_domain(S::in,
     var_name_source::in, tvarset::in, maybe(structure_reuse_domain)::in,
-    io::di, io::uo) is det.
+    U::di, U::uo) is det <= pt_output(S, U).
 
 %---------------------------------------------------------------------------%
 %
@@ -189,7 +130,6 @@
 
 :- import_module parse_tree.parse_sym_name.
 :- import_module parse_tree.parse_tree_out_cons_id.
-:- import_module parse_tree.parse_tree_out_info.
 :- import_module parse_tree.parse_tree_out_misc.
 :- import_module parse_tree.parse_tree_out_type.
 :- import_module parse_tree.parse_type_name.
@@ -197,6 +137,7 @@
 :- import_module parse_tree.prog_type_unify.
 :- import_module parse_tree.prog_util.
 
+:- import_module bool.
 :- import_module int.
 :- import_module pair.
 :- import_module require.
@@ -524,6 +465,12 @@ mer_type_to_typesel(Type, typesel(Type)).
 % Printing routines.
 %
 
+:- pred format_selector(S::in, tvarset::in, selector::in,
+    U::di, U::uo) is det <= pt_output(S, U).
+
+format_selector(S, TVarSet, Selector, !U) :-
+    add_string(selector_to_string(TVarSet, Selector), S, !U).
+
 :- func selector_to_string(tvarset, selector) = string.
 
 selector_to_string(TVarSet, Selector) = String :-
@@ -554,35 +501,58 @@ unit_selector_to_string(TVarSet, typesel(TypeSel)) =
         mercury_type_to_string(TVarSet, print_name_only, TypeSel),
         ")"]).
 
-print_selector(Stream, TVarSet, Selector, !IO) :-
-    io.write_string(Stream, selector_to_string(TVarSet, Selector), !IO).
+%---------------------%
 
-print_datastruct(Stream, VarNameSrc, TypeVarSet, DataStruct, !IO) :-
+:- pred format_datastructs(S::in, var_name_source::in, tvarset::in,
+    list(datastruct)::in, U::di, U::uo) is det <= pt_output(S, U).
+
+format_datastructs(S, VarNameSrc, TypeVarSet, Datastructs, !U) :-
+    add_string("[", S, !U),
+    list.gap_foldl(format_datastruct(S, VarNameSrc, TypeVarSet),
+        add_string(", ", S), Datastructs, !U),
+    add_string("]", S, !U).
+
+:- pred format_datastruct(S::in, var_name_source::in, tvarset::in,
+    datastruct::in, U::di, U::uo) is det <= pt_output(S, U).
+
+format_datastruct(S, VarNameSrc, TypeVarSet, DataStruct, !U) :-
     lookup_var_name_in_source(VarNameSrc, DataStruct ^ sc_var, VarName),
-    io.write_strings(Stream, ["cel(", VarName, ", "], !IO),
-    print_selector(Stream, TypeVarSet, DataStruct ^ sc_selector, !IO),
-    io.write_string(Stream, ")", !IO).
+    add_string("cel(", S, !U),
+    add_string(VarName, S, !U),
+    add_string(", ", S, !U),
+    format_selector(S, TypeVarSet, DataStruct ^ sc_selector, !U),
+    add_string(")", S, !U).
 
-print_datastructs(Stream, VarNameSrc, TypeVarSet, Datastructs, !IO) :-
-    io.write_string(Stream, "[", !IO),
-    % XXX Specifying the stream to print the items and the separators
-    % is suboptimal, but in the absence of active work on ctgc, we
-    % probably don't care.
-    io.write_list(Stream, Datastructs, ", ",
-        print_datastruct(Stream, VarNameSrc, TypeVarSet), !IO),
-    io.write_string(Stream, "]", !IO).
+%---------------------%
 
-print_structure_sharing_pair(Stream, VarNameSrc, TypeVarSet,
-        SharingPair, !IO) :-
+:- pred format_structure_sharing_pair(S::in, var_name_source::in, tvarset::in,
+    structure_sharing_pair::in, U::di, U::uo) is det <= pt_output(S, U).
+
+format_structure_sharing_pair(S, VarNameSrc, TypeVarSet, SharingPair, !U) :-
     SharingPair = D1 - D2,
-    io.write_string(Stream, "pair(", !IO),
-    print_datastruct(Stream, VarNameSrc, TypeVarSet, D1, !IO),
-    io.write_string(Stream, ", ", !IO),
-    print_datastruct(Stream, VarNameSrc, TypeVarSet, D2, !IO),
-    io.write_string(Stream, ")", !IO).
+    add_string("pair(", S, !U),
+    format_datastruct(S, VarNameSrc, TypeVarSet, D1, !U),
+    add_string(", ", S, !U),
+    format_datastruct(S, VarNameSrc, TypeVarSet, D2, !U),
+    add_string(")", S, !U).
 
-print_structure_sharing(Stream, VarNameSrc, TypeVarSet, MaybeLimit,
-        Start, Sep, End, SharingPairs0, !IO) :-
+    % Print list of structure sharing pairs.
+    %
+    % format_structure_sharing(Varset, TVarset, MaybeThreshold,
+    %   StartingString, Separator, EndingString, SharingPairs, !IO):
+    %
+    % Print the list of sharing pairs using StartString to precede the
+    % list, using EndString to end the list, using Separator to separate
+    % each of the sharing pairs occurring in the list. If a threshold, say
+    % N, is given, then only the first N pairs are printed (and "..."
+    % is shown if there are more than N pairs).
+    %
+:- pred format_structure_sharing(S::in, var_name_source::in, tvarset::in,
+    maybe(int)::in, string::in, string::in, string::in, structure_sharing::in,
+    U::di, U::uo) is det <= pt_output(S, U).
+
+format_structure_sharing(S, VarNameSrc, TypeVarSet, MaybeLimit,
+        Start, Sep, End, SharingPairs0, !U) :-
     (
         MaybeLimit = yes(Limit),
         list.take_upto(Limit, SharingPairs0, SharingPairs),
@@ -596,147 +566,163 @@ print_structure_sharing(Stream, VarNameSrc, TypeVarSet, MaybeLimit,
         SharingPairs = SharingPairs0,
         CompleteList = yes
     ),
-    io.write_string(Stream, Start, !IO),
-    % XXX Specifying the stream to print the items and the separators
-    % is suboptimal, but in the absence of active work on ctgc, we
-    % probably don't care.
-    io.write_list(Stream, SharingPairs, Sep,
-        print_structure_sharing_pair(Stream, VarNameSrc, TypeVarSet), !IO),
+    add_string(Start, S, !U),
+    list.gap_foldl(format_structure_sharing_pair(S, VarNameSrc, TypeVarSet),
+        add_string(Sep, S), SharingPairs, !U),
     (
         CompleteList = no,
-        io.write_string(Stream, Sep, !IO),
-        io.write_string(Stream, "...", !IO)
+        add_string(Sep, S, !U),
+        add_string("...", S, !U)
     ;
         CompleteList = yes
     ),
-    io.write_string(Stream, End, !IO).
+    add_string(End, S, !U).
 
-print_structure_sharing_as_list(Stream, VarTable, TypeVarSet,
-        SharingPairs, !IO) :-
-    print_structure_sharing(Stream, vns_var_table(VarTable), TypeVarSet, no,
-        "[", ",", "]", SharingPairs, !IO).
+    % Print complete list of structure sharing pairs as a list (using "[",
+    % ",", and "]"). This can later be parsed automatically.
+    %
+:- pred format_structure_sharing_as_list(S::in, var_name_source::in,
+    tvarset::in, structure_sharing::in, U::di, U::uo) is det
+    <= pt_output(S, U).
+:- pragma consider_used(pred(format_structure_sharing_as_list/6)).
 
-print_structure_sharing_domain(Stream, VarNameSrc, TypeVarSet, VerboseTop,
-        MaybeThreshold, SharingAs, !IO) :-
-    do_print_structure_sharing_domain(Stream, VarNameSrc, TypeVarSet,
-        VerboseTop, MaybeThreshold, "", ", ", "", SharingAs, !IO).
+format_structure_sharing_as_list(S, VarNameSrc, TypeVarSet,
+        SharingPairs, !U) :-
+    format_structure_sharing(S, VarNameSrc, TypeVarSet, no, "[", ",", "]",
+        SharingPairs, !U).
 
-:- pred do_print_structure_sharing_domain(io.text_output_stream::in,
-    var_name_source::in, tvarset::in, bool::in, maybe(int)::in,
-    string::in, string::in, string::in, structure_sharing_domain::in,
-    io::di, io::uo) is det.
+    % Print structure sharing domain.
+    %
+    % format_structure_sharing_domain(P, T, VerboseTop, MaybeThreshold,
+    %   Sharing, !IO):
+    %
+    % If VerboseTop = yes, then the full list of reasons why sharing is
+    % top is printed as "top([ ... Messages ... ])". If VerboseTop = no,
+    % then top is printed as "top".
+    % If a threshold is given, say N, then only the first N structure
+    % sharing pairs are printed.
+    %
+    % The output can later be parsed again only if VerboseTop = no and
+    % MaybeThreshold = no.
+    %
+:- pred format_structure_sharing_domain(S::in, var_name_source::in,
+    tvarset::in, bool::in, maybe(int)::in, structure_sharing_domain::in,
+    U::di, U::uo) is det <= pt_output(S, U).
 
-do_print_structure_sharing_domain(Stream, VarNameSrc, TypeVarSet, VerboseTop,
-        MaybeThreshold, Start, Separator, End, SharingAs, !IO) :-
-    io.write_string(Stream, Start, !IO),
+format_structure_sharing_domain(S, VarNameSrc, TypeVarSet, VerboseTop,
+        MaybeThreshold, SharingAs, !U) :-
+    do_format_structure_sharing_domain(S, VarNameSrc, TypeVarSet,
+        VerboseTop, MaybeThreshold, "", ", ", "", SharingAs, !U).
+
+:- pred do_format_structure_sharing_domain(S::in, var_name_source::in,
+    tvarset::in, bool::in, maybe(int)::in, string::in, string::in, string::in,
+    structure_sharing_domain::in, U::di, U::uo) is det <= pt_output(S, U).
+
+do_format_structure_sharing_domain(S, VarNameSrc, TypeVarSet, VerboseTop,
+        MaybeThreshold, Start, Separator, End, SharingAs, !U) :-
+    add_string(Start, S, !U),
     (
         SharingAs = structure_sharing_top(Msgs),
         (
             VerboseTop = no,
-            io.write_string(Stream, "top", !IO)
+            add_string("top", S, !U)
         ;
             VerboseTop = yes,
-            io.write_string(Stream, "top([", !IO),
-            % XXX Specifying the stream to print the items and the separators
-            % is suboptimal, but in the absence of active work on ctgc, we
-            % probably don't care.
-            io.write_list(Stream, set.to_sorted_list(Msgs), Separator,
-                io.write(Stream), !IO),
-            io.write_string(Stream, "])", !IO)
+            MsgStrs = list.map(string.string, set.to_sorted_list(Msgs)),
+            add_string("top([", S, !U),
+            add_list(add_string, Separator, MsgStrs, S, !U),
+            add_string("])", S, !U)
         )
     ;
         SharingAs = structure_sharing_bottom,
-        io.write_string(Stream, "bottom", !IO)
+        add_string("bottom", S, !U)
     ;
         SharingAs = structure_sharing_real(SharingPairs),
-        print_structure_sharing(Stream, VarNameSrc, TypeVarSet,
-            MaybeThreshold, "[", Separator, "]", SharingPairs, !IO)
+        format_structure_sharing(S, VarNameSrc, TypeVarSet,
+            MaybeThreshold, "[", Separator, "]", SharingPairs, !U)
     ),
-    io.write_string(Stream, End, !IO).
+    add_string(End, S, !U).
 
-dump_structure_sharing_domain(Stream, VarTable, TypeVarSet, SharingAs, !IO) :-
-    do_print_structure_sharing_domain(Stream, vns_var_table(VarTable),
-        TypeVarSet, yes, no, "%\t ", "\n%\t", "\n", SharingAs, !IO).
+dump_structure_sharing_domain(S, VarNameSrc, TypeVarSet, SharingAs, !U) :-
+    do_format_structure_sharing_domain(S, VarNameSrc, TypeVarSet, yes, no,
+        "%\t ", "\n%\t", "\n", SharingAs, !U).
 
-print_interface_structure_sharing_domain(Stream, VarNameSrc, TypeVarSet,
-        MaybeSharingAs, !IO) :-
+format_interface_structure_sharing_domain(S, VarNameSrc, TypeVarSet,
+        MaybeSharingAs, !U) :-
     (
         MaybeSharingAs = no,
-        io.write_string(Stream, "not_available", !IO)
+        add_string("not_available", S, !U)
     ;
         MaybeSharingAs = yes(SharingAs),
-        io.write_string(Stream, "yes(", !IO),
-        print_structure_sharing_domain(Stream, VarNameSrc, TypeVarSet,
-            no, no, SharingAs, !IO),
-        io.write_string(Stream, ")", !IO)
+        add_string("yes(", S, !U),
+        format_structure_sharing_domain(S, VarNameSrc, TypeVarSet,
+            no, no, SharingAs, !U),
+        add_string(")", S, !U)
     ).
 
-dump_structure_reuse_domain(Stream, VarTable, TypeVarSet, ReuseAs, !IO) :-
-    print_structure_reuse_domain(Stream, vns_var_table(VarTable), TypeVarSet,
-        ReuseAs, "%\t ", ", \n%\t ", "\n", !IO).
+dump_structure_reuse_domain(S, VarNameSrc, TypeVarSet, ReuseAs, !U) :-
+    format_structure_reuse_domain(S, VarNameSrc, TypeVarSet, ReuseAs,
+        "%\t ", ", \n%\t ", "\n", !U).
 
-:- pred print_structure_reuse_condition(io.text_output_stream::in,
-    var_name_source::in, tvarset::in, structure_reuse_condition::in,
-    io::di, io::uo) is det.
+:- pred format_structure_reuse_condition(S::in, var_name_source::in,
+    tvarset::in, structure_reuse_condition::in, U::di, U::uo) is det
+    <= pt_output(S, U).
 
-print_structure_reuse_condition(Stream, VarNameSrc, TypeVarSet,
-        ReuseCond, !IO) :-
+format_structure_reuse_condition(S, VarNameSrc, TypeVarSet, ReuseCond, !U) :-
     ReuseCond = structure_reuse_condition(DeadNodes, InUseNodes, Sharing),
     DeadNodesList = set.to_sorted_list(DeadNodes),
-    io.write_string(Stream, "condition(", !IO),
-    print_datastructs(Stream, VarNameSrc, TypeVarSet, DeadNodesList, !IO),
-    io.write_string(Stream, ", ", !IO),
-    print_datastructs(Stream, VarNameSrc, TypeVarSet, InUseNodes, !IO),
-    io.write_string(Stream, ", ", !IO),
-    print_structure_sharing_domain(Stream, VarNameSrc, TypeVarSet, no, no,
-        Sharing, !IO),
-    io.write_string(Stream, ")", !IO).
+    add_string("condition(", S, !U),
+    format_datastructs(S, VarNameSrc, TypeVarSet, DeadNodesList, !U),
+    add_string(", ", S, !U),
+    format_datastructs(S, VarNameSrc, TypeVarSet, InUseNodes, !U),
+    add_string(", ", S, !U),
+    format_structure_sharing_domain(S, VarNameSrc, TypeVarSet, no, no,
+        Sharing, !U),
+    add_string(")", S, !U).
 
-:- pred print_structure_reuse_conditions(io.text_output_stream::in,
-    var_name_source::in, tvarset::in, string::in,
-    structure_reuse_conditions::in, io::di, io::uo) is det.
+:- pred format_structure_reuse_conditions(S::in, var_name_source::in,
+    tvarset::in, string::in, list(structure_reuse_condition)::in,
+    U::di, U::uo) is det <= pt_output(S, U).
 
-print_structure_reuse_conditions(Stream, VarNameSrc, TypeVarSet, Separator,
-        ReuseConds, !IO) :-
-    % XXX Specifying the stream to print the items and the separators
-    % is suboptimal, but in the absence of active work on ctgc, we
-    % probably don't care.
-    io.write_list(Stream, ReuseConds, Separator,
-        print_structure_reuse_condition(Stream, VarNameSrc, TypeVarSet), !IO).
+format_structure_reuse_conditions(S, VarNameSrc, TypeVarSet, Separator,
+        ReuseConds, !U) :-
+    list.gap_foldl(
+        format_structure_reuse_condition(S, VarNameSrc, TypeVarSet),
+        add_string(Separator, S), ReuseConds, !U).
 
-:- pred print_structure_reuse_domain(io.text_output_stream::in,
-    var_name_source::in, tvarset::in, structure_reuse_domain::in,
-    string::in, string::in, string::in, io::di, io::uo) is det.
+:- pred format_structure_reuse_domain(S::in, var_name_source::in, tvarset::in,
+    structure_reuse_domain::in, string::in, string::in, string::in,
+    U::di, U::uo) is det <= pt_output(S, U).
 
-print_structure_reuse_domain(Stream, VarNameSrc, TypeVarSet, ReuseDomain,
-        Start, Separator, End, !IO) :-
-    io.write_string(Stream, Start, !IO),
+format_structure_reuse_domain(S, VarNameSrc, TypeVarSet, ReuseDomain,
+        Start, Separator, End, !U) :-
+    add_string(Start, S, !U),
     (
         ReuseDomain = has_no_reuse,
-        io.write_string(Stream, "has_no_reuse", !IO)
+        add_string("has_no_reuse", S, !U)
     ;
         ReuseDomain = has_only_unconditional_reuse,
-        io.write_string(Stream, "has_only_unconditional_reuse", !IO)
+        add_string("has_only_unconditional_reuse", S, !U)
     ;
         ReuseDomain = has_conditional_reuse(ReuseConditions),
-        io.write_string(Stream, "has_conditional_reuse([", !IO),
-        print_structure_reuse_conditions(Stream, VarNameSrc, TypeVarSet,
-            Separator, ReuseConditions, !IO),
-        io.write_string(Stream, "])", !IO)
+        add_string("has_conditional_reuse([", S, !U),
+        format_structure_reuse_conditions(S, VarNameSrc, TypeVarSet,
+            Separator, ReuseConditions, !U),
+        add_string("])", S, !U)
     ),
-    io.write_string(Stream, End, !IO).
+    add_string(End, S, !U).
 
-print_interface_maybe_structure_reuse_domain(Stream, VarNameSrc, TypeVarSet,
-        MaybeReuseDomain, !IO) :-
+format_interface_maybe_structure_reuse_domain(S, VarNameSrc, TypeVarSet,
+        MaybeReuseDomain, !U) :-
     (
         MaybeReuseDomain = no,
-        io.write_string(Stream, "not_available", !IO)
+        add_string("not_available", S, !U)
     ;
         MaybeReuseDomain = yes(ReuseDomain),
-        io.write_string(Stream, "yes(", !IO),
-        print_structure_reuse_domain(Stream, VarNameSrc, TypeVarSet,
-            ReuseDomain, "", ", ", "", !IO),
-        io.write_string(Stream, ")", !IO)
+        add_string("yes(", S, !U),
+        format_structure_reuse_domain(S, VarNameSrc, TypeVarSet,
+            ReuseDomain, "", ", ", "", !U),
+        add_string(")", S, !U)
     ).
 
 %---------------------------------------------------------------------------%
@@ -761,6 +747,7 @@ rename_datastruct(Dict, Subst, !Data) :-
     map.lookup(Dict, Var0, Var),
     rename_selector(Subst, Sel0, Sel),
     !:Data = selected_cel(Var, Sel).
+
 rename_datastruct(Dict, Subst, Data0) = Data :-
     rename_datastruct(Dict, Subst, Data0, Data).
 
@@ -769,6 +756,7 @@ rename_structure_sharing_pair(Dict, TypeSubst, !Pair) :-
     rename_datastruct(Dict, TypeSubst, D1, Da),
     rename_datastruct(Dict, TypeSubst, D2, Db),
     !:Pair = Da - Db.
+
 rename_structure_sharing(Dict, TypeSubst, !List) :-
     list.map(rename_structure_sharing_pair(Dict, TypeSubst), !List).
 

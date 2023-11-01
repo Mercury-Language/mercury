@@ -89,7 +89,10 @@
     output_lang::in, inst_varset::in, sym_name::in,
     list(mer_mode)::in, maybe(mer_inst)::in, maybe(determinism)::in,
     io::di, io::uo) is det.
-:- pred mercury_format_pred_or_func_mode_decl(output_lang::in,
+:- pred mercury_format_pred_mode_decl(output_lang::in,
+    inst_varset::in, sym_name::in, list(mer_mode)::in, maybe(mer_inst)::in,
+    maybe(determinism)::in, S::in, U::di, U::uo) is det <= pt_output(S, U).
+:- pred mercury_format_pred_or_func_mode_decl_gen(output_lang::in,
     inst_varset::in, sym_name::in, list(mer_mode)::in, maybe(mer_inst)::in,
     maybe(determinism)::in, string::in, string::in,
     S::in, U::di, U::uo) is det <= pt_output(S, U).
@@ -104,6 +107,9 @@
     io::di, io::uo) is det.
 :- pred mercury_format_func_mode_decl(output_lang::in, inst_varset::in,
     sym_name::in, list(mer_mode)::in, mer_mode::in, maybe(determinism)::in,
+    S::in, U::di, U::uo) is det <= pt_output(S, U).
+:- pred mercury_format_func_mode_decl_gen(output_lang::in, inst_varset::in,
+    sym_name::in, list(mer_mode)::in, mer_mode::in, maybe(determinism)::in,
     string::in, string::in, S::in, U::di, U::uo) is det <= pt_output(S, U).
 
     % XXX Document me.
@@ -113,6 +119,9 @@
 :- pred mercury_output_mode_subdecl(io.text_output_stream::in,
     output_lang::in, pred_or_func::in, inst_varset::in, sym_name::in,
     list(mer_mode)::in, maybe(determinism)::in, io::di, io::uo) is det.
+:- pred mercury_format_mode_subdecl(output_lang::in, pred_or_func::in,
+    inst_varset::in, sym_name::in, list(mer_mode)::in, maybe(determinism)::in,
+    S::in, U::di, U::uo) is det <= pt_output(S, U).
 
     % XXX Document me.
     %
@@ -121,6 +130,9 @@
 :- pred mercury_output_pred_mode_subdecl(io.text_output_stream::in,
     output_lang::in, inst_varset::in, sym_name::in,
     list(mer_mode)::in, maybe(determinism)::in, io::di, io::uo) is det.
+:- pred mercury_format_pred_or_func_mode_subdecl(output_lang::in,
+    inst_varset::in, sym_name::in, list(mer_mode)::in, maybe(mer_inst)::in,
+    maybe(determinism)::in, S::in, U::di, U::uo) is det <= pt_output(S, U).
 
     % XXX Document me.
     %
@@ -130,6 +142,9 @@
     output_lang::in, inst_varset::in, sym_name::in,
     list(mer_mode)::in, mer_mode::in, maybe(determinism)::in,
     io::di, io::uo) is det.
+:- pred mercury_format_func_mode_subdecl(output_lang::in, inst_varset::in,
+    sym_name::in, list(mer_mode)::in, mer_mode::in, maybe(determinism)::in,
+    S::in, U::di, U::uo) is det <= pt_output(S, U).
 
 %---------------------------------------------------------------------------%
 
@@ -162,7 +177,7 @@ mercury_format_pred_or_func_decl(Lang, VarNamePrint, TypeVarSet, InstVarSet,
         mercury_format_pred_or_func_type_2(TypeVarSet, VarNamePrint,
             PredOrFunc, ExistQVars, PredName, Types, MaybeWithType, MaybeDet1,
             Purity, ClassContext, StartString, Separator, S, !U),
-        mercury_format_pred_or_func_mode_decl(Lang, InstVarSet, PredName,
+        mercury_format_pred_or_func_mode_decl_gen(Lang, InstVarSet, PredName,
             Modes, MaybeWithInst, MaybeDet0, StartString, Terminator, S, !U)
     else
         mercury_format_pred_or_func_type_2(TypeVarSet, VarNamePrint,
@@ -184,7 +199,7 @@ mercury_format_func_decl(Lang, VarNamePrint, TypeVarSet, InstVarSet,
         mercury_format_func_type_2(TypeVarSet, VarNamePrint,
             ExistQVars, FuncName, Types, RetType, no, Purity,
             ClassContext, StartString, Separator, S, !U),
-        mercury_format_func_mode_decl(Lang, InstVarSet, FuncName, Modes,
+        mercury_format_func_mode_decl_gen(Lang, InstVarSet, FuncName, Modes,
             RetMode, MaybeDet, StartString, Terminator, S, !U)
     else
         mercury_format_func_type_2(TypeVarSet, VarNamePrint,
@@ -361,17 +376,21 @@ mercury_format_func_type_2(VarSet, VarNamePrint, ExistQVars, FuncName, Types,
 mercury_pred_mode_decl_to_string(Lang, VarSet, PredName, Modes,
         MaybeWithInst, MaybeDet) = Str :-
     State0 = string.builder.init,
-    mercury_format_pred_or_func_mode_decl(Lang, VarSet, PredName, Modes,
-        MaybeWithInst, MaybeDet, ":- ", ".\n",
-        string.builder.handle, State0, State),
+    mercury_format_pred_mode_decl(Lang, VarSet, PredName, Modes,
+        MaybeWithInst, MaybeDet, string.builder.handle, State0, State),
     Str = string.builder.to_string(State).
 
 mercury_output_pred_mode_decl(Stream, Lang, VarSet, PredName, Modes,
         MaybeWithInst, MaybeDet, !IO) :-
-    mercury_format_pred_or_func_mode_decl(Lang, VarSet, PredName, Modes,
-        MaybeWithInst, MaybeDet, ":- ", ".\n", Stream, !IO).
+    mercury_format_pred_mode_decl(Lang, VarSet, PredName, Modes,
+        MaybeWithInst, MaybeDet, Stream, !IO).
 
-mercury_format_pred_or_func_mode_decl(Lang, VarSet, PredName, Modes,
+mercury_format_pred_mode_decl(Lang, VarSet, PredName, Modes,
+        MaybeWithInst, MaybeDet, S, !U) :-
+    mercury_format_pred_or_func_mode_decl_gen(Lang, VarSet, PredName, Modes,
+        MaybeWithInst, MaybeDet, ":- ", ".\n", S, !U).
+
+mercury_format_pred_or_func_mode_decl_gen(Lang, VarSet, PredName, Modes,
         MaybeWithInst, MaybeDet, StartString, Separator, S, !U) :-
     add_string(StartString, S, !U),
     add_string("mode ", S, !U),
@@ -385,15 +404,20 @@ mercury_func_mode_decl_to_string(Lang, VarSet, FuncName, Modes, RetMode,
         MaybeDet) = Str :-
     State0 = string.builder.init,
     mercury_format_func_mode_decl(Lang, VarSet, FuncName, Modes, RetMode,
-        MaybeDet, ":- ", ".\n", string.builder.handle, State0, State),
+        MaybeDet, string.builder.handle, State0, State),
     Str = string.builder.to_string(State).
 
 mercury_output_func_mode_decl(Stream, Lang, VarSet, FuncName, Modes, RetMode,
         MaybeDet, !IO) :-
     mercury_format_func_mode_decl(Lang, VarSet, FuncName, Modes, RetMode,
-        MaybeDet, ":- ", ".\n", Stream, !IO).
+        MaybeDet, Stream, !IO).
 
 mercury_format_func_mode_decl(Lang, VarSet, FuncName, Modes, RetMode,
+        MaybeDet, S, !U) :-
+    mercury_format_func_mode_decl_gen(Lang, VarSet, FuncName, Modes, RetMode,
+        MaybeDet, ":- ", ".\n", S, !U).
+
+mercury_format_func_mode_decl_gen(Lang, VarSet, FuncName, Modes, RetMode,
         MaybeDet, StartString, Separator, S, !U) :-
     add_string(StartString, S, !U),
     add_string("mode ", S, !U),
@@ -414,10 +438,6 @@ mercury_output_mode_subdecl(Stream, Lang, PredOrFunc, InstVarSet, Name, Modes,
         MaybeDet, !IO) :-
     mercury_format_mode_subdecl(Lang, PredOrFunc, InstVarSet, Name, Modes,
         MaybeDet, Stream, !IO).
-
-:- pred mercury_format_mode_subdecl(output_lang::in, pred_or_func::in,
-    inst_varset::in, sym_name::in, list(mer_mode)::in, maybe(determinism)::in,
-    S::in, U::di, U::uo) is det <= pt_output(S, U).
 
 mercury_format_mode_subdecl(Lang, PredOrFunc, InstVarSet, Name, Modes,
         MaybeDet, S, !U) :-
@@ -445,10 +465,6 @@ mercury_output_pred_mode_subdecl(Stream, Lang, VarSet, PredName, Modes,
         MaybeDet, !IO) :-
     mercury_format_pred_or_func_mode_subdecl(Lang, VarSet, PredName,
         Modes, no, MaybeDet, Stream, !IO).
-
-:- pred mercury_format_pred_or_func_mode_subdecl(output_lang::in,
-    inst_varset::in, sym_name::in, list(mer_mode)::in, maybe(mer_inst)::in,
-    maybe(determinism)::in, S::in, U::di, U::uo) is det <= pt_output(S, U).
 
 mercury_format_pred_or_func_mode_subdecl(Lang, InstVarSet, PredName, Modes,
         MaybeWithInst, MaybeDet, S, !U) :-
@@ -485,10 +501,6 @@ mercury_output_func_mode_subdecl(Stream, Lang, VarSet, FuncName,
         Modes, RetMode, MaybeDet, !IO) :-
     mercury_format_func_mode_subdecl(Lang, VarSet, FuncName, Modes, RetMode,
         MaybeDet, Stream, !IO).
-
-:- pred mercury_format_func_mode_subdecl(output_lang::in, inst_varset::in,
-    sym_name::in, list(mer_mode)::in, mer_mode::in, maybe(determinism)::in,
-    S::in, U::di, U::uo) is det <= pt_output(S, U).
 
 mercury_format_func_mode_subdecl(Lang, InstVarSet, FuncName, Modes, RetMode,
         MaybeDet, S, !U) :-

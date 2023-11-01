@@ -102,6 +102,8 @@
     %
 :- pred mercury_output_state_vars(varset(T)::in, var_name_print::in,
     list(var(T))::in, io.text_output_stream::in, io::di, io::uo) is det.
+:- pred mercury_format_state_vars(varset(T)::in, var_name_print::in,
+    list(var(T))::in, S::in, U::di, U::uo) is det <= pt_output(S, U).
 
 %---------------------------------------------------------------------------%
 
@@ -127,6 +129,8 @@
     %
 :- pred write_context(io.text_output_stream::in, prog_context::in,
     io::di, io::uo) is det.
+:- pred format_context(S::in, prog_context::in, U::di, U::uo) is det
+    <= pt_output(S, U).
 
 %---------------------------------------------------------------------------%
 %
@@ -138,6 +142,8 @@
 
 :- pred mercury_output_newline(int::in, io.text_output_stream::in,
     io::di, io::uo) is det.
+:- pred mercury_format_newline(int::in, S::in, U::di, U::uo) is det
+    <= pt_output(S, U).
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -322,15 +328,18 @@ mercury_format_quantifier(TypeVarSet, VarNamePrint, ExistQVars, S, !U) :-
 %---------------------------------------------------------------------------%
 
 mercury_output_state_vars(VarSet, VarNamePrint, StateVars, Stream, !IO) :-
-    write_out_list(mercury_output_state_var(VarSet, VarNamePrint),
-        ", ", StateVars, Stream, !IO).
+    mercury_format_state_vars(VarSet, VarNamePrint, StateVars, Stream, !IO).
 
-:- pred mercury_output_state_var(varset(T)::in, var_name_print::in, var(T)::in,
-    io.text_output_stream::in, io::di, io::uo) is det.
+mercury_format_state_vars(VarSet, VarNamePrint, StateVars, S, !U) :-
+    list.gap_foldl(mercury_format_state_var(VarSet, VarNamePrint, S),
+        add_string(", ", S), StateVars, !U).
 
-mercury_output_state_var(VarSet, VarNamePrint, Var, Stream, !IO) :-
-    io.write_string(Stream, "!", !IO),
-    mercury_output_var_vs(VarSet, VarNamePrint, Var, Stream, !IO).
+:- pred mercury_format_state_var(varset(T)::in, var_name_print::in, S::in,
+    var(T)::in, U::di, U::uo) is det <= pt_output(S, U).
+
+mercury_format_state_var(VarSet, VarNamePrint, S, Var, !U) :-
+    add_string("!", S, !U),
+    mercury_format_var_vs(VarSet, VarNamePrint, Var, S, !U).
 
 %---------------------------------------------------------------------------%
 
@@ -358,6 +367,10 @@ write_context(Stream, Context, !IO) :-
     context_to_string(Context, ContextMessage),
     io.write_string(Stream, ContextMessage, !IO).
 
+format_context(S, Context, !U) :-
+    context_to_string(Context, ContextMessage),
+    add_string(ContextMessage, S, !U).
+
 %---------------------------------------------------------------------------%
 
 mercury_format_tabs(Indent, S, !U) :-
@@ -371,8 +384,11 @@ mercury_format_tabs(Indent, S, !U) :-
 %---------------------------------------------------------------------------%
 
 mercury_output_newline(Indent, Stream, !IO) :-
-    io.write_char(Stream, '\n', !IO),
-    mercury_format_tabs(Indent, Stream, !IO).
+    mercury_format_newline(Indent, Stream, !IO).
+
+mercury_format_newline(Indent, S, !U) :-
+    add_char('\n', S, !U),
+    mercury_format_tabs(Indent, S, !U).
 
 %---------------------------------------------------------------------------%
 :- end_module parse_tree.parse_tree_out_misc.

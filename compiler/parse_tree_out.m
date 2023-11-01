@@ -61,10 +61,14 @@
 
 :- pred mercury_output_parse_tree_src(merc_out_info::in,
     io.text_output_stream::in, parse_tree_src::in, io::di, io::uo) is det.
+:- pred mercury_format_parse_tree_src(merc_out_info::in,
+    S::in, parse_tree_src::in, U::di, U::uo) is det <= pt_output(S, U).
 
 :- pred mercury_output_parse_tree_module_src(merc_out_info::in,
     io.text_output_stream::in, parse_tree_module_src::in,
     io::di, io::uo) is det.
+:- pred mercury_format_parse_tree_module_src(merc_out_info::in, S::in,
+    parse_tree_module_src::in, U::di, U::uo) is det <= pt_output(S, U).
 
 :- pred mercury_output_ancestor_int_spec(merc_out_info::in,
     io.text_output_stream::in, ancestor_int_spec::in, io::di, io::uo) is det.
@@ -90,6 +94,20 @@
 :- pred mercury_output_parse_tree_int3(merc_out_info::in,
     io.text_output_stream::in, parse_tree_int3::in, io::di, io::uo) is det.
 
+:- func parse_tree_int0_to_string(merc_out_info, parse_tree_int0) = string.
+:- func parse_tree_int1_to_string(merc_out_info, parse_tree_int1) = string.
+:- func parse_tree_int2_to_string(merc_out_info, parse_tree_int2) = string.
+:- func parse_tree_int3_to_string(merc_out_info, parse_tree_int3) = string.
+
+:- pred mercury_format_parse_tree_int0(merc_out_info::in, S::in,
+    parse_tree_int0::in, U::di, U::uo) is det <= pt_output(S, U).
+:- pred mercury_format_parse_tree_int1(merc_out_info::in, S::in,
+    parse_tree_int1::in, U::di, U::uo) is det <= pt_output(S, U).
+:- pred mercury_format_parse_tree_int2(merc_out_info::in, S::in,
+    parse_tree_int2::in, U::di, U::uo) is det <= pt_output(S, U).
+:- pred mercury_format_parse_tree_int3(merc_out_info::in, S::in,
+    parse_tree_int3::in, U::di, U::uo) is det <= pt_output(S, U).
+
 :- pred mercury_output_parse_tree_plain_opt(merc_out_info::in,
     io.text_output_stream::in, parse_tree_plain_opt::in,
     io::di, io::uo) is det.
@@ -97,33 +115,40 @@
     io.text_output_stream::in, parse_tree_trans_opt::in,
     io::di, io::uo) is det.
 
+:- pred mercury_format_parse_tree_plain_opt(merc_out_info::in, S::in,
+    parse_tree_plain_opt::in, U::di, U::uo) is det <= pt_output(S, U).
+:- pred mercury_format_parse_tree_trans_opt(merc_out_info::in, S::in,
+    parse_tree_trans_opt::in, U::di, U::uo) is det <= pt_output(S, U).
+
 %---------------------------------------------------------------------------%
 
     % mercury_output_module_decl(Stream, Decl, ModuleName, !IO)
     %
 :- pred mercury_output_module_decl(io.text_output_stream::in,
     string::in, module_name::in, io::di, io::uo) is det.
+:- pred mercury_format_module_decl(S::in, string::in, module_name::in,
+    U::di, U::uo) is det <= pt_output(S, U).
 
 %---------------------------------------------------------------------------%
 
-:- pred mercury_output_item(merc_out_info::in, io.text_output_stream::in,
-    item::in, io::di, io::uo) is det.
+:- pred mercury_format_item(merc_out_info::in, S::in, item::in,
+    U::di, U::uo) is det <= pt_output(S, U).
 
 %---------------------------------------------------------------------------%
 %
 % Output some components of type definitions.
 %
 
-:- pred mercury_output_item_type_defn(merc_out_info::in,
-    io.text_output_stream::in, item_type_defn_info::in, io::di, io::uo) is det.
+:- pred mercury_format_item_type_defn(merc_out_info::in, S::in,
+    item_type_defn_info::in, U::di, U::uo) is det <= pt_output(S, U).
 
-:- pred mercury_output_where_attributes(merc_out_info::in, tvarset::in,
+:- pred mercury_format_where_attributes(merc_out_info::in, tvarset::in,
     maybe(solver_type_details)::in, maybe_canonical::in,
-    maybe(list(sym_name_arity))::in, io.text_output_stream::in,
-    io::di, io::uo) is det.
+    maybe(list(sym_name_arity))::in, S::in, U::di, U::uo) is det
+    <= pt_output(S, U).
 
-:- pred mercury_output_ctor(tvarset::in, constructor::in,
-    io.text_output_stream::in, io::di, io::uo) is det.
+:- pred mercury_format_ctor(tvarset::in, constructor::in,
+    S::in, U::di, U::uo) is det <= pt_output(S, U).
 
 :- pred maybe_cons_exist_constraints_to_prefix_suffix(tvarset::in,
     string::in, string::in, maybe_cons_exist_constraints::in,
@@ -134,19 +159,19 @@
 
 %---------------------------------------------------------------------------%
 
-:- pred mercury_output_item_inst_defn(merc_out_info::in,
-    io.text_output_stream::in, item_inst_defn_info::in, io::di, io::uo) is det.
-:- pred mercury_output_item_mode_defn(merc_out_info::in,
-    io.text_output_stream::in, item_mode_defn_info::in, io::di, io::uo) is det.
-:- pred mercury_output_item_pred_decl(output_lang::in, var_name_print::in,
-    io.text_output_stream::in, item_pred_decl_info::in, io::di, io::uo) is det.
-:- pred mercury_output_item_mode_decl(merc_out_info::in,
-    io.text_output_stream::in, item_mode_decl_info::in, io::di, io::uo) is det.
+:- pred mercury_format_item_inst_defn(merc_out_info::in, S::in,
+    item_inst_defn_info::in, U::di, U::uo) is det <= pt_output(S, U).
+:- pred mercury_format_item_mode_defn(merc_out_info::in, S::in,
+    item_mode_defn_info::in, U::di, U::uo) is det <= pt_output(S, U).
+:- pred mercury_format_item_pred_decl(output_lang::in, var_name_print::in,
+    S::in, item_pred_decl_info::in, U::di, U::uo) is det <= pt_output(S, U).
+:- pred mercury_format_item_mode_decl(merc_out_info::in,
+    S::in, item_mode_decl_info::in, U::di, U::uo) is det <= pt_output(S, U).
 :- pred mercury_format_item_foreign_enum(merc_out_info::in, S::in,
     item_foreign_enum_info::in, U::di, U::uo) is det <= pt_output(S, U).
 
-:- pred mercury_output_item_typeclass(merc_out_info::in,
-    io.text_output_stream::in, item_typeclass_info::in, io::di, io::uo) is det.
+:- pred mercury_format_item_typeclass(merc_out_info::in,
+    S::in, item_typeclass_info::in, U::di, U::uo) is det <= pt_output(S, U).
 :- pred mercury_format_item_abstract_typeclass(merc_out_info::in,
     S::in, item_abstract_typeclass_info::in, U::di, U::uo) is det
     <= pt_output(S, U).
@@ -156,8 +181,8 @@
 % Output some components of an instance definition.
 %
 
-:- pred mercury_output_item_instance(merc_out_info::in,
-    io.text_output_stream::in, item_instance_info::in, io::di, io::uo) is det.
+:- pred mercury_format_item_instance(merc_out_info::in, S::in,
+    item_instance_info::in, U::di, U::uo) is det <= pt_output(S, U).
 
 :- func item_abstract_instance_to_string(merc_out_info,
     item_abstract_instance_info) = string.
@@ -165,8 +190,8 @@
     S::in, item_abstract_instance_info::in, U::di, U::uo) is det
     <= pt_output(S, U).
 
-:- pred mercury_output_instance_method(instance_method::in,
-    io.text_output_stream::in, io::di, io::uo) is det.
+:- pred mercury_format_instance_method(instance_method::in, S::in,
+    U::di, U::uo) is det <= pt_output(S, U).
 
 %---------------------------------------------------------------------------%
 %
@@ -175,13 +200,15 @@
 
 :- pred mercury_output_fim_spec(io.text_output_stream::in, fim_spec::in,
     io::di, io::uo) is det.
+:- pred mercury_format_fim_spec(S::in, fim_spec::in, U::di, U::uo) is det
+    <= pt_output(S, U).
 
 %---------------------------------------------------------------------------%
 
     % Print a blank line if the given list is not empty.
     %
-:- pred maybe_write_block_start_blank_line(io.text_output_stream::in,
-    list(T)::in, io::di, io::uo) is det.
+:- pred maybe_format_block_start_blank_line(S::in, list(T)::in,
+    U::di, U::uo) is det <= pt_output(S, U).
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -321,13 +348,22 @@ output_some_parse_tree(ProgressStream, Globals,
 %---------------------------------------------------------------------------%
 
 mercury_output_parse_tree_src(Info, Stream, ParseTree, !IO) :-
+    mercury_format_parse_tree_src(Info, Stream, ParseTree, !IO).
+
+mercury_format_parse_tree_src(Info, S, ParseTree, !U) :-
     ParseTree = parse_tree_src(ModuleName, _Context, ModuleComponentsCord),
-    mercury_output_module_decl(Stream, "module", ModuleName, !IO),
+    mercury_format_module_decl(S, "module", ModuleName, !U),
     ModuleComponents = cord.list(ModuleComponentsCord),
-    mercury_output_module_components(Info, Stream, no, ModuleComponents, !IO),
-    mercury_output_module_decl(Stream, "end_module", ModuleName, !IO).
+    mercury_format_module_components(Info, S, no, ModuleComponents, !U),
+    mercury_format_module_decl(S, "end_module", ModuleName, !U).
+
+%---------------------------------------------------------------------------%
 
 mercury_output_parse_tree_module_src(Info, Stream, ParseTreeModuleSrc, !IO) :-
+    mercury_format_parse_tree_module_src(Info, Stream,
+        ParseTreeModuleSrc, !IO).
+
+mercury_format_parse_tree_module_src(Info, S, ParseTreeModuleSrc, !U) :-
     ParseTreeModuleSrc = parse_tree_module_src(ModuleName, _ModuleContext,
         InclMap, ImportUseMap,
         IntFIMSpecMap, ImpFIMSpecMap, IntSelfFIMLangs, ImpSelfFIMLangs,
@@ -359,160 +395,164 @@ mercury_output_parse_tree_module_src(Info, Stream, ParseTreeModuleSrc, !IO) :-
     mode_ctor_checked_map_get_src_defns(ModeCtorCheckedMap,
         IntModeDefns, ImpModeDefns),
 
-    io.write_string(Stream, "% module src\n", !IO),
-    mercury_output_module_decl(Stream, "module", ModuleName, !IO),
+    add_string("% module src\n", S, !U),
+    mercury_format_module_decl(S, "module", ModuleName, !U),
 
-    io.write_string(Stream, "% include_module_map\n", !IO),
-    map.foldl(write_include_module_map_entry(Stream), InclMap, !IO),
-    io.write_string(Stream, "% section_import_and_or_use_map\n", !IO),
-    map.foldl(write_import_use_map_entry(Stream), ImportUseMap, !IO),
+    add_string("% include_module_map\n", S, !U),
+    map.foldl(format_include_module_map_entry(S), InclMap, !U),
+    add_string("% section_import_and_or_use_map\n", S, !U),
+    map.foldl(format_import_use_map_entry(S), ImportUseMap, !U),
 
-    mercury_output_section_marker(Stream, ms_interface, !IO),
-    set.foldl(mercury_output_module_decl(Stream, "include_module"),
-        IntInclModules, !IO),
-    list.foldl(mercury_output_module_decl(Stream, "import_module"),
-        map.keys(IntImportMap0), !IO),
-    list.foldl(mercury_output_module_decl(Stream, "use_module"),
-        map.keys(IntUseMap0), !IO),
-    list.foldl(mercury_output_fim_spec(Stream), map.keys(IntFIMSpecMap), !IO),
+    mercury_format_section_marker(S, ms_interface, !U),
+    set.foldl(mercury_format_module_decl(S, "include_module"),
+        IntInclModules, !U),
+    list.foldl(mercury_format_module_decl(S, "import_module"),
+        map.keys(IntImportMap0), !U),
+    list.foldl(mercury_format_module_decl(S, "use_module"),
+        map.keys(IntUseMap0), !U),
+    list.foldl(mercury_format_fim_spec(S), map.keys(IntFIMSpecMap), !U),
     IntSelfFIMLangStrs = list.map(mercury_foreign_language_to_string,
         set.to_sorted_list(IntSelfFIMLangs)),
     ImpSelfFIMLangStrs = list.map(mercury_foreign_language_to_string,
         set.to_sorted_list(ImpSelfFIMLangs)),
-    io.format(Stream,
-        "%% implicit interface FIM self-import languages: %s\n",
-       [s(string.join_list(", ", IntSelfFIMLangStrs))], !IO),
-    io.format(Stream,
-        "%% implicit implementation FIM self-import languages: %s\n",
-       [s(string.join_list(", ", ImpSelfFIMLangStrs))], !IO),
-    list.foldl(mercury_output_item_type_defn(Info, Stream),
-        IntTypeDefns, !IO),
-    list.foldl(mercury_output_item_inst_defn(Info, Stream),
-        IntInstDefns, !IO),
-    list.foldl(mercury_output_item_mode_defn(Info, Stream),
-        IntModeDefns, !IO),
-    list.foldl(mercury_output_item_typeclass(Info, Stream),
-        IntTypeClasses, !IO),
-    list.foldl(mercury_output_item_instance(Info, Stream),
-        IntInstances, !IO),
+    add_string("% implicit interface FIM self-import languages: ", S, !U),
+    add_string(string.join_list(", ", IntSelfFIMLangStrs), S, !U),
+    add_string("\n", S, !U),
+    add_string("% implicit implementation FIM self-import languages: ", S, !U),
+    add_string(string.join_list(", ", ImpSelfFIMLangStrs), S, !U),
+    add_string("\n", S, !U),
+    list.foldl(mercury_format_item_type_defn(Info, S),
+        IntTypeDefns, !U),
+    list.foldl(mercury_format_item_inst_defn(Info, S),
+        IntInstDefns, !U),
+    list.foldl(mercury_format_item_mode_defn(Info, S),
+        IntModeDefns, !U),
+    list.foldl(mercury_format_item_typeclass(Info, S),
+        IntTypeClasses, !U),
+    list.foldl(mercury_format_item_instance(Info, S),
+        IntInstances, !U),
     list.foldl(
-        mercury_output_item_pred_decl_mu_mc(Info, print_name_only, Stream),
-        IntPredDecls, !IO),
-    list.foldl(mercury_output_item_mode_decl(Info, Stream),
-        IntModeDecls, !IO),
-    list.foldl(mercury_output_item_decl_pragma(Info, Stream),
-        IntDeclPragmas, !IO),
-    list.foldl(mercury_format_item_decl_marker(Stream),
-        IntDeclMarkers, !IO),
-    list.foldl(mercury_output_item_promise(Info, Stream),
-        IntPromises, !IO),
+        mercury_format_item_pred_decl_mu_mc(Info, print_name_only, S),
+        IntPredDecls, !U),
+    list.foldl(mercury_format_item_mode_decl(Info, S),
+        IntModeDecls, !U),
+    list.foldl(mercury_format_item_decl_pragma(Info, S),
+        IntDeclPragmas, !U),
+    list.foldl(mercury_format_item_decl_marker(S),
+        IntDeclMarkers, !U),
+    list.foldl(mercury_format_item_promise(Info, S),
+        IntPromises, !U),
 
-    mercury_output_section_marker(Stream, ms_implementation, !IO),
-    set.foldl(mercury_output_module_decl(Stream, "include_module"),
-        ImpInclModules, !IO),
-    list.foldl(mercury_output_module_decl(Stream, "import_module"),
-        map.keys(ImpImportMap0), !IO),
-    list.foldl(mercury_output_module_decl(Stream, "use_module"),
-        map.keys(ImpUseMap0), !IO),
-    list.foldl(mercury_output_fim_spec(Stream), map.keys(ImpFIMSpecMap), !IO),
-    list.foldl(mercury_output_item_type_defn(Info, Stream),
-        ImpTypeDefns, !IO),
-    list.foldl(mercury_output_item_inst_defn(Info, Stream),
-        ImpInstDefns, !IO),
-    list.foldl(mercury_output_item_mode_defn(Info, Stream),
-        ImpModeDefns, !IO),
-    list.foldl(mercury_output_item_typeclass(Info, Stream),
-        ImpTypeClasses, !IO),
-    list.foldl(mercury_output_item_instance(Info, Stream),
-        ImpInstances, !IO),
+    mercury_format_section_marker(S, ms_implementation, !U),
+    set.foldl(mercury_format_module_decl(S, "include_module"),
+        ImpInclModules, !U),
+    list.foldl(mercury_format_module_decl(S, "import_module"),
+        map.keys(ImpImportMap0), !U),
+    list.foldl(mercury_format_module_decl(S, "use_module"),
+        map.keys(ImpUseMap0), !U),
+    list.foldl(mercury_format_fim_spec(S), map.keys(ImpFIMSpecMap), !U),
+    list.foldl(mercury_format_item_type_defn(Info, S),
+        ImpTypeDefns, !U),
+    list.foldl(mercury_format_item_inst_defn(Info, S),
+        ImpInstDefns, !U),
+    list.foldl(mercury_format_item_mode_defn(Info, S),
+        ImpModeDefns, !U),
+    list.foldl(mercury_format_item_typeclass(Info, S),
+        ImpTypeClasses, !U),
+    list.foldl(mercury_format_item_instance(Info, S),
+        ImpInstances, !U),
     list.foldl(
-        mercury_output_item_pred_decl_mu_mc(Info, print_name_only, Stream),
-        ImpPredDecls, !IO),
-    list.foldl(mercury_output_item_mode_decl(Info, Stream),
-        ImpModeDecls, !IO),
-    list.foldl(mercury_output_item_clause(Info, Stream),
-        ImpClauses, !IO),
-    list.foldl(mercury_output_item_foreign_proc(Stream, get_output_lang(Info)),
-        ImpForeignProcs, !IO),
-    list.foldl(mercury_format_item_foreign_enum(Info, Stream),
-        ImpForeignEnums, !IO),
-    list.foldl(mercury_format_item_foreign_export_enum(Info, Stream),
-        ImpForeignExportEnums, !IO),
-    list.foldl(mercury_output_item_decl_pragma(Info, Stream),
-        ImpDeclPragmas, !IO),
-    list.foldl(mercury_format_item_decl_marker(Stream),
-        ImpDeclMarkers, !IO),
-    list.foldl(mercury_output_item_impl_pragma(Info, Stream),
-        ImpImplPragmas, !IO),
-    list.foldl(mercury_format_item_impl_marker(Stream),
-        ImpImplMarkers, !IO),
-    list.foldl(mercury_output_item_promise(Info, Stream),
-        ImpPromises, !IO),
-    list.foldl(mercury_output_item_initialise(Info, Stream),
-        ImpInitialises, !IO),
-    list.foldl(mercury_output_item_finalise(Info, Stream),
-        ImpFinalises, !IO),
-    list.foldl(mercury_output_item_mutable(Info, Stream),
-        ImpMutables, !IO),
-    mercury_output_module_decl(Stream, "end_module", ModuleName, !IO),
-    io.nl(Stream, !IO).
+        mercury_format_item_pred_decl_mu_mc(Info, print_name_only, S),
+        ImpPredDecls, !U),
+    list.foldl(mercury_format_item_mode_decl(Info, S),
+        ImpModeDecls, !U),
+    list.foldl(mercury_format_item_clause(Info, S),
+        ImpClauses, !U),
+    list.foldl(mercury_format_item_foreign_proc(S, get_output_lang(Info)),
+        ImpForeignProcs, !U),
+    list.foldl(mercury_format_item_foreign_enum(Info, S),
+        ImpForeignEnums, !U),
+    list.foldl(mercury_format_item_foreign_export_enum(Info, S),
+        ImpForeignExportEnums, !U),
+    list.foldl(mercury_format_item_decl_pragma(Info, S),
+        ImpDeclPragmas, !U),
+    list.foldl(mercury_format_item_decl_marker(S),
+        ImpDeclMarkers, !U),
+    list.foldl(mercury_format_item_impl_pragma(Info, S),
+        ImpImplPragmas, !U),
+    list.foldl(mercury_format_item_impl_marker(S),
+        ImpImplMarkers, !U),
+    list.foldl(mercury_format_item_promise(Info, S),
+        ImpPromises, !U),
+    list.foldl(mercury_format_item_initialise(Info, S),
+        ImpInitialises, !U),
+    list.foldl(mercury_format_item_finalise(Info, S),
+        ImpFinalises, !U),
+    list.foldl(mercury_format_item_mutable(Info, S),
+        ImpMutables, !U),
+    mercury_format_module_decl(S, "end_module", ModuleName, !U),
+    add_string("\n", S, !U).
 
-:- pred write_include_module_map_entry(io.text_output_stream::in,
-    module_name::in, include_module_info::in, io::di, io::uo) is det.
+:- pred format_include_module_map_entry(S::in,
+    module_name::in, include_module_info::in, U::di, U::uo) is det
+    <= pt_output(S, U).
 
-write_include_module_map_entry(Stream, ModuleName, InclInfo, !IO) :-
+format_include_module_map_entry(S, ModuleName, InclInfo, !U) :-
     InclInfo = include_module_info(Section, _Context),
-    io.write_string(Stream, "% ", !IO),
-    mercury_output_bracketed_sym_name(ModuleName, Stream, !IO),
-    io.write_string(Stream, " -> ", !IO),
     (
         Section = ms_interface,
-        io.write_string(Stream, "interface", !IO)
+        MarkerStr = "interface"
     ;
         Section = ms_implementation,
-        io.write_string(Stream, "implementation", !IO)
+        MarkerStr = "implementation"
     ),
-    io.nl(Stream, !IO).
+    add_string("% ", S, !U),
+    mercury_format_bracketed_sym_name(ModuleName, S, !U),
+    add_string(" -> ", S, !U),
+    add_string(MarkerStr, S, !U),
+    add_string("\n", S, !U).
 
-:- pred write_import_use_map_entry(io.text_output_stream::in, module_name::in,
-    maybe_implicit_import_and_or_use::in, io::di, io::uo) is det.
+:- pred format_import_use_map_entry(S::in, module_name::in,
+    maybe_implicit_import_and_or_use::in, U::di, U::uo) is det
+    <= pt_output(S, U).
 
-write_import_use_map_entry(Stream, ModuleName, ImportAndOrUse, !IO) :-
-    io.write_string(Stream, "% ", !IO),
-    mercury_output_bracketed_sym_name(ModuleName, Stream, !IO),
-    io.write_string(Stream, " -> ", !IO),
+format_import_use_map_entry(S, ModuleName, ImportAndOrUse, !U) :-
     (
         ImportAndOrUse = explicit_avail(SectionImportAndOrUse),
         (
             SectionImportAndOrUse = int_import(_),
-            io.write_string(Stream, "int_import", !IO)
+            KindStr = "int_import"
         ;
             SectionImportAndOrUse = int_use(_),
-            io.write_string(Stream, "int_use", !IO)
+            KindStr = "int_use"
         ;
             SectionImportAndOrUse = imp_import(_),
-            io.write_string(Stream, "imp_import", !IO)
+            KindStr = "imp_import"
         ;
             SectionImportAndOrUse = imp_use(_),
-            io.write_string(Stream, "imp_use", !IO)
+            KindStr = "imp_use"
         ;
             SectionImportAndOrUse = int_use_imp_import(_, _),
-            io.write_string(Stream, "int_use_imp_import", !IO)
+            KindStr = "int_use_imp_import"
         )
     ;
         ImportAndOrUse = implicit_avail(ImplicitImportAndOrUse, _),
         (
             ImplicitImportAndOrUse = implicit_int_import,
-            io.write_string(Stream, "implicit_int_import", !IO)
+            KindStr = "implicit_int_import"
         ;
             ImplicitImportAndOrUse = implicit_int_use,
-            io.write_string(Stream, "implicit_int_use", !IO)
+            KindStr = "implicit_int_use"
         ;
             ImplicitImportAndOrUse = implicit_imp_use,
-            io.write_string(Stream, "implicit_imp_use", !IO)
+            KindStr = "implicit_imp_use"
         )
     ),
-    io.nl(Stream, !IO).
+    add_string("% ", S, !U),
+    mercury_format_bracketed_sym_name(ModuleName, S, !U),
+    add_string(" -> ", S, !U),
+    add_string(KindStr, S, !U),
+    add_string("\n", S, !U).
 
 %---------------------------------------------------------------------------%
 
@@ -555,6 +595,46 @@ mercury_output_type_repn_spec(Info, Stream, TypeRepnSpec, !IO) :-
 %---------------------------------------------------------------------------%
 
 mercury_output_parse_tree_int0(Info, Stream, ParseTreeInt0, !IO) :-
+    mercury_format_parse_tree_int0(Info, Stream, ParseTreeInt0, !IO).
+
+mercury_output_parse_tree_int1(Info, Stream, ParseTreeInt1, !IO) :-
+    mercury_format_parse_tree_int1(Info, Stream, ParseTreeInt1, !IO).
+
+mercury_output_parse_tree_int2(Info, Stream, ParseTreeInt2, !IO) :-
+    mercury_format_parse_tree_int2(Info, Stream, ParseTreeInt2, !IO).
+
+mercury_output_parse_tree_int3(Info, Stream, ParseTreeInt3, !IO) :-
+    mercury_format_parse_tree_int3(Info, Stream, ParseTreeInt3, !IO).
+
+%---------------------------------------------------------------------------%
+
+parse_tree_int0_to_string(Info, ParseTreeInt0) = Str :-
+    State0 = string.builder.init,
+    mercury_format_parse_tree_int0(Info, string.builder.handle, ParseTreeInt0,
+        State0, State),
+    Str = string.builder.to_string(State).
+
+parse_tree_int1_to_string(Info, ParseTreeInt1) = Str :-
+    State0 = string.builder.init,
+    mercury_format_parse_tree_int1(Info, string.builder.handle, ParseTreeInt1,
+        State0, State),
+    Str = string.builder.to_string(State).
+
+parse_tree_int2_to_string(Info, ParseTreeInt2) = Str :-
+    State0 = string.builder.init,
+    mercury_format_parse_tree_int2(Info, string.builder.handle, ParseTreeInt2,
+        State0, State),
+    Str = string.builder.to_string(State).
+
+parse_tree_int3_to_string(Info, ParseTreeInt3) = Str :-
+    State0 = string.builder.init,
+    mercury_format_parse_tree_int3(Info, string.builder.handle, ParseTreeInt3,
+        State0, State),
+    Str = string.builder.to_string(State).
+
+%---------------------------------------------------------------------------%
+
+mercury_format_parse_tree_int0(Info, S, ParseTreeInt0, !U) :-
     ParseTreeInt0 = parse_tree_int0(ModuleName, _ModuleContext,
         MaybeVersionNumbers, InclMap,
         ImportUseMap, IntFIMSpecs, ImpFIMSpecs,
@@ -574,37 +654,37 @@ mercury_output_parse_tree_int0(Info, Stream, ParseTreeInt0, !IO) :-
     mode_ctor_checked_map_get_src_defns(ModeCtorCheckedMap,
         IntModeDefns, ImpModeDefns),
 
-    mercury_output_module_decl(Stream, "module", ModuleName, !IO),
-    mercury_output_maybe_module_version_numbers(Stream, ModuleName,
-        MaybeVersionNumbers, !IO),
+    mercury_format_module_decl(S, "module", ModuleName, !U),
+    mercury_format_maybe_module_version_numbers(S, ModuleName,
+        MaybeVersionNumbers, !U),
 
-    mercury_output_section_marker(Stream, ms_interface, !IO),
-    set.foldl(mercury_output_module_decl(Stream, "include_module"),
-        IntIncls, !IO),
-    set.foldl(mercury_output_module_decl(Stream, "import_module"),
-        IntImports, !IO),
-    set.foldl(mercury_output_module_decl(Stream, "use_module"),
-        IntUses, !IO),
-    set.foldl(mercury_output_fim_spec(Stream), IntFIMSpecs, !IO),
-    list.foldl(mercury_output_item_type_defn(Info, Stream),
-        IntTypeDefns, !IO),
-    list.foldl(mercury_output_item_inst_defn(Info, Stream),
-        IntInstDefns, !IO),
-    list.foldl(mercury_output_item_mode_defn(Info, Stream),
-        IntModeDefns, !IO),
-    list.foldl(mercury_output_item_typeclass(Info, Stream),
-        list.sort(IntTypeClasses), !IO),
-    list.foldl(mercury_format_item_abstract_instance(Info, Stream),
-        list.sort(IntInstances), !IO),
+    mercury_format_section_marker(S, ms_interface, !U),
+    set.foldl(mercury_format_module_decl(S, "include_module"),
+        IntIncls, !U),
+    set.foldl(mercury_format_module_decl(S, "import_module"),
+        IntImports, !U),
+    set.foldl(mercury_format_module_decl(S, "use_module"),
+        IntUses, !U),
+    set.foldl(mercury_format_fim_spec(S), IntFIMSpecs, !U),
+    list.foldl(mercury_format_item_type_defn(Info, S),
+        IntTypeDefns, !U),
+    list.foldl(mercury_format_item_inst_defn(Info, S),
+        IntInstDefns, !U),
+    list.foldl(mercury_format_item_mode_defn(Info, S),
+        IntModeDefns, !U),
+    list.foldl(mercury_format_item_typeclass(Info, S),
+        list.sort(IntTypeClasses), !U),
+    list.foldl(mercury_format_item_abstract_instance(Info, S),
+        list.sort(IntInstances), !U),
     order_pred_and_mode_decls(IntPredDecls, IntModeDecls, IntPredOrModeDecls),
-    mercury_output_pred_or_mode_decls(Info, print_name_only, Stream,
-        IntPredOrModeDecls, !IO),
-    list.foldl(mercury_output_item_decl_pragma(Info, Stream),
-        list.sort(IntDeclPragmas), !IO),
-    list.foldl(mercury_format_item_decl_marker(Stream),
-        list.sort(IntDeclMarkers), !IO),
-    list.foldl(mercury_output_item_promise(Info, Stream),
-        list.sort(IntPromises), !IO),
+    mercury_format_pred_or_mode_decls(Info, print_name_only, S,
+        IntPredOrModeDecls, !U),
+    list.foldl(mercury_format_item_decl_pragma(Info, S),
+        list.sort(IntDeclPragmas), !U),
+    list.foldl(mercury_format_item_decl_marker(S),
+        list.sort(IntDeclMarkers), !U),
+    list.foldl(mercury_format_item_promise(Info, S),
+        list.sort(IntPromises), !U),
 
     ( if
         set.is_empty(ImpIncls),
@@ -625,39 +705,39 @@ mercury_output_parse_tree_int0(Info, Stream, ParseTreeInt0, !IO) :-
     then
         true
     else
-        mercury_output_section_marker(Stream, ms_implementation, !IO),
-        set.foldl(mercury_output_module_decl(Stream, "include_module"),
-            ImpIncls, !IO),
-        set.foldl(mercury_output_module_decl(Stream, "import_module"),
-            ImpImports, !IO),
-        set.foldl(mercury_output_module_decl(Stream, "use_module"),
-            ImpUses, !IO),
-        set.foldl(mercury_output_fim_spec(Stream), ImpFIMSpecs, !IO),
-        list.foldl(mercury_output_item_type_defn(Info, Stream),
-            ImpTypeDefns, !IO),
-        list.foldl(mercury_output_item_inst_defn(Info, Stream),
-            ImpInstDefns, !IO),
-        list.foldl(mercury_output_item_mode_defn(Info, Stream),
-            ImpModeDefns, !IO),
-        list.foldl(mercury_output_item_typeclass(Info, Stream),
-            list.sort(ImpTypeClasses), !IO),
-        list.foldl(mercury_format_item_abstract_instance(Info, Stream),
-            list.sort(ImpInstances), !IO),
+        mercury_format_section_marker(S, ms_implementation, !U),
+        set.foldl(mercury_format_module_decl(S, "include_module"),
+            ImpIncls, !U),
+        set.foldl(mercury_format_module_decl(S, "import_module"),
+            ImpImports, !U),
+        set.foldl(mercury_format_module_decl(S, "use_module"),
+            ImpUses, !U),
+        set.foldl(mercury_format_fim_spec(S), ImpFIMSpecs, !U),
+        list.foldl(mercury_format_item_type_defn(Info, S),
+            ImpTypeDefns, !U),
+        list.foldl(mercury_format_item_inst_defn(Info, S),
+            ImpInstDefns, !U),
+        list.foldl(mercury_format_item_mode_defn(Info, S),
+            ImpModeDefns, !U),
+        list.foldl(mercury_format_item_typeclass(Info, S),
+            list.sort(ImpTypeClasses), !U),
+        list.foldl(mercury_format_item_abstract_instance(Info, S),
+            list.sort(ImpInstances), !U),
         order_pred_and_mode_decls(ImpPredDecls, ImpModeDecls,
             ImpPredOrModeDecls),
-        mercury_output_pred_or_mode_decls(Info, print_name_only, Stream,
-            ImpPredOrModeDecls, !IO),
-        list.foldl(mercury_format_item_foreign_enum(Info, Stream),
-            ImpForeignEnums, !IO),
-        list.foldl(mercury_output_item_decl_pragma(Info, Stream),
-            list.sort(ImpDeclPragmas), !IO),
-        list.foldl(mercury_format_item_decl_marker(Stream),
-            list.sort(ImpDeclMarkers), !IO),
-        list.foldl(mercury_output_item_promise(Info, Stream),
-            list.sort(ImpPromises), !IO)
+        mercury_format_pred_or_mode_decls(Info, print_name_only, S,
+            ImpPredOrModeDecls, !U),
+        list.foldl(mercury_format_item_foreign_enum(Info, S),
+            ImpForeignEnums, !U),
+        list.foldl(mercury_format_item_decl_pragma(Info, S),
+            list.sort(ImpDeclPragmas), !U),
+        list.foldl(mercury_format_item_decl_marker(S),
+            list.sort(ImpDeclMarkers), !U),
+        list.foldl(mercury_format_item_promise(Info, S),
+            list.sort(ImpPromises), !U)
     ).
 
-mercury_output_parse_tree_int1(Info, Stream, ParseTreeInt1, !IO) :-
+mercury_format_parse_tree_int1(Info, S, ParseTreeInt1, !U) :-
     ParseTreeInt1 = parse_tree_int1(ModuleName, _ModuleContext,
         MaybeVersionNumbers, InclMap, UseMap, IntFIMSpecs, ImpFIMSpecs,
         TypeCtorCheckedMap, InstCtorCheckedMap, ModeCtorCheckedMap,
@@ -673,36 +753,36 @@ mercury_output_parse_tree_int1(Info, Stream, ParseTreeInt1, !IO) :-
     mode_ctor_checked_map_get_src_defns(ModeCtorCheckedMap,
         IntModeDefns, _ImpModeDefns),
 
-    mercury_output_module_decl(Stream, "module", ModuleName, !IO),
-    mercury_output_maybe_module_version_numbers(Stream, ModuleName,
-        MaybeVersionNumbers, !IO),
-    mercury_output_section_marker(Stream, ms_interface, !IO),
-    set.foldl(mercury_output_module_decl(Stream, "include_module"),
-        IntIncls, !IO),
-    set.foldl(mercury_output_module_decl(Stream, "use_module"),
-        IntUses, !IO),
-    set.foldl(mercury_output_fim_spec(Stream), IntFIMSpecs, !IO),
-    list.foldl(mercury_output_item_type_defn(Info, Stream),
-        IntTypeDefns, !IO),
-    list.foldl(mercury_output_item_inst_defn(Info, Stream),
-        IntInstDefns, !IO),
-    list.foldl(mercury_output_item_mode_defn(Info, Stream),
-        IntModeDefns, !IO),
-    list.foldl(mercury_output_item_typeclass(Info, Stream),
-        list.sort(IntTypeClasses), !IO),
-    list.foldl(mercury_format_item_abstract_instance(Info, Stream),
-        list.sort(IntInstances), !IO),
+    mercury_format_module_decl(S, "module", ModuleName, !U),
+    mercury_format_maybe_module_version_numbers(S, ModuleName,
+        MaybeVersionNumbers, !U),
+    mercury_format_section_marker(S, ms_interface, !U),
+    set.foldl(mercury_format_module_decl(S, "include_module"),
+        IntIncls, !U),
+    set.foldl(mercury_format_module_decl(S, "use_module"),
+        IntUses, !U),
+    set.foldl(mercury_format_fim_spec(S), IntFIMSpecs, !U),
+    list.foldl(mercury_format_item_type_defn(Info, S),
+        IntTypeDefns, !U),
+    list.foldl(mercury_format_item_inst_defn(Info, S),
+        IntInstDefns, !U),
+    list.foldl(mercury_format_item_mode_defn(Info, S),
+        IntModeDefns, !U),
+    list.foldl(mercury_format_item_typeclass(Info, S),
+        list.sort(IntTypeClasses), !U),
+    list.foldl(mercury_format_item_abstract_instance(Info, S),
+        list.sort(IntInstances), !U),
     order_pred_and_mode_decls(IntPredDecls, IntModeDecls, IntPredOrModeDecls),
-    mercury_output_pred_or_mode_decls(Info, print_name_only, Stream,
-        IntPredOrModeDecls, !IO),
-    list.foldl(mercury_output_item_decl_pragma(Info, Stream),
-        list.sort(IntDeclPragmas), !IO),
-    list.foldl(mercury_format_item_decl_marker(Stream),
-        list.sort(IntDeclMarkers), !IO),
-    list.foldl(mercury_output_item_promise(Info, Stream),
-        list.sort(IntPromises), !IO),
-    map.foldl_values(mercury_output_item_type_repn(Info, Stream),
-        IntTypeRepnMap, !IO),
+    mercury_format_pred_or_mode_decls(Info, print_name_only, S,
+        IntPredOrModeDecls, !U),
+    list.foldl(mercury_format_item_decl_pragma(Info, S),
+        list.sort(IntDeclPragmas), !U),
+    list.foldl(mercury_format_item_decl_marker(S),
+        list.sort(IntDeclMarkers), !U),
+    list.foldl(mercury_format_item_promise(Info, S),
+        list.sort(IntPromises), !U),
+    map.foldl_values(mercury_format_item_type_repn(Info, S),
+        IntTypeRepnMap, !U),
 
     ( if
         set.is_empty(ImpIncls),
@@ -714,21 +794,21 @@ mercury_output_parse_tree_int1(Info, Stream, ParseTreeInt1, !IO) :-
     then
         true
     else
-        mercury_output_section_marker(Stream, ms_implementation, !IO),
-        set.foldl(mercury_output_module_decl(Stream, "include_module"),
-            ImpIncls, !IO),
-        set.foldl(mercury_output_module_decl(Stream, "use_module"),
-            ImpUses, !IO),
-        set.foldl(mercury_output_fim_spec(Stream), ImpFIMSpecs, !IO),
-        list.foldl(mercury_output_item_type_defn(Info, Stream),
-            ImpTypeDefns, !IO),
-        list.foldl(mercury_format_item_foreign_enum(Info, Stream),
-            ImpForeignEnums, !IO),
-        list.foldl(mercury_format_item_abstract_typeclass(Info, Stream),
-            list.sort(ImpTypeClasses), !IO)
+        mercury_format_section_marker(S, ms_implementation, !U),
+        set.foldl(mercury_format_module_decl(S, "include_module"),
+            ImpIncls, !U),
+        set.foldl(mercury_format_module_decl(S, "use_module"),
+            ImpUses, !U),
+        set.foldl(mercury_format_fim_spec(S), ImpFIMSpecs, !U),
+        list.foldl(mercury_format_item_type_defn(Info, S),
+            ImpTypeDefns, !U),
+        list.foldl(mercury_format_item_foreign_enum(Info, S),
+            ImpForeignEnums, !U),
+        list.foldl(mercury_format_item_abstract_typeclass(Info, S),
+            list.sort(ImpTypeClasses), !U)
     ).
 
-mercury_output_parse_tree_int2(Info, Stream, ParseTreeInt2, !IO) :-
+mercury_format_parse_tree_int2(Info, S, ParseTreeInt2, !U) :-
     ParseTreeInt2 = parse_tree_int2(ModuleName, _ModuleContext,
         MaybeVersionNumbers, IntInclMap, UseMap, IntFIMSpecs, ImpFIMSpecs,
         TypeCtorCheckedMap, InstCtorCheckedMap, ModeCtorCheckedMap,
@@ -743,27 +823,27 @@ mercury_output_parse_tree_int2(Info, Stream, ParseTreeInt2, !IO) :-
     mode_ctor_checked_map_get_src_defns(ModeCtorCheckedMap,
         IntModeDefns, _ImpModeDefns),
 
-    mercury_output_module_decl(Stream, "module", ModuleName, !IO),
-    mercury_output_maybe_module_version_numbers(Stream, ModuleName,
-        MaybeVersionNumbers, !IO),
-    mercury_output_section_marker(Stream, ms_interface, !IO),
-    set.foldl(mercury_output_module_decl(Stream, "include_module"),
-        IntIncls, !IO),
-    set.foldl(mercury_output_module_decl(Stream, "use_module"),
-        IntUses, !IO),
-    set.foldl(mercury_output_fim_spec(Stream), IntFIMSpecs, !IO),
-    list.foldl(mercury_output_item_type_defn(Info, Stream),
-        IntTypeDefns, !IO),
-    list.foldl(mercury_output_item_inst_defn(Info, Stream),
-        IntInstDefns, !IO),
-    list.foldl(mercury_output_item_mode_defn(Info, Stream),
-        IntModeDefns, !IO),
-    list.foldl(mercury_output_item_typeclass(Info, Stream),
-        list.sort(IntTypeClasses), !IO),
-    list.foldl(mercury_format_item_abstract_instance(Info, Stream),
-        list.sort(IntInstances), !IO),
-    map.foldl_values(mercury_output_item_type_repn(Info, Stream),
-        IntTypeRepnMap, !IO),
+    mercury_format_module_decl(S, "module", ModuleName, !U),
+    mercury_format_maybe_module_version_numbers(S, ModuleName,
+        MaybeVersionNumbers, !U),
+    mercury_format_section_marker(S, ms_interface, !U),
+    set.foldl(mercury_format_module_decl(S, "include_module"),
+        IntIncls, !U),
+    set.foldl(mercury_format_module_decl(S, "use_module"),
+        IntUses, !U),
+    set.foldl(mercury_format_fim_spec(S), IntFIMSpecs, !U),
+    list.foldl(mercury_format_item_type_defn(Info, S),
+        IntTypeDefns, !U),
+    list.foldl(mercury_format_item_inst_defn(Info, S),
+        IntInstDefns, !U),
+    list.foldl(mercury_format_item_mode_defn(Info, S),
+        IntModeDefns, !U),
+    list.foldl(mercury_format_item_typeclass(Info, S),
+        list.sort(IntTypeClasses), !U),
+    list.foldl(mercury_format_item_abstract_instance(Info, S),
+        list.sort(IntInstances), !U),
+    map.foldl_values(mercury_format_item_type_repn(Info, S),
+        IntTypeRepnMap, !U),
 
     % XXX Currently, ImpUses will always be empty, but the fix for
     % Mantis bug #563 will require allowing ImpUses to be nonempty.
@@ -774,15 +854,15 @@ mercury_output_parse_tree_int2(Info, Stream, ParseTreeInt2, !IO) :-
     then
         true
     else
-        mercury_output_section_marker(Stream, ms_implementation, !IO),
-        set.foldl(mercury_output_module_decl(Stream, "use_module"),
-            ImpUses, !IO),
-        set.foldl(mercury_output_fim_spec(Stream), ImpFIMSpecs, !IO),
-        list.foldl(mercury_output_item_type_defn(Info, Stream),
-            ImpTypeDefns, !IO)
+        mercury_format_section_marker(S, ms_implementation, !U),
+        set.foldl(mercury_format_module_decl(S, "use_module"),
+            ImpUses, !U),
+        set.foldl(mercury_format_fim_spec(S), ImpFIMSpecs, !U),
+        list.foldl(mercury_format_item_type_defn(Info, S),
+            ImpTypeDefns, !U)
     ).
 
-mercury_output_parse_tree_int3(Info, Stream, ParseTreeInt3, !IO) :-
+mercury_format_parse_tree_int3(Info, S, ParseTreeInt3, !U) :-
     ParseTreeInt3 = parse_tree_int3(ModuleName, _ModuleContext,
         IntInclMap, IntImportMap,
         TypeCtorCheckedMap, InstCtorCheckedMap, ModeCtorCheckedMap,
@@ -796,25 +876,33 @@ mercury_output_parse_tree_int3(Info, Stream, ParseTreeInt3, !IO) :-
         IntInstDefns, _ImpInstDefns),
     mode_ctor_checked_map_get_src_defns(ModeCtorCheckedMap,
         IntModeDefns, _ImpModeDefns),
-    mercury_output_module_decl(Stream, "module", ModuleName, !IO),
-    mercury_output_section_marker(Stream, ms_interface, !IO),
-    set.foldl(mercury_output_module_decl(Stream, "include_module"),
-        IntInclModules, !IO),
-    list.foldl(mercury_output_module_decl(Stream, "import_module"),
-        map.sorted_keys(IntImportMap), !IO),
-    list.foldl(mercury_output_item_type_defn(Info, Stream), IntTypeDefns, !IO),
-    list.foldl(mercury_output_item_inst_defn(Info, Stream), IntInstDefns, !IO),
-    list.foldl(mercury_output_item_mode_defn(Info, Stream), IntModeDefns, !IO),
-    list.foldl(mercury_format_item_abstract_typeclass(Info, Stream),
-        list.sort(IntTypeClasses), !IO),
-    list.foldl(mercury_format_item_abstract_instance(Info, Stream),
-        list.sort(IntInstances), !IO),
-    map.foldl_values(mercury_output_item_type_repn(Info, Stream),
-        IntTypeRepnMap, !IO).
+    mercury_format_module_decl(S, "module", ModuleName, !U),
+    mercury_format_section_marker(S, ms_interface, !U),
+    set.foldl(mercury_format_module_decl(S, "include_module"),
+        IntInclModules, !U),
+    list.foldl(mercury_format_module_decl(S, "import_module"),
+        map.sorted_keys(IntImportMap), !U),
+    list.foldl(mercury_format_item_type_defn(Info, S), IntTypeDefns, !U),
+    list.foldl(mercury_format_item_inst_defn(Info, S), IntInstDefns, !U),
+    list.foldl(mercury_format_item_mode_defn(Info, S), IntModeDefns, !U),
+    list.foldl(mercury_format_item_abstract_typeclass(Info, S),
+        list.sort(IntTypeClasses), !U),
+    list.foldl(mercury_format_item_abstract_instance(Info, S),
+        list.sort(IntInstances), !U),
+    map.foldl_values(mercury_format_item_type_repn(Info, S),
+        IntTypeRepnMap, !U).
 
 %---------------------------------------------------------------------------%
 
 mercury_output_parse_tree_plain_opt(Info, Stream, ParseTree, !IO) :-
+    mercury_format_parse_tree_plain_opt(Info, Stream, ParseTree, !IO).
+
+mercury_output_parse_tree_trans_opt(Info, Stream, ParseTree, !IO) :-
+    mercury_format_parse_tree_trans_opt(Info, Stream, ParseTree, !IO).
+
+%---------------------------------------------------------------------------%
+
+mercury_format_parse_tree_plain_opt(Info, S, ParseTree, !U) :-
     ParseTree = parse_tree_plain_opt(ModuleName, _Context,
         UseMap, FIMSpecs, TypeDefns, ForeignEnums,
         InstDefns, ModeDefns, TypeClasses, Instances,
@@ -822,18 +910,18 @@ mercury_output_parse_tree_plain_opt(Info, Stream, ParseTree, !IO) :-
         DeclMarkers, ImplMarkers, TypeSpecs, UnusedArgs, Terms, Term2s,
         Exceptions, Trailings, MMTablings, Sharings, Reuses),
     Lang = get_output_lang(Info),
-    io.write_string(Stream, "% .opt file\n", !IO),
-    mercury_output_module_decl(Stream, "module", ModuleName, !IO),
-    list.foldl(mercury_output_module_decl(Stream, "use_module"),
-        map.keys(UseMap), !IO),
-    set.foldl(mercury_output_fim_spec(Stream), FIMSpecs, !IO),
-    list.foldl(mercury_output_item_type_defn(Info, Stream), TypeDefns, !IO),
-    list.foldl(mercury_format_item_foreign_enum(Info, Stream),
-        ForeignEnums, !IO),
-    list.foldl(mercury_output_item_inst_defn(Info, Stream), InstDefns, !IO),
-    list.foldl(mercury_output_item_mode_defn(Info, Stream), ModeDefns, !IO),
-    list.foldl(mercury_output_item_typeclass(Info, Stream), TypeClasses, !IO),
-    list.foldl(mercury_output_item_instance(Info, Stream), Instances, !IO),
+    add_string("% .opt file\n", S, !U),
+    mercury_format_module_decl(S, "module", ModuleName, !U),
+    list.foldl(mercury_format_module_decl(S, "use_module"),
+        map.keys(UseMap), !U),
+    set.foldl(mercury_format_fim_spec(S), FIMSpecs, !U),
+    list.foldl(mercury_format_item_type_defn(Info, S), TypeDefns, !U),
+    list.foldl(mercury_format_item_foreign_enum(Info, S),
+        ForeignEnums, !U),
+    list.foldl(mercury_format_item_inst_defn(Info, S), InstDefns, !U),
+    list.foldl(mercury_format_item_mode_defn(Info, S), ModeDefns, !U),
+    list.foldl(mercury_format_item_typeclass(Info, S), TypeClasses, !U),
+    list.foldl(mercury_format_item_instance(Info, S), Instances, !U),
     % NOTE: The names of type variables in type_spec pragmas must match
     % *exactly* the names of the corresponding type variables in the
     % predicate declaration to which they apply. This is why one variable,
@@ -859,103 +947,103 @@ mercury_output_parse_tree_plain_opt(Info, Stream, ParseTree, !IO) :-
     % was obviously not needed.
     VarNamePrintPredDecl = print_name_only,
     list.foldl(
-        mercury_output_item_pred_decl(Lang, VarNamePrintPredDecl, Stream),
-        PredDecls, !IO),
-    list.foldl(mercury_output_item_mode_decl(Info, Stream), ModeDecls, !IO),
-    list.foldl(mercury_format_item_decl_marker(Stream),
-        coerce(DeclMarkers), !IO),
-    list.foldl(mercury_format_item_impl_marker(Stream),
-        coerce(ImplMarkers), !IO),
-    list.foldl(mercury_output_pragma_type_spec(Stream, Lang), TypeSpecs, !IO),
-    list.foldl(mercury_output_item_clause(Info, Stream), Clauses, !IO),
-    list.foldl(mercury_output_item_foreign_proc(Stream, Lang),
-        ForeignProcs, !IO),
-    list.foldl(mercury_output_item_promise(Info, Stream), Promises, !IO),
+        mercury_format_item_pred_decl(Lang, VarNamePrintPredDecl, S),
+        PredDecls, !U),
+    list.foldl(mercury_format_item_mode_decl(Info, S), ModeDecls, !U),
+    list.foldl(mercury_format_item_decl_marker(S),
+        coerce(DeclMarkers), !U),
+    list.foldl(mercury_format_item_impl_marker(S),
+        coerce(ImplMarkers), !U),
+    list.foldl(mercury_format_pragma_type_spec(S, Lang), TypeSpecs, !U),
+    list.foldl(mercury_format_item_clause(Info, S), Clauses, !U),
+    list.foldl(mercury_format_item_foreign_proc(S, Lang), ForeignProcs, !U),
+    list.foldl(mercury_format_item_promise(Info, S), Promises, !U),
 
-    maybe_write_block_start_blank_line(Stream, UnusedArgs, !IO),
-    list.foldl(mercury_output_pragma_unused_args(Stream), UnusedArgs, !IO),
-    maybe_write_block_start_blank_line(Stream, Terms, !IO),
-    list.foldl(write_pragma_termination(Stream, Lang), Terms, !IO),
-    maybe_write_block_start_blank_line(Stream, Term2s, !IO),
-    list.foldl(write_pragma_termination2(Stream, Lang), Term2s, !IO),
-    maybe_write_block_start_blank_line(Stream, Exceptions, !IO),
-    list.foldl(mercury_output_pragma_exceptions(Stream), Exceptions, !IO),
-    maybe_write_block_start_blank_line(Stream, Trailings, !IO),
-    list.foldl(mercury_output_pragma_trailing(Stream), Trailings, !IO),
-    maybe_write_block_start_blank_line(Stream, MMTablings, !IO),
-    list.foldl(mercury_output_pragma_mm_tabling(Stream), MMTablings, !IO),
-    maybe_write_block_start_blank_line(Stream, Sharings, !IO),
-    list.foldl(write_pragma_struct_sharing(Stream, Lang), Sharings, !IO),
-    maybe_write_block_start_blank_line(Stream, Reuses, !IO),
-    list.foldl(write_pragma_struct_reuse(Stream, Lang), Reuses, !IO).
+    maybe_format_block_start_blank_line(S, UnusedArgs, !U),
+    list.foldl(mercury_format_pragma_unused_args(S), UnusedArgs, !U),
+    maybe_format_block_start_blank_line(S, Terms, !U),
+    list.foldl(mercury_format_pragma_termination(S, Lang), Terms, !U),
+    maybe_format_block_start_blank_line(S, Term2s, !U),
+    list.foldl(mercury_format_pragma_termination2(S, Lang), Term2s, !U),
+    maybe_format_block_start_blank_line(S, Exceptions, !U),
+    list.foldl(mercury_format_pragma_exceptions(S), Exceptions, !U),
+    maybe_format_block_start_blank_line(S, Trailings, !U),
+    list.foldl(mercury_format_pragma_trailing(S), Trailings, !U),
+    maybe_format_block_start_blank_line(S, MMTablings, !U),
+    list.foldl(mercury_format_pragma_mm_tabling(S), MMTablings, !U),
+    maybe_format_block_start_blank_line(S, Sharings, !U),
+    list.foldl(mercury_format_pragma_struct_sharing(S, Lang), Sharings, !U),
+    maybe_format_block_start_blank_line(S, Reuses, !U),
+    list.foldl(mercury_format_pragma_struct_reuse(S, Lang), Reuses, !U).
 
-mercury_output_parse_tree_trans_opt(Info, Stream, ParseTree, !IO) :-
+mercury_format_parse_tree_trans_opt(Info, S, ParseTree, !U) :-
     ParseTree = parse_tree_trans_opt(ModuleName, _Context,
         Terms, Term2s, Exceptions, Trailings, MMTablings, Sharings, Reuses),
     Lang = get_output_lang(Info),
-    io.write_string(Stream, "% .trans_opt file\n", !IO),
-    mercury_output_module_decl(Stream, "module", ModuleName, !IO),
-    maybe_write_block_start_blank_line(Stream, Terms, !IO),
-    list.foldl(write_pragma_termination(Stream, Lang), Terms, !IO),
-    maybe_write_block_start_blank_line(Stream, Term2s, !IO),
-    list.foldl(write_pragma_termination2(Stream, Lang), Term2s, !IO),
-    maybe_write_block_start_blank_line(Stream, Exceptions, !IO),
-    list.foldl(mercury_output_pragma_exceptions(Stream), Exceptions, !IO),
-    maybe_write_block_start_blank_line(Stream, Trailings, !IO),
-    list.foldl(mercury_output_pragma_trailing(Stream), Trailings, !IO),
-    maybe_write_block_start_blank_line(Stream, MMTablings, !IO),
-    list.foldl(mercury_output_pragma_mm_tabling(Stream), MMTablings, !IO),
-    maybe_write_block_start_blank_line(Stream, Sharings, !IO),
-    list.foldl(write_pragma_struct_sharing(Stream, Lang), Sharings, !IO),
-    maybe_write_block_start_blank_line(Stream, Reuses, !IO),
-    list.foldl(write_pragma_struct_reuse(Stream, Lang), Reuses, !IO).
+    add_string("% .trans_opt file\n", S, !U),
+    mercury_format_module_decl(S, "module", ModuleName, !U),
+    maybe_format_block_start_blank_line(S, Terms, !U),
+    list.foldl(mercury_format_pragma_termination(S, Lang), Terms, !U),
+    maybe_format_block_start_blank_line(S, Term2s, !U),
+    list.foldl(mercury_format_pragma_termination2(S, Lang), Term2s, !U),
+    maybe_format_block_start_blank_line(S, Exceptions, !U),
+    list.foldl(mercury_format_pragma_exceptions(S), Exceptions, !U),
+    maybe_format_block_start_blank_line(S, Trailings, !U),
+    list.foldl(mercury_format_pragma_trailing(S), Trailings, !U),
+    maybe_format_block_start_blank_line(S, MMTablings, !U),
+    list.foldl(mercury_format_pragma_mm_tabling(S), MMTablings, !U),
+    maybe_format_block_start_blank_line(S, Sharings, !U),
+    list.foldl(mercury_format_pragma_struct_sharing(S, Lang), Sharings, !U),
+    maybe_format_block_start_blank_line(S, Reuses, !U),
+    list.foldl(mercury_format_pragma_struct_reuse(S, Lang), Reuses, !U).
 
 %---------------------------------------------------------------------------%
 
-:- pred mercury_output_maybe_module_version_numbers(io.text_output_stream::in,
-    module_name::in, maybe_version_numbers::in, io::di, io::uo) is det.
+:- pred mercury_format_maybe_module_version_numbers(S::in, module_name::in,
+    maybe_version_numbers::in, U::di, U::uo) is det <= pt_output(S, U).
 
-mercury_output_maybe_module_version_numbers(Stream, ModuleName,
-        MaybeVersionNumbers, !IO) :-
+mercury_format_maybe_module_version_numbers(S, ModuleName,
+        MaybeVersionNumbers, !U) :-
     (
         MaybeVersionNumbers = no_version_numbers
     ;
         MaybeVersionNumbers = version_numbers(VersionNumbers),
-        mercury_output_module_version_numbers(Stream, ModuleName,
-            VersionNumbers, !IO)
+        mercury_format_module_version_numbers(S, ModuleName,
+            VersionNumbers, !U)
     ).
 
-:- pred mercury_output_module_version_numbers(io.text_output_stream::in,
-    module_name::in, module_item_version_numbers::in, io::di, io::uo) is det.
+:- pred mercury_format_module_version_numbers(S::in, module_name::in,
+    module_item_version_numbers::in, U::di, U::uo) is det <= pt_output(S, U).
 
-mercury_output_module_version_numbers(Stream, ModuleName,
-        ModuleItemVersionNumbers, !IO) :-
-    io.format(Stream, ":- version_numbers(%d, %s,\n%s).\n",
+mercury_format_module_version_numbers(S, ModuleName,
+        ModuleItemVersionNumbers, !U) :-
+    string.format(":- version_numbers(%d, %s,\n%s).\n",
         [i(module_item_version_numbers_version_number),
         s(mercury_bracketed_sym_name_to_string(ModuleName)),
         s(module_item_version_numbers_to_string(ModuleItemVersionNumbers))],
-        !IO).
+        Str),
+    add_string(Str, S, !U).
 
 %---------------------------------------------------------------------------%
 
-:- pred mercury_output_module_components(merc_out_info::in,
-    io.text_output_stream::in, maybe(module_section)::in,
-    list(module_component)::in, io::di, io::uo) is det.
+:- pred mercury_format_module_components(merc_out_info::in,
+    S::in, maybe(module_section)::in, list(module_component)::in,
+    U::di, U::uo) is det <= pt_output(S, U).
 
-mercury_output_module_components(_, _, _, [], !IO).
-mercury_output_module_components(Info, Stream, MaybePrevSectionKind,
-        [Component | Components], !IO) :-
+mercury_format_module_components(_, _, _, [], !U).
+mercury_format_module_components(Info, S, MaybePrevSectionKind,
+        [Component | Components], !U) :-
     (
         Component = mc_section(_, SectionKind, _SectionContext,
             InclsCord, AvailsCord, FIMsCord, ItemsCord),
-        mercury_output_section_marker(Stream, SectionKind, !IO),
-        list.foldl(mercury_output_item_include(Info, Stream),
-            cord.list(InclsCord), !IO),
-        list.foldl(mercury_output_item_avail(Info, Stream),
-            cord.list(AvailsCord), !IO),
-        list.foldl(mercury_output_item_foreign_import_module(Stream),
-            cord.list(FIMsCord), !IO),
-        mercury_output_items(Info, Stream, cord.list(ItemsCord), !IO),
+        mercury_format_section_marker(S, SectionKind, !U),
+        list.foldl(mercury_format_item_include(Info, S),
+            cord.list(InclsCord), !U),
+        list.foldl(mercury_format_item_avail(Info, S),
+            cord.list(AvailsCord), !U),
+        list.foldl(mercury_format_item_foreign_import_module(S),
+            cord.list(FIMsCord), !U),
+        mercury_format_items(Info, S, cord.list(ItemsCord), !U),
         MaybeCurSectionKind = yes(SectionKind)
     ;
         Component = mc_nested_submodule(_, SectionKind, _, SubParseTree),
@@ -968,56 +1056,54 @@ mercury_output_module_components(Info, Stream, MaybePrevSectionKind,
             then
                 true
             else
-                mercury_output_section_marker(Stream, SectionKind, !IO)
+                mercury_format_section_marker(S, SectionKind, !U)
             )
         ;
             Lang = output_debug,
-            mercury_output_section_marker(Stream, SectionKind, !IO),
+            mercury_format_section_marker(S, SectionKind, !U),
             (
                 SectionKind = ms_interface,
-                io.write_string(Stream,
-                    "% nested submodule in interface\n", !IO)
+                add_string("% nested submodule in interface\n", S, !U)
             ;
                 SectionKind = ms_implementation,
-                io.write_string(Stream,
-                    "% nested submodule in implementation\n", !IO)
+                add_string("% nested submodule in implementation\n", S, !U)
             )
         ),
-        mercury_output_parse_tree_src(Info, Stream, SubParseTree, !IO),
+        mercury_format_parse_tree_src(Info, S, SubParseTree, !U),
         MaybeCurSectionKind = MaybePrevSectionKind
     ),
-    mercury_output_module_components(Info, Stream, MaybeCurSectionKind,
-        Components, !IO).
+    mercury_format_module_components(Info, S, MaybeCurSectionKind,
+        Components, !U).
 
 %---------------------------------------------------------------------------%
 
-:- pred mercury_output_section_marker(io.text_output_stream::in,
-    module_section::in, io::di, io::uo) is det.
+:- pred mercury_format_section_marker(S::in, module_section::in,
+    U::di, U::uo) is det <= pt_output(S, U).
 
-mercury_output_section_marker(Stream, Section, !IO) :-
+mercury_format_section_marker(S, Section, !U) :-
     (
         Section = ms_interface,
-        io.write_string(Stream, ":- interface.\n", !IO)
+        add_string(":- interface.\n", S, !U)
     ;
         Section = ms_implementation,
-        io.write_string(Stream, ":- implementation.\n", !IO)
+        add_string(":- implementation.\n", S, !U)
     ).
 
 %---------------------------------------------------------------------------%
 
-:- pred mercury_output_item_include(merc_out_info::in,
-    io.text_output_stream::in, item_include::in, io::di, io::uo) is det.
+:- pred mercury_format_item_include(merc_out_info::in, S::in, item_include::in,
+    U::di, U::uo) is det <= pt_output(S, U).
 
-mercury_output_item_include(Info, Stream, ItemInclude, !IO) :-
+mercury_format_item_include(Info, S, ItemInclude, !U) :-
     ItemInclude = item_include(ModuleName, Context, _SeqNum),
     Decl = "include_module",
-    maybe_output_line_number(Info, Context, Stream, !IO),
-    mercury_output_module_decl(Stream, Decl, ModuleName, !IO).
+    maybe_format_line_number(Info, Context, S, !U),
+    mercury_format_module_decl(S, Decl, ModuleName, !U).
 
-:- pred mercury_output_item_avail(merc_out_info::in,
-    io.text_output_stream::in, item_avail::in, io::di, io::uo) is det.
+:- pred mercury_format_item_avail(merc_out_info::in, S::in, item_avail::in, 
+    U::di, U::uo) is det <= pt_output(S, U).
 
-mercury_output_item_avail(Info, Stream, Avail, !IO) :-
+mercury_format_item_avail(Info, S, Avail, !U) :-
     (
         Avail = avail_import(avail_import_info(ModuleName, Context, _SeqNum)),
         Decl = "import_module"
@@ -1025,121 +1111,123 @@ mercury_output_item_avail(Info, Stream, Avail, !IO) :-
         Avail = avail_use(avail_use_info(ModuleName, Context, _SeqNum)),
         Decl = "use_module"
     ),
-    maybe_output_line_number(Info, Context, Stream, !IO),
-    mercury_output_module_decl(Stream, Decl, ModuleName, !IO).
+    maybe_format_line_number(Info, Context, S, !U),
+    mercury_format_module_decl(S, Decl, ModuleName, !U).
 
 mercury_output_module_decl(Stream, Decl, ModuleName, !IO) :-
+    mercury_format_module_decl(Stream, Decl, ModuleName, !IO).
+
+mercury_format_module_decl(S, Decl, ModuleName, !U) :-
     ModuleNameStr = mercury_bracketed_sym_name_to_string(ModuleName),
-    io.format(Stream, ":- %s %s.\n", [s(Decl), s(ModuleNameStr)], !IO).
+    string.format(":- %s %s.\n", [s(Decl), s(ModuleNameStr)], DeclStr),
+    add_string(DeclStr, S, !U).
 
 %---------------------------------------------------------------------------%
 
-:- pred mercury_output_items(merc_out_info::in, io.text_output_stream::in,
-    list(item)::in, io::di, io::uo) is det.
+:- pred mercury_format_items(merc_out_info::in, S::in, list(item)::in,
+    U::di, U::uo) is det <= pt_output(S, U).
 
-mercury_output_items(_, _, [], !IO).
-mercury_output_items(Info, Stream, [Item | Items], !IO) :-
-    mercury_output_item(Info, Stream, Item, !IO),
-    mercury_output_items(Info, Stream, Items, !IO).
+mercury_format_items(_, _, [], !U).
+mercury_format_items(Info, S, [Item | Items], !U) :-
+    mercury_format_item(Info, S, Item, !U),
+    mercury_format_items(Info, S, Items, !U).
 
-mercury_output_item(Info, Stream, Item, !IO) :-
+mercury_format_item(Info, S, Item, !U) :-
     (
         Item = item_type_defn(ItemTypeDefn),
-        mercury_output_item_type_defn(Info, Stream, ItemTypeDefn, !IO)
+        mercury_format_item_type_defn(Info, S, ItemTypeDefn, !U)
     ;
         Item = item_inst_defn(ItemInstDefn),
-        mercury_output_item_inst_defn(Info, Stream, ItemInstDefn, !IO)
+        mercury_format_item_inst_defn(Info, S, ItemInstDefn, !U)
     ;
         Item = item_mode_defn(ItemModeDefn),
-        mercury_output_item_mode_defn(Info, Stream, ItemModeDefn, !IO)
+        mercury_format_item_mode_defn(Info, S, ItemModeDefn, !U)
     ;
         Item = item_pred_decl(ItemPredDecl),
-        mercury_output_item_pred_decl_mu_mc(Info, print_name_only, Stream,
-            ItemPredDecl, !IO)
+        mercury_format_item_pred_decl_mu_mc(Info, print_name_only, S,
+            ItemPredDecl, !U)
     ;
         Item = item_mode_decl(ItemModeDecl),
-        mercury_output_item_mode_decl(Info, Stream, ItemModeDecl, !IO)
+        mercury_format_item_mode_decl(Info, S, ItemModeDecl, !U)
     ;
         Item = item_clause(ItemClause),
-        mercury_output_item_clause(Info, Stream, ItemClause, !IO)
+        mercury_format_item_clause(Info, S, ItemClause, !U)
     ;
         Item = item_foreign_proc(ItemForeignProc),
-        mercury_output_item_foreign_proc(Stream, get_output_lang(Info),
-            ItemForeignProc, !IO)
+        mercury_format_item_foreign_proc(S, get_output_lang(Info),
+            ItemForeignProc, !U)
     ;
         Item = item_foreign_enum(ItemForeignEnum),
-        mercury_format_item_foreign_enum(Info, Stream, ItemForeignEnum, !IO)
+        mercury_format_item_foreign_enum(Info, S, ItemForeignEnum, !U)
     ;
         Item = item_foreign_export_enum(ItemForeignExportEnum),
-        mercury_format_item_foreign_export_enum(Info, Stream,
-            ItemForeignExportEnum, !IO)
+        mercury_format_item_foreign_export_enum(Info, S,
+            ItemForeignExportEnum, !U)
     ;
         Item = item_decl_pragma(ItemDeclPragma),
-        mercury_output_item_decl_pragma(Info, Stream, ItemDeclPragma, !IO)
+        mercury_format_item_decl_pragma(Info, S, ItemDeclPragma, !U)
     ;
         Item = item_decl_marker(ItemDeclPragma),
-        mercury_format_item_decl_marker(Stream, ItemDeclPragma, !IO)
+        mercury_format_item_decl_marker(S, ItemDeclPragma, !U)
     ;
         Item = item_impl_pragma(ItemImplPragma),
-        mercury_output_item_impl_pragma(Info, Stream, ItemImplPragma, !IO)
+        mercury_format_item_impl_pragma(Info, S, ItemImplPragma, !U)
     ;
         Item = item_impl_marker(ItemImplPragma),
-        mercury_format_item_impl_marker(Stream, ItemImplPragma, !IO)
+        mercury_format_item_impl_marker(S, ItemImplPragma, !U)
     ;
         Item = item_generated_pragma(ItemGenPragma),
-        mercury_output_item_generated_pragma(Info, Stream, ItemGenPragma, !IO)
+        mercury_format_item_generated_pragma(Info, S, ItemGenPragma, !U)
     ;
         Item = item_promise(ItemPromise),
-        mercury_output_item_promise(Info, Stream, ItemPromise, !IO)
+        mercury_format_item_promise(Info, S, ItemPromise, !U)
     ;
         Item = item_typeclass(ItemTypeClass),
-        mercury_output_item_typeclass(Info, Stream, ItemTypeClass, !IO)
+        mercury_format_item_typeclass(Info, S, ItemTypeClass, !U)
     ;
         Item = item_instance(ItemInstance),
-        mercury_output_item_instance(Info, Stream, ItemInstance, !IO)
+        mercury_format_item_instance(Info, S, ItemInstance, !U)
     ;
         Item = item_initialise(ItemInitialise),
-        mercury_output_item_initialise(Info, Stream, ItemInitialise, !IO)
+        mercury_format_item_initialise(Info, S, ItemInitialise, !U)
     ;
         Item = item_finalise(ItemFinalise),
-        mercury_output_item_finalise(Info, Stream, ItemFinalise, !IO)
+        mercury_format_item_finalise(Info, S, ItemFinalise, !U)
     ;
         Item = item_mutable(ItemMutable),
-        mercury_output_item_mutable(Info, Stream, ItemMutable, !IO)
+        mercury_format_item_mutable(Info, S, ItemMutable, !U)
     ;
         Item = item_type_repn(ItemTypeRepn),
-        mercury_output_item_type_repn(Info, Stream, ItemTypeRepn, !IO)
+        mercury_format_item_type_repn(Info, S, ItemTypeRepn, !U)
     ).
 
 %---------------------------------------------------------------------------%
 
-:- pred mercury_output_pred_or_mode_decls(merc_out_info::in,
-    var_name_print::in, io.text_output_stream::in,
-    list(pred_or_mode_decl_item)::in, io::di, io::uo) is det.
+:- pred mercury_format_pred_or_mode_decls(merc_out_info::in,
+    var_name_print::in, S::in, list(pred_or_mode_decl_item)::in,
+    U::di, U::uo) is det <= pt_output(S, U).
 
-mercury_output_pred_or_mode_decls(_, _, _, [], !IO).
-mercury_output_pred_or_mode_decls(Info, VarNamePrint, Stream,
-        [Item | Items], !IO) :-
-    mercury_output_pred_or_mode_decl(Info, VarNamePrint, Stream, Item, !IO),
-    mercury_output_pred_or_mode_decls(Info, VarNamePrint, Stream, Items, !IO).
+mercury_format_pred_or_mode_decls(_, _, _, [], !U).
+mercury_format_pred_or_mode_decls(Info, VarNamePrint, S, [Item | Items], !U) :-
+    mercury_format_pred_or_mode_decl(Info, VarNamePrint, S, Item, !U),
+    mercury_format_pred_or_mode_decls(Info, VarNamePrint, S, Items, !U).
 
-:- pred mercury_output_pred_or_mode_decl(merc_out_info::in, var_name_print::in,
-    io.text_output_stream::in, pred_or_mode_decl_item::in,
-    io::di, io::uo) is det.
+:- pred mercury_format_pred_or_mode_decl(merc_out_info::in, var_name_print::in,
+    S::in, pred_or_mode_decl_item::in, U::di, U::uo) is det <= pt_output(S, U).
 
-mercury_output_pred_or_mode_decl(Info, VarNamePrint, Stream, Item, !IO) :-
+mercury_format_pred_or_mode_decl(Info, VarNamePrint, S, Item, !U) :-
     (
         Item = pomd_pred(ItemPredDecl),
-        mercury_output_item_pred_decl_mu_mc(Info, VarNamePrint, Stream,
-            ItemPredDecl, !IO)
+        mercury_format_item_pred_decl_mu_mc(Info, VarNamePrint, S,
+            ItemPredDecl, !U)
     ;
         Item = pomd_mode(ItemModeDecl),
-        mercury_output_item_mode_decl(Info, Stream, ItemModeDecl, !IO)
+        mercury_format_item_mode_decl(Info, S, ItemModeDecl, !U)
     ).
 
 %---------------------------------------------------------------------------%
 
-mercury_output_item_type_defn(Info, Stream, ItemTypeDefn, !IO) :-
+mercury_format_item_type_defn(Info, S, ItemTypeDefn, !U) :-
     % XXX We should not use the tvar names in TypeVarSet; we should be
     % using standard tvar names such as TV1, TV2 etc. This should allow
     % any automatically generated interface files to remain unchanged
@@ -1149,7 +1237,7 @@ mercury_output_item_type_defn(Info, Stream, ItemTypeDefn, !IO) :-
     ItemTypeDefn = item_type_defn_info(SymName0, TypeParams, TypeDefn,
         TypeVarSet, Context, _SeqNum),
     maybe_unqualify_sym_name(Info, SymName0, SymName),
-    maybe_output_line_number(Info, Context, Stream, !IO),
+    maybe_format_line_number(Info, Context, S, !U),
     Args = list.map((func(V) = term.variable(V, Context)), TypeParams),
     construct_qualified_term_with_context(SymName, Args, Context, TypeTerm),
     (
@@ -1161,19 +1249,19 @@ mercury_output_item_type_defn(Info, Stream, ItemTypeDefn, !IO) :-
             ; DetailsAbstract = abstract_type_fits_in_n_bits(_)
             ; DetailsAbstract = abstract_subtype(_)
             ),
-            io.write_string(Stream, ":- type ", !IO)
+            add_string(":- type ", S, !U)
         ;
             DetailsAbstract = abstract_solver_type,
-            io.write_string(Stream, ":- solver type ", !IO)
+            add_string(":- solver type ", S, !U)
         ),
-        mercury_output_term_nq_vs(TypeVarSet, print_name_only,
-            next_to_graphic_token, TypeTerm, Stream, !IO),
+        mercury_format_term_nq_vs(TypeVarSet, print_name_only,
+            next_to_graphic_token, TypeTerm, S, !U),
         (
             DetailsAbstract = abstract_type_fits_in_n_bits(NumBits),
             % XXX TYPE_REPN Instead of adding this information to the
             % generated type definition, generate and write out
             % a separate type_repn item instead.
-            mercury_output_where_abstract_enum_type(Stream, NumBits, !IO)
+            mercury_format_where_abstract_enum_type(S, NumBits, !U)
         ;
             ( DetailsAbstract = abstract_dummy_type
             ; DetailsAbstract = abstract_notag_type
@@ -1183,75 +1271,67 @@ mercury_output_item_type_defn(Info, Stream, ItemTypeDefn, !IO) :-
             % so we don't have anything to do for them.
         ;
             DetailsAbstract = abstract_subtype(SuperTypeCtor),
-            mercury_output_where_abstract_subtype(Stream, SuperTypeCtor, !IO)
+            mercury_format_where_abstract_subtype(S, SuperTypeCtor, !U)
         ;
             ( DetailsAbstract = abstract_type_general
             ; DetailsAbstract = abstract_solver_type
             )
         ),
-        io.write_string(Stream, ".\n", !IO)
+        add_string(".\n", S, !U)
     ;
         TypeDefn = parse_tree_eqv_type(DetailsEqv),
         DetailsEqv = type_details_eqv(EqvType),
-        io.write_string(Stream, ":- type ", !IO),
-        mercury_output_term_vs(TypeVarSet, print_name_only, TypeTerm,
-            Stream, !IO),
-        io.write_string(Stream, " == ", !IO),
-        mercury_output_type(TypeVarSet, print_name_only, EqvType, Stream, !IO),
-        io.write_string(Stream, ".\n", !IO)
+        add_string(":- type ", S, !U),
+        mercury_format_term_vs(TypeVarSet, print_name_only, TypeTerm, S, !U),
+        add_string(" == ", S, !U),
+        mercury_format_type(TypeVarSet, print_name_only, EqvType, S, !U),
+        add_string(".\n", S, !U)
     ;
         TypeDefn = parse_tree_du_type(DetailsDu),
         DetailsDu = type_details_du(OoMCtors, MaybeCanonical, MaybeDirectArgs),
-        io.write_string(Stream, ":- type ", !IO),
-        mercury_output_term_vs(TypeVarSet, print_name_only, TypeTerm,
-            Stream, !IO),
+        add_string(":- type ", S, !U),
+        mercury_format_term_vs(TypeVarSet, print_name_only, TypeTerm, S, !U),
         OoMCtors = one_or_more(HeadCtor, TailCtors),
-        mercury_output_ctors(TypeVarSet, yes, HeadCtor, TailCtors,
-            Stream, !IO),
-        mercury_output_where_attributes(Info, TypeVarSet, no,
-            MaybeCanonical, MaybeDirectArgs, Stream, !IO),
-        io.write_string(Stream, ".\n", !IO)
+        mercury_format_ctors(TypeVarSet, yes, HeadCtor, TailCtors, S, !U),
+        mercury_format_where_attributes(Info, TypeVarSet, maybe.no,
+            MaybeCanonical, MaybeDirectArgs, S, !U),
+        add_string(".\n", S, !U)
     ;
         TypeDefn = parse_tree_sub_type(DetailsDu),
         DetailsDu = type_details_sub(SuperType, OoMCtors),
-        io.write_string(Stream, ":- type ", !IO),
-        mercury_output_term_vs(TypeVarSet, print_name_only, TypeTerm,
-            Stream, !IO),
-        io.write_string(Stream, " =< ", !IO),
-        mercury_output_type(TypeVarSet, print_name_only, SuperType,
-            Stream, !IO),
+        add_string(":- type ", S, !U),
+        mercury_format_term_vs(TypeVarSet, print_name_only, TypeTerm, S, !U),
+        add_string(" =< ", S, !U),
+        mercury_format_type(TypeVarSet, print_name_only, SuperType, S, !U),
         OoMCtors = one_or_more(HeadCtor, TailCtors),
-        mercury_output_ctors(TypeVarSet, yes, HeadCtor, TailCtors,
-            Stream, !IO),
-        io.write_string(Stream, ".\n", !IO)
+        mercury_format_ctors(TypeVarSet, yes, HeadCtor, TailCtors, S, !U),
+        add_string(".\n", S, !U)
     ;
         TypeDefn = parse_tree_solver_type(DetailsSolver),
         DetailsSolver =
             type_details_solver(SolverTypeDetails, MaybeCanonical),
-        io.write_string(Stream, ":- solver type ", !IO),
-        mercury_output_term_vs(TypeVarSet, print_name_only, TypeTerm,
-            Stream, !IO),
-        mercury_output_where_attributes(Info, TypeVarSet,
-            yes(SolverTypeDetails), MaybeCanonical, no, Stream, !IO),
-        io.write_string(Stream, ".\n", !IO)
+        add_string(":- solver type ", S, !U),
+        mercury_format_term_vs(TypeVarSet, print_name_only, TypeTerm, S, !U),
+        mercury_format_where_attributes(Info, TypeVarSet,
+            yes(SolverTypeDetails), MaybeCanonical, maybe.no, S, !U),
+        add_string(".\n", S, !U)
     ;
         TypeDefn = parse_tree_foreign_type(DetailsForeign),
         DetailsForeign = type_details_foreign(ForeignType, MaybeCanonical,
             foreign_type_assertions(Assertions)),
-        io.write_string(Stream, ":- pragma foreign_type(", !IO),
+        add_string(":- pragma foreign_type(", S, !U),
         (
             ForeignType = c(_),
-            io.write_string(Stream, "c, ", !IO)
+            add_string("c, ", S, !U)
         ;
             ForeignType = java(_),
-            io.write_string(Stream, "java, ", !IO)
+            add_string("java, ", S, !U)
         ;
             ForeignType = csharp(_),
-            io.write_string(Stream, "csharp, ", !IO)
+            add_string("csharp, ", S, !U)
         ),
-        mercury_output_term_vs(TypeVarSet, print_name_only, TypeTerm,
-            Stream, !IO),
-        io.write_string(Stream, ", \"", !IO),
+        mercury_format_term_vs(TypeVarSet, print_name_only, TypeTerm, S, !U),
+        add_string(", \"", S, !U),
         (
             ForeignType = c(c_type(ForeignTypeStr))
         ;
@@ -1259,8 +1339,8 @@ mercury_output_item_type_defn(Info, Stream, ItemTypeDefn, !IO) :-
         ;
             ForeignType = csharp(csharp_type(ForeignTypeStr))
         ),
-        io.write_string(Stream, ForeignTypeStr, !IO),
-        io.write_string(Stream, "\"", !IO),
+        add_string(ForeignTypeStr, S, !U),
+        add_string("\"", S, !U),
         set.to_sorted_list(Assertions, AssertionsList),
         (
             AssertionsList = []
@@ -1269,14 +1349,14 @@ mercury_output_item_type_defn(Info, Stream, ItemTypeDefn, !IO) :-
             AssertionStrs =
                 list.map(foreign_type_assertion_to_string, AssertionsList),
             AssertionsStr = string.join_list(", ", AssertionStrs),
-            io.write_string(Stream, ", [", !IO),
-            io.write_string(Stream, AssertionsStr, !IO),
-            io.write_string(Stream, "]", !IO)
+            add_string(", [", S, !U),
+            add_string(AssertionsStr, S, !U),
+            add_string("]", S, !U)
         ),
-        io.write_string(Stream, ")", !IO),
-        mercury_output_where_attributes(Info, TypeVarSet, no,
-            MaybeCanonical, no, Stream, !IO),
-        io.write_string(Stream, ".\n", !IO)
+        add_string(")", S, !U),
+        mercury_format_where_attributes(Info, TypeVarSet, no,
+            MaybeCanonical, no, S, !U),
+        add_string(".\n", S, !U)
     ).
 
 %---------------------%
@@ -1284,8 +1364,8 @@ mercury_output_item_type_defn(Info, Stream, ItemTypeDefn, !IO) :-
 % Predicates needed to output more than one kind of type.
 %
 
-mercury_output_where_attributes(Info, TypeVarSet, MaybeSolverTypeDetails,
-        MaybeCanonical, MaybeDirectArgs, Stream, !IO) :-
+mercury_format_where_attributes(Info, TypeVarSet, MaybeSolverTypeDetails,
+        MaybeCanonical, MaybeDirectArgs, S, !U) :-
     some [!LineCord]
     (
         !:LineCord = cord.init,
@@ -1337,16 +1417,16 @@ mercury_output_where_attributes(Info, TypeVarSet, MaybeSolverTypeDetails,
         then
             true
         else
-            io.write_string(Stream, "\n    where\n", !IO),
+            add_string("\n    where\n", S, !U),
             (
                 MaybeSolverTypeDetails = yes(SolverTypeDetails),
-                mercury_output_solver_type_details(Info, Stream, TypeVarSet,
-                    SolverTypeDetails, !IO),
+                mercury_format_solver_type_details(Info, S, TypeVarSet,
+                    SolverTypeDetails, !U),
                 (
                     Lines = []
                 ;
                     Lines = [_ | _],
-                    io.write_string(Stream, ",\n", !IO)
+                    add_string(",\n", S, !U)
                 )
             ;
                 MaybeSolverTypeDetails = no
@@ -1358,35 +1438,34 @@ mercury_output_where_attributes(Info, TypeVarSet, MaybeSolverTypeDetails,
                 ),
             IndentedLines = list.map(IndentLine, Lines),
             AllLines = string.join_list(",\n", IndentedLines),
-            io.write_string(Stream, AllLines, !IO)
+            add_string(AllLines, S, !U)
         )
     ).
 
-:- pred mercury_output_solver_type_details(merc_out_info::in,
-    io.text_output_stream::in, tvarset::in, solver_type_details::in,
-    io::di, io::uo) is det.
+:- pred mercury_format_solver_type_details(merc_out_info::in,
+    S::in, tvarset::in, solver_type_details::in, U::di, U::uo) is det
+    <= pt_output(S, U).
 
-mercury_output_solver_type_details(Info, Stream, TypeVarSet, Details, !IO) :-
+mercury_format_solver_type_details(Info, S, TypeVarSet, Details, !U) :-
     Details = solver_type_details(RepresentationType, GroundInst,
         AnyInst, MutableInfos),
-    io.write_string(Stream, "        representation is ", !IO),
-    mercury_output_type(TypeVarSet, print_name_only, RepresentationType,
-        Stream, !IO),
+    add_string("        representation is ", S, !U),
+    mercury_format_type(TypeVarSet, print_name_only, RepresentationType,
+        S, !U),
     Lang = get_output_lang(Info),
     varset.init(EmptyInstVarSet),
-    io.write_string(Stream, ",\n        ground is ", !IO),
-    mercury_output_inst(Stream, Lang, EmptyInstVarSet, GroundInst, !IO),
-    io.write_string(Stream, ",\n        any is ", !IO),
-    mercury_output_inst(Stream, Lang, EmptyInstVarSet, AnyInst, !IO),
+    add_string(",\n        ground is ", S, !U),
+    mercury_format_inst(Lang, EmptyInstVarSet, GroundInst, S, !U),
+    add_string(",\n        any is ", S, !U),
+    mercury_format_inst(Lang, EmptyInstVarSet, AnyInst, S, !U),
     (
         MutableInfos = []
     ;
         MutableInfos = [_ | _],
-        io.write_string(Stream,
-            ",\n        constraint_store is [\n            ", !IO),
-        write_out_list(mercury_output_item_mutable_2(Info),
-            ",\n            ", MutableInfos, Stream, !IO),
-        io.write_string(Stream, "\n        ]", !IO)
+        add_string(",\n        constraint_store is [\n            ", S, !U),
+        list.gap_foldl(mercury_format_item_mutable(Info, S),
+            add_string(",\n            ", S), MutableInfos, !U),
+        add_string("\n        ]", S, !U)
     ).
 
 %---------------------%
@@ -1394,56 +1473,55 @@ mercury_output_solver_type_details(Info, Stream, TypeVarSet, Details, !IO) :-
 % Predicates needed to output abstract types.
 %
 
-:- pred mercury_output_where_abstract_enum_type(io.text_output_stream::in,
-    int::in, io::di, io::uo) is det.
+:- pred mercury_format_where_abstract_enum_type(S::in, int::in,
+    U::di, U::uo) is det <= pt_output(S, U).
 
-mercury_output_where_abstract_enum_type(Stream, NumBits, !IO) :-
-    io.write_string(Stream, "\n\twhere\t", !IO),
-    io.write_string(Stream, "type_is_abstract_enum(", !IO),
+mercury_format_where_abstract_enum_type(S, NumBits, !U) :-
+    add_string("\n\twhere\t", S, !U),
+    add_string("type_is_abstract_enum(", S, !U),
     % XXX TYPE_REPN
-    % io.write_string(Stream, "type_is_representable_in_n_bits(", !IO),
-    io.write_int(Stream, NumBits, !IO),
-    io.write_string(Stream, ")", !IO).
+    % add_string("type_is_representable_in_n_bits(", S, !U),
+    add_int(NumBits, S, !U),
+    add_string(")", S, !U).
 
-:- pred mercury_output_where_abstract_subtype(io.text_output_stream::in,
-    type_ctor::in, io::di, io::uo) is det.
+:- pred mercury_format_where_abstract_subtype(S::in, type_ctor::in,
+    U::di, U::uo) is det <= pt_output(S, U).
 
-mercury_output_where_abstract_subtype(Stream, TypeCtor, !IO) :-
-    io.write_string(Stream, "\n\twhere\t", !IO),
-    io.write_string(Stream, "type_is_abstract_subtype(", !IO),
+mercury_format_where_abstract_subtype(S, TypeCtor, !U) :-
+    add_string("\n\twhere\t", S, !U),
+    add_string("type_is_abstract_subtype(", S, !U),
     TypeCtor = type_ctor(SymName, Arity),
-    mercury_output_sym_name(SymName, Stream, !IO),
-    io.write_string(Stream, "/", !IO),
-    io.write_int(Stream, Arity, !IO),
-    io.write_string(Stream, ")", !IO).
+    mercury_format_sym_name(SymName, S, !U),
+    add_string("/", S, !U),
+    add_int(Arity, S, !U),
+    add_string(")", S, !U).
 
 %---------------------%
 %
 % Predicates needed to output discriminated union types.
 %
 
-:- pred mercury_output_ctors(tvarset::in, bool::in,
-    constructor::in, list(constructor)::in, io.text_output_stream::in,
-    io::di, io::uo) is det.
+:- pred mercury_format_ctors(tvarset::in, bool::in,
+    constructor::in, list(constructor)::in, S::in,
+    U::di, U::uo) is det <= pt_output(S, U).
 
-mercury_output_ctors(VarSet, First, HeadCtor, TailCtors, Stream, !IO) :-
+mercury_format_ctors(VarSet, First, HeadCtor, TailCtors, S, !U) :-
     (
         First = yes,
-        io.write_string(Stream, "\n    --->    ", !IO)
+        add_string("\n    --->    ", S, !U)
     ;
         First = no,
-        io.write_string(Stream, "\n    ;       ", !IO)
+        add_string("\n    ;       ", S, !U)
     ),
-    mercury_output_ctor(VarSet, HeadCtor, Stream, !IO),
+    mercury_format_ctor(VarSet, HeadCtor, S, !U),
     (
         TailCtors = []
     ;
         TailCtors = [HeadTailCtor | TailTailCtors],
-        mercury_output_ctors(VarSet, no, HeadTailCtor, TailTailCtors,
-            Stream, !IO)
+        mercury_format_ctors(VarSet, no, HeadTailCtor, TailTailCtors, S, !U)
     ).
 
-mercury_output_ctor(TVarSet, Ctor, Stream, !IO) :-
+mercury_format_ctor(TVarSet, Ctor, S, !U) :-
     % NOTE The code of this predicate is almost identical to the
     % code of write_ctor and write_ctor_repn in hlds_out_module.m.
     % Any changes made here will probably need to be made there as well.
@@ -1455,24 +1533,24 @@ mercury_output_ctor(TVarSet, Ctor, Stream, !IO) :-
     maybe_cons_exist_constraints_to_prefix_suffix(TVarSet, "", "",
         MaybeExistConstraints, ExistConstraintsPrefix, ExistConstraintsSuffix),
     maybe_brace_for_name_prefix_suffix(Arity, Name, BracePrefix, BraceSuffix),
-    io.write_string(Stream, ExistConstraintsPrefix, !IO),
-    io.write_string(Stream, BracePrefix, !IO),
+    add_string(ExistConstraintsPrefix, S, !U),
+    add_string(BracePrefix, S, !U),
     (
         Args = [],
-        mercury_output_bracketed_sym_name(unqualified(Name), Stream, !IO),
+        mercury_format_bracketed_sym_name(unqualified(Name), S, !U),
         % This space prevents a terminating full stop from being confused
         % as part of the sym_name if the sym_name contains graphical
         % characters.
-        io.write_string(Stream, " ", !IO)
+        add_string(" ", S, !U)
     ;
         Args = [HeadArg | TailArgs],
-        mercury_output_sym_name(unqualified(Name), Stream, !IO),
-        io.write_string(Stream, "(", !IO),
-        mercury_output_ctor_args(Stream, TVarSet, HeadArg, TailArgs, !IO),
-        io.write_string(Stream, ")", !IO)
+        mercury_format_sym_name(unqualified(Name), S, !U),
+        add_string("(", S, !U),
+        mercury_format_ctor_args(S, TVarSet, HeadArg, TailArgs, !U),
+        add_string(")", S, !U)
     ),
-    io.write_string(Stream, BraceSuffix, !IO),
-    io.write_string(Stream, ExistConstraintsSuffix, !IO).
+    add_string(BraceSuffix, S, !U),
+    add_string(ExistConstraintsSuffix, S, !U).
 
 maybe_cons_exist_constraints_to_prefix_suffix(TVarSet, SuffixStart, SuffixEnd,
         MaybeExistConstraints, Prefix, Suffix) :-
@@ -1510,40 +1588,40 @@ maybe_brace_for_name_prefix_suffix(Arity, Name, Prefix, Suffix) :-
         Suffix = ""
     ).
 
-:- pred mercury_output_ctor_args(io.text_output_stream::in, tvarset::in,
-    constructor_arg::in, list(constructor_arg)::in, io::di, io::uo) is det.
+:- pred mercury_format_ctor_args(S::in, tvarset::in,
+    constructor_arg::in, list(constructor_arg)::in,
+    U::di, U::uo) is det <= pt_output(S, U).
 
-mercury_output_ctor_args(Stream, TVarSet, HeadArg, TailArgs, !IO) :-
-    mercury_output_ctor_arg(Stream, TVarSet, HeadArg, !IO),
+mercury_format_ctor_args(S, TVarSet, HeadArg, TailArgs, !U) :-
+    mercury_format_ctor_arg(S, TVarSet, HeadArg, !U),
     (
         TailArgs = []
     ;
         TailArgs = [HeadTailArg | TailTailArgs],
-        io.write_string(Stream, ", ", !IO),
-        mercury_output_ctor_args(Stream, TVarSet,
-            HeadTailArg, TailTailArgs, !IO)
+        add_string(", ", S, !U),
+        mercury_format_ctor_args(S, TVarSet, HeadTailArg, TailTailArgs, !U)
     ).
 
-:- pred mercury_output_ctor_arg(io.text_output_stream::in, tvarset::in,
-    constructor_arg::in, io::di, io::uo) is det.
+:- pred mercury_format_ctor_arg(S::in, tvarset::in, constructor_arg::in,
+    U::di, U::uo) is det <= pt_output(S, U).
 
-mercury_output_ctor_arg(Stream, TVarSet, Arg, !IO) :-
+mercury_format_ctor_arg(S, TVarSet, Arg, !U) :-
     Arg = ctor_arg(Name, Type, _Context),
-    mercury_output_ctor_arg_name_prefix(Stream, Name, !IO),
-    mercury_output_type(TVarSet, print_name_only, Type, Stream, !IO).
+    mercury_format_ctor_arg_name_prefix(S, Name, !U),
+    mercury_format_type(TVarSet, print_name_only, Type, S, !U).
 
-:- pred mercury_output_ctor_arg_name_prefix(io.text_output_stream::in,
-    maybe(ctor_field_name)::in, io::di, io::uo) is det.
+:- pred mercury_format_ctor_arg_name_prefix(S::in, maybe(ctor_field_name)::in,
+    U::di, U::uo) is det <= pt_output(S, U).
 
-mercury_output_ctor_arg_name_prefix(_Stream, no, !IO).
-mercury_output_ctor_arg_name_prefix(Stream, yes(FieldName), !IO) :-
+mercury_format_ctor_arg_name_prefix(_S, no, !U).
+mercury_format_ctor_arg_name_prefix(S, yes(FieldName), !U) :-
     FieldName = ctor_field_name(Name, _Ctxt),
-    mercury_output_bracketed_sym_name(Name, Stream, !IO),
-    io.write_string(Stream, " :: ", !IO).
+    mercury_format_bracketed_sym_name(Name, S, !U),
+    add_string(" :: ", S, !U).
 
 %---------------------------------------------------------------------------%
 
-mercury_output_item_inst_defn(Info, Stream, ItemInstDefn, !IO) :-
+mercury_format_item_inst_defn(Info, S, ItemInstDefn, !U) :-
     ItemInstDefn = item_inst_defn_info(SymName0, InstParams, MaybeForTypeCtor,
         MaybeAbstractInstDefn, InstVarSet, Context, _SeqNum),
     % If the unqualified name is a builtin inst, then output the qualified
@@ -1555,17 +1633,17 @@ mercury_output_item_inst_defn(Info, Stream, ItemInstDefn, !IO) :-
     else
         SymName = UnQualSymName
     ),
-    maybe_output_line_number(Info, Context, Stream, !IO),
+    maybe_format_line_number(Info, Context, S, !U),
     Lang = get_output_lang(Info),
     ArgTerms = list.map(func(V) = variable(V, Context), InstParams),
     construct_qualified_term_with_context(SymName, ArgTerms, Context,
         InstTerm),
     (
         MaybeAbstractInstDefn = abstract_inst_defn,
-        io.write_string(Stream, ":- abstract_inst((", !IO),
-        mercury_output_term_vs(InstVarSet, print_name_only, InstTerm,
-            Stream, !IO),
-        io.write_string(Stream, ")).\n", !IO)
+        add_string(":- abstract_inst((", S, !U),
+        mercury_format_term_vs(InstVarSet, print_name_only, InstTerm,
+            S, !U),
+        add_string(")).\n", S, !U)
     ;
         MaybeAbstractInstDefn = nonabstract_inst_defn(eqv_inst(Inst)),
         ( if
@@ -1578,33 +1656,33 @@ mercury_output_item_inst_defn(Info, Stream, ItemInstDefn, !IO) :-
         then
             % Yes it is, so print the inst and its parameters without
             % extra parentheses around them.
-            io.format(Stream, ":- inst %s",
-                [s(sym_name_to_string(SymName))], !IO),
+            add_string(":- inst ", S, !U),
+            add_string(sym_name_to_string(SymName), S, !U),
             (
                 ArgTerms = []
             ;
                 ArgTerms = [HeadArgTerm | TailArgTerms],
-                io.write_string(Stream, "(", !IO),
+                add_string("(", S, !U),
                 mercury_format_comma_separated_terms_vs(InstVarSet,
-                    print_name_only, HeadArgTerm, TailArgTerms, Stream, !IO),
-                io.write_string(Stream, ")", !IO)
+                    print_name_only, HeadArgTerm, TailArgTerms, S, !U),
+                add_string(")", S, !U)
             )
         else
             % No it isn't, so print the extra parentheses.
-            io.write_string(Stream, ":- inst (", !IO),
-            mercury_output_term_vs(InstVarSet, print_name_only, InstTerm,
-                Stream, !IO),
-            io.write_string(Stream, ")", !IO)
+            add_string(":- inst (", S, !U),
+            mercury_format_term_vs(InstVarSet, print_name_only, InstTerm,
+                S, !U),
+            add_string(")", S, !U)
         ),
         (
             MaybeForTypeCtor = no
         ;
             MaybeForTypeCtor = yes(ForTypeCtor),
             ForTypeCtor = type_ctor(ForTypeCtorSymName, ForTypeCtorArity),
-            io.write_string(Stream, " for ", !IO),
-            mercury_output_sym_name(ForTypeCtorSymName, Stream, !IO),
-            io.write_string(Stream, "/", !IO),
-            io.write_int(Stream, ForTypeCtorArity, !IO)
+            add_string(" for ", S, !U),
+            mercury_format_sym_name(ForTypeCtorSymName, S, !U),
+            add_string("/", S, !U),
+            add_int(ForTypeCtorArity, S, !U)
         ),
         ( if
             % Can we print the inst using the syntax that resembles
@@ -1617,14 +1695,14 @@ mercury_output_item_inst_defn(Info, Stream, ItemInstDefn, !IO) :-
             % Yes, so use that syntax, which is more readable, partly
             % because it has less clutter, and partly because it can be
             % formatted to have meaningful indentation.
-            io.write_string(Stream, "\n", !IO),
-            output_bound_inst_being_defined(Stream, Lang, InstVarSet,
-                "    --->    ", HeadSimpleBI, TailSimpleBIs, !IO)
+            add_string("\n", S, !U),
+            format_bound_inst_being_defined(S, Lang, InstVarSet,
+                "    --->    ", HeadSimpleBI, TailSimpleBIs, !U)
         else
             % No, so fall back to the less readable but more general syntax.
-            io.write_string(Stream, " == ", !IO),
-            mercury_output_inst(Stream, Lang, InstVarSet, Inst, !IO),
-            io.write_string(Stream, ".\n", !IO)
+            add_string(" == ", S, !U),
+            mercury_format_inst(Lang, InstVarSet, Inst, S, !U),
+            add_string(".\n", S, !U)
         )
     ).
 
@@ -1673,42 +1751,44 @@ name_is_simple(Name) :-
     char.is_lower(HeadChar),
     all_true(char.is_alnum_or_underscore, TailChars).
 
-:- pred output_bound_inst_being_defined(io.text_output_stream::in,
+:- pred format_bound_inst_being_defined(S::in,
     output_lang::in, inst_varset::in, string::in,
-    simple_bound_inst::in, list(simple_bound_inst)::in, io::di, io::uo) is det.
+    simple_bound_inst::in, list(simple_bound_inst)::in,
+    U::di, U::uo) is det <= pt_output(S, U).
 
-output_bound_inst_being_defined(Stream, Lang, InstVarSet, ArrowOrSemi,
-        HeadBI, TailBIs, !IO) :-
+format_bound_inst_being_defined(S, Lang, InstVarSet, ArrowOrSemi,
+        HeadBI, TailBIs, !U) :-
     HeadBI = simple_bound_functor(Name, ArgInsts),
-    io.format(Stream, "%s%s", [s(ArrowOrSemi), s(Name)], !IO),
+    string.format("%s%s", [s(ArrowOrSemi), s(Name)], InitStr),
+    add_string(InitStr, S, !U),
     (
         ArgInsts = []
     ;
         ArgInsts = [_ | _],
-        io.write_string(Stream, "(", !IO),
-        mercury_output_inst_list(Stream, Lang, InstVarSet, ArgInsts, !IO),
-        io.write_string(Stream, ")", !IO)
+        add_string("(", S, !U),
+        mercury_format_inst_list(Lang, InstVarSet, ArgInsts, S, !U),
+        add_string(")", S, !U)
     ),
     (
         TailBIs = [],
-        io.write_string(Stream, ".\n", !IO)
+        add_string(".\n", S, !U)
     ;
         TailBIs = [HeadTailBI | TailTailBIs],
-        io.write_string(Stream, "\n", !IO),
-        output_bound_inst_being_defined(Stream, Lang, InstVarSet,
-            "    ;       ", HeadTailBI, TailTailBIs, !IO)
+        add_string("\n", S, !U),
+        format_bound_inst_being_defined(S, Lang, InstVarSet,
+            "    ;       ", HeadTailBI, TailTailBIs, !U)
     ).
 
 %---------------------------------------------------------------------------%
 
-mercury_output_item_mode_defn(Info, Stream, ItemModeDefn, !IO) :-
+mercury_format_item_mode_defn(Info, S, ItemModeDefn, !U) :-
     ItemModeDefn = item_mode_defn_info(SymName, InstParams,
         MaybeAbstractModeDefn, VarSet, Context, _SeqNum),
     maybe_unqualify_sym_name(Info, SymName, UnQualSymName),
-    maybe_output_line_number(Info, Context, Stream, !IO),
+    maybe_format_line_number(Info, Context, S, !U),
     Lang = get_output_lang(Info),
     mercury_format_mode_defn(Lang, VarSet, Context, UnQualSymName, InstParams,
-        MaybeAbstractModeDefn, Stream, !IO).
+        MaybeAbstractModeDefn, S, !U).
 
     % This is defined to work on !U instead of !IO so that we can call
     % mercury_format_mode with simple_inst_info.
@@ -1750,12 +1830,12 @@ mercury_format_mode_defn_head(InstVarSet, Context, Name, Args, S, !U) :-
     % - Maybe Unqualifying the predicate name, and
     % - Maybe writing out the line number Context.
     %
-:- pred mercury_output_item_pred_decl_mu_mc(merc_out_info::in,
-    var_name_print::in, io.text_output_stream::in, item_pred_decl_info::in,
-    io::di, io::uo) is det.
+:- pred mercury_format_item_pred_decl_mu_mc(merc_out_info::in,
+    var_name_print::in, S::in, item_pred_decl_info::in,
+    U::di, U::uo) is det <= pt_output(S, U).
 
-mercury_output_item_pred_decl_mu_mc(Info, VarNamePrint, Stream,
-        ItemPredDecl0, !IO) :-
+mercury_format_item_pred_decl_mu_mc(Info, VarNamePrint, S,
+        ItemPredDecl0, !U) :-
     MaybeQualifiedItemNames = get_maybe_qualified_item_names(Info),
     (
         MaybeQualifiedItemNames = qualified_item_names,
@@ -1766,12 +1846,11 @@ mercury_output_item_pred_decl_mu_mc(Info, VarNamePrint, Stream,
         PredSymName = unqualified(unqualify_name(PredSymName0)),
         ItemPredDecl = ItemPredDecl0 ^ pf_name := PredSymName
     ),
-    maybe_output_line_number(Info, ItemPredDecl ^ pf_context, Stream, !IO),
+    maybe_format_line_number(Info, ItemPredDecl ^ pf_context, S, !U),
     Lang = get_output_lang(Info),
-    mercury_output_item_pred_decl(Lang, VarNamePrint, Stream,
-        ItemPredDecl, !IO).
+    mercury_format_item_pred_decl(Lang, VarNamePrint, S, ItemPredDecl, !U).
 
-mercury_output_item_pred_decl(Lang, VarNamePrint, Stream, ItemPredDecl, !IO) :-
+mercury_format_item_pred_decl(Lang, VarNamePrint, S, ItemPredDecl, !U) :-
     % Most of the code that outputs pred declarations is in
     % parse_tree_out_pred_decl.m.
     ItemPredDecl = item_pred_decl_info(PredSymName, PredOrFunc, TypesAndModes,
@@ -1788,36 +1867,36 @@ mercury_output_item_pred_decl(Lang, VarNamePrint, Stream, ItemPredDecl, !IO) :-
         mercury_format_func_decl(Lang, VarNamePrint,
             TypeVarSet, InstVarSet, ExistQVars,
             PredSymName, FuncTypesAndModes, RetTypeAndMode, MaybeDetism,
-            Purity, Constraints, ":- ", ".\n", ".\n", Stream, !IO)
+            Purity, Constraints, ":- ", ".\n", ".\n", S, !U)
     else
         mercury_format_pred_or_func_decl(Lang, VarNamePrint,
             TypeVarSet, InstVarSet, PredOrFunc, ExistQVars,
             PredSymName, TypesAndModes, WithType, WithInst, MaybeDetism,
-            Purity, Constraints, ":- ", ".\n", ".\n", Stream, !IO)
+            Purity, Constraints, ":- ", ".\n", ".\n", S, !U)
     ).
 
 %---------------------------------------------------------------------------%
 
-mercury_output_item_mode_decl(Info, Stream, ItemModeDecl, !IO) :-
+mercury_format_item_mode_decl(Info, S, ItemModeDecl, !U) :-
     % Most of the code that outputs mode declarations is in
     % parse_tree_out_pred_decl.m.
     ItemModeDecl = item_mode_decl_info(PredSymName0, MaybePredOrFunc, ArgModes,
         MaybeWithInst, MaybeDetism, InstVarSet, Context, _SeqNum),
     maybe_unqualify_sym_name(Info, PredSymName0, PredSymName),
-    maybe_output_line_number(Info, Context, Stream, !IO),
+    maybe_format_line_number(Info, Context, S, !U),
     Lang = get_output_lang(Info),
     ( if
+        MaybePredOrFunc = yes(pf_function),
         % Function mode declarations using `with_type` have the same format
         % as predicate mode declarations.
-        MaybePredOrFunc = yes(pf_function),
         MaybeWithInst = no
     then
         pred_args_to_func_args(ArgModes, FuncArgModes, ReturnMode),
-        mercury_output_func_mode_decl(Stream, Lang, InstVarSet, PredSymName,
-            FuncArgModes, ReturnMode, MaybeDetism, !IO)
+        mercury_format_func_mode_decl(Lang, InstVarSet, PredSymName,
+            FuncArgModes, ReturnMode, MaybeDetism, S, !U)
     else
-        mercury_output_pred_mode_decl(Stream, Lang, InstVarSet, PredSymName,
-            ArgModes, MaybeWithInst, MaybeDetism, !IO)
+        mercury_format_pred_mode_decl(Lang, InstVarSet, PredSymName,
+            ArgModes, MaybeWithInst, MaybeDetism, S, !U)
     ).
 
 %---------------------------------------------------------------------------%
@@ -1924,10 +2003,10 @@ mercury_format_sym_name_string_pair(SymName - String, S, !U) :-
 
 %---------------------------------------------------------------------------%
 
-:- pred mercury_output_item_promise(merc_out_info::in,
-    io.text_output_stream::in, item_promise_info::in, io::di, io::uo) is det.
+:- pred mercury_format_item_promise(merc_out_info::in, S::in,
+    item_promise_info::in, U::di, U::uo) is det <= pt_output(S, U).
 
-mercury_output_item_promise(_, Stream, ItemPromise, !IO) :-
+mercury_format_item_promise(_, S, ItemPromise, !U) :-
     % Any changes here may require similar changes in the write_promise
     % predicate in intermod.m.
     ItemPromise = item_promise_info(PromiseType, Goal, VarSet, UnivVars,
@@ -1939,47 +2018,50 @@ mercury_output_item_promise(_, Stream, ItemPromise, !IO) :-
     % to read back in the promises we write out.
     (
         PromiseType = promise_type_true,
-        io.format(Stream, ":- promise all [%s] (\n", [s(UnivVarsStr)], !IO)
+        string.format(":- promise all [%s] ", [s(UnivVarsStr)], PrefixStr)
     ;
         ( PromiseType = promise_type_exclusive
         ; PromiseType = promise_type_exhaustive
         ; PromiseType = promise_type_exclusive_exhaustive
         ),
-        io.format(Stream, ":- all [%s]\n%s\n(\n",
-            [s(UnivVarsStr), s(promise_to_string(PromiseType))], !IO)
+        string.format(":- all [%s]\n%s\n",
+            [s(UnivVarsStr), s(promise_to_string(PromiseType))], PrefixStr)
     ),
+    add_string(PrefixStr, S, !U),
+    add_string("(\n", S, !U),
     Indent = 1,
-    mercury_output_goal(Stream, VarSet, Indent, Goal, !IO),
-    io.write_string(Stream, "\n).\n", !IO).
+    mercury_format_goal(S, VarSet, Indent, Goal, !U),
+    add_string("\n).\n", S, !U).
 
 %---------------------------------------------------------------------------%
 
-mercury_output_item_typeclass(Info, Stream, ItemTypeClass, !IO) :-
+mercury_format_item_typeclass(Info, S, ItemTypeClass, !U) :-
     ItemTypeClass = item_typeclass_info(ClassName0, Vars, Constraints, FunDeps,
         Interface, VarSet, _Context, _SeqNum),
     maybe_unqualify_sym_name(Info, ClassName0, ClassName),
     ClassNameStr = mercury_sym_name_to_string(ClassName),
     VarStrs = list.map(varset.lookup_name(VarSet), Vars),
     VarsStr = string.join_list(", ", VarStrs),
-    io.format(Stream, ":- typeclass %s(%s)",
-        [s(ClassNameStr), s(VarsStr)], !IO),
+    string.format(":- typeclass %s(%s)",
+        [s(ClassNameStr), s(VarsStr)], DeclStr),
+    add_string(DeclStr, S, !U),
     mercury_format_fundeps_and_prog_constraint_list(VarSet, print_name_only,
-        FunDeps, Constraints, Stream, !IO),
+        FunDeps, Constraints, S, !U),
     (
         Interface = class_interface_abstract,
-        io.write_string(Stream, ".\n", !IO)
+        add_string(".\n", S, !U)
     ;
         Interface = class_interface_concrete(ClassDecls),
         (
             ClassDecls = [],
-            io.write_string(Stream, " where [].\n", !IO)
+            add_string(" where [].\n", S, !U)
         ;
             ClassDecls = [HeadClassDecl | TailClassDecls],
-            io.write_string(Stream, " where [\n", !IO),
+            add_string(" where [\n", S, !U),
             Lang = get_output_lang(Info),
-            output_class_decls(Stream, Lang, print_name_only,
-                HeadClassDecl, TailClassDecls, !IO),
-            io.write_string(Stream, "].\n", !IO)
+            format_class_decls(S, Lang, print_name_only,
+                HeadClassDecl, TailClassDecls, !U),
+            add_string("].\n", S, !U)
         )
     ).
 
@@ -2041,38 +2123,37 @@ mercury_format_fundep(TypeVarSet, VarNamePrint, fundep(Domain, Range),
         S, !U),
     add_string(")", S, !U).
 
-:- pred output_class_decls(io.text_output_stream::in,
-    output_lang::in, var_name_print::in, class_decl::in, list(class_decl)::in,
-    io::di, io::uo) is det.
+:- pred format_class_decls(S::in, output_lang::in, var_name_print::in,
+    class_decl::in, list(class_decl)::in, U::di, U::uo) is det
+    <= pt_output(S, U).
 
-output_class_decls(Stream, Lang, VarNamePrint,
-        HeadClassDecl, TailClassDecls, !IO) :-
-    output_class_decl(Stream, Lang, VarNamePrint, HeadClassDecl, !IO),
+format_class_decls(S, Lang, VarNamePrint, HeadClassDecl, TailClassDecls, !U) :-
+    format_class_decl(S, Lang, VarNamePrint, HeadClassDecl, !U),
     (
         TailClassDecls = [],
-        io.write_string(Stream, "\n", !IO)
+        add_string("\n", S, !U)
     ;
         TailClassDecls = [HeadTailClassDecl | TailTailClassDecls],
-        io.write_string(Stream, ",\n", !IO),
-        output_class_decls(Stream, Lang, VarNamePrint,
-            HeadTailClassDecl, TailTailClassDecls, !IO)
+        add_string(",\n", S, !U),
+        format_class_decls(S, Lang, VarNamePrint,
+            HeadTailClassDecl, TailTailClassDecls, !U)
     ).
 
-:- pred output_class_decl(io.text_output_stream::in, output_lang::in,
-    var_name_print::in, class_decl::in, io::di, io::uo) is det.
+:- pred format_class_decl(S::in, output_lang::in, var_name_print::in,
+    class_decl::in, U::di, U::uo) is det <= pt_output(S, U).
 
-output_class_decl(Stream, Lang, VarNamePrint, Decl, !IO) :-
-    io.write_string(Stream, "\t", !IO),
+format_class_decl(S, Lang, VarNamePrint, Decl, !U) :-
+    add_string("\t", S, !U),
     (
         Decl = class_decl_pred_or_func(PredOrFuncInfo),
-        PredOrFuncInfo = class_pred_or_func_info(SymName, PredOrFunc,
+        PredOrFuncInfo = class_pred_or_func_info(SymName0, PredOrFunc,
             TypesAndModes, WithType, WithInst, MaybeDetism,
             TypeVarSet, InstVarSet, ExistQVars, Purity,
             Constraints, _Context),
 
         % The module name is implied by the qualifier of the
         % `:- typeclass declaration'.
-        Name = unqualify_name(SymName),
+        SymName = unqualified(unqualify_name(SymName0)),
         ( if
             % Function declarations using `with_type` have the same format
             % as predicate declarations, but with `func' instead of `pred'.
@@ -2083,22 +2164,22 @@ output_class_decl(Stream, Lang, VarNamePrint, Decl, !IO) :-
                 FuncTypesAndModes, RetTypeAndMode),
             mercury_format_func_decl(Lang, VarNamePrint,
                 TypeVarSet, InstVarSet, ExistQVars,
-                unqualified(Name), FuncTypesAndModes, RetTypeAndMode,
-                MaybeDetism, Purity, Constraints, "", ",\n\t", "", Stream, !IO)
+                SymName, FuncTypesAndModes, RetTypeAndMode, MaybeDetism,
+                Purity, Constraints, "", ",\n\t", "", S, !U)
         else
             mercury_format_pred_or_func_decl(Lang, VarNamePrint,
                 TypeVarSet, InstVarSet, PredOrFunc, ExistQVars,
-                unqualified(Name), TypesAndModes, WithType, WithInst,
-                MaybeDetism, Purity, Constraints, "", ",\n\t", "", Stream, !IO)
+                SymName, TypesAndModes, WithType, WithInst, MaybeDetism,
+                Purity, Constraints, "", ",\n\t", "", S, !U)
         )
     ;
         Decl = class_decl_mode(ModeInfo),
-        ModeInfo = class_mode_info(SymName, PredOrFunc, Modes,
+        ModeInfo = class_mode_info(SymName0, PredOrFunc, Modes,
             WithInst, MaybeDetism, InstVarSet, _Context),
 
         % The module name is implied by the qualifier of the
         % `:- typeclass declaration'.
-        Name = unqualify_name(SymName),
+        SymName = unqualified(unqualify_name(SymName0)),
         ( if
             % Function mode declarations using `with_type` have the same format
             % as predicate mode declarations.
@@ -2106,36 +2187,36 @@ output_class_decl(Stream, Lang, VarNamePrint, Decl, !IO) :-
             WithInst = no
         then
             pred_args_to_func_args(Modes, FuncModes, RetMode),
-            mercury_format_func_mode_decl(Lang, InstVarSet,
-                unqualified(Name), FuncModes, RetMode, MaybeDetism,
-                "", "", Stream, !IO)
+            mercury_format_func_mode_decl_gen(Lang, InstVarSet,
+                SymName, FuncModes, RetMode, MaybeDetism, "", "", S, !U)
         else
-            mercury_format_pred_or_func_mode_decl(Lang, InstVarSet,
-                unqualified(Name), Modes, WithInst, MaybeDetism,
-                "", "", Stream, !IO)
+            mercury_format_pred_or_func_mode_decl_gen(Lang, InstVarSet,
+                SymName, Modes, WithInst, MaybeDetism, "", "", S, !U)
         )
     ).
 
 %---------------------------------------------------------------------------%
 
-mercury_output_item_instance(_Info, Stream, ItemInstance, !IO) :-
+mercury_format_item_instance(_Info, S, ItemInstance, !U) :-
     ItemInstance = item_instance_info(_ClassName, _Types, _OriginalTypes,
         _Constraints, Body, _VarSet, _InstanceModuleName, _Context, _SeqNum),
     HeaderStr = mercury_instance_header_to_string(ItemInstance),
     (
         Body = instance_body_abstract,
-        io.format(Stream, "%s.\n", [s(HeaderStr)], !IO)
+        string.format("%s.\n", [s(HeaderStr)], DeclStr),
+        add_string(DeclStr, S, !U)
     ;
         Body = instance_body_concrete(Methods),
         (
             Methods = [],
-            io.format(Stream, "%s where [].\n", [s(HeaderStr)], !IO)
+            string.format("%s where [].\n", [s(HeaderStr)], DeclStr),
+            add_string(DeclStr, S, !U)
         ;
             Methods = [HeadMethod | TailMethods],
-            io.format(Stream, "%s where [\n", [s(HeaderStr)], !IO),
-            mercury_output_instance_methods(Stream,
-                HeadMethod, TailMethods, !IO),
-            io.write_string(Stream, "].\n", !IO)
+            string.format("%s where [\n", [s(HeaderStr)], DeclStartStr),
+            add_string(DeclStartStr, S, !U),
+            mercury_format_instance_methods(S, HeadMethod, TailMethods, !U),
+            add_string("].\n", S, !U)
         )
     ).
 
@@ -2181,22 +2262,22 @@ mercury_instance_header_to_string(ItemInstance) = Str :-
             [s(ClassNameStr), s(TypesStr), s(ConstraintsStr)], Str)
     ).
 
-:- pred mercury_output_instance_methods(io.text_output_stream::in,
-    instance_method::in, list(instance_method)::in, io::di, io::uo) is det.
+:- pred mercury_format_instance_methods(S::in,
+    instance_method::in, list(instance_method)::in,
+    U::di, U::uo) is det <= pt_output(S, U).
 
-mercury_output_instance_methods(Stream, HeadMethod, TailMethods, !IO) :-
-    mercury_output_instance_method(HeadMethod, Stream, !IO),
+mercury_format_instance_methods(S, HeadMethod, TailMethods, !U) :-
+    mercury_format_instance_method(HeadMethod, S, !U),
     (
         TailMethods = [],
-        io.write_string(Stream, "\n", !IO)
+        add_string("\n", S, !U)
     ;
         TailMethods = [HeadTailMethod | TailTailMethods],
-        io.write_string(Stream, ",\n", !IO),
-        mercury_output_instance_methods(Stream,
-            HeadTailMethod, TailTailMethods, !IO)
+        add_string(",\n", S, !U),
+        mercury_format_instance_methods(S, HeadTailMethod, TailTailMethods, !U)
     ).
 
-mercury_output_instance_method(Method, Stream, !IO) :-
+mercury_format_instance_method(Method, S, !U) :-
     Method = instance_method(MethodId, Defn, _Context),
     MethodId = pred_pf_name_arity(PredOrFunc, MethodSymName, UserArity),
     UserArity = user_arity(UserArityInt),
@@ -2206,103 +2287,100 @@ mercury_output_instance_method(Method, Stream, !IO) :-
         MethodSymNameStr = mercury_bracketed_sym_name_to_string_ngt(
             next_to_graphic_token, MethodSymName),
         PredNameStr = mercury_bracketed_sym_name_to_string(PredName),
-        io.format(Stream, "\t%s(%s/%d) is %s",
+        string.format("\t%s(%s/%d) is %s",
             [s(PFStr), s(MethodSymNameStr), i(UserArityInt), s(PredNameStr)],
-            !IO)
+            DeclStr),
+        add_string(DeclStr, S, !U)
     ;
         Defn = instance_proc_def_clauses(ItemsCord),
         Items = cord.list(ItemsCord),
         % XXX should we output the term contexts?
-        io.write_string(Stream, "\t(", !IO),
-        write_out_list(output_instance_method_clause(MethodSymName),
-            "),\n\t(", Items, Stream, !IO),
-        io.write_string(Stream, ")", !IO)
+        add_string("\t(", S, !U),
+        add_list(mercury_format_instance_method_clause(MethodSymName),
+            "),\n\t(", Items, S, !U),
+        add_string(")", S, !U)
     ).
 
 %---------------------------------------------------------------------------%
 
-:- pred mercury_output_item_initialise(merc_out_info::in,
-    io.text_output_stream::in, item_initialise_info::in,
-    io::di, io::uo) is det.
+:- pred mercury_format_item_initialise(merc_out_info::in, S::in,
+    item_initialise_info::in, U::di, U::uo) is det <= pt_output(S, U).
 
-mercury_output_item_initialise(_, Stream, ItemInitialise, !IO) :-
-    ItemInitialise = item_initialise_info(PredSymName, UserArity, _, _Context,
-        _SeqNum),
+mercury_format_item_initialise(_, S, ItemInitialise, !IO) :-
+    ItemInitialise = item_initialise_info(PredSymName, UserArity, _, _, _),
     PredSymNameStr = mercury_bracketed_sym_name_to_string(PredSymName),
     UserArity = user_arity(UserArityInt),
-    io.format(Stream, ":- initialise %s/%d.\n",
-        [s(PredSymNameStr), i(UserArityInt)], !IO).
+    string.format(":- initialise %s/%d.\n",
+        [s(PredSymNameStr), i(UserArityInt)], DeclStr),
+    add_string(DeclStr, S, !IO).
 
 %---------------------------------------------------------------------------%
 
-:- pred mercury_output_item_finalise(merc_out_info::in,
-    io.text_output_stream::in, item_finalise_info::in, io::di, io::uo) is det.
+:- pred mercury_format_item_finalise(merc_out_info::in, S::in,
+    item_finalise_info::in, U::di, U::uo) is det <= pt_output(S, U).
 
-mercury_output_item_finalise(_, Stream, ItemFinalise, !IO) :-
-    ItemFinalise = item_finalise_info(PredSymName, UserArity, _, _Context,
-        _SeqNum),
+mercury_format_item_finalise(_, S, ItemFinalise, !IO) :-
+    ItemFinalise = item_finalise_info(PredSymName, UserArity, _, _, _),
     PredSymNameStr = mercury_bracketed_sym_name_to_string(PredSymName),
     UserArity = user_arity(UserArityInt),
-    io.format(Stream, ":- finalise %s/%d.\n",
-        [s(PredSymNameStr), i(UserArityInt)], !IO).
+    string.format(":- finalise %s/%d.\n",
+        [s(PredSymNameStr), i(UserArityInt)], DeclStr),
+    add_string(DeclStr, S, !IO).
 
 %---------------------------------------------------------------------------%
 
-:- pred mercury_output_item_mutable(merc_out_info::in,
-    io.text_output_stream::in, item_mutable_info::in, io::di, io::uo) is det.
+:- pred mercury_format_item_mutable(merc_out_info::in, S::in,
+    item_mutable_info::in, U::di, U::uo) is det <= pt_output(S, U).
 
-mercury_output_item_mutable(Info, Stream, ItemMutable, !IO) :-
+mercury_format_item_mutable(Info, S, ItemMutable, !U) :-
     ItemMutable = item_mutable_info(Name, _OrigType, Type, _OrigInst, Inst,
         InitTerm, MutVarSet, Attrs, _Context, _SeqNum),
-    io.write_string(Stream, ":- mutable(", !IO),
-    io.write_string(Stream, Name, !IO),
-    io.write_string(Stream, ", ", !IO),
-    mercury_output_type(varset.init, print_name_only, Type, Stream, !IO),
-    io.write_string(Stream, ", ", !IO),
+    add_string(":- mutable(", S, !U),
+    add_string(Name, S, !U),
+    add_string(", ", S, !U),
+    mercury_format_type(varset.init, print_name_only, Type, S, !U),
+    add_string(", ", S, !U),
 
     % See the comments for read_mutable_decl for the reason we _must_ use
     % MutVarSet here.
-    mercury_output_term_vs(MutVarSet, print_name_only, InitTerm, Stream, !IO),
-    io.write_string(Stream, ", ", !IO),
+    mercury_format_term_vs(MutVarSet, print_name_only, InitTerm, S, !U),
+    add_string(", ", S, !U),
     Lang = get_output_lang(Info),
-    mercury_output_inst(Stream, Lang, varset.init, Inst, !IO),
-    io.write_string(Stream, ", ", !IO),
-    io.print(Stream, Attrs, !IO),
-    io.write_string(Stream, ").\n", !IO).
-
-:- pred mercury_output_item_mutable_2(merc_out_info::in, item_mutable_info::in,
-    io.text_output_stream::in, io::di, io::uo) is det.
-
-mercury_output_item_mutable_2(Info, ItemMutable, Stream, !IO) :-
-    mercury_output_item_mutable(Info, Stream, ItemMutable, !IO).
+    mercury_format_inst(Lang, varset.init, Inst, S, !U),
+    add_string(", ", S, !U),
+    add_string(string.string(Attrs), S, !U),
+    add_string(").\n", S, !U).
 
 %---------------------------------------------------------------------------%
 
-:- pred mercury_output_item_foreign_import_module(io.text_output_stream::in,
-    item_fim::in, io::di, io::uo) is det.
+:- pred mercury_format_item_foreign_import_module(S::in, item_fim::in,
+    U::di, U::uo) is det <= pt_output(S, U).
 
-mercury_output_item_foreign_import_module(Stream, ItemFIM, !IO) :-
+mercury_format_item_foreign_import_module(S, ItemFIM, !U) :-
     ItemFIM = item_fim(Lang, ModuleName, _Context, _SeqNum),
     FIMSpec = fim_spec(Lang, ModuleName),
-    mercury_output_fim_spec(Stream, FIMSpec, !IO).
+    mercury_format_fim_spec(S, FIMSpec, !U).
 
 mercury_output_fim_spec(Stream, FIMSpec, !IO) :-
+    mercury_format_fim_spec(Stream, FIMSpec, !IO).
+
+mercury_format_fim_spec(S, FIMSpec, !U) :-
     FIMSpec = fim_spec(Lang, ModuleName),
-    io.write_string(Stream, ":- pragma foreign_import_module(", !IO),
-    mercury_format_foreign_language_string(Lang, Stream, !IO),
-    io.write_string(Stream, ", ", !IO),
-    mercury_output_bracketed_sym_name_ngt(not_next_to_graphic_token,
-        ModuleName, Stream, !IO),
-    io.write_string(Stream, ").\n", !IO).
+    add_string(":- pragma foreign_import_module(", S, !U),
+    mercury_format_foreign_language_string(Lang, S, !U),
+    add_string(", ", S, !U),
+    mercury_format_bracketed_sym_name_ngt(not_next_to_graphic_token,
+        ModuleName, S, !U),
+    add_string(").\n", S, !U).
 
 %---------------------------------------------------------------------------%
 
-maybe_write_block_start_blank_line(Stream, Items, !IO) :-
+maybe_format_block_start_blank_line(S, Items, !U) :-
     (
         Items = []
     ;
         Items = [_ | _],
-        io.nl(Stream, !IO)
+        add_string("\n", S, !U)
     ).
 
 %---------------------------------------------------------------------------%

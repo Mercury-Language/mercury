@@ -1758,7 +1758,7 @@ write_goal_foreign_proc(InfoGoal, Stream, Indent, Follow, GoalExpr, !IO) :-
     ;
         MaybeTraceRuntimeCond = yes(TraceRuntimeCond),
         io.format(Stream, "%s%% trace_runtime_cond(", [s(IndentStr)], !IO),
-        mercury_output_trace_expr(Stream, mercury_output_trace_runtime,
+        mercury_format_trace_expr(Stream, mercury_format_trace_runtime,
             TraceRuntimeCond, !IO),
         io.write_string(Stream, ")\n", !IO)
     ),
@@ -2107,7 +2107,7 @@ write_goal_scope(!.InfoGoal, Stream, Indent, Follow, GoalExpr, !IO) :-
     ;
         Reason = disable_warnings(HeadWarning, TailWarnings),
         io.write_string(Stream, "disable_warnings [", !IO),
-        write_goal_warnings(Stream, HeadWarning, TailWarnings, !IO),
+        mercury_format_goal_warnings(Stream, HeadWarning, TailWarnings, !IO),
         io.write_string(Stream, "] (\n", !IO)
     ;
         Reason = promise_purity(Purity),
@@ -2231,8 +2231,8 @@ write_goal_scope(!.InfoGoal, Stream, Indent, Follow, GoalExpr, !IO) :-
             (
                 MaybeCompileTime = yes(CompileTime),
                 io.format(Stream, "%scompile_time(", [s(Indent1Str)], !IO),
-                mercury_output_trace_expr(Stream,
-                    mercury_output_trace_compiletime, CompileTime, !IO),
+                mercury_format_trace_expr(Stream,
+                    mercury_format_trace_compiletime, CompileTime, !IO),
                 io.write_string(Stream, ")", !IO),
                 !:AddCommaNewline = yes
             ;
@@ -2242,7 +2242,7 @@ write_goal_scope(!.InfoGoal, Stream, Indent, Follow, GoalExpr, !IO) :-
                 MaybeRunTime = yes(RunTime),
                 maybe_add_comma_newline(Stream, !.AddCommaNewline, !IO),
                 io.format(Stream, "%sruntime(", [s(Indent1Str)], !IO),
-                mercury_output_trace_expr(Stream, mercury_output_trace_runtime,
+                mercury_format_trace_expr(Stream, mercury_format_trace_runtime,
                     RunTime, !IO),
                 io.write_string(Stream, ")", !IO),
                 !:AddCommaNewline = yes
