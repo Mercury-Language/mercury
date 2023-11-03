@@ -569,8 +569,11 @@ generate_parse_tree_int0(ProgressStream, Globals, AddToHptm, BurdenedModule,
     BurdenedModule = burdened_module(Baggage0, ParseTreeModuleSrc0),
     ModuleName = ParseTreeModuleSrc0 ^ ptms_module_name,
 
+    generate_pre_grab_pre_qual_interface_for_int0(ParseTreeModuleSrc0,
+        IntParseTreeModuleSrc),
+
     grab_unqual_imported_modules_make_int(ProgressStream, Globals,
-        ParseTreeModuleSrc0, AugMakeIntUnit1, Baggage0, Baggage,
+        IntParseTreeModuleSrc, AugMakeIntUnit1, Baggage0, Baggage,
         !HaveParseTreeMaps, !IO),
 
     % Check whether we succeeded.
@@ -583,12 +586,6 @@ generate_parse_tree_int0(ProgressStream, Globals, AddToHptm, BurdenedModule,
         there_are_no_errors(GetErrors)
     then
         % Module-qualify the aug_make_int_unit.
-        %
-        % XXX ITEM_LIST We don't need grab_unqual_imported_modules
-        % to include in AugMakeIntUnit1 any items that
-        % (a) create_parse_tree_int0 below will throw away, and
-        % (b) which don't help the module qualification of the items
-        % that it keeps.
         module_qualify_aug_make_int_unit(Globals,
             AugMakeIntUnit1, AugMakeIntUnit, [], QualSpecs),
         filter_interface_generation_specs(Globals,
@@ -626,6 +623,69 @@ generate_parse_tree_int0(ProgressStream, Globals, AddToHptm, BurdenedModule,
         GenerateResult = gpti0_error(ModuleName, PrefixPieces, GetSpecs)
     ).
 
+%---------------------------------------------------------------------------%
+
+    % Delete from the parse tree of the module any items that
+    % we don't need either
+    % - to include in the final .int0 file,
+    % - to module qualify something that we do include there.
+    % We do this to stop module qualification from having to do redundant
+    % work, by processing items whose processing cannot affect the final
+    % parse tree we generate.
+    %
+:- pred generate_pre_grab_pre_qual_interface_for_int0(
+    parse_tree_module_src::in, parse_tree_module_src::out) is det.
+
+generate_pre_grab_pre_qual_interface_for_int0(ParseTreeModuleSrc,
+        IntParseTreeModuleSrc) :-
+    ParseTreeModuleSrc = parse_tree_module_src(ModuleName,
+        ModuleNameContext, InclMap, ImportUseMap,
+        IntFIMSpecMap, ImpFIMSpecMap, IntSelfFIMLangs, ImpSelfFIMLangs,
+
+        TypeCtorCheckedMap, InstCtorCheckedMap, ModeCtorCheckedMap,
+        _TypeSpecs, _InstModeSpecs,
+
+        IntTypeClasses, IntInstances0, IntPredDecls, IntModeDecls,
+        IntDeclPragmas, IntDeclMarkers, IntPromises, _IntBadClausePreds,
+
+        ImpTypeClasses, ImpInstances0, ImpPredDecls, ImpModeDecls,
+        _ImpClauses, _ImpForeignProcs, _ImpForeignExportEnums,
+        ImpDeclPragmas, ImpDeclMarkers, _ImpImplPragmas, _ImpImplMarkers,
+        ImpPromises, _ImpInitialises, _ImpFinalises, ImpMutables),
+
+    % Make instances abstract in both interface and implementation sections.
+    % Delete from the implementation section any abstract instances
+    % that would duplicate one in the interface section.
+    OutInfo = init_write_int_merc_out_info,
+    IntAbsInstances0 = list.map(make_instance_abstract, IntInstances0),
+    IntAbsInstanceStrs =
+        list.map(item_abstract_instance_to_string(OutInfo), IntAbsInstances0),
+    set_tree234.list_to_set(IntAbsInstanceStrs, IntAbsInstanceStrSet),
+    ImpAbsInstances1 = list.map(make_instance_abstract, ImpInstances0),
+    KeepImpAbsInstanceTest =
+        ( pred(AbsInstance::in) is semidet :-
+            Str = item_abstract_instance_to_string(OutInfo, AbsInstance),
+            not set_tree234.contains(IntAbsInstanceStrSet, Str)
+        ),
+    list.filter(KeepImpAbsInstanceTest, ImpAbsInstances1, ImpAbsInstances0),
+
+    IntParseTreeModuleSrc = parse_tree_module_src(ModuleName,
+        ModuleNameContext, InclMap, ImportUseMap,
+        IntFIMSpecMap, ImpFIMSpecMap, IntSelfFIMLangs, ImpSelfFIMLangs,
+
+        TypeCtorCheckedMap, InstCtorCheckedMap, ModeCtorCheckedMap,
+        [], [],
+
+        IntTypeClasses, coerce(IntAbsInstances0), IntPredDecls, IntModeDecls,
+        IntDeclPragmas, IntDeclMarkers, IntPromises, set.init,
+
+        ImpTypeClasses, coerce(ImpAbsInstances0), ImpPredDecls, ImpModeDecls,
+        [], [], [],
+        ImpDeclPragmas, ImpDeclMarkers, [], [],
+        ImpPromises, [], [], ImpMutables).
+
+%---------------------------------------------------------------------------%
+
     % create_parse_tree_int0(AugMakeIntUnit, ParseTreeInt0, !Specs):
     %
     % Generate the private interface of a module (its .int0 file), which
@@ -652,10 +712,10 @@ create_parse_tree_int0(AugMakeIntUnit, ParseTreeInt0, !Specs) :-
         TypeCtorCheckedMap, InstCtorCheckedMap, ModeCtorCheckedMap,
         _TypeSpecs, _InstModeSpecs,
 
-        IntTypeClasses, IntInstances0, IntPredDecls, IntModeDecls,
+        IntTypeClasses, IntInstances, IntPredDecls, IntModeDecls,
         IntDeclPragmas, IntDeclMarkers, IntPromises, _IntBadClausePreds,
 
-        ImpTypeClasses, ImpInstances0, ImpPredDecls0, ImpModeDecls,
+        ImpTypeClasses, ImpInstances, ImpPredDecls0, ImpModeDecls,
         _ImpClauses, _ImpForeignProcs, _ImpForeignExportEnums,
         ImpDeclPragmas, ImpDeclMarkers, _ImpImplPragmas, _ImpImplMarkers,
         ImpPromises, _ImpInitialises, _ImpFinalises, ImpMutables),
@@ -675,18 +735,8 @@ create_parse_tree_int0(AugMakeIntUnit, ParseTreeInt0, !Specs) :-
     % Make the implementation FIMs disjoint from the interface FIMs.
     set.difference(ImpFIMSpecs1, IntFIMSpecs, ImpFIMSpecs),
 
-    OutInfo = init_write_int_merc_out_info,
-    IntInstances = list.map(make_instance_abstract, IntInstances0),
-    IntInstanceStrs =
-        list.map(item_abstract_instance_to_string(OutInfo), IntInstances),
-    set_tree234.list_to_set(IntInstanceStrs, IntInstanceStrSet),
-    ImpInstances1 = list.map(make_instance_abstract, ImpInstances0),
-    KeepImpInstanceTest =
-        ( pred(AbsInstance::in) is semidet :-
-            Str = item_abstract_instance_to_string(OutInfo, AbsInstance),
-            not set_tree234.contains(IntInstanceStrSet, Str)
-        ),
-    list.filter(KeepImpInstanceTest, ImpInstances1, ImpInstances),
+    IntAbsInstances = list.map(check_instance_is_abstract, IntInstances),
+    ImpAbsInstances = list.map(check_instance_is_abstract, ImpInstances),
 
     ImpPredDecls = ImpPredDecls0 ++ list.condense(
         list.map(declare_mutable_aux_preds_for_int0(ModuleName), ImpMutables)),
@@ -695,9 +745,9 @@ create_parse_tree_int0(AugMakeIntUnit, ParseTreeInt0, !Specs) :-
         MaybeVersionNumbers, InclMap, SectionImportUseMap,
         IntFIMSpecs, ImpFIMSpecs,
         TypeCtorCheckedMap, InstCtorCheckedMap, ModeCtorCheckedMap,
-        IntTypeClasses, IntInstances, IntPredDecls, IntModeDecls,
+        IntTypeClasses, IntAbsInstances, IntPredDecls, IntModeDecls,
         IntDeclPragmas, IntDeclMarkers, IntPromises,
-        ImpTypeClasses, ImpInstances, ImpPredDecls, ImpModeDecls,
+        ImpTypeClasses, ImpAbsInstances, ImpPredDecls, ImpModeDecls,
         ImpDeclPragmas, ImpDeclMarkers, ImpPromises).
 
 %---------------------------------------------------------------------------%
@@ -787,9 +837,16 @@ generate_parse_tree_int12(ProgressStream, Globals, AddToHptm,
     % generate_pre_grab_pre_qual_interface_for_int1_int2(ParseTreeModuleSrc,
     %   IntParseTreeModuleSrc):
     %
-    % Prepare for the generation of .int and .int2 files by generating
-    % the part of the module's parse tree that needs to be module qualified
-    % before the invocation of create_parse_trees_int1_int2.
+    % Delete from the parse tree of the module any items that
+    % we don't need either
+    % - to include in the final .int/.int2 files,
+    % - to module qualify something that we do include there.
+    % We do this to stop module qualification from having to do redundant
+    % work, by processing items whose processing cannot affect the final
+    % parse tree we generate.
+    %
+    % XXX Do we need the rest of this comment? It is about half the length
+    % of the code itself.
     %
     % We return interface sections almost intact, changing them only by
     % making instance declarations abstract. We delete most kinds of items
@@ -810,19 +867,6 @@ generate_parse_tree_int12(ProgressStream, Globals, AddToHptm,
     % - Foreign_enum pragmas.
     %
     % - Foreign_import_module declarations.
-    %
-    % XXX ITEM_LIST Document why we do all this *before* module qualification.
-    %
-    % XXX ITEM_LIST The original comment on this predicate,
-    % when it was conjoined with the code of get_interface above, was:
-    % "Given the raw compilation unit of a module, extract and return
-    % the part of that module that will go into the .int file of the module.
-    % This will typically mostly be the interface section of the module,
-    % but it may also contain parts of the implementation section as well.
-    % Both parts may be somewhat modified; for example, we may remove
-    % the bodies of instance definitions in an interface section,
-    % but put the original, non-abstract instance definition in the
-    % implementation section."
     %
 :- pred generate_pre_grab_pre_qual_interface_for_int1_int2(
     parse_tree_module_src::in, parse_tree_module_src::out) is det.
