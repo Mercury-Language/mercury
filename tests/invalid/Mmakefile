@@ -140,6 +140,7 @@ BORING_SINGLEMODULE_PROGS = \
 	cyclic_typeclass \
 	cyclic_typeclass_2 \
 	cyclic_typeclass_3 \
+	dcg_context \
 	default_ho_inst \
 	default_ho_inst_2 \
 	det_atomic_goal_msgs \

@@ -825,7 +825,7 @@ parse_dcg_goal_if(ArgTerms, Context, ContextPieces,
             [CondGoalTerm, ThenGoalTerm], _)]
     then
         InVar = !.DCGVar,
-        parse_dcg_if_then(CondGoalTerm, ThenGoalTerm, Context, ContextPieces,
+        parse_dcg_if_then(CondGoalTerm, ThenGoalTerm, ContextPieces,
             MaybeVarsCondGoal, MaybeThenGoal, !VarSet, !Counter, !DCGVar),
         OutVar = !.DCGVar,
         ( if
@@ -834,12 +834,20 @@ parse_dcg_goal_if(ArgTerms, Context, ContextPieces,
             MaybeThenGoal = ok2(ThenGoal, ThenWarningSpecs)
         then
             WarningSpecs = CondWarningSpecs ++ ThenWarningSpecs,
+            % There is else part in the source code, so any context
+            % we use for it will be misleading. Using Context here is
+            % also misleading, but any other context from the source code
+            % will be at least as bad.
+            % XXX We could use a context that is NOT in the source code.
+            % For example, we could use the line number from Context,
+            % but replace the filename with something like "MISSING_ELSE".
+            ElseContext = Context,
             ( if OutVar = InVar then
-                ElseGoal = true_expr(Context)
+                ElseGoal = true_expr(ElseContext)
             else
-                ElseGoal = unify_expr(Context,
-                    term.variable(OutVar, Context),
-                    term.variable(InVar, Context),
+                ElseGoal = unify_expr(ElseContext,
+                    term.variable(OutVar, ElseContext),
+                    term.variable(InVar, ElseContext),
                     purity_pure)
             ),
             Goal = if_then_else_expr(Context, Vars, StateVars,
@@ -1087,13 +1095,12 @@ parse_some_vars_dcg_goal(Term, ContextPieces, MaybeVarsGoal,
     %   )
     % so that the implicit quantification of DCG_2 is correct.
     %
-:- pred parse_dcg_if_then(term::in, term::in, prog_context::in,
-    cord(format_piece)::in,
+:- pred parse_dcg_if_then(term::in, term::in, cord(format_piece)::in,
     maybe4(list(prog_var), list(prog_var), goal, list(warning_spec))::out,
     maybe2(goal, list(warning_spec))::out, prog_varset::in, prog_varset::out,
     counter::in, counter::out, prog_var::in, prog_var::out) is det.
 
-parse_dcg_if_then(CondGoalTerm, ThenGoalTerm, Context, ContextPieces,
+parse_dcg_if_then(CondGoalTerm, ThenGoalTerm, ContextPieces,
         MaybeVarsCond, MaybeThen, !VarSet, !Counter, Var0, Var) :-
     parse_some_vars_dcg_goal(CondGoalTerm, ContextPieces, MaybeVarsCond,
         !VarSet, !Counter, Var0, Var1),
@@ -1104,13 +1111,15 @@ parse_dcg_if_then(CondGoalTerm, ThenGoalTerm, Context, ContextPieces,
         Var1 = Var2
     then
         (
-            MaybeThen1 = ok2(Then1, ThenWarningSpecs),
+            MaybeThen1 = ok2(ThenGoal1, ThenWarningSpecs),
+            ThenContext = get_goal_context(ThenGoal1),
             new_dcg_var(!VarSet, !Counter, Var),
-            Unify = unify_expr(Context,
-                term.variable(Var, Context), term.variable(Var2, Context),
+            UnifyGoal = unify_expr(ThenContext,
+                term.variable(Var, ThenContext),
+                term.variable(Var2, ThenContext),
                 purity_pure),
-            Then = conj_expr(Context, Then1, [Unify]),
-            MaybeThen = ok2(Then, ThenWarningSpecs)
+            ThenGoal = conj_expr(ThenContext, ThenGoal1, [UnifyGoal]),
+            MaybeThen = ok2(ThenGoal, ThenWarningSpecs)
         ;
             MaybeThen1 = error2(_),
             MaybeThen = MaybeThen1,
@@ -1127,36 +1136,40 @@ parse_dcg_if_then(CondGoalTerm, ThenGoalTerm, Context, ContextPieces,
     prog_var::in, prog_var::out) is det.
 
 parse_dcg_if_then_else(CondGoalTerm, ThenGoalTerm, ElseGoalTerm,
-        Context, ContextPieces, MaybeGoal, !VarSet, !Counter, Var0, Var) :-
-    parse_dcg_if_then(CondGoalTerm, ThenGoalTerm, Context, ContextPieces,
+        CondContext, ContextPieces, MaybeGoal, !VarSet, !Counter, Var0, Var) :-
+    parse_dcg_if_then(CondGoalTerm, ThenGoalTerm, ContextPieces,
         MaybeVarsCond, MaybeThen1, !VarSet, !Counter, Var0, VarThen),
     parse_dcg_goal(ElseGoalTerm, ContextPieces, MaybeElse1,
         !VarSet, !Counter, Var0, VarElse),
     ( if
-        MaybeVarsCond = ok4(Vars, StateVars, Cond, CondWarningSpecs),
-        MaybeThen1 = ok2(Then1, ThenWarningSpecs),
-        MaybeElse1 = ok2(Else1, ElseWarningSpecs)
+        MaybeVarsCond = ok4(Vars, StateVars, CondGoal, CondWarningSpecs),
+        MaybeThen1 = ok2(ThenGoal1, ThenWarningSpecs),
+        MaybeElse1 = ok2(ElseGoal1, ElseWarningSpecs)
     then
         WarningSpecs = CondWarningSpecs ++
             ThenWarningSpecs ++ ElseWarningSpecs,
         ( if VarThen = Var0, VarElse = Var0 then
             Var = Var0,
-            Then = Then1,
-            Else = Else1
+            ThenGoal = ThenGoal1,
+            ElseGoal = ElseGoal1
         else if VarThen = Var0 then
+            ThenContext = get_goal_context(ThenGoal1),
             Var = VarElse,
-            Unify = unify_expr(Context,
-                term.variable(Var, Context), term.variable(VarThen, Context),
+            UnifyGoal = unify_expr(ThenContext,
+                term.variable(Var, ThenContext),
+                term.variable(VarThen, ThenContext),
                 purity_pure),
-            Then = conj_expr(Context, Then1, [Unify]),
-            Else = Else1
+            ThenGoal = conj_expr(ThenContext, ThenGoal1, [UnifyGoal]),
+            ElseGoal = ElseGoal1
         else if VarElse = Var0 then
+            ElseContext = get_goal_context(ElseGoal1),
             Var = VarThen,
-            Then = Then1,
-            Unify = unify_expr(Context,
-                term.variable(Var, Context), term.variable(VarElse, Context),
+            ThenGoal = ThenGoal1,
+            UnifyGoal = unify_expr(ElseContext,
+                term.variable(Var, ElseContext),
+                term.variable(VarElse, ElseContext),
                 purity_pure),
-            Else = conj_expr(Context, Else1, [Unify])
+            ElseGoal = conj_expr(ElseContext, ElseGoal1, [UnifyGoal])
         else
             % We prefer to substitute the then part since it is likely to be
             % smaller than the else part, since the else part may have a deeply
@@ -1168,10 +1181,11 @@ parse_dcg_if_then_else(CondGoalTerm, ThenGoalTerm, ElseGoalTerm,
             % substitution in the condition.
 
             Var = VarElse,
-            prog_util.rename_in_goal(VarThen, VarElse, Then1, Then),
-            Else = Else1
+            prog_util.rename_in_goal(VarThen, VarElse, ThenGoal1, ThenGoal),
+            ElseGoal = ElseGoal1
         ),
-        Goal = if_then_else_expr(Context, Vars, StateVars, Cond, Then, Else),
+        Goal = if_then_else_expr(CondContext, Vars, StateVars,
+            CondGoal, ThenGoal, ElseGoal),
         MaybeGoal = ok2(Goal, WarningSpecs)
     else
         Specs = get_any_errors_warnings4(MaybeVarsCond) ++

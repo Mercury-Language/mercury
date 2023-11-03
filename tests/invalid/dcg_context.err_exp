@@ -1,0 +1,10 @@
+dcg_context.m:076: In clause for `get_class_super(out, out, in, out)':
+dcg_context.m:076:   mode mismatch in if-then-else.
+dcg_context.m:076:   The variable `Class' is ground in some branches but not
+dcg_context.m:076:   others.
+dcg_context.m:076:     In this branch, `Class' is free.
+dcg_context.m:077:     In this branch, `Class' is ground.
+dcg_context.m:076:   The variable `MaybeSuper' is ground in some branches but
+dcg_context.m:076:   not others.
+dcg_context.m:076:     In this branch, `MaybeSuper' is free.
+dcg_context.m:077:     In this branch, `MaybeSuper' is ground.
