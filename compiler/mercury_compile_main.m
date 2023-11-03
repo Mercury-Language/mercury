@@ -1257,6 +1257,16 @@ deps_make_ints(ProgressStream, Globals, DepsMap,
     map.values(DepsMap, DepsList),
     list.filter_map_foldl(gather_local_burdened_modules,
         DepsList, BurdenedModules, [], Ancestors),
+    % XXX This code should be parallelized.
+    % We could replace the next call with a loop that, in each iteration,
+    %
+    % - calls generate_parse_tree_int3 for a given burdened_module,
+    %   adding that parse_tree_int3 to !HaveParseTreeMaps, and then
+    % - adds that parse_tree_int3 to a work queue
+    %
+    % while independently, each of several workers execute a loop in which
+    % they take a parse_tree_int3 off the work queue and invoke
+    % write_parse_tree_int3 on it.
     list.map2_foldl2(
         generate_and_write_interface_file_int3(ProgressStream, Globals,
             do_add_new_to_hptm),
@@ -1271,6 +1281,28 @@ deps_make_ints(ProgressStream, Globals, DepsMap,
         Errors3 = no,
         list.sort(Ancestors, SortedAncestors),
         assoc_list.values(SortedAncestors, AncestorBurdenedModules),
+        % XXX This code could be parallelized by the same method as proposed
+        % for .int3 files above, starting with a !HaveParseTreeMaps
+        % containing the parse trees of all the .int3 files generated above.
+        %
+        % There is a complication, but it does not need a change in code.
+        %
+        % The complication is that the process of generating a .int0 file
+        % for mod_a.mod_b.mod_c.m requires access to the parse trees of
+        % for mod_a.int0 and mod_a.mod_b.int0. In our context, this means that
+        % we should not invoke generate_parse_tree_int0 for a module
+        % until we have already generated the parse trees of all its
+        % ancestors (if any). The reason why this does not need any extra code
+        % is the call to list.sort above. Ancestors is an assoc_list,
+        % but each of its keys is unique, so the sort of the assoc_list
+        % effectively sorts only on the keys. Each key is the list of
+        % the module qualifiers in front of the base module name, followed
+        % by the base module name. Since the empty lists sorts before
+        % any nonempty list, any comparison of a list of module name components
+        % (representing an arbitrary module name) with any initial subsequence
+        % of those components (representing the arbitrary module's anccestors)
+        % will put the latter first, thus guaranteeing that we process
+        % ancestor modules before their descendants.
         list.map2_foldl2(
             generate_and_write_interface_file_int0(ProgressStream, Globals,
                 do_add_new_to_hptm),
@@ -1291,6 +1323,16 @@ deps_make_ints(ProgressStream, Globals, DepsMap,
             Errors0 = no,
             Continue0 = yes
         then
+            % XXX This code could be parallelized by the same method as
+            % proposed for .int3 files above, starting with a
+            % !HaveParseTreeMaps containing the parse trees of all the
+            % .int3 and .int0 files generated above.
+            %
+            % XXX We should teach the implementation of mmc --make
+            % to use this technique of holding onto the parse trees
+            % of the files it generates, to allow later actions to get
+            % access to those parse trees without reading the file
+            % they were written out to.
             list.map2_foldl2(
                 generate_and_write_interface_file_int1_int2(ProgressStream,
                     Globals, do_add_new_to_hptm),
