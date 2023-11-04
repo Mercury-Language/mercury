@@ -23,6 +23,8 @@
 :- module make.deps_set.
 :- interface.
 
+:- import_module libs.
+:- import_module libs.file_util.
 :- import_module make.make_info.
 :- import_module mdbcomp.
 :- import_module mdbcomp.sym_name.
@@ -107,9 +109,13 @@
 :- pred dependency_file_to_index(dependency_file_with_module_index::in,
     dependency_file_index::out, make_info::in, make_info::out) is det.
 
-    % Convert a list of dependency files to a dependency_file_index set.
+    % Convert a list of dependency files, or raw filenames,
+    % to a dependency_file_index set.
     %
 :- pred dependency_files_to_index_set(list(dependency_file)::in,
+    deps_set(dependency_file_index)::out, make_info::in, make_info::out)
+    is det.
+:- pred file_names_to_index_set(list(file_name)::in,
     deps_set(dependency_file_index)::out, make_info::in, make_info::out)
     is det.
 
@@ -303,6 +309,21 @@ acc_dependency_files_to_index_set(DepFile0, !Set, !Info) :-
         DepFile0 = dep_file(FileName),
         DepFile = dfmi_file(FileName)
     ),
+    dependency_file_to_index(DepFile, DepIndex, !Info),
+    deps_set_insert(DepIndex, !Set).
+
+%---------------------%
+
+file_names_to_index_set(FileNames, DepIndexSet, !Info) :-
+    list.foldl2(acc_file_names_to_index_set, FileNames,
+        deps_set_init, DepIndexSet, !Info).
+
+:- pred acc_file_names_to_index_set(file_name::in,
+    deps_set(dependency_file_index)::in, deps_set(dependency_file_index)::out,
+    make_info::in, make_info::out) is det.
+
+acc_file_names_to_index_set(FileName, !Set, !Info) :-
+    DepFile = dfmi_file(FileName),
     dependency_file_to_index(DepFile, DepIndex, !Info),
     deps_set_insert(DepIndex, !Set).
 

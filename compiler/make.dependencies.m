@@ -512,19 +512,11 @@ find_dep_spec(ProgressStream, KeepGoing, Globals, ModuleIndex, DepSpec,
     ;
         DepSpec = self_fact_table_files,
         get_fact_table_files(ProgressStream, Globals, ModuleIndex,
-            Succeeded, FactTableDepFiles, !Info, !IO),
-        % XXX MDNEW Push this call into fact_table_files
-        % when the old machinery is deleted.
-        dependency_files_to_index_set(set.to_sorted_list(FactTableDepFiles),
-            DepFileIndexSet, !Info)
+            Succeeded, DepFileIndexSet, !Info, !IO)
     ;
         DepSpec = self_foreign_include_files,
         get_foreign_include_files(ProgressStream, Globals, ModuleIndex,
-            Succeeded, ForeignDepFiles, !Info, !IO),
-        % XXX MDNEW Push this call into foreign_include_files
-        % when the old machinery is deleted.
-        dependency_files_to_index_set(set.to_sorted_list(ForeignDepFiles),
-            DepFileIndexSet, !Info)
+            Succeeded, DepFileIndexSet, !Info, !IO)
     ),
     trace [
         compile_time(flag("find_dep_spec")),
@@ -861,20 +853,26 @@ get_foreign_imports_non_intermod_uncached(LangSet, ProgressStream, _KeepGoing,
     (
         MaybeModuleDepInfo = some_module_dep_info(ModuleDepInfo),
         module_dep_info_get_fims(ModuleDepInfo, FIMSpecs),
-        ForLangsPred =
-            ( pred(fim_spec(Lang, Module)::in, Module::out) is semidet :-
-                % XXX MDNEW Instead of returning Module,
-                % we should add its index to a deps_set (in a fold).
-                set.contains(LangSet, Lang)
-            ),
-        set.filter_map(ForLangsPred, FIMSpecs, ForeignModuleNameSet),
-        module_names_to_index_set(set.to_sorted_list(ForeignModuleNameSet),
-            ForeignModules, !Info),
+        set.foldl2(acc_module_index_if_for_lang_in_set(LangSet), FIMSpecs,
+            deps_set_init, ForeignModules, !Info),
         Succeeded = succeeded
     ;
         MaybeModuleDepInfo = no_module_dep_info,
         ForeignModules = deps_set_init,
         Succeeded = did_not_succeed
+    ).
+
+:- pred acc_module_index_if_for_lang_in_set(set(foreign_language)::in,
+    fim_spec::in, deps_set(module_index)::in, deps_set(module_index)::out,
+    make_info::in, make_info::out) is det.
+
+acc_module_index_if_for_lang_in_set(LangSet, FIMSpec, !DepsSet, !Info) :-
+    FIMSpec = fim_spec(Lang, ModuleName),
+    ( if set.contains(LangSet, Lang) then
+        module_name_to_index(ModuleName, ModuleIndex, !Info),
+        deps_set_insert(ModuleIndex, !DepsSet)
+    else
+        true
     ).
 
 %---------------------------------------------------------------------------%
@@ -939,33 +937,36 @@ index_get_ancestors(ModuleIndex, AncestorModuleIndexSet, !Info) :-
 %---------------------------------------------------------------------------%
 
 :- pred get_fact_table_files(io.text_output_stream::in, globals::in,
-    module_index::in, maybe_succeeded::out, set(dependency_file)::out,
+    module_index::in, maybe_succeeded::out,
+    deps_set(dependency_file_index)::out,
     make_info::in, make_info::out, io::di, io::uo) is det.
 
 get_fact_table_files(ProgressStream, Globals, ModuleIndex,
-        Succeeded, Files, !Info, !IO) :-
+        Succeeded, DepFileIndexSet, !Info, !IO) :-
     module_index_to_name(!.Info, ModuleIndex, ModuleName),
     get_maybe_module_dep_info(ProgressStream, Globals,
         ModuleName, MaybeModuleDepInfo, !Info, !IO),
     (
         MaybeModuleDepInfo = some_module_dep_info(ModuleDepInfo),
         Succeeded = succeeded,
-        module_dep_info_get_fact_tables(ModuleDepInfo, FactTableFiles),
-        Files = set.map((func(File) = dep_file(File)), FactTableFiles)
+        module_dep_info_get_fact_tables(ModuleDepInfo, FactTableFileNames),
+        file_names_to_index_set(set.to_sorted_list(FactTableFileNames),
+            DepFileIndexSet, !Info)
     ;
         MaybeModuleDepInfo = no_module_dep_info,
         Succeeded = did_not_succeed,
-        Files = set.init
+        DepFileIndexSet = deps_set_init
     ).
 
 %---------------------------------------------------------------------------%
 
 :- pred get_foreign_include_files(io.text_output_stream::in, globals::in,
-    module_index::in, maybe_succeeded::out, set(dependency_file)::out,
+    module_index::in, maybe_succeeded::out,
+    deps_set(dependency_file_index)::out,
     make_info::in, make_info::out, io::di, io::uo) is det.
 
 get_foreign_include_files(ProgressStream, Globals, ModuleIndex,
-        Succeeded, DepFiles, !Info, !IO) :-
+        Succeeded, DepFileIndexSet, !Info, !IO) :-
     globals.get_backend_foreign_languages(Globals, Languages),
     module_index_to_name(!.Info, ModuleIndex, ModuleName),
     get_maybe_module_dep_info(ProgressStream, Globals,
@@ -977,34 +978,32 @@ get_foreign_include_files(ProgressStream, Globals, ModuleIndex,
         module_dep_info_get_foreign_include_files(ModuleDepInfo,
             ForeignIncludeFiles),
         LangSet = set.list_to_set(Languages),
-        dep_files_for_foreign_includes_if_in_langset(LangSet, SourceFileName,
-            ForeignIncludeFiles, DepFiles)
+        set.foldl2(
+            acc_dep_file_index_for_foreign_include_if_in_langset(LangSet,
+                SourceFileName),
+            ForeignIncludeFiles, deps_set_init, DepFileIndexSet, !Info)
     ;
         MaybeModuleDepInfo = no_module_dep_info,
         Succeeded = did_not_succeed,
-        DepFiles = set.init
+        DepFileIndexSet = deps_set_init
     ).
 
-:- pred dep_files_for_foreign_includes_if_in_langset(set(foreign_language)::in,
-    file_name::in, set(foreign_include_file_info)::in,
-    set(dependency_file)::out) is det.
+:- pred acc_dep_file_index_for_foreign_include_if_in_langset(
+    set(foreign_language)::in, file_name::in, foreign_include_file_info::in,
+    deps_set(dependency_file_index)::in, deps_set(dependency_file_index)::out,
+    make_info::in, make_info::out) is det.
 
-dep_files_for_foreign_includes_if_in_langset(LangSet, SourceFileName,
-        ForeignIncludes, DepFiles) :-
-    set.filter_map(
-        dep_file_for_foreign_include_if_in_langset(LangSet, SourceFileName),
-        ForeignIncludes, DepFiles).
-
-:- pred dep_file_for_foreign_include_if_in_langset(set(foreign_language)::in,
-    file_name::in, foreign_include_file_info::in, dependency_file::out)
-    is semidet.
-
-dep_file_for_foreign_include_if_in_langset(LangSet, SourceFileName,
-        ForeignInclude, DepFile) :-
+acc_dep_file_index_for_foreign_include_if_in_langset(LangSet, SourceFileName,
+        ForeignInclude, !DepFileIndexSet, !Info) :-
     ForeignInclude = foreign_include_file_info(Lang, IncludeFileName),
-    set.member(Lang, LangSet),
-    make_include_file_path(SourceFileName, IncludeFileName, IncludePath),
-    DepFile = dep_file(IncludePath).
+    ( if set.contains(LangSet, Lang) then
+        make_include_file_path(SourceFileName, IncludeFileName, IncludePath),
+        DepFile = dfmi_file(IncludePath),
+        dependency_file_to_index(DepFile, DepFileIndex, !Info),
+        deps_set_insert(DepFileIndex, !DepFileIndexSet)
+    else
+        true
+    ).
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
