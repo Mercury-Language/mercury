@@ -1300,7 +1300,7 @@ deps_make_ints(ProgressStream, Globals, DepsMap,
         % by the base module name. Since the empty lists sorts before
         % any nonempty list, any comparison of a list of module name components
         % (representing an arbitrary module name) with any initial subsequence
-        % of those components (representing the arbitrary module's anccestors)
+        % of those components (representing the arbitrary module's ancestors)
         % will put the latter first, thus guaranteeing that we process
         % ancestor modules before their descendants.
         list.map2_foldl2(
@@ -1333,6 +1333,11 @@ deps_make_ints(ProgressStream, Globals, DepsMap,
             % of the files it generates, to allow later actions to get
             % access to those parse trees without reading the file
             % they were written out to.
+            %
+            % XXX At the moment, generate_parse_tree_int12 takes some shortcuts
+            % when creating type_ctor_checked_defns that would need to be fixed
+            % before mmc --make reuses the parse trees it returns.
+            % Those shortcuts are marked by "XXX CLEANUP".
             list.map2_foldl2(
                 generate_and_write_interface_file_int1_int2(ProgressStream,
                     Globals, do_add_new_to_hptm),
