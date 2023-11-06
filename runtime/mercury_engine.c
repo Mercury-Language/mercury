@@ -324,7 +324,7 @@ MR_call_engine(MR_Code *entry_point, MR_bool catch_exceptions)
             if (exception != NULL) {
                 return exception;
             }
-            // If we added an exception hander, but we didn't get an exception,
+            // If we added an exception handler, but we didn't get an exception,
             // then we need to remove the exception handler frames from the
             // nondet stack and prune the trail ticket allocated by
             // MR_create_exception_handler().
