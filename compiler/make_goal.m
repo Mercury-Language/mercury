@@ -82,7 +82,7 @@
     % goal_info of the returned goal. With alias tracking, the instmap_delta
     % will be correct only if the variable being assigned to has no aliases.
     %
-    % Ths cons_id passed to make_const_construction must be fully module
+    % The cons_id passed to make_const_construction must be fully module
     % qualified.
     %
 :- pred make_int_const_construction(prog_context::in,
