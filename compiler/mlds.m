@@ -1439,7 +1439,7 @@
                 % The ordinary function arguments.
                 list(mlds_rval),
 
-                % Th places to store the function return value(s).
+                % The places to store the function return value(s).
                 list(mlds_lval),
 
                 % Is this call an ordinary call, a tail call,
