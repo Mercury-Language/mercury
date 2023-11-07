@@ -18,6 +18,7 @@ MCFLAGS-bug314                      = --trace deep
 MCFLAGS-bug392                      = -O0 --deforestation
 MCFLAGS-bug455                      = --intermodule-optimization
 MCFLAGS-bug548                      = --inlining
+MCFLAGS-bug567                      = -O2 --merge-code-after-switch
 MCFLAGS-checked_nondet_tailcall     = --checked-nondet-tailcalls
 MCFLAGS-checked_nondet_tailcall_noinline = \
                                     --checked-nondet-tailcalls --no-inlining

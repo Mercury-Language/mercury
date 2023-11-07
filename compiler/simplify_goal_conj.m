@@ -233,8 +233,7 @@ simplify_conj(!.PrevGoals, [HeadGoal0 | TailGoals0], Goals, ConjInfo,
                 ( if
                     simplify_do_merge_code_after_switch(!.Info),
                     HeadGoal1 = hlds_goal(HeadGoalExpr1, HeadGoalInfo1),
-                    HeadGoalExpr1 =
-                        switch(_SwitchVar, _SwitchCanFail1, _Cases1),
+                    HeadGoalExpr1 = switch(_, _, _),
                     TailGoals0 = [HeadTailGoal0 | TailTailGoals0],
                     HeadTailGoal0 =
                         hlds_goal(HeadTailGoalExpr0, HeadTailGoalInfo0),
@@ -250,10 +249,46 @@ simplify_conj(!.PrevGoals, [HeadGoal0 | TailGoals0], Goals, ConjInfo,
                             TailTailGoals0, MergeResult)
                     ;
                         HeadTailGoalExpr0 = switch(_, _, _),
-                        try_to_merge_switch_after_switch(!.Info,
-                            HeadGoalExpr1, HeadGoalInfo1,
-                            HeadTailGoalExpr0, HeadTailGoalInfo0,
-                            MergeResult)
+                        % Invoking try_to_merge_switch_after_switch with
+                        % HeadGoalExpr1/HeadGoalInfo1 leads to Mantis bug #567.
+                        % The reason for that is that the call to
+                        % try_to_merge_switch_after_switch can return
+                        % either merge_unsuccessful or
+                        % merge_successful_new_code_not_simplified.
+                        % In the latter case, we start again with Common0,
+                        % which is from *before* we simplified HeadGoal0
+                        % into HeadGoal1. This effectively throws away
+                        % any updates made to !Common since we took Common0
+                        % as a snapshot.
+                        %
+                        % If HeadGoal0 contains some code that constructs
+                        % some ground terms, then the call to simplify_goal
+                        % above can replace that code with a reference to
+                        % a ground_term_const. By keeping the reference
+                        % to this newly allocated ground_term_const in
+                        % HeadGoal1 but throwing away any reference to it
+                        % in !.Common, the reference becomes dangling.
+                        % It can result in a compiler abort, if the code
+                        % generator goes to look up the value of the
+                        % ground_term_const and does not find it, or
+                        % it can result in the dangling ground_term_const's
+                        % id number being reused to hold some other ground
+                        % term, resulting in the dangling reference being
+                        % quietly redirected to another ground term, which is
+                        % extremely unlikely to have the right value and is
+                        % not even all that likely to have the right type.
+                        % (In tests/hard_coded/bug567.m, the ground_term_const
+                        % id is reused, for a term of the right type but wrong
+                        % value.)
+                        HeadGoal0 = hlds_goal(HeadGoalExpr0, HeadGoalInfo0),
+                        ( if HeadGoalExpr0 = switch(_, _, _) then
+                            try_to_merge_switch_after_switch(!.Info,
+                                HeadGoalExpr0, HeadGoalInfo0,
+                                HeadTailGoalExpr0, HeadTailGoalInfo0,
+                                MergeResult)
+                        else
+                            MergeResult = merge_unsuccessful
+                        )
                     ),
                     (
                         MergeResult = merge_unsuccessful,
@@ -481,6 +516,10 @@ no_conjunct_refers_to_var([Goal | Goals], TestVar) :-
 
 %---------------------%
 
+:- inst merge_switch_switch for merge_code_after_switch_result/0
+    --->    merge_unsuccessful
+    ;       merge_successful_new_code_not_simplified(ground).
+
     % Look for situations like this:
     %
     %   (
@@ -532,7 +571,7 @@ no_conjunct_refers_to_var([Goal | Goals], TestVar) :-
 :- pred try_to_merge_switch_after_switch(simplify_info::in,
     hlds_goal_expr::in(goal_expr_switch), hlds_goal_info::in,
     hlds_goal_expr::in(goal_expr_switch), hlds_goal_info::in,
-    merge_code_after_switch_result::out) is det.
+    merge_code_after_switch_result::out(merge_switch_switch)) is det.
 
 try_to_merge_switch_after_switch(!.Info, FirstGoalExpr, FirstGoalInfo,
         SecondGoalExpr0, SecondGoalInfo0, Result) :-
