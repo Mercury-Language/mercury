@@ -346,8 +346,8 @@ make_dependency_files(ProgressStream, Globals, TargetFile, TargetFileName,
                 TargetFile = target_file(ModuleName, TargetType),
                 TargetType = module_target_analysis_registry
             then
-                force_reanalysis_of_suboptimal_module(Globals, ModuleName,
-                    ForceReanalysis, !.Info, !IO)
+                should_we_force_reanalysis_of_suboptimal_module(Globals,
+                    ModuleName, ForceReanalysis, !.Info, !IO)
             else
                 ForceReanalysis = no
             ),
@@ -411,11 +411,11 @@ make_dependency_files(ProgressStream, Globals, TargetFile, TargetFileName,
         )
     ).
 
-:- pred force_reanalysis_of_suboptimal_module(globals::in, module_name::in,
-    bool::out, make_info::in, io::di, io::uo) is det.
+:- pred should_we_force_reanalysis_of_suboptimal_module(globals::in,
+    module_name::in, bool::out, make_info::in, io::di, io::uo) is det.
 
-force_reanalysis_of_suboptimal_module(Globals, ModuleName, ForceReanalysis,
-        Info, !IO) :-
+should_we_force_reanalysis_of_suboptimal_module(Globals, ModuleName,
+        ForceReanalysis, Info, !IO) :-
     ( if make_info_get_reanalysis_passes(Info) > 0 then
         do_read_module_overall_status(mmc, Globals, ModuleName, AnalysisStatus,
             !IO),
