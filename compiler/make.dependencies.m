@@ -71,6 +71,34 @@
 
 %---------------------------------------------------------------------------%
 
+% XXX MDNEW Rename to something like find_direct_prereqs_of_make_targets.
+%
+% XXX MDNEW add loop on top to find indirect prereqs
+% That way, complexity is given by
+%   #layers in dependency hierarchy * avg width of each layer
+% instead of by #paths through the layers,
+% but ONLY if we don't repeat this work later, in submakes.
+%
+% XXX MDNEW Sort the final, overall set of prereqs
+% - first on target type (.int3, .int0, .int/.int2, .opt etc)
+% - then on the list of module name components
+%
+% Sorting on target type should put prereqs before the things they are prereqs
+% *for* in all cases where the target types differ.
+%
+% Sorting on the list of module name components should put prereqs before
+% the things they are prereqs *for* in all cases where the target types match.
+%
+% For parallel makes, we would also need to return, for each element of the
+% list, the set of earlier elements that are its prereqs.
+%
+% XXX MDNEW We should never put any targets involving nested submodules into
+% sets of depenendency_file_indexes. Those targets will be made as a side
+% effect of making the same target type for the top module in the source file.
+% However, the prereqs of a nested submodule, such as any fact table files
+% it may need, must become the prereqs of the top-level module of their
+% source file.
+
 find_target_dependencies_of_modules(_, _, _, _,
         [], !Succeeded, !Deps, !Info, !IO).
 find_target_dependencies_of_modules(ProgressStream, KeepGoing, Globals,
@@ -95,6 +123,9 @@ find_target_dependencies_of_modules(ProgressStream, KeepGoing, Globals,
     deps_set(dependency_file_index)::in, deps_set(dependency_file_index)::out,
     make_info::in, make_info::out, io::di, io::uo) is det.
 
+% XXX MDNEW Rename !Deps to something like !DepFileIndexSet or !Prereqs.
+% Whatever we choose, use that variable name consistently in the module.
+% XXX MDNEW Return only the NEW dfmis.
 find_target_dependencies_of_module(ProgressStream, KeepGoing, Globals,
         TargetType, ModuleIndex, Succeeded, !Deps, !Info, !IO) :-
     (
@@ -130,6 +161,8 @@ find_target_dependencies_of_module(ProgressStream, KeepGoing, Globals,
         ; TargetType = module_target_errors
         ),
         compiled_code_dependencies(Globals, DepSpecs),
+        % XXX MDNEW Get intermod, pass as extra arg in the returned deps.
+        % XXX MDNEW Same for direct and indirect deps, and ancestors.
         find_dep_specs(ProgressStream, KeepGoing, Globals,
             ModuleIndex, DepSpecs, Succeeded, NewDeps, !Info, !IO),
         deps_set_union(NewDeps, !Deps)
@@ -227,8 +260,7 @@ compiled_code_dependencies(Globals, DepSpecs) :-
     % foreign language files and Mercury interface files it imports.
     DepSpecsSrcInts = [
         self(module_target_source),
-        self_fact_table_files,
-        self_foreign_include_files,
+        self_foreign_incl_fact_table_files,
         self(module_target_int1),
         % XXX MDNEW The next two dep_specs should be a single
         % combined dep_spec, anc01_dir1_indir2_intermod.
@@ -309,8 +341,8 @@ compiled_code_dependencies(Globals, DepSpecs) :-
             % of the specified module, but of the ancestors of its intermod
             % imports.
 
-    ;       self_fact_table_files
-    ;       self_foreign_include_files.
+    ;       self_foreign_incl_fact_table_files.
+            % Files named in foreign include module and fact table pragmas.
 
 :- pred find_dep_specs(io.text_output_stream::in, maybe_keep_going::in,
     globals::in, module_index::in, list(dep_spec)::in,
@@ -356,11 +388,14 @@ find_dep_spec(ProgressStream, KeepGoing, Globals, ModuleIndex, DepSpec,
     ),
     % XXX Some of these alternatives don't need I/O.
     % We can wrap caching code around the code of any set of switch arms.
+    %
+    % XXX Are there are any dep_spec kinds for which we may return
+    % did_not_succeed AND a nonempty DepFileIndexSet? If not, then
+    % those two parameters are effectively a single value of a maybe type.
     (
         DepSpec = self(TargetType),
         Succeeded = succeeded,
-        acc_rev_dfmi_target(TargetType, ModuleIndex,
-            deps_set_init, DepFileIndexSet, !Info)
+        dfmi_target(ModuleIndex, TargetType, DepFileIndexSet, !Info)
     ;
         DepSpec = ancestors(TargetType),
         Succeeded = succeeded,
@@ -510,13 +545,9 @@ find_dep_spec(ProgressStream, KeepGoing, Globals, ModuleIndex, DepSpec,
                 [s(string.string(DepSpec)), s(IndexModuleNameStr)], !TIO)
         )
     ;
-        DepSpec = self_fact_table_files,
-        get_fact_table_files(ProgressStream, Globals, ModuleIndex,
-            Succeeded, DepFileIndexSet, !Info, !IO)
-    ;
-        DepSpec = self_foreign_include_files,
-        get_foreign_include_files(ProgressStream, Globals, ModuleIndex,
-            Succeeded, DepFileIndexSet, !Info, !IO)
+        DepSpec = self_foreign_incl_fact_table_files,
+        get_foreign_incl_fact_table_files(ProgressStream, Globals,
+            ModuleIndex, Succeeded, DepFileIndexSet, !Info, !IO)
     ),
     trace [
         compile_time(flag("find_dep_spec")),
@@ -546,9 +577,19 @@ find_dep_spec(ProgressStream, KeepGoing, Globals, ModuleIndex, DepSpec,
 
 %---------------------------------------------------------------------------%
 
+:- pred dfmi_target(module_index::in, module_target_type::in,
+    deps_set(dependency_file_index)::out,
+    make_info::in, make_info::out) is det.
+:- pragma inline(pred(dfmi_target/5)).
+
+dfmi_target(ModuleIndex, TargetType, DepFileIndexSet, !Info) :-
+    acc_rev_dfmi_target(TargetType, ModuleIndex,
+        deps_set_init, DepFileIndexSet, !Info).
+
 :- pred dfmi_targets(deps_set(module_index)::in, module_target_type::in,
     deps_set(dependency_file_index)::out,
     make_info::in, make_info::out) is det.
+:- pragma inline(pred(dfmi_targets/5)).
 
 dfmi_targets(ModuleIndexSet, TargetType, DepFileIndexSet, !Info) :-
     deps_set_foldl2(acc_rev_dfmi_target(TargetType), ModuleIndexSet,
@@ -557,6 +598,7 @@ dfmi_targets(ModuleIndexSet, TargetType, DepFileIndexSet, !Info) :-
 :- pred acc_rev_dfmi_target(module_target_type::in, module_index::in,
     deps_set(dependency_file_index)::in, deps_set(dependency_file_index)::out,
     make_info::in, make_info::out) is det.
+:- pragma inline(pred(acc_rev_dfmi_target/6)).
 
 acc_rev_dfmi_target(TargetType, ModuleIndex, !DepFileIndexSet, !Info) :-
     TargetFile = dfmi_target(ModuleIndex, TargetType),
@@ -936,12 +978,12 @@ index_get_ancestors(ModuleIndex, AncestorModuleIndexSet, !Info) :-
 
 %---------------------------------------------------------------------------%
 
-:- pred get_fact_table_files(io.text_output_stream::in, globals::in,
-    module_index::in, maybe_succeeded::out,
+:- pred get_foreign_incl_fact_table_files(io.text_output_stream::in,
+    globals::in, module_index::in, maybe_succeeded::out,
     deps_set(dependency_file_index)::out,
     make_info::in, make_info::out, io::di, io::uo) is det.
 
-get_fact_table_files(ProgressStream, Globals, ModuleIndex,
+get_foreign_incl_fact_table_files(ProgressStream, Globals, ModuleIndex,
         Succeeded, DepFileIndexSet, !Info, !IO) :-
     module_index_to_name(!.Info, ModuleIndex, ModuleName),
     get_maybe_module_dep_info(ProgressStream, Globals,
@@ -951,37 +993,17 @@ get_fact_table_files(ProgressStream, Globals, ModuleIndex,
         Succeeded = succeeded,
         module_dep_info_get_fact_tables(ModuleDepInfo, FactTableFileNames),
         file_names_to_index_set(set.to_sorted_list(FactTableFileNames),
-            DepFileIndexSet, !Info)
-    ;
-        MaybeModuleDepInfo = no_module_dep_info,
-        Succeeded = did_not_succeed,
-        DepFileIndexSet = deps_set_init
-    ).
+            FactDepFileIndexSet, !Info),
 
-%---------------------------------------------------------------------------%
-
-:- pred get_foreign_include_files(io.text_output_stream::in, globals::in,
-    module_index::in, maybe_succeeded::out,
-    deps_set(dependency_file_index)::out,
-    make_info::in, make_info::out, io::di, io::uo) is det.
-
-get_foreign_include_files(ProgressStream, Globals, ModuleIndex,
-        Succeeded, DepFileIndexSet, !Info, !IO) :-
-    globals.get_backend_foreign_languages(Globals, Languages),
-    module_index_to_name(!.Info, ModuleIndex, ModuleName),
-    get_maybe_module_dep_info(ProgressStream, Globals,
-        ModuleName, MaybeModuleDepInfo, !Info, !IO),
-    (
-        MaybeModuleDepInfo = some_module_dep_info(ModuleDepInfo),
-        Succeeded = succeeded,
         module_dep_info_get_source_file_name(ModuleDepInfo, SourceFileName),
         module_dep_info_get_foreign_include_files(ModuleDepInfo,
             ForeignIncludeFiles),
+        globals.get_backend_foreign_languages(Globals, Languages),
         LangSet = set.list_to_set(Languages),
         set.foldl2(
             acc_dep_file_index_for_foreign_include_if_in_langset(LangSet,
                 SourceFileName),
-            ForeignIncludeFiles, deps_set_init, DepFileIndexSet, !Info)
+            ForeignIncludeFiles, FactDepFileIndexSet, DepFileIndexSet, !Info)
     ;
         MaybeModuleDepInfo = no_module_dep_info,
         Succeeded = did_not_succeed,
