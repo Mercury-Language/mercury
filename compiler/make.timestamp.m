@@ -155,9 +155,11 @@ get_target_timestamp(ProgressStream, Globals, Search, TargetFile,
         get_target_timestamp_analysis_registry(ProgressStream, Globals,
             Search, TargetFile, FileName, MaybeTimestamp, !Info, !IO)
     else
-        % This path is hit very frequently so it is worth caching timestamps
+        % This path is hit very frequently, so it is worth caching timestamps
         % by target_file. It avoids having to compute a file name for a
         % target_file first, before looking up the timestamp for that file.
+        % XXX Wouldn't the search be even faster if, instead of the module's
+        % name, our caller gave us its module_index?
         TargetFileTimestamps0 = make_info_get_target_file_timestamps(!.Info),
         ( if
             version_hash_table.search(TargetFileTimestamps0, TargetFile,
