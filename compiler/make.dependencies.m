@@ -105,7 +105,8 @@ find_target_dependencies_of_modules(ProgressStream, KeepGoing, Globals,
         TargetType, [ModuleIndex | ModuleIndexes],
         !Succeeded, !Deps, !Info, !IO) :-
     find_target_dependencies_of_module(ProgressStream, KeepGoing, Globals,
-        TargetType, ModuleIndex, HeadSucceeded, !Deps, !Info, !IO),
+        TargetType, ModuleIndex, HeadSucceeded, NewDeps, !Info, !IO),
+    deps_set_union(NewDeps, !Deps),
     ( if
         HeadSucceeded = did_not_succeed,
         KeepGoing = do_not_keep_going
@@ -119,26 +120,26 @@ find_target_dependencies_of_modules(ProgressStream, KeepGoing, Globals,
 
 :- pred find_target_dependencies_of_module(io.text_output_stream::in,
     maybe_keep_going::in, globals::in,
-    module_target_type::in, module_index::in, maybe_succeeded::out,
-    deps_set(dependency_file_index)::in, deps_set(dependency_file_index)::out,
+    module_target_type::in, module_index::in,
+    maybe_succeeded::out, deps_set(dependency_file_index)::out,
     make_info::in, make_info::out, io::di, io::uo) is det.
 
 % XXX MDNEW Rename !Deps to something like !DepFileIndexSet or !Prereqs.
 % Whatever we choose, use that variable name consistently in the module.
 % XXX MDNEW Return only the NEW dfmis.
 find_target_dependencies_of_module(ProgressStream, KeepGoing, Globals,
-        TargetType, ModuleIndex, Succeeded, !Deps, !Info, !IO) :-
+        TargetType, ModuleIndex, Succeeded, Deps, !Info, !IO) :-
     (
         ( TargetType = module_target_source
         ; TargetType = module_target_track_flags
         ),
-        Succeeded = succeeded
+        Succeeded = succeeded,
+        Deps = deps_set_init
     ;
         TargetType = module_target_int3,
         DepSpecs = [self(module_target_source)],
         find_dep_specs(ProgressStream, KeepGoing, Globals,
-            ModuleIndex, DepSpecs, Succeeded, NewDeps, !Info, !IO),
-        deps_set_union(NewDeps, !Deps)
+            ModuleIndex, DepSpecs, Succeeded, Deps, !Info, !IO)
     ;
         ( TargetType = module_target_int0
         ; TargetType = module_target_int1
@@ -151,8 +152,7 @@ find_target_dependencies_of_module(ProgressStream, KeepGoing, Globals,
             indirect_imports_intermod(module_target_int3)
         ],
         find_dep_specs(ProgressStream, KeepGoing, Globals,
-            ModuleIndex, DepSpecs, Succeeded, NewDeps, !Info, !IO),
-        deps_set_union(NewDeps, !Deps)
+            ModuleIndex, DepSpecs, Succeeded, Deps, !Info, !IO)
     ;
         ( TargetType = module_target_c_code
         ; TargetType = module_target_c_header(_)
@@ -164,14 +164,12 @@ find_target_dependencies_of_module(ProgressStream, KeepGoing, Globals,
         % XXX MDNEW Get intermod, pass as extra arg in the returned deps.
         % XXX MDNEW Same for direct and indirect deps, and ancestors.
         find_dep_specs(ProgressStream, KeepGoing, Globals,
-            ModuleIndex, DepSpecs, Succeeded, NewDeps, !Info, !IO),
-        deps_set_union(NewDeps, !Deps)
+            ModuleIndex, DepSpecs, Succeeded, Deps, !Info, !IO)
     ;
         TargetType = module_target_java_class_code,
         DepSpec = self(module_target_java_code),
         find_dep_spec(ProgressStream, KeepGoing, Globals,
-            ModuleIndex, DepSpec, Succeeded, NewDeps, !Info, !IO),
-        deps_set_union(NewDeps, !Deps)
+            ModuleIndex, DepSpec, Succeeded, Deps, !Info, !IO)
     ;
         ( TargetType = module_target_foreign_object(PIC, _)
         ; TargetType = module_target_fact_table_object(PIC, _)
@@ -180,8 +178,7 @@ find_target_dependencies_of_module(ProgressStream, KeepGoing, Globals,
         TargetCodeType = target_to_module_target_code(CompilationTarget, PIC),
         DepSpec = self(TargetCodeType),
         find_dep_spec(ProgressStream, KeepGoing, Globals,
-            ModuleIndex, DepSpec, Succeeded, NewDeps, !Info, !IO),
-        deps_set_union(NewDeps, !Deps)
+            ModuleIndex, DepSpec, Succeeded, Deps, !Info, !IO)
     ;
         TargetType = module_target_object_code(PIC),
         globals.get_target(Globals, CompilationTarget),
@@ -206,8 +203,7 @@ find_target_dependencies_of_module(ProgressStream, KeepGoing, Globals,
             DepSpecs = [DepSpecSelf, DepSpecMh]
         ),
         find_dep_specs(ProgressStream, KeepGoing, Globals,
-            ModuleIndex, DepSpecs, Succeeded, NewDeps, !Info, !IO),
-        deps_set_union(NewDeps, !Deps)
+            ModuleIndex, DepSpecs, Succeeded, Deps, !Info, !IO)
     ;
         ( TargetType = module_target_opt
         ; TargetType = module_target_xml_doc
@@ -217,8 +213,7 @@ find_target_dependencies_of_module(ProgressStream, KeepGoing, Globals,
             anc0_dir1_indir2_non_intermod
         ],
         find_dep_specs(ProgressStream, KeepGoing, Globals,
-            ModuleIndex, DepSpecs, Succeeded, NewDeps, !Info, !IO),
-        deps_set_union(NewDeps, !Deps)
+            ModuleIndex, DepSpecs, Succeeded, Deps, !Info, !IO)
     ;
         TargetType = module_target_analysis_registry,
         DepSpecs = [
@@ -229,8 +224,7 @@ find_target_dependencies_of_module(ProgressStream, KeepGoing, Globals,
             intermod_imports(module_target_opt)
         ],
         find_dep_specs(ProgressStream, KeepGoing, Globals,
-            ModuleIndex, DepSpecs, Succeeded, NewDeps, !Info, !IO),
-        deps_set_union(NewDeps, !Deps)
+            ModuleIndex, DepSpecs, Succeeded, Deps, !Info, !IO)
     ).
 
 :- func target_to_module_target_code(compilation_target, pic)
