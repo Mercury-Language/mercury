@@ -263,8 +263,8 @@ make_linked_target_2(ProgressStream, Globals, LinkedTargetFile, Succeeded,
         % This prevents a problem when two parallel branches try to generate
         % the same missing interface file later.
 
-        make_all_interface_files(ProgressStream, Globals, do_not_stop,
-            AllModulesList, IntsSucceeded, !Info, !IO),
+        build_int_opt_files(ProgressStream, Globals,
+            build_all_ints_opts, AllModulesList, IntsSucceeded, !Info, !IO),
         ( if
             IntsSucceeded = did_not_succeed,
             KeepGoing = do_not_keep_going
@@ -925,18 +925,18 @@ make_misc_target_builder(ProgressStream, Globals, MainModuleName, TargetType,
                 Succeeded1 = succeeded
             ;
                 ModuleTargetType = module_target_int0,
-                make_all_interface_files(ProgressStream, Globals,
-                    stop_after_int3s, AllModules, Succeeded1, !Info, !IO)
+                build_int_opt_files(ProgressStream, Globals,
+                    build_int3s, AllModules, Succeeded1, !Info, !IO)
             ;
                 ( ModuleTargetType = module_target_int1
                 ; ModuleTargetType = module_target_int2
                 ),
-                make_all_interface_files(ProgressStream, Globals,
-                    stop_after_int0s, AllModules, Succeeded1, !Info, !IO)
+                build_int_opt_files(ProgressStream, Globals,
+                    build_int3s_int0s, AllModules, Succeeded1, !Info, !IO)
             ;
                 ModuleTargetType = module_target_opt,
-                make_all_interface_files(ProgressStream, Globals,
-                    stop_after_int12s, AllModules, Succeeded1, !Info, !IO)
+                build_int_opt_files(ProgressStream, Globals,
+                    build_all_ints, AllModules, Succeeded1, !Info, !IO)
             ;
                 ( ModuleTargetType = module_target_errors
                 ; ModuleTargetType = module_target_analysis_registry
@@ -950,8 +950,8 @@ make_misc_target_builder(ProgressStream, Globals, MainModuleName, TargetType,
                 ; ModuleTargetType = module_target_fact_table_object(_, _)
                 ; ModuleTargetType = module_target_xml_doc
                 ),
-                make_all_interface_files(ProgressStream, Globals, do_not_stop,
-                    AllModules, Succeeded1, !Info, !IO)
+                build_int_opt_files(ProgressStream, Globals,
+                    build_all_ints_opts, AllModules, Succeeded1, !Info, !IO)
             ),
             ( if
                 Succeeded1 = did_not_succeed,
@@ -959,10 +959,11 @@ make_misc_target_builder(ProgressStream, Globals, MainModuleName, TargetType,
             then
                 Succeeded = did_not_succeed
             else
+                Targets =
+                    make_dependency_list(TargetModules, ModuleTargetType),
                 maybe_with_analysis_cache_dir_2(ProgressStream, Globals,
                     foldl2_make_module_targets_maybe_parallel_build2(KeepGoing,
-                        [], Globals,
-                        make_dependency_list(TargetModules, ModuleTargetType)),
+                        [], Globals, Targets),
                     Succeeded2, !Info, !IO),
                 Succeeded = Succeeded0 `and` Succeeded1 `and` Succeeded2
             )
@@ -975,7 +976,7 @@ make_misc_target_builder(ProgressStream, Globals, MainModuleName, TargetType,
             Succeeded, !Info, !IO)
     ;
         TargetType = misc_target_build_library,
-        make_all_interface_files(ProgressStream, Globals, do_not_stop,
+        build_int_opt_files(ProgressStream, Globals, build_all_ints_opts,
             AllModules, IntSucceeded, !Info, !IO),
         (
             IntSucceeded = succeeded,
@@ -1007,32 +1008,45 @@ make_misc_target_builder(ProgressStream, Globals, MainModuleName, TargetType,
         ( if Succeeded0 = did_not_succeed, KeepGoing = do_not_keep_going then
             Succeeded = did_not_succeed
         else
-            foldl2_make_module_targets(KeepGoing, [],
-                ProgressStream, Globals,
+            XmlDocs =
                 make_dependency_list(TargetModules, module_target_xml_doc),
-                Succeeded1, !Info, !IO),
+            foldl2_make_module_targets(KeepGoing, [],
+                ProgressStream, Globals, XmlDocs, Succeeded1, !Info, !IO),
             Succeeded = Succeeded0 `and` Succeeded1
         )
     ).
 
 %---------------------------------------------------------------------------%
 
-:- type stop_when
-    --->    stop_after_int3s
-    ;       stop_after_int0s
-    ;       stop_after_int12s
-    ;       do_not_stop.
+:- type build_what
+    --->    build_int3s
+    ;       build_int3s_int0s
+    ;       build_all_ints
+    ;       build_all_ints_opts.
 
-:- pred make_all_interface_files(io.text_output_stream::in, globals::in,
-    stop_when::in, list(module_name)::in, maybe_succeeded::out,
+:- pred build_int_opt_files(io.text_output_stream::in, globals::in,
+    build_what::in, list(module_name)::in, maybe_succeeded::out,
     make_info::in, make_info::out, io::di, io::uo) is det.
 
-make_all_interface_files(ProgressStream, Globals, StopWhen, AllModules0,
+build_int_opt_files(ProgressStream, Globals, BuildWhat, AllModules0,
         Succeeded, !Info, !IO) :-
     filter_out_nested_modules(ProgressStream, Globals,
         AllModules0, NonnestedModules, !Info, !IO),
     list.foldl3(collect_modules_with_children(ProgressStream, Globals),
         NonnestedModules, [], ParentModules, !Info, !IO),
+
+    get_nonnested_and_parent_modules(ProgressStream, Globals, AllModules0,
+        NonnestedModulesB, ParentModulesB, !Info, !IO),
+
+    list.sort(NonnestedModules,  SortedNonnestedModulesA),
+    list.sort(NonnestedModulesB, SortedNonnestedModulesB),
+    list.sort(ParentModules,  SortedParentModulesA),
+    list.sort(ParentModulesB, SortedParentModulesB),
+    expect(unify(SortedNonnestedModulesA, SortedNonnestedModulesB),
+        $pred, "nonnested modules mismatch"),
+    expect(unify(SortedParentModulesA, SortedParentModulesB),
+        $pred, "parent modules mismatch"),
+
     Int3s = make_dependency_list(NonnestedModules, module_target_int3),
     Int0s = make_dependency_list(ParentModules, module_target_int0),
     Int1s = make_dependency_list(NonnestedModules, module_target_int1),
@@ -1052,7 +1066,7 @@ make_all_interface_files(ProgressStream, Globals, StopWhen, AllModules0,
         ProgressStream, Globals, Int3s, Succeeded0, !Info, !IO),
     ( if
         ( Succeeded0 = did_not_succeed
-        ; StopWhen = stop_after_int3s
+        ; BuildWhat = build_int3s
         )
     then
         Succeeded = Succeeded0
@@ -1061,7 +1075,7 @@ make_all_interface_files(ProgressStream, Globals, StopWhen, AllModules0,
             ProgressStream, Globals, Int0s, Succeeded1, !Info, !IO),
         ( if
             ( Succeeded1 = did_not_succeed
-            ; StopWhen = stop_after_int0s
+            ; BuildWhat = build_int3s_int0s
             )
         then
             Succeeded = Succeeded1
@@ -1070,7 +1084,7 @@ make_all_interface_files(ProgressStream, Globals, StopWhen, AllModules0,
                 ProgressStream, Globals, Int1s, Succeeded2, !Info, !IO),
             ( if
                 ( Succeeded2 = did_not_succeed
-                ; StopWhen = stop_after_int12s
+                ; BuildWhat = build_all_ints
                 )
             then
                 Succeeded = Succeeded2
@@ -1079,26 +1093,6 @@ make_all_interface_files(ProgressStream, Globals, StopWhen, AllModules0,
                     ProgressStream, Globals, Opts, Succeeded, !Info, !IO)
             )
         )
-    ).
-
-:- pred collect_modules_with_children(io.text_output_stream::in, globals::in,
-    module_name::in, list(module_name)::in, list(module_name)::out,
-    make_info::in, make_info::out, io::di, io::uo) is det.
-
-collect_modules_with_children(ProgressStream, Globals, ModuleName,
-        !ParentModules, !Info, !IO) :-
-    get_maybe_module_dep_info(ProgressStream, Globals,
-        ModuleName, MaybeModuleDepInfo, !Info, !IO),
-    (
-        MaybeModuleDepInfo = some_module_dep_info(ModuleDepInfo),
-        module_dep_info_get_children(ModuleDepInfo, Children),
-        ( if set.is_empty(Children) then
-            true
-        else
-            !:ParentModules = [ModuleName | !.ParentModules]
-        )
-    ;
-        MaybeModuleDepInfo = no_module_dep_info
     ).
 
 %---------------------------------------------------------------------------%
@@ -1276,11 +1270,11 @@ build_analysis_files(Globals, MainModuleName, AllModules,
     then
         Succeeded = did_not_succeed
     else
-        % Ensure all interface files are present before continuing.
+        % Ensure all .intN and .opt files are present before continuing.
         % This prevents a problem when two parallel branches try to generate
-        % the same missing interface file later.
+        % the same missing file later.
         % (Although we can't actually build analysis files in parallel yet.)
-        make_all_interface_files(ProgressStream, Globals, do_not_stop,
+        build_int_opt_files(ProgressStream, Globals, build_all_ints_opts,
             AllModules, Succeeded1, !Info, !IO),
         ( if
             Succeeded1 = did_not_succeed,
@@ -1326,10 +1320,10 @@ build_analysis_files_1(ProgressStream, Globals, MainModuleName, AllModules,
 build_analysis_files_2(ProgressStream, Globals, MainModuleName, TargetModules,
         LocalModulesOpts, Succeeded0, Succeeded, !Info, !IO) :-
     KeepGoing = make_info_get_keep_going(!.Info),
-    foldl2_make_module_targets(KeepGoing, LocalModulesOpts, ProgressStream,
-        Globals,
+    Registries =
         make_dependency_list(TargetModules, module_target_analysis_registry),
-        Succeeded1, !Info, !IO),
+    foldl2_make_module_targets(KeepGoing, LocalModulesOpts, ProgressStream,
+        Globals, Registries, Succeeded1, !Info, !IO),
     % Maybe we should have an option to reanalyse cliques before moving
     % upwards in the dependency graph?
 
@@ -2409,6 +2403,79 @@ collect_nested_modules(ProgressStream, Globals, ModuleName,
         set.union(NestedSubModules, !NestedModules)
     ;
         MaybeModuleDepInfo = no_module_dep_info
+    ).
+
+:- pred collect_modules_with_children(io.text_output_stream::in, globals::in,
+    module_name::in, list(module_name)::in, list(module_name)::out,
+    make_info::in, make_info::out, io::di, io::uo) is det.
+
+collect_modules_with_children(ProgressStream, Globals, ModuleName,
+        !ParentModules, !Info, !IO) :-
+    get_maybe_module_dep_info(ProgressStream, Globals,
+        ModuleName, MaybeModuleDepInfo, !Info, !IO),
+    (
+        MaybeModuleDepInfo = some_module_dep_info(ModuleDepInfo),
+        module_dep_info_get_children(ModuleDepInfo, Children),
+        ( if set.is_empty(Children) then
+            true
+        else
+            !:ParentModules = [ModuleName | !.ParentModules]
+        )
+    ;
+        MaybeModuleDepInfo = no_module_dep_info
+    ).
+
+%---------------------------------------------------------------------------%
+
+:- pred get_nonnested_and_parent_modules(io.text_output_stream::in,
+    globals::in, list(module_name)::in,
+    list(module_name)::out, list(module_name)::out,
+    make_info::in, make_info::out, io::di, io::uo) is det.
+
+get_nonnested_and_parent_modules(ProgressStream, Globals, ModuleNames,
+        NonnestedModules, ParentModules, !Info, !IO) :-
+    list.foldl4(
+        acc_nonnested_and_parent_modules(ProgressStream, Globals),
+        ModuleNames,
+        [], NonnestedModules, [], ParentModules, !Info, !IO).
+
+:- pred acc_nonnested_and_parent_modules(io.text_output_stream::in,
+    globals::in, module_name::in,
+    list(module_name)::in, list(module_name)::out,
+    list(module_name)::in, list(module_name)::out,
+    make_info::in, make_info::out, io::di, io::uo) is det.
+
+acc_nonnested_and_parent_modules(ProgressStream, Globals, ModuleName,
+        !NonnestedModules, !ParentModules, !Info, !IO) :-
+    get_maybe_module_dep_info(ProgressStream, Globals,
+        ModuleName, MaybeModuleDepInfo, !Info, !IO),
+    (
+        MaybeModuleDepInfo = some_module_dep_info(ModuleDepInfo),
+        module_dep_info_get_maybe_top_module(ModuleDepInfo, MaybeTopModule),
+        (
+            MaybeTopModule = top_module(_NestedSubModules),
+            % don't include in NestedModules
+            %   which means DO include in NonnestedModules
+            !:NonnestedModules = [ModuleName | !.NonnestedModules],
+            module_dep_info_get_children(ModuleDepInfo, Children),
+            ( if set.is_empty(Children) then
+                true
+            else
+                !:ParentModules = [ModuleName | !.ParentModules]
+            )
+        ;
+            MaybeTopModule = not_top_module
+            % do include in NestedModules
+            %   which means DO NOT include in NonnestedModules
+            %   which means DO NOT include in ParentModules
+        )
+    ;
+        MaybeModuleDepInfo = no_module_dep_info,
+        % don't include in NestedModules
+        %   which means DO include in NonnestedModules
+        % do not include in ParentModules
+        %   due to absence of info about any children
+        !:NonnestedModules = [ModuleName | !.NonnestedModules]
     ).
 
 %---------------------------------------------------------------------------%
