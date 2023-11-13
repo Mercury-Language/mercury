@@ -147,11 +147,11 @@ get_dependency_timestamp(ProgressStream, Globals, DependencyFile,
 
 get_target_timestamp(ProgressStream, Globals, Search, TargetFile,
         MaybeTimestamp, !Info, !IO) :-
-    TargetFile = target_file(_ModuleName, TargetType),
+    TargetFile = target_file(ModuleName, TargetType),
     ( if TargetType = module_target_analysis_registry then
         ForSearch = maybe_search_to_maybe_for_search(Search),
-        get_file_name_for_target_file(ProgressStream, Globals, $pred,
-            ForSearch, TargetFile, FileName, !Info, !IO),
+        module_target_to_maybe_for_search_file_name(Globals, $pred,
+            ForSearch, TargetType, ModuleName, FileName, !IO),
         get_target_timestamp_analysis_registry(ProgressStream, Globals,
             Search, TargetFile, FileName, MaybeTimestamp, !Info, !IO)
     else
@@ -168,8 +168,9 @@ get_target_timestamp(ProgressStream, Globals, Search, TargetFile,
             MaybeTimestamp = ok(Timestamp)
         else
             ForSearch = maybe_search_to_maybe_for_search(Search),
-            get_file_name_for_target_file(ProgressStream, Globals, $pred,
-                ForSearch, TargetFile, FileName, !Info, !IO),
+            module_target_file_to_file_name_maybe_search_module_dep(
+                ProgressStream, Globals, $pred, ForSearch,
+                TargetFile, FileName, !Info, !IO),
             get_target_timestamp_2(ProgressStream, Globals,
                 Search, TargetFile, FileName, MaybeTimestamp, !Info, !IO),
             (

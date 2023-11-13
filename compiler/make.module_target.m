@@ -200,7 +200,8 @@ make_module_target_file_main_path(ExtraOptions, ProgressStream, Globals,
         TargetFile, CompilationTaskAndOptions, ModuleDepInfo, Succeeded,
         !Info, !IO) :-
     TargetFile = target_file(ModuleName, TargetType),
-    get_make_target_file_name(Globals, $pred, TargetFile, TargetFileName, !IO),
+    module_target_file_to_file_name(Globals, $pred,
+        TargetFile, TargetFileName, !IO),
     CompilationTaskAndOptions = task_and_options(CompilationTaskType, _),
     find_files_maybe_touched_by_task(ProgressStream, Globals, TargetFile,
         CompilationTaskType, TouchedTargetFiles, TouchedFiles, !Info, !IO),
@@ -267,9 +268,9 @@ make_module_target_file_main_path(ExtraOptions, ProgressStream, Globals,
     then
         DepsResult = deps_error
     else
-        make_dependency_files(ProgressStream, Globals, TargetFile,
-            TargetFileName, DepFilesToMake, TouchedTargetFiles, TouchedFiles,
-            DepsResult0, !Info, !IO),
+        make_dependency_files(ProgressStream, Globals,
+            TargetFile, TargetFileName, DepFilesToMake,
+            TouchedTargetFiles, TouchedFiles, DepsResult0, !Info, !IO),
         (
             DepsSucceeded = succeeded,
             DepsResult = DepsResult0
@@ -290,8 +291,9 @@ make_module_target_file_main_path(ExtraOptions, ProgressStream, Globals,
             Targets0, Targets),
         make_info_set_command_line_targets(Targets, !Info),
         build_target(ProgressStream, Globals, CompilationTaskAndOptions,
-            TargetFile, ModuleDepInfo, TouchedTargetFiles, TouchedFiles,
-            ExtraOptions, Succeeded, !Info, !IO)
+            TargetFile, TargetFileName, ModuleDepInfo,
+            TouchedTargetFiles, TouchedFiles, ExtraOptions,
+            Succeeded, !Info, !IO)
     ;
         DepsResult = deps_up_to_date,
         TopTargetFile = top_target_file(ModuleName, module_target(TargetType)),
@@ -316,6 +318,7 @@ make_dependency_files(ProgressStream, Globals, TargetFile, TargetFileName,
         DepFilesToMake, TouchedTargetFiles, TouchedFiles, DepsResult,
         !Info, !IO) :-
     % Build the dependencies.
+    % ZZZ sort
     KeepGoing = make_info_get_keep_going(!.Info),
     foldl2_make_module_targets(KeepGoing, [], ProgressStream, Globals,
         DepFilesToMake, MakeDepsSucceeded, !Info, !IO),
@@ -372,36 +375,42 @@ make_dependency_files(ProgressStream, Globals, TargetFile, TargetFileName,
 
                 % Our caller computes TargetFileName using the call
                 %
-                %   get_make_target_file_name(Globals, $pred, TargetFile,
+                %   module_target_file_to_file_name(Globals, $pred, TargetFile,
                 %       TargetFileName, !IO)
                 %
-                % get_file_name(... do_not_search, ...) and
-                % get_make_target_file_name both just call
+                % module_target_file_to_file_name_maybe_module_dep and
+                % module_target_file_to_file_name both just call
                 % module_name_to_file_name for *most*, but not *all*
-                % target file types. For the other three target types, namely
-                %
-                %   module_target_source
-                %   module_target_foreign_object
-                %   module_target_fact_table_object
-                %
+                % target file types. There is one exception:
+                % module_target_source. For this target type,
                 % one of the following three must hold:
                 %
                 % - the different code paths in the above two predicates
-                %   may be equivalent, in which case one of those predicates
-                %   is redundant;
+                %   may be equivalent even though they do not seem to be,
+                %   in which case one of those predicates is redundant;
                 %
-                % - this code point cannot be reached with these target file
-                %   types, a proposition for which I (zs) see no evidence, or
+                % - this code point cannot be reached with this target file
+                %   type, a proposition for which I (zs) see no evidence, or
                 %
-                % - the call to get_file_name here, instead of
-                %   get_make_target_file_name, is, and always has been,
+                % - the call to module_target_file_to_file_name_maybe_
+                %   _search_maybe_module_dep here, instead of just
+                %   module_target_file_to_file_name, is, and always has been,
                 %   a BUG.
                 %
                 % The fact that a hlc.gc bootcheck does not cause the
                 % call to expect below to throw an exception seems to argue
                 % against the last alternative above.
-                get_file_name_for_target_file(ProgressStream, Globals, $pred,
-                    not_for_search, TargetFile, TargetFileNameB, !Info, !IO),
+                %
+                % It is also possible that the correct answer *was* the
+                % last alternative until we started requiring "mmc -f *.m"
+                % if any module was stored in a nonstandard filename,
+                % but now that we do require that, the correct answer has
+                % become the first alternative. If this is the case, then
+                % calling module_target_file_to_file_name here would be
+                % equivalent but simpler.
+                module_target_file_to_file_name_maybe_search_module_dep(
+                    ProgressStream, Globals, $pred, not_for_search,
+                    TargetFile, TargetFileNameB, !Info, !IO),
                 expect(unify(TargetFileName, TargetFileNameB), $pred,
                     "TargetFileName mismatch"),
                 check_dependencies(ProgressStream, Globals, TargetFileNameB,
@@ -436,16 +445,14 @@ should_we_force_reanalysis_of_suboptimal_module(Globals, ModuleName,
 
 :- pred build_target(io.text_output_stream::in, globals::in,
     compilation_task_type_and_options::in,
-    target_file::in, module_dep_info::in, list(target_file)::in,
+    target_file::in, file_name::in, module_dep_info::in, list(target_file)::in,
     list(file_name)::in, list(string)::in, maybe_succeeded::out,
     make_info::in, make_info::out, io::di, io::uo) is det.
 
-build_target(ProgressStream, Globals, CompilationTask, TargetFile,
-        ModuleDepInfo, TouchedTargetFiles, TouchedFiles, ExtraOptions,
+build_target(ProgressStream, Globals, CompilationTask,
+        TargetFile, TargetFileName, ModuleDepInfo,
+        TouchedTargetFiles, TouchedFiles, ExtraOptions,
         Succeeded, !Info, !IO) :-
-    % XXX MAKE_FILENAME Either our caller should be able to give us
-    % TargetFileName, or we could compute it here, and give it to code below.
-    get_make_target_file_name(Globals, $pred, TargetFile, TargetFileName, !IO),
     maybe_making_filename_msg(Globals, TargetFileName, MakingMsg),
     maybe_write_msg(ProgressStream, MakingMsg, !IO),
     TargetFile = target_file(ModuleName, _TargetType),
@@ -872,8 +879,10 @@ record_made_target_given_maybe_touched_files(ProgressStream, Globals,
     list.foldl(update_target_status(TargetStatus), TouchedTargetFiles, !Info),
 
     list.map_foldl2(
-        get_file_name_for_target_file(ProgressStream, Globals, $pred,
-            not_for_search),
+        % XXX I (zs) think that we should pass a closure containing
+        % just plain old module_target_file_to_file_name.
+        module_target_file_to_file_name_maybe_search_module_dep(ProgressStream,
+            Globals, $pred, not_for_search),
         TouchedTargetFiles, TouchedTargetFileNames, !Info, !IO),
 
     some [!FileTimestamps] (

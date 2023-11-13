@@ -621,7 +621,7 @@ write_module_dep_files_for_source_file(Globals, ProgressStream,
     % while we have the contents of the module. The `int3' file
     % does not depend on anything else.
     MadeTarget = target_file(ModuleName, module_target_int3),
-    get_make_target_file_name(Globals, $pred,
+    module_target_file_to_file_name(Globals, $pred,
         MadeTarget, MadeTargetFileName, !IO),
 
     globals.lookup_bool_option(Globals, very_verbose, VeryVerbose),

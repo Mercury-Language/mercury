@@ -32,26 +32,34 @@
 % File names.
 %
 
-    % get_file_name_for_target_file(Globals, From, Search, TargetFile,
-    %   FileName, !IO):
-    %
-    % Compute a file name for the given target file.
-    % `Search' should be `for_search' if the file could be part of an
-    % installed library.
-    %
-:- pred get_file_name_for_target_file(io.text_output_stream::in, globals::in,
-    string::in, maybe_for_search::in, target_file::in, file_name::out,
-    make_info::in, make_info::out, io::di, io::uo) is det.
-
 :- pred dependency_file_to_file_name(globals::in, dependency_file::in,
     string::out, io::di, io::uo) is det.
+
+    % module_target_file_to_file_name_maybe_search_module_dep(ProgressStream,
+    %   Globals, From, Search, TargetFile, FileName, !IO):
+    %
+    % Compute a file name for the given target file.
+    %
+    % This predicate uses the same algorithm as module_target_file_to_file_name
+    % for almost all target types. The one exception is module_target_source,
+    % for which it tries to get the filename from the module's module_dep_info
+    % structure, if it exists.
+    %
+    % XXX This special treatment of module_target_source is probably a bug.
+    %
+:- pred module_target_file_to_file_name_maybe_search_module_dep(
+    io.text_output_stream::in, globals::in, string::in, maybe_for_search::in,
+    target_file::in, file_name::out,
+    make_info::in, make_info::out, io::di, io::uo) is det.
 
     % Return the file name for the given target_file. The I/O state pair
     % may be needed to find this file name.
     %
-:- pred get_make_target_file_name(globals::in, string::in,
+:- pred module_target_file_to_file_name(globals::in, string::in,
     target_file::in, string::out, io::di, io::uo) is det.
-
+:- pred module_target_to_maybe_for_search_file_name(globals::in, string::in,
+    maybe_for_search::in, module_target_type::in,
+    module_name::in, file_name::out, io::di, io::uo) is det.
 :- pred module_target_to_file_name(globals::in, string::in,
     module_target_type::in, module_name::in, file_name::out,
     io::di, io::uo) is det.
@@ -79,8 +87,17 @@
 
 %---------------------------------------------------------------------------%
 
-get_file_name_for_target_file(ProgressStream, Globals, From, Search,
-        TargetFile, FileName, !Info, !IO) :-
+dependency_file_to_file_name(Globals, DepFile, FileName, !IO) :-
+    (
+        DepFile = dep_target(TargetFile),
+        module_target_file_to_file_name(Globals, $pred,
+            TargetFile, FileName, !IO)
+    ;
+        DepFile = dep_file(FileName)
+    ).
+
+module_target_file_to_file_name_maybe_search_module_dep(ProgressStream,
+        Globals, From, ForSearch, TargetFile, FileName, !Info, !IO) :-
     TargetFile = target_file(ModuleName, TargetType),
     ( if TargetType = module_target_source then
         % In some cases the module name won't match the file name
@@ -98,49 +115,26 @@ get_file_name_for_target_file(ProgressStream, Globals, From, Search,
             module_name_to_source_file_name(ModuleName, FileName, !IO)
         )
     else
-        target_type_to_target_extension(TargetType, TargetExt),
-        (
-            TargetExt = source,
-            module_name_to_source_file_name(ModuleName, FileName, !IO)
-        ;
-            TargetExt = extension(Ext),
-            (
-                Search = not_for_search,
-                module_name_to_file_name(Globals, From, Ext,
-                    ModuleName, FileName)
-            ;
-                Search = for_search,
-                module_name_to_search_file_name(Globals, From, Ext,
-                    ModuleName, FileName)
-            )
-        ;
-            ( TargetExt = foreign_obj(_, _)
-            ; TargetExt = fact_table_obj(_, _)
-            ),
-            (
-                Search = not_for_search,
-                module_target_to_file_name(Globals, From, TargetType,
-                    ModuleName, FileName, !IO)
-            ;
-                Search = for_search,
-                module_target_to_search_file_name(Globals, From, TargetType,
-                    ModuleName, FileName, !IO)
-            )
-        )
+        module_target_to_maybe_for_search_file_name(Globals, From, ForSearch,
+            TargetType, ModuleName, FileName, !IO)
     ).
 
-dependency_file_to_file_name(Globals, DepFile, FileName, !IO) :-
-    (
-        DepFile = dep_target(TargetFile),
-        get_make_target_file_name(Globals, $pred, TargetFile, FileName, !IO)
-    ;
-        DepFile = dep_file(FileName)
-    ).
-
-get_make_target_file_name(Globals, From, TargetFile, FileName, !IO) :-
+module_target_file_to_file_name(Globals, From, TargetFile, FileName, !IO) :-
     TargetFile = target_file(ModuleName, TargetType),
     module_target_to_file_name(Globals, From, TargetType, ModuleName,
         FileName, !IO).
+
+module_target_to_maybe_for_search_file_name(Globals, From, ForSearch,
+        TargetType, ModuleName, FileName, !IO) :-
+    (
+        ForSearch = not_for_search,
+        module_target_to_file_name(Globals, From,
+            TargetType, ModuleName, FileName, !IO)
+    ;
+        ForSearch = for_search,
+        module_target_to_search_file_name(Globals, From,
+            TargetType, ModuleName, FileName, !IO)
+    ).
 
 module_target_to_file_name(Globals, From, TargetType, ModuleName,
         FileName, !IO) :-
@@ -153,16 +147,13 @@ module_target_to_file_name(Globals, From, TargetType, ModuleName,
         module_name_to_file_name(Globals, From, Ext,
             ModuleName, FileName)
     ;
-        TargetExt = foreign_obj(PIC, Lang),
+        TargetExt = foreign_obj(Ext, Lang),
         foreign_language_module_name(ModuleName, Lang, ForeignModuleName),
-        module_target_to_file_name(Globals, From,
-            module_target_object_code(PIC),
-            ForeignModuleName, FileName, !IO)
+        module_name_to_file_name(Globals, From, Ext,
+            ForeignModuleName, FileName)
     ;
-        TargetExt = fact_table_obj(PIC, FactFile),
-        maybe_pic_object_file_extension(PIC, ObjExt, _),
-        fact_table_file_name(Globals, $pred, ext_cur_ngs_gs(ObjExt),
-            FactFile, FileName)
+        TargetExt = fact_table_obj(Ext, FactFile),
+        fact_table_file_name(Globals, $pred, Ext, FactFile, FileName)
     ).
 
 :- pred module_target_to_search_file_name(globals::in, string::in,
@@ -181,16 +172,14 @@ module_target_to_search_file_name(Globals, From, TargetType, ModuleName,
         module_name_to_search_file_name(Globals, From, Ext,
             ModuleName, FileName)
     ;
-        TargetExt = foreign_obj(PIC, Lang),
+        TargetExt = foreign_obj(Ext, Lang),
         foreign_language_module_name(ModuleName, Lang, ForeignModuleName),
-        module_target_to_search_file_name(Globals, From,
-            module_target_object_code(PIC), ForeignModuleName, FileName, !IO)
+        module_name_to_search_file_name(Globals, From, Ext,
+            ForeignModuleName, FileName)
     ;
-        TargetExt = fact_table_obj(PIC, FactFile),
-        maybe_pic_object_file_extension(PIC, ObjExt, _),
+        TargetExt = fact_table_obj(Ext, FactFile),
         % XXX This call ignores the implicit for_search setting.
-        fact_table_file_name(Globals, $pred, ext_cur_ngs_gs(ObjExt),
-            FactFile, FileName)
+        fact_table_file_name(Globals, $pred, Ext, FactFile, FileName)
     ).
 
 %---------------------------------------------------------------------------%
@@ -198,8 +187,8 @@ module_target_to_search_file_name(Globals, From, TargetType, ModuleName,
 :- type target_extension
     --->    source
     ;       extension(ext)
-    ;       foreign_obj(pic, foreign_language)
-    ;       fact_table_obj(pic, string).
+    ;       foreign_obj(ext, foreign_language)
+    ;       fact_table_obj(ext, string).
 
 :- pred target_type_to_target_extension(module_target_type::in,
     target_extension::out) is det.
@@ -271,10 +260,14 @@ target_type_to_target_extension(Target, TargetExt) :-
         TargetExt = extension(ext_cur(ext_cur_user_xml))
     ;
         Target = module_target_foreign_object(PIC, Lang),
-        TargetExt = foreign_obj(PIC, Lang)
+        maybe_pic_object_file_extension(PIC, ObjExt, _),
+        Ext = ext_cur_ngs_gs(ObjExt),
+        TargetExt = foreign_obj(Ext, Lang)
     ;
         Target = module_target_fact_table_object(PIC, FactFile),
-        TargetExt = fact_table_obj(PIC, FactFile)
+        maybe_pic_object_file_extension(PIC, ObjExt, _),
+        Ext = ext_cur_ngs_gs(ObjExt),
+        TargetExt = fact_table_obj(Ext, FactFile)
     ).
 
 timestamp_extension(ModuleTargetType, Ext) :-

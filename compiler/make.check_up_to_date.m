@@ -127,7 +127,7 @@ get_dependency_file_status(ProgressStream, Globals, Dep, Result, !Info, !IO) :-
             % so are also up-to-date.
             ModuleTarget = module_target(module_target_source),
             TopTargetFile = top_target_file(ModuleName, ModuleTarget),
-            get_make_target_file_name(Globals, $pred, Target,
+            module_target_file_to_file_name(Globals, $pred, Target,
                 TargetFileName, !IO),
             MaybeTargetFileName = yes(TargetFileName),
             maybe_warn_up_to_date_target_msg(Globals, TopTargetFile,
@@ -193,7 +193,7 @@ get_dependency_file_status(ProgressStream, Globals, Dep, Result, !Info, !IO) :-
                 % an unnecessary LARGE cost in execution time.
                 MaybeTargetFileName = no
             else
-                get_make_target_file_name(Globals, $pred,
+                module_target_file_to_file_name(Globals, $pred,
                     Target, TargetFileName, !IO),
                 MaybeTargetFileName = yes(TargetFileName),
                 get_maybe_module_dep_info(ProgressStream, Globals,
