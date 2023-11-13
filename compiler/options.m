@@ -1082,6 +1082,7 @@
     ;       use_symlinks
     ;       mercury_configuration_directory
     ;       mercury_configuration_directory_special
+    ;       install_method
     ;       install_command
     ;       install_command_dir_option
     ;       detect_libgrades
@@ -2045,6 +2046,7 @@ optdef(oc_buildsys, use_symlinks,                       bool(yes)).
     % of the options.
 optdef(oc_buildsys, mercury_configuration_directory_special, string_special).
 optdef(oc_buildsys, mercury_configuration_directory,    maybe_string(no)).
+optdef(oc_buildsys, install_method,                     string("external")).
 optdef(oc_buildsys, install_command,                    string("cp")).
 optdef(oc_buildsys, install_command_dir_option,         string("-R")).
 optdef(oc_buildsys, detect_libgrades,                   bool(yes)).
@@ -3111,6 +3113,7 @@ long_option("mercury-configuration-directory",
 long_option("mercury-config-dir",
                 mercury_configuration_directory_special).
 long_option("install-prefix",       install_prefix).
+long_option("install-method",       install_method).
 long_option("install-command",      install_command).
 long_option("install-command-dir-option", install_command_dir_option).
 long_option("use-symlinks",         use_symlinks).
@@ -6688,6 +6691,10 @@ options_help_build_system(Stream, !IO) :-
         % --use-symlinks is only used by Mercury.config.
         % It controls whether the build system should attempt
         % to use symlinks.
+
+        % --install-method is only used by Mercury.config.
+        % It controls how the build system attempts to copy files
+        % and directories.
 
         "--install-command <command>",
         "\tSpecify the command to use to install the files in",

@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1994-2012 The University of Melbourne.
-% Copyright (C) 2013-2021 The Mercury Team.
+% Copyright (C) 2013-2023 The Mercury Team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -246,7 +246,24 @@
 
 %---------------------%
 
-    % This type specifies the command compiler uses to install files.
+    % This type specifies how the compiler should install files and
+    % directories. Values of this type only affect how the compiler itself does
+    % file installation; they do not affect file installation done by mmake.
+:- type install_method
+    --->    install_method_external_cmd
+            % Files and directories should be installed by invoking a command
+            % (e.g. cp or cp -R) via the shell of the underlying operation
+            % system. (See the file_install_cmd/0 type below.)
+
+    ;       install_method_internal_code.
+            % Files and directories should be installed by invoking an OS or
+            % target language call, or by using predicates implemented using
+            % standard Mercury file operations.
+
+%---------------------%
+
+    % This type specifies the external command the compiler uses to install
+    % files.
     %
 :- type file_install_cmd
     --->    install_cmd_user(
@@ -329,9 +346,9 @@
     trace_level::in, trace_suppress_items::in, ssdb_trace_level::in,
     may_be_thread_safe::in, c_compiler_type::in, csharp_compiler_type::in,
     subdir_setting::in, reuse_strategy::in, maybe(feedback_info)::in,
-    env_type::in, env_type::in, env_type::in, file_install_cmd::in,
-    limit_error_contexts_map::in, linked_target_ext_info_map::in,
-    globals::out) is det.
+    env_type::in, env_type::in, env_type::in, install_method::in,
+    file_install_cmd::in, limit_error_contexts_map::in,
+    linked_target_ext_info_map::in, globals::out) is det.
 
 :- pred get_default_options(globals::in, option_table::out) is det.
 :- pred get_options(globals::in, option_table::out) is det.
@@ -355,6 +372,7 @@
 :- pred get_host_env_type(globals::in, env_type::out) is det.
 :- pred get_system_env_type(globals::in, env_type::out) is det.
 :- pred get_target_env_type(globals::in, env_type::out) is det.
+:- pred get_install_method(globals::in, install_method::out) is det.
 :- pred get_file_install_cmd(globals::in, file_install_cmd::out) is det.
 :- pred get_limit_error_contexts_map(globals::in,
     limit_error_contexts_map::out) is det.
@@ -824,7 +842,8 @@ convert_line_number_range(RangeStr, line_number_range(MaybeMin, MaybeMax)) :-
                 g_may_be_thread_safe        :: bool,
                 g_host_env_type             :: env_type,
                 g_system_env_type           :: env_type,
-                g_target_env_type           :: env_type
+                g_target_env_type           :: env_type,
+                g_install_method            :: install_method
             ).
 
 globals_init(DefaultOptions, Options, OptTuple, OpMode,
@@ -832,14 +851,14 @@ globals_init(DefaultOptions, Options, OptTuple, OpMode,
         TraceLevel, TraceSuppress, SSTraceLevel, MaybeThreadSafe,
         C_CompilerType, CSharp_CompilerType, SubdirSetting,
         ReuseStrategy, MaybeFeedback, HostEnvType, SystemEnvType,
-        TargetEnvType, FileInstallCmd, LimitErrorContextsMap,
+        TargetEnvType, InstallMethod, FileInstallCmd, LimitErrorContextsMap,
         LinkedTargetExtInfoMap, Globals) :-
     Globals = globals(DefaultOptions, Options, OptTuple, OpMode, TraceSuppress,
         ReuseStrategy, MaybeFeedback, FileInstallCmd, LimitErrorContextsMap,
         LinkedTargetExtInfoMap, C_CompilerType, CSharp_CompilerType,
         Target, SubdirSetting, WordSize, GC_Method,
         TerminationNorm, Termination2Norm, TraceLevel, SSTraceLevel,
-        MaybeThreadSafe, HostEnvType, SystemEnvType, TargetEnvType).
+        MaybeThreadSafe, HostEnvType, SystemEnvType, TargetEnvType, InstallMethod).
 
 get_default_options(Globals, Globals ^ g_default_options).
 get_options(Globals, Globals ^ g_options).
@@ -862,6 +881,7 @@ get_maybe_feedback_info(Globals, Globals ^ g_maybe_feedback).
 get_host_env_type(Globals, Globals ^ g_host_env_type).
 get_system_env_type(Globals, Globals ^ g_system_env_type).
 get_target_env_type(Globals, Globals ^ g_target_env_type).
+get_install_method(Globals, Globals ^ g_install_method).
 get_file_install_cmd(Globals, Globals ^ g_file_install_cmd).
 get_limit_error_contexts_map(Globals, Globals ^ g_limit_error_contexts_map).
 get_linked_target_ext_map(Globals, Globals ^ g_linked_target_ext_map).

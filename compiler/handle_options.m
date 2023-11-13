@@ -265,7 +265,7 @@ check_option_values(!OptionTable, Target, WordSize, GC_Method,
         WordSize = word_size_64,    % dummy
         BitsPerWordStr = string.int_to_string(BitsPerWord),
         WordSizeSpec =
-            [words("Invalid argument"), quote(BitsPerWordStr), 
+            [words("Invalid argument"), quote(BitsPerWordStr),
             words("to the"), quote("--bits-per-word"), words("option;"),
             words("must be either"), quote("32"), words("or"), quote("64"),
             suffix("."), nl],
@@ -846,6 +846,22 @@ convert_options_to_globals(ProgressStream, DefaultOptionTable, OptionTable0,
     OT_OptFrames0 = OptTuple0 ^ ot_opt_frames,
     OT_StringBinarySwitchSize0 = OptTuple0 ^ ot_string_binary_switch_size,
 
+    lookup_string_option(OptionTable0, install_method, InstallMethodStr),
+    ( if (InstallMethodStr = "" ; InstallMethodStr = "external") then
+        InstallMethod = install_method_external_cmd
+    else if InstallMethodStr = "internal" then
+        InstallMethod = install_method_internal_code
+    else
+        InstallMethodSpec = [words("Error: the value of the"),
+            quote("--install-method"), words("option is"),
+            quote(InstallMethodStr), suffix(","),
+            words("but the only valid values are"),
+            quote("external"), words("and"), quote("internal"),
+            suffix("."), nl],
+        add_error(phase_options, InstallMethodSpec, !Specs),
+        InstallMethod = install_method_external_cmd % Dummy value
+    ),
+
     lookup_string_option(OptionTable0, install_command, InstallCmd),
     ( if InstallCmd = "" then
         FileInstallCmd = install_cmd_cp
@@ -859,15 +875,15 @@ convert_options_to_globals(ProgressStream, DefaultOptionTable, OptionTable0,
     % the real value is set at the very end of this predicate,
     % We can do this because no code between here and there uses
     % the value of that field, and we *have* to do this because
-    % the bcode between here and there *can* update the values of
+    % the code between here and there *can* update the values of
     % the options from which the subdir setting is computed.
     globals_init(DefaultOptionTable, OptionTable0, !.OptTuple, OpMode, Target,
         WordSize, GC_Method, TermNorm, Term2Norm,
         TraceLevel, TraceSuppress, SSTraceLevel,
         MaybeThreadSafe, C_CompilerType, CSharp_CompilerType, use_cur_dir,
         ReuseStrategy, MaybeFeedbackInfo,
-        HostEnvType, SystemEnvType, TargetEnvType, FileInstallCmd,
-        LimitErrorContextsMap, LinkExtMap, !:Globals),
+        HostEnvType, SystemEnvType, TargetEnvType, InstallMethod,
+        FileInstallCmd, LimitErrorContextsMap, LinkExtMap, !:Globals),
 
     globals.lookup_bool_option(!.Globals, experiment2, Experiment2),
     (
