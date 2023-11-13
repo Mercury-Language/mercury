@@ -372,48 +372,7 @@ make_dependency_files(ProgressStream, Globals, TargetFile, TargetFileName,
                 find_error_or_oldest_ok_timestamp(
                     TouchedTargetFileTimestamps ++ TouchedFileTimestamps,
                     MaybeOldestTimestamp),
-
-                % Our caller computes TargetFileName using the call
-                %
-                %   module_target_file_to_file_name(Globals, $pred, TargetFile,
-                %       TargetFileName, !IO)
-                %
-                % module_target_file_to_file_name_maybe_module_dep and
-                % module_target_file_to_file_name both just call
-                % module_name_to_file_name for *most*, but not *all*
-                % target file types. There is one exception:
-                % module_target_source. For this target type,
-                % one of the following three must hold:
-                %
-                % - the different code paths in the above two predicates
-                %   may be equivalent even though they do not seem to be,
-                %   in which case one of those predicates is redundant;
-                %
-                % - this code point cannot be reached with this target file
-                %   type, a proposition for which I (zs) see no evidence, or
-                %
-                % - the call to module_target_file_to_file_name_maybe_
-                %   _search_maybe_module_dep here, instead of just
-                %   module_target_file_to_file_name, is, and always has been,
-                %   a BUG.
-                %
-                % The fact that a hlc.gc bootcheck does not cause the
-                % call to expect below to throw an exception seems to argue
-                % against the last alternative above.
-                %
-                % It is also possible that the correct answer *was* the
-                % last alternative until we started requiring "mmc -f *.m"
-                % if any module was stored in a nonstandard filename,
-                % but now that we do require that, the correct answer has
-                % become the first alternative. If this is the case, then
-                % calling module_target_file_to_file_name here would be
-                % equivalent but simpler.
-                module_target_file_to_file_name_maybe_search_module_dep(
-                    ProgressStream, Globals, $pred, not_for_search,
-                    TargetFile, TargetFileNameB, !Info, !IO),
-                expect(unify(TargetFileName, TargetFileNameB), $pred,
-                    "TargetFileName mismatch"),
-                check_dependencies(ProgressStream, Globals, TargetFileNameB,
+                check_dependencies(ProgressStream, Globals, TargetFileName,
                     MaybeOldestTimestamp, MakeDepsSucceeded, DepFilesToMake,
                     DepsResult, !Info, !IO)
             )
@@ -878,12 +837,8 @@ record_made_target_given_maybe_touched_files(ProgressStream, Globals,
 
     list.foldl(update_target_status(TargetStatus), TouchedTargetFiles, !Info),
 
-    list.map_foldl2(
-        % XXX I (zs) think that we should pass a closure containing
-        % just plain old module_target_file_to_file_name.
-        module_target_file_to_file_name_maybe_search_module_dep(ProgressStream,
-            Globals, $pred, not_for_search),
-        TouchedTargetFiles, TouchedTargetFileNames, !Info, !IO),
+    list.map_foldl(module_target_file_to_file_name(Globals, $pred),
+        TouchedTargetFiles, TouchedTargetFileNames, !IO),
 
     some [!FileTimestamps] (
         !:FileTimestamps = make_info_get_file_timestamps(!.Info),
