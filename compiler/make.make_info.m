@@ -104,6 +104,12 @@
     ;       deps_status_up_to_date
     ;       deps_status_error.
 
+    % An old, previously inappropriately-placed comment says:
+    %
+    % There should be a definite improvement if we could replace
+    % this hash table indexed by dependency_file terms with an array
+    % indexed by the uints inside values of type dependency_file_index.
+    %
 :- type dep_file_status_map ==
     version_hash_table(dependency_file, dependency_status).
 

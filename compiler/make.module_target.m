@@ -90,7 +90,6 @@
 :- import_module make.build.
 :- import_module make.check_up_to_date.
 :- import_module make.dependencies.
-:- import_module make.deps_set.
 :- import_module make.file_names.
 :- import_module make.get_module_dep_info.
 :- import_module make.timestamp.
@@ -117,7 +116,6 @@
 :- import_module maybe.
 :- import_module require.
 :- import_module set.
-:- import_module sparse_bitset.
 :- import_module string.
 :- import_module version_hash_table.
 
@@ -213,55 +211,12 @@ make_module_target_file_main_path(ExtraOptions, ProgressStream, Globals,
         CheckingMsg),
     maybe_write_msg(ProgressStream, CheckingMsg, !IO),
 
-    ( if CompilationTaskType = process_module(_) then
-        module_dep_info_get_maybe_top_module(ModuleDepInfo, MaybeTopModule),
-        NestedSubModules =
-            get_nested_children_list_of_top_module(MaybeTopModule),
-        ModulesToCheck = [ModuleName | NestedSubModules]
-    else
-        ModulesToCheck = [ModuleName]
-    ),
-    module_names_to_index_set(ModulesToCheck, ModuleIndexesToCheckSet, !Info),
-    ModuleIndexesToCheck = to_sorted_list(ModuleIndexesToCheckSet),
-
-    KeepGoing = make_info_get_keep_going(!.Info),
-    find_target_dependencies_of_modules(ProgressStream, KeepGoing, Globals,
-        TargetType, ModuleIndexesToCheck, succeeded, DepsSucceeded,
-        sparse_bitset.init, DepFiles0, !Info, !IO),
-    % NOTE: converting the dep_set to a plain set is relatively expensive,
-    % so it would be better to avoid it. Also, there should be a definite
-    % improvement if we could represent the dependency_status map with an
-    % array indexed by dependency_file_indexes, instead of a hash table
-    % indexed by dependency_file terms.
-    dependency_file_index_set_to_plain_set(!.Info, DepFiles0, DepFilesSet0),
-    ( if TargetType = module_target_int0 then
-        % Avoid circular dependencies (the `.int0' files for the
-        % nested sub-modules depend on this module's `.int0' file).
-        PrivateInts = make_dependency_list(ModulesToCheck, module_target_int0),
-        set.delete_list(PrivateInts, DepFilesSet0, DepFilesSet)
-    else
-        DepFilesSet = DepFilesSet0
-    ),
+    find_direct_prereqs_of_target_file(ProgressStream, Globals,
+        CompilationTaskType, ModuleDepInfo, TargetFile,
+        DepsSucceeded, DepFilesSet, !Info, !IO),
     DepFilesToMake = set.to_sorted_list(DepFilesSet),
 
-    globals.lookup_bool_option(Globals, debug_make, DebugMake),
-    (
-        DebugMake = no
-    ;
-        DebugMake = yes,
-        dependency_file_index_set_to_plain_set(!.Info,
-            DepFiles0, DepFilesPlainSet),
-        list.map_foldl(dependency_file_to_file_name(Globals),
-            set.to_sorted_list(DepFilesPlainSet), DepFileNames, !IO),
-        io.format(ProgressStream, "%s: dependencies:\n",
-            [s(TargetFileName)], !IO),
-        WriteDepFileName =
-            ( pred(FN::in, SIO0::di, SIO::uo) is det :-
-                io.format(ProgressStream, "\t%s\n", [s(FN)], SIO0, SIO)
-            ),
-        list.foldl(WriteDepFileName, DepFileNames, !IO)
-    ),
-
+    KeepGoing = make_info_get_keep_going(!.Info),
     ( if
         DepsSucceeded = did_not_succeed,
         KeepGoing = do_not_keep_going

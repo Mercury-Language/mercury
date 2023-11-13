@@ -22,27 +22,27 @@
 :- import_module libs.
 :- import_module libs.globals.
 :- import_module libs.maybe_util.
-:- import_module make.deps_set.
 :- import_module make.make_info.
+:- import_module parse_tree.
+:- import_module parse_tree.module_dep_info.
 
 :- import_module io.
-:- import_module list.
+:- import_module set.
 
 %---------------------------------------------------------------------------%
 
-    % find_target_dependencies_of_modules(KeepGoing, Globals, TargetType,
-    %     ModuleIndexes, !Succeeded, !Deps, !Info, !IO):
+    % find_direct_prereqs_of_target_file(ProgressStream, Globals,
+    %   CompilationTaskType, ModuleDepInfo, TargetFile,
+    %   Succeeded, Prereqs, !Info, !IO):
     %
     % The TargetType and ModuleIndexes arguments define a set of make targets.
     % Add to !Deps the dependency_file_indexes of all the files that
     % these make targets depend on, and which therefore have to be built
     % before we can build those make targets.
     %
-:- pred find_target_dependencies_of_modules(io.text_output_stream::in,
-    maybe_keep_going::in, globals::in,
-    module_target_type::in, list(module_index)::in,
-    maybe_succeeded::in, maybe_succeeded::out,
-    deps_set(dependency_file_index)::in, deps_set(dependency_file_index)::out,
+:- pred find_direct_prereqs_of_target_file(io.text_output_stream::in,
+    globals::in, compilation_task_type::in, module_dep_info::in,
+    target_file::in, maybe_succeeded::out, set(dependency_file)::out,
     make_info::in, make_info::out, io::di, io::uo) is det.
 
 %---------------------------------------------------------------------------%
@@ -55,17 +55,19 @@
 :- import_module libs.file_util.
 :- import_module libs.options.
 :- import_module make.deps_cache.
+:- import_module make.deps_set.
+:- import_module make.file_names.
 :- import_module make.find_local_modules.
 :- import_module make.get_module_dep_info.
+:- import_module make.util.
 :- import_module mdbcomp.
 :- import_module mdbcomp.sym_name.
-:- import_module parse_tree.
 :- import_module parse_tree.file_names.
-:- import_module parse_tree.module_dep_info.
+:- import_module parse_tree.module_baggage.
 :- import_module parse_tree.prog_data_foreign.
 
 :- import_module bool.
-:- import_module set.
+:- import_module list.
 :- import_module sparse_bitset.
 :- import_module string.
 
@@ -98,6 +100,95 @@
 % However, the prereqs of a nested submodule, such as any fact table files
 % it may need, must become the prereqs of the top-level module of their
 % source file.
+
+find_direct_prereqs_of_target_file(ProgressStream, Globals,
+        CompilationTaskType, ModuleDepInfo, TargetFile,
+        Succeeded, Prereqs, !Info, !IO) :-
+    TargetFile = target_file(ModuleName, TargetType),
+     (
+        CompilationTaskType = process_module(_),
+        module_dep_info_get_maybe_top_module(ModuleDepInfo, MaybeTopModule),
+        NestedSubModules =
+            get_nested_children_list_of_top_module(MaybeTopModule),
+        ModulesToCheck = [ModuleName | NestedSubModules]
+    ;
+        ( CompilationTaskType = target_code_to_object_code(_)
+        ; CompilationTaskType = foreign_code_to_object_code(_, _)
+        ; CompilationTaskType = fact_table_code_to_object_code(_, _)
+        ),
+        ModulesToCheck = [ModuleName]
+    ),
+    module_names_to_index_set(ModulesToCheck, ModuleIndexesToCheckSet, !Info),
+    ModuleIndexesToCheck = deps_set_to_sorted_list(ModuleIndexesToCheckSet),
+    KeepGoing = make_info_get_keep_going(!.Info),
+    find_target_dependencies_of_modules(ProgressStream, KeepGoing, Globals,
+        TargetType, ModuleIndexesToCheck,
+        succeeded, Succeeded, deps_set_init, PrereqIndexes0, !Info, !IO),
+    dependency_file_index_set_to_plain_set(!.Info, PrereqIndexes0, Prereqs0),
+    ( if TargetType = module_target_int0 then
+        % XXX Simon Taylor's comment, added originally to make.module_target.m
+        % on 2002 Apr 23, says:
+        %
+        %   Avoid circular dependencies (the `.int0' files for the
+        %   nested sub-modules depend on this module's `.int0' file).
+        %
+        % The log message of the commit says:
+        %
+        %   The `.int0' file for a module depends on the `.int0' file for the
+        %   parent module, which caused circular dependencies with nested
+        %   submodules, resulting in a compiler abort. The circular
+        %   dependencies are now removed from the list of dependencies to make.
+        %   Test case: tests/valid/foreign_type_spec.m.
+        %
+        % That test case, after being moved to valid_seq, was deleted together
+        % with the IL backend. It seems to have consisted of a main module
+        % and a separate submodule, so the NestedSubModules part of
+        % ModulesToCheck would have been irrelevant. And the ModuleName part
+        % of ModulesToCheck seems to be redundant: if the *target* is
+        % ModuleName.int0, then surely ModuleName.int0 cannot be a prereq?
+        %
+        % For these reasons, the code here seems to me (zs) to be too crude:
+        % it seems to delete far more prereqs than just the ones that may
+        % cause the problem that it was added to address.
+        ToDelete = make_dependency_list(ModulesToCheck, module_target_int0),
+        set.delete_list(ToDelete, Prereqs0, Prereqs)
+    else
+        ToDelete = [],
+        Prereqs = Prereqs0
+    ),
+
+    globals.lookup_bool_option(Globals, debug_make, DebugMake),
+    (
+        DebugMake = no
+    ;
+        DebugMake = yes,
+        set.map_fold(dependency_file_to_file_name(Globals),
+            Prereqs, PrereqFileNames, !IO),
+        WriteFileName =
+            ( pred(FN::in, SIO0::di, SIO::uo) is det :-
+                io.format(ProgressStream, "\t%s\n", [s(FN)], SIO0, SIO)
+            ),
+        io.format(ProgressStream, "direct prereqs of %s %s:\n",
+            [s(sym_name_to_string(ModuleName)),
+            s(string.string(TargetType))], !IO),
+        set.foldl(WriteFileName, PrereqFileNames, !IO),
+        (
+            ToDelete = []
+        ;
+            ToDelete = [_ | _],
+            list.map_foldl(dependency_file_to_file_name(Globals),
+                ToDelete, ToDeleteFileNames, !IO),
+            io.write_string(ProgressStream, "after deleting:\n", !IO),
+            list.foldl(WriteFileName, ToDeleteFileNames, !IO)
+        ),
+        io.write_string(ProgressStream, "end direct prereqs\n", !IO)
+    ).
+
+:- pred find_target_dependencies_of_modules(io.text_output_stream::in,
+    maybe_keep_going::in, globals::in, module_target_type::in,
+    list(module_index)::in, maybe_succeeded::in, maybe_succeeded::out,
+    deps_set(dependency_file_index)::in, deps_set(dependency_file_index)::out,
+    make_info::in, make_info::out, io::di, io::uo) is det.
 
 find_target_dependencies_of_modules(_, _, _, _,
         [], !Succeeded, !Deps, !Info, !IO).
