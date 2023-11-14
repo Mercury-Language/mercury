@@ -124,7 +124,6 @@ find_direct_prereqs_of_target_file(ProgressStream, Globals,
     find_direct_prereqs_of_nested_module_targets(ProgressStream, KeepGoing,
         Globals, TargetType, ModuleIndexesToCheck,
         succeeded, Succeeded, deps_set_init, PrereqIndexes0, !Info, !IO),
-    dependency_file_index_set_to_plain_set(!.Info, PrereqIndexes0, Prereqs0),
     ( if TargetType = module_target_int0 then
         % XXX Simon Taylor's comment, added originally to make.module_target.m
         % on 2002 Apr 23, says:
@@ -151,11 +150,13 @@ find_direct_prereqs_of_target_file(ProgressStream, Globals,
         % it seems to delete far more prereqs than just the ones that may
         % cause the problem that it was added to address.
         ToDelete = make_dependency_list(ModulesToCheck, module_target_int0),
-        set.delete_list(ToDelete, Prereqs0, Prereqs)
+        dependency_files_to_index_set(ToDelete, ToDeleteIndexes, !Info),
+        PrereqIndexes = deps_set_difference(PrereqIndexes0, ToDeleteIndexes)
     else
         ToDelete = [],
-        Prereqs = Prereqs0
+        PrereqIndexes = PrereqIndexes0
     ),
+    dependency_file_index_set_to_plain_set(!.Info, PrereqIndexes, Prereqs),
 
     globals.lookup_bool_option(Globals, debug_make, DebugMake),
     (
