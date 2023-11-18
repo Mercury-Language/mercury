@@ -617,10 +617,19 @@ find_items_used_by_instance(ClassId, Defn, !Info) :-
 find_items_used_by_class_decl(Decl, !Info) :-
     (
         Decl = class_decl_pred_or_func(PredOrFuncInfo),
-        PredOrFuncInfo = class_pred_or_func_info(_, _, ArgTypesAndModes,
+        PredOrFuncInfo = class_pred_or_func_info(_, _, ArgTypesAndMaybeModes,
             _, _, _, _, _, _, _, Constraints, _),
         find_items_used_by_class_context(Constraints, !Info),
-        list.foldl(find_items_used_by_type_and_mode, ArgTypesAndModes, !Info)
+        (
+            ArgTypesAndMaybeModes = no_types_arity_zero
+        ;
+            ArgTypesAndMaybeModes = types_only(ArgTypes),
+            list.foldl(find_items_used_by_type, ArgTypes, !Info)
+        ;
+            ArgTypesAndMaybeModes = types_and_modes(ArgTypesAndModes),
+            list.foldl(find_items_used_by_type_and_mode,
+                ArgTypesAndModes, !Info)
+        )
     ;
         Decl = class_decl_mode(ModeInfo),
         ModeInfo = class_mode_info(_, _, Modes, _, _, _, _),
@@ -631,13 +640,9 @@ find_items_used_by_class_decl(Decl, !Info) :-
     recompilation_usage_info::in, recompilation_usage_info::out) is det.
 
 find_items_used_by_type_and_mode(TypeAndMode, !Info) :-
-    (
-        TypeAndMode = type_only(Type)
-    ;
-        TypeAndMode = type_and_mode(Type, Mode),
-        find_items_used_by_mode(Mode, !Info)
-    ),
-    find_items_used_by_type(Type, !Info).
+    TypeAndMode = type_and_mode(Type, Mode),
+    find_items_used_by_type(Type, !Info),
+    find_items_used_by_mode(Mode, !Info).
 
 :- pred find_items_used_by_type_body(hlds_type_body::in,
     recompilation_usage_info::in, recompilation_usage_info::out) is det.

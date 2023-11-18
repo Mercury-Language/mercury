@@ -1004,23 +1004,32 @@ item_is_new_or_changed(UsedFileTimestamp, UsedVersionMap, SymName, Arity) :-
 :- pred check_for_pred_or_func_item_ambiguity(bool::in,
     recomp_avail::in, timestamp::in, module_item_version_numbers::in,
     pred_or_func::in, sym_name::in,
-    list(type_and_mode)::in, maybe(mer_type)::in,
+    types_and_maybe_modes::in, maybe(mer_type)::in,
     maybe(recompile_reason)::in, maybe(recompile_reason)::out,
     recompilation_check_info::in, recompilation_check_info::out) is det.
 
 check_for_pred_or_func_item_ambiguity(NeedsCheck, RecompAvail, OldTimestamp,
-        VersionNumbers, PredOrFunc, SymName, Args, WithType,
+        VersionNumbers, PredOrFunc, SymName, ArgTypesAndMaybeModes, WithType,
         !MaybeStoppingReason, !Info) :-
     (
         !.MaybeStoppingReason = yes(_)
     ;
         !.MaybeStoppingReason = no,
-        list.length(Args, PredFormArityInt),
+        PredFormArity = types_and_maybe_modes_arity(ArgTypesAndMaybeModes),
+        PredFormArity = pred_form_arity(PredFormArityInt),
         (
             WithType = no,
             % XXX Given that we use pred_form_arity elsewhere
             % when we process resolved_functor_pred_or_func,
             % setting Arity here to the user_arity looks to be a bug.
+            % (NOTE Comments elsewhere in the code seems to indicate
+            % that there are supposed to be rules that govern when
+            % we use pred_form arities and when we use user arities,
+            % given that due to the presence of with_type/with_inst,
+            % we cannot usefully use user arities everywhere. Unfortunately,
+            % I (zs) don't know of any place where those rules, invented
+            % by Simon ages ago, have been written down.)
+            %
             % Unfortunately, ...
             adjust_func_arity(PredOrFunc, UserArityInt, PredFormArityInt)
         ;

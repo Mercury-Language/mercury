@@ -611,9 +611,10 @@ gather_in_mode_defn(Section, ItemModeDefn, !ModeMap) :-
     gathered_item_multi_map_na::in, gathered_item_multi_map_na::out) is det.
 
 gather_in_pred_decl(Section, ItemPredDecl, !PredMap, !FuncMap) :-
-    ItemPredDecl = item_pred_decl_info(PredSymName, PredOrFunc, TypesAndModes,
-        WithType, WithInst, MaybeDetism, Origin, TypeVarSet, InstVarSet,
-        ExistQVars, Purity, Constraints, Context, SeqNum),
+    ItemPredDecl = item_pred_decl_info(PredSymName, PredOrFunc,
+        TypesAndMaybeModes, WithType, WithInst, MaybeDetism, Origin,
+        TypeVarSet, InstVarSet, ExistQVars, Purity, Constraints,
+        Context, SeqNum),
     % For predicates or functions defined using `with_type` annotations
     % the arity here won't be correct, but equiv_type.m will record
     % the dependency on the version number with the `incorrect' arity,
@@ -625,30 +626,31 @@ gather_in_pred_decl(Section, ItemPredDecl, !PredMap, !FuncMap) :-
     % which we don't currently do.
     %
     % XXX Likewise for with_inst annotations.
+    PredFormArity = types_and_maybe_modes_arity(TypesAndMaybeModes),
+    PredFormArity = pred_form_arity(Arity0),
     (
         WithType = no,
-        adjust_func_arity(PredOrFunc, Arity, list.length(TypesAndModes))
+        adjust_func_arity(PredOrFunc, Arity, Arity0)
     ;
         WithType = yes(_),
-        Arity = list.length(TypesAndModes)
+        Arity = Arity0
     ),
     PredNA = name_arity(unqualify_name(PredSymName), Arity),
 
-    split_types_and_modes(TypesAndModes, Types, MaybeModes),
-    % The code that generates interface files splits combined pred and mode
-    % declarations. It does this to allow the interface file to remain
-    % unchanged if/when that programmer doing this splitting manually,
-    % without making any other changes to the module's interface.
-    % The code here has to be prepared to compare such the pred_decl/mode_decl
-    % pair resulting from such as split against a still combined predmode_decl
-    % item in the source file.
-    ( if
+    % The code that generates interface files in parse_tree_out_pred_decl.m
+    % splits combined pred and mode declarations. It does this to allow
+    % the interface file to remain unchanged if/when the programmer
+    % either does, or undoes, this splitting manually, without making
+    % any other changes to the module's interface.
+    %
+    % The code here has to be prepared to compare the pred_decl/mode_decl pair
+    % resulting from such as split against a still combined predmode_decl item
+    % in the source file.
+    get_declared_types_and_maybe_modes(TypesAndMaybeModes, WithInst,
+        MaybeDetism, Types, MaybeModes),
+    (
         MaybeModes = yes(Modes),
-        ( Modes = [_ | _]
-        ; WithInst = yes(_)
-        )
-    then
-        TypesWithoutModes = list.map((func(Type) = type_only(Type)), Types),
+        TypesWithoutModes = types_only(Types),
         varset.init(EmptyInstVarSet),
         ItemPredOnlyDecl = item_pred_decl_info(PredSymName, PredOrFunc,
             TypesWithoutModes, WithType, no, no, Origin,
@@ -677,7 +679,8 @@ gather_in_pred_decl(Section, ItemPredDecl, !PredMap, !FuncMap) :-
             multi_map.add(PredNA, Section - PredOnlyItem, !FuncMap),
             multi_map.add(PredNA, Section - ModeItem, !FuncMap)
         )
-    else
+    ;
+        MaybeModes = no,
         PredItem = item_pred_decl(ItemPredDecl),
         (
             PredOrFunc = pf_predicate,
@@ -763,17 +766,15 @@ split_class_method_types_and_modes(Decl0) = Decls :-
     (
         Decl0 = class_decl_pred_or_func(PredOrFuncInfo0),
         PredOrFuncInfo0 = class_pred_or_func_info(SymName, PredOrFunc,
-            TypesAndModes, WithType, WithInst, MaybeDetism,
+            TypesAndMaybeModes, WithType, WithInst, MaybeDetism,
             TypeVarSet, InstVarSet, ExistQVars, Purity, Constraints, _Context),
-        ( if
-            split_types_and_modes(TypesAndModes, Types, MaybeModes),
+        % See the comment above the same call in gather_in_pred_decl
+        % for the rationale behind this code.
+        get_declared_types_and_maybe_modes(TypesAndMaybeModes, WithInst,
+            MaybeDetism, Types, MaybeModes),
+        (
             MaybeModes = yes(Modes),
-            ( Modes = [_ | _]
-            ; WithInst = yes(_)
-            )
-        then
-            TypesWithoutModes =
-                list.map((func(Type) = type_only(Type)), Types),
+            TypesWithoutModes = types_only(Types),
             (
                 WithInst = yes(_),
                 % MaybePredOrFunc needs to be `no' here because when the item
@@ -788,8 +789,9 @@ split_class_method_types_and_modes(Decl0) = Decls :-
                 Modes, WithInst, MaybeDetism, InstVarSet, dummy_context),
             ModeDecl = class_decl_mode(ModeInfo),
             ModeDecls = [ModeDecl]
-        else
-            TypesWithoutModes = TypesAndModes,
+        ;
+            MaybeModes = no,
+            TypesWithoutModes = TypesAndMaybeModes,
             ModeDecls = []
         ),
         varset.init(EmptyInstVarSet),
@@ -925,14 +927,15 @@ distribute_pragma_items_class_items(MaybePredOrFunc, SymName, Arity,
         list.member(Decl, Decls),
         Decl = class_decl_pred_or_func(PredOrFuncInfo),
         PredOrFuncInfo = class_pred_or_func_info(SymName, MethodPredOrFunc,
-            TypesAndModes, WithType, _, _, _, _, _, _, _, _),
+            TypesAndMaybeModes, WithType, _, _, _, _, _, _, _, _),
         ( MaybePredOrFunc = yes(MethodPredOrFunc)
         ; MaybePredOrFunc = no
         ),
+        PredFormArity = types_and_maybe_modes_arity(TypesAndMaybeModes),
+        PredFormArity = pred_form_arity(Arity0),
         (
             WithType = no,
-            adjust_func_arity(MethodPredOrFunc, Arity,
-                list.length(TypesAndModes))
+            adjust_func_arity(MethodPredOrFunc, Arity, Arity0)
         ;
             WithType = yes(_)
             % We don't know the actual arity, so just match on the name
@@ -1179,12 +1182,12 @@ is_item_changed(Item1, Item2, Changed) :-
     ;
         Item1 = item_pred_decl(ItemPredDecl1),
         ItemPredDecl1 = item_pred_decl_info(Name, PredOrFunc,
-            TypesAndModes1, WithType1, _, Det1, _, TVarSet1, _,
+            TypesAndMaybeModes1, WithType1, _, Det1, _, TVarSet1, _,
             ExistQVars1, Purity, Constraints1, _, _),
         ( if
             Item2 = item_pred_decl(ItemPredDecl2),
             ItemPredDecl2 = item_pred_decl_info(Name, PredOrFunc,
-                TypesAndModes2, WithType2, _, Det2, _, TVarSet2, _,
+                TypesAndMaybeModes2, WithType2, _, Det2, _, TVarSet2, _,
                 ExistQVars2, Purity, Constraints2, _, _),
 
             % For predicates, ignore the determinism -- the modes and
@@ -1203,8 +1206,8 @@ is_item_changed(Item1, Item2, Changed) :-
             ),
 
             pred_or_func_type_is_unchanged(TVarSet1, ExistQVars1,
-                TypesAndModes1, WithType1, Constraints1, TVarSet2,
-                ExistQVars2, TypesAndModes2, WithType2, Constraints2)
+                TypesAndMaybeModes1, WithType1, Constraints1, TVarSet2,
+                ExistQVars2, TypesAndMaybeModes2, WithType2, Constraints2)
         then
             Changed = unchanged
         else
@@ -1573,26 +1576,34 @@ is_gen_pragma_changed(GenPragma1, GenPragma2, Changed) :-
     % declaration in a single varset (it doesn't know which are which).
     %
 :- pred pred_or_func_type_is_unchanged(tvarset::in, existq_tvars::in,
-    list(type_and_mode)::in, maybe(mer_type)::in, prog_constraints::in,
-    tvarset::in, existq_tvars::in, list(type_and_mode)::in,
+    types_and_maybe_modes::in, maybe(mer_type)::in, prog_constraints::in,
+    tvarset::in, existq_tvars::in, types_and_maybe_modes::in,
     maybe(mer_type)::in, prog_constraints::in) is semidet.
 
-pred_or_func_type_is_unchanged(TVarSet1, ExistQVars1, TypesAndModes1,
+pred_or_func_type_is_unchanged(TVarSet1, ExistQVars1, TypesAndMaybeModes1,
         MaybeWithType1, Constraints1, TVarSet2, ExistQVars2,
-        TypesAndModes2, MaybeWithType2, Constraints2) :-
-    GetArgTypes =
-        ( func(TypeAndMode0) = Type :-
-            (
-                TypeAndMode0 = type_only(Type)
-            ;
-                % This should have been split out into a separate
-                % mode declaration by gather_items.
-                TypeAndMode0 = type_and_mode(_, _),
-                unexpected($pred, "type_and_mode")
-            )
-        ),
-    Types1 = list.map(GetArgTypes, TypesAndModes1),
-    Types2 = list.map(GetArgTypes, TypesAndModes2),
+        TypesAndMaybeModes2, MaybeWithType2, Constraints2) :-
+    % Any mode annotations on a predicate or function declaration
+    % should have been split out into a separate mode declaration
+    % by gather_items.
+    (
+        TypesAndMaybeModes1 = no_types_arity_zero,
+        Types1 = []
+    ;
+        TypesAndMaybeModes1 = types_only(Types1)
+    ;
+        TypesAndMaybeModes1 = types_and_modes(_),
+        unexpected($pred, "types_and_modes")
+    ),
+    (
+        TypesAndMaybeModes2 = no_types_arity_zero,
+        Types2 = []
+    ;
+        TypesAndMaybeModes2 = types_only(Types2)
+    ;
+        TypesAndMaybeModes2 = types_and_modes(_),
+        unexpected($pred, "types_and_modes")
+    ),
     (
         MaybeWithType1 = yes(WithType1),
         MaybeWithType2 = yes(WithType2),

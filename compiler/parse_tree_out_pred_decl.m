@@ -25,6 +25,7 @@
 :- import_module mdbcomp.sym_name.
 :- import_module parse_tree.parse_tree_out_info.
 :- import_module parse_tree.prog_data.
+:- import_module parse_tree.prog_item.
 
 :- import_module io.
 :- import_module list.
@@ -36,7 +37,7 @@
     %
 :- pred mercury_format_pred_or_func_decl(output_lang::in, var_name_print::in,
     tvarset::in, inst_varset::in, pred_or_func::in, existq_tvars::in,
-    sym_name::in, list(type_and_mode)::in,
+    sym_name::in, types_and_maybe_modes::in,
     maybe(mer_type)::in, maybe(mer_inst)::in, maybe(determinism)::in,
     purity::in, prog_constraints::in, string::in, string::in, string::in,
     S::in, U::di, U::uo) is det <= pt_output(S, U).
@@ -44,10 +45,10 @@
     % XXX Document me.
     %
 :- pred mercury_format_func_decl(output_lang::in, var_name_print::in,
-    tvarset::in, inst_varset::in, existq_tvars::in,
-    sym_name::in, list(type_and_mode)::in, type_and_mode::in,
-    maybe(determinism)::in, purity::in, prog_constraints::in, string::in,
-    string::in, string::in, S::in, U::di, U::uo) is det <= pt_output(S, U).
+    tvarset::in, inst_varset::in, existq_tvars::in, sym_name::in,
+    types_and_maybe_modes::in, maybe(determinism)::in, purity::in,
+    prog_constraints::in, string::in, string::in, string::in,
+    S::in, U::di, U::uo) is det <= pt_output(S, U).
 
 %---------------------------------------------------------------------------%
 
@@ -153,9 +154,11 @@
 :- import_module parse_tree.parse_tree_out_inst.
 :- import_module parse_tree.parse_tree_out_misc.
 :- import_module parse_tree.parse_tree_out_sym_name.
+:- import_module parse_tree.parse_tree_out_term.
 :- import_module parse_tree.parse_tree_out_type.
 :- import_module parse_tree.prog_util.
 
+:- import_module require.
 :- import_module string.
 :- import_module string.builder.
 :- import_module varset.
@@ -163,24 +166,22 @@
 %---------------------------------------------------------------------------%
 
 mercury_format_pred_or_func_decl(Lang, VarNamePrint, TypeVarSet, InstVarSet,
-        PredOrFunc, ExistQVars, PredName, TypesAndModes,
+        PredOrFunc, ExistQVars, PredName, TypesAndMaybeModes,
         MaybeWithType, MaybeWithInst, MaybeDet0, Purity, ClassContext,
         StartString, Separator, Terminator, S, !U) :-
-    split_types_and_modes(TypesAndModes, Types, MaybeModes),
-    ( if
+    get_declared_types_and_maybe_modes(TypesAndMaybeModes, MaybeWithInst,
+        MaybeDet0, Types, MaybeModes),
+    (
         MaybeModes = yes(Modes),
-        ( Modes = [_ | _]
-        ; MaybeWithInst = yes(_)
-        )
-    then
         MaybeDet1 = maybe.no,
-        mercury_format_pred_or_func_type_2(TypeVarSet, VarNamePrint,
+        mercury_format_pred_or_func_type_decl_2(TypeVarSet, VarNamePrint,
             PredOrFunc, ExistQVars, PredName, Types, MaybeWithType, MaybeDet1,
             Purity, ClassContext, StartString, Separator, S, !U),
         mercury_format_pred_or_func_mode_decl_gen(Lang, InstVarSet, PredName,
             Modes, MaybeWithInst, MaybeDet0, StartString, Terminator, S, !U)
-    else
-        mercury_format_pred_or_func_type_2(TypeVarSet, VarNamePrint,
+    ;
+        MaybeModes = no,
+        mercury_format_pred_or_func_type_decl_2(TypeVarSet, VarNamePrint,
             PredOrFunc, ExistQVars, PredName, Types, MaybeWithType, MaybeDet0,
             Purity, ClassContext, StartString, Terminator, S, !U)
     ).
@@ -188,23 +189,29 @@ mercury_format_pred_or_func_decl(Lang, VarNamePrint, TypeVarSet, InstVarSet,
 %---------------------%
 
 mercury_format_func_decl(Lang, VarNamePrint, TypeVarSet, InstVarSet,
-        ExistQVars, FuncName, TypesAndModes, RetTypeAndMode, MaybeDet, Purity,
-        ClassContext, StartString, Separator, Terminator, S, !U) :-
-    split_types_and_modes(TypesAndModes, Types, MaybeModes),
-    split_type_and_mode(RetTypeAndMode, RetType, MaybeRetMode),
-    ( if
-        MaybeModes = yes(Modes),
-        MaybeRetMode = yes(RetMode)
-    then
+        ExistQVars, FuncName, TypesAndMaybeModes,
+        MaybeDet, Purity, ClassContext, StartString, Separator, Terminator,
+        S, !U) :-
+    (
+        TypesAndMaybeModes = no_types_arity_zero,
+        % There should be at least a type for the return value.
+        unexpected($pred, "no_types_arity_zero")
+    ;
+        TypesAndMaybeModes = types_only(Types),
+        pred_args_to_func_args(Types, ArgTypes, RetType),
         mercury_format_func_type_2(TypeVarSet, VarNamePrint,
-            ExistQVars, FuncName, Types, RetType, no, Purity,
-            ClassContext, StartString, Separator, S, !U),
-        mercury_format_func_mode_decl_gen(Lang, InstVarSet, FuncName, Modes,
-            RetMode, MaybeDet, StartString, Terminator, S, !U)
-    else
-        mercury_format_func_type_2(TypeVarSet, VarNamePrint,
-            ExistQVars, FuncName, Types, RetType, MaybeDet, Purity,
+            ExistQVars, FuncName, ArgTypes, RetType, MaybeDet, Purity,
             ClassContext, StartString, Terminator, S, !U)
+    ;
+        TypesAndMaybeModes = types_and_modes(TypesAndModes),
+        split_types_and_modes(TypesAndModes, Types, Modes),
+        pred_args_to_func_args(Types, ArgTypes, RetType),
+        pred_args_to_func_args(Modes, ArgModes, RetMode),
+        mercury_format_func_type_2(TypeVarSet, VarNamePrint,
+            ExistQVars, FuncName, ArgTypes, RetType, no, Purity,
+            ClassContext, StartString, Separator, S, !U),
+        mercury_format_func_mode_decl_gen(Lang, InstVarSet, FuncName,
+            ArgModes, RetMode, MaybeDet, StartString, Terminator, S, !U)
     ).
 
 %---------------------------------------------------------------------------%
@@ -225,7 +232,7 @@ mercury_output_pred_type(Stream, TypeVarSet, VarNamePrint, ExistQVars,
 mercury_format_pred_type(TypeVarSet, VarNamePrint, ExistQVars, PredName,
         Types, MaybeDet, Purity, ClassContext, S, !U) :-
     MaybeWithType = maybe.no,
-    mercury_format_pred_or_func_type_2(TypeVarSet, VarNamePrint,
+    mercury_format_pred_or_func_type_decl_2(TypeVarSet, VarNamePrint,
         pf_predicate, ExistQVars, PredName, Types, MaybeWithType, MaybeDet,
         Purity, ClassContext, ":- ", ".\n", S, !U).
 
@@ -259,13 +266,13 @@ mercury_format_func_type(TypeVarSet, VarNamePrint, ExistQVars, FuncName,
 %   mercury_format_pred_type/mercury_format_func_type.
 %
 
-:- pred mercury_format_pred_or_func_type_2( tvarset::in, var_name_print::in,
-    pred_or_func::in, existq_tvars::in, sym_name::in, list(mer_type)::in,
-    maybe(mer_type)::in, maybe(determinism)::in, purity::in,
-    prog_constraints::in, string::in, string::in,
-    S::in, U::di, U::uo) is det <= pt_output(S, U).
+:- pred mercury_format_pred_or_func_type_decl_2( tvarset::in,
+    var_name_print::in, pred_or_func::in, existq_tvars::in,
+    sym_name::in, list(mer_type)::in, maybe(mer_type)::in,
+    maybe(determinism)::in, purity::in, prog_constraints::in,
+    string::in, string::in, S::in, U::di, U::uo) is det <= pt_output(S, U).
 
-mercury_format_pred_or_func_type_2(TypeVarSet, VarNamePrint, PredOrFunc,
+mercury_format_pred_or_func_type_decl_2(TypeVarSet, VarNamePrint, PredOrFunc,
         ExistQVars, PredName, Types, MaybeWithType, MaybeDet, Purity,
         Constraints, StartString, Separator, S, !U) :-
     add_string(StartString, S, !U),
@@ -287,14 +294,19 @@ mercury_format_pred_or_func_type_2(TypeVarSet, VarNamePrint, PredOrFunc,
     add_string(" ", S, !U),
     (
         Types = [_ | _],
-        mercury_format_sym_name(PredName, S, !U),
+        % The following left parenthesis is a graphic token.
+        mercury_format_sym_name_ngt(next_to_graphic_token, PredName, S, !U),
         add_string("(", S, !U),
         add_list(mercury_format_type(TypeVarSet, VarNamePrint), ", ", Types,
             S, !U),
         add_string(")", S, !U)
     ;
         Types = [],
-        mercury_format_bracketed_sym_name(PredName, S, !U)
+        % In a zero arity predicate declaration containing no determinism
+        % information, the next token could be the period that signifies
+        % the end of the declaration.
+        mercury_format_bracketed_sym_name_ngt(next_to_graphic_token, PredName,
+            S, !U)
     ),
     (
         MaybeWithType = yes(WithType),
@@ -355,14 +367,21 @@ mercury_format_func_type_2(VarSet, VarNamePrint, ExistQVars, FuncName, Types,
     add_string("func ", S, !U),
     (
         Types = [_ | _],
-        mercury_format_sym_name(FuncName, S, !U),
+        % The following left parenthesis is a graphic token.
+        mercury_format_sym_name_ngt(next_to_graphic_token, FuncName, S, !U),
         add_string("(", S, !U),
         add_list(mercury_format_type(VarSet, VarNamePrint), ", ", Types,
             S, !U),
         add_string(")", S, !U)
     ;
         Types = [],
-        mercury_format_bracketed_sym_name(FuncName, S, !U)
+        % In a zero arity predicate declaration containing no determinism
+        % information, the next token could be the period that signifies
+        % the end of the declaration. For functions, that cannot happen,
+        % but treating this call as being next to a graphic token is
+        % consistent with the corresponding code for predicates above.
+        mercury_format_bracketed_sym_name_ngt(next_to_graphic_token, FuncName,
+            S, !U)
     ),
     add_string(" = ", S, !U),
     mercury_format_type(VarSet, VarNamePrint, RetType, S, !U),
@@ -470,13 +489,14 @@ mercury_format_pred_or_func_mode_subdecl(Lang, InstVarSet, PredName, Modes,
         MaybeWithInst, MaybeDet, S, !U) :-
     (
         Modes = [_ | _],
-        mercury_format_sym_name(PredName, S, !U),
+        mercury_format_sym_name_ngt(next_to_graphic_token, PredName, S, !U),
         add_string("(", S, !U),
         mercury_format_mode_list(Lang, InstVarSet, Modes, S, !U),
         add_string(")", S, !U)
     ;
         Modes = [],
-        mercury_format_bracketed_sym_name(PredName, S, !U)
+        mercury_format_bracketed_sym_name_ngt(next_to_graphic_token, PredName,
+            S, !U)
     ),
     (
         MaybeWithInst = yes(WithInst),
@@ -506,13 +526,14 @@ mercury_format_func_mode_subdecl(Lang, InstVarSet, FuncName, Modes, RetMode,
         MaybeDet, S, !U) :-
     (
         Modes = [_ | _],
-        mercury_format_sym_name(FuncName, S, !U),
+        mercury_format_sym_name_ngt(next_to_graphic_token, FuncName, S, !U),
         add_string("(", S, !U),
         mercury_format_mode_list(Lang, InstVarSet, Modes, S, !U),
         add_string(")", S, !U)
     ;
         Modes = [],
-        mercury_format_bracketed_sym_name(FuncName, S, !U)
+        mercury_format_bracketed_sym_name_ngt(next_to_graphic_token, FuncName,
+            S, !U)
     ),
     add_string(" = ", S, !U),
     mercury_format_mode(Lang, InstVarSet, RetMode, S, !U),

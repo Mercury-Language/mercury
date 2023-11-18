@@ -2050,12 +2050,8 @@ valid_trace_grade_name(GradeName) :-
     ;       promise_type_true.
             % A promise that the given goal is true.
 
-    % A predicate or function declaration may give either
-    % (a) only the types of the arguments, or
-    % (b) both their types and modes.
 :- type type_and_mode
-    --->    type_only(mer_type)
-    ;       type_and_mode(mer_type, mer_mode).
+    --->    type_and_mode(mer_type, mer_mode).
 
 :- type item_seq_num
     --->    item_seq_num(int)

@@ -1346,7 +1346,7 @@
                 % and it may optionally also specify the mode and determinism.
                 pf_name                         :: sym_name,
                 pf_p_or_f                       :: pred_or_func,
-                pf_arg_decls                    :: list(type_and_mode),
+                pf_arg_decls                    :: types_and_maybe_modes,
                 % The next two fields hold the `with_type` and `with_inst`
                 % annotations. This syntactic sugar is expanded out by
                 % equiv_type.m, which will then set these fields to `no'.
@@ -1688,7 +1688,7 @@
                 pred_or_func,
 
                 % The arguments' types, and maybe modes.
-                list(type_and_mode),
+                types_and_maybe_modes,
 
                 % Any `with_type` and/or `with_inst` annotation.
                 maybe(mer_type),
@@ -3200,6 +3200,102 @@
 
 %---------------------------------------------------------------------------%
 
+    % A predicate or function declaration may give either
+    % (a) only the types of the arguments, or
+    % (b) both their types and modes.
+    % However, if there are no arguments, then we need info from the rest
+    % of the predicate declaration to decide whether to treat that declaration
+    % as a predmode declaration or not.
+:- type types_and_maybe_modes
+    --->    no_types_arity_zero
+    ;       types_only(list(mer_type))
+    ;       types_and_modes(list(type_and_mode)).
+
+    % get_declared_types_and_maybe_modes(TypesAndMaybeModes, WithInst,
+    %   MaybeDetism, Types, MaybeModes):
+    %
+    % A pred declaration may contains just types, as in
+    %   :- pred list.append(list(T), list(T), list(T)).
+    % or it may contain both types and modes, as in
+    %   :- pred list.append(list(T)::in, list(T)::in, list(T)::output).
+    %
+    % Due to that combination, the latter is a predmode declaration,
+    % while the former is just a non-predmode pred declaration.
+    %
+    % In several places in the compiler, we want to replace any predmode
+    % declarations with a pair of a non-predmode pred declaration and
+    % a mode declaration. However, the absence of mode annotations
+    % on arguments does NOT imply that a pred declaration does not need
+    % a mode declaration created from it. If a pred declaration has
+    % no visible arguments, then the statements "none of the visible arguments
+    % have mode annotations" and "all the visible arguments have mode
+    % annotations" are both true. In such cases, we use with pf_maybe_with_inst
+    % and pf_maybe_detism fields of the item_pred_decl_info to decide matters.
+    %
+    % If an arity-zero pred declaration has a with_inst annotation, then it
+    % should have a mode declaration generated for it (with the mode info
+    % in that annotation joining the type info in a matching with_type
+    % annotation). This can happen only before the execution of equiv_type.m,
+    % which extends the argument list with the info in with_type and with_inst
+    % annotations.
+    %
+    % If an arity-zero pred declaration without a with_inst annotation
+    % has a specified determinism, then it is truly a arity-zero predicate
+    % and thus has no argument modes to declare, but it nevertheless *should*
+    % have a mode declaration generated for it, because we attach determinism
+    % declarations to mode declarations.
+    %
+    % We should therefore return "no" as MaybeModes for arity-zero predicates
+    % only if they have neither a with_inst annotation nor a declared
+    % determinism. If they have either, we should return "yes([])".
+    %
+    % Despite the above, we return "no" in the absence of a with_inst
+    % annotation even in the presence of a declared determinism. The reason
+    % for this is that, while returning "yes([])" in that case leads to a
+    % mostly-successful bootcheck, it does cause one test case to fail.
+    %
+    % This is the recompilation/unchange_with_type_nr test case. The cause
+    % of the failure is the splitting up of this function declaration:
+    %
+    %   :- func with_type_6 `with_type` map_func(T, T) is det <= string(T).
+    %
+    % This function declaration has visible arity zero, no with_inst
+    % annotation, but does declare a determinism. If we let the last point
+    % cause is to return "yes([])" here, then our caller will output
+    % the available mode/determinism info in a separate mode declaration.
+    % Given that the function return value's type is not directly visible
+    % (it will be known only after the with_type annotation has been
+    % processed), the form in which we output this mode declaration will be
+    %
+    % :- mode with_type_6 is det.
+    %
+    % The problem is that this declaration is indistinguishable from the
+    % mode declaration of a zero-arity *predicate* named with_type_6,
+    % and indeed, that is what the parser believes it to be.
+    % The test case fails because the compiler reports that it sees
+    % a mode declaration for a predicate named with_type_6 which has no
+    % pred declaration. This error prevents the compiler from proceeding
+    % to the recompile/don't recompile decision that the test case is
+    % all about.
+    %
+    % Until we define syntax rules that allow the mode declarations
+    % of arity-zero predicates and functions (with the return value missing)
+    % to be differentiated from each other, we want to keep ignoring
+    % MaybeDetism, at least for functions. (We could pay attention
+    % to MaybeDetism for predicates if we wanted to; getting our callers
+    % to pass us a PredOrFunc value would be easy.)
+    %
+:- pred get_declared_types_and_maybe_modes(types_and_maybe_modes::in,
+    maybe(mer_inst)::in, maybe(determinism)::in,
+    list(mer_type)::out, maybe(list(mer_mode))::out) is det.
+
+:- pred split_types_and_modes(list(type_and_mode)::in,
+    list(mer_type)::out, list(mer_mode)::out) is det.
+
+:- func types_and_maybe_modes_arity(types_and_maybe_modes) = pred_form_arity.
+
+%---------------------------------------------------------------------------%
+
 :- type contains_foreign_code
     --->    foreign_code_langs_known(set(foreign_language))
     ;       foreign_code_langs_unknown.
@@ -3484,6 +3580,49 @@ get_goal_context(Goal) = Context :-
     ; Goal = event_expr(Context, _, _)
     ; Goal = call_expr(Context, _, _, _)
     ; Goal = unify_expr(Context, _, _, _)
+    ).
+
+%---------------------------------------------------------------------------%
+
+get_declared_types_and_maybe_modes(TypesAndMaybeModes, WithInst, _MaybeDetism,
+        Types, MaybeModes) :-
+    (
+        TypesAndMaybeModes = no_types_arity_zero,
+        Types = [],
+        ( if
+            WithInst = no
+            % This test is commented out, for the reason explained
+            % in the comment on the declaration of this predicate.
+            % MaybeDetism = no
+        then
+            MaybeModes = no
+        else
+            MaybeModes = yes([])
+        )
+    ;
+        TypesAndMaybeModes = types_only(Types),
+        MaybeModes = no
+    ;
+        TypesAndMaybeModes = types_and_modes(TypesAndModes),
+        split_types_and_modes(TypesAndModes, Types, Modes),
+        MaybeModes = yes(Modes)
+    ).
+
+split_types_and_modes([], [], []).
+split_types_and_modes([TM | TMs], [T | Ts], [M | Ms]) :-
+    TM = type_and_mode(T, M),
+    split_types_and_modes(TMs, Ts, Ms).
+
+types_and_maybe_modes_arity(TypesAndMaybeModes) = PredFormArity :-
+    (
+        TypesAndMaybeModes = no_types_arity_zero,
+        PredFormArity = pred_form_arity(0)
+    ;
+        TypesAndMaybeModes = types_only(Types),
+        PredFormArity = arg_list_arity(Types)
+    ;
+        TypesAndMaybeModes = types_and_modes(TypesAndModes),
+        PredFormArity = arg_list_arity(TypesAndModes)
     ).
 
 %---------------------------------------------------------------------------%

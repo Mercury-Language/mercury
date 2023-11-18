@@ -26,13 +26,13 @@
 # if they are in the current directory.
 /bin/rm -fr Mercury
 
-test_prog="add_type_re"
-expected_mmake_result=should_fail
+test_prog="unchanged_with_type_nr"
+expected_mmake_result=should_succeed
 module_1="${test_prog}"
 module_2="${test_prog}_2"
 modules="${module_1} ${module_2}"
 
-tested_compiler="/home/zs/ws/ws26/compiler/mercury_compile"
+tested_compiler="/home/zs/ws/ws31/compiler/mercury_compile"
 MERCURY_COMPILER="${tested_compiler}"
 export MERCURY_COMPILER
 
@@ -64,6 +64,8 @@ mmc --make-interface        ${std_opts} ${module_2}
 mmc --make-interface        ${std_opts} ${module_1}
 mmc --compile-to-c          ${std_opts} ${module_1} > ${module_1}.err 2>&1
 mmc --compile-to-c          ${std_opts} ${module_2} > ${module_2}.err 2>&1
+cp -f ${module_2}.int   ${module_2}.int.step1
+cp -f ${module_2}.used  ${module_2}.used.step1
 mgnuc ${grade_opts} -- -c ${module_1}.c -o ${module_1}.o
 mgnuc ${grade_opts} -- -c ${module_2}.c -o ${module_2}.o
 ml ${grade_opts} -- -o ${module_1} ${module_1}_init.o \
@@ -102,6 +104,8 @@ case "${expected_mmake_result}" in
         mmc --make-short-interface  ${std_opts} ${module_2}
         mmc --make-interface        ${std_opts} ${module_2}
         mmc --make-interface        ${std_opts} ${module_1}
+        cp -f ${module_2}.int   ${module_2}.int.step2
+        cp -f ${module_2}.used  ${module_2}.used.step2
         # mdb mmc --compile-to-c      ${std_opts} ${module_1}
         mmc --compile-to-c          ${std_opts} ${module_1} \
             > ${module_1}.err 2>&1
@@ -168,7 +172,7 @@ case "${expected_mmake_result}" in
             then \
                 echo "failure" >> "${module_1}.should_fail"; \
             fi; \
-        ) > "${module_1}.failing_mail_output"
+        ) > "${module_1}.failing_make_output"
         if test ! -s "${module_1}.should_fail)"
         then
             echo "Error: <mmake_test 2 should_fail> has succeeded"

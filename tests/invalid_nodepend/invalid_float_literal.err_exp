@@ -35,12 +35,12 @@ invalid_float_literal.m:039:   digits; it should not appear just before a
 invalid_float_literal.m:039:   decimal point.
 invalid_float_literal.m:041: Error: clause for predicate `-'/2
 invalid_float_literal.m:041:   without corresponding `:- pred' declaration.
-invalid_float_literal.m:041: Inferred :- pred -(T1, int).
+invalid_float_literal.m:041: Inferred :- pred '-'(T1, int).
 invalid_float_literal.m:041: Syntax error: unterminated exponent in float
 invalid_float_literal.m:041:   literal.
 invalid_float_literal.m:043: Error: clause for predicate `+'/2
 invalid_float_literal.m:043:   without corresponding `:- pred' declaration.
-invalid_float_literal.m:043: Inferred :- pred +(T1, int).
+invalid_float_literal.m:043: Inferred :- pred '+'(T1, int).
 invalid_float_literal.m:043: Syntax error: unterminated exponent in float
 invalid_float_literal.m:043:   literal.
 invalid_float_literal.m:047: In clause head:

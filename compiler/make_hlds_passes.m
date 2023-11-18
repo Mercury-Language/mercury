@@ -873,7 +873,7 @@ maybe_add_default_modes([SecSubList | SecSubLists], !ModuleInfo) :-
     module_info::in, module_info::out) is det.
 
 maybe_add_default_mode(PredDecl, !ModuleInfo) :-
-    PredDecl = item_pred_decl_info(PredSymName, PredOrFunc, TypesAndModes,
+    PredDecl = item_pred_decl_info(PredSymName, PredOrFunc, TypesAndMaybeModes,
         _, _, _, _, _, _, _, _, _, _, _),
     % Add default modes for function declarations, if necessary.
     PredName = unqualify_name(PredSymName),
@@ -886,7 +886,7 @@ maybe_add_default_mode(PredDecl, !ModuleInfo) :-
             PredOrFunc = pf_predicate
         ;
             PredOrFunc = pf_function,
-            PredFormArity = arg_list_arity(TypesAndModes),
+            PredFormArity = types_and_maybe_modes_arity(TypesAndMaybeModes),
             user_arity_pred_form_arity(PredOrFunc, UserArity, PredFormArity),
             module_info_get_predicate_table(!.ModuleInfo, PredTable0),
             predicate_table_lookup_func_sym_arity(PredTable0,

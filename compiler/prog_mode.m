@@ -23,7 +23,6 @@
 :- import_module parse_tree.prog_util.
 
 :- import_module list.
-:- import_module maybe.
 :- import_module term.
 
 %---------------------------------------------------------------------------%
@@ -223,11 +222,11 @@
     %
 :- pred inconsistent_constrained_inst_vars_in_modes(
     list(mer_mode)::in, list(inst_var)::out) is det.
-:- pred inconsistent_constrained_inst_vars_in_type_and_modes(
+:- pred inconsistent_constrained_inst_vars_in_tms(
     list(type_and_mode)::in, list(inst_var)::out) is det.
 
 :- pred report_inconsistent_constrained_inst_vars(string::in, term.context::in,
-    inst_varset::in, list(inst_var)::in, maybe(error_spec)::out) is det.
+    inst_varset::in, inst_var::in, list(inst_var)::in, error_spec::out) is det.
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -1293,52 +1292,41 @@ inconsistent_constrained_inst_vars_in_modes(Modes, InconsistentVars) :-
         Modes, set.init, InconsistentVarsSet, map.init, _),
     set.to_sorted_list(InconsistentVarsSet, InconsistentVars).
 
-inconsistent_constrained_inst_vars_in_type_and_modes(TypeAndModes,
+inconsistent_constrained_inst_vars_in_tms(TypeAndModes,
         InconsistentVars) :-
-    list.foldl2(gather_inconsistent_constrained_inst_vars_in_type_and_mode,
+    list.foldl2(gather_inconsistent_constrained_inst_vars_in_tm,
         TypeAndModes, set.init, InconsistentVarsSet, map.init, _),
     set.to_sorted_list(InconsistentVarsSet, InconsistentVars).
 
 report_inconsistent_constrained_inst_vars(WhereDesc, Context, InstVarSet,
-        InconsistentVars, MaybeSpec) :-
+        HeadInstVar, TailInstVars, Spec) :-
     (
-        InconsistentVars = [],
-        MaybeSpec = no
+        TailInstVars = [],
+        varset.lookup_name(InstVarSet, HeadInstVar, HeadInstVarName),
+        VarsPieces = [words("inst variable"), fixed(HeadInstVarName)]
     ;
-        InconsistentVars = [HeadInstVar | TailInstVars],
-        (
-            TailInstVars = [],
-            varset.lookup_name(InstVarSet, HeadInstVar, HeadInstVarName),
-            VarsPieces = [words("inst variable"), fixed(HeadInstVarName)]
-        ;
-            TailInstVars = [_ | _],
-            list.map(varset.lookup_name(InstVarSet), InconsistentVars,
-                InstVarNames),
-            VarsPieces = [words("inst variables") |
-                list_to_pieces(InstVarNames)]
-        ),
-        Pieces = [words("Error: inconsistent constraints on") | VarsPieces]
-            ++ [words(WhereDesc), suffix("."), nl],
-        Spec = simplest_spec($pred, severity_error, phase_term_to_parse_tree,
-            Context, Pieces),
-        MaybeSpec = yes(Spec)
-    ).
+        TailInstVars = [_ | _],
+        list.map(varset.lookup_name(InstVarSet), [HeadInstVar | TailInstVars],
+            InstVarNames),
+        VarsPieces = [words("inst variables") |
+            list_to_pieces(InstVarNames)]
+    ),
+    Pieces = [words("Error: inconsistent constraints on") | VarsPieces]
+        ++ [words(WhereDesc), suffix("."), nl],
+    Spec = simplest_spec($pred, severity_error, phase_term_to_parse_tree,
+        Context, Pieces).
 
 %---------------------%
 
-:- pred gather_inconsistent_constrained_inst_vars_in_type_and_mode(
-    type_and_mode::in, set(inst_var)::in, set(inst_var)::out,
+:- pred gather_inconsistent_constrained_inst_vars_in_tm(type_and_mode::in,
+    set(inst_var)::in, set(inst_var)::out,
     inst_var_sub::in, inst_var_sub::out) is det.
 
-gather_inconsistent_constrained_inst_vars_in_type_and_mode(TypeAndMode,
+gather_inconsistent_constrained_inst_vars_in_tm(TypeAndMode,
         !InconsistentVars, !Sub) :-
-    (
-        TypeAndMode = type_only(_)
-    ;
-        TypeAndMode = type_and_mode(_, Mode),
-        gather_inconsistent_constrained_inst_vars_in_mode(Mode,
-            !InconsistentVars, !Sub)
-    ).
+    TypeAndMode = type_and_mode(_, Mode),
+    gather_inconsistent_constrained_inst_vars_in_mode(Mode,
+        !InconsistentVars, !Sub).
 
 :- pred gather_inconsistent_constrained_inst_vars_in_modes(list(mer_mode)::in,
     set(inst_var)::in, set(inst_var)::out,

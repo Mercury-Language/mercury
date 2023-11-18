@@ -1853,25 +1853,24 @@ mercury_format_item_pred_decl_mu_mc(Info, VarNamePrint, S,
 mercury_format_item_pred_decl(Lang, VarNamePrint, S, ItemPredDecl, !U) :-
     % Most of the code that outputs pred declarations is in
     % parse_tree_out_pred_decl.m.
-    ItemPredDecl = item_pred_decl_info(PredSymName, PredOrFunc, TypesAndModes,
-        WithType, WithInst, MaybeDetism, _Origin, TypeVarSet, InstVarSet,
-        ExistQVars, Purity, Constraints, _Context, _SeqNum),
+    ItemPredDecl = item_pred_decl_info(PredSymName, PredOrFunc,
+        TypesAndMaybeModes, WithType, WithInst, MaybeDetism, _Origin,
+        TypeVarSet, InstVarSet, ExistQVars, Purity, Constraints,
+        _Context, _SeqNum),
     ( if
         % Function declarations using `with_type` have the same format
         % as predicate declarations, but with `func' instead of `pred'.
         PredOrFunc = pf_function,
         WithType = no
     then
-        pred_args_to_func_args(TypesAndModes, FuncTypesAndModes,
-            RetTypeAndMode),
         mercury_format_func_decl(Lang, VarNamePrint,
             TypeVarSet, InstVarSet, ExistQVars,
-            PredSymName, FuncTypesAndModes, RetTypeAndMode, MaybeDetism,
+            PredSymName, TypesAndMaybeModes, MaybeDetism,
             Purity, Constraints, ":- ", ".\n", ".\n", S, !U)
     else
         mercury_format_pred_or_func_decl(Lang, VarNamePrint,
             TypeVarSet, InstVarSet, PredOrFunc, ExistQVars,
-            PredSymName, TypesAndModes, WithType, WithInst, MaybeDetism,
+            PredSymName, TypesAndMaybeModes, WithType, WithInst, MaybeDetism,
             Purity, Constraints, ":- ", ".\n", ".\n", S, !U)
     ).
 
@@ -2147,7 +2146,7 @@ format_class_decl(S, Lang, VarNamePrint, Decl, !U) :-
     (
         Decl = class_decl_pred_or_func(PredOrFuncInfo),
         PredOrFuncInfo = class_pred_or_func_info(SymName0, PredOrFunc,
-            TypesAndModes, WithType, WithInst, MaybeDetism,
+            TypesAndMaybeModes, WithType, WithInst, MaybeDetism,
             TypeVarSet, InstVarSet, ExistQVars, Purity,
             Constraints, _Context),
 
@@ -2160,16 +2159,14 @@ format_class_decl(S, Lang, VarNamePrint, Decl, !U) :-
             PredOrFunc = pf_function,
             WithType = no
         then
-            pred_args_to_func_args(TypesAndModes,
-                FuncTypesAndModes, RetTypeAndMode),
             mercury_format_func_decl(Lang, VarNamePrint,
                 TypeVarSet, InstVarSet, ExistQVars,
-                SymName, FuncTypesAndModes, RetTypeAndMode, MaybeDetism,
+                SymName, TypesAndMaybeModes, MaybeDetism,
                 Purity, Constraints, "", ",\n\t", "", S, !U)
         else
             mercury_format_pred_or_func_decl(Lang, VarNamePrint,
                 TypeVarSet, InstVarSet, PredOrFunc, ExistQVars,
-                SymName, TypesAndModes, WithType, WithInst, MaybeDetism,
+                SymName, TypesAndMaybeModes, WithType, WithInst, MaybeDetism,
                 Purity, Constraints, "", ",\n\t", "", S, !U)
         )
     ;

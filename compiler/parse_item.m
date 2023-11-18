@@ -131,12 +131,14 @@
 :- import_module recompilation.
 :- import_module recompilation.version.
 
+:- import_module assoc_list.
 :- import_module bool.
 :- import_module cord.
 :- import_module int.
 :- import_module list.
 :- import_module map.
 :- import_module one_or_more.
+:- import_module pair.
 :- import_module pretty_printer.
 :- import_module string.
 :- import_module term_int.
@@ -1104,7 +1106,7 @@ parse_pred_or_func_decl_item(ModuleName, VarSet, Functor, ArgTerms,
     maybe1(item_or_marker)::out) is det.
 
 parse_pred_decl_base(PredOrFunc, ModuleName, VarSet, PredTypeTerm,
-        WithType, WithInst, MaybeDet, IsInClass, Context, SeqNum,
+        WithType, WithInst, MaybeDetism, IsInClass, Context, SeqNum,
         PurityAttrs, QuantConstrAttrs, MaybeIOM) :-
     ContextPieces = cord.singleton(words("In")) ++
         cord.from_list(pred_or_func_decl_pieces(PredOrFunc)) ++
@@ -1136,18 +1138,22 @@ parse_pred_decl_base(PredOrFunc, ModuleName, VarSet, PredTypeTerm,
                         cord.from_list([words("in the"), nth_fixed(ArgNum),
                         words("argument:"), nl])
                     ),
-                parse_type_and_modes(constrain_some_inst_vars(InstConstraints),
+                parse_types_and_maybe_modes(
+                    constrain_some_inst_vars(InstConstraints),
                     dont_require_tm_mode, wnhii_pred_arg, VarSet,
-                    ArgContextFunc, ArgTerms, 1, TypesAndModes, [], TMSpecs),
-                check_type_and_mode_list_is_consistent(TypesAndModes, no,
-                    get_term_context(PredTypeTerm), MaybeTypeModeListKind),
+                    ArgContextFunc, ArgTerms, 1, TypeAndMaybeModeList,
+                    [], TMSpecs),
+                PredTypeContext = get_term_context(PredTypeTerm),
+                check_type_and_maybe_mode_list_is_consistent(
+                    TypeAndMaybeModeList, no, PredTypeContext,
+                    MaybeTypesAndMaybeModes),
                 ( if
                     TMSpecs = [],
-                    MaybeTypeModeListKind = ok1(_)
+                    MaybeTypesAndMaybeModes = ok1(TypesAndMaybeModes)
                 then
                     ( if
                         WithInst = yes(_),
-                        TypesAndModes = [type_only(_) | _]
+                        TypesAndMaybeModes = types_only([_ | _])
                     then
                         Pieces = [words("Error:"), quote("with_inst"),
                             words("specified without argument modes."), nl],
@@ -1158,7 +1164,7 @@ parse_pred_decl_base(PredOrFunc, ModuleName, VarSet, PredTypeTerm,
                     else if
                         WithInst = no,
                         WithType = yes(_),
-                        TypesAndModes = [type_and_mode(_, _) | _]
+                        TypesAndMaybeModes = types_and_modes([_ | _])
                     then
                         Pieces = [words("Error: arguments have modes but"),
                             quote("with_inst"), words("not specified."), nl],
@@ -1169,30 +1175,41 @@ parse_pred_decl_base(PredOrFunc, ModuleName, VarSet, PredTypeTerm,
                     else
                         varset.coerce(VarSet, TypeVarSet),
                         varset.coerce(VarSet, InstVarSet),
-                        inconsistent_constrained_inst_vars_in_type_and_modes(
-                            TypesAndModes, InconsistentVars),
-                        report_inconsistent_constrained_inst_vars(
-                            in_pred_or_func_decl_desc(PredOrFunc),
-                            get_term_context(PredTypeTerm),
-                            InstVarSet, InconsistentVars,
-                            MaybeInconsistentSpec),
                         (
-                            MaybeInconsistentSpec = no,
+                            ( TypesAndMaybeModes = no_types_arity_zero
+                            ; TypesAndMaybeModes = types_only(_)
+                            ),
+                            InconsistentVars = []
+                        ;
+                            TypesAndMaybeModes =
+                                types_and_modes(TypesAndModes),
+                            inconsistent_constrained_inst_vars_in_tms(
+                                TypesAndModes, InconsistentVars)
+                        ),
+                        (
+                            InconsistentVars = [],
                             Origin = item_origin_user,
                             ItemPredDecl = item_pred_decl_info(Functor,
-                                PredOrFunc, TypesAndModes, WithType, WithInst,
-                                MaybeDet, Origin, TypeVarSet, InstVarSet,
-                                ExistQVars, Purity, Constraints,
-                                Context, SeqNum),
+                                PredOrFunc, TypesAndMaybeModes,
+                                WithType, WithInst, MaybeDetism, Origin,
+                                TypeVarSet, InstVarSet, ExistQVars, Purity,
+                                Constraints, Context, SeqNum),
                             Item = item_pred_decl(ItemPredDecl),
                             MaybeIOM = ok1(iom_item(Item))
                         ;
-                            MaybeInconsistentSpec = yes(Spec),
+                            InconsistentVars =
+                                [HeadInconsistentVar | TailInconsistentVars],
+                            report_inconsistent_constrained_inst_vars(
+                                in_pred_or_func_decl_desc(PredOrFunc),
+                                get_term_context(PredTypeTerm), InstVarSet,
+                                HeadInconsistentVar, TailInconsistentVars,
+                                Spec),
                             MaybeIOM = error1([Spec])
                         )
                     )
                 else
-                    Specs = TMSpecs ++ get_any_errors1(MaybeTypeModeListKind),
+                    Specs = TMSpecs ++
+                        get_any_errors1(MaybeTypesAndMaybeModes),
                     MaybeIOM = error1(Specs)
                 )
             )
@@ -1211,7 +1228,7 @@ parse_pred_decl_base(PredOrFunc, ModuleName, VarSet, PredTypeTerm,
     list(purity_attr)::in, list(quant_constr_attr)::in,
     maybe1(item_or_marker)::out) is det.
 
-parse_func_decl_base(ModuleName, VarSet, Term, MaybeDet, IsInClass, Context,
+parse_func_decl_base(ModuleName, VarSet, Term, MaybeDetism, IsInClass, Context,
         SeqNum, PurityAttrs, QuantConstrAttrs, MaybeIOM) :-
     ContextPieces = cord.from_list([words("In"), decl("func"),
         words("declaration:"), nl]),
@@ -1246,32 +1263,32 @@ parse_func_decl_base(ModuleName, VarSet, Term, MaybeDet, IsInClass, Context,
                             cord.from_list([words("in the"), nth_fixed(ArgNum),
                             words("argument:"), nl])
                         ),
-                    parse_type_and_modes(
+                    parse_types_and_maybe_modes(
                         constrain_some_inst_vars(InstConstraints),
                         dont_require_tm_mode, wnhii_func_arg,
                         VarSet, ArgContextFunc, ArgTerms, 1,
-                        ArgTypesAndModes, [], ArgTMSpecs),
+                        ArgTypesAndMaybeModes, [], ArgTMSpecs),
                     RetContextPieces = ContextPieces ++
                         cord.from_list([words("in the return value:"), nl]),
-                    parse_type_and_mode(
+                    parse_type_and_maybe_mode(
                         constrain_some_inst_vars(InstConstraints),
                         dont_require_tm_mode, wnhii_func_return_arg,
                         VarSet, RetContextPieces, ReturnTerm,
-                        MaybeRetTypeAndMode),
+                        MaybeRetTypeAndMaybeMode),
                     ( if
                         ArgTMSpecs = [],
-                        MaybeRetTypeAndMode = ok1(RetTypeAndMode)
+                        MaybeRetTypeAndMaybeMode = ok1(RetTypeAndMaybeMode)
                     then
                         % We use an auxiliary predicate because the code is
                         % just too deeply indented here.
                         parse_func_decl_base_2(FuncName,
-                            ArgTypesAndModes, RetTypeAndMode,
-                            FuncTerm, Term, VarSet, MaybeDet,
+                            ArgTypesAndMaybeModes, RetTypeAndMaybeMode,
+                            FuncTerm, Term, VarSet, MaybeDetism,
                             ExistQVars, Constraints, Context, SeqNum,
                             PurityAttrs, MaybeIOM)
                     else
-                        Specs =
-                            ArgTMSpecs ++ get_any_errors1(MaybeRetTypeAndMode),
+                        Specs = ArgTMSpecs ++
+                            get_any_errors1(MaybeRetTypeAndMaybeMode),
                         MaybeIOM = error1(Specs)
                     )
                 )
@@ -1285,57 +1302,55 @@ parse_func_decl_base(ModuleName, VarSet, Term, MaybeDet, IsInClass, Context,
         )
     ).
 
-:- pred parse_func_decl_base_2(sym_name::in, list(type_and_mode)::in,
-    type_and_mode::in, term::in, term::in, varset::in, maybe(determinism)::in,
-    existq_tvars::in, prog_constraints::in,
+:- pred parse_func_decl_base_2(sym_name::in, list(type_and_maybe_mode)::in,
+    type_and_maybe_mode::in, term::in, term::in, varset::in,
+    maybe(determinism)::in, existq_tvars::in, prog_constraints::in,
     prog_context::in, item_seq_num::in,
     list(purity_attr)::in, maybe1(item_or_marker)::out) is det.
 
 parse_func_decl_base_2(FuncName, Args, ReturnArg, FuncTerm, Term,
         VarSet, MaybeDetism, ExistQVars, Constraints, Context, SeqNum,
         PurityAttrs, MaybeIOM) :-
-    check_type_and_mode_list_is_consistent(Args, yes(ReturnArg),
-        get_term_context(FuncTerm), MaybeTypeModeListKind),
+    check_type_and_maybe_mode_list_is_consistent(Args, yes(ReturnArg),
+        get_term_context(FuncTerm), MaybeTypesAndMaybeModes),
     get_purity_from_attrs(Context, PurityAttrs, MaybePurity),
     ( if
-        MaybeTypeModeListKind = ok1(_),
+        MaybeTypesAndMaybeModes = ok1(TypesAndMaybeModes),
         MaybePurity = ok1(Purity)
     then
         varset.coerce(VarSet, TVarSet),
         varset.coerce(VarSet, IVarSet),
-        AllArgs = Args ++ [ReturnArg],
-        inconsistent_constrained_inst_vars_in_type_and_modes(AllArgs,
-            InconsistentVars),
-        report_inconsistent_constrained_inst_vars("in function declaration",
-            get_term_context(Term),
-            IVarSet, InconsistentVars, MaybeInconsistentSpec),
         (
-            MaybeInconsistentSpec = no,
+            ( TypesAndMaybeModes = no_types_arity_zero
+            ; TypesAndMaybeModes = types_only(_)
+            ),
+            InconsistentVars = []
+        ;
+            TypesAndMaybeModes = types_and_modes(TypesAndModes),
+            inconsistent_constrained_inst_vars_in_tms(TypesAndModes,
+                InconsistentVars)
+        ),
+        (
+            InconsistentVars = [],
             Origin = item_origin_user,
-            ItemPredDecl = item_pred_decl_info(FuncName, pf_function, AllArgs,
-                no, no, MaybeDetism, Origin, TVarSet, IVarSet, ExistQVars,
-                Purity, Constraints, Context, SeqNum),
+            ItemPredDecl = item_pred_decl_info(FuncName, pf_function,
+                TypesAndMaybeModes, no, no, MaybeDetism, Origin,
+                TVarSet, IVarSet, ExistQVars, Purity, Constraints,
+                Context, SeqNum),
             Item = item_pred_decl(ItemPredDecl),
             MaybeIOM = ok1(iom_item(Item))
         ;
-            MaybeInconsistentSpec = yes(Spec),
+            InconsistentVars = [HeadInconsistentVar | TailInconsistentVars],
+            report_inconsistent_constrained_inst_vars("in function declaration",
+                get_term_context(Term), IVarSet,
+                HeadInconsistentVar, TailInconsistentVars, Spec),
             MaybeIOM = error1([Spec])
         )
     else
-        Specs = get_any_errors1(MaybeTypeModeListKind)
+        Specs = get_any_errors1(MaybeTypesAndMaybeModes)
             ++ get_any_errors1(MaybePurity),
         MaybeIOM = error1(Specs)
     ).
-
-:- type type_mode_list_kind
-    --->    tml_no_arguments
-            % There are zero arguments.
-
-    ;       tml_all_types_have_modes
-            % There are some arguments, and they all have modes.
-
-    ;       tml_no_types_have_modes.
-            % There are some arguments, and none have modes.
 
     % Verify that among the arguments of a :- pred or :- func declaration,
     % either all arguments specify a mode or none of them do. If some do
@@ -1344,48 +1359,50 @@ parse_func_decl_base_2(FuncName, Args, ReturnArg, FuncTerm, Term,
     % modes, then the programmer probably intended for all of them to have
     % modes.)
     %
-:- pred check_type_and_mode_list_is_consistent(list(type_and_mode)::in,
-    maybe(type_and_mode)::in, term.context::in,
-    maybe1(type_mode_list_kind)::out) is det.
+:- pred check_type_and_maybe_mode_list_is_consistent(
+    list(type_and_maybe_mode)::in, maybe(type_and_maybe_mode)::in,
+    term.context::in, maybe1(types_and_maybe_modes)::out) is det.
 
-check_type_and_mode_list_is_consistent(TypesAndModes, MaybeRetTypeAndMode,
-        Context, MaybeKind) :-
-    classify_type_and_mode_list(1, TypesAndModes,
-        WithModeArgNums0, WithoutModeArgNums0),
+check_type_and_maybe_mode_list_is_consistent(TypesAndMaybeModes,
+        MaybeRetTypeAndMaybeMode, Context, MaybeResult) :-
+    classify_type_and_maybe_mode_list(1, TypesAndMaybeModes,
+        WithModeArgs0, WithoutModeArgs0),
     (
-        MaybeRetTypeAndMode = no,
-        WithModeArgNums = WithModeArgNums0,
-        WithoutModeArgNums = WithoutModeArgNums0
+        MaybeRetTypeAndMaybeMode = no,
+        WithModeArgs = WithModeArgs0,
+        WithoutModeArgs = WithoutModeArgs0
     ;
-        MaybeRetTypeAndMode = yes(RetTypeAndMode),
+        MaybeRetTypeAndMaybeMode = yes(RetTypeAndMaybeMode),
         (
-            RetTypeAndMode = type_only(_),
-            WithModeArgNums = WithModeArgNums0,
-            WithoutModeArgNums = WithoutModeArgNums0 ++ [-1]
+            RetTypeAndMaybeMode = type_only(RetType),
+            WithModeArgs = WithModeArgs0,
+            WithoutModeArgs = WithoutModeArgs0 ++ [-1 - RetType]
         ;
-            RetTypeAndMode = type_and_mode(_, _),
-            WithModeArgNums = WithModeArgNums0 ++ [-1],
-            WithoutModeArgNums = WithoutModeArgNums0
+            RetTypeAndMaybeMode = type_and_mode(RetType, RetMode),
+            RetTM = type_and_mode(RetType, RetMode),
+            WithModeArgs = WithModeArgs0 ++ [-1 - RetTM],
+            WithoutModeArgs = WithoutModeArgs0
         )
     ),
     (
-        WithModeArgNums = [],
-        WithoutModeArgNums = [],
-        % No arguments; no possibility of inconsistency.
-        MaybeKind = ok1(tml_no_arguments)
+        WithModeArgs = [],
+        WithoutModeArgs = [],
+        MaybeResult = ok1(no_types_arity_zero)
     ;
-        WithModeArgNums = [],
-        WithoutModeArgNums = [_ | _],
+        WithModeArgs = [],
+        WithoutModeArgs = [_ | _],
         % No arguments have modes; no inconsistency.
-        MaybeKind = ok1(tml_no_types_have_modes)
+        assoc_list.values(WithoutModeArgs, Types),
+        MaybeResult = ok1(types_only(Types))
     ;
-        WithModeArgNums = [_ | _],
-        WithoutModeArgNums = [],
+        WithModeArgs = [_ | _],
+        WithoutModeArgs = [],
         % All arguments have modes; no inconsistency.
-        MaybeKind = ok1(tml_all_types_have_modes)
+        assoc_list.values(WithModeArgs, TypesAndModes),
+        MaybeResult = ok1(types_and_modes(TypesAndModes))
     ;
-        WithModeArgNums = [_ | _],
-        WithoutModeArgNums = [FirstWithout | RestWithout],
+        WithModeArgs = [_ | _],
+        WithoutModeArgs = [FirstWithout | RestWithout],
         % Some arguments have modes and some don't, which is inconsistent.
         (
             RestWithout = [],
@@ -1399,7 +1416,7 @@ check_type_and_mode_list_is_consistent(TypesAndModes, MaybeRetTypeAndMode,
             % "The arguments without modes are the second and the return
             % value.".
             WithoutArgNumPieces =
-                list.map(wrap_nth(add_the_prefix), WithoutModeArgNums),
+                list.map(wrap_nth(add_the_prefix), WithoutModeArgs),
             WithoutArgNumsPieces =
                 component_list_to_pieces("and", WithoutArgNumPieces),
             IdPieces = [words("The arguments without modes are the") |
@@ -1409,34 +1426,36 @@ check_type_and_mode_list_is_consistent(TypesAndModes, MaybeRetTypeAndMode,
             | IdPieces],
         Spec = simplest_spec($pred, severity_error, phase_term_to_parse_tree,
             Context, Pieces),
-        MaybeKind = error1([Spec])
+        MaybeResult = error1([Spec])
     ).
 
-:- pred classify_type_and_mode_list(int::in, list(type_and_mode)::in,
-    list(int)::out, list(int)::out) is det.
+:- pred classify_type_and_maybe_mode_list(int::in,
+    list(type_and_maybe_mode)::in,
+    assoc_list(int, type_and_mode)::out,
+    assoc_list(int, mer_type)::out) is det.
 
-classify_type_and_mode_list(_, [], [], []).
-classify_type_and_mode_list(ArgNum, [Head | Tail],
-        WithModeArgNums, WithoutModeArgNums) :-
-    classify_type_and_mode_list(ArgNum + 1, Tail,
-        WithModeArgNums0, WithoutModeArgNums0),
+classify_type_and_maybe_mode_list(_, [], [], []).
+classify_type_and_maybe_mode_list(ArgNum, [Head | Tail],
+        WithModeArgs, WithoutModeArgs) :-
+    classify_type_and_maybe_mode_list(ArgNum + 1, Tail,
+        WithModeArgs0, WithoutModeArgs0),
     (
-        Head = type_only(_),
-        WithModeArgNums = WithModeArgNums0,
-        WithoutModeArgNums = [ArgNum | WithoutModeArgNums0]
+        Head = type_only(Type),
+        WithModeArgs = WithModeArgs0,
+        WithoutModeArgs = [ArgNum - Type| WithoutModeArgs0]
     ;
-        Head = type_and_mode(_, _),
-        WithModeArgNums = [ArgNum | WithModeArgNums0],
-        WithoutModeArgNums = WithoutModeArgNums0
+        Head = type_and_mode(Type, Mode),
+        WithModeArgs = [ArgNum - type_and_mode(Type, Mode) | WithModeArgs0],
+        WithoutModeArgs = WithoutModeArgs0
     ).
 
 :- type maybe_add_the_prefix
     --->    dont_add_the_prefix
     ;       add_the_prefix.
 
-:- func wrap_nth(maybe_add_the_prefix, int) = format_piece.
+:- func wrap_nth(maybe_add_the_prefix, pair(int, _)) = format_piece.
 
-wrap_nth(MaybeAddPredix, ArgNum) = Component :-
+wrap_nth(MaybeAddPredix, ArgNum - _) = Component :-
     ( if ArgNum < 0 then
         (
             MaybeAddPredix = dont_add_the_prefix,
@@ -1508,7 +1527,7 @@ parse_mode_decl(ModuleName, VarSet, Term, IsInClass, Context, SeqNum,
     maybe1(item_or_marker)::out) is det.
 
 parse_mode_decl_base(ModuleName, VarSet, Term, IsInClass, Context, SeqNum,
-        WithInst, MaybeDet, QuantConstrAttrs, MaybeIOM) :-
+        WithInst, MaybeDetism, QuantConstrAttrs, MaybeIOM) :-
     ( if
         WithInst = no,
         Term = term.functor(term.atom("="),
@@ -1532,7 +1551,7 @@ parse_mode_decl_base(ModuleName, VarSet, Term, IsInClass, Context, SeqNum,
             ;
                 MaybeFunctorArgs = ok2(Functor, ArgTerms),
                 parse_func_mode_decl(Functor, ArgTerms, ModuleName,
-                    ReturnTypeTerm, Term, VarSet, MaybeDet, Context, SeqNum,
+                    ReturnTypeTerm, Term, VarSet, MaybeDetism, Context, SeqNum,
                     QuantConstrAttrs, MaybeIOM)
             )
         )
@@ -1554,7 +1573,7 @@ parse_mode_decl_base(ModuleName, VarSet, Term, IsInClass, Context, SeqNum,
             ;
                 MaybeFunctorArgs = ok2(Functor, ArgTerms),
                 parse_pred_mode_decl(Functor, ArgTerms, ModuleName, Term,
-                    VarSet, WithInst, MaybeDet,
+                    VarSet, WithInst, MaybeDetism,
                     Context, SeqNum, QuantConstrAttrs, MaybeIOM)
             )
         )
@@ -1566,7 +1585,7 @@ parse_mode_decl_base(ModuleName, VarSet, Term, IsInClass, Context, SeqNum,
     maybe1(item_or_marker)::out) is det.
 
 parse_pred_mode_decl(Functor, ArgTerms, ModuleName, PredModeTerm, VarSet,
-        WithInst, MaybeDet, Context, SeqNum, QuantConstrAttrs, MaybeIOM) :-
+        WithInst, MaybeDetism, Context, SeqNum, QuantConstrAttrs, MaybeIOM) :-
     ArgContextPieces = cord.from_list(
         [words("In the mode declaration of the predicate"),
         unqual_sym_name(Functor), suffix(":"), nl]),
@@ -1585,11 +1604,8 @@ parse_pred_mode_decl(Functor, ArgTerms, ModuleName, PredModeTerm, VarSet,
         varset.coerce(VarSet, InstVarSet),
         inconsistent_constrained_inst_vars_in_modes(ArgModes,
             InconsistentVars),
-        report_inconsistent_constrained_inst_vars(
-            "in predicate mode declaration", get_term_context(PredModeTerm),
-            InstVarSet, InconsistentVars, MaybeInconsistentSpec),
         (
-            MaybeInconsistentSpec = no,
+            InconsistentVars = [],
             (
                 WithInst = no,
                 MaybePredOrFunc = yes(pf_predicate)
@@ -1600,11 +1616,14 @@ parse_pred_mode_decl(Functor, ArgTerms, ModuleName, PredModeTerm, VarSet,
                 MaybePredOrFunc = no
             ),
             ItemModeDecl = item_mode_decl_info(Functor, MaybePredOrFunc,
-                ArgModes, WithInst, MaybeDet, InstVarSet, Context, SeqNum),
+                ArgModes, WithInst, MaybeDetism, InstVarSet, Context, SeqNum),
             Item = item_mode_decl(ItemModeDecl),
             MaybeIOM = ok1(iom_item(Item))
         ;
-            MaybeInconsistentSpec = yes(Spec),
+            InconsistentVars = [HeadInconsistentVar | TailInconsistentVars],
+            report_inconsistent_constrained_inst_vars(
+                "in predicate mode declaration", get_term_context(PredModeTerm),
+                InstVarSet, HeadInconsistentVar, TailInconsistentVars, Spec),
             MaybeIOM = error1([Spec])
         )
     else
@@ -1647,18 +1666,18 @@ parse_func_mode_decl(Functor, ArgTerms, ModuleName, RetModeTerm, FullTerm,
         ArgReturnModes = ArgModes ++ [RetMode],
         inconsistent_constrained_inst_vars_in_modes(ArgReturnModes,
             InconsistentVars),
-        report_inconsistent_constrained_inst_vars(
-            "in function mode declaration", get_term_context(FullTerm),
-            InstVarSet, InconsistentVars, MaybeInconsistentSpec),
         (
-            MaybeInconsistentSpec = no,
+            InconsistentVars = [],
             ItemModeDecl = item_mode_decl_info(Functor,
                 yes(pf_function), ArgReturnModes, no, MaybeDetism,
                 InstVarSet, Context, SeqNum),
             Item = item_mode_decl(ItemModeDecl),
             MaybeIOM = ok1(iom_item(Item))
         ;
-            MaybeInconsistentSpec = yes(Spec),
+            InconsistentVars = [HeadInconsistentVar | TailInconsistentVars],
+            report_inconsistent_constrained_inst_vars(
+                "in function mode declaration", get_term_context(FullTerm),
+                InstVarSet, HeadInconsistentVar, TailInconsistentVars, Spec),
             MaybeIOM = error1([Spec])
         )
     else

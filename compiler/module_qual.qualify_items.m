@@ -623,16 +623,16 @@ module_qualify_item_abstract_instance(InInt, ItemInstance0, ItemInstance,
 module_qualify_item_pred_decl(InInt, ItemPredDecl0, ItemPredDecl,
         !Info, !Specs) :-
     ItemPredDecl0 = item_pred_decl_info(SymName, PredOrFunc,
-        TypesAndModes0, MaybeWithType0, MaybeWithInst0, MaybeDetism,
+        TypesAndMaybeModes0, MaybeWithType0, MaybeWithInst0, MaybeDetism,
         Origin, TypeVarSet, InstVarSet, ExistQVars, Purity,
         Constraints0, Context, SeqNum),
-    PredFormArity = arg_list_arity(TypesAndModes0),
+    PredFormArity = types_and_maybe_modes_arity(TypesAndMaybeModes0),
     PFSymNameArity = pf_sym_name_arity(PredOrFunc, SymName, PredFormArity),
     PredFormArity = pred_form_arity(PredFormArityInt),
     ErrorContext = mqec_pred_or_func(Context, PredOrFunc,
         mq_id(SymName, PredFormArityInt)),
-    qualify_types_and_modes(InInt, ErrorContext, TypesAndModes0, TypesAndModes,
-        !Info, !Specs),
+    qualify_types_and_maybe_modes(InInt, ErrorContext,
+        TypesAndMaybeModes0, TypesAndMaybeModes, !Info, !Specs),
     ConstraintErrorContext = mqcec_pred_decl(Context, PFSymNameArity),
     qualify_prog_constraints(InInt, ConstraintErrorContext,
         Constraints0, Constraints, !Info, !Specs),
@@ -656,7 +656,7 @@ module_qualify_item_pred_decl(InInt, ItemPredDecl0, ItemPredDecl,
         MaybeWithInst = no
     ),
     ItemPredDecl = item_pred_decl_info(SymName, PredOrFunc,
-        TypesAndModes, MaybeWithType, MaybeWithInst, MaybeDetism,
+        TypesAndMaybeModes, MaybeWithType, MaybeWithInst, MaybeDetism,
         Origin, TypeVarSet, InstVarSet, ExistQVars, Purity,
         Constraints, Context, SeqNum).
 
@@ -1331,6 +1331,40 @@ qualify_mode(InInt, ErrorContext, Mode0, Mode, !Info, !Specs) :-
 % Module qualify the components of predicate declarations.
 %
 
+:- pred qualify_types_and_maybe_modes(mq_in_interface::in,
+    mq_error_context::in,
+    types_and_maybe_modes::in, types_and_maybe_modes::out,
+    mq_info::in, mq_info::out,
+    list(error_spec)::in, list(error_spec)::out) is det.
+
+qualify_types_and_maybe_modes(InInt, ErrorContext,
+        TypesAndMaybeModes0, TypesAndMaybeModes, !Info, !Specs) :-
+    (
+        TypesAndMaybeModes0 = no_types_arity_zero,
+        TypesAndMaybeModes = no_types_arity_zero
+    ;
+        TypesAndMaybeModes0 = types_only(Types0),
+        qualify_types(InInt, ErrorContext, Types0, Types, !Info, !Specs),
+        TypesAndMaybeModes = types_only(Types)
+    ;
+        TypesAndMaybeModes0 = types_and_modes(TypesAndModes0),
+        qualify_types_and_modes(InInt, ErrorContext,
+            TypesAndModes0, TypesAndModes, !Info, !Specs),
+        TypesAndMaybeModes = types_and_modes(TypesAndModes)
+    ).
+
+    % Qualify a list of types.
+    %
+:- pred qualify_types(mq_in_interface::in, mq_error_context::in,
+    list(mer_type)::in, list(mer_type)::out, mq_info::in, mq_info::out,
+    list(error_spec)::in, list(error_spec)::out) is det.
+
+qualify_types(_InInt, _ErrorContext, [], [], !Info, !Specs).
+qualify_types(InInt, ErrorContext, [Type0 | Types0], [Type | Types],
+        !Info, !Specs) :-
+    qualify_type(InInt, ErrorContext, Type0, Type, !Info, !Specs),
+    qualify_types(InInt, ErrorContext, Types0, Types, !Info, !Specs).
+
     % Qualify a list of items of the form Type::Mode, as in a
     % predicate declaration.
     %
@@ -1354,16 +1388,10 @@ qualify_types_and_modes(InInt, ErrorContext,
 
 qualify_type_and_mode(InInt, ErrorContext, TypeAndMode0, TypeAndMode,
         !Info, !Specs) :-
-    (
-        TypeAndMode0 = type_only(Type0),
-        qualify_type(InInt, ErrorContext, Type0, Type, !Info, !Specs),
-        TypeAndMode = type_only(Type)
-    ;
-        TypeAndMode0 = type_and_mode(Type0, Mode0),
-        qualify_type(InInt, ErrorContext, Type0, Type, !Info, !Specs),
-        qualify_mode(InInt, ErrorContext, Mode0, Mode, !Info, !Specs),
-        TypeAndMode = type_and_mode(Type, Mode)
-    ).
+    TypeAndMode0 = type_and_mode(Type0, Mode0),
+    qualify_type(InInt, ErrorContext, Type0, Type, !Info, !Specs),
+    qualify_mode(InInt, ErrorContext, Mode0, Mode, !Info, !Specs),
+    TypeAndMode = type_and_mode(Type, Mode).
 
 %---------------------------------------------------------------------------%
 %
@@ -1454,12 +1482,12 @@ qualify_class_decl(InInt, ErrorContext, Decl0, Decl, !Info, !Specs) :-
     (
         Decl0 = class_decl_pred_or_func(PredOrFuncInfo0),
         PredOrFuncInfo0 = class_pred_or_func_info(Name, PredOrFunc,
-            TypesAndModes0, MaybeWithType0, MaybeWithInst0, MaybeDetism,
+            TypesAndMaybeModes0, MaybeWithType0, MaybeWithInst0, MaybeDetism,
             TypeVarset, InstVarset, ExistQVars,
             Purity, Constraints0, Context),
         % XXX We could pass a more specific error context.
-        qualify_types_and_modes(InInt, ErrorContext,
-            TypesAndModes0, TypesAndModes, !Info, !Specs),
+        qualify_types_and_maybe_modes(InInt, ErrorContext,
+            TypesAndMaybeModes0, TypesAndMaybeModes, !Info, !Specs),
         ConstraintErrorContext = mqcec_class_method(Context, PredOrFunc,
             unqualify_name(Name)),
         qualify_prog_constraints(InInt, ConstraintErrorContext,
@@ -1485,7 +1513,7 @@ qualify_class_decl(InInt, ErrorContext, Decl0, Decl, !Info, !Specs) :-
             MaybeWithInst = no
         ),
         PredOrFuncInfo = class_pred_or_func_info(Name, PredOrFunc,
-            TypesAndModes, MaybeWithType, MaybeWithInst, MaybeDetism,
+            TypesAndMaybeModes, MaybeWithType, MaybeWithInst, MaybeDetism,
             TypeVarset, InstVarset, ExistQVars,
             Purity, Constraints, Context),
         Decl = class_decl_pred_or_func(PredOrFuncInfo)

@@ -1111,9 +1111,9 @@ make_aux_pred_decl(ModuleName, MutableName, PredSymName, ArgTypesAndModes,
     ExistQVars = [],
     Constraints = constraints([], []),
     SeqNum = item_no_seq_num,
-    PredDecl = item_pred_decl_info(PredSymName, pf_predicate, ArgTypesAndModes,
-        WithType, WithMode, yes(detism_det), MaybeAttrs,
-        TypeVarSet, InstVarSet, ExistQVars, Purity, Constraints,
+    PredDecl = item_pred_decl_info(PredSymName, pf_predicate,
+        types_and_modes(ArgTypesAndModes), WithType, WithMode, yes(detism_det),
+        MaybeAttrs, TypeVarSet, InstVarSet, ExistQVars, Purity, Constraints,
         Context, SeqNum).
 
 %---------------------------------------------------------------------------%

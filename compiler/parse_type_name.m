@@ -76,16 +76,20 @@
 
 :- type arg_context_func == (func(int) = cord(format_piece)).
 
-:- pred parse_type_and_modes(maybe_constrain_inst_vars::in,
+:- type type_and_maybe_mode
+    --->    type_only(mer_type)
+    ;       type_and_mode(mer_type, mer_mode).
+
+:- pred parse_types_and_maybe_modes(maybe_constrain_inst_vars::in,
     maybe_require_tm_mode::in, why_no_ho_inst_info::in,
     varset::in, arg_context_func::in,
-    list(term)::in, int::in, list(type_and_mode)::out,
+    list(term)::in, int::in, list(type_and_maybe_mode)::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-:- pred parse_type_and_mode(maybe_constrain_inst_vars::in,
+:- pred parse_type_and_maybe_mode(maybe_constrain_inst_vars::in,
     maybe_require_tm_mode::in, why_no_ho_inst_info::in,
     varset::in, cord(format_piece)::in,
-    term::in, maybe1(type_and_mode)::out) is det.
+    term::in, maybe1(type_and_maybe_mode)::out) is det.
 
 %---------------------%
 
@@ -373,8 +377,9 @@ parse_compound_type(AllowHOInstInfo, Term, VarSet, ContextPieces,
             Pieces = cord.list(ContextPieces) ++ [lower_case_next_if_not_first,
                 words("Error: the purity marker"), quote(PurityName),
                 words("should be followed by a higher order type,"),
-                words("which should be of one of the following forms:")] ++
-                FormPieces ++ [suffix("."), nl],
+                words("which should be of one of the following forms:"),
+                nl_indent_delta(1)] ++
+                FormPieces ++ [suffix("."), nl_indent_delta(-1)],
             Spec = simplest_spec($pred, severity_error,
                 phase_term_to_parse_tree, get_term_context(SubTerm), Pieces),
             Result = error1([Spec])
@@ -392,34 +397,34 @@ parse_ho_type_and_inst(VarSet, ContextPieces, BeforeIsTerm, AfterIsTerm,
         FuncTerm = term.functor(term.atom("func"), ArgTerms, _)
     then
         ArgContextFunc = arg_context_pieces(ContextPieces, pf_function),
-        parse_type_and_modes(dont_constrain_inst_vars, require_tm_mode,
+        parse_types_and_maybe_modes(dont_constrain_inst_vars, require_tm_mode,
             wnhii_func_arg, VarSet, ArgContextFunc, ArgTerms, 1,
-            ArgTypeAndModes, [], ArgTMSpecs),
+            ArgTypeAndMaybeModes, [], ArgTMSpecs),
         RetContextPieces = ContextPieces ++ cord.from_list([
             words("in the return value of higher-order function type:"),
             nl]),
-        parse_type_and_mode(dont_constrain_inst_vars, require_tm_mode,
+        parse_type_and_maybe_mode(dont_constrain_inst_vars, require_tm_mode,
             wnhii_func_return_arg, VarSet, RetContextPieces,
-            RetTerm, MaybeRetTypeAndMode),
+            RetTerm, MaybeRetTypeAndMaybeMode),
         parse_ho_type_and_inst_2(VarSet, ContextPieces, Purity,
-            ArgTypeAndModes, ArgTMSpecs, yes(MaybeRetTypeAndMode),
+            ArgTypeAndMaybeModes, ArgTMSpecs, yes(MaybeRetTypeAndMaybeMode),
             MaybeDetism, MaybeType)
     else if
         BeforeIsTerm = term.functor(term.atom("pred"), ArgTerms, _)
     then
         ArgContextFunc = arg_context_pieces(ContextPieces, pf_predicate),
-        parse_type_and_modes(dont_constrain_inst_vars, require_tm_mode,
+        parse_types_and_maybe_modes(dont_constrain_inst_vars, require_tm_mode,
             wnhii_pred_arg, VarSet, ArgContextFunc, ArgTerms, 1,
-            ArgTypeAndModes, [], ArgTMSpecs),
+            ArgTypeAndMaybeModes, [], ArgTMSpecs),
         parse_ho_type_and_inst_2(VarSet, ContextPieces, Purity,
-            ArgTypeAndModes, ArgTMSpecs, no, MaybeDetism, MaybeType)
+            ArgTypeAndMaybeModes, ArgTMSpecs, no, MaybeDetism, MaybeType)
     else
         BeforeIsTermStr = describe_error_term(VarSet, BeforeIsTerm),
         HOPieces = [words("Error: a higher order type"),
-            words("must have one of the forms"), nl,
+            words("must have one of the forms"), nl_indent_delta(1),
             quote("pred(<arguments>) is det"), nl,
             quote("func(<arguments>) = <return_argument> is det"),
-            suffix(","), nl,
+            suffix(","), nl_indent_delta(-1),
             words("but"), quote(BeforeIsTermStr), words("is neither."), nl],
         HOSpec = simplest_spec($pred, severity_error, phase_term_to_parse_tree,
             get_term_context(AfterIsTerm), HOPieces),
@@ -427,8 +432,8 @@ parse_ho_type_and_inst(VarSet, ContextPieces, BeforeIsTerm, AfterIsTerm,
     ).
 
 :- pred parse_ho_type_and_inst_2(varset::in, cord(format_piece)::in,
-    purity::in, list(type_and_mode)::in, list(error_spec)::in,
-    maybe(maybe1(type_and_mode))::in, maybe1(determinism)::in,
+    purity::in, list(type_and_maybe_mode)::in, list(error_spec)::in,
+    maybe(maybe1(type_and_maybe_mode))::in, maybe1(determinism)::in,
     maybe1(mer_type)::out) is det.
 
 parse_ho_type_and_inst_2(_VarSet, _ContextPieces, Purity, ArgTypeAndModes,
@@ -475,7 +480,7 @@ parse_ho_type_and_inst_2(_VarSet, _ContextPieces, Purity, ArgTypeAndModes,
         MaybeType = error1(Specs)
     ).
 
-:- pred project_tm_type_and_mode(type_and_mode::in,
+:- pred project_tm_type_and_mode(type_and_maybe_mode::in,
     mer_type::out, mer_mode::out) is det.
 
 project_tm_type_and_mode(type_and_mode(Type, Mode), Type, Mode).
@@ -513,7 +518,7 @@ parse_type_no_mode(AllowHOInstInfo, Varset, ContextPieces, Term, MaybeType) :-
     ( if Term = term.functor(term.atom("::"), [_, _], _) then
         ErrorPieces = [lower_case_next_if_not_first,
             words("Error: unexpected"), quote("::mode"),
-                words("suffix."), nl],
+            words("suffix."), nl],
         Pieces = cord.list(ContextPieces ++ cord.from_list(ErrorPieces)),
         Spec = simplest_spec($pred, severity_error, phase_term_to_parse_tree,
             get_term_context(Term), Pieces),
@@ -564,23 +569,25 @@ parse_types_acc(AllowHOInstInfo, VarSet, ContextPieces, [Term | Terms],
 
 %---------------------------------------------------------------------------%
 
-parse_type_and_modes(_, _, _, _, _, [], _, [], !Specs).
-parse_type_and_modes(MaybeInstConstraints, MaybeRequireMode, Why, VarSet,
-        ArgContextFunc, [Term | Terms], ArgNum, TypesAndModes, !Specs) :-
-    parse_type_and_modes(MaybeInstConstraints, MaybeRequireMode, Why,
-        VarSet, ArgContextFunc, Terms, ArgNum + 1, TypesAndModesTail, !Specs),
-    parse_type_and_mode(MaybeInstConstraints, MaybeRequireMode, Why,
-        VarSet, ArgContextFunc(ArgNum), Term, MaybeTypeAndMode),
+parse_types_and_maybe_modes(_, _, _, _, _, [], _, [], !Specs).
+parse_types_and_maybe_modes(MaybeInstConstraints, MaybeRequireMode, Why,
+        VarSet, ArgContextFunc, [Term | Terms], ArgNum, TypesAndMaybeModes,
+        !Specs) :-
+    parse_types_and_maybe_modes(MaybeInstConstraints, MaybeRequireMode, Why,
+        VarSet, ArgContextFunc, Terms, ArgNum + 1, TypesAndMaybeModesTail,
+        !Specs),
+    parse_type_and_maybe_mode(MaybeInstConstraints, MaybeRequireMode, Why,
+        VarSet, ArgContextFunc(ArgNum), Term, MaybeTypeAndMaybeMode),
     (
-        MaybeTypeAndMode = ok1(TypeAndMode),
-        TypesAndModes = [TypeAndMode | TypesAndModesTail]
+        MaybeTypeAndMaybeMode = ok1(TypeAndMaybeMode),
+        TypesAndMaybeModes = [TypeAndMaybeMode | TypesAndMaybeModesTail]
     ;
-        MaybeTypeAndMode = error1(TMSpecs),
-        TypesAndModes = TypesAndModesTail,
+        MaybeTypeAndMaybeMode = error1(TMSpecs),
+        TypesAndMaybeModes = TypesAndMaybeModesTail,
         !:Specs = TMSpecs ++ !.Specs
     ).
 
-parse_type_and_mode(MaybeInstConstraints, MaybeRequireMode, Why, VarSet,
+parse_type_and_maybe_mode(MaybeInstConstraints, MaybeRequireMode, Why, VarSet,
         ContextPieces, Term, MaybeTypeAndMode) :-
     ( if
         Term = term.functor(term.atom("::"), [TypeTerm, ModeTerm], _Context)

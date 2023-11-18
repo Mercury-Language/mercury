@@ -134,7 +134,7 @@ classify_item_pred_decl(ItemPredDeclInfo, !PredRelatedMap) :-
         MaybeWithType = no,
         MaybeWithInst = no
     then
-        list.length(Args, Arity),
+        pred_form_arity(Arity) = types_and_maybe_modes_arity(Args),
         ArityPf = arity_pf(Arity, PorF),
         ( if map.search(!.PredRelatedMap, SymName, PredRelated0) then
             PredRelated0 =

@@ -112,9 +112,9 @@ get_solver_type_aux_pred_decls(SolverAuxPredInfo, PredDecls) :-
     %           (rt::out) is det' declaration.
     %
     ToGndRepnSymName = solver_to_ground_repn_symname(TypeCtor),
-    ToGndRepnArgTypesModes =
+    ToGndRepnArgTypesModes = types_and_modes(
         [type_and_mode(SolverType, in_mode),
-         type_and_mode(RepnType,   OutGndMode)],
+         type_and_mode(RepnType,   OutGndMode)]),
     ToGndAttrs = item_compiler_attributes(
         compiler_origin_solver_repn(TypeCtor, solver_type_to_ground_pred)),
     ToGndMaybeAttrs = item_origin_compiler(ToGndAttrs),
@@ -128,9 +128,9 @@ get_solver_type_aux_pred_decls(SolverAuxPredInfo, PredDecls) :-
     %           (rt::out(any)) is det' declaration.
     %
     ToAnyRepnSymName = solver_to_any_repn_symname(TypeCtor),
-    ToAnyRepnArgTypesModes =
+    ToAnyRepnArgTypesModes = types_and_modes(
         [type_and_mode(SolverType, in_any_mode),
-         type_and_mode(RepnType,   OutAnyMode)],
+         type_and_mode(RepnType,   OutAnyMode)]),
     ToAnyAttrs = item_compiler_attributes(
         compiler_origin_solver_repn(TypeCtor, solver_type_to_any_pred)),
     ToAnyMaybeAttrs = item_origin_compiler(ToAnyAttrs),
@@ -144,9 +144,9 @@ get_solver_type_aux_pred_decls(SolverAuxPredInfo, PredDecls) :-
     %           (st::out) is det' declaration.
     %
     FromGndRepnSymName = repn_to_ground_solver_symname(TypeCtor),
-    FromGndRepnArgTypesModes =
+    FromGndRepnArgTypesModes = types_and_modes(
         [type_and_mode(RepnType,   InGndMode),
-         type_and_mode(SolverType, out_mode)],
+         type_and_mode(SolverType, out_mode)]),
     FromGndAttrs = item_compiler_attributes(
         compiler_origin_solver_repn(TypeCtor, solver_type_from_ground_pred)),
     FromGndMaybeAttrs = item_origin_compiler(FromGndAttrs),
@@ -160,9 +160,9 @@ get_solver_type_aux_pred_decls(SolverAuxPredInfo, PredDecls) :-
     %           (st::out(any)) is det' declaration.
     %
     FromAnyRepnSymName = repn_to_any_solver_symname(TypeCtor),
-    FromAnyRepnArgTypesModes =
+    FromAnyRepnArgTypesModes = types_and_modes(
         [type_and_mode(RepnType,   InAnyMode),
-         type_and_mode(SolverType, out_any_mode)],
+         type_and_mode(SolverType, out_any_mode)]),
     FromAnyAttrs = item_compiler_attributes(
         compiler_origin_solver_repn(TypeCtor, solver_type_from_any_pred)),
     FromAnyOrigin = item_origin_compiler(FromAnyAttrs),

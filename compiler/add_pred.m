@@ -143,7 +143,7 @@
 module_add_pred_decl(ItemMercuryStatus, PredStatus, NeedQual, ItemPredDecl,
         MaybePredMaybeProcId, !ModuleInfo, !Specs) :-
     ItemPredDecl = item_pred_decl_info(PredSymName, PredOrFunc,
-        ArgTypesAndModes, WithType, WithInst, MaybeDetism,
+        ArgTypesAndMaybeModes, WithType, WithInst, MaybeDetism,
         Origin, TypeVarSet, InstVarSet, ExistQVars, Purity, Constraints,
         Context, SeqNum),
     (
@@ -171,37 +171,71 @@ module_add_pred_decl(ItemMercuryStatus, PredStatus, NeedQual, ItemPredDecl,
         !:Specs = [Spec | !.Specs],
         MaybePredMaybeProcId = no
     else
-        split_types_and_modes(ArgTypesAndModes, ArgTypes, MaybeArgModes0),
-        list.length(ArgTypes, PredFormArityInt),
-        ( if
+        PredFormArity = types_and_maybe_modes_arity(ArgTypesAndMaybeModes),
+        user_arity_pred_form_arity(PredOrFunc, UserArity, PredFormArity),
+        (
             PredOrFunc = pf_predicate,
-            MaybeArgModes0 = yes(ArgModes0),
-            % If a predicate declaration has no arguments and no determinism,
-            % then it has none of the components of a mode declaration.
-            ArgModes0 = [],
-            MaybeDetism = no
-        then
-            MaybeArgModes = no
-        else if
-            % A function declaration that contains no argument modes but does
-            % specify a determinism is implicitly specifying the default mode.
+            (
+                ArgTypesAndMaybeModes = no_types_arity_zero,
+                ArgTypes = [],
+                (
+                    % If a predicate declaration has no arguments and no
+                    % determinism, then it has none of the components of
+                    % a mode declaration.
+                    MaybeDetism = no,
+                    MaybeArgModes = no
+                ;
+                    % If a predicate declaration has no arguments but does
+                    % declare a determinism, then it has all of the components
+                    % of a mode declaration for an arity-zero predicate.
+                    %
+                    % parse_item.m is supposed to set ArgTypesAndMaybeModes
+                    % to types_and_modes([]) instead of types_only([])
+                    % in these cases, but just in case we get a pred decl
+                    % that is constructed elsewhere ...
+                    MaybeDetism = yes(_),
+                    MaybeArgModes = yes([])
+                )
+            ;
+                ArgTypesAndMaybeModes = types_only(ArgTypes),
+                MaybeArgModes = no
+            ;
+                ArgTypesAndMaybeModes = types_and_modes(ArgTypesAndModes),
+                split_types_and_modes(ArgTypesAndModes, ArgTypes, ArgModes0),
+                MaybeArgModes = yes(ArgModes0)
+            )
+        ;
             PredOrFunc = pf_function,
-            MaybeArgModes0 = no,
-            MaybeDetism = yes(_)
-        then
-            adjust_func_arity(pf_function, FuncArityInt, PredFormArityInt),
-            in_mode(InMode),
-            list.duplicate(FuncArityInt, InMode, InModes),
-            out_mode(OutMode),
-            MaybeArgModes = yes(InModes ++ [OutMode])
-        else
-            MaybeArgModes = MaybeArgModes0
+            (
+                ArgTypesAndMaybeModes = no_types_arity_zero,
+                % There should be at least one type, the type of the
+                % return value.
+                unexpected($pred, "no_types_arity_zero")
+            ;
+                ArgTypesAndMaybeModes = types_only(ArgTypes),
+                % A function declaration that contains no argument modes
+                % but does specify a determinism is implicitly specifying
+                % the default mode.
+                (
+                    MaybeDetism = yes(_),
+                    UserArity = user_arity(UserArityInt),
+                    in_mode(InMode),
+                    list.duplicate(UserArityInt, InMode, InModes),
+                    out_mode(OutMode),
+                    MaybeArgModes = yes(InModes ++ [OutMode])
+                ;
+                    MaybeDetism = no,
+                    MaybeArgModes = no
+                )
+            ;
+                ArgTypesAndMaybeModes = types_and_modes(ArgTypesAndModes),
+                split_types_and_modes(ArgTypesAndModes, ArgTypes, ArgModes0),
+                MaybeArgModes = yes(ArgModes0)
+            )
         ),
         ( MaybeArgModes = no,     PredmodeDecl = no_predmode_decl
         ; MaybeArgModes = yes(_), PredmodeDecl = predmode_decl
         ),
-        user_arity_pred_form_arity(PredOrFunc, UserArity,
-            pred_form_arity(PredFormArityInt)),
         record_pred_origin(PredOrFunc, PredSymName, UserArity, Origin,
             Context, PredOrigin, Markers),
         add_new_pred(PredOrigin, Context, SeqNum, PredStatus, NeedQual,
@@ -1052,13 +1086,13 @@ check_preds_if_field_access_function(ModuleInfo, [SecList | SecLists],
 
 check_pred_if_field_access_function(ModuleInfo, PredStatus, ItemPredDecl,
         !Specs) :-
-    ItemPredDecl = item_pred_decl_info(SymName, PredOrFunc, TypesAndModes,
+    ItemPredDecl = item_pred_decl_info(SymName, PredOrFunc, TypesAndMaybeModes,
         _, _, _, _, _, _, _, _, _, Context, _SeqNum),
     (
         PredOrFunc = pf_predicate
     ;
         PredOrFunc = pf_function,
-        PredFormArity = arg_list_arity(TypesAndModes),
+        PredFormArity = types_and_maybe_modes_arity(TypesAndMaybeModes),
         user_arity_pred_form_arity(pf_function, UserArity, PredFormArity),
         maybe_check_field_access_function(ModuleInfo, SymName, UserArity,
             PredStatus, Context, !Specs)

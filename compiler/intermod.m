@@ -653,7 +653,7 @@ intermod_write_pred_decl(MercInfo, Stream, ModuleInfo, OrderPredInfo,
     pred_info_get_class_context(PredInfo, ClassContext),
     pred_info_get_context(PredInfo, Context),
     PredSymName = qualified(ModuleName, PredName),
-    TypesAndNoModes = list.map((func(T) = type_only(T)), ArgTypes),
+    TypesAndMaybeModes = types_only(ArgTypes),
     MaybeWithType = maybe.no,
     MaybeWithInst = maybe.no,
     MaybeDetism = maybe.no,     % We are NOT declaring the mode.
@@ -663,7 +663,7 @@ intermod_write_pred_decl(MercInfo, Stream, ModuleInfo, OrderPredInfo,
     % by record_pred_origin in add_pred.m.
     Origin = item_origin_user,
     PredDecl = item_pred_decl_info(PredSymName, PredOrFunc,
-        TypesAndNoModes, MaybeWithType, MaybeWithInst, MaybeDetism, Origin,
+        TypesAndMaybeModes, MaybeWithType, MaybeWithInst, MaybeDetism, Origin,
         TVarSet, InstVarSet, ExistQVars, Purity, ClassContext,
         Context, item_no_seq_num),
     % NOTE: The names of type variables in type_spec pragmas must match
