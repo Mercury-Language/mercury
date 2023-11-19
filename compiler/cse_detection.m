@@ -832,72 +832,65 @@ common_deconstruct_cases_2([Case0 | Cases0], Var, !CseState, !CseInfo,
             )
     ;       multiple_candidates.
 
-:- pred find_bind_var_for_cse_in_deconstruct(prog_var::in, hlds_goal::in,
+:- pred find_bind_var_for_cse_in_deconstruct(prog_var::in,
+    hlds_goal_expr::in(goal_expr_deconstruct), hlds_goal_info::in,
     list(hlds_goal)::out, cse_state::in, cse_state::out,
     cse_info::in, cse_info::out) is det.
 
-find_bind_var_for_cse_in_deconstruct(Var, Goal0, Goals,
+find_bind_var_for_cse_in_deconstruct(Var, GoalExpr0, GoalInfo0, Goals,
         !CseState, !CseInfo) :-
     (
         !.CseState = before_candidate,
-        construct_common_unify(Var, Goal0, !CseInfo, ConsId, OldNewVars,
-            HoistedGoal, Goals),
+        construct_common_unify(Var, GoalExpr0, GoalInfo0,
+            !CseInfo, ConsId, OldNewVars, HoistedGoal, Goals),
         !:CseState = have_candidate(HoistedGoal, ConsId, OldNewVars, [])
     ;
         !.CseState = have_candidate(HoistedGoal, ConsId,
             FirstOldNewVars, LaterOldNewVars0),
-        Goal0 = hlds_goal(_, GoalInfo),
-        Context = goal_info_get_context(GoalInfo),
         ( if
-            find_similar_deconstruct(HoistedGoal,
-                Goal0, Context, OldNewVars, Goals0)
+            find_similar_deconstruct(HoistedGoal, GoalExpr0, GoalInfo0,
+                OldNewVars, Goals0)
         then
             Goals = Goals0,
             LaterOldNewVars = [OldNewVars | LaterOldNewVars0],
             !:CseState = have_candidate(HoistedGoal, ConsId,
                 FirstOldNewVars, LaterOldNewVars)
         else
-            Goals = [Goal0],
+            Goals = [hlds_goal(GoalExpr0, GoalInfo0)],
             !:CseState = multiple_candidates
         )
     ;
         !.CseState = multiple_candidates,
-        Goals = [Goal0],
+        Goals = [hlds_goal(GoalExpr0, GoalInfo0)],
         !:CseState = multiple_candidates
     ).
 
-:- pred construct_common_unify(prog_var::in, hlds_goal::in,
+:- pred construct_common_unify(prog_var::in,
+    hlds_goal_expr::in(goal_expr_deconstruct), hlds_goal_info::in,
     cse_info::in, cse_info::out, cons_id::out, assoc_list(prog_var)::out,
     hlds_goal::out, list(hlds_goal)::out) is det.
 
-construct_common_unify(Var, Goal0, !CseInfo, ConsId, OldNewVars, HoistedGoal,
-        ReplacementGoals) :-
-    Goal0 = hlds_goal(GoalExpr0, GoalInfo0),
-    ( if
-        GoalExpr0 = unify(_, RHS, Umode, Unif0, Ucontext),
-        Unif0 = deconstruct(_, ConsId0, ArgVars, Submodes, CanFail, CanCGC)
-    then
-        ConsId = ConsId0,
-        Unif = deconstruct(Var, ConsId, ArgVars, Submodes, CanFail, CanCGC),
-        (
-            RHS = rhs_functor(_, _, _),
-            GoalExpr1 = unify(Var, RHS, Umode, Unif, Ucontext)
-        ;
-            ( RHS = rhs_var(_)
-            ; RHS = rhs_lambda_goal(_, _, _, _, _, _, _, _)
-            ),
-            unexpected($pred, "non-functor unify")
+construct_common_unify(Var, GoalExpr0, GoalInfo0, !CseInfo,
+        ConsId, OldNewVars, HoistedGoal, ReplacementGoals) :-
+    GoalExpr0 = unify(_, RHS, UnifyMode, Unification0, UnifyContext),
+    Unification0 = deconstruct(_, ConsId, ArgVars, Submodes, CanFail, CanCGC),
+    Unification = deconstruct(Var, ConsId, ArgVars, Submodes, CanFail, CanCGC),
+    (
+        RHS = rhs_functor(_, _, _),
+        GoalExpr1 = unify(Var, RHS, UnifyMode, Unification, UnifyContext)
+    ;
+        ( RHS = rhs_var(_)
+        ; RHS = rhs_lambda_goal(_, _, _, _, _, _, _, _)
         ),
-        goal_info_add_feature(feature_lifted_by_cse, GoalInfo0, GoalInfo1),
-        Context = goal_info_get_context(GoalInfo1),
-        create_new_arg_vars(ArgVars, Context, Ucontext, !CseInfo,
-            OldNewVars, ReplacementGoals),
-        map.from_assoc_list(OldNewVars, Subn),
-        rename_some_vars_in_goal(Subn, hlds_goal(GoalExpr1, GoalInfo1),
-            HoistedGoal)
-    else
-        unexpected($pred, "non-unify goal")
-    ).
+        unexpected($pred, "non-functor unify")
+    ),
+    goal_info_add_feature(feature_lifted_by_cse, GoalInfo0, GoalInfo1),
+    Context = goal_info_get_context(GoalInfo1),
+    create_new_arg_vars(ArgVars, Context, UnifyContext, !CseInfo,
+        OldNewVars, ReplacementGoals),
+    map.from_assoc_list(OldNewVars, Subn),
+    rename_some_vars_in_goal(Subn, hlds_goal(GoalExpr1, GoalInfo1),
+        HoistedGoal).
 
 :- pred create_new_arg_vars(list(prog_var)::in, prog_context::in,
     unify_context::in, cse_info::in, cse_info::out,
@@ -945,7 +938,7 @@ create_new_arg_var(OldArgVar, Context, UnifyContext, !CseInfo, !OldNewVars,
     %   ).
     %
     % When printing the variables live at some point in the if-then-else,
-    % programmers shouldn't be surprised by the debugger telling them
+    % we shouldn't surprise programmers by causing the debugger to tell them
     % about a live variable named "S" or "Ss", when the names of those fields
     % at that point in the code are actually "A" and "As".
 
@@ -976,25 +969,26 @@ create_new_arg_var(OldArgVar, Context, UnifyContext, !CseInfo, !OldNewVars,
 
 %---------------------------------------------------------------------------%
 
-:- pred find_similar_deconstruct(hlds_goal::in, hlds_goal::in,
-    prog_context::in, assoc_list(prog_var)::out, list(hlds_goal)::out)
-    is semidet.
+:- pred find_similar_deconstruct(hlds_goal::in,
+    hlds_goal_expr::in(goal_expr_deconstruct), hlds_goal_info::in,
+    assoc_list(prog_var)::out, list(hlds_goal)::out) is semidet.
 
-find_similar_deconstruct(HoistedUnifyGoal, OldUnifyGoal, Context,
+find_similar_deconstruct(HoistedUnifyGoal, OldUnifyGoalExpr, OldUnifyGoalInfo,
         OldHoistedVars, Replacements) :-
     ( if
         HoistedUnifyGoal = hlds_goal(unify(_, _, _, HoistedUnifyInfo, OC), _),
         HoistedUnifyInfo = deconstruct(_, HoistedFunctor,
-            HoistedVars, _, _, _),
-        OldUnifyGoal = hlds_goal(unify(_, _, _, OldUnifyInfo, _NC), _),
-        OldUnifyInfo = deconstruct(_, OldFunctor, OldVars, _, _, _)
+            HoistedVars, _, _, _)
     then
+        OldUnifyGoalExpr = unify(_, _, _, OldUnification, _NC),
+        OldUnification = deconstruct(_, OldFunctor, OldVars, _, _, _),
         HoistedFunctor = OldFunctor,
         list.length(HoistedVars, HoistedVarsCount),
         list.length(OldVars, OldVarsCount),
         HoistedVarsCount = OldVarsCount,
         assoc_list.from_corresponding_lists(OldVars, HoistedVars,
             OldHoistedVars),
+        Context = goal_info_get_context(OldUnifyGoalInfo),
         pair_subterms(OldHoistedVars, Context, OC, Replacements)
     else
         unexpected($pred, "non-deconstruct unify")

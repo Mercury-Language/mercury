@@ -47,9 +47,15 @@
     --->    did_find_deconstruct
     ;       did_not_find_deconstruct.
 
+:- inst goal_expr_deconstruct for hlds_goal_expr/0
+    --->    unify(ground, ground, ground, unification_deconstruct, ground).
+
 :- type process_unify(Result, Info) ==
-    pred(prog_var, hlds_goal, list(hlds_goal), Result, Result, Info, Info).
-:- inst process_unify == (pred(in, in, out, in, out, in, out) is det).
+    pred(prog_var, hlds_goal_expr, hlds_goal_info, list(hlds_goal),
+        Result, Result, Info, Info).
+:- inst process_unify ==
+    (pred(in, in(goal_expr_deconstruct), in, out,
+        in, out, in, out) is det).
 
     % find_bind_var(Var, ProcessUnify, Goal0, Goal, !Result, !Info,
     %   FoundDeconstruct):
@@ -808,11 +814,10 @@ add_multi_entry_for_cons_id(Arm, ConsId, CasesTable0, CasesTable) :-
             % symbol and there are at least two cases, then follow the
             % programmer's lead. The programmer may prefer an incomplete
             % switch on the specified variable to a complete switch on
-            % on another variable. An example from the compiler: when
-            % handling special options in options.m, we would prefer
-            % the option handler to switch on the option, not on the
-            % kind of data (none, bool, int, string, maybe_string)
-            % given to it.
+            % another variable. An example from the compiler: when handling
+            % special options in options.m, we would prefer the option handler
+            % to switch on the option, not on the kind of data (none, bool,
+            % int, string, maybe_string) given to it.
 
 :- pred detect_switches_in_disj(hlds_goal_info::in, list(hlds_goal)::in,
     instmap::in, maybe(prog_var)::in, hlds_goal_expr::out,
@@ -1258,38 +1263,33 @@ partition_disj_trial([Disjunct0 | Disjuncts0], Var, !Left, !CasesTable) :-
     ),
     partition_disj_trial(Disjuncts0, Var, !Left, !CasesTable).
 
-:- pred find_bind_var_for_switch_in_deconstruct(prog_var::in, hlds_goal::in,
+:- pred find_bind_var_for_switch_in_deconstruct(prog_var::in,
+    hlds_goal_expr::in(goal_expr_deconstruct), hlds_goal_info::in,
     list(hlds_goal)::out, maybe(cons_id)::in, maybe(cons_id)::out,
     unit::in, unit::out) is det.
 
-find_bind_var_for_switch_in_deconstruct(SwitchVar, Goal0, Goals,
+find_bind_var_for_switch_in_deconstruct(SwitchVar, GoalExpr0, GoalInfo0, Goals,
         _Result0, Result, _, unit) :-
+    GoalExpr0 = unify(_, _, _, Unification0, _),
+    Unification0 = deconstruct(UnifyVar, Functor, ArgVars, _, _, _),
+    Result = yes(Functor),
     ( if
-        Goal0 = hlds_goal(GoalExpr0, GoalInfo),
-        GoalExpr0 = unify(_, _, _, Unification0, _),
-        Unification0 = deconstruct(UnifyVar, Functor, ArgVars, _, _, _)
+        ArgVars = [],
+        SwitchVar = UnifyVar
     then
-        Result = yes(Functor),
-        ( if
-            ArgVars = [],
-            SwitchVar = UnifyVar
-        then
-            % The test will get carried out in the switch, there are no
-            % argument values to pick up, and the test was on the switch
-            % variable (not on one of its aliases), so the unification
-            % serve no further purpose. We delete it here, so simplify
-            % doesn't have to.
-            Goals = []
-        else
-            % The deconstruction unification now becomes deterministic, since
-            % the test will get carried out in the switch.
-            Unification = Unification0 ^ deconstruct_can_fail := cannot_fail,
-            GoalExpr = GoalExpr0 ^ unify_kind := Unification,
-            Goal = hlds_goal(GoalExpr, GoalInfo),
-            Goals = [Goal]
-        )
+        % The test will get carried out in the switch, there are no
+        % argument values to pick up, and the test was on the switch
+        % variable (not on one of its aliases), so the unification
+        % serve no further purpose. We delete it here, so simplify
+        % doesn't have to.
+        Goals = []
     else
-        unexpected($pred, "goal is not a deconstruct unification")
+        % The deconstruction unification now becomes deterministic, since
+        % the test will get carried out in the switch.
+        Unification = Unification0 ^ deconstruct_can_fail := cannot_fail,
+        GoalExpr = GoalExpr0 ^ unify_kind := Unification,
+        Goal = hlds_goal(GoalExpr, GoalInfo0),
+        Goals = [Goal]
     ).
 
 %-----------------------------------------------------------------------------%
@@ -1367,7 +1367,7 @@ find_bind_var_2(Var, ProcessUnify, Goal0, Goal, !Subst,
             FoundDeconstruct = given_up_search
         )
     ;
-        GoalExpr0 = unify(LHS, RHS, _, UnifyInfo0, _),
+        GoalExpr0 = unify(LHS, RHS, UnifyMode, UnifyInfo0, UnifyContext),
         ( if
             % Check whether the unification is a deconstruction unification
             % on either Var or on a variable aliased to Var.
@@ -1380,7 +1380,11 @@ find_bind_var_2(Var, ProcessUnify, Goal0, Goal, !Subst,
                 term.variable(SubstUnifyVar, dummy_context)),
             SubstVar = SubstUnifyVar
         then
-            ProcessUnify(Var, Goal0, Goals, !Result, !Info),
+            % Rebuild GoalExpr0, but this time with the compiler knowing
+            % that UnifyInfo0 is bound to deconstruct. Common structure
+            % optimization should prevent any runtime overhead.
+            GoalExpr1 = unify(LHS, RHS, UnifyMode, UnifyInfo0, UnifyContext),
+            ProcessUnify(Var, GoalExpr1, GoalInfo, Goals, !Result, !Info),
             conj_list_to_goal(Goals, GoalInfo, Goal),
             FoundDeconstruct = found_deconstruct
         else
