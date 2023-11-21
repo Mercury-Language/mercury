@@ -770,7 +770,7 @@ dump_goal_goal_paths(OutputStream, Globals, Indent, Goal, !IO) :-
     Goal = hlds_goal(GoalExpr, GoalInfo),
     GoalId = goal_info_get_goal_id(GoalInfo),
     GoalId = goal_id(GoalIdNum),
-    GoalIdPieces = [words(string.int_to_string(GoalIdNum)), nl],
+    GoalIdPieces = [words(string.uint_to_string(GoalIdNum)), nl],
     write_error_pieces_maybe_with_context(OutputStream, Globals, no, Indent,
         GoalIdPieces, !IO),
 

@@ -433,8 +433,8 @@ write_constraint_id(Stream, ConstraintId, !IO) :-
         ConstraintTypeChar = 'A'
     ),
     GoalId = goal_id(GoalIdNum),
-    io.format(Stream, "(%c, %d, %d)",
-        [c(ConstraintTypeChar), i(GoalIdNum), i(N)], !IO).
+    io.format(Stream, "(%c, %u, %d)",
+        [c(ConstraintTypeChar), u(GoalIdNum), i(N)], !IO).
 
 %---------------------------------------------------------------------------%
 

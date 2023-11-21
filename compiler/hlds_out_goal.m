@@ -244,12 +244,12 @@ do_write_goal(InfoGoal, Stream, Indent, Follow, Goal, !IO) :-
     ),
     ( if string.contains_char(DumpOptions, 'P') then
         GoalId = goal_info_get_goal_id(GoalInfo),
-        GoalId = goal_id(GoalIdNum),
-        ( if GoalIdNum < 0 then
-            true
+        ( if is_valid_goal_id(GoalId) then
+            GoalId = goal_id(GoalIdNum),
+            io.format(Stream, "%s%% goal id: %u\n",
+                [s(IndentStr), u(GoalIdNum)], !IO)
         else
-            io.format(Stream, "%s%% goal id: %d\n",
-                [s(IndentStr), i(GoalIdNum)], !IO)
+            true
         )
     else
         true

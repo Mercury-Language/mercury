@@ -392,7 +392,7 @@ dump_mode_constraint_var(VarSet, RepVar) = Str :-
         RepVar = V `at` Id,
         varset.lookup_name(VarSet, V, Name),
         Id = goal_id(IdNum),
-        string.format("%s_%d", [s(Name), i(IdNum)], Str)
+        string.format("%s_%u", [s(Name), u(IdNum)], Str)
     ).
 
 robdd_to_dot(Constraint, ProgVarSet, MCI, FileName, !IO) :-

@@ -230,12 +230,21 @@
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
+    % We identify individual (sub)goals in clause bodies and procedure bodies
+    % with a goal id. The whole goal is goal_id(1u), and its subgoals are
+    % goal_id(N) for N > 1u. The goal id goal_id(0u) is reserved for use by
+    % goal_id_for_head_constraints.
+    %
 :- type goal_id
-    --->    goal_id(int).
+    --->    goal_id(uint).
 
     % Return the goal_id that identifies the whole of a procedure's body.
     %
 :- func whole_body_goal_id = goal_id.
+
+    % Return a recognizably invalid goal id.
+    %
+:- func invalid_goal_id = goal_id.
 
     % Succeed iff the given goal id is valid.
     %
@@ -352,11 +361,11 @@
 :- implementation.
 
 :- import_module assoc_list.
-:- import_module int.
 :- import_module list.
 :- import_module pair.
 :- import_module require.
 :- import_module string.
+:- import_module uint.
 
 %---------------------------------------------------------------------------%
 
@@ -619,12 +628,14 @@ goal_path_step_to_string(step_atomic_orelse(N)) =
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
-whole_body_goal_id = goal_id(0).
+whole_body_goal_id = goal_id(1u).
+
+invalid_goal_id = goal_id(0u).
 
 is_valid_goal_id(goal_id(GoalIdNum)) :-
-    GoalIdNum >= 0.
+    GoalIdNum > 0u.
 
-goal_id_for_head_constraints = goal_id(-1).
+goal_id_for_head_constraints = goal_id(0u).
     % Note that this is NOT a valid goal_id for a goal. Not being able
     % to confuse the goal_id on which head constraints are hung with the
     % goal_id of an actual goal is the POINT of this function.
@@ -712,17 +723,18 @@ goal_id_inside(ContainingGoalId, GoalIdA, GoalIdB) :-
 %---------------------------------------------------------------------------%
 
 create_goal_id_array(goal_id(LastGoalIdNum)) =
-    goal_attr_array(array.init(LastGoalIdNum + 1, no)).
+    goal_attr_array(array.init(uint.cast_to_int(LastGoalIdNum + 1u), no)).
 
 create_goal_id_array(goal_id(LastGoalIdNum), Default) =
-    goal_attr_array(array.init(LastGoalIdNum + 1, yes(Default))).
+    goal_attr_array(array.init(uint.cast_to_int(LastGoalIdNum + 1u),
+        yes(Default))).
 
-update_goal_attribute(goal_id(Index), Value, goal_attr_array(!.Array),
-        goal_attr_array(!:Array)) :-
-    array.set(Index, yes(Value), !Array).
+update_goal_attribute(goal_id(Index), Value,
+        goal_attr_array(!.Array), goal_attr_array(!:Array)) :-
+    array.set(uint.cast_to_int(Index), yes(Value), !Array).
 
 get_goal_attribute_det(goal_attr_array(Array), goal_id(Index)) = Attr :-
-    MaybeAttr = array.lookup(Array, Index),
+    MaybeAttr = array.lookup(Array, uint.cast_to_int(Index)),
     (
         MaybeAttr = yes(Attr)
     ;

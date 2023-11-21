@@ -95,7 +95,7 @@ fill_goal_id_slots_in_proc(ModuleInfo, ContainingGoalMap, !ProcInfo) :-
 fill_goal_id_slots_in_proc_body(ModuleInfo, VarTypeSrc, ContainingGoalMap,
         Goal0, Goal) :-
     SlotInfo = slot_info(ModuleInfo, VarTypeSrc),
-    fill_goal_id_slots(SlotInfo, whole_body_goal, counter.init(0), _,
+    fill_goal_id_slots(SlotInfo, whole_body_goal, counter.uinit(1u), _,
         [], ContainingGoalList, Goal0, Goal),
     map.from_rev_sorted_assoc_list(ContainingGoalList, ContainingGoalMap).
 
@@ -106,12 +106,12 @@ fill_goal_id_slots_in_clauses(ModuleInfo, ContainingGoalMap,
     clauses_info_get_var_table(ClausesInfo0, VarTable),
     SlotInfo = slot_info(ModuleInfo, VarTable),
     % If there is exactly one clause, we could theoretically start the counter
-    % at zero, assigning goal_id(0) to the whole clause, since it is also
+    % at zero, assigning goal_id(1u) to the whole clause, since it is also
     % the whole procedure body. However, all passes that care about the whole
     % procedure body work on procedures, not clauses, and are there unaffected
     % by what we do here. So we don't bother.
     list.map_foldl3(fill_slots_in_clause(SlotInfo),
-        Clauses0, Clauses, 1, _, counter.init(1), _,
+        Clauses0, Clauses, 1, _, counter.uinit(2u), _,
         [], ContainingGoalList),
     map.from_rev_sorted_assoc_list(ContainingGoalList, ContainingGoalMap),
     set_clause_list(Clauses, ClausesRep),
@@ -133,7 +133,7 @@ fill_goal_id_slots_in_clauses(ModuleInfo, ContainingGoalMap,
 :- type containing_goal_list == assoc_list(goal_id, containing_goal).
 
 :- pred fill_slots_in_clause(slot_info::in, clause::in, clause::out,
-    int::in, int::out, counter::in, counter::out,
+    int::in, int::out, ucounter::in, ucounter::out,
     containing_goal_list::in, containing_goal_list::out) is det.
 
 fill_slots_in_clause(SlotInfo, Clause0, Clause, CurClauseNum, NextClauseNum,
@@ -147,14 +147,14 @@ fill_slots_in_clause(SlotInfo, Clause0, Clause, CurClauseNum, NextClauseNum,
     Clause = Clause0 ^ clause_body := Goal.
 
 :- pred fill_goal_id_slots(slot_info::in, containing_goal::in,
-    counter::in, counter::out,
+    ucounter::in, ucounter::out,
     containing_goal_list::in, containing_goal_list::out,
     hlds_goal::in, hlds_goal::out) is det.
 
 fill_goal_id_slots(SlotInfo, ContainingGoal, !GoalNumCounter,
         !ContainingGoalList, Goal0, Goal) :-
     Goal0 = hlds_goal(GoalExpr0, GoalInfo0),
-    counter.allocate(GoalNum, !GoalNumCounter),
+    counter.uallocate(GoalNum, !GoalNumCounter),
     GoalId = goal_id(GoalNum),
     goal_info_set_goal_id(GoalId, GoalInfo0, GoalInfo),
     !:ContainingGoalList = [GoalId - ContainingGoal | !.ContainingGoalList],
@@ -261,7 +261,7 @@ fill_goal_id_slots(SlotInfo, ContainingGoal, !GoalNumCounter,
     Goal = hlds_goal(GoalExpr, GoalInfo).
 
 :- pred fill_conj_id_slots(slot_info::in, goal_id::in, int::in,
-    counter::in, counter::out,
+    ucounter::in, ucounter::out,
     containing_goal_list::in, containing_goal_list::out,
     list(hlds_goal)::in, list(hlds_goal)::out) is det.
 
@@ -276,7 +276,7 @@ fill_conj_id_slots(SlotInfo, GoalId, LastConjunctNum, !GoalNumCounter,
         !ContainingGoalList, Goals0, Goals).
 
 :- pred fill_disj_id_slots(slot_info::in, goal_id::in, int::in,
-    counter::in, counter::out,
+    ucounter::in, ucounter::out,
     containing_goal_list::in, containing_goal_list::out,
     list(hlds_goal)::in, list(hlds_goal)::out) is det.
 
@@ -291,7 +291,7 @@ fill_disj_id_slots(SlotInfo, GoalId, LastDisjunctNum, !GoalNumCounter,
         !ContainingGoalList, Goals0, Goals).
 
 :- pred fill_switch_id_slots(slot_info::in, goal_id::in,
-    int::in, maybe_switch_num_functors::in, counter::in, counter::out,
+    int::in, maybe_switch_num_functors::in, ucounter::in, ucounter::out,
     containing_goal_list::in, containing_goal_list::out,
     list(case)::in, list(case)::out) is det.
 
@@ -310,7 +310,7 @@ fill_switch_id_slots(SlotInfo, GoalId, LastArmNum, MaybeNumFunctors,
         !GoalNumCounter, !ContainingGoalList, Cases0, Cases).
 
 :- pred fill_orelse_id_slots(slot_info::in, goal_id::in, int::in,
-    counter::in, counter::out,
+    ucounter::in, ucounter::out,
     containing_goal_list::in, containing_goal_list::out,
     list(hlds_goal)::in, list(hlds_goal)::out) is det.
 

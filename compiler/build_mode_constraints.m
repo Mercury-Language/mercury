@@ -273,7 +273,8 @@ add_mc_vars_for_pred_head(ModuleInfo, PredId, !VarInfo) :-
     mc_var_info::in, mc_var_info::out) is det.
 
 add_mc_var_for_pred_head(ProgVarSet, PredId, HeadVar, !VarInfo) :-
-    prog_var_at_path(ProgVarSet, PredId, HeadVar, goal_id(0), _, !VarInfo).
+    prog_var_at_path(ProgVarSet, PredId, HeadVar, whole_body_goal_id, _,
+        !VarInfo).
 
 %-----------------------------------------------------------------------------%
 
@@ -368,7 +369,7 @@ add_clauses_constraints(ModuleInfo, PredId, PredInfo, !VarInfo,
         MainGoal = disj(Goals),
         Nonlocals = set_of_var.list_to_set(proc_arg_vector_to_list(HeadVars)),
         add_goal_expr_constraints(ModuleInfo, ProgVarSet, PredId, MainGoal,
-            Context, goal_id(0), Nonlocals, !VarInfo, !Constraints)
+            Context, whole_body_goal_id, Nonlocals, !VarInfo, !Constraints)
     ).
 
     % add_goal_constraints(ModuleInfo, ProgVarSet, PredId, Goal,
@@ -704,7 +705,7 @@ mode_decls_constraints(ModuleInfo, VarMap, PredId, Decls, HeadVarsList,
     % that it is produced by a call to the predicate).
     HeadVarsMCVars =
         list.map(list.map(
-                lookup_prog_var_at_path(VarMap, PredId, goal_id(0))),
+                lookup_prog_var_at_path(VarMap, PredId, whole_body_goal_id)),
             HeadVarsList),
 
     % Make the constraints for each declaration.
@@ -725,7 +726,7 @@ add_mode_decl_constraints(ModuleInfo, PredId, ProcId, Decl, Args,
     split_var_table(VarTable, ProgVarSet, _VarTypes),
     proc_info_get_context(ProcInfo, Context),
 
-    prog_vars_at_path(ProgVarSet, PredId, Args, goal_id(0), ArgsAtHead,
+    prog_vars_at_path(ProgVarSet, PredId, Args, whole_body_goal_id, ArgsAtHead,
         !VarInfo),
 
     DeclConstraints = mode_decl_constraints(ModuleInfo, ArgsAtHead, Decl),
@@ -801,8 +802,8 @@ add_call_mode_decls_constraints(ModuleInfo, ProgVarSet, CallContext,
 
 add_call_headvar_constraints(ProgVarSet, Context, GoalId, CallerPredId,
         CallArgs, CalleePredId, CalleeHeadVars, !VarInfo, !Constraints) :-
-    prog_vars_at_path(ProgVarSet, CalleePredId, CalleeHeadVars, goal_id(0),
-        HeadVarsAtHead, !VarInfo),
+    prog_vars_at_path(ProgVarSet, CalleePredId, CalleeHeadVars,
+        whole_body_goal_id, HeadVarsAtHead, !VarInfo),
     prog_vars_at_path(ProgVarSet, CallerPredId, CallArgs, GoalId,
         CallArgsHere, !VarInfo),
 
@@ -1108,7 +1109,7 @@ var_info_init = mc_var_info(varset.init, bimap.init).
 
 rep_var_to_string(ProgVarSet, (ProgVar `in` _) `at` GoalId) = RepString :-
     GoalId = goal_id(GoalIdNum),
-    GoalIdString = string.int_to_string(GoalIdNum),
+    GoalIdString = string.uint_to_string(GoalIdNum),
     varset.lookup_name(ProgVarSet, ProgVar, ProgVarString),
     RepString = ProgVarString ++ "." ++ GoalIdString.
 

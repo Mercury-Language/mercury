@@ -381,7 +381,7 @@
 
 :- type svar_store
     --->    svar_store(
-                store_next_goal_id  ::  counter,
+                store_next_goal_id  ::  ucounter,
                 store_final_remap   ::  incremental_rename_map,
                 store_specs         ::  list(error_spec)
             ).
@@ -392,7 +392,7 @@
 :- func new_svar_store = svar_store.
 
 new_svar_state = svar_state(map.init).
-new_svar_store = svar_store(counter.init(1), map.init, []).
+new_svar_store = svar_store(counter.uinit(1u), map.init, []).
 
 :- type state_var_name_source
     --->    name_initial
@@ -810,7 +810,7 @@ svar_finish_body(Globals, ModuleName, Context, FinalMap, Goals0, Goal,
             Goal = Goal1
         ;
             FinalSVarSubn = [_ | _],
-            counter.allocate(GoalIdNum, NextGoalId1, NextGoalId),
+            counter.uallocate(GoalIdNum, NextGoalId1, NextGoalId),
             GoalId = goal_id(GoalIdNum),
 
             trace [compiletime(flag("state-var-lambda")), io(!IO)] (
@@ -1076,7 +1076,7 @@ find_changes_in_arm_and_update_changed_status_map([Before | Befores],
 :- pred merge_changes_made_by_arms(list(hlds_goal_svar_state)::in,
     map(svar, svar_status)::in, assoc_list(svar, svar_status)::in,
     prog_varset::in, list(hlds_goal)::in, list(hlds_goal)::out,
-    counter::in, counter::out,
+    ucounter::in, ucounter::out,
     incremental_rename_map::in, incremental_rename_map::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
@@ -1087,7 +1087,7 @@ merge_changes_made_by_arms([ArmState | ArmStates],
         !NextGoalId, !DelayedRenamings, !Specs) :-
     ArmState = hlds_goal_svar_state(Arm0, StateAfterArm),
     StatusMapAfterArm = StateAfterArm ^ state_status_map,
-    counter.allocate(ArmIdNum, !NextGoalId),
+    counter.uallocate(ArmIdNum, !NextGoalId),
     ArmId = goal_id(ArmIdNum),
     handle_arm_updated_state_vars(ChangedStatusListAfter, StatusMapBefore,
         StatusMapAfterArm, VarSet, UninitVarNames, CopyGoals, ArmRenames),
@@ -1313,8 +1313,8 @@ svar_finish_if_then_else(Globals, ModuleName, LocKind, Context, QuantStateVars,
     conj_list_to_goal(ElseGoals, ElseInfo0, ElseGoal1),
 
     !.Store = svar_store(NextGoalId0, DelayedRenamings0, Specs),
-    counter.allocate(ThenGoalIdNum, NextGoalId0, NextGoalId1),
-    counter.allocate(ElseGoalIdNum, NextGoalId1, NextGoalId),
+    counter.uallocate(ThenGoalIdNum, NextGoalId0, NextGoalId1),
+    counter.uallocate(ElseGoalIdNum, NextGoalId1, NextGoalId),
     ThenGoalId = goal_id(ThenGoalIdNum),
     ElseGoalId = goal_id(ElseGoalIdNum),
     goal_set_goal_id(ThenGoalId, ThenGoal1, ThenGoal),
@@ -1921,7 +1921,7 @@ svar_goal_to_conj_list(Goal, Conjuncts, !Store) :-
     ).
 
 :- pred svar_goal_to_conj_list_internal(hlds_goal::in, list(hlds_goal)::out,
-    counter::in, counter::out,
+    ucounter::in, ucounter::out,
     incremental_rename_map::in, incremental_rename_map::out) is det.
 
 svar_goal_to_conj_list_internal(Goal, Conjuncts,
@@ -1943,7 +1943,7 @@ svar_goal_to_conj_list_internal(Goal, Conjuncts,
     ).
 
 :- pred add_conjunct_delayed_renames(assoc_list(prog_var, prog_var)::in,
-    hlds_goal::in, hlds_goal::out, counter::in, counter::out,
+    hlds_goal::in, hlds_goal::out, ucounter::in, ucounter::out,
     incremental_rename_map::in, incremental_rename_map::out) is det.
 
 add_conjunct_delayed_renames(DelayedRenamingToAdd, Goal0, Goal,
@@ -1960,7 +1960,7 @@ add_conjunct_delayed_renames(DelayedRenamingToAdd, Goal0, Goal,
         % ids to goals at this stage of the compilation process is this module,
         % and it attaches goal_ids to goals only if it also puts them the
         % delayed renaming map.
-        counter.allocate(GoalIdNum, !NextGoalId),
+        counter.uallocate(GoalIdNum, !NextGoalId),
         GoalId = goal_id(GoalIdNum),
         goal_info_set_goal_id(GoalId, GoalInfo0, GoalInfo),
         map.det_insert(GoalId, DelayedRenamingToAdd, !DelayedRenamingMap),

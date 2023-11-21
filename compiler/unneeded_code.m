@@ -438,8 +438,8 @@ unneeded_process_goal(UnneededInfo, Goal0, Goal, InitInstMap, FinalInstMap,
             Goal0 = hlds_goal(_GoalExpr0, GoalInfo0),
             goal_info_get_goal_id(GoalInfo0) = goal_id(GoalIdNum0),
             trace [io(!IO)] (
-                io.format(Stream, "unneeded code at goal id %d\n",
-                    [i(GoalIdNum0)], !IO)
+                io.format(Stream, "unneeded code at goal id %u\n",
+                    [u(GoalIdNum0)], !IO)
             )
         )
     ),

@@ -401,7 +401,7 @@ number_robdd_variables_in_pred(PredId, !ModuleInfo, !MCI) :-
         ( pred(V::in, S0::in, S::out) is det :-
             mode_constraint_var(in(V), _, S0, S1),
             mode_constraint_var(out(V), _, S1, S2),
-            mode_constraint_var(V `at` goal_id(0), _, S2, S)
+            mode_constraint_var(V `at` whole_body_goal_id, _, S2, S)
         ), InstGraph, HeadVars, !MCI),
 
     ( if pred_info_is_imported(PredInfo1) then

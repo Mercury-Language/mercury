@@ -207,7 +207,7 @@ coverage_prof_second_pass_goal(Goal0, Goal,
     then
         GoalId = goal_id(GoalNum),
         UnknownMsg = string.format(
-            "Coverage information is unknown for goal_id %d\n", [i(GoalNum)]),
+            "Coverage information is unknown for goal_id %u\n", [u(GoalNum)]),
         unexpected($pred, UnknownMsg)
     else
         true

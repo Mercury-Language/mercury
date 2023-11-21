@@ -212,6 +212,7 @@
 :- import_module require.
 :- import_module std_util.
 :- import_module string.
+:- import_module uint.
 
 %---------------------------------------------------------------------------%
 
@@ -903,19 +904,19 @@ print_unit_to_strings(_, _, cord.empty).
 % Label goals with IDs.
 %
 
-label_goals(goal_id(LastIdPlus1 - 1), Map, !Goal) :-
-    label_goal(whole_body_goal, !Goal, counter.init(0), Counter,
+label_goals(goal_id(LastIdPlus1 - 1u), Map, !Goal) :-
+    label_goal(whole_body_goal, !Goal, counter.uinit(1u), Counter,
         map.init, Map),
-    allocate(LastIdPlus1, Counter, _).
+    counter.uallocate(LastIdPlus1, Counter, _).
 
 :- pred label_goal(containing_goal::in,
-    goal_rep(T)::in, goal_rep(goal_id)::out, counter::in, counter::out,
+    goal_rep(T)::in, goal_rep(goal_id)::out, ucounter::in, ucounter::out,
     map(goal_id, containing_goal)::in, map(goal_id, containing_goal)::out)
     is det.
 
 label_goal(ContainingGoal, !Goal, !Counter, !Map) :-
     !.Goal = goal_rep(GoalExpr0, Detism, _),
-    allocate(GoalIdNum, !Counter),
+    counter.uallocate(GoalIdNum, !Counter),
     GoalId = goal_id(GoalIdNum),
     map.det_insert(GoalId, ContainingGoal, !Map),
     (
@@ -960,7 +961,7 @@ label_goal(ContainingGoal, !Goal, !Counter, !Map) :-
 :- pred label_goal_wrapper(
     (func(int) = goal_path_step)::in(func(in) = out is det), goal_id::in,
     goal_rep(T)::in, goal_rep(goal_id)::out, int::in, int::out,
-    counter::in, counter::out,
+    ucounter::in, ucounter::out,
     map(goal_id, containing_goal)::in, map(goal_id, containing_goal)::out)
     is det.
 
@@ -971,7 +972,7 @@ label_goal_wrapper(MakePathStep, ParentGoalId, !Goal, !GoalNum, !Counter,
     !:GoalNum = !.GoalNum + 1.
 
 :- pred label_case(goal_id::in, case_rep(T)::in, case_rep(goal_id)::out,
-    int::in, int::out, counter::in, counter::out,
+    int::in, int::out, ucounter::in, ucounter::out,
     containing_goal_map::in, containing_goal_map::out) is det.
 
 label_case(ParentGoalId, !Case, !CaseNum, !Counter, !Map) :-

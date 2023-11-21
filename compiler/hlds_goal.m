@@ -2091,7 +2091,7 @@ goal_info_init(GoalInfo) :-
     instmap_delta_init_unreachable(InstMapDelta),
     NonLocals = set_of_var.init,
     set.init(Features),
-    GoalId = goal_id(-1),
+    GoalId = invalid_goal_id,
     GoalInfo = goal_info(Detism, purity_pure, InstMapDelta, NonLocals,
         Features, GoalId, no_code_gen_info,
         hlds_goal_extra_info_init(dummy_context)).
@@ -2103,21 +2103,21 @@ goal_info_init(Context, GoalInfo) :-
     instmap_delta_init_unreachable(InstMapDelta),
     NonLocals = set_of_var.init,
     set.init(Features),
-    GoalId = goal_id(-1),
+    GoalId = invalid_goal_id,
     GoalInfo = goal_info(Detism, purity_pure, InstMapDelta, NonLocals,
         Features, GoalId, no_code_gen_info,
         hlds_goal_extra_info_init(Context)).
 
 goal_info_init(NonLocals, InstMapDelta, Detism, Purity, GoalInfo) :-
     set.init(Features),
-    GoalId = goal_id(-1),
+    GoalId = invalid_goal_id,
     GoalInfo = goal_info(Detism, Purity, InstMapDelta, NonLocals,
         Features, GoalId, no_code_gen_info,
         hlds_goal_extra_info_init(dummy_context)).
 
 goal_info_init(NonLocals, InstMapDelta, Detism, Purity, Context, GoalInfo) :-
     set.init(Features),
-    GoalId = goal_id(-1),
+    GoalId = invalid_goal_id,
     GoalInfo = goal_info(Detism, Purity, InstMapDelta, NonLocals,
         Features, GoalId, no_code_gen_info,
         hlds_goal_extra_info_init(Context)).
@@ -2127,7 +2127,7 @@ goal_info_init_context_purity(Context, Purity, GoalInfo) :-
     instmap_delta_init_unreachable(InstMapDelta),
     NonLocals = set_of_var.init,
     set.init(Features),
-    GoalId = goal_id(-1),
+    GoalId = invalid_goal_id,
     GoalInfo = goal_info(Detism, Purity, InstMapDelta, NonLocals,
         Features, GoalId, no_code_gen_info,
         hlds_goal_extra_info_init(Context)).
@@ -2672,8 +2672,8 @@ incremental_rename_vars_in_goal(Subn0, SubnUpdates, Goal0, Goal) :-
         trace [compiletime(flag("statevar-subn")), io(!IO)] (
             io.stderr_stream(StdErr, !IO),
             GoalId = goal_id(GoalIdNum),
-            io.format(StdErr, "Goal id %d has substitutions\n",
-                [i(GoalIdNum)], !IO),
+            io.format(StdErr, "Goal id %u has substitutions\n",
+                [u(GoalIdNum)], !IO),
             io.write(StdErr, GoalSubns, !IO),
             io.nl(StdErr, !IO)
         ),
