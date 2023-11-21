@@ -1437,20 +1437,29 @@ find_bind_var_2(Var, ProcessUnify, Goal0, Goal, !Subst,
 
 conj_find_bind_var(_Var, _, [], [],
         !Subst, !Result, !Info, before_deconstruct).
-conj_find_bind_var(Var, ProcessUnify, [Goal0 | Goals0], [Goal | Goals],
+conj_find_bind_var(Var, ProcessUnify, [HeadGoal0 | TailGoals0], Goals,
         !Subst, !Result, !Info, FoundDeconstruct) :-
-    find_bind_var_2(Var, ProcessUnify, Goal0, Goal, !Subst,
+    find_bind_var_2(Var, ProcessUnify, HeadGoal0, HeadGoal, !Subst,
         !Result, !Info, FoundDeconstruct1),
     (
         FoundDeconstruct1 = before_deconstruct,
-        conj_find_bind_var(Var, ProcessUnify, Goals0, Goals,
-            !Subst, !Result, !Info, FoundDeconstruct)
+        conj_find_bind_var(Var, ProcessUnify, TailGoals0, TailGoals,
+            !Subst, !Result, !Info, FoundDeconstruct),
+        Goals = [HeadGoal | TailGoals]
     ;
-        ( FoundDeconstruct1 = found_deconstruct
-        ; FoundDeconstruct1 = given_up_search
-        ),
+        FoundDeconstruct1 = found_deconstruct,
         FoundDeconstruct = FoundDeconstruct1,
-        Goals = Goals0
+        HeadGoal = hlds_goal(HeadGoalExpr, _),
+        ( if HeadGoalExpr = conj(_, []) then
+            % HeadGoal is "true". Delete it now, so simplify doesn't have to.
+            Goals = TailGoals0
+        else
+            Goals = [HeadGoal | TailGoals0]
+        )
+    ;
+        FoundDeconstruct1 = given_up_search,
+        FoundDeconstruct = FoundDeconstruct1,
+        Goals = [HeadGoal | TailGoals0]
     ).
 
 %-----------------------------------------------------------------------------%
