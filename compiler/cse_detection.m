@@ -757,22 +757,22 @@ record_pull_decline(UnifyGoal, !CseInfo) :-
 common_deconstruct(Goals0, Var, !CseInfo, Unify, ConsId,
         FirstOldNew, LaterOldNew, Goals) :-
     CseState0 = before_candidate,
-    common_deconstruct_2(Goals0, Var, CseState0, CseState,
+    common_deconstruct_branch_goals(Goals0, Var, CseState0, CseState,
         !CseInfo, Goals),
     CseState = have_candidate(Unify, ConsId, FirstOldNew, LaterOldNew),
     LaterOldNew = [_ | _].
 
-:- pred common_deconstruct_2(list(hlds_goal)::in, prog_var::in,
+:- pred common_deconstruct_branch_goals(list(hlds_goal)::in, prog_var::in,
     cse_state::in, cse_state::out, cse_info::in, cse_info::out,
     list(hlds_goal)::out) is semidet.
 
-common_deconstruct_2([], _Var, !CseState, !CseInfo, []).
-common_deconstruct_2([Goal0 | Goals0], Var, !CseState, !CseInfo,
+common_deconstruct_branch_goals([], _Var, !CseState, !CseInfo, []).
+common_deconstruct_branch_goals([Goal0 | Goals0], Var, !CseState, !CseInfo,
         [Goal | Goals]) :-
     find_bind_var(Var, find_bind_var_for_cse_in_deconstruct,
         Goal0, Goal, !CseState, !CseInfo, did_find_deconstruct),
     !.CseState = have_candidate(_, _, _, _),
-    common_deconstruct_2(Goals0, Var, !CseState, !CseInfo, Goals).
+    common_deconstruct_branch_goals(Goals0, Var, !CseState, !CseInfo, Goals).
 
 %---------------------------------------------------------------------------%
 
