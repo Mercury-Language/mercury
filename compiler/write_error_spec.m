@@ -32,6 +32,7 @@
 
 :- import_module libs.
 :- import_module libs.globals.
+:- import_module libs.indent.
 :- import_module libs.options.
 :- import_module parse_tree.error_spec.
 :- import_module parse_tree.prog_data.
@@ -87,11 +88,11 @@
     % and indent by `Indent'.
     %
 :- pred write_error_pieces(io.text_output_stream::in, globals::in,
-    prog_context::in, int::in,
-    list(format_piece)::in, io::di, io::uo) is det.
+    prog_context::in, indent::in, list(format_piece)::in,
+        io::di, io::uo) is det.
 
 :- pred write_error_pieces_maybe_with_context(io.text_output_stream::in,
-    globals::in, maybe(prog_context)::in, int::in, list(format_piece)::in,
+    globals::in, maybe(prog_context)::in, indent::in, list(format_piece)::in,
     io::di, io::uo) is det.
 
 %---------------------------------------------------------------------------%
@@ -165,7 +166,8 @@
     % --halt-at-warn option is set.
     %
 :- pred report_warning(io.text_output_stream::in, globals::in,
-    prog_context::in, int::in, list(format_piece)::in, io::di, io::uo) is det.
+    prog_context::in, indent::in, list(format_piece)::in,
+    io::di, io::uo) is det.
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -183,7 +185,6 @@
 :- implementation.
 
 :- import_module libs.compiler_util.
-:- import_module libs.indent.
 :- import_module mdbcomp.
 :- import_module mdbcomp.prim_data.
 :- import_module mdbcomp.sym_name.
@@ -204,6 +205,7 @@
 :- import_module set.
 :- import_module string.
 :- import_module term_context.
+:- import_module uint.
 
 %---------------------------------------------------------------------------%
 %
@@ -373,21 +375,22 @@ do_write_error_msgs(Stream, OptionTable, LimitErrorContextsMap, [Msg | Msgs],
         Components = [always(Pieces)],
         MaybeContext = yes(SimpleContext),
         TreatAsFirst = treat_based_on_posn,
-        ExtraIndentLevel = 0
+        ExtraIndentLevel = 0u
     ;
         Msg = simplest_no_context_msg(Pieces),
         Components = [always(Pieces)],
         MaybeContext = no,
         TreatAsFirst = treat_based_on_posn,
-        ExtraIndentLevel = 0
+        ExtraIndentLevel = 0u
     ;
         Msg = simple_msg(SimpleContext, Components),
         MaybeContext = yes(SimpleContext),
         TreatAsFirst = treat_based_on_posn,
-        ExtraIndentLevel = 0
+        ExtraIndentLevel = 0u
     ;
-        Msg = error_msg(MaybeContext, TreatAsFirst, ExtraIndentLevel,
-            Components)
+        Msg = error_msg(MaybeContext, TreatAsFirst, ExtraIndentLevelInt,
+            Components),
+        ExtraIndentLevel = uint.cast_from_int(ExtraIndentLevelInt)
     ),
     (
         TreatAsFirst = always_treat_as_first,
@@ -407,7 +410,7 @@ do_write_error_msgs(Stream, OptionTable, LimitErrorContextsMap, [Msg | Msgs],
 
 :- pred write_msg_components(io.text_output_stream::in, option_table::in,
     limit_error_contexts_map::in, maybe(prog_context)::in,
-    list(error_msg_component)::in, int::in,
+    list(error_msg_component)::in, indent::in,
     maybe_treat_as_first::in, maybe_treat_as_first::out,
     maybe_printed_something::in, maybe_printed_something::out,
     already_printed_verbose::in, already_printed_verbose::out,
@@ -494,7 +497,7 @@ write_error_pieces_plain(Stream, Globals, Pieces, !IO) :-
     globals.get_options(Globals, OptionTable),
     globals.get_limit_error_contexts_map(Globals, LimitErrorContextsMap),
     do_write_error_pieces(Stream, OptionTable, LimitErrorContextsMap,
-        no, treat_as_first, 0, Pieces, !IO).
+        no, treat_as_first, 0u, Pieces, !IO).
 
 %---------------------------------------------------------------------------%
 
@@ -517,7 +520,7 @@ write_error_pieces_maybe_with_context(Stream, Globals, MaybeContext, Indent,
 
 :- pred do_write_error_pieces(io.text_output_stream::in, option_table::in,
     limit_error_contexts_map::in, maybe(prog_context)::in,
-    maybe_treat_as_first::in, int::in, list(format_piece)::in,
+    maybe_treat_as_first::in, indent::in, list(format_piece)::in,
     io::di, io::uo) is det.
 
 do_write_error_pieces(Stream, OptionTable, LimitErrorContextsMap, MaybeContext,
@@ -638,7 +641,7 @@ write_msg_line(Stream, PrefixStr, Line, !IO) :-
 convert_pieces_to_lines(MaybeMaxWidth, ContextStr, TreatAsFirst, FixedIndent,
         Pieces, PrefixStr, Lines) :-
     convert_pieces_to_paragraphs(Pieces, Paragraphs),
-    string.pad_left("", ' ', FixedIndent, FixedIndentStr),
+    string.pad_left("", ' ', uint.cast_to_int(FixedIndent), FixedIndentStr),
     PrefixStr = ContextStr ++ FixedIndentStr,
     PrefixLen = string.count_code_points(PrefixStr),
     (
@@ -649,7 +652,7 @@ convert_pieces_to_lines(MaybeMaxWidth, ContextStr, TreatAsFirst, FixedIndent,
         MaybeMaxWidth = no,
         MaybeAvailLen = no
     ),
-    FirstIndent = (if TreatAsFirst = treat_as_first then 0 else 1),
+    FirstIndent = (if TreatAsFirst = treat_as_first then 0u else 1u),
     divide_paragraphs_into_lines(MaybeAvailLen, TreatAsFirst,
         FirstIndent, Paragraphs, Lines0),
     try_to_join_lp_to_rp_lines(Lines0, Lines),
@@ -1075,7 +1078,7 @@ find_word_end(String, Cur, WordEnd) :-
 
                 % Indent level of the line; multiply by indent2_increment
                 % to get the number of spaces this turns into.
-                line_indent_level   :: int,
+                line_indent_level   :: indent,
 
                 % The words on the line as a single string, with one space
                 % between each pair of words.
@@ -1120,7 +1123,7 @@ find_word_end(String, Cur, WordEnd) :-
     % at least one line.
     %
 :- pred divide_paragraphs_into_lines(maybe(int)::in, maybe_treat_as_first::in,
-    int::in, list(paragraph)::in, list(error_line)::out) is det.
+    indent::in, list(paragraph)::in, list(error_line)::out) is det.
 
 divide_paragraphs_into_lines(MaybeAvailLen, TreatAsFirst, CurIndent, Paras,
         Lines) :-
@@ -1133,13 +1136,16 @@ divide_paragraphs_into_lines(MaybeAvailLen, TreatAsFirst, CurIndent, Paras,
             ParaParen),
         (
             TreatAsFirst = treat_as_first,
-            RestIndent = CurIndent + 1
+            RestIndent = CurIndent + 1u
         ;
             TreatAsFirst = do_not_treat_as_first,
             RestIndent = CurIndent
         ),
-        NextIndent0 = RestIndent + FirstIndentDelta,
-        ( if NextIndent0 < 0 then
+        NextIndentInt = uint.cast_to_int(RestIndent) + FirstIndentDelta,
+        ( if uint.from_int(NextIndentInt, NextIndentPrime) then
+            NextIndent = NextIndentPrime,
+            FirstParaWarningLines = []
+        else
             % This indicates a bug in the code constructing the error_spec
             % that we are trying to output here, with the being a
             % nl_indent_delta with a negative delta that exceeeds the current
@@ -1152,10 +1158,7 @@ divide_paragraphs_into_lines(MaybeAvailLen, TreatAsFirst, CurIndent, Paras,
             WarningLine = error_line(MaybeAvailLen, CurIndent,
                 "WARNING: NEGATIVE INDENT", 0, paren_none),
             FirstParaWarningLines = [WarningLine],
-            NextIndent = 0
-        else
-            FirstParaWarningLines = [],
-            NextIndent = NextIndent0
+            NextIndent = 0u
         ),
 
         BlankLine = error_line(MaybeAvailLen, CurIndent, "", 0, paren_none),
@@ -1199,7 +1202,7 @@ divide_paragraphs_into_lines(MaybeAvailLen, TreatAsFirst, CurIndent, Paras,
     ).
 
 :- pred group_nonfirst_line_words(int::in, string::in, list(string)::in,
-    int::in, paren_status::in, list(error_line)::out) is det.
+    indent::in, paren_status::in, list(error_line)::out) is det.
 
 group_nonfirst_line_words(AvailLen, FirstWord, LaterWords,
         Indent, LastParen, Lines) :-
@@ -1221,12 +1224,12 @@ group_nonfirst_line_words(AvailLen, FirstWord, LaterWords,
     ).
 
 :- pred get_line_of_words(int::in, string::in, list(string)::in,
-    int::in, int::out, list(string)::out, list(string)::out) is det.
+    indent::in, int::out, list(string)::out, list(string)::out) is det.
 
 get_line_of_words(AvailLen, FirstWord, LaterWords, Indent, LineWordsLen,
         LineWords, RestWords) :-
     string.count_code_points(FirstWord, FirstWordLen),
-    AvailLeft = AvailLen - Indent * indent2_increment,
+    AvailLeft = AvailLen - uint.cast_to_int(Indent * indent2_increment),
     get_later_words(AvailLeft, LaterWords, FirstWordLen, LineWordsLen,
         cord.singleton(FirstWord), LineWordsCord, RestWords),
     LineWords = cord.list(LineWordsCord).
@@ -1336,7 +1339,8 @@ find_matching_rp_and_maybe_join(LPLine, TailLines0, ReplacementLines,
                 MaybeAvailLen = no
             ;
                 MaybeAvailLen = yes(AvailLen),
-                LPIndent * indent2_increment + TotalLpRpLen =< AvailLen
+                uint.cast_to_int(LPIndent * indent2_increment) + TotalLpRpLen
+                    =< AvailLen
             )
         then
             % We insert spaces
@@ -1451,7 +1455,7 @@ find_matching_rp([HeadLine0 | TailLines0], !MidLinesCord, !MidLinesLen,
 %---------------------------------------------------------------------------%
 
 error_pieces_to_std_lines(Pieces) = Lines :-
-    convert_pieces_to_lines(yes(80), "", treat_as_first, 0, Pieces, _, Lines).
+    convert_pieces_to_lines(yes(80), "", treat_as_first, 0u, Pieces, _, Lines).
 
 do_lines_fit_in_n_code_points(_Max, []).
 do_lines_fit_in_n_code_points(Max, [Line1 | Lines2plus]) :-

@@ -1044,7 +1044,7 @@ output_initializer_for_java(Info, Stream, OutputAux, Indent, Type,
             ; OutputAux = oa_force_init
             ),
             output_initializer_body_for_java(Info, Stream,
-                not_at_start_of_line, Indent + 1, Initializer, yes(Type),
+                not_at_start_of_line, Indent + 1u, Initializer, yes(Type),
                 Suffix, !IO)
         ;
             OutputAux = oa_alloc_only,
@@ -1147,7 +1147,7 @@ output_initializer_body_for_java(Info, Stream, InitStart, Indent, Initializer,
         ;
             FieldInits = [HeadFieldInit | TailFieldInits],
             io.format(Stream, "%s\n", [s(Start)], !IO),
-            output_initializer_body_list_for_java(Info, Stream, Indent + 1,
+            output_initializer_body_list_for_java(Info, Stream, Indent + 1u,
                 HeadFieldInit, TailFieldInits, "", !IO),
             io.format(Stream, "%s%s%s\n",
                 [s(IndentStr), s(End), s(Suffix)], !IO)
@@ -1176,7 +1176,7 @@ output_initializer_body_for_java(Info, Stream, InitStart, Indent, Initializer,
         ;
             ElementInits = [HeadElementInit | TailElementInits],
             io.write_string(Stream, " {\n", !IO),
-            output_initializer_body_list_for_java(Info, Stream, Indent + 1,
+            output_initializer_body_list_for_java(Info, Stream, Indent + 1u,
                 HeadElementInit, TailElementInits, "", !IO),
             io.format(Stream, "%s}%s\n", [s(IndentStr), s(Suffix)], !IO)
         )

@@ -121,6 +121,7 @@
 :- import_module require.
 :- import_module string.
 :- import_module term.
+:- import_module uint.
 :- import_module uint32.
 
 %---------------------------------------------------------------------------%
@@ -888,7 +889,7 @@ output_initializer_for_csharp(Info, Stream, OutputAux, Indent, Type,
             ; OutputAux = oa_force_init
             ),
             output_initializer_body_for_csharp(Info, Stream,
-                not_at_start_of_line, Indent + 1, Initializer, yes(Type),
+                not_at_start_of_line, Indent + 1u, Initializer, yes(Type),
                 Suffix, !IO)
         ;
             OutputAux = oa_alloc_only,
@@ -995,7 +996,7 @@ output_initializer_body_for_csharp(Info, Stream, InitStart, Indent,
             FieldInits = [HeadFieldInit | TailFieldInits],
             io.format(Stream, "%snew %s%s\n",
                 [s(IndentStr), s(TypeStr), s(LParen)], !IO),
-            output_initializer_body_list_for_csharp(Info, Stream, Indent + 1,
+            output_initializer_body_list_for_csharp(Info, Stream, Indent + 1u,
                 HeadFieldInit, TailFieldInits, "", !IO),
             io.format(Stream, "%s%s%s\n",
                 [s(IndentStr), s(RParen), s(Suffix)], !IO)
@@ -1024,7 +1025,7 @@ output_initializer_body_for_csharp(Info, Stream, InitStart, Indent,
         ;
             ElementInits = [HeadElementInit | TailElementInits],
             io.format(Stream, "%snew %s {\n", [s(IndentStr), s(TypeStr)], !IO),
-            output_initializer_body_list_for_csharp(Info, Stream, Indent + 1,
+            output_initializer_body_list_for_csharp(Info, Stream, Indent + 1u,
                 HeadElementInit, TailElementInits, "", !IO),
             io.format(Stream, "%s}%s\n", [s(IndentStr), s(Suffix)], !IO)
         )

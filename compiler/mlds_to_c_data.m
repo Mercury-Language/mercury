@@ -13,6 +13,8 @@
 :- module ml_backend.mlds_to_c_data.
 :- interface.
 
+:- import_module libs.
+:- import_module libs.indent.
 :- import_module ml_backend.mlds.
 :- import_module ml_backend.mlds_to_c_util.
 
@@ -38,7 +40,7 @@
     mlds_type::in, mlds_initializer::in, io::di, io::uo) is det.
 
 :- pred mlds_output_initializer_body(mlds_to_c_opts::in,
-    io.text_output_stream::in, int::in, mlds_initializer::in,
+    io.text_output_stream::in, indent::in, mlds_initializer::in,
     io::di, io::uo) is det.
 
 %---------------------------------------------------------------------------%
@@ -50,9 +52,7 @@
 :- import_module backend_libs.builtin_ops.
 :- import_module backend_libs.c_util.
 :- import_module backend_libs.rtti.
-:- import_module libs.
 :- import_module libs.globals.
-:- import_module libs.indent.
 :- import_module mdbcomp.
 :- import_module mdbcomp.prim_data.
 :- import_module mdbcomp.sym_name.
@@ -1091,7 +1091,7 @@ mlds_output_initializer(Opts, Stream, _Type, Initializer, !IO) :-
     (
         NeedsInit = yes,
         io.write_string(Stream, " = ", !IO),
-        mlds_output_initializer_body(Opts, Stream, 0, Initializer, !IO)
+        mlds_output_initializer_body(Opts, Stream, 0u, Initializer, !IO)
     ;
         NeedsInit = no
     ).
@@ -1147,7 +1147,7 @@ mlds_output_initializer_body(Opts, Stream, Indent, Initializer, !IO) :-
                     ),
                     % We can.
                     io.format(Stream, "%s{ ", [s(IndentStr)], !IO),
-                    mlds_output_initializer_body(Opts, Stream, 0,
+                    mlds_output_initializer_body(Opts, Stream, 0u,
                         HeadInit, !IO),
                     io.write_string(Stream, " }", !IO)
                 ;
@@ -1157,7 +1157,7 @@ mlds_output_initializer_body(Opts, Stream, Indent, Initializer, !IO) :-
                     % We probably can't: printing HeadInit by itself may need
                     % more than one line.
                     io.format(Stream, "%s{\n", [s(IndentStr)], !IO),
-                    mlds_output_initializer_body(Opts, Stream, Indent + 1,
+                    mlds_output_initializer_body(Opts, Stream, Indent + 1u,
                         HeadInit, !IO),
                     io.format(Stream, "\n%s}", [s(IndentStr)], !IO)
                 )
@@ -1165,7 +1165,7 @@ mlds_output_initializer_body(Opts, Stream, Indent, Initializer, !IO) :-
                 TailInits = [_ | _],
                 % We write the N inits on N+2 lines.
                 io.format(Stream, "%s{\n", [s(IndentStr)], !IO),
-                mlds_output_initializer_bodies(Opts, Stream, Indent + 1,
+                mlds_output_initializer_bodies(Opts, Stream, Indent + 1u,
                     HeadInit, TailInits, !IO),
                 io.format(Stream, "%s}", [s(IndentStr)], !IO)
             )
@@ -1173,7 +1173,7 @@ mlds_output_initializer_body(Opts, Stream, Indent, Initializer, !IO) :-
     ).
 
 :- pred mlds_output_initializer_bodies(mlds_to_c_opts::in,
-    io.text_output_stream::in, int::in,
+    io.text_output_stream::in, indent::in,
     mlds_initializer::in, list(mlds_initializer)::in, io::di, io::uo) is det.
 
 mlds_output_initializer_bodies(Opts, Stream, Indent,

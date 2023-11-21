@@ -292,11 +292,13 @@
 
 :- implementation.
 
+:- import_module libs.indent.
 :- import_module parse_tree.error_spec.
 :- import_module parse_tree.write_error_spec.
 
 :- import_module int.
 :- import_module string.
+:- import_module uint.
 
 %---------------------------------------------------------------------------%
 
@@ -421,7 +423,7 @@ xor(MCVarSet, Context, A, B, !Constraints) :-
 
 dump_constraints_and_annotations(OutputStream, Globals, VarSet,
         AnnConstraints, !IO) :-
-    Indent = 0,
+    Indent = 0u,
     list.foldl(dump_ann_constraint(OutputStream, Globals, VarSet, Indent),
         AnnConstraints, !IO).
 
@@ -429,7 +431,7 @@ dump_constraints_and_annotations(OutputStream, Globals, VarSet,
     % at indent level indicated by the int.
     %
 :- pred dump_constraints(io.text_output_stream::in, globals::in, mc_varset::in,
-    int::in, mc_annotation::in, list(mc_constraint)::in,
+    indent::in, mc_annotation::in, list(mc_constraint)::in,
     io::di, io::uo) is det.
 
 dump_constraints(OutputStream, Globals, VarSet, Indent, Annotation,
@@ -439,7 +441,7 @@ dump_constraints(OutputStream, Globals, VarSet, Indent, Annotation,
         Constraints, !IO).
 
 :- pred dump_ann_constraint(io.text_output_stream::in, globals::in,
-    mc_varset::in, int::in, mc_ann_constraint::in, io::di, io::uo) is det.
+    mc_varset::in, indent::in, mc_ann_constraint::in, io::di, io::uo) is det.
 
 dump_ann_constraint(OutputStream, Globals, VarSet, Indent,
         AnnConstraint, !IO) :-
@@ -450,7 +452,7 @@ dump_ann_constraint(OutputStream, Globals, VarSet, Indent,
     % Prints one mc_constraint to the output. The int is an indent level.
     %
 :- pred dump_constraint(io.text_output_stream::in, globals::in, mc_varset::in,
-    int::in, mc_annotation::in, mc_constraint::in, io::di, io::uo) is det.
+    indent::in, mc_annotation::in, mc_constraint::in, io::di, io::uo) is det.
 
 dump_constraint(OutputStream, Globals, VarSet, Indent, Annotation,
         Constraint, !IO) :-
@@ -459,7 +461,7 @@ dump_constraint(OutputStream, Globals, VarSet, Indent, Annotation,
         Context = context(Annotation),
         write_error_pieces(OutputStream, Globals, Context, Indent,
             [words("disj(")], !IO),
-        dump_constraints(OutputStream, Globals, VarSet, Indent + 1,
+        dump_constraints(OutputStream, Globals, VarSet, Indent + 1u,
             Annotation, Constraints, !IO),
         write_error_pieces(OutputStream, Globals, Context, Indent,
             [words(") end disj")], !IO)
@@ -468,7 +470,7 @@ dump_constraint(OutputStream, Globals, VarSet, Indent, Annotation,
         Context = context(Annotation),
         write_error_pieces(OutputStream, Globals, Context, Indent,
             [words("conj(")], !IO),
-        dump_constraints(OutputStream, Globals, VarSet, Indent+1,
+        dump_constraints(OutputStream, Globals, VarSet, Indent + 1u,
             Annotation, Constraints, !IO),
         write_error_pieces(OutputStream, Globals, Context, Indent,
             [words(") end conj")], !IO)
@@ -481,7 +483,7 @@ dump_constraint(OutputStream, Globals, VarSet, Indent, Annotation,
     % Prints a var_constraint to the output. The int is an indent level.
     %
 :- pred dump_var_constraint(io.text_output_stream::in, globals::in,
-    mc_varset::in, int::in, mc_annotation::in, var_constraint::in,
+    mc_varset::in, indent::in, mc_annotation::in, var_constraint::in,
     io::di, io::uo) is det.
 
 dump_var_constraint(OutputStream, Globals, VarSet, Indent, Annotation,

@@ -112,6 +112,7 @@
 :- import_module hlds.hlds_goal.
 :- import_module libs.
 :- import_module libs.globals.
+:- import_module libs.indent.
 :- import_module parse_tree.
 :- import_module parse_tree.error_spec.
 :- import_module parse_tree.prog_data.
@@ -120,12 +121,12 @@
 
 :- import_module bimap.
 :- import_module bool.
-:- import_module int.
 :- import_module map.
 :- import_module maybe.
 :- import_module multi_map.
 :- import_module require.
 :- import_module string.
+:- import_module uint.
 
 %-----------------------------------------------------------------------------%
 %
@@ -729,7 +730,7 @@ dump_pred_goal_paths(OutputStream, ModuleInfo, PredId, !IO) :-
         clauses_info_get_clauses_rep(ClausesInfo, ClausesRep, _ItemNumbers),
         get_clause_list_maybe_repeated(ClausesRep, Clauses),
         Goals = list.map(func(Clause) = clause_body(Clause), Clauses),
-        Indent = 0,
+        Indent = 0u,
         list.foldl(dump_goal_goal_paths(OutputStream, Globals, Indent),
             Goals, !IO)
     ;
@@ -752,7 +753,7 @@ dump_proc_goal_paths(OutputStream, Globals, ProcTable, ProcId, !IO) :-
     write_error_pieces_plain(OutputStream, Globals, ProcHeaderFormat, !IO),
     map.lookup(ProcTable, ProcId, ProcInfo),
     proc_info_get_goal(ProcInfo, Goal),
-    Indent = 0,
+    Indent = 0u,
     dump_goal_goal_paths(OutputStream, Globals, Indent, Goal, !IO).
 
     % dump_goal_goal_paths(OutputStream, Globals, Indent, Goal, !IO)
@@ -763,7 +764,7 @@ dump_proc_goal_paths(OutputStream, Globals, ProcTable, ProcId, !IO) :-
     % re-ordering.
     %
 :- pred dump_goal_goal_paths(io.text_output_stream::in, globals::in,
-    int::in, hlds_goal::in, io::di, io::uo) is det.
+    indent::in, hlds_goal::in, io::di, io::uo) is det.
 
 dump_goal_goal_paths(OutputStream, Globals, Indent, Goal, !IO) :-
     Goal = hlds_goal(GoalExpr, GoalInfo),
@@ -776,7 +777,7 @@ dump_goal_goal_paths(OutputStream, Globals, Indent, Goal, !IO) :-
     % Dump the goal paths for each subgoal in GoalExpr at SubGoalIndent,
     % in the order they appear, for the purposes of visually checking
     % reordering.
-    SubGoalIndent = Indent + 1,
+    SubGoalIndent = Indent + 1u,
     (
         ( GoalExpr = plain_call(_, _, _, _, _, _)
         ; GoalExpr = generic_call(_, _, _, _, _)

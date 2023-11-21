@@ -2028,7 +2028,7 @@ mercury_format_item_promise(_, S, ItemPromise, !U) :-
     ),
     add_string(PrefixStr, S, !U),
     add_string("(\n", S, !U),
-    Indent = 1,
+    Indent = 1u,
     mercury_format_goal(S, VarSet, Indent, Goal, !U),
     add_string("\n).\n", S, !U).
 

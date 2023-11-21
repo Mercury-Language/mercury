@@ -14,6 +14,8 @@
 :- module parse_tree.parse_tree_out_clause.
 :- interface.
 
+:- import_module libs.
+:- import_module libs.indent.
 :- import_module mdbcomp.
 :- import_module mdbcomp.sym_name.
 :- import_module parse_tree.parse_tree_out_info.
@@ -33,7 +35,7 @@
 %---------------------------------------------------------------------------%
 
 :- pred mercury_format_goal(S::in, prog_varset::in,
-    int::in, goal::in, U::di, U::uo) is det <= pt_output(S, U).
+    indent::in, goal::in, U::di, U::uo) is det <= pt_output(S, U).
 
 :- pred mercury_format_goal_warnings(S::in,
     goal_warning::in, list(goal_warning)::in,
@@ -62,12 +64,12 @@
 :- import_module parse_tree.prog_util.
 
 :- import_module bool.
-:- import_module int.
 :- import_module maybe.
 :- import_module string.
 :- import_module term.
 :- import_module term_context.
 :- import_module term_io.
+:- import_module uint.
 :- import_module varset.
 
 %---------------------------------------------------------------------------%
@@ -137,7 +139,7 @@ mercury_format_pred_clause(S, VarSet, PredName, Args, Body, !U) :-
         true
     else
         add_string(" :-\n\t", S, !U),
-        mercury_format_goal(S, VarSet, 1, Body, !U)
+        mercury_format_goal(S, VarSet, 1u, Body, !U)
     ).
 
 :- pred mercury_format_func_clause(S::in, prog_varset::in,
@@ -162,7 +164,7 @@ mercury_format_func_clause(S, VarSet, PredName, Args, Result, Body, !U) :-
     else
         mercury_format_term_vs(VarSet, print_name_only, Result, S, !U),
         add_string(" :-\n\t", S, !U),
-        mercury_format_goal(S, VarSet, 1, Body, !U)
+        mercury_format_goal(S, VarSet, 1u, Body, !U)
     ).
 
 %---------------------------------------------------------------------------%
@@ -176,7 +178,7 @@ mercury_format_goal(S, VarSet, Indent, Goal, !U) :-
         add_string("true", S, !U)
     ;
         Goal = implies_expr(_, SubGoalA, SubGoalB),
-        Indent1 = Indent + 1,
+        Indent1 = Indent + 1u,
         add_string("(", S, !U),
         mercury_format_newline(Indent1, S, !U),
         mercury_format_connected_goal(S, VarSet, Indent1, SubGoalA, !U),
@@ -188,7 +190,7 @@ mercury_format_goal(S, VarSet, Indent, Goal, !U) :-
         add_string(")", S, !U)
     ;
         Goal = equivalent_expr(_, SubGoalA, SubGoalB),
-        Indent1 = Indent + 1,
+        Indent1 = Indent + 1u,
         add_string("(", S, !U),
         mercury_format_newline(Indent1, S, !U),
         mercury_format_connected_goal(S, VarSet, Indent1, SubGoalA, !U),
@@ -221,7 +223,7 @@ mercury_format_goal(S, VarSet, Indent, Goal, !U) :-
                 mercury_format_state_vars(VarSet, print_name_only, Vars, S, !U)
             ),
             add_string("] (", S, !U),
-            Indent1 = Indent + 1,
+            Indent1 = Indent + 1u,
             mercury_format_newline(Indent1, S, !U),
             mercury_format_goal(S, VarSet, Indent1, SubGoal, !U),
             mercury_format_newline(Indent, S, !U),
@@ -250,7 +252,7 @@ mercury_format_goal(S, VarSet, Indent, Goal, !U) :-
         ; Purity = purity_semipure, PurityStr = "promise_semipure"
         ; Purity = purity_impure,   PurityStr = "promise_impure"
         ),
-        Indent1 = Indent + 1,
+        Indent1 = Indent + 1u,
         add_string(PurityStr, S, !U),
         add_string(" (", S, !U),
         mercury_format_newline(Indent1, S, !U),
@@ -270,7 +272,7 @@ mercury_format_goal(S, VarSet, Indent, Goal, !U) :-
         ),
         add_string(DetismStr, S, !U),
         add_string(" (", S, !U),
-        Indent1 = Indent + 1,
+        Indent1 = Indent + 1u,
         mercury_format_newline(Indent1, S, !U),
         mercury_format_goal(S, VarSet, Indent1, SubGoal, !U),
         mercury_format_newline(Indent, S, !U),
@@ -280,7 +282,7 @@ mercury_format_goal(S, VarSet, Indent, Goal, !U) :-
         add_string("require_complete_switch [", S, !U),
         mercury_format_plain_or_dot_var(S, VarSet, print_name_only, Var, !U),
         add_string("] (", S, !U),
-        Indent1 = Indent + 1,
+        Indent1 = Indent + 1u,
         mercury_format_newline(Indent1, S, !U),
         mercury_format_goal(S, VarSet, Indent1, SubGoal, !U),
         mercury_format_newline(Indent, S, !U),
@@ -300,7 +302,7 @@ mercury_format_goal(S, VarSet, Indent, Goal, !U) :-
         add_string(" [", S, !U),
         mercury_format_plain_or_dot_var(S, VarSet, print_name_only, Var, !U),
         add_string("] (", S, !U),
-        Indent1 = Indent + 1,
+        Indent1 = Indent + 1u,
         mercury_format_newline(Indent1, S, !U),
         mercury_format_goal(S, VarSet, Indent1, SubGoal, !U),
         mercury_format_newline(Indent, S, !U),
@@ -310,7 +312,7 @@ mercury_format_goal(S, VarSet, Indent, Goal, !U) :-
         add_string("disable_warnings [", S, !U),
         mercury_format_goal_warnings(S, HeadWarning, TailWarnings, !U),
         add_string("] (", S, !U),
-        Indent1 = Indent + 1,
+        Indent1 = Indent + 1u,
         mercury_format_newline(Indent1, S, !U),
         mercury_format_goal(S, VarSet, Indent1, SubGoal, !U),
         mercury_format_newline(Indent, S, !U),
@@ -341,7 +343,7 @@ mercury_format_goal(S, VarSet, Indent, Goal, !U) :-
         ),
         add_string(")] (", S, !U),
 
-        Indent1 = Indent + 1,
+        Indent1 = Indent + 1u,
         mercury_format_newline(Indent1, S, !U),
         mercury_format_orelse_goals(S, VarSet, Indent1,
             [MainGoal | OrElseGoals], !U),
@@ -389,8 +391,8 @@ mercury_format_goal(S, VarSet, Indent, Goal, !U) :-
                 MutableVars, !.NeedComma, _, !U)
         ),
         add_string("]", S, !U),
-        mercury_format_newline(Indent + 1, S, !U),
-        mercury_format_goal(S, VarSet, Indent + 1, SubGoal, !U),
+        mercury_format_newline(Indent + 1u, S, !U),
+        mercury_format_goal(S, VarSet, Indent + 1u, SubGoal, !U),
         mercury_format_newline(Indent, S, !U),
         add_string(")", S, !U)
     ;
@@ -406,7 +408,7 @@ mercury_format_goal(S, VarSet, Indent, Goal, !U) :-
             MaybeIO = no
         ),
         add_string("] (", S, !U),
-        Indent1 = Indent + 1,
+        Indent1 = Indent + 1u,
         mercury_format_newline(Indent1, S, !U),
         mercury_format_goal(S, VarSet, Indent1, SubGoal, !U),
         mercury_format_newline(Indent, S, !U),
@@ -441,7 +443,7 @@ mercury_format_goal(S, VarSet, Indent, Goal, !U) :-
         Goal = if_then_else_expr(_, Vars, StateVars, Cond, Then, Else),
         add_string("(if", S, !U),
         mercury_format_some(S, VarSet, Vars, StateVars, !U),
-        Indent1 = Indent + 1,
+        Indent1 = Indent + 1u,
         mercury_format_newline(Indent1, S, !U),
         mercury_format_goal(S, VarSet, Indent1, Cond, !U),
         mercury_format_newline(Indent, S, !U),
@@ -457,7 +459,7 @@ mercury_format_goal(S, VarSet, Indent, Goal, !U) :-
     ;
         Goal = not_expr(_, SubGoal),
         add_string("\\+ (", S, !U),
-        Indent1 = Indent + 1,
+        Indent1 = Indent + 1u,
         mercury_format_newline(Indent1, S, !U),
         mercury_format_goal(S, VarSet, Indent1, SubGoal, !U),
         mercury_format_newline(Indent, S, !U),
@@ -475,7 +477,7 @@ mercury_format_goal(S, VarSet, Indent, Goal, !U) :-
         Goal = disj_expr(_, Disjunct1, Disjunct2, Disjuncts),
         NonFirstDisjuncts = [Disjunct2 | Disjuncts],
         add_string("(", S, !U),
-        Indent1 = Indent + 1,
+        Indent1 = Indent + 1u,
         mercury_format_newline(Indent1, S, !U),
         mercury_format_goal(S, VarSet, Indent1, Disjunct1, !U),
         mercury_format_disj(S, VarSet, Indent, NonFirstDisjuncts, !U),
@@ -500,7 +502,7 @@ mercury_format_goal(S, VarSet, Indent, Goal, !U) :-
 
 %---------------------------------------------------------------------------%
 
-:- pred mercury_format_connected_goal(S::in, prog_varset::in, int::in,
+:- pred mercury_format_connected_goal(S::in, prog_varset::in, indent::in,
     goal::in, U::di, U::uo) is det <= pt_output(S, U).
 
 mercury_format_connected_goal(S, VarSet, Indent, Goal, !U) :-
@@ -533,7 +535,7 @@ mercury_format_connected_goal(S, VarSet, Indent, Goal, !U) :-
         ; Goal = atomic_expr(_, _, _, _, _, _)
         ; Goal = trace_expr(_, _, _, _, _, _)
         ),
-        Indent1 = Indent + 1,
+        Indent1 = Indent + 1u,
         add_string("(", S, !U),
         mercury_format_newline(Indent1, S, !U),
         mercury_format_goal(S, VarSet, Indent1, Goal, !U),
@@ -581,13 +583,13 @@ mercury_format_call(S, VarSet, SymName, Term, !U) :-
 %---------------------------------------------------------------------------%
 
 :- pred mercury_format_disj(S::in, prog_varset::in,
-    int::in, list(goal)::in, U::di, U::uo) is det <= pt_output(S, U).
+    indent::in, list(goal)::in, U::di, U::uo) is det <= pt_output(S, U).
 
 mercury_format_disj(_S, _VarSet, _Indent, [], !U).
 mercury_format_disj(S, VarSet, Indent, [Disjunct | Disjuncts], !U) :-
     mercury_format_newline(Indent, S, !U),
     add_string(";", S, !U),
-    Indent1 = Indent + 1,
+    Indent1 = Indent + 1u,
     mercury_format_newline(Indent1, S, !U),
     mercury_format_goal(S, VarSet, Indent1, Disjunct, !U),
     mercury_format_disj(S, VarSet, Indent, Disjuncts, !U).
@@ -595,7 +597,8 @@ mercury_format_disj(S, VarSet, Indent, [Disjunct | Disjuncts], !U) :-
 %---------------------------------------------------------------------------%
 
 :- pred mercury_format_conj(S::in, prog_varset::in,
-    int::in, goal::in, list(goal)::in, U::di, U::uo) is det <= pt_output(S, U).
+    indent::in, goal::in, list(goal)::in, U::di, U::uo) is det
+    <= pt_output(S, U).
 
 mercury_format_conj(S, VarSet, Indent, GoalA, GoalsB, !U) :-
     mercury_format_goal(S, VarSet, Indent, GoalA, !U),
@@ -609,10 +612,11 @@ mercury_format_conj(S, VarSet, Indent, GoalA, GoalsB, !U) :-
     ).
 
 :- pred mercury_format_par_conj(S::in, prog_varset::in,
-    int::in, goal::in, list(goal)::in, U::di, U::uo) is det <= pt_output(S, U).
+    indent::in, goal::in, list(goal)::in, U::di, U::uo) is det
+    <= pt_output(S, U).
 
 mercury_format_par_conj(S, VarSet, Indent, GoalA, GoalsB, !U) :-
-    Indent1 = Indent + 1,
+    Indent1 = Indent + 1u,
     mercury_format_tabs(Indent1, S, !U),
     mercury_format_goal(S, VarSet, Indent1, GoalA, !U),
     (
@@ -627,7 +631,7 @@ mercury_format_par_conj(S, VarSet, Indent, GoalA, GoalsB, !U) :-
 %---------------------------------------------------------------------------%
 
 :- pred mercury_format_orelse_goals(S::in, prog_varset::in,
-    int::in, list(goal)::in, U::di, U::uo) is det <= pt_output(S, U).
+    indent::in, list(goal)::in, U::di, U::uo) is det <= pt_output(S, U).
 
 mercury_format_orelse_goals(S, VarSet, Indent, Goals, !U) :-
     (
@@ -636,10 +640,10 @@ mercury_format_orelse_goals(S, VarSet, Indent, Goals, !U) :-
         Goals = [HeadGoal | TailGoals],
         (
             TailGoals = [],
-            mercury_format_goal(S, VarSet, Indent + 1, HeadGoal, !U)
+            mercury_format_goal(S, VarSet, Indent + 1u, HeadGoal, !U)
         ;
             TailGoals = [_|_],
-            mercury_format_goal(S, VarSet, Indent + 1, HeadGoal, !U),
+            mercury_format_goal(S, VarSet, Indent + 1u, HeadGoal, !U),
             mercury_format_newline(Indent, S, !U),
             add_string("orelse", S, !U),
             mercury_format_newline(Indent, S, !U),
@@ -680,7 +684,7 @@ mercury_format_some(S, VarSet, Vars, StateVars, !U) :-
 %---------------------------------------------------------------------------%
 
 :- pred mercury_format_promise_eqv_solutions_goal(S::in, prog_varset::in,
-    int::in, list(prog_var)::in, list(prog_var)::in,
+    indent::in, list(prog_var)::in, list(prog_var)::in,
     list(prog_var)::in, list(prog_var)::in, goal::in, string::in,
     U::di, U::uo) is det <= pt_output(S, U).
 
@@ -735,7 +739,7 @@ mercury_format_promise_eqv_solutions_goal(S, VarSet, Indent,
         mercury_format_state_vars_using_prefix(S, VarSet, print_name_only,
             "!:", ColonSVars, !U),
         add_string("] (", S, !U),
-        Indent1 = Indent + 1,
+        Indent1 = Indent + 1u,
         mercury_format_newline(Indent1, S, !U),
         mercury_format_goal(S, VarSet, Indent1, Goal, !U),
         mercury_format_newline(Indent, S, !U),
@@ -847,15 +851,15 @@ mercury_format_trace_mutable_var_and_comma(S, VarSet, VarNamePrint, MutableVar,
 
 %---------------------------------------------------------------------------%
 
-:- pred mercury_format_catch(S::in, prog_varset::in, int::in, catch_expr::in,
-    U::di, U::uo) is det <= pt_output(S, U).
+:- pred mercury_format_catch(S::in, prog_varset::in, indent::in,
+    catch_expr::in, U::di, U::uo) is det <= pt_output(S, U).
 
 mercury_format_catch(S, VarSet, Indent, catch_expr(Pattern, Goal), !U) :-
     add_string("catch ", S, !U),
     mercury_format_term_vs(VarSet, print_name_only, Pattern, S, !U),
     add_string(" ->", S, !U),
-    mercury_format_newline(Indent + 1, S, !U),
-    mercury_format_goal(S, VarSet, Indent + 1, Goal, !U),
+    mercury_format_newline(Indent + 1u, S, !U),
+    mercury_format_goal(S, VarSet, Indent + 1u, Goal, !U),
     mercury_format_newline(Indent, S, !U).
 
 %---------------------------------------------------------------------------%

@@ -19,6 +19,8 @@
 :- import_module hlds.hlds_module.
 :- import_module hlds.hlds_out.hlds_out_util.
 :- import_module hlds.hlds_pred.
+:- import_module libs.
+:- import_module libs.indent.
 :- import_module mdbcomp.
 :- import_module mdbcomp.prim_data.
 :- import_module parse_tree.
@@ -49,7 +51,7 @@
 :- pred write_clause(hlds_out_info::in, io.text_output_stream::in,
     output_lang::in, module_info::in, pred_id::in, pred_or_func::in,
     var_name_source::in, type_qual::in,
-    var_name_print::in, write_which_modes::in, int::in,
+    var_name_print::in, write_which_modes::in, indent::in,
     list(prog_term)::in, clause::in, io::di, io::uo) is det.
 
 %---------------------------------------------------------------------------%
@@ -72,9 +74,7 @@
 :- import_module hlds.pred_name.
 :- import_module hlds.status.
 :- import_module hlds.var_table_hlds.
-:- import_module libs.
 :- import_module libs.globals.
-:- import_module libs.indent.
 :- import_module libs.trace_params.
 :- import_module mdbcomp.goal_path.
 :- import_module mdbcomp.program_representation.
@@ -105,6 +105,7 @@
 :- import_module string.
 :- import_module term.
 :- import_module term_subst.
+:- import_module uint.
 :- import_module varset.
 
 %---------------------------------------------------------------------------%
@@ -376,7 +377,7 @@ write_pred_types(Stream, VarNamePrint, TVarSet, VarTable, RttiVarMaps,
     ( if map.is_empty(ProofMap) then
         true
     else
-        write_constraint_proof_map(Stream, 0, VarNamePrint, TVarSet,
+        write_constraint_proof_map(Stream, 0u, VarNamePrint, TVarSet,
             ProofMap, !IO),
         io.write_string(Stream, "\n", !IO)
     ),
@@ -499,7 +500,7 @@ write_clauses_loop(Info, Stream, Lang, ModuleInfo, PredId, PredOrFunc,
         Clauses = [FirstClause | LaterClauses],
         io.format(Stream, "%% clause %d\n", [i(CurClauseNum)], !IO),
         write_clause(Info, Stream, Lang, ModuleInfo, PredId, PredOrFunc,
-            VarNameSrc, TypeQual, VarNamePrint, write_actual_modes, 0,
+            VarNameSrc, TypeQual, VarNamePrint, write_actual_modes, 0u,
             HeadTerms, FirstClause, !IO),
         write_clauses_loop(Info, Stream, Lang, ModuleInfo, PredId, PredOrFunc,
             VarNameSrc, TypeQual, VarNamePrint, HeadTerms,
@@ -512,7 +513,7 @@ write_clause(Info, Stream, Lang, ModuleInfo, PredId, PredOrFunc, VarNameSrc,
     Clause = clause(ApplicableModes, Goal, ImplLang, Context,
         _StateVarWarnings),
     IndentStr = indent2_string(Indent),
-    Indent1 = Indent + 1,
+    Indent1 = Indent + 1u,
     DumpOptions = Info ^ hoi_dump_hlds_options,
     (
         ApplicableModes = all_modes
@@ -723,7 +724,7 @@ write_proc(Info, Stream, VarNamePrint, ModuleInfo, PredId, PredInfo,
     proc_info_get_maybe_deep_profile_info(ProcInfo, MaybeDeepProfileInfo),
     proc_info_get_maybe_untuple_info(ProcInfo, MaybeUntupleInfo),
     proc_info_get_var_name_remap(ProcInfo, VarNameRemap),
-    Indent1 = 1,
+    Indent1 = 1u,
     Indent1Str = indent2_string(Indent1),
 
     DumpOptions = Info ^ hoi_dump_hlds_options,
@@ -1352,7 +1353,7 @@ write_stack_slots(Stream, VarTable, VarNamePrint, StackSlots, !IO) :-
     VarSlotList = assoc_list.map_values_only(stack_slot_to_abs_locn,
         VarSlotList0),
     write_var_to_abs_locns(Stream, vns_var_table(VarTable), VarNamePrint,
-        0, VarSlotList, !IO).
+        0u, VarSlotList, !IO).
 
 %---------------------------------------------------------------------------%
 :- end_module hlds.hlds_out.hlds_out_pred.

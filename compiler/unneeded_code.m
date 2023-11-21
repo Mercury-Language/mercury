@@ -363,7 +363,7 @@ unneeded_process_proc(ProgressStream, PredId, Pass, Successful,
                     proc_info_get_inst_varset(!.ProcInfo, InstVarSet0),
                     write_goal(OutInfo, ProgressStream, !.ModuleInfo,
                         vns_var_table(VarTable0), print_name_and_num,
-                        TVarSet, InstVarSet0, 0, ".\n", Goal0, !IO)
+                        TVarSet, InstVarSet0, 0u, ".\n", Goal0, !IO)
                 else
                     true
                 )

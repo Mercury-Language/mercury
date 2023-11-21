@@ -24,7 +24,7 @@
     % When the MLDS backend generates C, Java or C# code, each indent level
     % is two spaces, so the appropriate way to translate an indent level
     % to an indent string is the indent2 family of operations below.
-:- type indent == int.
+:- type indent == uint.
 
 %---------------------------------------------------------------------------%
 %
@@ -38,30 +38,30 @@
     % Later, we will also support four-spaces-per-indent-level, which is
     % used by parse_tree_out_*.m.
     %
-:- func indent2_increment = int.
+:- func indent2_increment = indent.
 
     % Write out the given indent level (indent2_increment spaces per level).
     %
-:- pred write_indent2(io.text_output_stream::in, int::in,
+:- pred write_indent2(io.text_output_stream::in, indent::in,
     io::di, io::uo) is det.
 
     % Return the indent for the given level as a string.
     %
-:- func indent2_string(int) = string.
+:- func indent2_string(indent) = string.
 
-:- func add_indent2_prefix(int, string) = string.
+:- func add_indent2_prefix(indent, string) = string.
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
 :- implementation.
 
-:- import_module int.
+:- import_module uint.
 :- import_module string.
 
 %---------------------------------------------------------------------------%
 
-indent2_increment = 2.
+indent2_increment = 2u.
 
 write_indent2(Stream, Indent, !IO) :-
     Str = indent2_string(Indent),
@@ -74,34 +74,34 @@ indent2_string(Indent) = Str :-
     % is much rarer.
     ( if indent2_str_lo(Indent, StrPrime) then
         Str = StrPrime
-    else if Indent > 0 then
+    else if Indent > 0u then
         indent2_str_16(SixteenIndentStr),
-        Str = SixteenIndentStr ++ indent2_string(Indent - 16)
+        Str = SixteenIndentStr ++ indent2_string(Indent - 16u)
     else
-        % A negative indent is a bug.
+        % Indent must be zero.
         Str = ""
     ).
 
-:- pred indent2_str_lo(int::in, string::out) is semidet.
+:- pred indent2_str_lo(indent::in, string::out) is semidet.
 :- pred indent2_str_16(string::out) is det.
 
-indent2_str_lo( 0,  "").
-indent2_str_lo( 1,  "  ").
-indent2_str_lo( 2,  "    ").
-indent2_str_lo( 3,  "      ").
-indent2_str_lo( 4,  "        ").
-indent2_str_lo( 5,  "          ").
-indent2_str_lo( 6,  "            ").
-indent2_str_lo( 7,  "              ").
-indent2_str_lo( 8,  "                ").
-indent2_str_lo( 9,  "                  ").
-indent2_str_lo(10,  "                    ").
-indent2_str_lo(11,  "                      ").
-indent2_str_lo(12,  "                        ").
-indent2_str_lo(13,  "                          ").
-indent2_str_lo(14,  "                            ").
-indent2_str_lo(15,  "                              ").
-indent2_str_16(     "                                ").
+indent2_str_lo( 0u,  "").
+indent2_str_lo( 1u,  "  ").
+indent2_str_lo( 2u,  "    ").
+indent2_str_lo( 3u,  "      ").
+indent2_str_lo( 4u,  "        ").
+indent2_str_lo( 5u,  "          ").
+indent2_str_lo( 6u,  "            ").
+indent2_str_lo( 7u,  "              ").
+indent2_str_lo( 8u,  "                ").
+indent2_str_lo( 9u,  "                  ").
+indent2_str_lo(10u,  "                    ").
+indent2_str_lo(11u,  "                      ").
+indent2_str_lo(12u,  "                        ").
+indent2_str_lo(13u,  "                          ").
+indent2_str_lo(14u,  "                            ").
+indent2_str_lo(15u,  "                              ").
+indent2_str_16(      "                                ").
 
 add_indent2_prefix(Indent, Str0) = Str :-
     Str = indent2_string(Indent) ++ Str0.

@@ -1274,7 +1274,7 @@ partition_disj_trial(LocalInfo, Var, [Disjunct0 | Disjuncts0],
         VarTable = LocalInfo ^ lsdi_var_table,
         io.output_stream(Stream, !IO),
         DisjunctDesc0 =
-            describe_structured_goal(ModuleInfo, VarTable, 1, Disjunct0),
+            describe_structured_goal(ModuleInfo, VarTable, 1u, Disjunct0),
         (
             MaybeConsId = no,
             ResultStr = "no"

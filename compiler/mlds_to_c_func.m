@@ -76,6 +76,7 @@
 :- import_module int.
 :- import_module maybe.
 :- import_module string.
+:- import_module uint.
 
 %---------------------------------------------------------------------------%
 
@@ -187,7 +188,7 @@ mlds_output_params_in_parens(Opts, Stream, GetTypePrefixSuffix,
     ;
         Args = [HeadArg | TailArgs],
         io.write_string(Stream, "(\n", !IO),
-        mlds_output_params_list(Opts, Stream, GetTypePrefixSuffix, Indent + 1,
+        mlds_output_params_list(Opts, Stream, GetTypePrefixSuffix, Indent + 1u,
             Context, HeadArg, TailArgs, !IO),
         io.write_char(Stream, ')', !IO)
     ).
@@ -316,11 +317,11 @@ mlds_output_func(Opts, Stream, Indent, QualFuncName, Context, Params,
             (
                 ProfileTime = yes,
                 mlds_output_time_profile_instr(Opts, Stream, Context,
-                    Indent + 1, QualFuncName, !IO)
+                    Indent + 1u, QualFuncName, !IO)
             ;
                 ProfileTime = no
             ),
-            mlds_output_statement(Opts, Stream, Indent + 1, FuncInfo,
+            mlds_output_statement(Opts, Stream, Indent + 1u, FuncInfo,
                 BodyStmt, !IO),
             c_output_context(Stream, LineNumbers, Context, !IO),
             % end of the function

@@ -59,12 +59,12 @@
 :- import_module parse_tree.prog_data.
 
 :- import_module bool.
-:- import_module int.
 :- import_module list.
 :- import_module maybe.
 :- import_module require.
 :- import_module string.
 :- import_module term.
+:- import_module uint.
 
 %---------------------------------------------------------------------------%
 
@@ -106,7 +106,7 @@ output_class_defn_for_csharp(Info0, Stream, Indent, ClassDefn, !IO) :-
     ),
 
     io.format(Stream, "%s{\n", [s(IndentStr)], !IO),
-    Indent1 = Indent + 1,
+    Indent1 = Indent + 1u,
     list.foldl(
         output_field_var_defn_for_csharp(Info, Stream, Indent1),
         MemberFields, !IO),
@@ -151,7 +151,7 @@ output_enum_class_defn_for_csharp(Info0, Stream, Indent, EnumDefn, !IO) :-
     expect(unify(Implements, no), $pred, "Implements != no"),
 
     io.format(Stream, "%s{\n", [s(IndentStr)], !IO),
-    Indent1 = Indent + 1,
+    Indent1 = Indent + 1u,
     Indent2Str = indent2_string(Indent1),
     list.foldl(output_enum_constant_for_csharp(Info, Stream, Indent2Str),
         EnumConsts, !IO),
@@ -165,7 +165,7 @@ output_enum_class_defn_for_csharp(Info0, Stream, Indent, EnumDefn, !IO) :-
 output_env_defn_for_csharp(Info, Stream, Indent, EnvDefn, !IO) :-
     EnvDefn = mlds_env_defn(EnvName, _Context, MemberFields),
     IndentStr = indent2_string(Indent),
-    Indent1 = Indent + 1,
+    Indent1 = Indent + 1u,
     Indent1Str = indent2_string(Indent1),
     EnvNameStr = unqual_class_name_to_ll_string_for_csharp(EnvName, 0),
     EnvTypeStr = type_to_string_for_csharp(Info, mlds_generic_env_ptr_type),
@@ -189,7 +189,7 @@ output_struct_defn_for_csharp(Info, Stream, Indent, StructDefn, !IO) :-
     ;
         MaybeCtor = yes(Ctor)
     ),
-    Indent1 = Indent + 1,
+    Indent1 = Indent + 1u,
     IndentStr = indent2_string(Indent),
     StructNameStr = unqual_class_name_to_ll_string_for_csharp(StructName, 0),
 
@@ -269,7 +269,7 @@ output_field_var_defn_for_csharp(Info, Stream, Indent, FieldVarDefn, !IO) :-
     io.format(Stream, "%s%s%s%s%s %s",
         [s(IndentStr), s(AccessPrefix), s(PerInstancePrefix),
         s(ConstnessPrefix), s(TypeStr), s(FieldVarNameStr)], !IO),
-    output_initializer_for_csharp(Info, Stream, oa_none, Indent + 1,
+    output_initializer_for_csharp(Info, Stream, oa_none, Indent + 1u,
         Type, Initializer, ";", !IO).
 
 %---------------------------------------------------------------------------%

@@ -110,7 +110,6 @@
 :- import_module assoc_list.
 :- import_module bool.
 :- import_module cord.
-:- import_module int.
 :- import_module list.
 :- import_module map.
 :- import_module maybe.
@@ -120,6 +119,7 @@
 :- import_module set.
 :- import_module string.
 :- import_module term_context.
+:- import_module uint.
 
 %---------------------------------------------------------------------------%
 
@@ -247,9 +247,9 @@ output_java_src_file(ModuleInfo, MLDS, Stream, Errors, !IO) :-
         RttiDefns = [_ | _],
         io.write_string(Stream, "\n// RttiDefns\n", !IO),
         list.foldl(
-            output_global_var_defn_for_java(Info, Stream, 1, oa_alloc_only),
+            output_global_var_defn_for_java(Info, Stream, 1u, oa_alloc_only),
             RttiDefns, !IO),
-        output_rtti_assignments_for_java(Info, Stream, 1, RttiDefns, !IO)
+        output_rtti_assignments_for_java(Info, Stream, 1u, RttiDefns, !IO)
     ),
 
     ( if
@@ -259,10 +259,10 @@ output_java_src_file(ModuleInfo, MLDS, Stream, Errors, !IO) :-
         true
     else
         io.write_string(Stream, "\n// Cell and tabling definitions\n", !IO),
-        output_global_var_decls_for_java(Info, Stream, 1, CellDefns, !IO),
-        output_global_var_decls_for_java(Info, Stream, 1,
+        output_global_var_decls_for_java(Info, Stream, 1u, CellDefns, !IO),
+        output_global_var_decls_for_java(Info, Stream, 1u,
             TableStructDefns, !IO),
-        output_global_var_assignments_for_java(Info, Stream, 1,
+        output_global_var_assignments_for_java(Info, Stream, 1u,
             CellDefns ++ TableStructDefns, !IO)
     ),
 
@@ -272,7 +272,7 @@ output_java_src_file(ModuleInfo, MLDS, Stream, Errors, !IO) :-
         true
     else
         io.write_string(Stream, "\n// Scalar common data\n", !IO),
-        output_scalar_common_data_for_java(Info, Stream, 1,
+        output_scalar_common_data_for_java(Info, Stream, 1u,
             ScalarCellGroupMap, !IO)
     ),
 
@@ -280,7 +280,7 @@ output_java_src_file(ModuleInfo, MLDS, Stream, Errors, !IO) :-
         true
     else
         io.write_string(Stream, "\n// Vector common data\n", !IO),
-        output_vector_common_data_for_java(Info, Stream, 1,
+        output_vector_common_data_for_java(Info, Stream, 1u,
             VectorCellGroupMap, !IO)
     ),
 
@@ -291,7 +291,7 @@ output_java_src_file(ModuleInfo, MLDS, Stream, Errors, !IO) :-
         SortedFuncDefns = [_ | _],
         io.write_string(Stream, "\n// Function definitions\n", !IO),
         list.foldl(
-            output_function_defn_for_java(Info, Stream, 1, oa_none),
+            output_function_defn_for_java(Info, Stream, 1u, oa_none),
             SortedFuncDefns, !IO)
     ),
 
@@ -301,7 +301,7 @@ output_java_src_file(ModuleInfo, MLDS, Stream, Errors, !IO) :-
     ;
         SortedClassDefns = [_ | _],
         io.write_string(Stream, "\n// Class definitions\n", !IO),
-        list.foldl(output_class_defn_for_java(Info, Stream, 1),
+        list.foldl(output_class_defn_for_java(Info, Stream, 1u),
             SortedClassDefns, !IO)
     ),
 
@@ -311,7 +311,7 @@ output_java_src_file(ModuleInfo, MLDS, Stream, Errors, !IO) :-
     ;
         SortedEnumDefns = [_ | _],
         io.write_string(Stream, "\n// Enum class definitions\n", !IO),
-        list.foldl(output_enum_class_defn_for_java(Info, Stream, 1),
+        list.foldl(output_enum_class_defn_for_java(Info, Stream, 1u),
             SortedEnumDefns, !IO)
     ),
 
@@ -321,7 +321,7 @@ output_java_src_file(ModuleInfo, MLDS, Stream, Errors, !IO) :-
     ;
         SortedEnvDefns = [_ | _],
         io.write_string(Stream, "\n// Env definitions\n", !IO),
-        list.foldl(output_env_defn_for_java(Info, Stream, 1),
+        list.foldl(output_env_defn_for_java(Info, Stream, 1u),
             SortedEnvDefns, !IO)
     ),
 
@@ -330,7 +330,7 @@ output_java_src_file(ModuleInfo, MLDS, Stream, Errors, !IO) :-
     ;
         ExportDefns = [_ | _],
         io.write_string(Stream, "\n// ExportDefns\n", !IO),
-        output_exports_for_java(Info, Stream, 1, ExportDefns, !IO)
+        output_exports_for_java(Info, Stream, 1u, ExportDefns, !IO)
     ),
 
     (
@@ -338,7 +338,7 @@ output_java_src_file(ModuleInfo, MLDS, Stream, Errors, !IO) :-
     ;
         ExportedEnums = [_ | _],
         io.write_string(Stream, "\n// ExportedEnums\n", !IO),
-        output_exported_enums_for_java(Info, Stream, 1, ExportedEnums, !IO)
+        output_exported_enums_for_java(Info, Stream, 1u, ExportedEnums, !IO)
     ),
 
     (
@@ -346,7 +346,7 @@ output_java_src_file(ModuleInfo, MLDS, Stream, Errors, !IO) :-
     ;
         InitPreds = [_ | _],
         io.write_string(Stream, "\n// InitPreds\n", !IO),
-        output_inits_for_java(Stream, 1, InitPreds, !IO)
+        output_inits_for_java(Stream, 1u, InitPreds, !IO)
     ),
 
     (
@@ -354,7 +354,7 @@ output_java_src_file(ModuleInfo, MLDS, Stream, Errors, !IO) :-
     ;
         FinalPreds = [_  | _],
         io.write_string(Stream, "\n// FinalPreds\n", !IO),
-        output_finals_for_java(Stream, 1, FinalPreds, !IO)
+        output_finals_for_java(Stream, 1u, FinalPreds, !IO)
     ),
 
     set.init(EnvVarNamesSet0),
@@ -366,7 +366,7 @@ output_java_src_file(ModuleInfo, MLDS, Stream, Errors, !IO) :-
         true
     else
         io.write_string(Stream, "\n// EnvVarNames\n", !IO),
-        set.foldl(output_env_var_definition_for_java(Stream, 1),
+        set.foldl(output_env_var_definition_for_java(Stream, 1u),
             EnvVarNamesSet, !IO)
     ),
 
@@ -422,7 +422,7 @@ output_src_start_for_java(Info, Stream, MercuryModuleName, Imports,
     % a `main' method in the resulting Java class that calls the `main'
     % predicate.
     ( if func_defns_contain_main(FuncDefns) then
-        write_main_driver_for_java(Stream, 1, ClassName, !IO)
+        write_main_driver_for_java(Stream, 1u, ClassName, !IO)
     else
         true
     ).
@@ -454,7 +454,7 @@ write_main_driver_for_java(Stream, Indent, ClassName, !IO) :-
         "io.flush_output_3_p_0(io.stderr_stream_0_f_0());",
         "java.lang.System.exit(jmercury.runtime.JavaInternal.exit_status);"
     ],
-    Indent1Str = indent2_string(Indent + 1),
+    Indent1Str = indent2_string(Indent + 1u),
     list.foldl(write_indentstr_line(Stream, Indent1Str), Body, !IO),
     io.format(Stream, "%s}\n", [s(IndentStr)], !IO).
 
@@ -581,7 +581,7 @@ output_java_foreign_literal_or_include(Info, Stream, LiteralOrInclude,
         Context, Res, !IO) :-
     (
         LiteralOrInclude = floi_literal(Code),
-        write_string_with_context_block(Info, Stream, 0, Code, Context, !IO),
+        write_string_with_context_block(Info, Stream, 0u, Code, Context, !IO),
         Res = ok
     ;
         LiteralOrInclude = floi_include_file(IncludeFile),
@@ -601,7 +601,7 @@ output_java_foreign_literal_or_include(Info, Stream, LiteralOrInclude,
 % Code to output calls to module initialisers.
 %
 
-:- pred output_inits_for_java(io.text_output_stream::in, int::in,
+:- pred output_inits_for_java(io.text_output_stream::in, indent::in,
     list(string)::in, io::di, io::uo) is det.
 
 output_inits_for_java(Stream, Indent, InitPreds, !IO) :-
@@ -610,7 +610,7 @@ output_inits_for_java(Stream, Indent, InitPreds, !IO) :-
     ;
         InitPreds = [_ | _],
         IndentStr = indent2_string(Indent),
-        Indent1Str = indent2_string(Indent + 1),
+        Indent1Str = indent2_string(Indent + 1u),
         % We call the initialisation predicates from a static initialisation
         % block.
         io.format(Stream, "%sstatic {\n", [s(IndentStr)], !IO),
@@ -650,7 +650,7 @@ output_finals_for_java(Stream, Indent, FinalPreds, !IO) :-
             "}"
         ],
         IndentStr = indent2_string(Indent),
-        Indent4Str = indent2_string(Indent + 4),
+        Indent4Str = indent2_string(Indent + 4u),
         list.foldl(write_indentstr_line(Stream, IndentStr), BeforeBlock, !IO),
         list.foldl(output_final_for_java(Stream, Indent4Str), FinalPreds, !IO),
         list.foldl(write_indentstr_line(Stream, IndentStr), AfterBlock, !IO)

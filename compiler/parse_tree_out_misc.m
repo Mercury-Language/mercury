@@ -19,6 +19,7 @@
 :- interface.
 
 :- import_module libs.
+:- import_module libs.indent.
 :- import_module libs.globals.
 :- import_module mdbcomp.
 :- import_module mdbcomp.prim_data.
@@ -137,12 +138,12 @@
 % Write out indentation.
 %
 
-:- pred mercury_format_tabs(int::in, S::in, U::di, U::uo) is det
+:- pred mercury_format_tabs(indent::in, S::in, U::di, U::uo) is det
     <= pt_output(S, U).
 
-:- pred mercury_output_newline(int::in, io.text_output_stream::in,
+:- pred mercury_output_newline(indent::in, io.text_output_stream::in,
     io::di, io::uo) is det.
-:- pred mercury_format_newline(int::in, S::in, U::di, U::uo) is det
+:- pred mercury_format_newline(indent::in, S::in, U::di, U::uo) is det
     <= pt_output(S, U).
 
 %---------------------------------------------------------------------------%
@@ -152,11 +153,11 @@
 
 :- import_module parse_tree.parse_tree_out_term.
 
-:- import_module int.
 :- import_module require.
 :- import_module string.
 :- import_module string.builder.
 :- import_module term_context.
+:- import_module uint.
 
 %---------------------------------------------------------------------------%
 
@@ -374,9 +375,9 @@ format_context(S, Context, !U) :-
 %---------------------------------------------------------------------------%
 
 mercury_format_tabs(Indent, S, !U) :-
-    ( if Indent > 0 then
+    ( if Indent > 0u then
         add_string("\t", S, !U),
-        mercury_format_tabs(Indent - 1, S, !U)
+        mercury_format_tabs(Indent - 1u, S, !U)
     else
         true
     ).

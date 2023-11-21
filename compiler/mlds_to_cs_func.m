@@ -51,6 +51,7 @@
 :- import_module maybe.
 :- import_module string.
 :- import_module term.
+:- import_module uint.
 
 %---------------------------------------------------------------------------%
 
@@ -114,7 +115,7 @@ output_func_for_csharp(Info, Stream, Indent, FuncName, OutputAux, Context,
         cs_output_context(Stream, PrintLineNumbers, Context, !IO),
         io.format(Stream, "%s{\n", [s(IndentStr)], !IO),
         FuncInfo = func_info_csj(Signature),
-        output_stmt_for_csharp(Info, Stream, Indent + 1, FuncInfo, Body,
+        output_stmt_for_csharp(Info, Stream, Indent + 1u, FuncInfo, Body,
             _ExitMethods, !IO),
         % XXX What is this printed context for? Its scope is limited
         % to just one close brace.
@@ -180,7 +181,7 @@ params_to_string_for_csharp(Info, Indent, Params) = Str :-
         Str = "()"
     ;
         Params = [_ | _],
-        Indent1Str = indent2_string(Indent + 1),
+        Indent1Str = indent2_string(Indent + 1u),
         ParamStrs =
             list.map(param_to_string_for_csharp(Info, Indent1Str), Params),
         ParamsStr = string.join_list(",\n", ParamStrs),

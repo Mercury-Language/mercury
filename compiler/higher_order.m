@@ -108,6 +108,7 @@
 :- import_module set.
 :- import_module string.
 :- import_module term_context.
+:- import_module uint.
 :- import_module varset.
 
 %-----------------------------------------------------------------------------%
@@ -3011,18 +3012,18 @@ write_request(OutputStream, ModuleInfo, Msg,
     ),
     io.write_string(OutputStream, " with higher-order arguments:\n", !IO),
     NumToDrop = ActualArityInt - PredArityInt,
-    output_higher_order_args(OutputStream, ModuleInfo, NumToDrop, 0,
+    output_higher_order_args(OutputStream, ModuleInfo, NumToDrop, 0u,
         HOArgs, !IO).
 
 :- pred output_higher_order_args(io.text_output_stream::in, module_info::in,
-    int::in, int::in, list(higher_order_arg)::in, io::di, io::uo) is det.
+    int::in, indent::in, list(higher_order_arg)::in, io::di, io::uo) is det.
 
 output_higher_order_args(_, _, _, _, [], !IO).
 output_higher_order_args(OutputStream, ModuleInfo, NumToDrop, Indent,
         [HOArg | HOArgs], !IO) :-
     HOArg = higher_order_arg(ConsId, ArgNo, NumArgs, _, _, _,
         CurriedHOArgs, IsConst),
-    Indent1Str = indent2_string(Indent + 1),
+    Indent1Str = indent2_string(Indent + 1u),
     io.format(OutputStream, "%% %s", [s(Indent1Str)], !IO),
     (
         IsConst = yes,
@@ -3058,7 +3059,7 @@ output_higher_order_args(OutputStream, ModuleInfo, NumToDrop, Indent,
     ;
         CurriedHOArgs = [_ | _],
         io.write_string(OutputStream, ":\n", !IO),
-        output_higher_order_args(OutputStream, ModuleInfo, 0, Indent + 1,
+        output_higher_order_args(OutputStream, ModuleInfo, 0, Indent + 1u,
             CurriedHOArgs, !IO)
     ),
     output_higher_order_args(OutputStream, ModuleInfo, NumToDrop, Indent,

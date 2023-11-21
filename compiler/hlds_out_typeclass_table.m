@@ -69,7 +69,7 @@ write_class_defn(Info, Stream, ClassId - ClassDefn, !IO) :-
         _, _, MethodInfos, Context, _),
 
     io.format(Stream, "\n%% %s:\n", [s(class_id_to_string(ClassId))], !IO),
-    maybe_output_context_comment(Stream, 0, "", Context, !IO),
+    maybe_output_context_comment(Stream, 0u, "", Context, !IO),
     DumpOptions = Info ^ hoi_dump_hlds_options,
     ( if string.contains_char(DumpOptions, 'v') then
         VarNamePrint = print_name_and_num
@@ -158,7 +158,7 @@ write_instance_defn(Info, Stream, InstanceDefn, !IO) :-
 
     % Separate this instance from any previous ones, or the class id.
     io.nl(Stream, !IO),
-    maybe_output_context_comment(Stream, 1, "", Context, !IO),
+    maybe_output_context_comment(Stream, 1u, "", Context, !IO),
 
     DumpOptions = Info ^ hoi_dump_hlds_options,
     ( if string.contains_char(DumpOptions, 'v') then
@@ -167,7 +167,7 @@ write_instance_defn(Info, Stream, InstanceDefn, !IO) :-
         VarNamePrint = print_name_only
     ),
 
-    IndentStr = indent2_string(1),
+    IndentStr = indent2_string(1u),
     TypeStrs = list.map(mercury_type_to_string(TVarSet, VarNamePrint),
         Types),
     OriginalTypeStrs = list.map(mercury_type_to_string(TVarSet, VarNamePrint),
@@ -214,7 +214,7 @@ write_instance_defn(Info, Stream, InstanceDefn, !IO) :-
     ;
         MaybeMethodInfos = no
     ),
-    write_constraint_proof_map(Stream, 1, VarNamePrint, TVarSet,
+    write_constraint_proof_map(Stream, 1u, VarNamePrint, TVarSet,
         ProofMap, !IO).
 
 :- pred write_instance_methods(io.text_output_stream::in, string::in,

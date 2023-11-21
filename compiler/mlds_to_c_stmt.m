@@ -70,6 +70,7 @@
 :- import_module maybe.
 :- import_module require.
 :- import_module string.
+:- import_module uint.
 
 %---------------------------------------------------------------------------%
 
@@ -137,7 +138,7 @@ mlds_output_statement(Opts, Stream, Indent, FuncInfo, Stmt, !IO) :-
 mlds_output_stmt_block(Opts, Stream, Indent, FuncInfo, Stmt, !IO) :-
     Stmt = ml_stmt_block(LocalVarDefns, FuncDefns, SubStmts, Context),
     BraceIndent = Indent,
-    BlockIndent = Indent + 1,
+    BlockIndent = Indent + 1u,
     BraceIndentStr = indent2_string(BraceIndent),
 
     io.format(Stream, "%s{\n", [s(BraceIndentStr)], !IO),
@@ -380,10 +381,10 @@ mlds_output_stmt_switch(Opts, Stream, Indent, FuncInfo, Stmt, !IO) :-
     CaseOpts = Opts ^ m2co_break_context := bc_switch,
     % We put the default case first, so that if it is unreachable,
     % it will get merged in with the first case.
-    mlds_output_switch_default(CaseOpts, Stream, Indent + 1, FuncInfo,
+    mlds_output_switch_default(CaseOpts, Stream, Indent + 1u, FuncInfo,
         Context, Default, !IO),
     list.foldl(
-        mlds_output_switch_case(CaseOpts, Stream, Indent + 1, FuncInfo,
+        mlds_output_switch_case(CaseOpts, Stream, Indent + 1u, FuncInfo,
             Context),
         Cases, !IO),
     c_output_context(Stream, Opts ^ m2co_line_numbers, Context, !IO),
@@ -396,11 +397,11 @@ mlds_output_stmt_switch(Opts, Stream, Indent, FuncInfo, Stmt, !IO) :-
 mlds_output_switch_case(Opts, Stream, Indent, FuncInfo, Context, Case, !IO) :-
     Case = mlds_switch_case(FirstCond, LaterConds, Stmt),
     IndentStr = indent2_string(Indent),
-    Indent1Str = indent2_string(Indent + 1),
+    Indent1Str = indent2_string(Indent + 1u),
     mlds_output_case_cond(Opts, Stream, IndentStr, Context, FirstCond, !IO),
     list.foldl(mlds_output_case_cond(Opts, Stream, IndentStr, Context),
         LaterConds, !IO),
-    mlds_output_statement(Opts, Stream, Indent + 1, FuncInfo, Stmt, !IO),
+    mlds_output_statement(Opts, Stream, Indent + 1u, FuncInfo, Stmt, !IO),
     c_output_context(Stream, Opts ^ m2co_line_numbers, Context, !IO),
     io.format(Stream, "%sbreak;\n", [s(Indent1Str)], !IO).
 
@@ -443,10 +444,10 @@ mlds_output_switch_default(Opts, Stream, Indent, FuncInfo, Context,
     ;
         Default = default_case(Stmt),
         IndentStr = indent2_string(Indent),
-        Indent1Str = indent2_string(Indent + 1),
+        Indent1Str = indent2_string(Indent + 1u),
         c_output_context(Stream, Opts ^ m2co_line_numbers, Context, !IO),
         io.format(Stream, "%sdefault:\n", [s(IndentStr)], !IO),
-        mlds_output_statement(Opts, Stream, Indent + 1, FuncInfo, Stmt, !IO),
+        mlds_output_statement(Opts, Stream, Indent + 1u, FuncInfo, Stmt, !IO),
         % XXX Why put a context on a non-user-provide code such as "break"?
         c_output_context(Stream, Opts ^ m2co_line_numbers, Context, !IO),
         io.format(Stream, "%sbreak;\n", [s(Indent1Str)], !IO)
@@ -463,7 +464,7 @@ mlds_output_switch_default(Opts, Stream, Indent, FuncInfo, Context,
 
 mlds_output_stmt_label(Stream, Indent, Stmt, !IO) :-
     Stmt = ml_stmt_label(Label, _Context),
-    IndentM1Str = indent2_string(Indent - 1),
+    IndentM1Str = indent2_string(Indent - 1u),
     % Note: MLDS allows labels at the end of blocks. C does not.
     % Hence we need to insert a semicolon after the colon to ensure that
     % there is a statement to attach the label to.
@@ -533,7 +534,7 @@ mlds_output_stmt_goto(Opts, Stream, Indent, Stmt, !IO) :-
 mlds_output_stmt_computed_goto(Opts, Stream, Indent, Stmt, !IO) :-
     Stmt = ml_stmt_computed_goto(Expr, Labels, Context),
     IndentStr = indent2_string(Indent),
-    Indent1Str = indent2_string(Indent + 1),
+    Indent1Str = indent2_string(Indent + 1u),
     % XXX For GNU C, we could output potentially more efficient code
     % by using an array of labels; this would tell the compiler that
     % it did not need to do any range check.
@@ -599,7 +600,7 @@ mlds_output_stmt_call(Opts, Stream, Indent, FuncInfo, Stmt, !IO) :-
         mlds_output_call(Opts, Stream, Context, Indent, CallHasReturn,
             FuncRval, CallArgs, Results, !IO)
     else
-        BodyIndent = Indent + 1,
+        BodyIndent = Indent + 1u,
         IndentStr = indent2_string(Indent),
         BodyIndentStr = indent2_string(BodyIndent),
 
@@ -833,12 +834,12 @@ mlds_output_stmt_try_commit(Opts, Stream, Indent, FuncInfo, Stmt, !IO) :-
     mlds_output_lval(Opts, Ref, Stream, !IO),
     io.write_string(Stream, ") == 0)\n", !IO),
 
-    mlds_output_statement(Opts, Stream, Indent + 1, FuncInfo, BodyStmt, !IO),
+    mlds_output_statement(Opts, Stream, Indent + 1u, FuncInfo, BodyStmt, !IO),
 
     c_output_context(Stream, Opts ^ m2co_line_numbers, Context, !IO),
     io.format(Stream, "%selse\n", [s(IndentStr)], !IO),
 
-    mlds_output_statement(Opts, Stream, Indent + 1, FuncInfo, HandlerStmt,
+    mlds_output_statement(Opts, Stream, Indent + 1u, FuncInfo, HandlerStmt,
         !IO).
 
 %---------------------------------------------------------------------------%
@@ -945,7 +946,7 @@ mlds_output_stmt_atomic_new_object(Opts, Stream, Indent, AtomicStmt,
     AtomicStmt = new_object(Target, Ptag, _ExplicitSecTag, Type,
         MaybeSize, _MaybeCtorName, ArgRvalsTypes, MayUseAtomic, MaybeAllocId),
     IndentStr = indent2_string(Indent),
-    Indent1Str = indent2_string(Indent + 1),
+    Indent1Str = indent2_string(Indent + 1u),
     io.format(Stream, "%s{\n", [s(IndentStr)], !IO),
 
     % When filling in the fields of a newly allocated cell, use a fresh
@@ -1067,7 +1068,7 @@ mlds_output_stmt_atomic_new_object(Opts, Stream, Indent, AtomicStmt,
         io.format(Stream, " = %s;\n", [s(BaseVarName1)], !IO)
     ),
     mlds_output_init_args(Opts, Stream, ArgRvalsTypes, Context, 0, Base, Ptag,
-        Indent + 1, !IO),
+        Indent + 1u, !IO),
     c_output_context(Stream, Opts ^ m2co_line_numbers, Context, !IO),
     io.format(Stream, "%s}\n", [s(IndentStr)], !IO).
 

@@ -186,7 +186,7 @@ pd_debug_output_version(Stream, ModuleInfo, PredProcId, Version,
     pred_info_get_typevarset(PredInfo, TVarSet),
     proc_info_get_inst_varset(ProcInfo, InstVarSet),
     write_goal_nl(OutInfo, Stream, ModuleInfo, VarNameSrc, print_name_and_num,
-        TVarSet, InstVarSet, 1, "\n", Goal, !IO),
+        TVarSet, InstVarSet, 1u, "\n", Goal, !IO),
     set.to_sorted_list(Parents, ParentsList),
     ParentStrs = list.map(pred_proc_id_to_dev_string(ModuleInfo), ParentsList),
     ParentsStr = string.join_list(", ", ParentStrs),
@@ -197,7 +197,7 @@ pd_debug_output_version(Stream, ModuleInfo, PredProcId, Version,
         proc_info_get_goal(ProcInfo, ProcGoal),
         io.write_string(Stream, "Unfolded goal\n", !IO),
         write_goal_nl(OutInfo, Stream, ModuleInfo, VarNameSrc,
-            print_name_and_num, TVarSet, InstVarSet, 1, "\n", ProcGoal, !IO)
+            print_name_and_num, TVarSet, InstVarSet, 1u, "\n", ProcGoal, !IO)
     ;
         WriteUnfoldedGoal = no
     ).
@@ -272,7 +272,7 @@ pd_debug_output_goal(PDInfo, Msg, Goal, !IO) :-
         pred_info_get_typevarset(PredInfo, TVarSet),
         proc_info_get_inst_varset(ProcInfo, InstVarSet),
         write_goal_nl(OutInfo, Stream, ModuleInfo, vns_var_table(VarTable),
-            print_name_and_num, TVarSet, InstVarSet, 1, "\n", Goal, !IO),
+            print_name_and_num, TVarSet, InstVarSet, 1u, "\n", Goal, !IO),
         io.flush_output(Stream, !IO)
     ).
 

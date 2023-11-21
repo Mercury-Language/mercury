@@ -22,6 +22,7 @@
 :- import_module hlds.status.
 :- import_module libs.
 :- import_module libs.globals.
+:- import_module libs.indent.
 :- import_module mdbcomp.
 :- import_module mdbcomp.sym_name.
 :- import_module parse_tree.
@@ -155,7 +156,7 @@
     % If the given context is meaningful, output it in a form suitable
     % for a comment in HLDS dumps, followed by Suffix.
     %
-:- pred maybe_output_context_comment(io.text_output_stream::in, int::in,
+:- pred maybe_output_context_comment(io.text_output_stream::in, indent::in,
     string::in, term.context::in, io::di, io::uo) is det.
 
 :- func context_to_brief_string(term.context) = string.
@@ -209,7 +210,7 @@
 
 %---------------------------------------------------------------------------%
 
-:- pred write_constraint_proof_map(io.text_output_stream::in, int::in,
+:- pred write_constraint_proof_map(io.text_output_stream::in, indent::in,
     var_name_print::in, tvarset::in, constraint_proof_map::in,
     io::di, io::uo) is det.
 
@@ -246,7 +247,6 @@
 :- implementation.
 
 :- import_module hlds.pred_name.
-:- import_module libs.indent.
 :- import_module libs.options.
 :- import_module mdbcomp.builtin_modules.
 :- import_module mdbcomp.prim_data.

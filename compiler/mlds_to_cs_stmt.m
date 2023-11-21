@@ -67,6 +67,7 @@
 :- import_module set.
 :- import_module string.
 :- import_module term.
+:- import_module uint.
 
 %---------------------------------------------------------------------------%
 
@@ -130,7 +131,7 @@ output_stmt_block_for_csharp(Info, Stream, Indent, FuncInfo, Stmt,
         ExitMethods, !IO) :-
     Stmt = ml_stmt_block(LocalVarDefns, FuncDefns, Stmts, Context),
     BraceIndent = Indent,
-    BlockIndent = Indent + 1,
+    BlockIndent = Indent + 1u,
     LineNumbers = Info ^ csoi_line_numbers,
     BraceIndentStr = indent2_string(BraceIndent),
 
@@ -172,7 +173,7 @@ output_local_var_defn_for_csharp(Info, Stream, Indent, LocalVarDefn, !IO) :-
     LocalVarNameStr = local_var_name_to_ll_string_for_csharp(LocalVarName),
     io.format(Stream, "%s%s %s",
         [s(IndentStr), s(TypeStr), s(LocalVarNameStr)], !IO),
-    output_initializer_for_csharp(Info, Stream, oa_force_init, Indent + 1,
+    output_initializer_for_csharp(Info, Stream, oa_force_init, Indent + 1u,
         Type, Initializer, ";", !IO).
 
 :- pred output_stmts_for_csharp(csharp_out_info::in, io.text_output_stream::in,
@@ -350,7 +351,7 @@ output_stmt_switch_for_csharp(Info, Stream, Indent, FuncInfo, Stmt,
     output_rval_for_csharp(Info, Val, Stream, !IO),
     io.write_string(Stream, ") {\n", !IO),
     CaseInfo = Info ^ csoi_break_context := bc_switch,
-    output_switch_cases_for_csharp(CaseInfo, Stream, Indent + 1, FuncInfo,
+    output_switch_cases_for_csharp(CaseInfo, Stream, Indent + 1u, FuncInfo,
         Context, Cases, Default, ExitMethods, !IO),
     cs_output_context(Stream, LineNumbers, Context, !IO),
     io.format(Stream, "%s}\n", [s(IndentStr)], !IO).
@@ -389,11 +390,11 @@ output_switch_case_for_csharp(Info, Stream, Indent, FuncInfo, Context, Case,
         FirstCond, !IO),
     list.foldl(output_case_cond_for_csharp(Info, Stream, Indent, Context),
         LaterConds, !IO),
-    output_stmt_for_csharp(Info, Stream, Indent + 1, FuncInfo, Statement,
+    output_stmt_for_csharp(Info, Stream, Indent + 1u, FuncInfo, Statement,
         StmtExitMethods, !IO),
     ( if set.member(can_fall_through, StmtExitMethods) then
         LineNumbers = Info ^ csoi_line_numbers,
-        Indent1Str = indent2_string(Indent + 1),
+        Indent1Str = indent2_string(Indent + 1u),
         cs_output_context(Stream, LineNumbers, Context, !IO),
         io.format(Stream, "%sbreak;\n", [s(Indent1Str)], !IO),
         ExitMethods = set.delete(set.insert(StmtExitMethods, can_break),
@@ -436,7 +437,7 @@ output_switch_default_for_csharp(Info, Stream, Indent, FuncInfo, Context,
         IndentStr = indent2_string(Indent),
         cs_output_context(Stream, LineNumbers, Context, !IO),
         io.format(Stream, "%sdefault:\n", [s(IndentStr)], !IO),
-        output_stmt_for_csharp(Info, Stream, Indent + 1, FuncInfo, Statement,
+        output_stmt_for_csharp(Info, Stream, Indent + 1u, FuncInfo, Statement,
             ExitMethods, !IO),
         cs_output_context(Stream, LineNumbers, Context, !IO),
         io.format(Stream, "%sbreak;\n", [s(IndentStr)], !IO)
@@ -517,7 +518,7 @@ output_stmt_call_for_csharp(Info, Stream, Indent, _FuncInfo, Stmt,
     Signature = mlds_func_signature(ArgTypes, RetTypes),
     LineNumbers = Info ^ csoi_line_numbers,
     IndentStr = indent2_string(Indent),
-    Indent1Str = indent2_string(Indent + 1),
+    Indent1Str = indent2_string(Indent + 1u),
 
     io.format(Stream, "%s{\n", [s(IndentStr)], !IO),
     cs_output_context(Stream, LineNumbers, Context, !IO),
@@ -646,7 +647,7 @@ output_stmt_try_commit_for_csharp(Info, Stream, Indent, FuncInfo, Stmt,
     io.format(Stream, "%stry\n", [s(IndentStr)], !IO),
     cs_output_context(Stream, LineNumbers, Context, !IO),
     io.format(Stream, "%s{\n", [s(IndentStr)], !IO),
-    output_stmt_for_csharp(Info, Stream, Indent + 1, FuncInfo, BodyStmt,
+    output_stmt_for_csharp(Info, Stream, Indent + 1u, FuncInfo, BodyStmt,
         TryExitMethods0, !IO),
     io.format(Stream, "%s}\n", [s(IndentStr)], !IO),
     cs_output_context(Stream, LineNumbers, Context, !IO),
@@ -655,7 +656,7 @@ output_stmt_try_commit_for_csharp(Info, Stream, Indent, FuncInfo, Stmt,
     io.format(Stream, "%s{\n", [s(IndentStr)], !IO),
     cs_output_context(Stream, LineNumbers, Context, !IO),
     io.format(Stream, "%s  ", [s(IndentStr)], !IO),
-    output_stmt_for_csharp(Info, Stream, Indent + 1, FuncInfo, HandlerStmt,
+    output_stmt_for_csharp(Info, Stream, Indent + 1u, FuncInfo, HandlerStmt,
         CatchExitMethods, !IO),
     cs_output_context(Stream, LineNumbers, Context, !IO),
     io.format(Stream, "%s}\n", [s(IndentStr)], !IO),
@@ -739,7 +740,7 @@ output_atomic_stmt_for_csharp(Info, Stream, Indent, AtomicStmt,
         ;
             ArgRvalsTypes = [HeadArgRvalType | TailArgRvalsTypes],
             io.format(Stream, "%s\n", [s(LParen)], !IO),
-            Indent2Str = indent2_string(Indent + 1),
+            Indent2Str = indent2_string(Indent + 1u),
             output_init_args_for_csharp(Info, Stream, Indent2Str,
                 HeadArgRvalType, TailArgRvalsTypes, !IO),
             io.format(Stream, "%s  %s;\n", [s(IndentStr), s(RParen)], !IO)

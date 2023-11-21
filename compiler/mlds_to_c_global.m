@@ -98,6 +98,7 @@
 :- import_module require.
 :- import_module string.
 :- import_module term_context.
+:- import_module uint.
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -176,11 +177,11 @@ mlds_output_scalar_cell_group_defn(Opts, Stream, Indent, MangledModuleName,
         MangledModuleName, TypeRawNum, Type, InitArraySize, NumRows),
     io.format(Stream, "\n%sstatic /* final */ const %s = {\n",
         [s(IndentStr), s(TypeNameStr)], !IO),
-    list.foldl2(mlds_output_cell(Opts, Stream, Indent + 1), Rows, 0, _, !IO),
+    list.foldl2(mlds_output_cell(Opts, Stream, Indent + 1u), Rows, 0, _, !IO),
     io.format(Stream, "%s};\n", [s(IndentStr)], !IO).
 
 :- pred mlds_output_scalar_cell_group_struct_defn(mlds_to_c_opts::in,
-    io.text_output_stream::in, int::in, string::in, int::in,
+    io.text_output_stream::in, indent::in, string::in, int::in,
     list(mlds_type)::in, io::di, io::uo) is det.
 
 mlds_output_scalar_cell_group_struct_defn(Opts, Stream, Indent,
@@ -190,7 +191,7 @@ mlds_output_scalar_cell_group_struct_defn(Opts, Stream, Indent,
     io.format(Stream, "%sstruct %s_scalar_cell_group_%d {\n",
         [s(IndentStr), s(MangledModuleName), i(TypeRawNum)], !IO),
     list.foldl2(
-        mlds_output_scalar_cell_group_struct_field(Opts, Stream, Indent + 1),
+        mlds_output_scalar_cell_group_struct_field(Opts, Stream, Indent + 1u),
         ElemTypes, 1, _, !IO),
     io.format(Stream, "%s};\n", [s(IndentStr)], !IO),
     output_pragma_pack_pop(Stream, !IO).
@@ -288,7 +289,7 @@ mlds_output_vector_cell_group_defn(Opts, Stream, Indent, MangledModuleName,
         "\n%sstatic /* final */ const %s %s_vector_common_%d[%d]%s = {\n",
         [s(IndentStr), s(TypePrefix),
         s(MangledModuleName), i(TypeRawNum), i(NumRows), s(TypeSuffix)], !IO),
-    list.foldl2(mlds_output_cell(Opts, Stream, Indent + 1), Rows, 0, _, !IO),
+    list.foldl2(mlds_output_cell(Opts, Stream, Indent + 1u), Rows, 0, _, !IO),
     io.format(Stream, "%s};\n", [s(IndentStr)], !IO).
 
 :- pred mlds_output_cell(mlds_to_c_opts::in, io.text_output_stream::in,
@@ -335,7 +336,7 @@ mlds_output_alloc_site_defns(Opts, Stream, Indent, MLDS_ModuleName,
         io.format(Stream, "%sstatic MR_AllocSiteInfo MR_alloc_sites[%d] = {\n",
             [s(IndentStr), i(NumAllocSites)], !IO),
         list.foldl(
-            mlds_output_alloc_site_defn(Opts, Stream, Indent + 1,
+            mlds_output_alloc_site_defn(Opts, Stream, Indent + 1u,
                 MLDS_ModuleName),
             AllocSites, !IO),
         io.format(Stream, "%s};\n", [s(IndentStr)], !IO)

@@ -1417,7 +1417,7 @@ mode_error_conjunct_to_msgs(Context, !.ModeInfo, DelayedGoal) = Msgs :-
         varset.init(InstVarSet),
         io.write_string(OutputStream, "\t\t", !IO),
         write_goal(OutInfo, OutputStream, ModuleInfo, VarNameSrc,
-            print_name_only, TVarSet, InstVarSet, 2, ".\n", Goal, !IO)
+            print_name_only, TVarSet, InstVarSet, 2u, ".\n", Goal, !IO)
     )
 ].
 

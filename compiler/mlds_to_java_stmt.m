@@ -60,6 +60,7 @@
 :- import_module set.
 :- import_module string.
 :- import_module term.
+:- import_module uint.
 
 %---------------------------------------------------------------------------%
 
@@ -184,7 +185,7 @@ output_stmt_block_for_java(Info, Stream, Indent, FuncInfo, Stmt,
         ExitMethods, !IO) :-
     Stmt = ml_stmt_block(LocalVarDefns, FuncDefns, SubStmts, Context),
     BraceIndent = Indent,
-    BlockIndent = Indent + 1,
+    BlockIndent = Indent + 1u,
     BraceIndentStr = indent2_string(BraceIndent),
     io.format(Stream, "%s{\n", [s(BraceIndentStr)], !IO),
     (
@@ -222,7 +223,7 @@ output_local_var_defn_for_java(Info, Stream, Indent, LocalVarDefn, !IO) :-
     indent_line_after_context(Stream, Info ^ joi_line_numbers,
         marker_comment, Context, Indent, !IO),
     output_local_var_decl_for_java(Info, Stream, LocalVarName, Type, !IO),
-    output_initializer_for_java(Info, Stream, oa_force_init, Indent + 1,
+    output_initializer_for_java(Info, Stream, oa_force_init, Indent + 1u,
         Type, Initializer, ";", !IO).
 
 :- pred output_local_var_decl_for_java(java_out_info::in,
@@ -351,7 +352,7 @@ output_stmt_switch_for_java(Info, Stream, Indent, FuncInfo, Stmt,
     output_rval_maybe_with_enum_for_java(Info, Rval, Stream, !IO),
     io.write_string(Stream, ") {\n", !IO),
     CaseInfo = Info ^ joi_break_context := bc_switch,
-    output_switch_cases_for_java(CaseInfo, Stream, Indent + 1, FuncInfo,
+    output_switch_cases_for_java(CaseInfo, Stream, Indent + 1u, FuncInfo,
         Context, Cases, Default, ExitMethods, !IO),
     indent_line_after_context(Stream, Info ^ joi_line_numbers,
         marker_comment, Context, Indent, !IO),
@@ -370,7 +371,7 @@ output_stmt_call_for_java(Info, Stream, Indent, _FuncInfo, Stmt,
     IndentStr = indent2_string(Indent),
     io.format(Stream, "%s{\n", [s(IndentStr)], !IO),
     indent_line_after_context(Stream, Info ^ joi_line_numbers,
-        marker_comment, Context, Indent + 1, !IO),
+        marker_comment, Context, Indent + 1u, !IO),
     (
         Results = []
     ;
@@ -435,7 +436,7 @@ output_stmt_call_for_java(Info, Stream, Indent, _FuncInfo, Stmt,
     ( if Results = [_, _ | _] then
         % Copy the results from the "result" array into the Result lvals
         % (unboxing them as we go).
-        output_assign_results(Info, Stream, Results, RetTypes, 0, Indent + 1,
+        output_assign_results(Info, Stream, Results, RetTypes, 0, Indent + 1u,
             Context, !IO)
     else
         true
@@ -478,7 +479,7 @@ output_stmt_return_for_java(Info, Stream, Indent, FuncInfo, Stmt,
             ReturnTypes, Results),
         io.format(Stream, "%sreturn new java.lang.Object[] {\n",
             [s(IndentStr)], !IO),
-        Indent1Str = indent2_string(Indent + 1),
+        Indent1Str = indent2_string(Indent + 1u),
         % Each call to OutputBoxedRval writes the entire contents of a line
         % without the final (comma and) newline.
         OutputBoxedRval =
@@ -521,14 +522,15 @@ output_stmt_try_commit_for_java(Info, Stream, Indent, FuncInfo, Stmt,
     IndentStr = indent2_string(Indent),
     io.format(Stream, "%stry\n", [s(IndentStr)], !IO),
     io.format(Stream, "%s{\n", [s(IndentStr)], !IO),
-    output_statement_for_java(Info, Stream, Indent + 1, FuncInfo, BodyStmt,
+    Indent1 = Indent + 1u,
+    output_statement_for_java(Info, Stream, Indent1, FuncInfo, BodyStmt,
         TryExitMethods0, !IO),
     io.format(Stream, "%s}\n", [s(IndentStr)], !IO),
     io.format(Stream, "%scatch (jmercury.runtime.Commit commit_variable)\n",
         [s(IndentStr)], !IO),
     io.format(Stream, "%s{\n", [s(IndentStr)], !IO),
-    write_indent2(Stream, Indent + 1, !IO),
-    output_statement_for_java(Info, Stream, Indent + 1, FuncInfo, HandlerStmt,
+    write_indent2(Stream, Indent1, !IO),
+    output_statement_for_java(Info, Stream, Indent1, FuncInfo, HandlerStmt,
         CatchExitMethods, !IO),
     io.format(Stream, "%s}\n", [s(IndentStr)], !IO),
     ExitMethods = set.union(set.delete(TryExitMethods0, can_throw),
@@ -700,11 +702,12 @@ output_switch_case_for_java(Info, Stream, Indent, FuncInfo, Context, Case,
     output_case_cond_for_java(Info, Stream, Indent, Context, FirstCond, !IO),
     list.foldl(output_case_cond_for_java(Info, Stream, Indent, Context),
         LaterConds, !IO),
-    output_statement_for_java(Info, Stream, Indent + 1, FuncInfo, Stmt,
+    Indent1 = Indent + 1u,
+    output_statement_for_java(Info, Stream, Indent1, FuncInfo, Stmt,
         StmtExitMethods, !IO),
     ( if set.member(can_fall_through, StmtExitMethods) then
         indent_line_after_context(Stream, Info ^ joi_line_numbers,
-            marker_comment, Context, Indent + 1, !IO),
+            marker_comment, Context, Indent1, !IO),
         io.write_string(Stream, "break;\n", !IO),
         ExitMethods = set.delete(set.insert(StmtExitMethods, can_break),
             can_fall_through)
@@ -748,7 +751,7 @@ output_switch_default_for_java(Info, Stream, Indent, FuncInfo, Context,
         indent_line_after_context(Stream, Info ^ joi_line_numbers,
             marker_comment, Context, Indent, !IO),
         io.write_string(Stream, "default:\n", !IO),
-        output_statement_for_java(Info, Stream, Indent + 1, FuncInfo, Stmt,
+        output_statement_for_java(Info, Stream, Indent + 1u, FuncInfo, Stmt,
             ExitMethods, !IO)
     ;
         Default = default_is_unreachable,
@@ -756,7 +759,7 @@ output_switch_default_for_java(Info, Stream, Indent, FuncInfo, Context,
             marker_comment, Context, Indent, !IO),
         io.write_string(Stream, "default: /*NOTREACHED*/\n", !IO),
         indent_line_after_context(Stream, Info ^ joi_line_numbers,
-            marker_comment, Context, Indent + 1, !IO),
+            marker_comment, Context, Indent + 1u, !IO),
         io.write_string(Stream,
             "throw new jmercury.runtime.UnreachableDefault();\n", !IO),
         ExitMethods = set.make_singleton_set(can_throw)
@@ -808,7 +811,7 @@ output_atomic_stmt_for_java(Info, Stream, Indent, AtomicStmt, Context, !IO) :-
 
         io.format(Stream, "%s{\n", [s(IndentStr)], !IO),
         indent_line_after_context(Stream, Info ^ joi_line_numbers,
-            marker_comment, Context, Indent + 1, !IO),
+            marker_comment, Context, Indent + 1u, !IO),
         output_lval_for_java(Info, Target, Stream, !IO),
         io.write_string(Stream, " = new ", !IO),
         % Generate class constructor name.
@@ -836,9 +839,9 @@ output_atomic_stmt_for_java(Info, Stream, Indent, AtomicStmt, Context, !IO) :-
         ;
             ArgRvalsTypes = [HeadArgRvalType | TailArgRvalsTypes],
             io.format(Stream, "%s\n", [s(Start)], !IO),
-            output_init_args_for_java(Info, Stream, Indent + 2,
+            output_init_args_for_java(Info, Stream, Indent + 2u,
                 HeadArgRvalType, TailArgRvalsTypes, !IO),
-            write_indent2(Stream, Indent + 1, !IO),
+            write_indent2(Stream, Indent + 1u, !IO),
             io.format(Stream, "%s;\n", [s(End)], !IO)
         ),
         io.format(Stream, "%s}\n", [s(IndentStr)], !IO)
@@ -878,7 +881,7 @@ output_atomic_stmt_for_java(Info, Stream, Indent, AtomicStmt, Context, !IO) :-
     % object's class constructor.
     %
 :- pred output_init_args_for_java(java_out_info::in, io.text_output_stream::in,
-    int::in, mlds_typed_rval::in, list(mlds_typed_rval)::in,
+    indent::in, mlds_typed_rval::in, list(mlds_typed_rval)::in,
     io::di, io::uo) is det.
 
 output_init_args_for_java(Info, Stream, Indent, HeadArg, TailArgs, !IO) :-
@@ -906,7 +909,7 @@ output_target_code_component_for_java(Info, Stream, TargetCode, !IO) :-
         TargetCode = user_target_code(CodeString, MaybeUserContext),
         (
             MaybeUserContext = yes(ProgContext),
-            write_string_with_context_block(Info, Stream, 0, CodeString,
+            write_string_with_context_block(Info, Stream, 0u, CodeString,
                 ProgContext, !IO)
         ;
             MaybeUserContext = no,

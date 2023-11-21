@@ -29,6 +29,8 @@
 :- import_module hlds.hlds_llds.
 :- import_module hlds.hlds_module.
 :- import_module hlds.hlds_out.hlds_out_util.
+:- import_module libs.
+:- import_module libs.indent.
 :- import_module parse_tree.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.var_db.
@@ -61,14 +63,14 @@
     %
 :- pred write_goal(hlds_out_info::in, io.text_output_stream::in,
     module_info::in, var_name_source::in, var_name_print::in,
-    tvarset::in, inst_varset::in, int::in, string::in, hlds_goal::in,
+    tvarset::in, inst_varset::in, indent::in, string::in, hlds_goal::in,
     io::di, io::uo) is det.
 
     % As write_goal, but add a newline at the end.
     %
 :- pred write_goal_nl(hlds_out_info::in, io.text_output_stream::in,
     module_info::in, var_name_source::in, var_name_print::in,
-    tvarset::in, inst_varset::in, int::in, string::in, hlds_goal::in,
+    tvarset::in, inst_varset::in, indent::in, string::in, hlds_goal::in,
     io::di, io::uo) is det.
 
 %---------------------------------------------------------------------------%
@@ -92,7 +94,7 @@
             ).
 
 :- pred do_write_goal(hlds_out_info_goal::in, io.text_output_stream::in,
-    int::in, string::in, hlds_goal::in, io::di, io::uo) is det.
+    indent::in, string::in, hlds_goal::in, io::di, io::uo) is det.
 
     % write_goal_list is used to write both disjunctions and parallel
     % conjunctions. The boolean says whether variables should have
@@ -102,14 +104,14 @@
     % but may also contain other characters before that.
     %
 :- pred write_goal_list(hlds_out_info_goal::in, io.text_output_stream::in,
-    int::in, string::in, list(hlds_goal)::in, io::di, io::uo) is det.
+    indent::in, string::in, list(hlds_goal)::in, io::di, io::uo) is det.
 
 %---------------------------------------------------------------------------%
 
     % Write out the mapping of variables to their abstract locations.
     %
 :- pred write_var_to_abs_locns(io.text_output_stream::in,
-    var_name_source::in, var_name_print::in, int::in,
+    var_name_source::in, var_name_print::in, indent::in,
     assoc_list(prog_var, abs_locn)::in, io::di, io::uo) is det.
 
 %---------------------------------------------------------------------------%
@@ -121,7 +123,7 @@
     %
 :- pred write_unify_rhs(hlds_out_info::in, io.text_output_stream::in,
     module_info::in, var_name_source::in, var_name_print::in,
-    tvarset::in, inst_varset::in, int::in, unify_rhs::in,
+    tvarset::in, inst_varset::in, indent::in, unify_rhs::in,
     io::di, io::uo) is det.
 
     % Converts the right-hand-side of a unification to a string, similarly to
@@ -158,9 +160,7 @@
 :- import_module hlds.hlds_out.hlds_out_mode.
 :- import_module hlds.hlds_pred.
 :- import_module hlds.instmap.
-:- import_module libs.
 :- import_module libs.globals.
-:- import_module libs.indent.
 :- import_module mdbcomp.
 :- import_module mdbcomp.goal_path.
 :- import_module mdbcomp.prim_data.
@@ -193,6 +193,7 @@
 :- import_module term_context.
 :- import_module term_int.
 :- import_module term_subst.
+:- import_module uint.
 :- import_module varset.
 
 %---------------------------------------------------------------------------%
@@ -204,7 +205,7 @@ dump_goal(Stream, ModuleInfo, VarNameSrc, TVarSet, InstVarSet, Goal, !IO) :-
     TypeQual = no_tvarset_var_table,
     InfoGoal = hlds_out_info_goal(Info, ModuleInfo, VarNameSrc, VarNamePrint,
         TVarSet, InstVarSet, TypeQual),
-    Indent = 0,
+    Indent = 0u,
     Follow = "",
     do_write_goal(InfoGoal, Stream, Indent, Follow, Goal, !IO).
 
@@ -655,14 +656,14 @@ write_goal_list(InfoGoal, Stream, Indent, Separator, Goals, !IO) :-
         Goals = [HeadGoal | TailGoals],
         write_indent2(Stream, Indent, !IO),
         io.write_string(Stream, Separator, !IO),
-        do_write_goal(InfoGoal, Stream, Indent + 1, "\n", HeadGoal, !IO),
+        do_write_goal(InfoGoal, Stream, Indent + 1u, "\n", HeadGoal, !IO),
         write_goal_list(InfoGoal, Stream, Indent, Separator, TailGoals, !IO)
     ;
         Goals = []
     ).
 
 :- pred write_llds_code_gen_info(hlds_out_info::in, io.text_output_stream::in,
-    hlds_goal_info::in, var_name_source::in, var_name_print::in, int::in,
+    hlds_goal_info::in, var_name_source::in, var_name_print::in, indent::in,
     io::di, io::uo) is det.
 
 write_llds_code_gen_info(Info, Stream, GoalInfo, VarNameSrc, VarNamePrint,
@@ -898,7 +899,7 @@ is_conditional_to_string(IsConditional) = Str :-
 %
 
 :- pred write_goal_expr(hlds_out_info_goal::in, io.text_output_stream::in,
-    int::in, string::in, hlds_goal_expr::in, io::di, io::uo) is det.
+    indent::in, string::in, hlds_goal_expr::in, io::di, io::uo) is det.
 
 write_goal_expr(InfoGoal, Stream, Indent, Follow, GoalExpr, !IO) :-
     (
@@ -949,7 +950,7 @@ write_goal_expr(InfoGoal, Stream, Indent, Follow, GoalExpr, !IO) :-
     % Write out a unification.
     %
 :- pred write_goal_unify(hlds_out_info_goal::in, io.text_output_stream::in,
-    int::in, string::in, hlds_goal_expr::in(goal_expr_unify),
+    indent::in, string::in, hlds_goal_expr::in(goal_expr_unify),
     io::di, io::uo) is det.
 
 write_goal_unify(InfoGoal, Stream, Indent, Follow, GoalExpr, !IO) :-
@@ -1009,7 +1010,7 @@ write_unify_rhs(Info, Stream, ModuleInfo, VarNameSrc, VarNamePrint,
     write_unify_rhs_2(InfoGoal, Stream, Indent, no, RHS, !IO).
 
 :- pred write_unify_rhs_2(hlds_out_info_goal::in, io.text_output_stream::in,
-    int::in, maybe(mer_type)::in, unify_rhs::in, io::di, io::uo) is det.
+    indent::in, maybe(mer_type)::in, unify_rhs::in, io::di, io::uo) is det.
 
 write_unify_rhs_2(InfoGoal, Stream, Indent, MaybeType, RHS, !IO) :-
     VarNameSrc = InfoGoal ^ hoig_var_name_src,
@@ -1045,7 +1046,7 @@ write_unify_rhs_2(InfoGoal, Stream, Indent, MaybeType, RHS, !IO) :-
         RHS = rhs_lambda_goal(Purity, Groundness, PredOrFunc, _EvalMethod,
             NonLocals, VarsModes, Det, Goal),
         IndentStr = indent2_string(Indent),
-        Indent1 = Indent + 1,
+        Indent1 = Indent + 1u,
         io.write_string(Stream, purity_prefix_to_string(Purity), !IO),
         Info = InfoGoal ^ hoig_out_info,
         Lang = get_output_lang(Info ^ hoi_merc_out_info),
@@ -1151,7 +1152,7 @@ unify_rhs_to_string(ModuleInfo, VarTable, VarNamePrint, RHS) = Str :-
     ).
 
 :- pred write_unification(hlds_out_info_goal::in, io.text_output_stream::in,
-    int::in, unification::in, io::di, io::uo) is det.
+    indent::in, unification::in, io::di, io::uo) is det.
 
 write_unification(InfoGoal, Stream, Indent, Unification, !IO) :-
     VarNameSrc = InfoGoal ^ hoig_var_name_src,
@@ -1297,7 +1298,7 @@ write_unification(InfoGoal, Stream, Indent, Unification, !IO) :-
     ).
 
 :- pred write_functor_and_submodes(hlds_out_info_goal::in,
-    io.text_output_stream::in, int::in,
+    io.text_output_stream::in, indent::in,
     cons_id::in, list(prog_var)::in, list(unify_mode)::in,
     io::di, io::uo) is det.
 
@@ -1448,7 +1449,7 @@ limit_size_of_bound_insts(Levels,
 %
 
 :- pred write_goal_plain_call(hlds_out_info_goal::in,
-    io.text_output_stream::in, int::in, string::in,
+    io.text_output_stream::in, indent::in, string::in,
     hlds_goal_expr::in(goal_expr_plain_call), io::di, io::uo) is det.
 
 write_goal_plain_call(InfoGoal, Stream, Indent, Follow, GoalExpr, !IO) :-
@@ -1558,7 +1559,7 @@ sym_name_and_args_to_string(VarNameSrc, VarNamePrint, PredName, ArgVars)
 %
 
 :- pred write_goal_generic_call(hlds_out_info_goal::in,
-    io.text_output_stream::in, int::in, string::in,
+    io.text_output_stream::in, indent::in, string::in,
     hlds_goal_expr::in(goal_expr_generic_call), io::di, io::uo) is det.
 
 write_goal_generic_call(InfoGoal, Stream, Indent, Follow, GoalExpr, !IO) :-
@@ -1689,7 +1690,7 @@ write_goal_generic_call(InfoGoal, Stream, Indent, Follow, GoalExpr, !IO) :-
         io.write_string(Stream, Follow, !IO)
     ).
 
-:- pred write_ho_arg_regs(io.text_output_stream::in, int::in,
+:- pred write_ho_arg_regs(io.text_output_stream::in, indent::in,
     arg_reg_type_info::in, io::di, io::uo) is det.
 
 write_ho_arg_regs(Stream, Indent, MaybeArgRegs, !IO) :-
@@ -1736,7 +1737,7 @@ write_cast_as_pred_or_func(CastType) = PredOrFunc :-
 %
 
 :- pred write_goal_foreign_proc(hlds_out_info_goal::in,
-    io.text_output_stream::in, int::in, string::in,
+    io.text_output_stream::in, indent::in, string::in,
     hlds_goal_expr::in(goal_expr_foreign_proc), io::di, io::uo) is det.
 
 write_goal_foreign_proc(InfoGoal, Stream, Indent, Follow, GoalExpr, !IO) :-
@@ -1848,7 +1849,7 @@ foreign_args_to_string_lag(VarNameSrc, VarNamePrint, TypeVarSet, InstVarSet,
 %
 
 :- pred write_goal_conj(hlds_out_info_goal::in, io.text_output_stream::in,
-    int::in, string::in, hlds_goal_expr::in(goal_expr_conj), io::di,
+    indent::in, string::in, hlds_goal_expr::in(goal_expr_conj), io::di,
     io::uo) is det.
 
 write_goal_conj(InfoGoal, Stream, Indent, Follow, GoalExpr, !IO) :-
@@ -1865,7 +1866,7 @@ write_goal_conj(InfoGoal, Stream, Indent, Follow, GoalExpr, !IO) :-
             else
                 IndentStr = indent2_string(Indent),
                 io.format(Stream, "%s( %% conjunction\n", [s(IndentStr)], !IO),
-                write_conj(InfoGoal, Stream, Indent + 1, "\n", ",\n",
+                write_conj(InfoGoal, Stream, Indent + 1u, "\n", ",\n",
                     Goal, Goals, !IO),
                 io.format(Stream, "%s)%s", [s(IndentStr), s(Follow)], !IO)
             )
@@ -1874,7 +1875,7 @@ write_goal_conj(InfoGoal, Stream, Indent, Follow, GoalExpr, !IO) :-
             IndentStr = indent2_string(Indent),
             io.format(Stream, "%s( %% parallel conjunction\n",
                 [s(IndentStr)], !IO),
-            do_write_goal(InfoGoal, Stream, Indent + 1, "\n", Goal, !IO),
+            do_write_goal(InfoGoal, Stream, Indent + 1u, "\n", Goal, !IO),
             % See comments at write_goal_list.
             write_goal_list(InfoGoal, Stream, Indent, "&\n", Goals, !IO),
             io.format(Stream, "%s)%s", [s(IndentStr), s(Follow)], !IO)
@@ -1894,7 +1895,7 @@ write_goal_conj(InfoGoal, Stream, Indent, Follow, GoalExpr, !IO) :-
     ).
 
 :- pred write_conj(hlds_out_info_goal::in, io.text_output_stream::in,
-    int::in, string::in, string::in, hlds_goal::in, list(hlds_goal)::in,
+    indent::in, string::in, string::in, hlds_goal::in, list(hlds_goal)::in,
     io::di, io::uo) is det.
 
 write_conj(InfoGoal, Stream, Indent, Follow, Separator, Goal1, Goals1, !IO) :-
@@ -1925,7 +1926,7 @@ write_conj(InfoGoal, Stream, Indent, Follow, Separator, Goal1, Goals1, !IO) :-
 %
 
 :- pred write_goal_disj(hlds_out_info_goal::in, io.text_output_stream::in,
-    int::in, string::in, hlds_goal_expr::in(goal_expr_disj),
+    indent::in, string::in, hlds_goal_expr::in(goal_expr_disj),
     io::di, io::uo) is det.
 
 write_goal_disj(InfoGoal, Stream, Indent, Follow, GoalExpr, !IO) :-
@@ -1934,7 +1935,7 @@ write_goal_disj(InfoGoal, Stream, Indent, Follow, GoalExpr, !IO) :-
     (
         Disjuncts = [Goal | Goals],
         io.format(Stream, "%s( %% disjunction\n", [s(IndentStr)], !IO),
-        do_write_goal(InfoGoal, Stream, Indent + 1, "\n", Goal, !IO),
+        do_write_goal(InfoGoal, Stream, Indent + 1u, "\n", Goal, !IO),
         write_goal_list(InfoGoal, Stream, Indent, ";\n", Goals, !IO),
         io.format(Stream, "%s)%s", [s(IndentStr), s(Follow)], !IO)
     ;
@@ -1948,7 +1949,7 @@ write_goal_disj(InfoGoal, Stream, Indent, Follow, GoalExpr, !IO) :-
 %
 
 :- pred write_goal_switch(hlds_out_info_goal::in, io.text_output_stream::in,
-    int::in, string::in, hlds_goal_expr::in(goal_expr_switch),
+    indent::in, string::in, hlds_goal_expr::in(goal_expr_switch),
     io::di, io::uo) is det.
 
 write_goal_switch(InfoGoal, Stream, Indent, Follow, GoalExpr, !IO) :-
@@ -1960,7 +1961,7 @@ write_goal_switch(InfoGoal, Stream, Indent, Follow, GoalExpr, !IO) :-
     VarStr = mercury_var_to_string_src(VarNameSrc, VarNamePrint, Var),
     io.format(Stream, "%s( %% %s switch on `%s'\n",
         [s(IndentStr), s(CanFailStr), s(VarStr)], !IO),
-    Indent1 = Indent + 1,
+    Indent1 = Indent + 1u,
     (
         CasesList = [Case | Cases],
         write_case(InfoGoal, Stream, Indent1, Var, Case, !IO),
@@ -1972,21 +1973,21 @@ write_goal_switch(InfoGoal, Stream, Indent, Follow, GoalExpr, !IO) :-
     io.format(Stream, "%s)%s", [s(IndentStr), s(Follow)], !IO).
 
 :- pred write_cases(hlds_out_info_goal::in, io.text_output_stream::in,
-    int::in, prog_var::in, list(case)::in, io::di, io::uo) is det.
+    indent::in, prog_var::in, list(case)::in, io::di, io::uo) is det.
 
 write_cases(InfoGoal, Stream, Indent, Var, CasesList, !IO) :-
     (
         CasesList = [Case | Cases],
         IndentStr = indent2_string(Indent),
         io.format(Stream, "%s;\n", [s(IndentStr)], !IO),
-        write_case(InfoGoal, Stream, Indent + 1, Var, Case, !IO),
+        write_case(InfoGoal, Stream, Indent + 1u, Var, Case, !IO),
         write_cases(InfoGoal, Stream, Indent, Var, Cases, !IO)
     ;
         CasesList = []
     ).
 
 :- pred write_case(hlds_out_info_goal::in, io.text_output_stream::in,
-    int::in, prog_var::in, case::in, io::di, io::uo) is det.
+    indent::in, prog_var::in, case::in, io::di, io::uo) is det.
 
 write_case(InfoGoal, Stream, Indent, Var, Case, !IO) :-
     Case = case(MainConsId, OtherConsIds, Goal),
@@ -2029,14 +2030,14 @@ case_comment(VarName, MainConsName, OtherConsNames) = Comment :-
 %
 
 :- pred write_goal_negation(hlds_out_info_goal::in, io.text_output_stream::in,
-    int::in, string::in, hlds_goal_expr::in(goal_expr_neg),
+    indent::in, string::in, hlds_goal_expr::in(goal_expr_neg),
     io::di, io::uo) is det.
 
 write_goal_negation(InfoGoal, Stream, Indent, Follow, GoalExpr, !IO) :-
     GoalExpr = negation(Goal),
     IndentStr = indent2_string(Indent),
     io.format(Stream, "%snot (\n", [s(IndentStr)], !IO),
-    do_write_goal(InfoGoal, Stream, Indent + 1, "\n", Goal, !IO),
+    do_write_goal(InfoGoal, Stream, Indent + 1u, "\n", Goal, !IO),
     io.format(Stream, "%s)%s", [s(IndentStr), s(Follow)], !IO).
 
 %---------------------------------------------------------------------------%
@@ -2045,7 +2046,7 @@ write_goal_negation(InfoGoal, Stream, Indent, Follow, GoalExpr, !IO) :-
 %
 
 :- pred write_goal_if_then_else(hlds_out_info_goal::in,
-    io.text_output_stream::in, int::in, string::in,
+    io.text_output_stream::in, indent::in, string::in,
     hlds_goal_expr::in(goal_expr_ite), io::di, io::uo) is det.
 
 write_goal_if_then_else(InfoGoal, Stream, Indent, Follow, GoalExpr, !IO) :-
@@ -2063,7 +2064,7 @@ write_goal_if_then_else(InfoGoal, Stream, Indent, Follow, GoalExpr, !IO) :-
     ),
     io.format(Stream, "%s( if%s\n", [s(IndentStr), s(SomeVarsStr)], !IO),
 
-    Indent1 = Indent + 1,
+    Indent1 = Indent + 1u,
     do_write_goal(InfoGoal, Stream, Indent1, "\n", Cond, !IO),
     io.format(Stream, "%sthen\n", [s(IndentStr)], !IO),
     do_write_goal(InfoGoal, Stream, Indent1, "\n", Then, !IO),
@@ -2087,7 +2088,7 @@ write_goal_if_then_else(InfoGoal, Stream, Indent, Follow, GoalExpr, !IO) :-
 %
 
 :- pred write_goal_scope(hlds_out_info_goal::in, io.text_output_stream::in,
-    int::in, string::in, hlds_goal_expr::in(goal_expr_scope),
+    indent::in, string::in, hlds_goal_expr::in(goal_expr_scope),
     io::di, io::uo) is det.
 
 write_goal_scope(!.InfoGoal, Stream, Indent, Follow, GoalExpr, !IO) :-
@@ -2227,7 +2228,7 @@ write_goal_scope(!.InfoGoal, Stream, Indent, Follow, GoalExpr, !IO) :-
         io.write_string(Stream, "trace [\n", !IO),
         some [!AddCommaNewline] (
             !:AddCommaNewline = no,
-            Indent1Str = indent2_string(Indent + 1),
+            Indent1Str = indent2_string(Indent + 1u),
             (
                 MaybeCompileTime = yes(CompileTime),
                 io.format(Stream, "%scompile_time(", [s(Indent1Str)], !IO),
@@ -2349,7 +2350,7 @@ write_goal_scope(!.InfoGoal, Stream, Indent, Follow, GoalExpr, !IO) :-
         io.format(Stream, "%s%% loop_control_spawn_off_%s(%s) (\n",
             [s(IndentStr), s(UseParentStackStr), s(LCVarsStr)], !IO)
     ),
-    do_write_goal(!.InfoGoal, Stream, Indent + 1, "\n", Goal, !IO),
+    do_write_goal(!.InfoGoal, Stream, Indent + 1u, "\n", Goal, !IO),
     io.format(Stream, "%s)%s", [s(IndentStr), s(Follow)], !IO).
 
 :- pred write_trace_mutable_var_hlds(io.text_output_stream::in, string::in,
@@ -2380,13 +2381,13 @@ maybe_add_comma_newline(Stream, AddCommaNewline, !IO) :-
 %
 
 :- pred write_goal_shorthand(hlds_out_info_goal::in, io.text_output_stream::in,
-    int::in, string::in, hlds_goal_expr::in(goal_expr_shorthand),
+    indent::in, string::in, hlds_goal_expr::in(goal_expr_shorthand),
     io::di, io::uo) is det.
 
 write_goal_shorthand(InfoGoal, Stream, Indent, Follow, GoalExpr, !IO) :-
     GoalExpr = shorthand(ShortHand),
     IndentStr = indent2_string(Indent),
-    Indent1 = Indent + 1,
+    Indent1 = Indent + 1u,
     (
         ShortHand = atomic_goal(_GoalType, Outer, Inner, MaybeOutputVars,
             MainGoal, OrElseGoals, _OrElseInners),

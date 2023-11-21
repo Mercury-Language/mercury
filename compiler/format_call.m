@@ -540,7 +540,7 @@ analyze_and_optimize_format_calls(ModuleInfo, PredInfo, ProcInfo,
         io.output_stream(Stream, !IO),
         io.write_string(Stream, "\n\nBEFORE TRANSFORM:\n", !IO),
         write_goal(OutInfo, Stream, ModuleInfo, vns_var_table(!.VarTable),
-            print_name_and_num, TVarSet, InstVarSet, 0, "\n", Goal1, !IO)
+            print_name_and_num, TVarSet, InstVarSet, 0u, "\n", Goal1, !IO)
     ),
 
     globals.lookup_bool_option(Globals, warn_unknown_format_calls,
@@ -595,7 +595,7 @@ analyze_and_optimize_format_calls(ModuleInfo, PredInfo, ProcInfo,
             io.output_stream(Stream, !IO),
             io.write_string(Stream, "\n\nAFTER TRANSFORM:\n", !IO),
             write_goal(OutInfo, Stream, ModuleInfo, vns_var_table(!.VarTable),
-                print_name_and_num, TVarSet, InstVarSet, 0, "\n", Goal, !IO)
+                print_name_and_num, TVarSet, InstVarSet, 0u, "\n", Goal, !IO)
         ),
         MaybeGoal = yes(Goal)
     ).

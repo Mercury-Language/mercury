@@ -74,6 +74,7 @@
 :- import_module require.
 :- import_module string.
 :- import_module term.
+:- import_module uint.
 
 %---------------------------------------------------------------------------%
 
@@ -101,7 +102,7 @@ output_init_global_var_method_for_csharp(Info, Stream, Indent,
     IndentStr = indent2_string(Indent),
     io.format(Stream, "%sprivate static void MR_init_data() {\n",
         [s(IndentStr)], !IO),
-    output_init_global_var_statements_for_csharp(Info, Stream, Indent + 1,
+    output_init_global_var_statements_for_csharp(Info, Stream, Indent + 1u,
         GlobalVarDefns, !IO),
     io.format(Stream, "%s}\n", [s(IndentStr)], !IO).
 
@@ -117,7 +118,7 @@ output_init_global_var_statements_for_csharp(Info, Stream, Indent,
     IndentStr = indent2_string(Indent),
     GlobalVarNameStr = global_var_name_to_ll_string_for_csharp(GlobalVarName),
     io.format(Stream, "%s%s", [s(IndentStr), s(GlobalVarNameStr)], !IO),
-    output_initializer_for_csharp(Info, Stream, oa_none, Indent + 1,
+    output_initializer_for_csharp(Info, Stream, oa_none, Indent + 1u,
         Type, Initializer, ";", !IO),
     output_init_global_var_statements_for_csharp(Info, Stream, Indent,
         GlobalVarDefns, !IO).
@@ -134,7 +135,7 @@ output_global_var_defn_for_csharp(Info, Stream, Indent, OutputAux,
     GlobalVarNameStr = global_var_name_to_ll_string_for_csharp(GlobalVarName),
     io.format(Stream, "%s%s %s %s",
         [s(IndentStr), s(FlagsStr), s(TypeStr), s(GlobalVarNameStr)], !IO),
-    output_initializer_for_csharp(Info, Stream, OutputAux, Indent + 1,
+    output_initializer_for_csharp(Info, Stream, OutputAux, Indent + 1u,
         Type, Initializer, ";", !IO).
 
 %---------------------------------------------------------------------------%
@@ -155,7 +156,7 @@ output_scalar_common_data_for_csharp(Info, Stream, Indent,
             "%sprivate static void MR_init_scalar_common_data() {\n",
             [s(IndentStr)], !IO),
         list.foldl(
-            output_scalar_init_for_csharp(Info, Stream, Indent + 1, Map),
+            output_scalar_init_for_csharp(Info, Stream, Indent + 1u, Map),
             ToFromScalars, !IO),
         io.format(Stream, "%s}\n", [s(IndentStr)], !IO)
     else
@@ -201,7 +202,7 @@ output_scalar_init_for_csharp(Info, Stream, Indent, Map, Scalar, !IO) :-
     io.format(Stream, "%sMR_scalar_common_%d[%d] =\n",
         [s(IndentStr), i(TypeRawNum), i(RowNum)], !IO),
     output_initializer_body_for_csharp(Info, Stream, at_start_of_line,
-        Indent + 1, Initializer, yes(Type), ";", !IO).
+        Indent + 1u, Initializer, yes(Type), ";", !IO).
 
 %---------------------------------------------------------------------------%
 
@@ -213,7 +214,7 @@ output_vector_common_data_for_csharp(Info, Stream, Indent,
     io.format(Stream,
         "%sprivate static void MR_init_vector_common_data() {\n",
         [s(IndentStr)], !IO),
-    map.foldl(output_vector_cell_init_for_csharp(Info, Stream, Indent + 1),
+    map.foldl(output_vector_cell_init_for_csharp(Info, Stream, Indent + 1u),
         VectorCellGroupMap, !IO),
     io.format(Stream, "%s}\n", [s(IndentStr)], !IO).
 
@@ -242,7 +243,7 @@ output_vector_cell_decl_for_csharp(Info, Stream, Indent, TypeNum,
 
 output_vector_cell_init_for_csharp(Info, Stream, Indent, TypeNum,
         CellGroup, !IO) :-
-    Indent1 = Indent + 1,
+    Indent1 = Indent + 1u,
     IndentStr = indent2_string(Indent),
     Indent1Str = indent2_string(Indent1),
     TypeNum = ml_vector_common_type_num(TypeRawNum),
@@ -252,7 +253,7 @@ output_vector_cell_init_for_csharp(Info, Stream, Indent, TypeNum,
     io.format(Stream, "%sMR_vector_common_%d = new %s[]\n",
         [s(IndentStr), i(TypeRawNum), s(TypeStr)], !IO),
     io.format(Stream, "%s{\n", [s(Indent1Str)], !IO),
-    output_nonempty_initializer_body_list_for_csharp(Info, Stream, Indent + 2,
+    output_nonempty_initializer_body_list_for_csharp(Info, Stream, Indent + 2u,
         cord.list(RowInits), "", !IO),
     io.format(Stream, "%s};\n", [s(Indent1Str)], !IO).
 
@@ -263,7 +264,7 @@ output_rtti_assignments_for_csharp(Info, Stream, Indent, Defns, !IO) :-
     io.format(Stream, "%sstatic void MR_init_rtti() {\n", [s(IndentStr)], !IO),
     OrderedDefns = order_mlds_rtti_defns(Defns),
     list.foldl(
-        output_rtti_defns_assignments_for_csharp(Info, Stream, Indent + 1),
+        output_rtti_defns_assignments_for_csharp(Info, Stream, Indent + 1u),
         OrderedDefns, !IO),
     io.format(Stream, "%s}\n", [s(IndentStr)], !IO).
 
@@ -304,7 +305,7 @@ output_rtti_defn_assignments_for_csharp(Info, Stream, Indent,
             io.format(Stream, "%s%s.init(\n",
                 [s(IndentStr), s(GlobalVarNameStr)], !IO),
             output_nonempty_initializer_body_list_for_csharp(Info, Stream,
-                Indent + 1, FieldInits, "", !IO),
+                Indent + 1u, FieldInits, "", !IO),
             io.format(Stream, "%s);\n", [s(IndentStr)], !IO)
         ;
             ArrayDims = [_ | _],
@@ -331,7 +332,7 @@ output_rtti_array_assignments_for_csharp(Info, Stream, Indent, GlobalVarName,
     io.format(Stream, "%s%s[%d] =\n",
         [s(IndentStr), s(GlobalVarNameStr), i(Index)], !IO),
     output_initializer_body_for_csharp(Info, Stream, at_start_of_line,
-        Indent + 1, ElementInit, no, ";", !IO).
+        Indent + 1u, ElementInit, no, ";", !IO).
 
 %---------------------------------------------------------------------------%
 %

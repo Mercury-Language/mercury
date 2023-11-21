@@ -53,12 +53,12 @@
 :- import_module parse_tree.prog_data.
 
 :- import_module bool.
-:- import_module int.
 :- import_module list.
 :- import_module maybe.
 :- import_module require.
 :- import_module string.
 :- import_module term.
+:- import_module uint.
 
 %---------------------------------------------------------------------------%
 
@@ -148,7 +148,7 @@ mlds_output_class_defn(Opts, Stream, Indent, ModuleName, ClassDefn, !IO) :-
     % `target_uses_empty_base_classes' before generating empty structs.)
     % Hence we do not need to check for empty structs here.
     io.write_string(Stream, " {\n", !IO),
-    Indent1 = Indent + 1,
+    Indent1 = Indent + 1u,
     % XXX Why don't we output all the field vars in one block?
     list.foldl(
         mlds_output_field_var_defn(Opts, Stream, Indent1, no, ClassModuleName),
@@ -215,7 +215,7 @@ mlds_output_env_defn(Opts, Stream, Indent, ModuleName, EnvDefn, !IO) :-
     % `target_uses_empty_base_classes' before generating empty structs.)
     % Hence we do not need to check for empty structs here.
     io.write_string(Stream, " {\n", !IO),
-    Indent1 = Indent + 1,
+    Indent1 = Indent + 1u,
     list.foldl(
         mlds_output_field_var_defn(Opts, Stream, Indent1, no, EnvModuleName),
         MemberFields, !IO),
@@ -259,7 +259,7 @@ mlds_output_struct_defn(Opts, Stream, Indent, ModuleName, StructDefn, !IO) :-
     % `target_uses_empty_base_classes' before generating empty structs.)
     % Hence we do not need to check for empty structs here.
     io.write_string(Stream, " {\n", !IO),
-    Indent1 = Indent + 1,
+    Indent1 = Indent + 1u,
     list.foldl(
         mlds_output_field_var_defn(Opts, Stream, Indent1, no, ClassModuleName),
         MemberFields, !IO),

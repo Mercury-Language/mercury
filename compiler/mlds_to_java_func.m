@@ -61,9 +61,9 @@
 :- import_module parse_tree.prog_data.
 
 :- import_module bool.
-:- import_module int.
 :- import_module maybe.
 :- import_module string.
+:- import_module uint.
 
 %---------------------------------------------------------------------------%
 
@@ -108,7 +108,7 @@ output_params_for_java(Info, Stream, Indent, Parameters, !IO) :-
     ;
         Parameters = [_ | _],
         io.nl(Stream, !IO),
-        Indent1Str = indent2_string(Indent + 1),
+        Indent1Str = indent2_string(Indent + 1u),
         write_out_list(output_param(Info, Indent1Str), ",\n", Parameters,
             Stream, !IO)
     ),
@@ -191,8 +191,8 @@ output_func_for_java(Info, Stream, Indent, FuncName, OutputAux, Context,
         else
             IndentStr = indent2_string(Indent),
             io.format(Stream, "%s{\n", [s(IndentStr)], !IO),
-            output_statement_for_java(Info, Stream, Indent + 1, FuncInfo, Body,
-                _ExitMethods, !IO),
+            output_statement_for_java(Info, Stream, Indent + 1u, FuncInfo,
+                Body, _ExitMethods, !IO),
             indent_line_after_context(Stream, Info ^ joi_line_numbers,
                 marker_comment, Context, Indent, !IO),
             io.write_string(Stream, "}\n", !IO)

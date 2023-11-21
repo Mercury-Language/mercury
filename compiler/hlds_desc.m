@@ -25,6 +25,8 @@
 :- import_module hlds.hlds_goal.
 :- import_module hlds.hlds_module.
 :- import_module hlds.hlds_pred.
+:- import_module libs.
+:- import_module libs.indent.
 :- import_module parse_tree.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.var_table.
@@ -48,7 +50,7 @@
     % The returned string will consist of one or more line lines,
     % each ending with a newline.
     %
-:- func describe_structured_goal(module_info, var_table, int, hlds_goal)
+:- func describe_structured_goal(module_info, var_table, indent, hlds_goal)
     = string.
 
     % If the list is empty, return the empty string; if the list contains
@@ -87,8 +89,6 @@
 :- implementation.
 
 :- import_module hlds.pred_name.
-:- import_module libs.
-:- import_module libs.indent.
 :- import_module mdbcomp.
 :- import_module mdbcomp.prim_data.
 :- import_module mdbcomp.sym_name.
@@ -166,7 +166,7 @@ describe_goal(ModuleInfo, VarTable, Goal) = FullDesc :-
 
 describe_structured_goal(ModuleInfo, VarTable, Indent, Goal) = Desc :-
     Lines = do_describe_structured_goal(ModuleInfo, VarTable, Goal),
-    ( if Indent = 0 then
+    ( if Indent = 0u then
         IndentedLines = Lines
     else
         IndentedLines = list.map(add_indent2_prefix(Indent), Lines)

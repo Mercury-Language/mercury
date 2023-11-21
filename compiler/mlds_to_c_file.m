@@ -137,7 +137,7 @@ output_c_file_opts(ProgressStream, MLDS, Opts, Suffix, Succeeded, !IO) :-
         ext_cur_ngs_gs(ext_cur_ngs_gs_target_c),
         ModuleName, SourceFileName0, !IO),
     SourceFileName = SourceFileName0 ++ Suffix,
-    Indent = 0,
+    Indent = 0u,
     output_to_file_stream(ProgressStream, Globals, SourceFileName,
         mlds_output_src_file(Opts, Indent, MLDS), Succeeded, !IO).
 
@@ -163,7 +163,7 @@ output_c_header_file_opts(ProgressStream, MLDS, Opts, Suffix,
     HdrOpts = ((Opts
         ^ m2co_line_numbers := LineNumbersForCHdrs)
         ^ m2co_foreign_line_numbers := LineNumbersForCHdrs),
-    Indent = 0,
+    Indent = 0u,
     output_to_file_stream(ProgressStream, Globals, TmpHeaderFileName,
         mlds_output_hdr_file(HdrOpts, Indent, MLDS), !:Succeeded, !IO),
     (
@@ -210,7 +210,7 @@ func_defn_has_name_in_list(DumpPredNames, FuncDefn) :-
 output_c_dump_func_defns(_, _, [], _, [], !IO).
 output_c_dump_func_defns(Opts, ModuleName, [FuncDefn | FuncDefns],
         Stream, Errors, !IO) :-
-    Indent = 0,
+    Indent = 0u,
     mlds_output_function_defn(Opts, Stream, Indent, ModuleName, FuncDefn, !IO),
     output_c_dump_func_defns(Opts, ModuleName, FuncDefns, Stream, Errors, !IO).
 
@@ -929,7 +929,8 @@ mlds_output_c_defns(Opts, Stream, ModuleName, Indent, ForeignCode,
     list.filter_map(maybe_is_error, Results, Errors).
 
 :- pred mlds_output_c_foreign_import_module(mlds_to_c_opts::in,
-    io.text_output_stream::in, int::in, fim_spec::in, io::di, io::uo) is det.
+    io.text_output_stream::in, indent::in, fim_spec::in,
+    io::di, io::uo) is det.
 
 mlds_output_c_foreign_import_module(Opts, Stream, Indent, FIMSpec, !IO) :-
     FIMSpec = fim_spec(Lang, Import),

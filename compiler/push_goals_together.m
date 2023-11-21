@@ -106,7 +106,7 @@ push_goals_in_proc(PushGoals, OverallResult, !ProcInfo, !ModuleInfo) :-
         io.write_string(DebugStream, "Goal before pushes:\n", !IO),
         write_goal_nl(OutInfo, DebugStream, !.ModuleInfo,
             vns_var_table(VarTable0), print_name_and_num,
-            TVarSet, InstVarSet, 0, "", Goal0, !IO)
+            TVarSet, InstVarSet, 0u, "", Goal0, !IO)
     ),
     do_push_list(PushInfo, PushGoals, OverallResult, Goal0, Goal1),
     (
@@ -118,7 +118,7 @@ push_goals_in_proc(PushGoals, OverallResult, !ProcInfo, !ModuleInfo) :-
             io.write_string(DebugStream, "Goal after pushes:\n", !IO),
             write_goal_nl(OutInfo, DebugStream, !.ModuleInfo,
                 vns_var_table(VarTable0), print_name_and_num,
-                TVarSet, InstVarSet, 0, "", Goal1, !IO)
+                TVarSet, InstVarSet, 0u, "", Goal1, !IO)
         ),
 
         % We need to fix up the goal_infos of the goals touched directly or
@@ -151,7 +151,7 @@ push_goals_in_proc(PushGoals, OverallResult, !ProcInfo, !ModuleInfo) :-
             io.write_string(DebugStream, "Goal after fixups:\n", !IO),
             write_goal_nl(OutInfo, DebugStream, !.ModuleInfo,
                 vns_var_table(VarTable), print_name_and_num,
-                TVarSet, InstVarSet, 0, "", Goal, !IO)
+                TVarSet, InstVarSet, 0u, "", Goal, !IO)
         )
     ).
 

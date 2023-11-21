@@ -20,6 +20,8 @@
 :- import_module backend_libs.rtti.
 :- import_module hlds.
 :- import_module hlds.hlds_pred.
+:- import_module libs.
+:- import_module libs.indent.
 :- import_module mdbcomp.
 :- import_module mdbcomp.sym_name.
 :- import_module ml_backend.mlds.
@@ -202,7 +204,7 @@
 :- pred write_indentstr_line(io.text_output_stream::in, string::in, string::in,
     io::di, io::uo) is det.
 
-:- pred scope_indent(mlds_stmt::in, int::in, int::out) is det.
+:- pred scope_indent(mlds_stmt::in, indent::in, indent::out) is det.
 
 %---------------------------------------------------------------------------%
 
@@ -274,6 +276,7 @@
 :- import_module pair.
 :- import_module require.
 :- import_module string.
+:- import_module uint.
 :- import_module varset.
 
 %---------------------------------------------------------------------------%
@@ -436,7 +439,7 @@ scope_indent(Stmt, CurIndent, ScopeIndent) :-
         % it is ok for the braces around the block to be indented by CurIndent.
         ScopeIndent = CurIndent
     else
-        ScopeIndent = CurIndent + 1
+        ScopeIndent = CurIndent + 1u
     ).
 
 %---------------------------------------------------------------------------%

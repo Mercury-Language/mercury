@@ -329,12 +329,12 @@ sync_dep_par_conjs_in_proc(ProgressStream, PredId, ProcId, IgnoreVars,
                     [s(string(PredId)), s(string(ProcId))], !IO),
                 write_goal_nl(OutInfo, ProgressStream, !.ModuleInfo,
                     vns_var_table(!.VarTable), print_name_and_num,
-                    TVarSet, InstVarSet, 0, "", GoalBeforeDepParConj, !IO),
+                    TVarSet, InstVarSet, 0u, "", GoalBeforeDepParConj, !IO),
                 io.nl(ProgressStream, !IO),
                 io.write_string(ProgressStream, "After dep-par-conj:\n", !IO),
                 write_goal_nl(OutInfo, ProgressStream, !.ModuleInfo,
                     vns_var_table(!.VarTable), print_name_and_num,
-                    TVarSet, InstVarSet, 0, "", !.Goal, !IO)
+                    TVarSet, InstVarSet, 0u, "", !.Goal, !IO)
             else
                 true
             )
@@ -1580,7 +1580,7 @@ find_specialization_requests_in_proc(DoneProcs, InitialModuleInfo, PredProcId,
                     [i(PredIdInt), i(proc_id_to_int(ProcId))], !IO),
                 write_goal_nl(OutInfo, Stream, !.ModuleInfo,
                     vns_var_table(VarTable), print_name_and_num,
-                    TVarSet, InstVarSet, 0, "", !.Goal, !IO)
+                    TVarSet, InstVarSet, 0u, "", !.Goal, !IO)
             else
                 true
             )

@@ -1064,7 +1064,7 @@ maybe_write_progress_message(ProgressStream, ModuleInfo, DebugStackOpt,
         io.write_string(ProgressStream, ":\n", !IO),
         write_goal_nl(OutInfo, ProgressStream, ModuleInfo,
             vns_var_table(VarTable), print_name_and_num,
-            TVarSet, InstVarSet, 0, "\n", Goal, !IO)
+            TVarSet, InstVarSet, 0u, "\n", Goal, !IO)
     else
         true
     ).

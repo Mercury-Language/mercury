@@ -64,6 +64,7 @@
 :- import_module require.
 :- import_module string.
 :- import_module term.
+:- import_module uint.
 
 %---------------------------------------------------------------------------%
 
@@ -126,7 +127,7 @@ output_export_for_java(Info0, Stream, Indent, Export, !IO) :-
 output_export_no_ref_out(Info, Stream, Indent, Export, !IO) :-
     Export = ml_pragma_export(_Lang, _ExportName, QualFuncName, MLDS_Signature,
         _UnivQTVars, _Context),
-    Indent1 = Indent + 1,
+    Indent1 = Indent + 1u,
     IndentStr = indent2_string(Indent),
     Indent1Str = indent2_string(Indent1),
 
@@ -157,7 +158,7 @@ output_export_no_ref_out(Info, Stream, Indent, Export, !IO) :-
 output_export_ref_out(Info, Stream, Indent, Export, !IO) :-
     Export = ml_pragma_export(_Lang, _ExportName, QualFuncName, MLDS_Signature,
         _UnivQTVars, _Context),
-    Indent1 = Indent + 1,
+    Indent1 = Indent + 1u,
     IndentStr = indent2_string(Indent),
     Indent1Str = indent2_string(Indent1),
 
@@ -201,7 +202,7 @@ output_export_params_ref_out(Info, Stream, Indent, Parameters, !IO) :-
     ;
         Parameters = [_ | _],
         io.nl(Stream, !IO),
-        write_out_list(output_export_param_ref_out(Info, Indent + 1),
+        write_out_list(output_export_param_ref_out(Info, Indent + 1u),
             ",\n", Parameters, Stream, !IO)
     ),
     io.write_string(Stream, ")", !IO).
@@ -296,7 +297,7 @@ output_exported_enum_constant_for_java(Info, Stream, Indent, MLDS_Type,
         [s(IndentStr), s(type_to_string_for_java(Info, MLDS_Type)), s(Name)],
         !IO),
     output_initializer_body_for_java(Info, Stream, not_at_start_of_line,
-        Indent + 1, Initializer, no, ";", !IO).
+        Indent + 1u, Initializer, no, ";", !IO).
 
 %---------------------------------------------------------------------------%
 :- end_module ml_backend.mlds_to_java_export.

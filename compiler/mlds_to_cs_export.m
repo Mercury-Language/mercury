@@ -56,11 +56,11 @@
 :- import_module parse_tree.
 :- import_module parse_tree.prog_data.
 
-:- import_module int.
 :- import_module maybe.
 :- import_module require.
 :- import_module string.
 :- import_module term.
+:- import_module uint.
 
 %---------------------------------------------------------------------------%
 
@@ -78,7 +78,7 @@ output_export_for_csharp(Info, Stream, Indent, Export, !IO) :-
         "foreign_export for language other than C#."),
     list.filter(is_out_argument, Parameters, OutArgs, InArgs),
     MLDS_Signature = mlds_func_params(Parameters, ReturnTypes),
-    ParamsStr = params_to_string_for_csharp(Info, Indent + 1, Parameters),
+    ParamsStr = params_to_string_for_csharp(Info, Indent + 1u, Parameters),
 
     IndentStr = indent2_string(Indent),
 
@@ -183,7 +183,7 @@ output_exported_enum_for_csharp(Info, Stream, Indent, ExportedEnum, !IO) :-
     ).
 
 :- pred output_exported_enum_constant_for_csharp(csharp_out_info::in,
-    io.text_output_stream::in, int::in, mlds_type::in,
+    io.text_output_stream::in, indent::in, mlds_type::in,
     mlds_exported_enum_constant::in, io::di, io::uo) is det.
 
 output_exported_enum_constant_for_csharp(Info, Stream, Indent, MLDS_Type,
@@ -194,7 +194,7 @@ output_exported_enum_constant_for_csharp(Info, Stream, Indent, MLDS_Type,
     io.format(Stream, "%spublic static readonly %s %s = ",
         [s(IndentStr), s(TypeStr), s(Name)], !IO),
     output_initializer_body_for_csharp(Info, Stream, not_at_start_of_line,
-        Indent + 1, Initializer, no, ";", !IO).
+        Indent + 1u, Initializer, no, ";", !IO).
 
 %---------------------------------------------------------------------------%
 :- end_module ml_backend.mlds_to_cs_export.

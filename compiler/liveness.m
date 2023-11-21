@@ -335,7 +335,7 @@ maybe_debug_liveness(ModuleInfo, Message, DebugLiveness, PredId, ProcInfo,
         pred_info_get_typevarset(PredInfo, TVarSet),
         proc_info_get_inst_varset(ProcInfo, InstVarSet),
         write_goal_nl(OutInfo, Stream, ModuleInfo, vns_var_table(VarTable),
-            print_name_and_num, TVarSet, InstVarSet, 0, "\n", Goal, !IO)
+            print_name_and_num, TVarSet, InstVarSet, 0u, "\n", Goal, !IO)
     else
         true
     ).

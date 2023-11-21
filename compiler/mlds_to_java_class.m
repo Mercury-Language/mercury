@@ -92,6 +92,7 @@
 :- import_module require.
 :- import_module string.
 :- import_module term.
+:- import_module uint.
 
 %---------------------------------------------------------------------------%
 %
@@ -126,7 +127,7 @@ output_class_defn_for_java(Info0, Stream, Indent, ClassDefn, !IO) :-
     ),
     io.nl(Stream, !IO),
 
-    Indent1 = Indent + 1,
+    Indent1 = Indent + 1u,
     output_inherits_list(Info, Stream, Indent1, Inherits, !IO),
     output_implements_list(Stream, Indent1, Implements, !IO),
     IndentStr = indent2_string(Indent),
@@ -172,7 +173,7 @@ output_enum_class_defn_for_java(Info0, Stream, Indent, EnumDefn, !IO) :-
     io.nl(Stream, !IO),
 
     IndentStr = indent2_string(Indent),
-    Indent1 = Indent + 1,
+    Indent1 = Indent + 1u,
     output_enum_inherits_list(Info, Stream, Indent1, Inherits, !IO),
     io.format(Stream, "%simplements %s\n",
         [s(IndentStr), s(InterfaceStr)], !IO),
@@ -191,7 +192,7 @@ output_enum_class_defn_for_java(Info0, Stream, Indent, EnumDefn, !IO) :-
 output_env_defn_for_java(Info, Stream, Indent, EnvDefn, !IO) :-
     EnvDefn = mlds_env_defn(EnvName, Context, MemberFields),
     IndentStr = indent2_string(Indent),
-    Indent1 = Indent + 1,
+    Indent1 = Indent + 1u,
     Indent1Str = indent2_string(Indent1),
     EnvNameStr = unqual_class_name_to_string_for_java(EnvName, 0),
     BaseTypeStr = type_to_string_for_java(Info, mlds_generic_env_ptr_type),
@@ -216,7 +217,7 @@ output_struct_defn_for_java(Info, Stream, Indent, StructDefn, !IO) :-
         MaybeCtor = yes(Ctor)
     ),
     StructNameStr = unqual_class_name_to_string_for_java(StructName, 0),
-    Indent1 = Indent + 1,
+    Indent1 = Indent + 1u,
     IndentStr = indent2_string(Indent),
 
     indent_line_after_context(Stream, Info ^ joi_line_numbers,
@@ -316,7 +317,7 @@ interface_to_string_for_java(Interface) = String :-
 
 output_enum_ctor_for_java(Stream, Indent, ClassName, ClassArity, !IO) :-
     IndentStr = indent2_string(Indent),
-    Indent1Str = indent2_string(Indent + 1),
+    Indent1Str = indent2_string(Indent + 1u),
     UnqualClassnameStr =
         unqual_class_name_to_string_for_java(ClassName, ClassArity),
     io.format(Stream, "%sprivate %s(int val) {\n",
@@ -374,7 +375,7 @@ output_field_var_defn_for_java(Info, Stream, Indent, FieldVarDefn, !IO) :-
         Context, Indent, !IO),
     output_field_var_decl_flags_for_java(Stream, Flags, !IO),
     output_field_var_decl_for_java(Info, Stream, FieldVarName, Type, !IO),
-    output_initializer_for_java(Info, Stream, oa_none, Indent + 1,
+    output_initializer_for_java(Info, Stream, oa_none, Indent + 1u,
         Type, Initializer, ";", !IO).
 
 %---------------------------------------------------------------------------%

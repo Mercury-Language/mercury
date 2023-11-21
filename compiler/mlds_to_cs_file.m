@@ -62,7 +62,6 @@
 :- import_module assoc_list.
 :- import_module bool.
 :- import_module cord.
-:- import_module int.
 :- import_module list.
 :- import_module map.
 :- import_module maybe.
@@ -71,6 +70,7 @@
 :- import_module set.
 :- import_module string.
 :- import_module term_context.
+:- import_module uint.
 
 %---------------------------------------------------------------------------%
 
@@ -137,55 +137,55 @@ output_csharp_src_file(ModuleInfo, MLDS, Stream, Errors, !IO) :-
 
     io.write_string(Stream, "\n// RttiDefns\n", !IO),
     list.foldl(
-        output_global_var_defn_for_csharp(Info, Stream, 1, oa_alloc_only),
+        output_global_var_defn_for_csharp(Info, Stream, 1u, oa_alloc_only),
         RttiDefns, !IO),
-    output_rtti_assignments_for_csharp(Info, Stream, 1, RttiDefns, !IO),
+    output_rtti_assignments_for_csharp(Info, Stream, 1u, RttiDefns, !IO),
 
     io.write_string(Stream, "\n// Cell and tabling definitions\n", !IO),
-    output_global_var_decls_for_csharp(Info, Stream, 1, CellDefns, !IO),
-    output_global_var_decls_for_csharp(Info, Stream, 1, TableStructDefns, !IO),
-    output_init_global_var_method_for_csharp(Info, Stream, 1,
+    output_global_var_decls_for_csharp(Info, Stream, 1u, CellDefns, !IO),
+    output_global_var_decls_for_csharp(Info, Stream, 1u, TableStructDefns, !IO),
+    output_init_global_var_method_for_csharp(Info, Stream, 1u,
         CellDefns ++ TableStructDefns, !IO),
 
     % Scalar common data must appear after the previous data definitions,
     % and the vector common data after that.
     io.write_string(Stream, "\n// Scalar common data\n", !IO),
-    output_scalar_common_data_for_csharp(Info, Stream, 1,
+    output_scalar_common_data_for_csharp(Info, Stream, 1u,
         ScalarCellGroupMap, !IO),
 
     io.write_string(Stream, "\n// Vector common data\n", !IO),
-    output_vector_common_data_for_csharp(Info, Stream, 1,
+    output_vector_common_data_for_csharp(Info, Stream, 1u,
         VectorCellGroupMap, !IO),
 
     io.write_string(Stream, "\n// Method pointers\n", !IO),
-    output_method_ptr_constants(Info, Stream, 1, CodeAddrs, !IO),
+    output_method_ptr_constants(Info, Stream, 1u, CodeAddrs, !IO),
 
     io.write_string(Stream, "\n// Function definitions\n", !IO),
     list.sort(ClosureWrapperFuncDefns ++ ProcDefns, SortedFuncDefns),
     list.foldl(
-        output_function_defn_for_csharp(Info, Stream, 1, oa_none),
+        output_function_defn_for_csharp(Info, Stream, 1u, oa_none),
         SortedFuncDefns, !IO),
 
     io.write_string(Stream, "\n// Class definitions\n", !IO),
     list.sort(ClassDefns, SortedClassDefns),
-    list.foldl(output_class_defn_for_csharp(Info, Stream, 1),
+    list.foldl(output_class_defn_for_csharp(Info, Stream, 1u),
         SortedClassDefns, !IO),
 
     io.write_string(Stream, "\n// Enum class definitions\n", !IO),
     list.sort(EnumDefns, SortedEnumDefns),
-    list.foldl(output_enum_class_defn_for_csharp(Info, Stream, 1),
+    list.foldl(output_enum_class_defn_for_csharp(Info, Stream, 1u),
         SortedEnumDefns, !IO),
 
     io.write_string(Stream, "\n// Env definitions\n", !IO),
     list.sort(EnvDefns, SortedEnvDefns),
-    list.foldl(output_env_defn_for_csharp(Info, Stream, 1),
+    list.foldl(output_env_defn_for_csharp(Info, Stream, 1u),
         SortedEnvDefns, !IO),
 
     io.write_string(Stream, "\n// ExportDefns\n", !IO),
-    output_exports_for_csharp(Info, Stream, 1, ExportDefns, !IO),
+    output_exports_for_csharp(Info, Stream, 1u, ExportDefns, !IO),
 
     io.write_string(Stream, "\n// ExportedEnums\n", !IO),
-    output_exported_enums_for_csharp(Info, Stream, 1, ExportedEnums, !IO),
+    output_exported_enums_for_csharp(Info, Stream, 1u, ExportedEnums, !IO),
 
     io.write_string(Stream, "\n// EnvVarNames\n", !IO),
     set.init(EnvVarNamesSet0),
@@ -193,7 +193,7 @@ output_csharp_src_file(ModuleInfo, MLDS, Stream, Errors, !IO) :-
         EnvVarNamesSet0, EnvVarNamesSet1),
     list.foldl(accumulate_env_var_names, ClosureWrapperFuncDefns,
         EnvVarNamesSet1, EnvVarNamesSet),
-    set.foldl(output_env_var_definition_for_csharp(Stream, 1),
+    set.foldl(output_env_var_definition_for_csharp(Stream, 1u),
         EnvVarNamesSet, !IO),
 
     StaticCtorCalls = [
@@ -203,7 +203,7 @@ output_csharp_src_file(ModuleInfo, MLDS, Stream, Errors, !IO) :-
         "MR_init_vector_common_data"
         | InitPreds
     ],
-    output_static_constructor(Stream, ModuleName, 1, StaticCtorCalls,
+    output_static_constructor(Stream, ModuleName, 1u, StaticCtorCalls,
         FinalPreds, !IO),
 
     output_src_end_for_csharp(Stream, ModuleName, !IO),
@@ -251,7 +251,7 @@ output_src_start_for_csharp(Info, Stream, ModuleName, _Imports,
     % Check whether this module contains a `main' predicate, and if it does,
     % then generate a `main' method that calls the `main' predicate.
     ( if func_defns_contain_main(FuncDefns) then
-        write_main_driver_for_csharp(Stream, 1, ClassName, !IO)
+        write_main_driver_for_csharp(Stream, 1u, ClassName, !IO)
     else
         true
     ).
@@ -266,7 +266,7 @@ output_src_start_for_csharp(Info, Stream, ModuleName, _Imports,
 output_static_constructor(Stream, ModuleName, Indent,
         StaticConstructors, FinalPreds, !IO) :-
     IndentStr = indent2_string(Indent),
-    Indent1Str = indent2_string(Indent + 1),
+    Indent1Str = indent2_string(Indent + 1u),
     mangle_sym_name_for_csharp(ModuleName, module_qual, "__", ClassName),
     io.format(Stream, "%sstatic %s() {\n", [s(IndentStr), s(ClassName)], !IO),
     WriteCall =
@@ -292,7 +292,7 @@ output_static_constructor(Stream, ModuleName, Indent,
 
 write_main_driver_for_csharp(Stream, Indent, ClassName, !IO) :-
     IndentStr = indent2_string(Indent),
-    Indent1Str = indent2_string(Indent + 1),
+    Indent1Str = indent2_string(Indent + 1u),
     io.format(Stream, "%spublic static void Main(string[] args)\n",
         [s(IndentStr)], !IO),
     io.format(Stream, "%s{\n", [s(IndentStr)], !IO),

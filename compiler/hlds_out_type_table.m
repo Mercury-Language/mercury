@@ -49,6 +49,7 @@
 :- import_module set.
 :- import_module string.
 :- import_module term.
+:- import_module uint.
 :- import_module varset.
 
 %---------------------------------------------------------------------------%
@@ -94,7 +95,7 @@ write_type_table_entry(Info, Stream, TypeCtor - TypeDefn, !IO) :-
     hlds_data.get_type_defn_context(TypeDefn, Context),
     % Write the context.
     io.write_char(Stream, '\n', !IO),
-    maybe_output_context_comment(Stream, 0, "", Context, !IO),
+    maybe_output_context_comment(Stream, 0u, "", Context, !IO),
     DumpOptions = Info ^ hoi_dump_hlds_options,
     ( if string.contains_char(DumpOptions, 'c') then
         io.format(Stream, "%% status %s\n",
@@ -144,7 +145,7 @@ write_comma_type_params_loop(Stream, TVarSet, [Param | Params], !IO) :-
     io::di, io::uo) is det.
 
 write_type_body(Info, Stream, _TypeCtor, TypeBody, TVarSet, !IO) :-
-    BaseIndent = 1,
+    BaseIndent = 1u,
     IndentStr = indent2_string(BaseIndent),
     (
         TypeBody = hlds_du_type(TypeBodyDu),
@@ -303,7 +304,7 @@ write_type_body(Info, Stream, _TypeCtor, TypeBody, TVarSet, !IO) :-
         ),
         % What we output is not valid Mercury syntax, but it is easier
         % to read than valid Mercury syntax would be.
-        Indent1Str = indent2_string(BaseIndent + 1),
+        Indent1Str = indent2_string(BaseIndent + 1u),
         io.format(Stream, " is foreign_type(\n%s%s,\n%s%s,\n%s%s\n%s).\n",
             [s(Indent1Str), s(MaybeCStr),
             s(Indent1Str), s(MaybeJavaStr),
@@ -411,7 +412,7 @@ write_constructor_repns(Stream, TVarSet, CtorRepns, !IO) :-
 
 write_constructors_loop(Stream, TVarSet, ArrowOrSemi0,
         HeadCtor, TailCtors, !IO) :-
-    write_indent2(Stream, 1, !IO),
+    write_indent2(Stream, 1u, !IO),
     io.write_string(Stream, ArrowOrSemi0, !IO),
     (
         TailCtors = [],
@@ -430,7 +431,7 @@ write_constructors_loop(Stream, TVarSet, ArrowOrSemi0,
 
 write_constructor_repns_loop(Stream, TVarSet, ArrowOrSemi0,
         HeadCtorRepn, TailCtorRepns, !IO) :-
-    write_indent2(Stream, 1, !IO),
+    write_indent2(Stream, 1u, !IO),
     io.write_string(Stream, ArrowOrSemi0, !IO),
     (
         TailCtorRepns = [],
@@ -461,8 +462,8 @@ write_ctor(Stream, TVarSet, Ctor, !IO) :-
         mercury_bracketed_atom_to_string(not_next_to_graphic_token, Name),
     % The width of ArrowOrSemi is eight spaces, which is the same as
     % four indents. This comes after the original one indent.
-    BaseIndent = 1,
-    ASIndent = 4,
+    BaseIndent = 1u,
+    ASIndent = 4u,
     BaseASIndentStr = indent2_string(BaseIndent + ASIndent),
     maybe_cons_exist_constraints_to_prefix_suffix(TVarSet,
         BaseASIndentStr, "\n", MaybeExistConstraints,
@@ -477,7 +478,7 @@ write_ctor(Stream, TVarSet, Ctor, !IO) :-
         Args = [HeadArg | TailArgs],
         io.format(Stream, "%s%s(\n", [s(BracePrefix), s(NameStr)], !IO),
         AnyFieldName = does_any_arg_have_a_field_name(Args),
-        BaseASIndent1Str = indent2_string(BaseIndent + ASIndent + 1),
+        BaseASIndent1Str = indent2_string(BaseIndent + ASIndent + 1u),
         mercury_output_ctor_args(Stream, TVarSet, BaseASIndent1Str,
             AnyFieldName, HeadArg, TailArgs, !IO),
         io.format(Stream, "%s)%s\n",
@@ -503,8 +504,8 @@ write_ctor_repn(Stream, TVarSet, CtorRepn, !IO) :-
         mercury_bracketed_atom_to_string(not_next_to_graphic_token, Name),
     % The width of ArrowOrSemi is eight spaces, which is the same as
     % four indents. This comes after the original one indent.
-    BaseIndent = 1,
-    ASIndent = 4,
+    BaseIndent = 1u,
+    ASIndent = 4u,
     BaseASIndentStr = indent2_string(BaseIndent + ASIndent),
     maybe_cons_exist_constraints_to_prefix_suffix(TVarSet,
         BaseASIndentStr, "\n", MaybeExistConstraints,
@@ -521,7 +522,7 @@ write_ctor_repn(Stream, TVarSet, CtorRepn, !IO) :-
             !IO)
     ;
         ArgRepns = [HeadArgRepn | TailArgRepns],
-        BaseASIndent1Str = indent2_string(BaseIndent + ASIndent + 1),
+        BaseASIndent1Str = indent2_string(BaseIndent + ASIndent + 1u),
         io.format(Stream, "%s%s(\n%s",
             [s(BracePrefix), s(NameStr), s(ConsTagString)], !IO),
         AnyFieldName = does_any_arg_repn_have_a_field_name(ArgRepns),

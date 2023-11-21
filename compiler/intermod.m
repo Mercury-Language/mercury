@@ -958,7 +958,7 @@ write_promise(Info, Stream, ModuleInfo, TVarSet, VarTable, PromiseType,
     InfoGoal = hlds_out_info_goal(Info, ModuleInfo, 
         vns_var_table(VarTable), print_name_only,
         TVarSet, InstVarSet, no_tvarset_var_table),
-    do_write_goal(InfoGoal, Stream, 1, "\n).\n", Goal, !IO).
+    do_write_goal(InfoGoal, Stream, 1u, "\n).\n", Goal, !IO).
 
 :- pred intermod_write_clause(hlds_out_info::in, io.text_output_stream::in,
     module_info::in, pred_id::in, sym_name::in, pred_or_func::in,
@@ -989,7 +989,7 @@ intermod_write_clause(OutInfo, Stream, ModuleInfo, PredId, SymName, PredOrFunc,
         init_var_table(EmptyVarTable),
         write_clause(OutInfo, Stream, output_mercury, ModuleInfo,
             PredId, PredOrFunc, vns_var_table(EmptyVarTable), TypeQual,
-            print_name_and_num, write_declared_modes, 1, ClauseHeadVars,
+            print_name_and_num, write_declared_modes, 1u, ClauseHeadVars,
             Clause, !IO)
     ;
         ImplLang = impl_lang_foreign(_),

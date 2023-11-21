@@ -17,6 +17,8 @@
 
 :- import_module hlds.hlds_goal.
 :- import_module hlds.instmap.
+:- import_module libs.
+:- import_module libs.indent.
 :- import_module parse_tree.
 :- import_module parse_tree.parse_tree_out_info.
 :- import_module parse_tree.prog_data.
@@ -39,10 +41,10 @@
     % but may not be valid Mercury.
     %
 :- pred mercury_output_structured_inst_list(io.text_output_stream::in,
-    output_lang::in, inst_varset::in, incl_addr::in, int::in,
+    output_lang::in, inst_varset::in, incl_addr::in, indent::in,
     list(mer_inst)::in, io::di, io::uo) is det.
 :- func mercury_structured_inst_list_to_string(output_lang, inst_varset,
-    incl_addr, int, list(mer_inst)) = string.
+    incl_addr, indent, list(mer_inst)) = string.
 
     % Output an inst in a format that makes it easy to read
     % but may not be valid Mercury.
@@ -50,24 +52,24 @@
     % (These routines are used with `--debug-modes'.)
     %
 :- pred mercury_output_structured_inst(io.text_output_stream::in,
-    output_lang::in, inst_varset::in, incl_addr::in, int::in, mer_inst::in,
+    output_lang::in, inst_varset::in, incl_addr::in, indent::in, mer_inst::in,
     io::di, io::uo) is det.
 :- func mercury_structured_inst_to_string(output_lang, inst_varset, incl_addr,
-    int, mer_inst) = string.
+    indent, mer_inst) = string.
 
 %---------------------------------------------------------------------------%
 
 :- pred mercury_output_structured_unify_mode_list(io.text_output_stream::in,
-    output_lang::in, inst_varset::in, incl_addr::in, int::in,
+    output_lang::in, inst_varset::in, incl_addr::in, indent::in,
     list(unify_mode)::in, io::di, io::uo) is det.
 :- func mercury_structured_unify_mode_list_to_string(output_lang, inst_varset,
-    incl_addr, int, list(unify_mode)) = string.
+    incl_addr, indent, list(unify_mode)) = string.
 
 :- pred mercury_output_structured_unify_mode(io.text_output_stream::in,
-    output_lang::in, inst_varset::in, incl_addr::in, int::in, unify_mode::in,
+    output_lang::in, inst_varset::in, incl_addr::in, indent::in, unify_mode::in,
     io::di, io::uo) is det.
 :- func mercury_structured_unify_mode_to_string(output_lang, inst_varset,
-    incl_addr, int, unify_mode) = string.
+    incl_addr, indent, unify_mode) = string.
 
 %---------------------------------------------------------------------------%
 
@@ -97,6 +99,7 @@
 :- import_module string.
 :- import_module string.builder.
 :- import_module term_context.
+:- import_module uint.
 :- import_module varset.
 
 %---------------------------------------------------------------------------%
@@ -148,7 +151,7 @@ mercury_structured_inst_list_to_string(Lang, InstVarSet, InclAddr, Indent,
     Str = string.builder.to_string(State).
 
 :- pred mercury_format_structured_inst_list(output_lang::in,
-    inst_varset::in, incl_addr::in, int::in, list(mer_inst)::in,
+    inst_varset::in, incl_addr::in, indent::in, list(mer_inst)::in,
     S::in, U::di, U::uo) is det <= pt_output(S, U).
 
 mercury_format_structured_inst_list(_, _, _, _, [], _, !U).
@@ -181,7 +184,7 @@ mercury_structured_inst_to_string(Lang, InstVarSet, InclAddr, Indent, Inst)
     Str = string.builder.to_string(State).
 
 :- pred mercury_format_structured_inst(output_lang::in, inst_varset::in,
-    incl_addr::in, int::in, string::in, mer_inst::in,
+    incl_addr::in, indent::in, string::in, mer_inst::in,
     S::in, U::di, U::uo) is det <= pt_output(S, U).
 
 mercury_format_structured_inst(Lang, InstVarSet, InclAddr, Indent,
@@ -223,7 +226,7 @@ mercury_format_structured_inst(Lang, InstVarSet, InclAddr, Indent,
                 inst_test_results_to_term(dummy_context, InstResults),
             InstResultsStr = mercury_term_to_string_vs(varset.init,
                 print_num_only, InstResultsTerm),
-            mercury_format_tabs(Indent + 1, S, !U),
+            mercury_format_tabs(Indent + 1u, S, !U),
             add_string(InstResultsStr, S, !U),
             add_string(",\n", S, !U)
         ),
@@ -231,16 +234,16 @@ mercury_format_structured_inst(Lang, InstVarSet, InclAddr, Indent,
             Lang = output_mercury
         ;
             Lang = output_debug,
-            mercury_format_tabs(Indent + 1, S, !U),
+            mercury_format_tabs(Indent + 1u, S, !U),
             add_string("[\n", S, !U)
         ),
         mercury_format_structured_bound_insts(Lang, InstVarSet, InclAddr,
-            Indent + 1, BoundInsts, S, !U),
+            Indent + 1u, BoundInsts, S, !U),
         (
             Lang = output_mercury
         ;
             Lang = output_debug,
-            mercury_format_tabs(Indent + 1, S, !U),
+            mercury_format_tabs(Indent + 1u, S, !U),
             add_string("]\n", S, !U)
         ),
         mercury_format_tabs(Indent, S, !U),
@@ -277,15 +280,15 @@ mercury_format_structured_inst(Lang, InstVarSet, InclAddr, Indent,
     ).
 
 :- pred mercury_format_structured_bound_insts(output_lang::in,
-    inst_varset::in, incl_addr::in, int::in, list(bound_inst)::in,
+    inst_varset::in, incl_addr::in, indent::in, list(bound_inst)::in,
     S::in, U::di, U::uo) is det <= pt_output(S, U).
 
 mercury_format_structured_bound_insts(_, _, _, _, [], _, !U).
 mercury_format_structured_bound_insts(Lang, InstVarSet, InclAddr, Indent0,
         [BoundInst | BoundInsts], S, !U) :-
     BoundInst = bound_functor(ConsId, Args),
-    Indent1 = Indent0 + 1,
-    Indent2 = Indent1 + 1,
+    Indent1 = Indent0 + 1u,
+    Indent2 = Indent1 + 1u,
     (
         Args = [],
         mercury_format_tabs(Indent1, S, !U),
@@ -337,7 +340,7 @@ mercury_structured_unify_mode_list_to_string(Lang, InstVarSet, InclAddr,
     Str = string.builder.to_string(State).
 
 :- pred mercury_format_structured_unify_mode_list(output_lang::in,
-    inst_varset::in, incl_addr::in, int::in, int::in, list(unify_mode)::in,
+    inst_varset::in, incl_addr::in, indent::in, int::in, list(unify_mode)::in,
     S::in, U::di, U::uo) is det <= pt_output(S, U).
 
 mercury_format_structured_unify_mode_list(_, _, _, _, _, [], _, !U).
@@ -367,7 +370,7 @@ mercury_structured_unify_mode_to_string(Lang, InstVarSet, InclAddr,
     Str = string.builder.to_string(State).
 
 :- pred mercury_format_structured_unify_mode(output_lang::in, inst_varset::in,
-    incl_addr::in, int::in, unify_mode::in,
+    incl_addr::in, indent::in, unify_mode::in,
     S::in, U::di, U::uo) is det <= pt_output(S, U).
 
 mercury_format_structured_unify_mode(Lang, InstVarSet, InclAddr, Indent,
@@ -422,7 +425,7 @@ mercury_format_structured_unify_mode(Lang, InstVarSet, InclAddr, Indent,
 %---------------------------------------------------------------------------%
 
 :- pred mercury_format_structured_inst_name(output_lang::in, inst_varset::in,
-    incl_addr::in, int::in, bool::in, string::in, inst_name::in,
+    incl_addr::in, indent::in, bool::in, string::in, inst_name::in,
     S::in, U::di, U::uo) is det <= pt_output(S, U).
 
 mercury_format_structured_inst_name(Lang, InstVarSet, InclAddr, Indent,
@@ -443,7 +446,7 @@ mercury_format_structured_inst_name(Lang, InstVarSet, InclAddr, Indent,
             mercury_format_sym_name(Name, S, !U),
             add_string("(\n", S, !U),
             mercury_format_structured_inst_list(Lang, InstVarSet, InclAddr,
-                Indent + 1, Args, S, !U),
+                Indent + 1u, Args, S, !U),
             mercury_format_tabs(Indent, S, !U),
             add_string(")", S, !U)
         ),
@@ -455,7 +458,7 @@ mercury_format_structured_inst_name(Lang, InstVarSet, InclAddr, Indent,
         mercury_format_real_comma(Real, S, !U),
         add_string("\n", S, !U),
         mercury_format_structured_inst_list(Lang, InstVarSet, InclAddr,
-            Indent + 1, [InstA, InstB], S, !U),
+            Indent + 1u, [InstA, InstB], S, !U),
         mercury_format_tabs(Indent, S, !U),
         add_string(")", S, !U),
         add_string(Suffix, S, !U)
@@ -463,7 +466,7 @@ mercury_format_structured_inst_name(Lang, InstVarSet, InclAddr, Indent,
         InstName = merge_inst(InstA, InstB),
         add_string("$merge_inst(\n", S, !U),
         mercury_format_structured_inst_list(Lang, InstVarSet, InclAddr,
-            Indent + 1, [InstA, InstB], S, !U),
+            Indent + 1u, [InstA, InstB], S, !U),
         mercury_format_tabs(Indent, S, !U),
         add_string(")", S, !U),
         add_string(Suffix, S, !U)
@@ -475,7 +478,7 @@ mercury_format_structured_inst_name(Lang, InstVarSet, InclAddr, Indent,
         mercury_format_uniqueness(Uniq, "shared", S, !U),
         add_string(",\n", S, !U),
         mercury_format_structured_inst_name(Lang, InstVarSet, InclAddr,
-            Indent + 1, no, "\n", SubInstName, S, !U),
+            Indent + 1u, no, "\n", SubInstName, S, !U),
         mercury_format_tabs(Indent, S, !U),
         add_string(")", S, !U),
         add_string(Suffix, S, !U)
@@ -487,7 +490,7 @@ mercury_format_structured_inst_name(Lang, InstVarSet, InclAddr, Indent,
         mercury_format_uniqueness(Uniq, "shared", S, !U),
         add_string(",\n", S, !U),
         mercury_format_structured_inst_name(Lang, InstVarSet, InclAddr,
-            Indent + 1, no, "\n", SubInstName, S, !U),
+            Indent + 1u, no, "\n", SubInstName, S, !U),
         mercury_format_tabs(Indent, S, !U),
         add_string(")", S, !U),
         add_string(Suffix, S, !U)
@@ -495,7 +498,7 @@ mercury_format_structured_inst_name(Lang, InstVarSet, InclAddr, Indent,
         InstName = shared_inst(SubInstName),
         add_string("$shared_inst(\n", S, !U),
         mercury_format_structured_inst_name(Lang, InstVarSet, InclAddr,
-            Indent + 1, no, "\n", SubInstName, S, !U),
+            Indent + 1u, no, "\n", SubInstName, S, !U),
         mercury_format_tabs(Indent, S, !U),
         add_string(")", S, !U),
         add_string(Suffix, S, !U)
@@ -503,7 +506,7 @@ mercury_format_structured_inst_name(Lang, InstVarSet, InclAddr, Indent,
         InstName = mostly_uniq_inst(SubInstName),
         add_string("$mostly_uniq_inst(\n", S, !U),
         mercury_format_structured_inst_name( Lang, InstVarSet, InclAddr,
-            Indent + 1, no, "\n", SubInstName, S, !U),
+            Indent + 1u, no, "\n", SubInstName, S, !U),
         mercury_format_tabs(Indent, S, !U),
         add_string(")", S, !U),
         add_string(Suffix, S, !U)
@@ -523,7 +526,7 @@ mercury_format_structured_inst_name(Lang, InstVarSet, InclAddr, Indent,
         mercury_format_type(TypeVarSet, print_name_only, Type, S, !U),
         add_string(",\n", S, !U),
         mercury_format_structured_inst_name(Lang, InstVarSet, InclAddr,
-            Indent + 1, no, "\n", SubInstName, S, !U),
+            Indent + 1u, no, "\n", SubInstName, S, !U),
         mercury_format_tabs(Indent, S, !U),
         add_string(")", S, !U),
         add_string(Suffix, S, !U)
