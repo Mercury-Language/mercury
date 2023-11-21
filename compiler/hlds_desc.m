@@ -36,7 +36,20 @@
     % Return a short, less than one line description of the given goal,
     % given the ModuleInfo and the var_table of the procedure the goal is from.
     %
+    % The returned string won't end with a newline.
+    %
 :- func describe_goal(module_info, var_table, hlds_goal) = string.
+
+    % Return a short but nevertheless structured description of the given goal,
+    % given the ModuleInfo and the var_table of the procedure the goal is from.
+    % The description will have at most one line per atomic goal, but
+    % the descriptions of structured goals will be longer.
+    %
+    % The returned string will consist of one or more line lines,
+    % each ending with a newline.
+    %
+:- func describe_structured_goal(module_info, var_table, int, hlds_goal)
+    = string.
 
     % If the list is empty, return the empty string; if the list contains
     % some variables, return the descriptions of those variables between
@@ -74,6 +87,8 @@
 :- implementation.
 
 :- import_module hlds.pred_name.
+:- import_module libs.
+:- import_module libs.indent.
 :- import_module mdbcomp.
 :- import_module mdbcomp.prim_data.
 :- import_module mdbcomp.sym_name.
@@ -89,57 +104,13 @@ describe_goal(ModuleInfo, VarTable, Goal) = FullDesc :-
     Goal = hlds_goal(GoalExpr, GoalInfo),
     (
         GoalExpr = unify(_, _, _, Unification, _),
-        (
-            (
-                Unification = construct(Var, ConsId, Args, _, _, _, _),
-                OpStr = "<="
-            ;
-                Unification = deconstruct(Var, ConsId, Args, _, _, _),
-                OpStr = "=>"
-            ),
-            VarStr = describe_var(VarTable, Var),
-            ConsIdStr = cons_id_and_arity_to_string(ConsId),
-            ArgsStr = describe_args(VarTable, Args),
-            string.format("%s %s %s%s",
-                [s(VarStr), s(OpStr), s(ConsIdStr), s(ArgsStr)], Desc)
-        ;
-            (
-                Unification = assign(VarA, VarB),
-                OpStr = ":="
-            ;
-                Unification = simple_test(VarA, VarB),
-                OpStr = "-="
-            ),
-            string.format("%s %s %s",
-                [s(describe_var(VarTable, VarA)), s(OpStr),
-                s(describe_var(VarTable, VarB))], Desc)
-        ;
-            Unification = complicated_unify(_, _, _),
-            Desc = "complicated unify"
-        )
+        Desc = describe_unify(VarTable, Unification)
     ;
-        GoalExpr = plain_call(_, _, Args, _, _, SymName),
-        Desc = sym_name_to_string(SymName) ++ describe_args(VarTable, Args)
+        GoalExpr = plain_call(_, _, ArgVars, _, _, SymName),
+        Desc = describe_plain_call(VarTable, SymName, ArgVars)
     ;
-        GoalExpr = generic_call(GCall, Args, _, _, _),
-        ArgsStr = describe_args(VarTable, Args),
-        (
-            GCall = higher_order(Var, _, _, _),
-            string.format("%s%s",
-                [s(describe_var(VarTable, Var)), s(ArgsStr)], Desc)
-        ;
-            GCall = class_method(Var, _, _, MethodSNA),
-            string.format("%s[%s]%s",
-                [s(pf_sym_name_pred_form_arity_to_string(MethodSNA)),
-                s(describe_var(VarTable, Var)), s(ArgsStr)], Desc)
-        ;
-            GCall = event_call(EventName),
-            string.format("%s %s", [s(EventName), s(ArgsStr)], Desc)
-        ;
-            GCall = cast(CastType),
-            string.format("%s %s",
-                [s(describe_cast(CastType)), s(ArgsStr)], Desc)
-        )
+        GoalExpr = generic_call(GCall, ArgVars, _, _, _),
+        Desc = describe_generic_call(VarTable, GCall, ArgVars)
     ;
         GoalExpr = call_foreign_proc(_, PredId, _, Args, ExtraArgs, _, _),
         module_info_pred_info(ModuleInfo, PredId, PredInfo),
@@ -150,11 +121,29 @@ describe_goal(ModuleInfo, VarTable, Goal) = FullDesc :-
             [s(Name), s(describe_args(VarTable, ArgVars)),
             s(describe_args(VarTable, ExtraVars))], Desc)
     ;
-        GoalExpr = conj(_, _),
-        Desc = "conj"
+        GoalExpr = conj(ConjType, SubGoals),
+        (
+            SubGoals = [],
+            Desc = "true"
+        ;
+            SubGoals = [_ | _],
+            ( ConjType = plain_conj,    ConjStr = "conj"
+            ; ConjType = parallel_conj, ConjStr = "par_conj"
+            ),
+            list.length(SubGoals, NumSubGoals),
+            string.format("%s(%d subgoals)", [s(ConjStr), i(NumSubGoals)],
+                Desc)
+        )
     ;
-        GoalExpr = disj(_),
-        Desc = "disj"
+        GoalExpr = disj(SubGoals),
+        (
+            SubGoals = [],
+            Desc = "fail"
+        ;
+            SubGoals = [_ | _],
+            list.length(SubGoals, NumSubGoals),
+            string.format("disj(%d subgoals)", [i(NumSubGoals)], Desc)
+        )
     ;
         GoalExpr = switch(Var, _, _),
         Desc = "switch on " ++ describe_var(VarTable, Var)
@@ -163,43 +152,7 @@ describe_goal(ModuleInfo, VarTable, Goal) = FullDesc :-
         Desc = "negation"
     ;
         GoalExpr = scope(Reason, _),
-        (
-            Reason = disable_warnings(_, _),
-            Desc = "disable warnings"
-        ;
-            Reason = exist_quant(_, _),
-            Desc = "scope exist quant"
-        ;
-            Reason = promise_solutions(_, _),
-            Desc = "scope promise solutions"
-        ;
-            Reason = promise_purity(_),
-            Desc = "scope promise purity"
-        ;
-            Reason = require_detism(_),
-            Desc = "scope require detism"
-        ;
-            Reason = require_complete_switch(_),
-            Desc = "scope require complete switch"
-        ;
-            Reason = require_switch_arms_detism(_, _),
-            Desc = "scope require switch arm detism"
-        ;
-            Reason = commit(_),
-            Desc = "scope commit"
-        ;
-            Reason = barrier(_),
-            Desc = "scope barrier"
-        ;
-            Reason = from_ground_term(_, _),
-            Desc = "scope from_ground_term"
-        ;
-            Reason = trace_goal(_, _, _, _, _),
-            Desc = "scope trace goal"
-        ;
-            Reason = loop_control(_, _, _),
-            Desc = "scope loop control goal"
-        )
+        Desc = describe_scope_reason(Reason)
     ;
         GoalExpr = if_then_else(_, _, _, _),
         Desc = "if_then_else"
@@ -211,19 +164,285 @@ describe_goal(ModuleInfo, VarTable, Goal) = FullDesc :-
     Line = term_context.context_line(Context),
     FullDesc = Desc ++ "@" ++ int_to_string(Line).
 
+describe_structured_goal(ModuleInfo, VarTable, Indent, Goal) = Desc :-
+    Lines = do_describe_structured_goal(ModuleInfo, VarTable, Goal),
+    ( if Indent = 0 then
+        IndentedLines = Lines
+    else
+        IndentedLines = list.map(add_indent2_prefix(Indent), Lines)
+    ),
+    string.append_list(IndentedLines, Desc).
+
+:- func do_describe_structured_goal(module_info, var_table, hlds_goal) =
+    list(string).
+
+do_describe_structured_goal(ModuleInfo, VarTable, Goal) = Lines :-
+    Goal = hlds_goal(GoalExpr, _GoalInfo),
+    (
+        GoalExpr = unify(_, _, _, Unification, _),
+        Desc = describe_unify(VarTable, Unification),
+        Lines = desc_to_lines(Desc)
+    ;
+        GoalExpr = plain_call(_, _, ArgVars, _, _, SymName),
+        Desc = describe_plain_call(VarTable, SymName, ArgVars),
+        Lines = desc_to_lines(Desc)
+    ;
+        GoalExpr = generic_call(GCall, ArgVars, _, _, _),
+        Desc = describe_generic_call(VarTable, GCall, ArgVars),
+        Lines = desc_to_lines(Desc)
+    ;
+        GoalExpr = call_foreign_proc(_, PredId, _, Args, ExtraArgs, _, _),
+        module_info_pred_info(ModuleInfo, PredId, PredInfo),
+        Name = pred_info_name(PredInfo),
+        ArgVars = list.map(foreign_arg_var, Args),
+        ExtraVars = list.map(foreign_arg_var, ExtraArgs),
+        string.format("foreign %s%s%s",
+            [s(Name), s(describe_args(VarTable, ArgVars)),
+            s(describe_args(VarTable, ExtraVars))], Desc),
+        Lines = desc_to_lines(Desc)
+    ;
+        GoalExpr = conj(ConjType, SubGoals),
+        (
+            SubGoals = [],
+            Lines = ["true\n"]
+        ;
+            SubGoals = [_ | _],
+            ( ConjType = plain_conj,    ConjStr = "conj"
+            ; ConjType = parallel_conj, ConjStr = "par_conj"
+            ),
+            string.format("%s(\n", [s(ConjStr)], FirstLine),
+            SubGoalLineLists = list.map(
+                do_describe_structured_goal(ModuleInfo, VarTable), SubGoals),
+            list.condense(SubGoalLineLists, SubGoalLines),
+            IndentedSubGoalLines = list.map(indent_desc_line, SubGoalLines),
+            LastLine = ")\n",
+            Lines = [FirstLine | IndentedSubGoalLines] ++ [LastLine]
+        )
+    ;
+        GoalExpr = disj(SubGoals),
+        (
+            SubGoals = [],
+            Lines = ["fail\n"]
+        ;
+            SubGoals = [HeadSubGoal | TailSubGoals],
+            FirstLine = "disj(\n",
+            HeadSubGoalLineList = do_describe_structured_goal(
+                ModuleInfo, VarTable, HeadSubGoal),
+            TailSubGoalLineLists = list.map(do_describe_structured_goal(
+                ModuleInfo, VarTable), TailSubGoals),
+            DisjunctLines =
+                disjunction_lines(HeadSubGoalLineList, TailSubGoalLineLists),
+            LastLine = ")\n",
+            Lines = [FirstLine | DisjunctLines] ++ [LastLine]
+        )
+    ;
+        GoalExpr = switch(Var, _, Cases),
+        string.format("switch(%s,\n", [s(describe_var(VarTable, Var))],
+            FirstLine),
+        CaseLineLists = list.map(
+            do_describe_structured_case(ModuleInfo, VarTable), Cases),
+        list.condense(CaseLineLists, CaseLines),
+        IndentedCaseLines = list.map(indent_desc_line, CaseLines),
+        LastLine = ")\n",
+        Lines = [FirstLine | IndentedCaseLines] ++ [LastLine]
+    ;
+        GoalExpr = negation(SubGoal),
+        FirstLine = "not(\n",
+        SubGoalLines =
+            do_describe_structured_goal(ModuleInfo, VarTable, SubGoal),
+        IndentedSubGoalLines = list.map(indent_desc_line, SubGoalLines),
+        LastLine = ")\n",
+        Lines = [FirstLine | IndentedSubGoalLines] ++ [LastLine]
+    ;
+        GoalExpr = scope(Reason, SubGoal),
+        ReasonDesc = describe_scope_reason(Reason),
+        string.format("scope(%s,\n", [s(ReasonDesc)], FirstLine),
+        SubGoalLines =
+            do_describe_structured_goal(ModuleInfo, VarTable, SubGoal),
+        IndentedSubGoalLines = list.map(indent_desc_line, SubGoalLines),
+        LastLine = ")\n",
+        Lines = [FirstLine | IndentedSubGoalLines] ++ [LastLine]
+    ;
+        GoalExpr = if_then_else(_, Cond, Then, Else),
+        CondLines =
+            do_describe_structured_goal(ModuleInfo, VarTable, Cond),
+        ITE1 = "( if\n",
+        ITE2 = "then\n",
+        ITE3 = "else\n",
+        ITE4 = ")\n",
+        IndentedCondLines = list.map(indent_desc_line, CondLines),
+        ThenLines =
+            do_describe_structured_goal(ModuleInfo, VarTable, Then),
+        IndentedThenLines = list.map(indent_desc_line, ThenLines),
+        ElseLines =
+            do_describe_structured_goal(ModuleInfo, VarTable, Else),
+        IndentedElseLines = list.map(indent_desc_line, ElseLines),
+        Lines =
+            [ITE1 | IndentedCondLines] ++
+            [ITE2 | IndentedThenLines] ++
+            [ITE3 | IndentedElseLines] ++
+            [ITE4]
+    ;
+        GoalExpr = shorthand(_),
+        Desc = "shorthand",
+        Lines = desc_to_lines(Desc)
+    ).
+
+:- func do_describe_structured_case(module_info, var_table, case) =
+    list(string).
+
+do_describe_structured_case(ModuleInfo, VarTable, Case) = Lines :-
+    Case = case(MainConsId, OtherConsIds, Goal),
+    MainConsIdStr = cons_id_and_arity_to_string(MainConsId),
+    OtherConsIdStrs = list.map(cons_id_and_arity_to_string, OtherConsIds),
+    ConsIdStr = string.join_list(" or ", [MainConsIdStr | OtherConsIdStrs]),
+    string.format("case %s:\n", [s(ConsIdStr)], FirstLine),
+    GoalLines = do_describe_structured_goal(ModuleInfo, VarTable, Goal),
+    IndentedGoalLines = list.map(indent_desc_line, GoalLines),
+    Lines = [FirstLine | IndentedGoalLines].
+
+:- func desc_to_lines(string) = list(string).
+
+desc_to_lines(Desc) = [Desc ++ "\n"].
+
+:- func disjunction_lines(list(string), list(list(string))) = list(string).
+
+disjunction_lines(HeadGroup, TailGroups) = Lines :-
+    IndentedHeadLines = list.map(indent_desc_line, HeadGroup),
+    (
+        TailGroups = [],
+        Lines = IndentedHeadLines
+    ;
+        TailGroups = [HeadTailGroup | TailTailGroups],
+        TailLines = disjunction_lines(HeadTailGroup, TailTailGroups),
+        Lines = IndentedHeadLines ++ [";\n" | TailLines]
+    ).
+
+:- func indent_desc_line(string) = string.
+
+indent_desc_line(Line) = "  " ++ Line.
+
+%-----------------------------------------------------------------------------%
+
+:- func describe_unify(var_table, unification) = string.
+
+describe_unify(VarTable, Unification) = Desc :-
+    (
+        (
+            Unification = construct(Var, ConsId, Args, _, _, _, _),
+            OpStr = "<="
+        ;
+            Unification = deconstruct(Var, ConsId, Args, _, _, _),
+            OpStr = "=>"
+        ),
+        VarStr = describe_var(VarTable, Var),
+        ConsIdStr = cons_id_and_arity_to_string(ConsId),
+        ArgsStr = describe_args(VarTable, Args),
+        string.format("%s %s %s%s",
+            [s(VarStr), s(OpStr), s(ConsIdStr), s(ArgsStr)], Desc)
+    ;
+        (
+            Unification = assign(VarA, VarB),
+            OpStr = ":="
+        ;
+            Unification = simple_test(VarA, VarB),
+            OpStr = "-="
+        ),
+        string.format("%s %s %s",
+            [s(describe_var(VarTable, VarA)), s(OpStr),
+            s(describe_var(VarTable, VarB))], Desc)
+    ;
+        Unification = complicated_unify(_, _, _),
+        Desc = "complicated unify"
+    ).
+
+:- func describe_plain_call(var_table, sym_name, list(prog_var)) = string.
+
+describe_plain_call(VarTable, SymName, ArgVars) = Desc :-
+    Desc = sym_name_to_string(SymName) ++ describe_args(VarTable, ArgVars).
+
+:- func describe_generic_call(var_table, generic_call, list(prog_var))
+    = string.
+
+describe_generic_call(VarTable, GCall, ArgVars) = Desc :-
+    ArgsStr = describe_args(VarTable, ArgVars),
+    (
+        GCall = higher_order(Var, _, _, _),
+        string.format("%s%s",
+            [s(describe_var(VarTable, Var)), s(ArgsStr)], Desc)
+    ;
+        GCall = class_method(Var, _, _, MethodSNA),
+        string.format("%s[%s]%s",
+            [s(pf_sym_name_pred_form_arity_to_string(MethodSNA)),
+            s(describe_var(VarTable, Var)), s(ArgsStr)], Desc)
+    ;
+        GCall = event_call(EventName),
+        string.format("%s %s", [s(EventName), s(ArgsStr)], Desc)
+    ;
+        GCall = cast(CastType),
+        string.format("%s %s",
+            [s(describe_cast(CastType)), s(ArgsStr)], Desc)
+    ).
+
 :- func describe_cast(cast_kind) = string.
 
 describe_cast(CastType) = Desc :-
     (
-        ( CastType = unsafe_type_cast
-        ; CastType = unsafe_type_inst_cast
-        ; CastType = equiv_type_cast
-        ; CastType = exists_cast
-        ),
-        Desc = "cast"
+        CastType = unsafe_type_cast,
+        Desc = "unsafe_type_cast"
+    ;
+        CastType = unsafe_type_inst_cast,
+        Desc = "unsafe_type_inst_cast"
+    ;
+        CastType = equiv_type_cast,
+        Desc = "equiv_type_cast"
+    ;
+        CastType = exists_cast,
+        Desc = "exists_cast"
     ;
         CastType = subtype_coerce,
         Desc = "coerce"
+    ).
+
+:- func describe_scope_reason(scope_reason) = string.
+
+describe_scope_reason(Reason) = Desc :-
+    (
+        Reason = disable_warnings(_, _),
+        Desc = "disable warnings"
+    ;
+        Reason = exist_quant(_, _),
+        Desc = "scope exist quant"
+    ;
+        Reason = promise_solutions(_, _),
+        Desc = "scope promise solutions"
+    ;
+        Reason = promise_purity(_),
+        Desc = "scope promise purity"
+    ;
+        Reason = require_detism(_),
+        Desc = "scope require detism"
+    ;
+        Reason = require_complete_switch(_),
+        Desc = "scope require complete switch"
+    ;
+        Reason = require_switch_arms_detism(_, _),
+        Desc = "scope require switch arm detism"
+    ;
+        Reason = commit(_),
+        Desc = "scope commit"
+    ;
+        Reason = barrier(_),
+        Desc = "scope barrier"
+    ;
+        Reason = from_ground_term(_, _),
+        Desc = "scope from_ground_term"
+    ;
+        Reason = trace_goal(_, _, _, _, _),
+        Desc = "scope trace goal"
+    ;
+        Reason = loop_control(_, _, _),
+        Desc = "scope loop control goal"
     ).
 
 %---------------------------------------------------------------------------%

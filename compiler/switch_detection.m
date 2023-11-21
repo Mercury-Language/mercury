@@ -82,6 +82,7 @@
 :- import_module check_hlds.inst_test.
 :- import_module check_hlds.type_util.
 :- import_module hlds.goal_util.
+:- import_module hlds.hlds_desc.
 :- import_module hlds.hlds_proc_util.
 :- import_module hlds.instmap.
 :- import_module hlds.passes_aux.
@@ -89,6 +90,7 @@
 :- import_module libs.
 :- import_module libs.globals.
 :- import_module libs.options.
+:- import_module parse_tree.parse_tree_out_cons_id.
 :- import_module parse_tree.prog_mode.
 :- import_module parse_tree.prog_type.
 :- import_module parse_tree.set_of_var.
@@ -104,6 +106,7 @@
 :- import_module require.
 :- import_module set.
 :- import_module set_tree234.
+:- import_module string.
 :- import_module term.
 :- import_module term_context.
 :- import_module term_subst.
@@ -224,15 +227,15 @@ detect_switches_in_proc(Info, !ProcInfo) :-
     proc_info_get_var_table(!.ProcInfo, VarTable),
     Requant0 = do_not_need_to_requantify,
     BodyDeletedCallCallees0 = set.init,
-    LocalInfo0 = local_switch_detect_info(ModuleInfo, AllowMulti, Requant0,
-        VarTable, BodyDeletedCallCallees0),
+    LocalInfo0 = local_switch_detect_info(VarTable, AllowMulti,
+        ModuleInfo, Requant0, BodyDeletedCallCallees0),
 
     proc_info_get_goal(!.ProcInfo, Goal0),
     proc_info_get_initial_instmap(ModuleInfo, !.ProcInfo, InstMap0),
     detect_switches_in_goal(InstMap0, no, Goal0, Goal, LocalInfo0, LocalInfo),
     proc_info_set_goal(Goal, !ProcInfo),
-    LocalInfo = local_switch_detect_info(_ModuleInfo, _AllowMulti, Requant,
-        _VarTable, BodyDeletedCallCallees),
+    LocalInfo = local_switch_detect_info(_VarTable, _AllowMulti,
+        _ModuleInfo, Requant, BodyDeletedCallCallees),
     (
         Requant = need_to_requantify,
         requantify_proc_general(ord_nl_maybe_lambda, !ProcInfo)
@@ -248,10 +251,19 @@ detect_switches_in_proc(Info, !ProcInfo) :-
 
 :- type local_switch_detect_info
     --->    local_switch_detect_info(
-                lsdi_module_info        :: module_info,
-                lsdi_allow_multi_arm    :: allow_multi_arm,
-                lsdi_requant            :: need_to_requantify,
+                % These fields are read-only.
                 lsdi_var_table          :: var_table,
+                lsdi_allow_multi_arm    :: allow_multi_arm,
+
+                % These fields are read-write.
+                %
+                % We update module_info when we enter a switch arm, and update
+                % the inst of the switched-on variable to record it being bound
+                % to one of the cons_ids that the switch arm is for.
+                % XXX However, detect_switches_in_proc then throws away
+                % the updated module_info.
+                lsdi_module_info        :: module_info,
+                lsdi_requant            :: need_to_requantify,
                 lsdi_deleted_callees    :: set(pred_proc_id)
             ).
 
@@ -295,16 +307,16 @@ detect_switches_in_goal_expr(InstMap0, MaybeRequiredVar, GoalInfo,
         GoalExpr0 = disj(Disjuncts0),
         (
             Disjuncts0 = [],
-            GoalExpr = disj([])
+            GoalExpr = GoalExpr0
         ;
             Disjuncts0 = [_ | _],
-            detect_switches_in_disj(GoalInfo, Disjuncts0, InstMap0,
-                MaybeRequiredVar, GoalExpr, !LocalInfo)
+            detect_switches_in_disj(InstMap0, MaybeRequiredVar,
+                Disjuncts0, GoalInfo, GoalExpr, !LocalInfo)
         )
     ;
-        GoalExpr0 = conj(ConjType, Goals0),
-        detect_switches_in_conj(InstMap0, Goals0, Goals, !LocalInfo),
-        GoalExpr = conj(ConjType, Goals)
+        GoalExpr0 = conj(ConjType, Conjuncts0),
+        detect_switches_in_conj(InstMap0, Conjuncts0, Conjuncts, !LocalInfo),
+        GoalExpr = conj(ConjType, Conjuncts)
     ;
         GoalExpr0 = negation(SubGoal0),
         detect_switches_in_goal(InstMap0, no, SubGoal0, SubGoal, !LocalInfo),
@@ -819,11 +831,11 @@ add_multi_entry_for_cons_id(Arm, ConsId, CasesTable0, CasesTable) :-
             % to switch on the option, not on the kind of data (none, bool,
             % int, string, maybe_string) given to it.
 
-:- pred detect_switches_in_disj(hlds_goal_info::in, list(hlds_goal)::in,
-    instmap::in, maybe(prog_var)::in, hlds_goal_expr::out,
+:- pred detect_switches_in_disj(instmap::in, maybe(prog_var)::in,
+    list(hlds_goal)::in, hlds_goal_info::in, hlds_goal_expr::out,
     local_switch_detect_info::in, local_switch_detect_info::out) is det.
 
-detect_switches_in_disj(GoalInfo, Disjuncts0, InstMap0, MaybeRequiredVar,
+detect_switches_in_disj(InstMap0, MaybeRequiredVar, Disjuncts0, GoalInfo,
         GoalExpr, !LocalInfo) :-
     % The initial version of switch detection, which we used for a *long* time,
     % looked at nonlocal variables in variable number order and stopped looking
@@ -909,8 +921,8 @@ detect_switches_in_disj(GoalInfo, Disjuncts0, InstMap0, MaybeRequiredVar,
                 GoalExpr = SwitchGoalExpr
             ;
                 LeftDisjuncts0 = [_ | _],
-                detect_switches_in_disj(GoalInfo, LeftDisjuncts0, InstMap0,
-                    MaybeRequiredVar, LeftGoal, !LocalInfo),
+                detect_switches_in_disj(InstMap0, MaybeRequiredVar,
+                    LeftDisjuncts0, GoalInfo, LeftGoal, !LocalInfo),
                 goal_to_disj_list(hlds_goal(LeftGoal, GoalInfo),
                     LeftDisjuncts),
                 SwitchGoal = hlds_goal(SwitchGoalExpr, GoalInfo),
@@ -939,7 +951,7 @@ detect_switch_candidates_in_disj(GoalInfo, Disjuncts0, InstMap0,
     instmap_lookup_var(InstMap0, Var, VarInst0),
     ( if
         inst_is_bound(ModuleInfo, VarInst0),
-        partition_disj(Disjuncts0, Var, GoalInfo, Left, Cases, !LocalInfo),
+        partition_disj(Var, Disjuncts0, GoalInfo, Left, Cases, !LocalInfo),
 
         VarTable = !.LocalInfo ^ lsdi_var_table,
         lookup_var_type(VarTable, Var, VarType),
@@ -1097,7 +1109,8 @@ select_best_candidate_switch([Candidate | Candidates], !BestCandidate) :-
 
 %-----------------------------------------------------------------------------%
 
-    % partition_disj(Disjuncts, Var, GoalInfo, Left, Cases, !LocalInfo):
+    % partition_disj(LocalInfo, Var, Disjuncts, GoalInfo,
+    %   Left, Cases, !LocalInfo):
     %
     % Attempts to partition the disjunction `Disjuncts' into a switch on `Var'.
     % If at least partially successful, returns the resulting `Cases', with
@@ -1110,13 +1123,14 @@ select_best_candidate_switch([Candidate | Candidates], !BestCandidate) :-
     % unifications at the start of each disjunction, to build up a
     % substitution.
     %
-:- pred partition_disj(list(hlds_goal)::in, prog_var::in,
+:- pred partition_disj(prog_var::in, list(hlds_goal)::in,
     hlds_goal_info::in, list(hlds_goal)::out, list(case)::out,
     local_switch_detect_info::in, local_switch_detect_info::out) is semidet.
 
-partition_disj(Disjuncts0, Var, GoalInfo, Left, Cases, !LocalInfo) :-
+partition_disj(Var, Disjuncts0, GoalInfo, Left, Cases, !LocalInfo) :-
     CasesTable0 = cases_table(map.init, set_tree234.init),
-    partition_disj_trial(Disjuncts0, Var, [], Left1, CasesTable0, CasesTable1),
+    partition_disj_trial(!.LocalInfo, Var, Disjuncts0,
+        [], Left1, CasesTable0, CasesTable1),
     (
         Left1 = [],
         % There must be at least one case in CasesTable1.
@@ -1128,9 +1142,8 @@ partition_disj(Disjuncts0, Var, GoalInfo, Left, Cases, !LocalInfo) :-
         % We don't insist on there being at least one case in CasesTable1,
         % to allow for switches in which *all* cases contain subsidiary
         % disjunctions.
-        AllowMulti = !.LocalInfo ^ lsdi_allow_multi_arm,
         ( if
-            expand_sub_disjs(AllowMulti, Var, Left1, CasesTable1, CasesTable)
+            expand_sub_disjs(!.LocalInfo, Var, Left1, CasesTable1, CasesTable)
         then
             Left = [],
             num_cases_in_table(CasesTable) >= 1,
@@ -1144,35 +1157,35 @@ partition_disj(Disjuncts0, Var, GoalInfo, Left, Cases, !LocalInfo) :-
 
 %-----------------------------------------------------------------------------%
 
-:- pred expand_sub_disjs(allow_multi_arm::in, prog_var::in,
+:- pred expand_sub_disjs(local_switch_detect_info::in, prog_var::in,
     list(hlds_goal)::in, cases_table::in, cases_table::out) is semidet.
 
-expand_sub_disjs(_AllowMulti, _Var, [], !CasesTable).
-expand_sub_disjs(AllowMulti, Var, [LeftGoal | LeftGoals], !CasesTable) :-
-    expand_sub_disj(AllowMulti, Var, LeftGoal, !CasesTable),
-    expand_sub_disjs(AllowMulti, Var, LeftGoals, !CasesTable).
+expand_sub_disjs(_, _, [], !CasesTable).
+expand_sub_disjs(LocalInfo, Var, [LeftGoal | LeftGoals], !CasesTable) :-
+    expand_sub_disj(LocalInfo, Var, LeftGoal, !CasesTable),
+    expand_sub_disjs(LocalInfo, Var, LeftGoals, !CasesTable).
 
-:- pred expand_sub_disj(allow_multi_arm::in, prog_var::in, hlds_goal::in,
-    cases_table::in, cases_table::out) is semidet.
+:- pred expand_sub_disj(local_switch_detect_info::in, prog_var::in,
+    hlds_goal::in, cases_table::in, cases_table::out) is semidet.
 
-expand_sub_disj(AllowMulti, Var, Goal, !CasesTable) :-
+expand_sub_disj(LocalInfo, Var, Goal, !CasesTable) :-
     Goal = hlds_goal(GoalExpr, GoalInfo0),
     goal_info_add_feature(feature_duplicated_for_switch, GoalInfo0, GoalInfo),
     ( if GoalExpr = conj(plain_conj, SubGoals) then
-        expand_sub_disj_process_conj(AllowMulti, Var, SubGoals, [], GoalInfo,
+        expand_sub_disj_process_conj(LocalInfo, Var, SubGoals, [], GoalInfo,
             !CasesTable)
     else if GoalExpr = disj(_) then
-        expand_sub_disj_process_conj(AllowMulti, Var, [Goal], [], GoalInfo,
+        expand_sub_disj_process_conj(LocalInfo, Var, [Goal], [], GoalInfo,
             !CasesTable)
     else
         fail
     ).
 
-:- pred expand_sub_disj_process_conj(allow_multi_arm::in, prog_var::in,
-    list(hlds_goal)::in, list(hlds_goal)::in, hlds_goal_info::in,
+:- pred expand_sub_disj_process_conj(local_switch_detect_info::in,
+    prog_var::in, list(hlds_goal)::in, list(hlds_goal)::in, hlds_goal_info::in,
     cases_table::in, cases_table::out) is semidet.
 
-expand_sub_disj_process_conj(AllowMulti, Var, ConjGoals, !.RevUnifies,
+expand_sub_disj_process_conj(LocalInfo, Var, ConjGoals, !.RevUnifies,
         GoalInfo, !CasesTable) :-
     (
         ConjGoals = [],
@@ -1183,13 +1196,13 @@ expand_sub_disj_process_conj(AllowMulti, Var, ConjGoals, !.RevUnifies,
         (
             FirstGoalExpr = unify(_, _, _, _, _),
             !:RevUnifies = [FirstGoal | !.RevUnifies],
-            expand_sub_disj_process_conj(AllowMulti, Var, LaterGoals,
+            expand_sub_disj_process_conj(LocalInfo, Var, LaterGoals,
                 !.RevUnifies, GoalInfo, !CasesTable)
         ;
             FirstGoalExpr = disj(Disjuncts),
             Disjuncts = [_ | _],
             ( if
-                AllowMulti = allow_multi_arm,
+                LocalInfo ^ lsdi_allow_multi_arm = allow_multi_arm,
                 !.RevUnifies = [],
 
                 % If the unifications pick up the values of variables,
@@ -1215,8 +1228,8 @@ expand_sub_disj_process_conj(AllowMulti, Var, ConjGoals, !.RevUnifies,
                 list.map(
                     create_expanded_conjunction(Unifies, LaterGoals, GoalInfo),
                     Disjuncts, ExpandedConjunctions),
-                partition_disj_trial(ExpandedConjunctions, Var, [], Left,
-                    !CasesTable),
+                partition_disj_trial(LocalInfo, Var, ExpandedConjunctions,
+                    [], Left, !CasesTable),
                 Left = []
             )
         )
@@ -1246,14 +1259,34 @@ create_expanded_conjunction(Unifies, LaterGoals, GoalInfo, Disjunct, Goal) :-
 
 %-----------------------------------------------------------------------------%
 
-:- pred partition_disj_trial(list(hlds_goal)::in, prog_var::in,
+:- pred partition_disj_trial(local_switch_detect_info::in, prog_var::in,
+    list(hlds_goal)::in,
     list(hlds_goal)::in, list(hlds_goal)::out,
     cases_table::in, cases_table::out) is det.
 
-partition_disj_trial([], _Var, !Left, !CasesTable).
-partition_disj_trial([Disjunct0 | Disjuncts0], Var, !Left, !CasesTable) :-
+partition_disj_trial(_, _, [], !Left, !CasesTable).
+partition_disj_trial(LocalInfo, Var, [Disjunct0 | Disjuncts0],
+        !Left, !CasesTable) :-
     find_bind_var(Var, find_bind_var_for_switch_in_deconstruct,
         Disjunct0, Disjunct, no, MaybeConsId, unit, _, _),
+    trace [compile_time(flag("partition_disj")), io(!IO)] (
+        ModuleInfo = LocalInfo ^ lsdi_module_info,
+        VarTable = LocalInfo ^ lsdi_var_table,
+        io.output_stream(Stream, !IO),
+        DisjunctDesc0 =
+            describe_structured_goal(ModuleInfo, VarTable, 1, Disjunct0),
+        (
+            MaybeConsId = no,
+            ResultStr = "no"
+        ;
+            MaybeConsId = yes(ConsId0),
+            ResultStr = "yes(" ++ cons_id_and_arity_to_string(ConsId0) ++ ")"
+        ),
+        io.format(Stream, "\nfind_bind_var for %s on\n",
+            [s(describe_var(VarTable, Var))], !IO),
+        io.write_string(Stream, DisjunctDesc0, !IO),
+        io.format(Stream, "MaybeConsId = %s\n\n", [s(ResultStr)], !IO)
+    ),
     (
         MaybeConsId = yes(ConsId),
         add_single_entry(ConsId, Disjunct, !CasesTable)
@@ -1261,7 +1294,7 @@ partition_disj_trial([Disjunct0 | Disjuncts0], Var, !Left, !CasesTable) :-
         MaybeConsId = no,
         !:Left = [Disjunct0 | !.Left]
     ),
-    partition_disj_trial(Disjuncts0, Var, !Left, !CasesTable).
+    partition_disj_trial(LocalInfo, Var, Disjuncts0, !Left, !CasesTable).
 
 :- pred find_bind_var_for_switch_in_deconstruct(prog_var::in,
     hlds_goal_expr::in(goal_expr_deconstruct), hlds_goal_info::in,

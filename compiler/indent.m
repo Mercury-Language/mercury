@@ -49,6 +49,8 @@
     %
 :- func indent2_string(int) = string.
 
+:- func add_indent2_prefix(int, string) = string.
+
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
@@ -100,6 +102,9 @@ indent2_str_lo(13,  "                          ").
 indent2_str_lo(14,  "                            ").
 indent2_str_lo(15,  "                              ").
 indent2_str_16(     "                                ").
+
+add_indent2_prefix(Indent, Str0) = Str :-
+    Str = indent2_string(Indent) ++ Str0.
 
 %---------------------------------------------------------------------------%
 :- end_module libs.indent.
