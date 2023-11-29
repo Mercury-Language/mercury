@@ -459,7 +459,6 @@ try_parse_symbol_name(Term, SymName) :-
         SymName = string_to_sym_name_sep(Name, "__")
     ).
 
-    % Given two terms T1 and T2, that came from that appeared in 
     % This function is used to help implement a rare form of
     % module qualification which mixes the "." module qualifier,
     % which shows up in the structures of terms, and the "__" module qualifier,
