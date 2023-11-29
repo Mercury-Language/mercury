@@ -1222,10 +1222,15 @@ det),
 %
 % This is the old version of map.merge/3. It is buggy in the sense that if the
 % sets of keys of the input maps are not disjoint, it won't throw an exception,
-% but will insert the key and the smallest of the two corresponding values into
-% the output map. Eventually we would like to get rid of this version but some
-% of the code in the compiler currently assumes this behaviour, and
-% fixing this is non-trivial.
+% but will insert the key and the larger of the two corresponding values into
+% the output map. (Actually, it inserts the key into the output map twice,
+% once with each value, but it inserts the key with the smaller corresponding
+% value first, and this is overwritten when the larger corresponding value
+% on the next insert.)
+%
+% Eventually we would like to get rid of this version, but some of the code
+% in the compiler currently assumes this behaviour, and fixing this
+% is non-trivial.
 
 :- func old_merge(map(K, V), map(K, V)) = map(K, V).
 :- pred old_merge(map(K, V)::in, map(K, V)::in, map(K, V)::out) is det.
@@ -2265,7 +2270,7 @@ old_merge(MapA, MapB, MergedMap) :-
     map.to_assoc_list(MapA, ListA),
     map.to_assoc_list(MapB, ListB),
     list.merge(ListA, ListB, MergedList),
-    % MergedList may be sorted, but it may contain duplicates.
+    % MergedList will be sorted, but it may contain duplicates.
     map.from_assoc_list(MergedList, MergedMap).
 
 %---------------------------------------------------------------------------%
