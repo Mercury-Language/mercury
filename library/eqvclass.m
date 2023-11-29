@@ -75,13 +75,15 @@
 :- func new_element(eqvclass(T), T) = eqvclass(T).
 :- pred new_element(T::in, eqvclass(T)::in, eqvclass(T)::out) is det.
 
-    % Make two elements of the equivalence class equivalent.
-    % It is ok if they already are.
+    % Ensure that the two items are known to the equivalence class,
+    % and make them equivalent. It is ok if they already are equivalent.
     %
 :- func ensure_equivalence(eqvclass(T), T, T) = eqvclass(T).
 :- pred ensure_equivalence(T::in, T::in,
     eqvclass(T)::in, eqvclass(T)::out) is det.
 
+    % Call ensure_equivalence on each pair of corresponding list elements.
+    %
 :- func ensure_corresponding_equivalences(list(T), list(T),
     eqvclass(T)) = eqvclass(T).
 :- pred ensure_corresponding_equivalences(list(T)::in, list(T)::in,
@@ -94,11 +96,14 @@
 :- pred new_equivalence(T::in, T::in, eqvclass(T)::in, eqvclass(T)::out)
     is det.
 
-    % Test if two elements are equivalent.
+    % Succeed if and only if the two items are both known to the equivalence
+    % class, and are known to be equivalent.
     %
 :- pred same_eqvclass(eqvclass(T)::in, T::in, T::in) is semidet.
 
-    % Test if a list of elements are equivalent.
+    % Succeed if and only if all the items in the list are known
+    % to the equivalence class, and are known to be all equivalent
+    % to each other.
     %
 :- pred same_eqvclass_list(eqvclass(T)::in, list(T)::in) is semidet.
 
@@ -113,13 +118,13 @@
 :- pred partition_list(eqvclass(T)::in, list(set(T))::out) is det.
 
     % Create an equivalence class from a partition set.
-    % It is an error if the sets are not disjoint.
+    % Throws an exception if the sets are not disjoint.
     %
 :- func partition_set_to_eqvclass(set(set(T))) = eqvclass(T).
 :- pred partition_set_to_eqvclass(set(set(T))::in, eqvclass(T)::out) is det.
 
     % Create an equivalence class from a list of partitions.
-    % It is an error if the sets are not disjoint.
+    % Throws an exception if the sets are not disjoint.
     %
 :- func partition_list_to_eqvclass(list(set(T))) = eqvclass(T).
 :- pred partition_list_to_eqvclass(list(set(T))::in,
@@ -163,7 +168,7 @@
 
 :- type eqvclass(T)
     --->    eqvclass(
-                % We use counter to allocate new partition ids.
+                % We use this counter to allocate new partition ids.
                 next_id_counter :: counter,
 
                 % Maps each partition_id to the set of elements in that
@@ -249,13 +254,13 @@ ensure_equivalence(!.EqvClass, X, Y) = !:EqvClass :-
 ensure_equivalence(ElementA, ElementB, EqvClass0, EqvClass) :-
     % The following code is logically equivalent to this code:
     %
-    % eqvclass.ensure_equivalence(ElementA, ElementB, EqvClass0, EqvClass) :-
-    %     eqvclass.ensure_element_2(ElementA, IdA, EqvClass0, EqvClass1),
-    %     eqvclass.ensure_element_2(ElementB, IdB, EqvClass1, EqvClass2),
+    % ensure_equivalence(ElementA, ElementB, EqvClass0, EqvClass) :-
+    %     ensure_element_partition_id(ElementA, IdA, EqvClass0, EqvClass1),
+    %     ensure_element_partition_id(ElementB, IdB, EqvClass1, EqvClass2),
     %     ( if IdA = IdB then
     %         EqvClass = EqvClass2
     %     else
-    %         eqvclass.add_equivalence(IdA, IdB, EqvClass2, EqvClass)
+    %         add_equivalence(IdA, IdB, EqvClass2, EqvClass)
     %     ).
     %
     % However, the above code allocates significantly more memory than the code
@@ -403,15 +408,16 @@ same_eqvclass_list(_, []).
 same_eqvclass_list(EqvClass, [Element | Elements]) :-
     ElementMap = EqvClass ^ element_map,
     map.search(ElementMap, Element, Id),
-    same_eqvclass_list_2(ElementMap, Elements, Id).
+    all_elements_are_in_given_partition(ElementMap, Id, Elements).
 
-:- pred same_eqvclass_list_2(map(T, partition_id)::in,
-    list(T)::in, partition_id::in) is semidet.
+:- pred all_elements_are_in_given_partition(map(T, partition_id)::in,
+    partition_id::in, list(T)::in) is semidet.
 
-same_eqvclass_list_2(_, [], _).
-same_eqvclass_list_2(ElementMap, [Element | Elements], Id) :-
-    map.search(ElementMap, Element, Id),
-    same_eqvclass_list_2(ElementMap, Elements, Id).
+all_elements_are_in_given_partition(_, _, []).
+all_elements_are_in_given_partition(ElementMap, Id, [Element | Elements]) :-
+    map.search(ElementMap, Element, ElementId),
+    ElementId = Id,
+    all_elements_are_in_given_partition(ElementMap, Id, Elements).
 
 %---------------------------------------------------------------------------%
 
