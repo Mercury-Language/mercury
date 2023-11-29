@@ -118,13 +118,13 @@
 :- pred partition_list(eqvclass(T)::in, list(set(T))::out) is det.
 
     % Create an equivalence class from a partition set.
-    % Throws an exception if the sets are not disjoint.
+    % Throw an exception if the sets are not disjoint.
     %
 :- func partition_set_to_eqvclass(set(set(T))) = eqvclass(T).
 :- pred partition_set_to_eqvclass(set(set(T))::in, eqvclass(T)::out) is det.
 
     % Create an equivalence class from a list of partitions.
-    % Throws an exception if the sets are not disjoint.
+    % Throw an exception if the sets are not disjoint.
     %
 :- func partition_list_to_eqvclass(list(set(T))) = eqvclass(T).
 :- pred partition_list_to_eqvclass(list(set(T))::in,
