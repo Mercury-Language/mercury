@@ -352,6 +352,8 @@ make_linked_target_2(ProgressStream, Globals, LinkedTargetFile, Succeeded,
         )
     ).
 
+%---------------------%
+
 :- pred order_target_modules(io.text_output_stream::in, globals::in,
     list(module_name)::in, list(module_name)::out,
     make_info::in, make_info::out, io::di, io::uo) is det.
@@ -417,6 +419,22 @@ compare_paired_modules(KeyA - ModuleA, KeyB - ModuleB, Result) :-
         compare(Result, ModuleAStr, ModuleBStr)
     ).
 
+%---------------------%
+
+    % Remove all nested modules from a list of modules.
+    %
+:- pred filter_out_nested_modules(io.text_output_stream::in, globals::in,
+    list(module_name)::in, list(module_name)::out,
+    make_info::in, make_info::out, io::di, io::uo) is det.
+
+filter_out_nested_modules(ProgressStream, Globals, Modules0, Modules,
+        !Info, !IO) :-
+    list.foldl3(collect_nested_modules(ProgressStream, Globals), Modules0,
+        set.init, NestedModules, !Info, !IO),
+    list.negated_filter(set.contains(NestedModules), Modules0, Modules).
+
+%---------------------%
+
 :- pred get_foreign_object_targets(io.text_output_stream::in, globals::in,
     pic::in, module_name::in, list(dependency_file)::out,
     make_info::in, make_info::out, io::di, io::uo) is det.
@@ -458,6 +476,8 @@ get_foreign_object_targets(ProgressStream, Globals, PIC,
         ),
         ObjectTargets = []
     ).
+
+%---------------------------------------------------------------------------%
 
 :- pred build_linked_target(io.text_output_stream::in, globals::in,
     module_name::in, linked_target_type::in, file_name::in, file_name::in,
@@ -1030,22 +1050,8 @@ make_misc_target_builder(ProgressStream, Globals, MainModuleName, TargetType,
 
 build_int_opt_files(ProgressStream, Globals, BuildWhat, AllModules0,
         Succeeded, !Info, !IO) :-
-    filter_out_nested_modules(ProgressStream, Globals,
-        AllModules0, NonnestedModules, !Info, !IO),
-    list.foldl3(collect_modules_with_children(ProgressStream, Globals),
-        NonnestedModules, [], ParentModules, !Info, !IO),
-
     get_nonnested_and_parent_modules(ProgressStream, Globals, AllModules0,
-        NonnestedModulesB, ParentModulesB, !Info, !IO),
-
-    list.sort(NonnestedModules,  SortedNonnestedModulesA),
-    list.sort(NonnestedModulesB, SortedNonnestedModulesB),
-    list.sort(ParentModules,  SortedParentModulesA),
-    list.sort(ParentModulesB, SortedParentModulesB),
-    expect(unify(SortedNonnestedModulesA, SortedNonnestedModulesB),
-        $pred, "nonnested modules mismatch"),
-    expect(unify(SortedParentModulesA, SortedParentModulesB),
-        $pred, "parent modules mismatch"),
+        NonnestedModules, ParentModules, !Info, !IO),
 
     Int3s = make_dependency_list(NonnestedModules, module_target_int3),
     Int0s = make_dependency_list(ParentModules, module_target_int0),
@@ -2376,18 +2382,6 @@ make_module_realclean(ProgressStream, Globals, ModuleName, !Info, !IO) :-
 
 %---------------------------------------------------------------------------%
 
-    % Remove all nested modules from a list of modules.
-    %
-:- pred filter_out_nested_modules(io.text_output_stream::in, globals::in,
-    list(module_name)::in, list(module_name)::out,
-    make_info::in, make_info::out, io::di, io::uo) is det.
-
-filter_out_nested_modules(ProgressStream, Globals, Modules0, Modules,
-        !Info, !IO) :-
-    list.foldl3(collect_nested_modules(ProgressStream, Globals), Modules0,
-        set.init, NestedModules, !Info, !IO),
-    list.negated_filter(set.contains(NestedModules), Modules0, Modules).
-
 :- pred collect_nested_modules(io.text_output_stream::in, globals::in,
     module_name::in, set(module_name)::in, set(module_name)::out,
     make_info::in, make_info::out, io::di, io::uo) is det.
@@ -2401,26 +2395,6 @@ collect_nested_modules(ProgressStream, Globals, ModuleName,
         module_dep_info_get_maybe_top_module(ModuleDepInfo, MaybeTopModule),
         NestedSubModules = get_nested_children_of_top_module(MaybeTopModule),
         set.union(NestedSubModules, !NestedModules)
-    ;
-        MaybeModuleDepInfo = no_module_dep_info
-    ).
-
-:- pred collect_modules_with_children(io.text_output_stream::in, globals::in,
-    module_name::in, list(module_name)::in, list(module_name)::out,
-    make_info::in, make_info::out, io::di, io::uo) is det.
-
-collect_modules_with_children(ProgressStream, Globals, ModuleName,
-        !ParentModules, !Info, !IO) :-
-    get_maybe_module_dep_info(ProgressStream, Globals,
-        ModuleName, MaybeModuleDepInfo, !Info, !IO),
-    (
-        MaybeModuleDepInfo = some_module_dep_info(ModuleDepInfo),
-        module_dep_info_get_children(ModuleDepInfo, Children),
-        ( if set.is_empty(Children) then
-            true
-        else
-            !:ParentModules = [ModuleName | !.ParentModules]
-        )
     ;
         MaybeModuleDepInfo = no_module_dep_info
     ).
