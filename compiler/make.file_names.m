@@ -35,6 +35,24 @@
 :- pred dependency_file_to_file_name(globals::in, dependency_file::in,
     string::out, io::di, io::uo) is det.
 
+    % module_maybe_nested_target_file_to_file_name(ProgressStream,
+    %   Globals, From, Search, TargetFile, FileName, !IO):
+    %
+    % Compute a file name for the given target file.
+    %
+    % This predicate uses the same algorithm as module_target_file_to_file_name
+    % for almost all target types. The one exception is module_target_source,
+    % for which it tries to get the filename from the module's module_dep_info
+    % structure, if it exists. We need this exception because, in the case of
+    % a source file containing nested submodules, the filename computed
+    % for module_target_source by module_target_file_to_file_name will be
+    % correct ONLY for the top module in the file.
+    %
+:- pred module_maybe_nested_target_file_to_file_name(io.text_output_stream::in,
+    globals::in, string::in, maybe_for_search::in,
+    target_file::in, file_name::out,
+    make_info::in, make_info::out, io::di, io::uo) is det.
+
     % Return the file name for the given target_file. The I/O state pair
     % may be needed to find this file name.
     %
@@ -64,6 +82,8 @@
 
 :- import_module backend_libs.
 :- import_module backend_libs.compile_target_code.
+:- import_module make.get_module_dep_info.
+:- import_module parse_tree.module_dep_info.
 :- import_module parse_tree.prog_foreign.
 
 %---------------------------------------------------------------------------%
@@ -75,6 +95,29 @@ dependency_file_to_file_name(Globals, DepFile, FileName, !IO) :-
             TargetFile, FileName, !IO)
     ;
         DepFile = dep_file(FileName)
+    ).
+
+module_maybe_nested_target_file_to_file_name(ProgressStream,
+        Globals, From, ForSearch, TargetFile, FileName, !Info, !IO) :-
+    TargetFile = target_file(ModuleName, TargetType),
+    ( if TargetType = module_target_source then
+        % In some cases the module name won't match the file name
+        % (module mdb.parse might be in parse.m or mdb.m), so we need to
+        % look up the file name here.
+        get_maybe_module_dep_info(ProgressStream, Globals,
+            ModuleName, MaybeModuleDepInfo, !Info, !IO),
+        (
+            MaybeModuleDepInfo = some_module_dep_info(ModuleDepInfo),
+            module_dep_info_get_source_file_name(ModuleDepInfo, FileName)
+        ;
+            MaybeModuleDepInfo = no_module_dep_info,
+            % Something has gone wrong generating the dependencies,
+            % so just take a punt (which probably won't work).
+            module_name_to_source_file_name(ModuleName, FileName, !IO)
+        )
+    else
+        module_target_to_maybe_for_search_file_name(Globals, From, ForSearch,
+            TargetType, ModuleName, FileName, !IO)
     ).
 
 module_target_file_to_file_name(Globals, From, TargetFile, FileName, !IO) :-

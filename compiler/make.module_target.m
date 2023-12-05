@@ -792,8 +792,10 @@ record_made_target_given_maybe_touched_files(ProgressStream, Globals,
 
     list.foldl(update_target_status(TargetStatus), TouchedTargetFiles, !Info),
 
-    list.map_foldl(module_target_file_to_file_name(Globals, $pred),
-        TouchedTargetFiles, TouchedTargetFileNames, !IO),
+    list.map_foldl2(
+        module_maybe_nested_target_file_to_file_name(ProgressStream, Globals,
+            $pred, not_for_search),
+        TouchedTargetFiles, TouchedTargetFileNames, !Info, !IO),
 
     some [!FileTimestamps] (
         !:FileTimestamps = make_info_get_file_timestamps(!.Info),
