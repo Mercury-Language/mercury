@@ -820,7 +820,7 @@ record_made_target_given_maybe_touched_files(ProgressStream, Globals,
     ),
 
     TargetFileTimestamps0 = make_info_get_target_file_timestamps(!.Info),
-    version_hash_table.delete(TargetFile,
+    list.foldl(version_hash_table.delete, TouchedTargetFiles,
         TargetFileTimestamps0, TargetFileTimestamps),
     make_info_set_target_file_timestamps(TargetFileTimestamps, !Info).
 
