@@ -206,70 +206,11 @@ is_undef_pred_reference_special(ClauseContext, PFSymNameArity, UndefClass) :-
         pf_sym_name_arity(_PredOrFunc, PredSymName, PredFormArity),
     PredFormArity = pred_form_arity(PredFormArityInt),
     ( if
-        PredSymName = unqualified("->"),
-        ( PredFormArityInt = 2 ; PredFormArityInt = 4 )
+        PredSymName = unqualified(PredName),
+        is_undef_pred_a_syntax_error(PredName, PredFormArityInt,
+            UndefSyntaxComponents)
     then
-        MainPieces = [words("error:"), quote("->"), words("without"),
-            quote(";"), suffix("."), nl],
-        MainComponent = always(MainPieces),
-        VerbosePieces =
-            [words("Note: the else part is not optional."), nl,
-            words("Every if-then must have an else."), nl],
-        VerboseComponent = verbose_only(verbose_once, VerbosePieces),
-        Components = [MainComponent, VerboseComponent],
-        UndefClass = undef_special(Components)
-    else if
-        PredSymName = unqualified("else"),
-        ( PredFormArityInt = 2 ; PredFormArityInt = 4 )
-    then
-        Components = [always([words("error: unmatched"), quote("else"),
-            suffix("."), nl])],
-        UndefClass = undef_special(Components)
-    else if
-        PredSymName = unqualified("if"),
-        ( PredFormArityInt = 2 ; PredFormArityInt = 4 )
-    then
-        Pieces = [words("error:"), quote("if"), words("without"),
-            quote("then"), words("or"), quote("else"), suffix("."), nl],
-        UndefClass = undef_special([always(Pieces)])
-    else if
-        PredSymName = unqualified("then"),
-        ( PredFormArityInt = 2 ; PredFormArityInt = 4 )
-    then
-        MainPieces = [words("error:"), quote("then"), words("without"),
-            quote("if"), words("or"), quote("else"), suffix("."), nl],
-        MainComponent = always(MainPieces),
-        VerbosePieces =
-            [words("Note: the"), quote("else"), words("part is not optional."),
-            nl, words("Every if-then must have an"),
-            quote("else"), suffix("."), nl],
-        VerboseComponent = verbose_only(verbose_once, VerbosePieces),
-        UndefClass = undef_special([MainComponent, VerboseComponent])
-    else if
-        PredSymName = unqualified("apply"),
-        PredFormArityInt >= 1
-    then
-        UndefClass = undef_special(report_apply_instead_of_pred)
-    else if
-        PredSymName = unqualified(PurityString),
-        PredFormArityInt = 1,
-        ( PurityString = "impure" ; PurityString = "semipure" )
-    then
-        MainPieces = [words("error:"), quote(PurityString),
-            words("marker in an inappropriate place."), nl],
-        MainComponent = always(MainPieces),
-        VerbosePieces =
-            [words("Such markers only belong before predicate calls."), nl],
-        VerboseComponent = verbose_only(verbose_once, VerbosePieces),
-        UndefClass = undef_special([MainComponent, VerboseComponent])
-    else if
-        PredSymName = unqualified("some"),
-        PredFormArityInt = 2
-    then
-        Pieces = [words("syntax error in existential quantification:"),
-            words("first argument of"), quote("some"),
-            words("should be a list of variables."), nl],
-        UndefClass = undef_special([always(Pieces)])
+        UndefClass = undef_special(UndefSyntaxComponents)
     else
         (
             PredSymName = qualified(ModuleQualifier, _),
@@ -281,46 +222,73 @@ is_undef_pred_reference_special(ClauseContext, PFSymNameArity, UndefClass) :-
             MissingImportAddeddumPieces = [],
             MissingImportModules = []
         ),
-        ( if
-            % A call to process_options_se or to process_options_track_se
-            % in getopt or getopt_io may appear in the source code either
-            % explicitly qualified, or unqualified. If not explicitly
-            % qualified by the user, it won't be qualified by the compiler
-            % either, due to the wrong name.
-            (
-                PredSymName = unqualified(PredName)
-            ;
-                PredSymName = qualified(ModuleName, PredName),
-                is_std_lib_module_name(ModuleName, StdLibModuleName),
-                ( StdLibModuleName = "getopt"
-                ; StdLibModuleName = "getopt_io"
-                )
-            ),
-            % We add SpecialPieces if these predicates are called
-            % with (one of) their old arities. (If they are called
-            % with any other arity, then the caller didn't work
-            % with the old contents of the getopt modules either.)
-            (
-                PredName = "process_options_se",
-                ( PredFormArityInt = 4 ; PredFormArityInt = 5 ;
-                PredFormArityInt = 6 ; PredFormArityInt = 7 ),
-                NewPredName = "process_options"
-            ;
-                PredName = "process_options_track_se",
-                ( PredFormArityInt = 7 ; PredFormArityInt = 9 ),
-                NewPredName = "process_options_track"
-            )
-        then
-            GetoptPieces =
-                [words("One possible reason for the error is that"),
-                words("the predicate"), quote(PredName),
-                words("in the Mercury standard library has been renamed to"),
-                quote(NewPredName), suffix("."), nl]
-        else
-            GetoptPieces = []
-        ),
+        maybe_warn_about_getopt_changes(PredSymName, PredFormArityInt,
+            GetoptPieces),
         AddeddumPieces = MissingImportAddeddumPieces ++ GetoptPieces,
         UndefClass = undef_ordinary(MissingImportModules, AddeddumPieces)
+    ).
+
+:- pred is_undef_pred_a_syntax_error(string::in, int::in,
+    list(error_msg_component)::out) is semidet.
+
+is_undef_pred_a_syntax_error(PredName, PredFormArityInt, Components) :-
+    (
+        PredName = "->",
+        ( PredFormArityInt = 2 ; PredFormArityInt = 4 ),
+        MainPieces = [words("error:"), quote("->"), words("without"),
+            quote(";"), suffix("."), nl],
+        MainComponent = always(MainPieces),
+        VerbosePieces =
+            [words("Note: the else part is not optional."), nl,
+            words("Every if-then must have an else."), nl],
+        VerboseComponent = verbose_only(verbose_once, VerbosePieces),
+        Components = [MainComponent, VerboseComponent]
+    ;
+        PredName = "else",
+        ( PredFormArityInt = 2 ; PredFormArityInt = 4 ),
+        Components = [always([words("error: unmatched"), quote("else"),
+            suffix("."), nl])]
+    ;
+        PredName = "if",
+        ( PredFormArityInt = 2 ; PredFormArityInt = 4 ),
+        Pieces = [words("error:"), quote("if"), words("without"),
+            quote("then"), words("or"), quote("else"), suffix("."), nl],
+        Components = [always(Pieces)]
+    ;
+        PredName = "then",
+        ( PredFormArityInt = 2 ; PredFormArityInt = 4 ),
+        MainPieces = [words("error:"), quote("then"), words("without"),
+            quote("if"), words("or"), quote("else"), suffix("."), nl],
+        MainComponent = always(MainPieces),
+        VerbosePieces =
+            [words("Note: the"), quote("else"), words("part is not optional."),
+            nl, words("Every if-then must have an"),
+            quote("else"), suffix("."), nl],
+        VerboseComponent = verbose_only(verbose_once, VerbosePieces),
+        Components = [MainComponent, VerboseComponent]
+    ;
+        PredName = "apply",
+        PredFormArityInt >= 1,
+        Components = report_apply_instead_of_pred
+    ;
+        ( PredName = "semipure"
+        ; PredName = "impure"
+        ),
+        PredFormArityInt = 1,
+        MainPieces = [words("error:"), quote(PredName),
+            words("marker in an inappropriate place."), nl],
+        MainComponent = always(MainPieces),
+        VerbosePieces =
+            [words("Such markers only belong before predicate calls."), nl],
+        VerboseComponent = verbose_only(verbose_once, VerbosePieces),
+        Components = [MainComponent, VerboseComponent]
+    ;
+        PredName = "some",
+        PredFormArityInt = 2,
+        Pieces = [words("syntax error in existential quantification:"),
+            words("first argument of"), quote("some"),
+            words("should be a list of variables."), nl],
+        Components = [always(Pieces)]
     ).
 
 :- func report_apply_instead_of_pred = list(error_msg_component).
@@ -343,6 +311,56 @@ report_apply_instead_of_pred = Components :-
         quote("my_apply(Func, X, Y) :- apply(Func, X, Y)."), nl],
     VerboseComponent = verbose_only(verbose_always, VerbosePieces),
     Components = [MainComponent, VerboseComponent].
+
+%---------------------%
+
+:- pred maybe_warn_about_getopt_changes(sym_name::in, int::in,
+    list(format_piece)::out) is det.
+
+maybe_warn_about_getopt_changes(PredSymName, PredFormArityInt, GetoptPieces) :-
+    ( if
+        % A call to process_options_se or to process_options_track_se
+        % in getopt or getopt_io may appear in the source code either
+        % explicitly qualified, or unqualified. If not explicitly
+        % qualified by the user, it won't be qualified by the compiler
+        % either, due to the wrong name.
+        (
+            PredSymName = unqualified(PredName)
+        ;
+            PredSymName = qualified(ModuleName, PredName),
+            is_std_lib_module_name(ModuleName, StdLibModuleName),
+            ( StdLibModuleName = "getopt"
+            ; StdLibModuleName = "getopt_io"
+            )
+        ),
+        % We add SpecialPieces if these predicates are called
+        % with (one of) their old arities. (If they are called
+        % with any other arity, then the caller didn't work
+        % with the old contents of the getopt modules either.)
+        (
+            PredName = "process_options_se",
+            ( PredFormArityInt = 4
+            ; PredFormArityInt = 5
+            ; PredFormArityInt = 6
+            ; PredFormArityInt = 7
+            ),
+            NewPredName = "process_options"
+        ;
+            PredName = "process_options_track_se",
+            ( PredFormArityInt = 7
+            ; PredFormArityInt = 9
+            ),
+            NewPredName = "process_options_track"
+        )
+    then
+        GetoptPieces =
+            [words("One possible reason for the error is that"),
+            words("the predicate"), quote(PredName),
+            words("in the Mercury standard library has been renamed to"),
+            quote(NewPredName), suffix("."), nl]
+    else
+        GetoptPieces = []
+    ).
 
 %---------------------%
 
