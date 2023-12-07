@@ -39,7 +39,7 @@
     tvarset::in, inst_varset::in, pred_or_func::in, existq_tvars::in,
     sym_name::in, types_and_maybe_modes::in,
     maybe(mer_type)::in, maybe(mer_inst)::in, maybe(determinism)::in,
-    purity::in, prog_constraints::in, string::in, string::in, string::in,
+    purity::in, univ_exist_constraints::in, string::in, string::in, string::in,
     S::in, U::di, U::uo) is det <= pt_output(S, U).
 
     % XXX Document me.
@@ -47,7 +47,7 @@
 :- pred mercury_format_func_decl(output_lang::in, var_name_print::in,
     tvarset::in, inst_varset::in, existq_tvars::in, sym_name::in,
     types_and_maybe_modes::in, maybe(determinism)::in, purity::in,
-    prog_constraints::in, string::in, string::in, string::in,
+    univ_exist_constraints::in, string::in, string::in, string::in,
     S::in, U::di, U::uo) is det <= pt_output(S, U).
 
 %---------------------------------------------------------------------------%
@@ -56,28 +56,28 @@
     %
 :- func mercury_pred_type_to_string(tvarset, var_name_print,
     existq_tvars, sym_name, list(mer_type), maybe(determinism),
-    purity, prog_constraints) = string.
+    purity, univ_exist_constraints) = string.
 :- pred mercury_output_pred_type(io.text_output_stream::in, tvarset::in,
     var_name_print::in, existq_tvars::in, sym_name::in, list(mer_type)::in,
-    maybe(determinism)::in, purity::in, prog_constraints::in,
+    maybe(determinism)::in, purity::in, univ_exist_constraints::in,
     io::di, io::uo) is det.
 :- pred mercury_format_pred_type(tvarset::in, var_name_print::in,
     existq_tvars::in, sym_name::in, list(mer_type)::in,
-    maybe(determinism)::in, purity::in, prog_constraints::in,
+    maybe(determinism)::in, purity::in, univ_exist_constraints::in,
     S::in, U::di, U::uo) is det <= pt_output(S, U).
 
     % Output a `:- func' declaration.
     %
 :- func mercury_func_type_to_string(tvarset, var_name_print,
     existq_tvars, sym_name, list(mer_type), mer_type, maybe(determinism),
-    purity, prog_constraints) = string.
+    purity, univ_exist_constraints) = string.
 :- pred mercury_output_func_type(io.text_output_stream::in,
     tvarset::in, var_name_print::in, existq_tvars::in, sym_name::in,
     list(mer_type)::in, mer_type::in, maybe(determinism)::in, purity::in,
-    prog_constraints::in, io::di, io::uo) is det.
+    univ_exist_constraints::in, io::di, io::uo) is det.
 :- pred mercury_format_func_type(tvarset::in, var_name_print::in,
     existq_tvars::in, sym_name::in, list(mer_type)::in, mer_type::in,
-    maybe(determinism)::in, purity::in, prog_constraints::in,
+    maybe(determinism)::in, purity::in, univ_exist_constraints::in,
     S::in, U::di, U::uo) is det <= pt_output(S, U).
 
 %---------------------------------------------------------------------------%
@@ -269,7 +269,7 @@ mercury_format_func_type(TypeVarSet, VarNamePrint, ExistQVars, FuncName,
 :- pred mercury_format_pred_or_func_type_decl_2( tvarset::in,
     var_name_print::in, pred_or_func::in, existq_tvars::in,
     sym_name::in, list(mer_type)::in, maybe(mer_type)::in,
-    maybe(determinism)::in, purity::in, prog_constraints::in,
+    maybe(determinism)::in, purity::in, univ_exist_constraints::in,
     string::in, string::in, S::in, U::di, U::uo) is det <= pt_output(S, U).
 
 mercury_format_pred_or_func_type_decl_2(TypeVarSet, VarNamePrint, PredOrFunc,
@@ -277,7 +277,7 @@ mercury_format_pred_or_func_type_decl_2(TypeVarSet, VarNamePrint, PredOrFunc,
         Constraints, StartString, Separator, S, !U) :-
     add_string(StartString, S, !U),
     mercury_format_quantifier(TypeVarSet, VarNamePrint, ExistQVars, S, !U),
-    Constraints = constraints(UnivConstraints, ExistConstraints),
+    Constraints = univ_exist_constraints(UnivConstraints, ExistConstraints),
     ( if
         ExistQVars = [],
         ExistConstraints = []
@@ -344,7 +344,7 @@ mercury_format_pred_or_func_type_decl_2(TypeVarSet, VarNamePrint, PredOrFunc,
 
 :- pred mercury_format_func_type_2(tvarset::in, var_name_print::in,
     existq_tvars::in, sym_name::in, list(mer_type)::in, mer_type::in,
-    maybe(determinism)::in, purity::in, prog_constraints::in,
+    maybe(determinism)::in, purity::in, univ_exist_constraints::in,
     string::in, string::in, S::in, U::di, U::uo) is det <= pt_output(S, U).
 
 mercury_format_func_type_2(VarSet, VarNamePrint, ExistQVars, FuncName, Types,
@@ -352,7 +352,7 @@ mercury_format_func_type_2(VarSet, VarNamePrint, ExistQVars, FuncName, Types,
         S, !U) :-
     add_string(StartString, S, !U),
     mercury_format_quantifier(VarSet, VarNamePrint, ExistQVars, S, !U),
-    Constraints = constraints(UnivConstraints, ExistConstraints),
+    Constraints = univ_exist_constraints(UnivConstraints, ExistConstraints),
     ( if
         ExistQVars = [],
         ExistConstraints = []

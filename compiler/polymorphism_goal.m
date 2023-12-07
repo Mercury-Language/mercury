@@ -811,7 +811,7 @@ polymorphism_process_call(PredId, ArgVars0, GoalInfo0, GoalInfo,
             % Optimize for the common case of nonpolymorphic call
             % with no constraints.
             ParentTVars = [],
-            PredClassContext = constraints([], [])
+            PredClassContext = univ_exist_constraints([], [])
         ;
             % Some builtins don't need or want the type_info.
             no_type_info_builtin(PredModule, PredName, PredFormArityInt)
@@ -825,9 +825,9 @@ polymorphism_process_call(PredId, ArgVars0, GoalInfo0, GoalInfo,
 
         % Compute which "parent" type variables are constrained
         % by the type class constraints.
-        apply_variable_renaming_to_prog_constraints(PredToParentTypeRenaming,
-            PredClassContext, ParentClassContext),
-        ParentClassContext = constraints(ParentUnivConstraints,
+        apply_variable_renaming_to_univ_exist_constraints(
+            PredToParentTypeRenaming, PredClassContext, ParentClassContext),
+        ParentClassContext = univ_exist_constraints(ParentUnivConstraints,
             ParentExistConstraints),
         constraint_list_get_tvars(ParentUnivConstraints,
             ParentUnivConstrainedTVars),
@@ -1042,7 +1042,8 @@ polymorphism_process_foreign_proc_args(PredInfo, Impl, Vars, Args) :-
 
     % Find out which variables are constrained (so that we don't add
     % type_infos for them).
-    pred_info_get_class_context(PredInfo, constraints(UnivCs, ExistCs)),
+    pred_info_get_class_context(PredInfo,
+        univ_exist_constraints(UnivCs, ExistCs)),
     UnivVars0 = list.map(get_constrained_vars, UnivCs),
     list.condense(UnivVars0, UnivConstrainedVars),
     ExistVars0 = list.map(get_constrained_vars, ExistCs),

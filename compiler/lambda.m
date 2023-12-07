@@ -531,7 +531,7 @@ create_new_pred_for_lambda(RegWrapperProc, RHS0, OrigVars, ArgVars,
     set_of_type_vars_in_types(LambdaVarTypeList, LambdaTypeVars),
     list.filter(constraint_contains_only_lambda_tvars(LambdaTypeVars),
         AllConstraints, UnivConstraints),
-    Constraints = constraints(UnivConstraints, []),
+    Constraints = univ_exist_constraints(UnivConstraints, []),
 
     % Existentially typed lambda expressions are not yet supported
     % (see the documentation at top of this file).

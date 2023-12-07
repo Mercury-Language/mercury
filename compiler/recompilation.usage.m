@@ -774,7 +774,7 @@ find_items_used_by_pred(PredOrFunc, NameArity, PredId - PredModule, !Info) :-
         % The typeclass for which the predicate is a method is the first
         % of the universal class constraints in the pred_info.
         pred_info_get_class_context(PredInfo, MethodClassContext),
-        MethodClassContext = constraints(MethodUnivConstraints, _),
+        MethodClassContext = univ_exist_constraints(MethodUnivConstraints, _),
         (
             MethodUnivConstraints = [MethodUnivConstraint | _],
             MethodUnivConstraint = constraint(ClassName, ClassArgTypes),
@@ -1032,11 +1032,11 @@ find_items_used_by_inst_name(InstName, !Info) :-
         find_items_used_by_inst_name(SubInstName, !Info)
     ).
 
-:- pred find_items_used_by_class_context(prog_constraints::in,
+:- pred find_items_used_by_class_context(univ_exist_constraints::in,
     recompilation_usage_info::in, recompilation_usage_info::out) is det.
 
 find_items_used_by_class_context(Constraints, !Info) :-
-    Constraints = constraints(UnivConstraints, ExistConstraints),
+    Constraints = univ_exist_constraints(UnivConstraints, ExistConstraints),
     find_items_used_by_class_constraints(UnivConstraints, !Info),
     find_items_used_by_class_constraints(ExistConstraints, !Info).
 

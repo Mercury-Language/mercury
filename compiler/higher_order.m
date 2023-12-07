@@ -1584,7 +1584,8 @@ maybe_specialize_ordinary_call(CanRequest, CalledPred, CalledProc,
 
             % Check whether any typeclass constraints now match an instance.
             pred_info_get_class_context(CalleePredInfo, CalleeClassContext),
-            CalleeClassContext = constraints(CalleeUnivConstraints0, _),
+            CalleeClassContext =
+                univ_exist_constraints(CalleeUnivConstraints0, _),
             pred_info_get_typevarset(CalleePredInfo, CalleeTVarSet),
             pred_info_get_exist_quant_tvars(CalleePredInfo, CalleeExistQTVars),
             CallerPredInfo0 = !.Info ^ hoi_pred_info,
@@ -3609,12 +3610,12 @@ higher_order_arg_depth(HOArg) =
     %
 :- pred find_class_context(module_info::in, list(rtti_var_info)::in,
     list(mer_mode)::in, list(prog_constraint)::in, list(prog_constraint)::in,
-    prog_constraints::out) is det.
+    univ_exist_constraints::out) is det.
 
 find_class_context(_, [], [], !.RevUniv, !.RevExist, Constraints) :-
     list.reverse(!.RevUniv, Univ),
     list.reverse(!.RevExist, Exist),
-    Constraints = constraints(Univ, Exist).
+    Constraints = univ_exist_constraints(Univ, Exist).
 find_class_context(_, [], [_ | _], _, _, _) :-
     unexpected($pred, "mismatched list length").
 find_class_context(_, [_ | _], [], _, _, _) :-

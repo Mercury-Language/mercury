@@ -387,7 +387,7 @@ check_for_modeless_predmode_decl(PredStatus, PredOrFunc,
 :- pred add_new_pred(pred_origin::in, prog_context::in, item_seq_num::in,
     pred_status::in, need_qualifier::in, pred_or_func::in,
     module_name::in, string::in, tvarset::in, existq_tvars::in,
-    list(mer_type)::in, prog_constraints::in, maybe_predmode_decl::in,
+    list(mer_type)::in, univ_exist_constraints::in, maybe_predmode_decl::in,
     purity::in, pred_markers::in, maybe(pred_id)::out,
     module_info::in, module_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
@@ -1030,7 +1030,7 @@ add_implicit_pred_decl(PredOrFunc, PredModuleName, PredName, PredFormArity,
     ExistQVars = [],
     % The class context is empty since this is an implicit definition.
     % Inference will fill it in.
-    Constraints = constraints([], []),
+    Constraints = univ_exist_constraints([], []),
     map.init(Proofs),
     map.init(ConstraintMap),
     map.init(VarNameRemap),

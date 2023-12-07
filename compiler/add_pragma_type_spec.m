@@ -169,8 +169,8 @@ subst_desc(TVar - Type) = var_to_int(TVar) - Type.
 
 :- pred add_type_spec_version_of_pred(pred_id::in, pred_info::in,
     pred_form_arity::in, decl_pragma_type_spec_info::in,
-    tvarset::in, list(mer_type)::in, existq_tvars::in, prog_constraints::in,
-    proc_table::in, list(proc_id)::in,
+    tvarset::in, list(mer_type)::in, existq_tvars::in,
+    univ_exist_constraints::in, proc_table::in, list(proc_id)::in,
     pred_id::out, pred_status::out, module_info::in, module_info::out) is det.
 
 add_type_spec_version_of_pred(PredId, PredInfo0, PredFormArity, TSInfo0,
@@ -324,7 +324,7 @@ maybe_record_type_spec_in_qual_info(PredOrFunc, SymName, UserArity, PredStatus,
     %
 :- pred handle_pragma_type_spec_subst(pred_info::in, tvarset::in,
     type_subst::in, prog_context::in,
-    maybe5(tvarset, list(mer_type), existq_tvars, prog_constraints,
+    maybe5(tvarset, list(mer_type), existq_tvars, univ_exist_constraints,
         type_subst)::out) is det.
 
 handle_pragma_type_spec_subst(PredInfo0, TVarSet0, Subst, Context,
@@ -387,7 +387,7 @@ handle_pragma_type_spec_subst(PredInfo0, TVarSet0, Subst, Context,
                     pred_info_get_arg_types(PredInfo0, Types0),
                     pred_info_get_class_context(PredInfo0, ClassContext0),
                     apply_rec_subst_to_type_list(TypeSubst, Types0, Types),
-                    apply_rec_subst_to_prog_constraints(TypeSubst,
+                    apply_rec_subst_to_univ_exist_constraints(TypeSubst,
                         ClassContext0, ClassContext),
                     det_list_to_one_or_more(SubAL, RenamedSubst),
                     MaybeSubstResult = ok5(TVarSet, Types, ExistQVars,

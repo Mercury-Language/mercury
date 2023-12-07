@@ -1576,9 +1576,9 @@ is_gen_pragma_changed(GenPragma1, GenPragma2, Changed) :-
     % declaration in a single varset (it doesn't know which are which).
     %
 :- pred pred_or_func_type_is_unchanged(tvarset::in, existq_tvars::in,
-    types_and_maybe_modes::in, maybe(mer_type)::in, prog_constraints::in,
+    types_and_maybe_modes::in, maybe(mer_type)::in, univ_exist_constraints::in,
     tvarset::in, existq_tvars::in, types_and_maybe_modes::in,
-    maybe(mer_type)::in, prog_constraints::in) is semidet.
+    maybe(mer_type)::in, univ_exist_constraints::in) is semidet.
 
 pred_or_func_type_is_unchanged(TVarSet1, ExistQVars1, TypesAndMaybeModes1,
         MaybeWithType1, Constraints1, TVarSet2, ExistQVars2,
@@ -1639,9 +1639,9 @@ pred_or_func_type_is_unchanged(TVarSet1, ExistQVars1, TypesAndMaybeModes1,
     ),
 
     % Check that the class constraints are identical.
-    apply_variable_renaming_to_prog_constraints(Renaming,
+    apply_variable_renaming_to_univ_exist_constraints(Renaming,
         Constraints2, RenamedConstraints2),
-    apply_rec_subst_to_prog_constraints(Types2ToTypes1Subst,
+    apply_rec_subst_to_univ_exist_constraints(Types2ToTypes1Subst,
         RenamedConstraints2, SubstConstraints2),
     Constraints1 = SubstConstraints2.
 

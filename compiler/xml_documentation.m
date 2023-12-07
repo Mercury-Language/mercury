@@ -579,7 +579,7 @@ predicate_documentation(C, PredInfo) = Xml :-
     XmlTypes = xml_list("pred_types", mer_type_to_xml(TVarset), Types),
     XmlExistVars = xml_list("pred_exist_vars", type_param_to_xml(TVarset),
         Exists),
-    XmlConstraints = prog_constraints_to_xml(TVarset, Constraints),
+    XmlConstraints = univ_exist_constraints_to_xml(TVarset, Constraints),
     XmlVisibility = pred_visibility_to_xml(PredStatus),
 
     pred_info_get_proc_table(PredInfo, ProcTable),
@@ -610,9 +610,10 @@ keep_last_n(N, L0) =
         func_error("keep_last_n")
     ).
 
-:- func prog_constraints_to_xml(tvarset, prog_constraints) = xml.
+:- func univ_exist_constraints_to_xml(tvarset, univ_exist_constraints) = xml.
 
-prog_constraints_to_xml(TVarset, constraints(Univs, Exists)) = Xml :-
+univ_exist_constraints_to_xml(TVarset, Constraints) = Xml :-
+    Constraints = univ_exist_constraints(Univs, Exists),
     XmlUnivs = xml_list("pred_universal",
         prog_constraint_to_xml(TVarset), Univs),
     XmlExists = xml_list("pred_exist",

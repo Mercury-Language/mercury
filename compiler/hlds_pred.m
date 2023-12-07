@@ -503,7 +503,7 @@
     pred_form_arity::in, prog_context::in, pred_origin::in,
     pred_status::in, maybe(cur_user_decl_info)::in, goal_type::in,
     pred_markers::in, list(mer_type)::in, tvarset::in, existq_tvars::in,
-    prog_constraints::in, constraint_proof_map::in, constraint_map::in,
+    univ_exist_constraints::in, constraint_proof_map::in, constraint_map::in,
     clauses_info::in, map(prog_var, string)::in, pred_info::out) is det.
 
     % pred_info_create(ModuleInfo, PredOrFunc, ModuleName, PredName,
@@ -517,9 +517,10 @@
     %
 :- pred pred_info_create(pred_or_func::in, module_name::in, string::in,
     prog_context::in, pred_origin::in, pred_status::in, pred_markers::in,
-    list(mer_type)::in, tvarset::in, existq_tvars::in, prog_constraints::in,
-    set(assert_id)::in, map(prog_var, string)::in, goal_type::in,
-    proc_info::in, proc_id::out, pred_info::out) is det.
+    list(mer_type)::in, tvarset::in, existq_tvars::in,
+    univ_exist_constraints::in, set(assert_id)::in,
+    map(prog_var, string)::in, goal_type::in, proc_info::in,
+    proc_id::out, pred_info::out) is det.
 
 %---------------------%
 
@@ -540,7 +541,7 @@
     module_name::out, pred_or_func::out, string::out, pred_form_arity::out,
     pred_origin::out, pred_status::out, pred_markers::out, list(mer_type)::out,
     tvarset::out, tvarset::out, existq_tvars::out, int::out,
-    prog_constraints::out, clauses_info::out,
+    univ_exist_constraints::out, clauses_info::out,
     proc_table::out, prog_context::out,
     maybe(cur_user_decl_info)::out, goal_type::out, tvar_kind_map::out,
     tsubst::out, external_type_params::out, constraint_proof_map::out,
@@ -550,9 +551,9 @@
     list(mer_type)::out) is det.
 
 :- pred pred_create(module_name::in,
-    pred_or_func::in, string::in, pred_form_arity::in,
-    pred_origin::in, pred_status::in, pred_markers::in, list(mer_type)::in,
-    tvarset::in, tvarset::in, existq_tvars::in, int::in, prog_constraints::in,
+    pred_or_func::in, string::in, pred_form_arity::in, pred_origin::in,
+    pred_status::in, pred_markers::in, list(mer_type)::in, tvarset::in,
+    tvarset::in, existq_tvars::in, int::in, univ_exist_constraints::in,
     clauses_info::in, proc_table::in, prog_context::in,
     maybe(cur_user_decl_info)::in, goal_type::in, tvar_kind_map::in,
     tsubst::in, external_type_params::in, constraint_proof_map::in,
@@ -575,7 +576,7 @@
     %
 :- pred define_new_pred(sym_name::in, pred_origin::in,
     tvarset::in, inst_varset::in, var_table::in,
-    rtti_varmaps::in, prog_constraints::in, instmap::in,
+    rtti_varmaps::in, univ_exist_constraints::in, instmap::in,
     map(prog_var, string)::in, pred_markers::in,
     is_address_taken::in, has_parallel_conj::in, pred_proc_id::out,
     list(prog_var)::in, list(prog_var)::out, hlds_goal::in, hlds_goal::out,
@@ -640,7 +641,7 @@
 :- pred pred_info_get_external_type_params(pred_info::in,
     external_type_params::out) is det.
 :- pred pred_info_get_class_context(pred_info::in,
-    prog_constraints::out) is det.
+    univ_exist_constraints::out) is det.
 :- pred pred_info_get_constraint_proof_map(pred_info::in,
     constraint_proof_map::out) is det.
 :- pred pred_info_get_constraint_map(pred_info::in,
@@ -697,7 +698,7 @@
     pred_info::in, pred_info::out) is det.
 :- pred pred_info_set_external_type_params(external_type_params::in,
     pred_info::in, pred_info::out) is det.
-:- pred pred_info_set_class_context(prog_constraints::in,
+:- pred pred_info_set_class_context(univ_exist_constraints::in,
     pred_info::in, pred_info::out) is det.
 :- pred pred_info_set_constraint_proof_map(constraint_proof_map::in,
     pred_info::in, pred_info::out) is det.
@@ -1062,7 +1063,7 @@ marker_name(marker_fact_table_semantic_errors, "fact_table_semantic_errors").
                 % for that typeclass. This is ensured by code in
                 % module_add_class_method, which is executed when
                 % the class method's pred declaration is added to the HLDS.
-/* 12 */        pi_class_context        :: prog_constraints,
+/* 12 */        pi_class_context        :: univ_exist_constraints,
 
 /* 13 */        pi_clauses_info         :: clauses_info,
 

@@ -203,7 +203,7 @@ expand_args_in_pred(PredId, !ModuleInfo, !TransformMap, !Counter) :-
         % For now, take the safe option and don't touch them.
         pred_info_get_exist_quant_tvars(PredInfo, []),
         pred_info_get_external_type_params(PredInfo, []),
-        pred_info_get_class_context(PredInfo, constraints([], [])),
+        pred_info_get_class_context(PredInfo, univ_exist_constraints([], [])),
         pred_info_get_origin(PredInfo, Origin),
         Origin = origin_user(user_made_pred(_, _, _)),
         pred_info_get_arg_types(PredInfo, TypeVarSet, ExistQVars, ArgTypes),

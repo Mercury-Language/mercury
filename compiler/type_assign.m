@@ -139,7 +139,7 @@
     %
 :- pred type_assign_set_get_final_info(type_assign_set::in,
     list(tvar)::in, existq_tvars::in, vartypes::in, tvarset::out,
-    existq_tvars::out, vartypes::out, prog_constraints::out,
+    existq_tvars::out, vartypes::out, univ_exist_constraints::out,
     constraint_proof_map::out, constraint_map::out,
     tvar_renaming::out, tvar_renaming::out) is det.
 
@@ -399,7 +399,7 @@ type_assign_set_get_final_info(TypeAssignSet,
 
     % Finally, if necessary, rename the types and type class constraints
     % to use the new typevarset type variables.
-    retrieve_prog_constraints(HLDSTypeConstraints, TypeConstraints),
+    retrieve_univ_exist_constraints(HLDSTypeConstraints, TypeConstraints),
     ( if map.is_empty(TSubst) then
         NewVarTypes = VarTypes1,
         NewExternalTypeParams = ExternalTypeParams,
@@ -409,7 +409,7 @@ type_assign_set_get_final_info(TypeAssignSet,
     else
         apply_variable_renaming_to_vartypes(TSubst, VarTypes1, NewVarTypes),
         map.apply_to_list(ExternalTypeParams, TSubst, NewExternalTypeParams),
-        apply_variable_renaming_to_prog_constraints(TSubst,
+        apply_variable_renaming_to_univ_exist_constraints(TSubst,
             TypeConstraints, NewTypeConstraints),
         apply_variable_renaming_to_constraint_proof_map(TSubst,
             ConstraintProofMap, NewConstraintProofMap),

@@ -248,7 +248,7 @@ table_gen_process_io_proc(PredId, ProcId, ProcInfo0, PredInfo0,
             TraceTableIoOnlyRetry = no,
             pred_info_get_class_context(PredInfo0, TypeClassConstraints),
             TypeClassConstraints =
-                constraints(UnivConstraints, ExistConstraints),
+                univ_exist_constraints(UnivConstraints, ExistConstraints),
             ( if
                 UnivConstraints = [],
                 ExistConstraints = []

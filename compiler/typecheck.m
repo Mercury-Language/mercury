@@ -549,7 +549,7 @@ do_typecheck_pred(ProgressStream, ModuleInfo, PredId, !PredInfo,
                     "Inferring type of", PredId, !IO)
             ),
             !:ExternalTypeParams = [],
-            PredConstraints = constraints([], [])
+            PredConstraints = univ_exist_constraints([], [])
         else
             Inferring = no,
             trace [io(!IO)] (
@@ -710,7 +710,7 @@ do_typecheck_pred(ProgressStream, ModuleInfo, PredId, !PredInfo,
                     ExistQVars0, ExistQVars1),
                 apply_variable_renaming_to_type_list(ExistTypeRenaming,
                     ArgTypes0, ArgTypes1),
-                apply_variable_renaming_to_prog_constraints(
+                apply_variable_renaming_to_univ_exist_constraints(
                     ExistTypeRenaming, PredConstraints, PredConstraints1),
                 rename_instance_method_constraints(ExistTypeRenaming,
                     Origin0, Origin1)
@@ -721,7 +721,7 @@ do_typecheck_pred(ProgressStream, ModuleInfo, PredId, !PredInfo,
                 ExistQVars1, ExistQVars),
             apply_variable_renaming_to_type_list(TVarRenaming, ArgTypes1,
                 RenamedOldArgTypes),
-            apply_variable_renaming_to_prog_constraints(TVarRenaming,
+            apply_variable_renaming_to_univ_exist_constraints(TVarRenaming,
                 PredConstraints1, RenamedOldConstraints),
             rename_instance_method_constraints(TVarRenaming, Origin1, Origin),
 
@@ -859,7 +859,7 @@ rename_instance_method_constraints(Renaming, Origin0, Origin) :-
             InstanceTypes),
         apply_variable_renaming_to_prog_constraint_list(Renaming,
             InstanceConstraints0, InstanceConstraints),
-        apply_variable_renaming_to_prog_constraints(Renaming,
+        apply_variable_renaming_to_univ_exist_constraints(Renaming,
             ClassMethodClassContext0, ClassMethodClassContext),
         Constraints = instance_method_constraints(ClassId,
             InstanceTypes, InstanceConstraints, ClassMethodClassContext),
@@ -907,14 +907,15 @@ infer_existential_types(ArgTypeVars, ExistQVars,
     % HeadVarTypes.
     %
 :- pred restrict_constraints_to_head_vars(list(tvar)::in,
-    prog_constraints::in, prog_constraints::out,
+    univ_exist_constraints::in, univ_exist_constraints::out,
     list(prog_constraint)::out) is det.
 
-restrict_constraints_to_head_vars(ArgVarTypes, constraints(UnivCs0, ExistCs0),
-        constraints(UnivCs, ExistCs), UnprovenCs) :-
+restrict_constraints_to_head_vars(ArgVarTypes, !Constraints, UnprovenCs) :-
+    !.Constraints = univ_exist_constraints(UnivCs0, ExistCs0),
     restrict_constraints_to_head_vars_2(ArgVarTypes, UnivCs0, UnivCs,
         UnprovenCs),
-    restrict_constraints_to_head_vars_2(ArgVarTypes, ExistCs0, ExistCs, _).
+    restrict_constraints_to_head_vars_2(ArgVarTypes, ExistCs0, ExistCs, _),
+    !:Constraints = univ_exist_constraints(UnivCs, ExistCs).
 
 :- pred restrict_constraints_to_head_vars_2(list(tvar)::in,
     list(prog_constraint)::in,
@@ -946,8 +947,9 @@ is_head_class_constraint(HeadTypeVars, Constraint) :-
     % to identical_up_to_renaming.
     %
 :- pred argtypes_identical_up_to_renaming(tvar_kind_map::in,
-    existq_tvars::in, list(mer_type)::in, prog_constraints::in,
-    existq_tvars::in, list(mer_type)::in, prog_constraints::in) is semidet.
+    existq_tvars::in, list(mer_type)::in, univ_exist_constraints::in,
+    existq_tvars::in, list(mer_type)::in, univ_exist_constraints::in)
+    is semidet.
 
 argtypes_identical_up_to_renaming(KindMap, ExistQVarsA, ArgTypesA,
         TypeConstraintsA, ExistQVarsB, ArgTypesB, TypeConstraintsB) :-
@@ -965,12 +967,12 @@ argtypes_identical_up_to_renaming(KindMap, ExistQVarsA, ArgTypesA,
     % in each set of type class constraints and return them.
     %
 :- pred constraints_have_same_structure(
-    prog_constraints::in, prog_constraints::in,
+    univ_exist_constraints::in, univ_exist_constraints::in,
     list(mer_type)::out, list(mer_type)::out) is semidet.
 
 constraints_have_same_structure(ConstraintsA, ConstraintsB, TypesA, TypesB) :-
-    ConstraintsA = constraints(UnivCsA, ExistCsA),
-    ConstraintsB = constraints(UnivCsB, ExistCsB),
+    ConstraintsA = univ_exist_constraints(UnivCsA, ExistCsA),
+    ConstraintsB = univ_exist_constraints(UnivCsB, ExistCsB),
     % these calls to same_length are just an optimization,
     % to catch the simple cases quicker
     list.same_length(UnivCsA, UnivCsB),

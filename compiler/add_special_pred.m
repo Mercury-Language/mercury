@@ -296,7 +296,7 @@ add_special_pred_decl(SpecialPredId, TVarSet, Type, TypeCtor, TypeStatus,
     init_markers(Markers),
     % XXX If/when we have "comparable" or "unifiable" typeclasses,
     % this context might not be empty.
-    ClassContext = constraints([], []),
+    ClassContext = univ_exist_constraints([], []),
     ExistQVars = [],
     map.init(VarNameRemap),
     % XXX Why are we passing the name of the *current* module here,

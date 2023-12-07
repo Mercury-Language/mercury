@@ -151,7 +151,7 @@ setup_headvars(PredInfo, !HeadVars, !:ExtraArgModes,
     % constraints in the constraint map. For the universal constraints there
     % is no distinction between the internal views and the external view, so
     % we just use the constraints from the class context.
-    ClassContext = constraints(UnivConstraints, ExistConstraints),
+    ClassContext = univ_exist_constraints(UnivConstraints, ExistConstraints),
     constraint_list_get_tvars(UnivConstraints, UnivConstrainedTVars),
     constraint_list_get_tvars(ExistConstraints, ExistConstrainedTVars),
     poly_info_get_constraint_map(!.Info, ConstraintMap),
@@ -270,8 +270,8 @@ setup_headvars(PredInfo, !HeadVars, !:ExtraArgModes,
     % argument list. We need to match that order here.
     %
 :- pred setup_instance_method_headvars(pred_info::in,
-    instance_method_constraints::in, prog_constraints::out, list(tvar)::out,
-    list(tvar)::out, list(prog_var)::out,
+    instance_method_constraints::in, univ_exist_constraints::out,
+    list(tvar)::out, list(tvar)::out, list(prog_var)::out,
     proc_arg_vector(prog_var)::in, proc_arg_vector(prog_var)::out,
     poly_arg_vector(mer_mode)::in, poly_arg_vector(mer_mode)::out,
     poly_info::in, poly_info::out) is det.

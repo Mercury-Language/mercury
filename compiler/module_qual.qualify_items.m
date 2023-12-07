@@ -1401,18 +1401,19 @@ qualify_type_and_mode(InInt, ErrorContext, TypeAndMode0, TypeAndMode,
 
 :- pred qualify_prog_constraints(mq_in_interface::in,
     mq_constraint_error_context::in,
-    prog_constraints::in, prog_constraints::out, mq_info::in, mq_info::out,
+    univ_exist_constraints::in, univ_exist_constraints::out,
+    mq_info::in, mq_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
 qualify_prog_constraints(InInt, ConstraintErrorContext,
         Constraints0, Constraints, !Info, !Specs) :-
-    Constraints0 = constraints(UnivCs0, ExistCs0),
+    Constraints0 = univ_exist_constraints(UnivCs0, ExistCs0),
     % XXX We could pass a more specific error context.
     qualify_prog_constraint_list(InInt, ConstraintErrorContext,
         UnivCs0, UnivCs, !Info, !Specs),
     qualify_prog_constraint_list(InInt, ConstraintErrorContext,
         ExistCs0, ExistCs, !Info, !Specs),
-    Constraints = constraints(UnivCs, ExistCs).
+    Constraints = univ_exist_constraints(UnivCs, ExistCs).
 
 :- pred qualify_prog_constraint_list(mq_in_interface::in,
     mq_constraint_error_context::in,

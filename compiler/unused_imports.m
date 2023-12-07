@@ -721,7 +721,8 @@ pred_info_used_modules(ProgressStream, PredId, PredInfo, !UsedModules) :-
         Visibility = pred_visibility(PredStatus),
 
         pred_info_get_class_context(PredInfo, Constraints),
-        Constraints = constraints(UnivConstraints, ExistConstraints),
+        Constraints =
+            univ_exist_constraints(UnivConstraints, ExistConstraints),
         list.foldl(prog_constraint_used_modules(Visibility),
             UnivConstraints, !UsedModules),
         list.foldl(prog_constraint_used_modules(Visibility),

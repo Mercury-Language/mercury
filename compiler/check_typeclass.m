@@ -822,14 +822,14 @@ generate_instance_method_pred_and_procs(ClassId, ClassVars, ClassPredId,
     % is always the constraint for the class of which it is a member.
     % Seeing that we are checking an instance declaration, we don't check
     % that constraint... the instance declaration itself satisfies it!
-    ClassContext0 = constraints(UnivCs0, ExistCs),
+    ClassContext0 = univ_exist_constraints(UnivCs0, ExistCs),
     (
         UnivCs0 = [_ | UnivCs]
     ;
         UnivCs0 = [],
         unexpected($pred, "no constraint on class method")
     ),
-    ClassMethodClassContext0 = constraints(UnivCs, ExistCs),
+    ClassMethodClassContext0 = univ_exist_constraints(UnivCs, ExistCs),
     ClassPredModule = pred_info_module(ClassPredInfo),
     ClassPredMethodName = pred_info_name(ClassPredInfo),
     ClassPredMethodSymName = qualified(ClassPredModule, ClassPredMethodName),
@@ -863,7 +863,7 @@ generate_instance_method_pred_and_procs(ClassId, ClassVars, ClassPredId,
     % instance, and update the class types appropriately.
     map.from_corresponding_lists(ClassVars, InstanceTypes1, TypeSubst),
     apply_subst_to_type_list(TypeSubst, ArgTypes0, ArgTypes1),
-    apply_subst_to_prog_constraints(TypeSubst, ClassMethodClassContext0,
+    apply_subst_to_univ_exist_constraints(TypeSubst, ClassMethodClassContext0,
         ClassMethodClassContext1),
 
     % Calculate which type variables we need to keep. This includes all
@@ -872,7 +872,8 @@ generate_instance_method_pred_and_procs(ClassId, ClassVars, ClassPredId,
     % occur either in the argument types or in the class method context;
     % type variables in the instance types must appear in the arguments.)
     type_vars_in_types(ArgTypes1, ArgTVars),
-    prog_constraints_get_tvars(ClassMethodClassContext1, MethodContextTVars),
+    univ_exist_constraints_get_tvars(ClassMethodClassContext1,
+        MethodContextTVars),
     constraint_list_get_tvars(InstanceConstraints1, InstanceTVars),
     list.condense([ArgTVars, MethodContextTVars, InstanceTVars], VarsToKeep0),
     list.sort_and_remove_dups(VarsToKeep0, VarsToKeep),
@@ -880,7 +881,7 @@ generate_instance_method_pred_and_procs(ClassId, ClassVars, ClassPredId,
     % Project away the unwanted type variables.
     varset.squash(TVarSet1, VarsToKeep, TVarSet2, SquashSubst),
     apply_variable_renaming_to_type_list(SquashSubst, ArgTypes1, ArgTypes),
-    apply_variable_renaming_to_prog_constraints(SquashSubst,
+    apply_variable_renaming_to_univ_exist_constraints(SquashSubst,
         ClassMethodClassContext1, ClassMethodClassContext),
     apply_partial_map_to_list(SquashSubst, ExistQVars0, ExistQVars),
     apply_variable_renaming_to_type_list(SquashSubst, InstanceTypes1,
@@ -891,9 +892,11 @@ generate_instance_method_pred_and_procs(ClassId, ClassVars, ClassPredId,
     % Add the constraints from the instance declaration to the constraints
     % from the class method. This allows an instance method to have constraints
     % on it which are not part of the instance declaration as a whole.
-    ClassMethodClassContext = constraints(UnivConstraints1, ExistConstraints),
+    ClassMethodClassContext =
+        univ_exist_constraints(UnivConstraints1, ExistConstraints),
     list.append(InstanceConstraints, UnivConstraints1, UnivConstraints),
-    ClassContext = constraints(UnivConstraints, ExistConstraints),
+    ClassContext =
+        univ_exist_constraints(UnivConstraints, ExistConstraints),
 
     % Introduce a new predicate which calls the implementation
     % given in the instance declaration.
@@ -1622,7 +1625,7 @@ check_typeclass_constraints_on_pred(ProgressStream, ModuleInfo, PredId,
         !Specs) :-
     module_info_pred_info(ModuleInfo, PredId, PredInfo),
     pred_info_get_class_context(PredInfo, Constraints),
-    Constraints = constraints(UnivConstraints, ExistConstraints),
+    Constraints = univ_exist_constraints(UnivConstraints, ExistConstraints),
     ( if
         ( UnivConstraints = [_ | _]
         ; ExistConstraints = [_ | _]
@@ -1718,8 +1721,8 @@ check_pred_type_ambiguities(ModuleInfo, PredInfo, !Specs) :-
     pred_info_get_arg_types(PredInfo, ArgTypes),
     pred_info_get_class_context(PredInfo, Constraints),
     type_vars_in_types(ArgTypes, ArgTVars),
-    prog_constraints_get_tvars(Constraints, ConstrainedTVars),
-    Constraints = constraints(UnivCs, ExistCs),
+    univ_exist_constraints_get_tvars(Constraints, ConstrainedTVars),
+    Constraints = univ_exist_constraints(UnivCs, ExistCs),
     get_unbound_tvars(ModuleInfo, TVarSet, ArgTVars, ConstrainedTVars,
         UnivCs ++ ExistCs, UnboundTVars),
     (
@@ -1740,7 +1743,7 @@ check_pred_type_ambiguities(ModuleInfo, PredInfo, !Specs) :-
 check_constraint_quant(PredInfo, !Specs) :-
     pred_info_get_exist_quant_tvars(PredInfo, ExistQVars),
     pred_info_get_class_context(PredInfo, Constraints),
-    Constraints = constraints(UnivCs, ExistCs),
+    Constraints = univ_exist_constraints(UnivCs, ExistCs),
     constraint_list_get_tvars(UnivCs, UnivTVars),
     set.list_to_set(ExistQVars, ExistQVarsSet),
     set.list_to_set(UnivTVars, UnivTVarsSet),

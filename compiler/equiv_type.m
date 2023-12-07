@@ -136,8 +136,9 @@
     tvarset::in, tvarset::out,
     eqv_expand_info::in, eqv_expand_info::out) is det.
 
-:- pred replace_in_prog_constraints(type_eqv_map::in,
-    prog_constraints::in, prog_constraints::out, tvarset::in, tvarset::out,
+:- pred replace_in_univ_exist_constraints(type_eqv_map::in,
+    univ_exist_constraints::in, univ_exist_constraints::out,
+    tvarset::in, tvarset::out,
     eqv_expand_info::in, eqv_expand_info::out) is det.
 
 :- pred replace_in_prog_constraint_list(type_eqv_map::in,
@@ -2165,23 +2166,25 @@ replace_in_constraint_store(MaybeRecord, TypeEqvMap, InstEqvMap,
 
 %---------------------------------------------------------------------------%
 
-replace_in_prog_constraints(TypeEqvMap, Cs0, Cs, !TVarSet, !EquivTypeInfo) :-
-    replace_in_prog_constraints_location(dont_record_sym_name_use, TypeEqvMap,
-        Cs0, Cs, !TVarSet, !EquivTypeInfo, used_modules_init, _).
+replace_in_univ_exist_constraints(TypeEqvMap, Cs0, Cs,
+        !TVarSet, !EquivTypeInfo) :-
+    replace_in_univ_exist_constraints_location(dont_record_sym_name_use,
+        TypeEqvMap, Cs0, Cs, !TVarSet, !EquivTypeInfo, used_modules_init, _).
 
-:- pred replace_in_prog_constraints_location(maybe_record_sym_name_use::in,
-    type_eqv_map::in, prog_constraints::in, prog_constraints::out,
+:- pred replace_in_univ_exist_constraints_location(
+    maybe_record_sym_name_use::in, type_eqv_map::in,
+    univ_exist_constraints::in, univ_exist_constraints::out,
     tvarset::in, tvarset::out, eqv_expand_info::in, eqv_expand_info::out,
     used_modules::in, used_modules::out) is det.
 
-replace_in_prog_constraints_location(MaybeRecord, TypeEqvMap, Cs0, Cs,
+replace_in_univ_exist_constraints_location(MaybeRecord, TypeEqvMap, Cs0, Cs,
         !TVarSet, !EquivTypeInfo, !UsedModules) :-
-    Cs0 = constraints(UnivCs0, ExistCs0),
+    Cs0 = univ_exist_constraints(UnivCs0, ExistCs0),
     replace_in_prog_constraint_list_location(MaybeRecord, TypeEqvMap,
         UnivCs0, UnivCs, !TVarSet, !EquivTypeInfo, !UsedModules),
     replace_in_prog_constraint_list_location(MaybeRecord, TypeEqvMap,
         ExistCs0, ExistCs, !TVarSet, !EquivTypeInfo, !UsedModules),
-    Cs = constraints(UnivCs, ExistCs).
+    Cs = univ_exist_constraints(UnivCs, ExistCs).
 
 replace_in_prog_constraint_list(TypeEqvMap,
         !Constraints, !TVarSet, !EquivTypeInfo) :-
@@ -2398,7 +2401,7 @@ replace_in_inst_location(MaybeRecord, InstEqvMap, ExpandedInstCtors,
 :- pred replace_in_pred_types_and_maybe_modes(maybe_record_sym_name_use::in,
     sym_name::in, pred_or_func::in, prog_context::in,
     type_eqv_map::in, inst_eqv_map::in,
-    prog_constraints::in, prog_constraints::out,
+    univ_exist_constraints::in, univ_exist_constraints::out,
     types_and_maybe_modes::in, types_and_maybe_modes::out,
     tvarset::in, tvarset::out,
     maybe(mer_type)::in, maybe(mer_type)::out,
@@ -2412,7 +2415,7 @@ replace_in_pred_types_and_maybe_modes(MaybeRecord, PredName, PredOrFunc,
         TypesAndMaybeModes0, TypesAndMaybeModes, !TVarSet,
         MaybeWithType0, MaybeWithType, MaybeWithInst0, MaybeWithInst,
         !MaybeDetism, !EquivTypeInfo, !UsedModules, !:Specs) :-
-    replace_in_prog_constraints_location(MaybeRecord, TypeEqvMap,
+    replace_in_univ_exist_constraints_location(MaybeRecord, TypeEqvMap,
         ClassContext0, ClassContext, !TVarSet, !EquivTypeInfo, !UsedModules),
     replace_in_types_and_maybe_modes(MaybeRecord, TypeEqvMap,
         TypesAndMaybeModes0, TypesAndMaybeModes1,

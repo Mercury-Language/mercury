@@ -734,7 +734,7 @@ typecheck_call_pred_id(ArgVectorKind, Context, GoalId, PredId, ArgVars,
     % non-constrained predicate.
     ( if
         varset.is_empty(PredTypeVarSet),
-        PredClassContext = constraints([], [])
+        PredClassContext = univ_exist_constraints([], [])
     then
         typecheck_vars_have_types(ArgVectorKind, Context, ArgVars,
             PredArgTypes, !TypeAssignSet, !Info)
@@ -2091,7 +2091,7 @@ convert_cons_defn(Info, GoalId, Action, ConsId, ConsDefn, ConsTypeInfo) :-
         ),
         (
             Action = do_not_flip_constraints,
-            ProgConstraints = constraints(UnivProgConstraints,
+            ProgConstraints = univ_exist_constraints(UnivProgConstraints,
                 ExistProgConstraints),
             ExistQVars = ExistQVars0
         ;
@@ -2099,7 +2099,7 @@ convert_cons_defn(Info, GoalId, Action, ConsId, ConsDefn, ConsTypeInfo) :-
             % Make the existential constraints into universal ones, and discard
             % the existentially quantified variables (since they are now
             % universally quantified).
-            ProgConstraints = constraints(ExistProgConstraints,
+            ProgConstraints = univ_exist_constraints(ExistProgConstraints,
                 UnivProgConstraints),
             ExistQVars = []
         ;
@@ -2109,7 +2109,7 @@ convert_cons_defn(Info, GoalId, Action, ConsId, ConsDefn, ConsTypeInfo) :-
             % constraints here can be trivially reduced by the assumed ones,
             % we still need to process them so that the appropriate tables
             % get updated.
-            ProgConstraints = constraints(ExistProgConstraints,
+            ProgConstraints = univ_exist_constraints(ExistProgConstraints,
                 ExistProgConstraints),
             ExistQVars = ExistQVars0
         ),

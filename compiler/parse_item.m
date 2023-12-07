@@ -1304,7 +1304,7 @@ parse_func_decl_base(ModuleName, VarSet, Term, MaybeDetism, IsInClass, Context,
 
 :- pred parse_func_decl_base_2(sym_name::in, list(type_and_maybe_mode)::in,
     type_and_maybe_mode::in, term::in, term::in, varset::in,
-    maybe(determinism)::in, existq_tvars::in, prog_constraints::in,
+    maybe(determinism)::in, existq_tvars::in, univ_exist_constraints::in,
     prog_context::in, item_seq_num::in,
     list(purity_attr)::in, maybe1(item_or_marker)::out) is det.
 
@@ -1729,7 +1729,7 @@ get_purity_from_attrs(Context, [PurityAttr | PurityAttrs], MaybePurity) :-
     %
 :- pred get_class_context_and_inst_constraints_from_attrs(module_name::in,
     varset::in, list(quant_constr_attr)::in, cord(format_piece)::in,
-    maybe3(existq_tvars, prog_constraints, inst_var_sub)::out) is det.
+    maybe3(existq_tvars, univ_exist_constraints, inst_var_sub)::out) is det.
 
 get_class_context_and_inst_constraints_from_attrs(ModuleName, VarSet,
         QuantConstrAttrs, ContextPieces, MaybeExistClassInstContext) :-
@@ -1775,7 +1775,7 @@ get_class_context_and_inst_constraints_from_attrs(ModuleName, VarSet,
     list.map(term.coerce_var, ExistQVars0, ExistQVars),
     (
         Specs = [],
-        ClassConstraints = constraints(
+        ClassConstraints = univ_exist_constraints(
             cord.list(UnivClassConstraints),
             cord.list(ExistClassConstraints)),
         InstConstraints =

@@ -45,10 +45,11 @@
 
 %---------------------------------------------------------------------------%
 
-    % Return the list of type variables contained in a list of constraints.
+    % Return the list of type variables contained in lists of
+    % universal and existential constraints.
     %
-:- pred prog_constraints_get_tvars(prog_constraints::in, list(tvar)::out)
-    is det.
+:- pred univ_exist_constraints_get_tvars(univ_exist_constraints::in,
+    list(tvar)::out) is det.
 
     % Return the list of type variables contained in a list of constraints.
     %
@@ -155,7 +156,7 @@ type_list_contains_var([Type | Types], Var) :-
 
 %---------------------------------------------------------------------------%
 
-prog_constraints_get_tvars(constraints(Univ, Exist), TVars) :-
+univ_exist_constraints_get_tvars(univ_exist_constraints(Univ, Exist), TVars) :-
     constraint_list_get_tvars(Univ, UnivTVars),
     constraint_list_get_tvars(Exist, ExistTVars),
     list.append(UnivTVars, ExistTVars, TVars).

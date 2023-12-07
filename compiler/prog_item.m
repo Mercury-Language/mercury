@@ -1358,7 +1358,7 @@
                 pf_instvarset                   :: inst_varset,
                 pf_existqvars                   :: existq_tvars,
                 pf_purity                       :: purity,
-                pf_constraints                  :: prog_constraints,
+                pf_constraints                  :: univ_exist_constraints,
                 pf_context                      :: prog_context,
                 pf_seq_num                      :: item_seq_num
             ).
@@ -1708,7 +1708,7 @@
                 purity,
 
                 % The typeclass constraints on the declaration.
-                prog_constraints,
+                univ_exist_constraints,
 
                 prog_context
             ).

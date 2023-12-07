@@ -1258,7 +1258,7 @@ find_matching_pred_ids(ModuleInfo, TVarSet, ExistQTVars, ArgTypes,
             MaybeConstraintSearch = yes(ConstraintSearch),
             % Lookup the universal constraints on the candidate predicate.
             pred_info_get_class_context(PredInfo, ProgConstraints),
-            ProgConstraints = constraints(UnivConstraints, _),
+            ProgConstraints = univ_exist_constraints(UnivConstraints, _),
             list.length(UnivConstraints, NumConstraints),
             ConstraintSearch(NumConstraints, ProvenConstraints),
             univ_constraints_match(ProvenConstraints, UnivConstraints)

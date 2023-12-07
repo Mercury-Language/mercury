@@ -502,7 +502,7 @@
 
                 % The constraints on the method's type declaration in the
                 % `:- typeclass' declaration.
-                prog_constraints
+                univ_exist_constraints
             ).
 
 %---------------------------------------------------------------------------%
@@ -1232,8 +1232,8 @@ dump_origin(TVarSet, VarNamePrint, Prefix, Origin) = Str :-
                 ClassConstraint),
             Lines4 = dump_origin_constraints("instance constraints",
                 TVarSet, VarNamePrint, InstanceConstraints),
-            ClassMethodConstraints = constraints(MethodUnivConstraints,
-                MethodExistConstraints),
+            ClassMethodConstraints = univ_exist_constraints(
+                MethodUnivConstraints, MethodExistConstraints),
             Lines5 = dump_origin_constraints("method universal constraints",
                 TVarSet, VarNamePrint, MethodUnivConstraints),
             Lines6 = dump_origin_constraints("method existential constraints",

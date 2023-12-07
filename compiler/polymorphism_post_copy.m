@@ -114,7 +114,7 @@ expand_class_method_body(ClassMethodInfo, !ProcNum, !ModuleInfo) :-
         % Find which of the constraints on the pred is the one introduced
         % because it is a class method.
         pred_info_get_class_context(PredInfo0, ClassContext),
-        ( if ClassContext = constraints([Head | _], _) then
+        ( if ClassContext = univ_exist_constraints([Head | _], _) then
             InstanceConstraint = Head
         else
             unexpected($pred, "class method is not constrained")

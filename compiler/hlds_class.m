@@ -438,10 +438,10 @@ acc_pred_proc_ids_for_methods([MethodInfo | MethodInfos], !PredProcIdsCord) :-
     list(hlds_constraint)::out) is det.
 
 :- pred make_head_hlds_constraints(class_table::in, tvarset::in,
-    prog_constraints::in, hlds_constraints::out) is det.
+    univ_exist_constraints::in, hlds_constraints::out) is det.
 
 :- pred make_body_hlds_constraints(class_table::in, tvarset::in, goal_id::in,
-    prog_constraints::in, hlds_constraints::out) is det.
+    univ_exist_constraints::in, hlds_constraints::out) is det.
 
     % make_hlds_constraints(ClassTable, TVarSet, UnprovenConstraints,
     %   AssumedConstraints, Constraints):
@@ -464,8 +464,8 @@ acc_pred_proc_ids_for_methods([MethodInfo | MethodInfos], !PredProcIdsCord) :-
 :- pred merge_hlds_constraints(hlds_constraints::in, hlds_constraints::in,
     hlds_constraints::out) is det.
 
-:- pred retrieve_prog_constraints(hlds_constraints::in, prog_constraints::out)
-    is det.
+:- pred retrieve_univ_exist_constraints(hlds_constraints::in,
+    univ_exist_constraints::out) is det.
 
 :- pred retrieve_prog_constraint_list(list(hlds_constraint)::in,
     list(prog_constraint)::out) is det.
@@ -507,7 +507,8 @@ init_hlds_constraint(Constraint, HLDSConstraint) :-
 
 make_head_hlds_constraints(ClassTable, TVarSet, ProgConstraints,
         Constraints) :-
-    ProgConstraints = constraints(UnivConstraints, ExistConstraints),
+    ProgConstraints =
+        univ_exist_constraints(UnivConstraints, ExistConstraints),
     GoalId = goal_id_for_head_constraints,
     make_hlds_constraint_list(UnivConstraints, assumed, GoalId,
         AssumedConstraints),
@@ -518,7 +519,8 @@ make_head_hlds_constraints(ClassTable, TVarSet, ProgConstraints,
 
 make_body_hlds_constraints(ClassTable, TVarSet, GoalId, ProgConstraints,
         Constraints) :-
-    ProgConstraints = constraints(UnivConstraints, ExistConstraints),
+    ProgConstraints =
+        univ_exist_constraints(UnivConstraints, ExistConstraints),
     make_hlds_constraint_list(UnivConstraints, unproven, GoalId,
         UnprovenConstraints),
     make_hlds_constraint_list(ExistConstraints, assumed, GoalId,
@@ -579,11 +581,12 @@ is_shorter([], _).
 is_shorter([_ | As], [_ | Bs]) :-
     is_shorter(As, Bs).
 
-retrieve_prog_constraints(Constraints, ProgConstraints) :-
+retrieve_univ_exist_constraints(Constraints, UnivExistConstraints) :-
     Constraints = hlds_constraints(Unproven, Assumed, _, _),
     retrieve_prog_constraint_list(Unproven, UnivProgConstraints),
     retrieve_prog_constraint_list(Assumed, ExistProgConstraints),
-    ProgConstraints = constraints(UnivProgConstraints, ExistProgConstraints).
+    UnivExistConstraints =
+        univ_exist_constraints(UnivProgConstraints, ExistProgConstraints).
 
 retrieve_prog_constraint_list(Constraints, ProgConstraints) :-
     list.map(retrieve_prog_constraint, Constraints, ProgConstraints).

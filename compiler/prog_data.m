@@ -1157,8 +1157,8 @@ get_type_kind(kinded_type(_, Kind)) = Kind.
                 constraint_arg_types    :: list(mer_type)
             ).
 
-:- type prog_constraints
-    --->    constraints(
+:- type univ_exist_constraints
+    --->    univ_exist_constraints(
                 % Universally quantified constraints.
                 univ_constraints    :: list(prog_constraint),
 

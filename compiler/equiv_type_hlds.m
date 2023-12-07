@@ -628,7 +628,7 @@ replace_in_pred(TypeEqvMap, PredId, !ModuleInfo, !Cache) :-
         % The constraint_proofs aren't used after polymorphism,
         % so they don't need to be processed.
         pred_info_get_class_context(!.PredInfo, ClassContext0),
-        equiv_type.replace_in_prog_constraints(TypeEqvMap, ClassContext0,
+        equiv_type.replace_in_univ_exist_constraints(TypeEqvMap, ClassContext0,
             ClassContext, ArgTVarSet1, ArgTVarSet, !EquivTypeInfo),
         pred_info_set_class_context(ClassContext, !PredInfo),
         pred_info_set_arg_types(ArgTVarSet, ExistQVars, ArgTypes, !PredInfo),

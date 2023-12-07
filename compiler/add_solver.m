@@ -105,7 +105,7 @@ get_solver_type_aux_pred_decls(SolverAuxPredInfo, PredDecls) :-
 
     InstVarSet = varset.init,
     ExistQTVars = [],
-    NoConstraints = constraints([], []),
+    NoConstraints = univ_exist_constraints([], []),
 
     % The `:- impure
     %   func 'representation of ground st'(st::in(gi)) =

@@ -96,14 +96,14 @@
 
 %---------------------%
 
-:- pred apply_variable_renaming_to_prog_constraints(tvar_renaming::in,
-    prog_constraints::in, prog_constraints::out) is det.
+:- pred apply_variable_renaming_to_univ_exist_constraints(tvar_renaming::in,
+    univ_exist_constraints::in, univ_exist_constraints::out) is det.
 
-:- pred apply_subst_to_prog_constraints(tsubst::in, prog_constraints::in,
-    prog_constraints::out) is det.
+:- pred apply_subst_to_univ_exist_constraints(tsubst::in,
+    univ_exist_constraints::in, univ_exist_constraints::out) is det.
 
-:- pred apply_rec_subst_to_prog_constraints(tsubst::in, prog_constraints::in,
-    prog_constraints::out) is det.
+:- pred apply_rec_subst_to_univ_exist_constraints(tsubst::in,
+    univ_exist_constraints::in, univ_exist_constraints::out) is det.
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -389,26 +389,25 @@ apply_rec_subst_to_prog_constraint_list(Subst, !Constraints) :-
 
 %---------------------------------------------------------------------------%
 
-apply_variable_renaming_to_prog_constraints(Renaming, !Constraints) :-
-    !.Constraints = constraints(UnivConstraints0, ExistConstraints0),
+apply_variable_renaming_to_univ_exist_constraints(Renaming, !Constraints) :-
+    !.Constraints = univ_exist_constraints(UnivCs0, ExistCs0),
     apply_variable_renaming_to_prog_constraint_list(Renaming,
-        UnivConstraints0, UnivConstraints),
+        UnivCs0, UnivCs),
     apply_variable_renaming_to_prog_constraint_list(Renaming,
-        ExistConstraints0, ExistConstraints),
-    !:Constraints = constraints(UnivConstraints, ExistConstraints).
+        ExistCs0, ExistCs),
+    !:Constraints = univ_exist_constraints(UnivCs, ExistCs).
 
-apply_subst_to_prog_constraints(Subst,
-        constraints(UniversalCs0, ExistentialCs0),
-        constraints(UniversalCs, ExistentialCs)) :-
-    apply_subst_to_prog_constraint_list(Subst, UniversalCs0, UniversalCs),
-    apply_subst_to_prog_constraint_list(Subst, ExistentialCs0,
-        ExistentialCs).
+apply_subst_to_univ_exist_constraints(Subst, !Constraints) :-
+    !.Constraints = univ_exist_constraints(UnivCs0, ExistCs0),
+    apply_subst_to_prog_constraint_list(Subst, UnivCs0, UnivCs),
+    apply_subst_to_prog_constraint_list(Subst, ExistCs0, ExistCs),
+    !:Constraints = univ_exist_constraints(UnivCs, ExistCs).
 
-apply_rec_subst_to_prog_constraints(Subst, !Constraints) :-
-    !.Constraints = constraints(UnivCs0, ExistCs0),
+apply_rec_subst_to_univ_exist_constraints(Subst, !Constraints) :-
+    !.Constraints = univ_exist_constraints(UnivCs0, ExistCs0),
     apply_rec_subst_to_prog_constraint_list(Subst, UnivCs0, UnivCs),
     apply_rec_subst_to_prog_constraint_list(Subst, ExistCs0, ExistCs),
-    !:Constraints = constraints(UnivCs, ExistCs).
+    !:Constraints = univ_exist_constraints(UnivCs, ExistCs).
 
 %---------------------------------------------------------------------------%
 :- end_module parse_tree.prog_type_subst.
