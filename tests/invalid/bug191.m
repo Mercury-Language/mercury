@@ -29,7 +29,7 @@ main(!IO) :-
     ;       b(string).
 
 :- inst a
-    ---> a(ground).
+    --->    a(ground).
 
 :- typeclass foo(T) where [pred baz(T::in, int::in, foo::out(a)) is det].
 :- instance foo(int) where [pred(baz/3) is bar].

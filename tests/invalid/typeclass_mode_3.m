@@ -14,4 +14,3 @@
 :- implementation.
 
 p(_).
-
