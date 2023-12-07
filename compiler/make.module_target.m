@@ -1010,55 +1010,41 @@ find_files_maybe_touched_by_process_module(ProgressStream, Globals,
         unexpected($pred, "no nested module dependencies")
     ),
 
-    globals.get_target(Globals, CompilationTarget),
-    TargetModuleNames = SourceFileModuleNames,
-
-    % Find out what header files are generated.
     (
         Task = task_compile_to_target_code,
+        DirectTouchedTargetFiles = make_target_file_list(SourceFileModuleNames,
+            TargetType),
+        % Find out what header files are generated.
         TargetPIC = target_type_to_pic(TargetType),
         list.map_foldl(external_foreign_code_files(Globals, TargetPIC),
             ModuleDepInfos, ForeignCodeFileList, !IO),
         ForeignCodeFiles =
             list.map((func(ForeignFile) = ForeignFile ^ target_file),
                 list.condense(ForeignCodeFileList)),
+        globals.get_target(Globals, CompilationTarget),
         (
             CompilationTarget = target_c,
+            MhTargets = make_target_file_list(SourceFileModuleNames,
+                module_target_c_header(header_mh)),
             globals.lookup_bool_option(Globals, highlevel_code, HighLevelCode),
             (
                 HighLevelCode = yes,
                 % When compiling to high-level C, we always generate
                 % a header file.
-                HeaderModuleNames = SourceFileModuleNames,
-                HeaderTargets0 = make_target_file_list(HeaderModuleNames,
-                    module_target_c_header(header_mih))
+                MihTargets = make_target_file_list(SourceFileModuleNames,
+                    module_target_c_header(header_mih)),
+                TouchedTargetFiles = DirectTouchedTargetFiles ++ MhTargets ++
+                    MihTargets
             ;
                 HighLevelCode = no,
-                HeaderTargets0 = []
+                TouchedTargetFiles = DirectTouchedTargetFiles ++ MhTargets
             )
         ;
             ( CompilationTarget = target_csharp
             ; CompilationTarget = target_java
             ),
-            HeaderTargets0 = []
-        ),
-
-        (
-            CompilationTarget = target_c,
-            Names = SourceFileModuleNames,
-            HeaderTargets =
-                make_target_file_list(Names, module_target_c_header(header_mh))
-                ++ HeaderTargets0
-        ;
-            ( CompilationTarget = target_csharp
-            ; CompilationTarget = target_java
-            ),
-            HeaderTargets = HeaderTargets0
-        ),
-
-        TouchedTargetFiles0 = make_target_file_list(TargetModuleNames,
-            TargetType),
-        TouchedTargetFiles = TouchedTargetFiles0 ++ HeaderTargets
+            TouchedTargetFiles = DirectTouchedTargetFiles
+        )
     ;
         Task = task_make_int0,
         ForeignCodeFiles = [],
@@ -1074,8 +1060,8 @@ find_files_maybe_touched_by_process_module(ProgressStream, Globals,
         % when making the interface.
         ForeignCodeFiles = [],
         TouchedTargetFiles =
-            make_target_file_list(TargetModuleNames, module_target_int1) ++
-            make_target_file_list(TargetModuleNames, module_target_int2)
+            make_target_file_list(SourceFileModuleNames, module_target_int1) ++
+            make_target_file_list(SourceFileModuleNames, module_target_int2)
     ;
         ( Task = task_errorcheck
         ; Task = task_make_int3
@@ -1085,7 +1071,7 @@ find_files_maybe_touched_by_process_module(ProgressStream, Globals,
         ),
         ForeignCodeFiles = [],
         TouchedTargetFiles =
-            make_target_file_list(TargetModuleNames, TargetType)
+            make_target_file_list(SourceFileModuleNames, TargetType)
     ),
     list.foldl2(gather_target_file_timestamp_file_names(Globals),
         TouchedTargetFiles, [], TimestampFileNames, !IO),
