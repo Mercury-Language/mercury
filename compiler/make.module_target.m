@@ -1060,6 +1060,15 @@ find_files_maybe_touched_by_process_module(ProgressStream, Globals,
             TargetType),
         TouchedTargetFiles = TouchedTargetFiles0 ++ HeaderTargets
     ;
+        Task = task_make_int0,
+        ForeignCodeFiles = [],
+        % TouchedTargetFiles must only include modules with children, as we
+        % no longer write out private interface files for modules without
+        % children.
+        list.filter_map(is_ancestor_module, ModuleDepInfos, AncestorModules),
+        TouchedTargetFiles =
+            make_target_file_list(AncestorModules, TargetType)
+    ;
         Task = task_make_int12,
         % Both long and short interface files are produced
         % when making the interface.
@@ -1069,7 +1078,6 @@ find_files_maybe_touched_by_process_module(ProgressStream, Globals,
             make_target_file_list(TargetModuleNames, module_target_int2)
     ;
         ( Task = task_errorcheck
-        ; Task = task_make_int0
         ; Task = task_make_int3
         ; Task = task_make_opt
         ; Task = task_make_analysis_registry
@@ -1082,6 +1090,13 @@ find_files_maybe_touched_by_process_module(ProgressStream, Globals,
     list.foldl2(gather_target_file_timestamp_file_names(Globals),
         TouchedTargetFiles, [], TimestampFileNames, !IO),
     TouchedFileNames = ForeignCodeFiles ++ TimestampFileNames.
+
+:- pred is_ancestor_module(module_dep_info::in, module_name::out) is semidet.
+
+is_ancestor_module(ModuleDepInfo, ModuleName) :-
+    module_dep_info_get_children(ModuleDepInfo, Children),
+    not set.is_empty(Children),
+    module_dep_info_get_module_name(ModuleDepInfo, ModuleName).
 
 :- pred gather_target_file_timestamp_file_names(globals::in, target_file::in,
     list(string)::in, list(string)::out, io::di, io::uo) is det.
