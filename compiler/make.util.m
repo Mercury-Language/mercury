@@ -228,7 +228,7 @@ remove_make_target_file_by_name(ProgressStream, Globals, From, VerboseOption,
         ModuleName, FileName, !IO),
     remove_file_for_make(ProgressStream, Globals, VerboseOption, FileName,
         !Info, !IO),
-    ( if timestamp_extension(TargetType, TimestampExt) then
+    ( if date_file_extension(TargetType, TimestampExt) then
         remove_module_file_for_make(ProgressStream, Globals, VerboseOption,
             ModuleName, TimestampExt, !Info, !IO)
     else

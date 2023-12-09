@@ -32,12 +32,6 @@
 
 :- func init_target_file_timestamps = target_file_timestamps.
 
-    % Find the timestamp updated when a target is produced.
-    %
-:- pred get_timestamp_file_timestamp(globals::in, target_file::in,
-    maybe_error(timestamp)::out, make_info::in, make_info::out,
-    io::di, io::uo) is det.
-
     % Find the timestamp for the given dependency file.
     %
 :- pred get_dependency_timestamp(io.text_output_stream::in, globals::in,
@@ -89,23 +83,6 @@
 
 init_target_file_timestamps =
     version_hash_table.unsafe_init_default(target_file_hash).
-
-%---------------------------------------------------------------------------%
-
-get_timestamp_file_timestamp(Globals, target_file(ModuleName, TargetType),
-        MaybeTimestamp, !Info, !IO) :-
-    ( if timestamp_extension(TargetType, TimestampExt) then
-        module_name_to_file_name(Globals, $pred,
-            TimestampExt, ModuleName, FileName)
-    else
-        module_target_to_file_name(Globals, $pred, TargetType,
-            ModuleName, FileName, !IO)
-    ),
-    % We should only ever look for timestamp files in the current directory.
-    % Timestamp files are only used when processing a module, and only modules
-    % in the current directory are processed.
-    SearchDirs = [dir.this_directory],
-    get_file_timestamp(SearchDirs, FileName, MaybeTimestamp, !Info, !IO).
 
 %---------------------------------------------------------------------------%
 

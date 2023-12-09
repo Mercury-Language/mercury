@@ -71,9 +71,10 @@
 %
 
     % Find the extension for the timestamp file for the given target type,
-    % if one exists.
+    % if one exists. These usually have "date" somewhere in the name,
+    % e.g. ".c_date" as the timestamp for a ".c" file.
     %
-:- pred timestamp_extension(module_target_type::in, ext::out) is semidet.
+:- pred date_file_extension(module_target_type::in, ext::out) is semidet.
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -271,7 +272,7 @@ target_type_to_target_extension(Target, TargetExt) :-
         TargetExt = fact_table_obj(Ext, FactFile)
     ).
 
-timestamp_extension(ModuleTargetType, Ext) :-
+date_file_extension(ModuleTargetType, Ext) :-
     % XXX EXT The absence of code handling .trans_opt_date files
     % would seem to me (zs) to be a bug.
     (
