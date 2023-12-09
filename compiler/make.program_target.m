@@ -317,12 +317,20 @@ make_linked_target_2(ProgressStream, Globals, LinkedTargetFile, Succeeded,
             FullMainModuleLinkedFileName, CurDirMainModuleLinkedFileName, !IO),
         get_file_timestamp([dir.this_directory], FullMainModuleLinkedFileName,
             MaybeTimestamp, !Info, !IO),
+        (
+            MaybeTimestamp = error(_),
+            MaybeOldestLhsTimestamp = some_lhs_file_is_missing
+        ;
+            MaybeTimestamp = ok(LinkedFileTimestamp),
+            MaybeOldestLhsTimestamp =
+                all_lhs_files_exist_oldest_timestamp(LinkedFileTimestamp)
+        ),
         check_dependencies(ProgressStream, Globals,
-            FullMainModuleLinkedFileName, MaybeTimestamp, BuildDepsSucceeded,
-            ObjTargets, BuildDepsResult, !Info, !IO),
+            FullMainModuleLinkedFileName, MaybeOldestLhsTimestamp,
+            BuildDepsSucceeded, ObjTargets, BuildDepsResult, !Info, !IO),
         ( if
             DepsSucceeded = succeeded,
-            BuildDepsResult \= deps_error
+            BuildDepsResult \= rhs_error
         then
             globals.lookup_bool_option(Globals, very_verbose, VeryVerbose),
             setup_checking_for_interrupt(Cookie, !IO),
@@ -335,9 +343,9 @@ make_linked_target_2(ProgressStream, Globals, LinkedTargetFile, Succeeded,
                 MaybeErrorStream = es_ok(MESI, ErrorStream),
                 build_linked_target(ProgressStream, Globals,
                     MainModuleName, FileType, FullMainModuleLinkedFileName,
-                    CurDirMainModuleLinkedFileName, MaybeTimestamp, AllModules,
-                    ObjModules, CompilationTarget, PIC, DepsSucceeded,
-                    BuildDepsResult,
+                    CurDirMainModuleLinkedFileName, MaybeOldestLhsTimestamp,
+                    AllModules, ObjModules, CompilationTarget, PIC,
+                    DepsSucceeded, BuildDepsResult,
                     Succeeded0, !Info, !IO),
                 close_module_error_stream_handle_errors(ProgressStream,
                     Globals, MainModuleName, MESI, ErrorStream, !Info, !IO)
@@ -481,15 +489,16 @@ get_foreign_object_targets(ProgressStream, Globals, PIC,
 
 :- pred build_linked_target(io.text_output_stream::in, globals::in,
     module_name::in, linked_target_type::in, file_name::in, file_name::in,
-    maybe_error(timestamp)::in, set(module_name)::in, list(module_name)::in,
+    maybe_oldest_lhs_file::in, set(module_name)::in, list(module_name)::in,
     compilation_target::in, pic::in, maybe_succeeded::in,
-    dependencies_result::in, maybe_succeeded::out,
+    lhs_result::in, maybe_succeeded::out,
     make_info::in, make_info::out, io::di, io::uo) is det.
 
 build_linked_target(ProgressStream, Globals, MainModuleName, FileType,
         FullMainModuleLinkedFileName, CurDirMainModuleLinkedFileName,
-        MaybeTimestamp, AllModules, ObjModules, CompilationTarget, PIC,
-        DepsSucceeded, BuildDepsResult, Succeeded, !Info, !IO) :-
+        MaybeOldestLhsTimestamp, AllModules, ObjModules,
+        CompilationTarget, PIC, DepsSucceeded, BuildDepsResult, Succeeded,
+        !Info, !IO) :-
     globals.lookup_maybe_string_option(Globals, pre_link_command,
         MaybePreLinkCommand),
     (
@@ -508,8 +517,9 @@ build_linked_target(ProgressStream, Globals, MainModuleName, FileType,
         build_linked_target_2(ProgressStream, Globals,
             MainModuleName, FileType,
             FullMainModuleLinkedFileName, CurDirMainModuleLinkedFileName,
-            MaybeTimestamp, AllModules, ObjModules, CompilationTarget, PIC,
-            DepsSucceeded, BuildDepsResult, Succeeded, !Info, !IO)
+            MaybeOldestLhsTimestamp, AllModules, ObjModules,
+            CompilationTarget, PIC, DepsSucceeded, BuildDepsResult,
+            Succeeded, !Info, !IO)
     ;
         PreLinkSucceeded = did_not_succeed,
         Succeeded = did_not_succeed
@@ -517,15 +527,16 @@ build_linked_target(ProgressStream, Globals, MainModuleName, FileType,
 
 :- pred build_linked_target_2(io.text_output_stream::in, globals::in,
     module_name::in, linked_target_type::in, file_name::in, file_name::in,
-    maybe_error(timestamp)::in, set(module_name)::in, list(module_name)::in,
+    maybe_oldest_lhs_file::in, set(module_name)::in, list(module_name)::in,
     compilation_target::in, pic::in, maybe_succeeded::in,
-    dependencies_result::in, maybe_succeeded::out,
+    lhs_result::in, maybe_succeeded::out,
     make_info::in, make_info::out, io::di, io::uo) is det.
 
 build_linked_target_2(ProgressStream, Globals, MainModuleName, FileType,
         FullMainModuleLinkedFileName, CurDirMainModuleLinkedFileName,
-        MaybeTimestamp, AllModules, ObjModules, CompilationTarget, PIC,
-        DepsSucceeded, BuildDepsResult, Succeeded, !Info, !IO) :-
+        MaybeOldestLhsTimestamp, AllModules, ObjModules,
+        CompilationTarget, PIC, DepsSucceeded, BuildDepsResult, Succeeded,
+        !Info, !IO) :-
     % Clear the option -- we will pass the list of files directly.
     globals.lookup_accumulating_option(Globals, link_objects, LinkObjects),
     globals.set_option(link_objects, accumulating([]),
@@ -552,7 +563,7 @@ build_linked_target_2(ProgressStream, Globals, MainModuleName, FileType,
             DepsResult2 = BuildDepsResult
         ;
             InitObjectResult = no,
-            DepsResult2 = deps_error,
+            DepsResult2 = rhs_error,
             InitObjects = []
         )
     ;
@@ -580,36 +591,42 @@ build_linked_target_2(ProgressStream, Globals, MainModuleName, FileType,
             ExtraObjTuple = dependency_status_result(_, _, deps_status_error)
         )
     then
-        DepsResult3 = deps_error
+        DepsResult3 = rhs_error
     else
         DepsResult3 = DepsResult2
     ),
     BuildDepsSucceeded =
-        ( if DepsResult3 = deps_error then did_not_succeed else succeeded ),
+        ( if DepsResult3 = rhs_error then did_not_succeed else succeeded ),
     list.map_foldl2(get_file_timestamp([dir.this_directory]),
         ObjectsToCheck, ExtraObjectTimestamps, !Info, !IO),
     check_dependency_timestamps(ProgressStream, NoLinkObjsGlobals,
-        FullMainModuleLinkedFileName, MaybeTimestamp, BuildDepsSucceeded,
-        ExtraObjTuples, ExtraObjectTimestamps, ExtraObjectDepsResult, !IO),
+        FullMainModuleLinkedFileName, MaybeOldestLhsTimestamp,
+        BuildDepsSucceeded, ExtraObjTuples,
+        ExtraObjectTimestamps, ExtraObjectDepsResult, !IO),
 
     (
         DepsSucceeded = succeeded,
-        ( DepsResult3 = deps_error,       DepsResult = DepsResult3
-        ; DepsResult3 = deps_out_of_date, DepsResult = DepsResult3
-        ; DepsResult3 = deps_up_to_date,  DepsResult = ExtraObjectDepsResult
+        (
+            ( DepsResult3 = rhs_error
+            ; DepsResult3 = some_lhs_file_needs_rebuilding
+            ),
+            DepsResult = DepsResult3
+        ;
+            DepsResult3 = all_lhs_files_up_to_date,
+            DepsResult = ExtraObjectDepsResult
         )
     ;
         DepsSucceeded = did_not_succeed,
-        DepsResult = deps_error
+        DepsResult = rhs_error
     ),
 
     (
-        DepsResult = deps_error,
+        DepsResult = rhs_error,
         file_error_msg(FullMainModuleLinkedFileName, ErrorMsg),
         maybe_write_msg_locked(ProgressStream, !.Info, ErrorMsg, !IO),
         Succeeded = did_not_succeed
     ;
-        DepsResult = deps_up_to_date,
+        DepsResult = all_lhs_files_up_to_date,
         MainModuleLinkedTarget =
             top_target_file(MainModuleName, linked_target(FileType)),
         ( if FullMainModuleLinkedFileName = CurDirMainModuleLinkedFileName then
@@ -637,7 +654,7 @@ build_linked_target_2(ProgressStream, Globals, MainModuleName, FileType,
             )
         )
     ;
-        DepsResult = deps_out_of_date,
+        DepsResult = some_lhs_file_needs_rebuilding,
         maybe_making_filename_msg(NoLinkObjsGlobals,
             FullMainModuleLinkedFileName, MakingMsg),
         maybe_write_msg(ProgressStream, MakingMsg, !IO),
@@ -712,7 +729,7 @@ get_module_foreign_object_files(ProgressStream, Globals, PIC,
         ModuleName, MaybeModuleDepInfo, !MakeInfo, !IO),
     (
         MaybeModuleDepInfo = some_module_dep_info(ModuleDepInfo),
-        external_foreign_code_files(Globals, PIC, ModuleDepInfo,
+        get_any_fact_table_object_code_files(Globals, PIC, ModuleDepInfo,
             ForeignFiles, !IO),
         ForeignObjectFiles = list.map(
             (func(foreign_code_file(_, _, ObjFile)) = ObjFile),

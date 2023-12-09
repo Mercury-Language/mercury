@@ -71,11 +71,12 @@
                 fcf_object_file         :: file_name
             ).
 
-    % Find the foreign code files generated when a module is processed.
-    % The `pic' field is only used for C foreign code.
+    % Find the foreign code files generated for fact tables
+    % when a module is processed. For now, the result will be the empty list
+    % for any target language other than C.
     %
-:- pred external_foreign_code_files(globals::in, pic::in, module_dep_info::in,
-    list(foreign_code_file)::out, io::di, io::uo) is det.
+:- pred get_any_fact_table_object_code_files(globals::in, pic::in,
+    module_dep_info::in, list(foreign_code_file)::out, io::di, io::uo) is det.
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -201,11 +202,10 @@ make_module_target_file_main_path(ExtraOptions, ProgressStream, Globals,
     module_target_file_to_file_name(Globals, $pred,
         TargetFile, TargetFileName, !IO),
     CompilationTaskAndOptions = task_and_options(CompilationTaskType, _),
-    find_files_maybe_touched_by_task(ProgressStream, Globals, TargetFile,
-        CompilationTaskType, TouchedFiles, !Info, !IO),
-    TouchedFiles = touched_files(TouchedTargetFiles, _TouchedTimestampFiles),
-    list.foldl(update_target_status(deps_status_being_built),
-        TouchedTargetFiles, !Info),
+    find_lhs_files_of_task(ProgressStream, Globals, TargetFile,
+        CompilationTaskType, MakeLhsFiles, !Info, !IO),
+    MakeLhsFiles = make_lhs_files(LhsFiles, _, _),
+    list.foldl(update_target_status(deps_status_being_built), LhsFiles, !Info),
 
     debug_make_msg(Globals,
         string.format("%s: checking dependencies\n", [s(TargetFileName)]),
@@ -222,35 +222,34 @@ make_module_target_file_main_path(ExtraOptions, ProgressStream, Globals,
         DepsSucceeded = did_not_succeed,
         KeepGoing = do_not_keep_going
     then
-        DepsResult = deps_error
+        LhsResult = rhs_error
     else
         make_dependency_files(ProgressStream, Globals,
             TargetFile, TargetFileName, DepFilesToMake,
-            TouchedFiles, DepsResult0, !Info, !IO),
+            MakeLhsFiles, LhsResult0, !Info, !IO),
         (
             DepsSucceeded = succeeded,
-            DepsResult = DepsResult0
+            LhsResult = LhsResult0
         ;
             DepsSucceeded = did_not_succeed,
-            DepsResult = deps_error
+            LhsResult = rhs_error
         )
     ),
     (
-        DepsResult = deps_error,
+        LhsResult = rhs_error,
         Succeeded = did_not_succeed,
-        list.foldl(update_target_status(deps_status_error),
-            TouchedTargetFiles, !Info)
+        list.foldl(update_target_status(deps_status_error), LhsFiles, !Info)
     ;
-        DepsResult = deps_out_of_date,
+        LhsResult = some_lhs_file_needs_rebuilding,
         Targets0 = make_info_get_command_line_targets(!.Info),
         set.delete(top_target_file(ModuleName, module_target(TargetType)),
             Targets0, Targets),
         make_info_set_command_line_targets(Targets, !Info),
         build_target(ProgressStream, Globals, CompilationTaskAndOptions,
-            TargetFile, TargetFileName, ModuleDepInfo, TouchedFiles,
+            TargetFile, TargetFileName, ModuleDepInfo, MakeLhsFiles,
             ExtraOptions, Succeeded, !Info, !IO)
     ;
-        DepsResult = deps_up_to_date,
+        LhsResult = all_lhs_files_up_to_date,
         TopTargetFile = top_target_file(ModuleName, module_target(TargetType)),
         maybe_warn_up_to_date_target_msg(Globals, TopTargetFile,
             TargetFileName, !Info, UpToDateMsg),
@@ -261,27 +260,22 @@ make_module_target_file_main_path(ExtraOptions, ProgressStream, Globals,
         maybe_write_msg(ProgressStream, DebugMsg, !IO),
         Succeeded = succeeded,
         list.foldl(update_target_status(deps_status_up_to_date),
-            [TargetFile | TouchedTargetFiles], !Info)
+            [TargetFile | LhsFiles], !Info)
     ).
 
 :- pred make_dependency_files(io.text_output_stream::in, globals::in,
     target_file::in, file_name::in, list(dependency_file)::in,
-    touched_files::in, dependencies_result::out,
+    make_lhs_files::in, lhs_result::out,
     make_info::in, make_info::out, io::di, io::uo) is det.
 
 make_dependency_files(ProgressStream, Globals, TargetFile, TargetFileName,
-        DepFilesToMake, TouchedFiles, DepsResult, !Info, !IO) :-
+        DepFilesToMake, MakeLhsFiles, DepsResult, !Info, !IO) :-
     % Build the dependencies.
     % XXX MAKE sort
     KeepGoing = make_info_get_keep_going(!.Info),
     foldl2_make_module_targets(KeepGoing, [], ProgressStream, Globals,
         DepFilesToMake, MakeDepsSucceeded, !Info, !IO),
 
-    % Check that the target files exist.
-    TouchedFiles = touched_files(TouchedTargetFiles, TouchedTimestampFiles),
-    list.map_foldl2(
-        get_target_timestamp(ProgressStream, Globals, do_not_search),
-        TouchedTargetFiles, TargetTimestamps, !Info, !IO),
     (
         MakeDepsSucceeded = did_not_succeed,
         debug_make_msg(Globals,
@@ -289,17 +283,30 @@ make_dependency_files(ProgressStream, Globals, TargetFile, TargetFileName,
                 [s(TargetFileName)]),
             DebugMsg),
         maybe_write_msg(ProgressStream, DebugMsg, !IO),
-        DepsResult = deps_error
+        DepsResult = rhs_error
+        % XXX MAKE Move the part of this predicate above this comment
+        % to its only call site, so that the part that is left has one job:
+        % deciding whether to execute the action or not. It should also allow
+        % deleting rhs_error from the lhs_result type.
     ;
         MakeDepsSucceeded = succeeded,
-        ( if list.member(error(_), TargetTimestamps) then
+        % Check whether all the lhs files exist, because if some are missing,
+        % then we need to execute the action.
+        MakeLhsFiles = make_lhs_files(LhsFiles, LhsTimestampFiles,
+            LhsForeignCodeFiles),
+        list.map_foldl2(
+            get_target_timestamp(ProgressStream, Globals, do_not_search),
+            LhsFiles, LhsFileTimestamps, !Info, !IO),
+        ( if list.member(error(_), LhsFileTimestamps) then
             debug_make_msg(Globals,
                 string.format("%s: target file does not exist\n",
                     [s(TargetFileName)]),
                 DebugMsg),
             maybe_write_msg(ProgressStream, DebugMsg, !IO),
-            DepsResult = deps_out_of_date
+            DepsResult = some_lhs_file_needs_rebuilding
         else
+            % All the lhs files exist, so check whether they are all
+            % up-to-date.
             ( if
                 TargetFile = target_file(ModuleName, TargetType),
                 TargetType = module_target_analysis_registry
@@ -311,27 +318,50 @@ make_dependency_files(ProgressStream, Globals, TargetFile, TargetFileName,
             ),
             (
                 ForceReanalysis = yes,
-                DepsResult = deps_out_of_date
+                DepsResult = some_lhs_file_needs_rebuilding
             ;
                 ForceReanalysis = no,
 
                 % Compare the oldest of the timestamps of the touched
                 % files with the timestamps of the dependencies.
 
+                % XXX MAKE This call redoes the work of the call that computes
+                % LhsFileTimestamps above for lhs files whose file types
+                % for which timestamp_extension does NOT succeed.
+                %
+                % We should do a single traversal above that both
+                %
+                % - checks whether all LhsFiles exist, and
+                % - for files in LhsFiles for whose type timestamp_extension
+                %   fails, returns their timestamp, while
+                % - for files in LhsFiles for whose type timestamp_extension
+                %   succeeds, returns the timestamp of their timestamp file.
+                %
+                % The computation of the last part would be wasted if
+                % ForceReanalysis = yes, but that will be very rare.
                 list.map_foldl2(get_timestamp_file_timestamp(Globals),
-                    TouchedTargetFiles, TouchedTargetFileTimestamps,
+                    LhsFiles, LhsMaybeTimestampFileTimestamps, !Info, !IO),
+                list.map_foldl2(get_file_timestamp([dir.this_directory]),
+                    LhsTimestampFiles, LhsTimestampFileTimestamps,
                     !Info, !IO),
                 list.map_foldl2(get_file_timestamp([dir.this_directory]),
-                    TouchedTimestampFiles, TouchedFileTimestamps, !Info, !IO),
-                find_error_or_oldest_ok_timestamp(
-                    TouchedTargetFileTimestamps ++ TouchedFileTimestamps,
-                    MaybeOldestTimestamp),
+                    LhsForeignCodeFiles, LhsForeignCodeFileTimestamps,
+                    !Info, !IO),
+                % XXX MAKE Due to the problem above, the first two lists here
+                % may overlap.
+                AllLhsTimestamps = LhsMaybeTimestampFileTimestamps ++
+                    LhsTimestampFileTimestamps ++
+                    LhsForeignCodeFileTimestamps,
+                find_oldest_lhs_file(AllLhsTimestamps,
+                    MaybeOldestLhsTimestamp),
                 check_dependencies(ProgressStream, Globals, TargetFileName,
-                    MaybeOldestTimestamp, MakeDepsSucceeded, DepFilesToMake,
+                    MaybeOldestLhsTimestamp, MakeDepsSucceeded, DepFilesToMake,
                     DepsResult, !Info, !IO)
             )
         )
     ).
+
+%---------------------%
 
 :- pred should_we_force_reanalysis_of_suboptimal_module(globals::in,
     module_name::in, bool::out, make_info::in, io::di, io::uo) is det.
@@ -354,16 +384,63 @@ should_we_force_reanalysis_of_suboptimal_module(Globals, ModuleName,
         ForceReanalysis = no
     ).
 
+%---------------------%
+
+:- pred find_oldest_lhs_file(list(maybe_error(timestamp))::in,
+    maybe_oldest_lhs_file::out) is det.
+
+find_oldest_lhs_file(LhsMaybeTimestamps, MaybeOldestLhsTimestamp) :-
+    (
+        LhsMaybeTimestamps = [],
+        unexpected($pred, "LhsMaybeTimestamps = []")
+    ;
+        LhsMaybeTimestamps = [HeadLhsMaybeTimestamp | TailLhsMaybeTimestamps],
+        (
+            HeadLhsMaybeTimestamp = error(_),
+            MaybeOldestLhsTimestamp = some_lhs_file_is_missing
+        ;
+            HeadLhsMaybeTimestamp = ok(HeadLhsTimestamp),
+            find_oldest_lhs_file_loop(TailLhsMaybeTimestamps, HeadLhsTimestamp,
+                MaybeOldestLhsTimestamp)
+        )
+    ).
+
+:- pred find_oldest_lhs_file_loop(list(maybe_error(timestamp))::in,
+    timestamp::in, maybe_oldest_lhs_file::out) is det.
+
+find_oldest_lhs_file_loop(LhsMaybeTimestamps, !.OldestLhsTimestamp,
+        MaybeOldestLhsTimestamp) :-
+    (
+        LhsMaybeTimestamps = [HeadLhsMaybeTimestamp | TailLhsMaybeTimestamps],
+        (
+            HeadLhsMaybeTimestamp = error(_),
+            MaybeOldestLhsTimestamp = some_lhs_file_is_missing
+        ;
+            HeadLhsMaybeTimestamp = ok(HeadLhsTimestamp),
+            ( if compare((<), HeadLhsTimestamp, !.OldestLhsTimestamp) then
+                !:OldestLhsTimestamp = HeadLhsTimestamp
+            else
+                true
+            ),
+            find_oldest_lhs_file_loop(TailLhsMaybeTimestamps,
+                !.OldestLhsTimestamp, MaybeOldestLhsTimestamp)
+        )
+    ;
+        LhsMaybeTimestamps = [],
+        MaybeOldestLhsTimestamp =
+            all_lhs_files_exist_oldest_timestamp(!.OldestLhsTimestamp)
+    ).
+
 %---------------------------------------------------------------------------%
 
 :- pred build_target(io.text_output_stream::in, globals::in,
     compilation_task_type_and_options::in,
-    target_file::in, file_name::in, module_dep_info::in, touched_files::in,
+    target_file::in, file_name::in, module_dep_info::in, make_lhs_files::in,
     list(string)::in, maybe_succeeded::out,
     make_info::in, make_info::out, io::di, io::uo) is det.
 
 build_target(ProgressStream, Globals, CompilationTask,
-        TargetFile, TargetFileName, ModuleDepInfo, TouchedFiles,
+        TargetFile, TargetFileName, ModuleDepInfo, MakeLhsFiles,
         ExtraOptions, Succeeded, !Info, !IO) :-
     maybe_making_filename_msg(Globals, TargetFileName, MakingMsg),
     maybe_write_msg(ProgressStream, MakingMsg, !IO),
@@ -402,7 +479,7 @@ build_target(ProgressStream, Globals, CompilationTask,
         get_real_milliseconds(StartTimeMs, !IO),
         globals.lookup_bool_option(Globals, very_verbose, VeryVerbose),
         Cleanup = cleanup_files(ProgressStream, Globals, MaybeArgFileName,
-            TouchedFiles),
+            MakeLhsFiles),
         setup_checking_for_interrupt(Cookie, !IO),
         get_default_options(Globals, DefaultOptionTable),
         DetectedGradeFlags = make_info_get_detected_grade_flags(!.Info),
@@ -434,8 +511,8 @@ build_target(ProgressStream, Globals, CompilationTask,
         ),
         teardown_checking_for_interrupt(VeryVerbose, Cookie, Cleanup,
             Succeeded0, Succeeded, !Info, !IO),
-        record_made_target_given_maybe_touched_files(ProgressStream, Globals,
-            Succeeded, TargetFile, TargetFileName, TouchedFiles, !Info, !IO),
+        record_made_target_given_make_lhs_files(ProgressStream, Globals,
+            Succeeded, TargetFile, TargetFileName, MakeLhsFiles, !Info, !IO),
         get_real_milliseconds(EndTimeMs, !IO),
 
         globals.lookup_bool_option(Globals, show_make_times, ShowMakeTimes),
@@ -460,19 +537,22 @@ build_target(ProgressStream, Globals, CompilationTask,
     ).
 
 :- pred cleanup_files(io.text_output_stream::in, globals::in,
-    maybe(string)::in, touched_files::in,
+    maybe(string)::in, make_lhs_files::in,
     make_info::in, make_info::out, io::di, io::uo) is det.
 
-cleanup_files(ProgressStream, Globals, MaybeArgFileName, TouchedFiles,
+cleanup_files(ProgressStream, Globals, MaybeArgFileName, MakeLhsFiles,
         !MakeInfo, !IO) :-
-    TouchedFiles = touched_files(TouchedTargetFiles, TouchedTimestampFiles),
+    MakeLhsFiles = make_lhs_files(LhsFiles, LhsTimestampFiles,
+        LhsForeignCodeFiles),
     % XXX Remove `.int.tmp' files.
     list.foldl2(
         remove_make_target_file(ProgressStream, Globals, $pred,
             very_verbose),
-        TouchedTargetFiles, !MakeInfo, !IO),
+        LhsFiles, !MakeInfo, !IO),
     list.foldl2(remove_file_for_make(ProgressStream, Globals, very_verbose),
-        TouchedTimestampFiles, !MakeInfo, !IO),
+        LhsTimestampFiles, !MakeInfo, !IO),
+    list.foldl2(remove_file_for_make(ProgressStream, Globals, very_verbose),
+        LhsForeignCodeFiles, !MakeInfo, !IO),
     (
         MaybeArgFileName = yes(ArgFileName2),
         io.file.remove_file(ArgFileName2, _, !IO)
@@ -767,17 +847,17 @@ target_is_java :-
 
 record_made_target(ProgressStream, Globals, TargetFile, TargetFileName,
         CompilationTask, Succeeded, !Info, !IO) :-
-    find_files_maybe_touched_by_task(ProgressStream, Globals, TargetFile,
-        CompilationTask, TouchedFiles, !Info, !IO),
-    record_made_target_given_maybe_touched_files(ProgressStream, Globals,
-        Succeeded, TargetFile, TargetFileName, TouchedFiles, !Info, !IO).
+    find_lhs_files_of_task(ProgressStream, Globals, TargetFile,
+        CompilationTask, MakeLhsFiles, !Info, !IO),
+    record_made_target_given_make_lhs_files(ProgressStream, Globals,
+        Succeeded, TargetFile, TargetFileName, MakeLhsFiles, !Info, !IO).
 
-:- pred record_made_target_given_maybe_touched_files(io.text_output_stream::in,
+:- pred record_made_target_given_make_lhs_files(io.text_output_stream::in,
     globals::in, maybe_succeeded::in, target_file::in, string::in,
-    touched_files::in, make_info::in, make_info::out, io::di, io::uo) is det.
+    make_lhs_files::in, make_info::in, make_info::out, io::di, io::uo) is det.
 
-record_made_target_given_maybe_touched_files(ProgressStream, Globals,
-        Succeeded, TargetFile, TargetFileName, TouchedFiles, !Info, !IO) :-
+record_made_target_given_make_lhs_files(ProgressStream, Globals,
+        Succeeded, TargetFile, TargetFileName, MakeLhsFiles, !Info, !IO) :-
     (
         Succeeded = succeeded,
         TargetStatus = deps_status_up_to_date
@@ -788,20 +868,23 @@ record_made_target_given_maybe_touched_files(ProgressStream, Globals,
         maybe_write_msg_locked(ProgressStream, !.Info, ErrorMsg, !IO)
     ),
 
-    TouchedFiles = touched_files(TouchedTargetFiles, TouchedTimestampFiles),
-    list.foldl(update_target_status(TargetStatus), TouchedTargetFiles, !Info),
+    MakeLhsFiles = make_lhs_files(LhsFiles, LhsTimestampFiles,
+        LhsForeignCodeFiles),
+    list.foldl(update_target_status(TargetStatus), LhsFiles, !Info),
 
     list.map_foldl2(
         module_maybe_nested_target_file_to_file_name(ProgressStream, Globals,
             $pred, not_for_search),
-        TouchedTargetFiles, TouchedTargetFileNames, !Info, !IO),
+        LhsFiles, TouchedTargetFileNames, !Info, !IO),
 
     some [!FileTimestamps] (
         !:FileTimestamps = make_info_get_file_timestamps(!.Info),
         list.foldl(delete_timestamp(ProgressStream, Globals),
             TouchedTargetFileNames, !FileTimestamps),
         list.foldl(delete_timestamp(ProgressStream, Globals),
-            TouchedTimestampFiles, !FileTimestamps),
+            LhsTimestampFiles, !FileTimestamps),
+        list.foldl(delete_timestamp(ProgressStream, Globals),
+            LhsForeignCodeFiles, !FileTimestamps),
 
         % When an .analysis file is made, that potentially invalidates other
         % .analysis files so we have to delete their timestamps. The exact list
@@ -819,7 +902,7 @@ record_made_target_given_maybe_touched_files(ProgressStream, Globals,
     ),
 
     TargetFileTimestamps0 = make_info_get_target_file_timestamps(!.Info),
-    list.foldl(version_hash_table.delete, TouchedTargetFiles,
+    list.foldl(version_hash_table.delete, LhsFiles,
         TargetFileTimestamps0, TargetFileTimestamps),
     make_info_set_target_file_timestamps(TargetFileTimestamps, !Info).
 
@@ -932,28 +1015,72 @@ get_compilation_task_and_options(Target, Result) :-
             ["--make-xml-doc"])
     ).
 
+%---------------------------------------------------------------------------%
+
+:- type make_lhs_files
+    --->    make_lhs_files(
+                % Values of this type represent the set of files that
+                % building a make target can generate, either from scratch,
+                % or by overwriting a previously-generated file.
+                % Basically, this is the set of files that would be
+                % on left hand side of a make rule:
+                %
+                % lhs_files:    rhs_files
+                %               action
+
+                % This is the set of files on the left hand side of the rule.
+                tf_target_files         :: list(target_file),
+
+                % For any target file in tf_target_files for whose target type
+                % timestamp_extension succeeds, this field will contain the
+                % name of its timestamp file.
+                %
+                % XXX MAKE This field should NOT be needed, at least in its
+                % current form, in the code that decides whether any of the
+                % files on the lhs of a make rule is out-of-date, because
+                % it does not provide a means of distinguishing which files
+                % in tf_target_files have no entry in tf_timestamp_files,
+                % and therefore need to have stat(2), or its non-Unix
+                % equivalents, invoked on them. This field *is* needed
+                % by the code that does cleanup, both by deleting files,
+                % and by deleting entries from !FileTimestamps.
+                tf_timestamp_files      :: list(file_name),
+
+                % The names of any target code files that the make action
+                % whose effects we are describing may create or update.
+                % This may include e.g. files named in fact_table declarations.
+                % XXX Both find_lhs_files_of_task and
+                % find_lhs_files_of_process_module put the names of object
+                % files created for fact tables into this slot.
+                % find_lhs_files_of_task also puts the names of object files
+                % from foreign_code_to_object_code tasks in it as well,
+                % but it is not clear to me (zs) just what kinds of files
+                % those may be.
+                tf_foreign_code_files   :: list(file_name)
+            ).
+
     % Find the files which could be touched by a compilation task.
     %
-:- pred find_files_maybe_touched_by_task(io.text_output_stream::in,
+:- pred find_lhs_files_of_task(io.text_output_stream::in,
     globals::in, target_file::in, compilation_task_type::in,
-    touched_files::out, make_info::in, make_info::out, io::di, io::uo) is det.
+    make_lhs_files::out, make_info::in, make_info::out, io::di, io::uo) is det.
 
-find_files_maybe_touched_by_task(ProgressStream, Globals, TargetFile, Task,
-        TouchedFiles, !Info, !IO) :-
+find_lhs_files_of_task(ProgressStream, Globals, TargetFile, Task, MakeLhsFiles,
+        !Info, !IO) :-
     (
         Task = process_module(ModuleTask),
-        find_files_maybe_touched_by_process_module(ProgressStream, Globals,
-            TargetFile, ModuleTask, TouchedFiles, !Info, !IO)
+        find_lhs_files_of_process_module(ProgressStream, Globals,
+            TargetFile, ModuleTask, MakeLhsFiles, !Info, !IO)
     ;
         Task = target_code_to_object_code(_),
-        TouchedFiles = touched_files([TargetFile], [])
+        MakeLhsFiles = make_lhs_files([TargetFile], [], [])
     ;
         Task = foreign_code_to_object_code(PIC, Lang),
         TargetFile = target_file(ModuleName, _),
         get_foreign_code_file(Globals, ModuleName, PIC, Lang, ForeignCodeFile,
             !IO),
         ForeignObjectFile = ForeignCodeFile ^ fcf_object_file,
-        TouchedFiles = touched_files([TargetFile], [ForeignObjectFile])
+        MakeLhsFiles = make_lhs_files([TargetFile], [], [ForeignObjectFile])
     ;
         Task = fact_table_code_to_object_code(PIC, FactTableName),
         get_object_extension(Globals, PIC, ObjExt),
@@ -961,40 +1088,15 @@ find_files_maybe_touched_by_task(ProgressStream, Globals, TargetFile, Task,
             ext_cur_ngs_gs(ObjExt), FactTableName,
             FactTableDirs, FactTableObjectFile),
         create_any_dirs_on_path(FactTableDirs, !IO),
-        TouchedFiles = touched_files([TargetFile], [FactTableObjectFile])
+        MakeLhsFiles = make_lhs_files([TargetFile], [], [FactTableObjectFile])
     ).
 
-:- type touched_files
-    --->    touched_files(
-                % Values of this type represent the set of files that
-                % building a make target can generate, either from scratch,
-                % or by overwriting a previously-generated file.
-
-                % This is the set of (the specifications of) those files.
-                tf_target_files     :: list(target_file),
-
-                % This is the set of files whose timestamps one should check
-                % to see whether the given make target is *already* up to date.
-                % This will include the names of the timestamp files of
-                % every item in tf_target_files, but may also include
-                %
-                % - the names of foreign (non-Mercury) source files that
-                %   the Mercury code may refer to, using either fact_table or
-                %   foreign_include_module declarations, or
-                %
-                % - the names of their object file versions.
-                %
-                % Note that only find_files_maybe_touched_by_task generates
-                % references to object files.
-                tf_timestamp_files  :: list(file_name)
-            ).
-
-:- pred find_files_maybe_touched_by_process_module(io.text_output_stream::in,
+:- pred find_lhs_files_of_process_module(io.text_output_stream::in,
     globals::in, target_file::in, module_compilation_task_type::in,
-    touched_files::out, make_info::in, make_info::out, io::di, io::uo) is det.
+    make_lhs_files::out, make_info::in, make_info::out, io::di, io::uo) is det.
 
-find_files_maybe_touched_by_process_module(ProgressStream, Globals,
-        TargetFile, Task, TouchedFiles, !Info, !IO) :-
+find_lhs_files_of_process_module(ProgressStream, Globals, TargetFile, Task,
+        MakeLhsFiles, !Info, !IO) :-
     TargetFile = target_file(ModuleName, TargetType),
     get_maybe_module_dep_info(ProgressStream, Globals,
         ModuleName, MaybeModuleDepInfo, !Info, !IO),
@@ -1030,13 +1132,13 @@ find_files_maybe_touched_by_process_module(ProgressStream, Globals,
 
     (
         Task = task_compile_to_target_code,
-        DirectTouchedTargetFiles = make_target_file_list(SourceFileModuleNames,
+        DirectLhsFiles = make_target_file_list(SourceFileModuleNames,
             TargetType),
         % Find out what header files are generated.
         TargetPIC = target_type_to_pic(TargetType),
-        list.map_foldl(external_foreign_code_files(Globals, TargetPIC),
+        list.map_foldl(get_any_fact_table_object_code_files(Globals, TargetPIC),
             ModuleDepInfos, ForeignCodeFileList, !IO),
-        ForeignCodeFileNames =
+        LhsForeignCodeFileNames =
             list.map((func(ForeignFile) = ForeignFile ^ fcf_target_file),
                 list.condense(ForeignCodeFileList)),
         globals.get_target(Globals, CompilationTarget),
@@ -1051,33 +1153,32 @@ find_files_maybe_touched_by_process_module(ProgressStream, Globals,
                 % a header file.
                 MihTargets = make_target_file_list(SourceFileModuleNames,
                     module_target_c_header(header_mih)),
-                TouchedTargetFiles = DirectTouchedTargetFiles ++ MhTargets ++
+                LhsFiles = DirectLhsFiles ++ MhTargets ++
                     MihTargets
             ;
                 HighLevelCode = no,
-                TouchedTargetFiles = DirectTouchedTargetFiles ++ MhTargets
+                LhsFiles = DirectLhsFiles ++ MhTargets
             )
         ;
             ( CompilationTarget = target_csharp
             ; CompilationTarget = target_java
             ),
-            TouchedTargetFiles = DirectTouchedTargetFiles
+            LhsFiles = DirectLhsFiles
         )
     ;
         Task = task_make_int0,
-        ForeignCodeFileNames = [],
-        % TouchedTargetFiles must only include modules with children,
+        % LhsFiles must only include modules with children,
         % as we no longer write out .int0 files for modules without children.
         list.filter_map(is_ancestor_module, ModuleDepInfos, AncestorModules),
-        TouchedTargetFiles =
-            make_target_file_list(AncestorModules, TargetType)
+        LhsFiles = make_target_file_list(AncestorModules, TargetType),
+        LhsForeignCodeFileNames = []
     ;
         Task = task_make_int12,
         % "mmc --make-interface" generates both .int and .int2 files.
-        ForeignCodeFileNames = [],
-        TouchedTargetFiles =
+        LhsFiles =
             make_target_file_list(SourceFileModuleNames, module_target_int1) ++
-            make_target_file_list(SourceFileModuleNames, module_target_int2)
+            make_target_file_list(SourceFileModuleNames, module_target_int2),
+        LhsForeignCodeFileNames = []
     ;
         ( Task = task_errorcheck
         ; Task = task_make_int3
@@ -1085,14 +1186,13 @@ find_files_maybe_touched_by_process_module(ProgressStream, Globals,
         ; Task = task_make_analysis_registry
         ; Task = task_make_xml_doc
         ),
-        ForeignCodeFileNames = [],
-        TouchedTargetFiles =
-            make_target_file_list(SourceFileModuleNames, TargetType)
+        LhsFiles = make_target_file_list(SourceFileModuleNames, TargetType),
+        LhsForeignCodeFileNames = []
     ),
     list.foldl2(gather_target_file_timestamp_file_names(Globals),
-        TouchedTargetFiles, [], MerTimestampFileNames, !IO),
-    TimestampFileNames = ForeignCodeFileNames ++ MerTimestampFileNames,
-    TouchedFiles = touched_files(TouchedTargetFiles, TimestampFileNames).
+        LhsFiles, [], LhsTimestampFileNames, !IO),
+    MakeLhsFiles = make_lhs_files(LhsFiles, LhsTimestampFileNames,
+        LhsForeignCodeFileNames).
 
 :- pred is_ancestor_module(module_dep_info::in, module_name::out) is semidet.
 
@@ -1117,20 +1217,20 @@ gather_target_file_timestamp_file_names(Globals, TouchedTargetFile,
 
 %---------------------------------------------------------------------------%
 
-external_foreign_code_files(Globals, PIC, ModuleDepInfo, ForeignFiles, !IO) :-
+get_any_fact_table_object_code_files(Globals, PIC, ModuleDepInfo,
+        ForeignFiles, !IO) :-
     % Find externally compiled foreign code files for
     % `:- pragma foreign_proc' declarations.
     %
     % Any changes here may require corresponding changes in
     % get_foreign_object_targets.
-
-    maybe_pic_object_file_extension(PIC, ObjExt, _),
     globals.get_target(Globals, CompilationTarget),
 
     % None of the current backends require externally compiled foreign code,
     % except the C backend for fact tables.
     (
         CompilationTarget = target_c,
+        maybe_pic_object_file_extension(PIC, ObjExt, _),
         module_dep_info_get_fact_tables(ModuleDepInfo, FactTableFiles),
         list.map_foldl(
             get_fact_table_foreign_code_file(Globals, do_not_create_dirs,
