@@ -44,6 +44,31 @@
     %   MaybeOldestLhsFile, BuildRhsSucceeded, RhsDepFiles, LhsResult,
     %   !Info, !IO):
     %
+    % Decide whether we should execute the make action to (re)build
+    % the lhs of a mmc --make rule, returning that decision in LhsResult.
+    %
+    % MaybeOldestLhsFile specifies whether all the lhs files already exist,
+    % and if they do, what the timestamp of the oldest of these is.
+    % TargetFileName is the name of the main target on the lhs of the rule.
+    %
+    % RhsDepFiles lists the files on the rhs of the rule.
+    %
+    % BuildRhsSucceeded says whether the building of RhsDepFiles has succeeded.
+    % XXX This argument should not be needed; if it is did_not_succeed, then
+    % this predicate should not be called. The only call site of this predicate
+    % in make.module_target *does* always pass succeeded, but this is not
+    % necessarily true for the calls in make.program_target.m to this
+    % predicate, and to should_we_rebuild_lhs_given_timestamps.
+    %
+    % XXX This predicate double-checks whether the building of RhsDepFiles
+    % succeeded by looking up their dependency statuses. This should NOT be
+    % necessary; BuildRhsSucceeded = succeeded *should* imply that all these
+    % files have deps_status_up_to_date. This is ensured by code before
+    % the one call to should_we_rebuild_lhs_given_timestamps in
+    % make.program_target.m, but not (as far as I, zs, can see) in the two
+    % calls to should_we_rebuild_lhs in make.module_target.m and
+    % make.program_target.m.
+    %
 :- pred should_we_rebuild_lhs(io.text_output_stream::in,
     globals::in, file_name::in, maybe_oldest_lhs_file::in, maybe_succeeded::in,
     list(dependency_file)::in, lhs_result::out,
