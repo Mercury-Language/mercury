@@ -250,7 +250,7 @@ make_module_target_file_main_path(ExtraOptions, ProgressStream, Globals,
         ;
             MakeRhsFilesSucceeded = succeeded,
             % We succeeded in making RhsDepFiles. Were these all the
-            % prerequisities? If not, then we cannot build the rhs files.
+            % prerequisities? If not, then we cannot build the lhs files.
             (
                 RhsResult = found_all_prereqs(_),
                 must_or_should_we_rebuild_lhs(ProgressStream, Globals,
@@ -534,34 +534,6 @@ build_target(ProgressStream, Globals, CompilationTask,
         Succeeded = did_not_succeed
     ).
 
-:- pred cleanup_files(io.text_output_stream::in, globals::in,
-    maybe(string)::in, make_lhs_files::in,
-    make_info::in, make_info::out, io::di, io::uo) is det.
-
-cleanup_files(ProgressStream, Globals, MaybeArgFileName, MakeLhsFiles,
-        !MakeInfo, !IO) :-
-    MakeLhsFiles = make_lhs_files(DatelessLhsTargetFiles, DatedLhsTargetFiles,
-        LhsDateFileNames, LhsForeignCodeFileNames),
-    % XXX Remove `.int.tmp' files.
-    list.foldl2(
-        remove_make_target_file(ProgressStream, Globals, $pred,
-            very_verbose),
-        DatelessLhsTargetFiles, !MakeInfo, !IO),
-    list.foldl2(
-        remove_make_target_file(ProgressStream, Globals, $pred,
-            very_verbose),
-        DatedLhsTargetFiles, !MakeInfo, !IO),
-    list.foldl2(remove_file_for_make(ProgressStream, Globals, very_verbose),
-        LhsDateFileNames, !MakeInfo, !IO),
-    list.foldl2(remove_file_for_make(ProgressStream, Globals, very_verbose),
-        LhsForeignCodeFileNames, !MakeInfo, !IO),
-    (
-        MaybeArgFileName = yes(ArgFileName),
-        io.file.remove_file(ArgFileName, _, !IO)
-    ;
-        MaybeArgFileName = no
-    ).
-
 :- pred build_target_2( io.text_output_stream::in, io.text_output_stream::in,
     globals::in, compilation_task_type::in, module_name::in,
     module_dep_info::in, maybe(file_name)::in, list(string)::in,
@@ -702,6 +674,36 @@ do_task_in_separate_process(task_make_opt) = yes.
 do_task_in_separate_process(task_make_analysis_registry) = yes.
 do_task_in_separate_process(task_compile_to_target_code) = yes.
 do_task_in_separate_process(task_make_xml_doc) = yes.
+
+%---------------------------------------------------------------------------%
+
+:- pred cleanup_files(io.text_output_stream::in, globals::in,
+    maybe(string)::in, make_lhs_files::in,
+    make_info::in, make_info::out, io::di, io::uo) is det.
+
+cleanup_files(ProgressStream, Globals, MaybeArgFileName, MakeLhsFiles,
+        !MakeInfo, !IO) :-
+    MakeLhsFiles = make_lhs_files(DatelessLhsTargetFiles, DatedLhsTargetFiles,
+        LhsDateFileNames, LhsForeignCodeFileNames),
+    % XXX Remove `.int.tmp' files.
+    list.foldl2(
+        remove_make_target_file(ProgressStream, Globals, $pred,
+            very_verbose),
+        DatelessLhsTargetFiles, !MakeInfo, !IO),
+    list.foldl2(
+        remove_make_target_file(ProgressStream, Globals, $pred,
+            very_verbose),
+        DatedLhsTargetFiles, !MakeInfo, !IO),
+    list.foldl2(remove_file_for_make(ProgressStream, Globals, very_verbose),
+        LhsDateFileNames, !MakeInfo, !IO),
+    list.foldl2(remove_file_for_make(ProgressStream, Globals, very_verbose),
+        LhsForeignCodeFileNames, !MakeInfo, !IO),
+    (
+        MaybeArgFileName = yes(ArgFileName),
+        io.file.remove_file(ArgFileName, _, !IO)
+    ;
+        MaybeArgFileName = no
+    ).
 
 %---------------------------------------------------------------------------%
 
@@ -1083,16 +1085,14 @@ find_lhs_files_of_process_module(ProgressStream, Globals, TargetFile, Task,
         unexpected($pred, "no module dependencies")
     ),
 
-    module_dep_info_get_maybe_top_module(ModuleDepInfo,
-        MaybeTopModule),
+    module_dep_info_get_maybe_top_module(ModuleDepInfo, MaybeTopModule),
     NestedSubModules = get_nested_children_list_of_top_module(MaybeTopModule),
     SourceFileModuleNames = [ModuleName | NestedSubModules],
 
     list.map_foldl2(get_maybe_module_dep_info(ProgressStream, Globals),
         NestedSubModules, MaybeNestedModuleDepInfos, !Info, !IO),
     ( if
-        list.map(
-            ( pred(some_module_dep_info(MDI)::in, MDI::out) is semidet),
+        list.map((pred(some_module_dep_info(MDI)::in, MDI::out) is semidet),
             MaybeNestedModuleDepInfos, NestedModuleDepInfos)
     then
         ModuleDepInfos = [ModuleDepInfo | NestedModuleDepInfos]
@@ -1141,7 +1141,7 @@ find_lhs_files_of_process_module(ProgressStream, Globals, TargetFile, Task,
         )
     ;
         Task = task_make_int0,
-        % LhsFiles must only include modules with children,
+        % LhsTargetFiles must only include modules with children,
         % as we no longer write out .int0 files for modules without children.
         list.filter_map(is_ancestor_module, ModuleDepInfos, AncestorModules),
         LhsTargetFiles = make_target_file_list(AncestorModules, TargetType),
