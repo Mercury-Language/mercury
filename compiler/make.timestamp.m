@@ -265,7 +265,6 @@ get_search_option_for_file_type(ModuleTargetType) = MaybeSearchOption :-
         ; ModuleTargetType = module_target_java_code
         ; ModuleTargetType = module_target_java_class_code
         ; ModuleTargetType = module_target_object_code(_)
-        ; ModuleTargetType = module_target_foreign_object(_, _)
         ; ModuleTargetType = module_target_fact_table_object(_, _)
         ; ModuleTargetType = module_target_xml_doc
         ),

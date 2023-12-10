@@ -19,7 +19,6 @@
 :- import_module backend_libs.compile_target_code.
 :- import_module libs.
 :- import_module libs.file_util.
-:- import_module libs.globals.
 :- import_module libs.timestamp.
 :- import_module make.build.
 :- import_module make.deps_cache.
@@ -148,7 +147,6 @@
     ;       module_target_java_code
     ;       module_target_java_class_code
     ;       module_target_object_code(pic)
-    ;       module_target_foreign_object(pic, foreign_language)
     ;       module_target_fact_table_object(pic, file_name)
     ;       module_target_xml_doc.
 
@@ -171,7 +169,6 @@
     --->    process_module(module_compilation_task_type)
             % The `pic' argument is only used for `--target c'.
     ;       target_code_to_object_code(pic)
-    ;       foreign_code_to_object_code(pic, foreign_language)
     ;       fact_table_code_to_object_code(pic, file_name).
 
 :- type module_compilation_task_type

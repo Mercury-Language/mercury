@@ -113,7 +113,6 @@ find_direct_prereqs_of_target_file(ProgressStream, Globals,
         ModulesToCheck = [ModuleName | NestedSubModules]
     ;
         ( CompilationTaskType = target_code_to_object_code(_)
-        ; CompilationTaskType = foreign_code_to_object_code(_, _)
         ; CompilationTaskType = fact_table_code_to_object_code(_, _)
         ),
         ModulesToCheck = [ModuleName]
@@ -262,9 +261,7 @@ find_direct_prereqs_of_module_target(ProgressStream, KeepGoing, Globals,
         find_prereqs_from_spec(ProgressStream, KeepGoing, Globals,
             ModuleIndex, PrereqSpec, Succeeded, Prereqs, !Info, !IO)
     ;
-        ( TargetType = module_target_foreign_object(PIC, _)
-        ; TargetType = module_target_fact_table_object(PIC, _)
-        ),
+        TargetType = module_target_fact_table_object(PIC, _),
         globals.get_target(Globals, CompilationTarget),
         TargetCodeType = target_to_module_target_code(CompilationTarget, PIC),
         PrereqSpec = self(TargetCodeType),

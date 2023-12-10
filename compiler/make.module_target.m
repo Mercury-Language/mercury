@@ -100,7 +100,6 @@
 :- import_module parse_tree.file_names.
 :- import_module parse_tree.module_baggage.
 :- import_module parse_tree.module_cmds.
-:- import_module parse_tree.prog_foreign.
 :- import_module parse_tree.write_error_spec.
 :- import_module top_level.                      % XXX unwanted dependency
 :- import_module top_level.mercury_compile_main. % XXX unwanted dependency
@@ -624,7 +623,6 @@ build_target_2(ProgressStream, ErrorStream, Globals, Task, ModuleName,
     ;
         Task = target_code_to_object_code(PIC),
         globals.get_target(Globals, CompilationTarget),
-
         % Run the compilation in a child process, so it can be killed
         % if an interrupt arrives.
         call_in_forked_process(
@@ -632,23 +630,11 @@ build_target_2(ProgressStream, ErrorStream, Globals, Task, ModuleName,
                 ModuleName, ModuleDepInfo),
             Succeeded, !IO)
     ;
-        Task = foreign_code_to_object_code(PIC, Lang),
-        get_foreign_code_file(Globals, ModuleName, PIC, Lang, ForeignCodeFile,
-            !IO),
-
-        % Run the compilation in a child process, so it can be killed
-        % if an interrupt arrives.
-        call_in_forked_process(
-            compile_foreign_code_file(Globals, ProgressStream, PIC,
-                ModuleDepInfo, ForeignCodeFile),
-            Succeeded, !IO)
-    ;
         Task = fact_table_code_to_object_code(PIC, FactTableFileName),
         get_object_extension(Globals, PIC, ObjExt),
         get_fact_table_foreign_code_file(Globals, do_create_dirs,
             ext_cur_ngs_gs(ObjExt),
             FactTableFileName, FactTableForeignCode, !IO),
-
         % Run the compilation in a child process, so it can be killed
         % if an interrupt arrives.
         call_in_forked_process(
@@ -715,19 +701,6 @@ do_task_in_separate_process(task_compile_to_target_code) = yes.
 do_task_in_separate_process(task_make_xml_doc) = yes.
 
 %---------------------------------------------------------------------------%
-
-:- pred get_foreign_code_file(globals::in, module_name::in, pic::in,
-    foreign_language::in, foreign_code_file::out, io::di, io::uo) is det.
-
-get_foreign_code_file(Globals, ModuleName, PIC, Lang, ForeignCodeFile, !IO) :-
-    foreign_language_module_name(ModuleName, Lang, ForeignModName),
-    foreign_language_file_extension(Lang, SrcExt),
-    get_object_extension(Globals, PIC, ObjExt),
-    module_name_to_file_name_create_dirs(Globals, $pred,
-        SrcExt, ForeignModName, SrcFileName, !IO),
-    module_name_to_file_name_create_dirs(Globals, $pred,
-        ext_cur_ngs_gs(ObjExt), ForeignModName, ObjFileName, !IO),
-    ForeignCodeFile = foreign_code_file(Lang, SrcFileName, ObjFileName).
 
 :- pred get_object_extension(globals::in, pic::in, ext_cur_ngs_gs::out) is det.
 
@@ -1014,9 +987,6 @@ get_compilation_task_and_options(Target, Result) :-
         Target = module_target_object_code(PIC),
         Result = task_and_options(target_code_to_object_code(PIC), [])
     ;
-        Target = module_target_foreign_object(PIC, Lang),
-        Result = task_and_options(foreign_code_to_object_code(PIC, Lang), [])
-    ;
         Target = module_target_fact_table_object(PIC, FactTable),
         Result = task_and_options(
             fact_table_code_to_object_code(PIC, FactTable), [])
@@ -1037,32 +1007,25 @@ get_compilation_task_and_options(Target, Result) :-
     %               action
 :- type make_lhs_files
     --->    make_lhs_files(
-
-                % The next two fields contain the set of files on the
+                % The first two fields contain the set of files on the
                 % left hand side of the rule. The two fields partition
                 % those files based on the answer to the question:
                 % does this file have a corresponding date file? More
                 % precisely, does date_file_extension succeed for the
-                % target file's target type? If it does, it is part of
-                % tf_dated_target_files; if it does not, it is part of
-                % tf_dateless_target_files.
+                % target file's target type? If it does not, it is part of
+                % tf_dateless_target_files; if it does, it is part of
+                % tf_dated_target_files.
                 tf_dateless_target_files    :: list(target_file),
                 tf_dated_target_files       :: list(target_file),
 
-                % The file names of the target files in the
+                % The names of the date files of the files in the
                 % tf_dated_target_files field.
                 tf_date_files               :: list(file_name),
 
                 % The names of any target code files that the make action
                 % whose effects we are describing may create or update.
-                % This may include e.g. files named in fact_table declarations.
-                % XXX Both find_lhs_files_of_task and
-                % find_lhs_files_of_process_module put the names of object
-                % files created for fact tables into this slot.
-                % find_lhs_files_of_task also puts the names of object files
-                % from foreign_code_to_object_code tasks in it as well,
-                % but it is not clear to me (zs) just what kinds of files
-                % those may be.
+                % Currently, this will be the set of files named in fact_table
+                % declarations.
                 tf_foreign_code_files       :: list(file_name)
             ).
 
@@ -1085,17 +1048,6 @@ find_lhs_files_of_task(ProgressStream, Globals, TargetFile, Task, MakeLhsFiles,
     ;
         Task = target_code_to_object_code(_),
         MakeLhsFiles = make_lhs_files([TargetFile], [], [], [])
-    ;
-        Task = foreign_code_to_object_code(PIC, Lang),
-        TargetFile = target_file(ModuleName, _),
-        foreign_language_module_name(ModuleName, Lang, ForeignModuleName),
-        get_object_extension(Globals, PIC, ObjExt),
-        Ext = ext_cur_ngs_gs(ObjExt),
-        module_name_to_file_name_create_dirs(Globals, $pred, Ext,
-            ForeignModuleName, ForeignObjectFileName, !IO),
-        % XXX MAKE double inclusion in first and last fields
-        MakeLhsFiles = make_lhs_files([TargetFile], [], [],
-            [ForeignObjectFileName])
     ;
         Task = fact_table_code_to_object_code(PIC, FactTableName),
         get_object_extension(Globals, PIC, ObjExt),
@@ -1312,7 +1264,6 @@ target_type_to_pic(TargetType) = Result :-
         ; TargetType = module_target_csharp_code
         ; TargetType = module_target_java_code
         ; TargetType = module_target_java_class_code
-        ; TargetType = module_target_foreign_object(_, _)
         ; TargetType = module_target_fact_table_object(_, _)
         ; TargetType = module_target_xml_doc
         ),

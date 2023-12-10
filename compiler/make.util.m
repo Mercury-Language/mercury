@@ -296,7 +296,6 @@ is_target_grade_or_arch_dependent(Target) = IsDependent :-
         ; Target = module_target_java_code
         ; Target = module_target_java_class_code
         ; Target = module_target_object_code(_)
-        ; Target = module_target_foreign_object(_, _)
         ; Target = module_target_fact_table_object(_, _)
         ),
         IsDependent = yes

@@ -85,7 +85,6 @@
 :- import_module backend_libs.compile_target_code.
 :- import_module make.get_module_dep_info.
 :- import_module parse_tree.module_dep_info.
-:- import_module parse_tree.prog_foreign.
 
 %---------------------------------------------------------------------------%
 
@@ -149,11 +148,6 @@ module_target_to_file_name(Globals, From, TargetType, ModuleName,
         module_name_to_file_name(Globals, From, Ext,
             ModuleName, FileName)
     ;
-        TargetExt = foreign_obj(Ext, Lang),
-        foreign_language_module_name(ModuleName, Lang, ForeignModuleName),
-        module_name_to_file_name(Globals, From, Ext,
-            ForeignModuleName, FileName)
-    ;
         TargetExt = fact_table_obj(Ext, FactFile),
         fact_table_file_name(Globals, $pred, Ext, FactFile, FileName)
     ).
@@ -174,11 +168,6 @@ module_target_to_search_file_name(Globals, From, TargetType, ModuleName,
         module_name_to_search_file_name(Globals, From, Ext,
             ModuleName, FileName)
     ;
-        TargetExt = foreign_obj(Ext, Lang),
-        foreign_language_module_name(ModuleName, Lang, ForeignModuleName),
-        module_name_to_search_file_name(Globals, From, Ext,
-            ForeignModuleName, FileName)
-    ;
         TargetExt = fact_table_obj(Ext, FactFile),
         % XXX This call ignores the implicit for_search setting.
         fact_table_file_name(Globals, $pred, Ext, FactFile, FileName)
@@ -189,7 +178,6 @@ module_target_to_search_file_name(Globals, From, TargetType, ModuleName,
 :- type target_extension
     --->    source
     ;       extension(ext)
-    ;       foreign_obj(ext, foreign_language)
     ;       fact_table_obj(ext, string).
 
 :- pred target_type_to_target_extension(module_target_type::in,
@@ -260,11 +248,6 @@ target_type_to_target_extension(Target, TargetExt) :-
     ;
         Target = module_target_xml_doc,
         TargetExt = extension(ext_cur(ext_cur_user_xml))
-    ;
-        Target = module_target_foreign_object(PIC, Lang),
-        maybe_pic_object_file_extension(PIC, ObjExt, _),
-        Ext = ext_cur_ngs_gs(ObjExt),
-        TargetExt = foreign_obj(Ext, Lang)
     ;
         Target = module_target_fact_table_object(PIC, FactFile),
         maybe_pic_object_file_extension(PIC, ObjExt, _),

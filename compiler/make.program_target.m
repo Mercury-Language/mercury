@@ -1029,7 +1029,6 @@ make_misc_target_builder(ProgressStream, Globals, MainModuleName, TargetType,
                 ; ModuleTargetType = module_target_java_code
                 ; ModuleTargetType = module_target_java_class_code
                 ; ModuleTargetType = module_target_object_code(_)
-                ; ModuleTargetType = module_target_foreign_object(_, _)
                 ; ModuleTargetType = module_target_fact_table_object(_, _)
                 ; ModuleTargetType = module_target_xml_doc
                 ),
@@ -2394,9 +2393,6 @@ remove_object_and_assembler_files(ProgressStream, Globals, ModuleName, PIC,
         FactTableFiles, !Info, !IO) :-
     remove_make_target_file_by_name(ProgressStream, Globals, $pred,
         very_verbose, ModuleName, module_target_object_code(PIC), !Info, !IO),
-    remove_make_target_file_by_name(ProgressStream, Globals, $pred,
-        very_verbose, ModuleName, module_target_foreign_object(PIC, lang_c),
-        !Info, !IO),
     list.foldl2(
         remove_fact_table_object_and_assembler_files(ProgressStream, Globals,
             ModuleName, PIC),

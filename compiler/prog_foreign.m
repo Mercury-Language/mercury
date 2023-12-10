@@ -301,7 +301,7 @@ foreign_language_module_name(ModuleName, Lang, FullyQualifiedModuleName) :-
 
 %-----------------------------------------------------------------------------%
 
-:- pragma no_determinism_warning(pred(foreign_language_file_extension/2)).
+% ZZZ :- pragma no_determinism_warning(pred(foreign_language_file_extension/2)).
 
 foreign_language_file_extension(lang_c,
     ext_cur_ngs_gs(ext_cur_ngs_gs_target_c)).

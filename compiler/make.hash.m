@@ -41,8 +41,6 @@
 
 :- import_module backend_libs.
 :- import_module backend_libs.compile_target_code.
-:- import_module libs.
-:- import_module libs.globals.
 
 :- import_module enum.
 :- import_module int.
@@ -138,9 +136,9 @@ module_target_type_to_nonce(Type) = X :-
     ;
         Type = module_target_object_code(PIC),
         X = 16 `mix` pic_to_nonce(PIC)
-    ;
-        Type = module_target_foreign_object(_PIC, _ForeignLang),
-        X = 17
+%   ;
+%       Type = module_target_foreign_object(_PIC, _ForeignLang),
+%       X = 17
     ;
         Type = module_target_fact_table_object(_PIC, _FileName),
         X = 18

@@ -320,7 +320,6 @@ get_dependency_file_status(ProgressStream, Globals, Dep, Result, !Info, !IO) :-
             ; FileType = module_target_java_code
             ; FileType = module_target_java_class_code
             ; FileType = module_target_object_code(_)
-            ; FileType = module_target_foreign_object(_, _)
             ; FileType = module_target_fact_table_object(_, _)
             ; FileType = module_target_xml_doc
             ),
