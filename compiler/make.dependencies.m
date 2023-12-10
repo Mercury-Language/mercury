@@ -21,7 +21,6 @@
 
 :- import_module libs.
 :- import_module libs.globals.
-:- import_module libs.maybe_util.
 :- import_module make.make_info.
 :- import_module parse_tree.
 :- import_module parse_tree.module_dep_info.
@@ -30,6 +29,13 @@
 :- import_module set.
 
 %---------------------------------------------------------------------------%
+
+:- type find_prereqs_result
+    --->    could_not_find_some_prereqs(set(dependency_file))
+            % There were some prerequisites that we could not find.
+            % The set specifies the prerequisites we *could* find.
+    ;       found_all_prereqs(set(dependency_file)).
+            % We found all prerequisites, and here they are.
 
     % find_direct_prereqs_of_target_file(ProgressStream, Globals,
     %   CompilationTaskType, ModuleDepInfo, TargetFile,
@@ -42,7 +48,7 @@
     %
 :- pred find_direct_prereqs_of_target_file(io.text_output_stream::in,
     globals::in, compilation_task_type::in, module_dep_info::in,
-    target_file::in, maybe_succeeded::out, set(dependency_file)::out,
+    target_file::in, find_prereqs_result::out,
     make_info::in, make_info::out, io::di, io::uo) is det.
 
 %---------------------------------------------------------------------------%
@@ -53,6 +59,7 @@
 :- import_module backend_libs.
 :- import_module backend_libs.compile_target_code.
 :- import_module libs.file_util.
+:- import_module libs.maybe_util.
 :- import_module libs.options.
 :- import_module make.deps_cache.
 :- import_module make.deps_set.
@@ -73,8 +80,6 @@
 
 %---------------------------------------------------------------------------%
 
-% XXX MDNEW Rename to something like find_direct_prereqs_of_make_targets.
-%
 % XXX MDNEW add loop on top to find indirect prereqs
 % That way, complexity is given by
 %   #layers in dependency hierarchy * avg width of each layer
@@ -102,8 +107,8 @@
 % source file.
 
 find_direct_prereqs_of_target_file(ProgressStream, Globals,
-        CompilationTaskType, ModuleDepInfo, TargetFile,
-        Succeeded, Prereqs, !Info, !IO) :-
+        CompilationTaskType, ModuleDepInfo, TargetFile, PrereqsResult,
+        !Info, !IO) :-
     TargetFile = target_file(ModuleName, TargetType),
      (
         CompilationTaskType = process_module(_),
@@ -156,6 +161,13 @@ find_direct_prereqs_of_target_file(ProgressStream, Globals,
         PrereqIndexes = PrereqIndexes0
     ),
     dependency_file_index_set_to_plain_set(!.Info, PrereqIndexes, Prereqs),
+    (
+        Succeeded = did_not_succeed,
+        PrereqsResult = could_not_find_some_prereqs(Prereqs)
+    ;
+        Succeeded = succeeded,
+        PrereqsResult = found_all_prereqs(Prereqs)
+    ),
 
     globals.lookup_bool_option(Globals, debug_make, DebugMake),
     (

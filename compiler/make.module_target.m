@@ -165,10 +165,11 @@ make_module_target(ExtraOptions, ProgressStream, Globals, Dep, Succeeded,
                     CompilationTaskType = process_module(_),
                     SourceFileModuleName \= ModuleName
                 then
-                    NestedTargetFile =
+                    MainTargetFile =
                         target_file(SourceFileModuleName, TargetType),
+                    % Recursive call. We should not recurse more than once.
                     make_module_target(ExtraOptions, ProgressStream, Globals,
-                        dep_target(NestedTargetFile), Succeeded, !Info, !IO)
+                        dep_target(MainTargetFile), Succeeded, !Info, !IO)
                 else
                     make_module_target_file_main_path(ExtraOptions,
                         ProgressStream, Globals, TargetFile,
@@ -220,26 +221,45 @@ make_module_target_file_main_path(ExtraOptions, ProgressStream, Globals,
     maybe_write_msg(ProgressStream, CheckingMsg, !IO),
 
     find_direct_prereqs_of_target_file(ProgressStream, Globals,
-        CompilationTaskType, ModuleDepInfo, TargetFile,
-        DepsSucceeded, DepFilesSet, !Info, !IO),
-    DepFilesToMake = set.to_sorted_list(DepFilesSet),
+        CompilationTaskType, ModuleDepInfo, TargetFile, RhsResult,
+        !Info, !IO),
 
     KeepGoing = make_info_get_keep_going(!.Info),
     ( if
-        DepsSucceeded = did_not_succeed,
+        RhsResult = could_not_find_some_prereqs(_),
         KeepGoing = do_not_keep_going
     then
         LhsResult = rhs_error
     else
-        make_dependency_files(ProgressStream, Globals,
-            TargetFile, TargetFileName, DepFilesToMake,
-            MakeLhsFiles, LhsResult0, !Info, !IO),
+        ( RhsResult = could_not_find_some_prereqs(RhsDepFileSet)
+        ; RhsResult = found_all_prereqs(RhsDepFileSet)
+        ),
+        % XXX MAKE sort
+        RhsDepFiles = set.to_sorted_list(RhsDepFileSet),
+        % Build the files on the rhs.
+        foldl2_make_module_targets(KeepGoing, [], ProgressStream, Globals,
+            RhsDepFiles, MakeRhsFilesSucceeded, !Info, !IO),
         (
-            DepsSucceeded = succeeded,
-            LhsResult = LhsResult0
-        ;
-            DepsSucceeded = did_not_succeed,
+            MakeRhsFilesSucceeded = did_not_succeed,
+            debug_make_msg(Globals,
+                string.format("%s: error making dependencies\n",
+                    [s(TargetFileName)]),
+                RhsErrorDebugMsg),
+            maybe_write_msg(ProgressStream, RhsErrorDebugMsg, !IO),
             LhsResult = rhs_error
+        ;
+            MakeRhsFilesSucceeded = succeeded,
+            % We succeeded in making RhsDepFiles. Were these all the
+            % prerequisities? If not, then we cannot build the rhs files.
+            (
+                RhsResult = found_all_prereqs(_),
+                must_or_should_we_rebuild_lhs(ProgressStream, Globals,
+                    TargetFile, TargetFileName, RhsDepFiles,
+                    MakeLhsFiles, LhsResult, !Info, !IO)
+            ;
+                RhsResult = could_not_find_some_prereqs(_),
+                LhsResult = rhs_error
+            )
         )
     ),
     (
@@ -265,94 +285,77 @@ make_module_target_file_main_path(ExtraOptions, ProgressStream, Globals,
         maybe_write_msg(ProgressStream, UpToDateMsg, !IO),
         debug_make_msg(Globals,
             string.format("%s: up to date\n", [s(TargetFileName)]),
-            DebugMsg),
-        maybe_write_msg(ProgressStream, DebugMsg, !IO),
+            UpToDateDebugMsg),
+        maybe_write_msg(ProgressStream, UpToDateDebugMsg, !IO),
         Succeeded = succeeded,
         LhsTargetFiles = DatelessLhsTargetFiles ++ DatedLhsTargetFiles,
         list.foldl(update_target_status(deps_status_up_to_date),
             [TargetFile | LhsTargetFiles], !Info)
     ).
 
-:- pred make_dependency_files(io.text_output_stream::in, globals::in,
+:- pred must_or_should_we_rebuild_lhs(io.text_output_stream::in, globals::in,
     target_file::in, file_name::in, list(dependency_file)::in,
     make_lhs_files::in, lhs_result::out,
     make_info::in, make_info::out, io::di, io::uo) is det.
 
-make_dependency_files(ProgressStream, Globals, TargetFile, TargetFileName,
-        DepFilesToMake, MakeLhsFiles, LhsResult, !Info, !IO) :-
-    % Build the dependencies.
-    % XXX MAKE sort
-    KeepGoing = make_info_get_keep_going(!.Info),
-    foldl2_make_module_targets(KeepGoing, [], ProgressStream, Globals,
-        DepFilesToMake, MakeDepsSucceeded, !Info, !IO),
-    (
-        MakeDepsSucceeded = did_not_succeed,
+must_or_should_we_rebuild_lhs(ProgressStream, Globals,
+        TargetFile, TargetFileName, RhsFiles, MakeLhsFiles, LhsResult,
+        !Info, !IO) :-
+    % Check whether all the lhs files exist, because if some are missing,
+    % then we need to execute the action.
+    MakeLhsFiles = make_lhs_files(DatelessLhsTargetFiles,
+        DatedLhsTargetFiles, LhsDateFileNames, LhsForeignCodeFileNames),
+    list.map_foldl2(
+        get_target_timestamp(ProgressStream, Globals, do_not_search),
+        DatelessLhsTargetFiles, DatelessLhsFileTimestamps, !Info, !IO),
+    list.map_foldl2(
+        get_target_timestamp(ProgressStream, Globals, do_not_search),
+        DatedLhsTargetFiles, DatedLhsFileTimestamps, !Info, !IO),
+    ( if
+        ( list.member(error(_), DatelessLhsFileTimestamps)
+        ; list.member(error(_), DatedLhsFileTimestamps)
+        )
+    then
+        % Some lhs file does not exist.
         debug_make_msg(Globals,
-            string.format("%s: error making dependencies\n",
+            string.format("%s: target file does not exist\n",
                 [s(TargetFileName)]),
             DebugMsg),
         maybe_write_msg(ProgressStream, DebugMsg, !IO),
-        LhsResult = rhs_error
-        % XXX MAKE Move the part of this predicate above this comment
-        % to its only call site, so that the part that is left has one job:
-        % deciding whether to execute the action or not. The predicate
-        % could then be renamed to reflect its actual main purpose.
-    ;
-        MakeDepsSucceeded = succeeded,
-        % Check whether all the lhs files exist, because if some are missing,
-        % then we need to execute the action.
-        MakeLhsFiles = make_lhs_files(DatelessLhsTargetFiles,
-            DatedLhsTargetFiles, LhsDateFileNames, LhsForeignCodeFileNames),
-        list.map_foldl2(
-            get_target_timestamp(ProgressStream, Globals, do_not_search),
-            DatelessLhsTargetFiles, DatelessLhsFileTimestamps, !Info, !IO),
-        list.map_foldl2(
-            get_target_timestamp(ProgressStream, Globals, do_not_search),
-            DatedLhsTargetFiles, DatedLhsFileTimestamps, !Info, !IO),
+        LhsResult = can_rebuild_lhs(some_lhs_file_needs_rebuilding)
+    else
+        % All the lhs files exist, so check whether they are all
+        % up-to-date.
         ( if
-            ( list.member(error(_), DatelessLhsFileTimestamps)
-            ; list.member(error(_), DatedLhsFileTimestamps)
-            )
+            TargetFile = target_file(ModuleName, TargetType),
+            TargetType = module_target_analysis_registry
         then
-            % Some lhs file does not exist.
-            debug_make_msg(Globals,
-                string.format("%s: target file does not exist\n",
-                    [s(TargetFileName)]),
-                DebugMsg),
-            maybe_write_msg(ProgressStream, DebugMsg, !IO),
-            LhsResult = can_rebuild_lhs(some_lhs_file_needs_rebuilding)
+            should_we_force_reanalysis_of_suboptimal_module(Globals,
+                ModuleName, ForceReanalysis, !.Info, !IO)
         else
-            % All the lhs files exist, so check whether they are all
-            % up-to-date.
-            ( if
-                TargetFile = target_file(ModuleName, TargetType),
-                TargetType = module_target_analysis_registry
-            then
-                should_we_force_reanalysis_of_suboptimal_module(Globals,
-                    ModuleName, ForceReanalysis, !.Info, !IO)
-            else
-                ForceReanalysis = no
-            ),
-            (
-                ForceReanalysis = yes,
-                LhsResult = can_rebuild_lhs(some_lhs_file_needs_rebuilding)
-            ;
-                ForceReanalysis = no,
-                % Compare the oldest of the timestamps of the lhs files
-                % with the timestamps of the rhs.
-                list.map_foldl2(get_file_timestamp([dir.this_directory]),
-                    LhsDateFileNames, LhsDateFileTimestamps, !Info, !IO),
-                list.map_foldl2(get_file_timestamp([dir.this_directory]),
-                    LhsForeignCodeFileNames, LhsForeignCodeFileTimestamps,
-                    !Info, !IO),
-                AllLhsTimestamps = DatelessLhsFileTimestamps ++
-                    LhsDateFileTimestamps ++ LhsForeignCodeFileTimestamps,
-                find_oldest_lhs_file(AllLhsTimestamps,
-                    MaybeOldestLhsTimestamp),
-                should_we_rebuild_lhs(ProgressStream, Globals, TargetFileName,
-                    MaybeOldestLhsTimestamp, MakeDepsSucceeded, DepFilesToMake,
-                    LhsResult, !Info, !IO)
-            )
+            ForceReanalysis = no
+        ),
+        (
+            ForceReanalysis = yes,
+            LhsResult = can_rebuild_lhs(some_lhs_file_needs_rebuilding)
+        ;
+            ForceReanalysis = no,
+            % Compare the oldest of the timestamps of the lhs files
+            % with the timestamps of the rhs.
+            list.map_foldl2(get_file_timestamp([dir.this_directory]),
+                LhsDateFileNames, LhsDateFileTimestamps, !Info, !IO),
+            list.map_foldl2(get_file_timestamp([dir.this_directory]),
+                LhsForeignCodeFileNames, LhsForeignCodeFileTimestamps,
+                !Info, !IO),
+            AllLhsTimestamps = DatelessLhsFileTimestamps ++
+                LhsDateFileTimestamps ++ LhsForeignCodeFileTimestamps,
+            find_oldest_lhs_file(AllLhsTimestamps, MaybeOldestLhsTimestamp),
+            % This predicate gets called only if the (re)building
+            % of the rhs only if succeeded.
+            MakeRhsFilesSucceeded = succeeded,
+            should_we_rebuild_lhs(ProgressStream, Globals, TargetFileName,
+                MaybeOldestLhsTimestamp, MakeRhsFilesSucceeded, RhsFiles,
+                LhsResult, !Info, !IO)
         )
     ).
 
@@ -447,7 +450,7 @@ build_target(ProgressStream, Globals, CompilationTask,
         do_task_in_separate_process(ModuleTask) = yes,
         not can_fork
     then
-        % If we will perform a compilation task in a separate process,
+        % If we want to perform a compilation task in a separate process,
         % but fork() is unavailable, then we will invoke the Mercury compiler
         % with a bunch of command line arguments. On Windows, the command line
         % is likely to exceed that maximum command line length, so we need to
