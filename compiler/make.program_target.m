@@ -304,6 +304,11 @@ make_linked_target_2(ProgressStream, Globals, LinkedTargetFile, Succeeded,
             ),
             (
                 BuildDepsSucceeded1 = succeeded,
+                % We expect ForeignObjTargets to be the empty list during
+                % most compiler invoations, and to be a very short list during
+                % most of the remaining compiler invoations. This means that
+                % parallelism here would probably incur more cost in overhead
+                % than it could possibly gain back.
                 foldl2_make_module_targets(KeepGoing, [],
                     ProgressStream, Globals, ForeignObjTargets,
                     BuildDepsSucceeded, !Info, !IO)
@@ -325,12 +330,17 @@ make_linked_target_2(ProgressStream, Globals, LinkedTargetFile, Succeeded,
             MaybeOldestLhsTimestamp =
                 all_lhs_files_exist_oldest_timestamp(LinkedFileTimestamp)
         ),
-        check_dependencies(ProgressStream, Globals,
+        % XXX We pass BuildDepsSucceeded here, but BuildDepsSucceeded being
+        % did_not_succeed does not prevent LhsResult being can_rebuild_lhs(_).
+        % This means that we can go on to attempt to (re)build the target
+        % even if we couldn't build all its prerequisites. To me (zs),
+        % that looks like a bug, even if the keep_going flag is set.
+        should_we_rebuild_lhs(ProgressStream, Globals,
             FullMainModuleLinkedFileName, MaybeOldestLhsTimestamp,
-            BuildDepsSucceeded, ObjTargets, BuildDepsResult, !Info, !IO),
+            BuildDepsSucceeded, ObjTargets, LhsResult, !Info, !IO),
         ( if
             DepsSucceeded = succeeded,
-            BuildDepsResult \= rhs_error
+            LhsResult = can_rebuild_lhs(ShouldRebuildLhs)
         then
             globals.lookup_bool_option(Globals, very_verbose, VeryVerbose),
             setup_checking_for_interrupt(Cookie, !IO),
@@ -345,8 +355,7 @@ make_linked_target_2(ProgressStream, Globals, LinkedTargetFile, Succeeded,
                     MainModuleName, FileType, FullMainModuleLinkedFileName,
                     CurDirMainModuleLinkedFileName, MaybeOldestLhsTimestamp,
                     AllModules, ObjModules, CompilationTarget, PIC,
-                    DepsSucceeded, BuildDepsResult,
-                    Succeeded0, !Info, !IO),
+                    ShouldRebuildLhs, Succeeded0, !Info, !IO),
                 close_module_error_stream_handle_errors(ProgressStream,
                     Globals, MainModuleName, MESI, ErrorStream, !Info, !IO)
             ),
@@ -490,15 +499,14 @@ get_foreign_object_targets(ProgressStream, Globals, PIC,
 :- pred build_linked_target(io.text_output_stream::in, globals::in,
     module_name::in, linked_target_type::in, file_name::in, file_name::in,
     maybe_oldest_lhs_file::in, set(module_name)::in, list(module_name)::in,
-    compilation_target::in, pic::in, maybe_succeeded::in,
-    lhs_result::in, maybe_succeeded::out,
-    make_info::in, make_info::out, io::di, io::uo) is det.
+    compilation_target::in, pic::in, should_rebuild_lhs::in,
+    maybe_succeeded::out, make_info::in, make_info::out,
+    io::di, io::uo) is det.
 
 build_linked_target(ProgressStream, Globals, MainModuleName, FileType,
         FullMainModuleLinkedFileName, CurDirMainModuleLinkedFileName,
         MaybeOldestLhsTimestamp, AllModules, ObjModules,
-        CompilationTarget, PIC, DepsSucceeded, BuildDepsResult, Succeeded,
-        !Info, !IO) :-
+        CompilationTarget, PIC, ShouldRebuildLhs, Succeeded, !Info, !IO) :-
     globals.lookup_maybe_string_option(Globals, pre_link_command,
         MaybePreLinkCommand),
     (
@@ -518,8 +526,7 @@ build_linked_target(ProgressStream, Globals, MainModuleName, FileType,
             MainModuleName, FileType,
             FullMainModuleLinkedFileName, CurDirMainModuleLinkedFileName,
             MaybeOldestLhsTimestamp, AllModules, ObjModules,
-            CompilationTarget, PIC, DepsSucceeded, BuildDepsResult,
-            Succeeded, !Info, !IO)
+            CompilationTarget, PIC, ShouldRebuildLhs, Succeeded, !Info, !IO)
     ;
         PreLinkSucceeded = did_not_succeed,
         Succeeded = did_not_succeed
@@ -528,19 +535,18 @@ build_linked_target(ProgressStream, Globals, MainModuleName, FileType,
 :- pred build_linked_target_2(io.text_output_stream::in, globals::in,
     module_name::in, linked_target_type::in, file_name::in, file_name::in,
     maybe_oldest_lhs_file::in, set(module_name)::in, list(module_name)::in,
-    compilation_target::in, pic::in, maybe_succeeded::in,
-    lhs_result::in, maybe_succeeded::out,
-    make_info::in, make_info::out, io::di, io::uo) is det.
+    compilation_target::in, pic::in, should_rebuild_lhs::in,
+    maybe_succeeded::out, make_info::in, make_info::out,
+    io::di, io::uo) is det.
 
-build_linked_target_2(ProgressStream, Globals, MainModuleName, FileType,
+build_linked_target_2(ProgressStream, Globals0, MainModuleName, FileType,
         FullMainModuleLinkedFileName, CurDirMainModuleLinkedFileName,
         MaybeOldestLhsTimestamp, AllModules, ObjModules,
-        CompilationTarget, PIC, DepsSucceeded, BuildDepsResult, Succeeded,
-        !Info, !IO) :-
-    % Clear the option -- we will pass the list of files directly.
-    globals.lookup_accumulating_option(Globals, link_objects, LinkObjects),
+        CompilationTarget, PIC, ShouldRebuildLhs, Succeeded, !Info, !IO) :-
+    % Clear the link_objects option -- we will pass the list of files directly.
+    globals.lookup_accumulating_option(Globals0, link_objects, LinkObjects),
     globals.set_option(link_objects, accumulating([]),
-        Globals, NoLinkObjsGlobals),
+        Globals0, NoLinkObjsGlobals),
 
     % Remake the `_init.o' file.
     % XXX We should probably make a `_init.o' file for shared
@@ -548,24 +554,9 @@ build_linked_target_2(ProgressStream, Globals, MainModuleName, FileType,
     AllModulesList = set.to_sorted_list(AllModules),
     (
         FileType = executable,
-        make_init_obj_file(NoLinkObjsGlobals, ProgressStream,
-            MainModuleName, AllModulesList, InitObjectResult, !IO),
-        (
-            InitObjectResult = yes(InitObject),
-            % We may need to update the timestamp of the `_init.o' file.
-            FileTimestamps0 = make_info_get_file_timestamps(!.Info),
-            map.delete(InitObject, FileTimestamps0, FileTimestamps1),
-            make_info_set_file_timestamps(FileTimestamps1, !Info),
-            % There is no module_target_type for the `_init.o' file,
-            % so mki_target_file_timestamps should not contain anything
-            % that needs to be invalidated.
-            InitObjects = [InitObject],
-            DepsResult2 = BuildDepsResult
-        ;
-            InitObjectResult = no,
-            DepsResult2 = rhs_error,
-            InitObjects = []
-        )
+        make_init_obj_file_check_result(ProgressStream, NoLinkObjsGlobals,
+            MainModuleName, AllModulesList, InitObjSucceeded, InitObjects,
+            !Info, !IO)
     ;
         ( FileType = static_library
         ; FileType = shared_library
@@ -574,149 +565,203 @@ build_linked_target_2(ProgressStream, Globals, MainModuleName, FileType,
         ; FileType = java_executable
         ; FileType = java_archive
         ),
-        DepsResult2 = BuildDepsResult,
+        InitObjSucceeded = succeeded,
         InitObjects = []
     ),
 
-    ObjectsToCheck = InitObjects ++ LinkObjects,
-
     % Report errors if any of the extra objects aren't present.
+    ObjectsToCheck = InitObjects ++ LinkObjects,
     ObjectsToCheckDepFiles = list.map((func(F) = dep_file(F)), ObjectsToCheck),
     list.map_foldl2(
         get_dependency_file_status(ProgressStream, NoLinkObjsGlobals),
-        ObjectsToCheckDepFiles, ExtraObjTuples, !Info, !IO),
+        ObjectsToCheckDepFiles, ExtraObjDepStatuses, !Info, !IO),
     ( if
-        some [ExtraObjTuple] (
-            list.member(ExtraObjTuple, ExtraObjTuples),
-            ExtraObjTuple = dependency_status_result(_, _, deps_status_error)
+        some [ExtraObjDepStatus] (
+            list.member(ExtraObjDepStatus, ExtraObjDepStatuses),
+            ExtraObjDepStatus =
+                dependency_status_result(_, _, deps_status_error)
         )
     then
-        DepsResult3 = rhs_error
+        ExtraObjSucceeded = did_not_succeed
     else
-        DepsResult3 = DepsResult2
+        ExtraObjSucceeded = succeeded
     ),
-    BuildDepsSucceeded =
-        ( if DepsResult3 = rhs_error then did_not_succeed else succeeded ),
+    BuildDepsSucceeded = InitObjSucceeded `and` ExtraObjSucceeded,
+
     list.map_foldl2(get_file_timestamp([dir.this_directory]),
         ObjectsToCheck, ExtraObjectTimestamps, !Info, !IO),
-    check_dependency_timestamps(ProgressStream, NoLinkObjsGlobals,
+    % XXX We pass BuildDepsSucceeded here, but BuildDepsSucceeded being
+    % did_not_succeed does not prevent LhsResult being can_rebuild_lhs(_).
+    % This means that we can go on to attempt to (re)build the target
+    % even if we couldn't build all its prerequisites. To me (zs),
+    % that looks like a bug, even if the keep_going flag is set.
+    should_we_rebuild_lhs_given_timestamps(ProgressStream, NoLinkObjsGlobals,
         FullMainModuleLinkedFileName, MaybeOldestLhsTimestamp,
-        BuildDepsSucceeded, ExtraObjTuples,
-        ExtraObjectTimestamps, ExtraObjectDepsResult, !IO),
-
+        BuildDepsSucceeded, ExtraObjDepStatuses, ExtraObjectTimestamps,
+        ExtraObjectLhsResult, !IO),
     (
-        DepsSucceeded = succeeded,
-        (
-            ( DepsResult3 = rhs_error
-            ; DepsResult3 = some_lhs_file_needs_rebuilding
-            ),
-            DepsResult = DepsResult3
-        ;
-            DepsResult3 = all_lhs_files_up_to_date,
-            DepsResult = ExtraObjectDepsResult
-        )
-    ;
-        DepsSucceeded = did_not_succeed,
-        DepsResult = rhs_error
-    ),
-
-    (
-        DepsResult = rhs_error,
+        ExtraObjectLhsResult = rhs_error,
+        % XXX We should get here if BuildDepsSucceeded = did_not_succeed,
+        % as well as if ExtraObjectDepsResult = rhs_error.
         file_error_msg(FullMainModuleLinkedFileName, ErrorMsg),
         maybe_write_msg_locked(ProgressStream, !.Info, ErrorMsg, !IO),
         Succeeded = did_not_succeed
     ;
-        DepsResult = all_lhs_files_up_to_date,
-        MainModuleLinkedTarget =
-            top_target_file(MainModuleName, linked_target(FileType)),
-        ( if FullMainModuleLinkedFileName = CurDirMainModuleLinkedFileName then
-            maybe_warn_up_to_date_target_msg(NoLinkObjsGlobals,
-                MainModuleLinkedTarget, FullMainModuleLinkedFileName, !Info,
-                UpToDateMsg),
-            maybe_write_msg(ProgressStream, UpToDateMsg, !IO),
-            Succeeded = succeeded
-        else
-            post_link_maybe_make_symlink_or_copy(NoLinkObjsGlobals,
-                ProgressStream,
+        ExtraObjectLhsResult = can_rebuild_lhs(ExtraObjShouldRebuildLhs),
+        % Our caller has checked whether the lhs is up to date with respect
+        % to *some* files on the rhs, and just above we checked whether they
+        % are up to date with repspect to *other* files on the rhs.
+        % XXX This seems like a clumsy arrangement.
+        ( if
+            ShouldRebuildLhs = all_lhs_files_up_to_date,
+            ExtraObjShouldRebuildLhs = all_lhs_files_up_to_date
+        then
+            post_link_maybe_warn_linked_target_up_to_date(ProgressStream,
+                NoLinkObjsGlobals, MainModuleName, FileType,
                 FullMainModuleLinkedFileName, CurDirMainModuleLinkedFileName,
-                MainModuleName, FileType, Succeeded, MadeSymlinkOrCopy, !IO),
-            (
-                MadeSymlinkOrCopy = yes,
-                maybe_symlink_or_copy_linked_target_msg(NoLinkObjsGlobals,
-                    FullMainModuleLinkedFileName, LinkMsg),
-                maybe_write_msg(ProgressStream, LinkMsg, !IO)
-            ;
-                MadeSymlinkOrCopy = no,
-                maybe_warn_up_to_date_target_msg(NoLinkObjsGlobals,
-                    MainModuleLinkedTarget, FullMainModuleLinkedFileName,
-                    !Info, UpToDateMsg),
-                maybe_write_msg(ProgressStream, UpToDateMsg, !IO)
-            )
+                Succeeded, !Info, !IO)
+        else
+            rebuild_linked_target(ProgressStream, NoLinkObjsGlobals,
+                MainModuleName, FileType, FullMainModuleLinkedFileName,
+                AllModulesList, ObjModules, InitObjects, LinkObjects,
+                CompilationTarget, PIC, Succeeded, !Info, !IO)
         )
+    ).
+
+:- pred make_init_obj_file_check_result(io.text_output_stream::in, globals::in,
+    module_name::in, list(module_name)::in,
+    maybe_succeeded::out, list(file_name)::out,
+    make_info::in, make_info::out, io::di, io::uo) is det.
+
+make_init_obj_file_check_result(ProgressStream, NoLinkObjsGlobals,
+        MainModuleName, AllModulesList, Succeeded, InitObjects, !Info, !IO) :-
+    make_init_obj_file(NoLinkObjsGlobals, ProgressStream,
+        MainModuleName, AllModulesList, InitObjectResult, !IO),
+    (
+        InitObjectResult = yes(InitObject),
+        % We may need to update the timestamp of the `_init.o' file.
+        FileTimestamps0 = make_info_get_file_timestamps(!.Info),
+        map.delete(InitObject, FileTimestamps0, FileTimestamps1),
+        make_info_set_file_timestamps(FileTimestamps1, !Info),
+        % There is no module_target_type for the `_init.o' file,
+        % so mki_target_file_timestamps should not contain anything
+        % that needs to be invalidated.
+        Succeeded = succeeded,
+        InitObjects = [InitObject]
     ;
-        DepsResult = some_lhs_file_needs_rebuilding,
-        maybe_making_filename_msg(NoLinkObjsGlobals,
-            FullMainModuleLinkedFileName, MakingMsg),
-        maybe_write_msg(ProgressStream, MakingMsg, !IO),
+        InitObjectResult = no,
+        Succeeded = did_not_succeed,
+        InitObjects = []
+    ).
 
-        % Find the extra object files for externally compiled foreign
-        % procedures and fact tables. We don't need to include these in the
-        % timestamp checking above -- they will have been checked when the
-        % module's object file was built.
-        list.map_foldl2(
-            get_module_foreign_object_files(ProgressStream, Globals, PIC),
-            AllModulesList, ForeignObjectFileLists, !Info, !IO),
-        ForeignObjects = list.condense(ForeignObjectFileLists),
+:- pred post_link_maybe_warn_linked_target_up_to_date(
+    io.text_output_stream::in, globals::in,
+    module_name::in, linked_target_type::in, file_name::in, file_name::in,
+    maybe_succeeded::out, make_info::in, make_info::out,
+    io::di, io::uo) is det.
 
+post_link_maybe_warn_linked_target_up_to_date(ProgressStream,
+        NoLinkObjsGlobals, MainModuleName, FileType,
+        FullMainModuleLinkedFileName, CurDirMainModuleLinkedFileName,
+        Succeeded, !Info, !IO) :-
+    MainModuleLinkedTarget =
+        top_target_file(MainModuleName, linked_target(FileType)),
+    ( if FullMainModuleLinkedFileName = CurDirMainModuleLinkedFileName then
+        maybe_warn_up_to_date_target_msg(NoLinkObjsGlobals,
+            MainModuleLinkedTarget, FullMainModuleLinkedFileName, !Info,
+            UpToDateMsg),
+        maybe_write_msg(ProgressStream, UpToDateMsg, !IO),
+        Succeeded = succeeded
+    else
+        post_link_maybe_make_symlink_or_copy(NoLinkObjsGlobals, ProgressStream,
+            FullMainModuleLinkedFileName, CurDirMainModuleLinkedFileName,
+            MainModuleName, FileType, Succeeded, MadeSymlinkOrCopy, !IO),
         (
-            CompilationTarget = target_c,
-            maybe_pic_object_file_extension(PIC, ObjExt, _),
-            Ext = ext_cur_ngs_gs(ObjExt)
+            MadeSymlinkOrCopy = yes,
+            maybe_symlink_or_copy_linked_target_msg(NoLinkObjsGlobals,
+                FullMainModuleLinkedFileName, LinkMsg),
+            maybe_write_msg(ProgressStream, LinkMsg, !IO)
         ;
-            CompilationTarget = target_csharp,
-            % There is no separate object code step.
-            Ext = ext_cur_ngs_gs(ext_cur_ngs_gs_target_cs)
-        ;
-            CompilationTarget = target_java,
-            Ext = ext_cur_ngs_gs_java(ext_cur_ngs_gs_java_class)
-        ),
-        list.map(
-            module_name_to_file_name(NoLinkObjsGlobals, $pred, Ext),
-            ObjModules, ObjList),
-
-        % LinkObjects may contain `.a' files which must come
-        % after all the object files on the linker command line.
-        AllObjects = InitObjects ++ ObjList ++ ForeignObjects ++ LinkObjects,
-        (
-            ( CompilationTarget = target_c
-            ; CompilationTarget = target_java
-            ; CompilationTarget = target_csharp
-            ),
-            % Run the link in a separate process so it can be killed
-            % if an interrupt is received.
-            call_in_forked_process(
-                compile_target_code.link(NoLinkObjsGlobals, ProgressStream,
-                    FileType, MainModuleName, AllObjects),
-                Succeeded, !IO)
-        ),
-        CmdLineTargets0 = make_info_get_command_line_targets(!.Info),
-        set.delete(top_target_file(MainModuleName, linked_target(FileType)),
-            CmdLineTargets0, CmdLineTargets),
-        make_info_set_command_line_targets(CmdLineTargets, !Info),
-        (
-            Succeeded = succeeded,
-            FileTimestamps2 = make_info_get_file_timestamps(!.Info),
-            map.delete(FullMainModuleLinkedFileName,
-                FileTimestamps2, FileTimestamps),
-            make_info_set_file_timestamps(FileTimestamps, !Info)
-            % There is no module_target_type for the linked target,
-            % so mki_target_file_timestamps should not contain anything
-            % that needs to be invalidated.
-        ;
-            Succeeded = did_not_succeed,
-            file_error_msg(FullMainModuleLinkedFileName, ErrorMsg),
-            maybe_write_msg_locked(ProgressStream, !.Info, ErrorMsg, !IO)
+            MadeSymlinkOrCopy = no,
+            maybe_warn_up_to_date_target_msg(NoLinkObjsGlobals,
+                MainModuleLinkedTarget, FullMainModuleLinkedFileName,
+                !Info, UpToDateMsg),
+            maybe_write_msg(ProgressStream, UpToDateMsg, !IO)
         )
+    ).
+
+:- pred rebuild_linked_target(io.text_output_stream::in, globals::in,
+    module_name::in, linked_target_type::in, file_name::in,
+    list(module_name)::in, list(module_name)::in,
+    list(file_name)::in, list(file_name)::in, compilation_target::in, pic::in,
+    maybe_succeeded::out, make_info::in, make_info::out,
+    io::di, io::uo) is det.
+
+rebuild_linked_target(ProgressStream, NoLinkObjsGlobals,
+        MainModuleName, FileType, FullMainModuleLinkedFileName,
+        AllModulesList, ObjModules, InitObjects, LinkObjects,
+        CompilationTarget, PIC, Succeeded, !Info, !IO) :-
+    maybe_making_filename_msg(NoLinkObjsGlobals,
+        FullMainModuleLinkedFileName, MakingMsg),
+    maybe_write_msg(ProgressStream, MakingMsg, !IO),
+
+    % Find the extra object files for externally compiled foreign
+    % procedures and fact tables. We don't need to include these in the
+    % timestamp checking above -- they will have been checked when the
+    % module's object file was built.
+    list.map_foldl2(
+        get_module_foreign_object_files(ProgressStream, NoLinkObjsGlobals,
+            PIC),
+        AllModulesList, ForeignObjectFileLists, !Info, !IO),
+    ForeignObjects = list.condense(ForeignObjectFileLists),
+
+    (
+        CompilationTarget = target_c,
+        maybe_pic_object_file_extension(PIC, ObjExt, _),
+        Ext = ext_cur_ngs_gs(ObjExt)
+    ;
+        CompilationTarget = target_csharp,
+        % There is no separate object code step.
+        Ext = ext_cur_ngs_gs(ext_cur_ngs_gs_target_cs)
+    ;
+        CompilationTarget = target_java,
+        Ext = ext_cur_ngs_gs_java(ext_cur_ngs_gs_java_class)
+    ),
+    list.map(module_name_to_file_name(NoLinkObjsGlobals, $pred, Ext),
+        ObjModules, ObjList),
+
+    % LinkObjects may contain `.a' files which must come
+    % after all the object files on the linker command line.
+    AllObjects = InitObjects ++ ObjList ++ ForeignObjects ++ LinkObjects,
+    (
+        ( CompilationTarget = target_c
+        ; CompilationTarget = target_java
+        ; CompilationTarget = target_csharp
+        ),
+        % Run the link in a separate process so it can be killed
+        % if an interrupt is received.
+        call_in_forked_process(
+            compile_target_code.link(NoLinkObjsGlobals, ProgressStream,
+                FileType, MainModuleName, AllObjects),
+            Succeeded, !IO)
+    ),
+    CmdLineTargets0 = make_info_get_command_line_targets(!.Info),
+    set.delete(top_target_file(MainModuleName, linked_target(FileType)),
+        CmdLineTargets0, CmdLineTargets),
+    make_info_set_command_line_targets(CmdLineTargets, !Info),
+    (
+        Succeeded = succeeded,
+        FileTimestamps2 = make_info_get_file_timestamps(!.Info),
+        map.delete(FullMainModuleLinkedFileName,
+            FileTimestamps2, FileTimestamps),
+        make_info_set_file_timestamps(FileTimestamps, !Info)
+        % There is no module_target_type for the linked target,
+        % so mki_target_file_timestamps should not contain anything
+        % that needs to be invalidated.
+    ;
+        Succeeded = did_not_succeed,
+        file_error_msg(FullMainModuleLinkedFileName, ErrorMsg),
+        maybe_write_msg_locked(ProgressStream, !.Info, ErrorMsg, !IO)
     ).
 
 :- pred get_module_foreign_object_files(io.text_output_stream::in, globals::in,
@@ -794,7 +839,7 @@ make_java_files(ProgressStream, Globals, MainModuleName, ObjModules,
         % it probably won't) so clear out all the timestamps which might be
         % affected.
         Timestamps0 = make_info_get_file_timestamps(!.Info),
-        map.foldl(delete_java_class_timestamps, Timestamps0,
+        map.foldl(do_not_reinsert_java_class_timestamps, Timestamps0,
             map.init, Timestamps),
         make_info_set_file_timestamps(Timestamps, !Info),
         % For simplicity, clear out all target file timestamps.
@@ -871,10 +916,11 @@ build_java_files_2(ProgressStream, Globals, JavaFiles, Succeeded,
             HeadJavaFile, TailJavaFiles),
         Succeeded, !IO).
 
-:- pred delete_java_class_timestamps(string::in, maybe_error(timestamp)::in,
+:- pred do_not_reinsert_java_class_timestamps(string::in,
+    maybe_error(timestamp)::in,
     file_timestamps::in, file_timestamps::out) is det.
 
-delete_java_class_timestamps(FileName, MaybeTimestamp, !Timestamps) :-
+do_not_reinsert_java_class_timestamps(FileName, MaybeTimestamp, !Timestamps) :-
     ( if string.suffix(FileName, ".class") then
         true
     else

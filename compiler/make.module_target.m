@@ -250,7 +250,7 @@ make_module_target_file_main_path(ExtraOptions, ProgressStream, Globals,
         list.foldl(update_target_status(deps_status_error),
             LhsTargetFiles, !Info)
     ;
-        LhsResult = some_lhs_file_needs_rebuilding,
+        LhsResult = can_rebuild_lhs(some_lhs_file_needs_rebuilding),
         Targets0 = make_info_get_command_line_targets(!.Info),
         set.delete(top_target_file(ModuleName, module_target(TargetType)),
             Targets0, Targets),
@@ -259,7 +259,7 @@ make_module_target_file_main_path(ExtraOptions, ProgressStream, Globals,
             TargetFile, TargetFileName, ModuleDepInfo, MakeLhsFiles,
             ExtraOptions, Succeeded, !Info, !IO)
     ;
-        LhsResult = all_lhs_files_up_to_date,
+        LhsResult = can_rebuild_lhs(all_lhs_files_up_to_date),
         TopTargetFile = top_target_file(ModuleName, module_target(TargetType)),
         maybe_warn_up_to_date_target_msg(Globals, TopTargetFile,
             TargetFileName, !Info, UpToDateMsg),
@@ -280,13 +280,12 @@ make_module_target_file_main_path(ExtraOptions, ProgressStream, Globals,
     make_info::in, make_info::out, io::di, io::uo) is det.
 
 make_dependency_files(ProgressStream, Globals, TargetFile, TargetFileName,
-        DepFilesToMake, MakeLhsFiles, DepsResult, !Info, !IO) :-
+        DepFilesToMake, MakeLhsFiles, LhsResult, !Info, !IO) :-
     % Build the dependencies.
     % XXX MAKE sort
     KeepGoing = make_info_get_keep_going(!.Info),
     foldl2_make_module_targets(KeepGoing, [], ProgressStream, Globals,
         DepFilesToMake, MakeDepsSucceeded, !Info, !IO),
-
     (
         MakeDepsSucceeded = did_not_succeed,
         debug_make_msg(Globals,
@@ -294,11 +293,11 @@ make_dependency_files(ProgressStream, Globals, TargetFile, TargetFileName,
                 [s(TargetFileName)]),
             DebugMsg),
         maybe_write_msg(ProgressStream, DebugMsg, !IO),
-        DepsResult = rhs_error
+        LhsResult = rhs_error
         % XXX MAKE Move the part of this predicate above this comment
         % to its only call site, so that the part that is left has one job:
-        % deciding whether to execute the action or not. It should also allow
-        % deleting rhs_error from the lhs_result type.
+        % deciding whether to execute the action or not. The predicate
+        % could then be renamed to reflect its actual main purpose.
     ;
         MakeDepsSucceeded = succeeded,
         % Check whether all the lhs files exist, because if some are missing,
@@ -322,7 +321,7 @@ make_dependency_files(ProgressStream, Globals, TargetFile, TargetFileName,
                     [s(TargetFileName)]),
                 DebugMsg),
             maybe_write_msg(ProgressStream, DebugMsg, !IO),
-            DepsResult = some_lhs_file_needs_rebuilding
+            LhsResult = can_rebuild_lhs(some_lhs_file_needs_rebuilding)
         else
             % All the lhs files exist, so check whether they are all
             % up-to-date.
@@ -337,7 +336,7 @@ make_dependency_files(ProgressStream, Globals, TargetFile, TargetFileName,
             ),
             (
                 ForceReanalysis = yes,
-                DepsResult = some_lhs_file_needs_rebuilding
+                LhsResult = can_rebuild_lhs(some_lhs_file_needs_rebuilding)
             ;
                 ForceReanalysis = no,
                 % Compare the oldest of the timestamps of the lhs files
@@ -351,9 +350,9 @@ make_dependency_files(ProgressStream, Globals, TargetFile, TargetFileName,
                     LhsDateFileTimestamps ++ LhsForeignCodeFileTimestamps,
                 find_oldest_lhs_file(AllLhsTimestamps,
                     MaybeOldestLhsTimestamp),
-                check_dependencies(ProgressStream, Globals, TargetFileName,
+                should_we_rebuild_lhs(ProgressStream, Globals, TargetFileName,
                     MaybeOldestLhsTimestamp, MakeDepsSucceeded, DepFilesToMake,
-                    DepsResult, !Info, !IO)
+                    LhsResult, !Info, !IO)
             )
         )
     ).

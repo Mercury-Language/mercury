@@ -32,22 +32,25 @@
     --->    some_lhs_file_is_missing
     ;       all_lhs_files_exist_oldest_timestamp(timestamp).
 
-:- type lhs_result
+:- type should_rebuild_lhs
     --->    all_lhs_files_up_to_date
-    ;       some_lhs_file_needs_rebuilding
+    ;       some_lhs_file_needs_rebuilding.
+
+:- type lhs_result
+    --->    can_rebuild_lhs(should_rebuild_lhs)
     ;       rhs_error.
 
-    % check_dependencies(ProgressStream, Globals, TargetFileName,
+    % should_we_rebuild_lhs(ProgressStream, Globals, TargetFileName,
     %   MaybeOldestLhsFile, BuildRhsSucceeded, RhsDepFiles, LhsResult,
     %   !Info, !IO):
     %
-:- pred check_dependencies(io.text_output_stream::in, globals::in,
-    file_name::in, maybe_oldest_lhs_file::in, maybe_succeeded::in,
+:- pred should_we_rebuild_lhs(io.text_output_stream::in,
+    globals::in, file_name::in, maybe_oldest_lhs_file::in, maybe_succeeded::in,
     list(dependency_file)::in, lhs_result::out,
     make_info::in, make_info::out, io::di, io::uo) is det.
 
-    % check_dependency_timestamps(ProgressStream, Globals, TargetFileName,
-    %   MaybeOldestLhsFile, BuildRhsSucceeded,
+    % should_we_rebuild_lhs_given_timestamps(ProgressStream, Globals,
+    %   TargetFileName, MaybeOldestLhsFile, BuildRhsSucceeded,
     %   RhsDepStatusTuples, RhsMaybeTimestamps, LhsResult, !IO):
     %
     % A version of the predicate above that
@@ -60,8 +63,8 @@
     %
     % Exported for make.program_target.m.
     %
-:- pred check_dependency_timestamps(io.text_output_stream::in, globals::in,
-    file_name::in, maybe_oldest_lhs_file::in, maybe_succeeded::in,
+:- pred should_we_rebuild_lhs_given_timestamps(io.text_output_stream::in,
+    globals::in, file_name::in, maybe_oldest_lhs_file::in, maybe_succeeded::in,
     list(dependency_status_result)::in, list(maybe_error(timestamp))::in,
     lhs_result::out, io::di, io::uo) is det.
 
@@ -103,8 +106,9 @@
 
 %---------------------------------------------------------------------------%
 
-check_dependencies(ProgressStream, Globals, TargetFileName, MaybeOldestLhsFile,
-        BuildRhsSucceeded, RhsDepFiles, LhsResult, !Info, !IO) :-
+should_we_rebuild_lhs(ProgressStream, Globals, TargetFileName,
+        MaybeOldestLhsFile, BuildRhsSucceeded, RhsDepFiles, LhsResult,
+        !Info, !IO) :-
     list.map_foldl2(get_dependency_file_status(ProgressStream, Globals),
         RhsDepFiles, RhsDepStatusTuples, !Info, !IO),
     list.filter(
@@ -130,12 +134,12 @@ check_dependencies(ProgressStream, Globals, TargetFileName, MaybeOldestLhsFile,
         list.map_foldl2(get_dependency_timestamp(ProgressStream, Globals),
             RhsDepFiles, RhsMaybeTimestamps, !Info, !IO),
 
-        check_dependency_timestamps(ProgressStream, Globals, TargetFileName,
-            MaybeOldestLhsFile, BuildRhsSucceeded, RhsDepStatusTuples,
-            RhsMaybeTimestamps, LhsResult, !IO)
+        should_we_rebuild_lhs_given_timestamps(ProgressStream, Globals,
+            TargetFileName, MaybeOldestLhsFile, BuildRhsSucceeded,
+            RhsDepStatusTuples, RhsMaybeTimestamps, LhsResult, !IO)
     ).
 
-check_dependency_timestamps(ProgressStream, Globals, TargetFileName,
+should_we_rebuild_lhs_given_timestamps(ProgressStream, Globals, TargetFileName,
         MaybeOldestLhsFile, BuildRhsSucceeded,
         RhsDepStatusTuples, RhsMaybeTimestamps, LhsResult, !IO) :-
     (
@@ -149,7 +153,7 @@ check_dependency_timestamps(ProgressStream, Globals, TargetFileName,
         % *may* be misleading. (Of course, in the common case, the lhs
         % file list will contain just one file, in which case the missing
         % file *has* to be TargetFileName.)
-        LhsResult = some_lhs_file_needs_rebuilding,
+        LhsResult = can_rebuild_lhs(some_lhs_file_needs_rebuilding),
         debug_make_msg(Globals,
             string.format("%s does not exist.\n", [s(TargetFileName)]),
             DebugMsg),
@@ -169,17 +173,16 @@ check_dependency_timestamps(ProgressStream, Globals, TargetFileName,
                 % Something has gone wrong -- building the target has
                 % succeeded, but there are some files missing.
                 % Report an error.
-                check_dependencies_timestamps_missing_deps_msg(
-                    TargetFileName, BuildRhsSucceeded,
+                rhs_timestamps_missing_msg(TargetFileName, BuildRhsSucceeded,
                     FilledInRhsDepStatusTuples,
                     RhsMaybeTimestamps, MissingDepsMsg),
                 io.write_string(ProgressStream, MissingDepsMsg, !IO)
             ;
                 BuildRhsSucceeded = did_not_succeed,
                 debug_make_msg(Globals,
-                    check_dependencies_timestamps_missing_deps_msg(
-                        TargetFileName, BuildRhsSucceeded,
-                        FilledInRhsDepStatusTuples, RhsMaybeTimestamps),
+                    rhs_timestamps_missing_msg(TargetFileName,
+                        BuildRhsSucceeded, FilledInRhsDepStatusTuples,
+                        RhsMaybeTimestamps),
                     MaybeMissingDepsMsg),
                 maybe_write_msg(ProgressStream, MaybeMissingDepsMsg, !IO)
             )
@@ -191,13 +194,13 @@ check_dependency_timestamps(ProgressStream, Globals, TargetFileName,
                 % With `--rebuild', we always consider the lhs files to be
                 % out-of-date, regardless of their timestamps, or the
                 % timestamps of the rhs files.
-                LhsResult = some_lhs_file_needs_rebuilding
+                ShouldRebuildLhs = some_lhs_file_needs_rebuilding
             ;
                 Rebuild = no,
                 is_any_rhs_file_newer_than_oldest_lhs(RhsTimestamps,
-                    OldestLhsFileTimestamp, LhsResult),
+                    OldestLhsFileTimestamp, ShouldRebuildLhs),
                 (
-                    LhsResult = some_lhs_file_needs_rebuilding,
+                    ShouldRebuildLhs = some_lhs_file_needs_rebuilding,
                     get_dependency_file_names(Globals,
                         RhsDepStatusTuples, FilledInRhsDepStatusTuples, !IO),
                     debug_make_msg(Globals,
@@ -207,9 +210,10 @@ check_dependency_timestamps(ProgressStream, Globals, TargetFileName,
                         DebugMsg),
                     maybe_write_msg(ProgressStream, DebugMsg, !IO)
                 ;
-                    LhsResult = all_lhs_files_up_to_date
+                    ShouldRebuildLhs = all_lhs_files_up_to_date
                 )
-            )
+            ),
+            LhsResult = can_rebuild_lhs(ShouldRebuildLhs)
         )
     ).
 
@@ -234,12 +238,8 @@ find_timestamps_and_errors([RhsMaybeTimestamp | RhsMaybeTimestamps],
     find_timestamps_and_errors(RhsMaybeTimestamps,
         !RhsTimestamps, !FoundError).
 
-:- inst ok_lhs_result for lhs_result/0
-    --->    all_lhs_files_up_to_date
-    ;       some_lhs_file_needs_rebuilding.
-
 :- pred is_any_rhs_file_newer_than_oldest_lhs(list(timestamp)::in,
-    timestamp::in, lhs_result::out(ok_lhs_result)) is det.
+    timestamp::in, should_rebuild_lhs::out) is det.
 
 is_any_rhs_file_newer_than_oldest_lhs(RhsTimestamps, OldestLhsTimestamp,
         Result) :-
@@ -453,12 +453,12 @@ get_dependency_file_name(Globals, Tuple0, Tuple, !IO) :-
 % Code to construct messages for all users of mmc --make.
 %
 
-:- pred check_dependencies_timestamps_missing_deps_msg(file_name::in,
+:- pred rhs_timestamps_missing_msg(file_name::in,
     maybe_succeeded::in, list(dependency_status_known_file)::in,
     list(maybe_error(timestamp))::in, string::out) is det.
 
-check_dependencies_timestamps_missing_deps_msg(TargetFileName,
-        BuildRhsSucceeded, RhsDepStatusTuples, RhsTimestamps, Msg) :-
+rhs_timestamps_missing_msg(TargetFileName, BuildRhsSucceeded,
+        RhsDepStatusTuples, RhsTimestamps, Msg) :-
     assoc_list.from_corresponding_lists(RhsDepStatusTuples, RhsTimestamps,
         RhsTimestampAL),
     list.filter_map(
