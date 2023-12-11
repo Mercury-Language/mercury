@@ -305,8 +305,8 @@ make_linked_target_2(ProgressStream, Globals, LinkedTargetFile, Succeeded,
             (
                 BuildDepsSucceeded1 = succeeded,
                 % We expect ForeignObjTargets to be the empty list during
-                % most compiler invoations, and to be a very short list during
-                % most of the remaining compiler invoations. This means that
+                % most compiler invocations, and to be a very short list during
+                % most of the remaining compiler invocations. This means that
                 % parallelism here would probably incur more cost in overhead
                 % than it could possibly gain back.
                 foldl2_make_module_targets(KeepGoing, [],
@@ -610,7 +610,7 @@ build_linked_target_2(ProgressStream, Globals0, MainModuleName, FileType,
         ExtraObjectLhsResult = can_rebuild_lhs(ExtraObjShouldRebuildLhs),
         % Our caller has checked whether the lhs is up to date with respect
         % to *some* files on the rhs, and just above we checked whether they
-        % are up to date with repspect to *other* files on the rhs.
+        % are up to date with respect to *other* files on the rhs.
         % XXX This seems like a clumsy arrangement.
         ( if
             ShouldRebuildLhs = all_lhs_files_up_to_date,
