@@ -249,8 +249,9 @@ make_module_target_file_main_path(ExtraOptions, ProgressStream, Globals,
             LhsResult = rhs_error
         ;
             MakeRhsFilesSucceeded = succeeded,
-            % We succeeded in making RhsDepFiles. Were these all the
-            % prerequisities? If not, then we cannot build the lhs files.
+            % We succeeded in making RhsDepFiles. However, if there are
+            % prerequisities that we could not find, then we cannot build
+            % the lhs files.
             (
                 RhsResult = found_all_prereqs(_),
                 must_or_should_we_rebuild_lhs(ProgressStream, Globals,
@@ -351,7 +352,7 @@ must_or_should_we_rebuild_lhs(ProgressStream, Globals,
                 LhsDateFileTimestamps ++ LhsForeignCodeFileTimestamps,
             find_oldest_lhs_file(AllLhsTimestamps, MaybeOldestLhsTimestamp),
             % This predicate gets called only if the (re)building
-            % of the rhs only if succeeded.
+            % of the rhs files succeeded.
             MakeRhsFilesSucceeded = succeeded,
             should_we_rebuild_lhs(ProgressStream, Globals, TargetFileName,
                 MaybeOldestLhsTimestamp, MakeRhsFilesSucceeded, RhsFiles,
@@ -1020,18 +1021,18 @@ get_compilation_task_and_options(Target, Result) :-
                 % target file's target type? If it does not, it is part of
                 % tf_dateless_target_files; if it does, it is part of
                 % tf_dated_target_files.
-                tf_dateless_target_files    :: list(target_file),
-                tf_dated_target_files       :: list(target_file),
+                mlf_dateless_target_files   :: list(target_file),
+                mlf_dated_target_files      :: list(target_file),
 
                 % The names of the date files of the files in the
                 % tf_dated_target_files field.
-                tf_date_files               :: list(file_name),
+                mlf_date_files              :: list(file_name),
 
                 % The names of any target code files that the make action
                 % whose effects we are describing may create or update.
                 % Currently, this will be the set of files named in fact_table
                 % declarations.
-                tf_foreign_code_files       :: list(file_name)
+                mlf_foreign_code_files      :: list(file_name)
             ).
 
     % Find the files which could be touched by a compilation task.
