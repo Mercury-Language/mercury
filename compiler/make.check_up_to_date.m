@@ -28,6 +28,38 @@
 
 %---------------------------------------------------------------------------%
 
+    % Values of this type represent the set of files that building a make
+    % target can generate, either from scratch, or by overwriting a
+    % previously-generated file. Basically, this is the set of files
+    % that would be on left hand side of a make rule:
+    %
+    % lhs_files:    rhs_files
+    %               action
+    %
+:- type make_lhs_files
+    --->    make_lhs_files(
+                % The first two fields contain the set of files on the
+                % left hand side of the rule. The two fields partition
+                % those files based on the answer to the question:
+                % does this file have a corresponding date file? More
+                % precisely, does date_file_extension succeed for the
+                % target file's target type? If it does not, it is part of
+                % tf_dateless_target_files; if it does, it is part of
+                % tf_dated_target_files.
+                mlf_dateless_target_files   :: list(target_file),
+                mlf_dated_target_files      :: list(target_file),
+
+                % The names of the date files of the files in the
+                % tf_dated_target_files field.
+                mlf_date_files              :: list(file_name),
+
+                % The names of any target code files that the make action
+                % whose effects we are describing may create or update.
+                % Currently, this will be the set of files named in fact_table
+                % declarations.
+                mlf_foreign_code_files      :: list(file_name)
+            ).
+
 :- type maybe_oldest_lhs_file
     --->    some_lhs_file_is_missing
     ;       all_lhs_files_exist_oldest_timestamp(timestamp).
@@ -39,6 +71,37 @@
 :- type lhs_result
     --->    can_rebuild_lhs(should_rebuild_lhs)
     ;       rhs_error.
+
+%---------------------------------------------------------------------------%
+
+    % must_or_should_we_rebuild_lhs(ProgressStream, Globals,
+    %   TargetFile, TargetFileName, MakeLhsFiles, RhsDepFiles, LhsResult,
+    %   !Info, !IO):
+    %
+    % The TargetFile and TargetFileName arguments specify the principal
+    % target of a make rule in structured and string form respectively,
+    % while MakeLhsFiles and RhsDepFiles specify the full set of the lhs and
+    % rhs files respectively.
+    %
+    % Decide whether we either
+    %
+    % - *must* execute the action of a mmc --make rule, because one or more
+    %   of the lhs files do not exist; or
+    %
+    % - if all the lhs files, whether we *should* execute the action, because
+    %   one or more of the lhs files are out-of-date with respect to the rhs
+    %   files.
+    %
+    % As part of the above process, check whether we have all the info we need
+    % about the rhs files to make that decision. If not, then we cannot execute
+    % the action, even if we otherwise would like to do so.
+    %
+    % Return the decision in LhsResult.
+    %
+:- pred must_or_should_we_rebuild_lhs(io.text_output_stream::in, globals::in,
+    target_file::in, file_name::in, make_lhs_files::in,
+    list(dependency_file)::in, lhs_result::out,
+    make_info::in, make_info::out, io::di, io::uo) is det.
 
     % should_we_rebuild_lhs(ProgressStream, Globals, TargetFileName,
     %   MaybeOldestLhsFile, BuildRhsSucceeded, RhsDepFiles, LhsResult,
@@ -56,9 +119,9 @@
     % BuildRhsSucceeded says whether the building of RhsDepFiles has succeeded.
     % XXX This argument should not be needed; if it is did_not_succeed, then
     % this predicate should not be called. The only call site of this predicate
-    % in make.module_target *does* always pass succeeded, but this is not
-    % necessarily true for the calls in make.program_target.m to this
-    % predicate, and to should_we_rebuild_lhs_given_timestamps.
+    % in must_or_should_we_rebuild_lhs below *does* always pass succeeded,
+    % but this is not necessarily true for the calls in make.program_target.m
+    % to this predicate, and to should_we_rebuild_lhs_given_timestamps.
     %
     % XXX This predicate double-checks whether the building of RhsDepFiles
     % succeeded by looking up their dependency statuses. This should NOT be
@@ -66,8 +129,13 @@
     % files have deps_status_up_to_date. This is ensured by code before
     % the one call to should_we_rebuild_lhs_given_timestamps in
     % make.program_target.m, but not (as far as I, zs, can see) in the two
-    % calls to should_we_rebuild_lhs in make.module_target.m and
-    % make.program_target.m.
+    % calls to should_we_rebuild_lhs, in must_or_should_we_rebuild_lhs below,
+    % and in make.program_target.m.
+    %
+    % XXX The best way to fix this would probably be to replace the calls
+    % in make.program_target.m to should_we_rebuild_lhs and to
+    % should_we_rebuild_lhs_given_timestamps by a SINGLE call to this
+    % predicate.
     %
 :- pred should_we_rebuild_lhs(io.text_output_stream::in,
     globals::in, file_name::in, maybe_oldest_lhs_file::in, maybe_succeeded::in,
@@ -111,6 +179,7 @@
 
 :- implementation.
 
+:- import_module analysis.
 :- import_module libs.options.
 :- import_module make.file_names.
 :- import_module make.get_module_dep_info.
@@ -121,13 +190,151 @@
 :- import_module parse_tree.
 :- import_module parse_tree.file_names.
 :- import_module parse_tree.module_dep_info.
+:- import_module transform_hlds.
+:- import_module transform_hlds.mmc_analysis.
 
 :- import_module assoc_list.
 :- import_module bool.
 :- import_module dir.
+:- import_module int.
 :- import_module pair.
+:- import_module require.
 :- import_module string.
 :- import_module version_hash_table.
+
+%---------------------------------------------------------------------------%
+
+must_or_should_we_rebuild_lhs(ProgressStream, Globals,
+        TargetFile, TargetFileName, MakeLhsFiles, RhsDepFiles, LhsResult,
+        !Info, !IO) :-
+    % Check whether all the lhs files exist, because if some are missing,
+    % then we need to execute the action.
+    MakeLhsFiles = make_lhs_files(DatelessLhsTargetFiles,
+        DatedLhsTargetFiles, LhsDateFileNames, LhsForeignCodeFileNames),
+    list.map_foldl2(
+        get_target_timestamp(ProgressStream, Globals, do_not_search),
+        DatelessLhsTargetFiles, DatelessLhsFileTimestamps, !Info, !IO),
+    list.map_foldl2(
+        get_target_timestamp(ProgressStream, Globals, do_not_search),
+        DatedLhsTargetFiles, DatedLhsFileTimestamps, !Info, !IO),
+    ( if
+        ( list.member(error(_), DatelessLhsFileTimestamps)
+        ; list.member(error(_), DatedLhsFileTimestamps)
+        )
+    then
+        % Some lhs file does not exist.
+        % XXX MAKE The one that does not exist may not be TargetFileName.
+        debug_make_msg(Globals,
+            string.format("%s: target file does not exist\n",
+                [s(TargetFileName)]),
+            DebugMsg),
+        maybe_write_msg(ProgressStream, DebugMsg, !IO),
+        LhsResult = can_rebuild_lhs(some_lhs_file_needs_rebuilding)
+    else
+        % All the lhs files exist, so check whether they are all up-to-date.
+        ( if
+            TargetFile = target_file(ModuleName, TargetType),
+            TargetType = module_target_analysis_registry
+        then
+            should_we_force_reanalysis_of_suboptimal_module(Globals,
+                ModuleName, ForceReanalysis, !.Info, !IO)
+        else
+            ForceReanalysis = no
+        ),
+        (
+            ForceReanalysis = yes,
+            LhsResult = can_rebuild_lhs(some_lhs_file_needs_rebuilding)
+        ;
+            ForceReanalysis = no,
+            % Compare the oldest of the timestamps of the lhs files
+            % with the timestamps of the rhs.
+            list.map_foldl2(get_file_timestamp([dir.this_directory]),
+                LhsDateFileNames, LhsDateFileTimestamps, !Info, !IO),
+            list.map_foldl2(get_file_timestamp([dir.this_directory]),
+                LhsForeignCodeFileNames, LhsForeignCodeFileTimestamps,
+                !Info, !IO),
+            AllLhsTimestamps = DatelessLhsFileTimestamps ++
+                LhsDateFileTimestamps ++ LhsForeignCodeFileTimestamps,
+            find_oldest_lhs_file(AllLhsTimestamps, MaybeOldestLhsTimestamp),
+            % This predicate gets called only if the (re)building
+            % of the rhs files succeeded.
+            BuildRhsSucceeded = succeeded,
+            should_we_rebuild_lhs(ProgressStream, Globals, TargetFileName,
+                MaybeOldestLhsTimestamp, BuildRhsSucceeded, RhsDepFiles,
+                LhsResult, !Info, !IO)
+        )
+    ).
+
+%---------------------%
+
+:- pred should_we_force_reanalysis_of_suboptimal_module(globals::in,
+    module_name::in, bool::out, make_info::in, io::di, io::uo) is det.
+
+should_we_force_reanalysis_of_suboptimal_module(Globals, ModuleName,
+        ForceReanalysis, Info, !IO) :-
+    ( if make_info_get_reanalysis_passes(Info) > 0 then
+        do_read_module_overall_status(mmc, Globals, ModuleName, AnalysisStatus,
+            !IO),
+        (
+            ( AnalysisStatus = suboptimal
+            ; AnalysisStatus = invalid
+            ),
+            ForceReanalysis = yes
+        ;
+            AnalysisStatus = optimal,
+            ForceReanalysis = no
+        )
+    else
+        ForceReanalysis = no
+    ).
+
+%---------------------%
+
+:- pred find_oldest_lhs_file(list(maybe_error(timestamp))::in,
+    maybe_oldest_lhs_file::out) is det.
+
+find_oldest_lhs_file(LhsMaybeTimestamps, MaybeOldestLhsTimestamp) :-
+    (
+        LhsMaybeTimestamps = [],
+        unexpected($pred, "LhsMaybeTimestamps = []")
+    ;
+        LhsMaybeTimestamps = [HeadLhsMaybeTimestamp | TailLhsMaybeTimestamps],
+        (
+            HeadLhsMaybeTimestamp = error(_),
+            MaybeOldestLhsTimestamp = some_lhs_file_is_missing
+        ;
+            HeadLhsMaybeTimestamp = ok(HeadLhsTimestamp),
+            find_oldest_lhs_file_loop(TailLhsMaybeTimestamps, HeadLhsTimestamp,
+                MaybeOldestLhsTimestamp)
+        )
+    ).
+
+:- pred find_oldest_lhs_file_loop(list(maybe_error(timestamp))::in,
+    timestamp::in, maybe_oldest_lhs_file::out) is det.
+
+find_oldest_lhs_file_loop(LhsMaybeTimestamps, !.OldestLhsTimestamp,
+        MaybeOldestLhsTimestamp) :-
+    (
+        LhsMaybeTimestamps = [HeadLhsMaybeTimestamp | TailLhsMaybeTimestamps],
+        (
+            HeadLhsMaybeTimestamp = error(_),
+            MaybeOldestLhsTimestamp = some_lhs_file_is_missing
+        ;
+            HeadLhsMaybeTimestamp = ok(HeadLhsTimestamp),
+            ( if compare((<), HeadLhsTimestamp, !.OldestLhsTimestamp) then
+                !:OldestLhsTimestamp = HeadLhsTimestamp
+            else
+                true
+            ),
+            find_oldest_lhs_file_loop(TailLhsMaybeTimestamps,
+                !.OldestLhsTimestamp, MaybeOldestLhsTimestamp)
+        )
+    ;
+        LhsMaybeTimestamps = [],
+        MaybeOldestLhsTimestamp =
+            all_lhs_files_exist_oldest_timestamp(!.OldestLhsTimestamp)
+    ).
+
 
 %---------------------------------------------------------------------------%
 
