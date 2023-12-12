@@ -80,7 +80,6 @@
 :- import_module make.check_up_to_date.
 :- import_module make.find_local_modules.
 :- import_module make.get_module_dep_info.
-:- import_module make.hash.
 :- import_module make.module_target.
 :- import_module make.options_file.
 :- import_module make.timestamp.
@@ -1827,14 +1826,23 @@ install_library_grade(LinkSucceeded0, ModuleName, AllModules,
 
         % Remove the grade-dependent targets from the status map
         % (we need to rebuild them in the new grade).
-
-        % XXX version_hash_table.delete is not working properly so just clear
-        % the dependency status cache completely.
         %
-        % StatusMap0 = !.Info ^ dependency_status,
-        % StatusMap = version_hash_table.fold(remove_grade_dependent_targets,
-        %     StatusMap0, StatusMap0),
-        StatusMap = version_hash_table.init_default(dependency_file_hash),
+        % NOTE This code was disabled from 2008 jul 14 until 2023 dec 12
+        % due to a bug in version_hash_table.delete. That bug, which was
+        % due to the holes left by deletes in open addressing probe sequences,
+        % was fixed by switching to separate chaining on 2009 mar 26.
+        % The replacement code was
+        %
+        %   StatusMap = version_hash_table.init_default(dependency_file_hash)
+        %
+        % NOTE that each delete made by remove_target_file_if_grade_dependent
+        % will create a new version_hash_table, even though, with the exception
+        % of the last one, none of them can never be referred to again.
+        % It is not clear whether keeping all non-grade-dependent files'
+        % statuses in the map makes paying this cost worthwhile.
+        StatusMap0 = make_info_get_dep_file_status_map(!.Info),
+        version_hash_table.fold(remove_target_file_if_grade_dependent,
+            StatusMap0, StatusMap0, StatusMap),
 
         make_info_set_dep_file_status_map(StatusMap, !Info),
         make_info_set_option_args(OptionArgs, !Info),
@@ -1851,24 +1859,6 @@ install_library_grade(LinkSucceeded0, ModuleName, AllModules,
             CleanAfter, ModuleName, AllModules),
         teardown_checking_for_interrupt(VeryVerbose, Cookie, Cleanup,
             Succeeded0, Succeeded, !Info, !IO)
-    ).
-
-% XXX Move out of between install_library_grade and install_library_grade_2.
-:- func remove_grade_dependent_targets(dependency_file, dependency_status,
-    version_hash_table(dependency_file, dependency_status)) =
-    version_hash_table(dependency_file, dependency_status).
-% See the comment above for the reason why we don't use this function
-% (that should be a predicate anyway).
-:- pragma consider_used(func(remove_grade_dependent_targets/3)).
-
-remove_grade_dependent_targets(File, _Status, StatusMap0) = StatusMap :-
-    ( if
-        File = dep_target(target_file(_, Target)),
-        target_is_grade_or_arch_dependent(Target)
-    then
-        StatusMap = delete(StatusMap0, File)
-    else
-        StatusMap = StatusMap0
     ).
 
 :- pred install_library_grade_2(io.text_output_stream::in, globals::in,
@@ -2244,6 +2234,23 @@ generate_archive_index(ProgressStream, Globals, FileName, InstallDir,
     CmdOutputStream = ProgressStream,
     invoke_system_command(Globals, ProgressStream,
         CmdOutputStream, cmd_verbose, Command, Succeeded, !IO).
+
+%---------------------%
+
+:- pred remove_target_file_if_grade_dependent(dependency_file::in,
+    dependency_status::in,
+    version_hash_table(dependency_file, dependency_status)::in,
+    version_hash_table(dependency_file, dependency_status)::out) is det.
+
+remove_target_file_if_grade_dependent(File, _Status, !StatusMap) :-
+    ( if
+        File = dep_target(target_file(_, TargetType)),
+        target_is_grade_or_arch_dependent(TargetType)
+    then
+        version_hash_table.delete(File, !StatusMap)
+    else
+        true
+    ).
 
 %---------------------------------------------------------------------------%
 
