@@ -76,6 +76,7 @@
 
 :- import_module dir.
 :- import_module map.
+:- import_module require.
 :- import_module string.
 :- import_module version_hash_table.
 
@@ -133,12 +134,16 @@ get_target_timestamp(ProgressStream, Globals, Search, TargetFile,
             version_hash_table.search(TargetFileTimestamps0, TargetFile,
                 Timestamp)
         then
+            trace [compile_time(flag("target_timestamp_cache")), io(!TIO)] (
+                verify_cached_target_file_timestamp(ProgressStream, Globals,
+                    Search, TargetFile, Timestamp, !.Info, _Info, !TIO)
+            ),
             MaybeTimestamp = ok(Timestamp)
         else
             ForSearch = maybe_search_to_maybe_for_search(Search),
             module_maybe_nested_target_file_to_file_name(ProgressStream,
                 Globals, $pred, ForSearch, TargetFile, FileName, !Info, !IO),
-            get_target_timestamp_2(ProgressStream, Globals,
+            get_target_timestamp_uncached(ProgressStream, Globals,
                 Search, TargetFile, FileName, MaybeTimestamp, !Info, !IO),
             (
                 MaybeTimestamp = ok(Timestamp),
@@ -155,6 +160,36 @@ get_target_timestamp(ProgressStream, Globals, Search, TargetFile,
                 % file is made.
             )
         )
+    ).
+
+:- pred verify_cached_target_file_timestamp(io.text_output_stream::in,
+    globals::in, maybe_search::in, target_file::in, timestamp::in,
+    make_info::in, make_info::out, io::di, io::uo) is det.
+
+verify_cached_target_file_timestamp(ProgressStream, Globals, Search,
+        TargetFile, CachedTimestamp, !Info, !IO) :-
+    ForSearch = maybe_search_to_maybe_for_search(Search),
+    module_maybe_nested_target_file_to_file_name(ProgressStream,
+        Globals, $pred, ForSearch, TargetFile, FileName, !Info, !IO),
+    get_target_timestamp_uncached(ProgressStream, Globals,
+        Search, TargetFile, FileName, MaybeFileTimestamp, !Info, !IO),
+    (
+        MaybeFileTimestamp = ok(FileTimestamp),
+        ( if CachedTimestamp = FileTimestamp then
+            true
+        else
+            string.format(
+                "target file timestamp differs: %s (cached) vs %s (actual)",
+                [s(timestamp_to_string(CachedTimestamp)),
+                s(timestamp_to_string(FileTimestamp))], Msg),
+            unexpected($pred, Msg)
+        )
+    ;
+        MaybeFileTimestamp = error(Error),
+        string.format(
+            "target file timestamp differs: %s (cached) vs %s (actual)",
+            [s(timestamp_to_string(CachedTimestamp)), s(Error)], Msg),
+        unexpected($pred, Msg)
     ).
 
     % Special treatment for `.analysis' files. If the corresponding
@@ -178,8 +213,8 @@ get_target_timestamp_analysis_registry(ProgressStream, Globals, Search,
             ( Status = optimal
             ; Status = suboptimal
             ),
-            get_target_timestamp_2(ProgressStream, Globals, Search, TargetFile,
-                FileName, MaybeTimestamp, !Info, !IO)
+            get_target_timestamp_uncached(ProgressStream, Globals, Search,
+                TargetFile, FileName, MaybeTimestamp, !Info, !IO)
         ;
             Status = invalid,
             MaybeTimestamp = error("invalid module"),
@@ -189,13 +224,13 @@ get_target_timestamp_analysis_registry(ProgressStream, Globals, Search,
         )
     ).
 
-:- pred get_target_timestamp_2(io.text_output_stream::in, globals::in,
-    maybe_search::in, target_file::in, file_name::in,
+:- pred get_target_timestamp_uncached(io.text_output_stream::in,
+    globals::in, maybe_search::in, target_file::in, file_name::in,
     maybe_error(timestamp)::out,
     make_info::in, make_info::out, io::di, io::uo) is det.
 
-get_target_timestamp_2(ProgressStream, Globals, Search, TargetFile, FileName,
-        MaybeTimestamp, !Info, !IO) :-
+get_target_timestamp_uncached(ProgressStream, Globals, Search,
+        TargetFile, FileName, MaybeTimestamp, !Info, !IO) :-
     TargetFile = target_file(ModuleName, TargetType),
     (
         Search = do_search,

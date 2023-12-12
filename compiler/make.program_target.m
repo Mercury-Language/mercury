@@ -1847,6 +1847,11 @@ install_library_grade(LinkSucceeded0, ModuleName, AllModules,
         make_info_set_dep_file_status_map(StatusMap, !Info),
         make_info_set_option_args(OptionArgs, !Info),
 
+        % Reset the target file timestamp cache, as the information it contains
+        % is not valid for the changed grade and grade-subdir setting.
+        make_info_set_target_file_timestamps(init_target_file_timestamps,
+            !Info),
+
         % Building the library in the new grade is done in a separate process
         % to make it easier to stop and clean up on an interrupt.
         globals.lookup_bool_option(LibGlobals, very_verbose, VeryVerbose),
