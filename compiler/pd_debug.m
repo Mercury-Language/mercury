@@ -73,84 +73,71 @@
 :- import_module parse_tree.var_table.
 
 :- import_module bool.
+:- import_module maybe.
 :- import_module set.
 
 %---------------------------------------------------------------------------%
 
 pd_debug_message(PDInfo, Fmt, Args, !IO) :-
-    pd_info_get_module_info(PDInfo, ModuleInfo),
-    module_info_get_globals(ModuleInfo, Globals),
-    globals.lookup_bool_option(Globals, debug_pd, DebugPD),
+    pd_info_get_maybe_debug_stream(PDInfo, MaybeDebugStream),
     (
-        DebugPD = no
+        MaybeDebugStream = no
     ;
-        DebugPD = yes,
-        module_info_get_name(ModuleInfo, ModuleName),
-        get_debug_output_stream(Globals, ModuleName, Stream, !IO),
+        MaybeDebugStream = yes(DebugStream),
         disable_warning [unknown_format_calls] (
-            io.format(Stream, Fmt, Args, !IO)
+            io.format(DebugStream, Fmt, Args, !IO)
         ),
-        io.flush_output(Stream, !IO)
+        io.flush_output(DebugStream, !IO)
     ).
 
 pd_debug_message_context(PDInfo, Context, Fmt, Args, !IO) :-
-    pd_info_get_module_info(PDInfo, ModuleInfo),
-    module_info_get_globals(ModuleInfo, Globals),
-    globals.lookup_bool_option(Globals, debug_pd, DebugPD),
+    pd_info_get_maybe_debug_stream(PDInfo, MaybeDebugStream),
     (
-        DebugPD = no
+        MaybeDebugStream = no
     ;
-        DebugPD = yes,
-        module_info_get_name(ModuleInfo, ModuleName),
-        get_debug_output_stream(Globals, ModuleName, Stream, !IO),
-        parse_tree_out_misc.write_context(Stream, Context, !IO),
+        MaybeDebugStream = yes(DebugStream),
+        parse_tree_out_misc.write_context(DebugStream, Context, !IO),
         disable_warning [unknown_format_calls] (
-            io.format(Stream, Fmt, Args, !IO)
+            io.format(DebugStream, Fmt, Args, !IO)
         ),
-        io.flush_output(Stream, !IO)
+        io.flush_output(DebugStream, !IO)
     ).
 
 %---------------------------------------------------------------------------%
 
 pd_debug_search_version_result(PDInfo, MaybeVersion, !IO) :-
-    pd_info_get_module_info(PDInfo, ModuleInfo),
-    module_info_get_globals(ModuleInfo, Globals),
-    globals.lookup_bool_option(Globals, debug_pd, DebugPD),
+    pd_info_get_maybe_debug_stream(PDInfo, MaybeDebugStream),
     (
-        DebugPD = no
+        MaybeDebugStream = no
     ;
-        DebugPD = yes,
-        module_info_get_name(ModuleInfo, ModuleName),
-        get_debug_output_stream(Globals, ModuleName, Stream, !IO),
+        MaybeDebugStream = yes(DebugStream),
         (
             MaybeVersion = no_version,
-            io.write_string(Stream, "Specialised version not found.\n", !IO)
+            io.write_string(DebugStream,
+                "Specialised version not found.\n", !IO)
         ;
             MaybeVersion = version(exact, _, _, _, _),
-            io.write_string(Stream, "Exact match found.\n", !IO)
+            io.write_string(DebugStream, "Exact match found.\n", !IO)
         ;
             MaybeVersion = version(more_general, PredProcId, Version, _, _),
-            io.write_string(Stream, "More general version.\n", !IO),
-            pd_debug_output_version(Stream, ModuleInfo, PredProcId, Version,
-                no, !IO)
+            pd_info_get_module_info(PDInfo, ModuleInfo),
+            io.write_string(DebugStream, "More general version.\n", !IO),
+            pd_debug_output_version(DebugStream, ModuleInfo, PredProcId,
+                Version, no, !IO)
         )
     ).
 
 %------------%
 
 pd_debug_register_version(PDInfo, PredProcId, Version, !IO) :-
-    pd_info_get_module_info(PDInfo, ModuleInfo),
-    module_info_get_globals(ModuleInfo, Globals),
-    globals.lookup_bool_option(Globals, debug_pd, DebugPD),
+    pd_info_get_maybe_debug_stream(PDInfo, MaybeDebugStream),
     (
-        DebugPD = no
+        MaybeDebugStream = no
     ;
-        DebugPD = yes,
-        module_info_get_name(ModuleInfo, ModuleName),
-        get_debug_output_stream(Globals, ModuleName, Stream, !IO),
-
-        io.write_string(Stream, "Registering version:\n", !IO),
-        pd_debug_output_version(Stream, ModuleInfo, PredProcId, Version,
+        MaybeDebugStream = yes(DebugStream),
+        pd_info_get_module_info(PDInfo, ModuleInfo),
+        io.write_string(DebugStream, "Registering version:\n", !IO),
+        pd_debug_output_version(DebugStream, ModuleInfo, PredProcId, Version,
             no, !IO)
     ).
 

@@ -36,22 +36,6 @@
 
 %---------------------------------------------------------------------------%
 
-:- type pd_info
-    --->    pd_info(
-                pdi_module_info         :: module_info,
-                pdi_maybe_unfold_info   :: maybe(unfold_info),
-                pdi_goal_version_index  :: goal_version_index,
-                pdi_versions            :: version_index,
-                pdi_proc_arg_info       :: pd_arg_info,
-                pdi_counter             :: counter,
-                pdi_global_term_info    :: global_term_info,
-                pdi_parent_versions     :: set(pred_proc_id),
-                pdi_depth               :: int,
-                pdi_created_versions    :: set(pred_proc_id),
-                pdi_useless_versions    :: useless_versions,
-                pdi_progress_stream     :: io.text_output_stream
-            ).
-
     % Map from list of called preds in the conjunctions
     % to the specialised versions.
     %
@@ -63,12 +47,18 @@
     %
 :- type version_index == map(pred_proc_id, version_info).
 
+:- type pd_info.
+
 :- pred pd_info_init(io.text_output_stream::in, module_info::in,
     pd_arg_info::in, pd_info::out) is det.
 
 :- pred pd_info_init_unfold_info(pred_proc_id::in, pred_info::in,
     proc_info::in, pd_info::in, pd_info::out) is det.
 
+:- pred pd_info_get_progress_stream(pd_info::in, io.text_output_stream::out)
+    is det.
+:- pred pd_info_get_maybe_debug_stream(pd_info::in,
+    maybe(io.text_output_stream)::out) is det.
 :- pred pd_info_get_module_info(pd_info::in, module_info::out) is det.
 :- pred pd_info_get_unfold_info(pd_info::in, unfold_info::out) is det.
 :- pred pd_info_get_goal_version_index(pd_info::in, goal_version_index::out)
@@ -84,8 +74,6 @@
 :- pred pd_info_get_created_versions(pd_info::in, set(pred_proc_id)::out)
     is det.
 :- pred pd_info_get_useless_versions(pd_info::in, useless_versions::out)
-    is det.
-:- pred pd_info_get_progress_stream(pd_info::in, io.text_output_stream::out)
     is det.
 
 :- pred pd_info_set_module_info(module_info::in,
@@ -128,6 +116,9 @@
 :- import_module check_hlds.modecheck_util.
 :- import_module hlds.hlds_proc_util.
 :- import_module hlds.pred_name.
+:- import_module libs.
+:- import_module libs.globals.
+:- import_module libs.options.
 :- import_module mdbcomp.
 :- import_module mdbcomp.prim_data.
 :- import_module parse_tree.set_of_var.
@@ -141,16 +132,50 @@
 
 %---------------------------------------------------------------------------%
 
+:- type pd_info
+    --->    pd_info(
+                % Read-only fields.
+                pdi_progress_stream     :: io.text_output_stream,
+                pdi_maybe_debug_stream  :: maybe(io.text_output_stream),
+
+                % Writeable fields.
+                pdi_module_info         :: module_info,
+                pdi_maybe_unfold_info   :: maybe(unfold_info),
+                pdi_goal_version_index  :: goal_version_index,
+                pdi_versions            :: version_index,
+                pdi_proc_arg_info       :: pd_arg_info,
+                pdi_counter             :: counter,
+                pdi_global_term_info    :: global_term_info,
+                pdi_parent_versions     :: set(pred_proc_id),
+                pdi_depth               :: int,
+                pdi_created_versions    :: set(pred_proc_id),
+                pdi_useless_versions    :: useless_versions
+            ).
+
+%---------------------------------------------------------------------------%
+
 pd_info_init(ProgressStream, ModuleInfo, ProcArgInfos, PDInfo) :-
+    module_info_get_globals(ModuleInfo, Globals),
+    globals.lookup_bool_option(Globals, debug_pd, DebugPD),
+    (
+        DebugPD = no,
+        MaybeDebugStream = maybe.no
+    ;
+        DebugPD = yes,
+        MaybeDebugStream = maybe.yes(ProgressStream)
+    ),
+    MaybeUnfoldInfo = maybe.no,
     map.init(GoalVersionIndex),
     map.init(Versions),
     set.init(ParentVersions),
-    pd_term.global_term_info_init(GlobalInfo),
+    pd_term.global_term_info_init(GlobalTermInfo),
+    Depth = 0,
     set.init(CreatedVersions),
     set.init(UselessVersions),
-    PDInfo = pd_info(ModuleInfo, no, GoalVersionIndex,
-        Versions, ProcArgInfos, counter.init(0), GlobalInfo, ParentVersions,
-        0, CreatedVersions, UselessVersions, ProgressStream).
+    PDInfo = pd_info(ProgressStream, MaybeDebugStream, ModuleInfo,
+        MaybeUnfoldInfo, GoalVersionIndex, Versions, ProcArgInfos,
+        counter.init(0), GlobalTermInfo, ParentVersions, Depth,
+        CreatedVersions, UselessVersions).
 
 pd_info_init_unfold_info(PredProcId, PredInfo, ProcInfo, !PDInfo) :-
     pd_info_get_module_info(!.PDInfo, ModuleInfo),
@@ -164,6 +189,8 @@ pd_info_init_unfold_info(PredProcId, PredInfo, ProcInfo, !PDInfo) :-
         LocalTermInfo, PredInfo, Parents, PredProcId, 0, no, no),
     pd_info_set_unfold_info(UnfoldInfo, !PDInfo).
 
+pd_info_get_progress_stream(PDInfo, PDInfo ^ pdi_progress_stream).
+pd_info_get_maybe_debug_stream(PDInfo, PDInfo ^ pdi_maybe_debug_stream).
 pd_info_get_module_info(PDInfo, PDInfo ^ pdi_module_info).
 pd_info_get_unfold_info(PDInfo, UnfoldInfo) :-
     MaybeUnfoldInfo = PDInfo ^ pdi_maybe_unfold_info,
@@ -182,7 +209,6 @@ pd_info_get_parent_versions(PDInfo, PDInfo ^ pdi_parent_versions).
 pd_info_get_depth(PDInfo, PDInfo ^ pdi_depth).
 pd_info_get_created_versions(PDInfo, PDInfo ^ pdi_created_versions).
 pd_info_get_useless_versions(PDInfo, PDInfo ^ pdi_useless_versions).
-pd_info_get_progress_stream(PDInfo, PDInfo ^ pdi_progress_stream).
 
 pd_info_set_module_info(ModuleInfo, !PDInfo) :-
     !PDInfo ^ pdi_module_info := ModuleInfo.
