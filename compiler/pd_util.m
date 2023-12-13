@@ -50,7 +50,7 @@
 
     % Apply simplify.m to the goal.
     %
-:- pred pd_simplify_goal(simplify_tasks::in, hlds_goal::in,
+:- pred pd_simplify_goal(string::in, simplify_tasks::in, hlds_goal::in,
     hlds_goal::out, pd_info::in, pd_info::out) is det.
 
     % Apply unique_modes.m to the goal.
@@ -177,7 +177,6 @@
 :- import_module libs.
 :- import_module libs.globals.
 :- import_module libs.optimization_options.
-:- import_module libs.options.
 :- import_module parse_tree.error_spec.
 :- import_module parse_tree.error_util.
 :- import_module parse_tree.prog_type_unify.
@@ -214,9 +213,8 @@ propagate_constraints(!Goal, !PDInfo) :-
         ConstraintProp = prop_local_constraints,
         Goal0 = !.Goal,
         trace [io(!IO)] (
-            pd_debug_message(!.PDInfo,
-                "%% Propagating constraints\n", [], !IO),
-            pd_debug_output_goal(!.PDInfo, "before constraints\n", Goal0, !IO)
+            pd_debug_output_goal(!.PDInfo, "propagate_constraints",
+                "before constraints\n", Goal0, !IO)
         ),
         pd_info_get_proc_info(!.PDInfo, ProcInfo0),
         pd_info_get_instmap(!.PDInfo, InstMap),
@@ -232,15 +230,22 @@ propagate_constraints(!Goal, !PDInfo) :-
         (
             Changed = yes,
             trace [io(!IO)] (
-                pd_debug_output_goal(!.PDInfo,
-                    "after constraints, before recompute\n", !.Goal, !IO)
+                pd_debug_output_goal(!.PDInfo, "propagate_constraints",
+                    "after constraints, before recomputing instmaps\n",
+                    !.Goal, !IO)
             ),
             pd_requantify_goal(NonLocals, !Goal, !PDInfo),
             pd_recompute_instmap_delta(!Goal, !PDInfo),
+            trace [io(!IO)] (
+                pd_debug_output_goal(!.PDInfo, "propagate_constraints",
+                    "after recomputing instmaps, before recomputing detisms\n",
+                    !.Goal, !IO)
+            ),
             rerun_det_analysis(!Goal, !PDInfo),
             find_simplify_tasks(Globals, do_not_generate_warnings,
                 SimplifyTasks),
-            pd_simplify_goal(SimplifyTasks, !Goal, !PDInfo)
+            pd_simplify_goal("propagate_constraints", SimplifyTasks,
+                !Goal, !PDInfo)
         ;
             % Use Goal0 rather than the output of propagate_constraints_in_goal
             % because constraint propagation can make the quantification
@@ -255,7 +260,12 @@ propagate_constraints(!Goal, !PDInfo) :-
 
 %---------------------------------------------------------------------------%
 
-pd_simplify_goal(SimplifyTasks, !Goal, !PDInfo) :-
+pd_simplify_goal(IdStr, SimplifyTasks, !Goal, !PDInfo) :-
+    trace [io(!IO)] (
+        pd_debug_output_goal(!.PDInfo, IdStr,
+            "before redoing simplification\n", !.Goal, !IO)
+    ),
+
     pd_info_get_module_info(!.PDInfo, ModuleInfo0),
     pd_info_get_pred_proc_id(!.PDInfo, proc(PredId, ProcId)),
     pd_info_get_proc_info(!.PDInfo, ProcInfo0),
@@ -263,6 +273,11 @@ pd_simplify_goal(SimplifyTasks, !Goal, !PDInfo) :-
 
     simplify_goal_update_vars_in_proc(SimplifyTasks, ModuleInfo0, ModuleInfo,
         PredId, ProcId, ProcInfo0, ProcInfo, InstMap0, !Goal, CostDelta),
+
+    trace [io(!IO)] (
+        pd_debug_output_goal(!.PDInfo, IdStr,
+            "after redoing simplification\n", !.Goal, !IO)
+    ),
 
     pd_info_set_module_info(ModuleInfo, !PDInfo),
     pd_info_set_proc_info(ProcInfo, !PDInfo),
@@ -299,19 +314,18 @@ unique_modecheck_goal_live_vars(LiveVars, Goal0, Goal, Errors, !PDInfo) :-
 
     unique_modes_check_goal(Goal0, Goal, ModeInfo0, ModeInfo),
     mode_info_get_module_info(ModeInfo, ModuleInfo),
-    module_info_get_globals(ModuleInfo, Globals),
-    globals.lookup_bool_option(Globals, debug_pd, Debug),
     mode_info_get_errors(ModeInfo, Errors),
+
+    pd_info_get_maybe_debug_stream(!.PDInfo, MaybeDebugStream),
     (
-        Debug = yes,
+        MaybeDebugStream = no
+    ;
+        MaybeDebugStream = yes(DebugStream),
         trace [io(!IO)] (
+            module_info_get_globals(ModuleInfo, Globals),
             ErrorSpecs = list.map(mode_error_info_to_spec(ModeInfo), Errors),
-            module_info_get_name(ModuleInfo, ModuleName),
-            get_debug_output_stream(Globals, ModuleName, DebugStream, !IO),
             write_error_specs(DebugStream, Globals, ErrorSpecs, !IO)
         )
-    ;
-        Debug = no
     ),
 
     pd_info_set_module_info(ModuleInfo, !PDInfo),

@@ -29,7 +29,7 @@
 
 %---------------------------------------------------------------------------%
 
-:- func instmap_to_string(var_table, var_name_print, int, instmap) = string.
+:- func instmap_to_string(var_table, var_name_print, uint, instmap) = string.
 
 %---------------------------------------------------------------------------%
 
@@ -113,16 +113,18 @@ instmap_to_string(VarTable, VarNamePrint, Indent, InstMap) = Str :-
             AssocList)
     ).
 
-:- func var_inst_list_to_string(var_table, var_name_print, int,
+:- func var_inst_list_to_string(var_table, var_name_print, uint,
     assoc_list(prog_var, mer_inst)) = string.
 
 var_inst_list_to_string(_, _, _, []) = "".
 var_inst_list_to_string(VarTable, VarNamePrint, Indent,
         [Var - Inst | VarsInsts]) = Str :-
+    IndentStr = indent2_string(Indent),
     VarStr = mercury_var_to_string(VarTable, VarNamePrint, Var),
     varset.init(InstVarSet),
     InstStr = mercury_inst_to_string(output_debug, InstVarSet, Inst),
-    string.format("%s -> %s", [s(VarStr), s(InstStr)], VarInstStr),
+    string.format("%s%% %s -> %s",
+        [s(IndentStr), s(VarStr), s(InstStr)], VarInstStr),
     (
         VarsInsts = [],
         Str = VarInstStr
@@ -130,10 +132,7 @@ var_inst_list_to_string(VarTable, VarNamePrint, Indent,
         VarsInsts = [_ | _],
         VarsInstsStr = var_inst_list_to_string(VarTable, VarNamePrint,
             Indent, VarsInsts),
-        string.duplicate_char('\t', Indent, IndentStr),
-        Prefix= "%            ",
-        string.format("%s\n%s%s%s",
-            [s(VarInstStr), s(IndentStr), s(Prefix), s(VarsInstsStr)], Str)
+        string.format("%s\n%s", [s(VarInstStr), s(VarsInstsStr)], Str)
     ).
 
 %---------------------------------------------------------------------------%

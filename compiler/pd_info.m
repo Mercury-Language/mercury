@@ -517,7 +517,8 @@ pd_info_incr_size_delta(Delta1, !PDInfo) :-
 
 pd_info_search_version(PDInfo, Goal, MaybeVersion) :-
     trace [io(!IO)] (
-        pd_debug_output_goal(PDInfo, "Searching for version:\n", Goal, !IO)
+        pd_debug_output_goal(PDInfo, "pd_info_search_version",
+            "searching for version:\n", Goal, !IO)
     ),
     pd_util.goal_get_calls(Goal, CalledPreds),
     pd_info_get_versions(PDInfo, Versions),
@@ -536,7 +537,8 @@ pd_info_search_version(PDInfo, Goal, MaybeVersion) :-
         MaybeVersion = no_version
     ),
     trace [io(!IO)] (
-        pd_debug_search_version_result(PDInfo, MaybeVersion, !IO)
+        pd_debug_search_version_result(PDInfo, "pd_info_search_version",
+            MaybeVersion, !IO)
     ).
 
 %---------------------------------------------------------------------------%
@@ -718,7 +720,8 @@ pd_info_define_new_pred(Goal, PredProcId, CallGoal, !PDInfo) :-
 
 pd_info_register_version(PredProcId, Version, !PDInfo) :-
     trace [io(!IO)] (
-        pd_debug_register_version(!.PDInfo, PredProcId, Version, !IO)
+        pd_debug_register_version(!.PDInfo, "pd_info_register_version",
+            PredProcId, Version, !IO)
     ),
     pd_info_get_goal_version_index(!.PDInfo, GoalVersionIndex0),
     Goal = Version ^ version_orig_goal,
