@@ -178,7 +178,9 @@
     ;       task_make_int3
     ;       task_make_opt
     ;       task_make_analysis_registry
-    ;       task_compile_to_target_code
+    ;       task_compile_to_c
+    ;       task_compile_to_java
+    ;       task_compile_to_csharp
     ;       task_make_xml_doc.
 
 %---------------------------------------------------------------------------%

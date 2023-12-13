@@ -442,7 +442,9 @@ build_target_2(ProgressStream, ErrorStream, Globals, Task, ModuleName,
         ),
 
         ( if
-            ( ModuleTask = task_compile_to_target_code
+            ( ModuleTask = task_compile_to_c
+            ; ModuleTask = task_compile_to_java
+            ; ModuleTask = task_compile_to_csharp
             ; ModuleTask = task_errorcheck
             )
         then
@@ -532,7 +534,9 @@ do_task_in_separate_process(task_make_int12) = no.
 do_task_in_separate_process(task_make_int3) = no.
 do_task_in_separate_process(task_make_opt) = yes.
 do_task_in_separate_process(task_make_analysis_registry) = yes.
-do_task_in_separate_process(task_compile_to_target_code) = yes.
+do_task_in_separate_process(task_compile_to_c) = yes.
+do_task_in_separate_process(task_compile_to_java) = yes.
+do_task_in_separate_process(task_compile_to_csharp) = yes.
 do_task_in_separate_process(task_make_xml_doc) = yes.
 
 %---------------------------------------------------------------------------%
@@ -835,15 +839,15 @@ get_compilation_task_and_options(Target, Result) :-
         ( Target = module_target_c_header(_)
         ; Target = module_target_c_code
         ),
-        Result = task_and_options(process_module(task_compile_to_target_code),
+        Result = task_and_options(process_module(task_compile_to_c),
             ["--compile-to-c"])
     ;
         Target = module_target_csharp_code,
-        Result = task_and_options(process_module(task_compile_to_target_code),
+        Result = task_and_options(process_module(task_compile_to_csharp),
             ["--csharp-only"])
     ;
         Target = module_target_java_code,
-        Result = task_and_options(process_module(task_compile_to_target_code),
+        Result = task_and_options(process_module(task_compile_to_java),
             ["--java-only"])
     ;
         Target = module_target_java_class_code,
@@ -933,7 +937,7 @@ find_lhs_files_of_process_module(ProgressStream, Globals, TargetFile, Task,
     ),
 
     (
-        Task = task_compile_to_target_code,
+        Task = task_compile_to_c,
         DirectLhsTargetFiles =
             make_target_file_list(SourceFileModuleNames, TargetType),
         % Find out what header files are generated.
@@ -944,30 +948,32 @@ find_lhs_files_of_process_module(ProgressStream, Globals, TargetFile, Task,
         LhsForeignCodeFileNames =
             list.map((func(ForeignFile) = ForeignFile ^ fcf_target_file),
                 list.condense(ForeignCodeFiles)),
-        globals.get_target(Globals, CompilationTarget),
+        MhTargetFiles = make_target_file_list(SourceFileModuleNames,
+            module_target_c_header(header_mh)),
+        globals.lookup_bool_option(Globals, highlevel_code, HighLevelCode),
         (
-            CompilationTarget = target_c,
-            MhTargetFiles = make_target_file_list(SourceFileModuleNames,
-                module_target_c_header(header_mh)),
-            globals.lookup_bool_option(Globals, highlevel_code, HighLevelCode),
-            (
-                HighLevelCode = yes,
-                % When compiling to high-level C, we always generate
-                % a header file.
-                MihTargetFiles = make_target_file_list(SourceFileModuleNames,
-                    module_target_c_header(header_mih)),
-                LhsTargetFiles = DirectLhsTargetFiles ++ MhTargetFiles ++
-                    MihTargetFiles
-            ;
-                HighLevelCode = no,
-                LhsTargetFiles = DirectLhsTargetFiles ++ MhTargetFiles
-            )
+            HighLevelCode = yes,
+            % When compiling to high-level C, we always generate both
+            % a .mih file and a .mh file.
+            MihTargetFiles = make_target_file_list(SourceFileModuleNames,
+                module_target_c_header(header_mih)),
+            LhsTargetFiles = DirectLhsTargetFiles ++ MhTargetFiles ++
+                MihTargetFiles
         ;
-            ( CompilationTarget = target_csharp
-            ; CompilationTarget = target_java
-            ),
-            LhsTargetFiles = DirectLhsTargetFiles
+            HighLevelCode = no,
+            % When compiling to high-level C, we generate only a .mh file.
+            LhsTargetFiles = DirectLhsTargetFiles ++ MhTargetFiles
         )
+    ;
+        ( Task = task_compile_to_java
+        ; Task = task_compile_to_csharp
+        ),
+        % We do not generate any kind of header file for either Java or C#.
+        LhsTargetFiles =
+            make_target_file_list(SourceFileModuleNames, TargetType),
+        % We support fact tables only when targeting C, not when targeting
+        % Java or C#.
+        LhsForeignCodeFileNames = []
     ;
         Task = task_make_int0,
         % LhsTargetFiles must only include modules with children,
