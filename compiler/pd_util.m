@@ -266,13 +266,15 @@ pd_simplify_goal(IdStr, SimplifyTasks, !Goal, !PDInfo) :-
             "before redoing simplification\n", !.Goal, !IO)
     ),
 
+    pd_info_get_progress_stream(!.PDInfo, ProgressStreeam),
     pd_info_get_module_info(!.PDInfo, ModuleInfo0),
     pd_info_get_pred_proc_id(!.PDInfo, proc(PredId, ProcId)),
     pd_info_get_proc_info(!.PDInfo, ProcInfo0),
     pd_info_get_instmap(!.PDInfo, InstMap0),
 
-    simplify_goal_update_vars_in_proc(SimplifyTasks, ModuleInfo0, ModuleInfo,
-        PredId, ProcId, ProcInfo0, ProcInfo, InstMap0, !Goal, CostDelta),
+    simplify_goal_update_vars_in_proc(ProgressStreeam, SimplifyTasks,
+        PredId, ProcId, InstMap0, CostDelta,
+        !Goal, ProcInfo0, ProcInfo, ModuleInfo0, ModuleInfo),
 
     trace [io(!IO)] (
         pd_debug_output_goal(!.PDInfo, IdStr,

@@ -230,18 +230,19 @@ size_prof_process_proc_msg(ProgressStream, Transform, PredProcId,
         maybe_write_proc_progress_message(ProgressStream, !.ModuleInfo,
             "Size profiling", PredProcId, !IO)
     ),
-    size_prof_process_proc(Transform, PredProcId, !ProcInfo, !ModuleInfo).
+    size_prof_process_proc(ProgressStream, Transform, PredProcId,
+        !ProcInfo, !ModuleInfo).
 
-:- pred size_prof_process_proc(construct_transform::in, pred_proc_id::in,
-    proc_info::in, proc_info::out,
+:- pred size_prof_process_proc(io.text_output_stream::in,
+    construct_transform::in, pred_proc_id::in, proc_info::in, proc_info::out,
     module_info::in, module_info::out) is det.
 
-size_prof_process_proc(Transform, proc(PredId, ProcId), !ProcInfo,
-        !ModuleInfo) :-
+size_prof_process_proc(ProgressStream, Transform, proc(PredId, ProcId),
+        !ProcInfo, !ModuleInfo) :-
     module_info_get_globals(!.ModuleInfo, Globals),
     SimplifyTasks = list_to_simplify_tasks(Globals, []),
-    simplify_proc(maybe.no, SimplifyTasks, PredId, ProcId,
-        !ModuleInfo, !ProcInfo),
+    simplify_proc(maybe.no, ProgressStream, SimplifyTasks, PredId, ProcId,
+        !ProcInfo, !ModuleInfo),
 
     proc_info_get_goal(!.ProcInfo, Goal0),
     proc_info_get_var_table(!.ProcInfo, VarTable0),

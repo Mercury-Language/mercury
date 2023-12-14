@@ -9,10 +9,10 @@
 % File: simplify_info.m.
 %
 % This module defines the simplify_info type and its access predicates.
-% This contains information for use by the other submodules of simplify.m:
-% both static information (such as identify of the procedure whose body is
+% This type contains information for use by the other submodules of simplify.m:
+% both static information (such as identity of the procedure whose body is
 % being simplified), and information specific to the current point in the
-% simplification process (such as the current instmap).
+% simplification process (such as whether we have seen a parallel conjunction).
 %
 %---------------------------------------------------------------------------%
 
@@ -34,6 +34,7 @@
 :- import_module parse_tree.var_table.
 
 :- import_module bool.
+:- import_module io.
 :- import_module list.
 :- import_module maybe.
 :- import_module set.
@@ -115,8 +116,9 @@
 
     % Initialise the simplify_info.
     %
-:- pred simplify_info_init(module_info::in, pred_id::in, proc_id::in,
-    proc_info::in, simplify_tasks::in, simplify_info::out) is det.
+:- pred simplify_info_init(io.text_output_stream::in, module_info::in,
+    pred_id::in, proc_id::in, proc_info::in, simplify_tasks::in,
+    simplify_info::out) is det.
 
     % Reinitialise the simplify_info before reprocessing a goal.
     %
@@ -170,6 +172,8 @@
 :- pred simplify_info_get_rerun_det(simplify_info::in,
     maybe_rerun_det::out) is det.
 
+:- pred simplify_info_get_progress_stream(simplify_info::in,
+    io.text_output_stream::out) is det.
 :- pred simplify_info_get_pred_proc_id(simplify_info::in,
     pred_proc_id::out) is det.
 :- pred simplify_info_get_tvarset(simplify_info::in,
@@ -319,6 +323,9 @@
 
 :- type simplify_info_params
     --->    simplify_info_params(
+                % The id of the stream to which any trace goals should write.
+                sip_progress_stream         :: io.text_output_stream,
+
                 % The id of the procedure we are simplifying, and two
                 % fields of its pred_info and proc_info that we need
                 % but never change.
@@ -356,6 +363,9 @@
                 % Measure of the improvement in the goal from simplification.
                 ssimp_cost_delta            :: int,
 
+                % Are we allowed to generate error, warning and/or
+                % informational message for the user?
+                %
                 % The default value of this field is allow_messages,
                 % but it is set to do_not_allow_messages during the second pass
                 % of simplification. See the comment in simplify_proc.m
@@ -389,8 +399,8 @@
                 ssimp_defined_where         :: defined_where
             ).
 
-simplify_info_init(ModuleInfo, PredId, ProcId, ProcInfo, SimplifyTasks,
-        Info) :-
+simplify_info_init(ProgressStream, ModuleInfo, PredId, ProcId, ProcInfo,
+        SimplifyTasks, Info) :-
     PredProcId = proc(PredId, ProcId),
     proc_info_get_inst_varset(ProcInfo, InstVarSet),
     module_info_get_globals(ModuleInfo, Globals),
@@ -416,8 +426,9 @@ simplify_info_init(ModuleInfo, PredId, ProcId, ProcInfo, SimplifyTasks,
         IgnoreMarkedStatic = do_not_ignore_marked_static
     ),
 
-    Params = simplify_info_params(PredProcId, TVarSet, InstVarSet, FullyStrict,
-        EffTraceLevel, TraceOptimized, IgnoreMarkedStatic),
+    Params = simplify_info_params(ProgressStream, PredProcId,
+        TVarSet, InstVarSet, FullyStrict, EffTraceLevel,
+        TraceOptimized, IgnoreMarkedStatic),
 
     proc_info_get_rtti_varmaps(ProcInfo, RttiVarMaps),
     ElimVars = [],
@@ -511,6 +522,8 @@ simplify_info_get_rerun_quant_instmap_delta(Info, X) :-
 simplify_info_get_rerun_det(Info, X) :-
     X = Info ^ simp_rerun_det.
 
+simplify_info_get_progress_stream(Info, X) :-
+    X = Info ^ simp_params ^ sip_progress_stream.
 simplify_info_get_pred_proc_id(Info, X) :-
     X = Info ^ simp_params ^ sip_pred_proc_id.
 simplify_info_get_tvarset(Info, X) :-

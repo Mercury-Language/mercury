@@ -433,8 +433,8 @@ llds_backend_pass_for_proc(ProgressStream, ConstStructMap, SCCMap,
         maybe_write_proc_progress_message(ProgressStream, !.HLDS,
             "Simplifying", PredProcId, !IO)
     ),
-    simplify_proc(yes(ProgressStream), SimplifyTasks, PredId, ProcId,
-        !HLDS, !ProcInfo),
+    simplify_proc(yes(ProgressStream), ProgressStream, SimplifyTasks,
+        PredId, ProcId, !ProcInfo, !HLDS),
     trace [io(!IO)] (
         maybe_write_proc_progress_message(ProgressStream, !.HLDS,
             "Computing liveness in", PredProcId, !IO)

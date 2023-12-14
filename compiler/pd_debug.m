@@ -261,24 +261,24 @@ pd_debug_output_goal(PDInfo, IdStr, Msg, Goal, !IO) :-
     string::in, string::in, hlds_goal::in, io::di, io::uo) is det.
 
 pd_debug_definitely_output_goal(PDInfo, DebugStream, IdStr, Msg, Goal, !IO) :-
+    pd_info_get_module_info(PDInfo, ModuleInfo),
     pd_info_get_pred_info(PDInfo, PredInfo),
     pd_info_get_proc_info(PDInfo, ProcInfo),
-    proc_info_get_var_table(ProcInfo, VarTable),
-    pred_info_get_typevarset(PredInfo, TVarSet),
-    proc_info_get_inst_varset(ProcInfo, InstVarSet),
 
+    io.format(DebugStream, "%s: %s\n", [s(IdStr), s(Msg)], !IO),
+
+    proc_info_get_var_table(ProcInfo, VarTable),
     goal_util.goal_vars(Goal, Vars),
     pd_info_get_instmap(PDInfo, InstMap),
     instmap_restrict(Vars, InstMap, VarsInstMap),
+    InstMapStr = instmap_to_string(VarTable, print_name_and_num,
+        1u, VarsInstMap),
+    io.format(DebugStream, "%s\n", [s(InstMapStr)], !IO),
 
-    pd_info_get_module_info(PDInfo, ModuleInfo),
     module_info_get_globals(ModuleInfo, Globals),
     OutInfo = init_hlds_out_info(Globals, output_debug),
-    InstmapStr = instmap_to_string(VarTable, print_name_and_num,
-        1u, VarsInstMap),
-
-    io.format(DebugStream, "%s: %s\n%s\n",
-        [s(IdStr), s(Msg), s(InstmapStr)], !IO),
+    pred_info_get_typevarset(PredInfo, TVarSet),
+    proc_info_get_inst_varset(ProcInfo, InstVarSet),
     write_goal_nl(OutInfo, DebugStream, ModuleInfo,
         vns_var_table(VarTable), print_name_and_num, TVarSet, InstVarSet,
         1u, "\n", Goal, !IO),

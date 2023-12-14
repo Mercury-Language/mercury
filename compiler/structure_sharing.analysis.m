@@ -133,7 +133,7 @@ perform_structure_sharing_analysis(ProgressStream, !ModuleInfo) :-
     % Annotate the HLDS with liveness information. The liveness analysis
     % requires argument passing information.
     generate_arg_info(!ModuleInfo),
-    annotate_liveness(!ModuleInfo),
+    annotate_liveness(ProgressStream, !ModuleInfo),
 
     % Load all structure sharing information present in the HLDS.
     LoadedSharingTable = load_structure_sharing_table(!.ModuleInfo),
@@ -329,16 +329,20 @@ structure_sharing_answer_to_domain(MaybePPId, HeadVarTypes, ProcInfo, Answer,
     % used by the liveness pass (liveness.m). This information is used to
     % eliminate useless sharing pairs during sharing analysis.
     %
-:- pred annotate_liveness(module_info::in, module_info::out) is det.
+:- pred annotate_liveness(io.text_output_stream::in,
+    module_info::in, module_info::out) is det.
 
-annotate_liveness(!ModuleInfo) :-
+annotate_liveness(ProgressStream, !ModuleInfo) :-
     process_valid_nonimported_procs(
-        update_module(simplify_and_detect_liveness_proc), !ModuleInfo).
+        update_module(simplify_and_detect_liveness_proc(ProgressStream)),
+        !ModuleInfo).
 
-:- pred simplify_and_detect_liveness_proc(pred_proc_id::in,
-    proc_info::in, proc_info::out, module_info::in, module_info::out) is det.
+:- pred simplify_and_detect_liveness_proc(io.text_output_stream::in,
+    pred_proc_id::in, proc_info::in, proc_info::out,
+    module_info::in, module_info::out) is det.
 
-simplify_and_detect_liveness_proc(PredProcId, !ProcInfo, !ModuleInfo) :-
+simplify_and_detect_liveness_proc(ProgressStream, PredProcId,
+        !ProcInfo, !ModuleInfo) :-
     % Liveness annotation expects the procedure to have been simplified.
     % For example, an if-then-else with an `erroneous' condition will cause
     % an assertion failure if it is not simplified away.
@@ -346,8 +350,8 @@ simplify_and_detect_liveness_proc(PredProcId, !ProcInfo, !ModuleInfo) :-
     SimplifyTasks = list_to_simplify_tasks(Globals, []),
     PredProcId = proc(PredId, ProcId),
     MaybeProgressStream = maybe.no,
-    simplify_proc(MaybeProgressStream, SimplifyTasks, PredId, ProcId,
-        !ModuleInfo, !ProcInfo),
+    simplify_proc(MaybeProgressStream, ProgressStream, SimplifyTasks,
+        PredId, ProcId, !ProcInfo, !ModuleInfo),
     detect_liveness_proc(!.ModuleInfo, PredProcId, !ProcInfo).
 
 %---------------------------------------------------------------------------%

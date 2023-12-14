@@ -1,0 +1,9 @@
+Prepare: prepare_send
+header(field_name("skip_empty"), header_value("yes"))
+header(field_name("Message-ID"), header_value("value"))
+
+Prepare: prepare_edit
+no headers
+
+Prepare: prepare_postpone
+header(field_name("skip_empty"), header_value("no"))

@@ -45,8 +45,10 @@
 
 :- import_module check_hlds.simplify.simplify_goal.
 :- import_module hlds.goal_util.
+:- import_module hlds.hlds_module.
 :- import_module hlds.hlds_out.
 :- import_module hlds.hlds_out.hlds_out_goal.
+:- import_module hlds.hlds_out.hlds_out_util.
 :- import_module hlds.hlds_pred.
 :- import_module hlds.hlds_rtti.
 :- import_module hlds.make_goal.
@@ -54,6 +56,7 @@
 :- import_module libs.
 :- import_module libs.trace_params.
 :- import_module parse_tree.
+:- import_module parse_tree.parse_tree_out_info.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_detism.
 :- import_module parse_tree.prog_rename.
@@ -575,6 +578,29 @@ no_conjunct_refers_to_var([Goal | Goals], TestVar) :-
 
 try_to_merge_switch_after_switch(!.Info, FirstGoalExpr, FirstGoalInfo,
         SecondGoalExpr0, SecondGoalInfo0, Result) :-
+    trace [compile_time(flag("merge_switch_switch")), io(!IO)] (
+        simplify_info_get_progress_stream(!.Info, ProgressStream),
+        simplify_info_get_module_info(!.Info, ModuleInfo),
+        module_info_get_globals(ModuleInfo, Globals),
+        OutInfo = init_hlds_out_info(Globals, output_debug),
+        simplify_info_get_var_table(!.Info, VarTable),
+        simplify_info_get_tvarset(!.Info, TVarSet),
+        simplify_info_get_inst_varset(!.Info, InstVarSet),
+        FirstGoal = hlds_goal(FirstGoalExpr, FirstGoalInfo),
+        SecondGoal0 = hlds_goal(SecondGoalExpr0, SecondGoalInfo0),
+
+        io.write_string(ProgressStream,
+            "try_to_merge_switch_after_switch\n", !IO),
+        io.write_string(ProgressStream, "first switch\n", !IO),
+        write_goal_nl(OutInfo, ProgressStream, ModuleInfo,
+            vns_var_table(VarTable), print_name_and_num, TVarSet, InstVarSet,
+            1u, "\n", FirstGoal, !IO),
+        io.write_string(ProgressStream, "second switch\n", !IO),
+        write_goal_nl(OutInfo, ProgressStream, ModuleInfo,
+            vns_var_table(VarTable), print_name_and_num, TVarSet, InstVarSet,
+            1u, "\n", SecondGoal0, !IO),
+        io.flush_output(ProgressStream, !IO)
+    ),
     FirstGoalExpr = switch(FirstSwitchVar, FirstSwitchCanFail, FirstCases),
     SecondGoalExpr0 =
         switch(SecondSwitchVar, SecondSwitchCanFail, SecondCases),
@@ -607,8 +633,28 @@ try_to_merge_switch_after_switch(!.Info, FirstGoalExpr, FirstGoalInfo,
         compute_goal_info_for_merged_goal(FirstGoalInfo, SecondGoalInfo0,
             GoalInfo),
         Goal = hlds_goal(GoalExpr, GoalInfo),
+        trace [compile_time(flag("merge_switch_switch")), io(!IO)] (
+            simplify_info_get_progress_stream(!.Info, ProgressStream),
+            simplify_info_get_module_info(!.Info, ModuleInfo),
+            module_info_get_globals(ModuleInfo, Globals),
+            OutInfo = init_hlds_out_info(Globals, output_debug),
+            simplify_info_get_var_table(!.Info, VarTable),
+            simplify_info_get_tvarset(!.Info, TVarSet),
+            simplify_info_get_inst_varset(!.Info, InstVarSet),
+
+            io.write_string(ProgressStream, "merge successful\n", !IO),
+            write_goal_nl(OutInfo, ProgressStream, ModuleInfo,
+                vns_var_table(VarTable), print_name_and_num,
+                TVarSet, InstVarSet, 1u, "\n", Goal, !IO),
+            io.flush_output(ProgressStream, !IO)
+        ),
         Result = merge_successful_new_code_not_simplified(Goal)
     else
+        trace [compile_time(flag("merge_switch_switch")), io(!IO)] (
+            simplify_info_get_progress_stream(!.Info, ProgressStream),
+            io.write_string(ProgressStream, "merge unsuccessful\n", !IO),
+            io.flush_output(ProgressStream, !IO)
+        ),
         Result = merge_unsuccessful
     ).
 
@@ -660,13 +706,67 @@ build_maps_second_switch([Case | Cases], CurCaseNum, FirstSwitchConsIdMap,
 
 build_maps_second_switch_cons_id(FirstSwitchConsIdMap, SecondSwitchCaseNum,
         ConsId, !CasesConsIdsMap) :-
-    map.lookup(FirstSwitchConsIdMap, ConsId, FirstSwitchCaseNum),
-    CaseNums = {FirstSwitchCaseNum, SecondSwitchCaseNum},
-    ( if map.search(!.CasesConsIdsMap, CaseNums, OldConsIds) then
-        NewConsIds = one_or_more.cons(ConsId, OldConsIds),
-        map.det_update(CaseNums, NewConsIds, !CasesConsIdsMap)
+    ( if map.search(FirstSwitchConsIdMap, ConsId, FirstSwitchCaseNum) then
+        CaseNums = {FirstSwitchCaseNum, SecondSwitchCaseNum},
+        ( if map.search(!.CasesConsIdsMap, CaseNums, OldConsIds) then
+            NewConsIds = one_or_more.cons(ConsId, OldConsIds),
+            map.det_update(CaseNums, NewConsIds, !CasesConsIdsMap)
+        else
+            map.det_insert(CaseNums, one_or_more(ConsId, []), !CasesConsIdsMap)
+        )
     else
-        map.det_insert(CaseNums, one_or_more(ConsId, []), !CasesConsIdsMap)
+        % This cons_id exists in the second switch, but not in the first.
+        % This means one of two things.
+        %
+        % The first possibility is that the first switch is a can_fail switch.
+        % In such a situation, if the value of the switched-on variable
+        % is ConsId, then execution cannot reach the end of the first switch.
+        % Mode analysis will notice this fact before the compiler even
+        % discovers that the first switch *is* a switch, when it is still
+        % a disjunction. It will generate a warning about the unification
+        % of the same switched-on variable with ConsId in the disjunction
+        % that would turn into the second switch, and then delete that
+        % unification. So when switch detection gets around to that
+        % disjunction, it won't have a unification with ConsId to make
+        % ConsId one of the cons_ids of a switch arm. This means if execution
+        % gets here, then this possibility cannot actually have happened.
+        %
+        % For an example of this, have a look at the HLDS dumps of
+        % tests/hard_coded/bug570_can_fail.m from just before and just after
+        % the mode checking pass.
+        %
+        % The second possibility is that the first switch is a cannot_fail
+        % switch, but the inst of the switched-on variable at its start
+        % implies that the switched-on variable *cannot* be bound to ConsId
+        % there. Again, if the user writes code like this, the compiler will
+        % notice that the unification of the switched-on variable with ConsId
+        % in the disjunction that would turn into the second switch cannot
+        % succeed, generate a warning, and then delete that unification.
+        % This again would mean that execution cannot get here.
+        %
+        % However, there is a way in which execution *can* get here:
+        % if the code sequence containing the two switches, the first
+        % not having a ConsId arm but the second having such an arm,
+        % is constructed internally by the compiler *after* the mode analysis
+        % pass. This happens in tests/hard_coded/bug570, where this
+        % construction is done by the deforestation pass, which then
+        % invokes simplification on its output.
+        %
+        % The map.search above used to be a map.lookup, but that test case
+        % showed that it must be a map.search. The make_headers predicate in
+        % bug570.m consists of three successive switches on the same variable,
+        % Prepare, all of which handle all the function symbols of Prepare's
+        % type. Deforestation moves copies of those switches into each arm
+        % of the previous switch. In their new positions in the arms of the
+        % first switch, some arms of the copied second switch become
+        % unreachable, and are pruned away. Mantis bug #570 happened when
+        % deforestation tried to move copies of the third switch, which had
+        % an arm for Prepare = prepare_edit, into each arm of the merged
+        % first/second switch, one of which occurred in a context in which
+        % Prepare could *not* be bound to prepare_edit, because it was derived
+        % from the arm of the first switch on Prepare which was *not*
+        % prepare_edit.
+        true
     ).
 
 %---------------------%

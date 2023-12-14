@@ -40,9 +40,9 @@
     %
     % Used by mercury_compiler_front_end.m when doing compilation pass-by-pass.
     %
-:- pred simplify_pred_procs(maybe(io.text_output_stream)::in,
+:- pred simplify_pred_procs(io.text_output_stream::in,
     simplify_tasks::in, pred_id::in, list(proc_id)::in,
-    module_info::in, module_info::out, pred_info::in, pred_info::out,
+    pred_info::in, pred_info::out, module_info::in, module_info::out,
     error_spec_accumulator::in, error_spec_accumulator::out) is det.
 
     % Simplify the given procedure. Throw away any resulting error messages.
@@ -50,12 +50,12 @@
     % Used by compiler passes after the front end that need (or maybe just
     % want) to eliminate unnecessary parts of the procedure.
     %
-:- pred simplify_proc(maybe(io.text_output_stream)::in, simplify_tasks::in,
-    pred_id::in, proc_id::in, module_info::in, module_info::out,
-    proc_info::in, proc_info::out) is det.
+:- pred simplify_proc(maybe(io.text_output_stream)::in,
+    io.text_output_stream::in, simplify_tasks::in, pred_id::in, proc_id::in,
+    proc_info::in, proc_info::out, module_info::in, module_info::out) is det.
 
-    % simplify_goal_update_vars_in_proc(SimplifyTasks, !ModuleInfo,
-    %   PredId, ProcId, !ProcInfo, InstMap0, !Goal, CostDelta):
+    % simplify_goal_update_vars_in_proc(ProgressStream, SimplifyTasks,
+    %   PredId, ProcId, InstMap0, CostDelta, !Goal, !ProcInfo, !ModuleInfo):
     %
     % Perform the specified simplification tasks on !Goal, which should be
     % part of the procedure identified by PredId and ProcId. InstMap0
@@ -71,10 +71,10 @@
     %
     % Used by partial evaluation.
     %
-:- pred simplify_goal_update_vars_in_proc(simplify_tasks::in,
-    module_info::in, module_info::out, pred_id::in, proc_id::in,
-    proc_info::in, proc_info::out, instmap::in, hlds_goal::in, hlds_goal::out,
-    int::out) is det.
+:- pred simplify_goal_update_vars_in_proc(io.text_output_stream::in,
+    simplify_tasks::in, pred_id::in, proc_id::in, instmap::in, int::out,
+    hlds_goal::in, hlds_goal::out, proc_info::in, proc_info::out,
+    module_info::in, module_info::out) is det.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -122,27 +122,27 @@
 
 %-----------------------------------------------------------------------------%
 
-simplify_pred_procs(_, _, _, [], !ModuleInfo, !PredInfo, !Specs).
-simplify_pred_procs(MaybeProgressStream, SimplifyTasks, PredId,
-        [ProcId | ProcIds], !ModuleInfo, !PredInfo, !Specs) :-
-    simplify_pred_proc(MaybeProgressStream, SimplifyTasks, PredId, ProcId,
-        !ModuleInfo, !PredInfo, !Specs),
-    simplify_pred_procs(MaybeProgressStream, SimplifyTasks, PredId, ProcIds,
-        !ModuleInfo, !PredInfo, !Specs).
+simplify_pred_procs(_, _, _, [], !PredInfo, !ModuleInfo, !Specs).
+simplify_pred_procs(ProgressStream, SimplifyTasks, PredId,
+        [ProcId | ProcIds], !PredInfo, !ModuleInfo, !Specs) :-
+    simplify_pred_proc(ProgressStream, SimplifyTasks, PredId, ProcId,
+        !PredInfo, !ModuleInfo, !Specs),
+    simplify_pred_procs(ProgressStream, SimplifyTasks, PredId, ProcIds,
+        !PredInfo, !ModuleInfo, !Specs).
 
-:- pred simplify_pred_proc(maybe(io.text_output_stream)::in,
-    simplify_tasks::in, pred_id::in, proc_id::in,
-    module_info::in, module_info::out, pred_info::in, pred_info::out,
+:- pred simplify_pred_proc(io.text_output_stream::in, simplify_tasks::in,
+    pred_id::in, proc_id::in, pred_info::in, pred_info::out,
+    module_info::in, module_info::out,
     error_spec_accumulator::in, error_spec_accumulator::out) is det.
 
-simplify_pred_proc(_MaybeProgressStream, SimplifyTasks, PredId, ProcId,
-        !ModuleInfo, !PredInfo, !Specs) :-
+simplify_pred_proc(ProgressStream, SimplifyTasks, PredId, ProcId,
+        !PredInfo, !ModuleInfo, !Specs) :-
     % XXX It is strange that simplify_proc prints progress messages,
     % but simplify_pred_proc does not.
     pred_info_get_proc_table(!.PredInfo, ProcTable0),
     map.lookup(ProcTable0, ProcId, ProcInfo0),
-    simplify_proc_return_msgs(SimplifyTasks, PredId, ProcId,
-        !ModuleInfo, ProcInfo0, ProcInfo, ProcSpecs),
+    simplify_proc_return_msgs(ProgressStream, SimplifyTasks, PredId, ProcId,
+        ProcSpecs, ProcInfo0, ProcInfo, !ModuleInfo),
     % This is ugly, but we want to avoid running the dependent parallel
     % conjunction pass on predicates and even modules that do not contain
     % parallel conjunctions (nearly all of them). Since simplification
@@ -166,24 +166,24 @@ simplify_pred_proc(_MaybeProgressStream, SimplifyTasks, PredId, ProcId,
     pred_info_set_proc_table(ProcTable, !PredInfo),
     accumulate_error_specs_for_proc(ProcSpecs, !Specs).
 
-simplify_proc(MaybeProgressStream, SimplifyTasks, PredId, ProcId,
-        !ModuleInfo, !ProcInfo)  :-
+simplify_proc(MaybeProgressStream, ProgressStream, SimplifyTasks,
+        PredId, ProcId, !ProcInfo, !ModuleInfo)  :-
     trace [io(!IO)] (
         (
             MaybeProgressStream = no
         ;
-            MaybeProgressStream = yes(ProgressStream),
-            maybe_write_pred_progress_message(ProgressStream, !.ModuleInfo,
+            MaybeProgressStream = yes(Stream),
+            maybe_write_pred_progress_message(Stream, !.ModuleInfo,
                 "Simplifying", PredId, !IO)
         )
     ),
-    simplify_proc_return_msgs(SimplifyTasks, PredId, ProcId, !ModuleInfo,
-        !ProcInfo, _).
+    simplify_proc_return_msgs(ProgressStream, SimplifyTasks, PredId, ProcId,
+        _, !ProcInfo, !ModuleInfo).
 
-simplify_goal_update_vars_in_proc(SimplifyTasks, !ModuleInfo,
-        PredId, ProcId, !ProcInfo, InstMap0, !Goal, CostDelta) :-
-    simplify_info_init(!.ModuleInfo, PredId, ProcId, !.ProcInfo,
-        SimplifyTasks, SimplifyInfo0),
+simplify_goal_update_vars_in_proc(ProgressStream, SimplifyTasks,
+        PredId, ProcId, InstMap0, CostDelta, !Goal, !ProcInfo, !ModuleInfo) :-
+    simplify_info_init(ProgressStream, !.ModuleInfo, PredId, ProcId,
+        !.ProcInfo, SimplifyTasks, SimplifyInfo0),
     % The nested context we construct is probably a lie; we don't actually
     % know whether we are inside a goal duplicated for a switch, or a lambda,
     % or a model_non procedure. However, this should be ok. The first three
@@ -215,12 +215,12 @@ simplify_goal_update_vars_in_proc(SimplifyTasks, !ModuleInfo,
 
     % Simplify the given procedure. Return the resulting error messages.
     %
-:- pred simplify_proc_return_msgs(simplify_tasks::in, pred_id::in,
-    proc_id::in, module_info::in, module_info::out,
-    proc_info::in, proc_info::out, list(error_spec)::out) is det.
+:- pred simplify_proc_return_msgs(io.text_output_stream::in,
+    simplify_tasks::in, pred_id::in, proc_id::in, list(error_spec)::out,
+    proc_info::in, proc_info::out, module_info::in, module_info::out) is det.
 
-simplify_proc_return_msgs(SimplifyTasks0, PredId, ProcId, !ModuleInfo,
-        !ProcInfo, !:Specs) :-
+simplify_proc_return_msgs(ProgressStream, SimplifyTasks0, PredId, ProcId,
+        !:Specs, !ProcInfo, !ModuleInfo) :-
     simplify_proc_maybe_vary_parameters(!.ModuleInfo, PredId, !.ProcInfo,
         SimplifyTasks0, SimplifyTasks),
     module_info_pred_info(!.ModuleInfo, PredId, PredInfo0),
@@ -266,8 +266,8 @@ simplify_proc_return_msgs(SimplifyTasks0, PredId, ProcId, !ModuleInfo,
         FormatSpecs = []
     ),
 
-    simplify_info_init(!.ModuleInfo, PredId, ProcId, !.ProcInfo,
-        SimplifyTasks, Info0),
+    simplify_info_init(ProgressStream, !.ModuleInfo, PredId, ProcId,
+        !.ProcInfo, SimplifyTasks, Info0),
 
     InsideDuplForSwitch = no,
     CodeModel = proc_info_interface_code_model(!.ProcInfo),
