@@ -61,9 +61,11 @@ LDFLAGS_FOR_SANITIZERS="@LDFLAGS_FOR_SANITIZERS@"
 
 TMPDIR=${TMPDIR=/tmp}
 MATH_LIB=${MERCURY_MATH_LIB="@MATH_LIB@"}
-# Note: the setting of SHARED_LIBS needs to come after the setting of MATH_LIB,
-# since @SHARED_LIBS_SH@ may refer to ${MATH_LIB}.
-SHARED_LIBS=${MERCURY_SHARED_LIBS="@SHARED_LIBS_SH@"}
+# Defer assigning SHARED_LIBS until it is actually required,
+# as SHARED_LIBS_SH may invoke gcc in a command substitution.
+set_shared_libs() {
+    SHARED_LIBS=${MERCURY_SHARED_LIBS="@SHARED_LIBS_SH@"}
+}
 
 # Set the MACOSX_DEPLOYMENT_TARGET environment variable if needed.
 @SET_MACOSX_DEPLOYMENT_TARGET@
@@ -424,6 +426,7 @@ case "${make_shared_lib}" in
         esac
         RPATH_OPT="${SHLIB_RPATH_OPT}"
         RPATH_SEP="${SHLIB_RPATH_SEP}"
+        set_shared_libs
         STDLIBS="${SHARED_LIBS} ${THREAD_LIBS}"
         case "${trace}" in
             true)
