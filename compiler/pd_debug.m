@@ -74,7 +74,6 @@
 :- import_module parse_tree.parse_tree_out_info.
 :- import_module parse_tree.parse_tree_out_misc.
 :- import_module parse_tree.parse_tree_out_term.
-:- import_module parse_tree.set_of_var.
 :- import_module parse_tree.var_db.
 :- import_module parse_tree.var_table.
 
