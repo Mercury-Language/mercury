@@ -982,6 +982,12 @@
                 % and must be before the simplification pass at the end of
                 % semantic analysis (since that is when format_call.m's code
                 % uses this info, relying on it having being checked).
+                %
+                % The presence of a pred_id in this field does NOT keep
+                % the predicate it refers to alive. Any code handling these
+                % pred_ids must be prepared for the possibility that dead
+                % predicate elimination has deleted the pred_info it originally
+                % referred to.
                 mri_format_call_pragma_preds    :: set(pred_id),
 
                 % Enumeration types that have been exported to a foreign

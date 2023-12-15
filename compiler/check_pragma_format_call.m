@@ -87,46 +87,50 @@ check_pragma_format_call_preds(FormatCallPredIds, !ModuleInfo, !Specs) :-
     list(error_spec)::in, list(error_spec)::out) is det.
 
 check_pragma_format_call_pred(PredId, !ModuleInfo, !Specs) :-
-    module_info_pred_info(!.ModuleInfo, PredId, PredInfo0),
-    pred_info_get_format_call(PredInfo0, MaybeFormatCall0),
-    (
-        MaybeFormatCall0 = no,
-        % add_pragma.m should add a pred_id to the set of predicates
-        % that have a format_call pragma if and only if it also sets
-        % this field to yes(...).
-        unexpected($pred, "MaybeFormatCall0 = no")
-    ;
-        MaybeFormatCall0 = yes(FormatCall0)
-    ),
+    module_info_get_pred_id_table(!.ModuleInfo, PredIdTable0),
+    ( if map.search(PredIdTable0, PredId, PredInfo0) then
+        pred_info_get_format_call(PredInfo0, MaybeFormatCall0),
+        (
+            MaybeFormatCall0 = no,
+            % add_pragma.m should add a pred_id to the set of predicates
+            % that have a format_call pragma if and only if it also sets
+            % this field to yes(...).
+            unexpected($pred, "MaybeFormatCall0 = no")
+        ;
+            MaybeFormatCall0 = yes(FormatCall0)
+        ),
 
-    FormatCall0 = format_call(Context, OoMFormatArgs0),
-    FormatArgs0 = one_or_more_to_list(OoMFormatArgs0),
-    list.length(FormatArgs0, NumFormatArgs0),
-    pred_info_get_proc_table(PredInfo0, ProcTable0),
-    map.to_sorted_assoc_list(ProcTable0, ProcIdsInfos0),
-    list.length(ProcIdsInfos0, NumProcs),
-    % Setting the maximum argument number that a format_call pragma
-    % may refer to be from the *user* arity means that format_call
-    % pragmas cannot refer to the return values of functions.
-    % The reason for this is that a function's return value
-    % is supposed to be output, while the format string and
-    % values list arguments are supposed to be inputs.
-    user_arity(MaxArgNum) = pred_info_user_arity(PredInfo0),
-    pred_info_get_arg_types(PredInfo0, ArgTypes),
-    check_format_args(!.ModuleInfo, PredInfo0, Context, MaxArgNum, ArgTypes,
-        NumProcs, ProcIdsInfos0, NumFormatArgs0,
-        1, FormatArgs0, FormatArgs, !Specs),
-    (
-        FormatArgs = [HeadFormatArgs | TailFormatArgs],
-        OoMFormatArgs = one_or_more(HeadFormatArgs, TailFormatArgs),
-        FormatCall = format_call(Context, OoMFormatArgs),
-        MaybeFormatCall = yes(FormatCall)
-    ;
-        FormatArgs = [],
-        MaybeFormatCall = no
-    ),
-    pred_info_set_format_call(MaybeFormatCall, PredInfo0, PredInfo),
-    module_info_set_pred_info(PredId, PredInfo, !ModuleInfo).
+        FormatCall0 = format_call(Context, OoMFormatArgs0),
+        FormatArgs0 = one_or_more_to_list(OoMFormatArgs0),
+        list.length(FormatArgs0, NumFormatArgs0),
+        pred_info_get_proc_table(PredInfo0, ProcTable0),
+        map.to_sorted_assoc_list(ProcTable0, ProcIdsInfos0),
+        list.length(ProcIdsInfos0, NumProcs),
+        % Setting the maximum argument number that a format_call pragma
+        % may refer to be from the *user* arity means that format_call
+        % pragmas cannot refer to the return values of functions.
+        % The reason for this is that a function's return value
+        % is supposed to be output, while the format string and
+        % values list arguments are supposed to be inputs.
+        user_arity(MaxArgNum) = pred_info_user_arity(PredInfo0),
+        pred_info_get_arg_types(PredInfo0, ArgTypes),
+        check_format_args(!.ModuleInfo, PredInfo0, Context, MaxArgNum,
+            ArgTypes, NumProcs, ProcIdsInfos0, NumFormatArgs0,
+            1, FormatArgs0, FormatArgs, !Specs),
+        (
+            FormatArgs = [HeadFormatArgs | TailFormatArgs],
+            OoMFormatArgs = one_or_more(HeadFormatArgs, TailFormatArgs),
+            FormatCall = format_call(Context, OoMFormatArgs),
+            MaybeFormatCall = yes(FormatCall)
+        ;
+            FormatArgs = [],
+            MaybeFormatCall = no
+        ),
+        pred_info_set_format_call(MaybeFormatCall, PredInfo0, PredInfo),
+        module_info_set_pred_info(PredId, PredInfo, !ModuleInfo)
+    else
+        true
+    ).
 
 :- pred check_format_args(module_info::in, pred_info::in, prog_context::in,
     int::in, list(mer_type)::in, int::in, list(pair(proc_id, proc_info))::in,
