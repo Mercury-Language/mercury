@@ -60,7 +60,7 @@ else
     exit 1
 fi
 
-if command -v mmc >/dev/null && mmc -v 2>&1 | grep -q Mercury
+if mmc --version 2>&1 | grep -q Mercury
 then
     true
 else
