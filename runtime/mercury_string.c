@@ -585,11 +585,11 @@ MR_utf8_to_wide(const char *s)
 
     wslen = MultiByteToWideChar(CP_UTF8, 0, s, -1, NULL, 0);
     if (wslen == 0) {
-        MR_fatal_error("ML_utf8_to_wide: MultiByteToWideChar failed");
+        MR_fatal_error("MR_utf8_to_wide: MultiByteToWideChar failed");
     }
     ws = MR_GC_NEW_ARRAY(wchar_t, wslen);
     if (0 == MultiByteToWideChar(CP_UTF8, 0, s, -1, ws, wslen)) {
-        MR_fatal_error("ML_utf8_to_wide: MultiByteToWideChar failed");
+        MR_fatal_error("MR_utf8_to_wide: MultiByteToWideChar failed");
     }
     return ws;
 }
@@ -602,11 +602,11 @@ MR_wide_to_utf8(const wchar_t *ws, MR_AllocSiteInfoPtr alloc_id)
 
     bytes = WideCharToMultiByte(CP_UTF8, 0, ws, -1, NULL, 0, NULL, NULL);
     if (bytes == 0) {
-        MR_fatal_error("ML_wide_to_utf8: WideCharToMultiByte failed");
+        MR_fatal_error("MR_wide_to_utf8: WideCharToMultiByte failed");
     }
     MR_allocate_aligned_string_msg(s, bytes, alloc_id);
     if (0 == WideCharToMultiByte(CP_UTF8, 0, ws, -1, s, bytes, NULL, NULL)) {
-        MR_fatal_error("ML_wide_to_utf8: WideCharToMultiByte failed");
+        MR_fatal_error("MR_wide_to_utf8: WideCharToMultiByte failed");
     }
     return s;
 }
