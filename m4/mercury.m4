@@ -622,33 +622,34 @@ fi
 
 AC_DEFUN([MERCURY_GCC_VERSION], [
 AC_REQUIRE([AC_PROG_CC])
-    
+
 AC_MSG_CHECKING([what the gcc version is])
 
 # -dumpfullversion has only been supported since GCC 7; if it is available we
 # prefer its output since it is guaranteed to be in the form major.minor.patch.
-#
-raw_gcc_version=`$CC -dumpfullversion 2> /dev/null`
-if test $? -ne 0
-then
-    raw_gcc_version=`$CC -dumpversion`
-fi
+# (It turns out that mingw32 gcc -dumpfullversion on Debian 12 reports
+# "12-win32" anyway.)
+raw_gcc_version=$($CC -dumpfullversion 2>/dev/null || $CC -dumpversion)
 
-# We expect that the major and minor version numbers will always be present.
-# MinGW-w64 may add a suffix "-win32" or "-posix" after the second or third
-# number that should be ignored.
-mercury_cv_gcc_version=`echo $raw_gcc_version | tr .- '  ' | {
-    read major minor third ignore
-    case $third in
-        [[0-9]]*)
-            patchlevel=$third
-            ;;
-        *)
-            patchlevel=
-            ;;
+# The major version number should always be present.
+# The minor version number and patchlevel are not always present.
+# MinGW-w64 may add a suffix "-win32" or "-posix" that should be ignored.
+mercury_cv_gcc_version=$(echo "${raw_gcc_version%-*}" | tr . ' ' | {
+    read major minor patchlevel ignore
+    case $major in
+	[[0-9]]*) ;;
+	*) major=u ;;
     esac
-    echo ${major:-u}_${minor:-u}_${patchlevel:-u}
-    }`
+    case $minor in
+	[[0-9]]*) ;;
+	*) minor=u ;;
+    esac
+    case $patchlevel in
+	[[0-9]]*) ;;
+	*) patchlevel=u ;;
+    esac
+    echo "${major}_${minor}_${patchlevel}"
+    })
 
 AC_MSG_RESULT([$mercury_cv_gcc_version])
 ])
@@ -728,21 +729,31 @@ AC_MSG_RESULT([$mercury_cv_cc_type])
 AC_DEFUN([MERCURY_CLANG_VERSION], [
 AC_REQUIRE([AC_PROG_CC])
 
-# We expect that the major and minor version numbers will always be present.
+AC_MSG_CHECKING([what the clang version is])
+
+raw_clang_version=$($CC -dumpversion)
+
+# The major version number should always be present.
 # For GCC we allow for a suffix after the second or third number that should
 # be ignored; it seems prudent to do the same for clang here as well.
-mercury_cv_clang_version=`$CC -dumpversion | tr .- '  ' | {
-    read major minor third ignore
-    case $third in
-        [[0-9]]*)
-            patchlevel=$third
-            ;;
-        *)
-            patchlevel=
-            ;;
+mercury_cv_clang_version=$(echo "${raw_clang_version%-*}" | tr . ' ' | {
+    read major minor patchlevel ignore
+    case $major in
+	[[0-9]]*) ;;
+	*) major=u ;;
     esac
-    echo ${major:-u}_${minor:-u}_${patchlevel:-u}
-    }`
+    case $minor in
+	[[0-9]]*) ;;
+	*) minor=u ;;
+    esac
+    case $patchlevel in
+	[[0-9]]*) ;;
+	*) patchlevel=u ;;
+    esac
+    echo "${major}_${minor}_${patchlevel}"
+    })
+
+AC_MSG_RESULT([$mercury_cv_clang_version])
 ])
 
 #-----------------------------------------------------------------------------#
