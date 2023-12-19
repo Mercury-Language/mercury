@@ -348,12 +348,9 @@
 :- import_module exception.
 :- import_module int.
 
-%
-% Header files of mathematical significance.
-%
-
 :- pragma foreign_decl("C", "
     #include <float.h>
+    #include <inttypes.h>
     #include <math.h>
 
 #ifdef MR_HAVE_IEEEFP_H
@@ -1166,7 +1163,7 @@ float_to_doc(F) = pretty_printer.float_to_doc(F).
 
 :- pragma foreign_proc("C",
     float32_bits_string(Flt::in) = (Str::uo),
-    [will_not_call_mercury, promise_pure, thread_safe],
+    [will_not_call_mercury, promise_pure, thread_safe, may_not_export_body],
 "
     union {
         float f;
@@ -1181,7 +1178,7 @@ float_to_doc(F) = pretty_printer.float_to_doc(F).
 
 :- pragma foreign_proc("Java",
     float32_bits_string(Flt::in) = (Str::uo),
-    [will_not_call_mercury, promise_pure, thread_safe],
+    [will_not_call_mercury, promise_pure, thread_safe, may_not_export_body],
 "
     float f = (float) Flt;
     int i = Float.floatToIntBits(f);
@@ -1190,7 +1187,7 @@ float_to_doc(F) = pretty_printer.float_to_doc(F).
 
 :- pragma foreign_proc("C#",
     float32_bits_string(Flt::in) = (Str::uo),
-    [will_not_call_mercury, promise_pure, thread_safe],
+    [will_not_call_mercury, promise_pure, thread_safe, may_not_export_body],
 "
     float f = (float) Flt;
     int i = System.BitConverter.ToInt32(System.BitConverter.GetBytes(f), 0);
@@ -1199,7 +1196,7 @@ float_to_doc(F) = pretty_printer.float_to_doc(F).
 
 :- pragma foreign_proc("C",
     float64_bits_string(Flt::in) = (Str::uo),
-    [will_not_call_mercury, promise_pure, thread_safe],
+    [will_not_call_mercury, promise_pure, thread_safe, may_not_export_body],
 "
     #if defined(MR_INT_LEAST64_TYPE)
 
@@ -1210,7 +1207,7 @@ float_to_doc(F) = pretty_printer.float_to_doc(F).
         char buf[64];
 
         u.f = (double) Flt;
-        sprintf(buf, ""%"" MR_INT_LEAST64_LENGTH_MODIFIER ""d"", u.i);
+        sprintf(buf, ""%"" PRIdLEAST64, u.i);
         MR_make_aligned_string_copy(Str, buf);
     #else
         MR_fatal_error(
@@ -1220,7 +1217,7 @@ float_to_doc(F) = pretty_printer.float_to_doc(F).
 
 :- pragma foreign_proc("Java",
     float64_bits_string(Flt::in) = (Str::uo),
-    [will_not_call_mercury, promise_pure, thread_safe],
+    [will_not_call_mercury, promise_pure, thread_safe, may_not_export_body],
 "
     double d = (double) Flt;
     long i = Double.doubleToLongBits(d);
@@ -1229,7 +1226,7 @@ float_to_doc(F) = pretty_printer.float_to_doc(F).
 
 :- pragma foreign_proc("C#",
     float64_bits_string(Flt::in) = (Str::uo),
-    [will_not_call_mercury, promise_pure, thread_safe],
+    [will_not_call_mercury, promise_pure, thread_safe, may_not_export_body],
 "
     double d = (double) Flt;
     long i = System.BitConverter.DoubleToInt64Bits(d);

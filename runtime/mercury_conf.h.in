@@ -67,11 +67,6 @@
 
 #undef  MR_INT_LEAST64_TYPE
 
-// MR_INT_LEAST64_LENGTH_MODIFIER: the print() length modifier for
-// a MR_int_least64_t.
-
-#undef  MR_INT_LEAST64_LENGTH_MODIFIER
-
 // MR_INT_LEAST32_TYPE:
 // This must be a C integral type (e.g. short, int, long)
 // without any explicit signedness.

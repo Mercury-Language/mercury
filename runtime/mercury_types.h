@@ -44,11 +44,13 @@
 #endif
 
 // This section defines types similar to C9X's <stdint.h> header.
-// We do not use <stdint.h>, or the <inttypes.h> or <sys/types.h> files
-// that substitute for it on some systems because (a) some such files
-// do not define the types we need, and (b) some such files include
-// inline function definitions. The latter is a problem because we want to
-// reserve some real machine registers for Mercury abstract machine registers.
+// Historically, we did not use <stdint.h>, or the <inttypes.h> or
+// <sys/types.h> files that substitute for it on some systems because
+// (a) some such files do not define the types we need, and
+// (b) some such files include inline function definitions.
+// While the former reason is very much out of date,
+// the latter may still be a problem because we want to reserve some
+// real machine registers for Mercury abstract machine registers.
 // To be effective, the definitions of these global register variables
 // must precede all function definitions, and we want to put their
 // definitions after mercury_types.h.
