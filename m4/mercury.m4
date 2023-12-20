@@ -635,20 +635,20 @@ raw_gcc_version=$($CC -dumpfullversion 2>/dev/null || $CC -dumpversion)
 # The minor version number and patchlevel are not always present.
 # MinGW-w64 may add a suffix "-win32" or "-posix" that should be ignored.
 mercury_cv_gcc_version=$(echo "${raw_gcc_version%-*}" | tr . ' ' | {
-    read major minor patchlevel ignore
+    read major minor patchlevel ignore;
     case $major in
 	[[0-9]]*) ;;
 	*) major=u ;;
-    esac
+    esac;
     case $minor in
 	[[0-9]]*) ;;
 	*) minor=u ;;
-    esac
+    esac;
     case $patchlevel in
 	[[0-9]]*) ;;
 	*) patchlevel=u ;;
-    esac
-    echo "${major}_${minor}_${patchlevel}"
+    esac;
+    echo "${major}_${minor}_${patchlevel}";
     })
 
 AC_MSG_RESULT([$mercury_cv_gcc_version])
@@ -737,20 +737,20 @@ raw_clang_version=$($CC -dumpversion)
 # For GCC we allow for a suffix after the second or third number that should
 # be ignored; it seems prudent to do the same for clang here as well.
 mercury_cv_clang_version=$(echo "${raw_clang_version%-*}" | tr . ' ' | {
-    read major minor patchlevel ignore
+    read major minor patchlevel ignore;
     case $major in
 	[[0-9]]*) ;;
 	*) major=u ;;
-    esac
+    esac;
     case $minor in
 	[[0-9]]*) ;;
 	*) minor=u ;;
-    esac
+    esac;
     case $patchlevel in
 	[[0-9]]*) ;;
 	*) patchlevel=u ;;
-    esac
-    echo "${major}_${minor}_${patchlevel}"
+    esac;
+    echo "${major}_${minor}_${patchlevel}";
     })
 
 AC_MSG_RESULT([$mercury_cv_clang_version])
