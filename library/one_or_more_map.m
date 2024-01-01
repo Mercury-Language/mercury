@@ -7,15 +7,15 @@
 %
 % File: one_or_more_map.m.
 %
-% This file provides a version of the 'multi_map' ADT.
+% This file provides another version of the multi_map(K, V) abstract data type.
 % A map (also known as a dictionary or an associative array) is a collection
 % of (Key, Value) pairs which allows you to look up any Value given the Key.
 % A multi_map is similar, but it allows more than one Value for each Key.
 % A multi_map represents this by using list(V) as the range type, which works,
 % but does not express the invariant maintained by the relevant operations,
 % which is that these lists are never empty. A one_or_more_map is a multi_map
-% in which key the range type is one_or_more(V), which *does* express
-% this invariant.
+% in which the range type is not list(V) but one_or_more(V), which *does*
+% express this invariant.
 %
 %---------------------------------------------------------------------------%
 
@@ -128,13 +128,13 @@
     one_or_more_map(K, V)::in, one_or_more_map(K, V)::out) is det.
 
     % Add the given key-value pair to the one_or_more_map.
-    % (`add' is a synonym for `set'.)
+    % (`set' is a synonym for `add'.)
     %
-:- func set(one_or_more_map(K, V), K, V) = one_or_more_map(K, V).
-:- pred set(K::in, V::in,
-    one_or_more_map(K, V)::in, one_or_more_map(K, V)::out) is det.
 :- func add(one_or_more_map(K, V), K, V) = one_or_more_map(K, V).
 :- pred add(K::in, V::in,
+    one_or_more_map(K, V)::in, one_or_more_map(K, V)::out) is det.
+:- func set(one_or_more_map(K, V), K, V) = one_or_more_map(K, V).
+:- pred set(K::in, V::in,
     one_or_more_map(K, V)::in, one_or_more_map(K, V)::out) is det.
 
     % Add the given value-key pair to the one_or_more_map.
@@ -406,10 +406,10 @@ det_replace(!.OneOrMoreMap, Key, Values) = !:OneOrMoreMap :-
 det_replace(Key, Values, !OneOrMoreMap) :-
     map.det_update(Key, Values, !OneOrMoreMap).
 
-set(!.OneOrMoreMap, Key, Value) = !:OneOrMoreMap :-
-    one_or_more_map.set(Key, Value, !OneOrMoreMap).
+add(!.OneOrMoreMap, Key, Value) = !:OneOrMoreMap :-
+    one_or_more_map.add(Key, Value, !OneOrMoreMap).
 
-set(Key, Value, !OneOrMoreMap) :-
+add(Key, Value, !OneOrMoreMap) :-
     ( if map.search(!.OneOrMoreMap, Key, Values0) then
         Values = one_or_more.cons(Value, Values0),
         map.set(Key, Values, !OneOrMoreMap)
@@ -417,14 +417,14 @@ set(Key, Value, !OneOrMoreMap) :-
         map.det_insert(Key, one_or_more(Value, []), !OneOrMoreMap)
     ).
 
-add(!.OneOrMoreMap, Key, Value) = !:OneOrMoreMap :-
-    one_or_more_map.set(Key, Value, !OneOrMoreMap).
+set(!.OneOrMoreMap, Key, Value) = !:OneOrMoreMap :-
+    one_or_more_map.add(Key, Value, !OneOrMoreMap).
 
-add(Key, Value, !OneOrMoreMap) :-
-    one_or_more_map.set(Key, Value, !OneOrMoreMap).
+set(Key, Value, !OneOrMoreMap) :-
+    one_or_more_map.add(Key, Value, !OneOrMoreMap).
 
 reverse_set(!.OneOrMoreMap, Value, Key) = !:OneOrMoreMap :-
-    one_or_more_map.reverse_set(Value, Key, !OneOrMoreMap).
+    one_or_more_map.set(Key, Value, !OneOrMoreMap).
 
 reverse_set(Value, Key, !OneOrMoreMap) :-
     one_or_more_map.set(Key, Value, !OneOrMoreMap).

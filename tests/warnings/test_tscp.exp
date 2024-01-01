@@ -1,0 +1,4 @@
+% For the type_spec_constrained_pred pragma at test_tscp.m:37,
+% the compiler generated these type_spec pragmas:
+% :- pragma type_spec(pred((test_tscp.test)/5), (C = int, D = term.var(V_3))).
+% :- pragma type_spec(pred((test_tscp.test)/5), (B = character, C = bool.bool)).

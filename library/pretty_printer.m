@@ -61,13 +61,15 @@
 
 :- type doc
     --->    str(string)
-            % Output a literal string. Strings containing newlines, hard tabs,
-            % etc. will lead to strange output.
+            % Output a literal string. This string should not contain newlines,
+            % hard tabs, or other formatting characters other than spaces;
+            % if it does, the resulting output will almost certainly look
+            % strange.
 
     ;       nl
-            % Output a newline, followed by indentation, iff the enclosing
-            % group does not fit on the current line and starting a new line
-            % adds more space.
+            % Output a newline, followed by indentation, if and only if
+            % - the enclosing group does not fit on the current line, and
+            % - starting a new line adds more space.
 
     ;       hard_nl
             % Always outputs a newline, followed by indentation.
@@ -76,29 +78,34 @@
             % An embedded sequence of docs.
 
     ;       format_univ(univ)
-            % Use a specialised formatter if available, otherwise use the
-            % generic formatter.
+            % Use a specialised formatter on the given value if
+            % is available for its type. Otherwise, use the generic formatter.
 
     ;       format_list(list(univ), doc)
             % Pretty print a list of items using the given doc as a separator
-            % between items.
+            % between each pair of items.
 
     ;       format_term(string, list(univ))
             % Pretty print a term with zero or more arguments. If the term
-            % corresponds to a Mercury operator it will be printed with
+            % corresponds to a Mercury operator, it will be printed with
             % appropriate fixity and, if necessary, in parentheses. The term
             % name will be quoted and escaped if necessary.
 
     ;       format_susp((func) = doc)
-            % The argument is a suspended computation used to lazily produce a
-            % doc. If the formatting limit has been reached then just "..." is
-            % output, otherwise the suspension is evaluated and the resulting
-            % doc is used. This is useful for formatting large structures
-            % without using more resources than required. Expanding a
-            % suspended computation reduces the formatting limit by one.
+            % The argument is a suspended computation that, if evaluated,
+            % will produce a doc to print. The evaluation must materialize
+            % at least one part of this doc, but other parts may remain
+            % in the form of other suspensions. This will produce a final
+            % doc in a lazy fashion, if needed. The *point* of producing the
+            % doc lazily is that when the formatting limit is reached,
+            % then the prettyprinter will just output "...", and will do so
+            % *without* evaluating any remaining suspensions. This is useful
+            % for formatting large structures without using more resources
+            % than required. Note that expanding a suspended computation
+            % reduces the formatting limit by one.
 
     ;       pp_internal(pp_internal).
-            % pp_internal docs are used in the implementation and cannot be
+            % pp_internal docs are used in the implementation, and cannot be
             % exploited by user code.
 
 :- type docs == list(doc).
@@ -194,15 +201,76 @@
 
     % The type of generic formatting functions.
     % The first argument is the univ of the value to be formatted.
-    % The second argument is the list of argument type_descs for
-    % the type of the first argument.
+    % The type of this value will have the form "TC(AT1, AT2, ..., ATn)",
+    % where TC is a type constructor, and ATi are its argument types.
+    % The second argument of the function will consist of the list of
+    % type descriptors describing AT1, AT2, ... ATn.
+    %
+    % These argumments are intended to be used as shown by this example
+    % function, which can be the entry for the type constructor tree234(K, V):
+    %
+    %     fmt_tree234(Univ, ArgDescs) =
+    %         ( if
+    %             ArgDescs = [ArgDescA, ArgDescB],
+    %             has_type(_ArgA : K, ArgDescA),
+    %             has_type(_ArgB : V, ArgDescB),
+    %             Value = univ_value(Univ),
+    %             dynamic_cast(Value, Tree : tree234(K, V))
+    %         then
+    %             pretty_printer.tree234_to_doc(Tree)
+    %         else
+    %             str("internal error: expected a tree234, did not get it")
+    %         ).
+    %
+    % Since the tree234 type constructor has arity two, the caller will pass
+    % two type descriptors to fmt_tree234, which will describe the actual types
+    % of the keys and values in *this* tree. The two calls to has_type
+    % (which is defined in the type_desc module of the Mercury standard
+    % library) tell the compiler that the type variables K and V in *this*
+    % function should stand for the ground types described by ArgDescA
+    % and ArgDescB respectively.
+    %
+    % After the call to univ_value picks the value out of Univ, the call to
+    % dynamic_cast (which is defined in the builtin module of the Mercury
+    % standard library) checks whether the type of Value is tree234(K, V),
+    % and if it is, (which it should be, since the predicates and functions
+    % of this module would not have called fmt_tree234 otherwise), will return
+    % Value as Tree. Note that the difference between Value and Tree is that
+    %
+    % - the compiler does not know the type of Value statically, since that
+    %   information comes from Univ, which is available only at runtime, but
+    %
+    % - the compiler *does* know the type of Tree statically, due to the type
+    %   annotation on it. This type, tree234(K, V), does contain type
+    %   variables, but its principal type constructor is known, and that is
+    %   enough for the code in the then-part of the if-then-else to do its job.
+    %
+    % Note that the code in the else-part should not matter. If that code
+    % is ever executed, that would mean that a predicate or function of
+    % this module has called fmt_tree234 with inappropriate data.
     %
 :- type formatter == (func(univ, list(type_desc)) = doc).
 
-    % A formatter_map maps types to pps. Types are identified by module name,
-    % type name, and type arity.
+    % A formatter_map maps type constructors to formatters.
+    %
+    % If the principal (outermost) type constructor of a value's type
+    % has an entry in the formatter_map given to one of the prettyprinting
+    % predicates or functions below, then that predicate or function will use
+    % the corresponding formatter to format that value.
     %
 :- type formatter_map.
+
+    % Formatter maps identify type constructors by
+    %
+    % - the name of the module that defines the type constructor,
+    % - the type constructor's name, and
+    % - the type constructor's arity.
+    %
+    % The three fields contain this info in this order.
+    %
+:- type formatter_map_entry
+    --->    formatter_map_entry(string, string, int).
+            % ModuleName.TypeName/TypeArity.
 
     % Construct a new formatter_map.
     %
@@ -215,12 +283,6 @@
     %
 :- pred set_formatter(string::in, string::in, int::in, formatter::in,
     formatter_map::in, formatter_map::out) is det.
-
-    % Values of this type identify a type that has an entry in a formatter_map.
-    %
-:- type formatter_map_entry
-    --->    formatter_map_entry(string, string, int).
-            % ModuleName.TypeName/TypeArity.
 
 :- func get_formatter_map_entry_types(formatter_map) =
     list(formatter_map_entry).
@@ -1821,7 +1883,11 @@ tree234_elements_to_doc(tll_lazy_cons(K, V, Susp)) = Doc :-
 %---------------------------------------------------------------------------%
 
 version_array_to_doc(A) =
-    docs([str("version_array(["), version_array_to_doc_loop(A, 0), str("])")]).
+    docs([
+        str("version_array(["),
+        version_array_to_doc_loop(A, 0),
+        str("])")
+    ]).
 
 :- func version_array_to_doc_loop(version_array(T), int) = doc.
 

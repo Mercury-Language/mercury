@@ -272,7 +272,7 @@
     %
     % This predicate is intended to be used in situations where
     % a term has been read in after being written out. The process of
-    % writing out the term forces every variable to given a name
+    % writing out the term requires giving every variable a name
     % that can be written out, even variables that until then did not
     % have names. If these variables are given names of the default form, then,
     % after the written-out term is read back in, this predicate will recreate
@@ -825,9 +825,14 @@ ensure_unique_names(AllVars, Suffix, !.VarSet) = !:VarSet :-
 
 ensure_unique_names(AllVars, Suffix, !VarSet) :-
     VarNames0 = !.VarSet ^ var_names,
-    varset.ensure_unique_names_loop(AllVars, Suffix, set.init, VarNames0,
-        map.init, VarNames),
-    !VarSet ^ var_names := VarNames.
+    ( if Suffix = "" then
+        unexpected($pred,
+            "Error: the disambiguating suffix is the empty string.")
+    else
+        varset.ensure_unique_names_loop(AllVars, Suffix, set.init, VarNames0,
+            map.init, VarNames),
+        !VarSet ^ var_names := VarNames
+    ).
 
 :- pred ensure_unique_names_loop(list(var(T))::in, string::in,
     set(string)::in, map(var(T), string)::in, map(var(T), string)::in,
