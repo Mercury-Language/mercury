@@ -206,7 +206,7 @@
     % The second argument of the function will consist of the list of
     % type descriptors describing AT1, AT2, ... ATn.
     %
-    % These argumments are intended to be used as shown by this example
+    % These arguments are intended to be used as shown by this example
     % function, which can be the entry for the type constructor tree234(K, V):
     %
     %     fmt_tree234(Univ, ArgDescs) =
