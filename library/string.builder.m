@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 2006-2007 The University of Melbourne.
-% Copyright (C) 2014-2015, 2018 The Mercury team.
+% Copyright (C) 2014-2015, 2018, 2022-2024 The Mercury team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %---------------------------------------------------------------------------%
 %
@@ -42,17 +42,17 @@
 
 :- func init = (string.builder.state::uo) is det.
 
-    % Add a character to the end of the the string builder.
+    % Add a character to the end of the string builder.
     %
 :- pred append_char(char::in,
     string.builder.state::di, string.builder.state::uo) is det.
 
-    % Add a string to the end of the the string builder.
+    % Add a string to the end of the string builder.
     %
 :- pred append_string(string::in,
     string.builder.state::di, string.builder.state::uo) is det.
 
-    % Add a list of strings to the end of the the string builder.
+    % Add a list of strings to the end of the string builder.
     %
 :- pred append_strings(list(string)::in,
     string.builder.state::di, string.builder.state::uo) is det.
