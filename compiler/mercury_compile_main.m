@@ -2,7 +2,7 @@
 % vim: ts=4 sw=4 et ft=mercury
 %---------------------------------------------------------------------------%
 % Copyright (C) 1994-2012 The University of Melbourne.
-% Copyright (C) 2017 The Mercury Team.
+% Copyright (C) 2017-2024 The Mercury Team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -473,7 +473,7 @@ process_options_std_config_file(ProgressStream, FlagsArgsOptionTable,
         MaybeConfigFile0),
     % The meanings of the possible values of MaybeConfigFile0 are as follows.
     %
-    % - A value of yes("") means either that the the command line had no
+    % - A value of yes("") means either that the command line had no
     %   --config-file option (since yes("") is the default for this option),
     %   or that the command line contained --config-file ''.
     %   The latter is *extremely* unlikely.
