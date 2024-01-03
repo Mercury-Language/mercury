@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1995-1997, 1999, 2002, 2004-2012 The University of Melbourne.
-% Copyright (C) 2013, 2015-2023 The Mercury team.
+% Copyright (C) 2013, 2015-2024 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -162,7 +162,7 @@ long_usage(OutputStream, !IO) :-
 write_copyright_notice(OutputStream, !IO) :-
     io.write_strings(OutputStream, [
         "Copyright (C) 1995-2012 The University of Melbourne\n",
-        "Copyright (C) 2013-2023 The Mercury team\n"
+        "Copyright (C) 2013-2024 The Mercury team\n"
     ], !IO).
 
 %---------------------------------------------------------------------------%
