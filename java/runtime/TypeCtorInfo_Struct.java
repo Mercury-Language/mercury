@@ -1,7 +1,7 @@
 // vim: ts=4 sw=4 expandtab ft=java
 //
 // Copyright (C) 2001-2004, 2009 The University of Melbourne.
-// Copyright (C) 2018, 2021 The Mercury team.
+// Copyright (C) 2018, 2021, 2024 The Mercury team.
 // This file is distributed under the terms specified in COPYING.LIB.
 //
 
@@ -28,7 +28,7 @@ public class TypeCtorInfo_Struct extends PseudoTypeInfo
     public int[]                type_functor_number_map;
     public TypeCtorInfo_Struct  type_ctor_base; // null unless subtype
 
-    private final short MR_TYPE_CTOR_FLAG_LAYOUT_INDEXABLE = 0x8;
+    private static final short MR_TYPE_CTOR_FLAG_LAYOUT_INDEXABLE = 0x8;
 
     public TypeCtorInfo_Struct()
     {
