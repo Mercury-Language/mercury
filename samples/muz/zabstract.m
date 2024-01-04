@@ -16,7 +16,6 @@
 :- import_module list.
 :- import_module maybe.
 :- import_module pair.
-:- import_module string.
 :- import_module word.
 
 :- type quantifier
@@ -154,8 +153,8 @@
 :- implementation.
 
 :- import_module higher_order.
-:- import_module int.
 :- import_module map. %, term, term_io, varset.
+:- import_module string.
 
 display_to_string(set) = "set".
 display_to_string(seq) = "seq".

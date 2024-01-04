@@ -30,7 +30,6 @@
 
 :- import_module char.
 :- import_module higher_order.
-:- import_module int.
 :- import_module list.
 :- import_module map.
 :- import_module maybe.

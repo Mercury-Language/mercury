@@ -34,7 +34,6 @@
 
 :- import_module assoc_list.
 :- import_module int.
-:- import_module map.  % Used only in add_operat/4---should be in word.m
 :- import_module maybe.
 :- import_module pair.
 :- import_module require.

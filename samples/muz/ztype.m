@@ -101,8 +101,6 @@
 
 :- implementation.
 
-:- import_module builtin.
-:- import_module int.
 :- import_module require.
 :- import_module string.
 

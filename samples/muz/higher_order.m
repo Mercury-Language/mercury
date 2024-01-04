@@ -11,7 +11,6 @@
 :- interface.
 
 :- import_module list.
-:- import_module string.
 
 % :- func univ(string, list(term)) = term.
 %
@@ -41,8 +40,8 @@
 
 :- implementation.
 
-:- import_module builtin.
 :- import_module int.
+:- import_module string.
 
 % univ(S, L) = term.functor(term.atom(S), L, C) :- term.context_init(C).
 %

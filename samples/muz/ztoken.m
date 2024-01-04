@@ -12,7 +12,6 @@
 
 :- import_module list.
 :- import_module pair.
-:- import_module string.
 :- import_module word.
 
 :- type ztoken_list == list(pair(ztoken, zcontext)).
@@ -146,6 +145,8 @@
 :- implementation.
 
 :- import_module maybe.
+:- import_module string.
+:- import_module require.
 
 pragma("ABBREV", abbrev).
 pragma("MONOT", monot).
@@ -155,10 +156,10 @@ pragma("LOGICGEN", logicgen).
 pragma("NOLOGICGEN", nologicgen).
 % pragma("EMAIL", email).
 
-:- import_module require.
-
 ztokenPortrayL([],  []).
-ztokenPortrayL([H0-_|T0], [H|T]) :- ztokenPortray(H0, H), ztokenPortrayL(T0, T).
+ztokenPortrayL([H0 - _ | T0], [H | T]) :-
+    ztokenPortray(H0, H),
+    ztokenPortrayL(T0, T).
 
 ztokenPortray(T, S) :-
     ( if T = name(I) then S = identPortray(I)

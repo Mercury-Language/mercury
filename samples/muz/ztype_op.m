@@ -150,7 +150,6 @@
 :- import_module int.
 :- import_module map.
 :- import_module require.
-:- import_module set.
 :- import_module solutions.
 :- import_module string.
 

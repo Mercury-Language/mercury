@@ -24,7 +24,6 @@
 :- import_module list.
 :- import_module maybe.
 :- import_module pair.
-:- import_module require.
 :- import_module string.
 :- import_module typecheck.
 :- import_module word.
