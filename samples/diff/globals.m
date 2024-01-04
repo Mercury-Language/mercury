@@ -39,11 +39,11 @@
 
 :- pred get_options(globals::in, option_table::out) is det.
 
-:- pred set_options(globals::in, option_table::in, globals::out) is det.
+:- pred set_options(option_table::in, globals::in, globals::out) is det.
 
 :- pred get_output_style(globals::in, output_style::out) is det.
 
-:- pred set_output_style(globals::in, output_style::in, globals::out) is det.
+:- pred set_output_style(output_style::in, globals::in, globals::out) is det.
 
 :- pred lookup_option(globals::in, option::in, option_data::out) is det.
 
@@ -111,11 +111,11 @@ init(Options, globals(Options, OutputType)) :-
 
 get_options(globals(Options, _), Options).
 
-set_options(globals(_, Scanner), Options, globals(Options, Scanner)).
+set_options(Options, globals(_, Scanner), globals(Options, Scanner)).
 
 get_output_style(globals(_, Output), Output).
 
-set_output_style(globals(A, _), Output, globals(A, Output)).
+set_output_style(Output, globals(A, _), globals(A, Output)).
 
 lookup_option(Globals, Option, OptionData) :-
     globals.get_options(Globals, OptionTable),
@@ -173,7 +173,7 @@ io_set_option(Option, OptionData, !IO) :-
     get_globals_var(Globals0, !IO),
     globals.get_options(Globals0, OptionTable0),
     map.set(Option, OptionData, OptionTable0, OptionTable),
-    globals.set_options(Globals0, OptionTable, Globals),
+    globals.set_options(OptionTable, Globals0, Globals),
     set_globals_var(Globals, !IO).
 
 %-----------------------------------------------------------------------------%
@@ -202,7 +202,7 @@ io_get_output_style(Output, !IO) :-
 
 io_set_output_style(Output, !IO) :-
     get_globals_var(Globals0, !IO),
-    globals.set_output_style(Globals0, Output, Globals),
+    globals.set_output_style(Output, Globals0, Globals),
     set_globals_var(Globals, !IO).
 
 %-----------------------------------------------------------------------------%
