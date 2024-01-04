@@ -427,12 +427,6 @@ destroying the current state of the world
 and returning a new state of the world.
 This effectively considers the mutable to be part of the state of the world
 @emph{outside} the Mercury program.
-The @code{io} module also provides another way to do this,
-by allowing the storage of information in the @code{io.state}
-using the predicates @code{io.get_globals} and @code{io.set_globals}.
-These predicates take an argument of type @code{univ}, the universal type,
-so that by using @code{type_to_univ} and @code{univ_to_type}
-it is possible to store data of any type in the @code{io.state}.
 
 Alternatively, you can set things up so that
 the getter and setter predicates of a mutable are @emph{not} I/O operations,
