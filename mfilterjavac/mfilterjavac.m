@@ -2,6 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %----------------------------------------------------------------------------%
 % Copyright (C) 2013 The University of Melbourne.
+% Copyright (C) 2015-2016, 2023-2024 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %----------------------------------------------------------------------------%
@@ -14,7 +15,7 @@
 % reported by the Java compiler into the corresponding error contexts in the
 % Mercury source file. This is done by looking for special comments inserted
 % into the generated Java code by the Mercury compiler.
-% (See compiler/mlds_to_java.m for details.)
+% (See compiler/mlds_to_java_util.m for details.)
 %
 %-----------------------------------------------------------------------------%
 
