@@ -36,7 +36,7 @@
             % Output the command line with `--verbose-commands'. This should be
             % used for commands that may be of interest to the user.
 
-    % invoke_system_cmds(Globals, ProgressStream, CmdOutputStream,
+    % invoke_system_command(Globals, ProgressStream, CmdOutputStream,
     %   Verbosity, Command, Succeeded):
     %
     % Invoke an executable. Progress messages, including error messages
@@ -50,7 +50,7 @@
 
     % invoke_system_command_maybe_filter_output(Globals,
     %   ProgressStream, CmdOutputStream, Verbosity, Command,
-    %   MaybeProcessOutput, Succeeded)
+    %   MaybeProcessOutput, Succeeded):
     %
     % Invoke an executable. Progress messages, including error messages
     % that say why we cannot make progress, will go to ProgressStream.
@@ -61,6 +61,38 @@
     io.text_output_stream::in, io.text_output_stream::in,
     command_verbosity::in, string::in, maybe(string)::in, maybe_succeeded::out,
     io::di, io::uo) is det.
+
+    % invoke_long_system_command(Globals, ProgressStream, CmdOutputStream,
+    %     Verbosity, Command, Args, Succeeded):
+    %
+    % Invoke an executable with arguments Args, using the @file style of
+    % calling to avoid command line length limits on various systems. If the
+    % underlying tool chain does not support this, it just calls the normal
+    % invoke_system_command and hopes the command is not too long. Progress
+    % messages, including error messages that say why we cannot make progress,
+    % will go to ProgressStream. Output from the invoked command will go to
+    % CmdOutputStream.
+    %
+:- pred invoke_long_system_command(globals::in, io.text_output_stream::in,
+    io.text_output_stream::in, command_verbosity::in, string::in, string::in,
+    maybe_succeeded::out, io::di, io::uo) is det.
+
+    % invoke_long_system_command_maybe_filter_output(Globals,
+    %   ProgressStream, CmdOutputStream, Verbosity, Command,
+    %   NonAtArgs, Args, MaybeProcessOutput, Succeeded):
+    %
+    % Invoke an executable with arguments NonAtArgs and Args, using the @file
+    % style of calling for Args and passing NonAtArgs on the command line. If
+    % the underlying tool chain does not support this, it just calls the normal
+    % invoke_system_command and hopes the command is not too long. Progress
+    % messages, including error messages that say why we cannot make progress,
+    % will go to ProgressStream. Output from the invoked command, filtered if
+    % MaybeProcessOutput is set to yes(...), will go to CmdOutputStream.
+    %
+:- pred invoke_long_system_command_maybe_filter_output(globals::in,
+    io.text_output_stream::in, io.text_output_stream::in,
+    command_verbosity::in, string::in, string::in, string::in,
+    maybe(string)::in, maybe_succeeded::out, io::di, io::uo) is det.
 
     % Make a command string, which needs to be invoked in a shell environment.
     %
@@ -262,6 +294,102 @@ invoke_system_command_maybe_filter_output(Globals, ProgressStream,
     ),
     io.file.remove_file(ProcessedTmpFile, _, !IO),
     io.set_exit_status(OldStatus, !IO).
+
+%-----------------------------------------------------------------------------%
+
+invoke_long_system_command(Globals,
+        ProgressStream, CmdOutputStream, Verbosity,
+        Cmd, Args, Succeeded, !IO) :-
+    invoke_long_system_command_maybe_filter_output(Globals,
+        ProgressStream, CmdOutputStream, Verbosity,
+        Cmd, "", Args, no, Succeeded, !IO).
+
+invoke_long_system_command_maybe_filter_output(Globals,
+        ProgressStream, CmdOutputStream, Verbosity,
+        Cmd, NonAtArgs, Args, MaybeProcessOutput, Succeeded, !IO) :-
+    globals.lookup_bool_option(Globals, restricted_command_line,
+        RestrictedCommandLine),
+    (
+        RestrictedCommandLine = yes,
+
+        % Avoid generating very long command lines by using @files.
+        open_temp_output(TmpFileResult, !IO),
+        (
+            TmpFileResult = ok({TmpFile, TmpStream}),
+
+            % We need to escape any \ before writing them to the file,
+            % otherwise we lose them.
+            TmpFileArgs = string.replace_all(Args, "\\", "\\\\"),
+
+            io.write_string(TmpStream, TmpFileArgs, !IO),
+            io.close_output(TmpStream, !IO),
+
+            globals.lookup_bool_option(Globals, very_verbose, VeryVerbose),
+            AtFileName = at_file_name(Globals, TmpFile),
+            (
+                VeryVerbose = yes,
+                io.format(ProgressStream, "%% Args placed in %s: `%s'\n",
+                    [s(AtFileName), s(TmpFileArgs)], !IO),
+                io.flush_output(ProgressStream, !IO)
+            ;
+                VeryVerbose = no
+            ),
+
+            ( if NonAtArgs = "" then
+                string.format("%s %s", [s(Cmd), s(AtFileName)], FullCmd)
+            else
+                string.format("%s %s %s",
+                    [s(Cmd), s(NonAtArgs), s(AtFileName)], FullCmd)
+            ),
+            invoke_system_command_maybe_filter_output(Globals,
+                ProgressStream, CmdOutputStream, Verbosity,
+                FullCmd, MaybeProcessOutput, Succeeded0, !IO),
+
+            io.file.remove_file(TmpFile, RemoveResult, !IO),
+            (
+                RemoveResult = ok,
+                Succeeded = Succeeded0
+            ;
+                RemoveResult = error(_),
+                Succeeded = did_not_succeed
+            )
+        ;
+            TmpFileResult = error(ErrorMessage),
+            io.format(ProgressStream, "%s\n", [s(ErrorMessage)], !IO),
+            Succeeded = did_not_succeed
+        )
+    ;
+        RestrictedCommandLine = no,
+        ( if NonAtArgs = "" then
+            string.format("%s %s", [s(Cmd), s(Args)], FullCmd)
+        else
+            string.format("%s %s %s", [s(Cmd), s(NonAtArgs), s(Args)], FullCmd)
+        ),
+        invoke_system_command_maybe_filter_output(Globals,
+            ProgressStream, CmdOutputStream, Verbosity,
+            FullCmd, MaybeProcessOutput, Succeeded, !IO)
+    ).
+
+    % Form the name of an @file given a file name.
+    % On some systems we need to escape the `@' character.
+    %
+:- func at_file_name(globals, string) = string.
+
+at_file_name(Globals, FileName) = AtFileName :-
+    get_system_env_type(Globals, EnvType),
+    (
+        EnvType = env_type_powershell,
+        AtFileName = "`@" ++ FileName
+    ;
+        ( EnvType = env_type_posix
+        ; EnvType = env_type_cygwin
+        ; EnvType = env_type_msys
+        ; EnvType = env_type_win_cmd
+        ),
+        AtFileName = "@" ++ FileName
+    ).
+
+%-----------------------------------------------------------------------------%
 
 make_command_string(String0, QuoteType, String) :-
     ( if use_win32 then
