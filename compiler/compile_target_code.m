@@ -244,6 +244,7 @@
 :- import_module libs.optimization_options.
 :- import_module libs.options.
 :- import_module libs.shell_util.
+:- import_module libs.system_cmds.
 :- import_module libs.trace_params.
 :- import_module parse_tree.error_spec.
 :- import_module parse_tree.find_module.

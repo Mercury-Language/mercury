@@ -75,6 +75,7 @@
 :- import_module libs.options.
 :- import_module libs.process_util.
 :- import_module libs.shell_util.
+:- import_module libs.system_cmds.
 :- import_module libs.timestamp.
 :- import_module make.build.
 :- import_module make.check_up_to_date.
