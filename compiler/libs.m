@@ -43,6 +43,7 @@
 :- include_module va_map.
 
 % OS interfaces not provided by the standard library.
+:- include_module copy_util.
 :- include_module process_util.
 :- include_module shell_util.
 :- include_module system_cmds.
