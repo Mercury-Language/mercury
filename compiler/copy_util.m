@@ -12,33 +12,51 @@
 % This module provides predicates for copying files. The Mercury compiler
 % copies files for the following reasons.
 %
-% 1. Files are copied into an installation directory for an mmc --make install
-%    target. (See make.program_target.m.)
+% 1. "mmc --make" will copy files into an installation directory when
+%    it is given an install target. (See make.program_target.m.)
 %
-% 2. Files are copied on systems where symbolic links are not supported (or
-%    when symbolic link support is turned off by the user).
+% 2  "mmc --make", when asked to build some kinds of target files,
+%    such as .int* and .*opt files, will put the contents it constructs
+%    for that file not into the file with its intended name, but into a file
+%    with a .tmp suffix, and will copy that file to the originally intended
+%    file name only if the new file differs from the old contents of the
+%    target file. This allows us to avoid rebuild all the files that
+%    depend on *that* file.
 %
-% 3. Interface files are copied when an interface is updated.
-%    (See module_cmds.m)
+% 2  "mmc --make", after constructing some kinds of files (such as executables)
+%    in subdirectories of the current directory, will want to make that file
+%    available in the current directory as well. If the current platform
+%    supports symbolic links, we would normally do this by creating such a
+%    link, but if symbolic links are not available, or if the user asks us
+%    not to use them, then we fall back to copying the file back to the
+%    current directory.
 %
-% This module uses two strategies for copying a file.
+% This module can use either external or internal code to copy a file,
+% with the choice being dictated by the value of the --install-method option.
 %
-% 1. Invoking an external command (e.g. cp) in the shell. The command is
-%    specified using the --install-command option.
-%    (XXX in practice the way this is currently implemented only works for the
+% 1. The external method invokes a shell command. The identity of the command
+%    is specified using the --install-command option, which defaults to "cp".
+%    (XXX In practice, the way this is currently implemented only works for the
 %    cp command on Unix-like systems; the various file copying commands on
 %    Windows -- e.g. copy, xcopy, robocopy -- do not work.)
 %
-% 2. Calling a library procedure, either provided by the underlying platform
-%    (NYI) or using a file copy procedure implemented in Mercury (see the
-%    predicate do_copy_file/5 below).
+% 2. The internal method uses code internal to the compiler's executable code.
+%    We intend to support two different internal methods:
 %
-% The choice of mechanism is controlled by the value of the --install-method
-% option. Regardless of the mechanism, we must ensure that at least some of the
-% file metadata (notably execute bits on those system that use them) is copied.
-% (XXX copying via library procedure does *not* currently do this).
+%    - We can call do_copy_file/5, a file copy predicate that uses
+%      only the facilities of the Mercury standard library.
 %
-% XXX this module should eventually also provide a mechanism for copying
+%    - We also intend eventually to support copying using mechanisms
+%      provided by the underlying platform, which we expect may be faster
+%      than just using pure Mercury code. We would access those mechanisms
+%      via foreign_procs.
+%
+% Regardless of the mechanism, we must ensure that copying preserves
+% as much of the file's metadata as possible. Notably, this must include
+% the execute permission bits on platforms that use them.
+% (XXX Copying via library code does *not* currently do this).
+%
+% XXX This module should eventually also provide a mechanism for copying
 % entire directory trees (see install_directory/7 in make.program_target.m),
 % but currently we only support doing that via invoking an external command
 % in the shell.
@@ -60,7 +78,8 @@
     %   DestinationFile, Succeeded, !IO):
     %
     % Copy SourceFile to DestinationFile. Both SourceFile and DestinationFile
-    % must be file paths, not directory paths.
+    % must be paths that name files, not directories.
+    %
     % If DestinationFile already exists, it will be overwritten and replaced.
     %
     % XXX what if SourceFile = DestinationFile? I (juliensf), don't think
@@ -72,9 +91,11 @@
     % copy_file_to_directory(Globals, ProgressStream, SourceFile,
     %   DestinationDir, Succeeded, !IO):
     %
-    % Copy SourceFile into the directory DestinationDir, that is a file with
-    % the basename of SourceFile will be created in DestinationDir.
+    % Copy SourceFile into the directory DestinationDir. The name of the
+    % new file in DestinationDir will be the basename of SourceFile.
+    %
     % This predicate assumes that DestinationDir exists and is writable.
+    %
     % If the destination file already exists, it will be overwritten and
     % replaced.
     %
