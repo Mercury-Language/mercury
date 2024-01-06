@@ -260,16 +260,21 @@ copy_dot_tmp_to_base_file_create_file(Globals, ProgressStream,
     string.format("%% `%s' has %s.\n", [s(OutputFileName), s(ChangedStr)],
         ChangedMsg),
     maybe_write_string(ProgressStream, Verbose, ChangedMsg, !IO),
-    copy_file(Globals, ProgressStream, TmpOutputFileName, OutputFileName,
-        MoveRes, !IO),
+    copy_file_to_file_name(Globals, ProgressStream, TmpOutputFileName,
+        OutputFileName, MoveRes, !IO),
     (
-        MoveRes = ok,
+        MoveRes = succeeded,
         Result = base_file_new_or_changed
     ;
-        MoveRes = error(MoveError),
-        Result = dot_tmp_copy_error,
-        io.format(ProgressStream, "Error creating `%s': %s\n",
-            [s(OutputFileName), s(io.error_message(MoveError))], !IO)
+        MoveRes = did_not_succeed,
+        Result = dot_tmp_copy_error
+        % copy_file_to_file_name/7 writes an error message to ProgressStream
+        % if the copy fails.
+        % XXX FILE COPY: we used to generate the following error message
+        % here, but I suspect it wasn't really possible to trigger it.
+        %MoveRes = error(MoveError),
+        %io.format(ProgressStream, "Error creating `%s': %s\n",
+        %    [s(OutputFileName), s(io.error_message(MoveError))], !IO)
     ),
     io.file.remove_file(TmpOutputFileName, _, !IO).
 
@@ -311,10 +316,23 @@ make_symlink_or_copy_file(Globals, ProgressStream,
         ;
             PrintCommand = no
         ),
-        io.file.make_symlink(SourceFileName, DestinationFileName, Result, !IO)
+        io.file.make_symlink(SourceFileName, DestinationFileName, Result, !IO),
+        (
+            Result = ok,
+            Succeeded = succeeded
+        ;
+            Result = error(Error),
+            Succeeded = did_not_succeed,
+            io.progname_base("mercury_compile", ProgName, !IO),
+            io.error_message(Error, ErrorMsg),
+            io.format(ProgressStream, "%s: error %s `%s' to `%s', %s\n",
+                [s(ProgName), s(LinkOrCopy), s(SourceFileName),
+                s(DestinationFileName), s(ErrorMsg)], !IO),
+            io.flush_output(ProgressStream, !IO)
+        )
     ;
         UseSymLinks = no,
-        LinkOrCopy = "copying",
+        %LinkOrCopy = "copying",
         (
             PrintCommand = yes,
             io.format(ProgressStream, "%% Copying file `%s' -> `%s'\n",
@@ -323,21 +341,12 @@ make_symlink_or_copy_file(Globals, ProgressStream,
         ;
             PrintCommand = no
         ),
-        copy_file(Globals, ProgressStream, SourceFileName, DestinationFileName,
-            Result, !IO)
-    ),
-    (
-        Result = ok,
-        Succeeded = succeeded
-    ;
-        Result = error(Error),
-        Succeeded = did_not_succeed,
-        io.progname_base("mercury_compile", ProgName, !IO),
-        io.error_message(Error, ErrorMsg),
-        io.format(ProgressStream, "%s: error %s `%s' to `%s', %s\n",
-            [s(ProgName), s(LinkOrCopy), s(SourceFileName),
-            s(DestinationFileName), s(ErrorMsg)], !IO),
-        io.flush_output(ProgressStream, !IO)
+        % XXX FILE COPY
+        % copy_file_to_file_name/7 will write an error message to ProgressStream
+        % itself if the file copy fails. We used to generate an error similar
+        % to the symlink case above here.
+        copy_file_to_file_name(Globals, ProgressStream, SourceFileName,
+            DestinationFileName, Succeeded, !IO)
     ).
 
 make_symlink_or_copy_dir(Globals, ProgressStream,

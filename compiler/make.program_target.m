@@ -70,6 +70,7 @@
 :- import_module backend_libs.compile_target_code.
 :- import_module libs.check_libgrades.
 :- import_module libs.compute_grade.
+:- import_module libs.copy_util.
 :- import_module libs.file_util.
 :- import_module libs.handle_options.
 :- import_module libs.options.
@@ -2102,13 +2103,11 @@ maybe_install_library_file(ProgressStream, Globals, Linkage,
 
 install_file(ProgressStream, Globals, FileName, InstallDir, Succeeded, !IO) :-
     % XXX MAKE_STREAM
-    OutputStream = ProgressStream,
     verbose_make_four_part_msg(Globals, "Installing file", FileName,
         "in", InstallDir, InstallMsg),
     maybe_write_msg(ProgressStream, InstallMsg, !IO),
-    Command = make_install_file_command(Globals, FileName, InstallDir),
-    invoke_system_command(Globals, ProgressStream, OutputStream,
-        cmd_verbose, Command, Succeeded, !IO).
+    copy_file_to_directory(Globals, ProgressStream, FileName,
+        InstallDir, Succeeded, !IO).
 
 :- pred install_directory(io.text_output_stream::in, globals::in,
     dir_name::in, dir_name::in, maybe_succeeded::out, io::di, io::uo) is det.

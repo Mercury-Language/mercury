@@ -9,7 +9,39 @@
 %
 % File: copy_util.m.
 %
-% This module provides a predicate for copying files.
+% This module provides predicates for copying files. The Mercury compiler
+% copies files for the following reasons.
+%
+% 1. Files are copied into an installation directory for an mmc --make install
+%    target. (See make.program_target.m.)
+%
+% 2. Files are copied on systems where symbolic links are not supported (or
+%    when symbolic link support is turned off by the user).
+%
+% 3. Interface files are copied when an interface is updated.
+%    (See module_cmds.m)
+%
+% This module uses two strategies for copying a file.
+%
+% 1. Invoking an external command (e.g. cp) in the shell. The command is
+%    specified using the --install-command option.
+%    (XXX in practice the way this is currently implemented only works for the
+%    cp command on Unix-like systems; the various file copying commands on
+%    Windows -- e.g. copy, xcopy, robocopy -- do not work.)
+%
+% 2. Calling a library procedure, either provided by the underlying platform
+%    (NYI) or using a file copy procedure implemented in Mercury (see the
+%    predicate do_copy_file/5 below).
+%
+% The choice of mechanism is controlled by the value of the --install-method
+% option. Regardless of the mechanism, we must ensure that at least some of the
+% file metadata (notably execute bits on those system that use them) is copied.
+% (XXX copying via library procedure does *not* currently do this).
+%
+% XXX this module should eventually also provide a mechanism for copying
+% entire directory trees (see install_directory/7 in make.program_target.m),
+% but currently we only support doing that via invoking an external command
+% in the shell.
 %
 %-----------------------------------------------------------------------------%
 
@@ -18,43 +50,105 @@
 
 :- import_module libs.file_util.
 :- import_module libs.globals.
+:- import_module libs.maybe_util.
 
 :- import_module io.
 
 %-----------------------------------------------------------------------------%
 
-    % copy_file(Globals, ProgressStream, Source, Destination, Succeeded, !IO).
+    % copy_file_to_file_name(Globals, ProgressStream, SourceFile,
+    %   DestinationFile, Succeeded, !IO):
     %
-    % XXX A version of this predicate belongs in the standard library.
+    % Copy SourceFile to DestinationFile. Both SourceFile and DestinationFile
+    % must be file paths, not directory paths.
+    % If DestinationFile already exists, it will be overwritten and replaced.
     %
-:- pred copy_file(globals::in, io.text_output_stream::in,
-    file_name::in, file_name::in, io.res::out, io::di, io::uo) is det.
+    % XXX what if SourceFile = DestinationFile? I (juliensf), don't think
+    % the Mercury compiler actually does a file copy operation like that.
+    %
+:- pred copy_file_to_file_name(globals::in, io.text_output_stream::in,
+    file_name::in, file_name::in, maybe_succeeded::out, io::di, io::uo) is det.
+
+    % copy_file_to_directory(Globals, ProgressStream, SourceFile,
+    %   DestinationDir, Succeeded, !IO):
+    %
+    % Copy SourceFile into the directory DestinationDir, that is a file with
+    % the basename of SourceFile will be created in DestinationDir.
+    % This predicate assumes that DestinationDir exists and is writable.
+    % If the destination file already exists, it will be overwritten and
+    % replaced.
+    %
+:- pred copy_file_to_directory(globals::in, io.text_output_stream::in,
+    file_name::in, dir_name::in, maybe_succeeded::out, io::di, io::uo) is det.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
 :- implementation.
 
-:- import_module libs.maybe_util.
 :- import_module libs.system_cmds.
 
 :- import_module bool.
+:- import_module dir.
 :- import_module int.
+:- import_module string.
 
 %-----------------------------------------------------------------------------%
 
-copy_file(Globals, ProgressStream, Source, Destination, Res, !IO) :-
-    % Try to use the system's cp command in order to preserve metadata.
-    Command = make_install_file_command(Globals, Source, Destination),
-    invoke_system_command(Globals, ProgressStream, ProgressStream,
-        cmd_verbose, Command, Succeeded, !IO),
+copy_file_to_file_name(Globals, ProgressStream, SourceFile, DestinationFile,
+        Succeeded, !IO) :-
+    globals.get_install_method(Globals, InstallMethod),
     (
-        Succeeded = succeeded,
-        Res = ok
+        InstallMethod = install_method_external_cmd,
+        Command = make_install_file_command(Globals, SourceFile, DestinationFile),
+        invoke_system_command(Globals, ProgressStream, ProgressStream,
+            cmd_verbose, Command, Succeeded, !IO)
     ;
-        Succeeded = did_not_succeed,
-        do_copy_file(Source, Destination, Res, !IO)
+        InstallMethod = install_method_internal_code,
+        do_copy_file(SourceFile, DestinationFile, Res, !IO),
+        (
+            Res = ok,
+            Succeeded = succeeded
+        ;
+            Res = error(Error),
+            report_error(ProgressStream,
+                "Could not copy file:  " ++ error_message(Error), !IO),
+            Succeeded = did_not_succeed
+        )
     ).
+
+%-----------------------------------------------------------------------------%
+
+copy_file_to_directory(Globals, ProgressStream, SourceFile, DestinationDir,
+        Succeeded, !IO) :-
+    globals.get_install_method(Globals, InstallMethod),
+    (
+        InstallMethod = install_method_external_cmd,
+        Command = make_install_file_command(Globals, SourceFile, DestinationDir),
+        invoke_system_command(Globals, ProgressStream, ProgressStream,
+            cmd_verbose, Command, Succeeded, !IO)
+    ;
+        InstallMethod = install_method_internal_code,
+        ( if dir.basename(SourceFile, BaseSourceFile) then
+            DestinationFile = DestinationDir / BaseSourceFile,
+            do_copy_file(SourceFile, DestinationFile, Res, !IO),
+            (
+                Res = ok,
+                Succeeded = succeeded
+            ;
+                Res = error(Error),
+                report_error(ProgressStream,
+                    "Could not copy file:  " ++ error_message(Error), !IO),
+                Succeeded = did_not_succeed
+            )
+        else
+            report_error(ProgressStream,
+                "Could not copy file: source is a root directory.", !IO),
+            Succeeded = did_not_succeed
+        )
+    ).
+
+%-----------------------------------------------------------------------------%
 
     % XXX TODO: copying the file byte-by-byte is inefficient.
     % If the OS or platform we are on provides a system call for copying files,
