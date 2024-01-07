@@ -355,9 +355,17 @@ get_file_permissions(FileName, FilePermissions, !IO) :-
     [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io],
 "
 #if defined(MR_HAVE_STAT)
-    struct stat statbuf;
 
-    if (stat(FileName, &statbuf) == 0) {
+    int stat_result;
+    #if defined(MR_WIN32)
+        struct _stat statbuf;
+        stat_result = _wstat(MR_utf8_to_wide(FileName), &statbuf);
+    #else
+        struct stat statbuf;
+        stat_result = stat(FileName, &statbuf);
+    #endif
+
+    if (stat_result == 0) {
         IsOk = MR_YES;
         RawFilePermissions = statbuf.st_mode;
     } else {
@@ -392,7 +400,11 @@ set_file_permissions(FileName, FilePermissions, !IO) :-
     [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io],
 "
 #if defined(MR_HAVE_CHMOD)
-    (void) chmod(FileName, (mode_t) RawFilePermissions);
+    #if defined(MR_WIN32)
+        (void) _wchmod(MR_utf8_to_wide(FileName), (mode_t) RawFilePermissions);
+    #else
+        (void) chmod(FileName, (mode_t) RawFilePermissions);
+    #endif
 #endif
 ").
 
