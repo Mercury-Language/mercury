@@ -183,6 +183,7 @@ copy_file_to_directory(Globals, ProgressStream, SourceFile, DestinationDir,
 
 do_copy_file(Source, Destination, Res, !IO) :-
     io.open_binary_input(Source, SourceRes, !IO),
+    get_file_permissions(Source, SourceFilePermissions, !IO),
     (
         SourceRes = ok(SourceStream),
         io.open_binary_output(Destination, DestRes, !IO),
@@ -190,7 +191,8 @@ do_copy_file(Source, Destination, Res, !IO) :-
             DestRes = ok(DestStream),
             copy_bytes(SourceStream, DestStream, Res, !IO),
             io.close_binary_input(SourceStream, !IO),
-            io.close_binary_output(DestStream, !IO)
+            io.close_binary_output(DestStream, !IO),
+            set_file_permissions(Destination, SourceFilePermissions, !IO)
         ;
             DestRes = error(Error),
             Res = error(Error)
@@ -301,6 +303,101 @@ should_reduce_stack_usage(yes).
     ShouldReduce = MR_NO;
 #endif
 ").
+
+%-----------------------------------------------------------------------------%
+%
+% Getting and setting file permissions.
+%
+
+    % This type describes the result of retrieving file permissions.
+    %
+:- type file_permissions
+    --->    unknown_file_permissions
+            % The file permissions are unavailable, either due an error or not
+            % being supported on this system.
+
+    ;       have_file_permissions(uint64).
+            % We have file permissions, which are returned in the argument.
+            % (We return the file mode as a uint64 to avoid having to
+            % conditionally define a foreign type to represent it.)
+
+:- pred get_file_permissions(file_name::in, file_permissions::out,
+    io::di, io::uo) is det.
+
+get_file_permissions(FileName, FilePermissions, !IO) :-
+    do_get_file_permissions(FileName, RawFilePermissions, IsOk, !IO),
+    (
+        IsOk = yes,
+        FilePermissions = have_file_permissions(RawFilePermissions)
+    ;
+        IsOk = no,
+        FilePermissions = unknown_file_permissions
+    ).
+
+:- pragma foreign_decl("C", "
+#if defined(MR_HAVE_SYS_TYPES_H)
+    #include <sys/types.h>
+#endif
+#if defined(MR_HAVE_SYS_STAT_H)
+    #include <sys/stat.h>
+#endif
+#if defined(MR_HAVE_UNISTD_H)
+    #include <unistd.h>
+#endif
+").
+
+:- pred do_get_file_permissions(file_name::in, uint64::out, bool::out,
+    io::di, io::uo) is det.
+
+:- pragma foreign_proc("C",
+    do_get_file_permissions(FileName::in, RawFilePermissions::out, IsOk::out,
+        _IO0::di, _IO::uo),
+    [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io],
+"
+#if defined(MR_HAVE_STAT)
+    struct stat statbuf;
+
+    if (stat(FileName, &statbuf) == 0) {
+        IsOk = MR_YES;
+        RawFilePermissions = statbuf.st_mode;
+    } else {
+        IsOk = MR_NO;
+        RawFilePermissions = 0;
+    }
+#else
+    IsOk = MR_NO;
+    RawFilePermissions = 0;
+#endif
+").
+
+% For the non-C backends.
+do_get_file_permissions(_, 0u64, no, !IO).
+
+:- pred set_file_permissions(file_name::in, file_permissions::in,
+    io::di, io::uo) is det.
+
+set_file_permissions(FileName, FilePermissions, !IO) :-
+    (
+        FilePermissions = unknown_file_permissions
+    ;
+        FilePermissions = have_file_permissions(RawFilePermissions),
+        do_set_file_permissions(FileName, RawFilePermissions, !IO)
+    ).
+
+:- pred do_set_file_permissions(file_name::in, uint64::in, io::di, io::uo) is det.
+
+:- pragma foreign_proc("C",
+    do_set_file_permissions(FileName::in, RawFilePermissions::in,
+        _IO0::di, _IO::uo),
+    [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io],
+"
+#if defined(MR_HAVE_CHMOD)
+    (void) chmod(FileName, (mode_t) RawFilePermissions);
+#endif
+").
+
+% For the non-C backends.
+do_set_file_permissions(_, _, !IO).
 
 %-----------------------------------------------------------------------------%
 :- end_module copy_util.

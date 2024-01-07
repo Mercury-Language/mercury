@@ -293,6 +293,7 @@
 //  MR_HAVE_BUILTIN_BSWAP16     we have the __builtin_bswap16() function.
 //  MR_HAVE_BUILTIN_BSWAP32     we have the __builtin_bswap32() function.
 //  MR_HAVE_BUILTIN_BSWAP64     we have the __builtin_bswap64() function.
+//  MR_HAVE_CHMOD               we have the chmod() function.
 
 #undef  MR_HAVE_GETPID
 #undef  MR_HAVE_SETPGID
@@ -372,6 +373,7 @@
 #undef  MR_HAVE_BUILTIN_BSWAP16
 #undef  MR_HAVE_BUILTIN_BSWAP32
 #undef  MR_HAVE_BUILTIN_BSWAP64
+#undef  MR_HAVE_CHMOD
 
 // We use mprotect() and signals to catch stack and heap overflows.
 // In order to detect such overflows, we need to be able to figure out
