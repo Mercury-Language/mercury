@@ -112,6 +112,7 @@
 :- import_module bool.
 :- import_module dir.
 :- import_module int.
+:- import_module require.
 :- import_module string.
 
 %-----------------------------------------------------------------------------%
@@ -206,7 +207,7 @@ do_copy_file(SourceFile, DestinationFile, Res, !IO) :-
 ").
 
 % For the non-C backends.
-get_internal_copy_method = icm_mercury.
+get_internal_copy_method = icm_mercury_impl.
 
 %-----------------------------------------------------------------------------%
 %
@@ -236,8 +237,10 @@ windows_copy_file(Source, Destination, Res, !IO) :-
 #endif
 ").
 
+
 :- pred do_windows_copy_file(file_name::in, file_name::in, bool::out,
     system_error::out, io::di, io::uo) is det.
+:- pragma no_determinism_warning(pred(do_windows_copy_file/6)).
 
 :- pragma foreign_proc("C",
     do_windows_copy_file(Src::in, Dst::in, IsOk::out, SysErr::out,
@@ -256,6 +259,10 @@ windows_copy_file(Source, Destination, Res, !IO) :-
      MR_fatal_error(""do_windows_copy_file/6 not supported on this system"");
 #endif
 ").
+
+do_windows_copy_file(_, _, _, _, _, _) :-
+    unexpected($pred,
+        "do_windows_copy_file/6 not supported on non-C backends").
 
 %-----------------------------------------------------------------------------%
 %
