@@ -112,7 +112,7 @@
 :- import_module bool.
 :- import_module dir.
 :- import_module int.
-:- import_module require.
+:- import_module require.   % Required by non-C grades.
 :- import_module string.
 
 %-----------------------------------------------------------------------------%
