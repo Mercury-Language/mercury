@@ -43,13 +43,13 @@
 % 2. The internal method uses code internal to the compiler's executable code.
 %    We intend to support two different internal methods:
 %
-%    - We can call do_copy_file/5, a file copy predicate that uses
+%    - We can call mercury_copy_file/5, a file copy predicate that uses
 %      only the facilities of the Mercury standard library.
 %
-%    - We also intend eventually to support copying using mechanisms
-%      provided by the underlying platform, which we expect may be faster
-%      than just using pure Mercury code. We would access those mechanisms
-%      via foreign_procs.
+%    - We also support copying using mechanisms provided by the underlying
+%      platform, which we expect may be faster than just using pure Mercury
+%      code. We access those mechanisms via foreign_procs. This is currently
+%      only done for C grades on Windows.
 %
 % Regardless of the mechanism, we must ensure that copying preserves
 % as much of the file's metadata as possible. Notably, this must include
@@ -171,6 +171,97 @@ copy_file_to_directory(Globals, ProgressStream, SourceFile, DestinationDir,
 
 %-----------------------------------------------------------------------------%
 
+:- pred do_copy_file(file_name::in, file_name::in, io.res::out,
+    io::di, io::uo) is det.
+
+do_copy_file(SourceFile, DestinationFile, Res, !IO) :-
+    CopyMethod = get_internal_copy_method,
+    (
+        CopyMethod = icm_mercury_impl,
+        mercury_copy_file(SourceFile, DestinationFile, Res, !IO)
+    ;
+        CopyMethod = icm_windows_api,
+        windows_copy_file(SourceFile, DestinationFile, Res, !IO)
+    ).
+
+:- type internal_copy_method
+    --->    icm_mercury_impl % Mercury copy implementation.
+    ;       icm_windows_api. % CopyFileW() function from the Windows API.
+
+:- pragma foreign_export_enum("C", internal_copy_method/0,
+    [prefix("MC_"), uppercase]).
+
+:- func get_internal_copy_method = internal_copy_method.
+
+:- pragma foreign_proc("C",
+    get_internal_copy_method = (Method::out),
+    [will_not_call_mercury, thread_safe, promise_pure],
+"
+#if defined(MR_WIN32) && !defined(MR_CYGWIN)
+    Method = MC_ICM_WINDOWS_API;
+#else
+    Method = MC_ICM_MERCURY_IMPL;
+#endif
+
+").
+
+% For the non-C backends.
+get_internal_copy_method = icm_mercury.
+
+%-----------------------------------------------------------------------------%
+%
+% File copying using the Windows API.
+%
+
+:- pred windows_copy_file(file_name::in, file_name::in, io.res::out,
+    io::di, io::uo) is det.
+
+windows_copy_file(Source, Destination, Res, !IO) :-
+    do_windows_copy_file(Source, Destination, IsOk, SysErr, !IO),
+    (
+        IsOk = yes,
+        Res = ok
+    ;
+        IsOk = no,
+        io.make_io_error_from_windows_error(SysErr, "file copy failed: ",
+            IO_Error, !IO),
+        Res = error(IO_Error)
+    ).
+
+:- pragma foreign_decl("C", "
+#if defined(MR_WIN32)
+   #include ""mercury_string.h""   // For MR_utf8_to_wide.
+   #include ""mercury_windows.h""  // For windows.h.
+   #include <Winbase.h>            // For CopyFileW().
+#endif
+").
+
+:- pred do_windows_copy_file(file_name::in, file_name::in, bool::out,
+    system_error::out, io::di, io::uo) is det.
+
+:- pragma foreign_proc("C",
+    do_windows_copy_file(Src::in, Dst::in, IsOk::out, SysErr::out,
+        _IO0::di, _IO::uo),
+    [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io],
+"
+#if defined(MR_WIN32)
+     if (CopyFileW(MR_utf8_to_wide(Src), MR_utf8_to_wide(Dst), FALSE)) {
+         IsOk = MR_YES;
+         SysErr = 0;
+     } else {
+         IsOk = MR_NO;
+         SysErr = GetLastError();
+     }
+#else
+     MR_fatal_error(""do_windows_copy_file/6 not supported on this system"");
+#endif
+").
+
+%-----------------------------------------------------------------------------%
+%
+% Mercury implementation of file copying.
+%
+
     % XXX TODO: copying the file byte-by-byte is inefficient.
     % If the OS or platform we are on provides a system call for copying files,
     % we should use that in preference to the code below.
@@ -178,10 +269,10 @@ copy_file_to_directory(Globals, ProgressStream, SourceFile, DestinationDir,
     % change the code below to read the file being copied into a byte_array and
     % then write out that array using a single system call.
     %
-:- pred do_copy_file(file_name::in, file_name::in, io.res::out,
+:- pred mercury_copy_file(file_name::in, file_name::in, io.res::out,
     io::di, io::uo) is det.
 
-do_copy_file(Source, Destination, Res, !IO) :-
+mercury_copy_file(Source, Destination, Res, !IO) :-
     io.open_binary_input(Source, SourceRes, !IO),
     get_file_permissions(Source, SourceFilePermissions, !IO),
     (
