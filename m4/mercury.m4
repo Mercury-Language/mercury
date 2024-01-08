@@ -634,8 +634,12 @@ raw_gcc_version=$($CC -dumpfullversion 2>/dev/null || $CC -dumpversion)
 # The major version number should always be present.
 # The minor version number and patchlevel are not always present.
 # MinGW-w64 may add a suffix "-win32" or "-posix" that should be ignored.
-mercury_cv_gcc_version=$(echo "${raw_gcc_version%-*}" | tr . ' ' | {
-    read major minor patchlevel ignore;
+#
+# We use backticks for this command substitution because old versions of
+# bash fail to parse this command with $() syntax.
+# In particular, MacOS 14 and earlier use bash 3.2 as /bin/sh.
+mercury_cv_gcc_version=`echo "${raw_gcc_version%-*}" | tr . ' ' | {
+    read -r major minor patchlevel ignore;
     case $major in
 	[[0-9]]*) ;;
 	*) major=u ;;
@@ -649,7 +653,7 @@ mercury_cv_gcc_version=$(echo "${raw_gcc_version%-*}" | tr . ' ' | {
 	*) patchlevel=u ;;
     esac;
     echo "${major}_${minor}_${patchlevel}";
-    })
+    }`
 
 AC_MSG_RESULT([$mercury_cv_gcc_version])
 ])
@@ -736,8 +740,8 @@ raw_clang_version=$($CC -dumpversion)
 # The major version number should always be present.
 # For GCC we allow for a suffix after the second or third number that should
 # be ignored; it seems prudent to do the same for clang here as well.
-mercury_cv_clang_version=$(echo "${raw_clang_version%-*}" | tr . ' ' | {
-    read major minor patchlevel ignore;
+mercury_cv_clang_version=`echo "${raw_clang_version%-*}" | tr . ' ' | {
+    read -r major minor patchlevel ignore;
     case $major in
 	[[0-9]]*) ;;
 	*) major=u ;;
@@ -751,7 +755,7 @@ mercury_cv_clang_version=$(echo "${raw_clang_version%-*}" | tr . ' ' | {
 	*) patchlevel=u ;;
     esac;
     echo "${major}_${minor}_${patchlevel}";
-    })
+    }`
 
 AC_MSG_RESULT([$mercury_cv_clang_version])
 ])
