@@ -233,7 +233,7 @@ windows_copy_file(Source, Destination, Res, !IO) :-
 #if defined(MR_WIN32)
    #include ""mercury_string.h""   // For MR_utf8_to_wide.
    #include ""mercury_windows.h""  // For windows.h.
-   #include <Winbase.h>            // For CopyFileW().
+   #include <winbase.h>            // For CopyFileW().
 #endif
 ").
 
