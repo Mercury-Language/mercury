@@ -11,5 +11,5 @@ case $WINDIR in
 esac
 MONO_PATH="$DIR/../lib/mercury/lib/csharp"${SEP}$MONO_PATH
 export MONO_PATH
-CLI_INTERPRETER=${CLI_INTERPRETER:-/opt/local/bin/mono}
+CLI_INTERPRETER=${CLI_INTERPRETER:-mono}
 exec "$CLI_INTERPRETER" "$DIR/mercury_compile.exe" "$@"
