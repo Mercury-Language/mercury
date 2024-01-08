@@ -49,7 +49,7 @@
 %    - We also support copying using mechanisms provided by the underlying
 %      platform, which we expect may be faster than just using pure Mercury
 %      code. We access those mechanisms via foreign_procs. This is currently
-%      only done for C grades on Windows.
+%      only done for C grades on Windows and for the Java grade.
 %
 % Regardless of the mechanism, we must ensure that copying preserves
 % as much of the file's metadata as possible. Notably, this must include
@@ -112,6 +112,8 @@
 :- import_module bool.
 :- import_module dir.
 :- import_module int.
+:- import_module io.error_util.
+:- import_module maybe.
 :- import_module require.   % Required by non-C grades.
 :- import_module string.
 
@@ -183,13 +185,20 @@ do_copy_file(SourceFile, DestinationFile, Res, !IO) :-
     ;
         CopyMethod = icm_windows_api,
         windows_copy_file(SourceFile, DestinationFile, Res, !IO)
+    ;
+        CopyMethod = icm_java_library,
+        java_copy_file(SourceFile, DestinationFile, Res, !IO)
     ).
 
 :- type internal_copy_method
-    --->    icm_mercury_impl % Mercury copy implementation.
-    ;       icm_windows_api. % CopyFileW() function from the Windows API.
+    --->    icm_mercury_impl  % Mercury copy implementation.
+    ;       icm_windows_api   % CopyFileW() function from the Windows API.
+    ;       icm_java_library. % Files.copy() from the Java library.
 
 :- pragma foreign_export_enum("C", internal_copy_method/0,
+    [prefix("MC_"), uppercase]).
+
+:- pragma foreign_export_enum("Java", internal_copy_method/0,
     [prefix("MC_"), uppercase]).
 
 :- func get_internal_copy_method = internal_copy_method.
@@ -203,10 +212,16 @@ do_copy_file(SourceFile, DestinationFile, Res, !IO) :-
 #else
     Method = MC_ICM_MERCURY_IMPL;
 #endif
-
 ").
 
-% For the non-C backends.
+:- pragma foreign_proc("Java",
+    get_internal_copy_method = (Method::out),
+    [will_not_call_mercury, thread_safe, promise_pure],
+"
+    Method = MC_ICM_JAVA_LIBRARY;
+").
+
+% For the C# backend.
 get_internal_copy_method = icm_mercury_impl.
 
 %-----------------------------------------------------------------------------%
@@ -218,15 +233,14 @@ get_internal_copy_method = icm_mercury_impl.
     io::di, io::uo) is det.
 
 windows_copy_file(Source, Destination, Res, !IO) :-
-    do_windows_copy_file(Source, Destination, IsOk, SysErr, !IO),
+    do_windows_copy_file(Source, Destination, SysErr, !IO),
+    is_error_maybe_win32(SysErr, yes, "file copy failed: ", MaybeIOError, !IO),
     (
-        IsOk = yes,
-        Res = ok
-    ;
-        IsOk = no,
-        io.make_io_error_from_windows_error(SysErr, "file copy failed: ",
-            IO_Error, !IO),
+        MaybeIOError = yes(IO_Error),
         Res = error(IO_Error)
+    ;
+        MaybeIOError = no,
+        Res = ok
     ).
 
 :- pragma foreign_decl("C", "
@@ -237,22 +251,18 @@ windows_copy_file(Source, Destination, Res, !IO) :-
 #endif
 ").
 
-
-:- pred do_windows_copy_file(file_name::in, file_name::in, bool::out,
-    system_error::out, io::di, io::uo) is det.
-:- pragma no_determinism_warning(pred(do_windows_copy_file/6)).
+:- pred do_windows_copy_file(file_name::in, file_name::in, system_error::out,
+    io::di, io::uo) is det.
+:- pragma no_determinism_warning(pred(do_windows_copy_file/5)).
 
 :- pragma foreign_proc("C",
-    do_windows_copy_file(Src::in, Dst::in, IsOk::out, SysErr::out,
-        _IO0::di, _IO::uo),
+    do_windows_copy_file(Src::in, Dst::in, SysErr::out, _IO0::di, _IO::uo),
     [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io],
 "
 #if defined(MR_WIN32)
      if (CopyFileW(MR_utf8_to_wide(Src), MR_utf8_to_wide(Dst), FALSE)) {
-         IsOk = MR_YES;
          SysErr = 0;
      } else {
-         IsOk = MR_NO;
          SysErr = GetLastError();
      }
 #else
@@ -260,9 +270,52 @@ windows_copy_file(Source, Destination, Res, !IO) :-
 #endif
 ").
 
-do_windows_copy_file(_, _, _, _, _, _) :-
+do_windows_copy_file(_, _, _, _, _) :-
     unexpected($pred,
-        "do_windows_copy_file/6 not supported on non-C backends").
+        "do_windows_copy_file/5 not supported on non-C backends").
+
+%-----------------------------------------------------------------------------%
+%
+% File copying using the Java library.
+%
+
+:- pred java_copy_file(file_name::in, file_name::in, io.res::out,
+    io::di, io::uo) is det.
+
+java_copy_file(Source, Destination, Res, !IO) :-
+    do_java_copy_file(Source, Destination, SysErr, !IO),
+    is_error(SysErr, "file copy failed: ", MaybeIOError, !IO),
+    (
+        MaybeIOError = yes(IO_Error),
+        Res = error(IO_Error)
+    ;
+        MaybeIOError = no,
+        Res = ok
+    ).
+
+:- pred do_java_copy_file(file_name::in, file_name::in, system_error::out,
+    io::di, io::uo) is det.
+:- pragma no_determinism_warning(pred(do_java_copy_file/5)).
+
+:- pragma foreign_proc("Java",
+    do_java_copy_file(Src::in, Dst::in, Error::out, _IO0::di, _IO::uo),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    try {
+        java.nio.file.Files.copy(
+            java.nio.file.Paths.get(Src),
+            java.nio.file.Paths.get(Dst),
+            java.nio.file.StandardCopyOption.REPLACE_EXISTING,
+            java.nio.file.StandardCopyOption.COPY_ATTRIBUTES);
+            Error = null;
+    } catch (java.lang.Exception e) {
+        Error = e;
+    }
+").
+
+do_java_copy_file(_, _, _, _, _) :-
+    unexpected($pred,
+        "do_java_copy_file/5 not supported on non-Java backends").
 
 %-----------------------------------------------------------------------------%
 %
