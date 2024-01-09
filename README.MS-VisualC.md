@@ -131,7 +131,7 @@ The MSVC port currently has a number of limitations:
   Time profiling grades (those whose name contains the `prof` grade component)
   will not be installed.
 
-  Note that memory profiling _does_ work with MSVC.  (Memory profiling grades
+  Note that memory profiling _does_ work with MSVC. (Memory profiling grades
   are those whose name contains the `memprof` grade component.)
 
 * Parallel grades (those whose name contains the `par` component) do not
@@ -153,7 +153,7 @@ The MSVC port currently has a number of limitations:
 * When used directly from the Windows command prompt, mmake will not work.
   You should use `mmc --make` instead. (`mmake` requires a POSIX-like shell
   and GNU `make`; it will however work with the Cygwin or MSYS shells.)
-  We do not intend to support mmake directly on Windows.
+  We do not intend to support `mmake` directly on Windows.
 
 * Creation of shared libraries (DLLs) is not currently supported.
 
@@ -209,7 +209,7 @@ directory
 * In the file `lib/mercury/mdb/mdbrc`
 
   + The backslash character, `\`, is used as an escape character in mdbrc
-    files.  You need to escape it if it occurs in any paths used in the
+    files. You need to escape it if it occurs in any paths used in the
     argument of source commands, for example
 
         source c:\mercury-11.07\lib\mercury\mdb\mdb_doc
