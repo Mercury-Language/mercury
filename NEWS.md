@@ -1245,10 +1245,14 @@ Changes to the Mercury compiler
   deployment target, if set.
 
 * The `--no-ansi-c` option has been deprecated and will be removed in a future
-  release.  The option has not had any effect for a long time.
+  release. The option has not had any effect for a long time.
 
 * We have deleted the `--java-object-file-extension` option, which has
   only ever had one useful value, which is the default value, ".class".
+
+* The `--install-command-dir-option` option has been deprecated and will be
+  removed in a future release. This option has not had any effect for a long
+  time.
 
 Changes to the Mercury debugger
 -------------------------------

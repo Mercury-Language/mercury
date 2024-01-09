@@ -866,9 +866,7 @@ convert_options_to_globals(ProgressStream, DefaultOptionTable, OptionTable0,
     ( if InstallCmd = "" then
         FileInstallCmd = install_cmd_cp
     else
-        lookup_string_option(OptionTable0, install_command_dir_option,
-            InstallCmdDirOption),
-        FileInstallCmd = install_cmd_user(InstallCmd, InstallCmdDirOption)
+        FileInstallCmd = install_cmd_user(InstallCmd)
     ),
 
     % The use_cur_dir we pass here as the subdir setting is a dummy;

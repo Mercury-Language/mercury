@@ -2109,21 +2109,6 @@ install_file(ProgressStream, Globals, FileName, InstallDir, Succeeded, !IO) :-
     copy_file_to_directory(Globals, ProgressStream, FileName,
         InstallDir, Succeeded, !IO).
 
-:- pred install_directory(io.text_output_stream::in, globals::in,
-    dir_name::in, dir_name::in, maybe_succeeded::out, io::di, io::uo) is det.
-:- pragma consider_used(pred(install_directory/7)).
-
-install_directory(ProgressStream, Globals, SourceDirName, InstallDir,
-        Succeeded, !IO) :-
-    % XXX MAKE_STREAM
-    OutputStream = ProgressStream,
-    verbose_make_four_part_msg(Globals, "Installing directory", SourceDirName,
-        "in", InstallDir, InstallMsg),
-    maybe_write_msg(ProgressStream, InstallMsg, !IO),
-    Command = make_install_dir_command(Globals, SourceDirName, InstallDir),
-    invoke_system_command(Globals, ProgressStream, OutputStream,
-        cmd_verbose, Command, Succeeded, !IO).
-
 :- pred make_install_dirs(io.text_output_stream::in, globals::in,
     maybe_succeeded::out, maybe_succeeded::out, io::di, io::uo) is det.
 

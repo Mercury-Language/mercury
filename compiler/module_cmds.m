@@ -79,11 +79,6 @@
 :- pred make_symlink_or_copy_file(globals::in, io.text_output_stream::in,
     file_name::in, file_name::in, maybe_succeeded::out, io::di, io::uo) is det.
 
-    % As above, but for when LinkTarget is a directory rather than a file.
-    %
-:- pred make_symlink_or_copy_dir(globals::in, io.text_output_stream::in,
-    file_name::in, file_name::in, maybe_succeeded::out, io::di, io::uo) is det.
-
 %-----------------------------------------------------------------------------%
 
     % touch_module_ext_datestamp(Globals, ProgressStream,
@@ -169,7 +164,6 @@
 :- import_module libs.compute_grade.    % for grade_directory_component
 :- import_module libs.copy_util.
 :- import_module libs.options.
-:- import_module libs.system_cmds.
 :- import_module parse_tree.java_names.
 
 :- import_module bool.
@@ -280,15 +274,6 @@ copy_dot_tmp_to_base_file_create_file(Globals, ProgressStream,
 
 %-----------------------------------------------------------------------------%
 
-:- pred copy_dir(globals::in, io.text_output_stream::in,
-    dir_name::in, dir_name::in, maybe_succeeded::out, io::di, io::uo) is det.
-
-copy_dir(Globals, ProgressStream, Source, Destination,
-        Succeeded, !IO) :-
-    Command = make_install_dir_command(Globals, Source, Destination),
-    invoke_system_command(Globals, ProgressStream, ProgressStream,
-        cmd_verbose, Command, Succeeded, !IO).
-
 maybe_make_symlink(Globals, LinkTarget, LinkName, Result, !IO) :-
     globals.lookup_bool_option(Globals, use_symlinks, UseSymLinks),
     (
@@ -347,40 +332,6 @@ make_symlink_or_copy_file(Globals, ProgressStream,
         % to the symlink case above here.
         copy_file_to_file_name(Globals, ProgressStream, SourceFileName,
             DestinationFileName, Succeeded, !IO)
-    ).
-
-make_symlink_or_copy_dir(Globals, ProgressStream,
-        SourceDirName, DestinationDirName, Succeeded, !IO) :-
-    globals.lookup_bool_option(Globals, use_symlinks, UseSymLinks),
-    (
-        UseSymLinks = yes,
-        io.file.make_symlink(SourceDirName, DestinationDirName, Result, !IO),
-        (
-            Result = ok,
-            Succeeded = succeeded
-        ;
-            Result = error(Error),
-            Succeeded = did_not_succeed,
-            io.progname_base("mercury_compile", ProgName, !IO),
-            io.format(ProgressStream, "%s: error linking `%s' to `%s': %s\n",
-                [s(ProgName), s(SourceDirName), s(DestinationDirName),
-                s(io.error_message(Error))], !IO),
-            io.flush_output(ProgressStream, !IO)
-        )
-    ;
-        UseSymLinks = no,
-        copy_dir(Globals, ProgressStream, SourceDirName, DestinationDirName,
-            Succeeded, !IO),
-        (
-            Succeeded = succeeded
-        ;
-            Succeeded = did_not_succeed,
-            io.progname_base("mercury_compile", ProgName, !IO),
-            io.format(ProgressStream,
-                "%s: error copying directory `%s' to `%s'\n",
-                [s(ProgName), s(SourceDirName), s(DestinationDirName)], !IO),
-            io.flush_output(ProgressStream, !IO)
-        )
     ).
 
 %-----------------------------------------------------------------------------%

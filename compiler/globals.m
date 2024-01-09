@@ -267,12 +267,9 @@
     %
 :- type file_install_cmd
     --->    install_cmd_user(
-                string,         % Cmd.
-                string          % Flag for copying directories.
+                string         % Cmd.
             )
-            % Command specified by the user using --install-command and the
-            % option for copying directories specified by
-            % --install-command-dir-option.
+            % Command specified by the user using --install-command.
 
     ;       install_cmd_cp.
             % POSIX conformant cp command.

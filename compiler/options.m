@@ -6701,11 +6701,10 @@ options_help_build_system(Stream, !IO) :-
         "\tMercury libraries. The given command will be invoked as",
         "\t`<command> <source> <target>' to install each file",
         "\tin a Mercury library. The default command is `cp'.",
-        "--install-command-dir-option <option>",
-        "\tSpecify the flag to pass to the install command to install",
-        "\ta directory. The given command will be invoked as",
-        "\t`<command> <option> <source> <target>'",
-        "\tto install each directory. The default option is `-R'.",
+
+        % --install-command-dir-option no longer has any effect and is
+        % only still present for backwards compatibility.
+
         "--no-detect-libgrades",
         "\tDo not scan the installation directory to determine which",
         "\tstandard library grades are available.",

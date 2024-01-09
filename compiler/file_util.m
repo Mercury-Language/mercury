@@ -96,12 +96,6 @@
     %
 :- func make_install_file_command(globals, string, string) = string.
 
-    % make_install_dir_command(Globals, SourceDirName, InstallDir) = Command:
-    % Command is the command required to install directory SourceDirName
-    % in directory InstallDir.
-    %
-:- func make_install_dir_command(globals, string, string) = string.
-
 %---------------------------------------------------------------------------%
 
     % open_temp_output(Dir, Prefix, Suffix, Result, !IO):
@@ -329,25 +323,13 @@ report_error(Stream, ErrorMessage, !IO) :-
 make_install_file_command(Globals, FileName, InstallDir) = Command :-
     globals.get_file_install_cmd(Globals, FileInstallCmd),
     (
-        FileInstallCmd = install_cmd_user(InstallCmd, _InstallCmdDirOpt)
+        FileInstallCmd = install_cmd_user(InstallCmd)
     ;
         FileInstallCmd = install_cmd_cp,
         InstallCmd = "cp"
     ),
     Command = string.join_list("   ", list.map(quote_shell_cmd_arg,
         [InstallCmd, FileName, InstallDir])).
-
-make_install_dir_command(Globals, SourceDirName, InstallDir) = Command :-
-    globals.get_file_install_cmd(Globals, FileInstallCmd),
-    (
-        FileInstallCmd = install_cmd_user(InstallCmd, InstallCmdDirOpt)
-    ;
-        FileInstallCmd = install_cmd_cp,
-        InstallCmd = "cp",
-        InstallCmdDirOpt = "-R"
-    ),
-    Command = string.join_list("   ", list.map(quote_shell_cmd_arg,
-        [InstallCmd, InstallCmdDirOpt, SourceDirName, InstallDir])).
 
 %---------------------------------------------------------------------------%
 

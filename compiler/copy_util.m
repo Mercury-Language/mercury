@@ -54,12 +54,6 @@
 % Regardless of the mechanism, we must ensure that copying preserves
 % as much of the file's metadata as possible. Notably, this must include
 % the execute permission bits on platforms that use them.
-% (XXX Copying via library code does *not* currently do this).
-%
-% XXX This module should eventually also provide a mechanism for copying
-% entire directory trees (see install_directory/7 in make.program_target.m),
-% but currently we only support doing that via invoking an external command
-% in the shell.
 %
 %-----------------------------------------------------------------------------%
 
