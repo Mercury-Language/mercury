@@ -545,7 +545,10 @@ set_file_permissions(FileName, FilePermissions, !IO) :-
     [will_not_call_mercury, promise_pure, thread_safe, tabled_for_io],
 "
 #if defined(MR_HAVE_CHMOD)
-    #if defined(MR_WIN32)
+    #if defined(MR_MSVC)
+        // MSVC does not define mode_t.
+        (void) _wchmod(MR_utf8_to_wide(FileName), (int) RawFilePermissions);
+    #elif defined(MR_WIN32)
         (void) _wchmod(MR_utf8_to_wide(FileName), (mode_t) RawFilePermissions);
     #else
         (void) chmod(FileName, (mode_t) RawFilePermissions);
