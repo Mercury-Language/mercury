@@ -2,7 +2,7 @@
 # vim: ts=8 sw=8 noexpandtab ft=make
 #-----------------------------------------------------------------------------#
 # Copyright (C) 1996-2009, 2011 The University of Melbourne.
-# Copyright (C) 2013, 2015, 2017-2018, 2020, 2022-2023 The Mercury team.
+# Copyright (C) 2013, 2015, 2017-2018, 2020, 2022-2024 The Mercury team.
 # This file may only be copied under the terms of the GNU General
 # Public License - see the file COPYING in the Mercury distribution.
 #-----------------------------------------------------------------------------#
@@ -16,19 +16,17 @@ include $(MERCURY_DIR)/Mmake.common
 
 #-----------------------------------------------------------------------------#
 
-NONCONF_SCRIPTS = \
+NONCONF_SH_SCRIPTS = \
 	mprof_merge_runs \
 	mtc \
 	vpath_find
 
-CONF_SCRIPTS = \
+CONF_SH_SCRIPTS = \
 	c2init \
 	canonical_grade \
 	mdb \
-	mdb.bat \
 	mdprof \
 	mercury \
-	mercury.bat \
 	mercury_config \
 	mercury_update_interface \
 	mgnuc \
@@ -37,11 +35,31 @@ CONF_SCRIPTS = \
 	mmake \
 	mmc \
 	mprof \
-	mprof.bat \
 	mtags \
 	prepare_install_dir
 
-SCRIPTS = $(NONCONF_SCRIPTS) $(CONF_SCRIPTS)
+CONF_BATCH_FILES = \
+	mdb.bat \
+	mercury.bat \
+	mprof.bat
+
+CONF_SCRIPTS = $(CONF_SH_SCRIPTS) $(CONF_BATCH_FILES)
+
+NONCONF_SCRIPTS = $(NONCONF_SH_SCRIPTS)
+
+# SCRIPTS is the list all scripts, regardless of whether they need to be
+# installed or not.
+SCRIPTS = $(NONCONF_SH_SCRIPTS) $(CONF_SH_SCRIPTS) $(CONF_BATCH_FILES)
+
+# INSTALL_SCRIPTS is the list of scripts we are going to install.
+# It may be a subset of SCRIPTS, since it does not make sense to install
+# things like Windows batch files on non-Windows systems.
+
+ifeq ($(INSTALL_WINDOWS_SCRIPTS),yes)
+INSTALL_SCRIPTS = $(NONCONF_SH_SCRIPTS) $(CONF_SH_SCRIPTS) $(CONF_BATCH_FILES)
+else
+INSTALL_SCRIPTS = $(NONCONF_SH_SCRIPTS) $(CONF_SH_SCRIPTS)
+endif
 
 CONF_FILES = \
 	Mercury.config.bootstrap \
@@ -163,17 +181,17 @@ install_mmake: Mmake.vars Mmake.rules install_dirs
 	cp `vpath_find Mmake.vars Mmake.rules` $(INSTALL_LIBDIR)/mmake
 
 .PHONY: install_scripts
-install_scripts: $(SCRIPTS) install_dirs
+install_scripts: $(INSTALL_SCRIPTS) install_dirs
 	# We move the installed `mmake' script before (re)installing it
 	# to avoid overwriting the script while it is running
-	# (just removing it doesn't work very well on win32, which will
+	# (just removing it doesn't work very well on Windows which will
 	# deny you permission to write the file while mmake is running).
 	-mv $(INSTALL_BINDIR)/mmake $(INSTALL_BINDIR)/mmake.old
-	cp $(SCRIPTS) $(INSTALL_BINDIR)
-	-for file in $(SCRIPTS); do \
+	cp $(INSTALL_SCRIPTS) $(INSTALL_BINDIR)
+	-for file in $(INSTALL_SCRIPTS); do \
 		chmod u+w $(INSTALL_BINDIR)/$$file ;\
 	done
-	cp *.in *.sh-subr $(SCRIPTS) $(INSTALL_RECONF_DIR)/scripts
+	cp *.in *.sh-subr $(INSTALL_SCRIPTS) $(INSTALL_RECONF_DIR)/scripts
 	-rm -f $(INSTALL_BINDIR)/mmake.old
 ifeq ($(findstring java,$(GRADE)),java)
 	for file in $(JAVA_WRAPPER_SCRIPTS); do \

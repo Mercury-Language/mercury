@@ -2,7 +2,7 @@
 # vim: ts=4 sw=4 expandtab
 #-----------------------------------------------------------------------------#
 # Copyright (C) 1995-2012 The University of Melbourne.
-# Copyright (C) 2013-2023 The Mercury team.
+# Copyright (C) 2013-2024 The Mercury team.
 # This file may only be copied under the terms of the GNU General
 # Public Licence - see the file COPYING in the Mercury distribution.
 #-----------------------------------------------------------------------------#
@@ -892,6 +892,27 @@ if test "$MKTEMP" = ""; then
     MKTEMP=""
 fi
 AC_SUBST(MKTEMP)
+
+#-----------------------------------------------------------------------------#
+
+# Determine if we should install Windows-specific files such as the batch
+# files. We only do this where there is a chance they can be useful.
+
+INSTALL_WINDOWS_SCRIPTS=no
+case "$host" in
+    *mingw*)
+        INSTALL_WINDOWS_SCRIPTS=yes
+        ;;
+    *)
+        if test "$ac_microsoft" = "yes"
+        then
+            INSTALL_WINDOWS_SCRIPTS=yes
+        else
+            INSTALL_WINDOWS_SCRIPTS=no
+        fi
+        ;;
+esac
+AC_SUBST(INSTALL_WINDOWS_SCRIPTS)
 
 #-----------------------------------------------------------------------------#
 AC_PATH_PROG(INSTALL_INFO,install-info)
