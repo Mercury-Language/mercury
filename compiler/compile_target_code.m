@@ -2329,7 +2329,8 @@ use_thread_libs(Globals, UseThreadLibs) :-
     % However, if only .lib files are given on the command line then
     % the linker needs to manually told some details that it usually infers
     % from the object files, for example the program entry point and the
-    % target machine type.
+    % target machine type. link.exe will print a warning (#4001) when this
+    % occurs so we also need to shut that up.
     %
 :- pred get_restricted_command_line_link_opts(globals::in,
     linked_target_type::in, string::out) is det.
@@ -2349,6 +2350,7 @@ get_restricted_command_line_link_opts(Globals, LinkTargetType,
                 % supporting 64-bit Windows with MSVC.
                 ResCmdLinkFlags = [
                     "-nologo",
+                    "-ignore:4001",
                     "-subsystem:console",
                     "-machine:x86",
                     "-entry:wmainCRTStartup",
