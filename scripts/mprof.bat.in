@@ -1,7 +1,8 @@
 @echo off
 rem @configure_input@
 rem ---------------------------------------------------------------------------
-rem Copyright (C), 2011 The University of Melbourne.
+rem Copyright (C) 2011 The University of Melbourne.
+rem Copyright (C) 2024 The Mercury team.
 rem This file may only be copied under the terms of the GNU General
 rem Public License - see the file COPYING in the Mercury distribution.
 rem ---------------------------------------------------------------------------
@@ -10,8 +11,10 @@ rem mprof - MercuryProfiler
 rem Use `mprof -h' for help.
 rem
 rem ---------------------------------------------------------------------------
-@echo off
-setlocal
 
-set MPROF="@PREFIX@\bin\mercury_profile"
+rem Do not export any local environment changes and ensure command extensions
+rem are enabled.
+setlocal enableextensions
+
+set "MPROF=@PREFIX@\bin\mercury_profile"
 %MPROF% %*
