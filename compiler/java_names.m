@@ -347,6 +347,8 @@ is_csharp_keyword("while").
 is_csharp_keyword("args").
 is_csharp_keyword("file").
 is_csharp_keyword("record").
+is_csharp_keyword("required").
+is_csharp_keyword("scoped").
 
 csharp_mercury_runtime_package_name =
     qualified(unqualified("mercury"), "runtime").
