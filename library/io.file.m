@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1993-2012 The University of Melbourne.
-% Copyright (C) 2013-2023 The Mercury team.
+% Copyright (C) 2013-2024 The Mercury team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %---------------------------------------------------------------------------%
 %
@@ -988,18 +988,18 @@ file_type(FollowSymLinks, FileName, Result, !IO) :-
         if ((attrs & System.IO.FileAttributes.Directory) ==
             System.IO.FileAttributes.Directory)
         {
-            FileType = mercury.io__file.ML_FILE_TYPE_DIRECTORY;
+            FileType = mercury.io__mr_file.ML_FILE_TYPE_DIRECTORY;
         }
         else if ((attrs & System.IO.FileAttributes.Device) ==
             System.IO.FileAttributes.Device)
         {
             // XXX It may be a block device, but .NET doesn't
             // distinguish between character and block devices.
-            FileType = mercury.io__file.ML_FILE_TYPE_CHARACTER_DEVICE;
+            FileType = mercury.io__mr_file.ML_FILE_TYPE_CHARACTER_DEVICE;
         }
         else
         {
-            FileType = mercury.io__file.ML_FILE_TYPE_REGULAR_FILE;
+            FileType = mercury.io__mr_file.ML_FILE_TYPE_REGULAR_FILE;
         }
         Error = null;
     } catch (System.Exception e) {

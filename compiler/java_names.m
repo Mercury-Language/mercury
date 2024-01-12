@@ -2,6 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
 % Copyright (C) 2002-2011 The University of Melbourne.
+% Copyright (C) 2014-2015, 2017, 2019, 2024 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -262,6 +263,7 @@ make_valid_csharp_symbol_name(SymName) = ValidSymName :-
         ValidSymName = SymName
     ).
 
+% This list is the reserved keywords in C#.
 is_csharp_keyword("abstract").
 is_csharp_keyword("as").
 is_csharp_keyword("base").
@@ -339,6 +341,12 @@ is_csharp_keyword("virtual").
 is_csharp_keyword("volatile").
 is_csharp_keyword("void").
 is_csharp_keyword("while").
+
+% This is a partial list of contextual keywords in C# that we
+% may need to make safe.
+is_csharp_keyword("args").
+is_csharp_keyword("file").
+is_csharp_keyword("record").
 
 csharp_mercury_runtime_package_name =
     qualified(unqualified("mercury"), "runtime").
