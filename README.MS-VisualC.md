@@ -179,13 +179,6 @@ installation. (In future releases, this will all hopefully be automated.)
 All references to files in the following are within the Mercury installation
 directory
 
-* By default, the Mercury compiler will attempt to use the `cp` command to
-  install files. Since Windows does not provide this, you will need to provide
-  an alternative (see the next section for details of how to do this).
-
-  We recommend installing the [UnxUtils](https://sourceforge.net/projects/unxutils/)
-  port of `cp` and using that with Mercury.
-
 * In the file `lib/mercury/conf/Mercury.config`:
   
   + Replace any Unix-style paths with their Windows-style equivalent. 
@@ -196,15 +189,6 @@ directory
 
         --host-env-type "windows"
         --target-env-type "windows"
-
-  + To specify the commands used to install files and directories include
-    the following options in the value of the variable `DEFAULT_MCFLAGS`
-    
-        --install-command <cp>
-        --install-command-dir-option <opt>
-
-    (NOTE: if you are using the UnxUtils port of `cp` then you don't need to
-    do anything here; the default settings will suffice.)
 
 * In the file `lib/mercury/mdb/mdbrc`
 
