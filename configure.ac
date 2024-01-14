@@ -604,7 +604,7 @@ EOF
         $BOOTSTRAP_MC \
             --verbose \
             $link_static_opt conftest \
-            --gen-dep-ints-2023-10-15 \
+            --install-method "external" \
             --allow-ho-insts-as-modes \
             --no-ssdb \
             </dev/null >&AS_MESSAGE_LOG_FD 2>&1 &&
@@ -5171,6 +5171,49 @@ HWLOC_STATIC_LIBS="$hwloc_static_libs"
 AC_SUBST(HWLOC_LIBS)
 AC_SUBST(HWLOC_CFLAGS)
 AC_SUBST(HWLOC_STATIC_LIBS)
+
+#-----------------------------------------------------------------------------#
+#
+# Check whether we should use "cp" for file copying by the compiler.
+#
+
+AC_ARG_WITH([cp],
+    AS_HELP_STRING([--with-cp],
+       [Use the cp command for file copying by the Mercury compiler.
+        The is the default except when using MSVC or on MinGW.]),
+       [with_cp="$withval"],
+       [with_cp="default"])
+
+INSTALL_METHOD_OPT=
+case "$with_cp" in
+    yes)
+        INSTALL_METHOD_OPT="--install-method \"external\""
+        ;;
+    no)
+        INSTALL_METHOD_OPT="--install-method \"internal\""
+        ;;
+    default)
+        if test "$USING_MICROSOFT_CL_COMPILER" = "yes"
+        then
+            INSTALL_METHOD_OPT="--install-method \"internal\""
+        else
+            case "$host" in
+                *mingw*)
+                    INSTALL_METHOD_OPT="--install-method \"internal\""
+                    ;;
+                *)
+                    INSTALL_METHOD_OPT="--install-method \"external\""
+                    ;;
+            esac
+        fi
+        ;;
+    *)
+        AC_MSG_ERROR([unexpected argument to --with-cp])
+        ;;
+
+esac
+
+AC_SUBST(INSTALL_METHOD_OPT)
 
 #-----------------------------------------------------------------------------#
 #
