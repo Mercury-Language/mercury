@@ -207,15 +207,8 @@ call_system_return_signal(Command, Result, !IO) :-
 "
     boolean has_sh;
     try {
-        SecurityManager sm = System.getSecurityManager();
-        if (sm != null) {
-            sm.checkExec(""/bin/sh"");
-            has_sh = true;
-        } else {
-            // If there is no security manager installed, we just check
-            // if the file exists.
-            has_sh = new java.io.File(""/bin/sh"").exists();
-        }
+        has_sh = java.nio.file.Files.isExecutable(
+            java.nio.file.Paths.get(""/bin/sh""));
     } catch (java.lang.Exception e) {
         has_sh = false;
     }
@@ -262,7 +255,7 @@ call_system_return_signal(Command, Result, !IO) :-
             throw stderr.exception;
         }
     } catch (java.lang.Exception e) {
-        Status  = 1;
+        Status = 1;
         Error = e;
     }
 ").
