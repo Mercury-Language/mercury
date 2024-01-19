@@ -1,9 +1,8 @@
 // vim: ts=4 sw=4 expandtab ft=java
 //
-// Copyright (C) 2014, 2016, 2018 The Mercury Team
+// Copyright (C) 2014, 2016, 2018, 2024 The Mercury Team.
 // This file is distributed under the terms specified in COPYING.LIB.
 //
-
 package jmercury.runtime;
 
 import java.util.List;
@@ -27,27 +26,31 @@ public class MercuryOptions {
 
     public void process()
     {
-        String          options;
+        String options = System.getenv("MERCURY_OPTIONS");
+        if (options == null) {
+            return;
+        }
 
-        options = System.getenv("MERCURY_OPTIONS");
-        if (options != null) {
-            Getopt getopt = new Getopt(options);
-            List<String> args;
-
-            for (Getopt.Option option : getopt) {
-                if (option.optionIs("P")) {
+        Getopt getopt = new Getopt(options);
+        for (Getopt.Option option : getopt) {
+            if (option.optionIs("P")) {
+                try {
                     num_processors = option.getValueInt();
-                } else {
-                    System.err.println("Unrecognized option: " + option);
-                    System.exit(1);
+                } catch (java.lang.NumberFormatException e) {
+                    throw new MercuryFatalError(
+                        "the value of the -P option must be " +
+                        "a non-negative integer", e);
                 }
+            } else {
+                throw new MercuryFatalError("Unrecognized option: " + option);
             }
-            args = getopt.getArguments();
-            if (args.size() > 0) {
-                System.err.println(
-                    "Error parsing MERCURY_OPTIONS environment variable,"
-                    + " unexpected: " + args.get(0));
-            }
+        }
+
+        List<String> args = getopt.getArguments();
+        if (args.size() > 0) {
+            throw new MercuryFatalError(
+                "Error parsing MERCURY_OPTIONS environment variable,"
+                 + " unexpected: " + args.get(0));
         }
     }
 
@@ -57,5 +60,4 @@ public class MercuryOptions {
     public int getNumProcessors() {
         return num_processors;
     }
-
 }

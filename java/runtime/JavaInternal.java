@@ -77,7 +77,17 @@ public class JavaInternal {
      */
     public static void runMain(Runnable main)
     {
-        getThreadPool().runMain(main);
+        try {
+            getThreadPool().runMain(main);
+        } catch (jmercury.runtime.MercuryFatalError e) {
+            System.out.flush();
+            System.err.println("Mercury runtime: " + e.getMessage());
+            System.err.flush();
+
+            if (exit_status == 0) {
+                exit_status = 1;
+            }
+        }
     }
 
     /**

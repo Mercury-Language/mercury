@@ -61,7 +61,8 @@ public class MercuryWorkerThread extends MercuryThread
                         // Make the thread exit after throwing an exception.
                         break;
                     } catch (Throwable e) {
-                        // Some other error occured. bail out.
+                        // Some other error occured, bail out.
+                        // XXX We should avoid calling exit() here.
                         System.err.println("Uncaught exception: " +
                             e.toString());
                         System.err.println(e.getMessage());
