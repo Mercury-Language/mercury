@@ -2428,6 +2428,16 @@ case "$ac_cv_c_compiler_gnu" in yes)
                 mercury_cv_asm_labels=no
                 mercury_cv_gcc_labels=no
             fi
+
+            # In asm_fast grades the compiler seg faults during stage 3 library
+            # compilation; we disable their use on Windows until this is fixed.
+            case "$host" in
+               *mingw*|*cygwin*)
+                MERCURY_MSG("gcc labels do not currently work on Windows")
+                mercury_cv_asm_labels=no
+                mercury_cv_gcc_labels=no
+                ;;
+            esac
             ;;
         rs6000-*)
             MERCURY_MSG("gcc labels do not work on the RS/6000")

@@ -91,9 +91,9 @@ case "$cc_type:$host" in
         mercury_cv_is_littleender=yes
         mercury_cv_normal_system_retval=no
         mercury_cv_can_do_pending_io=no
-        mercury_cv_gcc_labels=yes
-        mercury_cv_asm_labels=yes
-        mercury_cv_gcc_model_fast=yes
+        mercury_cv_gcc_labels=no
+        mercury_cv_asm_labels=no
+        mercury_cv_gcc_model_fast=no
         mercury_cv_gcc_model_reg=yes
         mercury_cv_cannot_use_structure_assignment=yes
         ;;
