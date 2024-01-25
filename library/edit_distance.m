@@ -110,11 +110,9 @@
 
 :- implementation.
 
-:- import_module assoc_list.
+:- import_module array.
 :- import_module cord.
 :- import_module io.
-:- import_module map.
-:- import_module pair.
 :- import_module require.
 :- import_module string.
 :- import_module uint.
@@ -134,8 +132,13 @@ find_edit_distance(Params, SeqA, SeqB, Cost) :-
             [s(string.string(SeqA)), s(string.string(SeqB))], !IO)
     ),
 
-    build_seq_map(SeqA, 0u, LenA, map.init, ItemMapA),
-    build_seq_map(SeqB, 0u, LenB, map.init, ItemMapB),
+    list.length(SeqA, LenIntA),
+    list.length(SeqB, LenIntB),
+    LenA = uint.det_from_int(LenIntA),
+    LenB = uint.det_from_int(LenIntB),
+    ItemMapA = array.from_list(SeqA),
+    ItemMapB = array.from_list(SeqB),
+
     InsertCost = Params ^ cost_of_insert,
     DeleteCost = Params ^ cost_of_delete,
 
@@ -166,77 +169,112 @@ find_edit_distance(Params, SeqA, SeqB, Cost) :-
         % RowNum here iterates from 0u up to LenB - 1u.
         % And just as in the gcc code j iterates from 0 up to len_s-1,
         % J here iterates from 0u up to LenA - 1u.
-        map.init(RowTwoAgo),
-        init_row_zero(DeleteCost, 0u, LenA, map.init, RowOneAgo),
+        %
+        % The Mercury compiler uses this predicate mostly when constructing
+        % "did you mean" addendums for diagnostic messages reporting
+        % failed name lookups. In modules that are large themselves, or
+        % (more likely) in modules that import many other modules, the set of
+        % names to which we want to compare the name whose lookup failed
+        % can be quite large. In such situations, the code constructing
+        % the error message will invoke find_edit_distance thousands of times.
+        %
+        % The original Mercury version of this code used maps to implement
+        % both ItemMap{A,B} and Row{OneAgo,TwoAgo,Next}. In some cases,
+        % this caused the construction of "did you mean" addendums to take
+        % several seconds (much more time than than was needed by the *rest*
+        % of the compiler), which is is annoying.
+        %
+        % The two main of this slowdown are almost certainly
+        %
+        % - the logN factor in the complexity of pretty much all operations
+        %   on maps, and
+        %
+        % - the allocating of logN heap cells on every update of every element
+        %   of every map.
+        %
+        % We can fix the first cause by switching the representation of
+        % ItemMap{A,B} and Row{OneAgo,TwoAgo,Next} to arrays.
+        % This also helps with the second cause, but we can do better still
+        % by only ever using the *same* three arrays, meaning that we don't
+        % allocate any memory in build_rows at all.
+        RowTwoAgo = array.init(uint.cast_to_int(LenA + 1u), 0u),
+        init_delete_cost_row(DeleteCost, 0u, LenA, RowOneAgoList),
+        RowOneAgo = array.from_list(RowOneAgoList),
+        RowSpare = array.init(uint.cast_to_int(LenA + 1u), 0u),
+
         build_rows(Params, LenA, LenB, ItemMapA, ItemMapB,
-            0u, RowTwoAgo, RowOneAgo, FinalRow),
-        map.lookup(FinalRow, LenA, Cost)
+            0u, RowTwoAgo, RowOneAgo, RowSpare, FinalRow),
+        array.lookup(FinalRow, uint.cast_to_int(LenA), Cost)
     ).
-
-%---------------------%
-
-:- pred build_seq_map(list(T)::in, uint::in, uint::out,
-    map(uint, T)::in, map(uint, T)::out) is det.
-
-build_seq_map([], Cur, Cur, !SeqMap).
-build_seq_map([Item | Items], Cur, Len, !SeqMap) :-
-    map.det_insert(Cur, Item, !SeqMap),
-    build_seq_map(Items, Cur + 1u, Len, !SeqMap).
 
 %---------------------%
 
     % The first row is for the case of an empty target string,
     % which we can reach by deleting every character in the source string.
     %
-:- pred init_row_zero(uint::in, uint::in, uint::in,
-    map(uint, uint)::in, map(uint, uint)::out) is det.
+:- pred init_delete_cost_row(uint::in, uint::in, uint::in, list(uint)::out)
+    is det.
 
-init_row_zero(DeleteCost, ColNum, MaxColNum, !Row) :-
+init_delete_cost_row(DeleteCost, ColNum, MaxColNum, Row) :-
     ( if ColNum =< MaxColNum then
-        map.det_insert(ColNum, ColNum * DeleteCost, !Row),
-        init_row_zero(DeleteCost, ColNum + 1u, MaxColNum, !Row)
+        init_delete_cost_row(DeleteCost, ColNum + 1u, MaxColNum, RowTail),
+        Row = [ColNum * DeleteCost | RowTail]
     else
-        true
+        Row = []
     ).
 
 %---------------------%
 
 :- pred build_rows(edit_params(T)::in, uint::in, uint::in,
-    map(uint, T)::in, map(uint, T)::in, uint::in,
-    map(uint, uint)::in, map(uint, uint)::in, map(uint, uint)::out) is det.
+    array(T)::in, array(T)::in, uint::in,
+    array(uint)::array_di, array(uint)::array_di,
+    array(uint)::array_di, array(uint)::array_uo) is det.
 
 build_rows(Params, LenA, LenB, ItemMapA, ItemMapB, RowNum,
-        RowTwoAgo, RowOneAgo, FinalRow) :-
+        RowTwoAgo0, RowOneAgo0, RowSpare, FinalRow) :-
     trace [compile_time(flag("debug_edit_distance")), io(!IO)] (
-        dump_row(RowNum, RowOneAgo, !IO)
+        dump_row(RowNum, RowOneAgo0, !IO)
     ),
     ( if RowNum < LenB then
-        map.init(RowNext0),
+        RowNext0 = RowSpare,
         % The initial column is for the case of an empty source string;
         % we can reach prefixes of the target string of length i (RowNum)
         % by inserting i characters.
         InsertCost = Params ^ cost_of_insert,
-        map.det_insert(0u, (RowNum + 1u) * InsertCost, RowNext0, RowNext1),
+        array.set(0, (RowNum + 1u) * InsertCost, RowNext0, RowNext1),
 
         build_columns(Params, LenA, LenB, ItemMapA, ItemMapB, RowNum, 0u,
-            RowTwoAgo, RowOneAgo, RowNext1, RowNext),
+            RowTwoAgo0, RowTwoAgo, RowOneAgo0, RowOneAgo, RowNext1, RowNext),
 
         build_rows(Params, LenA, LenB, ItemMapA, ItemMapB, RowNum + 1u,
-            RowOneAgo, RowNext, FinalRow)
+            RowOneAgo, RowNext, RowTwoAgo, FinalRow)
     else
-        FinalRow = RowOneAgo
+        FinalRow = RowOneAgo0
     ).
 
-    % Build the rest of the RowNext by considering neighbors
-    % to the north, west and northwest.
+    % build_columns(Params, LenA, LenB, ItemMapA, ItemMapB, RowNum, J,
+    %   !RowTwoAgo, !RowOneAgo, !RowNext):
+    %
+    % Compute the slots of the !:RowNext starting at ColNum (J+1)
+    % by considering their neighbors to the north, west and northwest.
+    %
+    % Obviously, this means that this predicate updates !RowNext.
+    % It also has array_{di,uo} pairs of arguments for !RowTwoAgo
+    % and !RowOneAgo, but this predicate leaves those two state variables
+    % unchanged. We need to return the "new" values of !:RowTwoAgo
+    % and !.RowOneAgo to our caller to allow the mode checker to see
+    % that these arrays are still unique, which allows our caller
+    % to reuse the same three arrays over and over, thus avoiding
+    % ever allocating a fourth array.
     %
 :- pred build_columns(edit_params(T)::in, uint::in, uint::in,
-    map(uint, T)::in, map(uint, T)::in, uint::in, uint::in,
-    map(uint, uint)::in, map(uint, uint)::in,
-    map(uint, uint)::in, map(uint, uint)::out) is det.
+    array(T)::in, array(T)::in, uint::in, uint::in,
+    array(uint)::array_di, array(uint)::array_uo,
+    array(uint)::array_di, array(uint)::array_uo,
+    array(uint)::array_di, array(uint)::array_uo) is det.
 
 build_columns(Params, LenA, LenB, ItemMapA, ItemMapB, RowNum, J,
-        RowTwoAgo, RowOneAgo, !RowNext) :-
+        !RowTwoAgo, !RowOneAgo, !RowNext) :-
     ( if J < LenA then
         ColNum = J + 1u,
         % Note that "here", the position from which are looking,
@@ -247,10 +285,10 @@ build_columns(Params, LenA, LenB, ItemMapA, ItemMapB, RowNum, J,
         % - diag        is RowOneAgo(J)
         % - trans_diag  is RowTwoAgo(J - 1u)
 
-        map.lookup(RowOneAgo, J, DiagCost),
+        array.lookup(!.RowOneAgo, uint.cast_to_int(J), DiagCost),
         I = RowNum,
-        map.lookup(ItemMapA, J, CurAJ),
-        map.lookup(ItemMapB, I, CurBI),
+        array.lookup(ItemMapA, uint.cast_to_int(J), CurAJ),
+        array.lookup(ItemMapB, uint.cast_to_int(I), CurBI),
         ( if CurAJ = CurBI then
             MinCost = DiagCost,
             trace [compile_time(flag("debug_edit_distance")), io(!IO)] (
@@ -260,10 +298,10 @@ build_columns(Params, LenA, LenB, ItemMapA, ItemMapB, RowNum, J,
             ReplacementCostFunc = Params ^ cost_of_replace,
             ReplacementCost = DiagCost + ReplacementCostFunc(CurAJ, CurBI),
 
-            map.lookup(!.RowNext, J, LeftCost),
+            array.lookup(!.RowNext, uint.cast_to_int(J), LeftCost),
             DeleteCost = LeftCost + Params ^ cost_of_delete,
 
-            map.lookup(RowOneAgo, ColNum, UpCost),
+            array.lookup(!.RowOneAgo, uint.cast_to_int(ColNum), UpCost),
             InsertCost = UpCost + Params ^ cost_of_insert,
 
             MinCost0 = min(InsertCost, min(DeleteCost, ReplacementCost)),
@@ -271,10 +309,11 @@ build_columns(Params, LenA, LenB, ItemMapA, ItemMapB, RowNum, J,
             ( if
                 I > 0u,
                 J > 0u,
-                map.lookup(ItemMapB, I - 1u, CurAJ),
-                map.lookup(ItemMapA, J - 1u, CurBI)
+                array.lookup(ItemMapB, uint.cast_to_int(I - 1u), CurAJ),
+                array.lookup(ItemMapA, uint.cast_to_int(J - 1u), CurBI)
             then
-                map.lookup(RowTwoAgo, J - 1u, TransDiagCost),
+                array.lookup(!.RowTwoAgo, uint.cast_to_int(J - 1u),
+                    TransDiagCost),
                 TransposeCost = TransDiagCost + Params ^ cost_of_transpose,
                 MinCost = min(MinCost0, TransposeCost),
                 trace [compile_time(flag("debug_edit_distance")), io(!IO)] (
@@ -291,9 +330,9 @@ build_columns(Params, LenA, LenB, ItemMapA, ItemMapB, RowNum, J,
                 )
             )
         ),
-        map.det_insert(ColNum, MinCost, !RowNext),
+        array.set(uint.cast_to_int(ColNum), MinCost, !RowNext),
         build_columns(Params, LenA, LenB, ItemMapA, ItemMapB,
-            RowNum, J + 1u, RowTwoAgo, RowOneAgo, !RowNext)
+            RowNum, J + 1u, !RowTwoAgo, !RowOneAgo, !RowNext)
     else
         trace [compile_time(flag("debug_edit_distance")), io(!IO)] (
             io.nl(!IO)
@@ -302,21 +341,21 @@ build_columns(Params, LenA, LenB, ItemMapA, ItemMapB, RowNum, J,
 
 %---------------------%
 
-:- pred dump_row(uint::in, map(uint, uint)::in, io::di, io::uo) is det.
+:- pred dump_row(uint::in, array(uint)::in, io::di, io::uo) is det.
 
 dump_row(RowNum, RowMap, !IO) :-
     io.format("row #%2u: [", [u(RowNum)], !IO),
-    map.to_assoc_list(RowMap, RowAL),
-    dump_columns(RowAL, !IO),
+    array.to_list(RowMap, RowAL),
+    dump_columns(0u, RowAL, !IO),
     io.write_string("]\n", !IO),
     io.flush_output(!IO).
 
-:- pred dump_columns(assoc_list(uint, uint)::in, io::di, io::uo) is det.
+:- pred dump_columns(uint::in, list(uint)::in, io::di, io::uo) is det.
 
-dump_columns([], !IO).
-dump_columns([ColNum - Value | ColNumsValues], !IO) :-
+dump_columns(_, [], !IO).
+dump_columns(ColNum, [Value | Values], !IO) :-
     io.format("%2u: %3u, ", [u(ColNum), u(Value)], !IO),
-    dump_columns(ColNumsValues, !IO).
+    dump_columns(ColNum + 1u, Values, !IO).
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
