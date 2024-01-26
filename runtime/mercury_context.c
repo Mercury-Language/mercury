@@ -1,7 +1,7 @@
 // vim: ts=4 sw=4 expandtab ft=c
 
 // Copyright (C) 1995-2007, 2009-2011 The University of Melbourne.
-// Copyright (C) 2014, 2016-2018 The Mercury team.
+// Copyright (C) 2014, 2016-2018, 2020-2021, 2024 The Mercury team.
 // This file is distributed under the terms specified in COPYING.LIB.
 
 // mercury_context.c - handles multithreading stuff.
@@ -310,7 +310,7 @@ static MR_bool  try_wake_engine(MR_EngineId engine_id, int action,
 // semaphore so it cannot wake a sleeping engine. Don't confuse the
 // dropable and non-dropable notifications with the notify/wake methods.
 // The only connection is that in general non-dropable notifications should
-// be used wit try_notify_engine.
+// be used with try_notify_engine.
 //
 // The engine's current state must be passed in engine_state as it is used
 // with the CAS operation.
