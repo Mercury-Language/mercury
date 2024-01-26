@@ -96,6 +96,29 @@
 :- pred find_closest_seqs(edit_params(T)::in, list(T)::in, list(list(T))::in,
     uint::out, list(T)::out, list(list(T))::out) is det.
 
+    % find_best_close_enough_seqs(Params, SourceSeq, TargetSeqs,
+    %   MaxEditDistance, BestEditDistance,
+    %   HeadBestCloseSeq, TailBestCloseSeqs):
+    %
+    % This is a version of find_closest_seqs that takes MaxEditDistance
+    % as an input, and which ignores any target sequence whose edit distance
+    % from SourceSeq is known to exceed MaxEditDistance.
+    %
+    % If all elements of TargetSeqs have edit distances from SourceSeq
+    % that are greater than MaxEditDistance, then this predicate will fail.
+    % If this is not the case, i.e. if there are some target sequences
+    % whose distance is less than or equal to MaxEditDistance, this predicate
+    % will succeed, and will do the same job as find_closest_seqs, but it is
+    % intended to do more quickly, the efficiency gain coming from stopping
+    % the computation of exact edit distances as soon as it becomes known
+    % that the distance would exceed MaxEditDistance.
+    %
+:- pred find_best_close_enough_seqs(edit_params(T)::in, list(T)::in,
+    list(list(T))::in, uint::in, uint::out,
+    list(T)::out, list(list(T))::out) is semidet.
+
+%---------------------%
+
     % find_closest_strings(Params, SourceStr, TargetStrs,
     %    BestEditDistance, HeadBestCloseStr, TailBestCloseStrs):
     %
@@ -104,6 +127,17 @@
     %
 :- pred find_closest_strings(edit_params(char)::in, string::in,
     list(string)::in, uint::out, string::out, list(string)::out) is det.
+
+    % find_best_close_enough_strings(Params, SourceStr, TargetStrs,
+    %    MaxEditDistance,
+    %   BestEditDistance, HeadBestCloseStr, TailBestCloseStrs):
+    %
+    % This is an instance of find_best_close_enough_seqs that takes care of the
+    % necessary conversions between strings and sequences of characters.
+    %
+:- pred find_best_close_enough_strings(edit_params(char)::in, string::in,
+    list(string)::in, uint::in, uint::out, string::out, list(string)::out)
+    is semidet.
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -406,6 +440,45 @@ find_closest_seqs(Params, SourceSeq, TargetSeqs,
         list.det_head_tail(BestSeqList, HeadBestSeq, TailBestSeqs)
     ).
 
+%---------------------%
+
+find_best_close_enough_seqs(Params, SourceSeq, TargetSeqs,
+        MaxCost, BestCost, HeadBestSeq, TailBestSeqs) :-
+    (
+        TargetSeqs = [],
+        unexpected($pred,
+            "Calling find_best_close_enough_seqs on an empty list" ++
+            " of target sequences does not make sense")
+    ;
+        TargetSeqs = [_ | _],
+        find_first_close_enough_seq(Params, SourceSeq, TargetSeqs,
+            MaxCost, FirstCost, FirstTargetSeq, RestTargetSeqs),
+        find_closest_seqs_loop(Params, SourceSeq, RestTargetSeqs,
+            FirstCost, BestCost, cord.singleton(FirstTargetSeq), BestSeqCord),
+        BestSeqList = cord.list(BestSeqCord),
+        list.det_head_tail(BestSeqList, HeadBestSeq, TailBestSeqs)
+    ).
+
+:- pred find_first_close_enough_seq(edit_params(T)::in, list(T)::in,
+    list(list(T))::in, uint::in, uint::out, list(T)::out, list(list(T))::out)
+    is semidet.
+
+find_first_close_enough_seq(Params, SourceSeq,
+        [HeadTargetSeq | TailTargetSeqs], MaxCost,
+        FirstCost, FirstTargetSeq, RestTargetSeqs) :-
+    find_edit_distance_ceiling(Params, SourceSeq, HeadTargetSeq,
+        yes(MaxCost), HeadCost),
+    ( if HeadCost =< MaxCost then
+        FirstCost = HeadCost,
+        FirstTargetSeq = HeadTargetSeq,
+        RestTargetSeqs = TailTargetSeqs
+    else
+        find_first_close_enough_seq(Params, SourceSeq, TailTargetSeqs, MaxCost,
+            FirstCost, FirstTargetSeq, RestTargetSeqs)
+    ).
+
+%---------------------%
+
 :- pred find_closest_seqs_loop(edit_params(T)::in, list(T)::in,
     list(list(T))::in, uint::in, uint::out,
     cord(list(T))::in, cord(list(T))::out) is det.
@@ -441,6 +514,15 @@ find_closest_strings(Params, SourceStr, TargetStrs,
     string.to_char_list(SourceStr, SourceCharSeq),
     list.map(string.to_char_list, TargetStrs, TargetCharSeqs),
     find_closest_seqs(Params, SourceCharSeq, TargetCharSeqs,
+        BestCost, HeadBestCharSeq, TailBestCharSeqs),
+    string.from_char_list(HeadBestCharSeq, HeadBestStr),
+    list.map(string.from_char_list, TailBestCharSeqs, TailBestStrs).
+
+find_best_close_enough_strings(Params, SourceStr, TargetStrs, MaxCost,
+        BestCost, HeadBestStr, TailBestStrs) :-
+    string.to_char_list(SourceStr, SourceCharSeq),
+    list.map(string.to_char_list, TargetStrs, TargetCharSeqs),
+    find_best_close_enough_seqs(Params, SourceCharSeq, TargetCharSeqs, MaxCost,
         BestCost, HeadBestCharSeq, TailBestCharSeqs),
     string.from_char_list(HeadBestCharSeq, HeadBestStr),
     list.map(string.from_char_list, TailBestCharSeqs, TailBestStrs).

@@ -777,15 +777,37 @@ maybe_construct_did_you_mean_pieces(BaseName, CandidateNames,
     % Note: name_is_close_enough below depends on all costs here
     % except for case changes being 2u.
     Params = edit_params(2u, 2u, case_sensitive_replacement_cost, 2u),
-    find_closest_strings(Params, BaseName, CandidateNames,
-        Cost, HeadBestName, TailBestNames),
-    BestNames = [HeadBestName | TailBestNames],
+    string.count_code_points(BaseName, BaseNameLen),
+    BaseNameLenU = uint.cast_from_int(BaseNameLen),
+    % The algorithm we use here to set MaxCost has two purposes.
+    %
+    % One is to speed up the process of finding close enough candidates,
+    % by allowing candidates with too-large edit distances to be rejected
+    % without having to finish the computation of those edit distances.
+    %
+    % The other is to require edits to replace at most half of any base name
+    % that exceeds one character. Note that the heuristic for "close enough"
+    % that name_is_close_enough uses, which is originally from gcc, does *not*
+    % impose that requirement.
+    ( if BaseNameLenU < 2u then
+        % If BaseName consists of a single character, allow a suggestion
+        % to replace that character.
+        MaxCost = 2u
+    else
+        % If BaseName consists of two or more characters, allow suggestions
+        % to replace at most half of those characters (rounded up).
+        % 2u is the replacement cost.
+        MaxCost = ((BaseNameLenU + 1u) / 2u) * 2u
+    ),
     ( if
+        find_best_close_enough_strings(Params, BaseName, CandidateNames,
+            MaxCost, BestCost, HeadBestName, TailBestNames),
+        BestNames = [HeadBestName | TailBestNames],
         % Don't offer a string as a replacement for itself.
-        Cost > 0u,
+        BestCost > 0u,
         % Don't offer a string as a replacement if it is too far
         % from the original, either.
-        list.filter(name_is_close_enough(Cost, BaseName),
+        list.filter(name_is_close_enough(BestCost, BaseName, BaseNameLenU),
             BestNames, CloseEnoughBestNames),
         CloseEnoughBestNames = [_ | _]
     then
@@ -815,15 +837,14 @@ maybe_construct_did_you_mean_pieces(BaseName, CandidateNames,
         DidYouMeanPieces = []
     ).
 
-:- pred name_is_close_enough(uint::in, string::in, string::in) is semidet.
+:- pred name_is_close_enough(uint::in, string::in, uint::in, string::in)
+    is semidet.
 
-name_is_close_enough(Cost, Query, Name) :-
+name_is_close_enough(Cost, Query, QueryLenU, Name) :-
     % This heuristic for when a name is "close enough"
     % is from spellcheck.cc in the gcc source code.
     require_det (
-        string.count_code_points(Query, QueryLen),
         string.count_code_points(Name, NameLen),
-        QueryLenU = uint.cast_from_int(QueryLen),
         NameLenU = uint.cast_from_int(NameLen),
         MinLenU = uint.min(QueryLenU, NameLenU),
         MaxLenU = uint.max(QueryLenU, NameLenU),
@@ -839,6 +860,12 @@ name_is_close_enough(Cost, Query, Name) :-
             % to some cases involving insertions/deletions.
             MaxAcceptableLen = (MaxLenU + 2u) / 3u
         ),
+        % Note that in situations where the Name is much longer than BaseName,
+        % and therefore MaxLenU is much greater than MinLenU, the above formula
+        % generates values of MaxAcceptableLen that exceed BaseLenU, which thus
+        % allows suggestions that replace *every* item in Query. This may be
+        % a usability bug in the gcc heuristic.
+
         % The 2u represents the cost of edits other than case transformations.
         MaxAcceptableCost = 2u * MaxAcceptableLen,
         trace [compile_time(flag("debug_close_enough")), io(!IO)] (
