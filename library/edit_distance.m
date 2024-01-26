@@ -18,8 +18,8 @@
 %   between two given sequences in a way that makes their differences
 %   as easy to understand as possible.
 %
-% - edit_distance.m aims to solve the problem of finding in a pool of
-%   candidate sequences the candidate that is closest to a given query
+% - edit_distance.m aims to solve the problem of finding, in a pool of
+%   candidate sequences, the candidate that is closest to a given query
 %   sequence.
 %
 % Doing a second job with the second problem requires a mechanism that
@@ -113,6 +113,7 @@
 :- import_module array.
 :- import_module cord.
 :- import_module io.
+:- import_module maybe.
 :- import_module require.
 :- import_module string.
 :- import_module uint.
@@ -124,6 +125,20 @@
 %
 
 find_edit_distance(Params, SeqA, SeqB, Cost) :-
+    find_edit_distance_ceiling(Params, SeqA, SeqB, no, Cost).
+
+    % This version of find_edit_distance allows the caller to specify
+    % a cost ceiling, beyond which the cost does not matter (because
+    % it will be thrown away anyway). Once the minimum cost in a row
+    % exceeds the ceiling (if there is one), we stop computing further rows,
+    % because the cost can only increase from then on. In such cases,
+    % the cost we return will be inaccurate, but this is ok; since it will be
+    % beyond the ceiling, our caller told us it will throw it away.
+    %
+:- pred find_edit_distance_ceiling(edit_params(T)::in,
+    list(T)::in, list(T)::in, maybe(uint)::in, uint::out) is det.
+
+find_edit_distance_ceiling(Params, SeqA, SeqB, MaybeCeiling, Cost) :-
     % The gcc code on which the implementation of this predicate is based
     % is included at the bottom of this module in a big comment. It has been
     % reformatted to follow *our* code style for C (though the code is in C++).
@@ -202,7 +217,7 @@ find_edit_distance(Params, SeqA, SeqB, Cost) :-
         RowOneAgo = array.from_list(RowOneAgoList),
         RowSpare = array.init(uint.cast_to_int(LenA + 1u), 0u),
 
-        build_rows(Params, LenA, LenB, ItemMapA, ItemMapB,
+        build_rows(Params, LenA, LenB, ItemMapA, ItemMapB, MaybeCeiling,
             0u, RowTwoAgo, RowOneAgo, RowSpare, FinalRow),
         array.lookup(FinalRow, uint.cast_to_int(LenA), Cost)
     ).
@@ -226,12 +241,12 @@ init_delete_cost_row(DeleteCost, ColNum, MaxColNum, Row) :-
 %---------------------%
 
 :- pred build_rows(edit_params(T)::in, uint::in, uint::in,
-    array(T)::in, array(T)::in, uint::in,
+    array(T)::in, array(T)::in, maybe(uint)::in, uint::in,
     array(uint)::array_di, array(uint)::array_di,
     array(uint)::array_di, array(uint)::array_uo) is det.
 
-build_rows(Params, LenA, LenB, ItemMapA, ItemMapB, RowNum,
-        RowTwoAgo0, RowOneAgo0, RowSpare, FinalRow) :-
+build_rows(Params, LenA, LenB, ItemMapA, ItemMapB, MaybeCeiling,
+        RowNum, RowTwoAgo0, RowOneAgo0, RowSpare, FinalRow) :-
     trace [compile_time(flag("debug_edit_distance")), io(!IO)] (
         dump_row(RowNum, RowOneAgo0, !IO)
     ),
@@ -241,13 +256,22 @@ build_rows(Params, LenA, LenB, ItemMapA, ItemMapB, RowNum,
         % we can reach prefixes of the target string of length i (RowNum)
         % by inserting i characters.
         InsertCost = Params ^ cost_of_insert,
-        array.set(0, (RowNum + 1u) * InsertCost, RowNext0, RowNext1),
+        InsertCostInRow = (RowNum + 1u) * InsertCost,
+        array.set(0, InsertCostInRow, RowNext0, RowNext1),
 
+        MinCostInRow0 = InsertCostInRow,
         build_columns(Params, LenA, LenB, ItemMapA, ItemMapB, RowNum, 0u,
-            RowTwoAgo0, RowTwoAgo, RowOneAgo0, RowOneAgo, RowNext1, RowNext),
-
-        build_rows(Params, LenA, LenB, ItemMapA, ItemMapB, RowNum + 1u,
-            RowOneAgo, RowNext, RowTwoAgo, FinalRow)
+            RowTwoAgo0, RowTwoAgo, RowOneAgo0, RowOneAgo, RowNext1, RowNext,
+            MinCostInRow0, MinCostInRow),
+        ( if
+            MaybeCeiling = yes(Ceiling),
+            MinCostInRow > Ceiling
+        then
+            FinalRow = RowNext
+        else
+            build_rows(Params, LenA, LenB, ItemMapA, ItemMapB, MaybeCeiling,
+                RowNum + 1u, RowOneAgo, RowNext, RowTwoAgo, FinalRow)
+        )
     else
         FinalRow = RowOneAgo0
     ).
@@ -271,10 +295,11 @@ build_rows(Params, LenA, LenB, ItemMapA, ItemMapB, RowNum,
     array(T)::in, array(T)::in, uint::in, uint::in,
     array(uint)::array_di, array(uint)::array_uo,
     array(uint)::array_di, array(uint)::array_uo,
-    array(uint)::array_di, array(uint)::array_uo) is det.
+    array(uint)::array_di, array(uint)::array_uo,
+    uint::in, uint::out) is det.
 
-build_columns(Params, LenA, LenB, ItemMapA, ItemMapB, RowNum, J,
-        !RowTwoAgo, !RowOneAgo, !RowNext) :-
+build_columns(Params, LenA, LenB, ItemMapA, ItemMapB, RowNum, J, 
+        !RowTwoAgo, !RowOneAgo, !RowNext, !MinCostInRow) :-
     ( if J < LenA then
         ColNum = J + 1u,
         % Note that "here", the position from which are looking,
@@ -331,8 +356,13 @@ build_columns(Params, LenA, LenB, ItemMapA, ItemMapB, RowNum, J,
             )
         ),
         array.set(uint.cast_to_int(ColNum), MinCost, !RowNext),
+        ( if MinCost < !.MinCostInRow then
+            !:MinCostInRow = MinCost
+        else
+            true
+        ),
         build_columns(Params, LenA, LenB, ItemMapA, ItemMapB,
-            RowNum, J + 1u, !RowTwoAgo, !RowOneAgo, !RowNext)
+            RowNum, J + 1u, !RowTwoAgo, !RowOneAgo, !RowNext, !MinCostInRow)
     else
         trace [compile_time(flag("debug_edit_distance")), io(!IO)] (
             io.nl(!IO)
@@ -383,7 +413,8 @@ find_closest_seqs(Params, SourceSeq, TargetSeqs,
 find_closest_seqs_loop(_, _, [], !Cost, !CostSeqCord).
 find_closest_seqs_loop(Params, SourceSeq, [HeadTargetSeq | TailTargetSeqs],
         !Cost, !CostSeqCord) :-
-    find_edit_distance(Params, SourceSeq, HeadTargetSeq, HeadCost),
+    find_edit_distance_ceiling(Params, SourceSeq, HeadTargetSeq,
+        yes(!.Cost), HeadCost),
     ( if HeadCost < !.Cost then
         % Update the best known cost, ...
         !:Cost = HeadCost,
