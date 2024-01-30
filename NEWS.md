@@ -98,6 +98,7 @@ Changes to the Mercury standard library
 
 * The following predicates have been added:
 
+    - pred `full_memory_stats_are_available/0`
     - pred `report_stats/3`
     - pred `report_stats/4`
     - pred `report_standard_stats/2`

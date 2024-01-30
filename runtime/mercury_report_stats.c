@@ -261,6 +261,16 @@ MR_report_standard_stats(FILE *fp, int *line_number)
 }
 
 int
+MR_full_memory_stats_available(void)
+{
+#ifndef MR_MPROF_PROFILE_MEMORY
+    return 0;
+#else
+    return 1;
+#endif
+}
+
+int
 MR_report_full_memory_stats(FILE *fp, int *line_number)
 {
 #ifndef MR_MPROF_PROFILE_MEMORY

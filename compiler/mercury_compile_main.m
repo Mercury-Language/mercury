@@ -942,7 +942,11 @@ do_op_mode_args(ProgressStream, ErrorStream, Globals,
     globals.lookup_bool_option(Globals, statistics, Statistics),
     (
         Statistics = yes,
-        benchmarking.report_full_memory_stats(StdErr, !IO)
+        ( if benchmarking.full_memory_stats_are_available then
+            benchmarking.report_full_memory_stats(StdErr, !IO)
+        else
+            true
+        )
     ;
         Statistics = no
     ).

@@ -70,6 +70,12 @@
     io::di, io::uo) is det.
 :- pred report_full_memory_stats(io::di, io::uo) is det.
 
+    % Succeed if and only if full memory statistics are available,
+    % i.e. if report_full_memory_stats will print those statistics,
+    % instead of a message about them not being available.
+    %
+:- pred full_memory_stats_are_available is semidet.
+
     % report_tabling_statistics/3, as its name says, reports statistics
     % about tabling to the specified output stream, or to stderr.
     %
@@ -360,6 +366,29 @@ report_full_memory_stats(!IO) :-
         Error = e;
     }
 ").
+
+full_memory_stats_are_available :-
+    full_memory_stats_are_available_2(N),
+    N > 0.
+
+    % Return a positive value if full memory statistics are available
+    % (i.e. if report_full_memory_stats will print them).
+    % Return a zero value if full memory statistics are NOT available
+    % (i.e. if report_full_memory_stats will print a message about them
+    % not being available).
+    %
+:- pred full_memory_stats_are_available_2(int::out) is det.
+
+:- pragma foreign_proc("C",
+    full_memory_stats_are_available_2(N::out),
+    [promise_pure, will_not_call_mercury, tabled_for_io,
+        does_not_affect_liveness],
+"
+    N = MR_full_memory_stats_available();
+").
+
+% Full memory stats are not available in non-C grades.
+full_memory_stats_are_available_2(0).
 
 %---------------------%
 
