@@ -146,15 +146,17 @@
     % Look up the name of a variable;
     % if it doesn't have one, create one using the specified prefix.
     %
+:- func lookup_name_default_prefix(varset(T), var(T), string) = string.
+:- pred lookup_name_default_prefix(varset(T)::in, var(T)::in, string::in,
+    string::out) is det.
+
+    % The old, now obsolete name for what is now lookup_name_default_prefix.
+    %
 :- func lookup_name(varset(T), var(T), string) = string.
 :- pred lookup_name(varset(T)::in, var(T)::in, string::in, string::out)
     is det.
 :- pragma obsolete(func(lookup_name/3), [varset.lookup_name_default_prefix/3]).
 :- pragma obsolete(pred(lookup_name/4), [varset.lookup_name_default_prefix/4]).
-
-:- func lookup_name_default_prefix(varset(T), var(T), string) = string.
-:- pred lookup_name_default_prefix(varset(T)::in, var(T)::in, string::in,
-    string::out) is det.
 
     % Look up the name of a variable;
     % fail if it doesn't have one.
@@ -493,12 +495,6 @@ lookup_name(VarSet, Var, Name) :-
         Name = "V_" ++ string.int_to_string(VarNum)
     ).
 
-lookup_name(VarSet, Id, Prefix) = Name :-
-    lookup_name_default_prefix(VarSet, Id, Prefix, Name).
-
-lookup_name(VarSet, Id, Prefix, Name) :-
-    lookup_name_default_prefix(VarSet, Id, Prefix, Name).
-
 lookup_name_default_prefix(VarSet, Id, Prefix) = Name :-
     varset.lookup_name_default_prefix(VarSet, Id, Prefix, Name).
 
@@ -509,6 +505,12 @@ lookup_name_default_prefix(VarSet, Id, Prefix, Name) :-
         term.var_to_int(Id, VarNum),
         Name = Prefix ++ string.int_to_string(VarNum)
     ).
+
+lookup_name(VarSet, Id, Prefix) = Name :-
+    lookup_name_default_prefix(VarSet, Id, Prefix, Name).
+
+lookup_name(VarSet, Id, Prefix, Name) :-
+    lookup_name_default_prefix(VarSet, Id, Prefix, Name).
 
 search_name(VarSet, Var, Name) :-
     VarSet = varset(_, Names, _),
