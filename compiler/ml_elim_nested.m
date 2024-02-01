@@ -1002,10 +1002,10 @@ gen_gc_trace_func(PredModule, FuncName, FramePointerDefn, GCTraceStmts,
     % Construct the function definition.
     Stmt = ml_stmt_block([FramePointerDefn], [], GCTraceStmts, Context),
     DeclFlags = mlds_function_decl_flags(func_private, one_copy),
-    MaybePredProcId = no,
+    Source = mlds_func_source_trace,
     EnvVarNames = set.init,
     GCTraceFuncDefn = mlds_function_defn(GCTraceFuncName,
-        Context, DeclFlags, MaybePredProcId, FuncParams,
+        Context, DeclFlags, Source, FuncParams,
         body_defined_here(Stmt), EnvVarNames, no).
 
 :- pred extract_gc_statements(

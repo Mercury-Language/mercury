@@ -738,7 +738,8 @@ ml_gen_constructor_function(Target, BaseClassId, CtorClassId, ClassQualifier,
     Stmt = ml_stmt_block([], [], InitMembers, Context),
     EnvVarNames = set.init,
     CtorDefn = mlds_function_defn(FunctionName, Context,
-        CtorFlags, no, Params, body_defined_here(Stmt), EnvVarNames, no).
+        CtorFlags, mlds_func_source_constructor, Params,
+        body_defined_here(Stmt), EnvVarNames, no).
 
 ml_gen_struct_constructor_function(StructId, ClassQualifier, FieldInfos,
         Context) = CtorDefn :-
@@ -757,7 +758,8 @@ ml_gen_struct_constructor_function(StructId, ClassQualifier, FieldInfos,
     Stmt = ml_stmt_block([], [], InitMembers, Context),
     EnvVarNames = set.init,
     CtorDefn = mlds_function_defn(FunctionName, Context,
-        CtorFlags, no, Params, body_defined_here(Stmt), EnvVarNames, no).
+        CtorFlags, mlds_func_source_constructor, Params,
+        body_defined_here(Stmt), EnvVarNames, no).
 
     % Get the name and type from the field description, for use as a
     % constructor argument name and type.

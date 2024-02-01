@@ -1018,8 +1018,8 @@ gen_closure_gc_statement(ClosureName, ClosureDeclType,
 ml_gen_wrapper_func(MaybeAux, FuncParams, Context, Stmt, FunctionDefn,
         !Info) :-
     % XXX MLDS_DEFN: pass the needed flags to ml_gen_label_func
-    ml_gen_label_func(!.Info, MaybeAux, FuncParams, Context, Stmt,
-        FunctionDefn0),
+    ml_gen_label_func(!.Info, MaybeAux, mlds_func_source_wrapper, FuncParams,
+        Context, Stmt, FunctionDefn0),
     FunctionDefn0 = mlds_function_defn(Name, Ctxt, _DeclFlags0,
         MaybePredProcId, DefnFuncParams, Body, EnvVarNames, TailRec),
     DeclFlags = mlds_function_decl_flags(func_private, one_copy),

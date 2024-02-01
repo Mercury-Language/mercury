@@ -251,8 +251,9 @@ ml_gen_commit(Goal, CodeModel, Context, LocalVarDefns, FuncDefns, Stmts,
         CommitRefDefn = ml_gen_commit_var_decl(Context, CommitRef),
         DoCommitStmt = ml_stmt_do_commit(ml_lval(CommitRefLval), Context),
         % Pop nesting level.
-        ml_gen_nondet_label_func(!.Info, SuccessFuncLabel, Context,
-            DoCommitStmt, SuccessFuncDefn),
+        ml_gen_nondet_label_func(!.Info, SuccessFuncLabel,
+            mlds_func_source_continuation, Context, DoCommitStmt,
+            SuccessFuncDefn),
 
         ml_get_env_ptr(EnvPtrRval),
         SuccessCont = success_cont(SuccessFuncLabelRval, EnvPtrRval, []),
@@ -336,8 +337,9 @@ ml_gen_commit(Goal, CodeModel, Context, LocalVarDefns, FuncDefns, Stmts,
         CommitRefDefn = ml_gen_commit_var_decl(Context, CommitRef),
         DoCommitStmt = ml_stmt_do_commit(ml_lval(CommitRefLval), Context),
         % pop nesting level
-        ml_gen_nondet_label_func(!.Info, SuccessFuncLabel, Context,
-            DoCommitStmt, SuccessFuncDefn),
+        ml_gen_nondet_label_func(!.Info, SuccessFuncLabel,
+            mlds_func_source_continuation, Context, DoCommitStmt,
+            SuccessFuncDefn),
 
         ml_get_env_ptr(EnvPtrRval),
         SuccessCont = success_cont(SuccessFuncLabelRval, EnvPtrRval, []),
@@ -416,8 +418,9 @@ maybe_put_commit_in_own_func(LocalVarDefn0, FuncDefn0, TryCommitStmts,
         CommitFuncBody = ml_gen_block([LocalVarDefn0], [FuncDefn0],
             TryCommitStmts, Context),
         % Pop nesting level.
-        ml_gen_nondet_label_func(!.Info, CommitFuncLabel, Context,
-            CommitFuncBody, CommitFuncDefn),
+        ml_gen_nondet_label_func(!.Info, CommitFuncLabel,
+            mlds_func_source_continuation, Context, CommitFuncBody,
+            CommitFuncDefn),
 
         % Generate the call to `commit_func();'
         ml_get_env_ptr(EnvPtrRval),

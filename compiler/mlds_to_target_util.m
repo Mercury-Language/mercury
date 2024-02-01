@@ -18,8 +18,6 @@
 
 :- import_module backend_libs.
 :- import_module backend_libs.rtti.
-:- import_module hlds.
-:- import_module hlds.hlds_pred.
 :- import_module libs.
 :- import_module libs.indent.
 :- import_module mdbcomp.
@@ -196,8 +194,9 @@
 
 %---------------------------------------------------------------------------%
 
-:- pred maybe_output_pred_proc_id_comment(io.text_output_stream::in, bool::in,
-    string::in, pred_proc_id::in, io::di, io::uo) is det.
+:- pred maybe_output_pre_function_comment(io.text_output_stream::in,
+    bool::in, string::in,string::in,  string::in, mlds_function_defn::in,
+    io::di, io::uo) is det.
 
 %---------------------------------------------------------------------------%
 
@@ -270,6 +269,12 @@
 
 :- implementation.
 
+:- import_module hlds.
+:- import_module hlds.hlds_pred.
+:- import_module parse_tree.prog_util.
+:- import_module parse_tree.parse_tree_out_misc.
+
+:- import_module char.
 :- import_module int.
 :- import_module library.
 :- import_module maybe.
@@ -415,17 +420,89 @@ output_generic_tvars(Stream, Vars, !IO) :-
 
 %---------------------------------------------------------------------------%
 
-maybe_output_pred_proc_id_comment(Stream, AutoComments, IndentStr,
-        PredProcId, !IO) :-
+maybe_output_pre_function_comment(Stream, AutoComments, IndentStr,
+        SC, EC, FunctionDefn, !IO) :-
     (
-        AutoComments = yes,
-        PredProcId = proc(PredId, ProcId),
-        pred_id_to_int(PredId, PredIdNum),
-        proc_id_to_int(ProcId, ProcIdNum),
-        io.format(Stream, "%s// pred_id: %d, proc_id: %d\n",
-            [s(IndentStr), i(PredIdNum), i(ProcIdNum)], !IO)
-    ;
         AutoComments = no
+    ;
+        AutoComments = yes,
+        FunctionDefn = mlds_function_defn(FuncName, _Context, _Flags, Source,
+            _Params, _MaybeBody, _EnvVarNames, _MaybeRequireTailrecInfo),
+        (
+            ( Source = mlds_func_source_constructor,    Desc = "constructor"
+            ; Source = mlds_func_source_continuation,   Desc = "continuation"
+            ; Source = mlds_func_source_trace,          Desc = "trace"
+            ; Source = mlds_func_source_wrapper,        Desc = "wrapper"
+            ),
+            io.format(Stream, "%s%s%s%s\n",
+                [s(IndentStr), s(SC), s(Desc), s(EC)], !IO)
+        ;
+            Source = mlds_func_source_proc(PredProcId),
+            PredProcId = proc(PredId, ProcId),
+            PredIdNum = pred_id_to_int(PredId),
+            ProcIdNum = proc_id_to_int(ProcId),
+            io.format(Stream, "%s%spred_id: %d, proc_id: %d%s\n",
+                [s(IndentStr), s(SC), i(PredIdNum), i(ProcIdNum), s(EC)], !IO),
+            (
+                FuncName = mlds_function_name(PlainFuncName),
+                PlainFuncName = mlds_plain_func_name(FuncLabel, _PredId),
+                FuncLabel = mlds_func_label(ProcLabel, _MaybeAuxFuncId),
+                ProcLabel = mlds_proc_label(PredLabel, _ProcId),
+                (
+                    PredLabel = mlds_user_pred_label(PorF, _MaybeModuleName,
+                        PredName0, PredFormArity, _CodeModel,
+                        _NonDefaultModeFunction),
+% We used to print the pre-function comment in .c files using /* */ syntax.
+% For a predicate whose name ends in '*', such as the usual multiplication
+% operators for the various types in the standard library, the predname/arity
+% we print below will end the comment prematurely. We can use this code
+% to mangle those predicate names in a way that leaves them recognizable,
+% and does not affect names that do not contain '*' chars.
+%
+% We used to use /* */ for these comments because we used to put this comment
+% in the middle of the function declaration. Putting it *before* the function
+% declaration allows us to use // syntax for the comment, which is a simpler
+% solution than the commented-out code here.
+%
+%                   ( is string.contains_char('*', PredName0) then
+%                       string.to_char_list(PredName0, PredNameChars0),
+%                       replace_all_stars(PredNameChars0, PredNameChars),
+%                       string.from_char_list(PredNameChars, PredName),
+%                   else
+%                       PredName = PredName0
+%                   ),
+                    PredName = PredName0,
+                    PorFStr = pred_or_func_to_str(PorF),
+                    user_arity_pred_form_arity(PorF, UserArity, PredFormArity),
+                    UserArity = user_arity(Arity),
+                    io.format(Stream, "%s%s%s %s/%d%s\n",
+                        [s(IndentStr), s(SC), s(PorFStr),
+                        s(PredName), i(Arity), s(EC)], !IO)
+                ;
+                    PredLabel = mlds_special_pred_label(PredName,
+                        _MaybeModuleName, TypeName, TypeArity),
+                    io.format(Stream, "%s%s%s for %s/%d%s\n",
+                        [s(IndentStr), s(SC), s(PredName),
+                        s(TypeName), i(TypeArity), s(EC)], !IO)
+                )
+            ;
+                FuncName = mlds_function_export(Name),
+                io.format(Stream, "%s%sexport %s%s\n",
+                    [s(IndentStr), s(SC), s(Name), s(EC)], !IO)
+            )
+        )
+    ).
+
+:- pred replace_all_stars(list(char)::in, list(char)::out) is det.
+:- pragma consider_used(pred(replace_all_stars/2)).
+
+replace_all_stars([], []).
+replace_all_stars([HeadChar0 | TailChars0], Chars) :-
+    replace_all_stars(TailChars0, TailChars),
+    ( if HeadChar0 = ('*') then
+        Chars = ['s', 't', 'a', 'r' | TailChars]
+    else
+        Chars = [HeadChar0 | TailChars]
     ).
 
 %---------------------------------------------------------------------------%

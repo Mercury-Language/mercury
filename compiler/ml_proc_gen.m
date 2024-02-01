@@ -751,10 +751,10 @@ construct_func_defn(ModuleInfo, PredProcIdInfo, FuncParams, FuncBody,
     ml_gen_proc_label(ModuleInfo, PredProcId, _ModuleName, PlainFuncName),
     proc_info_get_context(ProcInfo, ProcContext),
     DeclFlags = ml_gen_proc_decl_flags(ModuleInfo, PredId, ProcId),
-    MaybePredProcId = yes(PredProcId),
+    Source = mlds_func_source_proc(PredProcId),
     MaybeRequireTailrecInfoFD = no,
     FuncDefn = mlds_function_defn(mlds_function_name(PlainFuncName),
-        ProcContext, DeclFlags, MaybePredProcId, FuncParams, FuncBody,
+        ProcContext, DeclFlags, Source, FuncParams, FuncBody,
         EnvVarNames, MaybeRequireTailrecInfoFD).
 
 %---------------------------------------------------------------------------%

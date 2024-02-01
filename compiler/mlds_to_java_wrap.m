@@ -119,7 +119,8 @@ generate_addr_wrapper_class(MLDS_ModuleName, Arity - CodeAddrs, ClassDefn,
         Params = mlds_func_params(CtorArgs, CtorReturnValues),
         EnvVarNames = set.init,
         CtorDefn = mlds_function_defn(CtorFunctionName, Context, CtorFlags,
-            no, Params, body_defined_here(CtorStmt), EnvVarNames, no),
+            mlds_func_source_constructor, Params,
+            body_defined_here(CtorStmt), EnvVarNames, no),
         CtorDefns = [CtorDefn]
     ),
 
@@ -215,10 +216,9 @@ generate_call_method(Arity, CodeAddrs, MethodDefn) :-
     % Put it all together.
     MethodFlags = mlds_function_decl_flags(func_public, per_instance),
     MethodParams = mlds_func_params(MethodArgs, MethodRets),
-    MethodMaybeId = no,
     MethodEnvVarNames = set.init,
     MethodDefn = mlds_function_defn(MethodName, Context, MethodFlags,
-        MethodMaybeId, MethodParams, body_defined_here(Stmt),
+        mlds_func_source_wrapper, MethodParams, body_defined_here(Stmt),
         MethodEnvVarNames, no).
 
 :- pred create_generic_arg(int::in, mlds_local_var_name::out,

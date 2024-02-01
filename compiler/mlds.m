@@ -857,7 +857,7 @@
                 mfd_decl_flags          :: mlds_function_decl_flags,
 
                 % Identifies the original Mercury procedure, if any.
-                mfd_orig_proc           :: maybe(pred_proc_id),
+                mfd_orig_proc           :: mlds_func_source,
 
                 % The argument types and return types.
                 mfd_param               :: mlds_func_params,
@@ -877,6 +877,13 @@
                 mfdf_access             :: function_access,
                 mfdf_per_instance       :: per_instance
             ).
+
+:- type mlds_func_source
+    --->    mlds_func_source_proc(pred_proc_id)
+    ;       mlds_func_source_constructor
+    ;       mlds_func_source_continuation
+    ;       mlds_func_source_trace
+    ;       mlds_func_source_wrapper.
 
 %---------------------%
 

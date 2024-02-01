@@ -842,8 +842,8 @@ ml_gen_success_cont(OutputArgLvalsTypes, Context, NewCont, ContDecls, !Info) :-
         ml_gen_call_current_success_cont(Context, CallContStmt, !Info),
         CopyStmt = ml_gen_block([], [], CopyStmts ++ [CallContStmt], Context),
         % Pop nesting level.
-        ml_gen_label_func(!.Info, ContFuncLabel, Params, Context,
-            CopyStmt, ContFuncDefn),
+        ml_gen_label_func(!.Info, ContFuncLabel, mlds_func_source_continuation,
+            Params, Context, CopyStmt, ContFuncDefn),
         ContDecls = [ContFuncDefn],
 
         ml_get_env_ptr(EnvPtrRval),

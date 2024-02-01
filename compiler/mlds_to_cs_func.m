@@ -39,7 +39,6 @@
 
 :- import_module hlds.
 :- import_module hlds.hlds_module.
-:- import_module hlds.hlds_pred.            % for pred_proc_id
 :- import_module ml_backend.mlds_to_cs_name.
 :- import_module ml_backend.mlds_to_cs_stmt.
 :- import_module ml_backend.mlds_to_cs_type.
@@ -60,9 +59,8 @@ output_function_defn_for_csharp(Info, Stream, Indent, OutputAux,
     % Put a blank line before each function definition.
     io.nl(Stream, !IO),
     IndentStr = indent2_string(Indent),
-    FunctionDefn = mlds_function_defn(FuncName, Context, Flags,
-        MaybePredProcId, Params, MaybeBody, _EnvVarNames,
-        _MaybeRequireTailrecInfo),
+    FunctionDefn = mlds_function_defn(FuncName, Context, Flags, _Source,
+        Params, MaybeBody, _EnvVarNames, _MaybeRequireTailrecInfo),
     (
         MaybeBody = body_external,
         % This is just a function declaration, with no body.
@@ -78,13 +76,8 @@ output_function_defn_for_csharp(Info, Stream, Indent, OutputAux,
         PostStr = ""
     ),
     io.write_string(Stream, PreStr, !IO),
-    (
-        MaybePredProcId = no
-    ;
-        MaybePredProcId = yes(PredProcId),
-        maybe_output_pred_proc_id_comment(Stream, Info ^ csoi_auto_comments,
-            IndentStr, PredProcId, !IO)
-    ),
+    maybe_output_pre_function_comment(Stream, Info ^ csoi_auto_comments,
+        IndentStr, "// ", "", FunctionDefn, !IO),
     Flags = mlds_function_decl_flags(Access, PerInstance),
     ( Access = func_public,         AccessPrefix = "public "
     ; Access = func_private,        AccessPrefix = "private "

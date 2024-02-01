@@ -1077,8 +1077,9 @@ ml_gen_ite(CodeModel, Cond, Then, Else, Context,
         ThenFuncBody =
             ml_stmt_block([], [], [SetCondTrue, ThenStmt], ThenContext),
         % pop nesting level
-        ml_gen_nondet_label_func(!.Info, ThenFuncLabel, ThenContext,
-            ThenFuncBody, ThenFuncDefn),
+        ml_gen_nondet_label_func(!.Info, ThenFuncLabel,
+            mlds_func_source_continuation, ThenContext, ThenFuncBody,
+            ThenFuncDefn),
 
         % Generate `if (!cond_<N>) { <Else> }'.
         ml_gen_test_cond_var(CondVar, CondSucceeded),

@@ -131,9 +131,8 @@ output_function_defn_for_java(Info, Stream, Indent, OutputAux,
     % Put a blank line before each function definition.
     io.nl(Stream, !IO),
 
-    FunctionDefn = mlds_function_defn(FuncName, Context, Flags,
-        MaybePredProcId, Params, MaybeBody,
-        _EnvVarNames, _MaybeRequireTailrecInfo),
+    FunctionDefn = mlds_function_defn(FuncName, Context, Flags, _Source,
+        Params, MaybeBody, _EnvVarNames, _MaybeRequireTailrecInfo),
     (
         MaybeBody = body_external,
         % This is just a function declaration, with no body.
@@ -154,14 +153,9 @@ output_function_defn_for_java(Info, Stream, Indent, OutputAux,
         io.format(Stream, "// external: %s\n", [s(FuncNameStr)], !IO)
     ;
         MaybeBody = body_defined_here(_),
-        (
-            MaybePredProcId = no
-        ;
-            MaybePredProcId = yes(PredProcid),
-            IndentStr = indent2_string(Indent),
-            maybe_output_pred_proc_id_comment(Stream, Info ^ joi_auto_comments,
-                IndentStr, PredProcid, !IO)
-        ),
+        IndentStr = indent2_string(Indent),
+        maybe_output_pre_function_comment(Stream, Info ^ joi_auto_comments,
+            IndentStr, "// ", "", FunctionDefn, !IO),
         indent_line_after_context(Stream, Info ^ joi_line_numbers,
             marker_comment, Context, Indent, !IO),
         output_function_decl_flags_for_java(Info, Stream, Flags, !IO),

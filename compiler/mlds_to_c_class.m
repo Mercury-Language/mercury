@@ -39,8 +39,6 @@
 
 :- implementation.
 
-:- import_module hlds.
-:- import_module hlds.hlds_pred.         % for pred_proc_id.
 :- import_module libs.globals.
 :- import_module ml_backend.ml_code_util.
 :- import_module ml_backend.mlds_to_c_data.
