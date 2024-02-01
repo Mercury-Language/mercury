@@ -58,6 +58,24 @@
 
 %---------------------------------------------------------------------------%
 
+:- type maybe_mangle
+    --->    do_not_mangle
+    ;       do_mangle.
+
+:- inst do_not_mangle for maybe_mangle/0
+    --->    do_not_mangle.
+:- inst do_mangle for maybe_mangle/0
+    --->    do_mangle.
+
+    % pred_label_to_string_for_c should be kept in sync with
+    % browser/name_mangle.m.
+    %
+:- func pred_label_to_string_for_c(maybe_mangle, mlds_pred_label) = string.
+:- mode pred_label_to_string_for_c(in(do_not_mangle), in) = out is det.
+:- mode pred_label_to_string_for_c(in(do_mangle), in) = out is det.
+
+%---------------------------------------------------------------------------%
+
 :- func qualifier_to_string_for_c(mlds_module_name) = string.
 
 %---------------------------------------------------------------------------%
@@ -68,6 +86,7 @@
 :- import_module hlds.hlds_pred.
 :- import_module mdbcomp.
 :- import_module mdbcomp.prim_data.
+:- import_module mdbcomp.sym_name.
 :- import_module ml_backend.ml_util.
 :- import_module parse_tree.prog_foreign.
 
@@ -201,7 +220,7 @@ function_name_to_string_for_c(FuncName) = FuncNameStr :-
         PlainFuncName = mlds_plain_func_name(FuncLabel, _PredId),
         FuncLabel = mlds_func_label(ProcLabel, MaybeAux),
         ProcLabel = mlds_proc_label(PredLabel, ProcId),
-        PredLabelStr = pred_label_to_string_for_c(PredLabel),
+        PredLabelStr = pred_label_to_string_for_c(do_mangle, PredLabel),
         proc_id_to_int(ProcId, ModeNum),
         FuncIdSuffix = mlds_maybe_aux_func_id_to_suffix(MaybeAux),
         string.format("%s_%d%s",
@@ -234,16 +253,11 @@ qual_proc_label_to_string_for_c(QualProcLabel) = QualProcLabelStr :-
 
 proc_label_to_string_for_c(ProcLabel) = ProcLabelStr :-
     ProcLabel = mlds_proc_label(PredLabel, ProcId),
-    PredLabelStr = pred_label_to_string_for_c(PredLabel),
+    PredLabelStr = pred_label_to_string_for_c(do_mangle, PredLabel),
     proc_id_to_int(ProcId, ModeNum),
     string.format("%s_%d", [s(PredLabelStr), i(ModeNum)], ProcLabelStr).
 
-    % pred_label_to_string_for_c should be kept in sync with
-    % browser/name_mangle.m.
-    %
-:- func pred_label_to_string_for_c(mlds_pred_label) = string.
-
-pred_label_to_string_for_c(PredLabel) = Str :-
+pred_label_to_string_for_c(MaybeMangle, PredLabel) = Str :-
     (
         PredLabel = mlds_user_pred_label(PredOrFunc, MaybeDefiningModule,
             Name, PredFormArity),
@@ -257,12 +271,25 @@ pred_label_to_string_for_c(PredLabel) = Str :-
             Suffix = "f",
             UserArityInt = PredFormArityInt - 1
         ),
-        MangledName = name_mangle(Name),
+        (
+            MaybeMangle = do_not_mangle,
+            MangledName = Name
+        ;
+            MaybeMangle = do_mangle,
+            MangledName = name_mangle(Name)
+        ),
         (
             MaybeDefiningModule = yes(DefiningModule),
+            (
+                MaybeMangle = do_not_mangle,
+                MangledDefiningModule = sym_name_to_string(DefiningModule)
+            ;
+                MaybeMangle = do_mangle,
+                MangledDefiningModule = sym_name_mangle(DefiningModule)
+            ),
             Str = string.format("%s_%d_%s_in__%s",
                 [s(MangledName), i(UserArityInt), s(Suffix),
-                s(sym_name_mangle(DefiningModule))])
+                s(MangledDefiningModule)])
         ;
             MaybeDefiningModule = no,
             Str = string.format("%s_%d_%s",
@@ -271,11 +298,24 @@ pred_label_to_string_for_c(PredLabel) = Str :-
     ;
         PredLabel = mlds_special_pred_label(PredName, MaybeTypeModule,
             TypeName, TypeArity),
-        MangledPredName = name_mangle(PredName),
-        MangledTypeName = name_mangle(TypeName),
+        (
+            MaybeMangle = do_not_mangle,
+            MangledPredName = PredName,
+            MangledTypeName = TypeName
+        ;
+            MaybeMangle = do_mangle,
+            MangledPredName = name_mangle(PredName),
+            MangledTypeName = name_mangle(TypeName)
+        ),
         (
             MaybeTypeModule = yes(TypeModule),
-            MangledTypeModule = sym_name_mangle(TypeModule),
+            (
+                MaybeMangle = do_not_mangle,
+                MangledTypeModule = sym_name_to_string(TypeModule)
+            ;
+                MaybeMangle = do_mangle,
+                MangledTypeModule = sym_name_mangle(TypeModule)
+            ),
             % XXX The old mlds_output_pred_label predicate, which used to be
             % called from mlds_output_function_name and mlds_output_proc_label
             % (calls which have been replaced by calls to this function)

@@ -51,6 +51,7 @@
 :- import_module backend_libs.rtti.
 :- import_module hlds.
 :- import_module hlds.hlds_data.
+:- import_module hlds.hlds_pred.
 :- import_module libs.globals.
 :- import_module mdbcomp.
 :- import_module mdbcomp.sym_name.
@@ -641,6 +642,43 @@ mlds_output_stmt_call(Opts, Stream, Indent, FuncInfo, Stmt, !IO) :-
 mlds_output_call(Opts, Stream, Context, Indent, CallHasReturn, FuncRval,
         CallArgs, Results, !IO) :-
     IndentStr = indent2_string(Indent),
+    Comments = Opts ^ m2co_auto_comments,
+    ( if
+        Comments = yes,
+        FuncRval = ml_const(mlconst_code_addr(CodeAddr)),
+        CodeAddr = mlds_code_addr(QualFuncLabel, _Signature),
+        QualFuncLabel = qual_func_label(_ModuleName, FuncLabel),
+        FuncLabel = mlds_func_label(ProcLabel, _MaxbeAuxFuncId),
+        ProcLabel = mlds_proc_label(PredLabel, ProcId),
+        (
+            PredLabel = mlds_user_pred_label(_, MaybeModuleName, Name, _),
+            (
+                Name \= name_mangle(Name)
+            ;
+                MaybeModuleName = yes(ModuleName),
+                sym_name_to_string(ModuleName) \= sym_name_mangle(ModuleName)
+            )
+        ;
+            PredLabel = mlds_special_pred_label(PredName, MaybeModuleName,
+                TypeName, _), 
+            (
+                PredName \= name_mangle(PredName)
+            ;
+                MaybeModuleName = yes(ModuleName),
+                sym_name_to_string(ModuleName) \= sym_name_mangle(ModuleName)
+            ;
+                TypeName \= name_mangle(TypeName)
+            )
+        )
+    then
+        UnmangledPredLabelStr =
+            pred_label_to_string_for_c(do_not_mangle, PredLabel),
+        ProcIdNum = proc_id_to_int(ProcId),
+        io.format(Stream, "%s// callee is %s_%d\n",
+            [s(IndentStr), s(UnmangledPredLabelStr), i(ProcIdNum)], !IO)
+    else
+        true
+    ),
     c_output_context(Stream, Opts ^ m2co_line_numbers, Context, !IO),
     io.write_string(Stream, IndentStr, !IO),
     (
