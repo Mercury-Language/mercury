@@ -31,7 +31,6 @@
 :- import_module check_hlds.
 :- import_module check_hlds.mode_test.
 :- import_module hlds.add_pred.
-:- import_module hlds.code_model.
 :- import_module hlds.hlds_code_util.
 :- import_module hlds.make_hlds.add_clause.
 :- import_module hlds.make_hlds.add_foreign_proc.
@@ -721,14 +720,8 @@ table_info_c_global_var_name(ModuleInfo, PFSymNameArity, ProcId) = VarName :-
     (
         HighLevelCode = yes,
         MaybeModuleName = no,
-        % We set CodeModel and NoReturnValue to dummy values because we cannot
-        % do any better right now. The code that outputs the mlds_proc_label
-        % of an mlds_tabling_ref should use mlds_std_tabling_proc_label to
-        % set these fields to the same values.
-        CodeModel = model_det,
-        NoReturnValue = bool.no,
         MLDS_PredLabel = mlds_user_pred_label(PredOrFunc, MaybeModuleName,
-            PredName, PredFormArity, CodeModel, NoReturnValue),
+            PredName, PredFormArity),
         MLDS_ProcLabel = mlds_proc_label(MLDS_PredLabel, ProcId),
         VarName = tabling_struct_id_to_string(MLDS_ProcLabel, tabling_info)
     ;

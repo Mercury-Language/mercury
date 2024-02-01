@@ -73,7 +73,6 @@
 :- import_module backend_libs.c_util.
 :- import_module backend_libs.foreign.
 :- import_module hlds.
-:- import_module hlds.code_model.
 :- import_module hlds.hlds_pred.         % for pred_proc_id.
 :- import_module libs.compiler_util.
 :- import_module libs.file_util.
@@ -200,7 +199,7 @@ func_defn_has_name_in_list(DumpPredNames, FuncDefn) :-
     FuncLabel = mlds_func_label(ProcLabel, _MaybeSeqNum),
     ProcLabel = mlds_proc_label(PredLabel, _ProcId),
     PredLabel = mlds_user_pred_label(_PredOrFunc, _DeclModule, Name,
-        _Arity, _CodeModel, _MaybeReturnValue),
+        _Arity),
     list.member(Name, DumpPredNames).
 
 :- pred output_c_dump_func_defns(mlds_to_c_opts::in,

@@ -518,8 +518,7 @@ ml_elim_nested_defns_in_funcs(Target, Action, ModuleName,
         PlainFuncName = mlds_plain_func_name(FuncLabel, _),
         FuncLabel = mlds_func_label(ProcLabel, _MaybeSeqNum),
         ProcLabel = mlds_proc_label(PredLabel, _ProcId),
-        PredLabel = mlds_user_pred_label(_, _, "gc_trace", pred_form_arity(1),
-            _, _),
+        PredLabel = mlds_user_pred_label(_, _, "gc_trace", pred_form_arity(1)),
         PrivateBuiltin = mercury_private_builtin_module,
         ModuleName = mercury_module_name_to_mlds(PrivateBuiltin)
     then
@@ -1236,7 +1235,7 @@ env_ptr_var(hoist_nested_funcs) = lvn_comp_var(lvnc_env_ptr).
 ml_pred_label_name(PredLabel) = LabelName :-
     (
         PredLabel = mlds_user_pred_label(PredOrFunc, MaybeDefiningModule,
-            Name, PredFormArity, _CodeModel, _NonOutputFunc),
+            Name, PredFormArity),
         ( PredOrFunc = pf_predicate, Suffix = "p"
         ; PredOrFunc = pf_function, Suffix = "f"
         ),

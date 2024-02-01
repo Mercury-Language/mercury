@@ -103,10 +103,9 @@ global_var_name_to_string_for_java(GlobalVarName) = GlobalVarNameStr :-
         GlobalVarNameStr = RttiAddrName
     ;
         GlobalVarName = gvn_tabling_var(ProcLabel, TablingStructId),
-        TablingProcLabel = mlds_std_tabling_proc_label(ProcLabel),
-        TablingProcLabelStr = proc_label_to_string_for_java(TablingProcLabel),
+        ProcLabelStr = proc_label_to_string_for_java(ProcLabel),
         string.format("%s_%s",
-            [s(tabling_info_id_str(TablingStructId)), s(TablingProcLabelStr)],
+            [s(tabling_info_id_str(TablingStructId)), s(ProcLabelStr)],
             GlobalVarNameStr)
     ;
         GlobalVarName = gvn_dummy_var,
@@ -215,7 +214,7 @@ proc_label_to_string_for_java(ProcLabel) = ProcLabelStr :-
 pred_label_to_string_for_java(PredLabel) = PredLabelStr :-
     (
         PredLabel = mlds_user_pred_label(PredOrFunc, MaybeDefiningModule, Name,
-            PredFormArity, _, _),
+            PredFormArity),
         PredFormArity = pred_form_arity(PredFormArityInt),
         (
             PredOrFunc = pf_predicate,

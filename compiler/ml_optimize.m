@@ -281,7 +281,7 @@ optimize_in_call_stmt(_OptInfo, Stmt0, Stmt) :-
         MaybeAux = proc_func,
         ProcLabel = mlds_proc_label(PredLabel, _ProcId),
         PredLabel = mlds_user_pred_label(pf_predicate, _DefnModName, PredName,
-            _Arity, _CodeModel, _NonOutputFunc),
+            _Arity),
         (
             PredName = "mark_hp",
             CallArgRvals = [ml_mem_addr(Lval)],

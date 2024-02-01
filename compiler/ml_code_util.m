@@ -460,7 +460,6 @@
 :- implementation.
 
 :- import_module check_hlds.
-:- import_module check_hlds.mode_top_functor.
 :- import_module check_hlds.type_util.
 :- import_module hlds.pred_name.
 :- import_module libs.
@@ -475,7 +474,6 @@
 :- import_module parse_tree.prog_type.
 :- import_module parse_tree.prog_type_test.
 :- import_module parse_tree.prog_type_unify.
-:- import_module parse_tree.prog_util.
 :- import_module parse_tree.set_of_var.
 
 :- import_module map.
@@ -765,11 +763,11 @@ ml_gen_pred_label(ModuleInfo, PredProcId, MLDS_PredLabel, MLDS_Module) :-
     ml_gen_pred_label_from_rtti(ModuleInfo, RttiProcLabel,
         MLDS_PredLabel, MLDS_Module).
 
-ml_gen_pred_label_from_rtti(ModuleInfo, RttiProcLabel, MLDS_PredLabel,
+ml_gen_pred_label_from_rtti(_ModuleInfo, RttiProcLabel, MLDS_PredLabel,
         MLDS_Module) :-
     RttiProcLabel = rtti_proc_label(PredOrFunc, ThisModule, PredModule,
-        PredName, PredFormArity, _ArgTypes, PredId, ProcId,
-        _HeadVarsWithNames, _TopFunctorModes, Detism,
+        PredName, PredFormArity, _ArgTypes, _PredId, ProcId,
+        _HeadVarsWithNames, _TopFunctorModes, _Detism,
         PredIsImported, _PredIsPseudoImported,
         Origin, _ProcIsExported, _ProcIsImported),
     ( if Origin = origin_compiler(made_for_uci(SpecialPred, TypeCtor)) then
@@ -822,46 +820,10 @@ ml_gen_pred_label_from_rtti(ModuleInfo, RttiProcLabel, MLDS_PredLabel,
             DefiningModule = PredModule,
             MaybeDeclaringModule = no
         ),
-        ( if
-            PredOrFunc = pf_function,
-            not ml_is_output_det_function(ModuleInfo, proc(PredId, ProcId), _)
-        then
-            NonOutputFunc = yes
-        else
-            NonOutputFunc = no
-        ),
-        determinism_to_code_model(Detism, CodeModel),
         MLDS_PredLabel = mlds_user_pred_label(PredOrFunc, MaybeDeclaringModule,
-            PredName, PredFormArity, CodeModel, NonOutputFunc)
+            PredName, PredFormArity)
     ),
     MLDS_Module = mercury_module_name_to_mlds(DefiningModule).
-
-    % Test to see if the procedure is a model_det function whose function
-    % result has an output mode (whose type is not a dummy argument type
-    % like io.state), and if so, bind RetVar to the procedure's return value.
-    % These procedures need to handled specially: for such functions,
-    % we map the Mercury function result to an MLDS return value.
-    %
-:- pred ml_is_output_det_function(module_info::in, pred_proc_id::in,
-    prog_var::out) is semidet.
-
-ml_is_output_det_function(ModuleInfo, PredProcId, RetArgVar) :-
-    module_info_pred_proc_info(ModuleInfo, PredProcId, PredInfo, ProcInfo),
-
-    pred_info_is_pred_or_func(PredInfo) = pf_function,
-    proc_info_interface_code_model(ProcInfo) = model_det,
-
-    proc_info_get_argmodes(ProcInfo, Modes),
-    pred_info_get_arg_types(PredInfo, ArgTypes),
-    proc_info_get_headvars(ProcInfo, ArgVars),
-    modes_to_top_functor_modes(ModuleInfo, Modes, ArgTypes, TopFunctorModes),
-    pred_args_to_func_args(TopFunctorModes,
-        _InputTopFunctorModes, RetTopFunctorMode),
-    pred_args_to_func_args(ArgTypes, _InputArgTypes, RetArgType),
-    pred_args_to_func_args(ArgVars, _InputArgVars, RetArgVar),
-
-    RetTopFunctorMode = top_out,
-    is_type_a_dummy(ModuleInfo, RetArgType) = is_not_dummy_type.
 
 ml_gen_new_label(Label, !Info) :-
     ml_gen_info_new_label(LabelNum, !Info),

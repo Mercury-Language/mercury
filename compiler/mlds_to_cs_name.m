@@ -314,7 +314,7 @@ maybe_qualified_function_name_to_ll_string_for_csharp(Info, QualFuncName)
 pred_label_to_string_for_csharp(PredLabel) = PredLabelStr :-
     (
         PredLabel = mlds_user_pred_label(PredOrFunc, MaybeDefiningModule,
-            Name, PredFormArity, _, _),
+            Name, PredFormArity),
         PredFormArity = pred_form_arity(PredFormArityInt),
         (
             PredOrFunc = pf_predicate,

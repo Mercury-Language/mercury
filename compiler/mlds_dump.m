@@ -1404,7 +1404,7 @@ mlds_func_label_to_strcord(FuncLabel) = Cord :-
     ProcLabel = mlds_proc_label(PredLabel, ProcId),
     (
         PredLabel = mlds_user_pred_label(PorF, _MaybeModuleName,
-            PredName, PredFormArity, _CodeModel, _NonDefaultModeFunction),
+            PredName, PredFormArity),
         PredFormArity = pred_form_arity(PredFormArityInt),
         (
             PorF = pf_function,

@@ -331,7 +331,6 @@
 :- import_module backend_libs.builtin_ops.
 :- import_module backend_libs.rtti.
 :- import_module hlds.
-:- import_module hlds.code_model.
 :- import_module hlds.hlds_data.
 :- import_module hlds.hlds_module.
 :- import_module hlds.hlds_pred.
@@ -968,12 +967,7 @@
                 % The name of the predicate or function, its arity,
                 % and its code model.
                 string,
-                pred_form_arity,
-                code_model,
-
-                % Function without return value (i.e. non-default mode).
-                % XXX What does that mean?
-                bool
+                pred_form_arity
             )
     ;       mlds_special_pred_label(
                 % The predicate name.
@@ -1026,8 +1020,6 @@
 
 :- type mlds_arg_types == list(mlds_type).
 :- type mlds_return_types == list(mlds_type).
-
-:- func mlds_std_tabling_proc_label(mlds_proc_label) = mlds_proc_label.
 
 :- func mlds_get_arg_types(list(mlds_argument)) = list(mlds_type).
 
@@ -2810,25 +2802,6 @@ get_initializer_array_size(no_initializer) = no_size.
 get_initializer_array_size(init_obj(_)) = no_size.
 get_initializer_array_size(init_struct(_, _)) = no_size.
 get_initializer_array_size(init_array(Elems)) = array_size(list.length(Elems)).
-
-%---------------------------------------------------------------------------%
-
-mlds_std_tabling_proc_label(ProcLabel0) = ProcLabel :-
-    % We standardize the parts of PredLabel0 that are not computable from
-    % the tabling pragma, because the code that creates the reset predicate
-    % in table_info_global_var_name in add_pragma.m does not have access to
-    % this information.
-    ProcLabel0 = mlds_proc_label(PredLabel0, ProcId),
-    (
-        PredLabel0 = mlds_user_pred_label(PorF, MaybeModuleName, Name,
-            Arity, _, _),
-        PredLabel = mlds_user_pred_label(PorF, MaybeModuleName, Name,
-            Arity, model_det, no)
-    ;
-        PredLabel0 = mlds_special_pred_label(_, _, _, _),
-        unexpected($pred, "mlds_special_pred_label")
-    ),
-    ProcLabel = mlds_proc_label(PredLabel, ProcId).
 
 %---------------------------------------------------------------------------%
 

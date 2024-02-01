@@ -932,10 +932,9 @@ output_rval_const_for_java(Info, Stream, Const, !IO) :-
         SymName = mlds_module_name_to_sym_name(ModuleName),
         mangle_sym_name_for_java(SymName, module_qual, "__", ModuleNameStr),
         TablingIdStr = tabling_info_id_str(TablingId),
-        TablingProcLabel = mlds_std_tabling_proc_label(ProcLabel),
-        TablingProcLabelStr = proc_label_to_string_for_java(TablingProcLabel),
+        ProcLabelStr = proc_label_to_string_for_java(ProcLabel),
         io.format(Stream, "%s.%s_%s",
-            [s(ModuleNameStr), s(TablingIdStr), s(TablingProcLabelStr)], !IO)
+            [s(ModuleNameStr), s(TablingIdStr), s(ProcLabelStr)], !IO)
     ;
         Const = mlconst_null(Type),
         Initializer = get_default_initializer_for_java(Type),

@@ -450,8 +450,7 @@ maybe_output_pre_function_comment(Stream, AutoComments, IndentStr,
                 ProcLabel = mlds_proc_label(PredLabel, _ProcId),
                 (
                     PredLabel = mlds_user_pred_label(PorF, _MaybeModuleName,
-                        PredName0, PredFormArity, _CodeModel,
-                        _NonDefaultModeFunction),
+                        PredName0, PredFormArity),
 % We used to print the pre-function comment in .c files using /* */ syntax.
 % For a predicate whose name ends in '*', such as the usual multiplication
 % operators for the various types in the standard library, the predname/arity

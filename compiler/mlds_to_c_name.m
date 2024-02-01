@@ -65,7 +65,6 @@
 :- implementation.
 
 :- import_module hlds.
-:- import_module hlds.code_model.
 :- import_module hlds.hlds_pred.
 :- import_module mdbcomp.
 :- import_module mdbcomp.prim_data.
@@ -88,9 +87,8 @@ global_var_ref_to_string(env_var_ref(EnvVarName)) =
 
 tabling_struct_id_to_string(ProcLabel, TablingId) = TablingName :-
     TablingIdStr = tabling_info_id_str(TablingId),
-    TablingProcLabel = mlds_std_tabling_proc_label(ProcLabel),
-    TablingProcLabelStr = proc_label_to_string_for_c(TablingProcLabel),
-    string.format("%s_for_%s", [s(TablingIdStr), s(TablingProcLabelStr)],
+    ProcLabelStr = proc_label_to_string_for_c(ProcLabel),
+    string.format("%s_for_%s", [s(TablingIdStr), s(ProcLabelStr)],
         TablingName).
 
 %---------------------------------------------------------------------------%
@@ -180,7 +178,7 @@ qual_function_name_to_string_for_c(QualFuncName) = QualFuncNameStr :-
             FuncLabel = mlds_func_label(ProcLabel, _MaybeSeqNum),
             ProcLabel = mlds_proc_label(PredLabel, _ProcId),
             PredLabel = mlds_user_pred_label(pf_predicate, no, "main",
-                pred_form_arity(2), model_det, no)
+                pred_form_arity(2))
         ;
             % We do not module qualify pragma foreign_export names.
             FuncName = mlds_function_export(_)
@@ -221,7 +219,7 @@ qual_proc_label_to_string_for_c(QualProcLabel) = QualProcLabelStr :-
     ( if
         % Do not module-qualify main/2.
         PredLabel = mlds_user_pred_label(pf_predicate, no, "main",
-            pred_form_arity(2), model_det, no)
+            pred_form_arity(2))
     then
         QualProcLabelStr = ProcLabelStr
     else
@@ -248,7 +246,7 @@ proc_label_to_string_for_c(ProcLabel) = ProcLabelStr :-
 pred_label_to_string_for_c(PredLabel) = Str :-
     (
         PredLabel = mlds_user_pred_label(PredOrFunc, MaybeDefiningModule,
-            Name, PredFormArity, _CodeModel, _NonOutputFunc),
+            Name, PredFormArity),
         PredFormArity = pred_form_arity(PredFormArityInt),
         (
             PredOrFunc = pf_predicate,
