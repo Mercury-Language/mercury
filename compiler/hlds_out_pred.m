@@ -203,6 +203,15 @@ write_pred(Info, Stream, Lang, ModuleInfo, PredId, PredInfo, !IO) :-
         get_clause_list_maybe_repeated(ClausesRep, Clauses),
         (
             FilledInProcIdsInfos = [],
+            GetProcNum =
+                ( func(ProcId - _) = N :-
+                    proc_id_to_int(ProcId, N)
+                ),
+            ProcNums = list.map(GetProcNum, ProcIdsInfos),
+            FilledInProcNums = list.map(GetProcNum, FilledInProcIdsInfos),
+            io.format(Stream, "%% procedures: %s, filled in %s\n",
+                [s(string.string(ProcNums)),
+                s(string.string(FilledInProcNums))], !IO),
             (
                 Clauses = [],
                 ClauseCountReport = report_clause_count(Clauses),
