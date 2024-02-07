@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 2006-2012 The University of Melbourne.
-% Copyright (C) 2015-2023 The Mercury team.
+% Copyright (C) 2015-2024 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -547,7 +547,7 @@ analyze_and_optimize_format_calls(ModuleInfo, PredInfo, ProcInfo,
     globals.lookup_bool_option(Globals, warn_unknown_format_calls,
         WarnUnknownFormatBool),
     pred_info_get_origin(PredInfo, Origin),
-    % Geneeate warnings about unknown formats only if
+    % Generate warnings about unknown formats only if
     %
     % - such warnings have not been disabled, and
     % - if the predicate is itself written by the user.
