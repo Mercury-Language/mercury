@@ -1,16 +1,16 @@
 % For the type_spec_constrained_preds pragma at test_tscp.m:54,
 % the compiler generated these type_spec pragmas:
-% :- pragma type_spec(pred((test_tscp.p1)/5), (C = int, D = term.var(V_3))).
-% :- pragma type_spec(pred((test_tscp.p1)/5), (B = character, C = bool.bool)).
+% :- pragma type_spec(pred(test_tscp.p1/5), (C = int, D = term.var(V_3))).
+% :- pragma type_spec(pred(test_tscp.p1/5), (B = character, C = bool.bool)).
 % For the type_spec_constrained_preds pragma at test_tscp.m:66,
 % the compiler generated these type_spec pragmas:
-% :- pragma type_spec(pred((test_tscp.p2)/3), (Stream = io.text_input_stream, State = io.state, Error = io.error)).
+% :- pragma type_spec(pred(test_tscp.p2/3), (Stream = io.text_input_stream, State = io.state, Error = io.error)).
 % For the type_spec_constrained_preds pragma at test_tscp.m:74,
 % the compiler generated these type_spec pragmas:
-% :- pragma type_spec(pred((test_tscp.p2)/3), (Stream = io.text_input_stream, State = io.state, Error = io.error)).
+% :- pragma type_spec(pred(test_tscp.p2/3), (Stream = io.text_input_stream, State = io.state, Error = io.error)).
 % For the type_spec_constrained_preds pragma at test_tscp.m:100,
 % the compiler generated these type_spec pragmas:
-% :- pragma type_spec(pred((test_tscp.p3)/2), A = int).
-% :- pragma type_spec(pred((test_tscp.p3)/2), B = int).
-% :- pragma type_spec(pred((test_tscp.p3)/2), A = float).
-% :- pragma type_spec(pred((test_tscp.p3)/2), B = float).
+% :- pragma type_spec(pred(test_tscp.p3/2), A = int).
+% :- pragma type_spec(pred(test_tscp.p3/2), B = int).
+% :- pragma type_spec(pred(test_tscp.p3/2), A = float).
+% :- pragma type_spec(pred(test_tscp.p3/2), B = float).

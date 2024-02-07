@@ -1,5 +1,4 @@
-polymorphic_unification.m:023: In clause for `p(in, ((list.list_skel) >>
-polymorphic_unification.m:023:   dead))':
+polymorphic_unification.m:023: In clause for `p(in, (list.list_skel >> dead))':
 polymorphic_unification.m:023:   in polymorphically-typed unification:
 polymorphic_unification.m:023:   mode error: variable `X' has instantiatedness
 polymorphic_unification.m:023:     named inst list.list_skel

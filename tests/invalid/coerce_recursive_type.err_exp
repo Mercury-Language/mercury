@@ -10,7 +10,7 @@ coerce_recursive_type.m:045:   `coerce_recursive_type.rec(coerce_recursive_type.
 coerce_recursive_type.m:045:   is not a subtype of
 coerce_recursive_type.m:045:   `coerce_recursive_type.rec(coerce_recursive_type.citrus)'.
 coerce_recursive_type.m:051: In clause for
-coerce_recursive_type.m:051:   `bad2(in((coerce_recursive_type.cons_apple3))) =
+coerce_recursive_type.m:051:   `bad2(in(coerce_recursive_type.cons_apple3)) =
 coerce_recursive_type.m:051:   out':
 coerce_recursive_type.m:051:   in coerce expression:
 coerce_recursive_type.m:051:   mode error: in the argument term:
@@ -22,7 +22,7 @@ coerce_recursive_type.m:051:   instantiatedness `ground', and
 coerce_recursive_type.m:051:   `coerce_recursive_type.fruit' is not a subtype
 coerce_recursive_type.m:051:   of `coerce_recursive_type.citrus'.
 coerce_recursive_type.m:058: In clause for
-coerce_recursive_type.m:058:   `bad3(in((coerce_recursive_type.cons_apple3))) =
+coerce_recursive_type.m:058:   `bad3(in(coerce_recursive_type.cons_apple3)) =
 coerce_recursive_type.m:058:   out':
 coerce_recursive_type.m:058:   in coerce expression:
 coerce_recursive_type.m:058:   mode error: in the argument term:
