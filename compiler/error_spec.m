@@ -800,6 +800,7 @@ maybe_construct_did_you_mean_pieces(BaseName, CandidateNames,
         MaxCost = ((BaseNameLenU + 1u) / 2u) * 2u
     ),
     ( if
+        CandidateNames = [_ | _],
         find_best_close_enough_strings(Params, BaseName, CandidateNames,
             MaxCost, BestCost, HeadBestName, TailBestNames),
         BestNames = [HeadBestName | TailBestNames],
