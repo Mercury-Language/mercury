@@ -956,7 +956,8 @@ origin_user_to_user_dev_string(UserOrDev, OriginUser) = Str :-
             InstanceTypes, _, _),
         ClassId = class_id(ClassName, _),
         ClassStr = sym_name_to_string(ClassName),
-        TypeStrs = mercury_type_list_to_string(varset.init, InstanceTypes),
+        TypeStrs = mercury_types_to_string(varset.init, print_name_only,
+            InstanceTypes),
         (
             UserOrDev = user,
             string.format("instance method %s for `%s(%s)'",
@@ -1852,9 +1853,9 @@ type_subst_to_string(VarSet, TypeSubst) = Str :-
     TVarsStr = string.join_list(", ", TVarStrs),
     string.format("[%s]", [s(TVarsStr)], Str).
 
-:- func type_var_subst_to_string(tvarset, pair(tvar, mer_type)) = string.
+:- func type_var_subst_to_string(tvarset, tvar_subst) = string.
 
-type_var_subst_to_string(VarSet, Var - Type) = Str :-
+type_var_subst_to_string(VarSet, tvar_subst(Var, Type)) = Str :-
     varset.lookup_name(VarSet, Var, VarName),
     TypeStr = mercury_type_to_string(VarSet, print_name_only, Type),
     % XXX The use of = here *requires* mangling the names we construct.

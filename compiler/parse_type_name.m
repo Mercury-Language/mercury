@@ -49,6 +49,7 @@
     ;       wnhii_ctgc_type_selector
     ;       wnhii_pragma_struct_sharing
     ;       wnhii_pragma_struct_reuse
+    ;       wnhii_pragma_type_spec_constr
     ;       wnhii_pragma_type_spec.
 
 :- pred maybe_parse_type(allow_ho_inst_info::in, term::in, mer_type::out)
@@ -847,6 +848,9 @@ no_ho_inst_allowed_result(ContextPieces, Why, VarSet, Term) = Result :-
     ;
         Why = wnhii_pragma_struct_reuse,
         Place = "a structure_reuse pragma"
+    ;
+        Why = wnhii_pragma_type_spec_constr,
+        Place = "a type_spec_constrained_preds pragma"
     ;
         Why = wnhii_pragma_type_spec,
         Place = "a type_spec pragma"

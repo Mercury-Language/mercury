@@ -110,7 +110,6 @@
 :- import_module list.
 :- import_module map.
 :- import_module maybe.
-:- import_module multi_map.
 :- import_module one_or_more.
 :- import_module one_or_more_map.
 :- import_module pair.
@@ -857,8 +856,8 @@ intermod_gather_pred_marker_pragmas_loop(PredOrFunc, PredSymName, UserArity,
 intermod_gather_pred_type_spec_pragmas(ModuleInfo, PredId, TypeSpecs) :-
     module_info_get_type_spec_info(ModuleInfo, TypeSpecInfo),
     PragmaMap = TypeSpecInfo ^ pragma_map,
-    ( if multi_map.search(PragmaMap, PredId, TypeSpecsPrime) then
-        TypeSpecs = TypeSpecsPrime
+    ( if one_or_more_map.search(PragmaMap, PredId, OoMTypeSpecs) then
+        TypeSpecs = one_or_more_to_list(OoMTypeSpecs)
     else
         TypeSpecs = []
     ).

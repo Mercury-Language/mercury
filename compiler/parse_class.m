@@ -65,7 +65,10 @@
 :- import_module parse_tree.parse_inst_mode_name.
 :- import_module parse_tree.parse_item.
 :- import_module parse_tree.parse_sym_name.
+:- import_module parse_tree.parse_tree_out_info.
+:- import_module parse_tree.parse_tree_out_inst.
 :- import_module parse_tree.parse_tree_out_term.
+:- import_module parse_tree.parse_tree_out_type.
 :- import_module parse_tree.parse_type_name.
 :- import_module parse_tree.parse_util.
 :- import_module parse_tree.prog_item.
@@ -290,46 +293,77 @@ parse_superclass_constraints(_ModuleName, VarSet, ConstraintsTerm, Result) :-
     (
         Result0 = ok1(one_or_more(HeadArbConstraint, TailArbConstraints)),
         ArbitraryConstraints = [HeadArbConstraint | TailArbConstraints],
-        collect_simple_and_fundep_constraints(ArbitraryConstraints,
-            SimpleConstraints, FunDeps, BadConstraints),
+        collect_superclass_constraints(VarSet, ArbitraryConstraints,
+            SimpleConstraints, FunDeps, BadConstraintSpecs),
         (
-            BadConstraints = [],
+            BadConstraintSpecs = [],
             Result = ok2(SimpleConstraints, FunDeps)
         ;
-            BadConstraints = [_ | _],
-            Pieces = [words("Error: constraints on class declarations"),
-                words("may only constrain type variables and ground types."),
-                nl],
-            Spec = simplest_spec($pred, severity_error,
-                phase_term_to_parse_tree,
-                get_term_context(ConstraintsTerm), Pieces),
-            Result = error2([Spec])
+            BadConstraintSpecs = [_ | _],
+            Result = error2(BadConstraintSpecs)
         )
     ;
         Result0 = error1(Specs),
         Result = error2(Specs)
     ).
 
-:- pred collect_simple_and_fundep_constraints(list(arbitrary_constraint)::in,
+:- pred collect_superclass_constraints(varset::in,
+    list(arbitrary_constraint)::in,
     list(prog_constraint)::out, list(prog_fundep)::out,
-    list(arbitrary_constraint)::out) is det.
+    list(error_spec)::out) is det.
 
-collect_simple_and_fundep_constraints([], [], [], []).
-collect_simple_and_fundep_constraints([Constraint | Constraints],
-        !:SimpleConstraints, !:FunDeps, !:BadConstraints) :-
-    collect_simple_and_fundep_constraints(Constraints,
-        !:SimpleConstraints, !:FunDeps, !:BadConstraints),
+collect_superclass_constraints(_, [], [], [], []).
+collect_superclass_constraints(VarSet, [Constraint | Constraints],
+        !:SimpleConstraints, !:FunDeps, !:Specs) :-
+    collect_superclass_constraints(VarSet, Constraints,
+        !:SimpleConstraints, !:FunDeps, !:Specs),
     (
-        Constraint = simple(SimpleConstraint),
-        !:SimpleConstraints = [SimpleConstraint | !.SimpleConstraints]
+        Constraint = ac_type_constraint(TypeConstraint,
+            _VoGTypes, NonVarNonGroundTypes, Context),
+        (
+            NonVarNonGroundTypes = [],
+            !:SimpleConstraints = [TypeConstraint | !.SimpleConstraints]
+        ;
+            NonVarNonGroundTypes = [_ | _],
+            varset.coerce(VarSet, TVarSet),
+            TypeConstraint = constraint(SuperClassName, _),
+            BadTypeStrs = list.map(
+                mercury_type_to_string(TVarSet, print_name_only),
+                NonVarNonGroundTypes),
+            BadTypesStr = list_to_quoted_pieces(BadTypeStrs),
+            (
+                NonVarNonGroundTypes = [_],
+                BadTypePieces = [words("The type")] ++ BadTypesStr ++
+                    [words("is neither."), nl]
+            ;
+                NonVarNonGroundTypes = [_, _ | _],
+                BadTypePieces = [words("The types")] ++ BadTypesStr ++
+                    [words("are neither."), nl]
+            ),
+            Pieces = [words("Error: in a superclass constraint,"),
+                words("all the argument types of the superclass,"),
+                words("which in this case is"),
+                unqual_sym_name(SuperClassName), suffix(","),
+                words("must be either type variables or ground types.")] ++
+                BadTypePieces,
+            Spec = simplest_spec($pred, severity_error,
+                phase_term_to_parse_tree, Context, Pieces),
+            !:Specs = [Spec | !.Specs]
+        )
     ;
-        Constraint = fundep(FunDep),
+        Constraint = ac_inst_constraint(InstVar, Inst, Context),
+        varset.coerce(VarSet, InstVarSet),
+        InstConstraintStr = mercury_constrained_inst_vars_to_string(
+            output_mercury, InstVarSet, set.make_singleton_set(InstVar), Inst),
+        Pieces = [words("Error: a class declaration"),
+            words("may not contain an inst constraint such as"),
+            quote(InstConstraintStr), suffix("."), nl],
+        Spec = simplest_spec($pred, severity_error, phase_term_to_parse_tree,
+            Context, Pieces),
+        !:Specs = [Spec | !.Specs]
+    ;
+        Constraint = ac_fundep(FunDep, _),
         !:FunDeps = [FunDep | !.FunDeps]
-    ;
-        ( Constraint = non_simple(_)
-        ; Constraint = inst_constraint(_, _)
-        ),
-        !:BadConstraints = [Constraint | !.BadConstraints]
     ).
 
 :- pred parse_unconstrained_class(module_name::in, tvarset::in, term::in,
@@ -511,10 +545,10 @@ parse_derived_instance(ModuleName, TVarSet, NameTerm, ConstraintsTerm,
     maybe1(list(prog_constraint))::out) is det.
 
 parse_instance_constraints(ModuleName, VarSet, ConstraintsTerm, Result) :-
-    Pieces = [words("Error: constraints on instance declarations"),
+    NonSimplePieces = [words("Error: constraints on instance declarations"),
         words("may only constrain type variables and ground types."), nl],
-    parse_simple_class_constraints(ModuleName, VarSet, ConstraintsTerm, Pieces,
-        Result).
+    parse_simple_class_constraints(ModuleName, VarSet, ConstraintsTerm,
+        NonSimplePieces, Result).
 
 :- pred parse_underived_instance(module_name::in, tvarset::in, term::in,
     prog_context::in, item_seq_num::in, maybe1(item_instance_info)::out)
@@ -771,17 +805,17 @@ report_unexpected_method_term(VarSet, MethodTerm) = Spec :-
 %
 
 parse_class_constraints(ModuleName, VarSet, ConstraintsTerm, Result) :-
-    Pieces = [words("Sorry, not implemented:"),
+    NonSimplePieces = [words("Sorry, not implemented:"),
         words("constraints may only constrain type variables"),
         words("and ground types."), nl],
-    parse_simple_class_constraints(ModuleName, VarSet, ConstraintsTerm, Pieces,
-        Result).
+    parse_simple_class_constraints(ModuleName, VarSet, ConstraintsTerm,
+        NonSimplePieces, Result).
 
 :- pred parse_simple_class_constraints(module_name::in, varset::in, term::in,
     list(format_piece)::in, maybe1(list(prog_constraint))::out) is det.
 
-parse_simple_class_constraints(_ModuleName, VarSet, ConstraintsTerm, Pieces,
-        Result) :-
+parse_simple_class_constraints(_ModuleName, VarSet, ConstraintsTerm,
+        NonSimplePieces, Result) :-
     parse_arbitrary_constraints(VarSet, ConstraintsTerm, Result0),
     (
         Result0 = ok1(one_or_more(HeadArbConstraint, TailArbConstraints)),
@@ -795,9 +829,9 @@ parse_simple_class_constraints(_ModuleName, VarSet, ConstraintsTerm, Pieces,
             % to list allows an empty list.
             Result = ok1([HeadConstraint | TailConstraints])
         else
+            Context = get_term_context(ConstraintsTerm),
             Spec = simplest_spec($pred, severity_error,
-                phase_term_to_parse_tree,
-                get_term_context(ConstraintsTerm), Pieces),
+                phase_term_to_parse_tree, Context, NonSimplePieces),
             Result = error1([Spec])
         )
     ;
@@ -808,7 +842,7 @@ parse_simple_class_constraints(_ModuleName, VarSet, ConstraintsTerm, Pieces,
 :- pred get_simple_constraint(arbitrary_constraint::in, prog_constraint::out)
     is semidet.
 
-get_simple_constraint(simple(Constraint), Constraint).
+get_simple_constraint(ac_type_constraint(Constraint, _, [], _), Constraint).
 
 parse_class_and_inst_constraints(_ModuleName, VarSet, ConstraintsTerm,
         Result) :-
@@ -845,34 +879,34 @@ collect_class_and_inst_constraints([Constraint | Constraints],
     collect_class_and_inst_constraints(Constraints,
         !:ProgConstraints, !:FunDeps, !:InstVarSub),
     (
-        ( Constraint = simple(ProgConstraint)
-        ; Constraint = non_simple(ProgConstraint)
-        ),
+        Constraint = ac_type_constraint(ProgConstraint, _, _, _),
         !:ProgConstraints = [ProgConstraint | !.ProgConstraints]
     ;
-        Constraint = inst_constraint(InstVar, Inst),
+        Constraint = ac_inst_constraint(InstVar, Inst, _),
         map.set(InstVar, Inst, !InstVarSub)
     ;
-        Constraint = fundep(FunDep),
+        Constraint = ac_fundep(FunDep, _),
         !:FunDeps = [FunDep | !.FunDeps]
     ).
 
 :- type arbitrary_constraint
-    --->    simple(prog_constraint)
-            % A class constraint whose arguments are either variables
-            % or ground terms.
+    --->    ac_type_constraint(prog_constraint, list(var_or_ground_type),
+                list(mer_type), prog_context)
+            % A constraint consisting of a typeclass name applied to one
+            % or more types. The second argument lists the types that are
+            % either type variables or ground types; the third argument lists
+            % the types that are neither. (Superclass constraints, and the
+            % constraints in type_spec_constrained_preds pragmas, may have
+            % only type variables and ground types as arguments.)
 
-    ;       non_simple(prog_constraint)
-            % An arbitrary class constraint not matching the description
-            % of "simple".
+    ;       ac_inst_constraint(inst_var, mer_inst, prog_context)
+            % A constraint on an inst variable. Its principal functor is
+            % '=<'/2.
 
-    ;       inst_constraint(inst_var, mer_inst)
-            % A constraint on an inst variable (that is, one whose head
-            % is '=<'/2).
-
-    ;       fundep(prog_fundep).
-            % A functional dependency (that is, one whose head is '->'/2)
-            % and whose arguments are comma-separated variables.
+    ;       ac_fundep(prog_fundep, prog_context).
+            % A functional dependency. Its principal function symbol is '->'/2,
+            % and both its argument terms contain one or more variables
+            % separated by commas.
 
 :- type arbitrary_constraints == one_or_more(arbitrary_constraint).
 
@@ -919,7 +953,8 @@ parse_arbitrary_constraint_list(VarSet, HeadTerm, TailTerms, Result) :-
 
 parse_arbitrary_constraint(VarSet, ConstraintTerm, Result) :-
     ( if
-        ConstraintTerm = term.functor(term.atom("=<"), [LHSTerm, RHSTerm], _)
+        ConstraintTerm =
+            term.functor(term.atom("=<"), [LHSTerm, RHSTerm], Context)
     then
         (
             LHSTerm = term.variable(InstVar0, _),
@@ -943,7 +978,7 @@ parse_arbitrary_constraint(VarSet, ConstraintTerm, Result) :-
             MaybeInstVar = ok1(InstVar),
             MaybeInst = ok1(Inst)
         then
-            Result = ok1(inst_constraint(InstVar, Inst))
+            Result = ok1(ac_inst_constraint(InstVar, Inst, Context))
         else
             Specs = get_any_errors1(MaybeInstVar)
                 ++ get_any_errors1(MaybeInst),
@@ -954,20 +989,21 @@ parse_arbitrary_constraint(VarSet, ConstraintTerm, Result) :-
     then
         Result = Result0
     else if
-        try_parse_sym_name_and_args(ConstraintTerm, ClassName, Args0)
+        try_parse_sym_name_and_args(ConstraintTerm, ClassName, ArgTerms0)
     then
         ArgsResultContextPieces =
             cord.singleton(words("In class constraint:")),
         parse_types(no_allow_ho_inst_info(wnhii_class_constraint),
-            VarSet, ArgsResultContextPieces, Args0, ArgsResult),
+            VarSet, ArgsResultContextPieces, ArgTerms0, ArgsResult),
         (
-            ArgsResult = ok1(Args),
-            Constraint = constraint(ClassName, Args),
-            ( if constraint_is_not_simple(Constraint) then
-                Result = ok1(non_simple(Constraint))
-            else
-                Result = ok1(simple(Constraint))
-            )
+            ArgsResult = ok1(ArgTypes),
+            varset.coerce(VarSet, TVarSet),
+            Constraint = constraint(ClassName, ArgTypes),
+            classify_types_as_var_ground_or_neither(TVarSet, ArgTypes,
+                VoGTypes, NonVarNonGroundTypes),
+            Context = get_term_context(ConstraintTerm),
+            Result = ok1(ac_type_constraint(Constraint, VoGTypes,
+                NonVarNonGroundTypes, Context))
         ;
             ArgsResult = error1(Specs),
             Result = error1(Specs)
@@ -983,12 +1019,12 @@ parse_arbitrary_constraint(VarSet, ConstraintTerm, Result) :-
 :- pred parse_fundep(term::in, maybe1(arbitrary_constraint)::out) is semidet.
 
 parse_fundep(Term, Result) :-
-    Term = term.functor(term.atom("->"), [DomainTerm, RangeTerm], _),
+    Term = term.functor(term.atom("->"), [DomainTerm, RangeTerm], Context),
     ( if
-        parse_fundep_2(DomainTerm, Domain),
-        parse_fundep_2(RangeTerm, Range)
+        parse_fundep_side(DomainTerm, Domain),
+        parse_fundep_side(RangeTerm, Range)
     then
-        Result = ok1(fundep(fundep(Domain, Range)))
+        Result = ok1(ac_fundep(fundep(Domain, Range), Context))
     else
         Pieces = [words("Error: the domain and range"),
             words("of a functional dependency"),
@@ -1000,20 +1036,32 @@ parse_fundep(Term, Result) :-
 
     % XXX ITEM_LIST Should return one_or_more(tvar).
     %
-:- pred parse_fundep_2(term::in, list(tvar)::out) is semidet.
+:- pred parse_fundep_side(term::in, list(tvar)::out) is semidet.
 
-parse_fundep_2(TypesTerm0, TypeVars) :-
+parse_fundep_side(TypesTerm0, TypeVars) :-
     TypesTerm = term.coerce(TypesTerm0),
     conjunction_to_list(TypesTerm, TypeTerms),
     term_subst.term_list_to_var_list(TypeTerms, TypeVars).
 
-:- pred constraint_is_not_simple(prog_constraint::in) is semidet.
+:- pred classify_types_as_var_ground_or_neither(tvarset::in,
+    list(mer_type)::in,
+    list(var_or_ground_type)::out, list(mer_type)::out) is det.
 
-constraint_is_not_simple(constraint(_ClassName, ArgTypes)) :-
-    some [ArgType] (
-        list.member(ArgType, ArgTypes),
-        type_is_nonvar(ArgType),
-        type_is_nonground(ArgType)
+classify_types_as_var_ground_or_neither(_, [], [], []).
+classify_types_as_var_ground_or_neither(TVarSet, [Type0 | Types0],
+        !:VarOrGroundTypes, !:NonVarNonGroundTypes) :-
+    classify_types_as_var_ground_or_neither(TVarSet, Types0,
+        !:VarOrGroundTypes, !:NonVarNonGroundTypes),
+    Type1 = strip_kind_annotation(Type0),
+    Type = coerce(Type1),
+    ( if Type = type_variable(TVar, _Context) then
+        varset.lookup_name(TVarSet, TVar, TVarName),
+        !:VarOrGroundTypes =
+            [type_var_name(TVar, TVarName) | !.VarOrGroundTypes]
+    else if type_is_ground(Type, GroundType) then
+        !:VarOrGroundTypes = [ground_type(GroundType) | !.VarOrGroundTypes]
+    else
+        !:NonVarNonGroundTypes = [Type | !.NonVarNonGroundTypes]
     ).
 
 %---------------------------------------------------------------------------%

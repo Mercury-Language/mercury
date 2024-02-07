@@ -42,6 +42,7 @@
 :- import_module mdbcomp.prim_data.
 :- import_module mdbcomp.sym_name.
 :- import_module parse_tree.prog_data.
+:- import_module parse_tree.prog_data_pragma.
 :- import_module parse_tree.prog_item.
 :- import_module parse_tree.prog_type.
 :- import_module parse_tree.prog_type_test.
@@ -799,7 +800,8 @@ find_items_used_by_pred(PredOrFunc, NameArity, PredId - PredModule, !Info) :-
         % Record items used by `:- pragma type_spec' declarations.
         module_info_get_type_spec_info(ModuleInfo, TypeSpecInfo),
         TypeSpecInfo = type_spec_info(_, _, _, PragmaMap),
-        ( if map.search(PragmaMap, PredId, TypeSpecPragmas) then
+        ( if map.search(PragmaMap, PredId, OoMTypeSpecPragmas) then
+            TypeSpecPragmas = one_or_more_to_list(OoMTypeSpecPragmas),
             list.foldl(find_items_used_by_type_spec, TypeSpecPragmas, !Info)
         else
             true
@@ -831,7 +833,8 @@ find_items_used_by_type_spec(TypeSpecInfo, !Info) :-
     ;
         PFUMM = pfumm_unknown(_Arity)
     ),
-    assoc_list.values(one_or_more_to_list(Subst), SubstTypes),
+    SubstTypes = list.map((func(tvar_subst(_Var, Type)) = Type),
+        one_or_more_to_list(Subst)),
     find_items_used_by_types(SubstTypes, !Info).
 
 :- pred find_items_used_by_functors(simple_item_set::in,

@@ -54,6 +54,13 @@
                 % The identity of the entity the constraint is on:
                 % whether it is predicate or function, its name, and its arity.
                 pf_sym_name_arity
+            )
+    ;       mqcec_type_spec_constr(prog_context,
+                % The constraint occurs in a type_spec_constraint pragma
+                % at the given location. The pragma has nothing that can serve
+                % as its "name" that is more useful than the id of the module
+                % to which it applies.
+                module_name
             ).
 
 :- type mq_error_context
@@ -461,6 +468,10 @@ mq_constraint_error_context_to_pieces(ConstraintErrorContext,
         Start = "on",
         Pieces = [words("declaration of"),
             unqual_pf_sym_name_pred_form_arity(PFSymNameArity)]
+    ;
+        ConstraintErrorContext = mqcec_type_spec_constr(Context, _ModuleName),
+        Start = "in",
+        Pieces = [pragma_decl("type_spec_constrained_preds")]
     ).
 
 :- pred mq_error_context_to_pieces(mq_error_context::in,

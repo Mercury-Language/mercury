@@ -63,6 +63,10 @@
 :- pred mercury_format_item_foreign_proc(S::in, output_lang::in,
     item_foreign_proc_info::in, U::di, U::uo) is det <= pt_output(S, U).
 
+:- pred mercury_format_pragma_type_spec_constr(S::in, output_lang::in,
+    decl_pragma_type_spec_constr_info::in, U::di, U::uo) is det
+    <= pt_output(S, U).
+
 :- pred mercury_format_pragma_type_spec(S::in, output_lang::in,
     decl_pragma_type_spec_info::in, U::di, U::uo) is det <= pt_output(S, U).
 
@@ -166,6 +170,10 @@ mercury_format_item_decl_pragma(Info, Stream, DeclPragma, !IO) :-
     ;
         DeclPragma = decl_pragma_format_call(FormatCall),
         mercury_format_pragma_format_call(FormatCall, Stream, !IO)
+    ;
+        DeclPragma = decl_pragma_type_spec_constr(TypeSpecConstr),
+        mercury_format_pragma_type_spec_constr(Stream, Lang,
+            TypeSpecConstr, !IO)
     ;
         DeclPragma = decl_pragma_type_spec(TypeSpec),
         mercury_format_pragma_type_spec(Stream, Lang, TypeSpec, !IO)
@@ -919,9 +927,29 @@ backend_to_string(Backend) = Str :-
 % Output a type_spec pragma.
 %
 
+mercury_format_pragma_type_spec_constr(S, _Lang, TypeSpecConstr, !U) :-
+    TypeSpecConstr = decl_pragma_type_spec_constr_info(_ModuleName,
+        OoMConstraints, ApplyToSupers, OoMTypeSubsts, TVarSet, _, _, _),
+    IndentStr = "    ",
+    add_string(":- pragma type_spec_constrained_preds([", S, !U),
+    add_list(mercury_format_type_spec_constraint(IndentStr, TVarSet), ",\n",
+        one_or_more_to_list(OoMConstraints), S, !U),
+    add_string("\n], ", S, !U),
+    (
+        ApplyToSupers = do_not_apply_to_supers,
+        add_string("do_not_apply_to_superclasses, ", S, !U)
+    ;
+        ApplyToSupers = apply_to_supers,
+        add_string("apply_to_superclasses, ", S, !U)
+    ),
+    add_string("[\n", S, !U),
+    add_list(mercury_format_type_subst_new(IndentStr, TVarSet), ",\n",
+        one_or_more_to_list(OoMTypeSubsts), S, !U),
+    add_string("\n]).\n", S, !U).
+
 mercury_format_pragma_type_spec(S, Lang, TypeSpec, !U) :-
     TypeSpec = decl_pragma_type_spec_info(PFUMM, PredName, _SpecModuleName,
-        TypeSubst, VarSet, _, _, _),
+        TypeSubst, TVarSet, _, _, _),
     add_string(":- pragma type_spec(", S, !U),
     (
         (
@@ -946,35 +974,78 @@ mercury_format_pragma_type_spec(S, Lang, TypeSpec, !U) :-
         mercury_format_pred_name_arity(PredName, PredArity, S, !U)
     ),
     add_string(", ", S, !U),
-    % The code that parses type_spec pragmas ensures that all types variables
-    % in the substitution are named. Therefore there is no reason to print
-    % variable numbers. In fact, printing variable numbers would be a bug,
-    % since any code reading the pragma we are now writing out would mistake
-    % the variable number as part of the variable *name*. See the long comment
-    % on the tspec_tvarset field of the pragma in prog_item.m.
+    mercury_format_type_subst_old(TVarSet, TypeSubst, S, !U),
+    add_string(").\n", S, !U).
+
+:- pred mercury_format_type_spec_constraint(string::in, tvarset::in,
+    var_or_ground_constraint::in, S::in, U::di, U::uo) is det
+    <= pt_output(S, U).
+
+mercury_format_type_spec_constraint(Prefix, TVarSet, Constraint, S, !U) :-
+    add_string(Prefix, S, !U),
+    Constraint = var_or_ground_constraint(Name, Args, _Context),
+    mercury_format_sym_name(Name, S, !U),
+    add_string("(", S, !U),
+    add_list(mercury_format_var_or_ground_type(TVarSet), ", ",
+        Args, S, !U),
+    add_string(")", S, !U).
+
+:- pred mercury_format_var_or_ground_type(tvarset::in, var_or_ground_type::in,
+    S::in, U::di, U::uo) is det <= pt_output(S, U).
+
+mercury_format_var_or_ground_type(TVarSet, Arg, S, !U) :-
+    (
+        Arg = type_var_name(_, VarName),
+        add_string(VarName, S, !U)
+    ;
+        Arg = ground_type(GroundType),
+        Type = coerce(GroundType),
+        mercury_format_type(TVarSet, print_name_only, Type, S, !U)
+    ).
+
+:- pred mercury_format_type_subst_new(string::in, tvarset::in, type_subst::in,
+    S::in, U::di, U::uo) is det <= pt_output(S, U).
+
+mercury_format_type_subst_new(Prefix, TVarSet, TypeSubst, S, !U) :-
+    TypeSubst = one_or_more(HeadTypeSubst, TailTypeSubsts),
+    add_string(Prefix, S, !U),
+    add_string("subst([", S, !U),
+    add_list(mercury_format_tvar_subst(TVarSet), ", ",
+        [HeadTypeSubst | TailTypeSubsts], S, !U),
+    add_string("])", S, !U).
+
+:- pred mercury_format_type_subst_old(tvarset::in, type_subst::in,
+    S::in, U::di, U::uo) is det <= pt_output(S, U).
+
+mercury_format_type_subst_old(TVarSet, TypeSubst, S, !U) :-
     TypeSubst = one_or_more(HeadTypeSubst, TailTypeSubsts),
     (
         TailTypeSubsts = [],
         % In the common case of there being only type substitution,
         % do not put unnecessary parentheses around it.
-        mercury_format_type_subst(VarSet, print_name_only, HeadTypeSubst,
-            S, !U)
+        mercury_format_tvar_subst(TVarSet, HeadTypeSubst, S, !U)
     ;
         TailTypeSubsts = [_ | _],
         add_string("(", S, !U),
-        add_list(mercury_format_type_subst(VarSet, print_name_only), ", ",
+        add_list(mercury_format_tvar_subst(TVarSet), ", ",
             [HeadTypeSubst | TailTypeSubsts], S, !U),
         add_string(")", S, !U)
-    ),
-    add_string(").\n", S, !U).
+    ).
 
-:- pred mercury_format_type_subst(tvarset::in, var_name_print::in,
-    pair(tvar, mer_type)::in, S::in, U::di, U::uo) is det <= pt_output(S, U).
+:- pred mercury_format_tvar_subst(tvarset::in, tvar_subst::in,
+    S::in, U::di, U::uo) is det <= pt_output(S, U).
 
-mercury_format_type_subst(VarSet, VarNamePrint, Var - Type, S, !U) :-
-    mercury_format_var_vs(VarSet, VarNamePrint, Var, S, !U),
+mercury_format_tvar_subst(VarSet, TVarSubst, S, !U) :-
+    % The code that parses type_spec pragmas ensures that all type variables
+    % in the substitution are named. Therefore there is no reason to print
+    % variable numbers. In fact, printing variable numbers would be a bug,
+    % since any code reading the pragma we are now writing out would mistake
+    % the variable number as part of the variable *name*. See the long comment
+    % on the tspec_tvarset field of the pragma in prog_item.m.
+    TVarSubst = tvar_subst(Var, Type),
+    mercury_format_var_vs(VarSet, print_name_only, Var, S, !U),
     add_string(" = ", S, !U),
-    mercury_format_type(VarSet, VarNamePrint, Type, S, !U).
+    mercury_format_type(VarSet, print_name_only, Type, S, !U).
 
 %---------------------------------------------------------------------------%
 %
@@ -1605,8 +1676,15 @@ mercury_pred_name_arity_to_string(PredName, UserArity) = Str :-
 :- pred mercury_format_pred_name_arity(sym_name::in, user_arity::in, S::in,
     U::di, U::uo) is det <= pt_output(S, U).
 
-mercury_format_pred_name_arity(PredName, user_arity(Arity), S, !U) :-
-    NGT = next_to_graphic_token,
+mercury_format_pred_name_arity(PredName, UserArity, S, !U) :-
+    mercury_format_pred_name_arity_ngt(next_to_graphic_token, PredName,
+        UserArity, S, !U).
+
+:- pred mercury_format_pred_name_arity_ngt(needs_quotes::in, 
+    sym_name::in, user_arity::in, S::in, U::di, U::uo) is det
+    <= pt_output(S, U).
+
+mercury_format_pred_name_arity_ngt(NGT, PredName, user_arity(Arity), S, !U) :-
     mercury_format_bracketed_sym_name_ngt(NGT, PredName, S, !U),
     add_string("/", S, !U),
     add_int(Arity, S, !U).
@@ -1627,7 +1705,8 @@ mercury_pred_pf_name_arity_to_string(PredOrFunc, PredName, UserArity) = Str :-
 mercury_format_pred_pf_name_arity(PredOrFunc, PredName, UserArity, S, !U) :-
     add_string(pred_or_func_to_str(PredOrFunc), S, !U),
     add_string("(", S, !U),
-    mercury_format_pred_name_arity(PredName, UserArity, S, !U),
+    mercury_format_pred_name_arity_ngt(not_next_to_graphic_token,
+        PredName, UserArity, S, !U),
     add_string(")", S, !U).
 
 :- func mercury_pred_pfu_name_arity_to_string(pred_func_or_unknown,

@@ -477,9 +477,11 @@ tabled_eval_method_to_table_type(EvalMethod) = TableTypeStr :-
 
     % The type substitution for a `pragma type_spec' declaration.
     % Elsewhere in the compiler we generally use the `tsubst' type
-    % which is a map rather than an assoc_list.
+    % which is a map rather than (effectively) an assoc_list.
     %
-:- type type_subst == one_or_more(pair(tvar, mer_type)).
+:- type type_subst == one_or_more(tvar_subst).
+:- type tvar_subst
+    --->    tvar_subst(tvar, mer_type).
 
 %---------------------------------------------------------------------------%
 %

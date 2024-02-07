@@ -21,7 +21,13 @@
 
 %---------------------------------------------------------------------------%
 
-:- pred add_decl_pragmas(ims_list(item_decl_pragma_info)::in,
+:- pred add_decl_pragmas(io.text_output_stream::in,
+    ims_list(item_decl_pragma_info)::in,
+    module_info::in, module_info::out, qual_info::in, qual_info::out,
+    list(error_spec)::in, list(error_spec)::out) is det.
+
+:- pred add_decl_pragmas_type_spec_constr(io.text_output_stream::in,
+    list(decl_pragma_type_spec_constr_info)::in,
     module_info::in, module_info::out, qual_info::in, qual_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
@@ -151,12 +157,21 @@
 % Adding decl pragmas to the HLDS.
 %
 
-add_decl_pragmas([], !ModuleInfo, !QualInfo, !Specs).
-add_decl_pragmas([ImsList | ImsLists], !ModuleInfo, !QualInfo, !Specs) :-
+add_decl_pragmas(_, [], !ModuleInfo, !QualInfo, !Specs).
+add_decl_pragmas(ProgressStream, [ImsList | ImsLists],
+        !ModuleInfo, !QualInfo, !Specs) :-
     ImsList = ims_sub_list(ItemMercuryStatus, Items),
-    list.foldl3(add_decl_pragma(ItemMercuryStatus), Items,
+    list.foldl3(add_decl_pragma(ProgressStream, ItemMercuryStatus), Items,
         !ModuleInfo, !QualInfo, !Specs),
-    add_decl_pragmas(ImsLists, !ModuleInfo, !QualInfo, !Specs).
+    add_decl_pragmas(ProgressStream, ImsLists, !ModuleInfo, !QualInfo, !Specs).
+
+add_decl_pragmas_type_spec_constr(_, [], !ModuleInfo, !QualInfo, !Specs).
+add_decl_pragmas_type_spec_constr(ProgressStream, [Pragma | Pragmas],
+        !ModuleInfo, !QualInfo, !Specs) :-
+    add_pragma_type_spec_constr(ProgressStream, Pragma,
+        !ModuleInfo, !QualInfo, !Specs),
+    add_decl_pragmas_type_spec_constr(ProgressStream, Pragmas,
+        !ModuleInfo, !QualInfo, !Specs).
 
 add_decl_pragmas_type_spec([], !ModuleInfo, !QualInfo, !Specs).
 add_decl_pragmas_type_spec([Pragma | Pragmas],
@@ -186,11 +201,13 @@ add_decl_pragmas_reuse([Pragma | Pragmas], !ModuleInfo, !Specs) :-
 
 %---------------------%
 
-:- pred add_decl_pragma(item_mercury_status::in, item_decl_pragma_info::in,
+:- pred add_decl_pragma(io.text_output_stream::in, item_mercury_status::in,
+    item_decl_pragma_info::in,
     module_info::in, module_info::out, qual_info::in, qual_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-add_decl_pragma(ItemMercuryStatus, Pragma, !ModuleInfo, !QualInfo, !Specs) :-
+add_decl_pragma(ProgressStream, ItemMercuryStatus, Pragma,
+        !ModuleInfo, !QualInfo, !Specs) :-
     (
         Pragma = decl_pragma_obsolete_pred(ObsoletePredInfo),
         mark_pred_as_obsolete(ObsoletePredInfo, ItemMercuryStatus,
@@ -203,6 +220,10 @@ add_decl_pragma(ItemMercuryStatus, Pragma, !ModuleInfo, !QualInfo, !Specs) :-
         Pragma = decl_pragma_format_call(FormatCallInfo),
         mark_pred_as_format_call(FormatCallInfo, ItemMercuryStatus,
             !ModuleInfo, !Specs)
+    ;
+        Pragma = decl_pragma_type_spec_constr(TypeSpecConstrInfo),
+        add_pragma_type_spec_constr(ProgressStream, TypeSpecConstrInfo,
+            !ModuleInfo, !QualInfo, !Specs)
     ;
         Pragma = decl_pragma_type_spec(TypeSpecInfo),
         add_pragma_type_spec(TypeSpecInfo, !ModuleInfo, !QualInfo, !Specs)

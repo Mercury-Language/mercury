@@ -41,6 +41,10 @@
     --->    error5(E)
     ;       ok5(T1, T2, T3, T4, T5).
 
+:- type maybe6(T1, T2, T3, T4, T5, T6, E)
+    --->    error6(E)
+    ;       ok6(T1, T2, T3, T4, T5, T6).
+
 :- type maybe1(T1) ==
     maybe1(T1, list(error_spec)).
 :- type maybe2(T1, T2) ==
@@ -51,6 +55,8 @@
     maybe4(T1, T2, T3, T4, list(error_spec)).
 :- type maybe5(T1, T2, T3, T4, T5) ==
     maybe5(T1, T2, T3, T4, T5, list(error_spec)).
+:- type maybe6(T1, T2, T3, T4, T5, T6) ==
+    maybe6(T1, T2, T3, T4, T5, T6, list(error_spec)).
 
 %---------------------%
 
@@ -74,6 +80,10 @@
     --->    error5(ground)
     ;       ok5(I1, I2, I3, I4, I5).
 
+:- inst maybe6(I1, I2, I3, I4, I5, I6) for maybe6/7
+    --->    error6(ground)
+    ;       ok6(I1, I2, I3, I4, I5, I6).
+
 %---------------------%
 
 :- func get_any_errors1(maybe1(T1)) = list(error_spec).
@@ -81,6 +91,7 @@
 :- func get_any_errors3(maybe3(T1, T2, T3)) = list(error_spec).
 :- func get_any_errors4(maybe4(T1, T2, T3, T4)) = list(error_spec).
 :- func get_any_errors5(maybe5(T1, T2, T3, T4, T5)) = list(error_spec).
+:- func get_any_errors6(maybe6(T1, T2, T3, T4, T5, T6)) = list(error_spec).
 
 :- func get_any_errors_warnings2(maybe2(T1, list(warning_spec))) =
     list(error_spec).
@@ -90,6 +101,8 @@
     list(error_spec).
 :- func get_any_errors_warnings5(maybe5(T1, T2, T3, T4, list(warning_spec))) =
     list(error_spec).
+:- func get_any_errors_warnings6(maybe6(T1, T2, T3, T4, T5,
+    list(warning_spec))) = list(error_spec).
 
 :- pred project_ok1(maybe1(T1)::in, T1::out) is semidet.
 :- pred det_project_ok1(maybe1(T1)::in, T1::out) is det.
@@ -121,6 +134,9 @@ get_any_errors4(error4(Specs)) = Specs.
 get_any_errors5(ok5(_, _, _, _, _)) = [].
 get_any_errors5(error5(Specs)) = Specs.
 
+get_any_errors6(ok6(_, _, _, _, _, _)) = [].
+get_any_errors6(error6(Specs)) = Specs.
+
 %---------------------%
 
 get_any_errors_warnings2(ok2(_, Specs)) = Specs.
@@ -134,6 +150,9 @@ get_any_errors_warnings4(error4(Specs)) = Specs.
 
 get_any_errors_warnings5(ok5(_, _, _, _, Specs)) = Specs.
 get_any_errors_warnings5(error5(Specs)) = Specs.
+
+get_any_errors_warnings6(ok6(_, _, _, _, _, Specs)) = Specs.
+get_any_errors_warnings6(error6(Specs)) = Specs.
 
 %---------------------%
 

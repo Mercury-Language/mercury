@@ -53,6 +53,7 @@
 :- import_module maybe.
 :- import_module multi_map.
 :- import_module one_or_more.
+:- import_module one_or_more_map.
 :- import_module pair.
 :- import_module set.
 :- import_module set_tree234.
@@ -106,6 +107,9 @@
                 table_struct_attrs                  :: table_attributes
             ).
 
+:- type type_spec_pragma_map ==
+    one_or_more_map(pred_id, decl_pragma_type_spec_info).
+
     % List of procedures for which there are user-requested type
     % specializations, and a list of predicates which should be processed
     % by higher_order.m to ensure the production of those versions.
@@ -117,7 +121,7 @@
 
                 % Set of predicates which need to be processed by
                 % higher_order.m to produce those specialized versions.
-                must_process_preds  ::  set(pred_id),
+                must_process_preds  :: set(pred_id),
 
                 % Map from predicates for which the user requested a type
                 % specialization to the list of predicates which must be
@@ -128,8 +132,7 @@
 
                 % Type spec pragmas to be placed in the `.opt' file if a
                 % predicate becomes exported.
-                pragma_map          :: multi_map(pred_id,
-                                        decl_pragma_type_spec_info)
+                pragma_map          :: type_spec_pragma_map
             ).
 
     % Once filled in by simplify_proc.m (for all non-lambda procedures)

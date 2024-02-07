@@ -54,13 +54,14 @@
 :- import_module parse_tree.parse_util.
 :- import_module parse_tree.prog_data_pragma.
 :- import_module parse_tree.prog_item.
+:- import_module parse_tree.prog_type_scan.
+:- import_module parse_tree.prog_type_test.
 
 :- import_module cord.
 :- import_module counter.
 :- import_module int.
 :- import_module maybe.
 :- import_module one_or_more.
-:- import_module pair.
 :- import_module set.
 :- import_module string.
 :- import_module term_int.
@@ -74,7 +75,7 @@ parse_pragma(ModuleName, VarSet, PragmaTerms, Context, SeqNum, MaybeIOM) :-
             PragmaContext)
     then
         ( if
-            parse_pragma_type(ModuleName, VarSet, PragmaTerm,
+            parse_named_pragma(ModuleName, VarSet, PragmaTerm,
                 PragmaName, PragmaArgTerms, PragmaContext, SeqNum,
                 MaybeIOMPrime)
         then
@@ -91,12 +92,14 @@ parse_pragma(ModuleName, VarSet, PragmaTerms, Context, SeqNum, MaybeIOM) :-
         MaybeIOM = error1([Spec])
     ).
 
-:- pred parse_pragma_type(module_name::in, varset::in, term::in,
+:- pred parse_named_pragma(module_name::in, varset::in, term::in,
     string::in, list(term)::in, prog_context::in, item_seq_num::in,
     maybe1(item_or_marker)::out) is semidet.
 
-parse_pragma_type(ModuleName, VarSet, ErrorTerm, PragmaName, PragmaTerms,
+parse_named_pragma(ModuleName, VarSet, ErrorTerm, PragmaName, PragmaTerms,
         Context, SeqNum, MaybeIOM) :-
+    % XXX The Context argument is redundant, since we can always compute it
+    % as get_term_context(ErrorTerm).
     require_switch_arms_det [PragmaName]
     (
         PragmaName = "source_file",
@@ -228,6 +231,10 @@ parse_pragma_type(ModuleName, VarSet, ErrorTerm, PragmaName, PragmaTerms,
         PragmaName = "unused_args",
         parse_pragma_unused_args(ModuleName, VarSet, ErrorTerm,
             PragmaTerms, Context, SeqNum, MaybeIOM)
+    ;
+        PragmaName = "type_spec_constrained_preds",
+        parse_pragma_type_spec_constr(ModuleName, VarSet, ErrorTerm,
+            PragmaTerms, SeqNum, MaybeIOM)
     ;
         PragmaName = "type_spec",
         parse_pragma_type_spec(ModuleName, VarSet, ErrorTerm,
@@ -1239,6 +1246,530 @@ parse_oisu_preds_term(ModuleName, VarSet, ArgNum, ExpectedFunctor, Term,
 
 %---------------------------------------------------------------------------%
 %
+% Parse type_spec_constrained_preds pragmas.
+%
+
+:- pred parse_pragma_type_spec_constr(module_name::in, varset::in, term::in,
+    list(term)::in, item_seq_num::in,
+    maybe1(item_or_marker)::out) is det.
+
+parse_pragma_type_spec_constr(ModuleName, VarSet0, ErrorTerm, PragmaTerms,
+        SeqNum, MaybeIOM) :-
+    ( if
+        PragmaTerms = [ConstraintsTerm, ApplyToSupersTerm, TypeSubstsTerm]
+    then
+        acc_var_names_in_term(VarSet0, ConstraintsTerm,
+            set.init, NamedVarNames1),
+        acc_var_names_in_term(VarSet0, TypeSubstsTerm,
+            NamedVarNames1, NamedVarNames),
+        parse_var_or_ground_constraint_list(NamedVarNames, ConstraintsTerm,
+            Constraints, ConstraintSpecs,
+            counter.init(1), Counter1, VarSet0, VarSet1),
+        parse_apply_to_supers(ApplyToSupersTerm, MaybeApplyToSupers),
+        parse_type_subst_list(NamedVarNames, TypeSubstsTerm,
+            TypeSubsts, TypeSubstsSpecs, Counter1, _Counter, VarSet1, VarSet),
+        varset.coerce(VarSet0, TVarSet0),
+        list.foldl(var_or_ground_constraint_acc_tvars, Constraints,
+            set.init, ConstraintTVars),
+        check_type_substs(TVarSet0, ConstraintTVars, TypeSubstsTerm, 1,
+            TypeSubsts, [], TypeSubstTVarSpecs),
+        ( if
+            ConstraintSpecs = [],
+            MaybeApplyToSupers = ok1(ApplyToSupers),
+            TypeSubstsSpecs = [],
+            TypeSubstTVarSpecs = []
+        then
+            det_list_to_one_or_more(Constraints, OoMConstraints),
+            det_list_to_one_or_more(TypeSubsts, OoMTypeSubsts),
+            varset.coerce(VarSet, TVarSet),
+            TypeSpecConstr = decl_pragma_type_spec_constr_info(ModuleName,
+                OoMConstraints, ApplyToSupers, OoMTypeSubsts, TVarSet,
+                set.init, get_term_context(ErrorTerm), SeqNum),
+            Pragma = decl_pragma_type_spec_constr(TypeSpecConstr),
+            Item = item_decl_pragma(Pragma),
+            MaybeIOM = ok1(iom_item(Item))
+        else
+            Specs = ConstraintSpecs ++ get_any_errors1(MaybeApplyToSupers) ++
+                TypeSubstsSpecs ++ TypeSubstTVarSpecs,
+            MaybeIOM = error1(Specs)
+        )
+    else
+        Pieces = [words("Error: a"),
+            pragma_decl("type_spec_constrained_preds"),
+            words("declaration must have three arguments."), nl],
+        Spec = simplest_spec($pred, severity_error, phase_term_to_parse_tree,
+            get_term_context(ErrorTerm), Pieces),
+        MaybeIOM = error1([Spec])
+    ).
+
+%---------------------%
+
+:- pred parse_var_or_ground_constraint_list(set(string)::in, term::in,
+    list(var_or_ground_constraint)::out, list(error_spec)::out,
+    counter::in, counter::out, varset::in, varset::out) is det.
+
+parse_var_or_ground_constraint_list(NamedVarNames, Term, Constraints, Specs,
+        !Counter, !VarSet) :-
+    ( if list_term_to_term_list(Term, ConstraintTerms) then
+        (
+            ConstraintTerms = [],
+            Constraints = [],
+            Pieces = [words("In the first argument of a"),
+                pragma_decl("type_spec_constrained_preds"),
+                words("declaration:"),
+                words("error: the list of type class constraints"),
+                words("must not be empty."), nl],
+            Spec = simplest_spec($pred, severity_error,
+                phase_term_to_parse_tree, get_term_context(Term), Pieces),
+            Specs = [Spec]
+        ;
+            ConstraintTerms = [HeadConstraintTerm | TailConstraintTerms],
+            parse_var_or_ground_constraint_acc(NamedVarNames,
+                HeadConstraintTerm, cord.init, ConstraintCord1,
+                [], Specs1, !Counter, !VarSet),
+            list.foldl4(parse_var_or_ground_constraint_acc(NamedVarNames),
+                TailConstraintTerms, ConstraintCord1, ConstraintCord,
+                Specs1, Specs, !Counter, !VarSet),
+            Constraints = cord.list(ConstraintCord)
+        )
+    else
+        Constraints = [],
+        Pieces = [words("In the first argument of a"),
+            pragma_decl("type_spec_constrained_preds"),
+            words("declaration:"),
+            words("error: expected a list of type class constraints, got"),
+            quote(describe_error_term(!.VarSet, Term)), suffix("."), nl],
+        Spec = simplest_spec($pred, severity_error,
+            phase_term_to_parse_tree, get_term_context(Term), Pieces),
+        Specs = [Spec]
+    ).
+
+:- pred parse_var_or_ground_constraint_acc(set(string)::in, term::in,
+    cord(var_or_ground_constraint)::in, cord(var_or_ground_constraint)::out,
+    list(error_spec)::in, list(error_spec)::out,
+    counter::in, counter::out, varset::in, varset::out) is det.
+
+parse_var_or_ground_constraint_acc(NamedVarNames, Term,
+        !ConstraintCord, !Specs, !Counter, !VarSet) :-
+    ( if try_parse_sym_name_and_args(Term, ClassSymName, ArgTerms) then
+        (
+            ArgTerms = [],
+            Pieces = [words("In the first argument of a"),
+                pragma_decl("type_spec_constrained_preds"),
+                words("declaration:"),
+                words("error: expected a typeclass constraint consisting of"),
+                words("a class_name applied to one or more argument types,"),
+                words("got the class name"),
+                quote(sym_name_to_string(ClassSymName)),
+                words("without any argument types."), nl],
+            Spec = simplest_spec($pred, severity_error,
+                phase_term_to_parse_tree, get_term_context(Term), Pieces),
+            !:Specs = [Spec | !.Specs]
+        ;
+            ArgTerms = [_ | _],
+            list.foldl2(name_unnamed_vars_in_term(NamedVarNames),
+                ArgTerms, !Counter, !VarSet),
+            ContextPieces = cord.from_list(
+                [words("In the first argument of a"),
+                pragma_decl("type_spec_constrained_preds"),
+                words("declaration:")]),
+            AllowHOInstInfo =
+                no_allow_ho_inst_info(wnhii_pragma_type_spec_constr),
+            list.length(ArgTerms, NumArgTerms),
+            ClassId = class_id(ClassSymName, NumArgTerms),
+            parse_var_or_ground_types(AllowHOInstInfo, !.VarSet, ContextPieces,
+                ClassId, ArgTerms, MaybeArgs),
+            (
+                MaybeArgs = ok1(Args),
+                Context = get_term_context(Term),
+                Constraint =
+                    var_or_ground_constraint(ClassSymName, Args, Context),
+                cord.snoc(Constraint, !ConstraintCord)
+            ;
+                MaybeArgs = error1(ArgSpecs),
+                !:Specs = ArgSpecs ++ !.Specs
+            )
+        )
+    else
+        Pieces = [words("Error in the first argument of a"),
+            pragma_decl("type_spec_constrained_preds"),
+            words("declaration:"),
+            words("expected a typeclass constraint of the form"),
+            quote("class_name(argtype1, argtype2, ...)"),
+            words("got"), quote(describe_error_term(!.VarSet, Term)),
+            suffix("."), nl],
+        Spec = simplest_spec($pred, severity_error,
+            phase_term_to_parse_tree, get_term_context(Term), Pieces),
+        !:Specs = [Spec | !.Specs]
+    ).
+
+:- pred parse_var_or_ground_types(allow_ho_inst_info::in, varset::in,
+    cord(format_piece)::in, class_id::in, list(term)::in,
+    maybe1(list(var_or_ground_type))::out) is det.
+
+parse_var_or_ground_types(_, _, _, _, [], ok1([])).
+parse_var_or_ground_types(AllowHOInstInfo, VarSet, ContextPieces, ClassId,
+        [HeadTerm | TailTerms], Result) :-
+    parse_var_or_ground_types(AllowHOInstInfo, VarSet, ContextPieces, ClassId,
+        TailTerms, TailResult),
+    parse_type(AllowHOInstInfo, VarSet, ContextPieces, HeadTerm, HeadResult0),
+    (
+        HeadResult0 = ok1(HeadType),
+        ( if HeadType = type_variable(HeadVar, _) then
+            varset.coerce(VarSet, TVarSet),
+            varset.lookup_name(TVarSet, HeadVar, HeadVarName),
+            HeadArg0 = type_var_name(HeadVar, HeadVarName),
+            HeadResult = ok1(HeadArg0)
+        else if type_is_ground(HeadType, HeadGroundType) then
+            HeadArg0 = ground_type(HeadGroundType),
+            HeadResult = ok1(HeadArg0)
+        else
+            Pieces = [words("Error in the first argument of a"),
+                pragma_decl("type_spec_constrained_preds"),
+                words("declaration:"),
+                words("in the constraint using type class"),
+                unqual_class_id(ClassId), suffix(","),
+                quote("expect ground types as arguments,"),
+                words("got"), quote(describe_error_term(VarSet, HeadTerm)),
+                suffix("."), nl],
+            Spec = simplest_spec($pred, severity_error,
+                phase_term_to_parse_tree, get_term_context(HeadTerm), Pieces),
+            HeadResult = error1([Spec])
+        )
+    ;
+        HeadResult0 = error1(HeadSpecs),
+        HeadResult = error1(HeadSpecs)
+    ),
+    ( if
+        HeadResult = ok1(HeadArg),
+        TailResult = ok1(TailArgs)
+    then
+        Result = ok1([HeadArg | TailArgs])
+    else
+        Specs = get_any_errors1(HeadResult) ++ get_any_errors1(TailResult),
+        Result = error1(Specs)
+    ).
+
+:- pred parse_type_subst_list(set(string)::in, term::in,
+    list(type_subst)::out, list(error_spec)::out,
+    counter::in, counter::out, varset::in, varset::out) is det.
+
+parse_type_subst_list(NamedVarNames, Term, TypeSubsts, Specs,
+        !Counter, !VarSet) :-
+    ( if list_term_to_term_list(Term, TypeSubstTerms) then
+        (
+            TypeSubstTerms = [],
+            TypeSubsts = [],
+            Pieces = [words("In the third argument of a"),
+                pragma_decl("type_spec_constrained_preds"),
+                words("declaration:"),
+                words("error: the list of type substitutions"),
+                words("must not be empty."), nl],
+            Spec = simplest_spec($pred, severity_error,
+                phase_term_to_parse_tree, get_term_context(Term), Pieces),
+            Specs = [Spec]
+        ;
+            TypeSubstTerms = [HeadTypeSubstTerm | TailTypeSubstTerms],
+            PrefixPieces = [words("In the third argument of a"),
+                pragma_decl("type_spec_constrained_preds"),
+                words("declaration:"), nl],
+            WNHII = wnhii_pragma_type_spec_constr,
+            parse_type_subst_acc(WNHII, PrefixPieces, NamedVarNames,
+                HeadTypeSubstTerm, cord.init, TypeSubstCord1,
+                [], Specs1, !Counter, !VarSet),
+            list.foldl4(
+                parse_type_subst_acc(WNHII, PrefixPieces, NamedVarNames),
+                TailTypeSubstTerms, TypeSubstCord1, TypeSubstCord,
+                Specs1, Specs, !Counter, !VarSet),
+            TypeSubsts = cord.list(TypeSubstCord)
+        )
+    else
+        TypeSubsts = [],
+        Pieces = [words("In the third argument of a"),
+            pragma_decl("type_spec_constrained_preds"),
+            words("declaration:"),
+            words("error: expected a list of type substitutions, got"),
+            quote(describe_error_term(!.VarSet, Term)), suffix("."), nl],
+        Spec = simplest_spec($pred, severity_error,
+            phase_term_to_parse_tree, get_term_context(Term), Pieces),
+        Specs = [Spec]
+    ).
+
+:- pred parse_type_subst_acc(why_no_ho_inst_info::in, list(format_piece)::in,
+    set(string)::in, term::in, cord(type_subst)::in, cord(type_subst)::out,
+    list(error_spec)::in, list(error_spec)::out,
+    counter::in, counter::out, varset::in, varset::out) is det.
+
+parse_type_subst_acc(WNHII, PrefixPieces, NamedVarNames, Term,
+        !TypeSubstCord, !Specs, !Counter, !VarSet) :-
+    parse_type_subst(WNHII, PrefixPieces, NamedVarNames, Term, MaybeTypeSubst,
+        !Counter, !VarSet),
+    (
+        MaybeTypeSubst = ok1(TypeSubst),
+        cord.snoc(TypeSubst, !TypeSubstCord)
+    ;
+        MaybeTypeSubst = error1(TypeSubstSpecs),
+        !:Specs = TypeSubstSpecs ++ !.Specs
+    ).
+
+:- pred parse_type_subst(why_no_ho_inst_info::in, list(format_piece)::in,
+    set(string)::in, term::in, maybe1(type_subst)::out,
+    counter::in, counter::out, varset::in, varset::out) is det.
+
+parse_type_subst(WNHII, PrefixPieces, NamedVarNames, Term, MaybeTypeSubst,
+        !Counter, !VarSet) :-
+    ( if Term = term.functor(atom("subst"), ArgTerms, _) then
+        (
+            ( ArgTerms = []
+            ; ArgTerms = [_, _ | _]
+            ),
+            Pieces = PrefixPieces ++
+                [words("error:"), quote("subst"),
+                words("must have exactly one argument,"),
+                words("which should have the form"), nl_indent_delta(1),
+                quote("[V1 = <type1>, ...]"), suffix("."),
+                nl_indent_delta(-1)],
+            Spec = simplest_spec($pred, severity_error,
+                phase_term_to_parse_tree, get_term_context(Term), Pieces),
+            MaybeTypeSubst = error1([Spec])
+        ;
+            ArgTerms = [ArgTerm],
+            ( if list_term_to_term_list(ArgTerm, TypeSubstTerms) then
+                (
+                    TypeSubstTerms = [],
+                    Pieces = PrefixPieces ++
+                        [words("error: the list of type variable"),
+                        words("substitutions must not be empty."), nl],
+                    Spec = simplest_spec($pred, severity_error,
+                        phase_term_to_parse_tree, get_term_context(Term),
+                        Pieces),
+                    MaybeTypeSubst = error1([Spec])
+                ;
+                    TypeSubstTerms = [HeadTypeSubstTerm | TailTypeSubstTerms],
+                    VarSet0 = !.VarSet,
+                    name_unnamed_vars_in_term(NamedVarNames,
+                        HeadTypeSubstTerm, !Counter, !VarSet),
+                    list.foldl2(name_unnamed_vars_in_term(NamedVarNames),
+                        TailTypeSubstTerms, !Counter, !VarSet),
+                    parse_tvar_subst_acc(WNHII, PrefixPieces, VarSet0,
+                        HeadTypeSubstTerm, cord.init, TVarSubstCord1,
+                        [], TVarSpecs1),
+                    list.foldl2(
+                        parse_tvar_subst_acc(WNHII, PrefixPieces, VarSet0),
+                        TailTypeSubstTerms, TVarSubstCord1, TVarSubstCord,
+                        TVarSpecs1, TVarSpecs),
+                    (
+                        TVarSpecs = [],
+                        TVarSubsts = cord.list(TVarSubstCord),
+                        det_list_to_one_or_more(TVarSubsts, TypeSubst),
+                        MaybeTypeSubst = ok1(TypeSubst)
+                    ;
+                        TVarSpecs = [_ | _],
+                        MaybeTypeSubst = error1(TVarSpecs)
+                    )
+                )
+            else
+                ErrorTermStr = describe_error_term(!.VarSet, Term),
+                Pieces = PrefixPieces ++
+                    [words("error: expected a list of the form,"),
+                    nl_indent_delta(1),
+                    quote("[V1 = <type1>, ...]"), suffix(","),
+                    nl_indent_delta(-1),
+                    words("got"), quote(ErrorTermStr), suffix("."), nl],
+                Spec = simplest_spec($pred, severity_error,
+                    phase_term_to_parse_tree, get_term_context(Term), Pieces),
+                MaybeTypeSubst = error1([Spec])
+            )
+        )
+    else
+        ErrorTermStr = describe_error_term(!.VarSet, Term),
+        Pieces = PrefixPieces ++
+            [words("error: expected a term of the form"), nl_indent_delta(1),
+            quote("subst([V1 = <type1>, ...])"), suffix(","),
+            nl_indent_delta(-1),
+            words("got"), quote(ErrorTermStr), suffix("."), nl],
+        Spec = simplest_spec($pred, severity_error,
+            phase_term_to_parse_tree, get_term_context(Term), Pieces),
+        MaybeTypeSubst = error1([Spec])
+    ).
+
+%---------------------%
+
+:- pred parse_apply_to_supers(term::in, maybe1(maybe_apply_to_supers)::out)
+    is det.
+
+parse_apply_to_supers(Term, MaybeApplyToSupers) :-
+    ( if
+        Term = term.functor(Functor, Args, _),
+        Functor = term.atom(AtomStr),
+        (
+            AtomStr = "do_not_apply_to_superclasses",
+            ApplyToSupers0 = do_not_apply_to_supers
+        ;
+            AtomStr = "apply_to_superclasses",
+            ApplyToSupers0 = apply_to_supers
+        )
+    then
+        (
+            Args = [],
+            MaybeApplyToSupers = ok1(ApplyToSupers0)
+        ;
+            Args = [_ | _],
+            Pieces = [words("Error in the second argument of"),
+                pragma_decl("type_spec_constrained_preds"),
+                words("declaration:"), quote(AtomStr),
+                words("may not have any arguments."), nl],
+            Spec = simplest_spec($pred, severity_error,
+                phase_term_to_parse_tree, get_term_context(Term), Pieces),
+            MaybeApplyToSupers = error1([Spec])
+        )
+    else
+        Pieces = [words("Error: the second argument of a"),
+            pragma_decl("type_spec_constrained_preds"),
+            words("declaration must be either"),
+            quote("do_not_apply_to_superclasses"), words("or"),
+            quote("apply_to_superclasses"), suffix("."), nl],
+        Spec = simplest_spec($pred, severity_error,
+            phase_term_to_parse_tree, get_term_context(Term), Pieces),
+        MaybeApplyToSupers = error1([Spec])
+    ).
+
+%---------------------%
+
+:- pred var_or_ground_constraint_acc_tvars(var_or_ground_constraint::in,
+    set(tvar)::in, set(tvar)::out) is det.
+
+var_or_ground_constraint_acc_tvars(Constraint, !TVars) :-
+    Constraint = var_or_ground_constraint(_ClassName, VoGTypes, _Context),
+    list.foldl(var_or_ground_type_acc_tvars, VoGTypes, !TVars).
+
+:- pred var_or_ground_type_acc_tvars(var_or_ground_type::in,
+    set(tvar)::in, set(tvar)::out) is det.
+
+var_or_ground_type_acc_tvars(VoGType, !TVars) :-
+    (
+        VoGType = type_var_name(TVar, _TVarName),
+        set.insert(TVar, !TVars)
+    ;
+        VoGType = ground_type(_GroundType)
+    ).
+
+:- pred check_type_substs(tvarset::in, set(tvar)::in, term::in, int::in,
+    list(type_subst)::in, list(error_spec)::in, list(error_spec)::out) is det.
+
+check_type_substs(_, _, _, _, [], !TypeSubstTVarSpecs).
+check_type_substs(TVarSet, ConstraintTVars, ErrorTerm,
+        SubstNum, [TypeSubst | TypeSubsts], !TypeSubstTVarSpecs) :-
+    check_type_subst(TVarSet, ConstraintTVars, ErrorTerm,
+        SubstNum, TypeSubst, !TypeSubstTVarSpecs),
+    check_type_substs(TVarSet, ConstraintTVars, ErrorTerm,
+        SubstNum + 1, TypeSubsts, !TypeSubstTVarSpecs).
+
+:- pred check_type_subst(tvarset::in, set(tvar)::in, term::in, int::in,
+    type_subst::in, list(error_spec)::in, list(error_spec)::out) is det.
+
+check_type_subst(TVarSet, ConstraintTVars, ErrorTerm, SubstNum, TypeSubst,
+        !Specs) :-
+    TypeSubst = one_or_more(HeadTVarSubst, TailTVarSubsts),
+    check_tvar_subst(TVarSet, ConstraintTVars, HeadTVarSubst,
+        set.init, BadLHSTVars1, set.init, BadRHSTVars1),
+    list.foldl2(check_tvar_subst(TVarSet, ConstraintTVars), TailTVarSubsts,
+        BadLHSTVars1, BadLHSTVars, BadRHSTVars1, BadRHSTVars),
+    BadLHSTVarList = set.to_sorted_list(BadLHSTVars),
+    BadRHSTVarList = set.to_sorted_list(BadRHSTVars),
+    % If a type_spec_constrained_preds pragma contains N substitutions
+    % in its third argument, then the process of checking those substitutions
+    % can generate up to 2N error_specs: one for each lhs or rhs in those
+    % N substitutions. We don't have a context for any part of the third
+    % argument, just the context of the third argument as a whole (our caller
+    % passes us the term containing that argument as ErrorTerm). We want to
+    % generate any error messages for the parts of that third argument
+    % in an order which matches the order of the complained-about entities
+    % in that argument, which we achieve through the use of the invis order
+    % format pieces below.
+    (
+        BadLHSTVarList = []
+    ;
+        BadLHSTVarList = [_HeadBadLHSTVar | TailBadLHSTVars],
+        (
+            TailBadLHSTVars = [],
+            TheTypeVar = "the left-hand-side type variable",
+            ItDoesNot = "it does not."
+        ;
+            TailBadLHSTVars = [_ | _],
+            TheTypeVar = "the left-hand-side type variables",
+            ItDoesNot = "they do not."
+        ),
+        BadLHSTVarStrs =
+            list.map(mercury_var_to_string_vs(TVarSet, print_name_only),
+            BadLHSTVarList),
+        BadLHSTVarsPieces = list_to_pieces(BadLHSTVarStrs),
+        LHSPieces = [invis_order_default_start(SubstNum, "lhs"),
+            words("Error: in the third argument of a"),
+            pragma_decl("type_spec_constrained_preds"),
+            words("declaration:"), nl,
+            words("in the"), nth_fixed(SubstNum), words("substitution:"), nl,
+            words(TheTypeVar)] ++ BadLHSTVarsPieces ++ [words("must occur"),
+            words("in the constraints listed in the first argument,"),
+            words("but"), words(ItDoesNot), nl],
+        LHSSpec = simplest_spec($pred, severity_error,
+            phase_term_to_parse_tree, get_term_context(ErrorTerm), LHSPieces),
+        !:Specs = [LHSSpec | !.Specs]
+    ),
+    (
+        BadRHSTVarList = []
+    ;
+        BadRHSTVarList = [_HeadBadRHSTVar | TailBadRHSTVars],
+        (
+            TailBadRHSTVars = [],
+            IsNot = "is not."
+        ;
+            TailBadRHSTVars = [_ | _],
+            IsNot = "are not."
+        ),
+        BadRHSTVarStrs =
+            list.map(mercury_var_to_string_vs(TVarSet, print_name_only),
+            BadRHSTVarList),
+        BadRHSTVarsPieces = list_to_pieces(BadRHSTVarStrs),
+        RHSPieces = [invis_order_default_start(SubstNum, "rhs"),
+            words("Error: in the third argument of a"),
+            pragma_decl("type_spec_constrained_preds"),
+            words("declaration:"), nl,
+            words("in the"), nth_fixed(SubstNum), words("substitution:"), nl,
+            words("any type variables that occur on the right hand side"),
+            words("of a substitution must be anonymous, but")] ++
+            BadRHSTVarsPieces ++ [words(IsNot), nl],
+        RHSSpec = simplest_spec($pred, severity_error,
+            phase_term_to_parse_tree, get_term_context(ErrorTerm), RHSPieces),
+        !:Specs = [RHSSpec | !.Specs]
+    ).
+
+:- pred check_tvar_subst(tvarset::in, set(tvar)::in, tvar_subst::in,
+    set(tvar)::in, set(tvar)::out, set(tvar)::in, set(tvar)::out) is det.
+
+check_tvar_subst(TVarSet, ConstraintTVars, TVarSubst,
+        !BadLHSTVars, !BadRHSTVars) :-
+    TVarSubst = tvar_subst(LHSTVar, RHSType),
+    ( if set.contains(ConstraintTVars, LHSTVar) then
+        true
+    else
+        set.insert(LHSTVar, !BadLHSTVars)
+    ),
+    set_of_type_vars_in_type(RHSType, RHSTVars),
+    set.foldl(check_tvar_subst_rhs_tvar(TVarSet), RHSTVars, !BadRHSTVars).
+
+:- pred check_tvar_subst_rhs_tvar(tvarset::in, tvar::in,
+    set(tvar)::in, set(tvar)::out) is det.
+
+check_tvar_subst_rhs_tvar(TVarSet, TVar, !BadRHSTVars) :-
+    ( if varset.search_name(TVarSet, TVar, _VarName) then
+        set.insert(TVar, !BadRHSTVars)
+    else
+        true
+    ).
+
+%---------------------------------------------------------------------------%
+%
 % Parse type_spec pragmas.
 %
 
@@ -1248,13 +1779,9 @@ parse_oisu_preds_term(ModuleName, VarSet, ArgNum, ExpectedFunctor, Term,
 
 parse_pragma_type_spec(ModuleName, VarSet0, ErrorTerm, PragmaTerms,
         Context, SeqNum, MaybeIOM) :-
-    ( if
-        ( PragmaTerms = [PredAndModesTerm, TypeSubnTerm]
-        ; PragmaTerms = [PredAndModesTerm, TypeSubnTerm, _]
-        )
-    then
+    ( if PragmaTerms = [PredAndModesTerm, TypeSubstTerm] then
         ArityOrModesContextPieces = cord.from_list(
-            [words("In the first argument"), pragma_decl("type_spec"),
+            [words("In the first argument of"), pragma_decl("type_spec"),
             words("declaration:"), nl]),
         parse_pred_pfu_name_arity_maybe_modes(ModuleName,
             ArityOrModesContextPieces, VarSet0, PredAndModesTerm,
@@ -1263,43 +1790,62 @@ parse_pragma_type_spec(ModuleName, VarSet0, ErrorTerm, PragmaTerms,
             MaybePredOrProcSpec = ok1(PredOrProcSpec),
             PredOrProcSpec = pred_or_proc_pfumm_name(PFUMM, PredName),
 
-            % Give any anonymous variables in TypeSubnTerm names that
-            % do not conflict with the names of any named variables,
-            % nor, due to the use of sequence numbers, with each other.
-            acc_var_names_in_term(VarSet0, TypeSubnTerm,
+            WNHII = wnhii_pragma_type_spec,
+            TypeContextPieces =
+                [words("In the second argument of"), pragma_decl("type_spec"),
+                words("declaration:"), nl],
+            acc_var_names_in_term(VarSet0, TypeSubstTerm,
                 set.init, NamedVarNames),
-            name_unnamed_vars_in_term(NamedVarNames, TypeSubnTerm,
-                counter.init(1), _, VarSet0, VarSet),
-            conjunction_to_one_or_more(TypeSubnTerm, TypeSubnTerms),
-            TypeSubnTerms = one_or_more(HeadSubnTerm, TailSubnTerms),
-            ( if
-                parse_type_spec_pair(HeadSubnTerm, HeadTypeSubn),
-                list.map(parse_type_spec_pair, TailSubnTerms, TailTypeSubns)
-            then
-                % The varset is actually a tvarset.
-                varset.coerce(VarSet, TVarSet),
-                TypeSubns = one_or_more(HeadTypeSubn, TailTypeSubns),
-                TypeSpec = decl_pragma_type_spec_info(PFUMM, PredName,
-                    ModuleName, TypeSubns, TVarSet, set.init, Context, SeqNum),
-                Item = item_decl_pragma(decl_pragma_type_spec(TypeSpec)),
-                MaybeIOM = ok1(iom_item(Item))
+            ( if TypeSubstTerm = term.functor(atom("subst"), _, _) then
+                parse_type_subst(WNHII, TypeContextPieces, NamedVarNames,
+                    TypeSubstTerm, MaybeTypeSubst,
+                    counter.init(1), _, VarSet0, VarSet),
+                (
+                    MaybeTypeSubst = ok1(OoMTVarSubsts),
+                    % The varset is actually a tvarset.
+                    varset.coerce(VarSet, TVarSet),
+                    TypeSpec = decl_pragma_type_spec_info(PFUMM, PredName,
+                        ModuleName, OoMTVarSubsts, TVarSet,
+                        set.init, Context, SeqNum),
+                    Item = item_decl_pragma(decl_pragma_type_spec(TypeSpec)),
+                    MaybeIOM = ok1(iom_item(Item))
+                ;
+                    MaybeTypeSubst = error1(TypeSubstSpecs),
+                    MaybeIOM = error1(TypeSubstSpecs)
+                )
             else
-                TypeSubnTermStr = describe_error_term(VarSet0, TypeSubnTerm),
-                Pieces = [words("In the second argument of"),
-                    pragma_decl("type_spec"), words("declaration:"), nl,
-                    words("error: expected a type substitution, got"),
-                    quote(TypeSubnTermStr), suffix("."), nl],
-                TypeSubnContext = get_term_context(TypeSubnTerm),
-                Spec = simplest_spec($pred, severity_error,
-                    phase_term_to_parse_tree, TypeSubnContext, Pieces),
-                MaybeIOM = error1([Spec])
+                % Give any anonymous variables in TypeSubstTerm names that
+                % do not conflict with the names of any named variables,
+                % nor, due to the use of sequence numbers, with each other.
+                % (In the then branch, this is done by parse_type_subst_acc.)
+                name_unnamed_vars_in_term(NamedVarNames, TypeSubstTerm,
+                    counter.init(1), _, VarSet0, VarSet),
+                conjunction_to_one_or_more(TypeSubstTerm, TypeSubstTerms),
+                TypeSubstTerms =
+                    one_or_more(HeadTypeSubstTerm, TailTypeSubstTerms),
+                parse_tvar_substs(WNHII, TypeContextPieces, VarSet0,
+                    HeadTypeSubstTerm, TailTypeSubstTerms,
+                    TVarSubsts, [], TypeSpecs),
+                (
+                    TypeSpecs = [],
+                    % The varset is actually a tvarset.
+                    varset.coerce(VarSet, TVarSet),
+                    det_list_to_one_or_more(TVarSubsts, OoMTVarSubsts),
+                    TypeSpec = decl_pragma_type_spec_info(PFUMM, PredName,
+                        ModuleName, OoMTVarSubsts, TVarSet,
+                        set.init, Context, SeqNum),
+                    Item = item_decl_pragma(decl_pragma_type_spec(TypeSpec)),
+                    MaybeIOM = ok1(iom_item(Item))
+                ;
+                    TypeSpecs = [_ | _],
+                    MaybeIOM = error1(TypeSpecs)
+                )
             )
         ;
             MaybePredOrProcSpec = error1(Specs),
             MaybeIOM = error1(Specs)
         )
     else
-        % XXX We allow three as a bootstrapping measure.
         Pieces = [words("Error: a"), pragma_decl("type_spec"),
             words("declaration must have two arguments."), nl],
         Spec = simplest_spec($pred, severity_error, phase_term_to_parse_tree,
@@ -1307,16 +1853,100 @@ parse_pragma_type_spec(ModuleName, VarSet0, ErrorTerm, PragmaTerms,
         MaybeIOM = error1([Spec])
     ).
 
-:- pred parse_type_spec_pair(term::in, pair(tvar, mer_type)::out) is semidet.
+%---------------------------------------------------------------------------%
+%
+% Utility predicates needed for both type_spec_constrained_preds
+% and type_spec pragmas.
+%
 
-parse_type_spec_pair(Term, TypeSpec) :-
-    Term = term.functor(term.atom("="), [TypeVarTerm, SpecTypeTerm], _),
-    TypeVarTerm = term.variable(TypeVar0, _),
-    term.coerce_var(TypeVar0, TypeVar),
-    % XXX We should call parse_type instead.
-    maybe_parse_type(no_allow_ho_inst_info(wnhii_pragma_type_spec),
-        SpecTypeTerm, SpecType),
-    TypeSpec = TypeVar - SpecType.
+:- pred parse_tvar_substs(why_no_ho_inst_info::in, list(format_piece)::in,
+    varset::in, term::in, list(term)::in, list(tvar_subst)::out,
+    list(error_spec)::in, list(error_spec)::out) is det.
+
+parse_tvar_substs(WNHII, ContextPieces, VarSet, HeadTerm, TailTerms,
+        TVarSubsts, !Specs) :-
+    TVarSubstCord0 = cord.init,
+    parse_tvar_subst_acc(WNHII, ContextPieces, VarSet,
+        HeadTerm, TVarSubstCord0, TVarSubstCord1, !Specs),
+    list.foldl2(parse_tvar_subst_acc(WNHII, ContextPieces, VarSet),
+        TailTerms, TVarSubstCord1, TVarSubstCord, !Specs),
+    TVarSubsts = cord.list(TVarSubstCord).
+
+:- pred parse_tvar_subst_acc(why_no_ho_inst_info::in, list(format_piece)::in,
+    varset::in, term::in,
+    cord(tvar_subst)::in, cord(tvar_subst)::out,
+    list(error_spec)::in, list(error_spec)::out) is det.
+
+parse_tvar_subst_acc(WNHII, ContextPieces, VarSet, Term,
+        !TVarSubstCord, !Specs) :-
+    ( if
+        Term = term.functor(term.atom(Atom), [TypeVarTerm, TypeTerm], _),
+        ( Atom = "=", AtomStr = "equals sign"
+        ; Atom = "=>", AtomStr = "arrow"
+        )
+    then
+        ( if TypeVarTerm = term.variable(TypeVar0, _) then
+            RHSPieces = [words("on the right hand side of the"),
+                words(AtomStr), suffix(":"), nl],
+            TypeContextPieces = cord.from_list(ContextPieces) ++
+                cord.from_list(RHSPieces),
+            parse_type(no_allow_ho_inst_info(WNHII), VarSet, TypeContextPieces,
+                TypeTerm, MaybeType),
+            (
+                MaybeType = ok1(Type),
+                % XXX Having Type be a type variable would not make sense.
+                % The reference manual does not prohibit it, but it does not
+                % explicitly allow it either.
+                %
+                % The two usual shapes of Type are
+                %
+                % - an arity-zero type constructor, and
+                % - an arity-N type constructor for N > 0 being applied
+                %   to N anonymous variables.
+                %
+                % A type containing more than one nested type constructor
+                % also makes sense. Types containing *named* variables can
+                % also make sense, but only if each such variable occurs
+                % exactly once not just in this tvar_subst, but in the list
+                % of one or more tvar_substs that a type_subst consists of.
+                % This is because repeated variables restrict the applicability
+                % of the type substitution in a way 
+                %
+                % XXX We should consider adding code here to check for
+                % the cases that do not make sense, *after* documenting
+                % those restrictions in the reference manual.
+                term.coerce_var(TypeVar0, TypeVar),
+                TVarSubst = tvar_subst(TypeVar, Type),
+                cord.snoc(TVarSubst, !TVarSubstCord)
+            ;
+                MaybeType = error1(TypeSpecs),
+                !:Specs = TypeSpecs ++ !.Specs
+            )
+        else
+            TypeVarTermStr = describe_error_term(VarSet, TypeVarTerm),
+            Pieces = ContextPieces ++
+                [words("on the left hand side of the"),
+                words(AtomStr), suffix(":"), nl,
+                words("error: expected a variable, got"),
+                quote(TypeVarTermStr), suffix("."), nl],
+            Spec = simplest_spec($pred, severity_error,
+                phase_term_to_parse_tree, get_term_context(TypeVarTerm),
+                Pieces),
+            !:Specs = [Spec | !.Specs]
+        )
+    else
+        TermStr = describe_error_term(VarSet, Term),
+        Pieces = ContextPieces ++
+            [words("error: expected a term of the form"), nl_indent_delta(1),
+            % XXX We should replace the = with => when we start recommending
+            % that syntax for both type_spec and type_spec_constrained_preds
+            % pragmas.
+            quote("V1 = <type1>"), suffix(","), nl_indent_delta(-11),
+            words("got"), quote(TermStr), suffix("."), nl],
+        Spec = simplest_spec($pred, severity_error, phase_term_to_parse_tree,
+            get_term_context(Term), Pieces),
+        !:Specs = [Spec | !.Specs]
+    ).
 
 %---------------------%
 

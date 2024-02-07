@@ -100,6 +100,7 @@ syn keyword mercuryPragma       promise_equivalent_clauses
 syn keyword mercuryPragma       source_file
 syn keyword mercuryPragma       terminates
 syn keyword mercuryPragma       type_spec
+syn keyword mercuryPragma       type_spec_constrained_preds
 
 syn keyword mercuryCInterface   foreign_code
 syn keyword mercuryCInterface   foreign_decl

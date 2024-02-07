@@ -241,6 +241,7 @@
     ;       inform_suboptimal_packing
     ;       print_error_spec_id
     ;       inform_ignored_pragma_errors
+    ;       inform_generated_type_spec_pragmas
 
     % Verbosity options
     ;       verbose
@@ -1321,6 +1322,7 @@ optdef(oc_warn, inform_inferred_modes,                  bool(yes)).
 optdef(oc_warn, inform_suboptimal_packing,              bool(no)).
 optdef(oc_warn, print_error_spec_id,                    bool(no)).
 optdef(oc_warn, inform_ignored_pragma_errors,           bool(no)).
+optdef(oc_warn, inform_generated_type_spec_pragmas,     bool(no)).
 
     % Verbosity options.
 
@@ -2244,6 +2246,8 @@ long_option("inform-inferred-modes",    inform_inferred_modes).
 long_option("inform-suboptimal-packing",    inform_suboptimal_packing).
 long_option("print-error-spec-id",      print_error_spec_id).
 long_option("inform-ignored-pragma-errors", inform_ignored_pragma_errors).
+long_option("inform-generated-type-spec-pragmas",
+                                        inform_generated_type_spec_pragmas).
 
 % verbosity options
 long_option("verbose",                  verbose).
@@ -3244,6 +3248,8 @@ long_option("singleton-2023-06-10",
 long_option("warn-obsolete-transform-2023-07-03",
                                     compiler_sufficiently_recent).
 long_option("gen-dep-ints-2023-10-15",
+                                    compiler_sufficiently_recent).
+long_option("tscp-2024-02-07",
                                     compiler_sufficiently_recent).
 long_option("experiment",           experiment).
 long_option("experiment1",          experiment1).
@@ -4448,6 +4454,10 @@ options_help_warning(Stream, !IO) :-
 %       "\tPrint an informational message for each otherwise-ignored error",
 %       "\tthat reports an inability to find the procedure that a pragma",
 %       "\trefers to."
+%       "--inform-generated-type-spec-pragmas",
+%       "\tPrint an informational message for each type_spec pragma that"
+%       "\tthe compiler generates to implement a type_spec_constrained_pred"
+%       "\tpragma.",
     ], !IO).
 
 :- pred options_help_verbosity(io.text_output_stream::in,

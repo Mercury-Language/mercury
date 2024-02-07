@@ -56,6 +56,7 @@ ERRORCHECK_PROGS = \
 	suspicious_foreign_code \
 	suspicious_recursion \
 	table_with_inline \
+	test_tscp \
 	unify_f_g \
 	unify_x_f_x \
 	unknown_warning \

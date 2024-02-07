@@ -26,7 +26,8 @@
 
 %---------------------------------------------------------------------------%
 
-:- func mercury_type_list_to_string(tvarset, list(mer_type)) = string.
+:- func mercury_types_to_string(tvarset, var_name_print, list(mer_type))
+    = string.
 
 :- func mercury_type_to_string(tvarset, var_name_print, mer_type) = string.
 :- pred mercury_output_type(tvarset::in, var_name_print::in, mer_type::in,
@@ -92,19 +93,20 @@
 
 %---------------------------------------------------------------------------%
 
-mercury_type_list_to_string(_, []) = "".
-mercury_type_list_to_string(VarSet, [Type | Types]) = String :-
-    HeadString = mercury_type_to_string(VarSet, print_name_only, Type),
-    TailString = mercury_comma_type_list_to_string(VarSet, Types),
-    String = HeadString ++ TailString.
+mercury_types_to_string(_, _, []) = "".
+mercury_types_to_string(VarSet, VarNamePrint, [Type | Types]) = Str :-
+    HeadStr = mercury_type_to_string(VarSet, VarNamePrint, Type),
+    TailStr = mercury_comma_types_to_string(VarSet, VarNamePrint, Types),
+    Str = HeadStr ++ TailStr.
 
-:- func mercury_comma_type_list_to_string(tvarset, list(mer_type)) = string.
+:- func mercury_comma_types_to_string(tvarset, var_name_print, list(mer_type))
+    = string.
 
-mercury_comma_type_list_to_string(_, []) = "".
-mercury_comma_type_list_to_string(VarSet, [Type | Types]) = String :-
-    HeadString = mercury_type_to_string(VarSet, print_name_only, Type),
-    TailString = mercury_comma_type_list_to_string(VarSet, Types),
-    String = ", " ++ HeadString ++ TailString.
+mercury_comma_types_to_string(_, _, []) = "".
+mercury_comma_types_to_string(VarSet, VarNamePrint, [Type | Types]) = Str :-
+    HeadStr = mercury_type_to_string(VarSet, VarNamePrint, Type),
+    TailStr = mercury_comma_types_to_string(VarSet, VarNamePrint, Types),
+    Str = ", " ++ HeadStr ++ TailStr.
 
 %---------------------------------------------------------------------------%
 

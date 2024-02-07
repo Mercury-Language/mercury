@@ -7048,6 +7048,13 @@ could be packed more tightly if they were reordered.
 @c Print an informational message for each otherwise-ignored error
 @c that reports an inability to find the procedure that a pragma refers to.
 
+@c @sp 1
+@c @item --inform-generated-type-spec-pragmas
+@c @findex --inform-generated-type-spec-pragmas
+@c Print an informational message for each @code{type_spec pragma} that
+@c the compiler generates to implement
+@c a @code{type_spec_constrained_pred} pragma.
+
 @end table
 
 @node Verbosity options

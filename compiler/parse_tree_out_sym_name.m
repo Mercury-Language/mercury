@@ -255,12 +255,25 @@ mercury_output_bracketed_sym_name_ngt(NextToGraphicToken, SymName,
 mercury_format_bracketed_sym_name_ngt(NextToGraphicToken, SymName, S, !U) :-
     (
         SymName = qualified(ModuleName, Name),
+        % XXX REDUNDANT PARENS
+%       (
+%           NextToGraphicToken = next_to_graphic_token,
+%           add_string("(", S, !U)
+%       ;
+%           NextToGraphicToken = not_next_to_graphic_token
+%       ),
         add_string("(", S, !U),
         mercury_format_bracketed_sym_name_ngt(next_to_graphic_token,
             ModuleName, S, !U),
         add_string(".", S, !U),
         mercury_format_bracketed_atom(next_to_graphic_token, Name, S, !U),
         add_string(")", S, !U)
+%       (
+%           NextToGraphicToken = next_to_graphic_token,
+%           add_string(")", S, !U)
+%       ;
+%           NextToGraphicToken = not_next_to_graphic_token
+%       )
     ;
         SymName = unqualified(Name),
         mercury_format_bracketed_atom(NextToGraphicToken, Name, S, !U)

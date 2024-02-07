@@ -1734,7 +1734,7 @@ get_purity_from_attrs(Context, [PurityAttr | PurityAttrs], MaybePurity) :-
 get_class_context_and_inst_constraints_from_attrs(ModuleName, VarSet,
         QuantConstrAttrs, ContextPieces, MaybeExistClassInstContext) :-
     % When we reach here, QuantConstrAttrs contains declaration attributes
-    % in the outermost to innermost order.
+    % in outermost to innermost order.
     %
     % Constraints and quantifiers should occur in the following order,
     % outermost to innermost:
@@ -1748,14 +1748,14 @@ get_class_context_and_inst_constraints_from_attrs(ModuleName, VarSet,
     %   5. the decl itself          pred or func    700
     %
     % [*] Note that the semantic meaning of `=>' is not quite the same
-    % as implication; logically speaking it's more like conjunction.
+    % as implication; logically speaking, it is more like conjunction.
     % Oh well, at least it has the right precedence.
     %
-    % In theory it could make sense to allow the order of 2 & 3 to be
-    % swapped, or (in the case of multiple constraints & multiple
-    % quantifiers) to allow arbitrary interleaving of 2 & 3, but in
-    % practice it seems there would be little benefit in allowing that
-    % flexibility, so we don't.
+    % In theory, it could make sense to allow the order of 2 & 3 to be
+    % swapped, or (in the case of multiple constraints and multiple
+    % quantifiers) to allow arbitrary interleaving of 2 & 3, but in practice
+    % it seems there would be little benefit in allowing that flexibility,
+    % so we don't.
     %
     % NOTE We do NOT check that the order above is actually followed.
     %

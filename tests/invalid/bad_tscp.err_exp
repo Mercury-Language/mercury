@@ -1,0 +1,30 @@
+bad_tscp.m:054: Error: in the third argument of a
+bad_tscp.m:054:   `:- pragma type_spec_constrained_preds' declaration:
+bad_tscp.m:054:   in the second substitution:
+bad_tscp.m:054:   any type variables that occur on the right hand side of a
+bad_tscp.m:054:   substitution must be anonymous, but Y is not.
+bad_tscp.m:069: Error: in the third argument of a
+bad_tscp.m:069:   `:- pragma type_spec_constrained_preds' declaration:
+bad_tscp.m:069:   in the first substitution:
+bad_tscp.m:069:   the left-hand-side type variable Unit must occur in the
+bad_tscp.m:069:   constraints listed in the first argument, but it does not.
+bad_tscp.m:069: Error: in the third argument of a
+bad_tscp.m:069:   `:- pragma type_spec_constrained_preds' declaration:
+bad_tscp.m:069:   in the first substitution:
+bad_tscp.m:069:   any type variables that occur on the right hand side of a
+bad_tscp.m:069:   substitution must be anonymous, but T is not.
+bad_tscp.m:069: Error: in the third argument of a
+bad_tscp.m:069:   `:- pragma type_spec_constrained_preds' declaration:
+bad_tscp.m:069:   in the second substitution:
+bad_tscp.m:069:   the left-hand-side type variables Unit and Xyzzy must occur
+bad_tscp.m:069:   in the constraints listed in the first argument, but they do
+bad_tscp.m:069:   not.
+bad_tscp.m:069: Error: in the third argument of a
+bad_tscp.m:069:   `:- pragma type_spec_constrained_preds' declaration:
+bad_tscp.m:069:   in the second substitution:
+bad_tscp.m:069:   any type variables that occur on the right hand side of a
+bad_tscp.m:069:   substitution must be anonymous, but U, K and V are not.
+bad_tscp.m:072: In the third argument of a
+bad_tscp.m:072:   `:- pragma type_spec_constrained_preds' declaration:
+bad_tscp.m:072:   on the left hand side of the arrow:
+bad_tscp.m:072:   error: expected a variable, got `set(U)'.

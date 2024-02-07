@@ -1441,6 +1441,12 @@
     --->    item_typeclass_info(
                 tc_class_name                   :: class_name,
                 tc_class_params                 :: list(tvar),
+                % The argument list of every superclass constraint
+                % must be either a type variable, or a ground type.
+                % This is enforced by parse_superclass_constraints
+                % in parse_class.m.
+                % XXX We should consider changing the type of this field
+                % from list(prog_constraint) to list(var_or_ground_constraint).
                 tc_superclasses                 :: list(prog_constraint),
                 tc_fundeps                      :: list(prog_fundep),
                 tc_class_methods                :: class_interface,
@@ -2471,6 +2477,7 @@
     --->    decl_pragma_obsolete_pred(decl_pragma_obsolete_pred_info)
     ;       decl_pragma_obsolete_proc(decl_pragma_obsolete_proc_info)
     ;       decl_pragma_format_call(decl_pragma_format_call_info)
+    ;       decl_pragma_type_spec_constr(decl_pragma_type_spec_constr_info)
     ;       decl_pragma_type_spec(decl_pragma_type_spec_info)
     ;       decl_pragma_oisu(decl_pragma_oisu_info)
     ;       decl_pragma_termination(decl_pragma_termination_info)
@@ -2523,6 +2530,64 @@
                 format_seq_num          :: item_seq_num
             ).
 
+:- type decl_pragma_type_spec_constr_info
+    --->    decl_pragma_type_spec_constr_info(
+                % The name of the module from whose (source or interface) file
+                % we read the type_spec_constrained_preds pragma. This will
+                % always name the module that contains the pragma, because
+                % we never put a type_spec_constrained_preds pragma into
+                % any interface file other than an interface file of the
+                % module containing the pragma.
+                tsc_module_name         :: module_name,
+
+                % The list of constraints in the first argument of the pragma.
+                % The pragma asks for the type specialization of any predicates
+                % whose class context includes any nonempty subset of these
+                % constraints, and possibly (see the next field) their
+                % superclasses, as instances.
+                tsc_constraints     :: one_or_more(var_or_ground_constraint),
+
+                % The second argument of the pragma, which specifies whether
+                % the constraints in the first argument also implicitly specify
+                % their superclasses, *their* superclasses, and so on.
+                % If e.g. tc1(A, B, C) has tc2(A, B) as one of its
+                % superclasses, then a setting of apply_to_supers in this field
+                % means that the pragma asks us to specialize not only
+                % predicates whose class context includes tc1(A, char, B)
+                % (if that is has as its instance of one of the constraints),
+                % but also e.g. tc2(A, char).
+                tsc_apply_to_supers     :: maybe_apply_to_supers,
+
+                % The third argument of the pragma, which specifies the list
+                % of type substitutions for which the pragma asks us to create
+                % type-specialized versions of each predicate that matches
+                % the requirements described by the first and second args.
+                %
+                % Each type var on the left-hand-side of a substitution
+                % must occur in tsc_constraints, while all type vars that
+                % occur in a type on the right-hand-side of a substitution
+                % must be anonymous. These requirements are enforced by the
+                % code that parses these pragmas.
+                tsc_tsubst              :: one_or_more(type_subst),
+
+                % The varset of the term containing the pragma, coerced
+                % to being a tvarset (since all variables in the pragma
+                % are type variables).
+                %
+                % All variables in this tvarset have to have explicit names.
+                % If the original pragma contains anonymous variables, the
+                % code constructing this decl_pragma_type_spec will give
+                % those variable names. See the comment on the tspec_tvarset
+                % field below for the reason behind this requirement.
+                tsc_tvarset             :: tvarset,
+
+                % The equivalence types used.
+                tsc_items               :: set(recomp_item_id),
+
+                tsc_context             :: prog_context,
+                tsc_seq_num             :: item_seq_num
+            ).
+
 :- type decl_pragma_type_spec_info
     --->    decl_pragma_type_spec_info(
                 tspec_pfumm             :: pred_func_or_unknown_maybe_modes,
@@ -2532,7 +2597,7 @@
 
                 % The name of the module from whose (source or interface) file
                 % we read the type_spec pragma. This will always name
-                % the module that contain the pragma, because we never put
+                % the module that contains the pragma, because we never put
                 % a type_spec pragma into any interface file other than
                 % an interface file of the module containing the pragma.
                 tspec_module_name       :: module_name,
@@ -2579,6 +2644,21 @@
                 tspec_context           :: prog_context,
                 tspec_seq_num           :: item_seq_num
             ).
+
+:- type var_or_ground_constraint
+    --->    var_or_ground_constraint(
+                class_name,
+                list(var_or_ground_type),
+                prog_context
+            ).
+
+:- type var_or_ground_type
+    --->    type_var_name(tvar, string)
+    ;       ground_type(ground_type).
+
+:- type maybe_apply_to_supers
+    --->    do_not_apply_to_supers
+    ;       apply_to_supers.
 
 :- type decl_pragma_oisu_info
     --->    decl_pragma_oisu_info(
@@ -3493,6 +3573,9 @@ get_decl_pragma_context(DeclPragma) = Context :-
     ;
         DeclPragma = decl_pragma_format_call(FormatCall),
         Context = FormatCall ^ format_context
+    ;
+        DeclPragma = decl_pragma_type_spec_constr(TypeSpecConstr),
+        Context = TypeSpecConstr ^ tsc_context
     ;
         DeclPragma = decl_pragma_type_spec(TypeSpec),
         Context = TypeSpec ^ tspec_context

@@ -31,8 +31,8 @@
     % No kind checking is done, since it is assumed that kind errors
     % will be picked up elsewhere.
     %
-:- pred type_unify(mer_type::in, mer_type::in, list(tvar)::in, tsubst::in,
-    tsubst::out) is semidet.
+:- pred type_unify(mer_type::in, mer_type::in, list(tvar)::in,
+    tsubst::in, tsubst::out) is semidet.
 
 :- pred type_unify_list(list(mer_type)::in, list(mer_type)::in, list(tvar)::in,
     tsubst::in, tsubst::out) is semidet.

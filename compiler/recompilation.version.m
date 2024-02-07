@@ -91,6 +91,7 @@
 :- import_module parse_tree.parse_tree_out_term.
 :- import_module parse_tree.parse_tree_to_term.
 :- import_module parse_tree.parse_util.
+:- import_module parse_tree.prog_data_pragma.
 :- import_module parse_tree.prog_type.
 :- import_module parse_tree.prog_type_subst.
 :- import_module parse_tree.prog_type_unify.
@@ -957,6 +958,14 @@ distribute_pragma_items_class_items(MaybePredOrFunc, SymName, Arity,
 
 gather_decl_pragma_for_what_pf_id(DeclPragma, MaybePredOrFuncId) :-
     (
+        DeclPragma = decl_pragma_type_spec_constr(_TypeSpecConstr),
+        % XXX Unlike all the other decl_pragmas, the type_spec_constr
+        % pragma is not about a single specified predicate or function,
+        % but about all predicates and functions that have a specified
+        % set of constraints in their signature. That set is computed later,
+        % when we add this pragma to the HLDS.
+        MaybePredOrFuncId = no
+    ;
         DeclPragma = decl_pragma_type_spec(TypeSpec),
         TypeSpec = decl_pragma_type_spec_info(PFUMM, Name, _, _, _, _, _, _),
         pfumm_to_maybe_pf_arity_maybe_modes(PFUMM, MaybePredOrFunc,
@@ -1423,25 +1432,32 @@ is_decl_pragma_changed(DeclPragma1, DeclPragma2, Changed) :-
             FormatCall1 = decl_pragma_format_call_info(A, B, _, _),
             FormatCall2 = decl_pragma_format_call_info(A, B, _, _)
         ;
+            DeclPragma1 = decl_pragma_type_spec_constr(TypeSpecConstr1),
+            DeclPragma2 = decl_pragma_type_spec_constr(TypeSpecConstr2),
+            TypeSpecConstr1 = decl_pragma_type_spec_constr_info(ModuleName,
+                OoMConstraints1, ApplyToSupers1, OoMTypeSubsts1, TVarSet1,
+                _, _, _),
+            TypeSpecConstr2 = decl_pragma_type_spec_constr_info(ModuleName,
+                OoMConstraints2, ApplyToSupers2, OoMTypeSubsts2, TVarSet2,
+                _, _, _),
+            ApplyToSupers1 = ApplyToSupers2,
+            Constraints1 = one_or_more_to_list(OoMConstraints1),
+            Constraints2 = one_or_more_to_list(OoMConstraints2),
+            is_any_var_or_ground_constraint_changed(TVarSet1, TVarSet2,
+                Constraints1, Constraints2, unchanged),
+            TypeSubsts1 = one_or_more_to_list(OoMTypeSubsts1),
+            TypeSubsts2 = one_or_more_to_list(OoMTypeSubsts2),
+            is_any_type_subst_changed(TVarSet1, TVarSet2,
+                TypeSubsts1, TypeSubsts2, unchanged)
+        ;
             DeclPragma1 = decl_pragma_type_spec(TypeSpec1),
             DeclPragma2 = decl_pragma_type_spec(TypeSpec2),
             TypeSpec1 = decl_pragma_type_spec_info(PFUMM, Name, SpecName,
                 TypeSubst1, TVarSet1, _, _, _),
             TypeSpec2 = decl_pragma_type_spec_info(PFUMM, Name, SpecName,
                 TypeSubst2, TVarSet2, _, _, _),
-            assoc_list.keys_and_values(one_or_more_to_list(TypeSubst1),
-                TVars1, Types1),
-            assoc_list.keys_and_values(one_or_more_to_list(TypeSubst2),
-                TVars2, Types2),
-            % XXX kind inference:
-            % we assume vars have kind `star'.
-            KindMap = map.init,
-            prog_type.var_list_to_type_list(KindMap, TVars1, TVarTypes1),
-            prog_type.var_list_to_type_list(KindMap, TVars2, TVarTypes2),
-            type_list_is_unchanged(
-                TVarSet1, TVarTypes1 ++ Types1,
-                TVarSet2, TVarTypes2 ++ Types2,
-                _, _, _)
+            is_type_subst_changed(TVarSet1, TVarSet2, TypeSubst1, TypeSubst2,
+                unchanged)
         ;
             DeclPragma1 = decl_pragma_oisu(OISU1),
             DeclPragma2 = decl_pragma_oisu(OISU2),
@@ -1616,7 +1632,7 @@ pred_or_func_type_is_unchanged(TVarSet1, ExistQVars1, TypesAndMaybeModes1,
         AllTypes2 = Types2
     ),
 
-    type_list_is_unchanged(TVarSet1, AllTypes1, TVarSet2, AllTypes2,
+    type_list_is_unchanged(TVarSet1, TVarSet2, AllTypes1, AllTypes2,
         _TVarSet, Renaming, Types2ToTypes1Subst),
 
     % Check that the existentially quantified variables are equivalent.
@@ -1645,11 +1661,104 @@ pred_or_func_type_is_unchanged(TVarSet1, ExistQVars1, TypesAndMaybeModes1,
         RenamedConstraints2, SubstConstraints2),
     Constraints1 = SubstConstraints2.
 
-:- pred type_list_is_unchanged(tvarset::in, list(mer_type)::in,
-    tvarset::in, list(mer_type)::in, tvarset::out,
-    tvar_renaming::out, tsubst::out) is semidet.
+:- pred is_any_var_or_ground_constraint_changed(tvarset::in, tvarset::in,
+    list(var_or_ground_constraint)::in, list(var_or_ground_constraint)::in,
+    maybe_changed::out) is det.
 
-type_list_is_unchanged(TVarSet1, Types1, TVarSet2, Types2,
+is_any_var_or_ground_constraint_changed(_, _, [], [], unchanged).
+is_any_var_or_ground_constraint_changed(_, _, [], [_ | _], changed).
+is_any_var_or_ground_constraint_changed(_, _, [_ | _], [], changed).
+is_any_var_or_ground_constraint_changed(TVarSet1, TVarSet2,
+        [Constraint1 | Constraints1], [Constraint2 | Constraints2], Changed) :-
+    is_var_or_ground_constraint_changed(TVarSet1, TVarSet2,
+        Constraint1, Constraint2, HeadChanged),
+    (
+        HeadChanged = changed,
+        Changed = changed
+    ;
+        HeadChanged = unchanged,
+        is_any_var_or_ground_constraint_changed(TVarSet1, TVarSet2,
+            Constraints1, Constraints2, Changed)
+    ).
+
+:- pred is_var_or_ground_constraint_changed(tvarset::in, tvarset::in,
+    var_or_ground_constraint::in, var_or_ground_constraint::in,
+    maybe_changed::out) is det.
+
+is_var_or_ground_constraint_changed(TVarSet1, TVarSet2,
+        Constraint1, Constraint2, Changed) :-
+    Constraint1 = var_or_ground_constraint(ClassName1, Args1, _),
+    Constraint2 = var_or_ground_constraint(ClassName2, Args2, _),
+    VarOrGroundToType =
+        ( pred(Arg::in, Type::out) is det :-
+            (
+                Arg = type_var_name(TVar, _),
+                Type = type_variable(TVar, kind_star)
+            ;
+                Arg = ground_type(GroundType),
+                Type = coerce(GroundType)
+            )
+        ),
+    list.map(VarOrGroundToType, Args1, ArgTypes1),
+    list.map(VarOrGroundToType, Args2, ArgTypes2),
+    ( if
+        ClassName1 = ClassName2,
+        type_list_is_unchanged(TVarSet1, TVarSet2, ArgTypes1, ArgTypes2,
+            _, _, _)
+    then
+        Changed = unchanged
+    else
+        Changed = changed
+    ).
+
+:- pred is_any_type_subst_changed(tvarset::in, tvarset::in,
+    list(type_subst)::in, list(type_subst)::in, maybe_changed::out) is det.
+
+is_any_type_subst_changed(_, _, [], [], unchanged).
+is_any_type_subst_changed(_, _, [], [_ | _], changed).
+is_any_type_subst_changed(_, _, [_ | _], [], changed).
+is_any_type_subst_changed(TVarSet1, TVarSet2,
+        [TypeSubst1 | TypeSubsts1], [TypeSubst2 | TypeSubsts2], Changed) :-
+    is_type_subst_changed(TVarSet1, TVarSet2,
+        TypeSubst1, TypeSubst2, HeadChanged),
+    (
+        HeadChanged = changed,
+        Changed = changed
+    ;
+        HeadChanged = unchanged,
+        is_any_type_subst_changed(TVarSet1, TVarSet2,
+            TypeSubsts1, TypeSubsts2, Changed)
+    ).
+
+:- pred is_type_subst_changed(tvarset::in, tvarset::in,
+    type_subst::in, type_subst::in, maybe_changed::out) is det.
+
+is_type_subst_changed(TVarSet1, TVarSet2, TypeSubst1, TypeSubst2, Changed) :-
+    GetVarType =
+        ( pred(tvar_subst(TVar, Type)::in, TVar::out, Type::out) is det ),
+    list.map2(GetVarType, one_or_more_to_list(TypeSubst1),
+        TVars1, Types1),
+    list.map2(GetVarType, one_or_more_to_list(TypeSubst2),
+        TVars2, Types2),
+    % XXX kind inference:
+    % we assume vars have kind `star'.
+    KindMap = map.init,
+    prog_type.var_list_to_type_list(KindMap, TVars1, TVarTypes1),
+    prog_type.var_list_to_type_list(KindMap, TVars2, TVarTypes2),
+    ( if
+        type_list_is_unchanged(TVarSet1, TVarSet2,
+            TVarTypes1 ++ Types1, TVarTypes2 ++ Types2, _, _, _)
+    then
+        Changed = unchanged
+    else
+        Changed = changed
+    ).
+
+:- pred type_list_is_unchanged(tvarset::in, tvarset::in,
+    list(mer_type)::in, list(mer_type)::in,
+    tvarset::out, tvar_renaming::out, tsubst::out) is semidet.
+
+type_list_is_unchanged(TVarSet1, TVarSet2, Types1, Types2,
         TVarSet, Renaming, Types2ToTypes1Subst) :-
     tvarset_merge_renaming(TVarSet1, TVarSet2, TVarSet, Renaming),
     apply_variable_renaming_to_type_list(Renaming, Types2, SubstTypes2),

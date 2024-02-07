@@ -2347,7 +2347,7 @@ report_abstract_instance_without_concrete(ClassId, InstanceDefn, !Specs) :-
     ClassNameString = sym_name_to_string(ClassName),
     Types = InstanceDefn ^ instdefn_types,
     TVarSet = InstanceDefn ^ instdefn_tvarset,
-    TypesStr = mercury_type_list_to_string(TVarSet, Types),
+    TypesStr = mercury_types_to_string(TVarSet, print_name_only, Types),
     string.format("%s(%s)", [s(ClassNameString), s(TypesStr)], InstanceName),
     Pieces = [words("Error: this abstract instance declaration"),
         words("for"), quote(InstanceName),
@@ -2724,7 +2724,7 @@ instance_name(WhichTypes, Limit, Quals, ClassId, InstanceDefn)
                 Types0, Types)
         ),
         TVarSet = InstanceDefn ^ instdefn_tvarset,
-        TypesStr = mercury_type_list_to_string(TVarSet, Types),
+        TypesStr = mercury_types_to_string(TVarSet, print_name_only, Types),
         string.format("%s(%s)", [s(ClassNameStr), s(TypesStr)], InstanceName)
     ).
 

@@ -65,8 +65,8 @@ write_classes(Info, Stream, ClassTable, !IO) :-
     pair(class_id, hlds_class_defn)::in, io::di, io::uo) is det.
 
 write_class_defn(Info, Stream, ClassId - ClassDefn, !IO) :-
-    ClassDefn = hlds_class_defn(_, TVarSet, _, Vars, Constraints, FunDeps,
-        _, _, MethodInfos, Context, _),
+    ClassDefn = hlds_class_defn(_, TVarSet, _, Vars, SuperClassConstraints,
+        FunDeps, _, _, MethodInfos, Context, _),
 
     io.format(Stream, "\n%% %s:\n", [s(class_id_to_string(ClassId))], !IO),
     maybe_output_context_comment(Stream, 0u, "", Context, !IO),
@@ -84,12 +84,12 @@ write_class_defn(Info, Stream, ClassId - ClassDefn, !IO) :-
     io.write_string(Stream, "% Functional dependencies:\n", !IO),
     list.foldl(hlds_output_fundep(Stream, IndentStr), FunDeps, !IO),
 
-    io.write_string(Stream, "% Constraints:\n", !IO),
+    io.write_string(Stream, "% Superclass constraints:\n", !IO),
     list.foldl(
         hlds_output_constraint(Stream, IndentStr, TVarSet, VarNamePrint),
-        Constraints, !IO),
+        SuperClassConstraints, !IO),
 
-    io.write_string(Stream, "% Class Methods:\n", !IO),
+    io.write_string(Stream, "% Class methods:\n", !IO),
     list.foldl(write_method_info(Stream, IndentStr), MethodInfos, !IO).
 
 :- pred hlds_output_fundep(io.text_output_stream::in, string::in,

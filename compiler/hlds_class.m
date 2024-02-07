@@ -62,6 +62,12 @@
                 classdefn_vars              :: list(tvar),
 
                 % SuperClasses.
+                %
+                % Every type appearing in every superclass constraint must be
+                % either a type variable, or a ground type; types containing
+                % both type variables and type constructors are not allowed.
+                % This is enforced by parse_superclass_constraints in
+                % parse_class.m.
                 classdefn_supers            :: list(prog_constraint),
 
                 % Functional dependencies.

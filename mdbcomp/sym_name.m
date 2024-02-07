@@ -100,12 +100,14 @@
     %
 :- pred det_list_to_sym_name(list(string)::in, sym_name::out) is det.
 
-    % is_submodule(SymName1, SymName2):
+    % is_same_module_or_submodule(ModuleName1, ModuleName2):
     %
-    % True iff SymName1 is a submodule of SymName2.
-    % For example mod1.mod2.mod3 is a submodule of mod1.mod2.
+    % True iff ModuleName1 is either the same as ModuleName2,
+    % or is a submodule of ModuleName2. For example, mod1.mod2.mod3
+    % is a submodule of mod1.mod2.
     %
-:- pred is_submodule(module_name::in, module_name::in) is semidet.
+:- pred is_same_module_or_submodule(module_name::in, module_name::in)
+    is semidet.
 
     % Given a symbol name, return its unqualified name.
     %
@@ -333,9 +335,9 @@ list_to_sym_name_loop(RevNames, SymName) :-
 
 %---------------------------------------------------------------------------%
 
-is_submodule(SymName, SymName).
-is_submodule(qualified(SymNameA, _), SymNameB) :-
-    is_submodule(SymNameA, SymNameB).
+is_same_module_or_submodule(ModuleName, ModuleName).
+is_same_module_or_submodule(qualified(ModuleNameA, _), ModuleNameB) :-
+    is_same_module_or_submodule(ModuleNameA, ModuleNameB).
 
 %---------------------------------------------------------------------------%
 

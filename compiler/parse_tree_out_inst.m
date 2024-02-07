@@ -51,6 +51,8 @@
 
 %---------------------------------------------------------------------------%
 
+:- func mercury_constrained_inst_vars_to_string(output_lang, inst_varset,
+    set(inst_var), mer_inst) = string.
 :- pred mercury_format_constrained_inst_vars(output_lang::in, inst_varset::in,
     set(inst_var)::in, mer_inst::in, S::in, U::di, U::uo) is det
     <= pt_output(S, U).
@@ -342,6 +344,12 @@ mercury_format_inst_name(Lang, InstVarSet, InstName, S, !U) :-
     ).
 
 %---------------------------------------------------------------------------%
+
+mercury_constrained_inst_vars_to_string(Lang, InstVarSet, Vars, Inst) = Str :-
+    State0 = string.builder.init,
+    mercury_format_constrained_inst_vars(Lang, InstVarSet, Vars, Inst,
+        string.builder.handle, State0, State),
+    Str = string.builder.to_string(State).
 
 mercury_format_constrained_inst_vars(Lang, InstVarSet, !.Vars, Inst, S, !U) :-
     ( if set.remove_least(Var, !Vars) then

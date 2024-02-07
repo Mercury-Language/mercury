@@ -767,7 +767,7 @@ find_any_missing_ancestor_imports(CurrentModule, ParentOrAncestor,
                 % Is ParentModule the same as CurrentModule, or a parent
                 % or an ancestor of CurrentModule? If yes, then CurrentModule
                 % imports it implicitly.
-                is_submodule(CurrentModule, ParentModule)
+                is_same_module_or_submodule(CurrentModule, ParentModule)
             )
         then
             true

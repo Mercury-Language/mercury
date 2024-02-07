@@ -2297,6 +2297,7 @@ handle_stack_layout_options(!Globals, OT_OptDups0, OT_OptDups,
     %   transitive_optimization
     %   warn_wrong_module_name
     %   warn_unused_interface_imports
+    %   inform_generated_type_spec_pragmas
     %
 :- pred handle_opmode_implications(op_mode::in,
     globals::in, globals::out) is det.
@@ -2304,6 +2305,8 @@ handle_stack_layout_options(!Globals, OT_OptDups0, OT_OptDups,
 handle_opmode_implications(OpMode, !Globals) :-
     % Disable `--smart-recompilation' unless we are generating target code.
     globals.lookup_bool_option(!.Globals, smart_recompilation, Smart0),
+    globals.lookup_bool_option(!.Globals, inform_generated_type_spec_pragmas,
+        Inform0),
     (
         OpMode = opm_top_args(OpModeArgs, _),
         % Disable --line-numbers when building the `.int', `.opt', etc. files,
@@ -2334,7 +2337,8 @@ handle_opmode_implications(OpMode, !Globals) :-
                 globals.set_option(generate_item_version_numbers,
                     bool(no), !Globals)
             ),
-            Smart = bool.no
+            Smart = bool.no,
+            Inform = bool.no
         ;
             OpModeArgs = opma_augment(OpModeAugment),
             (
@@ -2343,7 +2347,8 @@ handle_opmode_implications(OpMode, !Globals) :-
                 globals.lookup_bool_option(!.Globals, halt_at_warn_make_opt,
                     HaltAtWarn),
                 globals.set_option(halt_at_warn, bool(HaltAtWarn), !Globals),
-                Smart = bool.no
+                Smart = bool.no,
+                Inform = bool.no
             ;
                 OpModeAugment = opmau_make_trans_opt,
                 globals.set_option(transitive_optimization, bool(yes),
@@ -2352,39 +2357,65 @@ handle_opmode_implications(OpMode, !Globals) :-
                 globals.lookup_bool_option(!.Globals, halt_at_warn_make_opt,
                     HaltAtWarn),
                 globals.set_option(halt_at_warn, bool(HaltAtWarn), !Globals),
-                Smart = bool.no
+                Smart = bool.no,
+                Inform = bool.no
             ;
                 ( OpModeAugment = opmau_make_analysis_registry
                 ; OpModeAugment = opmau_make_xml_documentation
                 ; OpModeAugment = opmau_typecheck_only
-                ; OpModeAugment = opmau_errorcheck_only
                 ),
-                Smart = bool.no
+                Smart = bool.no,
+                Inform = bool.no
+            ;
+                OpModeAugment = opmau_errorcheck_only,
+                Smart = bool.no,
+                % We execute all the tests in tests/warnings with
+                % --errorcheck-only.
+                Inform = Inform0
             ;
                 OpModeAugment = opmau_generate_code(_),
-                Smart = Smart0
+                Smart = Smart0,
+                Inform = Inform0
             )
         ;
             ( OpModeArgs = opma_generate_dependencies(_)
             ; OpModeArgs = opma_generate_dependency_file
             ; OpModeArgs = opma_convert_to_mercury
             ),
-            Smart = bool.no
+            Smart = bool.no,
+            Inform = bool.no
         )
     ;
         OpMode = opm_top_generate_source_file_mapping,
         % Without an existing source file mapping, there is no "right"
         % module name.
         globals.set_option(warn_wrong_module_name, bool(no), !Globals),
-        Smart = bool.no
+        Smart = bool.no,
+        Inform = bool.no
     ;
         ( OpMode = opm_top_generate_standalone_interface(_)
         ; OpMode = opm_top_query(_)
         ; OpMode = opm_top_make
         ),
-        Smart = bool.no
+        Smart = bool.no,
+        Inform = bool.no
     ),
-    globals.set_option(smart_recompilation, bool(Smart), !Globals).
+    % We do this here instead of replacing all the "Smart = bool.no"s above
+    % with a call to globals.set_option, because this way, we would get an
+    % error message from the compiler if we added a new op_mode and failed to
+    % explicitly consider what the value of Smart should be in its switch arm.
+    ( if Smart = Smart0 then
+        true
+    else
+        globals.set_option(smart_recompilation, bool(Smart), !Globals)
+    ),
+    % Thet consideration applies here as well.
+    ( if Inform = Inform0 then
+        true
+    else
+        globals.set_option(inform_generated_type_spec_pragmas, bool(Inform),
+            !Globals)
+    ).
 
 %---------------------%
 

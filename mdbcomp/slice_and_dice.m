@@ -976,14 +976,16 @@ format_float(DecimalPlaces, Flt) =
 
 :- pred proc_label_is_for_module(string::in, proc_label::in) is semidet.
 
-proc_label_is_for_module(Module, ProcLabel) :-
+proc_label_is_for_module(ModuleNameStr, ProcLabel) :-
     (
-        ProcLabel = ordinary_proc_label(_, _, ProcSymModule, _, _, _)
+        ProcLabel = ordinary_proc_label(_, _, ProcModuleName, _, _, _)
     ;
-        ProcLabel = special_proc_label(_, _, ProcSymModule, _, _, _)
+        ProcLabel = special_proc_label(_, _, ProcModuleName, _, _, _)
     ),
-    SymModule = string_to_sym_name(Module),
-    is_submodule(ProcSymModule, SymModule).
+    ModuleName = string_to_sym_name(ModuleNameStr),
+    % XXX Why are we saying that ProcLabel is for ModuleNameStr if it
+    % specifies the name of a module that is a *submodule* of ModuleNameStr?
+    is_same_module_or_submodule(ProcModuleName, ModuleName).
 
 :- func format_proc_label(proc_label) = string.
 

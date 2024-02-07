@@ -21,7 +21,7 @@
 :- mode my_unify(out, in) is det.
 
 :- pragma no_inline(my_unify/2).
-:- pragma type_spec(my_unify(in, in), T = list(int)).
+:- pragma type_spec(my_unify(in, in), subst([T = list(int)])).
 :- pragma type_spec(my_unify(in, in), T = int).
 :- pragma type_spec(my_unify(in, out), T = int).
 :- pragma type_spec(my_unify(out, in), T = list(int)).

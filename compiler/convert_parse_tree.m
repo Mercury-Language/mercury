@@ -1161,6 +1161,7 @@ classify_plain_opt_items([Item | Items], !TypeDefns, !ForeignEnums,
             ( DeclPragma = decl_pragma_obsolete_pred(_)
             ; DeclPragma = decl_pragma_obsolete_proc(_)
             ; DeclPragma = decl_pragma_format_call(_)
+            ; DeclPragma = decl_pragma_type_spec_constr(_)
             ; DeclPragma = decl_pragma_oisu(_)
             ),
             Pieces = [words("A .opt file may not contain")] ++
@@ -1400,6 +1401,7 @@ classify_trans_opt_items([Item | Items], !TermInfos, !Term2Infos,
             ; DeclPragma = decl_pragma_obsolete_proc(_)
             ; DeclPragma = decl_pragma_format_call(_)
             ; DeclPragma = decl_pragma_type_spec(_)
+            ; DeclPragma = decl_pragma_type_spec_constr(_)
             ; DeclPragma = decl_pragma_oisu(_)
             ),
             Pieces = [words("A .trans_opt file may not contain")] ++

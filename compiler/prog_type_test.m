@@ -68,9 +68,11 @@
 %---------------------------------------------------------------------------%
 
     % Succeeds iff the given type is ground (that is, contains no type
-    % variables).
+    % variables). The second version returns the input type with a form
+    % that expresses its groundness in its own type.
     %
 :- pred type_is_ground(mer_type::in) is semidet.
+:- pred type_is_ground(mer_type::in, ground_type::out) is semidet.
 
     % Succeeds iff the given type contains no type variables except
     % for those in the given list.
@@ -173,6 +175,42 @@ type_is_higher_order_details_det(Type, !:Purity, !:PredOrFunc, !:EvalMethod,
 
 type_is_ground(Type) :-
     not type_contains_var(Type, _).
+
+type_is_ground(Type, GroundType) :-
+    require_complete_switch [Type]
+    (
+        ( Type = type_variable(_TVar, _)
+        ; Type = apply_n_type(_TVar, _, _)
+        ),
+        fail
+    ;
+        Type = builtin_type(BuiltinType),
+        GroundType = builtin_type(BuiltinType)
+    ;
+        Type = defined_type(SymName, ArgTypes, Kind),
+        types_are_ground(ArgTypes, GroundArgTypes),
+        GroundType = defined_type(SymName, GroundArgTypes, Kind)
+    ;
+        Type = tuple_type(ArgTypes, Kind),
+        types_are_ground(ArgTypes, GroundArgTypes),
+        GroundType = tuple_type(GroundArgTypes, Kind)
+    ;
+        Type = higher_order_type(PorF, ArgTypes, HoInstInfo, Purity, EM),
+        types_are_ground(ArgTypes, GroundArgTypes),
+        GroundType = higher_order_type(PorF, GroundArgTypes, HoInstInfo,
+            Purity, EM)
+    ;
+        Type = kinded_type(SubType, Kind),
+        type_is_ground(SubType, GroundSubType),
+        GroundType = kinded_type(GroundSubType, Kind)
+    ).
+
+:- pred types_are_ground(list(mer_type)::in, list(ground_type)::out) is semidet.
+
+types_are_ground([], []).
+types_are_ground([Type | Types], [GroundType | GroundTypes]) :-
+    type_is_ground(Type, GroundType),
+    types_are_ground(Types, GroundTypes).
 
 type_is_ground_except_vars(Type, Except) :-
     all [TVar] (

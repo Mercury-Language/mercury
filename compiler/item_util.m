@@ -1573,6 +1573,10 @@ decl_pragma_desc_pieces(Pragma) = Pieces :-
         Pragma = decl_pragma_format_call(_),
         Pieces = [pragma_decl("format_call"), words("declaration")]
     ;
+        Pragma = decl_pragma_type_spec_constr(_),
+        Pieces = [pragma_decl("type_spec_constrained_preds"),
+            words("declaration")]
+    ;
         Pragma = decl_pragma_type_spec(_),
         Pieces = [pragma_decl("type_spec"), words("declaration")]
     ;

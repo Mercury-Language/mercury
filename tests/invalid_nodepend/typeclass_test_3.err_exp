@@ -6,5 +6,5 @@ typeclass_test_3.m:005:   than `:- import_module' in its interface section(s).
 typeclass_test_3.m:005:   This would normally be a `:- pred' or `:- func'
 typeclass_test_3.m:005:   declaration, or a `:- type', `:- inst', `:- mode',
 typeclass_test_3.m:005:   `:- typeclass' or `:- instance' definition.
-typeclass_test_3.m:008: Error: constraints on class declarations may only
-typeclass_test_3.m:008:   constrain type variables and ground types.
+typeclass_test_3.m:008: Error: a class declaration may not contain an inst
+typeclass_test_3.m:008:   constraint such as `(T =< blah(X))'.

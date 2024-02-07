@@ -871,6 +871,15 @@ cons_id_is_const_struct(ConsId, ConstNum) :-
             % A type expression with an explicit kind annotation.
             % (These are not yet used.)
 
+:- type ground_type =< mer_type
+    --->    defined_type(sym_name, list(ground_type), kind)
+    ;       builtin_type(builtin_type)
+    ;       tuple_type(list(ground_type), kind)
+    ;       higher_order_type(pred_or_func, list(ground_type), ho_inst_info,
+                purity, lambda_eval_method)
+    ;       apply_n_type(tvar, list(ground_type), kind)
+    ;       kinded_type(ground_type, kind).
+
 % We could use this subtype in the mercury_nb_type function symbol
 % of mlds_type in mlds.m.
 %

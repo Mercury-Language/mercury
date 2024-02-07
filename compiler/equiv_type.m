@@ -1513,6 +1513,12 @@ replace_in_abstract_instance_info(ModuleName, MaybeRecord, TypeEqvMap, _,
 replace_in_decl_pragma_info(ModuleName, MaybeRecord, TypeEqvMap, InstEqvMap,
         DeclPragma0, DeclPragma, !RecompInfo, !UsedModules, Specs) :-
     (
+        DeclPragma0 = decl_pragma_type_spec_constr(TypeSpecConstr0),
+        replace_in_decl_pragma_type_spec_constr(ModuleName, MaybeRecord,
+            TypeEqvMap, InstEqvMap, TypeSpecConstr0, TypeSpecConstr,
+            !RecompInfo, !UsedModules, Specs),
+        DeclPragma = decl_pragma_type_spec_constr(TypeSpecConstr)
+    ;
         DeclPragma0 = decl_pragma_type_spec(TypeSpec0),
         replace_in_decl_pragma_type_spec(ModuleName, MaybeRecord,
             TypeEqvMap, InstEqvMap, TypeSpec0, TypeSpec,
@@ -1531,6 +1537,55 @@ replace_in_decl_pragma_info(ModuleName, MaybeRecord, TypeEqvMap, InstEqvMap,
         DeclPragma = DeclPragma0,
         Specs = []
     ).
+
+:- pred replace_in_decl_pragma_type_spec_constr(module_name::in,
+    maybe_record_sym_name_use::in, type_eqv_map::in, inst_eqv_map::in,
+    decl_pragma_type_spec_constr_info::in,
+        decl_pragma_type_spec_constr_info::out,
+    maybe(recompilation_info)::in, maybe(recompilation_info)::out,
+    used_modules::in, used_modules::out, list(error_spec)::out) is det.
+
+replace_in_decl_pragma_type_spec_constr(ModuleName, MaybeRecord,
+        TypeEqvMap, _InstEqvMap, TypeSpecInfoConstr0, TypeSpecInfoConstr,
+        !RecompInfo, !UsedModules, []) :-
+    TypeSpecInfoConstr0 = decl_pragma_type_spec_constr_info(PragmaModuleName,
+        OoMConstraints0, ApplyToSupers, OoMSubsts0, TVarSet0, ItemIds0,
+        Context, SeqNum),
+    % XXX I (zs) don't understand the purpose of the test in the code that
+    % sets ExpandedItems0 in replace_in_decl_pragma_type_spec below.
+    % The commit that added that code (the commit by Simon that added
+    % the initial implementation of smart recompilation) does not mention
+    % any rationale either. I cannot copy that test since there is no PredName
+    % here. So this setting of ExpandedItems0 here is just a guess. Whether
+    % it is a correct guess or not will matter only once smart recompilation
+    % is completed, in the fullness of time.
+    OoMConstraints0 = one_or_more(HeadConstraint0, TailConstraints0),
+    ExpandedItems0 = eqv_expand_info(ModuleName, ItemIds0),
+    replace_in_var_or_ground_constraint_location(MaybeRecord, TypeEqvMap,
+        HeadConstraint0, HeadConstraint, TVarSet0, TVarSet1,
+        ExpandedItems0, ExpandedItems1, !UsedModules),
+    list.map_foldl3(
+        replace_in_var_or_ground_constraint_location(MaybeRecord, TypeEqvMap),
+        TailConstraints0, TailConstraints, TVarSet1, TVarSet2,
+        ExpandedItems1, ExpandedItems2, !UsedModules),
+    OoMConstraints = one_or_more(HeadConstraint, TailConstraints),
+    OoMSubsts0 = one_or_more(HeadSubst0, TailSubsts0),
+    replace_in_subst(MaybeRecord, TypeEqvMap,
+        HeadSubst0, HeadSubst, TVarSet2, TVarSet3,
+        ExpandedItems2, ExpandedItems3, !UsedModules),
+    list.map_foldl3(replace_in_subst(MaybeRecord, TypeEqvMap),
+        TailSubsts0, TailSubsts, TVarSet3, TVarSet,
+        ExpandedItems3, ExpandedItems, !UsedModules),
+    OoMSubsts = one_or_more(HeadSubst, TailSubsts),
+    (
+        ExpandedItems = no_eqv_expand_info,
+        ItemIds = ItemIds0
+    ;
+        ExpandedItems = eqv_expand_info(_, ItemIds)
+    ),
+    TypeSpecInfoConstr = decl_pragma_type_spec_constr_info(PragmaModuleName,
+        OoMConstraints, ApplyToSupers, OoMSubsts, TVarSet, ItemIds,
+        Context, SeqNum).
 
 :- pred replace_in_decl_pragma_type_spec(module_name::in,
     maybe_record_sym_name_use::in, type_eqv_map::in, inst_eqv_map::in,
@@ -1552,11 +1607,8 @@ replace_in_decl_pragma_type_spec(ModuleName, MaybeRecord,
     else
         ExpandedItems0 = eqv_expand_info(ModuleName, ItemIds0)
     ),
-    Subst0 = one_or_more(HeadSubst0, TailSubsts0),
-    replace_in_subst(MaybeRecord, TypeEqvMap,
-        HeadSubst0, HeadSubst, TailSubsts0, TailSubsts,
+    replace_in_subst(MaybeRecord, TypeEqvMap, Subst0, Subst,
         TVarSet0, TVarSet, ExpandedItems0, ExpandedItems, !UsedModules),
-    Subst = one_or_more(HeadSubst, TailSubsts),
     (
         ExpandedItems = no_eqv_expand_info,
         ItemIds = ItemIds0
@@ -2093,14 +2145,14 @@ replace_in_type_list_location_circ_2(_MaybeRecord, _TypeEqvMap, _Seen,
         [], [], unchanged, !ContainsCirc, !TVarSet,
         !EquivTypeInfo, !UsedModules).
 replace_in_type_list_location_circ_2(MaybeRecord, TypeEqvMap, Seen,
-        List0 @ [Type0 | Types0], List, Changed, !Circ, !TVarSet,
+        Types0 @ [HeadType0 | TailTypes0], Types, Changed, !Circ, !TVarSet,
         !EquivTypeInfo, !UsedModules) :-
     replace_in_type_maybe_record_use_2(MaybeRecord, TypeEqvMap, Seen,
-        Type0, Type, HeadChanged, HeadCirc, !TVarSet,
+        HeadType0, HeadType, HeadChanged, HeadCirc, !TVarSet,
         !EquivTypeInfo, !UsedModules),
     set.union(HeadCirc, !Circ),
     replace_in_type_list_location_circ_2(MaybeRecord, TypeEqvMap, Seen,
-        Types0, Types, TailChanged, !Circ, !TVarSet,
+        TailTypes0, TailTypes, TailChanged, !Circ, !TVarSet,
         !EquivTypeInfo, !UsedModules),
     ( if
         ( HeadChanged = changed
@@ -2108,10 +2160,10 @@ replace_in_type_list_location_circ_2(MaybeRecord, TypeEqvMap, Seen,
         )
     then
         Changed = changed,
-        List = [Type | Types]
+        Types = [HeadType | TailTypes]
     else
         Changed = unchanged,
-        List = List0
+        Types = Types0
     ).
 
 %---------------------------------------------------------------------------%
@@ -2215,6 +2267,44 @@ replace_in_prog_constraint_location(MaybeRecord, TypeEqvMap,
         ArgTypes0, ArgTypes, _, _, !TVarSet, !EquivTypeInfo, !UsedModules),
     Constraint = constraint(ClassName, ArgTypes).
 
+%---------------------%
+
+:- pred replace_in_var_or_ground_constraint_location(
+    maybe_record_sym_name_use::in, type_eqv_map::in,
+    var_or_ground_constraint::in, var_or_ground_constraint::out,
+    tvarset::in, tvarset::out, eqv_expand_info::in, eqv_expand_info::out,
+    used_modules::in, used_modules::out) is det.
+
+replace_in_var_or_ground_constraint_location(MaybeRecord, TypeEqvMap,
+        Constraint0, Constraint, !TVarSet, !EquivTypeInfo, !UsedModules) :-
+    Constraint0 = var_or_ground_constraint(ClassName, Args0, Context),
+    list.map_foldl3(
+        replace_in_var_or_ground_type_location(MaybeRecord, TypeEqvMap),
+        Args0, Args, !TVarSet, !EquivTypeInfo, !UsedModules),
+    Constraint = var_or_ground_constraint(ClassName, Args, Context).
+
+:- pred replace_in_var_or_ground_type_location(maybe_record_sym_name_use::in,
+    type_eqv_map::in, var_or_ground_type::in, var_or_ground_type::out,
+    tvarset::in, tvarset::out, eqv_expand_info::in, eqv_expand_info::out,
+    used_modules::in, used_modules::out) is det.
+
+replace_in_var_or_ground_type_location(MaybeRecord, TypeEqvMap,
+        Arg0, Arg, !TVarSet, !EquivTypeInfo, !UsedModules) :-
+    (
+        Arg0 = type_var_name(_, _),
+        Arg = Arg0
+    ;
+        Arg0 = ground_type(GroundType0),
+        Type0 = coerce(GroundType0),
+        replace_in_type_maybe_record_use(MaybeRecord, TypeEqvMap,
+            Type0, Type, _, !TVarSet, !EquivTypeInfo, !UsedModules),
+        ( if type_is_ground(Type, GroundType) then
+            Arg = ground_type(GroundType)
+        else
+            unexpected($pred, "expanded ground type is not ground")
+        )
+    ).
+
 %---------------------------------------------------------------------------%
 
 :- pred replace_in_class_interface(maybe_record_sym_name_use::in,
@@ -2281,26 +2371,39 @@ replace_in_class_decl(MaybeRecord, TypeEqvMap, InstEqvMap, Decl0, Decl,
 %---------------------------------------------------------------------------%
 
 :- pred replace_in_subst(maybe_record_sym_name_use::in, type_eqv_map::in,
-    pair(tvar, mer_type)::in, pair(tvar, mer_type)::out,
-    assoc_list(tvar, mer_type)::in, assoc_list(tvar, mer_type)::out,
+    type_subst::in, type_subst::out,
     tvarset::in, tvarset::out, eqv_expand_info::in, eqv_expand_info::out,
     used_modules::in, used_modules::out) is det.
 
-replace_in_subst(MaybeRecord, TypeEqvMap,
-        HeadVar - HeadType0, HeadVar - HeadType,
+replace_in_subst(MaybeRecord, TypeEqvMap, Subst0, Subst,
+        !TVarSet, !ExpandedItems, !UsedModules) :-
+    Subst0 = one_or_more(HeadSubst0, TailSubsts0),
+    replace_in_tvar_substs(MaybeRecord, TypeEqvMap,
+        HeadSubst0, HeadSubst, TailSubsts0, TailSubsts,
+        !TVarSet, !ExpandedItems, !UsedModules),
+    Subst = one_or_more(HeadSubst, TailSubsts).
+
+:- pred replace_in_tvar_substs(maybe_record_sym_name_use::in, type_eqv_map::in,
+    tvar_subst::in, tvar_subst::out,
+    list(tvar_subst)::in, list(tvar_subst)::out,
+    tvarset::in, tvarset::out, eqv_expand_info::in, eqv_expand_info::out,
+    used_modules::in, used_modules::out) is det.
+
+replace_in_tvar_substs(MaybeRecord, TypeEqvMap,
+        tvar_subst(HeadVar, HeadType0), tvar_subst(HeadVar, HeadType),
         TailVarsTypes0, TailVarsTypes,
-        !TVarSet, !EquivTypeInfo, !UsedModules) :-
+        !TVarSet, !ExpandedItems, !UsedModules) :-
     replace_in_type_maybe_record_use(MaybeRecord, TypeEqvMap,
-        HeadType0, HeadType, _, !TVarSet, !EquivTypeInfo, !UsedModules),
+        HeadType0, HeadType, _, !TVarSet, !ExpandedItems, !UsedModules),
     (
         TailVarsTypes0 = [],
         TailVarsTypes = []
     ;
         TailVarsTypes0 = [HeadTailVarType0 | TailTailVarsTypes0],
-        replace_in_subst(MaybeRecord, TypeEqvMap,
+        replace_in_tvar_substs(MaybeRecord, TypeEqvMap,
             HeadTailVarType0, HeadTailVarType,
             TailTailVarsTypes0, TailTailVarsTypes,
-            !TVarSet, !EquivTypeInfo, !UsedModules),
+            !TVarSet, !ExpandedItems, !UsedModules),
         TailVarsTypes = [HeadTailVarType | TailTailVarsTypes]
     ).
 

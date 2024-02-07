@@ -70,6 +70,7 @@
 :- import_module parse_tree.module_qual.qual_errors.
 :- import_module parse_tree.prog_data_foreign.
 :- import_module parse_tree.prog_data_pragma.
+:- import_module parse_tree.prog_type_test.
 
 :- import_module int.
 :- import_module one_or_more.
@@ -1415,6 +1416,8 @@ qualify_prog_constraints(InInt, ConstraintErrorContext,
         ExistCs0, ExistCs, !Info, !Specs),
     Constraints = univ_exist_constraints(UnivCs, ExistCs).
 
+%---------------------%
+
 :- pred qualify_prog_constraint_list(mq_in_interface::in,
     mq_constraint_error_context::in,
     list(prog_constraint)::in, list(prog_constraint)::out,
@@ -1447,6 +1450,70 @@ qualify_prog_constraint(InInt, ContainingErrorContext,
         ContainingErrorContext),
     qualify_type_list(InInt, ErrorContext, Types0, Types, !Info, !Specs),
     Constraint = constraint(ClassName, Types).
+
+%---------------------%
+
+:- pred qualify_var_or_ground_constraint_list(mq_in_interface::in,
+    mq_constraint_error_context::in,
+    list(var_or_ground_constraint)::in, list(var_or_ground_constraint)::out,
+    mq_info::in, mq_info::out,
+    list(error_spec)::in, list(error_spec)::out) is det.
+
+qualify_var_or_ground_constraint_list(_InInt, _ConstraintErrorContext,
+        [], [], !Info, !Specs).
+qualify_var_or_ground_constraint_list(InInt, ConstraintErrorContext,
+        [Constraint0 | Constraints0], [Constraint | Constraints],
+        !Info, !Specs) :-
+    qualify_var_or_ground_constraint(InInt, ConstraintErrorContext,
+        Constraint0, Constraint, !Info, !Specs),
+    qualify_var_or_ground_constraint_list(InInt, ConstraintErrorContext,
+        Constraints0, Constraints, !Info, !Specs).
+
+:- pred qualify_var_or_ground_constraint(mq_in_interface::in,
+    mq_constraint_error_context::in,
+    var_or_ground_constraint::in, var_or_ground_constraint::out,
+    mq_info::in, mq_info::out,
+    list(error_spec)::in, list(error_spec)::out) is det.
+
+qualify_var_or_ground_constraint(InInt, ContainingErrorContext,
+        Constraint0, Constraint, !Info, !Specs) :-
+    Constraint0 = var_or_ground_constraint(ClassName0, Types0, Context),
+    list.length(Types0, Arity),
+    OutsideContext = mqec_typeclass_constraint_name(ContainingErrorContext),
+    qualify_class_name(InInt, OutsideContext,
+        mq_id(ClassName0, Arity), ClassName, !Info, !Specs),
+    ErrorContext = mqec_typeclass_constraint(ClassName0, Arity,
+        ContainingErrorContext),
+    qualify_var_or_ground_type_list(InInt, ErrorContext, Types0, Types,
+        !Info, !Specs),
+    Constraint = var_or_ground_constraint(ClassName, Types, Context).
+
+:- pred qualify_var_or_ground_type_list(mq_in_interface::in,
+    mq_error_context::in,
+    list(var_or_ground_type)::in, list(var_or_ground_type)::out,
+    mq_info::in, mq_info::out,
+    list(error_spec)::in, list(error_spec)::out) is det.
+
+qualify_var_or_ground_type_list(_, _, [], [], !Info, !Specs).
+qualify_var_or_ground_type_list(InInt, ErrorContext,
+        [Arg0 | Args0], [Arg | Args], !Info, !Specs) :-
+    (
+        Arg0 = type_var_name(_, _),
+        Arg = Arg0
+    ;
+        Arg0 = ground_type(GroundType0),
+        Type0 = coerce(GroundType0),
+        qualify_type(InInt, ErrorContext, Type0, Type, !Info, !Specs),
+        ( if type_is_ground(Type, GroundType) then
+            Arg = ground_type(GroundType)
+        else
+            unexpected($pred, "qualified ground type is not ground")
+        )
+    ),
+    qualify_var_or_ground_type_list(InInt, ErrorContext,
+        Args0, Args, !Info, !Specs).
+
+%---------------------%
 
 :- pred qualify_class_name(mq_in_interface::in, mq_error_context::in,
     mq_id::in, sym_name::out, mq_info::in, mq_info::out,
@@ -1613,6 +1680,29 @@ qualify_instance_method(DefaultModuleName, InstanceMethod0, InstanceMethod) :-
 
 module_qualify_item_decl_pragma(InInt, Pragma0, Pragma, !Info, !Specs) :-
     (
+        Pragma0 = decl_pragma_type_spec_constr(TypeSpecConstrInfo0),
+        TypeSpecConstrInfo0 = decl_pragma_type_spec_constr_info(ModuleName,
+            OoMConstraints0, ApplyToSupers, OoMSubsts0, TVarSet, Items,
+            Context, SeqNum),
+        ConstraintErrorContext = mqcec_type_spec_constr(Context, ModuleName),
+        OoMConstraints0 = one_or_more(HeadConstraint0, TailConstraints0),
+        qualify_var_or_ground_constraint(InInt, ConstraintErrorContext,
+            HeadConstraint0, HeadConstraint, !Info, !Specs),
+        qualify_var_or_ground_constraint_list(InInt, ConstraintErrorContext,
+            TailConstraints0, TailConstraints, !Info, !Specs),
+        OoMConstraints = one_or_more(HeadConstraint, TailConstraints),
+        ErrorContext = mqec_pragma_decl(Context, Pragma0),
+        OoMSubsts0 = one_or_more(HeadSubst0, TailSubsts0),
+        qualify_type_subst(InInt, ErrorContext,
+            HeadSubst0, HeadSubst, !Info, !Specs),
+        list.map_foldl2(qualify_type_subst(InInt, ErrorContext),
+            TailSubsts0, TailSubsts, !Info, !Specs),
+        OoMSubsts = one_or_more(HeadSubst, TailSubsts),
+        TypeSpecConstrInfo = decl_pragma_type_spec_constr_info(ModuleName,
+            OoMConstraints, ApplyToSupers, OoMSubsts, TVarSet, Items,
+            Context, SeqNum),
+        Pragma = decl_pragma_type_spec_constr(TypeSpecConstrInfo)
+    ;
         Pragma0 = decl_pragma_type_spec(TypeSpecInfo0),
         TypeSpecInfo0 = decl_pragma_type_spec_info(PFUMM0, PredName,
             SpecPredName, Subst0, TVarSet, Items, Context, SeqNum),
@@ -1645,10 +1735,7 @@ module_qualify_item_decl_pragma(InInt, Pragma0, Pragma, !Info, !Specs) :-
             PFUMM0 = pfumm_unknown(_Arity),
             PFUMM = PFUMM0
         ),
-        Subst0 = one_or_more(HeadSubst0, TailSubsts0),
-        qualify_type_spec_subst(InInt, ErrorContext,
-            HeadSubst0, HeadSubst, TailSubsts0, TailSubsts, !Info, !Specs),
-        Subst = one_or_more(HeadSubst, TailSubsts),
+        qualify_type_subst(InInt, ErrorContext, Subst0, Subst, !Info, !Specs),
         TypeSpecInfo = decl_pragma_type_spec_info(PFUMM, PredName,
             SpecPredName, Subst, TVarSet, Items, Context, SeqNum),
         Pragma = decl_pragma_type_spec(TypeSpecInfo)
@@ -1812,24 +1899,33 @@ qualify_pragma_var(InInt, ErrorContext, PragmaVar0, PragmaVar,
     qualify_mode(InInt, ErrorContext, Mode0, Mode, !Info, !Specs),
     PragmaVar = pragma_var(Var, Name, Mode, Box).
 
-:- pred qualify_type_spec_subst(mq_in_interface::in, mq_error_context::in,
-    pair(tvar, mer_type)::in, pair(tvar, mer_type)::out,
-    assoc_list(tvar, mer_type)::in, assoc_list(tvar, mer_type)::out,
-    mq_info::in, mq_info::out,
+:- pred qualify_type_subst(mq_in_interface::in, mq_error_context::in,
+    type_subst::in, type_subst::out, mq_info::in, mq_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-qualify_type_spec_subst(InInt, ErrorContext,
+qualify_type_subst(InInt, ErrorContext, Subst0, Subst, !Info, !Specs) :-
+    Subst0 = one_or_more(HeadSubst0, TailSubsts0),
+    qualify_tvar_substs(InInt, ErrorContext,
+        HeadSubst0, HeadSubst, TailSubsts0, TailSubsts, !Info, !Specs),
+    Subst = one_or_more(HeadSubst, TailSubsts).
+
+:- pred qualify_tvar_substs(mq_in_interface::in, mq_error_context::in,
+    tvar_subst::in, tvar_subst::out,
+    list(tvar_subst)::in, list(tvar_subst)::out, mq_info::in, mq_info::out,
+    list(error_spec)::in, list(error_spec)::out) is det.
+
+qualify_tvar_substs(InInt, ErrorContext,
         HeadSubst0, HeadSubst, TailSubsts0, TailSubsts, !Info, !Specs) :-
-    HeadSubst0 = Var - Type0,
+    HeadSubst0 = tvar_subst(Var, Type0),
     % XXX We could pass a more specific error context.
     qualify_type(InInt, ErrorContext, Type0, Type, !Info, !Specs),
-    HeadSubst = Var - Type,
+    HeadSubst = tvar_subst(Var, Type),
     (
         TailSubsts0 = [],
         TailSubsts = []
     ;
         TailSubsts0 = [HeadTailSubst0 | TailTailSubsts0],
-        qualify_type_spec_subst(InInt, ErrorContext,
+        qualify_tvar_substs(InInt, ErrorContext,
             HeadTailSubst0, HeadTailSubst, TailTailSubsts0, TailTailSubsts,
             !Info, !Specs),
         TailSubsts = [HeadTailSubst | TailTailSubsts]
