@@ -169,6 +169,7 @@
 :- import_module hlds.hlds_out.hlds_out_util.
 :- import_module hlds.instmap.
 :- import_module hlds.make_goal.
+:- import_module hlds.pred_name.
 :- import_module hlds.pred_table.
 :- import_module libs.
 :- import_module libs.globals.
@@ -545,12 +546,25 @@ analyze_and_optimize_format_calls(ModuleInfo, PredInfo, ProcInfo,
 
     globals.lookup_bool_option(Globals, warn_unknown_format_calls,
         WarnUnknownFormatBool),
-    (
-        WarnUnknownFormatBool = no,
-        WarnUnknownFormat = do_not_warn_unknown_format
-    ;
+    pred_info_get_origin(PredInfo, Origin),
+    % Geneeate warnings about unknown formats only if
+    %
+    % - such warnings have not been disabled, and
+    % - if the predicate is itself written by the user.
+    %
+    % We need the latter test when we type-specialize e.g.
+    % stream.string_writer.format. The way we implement type specialization
+    % is that we create a fresh new predicate with the specialized types
+    % that simply calls the old predicate. When the old predicate is
+    % stream.string_writer.format, this would yield an error without
+    % this test here.
+    ( if
         WarnUnknownFormatBool = yes,
+        Origin = origin_user(_)
+    then
         WarnUnknownFormat = warn_unknown_format
+    else
+        WarnUnknownFormat = do_not_warn_unknown_format
     ),
     Params = format_call_traverse_params(ModuleInfo, WarnUnknownFormat),
     format_call_traverse_goal(Params, Goal1, _, [], FormatCallSites,

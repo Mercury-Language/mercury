@@ -3251,6 +3251,8 @@ long_option("gen-dep-ints-2023-10-15",
                                     compiler_sufficiently_recent).
 long_option("tscp-2024-02-07",
                                     compiler_sufficiently_recent).
+long_option("format-2024-02-07",
+                                    compiler_sufficiently_recent).
 long_option("experiment",           experiment).
 long_option("experiment1",          experiment1).
 long_option("experiment2",          experiment2).
