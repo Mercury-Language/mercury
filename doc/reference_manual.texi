@@ -7223,12 +7223,16 @@ The @code{typeclass} declaration
 gives the name of the type class that it is defining,
 the names of the type variables which are parameters to the type class,
 and the operations (i.e.@: methods) which form the interface of the type class.
-For each method, all parameters of the typeclass must be determined by
-the type variables appearing in the type signature of the method.
-A variable is determined by a type signature
-if it appears in the type signature,
-but if functional dependencies are present,
-then it may also be determined from the other variables
+For each method, all parameters of the typeclass must be determined
+by the type declaration of the method.
+The values of @emph{most} parameter type variables
+are determined by having them occur
+in the declared type of an argument of the method.
+However, in the presence of functional dependencies,
+@c where exactly? The possibilities are the typeclass declaration and
+@c the method itself; are both allowed?
+then the value of a variable
+may also be implied by the values of other variables
 (@pxref{Functional dependencies}).
 
 For example,
@@ -11430,7 +11434,7 @@ Note that equality axioms are important
 when considering the value of data structures.
 The declarative semantics of pure predicates
 is never affected by the invocation of other predicates.
-It is possible for the invocation of pure predicates
+It not is possible for the invocation of pure predicates
 to affect the operational behaviour of non-pure predicates and vice versa.
 
 By default, Mercury predicates and functions are pure.
@@ -11459,9 +11463,8 @@ They must be type-, mode-, determinism- and uniqueness correct.
 @node Purity ordering
 @section Purity ordering
 
-The three levels of purity have a total ordering defined upon them
-(which we will simply call the purity),
-where @code{pure > semipure > impure}.
+The three levels of purity (which we will simply call the purity)
+have a total ordering defined upon them: @code{pure > semipure > impure}.
 
 @node Impurity semantics
 @section Impurity semantics
@@ -11471,7 +11474,7 @@ to the flexibility of the compiler to optimize pure code,
 and to the semantics of the Mercury language,
 that a clear distinction be drawn
 between ordinary Mercury code and imperative code written with Mercury syntax.
-How this distinction is drawn will be explained below;
+How Mercury draws this distinction will be explained below;
 the purpose of this section
 is to explain the semantics of programs with impure predicates.
 
