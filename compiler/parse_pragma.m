@@ -98,8 +98,10 @@ parse_pragma(ModuleName, VarSet, PragmaTerms, Context, SeqNum, MaybeIOM) :-
 
 parse_named_pragma(ModuleName, VarSet, ErrorTerm, PragmaName, PragmaTerms,
         Context, SeqNum, MaybeIOM) :-
-    % XXX The Context argument is redundant, since we can always compute it
-    % as get_term_context(ErrorTerm).
+    % The Context argument is redundant, since we can always compute it
+    % as get_term_context(ErrorTerm). However, we need to compute the context
+    % both when a parse fails (to report the error) and when it succeeds
+    % (to set the context of the item we construct and return).
     require_switch_arms_det [PragmaName]
     (
         PragmaName = "source_file",
