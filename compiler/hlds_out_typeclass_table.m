@@ -32,8 +32,8 @@
 :- import_module mdbcomp.prim_data.
 :- import_module mdbcomp.sym_name.
 :- import_module parse_tree.
-:- import_module parse_tree.parse_tree_out.
 :- import_module parse_tree.parse_tree_out_info.
+:- import_module parse_tree.parse_tree_out_item.
 :- import_module parse_tree.parse_tree_out_misc.
 :- import_module parse_tree.parse_tree_out_sym_name.
 :- import_module parse_tree.parse_tree_out_term.

@@ -155,8 +155,8 @@
 :- import_module parse_tree.item_util.
 :- import_module parse_tree.module_qual.
 :- import_module parse_tree.parse_error.
-:- import_module parse_tree.parse_tree_out.
 :- import_module parse_tree.parse_tree_out_info.
+:- import_module parse_tree.parse_tree_out_item.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_data_foreign.
 :- import_module parse_tree.prog_foreign.

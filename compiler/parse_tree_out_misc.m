@@ -19,8 +19,8 @@
 :- interface.
 
 :- import_module libs.
-:- import_module libs.indent.
 :- import_module libs.globals.
+:- import_module libs.indent.
 :- import_module mdbcomp.
 :- import_module mdbcomp.prim_data.
 :- import_module parse_tree.parse_tree_output.

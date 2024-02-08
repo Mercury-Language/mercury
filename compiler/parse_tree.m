@@ -60,6 +60,7 @@
 :- include_module parse_tree_out_clause.
 :- include_module parse_tree_out_cons_id.
 :- include_module parse_tree_out_inst.
+:- include_module parse_tree_out_item.
 :- include_module parse_tree_out_misc.
 :- include_module parse_tree_out_pragma.
 :- include_module parse_tree_out_pred_decl.

@@ -56,8 +56,8 @@
 
 :- implementation.
 
-:- import_module uint.
 :- import_module string.
+:- import_module uint.
 
 %---------------------------------------------------------------------------%
 
