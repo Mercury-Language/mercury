@@ -57,7 +57,7 @@
 :- import_module ml_backend.mlds_to_java_stmt.
 :- import_module ml_backend.mlds_to_java_type.
 :- import_module parse_tree.
-:- import_module parse_tree.parse_tree_out_info.
+:- import_module parse_tree.parse_tree_output.
 :- import_module parse_tree.prog_data.
 
 :- import_module bool.

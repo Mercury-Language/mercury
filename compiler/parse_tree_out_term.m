@@ -14,7 +14,7 @@
 :- module parse_tree.parse_tree_out_term.
 :- interface.
 
-:- import_module parse_tree.parse_tree_out_info.
+:- import_module parse_tree.parse_tree_output.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.var_db.
 :- import_module parse_tree.var_table.

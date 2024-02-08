@@ -173,6 +173,7 @@
 :- import_module parse_tree.parse_tree_out_misc.
 :- import_module parse_tree.parse_tree_out_term.
 :- import_module parse_tree.parse_tree_out_type.
+:- import_module parse_tree.parse_tree_output.
 :- import_module parse_tree.prog_data_foreign.
 :- import_module parse_tree.prog_type.
 :- import_module parse_tree.prog_util.

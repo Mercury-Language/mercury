@@ -68,6 +68,7 @@
 :- include_module parse_tree_out_type.
 :- include_module parse_tree_out_type_repn.
 :- include_module parse_tree_out_info.
+:- include_module parse_tree_output.
 :- include_module parse_tree_to_term.
 
 % Utility data structures.

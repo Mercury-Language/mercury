@@ -1335,9 +1335,8 @@ write_proc_arg_info(Stream, DumpOptions, VarTable, VarNamePrint,
     ),
     ( if set_of_var.is_non_empty(RegR_HeadVars) then
         io.write_string(Stream, "% reg_r headvars: ", !IO),
-        write_out_list(
-            mercury_output_var_src(vns_var_table(VarTable), VarNamePrint),
-            ", ", set_of_var.to_sorted_list(RegR_HeadVars), Stream, !IO),
+        mercury_output_vars_src(vns_var_table(VarTable), VarNamePrint,
+            set_of_var.to_sorted_list(RegR_HeadVars), Stream, !IO),
         io.nl(Stream, !IO)
     else
         true

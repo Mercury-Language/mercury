@@ -434,11 +434,14 @@ parse_tree_out_inst.m outputs insts and modes.
 <li>
 parse_tree_out_term.m outputs variables and terms.
 <li>
-parse_tree_out_info.m provides a common infrastructure
-for the above modules, and for parse_tree_out_misc.m.
-<li>
 parse_tree_out_misc.m outputs the lowest level, and smallest,
 parts of the parse tree.
+<li>
+parse_tree_out_info.m defines the structure
+that stores the options used by all of the above modules.
+<li>
+parse_tree_output defines the pt_output typeclass and its instances,
+also for use by all of the above modules.
 </ul>
 
 <p>

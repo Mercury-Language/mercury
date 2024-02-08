@@ -18,7 +18,7 @@
 :- module parse_tree.prog_ctgc.
 :- interface.
 
-:- import_module parse_tree.parse_tree_out_info.
+:- import_module parse_tree.parse_tree_output.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_data_pragma.
 :- import_module parse_tree.var_db.
@@ -130,6 +130,7 @@
 
 :- import_module parse_tree.parse_sym_name.
 :- import_module parse_tree.parse_tree_out_cons_id.
+:- import_module parse_tree.parse_tree_out_info.
 :- import_module parse_tree.parse_tree_out_misc.
 :- import_module parse_tree.parse_tree_out_type.
 :- import_module parse_tree.parse_type_name.

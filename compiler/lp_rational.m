@@ -332,7 +332,7 @@
 :- implementation.
 
 :- import_module parse_tree.
-:- import_module parse_tree.parse_tree_out_info.
+:- import_module parse_tree.parse_tree_output.
 % undesirable dependency, for write_out_list
 
 :- import_module assoc_list.
