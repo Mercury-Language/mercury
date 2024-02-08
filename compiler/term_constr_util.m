@@ -92,7 +92,8 @@
     % Returns a list of constraints of the form "x >= 0" for every size_var
     % x that is in `SizeVarMap' and is not in the set `Zeros'.
     %
-:- func create_nonneg_constraints(size_var_map, zero_vars) = constraints.
+:- func create_nonneg_constraints(size_var_map, zero_vars)
+    = lp_constraint_conj.
 
 :- type var_substitution == map(size_var, size_var).
 
@@ -107,7 +108,7 @@
     % Create a non-negativity constraint for each size_var in the list,
     % *except* if it has zero size type.
     %
-:- func make_arg_constraints(list(size_var), zero_vars) = constraints.
+:- func make_arg_constraints(list(size_var), zero_vars) = lp_constraint_conj.
 
     % Check that a size_var is a member of the set of zero size_vars.
     % XXX Ideally we would just use set.member directly but the arguments
@@ -127,8 +128,8 @@
     % substitute_size_vars: Takes a list of constraints and a var_substitution.
     % Returns the constraints with the specified substitutions made.
     %
-:- func substitute_size_vars(constraints, map(size_var, size_var))
-    = constraints.
+:- func substitute_size_vars(lp_constraint_conj, map(size_var, size_var))
+    = lp_constraint_conj.
 
 %-----------------------------------------------------------------------------%
 
@@ -315,7 +316,7 @@ create_nonneg_constraints(SizeVarMap, Zeros) = Constraints :-
     create_nonneg_constraints_2(SizeVarMap, Zeros, Constraints).
 
 :- pred create_nonneg_constraints_2(size_var_map::in, zero_vars::in,
-    constraints::out) is det.
+    lp_constraint_conj::out) is det.
 
 create_nonneg_constraints_2(SizeVarMap, Zeros, NonNegs) :-
     SizeVars = map.values(SizeVarMap),

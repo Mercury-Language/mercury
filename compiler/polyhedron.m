@@ -1,10 +1,10 @@
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % Copyright (C) 2003, 2005-2007, 2009-2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % File: polyhedron.m.
 % Main author: juliensf.
@@ -39,7 +39,7 @@
 % TODO:
 %   * See if using the double description method is any faster.
 %
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- module libs.polyhedron.
 :- interface.
@@ -52,13 +52,13 @@
 :- import_module maybe.
 :- import_module set.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- type polyhedron.
 
 :- type polyhedra == list(polyhedron).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % The `empty' polyhedron. Equivalent to the constraint `false'.
     %
@@ -70,16 +70,16 @@
 
     % Constructs a convex polyhedron from a system of linear constraints.
     %
-:- func from_constraints(constraints) = polyhedron.
+:- func from_constraints(lp_constraint_conj) = polyhedron.
 
     % Returns a system of constraints whose solution space defines
     % the given polyhedron.
     %
-:- func constraints(polyhedron) = constraints.
+:- func constraints(polyhedron) = lp_constraint_conj.
 
     % As above but throws an exception if the given polyhedron is empty.
     %
-:- func non_false_constraints(polyhedron) = constraints.
+:- func non_false_constraints(polyhedron) = lp_constraint_conj.
 
     % Succeeds iff the given polyhedron is the empty polyhedron.
     %
@@ -171,8 +171,8 @@
 :- pred write_polyhedron(io.text_output_stream::in, lp_varset::in,
     polyhedron::in, io::di, io::uo) is det.
 
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- implementation.
 
@@ -182,16 +182,16 @@
 :- import_module require.
 :- import_module varset.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % XXX The constructor eqns/1 should really be called something
     % more meaningful.
     %
 :- type polyhedron
-    --->    eqns(constraints)
+    --->    eqns(lp_constraint_conj)
     ;       empty_poly.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Creation of polyhedra.
 %
@@ -235,7 +235,7 @@ optimize(VarSet, eqns(Constraints0), Result) :-
         Result = eqns(Constraints)
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Intersection.
 %
@@ -249,7 +249,7 @@ intersection(eqns(MatrixA), eqns(MatrixB)) = eqns(Constraints) :-
 
 intersection(PolyA, PolyB, polyhedron.intersection(PolyA, PolyB)).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Convex union.
 %
@@ -277,7 +277,7 @@ convex_union(VarSet, MaybeMaxSize, eqns(ConstraintsA),
         eqns(ConstraintsB), Hull) :-
     convex_hull([ConstraintsA, ConstraintsB], Hull, MaybeMaxSize, VarSet).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Convex hull calculation.
 %
@@ -337,8 +337,8 @@ convex_union(VarSet, MaybeMaxSize, eqns(ConstraintsA),
                 constr_varset   :: lp_varset
             ).
 
-:- pred convex_hull(list(constraints)::in, polyhedron::out, maybe(int)::in,
-    lp_varset::in) is det.
+:- pred convex_hull(list(lp_constraint_conj)::in, polyhedron::out,
+    maybe(int)::in, lp_varset::in) is det.
 
 convex_hull([], _, _, _) :-
     unexpected($pred, "empty list").
@@ -385,14 +385,14 @@ convex_hull(Polys @ [_, _ | _], ConvexHull, MaybeMaxSize, VarSet0) :-
         )
     ).
 
-:- pred transform_polyhedra(list(constraints)::in, constraints::out,
-    polyhedra_info::in, polyhedra_info::out) is det.
+:- pred transform_polyhedra(list(lp_constraint_conj)::in,
+    lp_constraint_conj::out, polyhedra_info::in, polyhedra_info::out) is det.
 
 transform_polyhedra(Polys, Eqns, !PolyInfo) :-
     list.foldl2(transform_polyhedron, Polys, [], Eqns, !PolyInfo).
 
-:- pred transform_polyhedron(constraints::in, constraints::in,
-    constraints::out, polyhedra_info::in, polyhedra_info::out) is det.
+:- pred transform_polyhedron(lp_constraint_conj::in, lp_constraint_conj::in,
+    lp_constraint_conj::out, polyhedra_info::in, polyhedra_info::out) is det.
 
 transform_polyhedron(Poly, Polys0, Polys, !PolyInfo) :-
     some [!VarSet] (
@@ -410,7 +410,7 @@ transform_polyhedron(Poly, Polys0, Polys, !PolyInfo) :-
     % variables are substituted for new ones and where the sigma variable is
     % included. The map of old to new variables is updated if necessary.
     %
-:- pred transform_constraint(lp_var::in, constraint::in, constraint::out,
+:- pred transform_constraint(lp_var::in, lp_constraint::in, lp_constraint::out,
     var_map::in, var_map::out, lp_varset::in, lp_varset::out) is det.
 
 transform_constraint(Sigma, !Constraint, !VarMap, !VarSet) :-
@@ -444,7 +444,7 @@ change_var(!Term, !VarMap, !VarSet) :-
     ).
 
 :- pred add_sigma_constraints(sigma_vars::in,
-    constraints::in, constraints::out) is det.
+    lp_constraint_conj::in, lp_constraint_conj::out) is det.
 
 add_sigma_constraints(Sigmas, !Constraints) :-
     % Add non-negativity constraints for each sigma variable.
@@ -458,7 +458,8 @@ add_sigma_constraints(Sigmas, !Constraints) :-
     % Add a constraint specifying that each variable is the sum of the
     % temporary variables to which it has been mapped.
     %
-:- func add_last_constraints(constraints, var_maps) = constraints.
+:- func add_last_constraints(lp_constraint_conj, var_maps)
+    = lp_constraint_conj.
 
 add_last_constraints(!.Constraints, VarMaps) = !:Constraints :-
     Keys = get_keys_from_maps(VarMaps),
@@ -475,7 +476,7 @@ get_keys_from_maps(Maps) = list.foldl(get_keys_from_map, Maps, set.init).
 
 get_keys_from_map(Map, KeySet) = set.insert_list(KeySet, map.keys(Map)).
 
-:- func make_last_constraint(var_maps, lp_var) = constraint is semidet.
+:- func make_last_constraint(var_maps, lp_var) = lp_constraint is semidet.
 
 make_last_constraint(VarMaps, OriginalVar) = Constraint :-
     list.foldl(make_last_terms(OriginalVar), VarMaps, [], LastTerms),
@@ -489,7 +490,7 @@ make_last_terms(OriginalVar, VarMap, !Terms) :-
     map.search(VarMap, OriginalVar, NewVar),
     list.cons(NewVar - (-one), !Terms).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Approximation of a polyhedron by a bounding box.
 %
@@ -498,7 +499,7 @@ bounding_box(empty_poly, _) = empty_poly.
 bounding_box(eqns(Constraints), VarSet) =
     eqns(lp_rational.bounding_box(VarSet, Constraints)).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Widening.
 %
@@ -511,7 +512,7 @@ widen(empty_poly, eqns(_), _) =
 widen(eqns(Poly1), eqns(Poly2), VarSet) = eqns(WidenedEqns) :-
     WidenedEqns = list.filter(entailed(VarSet, Poly2), Poly1).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Projection.
 %
@@ -556,7 +557,7 @@ project_polyhedron(VarSet, Vars, eqns(Constraints0), Result) :-
         Result = eqns(Constraints)
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Variable substitution.
 %
@@ -571,7 +572,7 @@ substitute_vars(SubstMap, Polyhedron0) = Polyhedron :-
     Constraints = lp_rational.substitute_vars(SubstMap, Constraints0),
     Polyhedron = polyhedron.from_constraints(Constraints).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Zeroing out variables.
 %
@@ -580,7 +581,7 @@ zero_vars(_, empty_poly) = empty_poly.
 zero_vars(Vars, eqns(Constraints0)) = eqns(Constraints) :-
     Constraints = lp_rational.set_vars_to_zero(Vars, Constraints0).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % Printing.
 %
@@ -600,6 +601,6 @@ write_polyhedron(Stream, VarSet, Polyhedron, !IO) :-
         )
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 :- end_module libs.polyhedron.
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%

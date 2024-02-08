@@ -60,7 +60,7 @@
     --->    max
     ;       min.
 
-:- type lp.result
+:- type result
     --->    unsatisfiable
     ;       satisfiable(float, map(var, float)).
 

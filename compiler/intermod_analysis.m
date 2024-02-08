@@ -558,7 +558,7 @@ maybe_constr_arg_size_info_to_arg_size_constr(VarToVarIdMap,
     ).
 
 :- pred lp_rational_constraint_to_arg_size_constr(map(size_var, int)::in,
-    lp_rational.constraint::in, arg_size_constr::out) is det.
+    lp_constraint::in, arg_size_constr::out) is det.
 
 lp_rational_constraint_to_arg_size_constr(VarToVarIdMap,
         LPConstraint, ArgSizeConstr) :-

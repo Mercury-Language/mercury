@@ -231,7 +231,7 @@ create_arg_size_polyhedron(SubstMap, yes(PragmaArgSizeInfo),
     Polyhedron = polyhedron.from_constraints(Constraints).
 
 :- pred create_arg_size_constraint(map(int, var)::in, arg_size_constr::in,
-    constraint::out) is det.
+    lp_constraint::out) is det.
 
 create_arg_size_constraint(SubstMap, le(Terms0, Constant), Constraint) :-
     list.map(create_lp_term(SubstMap), Terms0, Terms),
@@ -526,7 +526,7 @@ set_builtin_terminates([ProcId | ProcIds], PredId, PredInfo, ModuleInfo,
     set_builtin_terminates(ProcIds, PredId, PredInfo, ModuleInfo, !ProcTable).
 
 :- func process_no_type_info_builtin(string, prog_vars, size_var_map)
-    = constraints.
+    = lp_constraint_conj.
 
 process_no_type_info_builtin(PredName, HeadVars, SizeVarMap) = Constraints :-
     % This predicate should handle every predicate listed by

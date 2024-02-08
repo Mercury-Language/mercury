@@ -890,7 +890,7 @@ build_abstract_unification(Unification, AbstractGoal, !Info) :-
     % |U| - |V| = |f|. (|X| is the size_var corresponding to X).
     %
 :- pred build_abstract_decon_or_con_unify(prog_var::in, cons_id::in,
-    prog_vars::in, list(unify_mode)::in, constraints::out,
+    prog_vars::in, list(unify_mode)::in, lp_constraint_conj::out,
     tti_traversal_info::in, tti_traversal_info::out) is det.
 
 build_abstract_decon_or_con_unify(Var, ConsId, ArgVars, Modes, Constraints,
@@ -994,7 +994,8 @@ strip_typeinfos_from_args_and_modes_2(VarTable, [Arg | !.Args], !:Args,
     % are abstracted as |X| - |Y| = 0.
     %
 :- pred build_abstract_simple_or_assign_unify(prog_var::in, prog_var::in,
-    constraints::out, tti_traversal_info::in, tti_traversal_info::out) is det.
+    lp_constraint_conj::out,
+    tti_traversal_info::in, tti_traversal_info::out) is det.
 
 build_abstract_simple_or_assign_unify(LeftProgVar, RightProgVar, Constraints,
         !Info) :-
@@ -1026,7 +1027,7 @@ build_abstract_simple_or_assign_unify(LeftProgVar, RightProgVar, Constraints,
     % Check that the abstraction of a unification has not resulted
     % in the false constraint.
     %
-:- func build_goal_from_unify(constraints) = abstract_goal.
+:- func build_goal_from_unify(lp_constraint_conj) = abstract_goal.
 
 build_goal_from_unify(Constraints) = term_primitive(Polyhedron, [], []) :-
     Polyhedron = polyhedron.from_constraints(Constraints),
@@ -1267,8 +1268,8 @@ lower_bound(Norm, ModuleInfo, TypeCtor, Constructor) = LowerBound :-
     % upper bound.
     %
 :- pred upper_bound_constraints(functor_info::in, module_info::in,
-    size_var::in, type_ctor::in, list(constructor)::in, constraints::out)
-    is det.
+    size_var::in, type_ctor::in, list(constructor)::in,
+    lp_constraint_conj::out) is det.
 
 upper_bound_constraints(Norm, ModuleInfo, Var, TypeCtor, Ctors, Constraints) :-
     % If all the arguments of a functor are zero sized then we can give

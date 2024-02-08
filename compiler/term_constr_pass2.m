@@ -639,8 +639,8 @@ build_edge_map([]) = map.init.
 build_edge_map([Edge | Edges]) =
     map.det_insert(build_edge_map(Edges), Edge ^ tcge_caller, Edge).
 
-:- func subst_size_var_eqn(bimap(size_var, size_var), constraint)
-    = constraint.
+:- func subst_size_var_eqn(bimap(size_var, size_var), lp_constraint)
+    = lp_constraint.
 
 subst_size_var_eqn(Map, Eqn0) = Eqn :-
     deconstruct_constraint(Eqn0, Coeffs0, Operator, Constant),
