@@ -8,33 +8,74 @@
 %---------------------------------------------------------------------------%
 %
 % File: intermod.m.
-% Main author: stayl (the original intermod.m).
+% Main author: stayl (of the original intermod.m, of which not much is left).
 %
-% This module writes out the first half of .opt files, which we use
-% to implement inter-module optimization. The second half is written out
-% by intermod_analysis.m.
+% Mercury has two forms of intermodule optimization: non-transitive, and
+% transitive. The first kind to be implemented was non-transitive intermodule
+% optimization, which is why the compiler uses the phrase "intermodule
+% optimization" to mean the non-transitive kind, unless it is preceded
+% by "transitive".
 %
-% The first half of the .opt file includes:
-%   - The clauses for exported preds that can be inlined.
-%   - The clauses for exported preds that have higher-order pred arguments.
-%   - The pred/mode declarations for local predicates that the
-%     above clauses use.
-%   - pragma declarations for the exported preds.
-%   - Non-exported types, insts and modes used by the above.
-%   - Pragma foreign_enum, or foreign_type declarations for
-%     any types output due to the line above.
-%   - :- import_module declarations to import stuff used by the above.
-%   - pragma foreign_import_module declarations if any pragma foreign_proc
-%     preds are written.
-% All these items should be module qualified.
+% The aim of non-transitive intermodule optimization to allow the compiler
+% to apply its usual inter-predicate optimizations (inlining, deforestation,
+% type specialization, higher order specialization, and so on) even when
+% the predicates involved are defined in different modules. We make this
+% possible by including the information needed by those optimization
+% in .opt files.
 %
-% Note that predicates which call predicates that do not have mode or
-% determinism declarations do not have clauses exported, since this would
-% require running mode analysis and determinism analysis before writing the
-% .opt file, significantly increasing compile time for a very small gain.
+% Without intermodule optimization enabled, our general compilation scheme
+% consists of four phases:
 %
-% This module also contains predicates to adjust the import status
-% of local predicates which are exported for intermodule optimization.
+% - generating .int3 files
+% - generating .int0 files (for modules that have submodules)
+% - generating .int/.int2 files
+% - generating target language code
+%
+% We don't necessarily finish one phase before starting the next, but
+% we do always finish a phase for *the modules imported by a given module*,
+% say module A, before we proceeed to the next phase for module A.
+%
+% With intermodule optimization, we add a new phase just before target
+% code generation:
+%
+% - generating .opt files
+%
+% The .opt file will contain information such as the clauses of exported
+% predicates and functions that are worth inlining, and/or have higher-order
+% arguments that be specialized to the values passed at specific call sites.
+% It will also contain the information needed to make sense of those clauses,
+% including
+%
+%   - The declarations for any local predicates that the clauses use.
+%   - The definitions for any local types, insts and modes they use
+%     (the first of these may include foreign_type/foreign_enum pragmas).
+%   - Any relevant pragmas for the predicates/functions in the .opt file.
+%   - The set of ":- use_module" declarations needed to make sense of
+%     everything else in the .opt file. We can use use_module declarations
+%     and not import_module declarations because everything in a .opt file
+%     must be fully module qualified.
+%
+% There are also things which we purposefully do not include in .opt files.
+% For example, code that calls predicates that do not have mode or determinism
+% declarations traditionally did not have their clauses exported, because
+% this would require running mode analysis and determinism analysis before
+% writing the .opt file, significantly increasing compile time for only
+% a small gain.
+%
+% In the original implementation of intermodule optimization, everything
+% in the generated .opt files came directly from user-written source files.
+% This is now true *only* for the first part of .opt files. Now this first
+% part can be optionally followed by a second part that contains
+% compiler-generated pragmas that record the results of program analyses,
+% which figure out things such as which pieces of code cannot throw exceptions
+% or change the trail.
+% 
+% This module and its subcontractors decide what should be in the first half
+% of the .opt file for the given module, and then write it out. The second
+% half is handled by intermod_analysis.m. That module
+%
+% For a full list of what can appear in .opt files (in either half), see
+% the definition of the parse_tree_plain_opt type in prog_item.m.
 %
 %---------------------------------------------------------------------------%
 
@@ -51,18 +92,28 @@
 
 %---------------------------------------------------------------------------%
 
-    % Open the file "<module-name>.opt.tmp", and write out the declarations
-    % and clauses for intermodule optimization.
+    % Write the initial part of the .opt file (described in the big comment
+    % above) to the specified stream. Leave the stream open for the second part
+    % to be optionally appended later by our caller (or rather, its agents).
     %
-    % Although this predicate creates the .opt.tmp file, it does not
-    % necessarily create it in its final form. Later compiler passes
-    % may append to this file using the append_analysis_pragmas_to_opt_file
-    % predicate in intermod_analysis.m.
-    % XXX This is not an elegant arrangement.
+    % Returning the parse tree of the first part of the .opt file
+    % as part of an experiment. The aim of that experiment is to see whether
+    % we can change this code to *just* return that parse tree without
+    % writing anything, and let our caller just write out that parse tree
+    % (after the second part is optionally added to it).
     %
-    % Update_interface and touch_module_ext_datestamp are called from
-    % mercury_compile_front_end.m, since they must be called after
-    % the last time anything is appended to the .opt.tmp file.
+    % For now, the answer is "no": there are some parts of the generated
+    % .opt file that we cannot (yet) include in the parse tree. The main
+    % problem is clauses. Since our input is the whole HLDS, the goals in
+    % clauses are of course in HLDS goals. However, clauses in
+    % parse_tree_plain_opts must contain goals in parse tree form.
+    % It is, or at least at one time it was, easier to write out HLDS goals
+    % than to convert them to parse tree goals. However, the code for
+    % writing out goals cannot (yet) handle certain kinds of goals
+    % (mostly those that use constructs that were added to the language
+    % after the initial implementation of intermodule optimization,
+    % such as promise_pure scopes), so we simply don't write out clauses
+    % containing such constructs.
     %
 :- pred write_initial_opt_file(io.text_output_stream::in, module_info::in,
     intermod_info::out, parse_tree_plain_opt::out, io::di, io::uo) is det.
