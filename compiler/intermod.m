@@ -72,7 +72,8 @@
 %
 % This module and its subcontractors decide what should be in the first half
 % of the .opt file for the given module, and then write it out. The second
-% half is handled by intermod_analysis.m. That module
+% half is handled by intermod_analysis.m. That module also handles transitive
+% intermodule optimization.
 %
 % For a full list of what can appear in .opt files (in either half), see
 % the definition of the parse_tree_plain_opt type in prog_item.m.
