@@ -45,19 +45,17 @@
 %   are avoided.
 %
 % This module writes out the interface for transitive intermodule optimization.
-% The .trans_opt file includes:
+% The .trans_opt file can include, among other things,
+%
 %   :- pragma termination_info declarations for all exported preds
 %   :- pragma exceptions declarations for all exported preds
 %   :- pragma trailing_info declarations for all exported preds.
 %
-% All these items should be module qualified.
-% Constructors should be explicitly type qualified.
+% All these items should be fully module qualified.
+% Data constructors should be explicitly type qualified.
 %
-% Note that the .trans_opt file does not (yet) include clauses, `pragma
-% foreign_proc' declarations, or any of the other information that would be
-% needed for inlining or other optimizations. Currently it is used only for
-% recording the results of program analyses, such as termination analysis,
-% exception and trail usage analysis.
+% For a full list of what can appear in .trans_opt files, see
+% the definition of the parse_tree_trans_opt type in prog_item.m.
 %
 %---------------------------------------------------------------------------%
 
