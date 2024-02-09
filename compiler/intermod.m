@@ -20,7 +20,7 @@
 % to apply its usual inter-predicate optimizations (inlining, deforestation,
 % type specialization, higher order specialization, and so on) even when
 % the predicates involved are defined in different modules. We make this
-% possible by including the information needed by those optimization
+% possible by including the information needed by those optimizations
 % in .opt files.
 %
 % Without intermodule optimization enabled, our general compilation scheme
@@ -33,7 +33,7 @@
 %
 % We don't necessarily finish one phase before starting the next, but
 % we do always finish a phase for *the modules imported by a given module*,
-% say module A, before we proceeed to the next phase for module A.
+% say module A, before we proceed to the next phase for module A.
 %
 % With intermodule optimization, we add a new phase just before target
 % code generation:
@@ -42,9 +42,9 @@
 %
 % The .opt file will contain information such as the clauses of exported
 % predicates and functions that are worth inlining, and/or have higher-order
-% arguments that be specialized to the values passed at specific call sites.
-% It will also contain the information needed to make sense of those clauses,
-% including
+% arguments that can be specialized to the values passed at specific call
+% sites. It will also contain the information needed to make sense of those
+% clauses, including
 %
 %   - The declarations for any local predicates that the clauses use.
 %   - The definitions for any local types, insts and modes they use
@@ -69,7 +69,7 @@
 % compiler-generated pragmas that record the results of program analyses,
 % which figure out things such as which pieces of code cannot throw exceptions
 % or change the trail.
-% 
+%
 % This module and its subcontractors decide what should be in the first half
 % of the .opt file for the given module, and then write it out. The second
 % half is handled by intermod_analysis.m. That module
