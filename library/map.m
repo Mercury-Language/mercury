@@ -1225,7 +1225,7 @@ det),
 % but will insert the key and the larger of the two corresponding values into
 % the output map. (Actually, it inserts the key into the output map twice,
 % once with each value, but it inserts the key with the smaller corresponding
-% value first, and this is overwritten when the larger corresponding value
+% value first, and this is overwritten by the larger corresponding value
 % on the next insert.)
 %
 % Eventually we would like to get rid of this version, but some of the code
