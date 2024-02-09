@@ -143,7 +143,8 @@ output_csharp_src_file(ModuleInfo, MLDS, Stream, Errors, !IO) :-
 
     io.write_string(Stream, "\n// Cell and tabling definitions\n", !IO),
     output_global_var_decls_for_csharp(Info, Stream, 1u, CellDefns, !IO),
-    output_global_var_decls_for_csharp(Info, Stream, 1u, TableStructDefns, !IO),
+    output_global_var_decls_for_csharp(Info, Stream, 1u,
+        TableStructDefns, !IO),
     output_init_global_var_method_for_csharp(Info, Stream, 1u,
         CellDefns ++ TableStructDefns, !IO),
 

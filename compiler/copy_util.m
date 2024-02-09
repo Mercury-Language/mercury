@@ -118,7 +118,8 @@ copy_file_to_file_name(Globals, ProgressStream, SourceFile, DestinationFile,
     globals.get_install_method(Globals, InstallMethod),
     (
         InstallMethod = install_method_external_cmd,
-        Command = make_install_file_command(Globals, SourceFile, DestinationFile),
+        Command = make_install_file_command(Globals, SourceFile,
+            DestinationFile),
         invoke_system_command(Globals, ProgressStream, ProgressStream,
             cmd_verbose, Command, Succeeded, !IO)
     ;
@@ -142,7 +143,8 @@ copy_file_to_directory(Globals, ProgressStream, SourceFile, DestinationDir,
     globals.get_install_method(Globals, InstallMethod),
     (
         InstallMethod = install_method_external_cmd,
-        Command = make_install_file_command(Globals, SourceFile, DestinationDir),
+        Command = make_install_file_command(Globals, SourceFile,
+            DestinationDir),
         invoke_system_command(Globals, ProgressStream, ProgressStream,
             cmd_verbose, Command, Succeeded, !IO)
     ;
@@ -537,7 +539,8 @@ set_file_permissions(FileName, FilePermissions, !IO) :-
         do_set_file_permissions(FileName, RawFilePermissions, !IO)
     ).
 
-:- pred do_set_file_permissions(file_name::in, uint64::in, io::di, io::uo) is det.
+:- pred do_set_file_permissions(file_name::in, uint64::in, io::di, io::uo)
+    is det.
 
 :- pragma foreign_proc("C",
     do_set_file_permissions(FileName::in, RawFilePermissions::in,

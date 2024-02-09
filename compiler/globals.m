@@ -855,7 +855,8 @@ globals_init(DefaultOptions, Options, OptTuple, OpMode,
         LinkedTargetExtInfoMap, C_CompilerType, CSharp_CompilerType,
         Target, SubdirSetting, WordSize, GC_Method,
         TerminationNorm, Termination2Norm, TraceLevel, SSTraceLevel,
-        MaybeThreadSafe, HostEnvType, SystemEnvType, TargetEnvType, InstallMethod).
+        MaybeThreadSafe, HostEnvType, SystemEnvType, TargetEnvType,
+        InstallMethod).
 
 get_default_options(Globals, Globals ^ g_default_options).
 get_options(Globals, Globals ^ g_options).

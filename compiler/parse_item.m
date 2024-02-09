@@ -1341,7 +1341,8 @@ parse_func_decl_base_2(FuncName, Args, ReturnArg, FuncTerm, Term,
             MaybeIOM = ok1(iom_item(Item))
         ;
             InconsistentVars = [HeadInconsistentVar | TailInconsistentVars],
-            report_inconsistent_constrained_inst_vars("in function declaration",
+            Where = "in function declaration",
+            report_inconsistent_constrained_inst_vars(Where,
                 get_term_context(Term), IVarSet,
                 HeadInconsistentVar, TailInconsistentVars, Spec),
             MaybeIOM = error1([Spec])
@@ -1621,9 +1622,10 @@ parse_pred_mode_decl(Functor, ArgTerms, ModuleName, PredModeTerm, VarSet,
             MaybeIOM = ok1(iom_item(Item))
         ;
             InconsistentVars = [HeadInconsistentVar | TailInconsistentVars],
-            report_inconsistent_constrained_inst_vars(
-                "in predicate mode declaration", get_term_context(PredModeTerm),
-                InstVarSet, HeadInconsistentVar, TailInconsistentVars, Spec),
+            Where = "in predicate mode declaration",
+            report_inconsistent_constrained_inst_vars(Where,
+                get_term_context(PredModeTerm), InstVarSet,
+                HeadInconsistentVar, TailInconsistentVars, Spec),
             MaybeIOM = error1([Spec])
         )
     else

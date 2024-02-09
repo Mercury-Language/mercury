@@ -327,9 +327,9 @@ make_symlink_or_copy_file(Globals, ProgressStream,
             PrintCommand = no
         ),
         % XXX FILE COPY
-        % copy_file_to_file_name/7 will write an error message to ProgressStream
-        % itself if the file copy fails. We used to generate an error similar
-        % to the symlink case above here.
+        % copy_file_to_file_name/7 will write an error message
+        % to ProgressStream itself if the file copy fails. We used to generate
+        % an error similar to the symlink case above here.
         copy_file_to_file_name(Globals, ProgressStream, SourceFileName,
             DestinationFileName, Succeeded, !IO)
     ).

@@ -1790,7 +1790,8 @@ optdef(oc_opt, optopt_unneeded_code_copy_limit,         int_special).
 optdef(oc_opt, optopt_type_specialization,              bool_special).
 optdef(oc_opt, optopt_user_guided_type_specialization,  bool_special).
 optdef(oc_opt, optopt_introduce_accumulators,           bool_special).
-optdef(oc_opt, optopt_optimize_constructor_last_call_accumulator, bool_special).
+optdef(oc_opt, optopt_optimize_constructor_last_call_accumulator,
+                                                        bool_special).
 optdef(oc_opt, optopt_optimize_constructor_last_call_null, bool_special).
 optdef(oc_opt, optopt_optimize_constructor_last_call,   bool_special).
 optdef(oc_opt, optopt_optimize_dead_procs,              bool_special).
@@ -1955,7 +1956,8 @@ optdef(oc_link, mercury_libraries,                      accumulating([])).
 optdef(oc_link, mercury_standard_library_directory,     maybe_string(no)).
     % The Mercury.config file will set the default
     % standard library directory.
-optdef(oc_link, mercury_standard_library_directory_special, maybe_string_special).
+optdef(oc_link, mercury_standard_library_directory_special,
+                                                        maybe_string_special).
 optdef(oc_link, init_file_directories,                  accumulating([])).
 optdef(oc_link, init_files,                             accumulating([])).
 optdef(oc_link, trace_init_files,                       accumulating([])).
@@ -1992,7 +1994,7 @@ optdef(oc_link, mkinit_command,                         string("mkinit")).
 optdef(oc_link, mkinit_erl_command,                     string("mkinit_erl")).
 optdef(oc_link, demangle_command,                       string("mdemangle")).
 optdef(oc_link, filtercc_command,                       string("mfiltercc")).
-optdef(oc_link, filterjavac_command,                    string("mfilterjavac")).
+optdef(oc_link, filterjavac_command,                string("mfilterjavac")).
 optdef(oc_link, trace_libs,                             string("")).
 optdef(oc_link, thread_libs,                            string("")).
 optdef(oc_link, hwloc_libs,                             string("")).
@@ -4604,9 +4606,9 @@ options_help_verbosity(Stream, !IO) :-
         "\tOutput debugging traces of type representation choices."
 % The mode constraints code is still experimental so this option is
 % currently commented out.
-%         "--debug-mode-constraints",
-%         "\tOutput detailed debugging traces of the `--prop-mode-constraints'",
-%         "\toption."
+%       "--debug-mode-constraints",
+%       "\tOutput detailed debugging traces of the `--prop-mode-constraints'",
+%       "\toption."
     ], !IO).
 
 :- pred options_help_output(io.text_output_stream::in, io::di, io::uo) is det.
@@ -5127,7 +5129,8 @@ options_help_ctgc(Stream, !IO) :-
         "--structure-reuse, --ctgc",
         "\tPerform structure reuse analysis (Compile Time Garbage",
         "\tCollection).",
-        "--structure-reuse-constraint {same_cons_id, within_n_cells_difference}",
+        "--structure-reuse-constraint " ++
+            "{same_cons_id, within_n_cells_difference}",
         "--ctgc-constraint {same_cons_id, within_n_cells_difference}",
         "\tConstraint on the way we allow structure reuse. `same_cons_id'",
         "\tspecifies that reuse is only allowed between terms of the same",
@@ -5200,8 +5203,8 @@ options_help_termination(Stream, !IO) :-
 %       "\ton convex constraints.",
 %       "--chk-term2, --check-termination2",
 %       "\tEnable the alternative termination analysis, and emit warnings for",
-%       "\tsome predicates or functions that cannot be proved to terminate. In",
-%       "\tmany cases where the compiler is unable to prove termination",
+%       "\tsome predicates or functions that cannot be proved to terminate.",
+%       "\tIn many cases where the compiler is unable to prove termination",
 %       "\tthe problem is either a lack of information about the",
 %       "\ttermination properties of other predicates, or because language",
 %       "\tconstructs (such as higher order calls) were used which could",
@@ -5215,7 +5218,8 @@ options_help_termination(Stream, !IO) :-
 %       "--term2-widening-limit <n>, --termination2-widening-limit <n>",
 %       "\tSet the threshold for the number of iterations after which the",
 %       "\targument size analyser invokes widening.",
-%       "--term2-propagate-failure-constrs, --termination2-propagate-failure-constraints",
+%       "--term2-propagate-failure-constrs, " ++
+%           "--termination2-propagate-failure-constraints",
 %       "\tMake the argument analyser infer information about the sizes of any"
 %       "\tinputs to a goal in contexts where that goal fails."
 %       "--term2-max-matrix-size <n>, --termination2-maximum-matrix-size <n>",
@@ -5547,14 +5551,16 @@ options_help_compilation_model(Stream, !IO) :-
 %       "--det-copy-out",
 %       "\tSpecify whether to handle output arguments for det/semidet",
 %       "\tprocedures using return-by-value rather than pass-by-reference.",
-%       "\tThis option is ignored if the `--high-level-code' option is not enabled.",
+%       "\tThis option is ignored if the `--high-level-code' option",
+%       "\tis not enabled.",
 % The --nondet-copy-out option is not yet documented,
 % because it is probably not very useful except for Java,
 % where it is the default.
 %       "--nondet-copy-out",
 %       "\tSpecify whether to handle output arguments for nondet",
 %       "\tprocedures using pass-by-value rather than pass-by-reference.",
-%       "\tThis option is ignored if the `--high-level-code' option is not enabled.",
+%       "\tThis option is ignored if the `--high-level-code' option",
+%       "\tis not enabled.",
 % The --put-commit-in-own-func option is not documented because
 % it is enabled automatically (by handle_options) in the situations
 % where it is needed; the user should never need to set it.
@@ -6176,9 +6182,10 @@ options_help_hlds_hlds_optimization(Stream, !IO) :-
 %       Actually, this is the default for now.
 % This is for measurements by implementors only.
 %       "--always-specialize-in-dep-par-conjs",
-%       "\tWhen the transformation for handling dependent parallel conjunctions",
-%       "\tadds waits and/or signals around a call, create a specialized",
-%       "\tversion of the called procedure, even if this is not profitable.",
+%       "\tWhen the transformation for handling dependent parallel",
+%       "\tconjunctions adds waits and/or signals around a call,",
+%       "\tcreate a specialized version of the called procedure, even if".
+%       "\tthis is not profitable.",
 % '--region-analysis' is not documented because it is still experimental.
 %        "--region-analysis",
 %        "\tEnable the analysis for region-based memory management."
@@ -6803,8 +6810,9 @@ options_help_build_system(Stream, !IO) :-
         "\ta Mercury library.",
         "\t(This option is only supported by `mmc --make'.)",
         "--restricted-command-line",
-        "\tEnable this option if your shell doesn't support long command lines.",
-        "\tThis option uses temporary files to pass arguments to sub-commands.",
+        "\tEnable this option if your shell doesn't support long",
+        "\tcommand lines. This option uses temporary files to pass arguments",
+        "\tto sub-commands.",
         "\t(This option is only supported by `mmc --make'.)",
         "--env-type <type>",
         "\tSpecify the environment type in which the compiler and generated",

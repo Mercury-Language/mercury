@@ -205,7 +205,8 @@ type_is_ground(Type, GroundType) :-
         GroundType = kinded_type(GroundSubType, Kind)
     ).
 
-:- pred types_are_ground(list(mer_type)::in, list(ground_type)::out) is semidet.
+:- pred types_are_ground(list(mer_type)::in, list(ground_type)::out)
+    is semidet.
 
 types_are_ground([], []).
 types_are_ground([Type | Types], [GroundType | GroundTypes]) :-

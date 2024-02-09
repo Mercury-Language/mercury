@@ -66,8 +66,8 @@
     incl_addr, indent, list(unify_mode)) = string.
 
 :- pred mercury_output_structured_unify_mode(io.text_output_stream::in,
-    output_lang::in, inst_varset::in, incl_addr::in, indent::in, unify_mode::in,
-    io::di, io::uo) is det.
+    output_lang::in, inst_varset::in, incl_addr::in, indent::in,
+    unify_mode::in, io::di, io::uo) is det.
 :- func mercury_structured_unify_mode_to_string(output_lang, inst_varset,
     incl_addr, indent, unify_mode) = string.
 
