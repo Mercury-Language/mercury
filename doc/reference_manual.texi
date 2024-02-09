@@ -7228,11 +7228,9 @@ by the type declaration of the method.
 The values of @emph{most} parameter type variables
 are determined by having them occur
 in the declared type of an argument of the method.
-However, in the presence of functional dependencies,
-@c where exactly? The possibilities are the typeclass declaration and
-@c the method itself; are both allowed?
-then the value of a variable
-may also be implied by the values of other variables
+However, if either the typeclass named in the constraint, or its superclasses,
+include any functional dependencies, then
+the value of a variable may also be implied by the values of other variables
 (@pxref{Functional dependencies}).
 
 For example,
