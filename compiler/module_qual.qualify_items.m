@@ -71,6 +71,9 @@
 :- import_module parse_tree.prog_data_foreign.
 :- import_module parse_tree.prog_data_pragma.
 :- import_module parse_tree.prog_type_test.
+:- import_module recompilation.
+:- import_module recompilation.item_types.
+:- import_module recompilation.record_uses.
 
 :- import_module int.
 :- import_module one_or_more.
@@ -1253,8 +1256,8 @@ qualify_bound_inst(InInt, ErrorContext, BoundInst0, BoundInst,
     (
         ConsId = cons(Name, Arity, _),
         Id = recomp_item_name(Name, Arity),
-        update_recompilation_info(
-            recompilation.record_used_item(used_functor, Id, Id), !Info)
+        update_recompilation_info(record_used_item(used_functor, Id, Id),
+            !Info)
     ;
         ( ConsId = tuple_cons(_)
         ; ConsId = closure_cons(_, _)

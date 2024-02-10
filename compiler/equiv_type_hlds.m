@@ -58,6 +58,8 @@
 :- import_module parse_tree.prog_type_subst.
 :- import_module parse_tree.var_table.
 :- import_module recompilation.
+:- import_module recompilation.item_types.
+:- import_module recompilation.record_uses.
 
 :- import_module assoc_list.
 :- import_module bool.

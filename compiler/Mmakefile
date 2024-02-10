@@ -95,6 +95,9 @@ endif
 .PHONY: depend
 depend:		$(MC_PROG).$(DEPEND_TARGET)
 
+.PHONY: depend_only
+depend_only:	$(MC_PROG).depend
+
 $(MC_PROG).depend:      Mercury.modules COMP_FLAGS
 $(MC_PROG).depend_ints: Mercury.modules COMP_FLAGS
 

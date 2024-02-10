@@ -91,6 +91,8 @@
 :- import_module parse_tree.prog_type_test.
 :- import_module parse_tree.prog_util.
 :- import_module recompilation.
+:- import_module recompilation.item_types.
+:- import_module recompilation.record_uses.
 
 :- import_module bool.
 :- import_module cord.

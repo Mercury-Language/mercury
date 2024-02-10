@@ -118,6 +118,8 @@
 :- import_module mdbcomp.sym_name.
 :- import_module parse_tree.prog_mode.
 :- import_module recompilation.
+:- import_module recompilation.item_types.
+:- import_module recompilation.record_uses.
 
 :- import_module map.
 :- import_module require.
@@ -173,7 +175,7 @@ request_unify(UnifyId, InstVarSet, Determinism, Context, !ModuleInfo) :-
     (
         MaybeRecompInfo0 = yes(RecompInfo0),
         TypeCtorItem = type_ctor_to_recomp_item_name(TypeCtor),
-        recompilation.record_used_item(used_type_defn,
+        recompilation.record_uses.record_used_item(used_type_defn,
             TypeCtorItem, TypeCtorItem, RecompInfo0, RecompInfo),
         module_info_set_maybe_recompilation_info(yes(RecompInfo), !ModuleInfo)
     ;

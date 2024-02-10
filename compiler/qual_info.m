@@ -28,6 +28,7 @@
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.vartypes.
 :- import_module recompilation.
+:- import_module recompilation.record_uses.
 
 :- import_module bool.
 :- import_module list.
@@ -107,6 +108,7 @@
 :- import_module parse_tree.prog_type_scan.
 :- import_module parse_tree.prog_type_subst.
 :- import_module parse_tree.prog_util.
+:- import_module recompilation.item_types.
 
 :- import_module map.
 :- import_module maybe.
@@ -293,8 +295,8 @@ record_called_pred_or_func(PredOrFunc, SymName, UserArity, !QualInfo) :-
     ( PredOrFunc = pf_predicate, UsedItemType = used_predicate
     ; PredOrFunc = pf_function,  UsedItemType = used_function
     ),
-    apply_to_recompilation_info(
-        recompilation.record_used_item(UsedItemType, Id, Id), !QualInfo).
+    apply_to_recompilation_info(record_used_item(UsedItemType, Id, Id),
+        !QualInfo).
 
 :- pred record_used_functor(cons_id::in, qual_info::in, qual_info::out) is det.
 

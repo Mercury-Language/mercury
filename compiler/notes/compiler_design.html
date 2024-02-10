@@ -2384,7 +2384,14 @@ This functionality is implemented by the recompilation.m package.
 
 <ul>
 <li>
-recompilation.m contains types used by the other smart recompilation modules.
+recompilation.m just includes the recompilation.*.m modules.
+<li>
+recompilation.item_types.m defines the types
+that are part of the parse trees of interface files,
+and the operations we need on them.
+<li>
+recompilation.record_uses.m defines the data structures we use
+to record what parts of each imported module the current module uses.
 <li>
 recompilation.version.m generates version numbers
 for program items in interface files.

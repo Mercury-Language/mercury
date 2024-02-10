@@ -21,6 +21,7 @@
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_item.
 :- import_module recompilation.
+:- import_module recompilation.item_types.
 
 :- import_module list.
 :- import_module one_or_more.

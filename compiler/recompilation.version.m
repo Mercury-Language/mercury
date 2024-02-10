@@ -21,6 +21,7 @@
 :- import_module parse_tree.
 :- import_module parse_tree.maybe_error.
 :- import_module parse_tree.prog_item.
+:- import_module recompilation.item_types.
 
 :- import_module maybe.
 :- import_module term.
@@ -82,6 +83,9 @@
 :- implementation.
 
 :- import_module libs.maybe_util.
+:- import_module mdbcomp.
+:- import_module mdbcomp.prim_data.
+:- import_module mdbcomp.sym_name.
 :- import_module parse_tree.convert_parse_tree.
 :- import_module parse_tree.error_spec.
 :- import_module parse_tree.item_util.
@@ -91,6 +95,7 @@
 :- import_module parse_tree.parse_tree_out_term.
 :- import_module parse_tree.parse_tree_to_term.
 :- import_module parse_tree.parse_util.
+:- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_data_pragma.
 :- import_module parse_tree.prog_type.
 :- import_module parse_tree.prog_type_subst.

@@ -130,6 +130,8 @@
 :- implementation.
 
 :- import_module recompilation.
+:- import_module recompilation.item_types.
+:- import_module recompilation.record_uses.
 
 :- import_module assoc_list.
 :- import_module require.
@@ -317,8 +319,7 @@ find_unique_match(InInt, ErrorContext, IdSet, IdType, Id0, SymName,
         ItemName0 = recomp_item_name(SymName0, Arity),
         ItemName = recomp_item_name(SymName, Arity),
         update_recompilation_info(
-            recompilation.record_used_item(UsedItemType, ItemName0, ItemName),
-            !Info)
+            record_used_item(UsedItemType, ItemName0, ItemName), !Info)
     ).
 
 :- func convert_used_item_type(qual_id_kind) = used_item_type.

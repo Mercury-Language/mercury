@@ -46,6 +46,7 @@
 :- import_module parse_tree.prog_foreign.
 :- import_module parse_tree.prog_item.
 :- import_module recompilation.
+:- import_module recompilation.record_uses.
 
 :- import_module cord.
 :- import_module list.

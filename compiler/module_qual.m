@@ -83,6 +83,7 @@
 :- import_module parse_tree.prog_data_event.
 :- import_module parse_tree.prog_item.
 :- import_module recompilation.
+:- import_module recompilation.record_uses.
 
 :- import_module list.
 :- import_module maybe.

@@ -152,6 +152,7 @@
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_data_foreign.
 :- import_module recompilation.
+:- import_module recompilation.item_types.
 :- import_module recompilation.version.
 
 :- import_module bool.

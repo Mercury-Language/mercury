@@ -22,6 +22,7 @@
 
 :- import_module parse_tree.
 :- import_module parse_tree.module_baggage.
+:- import_module recompilation.record_uses.
 :- import_module recompilation.used_file.
 
 :- pred construct_used_file_contents(module_info::in, recompilation_info::in,
@@ -47,6 +48,7 @@
 :- import_module parse_tree.prog_type.
 :- import_module parse_tree.prog_type_test.
 :- import_module parse_tree.prog_util.
+:- import_module recompilation.item_types.
 
 :- import_module assoc_list.
 :- import_module int.

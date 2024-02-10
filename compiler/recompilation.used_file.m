@@ -35,9 +35,12 @@
 :- import_module parse_tree.error_spec.
 :- import_module parse_tree.module_baggage.
 :- import_module parse_tree.prog_data.
+:- import_module recompilation.item_types.
+:- import_module recompilation.record_uses.
 
 :- import_module assoc_list.
 :- import_module io.
+:- import_module list.
 :- import_module map.
 :- import_module maybe.
 :- import_module pair.
@@ -220,10 +223,10 @@
 
 :- import_module bool.
 :- import_module cord.
-:- import_module list.
 :- import_module mercury_term_lexer.
 :- import_module mercury_term_parser.
 :- import_module string.
+:- import_module term.
 :- import_module term_context.
 :- import_module term_int.
 :- import_module unit.

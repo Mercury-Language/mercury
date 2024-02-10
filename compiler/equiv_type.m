@@ -72,6 +72,7 @@
 :- import_module parse_tree.prog_data_used_modules.
 :- import_module parse_tree.prog_item.
 :- import_module recompilation.
+:- import_module recompilation.record_uses.
 
 :- import_module list.
 :- import_module map.
@@ -179,6 +180,7 @@
 :- import_module parse_tree.prog_type_subst.
 :- import_module parse_tree.prog_type_test.
 :- import_module parse_tree.prog_util.
+:- import_module recompilation.item_types.
 
 :- import_module assoc_list.
 :- import_module bool.

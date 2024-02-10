@@ -55,6 +55,8 @@
 :- import_module parse_tree.var_table.
 :- import_module parse_tree.vartypes.
 :- import_module recompilation.
+:- import_module recompilation.item_types.
+:- import_module recompilation.record_uses.
 
 :- import_module assoc_list.
 :- import_module map.
@@ -1500,7 +1502,7 @@ maybe_record_type_spec_in_qual_info(PredOrFunc, SymName, UserArity, PredStatus,
         ItemId = recomp_item_id(ItemType, ItemName),
         ExpandedItems = TSInfo ^ tspec_items,
         apply_to_recompilation_info(
-            recompilation.record_expanded_items(ItemId, ExpandedItems),
+            record_expanded_items(ItemId, ExpandedItems),
             !QualInfo)
     ;
         IsImported = no
