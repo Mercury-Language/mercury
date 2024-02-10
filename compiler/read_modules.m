@@ -438,6 +438,8 @@ read_module_src(ProgressStream, Globals, ReadReasonMsg, IgnoreErrors,
             mfas_ok(FileNameAndStream), IgnoreErrors, fk_src, ReadDoneMsg,
             FileName0, FileName, MaybeTimestampRes, MaybeTimestamp,
             Errors0, Errors1, !IO),
+        FileNameAndStream = path_name_and_stream(_FilePathName, FileStream),
+        io.close_input(FileStream, !IO),
         (
             MaybeParseTreeSrc0 = yes(ParseTreeSrc0),
             % If ModuleName = ParseTreeSrc0 ^ pts_module_name, this obviously
@@ -481,6 +483,8 @@ read_module_src_from_file(ProgressStream, Globals, FileName, FileNameDotM,
             MaybeParseTreeSrc, Errors0, !IO),
         read_module_end_file(Globals, fk_src, ReadDoneMsg, FileNameDotM,
             MaybeTimestampRes, MaybeTimestamp, Errors0, Errors1, !IO),
+        FileNameAndStream = path_name_and_stream(_FilePathName, FileStream),
+        io.close_input(FileStream, !IO),
         (
             MaybeParseTreeSrc = yes(ParseTreeSrc),
             HaveModule = have_module(FileNameDotM, ParseTreeSrc,
@@ -605,6 +609,8 @@ read_module_int0(ProgressStream, Globals, ReadReasonMsg, IgnoreErrors, Search,
         read_module_end_module(ProgressStream, Globals, MaybeFileNameAndStream,
             IgnoreErrors, fk_int(ifk_int0), ReadDoneMsg, FileName0, FileName,
             MaybeTimestampRes, MaybeTimestamp, Errors0, Errors1, !IO),
+        FileNameAndStream = path_name_and_stream(_FilePathName, FileStream),
+        io.close_input(FileStream, !IO),
         (
             MaybeParseTreeInt0 = yes(ParseTreeInt0),
             HaveModule = have_module(FileName, ParseTreeInt0,
@@ -637,6 +643,8 @@ read_module_int1(ProgressStream, Globals, ReadReasonMsg, IgnoreErrors, Search,
         read_module_end_module(ProgressStream, Globals, MaybeFileNameAndStream,
             IgnoreErrors, fk_int(ifk_int1), ReadDoneMsg, FileName0, FileName,
             MaybeTimestampRes, MaybeTimestamp, Errors0, Errors1, !IO),
+        FileNameAndStream = path_name_and_stream(_FilePathName, FileStream),
+        io.close_input(FileStream, !IO),
         (
             MaybeParseTreeInt1 = yes(ParseTreeInt1),
             HaveModule = have_module(FileName, ParseTreeInt1,
@@ -669,6 +677,8 @@ read_module_int2(ProgressStream, Globals, ReadReasonMsg, IgnoreErrors, Search,
         read_module_end_module(ProgressStream, Globals, MaybeFileNameAndStream,
             IgnoreErrors, fk_int(ifk_int2), ReadDoneMsg, FileName0, FileName,
             MaybeTimestampRes, MaybeTimestamp, Errors0, Errors1, !IO),
+        FileNameAndStream = path_name_and_stream(_FilePathName, FileStream),
+        io.close_input(FileStream, !IO),
         (
             MaybeParseTreeInt2 = yes(ParseTreeInt2),
             HaveModule = have_module(FileName, ParseTreeInt2,
@@ -701,6 +711,8 @@ read_module_int3(ProgressStream, Globals, ReadReasonMsg, IgnoreErrors, Search,
         read_module_end_module(ProgressStream, Globals, MaybeFileNameAndStream,
             IgnoreErrors, fk_int(ifk_int3), ReadDoneMsg, FileName0, FileName,
             MaybeTimestampRes, MaybeTimestamp, Errors0, Errors1, !IO),
+        FileNameAndStream = path_name_and_stream(_FilePathName, FileStream),
+        io.close_input(FileStream, !IO),
         (
             MaybeParseTreeInt3 = yes(ParseTreeInt3),
             HaveModule = have_module(FileName, ParseTreeInt3,
@@ -740,6 +752,8 @@ read_module_plain_opt(ProgressStream, Globals, ModuleName,
             MaybeFileNameAndStream, IgnoreErrors, fk_opt(ofk_opt), ReadDoneMsg,
             FileName0, FileName, MaybeTimestampRes, _MaybeTimestamp,
             Errors0, Errors, !IO),
+        FileNameAndStream = path_name_and_stream(_FilePathName, FileStream),
+        io.close_input(FileStream, !IO),
         (
             MaybeParseTreePlainOpt = yes(ParseTreePlainOpt),
             HaveModule = have_module(FileName, ParseTreePlainOpt,
@@ -777,6 +791,8 @@ read_module_trans_opt(ProgressStream, Globals, ModuleName,
             MaybeFileNameAndStream, IgnoreErrors, fk_opt(ofk_trans_opt),
             ReadDoneMsg, FileName0, FileName,
             MaybeTimestampRes, _MaybeTimestamp, Errors0, Errors, !IO),
+        FileNameAndStream = path_name_and_stream(_FilePathName, FileStream),
+        io.close_input(FileStream, !IO),
         (
             MaybeParseTreeTransOpt = yes(ParseTreeTransOpt),
             HaveModule = have_module(FileName, ParseTreeTransOpt,
@@ -908,10 +924,12 @@ read_module_begin(ProgressStream, Globals, ReadReasonMsg, Search,
     ;
         (
             FileKind = fk_int(IntFileKind),
-            int_file_kind_to_extension(IntFileKind, _ExtStr, Ext)
+            int_file_kind_to_extension(IntFileKind, _ExtStr, Ext),
+            SearchOpt = search_directories
         ;
             FileKind = fk_opt(OptFileKind),
-            opt_file_kind_to_extension(OptFileKind, _ExtStr, Ext)
+            opt_file_kind_to_extension(OptFileKind, _ExtStr, Ext),
+            SearchOpt = intermod_directories
         ),
         % The rest of this predicate should be kept in sync
         % with read_module_begin_from_file.
@@ -922,15 +940,7 @@ read_module_begin(ProgressStream, Globals, ReadReasonMsg, Search,
             % to us.
             module_name_to_search_file_name(Globals, $pred, Ext,
                 ModuleName, FileName),
-            (
-                FileKind = fk_int(_),
-                globals.lookup_accumulating_option(Globals,
-                    search_directories, SearchDirs)
-            ;
-                FileKind = fk_opt(_),
-                globals.lookup_accumulating_option(Globals,
-                    intermod_directories, SearchDirs)
-            )
+            globals.lookup_accumulating_option(Globals, SearchOpt, SearchDirs)
         ;
             Search = do_not_search,
             module_name_to_file_name(Globals, $pred, Ext,

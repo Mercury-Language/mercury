@@ -27,12 +27,16 @@
 %---------------------------------------------------------------------------%
 
 :- type path_name_and_stream
-    --->    path_name_and_stream(string, io.text_input_stream).
-            % The string may be a file name or a dir name.
+    --->    path_name_and_stream(file_name, io.text_input_stream).
+            % The string is a file name.
 
-:- type path_name_and_contents
-    --->    path_name_and_contents(string, string).
-            % The first string may be a file name or a dir name.
+:- type dir_name_and_stream
+    --->    dir_name_and_stream(dir_name, io.text_input_stream).
+            % The string is a dir name.
+
+:- type dir_name_and_contents
+    --->    dir_name_and_contents(dir_name, string).
+            % The first string is a dir name.
             % The second string is the contents of the file.
 
 %---------------------%
@@ -88,7 +92,7 @@
     % in which the file was found, and the contents of the file as a string.
     %
 :- pred search_for_file_returning_dir_and_contents(list(dir_name)::in,
-    file_name::in, maybe_error(path_name_and_contents)::out,
+    file_name::in, maybe_error(dir_name_and_contents)::out,
     io::di, io::uo) is det.
 
 %---------------------%
@@ -250,7 +254,7 @@ search_for_file_returning_dir_and_contents(Dirs, FileName,
 
 :- pred search_for_file_returning_dir_and_contents_loop(list(dir_name)::in,
     list(dir_name)::in, file_name::in,
-    maybe_error(path_name_and_contents)::out, io::di, io::uo) is det.
+    maybe_error(dir_name_and_contents)::out, io::di, io::uo) is det.
 
 search_for_file_returning_dir_and_contents_loop(AllDirs, Dirs, FileName,
         MaybeDirNameAndContents, !IO) :-
@@ -266,7 +270,7 @@ search_for_file_returning_dir_and_contents_loop(AllDirs, Dirs, FileName,
         (
             MaybeHeadContents = ok(HeadContents),
             MaybeDirNameAndContents =
-                ok(path_name_and_contents(HeadDir, HeadContents))
+                ok(dir_name_and_contents(HeadDir, HeadContents))
         ;
             MaybeHeadContents = error(_),
             search_for_file_returning_dir_and_contents_loop(AllDirs, TailDirs,

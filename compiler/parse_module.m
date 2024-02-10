@@ -254,11 +254,22 @@ peek_at_file(FileStream, DefaultModuleName, DefaultExpectationContexts,
 actually_read_module_src(_Globals, FileNameAndStream,
         DefaultModuleName, DefaultExpectationContexts,
         ReadModuleAndTimestamps, MaybeModuleTimestampRes,
-        MaybeParseTree, Errors, !IO) :-
-    do_actually_read_module(FileNameAndStream,
-        DefaultModuleName, DefaultExpectationContexts,
-        ReadModuleAndTimestamps, MaybeModuleTimestampRes,
-        read_parse_tree_src, MaybeParseTree, Errors, !IO).
+        MaybeParseTreeSrc, Errors, !IO) :-
+    do_actually_read_file(FileNameAndStream, ReadModuleAndTimestamps,
+        ReadFileResult, !IO),
+    (
+        ReadFileResult = drfr_ok(FileStr, FileStrLen, MaybeModuleTimestampRes),
+        FileNameAndStream = path_name_and_stream(FileName, _FileStream),
+        LineContext0 = line_context(1, 0),
+        LinePosn0 = line_posn(0),
+        read_parse_tree_src(FileName, FileStr, FileStrLen,
+            LineContext0, LinePosn0,
+            DefaultModuleName, DefaultExpectationContexts,
+            MaybeParseTreeSrc, Errors)
+    ;
+        ReadFileResult = drfr_error(Errors, MaybeModuleTimestampRes),
+        MaybeParseTreeSrc = no
+    ).
 
 %---------------------------------------------------------------------------%
 
@@ -267,20 +278,31 @@ actually_read_module_int0(Globals, FileNameAndStream,
         ReadModuleAndTimestamps, MaybeModuleTimestampRes,
         MaybeParseTreeInt0, Errors, !IO) :-
     IntFileKind = ifk_int0,
-    do_actually_read_module(FileNameAndStream,
-        DefaultModuleName, DefaultExpectationContexts,
-        ReadModuleAndTimestamps, MaybeModuleTimestampRes,
-        read_parse_tree_int(IntFileKind), MaybeInitParseTreeInt, Errors0, !IO),
+    do_actually_read_file(FileNameAndStream, ReadModuleAndTimestamps,
+        ReadFileResult, !IO),
     (
-        MaybeInitParseTreeInt = yes(InitParseTreeInt),
-        check_convert_parse_tree_int_to_int0(InitParseTreeInt, ParseTreeInt0,
-            [], ConvertSpecs),
-        MaybeParseTreeInt0 = yes(ParseTreeInt0),
-        maybe_add_convert_specs(Globals, ConvertSpecs, Errors0, Errors)
+        ReadFileResult = drfr_ok(FileStr, FileStrLen, MaybeModuleTimestampRes),
+        FileNameAndStream = path_name_and_stream(FileName, _FileStream),
+        LineContext0 = line_context(1, 0),
+        LinePosn0 = line_posn(0),
+        read_parse_tree_int(IntFileKind, FileName, FileStr, FileStrLen,
+            LineContext0, LinePosn0,
+            DefaultModuleName, DefaultExpectationContexts,
+            MaybeParseTreeInt, Errors0),
+        (
+            MaybeParseTreeInt = no,
+            MaybeParseTreeInt0 = no,
+            Errors = Errors0
+        ;
+            MaybeParseTreeInt = yes(ParseTreeInt),
+            check_convert_parse_tree_int_to_int0(ParseTreeInt,
+                ParseTreeInt0, [], ConvertSpecs),
+            MaybeParseTreeInt0 = yes(ParseTreeInt0),
+            maybe_add_convert_specs(Globals, ConvertSpecs, Errors0, Errors)
+        )
     ;
-        MaybeInitParseTreeInt = no,
-        MaybeParseTreeInt0 = no,
-        Errors = Errors0
+        ReadFileResult = drfr_error(Errors, MaybeModuleTimestampRes),
+        MaybeParseTreeInt0 = no
     ).
 
 actually_read_module_int1(Globals, FileNameAndStream,
@@ -288,20 +310,31 @@ actually_read_module_int1(Globals, FileNameAndStream,
         ReadModuleAndTimestamps, MaybeModuleTimestampRes,
         MaybeParseTreeInt1, Errors, !IO) :-
     IntFileKind = ifk_int1,
-    do_actually_read_module(FileNameAndStream,
-        DefaultModuleName, DefaultExpectationContexts,
-        ReadModuleAndTimestamps, MaybeModuleTimestampRes,
-        read_parse_tree_int(IntFileKind), MaybeInitParseTreeInt, Errors0, !IO),
+    do_actually_read_file(FileNameAndStream, ReadModuleAndTimestamps,
+        ReadFileResult, !IO),
     (
-        MaybeInitParseTreeInt = yes(InitParseTreeInt),
-        check_convert_parse_tree_int_to_int1(InitParseTreeInt, ParseTreeInt1,
-            [], ConvertSpecs),
-        MaybeParseTreeInt1 = yes(ParseTreeInt1),
-        maybe_add_convert_specs(Globals, ConvertSpecs, Errors0, Errors)
+        ReadFileResult = drfr_ok(FileStr, FileStrLen, MaybeModuleTimestampRes),
+        FileNameAndStream = path_name_and_stream(FileName, _FileStream),
+        LineContext0 = line_context(1, 0),
+        LinePosn0 = line_posn(0),
+        read_parse_tree_int(IntFileKind, FileName, FileStr, FileStrLen,
+            LineContext0, LinePosn0,
+            DefaultModuleName, DefaultExpectationContexts,
+            MaybeParseTreeInt, Errors0),
+        (
+            MaybeParseTreeInt = no,
+            MaybeParseTreeInt1 = no,
+            Errors = Errors0
+        ;
+            MaybeParseTreeInt = yes(ParseTreeInt),
+            check_convert_parse_tree_int_to_int1(ParseTreeInt,
+                ParseTreeInt1, [], ConvertSpecs),
+            MaybeParseTreeInt1 = yes(ParseTreeInt1),
+            maybe_add_convert_specs(Globals, ConvertSpecs, Errors0, Errors)
+        )
     ;
-        MaybeInitParseTreeInt = no,
-        MaybeParseTreeInt1 = no,
-        Errors = Errors0
+        ReadFileResult = drfr_error(Errors, MaybeModuleTimestampRes),
+        MaybeParseTreeInt1 = no
     ).
 
 actually_read_module_int2(Globals, FileNameAndStream,
@@ -309,20 +342,31 @@ actually_read_module_int2(Globals, FileNameAndStream,
         ReadModuleAndTimestamps, MaybeModuleTimestampRes,
         MaybeParseTreeInt2, Errors, !IO) :-
     IntFileKind = ifk_int2,
-    do_actually_read_module(FileNameAndStream,
-        DefaultModuleName, DefaultExpectationContexts,
-        ReadModuleAndTimestamps, MaybeModuleTimestampRes,
-        read_parse_tree_int(IntFileKind), MaybeInitParseTreeInt, Errors0, !IO),
+    do_actually_read_file(FileNameAndStream, ReadModuleAndTimestamps,
+        ReadFileResult, !IO),
     (
-        MaybeInitParseTreeInt = yes(InitParseTreeInt),
-        check_convert_parse_tree_int_to_int2(InitParseTreeInt, ParseTreeInt2,
-            [], ConvertSpecs),
-        MaybeParseTreeInt2 = yes(ParseTreeInt2),
-        maybe_add_convert_specs(Globals, ConvertSpecs, Errors0, Errors)
+        ReadFileResult = drfr_ok(FileStr, FileStrLen, MaybeModuleTimestampRes),
+        FileNameAndStream = path_name_and_stream(FileName, _FileStream),
+        LineContext0 = line_context(1, 0),
+        LinePosn0 = line_posn(0),
+        read_parse_tree_int(IntFileKind, FileName, FileStr, FileStrLen,
+            LineContext0, LinePosn0,
+            DefaultModuleName, DefaultExpectationContexts,
+            MaybeParseTreeInt, Errors0),
+        (
+            MaybeParseTreeInt = no,
+            MaybeParseTreeInt2 = no,
+            Errors = Errors0
+        ;
+            MaybeParseTreeInt = yes(ParseTreeInt),
+            check_convert_parse_tree_int_to_int2(ParseTreeInt,
+                ParseTreeInt2, [], ConvertSpecs),
+            MaybeParseTreeInt2 = yes(ParseTreeInt2),
+            maybe_add_convert_specs(Globals, ConvertSpecs, Errors0, Errors)
+        )
     ;
-        MaybeInitParseTreeInt = no,
-        MaybeParseTreeInt2 = no,
-        Errors = Errors0
+        ReadFileResult = drfr_error(Errors, MaybeModuleTimestampRes),
+        MaybeParseTreeInt2 = no
     ).
 
 actually_read_module_int3(Globals, FileNameAndStream,
@@ -330,20 +374,31 @@ actually_read_module_int3(Globals, FileNameAndStream,
         ReadModuleAndTimestamps, MaybeModuleTimestampRes,
         MaybeParseTreeInt3, Errors, !IO) :-
     IntFileKind = ifk_int3,
-    do_actually_read_module(FileNameAndStream,
-        DefaultModuleName, DefaultExpectationContexts,
-        ReadModuleAndTimestamps, MaybeModuleTimestampRes,
-        read_parse_tree_int(IntFileKind), MaybeInitParseTreeInt, Errors0, !IO),
+    do_actually_read_file(FileNameAndStream, ReadModuleAndTimestamps,
+        ReadFileResult, !IO),
     (
-        MaybeInitParseTreeInt = yes(InitParseTreeInt),
-        check_convert_parse_tree_int_to_int3(InitParseTreeInt, ParseTreeInt3,
-            [], ConvertSpecs),
-        MaybeParseTreeInt3 = yes(ParseTreeInt3),
-        maybe_add_convert_specs(Globals, ConvertSpecs, Errors0, Errors)
+        ReadFileResult = drfr_ok(FileStr, FileStrLen, MaybeModuleTimestampRes),
+        FileNameAndStream = path_name_and_stream(FileName, _FileStream),
+        LineContext0 = line_context(1, 0),
+        LinePosn0 = line_posn(0),
+        read_parse_tree_int(IntFileKind, FileName, FileStr, FileStrLen,
+            LineContext0, LinePosn0,
+            DefaultModuleName, DefaultExpectationContexts,
+            MaybeParseTreeInt, Errors0),
+        (
+            MaybeParseTreeInt = no,
+            MaybeParseTreeInt3 = no,
+            Errors = Errors0
+        ;
+            MaybeParseTreeInt = yes(ParseTreeInt),
+            check_convert_parse_tree_int_to_int3(ParseTreeInt,
+                ParseTreeInt3, [], ConvertSpecs),
+            MaybeParseTreeInt3 = yes(ParseTreeInt3),
+            maybe_add_convert_specs(Globals, ConvertSpecs, Errors0, Errors)
+        )
     ;
-        MaybeInitParseTreeInt = no,
-        MaybeParseTreeInt3 = no,
-        Errors = Errors0
+        ReadFileResult = drfr_error(Errors, MaybeModuleTimestampRes),
+        MaybeParseTreeInt3 = no
     ).
 
 :- pred maybe_add_convert_specs(globals::in, list(error_spec)::in,
@@ -363,40 +418,64 @@ maybe_add_convert_specs(Globals, ConvertSpecs, !Errors) :-
 
 actually_read_module_plain_opt(_Globals, FileNameAndStream, DefaultModuleName,
         MaybeParseTreePlainOpt, Errors, !IO) :-
-    DefaultExpectationContexts = [],
-    do_actually_read_module(FileNameAndStream,
-        DefaultModuleName, DefaultExpectationContexts,
-        always_read_module(dont_return_timestamp), _,
-        read_parse_tree_opt(ofk_opt), MaybeParseTreeOpt, Errors0, !IO),
+    ReadModuleAndTimestamps = always_read_module(dont_return_timestamp),
+    do_actually_read_file(FileNameAndStream, ReadModuleAndTimestamps,
+        ReadFileResult, !IO),
     (
-        MaybeParseTreeOpt = yes(ParseTreeOpt),
-        check_convert_parse_tree_opt_to_plain_opt(ParseTreeOpt,
-            ParseTreePlainOpt, [], ConvertSpecs),
-        MaybeParseTreePlainOpt = yes(ParseTreePlainOpt),
-        add_any_nec_errors(ConvertSpecs, Errors0, Errors)
+        ReadFileResult = drfr_ok(FileStr, FileStrLen, _),
+        FileNameAndStream = path_name_and_stream(FileName, _FileStream),
+        LineContext0 = line_context(1, 0),
+        LinePosn0 = line_posn(0),
+        DefaultExpectationContexts = [],
+        read_parse_tree_opt(ofk_opt, FileName, FileStr, FileStrLen,
+            LineContext0, LinePosn0,
+            DefaultModuleName, DefaultExpectationContexts,
+            MaybeParseTreeOpt, Errors0),
+        (
+            MaybeParseTreeOpt = no,
+            MaybeParseTreePlainOpt = no,
+            Errors = Errors0
+        ;
+            MaybeParseTreeOpt = yes(ParseTreeOpt),
+            check_convert_parse_tree_opt_to_plain_opt(ParseTreeOpt,
+                ParseTreePlainOpt, [], ConvertSpecs),
+            MaybeParseTreePlainOpt = yes(ParseTreePlainOpt),
+            add_any_nec_errors(ConvertSpecs, Errors0, Errors)
+        )
     ;
-        MaybeParseTreeOpt = no,
-        MaybeParseTreePlainOpt = no,
-        Errors = Errors0
+        ReadFileResult = drfr_error(Errors, _),
+        MaybeParseTreePlainOpt = no
     ).
 
 actually_read_module_trans_opt(_Globals, FileNameAndStream, DefaultModuleName,
         MaybeParseTreeTransOpt, Errors, !IO) :-
-    DefaultExpectationContexts = [],
-    do_actually_read_module(FileNameAndStream,
-        DefaultModuleName, DefaultExpectationContexts,
-        always_read_module(dont_return_timestamp), _,
-        read_parse_tree_opt(ofk_trans_opt), MaybeParseTreeOpt, Errors0, !IO),
+    ReadModuleAndTimestamps = always_read_module(dont_return_timestamp),
+    do_actually_read_file(FileNameAndStream, ReadModuleAndTimestamps,
+        ReadFileResult, !IO),
     (
-        MaybeParseTreeOpt = yes(ParseTreeOpt),
-        check_convert_parse_tree_opt_to_trans_opt(ParseTreeOpt,
-            ParseTreeTransOpt, [], ConvertSpecs),
-        MaybeParseTreeTransOpt = yes(ParseTreeTransOpt),
-        add_any_nec_errors(ConvertSpecs, Errors0, Errors)
+        ReadFileResult = drfr_ok(FileStr, FileStrLen, _),
+        FileNameAndStream = path_name_and_stream(FileName, _FileStream),
+        LineContext0 = line_context(1, 0),
+        LinePosn0 = line_posn(0),
+        DefaultExpectationContexts = [],
+        read_parse_tree_opt(ofk_trans_opt, FileName, FileStr, FileStrLen,
+            LineContext0, LinePosn0,
+            DefaultModuleName, DefaultExpectationContexts,
+            MaybeParseTreeOpt, Errors0),
+        (
+            MaybeParseTreeOpt = no,
+            MaybeParseTreeTransOpt = no,
+            Errors = Errors0
+        ;
+            MaybeParseTreeOpt = yes(ParseTreeOpt),
+            check_convert_parse_tree_opt_to_trans_opt(ParseTreeOpt,
+                ParseTreeTransOpt, [], ConvertSpecs),
+            MaybeParseTreeTransOpt = yes(ParseTreeTransOpt),
+            add_any_nec_errors(ConvertSpecs, Errors0, Errors)
+        )
     ;
-        MaybeParseTreeOpt = no,
-        MaybeParseTreeTransOpt = no,
-        Errors = Errors0
+        ReadFileResult = drfr_error(Errors, _),
+        MaybeParseTreeTransOpt = no
     ).
 
 %---------------------------------------------------------------------------%
@@ -457,29 +536,81 @@ expectation_context_to_msg(Context, SubMsg) :-
 
 %---------------------------------------------------------------------------%
 
+:- type do_read_file_result
+    --->    drfr_ok(
+                % The contents of the file, and its length.
+                %
+                % XXX When the compiler is compiled to C, this string will be
+                % byte-for-byte identical to the contents of the file.
+                % But when the compiler is compiled to C# or Java, the byte
+                % sequence in the file will need to be TRANSLATED from UTF-8
+                % to UTF-16. When the only reason we want to read e.g. a int
+                % file is to compare its old contents to its new intended
+                % contents, which will have to be converted from its UTF-16
+                % version to UTF-8 anyway, this is wasteful, because it
+                % requires the sequence
+                %
+                % - create new contents as UTF-16
+                % - read old contents of the file, which is UTF-8
+                % - convert old contents to UTF-16 (CONVERSION 1)
+                % - test whether the old UTF-16 contents as the same as the new
+                % - if the same then
+                %   - done
+                % - otherwise
+                %   - convert the UTF-16 new contents to UTF-8 (CONVERSION 2)
+                %   - write out the resulting UTF-8 string
+                %
+                % whereas if we returned the raw UTF-8 string directly as
+                % a byte array, we could use the sequence
+                %
+                % - create new contents as UTF-16
+                % - convert the UTF-16 new contents to UTF-8 (CONVERSION 1)
+                % - read old contents of the file, which is UTF-8
+                % - test whether the old UTF-8 contents as the same as the new
+                % - if the same then
+                %   - done
+                % - otherwise
+                %   - write out the new UTF-8 string
+                %
+                % This does the same number of conversions in the case where
+                % the old and the new contents are the same, i.e. one
+                % (though that conversion is in the opposite direction,
+                % and the string it is applied to may be either shorter
+                % or longer), but in the frequent case of the new contents
+                % differing from the old, it does one fewer conversion.
+                drfro_file_contents         :: string,
+                drfro_num_code_units        :: int,
+
+                % The timestamp of the file, if our caller requested it,
+                drfro_maybe_file_timestamp  :: maybe(io.res(timestamp))
+            )
+    ;       drfr_error(
+                drfre_errors                :: read_module_errors,
+
+                % The timestamp of the file, if our caller requested it,
+                % XXX This should not be needed if we can't read the file,
+                % since it means nothing useful.
+                drfre_maybe_file_timestamp  :: maybe(io.res(timestamp))
+            ).
+
     % This predicate implements all three of actually_read_module_{src,int,opt}
     % through the polymorphism provided by the ReadParseTree (sometimes the
     % MakeDummyParseTree) higher order variables. All the actual parsing
     % takes place inside ReadParseTree, which will be one of
     % read_parse_tree_src, read_parse_tree_int and read_parse_tree_src.
     %
-:- pred do_actually_read_module(path_name_and_stream::in,
-    module_name::in, list(prog_context)::in,
-    read_module_and_timestamps::in, maybe(io.res(timestamp))::out,
-    read_parse_tree(PT)::in(read_parse_tree), maybe(PT)::out,
-    read_module_errors::out, io::di, io::uo) is det.
+:- pred do_actually_read_file(path_name_and_stream::in,
+    read_module_and_timestamps::in, do_read_file_result::out,
+    io::di, io::uo) is det.
 
-do_actually_read_module(FileNameAndStream,
-        DefaultModuleName, DefaultExpectationContexts,
-        ReadModuleAndTimestamps, MaybeModuleTimestampRes,
-        ReadParseTree, MaybeParseTree, Errors, !IO) :-
-    FileNameAndStream = path_name_and_stream(_FilePathName, FileStream),
-    io.input_stream_name(FileStream, FileStreamName, !IO),
+do_actually_read_file(FileNameAndStream, ReadModuleAndTimestamps,
+        Result, !IO) :-
+    FileNameAndStream = path_name_and_stream(FileName, FileStream),
     (
         ( ReadModuleAndTimestamps = always_read_module(do_return_timestamp)
         ; ReadModuleAndTimestamps = dont_read_module_if_match(_)
         ),
-        io.file.file_modification_time(FileStreamName, TimestampResult, !IO),
+        io.file.file_modification_time(FileName, TimestampResult, !IO),
         (
             TimestampResult = ok(Timestamp),
             MaybeModuleTimestampRes =
@@ -500,8 +631,7 @@ do_actually_read_module(FileNameAndStream,
         % if ModuleName \= DefaultModuleName.
         % In that case, smart recompilation will be disabled
         % and actually_read_module should never be passed an old timestamp.
-        MaybeParseTree = no,
-        Errors = init_read_module_errors
+        Result = drfr_error(init_read_module_errors, MaybeModuleTimestampRes)
     else
         io.read_file_as_string_and_num_code_units(FileStream,
             MaybeResult, !IO),
@@ -516,24 +646,16 @@ do_actually_read_module(FileNameAndStream,
                     [i(NumCodeUnits), i(FileStringLen), s(FileString)]),
                 unexpected($pred, Msg)
             ),
-            LineContext0 = line_context(1, 0),
-            LinePosn0 = line_posn(0),
-            ReadParseTree(FileStreamName, FileString, FileStringLen,
-                LineContext0, LinePosn0,
-                DefaultModuleName, DefaultExpectationContexts,
-                MaybeParseTree, Errors)
+            Result = drfr_ok(FileString, NumCodeUnits, MaybeModuleTimestampRes)
         ;
             MaybeResult = error2(_PartialStr, _PartialLen, ErrorCode),
-            MaybeParseTree = no,
             io.error_message(ErrorCode, ErrorMsg0),
             ErrorMsg = "I/O error: " ++ ErrorMsg0,
             io_error_to_read_module_errors(frme_could_not_read_file,
-                phase_read_files, ErrorMsg, Errors, !IO)
+                phase_read_files, ErrorMsg, Errors, !IO),
+            Result = drfr_error(Errors, MaybeModuleTimestampRes)
         )
-    ),
-    % XXX This should be moved next to the code that opens FileStream,
-    % in one of our ancestors.
-    io.close_input(FileStream, !IO).
+    ).
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%

@@ -315,7 +315,7 @@ find_and_read_module_dep_file(ProgressStream, Globals, RebuildModuleDeps,
         MaybeDirAndContents, !IO),
     (
         MaybeDirAndContents = ok(DirAndContents),
-        DirAndContents = path_name_and_contents(DepFileDir, DepFileContents),
+        DirAndContents = dir_name_and_contents(DepFileDir, DepFileContents),
         read_module_dep_file(DepFileDir, DepFileName, DepFileContents,
             ModuleName, ParseResult),
         (
