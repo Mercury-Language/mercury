@@ -9,6 +9,7 @@
 %
 % File: prog_item.m.
 % Original author: fjh.
+% Main author of the current version: zs.
 %
 % This module, together with prog_data*.m, defines a data structure for
 % representing Mercury programs.
@@ -27,32 +28,24 @@
 % - to represent files being read in, and
 % - to represent files being written out.
 %
-% The two have slightly different requirements, which is why in several
-% kinds of parse trees seemingly the same information is present in
-% more than one set of fields. This is because while we will never
-% knowingly write out erroneous Mercury code, we know that we *will*
-% read in some. An example is import_module and use_module declarations.
-% Each parse_tree_module_src contains four fields that respectively specify
+% The two have slightly different requirements, because
 %
-% - the locations where a module has an import_module in the interface
-% - the locations where a module has an use_module in the interface
-% - the locations where a module has an import_module in the implementation
-% - the locations where a module has an use_module in the implementation
+% - we will never knowingly write out erroneous Mercury code, but
+% - we know that we *will* read in some.
 %
-% It is an error if a module has an entry in more than one of these maps,
-% with the sole exception being the use_module in interface and import_module
-% in implementation combination (because each grants a permission that the
-% other does not). Yet we want the ability to represent even invalid
-% combinations of these declarations, so that we can wait to generate
-% the appropriate error messages until we know all the relevant facts.
-% And in the process of checking for and reporting errors, we build up
-% another data structure, the import_and_or_use_map, which contains
-% a record of how the rest of the compiler should view, not just the
-% import_module and use_module declarations explicitly present in the
-% source code, but also the ones that get made available to it implicitly.
-% (Examples include builtin and private_builtin, which are implicitly available
-% to every module, and table_builtin, which is implicitly available
-% to modules that do certain kinds of tabling.)
+% In the past, we used to include some information (such as which modules
+% are imported and/or used in which section of a module) in two different
+% forms, one of which allowed the presence of errors, and one which did not.
+% We have now (mostly) transitioned to a scheme where we check for and report
+% (in the sense of generating warnings or errors for) any problems in the
+% input, and include in the parse tree only the cleaned-up form in which any
+% contradictions in the input have been resolved. This allows us to continue
+% to process the input, and find and report as many more problems as we can.
+% If the problems we found while constructing the parse tree included errors
+% and not just warnings, we will of course have to stop at a the point where
+% the risk of any errors we find and report has too high a chance of being
+% an avalanche error, caused not by the code we are looking at, but by
+% an incorrect resolution by the compiler of an earlier problem.
 %
 %---------------------------------------------------------------------------%
 
@@ -83,6 +76,10 @@
 
 %---------------------------------------------------------------------------%
 
+:- type module_names_contexts == one_or_more_map(module_name, prog_context).
+
+%---------------------------------------------------------------------------%
+
 :- type include_module_map == map(module_name, include_module_info).
 :- type int_include_module_map == map(module_name, int_include_module_info).
 :- type include_module_info
@@ -95,32 +92,6 @@
 
 :- type int_module_section =< module_section
     --->    ms_interface.
-
-:- type module_name_context == map(module_name, prog_context).
-:- type module_names_contexts == one_or_more_map(module_name, prog_context).
-
-    % Maps from module names to the includes, imports or uses
-    % in the named section. The code creating these maps will have
-    % detected and diagnosed any duplicate entries of the same kind
-    % of declaration for the same module in the same section.
-    % However, unlike include_module_maps or import_and_or_use_maps,
-    % which summarize the information in the first two of the maps below
-    % (for include_module_map) or the last four (for import_and_or_use_map),
-    % these maps may contain redundant entries as long as they are all
-    % in *different* maps (such as the module name A occurring in both
-    % the int_import_context_map and the int_use_context_map of module B).
-:- type int_incl_context_map
-    --->    int_incl_context_map(module_name_context).
-:- type imp_incl_context_map
-    --->    imp_incl_context_map(module_name_context).
-:- type int_import_context_map
-    --->    int_import_context_map(module_name_context).
-:- type int_use_context_map
-    --->    int_use_context_map(module_name_context).
-:- type imp_import_context_map
-    --->    imp_import_context_map(module_name_context).
-:- type imp_use_context_map
-    --->    imp_use_context_map(module_name_context).
 
 %---------------------%
 

@@ -120,7 +120,7 @@
     %   or of the user for tampering with the output of the compiler.
     %   In both of those cases, generating an error seems preferable to
     %   generating a warning.
-    % 
+    %
 :- pred classify_int_imp_use_modules(module_name::in,
     module_names_contexts::in, module_names_contexts::in,
     section_use_map::out, list(error_spec)::in, list(error_spec)::out) is det.
@@ -140,6 +140,30 @@
 :- pred import_and_or_use_map_to_item_avails(maybe_include_implicit::in,
     import_and_or_use_map::in,
     list(item_avail)::out, list(item_avail)::out) is det.
+
+:- type module_name_context == map(module_name, prog_context).
+
+    % Maps from module names to the imports or uses in the named section.
+    % The code creating these maps will have detected and diagnosed
+    % any duplicate entries of the same kind of declaration for
+    % the same module in the same section. However, unlike
+    % import_and_or_use_maps, which summarize the information in these maps,
+    % these maps may contain redundant entries as long as they are all
+    % in *different* maps (such as the module name A occurring in both
+    % the int_import_context_map and the int_use_context_map of module B).
+    %
+    % It is an error if a module has an entry in more than one of these maps,
+    % with the sole exception being the use_module-in-interface and
+    % import_module-in-implementation combination. This is an exception
+    % because each grants a permission that the other does not.
+:- type int_import_context_map
+    --->    int_import_context_map(module_name_context).
+:- type int_use_context_map
+    --->    int_use_context_map(module_name_context).
+:- type imp_import_context_map
+    --->    imp_import_context_map(module_name_context).
+:- type imp_use_context_map
+    --->    imp_use_context_map(module_name_context).
 
 :- pred import_and_or_use_map_to_explicit_int_imp_import_use_maps(
     import_and_or_use_map::in, section_import_and_or_use_map::out,
