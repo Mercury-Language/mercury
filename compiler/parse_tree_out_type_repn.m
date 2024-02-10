@@ -19,6 +19,10 @@
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_item.
 
+:- import_module io.
+:- import_module string.
+:- import_module string.builder.
+
 %---------------------------------------------------------------------------%
 
     % Output a type_repn item.
@@ -46,6 +50,14 @@
 
 %---------------------------------------------------------------------------%
 
+:- pragma type_spec_constrained_preds([pt_output(Stream, State)],
+    apply_to_superclasses,
+    [subst([Stream => io.text_output_stream, State = io.state]),
+    subst([Stream => string.builder.handle, State = string.builder.state])]).
+
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+
 :- implementation.
 
 :- import_module mdbcomp.
@@ -60,7 +72,6 @@
 :- import_module maybe.
 :- import_module one_or_more.
 :- import_module set.
-:- import_module string.
 :- import_module term.
 :- import_module term_io.
 :- import_module uint8.

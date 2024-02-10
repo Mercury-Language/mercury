@@ -23,6 +23,8 @@
 :- import_module bool.
 :- import_module io.
 :- import_module maybe.
+:- import_module string.
+:- import_module string.builder.
 
 %---------------------------------------------------------------------------%
 
@@ -121,6 +123,13 @@
     <= pt_output(S, U).
 
 %---------------------------------------------------------------------------%
+
+:- pragma type_spec_constrained_preds([pt_output(Stream, State)],
+    apply_to_superclasses,
+    [subst([Stream => io.text_output_stream, State = io.state]),
+    subst([Stream => string.builder.handle, State = string.builder.state])]).
+
+%---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
 :- implementation.
@@ -149,8 +158,6 @@
 :- import_module pair.
 :- import_module require.
 :- import_module set.
-:- import_module string.
-:- import_module string.builder.
 :- import_module term.
 :- import_module term_io.
 :- import_module unit.

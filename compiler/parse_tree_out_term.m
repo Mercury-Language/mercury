@@ -21,6 +21,8 @@
 
 :- import_module io.
 :- import_module list.
+:- import_module string.
+:- import_module string.builder.
 :- import_module term.
 :- import_module varset.
 
@@ -204,6 +206,13 @@
 :- pred mercury_op(string::in) is semidet.
 
 %---------------------------------------------------------------------------%
+
+:- pragma type_spec_constrained_preds([pt_output(Stream, State)],
+    apply_to_superclasses,
+    [subst([Stream => io.text_output_stream, State = io.state]),
+    subst([Stream => string.builder.handle, State = string.builder.state])]).
+
+%---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
 :- implementation.
@@ -212,8 +221,6 @@
 :- import_module int.
 :- import_module mercury_term_lexer.
 :- import_module ops.
-:- import_module string.
-:- import_module string.builder.
 
 %---------------------------------------------------------------------------%
 

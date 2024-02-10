@@ -22,37 +22,30 @@
 :- import_module io.
 :- import_module list.
 :- import_module string.
+:- import_module string.builder.
 :- import_module univ.
 
 %---------------------------------------------------------------------------%
 
 :- pred put_int(Stream::in, int::in, State::di, State::uo) is det
     <= stream.writer(Stream, string, State).
-
-:- pred put_uint(Stream::in, uint::in, State::di, State::uo) is det
-    <= stream.writer(Stream, string, State).
-
 :- pred put_int8(Stream::in, int8::in, State::di, State::uo) is det
     <= stream.writer(Stream, string, State).
-
-:- pred put_uint8(Stream::in, uint8::in, State::di, State::uo) is det
-    <= stream.writer(Stream, string, State).
-
 :- pred put_int16(Stream::in, int16::in, State::di, State::uo) is det
     <= stream.writer(Stream, string, State).
-
-:- pred put_uint16(Stream::in, uint16::in, State::di, State::uo) is det
-    <= stream.writer(Stream, string, State).
-
 :- pred put_int32(Stream::in, int32::in, State::di, State::uo) is det
     <= stream.writer(Stream, string, State).
-
-:- pred put_uint32(Stream::in, uint32::in, State::di, State::uo) is det
-    <= stream.writer(Stream, string, State).
-
 :- pred put_int64(Stream::in, int64::in, State::di, State::uo) is det
     <= stream.writer(Stream, string, State).
 
+:- pred put_uint(Stream::in, uint::in, State::di, State::uo) is det
+    <= stream.writer(Stream, string, State).
+:- pred put_uint8(Stream::in, uint8::in, State::di, State::uo) is det
+    <= stream.writer(Stream, string, State).
+:- pred put_uint16(Stream::in, uint16::in, State::di, State::uo) is det
+    <= stream.writer(Stream, string, State).
+:- pred put_uint32(Stream::in, uint32::in, State::di, State::uo) is det
+    <= stream.writer(Stream, string, State).
 :- pred put_uint64(Stream::in, uint64::in, State::di, State::uo) is det
     <= stream.writer(Stream, string, State).
 
@@ -150,10 +143,17 @@
 :- mode write(in, in, in, di, uo) is cc_multi.
 
 %---------------------------------------------------------------------------%
+
+:- pragma type_spec_constrained_preds(
+    [stream.writer(Stream, string, State)],
+    apply_to_superclasses,
+    [subst([Stream => io.text_output_stream, State = io.state]),
+    subst([Stream => string.builder.handle, State = string.builder.state])]).
+
+%---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
 :- implementation.
-
 :- interface.
 
 :- import_module ops.
@@ -181,41 +181,6 @@
 :- pred maybe_write_paren(Stream::in, string::in,
     ops.priority::in, ops.priority::in, State::di, State::uo) is det
     <= stream.writer(Stream, string, State).
-:- pragma type_spec(pred(maybe_write_paren/6),
-    (Stream = io.text_output_stream, State = io.state)).
-
-:- pragma type_spec(pred(write/4),
-    (Stream = io.text_output_stream, State = io.state)).
-:- pragma type_spec(pred(write/5),
-    (Stream = io.text_output_stream, State = io.state)).
-:- pragma type_spec(pred(write_univ/4),
-    (Stream = io.text_output_stream, State = io.state)).
-:- pragma type_spec(pred(write_univ/5),
-    (Stream = io.text_output_stream, State = io.state)).
-:- pragma type_spec(pred(put_int/4),
-    (Stream = io.text_output_stream, State = io.state)).
-:- pragma type_spec(pred(put_uint/4),
-    (Stream = io.text_output_stream, State = io.state)).
-:- pragma type_spec(pred(put_int8/4),
-    (Stream = io.text_output_stream, State = io.state)).
-:- pragma type_spec(pred(put_uint8/4),
-    (Stream = io.text_output_stream, State = io.state)).
-:- pragma type_spec(pred(put_int16/4),
-    (Stream = io.text_output_stream, State = io.state)).
-:- pragma type_spec(pred(put_uint16/4),
-    (Stream = io.text_output_stream, State = io.state)).
-:- pragma type_spec(pred(put_int32/4),
-    (Stream = io.text_output_stream, State = io.state)).
-:- pragma type_spec(pred(put_uint32/4),
-    (Stream = io.text_output_stream, State = io.state)).
-:- pragma type_spec(pred(put_int64/4),
-    (Stream = io.text_output_stream, State = io.state)).
-:- pragma type_spec(pred(put_uint64/4),
-    (Stream = io.text_output_stream, State = io.state)).
-:- pragma type_spec(pred(put_float/4),
-    (Stream = io.text_output_stream, State = io.state)).
-:- pragma type_spec(pred(put_char/4),
-    (Stream = io.text_output_stream, State = io.state)).
 
 %---------------------------------------------------------------------------%
 
@@ -233,6 +198,8 @@
 :- import_module type_desc.
 :- import_module version_array.
 
+%---------------------------------------------------------------------------%
+
 put_int(Stream, Int, !State) :-
     ( if
         % Handle the common I/O case more efficiently.
@@ -247,23 +214,6 @@ put_int(Stream, Int, !State) :-
         )
     else
         put(Stream, string.int_to_string(Int), !State)
-    ).
-
-put_uint(Stream, UInt, !State) :-
-    ( if
-        % Handle the common I/O case more efficiently.
-        dynamic_cast(!.State, IOState0),
-        dynamic_cast(Stream, IOStream)
-    then
-        io.write_uint(IOStream, UInt,
-            unsafe_promise_unique(IOState0), IOState),
-        ( if dynamic_cast(IOState, !:State) then
-            !:State = unsafe_promise_unique(!.State)
-        else
-            error($pred, "unexpected type error")
-        )
-    else
-        put(Stream, string.uint_to_string(UInt), !State)
     ).
 
 put_int8(Stream, Int8, !State) :-
@@ -283,23 +233,6 @@ put_int8(Stream, Int8, !State) :-
         put(Stream, string.int8_to_string(Int8), !State)
     ).
 
-put_uint8(Stream, UInt8, !State) :-
-    ( if
-        % Handle the common I/O case more efficiently.
-        dynamic_cast(!.State, IOState0),
-        dynamic_cast(Stream, IOStream)
-    then
-        io.write_uint8(IOStream, UInt8,
-            unsafe_promise_unique(IOState0), IOState),
-        ( if dynamic_cast(IOState, !:State) then
-            !:State = unsafe_promise_unique(!.State)
-        else
-            error($pred, "unexpected type error")
-        )
-    else
-        put(Stream, string.uint8_to_string(UInt8), !State)
-    ).
-
 put_int16(Stream, Int16, !State) :-
     ( if
         % Handle the common I/O case more efficiently.
@@ -315,23 +248,6 @@ put_int16(Stream, Int16, !State) :-
         )
     else
         put(Stream, string.int16_to_string(Int16), !State)
-    ).
-
-put_uint16(Stream, UInt16, !State) :-
-    ( if
-        % Handle the common I/O case more efficiently.
-        dynamic_cast(!.State, IOState0),
-        dynamic_cast(Stream, IOStream)
-    then
-        io.write_uint16(IOStream, UInt16,
-            unsafe_promise_unique(IOState0), IOState),
-        ( if dynamic_cast(IOState, !:State) then
-            !:State = unsafe_promise_unique(!.State)
-        else
-            error($pred, "unexpected type error")
-        )
-    else
-        put(Stream, string.uint16_to_string(UInt16), !State)
     ).
 
 put_int32(Stream, Int32, !State) :-
@@ -351,23 +267,6 @@ put_int32(Stream, Int32, !State) :-
         put(Stream, string.int32_to_string(Int32), !State)
     ).
 
-put_uint32(Stream, UInt32, !State) :-
-    ( if
-        % Handle the common I/O case more efficiently.
-        dynamic_cast(!.State, IOState0),
-        dynamic_cast(Stream, IOStream)
-    then
-        io.write_uint32(IOStream, UInt32,
-            unsafe_promise_unique(IOState0), IOState),
-        ( if dynamic_cast(IOState, !:State) then
-            !:State = unsafe_promise_unique(!.State)
-        else
-            error($pred, "unexpected type error")
-        )
-    else
-        put(Stream, string.uint32_to_string(UInt32), !State)
-    ).
-
 put_int64(Stream, Int64, !State) :-
     ( if
         % Handle the common I/O case more efficiently.
@@ -383,6 +282,76 @@ put_int64(Stream, Int64, !State) :-
         )
     else
         put(Stream, string.int64_to_string(Int64), !State)
+    ).
+
+%---------------------------------------------------------------------------%
+
+put_uint(Stream, UInt, !State) :-
+    ( if
+        % Handle the common I/O case more efficiently.
+        dynamic_cast(!.State, IOState0),
+        dynamic_cast(Stream, IOStream)
+    then
+        io.write_uint(IOStream, UInt,
+            unsafe_promise_unique(IOState0), IOState),
+        ( if dynamic_cast(IOState, !:State) then
+            !:State = unsafe_promise_unique(!.State)
+        else
+            error($pred, "unexpected type error")
+        )
+    else
+        put(Stream, string.uint_to_string(UInt), !State)
+    ).
+
+put_uint8(Stream, UInt8, !State) :-
+    ( if
+        % Handle the common I/O case more efficiently.
+        dynamic_cast(!.State, IOState0),
+        dynamic_cast(Stream, IOStream)
+    then
+        io.write_uint8(IOStream, UInt8,
+            unsafe_promise_unique(IOState0), IOState),
+        ( if dynamic_cast(IOState, !:State) then
+            !:State = unsafe_promise_unique(!.State)
+        else
+            error($pred, "unexpected type error")
+        )
+    else
+        put(Stream, string.uint8_to_string(UInt8), !State)
+    ).
+
+put_uint16(Stream, UInt16, !State) :-
+    ( if
+        % Handle the common I/O case more efficiently.
+        dynamic_cast(!.State, IOState0),
+        dynamic_cast(Stream, IOStream)
+    then
+        io.write_uint16(IOStream, UInt16,
+            unsafe_promise_unique(IOState0), IOState),
+        ( if dynamic_cast(IOState, !:State) then
+            !:State = unsafe_promise_unique(!.State)
+        else
+            error($pred, "unexpected type error")
+        )
+    else
+        put(Stream, string.uint16_to_string(UInt16), !State)
+    ).
+
+put_uint32(Stream, UInt32, !State) :-
+    ( if
+        % Handle the common I/O case more efficiently.
+        dynamic_cast(!.State, IOState0),
+        dynamic_cast(Stream, IOStream)
+    then
+        io.write_uint32(IOStream, UInt32,
+            unsafe_promise_unique(IOState0), IOState),
+        ( if dynamic_cast(IOState, !:State) then
+            !:State = unsafe_promise_unique(!.State)
+        else
+            error($pred, "unexpected type error")
+        )
+    else
+        put(Stream, string.uint32_to_string(UInt32), !State)
     ).
 
 put_uint64(Stream, UInt64, !State) :-
@@ -401,6 +370,8 @@ put_uint64(Stream, UInt64, !State) :-
     else
         put(Stream, string.uint64_to_string(UInt64), !State)
     ).
+
+%---------------------------------------------------------------------------%
 
 put_float(Stream, Float, !State) :-
     ( if
@@ -435,6 +406,8 @@ put_char(Stream, Char, !State) :-
     else
         put(Stream, string.char_to_string(Char), !State)
     ).
+
+%---------------------------------------------------------------------------%
 
 format(Stream, FormatString, Arguments, !State) :-
     disable_warning [unknown_format_calls] (
@@ -709,8 +682,6 @@ write_univ(Stream, NonCanon, Univ, !State) :-
 :- mode do_write_univ(in, in(canonicalize), in, di, uo) is det.
 :- mode do_write_univ(in, in(include_details_cc), in, di, uo) is cc_multi.
 :- mode do_write_univ(in, in, in, di, uo) is cc_multi.
-:- pragma type_spec(pred(do_write_univ/5),
-    (Stream = io.text_output_stream, State = io.state)).
 
 do_write_univ(Stream, NonCanon, Univ, !State) :-
     do_write_univ_prio(Stream, NonCanon, Univ,
@@ -723,12 +694,10 @@ do_write_univ(Stream, NonCanon, Univ, !State) :-
 :- mode do_write_univ_prio(in, in(include_details_cc), in, in, di, uo)
     is cc_multi.
 :- mode do_write_univ_prio(in, in, in, in, di, uo) is cc_multi.
-:- pragma type_spec(pred(do_write_univ_prio/6),
-    (Stream = io.text_output_stream, State = io.state)).
 
-    % We only use the io.stream_db we read impurely when we have
-    % the io.state.
+    % We only use the io.stream_db we read impurely when we have the io.state.
 :- pragma promise_pure(pred(do_write_univ_prio/6)).
+
 do_write_univ_prio(Stream, NonCanon, Univ, Priority, !State) :-
     % We need to special-case a whole bunch of builtin types.
     TypeDesc = univ_type(Univ),
@@ -996,8 +965,6 @@ same_private_builtin_type(_, _).
 :- mode write_ordinary_term(in, in(include_details_cc), in, in, di, uo)
     is cc_multi.
 :- mode write_ordinary_term(in, in, in, in, di, uo) is cc_multi.
-:- pragma type_spec(pred(write_ordinary_term/6),
-    (Stream = io.text_output_stream, State = io.state)).
 
 write_ordinary_term(Stream, NonCanon, Univ, Priority, !State) :-
     % NOTE: The code of this predicate should be kept in sync with
@@ -1130,8 +1097,6 @@ write_ordinary_term(Stream, NonCanon, Univ, Priority, !State) :-
 :- mode write_functor_and_args_prio(in, in(include_details_cc), in, in, in,
     di, uo) is cc_multi.
 :- mode write_functor_and_args_prio(in, in, in, in, in, di, uo) is cc_multi.
-:- pragma type_spec(pred(write_functor_and_args_prio/7),
-    (Stream = io.text_output_stream, State = io.state)).
 
 :- pragma inline(pred(write_functor_and_args_prio/7)).
 
@@ -1153,15 +1118,12 @@ write_functor_and_args_prio(Stream, NonCanon, Priority, Functor, Args,
     % Write out the term represented by Functor(Args).
     %
 :- pred write_functor_and_args(Stream, deconstruct.noncanon_handling, string,
-    list(univ), State, State)
-    <= stream.writer(Stream, string, State).
+    list(univ), State, State) <= stream.writer(Stream, string, State).
 :- mode write_functor_and_args(in, in(do_not_allow), in, in, di, uo) is det.
 :- mode write_functor_and_args(in, in(canonicalize), in, in, di, uo) is det.
 :- mode write_functor_and_args(in, in(include_details_cc), in, in, di, uo)
     is cc_multi.
 :- mode write_functor_and_args(in, in, in, in, di, uo) is cc_multi.
-:- pragma type_spec(pred(write_functor_and_args/6),
-    (Stream = io.text_output_stream, State = io.state)).
 
 :- pragma inline(pred(write_functor_and_args/6)).
 
@@ -1193,8 +1155,6 @@ maybe_write_paren(Stream, String, Priority, OpPriority, !State) :-
 :- mode write_list_tail(in, in(canonicalize), in, di, uo) is det.
 :- mode write_list_tail(in, in(include_details_cc), in, di, uo) is cc_multi.
 :- mode write_list_tail(in, in, in, di, uo) is cc_multi.
-:- pragma type_spec(pred(write_list_tail/5),
-    (Stream = io.text_output_stream, State = io.state)).
 
 write_list_tail(Stream, NonCanon, Univ, !State) :-
     Term = univ_value(Univ),
@@ -1224,8 +1184,6 @@ write_list_tail(Stream, NonCanon, Univ, !State) :-
 :- mode write_term_args(in, in(canonicalize), in, di, uo) is det.
 :- mode write_term_args(in, in(include_details_cc), in, di, uo) is cc_multi.
 :- mode write_term_args(in, in, in, di, uo) is cc_multi.
-:- pragma type_spec(pred(write_term_args/5),
-    (Stream = io.text_output_stream, State = io.state)).
 
 write_term_args(_Stream, _, [], !State).
 write_term_args(Stream, NonCanon, [X | Xs], !State) :-
@@ -1239,8 +1197,6 @@ write_term_args(Stream, NonCanon, [X | Xs], !State) :-
 :- mode write_arg(in, in(canonicalize), in, di, uo) is det.
 :- mode write_arg(in, in(include_details_cc), in, di, uo) is cc_multi.
 :- mode write_arg(in, in, in, di, uo) is cc_multi.
-:- pragma type_spec(pred(write_arg/5),
-    (Stream = io.text_output_stream, State = io.state)).
 
 write_arg(Stream, NonCanon, X, !State) :-
     CommaPrio = mercury_op_table_comma_priority,
@@ -1284,8 +1240,6 @@ write_c_pointer(Stream, C_Pointer, !State) :-
 
 :- pred write_array(Stream::in, array(T)::in, State::di, State::uo) is det
     <= stream.writer(Stream, string, State).
-:- pragma type_spec(pred(write_array/4),
-    (Stream = io.text_output_stream, State = io.state)).
 
 write_array(Stream, Array, !State) :-
     put(Stream, "array(", !State),
@@ -1295,8 +1249,6 @@ write_array(Stream, Array, !State) :-
 
 :- pred write_version_array(Stream::in, version_array(T)::in,
     State::di, State::uo) is det <= stream.writer(Stream, string, State).
-:- pragma type_spec(pred(write_version_array/4),
-    (Stream = io.text_output_stream, State = io.state)).
 
 write_version_array(Stream, VersionArray, !State) :-
     put(Stream, "version_array(", !State),

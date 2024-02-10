@@ -377,6 +377,9 @@
 
 :- interface.
 
+:- import_module string.
+:- import_module string.builder.
+
 %---------------------------------------------------------------------------%
 
     % Convert `integer_base' constant to its numeric value.
@@ -415,6 +418,12 @@
 :- mode encode_escaped_char(in, out) is semidet.
 :- mode encode_escaped_char(out, in) is semidet.
 
+:- pragma type_spec_constrained_preds(
+    [stream.writer(Stream, string, State)],
+    do_not_apply_to_superclasses,
+    [subst([Stream = io.text_output_stream, State = io.state]),
+    subst([Stream = string.builder.handle, State = string.builder.state])]).
+
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
@@ -427,8 +436,6 @@
 :- import_module list.
 :- import_module mercury_term_lexer.
 :- import_module require.
-:- import_module string.
-:- import_module string.builder.
 :- import_module stream.string_writer.
 
 %---------------------------------------------------------------------------%
@@ -446,10 +453,6 @@ write_term(VarSet, Term, !IO) :-
 write_term(OutStream, VarSet, Term, !IO) :-
     format_term(OutStream, VarSet, Term, !IO).
 
-:- pragma type_spec(pred(format_term/5),
-    (Stream = io.text_output_stream, State = io.state)).
-:- pragma type_spec(pred(format_term/5),
-    (Stream = string.builder.handle, State = string.builder.state)).
 format_term(Stream, VarSet, Term, !State) :-
     OpTable = init_mercury_op_table,
     format_term_with_op_table(Stream, OpTable, VarSet, Term, !State).
@@ -470,10 +473,6 @@ write_term_with_op_table(OutStream, OpTable, VarSet, Term, !IO) :-
     format_term_anon_vars(OutStream, OpTable, Term, VarSet, _,
         anon_var_to_int, _, !IO).
 
-:- pragma type_spec(pred(format_term_with_op_table/6),
-    (Stream = io.text_output_stream, State = io.state)).
-:- pragma type_spec(pred(format_term_with_op_table/6),
-    (Stream = string.builder.handle, State = string.builder.state)).
 format_term_with_op_table(Stream, OpTable, VarSet, Term, !State) :-
     format_term_anon_vars(Stream, OpTable, Term, VarSet, _,
         anon_var_to_int, _, !State).
@@ -493,10 +492,6 @@ write_term_nl(OutStream, VarSet, Term, !IO) :-
     OpTable = init_mercury_op_table,
     write_term_nl_with_op_table(OutStream, OpTable, VarSet, Term, !IO).
 
-:- pragma type_spec(pred(format_term_nl/5),
-    (Stream = io.text_output_stream, State = io.state)).
-:- pragma type_spec(pred(format_term_nl/5),
-    (Stream = string.builder.handle, State = string.builder.state)).
 format_term_nl(Stream, VarSet, Term, !State) :-
     OpTable = init_mercury_op_table,
     format_term_with_op_table(Stream, OpTable, VarSet, Term, !State).
@@ -516,10 +511,6 @@ write_term_nl_with_op_table(OpTable, VarSet, Term, !IO) :-
 write_term_nl_with_op_table(OutStream, OpTable, VarSet, Term, !IO) :-
     format_term_nl_with_op_table(OutStream, OpTable, VarSet, Term, !IO).
 
-:- pragma type_spec(pred(format_term_nl_with_op_table/6),
-    (Stream = io.text_output_stream, State = io.state)).
-:- pragma type_spec(pred(format_term_nl_with_op_table/6),
-    (Stream = string.builder.handle, State = string.builder.state)).
 format_term_nl_with_op_table(Stream, OpTable, VarSet, Term, !State) :-
     format_term_with_op_table(Stream, OpTable, VarSet, Term, !State),
     stream.put(Stream, ".\n", !State).
@@ -530,10 +521,6 @@ format_term_nl_with_op_table(Stream, OpTable, VarSet, Term, !State) :-
     term(T)::in, varset(T)::in, varset(T)::out,
     anon_var_info::in, anon_var_info::out, State::di, State::uo) is det
     <= (op_table(OpTable), stream.writer(Stream, string, State)).
-:- pragma type_spec(pred(format_term_anon_vars/9),
-    (Stream = io.text_output_stream, State = io.state)).
-:- pragma type_spec(pred(format_term_anon_vars/9),
-    (Stream = string.builder.handle, State = string.builder.state)).
 
 format_term_anon_vars(Stream, OpTable, Term, !VarSet, !Anon, !State) :-
     format_term_prio_anon_vars(Stream, OpTable, Term,
@@ -543,10 +530,6 @@ format_term_anon_vars(Stream, OpTable, Term, !VarSet, !Anon, !State) :-
     term(T)::in, ops.priority::in, varset(T)::in, varset(T)::out,
     anon_var_info::in, anon_var_info::out, State::di, State::uo) is det
     <= (op_table(OpTable), stream.writer(Stream, string, State)).
-:- pragma type_spec(pred(format_term_prio_anon_vars/10),
-    (Stream = io.text_output_stream, State = io.state)).
-:- pragma type_spec(pred(format_term_prio_anon_vars/10),
-    (Stream = string.builder.handle, State = string.builder.state)).
 
 format_term_prio_anon_vars(Stream, OpTable, Term, Priority,
         !VarSet, !Anon, !State) :-
@@ -582,10 +565,6 @@ format_term_prio_anon_vars(Stream, OpTable, Term, Priority,
     varset(T)::in, varset(T)::out, anon_var_info::in, anon_var_info::out,
     State::di, State::uo) is det
     <= (op_table(OpTable), stream.writer(Stream, string, State)).
-:- pragma type_spec(pred(format_atom_term_prio_anon_vars/11),
-    (Stream = io.text_output_stream, State = io.state)).
-:- pragma type_spec(pred(format_atom_term_prio_anon_vars/11),
-    (Stream = string.builder.handle, State = string.builder.state)).
 
 format_atom_term_prio_anon_vars(Stream, OpTable, Atom, ArgTerms,
         Priority, !VarSet, !Anon, !State) :-
@@ -759,10 +738,6 @@ format_atom_term_prio_anon_vars(Stream, OpTable, Atom, ArgTerms,
     varset(T)::in, varset(T)::out, anon_var_info::in, anon_var_info::out,
     State::di, State::uo) is det
     <= (op_table(OpTable), stream.writer(Stream, string, State)).
-:- pragma type_spec(pred(format_atom_term_prio_anon_vars_std/11),
-    (Stream = io.text_output_stream, State = io.state)).
-:- pragma type_spec(pred(format_atom_term_prio_anon_vars_std/11),
-    (Stream = string.builder.handle, State = string.builder.state)).
 
 format_atom_term_prio_anon_vars_std(Stream, OpTable, Atom, ArgTerms,
         Priority, !VarSet, !Anon, !State) :-
@@ -792,10 +767,6 @@ format_atom_term_prio_anon_vars_std(Stream, OpTable, Atom, ArgTerms,
     term(T)::in, varset(T)::in, varset(T)::out,
     anon_var_info::in, anon_var_info::out, State::di, State::uo) is det
     <= (op_table(OpTable), stream.writer(Stream, string, State)).
-:- pragma type_spec(pred(format_term_arg/9),
-    (Stream = io.text_output_stream, State = io.state)).
-:- pragma type_spec(pred(format_term_arg/9),
-    (Stream = string.builder.handle, State = string.builder.state)).
 
 format_term_arg(Stream, OpTable, Term, !VarSet, !Anon, !State) :-
     format_term_prio_anon_vars(Stream, OpTable, Term,
@@ -807,10 +778,6 @@ format_term_arg(Stream, OpTable, Term, !VarSet, !Anon, !State) :-
     list(term(T))::in, varset(T)::in, varset(T)::out,
     anon_var_info::in, anon_var_info::out, State::di, State::uo) is det
     <= (op_table(OpTable), stream.writer(Stream, string, State)).
-:- pragma type_spec(pred(format_term_later_args/9),
-    (Stream = io.text_output_stream, State = io.state)).
-:- pragma type_spec(pred(format_term_later_args/9),
-    (Stream = string.builder.handle, State = string.builder.state)).
 
 format_term_later_args(_, _, [], !VarSet, !Anon, !State).
 format_term_later_args(Stream, OpTable, [X | Xs], !VarSet, !Anon, !State) :-
@@ -822,10 +789,6 @@ format_term_later_args(Stream, OpTable, [X | Xs], !VarSet, !Anon, !State) :-
     term(T)::in, varset(T)::in, varset(T)::out,
     anon_var_info::in, anon_var_info::out, State::di, State::uo) is det
     <= (op_table(OpTable), stream.writer(Stream, string, State)).
-:- pragma type_spec(pred(format_later_list_elements/9),
-    (Stream = io.text_output_stream, State = io.state)).
-:- pragma type_spec(pred(format_later_list_elements/9),
-    (Stream = string.builder.handle, State = string.builder.state)).
 
 format_later_list_elements(Stream, OpTable, Term, !VarSet, !Anon, !State) :-
     ( if
@@ -950,10 +913,6 @@ format_variable_with_op_table(Stream, OpTable, VarSet, Var, !State) :-
     varset(T)::in, varset(T)::out, anon_var_info::in, anon_var_info::out,
     State::di, State::uo) is det
     <= (op_table(OpTable), stream.writer(Stream, string, State)).
-:- pragma type_spec(pred(format_variable_anon_vars/9),
-    (Stream = io.text_output_stream, State = io.state)).
-:- pragma type_spec(pred(format_variable_anon_vars/9),
-    (Stream = string.builder.handle, State = string.builder.state)).
 
 format_variable_anon_vars(Stream, OpTable, Var, !VarSet, !Anon, !State) :-
     ( if varset.search_var(!.VarSet, Var, Value) then
@@ -1014,10 +973,6 @@ format_constant(Stream, Const, !State) :-
 :- pred format_constant_agt(Stream::in, const::in,
     adjacent_to_graphic_token::in, State::di, State::uo) is det
     <= stream.writer(Stream, string, State).
-:- pragma type_spec(pred(format_constant_agt/5),
-    (Stream = io.text_output_stream, State = io.state)).
-:- pragma type_spec(pred(format_constant_agt/5),
-    (Stream = string.builder.handle, State = string.builder.state)).
 
 format_constant_agt(Stream, Const, AGT, !State) :-
     (
@@ -1048,10 +1003,6 @@ format_constant_agt(Stream, Const, AGT, !State) :-
 :- pred format_constant_atom(Stream::in, string::in, State::di, State::uo)
     is det <= stream.writer(Stream, string, State).
 :- pragma inline(pred(format_constant_atom/4)).
-:- pragma type_spec(pred(format_constant_atom/4),
-    (Stream = io.text_output_stream, State = io.state)).
-:- pragma type_spec(pred(format_constant_atom/4),
-    (Stream = string.builder.handle, State = string.builder.state)).
 
 format_constant_atom(Stream, Atom, !IO) :-
     AGT = not_adjacent_to_graphic_token,
@@ -1089,17 +1040,9 @@ write_quoted_atom(OutStream, Str, !IO) :-
     AGT = not_adjacent_to_graphic_token,
     term_io.write_quoted_atom_agt(OutStream, Str, AGT, !IO).
 
-:- pragma type_spec(pred(quote_atom/4),
-    (Stream = io.text_output_stream, State = io.state)).
-:- pragma type_spec(pred(quote_atom/4),
-    (Stream = string.builder.handle, State = string.builder.state)).
 quote_atom(Stream, Str, !State) :-
     format_quoted_atom(Stream, Str, !State).
 
-:- pragma type_spec(pred(format_quoted_atom/4),
-    (Stream = io.text_output_stream, State = io.state)).
-:- pragma type_spec(pred(format_quoted_atom/4),
-    (Stream = string.builder.handle, State = string.builder.state)).
 format_quoted_atom(Stream, Str, !State) :-
     AGT = not_adjacent_to_graphic_token,
     term_io.format_quoted_atom_agt(Stream, Str, AGT, !State).
@@ -1122,17 +1065,9 @@ write_quoted_atom_agt(Str, AGT, !IO) :-
 write_quoted_atom_agt(OutStream, Str, AGT, !IO) :-
     format_quoted_atom_agt(OutStream, Str, AGT, !IO).
 
-:- pragma type_spec(pred(quote_atom_agt/5),
-    (Stream = io.text_output_stream, State = io.state)).
-:- pragma type_spec(pred(quote_atom_agt/5),
-    (Stream = string.builder.handle, State = string.builder.state)).
 quote_atom_agt(Stream, Str, AGT, !State) :-
     term_io.format_quoted_atom_agt(Stream, Str, AGT, !State).
 
-:- pragma type_spec(pred(format_quoted_atom_agt/5),
-    (Stream = io.text_output_stream, State = io.state)).
-:- pragma type_spec(pred(format_quoted_atom_agt/5),
-    (Stream = string.builder.handle, State = string.builder.state)).
 format_quoted_atom_agt(Stream, Str, AGT, !State) :-
     ShouldQuote = should_atom_be_quoted(Str, AGT),
     (
@@ -1201,17 +1136,9 @@ write_escaped_string(Str, !IO) :-
     io.output_stream(Stream, !IO),
     term_io.format_escaped_string(Stream, Str, !IO).
 
-:- pragma type_spec(pred(write_escaped_string/4),
-    (Stream = io.text_output_stream, State = io.state)).
-:- pragma type_spec(pred(write_escaped_string/4),
-    (Stream = string.builder.handle, State = string.builder.state)).
 write_escaped_string(Stream, Str, !State) :-
     format_escaped_string(Stream, Str, !State).
 
-:- pragma type_spec(pred(format_escaped_string/4),
-    (Stream = io.text_output_stream, State = io.state)).
-:- pragma type_spec(pred(format_escaped_string/4),
-    (Stream = string.builder.handle, State = string.builder.state)).
 format_escaped_string(Stream, Str, !State) :-
     % XXX ILSEQ Decide what to do with ill-formed sequences.
     string.foldl(term_io.format_escaped_char(Stream), Str, !State).
@@ -1237,17 +1164,9 @@ write_quoted_string(Str, !IO) :-
 write_quoted_string(OutStream, Str, !State) :-
     format_quoted_string(OutStream, Str, !State).
 
-:- pragma type_spec(pred(quote_string/4),
-    (Stream = io.text_output_stream, State = io.state)).
-:- pragma type_spec(pred(quote_string/4),
-    (Stream = string.builder.handle, State = string.builder.state)).
 quote_string(Stream, Str, !State) :-
     format_quoted_string(Stream, Str, !State).
 
-:- pragma type_spec(pred(format_quoted_string/4),
-    (Stream = io.text_output_stream, State = io.state)).
-:- pragma type_spec(pred(format_quoted_string/4),
-    (Stream = string.builder.handle, State = string.builder.state)).
 format_quoted_string(Stream, Str, !State) :-
     stream.put(Stream, "\"", !State),
     term_io.format_escaped_string(Stream, Str, !State),
@@ -1265,17 +1184,9 @@ write_escaped_char(Char, !IO) :-
     io.output_stream(Stream, !IO),
     term_io.format_escaped_char(Stream, Char, !IO).
 
-:- pragma type_spec(pred(write_escaped_char/4),
-    (Stream = io.text_output_stream, State = io.state)).
-:- pragma type_spec(pred(write_escaped_char/4),
-    (Stream = string.builder.handle, State = string.builder.state)).
 write_escaped_char(Stream, Char, !State) :-
     format_escaped_char(Stream, Char, !State).
 
-:- pragma type_spec(pred(format_escaped_char/4),
-    (Stream = io.text_output_stream, State = io.state)).
-:- pragma type_spec(pred(format_escaped_char/4),
-    (Stream = string.builder.handle, State = string.builder.state)).
 format_escaped_char(Stream, Char, !State) :-
     % Note: the code of format_escaped_char is similar to code in
     % compiler/parse_tree_out_pragma.m and MR_escape_string_quote
@@ -1355,17 +1266,9 @@ write_quoted_char(C, !IO) :-
 write_quoted_char(OutStream, C, !IO) :-
     format_quoted_char(OutStream, C, !IO).
 
-:- pragma type_spec(pred(quote_char/4),
-    (Stream = io.text_output_stream, State = io.state)).
-:- pragma type_spec(pred(quote_char/4),
-    (Stream = string.builder.handle, State = string.builder.state)).
 quote_char(Stream, C, !State) :-
     format_quoted_char(Stream, C, !State).
 
-:- pragma type_spec(pred(format_quoted_char/4),
-    (Stream = io.text_output_stream, State = io.state)).
-:- pragma type_spec(pred(format_quoted_char/4),
-    (Stream = string.builder.handle, State = string.builder.state)).
 format_quoted_char(Stream, C, !State) :-
     stream.put(Stream, term_io.quoted_char_to_string(C), !State).
 

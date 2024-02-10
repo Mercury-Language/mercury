@@ -52,6 +52,8 @@
 :- import_module list.
 :- import_module one_or_more.
 :- import_module stream.
+:- import_module string.
+:- import_module string.builder.
 :- import_module tree234.
 :- import_module type_desc.
 :- import_module univ.
@@ -191,8 +193,12 @@
     State, State) <= stream.writer(Stream, string, State).
 :- mode put_doc(in, in(canonicalize), in, in, in, di, uo) is det.
 :- mode put_doc(in, in(include_details_cc), in, in, in, di, uo) is cc_multi.
-:- pragma type_spec(pred(put_doc/7),
-    (Stream = io.text_output_stream, State = io.state)).
+
+:- pragma type_spec_constrained_preds(
+    [stream.writer(Stream, string, State)],
+    apply_to_superclasses,
+    [subst([Stream => io.text_output_stream, State = io.state]),
+    subst([Stream => string.builder.handle, State = string.builder.state])]).
 
 %---------------------------------------------------------------------------%
 %
@@ -433,7 +439,6 @@
 :- import_module map.
 :- import_module ops.
 :- import_module require.
-:- import_module string.
 :- import_module term_io.
 
 %---------------------------------------------------------------------------%
@@ -574,8 +579,6 @@ put_doc(Stream, Canonicalize, FMap, Params, Doc, !IO) :-
     in, out, in, out, in, out, in, out, in, out, di, uo) is det.
 :- mode do_put_docs(in, in(include_details_cc), in, in, in,
     in, out, in, out, in, out, in, out, in, out, di, uo) is cc_multi.
-:- pragma type_spec(pred(do_put_docs/17),
-    (Stream = io.text_output_stream, State = io.state)).
 
 do_put_docs(_Stream, _Canonicalize, _FMap, _LineWidth, [],
         !RemainingWidth, !Indents, !RemainingLines, !Limit, !Pri, !IO).
@@ -681,8 +684,6 @@ do_put_docs(Stream, Canonicalize, FMap, LineWidth, [HeadDoc0 | TailDocs0],
     list(doc)::in, list(doc)::out, open_groups::in, int::in, int::out,
     int::in, int::out, State::di, State::uo) is det
     <= stream.writer(Stream, string, State).
-:- pragma type_spec(pred(output_current_group/12),
-    (Stream = io.text_output_stream, State = io.state)).
 
 output_current_group(_Stream, _LineWidth, _Indents, [], [],
         _OpenGroups, !RemainingWidth, !RemainingLines, !IO).
@@ -879,8 +880,6 @@ expand_docs_to_line_end(Canonicalize, FMap,
 :- pred format_nl(Stream::in, int::in, indent_stack::in, int::out,
     int::in, int::out, State::di, State::uo) is det
     <= stream.writer(Stream, string, State).
-:- pragma type_spec(pred(format_nl/8),
-    (Stream = io.text_output_stream, State = io.state)).
 
 format_nl(Stream, LineWidth, Indents, RemainingWidth, !RemainingLines, !IO) :-
     stream.put(Stream, "\n", !IO),
@@ -890,8 +889,6 @@ format_nl(Stream, LineWidth, Indents, RemainingWidth, !RemainingLines, !IO) :-
 
 :- pred output_indent_stack(Stream::in, indent_stack::in,
     State::di, State::uo) is det <= stream.writer(Stream, string, State).
-:- pragma type_spec(pred(output_indent_stack/4),
-    (Stream = io.text_output_stream, State = io.state)).
 
 output_indent_stack(Stream, IndentStack, !IO) :-
     (
@@ -908,8 +905,6 @@ output_indent_stack(Stream, IndentStack, !IO) :-
 
 :- pred output_std_indent_levels(Stream::in, int::in,
     State::di, State::uo) is det <= stream.writer(Stream, string, State).
-:- pragma type_spec(pred(output_std_indent_levels/4),
-    (Stream = io.text_output_stream, State = io.state)).
 
 output_std_indent_levels(Stream, NumLevels, !IO) :-
     % We try to amortize the overhead of stream.put over as large a part
