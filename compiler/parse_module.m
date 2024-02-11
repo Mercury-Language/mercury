@@ -175,6 +175,45 @@
     module_name::in, maybe(parse_tree_trans_opt)::out, read_module_errors::out,
     io::di, io::uo) is det.
 
+%---------------------------------------------------------------------------%
+
+    % parse_intN_file(Globals, FileName, FileStr, FileStrLen,
+    %   DefaultModuleName, DefaultExpectationContexts,
+    %   MaybeParseTreeIntN, Errors, !IO):
+    %
+    % Given FileName's its contents (FileStr, whose length is FileStrLen code
+    % units), try to parse those contents as a .intN file.
+    %
+:- pred parse_int0_file(globals::in, file_name::in, string::in, int::in,
+    module_name::in, list(prog_context)::in,
+    maybe(parse_tree_int0)::out, read_module_errors::out,
+    io::di, io::uo) is det.
+:- pred parse_int1_file(globals::in, file_name::in, string::in, int::in,
+    module_name::in, list(prog_context)::in,
+    maybe(parse_tree_int1)::out, read_module_errors::out,
+    io::di, io::uo) is det.
+:- pred parse_int2_file(globals::in, file_name::in, string::in, int::in,
+    module_name::in, list(prog_context)::in,
+    maybe(parse_tree_int2)::out, read_module_errors::out,
+    io::di, io::uo) is det.
+:- pred parse_int3_file(globals::in, file_name::in, string::in, int::in,
+    module_name::in, list(prog_context)::in,
+    maybe(parse_tree_int3)::out, read_module_errors::out,
+    io::di, io::uo) is det.
+
+    % parse_{plain,trans}_opt_file(FileName, FileStr, FileStrLen,
+    %   DefaultModuleName, MaybeParseTree{Plain,Trans}Opt, Errors, !IO):
+    %
+    % Given FileName's its contents (FileStr, whose length is FileStrLen code
+    % units), try to parse those contents as a .*opt file.
+    %
+:- pred parse_plain_opt_file(file_name::in, string::in, int::in,
+    module_name::in,
+    maybe(parse_tree_plain_opt)::out, read_module_errors::out) is det.
+:- pred parse_trans_opt_file(file_name::in, string::in, int::in,
+    module_name::in,
+    maybe(parse_tree_trans_opt)::out, read_module_errors::out) is det.
+
 :- type maybe_require_module_decl
     --->    dont_require_module_decl
     ;       require_module_decl.
@@ -277,29 +316,14 @@ actually_read_module_int0(Globals, FileNameAndStream,
         DefaultModuleName, DefaultExpectationContexts,
         ReadModuleAndTimestamps, MaybeModuleTimestampRes,
         MaybeParseTreeInt0, Errors, !IO) :-
-    IntFileKind = ifk_int0,
     do_actually_read_file(FileNameAndStream, ReadModuleAndTimestamps,
         ReadFileResult, !IO),
     (
         ReadFileResult = drfr_ok(FileStr, FileStrLen, MaybeModuleTimestampRes),
         FileNameAndStream = path_name_and_stream(FileName, _FileStream),
-        LineContext0 = line_context(1, 0),
-        LinePosn0 = line_posn(0),
-        parse_int_file(IntFileKind, FileName, FileStr, FileStrLen,
-            LineContext0, LinePosn0,
+        parse_int0_file(Globals, FileName, FileStr, FileStrLen,
             DefaultModuleName, DefaultExpectationContexts,
-            MaybeParseTreeInt, Errors0),
-        (
-            MaybeParseTreeInt = no,
-            MaybeParseTreeInt0 = no,
-            Errors = Errors0
-        ;
-            MaybeParseTreeInt = yes(ParseTreeInt),
-            check_convert_parse_tree_int_to_int0(ParseTreeInt,
-                ParseTreeInt0, [], ConvertSpecs),
-            MaybeParseTreeInt0 = yes(ParseTreeInt0),
-            maybe_add_convert_specs(Globals, ConvertSpecs, Errors0, Errors)
-        )
+            MaybeParseTreeInt0, Errors, !IO)
     ;
         ReadFileResult = drfr_error(Errors, MaybeModuleTimestampRes),
         MaybeParseTreeInt0 = no
@@ -309,29 +333,14 @@ actually_read_module_int1(Globals, FileNameAndStream,
         DefaultModuleName, DefaultExpectationContexts,
         ReadModuleAndTimestamps, MaybeModuleTimestampRes,
         MaybeParseTreeInt1, Errors, !IO) :-
-    IntFileKind = ifk_int1,
     do_actually_read_file(FileNameAndStream, ReadModuleAndTimestamps,
         ReadFileResult, !IO),
     (
         ReadFileResult = drfr_ok(FileStr, FileStrLen, MaybeModuleTimestampRes),
         FileNameAndStream = path_name_and_stream(FileName, _FileStream),
-        LineContext0 = line_context(1, 0),
-        LinePosn0 = line_posn(0),
-        parse_int_file(IntFileKind, FileName, FileStr, FileStrLen,
-            LineContext0, LinePosn0,
+        parse_int1_file(Globals, FileName, FileStr, FileStrLen,
             DefaultModuleName, DefaultExpectationContexts,
-            MaybeParseTreeInt, Errors0),
-        (
-            MaybeParseTreeInt = no,
-            MaybeParseTreeInt1 = no,
-            Errors = Errors0
-        ;
-            MaybeParseTreeInt = yes(ParseTreeInt),
-            check_convert_parse_tree_int_to_int1(ParseTreeInt,
-                ParseTreeInt1, [], ConvertSpecs),
-            MaybeParseTreeInt1 = yes(ParseTreeInt1),
-            maybe_add_convert_specs(Globals, ConvertSpecs, Errors0, Errors)
-        )
+            MaybeParseTreeInt1, Errors, !IO)
     ;
         ReadFileResult = drfr_error(Errors, MaybeModuleTimestampRes),
         MaybeParseTreeInt1 = no
@@ -341,29 +350,14 @@ actually_read_module_int2(Globals, FileNameAndStream,
         DefaultModuleName, DefaultExpectationContexts,
         ReadModuleAndTimestamps, MaybeModuleTimestampRes,
         MaybeParseTreeInt2, Errors, !IO) :-
-    IntFileKind = ifk_int2,
     do_actually_read_file(FileNameAndStream, ReadModuleAndTimestamps,
         ReadFileResult, !IO),
     (
         ReadFileResult = drfr_ok(FileStr, FileStrLen, MaybeModuleTimestampRes),
         FileNameAndStream = path_name_and_stream(FileName, _FileStream),
-        LineContext0 = line_context(1, 0),
-        LinePosn0 = line_posn(0),
-        parse_int_file(IntFileKind, FileName, FileStr, FileStrLen,
-            LineContext0, LinePosn0,
+        parse_int2_file(Globals, FileName, FileStr, FileStrLen,
             DefaultModuleName, DefaultExpectationContexts,
-            MaybeParseTreeInt, Errors0),
-        (
-            MaybeParseTreeInt = no,
-            MaybeParseTreeInt2 = no,
-            Errors = Errors0
-        ;
-            MaybeParseTreeInt = yes(ParseTreeInt),
-            check_convert_parse_tree_int_to_int2(ParseTreeInt,
-                ParseTreeInt2, [], ConvertSpecs),
-            MaybeParseTreeInt2 = yes(ParseTreeInt2),
-            maybe_add_convert_specs(Globals, ConvertSpecs, Errors0, Errors)
-        )
+            MaybeParseTreeInt2, Errors, !IO)
     ;
         ReadFileResult = drfr_error(Errors, MaybeModuleTimestampRes),
         MaybeParseTreeInt2 = no
@@ -373,33 +367,20 @@ actually_read_module_int3(Globals, FileNameAndStream,
         DefaultModuleName, DefaultExpectationContexts,
         ReadModuleAndTimestamps, MaybeModuleTimestampRes,
         MaybeParseTreeInt3, Errors, !IO) :-
-    IntFileKind = ifk_int3,
     do_actually_read_file(FileNameAndStream, ReadModuleAndTimestamps,
         ReadFileResult, !IO),
     (
         ReadFileResult = drfr_ok(FileStr, FileStrLen, MaybeModuleTimestampRes),
         FileNameAndStream = path_name_and_stream(FileName, _FileStream),
-        LineContext0 = line_context(1, 0),
-        LinePosn0 = line_posn(0),
-        parse_int_file(IntFileKind, FileName, FileStr, FileStrLen,
-            LineContext0, LinePosn0,
+        parse_int3_file(Globals, FileName, FileStr, FileStrLen,
             DefaultModuleName, DefaultExpectationContexts,
-            MaybeParseTreeInt, Errors0),
-        (
-            MaybeParseTreeInt = no,
-            MaybeParseTreeInt3 = no,
-            Errors = Errors0
-        ;
-            MaybeParseTreeInt = yes(ParseTreeInt),
-            check_convert_parse_tree_int_to_int3(ParseTreeInt,
-                ParseTreeInt3, [], ConvertSpecs),
-            MaybeParseTreeInt3 = yes(ParseTreeInt3),
-            maybe_add_convert_specs(Globals, ConvertSpecs, Errors0, Errors)
-        )
+            MaybeParseTreeInt3, Errors, !IO)
     ;
         ReadFileResult = drfr_error(Errors, MaybeModuleTimestampRes),
         MaybeParseTreeInt3 = no
     ).
+
+%---------------------%
 
 :- pred maybe_add_convert_specs(globals::in, list(error_spec)::in,
     read_module_errors::in, read_module_errors::out) is det.
@@ -424,24 +405,8 @@ actually_read_module_plain_opt(_Globals, FileNameAndStream, DefaultModuleName,
     (
         ReadFileResult = drfr_ok(FileStr, FileStrLen, _),
         FileNameAndStream = path_name_and_stream(FileName, _FileStream),
-        LineContext0 = line_context(1, 0),
-        LinePosn0 = line_posn(0),
-        DefaultExpectationContexts = [],
-        parse_opt_file(ofk_opt, FileName, FileStr, FileStrLen,
-            LineContext0, LinePosn0,
-            DefaultModuleName, DefaultExpectationContexts,
-            MaybeParseTreeOpt, Errors0),
-        (
-            MaybeParseTreeOpt = no,
-            MaybeParseTreePlainOpt = no,
-            Errors = Errors0
-        ;
-            MaybeParseTreeOpt = yes(ParseTreeOpt),
-            check_convert_parse_tree_opt_to_plain_opt(ParseTreeOpt,
-                ParseTreePlainOpt, [], ConvertSpecs),
-            MaybeParseTreePlainOpt = yes(ParseTreePlainOpt),
-            add_any_nec_errors(ConvertSpecs, Errors0, Errors)
-        )
+        parse_plain_opt_file(FileName, FileStr, FileStrLen, DefaultModuleName,
+            MaybeParseTreePlainOpt, Errors)
     ;
         ReadFileResult = drfr_error(Errors, _),
         MaybeParseTreePlainOpt = no
@@ -455,27 +420,137 @@ actually_read_module_trans_opt(_Globals, FileNameAndStream, DefaultModuleName,
     (
         ReadFileResult = drfr_ok(FileStr, FileStrLen, _),
         FileNameAndStream = path_name_and_stream(FileName, _FileStream),
-        LineContext0 = line_context(1, 0),
-        LinePosn0 = line_posn(0),
-        DefaultExpectationContexts = [],
-        parse_opt_file(ofk_trans_opt, FileName, FileStr, FileStrLen,
-            LineContext0, LinePosn0,
-            DefaultModuleName, DefaultExpectationContexts,
-            MaybeParseTreeOpt, Errors0),
-        (
-            MaybeParseTreeOpt = no,
-            MaybeParseTreeTransOpt = no,
-            Errors = Errors0
-        ;
-            MaybeParseTreeOpt = yes(ParseTreeOpt),
-            check_convert_parse_tree_opt_to_trans_opt(ParseTreeOpt,
-                ParseTreeTransOpt, [], ConvertSpecs),
-            MaybeParseTreeTransOpt = yes(ParseTreeTransOpt),
-            add_any_nec_errors(ConvertSpecs, Errors0, Errors)
-        )
+        parse_trans_opt_file(FileName, FileStr, FileStrLen, DefaultModuleName,
+            MaybeParseTreeTransOpt, Errors)
     ;
         ReadFileResult = drfr_error(Errors, _),
         MaybeParseTreeTransOpt = no
+    ).
+
+%---------------------------------------------------------------------------%
+
+parse_int0_file(Globals, FileName, FileStr, FileStrLen,
+        DefaultModuleName, DefaultExpectationContexts,
+        MaybeParseTreeInt0, Errors, !IO) :-
+    LineContext0 = line_context(1, 0),
+    LinePosn0 = line_posn(0),
+    parse_int_file(ifk_int0, FileName, FileStr, FileStrLen,
+        LineContext0, LinePosn0, DefaultModuleName, DefaultExpectationContexts,
+        MaybeParseTreeInt, Errors0),
+    (
+        MaybeParseTreeInt = no,
+        MaybeParseTreeInt0 = no,
+        Errors = Errors0
+    ;
+        MaybeParseTreeInt = yes(ParseTreeInt),
+        check_convert_parse_tree_int_to_int0(ParseTreeInt, ParseTreeInt0,
+            [], ConvertSpecs),
+        MaybeParseTreeInt0 = yes(ParseTreeInt0),
+        maybe_add_convert_specs(Globals, ConvertSpecs, Errors0, Errors)
+    ).
+
+parse_int1_file(Globals, FileName, FileStr, FileStrLen,
+        DefaultModuleName, DefaultExpectationContexts,
+        MaybeParseTreeInt1, Errors, !IO) :-
+    LineContext0 = line_context(1, 0),
+    LinePosn0 = line_posn(0),
+    parse_int_file(ifk_int1, FileName, FileStr, FileStrLen,
+        LineContext0, LinePosn0, DefaultModuleName, DefaultExpectationContexts,
+        MaybeParseTreeInt, Errors0),
+    (
+        MaybeParseTreeInt = no,
+        MaybeParseTreeInt1 = no,
+        Errors = Errors0
+    ;
+        MaybeParseTreeInt = yes(ParseTreeInt),
+        check_convert_parse_tree_int_to_int1(ParseTreeInt, ParseTreeInt1,
+            [], ConvertSpecs),
+        MaybeParseTreeInt1 = yes(ParseTreeInt1),
+        maybe_add_convert_specs(Globals, ConvertSpecs, Errors0, Errors)
+    ).
+
+parse_int2_file(Globals, FileName, FileStr, FileStrLen,
+        DefaultModuleName, DefaultExpectationContexts,
+        MaybeParseTreeInt2, Errors, !IO) :-
+    LineContext0 = line_context(1, 0),
+    LinePosn0 = line_posn(0),
+    parse_int_file(ifk_int2, FileName, FileStr, FileStrLen,
+        LineContext0, LinePosn0, DefaultModuleName, DefaultExpectationContexts,
+        MaybeParseTreeInt, Errors0),
+    (
+        MaybeParseTreeInt = no,
+        MaybeParseTreeInt2 = no,
+        Errors = Errors0
+    ;
+        MaybeParseTreeInt = yes(ParseTreeInt),
+        check_convert_parse_tree_int_to_int2(ParseTreeInt, ParseTreeInt2,
+            [], ConvertSpecs),
+        MaybeParseTreeInt2 = yes(ParseTreeInt2),
+        maybe_add_convert_specs(Globals, ConvertSpecs, Errors0, Errors)
+    ).
+
+parse_int3_file(Globals, FileName, FileStr, FileStrLen,
+        DefaultModuleName, DefaultExpectationContexts,
+        MaybeParseTreeInt3, Errors, !IO) :-
+    LineContext0 = line_context(1, 0),
+    LinePosn0 = line_posn(0),
+    parse_int_file(ifk_int3, FileName, FileStr, FileStrLen,
+        LineContext0, LinePosn0, DefaultModuleName, DefaultExpectationContexts,
+        MaybeParseTreeInt, Errors0),
+    (
+        MaybeParseTreeInt = no,
+        MaybeParseTreeInt3 = no,
+        Errors = Errors0
+    ;
+        MaybeParseTreeInt = yes(ParseTreeInt),
+        check_convert_parse_tree_int_to_int3(ParseTreeInt, ParseTreeInt3,
+            [], ConvertSpecs),
+        MaybeParseTreeInt3 = yes(ParseTreeInt3),
+        maybe_add_convert_specs(Globals, ConvertSpecs, Errors0, Errors)
+    ).
+
+%---------------------%
+
+parse_plain_opt_file(FileName, FileStr, FileStrLen, DefaultModuleName,
+        MaybeParseTreePlainOpt, Errors) :-
+    LineContext0 = line_context(1, 0),
+    LinePosn0 = line_posn(0),
+    DefaultExpectationContexts = [],
+    parse_opt_file(ofk_opt, FileName, FileStr, FileStrLen,
+        LineContext0, LinePosn0,
+        DefaultModuleName, DefaultExpectationContexts,
+        MaybeParseTreeOpt, Errors0),
+    (
+        MaybeParseTreeOpt = no,
+        MaybeParseTreePlainOpt = no,
+        Errors = Errors0
+    ;
+        MaybeParseTreeOpt = yes(ParseTreeOpt),
+        check_convert_parse_tree_opt_to_plain_opt(ParseTreeOpt,
+            ParseTreePlainOpt, [], ConvertSpecs),
+        MaybeParseTreePlainOpt = yes(ParseTreePlainOpt),
+        add_any_nec_errors(ConvertSpecs, Errors0, Errors)
+    ).
+
+parse_trans_opt_file(FileName, FileStr, FileStrLen, DefaultModuleName,
+        MaybeParseTreeTransOpt, Errors) :-
+    LineContext0 = line_context(1, 0),
+    LinePosn0 = line_posn(0),
+    DefaultExpectationContexts = [],
+    parse_opt_file(ofk_trans_opt, FileName, FileStr, FileStrLen,
+        LineContext0, LinePosn0,
+        DefaultModuleName, DefaultExpectationContexts,
+        MaybeParseTreeOpt, Errors0),
+    (
+        MaybeParseTreeOpt = no,
+        MaybeParseTreeTransOpt = no,
+        Errors = Errors0
+    ;
+        MaybeParseTreeOpt = yes(ParseTreeOpt),
+        check_convert_parse_tree_opt_to_trans_opt(ParseTreeOpt,
+            ParseTreeTransOpt, [], ConvertSpecs),
+        MaybeParseTreeTransOpt = yes(ParseTreeTransOpt),
+        add_any_nec_errors(ConvertSpecs, Errors0, Errors)
     ).
 
 %---------------------------------------------------------------------------%
