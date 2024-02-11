@@ -39,16 +39,16 @@
 % and we accordingly have different predicates for creating those parse trees.
 % The main predicates for reading these three kinds of files are
 %
-% - read_parse_tree_src,
-% - read_parse_tree_int, and
-% - read_parse_tree_opt.
+% - parse_src_file,
+% - parse_int_file, and
+% - parse_opt_file.
 %
 % Each of these kinds of files has its grammar describing the structure
 % its items should follow. The predicates parsing parts of those structures
 % each have a comment before them specifying what part of the relevant file
 % kind they are designed to parse. The grammar is simplest for opt files, and
 % next simplest for int files, so the order of those predicates in this module
-% is read_parse_tree_opt, read_parse_tree_int, and then read_parse_tree_src.
+% is parse_opt_file, parse_int_file, and then parse_src_file.
 %
 % Our parsing process has four stages instead of the usual two.
 %
@@ -222,7 +222,7 @@ peek_at_file(FileStream, DefaultModuleName, DefaultExpectationContexts,
         counter.init(1, SeqNumCounter0),
         LineContext0 = line_context(1, 0),
         LinePosn0 = line_posn(0),
-        read_first_module_decl(FileString, FileStringLen,
+        parse_first_module_decl(FileString, FileStringLen,
             dont_require_module_decl, DefaultModuleName,
             DefaultExpectationContexts, ModuleDeclPresent,
             may_change_source_file_name, SourceFileName0, _SourceFileName,
@@ -262,7 +262,7 @@ actually_read_module_src(_Globals, FileNameAndStream,
         FileNameAndStream = path_name_and_stream(FileName, _FileStream),
         LineContext0 = line_context(1, 0),
         LinePosn0 = line_posn(0),
-        read_parse_tree_src(FileName, FileStr, FileStrLen,
+        parse_src_file(FileName, FileStr, FileStrLen,
             LineContext0, LinePosn0,
             DefaultModuleName, DefaultExpectationContexts,
             MaybeParseTreeSrc, Errors)
@@ -285,7 +285,7 @@ actually_read_module_int0(Globals, FileNameAndStream,
         FileNameAndStream = path_name_and_stream(FileName, _FileStream),
         LineContext0 = line_context(1, 0),
         LinePosn0 = line_posn(0),
-        read_parse_tree_int(IntFileKind, FileName, FileStr, FileStrLen,
+        parse_int_file(IntFileKind, FileName, FileStr, FileStrLen,
             LineContext0, LinePosn0,
             DefaultModuleName, DefaultExpectationContexts,
             MaybeParseTreeInt, Errors0),
@@ -317,7 +317,7 @@ actually_read_module_int1(Globals, FileNameAndStream,
         FileNameAndStream = path_name_and_stream(FileName, _FileStream),
         LineContext0 = line_context(1, 0),
         LinePosn0 = line_posn(0),
-        read_parse_tree_int(IntFileKind, FileName, FileStr, FileStrLen,
+        parse_int_file(IntFileKind, FileName, FileStr, FileStrLen,
             LineContext0, LinePosn0,
             DefaultModuleName, DefaultExpectationContexts,
             MaybeParseTreeInt, Errors0),
@@ -349,7 +349,7 @@ actually_read_module_int2(Globals, FileNameAndStream,
         FileNameAndStream = path_name_and_stream(FileName, _FileStream),
         LineContext0 = line_context(1, 0),
         LinePosn0 = line_posn(0),
-        read_parse_tree_int(IntFileKind, FileName, FileStr, FileStrLen,
+        parse_int_file(IntFileKind, FileName, FileStr, FileStrLen,
             LineContext0, LinePosn0,
             DefaultModuleName, DefaultExpectationContexts,
             MaybeParseTreeInt, Errors0),
@@ -381,7 +381,7 @@ actually_read_module_int3(Globals, FileNameAndStream,
         FileNameAndStream = path_name_and_stream(FileName, _FileStream),
         LineContext0 = line_context(1, 0),
         LinePosn0 = line_posn(0),
-        read_parse_tree_int(IntFileKind, FileName, FileStr, FileStrLen,
+        parse_int_file(IntFileKind, FileName, FileStr, FileStrLen,
             LineContext0, LinePosn0,
             DefaultModuleName, DefaultExpectationContexts,
             MaybeParseTreeInt, Errors0),
@@ -427,7 +427,7 @@ actually_read_module_plain_opt(_Globals, FileNameAndStream, DefaultModuleName,
         LineContext0 = line_context(1, 0),
         LinePosn0 = line_posn(0),
         DefaultExpectationContexts = [],
-        read_parse_tree_opt(ofk_opt, FileName, FileStr, FileStrLen,
+        parse_opt_file(ofk_opt, FileName, FileStr, FileStrLen,
             LineContext0, LinePosn0,
             DefaultModuleName, DefaultExpectationContexts,
             MaybeParseTreeOpt, Errors0),
@@ -458,7 +458,7 @@ actually_read_module_trans_opt(_Globals, FileNameAndStream, DefaultModuleName,
         LineContext0 = line_context(1, 0),
         LinePosn0 = line_posn(0),
         DefaultExpectationContexts = [],
-        read_parse_tree_opt(ofk_trans_opt, FileName, FileStr, FileStrLen,
+        parse_opt_file(ofk_trans_opt, FileName, FileStr, FileStrLen,
             LineContext0, LinePosn0,
             DefaultModuleName, DefaultExpectationContexts,
             MaybeParseTreeOpt, Errors0),
@@ -597,7 +597,7 @@ expectation_context_to_msg(Context, SubMsg) :-
     % through the polymorphism provided by the ReadParseTree (sometimes the
     % MakeDummyParseTree) higher order variables. All the actual parsing
     % takes place inside ReadParseTree, which will be one of
-    % read_parse_tree_src, read_parse_tree_int and read_parse_tree_src.
+    % parse_src_file, parse_int_file and parse_opt_file.
     %
 :- pred do_actually_read_file(path_name_and_stream::in,
     read_module_and_timestamps::in, do_read_file_result::out,
@@ -671,16 +671,15 @@ do_actually_read_file(FileNameAndStream, ReadModuleAndTimestamps,
 
     % Read an optimization file (.opt or .trans_opt) from standard input.
     %
-:- pred read_parse_tree_opt(opt_file_kind::in, file_name::in,
-    string::in, int::in, line_context::in, line_posn::in,
-    module_name::in, list(prog_context)::in, maybe(parse_tree_opt)::out,
-    read_module_errors::out) is det.
+:- pred parse_opt_file(opt_file_kind::in, file_name::in, string::in, int::in,
+    line_context::in, line_posn::in, module_name::in, list(prog_context)::in,
+    maybe(parse_tree_opt)::out, read_module_errors::out) is det.
 
-read_parse_tree_opt(OptFileKind, SourceFileName0,
-        FileString, FileStringLen, !.LineContext, !.LinePosn,
+parse_opt_file(OptFileKind, SourceFileName0, FileString, FileStringLen,
+        !.LineContext, !.LinePosn,
         DefaultModuleName, DefaultExpectationContexts,
         MaybeParseTree, !:Errors) :-
-    read_module_header(FileString, FileStringLen,
+    parse_module_header(FileString, FileStringLen,
         DefaultModuleName, DefaultExpectationContexts, SourceFileName0,
         MaybeModuleHeader, SeqNumCounter1, !LineContext, !LinePosn),
     (
@@ -689,7 +688,7 @@ read_parse_tree_opt(OptFileKind, SourceFileName0,
     ;
         MaybeModuleHeader = valid_module_header(ModuleName, ModuleNameContext),
         % XXX We should allow the update of SourceFileName.
-        read_item_sequence(FileString, FileStringLen, ModuleName,
+        parse_item_sequence(FileString, FileStringLen, ModuleName,
             no_lookahead, FinalLookAhead,
             cord.init, InclsCord, cord.init, AvailsCord,
             cord.init, FIMsCord, cord.init, ItemsCord,
@@ -726,17 +725,16 @@ read_parse_tree_opt(OptFileKind, SourceFileName0,
 
     % Read an interface file (.int0, .int3, .int2 or .int).
     %
-:- pred read_parse_tree_int(int_file_kind::in, file_name::in,
-    string::in, int::in, line_context::in, line_posn::in,
-    module_name::in, list(prog_context)::in, maybe(parse_tree_int)::out,
-    read_module_errors::out) is det.
+:- pred parse_int_file(int_file_kind::in, file_name::in, string::in, int::in,
+    line_context::in, line_posn::in, module_name::in, list(prog_context)::in,
+    maybe(parse_tree_int)::out, read_module_errors::out) is det.
 
-read_parse_tree_int(IntFileKind, SourceFileName,
-        FileString, FileStringLen, !.LineContext, !.LinePosn,
+parse_int_file(IntFileKind, SourceFileName, FileString, FileStringLen,
+        !.LineContext, !.LinePosn,
         DefaultModuleName, DefaultExpectationContexts,
         MaybeParseTreeInt, !:Errors) :-
     some [!SeqNumCounter, !LookAhead] (
-        read_module_header(FileString, FileStringLen,
+        parse_module_header(FileString, FileStringLen,
             DefaultModuleName, DefaultExpectationContexts, SourceFileName,
             MaybeModuleHeader, !:SeqNumCounter, !LineContext, !LinePosn),
         (
@@ -746,7 +744,7 @@ read_parse_tree_int(IntFileKind, SourceFileName,
             MaybeModuleHeader =
                 valid_module_header(ModuleName, ModuleNameContext),
             !:LookAhead = no_lookahead,
-            read_any_version_number_item(FileString, FileStringLen,
+            parse_any_version_number_item(FileString, FileStringLen,
                 ModuleName, SourceFileName, !LookAhead, VersionNumbersResult,
                 !SeqNumCounter, !LineContext, !LinePosn),
             (
@@ -756,7 +754,7 @@ read_parse_tree_int(IntFileKind, SourceFileName,
                 MaybeParseTreeInt = no
             ;
                 VersionNumbersResult = vnr_ok(MaybeVersionNumbers),
-                read_parse_tree_int_sections(FileString, FileStringLen,
+                parse_int_file_sections(FileString, FileStringLen,
                     ModuleName, ModuleNameContext, IntFileKind,
                     SourceFileName, MaybeVersionNumbers,
                     !LookAhead, MaybeParseTreeInt, !SeqNumCounter,
@@ -773,12 +771,12 @@ read_parse_tree_int(IntFileKind, SourceFileName,
     --->    vnr_ok(maybe_version_numbers)
     ;       vnr_error(error_spec, nonfatal_read_module_error).
 
-:- pred read_any_version_number_item(string::in, int::in,
+:- pred parse_any_version_number_item(string::in, int::in,
     module_name::in, file_name::in, maybe_lookahead::in, maybe_lookahead::out,
     version_number_result::out, counter::in, counter::out,
     line_context::in, line_context::out, line_posn::in, line_posn::out) is det.
 
-read_any_version_number_item(FileString, FileStringLen,
+parse_any_version_number_item(FileString, FileStringLen,
         ModuleName, SourceFileName, InitLookAhead, FinalLookAhead,
         VersionNumberResult, !SeqNumCounter, !LineContext, !LinePosn) :-
     get_next_item_or_marker(SourceFileName, FileString, FileStringLen,
@@ -843,18 +841,18 @@ read_any_version_number_item(FileString, FileStringLen,
     % XXX ITEM_LIST We should return *either* a ParseTreeInt *or* some errors,
     % but *not* both.
     %
-:- pred read_parse_tree_int_sections(string::in, int::in,
+:- pred parse_int_file_sections(string::in, int::in,
     module_name::in, prog_context::in, int_file_kind::in, file_name::in,
     maybe_version_numbers::in, maybe_lookahead::in, maybe_lookahead::out,
     maybe(parse_tree_int)::out, counter::in, counter::out,
     read_module_errors::out,
     line_context::in, line_context::out, line_posn::in, line_posn::out) is det.
 
-read_parse_tree_int_sections(FileString, FileStringLen,
+parse_int_file_sections(FileString, FileStringLen,
         ModuleName, ModuleNameContext, IntFileKind, SourceFileName,
         MaybeVersionNumbers, !LookAhead, MaybeParseTreeInt, !SeqNumCounter,
         !:Errors, !LineContext, !LinePosn) :-
-    read_parse_tree_int_section(FileString, FileStringLen,
+    parse_int_file_section(FileString, FileStringLen,
         ModuleName, SourceFileName, "interface", !LookAhead,
         MaybeFirstRawItemBlock, !SeqNumCounter,
         init_read_module_errors, !:Errors, !LineContext, !LinePosn),
@@ -873,7 +871,7 @@ read_parse_tree_int_sections(FileString, FileStringLen,
             FirstIncls, FirstAvails, FirstFIMs, FirstItems),
         (
             FirstSectionKind = ms_interface,
-            read_parse_tree_int_section(FileString, FileStringLen,
+            parse_int_file_section(FileString, FileStringLen,
                 ModuleName, SourceFileName, "implementation", !LookAhead,
                 MaybeSecondRawItemBlock, !SeqNumCounter, !Errors,
                 !LineContext, !LinePosn),
@@ -927,14 +925,14 @@ read_parse_tree_int_sections(FileString, FileStringLen,
 %
 %---------------------------------------------------------------------------%
 
-:- pred read_parse_tree_int_section(string::in, int::in,
+:- pred parse_int_file_section(string::in, int::in,
     module_name::in, file_name::in, string::in,
     maybe_lookahead::in, maybe_lookahead::out,
     maybe({raw_item_block, prog_context})::out,
     counter::in, counter::out, read_module_errors::in, read_module_errors::out,
     line_context::in, line_context::out, line_posn::in, line_posn::out) is det.
 
-read_parse_tree_int_section(FileString, FileStringLen,
+parse_int_file_section(FileString, FileStringLen,
         ModuleName, SourceFileName, ExpectedSectionKindStr,
         InitLookAhead, FinalLookAhead, MaybeRawItemBlock,
         !SeqNumCounter, !Errors, !LineContext, !LinePosn) :-
@@ -959,7 +957,7 @@ read_parse_tree_int_section(FileString, FileStringLen,
         (
             IOM = iom_marker_section(SectionKind, SectionContext,
                 _SectionSeqNum),
-            read_item_sequence(FileString, FileStringLen,
+            parse_item_sequence(FileString, FileStringLen,
                 ModuleName, no_lookahead, FinalLookAhead,
                 cord.init, InclsCord, cord.init, AvailsCord,
                 cord.init, FIMsCord, cord.init, ItemsCord,
@@ -1023,11 +1021,11 @@ read_parse_tree_int_section(FileString, FileStringLen,
 %
 %---------------------------------------------------------------------------%
 
-:- pred read_parse_tree_src(file_name::in, string::in, int::in,
+:- pred parse_src_file(file_name::in, string::in, int::in,
     line_context::in, line_posn::in, module_name::in, list(prog_context)::in,
     maybe(parse_tree_src)::out, read_module_errors::out) is det.
 
-read_parse_tree_src(!.SourceFileName, FileString, FileStringLen,
+parse_src_file(!.SourceFileName, FileString, FileStringLen,
         !.LineContext, !.LinePosn,
         DefaultModuleName, DefaultExpectationContexts,
         MaybeParseTree, !:Errors) :-
@@ -1036,8 +1034,8 @@ read_parse_tree_src(!.SourceFileName, FileString, FileStringLen,
         counter.init(1, !:SeqNumCounter),
 
         % We handle the first module declaration specially. Read the
-        % documentation on read_first_module_decl for the reason.
-        read_first_module_decl(FileString, FileStringLen,
+        % documentation on parse_first_module_decl for the reason.
+        parse_first_module_decl(FileString, FileStringLen,
             dont_require_module_decl, DefaultModuleName,
             DefaultExpectationContexts, ModuleDeclPresent,
             may_change_source_file_name, !SourceFileName,
@@ -1068,7 +1066,7 @@ read_parse_tree_src(!.SourceFileName, FileString, FileStringLen,
 
         ContainingModules = [],
         MaybePrevSection = no,
-        read_parse_tree_src_components(FileString, FileStringLen,
+        parse_src_file_components(FileString, FileStringLen,
             ModuleName, ContainingModules, MaybePrevSection,
             have_not_given_missing_section_start_warning,
             InitLookAhead, FinalLookAhead, cord.init, ModuleComponents,
@@ -1091,7 +1089,7 @@ read_parse_tree_src(!.SourceFileName, FileString, FileStringLen,
 %
 %---------------------------------------------------------------------------%
 
-:- pred read_parse_tree_src_components(string::in, int::in,
+:- pred parse_src_file_components(string::in, int::in,
     module_name::in, list(module_name)::in,
     maybe(pair(module_section, prog_context))::in,
     missing_section_start_warning::in,
@@ -1101,7 +1099,7 @@ read_parse_tree_src(!.SourceFileName, FileString, FileStringLen,
     read_module_errors::in, read_module_errors::out,
     line_context::in, line_context::out, line_posn::in, line_posn::out) is det.
 
-read_parse_tree_src_components(FileString, FileStringLen,
+parse_src_file_components(FileString, FileStringLen,
         CurModuleName, ContainingModules,
         MaybePrevSection, !.MissingStartSectionWarning,
         InitLookAhead, FinalLookAhead, !ModuleComponents, !SourceFileName,
@@ -1117,7 +1115,7 @@ read_parse_tree_src_components(FileString, FileStringLen,
         ReadIOMResult = read_iom_parse_term_error(ItemSpec),
         add_nonfatal_error(rme_could_not_read_term, [ItemSpec], !Errors),
         % Continue looking for a section marker.
-        read_parse_tree_src_components(FileString, FileStringLen,
+        parse_src_file_components(FileString, FileStringLen,
             CurModuleName, ContainingModules,
             MaybePrevSection, !.MissingStartSectionWarning,
             no_lookahead, FinalLookAhead, !ModuleComponents, !SourceFileName,
@@ -1136,7 +1134,7 @@ read_parse_tree_src_components(FileString, FileStringLen,
         SectionKind = ms_implementation,
         SectionContext = dummy_context,
         ItemSeqInitLookAhead = lookahead(ReadIOMResult),
-        read_item_sequence(FileString, FileStringLen, CurModuleName,
+        parse_item_sequence(FileString, FileStringLen, CurModuleName,
             ItemSeqInitLookAhead, ItemSeqFinalLookAhead,
             cord.init, InclsCord, cord.init, AvailsCord,
             cord.init, FIMsCord, cord.init, ItemsCord,
@@ -1144,7 +1142,7 @@ read_parse_tree_src_components(FileString, FileStringLen,
         add_section_component(CurModuleName, SectionKind, SectionContext,
             InclsCord, AvailsCord, FIMsCord, ItemsCord, !ModuleComponents),
         % We have read in one component; recurse to read in other components.
-        read_parse_tree_src_components(FileString, FileStringLen,
+        parse_src_file_components(FileString, FileStringLen,
             CurModuleName, ContainingModules,
             yes(SectionKind - SectionContext),
             have_not_given_missing_section_start_warning,
@@ -1154,7 +1152,7 @@ read_parse_tree_src_components(FileString, FileStringLen,
         ReadIOMResult = read_iom_ok(_IOMVarSet, IOMTerm, IOM),
         (
             IOM = iom_marker_src_file(!:SourceFileName),
-            read_parse_tree_src_components(FileString, FileStringLen,
+            parse_src_file_components(FileString, FileStringLen,
                 CurModuleName, ContainingModules, MaybePrevSection,
                 !.MissingStartSectionWarning, no_lookahead, FinalLookAhead,
                 !ModuleComponents, !SourceFileName, !SeqNumCounter,
@@ -1166,7 +1164,7 @@ read_parse_tree_src_components(FileString, FileStringLen,
             Spec = simplest_spec($pred, severity_error, phase_read_files,
                 get_term_context(IOMTerm), Pieces),
             add_nonfatal_error(rme_nec, [Spec], !Errors),
-            read_parse_tree_src_components(FileString, FileStringLen,
+            parse_src_file_components(FileString, FileStringLen,
                 CurModuleName, ContainingModules, MaybePrevSection,
                 !.MissingStartSectionWarning, no_lookahead, FinalLookAhead,
                 !ModuleComponents, !SourceFileName, !SeqNumCounter,
@@ -1201,14 +1199,14 @@ read_parse_tree_src_components(FileString, FileStringLen,
                     StartModuleName = qualified(CurModuleName, RawBaseName)
                 )
             ),
-            read_parse_tree_src_submodule(FileString, FileStringLen,
+            parse_src_file_submodule(FileString, FileStringLen,
                 ContainingModules, MaybePrevSection, CurModuleName,
                 StartModuleName, StartContext,
                 no_lookahead, SubModuleFinalLookAhead, !ModuleComponents,
                 !SourceFileName, !SeqNumCounter, !Errors,
                 !LineContext, !LinePosn),
             % We have read in one component; recurse to read in others.
-            read_parse_tree_src_components(FileString, FileStringLen,
+            parse_src_file_components(FileString, FileStringLen,
                 CurModuleName, ContainingModules, MaybePrevSection,
                 !.MissingStartSectionWarning,
                 SubModuleFinalLookAhead, FinalLookAhead, !ModuleComponents,
@@ -1263,7 +1261,7 @@ read_parse_tree_src_components(FileString, FileStringLen,
             ),
             % The following code is duplicated in the case for
             % read_iom_parse_item_errors above.
-            read_item_sequence(FileString, FileStringLen, CurModuleName,
+            parse_item_sequence(FileString, FileStringLen, CurModuleName,
                 ItemSeqInitLookAhead, ItemSeqFinalLookAhead,
                 cord.init, InclsCord, cord.init, AvailsCord,
                 cord.init, FIMsCord, cord.init, ItemsCord, !SourceFileName,
@@ -1272,7 +1270,7 @@ read_parse_tree_src_components(FileString, FileStringLen,
                 InclsCord, AvailsCord, FIMsCord, ItemsCord, !ModuleComponents),
             % We have read in one component; recurse to read in other
             % components.
-            read_parse_tree_src_components(FileString, FileStringLen,
+            parse_src_file_components(FileString, FileStringLen,
                 CurModuleName, ContainingModules,
                 yes(SectionKind - SectionContext),
                 have_not_given_missing_section_start_warning,
@@ -1337,7 +1335,7 @@ generate_missing_start_section_warning_src(CurModuleName,
         % Do not generate duplicate warnings.
     ).
 
-:- pred read_parse_tree_src_submodule(string::in, int::in,
+:- pred parse_src_file_submodule(string::in, int::in,
     list(module_name)::in, maybe(pair(module_section, prog_context))::in,
     module_name::in, module_name::in, prog_context::in,
     maybe_lookahead::in, maybe_lookahead::out,
@@ -1346,7 +1344,7 @@ generate_missing_start_section_warning_src(CurModuleName,
     read_module_errors::in, read_module_errors::out,
     line_context::in, line_context::out, line_posn::in, line_posn::out) is det.
 
-read_parse_tree_src_submodule(FileString, FileStringLen, ContainingModules,
+parse_src_file_submodule(FileString, FileStringLen, ContainingModules,
         MaybePrevSection, ContainingModuleName, StartModuleName, StartContext,
         InitLookAhead, FinalLookAhead, !ModuleComponents, !SourceFileName,
         !SeqNumCounter, !Errors, !LineContext, !LinePosn) :-
@@ -1371,7 +1369,7 @@ read_parse_tree_src_submodule(FileString, FileStringLen, ContainingModules,
     ),
     NestedContainingModules = [StartModuleName | ContainingModules],
     NestedMaybePrevSection = no,
-    read_parse_tree_src_components(FileString, FileStringLen, StartModuleName,
+    parse_src_file_components(FileString, FileStringLen, StartModuleName,
         NestedContainingModules, NestedMaybePrevSection,
         have_not_given_missing_section_start_warning,
         InitLookAhead, FinalLookAhead, cord.init, NestedModuleComponents,
@@ -1442,17 +1440,17 @@ is_for_containing_module(EndedModuleName,
                 prog_context
             ).
 
-:- pred read_module_header(string::in, int::in,
+:- pred parse_module_header(string::in, int::in,
     module_name::in, list(prog_context)::in, file_name::in,
     maybe_module_header::out, counter::out,
     line_context::in, line_context::out, line_posn::in, line_posn::out) is det.
 
-read_module_header(FileString, FileStringLen,
+parse_module_header(FileString, FileStringLen,
         DefaultModuleName, DefaultExpectationContexts, SourceFileName,
         MaybeModuleHeader, !:SeqNumCounter,
         !LineContext, !LinePosn) :-
     counter.init(1, !:SeqNumCounter),
-    read_first_module_decl(FileString, FileStringLen, require_module_decl,
+    parse_first_module_decl(FileString, FileStringLen, require_module_decl,
         DefaultModuleName, DefaultExpectationContexts, ModuleDeclPresent,
         may_not_change_source_file_name, SourceFileName, _SourceFileName,
         !SeqNumCounter, !LineContext, !LinePosn),
@@ -1541,13 +1539,13 @@ read_module_header(FileString, FileStringLen,
     % that follows it occur in different scopes, so we need to know
     % what it is that we are parsing before we can parse it!
     %
-:- pred read_first_module_decl(string::in, int::in,
+:- pred parse_first_module_decl(string::in, int::in,
     maybe_require_module_decl::in, module_name::in, list(prog_context)::in,
     maybe_module_decl_present::out, may_change_source_file_name::in,
     file_name::in, file_name::out, counter::in, counter::out,
     line_context::in, line_context::out, line_posn::in, line_posn::out) is det.
 
-read_first_module_decl(FileString, FileStringLen, RequireModuleDecl,
+parse_first_module_decl(FileString, FileStringLen, RequireModuleDecl,
         DefaultModuleName, DefaultExpectationContexts,
         ModuleDeclPresent, MayChangeSourceFileName, !SourceFileName,
         !SeqNumCounter, !LineContext, !LinePosn) :-
@@ -1572,7 +1570,7 @@ read_first_module_decl(FileString, FileStringLen, RequireModuleDecl,
                 MayChangeSourceFileName = may_change_source_file_name,
                 % Apply and then skip `pragma source_file' decls, by calling
                 % ourselves recursively with the new source file name.
-                read_first_module_decl(FileString, FileStringLen,
+                parse_first_module_decl(FileString, FileStringLen,
                     RequireModuleDecl, DefaultModuleName,
                     DefaultExpectationContexts, ModuleDeclPresent,
                     MayChangeSourceFileName, !SourceFileName,
@@ -1641,7 +1639,7 @@ read_first_module_decl(FileString, FileStringLen, RequireModuleDecl,
     % We use the standard two level loop to avoid running out of stack
     % on long item sequences in grades that do not allow tail recursion.
     %
-:- pred read_item_sequence(string::in, int::in, module_name::in,
+:- pred parse_item_sequence(string::in, int::in, module_name::in,
     maybe_lookahead::in, maybe_lookahead::out,
     cord(item_include)::in, cord(item_include)::out,
     cord(item_avail)::in, cord(item_avail)::out,
@@ -1651,7 +1649,7 @@ read_first_module_decl(FileString, FileStringLen, RequireModuleDecl,
     read_module_errors::in, read_module_errors::out,
     line_context::in, line_context::out, line_posn::in, line_posn::out) is det.
 
-read_item_sequence(FileString, FileStringLen, ModuleName,
+parse_item_sequence(FileString, FileStringLen, ModuleName,
         InitLookAhead, FinalLookAhead,
         !InclsCord, !AvailsCord, !FIMsCord, !ItemsCord,
         !SourceFileName, !SeqNumCounter, !Errors,
@@ -1659,12 +1657,12 @@ read_item_sequence(FileString, FileStringLen, ModuleName,
     get_next_item_or_marker(!.SourceFileName, FileString, FileStringLen,
         InitLookAhead, ModuleName, ReadIOMResult,
         !SeqNumCounter, !LineContext, !LinePosn),
-    read_item_sequence_inner(FileString, FileStringLen, ModuleName,
+    parse_item_sequence_inner(FileString, FileStringLen, ModuleName,
         1024, NumItemsLeft, ReadIOMResult, MidLookAhead,
         !InclsCord, !AvailsCord, !FIMsCord, !ItemsCord,
         !SourceFileName, !SeqNumCounter, !Errors, !LineContext, !LinePosn),
     ( if NumItemsLeft = 0 then
-        read_item_sequence(FileString, FileStringLen, ModuleName,
+        parse_item_sequence(FileString, FileStringLen, ModuleName,
             MidLookAhead, FinalLookAhead,
             !InclsCord, !AvailsCord, !FIMsCord, !ItemsCord,
             !SourceFileName, !SeqNumCounter, !Errors, !LineContext, !LinePosn)
@@ -1672,7 +1670,7 @@ read_item_sequence(FileString, FileStringLen, ModuleName,
         FinalLookAhead = MidLookAhead
     ).
 
-:- pred read_item_sequence_inner(string::in, int::in,
+:- pred parse_item_sequence_inner(string::in, int::in,
     module_name::in, int::in, int::out,
     read_iom_result::in, maybe_lookahead::out,
     cord(item_include)::in, cord(item_include)::out,
@@ -1682,7 +1680,7 @@ read_item_sequence(FileString, FileStringLen, ModuleName,
     counter::in, counter::out, read_module_errors::in, read_module_errors::out,
     line_context::in, line_context::out, line_posn::in, line_posn::out) is det.
 
-read_item_sequence_inner(FileString, FileStringLen, ModuleName,
+parse_item_sequence_inner(FileString, FileStringLen, ModuleName,
         !NumItemsLeft, ReadIOMResult, FinalLookAhead,
         !InclsCord, !AvailsCord, !FIMsCord, !ItemsCord,
         !SourceFileName, !SeqNumCounter, !Errors, !LineContext, !LinePosn) :-
@@ -1702,10 +1700,10 @@ read_item_sequence_inner(FileString, FileStringLen, ModuleName,
                 add_nonfatal_error(rme_could_not_parse_item, ItemSpecs,
                     !Errors)
             ),
-            read_next_item_or_marker(!.SourceFileName,
+            parse_next_item_or_marker(!.SourceFileName,
                 FileString, FileStringLen, ModuleName, NextReadIOMResult,
                 !SeqNumCounter, !LineContext, !LinePosn),
-            read_item_sequence_inner(FileString, FileStringLen, ModuleName,
+            parse_item_sequence_inner(FileString, FileStringLen, ModuleName,
                 !NumItemsLeft, NextReadIOMResult, FinalLookAhead,
                 !InclsCord, !AvailsCord, !FIMsCord, !ItemsCord,
                 !SourceFileName, !SeqNumCounter, !Errors,
@@ -1756,10 +1754,10 @@ read_item_sequence_inner(FileString, FileStringLen, ModuleName,
                     IOM = iom_handled_error(HandledSpecs),
                     add_nonfatal_error(rme_nec, HandledSpecs, !Errors)
                 ),
-                read_next_item_or_marker(!.SourceFileName,
+                parse_next_item_or_marker(!.SourceFileName,
                     FileString, FileStringLen, ModuleName, NextReadIOMResult,
                     !SeqNumCounter, !LineContext, !LinePosn),
-                read_item_sequence_inner(FileString, FileStringLen, ModuleName,
+                parse_item_sequence_inner(FileString, FileStringLen, ModuleName,
                     !NumItemsLeft, NextReadIOMResult, FinalLookAhead,
                     !InclsCord, !AvailsCord, !FIMsCord, !ItemsCord,
                     !SourceFileName, !SeqNumCounter, !Errors,
@@ -1783,18 +1781,18 @@ get_next_item_or_marker(FileName, FileString, FileStringLen, InitLookAhead,
         ModuleName, ReadIOMResult, !SeqNumCounter, !LineContext, !LinePosn) :-
     (
         InitLookAhead = no_lookahead,
-        read_next_item_or_marker(FileName, FileString, FileStringLen,
+        parse_next_item_or_marker(FileName, FileString, FileStringLen,
             ModuleName, ReadIOMResult, !SeqNumCounter,
             !LineContext, !LinePosn)
     ;
         InitLookAhead = lookahead(ReadIOMResult)
     ).
 
-:- pred read_next_item_or_marker(file_name::in, string::in, int::in,
+:- pred parse_next_item_or_marker(file_name::in, string::in, int::in,
     module_name::in, read_iom_result::out, counter::in, counter::out,
     line_context::in, line_context::out, line_posn::in, line_posn::out) is det.
 
-read_next_item_or_marker(FileName, FileString, FileStringLen, ModuleName,
+parse_next_item_or_marker(FileName, FileString, FileStringLen, ModuleName,
         ReadIOMResult, !SeqNumCounter, !LineContext, !LinePosn) :-
     mercury_term_parser.read_term_from_linestr(FileName,
         FileString, FileStringLen, !LineContext, !LinePosn, ReadTermResult),
