@@ -1,0 +1,50 @@
+#!/usr/bin/env bash
+#
+# You can copy/symlink this script to .git/hooks/pre-commit.
+# It will update the Copyright lines of all files that are going to be
+# modified in the commit, before the commit is made.
+#
+# You need to compile the update_copyright.m program:
+#   mmc --mercury-linkage static update_copyright.m
+#
+# You can clean the intermediate files with:
+#   git clean -fx 'update_copyright.*' 'update_copyright_init.*'
+#
+set -e
+
+rootdir=$( git rev-parse --show-toplevel )
+update_copyright="$rootdir/git_hooks/update_copyright"
+
+# Only continue if the update_copyright program has been compiled.
+if test ! -x "$update_copyright"
+then
+    exit
+fi
+
+# Find changed files for this commit.
+changed_files=($( git diff --name-only --cached --diff-filter=ACMR ))
+update_files=()
+unknown_files=()
+
+for file in "${changed_files[@]}"
+do
+    case $file in
+        *.[mchly] | *.in | *.java | *Mmake*)
+            update_files+=( "$file" )
+            ;;
+        *)
+            unknown_files+=( "$file" )
+            ;;
+    esac
+done
+
+if test "${#unknown_files}" -gt 0
+then
+    update_files+=($( grep -sl 'Copyright .* Mercury team' "${unknown_files[@]}" \
+        || true ))
+fi
+
+if test "${#update_files}" -gt 0
+then
+    exec "$update_copyright" --suffix 'Mercury team' -- "${update_files[@]}"
+fi
