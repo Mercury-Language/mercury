@@ -30,6 +30,25 @@
 
 %-----------------------------------------------------------------------------%
 
+    % copy_dot_tmp_to_base_file_return_succeeded(ProgressStream, Globals,
+    %   ModuleName, OutputFileName, Succeeded, !IO)
+    %
+    % Update the interface file FileName from FileName.tmp if it has changed,
+    % and return whether the update succeeded (if it was needed).
+    %
+:- pred copy_dot_tmp_to_base_file_return_succeeded(io.text_output_stream::in,
+    globals::in, file_name::in, maybe_succeeded::out, io::di, io::uo) is det.
+
+    % copy_dot_tmp_to_base_file_report_any_error(ProgressStream, Globals,
+    %   FileKindStr, OutputFileName, Succeeded, !IO)
+    %
+    % As copy_dot_tmp_to_base_file_return_succeeded, but also print
+    % an error message (which includes FileKindStr) if the update failed.
+    %
+:- pred copy_dot_tmp_to_base_file_report_any_error(io.text_output_stream::in,
+    globals::in, string::in, file_name::in, maybe_succeeded::out,
+    io::di, io::uo) is det.
+
 :- type dot_tmp_copy_result
     --->    base_file_new_or_changed
     ;       base_file_unchanged
@@ -39,25 +58,11 @@
     %   FileName, Result, !IO):
     %
     % Update the interface file FileName from FileName.tmp if it has changed.
+    % Report whether the update was needed, and if it was, whether it
+    % succeeded.
     %
 :- pred copy_dot_tmp_to_base_file_return_changed(io.text_output_stream::in,
     globals::in, file_name::in, dot_tmp_copy_result::out,
-    io::di, io::uo) is det.
-
-    % copy_dot_tmp_to_base_file_return_succeeded(ProgressStream, Globals,
-    %   ModuleName, OutputFileName, Succeeded, !IO)
-    %
-:- pred copy_dot_tmp_to_base_file_return_succeeded(io.text_output_stream::in,
-    globals::in, file_name::in, maybe_succeeded::out, io::di, io::uo) is det.
-
-    % copy_dot_tmp_to_base_file_report_any_error(ProgressStream, Globals,
-    %   FileKindStr, OutputFileName, Succeeded, !IO)
-    %
-    % As copy_dot_tmp_to_base_file_return_succeeded, but also print
-    % an error message if the update did not succeed.
-    %
-:- pred copy_dot_tmp_to_base_file_report_any_error(io.text_output_stream::in,
-    globals::in, string::in, file_name::in, maybe_succeeded::out,
     io::di, io::uo) is det.
 
 %-----------------------------------------------------------------------------%
@@ -179,6 +184,36 @@
 
 %-----------------------------------------------------------------------------%
 
+copy_dot_tmp_to_base_file_return_succeeded(ProgressStream, Globals,
+        OutputFileName, Succeeded, !IO) :-
+    copy_dot_tmp_to_base_file_return_changed(ProgressStream, Globals,
+        OutputFileName, Result, !IO),
+    (
+        ( Result = base_file_new_or_changed
+        ; Result = base_file_unchanged
+        ),
+        Succeeded = succeeded
+    ;
+        Result = dot_tmp_copy_error,
+        Succeeded = did_not_succeed
+    ).
+
+copy_dot_tmp_to_base_file_report_any_error(ProgressStream, Globals,
+        FileKindStr, OutputFileName, Succeeded, !IO) :-
+    copy_dot_tmp_to_base_file_return_changed(ProgressStream, Globals,
+        OutputFileName, Result, !IO),
+    (
+        Result = dot_tmp_copy_error,
+        Succeeded = did_not_succeed,
+        string.format("problem updating %s files.", [s(FileKindStr)], Msg),
+        report_error(ProgressStream, Msg, !IO)
+    ;
+        ( Result = base_file_new_or_changed
+        ; Result = base_file_unchanged
+        ),
+        Succeeded = succeeded
+    ).
+
 copy_dot_tmp_to_base_file_return_changed(ProgressStream, Globals,
         OutputFileName, Result, !IO) :-
     globals.lookup_bool_option(Globals, verbose, Verbose),
@@ -214,32 +249,6 @@ copy_dot_tmp_to_base_file_return_changed(ProgressStream, Globals,
         OutputFileRes = error(_),
         copy_dot_tmp_to_base_file_create_file(Globals, ProgressStream,
             "been CREATED", OutputFileName, TmpOutputFileName, Result, !IO)
-    ).
-
-copy_dot_tmp_to_base_file_return_succeeded(ProgressStream, Globals,
-        OutputFileName, Succeeded, !IO) :-
-    copy_dot_tmp_to_base_file_return_changed(ProgressStream, Globals,
-        OutputFileName, Result, !IO),
-    (
-        ( Result = base_file_new_or_changed
-        ; Result = base_file_unchanged
-        ),
-        Succeeded = succeeded
-    ;
-        Result = dot_tmp_copy_error,
-        Succeeded = did_not_succeed
-    ).
-
-copy_dot_tmp_to_base_file_report_any_error(ProgressStream, Globals,
-        FileKindStr, OutputFileName, Succeeded, !IO) :-
-    copy_dot_tmp_to_base_file_return_succeeded(ProgressStream, Globals,
-        OutputFileName, Succeeded, !IO),
-    (
-        Succeeded = did_not_succeed,
-        string.format("problem updating %s files.", [s(FileKindStr)], Msg),
-        report_error(ProgressStream, Msg, !IO)
-    ;
-        Succeeded = succeeded
     ).
 
 %-----------------------------------------------------------------------------%

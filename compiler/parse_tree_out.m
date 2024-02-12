@@ -56,6 +56,11 @@
 
 %---------------------------------------------------------------------------%
 
+:- pred output_parse_tree_string(io.text_output_stream::in, globals::in,
+    string::in, string::in, maybe_succeeded::out, io::di, io::uo) is det.
+
+%---------------------------------------------------------------------------%
+
     % mercury_output_parse_tree_*(Info, FileStream, ParseTree, !IO)
     % mercury_format_parse_tree_*(Info, S, ParseTree, !U)
 
@@ -228,6 +233,8 @@ output_some_parse_tree(ProgressStream, Globals,
     io.open_output(OutputFileName, Res, !IO),
     (
         Res = ok(FileStream),
+        Info = init_merc_out_info(Globals, unqualified_item_names,
+            output_mercury),
         globals.lookup_bool_option(Globals, verbose, Verbose),
         (
             Verbose = yes,
@@ -237,10 +244,40 @@ output_some_parse_tree(ProgressStream, Globals,
         ;
             Verbose = no
         ),
-
-        Info = init_merc_out_info(Globals, unqualified_item_names,
-            output_mercury),
         OutputParseTree(Info, FileStream, ParseTree, !IO),
+        io.close_output(FileStream, !IO),
+        (
+            Verbose = yes,
+            io.write_string(ProgressStream, " done\n", !IO),
+            io.flush_output(ProgressStream, !IO)
+        ;
+            Verbose = no
+        ),
+        Succeeded = succeeded
+    ;
+        Res = error(_),
+        io.format(ProgressStream,
+            "Error: couldn't open file `%s' for output.\n",
+            [s(OutputFileName)], !IO),
+        io.flush_output(ProgressStream, !IO),
+        Succeeded = did_not_succeed
+    ).
+
+output_parse_tree_string(ProgressStream, Globals, OutputFileName,
+        ParseTreeStr, Succeeded, !IO) :-
+    io.open_output(OutputFileName, Res, !IO),
+    (
+        Res = ok(FileStream),
+        globals.lookup_bool_option(Globals, verbose, Verbose),
+        (
+            Verbose = yes,
+            io.format(ProgressStream, "%% Writing output to %s...",
+                [s(OutputFileName)], !IO),
+            io.flush_output(ProgressStream, !IO)
+        ;
+            Verbose = no
+        ),
+        io.write_string(FileStream, ParseTreeStr, !IO),
         io.close_output(FileStream, !IO),
         (
             Verbose = yes,

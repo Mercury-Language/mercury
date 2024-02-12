@@ -116,6 +116,7 @@
 
 :- implementation.
 
+:- import_module libs.file_util.
 :- import_module libs.options.
 :- import_module libs.timestamp.
 :- import_module mdbcomp.
@@ -123,7 +124,9 @@
 :- import_module parse_tree.file_names.
 :- import_module parse_tree.module_cmds.
 :- import_module parse_tree.parse_error.
+:- import_module parse_tree.parse_module.
 :- import_module parse_tree.parse_tree_out.
+:- import_module parse_tree.parse_tree_out_info.
 :- import_module parse_tree.prog_item.
 :- import_module recompilation.
 :- import_module recompilation.version.
@@ -134,6 +137,7 @@
 :- import_module io.file.
 :- import_module maybe.
 :- import_module require.
+:- import_module string.
 
 %---------------------------------------------------------------------------%
 %
@@ -154,10 +158,10 @@ generate_and_write_interface_file_int3(ProgressStream, Globals, AddToHptm,
 write_parse_tree_int3(ProgressStream, Globals, GenerateResult,
         Specs, Succeeded, !IO) :-
     (
-        GenerateResult = gpti3_ok(ParseTreeInt3, FileName, TmpFileName, Specs),
+        GenerateResult = gpti3_ok(ParseTreeInt3, FileName, Specs),
         ModuleName = ParseTreeInt3 ^ pti3_module_name,
         actually_write_interface_file3(ProgressStream, Globals, ParseTreeInt3,
-            FileName, TmpFileName, no, OutputSucceeded, !IO),
+            FileName, OutputSucceeded, !IO),
         touch_module_ext_datestamp(Globals, ProgressStream, ModuleName,
             ext_cur_ngs(ext_cur_ngs_int_date_int3), TouchSucceeded, !IO),
         Succeeded = OutputSucceeded `and` TouchSucceeded
@@ -190,10 +194,10 @@ write_parse_tree_int0(ProgressStream, Globals, GenerateResult,
         Specs, Succeeded, !IO) :-
     (
         GenerateResult = gpti0_ok(ParseTreeInt0, MaybeTimestamp,
-            FileName, TmpFileName, Specs),
+            FileName, Specs),
         ModuleName = ParseTreeInt0 ^ pti0_module_name,
         actually_write_interface_file0(ProgressStream, Globals, ParseTreeInt0,
-            FileName, TmpFileName, MaybeTimestamp, OutputSucceeded, !IO),
+            FileName, MaybeTimestamp, OutputSucceeded, !IO),
         touch_module_ext_datestamp(Globals, ProgressStream, ModuleName,
             ext_cur_ngs(ext_cur_ngs_int_date_int0), TouchSucceeded, !IO),
         Succeeded = OutputSucceeded `and` TouchSucceeded
@@ -226,14 +230,13 @@ write_parse_tree_int12(ProgressStream, Globals, GenerateResult,
         Specs, Succeeded, !IO) :-
     (
         GenerateResult = gpti12_ok(ParseTreeInt1, ParseTreeInt2,
-            MaybeTimestamp, FileName1, TmpFileName1, FileName2, TmpFileName2,
-            Specs),
+            MaybeSourceFileTimestamp, FileName1, FileName2, Specs),
         ModuleName = ParseTreeInt1 ^ pti1_module_name,
         actually_write_interface_file1(ProgressStream, Globals,
-            ParseTreeInt1, FileName1, TmpFileName1, MaybeTimestamp,
+            ParseTreeInt1, FileName1, MaybeSourceFileTimestamp,
             OutputSucceeded1, !IO),
         actually_write_interface_file2(ProgressStream, Globals,
-            ParseTreeInt2, FileName2, TmpFileName2, MaybeTimestamp,
+            ParseTreeInt2, FileName2, MaybeSourceFileTimestamp,
             OutputSucceeded2, !IO),
         touch_module_ext_datestamp(Globals, ProgressStream, ModuleName,
             ext_cur_ngs(ext_cur_ngs_int_date_int12), TouchSucceeded, !IO),
@@ -250,77 +253,197 @@ write_parse_tree_int12(ProgressStream, Globals, GenerateResult,
     ).
 
 %---------------------------------------------------------------------------%
+%
+% The following three predicates operate on parse_tree_int0s, parse_tree_int1s
+% and parse_tree_int2s. They do exactly the same thing with all three,
+% so their codes are identical, except for the fact that
+%
+% - they operate on values of different types, and
+% - they call predicates that perform the same operations on those different
+%   types.
+%
+% The fourth operates on parse_tree_int3s, and is also *almost* identical
+% in the above sense, except that it has one additional difference, which is
+% that it does not deal with version numbers for smart recompilation, since
+% .int3 files do not contain version numbers.
+%
+% The difference in types is why this common code cannot be factored out.
+%
 
 :- pred actually_write_interface_file0(io.text_output_stream::in, globals::in,
-    parse_tree_int0::in, string::in, string::in, maybe(timestamp)::in,
+    parse_tree_int0::in, file_name::in, maybe(timestamp)::in,
     maybe_succeeded::out, io::di, io::uo) is det.
 
-actually_write_interface_file0(ProgressStream, Globals, ParseTreeInt0,
-        FileName, TmpFileName, MaybeTimestamp, Succeeded, !IO) :-
+actually_write_interface_file0(ProgressStream, Globals, GenParseTreeInt0,
+        FileName, MaybeSourceFileTimestamp, Succeeded, !IO) :-
     disable_all_line_numbers(Globals, NoLineNumGlobals),
-    % We handle any failure to read in the old interface version as
-    % every item in the module source being brand new.
-    maybe_read_old_int0_and_compare_for_smart_recomp(ProgressStream,
-        NoLineNumGlobals, ParseTreeInt0, MaybeTimestamp,
-        MaybeVersionNumbers, !IO),
-    ParseTreeInt0V = ParseTreeInt0 ^ pti0_maybe_version_numbers
-        := MaybeVersionNumbers,
-    output_parse_tree_int0(ProgressStream, NoLineNumGlobals,
-        TmpFileName, ParseTreeInt0V, OutputSucceeded, !IO),
-    copy_dot_tmp_to_base_file_report_any_error(ProgressStream, Globals,
-        ".int0", FileName, UpdateSucceeded, !IO),
-    Succeeded = OutputSucceeded `and` UpdateSucceeded.
+    Info = init_merc_out_info(NoLineNumGlobals, unqualified_item_names,
+        output_mercury),
+    should_generate_item_version_numbers(NoLineNumGlobals,
+        WantVersionNumbers, !IO),
+    globals.lookup_bool_option(NoLineNumGlobals, verbose, Verbose),
+    string.format("%% Reading old version of `%s'... ",
+        [s(FileName)], ReadOldStartMsg),
+    maybe_write_string(ProgressStream, Verbose, ReadOldStartMsg, !IO),
+    io.read_named_file_as_string(FileName, ReadFileResult, !IO),
+    (
+        ReadFileResult = ok(OldFileStr),
+        maybe_parse_old_int0_and_compare_for_smart_recomp(NoLineNumGlobals,
+            WantVersionNumbers, FileName, yes(OldFileStr),
+            MaybeSourceFileTimestamp, GenParseTreeInt0, NewParseTreeInt0),
+        maybe_write_string(ProgressStream, Verbose, "done.\n", !IO),
+        NewParseTreeStr = parse_tree_int0_to_string(Info, NewParseTreeInt0),
+        ( if OldFileStr = NewParseTreeStr then
+            string.format("%% `%s' has not changed.\n",
+                [s(FileName)], NoChangeMsg),
+            maybe_write_string(ProgressStream, Verbose, NoChangeMsg, !IO),
+            Succeeded = succeeded
+        else
+            % This prints a progress message if --verbose is enabled.
+            output_parse_tree_string(ProgressStream, NoLineNumGlobals,
+                FileName, NewParseTreeStr, Succeeded, !IO)
+        )
+    ;
+        ReadFileResult = error(_),
+        maybe_write_string(ProgressStream, Verbose, "unsuccessful.\n", !IO),
+        MaybeOldFileStr = maybe.no,
+        maybe_parse_old_int0_and_compare_for_smart_recomp(NoLineNumGlobals,
+            WantVersionNumbers, FileName, MaybeOldFileStr,
+            MaybeSourceFileTimestamp, GenParseTreeInt0, NewParseTreeInt0),
+        NewParseTreeStr = parse_tree_int0_to_string(Info, NewParseTreeInt0),
+        % This prints a progress message if --verbose is enabled.
+        output_parse_tree_string(ProgressStream, NoLineNumGlobals,
+            FileName, NewParseTreeStr, Succeeded, !IO)
+    ).
 
 :- pred actually_write_interface_file1(io.text_output_stream::in, globals::in,
-    parse_tree_int1::in, string::in, string::in, maybe(timestamp)::in,
+    parse_tree_int1::in, file_name::in, maybe(timestamp)::in,
     maybe_succeeded::out, io::di, io::uo) is det.
 
-actually_write_interface_file1(ProgressStream, Globals, ParseTreeInt1,
-        FileName, TmpFileName, MaybeTimestamp, Succeeded, !IO) :-
+actually_write_interface_file1(ProgressStream, Globals, GenParseTreeInt1,
+        FileName, MaybeSourceFileTimestamp, Succeeded, !IO) :-
     disable_all_line_numbers(Globals, NoLineNumGlobals),
-    % We handle any failure to read in the old interface version as
-    % every item in the module source being brand new.
-    maybe_read_old_int1_and_compare_for_smart_recomp(ProgressStream,
-        NoLineNumGlobals, ParseTreeInt1, MaybeTimestamp,
-        MaybeVersionNumbers, !IO),
-    ParseTreeInt1V = ParseTreeInt1 ^ pti1_maybe_version_numbers
-        := MaybeVersionNumbers,
-    output_parse_tree_int1(ProgressStream, NoLineNumGlobals,
-        TmpFileName, ParseTreeInt1V, OutputSucceeded, !IO),
-    copy_dot_tmp_to_base_file_report_any_error(ProgressStream, Globals,
-        ".int", FileName, UpdateSucceeded, !IO),
-    Succeeded = OutputSucceeded `and` UpdateSucceeded.
+    Info = init_merc_out_info(NoLineNumGlobals, unqualified_item_names,
+        output_mercury),
+    should_generate_item_version_numbers(NoLineNumGlobals,
+        WantVersionNumbers, !IO),
+    globals.lookup_bool_option(NoLineNumGlobals, verbose, Verbose),
+    string.format("%% Reading old version of `%s'... ",
+        [s(FileName)], ReadOldStartMsg),
+    maybe_write_string(ProgressStream, Verbose, ReadOldStartMsg, !IO),
+    io.read_named_file_as_string(FileName, ReadFileResult, !IO),
+    (
+        ReadFileResult = ok(OldFileStr),
+        maybe_parse_old_int1_and_compare_for_smart_recomp(NoLineNumGlobals,
+            WantVersionNumbers, FileName, yes(OldFileStr),
+            MaybeSourceFileTimestamp, GenParseTreeInt1, NewParseTreeInt1),
+        maybe_write_string(ProgressStream, Verbose, "done.\n", !IO),
+        NewParseTreeStr = parse_tree_int1_to_string(Info, NewParseTreeInt1),
+        ( if OldFileStr = NewParseTreeStr then
+            string.format("%% `%s' has not changed.\n",
+                [s(FileName)], NoChangeMsg),
+            maybe_write_string(ProgressStream, Verbose, NoChangeMsg, !IO),
+            Succeeded = succeeded
+        else
+            % This prints a progress message if --verbose is enabled.
+            output_parse_tree_string(ProgressStream, NoLineNumGlobals,
+                FileName, NewParseTreeStr, Succeeded, !IO)
+        )
+    ;
+        ReadFileResult = error(_),
+        maybe_write_string(ProgressStream, Verbose, "unsuccessful.\n", !IO),
+        MaybeOldFileStr = maybe.no,
+        maybe_parse_old_int1_and_compare_for_smart_recomp(NoLineNumGlobals,
+            WantVersionNumbers, FileName, MaybeOldFileStr,
+            MaybeSourceFileTimestamp, GenParseTreeInt1, NewParseTreeInt1),
+        NewParseTreeStr = parse_tree_int1_to_string(Info, NewParseTreeInt1),
+        % This prints a progress message if --verbose is enabled.
+        output_parse_tree_string(ProgressStream, NoLineNumGlobals,
+            FileName, NewParseTreeStr, Succeeded, !IO)
+    ).
 
 :- pred actually_write_interface_file2(io.text_output_stream::in, globals::in,
-    parse_tree_int2::in, string::in, string::in, maybe(timestamp)::in,
+    parse_tree_int2::in, file_name::in, maybe(timestamp)::in,
     maybe_succeeded::out, io::di, io::uo) is det.
 
-actually_write_interface_file2(ProgressStream, Globals, ParseTreeInt2,
-        FileName, TmpFileName, MaybeTimestamp, Succeeded, !IO) :-
+actually_write_interface_file2(ProgressStream, Globals, GenParseTreeInt2,
+        FileName, MaybeSourceFileTimestamp, Succeeded, !IO) :-
     disable_all_line_numbers(Globals, NoLineNumGlobals),
-    maybe_read_old_int2_and_compare_for_smart_recomp(ProgressStream,
-        NoLineNumGlobals, ParseTreeInt2, MaybeTimestamp,
-        MaybeVersionNumbers, !IO),
-    ParseTreeInt2V = ParseTreeInt2 ^ pti2_maybe_version_numbers
-        := MaybeVersionNumbers,
-    output_parse_tree_int2(ProgressStream, NoLineNumGlobals,
-        TmpFileName, ParseTreeInt2V, OutputSucceeded, !IO),
-    copy_dot_tmp_to_base_file_report_any_error(ProgressStream, Globals,
-        ".int2", FileName, UpdateSucceeded, !IO),
-    Succeeded = OutputSucceeded `and` UpdateSucceeded.
+    Info = init_merc_out_info(NoLineNumGlobals, unqualified_item_names,
+        output_mercury),
+    should_generate_item_version_numbers(NoLineNumGlobals,
+        WantVersionNumbers, !IO),
+    globals.lookup_bool_option(NoLineNumGlobals, verbose, Verbose),
+    string.format("%% Reading old version of `%s'... ",
+        [s(FileName)], ReadOldStartMsg),
+    maybe_write_string(ProgressStream, Verbose, ReadOldStartMsg, !IO),
+    io.read_named_file_as_string(FileName, ReadFileResult, !IO),
+    (
+        ReadFileResult = ok(OldFileStr),
+        maybe_parse_old_int2_and_compare_for_smart_recomp(NoLineNumGlobals,
+            WantVersionNumbers, FileName, yes(OldFileStr),
+            MaybeSourceFileTimestamp, GenParseTreeInt2, NewParseTreeInt2),
+        maybe_write_string(ProgressStream, Verbose, "done.\n", !IO),
+        NewParseTreeStr = parse_tree_int2_to_string(Info, NewParseTreeInt2),
+        ( if OldFileStr = NewParseTreeStr then
+            string.format("%% `%s' has not changed.\n",
+                [s(FileName)], NoChangeMsg),
+            maybe_write_string(ProgressStream, Verbose, NoChangeMsg, !IO),
+            Succeeded = succeeded
+        else
+            % This prints a progress message if --verbose is enabled.
+            output_parse_tree_string(ProgressStream, NoLineNumGlobals,
+                FileName, NewParseTreeStr, Succeeded, !IO)
+        )
+    ;
+        ReadFileResult = error(_),
+        maybe_write_string(ProgressStream, Verbose, "unsuccessful.\n", !IO),
+        MaybeOldFileStr = maybe.no,
+        maybe_parse_old_int2_and_compare_for_smart_recomp(NoLineNumGlobals,
+            WantVersionNumbers, FileName, MaybeOldFileStr,
+            MaybeSourceFileTimestamp, GenParseTreeInt2, NewParseTreeInt2),
+        NewParseTreeStr = parse_tree_int2_to_string(Info, NewParseTreeInt2),
+        % This prints a progress message if --verbose is enabled.
+        output_parse_tree_string(ProgressStream, NoLineNumGlobals,
+            FileName, NewParseTreeStr, Succeeded, !IO)
+    ).
 
 :- pred actually_write_interface_file3(io.text_output_stream::in, globals::in,
-    parse_tree_int3::in, string::in, string::in, maybe(timestamp)::in,
-    maybe_succeeded::out, io::di, io::uo) is det.
+    parse_tree_int3::in, file_name::in, maybe_succeeded::out,
+    io::di, io::uo) is det.
 
-actually_write_interface_file3(ProgressStream, Globals, ParseTreeInt3,
-        FileName, TmpFileName, _MaybeTimestamp, Succeeded, !IO) :-
+actually_write_interface_file3(ProgressStream, Globals, NewParseTreeInt3,
+        FileName, Succeeded, !IO) :-
     disable_all_line_numbers(Globals, NoLineNumGlobals),
-    output_parse_tree_int3(ProgressStream, NoLineNumGlobals,
-        TmpFileName, ParseTreeInt3, OutputSucceeded, !IO),
-    copy_dot_tmp_to_base_file_report_any_error(ProgressStream, Globals,
-        ".int3", FileName, UpdateSucceeded, !IO),
-    Succeeded = OutputSucceeded `and` UpdateSucceeded.
+    Info = init_merc_out_info(NoLineNumGlobals, unqualified_item_names,
+        output_mercury),
+    globals.lookup_bool_option(NoLineNumGlobals, verbose, Verbose),
+    string.format("%% Reading old version of `%s'... ",
+        [s(FileName)], ReadOldStartMsg),
+    maybe_write_string(ProgressStream, Verbose, ReadOldStartMsg, !IO),
+    io.read_named_file_as_string(FileName, ReadFileResult, !IO),
+    (
+        ReadFileResult = ok(OldFileStr),
+        maybe_write_string(ProgressStream, Verbose, "done.\n", !IO),
+        NewParseTreeStr = parse_tree_int3_to_string(Info, NewParseTreeInt3),
+        ( if OldFileStr = NewParseTreeStr then
+            string.format("%% `%s' has not changed.\n",
+                [s(FileName)], NoChangeMsg),
+            maybe_write_string(ProgressStream, Verbose, NoChangeMsg, !IO),
+            Succeeded = succeeded
+        else
+            % This prints a progress message if --verbose is enabled.
+            output_parse_tree_string(ProgressStream, NoLineNumGlobals,
+                FileName, NewParseTreeStr, Succeeded, !IO)
+        )
+    ;
+        ReadFileResult = error(_),
+        maybe_write_string(ProgressStream, Verbose, "unsuccessful.\n", !IO),
+        NewParseTreeStr = parse_tree_int3_to_string(Info, NewParseTreeInt3),
+        % This prints a progress message if --verbose is enabled.
+        output_parse_tree_string(ProgressStream, NoLineNumGlobals,
+            FileName, NewParseTreeStr, Succeeded, !IO)
+    ).
 
 %---------------------------------------------------------------------------%
 
@@ -333,129 +456,140 @@ disable_all_line_numbers(Globals, NoLineNumGlobals) :-
         NoLineNumGlobals0, NoLineNumGlobals).
 
 %---------------------------------------------------------------------------%
+%
+% The following three predicates operate on parse_tree_int0s, parse_tree_int1s
+% and parse_tree_int2s. They do exactly the same thing with all three,
+% so their codes are identical, except for the fact that
+%
+% - they operate on values of different types, and
+% - they call predicates that perform the same operations on those different
+%   types.
+%
+% The difference in types is why this common code cannot be factored out.
+%
 
-:- pred maybe_read_old_int0_and_compare_for_smart_recomp(
-    io.text_output_stream::in, globals::in, parse_tree_int0::in,
-    maybe(timestamp)::in, maybe_version_numbers::out, io::di, io::uo) is det.
+:- pred maybe_parse_old_int0_and_compare_for_smart_recomp(globals::in,
+    maybe_generate_version_numbers::in, file_name::in, maybe(string)::in,
+    maybe(timestamp)::in, parse_tree_int0::in, parse_tree_int0::out) is det.
 
-maybe_read_old_int0_and_compare_for_smart_recomp(ProgressStream,
-        NoLineNumGlobals, ParseTreeInt0, MaybeTimestamp,
-        MaybeVersionNumbers, !IO) :-
-    should_generate_item_version_numbers(NoLineNumGlobals,
-        WantVersionNumbers, !IO),
+maybe_parse_old_int0_and_compare_for_smart_recomp(NoLineNumGlobals,
+        WantVersionNumbers, FileName, MaybeOldFileStr,
+        MaybeSourceFileTimestamp, GenParseTreeInt0, NewParseTreeInt0) :-
     (
         WantVersionNumbers = generate_version_numbers,
-        ModuleName = ParseTreeInt0 ^ pti0_module_name,
-        % Find the timestamp of the current module.
-        insist_on_timestamp(MaybeTimestamp, Timestamp),
-        % Read in the previous version of the file.
-        read_module_int0(ProgressStream, NoLineNumGlobals,
-            rrm_old, ignore_errors, do_search, ModuleName,
-            always_read_module(dont_return_timestamp), HaveReadInt0, !IO),
+        ModuleName = GenParseTreeInt0 ^ pti0_module_name,
         (
-            HaveReadInt0 = have_module(_FN, OldParseTreeInt0, Source),
-            have_parse_tree_source_get_maybe_timestamp_errors(Source,
-                _, OldModuleErrors),
+            MaybeOldFileStr = no,
+            MaybeOldParseTreeInt0 = maybe.no
+        ;
+            MaybeOldFileStr = yes(OldFileStr),
+            % Parse the previous version of the file.
+            string.count_code_units(OldFileStr, OldFileStrLen),
+            parse_int0_file(NoLineNumGlobals, FileName,
+                OldFileStr, OldFileStrLen, ModuleName, [],
+                MaybeOldParseTreeInt0Prime, OldModuleErrors),
             ( if there_are_no_errors(OldModuleErrors) then
-                MaybeOldParseTreeInt0 = yes(OldParseTreeInt0)
+                MaybeOldParseTreeInt0 = MaybeOldParseTreeInt0Prime
             else
-                % If we can't read in the old file, the timestamps will
-                % all be set to the modification time of the source file.
                 MaybeOldParseTreeInt0 = no
             )
-        ;
-            HaveReadInt0 = have_not_read_module(_, _),
-            MaybeOldParseTreeInt0 = no
         ),
+        % If we couldn't read in, or can't parse in the old .int file,
+        % we will set all the timestamps to the modification time
+        % of the source file. Insist on our caller giving us that time.
+        insist_on_timestamp(MaybeSourceFileTimestamp, SourceFileTimestamp),
         recompilation.version.compute_version_numbers_int0(
-            MaybeOldParseTreeInt0, Timestamp, ParseTreeInt0, VersionNumbers),
+            MaybeOldParseTreeInt0, SourceFileTimestamp, GenParseTreeInt0,
+            VersionNumbers),
         MaybeVersionNumbers = version_numbers(VersionNumbers)
     ;
         WantVersionNumbers = do_not_generate_version_numbers,
         MaybeVersionNumbers = no_version_numbers
-    ).
+    ),
+    NewParseTreeInt0 = GenParseTreeInt0 ^ pti0_maybe_version_numbers
+        := MaybeVersionNumbers.
 
-:- pred maybe_read_old_int1_and_compare_for_smart_recomp(
-    io.text_output_stream::in, globals::in, parse_tree_int1::in,
-    maybe(timestamp)::in, maybe_version_numbers::out, io::di, io::uo) is det.
+:- pred maybe_parse_old_int1_and_compare_for_smart_recomp(globals::in,
+    maybe_generate_version_numbers::in, file_name::in, maybe(string)::in,
+    maybe(timestamp)::in, parse_tree_int1::in, parse_tree_int1::out) is det.
 
-maybe_read_old_int1_and_compare_for_smart_recomp(ProgressStream,
-        NoLineNumGlobals, ParseTreeInt1, MaybeTimestamp,
-        MaybeVersionNumbers, !IO) :-
-    should_generate_item_version_numbers(NoLineNumGlobals,
-        WantVersionNumbers, !IO),
+maybe_parse_old_int1_and_compare_for_smart_recomp(NoLineNumGlobals,
+        WantVersionNumbers, FileName, MaybeOldFileStr,
+        MaybeSourceFileTimestamp, GenParseTreeInt1, NewParseTreeInt1) :-
     (
         WantVersionNumbers = generate_version_numbers,
-        ModuleName = ParseTreeInt1 ^ pti1_module_name,
-        % Find the timestamp of the current module.
-        insist_on_timestamp(MaybeTimestamp, Timestamp),
-        % Read in the previous version of the file.
-        read_module_int1(ProgressStream, NoLineNumGlobals,
-            rrm_old, ignore_errors, do_search, ModuleName,
-            always_read_module(dont_return_timestamp), HaveReadInt1, !IO),
+        ModuleName = GenParseTreeInt1 ^ pti1_module_name,
         (
-            HaveReadInt1 = have_module(_FN, OldParseTreeInt1, Source),
-            have_parse_tree_source_get_maybe_timestamp_errors(Source,
-                _, OldModuleErrors),
+            MaybeOldFileStr = no,
+            MaybeOldParseTreeInt1 = maybe.no
+        ;
+            MaybeOldFileStr = yes(OldFileStr),
+            % Parse the previous version of the file.
+            string.count_code_units(OldFileStr, OldFileStrLen),
+            parse_int1_file(NoLineNumGlobals, FileName,
+                OldFileStr, OldFileStrLen, ModuleName, [],
+                MaybeOldParseTreeInt1Prime, OldModuleErrors),
             ( if there_are_no_errors(OldModuleErrors) then
-                MaybeOldParseTreeInt1 = yes(OldParseTreeInt1)
+                MaybeOldParseTreeInt1 = MaybeOldParseTreeInt1Prime
             else
-                % If we can't read in the old file, the timestamps will
-                % all be set to the modification time of the source file.
                 MaybeOldParseTreeInt1 = no
             )
-        ;
-            HaveReadInt1 = have_not_read_module(_, _),
-            MaybeOldParseTreeInt1 = no
         ),
+        % If we couldn't read in, or can't parse in the old .int file,
+        % we will set all the timestamps to the modification time
+        % of the source file. Insist on our caller giving us that time.
+        insist_on_timestamp(MaybeSourceFileTimestamp, SourceFileTimestamp),
         recompilation.version.compute_version_numbers_int1(
-            MaybeOldParseTreeInt1, Timestamp, ParseTreeInt1, VersionNumbers),
+            MaybeOldParseTreeInt1, SourceFileTimestamp, GenParseTreeInt1,
+            VersionNumbers),
         MaybeVersionNumbers = version_numbers(VersionNumbers)
     ;
         WantVersionNumbers = do_not_generate_version_numbers,
         MaybeVersionNumbers = no_version_numbers
-    ).
+    ),
+    NewParseTreeInt1 = GenParseTreeInt1 ^ pti1_maybe_version_numbers
+        := MaybeVersionNumbers.
 
-:- pred maybe_read_old_int2_and_compare_for_smart_recomp(
-    io.text_output_stream::in, globals::in, parse_tree_int2::in,
-    maybe(timestamp)::in, maybe_version_numbers::out, io::di, io::uo) is det.
+:- pred maybe_parse_old_int2_and_compare_for_smart_recomp(globals::in,
+    maybe_generate_version_numbers::in, file_name::in, maybe(string)::in,
+    maybe(timestamp)::in, parse_tree_int2::in, parse_tree_int2::out) is det.
 
-maybe_read_old_int2_and_compare_for_smart_recomp(ProgressStream,
-        NoLineNumGlobals, ParseTreeInt2, MaybeTimestamp,
-        MaybeVersionNumbers, !IO) :-
-    should_generate_item_version_numbers(NoLineNumGlobals,
-        WantVersionNumbers, !IO),
+maybe_parse_old_int2_and_compare_for_smart_recomp(NoLineNumGlobals,
+        WantVersionNumbers, FileName, MaybeOldFileStr,
+        MaybeSourceFileTimestamp, GenParseTreeInt2, NewParseTreeInt2) :-
     (
         WantVersionNumbers = generate_version_numbers,
-        ModuleName = ParseTreeInt2 ^ pti2_module_name,
-        % Find the timestamp of the current module.
-        insist_on_timestamp(MaybeTimestamp, Timestamp),
-        % Read in the previous version of the file.
-        read_module_int2(ProgressStream, NoLineNumGlobals,
-            rrm_old, ignore_errors, do_search, ModuleName,
-            always_read_module(dont_return_timestamp), HaveReadInt2, !IO),
+        ModuleName = GenParseTreeInt2 ^ pti2_module_name,
         (
-            HaveReadInt2 = have_module(_FN, OldParseTreeInt2, Source),
-            have_parse_tree_source_get_maybe_timestamp_errors(Source,
-                _, OldModuleErrors),
+            MaybeOldFileStr = no,
+            MaybeOldParseTreeInt2 = maybe.no
+        ;
+            MaybeOldFileStr = yes(OldFileStr),
+            % Parse the previous version of the file.
+            string.count_code_units(OldFileStr, OldFileStrLen),
+            parse_int2_file(NoLineNumGlobals, FileName,
+                OldFileStr, OldFileStrLen, ModuleName, [],
+                MaybeOldParseTreeInt2Prime, OldModuleErrors),
             ( if there_are_no_errors(OldModuleErrors) then
-                MaybeOldParseTreeInt2 = yes(OldParseTreeInt2)
+                MaybeOldParseTreeInt2 = MaybeOldParseTreeInt2Prime
             else
-                % If we can't read in the old file, the timestamps will
-                % all be set to the modification time of the source file.
                 MaybeOldParseTreeInt2 = no
             )
-        ;
-            HaveReadInt2 = have_not_read_module(_, _),
-            MaybeOldParseTreeInt2 = no
         ),
+        % If we couldn't read in, or can't parse in the old .int2 file,
+        % we will set all the timestamps to the modification time
+        % of the source file. Insist on our caller giving us that time.
+        insist_on_timestamp(MaybeSourceFileTimestamp, SourceFileTimestamp),
         recompilation.version.compute_version_numbers_int2(
-            MaybeOldParseTreeInt2, Timestamp, ParseTreeInt2, VersionNumbers),
+            MaybeOldParseTreeInt2, SourceFileTimestamp, GenParseTreeInt2,
+            VersionNumbers),
         MaybeVersionNumbers = version_numbers(VersionNumbers)
     ;
         WantVersionNumbers = do_not_generate_version_numbers,
         MaybeVersionNumbers = no_version_numbers
-    ).
+    ),
+    NewParseTreeInt2 = GenParseTreeInt2 ^ pti2_maybe_version_numbers
+        := MaybeVersionNumbers.
 
 %---------------------------------------------------------------------------%
 

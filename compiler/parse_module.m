@@ -186,20 +186,16 @@
     %
 :- pred parse_int0_file(globals::in, file_name::in, string::in, int::in,
     module_name::in, list(prog_context)::in,
-    maybe(parse_tree_int0)::out, read_module_errors::out,
-    io::di, io::uo) is det.
+    maybe(parse_tree_int0)::out, read_module_errors::out) is det.
 :- pred parse_int1_file(globals::in, file_name::in, string::in, int::in,
     module_name::in, list(prog_context)::in,
-    maybe(parse_tree_int1)::out, read_module_errors::out,
-    io::di, io::uo) is det.
+    maybe(parse_tree_int1)::out, read_module_errors::out) is det.
 :- pred parse_int2_file(globals::in, file_name::in, string::in, int::in,
     module_name::in, list(prog_context)::in,
-    maybe(parse_tree_int2)::out, read_module_errors::out,
-    io::di, io::uo) is det.
+    maybe(parse_tree_int2)::out, read_module_errors::out) is det.
 :- pred parse_int3_file(globals::in, file_name::in, string::in, int::in,
     module_name::in, list(prog_context)::in,
-    maybe(parse_tree_int3)::out, read_module_errors::out,
-    io::di, io::uo) is det.
+    maybe(parse_tree_int3)::out, read_module_errors::out) is det.
 
     % parse_{plain,trans}_opt_file(FileName, FileStr, FileStrLen,
     %   DefaultModuleName, MaybeParseTree{Plain,Trans}Opt, Errors, !IO):
@@ -323,7 +319,7 @@ actually_read_module_int0(Globals, FileNameAndStream,
         FileNameAndStream = path_name_and_stream(FileName, _FileStream),
         parse_int0_file(Globals, FileName, FileStr, FileStrLen,
             DefaultModuleName, DefaultExpectationContexts,
-            MaybeParseTreeInt0, Errors, !IO)
+            MaybeParseTreeInt0, Errors)
     ;
         ReadFileResult = drfr_error(Errors, MaybeModuleTimestampRes),
         MaybeParseTreeInt0 = no
@@ -340,7 +336,7 @@ actually_read_module_int1(Globals, FileNameAndStream,
         FileNameAndStream = path_name_and_stream(FileName, _FileStream),
         parse_int1_file(Globals, FileName, FileStr, FileStrLen,
             DefaultModuleName, DefaultExpectationContexts,
-            MaybeParseTreeInt1, Errors, !IO)
+            MaybeParseTreeInt1, Errors)
     ;
         ReadFileResult = drfr_error(Errors, MaybeModuleTimestampRes),
         MaybeParseTreeInt1 = no
@@ -357,7 +353,7 @@ actually_read_module_int2(Globals, FileNameAndStream,
         FileNameAndStream = path_name_and_stream(FileName, _FileStream),
         parse_int2_file(Globals, FileName, FileStr, FileStrLen,
             DefaultModuleName, DefaultExpectationContexts,
-            MaybeParseTreeInt2, Errors, !IO)
+            MaybeParseTreeInt2, Errors)
     ;
         ReadFileResult = drfr_error(Errors, MaybeModuleTimestampRes),
         MaybeParseTreeInt2 = no
@@ -374,7 +370,7 @@ actually_read_module_int3(Globals, FileNameAndStream,
         FileNameAndStream = path_name_and_stream(FileName, _FileStream),
         parse_int3_file(Globals, FileName, FileStr, FileStrLen,
             DefaultModuleName, DefaultExpectationContexts,
-            MaybeParseTreeInt3, Errors, !IO)
+            MaybeParseTreeInt3, Errors)
     ;
         ReadFileResult = drfr_error(Errors, MaybeModuleTimestampRes),
         MaybeParseTreeInt3 = no
@@ -431,7 +427,7 @@ actually_read_module_trans_opt(_Globals, FileNameAndStream, DefaultModuleName,
 
 parse_int0_file(Globals, FileName, FileStr, FileStrLen,
         DefaultModuleName, DefaultExpectationContexts,
-        MaybeParseTreeInt0, Errors, !IO) :-
+        MaybeParseTreeInt0, Errors) :-
     LineContext0 = line_context(1, 0),
     LinePosn0 = line_posn(0),
     parse_int_file(ifk_int0, FileName, FileStr, FileStrLen,
@@ -451,7 +447,7 @@ parse_int0_file(Globals, FileName, FileStr, FileStrLen,
 
 parse_int1_file(Globals, FileName, FileStr, FileStrLen,
         DefaultModuleName, DefaultExpectationContexts,
-        MaybeParseTreeInt1, Errors, !IO) :-
+        MaybeParseTreeInt1, Errors) :-
     LineContext0 = line_context(1, 0),
     LinePosn0 = line_posn(0),
     parse_int_file(ifk_int1, FileName, FileStr, FileStrLen,
@@ -471,7 +467,7 @@ parse_int1_file(Globals, FileName, FileStr, FileStrLen,
 
 parse_int2_file(Globals, FileName, FileStr, FileStrLen,
         DefaultModuleName, DefaultExpectationContexts,
-        MaybeParseTreeInt2, Errors, !IO) :-
+        MaybeParseTreeInt2, Errors) :-
     LineContext0 = line_context(1, 0),
     LinePosn0 = line_posn(0),
     parse_int_file(ifk_int2, FileName, FileStr, FileStrLen,
@@ -491,7 +487,7 @@ parse_int2_file(Globals, FileName, FileStr, FileStrLen,
 
 parse_int3_file(Globals, FileName, FileStr, FileStrLen,
         DefaultModuleName, DefaultExpectationContexts,
-        MaybeParseTreeInt3, Errors, !IO) :-
+        MaybeParseTreeInt3, Errors) :-
     LineContext0 = line_context(1, 0),
     LinePosn0 = line_posn(0),
     parse_int_file(ifk_int3, FileName, FileStr, FileStrLen,

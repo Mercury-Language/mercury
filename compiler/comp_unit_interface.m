@@ -54,9 +54,8 @@
                 % We successfully generated this parse tree.
                 parse_tree_int3,
 
-                % The file names of the .int3 file, and its temp version.
-                file_name,  % .int3 file name
-                file_name,  % .int3 file name, tmp version
+                % The file name of the .int3 file.
+                file_name,
 
                 % The messages we created for (non-fatal) errors
                 % while generating the parse tree.
@@ -92,7 +91,6 @@
                 parse_tree_int0,
                 maybe(timestamp),
                 file_name,
-                file_name,
                 list(error_spec)
             )
     ;       gpti0_error(
@@ -118,11 +116,9 @@
     --->    gpti12_ok(
                 parse_tree_int1,
                 parse_tree_int2,
-                maybe(timestamp),
-                file_name,  % .int file name
-                file_name,  % .int file name, tmp version
-                file_name,  % .int2 file name
-                file_name,  % .int2 file name, tmp version
+                maybe(timestamp),   % The timestamp of the source file.
+                file_name,          % .int file name
+                file_name,          % .int2 file name
                 list(error_spec)
             )
     ;       gpti12_error(
@@ -205,7 +201,7 @@ generate_parse_tree_int3(Globals, AddToHptm, BurdenedModule,
         EffectivelyErrors = no,
         ExtraSuffix = "",
         construct_int_file_name(Globals, ModuleName, ifk_int3, ExtraSuffix,
-            FileName, TmpFileName, !IO),
+            FileName, !IO),
         (
             AddToHptm = do_not_add_new_to_hptm
         ;
@@ -215,7 +211,7 @@ generate_parse_tree_int3(Globals, AddToHptm, BurdenedModule,
             map.set(ModuleName, HM, Int3Map0, Int3Map),
             !HaveParseTreeMaps ^ hptm_int3 := Int3Map
         ),
-        GenerateResult = gpti3_ok(ParseTreeInt3, FileName, TmpFileName, Specs1)
+        GenerateResult = gpti3_ok(ParseTreeInt3, FileName, Specs1)
     ;
         EffectivelyErrors = yes,
         GenerateResult = gpti3_error(ModuleName, [], Specs1)
@@ -598,7 +594,7 @@ generate_parse_tree_int0(ProgressStream, Globals, AddToHptm, BurdenedModule,
             filter_interface_generation_specs(Globals, GenerateSpecs, Specs),
             ExtraSuffix = "",
             construct_int_file_name(Globals, ModuleName, ifk_int0, ExtraSuffix,
-                FileName, TmpFileName, !IO),
+                FileName, !IO),
             (
                 AddToHptm = do_not_add_new_to_hptm
             ;
@@ -610,7 +606,7 @@ generate_parse_tree_int0(ProgressStream, Globals, AddToHptm, BurdenedModule,
             ),
             MaybeTimestamp = Baggage0 ^ mb_maybe_timestamp,
             GenerateResult = gpti0_ok(ParseTreeInt0, MaybeTimestamp,
-                FileName, TmpFileName, Specs)
+                FileName, Specs)
         ;
             EffectiveGetQualSpecs = [_ | _],
             GenerateResult = gpti0_error(ModuleName, [], EffectiveGetQualSpecs)
@@ -799,9 +795,9 @@ generate_parse_tree_int12(ProgressStream, Globals, AddToHptm,
             filter_interface_generation_specs(Globals, GenerateSpecs, Specs),
             ExtraSuffix = "",
             construct_int_file_name(Globals, ModuleName, ifk_int1, ExtraSuffix,
-                FileName1, TmpFileName1, !IO),
+                FileName1, !IO),
             construct_int_file_name(Globals, ModuleName, ifk_int2, ExtraSuffix,
-                FileName2, TmpFileName2, !IO),
+                FileName2, !IO),
             (
                 AddToHptm = do_not_add_new_to_hptm
             ;
@@ -817,8 +813,7 @@ generate_parse_tree_int12(ProgressStream, Globals, AddToHptm,
             ),
             MaybeTimestamp = Baggage0 ^ mb_maybe_timestamp,
             GenerateResult = gpti12_ok(ParseTreeInt1, ParseTreeInt2,
-                MaybeTimestamp, FileName1, TmpFileName1,
-                FileName2, TmpFileName2, Specs)
+                MaybeTimestamp, FileName1, FileName2, Specs)
         ;
             EffectiveGetQualSpecs = [_ | _],
             GenerateResult =
@@ -3646,16 +3641,15 @@ accumulate_module(SymName, !MaybeUnqual, !ModuleNames) :-
 %---------------------------------------------------------------------------%
 
 :- pred construct_int_file_name(globals::in,
-    module_name::in, int_file_kind::in, string::in,
-    string::out, string::out, io::di, io::uo) is det.
+    module_name::in, int_file_kind::in, string::in, file_name::out,
+    io::di, io::uo) is det.
 
 construct_int_file_name(Globals, ModuleName, IntFileKind, ExtraSuffix,
-        OutputFileName, TmpOutputFileName, !IO) :-
+        IntFileName, !IO) :-
     int_file_kind_to_extension(IntFileKind, _ExtStr, Ext),
     module_name_to_file_name_create_dirs(Globals, $pred, Ext,
-        ModuleName, OutputFileName0, !IO),
-    OutputFileName = OutputFileName0 ++ ExtraSuffix,
-    TmpOutputFileName = OutputFileName ++ ".tmp".
+        ModuleName, IntFileName0, !IO),
+    IntFileName = IntFileName0 ++ ExtraSuffix.
 
 %---------------------------------------------------------------------------%
 :- end_module parse_tree.comp_unit_interface.
