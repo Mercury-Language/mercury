@@ -18,6 +18,7 @@
 %
 % Options:
 %
+%   -q, --quiet         Quiet mode: don't print anything except error messages.
 %   -s, --suffix STR    Match only Copyright lines with STR in the suffix.
 %
 % Exit status:
@@ -53,8 +54,12 @@
     --->    years(int, int).    % can be equal
 
 :- type option
-    --->    suffix
-    ;       dummy.
+    --->    quiet
+    ;       suffix.
+
+:- type options
+    --->    options(bool, maybe(string)).
+            % The values of the quiet and suffix options respectively.
 
 :- type mod_state
     --->    unmodified          % no copyright line found yet
@@ -70,14 +75,16 @@ main(!IO) :-
     (
         OptionResult = ok(OptionTable),
         current_year(Year, !IO),
+        getopt.lookup_bool_option(OptionTable, quiet, Quiet),
         getopt.lookup_maybe_string_option(OptionTable, suffix,
             MaybeExpectSuffix),
+        Options = options(Quiet, MaybeExpectSuffix),
         (
             NonOptionArgs = [],
-            process_stdin(Year, MaybeExpectSuffix, !IO)
+            process_stdin(Options, Year, !IO)
         ;
             NonOptionArgs = [_ | _],
-            process_files(Year, MaybeExpectSuffix, NonOptionArgs, !IO)
+            process_files(Options, Year, NonOptionArgs, !IO)
         )
     ;
         OptionResult = error(Error),
@@ -88,16 +95,18 @@ main(!IO) :-
 
 :- pred short_option(char::in, option::out) is semidet.
 
+short_option('q', quiet).
 short_option('s', suffix).
 
 :- pred long_option(string::in, option::out) is semidet.
 
+long_option("quiet", quiet).
 long_option("suffix", suffix).
 
 :- pred option_default(option::out, option_data::out) is multi.
 
+option_default(quiet, bool(no)).
 option_default(suffix, maybe_string(no)).
-option_default(dummy, int(0)).  % force multi
 
 %---------------------------------------------------------------------------%
 
@@ -108,57 +117,68 @@ current_year(Year, !IO) :-
     localtime(Time, TM, !IO),
     Year = 1900 + TM ^ tm_year.
 
-:- pred process_stdin(int::in, maybe(string)::in, io::di, io::uo) is det.
+:- pred process_stdin(options::in, int::in, io::di, io::uo) is det.
 
-process_stdin(CurrentYear, MaybeExpectSuffix, !IO) :-
+process_stdin(Options, CurrentYear, !IO) :-
     io.input_stream(InputStream, !IO),
-    read_lines_loop(InputStream, CurrentYear, MaybeExpectSuffix,
+    read_lines_loop(InputStream, Options, CurrentYear,
         [], RevLines, unmodified, _ModState, !IO),
     io.output_stream(OutputStream, !IO),
-    list.foldl(io.write_string(OutputStream), reverse(RevLines), !IO).
+    list.foldl(io.write_string(OutputStream), list.reverse(RevLines), !IO).
 
-:- pred process_files(int::in, maybe(string)::in, list(string)::in,
+:- pred process_files(options::in, int::in, list(string)::in,
     io::di, io::uo) is det.
 
-process_files(_CurrentYear, _MaybeExpectSuffix, [], !IO).
-process_files(CurrentYear, MaybeExpectSuffix, [FileName | FileNames], !IO) :-
-    process_file(CurrentYear, MaybeExpectSuffix, FileName, Continue, !IO),
+process_files(_Options, _CurrentYear, [], !IO).
+process_files(Options, CurrentYear, [FileName | FileNames], !IO) :-
+    process_file(Options, CurrentYear, FileName, Continue, !IO),
     (
         Continue = yes,
-        process_files(CurrentYear, MaybeExpectSuffix, FileNames, !IO)
+        process_files(Options, CurrentYear, FileNames, !IO)
     ;
         Continue = no
     ).
 
-:- pred process_file(int::in, maybe(string)::in, string::in, bool::out,
+:- pred process_file(options::in, int::in, string::in, bool::out,
     io::di, io::uo) is det.
 
-process_file(CurrentYear, MaybeExpectSuffix, FileName, Continue, !IO) :-
+process_file(Options, CurrentYear, FileName, Continue, !IO) :-
     io.open_input(FileName, OpenInputRes, !IO),
     (
         OpenInputRes = ok(InputStream),
-        read_lines_loop(InputStream, CurrentYear, MaybeExpectSuffix,
+        read_lines_loop(InputStream, Options, CurrentYear,
             [], RevLines, unmodified, ModState, !IO),
         io.close_input(InputStream, !IO),
+        Options = options(Quiet, _),
         (
             ( ModState = unmodified
             ; ModState = found_unmodified
             ),
-            io.format("Unchanged: %s\n", [s(FileName)], !IO),
+            (
+                Quiet = no,
+                io.format("Unchanged: %s\n", [s(FileName)], !IO)
+            ;
+                Quiet = yes
+            ),
             Continue = yes
         ;
             ModState = found_modified,
-            % It would be better to write a temporary file then atomically
-            % rename over the original file, but that would require extra work
-            % to preserve the file ownership and permissions. For simplicity,
-            % we forgo atomicity.
+            % It would be better to write to a temporary file and then
+            % atomically rename that temporary file to the original file,
+            % but that would require extra work to preserve the file ownership
+            % and permissions. For simplicity, we forgo atomicity.
             io.open_output(FileName, OpenOutputRes, !IO),
             (
                 OpenOutputRes = ok(OutputStream),
                 list.foldl(io.write_string(OutputStream),
-                    reverse(RevLines), !IO),
+                    list.reverse(RevLines), !IO),
                 io.close_output(OutputStream, !IO),
-                io.format("Modified: %s\n", [s(FileName)], !IO),
+                (
+                    Quiet = no,
+                    io.format("Modified: %s\n", [s(FileName)], !IO)
+                ;
+                    Quiet = yes
+                ),
                 maybe_set_modified_exit_status(!IO),
                 Continue = yes
             ;
@@ -175,19 +195,18 @@ process_file(CurrentYear, MaybeExpectSuffix, FileName, Continue, !IO) :-
 
 %---------------------------------------------------------------------------%
 
-:- pred read_lines_loop(io.text_input_stream::in, int::in, maybe(string)::in,
+:- pred read_lines_loop(io.text_input_stream::in, options::in, int::in,
     list(string)::in, list(string)::out, mod_state::in, mod_state::out,
     io::di, io::uo) is det.
 
-read_lines_loop(InputStream, CurrentYear, MaybeExpectSuffix,
+read_lines_loop(InputStream, Options, CurrentYear,
         !RevLines, !ModState, !IO) :-
     io.read_line_as_string(InputStream, ReadRes, !IO),
     (
         ReadRes = ok(Line),
         ( if
             !.ModState = unmodified,
-            parse_copyright_line(Line, MaybeExpectSuffix,
-                Prefix, Ranges0, Suffix)
+            parse_copyright_line(Options, Line, Prefix, Ranges0, Suffix)
         then
             % We could normalise ranges here.
             sort(Ranges0, Ranges1),
@@ -202,7 +221,7 @@ read_lines_loop(InputStream, CurrentYear, MaybeExpectSuffix,
         else
             !:RevLines = [Line | !.RevLines]
         ),
-        read_lines_loop(InputStream, CurrentYear, MaybeExpectSuffix,
+        read_lines_loop(InputStream, Options, CurrentYear,
             !RevLines, !ModState, !IO)
     ;
         ReadRes = eof
@@ -211,13 +230,14 @@ read_lines_loop(InputStream, CurrentYear, MaybeExpectSuffix,
         report_io_error("Error reading", Error, !IO)
     ).
 
-:- pred parse_copyright_line(string::in, maybe(string)::in,
+:- pred parse_copyright_line(options::in, string::in,
     string::out, list(year_range)::out, string::out) is semidet.
 
-parse_copyright_line(Line, MaybeExpectSuffix, Prefix, Ranges, Suffix) :-
+parse_copyright_line(Options, Line, Prefix, Ranges, Suffix) :-
     string.sub_string_search(Line, "Copyright ", AfterCopyright),
     find_prefix_end(Line, ' ', AfterCopyright, PrefixEnd),
     find_suffix_start(Line, PrefixEnd, PrefixEnd, SuffixStart),
+    Options = options(_, MaybeExpectSuffix),
     (
         MaybeExpectSuffix = no
     ;
