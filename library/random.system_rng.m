@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sts=4 sw=4 et
 %---------------------------------------------------------------------------%
-% Copyright (C) 2021-2022 The Mercury team.
+% Copyright (C) 2021-2022, 2024 The Mercury team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %---------------------------------------------------------------------------%
 %
@@ -184,18 +184,10 @@ typedef struct ML_SystemRandomHandle_Struct *ML_SystemRandomHandle;
 %---------------------------------------------------------------------------%
 
 :- instance urandom(system_rng, io) where [
-    ( generate_uint8(Handle, U, !IO) :-
-        system_rng.generate_uint8(Handle, U, !IO)
-    ),
-    ( generate_uint16(Handle, U, !IO) :-
-        system_rng.generate_uint16(Handle, U, !IO)
-    ),
-    ( generate_uint32(Handle, U, !IO) :-
-        system_rng.generate_uint32(Handle, U, !IO)
-    ),
-    ( generate_uint64(Handle, U, !IO) :-
-        system_rng.generate_uint64(Handle, U, !IO)
-    )
+    pred(generate_uint8/4) is system_rng.generate_uint8,
+    pred(generate_uint16/4) is system_rng.generate_uint16,
+    pred(generate_uint32/4) is system_rng.generate_uint32,
+    pred(generate_uint64/4) is system_rng.generate_uint64
 ].
 
 %---------------------------------------------------------------------------%
