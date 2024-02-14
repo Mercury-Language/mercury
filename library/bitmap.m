@@ -2508,35 +2508,47 @@ throw_bitmap_error(Msg) :-
 
 %---------------------------------------------------------------------------%
 
-:- instance stream.bulk_reader(binary_input_stream, int, bitmap, io, io.error)
+:- instance stream.bulk_reader(io.binary_input_stream, int, bitmap, io,
+    io.error)
     where
 [
-    ( bulk_get(Stream, Index, Int, !Store, NumRead, Result, !State) :-
-        bitmap.read_bitmap_range(Stream, Index, Int, !Store, NumRead,
-            Result0, !State),
-        Result = res_to_stream_res(Result0)
-    )
+    pred(bulk_get/9) is bitmap.stream_bulk_get
 ].
 
-:- instance stream.writer(binary_output_stream, bitmap, io)
+:- instance stream.writer(io.binary_output_stream, bitmap, io)
     where
 [
     pred(put/4) is bitmap.write_bitmap
 ].
 
-:- instance stream.writer(binary_output_stream, bitmap.slice, io)
+:- instance stream.writer(io.binary_output_stream, bitmap.slice, io)
     where
 [
-    ( put(Stream, Slice, !IO) :-
-        bitmap.write_bitmap_range(Stream, Slice ^ slice_bitmap,
-            Slice ^ slice_start_byte_index, Slice ^ slice_num_bytes, !IO)
-    )
+    pred(put/4) is bitmap.stream_put
 ].
+
+%---------------------------------------------------------------------------%
+
+:- pred stream_bulk_get(io.binary_input_stream::in, int::in, int::in,
+    bitmap::bulk_get_di, bitmap::bulk_get_uo, int::out,
+    stream.res(io.error)::out, io::di, io::uo) is det.
+
+stream_bulk_get(Stream, Index, Int, !Store, NumRead, Result, !IO) :-
+    bitmap.read_bitmap_range(Stream, Index, Int, !Store, NumRead,
+        Result0, !IO),
+    Result = res_to_stream_res(Result0).
 
 :- func res_to_stream_res(io.res) = stream.res(io.error).
 
 res_to_stream_res(ok) = ok.
 res_to_stream_res(error(E)) = error(E).
+
+:- pred stream_put(io.binary_output_stream::in, bitmap.slice::in,
+    io::di, io::uo) is det.
+
+stream_put(Stream, Slice, !IO) :-
+    bitmap.write_bitmap_range(Stream, Slice ^ slice_bitmap,
+        Slice ^ slice_start_byte_index, Slice ^ slice_num_bytes, !IO).
 
 %---------------------------------------------------------------------------%
 :- end_module bitmap.

@@ -410,10 +410,8 @@
 :- import_module uint8.
 
 :- instance enum(character) where [
-    (to_int(X) = Y :-
-        to_int(X, Y)),
-    (from_int(X) = Y :-
-        to_int(Y, X))
+    func(to_int/1) is char.to_int,
+    func(from_int/1) is char.from_int_func
 ].
 
 :- instance uenum(character) where [
@@ -424,9 +422,29 @@
 :- pragma foreign_decl("C", "#include <limits.h>").
 
 %---------------------------------------------------------------------------%
+%
+% All of
+%
+%   - func to_int/1
+%   - pred to_int/2
+%   - pred from_int/2
+%   - func det_from_int/1
+%   - pred det_from_int/2
+%
+% are implemented in terms of pred to_int/2. For the *from_int operations,
+% this is possible *only* because that predicate has a reverse mode as
+% as its usual forward mode.
+%
 
 to_int(C) = N :-
     to_int(C, N).
+
+%---------------------%
+%
+% The <in, outt> mode of to_int.
+%
+
+:- pragma inline(pred(to_int/2)).
 
 :- pragma foreign_proc("C",
     to_int(Character::in, Int::out),
@@ -435,6 +453,23 @@ to_int(C) = N :-
 "
     Int = (MR_UnsignedChar) Character;
 ").
+:- pragma foreign_proc("C#",
+    to_int(Character::in, Int::out),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    Int = Character;
+").
+:- pragma foreign_proc("Java",
+    to_int(Character::in, Int::out),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    Int = (int) Character;
+").
+
+%---------------------%
+%
+% The <in, in> mode of to_int.
+%
 
 :- pragma foreign_proc("C",
     to_int(Character::in, Int::in),
@@ -443,6 +478,23 @@ to_int(C) = N :-
 "
     SUCCESS_INDICATOR = ((MR_UnsignedChar) Character == Int);
 ").
+:- pragma foreign_proc("C#",
+    to_int(Character::in, Int::in),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    SUCCESS_INDICATOR = (Character == Int);
+").
+:- pragma foreign_proc("Java",
+    to_int(Character::in, Int::in),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    SUCCESS_INDICATOR = ((int) Character == Int);
+").
+
+%---------------------%
+%
+% The <out, in> mode of to_int.
+%
 
 :- pragma foreign_proc("C",
     to_int(Character::out, Int::in),
@@ -452,21 +504,6 @@ to_int(C) = N :-
     Character = Int;
     SUCCESS_INDICATOR = (Character >= 0 && Character <= 0x10ffff);
 ").
-
-:- pragma foreign_proc("C#",
-    to_int(Character::in, Int::out),
-    [will_not_call_mercury, promise_pure, thread_safe],
-"
-    Int = Character;
-").
-
-:- pragma foreign_proc("C#",
-    to_int(Character::in, Int::in),
-    [will_not_call_mercury, promise_pure, thread_safe],
-"
-    SUCCESS_INDICATOR = (Character == Int);
-").
-
 :- pragma foreign_proc("C#",
     to_int(Character::out, Int::in),
     [will_not_call_mercury, promise_pure, thread_safe],
@@ -476,29 +513,29 @@ to_int(C) = N :-
 ").
 
 :- pragma foreign_proc("Java",
-    to_int(Character::in, Int::out),
-    [will_not_call_mercury, promise_pure, thread_safe],
-"
-    Int = (int) Character;
-").
-
-:- pragma foreign_proc("Java",
-    to_int(Character::in, Int::in),
-    [will_not_call_mercury, promise_pure, thread_safe],
-"
-    SUCCESS_INDICATOR = ((int) Character == Int);
-").
-
-:- pragma foreign_proc("Java",
     to_int(Character::out, Int::in),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     Character = Int;
     SUCCESS_INDICATOR = (Int >= 0 && Int <= 0x10ffff);
 ").
+
+%---------------------%
 
 from_int(Int, Char) :-
     to_int(Char, Int).
+
+    % We don't export this function since we don't want to encourage people
+    % to use semidet functions, but the enum typeclass is ancient, and one
+    % of its two methods is a semidet function. Its implementation therefore
+    % must also be a semidet function.
+    %
+:- func from_int_func(int::in) = (char::out) is semidet.
+
+from_int_func(Int) = Char :-
+    from_int(Int, Char).
+
+%---------------------%
 
 det_from_int(Int) = Char :-
     det_from_int(Int, Char).
@@ -511,9 +548,18 @@ det_from_int(Int, Char) :-
     ).
 
 %---------------------------------------------------------------------------%
+%
+% The to_uint/from_uint operations are implemented quite differently from
+% their int versions. The reason for this is that while to_int has both
+% a forward mode and a reverse mode, to_uint has only the forward mode.
+% (By the time we added unsigned integers to the language, experience has
+% taught us that more modes are not necessarily better.)
+%
 
 to_uint(Char) = UInt :-
     UInt = uint.cast_from_int(char.to_int(Char)).
+
+:- pragma inline(pred(from_uint/2)).
 
 :- pragma foreign_proc("C",
     from_uint(UInt::in, Character::out),
@@ -523,7 +569,6 @@ to_uint(Char) = UInt :-
     Character = (MR_UnsignedChar) UInt;
     SUCCESS_INDICATOR = (UInt <= 0x10ffff);
 ").
-
 :- pragma foreign_proc("C#",
     from_uint(UInt::in, Character::out),
     [will_not_call_mercury, promise_pure, thread_safe],
@@ -531,7 +576,6 @@ to_uint(Char) = UInt :-
     Character = (int) UInt;
     SUCCESS_INDICATOR = (UInt <= 0x10ffff);
 ").
-
 :- pragma foreign_proc("Java",
     from_uint(UInt::in, Character::out),
     [will_not_call_mercury, promise_pure, thread_safe],
@@ -645,8 +689,8 @@ is_ascii(Char) :-
     Code >= 0x00,
     Code =< 0x7f.
 
-% The information here is duplicated in lookup_token_action
-% in mercury_term_lexer.m. If you update this; you will also need update that.
+% The information here is duplicated in lookup_token_action in
+% mercury_term_lexer.m. If you update this, you will also need to update that.
 is_whitespace(' ').
 is_whitespace('\t').
 is_whitespace('\n').
@@ -686,6 +730,7 @@ is_alnum_or_underscore(Char) :-
     % in mercury_term_lexer.m.)
     %
     % A more concise implementation would be:
+    %
     %   ( if is_digit(Char) then
     %       true
     %   else

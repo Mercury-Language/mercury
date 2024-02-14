@@ -400,11 +400,6 @@
 :- type digraph_key(T)
     --->    digraph_key(uint).
 
-:- instance uenum(digraph_key(T)) where [
-    to_uint(digraph_key(UInt)) = UInt,
-    from_uint(UInt, digraph_key(UInt))
-].
-
 :- type digraph(T)
     --->    digraph(
                 % Next unallocated key number.
@@ -419,6 +414,20 @@
                 % Maps each vertex to its direct predecessors.
                 bwd_map             :: key_set_map(T)
             ).
+
+:- instance uenum(digraph_key(T)) where [
+    func(to_uint/1) is digraph_key_to_uint,
+    pred(from_uint/2) is digraph_key_from_uint
+].
+
+:- func digraph_key_to_uint(digraph_key(T)) = uint.
+
+digraph_key_to_uint(digraph_key(UInt)) = UInt.
+
+:- pred digraph_key_from_uint(uint::in, digraph_key(T)::out) is semidet.
+:- pragma no_determinism_warning(pred(digraph_key_from_uint/2)).
+
+digraph_key_from_uint(UInt, digraph_key(UInt)).
 
 %---------------------------------------------------------------------------%
 

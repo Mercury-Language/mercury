@@ -667,17 +667,16 @@ create_var(var(V), var_supply(V0), var_supply(V)) :-
 %---------------------------------------------------------------------------%
 
 :- instance enum(var(_)) where [
-    to_int(X) = term.var_to_int(X),
-    from_int(X) = term.unsafe_int_to_var(X)
+    func(to_int/1) is term.var_to_int,
+    func(from_int/1) is term.unsafe_int_to_var
 ].
 
 :- instance uenum(var(_)) where [
-    to_uint(X) = term.var_to_uint(X),
-    from_uint(X, V) :-
-        V = term.unsafe_uint_to_var(X)
+    func(to_uint/1) is term.var_to_uint,
+    pred(from_uint/2) is term.unsafe_uint_to_var
 ].
 
-    % Cast an integer to a var(T), subverting the type-checking.
+    % Cast an integer to a var(T), subverting type checking.
     %
 :- func unsafe_int_to_var(int) = var(T).
 
@@ -686,11 +685,11 @@ unsafe_int_to_var(VarNum) = var(VarNum).
 var_to_int(var(VarNum)) = VarNum.
 var_to_int(var(VarNum), VarNum).
 
-    % Cast an integer to a var(T), subverting the type-checking.
+    % Cast an unsigned integer to a var(T), subverting type checking.
     %
-:- func unsafe_uint_to_var(uint) = var(T).
+:- pred unsafe_uint_to_var(uint::in, var(T)::out) is det.
 
-unsafe_uint_to_var(UVarNum) = var(cast_to_int(UVarNum)).
+unsafe_uint_to_var(UVarNum, var(cast_to_int(UVarNum))).
 
 var_to_uint(var(VarNum)) = cast_from_int(VarNum).
 var_to_uint(var(VarNum), cast_from_int(VarNum)).

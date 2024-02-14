@@ -68,8 +68,8 @@
 :- func total_num_code_points(string.builder.state) = int.
 
     % Succeed if and only if the total number of code points in the string
-    % that to_string would return. Determine this without constructing
-    % that string (yet).
+    % that to_string would return is at most the given number. Determine this
+    % without constructing that string (yet).
     %
     % Note that once you call this predicate, you cannot add any new entries
     % to the given string builder state, because it loses its uniqueness.
@@ -171,27 +171,47 @@ to_string(State) = String :-
 
 :- instance stream.stream(string.builder.handle, string.builder.state)
         where [
-    name(_, "<<string builder stream>>", !State)
+    pred(name/4) is string_builder_name
 ].
 
 :- instance stream.output(string.builder.handle, string.builder.state)
         where [
-    flush(_, !State)
+    pred(flush/3) is string_builder_flush
 ].
 
 :- instance stream.writer(string.builder.handle, string, string.builder.state)
         where [
-    ( put(_, Str, !State) :-
-        append_string(Str, !State)
-    )
+    pred(put/4) is string_builder_put_string
 ].
 
 :- instance stream.writer(string.builder.handle, char, string.builder.state)
         where [
-    ( put(_, Char, !State) :-
-        append_char(Char, !State)
-    )
+    pred(put/4) is string_builder_put_char
 ].
+
+%---------------------------------------------------------------------------%
+
+:- pred string_builder_name(string.builder.handle::in, string::out,
+    string.builder.state::di, string.builder.state::uo) is det.
+
+string_builder_name(_Handle, "<<string builder stream>>", !State).
+
+:- pred string_builder_flush(string.builder.handle::in,
+    string.builder.state::di, string.builder.state::uo) is det.
+
+string_builder_flush(_Handle, !State).
+
+:- pred string_builder_put_string(string.builder.handle::in, string::in,
+    string.builder.state::di, string.builder.state::uo) is det.
+
+string_builder_put_string(_Handle, Str, !State) :-
+    append_string(Str, !State).
+
+:- pred string_builder_put_char(string.builder.handle::in, character::in,
+    string.builder.state::di, string.builder.state::uo) is det.
+
+string_builder_put_char(_Handle, Char, !State) :-
+    append_char(Char, !State).
 
 %---------------------------------------------------------------------------%
 :- end_module string.builder.
