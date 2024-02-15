@@ -80,4 +80,5 @@ MCFLAGS-warn_return             = --warn-suspicious-foreign-procs
 MCFLAGS-warn_succ_ind           = --warn-suspicious-foreign-procs
 MCFLAGS-suspicious_foreign_code = --warn-suspicious-foreign-code
 
-MCFLAGS-test_tscp               = --inform-generated-type-spec-pragmas
+MCFLAGS-test_tscp               = --inform-generated-type-spec-pragmas \
+                                    --no-intermodule-optimization
