@@ -38,6 +38,8 @@
 :- import_module list.
 :- import_module maybe.
 :- import_module pair.
+:- import_module string.
+:- import_module string.builder.
 :- import_module term.
 
 %---------------------------------------------------------------------------%
@@ -158,6 +160,8 @@
     %
 :- pred maybe_output_context_comment(io.text_output_stream::in, indent::in,
     string::in, term.context::in, io::di, io::uo) is det.
+:- pred maybe_format_context_comment(indent::in, string::in, term.context::in,
+    string.builder.state::di, string.builder.state::uo) is det.
 
 :- func context_to_brief_string(term.context) = string.
 
@@ -259,7 +263,6 @@
 
 :- import_module int.
 :- import_module map.
-:- import_module string.
 :- import_module term_context.
 :- import_module term_io.
 :- import_module term_subst.
@@ -464,6 +467,17 @@ maybe_output_context_comment(Stream, Indent, Suffix, Context, !IO) :-
         IndentStr = indent2_string(Indent),
         io.format(Stream, "%s%% context: file \"%s\", line %d%s\n",
             [s(IndentStr), s(FileName), i(LineNumber), s(Suffix)], !IO)
+    ).
+
+maybe_format_context_comment(Indent, Suffix, Context, !State) :-
+    FileName = term_context.context_file(Context),
+    LineNumber = term_context.context_line(Context),
+    ( if FileName = "" then
+        true
+    else
+        IndentStr = indent2_string(Indent),
+        string.builder.format("%s%% context: file \"%s\", line %d%s\n",
+            [s(IndentStr), s(FileName), i(LineNumber), s(Suffix)], !State)
     ).
 
 context_to_brief_string(Context) = Str :-

@@ -39,6 +39,8 @@
 :- import_module assoc_list.
 :- import_module io.
 :- import_module list.
+:- import_module string.
+:- import_module string.builder.
 
 %---------------------------------------------------------------------------%
 
@@ -65,6 +67,10 @@
     module_info::in, var_name_source::in, var_name_print::in,
     tvarset::in, inst_varset::in, indent::in, string::in, hlds_goal::in,
     io::di, io::uo) is det.
+:- pred format_goal(hlds_out_info::in, module_info::in,
+    var_name_source::in, var_name_print::in,
+    tvarset::in, inst_varset::in, indent::in, string::in, hlds_goal::in,
+    string.builder.state::di, string.builder.state::uo) is det.
 
     % As write_goal, but add a newline at the end.
     %
@@ -72,6 +78,18 @@
     module_info::in, var_name_source::in, var_name_print::in,
     tvarset::in, inst_varset::in, indent::in, string::in, hlds_goal::in,
     io::di, io::uo) is det.
+:- pred format_goal_nl(hlds_out_info::in, module_info::in,
+    var_name_source::in, var_name_print::in,
+    tvarset::in, inst_varset::in, indent::in, string::in, hlds_goal::in,
+    string.builder.state::di, string.builder.state::uo) is det.
+
+    % As write_goal, but for a list of goals.
+    %
+:- pred write_goal_list(hlds_out_info_goal::in, io.text_output_stream::in,
+    indent::in, string::in, list(hlds_goal)::in, io::di, io::uo) is det.
+:- pred format_goal_list(hlds_out_info_goal::in,
+    indent::in, string::in, list(hlds_goal)::in,
+    string.builder.state::di, string.builder.state::uo) is det.
 
 %---------------------------------------------------------------------------%
 
@@ -95,16 +113,8 @@
 
 :- pred do_write_goal(hlds_out_info_goal::in, io.text_output_stream::in,
     indent::in, string::in, hlds_goal::in, io::di, io::uo) is det.
-
-    % write_goal_list is used to write both disjunctions and parallel
-    % conjunctions. The boolean says whether variables should have
-    % their numbers appended to them. The integer gives the level of
-    % indentation to be used within the goal. The string says what should be
-    % on the line between each goal; it should include a newline character,
-    % but may also contain other characters before that.
-    %
-:- pred write_goal_list(hlds_out_info_goal::in, io.text_output_stream::in,
-    indent::in, string::in, list(hlds_goal)::in, io::di, io::uo) is det.
+:- pred do_format_goal(hlds_out_info_goal::in, indent::in, string::in,
+    hlds_goal::in, string.builder.state::di, string.builder.state::uo) is det.
 
 %---------------------------------------------------------------------------%
 
@@ -113,6 +123,9 @@
 :- pred write_var_to_abs_locns(io.text_output_stream::in,
     var_name_source::in, var_name_print::in, indent::in,
     assoc_list(prog_var, abs_locn)::in, io::di, io::uo) is det.
+:- pred format_var_to_abs_locns(var_name_source::in, var_name_print::in,
+    indent::in, assoc_list(prog_var, abs_locn)::in,
+    string.builder.state::di, string.builder.state::uo) is det.
 
 %---------------------------------------------------------------------------%
 
@@ -125,6 +138,10 @@
     module_info::in, var_name_source::in, var_name_print::in,
     tvarset::in, inst_varset::in, indent::in, unify_rhs::in,
     io::di, io::uo) is det.
+:- pred format_unify_rhs(hlds_out_info::in, module_info::in,
+    var_name_source::in, var_name_print::in,
+    tvarset::in, inst_varset::in, indent::in, unify_rhs::in,
+    string.builder.state::di, string.builder.state::uo) is det.
 
     % Converts the right-hand-side of a unification to a string, similarly to
     % write_unify_rhs, but doesn't print any details for lambda goals.
@@ -189,7 +206,6 @@
 :- import_module maybe.
 :- import_module pair.
 :- import_module set.
-:- import_module string.
 :- import_module term.
 :- import_module term_context.
 :- import_module term_int.
@@ -214,32 +230,76 @@ dump_goal_nl(Stream, ModuleInfo, VarNameSrc, TVarSet, InstVarSet, Goal, !IO) :-
     dump_goal(Stream, ModuleInfo, VarNameSrc, TVarSet, InstVarSet, Goal, !IO),
     io.nl(Stream, !IO).
 
+%---------------------------------------------------------------------------%
+
 write_goal(Info, Stream, ModuleInfo, VarNameSrc, VarNamePrint,
         TVarSet, InstVarSet, Indent, Follow, Goal, !IO) :-
+    State0 = string.builder.init,
+    format_goal(Info, ModuleInfo, VarNameSrc, VarNamePrint,
+        TVarSet, InstVarSet, Indent, Follow, Goal, State0, State),
+    Str = string.builder.to_string(State),
+    io.write_string(Stream, Str, !IO).
+
+format_goal(Info, ModuleInfo, VarNameSrc, VarNamePrint,
+        TVarSet, InstVarSet, Indent, Follow, Goal, !State) :-
     % Do not type qualify everything.
     TypeQual = no_tvarset_var_table,
     InfoGoal = hlds_out_info_goal(Info, ModuleInfo, VarNameSrc, VarNamePrint,
         TVarSet, InstVarSet, TypeQual),
-    do_write_goal(InfoGoal, Stream, Indent, Follow, Goal, !IO).
+    do_format_goal(InfoGoal, Indent, Follow, Goal, !State).
+
+%---------------------%
 
 write_goal_nl(Info, Stream, ModuleInfo, VarNameSrc, VarNamePrint,
         TVarSet, InstVarSet, Indent, Follow, Goal, !IO) :-
-    write_goal(Info, Stream, ModuleInfo, VarNameSrc, VarNamePrint,
-        TVarSet, InstVarSet, Indent, Follow, Goal, !IO),
-    io.nl(Stream, !IO).
+    State0 = string.builder.init,
+    format_goal_nl(Info, ModuleInfo, VarNameSrc, VarNamePrint,
+        TVarSet, InstVarSet, Indent, Follow, Goal, State0, State),
+    Str = string.builder.to_string(State),
+    io.write_string(Stream, Str, !IO).
+
+format_goal_nl(Info, ModuleInfo, VarNameSrc, VarNamePrint,
+        TVarSet, InstVarSet, Indent, Follow, Goal, !State) :-
+    format_goal(Info, ModuleInfo, VarNameSrc, VarNamePrint,
+        TVarSet, InstVarSet, Indent, Follow, Goal, !State),
+    string.builder.append_string("\n", !State).
+
+%---------------------%
+
+write_goal_list(InfoGoal, Stream, Indent, Separator, Goals, !IO) :-
+    State0 = string.builder.init,
+    format_goal_list(InfoGoal, Indent, Separator, Goals, State0, State),
+    Str = string.builder.to_string(State),
+    io.write_string(Stream, Str, !IO).
+
+format_goal_list(InfoGoal, Indent, Separator, Goals, !State) :-
+    (
+        Goals = []
+    ;
+        Goals = [HeadGoal | TailGoals],
+        format_indent2(Indent, !State),
+        string.builder.append_string(Separator, !State),
+        do_format_goal(InfoGoal, Indent + 1u, "\n", HeadGoal, !State),
+        format_goal_list(InfoGoal, Indent, Separator, TailGoals, !State)
+    ).
 
 %---------------------------------------------------------------------------%
 
 do_write_goal(InfoGoal, Stream, Indent, Follow, Goal, !IO) :-
-    % Write out goal_infos in the form of annotations around goal expressions.
+    State0 = string.builder.init,
+    do_format_goal(InfoGoal, Indent, Follow, Goal, State0, State),
+    Str = string.builder.to_string(State),
+    io.write_string(Stream, Str, !IO).
 
+do_format_goal(InfoGoal, Indent, Follow, Goal, !State) :-
+    % Write out goal_infos in the form of annotations around goal expressions.
     IndentStr = indent2_string(Indent),
     Goal = hlds_goal(GoalExpr, GoalInfo),
     Info = InfoGoal ^ hoig_out_info,
     DumpOptions = Info ^ hoi_dump_hlds_options,
     ( if string.contains_char(DumpOptions, 'c') then
         Context = goal_info_get_context(GoalInfo),
-        maybe_output_context_comment(Stream, Indent, "", Context, !IO)
+        maybe_format_context_comment(Indent, "", Context, !State)
     else
         true
     ),
@@ -247,8 +307,8 @@ do_write_goal(InfoGoal, Stream, Indent, Follow, Goal, !IO) :-
         GoalId = goal_info_get_goal_id(GoalInfo),
         ( if is_valid_goal_id(GoalId) then
             GoalId = goal_id(GoalIdNum),
-            io.format(Stream, "%s%% goal id: %u\n",
-                [s(IndentStr), u(GoalIdNum)], !IO)
+            string.builder.format("%s%% goal id: %u\n",
+                [s(IndentStr), u(GoalIdNum)], !State)
         else
             true
         )
@@ -262,8 +322,8 @@ do_write_goal(InfoGoal, Stream, Indent, Follow, Goal, !IO) :-
             NonLocalsList = [_ | _],
             NonLocalsStr = mercury_vars_to_string_src(VarNameSrc, VarNamePrint,
                 NonLocalsList),
-            io.format(Stream, "%s%% nonlocals: %s\n",
-                [s(IndentStr), s(NonLocalsStr)], !IO)
+            string.builder.format("%s%% nonlocals: %s\n",
+                [s(IndentStr), s(NonLocalsStr)], !State)
         ;
             NonLocalsList = []
         )
@@ -280,8 +340,8 @@ do_write_goal(InfoGoal, Stream, Indent, Follow, Goal, !IO) :-
         then
             PreDeathStr = mercury_vars_to_string_src(VarNameSrc, VarNamePrint,
                 PreDeathList),
-            io.format(Stream, "%s%% pre-deaths: %s\n",
-                [s(IndentStr), s(PreDeathStr)], !IO)
+            string.builder.format("%s%% pre-deaths: %s\n",
+                [s(IndentStr), s(PreDeathStr)], !State)
         else
             true
         ),
@@ -292,8 +352,8 @@ do_write_goal(InfoGoal, Stream, Indent, Follow, Goal, !IO) :-
         then
             PreBirthStr = mercury_vars_to_string_src(VarNameSrc, VarNamePrint,
                 PreBirthList),
-            io.format(Stream, "%s%% pre-births: %s\n",
-                [s(IndentStr), s(PreBirthStr)], !IO)
+            string.builder.format("%s%% pre-births: %s\n",
+                [s(IndentStr), s(PreBirthStr)], !State)
         else
             true
         )
@@ -306,8 +366,8 @@ do_write_goal(InfoGoal, Stream, Indent, Follow, Goal, !IO) :-
             set_of_var.to_sorted_list(ProducingVars, ProducingVarsList),
             ProducingVarsStr = mercury_vars_to_string_src(VarNameSrc,
                 VarNamePrint, ProducingVarsList),
-            io.format(Stream, "%s%% producing vars: %s\n",
-                [s(IndentStr), s(ProducingVarsStr)], !IO)
+            string.builder.format("%s%% producing vars: %s\n",
+                [s(IndentStr), s(ProducingVarsStr)], !State)
         else
             true
         ),
@@ -317,8 +377,8 @@ do_write_goal(InfoGoal, Stream, Indent, Follow, Goal, !IO) :-
             set_of_var.to_sorted_list(ConsumingVars, ConsumingVarsList),
             ConsumingVarsStr = mercury_vars_to_string_src(VarNameSrc,
                 VarNamePrint, ConsumingVarsList),
-            io.format(Stream, "%s%% consuming vars: %s\n",
-                [s(IndentStr), s(ConsumingVarsStr)], !IO)
+            string.builder.format("%s%% consuming vars: %s\n",
+                [s(IndentStr), s(ConsumingVarsStr)], !State)
         else
             true
         ),
@@ -328,8 +388,8 @@ do_write_goal(InfoGoal, Stream, Indent, Follow, Goal, !IO) :-
             set_of_var.to_sorted_list(MakeVisibleVars, MakeVisibleVarsList),
             MakeVisibleVarsStr = mercury_vars_to_string_src(VarNameSrc,
                 VarNamePrint, MakeVisibleVarsList),
-            io.format(Stream, "%s%% make_visible vars: %s\n",
-                [s(IndentStr), s(MakeVisibleVarsStr)], !IO)
+            string.builder.format("%s%% make_visible vars: %s\n",
+                [s(IndentStr), s(MakeVisibleVarsStr)], !State)
         else
             true
         ),
@@ -339,8 +399,8 @@ do_write_goal(InfoGoal, Stream, Indent, Follow, Goal, !IO) :-
             set_of_var.to_sorted_list(NeedVisibleVars, NeedVisibleVarsList),
             NeedVisibleVarsStr = mercury_vars_to_string_src(VarNameSrc,
                 VarNamePrint, NeedVisibleVarsList),
-            io.format(Stream, "%s%% need_visible vars: %s\n",
-                [s(IndentStr), s(NeedVisibleVarsStr)], !IO)
+            string.builder.format("%s%% need_visible vars: %s\n",
+                [s(IndentStr), s(NeedVisibleVarsStr)], !State)
         else
             true
         )
@@ -349,8 +409,8 @@ do_write_goal(InfoGoal, Stream, Indent, Follow, Goal, !IO) :-
     ),
     ( if string.contains_char(DumpOptions, 'd') then
         Determinism = goal_info_get_determinism(GoalInfo),
-        io.format(Stream, "%s%% determinism: %s\n",
-            [s(IndentStr), s(determinism_to_string(Determinism))], !IO)
+        string.builder.format("%s%% determinism: %s\n",
+            [s(IndentStr), s(determinism_to_string(Determinism))], !State)
     else
         true
     ),
@@ -377,16 +437,16 @@ do_write_goal(InfoGoal, Stream, Indent, Follow, Goal, !IO) :-
             UsedStr = mercury_vars_to_string_src(VarNameSrc, VarNamePrint,
                 UsedList),
 
-            io.format(Stream, "%s%% Created regions: %s\n",
-                [s(IndentStr), s(CreatedStr)], !IO),
-            io.format(Stream, "%s%% Removed regions: %s\n",
-                [s(IndentStr), s(RemovedStr)], !IO),
-            io.format(Stream, "%s%% Carried regions: %s\n",
-                [s(IndentStr), s(CarriedStr)], !IO),
-            io.format(Stream, "%s%% Allocated into regions: %s\n",
-                [s(IndentStr), s(AllocStr)], !IO),
-            io.format(Stream, "%s%% Used regions: %s\n",
-                [s(IndentStr), s(UsedStr)], !IO)
+            string.builder.format("%s%% Created regions: %s\n",
+                [s(IndentStr), s(CreatedStr)], !State),
+            string.builder.format("%s%% Removed regions: %s\n",
+                [s(IndentStr), s(RemovedStr)], !State),
+            string.builder.format("%s%% Carried regions: %s\n",
+                [s(IndentStr), s(CarriedStr)], !State),
+            string.builder.format("%s%% Allocated into regions: %s\n",
+                [s(IndentStr), s(AllocStr)], !State),
+            string.builder.format("%s%% Used regions: %s\n",
+                [s(IndentStr), s(UsedStr)], !State)
         ;
             MaybeRbmmInfo = no
         )
@@ -399,10 +459,10 @@ do_write_goal(InfoGoal, Stream, Indent, Follow, Goal, !IO) :-
             Purity = purity_pure
         ;
             Purity = purity_semipure,
-            io.format(Stream, "%s%% semipure\n", [s(IndentStr)], !IO)
+            string.builder.format("%s%% semipure\n", [s(IndentStr)], !State)
         ;
             Purity = purity_impure,
-            io.format(Stream, "%s%% impure\n", [s(IndentStr)], !IO)
+            string.builder.format("%s%% impure\n", [s(IndentStr)], !State)
         )
     else
         true
@@ -413,8 +473,8 @@ do_write_goal(InfoGoal, Stream, Indent, Follow, Goal, !IO) :-
             MaybeDPInfo = yes(dp_goal_info(MdprofInst, MaybeDPCoverageInfo)),
             (
                 MdprofInst = goal_is_mdprof_inst,
-                io.format(Stream, "%s%% mdprof instrumentation\n",
-                    [s(IndentStr)], !IO)
+                string.builder.format("%s%% mdprof instrumentation\n",
+                    [s(IndentStr)], !State)
             ;
                 MdprofInst = goal_is_not_mdprof_inst
             ),
@@ -424,25 +484,25 @@ do_write_goal(InfoGoal, Stream, Indent, Follow, Goal, !IO) :-
                     PortCountsGiveCoverageAfter),
                 (
                     IsTrivial = goal_is_trivial,
-                    io.format(Stream, "%s%% trivial goal\n",
-                        [s(IndentStr)], !IO)
+                    string.builder.format("%s%% trivial goal\n",
+                        [s(IndentStr)], !State)
                 ;
                     IsTrivial = goal_is_nontrivial,
-                    io.format(Stream, "%s%% nontrivial goal\n",
-                        [s(IndentStr)], !IO)
+                    string.builder.format("%s%% nontrivial goal\n",
+                        [s(IndentStr)], !State)
                 ),
                 (
                     PortCountsGiveCoverageAfter =
                         port_counts_give_coverage_after,
-                    io.format(Stream,
+                    string.builder.format(
                         "%s%% port counts give coverage after\n",
-                        [s(IndentStr)], !IO)
+                        [s(IndentStr)], !State)
                 ;
                     PortCountsGiveCoverageAfter =
                         no_port_counts_give_coverage_after,
-                    io.format(Stream,
+                    string.builder.format(
                         "%s%% no port counts give coverage after\n",
-                        [s(IndentStr)], !IO)
+                        [s(IndentStr)], !State)
                 )
             ;
                 MaybeDPCoverageInfo = no
@@ -453,7 +513,7 @@ do_write_goal(InfoGoal, Stream, Indent, Follow, Goal, !IO) :-
     else
         true
     ),
-    write_goal_expr(InfoGoal, Stream, Indent, Follow, GoalExpr, !IO),
+    format_goal_expr(InfoGoal, Indent, Follow, GoalExpr, !State),
     ( if string.contains_char(DumpOptions, 'i') then
         InstMapDelta = goal_info_get_instmap_delta(GoalInfo),
         instmap_delta_changed_vars(InstMapDelta, Vars),
@@ -467,24 +527,24 @@ do_write_goal(InfoGoal, Stream, Indent, Follow, Goal, !IO) :-
         else
             ( if string.contains_char(DumpOptions, 'D') then
                 ( if instmap_delta_is_unreachable(InstMapDelta) then
-                    io.format(Stream, "%s%% new insts: unreachable\n",
-                        [s(IndentStr)], !IO)
+                    string.builder.format("%s%% new insts: unreachable\n",
+                        [s(IndentStr)], !State)
                 else if string.contains_char(DumpOptions, 'Y') then
                     instmap_delta_to_assoc_list(InstMapDelta, NewVarInsts),
                     NewVarInstStrs = list.map(
                         new_var_inst_msg_to_string(InfoGoal, IndentStr),
                         NewVarInsts),
-                    io.format(Stream, "%s%% new insts:\n",
-                        [s(IndentStr)], !IO),
-                    list.foldl(io.write_string(Stream), NewVarInstStrs, !IO)
+                    string.builder.format("%s%% new insts:\n",
+                        [s(IndentStr)], !State),
+                    string.builder.append_strings(NewVarInstStrs, !State)
                 else
                     instmap_delta_to_assoc_list(InstMapDelta, NewVarInsts),
                     NewVarInstStrs = list.map(
                         new_var_inst_to_string(InfoGoal, IndentStr),
                         NewVarInsts),
-                    io.format(Stream, "%s%% new insts:\n",
-                        [s(IndentStr)], !IO),
-                    list.foldl(io.write_string(Stream), NewVarInstStrs, !IO)
+                    string.builder.format("%s%% new insts:\n",
+                        [s(IndentStr)], !State),
+                    string.builder.append_strings(NewVarInstStrs, !State)
                 )
             else
                 ( if instmap_delta_is_unreachable(InstMapDelta) then
@@ -497,8 +557,8 @@ do_write_goal(InfoGoal, Stream, Indent, Follow, Goal, !IO) :-
                         NewVars),
                     NewVarsStr = string.join_list(", ", NewVarStrs)
                 ),
-                io.format(Stream, "%s%% vars with new insts: %s\n",
-                    [s(IndentStr), s(NewVarsStr)], !IO)
+                string.builder.format("%s%% vars with new insts: %s\n",
+                    [s(IndentStr), s(NewVarsStr)], !State)
             )
         )
 
@@ -507,7 +567,7 @@ do_write_goal(InfoGoal, Stream, Indent, Follow, Goal, !IO) :-
 %       GoalMode = goal_info_get_goal_mode(GoalInfo),
 %       PrefixStr = indent_string(Indent) ++ "% ",
 %       GoalModeStrs = dump_goal_mode(PrefixStr, VarNameSrc, GoalMode),
-%       list.foldl(io.write_string(Stream), GoalModeStrs, !IO)
+%       list.foldl(io.write_string(Stream), GoalModeStrs, !State)
     else
         true
     ),
@@ -519,8 +579,8 @@ do_write_goal(InfoGoal, Stream, Indent, Follow, Goal, !IO) :-
         then
             PostDeathStr = mercury_vars_to_string_src(VarNameSrc, VarNamePrint,
                 PostDeathList),
-            io.format(Stream, "%s%% post-deaths: %s\n",
-                [s(IndentStr), s(PostDeathStr)], !IO)
+            string.builder.format("%s%% post-deaths: %s\n",
+                [s(IndentStr), s(PostDeathStr)], !State)
         else
             true
         ),
@@ -531,8 +591,8 @@ do_write_goal(InfoGoal, Stream, Indent, Follow, Goal, !IO) :-
         then
             PostBirthStr = mercury_vars_to_string_src(VarNameSrc, VarNamePrint,
                 PostBirthList),
-            io.format(Stream, "%s%% post-births: %s\n",
-                [s(IndentStr), s(PostBirthStr)], !IO)
+            string.builder.format("%s%% post-births: %s\n",
+                [s(IndentStr), s(PostBirthStr)], !State)
         else
             true
         )
@@ -552,37 +612,37 @@ do_write_goal(InfoGoal, Stream, Indent, Follow, Goal, !IO) :-
             StrLBU = mercury_vars_to_string_src(VarNameSrc, VarNamePrint,
                 ListLBU),
 
-            io.format(Stream, "%s%% LFU: %s\n",
-                [s(IndentStr), s(StrLFU)], !IO),
-            io.format(Stream, "%s%% LBU: %s\n",
-                [s(IndentStr), s(StrLBU)], !IO),
+            string.builder.format("%s%% LFU: %s\n",
+                [s(IndentStr), s(StrLFU)], !State),
+            string.builder.format("%s%% LBU: %s\n",
+                [s(IndentStr), s(StrLBU)], !State),
 
-            io.format(Stream, "%s%% Reuse: ", [s(IndentStr)], !IO),
+            string.builder.format("%s%% Reuse: ", [s(IndentStr)], !State),
             (
                 ReuseDescription = no_reuse_info,
-                io.write_string(Stream, "no reuse info", !IO)
+                string.builder.append_string("no reuse info", !State)
             ;
                 ReuseDescription = no_possible_reuse,
-                io.write_string(Stream, "no possible reuse", !IO)
+                string.builder.append_string("no possible reuse", !State)
             ;
                 ReuseDescription = missed_reuse(Messages),
-                io.write_string(Stream, "missed (", !IO),
-                write_out_list(add_string, ", ", Messages, Stream, !IO),
-                io.write_string(Stream, ")", !IO)
+                string.builder.append_string("missed (", !State),
+                string.builder.append_strings_sep(", ", Messages, !State),
+                string.builder.append_string(")", !State)
             ;
                 ReuseDescription = potential_reuse(ShortReuseDescr),
-                io.write_string(Stream, "potential reuse (", !IO),
-                write_short_reuse_description(Stream, ShortReuseDescr,
-                    VarNameSrc, VarNamePrint, !IO),
-                io.write_string(Stream, ")", !IO)
+                string.builder.append_string("potential reuse (", !State),
+                format_short_reuse_description(ShortReuseDescr,
+                    VarNameSrc, VarNamePrint, !State),
+                string.builder.append_string(")", !State)
             ;
                 ReuseDescription = reuse(ShortReuseDescr),
-                io.write_string(Stream, "reuse (", !IO),
-                write_short_reuse_description(Stream, ShortReuseDescr,
-                    VarNameSrc, VarNamePrint, !IO),
-                io.write_string(Stream, ")", !IO)
+                string.builder.append_string("reuse (", !State),
+                format_short_reuse_description(ShortReuseDescr,
+                    VarNameSrc, VarNamePrint, !State),
+                string.builder.append_string(")", !State)
             ),
-            io.write_string(Stream, "\n", !IO)
+            string.builder.append_string("\n", !State)
         else
             true
         )
@@ -594,8 +654,8 @@ do_write_goal(InfoGoal, Stream, Indent, Follow, Goal, !IO) :-
         CodeGenInfo = no_code_gen_info
     ;
         CodeGenInfo = llds_code_gen_info(_CodeGenDetails),
-        write_llds_code_gen_info(Info, Stream, GoalInfo, VarNameSrc,
-            VarNamePrint, Indent, !IO)
+        format_llds_code_gen_info(Info, GoalInfo, VarNameSrc, VarNamePrint,
+            Indent, !State)
     ),
     ( if string.contains_char(DumpOptions, 'g') then
         Features = goal_info_get_features(GoalInfo),
@@ -604,8 +664,8 @@ do_write_goal(InfoGoal, Stream, Indent, Follow, Goal, !IO) :-
             FeatureList = []
         ;
             FeatureList = [_ | _],
-            io.format(Stream, "%s%% Goal features: %s\n",
-                [s(IndentStr), s(string.string(FeatureList))], !IO)
+            string.builder.format("%s%% Goal features: %s\n",
+                [s(IndentStr), s(string.string(FeatureList))], !State)
         )
     else
         true
@@ -652,23 +712,12 @@ new_var_inst_msg_to_string(InfoGoal, IndentStr, Var - Inst) = Str :-
             [s(IndentStr), s(VarStr), s(LongInstStr)], Str)
     ).
 
-write_goal_list(InfoGoal, Stream, Indent, Separator, Goals, !IO) :-
-    (
-        Goals = [HeadGoal | TailGoals],
-        write_indent2(Stream, Indent, !IO),
-        io.write_string(Stream, Separator, !IO),
-        do_write_goal(InfoGoal, Stream, Indent + 1u, "\n", HeadGoal, !IO),
-        write_goal_list(InfoGoal, Stream, Indent, Separator, TailGoals, !IO)
-    ;
-        Goals = []
-    ).
+:- pred format_llds_code_gen_info(hlds_out_info::in, hlds_goal_info::in,
+    var_name_source::in, var_name_print::in, indent::in,
+    string.builder.state::di, string.builder.state::uo) is det.
 
-:- pred write_llds_code_gen_info(hlds_out_info::in, io.text_output_stream::in,
-    hlds_goal_info::in, var_name_source::in, var_name_print::in, indent::in,
-    io::di, io::uo) is det.
-
-write_llds_code_gen_info(Info, Stream, GoalInfo, VarNameSrc, VarNamePrint,
-        Indent, !IO) :-
+format_llds_code_gen_info(Info, GoalInfo, VarNameSrc, VarNamePrint,
+        Indent, !State) :-
     DumpOptions = Info ^ hoi_dump_hlds_options,
     IndentStr = indent2_string(Indent),
     ( if string.contains_char(DumpOptions, 'f') then
@@ -678,10 +727,10 @@ write_llds_code_gen_info(Info, Stream, GoalInfo, VarNameSrc, VarNamePrint,
             FollowVars = abs_follow_vars(FollowVarsMap, NextRegR, NextRegF),
             map.to_assoc_list(FollowVarsMap, FVlist),
 
-            io.format(Stream, "%s%% follow vars: r%d, f%d\n",
-                [s(IndentStr), i(NextRegR), i(NextRegF)], !IO),
-            write_var_to_abs_locns(Stream, VarNameSrc, VarNamePrint, Indent,
-                FVlist, !IO)
+            string.builder.format("%s%% follow vars: r%d, f%d\n",
+                [s(IndentStr), i(NextRegR), i(NextRegF)], !State),
+            format_var_to_abs_locns(VarNameSrc, VarNamePrint, Indent,
+                FVlist, !State)
         ;
             MaybeFollowVars = no
         )
@@ -710,8 +759,8 @@ write_llds_code_gen_info(Info, Stream, GoalInfo, VarNameSrc, VarNamePrint,
                 Locs = resume_locs_stack_then_orig,
                 LocsStr = "stack then orig"
             ),
-            io.format(Stream, "%s%% resume point %s %s\n",
-                [s(IndentStr), s(LocsStr), s(ResumeVarsStr)], !IO)
+            string.builder.format("%s%% resume point %s %s\n",
+                [s(IndentStr), s(LocsStr), s(ResumeVarsStr)], !State)
         )
     else
         true
@@ -722,9 +771,9 @@ write_llds_code_gen_info(Info, Stream, GoalInfo, VarNameSrc, VarNamePrint,
         map.to_assoc_list(StoreMap, StoreMapList),
         StoreMapList = [_ | _]
     then
-        io.format(Stream, "%s%% store map:\n", [s(IndentStr)], !IO),
-        write_var_to_abs_locns(Stream, VarNameSrc, VarNamePrint, Indent,
-            StoreMapList, !IO)
+        string.builder.format("%s%% store map:\n", [s(IndentStr)], !State),
+        format_var_to_abs_locns(VarNameSrc, VarNamePrint, Indent,
+            StoreMapList, !State)
     else
         true
     ),
@@ -738,37 +787,37 @@ write_llds_code_gen_info(Info, Stream, GoalInfo, VarNameSrc, VarNamePrint,
         CallForwardList = set_of_var.to_sorted_list(CallForwardSet),
         CallResumeList = set_of_var.to_sorted_list(CallResumeSet),
         CallNondetList = set_of_var.to_sorted_list(CallNondetSet),
-        io.format(Stream, "%s%% need across call forward vars: ",
-            [s(IndentStr)], !IO),
+        string.builder.format("%s%% need across call forward vars: ",
+            [s(IndentStr)], !State),
         (
             CallForwardList = [],
-            io.write_string(Stream, "none\n", !IO)
+            string.builder.append_string("none\n", !State)
         ;
             CallForwardList = [_ | _],
-            write_vars(Stream, VarNameSrc, VarNamePrint, CallForwardList, !IO),
-            io.write_string(Stream, "\n", !IO)
+            format_vars(VarNameSrc, VarNamePrint, CallForwardList, !State),
+            string.builder.append_string("\n", !State)
         ),
 
-        io.format(Stream, "%s%% need across call resume vars: ",
-            [s(IndentStr)], !IO),
+        string.builder.format("%s%% need across call resume vars: ",
+            [s(IndentStr)], !State),
         (
             CallResumeList = [],
-            io.write_string(Stream, "none\n", !IO)
+            string.builder.append_string("none\n", !State)
         ;
             CallResumeList = [_ | _],
-            write_vars(Stream, VarNameSrc, VarNamePrint, CallResumeList, !IO),
-            io.write_string(Stream, "\n", !IO)
+            format_vars(VarNameSrc, VarNamePrint, CallResumeList, !State),
+            string.builder.append_string("\n", !State)
         ),
 
-        io.format(Stream, "%s%% need across call nondet vars: ",
-            [s(IndentStr)], !IO),
+        string.builder.format("%s%% need across call nondet vars: ",
+            [s(IndentStr)], !State),
         (
             CallNondetList = [],
-            io.write_string(Stream, "none\n", !IO)
+            string.builder.append_string("none\n", !State)
         ;
             CallNondetList = [_ | _],
-            write_vars(Stream, VarNameSrc, VarNamePrint, CallNondetList, !IO),
-            io.write_string(Stream, "\n", !IO)
+            format_vars(VarNameSrc, VarNamePrint, CallNondetList, !State),
+            string.builder.append_string("\n", !State)
         )
     else
         true
@@ -785,35 +834,35 @@ write_llds_code_gen_info(Info, Stream, GoalInfo, VarNameSrc, VarNamePrint,
 
         (
             ResumeOnStack = yes,
-            io.format(Stream, "%s%% resume point has stack label\n",
-                [s(IndentStr)], !IO)
+            string.builder.format("%s%% resume point has stack label\n",
+                [s(IndentStr)], !State)
         ;
             ResumeOnStack = no,
-            io.format(Stream, "%s%% resume point has no stack label\n",
-                [s(IndentStr)], !IO)
+            string.builder.format("%s%% resume point has no stack label\n",
+                [s(IndentStr)], !State)
         ),
-        io.format(Stream, "%s%% need in resume resume vars: ",
-            [s(IndentStr)], !IO),
+        string.builder.format("%s%% need in resume resume vars: ",
+            [s(IndentStr)], !State),
         (
             ResumeResumeList = [],
-            io.write_string(Stream, "none\n", !IO)
+            string.builder.append_string("none\n", !State)
         ;
             ResumeResumeList = [_ | _],
-            write_vars(Stream, VarNameSrc, VarNamePrint,
-                ResumeResumeList, !IO),
-            io.write_string(Stream, "\n", !IO)
+            format_vars(VarNameSrc, VarNamePrint,
+                ResumeResumeList, !State),
+            string.builder.append_string("\n", !State)
         ),
 
-        io.format(Stream, "%s%% need in resume nondet vars: ",
-            [s(IndentStr)], !IO),
+        string.builder.format("%s%% need in resume nondet vars: ",
+            [s(IndentStr)], !State),
         (
             ResumeNondetList = [],
-            io.write_string(Stream, "none\n", !IO)
+            string.builder.append_string("none\n", !State)
         ;
             ResumeNondetList = [_ | _],
-            write_vars(Stream, VarNameSrc, VarNamePrint,
-                ResumeNondetList, !IO),
-            io.write_string(Stream, "\n", !IO)
+            format_vars(VarNameSrc, VarNamePrint,
+                ResumeNondetList, !State),
+            string.builder.append_string("\n", !State)
         )
     else
         true
@@ -825,17 +874,25 @@ write_llds_code_gen_info(Info, Stream, GoalInfo, VarNameSrc, VarNamePrint,
     then
         NeedInParConj = need_in_par_conj(ParConjSet),
         ParConjList = set_of_var.to_sorted_list(ParConjSet),
-        io.format(Stream, "%s%% need in par_conj vars: ",
-            [s(IndentStr)], !IO),
-        write_vars(Stream, VarNameSrc, VarNamePrint, ParConjList, !IO),
-        io.write_string(Stream, "\n", !IO)
+        string.builder.format("%s%% need in par_conj vars: ",
+            [s(IndentStr)], !State),
+        format_vars(VarNameSrc, VarNamePrint, ParConjList, !State),
+        string.builder.append_string("\n", !State)
     else
         true
     ).
 
-write_var_to_abs_locns(_, _, _, _, [], !IO).
 write_var_to_abs_locns(Stream, VarNameSrc, VarNamePrint, Indent,
-        [Var - Loc | VarLocs], !IO) :-
+        VarLocs, !IO) :-
+    State0 = string.builder.init,
+    format_var_to_abs_locns(VarNameSrc, VarNamePrint, Indent,
+        VarLocs, State0, State),
+    Str = string.builder.to_string(State),
+    io.write_string(Stream, Str, !IO).
+
+format_var_to_abs_locns(_, _, _, [], !State).
+format_var_to_abs_locns(VarNameSrc, VarNamePrint, Indent,
+        [Var - Loc | VarLocs], !State) :-
     IndentStr = indent2_string(Indent),
     VarStr = mercury_var_to_string_src(VarNameSrc, VarNamePrint, Var),
     abs_locn_to_string(Loc, LocnStr, MaybeWidth),
@@ -846,41 +903,39 @@ write_var_to_abs_locns(Stream, VarNameSrc, VarNamePrint, Indent,
         MaybeWidth = yes(Width),
         WidthStr = " " ++ Width
     ),
-    io.format(Stream, "%s%%\t%s\t-> %s%s\n",
-        [s(IndentStr), s(VarStr), s(LocnStr), s(WidthStr)], !IO),
-    write_var_to_abs_locns(Stream, VarNameSrc, VarNamePrint, Indent,
-        VarLocs, !IO).
+    string.builder.format("%s%%\t%s\t-> %s%s\n",
+        [s(IndentStr), s(VarStr), s(LocnStr), s(WidthStr)], !State),
+    format_var_to_abs_locns(VarNameSrc, VarNamePrint, Indent,
+        VarLocs, !State).
 
-:- pred write_vars(io.text_output_stream::in, var_name_source::in,
-    var_name_print::in, list(prog_var)::in, io::di, io::uo) is det.
+:- pred format_vars(var_name_source::in, var_name_print::in,
+    list(prog_var)::in,
+    string.builder.state::di, string.builder.state::uo) is det.
 
-write_vars(_, _, _, [], !IO).
-write_vars(Stream, VarNameSrc, VarNamePrint, [Var], !IO) :-
-    mercury_output_var_src(VarNameSrc, VarNamePrint, Var, Stream, !IO).
-write_vars(Stream, VarNameSrc, VarNamePrint, [Var1, Var2 | Vars], !IO) :-
-    mercury_output_var_src(VarNameSrc, VarNamePrint, Var1, Stream, !IO),
-    io.write_string(Stream, ", ", !IO),
-    write_vars(Stream, VarNameSrc, VarNamePrint, [Var2 | Vars], !IO).
+% ZZZ
+format_vars(VarNameSrc, VarNamePrint, Vars, !State) :-
+    mercury_format_vars_src(VarNameSrc, VarNamePrint, Vars,
+        string.builder.handle, !State).
 
-:- pred write_short_reuse_description(io.text_output_stream::in,
-    short_reuse_description::in, var_name_source::in, var_name_print::in,
-    io::di, io::uo) is det.
+:- pred format_short_reuse_description(short_reuse_description::in,
+    var_name_source::in, var_name_print::in,
+    string.builder.state::di, string.builder.state::uo) is det.
 
-write_short_reuse_description(Stream, ShortDescription, VarNameSrc,
-        VarNamePrint, !IO):-
+format_short_reuse_description(ShortDescription, VarNameSrc, VarNamePrint,
+        !State):-
     (
         ShortDescription = cell_died,
-        io.write_string(Stream, "cell died", !IO)
+        string.builder.append_string("cell died", !State)
     ;
         ShortDescription = cell_reused(Var, IsConditional, _, _),
         VarStr = mercury_var_to_string_src(VarNameSrc, VarNamePrint, Var),
-        io.format(Stream, "cell reuse - %s - %s",
-            [s(VarStr), s(is_conditional_to_string(IsConditional))], !IO)
+        string.builder.format("cell reuse - %s - %s",
+            [s(VarStr), s(is_conditional_to_string(IsConditional))], !State)
     ;
         ShortDescription = reuse_call(IsConditional, NoClobbers),
-        io.format(Stream, "reuse call - %s, no clobbers = %s",
+        string.builder.format("reuse call - %s, no clobbers = %s",
             [s(is_conditional_to_string(IsConditional)),
-            s(string.string(NoClobbers))], !IO)
+            s(string.string(NoClobbers))], !State)
     ).
 
 :- func is_conditional_to_string(is_conditional) = string.
@@ -899,46 +954,47 @@ is_conditional_to_string(IsConditional) = Str :-
 % Write out goal expressions.
 %
 
-:- pred write_goal_expr(hlds_out_info_goal::in, io.text_output_stream::in,
-    indent::in, string::in, hlds_goal_expr::in, io::di, io::uo) is det.
+:- pred format_goal_expr(hlds_out_info_goal::in, 
+    indent::in, string::in, hlds_goal_expr::in,
+    string.builder.state::di, string.builder.state::uo) is det.
 
-write_goal_expr(InfoGoal, Stream, Indent, Follow, GoalExpr, !IO) :-
+format_goal_expr(InfoGoal, Indent, Follow, GoalExpr, !State) :-
     (
         GoalExpr = unify(_, _, _, _, _),
-        write_goal_unify(InfoGoal, Stream, Indent, Follow, GoalExpr, !IO)
+        format_goal_unify(InfoGoal, Indent, Follow, GoalExpr, !State)
     ;
         GoalExpr = plain_call(_, _, _, _, _, _),
-        write_goal_plain_call(InfoGoal, Stream, Indent, Follow, GoalExpr, !IO)
+        format_goal_plain_call(InfoGoal, Indent, Follow, GoalExpr, !State)
     ;
         GoalExpr = generic_call(_, _, _, _, _),
-        write_goal_generic_call(InfoGoal, Stream, Indent, Follow,
-            GoalExpr, !IO)
+        format_goal_generic_call(InfoGoal, Indent, Follow,
+            GoalExpr, !State)
     ;
         GoalExpr = call_foreign_proc(_, _, _, _, _, _, _),
-        write_goal_foreign_proc(InfoGoal, Stream, Indent, Follow,
-            GoalExpr, !IO)
+        format_goal_foreign_proc(InfoGoal, Indent, Follow,
+            GoalExpr, !State)
     ;
         GoalExpr = conj(_, _),
-        write_goal_conj(InfoGoal, Stream, Indent, Follow, GoalExpr, !IO)
+        format_goal_conj(InfoGoal, Indent, Follow, GoalExpr, !State)
     ;
         GoalExpr = disj(_),
-        write_goal_disj(InfoGoal, Stream, Indent, Follow, GoalExpr, !IO)
+        format_goal_disj(InfoGoal, Indent, Follow, GoalExpr, !State)
     ;
         GoalExpr = switch(_, _, _),
-        write_goal_switch(InfoGoal, Stream, Indent, Follow, GoalExpr, !IO)
+        format_goal_switch(InfoGoal, Indent, Follow, GoalExpr, !State)
     ;
         GoalExpr = scope(_, _),
-        write_goal_scope(InfoGoal, Stream, Indent, Follow, GoalExpr, !IO)
+        format_goal_scope(InfoGoal, Indent, Follow, GoalExpr, !State)
     ;
         GoalExpr = if_then_else(_, _, _, _),
-        write_goal_if_then_else(InfoGoal, Stream, Indent, Follow,
-            GoalExpr, !IO)
+        format_goal_if_then_else(InfoGoal, Indent, Follow,
+            GoalExpr, !State)
     ;
         GoalExpr = negation(_),
-        write_goal_negation(InfoGoal, Stream, Indent, Follow, GoalExpr, !IO)
+        format_goal_negation(InfoGoal, Indent, Follow, GoalExpr, !State)
     ;
         GoalExpr = shorthand(_),
-        write_goal_shorthand(InfoGoal, Stream, Indent, Follow, GoalExpr, !IO)
+        format_goal_shorthand(InfoGoal, Indent, Follow, GoalExpr, !State)
     ).
 
 %---------------------------------------------------------------------------%
@@ -946,15 +1002,15 @@ write_goal_expr(InfoGoal, Stream, Indent, Follow, GoalExpr, !IO) :-
 % Write out unifications.
 %
 
-    % write_goal_unify(InfoGoal, Stream, Indent, Follow, GoalExpr, !IO):
+    % format_goal_unify(InfoGoal, Indent, Follow, GoalExpr, !State):
     %
     % Write out a unification.
     %
-:- pred write_goal_unify(hlds_out_info_goal::in, io.text_output_stream::in,
+:- pred format_goal_unify(hlds_out_info_goal::in, 
     indent::in, string::in, hlds_goal_expr::in(goal_expr_unify),
-    io::di, io::uo) is det.
+    string.builder.state::di, string.builder.state::uo) is det.
 
-write_goal_unify(InfoGoal, Stream, Indent, Follow, GoalExpr, !IO) :-
+format_goal_unify(InfoGoal, Indent, Follow, GoalExpr, !State) :-
     GoalExpr = unify(LHS, RHS, _, Unification, _),
     Info = InfoGoal ^ hoig_out_info,
     DumpOptions = Info ^ hoi_dump_hlds_options,
@@ -963,7 +1019,7 @@ write_goal_unify(InfoGoal, Stream, Indent, Follow, GoalExpr, !IO) :-
     VarNameSrc = InfoGoal ^ hoig_var_name_src,
     VarNamePrint = InfoGoal ^ hoig_var_name_print,
     LHSStr = mercury_var_to_string_src(VarNameSrc, VarNamePrint, LHS),
-    io.format(Stream, "%s%s = ", [s(IndentStr), s(LHSStr)], !IO),
+    string.builder.format("%s%s = ", [s(IndentStr), s(LHSStr)], !State),
     TypeQual = InfoGoal ^ hoig_type_qual,
     (
         TypeQual = tvarset_var_table(_, VarTable),
@@ -973,8 +1029,8 @@ write_goal_unify(InfoGoal, Stream, Indent, Follow, GoalExpr, !IO) :-
         TypeQual = no_tvarset_var_table,
         VarType = no
     ),
-    write_unify_rhs_2(InfoGoal, Stream, Indent, VarType, RHS, !IO),
-    io.write_string(Stream, Follow, !IO),
+    format_unify_rhs_2(InfoGoal, Indent, VarType, RHS, !State),
+    string.builder.append_string(Follow, !State),
     ( if
         ( string.contains_char(DumpOptions, 'u')
         ; string.contains_char(DumpOptions, 'p')
@@ -995,9 +1051,9 @@ write_goal_unify(InfoGoal, Stream, Indent, Follow, GoalExpr, !IO) :-
             ( if string.contains_char(Follow, '\n') then
                 true
             else
-                io.nl(Stream, !IO)
+                string.builder.append_string("\n", !State)
             ),
-            write_unification(InfoGoal, Stream, Indent, Unification, !IO)
+            write_unification(InfoGoal, Indent, Unification, !State)
         )
     else
         true
@@ -1005,20 +1061,30 @@ write_goal_unify(InfoGoal, Stream, Indent, Follow, GoalExpr, !IO) :-
 
 write_unify_rhs(Info, Stream, ModuleInfo, VarNameSrc, VarNamePrint,
         TVarSet, InstVarSet, Indent, RHS, !IO) :-
+    State0 = string.builder.init,
+    format_unify_rhs(Info, ModuleInfo, VarNameSrc, VarNamePrint,
+        TVarSet, InstVarSet, Indent, RHS, State0, State),
+    Str = string.builder.to_string(State),
+    io.write_string(Stream, Str, !IO).
+
+format_unify_rhs(Info, ModuleInfo, VarNameSrc, VarNamePrint,
+        TVarSet, InstVarSet, Indent, RHS, !State) :-
     TypeQual = no_tvarset_var_table,
     InfoGoal = hlds_out_info_goal(Info, ModuleInfo, VarNameSrc, VarNamePrint,
         TVarSet, InstVarSet, TypeQual),
-    write_unify_rhs_2(InfoGoal, Stream, Indent, no, RHS, !IO).
+    format_unify_rhs_2(InfoGoal, Indent, no, RHS, !State).
 
-:- pred write_unify_rhs_2(hlds_out_info_goal::in, io.text_output_stream::in,
-    indent::in, maybe(mer_type)::in, unify_rhs::in, io::di, io::uo) is det.
+:- pred format_unify_rhs_2(hlds_out_info_goal::in, 
+    indent::in, maybe(mer_type)::in, unify_rhs::in,
+    string.builder.state::di, string.builder.state::uo) is det.
 
-write_unify_rhs_2(InfoGoal, Stream, Indent, MaybeType, RHS, !IO) :-
+format_unify_rhs_2(InfoGoal, Indent, MaybeType, RHS, !State) :-
     VarNameSrc = InfoGoal ^ hoig_var_name_src,
     VarNamePrint = InfoGoal ^ hoig_var_name_print,
     (
         RHS = rhs_var(Var),
-        mercury_output_var_src(VarNameSrc, VarNamePrint, Var, Stream, !IO)
+        mercury_format_var_src(VarNameSrc, VarNamePrint, Var,
+            string.builder.handle, !State)
     ;
         RHS = rhs_functor(ConsId0, IsExistConstruct, ArgVars),
         ( if
@@ -1033,13 +1099,14 @@ write_unify_rhs_2(InfoGoal, Stream, Indent, MaybeType, RHS, !IO) :-
         ModuleInfo = InfoGoal ^ hoig_module_info,
         RHSStr = functor_cons_id_to_string(ModuleInfo, VarNameSrc,
             VarNamePrint, ConsId, ArgVars),
-        io.write_string(Stream, RHSStr, !IO),
+        string.builder.append_string(RHSStr, !State),
         ( if
             MaybeType = yes(Type),
             InfoGoal ^ hoig_type_qual = tvarset_var_table(TVarSet, _)
         then
-            io.write_string(Stream, " : ", !IO),
-            mercury_output_type(TVarSet, VarNamePrint, Type, Stream, !IO)
+            string.builder.append_string(" : ", !State),
+            mercury_format_type(TVarSet, VarNamePrint, Type,
+                string.builder.handle, !State)
         else
             true
         )
@@ -1048,7 +1115,7 @@ write_unify_rhs_2(InfoGoal, Stream, Indent, MaybeType, RHS, !IO) :-
             NonLocals, VarsModes, Det, Goal),
         IndentStr = indent2_string(Indent),
         Indent1 = Indent + 1u,
-        io.write_string(Stream, purity_prefix_to_string(Purity), !IO),
+        string.builder.append_string(purity_prefix_to_string(Purity), !State),
         Info = InfoGoal ^ hoig_out_info,
         Lang = get_output_lang(Info ^ hoi_merc_out_info),
         (
@@ -1060,21 +1127,22 @@ write_unify_rhs_2(InfoGoal, Stream, Indent, MaybeType, RHS, !IO) :-
                 Groundness = ho_any,
                 Functor = "any_pred"
             ),
-            io.write_string(Stream, "(", !IO),
+            string.builder.append_string("(", !State),
             (
                 VarsModes = [],
-                io.format(Stream, "(%s)", [s(Functor)], !IO)
+                string.builder.format("(%s)", [s(Functor)], !State)
             ;
                 VarsModes = [_ | _],
                 InstVarSet = InfoGoal ^ hoig_inst_varset,
                 ModesStr = var_modes_to_string(Lang, VarNameSrc, InstVarSet,
                     VarNamePrint, VarsModes),
-                io.format(Stream, "%s(%s)", [s(Functor), s(ModesStr)], !IO)
+                string.builder.format("%s(%s)",
+                    [s(Functor), s(ModesStr)], !State)
             ),
             DetStr = mercury_det_to_string(Det),
-            io.format(Stream, " is %s :-\n", [s(DetStr)], !IO),
-            do_write_goal(InfoGoal, Stream, Indent1, "\n", Goal, !IO),
-            io.format(Stream, "%s)", [s(IndentStr)], !IO)
+            string.builder.format(" is %s :-\n", [s(DetStr)], !State),
+            do_format_goal(InfoGoal, Indent1, "\n", Goal, !State),
+            string.builder.format("%s)", [s(IndentStr)], !State)
         ;
             PredOrFunc = pf_function,
             (
@@ -1085,32 +1153,33 @@ write_unify_rhs_2(InfoGoal, Stream, Indent, MaybeType, RHS, !IO) :-
                 Functor = "any_func"
             ),
             pred_args_to_func_args(VarsModes, ArgVarsModes, RetVarMode),
-            io.write_string(Stream, "(", !IO),
+            string.builder.append_string("(", !State),
             InstVarSet = InfoGoal ^ hoig_inst_varset,
             (
                 ArgVarsModes = [],
-                io.format(Stream, "(%s)", [s(Functor)], !IO)
+                string.builder.format("(%s)", [s(Functor)], !State)
             ;
                 ArgVarsModes = [_ | _],
                 ArgModesStr = var_modes_to_string(Lang, VarNameSrc, InstVarSet,
                     VarNamePrint, ArgVarsModes),
-                io.format(Stream, "%s(%s)",
-                    [s(Functor), s(ArgModesStr)], !IO)
+                string.builder.format("%s(%s)",
+                    [s(Functor), s(ArgModesStr)], !State)
             ),
             RetModeStr = var_mode_to_string(Lang, VarNameSrc, InstVarSet,
                 VarNamePrint, RetVarMode),
             DetStr = mercury_det_to_string(Det),
-            io.format(Stream, " = (%s) is %s :-\n",
-                [s(RetModeStr), s(DetStr)], !IO),
-            do_write_goal(InfoGoal, Stream, Indent1, "\n", Goal, !IO),
-            io.format(Stream, "%s)", [s(IndentStr)], !IO)
+            string.builder.format(" = (%s) is %s :-\n",
+                [s(RetModeStr), s(DetStr)], !State),
+            do_format_goal(InfoGoal, Indent1, "\n", Goal, !State),
+            string.builder.format("%s)", [s(IndentStr)], !State)
         ),
         ( if
             MaybeType = yes(Type),
             InfoGoal ^ hoig_type_qual = tvarset_var_table(TVarSet, _)
         then
-            io.write_string(Stream, " : ", !IO),
-            mercury_output_type(TVarSet, VarNamePrint, Type, Stream, !IO)
+            string.builder.append_string(" : ", !State),
+            mercury_format_type(TVarSet, VarNamePrint, Type,
+                string.builder.handle, !State)
         else
             true
         ),
@@ -1120,8 +1189,8 @@ write_unify_rhs_2(InfoGoal, Stream, Indent, MaybeType, RHS, !IO) :-
                 NonLocals = [_ | _],
                 NonLocalsStr = mercury_vars_to_string_src(VarNameSrc,
                     VarNamePrint, NonLocals),
-                io.format(Stream, "\n%s%% lambda nonlocals: %s",
-                    [s(IndentStr), s(NonLocalsStr)], !IO)
+                string.builder.format("\n%s%% lambda nonlocals: %s",
+                    [s(IndentStr), s(NonLocalsStr)], !State)
             ;
                 NonLocals = []
             )
@@ -1152,10 +1221,10 @@ unify_rhs_to_string(ModuleInfo, VarTable, VarNamePrint, RHS) = Str :-
         Str = "lambda goal"
     ).
 
-:- pred write_unification(hlds_out_info_goal::in, io.text_output_stream::in,
-    indent::in, unification::in, io::di, io::uo) is det.
+:- pred write_unification(hlds_out_info_goal::in, indent::in, unification::in,
+    string.builder.state::di, string.builder.state::uo) is det.
 
-write_unification(InfoGoal, Stream, Indent, Unification, !IO) :-
+write_unification(InfoGoal, Indent, Unification, !State) :-
     VarNameSrc = InfoGoal ^ hoig_var_name_src,
     VarNamePrint = InfoGoal ^ hoig_var_name_print,
     IndentStr = indent2_string(Indent),
@@ -1163,21 +1232,22 @@ write_unification(InfoGoal, Stream, Indent, Unification, !IO) :-
         Unification = assign(X, Y),
         XStr = mercury_var_to_string_src(VarNameSrc, VarNamePrint, X),
         YStr = mercury_var_to_string_src(VarNameSrc, VarNamePrint, Y),
-        io.format(Stream, "%s%% %s := %s\n",
-            [s(IndentStr), s(XStr), s(YStr)], !IO)
+        string.builder.format("%s%% %s := %s\n",
+            [s(IndentStr), s(XStr), s(YStr)], !State)
     ;
         Unification = simple_test(X, Y),
         XStr = mercury_var_to_string_src(VarNameSrc, VarNamePrint, X),
         YStr = mercury_var_to_string_src(VarNameSrc, VarNamePrint, Y),
-        io.format(Stream, "%s%% %s == %s\n",
-            [s(IndentStr), s(XStr), s(YStr)], !IO)
+        string.builder.format("%s%% %s == %s\n",
+            [s(IndentStr), s(XStr), s(YStr)], !State)
     ;
         Unification = construct(Var, ConsId, ArgVars, ArgModes, ConstructHow,
             Uniqueness, SubInfo),
         VarStr = mercury_var_to_string_src(VarNameSrc, VarNamePrint, Var),
-        io.format(Stream, "%s%% %s <= ", [s(IndentStr), s(VarStr)], !IO),
-        write_functor_and_submodes(InfoGoal, Stream, Indent, ConsId,
-            ArgVars, ArgModes, !IO),
+        string.builder.format("%s%% %s <= ",
+            [s(IndentStr), s(VarStr)], !State),
+        format_functor_and_submodes(InfoGoal, Indent, ConsId,
+            ArgVars, ArgModes, !State),
 
         Info = InfoGoal ^ hoig_out_info,
         DumpOptions = Info ^ hoi_dump_hlds_options,
@@ -1185,15 +1255,16 @@ write_unification(InfoGoal, Stream, Indent, Unification, !IO) :-
             ( if ConsId = cons(_, _, TypeCtor) then
                 TypeCtor = type_ctor(TypeCtorSymName, TypeCtorArity),
                 TypeCtorSymNameStr = sym_name_to_string(TypeCtorSymName),
-                io.format(Stream, "%s%% cons_id type_ctor: %s/%d\n",
+                string.builder.format("%s%% cons_id type_ctor: %s/%d\n",
                     [s(IndentStr), s(TypeCtorSymNameStr), i(TypeCtorArity)],
-                    !IO)
+                    !State)
             else
                 true
             ),
             (
                 Uniqueness = cell_is_unique,
-                io.format(Stream, "%s%% cell_is_unique\n", [s(IndentStr)], !IO)
+                string.builder.format("%s%% cell_is_unique\n",
+                    [s(IndentStr)], !State)
             ;
                 Uniqueness = cell_is_shared
             ),
@@ -1203,23 +1274,26 @@ write_unification(InfoGoal, Stream, Indent, Unification, !IO) :-
                 SubInfo = construct_sub_info(MaybeTakeAddr, MaybeSize),
                 (
                     MaybeTakeAddr = yes(TakeAddressFields),
-                    io.format(Stream, "%s%% take address fields: %s\n",
+                    string.builder.format("%s%% take address fields: %s\n",
                         [s(IndentStr), s(string.string(TakeAddressFields))],
-                        !IO)
+                        !State)
                 ;
                     MaybeTakeAddr = no
                 ),
                 (
                     MaybeSize = yes(SizeSource),
-                    io.format(Stream, "%s%% term size ", [s(IndentStr)], !IO),
+                    string.builder.format("%s%% term size ",
+                        [s(IndentStr)], !State),
                     (
                         SizeSource = known_size(KnownSize),
-                        io.format(Stream, "const %d\n", [i(KnownSize)], !IO)
+                        string.builder.format("const %d\n",
+                            [i(KnownSize)], !State)
                     ;
                         SizeSource = dynamic_size(SizeVar),
                         SizeVarStr = mercury_var_to_string_src(VarNameSrc,
                             VarNamePrint, SizeVar),
-                        io.format(Stream, "var %s\n", [s(SizeVarStr)], !IO)
+                        string.builder.format("var %s\n",
+                            [s(SizeVarStr)], !State)
                     )
                 ;
                     MaybeSize = no
@@ -1229,28 +1303,28 @@ write_unification(InfoGoal, Stream, Indent, Unification, !IO) :-
                 ConstructHow = construct_dynamically
             ;
                 ConstructHow = construct_statically(born_static),
-                io.format(Stream,
+                string.builder.format(
                     "%s%% construct statically (born static)\n",
-                    [s(IndentStr)], !IO)
+                    [s(IndentStr)], !State)
             ;
                 ConstructHow = construct_statically(marked_static),
-                io.format(Stream,
+                string.builder.format(
                     "%s%% construct statically (marked static)\n",
-                    [s(IndentStr)], !IO)
+                    [s(IndentStr)], !State)
             ;
                 ConstructHow = reuse_cell(CellToReuse),
                 CellToReuse = cell_to_reuse(ReuseVar, _ReuseConsIds,
                     _FieldAssigns),
                 ReuseVarStr = mercury_var_to_string_src(VarNameSrc,
                     VarNamePrint, ReuseVar),
-                io.format(Stream, "%s%% reuse cell: %s\n",
-                    [s(IndentStr), s(ReuseVarStr)], !IO)
+                string.builder.format("%s%% reuse cell: %s\n",
+                    [s(IndentStr), s(ReuseVarStr)], !State)
             ;
                 ConstructHow = construct_in_region(RegVar),
                 RegVarStr = mercury_var_to_string_src(VarNameSrc,
                     VarNamePrint, RegVar),
-                io.format(Stream, "%s%% construct in region: %s\n",
-                    [s(IndentStr), s(RegVarStr)], !IO)
+                string.builder.format("%s%% construct in region: %s\n",
+                    [s(IndentStr), s(RegVarStr)], !State)
             )
         else
             true
@@ -1261,8 +1335,8 @@ write_unification(InfoGoal, Stream, Indent, Unification, !IO) :-
         Info = InfoGoal ^ hoig_out_info,
         DumpOptions = Info ^ hoi_dump_hlds_options,
         ( if string.contains_char(DumpOptions, 'G') then
-            io.format(Stream, "%s%% Compile time garbage collect: %s\n",
-                [s(IndentStr), s(string.string(CanCGC))], !IO)
+            string.builder.format("%s%% Compile time garbage collect: %s\n",
+                [s(IndentStr), s(string.string(CanCGC))], !State)
         else
             true
         ),
@@ -1274,10 +1348,10 @@ write_unification(InfoGoal, Stream, Indent, Unification, !IO) :-
             CanFail = cannot_fail,
             OpStr = "=>"
         ),
-        io.format(Stream, "%s%% %s %s ",
-            [s(IndentStr), s(VarStr), s(OpStr)], !IO),
-        write_functor_and_submodes(InfoGoal, Stream, Indent, ConsId, ArgVars,
-            ArgModes, !IO)
+        string.builder.format("%s%% %s %s ",
+            [s(IndentStr), s(VarStr), s(OpStr)], !State),
+        format_functor_and_submodes(InfoGoal, Indent, ConsId, ArgVars,
+            ArgModes, !State)
     ;
         Unification = complicated_unify(Mode, CanFail, TypeInfoVars),
         (
@@ -1289,33 +1363,34 @@ write_unification(InfoGoal, Stream, Indent, Unification, !IO) :-
         ),
         InstVarSet = InfoGoal ^ hoig_inst_varset,
         ModeStr = mercury_unify_mode_to_string(InstVarSet, Mode),
-        io.format(Stream, "%s%% %s, mode: %s\n",
-            [s(IndentStr), s(CanFailStr), s(ModeStr)], !IO),
+        string.builder.format("%s%% %s, mode: %s\n",
+            [s(IndentStr), s(CanFailStr), s(ModeStr)], !State),
 
         TypeInfoVarsStr = mercury_vars_to_string_src(VarNameSrc, VarNamePrint,
             TypeInfoVars),
-        io.format(Stream, "%s%% type-info vars: %s\n",
-            [s(IndentStr), s(TypeInfoVarsStr)], !IO)
+        string.builder.format("%s%% type-info vars: %s\n",
+            [s(IndentStr), s(TypeInfoVarsStr)], !State)
     ).
 
-:- pred write_functor_and_submodes(hlds_out_info_goal::in,
-    io.text_output_stream::in, indent::in,
+:- pred format_functor_and_submodes(hlds_out_info_goal::in,
+    indent::in,
     cons_id::in, list(prog_var)::in, list(unify_mode)::in,
-    io::di, io::uo) is det.
+    string.builder.state::di, string.builder.state::uo) is det.
 
-write_functor_and_submodes(InfoGoal, Stream, Indent, ConsId, ArgVars,
-        ArgUnifyModes0, !IO) :-
+format_functor_and_submodes(InfoGoal, Indent, ConsId, ArgVars,
+        ArgUnifyModes0, !State) :-
     ConsIdStr = cons_id_and_arity_to_string(ConsId),
     (
         ArgVars = [],
-        io.format(Stream, "%s\n", [s(ConsIdStr)], !IO)
+        string.builder.format("%s\n", [s(ConsIdStr)], !State)
     ;
         ArgVars = [_ | _],
         VarNameSrc = InfoGoal ^ hoig_var_name_src,
         VarNamePrint = InfoGoal ^ hoig_var_name_print,
         ArgVarsStr = mercury_vars_to_string_src(VarNameSrc, VarNamePrint,
             ArgVars),
-        io.format(Stream, "%s(%s)\n", [s(ConsIdStr), s(ArgVarsStr)], !IO),
+        string.builder.format("%s(%s)\n",
+            [s(ConsIdStr), s(ArgVarsStr)], !State),
         Info = InfoGoal ^ hoig_out_info,
         DumpOptions = Info ^ hoi_dump_hlds_options,
         ( if string.contains_char(DumpOptions, 'a') then
@@ -1323,29 +1398,32 @@ write_functor_and_submodes(InfoGoal, Stream, Indent, ConsId, ArgVars,
             IndentStr = indent2_string(Indent),
             list.map(limit_size_of_unify_mode, ArgUnifyModes0, ArgUnifyModes),
             ( if string.contains_char(DumpOptions, 'y') then
-                io.format(Stream, "%s%% arg-modes\n", [s(IndentStr)], !IO),
-                mercury_output_structured_unify_mode_list(Stream, output_debug,
-                    InstVarSet, do_incl_addr, Indent, ArgUnifyModes, !IO)
+                string.builder.format("%s%% arg-modes\n",
+                    [s(IndentStr)], !State),
+                mercury_format_structured_unify_mode_list(output_debug,
+                    InstVarSet, do_incl_addr, Indent, ArgUnifyModes,
+                    string.builder.handle, !State)
             else
-                write_arg_modes(Stream, InstVarSet, IndentStr, 1,
-                    ArgUnifyModes, !IO)
+                format_arg_modes(InstVarSet, IndentStr, 1,
+                    ArgUnifyModes, !State)
             )
         else
             true
         )
     ).
 
-:- pred write_arg_modes(io.text_output_stream::in, inst_varset::in,
-    string::in, int::in, list(unify_mode)::in, io::di, io::uo) is det.
+:- pred format_arg_modes(inst_varset::in, string::in, int::in,
+    list(unify_mode)::in,
+    string.builder.state::di, string.builder.state::uo) is det.
 
-write_arg_modes(_Stream, _InstVarSet, _Indent, _ArgNum, [], !IO).
-write_arg_modes(Stream, InstVarSet, IndentStr, ArgNum,
-        [UnifyMode | UnifyModes], !IO) :-
+format_arg_modes(__InstVarSet, _Indent, _ArgNum, [], !State).
+format_arg_modes(InstVarSet, IndentStr, ArgNum,
+        [UnifyMode | UnifyModes], !State) :-
     UnifyModeStr = mercury_unify_mode_to_string(InstVarSet, UnifyMode),
-    io.format(Stream, "%s%% arg-mode %d %s\n",
-        [s(IndentStr), i(ArgNum), s(UnifyModeStr)], !IO),
-    write_arg_modes(Stream, InstVarSet, IndentStr, ArgNum + 1,
-        UnifyModes, !IO).
+    string.builder.format("%s%% arg-mode %d %s\n",
+        [s(IndentStr), i(ArgNum), s(UnifyModeStr)], !State),
+    format_arg_modes(InstVarSet, IndentStr, ArgNum + 1,
+        UnifyModes, !State).
 
 %---------------------------------------------------------------------------%
 
@@ -1449,11 +1527,11 @@ limit_size_of_bound_insts(Levels,
 % Write out ordinary first-order calls.
 %
 
-:- pred write_goal_plain_call(hlds_out_info_goal::in,
-    io.text_output_stream::in, indent::in, string::in,
-    hlds_goal_expr::in(goal_expr_plain_call), io::di, io::uo) is det.
+:- pred format_goal_plain_call(hlds_out_info_goal::in, indent::in, string::in,
+    hlds_goal_expr::in(goal_expr_plain_call),
+    string.builder.state::di, string.builder.state::uo) is det.
 
-write_goal_plain_call(InfoGoal, Stream, Indent, Follow, GoalExpr, !IO) :-
+format_goal_plain_call(InfoGoal, Indent, Follow, GoalExpr, !State) :-
     GoalExpr = plain_call(PredId, ProcId, ArgVars, Builtin,
         MaybeUnifyContext, PredName),
     Info = InfoGoal ^ hoig_out_info,
@@ -1462,7 +1540,8 @@ write_goal_plain_call(InfoGoal, Stream, Indent, Follow, GoalExpr, !IO) :-
     ( if string.contains_char(DumpOptions, 'b') then
         (
             Builtin = inline_builtin,
-            io.format(Stream, "%s%% inline builtin\n", [s(IndentStr)], !IO)
+            string.builder.format("%s%% inline builtin\n",
+                [s(IndentStr)], !State)
         ;
             Builtin = not_builtin
         )
@@ -1494,7 +1573,7 @@ write_goal_plain_call(InfoGoal, Stream, Indent, Follow, GoalExpr, !IO) :-
         PredOrFunc = pf_predicate,
         PrefixStr = "CALL TO DELETED "
     ),
-    io.format(Stream, "%s%s", [s(IndentStr), s(PrefixStr)], !IO),
+    string.builder.format("%s%s", [s(IndentStr), s(PrefixStr)], !State),
     VarNameSrc = InfoGoal ^ hoig_var_name_src,
     VarNamePrint = InfoGoal ^ hoig_var_name_print,
     (
@@ -1503,17 +1582,18 @@ write_goal_plain_call(InfoGoal, Stream, Indent, Follow, GoalExpr, !IO) :-
     ;
         PredOrFunc = pf_function,
         pred_args_to_func_args(ArgVars, InParenArgVars, LHSVar),
-        mercury_output_var_src(VarNameSrc, VarNamePrint, LHSVar, Stream, !IO),
-        io.write_string(Stream, " = ", !IO)
+        mercury_format_var_src(VarNameSrc, VarNamePrint, LHSVar,
+            string.builder.handle, !State),
+        string.builder.append_string(" = ", !State)
     ),
     InParenArgVarsStr = sym_name_and_args_to_string(VarNameSrc, VarNamePrint,
         PredName, InParenArgVars),
-    io.format(Stream, "%s%s", [s(InParenArgVarsStr), s(Follow)], !IO),
+    string.builder.format("%s%s", [s(InParenArgVarsStr), s(Follow)], !State),
     ( if string.contains_char(DumpOptions, 'l') then
         pred_id_to_int(PredId, PredNum),
         proc_id_to_int(ProcId, ProcNum),
-        io.format(Stream, "%s%% pred id: %i, proc id: %d%s",
-            [s(IndentStr), i(PredNum), i(ProcNum), s(Follow)], !IO),
+        string.builder.format("%s%% pred id: %i, proc id: %d%s",
+            [s(IndentStr), i(PredNum), i(ProcNum), s(Follow)], !State),
         (
             MaybeUnifyContext = yes(CallUnifyContext),
             TypeQual = InfoGoal ^ hoig_type_qual,
@@ -1527,11 +1607,11 @@ write_goal_plain_call(InfoGoal, Stream, Indent, Follow, GoalExpr, !IO) :-
             ),
             CallUnifyContext = call_unify_context(Var, RHS, _UnifyContext),
             VarStr = mercury_var_to_string_src(VarNameSrc, VarNamePrint, Var),
-            io.format(Stream, "%s%% unify context: %s = ",
-                [s(IndentStr), s(VarStr)], !IO),
-            write_unify_rhs_2(InfoGoal, Stream, Indent, VarType, RHS, !IO),
+            string.builder.format("%s%% unify context: %s = ",
+                [s(IndentStr), s(VarStr)], !State),
+            format_unify_rhs_2(InfoGoal, Indent, VarType, RHS, !State),
             % XXX If we print Follow here, we shouldn't have printed it above.
-            io.write_string(Stream, Follow, !IO)
+            string.builder.append_string(Follow, !State)
         ;
             MaybeUnifyContext = no
         )
@@ -1559,11 +1639,11 @@ sym_name_and_args_to_string(VarNameSrc, VarNamePrint, PredName, ArgVars)
 % Write out generic calls.
 %
 
-:- pred write_goal_generic_call(hlds_out_info_goal::in,
-    io.text_output_stream::in, indent::in, string::in,
-    hlds_goal_expr::in(goal_expr_generic_call), io::di, io::uo) is det.
+:- pred format_goal_generic_call(hlds_out_info_goal::in, indent::in, string::in,
+    hlds_goal_expr::in(goal_expr_generic_call),
+    string.builder.state::di, string.builder.state::uo) is det.
 
-write_goal_generic_call(InfoGoal, Stream, Indent, Follow, GoalExpr, !IO) :-
+format_goal_generic_call(InfoGoal, Indent, Follow, GoalExpr, !State) :-
     GoalExpr = generic_call(GenericCall, ArgVars, Modes, MaybeArgRegs, _),
     Info = InfoGoal ^ hoig_out_info,
     DumpOptions = Info ^ hoi_dump_hlds_options,
@@ -1577,22 +1657,23 @@ write_goal_generic_call(InfoGoal, Stream, Indent, Follow, GoalExpr, !IO) :-
         (
             PredOrFunc = pf_predicate,
             ( if string.contains_char(DumpOptions, 'l') then
-                io.format(Stream, "%s%% higher-order predicate call\n",
-                    [s(IndentStr)], !IO),
-                write_ho_arg_regs(Stream, Indent, MaybeArgRegs, !IO)
+                string.builder.format("%s%% higher-order predicate call\n",
+                    [s(IndentStr)], !State),
+                format_ho_arg_regs(Indent, MaybeArgRegs, !State)
             else
                 true
             ),
             CallStr = functor_to_string(VarNameSrc, VarNamePrint,
                 term.atom("call"), [PredVar | ArgVars]),
-            io.format(Stream, "%s%s%s",
-                [s(IndentStr), s(PurityPrefix), s(CallStr)], !IO)
+            string.builder.format("%s%s%s",
+                [s(IndentStr), s(PurityPrefix), s(CallStr)], !State)
         ;
             PredOrFunc = pf_function,
             ( if string.contains_char(DumpOptions, 'l') then
-                io.format(Stream, "%s%% higher-order function application\n",
-                    [s(IndentStr)], !IO),
-                write_ho_arg_regs(Stream, Indent, MaybeArgRegs, !IO)
+                string.builder.format(
+                    "%s%% higher-order function application\n",
+                    [s(IndentStr)], !State),
+                format_ho_arg_regs(Indent, MaybeArgRegs, !State)
             else
                 true
             ),
@@ -1602,17 +1683,18 @@ write_goal_generic_call(InfoGoal, Stream, Indent, Follow, GoalExpr, !IO) :-
                 FuncRetVar),
             ApplyStr = functor_to_string(VarNameSrc, VarNamePrint,
                 term.atom("apply"), FuncArgVars),
-            io.format(Stream, "%s%s%s = %s",
+            string.builder.format("%s%s%s = %s",
                 [s(IndentStr), s(PurityPrefix), s(FuncRetVarStr), s(ApplyStr)],
-                !IO)
+                !State)
         ),
-        io.write_string(Stream, Follow, !IO)
+        string.builder.append_string(Follow, !State)
     ;
         GenericCall = class_method(TCInfoVar, method_proc_num(MethodNum),
             _ClassId, _MethodId),
         ( if string.contains_char(DumpOptions, 'l') then
-            io.format(Stream, "%s%% class method call\n", [s(IndentStr)], !IO),
-            write_ho_arg_regs(Stream, Indent, MaybeArgRegs, !IO)
+            string.builder.format("%s%% class method call\n",
+                [s(IndentStr)], !State),
+            format_ho_arg_regs(Indent, MaybeArgRegs, !State)
         else
             true
         ),
@@ -1623,23 +1705,25 @@ write_goal_generic_call(InfoGoal, Stream, Indent, Follow, GoalExpr, !IO) :-
         term_subst.var_list_to_term_list(ArgVars, ArgTerms),
         Term = term.functor(Functor, [TCInfoTerm, MethodNumTerm | ArgTerms],
             Context),
-        io.write_string(Stream, IndentStr, !IO),
-        mercury_output_term_src(VarNameSrc, VarNamePrint, Term, Stream, !IO),
-        io.write_string(Stream, Follow, !IO)
+        string.builder.append_string(IndentStr, !State),
+        mercury_format_term_src(VarNameSrc, VarNamePrint, Term,
+            string.builder.handle, !State),
+        string.builder.append_string(Follow, !State)
     ;
         GenericCall = event_call(EventName),
         ( if string.contains_char(DumpOptions, 'l') then
-            io.format(Stream, "%s%% event call\n", [s(IndentStr)], !IO),
-            write_ho_arg_regs(Stream, Indent, MaybeArgRegs, !IO)
+            string.builder.format("%s%% event call\n", [s(IndentStr)], !State),
+            format_ho_arg_regs(Indent, MaybeArgRegs, !State)
         else
             true
         ),
         Functor = term.atom(EventName),
         term_subst.var_list_to_term_list(ArgVars, ArgTerms),
         Term = term.functor(Functor, ArgTerms, dummy_context),
-        io.format(Stream, "%sevent ", [s(IndentStr)], !IO),
-        mercury_output_term_src(VarNameSrc, VarNamePrint, Term, Stream, !IO),
-        io.write_string(Stream, Follow, !IO)
+        string.builder.format("%sevent ", [s(IndentStr)], !State),
+        mercury_format_term_src(VarNameSrc, VarNamePrint, Term,
+            string.builder.handle, !State),
+        string.builder.append_string(Follow, !State)
     ;
         GenericCall = cast(CastType),
         (
@@ -1656,9 +1740,9 @@ write_goal_generic_call(InfoGoal, Stream, Indent, Follow, GoalExpr, !IO) :-
             CastTypeString = "coerce"
         ),
         ( if string.contains_char(DumpOptions, 'l') then
-            io.format(Stream, "%s%% %s\n",
-                [s(IndentStr), s(CastTypeString)], !IO),
-            write_ho_arg_regs(Stream, Indent, MaybeArgRegs, !IO)
+            string.builder.format("%s%% %s\n",
+                [s(IndentStr), s(CastTypeString)], !State),
+            format_ho_arg_regs(Indent, MaybeArgRegs, !State)
         else
             true
         ),
@@ -1666,8 +1750,8 @@ write_goal_generic_call(InfoGoal, Stream, Indent, Follow, GoalExpr, !IO) :-
             varset.init(InstVarSet),
             ModesStr = mercury_mode_list_to_string(output_debug, InstVarSet,
                 Modes),
-            io.format(Stream, "%s%% modes: %s\n",
-                [s(IndentStr), s(ModesStr)], !IO)
+            string.builder.format("%s%% modes: %s\n",
+                [s(IndentStr), s(ModesStr)], !State)
         else
             true
         ),
@@ -1676,8 +1760,8 @@ write_goal_generic_call(InfoGoal, Stream, Indent, Follow, GoalExpr, !IO) :-
             PredOrFunc = pf_predicate,
             CallStr = functor_to_string(VarNameSrc, VarNamePrint,
                 term.atom(CastTypeString), ArgVars),
-            io.format(Stream, "%s%s",
-                [s(IndentStr), s(CallStr)], !IO)
+            string.builder.format("%s%s",
+                [s(IndentStr), s(CallStr)], !State)
         ;
             PredOrFunc = pf_function,
             pred_args_to_func_args(ArgVars, FuncArgVars, FuncRetVar),
@@ -1685,23 +1769,23 @@ write_goal_generic_call(InfoGoal, Stream, Indent, Follow, GoalExpr, !IO) :-
                 FuncRetVar),
             CallStr = functor_to_string(VarNameSrc, VarNamePrint,
                 term.atom(CastTypeString), FuncArgVars),
-            io.format(Stream, "%s%s = %s",
-                [s(IndentStr), s(FuncRetVarStr), s(CallStr)], !IO)
+            string.builder.format("%s%s = %s",
+                [s(IndentStr), s(FuncRetVarStr), s(CallStr)], !State)
         ),
-        io.write_string(Stream, Follow, !IO)
+        string.builder.append_string(Follow, !State)
     ).
 
-:- pred write_ho_arg_regs(io.text_output_stream::in, indent::in,
-    arg_reg_type_info::in, io::di, io::uo) is det.
+:- pred format_ho_arg_regs(indent::in, arg_reg_type_info::in,
+    string.builder.state::di, string.builder.state::uo) is det.
 
-write_ho_arg_regs(Stream, Indent, MaybeArgRegs, !IO) :-
+format_ho_arg_regs(Indent, MaybeArgRegs, !State) :-
     (
         MaybeArgRegs = arg_reg_types(ArgRegs),
         IndentStr = indent2_string(Indent),
         ArgRegStrs = list.map(ho_arg_reg_to_string, ArgRegs),
         ArgRegsStr = string.join_list(", ", ArgRegStrs),
-        io.format(Stream, "%s%% arg regs: %s\n",
-            [s(IndentStr), s(ArgRegsStr)], !IO)
+        string.builder.format("%s%% arg regs: %s\n",
+            [s(IndentStr), s(ArgRegsStr)], !State)
     ;
         MaybeArgRegs = arg_reg_types_unset
     ).
@@ -1737,11 +1821,11 @@ write_cast_as_pred_or_func(CastType) = PredOrFunc :-
 % Write out calls to foreign procs.
 %
 
-:- pred write_goal_foreign_proc(hlds_out_info_goal::in,
-    io.text_output_stream::in, indent::in, string::in,
-    hlds_goal_expr::in(goal_expr_foreign_proc), io::di, io::uo) is det.
+:- pred format_goal_foreign_proc(hlds_out_info_goal::in,
+    indent::in, string::in, hlds_goal_expr::in(goal_expr_foreign_proc),
+    string.builder.state::di, string.builder.state::uo) is det.
 
-write_goal_foreign_proc(InfoGoal, Stream, Indent, Follow, GoalExpr, !IO) :-
+format_goal_foreign_proc(InfoGoal, Indent, Follow, GoalExpr, !State) :-
     GoalExpr = call_foreign_proc(Attributes, PredId, ProcId, Args, ExtraArgs,
         MaybeTraceRuntimeCond, PragmaCode),
     ForeignLang = get_foreign_language(Attributes),
@@ -1752,17 +1836,19 @@ write_goal_foreign_proc(InfoGoal, Stream, Indent, Follow, GoalExpr, !IO) :-
     proc_id_to_int(ProcId, ProcIdInt),
 
     IndentStr = indent2_string(Indent),
-    io.format(Stream, "%s$pragma_foreign_proc(/* %s */, %s pred %d proc %d,\n",
+    string.builder.format(
+        "%s$pragma_foreign_proc(/* %s */, %s pred %d proc %d,\n",
         [s(IndentStr), s(ForeignLangStr),
-        s(PredStr), i(PredIdInt), i(ProcIdInt)], !IO),
+        s(PredStr), i(PredIdInt), i(ProcIdInt)], !State),
     (
         MaybeTraceRuntimeCond = no
     ;
         MaybeTraceRuntimeCond = yes(TraceRuntimeCond),
-        io.format(Stream, "%s%% trace_runtime_cond(", [s(IndentStr)], !IO),
-        mercury_format_trace_expr(Stream, mercury_format_trace_runtime,
-            TraceRuntimeCond, !IO),
-        io.write_string(Stream, ")\n", !IO)
+        string.builder.format("%s%% trace_runtime_cond(",
+            [s(IndentStr)], !State),
+        mercury_format_trace_expr(string.builder.handle,
+            mercury_format_trace_runtime, TraceRuntimeCond, !State),
+        string.builder.append_string(")\n", !State)
     ),
     VarNameSrc = InfoGoal ^ hoig_var_name_src,
     VarNamePrint = InfoGoal ^ hoig_var_name_print,
@@ -1770,17 +1856,17 @@ write_goal_foreign_proc(InfoGoal, Stream, Indent, Follow, GoalExpr, !IO) :-
     InstVarSet = InfoGoal ^ hoig_inst_varset,
     ArgsStr = foreign_args_to_string(VarNameSrc, VarNamePrint,
         TypeVarSet, InstVarSet, IndentStr, "[", "],", Args),
-    io.write_string(Stream, ArgsStr, !IO),
+    string.builder.append_string(ArgsStr, !State),
     (
         ExtraArgs = []
     ;
         ExtraArgs = [_ | _],
         ExtraArgsStr = foreign_args_to_string(VarNameSrc, VarNamePrint,
             TypeVarSet, InstVarSet, IndentStr, "{", "},", ExtraArgs),
-        io.write_string(Stream, ExtraArgsStr, !IO)
+        string.builder.append_string(ExtraArgsStr, !State)
     ),
     PragmaCode = fp_impl_ordinary(Code, _),
-    io.format(Stream, """%s"")%s", [s(Code), s(Follow)], !IO).
+    string.builder.format("""%s"")%s", [s(Code), s(Follow)], !State).
 
 :- func foreign_args_to_string(var_name_source, var_name_print,
     tvarset, inst_varset, string, string, string, list(foreign_arg)) = string.
@@ -1849,11 +1935,11 @@ foreign_args_to_string_lag(VarNameSrc, VarNamePrint, TypeVarSet, InstVarSet,
 % Write out disjunctions.
 %
 
-:- pred write_goal_conj(hlds_out_info_goal::in, io.text_output_stream::in,
-    indent::in, string::in, hlds_goal_expr::in(goal_expr_conj), io::di,
-    io::uo) is det.
+:- pred format_goal_conj(hlds_out_info_goal::in, 
+    indent::in, string::in, hlds_goal_expr::in(goal_expr_conj),
+    string.builder.state::di, string.builder.state::uo) is det.
 
-write_goal_conj(InfoGoal, Stream, Indent, Follow, GoalExpr, !IO) :-
+format_goal_conj(InfoGoal, Indent, Follow, GoalExpr, !State) :-
     GoalExpr = conj(ConjType, List),
     (
         List = [Goal | Goals],
@@ -1862,24 +1948,26 @@ write_goal_conj(InfoGoal, Stream, Indent, Follow, GoalExpr, !IO) :-
             Info = InfoGoal ^ hoig_out_info,
             DumpOptions = Info ^ hoi_dump_hlds_options,
             ( if DumpOptions = "" then
-                write_conj(InfoGoal, Stream, Indent, Follow, ",\n",
-                    Goal, Goals, !IO)
+                write_conj(InfoGoal, Indent, Follow, ",\n",
+                    Goal, Goals, !State)
             else
                 IndentStr = indent2_string(Indent),
-                io.format(Stream, "%s( %% conjunction\n", [s(IndentStr)], !IO),
-                write_conj(InfoGoal, Stream, Indent + 1u, "\n", ",\n",
-                    Goal, Goals, !IO),
-                io.format(Stream, "%s)%s", [s(IndentStr), s(Follow)], !IO)
+                string.builder.format("%s( %% conjunction\n",
+                    [s(IndentStr)], !State),
+                write_conj(InfoGoal, Indent + 1u, "\n", ",\n",
+                    Goal, Goals, !State),
+                string.builder.format("%s)%s",
+                    [s(IndentStr), s(Follow)], !State)
             )
         ;
             ConjType = parallel_conj,
             IndentStr = indent2_string(Indent),
-            io.format(Stream, "%s( %% parallel conjunction\n",
-                [s(IndentStr)], !IO),
-            do_write_goal(InfoGoal, Stream, Indent + 1u, "\n", Goal, !IO),
-            % See comments at write_goal_list.
-            write_goal_list(InfoGoal, Stream, Indent, "&\n", Goals, !IO),
-            io.format(Stream, "%s)%s", [s(IndentStr), s(Follow)], !IO)
+            string.builder.format("%s( %% parallel conjunction\n",
+                [s(IndentStr)], !State),
+            do_format_goal(InfoGoal, Indent + 1u, "\n", Goal, !State),
+            % See comments at format_goal_list.
+            format_goal_list(InfoGoal, Indent, "&\n", Goals, !State),
+            string.builder.format("%s)%s", [s(IndentStr), s(Follow)], !State)
         )
     ;
         List = [],
@@ -1891,34 +1979,34 @@ write_goal_conj(InfoGoal, Stream, Indent, Follow, GoalExpr, !IO) :-
             ConjType = parallel_conj,
             ParStr = "/* parallel */"
         ),
-        io.format(Stream, "%s%strue%s",
-            [s(IndentStr), s(ParStr), s(Follow)], !IO)
+        string.builder.format("%s%strue%s",
+            [s(IndentStr), s(ParStr), s(Follow)], !State)
     ).
 
-:- pred write_conj(hlds_out_info_goal::in, io.text_output_stream::in,
+:- pred write_conj(hlds_out_info_goal::in, 
     indent::in, string::in, string::in, hlds_goal::in, list(hlds_goal)::in,
-    io::di, io::uo) is det.
+    string.builder.state::di, string.builder.state::uo) is det.
 
-write_conj(InfoGoal, Stream, Indent, Follow, Separator, Goal1, Goals1, !IO) :-
+write_conj(InfoGoal, Indent, Follow, Separator, Goal1, Goals1, !State) :-
     (
         Goals1 = [Goal2 | Goals2],
         Info = InfoGoal ^ hoig_out_info,
         DumpOptions = Info ^ hoi_dump_hlds_options,
         ( if DumpOptions = "" then
-            do_write_goal(InfoGoal, Stream, Indent, Separator, Goal1, !IO)
+            do_format_goal(InfoGoal, Indent, Separator, Goal1, !State)
         else
             % When generating verbose dumps, we want the comma on its own line,
             % since that way it visually separates the lines after one goal
             % and the lines before the next.
-            do_write_goal(InfoGoal, Stream, Indent, "\n", Goal1, !IO),
+            do_format_goal(InfoGoal, Indent, "\n", Goal1, !State),
             IndentStr = indent2_string(Indent),
-            io.format(Stream, "%s%s", [s(IndentStr), s(Separator)], !IO)
+            string.builder.format("%s%s", [s(IndentStr), s(Separator)], !State)
         ),
-        write_conj(InfoGoal, Stream, Indent, Follow, Separator,
-            Goal2, Goals2, !IO)
+        write_conj(InfoGoal, Indent, Follow, Separator,
+            Goal2, Goals2, !State)
     ;
         Goals1 = [],
-        do_write_goal(InfoGoal, Stream, Indent, Follow, Goal1, !IO)
+        do_format_goal(InfoGoal, Indent, Follow, Goal1, !State)
     ).
 
 %---------------------------------------------------------------------------%
@@ -1926,22 +2014,22 @@ write_conj(InfoGoal, Stream, Indent, Follow, Separator, Goal1, Goals1, !IO) :-
 % Write out disjunctions.
 %
 
-:- pred write_goal_disj(hlds_out_info_goal::in, io.text_output_stream::in,
+:- pred format_goal_disj(hlds_out_info_goal::in, 
     indent::in, string::in, hlds_goal_expr::in(goal_expr_disj),
-    io::di, io::uo) is det.
+    string.builder.state::di, string.builder.state::uo) is det.
 
-write_goal_disj(InfoGoal, Stream, Indent, Follow, GoalExpr, !IO) :-
+format_goal_disj(InfoGoal, Indent, Follow, GoalExpr, !State) :-
     GoalExpr = disj(Disjuncts),
     IndentStr = indent2_string(Indent),
     (
         Disjuncts = [Goal | Goals],
-        io.format(Stream, "%s( %% disjunction\n", [s(IndentStr)], !IO),
-        do_write_goal(InfoGoal, Stream, Indent + 1u, "\n", Goal, !IO),
-        write_goal_list(InfoGoal, Stream, Indent, ";\n", Goals, !IO),
-        io.format(Stream, "%s)%s", [s(IndentStr), s(Follow)], !IO)
+        string.builder.format("%s( %% disjunction\n", [s(IndentStr)], !State),
+        do_format_goal(InfoGoal, Indent + 1u, "\n", Goal, !State),
+        format_goal_list(InfoGoal, Indent, ";\n", Goals, !State),
+        string.builder.format("%s)%s", [s(IndentStr), s(Follow)], !State)
     ;
         Disjuncts = [],
-        io.format(Stream, "%sfail%s", [s(IndentStr), s(Follow)], !IO)
+        string.builder.format("%sfail%s", [s(IndentStr), s(Follow)], !State)
     ).
 
 %---------------------------------------------------------------------------%
@@ -1949,48 +2037,50 @@ write_goal_disj(InfoGoal, Stream, Indent, Follow, GoalExpr, !IO) :-
 % Write out switches.
 %
 
-:- pred write_goal_switch(hlds_out_info_goal::in, io.text_output_stream::in,
+:- pred format_goal_switch(hlds_out_info_goal::in, 
     indent::in, string::in, hlds_goal_expr::in(goal_expr_switch),
-    io::di, io::uo) is det.
+    string.builder.state::di, string.builder.state::uo) is det.
 
-write_goal_switch(InfoGoal, Stream, Indent, Follow, GoalExpr, !IO) :-
+format_goal_switch(InfoGoal, Indent, Follow, GoalExpr, !State) :-
     GoalExpr = switch(Var, CanFail, CasesList),
     IndentStr = indent2_string(Indent),
     CanFailStr = can_fail_to_string(CanFail),
     VarNameSrc = InfoGoal ^ hoig_var_name_src,
     VarNamePrint = InfoGoal ^ hoig_var_name_print,
     VarStr = mercury_var_to_string_src(VarNameSrc, VarNamePrint, Var),
-    io.format(Stream, "%s( %% %s switch on `%s'\n",
-        [s(IndentStr), s(CanFailStr), s(VarStr)], !IO),
+    string.builder.format("%s( %% %s switch on `%s'\n",
+        [s(IndentStr), s(CanFailStr), s(VarStr)], !State),
     Indent1 = Indent + 1u,
     (
         CasesList = [Case | Cases],
-        write_case(InfoGoal, Stream, Indent1, Var, Case, !IO),
-        write_cases(InfoGoal, Stream, Indent, Var, Cases, !IO)
+        write_case(InfoGoal, Indent1, Var, Case, !State),
+        write_cases(InfoGoal, Indent, Var, Cases, !State)
     ;
         CasesList = [],
-        io.format(Stream, "%sfail\n", [s(IndentStr)], !IO)
+        string.builder.format("%sfail\n", [s(IndentStr)], !State)
     ),
-    io.format(Stream, "%s)%s", [s(IndentStr), s(Follow)], !IO).
+    string.builder.format("%s)%s", [s(IndentStr), s(Follow)], !State).
 
-:- pred write_cases(hlds_out_info_goal::in, io.text_output_stream::in,
-    indent::in, prog_var::in, list(case)::in, io::di, io::uo) is det.
+:- pred write_cases(hlds_out_info_goal::in, 
+    indent::in, prog_var::in, list(case)::in,
+    string.builder.state::di, string.builder.state::uo) is det.
 
-write_cases(InfoGoal, Stream, Indent, Var, CasesList, !IO) :-
+write_cases(InfoGoal, Indent, Var, CasesList, !State) :-
     (
         CasesList = [Case | Cases],
         IndentStr = indent2_string(Indent),
-        io.format(Stream, "%s;\n", [s(IndentStr)], !IO),
-        write_case(InfoGoal, Stream, Indent + 1u, Var, Case, !IO),
-        write_cases(InfoGoal, Stream, Indent, Var, Cases, !IO)
+        string.builder.format("%s;\n", [s(IndentStr)], !State),
+        write_case(InfoGoal, Indent + 1u, Var, Case, !State),
+        write_cases(InfoGoal, Indent, Var, Cases, !State)
     ;
         CasesList = []
     ).
 
-:- pred write_case(hlds_out_info_goal::in, io.text_output_stream::in,
-    indent::in, prog_var::in, case::in, io::di, io::uo) is det.
+:- pred write_case(hlds_out_info_goal::in, 
+    indent::in, prog_var::in, case::in,
+    string.builder.state::di, string.builder.state::uo) is det.
 
-write_case(InfoGoal, Stream, Indent, Var, Case, !IO) :-
+write_case(InfoGoal, Indent, Var, Case, !State) :-
     Case = case(MainConsId, OtherConsIds, Goal),
     IndentStr = indent2_string(Indent),
     VarNameSrc = InfoGoal ^ hoig_var_name_src,
@@ -2002,14 +2092,14 @@ write_case(InfoGoal, Stream, Indent, Var, Case, !IO) :-
     ConsIdStrs = list.map(unqual_cons_id_and_arity_to_string,
         [MainConsId | OtherConsIds]),
     ConsIdsStr = string.join_list(" or ", ConsIdStrs),
-    io.format(Stream, "%s%% %s has functor %s\n",
-        [s(IndentStr), s(VarStr), s(ConsIdsStr)], !IO),
+    string.builder.format("%s%% %s has functor %s\n",
+        [s(IndentStr), s(VarStr), s(ConsIdsStr)], !State),
     % XXX if the output of this is to be used, e.g. in
     % inter-module optimization, output a unification to bind the
     % Var to the functor, since simplify.m and unused_args.m remove
     % the unification. At the moment this is not a problem, since
     % intermod.m works on the unoptimized clauses.
-    do_write_goal(InfoGoal, Stream, Indent, "\n", Goal, !IO).
+    do_format_goal(InfoGoal, Indent, "\n", Goal, !State).
 
 project_cons_name_and_tag(TaggedConsId, ConsName, ConsTag) :-
     TaggedConsId = tagged_cons_id(ConsId, ConsTag),
@@ -2030,27 +2120,27 @@ case_comment(VarName, MainConsName, OtherConsNames) = Comment :-
 % Write out negations.
 %
 
-:- pred write_goal_negation(hlds_out_info_goal::in, io.text_output_stream::in,
+:- pred format_goal_negation(hlds_out_info_goal::in, 
     indent::in, string::in, hlds_goal_expr::in(goal_expr_neg),
-    io::di, io::uo) is det.
+    string.builder.state::di, string.builder.state::uo) is det.
 
-write_goal_negation(InfoGoal, Stream, Indent, Follow, GoalExpr, !IO) :-
+format_goal_negation(InfoGoal, Indent, Follow, GoalExpr, !State) :-
     GoalExpr = negation(Goal),
     IndentStr = indent2_string(Indent),
-    io.format(Stream, "%snot (\n", [s(IndentStr)], !IO),
-    do_write_goal(InfoGoal, Stream, Indent + 1u, "\n", Goal, !IO),
-    io.format(Stream, "%s)%s", [s(IndentStr), s(Follow)], !IO).
+    string.builder.format("%snot (\n", [s(IndentStr)], !State),
+    do_format_goal(InfoGoal, Indent + 1u, "\n", Goal, !State),
+    string.builder.format("%s)%s", [s(IndentStr), s(Follow)], !State).
 
 %---------------------------------------------------------------------------%
 %
 % Write out if-then-elses.
 %
 
-:- pred write_goal_if_then_else(hlds_out_info_goal::in,
-    io.text_output_stream::in, indent::in, string::in,
-    hlds_goal_expr::in(goal_expr_ite), io::di, io::uo) is det.
+:- pred format_goal_if_then_else(hlds_out_info_goal::in, indent::in, string::in,
+    hlds_goal_expr::in(goal_expr_ite),
+    string.builder.state::di, string.builder.state::uo) is det.
 
-write_goal_if_then_else(InfoGoal, Stream, Indent, Follow, GoalExpr, !IO) :-
+format_goal_if_then_else(InfoGoal, Indent, Follow, GoalExpr, !State) :-
     GoalExpr = if_then_else(Vars, Cond, Then, Else),
     IndentStr = indent2_string(Indent),
     (
@@ -2063,13 +2153,14 @@ write_goal_if_then_else(InfoGoal, Stream, Indent, Follow, GoalExpr, !IO) :-
         VarsStr = mercury_vars_to_string_src(VarNameSrc, VarNamePrint, Vars),
         string.format(" some [%s]", [s(VarsStr)], SomeVarsStr)
     ),
-    io.format(Stream, "%s( if%s\n", [s(IndentStr), s(SomeVarsStr)], !IO),
+    string.builder.format("%s( if%s\n",
+        [s(IndentStr), s(SomeVarsStr)], !State),
 
     Indent1 = Indent + 1u,
-    do_write_goal(InfoGoal, Stream, Indent1, "\n", Cond, !IO),
-    io.format(Stream, "%sthen\n", [s(IndentStr)], !IO),
-    do_write_goal(InfoGoal, Stream, Indent1, "\n", Then, !IO),
-    io.format(Stream, "%selse\n", [s(IndentStr)], !IO),
+    do_format_goal(InfoGoal, Indent1, "\n", Cond, !State),
+    string.builder.format("%sthen\n", [s(IndentStr)], !State),
+    do_format_goal(InfoGoal, Indent1, "\n", Then, !State),
+    string.builder.format("%selse\n", [s(IndentStr)], !State),
     Info = InfoGoal ^ hoig_out_info,
     DumpOptions = Info ^ hoi_dump_hlds_options,
     ( if
@@ -2080,22 +2171,22 @@ write_goal_if_then_else(InfoGoal, Stream, Indent, Follow, GoalExpr, !IO) :-
     else
         ElseIndent = Indent1
     ),
-    do_write_goal(InfoGoal, Stream, ElseIndent, "\n", Else, !IO),
-    io.format(Stream, "%s)%s", [s(IndentStr), s(Follow)], !IO).
+    do_format_goal(InfoGoal, ElseIndent, "\n", Else, !State),
+    string.builder.format("%s)%s", [s(IndentStr), s(Follow)], !State).
 
 %---------------------------------------------------------------------------%
 %
 % Write out scope goals.
 %
 
-:- pred write_goal_scope(hlds_out_info_goal::in, io.text_output_stream::in,
+:- pred format_goal_scope(hlds_out_info_goal::in, 
     indent::in, string::in, hlds_goal_expr::in(goal_expr_scope),
-    io::di, io::uo) is det.
+    string.builder.state::di, string.builder.state::uo) is det.
 
-write_goal_scope(!.InfoGoal, Stream, Indent, Follow, GoalExpr, !IO) :-
+format_goal_scope(!.InfoGoal, Indent, Follow, GoalExpr, !State) :-
     GoalExpr = scope(Reason, Goal),
     IndentStr = indent2_string(Indent),
-    io.write_string(Stream, IndentStr, !IO),
+    string.builder.append_string(IndentStr, !State),
     (
         Reason = exist_quant(Vars, Creator),
         VarNameSrc = !.InfoGoal ^ hoig_var_name_src,
@@ -2104,20 +2195,21 @@ write_goal_scope(!.InfoGoal, Stream, Indent, Follow, GoalExpr, !IO) :-
         ( Creator = user_quant,     CreatorStr = "user"
         ; Creator = compiler_quant, CreatorStr = "compiler"
         ),
-        io.format(Stream, "some [%s] ( %% %s\n",
-            [s(VarsStr), s(CreatorStr)], !IO)
+        string.builder.format("some [%s] ( %% %s\n",
+            [s(VarsStr), s(CreatorStr)], !State)
     ;
         Reason = disable_warnings(HeadWarning, TailWarnings),
-        io.write_string(Stream, "disable_warnings [", !IO),
-        mercury_format_goal_warnings(Stream, HeadWarning, TailWarnings, !IO),
-        io.write_string(Stream, "] (\n", !IO)
+        string.builder.append_string("disable_warnings [", !State),
+        mercury_format_goal_warnings(string.builder.handle,
+            HeadWarning, TailWarnings, !State),
+        string.builder.append_string("] (\n", !State)
     ;
         Reason = promise_purity(Purity),
         ( Purity = purity_pure,         PromiseStr = "promise_pure"
         ; Purity = purity_semipure,     PromiseStr = "promise_semipure"
         ; Purity = purity_impure,       PromiseStr = "promise_impure"
         ),
-        io.format(Stream, "%s (\n", [s(PromiseStr)], !IO)
+        string.builder.format("%s (\n", [s(PromiseStr)], !State)
     ;
         Reason = promise_solutions(Vars, Kind),
         VarNameSrc = !.InfoGoal ^ hoig_var_name_src,
@@ -2133,7 +2225,8 @@ write_goal_scope(!.InfoGoal, Stream, Indent, Follow, GoalExpr, !IO) :-
             Kind = equivalent_solution_sets_arbitrary,
             PromiseKindStr = "arbitrary"
         ),
-        io.format(Stream, "%s [%s] (\n", [s(PromiseKindStr), s(VarsStr)], !IO)
+        string.builder.format("%s [%s] (\n",
+            [s(PromiseKindStr), s(VarsStr)], !State)
     ;
         Reason = require_detism(Detism),
         ( Detism = detism_det,          ReqStr = "require_det"
@@ -2145,13 +2238,14 @@ write_goal_scope(!.InfoGoal, Stream, Indent, Follow, GoalExpr, !IO) :-
         ; Detism = detism_failure,      ReqStr = "require_failure"
         ; Detism = detism_erroneous,    ReqStr = "require_erroneous"
         ),
-        io.format(Stream, "%s (\n", [s(ReqStr)], !IO)
+        string.builder.format("%s (\n", [s(ReqStr)], !State)
     ;
         Reason = require_complete_switch(Var),
         VarNameSrc = !.InfoGoal ^ hoig_var_name_src,
         VarNamePrint = !.InfoGoal ^ hoig_var_name_print,
         VarStr = mercury_var_to_string_src(VarNameSrc, VarNamePrint, Var),
-        io.format(Stream, "require_complete_switch [%s] (\n", [s(VarStr)], !IO)
+        string.builder.format("require_complete_switch [%s] (\n",
+            [s(VarStr)], !State)
     ;
         Reason = require_switch_arms_detism(Var, Detism),
         (
@@ -2182,27 +2276,27 @@ write_goal_scope(!.InfoGoal, Stream, Indent, Follow, GoalExpr, !IO) :-
         VarNameSrc = !.InfoGoal ^ hoig_var_name_src,
         VarNamePrint = !.InfoGoal ^ hoig_var_name_print,
         VarStr = mercury_var_to_string_src(VarNameSrc, VarNamePrint, Var),
-        io.format(Stream, "%s [%s] (\n", [s(ReqStr), s(VarStr)], !IO)
+        string.builder.format("%s [%s] (\n", [s(ReqStr), s(VarStr)], !State)
     ;
         Reason = barrier(removable),
-        io.write_string(Stream, "(\n", !IO),
-        write_indent2(Stream, Indent, !IO),
-        io.write_string(Stream, "% barrier(removable)\n", !IO)
+        string.builder.append_string("(\n", !State),
+        format_indent2(Indent, !State),
+        string.builder.append_string("% barrier(removable)\n", !State)
     ;
         Reason = barrier(not_removable),
-        io.write_string(Stream, "(\n", !IO),
-        write_indent2(Stream, Indent, !IO),
-        io.write_string(Stream, "% barrier(not_removable)\n", !IO)
+        string.builder.append_string("(\n", !State),
+        format_indent2(Indent, !State),
+        string.builder.append_string("% barrier(not_removable)\n", !State)
     ;
         Reason = commit(force_pruning),
-        io.write_string(Stream, "(\n", !IO),
-        write_indent2(Stream, Indent, !IO),
-        io.write_string(Stream, "% commit(force_pruning)\n", !IO)
+        string.builder.append_string("(\n", !State),
+        format_indent2(Indent, !State),
+        string.builder.append_string("% commit(force_pruning)\n", !State)
     ;
         Reason = commit(dont_force_pruning),
-        io.write_string(Stream, "(\n", !IO),
-        write_indent2(Stream, Indent, !IO),
-        io.write_string(Stream, "% commit(dont_force_pruning)\n", !IO)
+        string.builder.append_string("(\n", !State),
+        format_indent2(Indent, !State),
+        string.builder.append_string("% commit(dont_force_pruning)\n", !State)
     ;
         Reason = from_ground_term(Var, Kind),
         VarNameSrc = !.InfoGoal ^ hoig_var_name_src,
@@ -2213,9 +2307,9 @@ write_goal_scope(!.InfoGoal, Stream, Indent, Follow, GoalExpr, !IO) :-
         ; Kind = from_ground_term_deconstruct,  KindStr = "deconstruct"
         ; Kind = from_ground_term_other,        KindStr = "other"
         ),
-        io.write_string(Stream, "(\n", !IO),
-        io.format(Stream, "%s%% from_ground_term [%s, %s]\n",
-            [s(IndentStr), s(VarStr), s(KindStr)], !IO),
+        string.builder.append_string("(\n", !State),
+        string.builder.format("%s%% from_ground_term [%s, %s]\n",
+            [s(IndentStr), s(VarStr), s(KindStr)], !State),
         % The goals inside from_ground_term scopes are created with
         % all of the fields of goal infos already filled in.
         % This means printing them is meaningful, and sometimes
@@ -2226,27 +2320,28 @@ write_goal_scope(!.InfoGoal, Stream, Indent, Follow, GoalExpr, !IO) :-
     ;
         Reason = trace_goal(MaybeCompileTime, MaybeRunTime, MaybeIO0,
             MutableVars0, QuantVars),
-        io.write_string(Stream, "trace [\n", !IO),
+        string.builder.append_string("trace [\n", !State),
         some [!AddCommaNewline] (
             !:AddCommaNewline = no,
             Indent1Str = indent2_string(Indent + 1u),
             (
                 MaybeCompileTime = yes(CompileTime),
-                io.format(Stream, "%scompile_time(", [s(Indent1Str)], !IO),
-                mercury_format_trace_expr(Stream,
-                    mercury_format_trace_compiletime, CompileTime, !IO),
-                io.write_string(Stream, ")", !IO),
+                string.builder.format("%scompile_time(",
+                    [s(Indent1Str)], !State),
+                mercury_format_trace_expr(string.builder.handle,
+                    mercury_format_trace_compiletime, CompileTime, !State),
+                string.builder.append_string(")", !State),
                 !:AddCommaNewline = yes
             ;
                 MaybeCompileTime = no
             ),
             (
                 MaybeRunTime = yes(RunTime),
-                maybe_add_comma_newline(Stream, !.AddCommaNewline, !IO),
-                io.format(Stream, "%sruntime(", [s(Indent1Str)], !IO),
-                mercury_format_trace_expr(Stream, mercury_format_trace_runtime,
-                    RunTime, !IO),
-                io.write_string(Stream, ")", !IO),
+                maybe_add_comma_newline(!.AddCommaNewline, !State),
+                string.builder.format("%sruntime(", [s(Indent1Str)], !State),
+                mercury_format_trace_expr(string.builder.handle,
+                    mercury_format_trace_runtime, RunTime, !State),
+                string.builder.append_string(")", !State),
                 !:AddCommaNewline = yes
             ;
                 MaybeRunTime = no
@@ -2305,21 +2400,21 @@ write_goal_scope(!.InfoGoal, Stream, Indent, Follow, GoalExpr, !IO) :-
             ),
             (
                 MaybeIO = yes(IOStateVarName),
-                maybe_add_comma_newline(Stream, !.AddCommaNewline, !IO),
-                io.format(Stream, "%sio(!%s)",
-                    [s(Indent1Str), s(IOStateVarName)], !IO),
+                maybe_add_comma_newline(!.AddCommaNewline, !State),
+                string.builder.format("%sio(!%s)",
+                    [s(Indent1Str), s(IOStateVarName)], !State),
                 !:AddCommaNewline = yes
             ;
                 MaybeIO = no
             ),
-            list.foldl2(write_trace_mutable_var_hlds(Stream, Indent1Str),
-                MutableVars, !AddCommaNewline, !IO),
+            list.foldl2(write_trace_mutable_var_hlds(Indent1Str),
+                MutableVars, !AddCommaNewline, !State),
             (
                 !.AddCommaNewline = no
             ;
                 !.AddCommaNewline = yes,
                 % There is nothing following that requires a comma.
-                io.nl(Stream, !IO)
+                string.builder.append_string("\n", !State)
             ),
             (
                 Lang = output_mercury
@@ -2329,11 +2424,11 @@ write_goal_scope(!.InfoGoal, Stream, Indent, Follow, GoalExpr, !IO) :-
                 VarNamePrint = !.InfoGoal ^ hoig_var_name_print,
                 QuantVarsStr = mercury_vars_to_string_src(VarNameSrc,
                     VarNamePrint, QuantVars),
-                io.format(Stream, "%s%% quantified vars [%s]\n",
-                    [s(Indent1Str), s(QuantVarsStr)], !IO)
+                string.builder.format("%s%% quantified vars [%s]\n",
+                    [s(Indent1Str), s(QuantVarsStr)], !State)
             ),
-            write_indent2(Stream, Indent, !IO),
-            io.write_string(Stream, "] (\n", !IO)
+            format_indent2(Indent, !State),
+            string.builder.append_string("] (\n", !State)
         )
     ;
         Reason = loop_control(LCVar, LCSVar, UseParentStack),
@@ -2348,32 +2443,33 @@ write_goal_scope(!.InfoGoal, Stream, Indent, Follow, GoalExpr, !IO) :-
         VarNamePrint = !.InfoGoal ^ hoig_var_name_print,
         LCVarsStr = mercury_vars_to_string_src(VarNameSrc, VarNamePrint,
             [LCVar, LCSVar]),
-        io.format(Stream, "%s%% loop_control_spawn_off_%s(%s) (\n",
-            [s(IndentStr), s(UseParentStackStr), s(LCVarsStr)], !IO)
+        string.builder.format("%s%% loop_control_spawn_off_%s(%s) (\n",
+            [s(IndentStr), s(UseParentStackStr), s(LCVarsStr)], !State)
     ),
-    do_write_goal(!.InfoGoal, Stream, Indent + 1u, "\n", Goal, !IO),
-    io.format(Stream, "%s)%s", [s(IndentStr), s(Follow)], !IO).
+    do_format_goal(!.InfoGoal, Indent + 1u, "\n", Goal, !State),
+    string.builder.format("%s)%s", [s(IndentStr), s(Follow)], !State).
 
-:- pred write_trace_mutable_var_hlds(io.text_output_stream::in, string::in,
-    trace_mutable_var_hlds::in, bool::in, bool::out, io::di, io::uo) is det.
+:- pred write_trace_mutable_var_hlds(string::in, trace_mutable_var_hlds::in,
+    bool::in, bool::out,
+    string.builder.state::di, string.builder.state::uo) is det.
 
-write_trace_mutable_var_hlds(Stream, IndentStr, MutableVar,
-        !AddCommaNewline, !IO) :-
+write_trace_mutable_var_hlds(IndentStr, MutableVar,
+        !AddCommaNewline, !State) :-
     MutableVar = trace_mutable_var_hlds(MutableName, StateVarName),
-    maybe_add_comma_newline(Stream, !.AddCommaNewline, !IO),
-    io.format(Stream, "%sstate(%s, !%s)",
-        [s(IndentStr), s(MutableName), s(StateVarName)], !IO),
+    maybe_add_comma_newline(!.AddCommaNewline, !State),
+    string.builder.format("%sstate(%s, !%s)",
+        [s(IndentStr), s(MutableName), s(StateVarName)], !State),
     !:AddCommaNewline = yes.
 
-:- pred maybe_add_comma_newline(io.text_output_stream::in, bool::in,
-    io::di, io::uo) is det.
+:- pred maybe_add_comma_newline(bool::in,
+    string.builder.state::di, string.builder.state::uo) is det.
 
-maybe_add_comma_newline(Stream, AddCommaNewline, !IO) :-
+maybe_add_comma_newline(AddCommaNewline, !State) :-
     (
         AddCommaNewline = no
     ;
         AddCommaNewline = yes,
-        io.write_string(Stream, ",\n", !IO)
+        string.builder.append_string(",\n", !State)
     ).
 
 %---------------------------------------------------------------------------%
@@ -2381,11 +2477,11 @@ maybe_add_comma_newline(Stream, AddCommaNewline, !IO) :-
 % Write out shorthand goals.
 %
 
-:- pred write_goal_shorthand(hlds_out_info_goal::in, io.text_output_stream::in,
+:- pred format_goal_shorthand(hlds_out_info_goal::in, 
     indent::in, string::in, hlds_goal_expr::in(goal_expr_shorthand),
-    io::di, io::uo) is det.
+    string.builder.state::di, string.builder.state::uo) is det.
 
-write_goal_shorthand(InfoGoal, Stream, Indent, Follow, GoalExpr, !IO) :-
+format_goal_shorthand(InfoGoal, Indent, Follow, GoalExpr, !State) :-
     GoalExpr = shorthand(ShortHand),
     IndentStr = indent2_string(Indent),
     Indent1 = Indent + 1u,
@@ -2407,16 +2503,16 @@ write_goal_shorthand(InfoGoal, Stream, Indent, Follow, GoalExpr, !IO) :-
                 VarNamePrint, OutputVars),
             string.format("vars([%s])", [s(OutputVarsStr)], MaybeOutputVarsStr)
         ),
-        io.format(Stream, "%satomic [%s %s %s] (\n",
+        string.builder.format("%satomic [%s %s %s] (\n",
             [s(IndentStr), s(OuterStr), s(InnerStr), s(MaybeOutputVarsStr)],
-            !IO),
-        do_write_goal(InfoGoal, Stream, Indent1, "\n", MainGoal, !IO),
-        write_goal_list(InfoGoal, Stream, Indent, "or_else\n",
-            OrElseGoals, !IO),
-        io.format(Stream, "%s)%s", [s(IndentStr), s(Follow)], !IO)
+            !State),
+        do_format_goal(InfoGoal, Indent1, "\n", MainGoal, !State),
+        format_goal_list(InfoGoal, Indent, "or_else\n",
+            OrElseGoals, !State),
+        string.builder.format("%s)%s", [s(IndentStr), s(Follow)], !State)
     ;
         ShortHand = try_goal(MaybeIO, _, SubGoal),
-        io.format(Stream, "%s( %% try\n", [s(IndentStr)], !IO),
+        string.builder.format("%s( %% try\n", [s(IndentStr)], !State),
         (
             MaybeIO = yes(try_io_state_vars(IOVarA, IOVarB)),
             Indent1Str = indent2_string(Indent1),
@@ -2424,20 +2520,21 @@ write_goal_shorthand(InfoGoal, Stream, Indent, Follow, GoalExpr, !IO) :-
             VarNamePrint = InfoGoal ^ hoig_var_name_print,
             IOVarsStr = mercury_vars_to_string_src(VarNameSrc, VarNamePrint,
                 [IOVarA, IOVarB]),
-            io.format(Stream, "%s%% io(%s)\n",
-                [s(Indent1Str), s(IOVarsStr)], !IO)
+            string.builder.format("%s%% io(%s)\n",
+                [s(Indent1Str), s(IOVarsStr)], !State)
         ;
             MaybeIO = no
         ),
-        do_write_goal(InfoGoal, Stream, Indent1, "\n", SubGoal, !IO),
-        io.format(Stream, "%s)%s", [s(IndentStr), s(Follow)], !IO)
+        do_format_goal(InfoGoal, Indent1, "\n", SubGoal, !State),
+        string.builder.format("%s)%s", [s(IndentStr), s(Follow)], !State)
     ;
         ShortHand = bi_implication(GoalA, GoalB),
-        io.format(Stream, "%s( %% bi-implication\n", [s(IndentStr)], !IO),
-        do_write_goal(InfoGoal, Stream, Indent1, "\n", GoalA, !IO),
-        io.format(Stream, "%s<=>\n", [s(IndentStr)], !IO),
-        do_write_goal(InfoGoal, Stream, Indent1, "\n", GoalB, !IO),
-        io.format(Stream, "%s)%s", [s(IndentStr), s(Follow)], !IO)
+        string.builder.format("%s( %% bi-implication\n",
+            [s(IndentStr)], !State),
+        do_format_goal(InfoGoal, Indent1, "\n", GoalA, !State),
+        string.builder.format("%s<=>\n", [s(IndentStr)], !State),
+        do_format_goal(InfoGoal, Indent1, "\n", GoalB, !State),
+        string.builder.format("%s)%s", [s(IndentStr), s(Follow)], !State)
     ).
 
 :- func atomic_interface_vars_to_string(var_name_source, var_name_print,

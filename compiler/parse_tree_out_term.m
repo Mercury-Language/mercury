@@ -133,6 +133,8 @@
 
 :- pred mercury_output_term_src(var_name_source::in, var_name_print::in,
     prog_term::in, io.text_output_stream::in, io::di, io::uo) is det.
+:- pred mercury_format_term_src(var_name_source::in, var_name_print::in,
+    prog_term::in, S::in, U::di, U::uo) is det <= pt_output(S, U).
 
 :- func mercury_term_nq_to_string_vs(varset(T), var_name_print, needs_quotes,
     term(T)) = string.
@@ -465,14 +467,17 @@ mercury_format_term(VarTable, VarNamePrint, Term, S, !U) :-
 %---------------------%
 
 mercury_output_term_src(VarNameSrc, VarNamePrint, Term, Stream, !IO) :-
+    mercury_format_term_src(VarNameSrc, VarNamePrint, Term, Stream, !IO).
+
+mercury_format_term_src(VarNameSrc, VarNamePrint, Term, S, !U) :-
     (
         VarNameSrc = vns_varset(VarSet),
-        mercury_output_term_nq_vs(VarSet, VarNamePrint,
-            not_next_to_graphic_token, Term, Stream, !IO)
+        mercury_format_term_nq_vs(VarSet, VarNamePrint,
+            not_next_to_graphic_token, Term, S, !U)
     ;
         VarNameSrc = vns_var_table(VarTable),
-        mercury_output_term_nq(VarTable, VarNamePrint,
-            not_next_to_graphic_token, Term, Stream, !IO)
+        mercury_format_term_nq(VarTable, VarNamePrint,
+            not_next_to_graphic_token, Term, S, !U)
     ).
 
 %---------------------%

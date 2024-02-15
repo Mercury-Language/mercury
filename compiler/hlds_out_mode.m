@@ -21,6 +21,7 @@
 :- import_module libs.indent.
 :- import_module parse_tree.
 :- import_module parse_tree.parse_tree_out_info.
+:- import_module parse_tree.parse_tree_output.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.var_table.
 
@@ -64,6 +65,9 @@
     list(unify_mode)::in, io::di, io::uo) is det.
 :- func mercury_structured_unify_mode_list_to_string(output_lang, inst_varset,
     incl_addr, indent, list(unify_mode)) = string.
+:- pred mercury_format_structured_unify_mode_list(output_lang::in,
+    inst_varset::in, incl_addr::in, indent::in, list(unify_mode)::in,
+    S::in, U::di, U::uo) is det <= pt_output(S, U).
 
 :- pred mercury_output_structured_unify_mode(io.text_output_stream::in,
     output_lang::in, inst_varset::in, incl_addr::in, indent::in,
@@ -90,7 +94,6 @@
 :- import_module parse_tree.parse_tree_out_sym_name.
 :- import_module parse_tree.parse_tree_out_term.
 :- import_module parse_tree.parse_tree_out_type.
-:- import_module parse_tree.parse_tree_output.
 :- import_module parse_tree.parse_tree_to_term.
 
 :- import_module assoc_list.
@@ -329,22 +332,27 @@ get_inst_addr(_, -1).
 
 mercury_output_structured_unify_mode_list(Stream, Lang, InstVarSet, InclAddr,
         Indent, UnifyModes, !IO) :-
-    mercury_format_structured_unify_mode_list(Lang, InstVarSet, InclAddr,
+    mercury_format_structured_unify_modes_loop(Lang, InstVarSet, InclAddr,
         Indent, 1, UnifyModes, Stream, !IO).
 
 mercury_structured_unify_mode_list_to_string(Lang, InstVarSet, InclAddr,
         Indent, UnifyModes) = Str :-
     State0 = string.builder.init,
-    mercury_format_structured_unify_mode_list(Lang, InstVarSet, InclAddr,
+    mercury_format_structured_unify_modes_loop(Lang, InstVarSet, InclAddr,
         Indent, 1, UnifyModes, string.builder.handle, State0, State),
     Str = string.builder.to_string(State).
 
-:- pred mercury_format_structured_unify_mode_list(output_lang::in,
+mercury_format_structured_unify_mode_list(Lang, InstVarSet, InclAddr,
+        Indent, UnifyModes, Stream, !IO) :-
+    mercury_format_structured_unify_modes_loop(Lang, InstVarSet, InclAddr,
+        Indent, 1, UnifyModes, Stream, !IO).
+
+:- pred mercury_format_structured_unify_modes_loop(output_lang::in,
     inst_varset::in, incl_addr::in, indent::in, int::in, list(unify_mode)::in,
     S::in, U::di, U::uo) is det <= pt_output(S, U).
 
-mercury_format_structured_unify_mode_list(_, _, _, _, _, [], _, !U).
-mercury_format_structured_unify_mode_list(Lang, InstVarSet, InclAddr, Indent,
+mercury_format_structured_unify_modes_loop(_, _, _, _, _, [], _, !U).
+mercury_format_structured_unify_modes_loop(Lang, InstVarSet, InclAddr, Indent,
         ArgNum, [UnifyMode | UnifyModes], S, !U) :-
     mercury_format_tabs(Indent, S, !U),
     add_string("argument ", S, !U),
@@ -352,7 +360,7 @@ mercury_format_structured_unify_mode_list(Lang, InstVarSet, InclAddr, Indent,
     add_string(":\n", S, !U),
     mercury_format_structured_unify_mode(Lang, InstVarSet, InclAddr,
         Indent, UnifyMode, S, !U),
-    mercury_format_structured_unify_mode_list(Lang, InstVarSet, InclAddr,
+    mercury_format_structured_unify_modes_loop(Lang, InstVarSet, InclAddr,
         Indent, ArgNum + 1, UnifyModes, S, !U).
 
 %---------------------------------------------------------------------------%

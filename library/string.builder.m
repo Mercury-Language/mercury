@@ -57,6 +57,14 @@
 :- pred append_strings(list(string)::in,
     string.builder.state::di, string.builder.state::uo) is det.
 
+    % append_strings_sep(Sep, Strings, !State):
+    %
+    % Add a list of strings to the end of the string builder,
+    % with the given separator string between each pair.
+    %
+:- pred append_strings_sep(string::in, list(string)::in,
+    string.builder.state::di, string.builder.state::uo) is det.
+
 %---------------------%
 
 :- pred format(string::in, list(poly_type)::in,
@@ -135,6 +143,23 @@ append_strings([], !State).
 append_strings([Str | Strs], !State) :-
     append_string(Str, !State),
     append_strings(Strs, !State).
+
+append_strings_sep(_, [], !State).
+append_strings_sep(Sep, [Str | Strs], !State) :-
+    append_strings_sep_lag(Sep, Str, Strs, !State).
+
+:- pred append_strings_sep_lag(string::in, string::in, list(string)::in,
+    string.builder.state::di, string.builder.state::uo) is det.
+
+append_strings_sep_lag(Sep, HeadStr, TailStrs, !State) :-
+    append_string(HeadStr, !State),
+    (
+        TailStrs = []
+    ;
+        TailStrs = [HeadTailStr | TailTailStrs],
+        append_string(Sep, !State),
+        append_strings_sep_lag(Sep, HeadTailStr, TailTailStrs, !State)
+    ).
 
 %---------------------%
 

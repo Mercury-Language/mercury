@@ -17,6 +17,8 @@
 :- interface.
 
 :- import_module io.
+:- import_module string.
+:- import_module string.builder.
 
     % A value of type `indent' records the number of levels of indentation
     % to indent a piece of text (usually code). The number of spaces
@@ -44,6 +46,8 @@
     %
 :- pred write_indent2(io.text_output_stream::in, indent::in,
     io::di, io::uo) is det.
+:- pred format_indent2(indent::in,
+    string.builder.state::di, string.builder.state::uo) is det.
 
     % Return the indent for the given level as a string.
     %
@@ -56,7 +60,6 @@
 
 :- implementation.
 
-:- import_module string.
 :- import_module uint.
 
 %---------------------------------------------------------------------------%
@@ -66,6 +69,10 @@ indent2_increment = 2u.
 write_indent2(Stream, Indent, !IO) :-
     Str = indent2_string(Indent),
     io.write_string(Stream, Str, !IO).
+
+format_indent2(Indent, !State) :-
+    Str = indent2_string(Indent),
+    string.builder.append_string(Str, !State).
 
 indent2_string(Indent) = Str :-
     % The code here is modelled after output_std_indent_levels in
