@@ -217,6 +217,9 @@
 :- pred write_constraint_proof_map(io.text_output_stream::in, indent::in,
     var_name_print::in, tvarset::in, constraint_proof_map::in,
     io::di, io::uo) is det.
+:- pred format_constraint_proof_map(indent::in,
+    var_name_print::in, tvarset::in, constraint_proof_map::in,
+    string.builder.state::di, string.builder.state::uo) is det.
 
 %---------------------------------------------------------------------------%
 
@@ -881,29 +884,38 @@ int_const_to_string_with_suffix(IntConst) = Str :-
 
 write_constraint_proof_map(Stream, Indent, VarNamePrint, TVarSet,
         ProofMap, !IO) :-
+    State0 = string.builder.init,
+    format_constraint_proof_map(Indent, VarNamePrint, TVarSet, ProofMap,
+        State0, State),
+    Str = string.builder.to_string(State),
+    io.write_string(Stream, Str, !IO).
+
+format_constraint_proof_map(Indent, VarNamePrint, TVarSet, ProofMap, !State) :-
     map.to_assoc_list(ProofMap, ProofsList),
     IndentStr = indent2_string(Indent),
-    io.format(Stream, "%s%% Proofs:\n", [s(IndentStr)], !IO),
+    string.builder.format("%s%% Proofs:\n", [s(IndentStr)], !State),
     list.foldl(
-        write_constraint_proof(Stream, IndentStr, VarNamePrint, TVarSet),
-        ProofsList, !IO).
+        format_constraint_proof(IndentStr, VarNamePrint, TVarSet),
+        ProofsList, !State).
 
-:- pred write_constraint_proof(io.text_output_stream::in, string::in,
-    var_name_print::in, tvarset::in,
-    pair(prog_constraint, constraint_proof)::in, io::di, io::uo) is det.
+:- pred format_constraint_proof(string::in, var_name_print::in, tvarset::in,
+    pair(prog_constraint, constraint_proof)::in,
+    string.builder.state::di, string.builder.state::uo) is det.
 
-write_constraint_proof(Stream, IndentStr, VarNamePrint, TVarSet,
-        Constraint - Proof, !IO) :-
+format_constraint_proof(IndentStr, VarNamePrint, TVarSet,
+        Constraint - Proof, !State) :-
     ConstraintStr = mercury_constraint_to_string(TVarSet, VarNamePrint,
         Constraint),
-    io.format(Stream, "%s%% %s: ", [s(IndentStr), s(ConstraintStr)], !IO),
+    string.builder.format("%s%% %s: ",
+        [s(IndentStr), s(ConstraintStr)], !State),
     (
         Proof = apply_instance(instance_id(InstanceNum)),
-        io.format(Stream, "apply instance decl #%d\n", [i(InstanceNum)], !IO)
+        string.builder.format("apply instance decl #%d\n",
+            [i(InstanceNum)], !State)
     ;
         Proof = superclass(Super),
         SuperStr = mercury_constraint_to_string(TVarSet, VarNamePrint, Super),
-        io.format(Stream, "super class of %s\n", [s(SuperStr)], !IO)
+        string.builder.format("super class of %s\n", [s(SuperStr)], !State)
     ).
 
 %---------------------------------------------------------------------------%

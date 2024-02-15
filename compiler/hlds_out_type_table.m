@@ -14,9 +14,13 @@
 
 :- import_module bool.
 :- import_module io.
+:- import_module string.
+:- import_module string.builder.
 
-:- pred write_type_table(hlds_out_info::in, io.text_output_stream::in,
+:- pred write_type_table(hlds_out_info::in,  io.text_output_stream::in,
     bool::in, type_table::in, io::di, io::uo) is det.
+:- pred format_type_table(hlds_out_info::in, bool::in, type_table::in,
+    string.builder.state::di, string.builder.state::uo) is det.
 
 %---------------------------------------------------------------------------%
 
@@ -47,7 +51,6 @@
 :- import_module pair.
 :- import_module require.
 :- import_module set.
-:- import_module string.
 :- import_module term.
 :- import_module uint.
 :- import_module varset.
@@ -55,7 +58,13 @@
 %---------------------------------------------------------------------------%
 
 write_type_table(Info, Stream, LocalOnly, TypeTable, !IO) :-
-    io.write_string(Stream, "%-------- Types --------\n", !IO),
+    State0 = string.builder.init,
+    format_type_table(Info, LocalOnly, TypeTable, State0, State),
+    Str = string.builder.to_string(State),
+    io.write_string(Stream, Str, !IO).
+
+format_type_table(Info, LocalOnly, TypeTable, !State) :-
+    string.builder.append_string("%-------- Types --------\n", !State),
     get_all_type_ctor_defns(TypeTable, TypeAssocList),
     list.sort(TypeAssocList, SortedTypeAssocList),
     (
@@ -66,8 +75,8 @@ write_type_table(Info, Stream, LocalOnly, TypeTable, !IO) :-
         list.filter(type_table_entry_is_local, SortedTypeAssocList,
             PrintedTypeAssocList)
     ),
-    write_type_table_entries(Info, Stream, PrintedTypeAssocList, !IO),
-    io.nl(Stream, !IO).
+    format_type_table_entries(Info, PrintedTypeAssocList, !State),
+    string.builder.append_string("\n", !State).
 
 :- pred type_table_entry_is_local(pair(type_ctor, hlds_type_defn)::in)
     is semidet.
@@ -76,30 +85,32 @@ type_table_entry_is_local(_TypeCtor - TypeDefn) :-
     hlds_data.get_type_defn_status(TypeDefn, TypeStatus),
     type_status_defined_in_this_module(TypeStatus) = yes.
 
-:- pred write_type_table_entries(hlds_out_info::in, io.text_output_stream::in,
-    assoc_list(type_ctor, hlds_type_defn)::in, io::di, io::uo) is det.
+:- pred format_type_table_entries(hlds_out_info::in,
+    assoc_list(type_ctor, hlds_type_defn)::in,
+    string.builder.state::di, string.builder.state::uo) is det.
 
-write_type_table_entries(_, _, [], !IO).
-write_type_table_entries(Info, Stream, [Type | Types], !IO) :-
-    write_type_table_entry(Info, Stream, Type, !IO),
-    write_type_table_entries(Info, Stream, Types, !IO).
+format_type_table_entries(_, [], !State).
+format_type_table_entries(Info, [Type | Types], !State) :-
+    format_type_table_entry(Info, Type, !State),
+    format_type_table_entries(Info, Types, !State).
 
-:- pred write_type_table_entry(hlds_out_info::in, io.text_output_stream::in,
-    pair(type_ctor, hlds_type_defn)::in, io::di, io::uo) is det.
+:- pred format_type_table_entry(hlds_out_info::in, 
+    pair(type_ctor, hlds_type_defn)::in,
+    string.builder.state::di, string.builder.state::uo) is det.
 
-write_type_table_entry(Info, Stream, TypeCtor - TypeDefn, !IO) :-
+format_type_table_entry(Info, TypeCtor - TypeDefn, !State) :-
     hlds_data.get_type_defn_tvarset(TypeDefn, TVarSet),
     hlds_data.get_type_defn_tparams(TypeDefn, TypeParams),
     hlds_data.get_type_defn_body(TypeDefn, TypeBody),
     hlds_data.get_type_defn_status(TypeDefn, TypeStatus),
     hlds_data.get_type_defn_context(TypeDefn, Context),
     % Write the context.
-    io.write_char(Stream, '\n', !IO),
-    maybe_output_context_comment(Stream, 0u, "", Context, !IO),
+    string.builder.append_char('\n', !State),
+    maybe_format_context_comment(0u, "", Context, !State),
     DumpOptions = Info ^ hoi_dump_hlds_options,
     ( if string.contains_char(DumpOptions, 'c') then
-        io.format(Stream, "%% status %s\n",
-            [s(type_import_status_to_string(TypeStatus))], !IO)
+        string.builder.format("%% status %s\n",
+            [s(type_import_status_to_string(TypeStatus))], !State)
     else
         true
     ),
@@ -108,56 +119,57 @@ write_type_table_entry(Info, Stream, TypeCtor - TypeDefn, !IO) :-
         ; TypeBody = hlds_abstract_type(abstract_solver_type)
         )
     then
-        io.write_string(Stream, ":- solver type ", !IO)
+        string.builder.append_string(":- solver type ", !State)
     else
-        io.write_string(Stream, ":- type ", !IO)
+        string.builder.append_string(":- type ", !State)
     ),
-    write_type_name(Stream, TypeCtor, !IO),
-    write_type_params(Stream, TVarSet, TypeParams, !IO),
-    write_type_body(Info, Stream, TypeCtor, TypeBody, TVarSet, !IO).
+    format_type_name(string.builder.handle, TypeCtor, !State),
+    format_type_params(TVarSet, TypeParams, !State),
+    format_type_body(Info, TypeCtor, TypeBody, TVarSet, !State).
 
-:- pred write_type_params(io.text_output_stream::in, tvarset::in,
-    list(type_param)::in, io::di, io::uo) is det.
+:- pred format_type_params(tvarset::in, list(type_param)::in,
+    string.builder.state::di, string.builder.state::uo) is det.
 
-write_type_params(Stream, TVarSet, TypeParams, !IO) :-
+format_type_params(TVarSet, TypeParams, !State) :-
     (
         TypeParams = []
     ;
         TypeParams = [HeadParam | TailParams],
-        io.write_string(Stream, "(", !IO),
-        mercury_output_var_vs(TVarSet, print_name_only, HeadParam,
-            Stream, !IO),
-        write_comma_type_params_loop(Stream, TVarSet, TailParams, !IO),
-        io.write_string(Stream, ")", !IO)
+        string.builder.append_string("(", !State),
+        mercury_format_var_vs(TVarSet, print_name_only, HeadParam,
+            string.builder.handle, !State),
+        format_comma_type_params_loop(TVarSet, TailParams, !State),
+        string.builder.append_string(")", !State)
     ).
 
-:- pred write_comma_type_params_loop(io.text_output_stream::in, tvarset::in,
-    list(type_param)::in, io::di, io::uo) is det.
+:- pred format_comma_type_params_loop(tvarset::in, list(type_param)::in,
+    string.builder.state::di, string.builder.state::uo) is det.
 
-write_comma_type_params_loop(_Stream, _TVarSet, [], !IO).
-write_comma_type_params_loop(Stream, TVarSet, [Param | Params], !IO) :-
-    io.write_string(Stream, ", ", !IO),
-    mercury_output_var_vs(TVarSet, print_name_only, Param, Stream, !IO),
-    write_comma_type_params_loop(Stream, TVarSet, Params, !IO).
+format_comma_type_params_loop(_TVarSet, [], !State).
+format_comma_type_params_loop(TVarSet, [Param | Params], !State) :-
+    string.builder.append_string(", ", !State),
+    mercury_format_var_vs(TVarSet, print_name_only, Param,
+        string.builder.handle, !State),
+    format_comma_type_params_loop(TVarSet, Params, !State).
 
-:- pred write_type_body(hlds_out_info::in, io.text_output_stream::in,
+:- pred format_type_body(hlds_out_info::in, 
     type_ctor::in, hlds_type_body::in, tvarset::in,
-    io::di, io::uo) is det.
+    string.builder.state::di, string.builder.state::uo) is det.
 
-write_type_body(Info, Stream, _TypeCtor, TypeBody, TVarSet, !IO) :-
+format_type_body(Info, _TypeCtor, TypeBody, TVarSet, !State) :-
     BaseIndent = 1u,
     IndentStr = indent2_string(BaseIndent),
     (
         TypeBody = hlds_du_type(TypeBodyDu),
         TypeBodyDu = type_body_du(Ctors, MaybeSuperType, MaybeUserEqComp,
             MaybeRepn, Foreign),
-        io.nl(Stream, !IO),
+        string.builder.append_string("\n", !State),
         (
             MaybeSuperType = subtype_of(SuperType),
             SuperTypeStr = mercury_type_to_string(TVarSet,
                 print_name_only, SuperType),
-            io.format(Stream, "%s%% subtype of %s\n",
-                [s(IndentStr), s(SuperTypeStr)], !IO)
+            string.builder.format("%s%% subtype of %s\n",
+                [s(IndentStr), s(SuperTypeStr)], !State)
         ;
             MaybeSuperType = not_a_subtype
         ),
@@ -166,18 +178,19 @@ write_type_body(Info, Stream, _TypeCtor, TypeBody, TVarSet, !IO) :-
         (
             MaybeRepn = no,
             Ctors = one_or_more(HeadCtor, TailCtors),
-            write_constructors(Stream, TVarSet, HeadCtor, TailCtors, !IO),
+            format_constructors(TVarSet, HeadCtor, TailCtors, !State),
             MaybeDirectArgCtors = no,
             mercury_format_where_attributes(MercInfo, TVarSet,
                 MaybeSolverTypeDetails, MaybeUserEqComp, MaybeDirectArgCtors,
-                Stream, !IO),
-            io.format(Stream, "%s%% no type representation information yet\n",
-                [s(IndentStr)], !IO)
+                string.builder.handle, !State),
+            string.builder.format(
+                "%s%% no type representation information yet\n",
+                [s(IndentStr)], !State)
         ;
             MaybeRepn = yes(Repn),
             Repn = du_type_repn(CtorRepns, CtorRepnMap, CheaperTagTest,
                 DuTypeKind, MaybeDirectArgCtors),
-            write_constructor_repns(Stream, TVarSet, CtorRepns, !IO),
+            format_constructor_repns(TVarSet, CtorRepns, !State),
             (
                 CheaperTagTest = no_cheaper_tag_test
             ;
@@ -187,31 +200,31 @@ write_type_body(Info, Stream, _TypeCtor, TypeBody, TVarSet, !IO) :-
                     unqual_cons_id(ExpConsId)),
                 CheapConsIdStr = cons_id_and_arity_to_string(
                     unqual_cons_id(CheapConsId)),
-                io.format(Stream, "%s%% cheaper tag test:\n",
-                    [s(IndentStr)], !IO),
-                io.format(Stream, "%s%%   from %s\n",
-                    [s(IndentStr), s(ExpConsIdStr)], !IO),
-                io.format(Stream, "%s%%      %s\n",
-                    [s(IndentStr), s(du_cons_tag_to_string(ExpConsTag))], !IO),
-                io.format(Stream, "%s%%   to %s\n",
-                    [s(IndentStr), s(CheapConsIdStr)], !IO),
-                io.format(Stream, "%s%%      %s\n",
+                string.builder.format("%s%% cheaper tag test:\n",
+                    [s(IndentStr)], !State),
+                string.builder.format("%s%%   from %s\n",
+                    [s(IndentStr), s(ExpConsIdStr)], !State),
+                string.builder.format("%s%%      %s\n",
+                    [s(IndentStr), s(du_cons_tag_to_string(ExpConsTag))],
+                    !State),
+                string.builder.format("%s%%   to %s\n",
+                    [s(IndentStr), s(CheapConsIdStr)], !State),
+                string.builder.format("%s%%      %s\n",
                     [s(IndentStr), s(du_cons_tag_to_string(CheapConsTag))],
-                    !IO)
+                    !State)
             ),
             (
                 DuTypeKind = du_type_kind_mercury_enum,
-                io.format(Stream, "%s%% KIND enumeration\n",
-                    [s(IndentStr)], !IO)
+                string.builder.format("%s%% KIND enumeration\n",
+                    [s(IndentStr)], !State)
             ;
                 DuTypeKind = du_type_kind_foreign_enum(Lang),
-                io.format(Stream,
-                    "%s%% KIND foreign enumeration for %s\n",
-                    [s(IndentStr), s(foreign_language_string(Lang))], !IO)
+                string.builder.format("%s%% KIND foreign enumeration for %s\n",
+                    [s(IndentStr), s(foreign_language_string(Lang))], !State)
             ;
                 DuTypeKind = du_type_kind_direct_dummy,
-                io.format(Stream, "%s%% KIND dummy\n",
-                    [s(IndentStr)], !IO)
+                string.builder.format("%s%% KIND dummy\n",
+                    [s(IndentStr)], !State)
             ;
                 DuTypeKind = du_type_kind_notag(FunctorName, ArgType,
                     MaybeArgName),
@@ -223,25 +236,25 @@ write_type_body(Info, Stream, _TypeCtor, TypeBody, TVarSet, !IO) :-
                     MaybeArgName = no,
                     ArgName = "no arg name"
                 ),
-                io.format(Stream, "%s%% KIND notag: %s, %s, %s\n",
+                string.builder.format("%s%% KIND notag: %s, %s, %s\n",
                     [s(IndentStr), s(escaped_sym_name_to_string(FunctorName)),
-                    s(ArgTypeStr), s(ArgName)], !IO)
+                    s(ArgTypeStr), s(ArgName)], !State)
             ;
                 DuTypeKind = du_type_kind_general,
-                io.format(Stream, "%s%% KIND general\n",
-                    [s(IndentStr)], !IO)
+                string.builder.format("%s%% KIND general\n",
+                    [s(IndentStr)], !State)
             ),
             mercury_format_where_attributes(MercInfo, TVarSet,
                 MaybeSolverTypeDetails, MaybeUserEqComp, MaybeDirectArgCtors,
-                Stream, !IO),
+                string.builder.handle, !State),
             (
                 Foreign = yes(_),
-                io.format(Stream, "%s%% has foreign_type\n",
-                    [s(IndentStr)], !IO)
+                string.builder.format("%s%% has foreign_type\n",
+                    [s(IndentStr)], !State)
             ;
                 Foreign = no
             ),
-            trace [compile_time(flag("ctor_repn_invariant_check")), io(!TIO)] (
+            trace [compile_time(flag("ctor_repn_invariant_check")), io(!IO)] (
                 list.sort(CtorRepns, SortedCtorRepns),
                 map.foldl_values(accumulate_ctor_repns, CtorRepnMap,
                     [], MapCtorRepns),
@@ -249,20 +262,22 @@ write_type_body(Info, Stream, _TypeCtor, TypeBody, TVarSet, !IO) :-
                 ( if SortedCtorRepns = SortedMapCtorRepns then
                     true
                 else
-                    io.format(Stream, 
+                    io.output_stream(Stream, !IO),
+                    io.format(Stream,
                         "%s%% BUG SortedCtorRepns != SortedMapCtorRepns\n",
-                        [s(IndentStr)], !TIO)
+                        [s(IndentStr)], !IO)
                 )
             )
         )
     ;
         TypeBody = hlds_eqv_type(Type),
-        io.write_string(Stream, " == ", !IO),
-        mercury_output_type(TVarSet, print_name_only, Type, Stream, !IO),
-        io.write_string(Stream, ".\n", !IO)
+        string.builder.append_string(" == ", !State),
+        mercury_format_type(TVarSet, print_name_only, Type,
+            string.builder.handle, !State),
+        string.builder.append_string(".\n", !State)
     ;
         TypeBody = hlds_abstract_type(_IsSolverType),
-        io.write_string(Stream, ".\n", !IO)
+        string.builder.append_string(".\n", !State)
     ;
         TypeBody = hlds_foreign_type(ForeignTypeBody),
         ForeignTypeBody = foreign_type_body(MaybeC, MaybeJava, MaybeCsharp),
@@ -305,19 +320,20 @@ write_type_body(Info, Stream, _TypeCtor, TypeBody, TVarSet, !IO) :-
         % What we output is not valid Mercury syntax, but it is easier
         % to read than valid Mercury syntax would be.
         Indent1Str = indent2_string(BaseIndent + 1u),
-        io.format(Stream, " is foreign_type(\n%s%s,\n%s%s,\n%s%s\n%s).\n",
+        string.builder.format(" is foreign_type(\n%s%s,\n%s%s,\n%s%s\n%s).\n",
             [s(Indent1Str), s(MaybeCStr),
             s(Indent1Str), s(MaybeJavaStr),
             s(Indent1Str), s(MaybeCsharpStr),
-            s(IndentStr)], !IO)
+            s(IndentStr)], !State)
     ;
         TypeBody = hlds_solver_type(DetailsSolver),
         DetailsSolver =
             type_details_solver(SolverTypeDetails, MaybeUserEqComp),
         MercInfo = Info ^ hoi_merc_out_info,
         mercury_format_where_attributes(MercInfo, TVarSet,
-            yes(SolverTypeDetails), MaybeUserEqComp, no, Stream, !IO),
-        io.write_string(Stream, ".\n", !IO)
+            yes(SolverTypeDetails), MaybeUserEqComp, no,
+            string.builder.handle, !State),
+        string.builder.append_string(".\n", !State)
     ).
 
 :- func unqual_cons_id(cons_id) = cons_id.
@@ -383,75 +399,75 @@ accumulate_ctor_repns(one_or_more(HeadCR, TailCRs), !AccCRs) :-
 
 %---------------------%
 
-:- pred write_constructors(io.text_output_stream::in, tvarset::in,
-    constructor::in, list(constructor)::in, io::di, io::uo) is det.
+:- pred format_constructors(tvarset::in, constructor::in, list(constructor)::in,
+    string.builder.state::di, string.builder.state::uo) is det.
 
-write_constructors(Stream, TVarSet, HeadCtor, TailCtors, !IO) :-
+format_constructors(TVarSet, HeadCtor, TailCtors, !State) :-
     ArrowOrSemi0 = "--->    ",
-    write_constructors_loop(Stream, TVarSet, ArrowOrSemi0,
-        HeadCtor, TailCtors, !IO).
+    format_constructors_loop(TVarSet, ArrowOrSemi0,
+        HeadCtor, TailCtors, !State).
 
-:- pred write_constructor_repns(io.text_output_stream::in, tvarset::in,
-    list(constructor_repn)::in, io::di, io::uo) is det.
+:- pred format_constructor_repns(tvarset::in, list(constructor_repn)::in,
+    string.builder.state::di, string.builder.state::uo) is det.
 
-write_constructor_repns(Stream, TVarSet, CtorRepns, !IO) :-
+format_constructor_repns(TVarSet, CtorRepns, !State) :-
     (
         CtorRepns = [],
         unexpected($pred, "empty constructor list")
     ;
         CtorRepns = [HeadCtorRepn | TailCtorRepns],
         ArrowOrSemi0 = "--->    ",
-        write_constructor_repns_loop(Stream, TVarSet, ArrowOrSemi0,
-            HeadCtorRepn, TailCtorRepns, !IO)
+        format_constructor_repns_loop(TVarSet, ArrowOrSemi0,
+            HeadCtorRepn, TailCtorRepns, !State)
     ).
 
 %---------------------%
 
-:- pred write_constructors_loop(io.text_output_stream::in, tvarset::in,
-    string::in, constructor::in, list(constructor)::in, io::di, io::uo) is det.
+:- pred format_constructors_loop(tvarset::in, string::in,
+    constructor::in, list(constructor)::in,
+    string.builder.state::di, string.builder.state::uo) is det.
 
-write_constructors_loop(Stream, TVarSet, ArrowOrSemi0,
-        HeadCtor, TailCtors, !IO) :-
-    write_indent2(Stream, 1u, !IO),
-    io.write_string(Stream, ArrowOrSemi0, !IO),
+format_constructors_loop(TVarSet, ArrowOrSemi0, HeadCtor, TailCtors, !State) :-
+    format_indent2(1u, !State),
+    string.builder.append_string(ArrowOrSemi0, !State),
     (
         TailCtors = [],
-        write_ctor(Stream, TVarSet, HeadCtor, !IO)
+        format_ctor(TVarSet, HeadCtor, !State)
     ;
         TailCtors = [HeadTailCtor | TailTailCtors],
-        write_ctor(Stream, TVarSet, HeadCtor, !IO),
+        format_ctor(TVarSet, HeadCtor, !State),
         ArrowOrSemi = ";       ",
-        write_constructors_loop(Stream, TVarSet, ArrowOrSemi,
-            HeadTailCtor, TailTailCtors, !IO)
+        format_constructors_loop(TVarSet, ArrowOrSemi,
+            HeadTailCtor, TailTailCtors, !State)
     ).
 
-:- pred write_constructor_repns_loop(io.text_output_stream::in, tvarset::in,
+:- pred format_constructor_repns_loop(tvarset::in,
     string::in, constructor_repn::in, list(constructor_repn)::in,
-    io::di, io::uo) is det.
+    string.builder.state::di, string.builder.state::uo) is det.
 
-write_constructor_repns_loop(Stream, TVarSet, ArrowOrSemi0,
-        HeadCtorRepn, TailCtorRepns, !IO) :-
-    write_indent2(Stream, 1u, !IO),
-    io.write_string(Stream, ArrowOrSemi0, !IO),
+format_constructor_repns_loop(TVarSet, ArrowOrSemi0,
+        HeadCtorRepn, TailCtorRepns, !State) :-
+    format_indent2(1u, !State),
+    string.builder.append_string(ArrowOrSemi0, !State),
     (
         TailCtorRepns = [],
-        write_ctor_repn(Stream, TVarSet, HeadCtorRepn, !IO)
+        format_ctor_repn(TVarSet, HeadCtorRepn, !State)
     ;
         TailCtorRepns = [HeadTailCtorRepn | TailTailCtorRepns],
-        write_ctor_repn(Stream, TVarSet, HeadCtorRepn, !IO),
+        format_ctor_repn(TVarSet, HeadCtorRepn, !State),
         ArrowOrSemi = ";       ",
-        write_constructor_repns_loop(Stream, TVarSet, ArrowOrSemi,
-            HeadTailCtorRepn, TailTailCtorRepns, !IO)
+        format_constructor_repns_loop(TVarSet, ArrowOrSemi,
+            HeadTailCtorRepn, TailTailCtorRepns, !State)
     ).
 
 %---------------------%
 
-:- pred write_ctor(io.text_output_stream::in, tvarset::in,
-    constructor::in, io::di, io::uo) is det.
+:- pred format_ctor(tvarset::in, constructor::in,
+    string.builder.state::di, string.builder.state::uo) is det.
 
-write_ctor(Stream, TVarSet, Ctor, !IO) :-
+format_ctor(TVarSet, Ctor, !State) :-
     % NOTE The code of this predicate is almost identical to the code of
-    % write_ctor_repn below and mercury_output_ctor in parse_tree_out.m.
+    % format_ctor_repn below and format_ctor in parse_tree_out.m.
     % Any changes made here will probably need to be made there as well.
     Ctor = ctor(_Ordinal, MaybeExistConstraints, SymName, Args, Arity, _Ctxt),
 
@@ -469,30 +485,30 @@ write_ctor(Stream, TVarSet, Ctor, !IO) :-
         BaseASIndentStr, "\n", MaybeExistConstraints,
         ExistConstraintsPrefix, ExistConstraintsSuffix),
     maybe_brace_for_name_prefix_suffix(Arity, Name, BracePrefix, BraceSuffix),
-    io.write_string(Stream, ExistConstraintsPrefix, !IO),
+    string.builder.append_string(ExistConstraintsPrefix, !State),
     (
         Args = [],
-        io.format(Stream, "%s%s%s",
-            [s(BracePrefix), s(NameStr), s(BraceSuffix)], !IO)
+        string.builder.format("%s%s%s",
+            [s(BracePrefix), s(NameStr), s(BraceSuffix)], !State)
     ;
         Args = [HeadArg | TailArgs],
-        io.format(Stream, "%s%s(\n", [s(BracePrefix), s(NameStr)], !IO),
+        string.builder.format("%s%s(\n", [s(BracePrefix), s(NameStr)], !State),
         AnyFieldName = does_any_arg_have_a_field_name(Args),
         BaseASIndent1Str = indent2_string(BaseIndent + ASIndent + 1u),
-        mercury_output_ctor_args(Stream, TVarSet, BaseASIndent1Str,
-            AnyFieldName, HeadArg, TailArgs, !IO),
-        io.format(Stream, "%s)%s\n",
-            [s(BaseASIndentStr), s(BraceSuffix)], !IO)
+        format_ctor_args(TVarSet, BaseASIndent1Str, AnyFieldName,
+            HeadArg, TailArgs, !State),
+        string.builder.format("%s)%s\n",
+            [s(BaseASIndentStr), s(BraceSuffix)], !State)
     ),
-    io.format(Stream, "%s%s\n",
-        [s(BraceSuffix), s(ExistConstraintsSuffix)], !IO).
+    string.builder.format("%s%s\n",
+        [s(BraceSuffix), s(ExistConstraintsSuffix)], !State).
 
-:- pred write_ctor_repn(io.text_output_stream::in, tvarset::in,
-    constructor_repn::in, io::di, io::uo) is det.
+:- pred format_ctor_repn(tvarset::in, constructor_repn::in,
+    string.builder.state::di, string.builder.state::uo) is det.
 
-write_ctor_repn(Stream, TVarSet, CtorRepn, !IO) :-
+format_ctor_repn(TVarSet, CtorRepn, !State) :-
     % NOTE The code of this predicate is almost identical to the code of
-    % write_ctor_repn below and mercury_output_ctor in parse_tree_out.m.
+    % format_ctor_repn below and format_ctor in parse_tree_out.m.
     % Any changes made here will probably need to be made there as well.
     CtorRepn = ctor_repn(_Ordinal, MaybeExistConstraints, SymName,
         ConsTag, ArgRepns, Arity, _Ctxt),
@@ -511,93 +527,96 @@ write_ctor_repn(Stream, TVarSet, CtorRepn, !IO) :-
         BaseASIndentStr, "\n", MaybeExistConstraints,
         ExistConstraintsPrefix, ExistConstraintsSuffix),
     maybe_brace_for_name_prefix_suffix(Arity, Name, BracePrefix, BraceSuffix),
-    io.write_string(Stream, ExistConstraintsPrefix, !IO),
-    io.write_string(Stream, BracePrefix, !IO),
+    string.builder.append_string(ExistConstraintsPrefix, !State),
+    string.builder.append_string(BracePrefix, !State),
     ConsTagString = string.format("%s%% tag: %s\n",
         [s(BaseASIndentStr), s(du_cons_tag_to_string(ConsTag))]),
     (
         ArgRepns = [],
-        io.format(Stream, "%s%s%s\n%s",
+        string.builder.format("%s%s%s\n%s",
             [s(BracePrefix), s(NameStr), s(BraceSuffix), s(ConsTagString)],
-            !IO)
+            !State)
     ;
         ArgRepns = [HeadArgRepn | TailArgRepns],
         BaseASIndent1Str = indent2_string(BaseIndent + ASIndent + 1u),
-        io.format(Stream, "%s%s(\n%s",
-            [s(BracePrefix), s(NameStr), s(ConsTagString)], !IO),
+        string.builder.format("%s%s(\n%s",
+            [s(BracePrefix), s(NameStr), s(ConsTagString)], !State),
         AnyFieldName = does_any_arg_repn_have_a_field_name(ArgRepns),
-        mercury_output_ctor_arg_repns(Stream, TVarSet, BaseASIndent1Str,
-            AnyFieldName, 1, HeadArgRepn, TailArgRepns, !IO),
-        io.format(Stream, "%s)%s\n", [s(BaseASIndentStr), s(BraceSuffix)], !IO)
+        format_ctor_arg_repns(TVarSet, BaseASIndent1Str,
+            AnyFieldName, 1, HeadArgRepn, TailArgRepns, !State),
+        string.builder.format("%s)%s\n",
+            [s(BaseASIndentStr), s(BraceSuffix)], !State)
     ),
-    io.write_string(Stream, ExistConstraintsSuffix, !IO).
+    string.builder.append_string(ExistConstraintsSuffix, !State).
 
 %---------------------%
 
-:- pred mercury_output_ctor_args(io.text_output_stream::in, tvarset::in,
-    string::in, bool::in, constructor_arg::in, list(constructor_arg)::in,
-    io::di, io::uo) is det.
+:- pred format_ctor_args(tvarset::in, string::in, bool::in,
+    constructor_arg::in, list(constructor_arg)::in,
+    string.builder.state::di, string.builder.state::uo) is det.
 
-mercury_output_ctor_args(Stream, TVarSet, IndentStr, AnyFieldName,
-        HeadArg, TailArgs, !IO) :-
+format_ctor_args(TVarSet, IndentStr, AnyFieldName,
+        HeadArg, TailArgs, !State) :-
     HeadArg = ctor_arg(MaybeFieldName, Type, _Context),
-    io.write_string(Stream, IndentStr, !IO),
+    string.builder.append_string(IndentStr, !State),
     (
         AnyFieldName = no
     ;
         AnyFieldName = yes,
         (
             MaybeFieldName = no,
-            io.format(Stream, "%24s", [s("")], !IO)
+            string.builder.format("%24s", [s("")], !State)
         ;
             MaybeFieldName = yes(ctor_field_name(FieldName, _Ctxt)),
-            io.format(Stream, "%-20s :: ",
-                [s(unqualify_name(FieldName))], !IO)
+            string.builder.format("%-20s :: ",
+                [s(unqualify_name(FieldName))], !State)
         )
     ),
-    mercury_output_type(TVarSet, print_name_only, Type, Stream, !IO),
+    mercury_format_type(TVarSet, print_name_only, Type,
+        string.builder.handle, !State),
     (
         TailArgs = [],
-        io.write_string(Stream, "\n", !IO)
+        string.builder.append_string("\n", !State)
     ;
         TailArgs = [HeadTailArg | TailTailArgs],
-        io.write_string(Stream, ",\n", !IO),
-        mercury_output_ctor_args(Stream, TVarSet, IndentStr, AnyFieldName,
-            HeadTailArg, TailTailArgs, !IO)
+        string.builder.append_string(",\n", !State),
+        format_ctor_args(TVarSet, IndentStr, AnyFieldName,
+            HeadTailArg, TailTailArgs, !State)
     ).
 
-:- pred mercury_output_ctor_arg_repns(io.text_output_stream::in, tvarset::in,
-    string::in, bool::in, int::in, constructor_arg_repn::in,
-    list(constructor_arg_repn)::in, io::di, io::uo) is det.
+:- pred format_ctor_arg_repns(tvarset::in, string::in, bool::in,
+    int::in, constructor_arg_repn::in, list(constructor_arg_repn)::in,
+    string.builder.state::di, string.builder.state::uo) is det.
 
-mercury_output_ctor_arg_repns(Stream, TVarSet, IndentStr, AnyFieldName,
-        CurArgNum, HeadArgRepn, TailArgRepns, !IO) :-
+format_ctor_arg_repns(TVarSet, IndentStr, AnyFieldName,
+        CurArgNum, HeadArgRepn, TailArgRepns, !State) :-
     HeadArgRepn = ctor_arg_repn(MaybeFieldName, Type, ArgPosWidth, _Context),
-    io.write_string(Stream, IndentStr, !IO),
+    string.builder.append_string(IndentStr, !State),
     (
         AnyFieldName = no
     ;
         AnyFieldName = yes,
         (
             MaybeFieldName = no,
-            io.format(Stream, "%24s", [s("")], !IO)
+            string.builder.format("%24s", [s("")], !State)
         ;
             MaybeFieldName = yes(ctor_field_name(FieldName, _Ctxt)),
-            io.format(Stream, "%-20s :: ",
-                [s(unqualify_name(FieldName))], !IO)
+            string.builder.format("%-20s :: ",
+                [s(unqualify_name(FieldName))], !State)
         )
     ),
-    mercury_output_type(TVarSet, print_name_only, Type, Stream, !IO),
+    mercury_format_type(TVarSet, print_name_only, Type,
+        string.builder.handle, !State),
     (
         TailArgRepns = [],
-        io.write_string(Stream, "\n", !IO),
-        write_arg_pos_width(Stream, IndentStr, CurArgNum, ArgPosWidth, !IO)
+        string.builder.append_string("\n", !State),
+        format_arg_pos_width(IndentStr, CurArgNum, ArgPosWidth, !State)
     ;
         TailArgRepns = [HeadTailArgRepn | TailTailArgRepns],
-        io.write_string(Stream, ",\n", !IO),
-        write_arg_pos_width(Stream, IndentStr, CurArgNum, ArgPosWidth, !IO),
-        mercury_output_ctor_arg_repns(Stream, TVarSet, IndentStr, AnyFieldName,
-            CurArgNum + 1, HeadTailArgRepn, TailTailArgRepns, !IO)
+        string.builder.append_string(",\n", !State),
+        format_arg_pos_width(IndentStr, CurArgNum, ArgPosWidth, !State),
+        format_ctor_arg_repns(TVarSet, IndentStr, AnyFieldName,
+            CurArgNum + 1, HeadTailArgRepn, TailTailArgRepns, !State)
     ).
 
 %---------------------%
@@ -747,17 +766,17 @@ local_sectag_to_string(LocalSectag) = String :-
         String = string.format("%u in %u bits", [u(SectagValue), u8(NumBits)])
     ).
 
-:- pred write_arg_pos_width(io.text_output_stream::in, string::in, int::in,
-    arg_pos_width::in, io::di, io::uo) is det.
+:- pred format_arg_pos_width(string::in, int::in, arg_pos_width::in,
+    string.builder.state::di, string.builder.state::uo) is det.
 
-write_arg_pos_width(Stream, IndentStr, CurArgNum, ArgPosWidth, !IO) :-
-    io.write_string(Stream, IndentStr, !IO),
+format_arg_pos_width(IndentStr, CurArgNum, ArgPosWidth, !State) :-
+    string.builder.append_string(IndentStr, !State),
     (
         ArgPosWidth = apw_full(ArgOnlyOffset, CellOffset),
         ArgOnlyOffset = arg_only_offset(AOWordNum),
         CellOffset = cell_offset(CellWordNum),
-        io.format(Stream, "%% arg %d: full word, offset %d/%d\n",
-            [i(CurArgNum), i(AOWordNum), i(CellWordNum)], !IO)
+        string.builder.format("%% arg %d: full word, offset %d/%d\n",
+            [i(CurArgNum), i(AOWordNum), i(CellWordNum)], !State)
     ;
         ArgPosWidth = apw_double(ArgOnlyOffset, CellOffset, DoubleWordKind),
         ArgOnlyOffset = arg_only_offset(AOWordNum),
@@ -772,10 +791,10 @@ write_arg_pos_width(Stream, IndentStr, CurArgNum, ArgPosWidth, !IO) :-
             DoubleWordKind = dw_uint64,
             KindStr = "uint64"
         ),
-        io.format(Stream,
+        string.builder.format(
             "%% arg %d: double word %s, offsets %d/%d to %d/%d\n",
             [i(CurArgNum), s(KindStr), i(AOWordNum), i(CellWordNum),
-            i(AOWordNum + 1), i(CellWordNum + 1)], !IO)
+            i(AOWordNum + 1), i(CellWordNum + 1)], !State)
     ;
         (
             ArgPosWidth = apw_partial_first(ArgOnlyOffset, CellOffset, Shift,
@@ -792,19 +811,20 @@ write_arg_pos_width(Stream, IndentStr, CurArgNum, ArgPosWidth, !IO) :-
         NumBits = arg_num_bits(NumBitsInt),
         Mask = arg_mask(MaskInt),
         FillStr = fill_kind_to_string(FillKind),
-        io.format(Stream, "%% arg %d: partial %s, " ++
+        string.builder.format("%% arg %d: partial %s, " ++
             "offset %d/%d, shift %2d #bits %2d mask %x %s\n",
             [i(CurArgNum), s(FirstShifted), i(AOWordNum), i(CellWordNum),
-            i(ShiftInt), i(NumBitsInt), i(MaskInt), s(FillStr)], !IO)
+            i(ShiftInt), i(NumBitsInt), i(MaskInt), s(FillStr)], !State)
     ;
         ArgPosWidth = apw_none_shifted(ArgOnlyOffset, CellOffset),
         ArgOnlyOffset = arg_only_offset(AOWordNum),
         CellOffset = cell_offset(CellWordNum),
-        io.format(Stream, "%% arg %d: none shifted, offset %d/%d\n",
-            [i(CurArgNum), i(AOWordNum), i(CellWordNum)], !IO)
+        string.builder.format("%% arg %d: none shifted, offset %d/%d\n",
+            [i(CurArgNum), i(AOWordNum), i(CellWordNum)], !State)
     ;
         ArgPosWidth = apw_none_nowhere,
-        io.format(Stream, "%% arg %d: none_nowhere\n", [i(CurArgNum)], !IO)
+        string.builder.format("%% arg %d: none_nowhere\n",
+            [i(CurArgNum)], !State)
     ).
 
 :- func fill_kind_to_string(fill_kind) = string.

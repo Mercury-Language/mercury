@@ -13,12 +13,18 @@
 :- import_module hlds.hlds_out.hlds_out_util.
 
 :- import_module io.
+:- import_module string.
+:- import_module string.builder.
 
 :- pred write_classes(hlds_out_info::in, io.text_output_stream::in,
     class_table::in, io::di, io::uo) is det.
+:- pred format_classes(hlds_out_info::in, class_table::in,
+    string.builder.state::di, string.builder.state::uo) is det.
 
 :- pred write_instances(hlds_out_info::in, io.text_output_stream::in,
     instance_table::in, io::di, io::uo) is det.
+:- pred format_instances(hlds_out_info::in, instance_table::in,
+    string.builder.state::di, string.builder.state::uo) is det.
 
 %---------------------------------------------------------------------------%
 
@@ -46,9 +52,10 @@
 :- import_module maybe.
 :- import_module pair.
 :- import_module set.
-:- import_module string.
 :- import_module term.
 :- import_module varset.
+
+%---------------------------------------------------------------------------%
 
 %---------------------------------------------------------------------------%
 %
@@ -56,20 +63,28 @@
 %
 
 write_classes(Info, Stream, ClassTable, !IO) :-
-    io.write_string(Stream, "%-------- Classes --------\n", !IO),
+    State0 = string.builder.init,
+    format_classes(Info, ClassTable, State0, State),
+    Str = string.builder.to_string(State),
+    io.write_string(Stream, Str, !IO).
+
+format_classes(Info, ClassTable, !State) :-
+    string.builder.append_string("%-------- Classes --------\n", !State),
     map.to_assoc_list(ClassTable, ClassTableList),
-    list.foldl(write_class_defn(Info, Stream), ClassTableList, !IO),
-    io.nl(Stream, !IO).
+    list.foldl(format_class_defn(Info), ClassTableList, !State),
+    string.builder.append_string("\n", !State).
 
-:- pred write_class_defn(hlds_out_info::in, io.text_output_stream::in,
-    pair(class_id, hlds_class_defn)::in, io::di, io::uo) is det.
+:- pred format_class_defn(hlds_out_info::in,
+    pair(class_id, hlds_class_defn)::in,
+    string.builder.state::di, string.builder.state::uo) is det.
 
-write_class_defn(Info, Stream, ClassId - ClassDefn, !IO) :-
+format_class_defn(Info, ClassId - ClassDefn, !State) :-
     ClassDefn = hlds_class_defn(_, TVarSet, _, Vars, SuperClassConstraints,
         FunDeps, _, _, MethodInfos, Context, _),
 
-    io.format(Stream, "\n%% %s:\n", [s(class_id_to_string(ClassId))], !IO),
-    maybe_output_context_comment(Stream, 0u, "", Context, !IO),
+    string.builder.format("\n%% %s:\n",
+        [s(class_id_to_string(ClassId))], !State),
+    maybe_format_context_comment(0u, "", Context, !State),
     DumpOptions = Info ^ hoi_dump_hlds_options,
     ( if string.contains_char(DumpOptions, 'v') then
         VarNamePrint = print_name_and_num
@@ -77,88 +92,96 @@ write_class_defn(Info, Stream, ClassId - ClassDefn, !IO) :-
         VarNamePrint = print_name_only
     ),
 
-    io.format(Stream, "%% Vars: %s\n",
-        [s(mercury_vars_to_string_vs(TVarSet, VarNamePrint, Vars))], !IO),
+    string.builder.format("%% Vars: %s\n",
+        [s(mercury_vars_to_string_vs(TVarSet, VarNamePrint, Vars))], !State),
 
     IndentStr = "",
-    io.write_string(Stream, "% Functional dependencies:\n", !IO),
-    list.foldl(hlds_output_fundep(Stream, IndentStr), FunDeps, !IO),
+    string.builder.append_string("% Functional dependencies:\n", !State),
+    list.foldl(format_fundep(IndentStr), FunDeps, !State),
 
-    io.write_string(Stream, "% Superclass constraints:\n", !IO),
+    string.builder.append_string("% Superclass constraints:\n", !State),
     list.foldl(
-        hlds_output_constraint(Stream, IndentStr, TVarSet, VarNamePrint),
-        SuperClassConstraints, !IO),
+        format_constraint(IndentStr, TVarSet, VarNamePrint),
+        SuperClassConstraints, !State),
 
-    io.write_string(Stream, "% Class methods:\n", !IO),
-    list.foldl(write_method_info(Stream, IndentStr), MethodInfos, !IO).
+    string.builder.append_string("% Class methods:\n", !State),
+    list.foldl(format_method_info(IndentStr), MethodInfos, !State).
 
-:- pred hlds_output_fundep(io.text_output_stream::in, string::in,
-    hlds_class_fundep::in, io::di, io::uo) is det.
+:- pred format_fundep(string::in, hlds_class_fundep::in,
+    string.builder.state::di, string.builder.state::uo) is det.
 
-hlds_output_fundep(Stream, IndentStr, fundep(Domain, Range), !IO) :-
+format_fundep(IndentStr, fundep(Domain, Range), !State) :-
     DomainList = set.to_sorted_list(Domain),
     RangeList = set.to_sorted_list(Range),
     DomainStrs = list.map(string.int_to_string, DomainList),
     RangeStrs = list.map(string.int_to_string, RangeList),
     DomainStr = string.join_list(", ", DomainStrs),
     RangeStr = string.join_list(", ", RangeStrs),
-    io.format(Stream, "%s%%   (%s -> %s)\n",
-        [s(IndentStr), s(DomainStr), s(RangeStr)], !IO).
+    string.builder.format("%s%%   (%s -> %s)\n",
+        [s(IndentStr), s(DomainStr), s(RangeStr)], !State).
 
-:- pred hlds_output_constraint(io.text_output_stream::in, string::in,
-    tvarset::in, var_name_print::in, prog_constraint::in,
-    io::di, io::uo) is det.
+:- pred format_constraint(string::in, tvarset::in, var_name_print::in,
+    prog_constraint::in,
+    string.builder.state::di, string.builder.state::uo) is det.
 
-hlds_output_constraint(Stream, IndentStr, TVarSet, VarNamePrint,
-        Constraint, !IO) :-
+format_constraint(IndentStr, TVarSet, VarNamePrint, Constraint, !State) :-
     ConstraintStr = mercury_constraint_to_string(TVarSet, VarNamePrint,
         Constraint),
-    io.format(Stream, "%s%%   %s\n", [s(IndentStr), s(ConstraintStr)], !IO).
+    string.builder.format("%s%%   %s\n",
+        [s(IndentStr), s(ConstraintStr)], !State).
 
-:- pred write_method_info(io.text_output_stream::in, string::in,
-    method_info::in, io::di, io::uo) is det.
+:- pred format_method_info(string::in, method_info::in,
+    string.builder.state::di, string.builder.state::uo) is det.
 
-write_method_info(Stream, IndentStr, MethodInfo, !IO) :-
+format_method_info(IndentStr, MethodInfo, !State) :-
     MethodInfo = method_info(method_proc_num(MethodProcNum), PredPfNameArity,
         OrigPredProcId, _CurPredProcId),
     NameStr = pf_sym_name_user_arity_to_unquoted_string(PredPfNameArity),
     OrigPredProcId = proc(OrigPredId, OrigProcId),
     pred_id_to_int(OrigPredId, OrigPredInt),
     proc_id_to_int(OrigProcId, OrigProcInt),
-    io.format(Stream, "%s%%   method %2d: %s, proc(%d, %d)\n",
+    string.builder.format("%s%%   method %2d: %s, proc(%d, %d)\n",
         [s(IndentStr), i(MethodProcNum), s(NameStr),
-        i(OrigPredInt), i(OrigProcInt)], !IO).
+        i(OrigPredInt), i(OrigProcInt)], !State).
 
 %---------------------------------------------------------------------------%
 %
 % Write out the instance table.
 %
 
-write_instances(Info, Stream, InstanceTable, !IO) :-
-    io.write_string(Stream, "%-------- Instances --------\n", !IO),
-    map.to_assoc_list(InstanceTable, InstanceTableList),
-    list.foldl(write_instance_defns(Info, Stream), InstanceTableList, !IO),
-    io.nl(Stream, !IO).
+write_instances(Info, Stream, ClassTable, !IO) :-
+    State0 = string.builder.init,
+    format_instances(Info, ClassTable, State0, State),
+    Str = string.builder.to_string(State),
+    io.write_string(Stream, Str, !IO).
 
-:- pred write_instance_defns(hlds_out_info::in, io.text_output_stream::in,
-    pair(class_id, list(hlds_instance_defn))::in, io::di, io::uo) is det.
+format_instances(Info, InstanceTable, !State) :-
+    string.builder.append_string("%-------- Instances --------\n", !State),
+    map.to_assoc_list(InstanceTable, InstanceTableEntries),
+    list.foldl(format_instance_defns_for_class(Info),
+        InstanceTableEntries, !State),
+    string.builder.append_string("\n", !State).
 
-write_instance_defns(Info, Stream, ClassId - InstanceDefns, !IO) :-
-    io.format(Stream, "\n%% Instances for class %s:\n",
-        [s(class_id_to_string(ClassId))], !IO),
-    list.foldl(write_instance_defn(Info, Stream), InstanceDefns, !IO).
+:- pred format_instance_defns_for_class(hlds_out_info::in,
+    pair(class_id, list(hlds_instance_defn))::in,
+    string.builder.state::di, string.builder.state::uo) is det.
 
-:- pred write_instance_defn(hlds_out_info::in, io.text_output_stream::in,
-    hlds_instance_defn::in, io::di, io::uo) is det.
+format_instance_defns_for_class(Info, ClassId - InstanceDefns, !State) :-
+    string.builder.format("\n%% Instances for class %s:\n",
+        [s(class_id_to_string(ClassId))], !State),
+    list.foldl(format_instance_defn(Info), InstanceDefns, !State).
 
-write_instance_defn(Info, Stream, InstanceDefn, !IO) :-
+:- pred format_instance_defn(hlds_out_info::in, hlds_instance_defn::in,
+    string.builder.state::di, string.builder.state::uo) is det.
+
+format_instance_defn(Info, InstanceDefn, !State) :-
     InstanceDefn = hlds_instance_defn(_InstanceModule, InstanceStatus,
         TVarSet, OriginalTypes, Types, Constraints, MaybeSubsumedContext,
         ProofMap, Body, MaybeMethodInfos, Context),
 
     % Separate this instance from any previous ones, or the class id.
-    io.nl(Stream, !IO),
-    maybe_output_context_comment(Stream, 1u, "", Context, !IO),
+    string.builder.append_string("\n", !State),
+    maybe_format_context_comment(1u, "", Context, !State),
 
     DumpOptions = Info ^ hoi_dump_hlds_options,
     ( if string.contains_char(DumpOptions, 'v') then
@@ -174,71 +197,70 @@ write_instance_defn(Info, Stream, InstanceDefn, !IO) :-
         OriginalTypes),
     TypesStr = string.join_list(", ", TypeStrs),
     OriginalTypesStr = string.join_list(", ", OriginalTypeStrs),
-    io.format(Stream, "%s%% Types: %s\n",
-        [s(IndentStr), s(TypesStr)], !IO),
-    io.format(Stream, "%s%% Original types: %s\n",
-        [s(IndentStr), s(OriginalTypesStr)], !IO),
+    string.builder.format("%s%% Types: %s\n",
+        [s(IndentStr), s(TypesStr)], !State),
+    string.builder.format("%s%% Original types: %s\n",
+        [s(IndentStr), s(OriginalTypesStr)], !State),
 
     InstanceStatusStr = instance_import_status_to_string(InstanceStatus),
-    io.format(Stream, "%s%% Status: %s\n",
-        [s(IndentStr), s(InstanceStatusStr)], !IO),
+    string.builder.format("%s%% Status: %s\n",
+        [s(IndentStr), s(InstanceStatusStr)], !State),
 
     (
         MaybeSubsumedContext = no
     ;
         MaybeSubsumedContext = yes(SubsumedContext),
-        io.format(Stream, "%s%% Subsumed context: %s\n",
-            [s(IndentStr), s(context_to_brief_string(SubsumedContext))], !IO)
+        string.builder.format("%s%% Subsumed context: %s\n",
+            [s(IndentStr), s(context_to_brief_string(SubsumedContext))], !State)
     ),
 
     ConstraintStrs =
         list.map(mercury_constraint_to_string(TVarSet, VarNamePrint),
         Constraints),
     ConstraintsStr = string.join_list(", ", ConstraintStrs),
-    io.format(Stream, "%s%% Constraints: %s\n",
-        [s(IndentStr), s(ConstraintsStr)], !IO),
+    string.builder.format("%s%% Constraints: %s\n",
+        [s(IndentStr), s(ConstraintsStr)], !State),
 
     (
         Body = instance_body_abstract,
-        io.format(Stream, "%s%% abstract\n", [s(IndentStr)], !IO)
+        string.builder.format("%s%% abstract\n", [s(IndentStr)], !State)
     ;
         Body = instance_body_concrete(Methods),
-        io.format(Stream, "%s%% Instance methods:\n", [s(IndentStr)], !IO),
-        write_instance_methods(Stream, IndentStr, Methods, 1, !IO)
+        string.builder.format("%s%% Instance methods:\n",
+            [s(IndentStr)], !State),
+        format_instance_methods(IndentStr, Methods, 1, !State)
     ),
 
     (
         MaybeMethodInfos = yes(MethodInfos),
-        io.format(Stream, "%s%% Procedures:\n", [s(IndentStr)], !IO),
-        list.foldl(write_method_info(Stream, IndentStr), MethodInfos, !IO)
+        string.builder.format("%s%% Procedures:\n", [s(IndentStr)], !State),
+        list.foldl(format_method_info(IndentStr), MethodInfos, !State)
     ;
         MaybeMethodInfos = no
     ),
-    write_constraint_proof_map(Stream, 1u, VarNamePrint, TVarSet,
-        ProofMap, !IO).
+    format_constraint_proof_map(1u, VarNamePrint, TVarSet, ProofMap, !State).
 
-:- pred write_instance_methods(io.text_output_stream::in, string::in,
-    list(instance_method)::in, int::in, io::di, io::uo) is det.
+:- pred format_instance_methods(string::in, list(instance_method)::in, int::in,
+    string.builder.state::di, string.builder.state::uo) is det.
 
-write_instance_methods(_, _, [], _, !IO).
-write_instance_methods(Stream, IndentStr, [Method | Methods],
-        CurMethodNum, !IO) :-
+format_instance_methods(_, [], _, !State).
+format_instance_methods(IndentStr, [Method | Methods], CurMethodNum, !State) :-
     Method = instance_method(MethodName, _Defn, _Context),
     MethodName = pred_pf_name_arity(PredOrFunc, MethodSymName, UserArity),
     UserArity = user_arity(UserArityInt),
-    io.format(Stream, "%s%%   method %d, %s %s/%d\n",
+    string.builder.format("%s%%   method %d, %s %s/%d\n",
         [s(IndentStr), i(CurMethodNum), s(pred_or_func_to_str(PredOrFunc)),
-        s(sym_name_to_string(MethodSymName)), i(UserArityInt)], !IO),
-    io.format(Stream, "%s%%   ", [s(IndentStr)], !IO),
+        s(sym_name_to_string(MethodSymName)), i(UserArityInt)], !State),
+    string.builder.format("%s%%   ", [s(IndentStr)], !State),
     % XXX This sort-of does the right thing when Method is bound to
     % instance_proc_def_name (only sort-of because we shouldn't print tabs),
     % but it does the wrong things when Method is instance_proc_def_clauses.
     % Specifically, only the first line in the printout of the clause
     % will start with a percent sign (the one printed just above); all
     % the others will lack this sign. I (zs) see no simple way of fixing this.
-    mercury_format_instance_method(Method, Stream, !IO),
-    io.nl(Stream, !IO),
-    write_instance_methods(Stream, IndentStr, Methods, CurMethodNum + 1, !IO).
+    mercury_format_instance_method(Method, string.builder.handle, !State),
+    string.builder.append_string("\n", !State),
+    format_instance_methods(IndentStr, Methods, CurMethodNum + 1, !State).
 
 %---------------------------------------------------------------------------%
 :- end_module hlds.hlds_out.hlds_out_typeclass_table.

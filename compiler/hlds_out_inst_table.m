@@ -15,6 +15,8 @@
 :- import_module parse_tree.parse_tree_out_info.
 
 :- import_module io.
+:- import_module string.
+:- import_module string.builder.
 
 :- type maybe_use_error_msg_inst
     --->    do_not_use_error_msg_inst
@@ -23,9 +25,14 @@
 :- pred write_inst_table(io.text_output_stream::in, output_lang::in,
     maybe_use_error_msg_inst::in, int::in, int::in, inst_table::in,
     io::di, io::uo) is det.
+:- pred format_inst_table(output_lang::in,
+    maybe_use_error_msg_inst::in, int::in, int::in, inst_table::in,
+    string.builder.state::di, string.builder.state::uo) is det.
 
 :- pred write_mode_table(io.text_output_stream::in, mode_table::in,
     io::di, io::uo) is det.
+:- pred format_mode_table(mode_table::in,
+    string.builder.state::di, string.builder.state::uo) is det.
 
 %---------------------------------------------------------------------------%
 
@@ -48,7 +55,6 @@
 :- import_module list.
 :- import_module map.
 :- import_module pair.
-:- import_module string.
 :- import_module term.
 :- import_module varset.
 
@@ -56,7 +62,15 @@
 
 write_inst_table(Stream, Lang, MaybeUseErrorMsgInst,
         InstNumLimit, InstSizeLimit, InstTable, !IO) :-
-    io.write_string(Stream, "%-------- Insts --------\n", !IO),
+    State0 = string.builder.init,
+    format_inst_table(Lang, MaybeUseErrorMsgInst, InstNumLimit, InstSizeLimit,
+        InstTable, State0, State),
+    Str = string.builder.to_string(State),
+    io.write_string(Stream, Str, !IO).
+
+format_inst_table(Lang, MaybeUseErrorMsgInst, InstNumLimit, InstSizeLimit,
+        InstTable, !State) :-
+    string.builder.append_string("%-------- Insts --------\n", !State),
 
     inst_table_get_user_insts(InstTable, UserInstTable),
     inst_table_get_unify_insts(InstTable, UnifyInstTable),
@@ -75,262 +89,275 @@ write_inst_table(Stream, Lang, MaybeUseErrorMsgInst,
     mostly_uniq_insts_to_sorted_pairs(MostlyUniqInstTable,
         MostlyUniqInstPairs),
 
-    io.write_string(Stream, "\n%-------- User defined insts --------\n", !IO),
-    list.foldl(write_user_inst(Stream), UserInstPairs, !IO),
+    string.builder.append_string(
+        "\n%-------- User defined insts --------\n", !State),
+    list.foldl(format_user_inst, UserInstPairs, !State),
 
-    io.write_string(Stream, "\n%-------- Unify insts --------\n", !IO),
+    string.builder.append_string(
+        "\n%-------- Unify insts --------\n", !State),
     list.foldl2(
-        write_key_maybe_inst_det(MaybeUseErrorMsgInst, Stream, Lang, "Unify",
-            InstNumLimit, InstSizeLimit, write_key_unify_inst),
-        UnifyInstPairs, 0, NumUnifyInsts, !IO),
-    io.format(Stream,
-        "\nTotal number of unify insts: %d\n", [i(NumUnifyInsts)], !IO),
+        format_key_maybe_inst_det(MaybeUseErrorMsgInst, Lang, "Unify",
+            InstNumLimit, InstSizeLimit, format_key_unify_inst),
+        UnifyInstPairs, 0, NumUnifyInsts, !State),
+    string.builder.format("\nTotal number of unify insts: %d\n",
+        [i(NumUnifyInsts)], !State),
 
-    io.write_string(Stream, "\n%-------- Merge insts --------\n", !IO),
+    string.builder.append_string(
+        "\n%-------- Merge insts --------\n", !State),
     list.foldl2(
-        write_key_maybe_inst(MaybeUseErrorMsgInst, Stream, Lang, "Merge",
-            InstNumLimit, InstSizeLimit, write_key_merge_inst),
-        MergeInstPairs, 0, NumMergeInsts, !IO),
-    io.format(Stream,
-        "\nTotal number of merge insts: %d\n", [i(NumMergeInsts)], !IO),
+        format_key_maybe_inst(MaybeUseErrorMsgInst, Lang, "Merge",
+            InstNumLimit, InstSizeLimit, format_key_merge_inst),
+        MergeInstPairs, 0, NumMergeInsts, !State),
+    string.builder.format("\nTotal number of merge insts: %d\n",
+        [i(NumMergeInsts)], !State),
 
-    io.write_string(Stream, "\n%-------- Ground insts --------\n", !IO),
+    string.builder.append_string(
+        "\n%-------- Ground insts --------\n", !State),
     list.foldl2(
-        write_key_maybe_inst_det(MaybeUseErrorMsgInst, Stream, Lang, "Ground",
-            InstNumLimit, InstSizeLimit, write_key_ground_inst),
-        GroundInstPairs, 0, NumGroundInsts, !IO),
-    io.format(Stream, "\nTotal number of ground insts: %d\n",
-        [i(NumGroundInsts)], !IO),
+        format_key_maybe_inst_det(MaybeUseErrorMsgInst, Lang, "Ground",
+            InstNumLimit, InstSizeLimit, format_key_ground_inst),
+        GroundInstPairs, 0, NumGroundInsts, !State),
+    string.builder.format("\nTotal number of ground insts: %d\n",
+        [i(NumGroundInsts)], !State),
 
-    io.write_string(Stream, "\n%-------- Any insts --------\n", !IO),
+    string.builder.append_string(
+        "\n%-------- Any insts --------\n", !State),
     list.foldl2(
-        write_key_maybe_inst_det( MaybeUseErrorMsgInst, Stream, Lang, "Any",
-            InstNumLimit, InstSizeLimit, write_key_any_inst),
-        AnyInstPairs, 0, NumAnyInsts, !IO),
-    io.format(Stream,
-        "\nTotal number of any insts: %d\n", [i(NumAnyInsts)], !IO),
+        format_key_maybe_inst_det( MaybeUseErrorMsgInst, Lang, "Any",
+            InstNumLimit, InstSizeLimit, format_key_any_inst),
+        AnyInstPairs, 0, NumAnyInsts, !State),
+    string.builder.format("\nTotal number of any insts: %d\n",
+        [i(NumAnyInsts)], !State),
 
-    io.write_string(Stream, "\n%-------- Shared insts --------\n", !IO),
+    string.builder.append_string(
+        "\n%-------- Shared insts --------\n", !State),
     list.foldl2(
-        write_key_maybe_inst(MaybeUseErrorMsgInst, Stream, Lang, "Shared",
-            InstNumLimit, InstSizeLimit, write_inst_name_nl),
-        SharedInstPairs, 0, NumSharedInsts, !IO),
-    io.format(Stream, "\nTotal number of shared insts: %d\n",
-        [i(NumSharedInsts)], !IO),
+        format_key_maybe_inst(MaybeUseErrorMsgInst, Lang, "Shared",
+            InstNumLimit, InstSizeLimit, format_inst_name_nl),
+        SharedInstPairs, 0, NumSharedInsts, !State),
+    string.builder.format("\nTotal number of shared insts: %d\n",
+        [i(NumSharedInsts)], !State),
 
-    io.write_string(Stream, "\n%-------- MostlyUniq insts --------\n", !IO),
+    string.builder.append_string(
+        "\n%-------- MostlyUniq insts --------\n", !State),
     list.foldl2(
-        write_key_maybe_inst(MaybeUseErrorMsgInst, Stream, Lang, "MostlyUniq",
-            InstNumLimit, InstSizeLimit, write_inst_name_nl),
-        MostlyUniqInstPairs, 0, NumMostlyUniqInsts, !IO),
-    io.format(Stream, "\nTotal number of mostly uniq insts: %d\n",
-        [i(NumMostlyUniqInsts)], !IO),
+        format_key_maybe_inst(MaybeUseErrorMsgInst, Lang, "MostlyUniq",
+            InstNumLimit, InstSizeLimit, format_inst_name_nl),
+        MostlyUniqInstPairs, 0, NumMostlyUniqInsts, !State),
+    string.builder.format("\nTotal number of mostly uniq insts: %d\n",
+        [i(NumMostlyUniqInsts)], !State),
 
-    io.nl(Stream, !IO).
+    string.builder.append_string("\n", !State).
 
-:- pred write_user_inst(io.text_output_stream::in,
-    pair(inst_ctor, hlds_inst_defn)::in, io::di, io::uo) is det.
+:- pred format_user_inst(pair(inst_ctor, hlds_inst_defn)::in,
+    string.builder.state::di, string.builder.state::uo) is det.
 
-write_user_inst(Stream, InstCtor - InstDefn, !IO) :-
+format_user_inst(InstCtor - InstDefn, !State) :-
     InstCtor = inst_ctor(InstName, _InstArity),
-    io.format(Stream, "\n:- inst %s", [s(sym_name_to_string(InstName))], !IO),
+    string.builder.format("\n:- inst %s",
+        [s(sym_name_to_string(InstName))], !State),
     InstDefn = hlds_inst_defn(InstVarSet, InstParams, InstBody,
         _MaybeMatchingTypeCtors, _Context, Status),
     (
         InstParams = []
     ;
         InstParams = [HeadInstParam | TailInstParams],
-        io.write_string(Stream, "(", !IO),
-        write_inst_params(Stream, HeadInstParam, TailInstParams, InstVarSet,
-            !IO),
-        io.write_string(Stream, ")", !IO)
+        string.builder.append_string("(", !State),
+        format_inst_params(InstVarSet, HeadInstParam, TailInstParams, !State),
+        string.builder.append_string(")", !State)
     ),
     InstBody = eqv_inst(EqvInst),
-    io.write_string(Stream, ":\n", !IO),
-    mercury_output_inst(Stream, output_debug, InstVarSet, EqvInst, !IO),
-    io.write_string(Stream, "\n", !IO),
+    string.builder.append_string(":\n", !State),
+    mercury_format_inst(output_debug, InstVarSet, EqvInst,
+        string.builder.handle, !State),
+    string.builder.append_string("\n", !State),
     StatusStr = inst_import_status_to_string(Status),
-    io.format(Stream, "%% status %s\n", [s(StatusStr)], !IO).
+    string.builder.format("%% status %s\n", [s(StatusStr)], !State).
 
-:- pred write_inst_params(io.text_output_stream::in, inst_var::in,
-    list(inst_var)::in, inst_varset::in, io::di, io::uo) is det.
+:- pred format_inst_params(inst_varset::in, inst_var::in, list(inst_var)::in,
+    string.builder.state::di, string.builder.state::uo) is det.
 
-write_inst_params(Stream, InstVar, InstVars, InstVarSet, !IO) :-
+format_inst_params(InstVarSet, InstVar, InstVars, !State) :-
     varset.lookup_name(InstVarSet, InstVar, InstVarName),
-    io.write_string(Stream, InstVarName, !IO),
+    string.builder.append_string(InstVarName, !State),
     (
         InstVars = []
     ;
         InstVars = [HeadInstVar | TailInstVars],
-        io.write_string(Stream, ", ", !IO),
-        write_inst_params(Stream, HeadInstVar, TailInstVars, InstVarSet, !IO)
+        string.builder.append_string(", ", !State),
+        format_inst_params(InstVarSet, HeadInstVar, TailInstVars, !State)
     ).
 
-:- pred write_key_maybe_inst(maybe_use_error_msg_inst::in,
-    io.text_output_stream::in, output_lang::in, string::in, int::in, int::in,
-    pred(maybe_use_error_msg_inst, io.text_output_stream, output_lang, int,
-        Key, io, io)::
-        in(pred(in, in, in, in, in, di, uo) is det),
-    pair(Key, maybe_inst)::in, int::in, int::out, io::di, io::uo) is det.
+:- pred format_key_maybe_inst(maybe_use_error_msg_inst::in,
+    output_lang::in, string::in, int::in, int::in,
+    pred(maybe_use_error_msg_inst, output_lang, int, Key,
+        string.builder.state, string.builder.state)::
+        in(pred(in, in, in, in, di, uo) is det),
+    pair(Key, maybe_inst)::in, int::in, int::out,
+    string.builder.state::di, string.builder.state::uo) is det.
 
-write_key_maybe_inst(MaybeUseErrorMsgInst, Stream, Lang, Kind,
-        InstNumLimit, InstSizeLimit, WriteKey, Key - MaybeInst, !N, !IO) :-
+format_key_maybe_inst(MaybeUseErrorMsgInst, Lang, Kind,
+        InstNumLimit, InstSizeLimit, WriteKey, Key - MaybeInst, !N, !State) :-
     !:N = !.N + 1,
     ( if !.N =< InstNumLimit then
-        io.format(Stream, "\n%s entry %d key\n", [s(Kind), i(!.N)], !IO),
-        WriteKey(MaybeUseErrorMsgInst, Stream, Lang, InstSizeLimit, Key, !IO),
+        string.builder.format("\n%s entry %d key\n",
+            [s(Kind), i(!.N)], !State),
+        WriteKey(MaybeUseErrorMsgInst, Lang, InstSizeLimit, Key, !State),
         (
             MaybeInst = inst_unknown,
-            io.format(Stream, "%s entry %d value UNKNOWN\n",
-                [s(Kind), i(!.N)], !IO)
+            string.builder.format("%s entry %d value UNKNOWN\n",
+                [s(Kind), i(!.N)], !State)
         ;
             MaybeInst = inst_known(Inst),
-            io.format(Stream, "%s entry %d value:\n", [s(Kind), i(!.N)], !IO),
-            write_inst_entry(MaybeUseErrorMsgInst, Stream, Lang, InstSizeLimit,
-                Inst, !IO)
+            string.builder.format("%s entry %d value:\n",
+                [s(Kind), i(!.N)], !State),
+            format_inst_entry(MaybeUseErrorMsgInst, Lang, InstSizeLimit,
+                Inst, !State)
         )
     else
         true
     ).
 
-:- pred write_key_maybe_inst_det(maybe_use_error_msg_inst::in,
-    io.text_output_stream::in, output_lang::in, string::in, int::in, int::in,
-    pred(maybe_use_error_msg_inst, io.text_output_stream, output_lang, int,
-        Key, io, io)::
-        in(pred(in, in, in, in, in, di, uo) is det),
+:- pred format_key_maybe_inst_det(maybe_use_error_msg_inst::in,
+    output_lang::in, string::in, int::in, int::in,
+    pred(maybe_use_error_msg_inst, output_lang, int, Key,
+        string.builder.state, string.builder.state)::
+        in(pred(in, in, in, in, di, uo) is det),
     pair(Key, maybe_inst_det)::in, int::in, int::out,
-    io::di, io::uo) is det.
+    string.builder.state::di, string.builder.state::uo) is det.
 
-write_key_maybe_inst_det(MaybeUseErrorMsgInst, Stream, Lang, Kind,
-        InstNumLimit, InstSizeLimit, WriteKey, Key - MaybeInstDet, !N, !IO) :-
+format_key_maybe_inst_det(MaybeUseErrorMsgInst, Lang, Kind,
+        InstNumLimit, InstSizeLimit, WriteKey, Key - MaybeInstDet,
+        !N, !State) :-
     !:N = !.N + 1,
     ( if !.N =< InstNumLimit then
-        io.format(Stream, "\n%s entry %d key\n", [s(Kind), i(!.N)], !IO),
-        WriteKey(MaybeUseErrorMsgInst, Stream, Lang, InstSizeLimit, Key, !IO),
+        string.builder.format("\n%s entry %d key\n",
+            [s(Kind), i(!.N)], !State),
+        WriteKey(MaybeUseErrorMsgInst, Lang, InstSizeLimit, Key, !State),
         (
             MaybeInstDet = inst_det_unknown,
-            io.format(Stream, "%s entry %d value UNKNOWN\n",
-                [s(Kind), i(!.N)], !IO)
+            string.builder.format("%s entry %d value UNKNOWN\n",
+                [s(Kind), i(!.N)], !State)
         ;
             MaybeInstDet = inst_det_known(Inst, Detism),
             DetismStr = determinism_to_string(Detism),
-            io.format(Stream, "%s entry %d value (%s):\n",
-                [s(Kind), i(!.N), s(DetismStr)], !IO),
-            write_inst_entry(MaybeUseErrorMsgInst, Stream, Lang, InstSizeLimit,
-                Inst, !IO)
+            string.builder.format("%s entry %d value (%s):\n",
+                [s(Kind), i(!.N), s(DetismStr)], !State),
+            format_inst_entry(MaybeUseErrorMsgInst, Lang, InstSizeLimit,
+                Inst, !State)
         )
     else
         true
     ).
 
-:- pred write_key_unify_inst(maybe_use_error_msg_inst::in,
-    io.text_output_stream::in, output_lang::in, int::in,
-    unify_inst_info::in, io::di, io::uo) is det.
+:- pred format_key_unify_inst(maybe_use_error_msg_inst::in, output_lang::in,
+    int::in, unify_inst_info::in,
+    string.builder.state::di, string.builder.state::uo) is det.
 
-write_key_unify_inst(MaybeUseErrorMsgInst, Stream, Lang,
-        InstSizeLimit, UnifyInstInfo, !IO) :-
+format_key_unify_inst(MaybeUseErrorMsgInst, Lang, InstSizeLimit,
+        UnifyInstInfo, !State) :-
     UnifyInstInfo = unify_inst_info(Live, Real, InstA, InstB),
     (
         Live = is_live,
-        io.write_string(Stream, "live ", !IO)
+        string.builder.append_string("live ", !State)
     ;
         Live = is_dead,
-        io.write_string(Stream, "dead ", !IO)
+        string.builder.append_string("dead ", !State)
     ),
     (
         Real = real_unify,
-        io.write_string(Stream, "real unify\n", !IO)
+        string.builder.append_string("real unify\n", !State)
     ;
         Real = fake_unify,
-        io.write_string(Stream, "fake unify\n", !IO)
+        string.builder.append_string("fake unify\n", !State)
     ),
-    io.write_string(Stream, "InstA: ", !IO),
-    write_inst_entry(MaybeUseErrorMsgInst, Stream, Lang, InstSizeLimit,
-        InstA, !IO),
-    io.write_string(Stream, "InstB: ", !IO),
-    write_inst_entry(MaybeUseErrorMsgInst, Stream, Lang, InstSizeLimit,
-        InstB, !IO).
+    string.builder.append_string("InstA: ", !State),
+    format_inst_entry(MaybeUseErrorMsgInst, Lang, InstSizeLimit,
+        InstA, !State),
+    string.builder.append_string("InstB: ", !State),
+    format_inst_entry(MaybeUseErrorMsgInst, Lang, InstSizeLimit,
+        InstB, !State).
 
-:- pred write_key_merge_inst(maybe_use_error_msg_inst::in,
-    io.text_output_stream::in, output_lang::in, int::in,
-    merge_inst_info::in, io::di, io::uo) is det.
+:- pred format_key_merge_inst(maybe_use_error_msg_inst::in, output_lang::in,
+    int::in, merge_inst_info::in,
+    string.builder.state::di, string.builder.state::uo) is det.
 
-write_key_merge_inst(MaybeUseErrorMsgInst, Stream, Lang, InstSizeLimit,
-        MergeInstInfo, !IO) :-
+format_key_merge_inst(MaybeUseErrorMsgInst, Lang, InstSizeLimit,
+        MergeInstInfo, !State) :-
     MergeInstInfo = merge_inst_info(InstA, InstB),
-    io.write_string(Stream, "InstA: ", !IO),
-    write_inst_entry(MaybeUseErrorMsgInst, Stream, Lang, InstSizeLimit,
-        InstA, !IO),
-    io.write_string(Stream, "InstB: ", !IO),
-    write_inst_entry(MaybeUseErrorMsgInst, Stream, Lang, InstSizeLimit,
-        InstB, !IO).
+    string.builder.append_string("InstA: ", !State),
+    format_inst_entry(MaybeUseErrorMsgInst, Lang, InstSizeLimit,
+        InstA, !State),
+    string.builder.append_string("InstB: ", !State),
+    format_inst_entry(MaybeUseErrorMsgInst, Lang, InstSizeLimit,
+        InstB, !State).
 
-:- pred write_key_ground_inst(maybe_use_error_msg_inst::in,
-    io.text_output_stream::in, output_lang::in,
-    int::in, ground_inst_info::in, io::di, io::uo) is det.
+:- pred format_key_ground_inst(maybe_use_error_msg_inst::in, output_lang::in,
+    int::in, ground_inst_info::in,
+    string.builder.state::di, string.builder.state::uo) is det.
 
-write_key_ground_inst(MaybeUseErrorMsgInst, Stream, Lang, InstSizeLimit,
-        GroundInstInfo, !IO) :-
+format_key_ground_inst(MaybeUseErrorMsgInst, Lang, InstSizeLimit,
+        GroundInstInfo, !State) :-
     GroundInstInfo = ground_inst_info(InstName, Uniq, Live, Real),
-    write_uniq_live_real(Stream, Uniq, Live, Real, !IO),
-    write_inst_name_nl(MaybeUseErrorMsgInst, Stream, Lang, InstSizeLimit,
-        InstName, !IO).
+    format_uniq_live_real(Uniq, Live, Real, !State),
+    format_inst_name_nl(MaybeUseErrorMsgInst, Lang, InstSizeLimit,
+        InstName, !State).
 
-:- pred write_key_any_inst(maybe_use_error_msg_inst::in,
-    io.text_output_stream::in, output_lang::in,
-    int::in, any_inst_info::in, io::di, io::uo) is det.
+:- pred format_key_any_inst(maybe_use_error_msg_inst::in, output_lang::in,
+    int::in, any_inst_info::in,
+    string.builder.state::di, string.builder.state::uo) is det.
 
-write_key_any_inst(MaybeUseErrorMsgInst, Stream, Lang, InstSizeLimit,
-        AnyInstInfo, !IO) :-
+format_key_any_inst(MaybeUseErrorMsgInst, Lang, InstSizeLimit, AnyInstInfo,
+        !State) :-
     AnyInstInfo = any_inst_info(InstName, Uniq, Live, Real),
-    write_uniq_live_real(Stream, Uniq, Live, Real, !IO),
-    write_inst_name_nl(MaybeUseErrorMsgInst, Stream, Lang, InstSizeLimit,
-        InstName, !IO).
+    format_uniq_live_real(Uniq, Live, Real, !State),
+    format_inst_name_nl(MaybeUseErrorMsgInst, Lang, InstSizeLimit,
+        InstName, !State).
 
-:- pred write_uniq_live_real(io.text_output_stream::in,
-    uniqueness::in, is_live::in, unify_is_real::in, io::di, io::uo) is det.
+:- pred format_uniq_live_real(uniqueness::in, is_live::in, unify_is_real::in,
+    string.builder.state::di, string.builder.state::uo) is det.
 
-write_uniq_live_real(Stream, Uniq, Live, Real, !IO) :-
+format_uniq_live_real(Uniq, Live, Real, !State) :-
     (
         Uniq = shared,
-        io.write_string(Stream, "shared ", !IO)
+        string.builder.append_string("shared ", !State)
     ;
         Uniq = unique,
-        io.write_string(Stream, "unique ", !IO)
+        string.builder.append_string("unique ", !State)
     ;
         Uniq = mostly_unique,
-        io.write_string(Stream, "mostly_unique ", !IO)
+        string.builder.append_string("mostly_unique ", !State)
     ;
         Uniq = clobbered,
-        io.write_string(Stream, "clobbered", !IO)
+        string.builder.append_string("clobbered", !State)
     ;
         Uniq = mostly_clobbered,
-        io.write_string(Stream, "mostly_clobbered", !IO)
+        string.builder.append_string("mostly_clobbered", !State)
     ),
     (
         Live = is_live,
-        io.write_string(Stream, "live ", !IO)
+        string.builder.append_string("live ", !State)
     ;
         Live = is_dead,
-        io.write_string(Stream, "dead ", !IO)
+        string.builder.append_string("dead ", !State)
     ),
     (
         Real = real_unify,
-        io.write_string(Stream, "real unify\n", !IO)
+        string.builder.append_string("real unify\n", !State)
     ;
         Real = fake_unify,
-        io.write_string(Stream, "fake unify\n", !IO)
+        string.builder.append_string("fake unify\n", !State)
     ).
 
-:- pred write_inst_name_nl(maybe_use_error_msg_inst::in,
-    io.text_output_stream::in, output_lang::in, int::in, inst_name::in,
-    io::di, io::uo) is det.
+:- pred format_inst_name_nl(maybe_use_error_msg_inst::in,
+    output_lang::in, int::in, inst_name::in,
+    string.builder.state::di, string.builder.state::uo) is det.
 
-write_inst_name_nl(MaybeUseErrorMsgInst, Stream, Lang, InstSizeLimit, InstName,
-        !IO) :-
+format_inst_name_nl(MaybeUseErrorMsgInst, Lang, InstSizeLimit, InstName,
+        !State) :-
     (
         MaybeUseErrorMsgInst = do_not_use_error_msg_inst,
-        write_inst_name_as_term_nl(Stream, Lang, InstSizeLimit, InstName, !IO)
+        format_inst_name_as_term_nl(Lang, InstSizeLimit, InstName, !State)
     ;
         MaybeUseErrorMsgInst = use_error_msg_inst(ModuleInfo),
         varset.init(TVarSet),
@@ -345,24 +372,23 @@ write_inst_name_nl(MaybeUseErrorMsgInst, Stream, Lang, InstSizeLimit, InstName,
         InstNameLines = error_pieces_to_std_lines(InstNamePieces),
         ( if do_lines_fit_in_n_code_points(80, InstNameLines) then
             ShortInstNameStr = error_lines_to_one_line_string(InstNameLines),
-            io.format(Stream, "%s\n", [s(ShortInstNameStr)], !IO)
+            string.builder.format("%s\n", [s(ShortInstNameStr)], !State)
         else
             Prefix = "",
             LongInstNameStr =
                 error_lines_to_multi_line_string(Prefix, InstNameLines),
-            io.format(Stream, "%s", [s(LongInstNameStr)], !IO)
+            string.builder.format("%s", [s(LongInstNameStr)], !State)
         )
     ).
 
-:- pred write_inst_entry(maybe_use_error_msg_inst::in,
-    io.text_output_stream::in, output_lang::in, int::in, mer_inst::in,
-    io::di, io::uo) is det.
+:- pred format_inst_entry(maybe_use_error_msg_inst::in,
+    output_lang::in, int::in, mer_inst::in,
+    string.builder.state::di, string.builder.state::uo) is det.
 
-write_inst_entry(MaybeUseErrorMsgInst, Stream, Lang, InstSizeLimit,
-        Inst, !IO) :-
+format_inst_entry(MaybeUseErrorMsgInst, Lang, InstSizeLimit, Inst, !State) :-
     (
         MaybeUseErrorMsgInst = do_not_use_error_msg_inst,
-        write_inst_as_term_nl(Stream, Lang, InstSizeLimit, Inst, !IO)
+        format_inst_as_term_nl(Lang, InstSizeLimit, Inst, !State)
     ;
         MaybeUseErrorMsgInst = use_error_msg_inst(ModuleInfo),
         varset.init(TVarSet),
@@ -377,34 +403,34 @@ write_inst_entry(MaybeUseErrorMsgInst, Stream, Lang, InstSizeLimit,
         InstLines = error_pieces_to_std_lines(InstPieces),
         ( if do_lines_fit_in_n_code_points(80, InstLines) then
             ShortInstStr = error_lines_to_one_line_string(InstLines),
-            io.format(Stream, "%s\n", [s(ShortInstStr)], !IO)
+            string.builder.format("%s\n", [s(ShortInstStr)], !State)
         else
             Prefix = "",
             LongInstStr = error_lines_to_multi_line_string(Prefix, InstLines),
-            io.format(Stream, "%s", [s(LongInstStr)], !IO)
+            string.builder.format("%s", [s(LongInstStr)], !State)
         )
     ).
 
-:- pred write_inst_name_as_term_nl(io.text_output_stream::in, output_lang::in,
-    int::in, inst_name::in, io::di, io::uo) is det.
+:- pred format_inst_name_as_term_nl(output_lang::in, int::in, inst_name::in,
+    string.builder.state::di, string.builder.state::uo) is det.
 
-write_inst_name_as_term_nl(Stream, Lang, InstSizeLimit, InstName, !IO) :-
+format_inst_name_as_term_nl(Lang, InstSizeLimit, InstName, !State) :-
     InstNameTerm = inst_name_to_limited_size_term(Lang, InstSizeLimit,
         InstName),
     varset.init(InstVarSet),
-    mercury_output_term_vs(InstVarSet, print_name_only, InstNameTerm,
-        Stream, !IO),
-    io.nl(Stream, !IO).
+    mercury_format_term_vs(InstVarSet, print_name_only, InstNameTerm,
+        string.builder.handle, !State),
+    string.builder.append_string("\n", !State).
 
-:- pred write_inst_as_term_nl(io.text_output_stream::in, output_lang::in,
-    int::in, mer_inst::in, io::di, io::uo) is det.
+:- pred format_inst_as_term_nl(output_lang::in, int::in, mer_inst::in,
+    string.builder.state::di, string.builder.state::uo) is det.
 
-write_inst_as_term_nl(Stream, Lang, InstSizeLimit, Inst, !IO) :-
+format_inst_as_term_nl(Lang, InstSizeLimit, Inst, !State) :-
     InstTerm = inst_to_limited_size_term(Lang, InstSizeLimit, Inst),
     varset.init(InstVarSet),
-    mercury_output_term_vs(InstVarSet, print_name_only, InstTerm,
-        Stream, !IO),
-    io.nl(Stream, !IO).
+    mercury_format_term_vs(InstVarSet, print_name_only, InstTerm,
+        string.builder.handle, !State),
+    string.builder.append_string("\n", !State).
 
 %---------------------------------------------------------------------------%
 %
@@ -412,34 +438,41 @@ write_inst_as_term_nl(Stream, Lang, InstSizeLimit, Inst, !IO) :-
 %
 
 write_mode_table(Stream, ModeTable, !IO) :-
+    State0 = string.builder.init,
+    format_mode_table(ModeTable, State0, State),
+    Str = string.builder.to_string(State),
+    io.write_string(Stream, Str, !IO).
+
+format_mode_table(ModeTable, !State) :-
     mode_table_get_mode_defns(ModeTable, ModeDefns),
-    io.write_string(Stream, "%-------- Modes --------\n", !IO),
-    map.foldl(write_mode_table_entry(Stream), ModeDefns, !IO),
-    io.nl(Stream, !IO).
+    string.builder.append_string("%-------- Modes --------\n", !State),
+    map.foldl(format_mode_table_entry, ModeDefns, !State),
+    string.builder.append_string("\n", !State).
 
-:- pred write_mode_table_entry(io.text_output_stream::in,
-    mode_ctor::in, hlds_mode_defn::in, io::di, io::uo) is det.
-
-write_mode_table_entry(Stream, ModeCtor, ModeDefn, !IO) :-
+:- pred format_mode_table_entry(mode_ctor::in, hlds_mode_defn::in,
+    string.builder.state::di, string.builder.state::uo) is det.
+ 
+format_mode_table_entry(ModeCtor, ModeDefn, !State) :-
     ModeCtor = mode_ctor(ModeName, _ModeArity),
-    io.format(Stream, "\n:- mode %s", [s(sym_name_to_string(ModeName))], !IO),
+    string.builder.format("\n:- mode %s",
+        [s(sym_name_to_string(ModeName))], !State),
     ModeDefn = hlds_mode_defn(InstVarSet, InstParams, ModeBody, _Context,
         Status),
     (
         InstParams = []
     ;
         InstParams = [HeadInstParam | TailInstParams],
-        io.write_string(Stream, "(", !IO),
-        write_inst_params(Stream, HeadInstParam, TailInstParams,
-            InstVarSet, !IO),
-        io.write_string(Stream, ")", !IO)
+        string.builder.append_string("(", !State),
+        format_inst_params(InstVarSet, HeadInstParam, TailInstParams, !State),
+        string.builder.append_string(")", !State)
     ),
     ModeBody = hlds_mode_body(EqvMode),
-    io.write_string(Stream, ":\n", !IO),
-    mercury_output_mode(Stream, output_debug, InstVarSet, EqvMode, !IO),
-    io.write_string(Stream, "\n", !IO),
+    string.builder.append_string(":\n", !State),
+    mercury_format_mode(output_debug, InstVarSet, EqvMode,
+        string.builder.handle, !State),
+    string.builder.append_string("\n", !State),
     StatusStr = mode_import_status_to_string(Status),
-    io.format(Stream, "%% status %s\n", [s(StatusStr)], !IO).
+    string.builder.format("%% status %s\n", [s(StatusStr)], !State).
 
 %---------------------------------------------------------------------------%
 :- end_module hlds.hlds_out.hlds_out_inst_table.
