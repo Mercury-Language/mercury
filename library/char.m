@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1994-2008, 2011 The University of Melbourne.
-% Copyright (C) 2013-2015, 2017-2021 The Mercury team.
+% Copyright (C) 2013-2015, 2017-2022, 2024 The Mercury team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %---------------------------------------------------------------------------%
 %
@@ -441,7 +441,7 @@ to_int(C) = N :-
 
 %---------------------%
 %
-% The <in, outt> mode of to_int.
+% The <in, out> mode of to_int.
 %
 
 :- pragma inline(pred(to_int/2)).
@@ -463,7 +463,7 @@ to_int(C) = N :-
     to_int(Character::in, Int::out),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
-    Int = (int) Character;
+    Int = Character;
 ").
 
 %---------------------%
@@ -488,7 +488,7 @@ to_int(C) = N :-
     to_int(Character::in, Int::in),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
-    SUCCESS_INDICATOR = ((int) Character == Int);
+    SUCCESS_INDICATOR = (Character == Int);
 ").
 
 %---------------------%
