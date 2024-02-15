@@ -761,49 +761,23 @@ acc_implicit_avail_needs_in_goal(Goal, !ImplicitAvailNeeds) :-
         acc_implicit_avail_needs_in_goals(OrElseGoals, !ImplicitAvailNeeds)
     ;
         Goal = call_expr(_, CalleeSymName, Args, _Purity),
-        ( if
-            CalleeSymName = qualified(ModuleName, "format")
-        then
-            ( if
-                ( ModuleName = unqualified("string")
-                ; ModuleName = unqualified("io")
-                ; ModuleName = unqualified("builder")
-                ; ModuleName = qualified(unqualified("string"), "builder")
-                )
-            then
-                % For io.format, we need to pull in the same modules
-                % as for string.format.
-                !ImplicitAvailNeeds ^ ian_string_format
-                    := do_need_string_format
-            else if
-                ( ModuleName = unqualified("stream")
-                ; ModuleName = unqualified("string_writer")
-                ; ModuleName = qualified(unqualified("stream"),
-                    "string_writer")
-                )
-            then
-                % The replacement of calls to stream.string_writer.format
-                % needs everything that the replacement of calls to
-                % string.format or io.format needs.
-                !ImplicitAvailNeeds ^ ian_string_format
-                    := do_need_string_format,
+        ( if is_possible_format_call(CalleeSymName, FormatCallVersion) then
+            !ImplicitAvailNeeds ^ ian_string_format
+                := do_need_string_format,
+            (
+                FormatCallVersion = format_call_non_stream
+                % CalleeSymName will definitely not resolve to
+                % stream.string_writer.format.
+            ;
+                FormatCallVersion = format_call_maybe_stream,
+                % We don't know whether CalleeSymName will resolve to
+                % stream.string_writer.format, or to one of the other format
+                % predicates. In the presence of this uncertainty, implicitly
+                % importing stream.string_writer.m is the conservative course
+                % of action.
                 !ImplicitAvailNeeds ^ ian_stream_format
                     := do_need_stream_format
-            else
-                % The callee cannot be any of the predicates that
-                % format_call.m is designed to optimize.
-                true
             )
-        else if
-            CalleeSymName = unqualified("format")
-        then
-            % We don't know whether this will resolve to string.format,
-            % io.format, or stream.string.writer.format. Ideally, we would
-            % set ian_stream_format only if the current context contains
-            % an import of stream.string_writer.m, but we don't have that
-            % information here, or in our caller.
-            !ImplicitAvailNeeds ^ ian_string_format := do_need_string_format,
-            !ImplicitAvailNeeds ^ ian_stream_format := do_need_stream_format
         else
             true
         ),
@@ -1277,6 +1251,54 @@ acc_foreign_code_langs_from_impl_pragma(ImplPragma, !Langs) :-
         ; ImplPragma = impl_pragma_req_tail_rec(_)
         ; ImplPragma = impl_pragma_req_feature_set(_)
         )
+    ).
+
+%---------------------------------------------------------------------------%
+%
+% This predicate should be kept in sync with both is_format_call and
+% is_builtin_format_call_kind_and_vars in format_call.m. See the comment
+% before those predicates in that module for the reason.
+%
+%
+%
+
+:- type format_call_version
+    --->    format_call_non_stream
+    ;       format_call_maybe_stream.
+
+    % Can the predicate called by the given sym_name resolve to a predicate 
+    % that this module concerns itself with? If yes, then succeed, and
+    % return an indication of whether this predicate *may* be one that
+    % requires access to stream.string_writer.m.
+    %
+:- pred is_possible_format_call(sym_name::in, format_call_version::out)
+    is semidet.
+
+is_possible_format_call(SymName, Version) :-
+    (
+        SymName = qualified(ModuleName, "format"),
+        ( if
+            ( ModuleName = unqualified("string")
+            ; ModuleName = unqualified("io")
+            ; ModuleName = unqualified("builder")
+            ; ModuleName = qualified(unqualified("string"), "builder")
+            )
+        then
+            Version = format_call_non_stream
+        else if
+            ( ModuleName = unqualified("stream")
+            ; ModuleName = unqualified("string_writer")
+            ; ModuleName = qualified(unqualified("stream"),
+                "string_writer")
+            )
+        then
+            Version = format_call_maybe_stream
+        else
+            fail
+        )
+    ;
+        SymName = unqualified("format"),
+        Version = format_call_maybe_stream
     ).
 
 %---------------------------------------------------------------------------%

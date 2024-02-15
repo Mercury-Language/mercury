@@ -142,11 +142,13 @@
 
 %---------------------------------------------------------------------------%
 
+:- pred is_format_call(pred_info::in, list(prog_var)::in) is semidet.
+
+%---------------------------------------------------------------------------%
+
 :- type maybe_generate_implicit_stream_warnings
     --->    do_not_generate_implicit_stream_warnings
     ;       generate_implicit_stream_warnings.
-
-:- pred is_format_call(pred_info::in, list(prog_var)::in) is semidet.
 
 :- pred analyze_and_optimize_format_calls(module_info::in, pred_info::in,
     proc_info::in, maybe_generate_implicit_stream_warnings::in,
@@ -387,6 +389,45 @@ get_relevant_vars_from_fmt_str_val_vars(FmtStrVal) = Vars :-
     set_of_var.list_to_set([VarFS, VarVL], Vars).
 
 %---------------------------------------------------------------------------%
+%
+% This section contains two predicates that both recognize whether a call
+% is to a predicate that this module is interested in, both because we
+% want to check the call for errors, and because (in the absence of errors)
+% we want to replace the call with faster code.
+%
+% The two are different because of their different requirements.
+%
+% - is_format_call is used by determinism analysis, acting as a pre-pass
+%   for the simplification pass, to determine whether a predicate contains
+%   a call that this module is interested in, which in turn controls
+%   whether this module's main predicate, analyze_and_optimize_format_calls,
+%   should even be invoked. Since very few calls are format calls, most
+%   invocations of is_format_call will fail, so the key is make it fail fast.
+%
+% - is_format_call_kind_and_vars is used by analyze_and_optimize_format_calls
+%   itself to gather the info that that predicate needs to do its job.
+%   Since it is only ever invoked on predicates that *do* contain a format
+%   call, its performance is not as important.
+%
+% There is a third predicate that also needs to know which predicates
+% this module considers to be format predicates, and that is
+% is_possible_format_call in get_dependencies.m. This differs from both
+% the predicates above in that
+%
+% - it operates on the data structures of the module's parse_tree, NOT on
+%   the HLDS that we will later construct from it, and
+%
+% - since it operates before module qualification, the names it operates on
+%   may be unqualified or only partially qualified, so the best we can do
+%   is report whether a callee *may* be a format predicate.
+%
+% The first of these reasons is why is_possible_format_call cannot be moved
+% to this module; since its caller is in the parse_tree package, it cannot
+% call anything in the check_hlds package (which format_call.m is in).
+%
+% NOTE If you want to modify the set of format predicates, you must update
+% *all three* of these predicates.
+%
 
 is_format_call(PredInfo, ArgVars) :-
     ModuleName = pred_info_module(PredInfo),
