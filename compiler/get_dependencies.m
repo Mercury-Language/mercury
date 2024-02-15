@@ -1276,25 +1276,21 @@ acc_foreign_code_langs_from_impl_pragma(ImplPragma, !Langs) :-
 
 is_possible_format_call(SymName, Version) :-
     (
-        SymName = qualified(ModuleName, "format"),
-        ( if
+        SymName = qualified(WrappedModuleName, "format"),
+        maybe_remove_stdlib_wrapper(WrappedModuleName, ModuleName),
+        (
             ( ModuleName = unqualified("string")
             ; ModuleName = unqualified("io")
             ; ModuleName = unqualified("builder")
             ; ModuleName = qualified(unqualified("string"), "builder")
-            )
-        then
+            ),
             Version = format_call_non_stream
-        else if
+        ;
             ( ModuleName = unqualified("stream")
             ; ModuleName = unqualified("string_writer")
-            ; ModuleName = qualified(unqualified("stream"),
-                "string_writer")
-            )
-        then
+            ; ModuleName = qualified(unqualified("stream"), "string_writer")
+            ),
             Version = format_call_maybe_stream
-        else
-            fail
         )
     ;
         SymName = unqualified("format"),

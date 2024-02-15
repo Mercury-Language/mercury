@@ -20,6 +20,18 @@
 
 :- import_module list.
 
+% XXX We do not document whether the functions in this section are
+% intended to return, when we start add a "std" wrapper around the
+% names of modules in the Mercury standard library,
+%
+% - the name without the wrapper, or
+% - the name with the wrapper.
+%
+% At the moment, the two are identical, so the issue is moot.
+% However, different parts of the rest of the system seem to make
+% conflicting assumptions about the answer, and these will have to be
+% sorted out if/when we add that wrapper.
+
     % Returns all the modules which are automatically imported.
     %
 :- func all_builtin_modules = list(sym_name).
@@ -135,11 +147,6 @@
     %
 :- func mercury_stream_module = sym_name.
 
-    % Returns the sym_name of the module with the given name in the
-    % Mercury standard library.
-    %
-:- func mercury_std_lib_module_name(sym_name) = sym_name.
-
     % Succeeds iff the specified module is one of the builtin modules listed
     % above which may be automatically imported.
     %
@@ -148,6 +155,34 @@
     % Succeeds iff the specified module will never be traced.
     %
 :- pred non_traced_mercury_builtin_module(sym_name::in) is semidet.
+
+%---------------------------------------------------------------------------%
+
+    % Returns the sym_name of the module with the given name in the
+    % Mercury standard library. In the future, this may add a wrapper
+    % around the original module name, though for now, this function
+    % is a no-op.
+    %
+    % NOTE: If you want to change the status quo, see the XXX above
+    % about conflicting assumptions.
+    %
+:- func maybe_add_stdlib_wrapper(module_name) = module_name.
+
+    % Remove any wrapper added by maybe_add_stdlib_wrapper, without checking
+    % whether the module name inside is actually the name of a moduile
+    % in the Mercury standard library or not. If you want that check,
+    % call is_std_lib_module_name instead. This predicate is intended
+    % for uses which follow a call to the predicate with tests for
+    % indiviual, specific standard library modules. In such cases,
+    % a generic test for "does this module name occur in the standard library"
+    % would be useless work.
+    %
+    % At the moment, maybe_add_stdlib_wrapper does not add a wrapper,
+    % so cannot fail to find it. This is why this predicate is deterministic.
+    % When we change maybe_add_stdlib_wrapper to add a wrapper, this predicate
+    % will change to be semidet.
+    % 
+:- pred maybe_remove_stdlib_wrapper(module_name::in, module_name::out) is det.
 
 :- pred is_std_lib_module_name(sym_name::in, string::out) is semidet.
 
@@ -209,10 +244,6 @@ mercury_int_module = unqualified("int").
 mercury_io_module = unqualified("io").
 mercury_stream_module = unqualified("stream").
 
-mercury_std_lib_module_name(ModuleName) = ModuleName.
-    % -- not yet:
-    % QualfiedModuleName = qualified(unqualified("std"), ModuleName),
-
 any_mercury_builtin_module(Module) :-
     ( Module = mercury_public_builtin_module
     ; Module = mercury_private_builtin_module
@@ -232,10 +263,21 @@ non_traced_mercury_builtin_module(Module) :-
     ; Module = mercury_ssdb_builtin_module
     ).
 
-is_std_lib_module_name(ModuleName, Name) :-
+%---------------------------------------------------------------------------%
+
+maybe_add_stdlib_wrapper(ModuleName) = WrappedModuleName :-
+    WrappedModuleName = ModuleName.
     % -- not yet:
-    % ModuleName = qualified(unqualified("std"), UnqualifiedModuleName),
-    Name = sym_name_to_string(ModuleName),
+    % WrappedModuleName = qualified(unqualified("std"), ModuleName),
+
+maybe_remove_stdlib_wrapper(WrappedModuleName, ModuleName) :-
+    WrappedModuleName = ModuleName.
+    % -- not yet:
+    % WrappedModuleName = qualified(unqualified("std"), ModuleName),
+
+is_std_lib_module_name(ModuleName, Name) :-
+    maybe_remove_stdlib_wrapper(ModuleName, UnwrappedModuleName),
+    Name = sym_name_to_string(UnwrappedModuleName),
     mercury_std_library_module(Name).
 
 is_mdbcomp_module_name(ModuleName) :-

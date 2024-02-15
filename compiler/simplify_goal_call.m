@@ -390,8 +390,9 @@ maybe_generate_warning_for_implicit_stream_predicate(ModuleInfo,
     else if
         % We want to warn about calls to predicates that update
         % the current input or output stream.
-        ( ModuleName = mercury_io_module
-        ; ModuleName = mercury_std_lib_module_name(unqualified("prolog"))
+        maybe_remove_stdlib_wrapper(ModuleName, UnwrappedModuleName),
+        ( UnwrappedModuleName = unqualified("io")
+        ; UnwrappedModuleName = unqualified("prolog")
         ),
         PredOrFunc = pf_predicate,
         (
@@ -1293,7 +1294,7 @@ simplify_make_int_ico_op(ModuleName, Op, X, IntConst, Y, GoalExpr,
 
 simplify_make_binary_op_goal_expr(Info, ModuleName, Op, IsBuiltin, X, Y, Z,
         GoalExpr) :-
-    ModuleSymName = mercury_std_lib_module_name(unqualified(ModuleName)),
+    ModuleSymName = maybe_add_stdlib_wrapper(unqualified(ModuleName)),
     OpSymName = qualified(ModuleSymName, Op),
     simplify_info_get_module_info(Info, ModuleInfo),
     module_info_get_predicate_table(ModuleInfo, PredTable),

@@ -447,36 +447,29 @@ is_format_call(PredInfo, ArgVars) :-
 :- pred is_builtin_format_call(module_name::in, string::in, list(prog_var)::in)
     is semidet.
 
-is_builtin_format_call(ModuleName, Name, ArgVars) :-
+is_builtin_format_call(WrappedModuleName, Name, ArgVars) :-
     % NOTE The logic here must match the test logic of the
     % is_builtin_format_call_kind_and_vars predicate below.
     Name = "format",
-    ( if
-        ModuleName = mercury_string_module
-    then
+    maybe_remove_stdlib_wrapper(WrappedModuleName, ModuleName),
+    (
+        ModuleName = unqualified("string"),
         ArgVars = [_FmtStrVar, _FmtValuesVar, _ResultVar]
-    else if
-        ModuleName = mercury_io_module
-    then
+    ;
+        ModuleName = unqualified("io"),
         (
             ArgVars = [_FmtStrVar, _FmtValuesVar, _StateInVar, _StateOutVar]
         ;
             ArgVars = [_StreamVar, _FmtStrVar, _FmtValuesVar,
                 _StateInVar, _StateOutVar]
         )
-    else if
-        ModuleName = mercury_std_lib_module_name(
-            qualified(unqualified("string"), "builder"))
-    then
+    ;
+        ModuleName = qualified(unqualified("string"), "builder"),
         ArgVars = [_FmtStrVar, _FmtValuesVar, _StateInVar, _StateOutVar]
-    else if
-        ModuleName = mercury_std_lib_module_name(
-            qualified(unqualified("stream"), "string_writer"))
-    then
+    ;
+        ModuleName = qualified(unqualified("stream"), "string_writer"),
         ArgVars = [_TypeClassInfoVarForStream, _StreamVar, _FmtStrVar,
             _FmtValuesVar, _StateInVar, _StateOutVar]
-    else
-        fail
     ).
 
 %---------------------%
@@ -527,30 +520,23 @@ arg_nums_to_vars(ArgVars, NumFormatStringValues,
 :- pred is_builtin_format_call_kind_and_vars(module_name::in, string::in,
     list(prog_var)::in, hlds_goal_info::in, format_call_kind::out) is semidet.
 
-is_builtin_format_call_kind_and_vars(ModuleName, Name, ArgVars, GoalInfo,
-        Kind) :-
-    % If you modify this code to recognize any previously unrecognized
-    % predicates, then you also need to update the call tree of
-    % get_implicit_dependencies_* in module_imports.m. That code tests whether
-    % a list of items calls one of these predicates, so that it can record
-    % the need to implicitly import the modules that contain the predicates
-    % that implement their optimized versions.
-    %
-    % NOTE The test logic here must be duplicated in the is_builtin_format_call
-    % predicate above.
+is_builtin_format_call_kind_and_vars(WrappedModuleName, Name, ArgVars,
+        GoalInfo, Kind) :-
     Name = "format",
-    ( if
-        ModuleName = mercury_string_module
-    then
+    maybe_remove_stdlib_wrapper(WrappedModuleName, ModuleName),
+    % NOTE The test logic here must be duplicated in the is_builtin_format_call
+    % predicate above, and it the is_possible_format_call predicate in
+    % get_dependencies.m.
+    (
+        ModuleName = unqualified("string"),
         % We have these arguments regardless of whether we call the
         % predicate or function version of string.format.
         ArgVars = [FmtStrVar, FmtValuesVar, ResultVar],
         Context = goal_info_get_context(GoalInfo),
         FmtStrValVars = fmt_str_val_vars(no, FmtStrVar, FmtValuesVar),
         Kind = kind_string_format(Context, FmtStrValVars, ResultVar)
-    else if
-        ModuleName = mercury_io_module
-    then
+    ;
+        ModuleName = unqualified("io"),
         (
             ArgVars = [FmtStrVar, FmtValuesVar, StateInVar, StateOutVar],
             Context = goal_info_get_context(GoalInfo),
@@ -565,19 +551,15 @@ is_builtin_format_call_kind_and_vars(ModuleName, Name, ArgVars, GoalInfo,
             Kind = kind_io_format_stream(Context, StreamVar, FmtStrValVars,
                 StateInVar, StateOutVar)
         )
-    else if
-        ModuleName = mercury_std_lib_module_name(
-            qualified(unqualified("string"), "builder"))
-    then
+    ;
+        ModuleName = qualified(unqualified("string"), "builder"),
         ArgVars = [FmtStrVar, FmtValuesVar, StateInVar, StateOutVar],
         Context = goal_info_get_context(GoalInfo),
         FmtStrValVars = fmt_str_val_vars(no, FmtStrVar, FmtValuesVar),
         Kind = kind_string_builder(Context, FmtStrValVars,
             StateInVar, StateOutVar)
-    else if
-        ModuleName = mercury_std_lib_module_name(
-            qualified(unqualified("stream"), "string_writer"))
-    then
+    ;
+        ModuleName = qualified(unqualified("stream"), "string_writer"),
         % Since we do this check after polymorphism, there will have been
         % a typeclassinfo inserted at the front of the argument list.
         ArgVars = [TypeClassInfoVarForStream, StreamVar,
@@ -586,8 +568,6 @@ is_builtin_format_call_kind_and_vars(ModuleName, Name, ArgVars, GoalInfo,
         FmtStrValVars = fmt_str_val_vars(no, FmtStrVar, FmtValuesVar),
         Kind = kind_stream_string_writer(Context, TypeClassInfoVarForStream,
             StreamVar, FmtStrValVars, StateInVar, StateOutVar)
-    else
-        fail
     ).
 
 %---------------------------------------------------------------------------%

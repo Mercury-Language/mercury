@@ -1183,7 +1183,7 @@ classify_type_ctor_if_special(TypeCtor, TypeCategory) :-
         ;
             TypeName = "store",
             TypeSymName = qualified(ModuleSymName, _TypeName),
-            ModuleSymName = mercury_std_lib_module_name(unqualified("store")),
+            ModuleSymName = maybe_add_stdlib_wrapper(unqualified("store")),
             Arity = 1
         ),
         TypeCategory = ctor_cat_builtin_dummy

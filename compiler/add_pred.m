@@ -367,7 +367,7 @@ check_for_modeless_predmode_decl(PredStatus, PredOrFunc,
         % unique and non-unique modes.
         ( if
             PredSymName = qualified(PredModuleName, "is"),
-            PredModuleName = mercury_std_lib_module_name(unqualified("prolog"))
+            maybe_remove_stdlib_wrapper(PredModuleName, unqualified("prolog"))
         then
             true
         else

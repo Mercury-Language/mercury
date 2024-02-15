@@ -172,7 +172,7 @@ float_type = builtin_type(builtin_type_float).
 string_type = builtin_type(builtin_type_string).
 
 string_builder_state_type = defined_type(Name, [], kind_star) :-
-    Module = mercury_std_lib_module_name(mercury_string_builder_module),
+    Module = maybe_add_stdlib_wrapper(mercury_string_builder_module),
     Name = qualified(Module, "state").
 
 char_type = builtin_type(builtin_type_char).
@@ -212,15 +212,15 @@ typeclass_info_type = defined_type(Name, [], kind_star) :-
     Name = qualified(BuiltinModule, "typeclass_info").
 
 type_desc_type = defined_type(Name, [], kind_star) :-
-    Module = mercury_std_lib_module_name(unqualified("type_desc")),
+    Module = maybe_add_stdlib_wrapper(unqualified("type_desc")),
     Name = qualified(Module, "type_desc").
 
 pseudo_type_desc_type = defined_type(Name, [], kind_star) :-
-    Module = mercury_std_lib_module_name(unqualified("type_desc")),
+    Module = maybe_add_stdlib_wrapper(unqualified("type_desc")),
     Name = qualified(Module, "pseudo_type_desc").
 
 type_ctor_desc_type = defined_type(Name, [], kind_star) :-
-    Module = mercury_std_lib_module_name(unqualified("type_desc")),
+    Module = maybe_add_stdlib_wrapper(unqualified("type_desc")),
     Name = qualified(Module, "type_ctor_desc").
 
 comparison_result_type = defined_type(Name, [], kind_star) :-
@@ -244,7 +244,7 @@ exception_result_type(SubType) = defined_type(Name, [SubType], kind_star) :-
     Name = qualified(Module, "exception_result").
 
 stm_atomic_type = defined_type(Name, [], kind_star) :-
-    Module = mercury_std_lib_module_name(unqualified("stm_builtin")),
+    Module = maybe_add_stdlib_wrapper(unqualified("stm_builtin")),
     Name = qualified(Module, "stm").
 
 stm_state_type = defined_type(Name, [], kind_star) :-

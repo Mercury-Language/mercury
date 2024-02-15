@@ -384,7 +384,7 @@ is_type_ctor_a_builtin_dummy(TypeCtor) = IsBuiltinDummy :-
             ;
                 TypeName = "store",
                 TypeArity = 1,
-                ModuleName = mercury_std_lib_module_name(unqualified("store"))
+                ModuleName = maybe_add_stdlib_wrapper(unqualified("store"))
             )
         then
             IsBuiltinDummy = is_builtin_dummy_type_ctor

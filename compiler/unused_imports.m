@@ -994,7 +994,7 @@ mer_type_used_modules(Visibility, Type, !UsedModules) :-
         ;
             BuiltinType = builtin_type_char,
             % You *do* need to import char.m to use these.
-            CharModuleName = mercury_std_lib_module_name(unqualified("char")),
+            CharModuleName = maybe_add_stdlib_wrapper(unqualified("char")),
             record_module_and_ancestors_as_used(Visibility, CharModuleName,
                 !UsedModules)
         )
