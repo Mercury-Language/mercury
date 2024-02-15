@@ -15,7 +15,7 @@
 % - The first job is to check calls to
 %
 %   - the Mercury library predicates and functions string.format,
-%     io.format and stream.string_writer.format, and
+%     string.builder.format, io.format and stream.string_writer.format, and
 %
 %   - any user-written predicates or functions which have a format_call pragma
 %
@@ -26,8 +26,8 @@
 %   variables representing the format string and the list of values to be
 %   printed.
 %
-% - The second job is to try to transform well formed calls to
-%   string.format, io.format and stream.string_writer.format into code
+% - The second job is to try to transform well formed calls to string.format,
+%   string.builder.format, io.format and stream.string_writer.format into code
 %   that interprets the format string at compile time, rather than runtime.
 %   (We cannot do the same for user-written predicates or functions with
 %   format_call pragmas, because we don't know what the callee intends to do
@@ -35,7 +35,7 @@
 %
 % Our general approach to the first job is a backwards traversal of the
 % procedure body. During this traversal, we assign an id to every conjunction
-% (considering a cond and then parts of an if-then-else to be a conjunction).
+% (considering the cond and then parts of an if-then-else to be a conjunction).
 % When we find a call to a recognized format predicate or function, we remember
 % the call site together with the identities of the variables holding the
 % format string and the values to be printed, and include both variables
@@ -100,11 +100,12 @@
 % systematically convert each component of the format string and its
 % associated value to be printed (if any) to a string, and then either append
 % the resulting strings together (if the original call was to string.format),
-% or print the resulting strings as they are produced (if the original call
-% was to io.format). We optimize calls to stream.string_writer.format by
-% constructing the string to be written the same way as we do for
-% string.format, and then printing the result. For each call site that
-% we could optimize, we record its replacement in a map.
+% record the resulting strings (if the call was to string.builder.format)
+% or print the resulting strings as they are produced (if the call was to
+% io.format). We optimize calls to stream.string_writer.format by constructing
+% the string to be written the same way as we do for string.format, and then
+% printing the result. For each call site that we could optimize, we record
+% its replacement in a map.
 %
 % If there are any such replacements, we perform a second backward traversal
 % of the procedure body, looking for the goals to be replaced (which we
@@ -296,6 +297,12 @@
                 sf_fmt_str_values       :: fmt_str_val_vars,
                 sf_result_var           :: prog_var
             )
+    ;       kind_string_builder(
+                sb_context              :: prog_context,
+                sb_fmt_str_values       :: fmt_str_val_vars,
+                sb_state_in_var         :: prog_var,
+                sb_state_out_var        :: prog_var
+            )
     ;       kind_io_format_nostream(
                 iofns_context           :: prog_context,
                 iofns_fmt_str_values    :: fmt_str_val_vars,
@@ -324,6 +331,7 @@
 
 :- inst format_call_kind_opt for format_call_kind/0
     --->    kind_string_format(ground, ground, ground)
+    ;       kind_string_builder(ground, ground, ground, ground)
     ;       kind_io_format_nostream(ground, ground, ground, ground)
     ;       kind_io_format_stream(ground, ground, ground, ground, ground)
     ;       kind_stream_string_writer(ground, ground, ground,
@@ -351,6 +359,7 @@
 get_fmt_str_val_vars_from_format_call_kind(Kind, FmtStrVal, FmtStrVals) :-
     (
         ( Kind = kind_string_format(_, FmtStrVal, _)
+        ; Kind = kind_string_builder(_, FmtStrVal, _, _)
         ; Kind = kind_io_format_nostream(_, FmtStrVal, _, _)
         ; Kind = kind_io_format_stream(_, _, FmtStrVal, _, _)
         ; Kind = kind_stream_string_writer(_, _, _, FmtStrVal, _, _)
@@ -409,11 +418,16 @@ is_builtin_format_call(ModuleName, Name, ArgVars) :-
         ModuleName = mercury_io_module
     then
         (
-            ArgVars = [_FmtStrVar, _FmtValuesVar, _IOIn, _IOOut]
+            ArgVars = [_FmtStrVar, _FmtValuesVar, _StateInVar, _StateOutVar]
         ;
             ArgVars = [_StreamVar, _FmtStrVar, _FmtValuesVar,
-                _IOIn, _IOOut]
+                _StateInVar, _StateOutVar]
         )
+    else if
+        ModuleName = mercury_std_lib_module_name(
+            qualified(unqualified("string"), "builder"))
+    then
+        ArgVars = [_FmtStrVar, _FmtValuesVar, _StateInVar, _StateOutVar]
     else if
         ModuleName = mercury_std_lib_module_name(
             qualified(unqualified("stream"), "string_writer"))
@@ -497,17 +511,28 @@ is_builtin_format_call_kind_and_vars(ModuleName, Name, ArgVars, GoalInfo,
         ModuleName = mercury_io_module
     then
         (
-            ArgVars = [FmtStrVar, FmtValuesVar, IOIn, IOOut],
+            ArgVars = [FmtStrVar, FmtValuesVar, StateInVar, StateOutVar],
             Context = goal_info_get_context(GoalInfo),
             FmtStrValVars = fmt_str_val_vars(no, FmtStrVar, FmtValuesVar),
-            Kind = kind_io_format_nostream(Context, FmtStrValVars, IOIn, IOOut)
+            Kind = kind_io_format_nostream(Context, FmtStrValVars,
+                StateInVar, StateOutVar)
         ;
-            ArgVars = [StreamVar, FmtStrVar, FmtValuesVar, IOIn, IOOut],
+            ArgVars = [StreamVar, FmtStrVar, FmtValuesVar,
+                StateInVar, StateOutVar],
             Context = goal_info_get_context(GoalInfo),
             FmtStrValVars = fmt_str_val_vars(no, FmtStrVar, FmtValuesVar),
             Kind = kind_io_format_stream(Context, StreamVar, FmtStrValVars,
-                IOIn, IOOut)
+                StateInVar, StateOutVar)
         )
+    else if
+        ModuleName = mercury_std_lib_module_name(
+            qualified(unqualified("string"), "builder"))
+    then
+        ArgVars = [FmtStrVar, FmtValuesVar, StateInVar, StateOutVar],
+        Context = goal_info_get_context(GoalInfo),
+        FmtStrValVars = fmt_str_val_vars(no, FmtStrVar, FmtValuesVar),
+        Kind = kind_string_builder(Context, FmtStrValVars,
+            StateInVar, StateOutVar)
     else if
         ModuleName = mercury_std_lib_module_name(
             qualified(unqualified("stream"), "string_writer"))
@@ -643,6 +668,7 @@ check_format_call_site(ModuleInfo, PredInfo, ProcInfo, ImplicitStreamWarnings,
 
     (
         ( Kind = kind_string_format(_, FmtStrVal, _)
+        ; Kind = kind_string_builder(_, FmtStrVal, _, _)
         ; Kind = kind_io_format_nostream(_, FmtStrVal, _, _)
         ; Kind = kind_io_format_stream(_, _, FmtStrVal, _, _)
         ; Kind = kind_stream_string_writer(_, _, _, FmtStrVal, _, _)
@@ -1819,16 +1845,20 @@ create_replacement_goal(ModuleInfo, GoalId, CallKind, Specs,
             ResultVar, ReplacementGoal, !VarTable)
     ;
         (
+            CallKind = kind_string_builder(Context, _FmtStrValVars,
+                StateInVar, StateOutVar),
+            StateUpdate = string_builder_state
+        ;
             CallKind = kind_io_format_nostream(Context, _FmtStrValVars,
-                IOInVar, IOOutVar),
-            MaybeStreamVar = no
+                StateInVar, StateOutVar),
+            StateUpdate = io_state_no_stream
         ;
             CallKind = kind_io_format_stream(Context, StreamVar,
-                _FmtStrValVars, IOInVar, IOOutVar),
-            MaybeStreamVar = yes(StreamVar)
+                _FmtStrValVars, StateInVar, StateOutVar),
+            StateUpdate = io_state_stream(StreamVar)
         ),
-        create_io_format_replacement(ModuleInfo, Specs, Context,
-            MaybeStreamVar, IOInVar, IOOutVar, ReplacementGoal, !VarTable)
+        create_state_update_replacement(ModuleInfo, Specs, Context,
+            StateUpdate, StateInVar, StateOutVar, ReplacementGoal, !VarTable)
     ;
         CallKind = kind_stream_string_writer(Context,
             TypeClassInfoVarForStream, StreamVar, _FmtStrValVars,
@@ -1939,6 +1969,11 @@ replace_string_format_nonempty(ModuleInfo, HeadSpec, TailSpecs,
 
 %---------------------------------------------------------------------------%
 
+:- type state_format
+    --->    io_state_stream(prog_var)
+    ;       io_state_no_stream
+    ;       string_builder_state.
+
     % For optimizing e.g. io.format(Stream, "%3d_%.5x", [i(X), i(Y)], IO0, IO),
     % generate code that looks like this:
     %
@@ -1973,96 +2008,114 @@ replace_string_format_nonempty(ModuleInfo, HeadSpec, TailSpecs,
     % anyway, which is another reason why the --warn-implicit-stream-calls
     % option encourages programmers to do that.
     %
-:- pred create_io_format_replacement(module_info::in,
+:- pred create_state_update_replacement(module_info::in,
     list(compiler_format_spec)::in, prog_context::in,
-    maybe(prog_var)::in, prog_var::in, prog_var::in, hlds_goal::out,
+    state_format::in, prog_var::in, prog_var::in, hlds_goal::out,
     var_table::in, var_table::out) is det.
 
-create_io_format_replacement(ModuleInfo, Specs, Context, MaybeStreamVar,
-        IOInVar, IOOutVar, ReplacementGoal, !VarTable) :-
-    replace_io_format(ModuleInfo, Specs, MaybeStreamVar,
-        IOInVar, IOOutVar, Goals, ValueVars, !VarTable),
+create_state_update_replacement(ModuleInfo, Specs, Context, StateFormat,
+        StateInVar, StateOutVar, ReplacementGoal, !VarTable) :-
+    replace_state_format(ModuleInfo, Specs, StateFormat,
+        StateInVar, StateOutVar, Goals, ValueVars, !VarTable),
 
-    make_di_uo_instmap_delta(IOInVar, IOOutVar, InstMapDelta),
-    set_of_var.insert_list([IOInVar, IOOutVar], ValueVars, NonLocals),
+    make_di_uo_instmap_delta(StateInVar, StateOutVar, InstMapDelta),
+    set_of_var.insert_list([StateInVar, StateOutVar], ValueVars, NonLocals),
     goal_info_init(NonLocals, InstMapDelta, detism_det, purity_pure,
         Context, GoalInfo),
     conj_list_to_goal(Goals, GoalInfo, ReplacementGoal).
 
-:- pred replace_io_format(module_info::in, list(compiler_format_spec)::in,
-    maybe(prog_var)::in, prog_var::in, prog_var::in, list(hlds_goal)::out,
+:- pred replace_state_format(module_info::in, list(compiler_format_spec)::in,
+    state_format::in, prog_var::in, prog_var::in, list(hlds_goal)::out,
     set_of_progvar::out, var_table::in, var_table::out) is det.
 
-replace_io_format(ModuleInfo, Specs, MaybeStreamVar, IOInVar, IOOutVar,
+replace_state_format(ModuleInfo, Specs, StateFormat, StateInVar, StateOutVar,
         Goals, !:ValueVars, !VarTable) :-
     set_of_var.init(!:ValueVars),
     (
         Specs = [],
-        Unification = assign(IOOutVar, IOInVar),
+        Unification = assign(StateOutVar, StateInVar),
         Uniq = ground(unique, none_or_default_func),
         Clobbered = ground(clobbered, none_or_default_func),
         UnifyMode = unify_modes_li_lf_ri_rf(free, Uniq, Uniq, Clobbered),
         UnifyMainContext = umc_implicit("replace_io_format"),
         UnifyContext = unify_context(UnifyMainContext, []),
-        GoalExpr = unify(IOOutVar, rhs_var(IOInVar), UnifyMode, Unification,
-            UnifyContext),
-        make_di_uo_instmap_delta(IOInVar, IOOutVar, InstMapDelta),
-        goal_info_init(set_of_var.list_to_set([IOInVar, IOOutVar]),
+        GoalExpr = unify(StateOutVar, rhs_var(StateInVar), UnifyMode,
+            Unification, UnifyContext),
+        make_di_uo_instmap_delta(StateInVar, StateOutVar, InstMapDelta),
+        goal_info_init(set_of_var.list_to_set([StateInVar, StateOutVar]),
             InstMapDelta, detism_det, purity_pure, GoalInfo),
         Goal = hlds_goal(GoalExpr, GoalInfo),
         Goals = [Goal]
     ;
         Specs = [HeadSpec | TailSpecs],
-        replace_io_format_nonempty(ModuleInfo, HeadSpec, TailSpecs,
-            MaybeStreamVar, IOInVar, IOOutVar, Goals,
+        replace_state_format_nonempty(ModuleInfo, HeadSpec, TailSpecs,
+            StateFormat, StateInVar, StateOutVar, Goals,
             !ValueVars, !VarTable)
     ).
 
-:- pred replace_io_format_nonempty(module_info::in,
+:- pred replace_state_format_nonempty(module_info::in,
     compiler_format_spec::in, list(compiler_format_spec)::in,
-    maybe(prog_var)::in, prog_var::in, prog_var::in, list(hlds_goal)::out,
+    state_format::in, prog_var::in, prog_var::in, list(hlds_goal)::out,
     set_of_progvar::in, set_of_progvar::out,
     var_table::in, var_table::out) is det.
 
-replace_io_format_nonempty(ModuleInfo, HeadSpec, TailSpecs, MaybeStreamVar,
-        IOInVar, IOOutVar, Goals, !ValueVars, !VarTable) :-
+replace_state_format_nonempty(ModuleInfo, HeadSpec, TailSpecs, StateFormat,
+        StateInVar, StateOutVar, Goals, !ValueVars, !VarTable) :-
     (
         TailSpecs = [],
-        replace_one_io_format(ModuleInfo, HeadSpec, MaybeStreamVar,
-            IOInVar, IOOutVar, Goals, !ValueVars, !VarTable)
+        replace_one_state_format(ModuleInfo, HeadSpec, StateFormat,
+            StateInVar, StateOutVar, Goals, !ValueVars, !VarTable)
     ;
         TailSpecs = [FirstTailSpec | LaterTailSpecs],
-        IOMidVarEntry = vte("", io_state_type, is_dummy_type),
-        add_var_entry(IOMidVarEntry, IOMidVar, !VarTable),
-        replace_one_io_format(ModuleInfo, HeadSpec, MaybeStreamVar,
-            IOInVar, IOMidVar, HeadSpecGoals, !ValueVars, !VarTable),
-        replace_io_format_nonempty(ModuleInfo, FirstTailSpec, LaterTailSpecs,
-            MaybeStreamVar, IOMidVar, IOOutVar, TailSpecsGoals,
-            !ValueVars, !VarTable),
+        (
+            ( StateFormat = io_state_no_stream
+            ; StateFormat = io_state_stream(_)
+            ),
+            StateMidVarEntry = vte("", io_state_type, is_dummy_type)
+        ;
+            StateFormat = string_builder_state,
+            StateMidVarEntry =
+                vte("", string_builder_state_type, is_not_dummy_type)
+        ),
+        add_var_entry(StateMidVarEntry, StateMidVar, !VarTable),
+        replace_one_state_format(ModuleInfo, HeadSpec, StateFormat,
+            StateInVar, StateMidVar, HeadSpecGoals, !ValueVars, !VarTable),
+        replace_state_format_nonempty(ModuleInfo,
+            FirstTailSpec, LaterTailSpecs, StateFormat,
+            StateMidVar, StateOutVar, TailSpecsGoals, !ValueVars, !VarTable),
         Goals = HeadSpecGoals ++ TailSpecsGoals
     ).
 
-:- pred replace_one_io_format(module_info::in, compiler_format_spec::in,
-    maybe(prog_var)::in, prog_var::in, prog_var::in, list(hlds_goal)::out,
+:- pred replace_one_state_format(module_info::in, compiler_format_spec::in,
+    state_format::in, prog_var::in, prog_var::in, list(hlds_goal)::out,
     set_of_progvar::in, set_of_progvar::out,
     var_table::in, var_table::out) is det.
 
-replace_one_io_format(ModuleInfo, Spec, MaybeStreamVar,
-        IOInVar, IOOutVar, Goals, !ValueVars, !VarTable) :-
+replace_one_state_format(ModuleInfo, Spec, StateFormat,
+        StateInVar, StateOutVar, Goals, !ValueVars, !VarTable) :-
     represent_spec(ModuleInfo, Spec, no, SpecVar, SpecGoals, SpecContext,
         !ValueVars, !VarTable),
+    make_di_uo_instmap_delta(StateInVar, StateOutVar, InstMapDelta),
+    ArgVars = [SpecVar, StateInVar, StateOutVar],
     (
-        MaybeStreamVar = yes(StreamVar),
-        ArgVars = [StreamVar, SpecVar, IOInVar, IOOutVar]
+        (
+            StateFormat = io_state_stream(StreamVar),
+            ArgVarsIO = [StreamVar | ArgVars]
+        ;
+            StateFormat = io_state_no_stream,
+            ArgVarsIO = ArgVars
+        ),
+        generate_plain_call(ModuleInfo, pf_predicate,
+            mercury_io_module, "write_string", [], ArgVarsIO,
+            InstMapDelta, only_mode, detism_det, purity_pure,
+            [feature_do_not_warn_implicit_stream], SpecContext, CallGoal)
     ;
-        MaybeStreamVar = no,
-        ArgVars = [SpecVar, IOInVar, IOOutVar]
+        StateFormat = string_builder_state,
+        generate_plain_call(ModuleInfo, pf_predicate,
+            mercury_string_builder_module, "append_string", [], ArgVars,
+            InstMapDelta, only_mode, detism_det, purity_pure,
+            [], SpecContext, CallGoal)
     ),
-    make_di_uo_instmap_delta(IOInVar, IOOutVar, InstMapDelta),
-    generate_plain_call(ModuleInfo, pf_predicate,
-        mercury_io_module, "write_string", [], ArgVars, InstMapDelta,
-        only_mode, detism_det, purity_pure,
-        [feature_do_not_warn_implicit_stream], SpecContext, CallGoal),
     Goals = SpecGoals ++ [CallGoal].
 
 %---------------------------------------------------------------------------%

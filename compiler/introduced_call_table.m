@@ -110,6 +110,10 @@ may_introduce_calls_to(PredOrFunc, ModuleName, PredName,
         ModuleName = "string",
         mict_string(PredName, OrigArity, PredOrFunc)
     ;
+        ModuleName = "string.builder",
+        mict_string_builder(PredName, OrigArity),
+        PredOrFunc = pf_predicate
+    ;
         ModuleName = "string.format",
         mict_string_format(PredName, OrigArity),
         PredOrFunc = pf_predicate
@@ -383,6 +387,11 @@ mict_string("int_to_string",    2, _).
 mict_string("char_to_string",   2, _).
 mict_string("float_to_string",  2, _).
 mict_string("++",               3, pf_function).
+
+:- pred mict_string_builder(string::in, int::in) is semidet.
+:- pragma inline(pred(mict_string_builder/2)).
+
+mict_string_builder("append_string", 3).
 
 :- pred mict_string_format(string::in, int::in) is semidet.
 :- pragma inline(pred(mict_string_format/2)).

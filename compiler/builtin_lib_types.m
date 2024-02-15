@@ -36,6 +36,7 @@
 :- func uint64_type = mer_type.
 :- func float_type = mer_type.
 :- func string_type = mer_type.
+:- func string_builder_state_type = mer_type.
 :- func char_type = mer_type.
 :- func void_type = mer_type.
 :- func c_pointer_type = mer_type.
@@ -169,6 +170,10 @@ uint64_type = builtin_type(builtin_type_int(int_type_uint64)).
 float_type = builtin_type(builtin_type_float).
 
 string_type = builtin_type(builtin_type_string).
+
+string_builder_state_type = defined_type(Name, [], kind_star) :-
+    Module = mercury_std_lib_module_name(mercury_string_builder_module),
+    Name = qualified(Module, "state").
 
 char_type = builtin_type(builtin_type_char).
 

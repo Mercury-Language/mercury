@@ -767,6 +767,8 @@ acc_implicit_avail_needs_in_goal(Goal, !ImplicitAvailNeeds) :-
             ( if
                 ( ModuleName = unqualified("string")
                 ; ModuleName = unqualified("io")
+                ; ModuleName = unqualified("builder")
+                ; ModuleName = qualified(unqualified("string"), "builder")
                 )
             then
                 % For io.format, we need to pull in the same modules

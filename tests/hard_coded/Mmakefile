@@ -443,6 +443,7 @@ ORDINARY_PROGS = \
 	test234_sorted_insert \
 	test_bag \
 	test_bitsets \
+	test_builder_format \
 	test_char_digits \
 	test_cord \
 	test_cord2 \

@@ -88,8 +88,7 @@ maybe_log_msg(CurLogLevel, MsgLevel,
 :- pragma format_call(pred(maybe_log_simple_msg/6),
     format_string_values(3, 4)).
 
-maybe_log_simple_msg(CurLogLevel, MsgLevel,
-        FormatStr, ValuesList, !IO) :-
+maybe_log_simple_msg(CurLogLevel, MsgLevel, FormatStr, ValuesList, !IO) :-
     Diff = MsgLevel - CurLogLevel,
     ( if Diff >= 0 then
         io.format(FormatStr, ValuesList, !IO)

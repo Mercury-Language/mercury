@@ -111,6 +111,10 @@
     %
 :- func mercury_string_module = sym_name.
 
+    % Returns the name of the string.builder module.
+    %
+:- func mercury_string_builder_module = sym_name.
+
     % Returns the name of the string.format module.
     %
 :- func mercury_string_format_module = sym_name.
@@ -194,9 +198,10 @@ mercury_rtti_implementation_builtin_module =
 mercury_ssdb_builtin_module = unqualified("ssdb").
 mercury_list_module = unqualified("list").
 mercury_string_module = unqualified("string").
-% string.format and string.parse_util are non-builtin modules
+% string.builder, string.format and string.parse_util are non-builtin modules
 % that the compiler needs when compiling away the string format
 % interpretation overhead of string.format and similar functions.
+mercury_string_builder_module = qualified(unqualified("string"), "builder").
 mercury_string_format_module = qualified(unqualified("string"), "format").
 mercury_string_parse_util_module =
     qualified(unqualified("string"), "parse_util").

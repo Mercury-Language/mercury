@@ -59,6 +59,11 @@
 
 %---------------------%
 
+:- pred format(string::in, list(poly_type)::in,
+    string.builder.state::di, string.builder.state::uo) is det.
+
+%---------------------%
+
     % Return the total number of code points in the string that
     % to_string would return, without constructing that string (yet).
     %
@@ -130,6 +135,14 @@ append_strings([], !State).
 append_strings([Str | Strs], !State) :-
     append_string(Str, !State),
     append_strings(Strs, !State).
+
+%---------------------%
+
+format(FormatStr, PolyTypes, !State) :-
+    disable_warning [unknown_format_calls] (
+        string.format(FormatStr, PolyTypes, Str)
+    ),
+    append_string(Str, !State).
 
 %---------------------%
 
