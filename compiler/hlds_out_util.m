@@ -247,6 +247,8 @@
     %
 :- pred write_intlist(io.text_output_stream::in, list(int)::in,
     io::di, io::uo) is det.
+:- pred format_intlist(list(int)::in,
+    string.builder.state::di, string.builder.state::uo) is det.
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -1022,25 +1024,31 @@ old_import_status_to_string(status_exported_to_submodules) =
 %
 
 write_intlist(Stream, IntList, !IO) :-
+    State0 = string.builder.init,
+    format_intlist(IntList, State0, State),
+    Str = string.builder.to_string(State),
+    io.write_string(Stream, Str, !IO).
+
+format_intlist(IntList, !State) :-
     (
         IntList = [],
-        io.write_string(Stream, "[]", !IO)
+        string.builder.append_string("[]", !State)
     ;
         IntList = [H | T],
-        io.write_string(Stream, "[", !IO),
-        write_intlist_lag(Stream, H, T, !IO),
-        io.write_string(Stream, "]", !IO)
+        string.builder.append_string("[", !State),
+        format_intlist_lag(H, T, !State),
+        string.builder.append_string("]", !State)
     ).
 
-:- pred write_intlist_lag(io.text_output_stream::in, int::in, list(int)::in,
-    io::di, io::uo) is det.
+:- pred format_intlist_lag(int::in, list(int)::in,
+    string.builder.state::di, string.builder.state::uo) is det.
 
-write_intlist_lag(Stream, H, T, !IO) :-
-    io.write_int(Stream, H, !IO),
+format_intlist_lag(H, T, !State) :-
+    string.builder.append_string(string.int_to_string(H), !State),
     (
         T = [TH | TT],
-        io.write_string(Stream, ", ", !IO),
-        write_intlist_lag(Stream, TH, TT, !IO)
+        string.builder.append_string(", ", !State),
+        format_intlist_lag(TH, TT, !State)
     ;
         T = []
     ).
