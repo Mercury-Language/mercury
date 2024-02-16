@@ -24,6 +24,7 @@
     %
 :- pred write_hlds(io.text_output_stream::in, module_info::in,
     io::di, io::uo) is det.
+:- func hlds_to_string(module_info) = string.
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -37,7 +38,7 @@
 %
 % The problem is as follows.
 %
-% - The write_preds predicate calls module_info_get_pred_id_table,
+% - The format_preds predicate calls module_info_get_pred_id_table,
 %   whose output has type pred_id_table. Therefore logically, the type
 %   of the variable that holds this output is also pred_id_table,
 %   which means that logically, this module *does* use *something*
@@ -70,7 +71,7 @@
 %
 %   This approach would record this information on a per item basis
 %   because we want to avoid false positives. If module A imports module B,
-%   and module B contains a predicate p that refers to an equivalence type 
+%   and module B contains a predicate p that refers to an equivalence type
 %   in module C, this fact should make module C appear used in module A
 %   if and only if module A actually *uses* predicate p.
 %
@@ -140,6 +141,7 @@
 :- import_module pair.
 :- import_module set.
 :- import_module string.
+:- import_module string.builder.
 :- import_module varset.
 
 %---------------------------------------------------------------------------%
@@ -148,6 +150,18 @@
 %
 
 write_hlds(Stream, ModuleInfo, !IO) :-
+    Str = hlds_to_string(ModuleInfo),
+    io.write_string(Stream, Str, !IO).
+
+hlds_to_string(ModuleInfo) = Str :-
+    State0 = string.builder.init,
+    format_hlds(ModuleInfo, State0, State),
+    Str = string.builder.to_string(State).
+
+:- pred format_hlds(module_info::in,
+    string.builder.state::di, string.builder.state::uo) is det.
+
+format_hlds(ModuleInfo, !State) :-
     module_info_get_globals(ModuleInfo, Globals),
     globals.lookup_accumulating_option(Globals, dump_hlds_pred_id,
         DumpPredIdStrs),
@@ -156,7 +170,7 @@ write_hlds(Stream, ModuleInfo, !IO) :-
     globals.lookup_bool_option(Globals, dump_hlds_spec_preds, DumpSpecPreds0),
     globals.lookup_accumulating_option(Globals, dump_hlds_spec_preds_for,
         DumpSpecPredTypeNames),
-    write_header(Stream, ModuleInfo, !IO),
+    format_header(ModuleInfo, !State),
     Info = init_hlds_out_info(Globals, output_debug),
     Lang = output_debug,
     DumpOptions0 = Info ^ hoi_dump_hlds_options,
@@ -188,7 +202,7 @@ write_hlds(Stream, ModuleInfo, !IO) :-
     else
         ( if string.contains_char(DumpOptions, 'I') then
             module_info_get_avail_module_map(ModuleInfo, AvailModuleMap),
-            map.foldl(write_avail_entry(Stream), AvailModuleMap, !IO)
+            map.foldl(format_avail_entry, AvailModuleMap, !State)
         else
             true
         ),
@@ -201,9 +215,9 @@ write_hlds(Stream, ModuleInfo, !IO) :-
             module_info_get_type_table(ModuleInfo, TypeTable),
             module_info_get_instance_table(ModuleInfo, InstanceTable),
             module_info_get_class_table(ModuleInfo, ClassTable),
-            write_type_table(Info, Stream, LocalOnly, TypeTable, !IO),
-            write_classes(Info, Stream, ClassTable, !IO),
-            write_instances(Info, Stream, InstanceTable, !IO)
+            format_type_table(Info, LocalOnly, TypeTable, !State),
+            format_classes(Info, ClassTable, !State),
+            format_instances(Info, InstanceTable, !State)
         else
             true
         ),
@@ -219,22 +233,22 @@ write_hlds(Stream, ModuleInfo, !IO) :-
                 InstNumLimit),
             globals.lookup_int_option(Globals, dump_hlds_inst_size_limit,
                 InstSizeLimit),
-            write_inst_table(Stream, Lang, MaybeUseErrorMsgInst,
-                InstNumLimit, InstSizeLimit, InstTable, !IO),
-            write_mode_table(Stream, ModeTable, !IO)
+            format_inst_table(Lang, MaybeUseErrorMsgInst,
+                InstNumLimit, InstSizeLimit, InstTable, !State),
+            format_mode_table(ModeTable, !State)
         else
             true
         ),
         ( if string.contains_char(DumpOptions, 'Z') then
             module_info_get_table_struct_map(ModuleInfo, TableStructMap),
-            write_table_structs(Stream, ModuleInfo, TableStructMap, !IO)
+            format_table_structs(ModuleInfo, TableStructMap, !State)
         else
             true
         )
     ),
     ( if string.contains_char(DumpOptions, 'X') then
         module_info_get_const_struct_db(ModuleInfo, ConstStructDb),
-        write_const_struct_db(Stream, ConstStructDb, !IO)
+        format_const_struct_db(ConstStructDb, !State)
     else
         true
     ),
@@ -243,8 +257,8 @@ write_hlds(Stream, ModuleInfo, !IO) :-
         ; DumpSpecPreds = yes
         )
     then
-        write_preds(Info, Stream, DumpSpecPreds, DumpSpecPredTypeNames,
-            Lang, ModuleInfo, !IO)
+        format_preds(Info, DumpSpecPreds, DumpSpecPredTypeNames, Lang,
+            ModuleInfo, !State)
     else
         true
     ),
@@ -252,45 +266,44 @@ write_hlds(Stream, ModuleInfo, !IO) :-
         module_info_get_maybe_dependency_info(ModuleInfo, MaybeDependencyInfo),
         (
             MaybeDependencyInfo = no,
-            io.write_string(Stream, "% No dependency info\n\n", !IO)
+            string.builder.append_string("% No dependency info\n\n", !State)
         ;
             MaybeDependencyInfo = yes(DependencyInfo),
-            write_dependency_info(Info, Stream, ModuleInfo,
-                DependencyInfo, !IO)
+            format_dependency_info(Info, ModuleInfo, DependencyInfo, !State)
         )
     else
         true
     ),
-    write_footer(Stream, ModuleInfo, !IO).
+    format_footer(ModuleInfo, !State).
 
 %---------------------------------------------------------------------------%
 
-:- pred write_header(io.text_output_stream::in, module_info::in,
-    io::di, io::uo) is det.
+:- pred format_header(module_info::in,
+    string.builder.state::di, string.builder.state::uo) is det.
 
-write_header(Stream, Module, !IO) :-
+format_header(Module, !State) :-
     module_info_get_name(Module, ModuleName),
-    io.write_string(Stream, "% vim: ts=2 sw=2 ft=mercury\n\n", !IO),
-    io.format(Stream, ":- module %s.\n\n",
-        [s(escaped_sym_name_to_string(ModuleName))], !IO).
+    string.builder.append_string("% vim: ts=2 sw=2 ft=mercury\n\n", !State),
+    string.builder.format(":- module %s.\n\n",
+        [s(escaped_sym_name_to_string(ModuleName))], !State).
 
-:- pred write_footer(io.text_output_stream::in, module_info::in,
-    io::di, io::uo) is det.
+:- pred format_footer(module_info::in,
+    string.builder.state::di, string.builder.state::uo) is det.
 
-write_footer(Stream, Module, !IO) :-
+format_footer(Module, !State) :-
     module_info_get_name(Module, ModuleName),
-    io.format(Stream, ":- end_module %s.\n",
-        [s(escaped_sym_name_to_string(ModuleName))], !IO).
+    string.builder.format(":- end_module %s.\n",
+        [s(escaped_sym_name_to_string(ModuleName))], !State).
 
 %---------------------------------------------------------------------------%
 %
 % Write out the imports and uses.
 %
 
-:- pred write_avail_entry(io.text_output_stream::in, module_name::in,
-    avail_module_entry::in, io::di, io::uo) is det.
+:- pred format_avail_entry(module_name::in, avail_module_entry::in,
+    string.builder.state::di, string.builder.state::uo) is det.
 
-write_avail_entry(Stream, ModuleName, Entry, !IO) :-
+format_avail_entry(ModuleName, Entry, !State) :-
     Entry = avail_module_entry(Section, ImportOrUse, Avails),
     (
         ImportOrUse = import_decl,
@@ -299,81 +312,83 @@ write_avail_entry(Stream, ModuleName, Entry, !IO) :-
         ImportOrUse = use_decl,
         ImportOrUseDecl = "use_module"
     ),
-    io.format(Stream, ":- %s %s.\n",
-        [s(ImportOrUseDecl), s(escaped_sym_name_to_string(ModuleName))], !IO),
-    io.write_string(Stream, "% ", !IO),
-    io.write(Stream, Section, !IO),
-    io.write_string(Stream, ", ", !IO),
-    io.write_line(Stream, Avails, !IO).
+    string.builder.format(":- %s %s.\n",
+        [s(ImportOrUseDecl), s(escaped_sym_name_to_string(ModuleName))],
+        !State),
+    string.builder.format("%% %s, %s\n",
+        [s(string.string(Section)), s(string.string(Avails))], !State).
 
 %---------------------------------------------------------------------------%
 %
 % Write out constant structs defined in the module.
 %
 
-:- pred write_const_struct_db(io.text_output_stream::in, const_struct_db::in,
-    io::di, io::uo) is det.
+:- pred format_const_struct_db(const_struct_db::in,
+    string.builder.state::di, string.builder.state::uo) is det.
 
-write_const_struct_db(Stream, ConstStructDb, !IO) :-
+format_const_struct_db(ConstStructDb, !State) :-
     const_struct_db_get_structs(ConstStructDb, ConstStructs),
-    io.write_string(Stream, "%-------- Const structs --------\n\n", !IO),
-    list.foldl(write_const_struct(Stream), ConstStructs, !IO),
-    io.nl(Stream, !IO).
+    string.builder.append_string(
+        "%-------- Const structs --------\n\n", !State),
+    list.foldl(format_const_struct, ConstStructs, !State),
+    string.builder.append_string("\n", !State).
 
-:- pred write_const_struct(io.text_output_stream::in,
-    pair(int, const_struct)::in, io::di, io::uo) is det.
+:- pred format_const_struct(pair(int, const_struct)::in,
+    string.builder.state::di, string.builder.state::uo) is det.
 
-write_const_struct(Stream, N - ConstStruct, !IO) :-
-    io.format(Stream, "\nconst_struct %d:\n", [i(N)], !IO),
+format_const_struct(N - ConstStruct, !State) :-
+    string.builder.format("\nconst_struct %d:\n", [i(N)], !State),
     ConstStruct = const_struct(ConsId, ConstArgs, Type, Inst, DefinedWhere),
-    mercury_output_cons_id(output_debug, does_not_need_brackets, ConsId,
-        Stream, !IO),
+    mercury_format_cons_id(output_debug, does_not_need_brackets, ConsId,
+        string.builder.handle, !State),
     (
         ConstArgs = [],
-        io.nl(Stream, !IO)
+        string.builder.append_string("\n", !State)
     ;
         ConstArgs = [HeadConstArg | TailConstArgs],
-        io.write_string(Stream, "(\n", !IO),
-        write_const_struct_args(Stream, HeadConstArg, TailConstArgs, !IO),
-        io.write_string(Stream, ")\n", !IO)
+        string.builder.append_string("(\n", !State),
+        format_const_struct_args(HeadConstArg, TailConstArgs, !State),
+        string.builder.append_string(")\n", !State)
     ),
-    io.write_string(Stream, "type: ", !IO),
-    mercury_output_type(varset.init, print_name_only, Type, Stream, !IO),
-    io.nl(Stream, !IO),
-    io.write_string(Stream, "inst: ", !IO),
-    mercury_output_structured_inst(Stream, output_debug, varset.init,
-        do_not_incl_addr, 0u, Inst, !IO),
+    string.builder.append_string("type: ", !State),
+    mercury_format_type(varset.init, print_name_only, Type,
+        string.builder.handle, !State),
+    string.builder.append_string("\n", !State),
+    string.builder.append_string("inst: ", !State),
+    mercury_format_structured_inst(output_debug, varset.init, do_not_incl_addr,
+        0u, "\n", Inst, string.builder.handle, !State),
     (
         DefinedWhere = defined_in_this_module,
-        io.write_string(Stream, "defined_in_this_module\n", !IO)
+        string.builder.append_string("defined_in_this_module\n", !State)
     ;
         DefinedWhere = defined_in_other_module,
-        io.write_string(Stream, "defined_in_other_module\n", !IO)
+        string.builder.append_string("defined_in_other_module\n", !State)
     ).
 
-:- pred write_const_struct_args(io.text_output_stream::in,
-    const_struct_arg::in, list(const_struct_arg)::in, io::di, io::uo) is det.
+:- pred format_const_struct_args(const_struct_arg::in,
+    list(const_struct_arg)::in,
+    string.builder.state::di, string.builder.state::uo) is det.
 
-write_const_struct_args(Stream, HeadConstArg, TailConstArgs, !IO) :-
-    io.write_string(Stream, "    ", !IO),
+format_const_struct_args(HeadConstArg, TailConstArgs, !State) :-
+    string.builder.append_string("    ", !State),
     (
         HeadConstArg = csa_const_struct(N),
-        io.format(Stream, "cs(%d)", [i(N)], !IO)
+        string.builder.format("cs(%d)", [i(N)], !State)
     ;
         HeadConstArg = csa_constant(ConsId, Type),
-        mercury_output_cons_id(output_debug, does_not_need_brackets, ConsId,
-            Stream, !IO),
-        io.write_string(Stream, "\n        with type ", !IO),
-        mercury_output_type(varset.init, print_name_only, Type, Stream, !IO)
+        mercury_format_cons_id(output_debug, does_not_need_brackets, ConsId,
+            string.builder.handle, !State),
+        string.builder.append_string("\n        with type ", !State),
+        mercury_format_type(varset.init, print_name_only, Type,
+            string.builder.handle, !State)
     ),
     (
         TailConstArgs = [],
-        io.write_string(Stream, "\n", !IO)
+        string.builder.append_string("\n", !State)
     ;
         TailConstArgs = [HeadTailConstArg | TailTailConstArgs],
-        io.write_string(Stream, ",\n", !IO),
-        write_const_struct_args(Stream,
-            HeadTailConstArg, TailTailConstArgs, !IO)
+        string.builder.append_string(",\n", !State),
+        format_const_struct_args(HeadTailConstArg, TailTailConstArgs, !State)
     ).
 
 %---------------------------------------------------------------------------%
@@ -381,102 +396,103 @@ write_const_struct_args(Stream, HeadConstArg, TailConstArgs, !IO) :-
 % Write out tabling structs defined in the module.
 %
 
-:- pred write_table_structs(io.text_output_stream::in, module_info::in,
-    table_struct_map::in, io::di, io::uo) is det.
+:- pred format_table_structs(module_info::in, table_struct_map::in,
+    string.builder.state::di, string.builder.state::uo) is det.
 
-write_table_structs(Stream, ModuleInfo, TableStructMap, !IO) :-
+format_table_structs(ModuleInfo, TableStructMap, !State) :-
     map.to_assoc_list(TableStructMap, TableStructs),
-    io.write_string(Stream, "%-------- Table structs --------\n", !IO),
-    list.foldl(write_table_struct_info(Stream, ModuleInfo), TableStructs, !IO),
-    io.nl(Stream, !IO).
+    string.builder.append_string("%-------- Table structs --------\n", !State),
+    list.foldl(format_table_struct_info(ModuleInfo), TableStructs, !State),
+    string.builder.append_string("\n", !State).
 
-:- pred write_table_struct_info(io.text_output_stream::in, module_info::in,
-    pair(pred_proc_id, table_struct_info)::in, io::di, io::uo) is det.
+:- pred format_table_struct_info(module_info::in,
+    pair(pred_proc_id, table_struct_info)::in,
+    string.builder.state::di, string.builder.state::uo) is det.
 
-write_table_struct_info(Stream, ModuleInfo, PredProcId - TableStructInfo,
-        !IO) :-
+format_table_struct_info(ModuleInfo, PredProcId - TableStructInfo,
+        !State) :-
     PredProcIdStr = pred_proc_id_to_dev_string(ModuleInfo, PredProcId),
-    io.format(Stream, "\n%% table struct info for %s\n",
-        [s(PredProcIdStr)], !IO),
+    string.builder.format("\n%% table struct info for %s\n",
+        [s(PredProcIdStr)], !State),
     TableStructInfo = table_struct_info(ProcTableStructInfo, Attributes),
     ProcTableStructInfo = proc_table_struct_info(_ProcLabel, TVarSet, _Context,
         NumInputs, NumOutputs, InputSteps, MaybeOutputSteps, ArgInfos,
         _EvalMethod),
-    io.format(Stream, "%% #inputs: %d, #outputs: %d\n",
-        [i(NumInputs), i(NumOutputs)], !IO),
-    io.write_string(Stream, "% input steps:", !IO),
-    list.foldl(write_space_and_table_trie_step(Stream, TVarSet),
-        InputSteps, !IO),
-    io.nl(Stream, !IO),
+    string.builder.format("%% #inputs: %d, #outputs: %d\n",
+        [i(NumInputs), i(NumOutputs)], !State),
+    string.builder.append_string("% input steps:", !State),
+    list.foldl(format_space_and_table_trie_step(TVarSet),
+        InputSteps, !State),
+    string.builder.append_string("\n", !State),
     (
         MaybeOutputSteps = yes(OutputSteps),
-        io.write_string(Stream, "% output steps:", !IO),
-        list.foldl(write_space_and_table_trie_step(Stream, TVarSet),
-            OutputSteps, !IO),
-        io.nl(Stream, !IO)
+        string.builder.append_string("% output steps:", !State),
+        list.foldl(format_space_and_table_trie_step(TVarSet),
+            OutputSteps, !State),
+        string.builder.append_string("\n", !State)
     ;
         MaybeOutputSteps = no,
-        io.write_string(Stream, "% no output steps", !IO)
+        string.builder.append_string("% no output steps", !State)
     ),
-    write_table_arg_infos(Stream, TVarSet, ArgInfos, !IO),
+    format_table_arg_infos(TVarSet, ArgInfos, !State),
 
     Attributes = table_attributes(Strictness, SizeLimit, Stats, AllowReset,
         BackendWarning),
     (
         Strictness = cts_all_strict,
-        io.write_string(Stream, "% all strict\n", !IO)
+        string.builder.append_string("% all strict\n", !State)
     ;
         Strictness = cts_all_fast_loose,
-        io.write_string(Stream, "% all fast_loose\n", !IO)
+        string.builder.append_string("% all fast_loose\n", !State)
     ;
         Strictness = cts_specified(ArgMethods, HiddenArgMethod),
-        io.write_string(Stream, "% specified [", !IO),
-        write_arg_tabling_methods(Stream, "", ArgMethods, !IO),
-        io.write_string(Stream, "]", !IO),
+        string.builder.append_string("% specified [", !State),
+        format_arg_tabling_methods("", ArgMethods, !State),
+        string.builder.append_string("]", !State),
         (
             HiddenArgMethod = table_hidden_arg_value,
-            io.write_string(Stream, ", hidden args by value\n", !IO)
+            string.builder.append_string(", hidden args by value\n", !State)
         ;
             HiddenArgMethod = table_hidden_arg_addr,
-            io.write_string(Stream, ", hidden args by addr\n", !IO)
+            string.builder.append_string(", hidden args by addr\n", !State)
         )
     ),
     (
         SizeLimit = no,
-        io.write_string(Stream, "% no size limit\n", !IO)
+        string.builder.append_string("% no size limit\n", !State)
     ;
         SizeLimit = yes(Limit),
-        io.format(Stream, "%% size limit %d\n", [i(Limit)], !IO)
+        string.builder.format("%% size limit %d\n", [i(Limit)], !State)
     ),
     (
         Stats = table_gather_statistics,
-        io.write_string(Stream, "% gather statistics\n", !IO)
+        string.builder.append_string("% gather statistics\n", !State)
     ;
         Stats = table_dont_gather_statistics,
-        io.write_string(Stream, "% do not gather statistics\n", !IO)
+        string.builder.append_string("% do not gather statistics\n", !State)
     ),
     (
         AllowReset = table_allow_reset,
-        io.write_string(Stream, "% allow reset\n", !IO)
+        string.builder.append_string("% allow reset\n", !State)
     ;
         AllowReset = table_dont_allow_reset,
-        io.write_string(Stream, "% do not allow reset\n", !IO)
+        string.builder.append_string("% do not allow reset\n", !State)
     ),
     (
         BackendWarning = table_attr_ignore_with_warning,
-        io.write_string(Stream, "% ignore only with warning\n", !IO)
+        string.builder.append_string("% ignore only with warning\n", !State)
     ;
         BackendWarning = table_attr_ignore_without_warning,
-        io.write_string(Stream, "% may ignore without warning\n", !IO)
+        string.builder.append_string("% may ignore without warning\n", !State)
     ).
 
-:- pred write_space_and_table_trie_step(io.text_output_stream::in, tvarset::in,
-    table_step_desc::in, io::di, io::uo) is det.
+:- pred format_space_and_table_trie_step(tvarset::in, table_step_desc::in,
+    string.builder.state::di, string.builder.state::uo) is det.
 
-write_space_and_table_trie_step(Stream, TVarSet, StepDesc, !IO) :-
+format_space_and_table_trie_step(TVarSet, StepDesc, !State) :-
     StepDesc = table_step_desc(VarName, TrieStep),
     StepDescStr = table_trie_step_desc(TVarSet, TrieStep),
-    io.format(Stream, " %s: %s", [s(VarName), s(StepDescStr)], !IO).
+    string.builder.format(" %s: %s", [s(VarName), s(StepDescStr)], !State).
 
 :- func table_trie_step_desc(tvarset, table_trie_step) = string.
 
@@ -559,39 +575,40 @@ table_trie_step_desc(TVarSet, Step) = Str :-
         Str = "promise_implied"
     ).
 
-:- pred write_arg_tabling_methods(io.text_output_stream::in, string::in,
-    list(maybe(arg_tabling_method))::in, io::di, io::uo) is det.
+:- pred format_arg_tabling_methods(string::in,
+    list(maybe(arg_tabling_method))::in,
+    string.builder.state::di, string.builder.state::uo) is det.
 
-write_arg_tabling_methods(_, _, [], !IO).
-write_arg_tabling_methods(Stream, Prefix, [MaybeMethod | MaybeMethods], !IO) :-
-    io.write_string(Stream, Prefix, !IO),
+format_arg_tabling_methods(_, [], !State).
+format_arg_tabling_methods(Prefix, [MaybeMethod | MaybeMethods], !State) :-
+    string.builder.append_string(Prefix, !State),
     (
         MaybeMethod = no,
-        io.write_string(Stream, "output", !IO)
+        string.builder.append_string("output", !State)
     ;
         MaybeMethod = yes(arg_value),
-        io.write_string(Stream, "value", !IO)
+        string.builder.append_string("value", !State)
     ;
         MaybeMethod = yes(arg_addr),
-        io.write_string(Stream, "addr", !IO)
+        string.builder.append_string("addr", !State)
     ;
         MaybeMethod = yes(arg_promise_implied),
-        io.write_string(Stream, "promise_implied", !IO)
+        string.builder.append_string("promise_implied", !State)
     ),
-    write_arg_tabling_methods(Stream, ", ", MaybeMethods, !IO).
+    format_arg_tabling_methods(", ", MaybeMethods, !State).
 
 %---------------------------------------------------------------------------%
 %
 % Write out the predicate table.
 %
 
-:- pred write_preds(hlds_out_info::in, io.text_output_stream::in,
-    bool::in, list(string)::in, output_lang::in, module_info::in,
-    io::di, io::uo) is det.
+:- pred format_preds(hlds_out_info::in, bool::in, list(string)::in,
+    output_lang::in, module_info::in,
+    string.builder.state::di, string.builder.state::uo) is det.
 
-write_preds(Info, Stream, DumpSpecPreds, DumpSpecPredTypeNames, Lang,
-        ModuleInfo, !IO) :-
-    io.write_string(Stream, "%-------- Predicates --------\n\n", !IO),
+format_preds(Info, DumpSpecPreds, DumpSpecPredTypeNames, Lang,
+        ModuleInfo, !State) :-
+    string.builder.append_string("%-------- Predicates --------\n\n", !State),
     module_info_get_pred_id_table(ModuleInfo, PredIdTable),
     map.to_assoc_list(PredIdTable, PredIdsInfos),
     (
@@ -613,8 +630,8 @@ write_preds(Info, Stream, DumpSpecPreds, DumpSpecPredTypeNames, Lang,
             SpecPredMap0, SpecPredMap),
         map.values(SpecPredMap, PrintPredIdsInfos)
     ),
-    list.foldl(maybe_write_pred(Info, Stream, Lang, ModuleInfo),
-        PrintPredIdsInfos, !IO).
+    list.foldl(maybe_write_pred(Info, Lang, ModuleInfo),
+        PrintPredIdsInfos, !State).
 
 :- pred compare_in_name_order(
     pair(pred_id, pred_info)::in,
@@ -661,12 +678,11 @@ add_spec_preds_to_map(DumpSpecPredTypeNames, PredIdInfo, !SpecPredMap) :-
         true
     ).
 
-:- pred maybe_write_pred(hlds_out_info::in, io.text_output_stream::in,
-    output_lang::in, module_info::in, pair(pred_id, pred_info)::in,
-    io::di, io::uo) is det.
+:- pred maybe_write_pred(hlds_out_info::in, output_lang::in, module_info::in,
+    pair(pred_id, pred_info)::in,
+    string.builder.state::di, string.builder.state::uo) is det.
 
-maybe_write_pred(Info, Stream, Lang, ModuleInfo, PredId - PredInfo,
-        !IO) :-
+maybe_write_pred(Info, Lang, ModuleInfo, PredId - PredInfo, !State) :-
     DumpOptions = Info ^ hoi_dump_hlds_options,
     DumpPredIdStrs = Info ^ hoi_dump_hlds_pred_ids,
     DumpPredNames = Info ^ hoi_dump_hlds_pred_names,
@@ -691,7 +707,7 @@ maybe_write_pred(Info, Stream, Lang, ModuleInfo, PredId - PredInfo,
                 list.member(PredName, DumpPredNames)
             )
         then
-            write_pred(Info, Stream, Lang, ModuleInfo, PredId, PredInfo, !IO)
+            format_pred(Info, Lang, ModuleInfo, PredId, PredInfo, !State)
         else
             true
         )
@@ -719,7 +735,7 @@ maybe_write_pred(Info, Stream, Lang, ModuleInfo, PredId - PredInfo,
         then
             true
         else
-            write_pred(Info, Stream, Lang, ModuleInfo, PredId, PredInfo, !IO)
+            format_pred(Info, Lang, ModuleInfo, PredId, PredInfo, !State)
         )
     ).
 
@@ -728,67 +744,70 @@ maybe_write_pred(Info, Stream, Lang, ModuleInfo, PredId - PredInfo,
 % Write out dependency information.
 %
 
-:- pred write_dependency_info(hlds_out_info::in, io.text_output_stream::in,
-    module_info::in, hlds_dependency_info::in, io::di, io::uo) is det.
+:- pred format_dependency_info(hlds_out_info::in, module_info::in,
+    hlds_dependency_info::in,
+    string.builder.state::di, string.builder.state::uo) is det.
 
-write_dependency_info(_Info, Stream, ModuleInfo, DependencyInfo, !IO) :-
-    io.write_string(Stream, "% Dependency graph\n\n", !IO),
+format_dependency_info(_Info, ModuleInfo, DependencyInfo, !State) :-
+    string.builder.append_string("% Dependency graph\n\n", !State),
     Graph = dependency_info_get_graph(DependencyInfo),
     digraph.traverse(Graph,
-        write_dep_graph_node(Stream, ModuleInfo),
-        write_dep_graph_edge(Stream, ModuleInfo), !IO),
+        format_dep_graph_node(ModuleInfo),
+        format_dep_graph_edge(ModuleInfo), !State),
 
 % If needed, this code can be used to check the raw behavior
 % of digraph operations.
 %
 %   ( if tsort(Graph, TSort) then
-%       write_indent(Stream, Indent, !IO),
-%       io.write_string(Stream, "\n% TSORT ordering\n\n", !IO),
-%       list.foldl(write_dependency_proc(Indent, "", ModuleInfo), TSort, !IO)
+%       format_indent(Indent, !State),
+%       string.builder.append_string("\n% TSORT ordering\n\n", !State),
+%       list.foldl(format_dependency_proc(Indent, "", ModuleInfo),
+%           TSort, !State)
 %   else
-%       io.write_string(Stream, "\n% NO TSORT ordering\n\n", !IO)
+%       string.builder.append_string("\n% NO TSORT ordering\n\n", !State)
 %   ),
 %
-%   write_indent(Stream, Indent, !IO),
-%   io.write_string(Stream, "\n% ATSORT ordering\n\n", !IO),
+%   format_indent(Indent, !State),
+%   string.builder.append_string("\n% ATSORT ordering\n\n", !State),
 %   AtSort = digraph.atsort(Graph),
-%   list.foldl(write_dependency_scc(Indent, ModuleInfo), AtSort, !IO),
+%   list.foldl(format_dependency_scc(Indent, ModuleInfo), AtSort, !State),
 
-    io.write_string(Stream, "\n% Bottom up dependency sccs\n\n", !IO),
+    string.builder.append_string("\n% Bottom up dependency sccs\n\n", !State),
     Ordering = dependency_info_get_bottom_up_sccs(DependencyInfo),
-    list.foldl(write_dependency_scc(Stream, ModuleInfo), Ordering, !IO).
+    list.foldl(format_dependency_scc(ModuleInfo), Ordering, !State).
 
-:- pred write_dep_graph_node(io.text_output_stream::in, module_info::in,
-    pred_proc_id::in, io::di, io::uo) is det.
+:- pred format_dep_graph_node(module_info::in, pred_proc_id::in,
+    string.builder.state::di, string.builder.state::uo) is det.
 
-write_dep_graph_node(Stream, ModuleInfo, Proc, !IO) :-
-    write_dependency_proc(Stream, "calls from ", ModuleInfo, Proc, !IO).
+format_dep_graph_node(ModuleInfo, Proc, !State) :-
+    format_dependency_proc("calls from ", ModuleInfo, Proc, !State).
 
-:- pred write_dep_graph_edge(io.text_output_stream::in, module_info::in,
-    pred_proc_id::in, pred_proc_id::in, io::di, io::uo) is det.
+:- pred format_dep_graph_edge(module_info::in,
+    pred_proc_id::in, pred_proc_id::in,
+    string.builder.state::di, string.builder.state::uo) is det.
 
-write_dep_graph_edge(Stream, ModuleInfo, _ParentProc, ChildProc, !IO) :-
-    write_dependency_proc(Stream, "  to ", ModuleInfo, ChildProc, !IO).
+format_dep_graph_edge(ModuleInfo, _ParentProc, ChildProc, !State) :-
+    format_dependency_proc("  to ", ModuleInfo, ChildProc, !State).
 
-:- pred write_dependency_scc(io.text_output_stream::in, module_info::in,
-    scc::in, io::di, io::uo) is det.
+:- pred format_dependency_scc(module_info::in, scc::in,
+    string.builder.state::di, string.builder.state::uo) is det.
 
-write_dependency_scc(Stream, ModuleInfo, SCC, !IO) :-
-    io.write_string(Stream, "% SCC\n", !IO),
-    set.foldl(write_dependency_proc(Stream, "  ", ModuleInfo), SCC, !IO).
+format_dependency_scc(ModuleInfo, SCC, !State) :-
+    string.builder.append_string("% SCC\n", !State),
+    set.foldl(format_dependency_proc("  ", ModuleInfo), SCC, !State).
 
-:- pred write_dependency_proc(io.text_output_stream::in, string::in,
-    module_info::in, pred_proc_id::in, io::di, io::uo) is det.
+:- pred format_dependency_proc(string::in, module_info::in, pred_proc_id::in,
+    string.builder.state::di, string.builder.state::uo) is det.
 
-write_dependency_proc(Stream, Prefix, ModuleInfo, PredProcId, !IO) :-
+format_dependency_proc(Prefix, ModuleInfo, PredProcId, !State) :-
     PredProcId = proc(PredId, ProcId),
     Pieces = describe_one_proc_name(ModuleInfo,
         should_not_module_qualify, PredProcId),
     Desc = error_pieces_to_one_line_string(Pieces),
 
-    io.format(Stream, "%% %spred %d proc %d, %s\n",
+    string.builder.format("%% %spred %d proc %d, %s\n",
         [s(Prefix), i(pred_id_to_int(PredId)), i(proc_id_to_int(ProcId)),
-        s(Desc)], !IO).
+        s(Desc)], !State).
 
 %---------------------------------------------------------------------------%
 :- end_module hlds.hlds_out.hlds_out_module.
