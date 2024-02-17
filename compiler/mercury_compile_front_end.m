@@ -146,6 +146,7 @@
 :- import_module require.
 :- import_module set.
 :- import_module string.
+:- import_module string.builder.
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -512,79 +513,112 @@ frontend_pass_after_typecheck(ProgressStream, ErrorStream, OpModeAugment,
 create_and_write_opt_file(ProgressStream, ErrorStream, IntermodAnalysis,
         Globals, !HLDS, !DumpInfo, !Specs, !IO) :-
     module_info_get_name(!.HLDS, ModuleName),
-    module_name_to_file_name_create_dirs(Globals, $pred,
-        ext_cur_ngs_gs_max_ngs(ext_cur_ngs_gs_max_ngs_opt_plain),
+    OptExt = ext_cur_ngs_gs_max_ngs(ext_cur_ngs_gs_max_ngs_opt_plain),
+    module_name_to_file_name_create_dirs(Globals, $pred, OptExt,
         ModuleName, OptFileName, !IO),
-    TmpOptFileName = OptFileName ++ ".tmp",
 
-    io.open_output(TmpOptFileName, OpenResult, !IO),
-    (
-        OpenResult = error(Error),
-        io.progname_base("mmc", ProgName, !IO),
-        io.error_message(Error, ErrorMsg),
-        io.format(ProgressStream, "%s: cannot open `%s' for output: %s\n",
-            [s(ProgName), s(TmpOptFileName), s(ErrorMsg)], !IO),
-        io.set_exit_status(1, !IO)
-    ;
-        OpenResult = ok(TmpOptStream),
-        write_initial_opt_file(TmpOptStream, !.HLDS, IntermodInfo,
-            ParseTreePlainOpt0, !IO),
-        maybe_opt_export_listed_entities(IntermodInfo, !HLDS),
-
-        % The following passes are only run with `--intermodule-optimisation'
-        % to append their results to the `.opt.tmp' file. For
-        % `--intermodule-analysis', analysis results should be recorded
-        % using the intermodule analysis framework instead.
-        % XXX So why is the test "IntermodAnalysis = no", instead of
-        % "IntermodOpt = yes"?
-        %
-        % If intermod_unused_args is being performed, run polymorphism,
-        % mode analysis and determinism analysis before unused_args.
-        ( if
-            IntermodAnalysis = no,
-            need_middle_pass_for_opt_file(Globals, NeedMiddlePassForOptFile),
-            NeedMiddlePassForOptFile = yes
-        then
-            frontend_pass_by_phases(ProgressStream, ErrorStream,
-                !HLDS, FoundError, !DumpInfo, !Specs, !IO),
-            (
-                FoundError = no,
-                middle_pass_for_opt_file(ProgressStream, !HLDS,
-                    UnusedArgsInfos, !Specs, !IO),
-                append_analysis_pragmas_to_opt_file(TmpOptStream, !.HLDS,
-                    UnusedArgsInfos, ParseTreePlainOpt0, ParseTreePlainOpt,
-                    !IO)
-            ;
-                FoundError = yes,
-                io.set_exit_status(1, !IO),
-                ParseTreePlainOpt = ParseTreePlainOpt0
-            )
-        else
-            ParseTreePlainOpt = ParseTreePlainOpt0
-        ),
-        io.close_output(TmpOptStream, !IO),
-
-        copy_dot_tmp_to_base_file_report_any_error(ProgressStream, Globals,
-            ".opt", OptFileName, _UpdateSucceeded, !IO),
-        touch_module_ext_datestamp(Globals, ProgressStream,
-            ModuleName, ext_cur_ngs_gs(ext_cur_ngs_gs_opt_date_plain),
-            _TouchSucceeded, !IO),
-
-        globals.lookup_bool_option(Globals, experiment5, Experiment5),
+    OptState0 = string.builder.init,
+    format_initial_opt_file(!.HLDS, IntermodInfo, ParseTreePlainOpt0,
+        OptState0, OptState1),
+    % XXX Is this call needed even when the condition of the if-then-else
+    % just below fails?
+    maybe_opt_export_listed_entities(IntermodInfo, !HLDS),
+    % The following passes are only run with `--intermodule-optimisation'
+    % to append their results to the `.opt' file. For `--intermodule-analysis',
+    % analysis results should be recorded using the intermodule analysis
+    % framework instead.
+    % XXX So why is the test "IntermodAnalysis = no", instead of
+    % "IntermodOpt = yes"?
+    %
+    % If intermod_unused_args is being performed, run polymorphism,
+    % mode analysis and determinism analysis before unused_args.
+    ( if
+        IntermodAnalysis = no,
+        need_middle_pass_for_opt_file(Globals, NeedMiddlePassForOptFile),
+        NeedMiddlePassForOptFile = yes
+    then
+        frontend_pass_by_phases(ProgressStream, ErrorStream, !HLDS,
+            FoundFrontEndError, !DumpInfo, !Specs, !IO),
         (
-            Experiment5 = no
+            FoundFrontEndError = no,
+            middle_pass_for_opt_file(ProgressStream, !HLDS, UnusedArgsInfos,
+                !Specs, !IO),
+            append_analysis_pragmas_to_opt_file(!.HLDS, UnusedArgsInfos,
+                ParseTreePlainOpt0, ParseTreePlainOpt, OptState1, OptState)
         ;
-            Experiment5 = yes,
-            io.open_output(OptFileName ++ "x", OptXResult, !IO),
+            FoundFrontEndError = yes,
+            ParseTreePlainOpt = ParseTreePlainOpt0,
+            OptState = OptState1,
+            io.set_exit_status(1, !IO)
+        )
+    else
+        ParseTreePlainOpt = ParseTreePlainOpt0,
+        OptState = OptState1
+    ),
+    OptFileStr = string.builder.to_string(OptState),
+
+    io.read_named_file_as_string(OptFileName, ReadFileResult, !IO),
+    (
+        ReadFileResult = ok(OldOptFileStr),
+        ( if OldOptFileStr = OptFileStr then
+            WriteOpt = bool.no
+        else
+            WriteOpt = bool.yes
+        )
+    ;
+        ReadFileResult = error(_),
+        % It does not matter why we cannot read the old version of the file,
+        % we should try to write out the new version.
+        WriteOpt = bool.yes
+    ),
+
+    (
+        WriteOpt = no
+    ;
+        WriteOpt = yes,
+        % XXX Trying to output what we got from format_initial_opt_file above
+        % *even if FoundFrontEndError is yes* preserves behavior from
+        % old versions of this code in which the data gathered by
+        % format_initial_opt_file *was already output* by the time we called
+        % middle_pass_for_opt_file. We should consider more deeply
+        % whether this is a good idea.
+        io.open_output(OptFileName, OpenResult, !IO),
+        (
+            OpenResult = error(Error),
+            io.progname_base("mmc", ProgName, !IO),
+            io.error_message(Error, ErrorMsg),
+            io.format(ProgressStream, "%s: cannot open `%s' for output: %s\n",
+                [s(ProgName), s(OptFileName), s(ErrorMsg)], !IO),
+            io.set_exit_status(1, !IO)
+        ;
+            OpenResult = ok(OptStream),
+            io.write_string(OptStream, OptFileStr, !IO),
+            io.close_output(OptStream, !IO),
+
+            OptDateExt = ext_cur_ngs_gs(ext_cur_ngs_gs_opt_date_plain),
+            touch_module_ext_datestamp(Globals, ProgressStream,
+                ModuleName, OptDateExt, _TouchSucceeded, !IO),
+
+            globals.lookup_bool_option(Globals, experiment5, Experiment5),
             (
-                OptXResult = error(_)
+                Experiment5 = no
             ;
-                OptXResult = ok(OptXStream),
-                Info = init_merc_out_info(Globals, unqualified_item_names,
-                    output_mercury),
-                mercury_output_parse_tree_plain_opt(Info, OptXStream,
-                    ParseTreePlainOpt, !IO),
-                io.close_output(OptXStream, !IO)
+                Experiment5 = yes,
+                io.open_output(OptFileName ++ "x", OptXResult, !IO),
+                (
+                    OptXResult = error(_)
+                ;
+                    OptXResult = ok(OptXStream),
+                    Info = init_merc_out_info(Globals, unqualified_item_names,
+                        output_mercury),
+                    OptXState0 = string.builder.init,
+                    mercury_format_parse_tree_plain_opt(Info,
+                        string.builder.handle, ParseTreePlainOpt,
+                        OptXState0, OptXState),
+                    OptXFileStr = string.builder.to_string(OptXState),
+                    io.write_string(OptXStream, OptXFileStr, !IO),
+                    io.close_output(OptXStream, !IO)
+                )
             )
         )
     ).

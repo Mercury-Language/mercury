@@ -68,8 +68,9 @@
 :- import_module parse_tree.
 :- import_module parse_tree.prog_item.
 
-:- import_module io.
 :- import_module set.
+:- import_module string.
+:- import_module string.builder.
 
 %---------------------------------------------------------------------------%
 %
@@ -95,17 +96,17 @@
 % to append_unused_arg_pragmas_to_opt_file separately.
 %
 
-:- pred append_analysis_pragmas_to_opt_file(io.text_output_stream::in,
-    module_info::in, set(gen_pragma_unused_args_info)::in,
+:- pred append_analysis_pragmas_to_opt_file(module_info::in,
+    set(gen_pragma_unused_args_info)::in,
     parse_tree_plain_opt::in, parse_tree_plain_opt::out,
-    io::di, io::uo) is det.
+    string.builder.state::di, string.builder.state::uo) is det.
 
 %---------------------------------------------------------------------------%
 
     % Write out the contents of a module's .trans_opt file.
     %
-:- pred write_trans_opt_file(io.text_output_stream::in, module_info::in,
-    parse_tree_trans_opt::out, io::di, io::uo) is det.
+:- pred format_trans_opt_file(module_info::in, parse_tree_trans_opt::out,
+    string.builder.state::di, string.builder.state::uo) is det.
 
 %---------------------------------------------------------------------------%
 
@@ -169,7 +170,6 @@
 :- import_module maybe.
 :- import_module one_or_more.
 :- import_module pair.
-:- import_module string.
 :- import_module term_context.
 :- import_module unit.
 :- import_module varset.
@@ -177,8 +177,8 @@
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
-append_analysis_pragmas_to_opt_file(Stream, ModuleInfo, UnusedArgsInfosSet,
-        !ParseTreePlainOpt, !IO) :-
+append_analysis_pragmas_to_opt_file(ModuleInfo, UnusedArgsInfosSet,
+        !ParseTreePlainOpt, !State) :-
     module_info_get_proc_analysis_kinds(ModuleInfo, ProcAnalysisKinds),
     ( if
         set.is_empty(ProcAnalysisKinds),
@@ -195,11 +195,12 @@ append_analysis_pragmas_to_opt_file(Stream, ModuleInfo, UnusedArgsInfosSet,
             TermInfos, TermInfos2, Exceptions, TrailingInfos, MMTablingInfos,
             SharingInfos, ReuseInfos),
 
-        maybe_format_block_start_blank_line(Stream, UnusedArgsInfos, !IO),
-        list.foldl(mercury_format_pragma_unused_args(Stream),
-            UnusedArgsInfos, !IO),
-        write_analysis_pragmas(Stream, TermInfos, TermInfos2, Exceptions,
-            TrailingInfos, MMTablingInfos, SharingInfos, ReuseInfos, !IO),
+        maybe_format_block_start_blank_line(string.builder.handle,
+            UnusedArgsInfos, !State),
+        list.foldl(mercury_format_pragma_unused_args(string.builder.handle),
+            UnusedArgsInfos, !State),
+        format_analysis_pragmas(TermInfos, TermInfos2, Exceptions,
+            TrailingInfos, MMTablingInfos, SharingInfos, ReuseInfos, !State),
 
         !ParseTreePlainOpt ^ ptpo_unused_args := UnusedArgsInfos,
         !ParseTreePlainOpt ^ ptpo_termination := TermInfos,
@@ -213,10 +214,10 @@ append_analysis_pragmas_to_opt_file(Stream, ModuleInfo, UnusedArgsInfosSet,
 
 %---------------------%
 
-write_trans_opt_file(Stream, ModuleInfo, ParseTreeTransOpt, !IO) :-
+format_trans_opt_file(ModuleInfo, ParseTreeTransOpt, !State) :-
     module_info_get_name(ModuleInfo, ModuleName),
     ModuleNameStr = mercury_bracketed_sym_name_to_string(ModuleName),
-    io.format(Stream, ":- module %s.\n", [s(ModuleNameStr)], !IO),
+    string.builder.format(":- module %s.\n", [s(ModuleNameStr)], !State),
 
     % Select all the predicates for which something should be written
     % into the .trans_opt file.
@@ -235,8 +236,8 @@ write_trans_opt_file(Stream, ModuleInfo, ParseTreeTransOpt, !IO) :-
         NoReuseOrderPredInfos,
         TermInfos, TermInfos2, Exceptions, TrailingInfos, MMTablingInfos,
         SharingInfos, ReuseInfos),
-    write_analysis_pragmas(Stream, TermInfos, TermInfos2, Exceptions,
-        TrailingInfos, MMTablingInfos, SharingInfos, ReuseInfos, !IO),
+    format_analysis_pragmas(TermInfos, TermInfos2, Exceptions,
+        TrailingInfos, MMTablingInfos, SharingInfos, ReuseInfos, !State),
 
     ParseTreeTransOpt = parse_tree_trans_opt(ModuleName, dummy_context,
         TermInfos, TermInfos2, Exceptions, TrailingInfos, MMTablingInfos,
@@ -314,7 +315,7 @@ gather_analysis_pragmas(ModuleInfo, ProcAnalysisKinds, OrderPredInfos,
         ReuseInfos = []
     ).
 
-:- pred write_analysis_pragmas(io.text_output_stream::in,
+:- pred format_analysis_pragmas(
     list(decl_pragma_termination_info)::in,
     list(decl_pragma_termination2_info)::in,
     list(gen_pragma_exceptions_info)::in,
@@ -322,31 +323,46 @@ gather_analysis_pragmas(ModuleInfo, ProcAnalysisKinds, OrderPredInfos,
     list(gen_pragma_mm_tabling_info)::in,
     list(decl_pragma_struct_sharing_info)::in,
     list(decl_pragma_struct_reuse_info)::in,
-    io::di, io::uo) is det.
+    string.builder.state::di, string.builder.state::uo) is det.
 
-write_analysis_pragmas(Stream, TermInfos, TermInfos2, Exceptions,
-        TrailingInfos, MMTablingInfos, SharingInfos, ReuseInfos, !IO) :-
-    maybe_format_block_start_blank_line(Stream, TermInfos, !IO),
-    list.foldl(mercury_format_pragma_termination(Stream, output_mercury),
-        TermInfos, !IO),
-    maybe_format_block_start_blank_line(Stream, TermInfos2, !IO),
-    list.foldl(mercury_format_pragma_termination2(Stream, output_mercury),
-        TermInfos2, !IO),
-    maybe_format_block_start_blank_line(Stream, Exceptions, !IO),
-    list.foldl(mercury_format_pragma_exceptions(Stream),
-        Exceptions, !IO),
-    maybe_format_block_start_blank_line(Stream, TrailingInfos, !IO),
-    list.foldl(mercury_format_pragma_trailing(Stream),
-        TrailingInfos, !IO),
-    maybe_format_block_start_blank_line(Stream, MMTablingInfos, !IO),
-    list.foldl(mercury_format_pragma_mm_tabling(Stream),
-        MMTablingInfos, !IO),
-    maybe_format_block_start_blank_line(Stream, SharingInfos, !IO),
-    list.foldl(mercury_format_pragma_struct_sharing(Stream, output_debug),
-        SharingInfos, !IO),
-    maybe_format_block_start_blank_line(Stream, ReuseInfos, !IO),
-    list.foldl(mercury_format_pragma_struct_reuse(Stream, output_debug),
-        ReuseInfos, !IO).
+format_analysis_pragmas(TermInfos, TermInfos2, Exceptions, TrailingInfos,
+        MMTablingInfos, SharingInfos, ReuseInfos, !State) :-
+    maybe_format_block_start_blank_line(string.builder.handle, TermInfos,
+        !State),
+    list.foldl(
+        mercury_format_pragma_termination(string.builder.handle,
+            output_mercury),
+        TermInfos, !State),
+    maybe_format_block_start_blank_line(string.builder.handle, TermInfos2,
+        !State),
+    list.foldl(
+        mercury_format_pragma_termination2(string.builder.handle,
+            output_mercury),
+        TermInfos2, !State),
+    maybe_format_block_start_blank_line(string.builder.handle, Exceptions,
+        !State),
+    list.foldl(mercury_format_pragma_exceptions(string.builder.handle),
+        Exceptions, !State),
+    maybe_format_block_start_blank_line(string.builder.handle, TrailingInfos,
+        !State),
+    list.foldl(mercury_format_pragma_trailing(string.builder.handle),
+        TrailingInfos, !State),
+    maybe_format_block_start_blank_line(string.builder.handle, MMTablingInfos,
+        !State),
+    list.foldl(mercury_format_pragma_mm_tabling(string.builder.handle),
+        MMTablingInfos, !State),
+    maybe_format_block_start_blank_line(string.builder.handle, SharingInfos,
+        !State),
+    list.foldl(
+        mercury_format_pragma_struct_sharing(string.builder.handle,
+            output_debug),
+        SharingInfos, !State),
+    maybe_format_block_start_blank_line(string.builder.handle, ReuseInfos,
+        !State),
+    list.foldl(
+        mercury_format_pragma_struct_reuse(string.builder.handle,
+            output_debug),
+        ReuseInfos, !State).
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%

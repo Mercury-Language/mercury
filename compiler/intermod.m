@@ -89,7 +89,8 @@
 :- import_module parse_tree.prog_item.
 :- import_module transform_hlds.intermod_info.
 
-:- import_module io.
+:- import_module string.
+:- import_module string.builder.
 
 %---------------------------------------------------------------------------%
 
@@ -116,8 +117,9 @@
     % such as promise_pure scopes), so we simply don't write out clauses
     % containing such constructs.
     %
-:- pred write_initial_opt_file(io.text_output_stream::in, module_info::in,
-    intermod_info::out, parse_tree_plain_opt::out, io::di, io::uo) is det.
+:- pred format_initial_opt_file(module_info::in,
+    intermod_info::out, parse_tree_plain_opt::out,
+    string.builder.state::di, string.builder.state::uo) is det.
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -167,7 +169,6 @@
 :- import_module pair.
 :- import_module require.
 :- import_module set.
-:- import_module string.
 :- import_module term.
 :- import_module term_context.
 :- import_module term_subst.
@@ -175,24 +176,23 @@
 
 %---------------------------------------------------------------------------%
 
-write_initial_opt_file(TmpOptStream, ModuleInfo, IntermodInfo,
-        ParseTreePlainOpt, !IO) :-
+format_initial_opt_file(ModuleInfo, IntermodInfo, ParseTreePlainOpt, !State) :-
     decide_what_to_opt_export(ModuleInfo, IntermodInfo),
-    write_opt_file_initial(TmpOptStream, IntermodInfo, ParseTreePlainOpt, !IO).
+    format_opt_file_initial(IntermodInfo, ParseTreePlainOpt, !State).
 
 %---------------------------------------------------------------------------%
 
     % Output module imports, types, modes, insts and predicates.
     %
-:- pred write_opt_file_initial(io.text_output_stream::in,
-    intermod_info::in, parse_tree_plain_opt::out, io::di, io::uo) is det.
+:- pred format_opt_file_initial(intermod_info::in, parse_tree_plain_opt::out,
+    string.builder.state::di, string.builder.state::uo) is det.
 
-write_opt_file_initial(Stream, IntermodInfo, ParseTreePlainOpt, !IO) :-
+format_opt_file_initial(IntermodInfo, ParseTreePlainOpt, !State) :-
     deconstruct_intermod_info(IntermodInfo, ModuleInfo, _,
         PredDecls, PredDefns, Instances, _, _),
     module_info_get_name(ModuleInfo, ModuleName),
     ModuleNameStr = mercury_bracketed_sym_name_to_string(ModuleName),
-    io.format(Stream, ":- module %s.\n", [s(ModuleNameStr)], !IO),
+    string.builder.format(":- module %s.\n", [s(ModuleNameStr)], !State),
     ( if
         % If none of these kinds of items need writing, then
         % nothing else needs to be written.
@@ -207,8 +207,7 @@ write_opt_file_initial(Stream, IntermodInfo, ParseTreePlainOpt, !IO) :-
             map.init, set.init, [], [], [], [], [], [], [], [], [], [], [], [],
             [], [], [], [], [], [], [], [], [], [])
     else
-        write_opt_file_initial_body(Stream, IntermodInfo, ParseTreePlainOpt,
-            !IO)
+        format_opt_file_initial_body(IntermodInfo, ParseTreePlainOpt, !State)
     ).
 
 :- pred some_type_needs_to_be_written(
@@ -227,10 +226,11 @@ some_type_needs_to_be_written([_ - TypeDefn | TypeCtorDefns], NeedWrite) :-
         some_type_needs_to_be_written(TypeCtorDefns, NeedWrite)
     ).
 
-:- pred write_opt_file_initial_body(io.text_output_stream::in,
-    intermod_info::in, parse_tree_plain_opt::out, io::di, io::uo) is det.
+:- pred format_opt_file_initial_body(intermod_info::in,
+    parse_tree_plain_opt::out,
+    string.builder.state::di, string.builder.state::uo) is det.
 
-write_opt_file_initial_body(Stream, IntermodInfo, ParseTreePlainOpt, !IO) :-
+format_opt_file_initial_body(IntermodInfo, ParseTreePlainOpt, !State) :-
     deconstruct_intermod_info(IntermodInfo, ModuleInfo, _,
         WriteDeclPredIdSet, WriteDefnPredIdSet, InstanceDefns,
         Types, NeedFIMs),
@@ -284,28 +284,37 @@ write_opt_file_initial_body(Stream, IntermodInfo, ParseTreePlainOpt, !IO) :-
     intermod_gather_classes(ModuleInfo, TypeClasses),
     intermod_gather_instances(InstanceDefns, Instances),
 
-    list.foldl(mercury_output_module_decl(Stream, "use_module"),
-        UsedModuleNames, !IO),
-    maybe_format_block_start_blank_line(Stream, FIMSpecs, !IO),
-    list.foldl(mercury_output_fim_spec(Stream), FIMSpecs, !IO),
-    maybe_format_block_start_blank_line(Stream, TypeDefns, !IO),
-    list.foldl(mercury_format_item_type_defn(MercInfo, Stream),
-        TypeDefns, !IO),
-    maybe_format_block_start_blank_line(Stream, ForeignEnums, !IO),
-    list.foldl(mercury_format_item_foreign_enum(MercInfo, Stream),
-        ForeignEnums, !IO),
-    maybe_format_block_start_blank_line(Stream, InstDefns, !IO),
-    list.foldl(mercury_format_item_inst_defn(MercInfo, Stream),
-        InstDefns, !IO),
-    maybe_format_block_start_blank_line(Stream, ModeDefns, !IO),
-    list.foldl(mercury_format_item_mode_defn(MercInfo, Stream),
-        ModeDefns, !IO),
-    maybe_format_block_start_blank_line(Stream, TypeClasses, !IO),
-    list.foldl(mercury_format_item_typeclass(MercInfo, Stream),
-        TypeClasses, !IO),
-    maybe_format_block_start_blank_line(Stream, Instances, !IO),
-    list.foldl(mercury_format_item_instance(MercInfo, Stream),
-        Instances, !IO),
+    list.foldl(mercury_format_module_decl(string.builder.handle, "use_module"),
+        UsedModuleNames, !State),
+    maybe_format_block_start_blank_line(string.builder.handle, FIMSpecs,
+        !State),
+    list.foldl(mercury_format_fim_spec(string.builder.handle), FIMSpecs,
+        !State),
+    maybe_format_block_start_blank_line(string.builder.handle, TypeDefns,
+        !State),
+    list.foldl(mercury_format_item_type_defn(MercInfo, string.builder.handle),
+        TypeDefns, !State),
+    maybe_format_block_start_blank_line(string.builder.handle, ForeignEnums,
+        !State),
+    list.foldl(
+        mercury_format_item_foreign_enum(MercInfo, string.builder.handle),
+        ForeignEnums, !State),
+    maybe_format_block_start_blank_line(string.builder.handle, InstDefns,
+        !State),
+    list.foldl(mercury_format_item_inst_defn(MercInfo, string.builder.handle),
+        InstDefns, !State),
+    maybe_format_block_start_blank_line(string.builder.handle, ModeDefns,
+        !State),
+    list.foldl(mercury_format_item_mode_defn(MercInfo, string.builder.handle),
+        ModeDefns, !State),
+    maybe_format_block_start_blank_line(string.builder.handle, TypeClasses,
+        !State),
+    list.foldl(mercury_format_item_typeclass(MercInfo, string.builder.handle),
+        TypeClasses, !State),
+    maybe_format_block_start_blank_line(string.builder.handle, Instances,
+        !State),
+    list.foldl(mercury_format_item_instance(MercInfo, string.builder.handle),
+        Instances, !State),
 
     generate_order_pred_infos(ModuleInfo, WriteDeclPredIds,
         DeclOrderPredInfos),
@@ -320,23 +329,21 @@ write_opt_file_initial_body(Stream, IntermodInfo, ParseTreePlainOpt, !IO) :-
         TypeSpecs = []
     ;
         DeclOrderPredInfos = [_ | _],
-        io.nl(Stream, !IO),
-        intermod_write_pred_decls(MercInfo, Stream, ModuleInfo,
-            DeclOrderPredInfos,
+        string.builder.append_string("\n", !State),
+        intermod_format_pred_decls(MercInfo, ModuleInfo, DeclOrderPredInfos,
             cord.init, PredDeclsCord,
             cord.init, ModeDeclsCord,
             cord.init, DeclMarkersCord0,
             cord.init, ImplMarkersCord0,
-            cord.init, TypeSpecsCord, !IO),
+            cord.init, TypeSpecsCord, !State),
         PredDecls = cord.list(PredDeclsCord),
         ModeDecls = cord.list(ModeDeclsCord),
         TypeSpecs = cord.list(TypeSpecsCord)
     ),
     % Each of these writes a newline at the start.
-    intermod_write_pred_defns(OutInfoForPreds, Stream, ModuleInfo,
-        DefnOrderPredInfos,
+    intermod_format_pred_defns(OutInfoForPreds, ModuleInfo, DefnOrderPredInfos,
         DeclMarkersCord0, DeclMarkersCord,
-        ImplMarkersCord0, ImplMarkersCord, !IO),
+        ImplMarkersCord0, ImplMarkersCord, !State),
     Clauses = [],
     ForeignProcs = [],
     % XXX CLEANUP This *may* be a lie, in that some of the predicates we have
@@ -659,7 +666,7 @@ intermod_gather_instance(ClassId - InstanceDefn, !InstancesCord) :-
     % We need to write all the declarations for local predicates so
     % the procedure labels for the C code are calculated correctly.
     %
-:- pred intermod_write_pred_decls(merc_out_info::in, io.text_output_stream::in,
+:- pred intermod_format_pred_decls(merc_out_info::in, 
     module_info::in, list(order_pred_info)::in,
     cord(item_pred_decl_info)::in, cord(item_pred_decl_info)::out,
     cord(item_mode_decl_info)::in, cord(item_mode_decl_info)::out,
@@ -667,23 +674,23 @@ intermod_gather_instance(ClassId - InstanceDefn, !InstancesCord) :-
     cord(item_impl_marker_info_opt)::in, cord(item_impl_marker_info_opt)::out,
     cord(decl_pragma_type_spec_info)::in,
         cord(decl_pragma_type_spec_info)::out,
-    io::di, io::uo) is det.
+    string.builder.state::di, string.builder.state::uo) is det.
 
-intermod_write_pred_decls(_, _, _, [],
+intermod_format_pred_decls(_, _, [],
         !PredDeclsCord, !ModeDeclsCord,
-        !DeclMarkersCord, !ImplMarkersCord, !TypeSpecsCord, !IO).
-intermod_write_pred_decls(MercInfo, Stream, ModuleInfo,
+        !DeclMarkersCord, !ImplMarkersCord, !TypeSpecsCord, !State).
+intermod_format_pred_decls(MercInfo, ModuleInfo,
         [OrderPredInfo | OrderPredInfos],
         !PredDeclsCord, !ModeDeclsCord,
-        !DeclMarkersCord, !ImplMarkersCord, !TypeSpecsCord, !IO) :-
-    intermod_write_pred_decl(MercInfo, Stream, ModuleInfo, OrderPredInfo,
+        !DeclMarkersCord, !ImplMarkersCord, !TypeSpecsCord, !State) :-
+    intermod_format_pred_decl(MercInfo, ModuleInfo, OrderPredInfo,
         !PredDeclsCord, !ModeDeclsCord,
-        !DeclMarkersCord, !ImplMarkersCord, !TypeSpecsCord, !IO),
-    intermod_write_pred_decls(MercInfo, Stream, ModuleInfo, OrderPredInfos,
+        !DeclMarkersCord, !ImplMarkersCord, !TypeSpecsCord, !State),
+    intermod_format_pred_decls(MercInfo, ModuleInfo, OrderPredInfos,
         !PredDeclsCord, !ModeDeclsCord,
-        !DeclMarkersCord, !ImplMarkersCord, !TypeSpecsCord, !IO).
+        !DeclMarkersCord, !ImplMarkersCord, !TypeSpecsCord, !State).
 
-:- pred intermod_write_pred_decl(merc_out_info::in, io.text_output_stream::in,
+:- pred intermod_format_pred_decl(merc_out_info::in, 
     module_info::in, order_pred_info::in,
     cord(item_pred_decl_info)::in, cord(item_pred_decl_info)::out,
     cord(item_mode_decl_info)::in, cord(item_mode_decl_info)::out,
@@ -691,11 +698,11 @@ intermod_write_pred_decls(MercInfo, Stream, ModuleInfo,
     cord(item_impl_marker_info_opt)::in, cord(item_impl_marker_info_opt)::out,
     cord(decl_pragma_type_spec_info)::in,
         cord(decl_pragma_type_spec_info)::out,
-    io::di, io::uo) is det.
+    string.builder.state::di, string.builder.state::uo) is det.
 
-intermod_write_pred_decl(MercInfo, Stream, ModuleInfo, OrderPredInfo,
+intermod_format_pred_decl(MercInfo, ModuleInfo, OrderPredInfo,
         !PredDeclsCord, !ModeDeclsCord,
-        !DeclMarkersCord, !ImplMarkersCord, !TypeSpecsCord, !IO) :-
+        !DeclMarkersCord, !ImplMarkersCord, !TypeSpecsCord, !State) :-
     OrderPredInfo = order_pred_info(PredName, _PredArity, PredOrFunc,
         PredId, PredInfo),
     ModuleName = pred_info_module(PredInfo),
@@ -741,8 +748,8 @@ intermod_write_pred_decl(MercInfo, Stream, ModuleInfo, OrderPredInfo,
     % same type variable, so the numeric suffix added by print_name_and_num
     % was obviously not needed.
     VarNamePrint = print_name_only,
-    mercury_format_item_pred_decl(output_mercury, VarNamePrint, Stream,
-        PredDecl, !IO),
+    mercury_format_item_pred_decl(output_mercury, VarNamePrint,
+        string.builder.handle, PredDecl, !State),
     pred_info_get_proc_table(PredInfo, ProcMap),
     % Make sure the mode declarations go out in the same order they came in,
     % so that the all the modes get the same proc_id in the importing modules.
@@ -754,14 +761,15 @@ intermod_write_pred_decl(MercInfo, Stream, ModuleInfo, OrderPredInfo,
     intermod_gather_pred_marker_pragmas(PredInfo, DeclMarkers, ImplMarkers),
     intermod_gather_pred_type_spec_pragmas(ModuleInfo, PredId, TypeSpecs),
 
-    list.foldl(mercury_format_item_mode_decl(MercInfo, Stream),
-        ModeDecls, !IO),
-    list.foldl(mercury_format_item_decl_marker(Stream),
-        coerce(DeclMarkers), !IO),
-    list.foldl(mercury_format_item_impl_marker(Stream),
-        coerce(ImplMarkers), !IO),
+    list.foldl(mercury_format_item_mode_decl(MercInfo, string.builder.handle),
+        ModeDecls, !State),
+    list.foldl(mercury_format_item_decl_marker(string.builder.handle),
+        coerce(DeclMarkers), !State),
+    list.foldl(mercury_format_item_impl_marker(string.builder.handle),
+        coerce(ImplMarkers), !State),
     Lang = output_mercury,
-    list.foldl(mercury_format_pragma_type_spec(Stream, Lang), TypeSpecs, !IO),
+    list.foldl(mercury_format_pragma_type_spec(string.builder.handle, Lang),
+        TypeSpecs, !State),
 
     cord.snoc(PredDecl, !PredDeclsCord),
     !:ModeDeclsCord = !.ModeDeclsCord ++ cord.from_list(ModeDecls),
@@ -916,38 +924,39 @@ intermod_gather_pred_type_spec_pragmas(ModuleInfo, PredId, TypeSpecs) :-
 
 %---------------------------------------------------------------------------%
 
-:- pred intermod_write_pred_defns(hlds_out_info::in, io.text_output_stream::in,
+:- pred intermod_format_pred_defns(hlds_out_info::in, 
     module_info::in, list(order_pred_info)::in,
     cord(item_decl_marker_info_opt)::in, cord(item_decl_marker_info_opt)::out,
     cord(item_impl_marker_info_opt)::in, cord(item_impl_marker_info_opt)::out,
-    io::di, io::uo) is det.
+    string.builder.state::di, string.builder.state::uo) is det.
 
-intermod_write_pred_defns(_, _, _, [], !DeclMarkers, !ImplMarkers, !IO).
-intermod_write_pred_defns(OutInfo, Stream, ModuleInfo,
-        [OrderPredInfo | OrderPredInfos], !DeclMarkers, !ImplMarkers, !IO) :-
-    intermod_write_pred_defn(OutInfo, Stream, ModuleInfo, OrderPredInfo,
-        !DeclMarkers, !ImplMarkers, !IO),
-    intermod_write_pred_defns(OutInfo, Stream, ModuleInfo, OrderPredInfos,
-        !DeclMarkers, !ImplMarkers, !IO).
+intermod_format_pred_defns(_, _, [], !DeclMarkers, !ImplMarkers, !State).
+intermod_format_pred_defns(OutInfo, ModuleInfo,
+        [OrderPredInfo | OrderPredInfos],
+        !DeclMarkers, !ImplMarkers, !State) :-
+    intermod_format_pred_defn(OutInfo, ModuleInfo, OrderPredInfo,
+        !DeclMarkers, !ImplMarkers, !State),
+    intermod_format_pred_defns(OutInfo, ModuleInfo, OrderPredInfos,
+        !DeclMarkers, !ImplMarkers, !State).
 
-:- pred intermod_write_pred_defn(hlds_out_info::in, io.text_output_stream::in,
+:- pred intermod_format_pred_defn(hlds_out_info::in, 
     module_info::in, order_pred_info::in,
     cord(item_decl_marker_info_opt)::in, cord(item_decl_marker_info_opt)::out,
     cord(item_impl_marker_info_opt)::in, cord(item_impl_marker_info_opt)::out,
-    io::di, io::uo) is det.
+    string.builder.state::di, string.builder.state::uo) is det.
 
-intermod_write_pred_defn(OutInfo, Stream, ModuleInfo, OrderPredInfo,
-        !DeclMarkers, !ImplMarkers, !IO) :-
-    io.nl(Stream, !IO),
+intermod_format_pred_defn(OutInfo, ModuleInfo, OrderPredInfo,
+        !DeclMarkers, !ImplMarkers, !State) :-
+    string.builder.append_string("\n", !State),
     OrderPredInfo = order_pred_info(PredName, _PredArity, PredOrFunc,
         PredId, PredInfo),
     ModuleName = pred_info_module(PredInfo),
     PredSymName = qualified(ModuleName, PredName),
     intermod_gather_pred_marker_pragmas(PredInfo, DeclMarkers, ImplMarkers),
-    list.foldl(mercury_format_item_decl_marker(Stream),
-        coerce(DeclMarkers), !IO),
-    list.foldl(mercury_format_item_impl_marker(Stream),
-        coerce(ImplMarkers), !IO),
+    list.foldl(mercury_format_item_decl_marker(string.builder.handle),
+        coerce(DeclMarkers), !State),
+    list.foldl(mercury_format_item_impl_marker(string.builder.handle),
+        coerce(ImplMarkers), !State),
     !:DeclMarkers = !.DeclMarkers ++ cord.from_list(DeclMarkers),
     !:ImplMarkers = !.ImplMarkers ++ cord.from_list(ImplMarkers),
     % The type specialization pragmas for exported preds should
@@ -964,8 +973,8 @@ intermod_write_pred_defn(OutInfo, Stream, ModuleInfo, OrderPredInfo,
         GoalType = goal_for_promise(PromiseType),
         (
             Clauses = [Clause],
-            write_promise(OutInfo, Stream, ModuleInfo, TVarSet, VarTable,
-                PromiseType, HeadVars, Clause, !IO)
+            format_promise(OutInfo, ModuleInfo, TVarSet, VarTable,
+                PromiseType, HeadVars, Clause, !State)
         ;
             ( Clauses = []
             ; Clauses = [_, _ | _]
@@ -976,17 +985,17 @@ intermod_write_pred_defn(OutInfo, Stream, ModuleInfo, OrderPredInfo,
         GoalType = goal_not_for_promise(_),
         TypeQual = tvarset_var_table(TVarSet, VarTable),
         list.foldl(
-            intermod_write_clause(OutInfo, Stream, ModuleInfo, PredId,
-                PredSymName, PredOrFunc, VarTable, TypeQual, HeadVars),
-            Clauses, !IO)
+            intermod_format_clause(OutInfo, ModuleInfo, PredId, PredSymName,
+                PredOrFunc, VarTable, TypeQual, HeadVars),
+            Clauses, !State)
     ).
 
-:- pred write_promise(hlds_out_info::in, io.text_output_stream::in,
-    module_info::in, tvarset::in, var_table::in, promise_type::in,
-    list(prog_var)::in, clause::in, io::di, io::uo) is det.
+:- pred format_promise(hlds_out_info::in, module_info::in, tvarset::in,
+    var_table::in, promise_type::in, list(prog_var)::in, clause::in,
+    string.builder.state::di, string.builder.state::uo) is det.
 
-write_promise(Info, Stream, ModuleInfo, TVarSet, VarTable, PromiseType,
-        HeadVars, Clause, !IO) :-
+format_promise(Info, ModuleInfo, TVarSet, VarTable, PromiseType, HeadVars,
+        Clause, !State) :-
     % Please *either* keep this code in sync with mercury_output_item_promise
     % in parse_tree_out.m, *or* rewrite it to forward the work to that
     % predicate.
@@ -995,29 +1004,30 @@ write_promise(Info, Stream, ModuleInfo, TVarSet, VarTable, PromiseType,
     % Print initial formatting differently for assertions.
     (
         PromiseType = promise_type_true,
-        io.format(Stream, ":- promise all [%s] (\n", [s(HeadVarsStr)], !IO)
+        string.builder.format(":- promise all [%s] (\n",
+            [s(HeadVarsStr)], !State)
     ;
         ( PromiseType = promise_type_exclusive
         ; PromiseType = promise_type_exhaustive
         ; PromiseType = promise_type_exclusive_exhaustive
         ),
-        io.format(Stream, ":- all [%s] %s\n(\n",
-            [s(HeadVarsStr), s(promise_to_string(PromiseType))], !IO)
+        string.builder.format(":- all [%s] %s\n(\n",
+            [s(HeadVarsStr), s(promise_to_string(PromiseType))], !State)
     ),
     Goal = Clause ^ clause_body,
     varset.init(InstVarSet),
     InfoGoal = hlds_out_info_goal(Info, ModuleInfo, 
         vns_var_table(VarTable), print_name_only,
         TVarSet, InstVarSet, no_tvarset_var_table),
-    do_write_goal(InfoGoal, Stream, 1u, "\n).\n", Goal, !IO).
+    do_format_goal(InfoGoal, 1u, "\n).\n", Goal, !State).
 
-:- pred intermod_write_clause(hlds_out_info::in, io.text_output_stream::in,
+:- pred intermod_format_clause(hlds_out_info::in, 
     module_info::in, pred_id::in, sym_name::in, pred_or_func::in,
     var_table::in, type_qual::in, list(prog_var)::in, clause::in,
-    io::di, io::uo) is det.
+    string.builder.state::di, string.builder.state::uo) is det.
 
-intermod_write_clause(OutInfo, Stream, ModuleInfo, PredId, SymName, PredOrFunc,
-        VarTable, TypeQual, HeadVars, Clause0, !IO) :-
+intermod_format_clause(OutInfo, ModuleInfo, PredId, SymName, PredOrFunc,
+        VarTable, TypeQual, HeadVars, Clause0, !State) :-
     Clause0 = clause(ApplicableProcIds, Goal, ImplLang, _, _),
     (
         ImplLang = impl_lang_mercury,
@@ -1038,10 +1048,11 @@ intermod_write_clause(OutInfo, Stream, ModuleInfo, PredId, SymName, PredOrFunc,
         % code that converts parse tree goals into HLDS goals, so this is
         % not likely to be necessary, while its cost may be non-negligible.
         init_var_table(EmptyVarTable),
-        write_clause(OutInfo, Stream, output_mercury, ModuleInfo,
-            PredId, PredOrFunc, vns_var_table(EmptyVarTable), TypeQual,
+        format_clause(OutInfo, output_mercury, ModuleInfo, PredId, PredOrFunc,
+            vns_var_table(EmptyVarTable), TypeQual,
+            % ZZZ
             print_name_and_num, write_declared_modes, 1u, ClauseHeadVars,
-            Clause, !IO)
+            Clause, !State)
     ;
         ImplLang = impl_lang_foreign(_),
         module_info_pred_info(ModuleInfo, PredId, PredInfo),
@@ -1070,9 +1081,9 @@ intermod_write_clause(OutInfo, Stream, ModuleInfo, PredId, SymName, PredOrFunc,
             ;
                 ApplicableProcIds = selected_modes(ProcIds),
                 list.foldl(
-                    intermod_write_foreign_clause(Stream, Procs, PredOrFunc,
-                        VarTable, PragmaCode, Attributes, Args, SymName),
-                    ProcIds, !IO)
+                    intermod_format_foreign_clause(Procs, PredOrFunc, VarTable,
+                        PragmaCode, Attributes, Args, SymName),
+                    ProcIds, !State)
             ;
                 ( ApplicableProcIds = unify_in_in_modes
                 ; ApplicableProcIds = unify_non_in_in_modes
@@ -1197,14 +1208,13 @@ strip_headvar_unifications_from_goal_list([Goal | Goals0], HeadVars,
     strip_headvar_unifications_from_goal_list(Goals0, HeadVars,
         RevGoals1, Goals, !HeadVarMap).
 
-:- pred intermod_write_foreign_clause(io.text_output_stream::in,
-    proc_table::in, pred_or_func::in, var_table::in,
-    pragma_foreign_proc_impl::in, foreign_proc_attributes::in,
+:- pred intermod_format_foreign_clause(proc_table::in, pred_or_func::in,
+    var_table::in, pragma_foreign_proc_impl::in, foreign_proc_attributes::in,
     list(foreign_arg)::in, sym_name::in, proc_id::in,
-    io::di, io::uo) is det.
+    string.builder.state::di, string.builder.state::uo) is det.
 
-intermod_write_foreign_clause(Stream, Procs, PredOrFunc, VarTable0, PragmaImpl,
-        Attributes, Args, SymName, ProcId, !IO) :-
+intermod_format_foreign_clause(Procs, PredOrFunc, VarTable0, PragmaImpl,
+        Attributes, Args, SymName, ProcId, !State) :-
     map.lookup(Procs, ProcId, ProcInfo),
     proc_info_get_maybe_declared_argmodes(ProcInfo, MaybeArgModes),
     (
@@ -1216,7 +1226,8 @@ intermod_write_foreign_clause(Stream, Procs, PredOrFunc, VarTable0, PragmaImpl,
         FPInfo = item_foreign_proc_info(Attributes, SymName,
             PredOrFunc, PragmaVars, ProgVarSet, InstVarSet, PragmaImpl,
             term_context.dummy_context, item_no_seq_num),
-        mercury_output_item_foreign_proc(Stream, output_mercury, FPInfo, !IO)
+        mercury_format_item_foreign_proc(string.builder.handle, output_mercury,
+            FPInfo, !State)
     ;
         MaybeArgModes = no,
         unexpected($pred, "no mode declaration")

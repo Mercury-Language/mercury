@@ -126,6 +126,7 @@
 :- import_module pair.
 :- import_module require.
 :- import_module string.
+:- import_module string.builder.
 :- import_module univ.
 
 %---------------------------------------------------------------------------%
@@ -450,45 +451,72 @@ output_trans_opt_file(ProgressStream, !.HLDS, !Specs, !DumpInfo, !IO) :-
     maybe_dump_hlds(ProgressStream, !.HLDS, 185, "mm_tabling_analysis",
         !DumpInfo, !IO),
 
-    module_info_get_name(!.HLDS, ModuleName),
-    module_name_to_file_name_create_dirs(Globals, $pred,
-        ext_cur_ngs_gs_max_ngs(ext_cur_ngs_gs_max_ngs_opt_trans),
-        ModuleName, OptFileName, !IO),
-    TmpOptFileName = OptFileName ++ ".tmp",
-    io.open_output(TmpOptFileName, TmpOptResult, !IO),
-    (
-        TmpOptResult = error(Error),
-        io.progname_base("mmc", ProgName, !IO),
-        io.error_message(Error, ErrorMsg),
-        io.format(ProgressStream, "%s: cannot open `%s' for output: %s\n",
-            [s(ProgName), s(TmpOptFileName), s(ErrorMsg)], !IO),
-        io.set_exit_status(1, !IO)
-    ;
-        TmpOptResult = ok(TmpOptStream),
-        write_trans_opt_file(TmpOptStream, !.HLDS, ParseTreeTransOpt, !IO),
-        io.close_output(TmpOptStream, !IO),
+    TransOptState0 = string.builder.init,
+    format_trans_opt_file(!.HLDS, ParseTreeTransOpt,
+        TransOptState0, TransOptState),
+    TransOptFileStr = string.builder.to_string(TransOptState),
 
-        copy_dot_tmp_to_base_file_report_any_error(ProgressStream, Globals,
-            ".trans_opt", OptFileName, _UpdateSucceeded, !IO),
-        touch_module_ext_datestamp(Globals, ProgressStream,
-            ModuleName, ext_cur_ngs_gs(ext_cur_ngs_gs_opt_date_trans),
-            _TouchSucceeded, !IO),
+    module_info_get_name(!.HLDS, ModuleName),
+    TransOptExt = ext_cur_ngs_gs_max_ngs(ext_cur_ngs_gs_max_ngs_opt_trans),
+    module_name_to_file_name_create_dirs(Globals, $pred, TransOptExt,
+        ModuleName, TransOptFileName, !IO),
+
+    io.read_named_file_as_string(TransOptFileName, ReadFileResult, !IO),
+    (
+        ReadFileResult = ok(OldTransOptFileStr),
+        ( if OldTransOptFileStr = TransOptFileStr then
+            WriteTransOpt = bool.no
+        else
+            WriteTransOpt = bool.yes
+        )
+    ;
+        ReadFileResult = error(_),
+        % It does not matter why we cannot read the old version of the file,
+        % we should try to write out the new version.
+        WriteTransOpt = bool.yes
+    ),
+
+    (
+        WriteTransOpt = no
+    ;
+        WriteTransOpt = yes,
+        io.open_output(TransOptFileName, WriteFileResult, !IO),
+        (
+            WriteFileResult = ok(TransOptStream),
+            io.write_string(TransOptStream, TransOptFileStr, !IO),
+            io.close_output(TransOptStream, !IO),
+            TransOptDateExt = ext_cur_ngs_gs(ext_cur_ngs_gs_opt_date_trans),
+            touch_module_ext_datestamp(Globals, ProgressStream,
+                ModuleName, TransOptDateExt, _TouchSucceeded, !IO)
+        ;
+            WriteFileResult = error(Error),
+            io.progname_base("mmc", ProgName, !IO),
+            io.error_message(Error, ErrorMsg),
+            io.format(ProgressStream,
+                "%s: cannot open `%s' for output: %s\n",
+                [s(ProgName), s(TransOptFileName), s(ErrorMsg)], !IO),
+            io.set_exit_status(1, !IO)
+        ),
 
         globals.lookup_bool_option(Globals, experiment5, Experiment5),
         (
             Experiment5 = no
         ;
             Experiment5 = yes,
-            io.open_output(OptFileName ++ "x", OptXResult, !IO),
+            io.open_output(TransOptFileName ++ "x", TransOptXResult, !IO),
             (
-                OptXResult = error(_)
+                TransOptXResult = error(_)
             ;
-                OptXResult = ok(OptXStream),
+                TransOptXResult = ok(TransOptXStream),
                 Info = init_merc_out_info(Globals, unqualified_item_names,
                     output_mercury),
-                mercury_output_parse_tree_trans_opt(Info, OptXStream,
-                    ParseTreeTransOpt, !IO),
-                io.close_output(OptXStream, !IO)
+                TransOptXState0 = string.builder.init,
+                mercury_format_parse_tree_trans_opt(Info,
+                    string.builder.handle, ParseTreeTransOpt,
+                    TransOptXState0, TransOptXState),
+                TransOptXFileStr = string.builder.to_string(TransOptXState),
+                io.write_string(TransOptXStream, TransOptXFileStr, !IO),
+                io.close_output(TransOptXStream, !IO)
             )
         )
     ).
