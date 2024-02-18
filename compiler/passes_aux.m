@@ -172,7 +172,13 @@
 
 :- type dump_info
     --->    no_prev_dump
-    ;       prev_dumped_hlds(string, module_info).
+    ;       prev_dumped_hlds(
+                % The filename of the previous HLDS dump.
+                string,
+
+                % The contents of that file.
+                string
+            ).
 
     % maybe_dump_hlds(ProgressStream, HLDS, StageNum, StageName,
     %   !DumpInfo, !IO):
@@ -487,15 +493,17 @@ maybe_dump_hlds(ProgressStream, HLDS, StageNum, StageName, !DumpInfo, !IO) :-
     globals.lookup_string_option(Globals, dump_hlds_file_suffix,
         UserFileSuffix),
     StageNumStr = stage_num_str(StageNum),
+    module_info_get_dump_hlds_base_file_name(HLDS, BaseFileName),
     ( if
         should_dump_stage(StageNum, StageNumStr, StageName, DumpHLDSStages)
     then
-        module_info_get_dump_hlds_base_file_name(HLDS, BaseFileName),
-        DumpFileName = BaseFileName ++ "." ++ StageNumStr ++ "-" ++ StageName
-            ++ UserFileSuffix,
+        HLDSStr = hlds_to_string(HLDS),
+        string.format("%s.%s-%s%s",
+            [s(BaseFileName), s(StageNumStr), s(StageName), s(UserFileSuffix)],
+            HLDSDumpFileName),
         ( if
-            !.DumpInfo = prev_dumped_hlds(PrevDumpFileName, PrevHLDS),
-            HLDS = PrevHLDS
+            !.DumpInfo = prev_dumped_hlds(PrevHLDSDumpFileName, PrevHLDSStr),
+            HLDSStr = PrevHLDSStr
         then
             globals.lookup_bool_option(Globals, dump_same_hlds, DumpSameHLDS),
             (
@@ -509,46 +517,46 @@ maybe_dump_hlds(ProgressStream, HLDS, StageNum, StageName, !DumpInfo, !IO) :-
                     Verbose = yes,
                     io.format(ProgressStream, "%% HLDS dump `%s' would be " ++
                         "identical to previous dump.\n",
-                        [s(DumpFileName)], !IO)
+                        [s(HLDSDumpFileName)], !IO)
                 ),
 
                 % If a previous dump exists with this name, leaving it around
                 % would be quite misleading. However, there is nothing useful
                 % we can do if the removal fails.
-                io.file.remove_file(DumpFileName, _Result, !IO)
+                io.file.remove_file(HLDSDumpFileName, _Result, !IO)
             ;
                 DumpSameHLDS = yes,
-                CurDumpFileName = PrevDumpFileName,
-                io.open_output(DumpFileName, Res, !IO),
+                io.open_output(HLDSDumpFileName, OpenDumpFileResult, !IO),
                 (
-                    Res = ok(FileStream),
+                    OpenDumpFileResult = ok(FileStream),
                     io.format(FileStream,
                         "This stage is identical to the stage in %s.\n",
-                        [s(PrevDumpFileName)], !IO),
+                        [s(PrevHLDSDumpFileName)], !IO),
                     io.close_output(FileStream, !IO)
                 ;
-                    Res = error(IOError),
+                    OpenDumpFileResult = error(IOError),
                     maybe_write_string(ProgressStream, Verbose, "\n", !IO),
                     IOErrorMsg = io.error_message(IOError),
                     string.format("can't open file `%s' for output: %s\n",
-                        [s(DumpFileName), s(IOErrorMsg)], Msg),
-                    report_error(ProgressStream, Msg, !IO)
-                ),
-                !:DumpInfo = prev_dumped_hlds(CurDumpFileName, HLDS)
+                        [s(HLDSDumpFileName), s(IOErrorMsg)], HLDSErrorMsg),
+                    report_error(ProgressStream, HLDSErrorMsg, !IO)
+                )
             )
         else
-            dump_hlds(ProgressStream, DumpFileName, HLDS, !IO),
-            CurDumpFileName = DumpFileName,
-            !:DumpInfo = prev_dumped_hlds(CurDumpFileName, HLDS)
+            dump_hlds(ProgressStream, Globals, HLDSDumpFileName, HLDSStr, !IO),
+            !:DumpInfo = prev_dumped_hlds(HLDSDumpFileName, HLDSStr)
         )
-    else if
+    else
+        true
+    ),
+    ( if
         should_dump_stage(StageNum, StageNumStr, StageName, DumpTraceStages)
     then
-        module_info_get_dump_hlds_base_file_name(HLDS, BaseFileName),
-        DumpFileName = string.det_remove_suffix(BaseFileName, ".hlds_dump") ++
-            ".trace_counts." ++ StageNumStr ++ "-" ++ StageName ++
-            UserFileSuffix,
-        write_out_trace_counts(DumpFileName, MaybeTraceCountsError, !IO),
+        NoDumpName = string.det_remove_suffix(BaseFileName, ".hlds_dump"),
+        string.format("%s.trace_counts.%s-%s%s",
+            [s(NoDumpName), s(StageNumStr), s(StageName), s(UserFileSuffix)],
+            TraceDumpFileName),
+        write_out_trace_counts(TraceDumpFileName, MaybeTraceCountsError, !IO),
         (
             MaybeTraceCountsError = no,
             (
@@ -556,7 +564,7 @@ maybe_dump_hlds(ProgressStream, HLDS, StageNum, StageName, !DumpInfo, !IO) :-
             ;
                 Verbose = yes,
                 io.format(ProgressStream, "%% Dumped trace counts to `%s'\n",
-                    [s(DumpFileName)], !IO),
+                    [s(TraceDumpFileName)], !IO),
                 io.flush_output(ProgressStream, !IO)
             )
         ;
@@ -568,11 +576,10 @@ maybe_dump_hlds(ProgressStream, HLDS, StageNum, StageName, !DumpInfo, !IO) :-
         true
     ).
 
-:- pred dump_hlds(io.text_output_stream::in, string::in, module_info::in,
-    io::di, io::uo) is det.
+:- pred dump_hlds(io.text_output_stream::in, globals::in,
+    string::in, string::in, io::di, io::uo) is det.
 
-dump_hlds(ProgressStream, DumpFile, HLDS, !IO) :-
-    module_info_get_globals(HLDS, Globals),
+dump_hlds(ProgressStream, Globals, DumpFile, HLDSStr, !IO) :-
     globals.lookup_bool_option(Globals, verbose, Verbose),
     globals.lookup_bool_option(Globals, statistics, Stats),
     (
@@ -586,7 +593,7 @@ dump_hlds(ProgressStream, DumpFile, HLDS, !IO) :-
     io.open_output(DumpFile, DumpFileResult, !IO),
     (
         DumpFileResult = ok(DumpFileStream),
-        write_hlds(DumpFileStream, HLDS, !IO),
+        io.write_string(DumpFileStream, HLDSStr, !IO),
         io.close_output(DumpFileStream, !IO),
         maybe_write_string(ProgressStream, Verbose, " done.\n", !IO),
         maybe_report_stats(ProgressStream, Stats, !IO)
