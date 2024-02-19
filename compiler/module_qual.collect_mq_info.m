@@ -163,11 +163,18 @@ collect_mq_info_in_src_avail_map_entry(ModuleName, MaybeImplicit,
         % fails do we look up and update the existing entry (OldContexts)
         % that caused that failure.
         IntContexts = one_or_more(IntContext, []),
-        ( if map.insert(ModuleName, IntContexts, !UnusedIntModules) then
-            true
-        else
-            % ZZZ Is this needed anymore?
-            map.lookup(!.UnusedIntModules, ModuleName, OldContexts),
+        map.search_insert(ModuleName, IntContexts, MaybeOldContexts,
+            !UnusedIntModules),
+        (
+            MaybeOldContexts = no
+        ;
+            MaybeOldContexts = yes(OldContexts),
+            % This is quadratic in the number of import_module/use_module
+            % declarations we see for the same module name in the interface,
+            % but this should not matter, because even two such declarations
+            % would be very rare, and three or more would virtually never occur
+            % in real life code (as opposed to in code that was specifically
+            % constructed as a stress test).
             NewContexts = OldContexts ++ IntContexts,
             map.det_update(ModuleName, NewContexts, !UnusedIntModules)
         )
