@@ -317,7 +317,6 @@ inst_to_limited_size_term_with_context(Lang, Context, Inst, InstTerm,
         ;
             Lang = output_debug,
             ResultsTerm = inst_test_results_to_term(Context, InstResults),
-            % ZZZ
             !:SizeLeft = !.SizeLeft - 1,
             ArgTerms = [ResultsTerm, BoundInstsTerm]
         ),

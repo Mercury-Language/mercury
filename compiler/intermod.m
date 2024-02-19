@@ -1050,7 +1050,6 @@ intermod_format_clause(OutInfo, ModuleInfo, PredId, SymName, PredOrFunc,
         init_var_table(EmptyVarTable),
         format_clause(OutInfo, output_mercury, ModuleInfo, PredId, PredOrFunc,
             vns_var_table(EmptyVarTable), TypeQual,
-            % ZZZ
             print_name_and_num, write_declared_modes, 1u, ClauseHeadVars,
             Clause, !State)
     ;
