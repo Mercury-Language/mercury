@@ -959,8 +959,11 @@ line_number_and_desc_to_string(NumDigits, LineNumberDesc, LineNumberDescStr) :-
     % of the width to be supplied by a parameter, as e.g. printf in C does.
     %
     % We could construct the format string here, but format_call.m
-    % does not (yet) know how to handle a situation where part of
-    % ZZZ
+    % does not (yet) know how to handle a situation where part of a
+    % format specification is constructed dynamically using any operation
+    % other than appending strings. (This is because string.append and
+    % string.append_list are the only two operations it knows how to evaluate
+    % statically.)
     (
         NumDigits = digits_3,
         string.format("line %3d: %s", [i(LineNumber), s(Desc)],
