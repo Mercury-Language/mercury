@@ -794,7 +794,8 @@ format_llds_code_gen_info(Info, GoalInfo, VarNameSrc, VarNamePrint,
             string.builder.append_string("none\n", !State)
         ;
             CallForwardList = [_ | _],
-            format_vars(VarNameSrc, VarNamePrint, CallForwardList, !State),
+            mercury_format_vars_src(VarNameSrc, VarNamePrint, CallForwardList,
+                string.builder.handle, !State),
             string.builder.append_string("\n", !State)
         ),
 
@@ -805,7 +806,8 @@ format_llds_code_gen_info(Info, GoalInfo, VarNameSrc, VarNamePrint,
             string.builder.append_string("none\n", !State)
         ;
             CallResumeList = [_ | _],
-            format_vars(VarNameSrc, VarNamePrint, CallResumeList, !State),
+            mercury_format_vars_src(VarNameSrc, VarNamePrint, CallResumeList,
+                string.builder.handle, !State),
             string.builder.append_string("\n", !State)
         ),
 
@@ -816,7 +818,8 @@ format_llds_code_gen_info(Info, GoalInfo, VarNameSrc, VarNamePrint,
             string.builder.append_string("none\n", !State)
         ;
             CallNondetList = [_ | _],
-            format_vars(VarNameSrc, VarNamePrint, CallNondetList, !State),
+            mercury_format_vars_src(VarNameSrc, VarNamePrint, CallNondetList,
+                string.builder.handle, !State),
             string.builder.append_string("\n", !State)
         )
     else
@@ -848,8 +851,8 @@ format_llds_code_gen_info(Info, GoalInfo, VarNameSrc, VarNamePrint,
             string.builder.append_string("none\n", !State)
         ;
             ResumeResumeList = [_ | _],
-            format_vars(VarNameSrc, VarNamePrint,
-                ResumeResumeList, !State),
+            mercury_format_vars_src(VarNameSrc, VarNamePrint,
+                ResumeResumeList, string.builder.handle, !State),
             string.builder.append_string("\n", !State)
         ),
 
@@ -860,8 +863,8 @@ format_llds_code_gen_info(Info, GoalInfo, VarNameSrc, VarNamePrint,
             string.builder.append_string("none\n", !State)
         ;
             ResumeNondetList = [_ | _],
-            format_vars(VarNameSrc, VarNamePrint,
-                ResumeNondetList, !State),
+            mercury_format_vars_src(VarNameSrc, VarNamePrint,
+                ResumeNondetList, string.builder.handle, !State),
             string.builder.append_string("\n", !State)
         )
     else
@@ -876,7 +879,8 @@ format_llds_code_gen_info(Info, GoalInfo, VarNameSrc, VarNamePrint,
         ParConjList = set_of_var.to_sorted_list(ParConjSet),
         string.builder.format("%s%% need in par_conj vars: ",
             [s(IndentStr)], !State),
-        format_vars(VarNameSrc, VarNamePrint, ParConjList, !State),
+        mercury_format_vars_src(VarNameSrc, VarNamePrint, ParConjList,
+            string.builder.handle, !State),
         string.builder.append_string("\n", !State)
     else
         true
@@ -907,15 +911,6 @@ format_var_to_abs_locns(VarNameSrc, VarNamePrint, Indent,
         [s(IndentStr), s(VarStr), s(LocnStr), s(WidthStr)], !State),
     format_var_to_abs_locns(VarNameSrc, VarNamePrint, Indent,
         VarLocs, !State).
-
-:- pred format_vars(var_name_source::in, var_name_print::in,
-    list(prog_var)::in,
-    string.builder.state::di, string.builder.state::uo) is det.
-
-% ZZZ
-format_vars(VarNameSrc, VarNamePrint, Vars, !State) :-
-    mercury_format_vars_src(VarNameSrc, VarNamePrint, Vars,
-        string.builder.handle, !State).
 
 :- pred format_short_reuse_description(short_reuse_description::in,
     var_name_source::in, var_name_print::in,
@@ -1639,8 +1634,8 @@ sym_name_and_args_to_string(VarNameSrc, VarNamePrint, PredName, ArgVars)
 % Write out generic calls.
 %
 
-:- pred format_goal_generic_call(hlds_out_info_goal::in, indent::in, string::in,
-    hlds_goal_expr::in(goal_expr_generic_call),
+:- pred format_goal_generic_call(hlds_out_info_goal::in, indent::in,
+    string::in, hlds_goal_expr::in(goal_expr_generic_call),
     string.builder.state::di, string.builder.state::uo) is det.
 
 format_goal_generic_call(InfoGoal, Indent, Follow, GoalExpr, !State) :-
@@ -2136,8 +2131,8 @@ format_goal_negation(InfoGoal, Indent, Follow, GoalExpr, !State) :-
 % Write out if-then-elses.
 %
 
-:- pred format_goal_if_then_else(hlds_out_info_goal::in, indent::in, string::in,
-    hlds_goal_expr::in(goal_expr_ite),
+:- pred format_goal_if_then_else(hlds_out_info_goal::in, indent::in,
+    string::in, hlds_goal_expr::in(goal_expr_ite),
     string.builder.state::di, string.builder.state::uo) is det.
 
 format_goal_if_then_else(InfoGoal, Indent, Follow, GoalExpr, !State) :-
