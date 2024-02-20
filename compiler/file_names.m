@@ -2,6 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 2008-2011 The University of Melbourne.
+% Copyright (C) 2023-2024 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -26,21 +27,6 @@
 :- import_module list.
 
 %---------------------------------------------------------------------------%
-%
-% XXX This interface could be improved.
-%
-% Some parts of the compiler, such as choose_analysis_cache_dir_name,
-% want to know which directory should hold files with a given extension,
-% *without* constructing a filename for a module with that extension.
-% It should be possible for them to get that information without
-% duplicating the logic we have here (which violates Don't Repeat Yourself).
-%
-% Separating the process of constructing the directory name from the
-% the process of creating the filename would also allow us to optimize
-% code (such as the code that makes mmakefile fragments) that want
-% to convert many module names to filenames using the same extension,
-% by doing computing the directoy name parts of those filenames just once.
-%
 
     % For some kinds of files, we know exactly in which directory
     % they should be; for other kinds, we may have to search several
@@ -49,7 +35,7 @@
     % Search to for_search.
     %
     % Note that do_create_dirs is not compatible with for_search; if you
-    % know what one of several directories should contain a file, but don't
+    % know that one of several directories should contain a file, but don't
     % know which one, you have by definition no basis you can use to choose
     % which one to create. This invariant is enforced by the fact that
     % module_name_to_search_file_name always passes do_not_create_dirs
@@ -119,11 +105,11 @@
 % (or category of extensions) will usually be either
 %
 % - the current directory,
-% - a non-grade-specific subdirectory, which will be "Mercury/<X>s"
+% - a non-grade-specific subdirectory, which usually will be "Mercury/<X>s"
 %   for some string X,
 % - a grade-specific subdirectory, which will be
 %   "Mercury/<grade>/<arch>/Mercury/<X>s" for some string X.
-%   (See make_gs_dir_names) for the rationale for this scheme.)
+%   (See the comment in make_gs_dir_names for the rationale for this scheme.)
 %
 % Some Java extensions are an exception; they include an extra "jmercury"
 % component in the path.
@@ -168,8 +154,16 @@
 %
 % NOTE The current decisions on what algorithm we use to decide the directory
 % we use to store the files of any given extension were made when the code
-% here an over-complex mess, piling patch upon patch. Those decisions
+% here was an over-complex mess, piling patch upon patch. Those decisions
 % cannot be considered to represent the result of explicit deliberation.
+% We should
+%
+% - decide *explicitly* for each extension exactly what directory
+%   (or director*ies*) we want to put files with that extension into, and then
+%
+% - we should have a "flag day" when we flip the switch from the storing
+%   extensions in their old, sometimes-chosen-by accident directories
+%   to storing them in their new, deliberartely chosen directories.
 
 :- type ext
 %   --->    ext_src
@@ -489,8 +483,8 @@
     % being passed an I/O state pair.
     %
     % The versions whose names include "full_curdir" return two filenames.
-    % The first, the "full" filename may be in a non-grade-specific
-    % or in a grade-specific directory, or it can be in the current directory.
+    % The first, the "full" filename may be in a (non-grade-specific or
+    % grade-specific) directory, or it can be in the current directory.
     % The second, the "curdir" filename will always be in the current
     % directory.
     %
@@ -541,7 +535,7 @@
     %
     % Like module_name_to_file_name_return_dirs, but also allows a prefix.
     % The variants without the _return_dirs suffix and with the _create_dirs
-    % suffix, and with full_curdir,  mean the same thing as with
+    % suffix, and with _full_curdir, mean the same thing as with
     % module_name_to_file_name_return_dirs.
     %
     % Used for creating library names, e.g. `lib<foo>.$A' and `lib<foo>.so'.
@@ -605,14 +599,14 @@
     % maybe_create_any_dirs_on_path(Mkdir, DirNames, !IO):
     %
     % If Mkdir = do_create_dirs, then create the directory whose name
-    % given by the given directory component names.
+    % is specified by the given directory component names.
     %
 :- pred maybe_create_any_dirs_on_path(maybe_create_dirs::in,
     list(string)::in, io::di, io::uo) is det.
 
     % create_any_dirs_on_path(DirNames, !IO):
     %
-    % Create the directory whose name given by the given directory
+    % Create the directory whose name is specified by the given directory
     % component names.
     %
 :- pred create_any_dirs_on_path(list(string)::in, io::di, io::uo) is det.
@@ -718,7 +712,7 @@ extension_to_string(Globals, Ext) = ExtStr :-
     ;
         Ext = ext_cur_ngs_gs_java(ExtCurNgsGsJava),
         ext_cur_ngs_gs_java_extension_dir(ExtCurNgsGsJava,
-            ExtStr, _SubDirNames)
+            ExtStr, _SubDirName)
     ;
         Ext = ext_cur_ngs_gs_max_cur(ExtCurNgsGsMaxCur),
         ext_cur_ngs_gs_max_cur_extension_dir(ExtCurNgsGsMaxCur,
@@ -733,184 +727,185 @@ extension_to_string(Globals, Ext) = ExtStr :-
 
 :- pred ext_cur_extension(ext_cur::in, string::out) is det.
 
-ext_cur_extension(ext_cur_mh,                       ".mh").
-ext_cur_extension(ext_cur_pmt_all_int3s,            ".all_int3s").
-ext_cur_extension(ext_cur_pmt_all_ints,             ".all_ints").
-ext_cur_extension(ext_cur_pmt_all_opts,             ".all_opts").
-ext_cur_extension(ext_cur_pmt_all_trans_opts,       ".all_trans_opts").
-ext_cur_extension(ext_cur_pmt_check,                ".check").
-ext_cur_extension(ext_cur_pmt_classes,              ".classes").
-ext_cur_extension(ext_cur_pmt_clean,                ".clean").
-ext_cur_extension(ext_cur_pmt_depend,               ".depend").
-ext_cur_extension(ext_cur_pmt_install_grade_hdrs,   ".install_grade_hdrs").
-ext_cur_extension(ext_cur_pmt_install_hdrs,         ".install_hdrs").
-ext_cur_extension(ext_cur_pmt_install_ints,         ".install_ints").
-ext_cur_extension(ext_cur_pmt_install_opts,         ".install_opts").
-ext_cur_extension(ext_cur_pmt_int3s,                ".int3s").
-ext_cur_extension(ext_cur_pmt_ints,                 ".ints").
-ext_cur_extension(ext_cur_pmt_javas,                ".javas").
-ext_cur_extension(ext_cur_pmt_opts,                 ".opts").
-ext_cur_extension(ext_cur_pmt_realclean,            ".realclean").
-ext_cur_extension(ext_cur_pmt_trans_opts,           ".trans_opts").
-ext_cur_extension(ext_cur_user_defn_ext,            ".defn_extents").
-ext_cur_extension(ext_cur_user_defn_lc,             ".defn_line_counts").
-ext_cur_extension(ext_cur_user_defns,               ".defns").
-ext_cur_extension(ext_cur_user_depgraph,            ".dependency_graph").
-ext_cur_extension(ext_cur_user_err,                 ".err").
-ext_cur_extension(ext_cur_user_hlds_dump,           ".hlds_dump").
-ext_cur_extension(ext_cur_user_imports_graph,       ".imports_graph").
-ext_cur_extension(ext_cur_user_lct,                 ".local_call_tree").
-ext_cur_extension(ext_cur_user_lct_order,           ".local_call_tree_order").
-ext_cur_extension(ext_cur_user_mlds_dump,           ".mlds_dump").
-ext_cur_extension(ext_cur_user_mode_constr,         ".mode_constraints").
-ext_cur_extension(ext_cur_user_order,               ".order").
-ext_cur_extension(ext_cur_user_order_to,            ".order_trans_opt").
-ext_cur_extension(ext_cur_user_type_repns,          ".type_repns").
-ext_cur_extension(ext_cur_user_ugly,                ".ugly").
-ext_cur_extension(ext_cur_user_xml,                 ".xml").
+ext_cur_extension(Ext, Str) :-
+    ( Ext = ext_cur_mh,                       Str = ".mh"
+    ; Ext = ext_cur_pmt_all_int3s,            Str = ".all_int3s"
+    ; Ext = ext_cur_pmt_all_ints,             Str = ".all_ints"
+    ; Ext = ext_cur_pmt_all_opts,             Str = ".all_opts"
+    ; Ext = ext_cur_pmt_all_trans_opts,       Str = ".all_trans_opts"
+    ; Ext = ext_cur_pmt_check,                Str = ".check"
+    ; Ext = ext_cur_pmt_classes,              Str = ".classes"
+    ; Ext = ext_cur_pmt_clean,                Str = ".clean"
+    ; Ext = ext_cur_pmt_depend,               Str = ".depend"
+    ; Ext = ext_cur_pmt_install_grade_hdrs,   Str = ".install_grade_hdrs"
+    ; Ext = ext_cur_pmt_install_hdrs,         Str = ".install_hdrs"
+    ; Ext = ext_cur_pmt_install_ints,         Str = ".install_ints"
+    ; Ext = ext_cur_pmt_install_opts,         Str = ".install_opts"
+    ; Ext = ext_cur_pmt_int3s,                Str = ".int3s"
+    ; Ext = ext_cur_pmt_ints,                 Str = ".ints"
+    ; Ext = ext_cur_pmt_javas,                Str = ".javas"
+    ; Ext = ext_cur_pmt_opts,                 Str = ".opts"
+    ; Ext = ext_cur_pmt_realclean,            Str = ".realclean"
+    ; Ext = ext_cur_pmt_trans_opts,           Str = ".trans_opts"
+    ; Ext = ext_cur_user_defn_ext,            Str = ".defn_extents"
+    ; Ext = ext_cur_user_defn_lc,             Str = ".defn_line_counts"
+    ; Ext = ext_cur_user_defns,               Str = ".defns"
+    ; Ext = ext_cur_user_depgraph,            Str = ".dependency_graph"
+    ; Ext = ext_cur_user_err,                 Str = ".err"
+    ; Ext = ext_cur_user_hlds_dump,           Str = ".hlds_dump"
+    ; Ext = ext_cur_user_imports_graph,       Str = ".imports_graph"
+    ; Ext = ext_cur_user_lct,                 Str = ".local_call_tree"
+    ; Ext = ext_cur_user_lct_order,           Str = ".local_call_tree_order"
+    ; Ext = ext_cur_user_mlds_dump,           Str = ".mlds_dump"
+    ; Ext = ext_cur_user_mode_constr,         Str = ".mode_constraints"
+    ; Ext = ext_cur_user_order,               Str = ".order"
+    ; Ext = ext_cur_user_order_to,            Str = ".order_trans_opt"
+    ; Ext = ext_cur_user_type_repns,          Str = ".type_repns"
+    ; Ext = ext_cur_user_ugly,                Str = ".ugly"
+    ; Ext = ext_cur_user_xml,                 Str = ".xml"
+    ).
 
 :- pred ext_cur_ngs_extension_dir(ext_cur_ngs::in,
     string::out, string::out) is det.
 
-ext_cur_ngs_extension_dir(ext_cur_ngs_int_int0,         ".int0",    "int0s").
-ext_cur_ngs_extension_dir(ext_cur_ngs_int_int1,         ".int",     "ints").
-ext_cur_ngs_extension_dir(ext_cur_ngs_int_int2,         ".int2",    "int2s").
-ext_cur_ngs_extension_dir(ext_cur_ngs_int_int3,         ".int3",    "int3s").
-ext_cur_ngs_extension_dir(ext_cur_ngs_int_date_int0,    ".date0",   "date0s").
-ext_cur_ngs_extension_dir(ext_cur_ngs_int_date_int12,   ".date",    "dates").
-ext_cur_ngs_extension_dir(ext_cur_ngs_int_date_int3,    ".date3",   "date3s").
+ext_cur_ngs_extension_dir(Ext, Str, Dir) :-
+    ( Ext = ext_cur_ngs_int_int0,       Str = ".int0",      Dir = "int0s"
+    ; Ext = ext_cur_ngs_int_int1,       Str = ".int",       Dir = "ints"
+    ; Ext = ext_cur_ngs_int_int2,       Str = ".int2",      Dir = "int2s"
+    ; Ext = ext_cur_ngs_int_int3,       Str = ".int3",      Dir = "int3s"
+    ; Ext = ext_cur_ngs_int_date_int0,  Str = ".date0",     Dir = "date0s"
+    ; Ext = ext_cur_ngs_int_date_int12, Str = ".date",      Dir = "dates"
+    ; Ext = ext_cur_ngs_int_date_int3,  Str = ".date3",     Dir = "date3s"
+    ).
 
-ext_cur_ngs_extension_dir(ext_cur_ngs_mf_d,      ".d",   "ds").
-% The next two deviations below from the "delete initial dot, add final 's'"
-% rule are intentional, though I (zs) don't know the reason for the second.
-ext_cur_ngs_extension_dir(ext_cur_ngs_mf_dv,     ".dv",  "deps").
-ext_cur_ngs_extension_dir(ext_cur_ngs_mf_dep,    ".dep", "deps").
-ext_cur_ngs_extension_dir(ext_cur_ngs_bc_mbc,    ".mbc", "mbcs").
-ext_cur_ngs_extension_dir(ext_cur_ngs_bc_bytedebug,
-    ".bytedebug", "bytedebugs").
-ext_cur_ngs_extension_dir(ext_cur_ngs_misc_module_dep,
-    ".module_dep", "module_deps").
-ext_cur_ngs_extension_dir(ext_cur_ngs_misc_err_date,
-    ".err_date", "err_dates").
-ext_cur_ngs_extension_dir(ext_cur_ngs_misc_prof, ".prof", "profs").
+ext_cur_ngs_extension_dir(Ext, Str, Dir) :-
+    ( Ext = ext_cur_ngs_mf_d,           Str = ".d",         Dir = "ds"
+    % The next deviation below from the "delete initial dot, add final 's'"
+    % rule is intentional, though I (zs) don't know the full reason.
+    ; Ext = ext_cur_ngs_mf_dv,          Str = ".dv",        Dir = "deps"
+    ; Ext = ext_cur_ngs_mf_dep,         Str = ".dep",       Dir = "deps"
+    ; Ext = ext_cur_ngs_bc_mbc,         Str = ".mbc",       Dir = "mbcs"
+    ; Ext = ext_cur_ngs_bc_bytedebug,   Str = ".bytedebug", Dir = "bytedebugs"
+    ; Ext = ext_cur_ngs_misc_module_dep,
+                                        Str = ".module_dep",Dir = "module_deps"
+    ; Ext = ext_cur_ngs_misc_err_date,  Str = ".err_date",  Dir = "err_dates"
+    ; Ext = ext_cur_ngs_misc_prof,      Str = ".prof",      Dir = "profs"
+    ).
 
 :- pred ext_cur_gs_extension_dir(globals::in, ext_cur_gs::in,
     string::out, string::out) is det.
 
-% Launcher scripts go in the `bin' subdirectory.
-ext_cur_gs_extension_dir(_, ext_cur_gs_exec_noext,    "",     "bin").
-ext_cur_gs_extension_dir(_, ext_cur_gs_exec_exe,      ".exe", "bin").
-ext_cur_gs_extension_dir(_, ext_cur_gs_exec_bat,      ".bat", "bin").
-ext_cur_gs_extension_dir(Globals, ext_cur_gs_exec_exec_opt, ExtStr, "bin") :-
-    globals.lookup_string_option(Globals, executable_file_extension, ExtStr).
-ext_cur_gs_extension_dir(_, ext_cur_gs_lib_dollar_efsl,
-    ".$(EXT_FOR_SHARED_LIB)", "lib").
-% ext_cur_gs_extension_dir(_, ext_cur_gs_lib_lib,        ".lib",  "lib").
-% ext_cur_gs_extension_dir(_, ext_cur_gs_lib_so,         ".so",   "lib").
-ext_cur_gs_extension_dir(_, ext_cur_gs_lib_dollar_a,   ".$A",   "lib").
-ext_cur_gs_extension_dir(_, ext_cur_gs_lib_archive,    ".a",    "lib").
-ext_cur_gs_extension_dir(_, ext_cur_gs_lib_dll,        ".dll",  "lib").
-ext_cur_gs_extension_dir(_, ext_cur_gs_lib_init,       ".init", "inits").
-ext_cur_gs_extension_dir(_, ext_cur_gs_lib_jar,        ".jar",  "lib").
-ext_cur_gs_extension_dir(Globals, ext_cur_gs_lib_lib_opt, ExtStr, "lib") :-
-    globals.lookup_string_option(Globals, library_extension, ExtStr).
-ext_cur_gs_extension_dir(Globals, ext_cur_gs_lib_sh_lib_opt, ExtStr, "lib") :-
-    globals.lookup_string_option(Globals, shared_library_extension, ExtStr).
+ext_cur_gs_extension_dir(Globals, Ext, Str, Dir) :-
+    % Launcher scripts go in the `bin' subdirectory.
+    ( Ext = ext_cur_gs_exec_noext,      Str = "",       Dir = "bin"
+    ; Ext = ext_cur_gs_exec_exe,        Str = ".exe",   Dir = "bin"
+    ; Ext = ext_cur_gs_exec_bat,        Str = ".bat",   Dir = "bin"
+    ; Ext = ext_cur_gs_exec_exec_opt,
+        globals.lookup_string_option(Globals, executable_file_extension, Str),
+        Dir = "bin"
+    ; Ext = ext_cur_gs_lib_dollar_efsl,
+        Str = ".$(EXT_FOR_SHARED_LIB)", Dir = "lib"
+%   ; Ext = ext_cur_gs_lib_lib,         Str = ".lib",   Dir = "lib"
+%   ; Ext = ext_cur_gs_lib_so,          Str = ".so",    Dir = "lib"
+    ; Ext = ext_cur_gs_lib_dollar_a,    Str = ".$A",    Dir = "lib"
+    ; Ext = ext_cur_gs_lib_archive,     Str = ".a",     Dir = "lib"
+    ; Ext = ext_cur_gs_lib_dll,         Str = ".dll",   Dir = "lib"
+    ; Ext = ext_cur_gs_lib_init,        Str = ".init",  Dir = "inits"
+    ; Ext = ext_cur_gs_lib_jar,         Str = ".jar",   Dir = "lib"
+    ; Ext = ext_cur_gs_lib_lib_opt,
+        globals.lookup_string_option(Globals, library_extension, Str),
+        Dir = "lib"
+    ; Ext = ext_cur_gs_lib_sh_lib_opt,
+        globals.lookup_string_option(Globals, shared_library_extension, Str),
+        Dir = "lib"
+    ).
 
 :- pred ext_cur_ngs_gs_extension_dir(globals::in, ext_cur_ngs_gs::in,
     string::out, string::out) is det.
 
-ext_cur_ngs_gs_extension_dir(_, ext_cur_ngs_gs_opt_date_plain,
-        ".optdate", "optdates").
-ext_cur_ngs_gs_extension_dir(_, ext_cur_ngs_gs_opt_date_trans,
-        ".trans_opt_date", "trans_opt_dates").
-ext_cur_ngs_gs_extension_dir(_, ext_cur_ngs_gs_target_c,     ".c",    "cs").
-ext_cur_ngs_gs_extension_dir(_, ext_cur_ngs_gs_target_cs,    ".cs",   "css").
-ext_cur_ngs_gs_extension_dir(_, ext_cur_ngs_gs_target_date_c,
-        ".c_date",    "c_dates").
-ext_cur_ngs_gs_extension_dir(_, ext_cur_ngs_gs_target_date_cs,
-        ".cs_date",   "cs_dates").
-ext_cur_ngs_gs_extension_dir(_, ext_cur_ngs_gs_target_date_java,
-        ".java_date", "java_dates").
-% The deviation from the "delete initial dot, add final 's'" rule
-% is intentional.
-ext_cur_ngs_gs_extension_dir(_, ext_cur_ngs_gs_obj_dollar_o,
-        ".$O", "os").
-% The deviation from the "delete initial dot, add final 's'" rule
-% is intentional.
-ext_cur_ngs_gs_extension_dir(_, ext_cur_ngs_gs_obj_dollar_efpo,
-        ".$(EXT_FOR_PIC_OBJECTS)", "os").
-ext_cur_ngs_gs_extension_dir(_, ext_cur_ngs_gs_obj_o,
-        ".o", "os").
-% The deviation from the "delete initial dot, add final 's'" rule
-% is intentional.
-ext_cur_ngs_gs_extension_dir(_, ext_cur_ngs_gs_obj_pic_o,
-        ".pic_o", "os").
-ext_cur_ngs_gs_extension_dir(Globals, ext_cur_ngs_gs_obj_obj_opt,
-        ExtStr, "os") :-
-    globals.lookup_string_option(Globals, object_file_extension, ExtStr).
-ext_cur_ngs_gs_extension_dir(Globals, ext_cur_ngs_gs_obj_pic_obj_opt,
-        ExtStr, "os") :-
-    globals.lookup_string_option(Globals, pic_object_file_extension, ExtStr).
-% The deviation from the "delete initial dot, add final 's'" rule
-% is intentional.
-ext_cur_ngs_gs_extension_dir(_, ext_cur_ngs_gs_init_c, "_init.c", "cs").
-% The deviation from the "delete initial dot, add final 's'" rule
-% is intentional.
-ext_cur_ngs_gs_extension_dir(_, ext_cur_ngs_gs_init_obj_dollar_o,
-        "_init.$O",     "os").
-% The deviation from the "delete initial dot, add final 's'" rule
-% is intentional.
-ext_cur_ngs_gs_extension_dir(_, ext_cur_ngs_gs_init_obj_o,
-        "_init.o",      "os").
-% The deviation from the "delete initial dot, add final 's'" rule
-% is intentional.
-ext_cur_ngs_gs_extension_dir(_, ext_cur_ngs_gs_init_obj_pic_o,
-        "_init.pic_o",  "os").
-ext_cur_ngs_gs_extension_dir(Globals, ext_cur_ngs_gs_init_obj_obj_opt,
-        ExtStr, "os") :-
-    globals.lookup_string_option(Globals, object_file_extension, ExtStr0),
-    ExtStr = "_init" ++ ExtStr0.
-ext_cur_ngs_gs_extension_dir(Globals, ext_cur_ngs_gs_init_obj_pic_obj_opt,
-        ExtStr, "os") :-
-    globals.lookup_string_option(Globals, pic_object_file_extension, ExtStr0),
-    ExtStr = "_init" ++ ExtStr0.
-ext_cur_ngs_gs_extension_dir(_, ext_cur_ngs_gs_an_ds_date,
-        ".analysis_date",   "analysis_dates").
-ext_cur_ngs_gs_extension_dir(_, ext_cur_ngs_gs_an_ds_status,
-        ".analysis_status", "analysis_statuss").
-ext_cur_ngs_gs_extension_dir(_, ext_cur_ngs_gs_misc_used,
-        ".used",        "useds").
-ext_cur_ngs_gs_extension_dir(_, ext_cur_ngs_gs_misc_track_flags,
-        ".track_flags", "track_flags").
+ext_cur_ngs_gs_extension_dir(Globals, Ext, Str, Dir) :-
+    ( Ext = ext_cur_ngs_gs_opt_date_plain,
+        Str = ".optdate", Dir = "optdates"
+    ; Ext = ext_cur_ngs_gs_opt_date_trans,
+        Str = ".trans_opt_date", Dir = "trans_opt_dates"
+    ; Ext = ext_cur_ngs_gs_target_c,            Str = ".c",         Dir = "cs"
+    ; Ext = ext_cur_ngs_gs_target_cs,           Str = ".cs",        Dir = "css"
+    ; Ext = ext_cur_ngs_gs_target_date_c,
+        Str = ".c_date",    Dir = "c_dates"
+    ; Ext = ext_cur_ngs_gs_target_date_cs,
+        Str = ".cs_date",   Dir = "cs_dates"
+    ; Ext = ext_cur_ngs_gs_target_date_java,
+        Str = ".java_date", Dir = "java_dates"
+    % The deviation from the "delete initial dot, add final 's'" rule
+    % is intentional.
+    ; Ext = ext_cur_ngs_gs_obj_dollar_o,        Str = ".$O",        Dir = "os"
+    % The deviation from the "delete initial dot, add final 's'" rule
+    % is intentional.
+    ; Ext = ext_cur_ngs_gs_obj_dollar_efpo,
+        Str = ".$(EXT_FOR_PIC_OBJECTS)", Dir = "os"
+    ; Ext = ext_cur_ngs_gs_obj_o,               Str = ".o",         Dir = "os"
+    % The deviation from the "delete initial dot, add final 's'" rule
+    % is intentional.
+    ; Ext = ext_cur_ngs_gs_obj_pic_o,           Str = ".pic_o",     Dir = "os"
+    ; Ext = ext_cur_ngs_gs_obj_obj_opt,
+        globals.lookup_string_option(Globals, object_file_extension, Str),
+        Dir = "os"
+    ; Ext = ext_cur_ngs_gs_obj_pic_obj_opt,
+        globals.lookup_string_option(Globals, pic_object_file_extension, Str),
+        Dir = "os"
+    % The next four deviations from the "delete initial dot, add final 's'"
+    % rule are intentional.
+    ; Ext = ext_cur_ngs_gs_init_c,              Str = "_init.c",    Dir = "cs"
+    ; Ext = ext_cur_ngs_gs_init_obj_dollar_o,   Str = "_init.$O",   Dir = "os"
+    ; Ext = ext_cur_ngs_gs_init_obj_o,          Str = "_init.o",    Dir = "os"
+    ; Ext = ext_cur_ngs_gs_init_obj_pic_o,      Str = "_init.pic_o", Dir = "os"
+    ; Ext = ext_cur_ngs_gs_init_obj_obj_opt,
+        globals.lookup_string_option(Globals, object_file_extension, Str0),
+        Str = "_init" ++ Str0,
+        Dir = "os"
+    ; Ext = ext_cur_ngs_gs_init_obj_pic_obj_opt,
+        globals.lookup_string_option(Globals, pic_object_file_extension, Str0),
+        Str = "_init" ++ Str0,
+        Dir = "os"
+    ; Ext = ext_cur_ngs_gs_an_ds_date,
+        Str = ".analysis_date",   Dir = "analysis_dates"
+    ; Ext = ext_cur_ngs_gs_an_ds_status,
+        Str = ".analysis_status", Dir = "analysis_statuss"
+    ; Ext = ext_cur_ngs_gs_misc_used,
+        Str = ".used",        Dir = "useds"
+    ; Ext = ext_cur_ngs_gs_misc_track_flags,
+        Str = ".track_flags", Dir = "track_flags"
+    ).
 
 :- pred ext_cur_ngs_gs_java_extension_dir(ext_cur_ngs_gs_java::in,
     string::out, string::out) is det.
 
-ext_cur_ngs_gs_java_extension_dir(ext_cur_ngs_gs_java_java,
-        ".java",    "javas").
-ext_cur_ngs_gs_java_extension_dir(ext_cur_ngs_gs_java_class,
-        ".class",   "classes").
+ext_cur_ngs_gs_java_extension_dir(Ext, Str, Dir) :-
+    ( Ext = ext_cur_ngs_gs_java_java,   Str = ".java",  Dir = "javas"
+    ; Ext = ext_cur_ngs_gs_java_class,  Str = ".class", Dir = "classes"
+    ).
 
 :- pred ext_cur_ngs_gs_max_cur_extension_dir(ext_cur_ngs_gs_max_cur::in,
     string::out, string::out) is det.
 
-ext_cur_ngs_gs_max_cur_extension_dir(ext_cur_ngs_gs_max_cur_mih,
-        ".mih", "mihs").
+ext_cur_ngs_gs_max_cur_extension_dir(Ext, Str, Dir) :-
+    Ext = ext_cur_ngs_gs_max_cur_mih, Str = ".mih", Dir = "mihs".
 
 :- pred ext_cur_ngs_gs_max_ngs_extension_dir(ext_cur_ngs_gs_max_ngs::in,
     string::out, string::out) is det.
 
-ext_cur_ngs_gs_max_ngs_extension_dir(ext_cur_ngs_gs_max_ngs_opt_plain,
-        ".opt",        "opts").
-ext_cur_ngs_gs_max_ngs_extension_dir(ext_cur_ngs_gs_max_ngs_opt_trans,
-        ".trans_opt",  "trans_opts").
-ext_cur_ngs_gs_max_ngs_extension_dir(ext_cur_ngs_gs_max_ngs_an_analysis,
-        ".analysis",    "analyses").
-ext_cur_ngs_gs_max_ngs_extension_dir(ext_cur_ngs_gs_max_ngs_an_imdg,
-        ".imdg",        "imdgs").
-ext_cur_ngs_gs_max_ngs_extension_dir(ext_cur_ngs_gs_max_ngs_an_request,
-        ".request",     "requests").
+ext_cur_ngs_gs_max_ngs_extension_dir(Ext, Str, Dir) :-
+    ( Ext = ext_cur_ngs_gs_max_ngs_opt_plain,
+        Str = ".opt",       Dir = "opts"
+    ; Ext = ext_cur_ngs_gs_max_ngs_opt_trans,
+        Str = ".trans_opt", Dir = "trans_opts"
+    ; Ext = ext_cur_ngs_gs_max_ngs_an_analysis,
+        Str = ".analysis",  Dir = "analyses"
+    ; Ext = ext_cur_ngs_gs_max_ngs_an_imdg,
+        Str = ".imdg",      Dir = "imdgs"
+    ; Ext = ext_cur_ngs_gs_max_ngs_an_request,
+        Str = ".request",   Dir = "requests"
+    ).
 
 %---------------------------------------------------------------------------%
 
