@@ -943,7 +943,7 @@ line_number_and_descs_to_format_pieces(LineNumberDescSet) = Pieces :-
     list.map(line_number_and_desc_to_string(NumDigits), LineNumberDescs,
         LineNumberDescStrs),
     Pieces = line_list_to_line_pieces(LineNumberDescStrs).
-        
+
 :- type num_digits
     --->    digits_3
     ;       digits_4

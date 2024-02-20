@@ -451,7 +451,7 @@ format_mode_table(ModeTable, !State) :-
 
 :- pred format_mode_table_entry(mode_ctor::in, hlds_mode_defn::in,
     string.builder.state::di, string.builder.state::uo) is det.
- 
+
 format_mode_table_entry(ModeCtor, ModeDefn, !State) :-
     ModeCtor = mode_ctor(ModeName, _ModeArity),
     string.builder.format("\n:- mode %s",

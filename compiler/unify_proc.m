@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1994-2012 The University of Melbourne.
-% Copyright (C) 2015-2018, 2020-2021 The Mercury team.
+% Copyright (C) 2015-2018, 2020-2024 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -175,7 +175,7 @@ generate_clauses_for_special_pred(SpecDefnInfo, ClauseInfo, !ModuleInfo) :-
     % will need them.
     % XXX TYPE_REPN Should be no_foreign_lang_clauses
     ClauseInfo = clauses_info(VarSet, ExplicitVarTypes, VarTable, RttiVarMaps,
-        TVarNameMap, ArgVec, ClausesRep, init_clause_item_numbers_comp_gen, 
+        TVarNameMap, ArgVec, ClausesRep, init_clause_item_numbers_comp_gen,
         some_foreign_lang_clauses, no_clause_syntax_errors).
 
 :- pred get_explicitly_typed_vars(assoc_list(prog_var, mer_type)::in,
@@ -375,7 +375,7 @@ generate_unify_proc_body_user(NonCanonical, X, Y, Context, Clause, !Info) :-
         Goal0 = hlds_goal(conj(plain_conj, [CallGoal, UnifyGoal]), GoalInfo)
     ),
     % XXX If the user-specified unify (or compare) predicate always aborts,
-    % we should avoid a pretest, since if it accidentally happens to succeeed,
+    % we should avoid a pretest, since if it accidentally happens to succeed,
     % it avoids the requested abort.
     maybe_wrap_with_pretest_equality(Context, X, Y, no, Goal0, Goal, !Info),
     quantify_clause_body(all_modes, [X, Y], Goal, Context, Clause, !Info).
@@ -1107,7 +1107,7 @@ generate_compare_proc_body_user(Context, NonCanonical, Res, X, Y,
         Goal0 = hlds_goal(Call, GoalInfo),
         % XXX If the user-specified compare predicate always aborts,
         % we should avoid a pretest, since if it accidentally happens
-        % to succeeed, it avoids the requested abort.
+        % to succeed, it avoids the requested abort.
         maybe_wrap_with_pretest_equality(Context, X, Y, yes(Res),
             Goal0, Goal, !Info)
     ),
@@ -1304,7 +1304,7 @@ generate_compare_proc_body_du(SpecDefnInfo, CtorRepns, Res, X, Y, Clause,
             PtagBUint8 > 0u8
         )
         % If the type has three or more functors, then cast-to-unsigned-and-
-        % compare will not work. 
+        % compare will not work.
         %
         % If the third functor is a constant, then one of the constants
         % will have a nonzero local sectag value. If the arguments of the

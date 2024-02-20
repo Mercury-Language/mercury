@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
-% Copyright (C) 2015 The Mercury team.
+% Copyright (C) 2015, 2020, 2022-2024 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -199,10 +199,10 @@ emu_int_rem_bits_per_int(OpType, ConstX, ConstZ) :-
 % using the corresponding operations in library/integer.m, and such an
 % implementation would be much shorter and simpler than the implementation
 % here. The reason why we use the case-analysis-based implementation we do
-% is because it is not clear how well those operations in integer.m have 
+% is because it is not clear how well those operations in integer.m have
 % been tested. Once that testing happens, and those operations are found to be
 % correct and reliable, we should switch to using them.
-% 
+%
 
 emu_not(OpType, FunctorX, ConstY) :-
     FunctorX = some_int_const(ConstX),

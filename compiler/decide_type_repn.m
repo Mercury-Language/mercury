@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
-% Copyright (C) 2019-2021 The Mercury team.
+% Copyright (C) 2019-2024 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -1081,7 +1081,7 @@ decide_gen_du_functors(PlatformParams, WordAlignedTypeCtorsC, SimpleDuMap,
         assign_repns_to_direct_arg_functors(MaxPtagUint8,
             !CurPtagUint8, DirectArgFunctors, NonDirectArgFunctors,
             LeftOverDirectArgFunctors, !RepnMap),
-        RemoteFunctors = LeftOverDirectArgFunctors ++ NonLocalPackedFunctors, 
+        RemoteFunctors = LeftOverDirectArgFunctors ++ NonLocalPackedFunctors,
         assign_repns_to_remote_unshared(PlatformParams, MaxPtagUint8,
             !.CurPtagUint8, RemoteFunctors, RemoteSharedFunctors, !RepnMap),
         (
@@ -1776,7 +1776,7 @@ decide_remote_args(PlatformParams, NumRemoteSectagBits,
         TagwordArgRepns = [],
         NonTagwordMaybePackableArgs = MaybePackableArgs
     else
-        ( if 
+        ( if
             % Is the optimization of packing args next to the remote sectag
             % allowed?
             PlatformParams ^ pp_base_params ^ bp_allow_packing_remote_sectags

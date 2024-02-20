@@ -1,8 +1,8 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
-% Copyright (C) 1995-2012, 2014 The University of Melbourne.
-% Copyright (C) 2015 The Mercury team.
+% Copyright (C) 1995-2012 The University of Melbourne.
+% Copyright (C) 2013-2024 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -379,7 +379,7 @@ polymorphism_update_arg_types(MaybeProgressStream, PredId,
             PredInfo2 = PredInfo1
         ;
             MaybeFormatCall1 = yes(format_call(Context, OoMFormatStrsValues1)),
-            % Update the argument numbers in the format_call field 
+            % Update the argument numbers in the format_call field
             % to account for the new arguments we just added at the front
             % of the argument list.
             one_or_more.map(increment_arg_nums(NumExtraHeadVars),

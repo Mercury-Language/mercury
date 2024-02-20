@@ -666,7 +666,7 @@ intermod_gather_instance(ClassId - InstanceDefn, !InstancesCord) :-
     % We need to write all the declarations for local predicates so
     % the procedure labels for the C code are calculated correctly.
     %
-:- pred intermod_format_pred_decls(merc_out_info::in, 
+:- pred intermod_format_pred_decls(merc_out_info::in,
     module_info::in, list(order_pred_info)::in,
     cord(item_pred_decl_info)::in, cord(item_pred_decl_info)::out,
     cord(item_mode_decl_info)::in, cord(item_mode_decl_info)::out,
@@ -690,7 +690,7 @@ intermod_format_pred_decls(MercInfo, ModuleInfo,
         !PredDeclsCord, !ModeDeclsCord,
         !DeclMarkersCord, !ImplMarkersCord, !TypeSpecsCord, !State).
 
-:- pred intermod_format_pred_decl(merc_out_info::in, 
+:- pred intermod_format_pred_decl(merc_out_info::in,
     module_info::in, order_pred_info::in,
     cord(item_pred_decl_info)::in, cord(item_pred_decl_info)::out,
     cord(item_mode_decl_info)::in, cord(item_mode_decl_info)::out,
@@ -924,7 +924,7 @@ intermod_gather_pred_type_spec_pragmas(ModuleInfo, PredId, TypeSpecs) :-
 
 %---------------------------------------------------------------------------%
 
-:- pred intermod_format_pred_defns(hlds_out_info::in, 
+:- pred intermod_format_pred_defns(hlds_out_info::in,
     module_info::in, list(order_pred_info)::in,
     cord(item_decl_marker_info_opt)::in, cord(item_decl_marker_info_opt)::out,
     cord(item_impl_marker_info_opt)::in, cord(item_impl_marker_info_opt)::out,
@@ -939,7 +939,7 @@ intermod_format_pred_defns(OutInfo, ModuleInfo,
     intermod_format_pred_defns(OutInfo, ModuleInfo, OrderPredInfos,
         !DeclMarkers, !ImplMarkers, !State).
 
-:- pred intermod_format_pred_defn(hlds_out_info::in, 
+:- pred intermod_format_pred_defn(hlds_out_info::in,
     module_info::in, order_pred_info::in,
     cord(item_decl_marker_info_opt)::in, cord(item_decl_marker_info_opt)::out,
     cord(item_impl_marker_info_opt)::in, cord(item_impl_marker_info_opt)::out,
@@ -1016,12 +1016,12 @@ format_promise(Info, ModuleInfo, TVarSet, VarTable, PromiseType, HeadVars,
     ),
     Goal = Clause ^ clause_body,
     varset.init(InstVarSet),
-    InfoGoal = hlds_out_info_goal(Info, ModuleInfo, 
+    InfoGoal = hlds_out_info_goal(Info, ModuleInfo,
         vns_var_table(VarTable), print_name_only,
         TVarSet, InstVarSet, no_tvarset_var_table),
     do_format_goal(InfoGoal, 1u, "\n).\n", Goal, !State).
 
-:- pred intermod_format_clause(hlds_out_info::in, 
+:- pred intermod_format_clause(hlds_out_info::in,
     module_info::in, pred_id::in, sym_name::in, pred_or_func::in,
     var_table::in, type_qual::in, list(prog_var)::in, clause::in,
     string.builder.state::di, string.builder.state::uo) is det.

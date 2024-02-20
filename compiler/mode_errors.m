@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1994-2012 The University of Melbourne.
-% Copyright (C) 2014-2021 The Mercury team.
+% Copyright (C) 2014-2024  The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -1183,7 +1183,7 @@ mode_error_bad_higher_order_inst_to_spec(ModeInfo, PredVar, PredVarInst,
             mode_info_get_instvarset(ModeInfo, InstVarSet),
             PredVarInstPieces = error_msg_inst(ModuleInfo, InstVarSet,
                 dont_expand_named_insts, uod_user, quote_short_inst, [],
-                [nl_indent_delta(1)], [nl_indent_delta(-1)], PredVarInst), 
+                [nl_indent_delta(1)], [nl_indent_delta(-1)], PredVarInst),
             MismatchPieces = [words("mode error: context requires a"),
                 words(ExpPFStr), words("of"), ExpArityPiece, suffix("."),
                 words("The type of"), fixed(PredVarName),

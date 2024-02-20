@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %----------------------------------------------------------------------------%
 % Copyright (C) 2009-2011 The University of Melbourne.
-% Copyright (C) 2013-2018 The Mercury team.
+% Copyright (C) 2013-2018, 2020-2024 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %----------------------------------------------------------------------------%
@@ -467,7 +467,7 @@ output_c_module_init_list(Info, Stream, ModuleName, AnnotatedModules,
     io.write_string(Stream, "#ifdef MR_DEEP_PROFILING\n", !IO),
     io.write_string(Stream, "void ", !IO),
     io.write_string(Stream, ModuleInitName,  !IO),
-    io.write_string(Stream, 
+    io.write_string(Stream,
         "write_out_proc_statics(FILE *deep_fp, FILE *procrep_fp);\n", !IO),
     io.write_string(Stream, "#endif\n", !IO),
 
@@ -564,7 +564,7 @@ output_c_module_init_list(Info, Stream, ModuleName, AnnotatedModules,
     io.write_string(Stream, "#ifdef MR_DEEP_PROFILING\n", !IO),
     io.write_string(Stream, "\nvoid ", !IO),
     io.write_string(Stream, ModuleInitName,  !IO),
-    io.write_string(Stream, 
+    io.write_string(Stream,
         "write_out_proc_statics(FILE *deep_fp, FILE *procrep_fp)\n", !IO),
     io.write_string(Stream, "{\n", !IO),
     io.write_string(Stream,
@@ -635,7 +635,7 @@ output_c_module_init_list(Info, Stream, ModuleName, AnnotatedModules,
         io.nl(Stream, !IO)
     ),
 
-    io.write_string(Stream, 
+    io.write_string(Stream,
         "// Ensure everything is compiled with the same grade.\n", !IO),
     io.write_string(Stream, "const char *", !IO),
     io.write_string(Stream, ModuleInitName,  !IO),
@@ -798,12 +798,12 @@ output_write_proc_static_list(Stream, [ProcLayout | ProcLayouts], !IO) :-
         Kind = proc_layout_proc_id(UserOrUCI),
         (
             UserOrUCI = user,
-            io.write_string(Stream, 
+            io.write_string(Stream,
                 "\tMR_write_out_user_proc_static(deep_fp, procrep_fp,\n\t\t&",
                 !IO)
         ;
             UserOrUCI = uci,
-            io.write_string(Stream, 
+            io.write_string(Stream,
                 "\tMR_write_out_uci_proc_static(deep_fp, procrep_fp,\n\t\t&",
                 !IO)
         ),

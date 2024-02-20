@@ -1051,7 +1051,7 @@ mercury_format_item_include(Info, S, ItemInclude, !U) :-
     maybe_format_line_number(Info, Context, S, !U),
     mercury_format_module_decl(S, Decl, ModuleName, !U).
 
-:- pred mercury_format_item_avail(merc_out_info::in, S::in, item_avail::in, 
+:- pred mercury_format_item_avail(merc_out_info::in, S::in, item_avail::in,
     U::di, U::uo) is det <= pt_output(S, U).
 
 mercury_format_item_avail(Info, S, Avail, !U) :-

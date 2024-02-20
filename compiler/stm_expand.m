@@ -1,8 +1,8 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1995-2012 The University of Melbourne.
-% Copyright (C) 2015 The Mercury team.
+% Copyright (C) 2008-2012 The University of Melbourne.
+% Copyright (C) 2014-2024 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public Licence - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -107,7 +107,7 @@
 % Nonlocals instantiated before the atomic goal are passed through the
 % expanded predicates as input arguments (with mode "in"). Nonlocals which
 % are instantiated inside the atomic goal and are used outside the atomic goal
-% (which, for the sake of simplicitly, will be called "output" variables in
+% (which, for the sake of simplicity, will be called "output" variables in
 % this discussion) are passed as output arguments in the "entrypoint" and
 % "rollback" expanded predicates (with mode "out). In the "actual" expanded
 % predicate, these variables must be passed as part of an exception result and
@@ -115,7 +115,7 @@
 %
 %   - If there are no output variables, a dummy variable is created and
 %     passed up to the rollback predicate. This variable simply exists to
-%     satify the requirement of the closure returning an argument and
+%     satisfy the requirement of the closure returning an argument and
 %     will be ignored in the rollback predicate.
 %   - If there is one output variable, that variable will be passed up to
 %     the rollback predicate as it is.
@@ -128,10 +128,10 @@
 % features will be included in subsequent review postings. A number of
 % these relate to this module, whilst others relate to other modules.
 %
-%   - Nested atomic blocks: Whilst this will eventually be incluced, this
+%   - Nested atomic blocks: Whilst this will eventually be included, this
 %     is neither supported in the front end or in this module (although some
 %     passes, such as the type checker, has code for handling this).
-%     However, the current method of mode checking atomic goals pervents
+%     However, the current method of mode checking atomic goals prevents
 %     nested atomic goals (the uniqueness of the outer and inner variables
 %     are handled by inserting dummy predicates at the beginning and end
 %     of the atomic goal. The current implementation of these predicates
@@ -488,7 +488,7 @@ stm_process_switch_cases(Instmap0, [Case0 | Cases0], [Case | Cases], !Info) :-
 
     % Creates all the required predicates and returns the call to the
     % newly created top_level goal. The InitInstmap and FinalInstmap is the
-    % instmap before and after the atomic goal respectivly.
+    % instmap before and after the atomic goal respectively.
     %
 :- pred stm_create_actual_goal(prog_context::in,
     atomic_goal_type::in, instmap::in, instmap::in,
@@ -523,7 +523,7 @@ stm_create_actual_goal(Context, GoalType, InitInstmap, FinalInstmap,
 %-----------------------------------------------------------------------------%
 %
 % Predicates to determine if variables are inputs, outputs or local to a goal.
-% This decision is currenly governed by the following rules:
+% This decision is currently governed by the following rules:
 %
 %   1. If it is free in the initial instmap and not free in the final instmap,
 %      the variable is an output.
@@ -2481,7 +2481,7 @@ create_cloned_pred(ProcHeadVars, PredArgTypes, ProcHeadModes, CloneKind,
     PredOrFunc = pred_info_is_pred_or_func(PredInfo),
     pred_info_get_context(PredInfo, PredContext),
 
-    Transform = tn_stm_expanded(PredOrFunc, CloneKind, Arity, 
+    Transform = tn_stm_expanded(PredOrFunc, CloneKind, Arity,
         pred_id_to_int(PredId), ExpansionCnt0),
     make_transformed_pred_name(OrigPredName, Transform, NewPredName),
 

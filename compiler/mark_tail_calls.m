@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 2001-2008, 2010-2012 The University of Melbourne.
-% Copyright (C) 2014-2017 The Mercury Team.
+% Copyright (C) 2014-2024 The Mercury Team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -702,7 +702,7 @@ mark_tail_rec_calls_in_goal(Goal0, Goal, AtTail0, AtTail, !Info) :-
                 )
             then
                 OldParams = !.Info ^ mtc_params,
-                InnerParams = OldParams ^ warn_params := 
+                InnerParams = OldParams ^ warn_params :=
                     no_warnings_non_tail_rec_params,
                 InnerInfo0 = !.Info ^ mtc_params := InnerParams,
                 mark_tail_rec_calls_in_goal(SubGoal0, SubGoal, AtTail0, AtTail,

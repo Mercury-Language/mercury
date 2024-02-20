@@ -2,6 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------e
 % Copyright (C) 2008-2009, 2011-2012 The University of Melbourne.
+% Copyright (C) 2016-2017, 2019-2024 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -466,7 +467,7 @@ try_parse_symbol_name(Term, SymName) :-
     % but only one shows up as a function symbol. When its two args,
     % "a__b" and "c__d" are parsed as function symbols, we need to glue
     % the resulting qualifiers together. This function does that.
-    % 
+    %
 :- func glue_sym_names(module_name, sym_name) = sym_name.
 
 glue_sym_names(ModuleSymName, SubSymName) = SymName :-

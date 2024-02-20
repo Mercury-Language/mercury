@@ -1,7 +1,8 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
-% Copyright (C) 2005-2006,2008-2012 The University of Melbourne.
+% Copyright (C) 2005-2006, 2008-2012 The University of Melbourne.
+% Copyright (C) 2014-2021, 2023-2024 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -391,7 +392,7 @@ select_subtype(ModuleInfo, Type, ConsID, Position, SubType) :-
     else if
         get_existq_cons_defn(ModuleInfo, Type, ConsID, CtorDefn)
     then
-        CtorDefn = ctor_defn(_TVarSet, _KindMap, MaybeExistConstraints, 
+        CtorDefn = ctor_defn(_TVarSet, _KindMap, MaybeExistConstraints,
             ArgTypes, _RetType),
         (
             MaybeExistConstraints = no_exist_constraints,

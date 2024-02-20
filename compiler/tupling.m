@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
 % Copyright (C) 2005-2012 The University of Melbourne.
-% Copyright (C) 2017 The Mercury Team.
+% Copyright (C) 2014-2015, 2017-2024 The Mercury Team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -34,7 +34,7 @@
 % This implementation works as follows:
 %
 % 1. We divide the module into its constituent SCCs. We work our way
-% through each SCC, starting from the bottommost SCC in the call graph.
+% through each SCC, starting from the bottom most SCC in the call graph.
 %
 % 2. For each SCC, we take guesses at a good tupling scheme for the
 % procedures in the SCC, and count the average number of loads and stores
@@ -453,7 +453,7 @@ should_use_tupling_scheme(TuningParams,
     % which have the same name in more than one procedure in the SCC.
     %
     % For each candidate, the name is put in an association list along
-    % with a mappping to the actual variable within each procedure (if
+    % with a mapping to the actual variable within each procedure (if
     % that procedure has an input variable of the given name). The order
     % of the elements in the association list is important later on,
     % since we only try tupling contiguous runs of the candidate variables.
@@ -795,7 +795,7 @@ create_tupling_aux_pred(PredId, ProcId, PredInfo, ProcInfo, SeqNum,
     PredModule = pred_info_module(PredInfo),
     PredName = pred_info_name(PredInfo),
     PredOrFunc = pred_info_is_pred_or_func(PredInfo),
-    ProcNum = proc_id_to_int(ProcId), 
+    ProcNum = proc_id_to_int(ProcId),
     Context = goal_info_get_context(GoalInfo),
     LineNum = term_context.context_line(Context),
     Transform = tn_tupling(PredOrFunc, ProcNum, lnc(LineNum, SeqNum)),

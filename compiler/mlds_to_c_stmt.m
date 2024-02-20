@@ -660,7 +660,7 @@ mlds_output_call(Opts, Stream, Context, Indent, CallHasReturn, FuncRval,
             )
         ;
             PredLabel = mlds_special_pred_label(PredName, MaybeModuleName,
-                TypeName, _), 
+                TypeName, _),
             (
                 PredName \= name_mangle(PredName)
             ;

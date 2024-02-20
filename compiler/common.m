@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1995-2012 The University of Melbourne.
-% Copyright (C) 2015 The Mercury team.
+% Copyright (C) 2014-2017, 2019-2024 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -210,7 +210,7 @@
     %
     % All four combinations of the two structures being absent vs present
     % are legal.
-    % 
+    %
 :- type common_info
     --->    common_info(
                 maybe(common_struct_info),
@@ -471,7 +471,7 @@ common_optimise_unification(RHS0, UnifyMode, Unification0, UnifyContext,
         ( if
             % The call to common_optimise_construct below will try to perform
             % one of two optimizations on this construction unification.
-            % 
+            %
             % - The first is replacing a dynamic unification with an
             %   assignment whose right hand side is a reference to
             %   a constant structure. We try to do this if !.Common
@@ -731,7 +731,7 @@ all_vars_are_const_struct_args(VarMap, [ArgVar | ArgVars], [CSA | CSAs]) :-
     % the LLDS code generator will treat construction unifications
     % marked static by mark_static_terms.m the same way it would treat
     % construction unifications with construct_dynamically, we set
-    % the maybe_ignore_marked_static field of the simplify_info to 
+    % the maybe_ignore_marked_static field of the simplify_info to
     % ignore_marked_static when targeting the LLDS backend.
     %
     % Note also that the problem we have described above for the
@@ -877,7 +877,7 @@ common_standardize_and_record_construct(Var, TypeCtor, ConsId, ArgVars, VarEqv,
     % equivalence class that we have seen since the last stack flush.
     % See the comment on common_standardize_and_record_construct
     % for the reason why we do this.
-    % 
+    %
 :- pred find_representatives(set_of_progvar::in,
     eqvclass(prog_var)::in, list(prog_var)::in, list(prog_var)::out,
     maybe_changed::in, maybe_changed::out) is det.

@@ -145,7 +145,7 @@
 % - and then its arity,
 % - and then its module name,
 %
-% to the permissions for the sym_name_arity we can construct for these. 
+% to the permissions for the sym_name_arity we can construct for these.
 %
 % Going through just the first two stages allows us to see which modules
 % define an entity with the given base name and arity.

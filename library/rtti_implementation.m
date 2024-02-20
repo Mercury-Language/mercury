@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 2001-2007, 2009-2011 The University of Melbourne.
-% Copyright (C) 2014-2021 The Mercury team.
+% Copyright (C) 2014-2024 The Mercury team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %---------------------------------------------------------------------------%
 %
@@ -4160,7 +4160,7 @@ get_remote_secondary_tag(_) = 0 :-
     ;       stag_local_rest_of_word
     % We now use rtti_implementation.m for the C# and Java grades.
     % Type representations do not use stag_local_bits in those grades.
-    % ;     stag_local_bits             
+    % ;     stag_local_bits
     ;       stag_remote
     ;       stag_variable.
 

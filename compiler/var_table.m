@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
-% Copyright (C) 2022 The Mercury team.
+% Copyright (C) 2022, 2024 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -547,7 +547,7 @@ deconstruct_var_table(var_table(Counter, Map), Counter, Map).
 %---------------------------------------------------------------------------%
 %
 % This code is not currently used, but may be useful later.
-% 
+%
 %     % Given a var_table in which some variables have no name, but some
 %     % other variables may have the same name, return an updated var_table
 %     % in which every variable has a unique name.
@@ -556,7 +556,7 @@ deconstruct_var_table(var_table(Counter, Map), Counter, Map).
 %     %
 % :- pred ensure_unique_names(string::in, var_table::in, var_table::out)
 %     is det.
-% 
+%
 % ensure_unique_names(Suffix, !VarTable) :-
 %     !.VarTable = var_table(Counter, VarTableMap0),
 %     map.to_sorted_assoc_list(VarTableMap0, VarTableMapAL0),
@@ -564,12 +564,12 @@ deconstruct_var_table(var_table(Counter, Map), Counter, Map).
 %         [], RevVarsEntries),
 %     map.from_rev_sorted_assoc_list(RevVarsEntries, VarTableMap),
 %     !:VarTable = var_table(Counter, VarTableMap).
-% 
+%
 % :- pred ensure_unique_names_loop(string::in, set(string)::in,
 %     assoc_list(prog_var, var_table_entry)::in,
 %     assoc_list(prog_var, var_table_entry)::in,
 %     assoc_list(prog_var, var_table_entry)::out) is det.
-% 
+%
 % ensure_unique_names_loop(_, _, [], !RevVarsEntries).
 % ensure_unique_names_loop(Suffix, !.UsedNames, [Var - Entry0 | VarsEntries],
 %         !RevVarsEntries) :-
@@ -591,10 +591,10 @@ deconstruct_var_table(var_table(Counter, Map), Counter, Map).
 %     !:RevVarsEntries = [Var - Entry | !.RevVarsEntries],
 %     ensure_unique_names_loop(Suffix, !.UsedNames, VarsEntries,
 %         !RevVarsEntries).
-% 
+%
 % :- pred append_suffix_until_unique(string::in, string::in, set(string)::in,
 %     string::out) is det.
-% 
+%
 % append_suffix_until_unique(Trial0, Suffix, UsedNames, Final) :-
 %     ( if set.member(Trial0, UsedNames) then
 %         string.append(Trial0, Suffix, Trial1),

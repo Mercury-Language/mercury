@@ -2,7 +2,7 @@
 % vim: ts=4 sw=4 et ft=mercury
 %---------------------------------------------------------------------------%
 % Copyright (C) 2007, 2010-2011 The University of Melbourne
-% Copyright (C) 2014-2015, 2018 The Mercury team.
+% Copyright (C) 2014-2015, 2018-2019, 2022, 2024 The Mercury team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %---------------------------------------------------------------------------%
 % File: bit_buffer.read.m.
@@ -165,28 +165,28 @@
 %
 % :- implementation.
 % :- interface.
-% 
+%
 %     % A bit buffer is a stream of bits.
 %     %
 % :- type read_stream(Stream)
 %     ---> read_stream.
-% 
+%
 % :- instance stream.stream(read_stream(Stream, Error),
 %         read_buffer(Stream, State, Error))
 %     <= stream.bulk_reader(Stream, bit_index, bitmap, State, Error).
-% 
+%
 % :- instance stream.input(read_stream(Stream, Error),
 %         read_buffer(Stream, State, Error))
 %     <= stream.input(Stream, State).
-% 
+%
 % :- instance stream.reader(read_stream(Stream, Error), bool,
 %         read_buffer(Stream, State, Error), Error)
 %     <= stream.bulk_reader(Stream, bit_index, bitmap, State, Error).
-% 
+%
 % :- instance stream.bulk_reader(read_stream(Stream, Error),
 %         bit_index, word, read_buffer(Stream, State, Error), Error)
 %     <= stream.bulk_reader(Stream, bit_index, bitmap, State, Error).
-% 
+%
 % :- instance stream.bulk_reader(read_stream(Stream, Error),
 %         bit_index, bitmap, read_buffer(Stream, State, Error), Error)
 %     <= stream.bulk_reader(Stream, bit_index, bitmap, State, Error).

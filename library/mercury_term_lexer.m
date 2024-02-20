@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1993-2000, 2003-2008, 2011-2012 The University of Melbourne.
-% Copyright (C) 2014-2022 The Mercury team.
+% Copyright (C) 2014-2024 The Mercury team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %---------------------------------------------------------------------------%
 %
@@ -5110,7 +5110,7 @@ report_int_ends_in_underscore(base_16) =
 
 :- func report_exponent_ends_in_underscore = token.
 
-report_exponent_ends_in_underscore = 
+report_exponent_ends_in_underscore =
     error("the exponent cannot end with an underscore").
 
 :- func report_underscore_before_decimal_point = token.

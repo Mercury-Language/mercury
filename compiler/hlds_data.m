@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1996-2012 The University of Melbourne.
-% Copyright (C) 2014-2018 The Mercury team.
+% Copyright (C) 2014-2021, 2024 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -656,14 +656,14 @@ gather_type_ctors_by_name([TypeCtorTypeDefn | TypeCtorsTypeDefns0],
     assoc_list(type_ctor, hlds_type_defn)::out) is det.
 
 gather_type_ctors_this_name(_, !TypeCtorTable, [], []).
-gather_type_ctors_this_name(ThisName, !TypeCtorTable, 
+gather_type_ctors_this_name(ThisName, !TypeCtorTable,
         [TypeCtorTypeDefn | TypeCtorsTypeDefns], LeftOverTypeCtorsTypeDefns) :-
     TypeCtorTypeDefn = TypeCtor - TypeDefn,
     TypeCtor = type_ctor(SymName, _Arity),
     Name = unqualify_name(SymName),
     ( if Name = ThisName then
         map.det_insert(TypeCtor, TypeDefn, !TypeCtorTable),
-        gather_type_ctors_this_name(ThisName, !TypeCtorTable, 
+        gather_type_ctors_this_name(ThisName, !TypeCtorTable,
             TypeCtorsTypeDefns, LeftOverTypeCtorsTypeDefns)
     else
         LeftOverTypeCtorsTypeDefns = [TypeCtorTypeDefn | TypeCtorsTypeDefns]

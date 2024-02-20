@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 2008-2011 The University of Melbourne.
-% Copyright (C) 2013-2017, 2019-2023 The Mercury team.
+% Copyright (C) 2013-2017, 2019-2024 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -2442,7 +2442,7 @@ generate_dep_file_collective_targets(Globals, ModuleName,
         ModuleMakeVarName, !MmakeFile, !IO) :-
     list.map_foldl(
         generate_dep_file_collective_target(Globals, ModuleName,
-            ModuleMakeVarName), 
+            ModuleMakeVarName),
         [{ext_cur(ext_cur_pmt_check), ".errs"},
         {ext_cur(ext_cur_pmt_ints), ".dates"},
         {ext_cur(ext_cur_pmt_int3s), ".date3s"},
@@ -2813,11 +2813,11 @@ make_module_file_name(Globals, From, Ext, ModuleName, FileName,
 % number of hits:              3020344
 % number of misses:            1314406
 % hit %:                         69.68
-% 
+%
 % ----------------------------------------------------------
-% 
+%
 % extension                                                #exec #lookup  hit%
-% 
+%
 % ext_cur(ext_cur_mh)                                       5649 1716651 60.18
 % ext_cur_gs(ext_cur_gs_exec_noext)                         1680    4570  4.51
 % ext_cur_ngs(ext_cur_ngs_int_date_int0)                    5649   12345 17.20

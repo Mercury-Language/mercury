@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
-% Copyright (C) 2023 The Mercury team.
+% Copyright (C) 2023-2024 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -212,7 +212,7 @@ add_to_direct_imports_intermod_cache(ModuleIndex, Result, !Info) :-
 %     ),
 %     CacheMap = make_info_get_indirect_imports_non_intermod_cache(Info),
 %     map.search(CacheMap, ModuleIndex, Result).
-% 
+%
 % add_to_indirect_imports_non_intermod_cache(ModuleIndex, Result, !Info) :-
 %     trace [
 %         compile_time(flag("deps_cache_stats")),
@@ -303,7 +303,7 @@ add_to_foreign_imports_non_intermod_trans_cache(ModuleIndex, Result, !Info) :-
 %     ),
 %     CacheMap = make_info_get_anc0_dir1_indir2_non_intermod_cache(Info),
 %     map.search(CacheMap, Key, Result).
-% 
+%
 % add_to_anc0_dir1_indir2_non_intermod_cache(Key, Result, !Info) :-
 %     trace [
 %         compile_time(flag("deps_cache_stats")),
@@ -391,11 +391,11 @@ add_to_trans_deps_cache(DepsRoot, Result, !Info) :-
 % number of hits:              1962569
 % number of misses:              50370
 % hit %:                         97.50
-% 
+%
 % ----------------------------------------------------------
-% 
+%
 % cache                           #exec  #lookup     #hit    #miss   hit%
-% 
+%
 % direct_imports_non_intermod       100   850145   838363    11782  98.61
 % direct_imports_intermod           100    17300    10965     6335  63.38
 % indirect_imports_non_intermod      57     4112        0     4112   0.00

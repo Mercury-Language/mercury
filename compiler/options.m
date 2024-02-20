@@ -1506,7 +1506,7 @@ optdef(oc_grade, java,                                  special).
 optdef(oc_grade, java_only,                             special).
 
     % Optional feature compilation model options:
-    % (a) Debuggging
+    % (a) Debugging
 optdef(oc_grade, exec_trace,                            bool(no)).
 optdef(oc_grade, decl_debug,                            bool(no)).
     % (b) Profiling
@@ -1596,7 +1596,7 @@ optdef(oc_grade, gcc_non_local_gotos,                   bool(yes)).
 optdef(oc_grade, gcc_global_registers,                  bool(yes)).
 optdef(oc_grade, asm_labels,                            bool(yes)).
 optdef(oc_grade, use_float_registers,                   bool(yes)).
- 
+
     % MLDS back-end compilation model options
 optdef(oc_grade, highlevel_code,                        bool(no)).
 optdef(oc_grade, c_debug_grade,                         bool(no)).

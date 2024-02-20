@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
-% Copyright (C) 2016 The Mercury team.
+% Copyright (C) 2016, 2019-2024 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -243,7 +243,7 @@ report_any_inc_gaps(PredInfo, FirstINC, SecondINC, LaterINCs,
         FirstProcNum, !StyleInfo) :-
     % If FirstProcNum = 0, then FirstINC is for the predicate or function
     % declaration.
-    % If FirstProcNum > 0, then FirstINC is for FirstProcNum'th 
+    % If FirstProcNum > 0, then FirstINC is for FirstProcNum'th
     % mode declaration.
     FirstINC = inc(FirstItemNumber, FirstContext),
     SecondINC = inc(SecondItemNumber, SecondContext),

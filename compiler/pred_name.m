@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1994-2001, 2003-2012 The University of Melbourne.
-% Copyright (C) 2014-2017 The Mercury team.
+% Copyright (C) 2014-2017, 2022-2024 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -577,7 +577,7 @@
 :- func dump_origin(tvarset, var_name_print, string, pred_origin) = string.
 
     % Generated an identification of the predicate with the given origin
-    % and name to put into layout structures for the debugger and the deeep
+    % and name to put into layout structures for the debugger and the deep
     % profiler. Moved here from layout_out.m.
     %
 :- func layout_origin_name(pred_origin, string) = string.
@@ -1955,13 +1955,13 @@ bracketed_ints_to_string(Ints) = Str :-
 
 :- func mrtq_stuff_sym_name(sym_name) = string.
 
-mrtq_stuff_sym_name(SymName) = StuffedStr :- 
+mrtq_stuff_sym_name(SymName) = StuffedStr :-
     NameStr = sym_name_to_string(SymName),
     StuffedStr = mrtq_stuff(NameStr).
 
 :- func txq_mrtq_stuff_sym_name(sym_name) = string.
 
-txq_mrtq_stuff_sym_name(SymName) = StuffedStr :- 
+txq_mrtq_stuff_sym_name(SymName) = StuffedStr :-
     NameStr = sym_name_to_string(SymName),
     StuffedStr = txq_mrtq_stuff(NameStr).
 

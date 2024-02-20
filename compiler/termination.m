@@ -1,8 +1,8 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 1997-2001, 2003-2011 The University of Melbourne.
-% Copyright (C) 2017 The Mercury Team.
+% Copyright (C) 1997-2001, 2003-2012 The University of Melbourne.
+% Copyright (C) 2014-2020, 2022-2024 The Mercury Team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %----------------------------------------------------------------------------%
@@ -319,8 +319,8 @@ check_scc_pragmas_are_consistent(SCC, !ModuleInfo, !Specs) :-
     ).
 
 :- pred classify_termination_status(module_info::in, list(pred_proc_id)::in,
-    set(pair(string, pred_id))::in, set(pair(string, pred_id))::out, 
-    set(prog_context)::in, set(prog_context)::out, 
+    set(pair(string, pred_id))::in, set(pair(string, pred_id))::out,
+    set(prog_context)::in, set(prog_context)::out,
     set(termination_info)::in, set(termination_info)::out,
     set(pred_proc_id)::in, set(pred_proc_id)::out) is det.
 

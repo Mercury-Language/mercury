@@ -2,6 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 2002-2012 The University of Melbourne.
+% Copyright (C) 2013-2024 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -428,7 +429,7 @@ maybe_symlink_or_copy_linked_target_msg(Globals, FileName, Msg) :-
 
 %---------------------%
 
-maybe_write_msg(OutStream, Msg, !IO) :-    
+maybe_write_msg(OutStream, Msg, !IO) :-
     ( if Msg = "" then
         true
     else
@@ -436,7 +437,7 @@ maybe_write_msg(OutStream, Msg, !IO) :-
         io.flush_output(OutStream, !IO)
     ).
 
-maybe_write_msg_locked(OutStream, Info, Msg, !IO) :-    
+maybe_write_msg_locked(OutStream, Info, Msg, !IO) :-
     ( if Msg = "" then
         true
     else

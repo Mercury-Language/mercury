@@ -2,6 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 2009-2012 The University of Melbourne.
+% Copyright (C) 2013-2018, 2020-2024 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -247,7 +248,7 @@ ml_gen_scc(ProgressStream, ModuleInfo, OptTailCalls, DefaultWarnParams, Target,
         % where the caller and callee are in different TSCCs, exactly
         % which recursive calls being non-tail calls prevent them from
         % being in the same TSCC.
-        list.foldl(report_nontail_rec_call(ModuleInfo, DefaultWarnParams), 
+        list.foldl(report_nontail_rec_call(ModuleInfo, DefaultWarnParams),
             NonTailRecCalls, !Specs)
     else
         true
@@ -1703,7 +1704,7 @@ ml_gen_proc_body(CodeModel, ArgTuples, CopiedOutputVars, Goal, SeenAtLabelMap,
 
         % Boxing/unboxing/casting required. We need to convert the input
         % arguments, generate the goal, convert the output arguments,
-        % and then succeeed.
+        % and then succeed.
         DoConvOutputs =
             ( pred(NewLocalVarDefns::out, NewFuncDefns::out,
                     NewStmts::out, Info0::in, Info::out) is det :-

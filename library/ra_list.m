@@ -1,8 +1,8 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
-% Copyright (C) 1997,2000,2003,2005-2006 The University of Melbourne.
-% Copyright (C) 2014-2015,2021-2022 The Mercury team.
+% Copyright (C) 1997, 2000, 2003, 2005-2006 The University of Melbourne.
+% Copyright (C) 2014-2015, 2021-2024 The Mercury team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %---------------------------------------------------------------------------%
 %
@@ -241,7 +241,7 @@
     % when constructing ra_lists, and fewer dependent loads when traversing
     % existing ra_lists. (It may also require less memory, though with Boehm,
     % each three argument cons cell requires a four word block.)
-    % 
+    %
 :- type ra_list(T)
     --->    nil
             % The list is empty.
@@ -412,7 +412,7 @@ update(I, X, List0, List) :-
     is semidet.
 
 update_2(I, X, List0, List) :-
-    List0 = cons(Size, T0, Rest), 
+    List0 = cons(Size, T0, Rest),
     ( if I < Size then
         update_bintree(Size, I, X, T0, T),
         List = cons(Size, T, Rest)

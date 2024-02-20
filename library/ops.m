@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1995-2008, 2010, 2012 The University of Melbourne.
-% Copyright (C) 2014-2018 The Mercury team.
+% Copyright (C) 2014-2019, 2021-2022, 2024 The Mercury team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %---------------------------------------------------------------------------%
 %
@@ -291,7 +291,7 @@
     % synonym all take arguments of any type that is an instance of the
     % op_table type class. That would be a breaking change, but the breakage
     % would be comparatively minor.
-    % 
+    %
 :- type table == ops.mercury_op_table.
 
 %---------------------------------------------------------------------------%

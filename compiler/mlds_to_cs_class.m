@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 2010-2012 The University of Melbourne.
-% Copyright (C) 2013-2018 The Mercury team.
+% Copyright (C) 2013-2018, 2020, 2022-2024 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -200,7 +200,7 @@ output_struct_defn_for_csharp(Info, Stream, Indent, StructDefn, !IO) :-
         output_field_var_defn_for_csharp(Info, Stream, Indent1),
         MemberFields, !IO),
     io.nl(Stream, !IO),
-    output_function_defn_for_csharp(Info, Stream, Indent1, 
+    output_function_defn_for_csharp(Info, Stream, Indent1,
         oa_cname(StructName, 0), Ctor, !IO),
     io.format(Stream, "%s}\n\n", [s(IndentStr)], !IO).
 

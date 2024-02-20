@@ -2,6 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1996-2011 The University of Melbourne.
+% Copyright (C) 2016-2024 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -1936,7 +1937,7 @@ parse_warnings(VarSet, Term, ScopeFunctor, ContextPieces, WarningNum,
 
 parse_warning(VarSet, Term, ScopeFunctor, ContextPieces, WarningNum,
         Warnings, WarningSpecs) :-
-    ( if 
+    ( if
         Term = term.functor(term.atom(WarningFunctor), [], _),
         (
             WarningFunctor = "non_tail_recursive_calls",
@@ -2882,7 +2883,7 @@ parse_atomic_params(Context, Term, VarSet, MaybeComponentsContexts) :-
             StartStr = "The term"
         ),
         TermStr = describe_error_term(VarSet, Term),
-        Pieces = [words(StartStr), quote(TermStr), 
+        Pieces = [words(StartStr), quote(TermStr),
             words("is not a valid parameter of an atomic goal."), nl],
         Spec = simplest_spec($pred, severity_error, phase_term_to_parse_tree,
             TermContext, Pieces),

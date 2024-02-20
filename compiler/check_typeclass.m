@@ -2,6 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1996-2001, 2003-2012 The University of Melbourne.
+% Copyright (C) 2013-2024 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -2267,7 +2268,7 @@ constraint_list_to_comma_strings(TVarSet, [C | Cs], Strings) :-
 %
 
 :- pred report_overlapping_instances(class_id::in,
-    prog_context::in, prog_context::in, 
+    prog_context::in, prog_context::in,
     list(error_spec)::in, list(error_spec)::out) is det.
 
 report_overlapping_instances(ClassId, ContextA, ContextB, !Specs) :-
@@ -2327,7 +2328,7 @@ report_abstract_concrete_constraints_mismatch(ClassId,
     AbstractContext = AbstractInstanceDefn ^ instdefn_context,
     AbstractPieces = [words("Error: the instance constraints"),
         words("on this abstract instance declaration"),
-        words("for class"), qual_class_id(ClassId), 
+        words("for class"), qual_class_id(ClassId),
         words("do not match the instance constraints"),
         words("on the corresponding concrete instance declaration."), nl],
     AbstractMsg = simplest_msg(AbstractContext, AbstractPieces),

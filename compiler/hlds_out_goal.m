@@ -950,7 +950,7 @@ is_conditional_to_string(IsConditional) = Str :-
 % Write out goal expressions.
 %
 
-:- pred format_goal_expr(hlds_out_info_goal::in, 
+:- pred format_goal_expr(hlds_out_info_goal::in,
     indent::in, string::in, hlds_goal_expr::in,
     string.builder.state::di, string.builder.state::uo) is det.
 
@@ -1002,7 +1002,7 @@ format_goal_expr(InfoGoal, Indent, Follow, GoalExpr, !State) :-
     %
     % Write out a unification.
     %
-:- pred format_goal_unify(hlds_out_info_goal::in, 
+:- pred format_goal_unify(hlds_out_info_goal::in,
     indent::in, string::in, hlds_goal_expr::in(goal_expr_unify),
     string.builder.state::di, string.builder.state::uo) is det.
 
@@ -1070,7 +1070,7 @@ format_unify_rhs(Info, ModuleInfo, VarNameSrc, VarNamePrint,
         TVarSet, InstVarSet, TypeQual),
     format_unify_rhs_2(InfoGoal, Indent, no, RHS, !State).
 
-:- pred format_unify_rhs_2(hlds_out_info_goal::in, 
+:- pred format_unify_rhs_2(hlds_out_info_goal::in,
     indent::in, maybe(mer_type)::in, unify_rhs::in,
     string.builder.state::di, string.builder.state::uo) is det.
 
@@ -1931,7 +1931,7 @@ foreign_args_to_string_lag(VarNameSrc, VarNamePrint, TypeVarSet, InstVarSet,
 % Write out disjunctions.
 %
 
-:- pred format_goal_conj(hlds_out_info_goal::in, 
+:- pred format_goal_conj(hlds_out_info_goal::in,
     indent::in, string::in, hlds_goal_expr::in(goal_expr_conj),
     string.builder.state::di, string.builder.state::uo) is det.
 
@@ -1979,7 +1979,7 @@ format_goal_conj(InfoGoal, Indent, Follow, GoalExpr, !State) :-
             [s(IndentStr), s(ParStr), s(Follow)], !State)
     ).
 
-:- pred write_conj(hlds_out_info_goal::in, 
+:- pred write_conj(hlds_out_info_goal::in,
     indent::in, string::in, string::in, hlds_goal::in, list(hlds_goal)::in,
     string.builder.state::di, string.builder.state::uo) is det.
 
@@ -2010,7 +2010,7 @@ write_conj(InfoGoal, Indent, Follow, Separator, Goal1, Goals1, !State) :-
 % Write out disjunctions.
 %
 
-:- pred format_goal_disj(hlds_out_info_goal::in, 
+:- pred format_goal_disj(hlds_out_info_goal::in,
     indent::in, string::in, hlds_goal_expr::in(goal_expr_disj),
     string.builder.state::di, string.builder.state::uo) is det.
 
@@ -2033,7 +2033,7 @@ format_goal_disj(InfoGoal, Indent, Follow, GoalExpr, !State) :-
 % Write out switches.
 %
 
-:- pred format_goal_switch(hlds_out_info_goal::in, 
+:- pred format_goal_switch(hlds_out_info_goal::in,
     indent::in, string::in, hlds_goal_expr::in(goal_expr_switch),
     string.builder.state::di, string.builder.state::uo) is det.
 
@@ -2057,7 +2057,7 @@ format_goal_switch(InfoGoal, Indent, Follow, GoalExpr, !State) :-
     ),
     string.builder.format("%s)%s", [s(IndentStr), s(Follow)], !State).
 
-:- pred write_cases(hlds_out_info_goal::in, 
+:- pred write_cases(hlds_out_info_goal::in,
     indent::in, prog_var::in, list(case)::in,
     string.builder.state::di, string.builder.state::uo) is det.
 
@@ -2072,7 +2072,7 @@ write_cases(InfoGoal, Indent, Var, CasesList, !State) :-
         CasesList = []
     ).
 
-:- pred write_case(hlds_out_info_goal::in, 
+:- pred write_case(hlds_out_info_goal::in,
     indent::in, prog_var::in, case::in,
     string.builder.state::di, string.builder.state::uo) is det.
 
@@ -2116,7 +2116,7 @@ case_comment(VarName, MainConsName, OtherConsNames) = Comment :-
 % Write out negations.
 %
 
-:- pred format_goal_negation(hlds_out_info_goal::in, 
+:- pred format_goal_negation(hlds_out_info_goal::in,
     indent::in, string::in, hlds_goal_expr::in(goal_expr_neg),
     string.builder.state::di, string.builder.state::uo) is det.
 
@@ -2175,7 +2175,7 @@ format_goal_if_then_else(InfoGoal, Indent, Follow, GoalExpr, !State) :-
 % Write out scope goals.
 %
 
-:- pred format_goal_scope(hlds_out_info_goal::in, 
+:- pred format_goal_scope(hlds_out_info_goal::in,
     indent::in, string::in, hlds_goal_expr::in(goal_expr_scope),
     string.builder.state::di, string.builder.state::uo) is det.
 
@@ -2473,7 +2473,7 @@ maybe_add_comma_newline(AddCommaNewline, !State) :-
 % Write out shorthand goals.
 %
 
-:- pred format_goal_shorthand(hlds_out_info_goal::in, 
+:- pred format_goal_shorthand(hlds_out_info_goal::in,
     indent::in, string::in, hlds_goal_expr::in(goal_expr_shorthand),
     string.builder.state::di, string.builder.state::uo) is det.
 

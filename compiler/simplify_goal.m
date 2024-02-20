@@ -1,7 +1,7 @@
 %----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %----------------------------------------------------------------------------%
-% Copyright (C) 2014 The Mercury team.
+% Copyright (C) 2014-2018, 2020-2024 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %----------------------------------------------------------------------------%
@@ -304,7 +304,7 @@ simplify_goal(Goal0, Goal, NestedContext0, InstMap0, !Common, !Info) :-
             dump_goal_nl(StdErr, TraceModuleInfo, TraceVarNameSrc,
                 TVarSet, InstVarSet, Goal0, !IO),
             io.write_string(StdErr, "\nMerge goal after\n\n", !IO),
-            dump_goal_nl(StdErr, TraceModuleInfo, TraceVarNameSrc, 
+            dump_goal_nl(StdErr, TraceModuleInfo, TraceVarNameSrc,
                 TVarSet, InstVarSet, Goal5, !IO)
         else
             true

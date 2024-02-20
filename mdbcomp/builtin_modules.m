@@ -181,7 +181,7 @@
     % so cannot fail to find it. This is why this predicate is deterministic.
     % When we change maybe_add_stdlib_wrapper to add a wrapper, this predicate
     % will change to be semidet.
-    % 
+    %
 :- pred maybe_remove_stdlib_wrapper(module_name::in, module_name::out) is det.
 
 :- pred is_std_lib_module_name(sym_name::in, string::out) is semidet.

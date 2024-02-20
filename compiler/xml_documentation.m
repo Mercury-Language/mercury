@@ -2,6 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
 % Copyright (C) 2006-2012 The University of Melbourne.
+% Copyright (C) 2014-2024 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -825,7 +826,7 @@ fundep_to_xml_2(Tag, TVarset, Vars, Set) =
 :- func class_methods_to_xml(comments, pred_id_table, list(method_info)) = xml.
 
 class_methods_to_xml(C, PredTable, MethodInfos) = Xml :-
-    MethodInfoPredId = 
+    MethodInfoPredId =
         ( func(method_info(_, _, PredProcId, _)) = PredId :-
             PredProcId = proc(PredId, _)
         ),

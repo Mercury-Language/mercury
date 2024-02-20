@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1996-2001, 2003-2012 The University of Melbourne.
-% Copyright (C) 2015 The Mercury team.
+% Copyright (C) 2014-2015, 2018-2022, 2024 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -1200,7 +1200,7 @@ merge_insts_of_vars([Var | Vars], ArmInstMaps, VarTable, !InstMapping,
         !ModuleInfo, !:ErrorList),
     lookup_var_type(VarTable, Var, VarType),
     list.map(lookup_var_in_arm_instmap(Var), ArmInstMaps, VarInsts),
-    det_head_tail(VarInsts, HeadVarInst, TailVarInsts), 
+    det_head_tail(VarInsts, HeadVarInst, TailVarInsts),
     insts_merge(VarType, HeadVarInst, TailVarInsts, MaybeInst, !ModuleInfo),
     (
         MaybeInst = no,

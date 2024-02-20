@@ -2,7 +2,7 @@
 % vim: ts=4 sw=4 et ft=mercury
 %---------------------------------------------------------------------------%
 % Copyright (C) 2000-2007, 2011-2012 The University of Melbourne.
-% Copyright (C) 2014-2022 The Mercury team.
+% Copyright (C) 2014-2024 The Mercury team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %---------------------------------------------------------------------------%
 %
@@ -49,7 +49,7 @@
 % - the tree_bitset module,
 % - the fat_sparse_bitset module, and
 % - the fatter_sparse_bitset module.
-% 
+%
 % The comment at the top of tree_bitset.m explains
 %
 % - how its data structure differ from the data structure described above,

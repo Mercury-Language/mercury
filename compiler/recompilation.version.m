@@ -709,7 +709,7 @@ gather_in_mode_decl(Section, ItemModeDecl, !PredMap, !FuncMap) :-
     % the pred_or_func and arity here won't be correct, but equiv_type.m
     % will record the dependency on the version number with the `incorrect'
     % pred_or_func and arity, so this will work.
-    % 
+    %
     % XXX See the comment about with_inst in gather_in_pred_decl.
     ItemModeDecl = item_mode_decl_info(SymName, MaybePredOrFunc, ArgModes,
         WithInst, _, _, _, _),
@@ -1298,7 +1298,7 @@ is_item_changed(Item1, Item2, Changed) :-
     ;
         Item1 = item_decl_marker(DeclMarker1),
         DeclMarker1 = item_decl_marker_info(A, B, _, _),
-        ( if 
+        ( if
             Item2 = item_decl_marker(DeclMarker2),
             DeclMarker2 = item_decl_marker_info(A, B, _, _)
         then
@@ -1318,7 +1318,7 @@ is_item_changed(Item1, Item2, Changed) :-
     ;
         Item1 = item_impl_marker(ImplMarker1),
         ImplMarker1 = item_impl_marker_info(A, B, _, _),
-        ( if 
+        ( if
             Item2 = item_impl_marker(ImplMarker2),
             ImplMarker2 = item_impl_marker_info(A, B, _, _)
         then

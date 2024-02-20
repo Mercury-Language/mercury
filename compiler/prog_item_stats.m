@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2015 The Mercury team.
+% Copyright (C) 2015-2024 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -183,7 +183,7 @@ gather_stats_in_aug_comp_unit(AugCompUnit, !:CompUnitStats) :-
 % section_name_src(sms_interface) = "src_int".
 % section_name_src(sms_implementation) = "src_impl".
 % section_name_src(sms_impl_but_exported_to_submodules) = "src_impl_sub".
-% 
+%
 % :- func section_name_int(int_module_section) = string.
 % section_name_int(ims_imported_or_used(_, _, _, iou_imported)) =
 %     "int_imported".
@@ -200,7 +200,7 @@ gather_stats_in_aug_comp_unit(AugCompUnit, !:CompUnitStats) :-
 % :- pred gather_stats_in_item_blocks((func(MS) = string)::in,
 %     list(item_block(MS))::in,
 %     comp_unit_stats::in, comp_unit_stats::out) is det.
-% 
+%
 % gather_stats_in_item_blocks(_, [], !CompUnitStats).
 % gather_stats_in_item_blocks(SectionFunc, [ItemBlock | ItemBlocks],
 %         !CompUnitStats) :-

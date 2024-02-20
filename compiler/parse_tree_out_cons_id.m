@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1994-2012 The University of Melbourne.
-% Copyright (C) 2014-2018 The Mercury team.
+% Copyright (C) 2014-2018, 2023-2024 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -268,7 +268,7 @@ cons_id_and_arity_to_string_maybe_quoted(MangleCons, QuoteCons, StripQual,
         (
             StripQual = dont_strip_qual,
             SymNameString0 = sym_name_to_string(SymName)
-        ;   
+        ;
             StripQual = strip_qual,
             SymNameString0 = unqualify_name(SymName)
         ),

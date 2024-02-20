@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
 % Copyright (C) 1994-2012 The University of Melbourne.
-% Copyright (C) 2015 The Mercury team.
+% Copyright (C) 2014-2024 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -367,7 +367,7 @@ delete_invalid_procs_from_pred(PredId, ProcMap, !ModuleInfo) :-
 
     % Iterate over the list of pred_ids in a module.
     % XXX Document this predicate rather better than that.
-    % 
+    %
     % XXX I, zs, see three nontrivial problems with our current approach
     % to fixpoint iteration in the presence of predicates that have
     % no mode declarations.
@@ -398,7 +398,7 @@ delete_invalid_procs_from_pred(PredId, ProcMap, !ModuleInfo) :-
     %
     %     While this situation would be extremely likely to change in the
     %     next iteration, I see no correctness argument that would guarantee
-    %     would guarantee this. We could thus arrive at a fixpoint in which 
+    %     would guarantee this. We could thus arrive at a fixpoint in which
     %     a valid procedure in A would contain a call to an invalid procedure
     %     in B. Since we generate target language code for valid procedures
     %     but obviously not for invalid procedures, we would be generating
@@ -454,7 +454,7 @@ delete_invalid_procs_from_pred(PredId, ProcMap, !ModuleInfo) :-
 modecheck_to_fixpoint(ProgressStream, WhatToCheck, MayChangeCalledProc,
         NumIterationsLeft, PredIds, SafeToContinue, !:Specs,
         !ProcModeErrorMap, !ModuleInfo) :-
-    % Save the old procedure bodies, so that we can restore any procedure body 
+    % Save the old procedure bodies, so that we can restore any procedure body
     % for the next pass if necessary.
     module_info_get_pred_id_table(!.ModuleInfo, OldPredIdTable0),
 

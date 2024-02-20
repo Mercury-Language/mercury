@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
-% Copyright (C) 2015 The Mercury team.
+% Copyright (C) 2015-2016, 2018-2024 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -208,10 +208,10 @@ mercury_format_item_decl_marker(Stream, DeclMarker, !IO) :-
         MarkerKind = dpmk_terminates,
         MarkerKindStr = "terminates"
     ;
-        MarkerKind = dpmk_does_not_terminate, 
+        MarkerKind = dpmk_does_not_terminate,
         MarkerKindStr = "does_not_terminate"
     ;
-        MarkerKind = dpmk_check_termination, 
+        MarkerKind = dpmk_check_termination,
         MarkerKindStr = "check_termination"
     ),
     mercury_format_pragma_decl_pred_pfu_name_arity(MarkerKindStr,
@@ -1688,7 +1688,7 @@ mercury_format_pred_name_arity(PredName, UserArity, S, !U) :-
     mercury_format_pred_name_arity_ngt(next_to_graphic_token, PredName,
         UserArity, S, !U).
 
-:- pred mercury_format_pred_name_arity_ngt(needs_quotes::in, 
+:- pred mercury_format_pred_name_arity_ngt(needs_quotes::in,
     sym_name::in, user_arity::in, S::in, U::di, U::uo) is det
     <= pt_output(S, U).
 

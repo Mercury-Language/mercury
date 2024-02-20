@@ -1,7 +1,7 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2014 The Mercury team.
+% Copyright (C) 2014-2024 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -403,7 +403,7 @@ simplify_proc_maybe_vary_parameters(ModuleInfo, PredId, ProcInfo,
     % handle_options.m has just shy of 9,000 variables at the time of the
     % first simplify pass (HLDS dump stage 65). The compiler can handle that
     % easily, so the setting below allows for some growth.
-    % 
+    %
 :- func turn_off_common_struct_threshold = int.
 
 turn_off_common_struct_threshold = 12000.

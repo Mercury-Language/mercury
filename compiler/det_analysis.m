@@ -2,6 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1994-2012 The University of Melbourne.
+% Copyright (C) 2014-2024 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -2035,7 +2036,7 @@ noncanon_unify_verbose_preamble =
     [words("Since the type has a user-defined equality predicate,"),
     words("I must presume that there is more than one possible concrete"),
     words("representation for each abstract value of this type.")].
-    
+
 :- func noncanon_unify_verbose_would_require = list(format_piece).
 
 noncanon_unify_verbose_would_require =

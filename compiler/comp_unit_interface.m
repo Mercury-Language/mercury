@@ -110,7 +110,7 @@
 %---------------------------------------------------------------------------%
 
     % This type is similar to generate_int0_result, with its differences
-    % being the inclusion of two parse trees, and two pairs of file names, 
+    % being the inclusion of two parse trees, and two pairs of file names,
     % instead of one.
 :- type generate_int12_result
     --->    gpti12_ok(

@@ -585,7 +585,7 @@ format_atom_term_prio_anon_vars(Stream, OpTable, Atom, ArgTerms,
     % Unfortunately, three things conspire together to prevent code
     % along those lines from being an improvement:
     %
-    % - the fact that the special-case codes for these values of Atom 
+    % - the fact that the special-case codes for these values of Atom
     %   apply only if ArgTerms has the right shape,
     %
     % - the fact that these "right shapes" are different for these

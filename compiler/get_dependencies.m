@@ -1267,7 +1267,7 @@ acc_foreign_code_langs_from_impl_pragma(ImplPragma, !Langs) :-
     --->    format_call_non_stream
     ;       format_call_maybe_stream.
 
-    % Can the predicate called by the given sym_name resolve to a predicate 
+    % Can the predicate called by the given sym_name resolve to a predicate
     % that this module concerns itself with? If yes, then succeed, and
     % return an indication of whether this predicate *may* be one that
     % requires access to stream.string_writer.m.

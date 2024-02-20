@@ -332,7 +332,7 @@ build_rows(Params, LenA, LenB, ItemMapA, ItemMapB, MaybeCeiling,
     array(uint)::array_di, array(uint)::array_uo,
     uint::in, uint::out) is det.
 
-build_columns(Params, LenA, LenB, ItemMapA, ItemMapB, RowNum, J, 
+build_columns(Params, LenA, LenB, ItemMapA, ItemMapB, RowNum, J,
         !RowTwoAgo, !RowOneAgo, !RowNext, !MinCostInRow) :-
     ( if J < LenA then
         ColNum = J + 1u,
@@ -533,19 +533,19 @@ find_best_close_enough_strings(Params, SourceStr, TargetStrs, MaxCost,
 % get_edit_distance (const char *s, int len_s, const char *t, int len_t)
 % {
 %     const bool debug = false;
-% 
+%
 %     if (debug) {
 %         printf ("s: \"%s\" (len_s=%i)\n", s, len_s);
 %         printf ("t: \"%s\" (len_t=%i)\n", t, len_t);
 %     }
-% 
+%
 %     if (len_s == 0) {
 %         return BASE_COST * len_t;
 %     }
 %     if (len_t == 0) {
 %         return BASE_COST * len_s;
 %     }
-% 
+%
 %     // We effectively build a matrix where each (i, j) contains
 %     // the distance between the prefix strings s[0:j] and t[0:i].
 %     // Rather than actually build an (len_t + 1) * (len_s + 1) matrix,
@@ -554,13 +554,13 @@ find_best_close_enough_strings(Params, SourceStr, TargetStrs, MaxCost,
 %     edit_distance_t *v_two_ago = new edit_distance_t[len_s + 1];
 %     edit_distance_t *v_one_ago = new edit_distance_t[len_s + 1];
 %     edit_distance_t *v_next =    new edit_distance_t[len_s + 1];
-% 
+%
 %     // The first row is for the case of an empty target string,
 %     // which we can reach by deleting every character in the source string.
 %     for (int i = 0; i < len_s + 1; i++) {
 %         v_one_ago[i] = i * BASE_COST;
 %     }
-% 
+%
 %     // Build successive rows.
 %     for (int i = 0; i < len_t; i++) {
 %         if (debug) {
@@ -570,17 +570,17 @@ find_best_close_enough_strings(Params, SourceStr, TargetStrs, MaxCost,
 %             }
 %             printf ("\n");
 %         }
-% 
+%
 %         // The initial column is for the case of an empty source string;
 %         // we can reach prefixes of the target string of length i
 %         // by inserting i characters.
 %         v_next[0] = (i + 1) * BASE_COST;
-% 
+%
 %         // Build the rest of the row by considering neighbors
 %         // to the north, west and northwest.
 %         for (int j = 0; j < len_s; j++) {
 %             edit_distance_t cost;
-% 
+%
 %             if (s[j] == t[i]) {
 %                 cost = 0;
 %             } else if (TOLOWER (s[j]) == TOLOWER (t[i])) {
@@ -588,7 +588,7 @@ find_best_close_enough_strings(Params, SourceStr, TargetStrs, MaxCost,
 %             } else {
 %                 cost = BASE_COST;
 %             }
-% 
+%
 %             edit_distance_t deletion     = v_next[j] + BASE_COST;
 %             edit_distance_t insertion    = v_one_ago[j + 1] + BASE_COST;
 %             edit_distance_t substitution = v_one_ago[j] + cost;
@@ -600,14 +600,14 @@ find_best_close_enough_strings(Params, SourceStr, TargetStrs, MaxCost,
 %             }
 %             v_next[j + 1] = cheapest;
 %         }
-% 
+%
 %         // Prepare to move on to next row.
 %         for (int j = 0; j < len_s + 1; j++) {
 %             v_two_ago[j] = v_one_ago[j];
 %             v_one_ago[j] = v_next[j];
 %         }
 %     }
-% 
+%
 %     if (debug) {
 %         printf ("final v_next = ");
 %         for (int j = 0; j < len_s + 1; j++) {
@@ -615,7 +615,7 @@ find_best_close_enough_strings(Params, SourceStr, TargetStrs, MaxCost,
 %         }
 %         printf ("\n");
 %     }
-% 
+%
 %     edit_distance_t result = v_next[len_s];
 %     delete[] v_two_ago;
 %     delete[] v_one_ago;

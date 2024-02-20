@@ -2,6 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
 % Copyright (C) 1996-2012 The University of Melbourne.
+% Copyright (C) 2013-2024 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -1187,7 +1188,7 @@ dead_proc_eliminate_proc(ProcElimInfo, KeepAnyProc, PredId, ProcId,
             % all calls to it, and we count how many such calls there are
             % to "encourage" inlining to inline at such call sites. However,
             % if there is such an entry in Needed, then either inlining
-            % hasn't beeen run yet, or it has been run but it left some
+            % hasn't been run yet, or it has been run but it left some
             % calls to this procedure. Neither case allows the deletion
             % of this procedure.
             map.contains(Needed, entity_proc(proc(PredId, ProcId)))
@@ -1625,7 +1626,7 @@ dead_pred_elim_initialize(PredId, DeadInfo0, DeadInfo) :-
                 %   used, so that effort, and the time required to run the
                 %   resulting code, would be wasted in the vast majority of
                 %   compilations.
-                % 
+                %
                 is_unify_index_or_compare_pred(PredInfo)
             ;
                 is_std_lib_module_name(PredModuleName, PredModuleNameStr),

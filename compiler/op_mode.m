@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
-% Copyright (C) 2015-2016 The Mercury team.
+% Copyright (C) 2015-2016, 2019-2024 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -125,7 +125,7 @@
     % We can select the opm_top_make op_mode in response to two options:
     % --make and --rebuild. To let us return the right one, we also take
     % the value of the globals.
-    % 
+    %
 :- func op_mode_to_option_string(option_table, op_mode) = string.
 
 %---------------------------------------------------------------------------%

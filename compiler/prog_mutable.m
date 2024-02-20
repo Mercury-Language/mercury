@@ -1,8 +1,8 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
-% Copyright (C) 2005-2011 The University of Melbourne.
-% Copyright (C) 2015 The Mercury team.
+% Copyright (C) 2005-2012 The University of Melbourne.
+% Copyright (C) 2014-2015, 2019, 2021-2024 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -343,7 +343,7 @@ declare_mutable_aux_preds_for_int0(ModuleName, ItemMutable)
         declare_nonconstant_get_set_preds(ModuleName, MutableName, Type, Inst,
             AttachToIO, Context, _InitSetPredName,
             GetPredDecl, SetPredDecl, IOPredDecls),
-        % _AttachToIO = mutable_dont_attach_to_io_state => IOPredDecls = [] 
+        % _AttachToIO = mutable_dont_attach_to_io_state => IOPredDecls = []
         PublicAuxPredDecls = [GetPredDecl, SetPredDecl | IOPredDecls]
     ).
 
@@ -1021,7 +1021,7 @@ define_init_pred(ModuleName, Lang, ItemMutable, InitSetPredName,
     new_user_init_or_final_pred_target_name(ModuleName, "init", SeqNum,
         InitPredName, user_arity(0), TargetName, !PredTargetNames),
     PredNameModesPF = proc_pf_name_modes(pf_predicate, InitPredName, []),
-    FPEInfo = impl_pragma_fproc_export_info(Origin, Lang, PredNameModesPF,    
+    FPEInfo = impl_pragma_fproc_export_info(Origin, Lang, PredNameModesPF,
         TargetName, VarSetMutable, Context, item_no_seq_num).
 
 %---------------------------------------------------------------------------%

@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
-% Copyright (C) 2014 The Mercury team.
+% Copyright (C) 2014-2017, 2019-2024 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -90,7 +90,7 @@
             % for recursive calls in which all input arguments are
             % the same as in the clause head. These calls are guaranteed
             % to represent an infinite loop.
-            % 
+            %
             % If simptask_warn_suspicious_recursion is also set, we also
             % generate a weaker version of that warning for recursive calls
             % in which all *non-state-var* input arguments are the same as

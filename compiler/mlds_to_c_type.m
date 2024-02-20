@@ -1,7 +1,7 @@
 %_---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
-% Copyright (C) 2018 The Mercury team.
+% Copyright (C) 2018, 2020-2021, 2023-2024 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -70,7 +70,7 @@
     % some of the types in the initializer with simpler types that we
     % nevertheless translate to the same C type.
     %
-    % The idea is to let ml_global_data.m discover that two MLDS initializers 
+    % The idea is to let ml_global_data.m discover that two MLDS initializers
     % that are different would nevertheless generate the same row data
     % in a scalar common array, and thus can be translated to the same row,
     % instead of different rows with identical contents.
@@ -78,7 +78,7 @@
     % The name contains *semi* in front of canonicalize, because we do *not*
     % guarantee that we map all MLDS initializers that generate the same
     % C output to the same result.
-    % 
+    %
 :- func semicanonicalize_types_in_initializer_for_c(mlds_initializer)
     = mlds_initializer.
 

@@ -1,7 +1,8 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
-% Copyright (C) 1993-2006, 2008 The University of Melbourne.
+% Copyright (C) 1993-2006, 2008, 2012 The University of Melbourne.
+% Copyright (C) 2014-2024 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -41,7 +42,7 @@
     %
     % If the format_piece list is not empty, it is added to the end
     % of the message we generate for the first context.
-    % 
+    %
 :- pred report_multiply_defined(string::in, sym_name::in, user_arity::in,
     prog_context::in, prog_context::in, list(format_piece)::in,
     list(error_spec)::in, list(error_spec)::out) is det.

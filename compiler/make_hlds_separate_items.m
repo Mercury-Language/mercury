@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
-% Copyright (C) 2015 The Mercury team.
+% Copyright (C) 2015-2024 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -423,7 +423,7 @@ acc_parse_tree_module_src(ParseTreeModuleSrc, !Acc) :-
         SubItemMercuryStatus = ImpItemMercuryStatus,
         SubSectionInfo = ImpSectionInfo
     else
-        SubItemMercuryStatus = 
+        SubItemMercuryStatus =
             item_defined_in_this_module(item_export_only_submodules),
         SubSectionInfo = sec_info(SubItemMercuryStatus, may_be_unqualified)
     ),
@@ -704,7 +704,7 @@ acc_parse_tree_int1(ParseTreeInt1, ReadWhy1, !Acc) :-
             ReadWhy1 = rwi1_type_repn,
             % This ReadWhy1 should occur only in type_repn_specs,
             % which are processed separately by acc_type_repn_spec.
-            unexpected($pred, "rwi1_type_repn") 
+            unexpected($pred, "rwi1_type_repn")
         ),
         IntItemImport = item_import_int_concrete(IntImportLocn),
         ImpItemImport = item_import_int_abstract,

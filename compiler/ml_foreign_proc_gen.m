@@ -1,7 +1,8 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
-% Copyright (C) 2009-2011 The University of Melbourne.
+% Copyright (C) 2009-2012 The University of Melbourne.
+% Copyright (C) 2013-2024 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -607,7 +608,7 @@ ml_gen_foreign_proc_c_decl(Info, Lang, Code, !TIIn, !TIOut,
                 % to SeqArgName, so that a later version of the compiler
                 % could take the value of the corresponding HLDS variable
                 % from there.
-                % 
+                %
                 % After Code has been updated to assign to SeqArgName,
                 % we assign it to ArgName, because the later version of
                 % the compiler mentioned above may not have arrived yet.

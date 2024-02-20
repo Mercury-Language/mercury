@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1996-2012 The University of Melbourne.
-% Copyright (C) 2015-2021 The Mercury team.
+% Copyright (C) 2015-2024 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -73,7 +73,7 @@
     varset::in, term::in, maybe1(pred_pfu_name_arity)::out) is det.
 
 :- pred parse_pred_pfu_name_arity_maybe_modes(module_name::in,
-    cord(format_piece)::in, varset::in, term::in, 
+    cord(format_piece)::in, varset::in, term::in,
     maybe1(pred_or_proc_pfumm_name)::out) is det.
 
 :- type maybe_pred_or_func_modes ==

@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1995-2001, 2003-2008, 2011-2012 The University of Melbourne.
-% Copyright (C) 2014-2022 The Mercury team.
+% Copyright (C) 2014-2024 The Mercury team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %---------------------------------------------------------------------------%
 %
@@ -472,7 +472,7 @@ parse_left_term(MinPriority, TermKind, OpPriority, Term, !TokensLeft, !PS) :-
                 %
                 % Since most tokens aren't binary prefix ops, the test
                 % will almost always fail.
-                OpInfos ^ oi_binary_prefix = 
+                OpInfos ^ oi_binary_prefix =
                     bin_pre(BinOpPriority, GeOrGtA, GeOrGtB),
                 priority_ge(BinOpPriority, MinPriority),
                 !.TokensLeft = token_cons(NextToken, _, _),

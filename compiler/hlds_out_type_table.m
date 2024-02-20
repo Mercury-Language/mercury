@@ -94,7 +94,7 @@ format_type_table_entries(Info, [Type | Types], !State) :-
     format_type_table_entry(Info, Type, !State),
     format_type_table_entries(Info, Types, !State).
 
-:- pred format_type_table_entry(hlds_out_info::in, 
+:- pred format_type_table_entry(hlds_out_info::in,
     pair(type_ctor, hlds_type_defn)::in,
     string.builder.state::di, string.builder.state::uo) is det.
 
@@ -152,7 +152,7 @@ format_comma_type_params_loop(TVarSet, [Param | Params], !State) :-
         string.builder.handle, !State),
     format_comma_type_params_loop(TVarSet, Params, !State).
 
-:- pred format_type_body(hlds_out_info::in, 
+:- pred format_type_body(hlds_out_info::in,
     type_ctor::in, hlds_type_body::in, tvarset::in,
     string.builder.state::di, string.builder.state::uo) is det.
 

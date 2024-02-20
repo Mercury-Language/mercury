@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
-% Copyright (C) 2014 The Mercury team.
+% Copyright (C) 2014-2024 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -673,10 +673,10 @@ simplify_info_set_switch_arms_to_split(X, !Info) :-
 % unsigned long MR_stats_same[MR_NUM_INFO_STATS];
 % unsigned long MR_stats_diff[MR_NUM_INFO_STATS];
 % ").
-% 
+%
 % :- pred gather_info_read_stats(int::in,
 %     T::in, T::out) is det.
-% 
+%
 % :- pragma foreign_proc("C",
 %     gather_info_read_stats(N::in, X0::in, X::out),
 %     [will_not_call_mercury, promise_pure],
@@ -684,10 +684,10 @@ simplify_info_set_switch_arms_to_split(X, !Info) :-
 %     ++MR_stats_read[N];
 %     X = X0;
 % ").
-% 
+%
 % :- pred gather_info_write_stats(int::in, T::in, T::in,
 %     simplify_info::in, simplify_info::out) is det.
-% 
+%
 % :- pragma foreign_proc("C",
 %     gather_info_write_stats(N::in, Old::in, New::in, Info0::in, Info::out),
 %     [will_not_call_mercury, promise_pure],
@@ -697,21 +697,21 @@ simplify_info_set_switch_arms_to_split(X, !Info) :-
 %     } else {
 %         ++MR_stats_diff[N];
 %     }
-% 
+%
 %     Info = Info0;
 % ").
-% 
+%
 % :- interface.
 % :- import_module io.
 % :- pred write_simplify_info_stats(io::di, io::uo) is det.
 % :- implementation.
-% 
+%
 % :- pragma foreign_proc("C",
 %     write_simplify_info_stats(IO0::di, IO::uo),
 %     [will_not_call_mercury, promise_pure],
 % "
 %     FILE *fp;
-% 
+%
 %     fp = fopen(""/tmp/SIMPLIFY_INFO_STATS"", ""a"");
 %     if (fp != NULL) {
 %         int i;
@@ -720,7 +720,7 @@ simplify_info_set_switch_arms_to_split(X, !Info) :-
 %                 i, MR_stats_read[i], MR_stats_same[i], MR_stats_diff[i]);
 %         }
 %     }
-% 
+%
 %     IO = IO0;
 % ").
 

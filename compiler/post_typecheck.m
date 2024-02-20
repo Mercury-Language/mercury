@@ -1,7 +1,8 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
-% Copyright (C) 1997-2012,2014 The University of Melbourne.
+% Copyright (C) 1997-2012 The University of Melbourne.
+% Copyright (C) 2014-2024 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -633,7 +634,7 @@ report_unresolved_type_warning(ModuleInfo, PredId, PredInfo, VarsEntries,
         %   do *not* get any unwanted line breaks.
         ( if MaxVarNameLen0 > 15 then
             MaxVarNameLen = 15
-        else 
+        else
             MaxVarNameLen = MaxVarNameLen0
         ),
         VarTypePieceLists =
@@ -679,7 +680,7 @@ report_unresolved_type_warning(ModuleInfo, PredId, PredInfo, VarsEntries,
     --->    not_all_tvars
     ;       all_tvars.
 
-:- pred var_vte_to_name_and_type_strs(tvarset::in, 
+:- pred var_vte_to_name_and_type_strs(tvarset::in,
     pair(prog_var, var_table_entry)::in, pair(string, string)::out,
     int::in, int::out, maybe_all_tvars::in, maybe_all_tvars::out) is det.
 

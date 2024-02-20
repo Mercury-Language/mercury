@@ -23,7 +23,7 @@
 % line contains at most <n> characters (unless a long single word
 % forces the line over this limit) where --max-error-line-width <n>.
 % The error_spec may modify this structure, e.g. by inserting line breaks,
-% inserting blank lines, and by incresing/decreasing the indent level.
+% inserting blank lines, and by increasing/decreasing the indent level.
 %
 %---------------------------------------------------------------------------%
 
@@ -1148,7 +1148,7 @@ divide_paragraphs_into_lines(MaybeAvailLen, TreatAsFirst, CurIndent, Paras,
         else
             % This indicates a bug in the code constructing the error_spec
             % that we are trying to output here, with the being a
-            % nl_indent_delta with a negative delta that exceeeds the current
+            % nl_indent_delta with a negative delta that exceeds the current
             % indent level.
             %
             % We *could* abort here to warn about the problem, but that
@@ -1174,7 +1174,7 @@ divide_paragraphs_into_lines(MaybeAvailLen, TreatAsFirst, CurIndent, Paras,
                 MaybeAvailLen = yes(AvailLen),
                 get_line_of_words(AvailLen, FirstWord, LaterWords, CurIndent,
                     LineWordsLen, LineWords, RestWords),
-                LineWordsStr = line_words_to_str(LineWords), 
+                LineWordsStr = line_words_to_str(LineWords),
                 (
                     RestWords = [],
                     CurLine = error_line(MaybeAvailLen, CurIndent,
@@ -1380,7 +1380,7 @@ find_matching_rp_and_maybe_join(LPLine, TailLines0, ReplacementLines,
     %
     % Also, return in !:MidLinesLen by the total length of the lines
     % in !:MidLinesCord.
-    % 
+    %
 :- pred find_matching_rp(list(error_line)::in,
     cord(error_line)::in, cord(error_line)::out,
     int::in, int::out, error_line::out, list(error_line)::out) is semidet.

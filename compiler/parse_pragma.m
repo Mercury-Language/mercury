@@ -2,6 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 expandtab
 %---------------------------------------------------------------------------%
 % Copyright (C) 1996-2011 The University of Melbourne.
+% Copyright (C) 2016-2024 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -1912,7 +1913,7 @@ parse_tvar_subst_acc(WNHII, ContextPieces, VarSet, Term,
                 % exactly once not just in this tvar_subst, but in the list
                 % of one or more tvar_substs that a type_subst consists of.
                 % This is because repeated variables restrict the applicability
-                % of the type substitution in a way 
+                % of the type substitution in a way.
                 %
                 % XXX We should consider adding code here to check for
                 % the cases that do not make sense, *after* documenting

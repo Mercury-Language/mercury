@@ -2,6 +2,7 @@
 % vim: ft=mercury ff=unix ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
 % Copyright (C) 2006-2012 The University of Melbourne.
+% Copyright (C) 2014-2016, 2018-2019, 2021-2024 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -201,7 +202,7 @@ create_fresh_pred_proc_info_copy(PPId, NoClobberArgNums, NewPPId,
     set.insert(ReusePredId, ReusePreds0, ReusePreds),
     module_info_set_structure_reuse_preds(ReusePreds, !ModuleInfo).
 
-:- pred create_fresh_pred_proc_info_copy_2(pred_proc_id::in, 
+:- pred create_fresh_pred_proc_info_copy_2(pred_proc_id::in,
     pred_info::in, proc_info::in, no_clobber_args::in,
     pred_info::out, proc_id::out) is det.
 

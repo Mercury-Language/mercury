@@ -1,7 +1,8 @@
 %-----------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
-% Copyright (C) 2001-2011 The University of Melbourne.
+% Copyright (C) 2001-2012 The University of Melbourne.
+% Copyright (C) 2013-2016, 2018-2022, 2024 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -172,7 +173,7 @@
     %
 :- func proc_label_user_or_uci(proc_label) = proc_layout_user_or_uci.
 
-    % Return a value of the C type MR_PredFunc corrresponding to the argument.
+    % Return a value of the C type MR_PredFunc corresponding to the argument.
     %
 :- func mr_pred_or_func_to_string(pred_or_func) = string.
 

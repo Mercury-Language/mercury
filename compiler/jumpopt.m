@@ -2,6 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
 % Copyright (C) 1994-2007, 2009-2012 The University of Melbourne.
+% Copyright (C) 2013, 2015-2020, 2024 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -1206,10 +1207,10 @@ short_circuit_labels_const(InstrMap, RvalConst0, RvalConst) :-
 %         [MaybeRval | MaybeRvals]) :-
 %     short_circuit_labels_maybe_rval(InstrMap, MaybeRval0, MaybeRval),
 %     short_circuit_labels_maybe_rvals(InstrMap, MaybeRvals0, MaybeRvals).
-% 
+%
 % :- pred short_circuit_labels_maybe_rval(instrmap::in,
 %     maybe(rval)::in, maybe(rval)::out) is det.
-% 
+%
 % short_circuit_labels_maybe_rval(InstrMap, MaybeRval0, MaybeRval) :-
 %     (
 %         MaybeRval0 = no,

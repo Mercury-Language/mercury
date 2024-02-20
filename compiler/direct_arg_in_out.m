@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
-% Copyright (C) 2020-2021 The Mercury team.
+% Copyright (C) 2020-2024 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -165,7 +165,7 @@
 
     % find_and_record_any_direct_arg_in_out_posns(PredId, ProcId, VarTypes,
     %     Vars, Modes, !ModuleInfo):
-    % 
+    %
     % Given a procedure proc(PredId, ProcId) whose arguments Vars have
     % the types recorded in VarTypes and the modes recorded in Modes,
     % find out whether any of their arguments are daio arguments.
@@ -779,7 +779,7 @@ clone_daio_pred_proc_args(ModuleInfo, CurArgNum, HeadArgPosn, TailArgPosns,
             % It will never be used, and after we have transformed the
             % procedure body, replace_cloned_headvars will replace it
             % with the variable that holds the final version of HeadVar
-            % in the body. The reason why we nevertheless include NewVar 
+            % in the body. The reason why we nevertheless include NewVar
             % in the argument list is that
             %
             % (a) we have to add the type and mode of the cloned variable

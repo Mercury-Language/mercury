@@ -2,6 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
 % Copyright (C) 2000-2012 The University of Melbourne.
+% Copyright (C) 2014-2015, 2018-2020, 2022-2024 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -358,7 +359,7 @@ new_var(Name, Type, IsDummy, Var, !Info) :-
     list(prog_var)::in, instmap_delta::in, determinism::in, purity::in,
     term.context::in, hlds_goal::out) is det.
 
-heap_generate_call(Info, PredName, ArgVars, InstMapDelta, Detism, Purity, 
+heap_generate_call(Info, PredName, ArgVars, InstMapDelta, Detism, Purity,
         Context, CallGoal) :-
     ModuleInfo = Info ^ heap_module_info,
     generate_plain_call(ModuleInfo, pf_predicate,

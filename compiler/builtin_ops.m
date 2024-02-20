@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
 % Copyright (C) 1999-2001, 2003-2006, 2009-2011 The University of Melbourne.
-% Copyright (C) 2014-2018 The Mercury team.
+% Copyright (C) 2014-2018, 2020-2024 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -181,7 +181,7 @@
     %   any function result argument,
     %
     % succeed iff that predicate or function is an inline builtin.
-    % 
+    %
     % Note that we don't have to know whether the entity being asked about
     % is a predicate or a function. This is because of all of our inline
     % builtin operations are defined in a few modules of the standard library,

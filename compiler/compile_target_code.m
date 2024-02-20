@@ -1613,7 +1613,7 @@ link(Globals, ProgressStream, LinkTargetType, ModuleName, ObjectsList,
     maybe_report_stats(ProgressStream, Stats, !IO),
     (
         LinkSucceeded = succeeded,
-        post_link_maybe_make_symlink_or_copy(Globals, ProgressStream, 
+        post_link_maybe_make_symlink_or_copy(Globals, ProgressStream,
             FullOutputFileName, CurDirOutputFileName,
             ModuleName, LinkTargetType, Succeeded, _MadeSymlinkOrCopy, !IO)
     ;

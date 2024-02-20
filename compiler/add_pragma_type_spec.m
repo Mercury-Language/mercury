@@ -606,7 +606,7 @@ acc_matching_arg_vectors(PragmaTVarSet, PredTVarSet, ClassId, Types,
     % in the first argument of the type_spec_constrained_preds pragma
     % we are also processing, or is the list of corresponding argument types
     % of its superclass, or *its* superclass, and so on.
-    % 
+    %
     % The first arg may contain arbitrary type variables anywhere.
     % The types in the second arg will be either variables or ground terms,
     % with nothing in between. Any type variables in it should also be

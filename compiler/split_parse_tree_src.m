@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
-% Copyright (C) 2015 The Mercury team.
+% Copyright (C) 2015, 2017-2024 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -216,7 +216,7 @@ split_into_component_modules_perform_checks(Globals, ParseTreeSrc,
                 % implementation), and except for the item_includes
                 % for any modules nested inside, which ....
 
-                submodule_include_info_map 
+                submodule_include_info_map
                 % ... should be derived from this field, once we have seen
                 % all of this module's pieces.
             ).

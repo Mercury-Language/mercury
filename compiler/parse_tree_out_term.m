@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
-% Copyright (C) 2015 The Mercury team.
+% Copyright (C) 2015-2017, 2020-2024 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -531,14 +531,14 @@ mercury_format_term_nq_vs(VarSet, VarNamePrint, NextToGraphicToken, Term,
                 add_string("{ ", S, !U),
                 mercury_format_term_vs(VarSet, VarNamePrint, X, S, !U),
                 add_string(" }", S, !U)
-            ;   
+            ;
                 Xs = [_ | _],
                 add_string("{", S, !U),
                 mercury_format_comma_separated_terms_vs(VarSet, VarNamePrint,
                     X, Xs, S, !U),
                 add_string("}", S, !U)
             )
-        else if 
+        else if
             Functor = term.atom(FunctorName),
             mercury_op_table_search_op_infos(FunctorName, OpInfos)
         then

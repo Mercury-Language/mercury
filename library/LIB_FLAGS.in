@@ -20,7 +20,7 @@
 --no-allow-ho-insts-as-modes
 --no-mercury-stdlib-dir
 --no-detect-libgrades
---strict-sequential 
+--strict-sequential
 --generate-mmc-deps
 --no-shlib-linker-use-install-name
 --trace minimum
