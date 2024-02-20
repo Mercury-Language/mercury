@@ -2,6 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
 % Copyright (C) 1997-2003, 2005-2012 The University of Melbourne.
+% Copyright (C) 2014-2022, 2024 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -97,7 +98,7 @@
 
 :- type var_substitution == map(size_var, size_var).
 
-    % create_var_substition(FromVars, ToVars) = Substitution.
+    % create_var_substitution(FromVars, ToVars) = Substitution.
     % Create a mapping that maps elements of `FromVars' to their
     % corresponding elements in `ToVars'. This mapping is many-one.
     % An exception is thrown if `FromVars' contains any duplicate elements.

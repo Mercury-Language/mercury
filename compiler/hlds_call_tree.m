@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
-% Copyright (C) 2022 The Mercury team.
+% Copyright (C) 2022-2024 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -12,7 +12,7 @@
 % It does so in a piecewise fashion. Each piece maps a local predicate
 % to the list of other local predicates it calls, but since we can also
 % look up the pieces of the callees, we can (and do) traverse this
-% data structure as it were a fullly materialized tree.
+% data structure as if it were a fully materialized tree.
 %
 % We consider a reference to a closure containing a pred_id to be callee
 % just like a plain_call containing a pred_id, because the usual reason
@@ -24,10 +24,10 @@
 %   pred polymorphism_process_module/5
 %       pred maybe_polymorphism_process_pred/7
 %       pred polymorphism_update_arg_types/5
-% 
+%
 %   pred maybe_polymorphism_process_pred/7
 %       pred polymorphism_process_pred_msg/7
-% 
+%
 %   pred polymorphism_process_pred_msg/7
 %       pred polymorphism_process_pred/6
 %

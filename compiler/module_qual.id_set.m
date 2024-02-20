@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
-% Copyright (C) 2015 The Mercury team.
+% Copyright (C) 2015-2016, 2019, 2021-2024  The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -145,7 +145,7 @@
 % - and then its arity,
 % - and then its module name,
 %
-% to the permissions for the sym_name_arity we can contruct for these. 
+% to the permissions for the sym_name_arity we can construct for these. 
 %
 % Going through just the first two stages allows us to see which modules
 % define an entity with the given base name and arity.

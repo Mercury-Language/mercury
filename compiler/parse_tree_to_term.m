@@ -2,12 +2,12 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 2009-2012 The University of Melbourne.
-% Copyright (C) 2015-2018 The Mercury team.
+% Copyright (C) 2015-2024 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
 %
-% File: unparse.m.
+% File: parse_tree_to_term.m.
 % Main authors: conway, fjh.
 %
 %---------------------------------------------------------------------------%

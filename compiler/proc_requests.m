@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1994-2012 The University of Melbourne.
-% Copyright (C) 2015 The Mercury team.
+% Copyright (C) 2015, 2017-2019, 2021-2022, 2024 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -32,7 +32,7 @@
 %
 % Currently if the same complicated unification procedure is called by
 % different modules, each module will end up with a copy of the code for
-% that procedure. In the long run it would be desireable to either delay
+% that procedure. In the long run it would be desirable to either delay
 % generation of complicated unification procedures until link time (like
 % Cfront does with C++ templates) or to have a smart linker which could
 % merge duplicate definitions (like Borland C++). However the amount of

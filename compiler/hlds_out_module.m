@@ -2,6 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 2009-2012 The University of Melbourne.
+% Copyright (C) 2014-2024 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -66,7 +67,7 @@
 %   module warnings would consider that reference to use not just the module
 %   that defines module_info_get_pred_id_table, but also all the modules
 %   recorded in the new "modules that defined expanded equivalences" field
-%   of its pred_info. And likewide for other entities that contain types,
+%   of its pred_info. And likewise for other entities that contain types,
 %   insts and/or modes that can be expanded.
 %
 %   This approach would record this information on a per item basis
@@ -79,7 +80,7 @@
 %   types a new field that records the set of modules that defined the
 %   equivalence types, insts or modes in its construction. I mean that if
 %   the programmer writes map(pred_id, pred_info), then this set would be
-%   empty, but if the prgrammer writes pred_id_table, then, when replacing it
+%   empty, but if the programmer writes pred_id_table, then, when replacing it
 %   with map(pred_id, pred_info), equiv_type.m would include the pred_table
 %   module in this set. Every compiler pass *but* unused imports would
 %   of course ignore this extra argument.

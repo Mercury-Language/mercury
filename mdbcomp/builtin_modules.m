@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
-% Copyright (C) 2014-2018 The Mercury team.
+% Copyright (C) 2014-2018, 2024 The Mercury team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %---------------------------------------------------------------------------%
 %
@@ -169,11 +169,11 @@
 :- func maybe_add_stdlib_wrapper(module_name) = module_name.
 
     % Remove any wrapper added by maybe_add_stdlib_wrapper, without checking
-    % whether the module name inside is actually the name of a moduile
+    % whether the module name inside is actually the name of a module
     % in the Mercury standard library or not. If you want that check,
     % call is_std_lib_module_name instead. This predicate is intended
     % for uses which follow a call to the predicate with tests for
-    % indiviual, specific standard library modules. In such cases,
+    % individual, specific standard library modules. In such cases,
     % a generic test for "does this module name occur in the standard library"
     % would be useless work.
     %

@@ -2,6 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
 % Copyright (C) 2000-2008, 2010 The University of Melbourne.
+% Copyright (C) 2013-2017, 2019-2024 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -144,7 +145,7 @@
 
     % It is possible that more than one foreign language could be used to
     % implement a particular piece of code. Therefore, foreign languages
-    % have an order of preference, from most preferred to least perferred.
+    % have an order of preference, from most preferred to least preferred.
     % prefer_foreign_language(Globals, Target, Lang1, Lang2) returns
     % `yes' if Lang2 is preferred over Lang1; otherwise, it will return no.
     %

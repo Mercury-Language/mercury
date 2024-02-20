@@ -1,6 +1,6 @@
 // vim: ts=4 sw=4 expandtab ft=c
 
-// Copyright (C) 2021 The Mercury team.
+// Copyright (C) 2021, 2024 The Mercury team.
 // This file is distributed under the terms specified in COPYING.LIB.
 
 // This file contains code for implementing the predicates in the

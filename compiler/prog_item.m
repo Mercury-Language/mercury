@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1996-2011 The University of Melbourne.
-% Copyright (C) 2014-2021 The Mercury team.
+% Copyright (C) 2014-2024 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -584,7 +584,7 @@
                 % tc_superclasses and tc_fundeps fields. However, having
                 % empty_list as a subtype of list is not yet feasible,
                 % for the reason described next to the commented out
-                % empty_list subtype definition in librrary/list.m.
+                % empty_list subtype definition in library/list.m.
                 pti3_int_typeclasses    :: list(item_abstract_typeclass_info),
                 pti3_int_instances      :: list(item_abstract_instance_info),
                 pti3_int_type_repns         :: type_ctor_repn_map
