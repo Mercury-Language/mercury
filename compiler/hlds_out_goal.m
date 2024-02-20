@@ -48,12 +48,18 @@
     % Print a goal in a way that is suitable for debugging the compiler
     % (but necessarily for anything else).
     %
+    % If what you are after is a short, less-than-one-line description
+    % of a goal, then look in hlds_desc.m.
+    %
 :- pred dump_goal(io.text_output_stream::in, module_info::in,
     var_name_source::in, tvarset::in, inst_varset::in, hlds_goal::in,
     io::di, io::uo) is det.
 
     % Print a goal in a way that is suitable for debugging the compiler
     % (but necessarily for anything else), followed by a newline.
+    %
+    % If what you are after is a short, less-than-one-line description
+    % of a goal, then look in hlds_desc.m.
     %
 :- pred dump_goal_nl(io.text_output_stream::in, module_info::in,
     var_name_source::in, tvarset::in, inst_varset::in, hlds_goal::in,

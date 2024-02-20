@@ -1,18 +1,23 @@
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % Copyright (C) 1994-2012 The University of Melbourne.
+% Copyright (C) 2024 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % File: liveness.m.
 % Main authors: conway, zs, trd.
 %
 % This module traverses the goal for each procedure, and adds liveness
-% annotations to the goal_info for each sub-goal. These annotations are the
-% pre-birth set, the post-birth set, the pre-death set, the post-death set,
-% and the resume_point field.
+% annotations to the goal_info for each sub-goal. These annotations are
+%
+% - the pre-birth set,
+% - the post-birth set,
+% - the pre-death set,
+% - the post-death set, and
+% - the resume_point field.
 %
 % Because it recomputes each of these annotations from scratch, it is safe to
 % call this module multiple times, and in fact we do so if stack slot
@@ -21,7 +26,7 @@
 % NOTE: the concept of `liveness' here is different to that used in mode
 % analysis. Mode analysis is concerned with the liveness of what is *pointed*
 % to by a variable, for the purpose of avoiding and/or keeping track of
-% aliasing and for structure re-use optimization, whereas here we are
+% aliasing and for structure reuse optimization, whereas here we are
 % concerned with the liveness of the variable itself, for the purposes of
 % optimizing stack slot and register usage. Variables have a lifetime: each
 % variable is born, gets used, and then dies. To minimize stack slot and
@@ -58,8 +63,8 @@
 %
 % The second and third passes cannot be combined, because the second pass
 % traverses goals backwards while the third pass traverses goals forwards.
-% (The second pass does propagate liveness forwards, but it does so only along
-% one branch of every branched control structure.)
+% (The second pass does propagate liveness forwards, but it does so along
+% only one branch of every branched control structure.)
 %
 % The fourth pass, detect_resume_points_in_goal, finds goals that establish
 % resume points and attaches to them a resume_point annotation listing the
@@ -149,7 +154,7 @@
 % As written this module expects goals to be simplified, otherwise there may be
 % assertion failures.
 %
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- module ll_backend.liveness.
 :- interface.
@@ -160,7 +165,7 @@
 :- import_module parse_tree.
 :- import_module parse_tree.set_of_var.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % Add liveness annotations to the goal of the procedure. This consists of
     % the {pre,post}{birth,death} sets and resume point information.
@@ -180,8 +185,8 @@
 :- pred initial_liveness(module_info::in, pred_info::in, proc_info::in,
     set_of_progvar::out) is det.
 
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- implementation.
 
@@ -190,6 +195,7 @@
 :- import_module hlds.arg_info.
 :- import_module hlds.code_model.
 :- import_module hlds.goal_form.
+:- import_module hlds.hlds_desc.
 :- import_module hlds.hlds_goal.
 :- import_module hlds.hlds_llds.
 :- import_module hlds.hlds_out.
@@ -221,8 +227,9 @@
 :- import_module require.
 :- import_module string.
 :- import_module term.
+:- import_module term_context.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 detect_liveness_proc(ModuleInfo, proc(PredId, _ProcId), !ProcInfo) :-
     detect_liveness_proc_2(ModuleInfo, PredId, !ProcInfo).
@@ -233,13 +240,19 @@ detect_liveness_proc(ModuleInfo, proc(PredId, _ProcId), !ProcInfo) :-
 detect_liveness_proc_2(ModuleInfo, PredId, !ProcInfo) :-
     module_info_get_globals(ModuleInfo, Globals),
     globals.lookup_int_option(Globals, debug_liveness, DebugLiveness),
+    pred_id_to_int(PredId, PredIdInt),
+    ( if DebugLiveness = PredIdInt then
+        DebugThisPred = yes
+    else
+        DebugThisPred = no
+    ),
 
     proc_info_get_goal(!.ProcInfo, GoalBeforeQuant),
     proc_info_get_var_table(!.ProcInfo, VarTableBeforeQuant),
 
     trace [io(!IO)] (
         maybe_debug_liveness(ModuleInfo, "\nbefore requantify",
-            DebugLiveness, PredId, !.ProcInfo,
+            DebugThisPred, PredId, !.ProcInfo,
             VarTableBeforeQuant, GoalBeforeQuant, !IO)
     ),
     requantify_proc_general(ord_nl_no_lambda, !ProcInfo),
@@ -249,12 +262,12 @@ detect_liveness_proc_2(ModuleInfo, PredId, !ProcInfo) :-
     proc_info_get_rtti_varmaps(!.ProcInfo, RttiVarMaps),
     module_info_pred_info(ModuleInfo, PredId, PredInfo),
     body_should_use_typeinfo_liveness(PredInfo, Globals, TypeInfoLiveness),
-    live_info_init(ModuleInfo, TypeInfoLiveness, VarTable, RttiVarMaps,
-        LiveInfo),
+    live_info_init(ModuleInfo, TypeInfoLiveness, DebugThisPred,
+        VarTable, RttiVarMaps, LiveInfo),
 
     trace [io(!IO)] (
         maybe_debug_liveness(ModuleInfo, "\nbefore liveness",
-            DebugLiveness, PredId, !.ProcInfo, VarTable, GoalAfterQuant, !IO)
+            DebugThisPred, PredId, !.ProcInfo, VarTable, GoalAfterQuant, !IO)
     ),
 
     initial_liveness(ModuleInfo, PredInfo, !.ProcInfo, Liveness0),
@@ -263,7 +276,7 @@ detect_liveness_proc_2(ModuleInfo, PredId, !ProcInfo) :-
 
     trace [io(!IO)] (
         maybe_debug_liveness(ModuleInfo, "\nafter liveness",
-            DebugLiveness, PredId, !.ProcInfo, VarTable,
+            DebugThisPred, PredId, !.ProcInfo, VarTable,
             GoalAfterLiveness, !IO)
     ),
 
@@ -272,7 +285,7 @@ detect_liveness_proc_2(ModuleInfo, PredId, !ProcInfo) :-
         GoalAfterLiveness, GoalAfterDeadness, Deadness0, _),
     trace [io(!IO)] (
         maybe_debug_liveness(ModuleInfo, "\nafter deadness",
-            DebugLiveness, PredId, !.ProcInfo, VarTable,
+            DebugThisPred, PredId, !.ProcInfo, VarTable,
             GoalAfterDeadness, !IO)
     ),
 
@@ -295,7 +308,7 @@ detect_liveness_proc_2(ModuleInfo, PredId, !ProcInfo) :-
             VarTable, Liveness0),
         trace [io(!IO)] (
             maybe_debug_liveness(ModuleInfo, "\nafter delay death",
-                DebugLiveness, PredId, !.ProcInfo, VarTable,
+                DebugThisPred, PredId, !.ProcInfo, VarTable,
                 GoalAfterDelayDeath, !IO)
         )
     else
@@ -314,18 +327,19 @@ detect_liveness_proc_2(ModuleInfo, PredId, !ProcInfo) :-
         GoalAfterDelayDeath, Goal, Liveness0, _),
     trace [io(!IO)] (
         maybe_debug_liveness(ModuleInfo, "\nafter resume point",
-            DebugLiveness, PredId, !.ProcInfo, VarTable, Goal, !IO)
+            DebugThisPred, PredId, !.ProcInfo, VarTable, Goal, !IO)
     ),
     proc_info_set_goal(Goal, !ProcInfo),
     proc_info_set_liveness_info(Liveness0, !ProcInfo).
 
-:- pred maybe_debug_liveness(module_info::in, string::in, int::in, pred_id::in,
-    proc_info::in, var_table::in, hlds_goal::in, io::di, io::uo) is det.
+:- pred maybe_debug_liveness(module_info::in, string::in, bool::in,
+    pred_id::in, proc_info::in, var_table::in, hlds_goal::in,
+    io::di, io::uo) is det.
 
-maybe_debug_liveness(ModuleInfo, Message, DebugLiveness, PredId, ProcInfo,
+maybe_debug_liveness(ModuleInfo, Message, DebugThisPred, PredId, ProcInfo,
         VarTable, Goal, !IO) :-
-    pred_id_to_int(PredId, PredIdInt),
-    ( if DebugLiveness = PredIdInt then
+    (
+        DebugThisPred = yes,
         io.output_stream(Stream, !IO),
         io.write_string(Stream, Message, !IO),
         io.write_string(Stream, ":\n", !IO),
@@ -336,11 +350,11 @@ maybe_debug_liveness(ModuleInfo, Message, DebugLiveness, PredId, ProcInfo,
         proc_info_get_inst_varset(ProcInfo, InstVarSet),
         write_goal_nl(OutInfo, Stream, ModuleInfo, vns_var_table(VarTable),
             print_name_and_num, TVarSet, InstVarSet, 0u, "\n", Goal, !IO)
-    else
-        true
+    ;
+        DebugThisPred = no
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 detect_liveness_preds_parallel(!HLDS) :-
     module_info_get_valid_pred_ids(!.HLDS, PredIds),
@@ -384,8 +398,8 @@ detect_liveness_pred_proc(ModuleInfo, PredId, ProcId, !PredInfo) :-
     detect_liveness_proc_2(ModuleInfo, PredId, ProcInfo0, ProcInfo),
     pred_info_set_proc_info(ProcId, ProcInfo, !PredInfo).
 
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred detect_liveness_in_goal(live_info::in, hlds_goal::in, hlds_goal::out,
     set_of_progvar::in, set_of_progvar::out) is det.
@@ -533,7 +547,7 @@ detect_liveness_in_goal(LiveInfo, Goal0, Goal, Liveness0, FinalLiveness) :-
         PreDeaths, PostDeaths, no_resume_point, GoalInfo0, GoalInfo),
     Goal = hlds_goal(GoalExpr, GoalInfo).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred detect_liveness_in_conj(live_info::in,
     list(hlds_goal)::in, list(hlds_goal)::out,
@@ -558,7 +572,7 @@ detect_liveness_in_conj(LiveInfo, [Goal0 | Goals0], [Goal | Goals],
         detect_liveness_in_conj(LiveInfo, Goals0, Goals, !Liveness)
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred detect_liveness_in_disj(live_info::in, set_of_progvar::in,
     set_of_progvar::in, list(hlds_goal)::in, list(hlds_goal)::out,
@@ -575,7 +589,7 @@ detect_liveness_in_disj(LiveInfo, NonLocals, Liveness0,
     set_of_var.difference(NonLocalUnion, Liveness1, Residue),
     add_liveness_after_goal(Goal1, Residue, Goal).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred detect_liveness_in_cases(live_info::in,
     set_of_progvar::in, set_of_progvar::in,
@@ -595,7 +609,7 @@ detect_liveness_in_cases(LiveInfo, NonLocals, Liveness0,
     add_liveness_after_goal(Goal1, Residue, Goal),
     Case = case(MainConsId, OtherConsIds, Goal).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred detect_liveness_in_fgt_construct(live_info::in, prog_var::in,
     hlds_goal::in, hlds_goal::out,
@@ -658,7 +672,7 @@ detect_liveness_in_fgt_construct_goal_loop([Goal0 | Goals0], [Goal | Goals],
     ),
     detect_liveness_in_fgt_construct_goal_loop(Goals0, Goals, !LocalLiveVars).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred detect_liveness_in_par_conj(live_info::in,
     set_of_progvar::in, set_of_progvar::in,
@@ -676,8 +690,8 @@ detect_liveness_in_par_conj(LiveInfo, NonLocals, Liveness0,
     set_of_var.difference(NonLocalUnion, Liveness1, Residue),
     add_liveness_after_goal(Goal1, Residue, Goal).
 
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % At any given program point, Deadness is the set of variables that are
     % live now and whose values will be needed beyond that program point.
@@ -745,23 +759,43 @@ detect_deadness_in_goal(LiveInfo, !.Liveness, Goal0, Goal, !Deadness) :-
             GoalExpr = GoalExpr0
         ;
             Disjuncts0 = [_ | _],
+            IsAnyBranchEndReachable =
+                is_this_structured_goals_end_reachable(GoalInfo0),
             get_nonlocals_and_typeinfos(LiveInfo, GoalInfo0,
                 _, CompletedNonLocals),
             Union0 = set_of_var.init,
-            detect_deadness_in_disj(LiveInfo, Disjuncts0, Disjuncts,
-                !.Deadness, !.Liveness, CompletedNonLocals, Union0, Union, _),
+            detect_deadness_in_disj(LiveInfo, IsAnyBranchEndReachable,
+                Disjuncts0, Disjuncts, !.Deadness, !.Liveness,
+                CompletedNonLocals, Union0, Union, _),
             !:Deadness = Union,
             GoalExpr = disj(Disjuncts)
         ),
         GoalInfo = GoalInfo0
     ;
         GoalExpr0 = switch(Var, Det, Cases0),
+        IsAnyBranchEndReachable =
+            is_this_structured_goals_end_reachable(GoalInfo0),
         get_nonlocals_and_typeinfos(LiveInfo, GoalInfo0,
             _, CompletedNonLocals),
+        Deadness0 = !.Deadness,
         Union0 = set_of_var.init,
-        detect_deadness_in_cases(LiveInfo, Var, Cases0, Cases,
-            !.Deadness, !.Liveness, CompletedNonLocals, Union0, Union, _),
+        detect_deadness_in_cases(LiveInfo, Var, IsAnyBranchEndReachable,
+            Cases0, Cases, !.Deadness, !.Liveness,
+            CompletedNonLocals, Union0, Union, _),
         !:Deadness = Union,
+        trace [compile_time(flag("liveness")), io(!IO)] (
+            DebugThisPred = LiveInfo ^ li_debug_this_pred,
+            (
+                DebugThisPred = no
+            ;
+                DebugThisPred = yes,
+                io.output_stream(Stream, !IO),
+                io.write_string(Stream, "switch\n", !IO),
+                dump_vars(Stream, LiveInfo, "Deadness0", Deadness0, !IO),
+                dump_vars(Stream, LiveInfo, "Deadness", !.Deadness, !IO),
+                io.nl(Stream, !IO)
+            )
+        ),
         GoalExpr = switch(Var, Det, Cases),
         GoalInfo = GoalInfo0
     ;
@@ -781,49 +815,68 @@ detect_deadness_in_goal(LiveInfo, !.Liveness, Goal0, Goal, !Deadness) :-
             _, CompletedNonLocals),
         InstmapDelta = goal_info_get_instmap_delta(GoalInfo0),
         ( if instmap_delta_is_reachable(InstmapDelta) then
+            IsAnyBranchEndReachable = some_branch_end_is_reachable,
             Cond0 = hlds_goal(_, CondGoalInfo),
             CondInstmapDelta = goal_info_get_instmap_delta(CondGoalInfo),
             Then0 = hlds_goal(_, ThenGoalInfo),
             ThenInstmapDelta = goal_info_get_instmap_delta(ThenGoalInfo),
-            Else0 = hlds_goal(_, ElseGoalInfo),
-            ElseInstmapDelta = goal_info_get_instmap_delta(ElseGoalInfo),
             ( if
                 instmap_delta_is_reachable(CondInstmapDelta),
                 instmap_delta_is_reachable(ThenInstmapDelta)
             then
-                CondThenInstmapReachable = yes
+                CondThenInstmapReachable = this_branch_end_is_reachable
             else
-                CondThenInstmapReachable = no
+                CondThenInstmapReachable = this_branch_end_is_not_reachable
             ),
-            ( if
-                instmap_delta_is_reachable(ElseInstmapDelta)
-            then
-                ElseInstmapReachable = yes
-            else
-                ElseInstmapReachable = no
-            ),
+            ElseInstmapReachable = is_this_branch_goals_end_reachable(Else0),
             Union0 = set_of_var.init,
-            union_branch_deadness(DeadnessCond, Deadness0,
-                CondThenInstmapReachable, Union0, Union1),
-            union_branch_deadness(DeadnessElse, Deadness0,
-                ElseInstmapReachable, Union1, Union),
+            union_branch_deadness(IsAnyBranchEndReachable,
+                CondThenInstmapReachable,
+                DeadnessCond, Deadness0, Union0, Union1),
+            union_branch_deadness(IsAnyBranchEndReachable,
+                ElseInstmapReachable,
+                DeadnessElse, Deadness0, Union1, Union),
             Deadness = Union,
             set_of_var.intersect(Deadness, CompletedNonLocals,
                 CompletedNonLocalDeadness),
             add_branch_pre_deaths(DeadnessCond, Deadness0,
                 CompletedNonLocalDeadness, CondThenInstmapReachable,
-                Cond1, Cond),
+                AddedCondPreDeaths, Cond1, Cond),
             add_branch_pre_deaths(DeadnessElse, Deadness0,
-                CompletedNonLocalDeadness, ElseInstmapReachable, Else1, Else)
+                CompletedNonLocalDeadness, ElseInstmapReachable,
+                AddedElsePreDeaths, Else1, Else),
+            trace [compile_time(flag("liveness")), io(!IO)] (
+                DebugThisPred = LiveInfo ^ li_debug_this_pred,
+                (
+                    DebugThisPred = no
+                ;
+                    DebugThisPred = yes,
+                    io.output_stream(Stream, !IO),
+                    io.write_string(Stream, "if_then_else\n", !IO),
+                    dump_vars(Stream, LiveInfo, "Deadness0", Deadness0, !IO),
+                    dump_vars(Stream, LiveInfo, "Deadness", Deadness, !IO),
+                    dump_vars(Stream, LiveInfo, "CompletedNonLocals",
+                        CompletedNonLocals, !IO),
+                    dump_vars(Stream, LiveInfo, "CompletedNonLocalDeadness",
+                        CompletedNonLocalDeadness, !IO),
+                    dump_vars(Stream, LiveInfo, "AddedCondPreDeaths",
+                        AddedCondPreDeaths, !IO),
+                    dump_vars(Stream, LiveInfo, "AddedElsePreDeaths",
+                        AddedElsePreDeaths, !IO),
+                    io.nl(Stream, !IO)
+                )
+            )
         else
             set_of_var.union(DeadnessCond, DeadnessElse, Deadness),
             set_of_var.intersect(Deadness, CompletedNonLocals,
                 CompletedNonLocalDeadness),
-            InstmapReachable = no,
+            % If the end of the if-then-else as a whole is not reachable,
+            % then neither branch's end is reachable.
+            BranchEndReachable = this_branch_end_is_not_reachable,
             add_branch_pre_deaths(DeadnessCond, Deadness0,
-                CompletedNonLocalDeadness, InstmapReachable, Cond1, Cond),
+                CompletedNonLocalDeadness, BranchEndReachable, _, Cond1, Cond),
             add_branch_pre_deaths(DeadnessElse, Deadness0,
-                CompletedNonLocalDeadness, InstmapReachable, Else1, Else)
+                CompletedNonLocalDeadness, BranchEndReachable, _, Else1, Else)
         ),
         !:Deadness = Deadness,
         GoalExpr = if_then_else(Vars, Cond, Then, Else),
@@ -859,10 +912,43 @@ detect_deadness_in_goal(LiveInfo, !.Liveness, Goal0, Goal, !Deadness) :-
     ),
 
     Goal = hlds_goal(GoalExpr, GoalInfo),
+    AfterGoalDeadness0 = !.Deadness,
     set_of_var.difference(!.Deadness, PreBirths0, !:Deadness),
-    set_of_var.union(PreDeaths0, !Deadness).
+    AfterGoalDeadness1 = !.Deadness,
+    set_of_var.union(PreDeaths0, !Deadness),
+    AfterGoalDeadness2 = !.Deadness,
 
-%-----------------------------------------------------------------------------%
+    trace [compile_time(flag("liveness")), io(!IO)] (
+        DebugThisPred = LiveInfo ^ li_debug_this_pred,
+        (
+            DebugThisPred = no
+        ;
+            DebugThisPred = yes,
+            ModuleInfo = LiveInfo ^ li_module_info,
+            VarTable = LiveInfo ^ li_var_table,
+            Desc = describe_goal(ModuleInfo, VarTable, Goal),
+            io.output_stream(Stream, !IO),
+            io.format(Stream, "after goal %s:\n", [s(Desc)], !IO),
+            dump_vars(Stream, LiveInfo, "AfterGoalDeadness0",
+                AfterGoalDeadness0, !IO),
+            dump_vars(Stream, LiveInfo, "AfterGoalDeadness1",
+                AfterGoalDeadness1, !IO),
+            dump_vars(Stream, LiveInfo, "AfterGoalDeadness2",
+                AfterGoalDeadness2, !IO),
+            io.nl(Stream, !IO)
+        )
+    ).
+
+:- pred dump_vars(io.text_output_stream::in, live_info::in, string::in,
+    set_of_progvar::in, io::di, io::uo) is det.
+
+dump_vars(Stream, LiveInfo, Desc, SetOfVar, !IO) :-
+    set_of_var.to_sorted_list(SetOfVar, Vars),
+    VarTable = LiveInfo ^ li_var_table,
+    VarsStr = mercury_vars_to_string(VarTable, print_name_and_num, Vars),
+    io.format(Stream, "%s: %s\n", [s(Desc), s(VarsStr)], !IO).
+
+%---------------------------------------------------------------------------%
 
 :- pred detect_deadness_in_conj(live_info::in, set_of_progvar::in,
     list(hlds_goal)::in, list(hlds_goal)::out,
@@ -883,42 +969,39 @@ detect_deadness_in_conj(LiveInfo, Liveness0,
         detect_deadness_in_goal(LiveInfo, Liveness0, Goal0, Goal, !Deadness)
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
-:- pred detect_deadness_in_disj(live_info::in,
+:- pred detect_deadness_in_disj(live_info::in, is_any_branch_end_reachable::in,
     list(hlds_goal)::in, list(hlds_goal)::out,
     set_of_progvar::in, set_of_progvar::in, set_of_progvar::in,
     set_of_progvar::in, set_of_progvar::out, set_of_progvar::out) is det.
 
-detect_deadness_in_disj(_, [], [], _Deadness0, _Liveness0, CompletedNonLocals,
-        !Union, CompletedNonLocalUnion) :-
+detect_deadness_in_disj(_, _, [], [], _Deadness0, _Liveness0,
+        CompletedNonLocals, !Union, CompletedNonLocalUnion) :-
     set_of_var.intersect(!.Union, CompletedNonLocals, CompletedNonLocalUnion).
-detect_deadness_in_disj(LiveInfo, [Goal0 | Goals0], [Goal | Goals],
-        Deadness0, Liveness0, CompletedNonLocals,
-        !Union, CompletedNonLocalUnion) :-
+detect_deadness_in_disj(LiveInfo, IsAnyBranchEndReachable,
+        [Goal0 | Goals0], [Goal | Goals], Deadness0, Liveness0,
+        CompletedNonLocals, !Union, CompletedNonLocalUnion) :-
     detect_deadness_in_goal(LiveInfo, Liveness0, Goal0, Goal1,
         Deadness0, DeadnessGoal),
-    Goal1 = hlds_goal(_, GoalInfo1),
-    InstmapDelta1 = goal_info_get_instmap_delta(GoalInfo1),
-    ( if instmap_delta_is_reachable(InstmapDelta1) then
-        InstmapReachable = yes
-    else
-        InstmapReachable = no
-    ),
-    union_branch_deadness(DeadnessGoal, Deadness0, InstmapReachable, !Union),
-    detect_deadness_in_disj(LiveInfo, Goals0, Goals, Deadness0, Liveness0,
-        CompletedNonLocals, !Union, CompletedNonLocalUnion),
+    ThisBranchEndReachable = is_this_branch_goals_end_reachable(Goal1),
+    union_branch_deadness(IsAnyBranchEndReachable, ThisBranchEndReachable,
+        DeadnessGoal, Deadness0, !Union),
+    detect_deadness_in_disj(LiveInfo, IsAnyBranchEndReachable, Goals0, Goals,
+        Deadness0, Liveness0, CompletedNonLocals,
+        !Union, CompletedNonLocalUnion),
     add_branch_pre_deaths(DeadnessGoal, Deadness0, CompletedNonLocalUnion,
-        InstmapReachable, Goal1, Goal).
+        ThisBranchEndReachable, _, Goal1, Goal).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred detect_deadness_in_cases(live_info::in, prog_var::in,
+    is_any_branch_end_reachable::in,
     list(case)::in, list(case)::out,
     set_of_progvar::in, set_of_progvar::in, set_of_progvar::in,
     set_of_progvar::in, set_of_progvar::out, set_of_progvar::out) is det.
 
-detect_deadness_in_cases(LiveInfo, SwitchVar, [], [], _Deadness0, _Liveness,
+detect_deadness_in_cases(LiveInfo, SwitchVar, _, [], [], _Deadness0, _Liveness,
         CompletedNonLocals, !Union, CompletedNonLocalUnion) :-
     % If the switch variable does not become dead in a case, it must be put in
     % the pre-death set of that case.
@@ -926,27 +1009,46 @@ detect_deadness_in_cases(LiveInfo, SwitchVar, [], [], _Deadness0, _Liveness,
         set_of_var.make_singleton(SwitchVar), CompletedSwitchVar),
     set_of_var.union(CompletedSwitchVar, !Union),
     set_of_var.intersect(!.Union, CompletedNonLocals, CompletedNonLocalUnion).
-detect_deadness_in_cases(LiveInfo, SwitchVar, [Case0 | Cases0], [Case | Cases],
-        Deadness0, Liveness0, CompletedNonLocals, !Union,
-        CompletedNonLocalUnion) :-
+detect_deadness_in_cases(LiveInfo, SwitchVar, IsAnyBranchEndReachable,
+        [Case0 | Cases0], [Case | Cases], Deadness0, Liveness0,
+        CompletedNonLocals, !Union, CompletedNonLocalUnion) :-
     Case0 = case(MainConsId, OtherConsIds, Goal0),
     detect_deadness_in_goal(LiveInfo, Liveness0, Goal0, Goal1,
         Deadness0, DeadnessGoal),
-    Goal1 = hlds_goal(_, GoalInfo1),
-    InstmapDelta1 = goal_info_get_instmap_delta(GoalInfo1),
-    ( if instmap_delta_is_reachable(InstmapDelta1) then
-        InstmapReachable = yes
-    else
-        InstmapReachable = no
-    ),
-    union_branch_deadness(DeadnessGoal, Deadness0, InstmapReachable, !Union),
-    detect_deadness_in_cases(LiveInfo, SwitchVar, Cases0, Cases, Deadness0,
-        Liveness0, CompletedNonLocals, !Union, CompletedNonLocalUnion),
+    ThisBranchEndReachable = is_this_branch_goals_end_reachable(Goal1),
+    Union0 = !.Union,
+    union_branch_deadness(IsAnyBranchEndReachable, ThisBranchEndReachable,
+        DeadnessGoal, Deadness0, !Union),
+    Union = !.Union,
+    detect_deadness_in_cases(LiveInfo, SwitchVar, IsAnyBranchEndReachable,
+        Cases0, Cases, Deadness0, Liveness0, CompletedNonLocals,
+        !Union, CompletedNonLocalUnion),
     add_branch_pre_deaths(DeadnessGoal, Deadness0, CompletedNonLocalUnion,
-        InstmapReachable, Goal1, Goal),
-    Case = case(MainConsId, OtherConsIds, Goal).
+        ThisBranchEndReachable, AddedPreDeaths, Goal1, Goal),
+    Case = case(MainConsId, OtherConsIds, Goal),
+    trace [compile_time(flag("liveness")), io(!IO)] (
+        DebugThisPred = LiveInfo ^ li_debug_this_pred,
+        (
+            DebugThisPred = no
+        ;
+            DebugThisPred = yes,
+            Goal1 = hlds_goal(_, GoalInfo1),
+            Line = term_context.context_line(goal_info_get_context(GoalInfo1)),
+            io.output_stream(Stream, !IO),
+            io.format(Stream, "after switch case at line %d:\n",
+                [i(Line)], !IO),
+            io.format(Stream, "ThisBranchEndReachable: %s\n",
+                [s(string.string(ThisBranchEndReachable))], !IO),
+            dump_vars(Stream, LiveInfo, "Deadness0", Deadness0, !IO),
+            dump_vars(Stream, LiveInfo, "DeadnessGoal", DeadnessGoal, !IO),
+            dump_vars(Stream, LiveInfo, "Union0", Union0, !IO),
+            dump_vars(Stream, LiveInfo, "Union", Union, !IO),
+            dump_vars(Stream, LiveInfo, "AddedPreDeaths", AddedPreDeaths, !IO),
+            io.nl(Stream, !IO)
+        )
+    ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred detect_deadness_in_par_conj(live_info::in,
     set_of_progvar::in, set_of_progvar::in, set_of_progvar::in,
@@ -966,14 +1068,14 @@ detect_deadness_in_par_conj(LiveInfo, CompletedNonLocals, Deadness0, Liveness0,
     Goal1 = hlds_goal(_, GoalInfo1),
     InstmapDelta1 = goal_info_get_instmap_delta(GoalInfo1),
     ( if instmap_delta_is_reachable(InstmapDelta1) then
-        InstmapReachable = yes
+        ThisBranchEndReachable = this_branch_end_is_reachable
     else
         unexpected($pred, "unreachable instmap")
     ),
     add_branch_pre_deaths(DeadnessGoal, Deadness0, CompletedNonLocalUnion,
-        InstmapReachable, Goal1, Goal).
+        ThisBranchEndReachable, _, Goal1, Goal).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 % The situation that requires the use of these predicates is the following:
 %
@@ -1004,36 +1106,77 @@ detect_deadness_in_par_conj(LiveInfo, CompletedNonLocals, Deadness0, Liveness0,
 % their end points *were* reachable. Any excess deadness acquired by the goal
 % in this fashion will be discarded when the erroneous goal is paralleled by
 % a non-erroneous branch of an enclosing branched control structure.
+%
+% For some reason the above paragraph has been here for a long time without
+% being implemented, resulting in Mantis bug #572. For an explanation
+% of that bug, see the big comment in its test case, tests/valid/bug572.m.
 
-:- pred union_branch_deadness(set_of_progvar::in, set_of_progvar::in,
-    bool::in, set_of_progvar::in, set_of_progvar::out) is det.
+:- pred union_branch_deadness(is_any_branch_end_reachable::in,
+    is_this_branch_end_reachable::in, set_of_progvar::in, set_of_progvar::in,
+    set_of_progvar::in, set_of_progvar::out) is det.
 
-union_branch_deadness(DeadnessGoal, Deadness0, InstmapReachable, !Union) :-
-    (
-        InstmapReachable = yes,
-        set_of_var.union(!.Union, DeadnessGoal, !:Union)
-    ;
-        InstmapReachable = no,
+union_branch_deadness(AnyBranchEndReachable, ThisBranchEndReachable,
+        DeadnessGoal, Deadness0, !Union) :-
+    ( if
+        ThisBranchEndReachable = this_branch_end_is_not_reachable,
+        AnyBranchEndReachable = some_branch_end_is_reachable
+    then
         set_of_var.difference(DeadnessGoal, Deadness0, FilteredDeadnessGoal),
         set_of_var.union(!.Union, FilteredDeadnessGoal, !:Union)
+    else
+        set_of_var.union(!.Union, DeadnessGoal, !:Union)
     ).
 
 :- pred add_branch_pre_deaths(set_of_progvar::in, set_of_progvar::in,
-    set_of_progvar::in, bool::in, hlds_goal::in, hlds_goal::out) is det.
+    set_of_progvar::in, is_this_branch_end_reachable::in, set_of_progvar::out,
+    hlds_goal::in, hlds_goal::out) is det.
 
 add_branch_pre_deaths(DeadnessGoal, Deadness0, CompletedNonLocalUnion,
-        InstmapReachable, !Goal) :-
+        ThisBranchEndReachable, AddedPreDeaths, !Goal) :-
     set_of_var.difference(CompletedNonLocalUnion, DeadnessGoal, PreDeaths),
     (
-        InstmapReachable = yes,
-        add_deadness_before_goal(PreDeaths, !Goal)
+        ThisBranchEndReachable = this_branch_end_is_reachable,
+        AddedPreDeaths = PreDeaths
     ;
-        InstmapReachable = no,
-        set_of_var.difference(PreDeaths, Deadness0, FilteredPreDeaths),
-        add_deadness_before_goal(FilteredPreDeaths, !Goal)
+        ThisBranchEndReachable = this_branch_end_is_not_reachable,
+        set_of_var.difference(PreDeaths, Deadness0, AddedPreDeaths)
+    ),
+    add_deadness_before_goal(AddedPreDeaths, !Goal).
+
+%---------------------%
+
+:- type is_this_branch_end_reachable
+    --->    this_branch_end_is_not_reachable
+    ;       this_branch_end_is_reachable.
+
+:- type is_any_branch_end_reachable
+    --->    no_branch_end_is_reachable
+    ;       some_branch_end_is_reachable.
+
+:- func is_this_branch_goals_end_reachable(hlds_goal) =
+    is_this_branch_end_reachable.
+
+is_this_branch_goals_end_reachable(Goal) = EndIsReachable :-
+    Goal = hlds_goal(_, GoalInfo),
+    InstmapDelta = goal_info_get_instmap_delta(GoalInfo),
+    ( if instmap_delta_is_reachable(InstmapDelta) then
+        EndIsReachable = this_branch_end_is_reachable
+    else
+        EndIsReachable = this_branch_end_is_not_reachable
     ).
 
-%-----------------------------------------------------------------------------%
+:- func is_this_structured_goals_end_reachable(hlds_goal_info) =
+    is_any_branch_end_reachable.
+
+is_this_structured_goals_end_reachable(GoalInfo) = EndIsReachable :-
+    InstmapDelta = goal_info_get_instmap_delta(GoalInfo),
+    ( if instmap_delta_is_reachable(InstmapDelta) then
+        EndIsReachable = some_branch_end_is_reachable
+    else
+        EndIsReachable = no_branch_end_is_reachable
+    ).
+
+%---------------------------------------------------------------------------%
 
 :- pred update_liveness_goal(live_info::in, hlds_goal::in,
     set_of_progvar::in, set_of_progvar::out) is det.
@@ -1157,8 +1300,8 @@ find_reachable_case([case(_, _, Goal) | Cases], ReachableGoal) :-
         ReachableGoal = Goal
     ).
 
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 % The delay_death pass works by maintaining a set of variables (all named)
 % that, according to the deadness pass should have died by now, but which
@@ -1187,7 +1330,8 @@ find_reachable_case([case(_, _, Goal) | Cases], ReachableGoal) :-
 % branches, and we don't care about the actual name itself, this should be ok.
 %
 % For the details of potential problems with delaying the death of some
-% but not all variables, see tests/valid/bug50.m.
+% but not all variables, see tests/valid/bug50.m. That comment also explains
+% some possible alternatives to the approach taken here.
 
 :- pred delay_death_proc_body(hlds_goal::in, hlds_goal::out, var_table::in,
     set_of_progvar::in) is det.
@@ -1433,8 +1577,8 @@ kill_excess_delayed_dead_case(FinalDelayedDead, Case0 - DelayedDead0) = Case :-
     Goal = hlds_goal(GoalExpr, GoalInfo),
     Case = case(MainConsId, OtherConsIds, Goal).
 
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred detect_resume_points_in_goal(live_info::in, set_of_progvar::in,
     hlds_goal::in, hlds_goal::out,
@@ -1789,8 +1933,8 @@ require_equal(LivenessFirst, LivenessRest, GoalType, LiveInfo) :-
         unexpected($pred, Msg)
     ).
 
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 initial_liveness(ModuleInfo, PredInfo, ProcInfo, !:Liveness) :-
     proc_info_get_headvars(ProcInfo, Vars),
@@ -1833,7 +1977,7 @@ initial_liveness_loop(ModuleInfo, VarTable, [Var | Vars], [Mode | Modes],
     ),
     initial_liveness_loop(ModuleInfo, VarTable, Vars, Modes, !Liveness).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % Return the set of variables whose values are needed beyond the end
     % of the procedure (i.e. its output arguments).
@@ -1852,31 +1996,31 @@ initial_deadness(ModuleInfo, ProcInfo, LiveInfo, Deadness) :-
     maybe_complete_with_typeinfo_vars(VarTable, RttiVarMaps,
         LiveInfo ^ li_typeinfo_liveness, set_to_bitset(Deadness0), Deadness).
 
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred add_liveness_after_goal(hlds_goal::in, set_of_progvar::in,
     hlds_goal::out) is det.
 
-add_liveness_after_goal(Goal0, Residue, Goal) :-
+add_liveness_after_goal(Goal0, AddedPostLiveness, Goal) :-
     Goal0 = hlds_goal(GoalExpr, GoalInfo0),
     goal_info_get_post_births(GoalInfo0, PostBirths0),
-    set_of_var.union(PostBirths0, Residue, PostBirths),
+    set_of_var.union(PostBirths0, AddedPostLiveness, PostBirths),
     goal_info_set_post_births(PostBirths, GoalInfo0, GoalInfo),
     Goal = hlds_goal(GoalExpr, GoalInfo).
 
 :- pred add_deadness_before_goal(set_of_progvar::in,
     hlds_goal::in, hlds_goal::out) is det.
 
-add_deadness_before_goal(Residue, Goal0, Goal) :-
+add_deadness_before_goal(AddedPreDeadness, Goal0, Goal) :-
     Goal0 = hlds_goal(GoalExpr, GoalInfo0),
     goal_info_get_pre_deaths(GoalInfo0, PreDeaths0),
-    set_of_var.union(PreDeaths0, Residue, PreDeaths),
+    set_of_var.union(PreDeaths0, AddedPreDeadness, PreDeaths),
     goal_info_set_pre_deaths(PreDeaths, GoalInfo0, GoalInfo),
     Goal = hlds_goal(GoalExpr, GoalInfo).
 
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % Given a list of variables and an instmap delta, determine which
     % of those variables have a value given to them (i.e. they are bound
@@ -1906,7 +2050,7 @@ find_value_giving_occurrences([Var | Vars], LiveInfo, InstMapDelta,
     ),
     find_value_giving_occurrences(Vars, LiveInfo, InstMapDelta, !ValueVars).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % Get the nonlocals, and, if doing typeinfo liveness, add the
     % typeinfo vars for the nonlocals.
@@ -1927,7 +2071,7 @@ maybe_complete_with_typeinfos(LiveInfo, Vars0, Vars) :-
         LiveInfo ^ li_rtti_varmaps, LiveInfo ^ li_typeinfo_liveness,
         Vars0, Vars).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred make_and_set_resume_point(live_info::in,
     set_of_progvar::in, resume_locs::in, hlds_goal::in, hlds_goal::out) is det.
@@ -1966,29 +2110,30 @@ var_is_not_dummy_type(VarTable, Var) :-
     lookup_var_entry(VarTable, Var, Entry),
     Entry ^ vte_is_dummy = is_not_dummy_type.
 
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- type live_info
     --->    live_info(
                 li_module_info              :: module_info,
                 li_typeinfo_liveness        :: bool,
                 li_allow_packing_dummies    :: bool,
+                li_debug_this_pred          :: bool,
                 li_var_table                :: var_table,
                 li_rtti_varmaps             :: rtti_varmaps
             ).
 
-:- pred live_info_init(module_info::in, bool::in, var_table::in,
+:- pred live_info_init(module_info::in, bool::in, bool::in, var_table::in,
     rtti_varmaps::in, live_info::out) is det.
 
-live_info_init(ModuleInfo, TypeInfoLiveness, VarTable, RttiVarMaps,
-        LiveInfo) :-
+live_info_init(ModuleInfo, TypeInfoLiveness, DebugThisPred,
+        VarTable, RttiVarMaps, LiveInfo) :-
     module_info_get_globals(ModuleInfo, Globals),
     globals.lookup_bool_option(Globals, allow_packing_dummies,
         AllowPackingDummies),
     LiveInfo = live_info(ModuleInfo, TypeInfoLiveness, AllowPackingDummies,
-        VarTable, RttiVarMaps).
+        DebugThisPred, VarTable, RttiVarMaps).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 :- end_module ll_backend.liveness.
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
