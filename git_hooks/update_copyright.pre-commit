@@ -40,11 +40,12 @@ done
 
 if test "${#unknown_files}" -gt 0
 then
-    update_files+=($( grep -sl 'Copyright .* Mercury team' "${unknown_files[@]}" \
+    update_files+=($( grep -sl 'Copyright .* Mercury [Tt]eam' "${unknown_files[@]}" \
         || true ))
 fi
 
 if test "${#update_files}" -gt 0
 then
-    exec "$update_copyright" --suffix 'Mercury team' -- "${update_files[@]}"
+    # Accept both "Mercury team" and "Mercury Team".
+    exec "$update_copyright" --suffix ' Mercury ' -- "${update_files[@]}"
 fi
