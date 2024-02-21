@@ -97,3 +97,5 @@ MCFLAGS-check_hlds.check_typeclass       += --no-loop-invariants
 # This is the same bug as tests/valid/ho_and_type_spec_bug2.
 MCFLAGS-mode_robdd.tfeirn                += -O3
 MCFLAGS-mode_robdd.implications          += -O0
+
+MCFLAGS-transform_hlds.higher_order      += --no-warn-nothing-exported

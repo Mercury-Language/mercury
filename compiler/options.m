@@ -3257,6 +3257,8 @@ long_option("format-2024-02-07",
                                     compiler_sufficiently_recent).
 long_option("dym-2024-02-08",
                                     compiler_sufficiently_recent).
+long_option("wne-2024-02-21",
+                                    compiler_sufficiently_recent).
 long_option("experiment",           experiment).
 long_option("experiment1",          experiment1).
 long_option("experiment2",          experiment2).

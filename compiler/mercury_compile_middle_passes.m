@@ -96,6 +96,7 @@
 :- import_module transform_hlds.float_regs.
 :- import_module transform_hlds.granularity.
 :- import_module transform_hlds.higher_order.
+:- import_module transform_hlds.higher_order.specialize_in_module.
 :- import_module transform_hlds.implicit_parallelism.
 :- import_module transform_hlds.implicit_parallelism.introduce_parallelism.
 :- import_module transform_hlds.inlining.

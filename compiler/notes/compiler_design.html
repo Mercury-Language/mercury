@@ -1641,9 +1641,25 @@ Most of the remaining HLDS-to-HLDS transformations are optimizations:
 
 <ul>
 <li>
-higher_order.m specializes higher-order and polymorphic predicates
+The modules in the higher_order package
+(which is a subpackage of the transform_hlds package)
+specialize higher-order and polymorphic predicates
 in contexts where the value of the relevant
 higher-order, type_info, and/or typeclass_info arguments are known.
+    <ul>
+    <li>
+    higher_order.specialize_in_module.m controls the overall process.
+    <li>
+    higher_order.specialize_calls.m finds the calls to be specialized.
+    <li>
+    higher_order.make_specialized_pred.m constructs the specialized versions
+    of the calleeds.
+    <li>
+    higher_order.higher_order_globals_info.m
+    defines the data structures they all share,
+    and some utility operations that are needed
+    by more than one module in the package.
+    </ul>
 
 <li>
 accumulator.m attempts to introduce accumulators.

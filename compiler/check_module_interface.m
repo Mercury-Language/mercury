@@ -71,21 +71,39 @@ check_module_interface_for_no_exports(Globals, ParseTreeModuleSrc, !Specs) :-
             _ImpClauses, _ImpForeignProcs, _ImpForeignExportEnums,
             _ImpDeclPragmas, _ImpDeclMarkers, _ImpImplPragmas, _ImpImplMarkers,
             _ImpPromises, _ImpInitialises, _ImpFinalises, _ImpMutables),
-        CountIntIncls =
-            ( pred(_MN::in, InclInfo::in, Cnt0::in, Cnt::out) is det :-
+        CountIncls =
+            ( pred(_MN::in, InclInfo::in, IntCnt0::in, IntCnt::out,
+                    ImpCnt0::in, ImpCnt::out) is det :-
                 InclInfo = include_module_info(Section, _),
                 (
                     Section = ms_interface,
-                    Cnt = Cnt0 + 1
+                    IntCnt = IntCnt0 + 1,
+                    ImpCnt = ImpCnt0
                 ;
                     Section = ms_implementation,
-                    Cnt = Cnt0
+                    IntCnt = IntCnt0,
+                    ImpCnt = ImpCnt0 + 1
                 )
             ),
-        map.foldl(CountIntIncls, InclMap, 0, NumIntIncls),
+        map.foldl2(CountIncls, InclMap, 0, NumIntIncls, 0, NumImpIncls),
         ( if
-            ( NumIntIncls = 0
-            ; NumIntIncls = 1
+            (
+                NumIntIncls = 0
+            ;
+                NumIntIncls = 1,
+                % If a module interface contains nothing but a single
+                % include_module declaration, then
+                % - we should report "nothing exported" if there are no
+                %   include_module declarations in the implementation either,
+                % - but we should NOT report "nothing exported" if there are
+                %   some include_module declarations in the implementation.
+                %
+                % Such packages are a useful way to establish a group of
+                % modules that have access to each other's interfaces,
+                % without those interfaces being accessible from the
+                % rest of the program (with the obvious exception of the
+                % module whose include_module declaration is exported.)
+                NumImpIncls = 0
             ),
             type_ctor_checked_map_get_src_defns(TypeCtorCheckedMap,
                 IntTypeDefns, _, _),
