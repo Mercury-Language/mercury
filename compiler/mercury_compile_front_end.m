@@ -574,7 +574,8 @@ create_and_write_opt_file(ProgressStream, ErrorStream, IntermodAnalysis,
     ),
 
     (
-        WriteOpt = no
+        WriteOpt = no,
+        TouchDateFile = yes
     ;
         WriteOpt = yes,
         % XXX Trying to output what we got from format_initial_opt_file above
@@ -585,20 +586,10 @@ create_and_write_opt_file(ProgressStream, ErrorStream, IntermodAnalysis,
         % whether this is a good idea.
         io.open_output(OptFileName, OpenResult, !IO),
         (
-            OpenResult = error(Error),
-            io.progname_base("mmc", ProgName, !IO),
-            io.error_message(Error, ErrorMsg),
-            io.format(ProgressStream, "%s: cannot open `%s' for output: %s\n",
-                [s(ProgName), s(OptFileName), s(ErrorMsg)], !IO),
-            io.set_exit_status(1, !IO)
-        ;
             OpenResult = ok(OptStream),
             io.write_string(OptStream, OptFileStr, !IO),
             io.close_output(OptStream, !IO),
-
-            OptDateExt = ext_cur_ngs_gs(ext_cur_ngs_gs_opt_date_plain),
-            touch_module_ext_datestamp(Globals, ProgressStream,
-                ModuleName, OptDateExt, _TouchSucceeded, !IO),
+            TouchDateFile = yes,
 
             globals.lookup_bool_option(Globals, experiment5, Experiment5),
             (
@@ -621,7 +612,26 @@ create_and_write_opt_file(ProgressStream, ErrorStream, IntermodAnalysis,
                     io.close_output(OptXStream, !IO)
                 )
             )
+        ;
+            OpenResult = error(Error),
+            TouchDateFile = no,
+            io.progname_base("mmc", ProgName, !IO),
+            io.error_message(Error, ErrorMsg),
+            io.format(ProgressStream, "%s: cannot open `%s' for output: %s\n",
+                [s(ProgName), s(OptFileName), s(ErrorMsg)], !IO),
+            io.set_exit_status(1, !IO)
         )
+    ),
+
+    (
+        TouchDateFile = no
+    ;
+        TouchDateFile = yes,
+        % We update the .optdate file's timestamp whether or not
+        % we wrote out a new version of the .opt file.
+        OptDateExt = ext_cur_ngs_gs(ext_cur_ngs_gs_opt_date_plain),
+        touch_module_ext_datestamp(Globals, ProgressStream,
+            ModuleName, OptDateExt, _TouchSucceeded, !IO)
     ).
 
     % If there is a `.opt' file for this module, then we must mark

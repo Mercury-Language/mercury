@@ -238,7 +238,7 @@ make_module_target_file_main_path(ExtraOptions, ProgressStream, Globals,
         (
             MakeRhsFilesSucceeded = did_not_succeed,
             debug_make_msg(Globals,
-                string.format("%s: error making dependencies\n",
+                string.format("%s: error making prerequisites\n",
                     [s(TargetFileName)]),
                 RhsErrorDebugMsg),
             maybe_write_msg(ProgressStream, RhsErrorDebugMsg, !IO),

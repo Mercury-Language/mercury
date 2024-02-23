@@ -248,9 +248,10 @@ must_or_should_we_rebuild_lhs(ProgressStream, Globals,
             ForceReanalysis = no,
             % Compare the oldest of the timestamps of the lhs files
             % with the timestamps of the rhs.
-            list.map_foldl2(get_file_timestamp([dir.this_directory]),
+            GetLocalTimestamps = get_file_timestamp([dir.this_directory]),
+            list.map_foldl2(GetLocalTimestamps,
                 LhsDateFileNames, LhsDateFileTimestamps, !Info, !IO),
-            list.map_foldl2(get_file_timestamp([dir.this_directory]),
+            list.map_foldl2(GetLocalTimestamps,
                 LhsForeignCodeFileNames, LhsForeignCodeFileTimestamps,
                 !Info, !IO),
             AllLhsTimestamps = DatelessLhsFileTimestamps ++
