@@ -407,7 +407,7 @@
     %    constructed is ground (not unique, because it is static), and the
     %    determinism says that the goal is det. The goal_info of the
     %    conjunction will be filled in similarly.
-    % 4. None of the these unifications constructs a higher order value.
+    % 4. None of these unifications constructs a higher order value.
     % 5. The unifications are ordered such that a variable constructed by
     %    all unifications except the last occurs exactly once outside
     %    its constructing unification, and that occurrence will be as a functor
@@ -441,7 +441,7 @@
     % of the scope to from_ground_term_other (or from_ground_term_deconstruct).
     % If the original scope had the from_head feature, the code that does this
     % must also attach that feature to all the subgoals of the modified scope,
-    % unless we can  be sure that it is executed *after* switch detection,
+    % unless we can be sure that it is executed *after* switch detection,
     % which is the only pass that looks for from_head features, and which looks
     % in all scopes *except* from_ground_term_construct scopes.
     %
@@ -775,8 +775,9 @@
     ;       rhs_functor(
                 rhs_cons_id         :: cons_id,
                 % The `is_existential_construction' field is only used
-                % after polymorphism.m strips off the `new ' prefix from
-                % existentially typed constructions.
+                % after a call to remove_new_prefix during the polymorphism
+                % transformation strips off the `new ' prefix from an
+                % existentially typed construction.
                 rhs_is_exist_constr :: is_exist_constr,
                 rhs_args            :: list(prog_var)
             )
