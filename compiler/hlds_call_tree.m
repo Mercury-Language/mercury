@@ -17,7 +17,7 @@
 % We consider a reference to a closure containing a pred_id to be callee
 % just like a plain_call containing a pred_id, because the usual reason
 % for constructing a closure is that we want it to be called, though the call
-% may be done by other predicate (such as list.map, map.foldl etc).
+% may be done by another predicate (such as list.map, map.foldl etc).
 %
 % We write out the info in this call tree in the form of entries like this:
 %
@@ -94,6 +94,8 @@
     % predicates below: write_local_call_tree and generate_movability_report.
     %
 :- pred compute_local_call_tree(module_info::in, call_tree_info::out) is det.
+
+%---------------------%
 
     % Write out the pieces of the depth-first left-to-right traversal
     % (such as the first example above) of the given module to the first
@@ -181,20 +183,6 @@ compute_local_call_tree(ModuleInfo, CallTreeInfo) :-
     CallTreeInfo = call_tree_info(LocalPredIds, ExportList,
         PredCalleesList, PredCalleeMap).
 
-write_local_call_tree(TreeStream, OrderStream, ModuleInfo,
-        CallTreeInfo, !IO) :-
-    CallTreeInfo = call_tree_info(_LocalPredIds, _ExportList,
-        PredCalleesList, PredCalleeMap),
-
-    list.foldl2(write_pred_callees_entry(TreeStream, ModuleInfo),
-        PredCalleesList, yes, _First, !IO),
-
-    construct_depth_first_left_right_order(PredCalleeMap, PredCalleesList,
-        set_tree234.init, cord.init, PredIdCord),
-    PredIdList = cord.list(PredIdCord),
-    list.foldl(write_pred_order_entry(OrderStream, ModuleInfo),
-        PredIdList, !IO).
-
 %---------------------------------------------------------------------------%
 
 :- pred find_local_preds_exports(assoc_list(pred_id, pred_info)::in,
@@ -248,8 +236,9 @@ gather_pred_callees(PredIdTable, LocalPredIds, [HeadPredId | TailPredIds],
         map.lookup(PredIdTable, HeadPredId, PredInfo),
         pred_info_get_proc_table(PredInfo, ProcTable),
         map.to_assoc_list(ProcTable, ProcIdsInfos),
-        ( if find_first_valid_proc(ProcIdsInfos, ValidProcInfo) then
-            proc_info_get_goal(ValidProcInfo, Goal),
+        (
+            ProcIdsInfos = [_ProcId - ProcInfo | _],
+            proc_info_get_goal(ProcInfo, Goal),
             acc_goal_callees(Goal, cord.init, AllCalleesCord),
             AllCalleesList = cord.list(AllCalleesCord),
             list.filter(set_tree234.contains(LocalPredIds),
@@ -268,7 +257,8 @@ gather_pred_callees(PredIdTable, LocalPredIds, [HeadPredId | TailPredIds],
             list.filter(set_tree234.contains(!.HandledPredIds),
                 LocalCalleesList, _OldLocalCalleesList, NewLocalCalleesList),
             NextPredIds = NewLocalCalleesList ++ TailPredIds
-        else
+        ;
+            ProcIdsInfos = [],
             % Builtin predicates have no procedures in the HLDS,
             % and other predicates may have only procedures that mode analysis
             % has found to be invalid.
@@ -279,13 +269,6 @@ gather_pred_callees(PredIdTable, LocalPredIds, [HeadPredId | TailPredIds],
     ),
     gather_pred_callees(PredIdTable, LocalPredIds, NextPredIds,
         !.HandledPredIds, !PredCalleesCord, !PredCalleeMap).
-
-:- pred find_first_valid_proc(assoc_list(proc_id, proc_info)::in,
-    proc_info::out) is semidet.
-
-find_first_valid_proc([], _) :-
-    fail.
-find_first_valid_proc([_ProcId - ProcInfo | _ProcIdsInfos], ProcInfo).
 
 %---------------------%
 
@@ -418,6 +401,19 @@ keep_only_first_calls_loop([PredId | PredIds], !.SeenPredIds,
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
+write_local_call_tree(TreeStream, OrderStream, ModuleInfo,
+        CallTreeInfo, !IO) :-
+    CallTreeInfo = call_tree_info(_LocalPredIds, _ExportList,
+        PredCalleesList, PredCalleeMap),
+    construct_depth_first_left_right_order(PredCalleeMap, PredCalleesList,
+        set_tree234.init, cord.init, PredIdCord),
+    PredIdList = cord.list(PredIdCord),
+
+    list.foldl2(write_pred_callees_entry(TreeStream, ModuleInfo),
+        PredCalleesList, yes, _First, !IO),
+    list.foldl(write_pred_order_entry(OrderStream, ModuleInfo),
+        PredIdList, !IO).
+
 :- pred construct_depth_first_left_right_order(map(pred_id, pred_callees)::in,
     list(pred_callees)::in, set_tree234(pred_id)::in,
     cord(pred_id)::in, cord(pred_id)::out) is det.
@@ -440,7 +436,6 @@ construct_depth_first_left_right_order(PredCalleeMap,
     construct_depth_first_left_right_order(PredCalleeMap,
         NextPredCallees, !.HandledPredIds, !PredIdCord).
 
-%---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
 :- pred write_pred_callees_entry(io.text_output_stream::in, module_info::in,
