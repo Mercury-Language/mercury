@@ -70,7 +70,6 @@
 
 :- import_module assoc_list.
 :- import_module bool.
-:- import_module counter.
 :- import_module int.
 :- import_module list.
 :- import_module map.
@@ -89,7 +88,8 @@
 %
 
 recursively_process_ho_spec_requests(MaybeProgressStream, !GlobalInfo, !IO) :-
-    ( if set.is_empty(!.GlobalInfo ^ hogi_requests) then
+    RequestSet0 = hogi_get_requests(!.GlobalInfo),
+    ( if set.is_empty(RequestSet0) then
         true
     else
         process_ho_spec_requests(MaybeProgressStream, !GlobalInfo, !IO),
@@ -98,8 +98,9 @@ recursively_process_ho_spec_requests(MaybeProgressStream, !GlobalInfo, !IO) :-
     ).
 
 process_ho_spec_requests(MaybeProgressStream, !GlobalInfo, !IO) :-
-    Requests0 = set.to_sorted_list(!.GlobalInfo ^ hogi_requests),
-    !GlobalInfo ^ hogi_requests := set.init,
+    RequestSet0 = hogi_get_requests(!.GlobalInfo),
+    Requests0 = set.to_sorted_list(RequestSet0),
+    hogi_set_requests(set.init, !GlobalInfo),
     list.foldl3(filter_request(MaybeProgressStream, !.GlobalInfo), Requests0,
         [], Requests, [], LoopRequests, !IO),
     (
@@ -120,9 +121,9 @@ process_ho_spec_requests(MaybeProgressStream, !GlobalInfo, !IO) :-
             NewPredList = [_ | _],
             % The dependencies may have changed, so the dependency graph
             % needs to rebuilt for inlining to work properly.
-            ModuleInfo0 = !.GlobalInfo ^ hogi_module_info,
+            ModuleInfo0 = hogi_get_module_info(!.GlobalInfo),
             module_info_clobber_dependency_info(ModuleInfo0, ModuleInfo),
-            !GlobalInfo ^ hogi_module_info := ModuleInfo
+            hogi_set_module_info(ModuleInfo, !GlobalInfo)
         ;
             NewPredList = []
         )
@@ -144,9 +145,9 @@ process_ho_spec_requests(MaybeProgressStream, !GlobalInfo, !IO) :-
     list(ho_request)::in, list(ho_request)::out,
     list(ho_request)::in, list(ho_request)::out, io::di, io::uo) is det.
 
-filter_request(MaybeProgressStream, Info, Request,
+filter_request(MaybeProgressStream, GlobalInfo, Request,
         !AcceptedRequests, !LoopRequests, !IO) :-
-    ModuleInfo = Info ^ hogi_module_info,
+    ModuleInfo = hogi_get_module_info(GlobalInfo),
     Request = ho_request(CallingPredProcId, CalledPredProcId, _, _, HOArgs,
         _, _, RequestKind, Context),
     CalledPredProcId = proc(CalledPredId, _),
@@ -172,21 +173,21 @@ filter_request(MaybeProgressStream, Info, Request,
         list.cons(Request, !AcceptedRequests)
     ;
         RequestKind = non_user_type_spec,
-        GoalSizeMap = Info ^ hogi_goal_size_map,
+        GoalSizeMap = hogi_get_goal_size_map(GlobalInfo),
         ( if map.search(GoalSizeMap, CalledPredId, GoalSize0) then
             GoalSize = GoalSize0
         else
             % This can happen for a specialized version.
             GoalSize = 0
         ),
+        Params = hogi_get_params(GlobalInfo),
         ( if
-            GoalSize > Info ^ hogi_params ^ param_size_limit
+            GoalSize > Params ^ param_size_limit
         then
             maybe_write_string_to_stream(MaybeProgressStream,
                 "%    not specializing (goal too large).\n", !IO)
         else if
-            higher_order_args_size(HOArgs) >
-                Info ^ hogi_params ^ param_arg_limit
+            higher_order_args_size(HOArgs) > Params ^ param_arg_limit
         then
             % If the arguments are too large, we can end up producing a
             % specialized version with massive numbers of arguments, because
@@ -199,7 +200,7 @@ filter_request(MaybeProgressStream, Info, Request,
             % To ensure termination of the specialization process, the depth
             % of the higher-order arguments must strictly decrease compared
             % to parents with the same original pred_proc_id.
-            VersionInfoMap = Info ^ hogi_version_info,
+            VersionInfoMap = hogi_get_version_info_map(GlobalInfo),
             ( if
                 map.search(VersionInfoMap, CalledPredProcId, CalledVersionInfo)
             then
@@ -234,15 +235,16 @@ filter_request(MaybeProgressStream, Info, Request,
 :- pred check_loop_request(higher_order_global_info::in, ho_request::in,
     set(pred_proc_id)::in, set(pred_proc_id)::out) is det.
 
-check_loop_request(Info, Request, !PredsToFix) :-
+check_loop_request(GlobalInfo, Request, !PredsToFix) :-
     CallingPredProcId = Request ^ rq_caller,
     CalledPredProcId = Request ^ rq_callee,
+    NewPredMap0 = hogi_get_new_pred_map(GlobalInfo),
     ( if
-        map.search(Info ^ hogi_new_pred_map, CalledPredProcId, SpecVersions0),
+        map.search(NewPredMap0, CalledPredProcId, SpecVersions0),
         some [Version] (
             set.member(Version, SpecVersions0),
-            version_matches(Info ^ hogi_params, Info ^ hogi_module_info,
-                Request, Version, _)
+            version_matches(hogi_get_params(GlobalInfo),
+                hogi_get_module_info(GlobalInfo), Request, Version, _)
         )
     then
         set.insert(CallingPredProcId, !PredsToFix)
@@ -259,30 +261,30 @@ check_loop_request(Info, Request, !PredsToFix) :-
     io::di, io::uo) is det.
 
 maybe_create_new_ho_spec_preds(_, [],
-        !NewPreds, !PredsToFix, !Info, !IO).
+        !NewPreds, !PredsToFix, !GlobalInfo, !IO).
 maybe_create_new_ho_spec_preds(MaybeProgressStream, [Request | Requests],
-        !NewPreds, !PredsToFix, !Info, !IO) :-
+        !NewPreds, !PredsToFix, !GlobalInfo, !IO) :-
     Request = ho_request(CallingPredProcId, CalledPredProcId,
         _, _, _, _, _, _, _),
     set.insert(CallingPredProcId, !PredsToFix),
+    NewPredMap = hogi_get_new_pred_map(!.GlobalInfo),
     ( if
         % Check that we are not redoing the same pred.
         % SpecVersions0 are pred_proc_ids of the specialized versions
         % of the current pred.
-        NewPredMap = !.Info ^ hogi_new_pred_map,
         map.search(NewPredMap, CalledPredProcId, SpecVersions0),
         set.member(Version, SpecVersions0),
-        version_matches(!.Info ^ hogi_params, !.Info ^ hogi_module_info,
-            Request, Version, _)
+        version_matches(hogi_get_params(!.GlobalInfo),
+            hogi_get_module_info(!.GlobalInfo), Request, Version, _)
     then
         true
     else
         create_new_ho_spec_pred(MaybeProgressStream, Request, NewPred,
-            !Info, !IO),
+            !GlobalInfo, !IO),
         !:NewPreds = [NewPred | !.NewPreds]
     ),
     maybe_create_new_ho_spec_preds(MaybeProgressStream, Requests,
-        !NewPreds, !PredsToFix, !Info, !IO).
+        !NewPreds, !PredsToFix, !GlobalInfo, !IO).
 
     % Here we create the pred_info for the new predicate.
     %
@@ -291,12 +293,13 @@ maybe_create_new_ho_spec_preds(MaybeProgressStream, [Request | Requests],
     higher_order_global_info::in, higher_order_global_info::out,
     io::di, io::uo) is det.
 
-create_new_ho_spec_pred(MaybeProgressStream, Request, NewPred, !Info, !IO) :-
+create_new_ho_spec_pred(MaybeProgressStream, Request, NewPred,
+        !GlobalInfo, !IO) :-
     Request = ho_request(CallerPPId, CalleePPId, CallArgsTypes,
         ExtraTypeInfoTVars, HOArgs, CallerTVarSet, TypeInfoLiveness,
         RequestKind, Context),
     CallerPPId = proc(CallerPredId, CallerProcId),
-    ModuleInfo0 = !.Info ^ hogi_module_info,
+    ModuleInfo0 = hogi_get_module_info(!.GlobalInfo),
     module_info_pred_proc_info(ModuleInfo0, CalleePPId, PredInfo0, ProcInfo0),
 
     Name0 = pred_info_name(PredInfo0),
@@ -334,9 +337,7 @@ create_new_ho_spec_pred(MaybeProgressStream, Request, NewPred, !Info, !IO) :-
     ;
         RequestKind = non_user_type_spec,
         NewProcId = hlds_pred.initial_proc_id,
-        SeqNumCounter0 = !.Info ^ hogi_next_id,
-        counter.allocate(SeqNum, SeqNumCounter0, SeqNumCounter),
-        !Info ^ hogi_next_id := SeqNumCounter,
+        hogi_allocate_id(SeqNum, !GlobalInfo),
         Transform = tn_higher_order(PredOrFunc, SeqNum),
         make_transformed_pred_name(Name0, Transform, SpecName),
         ProcTransform = proc_transform_higher_order_spec(SeqNum),
@@ -383,26 +384,26 @@ create_new_ho_spec_pred(MaybeProgressStream, Request, NewPred, !Info, !IO) :-
     predicate_table_insert(NewPredInfo1, NewPredId, PredTable0, PredTable),
     module_info_set_predicate_table(PredTable, ModuleInfo0, ModuleInfo1),
 
-    !Info ^ hogi_module_info := ModuleInfo1,
+    hogi_set_module_info(ModuleInfo1, !GlobalInfo),
 
     SpecSymName = qualified(PredModuleName, SpecName),
     NewPred = new_pred(proc(NewPredId, NewProcId), CalleePPId, CallerPPId,
         SpecSymName, HOArgs, CallArgsTypes, ExtraTypeInfoTVars, CallerTVarSet,
         TypeInfoLiveness, RequestKind),
 
-    higher_order_add_new_pred(CalleePPId, NewPred, !Info),
+    higher_order_add_new_pred(CalleePPId, NewPred, !GlobalInfo),
 
     higher_order_create_new_proc(NewPred, ProcInfo0,
-        NewPredInfo1, NewPredInfo, !Info),
-    ModuleInfo2 = !.Info ^ hogi_module_info,
+        NewPredInfo1, NewPredInfo, !GlobalInfo),
+    ModuleInfo2 = hogi_get_module_info(!.GlobalInfo),
     module_info_set_pred_info(NewPredId, NewPredInfo, ModuleInfo2, ModuleInfo),
-    !Info ^ hogi_module_info := ModuleInfo.
+    hogi_set_module_info(ModuleInfo, !GlobalInfo).
 
 :- pred higher_order_add_new_pred(pred_proc_id::in, new_pred::in,
     higher_order_global_info::in, higher_order_global_info::out) is det.
 
-higher_order_add_new_pred(CalleePPId, NewPred, !Info) :-
-    NewPredMap0 = !.Info ^ hogi_new_pred_map,
+higher_order_add_new_pred(CalleePPId, NewPred, !GlobalInfo) :-
+    NewPredMap0 = hogi_get_new_pred_map(!.GlobalInfo),
     ( if map.search(NewPredMap0, CalleePPId, SpecVersions0) then
         set.insert(NewPred, SpecVersions0, SpecVersions),
         map.det_update(CalleePPId, SpecVersions, NewPredMap0, NewPredMap)
@@ -410,27 +411,27 @@ higher_order_add_new_pred(CalleePPId, NewPred, !Info) :-
         SpecVersions = set.make_singleton_set(NewPred),
         map.det_insert(CalleePPId, SpecVersions, NewPredMap0, NewPredMap)
     ),
-    !Info ^ hogi_new_pred_map := NewPredMap.
+    hogi_set_new_pred_map(NewPredMap, !GlobalInfo).
 
 %---------------------------------------------------------------------------%
 
-:- pred ho_fixup_preds(list(pred_proc_id)::in, higher_order_global_info::in,
-    higher_order_global_info::out) is det.
+:- pred ho_fixup_preds(list(pred_proc_id)::in,
+    higher_order_global_info::in, higher_order_global_info::out) is det.
 
-ho_fixup_preds(PredProcIds, !Info) :-
-    Requests0 = !.Info ^ hogi_requests,
-    list.foldl(ho_fixup_pred(need_not_recompute), PredProcIds, !Info),
+ho_fixup_preds(PredProcIds, !GlobalInfo) :-
+    Requests0 = hogi_get_requests(!.GlobalInfo),
+    list.foldl(ho_fixup_pred(need_not_recompute), PredProcIds, !GlobalInfo),
     % Any additional requests must have already been denied.
-    !Info ^ hogi_requests := Requests0.
+    hogi_set_requests(Requests0, !GlobalInfo).
 
 :- pred ho_fixup_specialized_versions(list(new_pred)::in,
     higher_order_global_info::in, higher_order_global_info::out) is det.
 
-ho_fixup_specialized_versions(NewPredList, !Info) :-
+ho_fixup_specialized_versions(NewPredList, !GlobalInfo) :-
     NewPredProcIds = list.map(get_np_version_ppid, NewPredList),
     % Reprocess the goals to find any new specializations made
     % possible by the specializations performed in this pass.
-    list.foldl(ho_fixup_pred(must_recompute), NewPredProcIds, !Info).
+    list.foldl(ho_fixup_pred(must_recompute), NewPredProcIds, !GlobalInfo).
 
 :- func get_np_version_ppid(new_pred) = pred_proc_id.
 
@@ -454,7 +455,7 @@ ho_fixup_pred(MustRecompute, proc(PredId, ProcId), !GlobalInfo) :-
 
 higher_order_create_new_proc(NewPred, !.NewProcInfo,
         !NewPredInfo, !GlobalInfo) :-
-    ModuleInfo = !.GlobalInfo ^ hogi_module_info,
+    ModuleInfo = hogi_get_module_info(!.GlobalInfo),
 
     NewPred = new_pred(NewPredProcId, OldPredProcId, CallerPredProcId, _Name,
         HOArgs0, CallArgsTypes0, ExtraTypeInfoTVars0, _, _, _),
@@ -579,7 +580,7 @@ higher_order_create_new_proc(NewPred, !.NewProcInfo,
     % applied, but not TypeRenaming. Perhaps this is enough?
 
     % Record extra information about this version.
-    VersionInfoMap0 = !.GlobalInfo ^ hogi_version_info,
+    VersionInfoMap0 = hogi_get_version_info_map(!.GlobalInfo),
     ArgsDepth = higher_order_args_depth(HOArgs),
 
     ( if map.search(VersionInfoMap0, OldPredProcId, OldProcVersionInfo) then
@@ -600,7 +601,7 @@ higher_order_create_new_proc(NewPred, !.NewProcInfo,
         KnownVarMap, ParentVersions),
     map.det_insert(NewPredProcId, VersionInfo,
         VersionInfoMap0, VersionInfoMap),
-    !GlobalInfo ^ hogi_version_info := VersionInfoMap,
+    hogi_set_version_info_map(VersionInfoMap, !GlobalInfo),
 
     % Fix up the argument vars, types and modes.
     in_mode(InMode),

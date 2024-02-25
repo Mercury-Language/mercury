@@ -60,9 +60,7 @@
 :- import_module transform_hlds.higher_order.specialize_calls.
 
 :- import_module bool.
-:- import_module counter.
 :- import_module list.
-:- import_module map.
 :- import_module maybe.
 :- import_module set.
 
@@ -80,16 +78,9 @@ specialize_higher_order(ProgressStream, !ModuleInfo, !IO) :-
     UserTypeSpec = OptTuple ^ ot_spec_types_user_guided,
     SizeLimit = OptTuple ^ ot_higher_order_size_limit,
     ArgLimit = OptTuple ^ ot_higher_order_arg_limit,
-    Params =
+    Params0 =
         ho_params(HigherOrder, TypeSpec, UserTypeSpec, SizeLimit, ArgLimit),
-    map.init(NewPredMap0),
-    map.init(GoalSizes0),
-    set.init(Requests0),
-    map.init(VersionInfo0),
     some [!GlobalInfo] (
-        !:GlobalInfo = higher_order_global_info(!.ModuleInfo, Params,
-            GoalSizes0, Requests0, NewPredMap0, VersionInfo0, counter.init(1)),
-
         module_info_get_valid_pred_ids(!.ModuleInfo, ValidPredIds),
         module_info_get_type_spec_info(!.ModuleInfo, TypeSpecInfo),
         TypeSpecInfo = type_spec_info(_, UserSpecPredIdSet, _, _),
@@ -106,23 +97,28 @@ specialize_higher_order(ProgressStream, !ModuleInfo, !IO) :-
 
         % Make sure the user requested specializations are processed first,
         % since we don't want to create more versions if one of these matches.
-        % We need to process these even if specialization is not being
-        % performed, in case any of the specialized versions are called
-        % from other modules.
+        % We need to process these even if the options don't call for
+        % specialization being done for this module, in case any of the
+        % specialized versions (whose existence is advertised by type_spec
+        % pragmas in the module interface) are called from other modules,
+        % whose options *do* call for specialization being done.
 
         set.to_sorted_list(UserSpecPredIdSet, UserSpecPredIds),
         (
             UserSpecPredIds = [],
+            !:GlobalInfo =
+                init_higher_order_global_info(Params0, !.ModuleInfo),
             NonUserSpecPredIds = ValidPredIds
         ;
             UserSpecPredIds = [_ | _],
+            Params = Params0 ^ param_do_user_type_spec
+                := spec_types_user_guided,
+            !:GlobalInfo = init_higher_order_global_info(Params, !.ModuleInfo),
+
             set.list_to_set(ValidPredIds, ValidPredIdSet),
             set.difference(ValidPredIdSet, UserSpecPredIdSet,
                 NonUserSpecPredIdSet),
             set.to_sorted_list(NonUserSpecPredIdSet, NonUserSpecPredIds),
-
-            !GlobalInfo ^ hogi_params ^ param_do_user_type_spec
-                := spec_types_user_guided,
             list.foldl(get_specialization_requests, UserSpecPredIds,
                 !GlobalInfo),
             process_ho_spec_requests(MaybeProgressStream, !GlobalInfo, !IO)
@@ -147,8 +143,8 @@ specialize_higher_order(ProgressStream, !ModuleInfo, !IO) :-
         % Remove the predicates which were used to force the production of
         % user-requested type specializations, since they are not called
         % from anywhere and are no longer needed.
-        list.foldl(module_info_remove_predicate, UserSpecPredIds,
-            !.GlobalInfo ^ hogi_module_info, !:ModuleInfo)
+        !:ModuleInfo = hogi_get_module_info(!.GlobalInfo),
+        list.foldl(module_info_remove_predicate, UserSpecPredIds, !ModuleInfo)
     ).
 
 %---------------------------------------------------------------------------%

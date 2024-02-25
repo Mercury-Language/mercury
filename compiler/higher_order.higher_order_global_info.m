@@ -35,25 +35,35 @@
 
 %---------------------------------------------------------------------------%
 
-:- type higher_order_global_info
-    --->    higher_order_global_info(
-                hogi_module_info    :: module_info,
-                hogi_params         :: ho_params,
-                hogi_goal_size_map  :: goal_size_map,
+:- type higher_order_global_info.
 
-                % Requested versions.
-                hogi_requests       :: set(ho_request),
+:- func init_higher_order_global_info(ho_params, module_info) =
+    higher_order_global_info.
 
-                % Specialized versions for each predicate
-                % not changed by ho_traverse_proc_body.
-                hogi_new_pred_map   :: new_pred_map,
+:- func hogi_get_module_info(higher_order_global_info) = module_info.
+:- func hogi_get_params(higher_order_global_info) = ho_params.
+:- func hogi_get_goal_size_map(higher_order_global_info) = goal_size_map.
+:- func hogi_get_requests(higher_order_global_info) = set(ho_request).
+:- func hogi_get_new_pred_map(higher_order_global_info) = new_pred_map.
+:- func hogi_get_version_info_map(higher_order_global_info) = version_info_map.
 
-                % Extra information about each specialized version.
-                hogi_version_info   :: map(pred_proc_id, version_info),
+:- pred hogi_set_module_info(module_info::in,
+    higher_order_global_info::in, higher_order_global_info::out) is det.
+:- pred hogi_set_requests(set(ho_request)::in,
+    higher_order_global_info::in, higher_order_global_info::out) is det.
+:- pred hogi_set_new_pred_map(new_pred_map::in,
+    higher_order_global_info::in, higher_order_global_info::out) is det.
+:- pred hogi_set_version_info_map(version_info_map::in,
+    higher_order_global_info::in, higher_order_global_info::out) is det.
 
-                % Number identifying a specialized version.
-                hogi_next_id        :: counter
-            ).
+:- pred hogi_add_goal_size(pred_id::in, int::in,
+    higher_order_global_info::in, higher_order_global_info::out) is det.
+:- pred hogi_add_request(ho_request::in,
+    higher_order_global_info::in, higher_order_global_info::out) is det.
+:- pred hogi_add_version(pred_proc_id::in, version_info::in,
+    higher_order_global_info::in, higher_order_global_info::out) is det.
+:- pred hogi_allocate_id(int::out,
+    higher_order_global_info::in, higher_order_global_info::out) is det.
 
 %---------------------%
 
@@ -121,6 +131,8 @@
             ).
 
 %---------------------%
+
+:- type version_info_map == map(pred_proc_id, version_info).
 
 :- type version_info
     --->    version_info(
@@ -318,6 +330,104 @@
 
 :- import_module int.
 :- import_module require.
+
+%---------------------------------------------------------------------------%
+
+:- type higher_order_global_info
+    --->    higher_order_global_info(
+                % This field is read-only. All the other fields
+                % are read-write.
+                hogi_params             :: ho_params,
+
+                hogi_module_info        :: module_info,
+                hogi_goal_size_map      :: goal_size_map,
+
+                % Requested versions.
+                hogi_requests           :: set(ho_request),
+
+                % Specialized versions for each predicate
+                % not changed by ho_traverse_proc_body.
+                hogi_new_pred_map       :: new_pred_map,
+
+                % Extra information about each specialized version.
+                hogi_version_info_map   :: version_info_map,
+
+                % A counter for allocating sequence numbers, each of which
+                % identifies one specialized predicate.
+                hogi_next_id_counter    :: counter
+            ).
+
+%---------------------%
+
+init_higher_order_global_info(Params, ModuleInfo) = Info :-
+    map.init(GoalSizeMap),
+    set.init(Requests),
+    map.init(NewPredMap),
+    map.init(VersionInfoMap),
+    NextIdCounter = counter.init(1),
+    Info = higher_order_global_info(Params, ModuleInfo, GoalSizeMap, Requests,
+        NewPredMap, VersionInfoMap, NextIdCounter).
+
+%---------------------%
+
+:- func hogi_get_next_id_counter(higher_order_global_info) = counter.
+
+hogi_get_module_info(Info) = X :-
+    X = Info ^ hogi_module_info.
+hogi_get_params(Info) = X :-
+    X = Info ^ hogi_params.
+hogi_get_goal_size_map(Info) = X :-
+    X = Info ^ hogi_goal_size_map.
+hogi_get_requests(Info) = X :-
+    X = Info ^ hogi_requests.
+hogi_get_new_pred_map(Info) = X :-
+    X = Info ^ hogi_new_pred_map.
+hogi_get_version_info_map(Info) = X :-
+    X = Info ^ hogi_version_info_map.
+hogi_get_next_id_counter(Info) = X :-
+    X = Info ^ hogi_next_id_counter.
+
+%---------------------%
+
+:- pred hogi_set_goal_size_map(goal_size_map::in,
+    higher_order_global_info::in, higher_order_global_info::out) is det.
+:- pred hogi_set_next_id_counter(counter::in,
+    higher_order_global_info::in, higher_order_global_info::out) is det.
+
+hogi_set_module_info(X, !Info) :-
+    !Info ^ hogi_module_info := X.
+hogi_set_goal_size_map(X, !Info) :-
+    !Info ^ hogi_goal_size_map := X.
+hogi_set_requests(X, !Info) :-
+    !Info ^ hogi_requests := X.
+hogi_set_new_pred_map(X, !Info) :-
+    !Info ^ hogi_new_pred_map := X.
+hogi_set_version_info_map(X, !Info) :-
+    !Info ^ hogi_version_info_map := X.
+hogi_set_next_id_counter(X, !Info) :-
+    !Info ^ hogi_next_id_counter := X.
+
+%---------------------%
+
+hogi_add_goal_size(PredId, GoalSize, !Info) :-
+    GoalSizeMap0 = hogi_get_goal_size_map(!.Info),
+    map.set(PredId, GoalSize, GoalSizeMap0, GoalSizeMap),
+    hogi_set_goal_size_map(GoalSizeMap, !Info).
+
+hogi_add_request(Request, !Info) :-
+    Requests0 = hogi_get_requests(!.Info),
+    set.insert(Request, Requests0, Requests),
+    hogi_set_requests(Requests, !Info).
+
+hogi_add_version(PredProcId, Version, !Info) :-
+    VersionInfoMap0 = hogi_get_version_info_map(!.Info),
+    map.det_insert(PredProcId, Version, VersionInfoMap0, VersionInfoMap),
+    hogi_set_version_info_map(VersionInfoMap, !Info).
+
+hogi_allocate_id(Id, !Info) :-
+    Counter0 = hogi_get_next_id_counter(!.Info),
+    counter.allocate(Id, Counter0, Counter),
+    hogi_set_next_id_counter(Counter, !Info).
 
 %---------------------------------------------------------------------------%
 

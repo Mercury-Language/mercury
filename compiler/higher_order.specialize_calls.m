@@ -77,7 +77,6 @@
 
 :- import_module assoc_list.
 :- import_module bool.
-:- import_module counter.
 :- import_module int.
 :- import_module list.
 :- import_module map.
@@ -118,7 +117,7 @@
 %---------------------------------------------------------------------------%
 
 get_specialization_requests(PredId, !GlobalInfo) :-
-    ModuleInfo0 = !.GlobalInfo ^ hogi_module_info,
+    ModuleInfo0 = hogi_get_module_info(!.GlobalInfo),
     module_info_pred_info(ModuleInfo0, PredId, PredInfo0),
     NonImportedProcs = pred_info_all_non_imported_procids(PredInfo0),
     (
@@ -128,11 +127,10 @@ get_specialization_requests(PredId, !GlobalInfo) :-
         list.foldl(ho_traverse_proc(need_not_recompute, PredId),
             NonImportedProcs, !GlobalInfo),
 
-        ModuleInfo1 = !.GlobalInfo ^ hogi_module_info,
+        ModuleInfo1 = hogi_get_module_info(!.GlobalInfo),
         module_info_proc_info(ModuleInfo1, PredId, FirstProcId, FirstProcInfo),
         proc_info_get_goal(FirstProcInfo, FirstProcGoal),
         goal_size(FirstProcGoal, FirstProcGoalSize),
-        GoalSizeMap1 = !.GlobalInfo ^ hogi_goal_size_map,
         % It is possible, though quite unlikely, for the sizes of the other
         % procedures to be significantly different from the size of the first.
         % The sizes will in general start out different if the predicate is
@@ -144,8 +142,7 @@ get_specialization_requests(PredId, !GlobalInfo) :-
         % since the avegare number of procedures per predicate is around 1.02,
         % recording the size of every procedure separately should not cost
         % too much either.
-        map.set(PredId, FirstProcGoalSize, GoalSizeMap1, GoalSizeMap),
-        !GlobalInfo ^ hogi_goal_size_map := GoalSizeMap
+        hogi_add_goal_size(PredId, FirstProcGoalSize, !GlobalInfo)
     ).
 
 %---------------------------------------------------------------------------%
@@ -156,16 +153,17 @@ get_specialization_requests(PredId, !GlobalInfo) :-
 
 ho_traverse_proc(MustRecompute, PredId, ProcId, !GlobalInfo) :-
     map.init(KnownVarMap0),
-    module_info_pred_proc_info(!.GlobalInfo ^ hogi_module_info,
-        PredId, ProcId, PredInfo0, ProcInfo0),
+    ModuleInfo0 = hogi_get_module_info(!.GlobalInfo),
+    module_info_pred_proc_info(ModuleInfo0, PredId, ProcId,
+        PredInfo0, ProcInfo0),
     Info0 = higher_order_info(!.GlobalInfo, KnownVarMap0, proc(PredId, ProcId),
         PredInfo0, ProcInfo0, hoc_unchanged),
     ho_traverse_proc_body(MustRecompute, Info0, Info),
     Info = higher_order_info(!:GlobalInfo, _, _, PredInfo, ProcInfo, _),
-    ModuleInfo0 = !.GlobalInfo ^ hogi_module_info,
+    ModuleInfo1 = hogi_get_module_info(!.GlobalInfo),
     module_info_set_pred_proc_info(PredId, ProcId, PredInfo, ProcInfo,
-        ModuleInfo0, ModuleInfo),
-    !GlobalInfo ^ hogi_module_info := ModuleInfo.
+        ModuleInfo1, ModuleInfo),
+    hogi_set_module_info(ModuleInfo, !GlobalInfo).
 
 :- pred ho_traverse_proc_body(must_recompute::in,
     higher_order_info::in, higher_order_info::out) is det.
@@ -173,7 +171,7 @@ ho_traverse_proc(MustRecompute, PredId, ProcId, !GlobalInfo) :-
 ho_traverse_proc_body(MustRecompute, !Info) :-
     % Lookup the initial known bindings of the variables if this procedure
     % is a specialised version.
-    VersionInfoMap = !.Info ^ hoi_global_info ^ hogi_version_info,
+    VersionInfoMap = hogi_get_version_info_map(!.Info ^ hoi_global_info),
     ( if
         map.search(VersionInfoMap, !.Info ^ hoi_pred_proc_id, VersionInfo),
         VersionInfo = version_info(_, _, KnownVarMap, _)
@@ -199,20 +197,22 @@ ho_fixup_proc_info(MustRecompute, !.Goal, !Info) :-
         % some variables from the code of the procedure. Some of those
         % variables appear in the RTTI varmaps, yet we do not delete them
         % from there. This is a bug.
-        some [!ModuleInfo, !ProcInfo] (
-            !:ModuleInfo = !.Info ^ hoi_global_info ^ hogi_module_info,
+        some [!ProcInfo] (
+            ModuleInfo0 = hogi_get_module_info(!.Info ^ hoi_global_info),
             !:ProcInfo   = !.Info ^ hoi_proc_info,
             proc_info_set_goal(!.Goal, !ProcInfo),
             requantify_proc_general(ord_nl_no_lambda, !ProcInfo),
             proc_info_get_goal(!.ProcInfo, !:Goal),
-            proc_info_get_initial_instmap(!.ModuleInfo, !.ProcInfo, InstMap),
+            proc_info_get_initial_instmap(ModuleInfo0, !.ProcInfo, InstMap),
             proc_info_get_var_table(!.ProcInfo, VarTable),
             proc_info_get_inst_varset(!.ProcInfo, InstVarSet),
             recompute_instmap_delta(no_recomp_atomics, VarTable, InstVarSet,
-                InstMap, !Goal, !ModuleInfo),
+                InstMap, !Goal, ModuleInfo0, ModuleInfo),
             proc_info_set_goal(!.Goal, !ProcInfo),
             !Info ^ hoi_proc_info := !.ProcInfo,
-            !Info ^ hoi_global_info ^ hogi_module_info := !.ModuleInfo
+            GlobalInfo1 = !.Info ^ hoi_global_info,
+            hogi_set_module_info(ModuleInfo, GlobalInfo1, GlobalInfo),
+            !Info ^ hoi_global_info := GlobalInfo
         )
     else
         true
@@ -633,7 +633,7 @@ ho_traverse_unify(Unification, !Info) :-
         % Deconstructing a higher order term is not allowed.
     ;
         Unification = construct(LVar, ConsId, Args, _Modes, _, _, _),
-        Params = !.Info ^ hoi_global_info ^ hogi_params,
+        Params = hogi_get_params(!.Info ^ hoi_global_info),
         IsInteresting = is_interesting_cons_id(Params, ConsId),
         (
             IsInteresting = yes,
@@ -775,7 +775,7 @@ maybe_specialize_method_call(TypeClassInfoVar, MethodProcNum, Args,
         Goal0, Goal, !Info) :-
     MethodProcNum = method_proc_num(MethodNum),
     Goal0 = hlds_goal(_GoalExpr0, GoalInfo0),
-    ModuleInfo = !.Info ^ hoi_global_info ^ hogi_module_info,
+    ModuleInfo = hogi_get_module_info(!.Info ^ hoi_global_info),
     % We can specialize calls to class_method_call/N if the typeclass_info
     % has a known value.
     ( if
@@ -1004,7 +1004,7 @@ get_typeclass_info_args_loop(ModuleInfo, TypeClassInfoVar, PredId, ProcId,
 
 construct_specialized_higher_order_call(PredId, ProcId, AllArgs, GoalInfo,
         hlds_goal(GoalExpr, GoalInfo), !Info) :-
-    ModuleInfo = !.Info ^ hoi_global_info ^ hogi_module_info,
+    ModuleInfo = hogi_get_module_info(!.Info ^ hoi_global_info),
     module_info_pred_info(ModuleInfo, PredId, PredInfo),
     ModuleName = pred_info_module(PredInfo),
     PredName = pred_info_name(PredInfo),
@@ -1026,7 +1026,7 @@ construct_specialized_higher_order_call(PredId, ProcId, AllArgs, GoalInfo,
 
 maybe_specialize_call(hlds_goal(GoalExpr0, GoalInfo),
         hlds_goal(GoalExpr, GoalInfo), !Info) :-
-    ModuleInfo0 = !.Info ^ hoi_global_info ^ hogi_module_info,
+    ModuleInfo0 = hogi_get_module_info(!.Info ^ hoi_global_info),
     GoalExpr0 = plain_call(CalledPred, CalledProc, Args0, IsBuiltin,
         MaybeContext, _SymName0),
     module_info_pred_proc_info(ModuleInfo0, CalledPred, CalledProc,
@@ -1090,8 +1090,8 @@ maybe_specialize_call(hlds_goal(GoalExpr0, GoalInfo),
 
 maybe_specialize_pred_const(hlds_goal(GoalExpr0, GoalInfo),
         hlds_goal(GoalExpr, GoalInfo), !Info) :-
-    ModuleInfo = !.Info ^ hoi_global_info ^ hogi_module_info,
-    NewPredMap = !.Info ^ hoi_global_info ^ hogi_new_pred_map,
+    ModuleInfo = hogi_get_module_info(!.Info ^ hoi_global_info),
+    NewPredMap = hogi_get_new_pred_map(!.Info ^ hoi_global_info),
     ProcInfo0  = !.Info ^ hoi_proc_info,
     ( if
         GoalExpr0 = unify(_, _, UniMode, Unify0, Context),
@@ -1219,7 +1219,7 @@ maybe_specialize_pred_const(hlds_goal(GoalExpr0, GoalInfo),
 maybe_specialize_ordinary_call(CanRequest, CalledPred, CalledProc,
         CalleePredInfo, CalleeProcInfo, Args0, IsBuiltin,
         MaybeContext, GoalInfo, Result, !Info) :-
-    ModuleInfo0 = !.Info ^ hoi_global_info ^ hogi_module_info,
+    ModuleInfo0 = hogi_get_module_info(!.Info ^ hoi_global_info),
     pred_info_get_status(CalleePredInfo, CalleeStatus),
     proc_info_get_var_table(CalleeProcInfo, CalleeVarTable),
     proc_info_get_headvars(CalleeProcInfo, CalleeHeadVars),
@@ -1248,8 +1248,8 @@ maybe_specialize_ordinary_call(CanRequest, CalledPred, CalledProc,
             % to avoid link errors.
             RequestKind = user_type_spec
         ;
-            !.Info ^ hoi_global_info ^ hogi_params ^ param_do_user_type_spec
-                = spec_types_user_guided,
+            Params = hogi_get_params(!.Info ^ hoi_global_info),
+            Params ^ param_do_user_type_spec = spec_types_user_guided,
             lookup_var_types(VarTable, Args0, ArgTypes),
 
             % Check whether any typeclass constraints now match an instance.
@@ -1292,11 +1292,13 @@ maybe_specialize_ordinary_call(CanRequest, CalledPred, CalledProc,
             Result = not_specialized,
             (
                 CanRequest = can_request,
-                Requests0 = !.Info ^ hoi_global_info ^ hogi_requests,
+
+                GlobalInfo0 = !.Info ^ hoi_global_info,
+                hogi_add_request(Request, GlobalInfo0, GlobalInfo),
+                !Info ^ hoi_global_info := GlobalInfo,
+
                 Changed0 = !.Info ^ hoi_changed,
-                set.insert(Request, Requests0, Requests),
                 update_changed_status(Changed0, hoc_request, Changed),
-                !Info ^ hoi_global_info ^ hogi_requests := Requests,
                 !Info ^ hoi_changed := Changed
             ;
                 CanRequest = can_not_request
@@ -1457,12 +1459,12 @@ find_matching_version(Info, CalledPred, CalledProc, Args0, Context,
     % Args is the original list of arguments with the curried arguments
     % of known higher-order arguments added.
 
-    ModuleInfo = Info ^ hoi_global_info ^ hogi_module_info,
-    NewPredMap = Info ^ hoi_global_info ^ hogi_new_pred_map,
+    ModuleInfo = hogi_get_module_info(Info ^ hoi_global_info),
+    Params = hogi_get_params(Info ^ hoi_global_info),
+    NewPredMap = hogi_get_new_pred_map(Info ^ hoi_global_info),
     Caller = Info ^ hoi_pred_proc_id,
     PredInfo = Info ^ hoi_pred_info,
     ProcInfo = Info ^ hoi_proc_info,
-    Params = Info ^ hoi_global_info ^ hogi_params,
 
     % WARNING - do not filter out higher-order arguments after this step,
     % except when partially matching against a previously produced
@@ -1595,7 +1597,7 @@ arg_contains_type_info_for_tvar(RttiVarMaps, Var, !TVars) :-
     higher_order_info::in, higher_order_info::out) is det.
 
 construct_extra_type_infos(Types, TypeInfoVars, TypeInfoGoals, !Info) :-
-    ModuleInfo0 = !.Info ^ hoi_global_info ^ hogi_module_info,
+    ModuleInfo0 = hogi_get_module_info(!.Info ^ hoi_global_info),
     PredInfo0 = !.Info ^ hoi_pred_info,
     ProcInfo0 = !.Info ^ hoi_proc_info,
     polymorphism_make_type_info_vars_mi(Types, dummy_context,
@@ -1603,7 +1605,9 @@ construct_extra_type_infos(Types, TypeInfoVars, TypeInfoGoals, !Info) :-
         PredInfo0, PredInfo, ProcInfo0, ProcInfo),
     !Info ^ hoi_pred_info := PredInfo,
     !Info ^ hoi_proc_info := ProcInfo,
-    !Info ^ hoi_global_info ^ hogi_module_info := ModuleInfo.
+    GlobalInfo1 = !.Info ^ hoi_global_info,
+    hogi_set_module_info(ModuleInfo, GlobalInfo1, GlobalInfo),
+    !Info ^ hoi_global_info := GlobalInfo.
 
 %---------------------%
 
@@ -1688,7 +1692,7 @@ is_typeclass_info_manipulator(ModuleInfo, PredId, TypeClassManipulator) :-
     higher_order_info::in, higher_order_info::out) is det.
 
 interpret_typeclass_info_manipulator(Manipulator, Args, Goal0, Goal, !Info) :-
-    ModuleInfo = !.Info ^ hoi_global_info ^ hogi_module_info,
+    ModuleInfo = hogi_get_module_info(!.Info ^ hoi_global_info),
     KnownVarMap0 = !.Info ^ hoi_known_var_map,
     ( if
         Args = [TypeClassInfoVar, IndexVar, OutputVar],
@@ -1846,7 +1850,7 @@ find_typeclass_info_components(ModuleInfo, KnownVarMap,
 
 specialize_call_to_unify_or_compare(CalledPred, CalledProc, Args, MaybeContext,
         OrigGoalInfo, Goal, !Info) :-
-    ModuleInfo = !.Info ^ hoi_global_info ^ hogi_module_info,
+    ModuleInfo = hogi_get_module_info(!.Info ^ hoi_global_info),
     ProcInfo0 = !.Info ^ hoi_proc_info,
     KnownVarMap = !.Info ^ hoi_known_var_map,
     proc_info_get_var_table(ProcInfo0, VarTable),
@@ -1993,7 +1997,7 @@ specialize_unify_or_compare_pred_for_dummy(MaybeResult, GoalExpr, !Info) :-
 
 specialize_unify_or_compare_pred_for_atomic(SpecialPredType, MaybeResult,
         Arg1, Arg2, MaybeContext, OrigGoalInfo, GoalExpr, !Info) :-
-    ModuleInfo = !.Info ^ hoi_global_info ^ hogi_module_info,
+    ModuleInfo = hogi_get_module_info(!.Info ^ hoi_global_info),
     ProcInfo0 = !.Info ^ hoi_proc_info,
     (
         MaybeResult = no,
@@ -2043,7 +2047,7 @@ specialize_unify_or_compare_pred_for_atomic(SpecialPredType, MaybeResult,
 specialize_unify_or_compare_pred_for_no_tag(OuterType, WrappedType,
         WrappedTypeIsDummy, Constructor, MaybeResult, Arg1, Arg2,
         MaybeContext, OrigGoalInfo, GoalExpr, !Info) :-
-    ModuleInfo = !.Info ^ hoi_global_info ^ hogi_module_info,
+    ModuleInfo = hogi_get_module_info(!.Info ^ hoi_global_info),
     ProcInfo0 = !.Info ^ hoi_proc_info,
     Context = goal_info_get_context(OrigGoalInfo),
     unwrap_no_tag_arg(OuterType, WrappedType, WrappedTypeIsDummy, Context,
@@ -2111,7 +2115,7 @@ specialize_unify_or_compare_pred_for_no_tag(OuterType, WrappedType,
 
 find_unify_or_compare_proc(TypeCtor, SpecialId, SymName, PredId, ProcId,
         !Info) :-
-    ModuleInfo0 = !.Info ^ hoi_global_info ^ hogi_module_info,
+    ModuleInfo0 = hogi_get_module_info(!.Info ^ hoi_global_info),
     ( if
         get_special_proc(ModuleInfo0, TypeCtor, SpecialId, SymName0,
             PredId0, ProcId0)
@@ -2151,7 +2155,9 @@ find_unify_or_compare_proc(TypeCtor, SpecialId, SymName, PredId, ProcId,
         ModuleName = pred_info_module(PredInfo),
         Name = pred_info_name(PredInfo),
         SymName = qualified(ModuleName, Name),
-        !Info ^ hoi_global_info ^ hogi_module_info := ModuleInfo
+        GlobalInfo1 = !.Info ^ hoi_global_info,
+        hogi_set_module_info(ModuleInfo, GlobalInfo1, GlobalInfo),
+        !Info ^ hoi_global_info := GlobalInfo
     ).
 
 :- pred find_builtin_type_with_equivalent_compare(module_info::in,
