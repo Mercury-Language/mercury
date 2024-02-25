@@ -1255,6 +1255,8 @@ maybe_write_call_tree(ProgressStream, ErrorStream, Verbose, Stats,
             ShowCallTree = yes,
             maybe_write_string(ProgressStream, Verbose,
                 "% Writing call_tree...", !IO),
+            construct_local_call_tree_file_contents(HLDS, CallTreeInfo,
+                TreeFileStr, OrderFileStr),
             module_info_get_name(HLDS, ModuleName),
             module_name_to_file_name_create_dirs(Globals, $pred,
                 ext_cur(ext_cur_user_lct), ModuleName, TreeFileName, !IO),
@@ -1264,27 +1266,34 @@ maybe_write_call_tree(ProgressStream, ErrorStream, Verbose, Stats,
             io.open_output(TreeFileName, TreeResult, !IO),
             (
                 TreeResult = ok(TreeFileStream),
-                io.open_output(OrderFileName, OrderResult, !IO),
-                (
-                    OrderResult = ok(OrderFileStream),
-                    hlds.hlds_call_tree.write_local_call_tree(TreeFileStream,
-                        OrderFileStream, HLDS, CallTreeInfo, !IO),
-                    io.close_output(TreeFileStream, !IO),
-                    io.close_output(OrderFileStream, !IO),
-                    maybe_write_string(ProgressStream, Verbose,
-                        " done.\n", !IO)
-                ;
-                    OrderResult = error(IOError),
-                    io.close_output(TreeFileStream, !IO),
-                    ErrorMsg = "unable to write local call tree order: " ++
-                        io.error_message(IOError),
-                    report_error(ErrorStream, ErrorMsg, !IO)
-                )
+                TreeErrorMsg = "",
+                io.write_string(TreeFileStream, TreeFileStr, !IO),
+                io.close_output(TreeFileStream, !IO)
             ;
-                TreeResult = error(IOError),
-                ErrorMsg = "unable to write local call tree: " ++
-                    io.error_message(IOError),
-                report_error(ErrorStream, ErrorMsg, !IO)
+                TreeResult = error(TreeIOError),
+                string.format("unable to write to %s: %s\n",
+                    [s(TreeFileName), s(io.error_message(TreeIOError))],
+                    TreeErrorMsg),
+                report_error(ErrorStream, TreeErrorMsg, !IO)
+            ),
+            io.open_output(OrderFileName, OrderResult, !IO),
+            (
+                OrderResult = ok(OrderFileStream),
+                OrderErrorMsg = "",
+                io.write_string(OrderFileStream, OrderFileStr, !IO),
+                io.close_output(OrderFileStream, !IO)
+            ;
+                OrderResult = error(OrderIOError),
+                string.format("unable to write to %s: %s\n",
+                    [s(OrderFileName), s(io.error_message(OrderIOError))],
+                    OrderErrorMsg),
+                report_error(ErrorStream, OrderErrorMsg, !IO)
+            ),
+            ( if TreeErrorMsg = "", OrderErrorMsg = "" then
+                maybe_write_string(ProgressStream, Verbose, " done.\n", !IO)
+            else
+                % We have already written out the error message(s).
+                true
             )
         ;
             ShowCallTree = no

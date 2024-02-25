@@ -82,7 +82,6 @@
 :- import_module parse_tree.
 :- import_module parse_tree.error_spec.
 
-:- import_module io.
 :- import_module list.
 
 %---------------------%
@@ -97,14 +96,17 @@
 
 %---------------------%
 
-    % Write out the pieces of the depth-first left-to-right traversal
-    % (such as the first example above) of the given module to the first
-    % output stream, and write the flatted predicate order to the second
-    % output stream.
+    % Construct and return strings containing
     %
-:- pred write_local_call_tree(io.text_output_stream::in,
-    io.text_output_stream::in, module_info::in, call_tree_info::in,
-    io::di, io::uo) is det.
+    % - the proposed contents of the file containing the depth-first
+    %   left-to-right traversal (such as the first example above)
+    %   of the given module, and
+    %
+    % - the proposed contents of the file containing the flattened
+    %   predicate order.
+    %
+:- pred construct_local_call_tree_file_contents(module_info::in,
+    call_tree_info::in, string::out, string::out) is det.
 
 %---------------------%
 
@@ -138,6 +140,7 @@
 :- import_module require.
 :- import_module set_tree234.
 :- import_module string.
+:- import_module string.builder.
 :- import_module term_context.
 
 %---------------------------------------------------------------------------%
@@ -401,18 +404,23 @@ keep_only_first_calls_loop([PredId | PredIds], !.SeenPredIds,
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
-write_local_call_tree(TreeStream, OrderStream, ModuleInfo,
-        CallTreeInfo, !IO) :-
+construct_local_call_tree_file_contents(ModuleInfo, CallTreeInfo,
+        TreeFileStr, OrderFileStr) :-
     CallTreeInfo = call_tree_info(_LocalPredIds, _ExportList,
         PredCalleesList, PredCalleeMap),
     construct_depth_first_left_right_order(PredCalleeMap, PredCalleesList,
         set_tree234.init, cord.init, PredIdCord),
     PredIdList = cord.list(PredIdCord),
 
-    list.foldl2(write_pred_callees_entry(TreeStream, ModuleInfo),
-        PredCalleesList, yes, _First, !IO),
-    list.foldl(write_pred_order_entry(OrderStream, ModuleInfo),
-        PredIdList, !IO).
+    TreeState0 = string.builder.init,
+    list.foldl2(construct_pred_callees_entry(ModuleInfo), PredCalleesList,
+        yes, _First, TreeState0, TreeState),
+    TreeFileStr = string.builder.to_string(TreeState),
+
+    OrderState0 = string.builder.init,
+    list.foldl(construct_pred_order_entry(ModuleInfo), PredIdList,
+        OrderState0, OrderState),
+    OrderFileStr = string.builder.to_string(OrderState).
 
 :- pred construct_depth_first_left_right_order(map(pred_id, pred_callees)::in,
     list(pred_callees)::in, set_tree234(pred_id)::in,
@@ -438,10 +446,11 @@ construct_depth_first_left_right_order(PredCalleeMap,
 
 %---------------------------------------------------------------------------%
 
-:- pred write_pred_callees_entry(io.text_output_stream::in, module_info::in,
-    pred_callees::in, bool::in, bool::out, io::di, io::uo) is det.
+:- pred construct_pred_callees_entry(module_info::in, pred_callees::in,
+    bool::in, bool::out,
+    string.builder.state::di, string.builder.state::uo) is det.
 
-write_pred_callees_entry(Stream, ModuleInfo, PredCallees, !IsFirst, !IO) :-
+construct_pred_callees_entry(ModuleInfo, PredCallees, !IsFirst, !State) :-
     PredCallees = pred_callees(_PredId, PredInfo, Callees),
     PredDesc = describe_pred(do_not_include_module_name, PredInfo),
     % Print a newline before every entry except the first.
@@ -450,28 +459,28 @@ write_pred_callees_entry(Stream, ModuleInfo, PredCallees, !IsFirst, !IO) :-
         !:IsFirst = no
     ;
         !.IsFirst = no,
-        io.nl(Stream, !IO)
+        string.builder.append_string("\n", !State)
     ),
-    io.format(Stream, "%s\n", [s(PredDesc)], !IO),
-    list.foldl(lookup_and_write_callee(Stream, ModuleInfo), Callees, !IO).
+    string.builder.format("%s\n", [s(PredDesc)], !State),
+    list.foldl(lookup_callee_and_construct_entry(ModuleInfo), Callees, !State).
 
-:- pred lookup_and_write_callee(io.text_output_stream::in, module_info::in,
-    pred_id::in, io::di, io::uo) is det.
+:- pred lookup_callee_and_construct_entry(module_info::in, pred_id::in,
+    string.builder.state::di, string.builder.state::uo) is det.
 
-lookup_and_write_callee(Stream, ModuleInfo, PredId, !IO) :-
+lookup_callee_and_construct_entry(ModuleInfo, PredId, !State) :-
     module_info_pred_info(ModuleInfo, PredId, PredInfo),
     PredDesc = describe_pred(do_not_include_module_name, PredInfo),
-    io.format(Stream, "    %s\n", [s(PredDesc)], !IO).
+    string.builder.format("    %s\n", [s(PredDesc)], !State).
 
 %---------------------------------------------------------------------------%
 
-:- pred write_pred_order_entry(io.text_output_stream::in, module_info::in,
-    pred_id::in, io::di, io::uo) is det.
+:- pred construct_pred_order_entry(module_info::in, pred_id::in,
+    string.builder.state::di, string.builder.state::uo) is det.
 
-write_pred_order_entry(Stream, ModuleInfo, PredId, !IO) :-
+construct_pred_order_entry(ModuleInfo, PredId, !State) :-
     PredDesc = describe_pred_from_id(do_not_include_module_name,
         ModuleInfo, PredId),
-    io.format(Stream, "%s\n", [s(PredDesc)], !IO).
+    string.builder.format("%s\n", [s(PredDesc)], !State).
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
