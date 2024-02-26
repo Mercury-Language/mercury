@@ -1,0 +1,6 @@
+a start
+b start
+a stop
+b stop
+a join result: ok({"a", 1234})
+b join result: ok({"b", 1234})

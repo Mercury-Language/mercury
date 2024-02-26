@@ -370,6 +370,7 @@ ORDINARY_PROGS = \
 	solve_quadratic \
 	space \
 	spawn_native \
+	spawn_native_joinable \
 	special_char \
 	stable_sort \
 	static_no_tag \

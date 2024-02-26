@@ -1049,6 +1049,13 @@ Changes to the Mercury standard library
 * This new module contains predicates and functions that find
   variables in terms.
 
+### Changes to the `thread` module
+
+* The following predicates have been added:
+
+    - pred `spawn_native_joinable/5`
+    - pred `join_thread/4`
+
 ### Changes to the `tree_bitset` module
 
 * The following predicates have been added:
