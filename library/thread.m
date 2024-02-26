@@ -123,8 +123,6 @@
     % The thread will continue to take up system resources until it terminates
     % and has been joined by a call to join_thread/4.
     %
-    % The Java and C# backends do not yet support joinable threads.
-    %
 :- pred spawn_native_joinable(
     pred(joinable_thread(T), T, io, io)::in(pred(in, out, di, uo) is cc_multi),
     thread_options::in, maybe_error(joinable_thread(T))::out, io::di, io::uo)
@@ -204,6 +202,7 @@
 
 :- pragma foreign_decl("Java", "
 import jmercury.runtime.JavaInternal;
+import jmercury.runtime.MercuryThread;
 import jmercury.runtime.Task;
 ").
 
@@ -231,13 +230,11 @@ import jmercury.runtime.Task;
 :- type thread_desc == string.
 
     % A thread handle from the underlying thread API.
-    % The C# and Java grades currently use strings for this type but
-    % that will need to change to support joinable threads in those grades.
     %
 :- type thread_handle.
 :- pragma foreign_type("C", thread_handle, "ML_ThreadHandle").
-:- pragma foreign_type("C#", thread_handle, "string").
-:- pragma foreign_type("Java", thread_handle, "java.lang.String").
+:- pragma foreign_type("C#", thread_handle, "System.Threading.Thread").
+:- pragma foreign_type("Java", thread_handle, "jmercury.runtime.MercuryThread").
 
 %---------------------------------------------------------------------------%
 
@@ -380,7 +377,7 @@ spawn_context_2(_, Res, "", !IO) :-
     [promise_pure, will_not_call_mercury, thread_safe, tabled_for_io,
         may_not_duplicate],
 "
-    RunGoal rg = new RunGoal((Object[]) Goal);
+    RunGoalDetached rg = new RunGoalDetached((Object[]) Goal);
     Task task = new Task(rg);
     ThreadDesc = String.valueOf(task.getId());
     rg.setThreadDesc(ThreadDesc);
@@ -448,20 +445,19 @@ spawn_native(Goal, Options, Res, !IO) :-
 "
     try {
         object[] thread_locals = runtime.ThreadLocalMutables.clone();
-        MercuryThread mt = new MercuryThread(Goal, thread_locals);
+        RunGoalDetached rg = new RunGoalDetached(Goal, thread_locals);
         System.Threading.Thread thread = new System.Threading.Thread(
-            new System.Threading.ThreadStart(mt.run));
-        ThreadDesc = thread.ManagedThreadId.ToString();
-        mt.setThreadDesc(ThreadDesc);
+            new System.Threading.ThreadStart(rg.run));
+        string thread_desc = thread.ManagedThreadId.ToString();
+        rg.setThreadDesc(thread_desc);
         thread.Start();
+
         Success = mr_bool.YES;
+        ThreadDesc = thread_desc;
         ErrorMsg = """";
-    } catch (System.Threading.ThreadStartException e) {
-        Success = mr_bool.NO;
-        ThreadDesc = """";
-        ErrorMsg = e.Message;
     } catch (System.SystemException e) {
-        // Seen with mono.
+        // This includes System.Threading.ThreadStartException.
+        // SystemException has been seen with mono.
         Success = mr_bool.NO;
         ThreadDesc = """";
         ErrorMsg = e.Message;
@@ -475,19 +471,23 @@ spawn_native(Goal, Options, Res, !IO) :-
     [promise_pure, will_not_call_mercury, thread_safe, tabled_for_io,
         may_not_duplicate],
 "
-    RunGoal rg = new RunGoal((Object[]) Goal);
-    Task task = new Task(rg);
-    ThreadDesc = String.valueOf(task.getId());
-    rg.setThreadDesc(ThreadDesc);
     try {
-        JavaInternal.getThreadPool().submitExclusiveThread(task);
+        RunGoalDetached rg = new RunGoalDetached((Object[]) Goal);
+        Task task = new Task(rg);
+        String thread_desc = String.valueOf(task.getId());
+        rg.setThreadDesc(thread_desc);
+        JavaInternal.getThreadPool().createExclusiveThread(task).start();
+
         Success = bool.YES;
+        ThreadDesc = thread_desc;
         ErrorMsg = """";
     } catch (java.lang.SecurityException e) {
         Success = bool.NO;
+        ThreadDesc = """";
         ErrorMsg = e.getMessage();
     } catch (java.lang.OutOfMemoryError e) {
         Success = bool.NO;
+        ThreadDesc = """";
         ErrorMsg = e.getMessage();
     }
     if (Success == bool.NO && ErrorMsg == null) {
@@ -539,27 +539,64 @@ spawn_native_joinable(Goal, Options, Res, !IO) :-
 ").
 
 :- pragma foreign_proc("C#",
-    spawn_native_joinable_2(_Goal::in(pred(in, out, di, uo) is cc_multi),
-        _MinStackSize::in, _OutputMutvar::in,
+    spawn_native_joinable_2(Goal::in(pred(in, out, di, uo) is cc_multi),
+        _MinStackSize::in, OutputMutvar::in,
         Success::out, ThreadHandle::out, ErrorMsg::out, _IO0::di, _IO::uo),
     [promise_pure, will_not_call_mercury, thread_safe, tabled_for_io,
         may_not_duplicate],
 "
-    Success = mr_bool.NO;
-    ThreadHandle = null;
-    ErrorMsg = ""Cannot create joinable thread in this grade."";
+    try {
+        object[] thread_locals = runtime.ThreadLocalMutables.clone();
+        RunGoalJoinable rg = new RunGoalJoinable(TypeInfo_for_T, Goal,
+            thread_locals, OutputMutvar);
+        System.Threading.Thread thread = new System.Threading.Thread(
+            new System.Threading.ThreadStart(rg.run));
+        rg.setThreadHandle(thread);
+        thread.Start();
+
+        Success = mr_bool.YES;
+        ThreadHandle = thread;
+        ErrorMsg = """";
+    } catch (System.SystemException e) {
+        // This includes System.Threading.ThreadStartException.
+        // SystemException has been seen with mono.
+        Success = mr_bool.NO;
+        ThreadHandle = null;
+        ErrorMsg = e.Message;
+    }
 ").
 
 :- pragma foreign_proc("Java",
-    spawn_native_joinable_2(_Goal::in(pred(in, out, di, uo) is cc_multi),
-        _MinStackSize::in, _OutputMutvar::in,
+    spawn_native_joinable_2(Goal::in(pred(in, out, di, uo) is cc_multi),
+        _MinStackSize::in, OutputMutvar::in,
         Success::out, ThreadHandle::out, ErrorMsg::out, _IO0::di, _IO::uo),
     [promise_pure, will_not_call_mercury, thread_safe, tabled_for_io,
         may_not_duplicate],
 "
-    Success = bool.NO;
-    ThreadHandle = null;
-    ErrorMsg = ""Cannot create joinable thread in this grade."";
+    try {
+        RunGoalJoinable rg = new RunGoalJoinable(TypeInfo_for_T,
+            (Object[]) Goal, OutputMutvar);
+        Task task = new Task(rg);
+        MercuryThread mt = JavaInternal.getThreadPool()
+            .createExclusiveThread(task);
+        rg.setThreadHandle(mt);
+        mt.start();
+
+        Success = bool.YES;
+        ThreadHandle = mt;
+        ErrorMsg = """";
+    } catch (java.lang.SecurityException e) {
+        Success = bool.NO;
+        ThreadHandle = null;
+        ErrorMsg = e.getMessage();
+    } catch (java.lang.OutOfMemoryError e) {
+        Success = bool.NO;
+        ThreadHandle = null;
+        ErrorMsg = e.getMessage();
+    }
+    if (Success == bool.NO && ErrorMsg == null) {
+        ErrorMsg = ""Unable to create new native thread."";
+    }
 ").
 
 %---------------------------------------------------------------------------%
@@ -608,9 +645,37 @@ join_thread(Thread, Res, !IO) :-
 #endif
 ").
 
-join_thread_2(_ThreadHandle, Success, ErrorMsg, !IO) :-
-    Success = no,
-    ErrorMsg = "Joinable threads not supported in this grade.".
+:- pragma foreign_proc("C#",
+    join_thread_2(ThreadHandle::in, Success::out, ErrorMsg::out,
+        _IO0::di, _IO::uo),
+    [promise_pure, will_not_call_mercury, thread_safe, tabled_for_io,
+        may_not_duplicate],
+"
+    try {
+        ThreadHandle.Join();
+        Success = mr_bool.YES;
+        ErrorMsg = """";
+    } catch (System.SystemException e) {
+        Success = mr_bool.NO;
+        ErrorMsg = e.Message;
+    }
+").
+
+:- pragma foreign_proc("Java",
+    join_thread_2(ThreadHandle::in, Success::out, ErrorMsg::out,
+        _IO0::di, _IO::uo),
+    [promise_pure, will_not_call_mercury, thread_safe, tabled_for_io,
+        may_not_duplicate],
+"
+    try {
+        ThreadHandle.join();
+        Success = bool.YES;
+        ErrorMsg = """";
+    } catch (java.lang.InterruptedException e) {
+        Success = bool.NO;
+        ErrorMsg = e.getMessage();
+    }
+").
 
 %---------------------------------------------------------------------------%
 
@@ -960,6 +1025,12 @@ call_back_to_mercury_detached(Goal, ThreadDesc, !IO) :-
 :- pragma foreign_export("C",
     call_back_to_mercury_joinable(in(pred(in, out, di, uo) is cc_multi),
     in, in, di, uo), "ML_call_back_to_mercury_joinable_cc_multi").
+:- pragma foreign_export("C#",
+    call_back_to_mercury_joinable(in(pred(in, out, di, uo) is cc_multi),
+    in, in, di, uo), "ML_call_back_to_mercury_joinable_cc_multi").
+:- pragma foreign_export("Java",
+    call_back_to_mercury_joinable(in(pred(in, out, di, uo) is cc_multi),
+    in, in, di, uo), "ML_call_back_to_mercury_joinable_cc_multi").
 :- pragma no_inline(pred(call_back_to_mercury_joinable/5)).
 
 call_back_to_mercury_joinable(Goal, ThreadHandle, OutputMutvar, !IO) :-
@@ -973,6 +1044,9 @@ call_back_to_mercury_joinable(Goal, ThreadHandle, OutputMutvar, !IO) :-
         % reference to the term resides only in some GC-inaccessible memory
         % in the pthread implementation, and therefore could be collected
         % before join_thread retrieves the value.
+        %
+        % The C# or Java thread APIs do not support returning a value from a
+        % joined thread anyway.
         impure set_mutvar(OutputMutvar, Output)
     ).
 
@@ -1027,15 +1101,16 @@ call_back_to_mercury_joinable(Goal, ThreadHandle, OutputMutvar, !IO) :-
 %---------------------------------------------------------------------------%
 
 :- pragma foreign_code("C#", "
-private class MercuryThread {
-    private object[] goal;
-    private object[] thread_local_mutables;
-    private string thread_desc;
+private class RunGoalDetached {
+    private object[]    goal;
+    private object[]    thread_local_mutables;
+    private string      thread_desc;
 
-    internal MercuryThread(object[] goal, object[] tlmuts)
+    internal RunGoalDetached(object[] goal, object[] tlmuts)
     {
         this.goal = goal;
         this.thread_local_mutables = tlmuts;
+        this.thread_desc = null;
     }
 
     internal void setThreadDesc(string thread_desc)
@@ -1048,14 +1123,45 @@ private class MercuryThread {
         runtime.ThreadLocalMutables.set_array(thread_local_mutables);
         thread.ML_call_back_to_mercury_detached_cc_multi(goal, thread_desc);
     }
-}").
+}
+
+private class RunGoalJoinable {
+    private runtime.TypeInfo_Struct typeinfo_for_T;
+    private object[]                goal;
+    private object[]                thread_local_mutables;
+    private object[]                output_mutvar;
+    private System.Threading.Thread thread_handle;
+
+    internal RunGoalJoinable(runtime.TypeInfo_Struct typeinfo_for_T,
+        object[] goal, object[] tlmuts, object[] output_mutvar)
+    {
+        this.typeinfo_for_T = typeinfo_for_T;
+        this.goal = goal;
+        this.thread_local_mutables = tlmuts;
+        this.output_mutvar = output_mutvar;
+        this.thread_handle = null;
+    }
+
+    internal void setThreadHandle(System.Threading.Thread thread_handle)
+    {
+        this.thread_handle = thread_handle;
+    }
+
+    internal void run()
+    {
+        runtime.ThreadLocalMutables.set_array(thread_local_mutables);
+        thread.ML_call_back_to_mercury_joinable_cc_multi(typeinfo_for_T, goal,
+            thread_handle, output_mutvar);
+    }
+}
+").
 
 :- pragma foreign_code("Java", "
-public static class RunGoal implements Runnable {
+public static class RunGoalDetached implements Runnable {
     private final Object[]  goal;
     private String          thread_desc;
 
-    private RunGoal(Object[] goal)
+    private RunGoalDetached(Object[] goal)
     {
         this.goal = goal;
         this.thread_desc = null;
@@ -1070,7 +1176,35 @@ public static class RunGoal implements Runnable {
     {
         thread.ML_call_back_to_mercury_detached_cc_multi(goal, thread_desc);
     }
-}").
+}
+
+public static class RunGoalJoinable implements Runnable {
+    private final jmercury.runtime.TypeInfo_Struct typeinfo_for_T;
+    private final Object[]      goal;
+    private final mutvar.Mutvar output_mutvar;
+    private MercuryThread       thread_handle;
+
+    private RunGoalJoinable(jmercury.runtime.TypeInfo_Struct typeinfo_for_T,
+        Object[] goal, mutvar.Mutvar output_mutvar)
+    {
+        this.typeinfo_for_T = typeinfo_for_T;
+        this.goal = goal;
+        this.output_mutvar = output_mutvar;
+        this.thread_handle = null;
+    }
+
+    private void setThreadHandle(MercuryThread thread_handle)
+    {
+        this.thread_handle = thread_handle;
+    }
+
+    public void run()
+    {
+        thread.ML_call_back_to_mercury_joinable_cc_multi(typeinfo_for_T, goal,
+            thread_handle, output_mutvar);
+    }
+}
+").
 
 %---------------------------------------------------------------------------%
 

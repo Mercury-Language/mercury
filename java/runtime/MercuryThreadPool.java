@@ -1,6 +1,6 @@
 // vim: ts=4 sw=4 expandtab ft=java
 //
-// Copyright (C) 2014, 2016, 2018 The Mercury Team
+// Copyright (C) 2014, 2016, 2018, 2024 The Mercury team.
 // This file is distributed under the terms specified in COPYING.LIB.
 //
 
@@ -134,12 +134,11 @@ public class MercuryThreadPool
     /**
      * Create a new thread to execute the given task.
      * @param task The task the new thread should execute.
-     * @return The task.
+     * @return The new thread.
      */
-    public void submitExclusiveThread(Task task)
+    public MercuryThread createExclusiveThread(Task task)
     {
-        Thread t = thread_factory.newThread(task);
-        t.start();
+        return thread_factory.newThread(task);
     }
 
     /**
