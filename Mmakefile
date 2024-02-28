@@ -458,7 +458,7 @@ configure: configure.ac aclocal.m4
 	autoconf
 
 config.status: configure VERSION
-	if [ -f ./config.status ]; then \
+	if test -f ./config.status; then \
 		./config.status --recheck; \
 	else \
 		echo "======> You need to run configure!"; \
@@ -636,7 +636,7 @@ install_util: util
 
 .PHONY: install_config
 install_config:
-	[ -d $(INSTALL_RECONF_DIR) ] || mkdir -p $(INSTALL_RECONF_DIR)
+	test -d $(INSTALL_RECONF_DIR) || mkdir -p $(INSTALL_RECONF_DIR)
 	cp VERSION aclocal.m4 configure configure.ac config.guess \
 		config.sub install-sh $(INSTALL_RECONF_DIR)
 
@@ -728,7 +728,7 @@ install_grades: install_main
 	#
 	# Force mmc --make for grades which require it.
 	+for grade in x $(LIBGRADES); do                                      \
-	    if [ "$${grade}" = "x" -o "$${grade}" = "$(GRADE)" ]; then        \
+	    if test "$${grade}" = "x" -o "$${grade}" = "$(GRADE)"; then       \
 		continue;                                                     \
 	    fi;                                                               \
 	    gc_grade=`scripts/ml --grade $${grade} --print-gc-grade`;         \
@@ -815,7 +815,7 @@ clean: clean_tests clean_subdirs clean_extras
 .PHONY: clean_subdirs
 clean_subdirs:
 	+for dir in $(SUBDIRS); do \
-		if [ "$$dir" = scripts ]; then continue; fi; \
+		if test "$$dir" = scripts; then continue; fi; \
 		(cd $$dir; $(SUBDIR_MMAKE) clean) \
 	done
 
@@ -842,7 +842,7 @@ realclean_subdirs: clean_subdirs
 	rm -rf stage[1-3] stage[1-3].*
 	rm -rf tests/PASSED_TC_DIR tests/FAILED_TC_DIR
 	+for dir in $(SUBDIRS); do \
-		if [ "$$dir" = scripts ]; then continue; fi; \
+		if test "$$dir" = scripts; then continue; fi; \
 		(cd $$dir; $(SUBDIR_MMAKE) realclean) \
 	done
 
