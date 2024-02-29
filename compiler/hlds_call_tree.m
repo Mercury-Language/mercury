@@ -951,12 +951,10 @@ generate_movability_report(ModuleInfo, CallTreeInfo, WantToMovePredNames,
         UnknownNames = [_ | _],
         UnknownPieces = [words("Error in the arguments"),
             words("of the --show-movability option: the"),
-            words(choose_number(UnknownNames,
-                "name", "names"))] ++
+            words(choose_number(UnknownNames, "name", "names"))] ++
             list_to_pieces(UnknownNames) ++
-            [words(choose_number(UnknownNames,
-                "does not", "do not")),
-            words("don't name any predicate or function."), nl],
+            [words(choose_number(UnknownNames, "does not", "do not")),
+            words("name any predicate or function in this module."), nl],
         UnknownSpec = simplest_no_context_spec($pred, severity_error,
             phase_style, UnknownPieces),
         UnknownSpecs = [UnknownSpec]
