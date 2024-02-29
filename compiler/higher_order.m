@@ -15,7 +15,9 @@
 :- implementation.
 
 :- include_module higher_order_global_info.
+:- include_module higher_order_info.
 :- include_module specialize_calls.
+:- include_module specialize_unify_compare.
 :- include_module make_specialized_preds.
 
 %---------------------------------------------------------------------------%

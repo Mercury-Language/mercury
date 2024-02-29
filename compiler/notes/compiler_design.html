@@ -1652,8 +1652,14 @@ higher-order, type_info, and/or typeclass_info arguments are known.
     <li>
     higher_order.specialize_calls.m finds the calls to be specialized.
     <li>
-    higher_order.make_specialized_pred.m constructs the specialized versions
-    of the calleeds.
+    higher_order.specialize_unify_compare.m replaces
+    generic unify and compare operations with type-specific ones.
+    <li>
+    higher_order.higher_order_info.m
+    defines the data structure that the two modules above share.
+    <li>
+    higher_order.make_specialized_pred.m constructs
+    the specialized versions of predicates for the specialized calls to call.
     <li>
     higher_order.higher_order_globals_info.m
     defines the data structures they all share,
