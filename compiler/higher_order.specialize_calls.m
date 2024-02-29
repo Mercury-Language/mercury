@@ -1943,20 +1943,20 @@ specialize_call_to_unify_or_compare(CalledPred, CalledProc, Args, MaybeContext,
                 WrappedTypeIsDummy, Constructor, MaybeResult, Arg1, Arg2,
                 MaybeContext, OrigGoalInfo, Goal, !Info)
         else
-            maybe_call_type_specific_unify_or_compare(Type, SpecialId,
+            create_goal_to_call_type_specific_unify_or_compare(Type, SpecialId,
                 TypeInfoArgs, SpecialPredArgs, MaybeContext, Goal, !Info)
         )
     else
-        maybe_call_type_specific_unify_or_compare(Type, SpecialId,
+        create_goal_to_call_type_specific_unify_or_compare(Type, SpecialId,
             TypeInfoArgs, SpecialPredArgs, MaybeContext, Goal, !Info)
     ).
 
-:- pred maybe_call_type_specific_unify_or_compare(mer_type::in,
+:- pred create_goal_to_call_type_specific_unify_or_compare(mer_type::in,
     special_pred_id::in, list(prog_var)::in, list(prog_var)::in,
     maybe(call_unify_context)::in, hlds_goal_expr::out,
     higher_order_info::in, higher_order_info::out) is semidet.
 
-maybe_call_type_specific_unify_or_compare(SpecialPredType, SpecialId,
+create_goal_to_call_type_specific_unify_or_compare(SpecialPredType, SpecialId,
         TypeInfoArgs, SpecialPredArgs, MaybeContext, Goal, !Info) :-
     % We can only specialize unifications and comparisons to call the
     % type-specific unify or compare predicate if we are generating
@@ -2050,10 +2050,12 @@ specialize_unify_or_compare_pred_for_no_tag(OuterType, WrappedType,
     ModuleInfo = hogi_get_module_info(!.Info ^ hoi_global_info),
     ProcInfo0 = !.Info ^ hoi_proc_info,
     Context = goal_info_get_context(OrigGoalInfo),
-    unwrap_no_tag_arg(OuterType, WrappedType, WrappedTypeIsDummy, Context,
-        Constructor, Arg1, UnwrappedArg1, ExtractGoal1, ProcInfo0, ProcInfo1),
-    unwrap_no_tag_arg(OuterType, WrappedType, WrappedTypeIsDummy, Context,
-        Constructor, Arg2, UnwrappedArg2, ExtractGoal2, ProcInfo1, ProcInfo2),
+    create_goal_to_unwrap_no_tag_arg(OuterType, WrappedType,
+        WrappedTypeIsDummy, Context, Constructor, Arg1, UnwrappedArg1,
+        ExtractGoal1, ProcInfo0, ProcInfo1),
+    create_goal_to_unwrap_no_tag_arg(OuterType, WrappedType,
+        WrappedTypeIsDummy, Context, Constructor, Arg2, UnwrappedArg2,
+        ExtractGoal2, ProcInfo1, ProcInfo2),
     set_of_var.list_to_set([UnwrappedArg1, UnwrappedArg2], NonLocals0),
     (
         MaybeResult = no,
@@ -2109,6 +2111,7 @@ specialize_unify_or_compare_pred_for_no_tag(OuterType, WrappedType,
         )
     ).
 
+    % ZZZ HOGI add type unify/compare pred to module_info
 :- pred find_unify_or_compare_proc(type_ctor::in, special_pred_id::in,
     sym_name::out, pred_id::out, proc_id::out,
     higher_order_info::in, higher_order_info::out) is semidet.
@@ -2138,7 +2141,6 @@ find_unify_or_compare_proc(TypeCtor, SpecialId, SymName, PredId, ProcId,
             fail
         ;
             SpecialId = spec_pred_unify,
-
             % XXX We should only add the declaration, not the body, for the
             % unify pred, but that complicates things if mode analysis is rerun
             % after higher_order.m and requests more unification procedures.
@@ -2146,7 +2148,6 @@ find_unify_or_compare_proc(TypeCtor, SpecialId, SymName, PredId, ProcId,
             % clauses if the predicate's arguments have already had type-infos
             % added. This case shouldn't come up unless an optimization does
             % reordering which requires rescheduling a conjunction.
-
             add_lazily_generated_unify_pred(TypeCtor, PredId,
                 ModuleInfo0, ModuleInfo),
             hlds_pred.in_in_unification_proc_id(ProcId)
@@ -2195,12 +2196,13 @@ generate_unsafe_type_cast(Context, ToType, IsDummy, Arg, CastArg, Goal,
     proc_info_create_var_from_type("", ToType, IsDummy, CastArg, !ProcInfo),
     generate_cast(unsafe_type_cast, Arg, CastArg, Context, Goal).
 
-:- pred unwrap_no_tag_arg(mer_type::in, mer_type::in, is_dummy_type::in,
-    prog_context::in, sym_name::in, prog_var::in, prog_var::out,
-    hlds_goal::out, proc_info::in, proc_info::out) is det.
+:- pred create_goal_to_unwrap_no_tag_arg(mer_type::in, mer_type::in,
+    is_dummy_type::in, prog_context::in, sym_name::in,
+    prog_var::in, prog_var::out, hlds_goal::out,
+    proc_info::in, proc_info::out) is det.
 
-unwrap_no_tag_arg(OuterType, WrappedType, IsDummy, Context, Constructor, Arg,
-        UnwrappedArg, Goal, !ProcInfo) :-
+create_goal_to_unwrap_no_tag_arg(OuterType, WrappedType, IsDummy, Context,
+        Constructor, Arg, UnwrappedArg, Goal, !ProcInfo) :-
     proc_info_create_var_from_type("", WrappedType, IsDummy,
         UnwrappedArg, !ProcInfo),
     type_to_ctor_det(OuterType, OuterTypeCtor),
