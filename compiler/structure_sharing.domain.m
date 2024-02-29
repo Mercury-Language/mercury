@@ -670,9 +670,8 @@ sharing_as_for_foreign_proc(ModuleInfo, Attributes, ForeignPPId,
     then
         SharingAs = sharing_as_bottom
     else
-        context_to_string(ProgContext, ContextString),
-        Msg = "foreign proc with unknown sharing ("
-            ++ ContextString ++ ")",
+        ContextStr = context_to_string(ProgContext),
+        Msg = "foreign proc with unknown sharing (" ++ ContextStr ++ ")",
         SharingAs = sharing_as_top_sharing(top_cannot_improve(Msg))
     ).
 

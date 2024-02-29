@@ -169,8 +169,8 @@ ho_traverse_proc(MustRecompute, PredId, ProcId, !GlobalInfo) :-
     higher_order_info::in, higher_order_info::out) is det.
 
 ho_traverse_proc_body(MustRecompute, !Info) :-
-    % Lookup the initial known bindings of the variables if this procedure
-    % is a specialised version.
+    % If this procedure is a specialised version, look up the initial
+    % known bindings of the variables.
     VersionInfoMap = hogi_get_version_info_map(!.Info ^ hoi_global_info),
     ( if
         map.search(VersionInfoMap, !.Info ^ hoi_pred_proc_id, VersionInfo),
@@ -182,12 +182,12 @@ ho_traverse_proc_body(MustRecompute, !Info) :-
     ),
     proc_info_get_goal(!.Info ^ hoi_proc_info, Goal0),
     ho_traverse_goal(Goal0, Goal, !Info),
-    ho_fixup_proc_info(MustRecompute, Goal, !Info).
+    ho_rebuild_nonlocals_instmaps_if_needed(MustRecompute, Goal, !Info).
 
-:- pred ho_fixup_proc_info(must_recompute::in, hlds_goal::in,
-    higher_order_info::in, higher_order_info::out) is det.
+:- pred ho_rebuild_nonlocals_instmaps_if_needed(must_recompute::in,
+    hlds_goal::in, higher_order_info::in, higher_order_info::out) is det.
 
-ho_fixup_proc_info(MustRecompute, !.Goal, !Info) :-
+ho_rebuild_nonlocals_instmaps_if_needed(MustRecompute, !.Goal, !Info) :-
     ( if
         ( !.Info ^ hoi_changed = hoc_changed
         ; MustRecompute = must_recompute

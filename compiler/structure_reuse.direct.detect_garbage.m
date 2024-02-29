@@ -243,9 +243,9 @@ determine_dead_deconstructions_generic_call(ModuleInfo, ProcInfo,
     (
         SetToTop = yes,
         Context = goal_info_get_context(GoalInfo),
-        context_to_string(Context, ContextString),
+        ContextStr = context_to_string(Context),
         !:SharingAs = sharing_as_top_sharing_accumulate(
-            top_cannot_improve("generic call (" ++ ContextString ++ ")"),
+            top_cannot_improve("generic call (" ++ ContextStr ++ ")"),
             !.SharingAs)
     ;
         SetToTop = no

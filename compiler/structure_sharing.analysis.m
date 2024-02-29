@@ -571,9 +571,9 @@ analyse_goal(ModuleInfo, PredInfo, ProcInfo, SharingTable, Verbose, Goal,
         ;
             ConjType = parallel_conj,
             Context = goal_info_get_context(GoalInfo),
-            context_to_string(Context, ContextString),
+            ContextStr = context_to_string(Context),
             !:SharingAs = sharing_as_top_sharing_accumulate(
-                top_cannot_improve("par_conj (" ++ ContextString ++ ")"),
+                top_cannot_improve("par_conj (" ++ ContextStr ++ ")"),
                 !.SharingAs)
         )
     ;
@@ -787,9 +787,9 @@ analyse_generic_call(ModuleInfo, ProcInfo, GenDetails, CallArgs, Modes,
     (
         SetToTop = yes,
         Context = goal_info_get_context(GoalInfo),
-        context_to_string(Context, ContextString),
+        ContextStr = context_to_string(Context),
         !:SharingAs = sharing_as_top_sharing_accumulate(
-            top_cannot_improve("generic call (" ++ ContextString ++ ")"),
+            top_cannot_improve("generic call (" ++ ContextStr ++ ")"),
             !.SharingAs)
     ;
         SetToTop = no

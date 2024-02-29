@@ -383,8 +383,8 @@ parse_user_annotated_sharing(!.Varset, Term, UserSharing) :-
         UserSharing = user_sharing(structure_sharing_bottom, no)
     ;
         Term = term.functor(term.atom("unknown_sharing"), [], Context),
-        context_to_string(Context, ContextString),
-        Msg = "user declared top(" ++ ContextString ++ ")",
+        ContextStr = context_to_string(Context),
+        Msg = "user declared top(" ++ ContextStr ++ ")",
         Reason = top_cannot_improve(Msg),
         UserSharing = user_sharing(structure_sharing_top(
             set.make_singleton_set(Reason)), no)

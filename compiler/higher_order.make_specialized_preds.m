@@ -273,9 +273,11 @@ maybe_create_new_ho_spec_preds(MaybeProgressStream, [Request | Requests],
         % SpecVersions0 are pred_proc_ids of the specialized versions
         % of the current pred.
         map.search(NewPredMap, CalledPredProcId, SpecVersions0),
-        set.member(Version, SpecVersions0),
-        version_matches(hogi_get_params(!.GlobalInfo),
-            hogi_get_module_info(!.GlobalInfo), Request, Version, _)
+        some [Version] (
+            set.member(Version, SpecVersions0),
+            version_matches(hogi_get_params(!.GlobalInfo),
+                hogi_get_module_info(!.GlobalInfo), Request, Version, _)
+        )
     then
         true
     else
@@ -481,8 +483,8 @@ higher_order_create_new_proc(NewPred, !.NewProcInfo,
     apply_variable_renaming_to_type_list(TypeRenaming,
         OriginalArgTypes0, OriginalArgTypes1),
 
-    % The real set of existentially quantified variables may be
-    % smaller, but this is OK.
+    % The real set of existentially quantified variables may be smaller,
+    % but this is OK.
     apply_variable_renaming_to_tvar_list(TypeRenaming,
         ExistQVars0, ExistQVars1),
 
@@ -514,7 +516,7 @@ higher_order_create_new_proc(NewPred, !.NewProcInfo,
         ExtraTypeInfoTVarTypes = ExtraTypeInfoTVarTypes0,
         ExtraTypeInfoTVars = ExtraTypeInfoTVars0
     else
-        % If there are existentially quantified variables in the callee
+        % If there are existentially quantified variables in the callee,
         % we may need to bind type variables in the caller.
         list.map(substitute_higher_order_arg(TypeSubn), HOArgs0, HOArgs),
 
@@ -667,8 +669,7 @@ higher_order_create_new_proc(NewPred, !.NewProcInfo,
     proc_info_get_headvars(!.NewProcInfo, ArgVars),
     proc_info_get_rtti_varmaps(!.NewProcInfo, NewRttiVarMaps),
     list.map(rtti_varmaps_var_info(NewRttiVarMaps), ArgVars, ArgVarInfos),
-    find_class_context(ModuleInfo, ArgVarInfos, ArgModes, [], [],
-        ClassContext),
+    find_class_context(ModuleInfo, ArgVarInfos, ArgModes, ClassContext),
     pred_info_set_class_context(ClassContext, !NewPredInfo),
 
     NewPredProcId = proc(_, NewProcId),
@@ -688,10 +689,10 @@ update_var_types(ModuleInfo, VarAndType, !VarTable) :-
 
 %---------------------%
 
-    % Take an original list of headvars and arg_modes and return these
+    % Take an original list of headvars and arg_modes, and return these
     % with curried arguments added. The old higher-order arguments are
-    % left in. They may be needed in calls which could not be
-    % specialised. If not, unused_args.m can clean them up.
+    % left in. They may be needed in calls which could not be specialised.
+    % If not, unused_args.m can clean them up.
     %
     % Build the initial known_var_map which records higher-order and
     % type_info constants for a call to ho_traverse_proc_body.
@@ -756,13 +757,8 @@ construct_higher_order_terms(ModuleInfo, HeadVars0, NewHeadVars, ArgModes0,
         IsConst = yes
     ),
 
-    assoc_list.from_corresponding_lists(CurriedArgs, CurriedHeadVars1,
-        CurriedRenaming),
-    list.foldl(
-        ( pred(VarPair::in, !.Map::in, !:Map::out) is det :-
-            VarPair = Var1 - Var2,
-            map.set(Var1, Var2, !Map)
-        ), CurriedRenaming, !Renaming),
+    map.set_from_corresponding_lists(CurriedArgs, CurriedHeadVars1,
+        !Renaming),
 
     % Recursively construct the curried higher-order arguments.
     construct_higher_order_terms(ModuleInfo, CurriedHeadVars1,
@@ -832,8 +828,8 @@ add_rtti_info(Var, VarInfo, !RttiVarMaps) :-
         else
             rtti_det_insert_typeclass_info_var(Constraint, Var, !RttiVarMaps),
             Constraint = constraint(_ClassName, ConstraintArgTypes),
-            list.foldl2(update_type_info_locn(Var), ConstraintArgTypes, 1, _,
-                !RttiVarMaps)
+            list.foldl2(update_type_info_locn(Var), ConstraintArgTypes,
+                1, _, !RttiVarMaps)
         )
     ;
         VarInfo = non_rtti_var
@@ -883,8 +879,8 @@ substitute_higher_order_arg(Subn, !HOArg) :-
     CurriedRttiTypes0 = !.HOArg ^ hoa_curry_rtti_type,
     CurriedHOArgs0 = !.HOArg ^ hoa_known_curry_args,
     apply_rec_subst_to_type_list(Subn, CurriedArgTypes0, CurriedArgTypes),
-    list.map(substitute_rtti_var_info(Subn), CurriedRttiTypes0,
-        CurriedRttiTypes),
+    list.map(substitute_rtti_var_info(Subn),
+        CurriedRttiTypes0, CurriedRttiTypes),
     list.map(substitute_higher_order_arg(Subn), CurriedHOArgs0, CurriedHOArgs),
     !HOArg ^ hoa_curry_type_in_caller := CurriedArgTypes,
     !HOArg ^ hoa_curry_rtti_type := CurriedRttiTypes,
@@ -909,24 +905,31 @@ substitute_rtti_var_info(Subn, RttiVarInfo0, RttiVarInfo) :-
 
 %---------------------------------------------------------------------------%
 
+:- pred find_class_context(module_info::in, list(rtti_var_info)::in,
+    list(mer_mode)::in, univ_exist_constraints::out) is det.
+
+find_class_context(ModuleInfo, VarInfos, Modes, Constraints) :-
+    acc_class_context(ModuleInfo, VarInfos, Modes, [], RevUniv, [], RevExist),
+    list.reverse(RevUniv, Univ),
+    list.reverse(RevExist, Exist),
+    Constraints = univ_exist_constraints(Univ, Exist).
+
     % Collect the list of prog_constraints from the list of argument types.
     % For universal constraints the typeclass_info is input, while
     % for existential constraints it is output.
     %
-:- pred find_class_context(module_info::in, list(rtti_var_info)::in,
-    list(mer_mode)::in, list(prog_constraint)::in, list(prog_constraint)::in,
-    univ_exist_constraints::out) is det.
+:- pred acc_class_context(module_info::in,
+    list(rtti_var_info)::in, list(mer_mode)::in,
+    list(prog_constraint)::in, list(prog_constraint)::out,
+    list(prog_constraint)::in, list(prog_constraint)::out) is det.
 
-find_class_context(_, [], [], !.RevUniv, !.RevExist, Constraints) :-
-    list.reverse(!.RevUniv, Univ),
-    list.reverse(!.RevExist, Exist),
-    Constraints = univ_exist_constraints(Univ, Exist).
-find_class_context(_, [], [_ | _], _, _, _) :-
+acc_class_context(_, [], [], !RevUniv, !RevExist).
+acc_class_context(_, [], [_ | _], !RevUniv, !RevExist) :-
     unexpected($pred, "mismatched list length").
-find_class_context(_, [_ | _], [], _, _, _) :-
+acc_class_context(_, [_ | _], [], !RevUniv, !RevExist) :-
     unexpected($pred, "mismatched list length").
-find_class_context(ModuleInfo, [VarInfo | VarInfos], [Mode | Modes],
-        !.RevUniv, !.RevExist, Constraints) :-
+acc_class_context(ModuleInfo, [VarInfo | VarInfos], [Mode | Modes],
+        !RevUniv, !RevExist) :-
     (
         VarInfo = typeclass_info_var(Constraint),
         ( if mode_is_input(ModuleInfo, Mode) then
@@ -939,8 +942,7 @@ find_class_context(ModuleInfo, [VarInfo | VarInfos], [Mode | Modes],
     ;
         VarInfo = non_rtti_var
     ),
-    find_class_context(ModuleInfo, VarInfos, Modes, !.RevUniv, !.RevExist,
-        Constraints).
+    acc_class_context(ModuleInfo, VarInfos, Modes, !RevUniv, !RevExist).
 
 :- pred maybe_add_constraint(prog_constraint::in,
     list(prog_constraint)::in, list(prog_constraint)::out) is det.
@@ -964,22 +966,21 @@ maybe_add_constraint(Constraint, !RevConstraints) :-
     maybe(string)::in, list(higher_order_arg)::in, prog_context::in,
     io::di, io::uo) is det.
 
-write_request(OutputStream, ModuleInfo, Msg,
-        SymName, PredArity, ActualArity, MaybeNewName, HOArgs, Context, !IO) :-
+write_request(OutputStream, ModuleInfo, Msg, SymName, PredArity, ActualArity,
+        MaybeNewName, HOArgs, Context, !IO) :-
+    ContextStr = context_to_string(Context),
     OldName = sym_name_to_string(SymName),
     PredArity = pred_form_arity(PredArityInt),
-    ActualArity = pred_form_arity(ActualArityInt),
-    io.write_string(OutputStream, "% ", !IO),
-    parse_tree_out_misc.write_context(OutputStream, Context, !IO),
-    io.format(OutputStream, "%s `%s'/%d",
-        [s(Msg), s(OldName), i(PredArityInt)], !IO),
     (
         MaybeNewName = yes(NewName),
-        io.format(OutputStream, " into %s", [s(NewName)], !IO)
+        string.format(" into %s", [s(NewName)], IntoStr)
     ;
-        MaybeNewName = no
+        MaybeNewName = no,
+        IntoStr = ""
     ),
-    io.write_string(OutputStream, " with higher-order arguments:\n", !IO),
+    io.format(OutputStream, "%% %s%s `%s'/%d%s with higher-order arguments:\n",
+        [s(ContextStr), s(Msg), s(OldName), i(PredArityInt), s(IntoStr)], !IO),
+    ActualArity = pred_form_arity(ActualArityInt),
     NumToDrop = ActualArityInt - PredArityInt,
     output_higher_order_args(OutputStream, ModuleInfo, NumToDrop, 0u,
         HOArgs, !IO).

@@ -121,15 +121,11 @@
 % Write out context.
 %
 
-    % Write to a string the information in term context (at the moment,
-    % just the line number) in a form suitable for the beginning of an
-    % error message.
+    % Output (to a string, or to a stream) the information in term context
+    % (at the moment, just the line number) in a form suitable for the
+    % beginning of an error message.
     %
-:- pred context_to_string(prog_context::in, string::out) is det.
-
-    % Write out the information in term context (at the moment, just the
-    % line number) in a form suitable for the beginning of an error message.
-    %
+:- func context_to_string(prog_context) = string.
 :- pred write_context(io.text_output_stream::in, prog_context::in,
     io::di, io::uo) is det.
 :- pred format_context(S::in, prog_context::in, U::di, U::uo) is det
@@ -362,7 +358,7 @@ mercury_format_foreign_language_string(Lang, S, !U) :-
 
 %---------------------------------------------------------------------------%
 
-context_to_string(Context, ContextStr) :-
+context_to_string(Context) = ContextStr :-
     FileName = term_context.context_file(Context),
     LineNumber = term_context.context_line(Context),
     ( if FileName = "" then
@@ -372,12 +368,12 @@ context_to_string(Context, ContextStr) :-
     ).
 
 write_context(Stream, Context, !IO) :-
-    context_to_string(Context, ContextMessage),
-    io.write_string(Stream, ContextMessage, !IO).
+    ContextStr = context_to_string(Context),
+    io.write_string(Stream, ContextStr, !IO).
 
 format_context(S, Context, !U) :-
-    context_to_string(Context, ContextMessage),
-    add_string(ContextMessage, S, !U).
+    ContextStr = context_to_string(Context),
+    add_string(ContextStr, S, !U).
 
 %---------------------------------------------------------------------------%
 

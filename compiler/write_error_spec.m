@@ -545,7 +545,7 @@ do_write_error_pieces(Stream, OptionTable, LimitErrorContextsMap, MaybeContext,
                 some_errors_were_context_limited, !IO),
             MaybeContextStr = no
         else
-            context_to_string(Context, ContextStr0),
+            ContextStr0 = context_to_string(Context),
             MaybeContextStr = yes(ContextStr0)
         )
     ;
