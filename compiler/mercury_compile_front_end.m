@@ -1256,10 +1256,13 @@ maybe_write_call_tree(ProgressStream, ErrorStream, Verbose, Stats,
             maybe_write_string(ProgressStream, Verbose,
                 "% Writing call_tree...", !IO),
             construct_local_call_tree_file_contents(HLDS, CallTreeInfo,
-                TreeFileStr, OrderFileStr),
+                TreeFileStr, FullFileStr, OrderFileStr),
             module_info_get_name(HLDS, ModuleName),
             module_name_to_file_name_create_dirs(Globals, $pred,
                 ext_cur(ext_cur_user_lct), ModuleName, TreeFileName, !IO),
+            module_name_to_file_name_create_dirs(Globals, $pred,
+                ext_cur(ext_cur_user_lct_full),
+                ModuleName, FullFileName, !IO),
             module_name_to_file_name_create_dirs(Globals, $pred,
                 ext_cur(ext_cur_user_lct_order),
                 ModuleName, OrderFileName, !IO),
@@ -1276,6 +1279,19 @@ maybe_write_call_tree(ProgressStream, ErrorStream, Verbose, Stats,
                     TreeErrorMsg),
                 report_error(ErrorStream, TreeErrorMsg, !IO)
             ),
+            io.open_output(FullFileName, FullResult, !IO),
+            (
+                FullResult = ok(FullFileStream),
+                FullErrorMsg = "",
+                io.write_string(FullFileStream, FullFileStr, !IO),
+                io.close_output(FullFileStream, !IO)
+            ;
+                FullResult = error(FullIOError),
+                string.format("unable to write to %s: %s\n",
+                    [s(FullFileName), s(io.error_message(FullIOError))],
+                    FullErrorMsg),
+                report_error(ErrorStream, FullErrorMsg, !IO)
+            ),
             io.open_output(OrderFileName, OrderResult, !IO),
             (
                 OrderResult = ok(OrderFileStream),
@@ -1289,7 +1305,7 @@ maybe_write_call_tree(ProgressStream, ErrorStream, Verbose, Stats,
                     OrderErrorMsg),
                 report_error(ErrorStream, OrderErrorMsg, !IO)
             ),
-            ( if TreeErrorMsg = "", OrderErrorMsg = "" then
+            ( if TreeErrorMsg = "", FullErrorMsg = "", OrderErrorMsg = "" then
                 maybe_write_string(ProgressStream, Verbose, " done.\n", !IO)
             else
                 % We have already written out the error message(s).

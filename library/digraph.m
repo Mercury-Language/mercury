@@ -7,13 +7,15 @@
 %---------------------------------------------------------------------------%
 %
 % File: digraph.m
-% Main author: bromage, petdr
+% Original authors: bromage, petdr
 % Stability: medium
 %
 % This module defines a data type representing directed graphs. A directed
 % graph of type digraph(T) is logically equivalent to a set of vertices of
 % type T, and a set of edges of type pair(T). The endpoints of each edge
-% must be included in the set of vertices; cycles and loops are allowed.
+% must be included in the set of vertices. Cycles are allowed, including
+% cycles consisting of only one edge (with both ends of the edge being
+% the same node).
 %
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%

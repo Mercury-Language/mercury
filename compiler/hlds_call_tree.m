@@ -6,20 +6,19 @@
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
 %
-% This module constructs a local call tree of the given module,
-% which is the call tree restricted to just the predicates of the module,
-% ignoring any references to predicates defined in other modules.
-% It does so in a piecewise fashion. Each piece maps a local predicate
-% to the list of other local predicates it calls, but since we can also
-% look up the pieces of the callees, we can (and do) traverse this
-% data structure as if it were a fully materialized tree.
+% This module constructs the call trees of the predicates defined in the
+% given module. (For the purposes of documentation in this module,
+% "predicates" includes functions as well.)
 %
-% We consider a reference to a closure containing a pred_id to be callee
-% just like a plain_call containing a pred_id, because the usual reason
-% for constructing a closure is that we want it to be called, though the call
+% The basic data structure we construct associates a given predicate with
+% the list of other predicates it makes a reference to. Most of the time,
+% this reference is a call, but it can also be a reference to a closure
+% containing a pred_id to be callee, because the usual reason for
+% constructing a closure is that we want it to be called, though the call
 % may be done by another predicate (such as list.map, map.foldl etc).
 %
-% We write out the info in this call tree in the form of entries like this:
+% We write out the info in this call tree to module.local_call_tree files
+% in the form of entries like this:
 %
 %   pred polymorphism_process_module/5
 %       pred maybe_polymorphism_process_pred/7
@@ -34,11 +33,17 @@
 %   ...
 %
 % Each entry gives the name of a predicate (or function), and then lists
-% its callees, in the order in which a depth-first left-to-right traversal
-% of the first valid procedure of the predicate first encounters them.
+% its local callees (i.e. the ones defined in the same module) in the order
+% in which a depth-first left-to-right traversal of the first valid procedure
+% of the predicate first encounters them. (The data structure records
+% references to predicates defined in other modules as well, but the intended
+% use case of .local_call_tree files is finding good ways to group the
+% predicates of the module, and for this purpose, references to nonlocal
+% predicates are irrelevant.)
 %
-% We start at the first exported predicate, write out the predicates
-% in its call tree in the same depth-first left-to-right order.
+% We start at the first exported predicate, write out the local predicates
+% in the first layer of its call tree (i.e. the local predicates it has
+% direct references to) in the same depth-first left-to-right order.
 % We then print out the second exported predicate and its call tree,
 % and third, and so on.
 %
@@ -51,9 +56,10 @@
 % exported predicate, it will be printed as part of the call tree
 % of only the first of those.
 %
-% This local call tree is one of two outputs we generate. The second output
-% is derived from the first: it is a list of just the predicates of the module
-% in the order in which the first output first encounters them, like this:
+% This local call tree is one of three outputs we generate. The second output,
+% the .local_call_tree_order file, is derived from the first: it is a list of
+% just the predicates of the module in the order in which the first output
+% first encounters them, like this:
 %
 %   pred polymorphism_process_module/5
 %   pred maybe_polymorphism_process_pred/7
@@ -72,6 +78,24 @@
 %   maintained together,
 %
 % next to each other.
+%
+% The third output, the .local_call_tree_full file, contains entries
+% for each predicate defined in the current module module in the same order,
+% but each entry lists the full visible call tree of the predicate.
+% This means that
+%
+% - in addition to listing only the directly referenced predicates,
+%   it also lists those that are indirectly referenced
+%   (meaning that if p calls q and q calls r, then it includes r
+%   in the call tree of p, even if p never references r directly), and
+%
+% - it lists referenced predicates defined in other modules, as well as
+%   those defined in other modules.
+%
+% The "visible" part of the phase "visible call tree" above acknowledges
+% the fact that the predicates defined in other modules will in general
+% have their own callees, but these are in effect beyond the visibility horizon
+% of the compiler when it has access only to the HLDS of the current module.
 %
 %---------------------------------------------------------------------------%
 
@@ -100,13 +124,20 @@
     %
     % - the proposed contents of the file containing the depth-first
     %   left-to-right traversal (such as the first example above)
-    %   of the given module, and
+    %   of the given module, with each predicate's entry containing
+    %   only its direct, local callees;
+    %
+    % - the proposed contents of the file containing the depth-first
+    %   left-to-right traversal (such as the first example above)
+    %   of the given module, with an entry for each local predicate containing
+    %   all predicates in its call tree, whether they are called directly
+    %   or indirectly, and whether they are local or not.
     %
     % - the proposed contents of the file containing the flattened
-    %   predicate order.
+    %   order of the module's predicates.
     %
 :- pred construct_local_call_tree_file_contents(module_info::in,
-    call_tree_info::in, string::out, string::out) is det.
+    call_tree_info::in, string::out, string::out, string::out) is det.
 
 %---------------------%
 
@@ -133,24 +164,63 @@
 :- import_module assoc_list.
 :- import_module bool.
 :- import_module cord.
+:- import_module digraph.
 :- import_module int.
 :- import_module map.
 :- import_module one_or_more_map.
 :- import_module pair.
 :- import_module require.
+:- import_module set.
 :- import_module set_tree234.
 :- import_module string.
 :- import_module string.builder.
 :- import_module term_context.
 
 %---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- type call_tree_info
     --->    call_tree_info(
-                cti_local_pred_set      :: set_tree234(pred_id),
-                cti_exported_preds      :: list(pred_id),
-                cti_pred_callee_list    :: list(pred_callees),
-                cti_pred_callee_map     :: pred_callees_map
+                % The set of pred_ids defined in the current module.
+                cti_local_pred_set          :: set_tree234(pred_id),
+
+                % The pred_ids of the exported predicates and functions
+                % of the current module, listed in the order in which
+                % they appear in the interface. (Technically, they are
+                % ordered by line number, which can be confused by the
+                % presence of pragmas that change the filename, and/or by
+                % the presence of more than one declaration on a single line,
+                % but such interfaces are vanishingly rare.)
+                cti_exported_preds          :: list(pred_id),
+
+                % The list of local predicates in the module, with the direct
+                % callees of each.
+                %
+                % The callees of each predicate are listed in the order
+                % in which a top-down left-to-right traversal of the first
+                % (valid) procedure of the predicate would encounter them.
+                %
+                % The pred_callee structures themselves are ordered in the same
+                % way, though the top level is not the body of a single
+                % predicate, but the list of the exported predicates, as given
+                % by cti_exported_preds.
+                cti_pred_callee_list        :: list(pred_callees),
+
+                % A map that returns, for each pred_id, its position in the
+                % cti_pred_callee_list field. Position numbers start at 1.
+                cti_pred_order_map          :: map(pred_id, int),
+
+                % A map that represents the same info as cti_pred_callee_list,
+                % but organized for random access by pred_id.
+                cti_direct_callee_map       :: pred_callees_map,
+
+                % A map that is effectively the transitive closure of the
+                % contents of the cti_direct_callee_map field. It maps each
+                % local pred_id to a pred_callees structure whose callees
+                % field contains not just the preds called *directly*
+                % by that pred, but also *its* callees, *their* callees,
+                % and so on.
+                cti_indirect_callee_map     :: pred_callees_map
             ).
 
 :- type pred_callees_map == map(pred_id, pred_callees).
@@ -161,13 +231,31 @@
                 pred_id,
                 pred_info,
 
-                % ... calls these local predicates. Each callee is present
+                % ... calls these predicates. Each callee is present
                 % in the list just once. The order of the list is given
                 % by the order in which the first occurrence of each callee
                 % is encountered in a depth-first left-to-right traversal
                 % of the first valid procedure of the predicate.
-                list(pred_id)
+                %
+                % For each callee, we record whether the callee is local or
+                % not, because several users of these structures want to
+                % process only local callees, and it is more efficient
+                % to determine whether the callee is local or not just once,
+                % rather than separately at each point of use.
+                %
+                % Whether this field contains just the direct callees of the
+                % predicate identified by the first two args, or the callees
+                % of callees of callees ... as well, depends on which of the
+                % fields of call_tree_info contains this structure.
+                list(callee)
             ).
+
+:- type callee
+    --->    callee(pred_id, maybe_local).
+
+:- type maybe_local
+    --->    is_not_local
+    ;       is_local.
 
 %---------------------------------------------------------------------------%
 
@@ -177,14 +265,23 @@ compute_local_call_tree(ModuleInfo, CallTreeInfo) :-
     find_local_preds_exports(PredIdsInfos,
         set_tree234.init, LocalPredIds, one_or_more_map.init, ExportLineMap),
     one_or_more_map.to_flat_assoc_list(ExportLineMap, ExportLineList),
-    assoc_list.values(ExportLineList, ExportList),
+    assoc_list.values(ExportLineList, ExportedPredIds),
 
-    gather_pred_callees(PredIdTable, LocalPredIds, ExportList,
-        set_tree234.init, cord.init, PredCalleesCord, map.init, PredCalleeMap),
+    build_direct_pred_callee_map(PredIdTable, LocalPredIds, ExportedPredIds,
+        set_tree234.init, cord.init, PredCalleesCord,
+        map.init, DirectPredCalleeMap),
     PredCalleesList = cord.list(PredCalleesCord),
 
-    CallTreeInfo = call_tree_info(LocalPredIds, ExportList,
-        PredCalleesList, PredCalleeMap).
+    list.foldl(add_pred_and_callees_to_digraph, PredCalleesList,
+        digraph.init, Graph),
+    BottomUpSccs = digraph.return_sccs_in_to_from_order(Graph),
+    record_pred_order(PredCalleesList, 0, map.init, PredOrderMap),
+    build_indirect_map_sccs(DirectPredCalleeMap, PredOrderMap, BottomUpSccs,
+        map.init, IndirectPredCalleesMap),
+
+    CallTreeInfo = call_tree_info(LocalPredIds, ExportedPredIds,
+        PredCalleesList, PredOrderMap,
+        DirectPredCalleeMap, IndirectPredCalleesMap).
 
 %---------------------------------------------------------------------------%
 
@@ -226,15 +323,16 @@ find_local_preds_exports([PredId - PredInfo | PredIdsInfos],
 
 %---------------------------------------------------------------------------%
 
-:- pred gather_pred_callees(pred_id_table::in, set_tree234(pred_id)::in,
-    list(pred_id)::in, set_tree234(pred_id)::in,
+:- pred build_direct_pred_callee_map(pred_id_table::in,
+    set_tree234(pred_id)::in, list(pred_id)::in, set_tree234(pred_id)::in,
     cord(pred_callees)::in, cord(pred_callees)::out,
     map(pred_id, pred_callees)::in, map(pred_id, pred_callees)::out) is det.
 
-gather_pred_callees(_PredIdTable, _LocalPredIds, [],
-        _HandledPredIds, !PredCalleesCord, !PredCalleeMap).
-gather_pred_callees(PredIdTable, LocalPredIds, [HeadPredId | TailPredIds],
-        !.HandledPredIds, !PredCalleesCord, !PredCalleeMap) :-
+build_direct_pred_callee_map(_PredIdTable, _LocalPredIds, [],
+        _HandledPredIds, !PredCalleesCord, !DirectPredCalleeMap).
+build_direct_pred_callee_map(PredIdTable, LocalPredIds,
+        [HeadPredId | TailPredIds], !.HandledPredIds,
+        !PredCalleesCord, !DirectPredCalleeMap) :-
     ( if set_tree234.insert_new(HeadPredId, !HandledPredIds) then
         map.lookup(PredIdTable, HeadPredId, PredInfo),
         pred_info_get_proc_table(PredInfo, ProcTable),
@@ -242,14 +340,14 @@ gather_pred_callees(PredIdTable, LocalPredIds, [HeadPredId | TailPredIds],
         (
             ProcIdsInfos = [_ProcId - ProcInfo | _],
             proc_info_get_goal(ProcInfo, Goal),
-            acc_goal_callees(Goal, cord.init, AllCalleesCord),
-            AllCalleesList = cord.list(AllCalleesCord),
-            list.filter(set_tree234.contains(LocalPredIds),
-                AllCalleesList, LocalCalleesList0),
-            LocalCalleesList = keep_only_first_calls(LocalCalleesList0),
-            PredCallees = pred_callees(HeadPredId, PredInfo, LocalCalleesList),
+            acc_pred_ids_in_goal(Goal, cord.init, ReferencedPredIdsCord),
+            ReferencedPredIds = cord.list(ReferencedPredIdsCord),
+            list.map(pred_id_to_callee(LocalPredIds),
+                ReferencedPredIds, Callees0),
+            Callees = keep_only_first_calls(Callees0),
+            PredCallees = pred_callees(HeadPredId, PredInfo, Callees),
             cord.snoc(PredCallees, !PredCalleesCord),
-            map.det_insert(HeadPredId, PredCallees, !PredCalleeMap),
+            map.det_insert(HeadPredId, PredCallees, !DirectPredCalleeMap),
             % Depth-first traversal: traverse the callees of HeadPredId
             % before traversing TailPredIds.
             %
@@ -257,34 +355,59 @@ gather_pred_callees(PredIdTable, LocalPredIds, [HeadPredId | TailPredIds],
             % We don't have to do it *here*; we could leave it for the
             % recursive call. However, doing it here substantially reduces
             % the maximum depth of the recursion.
-            list.filter(set_tree234.contains(!.HandledPredIds),
-                LocalCalleesList, _OldLocalCalleesList, NewLocalCalleesList),
-            NextPredIds = NewLocalCalleesList ++ TailPredIds
+            list.filter_map(
+                callee_is_local_has_not_been_handled(!.HandledPredIds),
+                Callees, NotYethandledLocalPredIds),
+            NextPredIds = NotYethandledLocalPredIds ++ TailPredIds
         ;
             ProcIdsInfos = [],
-            % Builtin predicates have no procedures in the HLDS,
-            % and other predicates may have only procedures that mode analysis
-            % has found to be invalid.
+            % Builtin predicates have no procedures in the HLDS.
+            % It is also possible for non-builtin predicates to *start* with
+            % one or more procedures, but mode analysis deletes any procedure
+            % it finds to be invalid, and it is possible for it to delete
+            % all of a predicate's initial procedures.
             NextPredIds = TailPredIds
         )
     else
         NextPredIds = TailPredIds
     ),
-    gather_pred_callees(PredIdTable, LocalPredIds, NextPredIds,
-        !.HandledPredIds, !PredCalleesCord, !PredCalleeMap).
+    build_direct_pred_callee_map(PredIdTable, LocalPredIds, NextPredIds,
+        !.HandledPredIds, !PredCalleesCord, !DirectPredCalleeMap).
+
+:- pred pred_id_to_callee(set_tree234(pred_id)::in, pred_id::in, callee::out)
+    is det.
+
+pred_id_to_callee(LocalPredIds, PredId, Callee) :-
+    ( if set_tree234.contains(LocalPredIds, PredId) then
+        MaybeLocal = is_local
+    else
+        MaybeLocal = is_not_local
+    ),
+    Callee = callee(PredId, MaybeLocal).
+
+:- pred callee_is_local_has_not_been_handled(set_tree234(pred_id)::in,
+    callee::in, pred_id::out) is semidet.
+
+callee_is_local_has_not_been_handled(HandledPredIds, Callee, PredId) :-
+    Callee = callee(PredId, MaybeLocal),
+    ( if set_tree234.contains(HandledPredIds, PredId) then
+        fail
+    else
+        MaybeLocal = is_local
+    ).
 
 %---------------------%
 
-:- pred acc_goal_callees(hlds_goal::in,
+:- pred acc_pred_ids_in_goal(hlds_goal::in,
     cord(pred_id)::in, cord(pred_id)::out) is det.
 
-acc_goal_callees(Goal, !CalleeCord) :-
+acc_pred_ids_in_goal(Goal, !CalleeCord) :-
     Goal = hlds_goal(GoalExpr, _GoalInfo),
     (
         GoalExpr = unify(_, RHS, _, Unification, _),
         (
             Unification = construct(_, UnifyConsId, _, _, _, _, _),
-            acc_cons_id_callees(UnifyConsId, !CalleeCord)
+            acc_pred_ids_in_cons_id(UnifyConsId, !CalleeCord)
         ;
             ( Unification = deconstruct(_, _, _, _, _, _)
             ; Unification = assign(_, _)
@@ -314,10 +437,10 @@ acc_goal_callees(Goal, !CalleeCord) :-
             RHS = rhs_var(_)
         ;
             RHS = rhs_functor(RHSConsId, _, _),
-            acc_cons_id_callees(RHSConsId, !CalleeCord)
+            acc_pred_ids_in_cons_id(RHSConsId, !CalleeCord)
         ;
             RHS = rhs_lambda_goal(_, _, _, _, _, _, _, SubGoal),
-            acc_goal_callees(SubGoal, !CalleeCord)
+            acc_pred_ids_in_goal(SubGoal, !CalleeCord)
         )
     ;
         GoalExpr = plain_call(PredId, _, _, _, _, _),
@@ -330,25 +453,26 @@ acc_goal_callees(Goal, !CalleeCord) :-
         % We don't know the identity of the callee.
     ;
         GoalExpr = conj(_Kind, SubGoals),
-        list.foldl(acc_goal_callees, SubGoals, !CalleeCord)
+        list.foldl(acc_pred_ids_in_goal, SubGoals, !CalleeCord)
     ;
         GoalExpr = disj(SubGoals),
-        list.foldl(acc_goal_callees, SubGoals, !CalleeCord)
+        list.foldl(acc_pred_ids_in_goal, SubGoals, !CalleeCord)
     ;
         GoalExpr = switch(_, _, Cases),
+        % The cons_ids that can occur in switch cases cannot contain pred_ids.
         SubGoals = list.map((func(C) = C ^ case_goal), Cases),
-        list.foldl(acc_goal_callees, SubGoals, !CalleeCord)
+        list.foldl(acc_pred_ids_in_goal, SubGoals, !CalleeCord)
     ;
         GoalExpr = negation(SubGoal),
-        acc_goal_callees(SubGoal, !CalleeCord)
+        acc_pred_ids_in_goal(SubGoal, !CalleeCord)
     ;
         GoalExpr = scope(_Reason, SubGoal),
-        acc_goal_callees(SubGoal, !CalleeCord)
+        acc_pred_ids_in_goal(SubGoal, !CalleeCord)
     ;
         GoalExpr = if_then_else(_Vars, Cond, Then, Else),
-        acc_goal_callees(Cond, !CalleeCord),
-        acc_goal_callees(Then, !CalleeCord),
-        acc_goal_callees(Else, !CalleeCord)
+        acc_pred_ids_in_goal(Cond, !CalleeCord),
+        acc_pred_ids_in_goal(Then, !CalleeCord),
+        acc_pred_ids_in_goal(Else, !CalleeCord)
     ;
         GoalExpr = shorthand(Shorthand),
         (
@@ -357,18 +481,18 @@ acc_goal_callees(Goal, !CalleeCord) :-
         ;
             Shorthand = atomic_goal(_Type, _Outer, _Inner, _OutputVars,
                 MainGoal, OrElseGoals, _Inners),
-            acc_goal_callees(MainGoal, !CalleeCord),
-            list.foldl(acc_goal_callees, OrElseGoals, !CalleeCord)
+            acc_pred_ids_in_goal(MainGoal, !CalleeCord),
+            list.foldl(acc_pred_ids_in_goal, OrElseGoals, !CalleeCord)
         ;
             Shorthand = try_goal(_MaybeIO, _ResultVar, SubGoal),
-            acc_goal_callees(SubGoal, !CalleeCord)
+            acc_pred_ids_in_goal(SubGoal, !CalleeCord)
         )
     ).
 
-:- pred acc_cons_id_callees(cons_id::in,
+:- pred acc_pred_ids_in_cons_id(cons_id::in,
     cord(pred_id)::in, cord(pred_id)::out) is det.
 
-acc_cons_id_callees(ConsId, !CalleeCord) :-
+acc_pred_ids_in_cons_id(ConsId, !CalleeCord) :-
     ( if ConsId = closure_cons(ShroudedPredProcId, _) then
         ShroudedPredProcId = shrouded_pred_proc_id(PredIdInt, _),
         ShroudedPredId = shrouded_pred_id(PredIdInt),
@@ -380,47 +504,193 @@ acc_cons_id_callees(ConsId, !CalleeCord) :-
 
 %---------------------%
 
-:- func keep_only_first_calls(list(pred_id)) = list(pred_id).
+:- func keep_only_first_calls(list(callee)) = list(callee).
 
-keep_only_first_calls(ListWithDuplicates) = ListWithoutDuplicates :-
-    SeenPredIds0 = set_tree234.init,
-    keep_only_first_calls_loop(ListWithDuplicates, SeenPredIds0,
-        cord.init, CordWithoutDuplicates),
-    ListWithoutDuplicates = cord.list(CordWithoutDuplicates).
+keep_only_first_calls(CalleeListWithDuplicates) = CalleeListWithoutDuplicates :-
+    SeenCalleess0 = set_tree234.init,
+    keep_only_first_calls_loop(CalleeListWithDuplicates, SeenCalleess0,
+        cord.init, CalleeCordWithoutDuplicates),
+    CalleeListWithoutDuplicates = cord.list(CalleeCordWithoutDuplicates).
 
-:- pred keep_only_first_calls_loop(list(pred_id)::in, set_tree234(pred_id)::in,
-    cord(pred_id)::in, cord(pred_id)::out) is det.
+:- pred keep_only_first_calls_loop(list(callee)::in, set_tree234(callee)::in,
+    cord(callee)::in, cord(callee)::out) is det.
 
-keep_only_first_calls_loop([], _, !CordWithoutDuplicates).
-keep_only_first_calls_loop([PredId | PredIds], !.SeenPredIds,
-        !CordWithoutDuplicates) :-
-    ( if set_tree234.insert_new(PredId, !SeenPredIds) then
-        cord.snoc(PredId, !CordWithoutDuplicates)
+keep_only_first_calls_loop([], _, !CalleeCordWithoutDuplicates).
+keep_only_first_calls_loop([Callee | Callees], !.SeenCallees,
+        !CalleeCordWithoutDuplicates) :-
+    ( if set_tree234.insert_new(Callee, !SeenCallees) then
+        cord.snoc(Callee, !CalleeCordWithoutDuplicates)
     else
         true
     ),
-    keep_only_first_calls_loop(PredIds, !.SeenPredIds, !CordWithoutDuplicates).
+    keep_only_first_calls_loop(Callees, !.SeenCallees,
+        !CalleeCordWithoutDuplicates).
 
-%---------------------------------------------------------------------------%
-%---------------------------------------------------------------------------%
+%---------------------%
 
-construct_local_call_tree_file_contents(ModuleInfo, CallTreeInfo,
-        TreeFileStr, OrderFileStr) :-
-    CallTreeInfo = call_tree_info(_LocalPredIds, _ExportList,
-        PredCalleesList, PredCalleeMap),
-    construct_depth_first_left_right_order(PredCalleeMap, PredCalleesList,
-        set_tree234.init, cord.init, PredIdCord),
-    PredIdList = cord.list(PredIdCord),
+:- pred add_pred_and_callees_to_digraph(pred_callees::in,
+    digraph(pred_id)::in, digraph(pred_id)::out) is det.
 
-    TreeState0 = string.builder.init,
-    list.foldl2(construct_pred_callees_entry(ModuleInfo), PredCalleesList,
-        yes, _First, TreeState0, TreeState),
-    TreeFileStr = string.builder.to_string(TreeState),
+add_pred_and_callees_to_digraph(PredCallee, !Graph) :-
+    PredCallee = pred_callees(CallerPredId, _, Callees),
+    add_vertex(CallerPredId, CallerKey, !Graph),
+    add_caller_callees_to_digraph(CallerKey, Callees, !Graph).
 
-    OrderState0 = string.builder.init,
-    list.foldl(construct_pred_order_entry(ModuleInfo), PredIdList,
-        OrderState0, OrderState),
-    OrderFileStr = string.builder.to_string(OrderState).
+:- pred add_caller_callees_to_digraph(digraph_key(pred_id)::in,
+    list(callee)::in, digraph(pred_id)::in, digraph(pred_id)::out) is det.
+
+add_caller_callees_to_digraph(_, [], !Graph).
+add_caller_callees_to_digraph(CallerKey, [Callee | Callees], !Graph) :-
+    Callee = callee(CalleePredId, _),
+    add_vertex(CalleePredId, CalleeKey, !Graph),
+    add_edge(CallerKey, CalleeKey, !Graph),
+    add_caller_callees_to_digraph(CallerKey, Callees, !Graph).
+
+%---------------------%
+
+:- pred record_pred_order(list(pred_callees)::in, int::in,
+    map(pred_id, int)::in, map(pred_id, int)::out) is det. 
+
+record_pred_order([], _, !PredOrderMap).
+record_pred_order([HeadPredCallee | TailPredCalles], CurNum, !PredOrderMap) :-
+    HeadPredCallee = pred_callees(CallerPredId, _, _),
+    map.det_insert(CallerPredId, CurNum, !PredOrderMap),
+    record_pred_order(TailPredCalles, CurNum + 1, !PredOrderMap).
+
+%---------------------%
+
+:- pred build_indirect_map_sccs(pred_callees_map::in, map(pred_id, int)::in,
+    list(set(pred_id))::in,
+    pred_callees_map::in, pred_callees_map::out) is det.
+
+build_indirect_map_sccs(_, _, [], !IndirectCalleeMap).
+build_indirect_map_sccs(DirectCalleeMap, PredOrderMap, [SccSet | SccSets],
+        !IndirectCalleeMap) :-
+    SccPredIds = set.to_sorted_list(SccSet),
+    % Construct IncompleteSccIndirectCalleeMap, which maps each pred in the SCC
+    % to a pred_callees structure in which the last field contains
+    %
+    % - the full call trees of every callee that is in a lower SCC, and
+    % - just the pred_id of every callee that is the same SCC,
+    %
+    % all in the order given by a depth-first left-to-right traversal.
+    % This list may (and often will) contain duplicates.
+    LowerSccIndirectCalleeMap = !.IndirectCalleeMap,
+    list.foldl(
+        build_incomplete_indirect_map_pred(DirectCalleeMap, SccSet,
+            LowerSccIndirectCalleeMap),
+        SccPredIds, map.init, IncompleteSccIndirectCalleeMap),
+    % Complete the incomplete map constructed above by replacing each callee
+    % that is in this SCC by its call tree, *and* delete any duplicates.
+    % Add the completed entries to !IndirectCalleeMap.
+    list.foldl(
+        complete_and_add_indirect_map_pred(IncompleteSccIndirectCalleeMap),
+        SccPredIds, !IndirectCalleeMap),
+    build_indirect_map_sccs(DirectCalleeMap, PredOrderMap, SccSets,
+        !IndirectCalleeMap).
+
+:- pred build_incomplete_indirect_map_pred(pred_callees_map::in,
+    set(pred_id)::in, pred_callees_map::in, pred_id::in,
+    pred_callees_map::in, pred_callees_map::out) is det.
+
+build_incomplete_indirect_map_pred(DirectCalleeMap, SccSet,
+        LowerSccIndirectCalleeMap, PredId,
+        !IncompleteSccIndirectCalleeMap) :-
+    expect(set.contains(SccSet, PredId), $pred, "PredId not in SccSet"),
+    ( if map.search(DirectCalleeMap, PredId, PredCallees) then
+        PredCallees = pred_callees(PredCalleesPredId, PredInfo, DirectCallees),
+        expect(unify(PredId, PredCalleesPredId), $pred,
+            "PredId != PredCalleesPredId"),
+        build_incomplete_indirect_map_callees(LowerSccIndirectCalleeMap,
+            SccSet, DirectCallees, cord.init, IncompleteIndirectCallees),
+        IncompleteIndirectPredCallees = pred_callees(PredId, PredInfo,
+            cord.list(IncompleteIndirectCallees)),
+        map.det_insert(PredId, IncompleteIndirectPredCallees,
+            !IncompleteSccIndirectCalleeMap)
+    else
+        % It is possible for the map.search to fail, in the presence of errors.
+        % This happens for tests/invalid/mode_inf.m.
+        true
+    ).
+
+:- pred build_incomplete_indirect_map_callees(pred_callees_map::in,
+    set(pred_id)::in, list(callee)::in,
+    cord(callee)::in, cord(callee)::out) is det.
+
+build_incomplete_indirect_map_callees(_, _, [],
+        !IncompleteIndirectCallees).
+build_incomplete_indirect_map_callees(LowerSccIndirectCalleeMap, SccSet,
+        [Callee | Callees], !IncompleteIndirectCallees) :-
+    Callee = callee(CalleePredId, _IsLocal),
+    ( if
+        map.search(LowerSccIndirectCalleeMap, CalleePredId, IndirectPredCallees)
+    then
+        IndirectPredCallees = pred_callees(_, _, IndirectCallees),
+        !:IncompleteIndirectCallees = !.IncompleteIndirectCallees ++
+            cord.from_list([Callee | IndirectCallees])
+    else
+        % This can be a predicate in the current SCC (whose info is NOT YET
+        % in LowerSccIndirectCalleeMap).
+        %
+        % or it could be a nonlocal predicate that (because it is nonlocal)
+        % build_direct_pred_callee_map did not add to DirectCalleeMap, and
+        % which therefore build_incomplete_indirect_map_pred did not add to
+        % IncompleteSccIndirectCalleeMap.
+        %
+        % This action is the appropriate action in both cases.
+        cord.snoc(Callee, !IncompleteIndirectCallees)
+    ),
+    build_incomplete_indirect_map_callees(LowerSccIndirectCalleeMap, SccSet,
+        Callees, !IncompleteIndirectCallees).
+
+:- pred complete_and_add_indirect_map_pred(pred_callees_map::in, pred_id::in,
+    pred_callees_map::in, pred_callees_map::out) is det.
+
+complete_and_add_indirect_map_pred(IncompleteSccIndirectPredCalleeMap, PredId,
+        !IndirectPredCalleeMap) :-
+    ( if
+        map.search(IncompleteSccIndirectPredCalleeMap, PredId,
+            IncompletePredCallees)
+    then
+        IncompletePredCallees = pred_callees(PredCalleesPredId, PredInfo,
+            IncompleteIndirectCallees),
+        expect(unify(PredId, PredCalleesPredId), $pred,
+            "PredId != PredCalleesPredId"),
+        complete_callees(IncompleteSccIndirectPredCalleeMap,
+            IncompleteIndirectCallees,
+            cord.init, CompleteIndirectCalleesCord0),
+        CompleteIndirectCallees0 = cord.list(CompleteIndirectCalleesCord0),
+        CompleteIndirectCallees =
+            keep_only_first_calls(CompleteIndirectCallees0),
+        PredCallees = pred_callees(PredId, PredInfo, CompleteIndirectCallees),
+        map.det_insert(PredId, PredCallees, !IndirectPredCalleeMap)
+    else
+        % Again, it is possible for the map.search to fail,
+        % in the presence of errors. This happens for tests/invalid/mode_inf.m.
+        true
+    ).
+
+:- pred complete_callees(pred_callees_map::in, list(callee)::in,
+    cord(callee)::in, cord(callee)::out) is det.
+
+complete_callees(_, [], !CompleteCalleesCord).
+complete_callees(IncompleteSccIndirectPredCalleeMap, [Callee | Callees],
+        !CompleteCalleesCord) :-
+    cord.snoc(Callee, !CompleteCalleesCord),
+    Callee = callee(PredId, _IsLocal),
+    ( if
+        map.search(IncompleteSccIndirectPredCalleeMap, PredId, PredCallees)
+    then
+        PredCallees = pred_callees(_, _, SccPredCallees),
+        !:CompleteCalleesCord = !.CompleteCalleesCord ++
+            cord.from_list([Callee | SccPredCallees])
+    else
+        true
+    ),
+    complete_callees(IncompleteSccIndirectPredCalleeMap, Callees,
+        !CompleteCalleesCord).
+
+%---------------------%
 
 :- pred construct_depth_first_left_right_order(map(pred_id, pred_callees)::in,
     list(pred_callees)::in, set_tree234(pred_id)::in,
@@ -432,11 +702,13 @@ construct_depth_first_left_right_order(PredCalleeMap,
     HeadPredCallees = pred_callees(PredId, _PredInfo, Callees),
     ( if set_tree234.insert_new(PredId, !HandledPredIds) then
         cord.snoc(PredId, !PredIdCord),
-        list.filter(set_tree234.contains(!.HandledPredIds), Callees,
-            _OldCallees, NewCallees),
+        keep_only_new_local_callees(!.HandledPredIds, Callees,
+            cord.init, NewLocalPredIdCord),
+        NewLocalPredIds = cord.list(NewLocalPredIdCord),
         % Some predicates in NewCallees may not be in PredCalleeMap,
         % because they have no valid procedures.
-        list.filter_map(map.search(PredCalleeMap), NewCallees, NewPredCallees),
+        list.filter_map(map.search(PredCalleeMap),
+            NewLocalPredIds, NewPredCallees),
         NextPredCallees = NewPredCallees ++ TailPredCallees
     else
         NextPredCallees = TailPredCallees
@@ -444,33 +716,163 @@ construct_depth_first_left_right_order(PredCalleeMap,
     construct_depth_first_left_right_order(PredCalleeMap,
         NextPredCallees, !.HandledPredIds, !PredIdCord).
 
+:- pred keep_only_new_local_callees(set_tree234(pred_id)::in, list(callee)::in,
+    cord(pred_id)::in, cord(pred_id)::out) is det.
+
+keep_only_new_local_callees(_HandledPredIds, [], !NewLocalPredIdCord).
+keep_only_new_local_callees(HandledPredIds, [Callee | Callees],
+        !NewLocalPredIdCord) :-
+    Callee = callee(PredId, IsLocal),
+    (
+        IsLocal = is_local,
+        ( if set_tree234.contains(HandledPredIds, PredId) then
+            true
+        else
+            cord.snoc(PredId, !NewLocalPredIdCord)
+        )
+    ;
+        IsLocal = is_not_local
+    ),
+    keep_only_new_local_callees(HandledPredIds, Callees, !NewLocalPredIdCord).
+
+%---------------------%
+
+:- pred compare_pred_callees_by_order(map(pred_id, int)::in,
+    pred_callees::in, pred_callees::in, comparison_result::out) is det.
+
+compare_pred_callees_by_order(PredOrderMap, PredCalleesA, PredCalleesB,
+        Result) :-
+    PredCalleesA = pred_callees(PredIdA, _, _),
+    PredCalleesB = pred_callees(PredIdB, _, _),
+    map.lookup(PredOrderMap, PredIdA, OrderA),
+    map.lookup(PredOrderMap, PredIdB, OrderB),
+    compare(Result, OrderA, OrderB).
+
+%---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
-:- pred construct_pred_callees_entry(module_info::in, pred_callees::in,
-    bool::in, bool::out,
+construct_local_call_tree_file_contents(ModuleInfo, CallTreeInfo,
+        DirectTreeFileStr, IndirectTreeFileStr, OrderFileStr) :-
+    CallTreeInfo = call_tree_info(_LocalPredIds, _ExportList,
+        PredCalleesList, PredOrderMap,
+        DirectPredCalleeMap, IndirectPredCalleesMap),
+
+    DirectTreeState0 = string.builder.init,
+    list.foldl2(construct_direct_pred_callees_entry(ModuleInfo),
+        PredCalleesList, "", _MaybeNlD, DirectTreeState0, DirectTreeState),
+    DirectTreeFileStr = string.builder.to_string(DirectTreeState),
+
+    map.values(IndirectPredCalleesMap, IndirectPredCalleesList0),
+    list.sort(compare_pred_callees_by_order(PredOrderMap),
+        IndirectPredCalleesList0, IndirectPredCalleesList),
+    IndirectTreeState0 = string.builder.init,
+    list.foldl2(construct_indirect_pred_callees_entry(ModuleInfo),
+        IndirectPredCalleesList, "", _MaybeNlI,
+        IndirectTreeState0, IndirectTreeState),
+    IndirectTreeFileStr = string.builder.to_string(IndirectTreeState),
+
+    construct_depth_first_left_right_order(DirectPredCalleeMap,
+        PredCalleesList, set_tree234.init, cord.init, PredIdCord),
+    PredIdList = cord.list(PredIdCord),
+    OrderState0 = string.builder.init,
+    list.foldl(construct_pred_order_entry(ModuleInfo), PredIdList,
+        OrderState0, OrderState),
+    OrderFileStr = string.builder.to_string(OrderState).
+
+%---------------------------------------------------------------------------%
+
+    % List a predicate's direct callees.
+    %
+:- pred construct_direct_pred_callees_entry(module_info::in,
+    pred_callees::in, string::in, string::out,
     string.builder.state::di, string.builder.state::uo) is det.
 
-construct_pred_callees_entry(ModuleInfo, PredCallees, !IsFirst, !State) :-
+construct_direct_pred_callees_entry(ModuleInfo, PredCallees,
+        !MaybeNl, !State) :-
     PredCallees = pred_callees(_PredId, PredInfo, Callees),
     PredDesc = describe_pred(do_not_include_module_name, PredInfo),
-    % Print a newline before every entry except the first.
-    (
-        !.IsFirst = yes,
-        !:IsFirst = no
-    ;
-        !.IsFirst = no,
-        string.builder.append_string("\n", !State)
-    ),
+    list.filter_map(callee_get_local_pred_id, Callees, LocalCalleePredIds),
+    list.map(lookup_callee_and_construct_direct_entry(ModuleInfo),
+        LocalCalleePredIds, LocalCalleeDescEntries),
+    % Print a blank line before every entry except the first.
+    string.builder.append_string(!.MaybeNl, !State),
+    !:MaybeNl = "\n",
     string.builder.format("%s\n", [s(PredDesc)], !State),
-    list.foldl(lookup_callee_and_construct_entry(ModuleInfo), Callees, !State).
+    string.builder.append_strings(LocalCalleeDescEntries, !State).
 
-:- pred lookup_callee_and_construct_entry(module_info::in, pred_id::in,
-    string.builder.state::di, string.builder.state::uo) is det.
+:- pred callee_get_local_pred_id(callee::in, pred_id::out) is semidet.
 
-lookup_callee_and_construct_entry(ModuleInfo, PredId, !State) :-
+callee_get_local_pred_id(callee(PredId, is_local), PredId).
+
+:- pred lookup_callee_and_construct_direct_entry(module_info::in, pred_id::in,
+    string::out) is det.
+
+lookup_callee_and_construct_direct_entry(ModuleInfo, PredId, PredDescEntry) :-
     module_info_pred_info(ModuleInfo, PredId, PredInfo),
     PredDesc = describe_pred(do_not_include_module_name, PredInfo),
-    string.builder.format("    %s\n", [s(PredDesc)], !State).
+    string.format("    %s\n", [s(PredDesc)], PredDescEntry).
+
+%---------------------------------------------------------------------------%
+
+    % List a predicate's direct and indirect callees.
+    %
+    % This list can be considerably longer than the list of
+    % just the direct callees. We therefore print it twice:
+    %
+    % - once in the order they are first encountered by a
+    %   depth-first left-to-right traversal of the predicate's body, and
+    %
+    % - once in alphabetical order.
+    %
+    % The latter makes it easier to see whether a searched-for predicate
+    % is in the call tree of this predicate, or not.
+    %
+:- pred construct_indirect_pred_callees_entry(module_info::in,
+    pred_callees::in, string::in, string::out,
+    string.builder.state::di, string.builder.state::uo) is det.
+
+construct_indirect_pred_callees_entry(ModuleInfo, PredCallees,
+        !MaybeNl, !State) :-
+    PredCallees = pred_callees(_PredId, PredInfo, Callees),
+    PredDesc = describe_pred(do_not_include_module_name, PredInfo),
+    list.map(lookup_callee_and_construct_indirect_entry(ModuleInfo),
+        Callees, CalleeDescEntries),
+    % Print a blank line before every entry except the first.
+    string.builder.append_string(!.MaybeNl, !State),
+    !:MaybeNl = "\n",
+    string.builder.format("%s\n", [s(PredDesc)], !State),
+    list.sort(CalleeDescEntries, SortedCalleeDescEntries),
+    ( if CalleeDescEntries = SortedCalleeDescEntries then
+        (
+            CalleeDescEntries = []
+            % There is no point in printing CalleeDescEntries twice,
+            % and there is no point in even printing the heading.
+        ;
+            CalleeDescEntries = [_ | _],
+            % There is no point in printing CalleeDescEntries twice.
+            string.builder.append_string(
+                "    <call and lexicographic order>\n", !State),
+            string.builder.append_strings(CalleeDescEntries, !State)
+        )
+    else
+        string.builder.append_string("    <call order>\n", !State),
+        string.builder.append_strings(CalleeDescEntries, !State),
+        string.builder.append_string("\n", !State),
+        string.builder.append_string("    <lexicographic order>\n", !State),
+        string.builder.append_strings(SortedCalleeDescEntries, !State)
+    ).
+
+:- pred lookup_callee_and_construct_indirect_entry(module_info::in, callee::in,
+    string::out) is det.
+
+lookup_callee_and_construct_indirect_entry(ModuleInfo, Callee, PredDescEntry) :-
+    Callee = callee(PredId, _IsLocal),
+    module_info_pred_info(ModuleInfo, PredId, PredInfo),
+    % XXX Should we pass include_module_name here if _IsLocal = is_not_local?
+    % The extra info may be welcome, but some module names are quite long,
+    % and the resulting overlong lines could be harder to read.
+    PredDesc = describe_pred(do_not_include_module_name, PredInfo),
+    string.format("    %s\n", [s(PredDesc)], PredDescEntry).
 
 %---------------------------------------------------------------------------%
 
@@ -580,7 +982,8 @@ generate_movability_report(ModuleInfo, CallTreeInfo, WantToMovePredNames,
         AmbigSpecs = []
     then
         CallTreeInfo = call_tree_info(_LocalPredIds, ExportPredIds,
-            _PredCalleesList, PredCalleeMap),
+            _PredCalleesList, _PredOrderMap,
+            PredCalleeMap, _IndirectPredCalleeMap),
         set_tree234.list_to_set(ExportPredIds, ExportPredIdSet),
         set_tree234.difference(ExportPredIdSet, WantToMovePredIdSet,
             NonMovingExportPredIdSet),
@@ -659,7 +1062,9 @@ find_moving_pred_ids(PredCalleeMap, NonMovingExportPredIdSet,
             NextPredIds = TailPredIds
         else
             map.lookup(PredCalleeMap, HeadPredId, PredCallees),
-            PredCallees = pred_callees(_, _, LocalCalleesList),
+            PredCallees = pred_callees(_, _, Callees),
+            list.filter_map(callee_get_local_pred_id,
+                Callees, LocalCalleePredIds),
             % Depth-first traversal: traverse the callees of HeadPredId
             % before traversing TailPredIds.
             %
@@ -667,9 +1072,9 @@ find_moving_pred_ids(PredCalleeMap, NonMovingExportPredIdSet,
             % We don't have to do it *here*; we could leave it for the
             % recursive call. However, doing it here substantially reduces
             % the maximum depth of the recursion.
-            list.filter(set_tree234.contains(!.ReachablePredIdSet),
-                LocalCalleesList, _OldLocalCalleesList, NewLocalCalleesList),
-            NextPredIds = NewLocalCalleesList ++ TailPredIds
+            list.negated_filter(set_tree234.contains(!.ReachablePredIdSet),
+                LocalCalleePredIds, NewLocalCalleePredIds),
+            NextPredIds = NewLocalCalleePredIds ++ TailPredIds
         )
     else
         NextPredIds = TailPredIds
@@ -690,7 +1095,9 @@ find_staying_pred_ids(PredCalleeMap, WantToMovePredIdSet,
     else
         ( if set_tree234.insert_new(HeadPredId, !StayingPredIdSet) then
             map.lookup(PredCalleeMap, HeadPredId, PredCallees),
-            PredCallees = pred_callees(_, _, LocalCalleesList),
+            PredCallees = pred_callees(_, _, Callees),
+            list.filter_map(callee_get_local_pred_id,
+                Callees, LocalCalleePredIds),
             % Depth-first traversal: traverse the callees of HeadPredId
             % before traversing TailPredIds.
             %
@@ -698,9 +1105,9 @@ find_staying_pred_ids(PredCalleeMap, WantToMovePredIdSet,
             % We don't have to do it *here*; we could leave it for the
             % recursive call. However, doing it here substantially reduces
             % the maximum depth of the recursion.
-            list.filter(set_tree234.contains(!.StayingPredIdSet),
-                LocalCalleesList, _OldLocalCalleesList, NewLocalCalleesList),
-            NextPredIds = NewLocalCalleesList ++ TailPredIds
+            list.negated_filter(set_tree234.contains(!.StayingPredIdSet),
+                LocalCalleePredIds, NewLocalCalleePredIds),
+            NextPredIds = NewLocalCalleePredIds ++ TailPredIds
         else
             NextPredIds = TailPredIds
         )
