@@ -27,7 +27,6 @@
 :- import_module counter.
 :- import_module list.
 :- import_module map.
-:- import_module maybe.
 :- import_module pair.
 :- import_module set.
 :- import_module term_context.
@@ -274,10 +273,7 @@
 :- type match
     --->    match(
                 new_pred,
-
-                % Was the match partial, if so, how many higher_order arguments
-                % matched.
-                maybe(int),
+                match_completeness,
 
                 % The arguments to the specialised call.
                 list(prog_var),
@@ -286,6 +282,12 @@
                 % to the start of the argument list.
                 list(mer_type)
             ).
+
+    % Was the match complete or partial? If partial, how many higher_order
+    % arguments matched?
+:- type match_completeness
+    --->    complete_match
+    ;       partial_match(int).
 
     % Check whether the request has already been implemented by the new_pred,
     % maybe ordering the list of extra type_infos in the caller predicate
@@ -432,7 +434,7 @@ hogi_allocate_id(Id, !Info) :-
 %---------------------------------------------------------------------------%
 
 version_matches(Params, ModuleInfo, Request, Version, Match) :-
-    Match = match(Version, PartialMatch, Args, ExtraTypeInfoTypes),
+    Match = match(Version, MatchCompleteness, Args, ExtraTypeInfoTypes),
     Request = ho_request(_, Callee, ArgsTypes0, _, RequestHigherOrderArgs,
         RequestTVarSet, _, _, _),
     Callee = proc(CalleePredId, _),
@@ -442,14 +444,14 @@ version_matches(Params, ModuleInfo, Request, Version, Match) :-
     higher_order_args_match(RequestHigherOrderArgs,
         VersionHigherOrderArgs, HigherOrderArgs, FullOrPartial),
     (
+        FullOrPartial = match_is_partial,
         % Don't accept partial matches unless the predicate is imported
         % or we are only doing user-guided type specialization.
-        FullOrPartial = match_is_partial,
-        PartialMatch = no
+        MatchCompleteness = complete_match
     ;
         FullOrPartial = match_is_full,
         list.length(HigherOrderArgs, NumHOArgs),
-        PartialMatch = yes(NumHOArgs),
+        MatchCompleteness = partial_match(NumHOArgs),
         pred_info_get_markers(CalleePredInfo, Markers),
 
         % Always fully specialize calls to class methods.

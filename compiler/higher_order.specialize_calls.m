@@ -1232,7 +1232,7 @@ maybe_specialize_ordinary_call(CanRequest, CalledPred, CalledProc,
             CallerPredInfo0 = hoi_get_pred_info(!.Info),
             pred_info_get_typevarset(CallerPredInfo0, TVarSet),
             pred_info_get_univ_quant_tvars(CallerPredInfo0, CallerUnivQTVars),
-            type_subst_makes_instance_known(ModuleInfo0,
+            type_subst_makes_some_instance_known(ModuleInfo0,
                 CalleeUnivConstraints0, TVarSet,
                 CallerUnivQTVars, ArgTypes, CalleeTVarSet,
                 CalleeExistQTVars, CalleeArgTypes)
@@ -1373,12 +1373,12 @@ find_higher_order_args(ModuleInfo, CalleeStatus, [Arg | Args],
     % Succeeds if the type substitution for a call makes any of the
     % class constraints match an instance which was not matched before.
     %
-:- pred type_subst_makes_instance_known(module_info::in,
+:- pred type_subst_makes_some_instance_known(module_info::in,
     list(prog_constraint)::in, tvarset::in, list(tvar)::in, list(mer_type)::in,
     tvarset::in, existq_tvars::in, list(mer_type)::in) is semidet.
 
-type_subst_makes_instance_known(ModuleInfo, CalleeUnivConstraints0, TVarSet0,
-        CallerHeadTypeParams, ArgTypes, CalleeTVarSet,
+type_subst_makes_some_instance_known(ModuleInfo, CalleeUnivConstraints0,
+        TVarSet0, CallerHeadTypeParams, ArgTypes, CalleeTVarSet,
         CalleeExistQVars, CalleeArgTypes0) :-
     CalleeUnivConstraints0 = [_ | _],
     tvarset_merge_renaming(TVarSet0, CalleeTVarSet, TVarSet, TypeRenaming),
@@ -1392,21 +1392,45 @@ type_subst_makes_instance_known(ModuleInfo, CalleeUnivConstraints0, TVarSet0,
         CalleeUnivConstraints0, CalleeUnivConstraints1),
     apply_rec_subst_to_prog_constraint_list(TypeSubn,
         CalleeUnivConstraints1, CalleeUnivConstraints),
-    assoc_list.from_corresponding_lists(CalleeUnivConstraints0,
-        CalleeUnivConstraints, CalleeUnivConstraintAL),
+    some_updated_constraint_makes_an_instance_known_loop(ModuleInfo, TVarSet,
+        CalleeUnivConstraints0, CalleeUnivConstraints).
 
-    % Go through each constraint in turn, checking whether any instances
-    % match which didn't before the substitution was applied.
-    list.member(CalleeUnivConstraint0 - CalleeUnivConstraint,
-        CalleeUnivConstraintAL),
-    CalleeUnivConstraint0 = constraint(ClassName, ConstraintArgTypes0),
-    list.length(ConstraintArgTypes0, ClassArity),
-    CalleeUnivConstraint = constraint(_ClassName, ConstraintArgTypes),
+    % Go through each constraint in turn, checking whether any instances match
+    % with its updated form which didn't match before the update.
+    %
+:- pred some_updated_constraint_makes_an_instance_known_loop(module_info::in,
+    tvarset::in, list(prog_constraint)::in, list(prog_constraint)::in)
+    is semidet.
+
+some_updated_constraint_makes_an_instance_known_loop(_, _, [], []) :-
+    fail.
+some_updated_constraint_makes_an_instance_known_loop(_, _, [], [_ | _]) :-
+    unexpected($pred, "length mismatch").
+some_updated_constraint_makes_an_instance_known_loop(_, _, [_ | _], []) :-
+    unexpected($pred, "length mismatch").
+some_updated_constraint_makes_an_instance_known_loop(ModuleInfo, TVarSet,
+        [CalleeUnivConstraint0 | CalleeUnivConstraints0],
+        [CalleeUnivConstraint | CalleeUnivConstraints]) :-
+    CalleeUnivConstraint0 = constraint(ClassName, ArgTypes0),
+    CalleeUnivConstraint = constraint(_ClassName, ArgTypes),
+    % The class name and the arity should be identical before and after
+    % the update.
+    list.length(ArgTypes0, ClassArity),
+    ClassId = class_id(ClassName, ClassArity),
     module_info_get_instance_table(ModuleInfo, InstanceTable),
-    map.search(InstanceTable, class_id(ClassName, ClassArity), Instances),
-    list.member(Instance, Instances),
-    instance_matches(ConstraintArgTypes, Instance, _, _, TVarSet, _),
-    not instance_matches(ConstraintArgTypes0, Instance, _, _, TVarSet, _).
+    ( if
+        map.search(InstanceTable, ClassId, Instances),
+        some [Instance] (
+            list.member(Instance, Instances),
+            instance_matches(ArgTypes, Instance, _, _, TVarSet, _),
+            not instance_matches(ArgTypes0, Instance, _, _, TVarSet, _)
+        )
+    then
+        true
+    else
+        some_updated_constraint_makes_an_instance_known_loop(ModuleInfo,
+            TVarSet, CalleeUnivConstraints0, CalleeUnivConstraints)
+    ).
 
 %---------------------%
 
@@ -1585,45 +1609,59 @@ construct_extra_type_infos(Types, TypeInfoVars, TypeInfoGoals, !Info) :-
 
 %---------------------%
 
+    % search_for_version(Info, Params, ModuleInfo, Request, Versions,
+    %   MaybeBestPartialSoFar0, Match):
+    %
+    % Search for a match for Request among Versions, returning either
+    %
+    % - the first complete match, if one exists, and
+    % - the best partial match, if no complete match exists.
+    %
+    % MaybeBestPartialSoFar0 should hold the best partial match (if any)
+    % that we have so far. The top-level caller should pass "no"
+    % in this arg position.
+    % 
 :- pred search_for_version(higher_order_info::in, ho_params::in,
     module_info::in, ho_request::in, list(new_pred)::in,
     maybe(match)::in, match::out) is semidet.
 
 search_for_version(_, _, _, _, [], yes(Match), Match).
 search_for_version(Info, Params, ModuleInfo, Request, [Version | Versions],
-        MaybeMatch0, Match) :-
+        MaybeBestPartialSoFar0, Match) :-
     ( if version_matches(Params, ModuleInfo, Request, Version, Match1) then
-        ( if
-            Match1 = match(_, MatchIsPartial, _, _),
-            MatchIsPartial = no
-        then
+        Match1 = match(_, MatchCompleteness1, _, _),
+        (
+            MatchCompleteness1 = complete_match,
             Match = Match1
-        else
+        ;
+            MatchCompleteness1 = partial_match(NumMatches1),
             (
-                MaybeMatch0 = no,
-                MaybeMatch2 = yes(Match1)
+                MaybeBestPartialSoFar0 = no,
+                MaybeBestPartialSoFar1 = yes(Match1)
             ;
-                MaybeMatch0 = yes(Match0),
-                ( if
+                MaybeBestPartialSoFar0 = yes(BestPartialSoFar0),
+                BestPartialSoFar0 = match(_, BestPartialCompleteness0, _, _),
+                (
+                    BestPartialCompleteness0 = partial_match(NumMatches0),
                     % Pick the best match.
-                    Match0 = match(_, yes(NumMatches0), _, _),
-                    Match1 = match(_, yes(NumMatches1), _, _)
-                then
+                    % XXX We prefer Match1 over Match0
+                    % when NumMatches0 = NumMatches1.
                     ( if NumMatches0 > NumMatches1 then
-                        MaybeMatch2 = MaybeMatch0
+                        MaybeBestPartialSoFar1 = MaybeBestPartialSoFar0
                     else
-                        MaybeMatch2 = yes(Match1)
+                        MaybeBestPartialSoFar1 = yes(Match1)
                     )
-                else
-                    unexpected($pred, "comparison failed")
+                ;
+                    BestPartialCompleteness0 = complete_match,
+                    unexpected($pred, "complete_match")
                 )
             ),
-            search_for_version(Info, Params, ModuleInfo, Request,
-                Versions, MaybeMatch2, Match)
+            search_for_version(Info, Params, ModuleInfo, Request, Versions,
+                MaybeBestPartialSoFar1, Match)
         )
     else
-        search_for_version(Info, Params, ModuleInfo, Request,
-            Versions, MaybeMatch0, Match)
+        search_for_version(Info, Params, ModuleInfo, Request, Versions,
+            MaybeBestPartialSoFar0, Match)
     ).
 
 %---------------------%
