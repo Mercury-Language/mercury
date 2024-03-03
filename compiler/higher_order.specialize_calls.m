@@ -1198,8 +1198,8 @@ maybe_specialize_ordinary_call(CanRequest, CalledPred, CalledProc,
     CallerProcInfo0 = hoi_get_proc_info(!.Info),
     proc_info_get_var_table(CallerProcInfo0, VarTable),
     proc_info_get_rtti_varmaps(CallerProcInfo0, RttiVarMaps),
-    find_higher_order_args(ModuleInfo0, CalleeStatus, Args0,
-        CalleeArgTypes, VarTable, RttiVarMaps, hoi_get_known_var_map(!.Info),
+    find_higher_order_args(ModuleInfo0, CalleeStatus, Args0, CalleeArgTypes,
+        VarTable, RttiVarMaps, hoi_get_known_var_map(!.Info),
         1, cord.init, HigherOrderArgsCord),
     HigherOrderArgs = cord.list(HigherOrderArgsCord),
 
@@ -1242,9 +1242,10 @@ maybe_specialize_ordinary_call(CanRequest, CalledPred, CalledProc,
         find_matching_version(!.Info, CalledPred, CalledProc, Args0,
             Context, HigherOrderArgs, RequestKind, FindResult),
         (
-            FindResult = find_result_match(match(Match, _, Args1,
-                ExtraTypeInfoTypes)),
-            Match = new_pred(NewPredProcId, _, _, NewName, _, _, _, _, _, _),
+            FindResult = find_result_match(Match),
+            Match = match(MatchedNewPred, _, Args1, ExtraTypeInfoTypes),
+            MatchedNewPred =
+                new_pred(NewPredProcId, _, _, NewName, _, _, _, _, _, _),
             NewPredProcId = proc(NewCalledPred, NewCalledProc),
 
             construct_extra_type_infos(ExtraTypeInfoTypes,
@@ -1346,23 +1347,22 @@ find_higher_order_args(ModuleInfo, CalleeStatus, [Arg | Args],
             CurriedCalleeArgTypes, VarTable, RttiVarMaps,
             KnownVarMap, 1, cord.init, HOCurriedArgsCord),
         HOCurriedArgs = cord.list(HOCurriedArgsCord),
-        list.length(CurriedArgs, NumArgs),
+        list.length(CurriedArgs, NumCurriedArgs),
+        list.length(HOCurriedArgs, NumHOCurriedArgs),
         ( if
-            list.length(HOCurriedArgs, NumArgs),
-            not (
-                some [HOCurriedArg] (
-                    list.member(HOCurriedArg, HOCurriedArgs),
-                    HOCurriedArg ^ hoa_is_constant = no
-                )
-            )
+            % XXX The reason for this equality test is unclear to me (zs).
+            % Unfortunately, Simon's commit of the original version of this
+            % code in July 2001 does not explain its purpose, and that diff
+            % had no reviews, so no reviewer raised the issue either.
+            NumCurriedArgs = NumHOCurriedArgs,
+            all_higher_order_args_are_constant(HOCurriedArgs)
         then
-            IsConst = yes
+            IsConst = arg_is_const
         else
-            IsConst = no
+            IsConst = arg_is_not_const
         ),
-        HOArg = higher_order_arg(ConsId, ArgNo, NumArgs,
-            CurriedArgs, CurriedArgTypes, CurriedArgRttiInfo,
-            HOCurriedArgs, IsConst),
+        HOArg = higher_order_arg(ConsId, ArgNo, NumCurriedArgs, CurriedArgs,
+            CurriedArgTypes, CurriedArgRttiInfo, HOCurriedArgs, IsConst),
         cord.snoc(HOArg, !HOArgsCord)
     else
         true
@@ -1488,8 +1488,8 @@ find_matching_version(Info, CalledPred, CalledProc, Args0, Context,
     % Check to see if any of the specialized versions of the called pred
     % apply here.
     ( if
-        map.search(NewPredMap, proc(CalledPred, CalledProc), Versions0),
-        set.to_sorted_list(Versions0, Versions),
+        map.search(NewPredMap, proc(CalledPred, CalledProc), VersionSet),
+        set.to_sorted_list(VersionSet, Versions),
         search_for_version(Info, Params, ModuleInfo, Request, Versions,
             no, Match)
     then

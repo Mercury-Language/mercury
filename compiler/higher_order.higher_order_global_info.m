@@ -92,7 +92,10 @@
     %
 :- type goal_size_map == map(pred_id, int).
 
+%---------------------%
+
 :- type new_pred_map == map(pred_proc_id, set(new_pred)).
+
 :- type new_pred
     --->    new_pred(
                 % version pred_proc_id
@@ -253,8 +256,17 @@
                 hoa_known_curry_args        :: list(higher_order_arg),
 
                 % Is this higher_order_arg a constant?
-                hoa_is_constant             :: bool
+                hoa_is_constant             :: is_arg_const
             ).
+
+:- type is_arg_const
+    --->    arg_is_not_const
+    ;       arg_is_const.
+
+:- pred all_higher_order_args_are_constant(list(higher_order_arg)::in)
+    is semidet.
+
+:- func both_constants(is_arg_const, is_arg_const) = is_arg_const.
 
 %---------------------------------------------------------------------------%
 
@@ -433,6 +445,20 @@ hogi_allocate_id(Id, !Info) :-
 
 %---------------------------------------------------------------------------%
 
+all_higher_order_args_are_constant([]).
+all_higher_order_args_are_constant([Arg | Args]) :-
+    Arg ^ hoa_is_constant = arg_is_const,
+    all_higher_order_args_are_constant(Args).
+
+both_constants(IsConstA, IsConstB) = IsConst :-
+    ( if IsConstA = arg_is_const, IsConstB = arg_is_const then
+        IsConst = arg_is_const
+    else
+        IsConst = arg_is_not_const
+    ).
+
+%---------------------------------------------------------------------------%
+
 version_matches(Params, ModuleInfo, Request, Version, Match) :-
     Match = match(Version, MatchCompleteness, Args, ExtraTypeInfoTypes),
     Request = ho_request(_, Callee, ArgsTypes0, _, RequestHigherOrderArgs,
@@ -521,7 +547,7 @@ higher_order_args_match([RequestArg | RequestArgs], [VersionArg | VersionArgs],
         higher_order_args_match(RequestArgs, VersionArgs, TailArgs, _),
         NewRequestArg = higher_order_arg(ConsId1, ArgNo1, NumArgs,
             CurriedArgs, CurriedArgTypes, CurriedArgRttiInfo,
-            NewHOCurriedArgs, RequestIsConst `and` VersionIsConst),
+            NewHOCurriedArgs, both_constants(RequestIsConst, VersionIsConst)),
         Args = [NewRequestArg | TailArgs]
     else
         % Type-info arguments present in the request may be missing from the
@@ -551,12 +577,12 @@ get_extra_arguments_2([HOArg | HOArgs], Args) :-
     HOArg = higher_order_arg(_, _, _, CurriedArgs0, _, _, HOCurriedArgs,
         IsConst),
     (
-        IsConst = yes,
+        IsConst = arg_is_const,
         % If this argument is constant, all its sub-terms must be constant,
         % so there won't be anything more to add.
         get_extra_arguments_2(HOArgs, Args)
     ;
-        IsConst = no,
+        IsConst = arg_is_not_const,
         remove_const_higher_order_args(1, CurriedArgs0,
             HOCurriedArgs, CurriedArgs),
         get_extra_arguments_2(HOCurriedArgs, ExtraCurriedArgs),
@@ -574,10 +600,10 @@ remove_const_higher_order_args(Index, [Arg | Args0], HOArgs0, Args) :-
         ( if HOIndex = Index then
             remove_const_higher_order_args(Index + 1, Args0, HOArgs, Args1),
             (
-                IsConst = yes,
+                IsConst = arg_is_const,
                 Args = Args1
             ;
-                IsConst = no,
+                IsConst = arg_is_not_const,
                 Args = [Arg | Args1]
             )
         else if HOIndex > Index then

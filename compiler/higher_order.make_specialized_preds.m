@@ -748,13 +748,13 @@ construct_higher_order_terms(ModuleInfo, HeadVars0, NewHeadVars, ArgModes0,
     proc_info_set_rtti_varmaps(RttiVarMaps, !ProcInfo),
 
     (
-        IsConst = no,
+        IsConst = arg_is_not_const,
         % Make ho_traverse_proc_body pretend that the input higher-order
         % argument is built using the new arguments as its curried arguments.
         map.det_insert(LVar, known_const(ConsId, CurriedHeadVars1),
             !KnownVarMap)
     ;
-        IsConst = yes
+        IsConst = arg_is_const
     ),
 
     map.set_from_corresponding_lists(CurriedArgs, CurriedHeadVars1,
@@ -772,7 +772,7 @@ construct_higher_order_terms(ModuleInfo, HeadVars0, NewHeadVars, ArgModes0,
         !Renaming, !KnownVarMap, ConstGoals1),
 
     (
-        IsConst = yes,
+        IsConst = arg_is_const,
         % Build the constant inside the specialized version, so that
         % other constants which include it will be recognized as constant.
         ArgModes = list.map(mode_both_sides_to_unify_mode(ModuleInfo),
@@ -792,7 +792,7 @@ construct_higher_order_terms(ModuleInfo, HeadVars0, NewHeadVars, ArgModes0,
         ConstGoal = hlds_goal(ConstGoalExpr, ConstGoalInfo),
         ConstGoals0 = CurriedConstGoals ++ [ConstGoal]
     ;
-        IsConst = no,
+        IsConst = arg_is_not_const,
         ConstGoals0 = CurriedConstGoals
     ),
 
@@ -996,10 +996,10 @@ output_higher_order_args(OutputStream, ModuleInfo, NumToDrop, Indent,
     Indent1Str = indent2_string(Indent + 1u),
     io.format(OutputStream, "%% %s", [s(Indent1Str)], !IO),
     (
-        IsConst = yes,
+        IsConst = arg_is_const,
         io.write_string(OutputStream, "const ", !IO)
     ;
-        IsConst = no
+        IsConst = arg_is_not_const
     ),
     ( if ConsId = closure_cons(ShroudedPredProcId, _) then
         proc(PredId, _) = unshroud_pred_proc_id(ShroudedPredProcId),
