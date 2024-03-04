@@ -88,13 +88,13 @@ test(!Res) :-
 
 add_res(R, Rs0, [R | Rs0]).
 
-:- type t0      --->    a0 ; b0.
-:- type t1(A)       --->    a1(A) ; b1(A).
-:- type t2(A, B)    --->    a2(A, B) ; b2(A, B).
-:- type t3(A, B, C) --->    a3(A, B, C) ; b3(A, B, C).
+:- type t0              --->    a0 ; b0.
+:- type t1(A)           --->    a1(A) ; b1(A).
+:- type t2(A, B)        --->    a2(A, B) ; b2(A, B).
+:- type t3(A, B, C)     --->    a3(A, B, C) ; b3(A, B, C).
 :- type t4(A, B, C, D)  --->    a4(A, B, C, D) ; b4(A, B, C, D).
 
-:- type i(A, B, C)  --->    ai(A) ; bi(B) ; ci(C).
+:- type i(A, B, C)      --->    ai(A) ; bi(B) ; ci(C).
 
 :- func ma0 = t0.
 :- func mb0 = t0.
