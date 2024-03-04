@@ -26,7 +26,7 @@ typedef MR_Next MR_TraceCmdFunc(char **words, int word_count,
 // each command is stored in a value of type MR_TraceCmdTableEntry.
 //
 // The name of the command itself is stored in the name field; the category
-// field contains name of the category to which the command belongs,
+// field contains the name of the category to which the command belongs,
 // e.g. "browsing".
 //
 // The code that the command loop should execute to handle a command of a given
