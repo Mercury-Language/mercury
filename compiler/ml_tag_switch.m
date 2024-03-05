@@ -137,10 +137,11 @@ ml_generate_tag_switch(Var, VarEntry, CodeModel, CanFail, Context, MaxPrimary,
 
     % Package up the results into a switch statement.
     Range = mlds_switch_range(0, uint8.cast_to_int(MaxPrimary)),
-    list.sort(PtagCases0, PtagCases),
+    merge_any_arms_for_same_case_id(PtagCases0, Cases0),
+    list.sort(Cases0, Cases),
     ml_switch_generate_default(CanFail, CodeModel, Context, Default, !Info),
     SwitchStmt0 = ml_stmt_switch(mlds_builtin_type_int(int_type_int),
-        PtagRval, Range, PtagCases, Default, Context),
+        PtagRval, Range, Cases, Default, Context),
     ml_simplify_switch(SwitchStmt0, SwitchStmt, !Info),
     Stmts = [SwitchStmt].
 
@@ -195,14 +196,14 @@ gen_tagged_case_code(CodeModel, EntryPackedArgsMap, TaggedCase, CaseId,
             % to a *single* environment structure, the affected fields
             % of the environment structure will be doubly defined,
             % and the target language compiler will rightly report an error.
-            % The simplest way to avoid this is use this setting of
+            % The simplest way to avoid this is to use this setting of
             % !:MayUseTagSwitch to tell ml_generate_tag_switch_if_possible
             % to fail, letting ml_switch_gen.m fall back to an if-then-else
             % chain for the switch. Slow but working target language code
             % beats "fast" but non-compilable target language code :-(
             % Given how long the problem we are guarding against here
             % has lurked in this code without being detected, the speed
-            % of the code we generate in such rare cases are extremely
+            % of the code we generate in such rare cases is extremely
             % unlikely to matter in practice.
             !:MayUseTagSwitch = may_not_use_tag_switch,
             % Since we are forcing ml_generate_tag_switch_if_possible
@@ -380,9 +381,31 @@ find_any_split_cases_2(_CaseId, Ptags, !IsAnyCaseSplit) :-
 
 %---------------------------------------------------------------------------%
 
+    % This type, as its name implies, is an extension of the mlds_switch_case 
+    % type, the addition being the maybe(case_id) field. Its semantics is that
+    % if it contains "yes(CaseId)", then the case contains the implementation
+    % of the given arm of the switch we are implementing, and this MLDS case
+    % can be merged with any other MLDS case that implements the same CaseId.
+    % If this field contains "no", then the case contains code for more than
+    % one case_id of the original switch, and this MLDS case cannot be
+    % merged with any other.
+    %
+    % It is an invariant that if two mlds_switch_case_ids bothe contain
+    % "yes(CaseId)" for same CaseId, then their statements will be identical.
+    % We guarantee this by setting this field to yes(CaseId) only when getting
+    % the mlds_stmt out of the CodeMap by looking up CaseId in it.
+    % Two lookups of the same key in the same map must yield the same result.
+:- type mlds_switch_case_id
+    --->    mlds_switch_case_id(
+                mlds_case_match_cond,
+                list(mlds_case_match_cond),
+                maybe(case_id),
+                mlds_stmt
+            ).
+
 :- pred gen_ptag_cases(prog_var::in, var_table_entry::in, can_fail::in,
     code_model::in, prog_context::in, code_map::in, ptag_count_map::in,
-    ptag_case_group_list(case_id)::in, list(mlds_switch_case)::out,
+    ptag_case_group_list(case_id)::in, list(mlds_switch_case_id)::out,
     list(ml_ground_term_map)::in, list(ml_ground_term_map)::out,
     ml_gen_info::in, ml_gen_info::out) is det.
 
@@ -397,7 +420,7 @@ gen_ptag_cases(Var, VarEntry, CanFail, CodeModel, Context, CodeMap,
 
 :- pred gen_ptag_case(prog_var::in, var_table_entry::in, can_fail::in,
     code_model::in, prog_context::in, code_map::in, ptag_count_map::in,
-    ptag_case_group_entry(case_id)::in, mlds_switch_case::out,
+    ptag_case_group_entry(case_id)::in, mlds_switch_case_id::out,
     list(ml_ground_term_map)::in, list(ml_ground_term_map)::out,
     ml_gen_info::in, ml_gen_info::out) is det.
 
@@ -420,7 +443,7 @@ gen_ptag_case(Var, VarEntry, CanFail, CodeModel, Context, CodeMap,
             unexpected($pred, "no goal for non-shared tag")
         ;
             GoalList = [_Stag - CaseId],
-            lookup_code_map(CodeMap, CaseId, CodeModel, Stmt,
+            lookup_code_map(CodeMap, CaseId, CodeModel, MaybeCaseId, Stmt,
                 !ReachableConstVarMaps, !Info)
         ;
             GoalList = [_, _ | _],
@@ -457,17 +480,19 @@ gen_ptag_case(Var, VarEntry, CanFail, CodeModel, Context, CodeMap,
             % to switch on it. This can happen if the other functor symbols
             % that share this primary tag are ruled out by the initial inst
             % of the switched-on variable.
-            lookup_code_map(CodeMap, CaseId, CodeModel, Stmt,
+            lookup_code_map(CodeMap, CaseId, CodeModel, MaybeCaseId, Stmt,
                 !ReachableConstVarMaps, !Info)
         else
             gen_stag_switch(Var, VarEntry, CodeModel, CaseCanFail, Context,
                 CodeMap, MainPtag, SecTagLocn, GroupedGoalList, Stmt,
-                !ReachableConstVarMaps, !Info)
+                !ReachableConstVarMaps, !Info),
+            MaybeCaseId = no
         )
     ),
     MainPtagMatch = make_ptag_match(MainPtag),
     OtherPtagMatches = list.map(make_ptag_match, OtherPtags),
-    MLDS_Case = mlds_switch_case(MainPtagMatch, OtherPtagMatches, Stmt).
+    MLDS_Case = mlds_switch_case_id(MainPtagMatch, OtherPtagMatches,
+        MaybeCaseId, Stmt).
 
 :- func make_ptag_match(ptag) = mlds_case_match_cond.
 
@@ -476,20 +501,22 @@ make_ptag_match(Ptag) = Cond :-
     Cond = match_value(ml_const(mlconst_int(uint8.cast_to_int(PtagUint8)))).
 
 :- pred lookup_code_map(code_map::in, case_id::in, code_model::in,
-    mlds_stmt::out,
+    maybe(case_id)::out, mlds_stmt::out,
     list(ml_ground_term_map)::in, list(ml_ground_term_map)::out,
     ml_gen_info::in, ml_gen_info::out) is det.
 
-lookup_code_map(CodeMap, CaseId, CodeModel, Stmt,
+lookup_code_map(CodeMap, CaseId, CodeModel, MaybeCaseId, Stmt,
         !ReachableConstVarMaps, !Info) :-
     map.lookup(CodeMap, CaseId, MaybeCode),
     (
-        MaybeCode = immediate(Stmt)
+        MaybeCode = immediate(Stmt),
+        MaybeCaseId = yes(CaseId)
     ;
         MaybeCode = generate(EntryPackedArgsMap, Goal),
         ml_gen_info_set_packed_word_map(EntryPackedArgsMap, !Info),
         ml_gen_goal_as_branch_block(CodeModel, Goal, Stmt,
-            !ReachableConstVarMaps, !Info)
+            !ReachableConstVarMaps, !Info),
+        MaybeCaseId = no
     ).
 
 %---------------------------------------------------------------------------%
@@ -605,13 +632,115 @@ gen_stag_case(Group, CodeMap, CodeModel, MLDS_Case,
     list.reverse(RevLaterStags, LaterStags),
     FirstMatch = make_match_value(FirstStag),
     LaterMatches = list.map(make_match_value, LaterStags),
-    lookup_code_map(CodeMap, CaseId, CodeModel, Stmt,
+    lookup_code_map(CodeMap, CaseId, CodeModel, _MaybeCaseId, Stmt,
         !ReachableConstVarMaps, !Info),
     MLDS_Case = mlds_switch_case(FirstMatch, LaterMatches, Stmt).
 
 :- func make_match_value(int) = mlds_case_match_cond.
 
 make_match_value(Stag) = match_value(ml_const(mlconst_int(Stag))).
+
+%---------------------------------------------------------------------------%
+
+    % The job of merge_any_arms_for_same_case_id is to generate target language
+    % code that should be more easily optimizable by the target language
+    % compiler. Without it, we can generate MLDS code that looks like this:
+    %
+    %   switch (MR_tag((MR_Word) HeadVar__3_3)) {
+    %     default: /*NOTREACHED*/ MR_assert(0);
+    %     case (MR_Integer) 0:
+    %       *HeadVar__1_1 = (MR_Integer) 0;
+    %       break;
+    %     case (MR_Integer) 1:
+    %     case (MR_Integer) 2:
+    %     case (MR_Integer) 3:
+    %     case (MR_Integer) 4:
+    %     case (MR_Integer) 5:
+    %     case (MR_Integer) 6:
+    %       *HeadVar__1_1 = (MR_Integer) 1;
+    %       break;
+    %     case (MR_Integer) 7:
+    %       *HeadVar__1_1 = (MR_Integer) 1;
+    %       break;
+    %   }
+    %
+    % (This is actual C code generated by mmc for part of the compare predicate
+    % of the expr type in tests/benchmarks/deriv.m.)
+    %
+    % Note that we have three separate arms of this switch that all do the same
+    % thing. This is not coincidence: they all implement the body of the same
+    % switch arm in the original HLDS. However, this switch arm is the active
+    % switch arm for nine of the type's ten cons_ids, including the six that
+    % are mapped to the unshared primary tags 1 through 6, and all three
+    % that are mapped to the shared primary tag 7. We generate code for the
+    % shared primary tag separately from the unshared ptags, since we may need
+    % to generate different code for each value of the remote secondary tag,
+    % but in this case, there is no such need. The same issue can arise
+    % with primary tag 0 which can be shared between several different cons_ids
+    % distinguished by a local secondary tag, thought that is not an issue
+    % in this example.
+    %
+    % This predicate merges together MLDS cases that all implement the same arm
+    % of the original switch. For the code that previously resulted in the MLDS
+    % code above, we now generate this:
+    %
+    %  switch (MR_tag((MR_Word) HeadVar__3_3)) {
+    %     default: /*NOTREACHED*/ MR_assert(0);
+    %     case (MR_Integer) 0:
+    %       *HeadVar__1_1 = (MR_Integer) 0;
+    %       break;
+    %     case (MR_Integer) 1:
+    %     case (MR_Integer) 2:
+    %     case (MR_Integer) 3:
+    %     case (MR_Integer) 4:
+    %     case (MR_Integer) 5:
+    %     case (MR_Integer) 6:
+    %     case (MR_Integer) 7:
+    %       *HeadVar__1_1 = (MR_Integer) 1;
+    %       break;
+    %   }
+    %
+    % Note that the order in which we return the cases does not matter,
+    % since our caller will sort the case list we return.
+    %
+:- pred merge_any_arms_for_same_case_id(list(mlds_switch_case_id)::in,
+    list(mlds_switch_case)::out) is det.
+
+merge_any_arms_for_same_case_id(IdCases, Arms) :-
+    acc_case_id_arms(IdCases, map.init, CaseIdMap, [], NoIdArms),
+    map.values(CaseIdMap, IdArms),
+    Arms = NoIdArms ++ IdArms.
+
+:- pred acc_case_id_arms(list(mlds_switch_case_id)::in,
+    map(case_id, mlds_switch_case)::in, map(case_id, mlds_switch_case)::out,
+    list(mlds_switch_case)::in, list(mlds_switch_case)::out) is det.
+
+acc_case_id_arms([], !CaseIdMap, !NoIdArms).
+acc_case_id_arms([HeadCaseId | TailCaseIds], !CaseIdMap, !NoIdArms) :-
+    HeadCaseId = mlds_switch_case_id(HeadMainConsId, HeadOtherConsIds,
+        MaybeCaseId, HeadStmt),
+    (
+        MaybeCaseId = no,
+        HeadArm = mlds_switch_case(HeadMainConsId, HeadOtherConsIds,
+            HeadStmt),
+        !:NoIdArms = [HeadArm | !.NoIdArms]
+    ;
+        MaybeCaseId = yes(CaseId),
+        ( if map.search(!.CaseIdMap, CaseId, OldArm) then
+            OldArm = mlds_switch_case(OldMainConsId, OldOtherConsIds, OldStmt),
+            OldConsIds = [OldMainConsId | OldOtherConsIds],
+            HeadConsIds = [HeadMainConsId | HeadOtherConsIds],
+            list.sort(OldConsIds ++ HeadConsIds, NewConsIds),
+            list.det_head_tail(NewConsIds, NewMainConsId, NewOtherConsIds),
+            NewArm = mlds_switch_case(NewMainConsId, NewOtherConsIds, OldStmt),
+            map.det_update(CaseId, NewArm, !CaseIdMap)
+        else
+            HeadArm = mlds_switch_case(HeadMainConsId, HeadOtherConsIds,
+                HeadStmt),
+            map.det_insert(CaseId, HeadArm, !CaseIdMap)
+        )
+    ),
+    acc_case_id_arms(TailCaseIds, !CaseIdMap, !NoIdArms).
 
 %---------------------------------------------------------------------------%
 :- end_module ml_backend.ml_tag_switch.

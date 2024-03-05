@@ -126,6 +126,7 @@
     ml_gen_info::in, ml_gen_info::out) is det.
 
     % Generate an appropriate default for a switch.
+    % (Exported to ml_tag_switch.m.)
     %
 :- pred ml_switch_generate_default(can_fail::in, code_model::in,
     prog_context::in, mlds_switch_default::out,
