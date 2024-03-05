@@ -39,7 +39,7 @@ main(!IO) :-
     ).
 
 :- type expr
-    --->   x
+    --->    x
     ;       num(int)
     ;       expr + expr
     ;       expr - expr
