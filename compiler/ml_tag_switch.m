@@ -381,7 +381,7 @@ find_any_split_cases_2(_CaseId, Ptags, !IsAnyCaseSplit) :-
 
 %---------------------------------------------------------------------------%
 
-    % This type, as its name implies, is an extension of the mlds_switch_case 
+    % This type, as its name implies, is an extension of the mlds_switch_case
     % type, the addition being the maybe(case_id) field. Its semantics is that
     % if it contains "yes(CaseId)", then the case contains the implementation
     % of the given arm of the switch we are implementing, and this MLDS case
@@ -390,10 +390,10 @@ find_any_split_cases_2(_CaseId, Ptags, !IsAnyCaseSplit) :-
     % one case_id of the original switch, and this MLDS case cannot be
     % merged with any other.
     %
-    % It is an invariant that if two mlds_switch_case_ids bothe contain
-    % "yes(CaseId)" for same CaseId, then their statements will be identical.
-    % We guarantee this by setting this field to yes(CaseId) only when getting
-    % the mlds_stmt out of the CodeMap by looking up CaseId in it.
+    % It is an invariant that if two mlds_switch_case_ids both contain
+    % "yes(CaseId)" for the same CaseId, then their statements will be
+    % identical. We guarantee this by setting this field to yes(CaseId) only
+    % when getting the mlds_stmt out of the CodeMap by looking up CaseId in it.
     % Two lookups of the same key in the same map must yield the same result.
 :- type mlds_switch_case_id
     --->    mlds_switch_case_id(
@@ -677,7 +677,7 @@ make_match_value(Stag) = match_value(ml_const(mlconst_int(Stag))).
     % to generate different code for each value of the remote secondary tag,
     % but in this case, there is no such need. The same issue can arise
     % with primary tag 0 which can be shared between several different cons_ids
-    % distinguished by a local secondary tag, thought that is not an issue
+    % distinguished by a local secondary tag, though that is not an issue
     % in this example.
     %
     % This predicate merges together MLDS cases that all implement the same arm
