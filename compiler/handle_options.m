@@ -3043,14 +3043,33 @@ handle_compare_specialization(!Globals) :-
         % we should set the option to the default value. This value
         % may be back end specific, since different back ends have
         % different performance tradeoffs.
+        %
+        % XXX Now that the quadratic code scheme for comparison predicates
+        % has been made cheaper, these limits should almost certainly be
+        % raised, but the *level* to which they should be raised requires
+        % nontrivial benchmarking.
         globals.lookup_bool_option(!.Globals, highlevel_code, HighLevelCode),
         (
             HighLevelCode = bool.no,
-            globals.set_option(compare_specialization, int(13), !Globals)
+            Limit0 = 13
         ;
             HighLevelCode = bool.yes,
-            globals.set_option(compare_specialization, int(14), !Globals)
-        )
+            Limit0 = 14
+        ),
+        % The old constraint-based mode analysis code has not been updated
+        % to handle switches in its input goals, so if it is enabled,
+        % set compare_specialization to a level that suppresses the creation
+        % of any switches.
+        globals.lookup_bool_option(!.Globals, mode_constraints,
+            ModeConstraints),
+        (
+            ModeConstraints = bool.no,
+            Limit = Limit0
+        ;
+            ModeConstraints = bool.yes,
+            Limit = 1
+        ),
+        globals.set_option(compare_specialization, int(Limit), !Globals)
     else
         true
     ).

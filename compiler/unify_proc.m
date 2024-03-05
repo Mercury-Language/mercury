@@ -119,6 +119,7 @@
 :- import_module maybe.
 :- import_module pair.
 :- import_module require.
+:- import_module set_tree234.
 :- import_module string.
 :- import_module term.
 :- import_module uint8.
@@ -1392,7 +1393,7 @@ is_ctor_with_all_locally_packed_unsigned_args(CtorRepn, PtagUint8) :-
     %       ;       g(a, b, c)
     %       ;       h.
     %
-    % the quadratic code we want to generate is
+    % the quadratic code we *used* to generate was
     %
     %   compare(Res, X, Y) :-
     %       (
@@ -1444,6 +1445,82 @@ is_ctor_with_all_locally_packed_unsigned_args(CtorRepn, PtagUint8) :-
     % switch_detection and det_analysis to recognize the determinism of the
     % predicate.
     %
+    % However, we now generate switches like this directly (show using
+    % pseudo-code, since Mercury's user syntax has no way to express
+    % switches *directly*):
+    %
+    %   compare(Res, X, Y) :-
+    %       % switch on X
+    %       (
+    %           % X has function symbol f/1
+    %           % switch on Y
+    %           (
+    %               % Y has function symbol f/1
+    %               X = f(X1),
+    %               Y = f(Y1),
+    %               compare(R, X1, Y1)
+    %           ;
+    %               % Y has function symbol g/3 or h/0
+    %               R = (<)
+    %           )
+    %       ;
+    %           % X has function symbol g/3
+    %           % switch on Y
+    %           (
+    %               % Y has function symbol f/1
+    %               R = (>)
+    %           ;
+    %               % Y has function symbol g/3
+    %               X = g(X1, X2, X3),
+    %               Y = g(Y1, Y2, Y3),
+    %               ( if compare(R1, X1, Y1), R1 \= (=) then
+    %                   R = R1
+    %               else if compare(R2, X2, Y2), R2 \= (=) then
+    %                   R = R2
+    %               else
+    %                   compare(R, X3, Y3)
+    %               )
+    %           ;
+    %               % Y has function symbol h/0
+    %               R = (<)
+    %           )
+    %       ;
+    %           % X has function symbol h/0
+    %           % switch on Y
+    %           (
+    %               % Y has function symbol f/1 or g/3
+    %               R = (>)
+    %           ;
+    %               % Y has function symbol h/0
+    %               R = (=)
+    %           )
+    %       ).
+    %
+    % The general structure is an outer switch on X, with one arm for each
+    % symbol symbol in the type. Each arm of this switch is an inner switch
+    % on Y. This switch will have two or three arms. It will have
+    %
+    % - one arm for the case where X and Y are bound to the same function
+    %   symbol, where R = (=) is a possible outcome, provided that the
+    %   argments of the function symbol in X and Y are equal
+    %
+    % - one arm for the case where Y is bound to one of the function symbols
+    %   that precede X's function symbol in the type's order, if there are
+    %   any such symbols, which always returns R = (>), and
+    %
+    % - one arm for the case where Y is bound to one of the function symbols
+    %   that follow X's function symbol in the type's order, if there are
+    %   any such symbols, which always returns R = (<).
+    %
+    % This is possible because the typechecker can now handle the switches
+    % that we generate. This ability depends on a natural property of these
+    % switches: they are all on X or Y, both of which are argument variables
+    % with declared types. This allows the compiler to effectively ignore
+    % the unifications netween X or Y on the one hand the cons_ids in the
+    % switch cases on the other hand, since (a) these implied unifications
+    % should be type correct by construction, and (b) processing them
+    % wouldn't tell the typechecker anything it does not already know.
+    %
 :- pred generate_compare_proc_body_du_quad(spec_pred_defn_info::in,
     uc_options::in, list(constructor_repn)::in,
     prog_var::in, prog_var::in, prog_var::in,
@@ -1453,83 +1530,130 @@ generate_compare_proc_body_du_quad(SpecDefnInfo, UCOptions, CtorRepns,
         R, X, Y, Goal, !Info) :-
     % XXX Consider returning switches, not disjunctions, both here
     % and everywhere else.
-    generate_compare_du_quad_switch_on_x(SpecDefnInfo, UCOptions,
-        CtorRepns, CtorRepns, R, X, Y, [], Cases, !Info),
-    Context = SpecDefnInfo ^ spdi_context,
-    goal_info_init(Context, GoalInfo),
-    disj_list_to_goal(Cases, GoalInfo, Goal).
+    % XXX Done here, not yet everywhere else.
+    (
+        CtorRepns = [],
+        % The definition of a type constructor must contain at least one
+        % data constructor.
+        unexpected($pred, "CtorRepns = []")
+    ;
+        CtorRepns = [CtorRepn],
+        % If the type has only one data constructor, then the data constructors
+        % of X and Y cannot be different.
+        generate_compare_case(SpecDefnInfo, UCOptions,
+            cons_ids_known_to_match, CtorRepn, R, X, Y, Goal, !Info)
+    ;
+        CtorRepns = [_, _ | _],
+        Context = SpecDefnInfo ^ spdi_context,
+        make_const_construction(Context, R, compare_cons_id("<"), ReturnLt),
+        make_const_construction(Context, R, compare_cons_id("="), ReturnEq),
+        make_const_construction(Context, R, compare_cons_id(">"), ReturnGt),
+        TypeCtor = SpecDefnInfo ^ spdi_type_ctor,
+        ConsIds = list.map(ctor_repn_to_cons_id(TypeCtor), CtorRepns),
+        ConsIdSet = set_tree234.list_to_set(ConsIds),
+        generate_compare_du_quad_outer_switch_arms(SpecDefnInfo, UCOptions,
+            CtorRepns, R, X, Y, ReturnLt, ReturnEq, ReturnGt,
+            set_tree234.init, ConsIdSet, [], Cases, !Info),
+        % Reversing Cases before putting them into GoalExpr can help
+        % make the initial HLDS we generate be a bit more readable,
+        % but for any purpose other than that, the order should not matter.
+        % (Technically, the order can matter for performance if we implement
+        % the switch using an if-then-else chain, but
+        %
+        % - that should happen only if disable smart indexing, which we
+        %   just about never do, and
+        %
+        % - even then, we don't how frequently each cons_id in the type
+        %   occurs at the program point just before the switch, so we
+        %   don't know what order of the if-then-else chain would be best.
+        GoalExpr = switch(X, cannot_fail, Cases),
+        goal_info_init(Context, GoalInfo),
+        Goal = hlds_goal(GoalExpr, GoalInfo)
+    ).
 
-:- pred generate_compare_du_quad_switch_on_x(spec_pred_defn_info::in,
-    uc_options::in, list(constructor_repn)::in, list(constructor_repn)::in,
+    % generate_compare_du_quad_outer_switch_arms(SpecDefnInfo, UCOptions,
+    %   CtorRepns, R, X, Y, !.ConsIdsLt, !.ConsIdsEqGt, !Cases, !Info):
+    %
+    % Generate one arm of the outer switch (on X), which is itself a complete
+    % inner switch (on Y) for each constructor in CtorRepns. X and Y are
+    % the terms being compared, and R is the result. !.ConsIdsLt are all
+    % the cons_ids that should compare as less-than the first constructor
+    % in CtorRepns, while !.ConsIdsEqGt are all the cons_ids that should
+    % compare as greater then or requal to that same constructor.
+    %
+    % Invariant: the union of !.ConsIdsLt and !.ConsIdsEqGt will always equal
+    % the set of all cons_ids in the type constructor's definition.
+    %
+:- pred generate_compare_du_quad_outer_switch_arms(spec_pred_defn_info::in,
+    uc_options::in, list(constructor_repn)::in,
     prog_var::in, prog_var::in, prog_var::in,
-    list(hlds_goal)::in, list(hlds_goal)::out,
+    hlds_goal::in, hlds_goal::in, hlds_goal::in,
+    set_tree234(cons_id)::in, set_tree234(cons_id)::in,
+    list(case)::in, list(case)::out,
     unify_proc_info::in, unify_proc_info::out) is det.
 
-generate_compare_du_quad_switch_on_x(_SpecDefnInfo, _UCOptions,
-        [], _RightCtorRepns, _R, _X, _Y, !Cases, !Info).
-generate_compare_du_quad_switch_on_x(SpecDefnInfo, UCOptions,
-        [LeftCtorRepn | LeftCtorRepns], RightCtorRepns, R, X, Y,
-        !Cases, !Info) :-
-    generate_compare_du_quad_switch_on_y(SpecDefnInfo, UCOptions,
-        LeftCtorRepn, RightCtorRepns, ">", R, X, Y, !Cases, !Info),
-    generate_compare_du_quad_switch_on_x(SpecDefnInfo, UCOptions,
-        LeftCtorRepns, RightCtorRepns, R, X, Y, !Cases, !Info).
-
-:- pred generate_compare_du_quad_switch_on_y(spec_pred_defn_info::in,
-    uc_options::in, constructor_repn::in, list(constructor_repn)::in,
-    string::in, prog_var::in, prog_var::in, prog_var::in,
-    list(hlds_goal)::in, list(hlds_goal)::out,
-    unify_proc_info::in, unify_proc_info::out) is det.
-
-generate_compare_du_quad_switch_on_y(_SpecDefnInfo, _UCOptions, _LeftCtorRepn,
-        [], _Cmp, _R, _X, _Y, !Cases, !Info).
-generate_compare_du_quad_switch_on_y(SpecDefnInfo, UCOptions, LeftCtorRepn,
-        [RightCtorRepn | RightCtorRepns], Cmp0, R, X, Y, !Cases, !Info) :-
-    ( if LeftCtorRepn = RightCtorRepn then
-        generate_compare_case(SpecDefnInfo, UCOptions, quad, LeftCtorRepn,
-            R, X, Y, Case, !Info),
-        Cmp1 = "<"
-    else
-        generate_compare_du_quad_compare_asymmetric(SpecDefnInfo,
-            LeftCtorRepn, RightCtorRepn, Cmp0, R, X, Y, Case, !Info),
-        Cmp1 = Cmp0
-    ),
-    generate_compare_du_quad_switch_on_y(SpecDefnInfo, UCOptions, LeftCtorRepn,
-        RightCtorRepns, Cmp1, R, X, Y, [Case | !.Cases], !:Cases, !Info).
-
-:- pred generate_compare_du_quad_compare_asymmetric(spec_pred_defn_info::in,
-    constructor_repn::in, constructor_repn::in,
-    string::in, prog_var::in, prog_var::in, prog_var::in,
-    hlds_goal::out, unify_proc_info::in, unify_proc_info::out) is det.
-
-generate_compare_du_quad_compare_asymmetric(SpecDefnInfo, CtorRepnA, CtorRepnB,
-        CompareOp, R, X, Y, Case, !Info) :-
-    CtorRepnA = ctor_repn(_OrdinalA, MaybeExistConstraintsA, FunctorNameA,
-        _ConsTagA, ArgRepnsA, _ArityA, _CtxtA),
-    CtorRepnB = ctor_repn(_OrdinalB, MaybeExistConstraintsB, FunctorNameB,
-        _ConsTagB, ArgRepnsB, _ArityB, _CtxtB),
-    list.length(ArgRepnsA, FunctorArityA),
-    list.length(ArgRepnsB, FunctorArityB),
+generate_compare_du_quad_outer_switch_arms(_SpecDefnInfo, _UCOptions,
+        [], _R, _X, _Y, _ReturnLt, _ReturnEq, _ReturnGt,
+        _ConsIdsLt, _ConsIdsEqGt, !Cases, !Info).
+generate_compare_du_quad_outer_switch_arms(SpecDefnInfo, UCOptions,
+        [CtorRepn | CtorRepns], R, X, Y, ReturnLt, ReturnEq, ReturnGt,
+        !.ConsIdsLt, !.ConsIdsEqGt, !Cases, !Info) :-
     TypeCtor = SpecDefnInfo ^ spdi_type_ctor,
-    FunctorConsIdA = cons(FunctorNameA, FunctorArityA, TypeCtor),
-    FunctorConsIdB = cons(FunctorNameB, FunctorArityB, TypeCtor),
-    make_fresh_vars_for_cons_args(ArgRepnsA, MaybeExistConstraintsA, VarsA,
-        !Info),
-    make_fresh_vars_for_cons_args(ArgRepnsB, MaybeExistConstraintsB, VarsB,
-        !Info),
-    RHSA = rhs_functor(FunctorConsIdA, is_not_exist_constr, VarsA),
-    RHSB = rhs_functor(FunctorConsIdB, is_not_exist_constr, VarsB),
+    CtorRepnConsId = ctor_repn_to_cons_id(TypeCtor, CtorRepn),
+
+    CtorArity = CtorRepn ^ cr_num_args,
+    ( if CtorArity = 0 then
+        EqGoal = ReturnEq
+    else
+        generate_compare_case(SpecDefnInfo, UCOptions,
+            cons_ids_not_known_to_match, CtorRepn, R, X, Y, EqGoal, !Info)
+    ),
+    EqCase = case(CtorRepnConsId, [], EqGoal),
+
+    LtConsIds = set_tree234.to_sorted_list(!.ConsIdsLt),
+    set_tree234.det_remove(CtorRepnConsId, !.ConsIdsEqGt, ConsIdsGt),
+    GtConsIds = set_tree234.to_sorted_list(ConsIdsGt),
+
+    (
+        LtConsIds = [],
+        LtCases = []
+    ;
+        LtConsIds = [HeadLtConsId | TailLtConsIds],
+        % CtorRepnConsId is greater than all the LtConsIds.
+        LtCase = case(HeadLtConsId, TailLtConsIds, ReturnGt),
+        LtCases = [LtCase]
+    ),
+
+    (
+        GtConsIds = [],
+        GtCases = []
+    ;
+        GtConsIds = [HeadGtConsId | TailGtConsIds],
+        % CtorRepnConsId is less than all the GtConsIds.
+        GtCase = case(HeadGtConsId, TailGtConsIds, ReturnLt),
+        GtCases = [GtCase]
+    ),
+
+    InnerSwitchCases = LtCases ++ [EqCase | GtCases],
+    InnerSwitchGoalExpr = switch(Y, cannot_fail, InnerSwitchCases),
     Context = SpecDefnInfo ^ spdi_context,
-    create_pure_atomic_complicated_unification(X, RHSA, Context,
-        umc_explicit, [], GoalUnifyX),
-    create_pure_atomic_complicated_unification(Y, RHSB, Context,
-        umc_explicit, [], GoalUnifyY),
-    make_const_construction(Context, R,
-        compare_cons_id(CompareOp), ReturnResult),
-    GoalList = [GoalUnifyX, GoalUnifyY, ReturnResult],
-    goal_info_init(GoalInfo0),
-    goal_info_set_context(Context, GoalInfo0, GoalInfo),
-    conj_list_to_goal(GoalList, GoalInfo, Case).
+    goal_info_init(Context, InnerSwitchGoalInfo),
+    InnerSwitchGoal = hlds_goal(InnerSwitchGoalExpr, InnerSwitchGoalInfo),
+    Case = case(CtorRepnConsId, [], InnerSwitchGoal),
+    !:Cases = [Case | !.Cases],
+
+    set_tree234.insert(CtorRepnConsId, !ConsIdsLt),
+    !:ConsIdsEqGt = ConsIdsGt,
+    generate_compare_du_quad_outer_switch_arms(SpecDefnInfo, UCOptions,
+        CtorRepns, R, X, Y, ReturnLt, ReturnEq, ReturnGt,
+        !.ConsIdsLt, !.ConsIdsEqGt, !Cases, !Info).
+
+:- func ctor_repn_to_cons_id(type_ctor, constructor_repn) = cons_id.
+
+ctor_repn_to_cons_id(TypeCtor, CtorRepn) = ConsId :-
+    CtorRepn = ctor_repn(_Ordinal, _MaybeExistConstraints, FunctorName,
+        _ConsTag, _ArgRepns, FunctorArity, _Ctxt),
+    ConsId = cons(FunctorName, FunctorArity, TypeCtor).
 
 %---------------------%
 
@@ -1682,23 +1806,23 @@ generate_compare_du_linear_cases(_SpecDefnInfo, _UCOptions,
         [], _R, _X, _Y, [], !Info).
 generate_compare_du_linear_cases(SpecDefnInfo, UCOptions,
         [CtorRepn | CtorRepns], R, X, Y, [Case | Cases], !Info) :-
-    generate_compare_case(SpecDefnInfo, UCOptions, linear, CtorRepn,
-        R, X, Y, Case, !Info),
-    generate_compare_du_linear_cases(SpecDefnInfo, UCOptions, CtorRepns,
-        R, X, Y, Cases, !Info).
+    generate_compare_case(SpecDefnInfo, UCOptions, cons_ids_known_to_match,
+        CtorRepn, R, X, Y, Case, !Info),
+    generate_compare_du_linear_cases(SpecDefnInfo, UCOptions,
+        CtorRepns, R, X, Y, Cases, !Info).
 
 %---------------------%
 
-:- type linear_or_quad
-    --->    linear
-    ;       quad.
+:- type cons_ids_match
+    --->    cons_ids_not_known_to_match
+    ;       cons_ids_known_to_match.
 
 :- pred generate_compare_case(spec_pred_defn_info::in,
-    uc_options::in, linear_or_quad::in, constructor_repn::in,
+    uc_options::in, cons_ids_match::in, constructor_repn::in,
     prog_var::in, prog_var::in, prog_var::in,
     hlds_goal::out, unify_proc_info::in, unify_proc_info::out) is det.
 
-generate_compare_case(SpecDefnInfo, UCOptions, LinearOrQuad, CtorRepn,
+generate_compare_case(SpecDefnInfo, UCOptions, ConsIdsMatch, CtorRepn,
         R, X, Y, Case, !Info) :-
     CtorRepn = ctor_repn(_Ordinal, MaybeExistConstraints, FunctorName,
         ConsTag, ArgRepns, FunctorArity, _Ctxt),
@@ -1712,13 +1836,23 @@ generate_compare_case(SpecDefnInfo, UCOptions, LinearOrQuad, CtorRepn,
             umc_explicit, [], GoalUnifyX),
         generate_return_equal(R, Context, EqualGoal),
         (
-            LinearOrQuad = linear,
-            % The disjunct we are generating is executed only if the index
-            % values of X and Y are the same, so if X is bound to a constant,
-            % Y must also be bound to that same constant.
+            ConsIdsMatch = cons_ids_known_to_match,
+            % We get called with cons_ids_known_to_match in two cases.
+            %
+            % - If we are generating the body of the compare predicate
+            %   using the linear method. With that method, we compare
+            %   the two inpiut terms only if the type's index predicate 
+            %   says that they have the same cons_id. This test is done
+            %   at runtime.
+            %
+            % - If we are generating the body of the compare predicate
+            %   using the quadratic method, but the type consists of
+            %   only one data constructor. In that case, *all* values
+            %   of the type have that data constructor. This test is done
+            %   at compile time.
             GoalList = [GoalUnifyX, EqualGoal]
         ;
-            LinearOrQuad = quad,
+            ConsIdsMatch = cons_ids_not_known_to_match,
             create_pure_atomic_complicated_unification(Y, RHS, Context,
                 umc_explicit, [], GoalUnifyY),
             GoalList = [GoalUnifyX, GoalUnifyY, EqualGoal]

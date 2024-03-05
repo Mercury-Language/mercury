@@ -205,9 +205,9 @@ typecheck_goal(Goal0, Goal, EnclosingContext, !TypeAssignSet, !Info) :-
     % Our algorithm handles overloading quite inefficiently: for each
     % unification of a variable with a function symbol that matches N type
     % declarations, we make N copies of the existing set of type assignments.
-    % In the worst case, therefore, the complexity of our algorithm
-    % (space complexity as well as time complexity) is therefore exponential
-    % in the number of ambiguous symbols.
+    % The consequence is that the worst case complexity of our algorithm,
+    % is exponential in the number of ambiguous symbols. Unfortunately,
+    % this is true for space complexity as well as time complexity,
     %
     % We issue a warning whenever the number of type assignments exceeds
     % the warn limit, and stop typechecking (after generating an error)
@@ -271,6 +271,27 @@ typecheck_goal_expr(GoalExpr0, GoalExpr, GoalInfo, !TypeAssignSet, !Info) :-
         typecheck_goal_list(SubGoals0, SubGoals, Context,
             !TypeAssignSet, !Info),
         GoalExpr = disj(SubGoals)
+    ;
+        GoalExpr0 = switch(SwitchVar, CanFail, Cases0),
+        % We have not run switch detection yet, so there can be no switches
+        % in user-written goals yet. However, the compiler can create clauses
+        % containing switches, and unify_proc.m now does just that for
+        % type-constructor-specific comparison predicates.
+        %
+        % In these switches, all of the main and other cons_ids in the cases
+        % have the form cons/3, and all have the type_ctor field of cons/3
+        % filled in with the same valid type_ctor, which is the type
+        % of SwitchVar. We *could* add code here to get this type_ctor
+        % out of the cons_ids in Cases0, and record that the top level
+        % type constructor of SwitchVar's type is this type_ctor,
+        % but SwitchVar will be one the predicate's arguments, and this
+        % argument will have a declared type, so the typechecker will
+        % *already* know this.
+        trace [compiletime(flag("type_checkpoint")), io(!IO)] (
+            type_checkpoint("switch", !.Info, VarSet, !.TypeAssignSet, !IO)
+        ),
+        typecheck_case_list(Cases0, Cases, Context, !TypeAssignSet, !Info),
+        GoalExpr = switch(SwitchVar, CanFail, Cases)
     ;
         GoalExpr0 = if_then_else(Vars, Cond0, Then0, Else0),
         trace [compiletime(flag("type_checkpoint")), io(!IO)] (
@@ -400,10 +421,6 @@ typecheck_goal_expr(GoalExpr0, GoalExpr, GoalInfo, !TypeAssignSet, !Info) :-
             LHS, RHS0, RHS, !TypeAssignSet, !Info),
         GoalExpr = unify(LHS, RHS, UnifyMode, Unification, UnifyContext)
     ;
-        GoalExpr0 = switch(_, _, _),
-        % We haven't run switch detection yet.
-        unexpected($pred, "switch")
-    ;
         GoalExpr0 = call_foreign_proc(_, PredId, _, Args, _, _, _),
         % Foreign_procs are automatically generated, so they will always be
         % type-correct, but we need to do the type analysis in order to
@@ -513,6 +530,18 @@ typecheck_goal_list([Goal0 | Goals0], [Goal | Goals], Context,
         !TypeAssignSet, !Info) :-
     typecheck_goal(Goal0, Goal, Context, !TypeAssignSet, !Info),
     typecheck_goal_list(Goals0, Goals, Context, !TypeAssignSet, !Info).
+
+:- pred typecheck_case_list(list(case)::in, list(case)::out,
+    prog_context::in, type_assign_set::in, type_assign_set::out,
+    typecheck_info::in, typecheck_info::out) is det.
+
+typecheck_case_list([], [], _, !TypeAssignSet, !Info).
+typecheck_case_list([Case0 | Cases0], [Case | Cases], Context,
+        !TypeAssignSet, !Info) :-
+    Case0 = case(MainCondId, OtherConsIds, Goal0),
+    typecheck_goal(Goal0, Goal, Context, !TypeAssignSet, !Info),
+    Case = case(MainCondId, OtherConsIds, Goal),
+    typecheck_case_list(Cases0, Cases, Context, !TypeAssignSet, !Info).
 
 %---------------------------------------------------------------------------%
 
@@ -1840,67 +1869,27 @@ typecheck_info_get_ctor_list(Info, ConsId, Arity, GoalId, ConsInfos,
     ).
 
 :- pred typecheck_info_get_ctor_list_2(typecheck_info::in, cons_id::in,
-    int::in, goal_id::in, list(cons_type_info)::out, list(cons_error)::out)
+    arity::in, goal_id::in, list(cons_type_info)::out, list(cons_error)::out)
     is det.
 
-typecheck_info_get_ctor_list_2(Info, ConsId, Arity, GoalId, ConsInfos,
-        DataConsErrors) :-
-    % Check if `ConsId/Arity' has been defined as a constructor in some
-    % discriminated union type(s). This gives us a list of possible
-    % cons_type_infos.
-    typecheck_info_get_cons_table(Info, ConsTable),
-    ( if
-        ConsId = cons(_, _, _),
-        search_cons_table(ConsTable, ConsId, ConsDefns)
-    then
-        convert_cons_defn_list(Info, GoalId, do_not_flip_constraints,
-            ConsId, ConsDefns, PlainMaybeConsInfos)
-    else
-        PlainMaybeConsInfos = []
-    ),
-
-    % For "existentially typed" functors, whether the functor is actually
-    % existentially typed depends on whether it is used as a constructor
-    % or as a deconstructor. As a constructor, it is universally typed,
-    % but as a deconstructor, it is existentially typed. But type checking
-    % and polymorphism need to know whether it is universally or existentially
-    % quantified _before_ mode analysis has inferred the mode of the
-    % unification. Therefore, we use a special syntax for construction
-    % unifications with existentially quantified functors: instead of
-    % just using the functor name (e.g. "Y = foo(X)", the programmer must use
-    % the special functor name "new foo" (e.g. "Y = 'new foo'(X)").
-    %
-    % Here we check for occurrences of functor names starting with "new ".
-    % For these, we look up the original functor in the constructor symbol
-    % table, and for any occurrences of that functor we flip the quantifiers on
-    % the type definition (i.e. convert the existential quantifiers and
-    % constraints into universal ones).
-    ( if
-        ConsId = cons(Name, Arity, ConsIdTypeCtor),
-        remove_new_prefix(Name, OrigName),
-        OrigConsId = cons(OrigName, Arity, ConsIdTypeCtor),
-        search_cons_table(ConsTable, OrigConsId, ExistQConsDefns)
-    then
-        convert_cons_defn_list(Info, GoalId, flip_constraints_for_new,
-            OrigConsId, ExistQConsDefns, UnivQuantifiedMaybeConsInfos)
-    else
-        UnivQuantifiedMaybeConsInfos = []
-    ),
+typecheck_info_get_ctor_list_2(Info, ConsId, Arity, GoalId,
+        ConsInfos, ConsErrors) :-
+    % Check if ConsId is a constructor in a discriminated union type.
+    typecheck_info_get_du_cons_ctor_list(Info, ConsId, GoalId,
+        DuConsInfos, DuConsErrors),
 
     % Check if ConsId is a field access function for which the user
     % has not supplied a declaration.
     ( if
-        builtin_field_access_function_type(Info, GoalId, ConsId,
-            Arity, FieldAccessMaybeConsInfosPrime)
+        builtin_field_access_function_type(Info, GoalId, ConsId, Arity,
+            FieldAccessMaybeConsInfosPrime)
     then
-        FieldAccessMaybeConsInfos = FieldAccessMaybeConsInfosPrime
+        split_cons_errors(FieldAccessMaybeConsInfosPrime,
+            FieldAccessConsInfos, FieldAccessConsErrors)
     else
-        FieldAccessMaybeConsInfos = []
+        FieldAccessConsInfos = [],
+        FieldAccessConsErrors = []
     ),
-
-    DataMaybeConsInfos = PlainMaybeConsInfos ++ UnivQuantifiedMaybeConsInfos
-        ++ FieldAccessMaybeConsInfos,
-    split_cons_errors(DataMaybeConsInfos, DataConsInfos, DataConsErrors),
 
     % Check if ConsId is a constant of one of the builtin atomic types
     % (string, float, int, character). If so, insert the resulting
@@ -1950,6 +1939,7 @@ typecheck_info_get_ctor_list_2(Info, ConsId, Arity, GoalId, ConsInfos,
     % Check if ConsId is the name of a predicate which takes at least
     % Arity arguments. If so, insert the resulting cons_type_info
     % at the start of the list.
+    % XXX We insert it, but NOT at the start.
     ( if
         builtin_pred_type(Info, ConsId, Arity, GoalId, PredConsInfosPrime)
     then
@@ -1965,9 +1955,64 @@ typecheck_info_get_ctor_list_2(Info, ConsId, Arity, GoalId, ConsInfos,
         ApplyConsInfos = []
     ),
 
-    OtherConsInfos = BuiltinConsInfos ++ TupleConsInfos
-        ++ PredConsInfos ++ ApplyConsInfos,
-    ConsInfos = DataConsInfos ++ OtherConsInfos.
+    ConsInfos = DuConsInfos ++ FieldAccessConsInfos ++
+        BuiltinConsInfos ++ TupleConsInfos ++ PredConsInfos ++ ApplyConsInfos,
+    ConsErrors = DuConsErrors ++ FieldAccessConsErrors.
+
+:- pred typecheck_info_get_du_cons_ctor_list(typecheck_info::in, cons_id::in,
+    goal_id::in, list(cons_type_info)::out, list(cons_error)::out) is det.
+
+typecheck_info_get_du_cons_ctor_list(Info, ConsId, GoalId,
+        ConsInfos, ConsErrors) :-
+    ( if ConsId = cons(Name, Arity, ConsIdTypeCtor) then
+        typecheck_info_get_cons_table(Info, ConsTable),
+
+        % Check if ConsId has been defined as a constructor in some
+        % discriminated union type or types.
+        ( if search_cons_table(ConsTable, ConsId, ConsDefns) then
+            convert_cons_defn_list(Info, GoalId, do_not_flip_constraints,
+                ConsId, ConsDefns, PlainConsInfos, PlainConsErrors)
+        else
+            PlainConsInfos = [],
+            PlainConsErrors = []
+        ),
+
+        % For "existentially typed" functors, whether the functor is actually
+        % existentially typed depends on whether it is used as a constructor
+        % or as a deconstructor. As a constructor, it is universally typed,
+        % but as a deconstructor, it is existentially typed. But type checking
+        % and polymorphism need to know whether it is universally or
+        % existentially quantified _before_ mode analysis has inferred
+        % the mode of the unification. Therefore, we use a special syntax
+        % for construction unifications with existentially quantified functors:
+        % instead of just using the functor name (e.g. "Y = foo(X)",
+        % the programmer must use the special functor name "new foo"
+        % (e.g. "Y = 'new foo'(X)").
+        %
+        % Here we check for occurrences of functor names starting with "new ".
+        % For these, we look up the original functor in the constructor symbol
+        % table, and for any occurrences of that functor we flip the
+        % quantifiers on the type definition (i.e. convert the existential
+        % quantifiers and constraints into universal ones).
+
+        ( if
+            remove_new_prefix(Name, OrigName),
+            OrigConsId = cons(OrigName, Arity, ConsIdTypeCtor),
+            search_cons_table(ConsTable, OrigConsId, ExistQConsDefns)
+        then
+            convert_cons_defn_list(Info, GoalId, flip_constraints_for_new,
+                OrigConsId, ExistQConsDefns,
+                UnivQuantConsInfos, UnivQuantConsErrors),
+            ConsInfos = PlainConsInfos ++ UnivQuantConsInfos,
+            ConsErrors = PlainConsErrors ++ UnivQuantConsErrors
+        else
+            ConsInfos = PlainConsInfos,
+            ConsErrors = PlainConsErrors
+        )
+    else
+        ConsInfos = [],
+        ConsErrors = []
+    ).
 
     % Filter out the errors (they aren't actually reported as errors
     % unless there was no other matching constructor).
@@ -1991,26 +2036,57 @@ split_cons_errors([MaybeConsInfo | MaybeConsInfos], Infos, Errors) :-
 %---------------------------------------------------------------------------%
 
 :- type cons_constraints_action
-    --->    flip_constraints_for_new
-    ;       flip_constraints_for_field_set
-    ;       do_not_flip_constraints.
+    --->    do_not_flip_constraints
+    ;       flip_constraints_for_new
+    ;       flip_constraints_for_field_set.
 
-:- pred convert_cons_defn_list(typecheck_info::in, goal_id::in,
-    cons_constraints_action::in, cons_id::in, list(hlds_cons_defn)::in,
-    list(maybe_cons_type_info)::out) is det.
+:- pred convert_cons_defn_list(typecheck_info, goal_id,
+    cons_constraints_action, cons_id, list(hlds_cons_defn),
+    list(cons_type_info), list(cons_error)).
+:- mode convert_cons_defn_list(in, in, in(bound(do_not_flip_constraints)),
+    in, in, out, out) is det.
+:- mode convert_cons_defn_list(in, in, in(bound(flip_constraints_for_new)),
+    in, in, out, out) is det.
 
-convert_cons_defn_list(_Info, _GoalId, _Action, _ConsId, [], []).
-convert_cons_defn_list(Info, GoalId, Action, ConsId,
-        [ConsDefn | ConsDefns], [ConsTypeInfo | ConsTypeInfos]) :-
-    convert_cons_defn(Info, GoalId, Action, ConsId, ConsDefn, ConsTypeInfo),
-    convert_cons_defn_list(Info, GoalId, Action, ConsId,
-        ConsDefns, ConsTypeInfos).
+convert_cons_defn_list(_Info, _GoalId, _Action, _ConsId, [], [], []).
+convert_cons_defn_list(Info, GoalId, Action, ConsId, [ConsDefn | ConsDefns],
+        ConsTypeInfos, ConsErrors) :-
+    convert_cons_defn(Info, GoalId, Action, ConsId, ConsDefn,
+        HeadMaybeConsTypeInfo),
+    convert_cons_defn_list(Info, GoalId, Action, ConsId, ConsDefns,
+        TailConsTypeInfos, TailConsErrors),
+    (
+        HeadMaybeConsTypeInfo = ok(HeadConsTypeInfo),
+        ConsTypeInfos = [HeadConsTypeInfo | TailConsTypeInfos],
+        ConsErrors = TailConsErrors
+    ;
+        HeadMaybeConsTypeInfo = error(HeadConsError),
+        ConsTypeInfos = TailConsTypeInfos,
+        ConsErrors = [HeadConsError | TailConsErrors]
+    ).
 
 :- pred convert_cons_defn(typecheck_info, goal_id,
     cons_constraints_action, cons_id, hlds_cons_defn, maybe_cons_type_info).
 :- mode convert_cons_defn(in, in, in(bound(do_not_flip_constraints)),
     in, in, out) is det.
-:- mode convert_cons_defn(in, in, in, in, in, out) is det.
+:- mode convert_cons_defn(in, in, in(bound(flip_constraints_for_field_set)),
+    in, in, out) is det.
+:- mode convert_cons_defn(in, in, in,
+    in, in, out) is det.
+% The last mode should be
+%
+% :- mode convert_cons_defn(in, in, in(bound(flip_constraints_for_new)),
+%     in, in, out) is det.
+%
+% However, as of 2024 03 04, this generates a spurious mode error:
+%
+%    In clause for `convert_cons_defn(in, in,
+%      in(bound(flip_constraints_for_new)), in, in, out)':
+%      mode mismatch in disjunction.
+%      The variable `ExistQVars0' is ground in some
+%      branches but not others.
+%        In this branch, `ExistQVars0' is free.
+%        In this branch, `ExistQVars0' is ground.
 
 convert_cons_defn(Info, GoalId, Action, ConsId, ConsDefn, ConsTypeInfo) :-
     % XXX We should investigate whether the job done by this predicate
@@ -2714,8 +2790,7 @@ builtin_field_access_function_type(Info, GoalId, ConsId, Arity,
 make_field_access_function_cons_type_info(Info, GoalId, FuncName, UserArity,
         AccessType, FieldName, FieldDefn, ConsTypeInfo) :-
     get_field_access_constructor(Info, GoalId, FuncName, UserArity,
-        AccessType, FieldDefn, OrigExistTVars,
-        MaybeFunctorConsTypeInfo),
+        AccessType, FieldDefn, OrigExistTVars, MaybeFunctorConsTypeInfo),
     (
         MaybeFunctorConsTypeInfo = ok(FunctorConsTypeInfo),
         typecheck_info_get_module_info(Info, ModuleInfo),
