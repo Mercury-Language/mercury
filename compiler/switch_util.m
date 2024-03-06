@@ -351,6 +351,16 @@
     % Find out how many secondary tags share each primary tag
     % of the given variable.
     %
+    % NOTE As of 2024 03 06, this predicate has exactly two calls,
+    % from tag_switch.m and ml_tag_switch.m, and both are just before calls
+    % to group_cases_by_ptag. We could stop exporting it if we folded its
+    % functionality into group_cases_by_ptag.
+    %
+    % NOTE It may also be interesting to instrument this code to see whether
+    % it is worth caching its output somewhere, though in that case we would
+    % have to change the interface to take a type_ctor, not a mer_type.
+    % (We only ever look at the top type_ctor of the supplied type.)
+    %
 :- pred get_ptag_counts(module_info::in, mer_type::in,
     uint8::out, ptag_count_map::out) is det.
 
@@ -1674,8 +1684,8 @@ group_case_by_ptag(CaseId, CaseRep, TaggedConsId,
             unexpected($pred, "unshared tag is shared")
         else
             StagGoalMap = map.singleton(-1, CaseRep),
-            map.det_insert(Ptag, ptag_case(SectagLocn, StagGoalMap),
-                !PtagCaseMap)
+            PtagCase = ptag_case(SectagLocn, StagGoalMap),
+            map.det_insert(Ptag, PtagCase, !PtagCaseMap)
         )
     ;
         ConsTag = remote_args_tag(RemoteArgsTagInfo),
@@ -1692,8 +1702,8 @@ group_case_by_ptag(CaseId, CaseRep, TaggedConsId,
                 unexpected($pred, "unshared tag is shared")
             else
                 StagGoalMap = map.singleton(-1, CaseRep),
-                map.det_insert(Ptag, ptag_case(SectagLocn, StagGoalMap),
-                    !PtagCaseMap)
+                PtagCase = ptag_case(SectagLocn, StagGoalMap),
+                map.det_insert(Ptag, PtagCase, !PtagCaseMap)
             )
         ;
             (
@@ -1715,17 +1725,17 @@ group_case_by_ptag(CaseId, CaseRep, TaggedConsId,
                 SectagLocn = sectag_remote_word,
                 Secondary = uint.cast_to_int(Data)
             ),
-            ( if map.search(!.PtagCaseMap, Ptag, Group) then
-                Group = ptag_case(OldSectagLocn, StagGoalMap0),
+            ( if map.search(!.PtagCaseMap, Ptag, PtagCase0) then
+                PtagCase0 = ptag_case(OldSectagLocn, StagGoalMap0),
                 expect(unify(OldSectagLocn, SectagLocn), $pred,
                     "remote tag is shared with non-remote"),
                 map.det_insert(Secondary, CaseRep, StagGoalMap0, StagGoalMap),
-                map.det_update(Ptag, ptag_case(SectagLocn, StagGoalMap),
-                    !PtagCaseMap)
+                PtagCase = ptag_case(SectagLocn, StagGoalMap),
+                map.det_update(Ptag, PtagCase, !PtagCaseMap)
             else
                 StagGoalMap = map.singleton(Secondary, CaseRep),
-                map.det_insert(Ptag, ptag_case(SectagLocn, StagGoalMap),
-                    !PtagCaseMap)
+                PtagCase = ptag_case(SectagLocn, StagGoalMap),
+                map.det_insert(Ptag, PtagCase, !PtagCaseMap)
             )
         )
     ;
@@ -1756,17 +1766,17 @@ group_case_by_ptag(CaseId, CaseRep, TaggedConsId,
             )
         ),
         Secondary = uint.cast_to_int(SecondaryUint),
-        ( if map.search(!.PtagCaseMap, Ptag, Group) then
-            Group = ptag_case(OldSectagLocn, StagGoalMap0),
+        ( if map.search(!.PtagCaseMap, Ptag, PtagCase0) then
+            PtagCase0 = ptag_case(OldSectagLocn, StagGoalMap0),
             expect(unify(OldSectagLocn, SectagLocn), $pred,
                 "local tag is shared with something different"),
             map.det_insert(Secondary, CaseRep, StagGoalMap0, StagGoalMap),
-            map.det_update(Ptag, ptag_case(SectagLocn, StagGoalMap),
-                !PtagCaseMap)
+            PtagCase = ptag_case(SectagLocn, StagGoalMap),
+            map.det_update(Ptag, PtagCase, !PtagCaseMap)
         else
             StagGoalMap = map.singleton(Secondary, CaseRep),
-            map.det_insert(Ptag, ptag_case(SectagLocn, StagGoalMap),
-                !PtagCaseMap)
+            PtagCase = ptag_case(SectagLocn, StagGoalMap),
+            map.det_insert(Ptag, PtagCase, !PtagCaseMap)
         )
     ;
         ( ConsTag = no_tag
@@ -1830,7 +1840,7 @@ interpret_rev_map_entry(RevEntry, GroupEntry) :-
                 ptag_case(CaseRep)
             ).
 
-:- type ptag_case_rev_map(CaseRep)  ==
+:- type ptag_case_rev_map(CaseRep) ==
     map(ptag_case(CaseRep), ptag_case_rev_map_entry(CaseRep)).
 
 :- pred build_ptag_case_rev_map(assoc_list(ptag, ptag_case(CaseRep))::in,
@@ -1839,22 +1849,23 @@ interpret_rev_map_entry(RevEntry, GroupEntry) :-
 
 build_ptag_case_rev_map([], _PtagCountMap, !RevMap).
 build_ptag_case_rev_map([Entry | Entries], PtagCountMap, !RevMap) :-
-    Entry = Ptag - Case,
+    Entry = Ptag - PtagCase,
     map.lookup(PtagCountMap, Ptag, CountSectagLocn - Count),
     (
         ( CountSectagLocn = sectag_none
         ; CountSectagLocn = sectag_none_direct_arg
         ),
-        ( if map.search(!.RevMap, Case, OldEntry) then
+        ( if map.search(!.RevMap, PtagCase, OldEntry) then
             OldEntry = ptag_case_rev_map_entry(OldCount,
-                OldFirstPtag, OldLaterPtags0, OldCase),
-            expect(unify(Case, OldCase), $pred, "Case != OldCase"),
+                OldFirstPtag, OldLaterPtags0, OldPtagCase),
+            expect(unify(PtagCase, OldPtagCase), $pred,
+                "PtagCase != OldPtagCase"),
             NewEntry = ptag_case_rev_map_entry(OldCount + Count,
-                OldFirstPtag, OldLaterPtags0 ++ [Ptag], OldCase),
-            map.det_update(Case, NewEntry, !RevMap)
+                OldFirstPtag, OldLaterPtags0 ++ [Ptag], OldPtagCase),
+            map.det_update(PtagCase, NewEntry, !RevMap)
         else
-            NewEntry = ptag_case_rev_map_entry(Count, Ptag, [], Case),
-            map.det_insert(Case, NewEntry, !RevMap)
+            NewEntry = ptag_case_rev_map_entry(Count, Ptag, [], PtagCase),
+            map.det_insert(PtagCase, NewEntry, !RevMap)
         )
     ;
         ( CountSectagLocn = sectag_local_rest_of_word
@@ -1881,8 +1892,8 @@ build_ptag_case_rev_map([Entry | Entries], PtagCountMap, !RevMap) :-
         % sectag_value to code maps were identical, their overall code couldn't
         % be identical, since they would have to get the secondary tags from
         % different places.
-        NewEntry = ptag_case_rev_map_entry(Count, Ptag, [], Case),
-        map.det_insert(Case, NewEntry, !RevMap)
+        NewEntry = ptag_case_rev_map_entry(Count, Ptag, [], PtagCase),
+        map.det_insert(PtagCase, NewEntry, !RevMap)
     ),
     build_ptag_case_rev_map(Entries, PtagCountMap, !RevMap).
 

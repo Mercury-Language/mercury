@@ -425,9 +425,10 @@ gen_ptag_cases(Var, VarEntry, CanFail, CodeModel, Context, CodeMap,
     ml_gen_info::in, ml_gen_info::out) is det.
 
 gen_ptag_case(Var, VarEntry, CanFail, CodeModel, Context, CodeMap,
-        PtagCountMap, PtagCase, MLDS_Case, !ReachableConstVarMaps, !Info) :-
-    PtagCase = ptag_case_group_entry(MainPtag, OtherPtags,
-        ptag_case(SecTagLocn, GoalMap)),
+        PtagCountMap, PtagCaseEntry, MLDS_Case,
+        !ReachableConstVarMaps, !Info) :-
+    PtagCaseEntry = ptag_case_group_entry(MainPtag, OtherPtags, PtagCase),
+    PtagCase = ptag_case(SecTagLocn, GoalMap),
     map.lookup(PtagCountMap, MainPtag, CountInfo),
     CountInfo = SecTagLocn1 - MaxSecondary,
     expect(unify(SecTagLocn, SecTagLocn1), $pred,
@@ -461,11 +462,10 @@ gen_ptag_case(Var, VarEntry, CanFail, CodeModel, Context, CodeMap,
             CaseCanFail = cannot_fail
         ;
             CanFail = can_fail,
-            ( if
-                list.length(GoalList, GoalCount),
-                FullGoalCount = MaxSecondary + 1,
-                FullGoalCount = GoalCount
-            then
+            list.length(GoalList, NumGoals),
+            % The +1 is to account for the fact that secondary tags go from
+            % 0 to MaxSecondary, both inclusive.
+            ( if NumGoals = MaxSecondary + 1 then
                 CaseCanFail = cannot_fail
             else
                 CaseCanFail = can_fail
