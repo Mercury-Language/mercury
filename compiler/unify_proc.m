@@ -1497,12 +1497,12 @@ is_ctor_with_all_locally_packed_unsigned_args(CtorRepn, PtagUint8) :-
     %       ).
     %
     % The general structure is an outer switch on X, with one arm for each
-    % symbol symbol in the type. Each arm of this switch is an inner switch
-    % on Y. This switch will have two or three arms. It will have
+    % symbol in the type. Each arm of this switch is an inner switch on Y.
+    % This switch will have two or three arms. It will have
     %
     % - one arm for the case where X and Y are bound to the same function
     %   symbol, where R = (=) is a possible outcome, provided that the
-    %   argments of the function symbol in X and Y are equal
+    %   arguments of the function symbol in X and Y are equal
     %
     % - one arm for the case where Y is bound to one of the function symbols
     %   that precede X's function symbol in the type's order, if there are
@@ -1516,7 +1516,7 @@ is_ctor_with_all_locally_packed_unsigned_args(CtorRepn, PtagUint8) :-
     % that we generate. This ability depends on a natural property of these
     % switches: they are all on X or Y, both of which are argument variables
     % with declared types. This allows the compiler to effectively ignore
-    % the unifications netween X or Y on the one hand the cons_ids in the
+    % the unifications between X or Y on the one hand the cons_ids in the
     % switch cases on the other hand, since (a) these implied unifications
     % should be type correct by construction, and (b) processing them
     % wouldn't tell the typechecker anything it does not already know.
@@ -1579,7 +1579,7 @@ generate_compare_proc_body_du_quad(SpecDefnInfo, UCOptions, CtorRepns,
     % the terms being compared, and R is the result. !.ConsIdsLt are all
     % the cons_ids that should compare as less-than the first constructor
     % in CtorRepns, while !.ConsIdsEqGt are all the cons_ids that should
-    % compare as greater then or requal to that same constructor.
+    % compare as greater then or equal to that same constructor.
     %
     % Invariant: the union of !.ConsIdsLt and !.ConsIdsEqGt will always equal
     % the set of all cons_ids in the type constructor's definition.
@@ -1841,7 +1841,7 @@ generate_compare_case(SpecDefnInfo, UCOptions, ConsIdsMatch, CtorRepn,
             %
             % - If we are generating the body of the compare predicate
             %   using the linear method. With that method, we compare
-            %   the two inpiut terms only if the type's index predicate 
+            %   the two input terms only if the type's index predicate 
             %   says that they have the same cons_id. This test is done
             %   at runtime.
             %

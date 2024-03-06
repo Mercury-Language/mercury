@@ -421,7 +421,7 @@ is_pred_origin_type_spec(Origin) = IsTypeSpec :-
 %---------------------%
 
     % Figure out which type vars in the given predicate's signature
-    % should be specialized to which types specified in the the
+    % should be specialized to which types specified in the
     % type_spec_constrained_preds pragma we are processing.
     %
 :- pred generate_type_spec_solns_for_pred(type_spec_constraint_map::in,

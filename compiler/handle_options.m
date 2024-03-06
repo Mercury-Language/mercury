@@ -2409,7 +2409,7 @@ handle_opmode_implications(OpMode, !Globals) :-
     else
         globals.set_option(smart_recompilation, bool(Smart), !Globals)
     ),
-    % Thet consideration applies here as well.
+    % That consideration applies here as well.
     ( if Inform = Inform0 then
         true
     else
