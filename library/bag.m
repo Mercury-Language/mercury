@@ -187,6 +187,8 @@
 :- func from_set(set(T)) = bag(T).
 :- pred from_set(set(T)::in, bag(T)::out) is det.
 
+%---------------------%
+
     % Given a bag, produce a sorted list containing all the values in the bag.
     % Each value will appear in the list the same number of times that it
     % appears in the bag.
@@ -399,8 +401,12 @@ init = Bag :-
 init(bag(Map)) :-
     map.init(Map).
 
+%---------------------%
+
 singleton(Item) = bag(Map) :-
     Map = map.singleton(Item, 1).
+
+%---------------------%
 
 is_empty(bag(Map)) :-
     map.is_empty(Map).
@@ -409,6 +415,8 @@ is_empty(bag(Map)) :-
 
 contains(bag(Map), X) :-
     map.contains(Map, X).
+
+%---------------------%
 
 count_value(Bag, X) = N :-
     bag.count_value(Bag, X, N).
@@ -420,8 +428,12 @@ count_value(bag(Map), X, N) :-
         N = 0
     ).
 
+%---------------------%
+
 member(X, bag(Map)) :-
     map.search(Map, X, _N).
+
+%---------------------%
 
 member(X, !Bag) :-
     Xs = bag.to_list(!.Bag),
@@ -440,6 +452,8 @@ insert(Item, bag(!.Map), bag(!:Map)) :-
         map.det_insert(Item, 1, !Map)
     ).
 
+%---------------------%
+
 insert_list(!.Bag, Xs) = !:Bag :-
     bag.insert_list(Xs, !Bag).
 
@@ -447,6 +461,8 @@ insert_list([], !Bag).
 insert_list([Item | Items], !Bag) :-
     bag.insert(Item, !Bag),
     bag.insert_list(Items, !Bag).
+
+%---------------------%
 
 insert_duplicates(N, Item, bag(!.Map), bag(!:Map)) :-
     compare(CmpResult, N, 0),
@@ -464,6 +480,8 @@ insert_duplicates(N, Item, bag(!.Map), bag(!:Map)) :-
         fail
     ).
 
+%---------------------%
+
 det_insert_duplicates(!.Bag, N, Item) = !:Bag :-
     det_insert_duplicates(N, Item, !Bag).
 
@@ -474,12 +492,22 @@ det_insert_duplicates(N, Item, !Bag) :-
         error($pred, "number of items is negative")
     ).
 
+%---------------------%
+
 insert_set(!.Bag, Xs) = !:Bag :-
     bag.insert_set(Xs, !Bag).
 
 insert_set(Set, !Bag) :-
     set.to_sorted_list(Set, List),
-    % XXX We should exploit the sortedness of List.
+    % We could try to exploit the sortedness of List, but
+    % 
+    % - it would make a difference only if the size of Set 
+    %   is comparable to the number of keys in Bag, and
+    %
+    % - using a test to restrict the special casing to just
+    %   the invocations for which it would help rather than hurt
+    %   will impose its own cost as well, which would need
+    %   to be paid on *all* invocations.
     bag.insert_list(List, !Bag).
 
 %---------------------------------------------------------------------------%
@@ -492,6 +520,8 @@ remove_smallest(X, bag(!.Map), bag(!:Map)) :-
         true
     ).
 
+%---------------------%
+
 remove(X, bag(!.Map), bag(!:Map)) :-
     map.search(!.Map, X, N),
     ( if N > 1 then
@@ -499,6 +529,8 @@ remove(X, bag(!.Map), bag(!:Map)) :-
     else
         map.delete(X, !Map)
     ).
+
+%---------------------%
 
 det_remove(!.Bag, X) = !:Bag :-
     bag.det_remove(X, !Bag).
@@ -510,10 +542,14 @@ det_remove(X, !Bag) :-
         unexpected($pred, "item not in bag")
     ).
 
+%---------------------%
+
 remove_list([], !Bag).
 remove_list([X | Xs], !Bag) :-
     bag.remove(X, !Bag),
     bag.remove_list(Xs, !Bag).
+
+%---------------------%
 
 det_remove_list(!.Bag, Xs) = !:Bag :-
     bag.det_remove_list(Xs, !Bag).
@@ -525,18 +561,32 @@ det_remove_list(Xs, !Bag) :-
         unexpected($pred, "some item not in bag")
     ).
 
+%---------------------%
+
 remove_set(Set, !Bag) :-
     set.to_sorted_list(Set, Xs),
-    % XXX We should exploit the sortedness of Xs.
+    % We could try to exploit the sortedness of List, but
+    % 
+    % - it would make a difference only if the size of Set 
+    %   is comparable to the number of keys in Bag, and
+    %
+    % - using a test to restrict the special casing to just
+    %   the invocations for which it would help rather than hurt
+    %   will impose its own cost as well, which would need
+    %   to be paid on *all* invocations.
     bag.remove_list(Xs, !Bag).
+
+%---------------------%
 
 det_remove_set(!.Bag, Set) = !:Bag :-
     bag.det_remove_set(Set, !Bag).
 
 det_remove_set(Set, !Bag) :-
     set.to_sorted_list(Set, Xs),
-    % XXX We should exploit the sortedness of List.
+    % See the comment in remove_set about sortedness.
     bag.det_remove_list(Xs, !Bag).
+
+%---------------------%
 
 delete(!.Bag, X) = !:Bag :-
     bag.delete(X, !Bag).
@@ -552,9 +602,13 @@ delete(X, bag(!.Map), bag(!:Map)) :-
         true
     ).
 
+%---------------------%
+
 remove_all(X, bag(!.Map), bag(!:Map)) :-
     % This is semidet.
     map.remove(X, _N, !Map).
+
+%---------------------%
 
 delete_all(!.Bag, X) = !:Bag :-
     bag.delete_all(X, !Bag).
@@ -574,22 +628,42 @@ from_list(Xs, Bag) :-
     bag.init(Bag0),
     bag.insert_list(Xs, Bag0, Bag).
 
+%---------------------%
+
 from_sorted_list(Xs) = Bag :-
     bag.from_sorted_list(Xs, Bag).
 
 from_sorted_list(Xs, Bag) :-
-    bag.init(Bag0),
-    % XXX We should exploit the sortedness of Xs.
-    bag.insert_list(Xs, Bag0, Bag).
+    % Instead of adding each X in Xs one-by-one to an initially empty map,
+    % we construct the map in its final form directly.
+    %
+    % The approach we use here allocates only two memory cells per item
+    % that do not end up in the final result: the pair and cons cells.
+    % For any list over about half a dozen items, this is fewer cells than
+    % would be used by intermediate forms of the map with the other approach.
+    % And for any list shorter than about half a dozen items, the memory
+    % needed, and the time taken by allocations, would both be too small
+    % to matter either way.
+    acc_rev_items(Xs, [], RevXsOnes),
+    map.from_rev_sorted_assoc_list(RevXsOnes, Map),
+    Bag = bag(Map).
+
+:- pred acc_rev_items(list(T)::in,
+    assoc_list(T, int)::in, assoc_list(T, int)::out) is det.
+
+acc_rev_items([], !RevAL).
+acc_rev_items([X | Xs], !RevAL) :-
+    !:RevAL = [X - 1 | !.RevAL],
+    acc_rev_items(Xs, !RevAL).
+
+%---------------------%
 
 from_set(Set) = Bag :-
     bag.from_set(Set, Bag).
 
 from_set(Set, Bag) :-
     set.to_sorted_list(Set, Xs),
-    bag.init(Bag0),
-    % XXX We should exploit the sortedness of List.
-    bag.insert_list(Xs, Bag0, Bag).
+    bag.from_sorted_list(Xs, Bag).
 
 %---------------------------------------------------------------------------%
 
@@ -610,17 +684,23 @@ prepend_n_xs(X, N, !RevXs) :-
         prepend_n_xs(X, N - 1, !RevXs)
     ).
 
+%---------------------%
+
 to_assoc_list(Bag) = XNs :-
     bag.to_assoc_list(Bag, XNs).
 
 to_assoc_list(bag(Map), XNs) :-
     map.to_assoc_list(Map, XNs).
 
+%---------------------%
+
 to_list_without_duplicates(Bag) = Xs :-
     bag.to_list_without_duplicates(Bag, Xs).
 
 to_list_without_duplicates(bag(Map), Xs) :-
     map.keys(Map, Xs).
+
+%---------------------%
 
 to_list_only_duplicates(Bag) = Xs :-
     bag.to_list_only_duplicates(Bag, Xs).
@@ -633,6 +713,8 @@ to_list_only_duplicates(bag(Map), DupXs) :-
 
 is_duplicated(X - XN, X) :-
     XN > 1.
+
+%---------------------%
 
 to_set(bag(Map)) = Set :-
     map.keys(Map, Xs),
@@ -692,6 +774,8 @@ subtract_loop(AXNs, BXNs, !RevAmBXNs) :-
             bag.subtract_loop(AXNs, TailBXNs, !RevAmBXNs)
         )
     ).
+
+%---------------------%
 
 subtract_small(BagA, BagB) = BagAmB :-
     bag.subtract_small(BagA, BagB, BagAmB).
@@ -777,6 +861,8 @@ least_upper_bound_loop(AXNs, BXNs, !RevAlubBXNs) :-
         )
     ).
 
+%---------------------%
+
 least_upper_bound_small(BagA, BagB) = BagAlubB :-
     bag.least_upper_bound_small(BagA, BagB, BagAlubB).
 
@@ -857,6 +943,8 @@ union_loop(AXNs, BXNs, !RevAuBXNs) :-
         )
     ).
 
+%---------------------%
+
 union_small(BagA, BagB) = BagAuB :-
     bag.union_small(BagA, BagB, BagAuB).
 
@@ -934,6 +1022,8 @@ intersect_loop(AXNs, BXNs, !RevAuBXNs) :-
         )
     ).
 
+%---------------------%
+
 intersect_small(BagA, BagB) = BagAiB :-
     bag.intersect_small(BagA, BagB, BagAiB).
 
@@ -957,6 +1047,8 @@ intersect_small_loop(MapA, MapB, !MapAiB) :-
         true
     ).
 
+%---------------------%
+
 intersect(bag(MapA), bag(MapB)) :-
     map.remove_smallest(X, _N, MapA, NextMapA),
     ( if map.contains(MapB, X) then
@@ -972,6 +1064,8 @@ is_subbag(BagA, BagB) :-
     ( Res = (<)
     ; Res = (=)
     ).
+
+%---------------------%
 
 subset_compare(Res, bag(MapA), bag(MapB)) :-
     map.to_assoc_list(MapA, AXNs),
@@ -1097,12 +1191,16 @@ subset_compare_verify_le(AXNs, BXNs) :-
 foldl(Pred, bag(Map), !Acc) :-
     map.foldl(Pred, Map, !Acc).
 
+%---------------------%
+
 foldl2(Pred, bag(Map), !Acc1, !Acc2) :-
     map.foldl2(Pred, Map, !Acc1, !Acc2).
 
 %---------------------------------------------------------------------------%
 
 count(bag(Map)) = list.foldl(int.plus, map.values(Map), 0).
+
+%---------------------%
 
 count_unique(bag(Map)) = map.count(Map).
 
