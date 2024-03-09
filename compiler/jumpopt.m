@@ -79,6 +79,7 @@
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_data_foreign.
 
+:- import_module cord.
 :- import_module map.
 :- import_module maybe.
 :- import_module require.
@@ -144,7 +145,7 @@ optimize_jumps_in_proc(LayoutLabels, MayAlterRtti, ProcLabel, Fulljumpopt,
                 check_nondet_tailcalls(ProcLabel, !.LabelNumCounter),
             jump_opt_instr_list(!.Instrs, comment(""), JumpOptInfo,
                 CheckedNondetTailCallInfo0, CheckedNondetTailCallInfo,
-                [], RevInstrs),
+                cord.init, InstrsCord),
             (
                 CheckedNondetTailCallInfo =
                     check_nondet_tailcalls(_, !:LabelNumCounter)
@@ -156,9 +157,9 @@ optimize_jumps_in_proc(LayoutLabels, MayAlterRtti, ProcLabel, Fulljumpopt,
             CheckedNondetTailCall = do_not_opt_checked_nondet_tailcalls,
             CheckedNondetTailCallInfo0 = dont_check_nondet_tailcalls,
             jump_opt_instr_list(!.Instrs, comment(""), JumpOptInfo,
-                CheckedNondetTailCallInfo0, _, [], RevInstrs)
+                CheckedNondetTailCallInfo0, _, cord.init, InstrsCord)
         ),
-        list.reverse(RevInstrs, !:Instrs),
+        !:Instrs = cord.list(InstrsCord),
         opt_util.filter_out_bad_livevals(!Instrs),
         ( if !.Instrs = Instrs0 then
             Mod = no
@@ -309,11 +310,12 @@ jump_opt_build_forkmap([llds_instr(Uinstr, _Comment) | Instrs], SdprocMap,
 :- pred jump_opt_instr_list(list(instruction)::in, instr::in,
     jump_opt_info::in,
     maybe_check_nondet_tailcalls::in, maybe_check_nondet_tailcalls::out,
-    list(instruction)::in, list(instruction)::out) is det.
+    cord(instruction)::in, cord(instruction)::out) is det.
 
-jump_opt_instr_list([], _PrevInstr, _, !CheckedNondetTailCallInfo, !RevInstrs).
+jump_opt_instr_list([], _PrevInstr, _,
+        !CheckedNondetTailCallInfo, !InstrsCord).
 jump_opt_instr_list([Instr0 | Instrs0], PrevInstr, JumpOptInfo,
-        !CheckedNondetTailCallInfo, !RevInstrs) :-
+        !CheckedNondetTailCallInfo, !InstrsCord) :-
     Instr0 = llds_instr(Uinstr0, Comment0),
     % We do a switch on the instruction type to ensure that we short circuit
     % all the labels that are in InstrMap but not in LayoutLabels in *all*
@@ -473,13 +475,10 @@ jump_opt_instr_list([Instr0 | Instrs0], PrevInstr, JumpOptInfo,
         NewRemain = nr_usual_case,
         ReplacementInstrsEmpty = no,
         RecurseInstrs = Instrs0,
-        !:RevInstrs = [Instr0 | !.RevInstrs]
+        cord.snoc(Instr0, !InstrsCord)
     ;
         NewRemain = nr_specified(ReplacementInstrs, RecurseInstrs),
-        % ReplacementInstrs are in the right order, but they will be reversed
-        % by our caller. We therefore reverse them here, which allows that
-        % final reverse to put them in the right order.
-        !:RevInstrs = list.reverse(ReplacementInstrs) ++ !.RevInstrs,
+        !:InstrsCord = !.InstrsCord ++ cord.from_list(ReplacementInstrs),
         (
             ReplacementInstrs = [],
             ReplacementInstrsEmpty = yes
@@ -498,7 +497,7 @@ jump_opt_instr_list([Instr0 | Instrs0], PrevInstr, JumpOptInfo,
         NewPrevInstr = Uinstr0
     ),
     jump_opt_instr_list(RecurseInstrs, NewPrevInstr, JumpOptInfo,
-        !CheckedNondetTailCallInfo, !RevInstrs).
+        !CheckedNondetTailCallInfo, !InstrsCord).
 
 :- pred jump_opt_llcall(instr::in(instr_llcall), string::in,
     list(instruction)::in, instr::in, jump_opt_info::in,
@@ -704,8 +703,8 @@ jump_opt_goto(Uinstr0, Comment0, Instrs0, PrevInstr, JumpOptInfo,
                 CrippledBlockMap,
             jump_opt_instr_list(AdjustedBlock, comment(""),
                 CrippledJumpOptInfo, !CheckedNondetTailCallInfo,
-                [], RevNewInstrs),
-            NewRemain = nr_specified(list.reverse(RevNewInstrs), Instrs0)
+                cord.init, NewInstrsCord),
+            NewRemain = nr_specified(cord.list(NewInstrsCord), Instrs0)
         else if
             % Short-circuit the goto.
             InstrMap = JumpOptInfo ^ joi_instr_map,
@@ -757,15 +756,15 @@ jump_opt_if_val(Uinstr0, Comment0, Instrs0, _PrevInstr, JumpOptInfo,
         ( if
             % Attempt to transform code such as
             %
-            %   if (Cond) L2
-            % L1:
-            %   goto L3
-            % L2:   ...
+            %       if (Cond) L2
+            %     L1:
+            %       goto L3
+            %     L2:   ...
             %
             % into
             %
-            %   if (! Cond) L3
-            % L2:   ...
+            %       if (! Cond) L3
+            %     L2:   ...
             %
             % The label L1 may be present or not. If it is present, we are
             % eliminating it, which is possible only because we short-circuit
@@ -803,19 +802,19 @@ jump_opt_if_val(Uinstr0, Comment0, Instrs0, _PrevInstr, JumpOptInfo,
         else if
             % Attempt to transform code such as
             %
-            %   if (Cond) L1
-            %   goto L2
+            %       if (Cond) L1
+            %       goto L2
             %
             % into
             %
-            %   if (! Cond) L2
-            %   <code at L1>
+            %       if (! Cond) L2
+            %       <code at L1>
             %
-            % when we know the code at L1 and don't know the code
-            % at L2. Here, we just generate
+            % when we know the code at L1 and don't know the code at L2.
+            % Here, we just generate
             %
-            %   if (! Cond) L2
-            %   goto L1
+            %       if (! Cond) L2
+            %       goto L1
             %
             % and get the code processed again starting after the if_val,
             % to get the recursive call to replace the goto to L1
@@ -846,18 +845,18 @@ jump_opt_if_val(Uinstr0, Comment0, Instrs0, _PrevInstr, JumpOptInfo,
             ( if
                 % Attempt to transform code such as
                 %
-                %   if (Cond) L1
-                %   r1 = MR_TRUE
-                %   <epilog>
-                %   ...
-                % L1:
-                %   r1 = MR_FALSE
-                %   <epilog>
+                %       if (Cond) L1
+                %       r1 = MR_TRUE
+                %       <epilog>
+                %       ...
+                %     L1:
+                %       r1 = MR_FALSE
+                %       <epilog>
                 %
                 % into
                 %
-                %   r1 = Cond
-                %   <epilog>
+                %       r1 = Cond
+                %       <epilog>
                 %
                 opt_util.is_sdproceed_next(Instrs0, BetweenFT),
                 map.search(BlockMap, DestLabel, Block),
