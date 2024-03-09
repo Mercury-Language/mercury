@@ -461,7 +461,7 @@
     % merge(L1, L2) = L:
     %
     % L is the result of merging the elements of L1 and L2, in ascending order.
-    % L1 and L2 must be sorted.
+    % Both L1 and L2 must already be sorted into ascending order.
     %
 :- func merge(list(T), list(T)) = list(T).
 :- pred merge(list(T)::in, list(T)::in, list(T)::out) is det.
