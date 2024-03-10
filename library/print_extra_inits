@@ -7,18 +7,18 @@
 # library/print_extra_inits - print extra .init file lines to stdout.
 #
 # Invocation:
-#	print_extra_inits <mer_std.ms>
-# 		where <mer_std.ms> is the names of all of the source files
-#		for the modules	in libmer_std.
+#   print_extra_inits <mer_std.ms>
+#       where <mer_std.ms> is the names of all of the source files
+#       for the modules in libmer_std.
 #
 #-----------------------------------------------------------------------------#
 
 for file in "$@"; do
-	if [ -f $file ]; then
-		grep '^INIT ' $file
-	else
-		echo "$0: source file $file not found" 1>&2
-		exit 1
-	fi
+    if test -f $file; then
+        grep '^INIT ' $file
+    else
+        echo "$0: source file $file not found" 1>&2
+        exit 1
+    fi
 done
 exit 0
