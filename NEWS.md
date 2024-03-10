@@ -1514,6 +1514,11 @@ Changes to the Mercury standard library
     - func `to_set_without_duplicates/1`    (replacement: func `to_set/1`)
     - pred `to_set_without_duplicates/2`    (replacement: func `to_set/1`)
 
+* The following predicates and functions have been added:
+
+    - func `from_sorted_list_without_duplicates/1`
+    - pred `from_sorted_list_without_duplicates/2`
+
 ### Changes to the `bitmap` module
 
 * The following predicates and functions have been added:

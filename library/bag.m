@@ -177,10 +177,15 @@
 :- func from_list(list(T)) = bag(T).
 :- pred from_list(list(T)::in, bag(T)::out) is det.
 
-    % Make a bag from a sorted list without any duplicates.
+    % Make a bag from a sorted list, which may have duplicates.
     %
 :- func from_sorted_list(list(T)) = bag(T).
 :- pred from_sorted_list(list(T)::in, bag(T)::out) is det.
+
+    % Make a bag from a sorted list without any duplicates.
+    %
+:- func from_sorted_list_without_duplicates(list(T)) = bag(T).
+:- pred from_sorted_list_without_duplicates(list(T)::in, bag(T)::out) is det.
 
     % Make a bag from a set.
     %
@@ -634,6 +639,43 @@ from_sorted_list(Xs) = Bag :-
     bag.from_sorted_list(Xs, Bag).
 
 from_sorted_list(Xs, Bag) :-
+    % See the comment in from_sorted_list_without_duplicates for the reason
+    % why we use this approach.
+    (
+        Xs = [],
+        map.init(Map)
+    ;
+        Xs = [HeadX | TailXs],
+        acc_rev_items(HeadX, 1, TailXs, [], RevXsOnes),
+        map.from_rev_sorted_assoc_list(RevXsOnes, Map)
+    ),
+    Bag = bag(Map).
+
+    % This predicate works on the same principle as
+    % acc_rev_items_without_duplicates, but it adds an item to !RevAL
+    % only when it know how many times it occurs in a row.
+    % (The caller has promised that the input list is sorted,
+    % so all occurrences of any given item in the list must be contiguous.)
+    %
+:- pred acc_rev_items(T::in, int::in, list(T)::in,
+    assoc_list(T, int)::in, assoc_list(T, int)::out) is det.
+
+acc_rev_items(CurX, CountX, [], !RevAL) :-
+    !:RevAL = [CurX - CountX | !.RevAL].
+acc_rev_items(CurX, CountX, [HeadX | TailXs], !RevAL) :-
+    ( if CurX = HeadX then
+        acc_rev_items(CurX, CountX + 1, TailXs, !RevAL)
+    else
+        !:RevAL = [CurX - CountX | !.RevAL],
+        acc_rev_items(HeadX, 1, TailXs, !RevAL)
+    ).
+
+%---------------------%
+
+from_sorted_list_without_duplicates(Xs) = Bag :-
+    bag.from_sorted_list_without_duplicates(Xs, Bag).
+
+from_sorted_list_without_duplicates(Xs, Bag) :-
     % Instead of adding each X in Xs one-by-one to an initially empty map,
     % we construct the map in its final form directly.
     %
@@ -644,17 +686,17 @@ from_sorted_list(Xs, Bag) :-
     % And for any list shorter than about half a dozen items, the memory
     % needed, and the time taken by allocations, would both be too small
     % to matter either way.
-    acc_rev_items(Xs, [], RevXsOnes),
+    acc_rev_items_without_duplicates(Xs, [], RevXsOnes),
     map.from_rev_sorted_assoc_list(RevXsOnes, Map),
     Bag = bag(Map).
 
-:- pred acc_rev_items(list(T)::in,
+:- pred acc_rev_items_without_duplicates(list(T)::in,
     assoc_list(T, int)::in, assoc_list(T, int)::out) is det.
 
-acc_rev_items([], !RevAL).
-acc_rev_items([X | Xs], !RevAL) :-
+acc_rev_items_without_duplicates([], !RevAL).
+acc_rev_items_without_duplicates([X | Xs], !RevAL) :-
     !:RevAL = [X - 1 | !.RevAL],
-    acc_rev_items(Xs, !RevAL).
+    acc_rev_items_without_duplicates(Xs, !RevAL).
 
 %---------------------%
 
