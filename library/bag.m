@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1994-1999, 2003-2007, 2011 The University of Melbourne.
-% Copyright (C) 2013-2015, 2017-2022 The Mercury team.
+% Copyright (C) 2013-2015, 2017-2024 The Mercury team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %---------------------------------------------------------------------------%
 %
@@ -177,7 +177,7 @@
 :- func from_list(list(T)) = bag(T).
 :- pred from_list(list(T)::in, bag(T)::out) is det.
 
-    % Make a bag from a sorted list.
+    % Make a bag from a sorted list without any duplicates.
     %
 :- func from_sorted_list(list(T)) = bag(T).
 :- pred from_sorted_list(list(T)::in, bag(T)::out) is det.
@@ -500,8 +500,8 @@ insert_set(!.Bag, Xs) = !:Bag :-
 insert_set(Set, !Bag) :-
     set.to_sorted_list(Set, List),
     % We could try to exploit the sortedness of List, but
-    % 
-    % - it would make a difference only if the size of Set 
+    %
+    % - it would make a difference only if the size of Set
     %   is comparable to the number of keys in Bag, and
     %
     % - using a test to restrict the special casing to just
@@ -566,8 +566,8 @@ det_remove_list(Xs, !Bag) :-
 remove_set(Set, !Bag) :-
     set.to_sorted_list(Set, Xs),
     % We could try to exploit the sortedness of List, but
-    % 
-    % - it would make a difference only if the size of Set 
+    %
+    % - it would make a difference only if the size of Set
     %   is comparable to the number of keys in Bag, and
     %
     % - using a test to restrict the special casing to just
