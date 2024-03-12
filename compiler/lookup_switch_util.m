@@ -139,18 +139,17 @@
 %
 % These predicates are used in both the LLDS and MLDS backends
 % when testing whether a switch is a lookup switch.
-% ZZZ turn them into functions
 %
 
     % If the cons_tag specifies an int_tag, return the int;
     % otherwise abort.
     %
-:- pred get_int_tag(cons_tag::in, int::out) is det.
+:- func get_int_tag(cons_tag) = int.
 
     % If the cons_tag specifies a string_tag, return the string;
     % otherwise abort.
     %
-:- pred get_string_tag(cons_tag::in, string::out) is det.
+:- func get_string_tag(cons_tag) = string.
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -227,7 +226,7 @@ type_range(ModuleInfo, TypeCtorCat, Type, Min, Max, NumValuesInRange) :-
 
 ctor_repns_int_tag_range([CtorRepn | CtorRepns], Min, Max) :-
     ConsTag = CtorRepn ^ cr_tag,
-    get_int_tag(ConsTag, Int),
+    Int = get_int_tag(ConsTag),
     list.foldl2(add_to_ctor_repn_int_tag_range, CtorRepns, Int, Min, Int, Max).
 
 :- pred add_to_ctor_repn_int_tag_range(constructor_repn::in,
@@ -235,7 +234,7 @@ ctor_repns_int_tag_range([CtorRepn | CtorRepns], Min, Max) :-
 
 add_to_ctor_repn_int_tag_range(CtorRepn, !Min, !Max) :-
     ConsTag = CtorRepn ^ cr_tag,
-    get_int_tag(ConsTag, Int),
+    Int = get_int_tag(ConsTag),
     int.min(Int, !Min),
     int.max(Int, !Max).
 
@@ -385,7 +384,7 @@ log2_rounded_down(X) = Log :-
 
 %---------------------------------------------------------------------------%
 
-get_int_tag(ConsTag, Int) :-
+get_int_tag(ConsTag) = Int :-
     ( if ConsTag = int_tag(int_tag_int(IntPrime)) then
         Int = IntPrime
     else
@@ -393,7 +392,7 @@ get_int_tag(ConsTag, Int) :-
     ).
 
 
-get_string_tag(ConsTag, Str) :-
+get_string_tag(ConsTag) = Str :-
     ( if ConsTag = string_tag(StrPrime) then
         Str = StrPrime
     else

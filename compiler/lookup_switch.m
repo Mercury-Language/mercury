@@ -87,8 +87,7 @@
 
     % Decide whether we can generate code for this switch using a lookup table.
     %
-:- pred is_lookup_switch(position_info::in,
-    pred(cons_tag, Key)::in(pred(in, out) is det),
+:- pred is_lookup_switch(position_info::in, (func(cons_tag) = Key)::in,
     list(tagged_case)::in, hlds_goal_info::in, abs_store_map::in,
     branch_end::in, branch_end::out, lookup_switch_info(Key)::out,
     code_info::in, code_info::out) is semidet.
@@ -224,9 +223,8 @@ is_lookup_switch(BranchStart, GetTag, TaggedCases, GoalInfo, StoreMap,
 %---------------------------------------------------------------------------%
 
 :- pred generate_constants_for_lookup_switch(position_info::in,
-    pred(cons_tag, Key)::in(pred(in, out) is det),
-    list(tagged_case)::in, list(prog_var)::in, set_of_progvar::in,
-    abs_store_map::in, set_of_progvar::out,
+    (func(cons_tag) = Key)::in, list(tagged_case)::in, list(prog_var)::in,
+    set_of_progvar::in, abs_store_map::in, set_of_progvar::out,
     map(Key, soln_consts(rval))::in, map(Key, soln_consts(rval))::out,
     branch_end::in, branch_end::out, set_of_progvar::in, set_of_progvar::out,
     bool::in, bool::out, code_info::in, code_info::out) is semidet.
@@ -300,8 +298,7 @@ generate_constants_for_lookup_switch(BranchStart, GetTag,
         TaggedCases, Vars, ArmNonLocals, StoreMap, _LivenessRest,
         !IndexMap, !MaybeEnd, !ResumeVars, !GoalsMayModifyTrail, !CI).
 
-:- pred record_lookup_for_tagged_cons_ids(
-    pred(cons_tag, Key)::in(pred(in, out) is det),
+:- pred record_lookup_for_tagged_cons_ids((func(cons_tag) = Key)::in,
     soln_consts(rval)::in, list(tagged_cons_id)::in,
     map(Key, soln_consts(rval))::in, map(Key, soln_consts(rval))::out) is det.
 
@@ -313,15 +310,14 @@ record_lookup_for_tagged_cons_ids(GetTag, SolnConsts,
     record_lookup_for_tagged_cons_ids(GetTag, SolnConsts,
         TaggedConsIds, !IndexMap).
 
-:- pred record_lookup_for_tagged_cons_id(
-    pred(cons_tag, Key)::in(pred(in, out) is det),
+:- pred record_lookup_for_tagged_cons_id((func(cons_tag) = Key)::in,
     soln_consts(rval)::in, tagged_cons_id::in,
     map(Key, soln_consts(rval))::in, map(Key, soln_consts(rval))::out) is det.
 
 record_lookup_for_tagged_cons_id(GetTag, SolnConsts, TaggedConsId,
         !IndexMap) :-
     TaggedConsId = tagged_cons_id(_ConsId, ConsTag),
-    GetTag(ConsTag, Index),
+    Index = GetTag(ConsTag),
     map.det_insert(Index, SolnConsts, !IndexMap).
 
 %---------------------------------------------------------------------------%

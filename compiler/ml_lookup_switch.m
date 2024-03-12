@@ -67,9 +67,8 @@
     % and consid1c, the cons_id->V map will have the corresponding entries
     % consid1a->values1, consid1b->values1 and consid1c->values1.
     %
-:- pred ml_case_id_soln_consts_to_tag_soln_consts(
-    pred(cons_tag, T)::in(pred(in, out) is det), list(tagged_case)::in,
-    map(case_id, V)::in, map(T, V)::out) is det.
+:- pred ml_case_id_soln_consts_to_tag_soln_consts((func(cons_tag) = T)::in,
+    list(tagged_case)::in, map(case_id, V)::in, map(T, V)::out) is det.
 
 %---------------------------------------------------------------------------%
 
@@ -227,7 +226,7 @@ ml_case_id_soln_consts_to_tag_soln_consts(GetTag, TaggedCases, CaseIdMap,
         "DepletedCaseIdMap not empty").
 
 :- pred ml_case_id_soln_consts_to_tag_soln_consts_loop(
-    pred(cons_tag, Key)::in(pred(in, out) is det), list(tagged_case)::in,
+    (func(cons_tag) = Key)::in, list(tagged_case)::in,
     map(case_id, V)::in, map(case_id, V)::out,
     map(Key, V)::in, map(Key, V)::out) is det.
 
@@ -245,14 +244,13 @@ ml_case_id_soln_consts_to_tag_soln_consts_loop(GetTag,
     ml_case_id_soln_consts_to_tag_soln_consts_loop(GetTag, TaggedCases,
         !CaseIdMap, !TagMap).
 
-:- pred ml_record_lookup_for_tagged_cons_id(
-    pred(cons_tag, T)::in(pred(in, out) is det), V::in, tagged_cons_id::in,
-    map(T, V)::in, map(T, V)::out) is det.
+:- pred ml_record_lookup_for_tagged_cons_id((func(cons_tag) = Key)::in,
+    V::in, tagged_cons_id::in, map(Key, V)::in, map(Key, V)::out) is det.
 
 ml_record_lookup_for_tagged_cons_id(GetTag, SolnConsts, TaggedConsId,
         !IndexMap) :-
     TaggedConsId = tagged_cons_id(_ConsId, ConsTag),
-    GetTag(ConsTag, Index),
+    Index = GetTag(ConsTag),
     map.det_insert(Index, SolnConsts, !IndexMap).
 
 %---------------------------------------------------------------------------%
