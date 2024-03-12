@@ -22,17 +22,18 @@
 :- include_module export.
 :- include_module foreign.
 :- include_module interval.
+:- include_module lookup_switch_util.
 :- include_module matching.
 :- include_module name_mangle.
 :- include_module proc_label.
 :- include_module pseudo_type_info.
 :- include_module rtti.
 :- include_module string_encoding.
+:- include_module string_switch_util.
 :- include_module switch_util.
-:- include_module type_ctor_info.
+:- include_module tag_switch_util.
 :- include_module type_class_info.
-
-:- implementation.
+:- include_module type_ctor_info.
 
 :- end_module backend_libs.
 

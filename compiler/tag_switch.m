@@ -1,17 +1,17 @@
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % Copyright (C) 1994-2000,2002-2007, 2009-2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % File: tag_switch.m.
 % Author: zs.
 %
 % Generate switches based on primary and secondary tags.
 %
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- module ll_backend.tag_switch.
 :- interface.
@@ -27,7 +27,7 @@
 
 :- import_module list.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % Generate intelligent indexing code for tag based switches.
     %
@@ -36,15 +36,15 @@
     branch_end::in, branch_end::out, llds_code::out,
     code_info::in, code_info::out, code_loc_dep::in) is det.
 
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- implementation.
 
 :- import_module backend_libs.
 :- import_module backend_libs.builtin_ops.
 :- import_module backend_libs.rtti.
-:- import_module backend_libs.switch_util.
+:- import_module backend_libs.tag_switch_util.
 :- import_module hlds.hlds_llds.
 :- import_module libs.
 :- import_module libs.globals.
@@ -65,7 +65,7 @@
 :- import_module uint8.
 :- import_module unit.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % The idea is to generate two-level switches, first on the primary
     % tag and then on the secondary tag. Since more than one function
@@ -197,7 +197,7 @@
     ;       jump_table
     ;       binary_search.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 generate_tag_switch(TaggedCases, VarRval, VarType, VarName, CodeModel, CanFail,
         SwitchGoalInfo, EndLabel, !MaybeEnd, Code, !CI, CLD0) :-
@@ -345,7 +345,7 @@ generate_tag_switch(TaggedCases, VarRval, VarType, VarName, CodeModel, CanFail,
     map.foldl(add_remaining_case, CaseLabelMap, empty, RemainingCasesCode),
     Code = PtagCode ++ CasesCode ++ RemainingCasesCode ++ FailCode ++ EndCode.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % Generate a switch on a primary tag value using a try-me-else chain.
     %
@@ -413,7 +413,7 @@ generate_primary_try_me_else_chain_group(PtagCountMap, VarRval, PtagRval,
     ),
     Code = TestCode ++ CaseCode ++ ElseCode.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % Generate a switch on a primary tag value using a try chain.
     %
@@ -532,7 +532,7 @@ encode_ptags_as_bitmap_loop(HeadPtag, TailPtags, !Bitmap) :-
         encode_ptags_as_bitmap_loop(HeadTailPtag, TailTailPtags, !Bitmap)
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % Generate the cases for a primary tag using a dense jump table
     % that has an entry for all possible primary tag values.
@@ -590,7 +590,7 @@ ptag_case_group_main_ptag(PtagGroup) = MainPtag :-
         SharedInfo = shared_ptag_info(MainPtag, _, _, _, _, _)
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % Generate the cases for a primary tag using a binary search.
     % This invocation looks after primary tag values in the range
@@ -668,7 +668,7 @@ generate_primary_binary_search(PtagCountMap, VarRval, PtagRval, SectagReg,
         Code = IfLoCode ++ LoRangeCode ++ EqHiLabelCode ++ EqHihRangeCode
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % Generate the code corresponding to a primary tag.
     % If this primary tag has secondary tags, decide whether we should
@@ -802,7 +802,7 @@ generate_ptag_group_code(PtagCountMap, VarRval, SectagReg, MaybeFailLabel,
         )
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % Generate a switch on a secondary tag value using a try-me-else chain.
     %
@@ -872,7 +872,7 @@ generate_secondary_try_me_else_chain_case(SectagRval, Case,
     ),
     Code = TestCode ++ CaseCode ++ ElseLabelCode.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % Generate a switch on a secondary tag value using a try chain.
     %
@@ -927,7 +927,7 @@ generate_secondary_try_chain_case(CaseLabelMap, SectagRval, Case,
     ),
     !:TryChainCode = !.TryChainCode ++ TestCode.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred test_sectag_is_in_case_group(rval::in, uint::in, list(uint)::in,
     rval::out) is det.
@@ -947,7 +947,7 @@ test_sectag_is_in_case_group(SectagRval, HeadSectag, TailSectags, TestRval) :-
         TestRval = binop(logical_or, HeadTestRval, TailTestRval)
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % Generate the cases for a primary tag using a dense jump table
     % that has an entry for all possible secondary tag values.
@@ -975,7 +975,7 @@ generate_secondary_jump_table(MaybeFailLabel, Cases, CurSectag, MaxSectag,
         )
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % Generate the cases for a secondary tag using a binary search.
     % This invocation looks after secondary tag values in the range
@@ -1051,7 +1051,7 @@ generate_secondary_binary_search(SectagRval, MaybeFailLabel,
         Code = IfCode ++ LoRangeCode ++ LabelCode ++ EqHiRangeCode
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- type tag_access_count
     --->    just_one_access
@@ -1099,6 +1099,6 @@ make_ptag_comment(BaseStr, PtagGroup, Comment) :-
 
 ptag_to_string(ptag(Ptag)) = string.uint8_to_string(Ptag).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 :- end_module ll_backend.tag_switch.
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%

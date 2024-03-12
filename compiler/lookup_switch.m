@@ -1,11 +1,11 @@
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % Copyright (C) 1996-2012 The University of Melbourne.
 % Copyright (C) 2015, 2017-2018, 2020-2022 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % File: lookup_switch.m.
 % Authors: conway, zs.
@@ -41,13 +41,13 @@
 % The module ml_lookup_switch.m implements lookup switches for the MLDS
 % backend. Any changes here may need to be reflected there as well.
 %
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- module ll_backend.lookup_switch.
 :- interface.
 
 :- import_module backend_libs.
-:- import_module backend_libs.switch_util.
+:- import_module backend_libs.lookup_switch_util.
 :- import_module hlds.
 :- import_module hlds.hlds_data.
 :- import_module hlds.hlds_goal.
@@ -61,7 +61,7 @@
 
 :- import_module list.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- type lookup_switch_info(Key)
     --->    lookup_switch_info(
@@ -158,8 +158,8 @@
 
 :- func default_value_for_type(llds_type) = rval.
 
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- implementation.
 
@@ -185,7 +185,7 @@
 :- import_module set.
 :- import_module string.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 is_lookup_switch(BranchStart, GetTag, TaggedCases, GoalInfo, StoreMap,
         !MaybeEnd, LookupSwitchInfo, !CI) :-
@@ -457,7 +457,7 @@ generate_simple_int_lookup_switch(IndexRval, StoreMap, StartVal, EndVal,
         BranchEndCode, !.CLD),
     Code = CheckBitVecCode ++ BaseRegInitCode ++ BranchEndCode.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred construct_simple_int_lookup_vector(assoc_list(int, list(rval))::in,
     int::in, list(llds_type)::in,
@@ -479,7 +479,7 @@ construct_simple_int_lookup_vector([Index - Rvals | Rest], CurIndex, OutTypes,
     construct_simple_int_lookup_vector( Remainder, CurIndex + 1, OutTypes,
         !RevRows).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred generate_several_soln_int_lookup_switch(rval::in, label::in,
     abs_store_map::in, int::in, int::in,
@@ -857,7 +857,7 @@ construct_fail_row(OutTypes, MainRow, !FailCaseCount) :-
     MainRow = ControlRvals ++ VarRvals,
     !:FailCaseCount = !.FailCaseCount + 1.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % The bitvector is an array of words (where we use the first 32 bits
     % of each word). Each bit represents a tag value for the (range checked)
@@ -949,7 +949,7 @@ generate_bit_vec_args([Word - Bits | Rest], Count, [Rval | Rvals]) :-
     Count1 = Count + 1,
     generate_bit_vec_args(Remainder, Count1, Rvals).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 default_value_for_type(lt_bool) = const(llconst_int(0)).
 default_value_for_type(lt_int_least(_)) = const(llconst_int(0)).
@@ -969,6 +969,6 @@ default_value_for_type(lt_data_ptr) = const(llconst_int(0)).
 default_value_for_type(lt_code_ptr) = const(llconst_int(0)).
 default_value_for_type(lt_word) = const(llconst_int(0)).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 :- end_module ll_backend.lookup_switch.
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%

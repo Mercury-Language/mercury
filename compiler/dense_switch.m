@@ -1,17 +1,17 @@
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % Copyright (C) 1994-2007, 2009-2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % File: dense_switch.m.
 % Author: fjh.
 %
 % For switches on atomic types, generate code using a dense jump table.
 %
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- module ll_backend.dense_switch.
 :- interface.
@@ -27,7 +27,7 @@
 
 :- import_module list.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- type dense_switch_info.
 
@@ -47,14 +47,14 @@
     label::in, branch_end::in, branch_end::out, llds_code::out,
     code_info::in, code_info::out, code_loc_dep::in) is det.
 
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- implementation.
 
 :- import_module backend_libs.
 :- import_module backend_libs.builtin_ops.
-:- import_module backend_libs.switch_util.
+:- import_module backend_libs.lookup_switch_util.
 :- import_module check_hlds.
 :- import_module check_hlds.type_util.
 :- import_module hlds.hlds_data.
@@ -72,7 +72,7 @@
 :- import_module pair.
 :- import_module require.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- type dense_switch_info
     --->    dense_switch_info(
@@ -238,7 +238,7 @@ record_dense_label_for_cons_tag(Label, ConsTag, !IndexMap) :-
         unexpected($pred, "not int_tag")
     ).
 
-%----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred generate_dense_jump_table(int::in, int::in,
     assoc_list(int, label)::in, list(maybe(label))::out,
@@ -287,6 +287,6 @@ get_dense_fail_label(FailLabel, !MaybeFailLabel, !CI) :-
         !.MaybeFailLabel = yes(FailLabel)
     ).
 
-%----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 :- end_module ll_backend.dense_switch.
-%----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%

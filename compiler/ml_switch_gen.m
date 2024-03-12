@@ -138,6 +138,7 @@
 :- implementation.
 
 :- import_module backend_libs.
+:- import_module backend_libs.lookup_switch_util.
 :- import_module backend_libs.switch_util.
 :- import_module hlds.hlds_data.
 :- import_module hlds.hlds_module.
@@ -562,7 +563,7 @@ ml_switch_gen_range(Info, MLDS_Type, Range) :-
     ( if
         ml_gen_info_get_module_info(Info, ModuleInfo),
         MLDS_Type = mercury_nb_type(Type, TypeCategory),
-        switch_util.type_range(ModuleInfo, coerce(TypeCategory), Type,
+        type_range(ModuleInfo, coerce(TypeCategory), Type,
             MinRange, MaxRange, _NumValuesInRange)
     then
         Range = mlds_switch_range(MinRange, MaxRange)

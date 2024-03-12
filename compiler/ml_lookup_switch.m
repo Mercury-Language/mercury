@@ -23,7 +23,7 @@
 :- interface.
 
 :- import_module backend_libs.
-:- import_module backend_libs.switch_util.
+:- import_module backend_libs.lookup_switch_util.
 :- import_module hlds.
 :- import_module hlds.code_model.
 :- import_module hlds.hlds_data.

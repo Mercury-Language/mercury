@@ -48,7 +48,7 @@
 
 :- import_module backend_libs.
 :- import_module backend_libs.builtin_ops.
-:- import_module backend_libs.switch_util.
+:- import_module backend_libs.tag_switch_util.
 :- import_module hlds.hlds_data.
 :- import_module ml_backend.ml_code_gen.
 :- import_module ml_backend.ml_code_util.

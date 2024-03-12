@@ -1,11 +1,11 @@
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % Copyright (C) 1994-2012 The University of Melbourne.
 % Copyright (C) 2013-2018 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % File: switch_gen.m.
 % Authors: conway, fjh, zs.
@@ -72,7 +72,7 @@
 % --smart-indexing option was disabled, then this module just generates
 % a chain of if-then-elses.
 %
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- module ll_backend.switch_gen.
 :- interface.
@@ -88,17 +88,18 @@
 
 :- import_module list.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred generate_switch(code_model::in, prog_var::in, can_fail::in,
     list(case)::in, hlds_goal_info::in, llds_code::out,
     code_info::in, code_info::out, code_loc_dep::in, code_loc_dep::out) is det.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- implementation.
 
 :- import_module backend_libs.
+:- import_module backend_libs.lookup_switch_util.
 :- import_module backend_libs.switch_util.
 :- import_module hlds.goal_form.
 :- import_module hlds.hlds_data.
@@ -126,7 +127,7 @@
 :- import_module pair.
 :- import_module string.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 generate_switch(CodeModel, SwitchVar, CanFail, Cases, GoalInfo, Code,
         !CI, !CLD) :-
@@ -329,8 +330,8 @@ generate_string_switch(Globals, CodeModel, CanFail,
             GoalInfo, EndLabel, MaybeEnd, SwitchCode, !CI, !.CLD)
     ).
 
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % Generate a switch as a chain of if-then-elses.
     %
@@ -445,7 +446,7 @@ separate_cannot_succeed_cases([Case | Cases],
         CannotSucceedCases = [Case | CannotSucceedCases1]
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred order_recursive_cases(list(tagged_case)::in, list(tagged_case)::out,
     code_model::in, can_fail::in, code_info::in) is det.
@@ -523,7 +524,7 @@ order_recursive_cases(Cases0, Cases, CodeModel, CanFail, CI) :-
         order_tag_test_cost(Cases0, Cases)
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred order_tag_test_cost(list(tagged_case)::in, list(tagged_case)::out)
     is det.
@@ -543,7 +544,7 @@ estimate_cost_of_case_test(TaggedCase) = Cost - TaggedCase :-
     OtherCosts = list.map(estimate_switch_tag_test_cost, OtherTags),
     Cost = list.foldl(int.plus, [MainCost | OtherCosts], 0).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred generate_if_then_else_chain_cases(position_info::in,
     list(tagged_case)::in, rval::in, mer_type::in, string::in,
@@ -620,6 +621,6 @@ generate_if_then_else_chain_cases(BranchStart, Cases, VarRval, VarType,
         Code = FailCode ++ EndCode
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 :- end_module ll_backend.switch_gen.
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%

@@ -1974,10 +1974,15 @@ to the following modules.
     switch_case.m contains utility predicates
     needed to implement all kinds of switches for the LLDS backend.
     <li>
-    switch_util.m, which is in the backend_libs.m package,
-    also contains utility predicates,
-    but these are needed to implement switches
-    in both the LLDS and MLDS backends.
+    switch_util.m, lookup_switch_util.m, string_switch_util.m and
+    tag_switch_util.m, which are in the backend_libs.m package,
+    also contain utility predicates,
+    but we use these to implement switches in both the LLDS and MLDS backends.
+    lookup_switch_util.m, string_switch_util.m and tag_switch_util.m
+    all contain types and operations that are specific
+    to the switch implementation methods they are named after, while
+    switch_util.m itself contains code to find out, for a given switch goal,
+    what kinds of implementation methods are applicable for it.
     </ul>
 <li>
 commit_gen.m contains code for generating commits.

@@ -1,11 +1,11 @@
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % Copyright (C) 1994-2007, 2009-2011 The University of Melbourne.
 % Copyright (C) 2015, 2017-2018, 2020, 2022 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % File: string_switch.m.
 % Authors: fjh, zs.
@@ -38,7 +38,7 @@
 % done, to go back and replace all the indicated numbers with the corresponding
 % final labels.
 %
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- module ll_backend.string_switch.
 :- interface.
@@ -76,14 +76,15 @@
     branch_end::in, branch_end::out, llds_code::out,
     code_info::in, code_info::out, code_loc_dep::in) is det.
 
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- implementation.
 
 :- import_module backend_libs.
 :- import_module backend_libs.builtin_ops.
-:- import_module backend_libs.switch_util.
+:- import_module backend_libs.lookup_switch_util.
+:- import_module backend_libs.string_switch_util.
 :- import_module hlds.hlds_data.
 :- import_module ll_backend.lookup_util.
 :- import_module ll_backend.switch_case.
@@ -99,8 +100,8 @@
 :- import_module require.
 :- import_module unit.
 
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 generate_string_hash_switch(Cases, VarRval, VarName, CodeModel, CanFail,
         SwitchGoalInfo, EndLabel, MaybeEnd, Code, !CI, CLD) :-
@@ -221,8 +222,8 @@ add_to_strs_labels(Label, TaggedConsId, !StrsLabels) :-
         unexpected($pred, "non-string tag")
     ).
 
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 generate_string_hash_lookup_switch(VarRval, LookupSwitchInfo,
         CanFail, EndLabel, StoreMap, !MaybeEnd, Code, !CI, CLD) :-
@@ -243,7 +244,7 @@ generate_string_hash_lookup_switch(VarRval, LookupSwitchInfo,
             CanFail, EndLabel, StoreMap, !MaybeEnd, Code, !CI, CLD)
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred generate_string_hash_simple_lookup_switch(rval::in,
     assoc_list(string, list(rval))::in, list(prog_var)::in,
@@ -369,7 +370,7 @@ construct_string_hash_simple_lookup_vector(Slot, TableSize, HashSlotMap,
             HashSlotMap, NumCollisions, DummyOutRvals, !RevRows)
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred generate_string_hash_several_soln_lookup_switch(rval::in,
     assoc_list(string, soln_consts(rval))::in, set_of_progvar::in, bool::in,
@@ -550,8 +551,8 @@ construct_string_hash_several_soln_lookup_vector(Slot, TableSize, HashSlotMap,
             !OneSolnCaseCount, !SeveralSolnsCaseCount)
     ).
 
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- type string_hash_switch_info
     --->    string_hash_switch_info(
@@ -691,8 +692,8 @@ generate_string_hash_switch_search(Info, VarRval, TableAddrRval,
         ]) ++ FailCode
     ).
 
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 generate_string_binary_switch(Cases, VarRval, VarName, CodeModel, CanFail,
         SwitchGoalInfo, EndLabel, MaybeEnd, Code, !CI, CLD) :-
@@ -706,8 +707,7 @@ generate_string_binary_switch(Cases, VarRval, VarName, CodeModel, CanFail,
 
     % Compute and generate the binary search table.
     map.init(CaseLabelMap0),
-    switch_util.string_binary_cases(Cases,
-        represent_tagged_case_for_llds(Params),
+    string_binary_cases(Cases, represent_tagged_case_for_llds(Params),
         CaseLabelMap0, CaseLabelMap, no, MaybeEnd, !CI, unit, _, SortedTable),
 
     gen_string_binary_jump_slots(SortedTable, [], RevTableRows, [], RevTargets,
@@ -764,8 +764,8 @@ gen_string_binary_jump_slots([Str - Label | StrLabels],
     gen_string_binary_jump_slots(StrLabels,
         !RevTableRows, !RevTargets, !CurIndex).
 
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 generate_string_binary_lookup_switch(VarRval, LookupSwitchInfo,
         CanFail, EndLabel, StoreMap, !MaybeEnd, Code, !CI, CLD) :-
@@ -786,7 +786,7 @@ generate_string_binary_lookup_switch(VarRval, LookupSwitchInfo,
             CanFail, EndLabel, StoreMap, !MaybeEnd, Code, !CI, CLD)
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred generate_string_binary_simple_lookup_switch(rval::in,
     assoc_list(string, list(rval))::in, list(prog_var)::in,
@@ -881,7 +881,7 @@ construct_string_binary_simple_lookup_vector([Str - OutRvals | Rest],
     !:RevRows = [RowRvals | !.RevRows],
     construct_string_binary_simple_lookup_vector(Rest, !RevRows).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred generate_string_binary_several_soln_lookup_switch(rval::in,
     assoc_list(string, soln_consts(rval))::in, set_of_progvar::in, bool::in,
@@ -1020,8 +1020,8 @@ construct_string_binary_several_soln_lookup_vector([Str - Soln | StrSolns],
         !RevMainRows, !.LaterNextRow, !LaterSolnArray,
         !OneSolnCaseCount, !SeveralSolnsCaseCount).
 
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- type string_binary_switch_info
     --->    string_binary_switch_info(
@@ -1143,7 +1143,7 @@ generate_string_binary_switch_search(Info, VarRval, TableAddrRval,
         llds_instr(label(EqLabel), "we found the key")
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- pred generate_string_switch_fail(can_fail::in, llds_code::out,
     code_info::in, code_info::out, code_loc_dep::in) is det.
@@ -1160,6 +1160,6 @@ generate_string_switch_fail(CanFail, FailCode, !CI, !.CLD) :-
         )
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 :- end_module ll_backend.string_switch.
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%

@@ -89,8 +89,9 @@
 
 :- import_module backend_libs.
 :- import_module backend_libs.builtin_ops.
+:- import_module backend_libs.lookup_switch_util.
 :- import_module backend_libs.string_encoding.
-:- import_module backend_libs.switch_util.
+:- import_module backend_libs.string_switch_util.
 :- import_module hlds.hlds_data.
 :- import_module hlds.hlds_module.
 :- import_module libs.
@@ -1637,7 +1638,7 @@ ml_generate_string_binary_jump_switch(VarRval, Cases, CodeModel, CanFail,
         unexpected($pred, "bad FieldIds")
     ),
     map.init(CaseLabelMap0),
-    switch_util.string_binary_cases(Cases,
+    string_binary_cases(Cases,
         gen_tagged_case_code_for_string_switch_return_case_id(CodeModel,
             EntryPackedArgsMap),
         CaseLabelMap0, CaseLabelMap, [], ReachableConstVarMaps, !Info,
