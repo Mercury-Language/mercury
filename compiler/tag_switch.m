@@ -249,36 +249,11 @@ generate_tag_switch(TaggedCases, VarRval, VarType, VarName, CodeModel, CanFail,
         PrimaryMethod = try_me_else_chain
     ),
 
-    AccessCount = switch_method_tag_access_count(PrimaryMethod),
-    ( if
-        AccessCount = more_than_one_access,
-        NumPtagsUsed >= 2,
-        globals.lookup_int_option(Globals, num_real_r_regs, NumRealRegs),
-        (
-            NumRealRegs = 0
-        ;
-            ( if PtagReg = reg(reg_r, PtagRegNo) then
-                PtagRegNo =< NumRealRegs
-            else
-                unexpected($pred, "improper reg in tag switch")
-            )
-        )
-    then
-        PtagCode = singleton(
-            llds_instr(assign(PtagReg, unop(tag, VarRval)),
-                "compute tag to switch on")
-        ),
-        PtagRval = lval(PtagReg)
-    else
-        PtagCode = empty,
-        PtagRval = unop(tag, VarRval)
-    ),
+    compute_ptag_rval(Globals, VarRval, PtagReg, NumPtagsUsed, PrimaryMethod,
+        PtagRval, PtagRvalCode),
 
-    % We generate EndCode (and if needed, FailCode) here because
-    % the last case within a primary tag may not be the last case overall.
-    EndCode = singleton(
-        llds_instr(label(EndLabel), "end of tag switch")
-    ),
+    % We must generate the failure code in the context in which
+    % none of the switch arms have been executed yet.
     (
         CanFail = cannot_fail,
         MaybeFailLabel = no,
@@ -290,8 +265,6 @@ generate_tag_switch(TaggedCases, VarRval, VarType, VarName, CodeModel, CanFail,
         FailLabelCode = singleton(
             llds_instr(label(FailLabel), "switch has failed")
         ),
-        % We must generate the failure code in the context in which
-        % none of the switch arms have been executed yet.
         some [!CLD] (
             reset_to_position(BranchStart, !.CI, !:CLD),
             generate_failure(FailureCode, !CI, !.CLD)
@@ -340,7 +313,41 @@ generate_tag_switch(TaggedCases, VarRval, VarType, VarName, CodeModel, CanFail,
     ),
     % ZZZ move this to just the methods that leave remaining cases
     map.foldl(add_remaining_case, CaseLabelMap, empty, RemainingCasesCode),
-    Code = PtagCode ++ CasesCode ++ RemainingCasesCode ++ FailCode ++ EndCode.
+    EndCode = singleton(
+        llds_instr(label(EndLabel), "end of tag switch")
+    ),
+    Code = PtagRvalCode ++ CasesCode ++ RemainingCasesCode ++
+        FailCode ++ EndCode.
+
+:- pred compute_ptag_rval(globals::in, rval::in, lval::in, int::in,
+    switch_method::in, rval::out, llds_code::out) is det.
+
+compute_ptag_rval(Globals, VarRval, PtagReg, NumPtagsUsed,
+        PrimaryMethod, PtagRval, PtagRvalCode) :-
+    AccessCount = switch_method_tag_access_count(PrimaryMethod),
+    ( if
+        AccessCount = more_than_one_access,
+        NumPtagsUsed >= 2,
+        globals.lookup_int_option(Globals, num_real_r_regs, NumRealRegs),
+        (
+            NumRealRegs = 0
+        ;
+            ( if PtagReg = reg(reg_r, PtagRegNum) then
+                PtagRegNum =< NumRealRegs
+            else
+                unexpected($pred, "improper reg in tag switch")
+            )
+        )
+    then
+        PtagRval = lval(PtagReg),
+        PtagRvalCode = singleton(
+            llds_instr(assign(PtagReg, unop(tag, VarRval)),
+                "compute tag to switch on")
+        )
+    else
+        PtagRval = unop(tag, VarRval),
+        PtagRvalCode = empty
+    ).
 
 %---------------------------------------------------------------------------%
 
@@ -612,7 +619,7 @@ generate_primary_binary_search(VarRval, PtagRval, SectagReg,
             ;
                 MaybeFailLabel = no,
                 % The switch is cannot_fail, which means this case cannot
-                % happen.
+                % happen at runtime.
                 Code = empty
             )
         ;
@@ -656,15 +663,13 @@ generate_primary_binary_search(VarRval, PtagRval, SectagReg,
             LoRangeCode, !CaseLabelMap, !CI),
         generate_primary_binary_search(VarRval, PtagRval, SectagReg,
             MaybeFailLabel, EqHiGroups, EqHiRangeMin, MaxPtag,
-            EqHihRangeCode, !CaseLabelMap, !CI),
-        Code = IfLoCode ++ LoRangeCode ++ EqHiLabelCode ++ EqHihRangeCode
+            EqHiRangeCode, !CaseLabelMap, !CI),
+        Code = IfLoCode ++ LoRangeCode ++ EqHiLabelCode ++ EqHiRangeCode
     ).
 
 %---------------------------------------------------------------------------%
 
     % Generate the code corresponding to a primary tag.
-    % If this primary tag has secondary tags, decide whether we should
-    % use a jump table to implement the secondary switch.
     %
 :- pred generate_ptag_group_code(rval::in, lval::in, maybe(label)::in,
     ptag_case_group(label)::in, llds_code::out,
@@ -680,111 +685,132 @@ generate_ptag_group_code(VarRval, SectagReg, MaybeFailLabel,
         generate_case_code_or_jump(CaseLabel, Code, !CaseLabelMap)
     ;
         PtagGroup = one_shared_ptag(SharedInfo),
-        SharedInfo = shared_ptag_info(Ptag, SharedSectagLocn, MaxSectag, _NF,
-            SectagToLabelMap, LabelToSectagsMap),
-        (
-            SharedSectagLocn = sectag_remote_word,
-            OrigSectagRval = lval(field(yes(Ptag), VarRval,
-                const(llconst_int(0)))),
-            Comment = "compute remote word sec tag to switch on"
-        ;
-            SharedSectagLocn = sectag_remote_bits(_NumBits, Mask),
-            SectagWordRval = lval(field(yes(Ptag), VarRval,
-                const(llconst_int(0)))),
-            OrigSectagRval = binop(bitwise_and(int_type_uint),
-                SectagWordRval, const(llconst_uint(Mask))),
-            Comment = "compute remote sec tag bits to switch on"
-        ;
-            SharedSectagLocn = sectag_local_rest_of_word,
-            OrigSectagRval = unop(unmkbody, VarRval),
-            Comment = "compute local rest-of-word sec tag to switch on"
-        ;
-            SharedSectagLocn = sectag_local_bits(_NumBits, Mask),
-            OrigSectagRval = binop(bitwise_and(int_type_uint),
-                unop(unmkbody, VarRval), const(llconst_uint(Mask))),
-            Comment = "compute local sec tag bits to switch on"
-        ),
+        generate_secondary_switch(VarRval, SectagReg, MaybeFailLabel,
+            SharedInfo, Code, !CaseLabelMap, !CI)
+    ).
 
-        % There is a secondary tag, so figure out how to switch on it.
-        get_globals(!.CI, Globals),
-        globals.get_opt_tuple(Globals, OptTuple),
-        DenseSwitchSize = OptTuple ^ ot_dense_switch_size,
-        TrySwitchSize = OptTuple ^ ot_try_switch_size,
-        BinarySwitchSize = OptTuple ^ ot_binary_switch_size,
-        MaxSectagInt = uint.cast_to_int(MaxSectag),
-        ( if MaxSectagInt >= DenseSwitchSize then
-            SecondaryMethod = jump_table
-        else if MaxSectagInt >= BinarySwitchSize then
-            SecondaryMethod = binary_search
-        else if MaxSectagInt >= TrySwitchSize then
-            SecondaryMethod = try_chain
-        else
-            SecondaryMethod = try_me_else_chain
-        ),
+    % Generate the switch on the secondary tag.
+    %
+:- pred generate_secondary_switch(rval::in, lval::in, maybe(label)::in,
+    shared_ptag_info(label)::in, llds_code::out,
+    case_label_map::in, case_label_map::out,
+    code_info::in, code_info::out) is det.
 
-        AccessCount = switch_method_tag_access_count(SecondaryMethod),
-        ( if
-            AccessCount = more_than_one_access,
-            MaxSectag >= 2u,
-            globals.lookup_int_option(Globals, num_real_r_regs, NumRealRegs),
-            (
-                NumRealRegs = 0
-            ;
-                ( if SectagReg = reg(reg_r, SectagRegNo) then
-                    SectagRegNo =< NumRealRegs
-                else
-                    unexpected($pred, "improper reg in tag switch")
-                )
-            )
-        then
-            SectagCode = singleton(
-                llds_instr(assign(SectagReg, OrigSectagRval), Comment)
-            ),
-            SectagRval = lval(SectagReg)
-        else
-            SectagCode = empty,
-            SectagRval = OrigSectagRval
-        ),
-        (
-            MaybeFailLabel = yes(FailLabel),
-            map.count(SectagToLabelMap, SectagGoalCount),
-            ( if SectagGoalCount = MaxSectagInt + 1 then
-                MaybeSecFailLabel = no
-            else
-                MaybeSecFailLabel = yes(FailLabel)
-            )
-        ;
-            MaybeFailLabel = no,
+generate_secondary_switch(VarRval, SectagReg, MaybeFailLabel,
+        SharedInfo, Code, !CaseLabelMap, !CI) :-
+    SharedInfo = shared_ptag_info(_Ptag, _SharedSectagLocn, MaxSectag, _NF,
+        SectagToLabelMap, LabelToSectagsMap),
+    % Which method should we use?
+    get_globals(!.CI, Globals),
+    globals.get_opt_tuple(Globals, OptTuple),
+    DenseSwitchSize = OptTuple ^ ot_dense_switch_size,
+    TrySwitchSize = OptTuple ^ ot_try_switch_size,
+    BinarySwitchSize = OptTuple ^ ot_binary_switch_size,
+    MaxSectagInt = uint.cast_to_int(MaxSectag),
+    % ZZZ revisit the defaults of these parameters
+    ( if MaxSectagInt >= DenseSwitchSize then
+        SecondaryMethod = jump_table
+    else if MaxSectagInt >= BinarySwitchSize then
+        SecondaryMethod = binary_search
+    else if MaxSectagInt >= TrySwitchSize then
+        SecondaryMethod = try_chain
+    else
+        SecondaryMethod = try_me_else_chain
+    ),
+
+    compute_sectag_rval(Globals, VarRval, SectagReg, SharedInfo,
+        SecondaryMethod, SectagRval, SectagRvalCode),
+    (
+        MaybeFailLabel = yes(FailLabel),
+        map.count(SectagToLabelMap, SectagGoalCount),
+        ( if SectagGoalCount = MaxSectagInt + 1 then
             MaybeSecFailLabel = no
-        ),
-
-        (
-            SecondaryMethod = jump_table,
-            map.to_sorted_assoc_list(SectagToLabelMap, SectagToLabelAL),
-            generate_secondary_jump_table(MaybeSecFailLabel, SectagToLabelAL,
-                0u, MaxSectag, Targets),
-            Code = singleton(
-                llds_instr(computed_goto(SectagRval, Targets),
-                    "switch on secondary tag")
-            )
-        ;
-            SecondaryMethod = binary_search,
-            map.to_sorted_assoc_list(SectagToLabelMap, SectagToLabelAL),
-            generate_secondary_binary_search(SectagRval, MaybeSecFailLabel,
-                SectagToLabelAL, 0u, MaxSectag, Code, !CaseLabelMap, !CI)
-        ;
-            SecondaryMethod = try_chain,
-            map.to_sorted_assoc_list(LabelToSectagsMap, LabelToSectagsAL),
-            generate_secondary_try_chain(SectagRval, MaybeSecFailLabel,
-                LabelToSectagsAL, empty, CaseCodes, !CaseLabelMap),
-            Code = SectagCode ++ CaseCodes
-        ;
-            SecondaryMethod = try_me_else_chain,
-            map.to_sorted_assoc_list(LabelToSectagsMap, LabelToSectagsAL),
-            generate_secondary_try_me_else_chain(SectagRval, MaybeSecFailLabel,
-                LabelToSectagsAL, CaseCodes, !CaseLabelMap, !CI),
-            Code = SectagCode ++ CaseCodes
+        else
+            MaybeSecFailLabel = yes(FailLabel)
         )
+    ;
+        MaybeFailLabel = no,
+        MaybeSecFailLabel = no
+    ),
+
+    (
+        SecondaryMethod = jump_table,
+        map.to_sorted_assoc_list(SectagToLabelMap, SectagToLabelAL),
+        generate_secondary_jump_table(MaybeSecFailLabel, SectagToLabelAL,
+            0u, MaxSectag, Targets),
+        CasesCode = singleton(
+            llds_instr(computed_goto(SectagRval, Targets),
+                "switch on secondary tag")
+        )
+    ;
+        SecondaryMethod = binary_search,
+        map.to_sorted_assoc_list(SectagToLabelMap, SectagToLabelAL),
+        generate_secondary_binary_search(SectagRval, MaybeSecFailLabel,
+            SectagToLabelAL, 0u, MaxSectag, CasesCode, !CaseLabelMap, !CI)
+    ;
+        SecondaryMethod = try_chain,
+        map.to_sorted_assoc_list(LabelToSectagsMap, LabelToSectagsAL),
+        generate_secondary_try_chain(SectagRval, MaybeSecFailLabel,
+            LabelToSectagsAL, empty, CasesCode, !CaseLabelMap)
+    ;
+        SecondaryMethod = try_me_else_chain,
+        map.to_sorted_assoc_list(LabelToSectagsMap, LabelToSectagsAL),
+        generate_secondary_try_me_else_chain(SectagRval, MaybeSecFailLabel,
+            LabelToSectagsAL, CasesCode, !CaseLabelMap, !CI)
+    ),
+    Code = SectagRvalCode ++ CasesCode.
+
+:- pred compute_sectag_rval(globals::in, rval::in, lval::in,
+    shared_ptag_info(label)::in, switch_method::in,
+    rval::out, llds_code::out) is det.
+
+compute_sectag_rval(Globals, VarRval, SectagReg, SharedInfo, SecondaryMethod,
+        SectagRval, SectagRvalCode) :-
+    SharedInfo = shared_ptag_info(Ptag, SharedSectagLocn, MaxSectag, _, _, _),
+    (
+        SharedSectagLocn = sectag_remote_word,
+        ZeroOffset = const(llconst_int(0)),
+        OrigSectagRval = lval(field(yes(Ptag), VarRval, ZeroOffset)),
+        Comment = "compute remote word sec tag to switch on"
+    ;
+        SharedSectagLocn = sectag_remote_bits(_NumBits, Mask),
+        ZeroOffset = const(llconst_int(0)),
+        SectagWordRval = lval(field(yes(Ptag), VarRval, ZeroOffset)),
+        OrigSectagRval = binop(bitwise_and(int_type_uint),
+            SectagWordRval, const(llconst_uint(Mask))),
+        Comment = "compute remote sec tag bits to switch on"
+    ;
+        SharedSectagLocn = sectag_local_rest_of_word,
+        OrigSectagRval = unop(unmkbody, VarRval),
+        Comment = "compute local rest-of-word sec tag to switch on"
+    ;
+        SharedSectagLocn = sectag_local_bits(_NumBits, Mask),
+        OrigSectagRval = binop(bitwise_and(int_type_uint),
+            unop(unmkbody, VarRval), const(llconst_uint(Mask))),
+        Comment = "compute local sec tag bits to switch on"
+    ),
+    AccessCount = switch_method_tag_access_count(SecondaryMethod),
+    ( if
+        AccessCount = more_than_one_access,
+        MaxSectag >= 2u,
+        globals.lookup_int_option(Globals, num_real_r_regs, NumRealRegs),
+        (
+            NumRealRegs = 0
+        ;
+            ( if SectagReg = reg(reg_r, SectagRegNum) then
+                SectagRegNum =< NumRealRegs
+            else
+                unexpected($pred, "improper reg in tag switch")
+            )
+        )
+    then
+        SectagRval = lval(SectagReg),
+        SectagRvalCode = singleton(
+            llds_instr(assign(SectagReg, OrigSectagRval), Comment)
+        )
+    else
+        SectagRval = OrigSectagRval,
+        SectagRvalCode = empty
     ).
 
 %---------------------------------------------------------------------------%
