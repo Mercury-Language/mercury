@@ -61,9 +61,10 @@
 :- import_module maybe.
 :- import_module one_or_more.
 :- import_module pair.
-:- import_module set.
 :- import_module uint.
 :- import_module uint8.
+
+%---------------------------------------------------------------------------%
 
 :- type code_map == map(case_id, maybe_code).
 
@@ -79,17 +80,17 @@ ml_generate_tag_switch_if_possible(Var, VarEntry, CodeModel, CanFail, Context,
     % constructors share each primary tag value, and sort the cases so that
     % the groups covering the most function symbols come first.
     ml_gen_info_get_module_info(!.Info, ModuleInfo),
-    get_ptag_counts(ModuleInfo, VarEntry ^ vte_type, MaxPrimary, PtagCountMap),
-    group_cases_by_ptag(PtagCountMap, TaggedCases,
+    VarType = VarEntry ^ vte_type,
+    group_cases_by_ptag(ModuleInfo, VarType, TaggedCases,
         gen_tagged_case_code(CodeModel, EntryPackedArgsMap),
         map.init, CodeMap, [], ReachableConstVarMaps0,
         may_use_tag_switch, MayUseTagSwitch, !Info,
-        _CaseIdPtagsMap, _PtagCaseMap, PtagCaseGroups0),
+        PtagCaseGroups0, _NumPtagsUsed, MaxPtagUint8),
     order_ptag_groups_by_count(PtagCaseGroups0, PtagCaseGroups),
     % Proceed only if we can do so safely.
     MayUseTagSwitch = may_use_tag_switch,
     ml_generate_tag_switch(Var, VarEntry, CodeModel, CanFail, Context,
-        MaxPrimary, CodeMap, ReachableConstVarMaps0, PtagCaseGroups, Stmts,
+        MaxPtagUint8, CodeMap, ReachableConstVarMaps0, PtagCaseGroups, Stmts,
         !Info).
 
 :- pred ml_generate_tag_switch(prog_var::in, var_table_entry::in,
@@ -118,11 +119,6 @@ ml_generate_tag_switch(Var, VarEntry, CodeModel, CanFail, Context, MaxPrimary,
     % if primary_tag(Var) indicates that Var has secondary_tag
     %   index += secondary_tag(Var)
     % switch on index using the direct mapped scheme
-    %
-    % For such targets, you would want to employ this code generation scheme,
-    % which is not (yet) implemented, if any value in CaseIdPtagsMap is a set
-    % with more than one element. One could test for that condition with the
-    % (currently unused) find_any_split_cases predicate.
 
     % Generate the switch on the primary tag.
     % ZZZ
@@ -361,31 +357,6 @@ acc_dup_properties_of_func(FuncDefn, !HasLabel, !HasAuxPred, !HasLocalVars) :-
 
 %---------------------------------------------------------------------------%
 
-:- type is_a_case_split_between_ptags
-    --->    no_case_is_split_between_ptags
-    ;       some_case_is_split_between_ptags.
-
-:- pred find_any_split_cases(case_id_ptags_map::in,
-    is_a_case_split_between_ptags::out) is det.
-:- pragma consider_used(pred(find_any_split_cases/2)).
-
-find_any_split_cases(CaseIdPtagsMap, IsAnyCaseSplit) :-
-    map.foldl(find_any_split_cases_2, CaseIdPtagsMap,
-        no_case_is_split_between_ptags, IsAnyCaseSplit).
-
-:- pred find_any_split_cases_2(case_id::in, set(ptag)::in,
-    is_a_case_split_between_ptags::in, is_a_case_split_between_ptags::out)
-    is det.
-
-find_any_split_cases_2(_CaseId, Ptags, !IsAnyCaseSplit) :-
-    ( if set.is_singleton(Ptags, _OnlyPtag) then
-        true
-    else
-        !:IsAnyCaseSplit = some_case_is_split_between_ptags
-    ).
-
-%---------------------------------------------------------------------------%
-
     % This type, as its name implies, is an extension of the mlds_switch_case
     % type, the addition being the maybe(case_id) field. Its semantics is that
     % if it contains "yes(CaseId)", then the case contains the implementation
@@ -460,7 +431,7 @@ gen_ptag_case(Var, VarEntry, CanFail, CodeModel, Context, CodeMap,
             )
         ),
         map.to_sorted_assoc_list(CaseIdToSectagsMap, CaseIdToSectagsAL),
-        gen_stag_switch(Var, VarEntry, CodeModel, CaseCanFail, Context,
+        gen_sectag_switch(Var, VarEntry, CodeModel, CaseCanFail, Context,
             CodeMap, Ptag, SharedSectagLocn, CaseIdToSectagsAL, Stmt,
             !ReachableConstVarMaps, !Info)
     ),
@@ -491,14 +462,14 @@ lookup_code_map(CodeMap, CaseId, CodeModel, Stmt,
 
 %---------------------------------------------------------------------------%
 
-:- pred gen_stag_switch(prog_var::in, var_table_entry::in, code_model::in,
+:- pred gen_sectag_switch(prog_var::in, var_table_entry::in, code_model::in,
     can_fail::in, prog_context::in, code_map::in, ptag::in,
     shared_sectag_locn::in, assoc_list(case_id, one_or_more(uint))::in,
     mlds_stmt::out,
     list(ml_ground_term_map)::in, list(ml_ground_term_map)::out,
     ml_gen_info::in, ml_gen_info::out) is det.
 
-gen_stag_switch(Var, VarEntry, CodeModel, CanFail, Context, CodeMap,
+gen_sectag_switch(Var, VarEntry, CodeModel, CanFail, Context, CodeMap,
         Ptag, SharedSectagLocn, Cases, Stmt, !ReachableConstVarMaps, !Info) :-
     % Generate the rval for the secondary tag.
     VarType = VarEntry ^ vte_type,
@@ -549,7 +520,7 @@ gen_stag_switch(Var, VarEntry, CodeModel, CanFail, Context, CodeMap,
     % trick, because unlike us, they are not allowed to assume that the value
     % of the actual secondary tag at runtime is in the range 0 .. MaxSectag;
     % in fact, they don't even know the value of MaxSectag.
-    gen_stag_cases(Cases, CodeMap, CodeModel, SectagCases0,
+    gen_sectag_cases(Cases, CodeMap, CodeModel, SectagCases0,
         !ReachableConstVarMaps, !Info),
     list.sort(SectagCases0, SectagCases),
     ml_switch_generate_default(CanFail, CodeModel, Context, Default, !Info),
@@ -562,29 +533,29 @@ gen_stag_switch(Var, VarEntry, CodeModel, CanFail, Context, CodeMap,
 
 %---------------------------------------------------------------------------%
 
-:- pred gen_stag_cases(assoc_list(case_id, one_or_more(uint))::in,
+:- pred gen_sectag_cases(assoc_list(case_id, one_or_more(uint))::in,
     code_map::in, code_model::in, list(mlds_switch_case)::out,
     list(ml_ground_term_map)::in, list(ml_ground_term_map)::out,
     ml_gen_info::in, ml_gen_info::out) is det.
 
-gen_stag_cases([], _, _, [], !ReachableConstVarMaps, !Info).
-gen_stag_cases([Group | Groups], CodeMap, CodeModel, [Case | Cases],
+gen_sectag_cases([], _, _, [], !ReachableConstVarMaps, !Info).
+gen_sectag_cases([Group | Groups], CodeMap, CodeModel, [Case | Cases],
         !ReachableConstVarMaps, !Info) :-
-    gen_stag_case(Group, CodeMap, CodeModel, Case,
+    gen_sectag_case(Group, CodeMap, CodeModel, Case,
         !ReachableConstVarMaps, !Info),
-    gen_stag_cases(Groups, CodeMap, CodeModel, Cases,
+    gen_sectag_cases(Groups, CodeMap, CodeModel, Cases,
         !ReachableConstVarMaps, !Info).
 
-:- pred gen_stag_case(pair(case_id, one_or_more(uint))::in,
+:- pred gen_sectag_case(pair(case_id, one_or_more(uint))::in,
     code_map::in, code_model::in, mlds_switch_case::out,
     list(ml_ground_term_map)::in, list(ml_ground_term_map)::out,
     ml_gen_info::in, ml_gen_info::out) is det.
 
-gen_stag_case(Group, CodeMap, CodeModel, MLDS_Case,
+gen_sectag_case(Group, CodeMap, CodeModel, MLDS_Case,
         !ReachableConstVarMaps, !Info) :-
-    Group = CaseId - one_or_more(FirstStag, LaterStags),
-    FirstMatch = make_match_value(FirstStag),
-    LaterMatches = list.map(make_match_value, LaterStags),
+    Group = CaseId - one_or_more(FirstSectag, LaterSectags),
+    FirstMatch = make_match_value(FirstSectag),
+    LaterMatches = list.map(make_match_value, LaterSectags),
     lookup_code_map(CodeMap, CaseId, CodeModel, Stmt,
         !ReachableConstVarMaps, !Info),
     MLDS_Case = mlds_switch_case(FirstMatch, LaterMatches, Stmt).
