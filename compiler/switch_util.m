@@ -36,6 +36,7 @@
 :- import_module bool.
 :- import_module list.
 :- import_module map.
+:- import_module one_or_more.
 :- import_module pair.
 :- import_module set.
 
@@ -287,18 +288,17 @@
 
     % Map primary tag values to the set of their switch arms.
     %
-    % Given a key-value pair in this map, the key is duplicated
-    % in the ptag field of the value.
+    % This data structure does not recognize situations in which different
+    % ptag values need the same treatment. It is now used only as an
+    % intermediate data structure on the way to a data structure,
+    % a list of ptag_case_groups, which *does* recognize such sharing.
     %
+    % ZZZ it should now be possible to stop exporting the types of this
+    % intermediate structure.
 :- type ptag_case_map(CaseRep) == map(ptag, ptag_case(CaseRep)).
 
 :- type ptag_case_entry(CaseRep)
     --->    ptag_case_entry(
-                % If we are generating code of a shape that works with
-                % two possibly unrelated (e.g. non-consecutive) ptag values
-                % having the same code, use ptag_case_group_entry. This type
-                % is for code shapes that cannot exploit such sharing.
-
                 % The ptag value that has this code.
                 ptag,
 
@@ -306,25 +306,119 @@
                 ptag_case(CaseRep)
             ).
 
-:- type ptag_case_group_entry(CaseRep)
-    --->    ptag_case_group_entry(
-                % It is possible for two or more primary tag values
-                % to have exactly the same action, if those ptags represent
-                % cons_ids that share the same arm of the switch.
-
-                % The first and any later ptag values that have this code.
-                ptag,
-                list(ptag),
-
-                % A representation of the code for this primary tag.
-                ptag_case(CaseRep)
-            ).
-
 :- type ptag_case(CaseRep)
-    --->    ptag_case(
-                sectag_locn,
+    --->    ptag_case_unshared(
+                % The ptag is not shared between function symbols.
+                CaseRep
+            )
+    ;       ptag_case_shared(
+                % The ptag is shared between function symbols.
+                % The next two fields give the location of the sectag,
+                % and its maximum value.
+                shared_sectag_locn,
+                uint,
+
+                % The map from the value of the sectag to its case.
                 stag_goal_map(CaseRep)
             ).
+
+    % Note that it is not an error for a primary tag to have no case.
+    % This can happen when
+    %
+    % - the in semidet switches, or in det switches where the
+    % initial inst of the switch variable is a bound(...) inst representing
+    % a subtype.
+    %
+:- type ptag_case_group(CaseRep)
+    --->    one_or_more_whole_ptags(whole_ptags_info(CaseRep))
+    ;       one_shared_ptag(shared_ptag_info(CaseRep)).
+
+    % It is possible for two or more primary tag values
+    % to have exactly the same action, if those ptags represent
+    % cons_ids that share the same arm of the switch.
+:- type whole_ptags_info(CaseRep)
+    --->    whole_ptags_info(
+                % The first and any later ptag values that have this code.
+                % For all of them, the following invariant holds:
+                %
+                % - either the ptag is unshared (i.e. its sectag_locn
+                %   is either sectag_none or sectag_none_direct_arg,
+                %
+                % - or the ptag is shared between two or more function symbols,
+                %   meaning its sectag_locn is one of the alternatives
+                %   in shared_sectag_locn, but the selected switch arm
+                %   is CaseRep for *all* the possible sectag values.
+                wpi_head_ptag           :: ptag,
+                wpi_tail_ptags          :: list(ptag),
+
+                % The number of function symbols represented by this group.
+                wpi_num_functors        :: uint,
+
+                % A representation of the code for this primary tag.
+                wpi_goal                :: CaseRep
+            ).
+
+:- type shared_ptag_info(CaseRep)
+    --->    shared_ptag_info(
+                % This ptag is shared by more than one function symbol,
+                % and the selected switch arm is NOT the same for all of them.
+                % (If the selected switch arm *were* the same for all of them,
+                % this ptag value would occur in a whole_ptags_info.)
+
+                spi_ptag                :: ptag,
+                spi_sectag_locn         :: shared_sectag_locn,
+
+                % MaxSectag, the maximum secondary tag value for this ptag.
+                % The number of function symbols that share this ptag
+                % will be MaxSectag + 1 (since sectag values start at 0u).
+                spi_max_sectag          :: uint,
+
+                % The number of function symbols represented by this group.
+                spi_num_functors        :: uint,
+
+                % The next two fields contain the same information in
+                % slightly different form. The spi_sectag_to_goal_map field
+                % contains this info in the form preferred as the input
+                % for the jump table and binary search methods of switching
+                % on the secondary tag, while the spi_goal_to_sectags_map
+                % contains it in the form preferred by the try_chain and
+                % try_me_else chain methods.
+
+                % This field maps each secondary tag value to the case arm
+                % it selects.
+                spi_sectag_to_goal_map  :: stag_goal_map(CaseRep),
+
+                % This field contains the reverse map, and groups together
+                % the sectag values that all select the same switch arm.
+                %
+                % As explained above, we use shared_ptag_infos only when
+                % the switch requires at least two different actions for
+                % some of the different sectag values sharing this ptag.
+                % However, it is still possible for this map to have
+                % just one entry, if
+                %
+                % - the function symbols using this shared ptag and the
+                %   sectag values listed as the value of that one entry select
+                %   the switch arm listed in the key of that entry, and
+                %
+                % - some of the other possible sectag values for this shared
+                %   ptag have *no* selected arm in this switch, either because
+                %   the switched-on variable cannot be bound to the
+                %   corresponding function symbol when the switch is entered,
+                %   or because the switch should fail if the variable *is*
+                %   bound to that function symbol.
+                %
+                % However, this map cannot be empty.
+                spi_goal_to_sectags_map :: stag_case_map(CaseRep)
+            ).
+
+:- type shared_sectag_locn =< sectag_locn
+    --->    sectag_local_rest_of_word
+    ;       sectag_local_bits(uint8, uint)              % #bits, mask
+    ;       sectag_remote_word
+    ;       sectag_remote_bits(uint8, uint).            % #bits, mask
+
+% ZZZ g/stag_/s//sectag_/g
 
     % Map each secondary tag value to the representation of the associated
     % code. A negative secondary tag "value" means "no secondary tag".
@@ -333,30 +427,58 @@
     % that maps to the same code. Exploiting such sharing is up to
     % backend-specific code.
     %
-:- type stag_goal_map(CaseRep)  == map(int, CaseRep).
-:- type stag_goal_list(CaseRep) == assoc_list(int, CaseRep).
+:- type stag_goal_map(CaseRep)  == map(uint, CaseRep).
+:- type stag_goal_list(CaseRep) == assoc_list(uint, CaseRep).
+
+:- type stag_case_map(CaseRep)  == map(CaseRep, one_or_more(uint)).
+:- type stag_case_list(CaseRep) == assoc_list(CaseRep, one_or_more(uint)).
 
 :- type ptag_case_list(CaseRep) == list(ptag_case_entry(CaseRep)).
-:- type ptag_case_group_list(CaseRep) == list(ptag_case_group_entry(CaseRep)).
 
-    % Map primary tag values to the number of constructors sharing them.
+    % Map primary tag values to information about the secondary tag, if any,
+    % for the ptag.the number of constructors sharing them.
     %
-:- type ptag_count_map == map(ptag, pair(sectag_locn, int)).
+    % ZZZ Rename this type, and stop exporting it. All its main uses
+    % are in this module; its uses in other modules are just sanity checks
+    % that duplicate what this module is doing.
+    %
+:- type ptag_count_map == map(ptag, ptag_sectag_info).
+:- type ptag_sectag_info
+    --->    ptag_sectag_info(
+                % Terms using this primary tags have their secondary tags,
+                % if any, in the location indicated by this field.
+                sectag_locn,
+                
+                % The maximum value of the secondary tag, or -1
+                % if this ptag has no secondary tag.
+                %
+                % If this field is MaxSectag, then the number of values using
+                % this primary tag is
+                %
+                % 1,                if MaxSectag = -1
+                % MaxSectag + 1,    if MaxSectag != -1
+                %
+                % The +1 is there to account for the fact that we start
+                % assigning secondary tags values at 0, not 1.
+                int
+            ).
 
     % Map case ids to the set of primary tags used in the cons_ids
     % of that case.
     %
 :- type case_id_ptags_map == map(case_id, set(ptag)).
 
-    % Find out how many secondary tags share each primary tag
-    % of the given variable.
+    % get_ptag_counts(ModuleInfo, Type, MaxPrimary, PtagCountMap):
     %
-    % NOTE As of 2024 03 06, this predicate has exactly two calls,
+    % Find the maximum primary used in Type, and find out how many
+    % secondary tags share each one of the used primary tags.
+    %
+    % ZZZ As of 2024 03 06, this predicate has exactly two calls,
     % from tag_switch.m and ml_tag_switch.m, and both are just before calls
     % to group_cases_by_ptag. We could stop exporting it if we folded its
     % functionality into group_cases_by_ptag.
     %
-    % NOTE It may also be interesting to instrument this code to see whether
+    % ZZZ It may be interesting to instrument this code to see whether
     % it is worth caching its output somewhere, though in that case we would
     % have to change the interface to take a type_ctor, not a mer_type.
     % (We only ever look at the top type_ctor of the supplied type.)
@@ -367,35 +489,37 @@
     % Group together all the cases that depend on the given variable
     % having the same primary tag value.
     %
-:- pred group_cases_by_ptag(list(tagged_case)::in,
+    % ZZZ The case_id_ptags_map output is no longer used.
+    % ZZZ The ptag_case_map output is still used, but for a purpose
+    % for which it is overkill.
+    %
+:- pred group_cases_by_ptag(ptag_count_map::in, list(tagged_case)::in,
     pred(tagged_case, CaseRep, StateA, StateA, StateB, StateB,
         StateC, StateC, StateD, StateD)
         ::in(pred(in, out, in, out, in, out, in, out, in, out) is det),
     StateA::in, StateA::out, StateB::in, StateB::out,
     StateC::in, StateC::out, StateD::in, StateD::out,
-    case_id_ptags_map::out, ptag_case_map(CaseRep)::out) is det.
+    case_id_ptags_map::out, ptag_case_map(CaseRep)::out,
+    list(ptag_case_group(CaseRep))::out) is det.
 
-    % Group together any primary tags with the same cases.
-    % Order the groups based on the number of secondary tags associated
-    % with them, putting the ones with the most secondary tags first.
+    % Order the given groups based on the number of function symbols they
+    % represent, putting the ones with the most function symbols first.
+    % Break ties by using the order of the first ptag in each group.
     %
-    % Note that it is not an error for a primary tag to have no case list;
-    % this can happen in semidet switches, or in det switches where the
-    % initial inst of the switch variable is a bound(...) inst representing
-    % a subtype.
-    %
-:- pred order_ptags_by_count(ptag_count_map::in,
-    ptag_case_map(CaseRep)::in, ptag_case_group_list(CaseRep)::out) is det.
+:- pred order_ptag_groups_by_count(list(ptag_case_group(CaseRep))::in,
+    list(ptag_case_group(CaseRep))::out) is det.
 
-    % order_ptags_by_value(FirstPtag, MaxPtag, !PtagCaseList):
+    % Ensure that each ptag_case_group covers only one ptag value,
+    % breaking up any entry in the input that lists two or more ptag values.
+    % Put the resulting ptag_case_groups, which are now all specific
+    % to one ptag value, into ascending order of those values.
     %
-    % Order the primary tags based on their value, lowest value first.
-    % We scan through the primary tags values from zero to maximum.
-    % Note that it is not an error for a primary tag to have no case list,
-    % for the reason documented in the comment above for order_ptags_by_count.
+    % ZZZ consider returning either a subtype that hardwires the wpi_tail_ptags
+    % field to nil, or a new type that just omits that field.
     %
-:- pred order_ptags_by_value(ptag::in, ptag::in,
-    ptag_case_map(CaseRep)::in, ptag_case_list(CaseRep)::out) is det.
+:- pred order_ptag_specific_groups_by_value(
+    list(ptag_case_group(CaseRep))::in,
+    list(ptag_case_group(CaseRep))::out) is det.
 
 %-----------------------------------------------------------------------------%
 
@@ -417,9 +541,11 @@
 :- import_module check_hlds.
 :- import_module check_hlds.type_util.
 :- import_module hlds.hlds_code_util.
+:- import_module hlds.hlds_pred.
 :- import_module libs.optimization_options.
 :- import_module libs.options.
 
+:- import_module cord.
 :- import_module int.
 :- import_module int16.
 :- import_module int32.
@@ -427,7 +553,6 @@
 :- import_module int8.
 :- import_module io.
 :- import_module maybe.
-:- import_module one_or_more.
 :- import_module require.
 :- import_module string.
 :- import_module uint.
@@ -845,7 +970,40 @@ find_switch_category(ModuleInfo, SwitchVarType, SwitchCategory) :-
     then
         SwitchCategory = ite_chain_switch
     else
-        SwitchCategory = SwitchCategory0
+% Enable this code (after getting callers to pass PredId) if you need
+% to debug one of the smart indexing methods.
+%       globals.lookup_string_option(Globals, experiment, Experiment),
+%       ( if string.split_at_char('-', Experiment) = [MinStr, MaxStr] then
+%           PredIdInt = pred_id_to_int(PredId),
+%           ( if num_is_in_range(PredIdInt, MinStr, MaxStr) then
+%               SwitchCategory = SwitchCategory0
+%           else
+%               SwitchCategory = ite_chain_switch
+%           )
+%       else
+            SwitchCategory = SwitchCategory0
+%       )
+    ).
+
+:- pred num_is_in_range(int::in, string::in, string::in) is semidet.
+:- pragma consider_used(pred(num_is_in_range/3)).
+
+num_is_in_range(PredIdInt, MinStr, MaxStr) :-
+    ( if MinStr = "" then
+        % Cannot be less than the minimum if there is no minimum.
+        true
+    else if string.to_int(MinStr, Min) then
+        Min =< PredIdInt 
+    else
+        unexpected($pred, "minimum is not a number")
+    ),
+    ( if MaxStr = "" then
+        % Cannot be greater than the maximum if there is no maximum.
+        true
+    else if string.to_int(MaxStr, Max) then
+        PredIdInt =< Max
+    else
+        unexpected($pred, "maximum is not a number")
     ).
 
 :- func is_smart_indexing_allowed_for_category(globals, switch_category)
@@ -1151,6 +1309,7 @@ get_word_bits(Globals, WordBits, Log2WordBits) :-
 
 :- func log2_rounded_down(int) = int.
 
+% ZZZ
 log2_rounded_down(X) = Log :-
     int.log2(X + 1, Log + 1).  % int.log2 rounds up
 
@@ -1527,25 +1686,26 @@ get_ptag_counts_loop([CtorRepn | CtorRepns], !MaxPrimary, !PtagCountMap) :-
         ( if map.search(!.PtagCountMap, Ptag, _) then
             unexpected($pred, "unshared tag is shared")
         else
-            map.det_insert(Ptag, SectagLocn - (-1), !PtagCountMap)
+            Info = ptag_sectag_info(SectagLocn, -1),
+            map.det_insert(Ptag, Info, !PtagCountMap)
         )
     ;
         ConsTag = remote_args_tag(RemoteArgsTagInfo),
         (
             (
                 RemoteArgsTagInfo = remote_args_only_functor,
-                Ptag = ptag(0u8),
-                SectagLocn = sectag_none
+                Ptag = ptag(0u8)
             ;
-                RemoteArgsTagInfo = remote_args_unshared(Ptag),
-                SectagLocn = sectag_none
+                RemoteArgsTagInfo = remote_args_unshared(Ptag)
             ),
+            SectagLocn = sectag_none,
             Ptag = ptag(Primary),
             !:MaxPrimary = uint8.max(Primary, !.MaxPrimary),
             ( if map.search(!.PtagCountMap, Ptag, _) then
                 unexpected($pred, "unshared tag is shared")
             else
-                map.det_insert(Ptag, SectagLocn - (-1), !PtagCountMap)
+                Info = ptag_sectag_info(SectagLocn, -1),
+                map.det_insert(Ptag, Info, !PtagCountMap)
             )
         ;
             (
@@ -1569,14 +1729,16 @@ get_ptag_counts_loop([CtorRepn | CtorRepns], !MaxPrimary, !PtagCountMap) :-
                 Secondary = uint.cast_to_int(Data)
             ),
             !:MaxPrimary = uint8.max(Primary, !.MaxPrimary),
-            ( if map.search(!.PtagCountMap, Ptag, Target) then
-                Target = OldSectagLocn - MaxSoFar,
+            ( if map.search(!.PtagCountMap, Ptag, Info0) then
+                Info0 = ptag_sectag_info(OldSectagLocn, MaxSoFar),
                 expect(unify(OldSectagLocn, SectagLocn), $pred,
                     "remote tag is shared with non-remote"),
                 int.max(Secondary, MaxSoFar, Max),
-                map.det_update(Ptag, SectagLocn - Max, !PtagCountMap)
+                Info = ptag_sectag_info(SectagLocn, Max),
+                map.det_update(Ptag, Info, !PtagCountMap)
             else
-                map.det_insert(Ptag, SectagLocn - Secondary, !PtagCountMap)
+                Info = ptag_sectag_info(SectagLocn, Secondary),
+                map.det_insert(Ptag, Info, !PtagCountMap)
             )
         )
     ;
@@ -1609,14 +1771,16 @@ get_ptag_counts_loop([CtorRepn | CtorRepns], !MaxPrimary, !PtagCountMap) :-
         Ptag = ptag(Primary),
         Secondary = uint.cast_to_int(SecondaryUint),
         !:MaxPrimary = uint8.max(Primary, !.MaxPrimary),
-        ( if map.search(!.PtagCountMap, Ptag, Target) then
-            Target = OldSectagLocn - MaxSoFar,
+        ( if map.search(!.PtagCountMap, Ptag, Info0) then
+            Info0 = ptag_sectag_info(OldSectagLocn, MaxSoFar),
             expect(unify(OldSectagLocn, SectagLocn), $pred,
-                "local tag is shared with something else"),
+                "local tag is shared with non-local"),
             int.max(Secondary, MaxSoFar, Max),
-            map.det_update(Ptag, SectagLocn - Max, !PtagCountMap)
+            Info = ptag_sectag_info(SectagLocn, Max),
+            map.det_update(Ptag, Info, !PtagCountMap)
         else
-            map.det_insert(Ptag, SectagLocn - Secondary, !PtagCountMap)
+            Info = ptag_sectag_info(SectagLocn, Secondary),
+            map.det_insert(Ptag, Info, !PtagCountMap)
         )
     ;
         ( ConsTag = no_tag
@@ -1641,14 +1805,21 @@ get_ptag_counts_loop([CtorRepn | CtorRepns], !MaxPrimary, !PtagCountMap) :-
 
 %-----------------------------------------------------------------------------%
 
-group_cases_by_ptag(TaggedCases, RepresentCase,
+group_cases_by_ptag(PtagCountMap, TaggedCases, RepresentCase,
         !StateA, !StateB, !StateC, !StateD,
-        CaseNumPtagsMap, PtagCaseMap) :-
-    group_cases_by_ptag_loop(TaggedCases, RepresentCase,
+        CaseNumPtagsMap, PtagCaseMap, PtagGroups) :-
+    group_cases_by_ptag_loop(PtagCountMap, TaggedCases, RepresentCase,
         !StateA, !StateB, !StateC, !StateD,
-        map.init, CaseNumPtagsMap, map.init, PtagCaseMap).
+        map.init, CaseNumPtagsMap, map.init, PtagCaseMap),
+    map.to_assoc_list(PtagCaseMap, PtagCaseList),
+    build_ptag_groups(PtagCountMap, PtagCaseList,
+        map.init, WholePtagsMap, [], SharedPtagInfos),
+    map.values(WholePtagsMap, WholePtagsInfos),
+    WholePtagGroups = list.map(wrap_whole_ptags_info, WholePtagsInfos),
+    SharedPtagGroups = list.map(wrap_shared_ptag_info, SharedPtagInfos),
+    PtagGroups = WholePtagGroups ++ SharedPtagGroups.
 
-:- pred group_cases_by_ptag_loop(list(tagged_case)::in,
+:- pred group_cases_by_ptag_loop(ptag_count_map::in, list(tagged_case)::in,
     pred(tagged_case, CaseRep, StateA, StateA, StateB, StateB,
         StateC, StateC, StateD, StateD)
         ::in(pred(in, out, in, out, in, out, in, out, in, out) is det),
@@ -1657,34 +1828,34 @@ group_cases_by_ptag(TaggedCases, RepresentCase,
     case_id_ptags_map::in, case_id_ptags_map::out,
     ptag_case_map(CaseRep)::in, ptag_case_map(CaseRep)::out) is det.
 
-group_cases_by_ptag_loop([], _,
+group_cases_by_ptag_loop(_, [], _,
         !StateA, !StateB, !StateC, !StateD, !CaseNumPtagsMap, !PtagCaseMap).
-group_cases_by_ptag_loop([TaggedCase | TaggedCases], RepresentCase,
-        !StateA, !StateB, !StateC, !StateD, !CaseNumPtagsMap, !PtagCaseMap) :-
+group_cases_by_ptag_loop(PtagCountMap, [TaggedCase | TaggedCases],
+        RepresentCase, !StateA, !StateB, !StateC, !StateD,
+        !CaseNumPtagsMap, !PtagCaseMap) :-
     TaggedCase = tagged_case(MainTaggedConsId, OtherConsIds, CaseId, _Goal),
     RepresentCase(TaggedCase, CaseRep, !StateA, !StateB, !StateC, !StateD),
-    group_case_by_ptag(CaseId, CaseRep, MainTaggedConsId,
-        !CaseNumPtagsMap, !PtagCaseMap),
-    list.foldl2(group_case_by_ptag(CaseId, CaseRep), OtherConsIds,
-        !CaseNumPtagsMap, !PtagCaseMap),
-    group_cases_by_ptag_loop(TaggedCases, RepresentCase,
+    group_case_by_ptag(PtagCountMap, CaseId, CaseRep,
+        MainTaggedConsId, !CaseNumPtagsMap, !PtagCaseMap),
+    list.foldl2(group_case_by_ptag(PtagCountMap, CaseId, CaseRep),
+        OtherConsIds, !CaseNumPtagsMap, !PtagCaseMap),
+    group_cases_by_ptag_loop(PtagCountMap, TaggedCases, RepresentCase,
         !StateA, !StateB, !StateC, !StateD, !CaseNumPtagsMap, !PtagCaseMap).
 
-:- pred group_case_by_ptag(case_id::in, CaseRep::in, tagged_cons_id::in,
+:- pred group_case_by_ptag(ptag_count_map::in, case_id::in, CaseRep::in,
+    tagged_cons_id::in,
     map(case_id, set(ptag))::in, map(case_id, set(ptag))::out,
     ptag_case_map(CaseRep)::in, ptag_case_map(CaseRep)::out) is det.
 
-group_case_by_ptag(CaseId, CaseRep, TaggedConsId,
+group_case_by_ptag(PtagCountMap, CaseId, CaseRep, TaggedConsId,
         !CaseIdPtagsMap, !PtagCaseMap) :-
     TaggedConsId = tagged_cons_id(_ConsId, ConsTag),
     (
         ConsTag = direct_arg_tag(Ptag),
-        SectagLocn = sectag_none_direct_arg,
         ( if map.search(!.PtagCaseMap, Ptag, _Group) then
             unexpected($pred, "unshared tag is shared")
         else
-            StagGoalMap = map.singleton(-1, CaseRep),
-            PtagCase = ptag_case(SectagLocn, StagGoalMap),
+            PtagCase = ptag_case_unshared(CaseRep),
             map.det_insert(Ptag, PtagCase, !PtagCaseMap)
         )
     ;
@@ -1692,23 +1863,20 @@ group_case_by_ptag(CaseId, CaseRep, TaggedConsId,
         (
             (
                 RemoteArgsTagInfo = remote_args_only_functor,
-                Ptag = ptag(0u8),
-                SectagLocn = sectag_none
+                Ptag = ptag(0u8)
             ;
-                RemoteArgsTagInfo = remote_args_unshared(Ptag),
-                SectagLocn = sectag_none
+                RemoteArgsTagInfo = remote_args_unshared(Ptag)
             ),
             ( if map.search(!.PtagCaseMap, Ptag, _Group) then
                 unexpected($pred, "unshared tag is shared")
             else
-                StagGoalMap = map.singleton(-1, CaseRep),
-                PtagCase = ptag_case(SectagLocn, StagGoalMap),
+                PtagCase = ptag_case_unshared(CaseRep),
                 map.det_insert(Ptag, PtagCase, !PtagCaseMap)
             )
         ;
             (
                 RemoteArgsTagInfo = remote_args_shared(Ptag, RemoteSectag),
-                RemoteSectag = remote_sectag(SecondaryUint, SectagSize),
+                RemoteSectag = remote_sectag(Sectag, SectagSize),
                 (
                     SectagSize = rsectag_word,
                     SectagLocn = sectag_remote_word
@@ -1716,32 +1884,21 @@ group_case_by_ptag(CaseId, CaseRep, TaggedConsId,
                     SectagSize = rsectag_subword(SectagBits),
                     SectagBits = sectag_bits(NumSectagBits, Mask),
                     SectagLocn = sectag_remote_bits(NumSectagBits, Mask)
-                ),
-                Secondary = uint.cast_to_int(SecondaryUint)
+                )
             ;
                 RemoteArgsTagInfo = remote_args_ctor(Data),
                 Primary = 0u8,
                 Ptag = ptag(Primary),
                 SectagLocn = sectag_remote_word,
-                Secondary = uint.cast_to_int(Data)
+                Sectag = Data
             ),
-            ( if map.search(!.PtagCaseMap, Ptag, PtagCase0) then
-                PtagCase0 = ptag_case(OldSectagLocn, StagGoalMap0),
-                expect(unify(OldSectagLocn, SectagLocn), $pred,
-                    "remote tag is shared with non-remote"),
-                map.det_insert(Secondary, CaseRep, StagGoalMap0, StagGoalMap),
-                PtagCase = ptag_case(SectagLocn, StagGoalMap),
-                map.det_update(Ptag, PtagCase, !PtagCaseMap)
-            else
-                StagGoalMap = map.singleton(Secondary, CaseRep),
-                PtagCase = ptag_case(SectagLocn, StagGoalMap),
-                map.det_insert(Ptag, PtagCase, !PtagCaseMap)
-            )
+            add_sectag_to_shared_ptag(PtagCountMap, Ptag,
+                SectagLocn, Sectag, CaseRep, !PtagCaseMap)
         )
     ;
         (
             ConsTag = shared_local_tag_no_args(Ptag, LocalSectag, MustMask),
-            LocalSectag = local_sectag(SecondaryUint, _, SectagBits),
+            LocalSectag = local_sectag(Sectag, _, SectagBits),
             (
                 MustMask = lsectag_always_rest_of_word,
                 SectagLocn = sectag_local_rest_of_word
@@ -1760,24 +1917,13 @@ group_case_by_ptag(CaseId, CaseRep, TaggedConsId,
             ;
                 LocalArgsTagInfo = local_args_not_only_functor(Ptag,
                     LocalSectag),
-                LocalSectag = local_sectag(SecondaryUint, _, SectagBits),
+                LocalSectag = local_sectag(Sectag, _, SectagBits),
                 SectagBits = sectag_bits(NumSectagBits, Mask),
                 SectagLocn = sectag_local_bits(NumSectagBits, Mask)
             )
         ),
-        Secondary = uint.cast_to_int(SecondaryUint),
-        ( if map.search(!.PtagCaseMap, Ptag, PtagCase0) then
-            PtagCase0 = ptag_case(OldSectagLocn, StagGoalMap0),
-            expect(unify(OldSectagLocn, SectagLocn), $pred,
-                "local tag is shared with something different"),
-            map.det_insert(Secondary, CaseRep, StagGoalMap0, StagGoalMap),
-            PtagCase = ptag_case(SectagLocn, StagGoalMap),
-            map.det_update(Ptag, PtagCase, !PtagCaseMap)
-        else
-            StagGoalMap = map.singleton(Secondary, CaseRep),
-            PtagCase = ptag_case(SectagLocn, StagGoalMap),
-            map.det_insert(Ptag, PtagCase, !PtagCaseMap)
-        )
+        add_sectag_to_shared_ptag(PtagCountMap, Ptag,
+            SectagLocn, Sectag, CaseRep, !PtagCaseMap)
     ;
         ( ConsTag = no_tag
         ; ConsTag = dummy_tag
@@ -1805,80 +1951,61 @@ group_case_by_ptag(CaseId, CaseRep, TaggedConsId,
         map.det_insert(CaseId, Ptags, !CaseIdPtagsMap)
     ).
 
+:- pred add_sectag_to_shared_ptag(ptag_count_map::in,
+    ptag::in, shared_sectag_locn::in, uint::in, CaseRep::in,
+    ptag_case_map(CaseRep)::in, ptag_case_map(CaseRep)::out) is det.
+
+add_sectag_to_shared_ptag(PtagCountMap, Ptag, SectagLocn, Sectag, CaseRep,
+        !PtagCaseMap) :-
+    ( if map.search(!.PtagCaseMap, Ptag, PtagCase0) then
+        (
+            PtagCase0 = ptag_case_unshared(_),
+            unexpected($pred, "adding shared to unshared")
+        ;
+            PtagCase0 = ptag_case_shared(SectagLocn0, MaxSectag, StagGoalMap0),
+            expect(unify(SectagLocn0, SectagLocn), $pred,
+                "sectag locn mismatch"),
+            map.det_insert(Sectag, CaseRep, StagGoalMap0, StagGoalMap),
+            PtagCase = ptag_case_shared(SectagLocn, MaxSectag, StagGoalMap),
+            map.det_update(Ptag, PtagCase, !PtagCaseMap)
+        )
+    else
+        map.lookup(PtagCountMap, Ptag, PtagSectagInfo),
+        PtagSectagInfo = ptag_sectag_info(InfoSectagLocn, MaxSectagInt),
+        expect(unify(coerce(SectagLocn), InfoSectagLocn), $pred,
+            "SectagLocn != InfoSectagLocn"),
+        % For a shared secondary tag, MaxSectagInt cannot be negative.
+        MaxSectag = uint.det_from_int(MaxSectagInt),
+        StagGoalMap = map.singleton(Sectag, CaseRep),
+        PtagCase = ptag_case_shared(SectagLocn, MaxSectag, StagGoalMap),
+        map.det_insert(Ptag, PtagCase, !PtagCaseMap)
+    ).
+
 %-----------------------------------------------------------------------------%
 
-order_ptags_by_count(PtagCountMap, PtagCaseMap, PtagGroupCaseList) :-
-    map.to_assoc_list(PtagCaseMap, PtagCaseList),
-    build_ptag_case_rev_map(PtagCaseList, PtagCountMap,
-        map.init, PtagCaseRevMap),
-    map.values(PtagCaseRevMap, PtagCaseRevList),
-    list.sort(PtagCaseRevList, PtagCaseRevSortedList),
-    % The sort puts the groups with the smallest counts first; we want the
-    % largest counts first.
-    list.reverse(PtagCaseRevSortedList, PtagCaseSortedList),
-    list.map(interpret_rev_map_entry, PtagCaseSortedList, PtagGroupCaseList).
+:- type whole_ptags_map(CaseRep) == map(CaseRep, whole_ptags_info(CaseRep)).
 
-:- pred interpret_rev_map_entry(ptag_case_rev_map_entry(CaseRep)::in,
-    ptag_case_group_entry(CaseRep)::out) is det.
+:- pred build_ptag_groups(ptag_count_map::in,
+    assoc_list(ptag, ptag_case(CaseRep))::in,
+    whole_ptags_map(CaseRep)::in, whole_ptags_map(CaseRep)::out,
+    list(shared_ptag_info(CaseRep))::in, list(shared_ptag_info(CaseRep))::out)
+    is det.
 
-interpret_rev_map_entry(RevEntry, GroupEntry) :-
-    RevEntry = ptag_case_rev_map_entry(_Count, MainPtag, OtherPtags, Case),
-    GroupEntry = ptag_case_group_entry(MainPtag, OtherPtags, Case).
-
-:- type ptag_case_rev_map_entry(CaseRep)
-    --->    ptag_case_rev_map_entry(
-                % The total number of function symbols sharing this case.
-                % This must be the first field for the sort to work as
-                % intended.
-                int,
-
-                % The primary tags sharing this case.
-                ptag,
-                list(ptag),
-
-                % The case itself.
-                ptag_case(CaseRep)
-            ).
-
-:- type ptag_case_rev_map(CaseRep) ==
-    map(ptag_case(CaseRep), ptag_case_rev_map_entry(CaseRep)).
-
-:- pred build_ptag_case_rev_map(assoc_list(ptag, ptag_case(CaseRep))::in,
-    ptag_count_map::in,
-    ptag_case_rev_map(CaseRep)::in, ptag_case_rev_map(CaseRep)::out) is det.
-
-build_ptag_case_rev_map([], _PtagCountMap, !RevMap).
-build_ptag_case_rev_map([Entry | Entries], PtagCountMap, !RevMap) :-
+build_ptag_groups(_PtagCountMap, [], !WholePtagsMap, !SharedPtagInfos).
+build_ptag_groups(PtagCountMap, [Entry | Entries],
+        !WholePtagsMap, !SharedPtagInfos) :-
     Entry = Ptag - PtagCase,
-    map.lookup(PtagCountMap, Ptag, CountSectagLocn - Count),
     (
-        ( CountSectagLocn = sectag_none
-        ; CountSectagLocn = sectag_none_direct_arg
-        ),
-        ( if map.search(!.RevMap, PtagCase, OldEntry) then
-            OldEntry = ptag_case_rev_map_entry(OldCount,
-                OldFirstPtag, OldLaterPtags0, OldPtagCase),
-            expect(unify(PtagCase, OldPtagCase), $pred,
-                "PtagCase != OldPtagCase"),
-            NewEntry = ptag_case_rev_map_entry(OldCount + Count,
-                OldFirstPtag, OldLaterPtags0 ++ [Ptag], OldPtagCase),
-            map.det_update(PtagCase, NewEntry, !RevMap)
-        else
-            NewEntry = ptag_case_rev_map_entry(Count, Ptag, [], PtagCase),
-            map.det_insert(PtagCase, NewEntry, !RevMap)
-        )
+        PtagCase = ptag_case_unshared(CaseRep),
+        record_whole_ptag(Ptag, 1u, CaseRep, !WholePtagsMap)
     ;
-        ( CountSectagLocn = sectag_local_rest_of_word
-        ; CountSectagLocn = sectag_local_bits(_, _)
-        ; CountSectagLocn = sectag_remote_word
-        ; CountSectagLocn = sectag_remote_bits(_, _)
-        ),
+        PtagCase = ptag_case_shared(SharedSectagLocn, MaxSectag, StagGoalMap),
         % There will only ever be at most one primary tag value with
         % a shared local tag, and there will only ever be at most one primary
         % tag value with a shared remote tag, so we can never have
         %
-        % - two ptags with CountSectagLocn = sectag_local_*
-        % - two ptags with CountSectagLocn = sectag_remote
+        % - two ptags with SectagLocn = sectag_local_*
+        % - two ptags with SectagLocn = sectag_remote
         %
         % We can never have two entries where one is sectag_local_bits(_)
         % and the other is sectag_local_rest_of_word; all function symbols
@@ -1886,41 +2013,187 @@ build_ptag_case_rev_map([Entry | Entries], PtagCountMap, !RevMap) :-
         % that sectag may ever be followed by arguments (sectag_local_bits)
         % or not (sectag_local_rest_of_word).
         %
-        % We can have two ptags, one with either CountSectagLocn =
-        % sectag_local_bits(_) or CountSectagLocn = sectag_local_rest_of_word,
-        % and the other with CountSectagLocn = sectag_remote, but even if their
+        % We can have two ptags, one with either SectagLocn =
+        % sectag_local_bits(_) or SectagLocn = sectag_local_rest_of_word,
+        % and the other with SectagLocn = sectag_remote, but even if their
         % sectag_value to code maps were identical, their overall code couldn't
         % be identical, since they would have to get the secondary tags from
         % different places.
-        NewEntry = ptag_case_rev_map_entry(Count, Ptag, [], PtagCase),
-        map.det_insert(PtagCase, NewEntry, !RevMap)
+
+        map.lookup(PtagCountMap, Ptag, SectagInfo),
+        SectagInfo = ptag_sectag_info(SectagLocn, MaybeMaxSectag),
+        expect(unify(coerce(SharedSectagLocn), SectagLocn), $pred,
+            "SharedSectagLocn != SectagLocn"),
+        ( if
+            uint.from_int(MaybeMaxSectag, MaxSectag0),
+            MaxSectag0 \= MaxSectag
+        then
+            unexpected($pred, "MaxSectag0 != MaxSectag")
+        else
+            true
+        ),
+        map.foldl2(build_sectag_case_cord_map, StagGoalMap,
+            map.init, StagCaseCordMap, 0u, NumFunctors),
+        StagCaseMap =
+            map.map_values_only(cord_to_one_or_more, StagCaseCordMap),
+        map.to_sorted_assoc_list(StagCaseMap, StagCaseList),
+        ( if
+            StagCaseList = [OneStagCase],
+            NumFunctors = MaxSectag + 1u
+        then
+            OneStagCase = CaseRep - _SectagValues,
+            record_whole_ptag(Ptag, NumFunctors, CaseRep, !WholePtagsMap)
+        else
+            SharedPtagInfo = shared_ptag_info(Ptag, SharedSectagLocn,
+                MaxSectag, NumFunctors, StagGoalMap, StagCaseMap),
+            !:SharedPtagInfos = [SharedPtagInfo | !.SharedPtagInfos]
+        )
     ),
-    build_ptag_case_rev_map(Entries, PtagCountMap, !RevMap).
+    build_ptag_groups(PtagCountMap, Entries, !WholePtagsMap, !SharedPtagInfos).
+
+:- pred record_whole_ptag(ptag::in, uint::in, CaseRep::in,
+    whole_ptags_map(CaseRep)::in, whole_ptags_map(CaseRep)::out) is det.
+
+record_whole_ptag(Ptag, PtagNumFunctors, CaseRep, !GroupMap) :-
+    ( if map.search(!.GroupMap, CaseRep, Entry0) then
+        Entry0 = whole_ptags_info(HeadPtag, TailPtags0, NumFunctors0,
+            CaseRep0),
+        expect(unify(CaseRep, CaseRep0), $pred, "CaseRep != CaseRep0"),
+        % This is quadratic, but this does not matter, because
+        % we can append to the list at most 6 time. The reason is:
+        %
+        % - a type can have at most eight ptags;
+        % - you can't have a switch in which all eight map to the same
+        %   CaseRep, because that would be a switch with only one arm,
+        %   which we simplify away, and
+        % - for the first ptag, the map.search fails, and does not
+        %   require an append.
+        TailPtags = TailPtags0 ++ [Ptag],
+        NumFunctors = NumFunctors0 + PtagNumFunctors,
+        Entry = whole_ptags_info(HeadPtag, TailPtags, NumFunctors, CaseRep),
+        map.det_update(CaseRep, Entry, !GroupMap)
+    else
+        Entry = whole_ptags_info(Ptag, [], PtagNumFunctors, CaseRep),
+        map.det_insert(CaseRep, Entry, !GroupMap)
+    ).
+
+:- type stag_case_cord_map(CaseRep) == map(CaseRep, cord(uint)).
+
+:- pred build_sectag_case_cord_map(uint::in, CaseRep::in,
+    stag_case_cord_map(CaseRep)::in, stag_case_cord_map(CaseRep)::out,
+    uint::in, uint::out) is det.
+
+build_sectag_case_cord_map(Sectag, CaseRep, !StagCaseCordMap, !NumFunctors) :-
+    !:NumFunctors = !.NumFunctors + 1u,
+    ( if map.search(!.StagCaseCordMap, CaseRep, Cord0) then
+        cord.snoc(Sectag, Cord0, Cord),
+        map.det_update(CaseRep, Cord, !StagCaseCordMap)
+    else
+        map.det_insert(CaseRep, cord.singleton(Sectag), !StagCaseCordMap)
+    ).
+
+:- func cord_to_one_or_more(cord(uint)) = one_or_more(uint).
+
+cord_to_one_or_more(Cord) = OoM :-
+    List = cord.list(Cord),
+    list.det_head_tail(List, Head, Tail),
+    OoM = one_or_more(Head, Tail).
+
+:- func wrap_whole_ptags_info(whole_ptags_info(CaseRep)) =
+    ptag_case_group(CaseRep).
+
+wrap_whole_ptags_info(WholeInfo) = one_or_more_whole_ptags(WholeInfo).
+
+:- func wrap_shared_ptag_info(shared_ptag_info(CaseRep)) = 
+    ptag_case_group(CaseRep).
+
+wrap_shared_ptag_info(SharedInfo) = one_shared_ptag(SharedInfo).
 
 %-----------------------------------------------------------------------------%
 
-order_ptags_by_value(Ptag, MaxPtag, PtagCaseMap0, PtagCaseList) :-
-    Ptag = ptag(PtagUint8),
-    MaxPtag = ptag(MaxPtagUint8),
-    ( if PtagUint8 =< MaxPtagUint8 then
-        NextPtagUint8 = PtagUint8 + 1u8,
-        NextPtag = ptag(NextPtagUint8),
-        ( if map.search(PtagCaseMap0, Ptag, PtagCase) then
-            map.delete(Ptag, PtagCaseMap0, PtagCaseMap1),
-            order_ptags_by_value(NextPtag, MaxPtag,
-                PtagCaseMap1, PtagCaseList1),
-            PtagCaseEntry = ptag_case_entry(Ptag, PtagCase),
-            PtagCaseList = [PtagCaseEntry | PtagCaseList1]
-        else
-            order_ptags_by_value(NextPtag, MaxPtag, PtagCaseMap0, PtagCaseList)
-        )
+order_ptag_groups_by_count(Groups, SortedGroups) :-
+    list.sort(order_groups_by_more_functors, Groups, SortedGroups).
+
+:- pred order_groups_by_more_functors(ptag_case_group(CaseRep)::in,
+    ptag_case_group(CaseRep)::in, comparison_result::out) is det.
+
+order_groups_by_more_functors(GroupA, GroupB, CompareResult) :-
+    NumFunctorsA = num_functors_in_ptag_case_group(GroupA),
+    NumFunctorsB = num_functors_in_ptag_case_group(GroupB),
+    ( if NumFunctorsA > NumFunctorsB then
+        % We want the groups with the largest counts first ...
+        CompareResult = (<)
+    else if NumFunctorsA < NumFunctorsB then
+        % ... and the groups with the smallest counts last.
+        CompareResult = (>)
     else
-        ( if map.is_empty(PtagCaseMap0) then
-            PtagCaseList = []
-        else
-            unexpected($pred, "PtagCaseMap0 is not empty")
-        )
+        % If two groups cover the same number of function symbols,
+        % then put them in the order given by their main ptags.
+        MainPtagA = main_ptag_in_ptag_case_group(GroupA),
+        MainPtagB = main_ptag_in_ptag_case_group(GroupB),
+        compare(CompareResult, MainPtagA, MainPtagB)
     ).
+
+:- func num_functors_in_ptag_case_group(ptag_case_group(CaseRep)) = uint.
+
+num_functors_in_ptag_case_group(Group) = NumFunctors :-
+    (
+        Group = one_or_more_whole_ptags(WholeInfo),
+        NumFunctors = WholeInfo ^ wpi_num_functors
+    ;
+        Group = one_shared_ptag(SharedInfo),
+        NumFunctors = SharedInfo ^ spi_num_functors
+    ).
+
+:- func main_ptag_in_ptag_case_group(ptag_case_group(CaseRep)) = uint8.
+
+main_ptag_in_ptag_case_group(Group) = MainPtagUint8 :-
+    (
+        Group = one_or_more_whole_ptags(WholeInfo),
+        ptag(MainPtagUint8) = WholeInfo ^ wpi_head_ptag
+    ;
+        Group = one_shared_ptag(SharedInfo),
+        ptag(MainPtagUint8) = SharedInfo ^ spi_ptag
+    ).
+
+%-----------------------------------------------------------------------------%
+
+order_ptag_specific_groups_by_value(Groups0, SortedSpecificGroups) :-
+    specialize_and_record_ptag_case_groups(Groups0, map.init, SpecificMap),
+    map.values(SpecificMap, SortedSpecificGroups).
+
+:- pred specialize_and_record_ptag_case_groups(
+    list(ptag_case_group(CaseRep))::in,
+    map(ptag, ptag_case_group(CaseRep))::in,
+    map(ptag, ptag_case_group(CaseRep))::out) is det.
+
+specialize_and_record_ptag_case_groups([], !SpecificMap).
+specialize_and_record_ptag_case_groups([Group | Groups], !SpecificMap) :-
+    (
+        Group = one_or_more_whole_ptags(WholeInfo),
+        WholeInfo = whole_ptags_info(MainPtag, OtherPtags, _NF, CaseRep),
+        record_specialized_versions(CaseRep, [MainPtag | OtherPtags],
+            !SpecificMap)
+    ;
+        Group = one_shared_ptag(SharedInfo),
+        SharedInfo = shared_ptag_info(Ptag, _, _, _, _, _),
+        map.det_insert(Ptag, Group, !SpecificMap)
+    ),
+    specialize_and_record_ptag_case_groups(Groups, !SpecificMap).
+
+:- pred record_specialized_versions(CaseRep::in, list(ptag)::in,
+    map(ptag, ptag_case_group(CaseRep))::in,
+    map(ptag, ptag_case_group(CaseRep))::out) is det.
+
+record_specialized_versions(_, [], !SpecificMap).
+record_specialized_versions(CaseRep, [Ptag | Ptags], !SpecificMap) :-
+    % In the original whole_ptags_info we are splitting up, each of the
+    % ptags is an unshared ptag, which means that it corresponds to
+    % exactly one function symbol.
+    WholeInfo = whole_ptags_info(Ptag, [], 1u, CaseRep),
+    Group = one_or_more_whole_ptags(WholeInfo),
+    map.det_insert(Ptag, Group, !SpecificMap),
+    record_specialized_versions(CaseRep, Ptags, !SpecificMap).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

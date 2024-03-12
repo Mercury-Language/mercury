@@ -48,7 +48,6 @@
 
 :- import_module backend_libs.
 :- import_module backend_libs.builtin_ops.
-:- import_module backend_libs.rtti.
 :- import_module backend_libs.switch_util.
 :- import_module hlds.hlds_data.
 :- import_module ml_backend.ml_code_gen.
@@ -58,12 +57,12 @@
 :- import_module ml_backend.ml_unify_gen_util.
 
 :- import_module assoc_list.
-:- import_module int.
 :- import_module map.
 :- import_module maybe.
+:- import_module one_or_more.
 :- import_module pair.
-:- import_module require.
 :- import_module set.
+:- import_module uint.
 :- import_module uint8.
 
 :- type code_map == map(case_id, maybe_code).
@@ -78,35 +77,34 @@ ml_generate_tag_switch_if_possible(Var, VarEntry, CodeModel, CanFail, Context,
         EntryPackedArgsMap, TaggedCases, Stmts, !Info) :-
     % Group the cases based on primary tag value, find out how many
     % constructors share each primary tag value, and sort the cases so that
-    % the most frequently occurring primary tag values come first.
+    % the groups covering the most function symbols come first.
     ml_gen_info_get_module_info(!.Info, ModuleInfo),
     get_ptag_counts(ModuleInfo, VarEntry ^ vte_type, MaxPrimary, PtagCountMap),
-    group_cases_by_ptag(TaggedCases,
+    group_cases_by_ptag(PtagCountMap, TaggedCases,
         gen_tagged_case_code(CodeModel, EntryPackedArgsMap),
         map.init, CodeMap, [], ReachableConstVarMaps0,
         may_use_tag_switch, MayUseTagSwitch, !Info,
-        _CaseIdPtagsMap, PtagCaseMap),
+        _CaseIdPtagsMap, _PtagCaseMap, PtagCaseGroups0),
+    order_ptag_groups_by_count(PtagCaseGroups0, PtagCaseGroups),
     % Proceed only if we can do so safely.
     MayUseTagSwitch = may_use_tag_switch,
     ml_generate_tag_switch(Var, VarEntry, CodeModel, CanFail, Context,
-        MaxPrimary, CodeMap, PtagCountMap, ReachableConstVarMaps0,
-        PtagCaseMap, Stmts, !Info).
+        MaxPrimary, CodeMap, ReachableConstVarMaps0, PtagCaseGroups, Stmts,
+        !Info).
 
 :- pred ml_generate_tag_switch(prog_var::in, var_table_entry::in,
     code_model::in, can_fail::in, prog_context::in, uint8::in,
-    code_map::in, ptag_count_map::in, list(ml_ground_term_map)::in,
-    ptag_case_map(case_id)::in, list(mlds_stmt)::out,
+    code_map::in, list(ml_ground_term_map)::in,
+    list(ptag_case_group(case_id))::in, list(mlds_stmt)::out,
     ml_gen_info::in, ml_gen_info::out) is det.
 
 ml_generate_tag_switch(Var, VarEntry, CodeModel, CanFail, Context, MaxPrimary,
-        CodeMap, PtagCountMap, ReachableConstVarMaps0,
-        PtagCaseMap, Stmts, !Info) :-
+        CodeMap, ReachableConstVarMaps0, PtagCaseGroups, Stmts, !Info) :-
     % Generate the rval for the primary tag.
     ml_gen_var(!.Info, Var, VarEntry, VarLval),
     VarRval = ml_lval(VarLval),
     PtagRval = ml_unop(tag, VarRval),
 
-    order_ptags_by_count(PtagCountMap, PtagCaseMap, PtagCaseList),
     % The code generation scheme that we use below can duplicate the code of a
     % case if the representations of the cons_ids of that case use more than
     % one primary tag. (We generate one copy of the code for each such primary
@@ -127,8 +125,15 @@ ml_generate_tag_switch(Var, VarEntry, CodeModel, CanFail, Context, MaxPrimary,
     % (currently unused) find_any_split_cases predicate.
 
     % Generate the switch on the primary tag.
-    gen_ptag_cases(Var, VarEntry, CanFail, CodeModel, Context,
-        CodeMap, PtagCountMap, PtagCaseList, PtagCases0,
+    % ZZZ
+    % XXX SWITCH If the length of SectagCases0 is small enough (2, or maybe 3)
+    % and there is no default case needed, then consider generating code
+    % that does one (or maybe two) if-then-elses, with the conditions
+    % being bitmap checks. The details are explained below after the next
+    % occurrence of XXX SWITCH, but their application here would be simpler,
+    % due to the max ptag being just 7.
+    gen_ptag_cases(Var, VarEntry, CanFail, CodeModel, Context, CodeMap,
+        PtagCaseGroups, MLDS_Cases0,
         ReachableConstVarMaps0, ReachableConstVarMaps, !Info),
     % We compute ReachableConstVarMaps above in two steps, because
     % - gen_tagged_case_code, as invoked by group_cases_by_ptag, generates code
@@ -138,11 +143,10 @@ ml_generate_tag_switch(Var, VarEntry, CodeModel, CanFail, Context, MaxPrimary,
 
     % Package up the results into a switch statement.
     Range = mlds_switch_range(0, uint8.cast_to_int(MaxPrimary)),
-    merge_any_arms_for_same_case_id(PtagCases0, Cases0),
-    list.sort(Cases0, Cases),
+    list.sort(MLDS_Cases0, MLDS_Cases),
     ml_switch_generate_default(CanFail, CodeModel, Context, Default, !Info),
     SwitchStmt0 = ml_stmt_switch(mlds_builtin_type_int(int_type_int),
-        PtagRval, Range, Cases, Default, Context),
+        PtagRval, Range, MLDS_Cases, Default, Context),
     ml_simplify_switch(SwitchStmt0, SwitchStmt, !Info),
     Stmts = [SwitchStmt].
 
@@ -405,95 +409,62 @@ find_any_split_cases_2(_CaseId, Ptags, !IsAnyCaseSplit) :-
             ).
 
 :- pred gen_ptag_cases(prog_var::in, var_table_entry::in, can_fail::in,
-    code_model::in, prog_context::in, code_map::in, ptag_count_map::in,
-    ptag_case_group_list(case_id)::in, list(mlds_switch_case_id)::out,
+    code_model::in, prog_context::in, code_map::in,
+    list(ptag_case_group(case_id))::in, list(mlds_switch_case)::out,
     list(ml_ground_term_map)::in, list(ml_ground_term_map)::out,
     ml_gen_info::in, ml_gen_info::out) is det.
 
-gen_ptag_cases(_, _, _, _, _, _, _, [], [], !ReachableConstVarMaps, !Info).
+gen_ptag_cases(_, _, _, _, _, _, [], [], !ReachableConstVarMaps, !Info).
 gen_ptag_cases(Var, VarEntry, CanFail, CodeModel, Context, CodeMap,
-        PtagCountMap, [PtagCase | PtagsCases], [MLDS_Case | MLDS_Cases],
+        [PtagCase | PtagsCases], [MLDS_Case | MLDS_Cases],
         !ReachableConstVarMaps, !Info) :-
     gen_ptag_case(Var, VarEntry, CanFail, CodeModel, Context, CodeMap,
-        PtagCountMap, PtagCase, MLDS_Case, !ReachableConstVarMaps, !Info),
+        PtagCase, MLDS_Case, !ReachableConstVarMaps, !Info),
     gen_ptag_cases(Var, VarEntry, CanFail, CodeModel, Context, CodeMap,
-        PtagCountMap, PtagsCases, MLDS_Cases, !ReachableConstVarMaps, !Info).
+        PtagsCases, MLDS_Cases, !ReachableConstVarMaps, !Info).
 
 :- pred gen_ptag_case(prog_var::in, var_table_entry::in, can_fail::in,
-    code_model::in, prog_context::in, code_map::in, ptag_count_map::in,
-    ptag_case_group_entry(case_id)::in, mlds_switch_case_id::out,
+    code_model::in, prog_context::in, code_map::in,
+    ptag_case_group(case_id)::in, mlds_switch_case::out,
     list(ml_ground_term_map)::in, list(ml_ground_term_map)::out,
     ml_gen_info::in, ml_gen_info::out) is det.
 
 gen_ptag_case(Var, VarEntry, CanFail, CodeModel, Context, CodeMap,
-        PtagCountMap, PtagCaseEntry, MLDS_Case,
-        !ReachableConstVarMaps, !Info) :-
-    PtagCaseEntry = ptag_case_group_entry(MainPtag, OtherPtags, PtagCase),
-    PtagCase = ptag_case(SecTagLocn, GoalMap),
-    map.lookup(PtagCountMap, MainPtag, CountInfo),
-    CountInfo = SecTagLocn1 - MaxSecondary,
-    expect(unify(SecTagLocn, SecTagLocn1), $pred,
-        "secondary tag locations differ"),
-    map.to_assoc_list(GoalMap, GoalList),
+        PtagGroup, MLDS_Case, !ReachableConstVarMaps, !Info) :-
     (
-        ( SecTagLocn = sectag_none
-        ; SecTagLocn = sectag_none_direct_arg
-        ),
+        PtagGroup = one_or_more_whole_ptags(WholeInfo),
+        WholeInfo = whole_ptags_info(MainPtag, OtherPtags, _NF, CaseId),
         % There is no secondary tag, so there is no switch on it.
-        (
-            GoalList = [],
-            unexpected($pred, "no goal for non-shared tag")
-        ;
-            GoalList = [_Stag - CaseId],
-            lookup_code_map(CodeMap, CaseId, CodeModel, MaybeCaseId, Stmt,
-                !ReachableConstVarMaps, !Info)
-        ;
-            GoalList = [_, _ | _],
-            unexpected($pred, "more than one goal for non-shared tag")
-        )
+        lookup_code_map(CodeMap, CaseId, CodeModel, Stmt,
+            !ReachableConstVarMaps, !Info),
+        MainPtagMatch = make_ptag_match(MainPtag),
+        OtherPtagMatches = list.map(make_ptag_match, OtherPtags)
     ;
-        ( SecTagLocn = sectag_local_rest_of_word
-        ; SecTagLocn = sectag_local_bits(_, _)
-        ; SecTagLocn = sectag_remote_word
-        ; SecTagLocn = sectag_remote_bits(_, _)
-        ),
-        expect(unify(OtherPtags, []), $pred, ">1 ptag with secondary tag"),
+        PtagGroup = one_shared_ptag(SharedInfo),
+        SharedInfo = shared_ptag_info(Ptag, SharedSectagLocn, MaxSectag, _NF,
+            SectagToGoalMap, CaseIdToSectagsMap),
+        MainPtagMatch = make_ptag_match(Ptag),
+        OtherPtagMatches = [],
         (
             CanFail = cannot_fail,
             CaseCanFail = cannot_fail
         ;
             CanFail = can_fail,
-            list.length(GoalList, NumGoals),
+            map.count(SectagToGoalMap, NumSectagsWithGoals),
             % The +1 is to account for the fact that secondary tags go from
             % 0 to MaxSecondary, both inclusive.
-            ( if NumGoals = MaxSecondary + 1 then
+            ( if uint.cast_from_int(NumSectagsWithGoals) = MaxSectag + 1u then
                 CaseCanFail = cannot_fail
             else
                 CaseCanFail = can_fail
             )
         ),
-        group_stag_cases(GoalList, GroupedGoalList),
-        ( if
-            GroupedGoalList = [CaseId - _Stags],
-            CaseCanFail = cannot_fail
-        then
-            % There is only one possible matching goal, so we don't need
-            % to switch on it. This can happen if the other functor symbols
-            % that share this primary tag are ruled out by the initial inst
-            % of the switched-on variable.
-            lookup_code_map(CodeMap, CaseId, CodeModel, MaybeCaseId, Stmt,
-                !ReachableConstVarMaps, !Info)
-        else
-            gen_stag_switch(Var, VarEntry, CodeModel, CaseCanFail, Context,
-                CodeMap, MainPtag, SecTagLocn, GroupedGoalList, Stmt,
-                !ReachableConstVarMaps, !Info),
-            MaybeCaseId = no
-        )
+        map.to_sorted_assoc_list(CaseIdToSectagsMap, CaseIdToSectagsAL),
+        gen_stag_switch(Var, VarEntry, CodeModel, CaseCanFail, Context,
+            CodeMap, Ptag, SharedSectagLocn, CaseIdToSectagsAL, Stmt,
+            !ReachableConstVarMaps, !Info)
     ),
-    MainPtagMatch = make_ptag_match(MainPtag),
-    OtherPtagMatches = list.map(make_ptag_match, OtherPtags),
-    MLDS_Case = mlds_switch_case_id(MainPtagMatch, OtherPtagMatches,
-        MaybeCaseId, Stmt).
+    MLDS_Case = mlds_switch_case(MainPtagMatch, OtherPtagMatches, Stmt).
 
 :- func make_ptag_match(ptag) = mlds_case_match_cond.
 
@@ -502,113 +473,96 @@ make_ptag_match(Ptag) = Cond :-
     Cond = match_value(ml_const(mlconst_int(uint8.cast_to_int(PtagUint8)))).
 
 :- pred lookup_code_map(code_map::in, case_id::in, code_model::in,
-    maybe(case_id)::out, mlds_stmt::out,
+    mlds_stmt::out,
     list(ml_ground_term_map)::in, list(ml_ground_term_map)::out,
     ml_gen_info::in, ml_gen_info::out) is det.
 
-lookup_code_map(CodeMap, CaseId, CodeModel, MaybeCaseId, Stmt,
+lookup_code_map(CodeMap, CaseId, CodeModel, Stmt,
         !ReachableConstVarMaps, !Info) :-
     map.lookup(CodeMap, CaseId, MaybeCode),
     (
-        MaybeCode = immediate(Stmt),
-        MaybeCaseId = yes(CaseId)
+        MaybeCode = immediate(Stmt)
     ;
         MaybeCode = generate(EntryPackedArgsMap, Goal),
         ml_gen_info_set_packed_word_map(EntryPackedArgsMap, !Info),
         ml_gen_goal_as_branch_block(CodeModel, Goal, Stmt,
-            !ReachableConstVarMaps, !Info),
-        MaybeCaseId = no
+            !ReachableConstVarMaps, !Info)
     ).
 
 %---------------------------------------------------------------------------%
 
-    % A list of secondary tag values that all have the same code.
-    % The list is stored in reversed form.
-    %
-:- type stags
-    --->    stags(int, list(int)).
-
-    % Maps case numbers (each of which identifies the code of one switch arm)
-    % to the secondary tags that share that code.
-    %
-:- type stag_rev_map == map(case_id, stags).
-
-:- pred group_stag_cases(stag_goal_list(case_id)::in,
-    assoc_list(case_id, stags)::out) is det.
-
-group_stag_cases(Goals, GroupedGoals) :-
-    build_stag_rev_map(Goals, map.init, RevMap),
-    map.to_assoc_list(RevMap, GroupedGoals).
-
-:- pred build_stag_rev_map(stag_goal_list(case_id)::in,
-    stag_rev_map::in, stag_rev_map::out) is det.
-
-build_stag_rev_map([], !RevMap).
-build_stag_rev_map([Entry | Entries], !RevMap) :-
-    Entry = Stag - CaseId,
-    ( if map.search(!.RevMap, CaseId, OldEntry) then
-        OldEntry = stags(OldFirstStag, OldLaterStags),
-        NewEntry = stags(OldFirstStag, [Stag | OldLaterStags]),
-        map.det_update(CaseId, NewEntry, !RevMap)
-    else
-        NewEntry = stags(Stag, []),
-        map.det_insert(CaseId, NewEntry, !RevMap)
-    ),
-    build_stag_rev_map(Entries, !RevMap).
-
-%---------------------------------------------------------------------------%
-
 :- pred gen_stag_switch(prog_var::in, var_table_entry::in, code_model::in,
-    can_fail::in, prog_context::in, code_map::in, ptag::in, sectag_locn::in,
-    assoc_list(case_id, stags)::in, mlds_stmt::out,
+    can_fail::in, prog_context::in, code_map::in, ptag::in,
+    shared_sectag_locn::in, assoc_list(case_id, one_or_more(uint))::in,
+    mlds_stmt::out,
     list(ml_ground_term_map)::in, list(ml_ground_term_map)::out,
     ml_gen_info::in, ml_gen_info::out) is det.
 
 gen_stag_switch(Var, VarEntry, CodeModel, CanFail, Context, CodeMap,
-        Ptag, StagLocn, Cases, Stmt, !ReachableConstVarMaps, !Info) :-
+        Ptag, SharedSectagLocn, Cases, Stmt, !ReachableConstVarMaps, !Info) :-
     % Generate the rval for the secondary tag.
     VarType = VarEntry ^ vte_type,
     ml_gen_var(!.Info, Var, VarEntry, VarLval),
     VarRval = ml_lval(VarLval),
     (
-        StagLocn = sectag_local_rest_of_word,
-        StagRval = ml_unop(unmkbody, VarRval)
+        SharedSectagLocn = sectag_local_rest_of_word,
+        SectagRval = ml_unop(unmkbody, VarRval)
     ;
-        StagLocn = sectag_local_bits(_, Mask),
-        StagRval = ml_binop(bitwise_and(int_type_uint),
+        SharedSectagLocn = sectag_local_bits(_, Mask),
+        SectagRval = ml_binop(bitwise_and(int_type_uint),
             ml_unop(unmkbody, VarRval), ml_const(mlconst_uint(Mask)))
     ;
-        StagLocn = sectag_remote_word,
+        SharedSectagLocn = sectag_remote_word,
         ml_gen_secondary_tag_rval(!.Info, VarType, VarRval,
-            Ptag, StagRval)
+            Ptag, SectagRval)
     ;
-        StagLocn = sectag_remote_bits(_, Mask),
+        SharedSectagLocn = sectag_remote_bits(_, Mask),
         ml_gen_secondary_tag_rval(!.Info, VarType, VarRval,
-            Ptag, StagWordRval),
-        StagRval = ml_binop(bitwise_and(int_type_uint),
-            StagWordRval, ml_const(mlconst_uint(Mask)))
-    ;
-        ( StagLocn = sectag_none
-        ; StagLocn = sectag_none_direct_arg
-        ),
-        unexpected($pred, "no stag")
+            Ptag, SectagWordRval),
+        SectagRval = ml_binop(bitwise_and(int_type_uint),
+            SectagWordRval, ml_const(mlconst_uint(Mask)))
     ),
 
     % Generate the switch on the secondary tag.
-    gen_stag_cases(Cases, CodeMap, CodeModel, StagCases0,
+    % XXX SWITCH If the length of SectagCases0 is small enough (2, or maybe 3)
+    % and there is no default case needed, then consider generating code
+    % that does one (or maybe two) if-then-elses, with the conditions
+    % being bitmap checks. We would construct a bitmap at compile time
+    % from the sectags of a case (by setting the 1 << Sectag for every
+    % Sectag in the case), and then test at runtime whether 1 << ActualSectag
+    % has its bit set in the resulting bitmap. We would need either
+    % ceil(MaxSectag/64) or ceil(MaxSectag/32) words for the bitmap,
+    % depending on the word size of the target machine. (Technically,
+    % we could use uint64s even on 32 bit machines, but looking for a set bit
+    % in 2N 32 bit words will be almost certainly faster than looking in
+    % N 64 bit words, when each half of those 64 bit words have to be tested
+    % individually.)
+    %
+    % If there are only two cases, we could use the trick of testing for
+    % "is the actual sectag in the set covered by the first case?" by testing
+    % for "is the actual sectag in the set covered by the second case?",
+    % and negating the result. This may be faster if it replaces a test
+    % in more than one word with a test in just one word.
+    %
+    % NOTE While target language compilers could convert an MLDS switch into
+    % an if-then-else chain using bitmap tests, they *cannot* use the above
+    % trick, because unlike us, they are not allowed to assume that the value
+    % of the actual secondary tag at runtime is in the range 0 .. MaxSectag;
+    % in fact, they don't even know the value of MaxSectag.
+    gen_stag_cases(Cases, CodeMap, CodeModel, SectagCases0,
         !ReachableConstVarMaps, !Info),
-    list.sort(StagCases0, StagCases),
+    list.sort(SectagCases0, SectagCases),
     ml_switch_generate_default(CanFail, CodeModel, Context, Default, !Info),
 
     % Package up the results into a switch statement.
     Range = mlds_switch_range_unknown, % XXX could do better
     SwitchStmt = ml_stmt_switch(mlds_builtin_type_int(int_type_int),
-        StagRval, Range, StagCases, Default, Context),
+        SectagRval, Range, SectagCases, Default, Context),
     ml_simplify_switch(SwitchStmt, Stmt, !Info).
 
 %---------------------------------------------------------------------------%
 
-:- pred gen_stag_cases(assoc_list(case_id, stags)::in,
+:- pred gen_stag_cases(assoc_list(case_id, one_or_more(uint))::in,
     code_map::in, code_model::in, list(mlds_switch_case)::out,
     list(ml_ground_term_map)::in, list(ml_ground_term_map)::out,
     ml_gen_info::in, ml_gen_info::out) is det.
@@ -621,28 +575,28 @@ gen_stag_cases([Group | Groups], CodeMap, CodeModel, [Case | Cases],
     gen_stag_cases(Groups, CodeMap, CodeModel, Cases,
         !ReachableConstVarMaps, !Info).
 
-:- pred gen_stag_case(pair(case_id, stags)::in,
+:- pred gen_stag_case(pair(case_id, one_or_more(uint))::in,
     code_map::in, code_model::in, mlds_switch_case::out,
     list(ml_ground_term_map)::in, list(ml_ground_term_map)::out,
     ml_gen_info::in, ml_gen_info::out) is det.
 
 gen_stag_case(Group, CodeMap, CodeModel, MLDS_Case,
         !ReachableConstVarMaps, !Info) :-
-    Group = CaseId - Stags,
-    Stags = stags(FirstStag, RevLaterStags),
-    list.reverse(RevLaterStags, LaterStags),
+    Group = CaseId - one_or_more(FirstStag, LaterStags),
     FirstMatch = make_match_value(FirstStag),
     LaterMatches = list.map(make_match_value, LaterStags),
-    lookup_code_map(CodeMap, CaseId, CodeModel, _MaybeCaseId, Stmt,
+    lookup_code_map(CodeMap, CaseId, CodeModel, Stmt,
         !ReachableConstVarMaps, !Info),
     MLDS_Case = mlds_switch_case(FirstMatch, LaterMatches, Stmt).
 
-:- func make_match_value(int) = mlds_case_match_cond.
+:- func make_match_value(uint) = mlds_case_match_cond.
 
-make_match_value(Stag) = match_value(ml_const(mlconst_int(Stag))).
+make_match_value(Sectag) = Match :-
+    Match = match_value(ml_const(mlconst_int(uint.cast_to_int(Sectag)))).
 
 %---------------------------------------------------------------------------%
 
+    % ZZZ move this commeent to switch_util.m
     % The job of merge_any_arms_for_same_case_id is to generate target language
     % code that should be more easily optimizable by the target language
     % compiler. Without it, we can generate MLDS code that looks like this:
@@ -704,44 +658,6 @@ make_match_value(Stag) = match_value(ml_const(mlconst_int(Stag))).
     % Note that the order in which we return the cases does not matter,
     % since our caller will sort the case list we return.
     %
-:- pred merge_any_arms_for_same_case_id(list(mlds_switch_case_id)::in,
-    list(mlds_switch_case)::out) is det.
-
-merge_any_arms_for_same_case_id(IdCases, Arms) :-
-    acc_case_id_arms(IdCases, map.init, CaseIdMap, [], NoIdArms),
-    map.values(CaseIdMap, IdArms),
-    Arms = NoIdArms ++ IdArms.
-
-:- pred acc_case_id_arms(list(mlds_switch_case_id)::in,
-    map(case_id, mlds_switch_case)::in, map(case_id, mlds_switch_case)::out,
-    list(mlds_switch_case)::in, list(mlds_switch_case)::out) is det.
-
-acc_case_id_arms([], !CaseIdMap, !NoIdArms).
-acc_case_id_arms([HeadCaseId | TailCaseIds], !CaseIdMap, !NoIdArms) :-
-    HeadCaseId = mlds_switch_case_id(HeadMainConsId, HeadOtherConsIds,
-        MaybeCaseId, HeadStmt),
-    (
-        MaybeCaseId = no,
-        HeadArm = mlds_switch_case(HeadMainConsId, HeadOtherConsIds,
-            HeadStmt),
-        !:NoIdArms = [HeadArm | !.NoIdArms]
-    ;
-        MaybeCaseId = yes(CaseId),
-        ( if map.search(!.CaseIdMap, CaseId, OldArm) then
-            OldArm = mlds_switch_case(OldMainConsId, OldOtherConsIds, OldStmt),
-            OldConsIds = [OldMainConsId | OldOtherConsIds],
-            HeadConsIds = [HeadMainConsId | HeadOtherConsIds],
-            list.sort(OldConsIds ++ HeadConsIds, NewConsIds),
-            list.det_head_tail(NewConsIds, NewMainConsId, NewOtherConsIds),
-            NewArm = mlds_switch_case(NewMainConsId, NewOtherConsIds, OldStmt),
-            map.det_update(CaseId, NewArm, !CaseIdMap)
-        else
-            HeadArm = mlds_switch_case(HeadMainConsId, HeadOtherConsIds,
-                HeadStmt),
-            map.det_insert(CaseId, HeadArm, !CaseIdMap)
-        )
-    ),
-    acc_case_id_arms(TailCaseIds, !CaseIdMap, !NoIdArms).
 
 %---------------------------------------------------------------------------%
 :- end_module ml_backend.ml_tag_switch.

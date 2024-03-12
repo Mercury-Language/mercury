@@ -57,9 +57,11 @@
 :- import_module int.
 :- import_module map.
 :- import_module maybe.
+:- import_module one_or_more.
 :- import_module pair.
 :- import_module require.
 :- import_module string.
+:- import_module uint.
 :- import_module uint8.
 :- import_module unit.
 
@@ -215,21 +217,25 @@ generate_tag_switch(TaggedCases, VarRval, VarType, VarName, CodeModel, CanFail,
     some [!CLD] (
         !:CLD = CLD0,
         acquire_reg(reg_r, PtagReg, !CLD),
-        acquire_reg(reg_r, StagReg, !CLD),
+        acquire_reg(reg_r, SectagReg, !CLD),
         release_reg(PtagReg, !CLD),
-        release_reg(StagReg, !CLD),
+        release_reg(SectagReg, !CLD),
         remember_position(!.CLD, BranchStart)
     ),
 
     % Group the cases based on primary tag value and find out how many
     % constructors share each primary tag value.
     get_module_info(!.CI, ModuleInfo),
-    get_ptag_counts(ModuleInfo, VarType, MaxPrimary, PtagCountMap),
+    get_ptag_counts(ModuleInfo, VarType, MaxPtagUint8, PtagCountMap),
     Params = represent_params(VarName, SwitchGoalInfo, CodeModel, BranchStart,
         EndLabel),
-    group_cases_by_ptag(TaggedCases, represent_tagged_case_for_llds(Params),
-        map.init, CaseLabelMap0, !MaybeEnd, !CI, unit, _, _, PtagCaseMap),
+    group_cases_by_ptag(PtagCountMap, TaggedCases,
+        represent_tagged_case_for_llds(Params),
+        map.init, CaseLabelMap0, !MaybeEnd, !CI, unit, _,
+        % ZZZ
+        _, PtagCaseMap, PtagGroups0),
 
+    % ZZZ
     map.count(PtagCaseMap, PtagsUsed),
     get_globals(!.CI, Globals),
     globals.get_opt_tuple(Globals, OptTuple),
@@ -246,8 +252,9 @@ generate_tag_switch(TaggedCases, VarRval, VarType, VarName, CodeModel, CanFail,
         PrimaryMethod = try_me_else_chain
     ),
 
+    AccessCount = switch_method_tag_access_count(PrimaryMethod),
     ( if
-        PrimaryMethod \= jump_table,
+        AccessCount = more_than_one_access,
         PtagsUsed >= 2,
         globals.lookup_int_option(Globals, num_real_r_regs, NumRealRegs),
         (
@@ -297,44 +304,44 @@ generate_tag_switch(TaggedCases, VarRval, VarType, VarName, CodeModel, CanFail,
 
     (
         PrimaryMethod = binary_search,
-        order_ptags_by_value(ptag(0u8), ptag(MaxPrimary),
-            PtagCaseMap, PtagCaseList),
-        generate_primary_binary_search(PtagCaseList, 0u8, MaxPrimary, PtagRval,
-            StagReg, VarRval, MaybeFailLabel, PtagCountMap, CasesCode,
-            CaseLabelMap0, CaseLabelMap, !CI)
+        order_ptag_specific_groups_by_value(PtagGroups0, PtagGroups),
+        generate_primary_binary_search(PtagCountMap, VarRval, PtagRval,
+            SectagReg, MaybeFailLabel, PtagGroups, 0u8, MaxPtagUint8,
+            CasesCode, CaseLabelMap0, CaseLabelMap, !CI)
     ;
         PrimaryMethod = jump_table,
-        order_ptags_by_value(ptag(0u8), ptag(MaxPrimary),
-            PtagCaseMap, PtagCaseList),
-        generate_primary_jump_table(PtagCaseList, 0u8, MaxPrimary, StagReg,
-            VarRval, MaybeFailLabel, PtagCountMap, Targets, TableCode,
-            CaseLabelMap0, CaseLabelMap, !CI),
+        order_ptag_specific_groups_by_value(PtagGroups0, PtagGroups),
+        generate_primary_jump_table(PtagCountMap, VarRval, SectagReg,
+            MaybeFailLabel, PtagGroups, 0u8, MaxPtagUint8,
+            TargetMaybeLabels, TableCode, CaseLabelMap0, CaseLabelMap, !CI),
         SwitchCode = singleton(
-            llds_instr(computed_goto(PtagRval, Targets),
-                "switch on primary tag")
+            llds_instr(computed_goto(PtagRval, TargetMaybeLabels),
+                "switch on ptag")
         ),
         CasesCode = SwitchCode ++ TableCode
     ;
         PrimaryMethod = try_chain,
-        order_ptags_by_count(PtagCountMap, PtagCaseMap, PtagCaseList0),
+        order_ptag_groups_by_count(PtagGroups0, PtagGroups1),
+        % ZZZ document the reason for the reorder, check if still valid
         ( if
             CanFail = cannot_fail,
-            PtagCaseList0 = [MostFreqCase | OtherCases]
+            PtagGroups1 = [MostFreqGroup | OtherGroups]
         then
-            PtagCaseList = OtherCases ++ [MostFreqCase]
+            PtagGroups = OtherGroups ++ [MostFreqGroup]
         else
-            PtagCaseList = PtagCaseList0
+            PtagGroups = PtagGroups1
         ),
-        generate_primary_try_chain(PtagCaseList, PtagRval, StagReg, VarRval,
-            MaybeFailLabel, PtagCountMap, empty, empty, CasesCode,
+        generate_primary_try_chain(PtagCountMap, VarRval, PtagRval, SectagReg,
+            MaybeFailLabel, PtagGroups, empty, empty, CasesCode,
             CaseLabelMap0, CaseLabelMap, !CI)
     ;
         PrimaryMethod = try_me_else_chain,
-        order_ptags_by_count(PtagCountMap, PtagCaseMap, PtagCaseList),
-        generate_primary_try_me_else_chain(PtagCaseList, PtagRval, StagReg,
-            VarRval, MaybeFailLabel, PtagCountMap, CasesCode,
+        order_ptag_groups_by_count(PtagGroups0, PtagGroups),
+        generate_primary_try_me_else_chain(PtagCountMap, VarRval, PtagRval,
+            SectagReg, MaybeFailLabel, PtagGroups, CasesCode,
             CaseLabelMap0, CaseLabelMap, !CI)
     ),
+    % ZZZ move this to just the methods that leave remaining cases
     map.foldl(add_remaining_case, CaseLabelMap, empty, RemainingCasesCode),
     Code = PtagCode ++ CasesCode ++ RemainingCasesCode ++ FailCode ++ EndCode.
 
@@ -342,249 +349,245 @@ generate_tag_switch(TaggedCases, VarRval, VarType, VarName, CodeModel, CanFail,
 
     % Generate a switch on a primary tag value using a try-me-else chain.
     %
-:- pred generate_primary_try_me_else_chain(ptag_case_group_list(label)::in,
-    rval::in, lval::in, rval::in, maybe(label)::in,
-    ptag_count_map::in, llds_code::out,
+    % ZZZ delete PtagCountMap
+    % ZZZ lag, get group_cases_by_ptag to return one_or_more
+:- pred generate_primary_try_me_else_chain(ptag_count_map::in,
+    rval::in, rval::in, lval::in, maybe(label)::in,
+    list(ptag_case_group(label))::in, llds_code::out,
     case_label_map::in, case_label_map::out,
     code_info::in, code_info::out) is det.
 
-generate_primary_try_me_else_chain([], _, _, _, _, _, _,
-        !CaseLabelMap, !CI) :-
+generate_primary_try_me_else_chain(_, _, _, _, _, [], _, !CaseLabelMap, !CI) :-
     unexpected($pred, "empty switch").
-generate_primary_try_me_else_chain([PtagGroup | PtagGroups], PtagRval, StagReg,
-        VarRval, MaybeFailLabel, PtagCountMap, Code, !CaseLabelMap, !CI) :-
-    PtagGroup = ptag_case_group_entry(MainPtag, OtherPtags, PtagCase),
-    PtagCase = ptag_case(StagLoc, StagGoalMap),
-    map.lookup(PtagCountMap, MainPtag, CountInfo),
-    CountInfo = StagLocPrime - MaxSecondary,
-    expect(unify(StagLoc, StagLocPrime), $pred,
-        "secondary tag locations differ"),
+generate_primary_try_me_else_chain(PtagCountMap, VarRval, PtagRval, SectagReg,
+        MaybeFailLabel, [PtagGroup | PtagGroups], Code, !CaseLabelMap, !CI) :-
     (
         PtagGroups = [_ | _],
-        generate_primary_try_me_else_chain_case(PtagRval, StagReg,
-            MainPtag, OtherPtags, PtagCase, MaxSecondary, VarRval,
-            MaybeFailLabel, ThisTagCode, !CaseLabelMap, !CI),
-        generate_primary_try_me_else_chain(PtagGroups, PtagRval, StagReg,
-            VarRval, MaybeFailLabel, PtagCountMap, OtherTagsCode,
+        generate_primary_try_me_else_chain_group(PtagCountMap, VarRval,
+            PtagRval, SectagReg, MaybeFailLabel, PtagGroup, ThisGroupCode,
             !CaseLabelMap, !CI),
-        Code = ThisTagCode ++ OtherTagsCode
+        generate_primary_try_me_else_chain(PtagCountMap, VarRval, PtagRval,
+            SectagReg, MaybeFailLabel, PtagGroups, OtherGroupsCode,
+            !CaseLabelMap, !CI),
+        Code = ThisGroupCode ++ OtherGroupsCode
     ;
         PtagGroups = [],
         (
             MaybeFailLabel = yes(FailLabel),
-            generate_primary_try_me_else_chain_case(PtagRval, StagReg,
-                MainPtag, OtherPtags, PtagCase, MaxSecondary, VarRval,
-                MaybeFailLabel, ThisTagCode, !CaseLabelMap, !CI),
+            generate_primary_try_me_else_chain_group(PtagCountMap, VarRval,
+                PtagRval, SectagReg, MaybeFailLabel, PtagGroup, ThisGroupCode,
+                !CaseLabelMap, !CI),
             % FailLabel ought to be the next label anyway, so this goto
             % will be optimized away (unless the layout of the failcode
             % in the caller changes).
             FailCode = singleton(
                 llds_instr(goto(code_label(FailLabel)),
-                    "primary tag with no code to handle it")
+                    "ptag with no code to handle it")
             ),
-            Code = ThisTagCode ++ FailCode
+            Code = ThisGroupCode ++ FailCode
         ;
             MaybeFailLabel = no,
-            generate_primary_tag_code(StagGoalMap, MainPtag, OtherPtags,
-                MaxSecondary, StagReg, StagLoc, VarRval, MaybeFailLabel, Code,
-                !CaseLabelMap, !CI)
+            generate_ptag_group_code(PtagCountMap, VarRval, SectagReg,
+                MaybeFailLabel, PtagGroup, Code, !CaseLabelMap, !CI)
         )
     ).
 
-:- pred generate_primary_try_me_else_chain_case(rval::in, lval::in,
-    ptag::in, list(ptag)::in, ptag_case(label)::in, int::in, rval::in,
-    maybe(label)::in, llds_code::out, case_label_map::in, case_label_map::out,
+:- pred generate_primary_try_me_else_chain_group(ptag_count_map::in,
+    rval::in, rval::in, lval::in, maybe(label)::in, ptag_case_group(label)::in,
+    llds_code::out, case_label_map::in, case_label_map::out,
     code_info::in, code_info::out) is det.
 
-generate_primary_try_me_else_chain_case(PtagRval, StagReg,
-        MainPtag, OtherPtags, PtagCase, MaxSecondary, VarRval, MaybeFailLabel,
-        Code, !CaseLabelMap, !CI) :-
+generate_primary_try_me_else_chain_group(PtagCountMap, VarRval, PtagRval,
+        SectagReg, MaybeFailLabel, PtagGroup, Code, !CaseLabelMap, !CI) :-
     get_next_label(ElseLabel, !CI),
-    MainPtag = ptag(MainPtagUint8),
-    TestRval0 = binop(ne(int_type_int), PtagRval,
-        const(llconst_int(uint8.cast_to_int(MainPtagUint8)))),
-    generate_primary_try_me_else_chain_other_ptags(OtherPtags, PtagRval,
-        TestRval0, TestRval),
+    test_ptag_is_in_case_group(PtagRval, PtagGroup, IsApplicableTestRval),
+    IsNotApplicableRval = unop(logical_not, IsApplicableTestRval),
     TestCode = singleton(
-        llds_instr(if_val(TestRval, code_label(ElseLabel)),
-            "test primary tag only")
+        llds_instr(if_val(IsNotApplicableRval, code_label(ElseLabel)),
+            "test ptag(s) only")
     ),
-    PtagCase = ptag_case(StagLoc, StagGoalMap),
-    generate_primary_tag_code(StagGoalMap, MainPtag, OtherPtags, MaxSecondary,
-        StagReg, StagLoc, VarRval, MaybeFailLabel, TagCode,
-        !CaseLabelMap, !CI),
+    generate_ptag_group_code(PtagCountMap, VarRval, SectagReg,
+        MaybeFailLabel, PtagGroup, CaseCode, !CaseLabelMap, !CI),
     ElseCode = singleton(
-        llds_instr(label(ElseLabel), "handle next primary tag")
+        llds_instr(label(ElseLabel), "handle next ptag")
     ),
-    Code = TestCode ++ TagCode ++ ElseCode.
-
-:- pred generate_primary_try_me_else_chain_other_ptags(list(ptag)::in,
-    rval::in, rval::in, rval::out) is det.
-
-generate_primary_try_me_else_chain_other_ptags([], _, TestRval, TestRval).
-generate_primary_try_me_else_chain_other_ptags([OtherPtag | OtherPtags],
-        PtagRval, TestRval0, TestRval) :-
-    OtherPtag = ptag(OtherPtagUint8),
-    ThisTestRval = binop(ne(int_type_int), PtagRval,
-        const(llconst_int(uint8.cast_to_int(OtherPtagUint8)))),
-    TestRval1 = binop(logical_and, TestRval0, ThisTestRval),
-    generate_primary_try_me_else_chain_other_ptags(OtherPtags,
-        PtagRval, TestRval1, TestRval).
+    Code = TestCode ++ CaseCode ++ ElseCode.
 
 %-----------------------------------------------------------------------------%
 
     % Generate a switch on a primary tag value using a try chain.
     %
-:- pred generate_primary_try_chain(ptag_case_group_list(label)::in,
-    rval::in, lval::in, rval::in, maybe(label)::in,
-    ptag_count_map::in, llds_code::in, llds_code::in, llds_code::out,
+    % ZZZ PtagCountMap
+    % ZZZ lag
+:- pred generate_primary_try_chain(ptag_count_map::in, rval::in, rval::in,
+    lval::in, maybe(label)::in, list(ptag_case_group(label))::in,
+    llds_code::in, llds_code::in, llds_code::out,
     case_label_map::in, case_label_map::out,
     code_info::in, code_info::out) is det.
 
-generate_primary_try_chain([], _, _, _, _, _, _, _, _, !CaseLabelMap, !CI) :-
+generate_primary_try_chain(_, _, _, _, _, [], _, _, _, !CaseLabelMap, !CI) :-
      unexpected($pred, "empty list").
-generate_primary_try_chain([PtagGroup | PtagGroups], PtagRval, StagReg,
-        VarRval, MaybeFailLabel, PtagCountMap, PrevTestsCode0, PrevCasesCode0,
-        Code, !CaseLabelMap, !CI) :-
-    PtagGroup = ptag_case_group_entry(MainPtag, OtherPtags, PtagCase),
-    PtagCase = ptag_case(StagLoc, StagGoalMap),
-    map.lookup(PtagCountMap, MainPtag, CountInfo),
-    CountInfo = StagLocPrime - MaxSecondary,
-    expect(unify(StagLoc, StagLocPrime), $pred,
-        "secondary tag locations differ"),
+generate_primary_try_chain(PtagCountMap, VarRval, PtagRval, SectagReg,
+        MaybeFailLabel, [PtagGroup | PtagGroups],
+        !.TryChainCode, !.GroupsCode, Code, !CaseLabelMap, !CI) :-
     (
         PtagGroups = [_ | _],
-        generate_primary_try_chain_case(PtagRval, StagReg,
-            MainPtag, OtherPtags, PtagCase, MaxSecondary, VarRval,
-            MaybeFailLabel,
-            PrevTestsCode0, PrevTestsCode1, PrevCasesCode0, PrevCasesCode1,
+        generate_primary_try_chain_case(PtagCountMap, VarRval, PtagRval,
+            SectagReg, MaybeFailLabel, PtagGroup, !TryChainCode, !GroupsCode,
             !CaseLabelMap, !CI),
-        generate_primary_try_chain(PtagGroups, PtagRval, StagReg, VarRval,
-            MaybeFailLabel, PtagCountMap, PrevTestsCode1, PrevCasesCode1,
+        generate_primary_try_chain(PtagCountMap, VarRval, PtagRval, SectagReg,
+            MaybeFailLabel, PtagGroups, !.TryChainCode, !.GroupsCode,
             Code, !CaseLabelMap, !CI)
     ;
         PtagGroups = [],
         (
             MaybeFailLabel = yes(FailLabel),
-            generate_primary_try_chain_case(PtagRval, StagReg,
-                MainPtag, OtherPtags, PtagCase, MaxSecondary,
-                VarRval, MaybeFailLabel,
-                PrevTestsCode0, PrevTestsCode1, PrevCasesCode0, PrevCasesCode1,
-                !CaseLabelMap, !CI),
+            generate_primary_try_chain_case(PtagCountMap, VarRval, PtagRval,
+                SectagReg, MaybeFailLabel, PtagGroup,
+                !TryChainCode, !GroupsCode, !CaseLabelMap, !CI),
             FailCode = singleton(
                 llds_instr(goto(code_label(FailLabel)),
-                    "primary tag with no code to handle it")
+                    "ptag with no code to handle it")
             ),
-            Code = PrevTestsCode1 ++ FailCode ++ PrevCasesCode1
+            Code = !.TryChainCode ++ FailCode ++ !.GroupsCode
         ;
             MaybeFailLabel = no,
-            make_ptag_comment("fallthrough to last primary tag value: ",
-                MainPtag, OtherPtags, Comment),
+            make_ptag_comment("fallthrough to last ptag value: ",
+                PtagGroup, Comment),
             CommentCode = singleton(
                 llds_instr(comment(Comment), "")
             ),
-            generate_primary_tag_code(StagGoalMap, MainPtag, OtherPtags,
-                MaxSecondary, StagReg, StagLoc, VarRval, MaybeFailLabel,
-                TagCode, !CaseLabelMap, !CI),
-            Code = PrevTestsCode0 ++ CommentCode ++ TagCode ++ PrevCasesCode0
+            generate_ptag_group_code(PtagCountMap, VarRval, SectagReg,
+                MaybeFailLabel, PtagGroup, GroupCode, !CaseLabelMap, !CI),
+            Code = !.TryChainCode ++ CommentCode ++ GroupCode ++ !.GroupsCode
         )
     ).
 
-:- pred generate_primary_try_chain_case(rval::in, lval::in,
-    ptag::in, list(ptag)::in,
-    ptag_case(label)::in, int::in, rval::in, maybe(label)::in,
+:- pred generate_primary_try_chain_case(ptag_count_map::in, rval::in, rval::in,
+    lval::in, maybe(label)::in, ptag_case_group(label)::in,
     llds_code::in, llds_code::out, llds_code::in, llds_code::out,
     case_label_map::in, case_label_map::out,
     code_info::in, code_info::out) is det.
 
-generate_primary_try_chain_case(PtagRval, StagReg, MainPtag, OtherPtags,
-        PtagCase, MaxSecondary, VarRval, MaybeFailLabel,
-        PrevTestsCode0, PrevTestsCode, PrevCasesCode0, PrevCasesCode,
+generate_primary_try_chain_case(PtagCountMap, VarRval, PtagRval, SectagReg,
+        MaybeFailLabel, PtagGroup, !TryChainCode, !GroupsCode,
         !CaseLabelMap, !CI) :-
-    get_next_label(ThisPtagLabel, !CI),
-    MainPtag = ptag(MainPtagUint8),
-    TestRval0 = binop(eq(int_type_int), PtagRval,
-        const(llconst_int(uint8.cast_to_int(MainPtagUint8)))),
-    generate_primary_try_chain_other_ptags(OtherPtags, PtagRval,
-        TestRval0, TestRval),
+    get_next_label(ThisGroupLabel, !CI),
+    test_ptag_is_in_case_group(PtagRval, PtagGroup, IsApplicableTestRval),
     TestCode = singleton(
-        llds_instr(if_val(TestRval, code_label(ThisPtagLabel)),
-            "test primary tag only")
+        llds_instr(if_val(IsApplicableTestRval, code_label(ThisGroupLabel)),
+            "test ptag only")
     ),
-    make_ptag_comment("primary tag value: ", MainPtag, OtherPtags, Comment),
+    make_ptag_comment("ptag value(s): ", PtagGroup, Comment),
     LabelCode = singleton(
-        llds_instr(label(ThisPtagLabel), Comment)
+        llds_instr(label(ThisGroupLabel), Comment)
     ),
-    PtagCase = ptag_case(StagLoc, StagGoalMap),
-    generate_primary_tag_code(StagGoalMap, MainPtag, OtherPtags, MaxSecondary,
-        StagReg, StagLoc, VarRval, MaybeFailLabel, TagCode,
-        !CaseLabelMap, !CI),
-    PrevTestsCode = PrevTestsCode0 ++ TestCode,
-    PrevCasesCode = LabelCode ++ TagCode ++ PrevCasesCode0.
+    generate_ptag_group_code(PtagCountMap, VarRval, SectagReg, MaybeFailLabel,
+        PtagGroup, GroupCode, !CaseLabelMap, !CI),
+    LabelledGroupCode = LabelCode ++ GroupCode,
+    !:TryChainCode = !.TryChainCode ++ TestCode,
+    !:GroupsCode = LabelledGroupCode ++ !.GroupsCode.
 
-:- pred generate_primary_try_chain_other_ptags(list(ptag)::in,
-    rval::in, rval::in, rval::out) is det.
+:- pred test_ptag_is_in_case_group(rval::in, ptag_case_group(label)::in,
+    rval::out) is det.
 
-generate_primary_try_chain_other_ptags([], _, TestRval, TestRval).
-generate_primary_try_chain_other_ptags([OtherPtag | OtherPtags],
-        PtagRval, TestRval0, TestRval) :-
-    OtherPtag = ptag(OtherPtagUint8),
-    ThisTestRval = binop(eq(int_type_int), PtagRval,
-        const(llconst_int(uint8.cast_to_int(OtherPtagUint8)))),
-    TestRval1 = binop(logical_or, TestRval0, ThisTestRval),
-    generate_primary_try_chain_other_ptags(OtherPtags,
-        PtagRval, TestRval1, TestRval).
+test_ptag_is_in_case_group(PtagRval, PtagGroup, TestRval) :-
+    (
+        PtagGroup = one_or_more_whole_ptags(WholeInfo),
+        % Note: OtherPtags may be [] here too.
+        WholeInfo = whole_ptags_info(MainPtag, OtherPtags, _, _)
+    ;
+        PtagGroup = one_shared_ptag(SharedInfo),
+        SharedInfo = shared_ptag_info(MainPtag, _, _, _, _, _),
+        OtherPtags = []
+    ),
+    (
+        OtherPtags = [],
+        MainPtag = ptag(MainPtagUint8),
+        TestRval = binop(eq(int_type_int), PtagRval,
+            const(llconst_int(uint8.cast_to_int(MainPtagUint8))))
+    ;
+        OtherPtags = [_ | _],
+        encode_ptags_as_bitmap_loop(MainPtag, OtherPtags, 0u, Bitmap),
+        LeftShiftOp = unchecked_left_shift(int_type_uint, shift_by_int),
+        SelectedBitMaskRval = binop(LeftShiftOp,
+            const(llconst_uint(1u)), PtagRval),
+        SelectedBitRval = binop(bitwise_and(int_type_uint),
+            SelectedBitMaskRval, const(llconst_uint(Bitmap))),
+        TestRval = binop(ne(int_type_uint),
+            SelectedBitRval, const(llconst_uint(0u)))
+    ).
+
+:- pred encode_ptags_as_bitmap_loop(ptag::in, list(ptag)::in,
+    uint::in, uint::out) is det.
+
+encode_ptags_as_bitmap_loop(HeadPtag, TailPtags, !Bitmap) :-
+    HeadPtag = ptag(HeadPtagUint8),
+    !:Bitmap = !.Bitmap \/
+        (1u `unchecked_left_ushift` uint8.cast_to_uint(HeadPtagUint8)),
+    (
+        TailPtags = []
+    ;
+        TailPtags = [HeadTailPtag | TailTailPtags],
+        encode_ptags_as_bitmap_loop(HeadTailPtag, TailTailPtags, !Bitmap)
+    ).
 
 %-----------------------------------------------------------------------------%
 
     % Generate the cases for a primary tag using a dense jump table
     % that has an entry for all possible primary tag values.
     %
-:- pred generate_primary_jump_table(ptag_case_list(label)::in,
-    uint8::in, uint8::in, lval::in, rval::in,
-    maybe(label)::in, ptag_count_map::in,
+:- pred generate_primary_jump_table(ptag_count_map::in, rval::in, lval::in,
+    maybe(label)::in, list(ptag_case_group(label))::in, uint8::in, uint8::in,
     list(maybe(label))::out, llds_code::out,
     case_label_map::in, case_label_map::out,
     code_info::in, code_info::out) is det.
 
-generate_primary_jump_table(PtagGroups, CurPrimary, MaxPrimary, StagReg,
-        VarRval, MaybeFailLabel, PtagCountMap, Targets, Code,
+generate_primary_jump_table(PtagCountMap, VarRval, SectagReg, MaybeFailLabel,
+        PtagGroups, CurPtagUint8, MaxPtagUint8, TargetMaybeLabels, Code,
         !CaseLabelMap, !CI) :-
-    ( if CurPrimary > MaxPrimary then
+    ( if CurPtagUint8 > MaxPtagUint8 then
         expect(unify(PtagGroups, []), $pred,
             "PtagGroups != [] when Cur > Max"),
-        Targets = [],
+        TargetMaybeLabels = [],
         Code = empty
     else
-        NextPrimary = CurPrimary + 1u8,
+        NextPtagUint8 = CurPtagUint8 + 1u8,
         ( if
-            PtagGroups = [PtagCaseEntry | PtagGroupsTail],
-            PtagCaseEntry = ptag_case_entry(ptag(CurPrimary), PrimaryInfo)
+            PtagGroups = [PtagGroup | TailPtagGroups],
+            ptag_case_group_main_ptag(PtagGroup) = ptag(CurPtagUint8)
         then
-            PrimaryInfo = ptag_case(StagLoc, StagGoalMap),
-            map.lookup(PtagCountMap, ptag(CurPrimary), CountInfo),
-            CountInfo = StagLocPrime - MaxSecondary,
-            expect(unify(StagLoc, StagLocPrime), $pred,
-                "secondary tag locations differ"),
-            get_next_label(NewLabel, !CI),
-            Comment = "start of a case in primary tag switch: ptag " ++
-                string.uint8_to_string(CurPrimary),
-            LabelCode = singleton(llds_instr(label(NewLabel), Comment)),
-            generate_primary_tag_code(StagGoalMap, ptag(CurPrimary), [],
-                MaxSecondary, StagReg, StagLoc, VarRval, MaybeFailLabel,
-                ThisTagCode, !CaseLabelMap, !CI),
-            generate_primary_jump_table(PtagGroupsTail, NextPrimary,
-                MaxPrimary, StagReg, VarRval, MaybeFailLabel, PtagCountMap,
-                TailTargets, TailCode, !CaseLabelMap, !CI),
-            Targets = [yes(NewLabel) | TailTargets],
-            Code = LabelCode ++ ThisTagCode ++ TailCode
+            get_next_label(ThisPtagLabel, !CI),
+            Comment = "start of a case in ptag switch: ptag " ++
+                string.uint8_to_string(CurPtagUint8),
+            LabelCode = singleton(llds_instr(label(ThisPtagLabel), Comment)),
+            generate_ptag_group_code(PtagCountMap, VarRval, SectagReg,
+                MaybeFailLabel, PtagGroup, HeadEntryCode0, !CaseLabelMap, !CI),
+            % ZZZ optimize: reuse labels if possible
+            HeadMaybeTargetLabel = yes(ThisPtagLabel),
+            HeadEntryCode = LabelCode ++ HeadEntryCode0,
+            NextPtagGroups = TailPtagGroups
         else
-            generate_primary_jump_table(PtagGroups, NextPrimary, MaxPrimary,
-                StagReg, VarRval, MaybeFailLabel, PtagCountMap,
-                TailTargets, TailCode, !CaseLabelMap, !CI),
-            Targets = [MaybeFailLabel | TailTargets],
-            Code = TailCode
-        )
+            HeadMaybeTargetLabel = MaybeFailLabel,
+            HeadEntryCode = empty,
+            NextPtagGroups = PtagGroups
+        ),
+        generate_primary_jump_table(PtagCountMap, VarRval, SectagReg,
+            MaybeFailLabel, NextPtagGroups, NextPtagUint8, MaxPtagUint8,
+            TailTargetMaybeLabels, TailEntriesCode, !CaseLabelMap, !CI),
+        TargetMaybeLabels = [HeadMaybeTargetLabel | TailTargetMaybeLabels],
+        Code = HeadEntryCode ++ TailEntriesCode
+    ).
+
+:- func ptag_case_group_main_ptag(ptag_case_group(CaseRep)) = ptag.
+
+ptag_case_group_main_ptag(PtagGroup) = MainPtag :-
+    (
+        PtagGroup = one_or_more_whole_ptags(WholeInfo),
+        WholeInfo = whole_ptags_info(MainPtag, _, _, _)
+    ;
+        PtagGroup = one_shared_ptag(SharedInfo),
+        SharedInfo = shared_ptag_info(MainPtag, _, _, _, _, _)
     ).
 
 %-----------------------------------------------------------------------------%
@@ -593,22 +596,23 @@ generate_primary_jump_table(PtagGroups, CurPrimary, MaxPrimary, StagReg,
     % This invocation looks after primary tag values in the range
     % MinPtag to MaxPtag (including both boundary values).
     %
-:- pred generate_primary_binary_search(ptag_case_list(label)::in,
-    uint8::in, uint8::in, rval::in, lval::in, rval::in, maybe(label)::in,
-    ptag_count_map::in, llds_code::out,
+:- pred generate_primary_binary_search(ptag_count_map::in,
+    rval::in, rval::in, lval::in, maybe(label)::in,
+    list(ptag_case_group(label))::in, uint8::in, uint8::in, llds_code::out,
     case_label_map::in, case_label_map::out,
     code_info::in, code_info::out) is det.
 
-generate_primary_binary_search(PtagGroups, MinPtag, MaxPtag, PtagRval, StagReg,
-        VarRval, MaybeFailLabel, PtagCountMap, Code, !CaseLabelMap, !CI) :-
+generate_primary_binary_search(PtagCountMap, VarRval, PtagRval, SectagReg,
+        MaybeFailLabel, PtagGroups, MinPtag, MaxPtag, Code,
+        !CaseLabelMap, !CI) :-
     ( if MinPtag = MaxPtag then
-        CurPrimary = MinPtag,
+        CurPtagUint8 = MinPtag,
         (
             PtagGroups = [],
             % There is no code for this tag.
             (
                 MaybeFailLabel = yes(FailLabel),
-                PtagStr = string.uint8_to_string(CurPrimary),
+                PtagStr = string.uint8_to_string(CurPtagUint8),
                 Comment = "no code for ptag " ++ PtagStr,
                 Code = singleton(
                     llds_instr(goto(code_label(FailLabel)), Comment)
@@ -620,57 +624,48 @@ generate_primary_binary_search(PtagGroups, MinPtag, MaxPtag, PtagRval, StagReg,
                 Code = empty
             )
         ;
-            PtagGroups = [ptag_case_entry(ptag(CurPrimaryPrime), PrimaryInfo)],
-            expect(unify(CurPrimary, CurPrimaryPrime), $pred,
+            PtagGroups = [PtagGroup],
+            MainPtag = ptag_case_group_main_ptag(PtagGroup),
+            expect(unify(ptag(CurPtagUint8), MainPtag), $pred,
                 "cur_primary mismatch"),
-            PrimaryInfo = ptag_case(StagLoc, StagGoalMap),
-            map.lookup(PtagCountMap, ptag(CurPrimary), CountInfo),
-            CountInfo = StagLocPrime - MaxSecondary,
-            expect(unify(StagLoc, StagLocPrime), $pred,
-                "secondary tag locations differ"),
-            generate_primary_tag_code(StagGoalMap, ptag(CurPrimary), [],
-                MaxSecondary, StagReg, StagLoc, VarRval, MaybeFailLabel, Code,
-                !CaseLabelMap, !CI)
+            generate_ptag_group_code(PtagCountMap, VarRval, SectagReg,
+                MaybeFailLabel, PtagGroup, Code, !CaseLabelMap, !CI)
         ;
             PtagGroups = [_, _ | _],
             unexpected($pred,
-                "caselist not singleton or empty when binary search ends")
+                "PtagGroups not singleton or empty when binary search ends")
         )
     else
-        LowRangeEnd = (MinPtag + MaxPtag) // 2u8,
-        HighRangeStart = LowRangeEnd + 1u8,
-        InLowGroup =
-            ( pred(PtagGroup::in) is semidet :-
-                PtagGroup = ptag_case_entry(ptag(Ptag), _),
-                Ptag =< LowRangeEnd
+        LoRangeMax = (MinPtag + MaxPtag) // 2u8,
+        EqHiRangeMin = LoRangeMax + 1u8,
+        InLoGroup =
+            ( pred(PG::in) is semidet :-
+                ptag(MainPtagUint8) = ptag_case_group_main_ptag(PG),
+                MainPtagUint8 =< LoRangeMax
             ),
-        list.filter(InLowGroup, PtagGroups, LowGroups, HighGroups),
-        get_next_label(NewLabel, !CI),
-        string.uint8_to_string(MinPtag) = LowStartStr,
-        string.uint8_to_string(LowRangeEnd) = LowEndStr,
-        string.uint8_to_string(HighRangeStart) = HighStartStr,
-        string.uint8_to_string(MaxPtag) = HighEndStr,
-        IfComment = "fallthrough for ptags " ++
-            LowStartStr ++ " to " ++ LowEndStr,
-        LabelComment = "code for ptags " ++
-            HighStartStr ++ " to " ++ HighEndStr,
+        list.filter(InLoGroup, PtagGroups, LoGroups, EqHiGroups),
+        get_next_label(EqHiLabel, !CI),
+        string.format("fallthrough for ptags %u to %u",
+            [u8(MinPtag), u8(LoRangeMax)], IfLoComment),
+        string.format("code for ptags %u to %u",
+            [u8(EqHiRangeMin), u8(MaxPtag)], EqHiLabelComment),
         % XXX ARG_PACK We should do the comparison on uint8s, not ints.
-        LowRangeEndConst = const(llconst_int(uint8.cast_to_int(LowRangeEnd))),
-        TestRval = binop(int_gt(int_type_int), PtagRval, LowRangeEndConst),
-        IfCode = singleton(
-            llds_instr(if_val(TestRval, code_label(NewLabel)), IfComment)
+        LoRangeMaxConst = const(llconst_int(uint8.cast_to_int(LoRangeMax))),
+        TestRval = binop(int_gt(int_type_int), PtagRval, LoRangeMaxConst),
+        IfLoCode = singleton(
+            llds_instr(if_val(TestRval, code_label(EqHiLabel)), IfLoComment)
         ),
-        LabelCode = singleton(
-            llds_instr(label(NewLabel), LabelComment)
+        EqHiLabelCode = singleton(
+            llds_instr(label(EqHiLabel), EqHiLabelComment)
         ),
 
-        generate_primary_binary_search(LowGroups, MinPtag, LowRangeEnd,
-            PtagRval, StagReg, VarRval, MaybeFailLabel, PtagCountMap,
-            LowRangeCode, !CaseLabelMap, !CI),
-        generate_primary_binary_search(HighGroups, HighRangeStart, MaxPtag,
-            PtagRval, StagReg, VarRval, MaybeFailLabel, PtagCountMap,
-            HighRangeCode, !CaseLabelMap, !CI),
-        Code = IfCode ++ LowRangeCode ++ LabelCode ++ HighRangeCode
+        generate_primary_binary_search(PtagCountMap, VarRval, PtagRval,
+            SectagReg, MaybeFailLabel, LoGroups, MinPtag, LoRangeMax,
+            LoRangeCode, !CaseLabelMap, !CI),
+        generate_primary_binary_search(PtagCountMap, VarRval, PtagRval,
+            SectagReg, MaybeFailLabel, EqHiGroups, EqHiRangeMin, MaxPtag,
+            EqHihRangeCode, !CaseLabelMap, !CI),
+        Code = IfLoCode ++ LoRangeCode ++ EqHiLabelCode ++ EqHihRangeCode
     ).
 
 %-----------------------------------------------------------------------------%
@@ -679,58 +674,51 @@ generate_primary_binary_search(PtagGroups, MinPtag, MaxPtag, PtagRval, StagReg,
     % If this primary tag has secondary tags, decide whether we should
     % use a jump table to implement the secondary switch.
     %
-:- pred generate_primary_tag_code(stag_goal_map(label)::in,
-    ptag::in, list(ptag)::in, int::in, lval::in, sectag_locn::in,
-    rval::in, maybe(label)::in, llds_code::out,
+:- pred generate_ptag_group_code(ptag_count_map::in, rval::in, lval::in,
+    maybe(label)::in, ptag_case_group(label)::in, llds_code::out,
     case_label_map::in, case_label_map::out,
     code_info::in, code_info::out) is det.
 
-generate_primary_tag_code(StagGoalMap, MainPtag, OtherPtags, MaxSecondary,
-        StagReg, StagLoc, Rval, MaybeFailLabel, Code, !CaseLabelMap, !CI) :-
-    map.to_assoc_list(StagGoalMap, StagGoalList),
+generate_ptag_group_code(PtagCountMap, VarRval, SectagReg, MaybeFailLabel,
+        PtagGroup, Code, !CaseLabelMap, !CI) :-
     (
-        ( StagLoc = sectag_none
-        ; StagLoc = sectag_none_direct_arg
-        ),
+        PtagGroup = one_or_more_whole_ptags(WholeInfo),
+        WholeInfo = whole_ptags_info(_MainPtag, _OtherPtags, _NF, CaseLabel),
         % There is no secondary tag, so there is no switch on it.
-        (
-            StagGoalList = [],
-            unexpected($pred, "no goal for non-shared tag")
-        ;
-            StagGoalList = [StagGoal],
-            ( if StagGoal = -1 - CaseLabel then
-                generate_case_code_or_jump(CaseLabel, Code, !CaseLabelMap)
-            else
-                unexpected($pred, "badly formed goal for non-shared tag")
-            )
-        ;
-            StagGoalList = [_, _ | _],
-            unexpected($pred, "more than one goal for non-shared tag")
-        )
+        generate_case_code_or_jump(CaseLabel, Code, !CaseLabelMap)
     ;
+        PtagGroup = one_shared_ptag(SharedInfo),
+        SharedInfo = shared_ptag_info(Ptag, SharedSectagLocn, MaxSectag, _NF,
+            SectagToLabelMap, LabelToSectagsMap),
+        % ZZZ
+        map.lookup(PtagCountMap, Ptag, CountInfo),
+        CountInfo = ptag_sectag_info(CountSectagLocn, CountMaxSectag),
+        expect(unify(coerce(SharedSectagLocn), CountSectagLocn), $pred,
+            "secondary tag locations differ"),
+        expect(unify(CountMaxSectag, uint.cast_to_int(MaxSectag)), $pred,
+            "CountMaxSectag != MaxSectag"),
         (
-            StagLoc = sectag_remote_word,
-            OrigStagRval = lval(field(yes(MainPtag), Rval,
+            SharedSectagLocn = sectag_remote_word,
+            OrigSectagRval = lval(field(yes(Ptag), VarRval,
                 const(llconst_int(0)))),
             Comment = "compute remote word sec tag to switch on"
         ;
-            StagLoc = sectag_remote_bits(_NumBits, Mask),
-            StagWordRval = lval(field(yes(MainPtag), Rval,
+            SharedSectagLocn = sectag_remote_bits(_NumBits, Mask),
+            SectagWordRval = lval(field(yes(Ptag), VarRval,
                 const(llconst_int(0)))),
-            OrigStagRval = binop(bitwise_and(int_type_uint),
-                StagWordRval, const(llconst_uint(Mask))),
+            OrigSectagRval = binop(bitwise_and(int_type_uint),
+                SectagWordRval, const(llconst_uint(Mask))),
             Comment = "compute remote sec tag bits to switch on"
         ;
-            StagLoc = sectag_local_rest_of_word,
-            OrigStagRval = unop(unmkbody, Rval),
+            SharedSectagLocn = sectag_local_rest_of_word,
+            OrigSectagRval = unop(unmkbody, VarRval),
             Comment = "compute local rest-of-word sec tag to switch on"
         ;
-            StagLoc = sectag_local_bits(_NumBits, Mask),
-            OrigStagRval = binop(bitwise_and(int_type_uint),
-                unop(unmkbody, Rval), const(llconst_uint(Mask))),
+            SharedSectagLocn = sectag_local_bits(_NumBits, Mask),
+            OrigSectagRval = binop(bitwise_and(int_type_uint),
+                unop(unmkbody, VarRval), const(llconst_uint(Mask))),
             Comment = "compute local sec tag bits to switch on"
         ),
-        expect(unify(OtherPtags, []), $pred, ">1 ptag with secondary tag"),
 
         % There is a secondary tag, so figure out how to switch on it.
         get_globals(!.CI, Globals),
@@ -738,45 +726,44 @@ generate_primary_tag_code(StagGoalMap, MainPtag, OtherPtags, MaxSecondary,
         DenseSwitchSize = OptTuple ^ ot_dense_switch_size,
         TrySwitchSize = OptTuple ^ ot_try_switch_size,
         BinarySwitchSize = OptTuple ^ ot_binary_switch_size,
-        ( if MaxSecondary >= DenseSwitchSize then
+        MaxSectagInt = uint.cast_to_int(MaxSectag),
+        ( if MaxSectagInt >= DenseSwitchSize then
             SecondaryMethod = jump_table
-        else if MaxSecondary >= BinarySwitchSize then
+        else if MaxSectagInt >= BinarySwitchSize then
             SecondaryMethod = binary_search
-        else if MaxSecondary >= TrySwitchSize then
+        else if MaxSectagInt >= TrySwitchSize then
             SecondaryMethod = try_chain
         else
             SecondaryMethod = try_me_else_chain
         ),
 
+        AccessCount = switch_method_tag_access_count(SecondaryMethod),
         ( if
-            SecondaryMethod \= jump_table,
-            MaxSecondary >= 2,
+            AccessCount = more_than_one_access,
+            MaxSectag >= 2u,
             globals.lookup_int_option(Globals, num_real_r_regs, NumRealRegs),
             (
                 NumRealRegs = 0
             ;
-                ( if StagReg = reg(reg_r, StagRegNo) then
-                    StagRegNo =< NumRealRegs
+                ( if SectagReg = reg(reg_r, SectagRegNo) then
+                    SectagRegNo =< NumRealRegs
                 else
                     unexpected($pred, "improper reg in tag switch")
                 )
             )
         then
-            StagCode = singleton(
-                llds_instr(assign(StagReg, OrigStagRval), Comment)
+            SectagCode = singleton(
+                llds_instr(assign(SectagReg, OrigSectagRval), Comment)
             ),
-            StagRval = lval(StagReg)
+            SectagRval = lval(SectagReg)
         else
-            StagCode = empty,
-            StagRval = OrigStagRval
+            SectagCode = empty,
+            SectagRval = OrigSectagRval
         ),
         (
             MaybeFailLabel = yes(FailLabel),
-            ( if
-                list.length(StagGoalList, StagGoalCount),
-                FullGoalCount = MaxSecondary + 1,
-                FullGoalCount = StagGoalCount
-            then
+            map.count(SectagToLabelMap, SectagGoalCount),
+            ( if SectagGoalCount = MaxSectagInt + 1 then
                 MaybeSecFailLabel = no
             else
                 MaybeSecFailLabel = yes(FailLabel)
@@ -788,26 +775,30 @@ generate_primary_tag_code(StagGoalMap, MainPtag, OtherPtags, MaxSecondary,
 
         (
             SecondaryMethod = jump_table,
-            generate_secondary_jump_table(StagGoalList, 0, MaxSecondary,
-                MaybeSecFailLabel, Targets),
+            map.to_sorted_assoc_list(SectagToLabelMap, SectagToLabelAL),
+            generate_secondary_jump_table(MaybeSecFailLabel, SectagToLabelAL,
+                0u, MaxSectag, Targets),
             Code = singleton(
-                llds_instr(computed_goto(StagRval, Targets),
+                llds_instr(computed_goto(SectagRval, Targets),
                     "switch on secondary tag")
             )
         ;
             SecondaryMethod = binary_search,
-            generate_secondary_binary_search(StagGoalList, 0, MaxSecondary,
-                StagRval, MaybeSecFailLabel, Code, !CaseLabelMap, !CI)
+            map.to_sorted_assoc_list(SectagToLabelMap, SectagToLabelAL),
+            generate_secondary_binary_search(SectagRval, MaybeSecFailLabel,
+                SectagToLabelAL, 0u, MaxSectag, Code, !CaseLabelMap, !CI)
         ;
             SecondaryMethod = try_chain,
-            generate_secondary_try_chain(StagGoalList, StagRval,
-                MaybeSecFailLabel, empty, Codes, !CaseLabelMap),
-            Code = StagCode ++ Codes
+            map.to_sorted_assoc_list(LabelToSectagsMap, LabelToSectagsAL),
+            generate_secondary_try_chain(SectagRval, MaybeSecFailLabel,
+                LabelToSectagsAL, empty, CaseCodes, !CaseLabelMap),
+            Code = SectagCode ++ CaseCodes
         ;
             SecondaryMethod = try_me_else_chain,
-            generate_secondary_try_me_else_chain(StagGoalList, StagRval,
-                MaybeSecFailLabel, Codes, !CaseLabelMap, !CI),
-            Code = StagCode ++ Codes
+            map.to_sorted_assoc_list(LabelToSectagsMap, LabelToSectagsAL),
+            generate_secondary_try_me_else_chain(SectagRval, MaybeSecFailLabel,
+                LabelToSectagsAL, CaseCodes, !CaseLabelMap, !CI),
+            Code = SectagCode ++ CaseCodes
         )
     ).
 
@@ -815,56 +806,67 @@ generate_primary_tag_code(StagGoalMap, MainPtag, OtherPtags, MaxSecondary,
 
     % Generate a switch on a secondary tag value using a try-me-else chain.
     %
-:- pred generate_secondary_try_me_else_chain(stag_goal_list(label)::in,
-    rval::in, maybe(label)::in, llds_code::out,
+:- pred generate_secondary_try_me_else_chain(rval::in, maybe(label)::in,
+    stag_case_list(label)::in, llds_code::out,
     case_label_map::in, case_label_map::out,
     code_info::in, code_info::out) is det.
 
-generate_secondary_try_me_else_chain([], _, _, _, !CaseLabelMap, !CI) :-
+% ZZZ lag, consistent both here and elsewhere in this module and in ml_tag_sw
+generate_secondary_try_me_else_chain(_, _, [], _, !CaseLabelMap, !CI) :-
     unexpected($pred, "empty switch").
-generate_secondary_try_me_else_chain([Case | Cases], StagRval,
-        MaybeFailLabel, Code, !CaseLabelMap, !CI) :-
-    Case = Secondary - CaseLabel,
+generate_secondary_try_me_else_chain(SectagRval, MaybeFailLabel,
+        [Case | Cases], Code, !CaseLabelMap, !CI) :-
     (
         Cases = [_ | _],
-        generate_secondary_try_me_else_chain_case(CaseLabel, StagRval,
-            Secondary, ThisCode, !CaseLabelMap, !CI),
-        generate_secondary_try_me_else_chain(Cases, StagRval,
-            MaybeFailLabel, OtherCode, !CaseLabelMap, !CI),
+        generate_secondary_try_me_else_chain_case(SectagRval, Case,
+            ThisCode, !CaseLabelMap, !CI),
+        generate_secondary_try_me_else_chain(SectagRval, MaybeFailLabel,
+            Cases, OtherCode, !CaseLabelMap, !CI),
         Code = ThisCode ++ OtherCode
     ;
         Cases = [],
         (
             MaybeFailLabel = yes(FailLabel),
-            generate_secondary_try_me_else_chain_case(CaseLabel, StagRval,
-                Secondary, ThisCode, !CaseLabelMap, !CI),
+            generate_secondary_try_me_else_chain_case(SectagRval, Case,
+                ThisCode, !CaseLabelMap, !CI),
             FailCode = singleton(
                 llds_instr(goto(code_label(FailLabel)),
-                    "secondary tag does not match")
+                    "secondary tag does not match any case")
             ),
             Code = ThisCode ++ FailCode
         ;
             MaybeFailLabel = no,
+            Case = CaseLabel - _OoMSectags,
             generate_case_code_or_jump(CaseLabel, Code, !CaseLabelMap)
         )
     ).
 
-:- pred generate_secondary_try_me_else_chain_case(label::in, rval::in, int::in,
-    llds_code::out, case_label_map::in, case_label_map::out,
+:- pred generate_secondary_try_me_else_chain_case(rval::in,
+    pair(label, one_or_more(uint))::in, llds_code::out,
+    case_label_map::in, case_label_map::out,
     code_info::in, code_info::out) is det.
 
-generate_secondary_try_me_else_chain_case(CaseLabel, StagRval, Secondary,
+generate_secondary_try_me_else_chain_case(SectagRval, Case,
         Code, !CaseLabelMap, !CI) :-
+    Case = CaseLabel - OoMSectags,
     generate_case_code_or_jump(CaseLabel, CaseCode, !CaseLabelMap),
+    % ZZZ
     % XXX Optimize what we generate when CaseCode = goto(CaseLabel).
     get_next_label(ElseLabel, !CI),
-    TestCode = singleton(
+    OoMSectags = one_or_more(HeadSectag, TailSectags),
+    test_sectag_is_in_case_group(SectagRval, HeadSectag, TailSectags,
+        IsApplicableTestRval),
+    IsNotApplicableTestRval = unop(logical_not, IsApplicableTestRval),
+    SectagStrs =
+        list.map(string.uint_to_string, one_or_more_to_list(OoMSectags)),
+    SectagsStr = string.join_list(", ", SectagStrs),
+    string.format("case for sectags %s", [s(SectagsStr)], CaseCommentStr),
+    TestCode = cord.from_list([
         llds_instr(
-            if_val(binop(ne(int_type_int), StagRval,
-                    const(llconst_int(Secondary))),
-                code_label(ElseLabel)),
-            "test sec tag only")
-    ),
+            if_val(IsNotApplicableTestRval, code_label(ElseLabel)),
+            "test sec tag only"),
+        llds_instr(comment(CaseCommentStr), "")
+    ]),
     ElseLabelCode = singleton(
         llds_instr(label(ElseLabel), "handle next secondary tag")
     ),
@@ -874,79 +876,102 @@ generate_secondary_try_me_else_chain_case(CaseLabel, StagRval, Secondary,
 
     % Generate a switch on a secondary tag value using a try chain.
     %
-:- pred generate_secondary_try_chain(stag_goal_list(label)::in, rval::in,
-    maybe(label)::in, llds_code::in, llds_code::out,
+:- pred generate_secondary_try_chain(rval::in, maybe(label)::in,
+    stag_case_list(label)::in, llds_code::in, llds_code::out,
     case_label_map::in, case_label_map::out) is det.
 
-generate_secondary_try_chain([], _, _, _, _, !CaseLabelMap) :-
+generate_secondary_try_chain(_, _, [], _, _, !CaseLabelMap) :-
     unexpected($pred, "empty switch").
-generate_secondary_try_chain([Case | Cases], StagRval, MaybeFailLabel,
-        PrevTestsCode0, Code, !CaseLabelMap) :-
-    Case = Secondary - CaseLabel,
+generate_secondary_try_chain(SectagRval, MaybeFailLabel, [Case | Cases],
+        !.TryChainCode, Code, !CaseLabelMap) :-
     (
         Cases = [_ | _],
-        generate_secondary_try_chain_case(CaseLabel, StagRval, Secondary,
-            PrevTestsCode0, PrevTestsCode1, !.CaseLabelMap),
-        generate_secondary_try_chain(Cases, StagRval,
-            MaybeFailLabel, PrevTestsCode1, Code, !CaseLabelMap)
+        generate_secondary_try_chain_case(!.CaseLabelMap, SectagRval, Case,
+            !TryChainCode),
+        generate_secondary_try_chain(SectagRval, MaybeFailLabel, Cases,
+            !.TryChainCode, Code, !CaseLabelMap)
     ;
         Cases = [],
         (
             MaybeFailLabel = yes(FailLabel),
-            generate_secondary_try_chain_case(CaseLabel, StagRval, Secondary,
-                PrevTestsCode0, PrevTestsCode1, !.CaseLabelMap),
+            generate_secondary_try_chain_case(!.CaseLabelMap, SectagRval, Case,
+                !TryChainCode),
             FailCode = singleton(
                 llds_instr(goto(code_label(FailLabel)),
                     "secondary tag with no code to handle it")
             ),
-            Code = PrevTestsCode1 ++ FailCode
+            Code = !.TryChainCode ++ FailCode
         ;
             MaybeFailLabel = no,
+            Case = CaseLabel - _OoMSectags,
             generate_case_code_or_jump(CaseLabel, ThisCode, !CaseLabelMap),
-            Code = PrevTestsCode0 ++ ThisCode
+            Code = !.TryChainCode ++ ThisCode
         )
     ).
 
-:- pred generate_secondary_try_chain_case(label::in, rval::in, int::in,
-    llds_code::in, llds_code::out, case_label_map::in) is det.
+:- pred generate_secondary_try_chain_case(case_label_map::in, rval::in,
+    pair(label, one_or_more(uint))::in, llds_code::in, llds_code::out) is det.
 
-generate_secondary_try_chain_case(CaseLabel, StagRval, Secondary,
-        PrevTestsCode0, PrevTestsCode, CaseLabelMap) :-
+generate_secondary_try_chain_case(CaseLabelMap, SectagRval, Case,
+        !TryChainCode) :-
+    Case = CaseLabel - OoMSectags,
     map.lookup(CaseLabelMap, CaseLabel, CaseInfo0),
     CaseInfo0 = case_label_info(Comment, _CaseCode, _CaseGenerated),
+    OoMSectags = one_or_more(HeadSectag, TailSectags),
+    test_sectag_is_in_case_group(SectagRval, HeadSectag, TailSectags,
+        IsApplicableTestRval),
     TestCode = singleton(
         llds_instr(
-            if_val(binop(eq(int_type_int), StagRval,
-                    const(llconst_int(Secondary))),
-                code_label(CaseLabel)),
+            if_val(IsApplicableTestRval, code_label(CaseLabel)),
             "test sec tag only for " ++ Comment)
     ),
-    PrevTestsCode = PrevTestsCode0 ++ TestCode.
+    !:TryChainCode = !.TryChainCode ++ TestCode.
+
+%-----------------------------------------------------------------------------%
+
+:- pred test_sectag_is_in_case_group(rval::in, uint::in, list(uint)::in,
+    rval::out) is det.
+
+test_sectag_is_in_case_group(SectagRval, HeadSectag, TailSectags, TestRval) :-
+    % ZZZ bitmap IF THIS IS BETTER
+    HeadSectagInt = uint.cast_to_int(HeadSectag),
+    HeadTestRval = binop(eq(int_type_int),
+        SectagRval, const(llconst_int(HeadSectagInt))),
+    (
+        TailSectags = [],
+        TestRval = HeadTestRval
+    ;
+        TailSectags = [HeadTailSectag | TailTailSectags],
+        test_sectag_is_in_case_group(SectagRval,
+            HeadTailSectag, TailTailSectags, TailTestRval),
+        TestRval = binop(logical_or, HeadTestRval, TailTestRval)
+    ).
 
 %-----------------------------------------------------------------------------%
 
     % Generate the cases for a primary tag using a dense jump table
     % that has an entry for all possible secondary tag values.
     %
-:- pred generate_secondary_jump_table(stag_goal_list(label)::in, int::in,
-    int::in, maybe(label)::in, list(maybe(label))::out) is det.
+:- pred generate_secondary_jump_table(maybe(label)::in,
+    stag_goal_list(label)::in, uint::in, uint::in,
+    list(maybe(label))::out) is det.
 
-generate_secondary_jump_table(CaseList, CurSecondary, MaxSecondary,
-        MaybeFailLabel, Targets) :-
-    ( if CurSecondary > MaxSecondary then
-        expect(unify(CaseList, []), $pred,
-            "caselist not empty when reaching limiting secondary tag"),
-        Targets = []
+generate_secondary_jump_table(MaybeFailLabel, Cases, CurSectag, MaxSectag,
+        TargetMaybeLabels) :-
+    ( if CurSectag > MaxSectag then
+        expect(unify(Cases, []), $pred,
+            "Cases not empty when reaching limiting secondary tag"),
+        TargetMaybeLabels = []
     else
-        NextSecondary = CurSecondary + 1,
-        ( if CaseList = [CurSecondary - CaseLabel | CaseListTail] then
-            generate_secondary_jump_table(CaseListTail, NextSecondary,
-                MaxSecondary, MaybeFailLabel, OtherTargets),
-            Targets = [yes(CaseLabel) | OtherTargets]
+        NextSectag = CurSectag + 1u,
+        ( if Cases = [CurSectag - CaseLabel | TailCases] then
+            generate_secondary_jump_table(MaybeFailLabel, TailCases,
+                NextSectag, MaxSectag, TailTargetMaybeLabels),
+            TargetMaybeLabels = [yes(CaseLabel) | TailTargetMaybeLabels]
         else
-            generate_secondary_jump_table(CaseList, NextSecondary,
-                MaxSecondary, MaybeFailLabel, OtherTargets),
-            Targets = [MaybeFailLabel | OtherTargets]
+            generate_secondary_jump_table(MaybeFailLabel, Cases,
+                NextSectag, MaxSectag, TailTargetMaybeLabels),
+            TargetMaybeLabels = [MaybeFailLabel | TailTargetMaybeLabels]
         )
     ).
 
@@ -956,22 +981,22 @@ generate_secondary_jump_table(CaseList, CurSecondary, MaxSecondary,
     % This invocation looks after secondary tag values in the range
     % MinPtag to MaxPtag (including both boundary values).
     %
-:- pred generate_secondary_binary_search(stag_goal_list(label)::in,
-    int::in, int::in, rval::in, maybe(label)::in, llds_code::out,
+:- pred generate_secondary_binary_search(rval::in, maybe(label)::in,
+    stag_goal_list(label)::in, uint::in, uint::in, llds_code::out,
     case_label_map::in, case_label_map::out,
     code_info::in, code_info::out) is det.
 
-generate_secondary_binary_search(StagGoals, MinStag, MaxStag, StagRval,
-        MaybeFailLabel, Code, !CaseLabelMap, !CI) :-
-    ( if MinStag = MaxStag then
-        CurSec = MinStag,
+generate_secondary_binary_search(SectagRval, MaybeFailLabel,
+        SectagGoals, MinSectag, MaxSectag, Code, !CaseLabelMap, !CI) :-
+    ( if MinSectag = MaxSectag then
+        CurSectag = MinSectag,
         (
-            StagGoals = [],
+            SectagGoals = [],
             % There is no code for this tag.
             (
                 MaybeFailLabel = yes(FailLabel),
-                string.int_to_string(CurSec, StagStr),
-                Comment = "no code for ptag " ++ StagStr,
+                CurSectagStr = string.uint_to_string(CurSectag),
+                Comment = "no code for ptag " ++ CurSectagStr,
                 Code = singleton(
                     llds_instr(goto(code_label(FailLabel)), Comment)
                 )
@@ -980,34 +1005,35 @@ generate_secondary_binary_search(StagGoals, MinStag, MaxStag, StagRval,
                 Code = empty
             )
         ;
-            StagGoals = [CurSecPrime - CaseLabel],
-            expect(unify(CurSec, CurSecPrime), $pred,
-                "cur_secondary mismatch"),
+            SectagGoals = [CurSectagPrime - CaseLabel],
+            expect(unify(CurSectag, CurSectagPrime), $pred,
+                "cur sectag mismatch"),
             generate_case_code_or_jump(CaseLabel, Code, !CaseLabelMap)
         ;
-            StagGoals = [_, _ | _],
+            SectagGoals = [_, _ | _],
             unexpected($pred,
-                "goallist not singleton or empty when binary search ends")
+                "SectagGoals not singleton or empty when binary search ends")
         )
     else
-        LowRangeEnd = (MinStag + MaxStag) // 2,
-        HighRangeStart = LowRangeEnd + 1,
-        InLowGroup = (pred(StagGoal::in) is semidet :-
-            StagGoal = Stag - _,
-            Stag =< LowRangeEnd
-        ),
-        list.filter(InLowGroup, StagGoals, LowGoals, HighGoals),
+        LoRangeMax = (MinSectag + MaxSectag) // 2u,
+        EqHiRangeMin = LoRangeMax + 1u,
+        InLoGroup =
+            ( pred(SectagGoal::in) is semidet :-
+                SectagGoal = Sectag - _,
+                Sectag =< LoRangeMax
+            ),
+        list.filter(InLoGroup, SectagGoals, LoGoals, EqHiGoals),
         get_next_label(NewLabel, !CI),
-        string.int_to_string(MinStag, LowStartStr),
-        string.int_to_string(LowRangeEnd, LowEndStr),
-        string.int_to_string(HighRangeStart, HighStartStr),
-        string.int_to_string(MaxStag, HighEndStr),
+        LoMinStr = string.uint_to_string(MinSectag),
+        LoMaxStr = string.uint_to_string(LoRangeMax),
+        EqHiMinStr = string.uint_to_string(EqHiRangeMin),
+        EqHiMaxStr = string.uint_to_string(MaxSectag),
         IfComment = "fallthrough for stags " ++
-            LowStartStr ++ " to " ++ LowEndStr,
+            LoMinStr ++ " to " ++ LoMaxStr,
         LabelComment = "code for stags " ++
-            HighStartStr ++ " to " ++ HighEndStr,
-        LowRangeEndConst = const(llconst_int(LowRangeEnd)),
-        TestRval = binop(int_gt(int_type_int), StagRval, LowRangeEndConst),
+            EqHiMinStr ++ " to " ++ EqHiMaxStr,
+        LoRangeMaxConst = const(llconst_uint(LoRangeMax)),
+        TestRval = binop(int_gt(int_type_int), SectagRval, LoRangeMaxConst),
         IfCode = singleton(
             llds_instr(if_val(TestRval, code_label(NewLabel)), IfComment)
         ),
@@ -1015,27 +1041,56 @@ generate_secondary_binary_search(StagGoals, MinStag, MaxStag, StagRval,
             llds_instr(label(NewLabel), LabelComment)
         ),
 
-        generate_secondary_binary_search(LowGoals, MinStag, LowRangeEnd,
-            StagRval, MaybeFailLabel, LowRangeCode, !CaseLabelMap, !CI),
-        generate_secondary_binary_search(HighGoals, HighRangeStart, MaxStag,
-            StagRval, MaybeFailLabel, HighRangeCode, !CaseLabelMap, !CI),
+        generate_secondary_binary_search(SectagRval, MaybeFailLabel,
+            LoGoals, MinSectag, LoRangeMax, LoRangeCode,
+            !CaseLabelMap, !CI),
+        generate_secondary_binary_search(SectagRval, MaybeFailLabel,
+            EqHiGoals, EqHiRangeMin, MaxSectag, EqHiRangeCode,
+            !CaseLabelMap, !CI),
 
-        Code = IfCode ++ LowRangeCode ++ LabelCode ++ HighRangeCode
+        Code = IfCode ++ LoRangeCode ++ LabelCode ++ EqHiRangeCode
     ).
 
 %-----------------------------------------------------------------------------%
 
-:- pred make_ptag_comment(string::in, ptag::in, list(ptag)::in,
+:- type tag_access_count
+    --->    just_one_access
+    ;       more_than_one_access.
+
+:- func switch_method_tag_access_count(switch_method) = tag_access_count.
+
+switch_method_tag_access_count(Method) = Count :-
+    (
+        Method = jump_table,
+        Count = just_one_access
+    ;
+        ( Method = try_chain
+        ; Method = try_me_else_chain
+        ; Method = binary_search
+        ),
+        Count = more_than_one_access
+    ).
+
+:- pred make_ptag_comment(string::in, ptag_case_group(label)::in,
     string::out) is det.
 
-make_ptag_comment(BaseStr, MainPtag, OtherPtags, Comment) :-
+make_ptag_comment(BaseStr, PtagGroup, Comment) :-
+    (
+        PtagGroup = one_or_more_whole_ptags(WholeInfo),
+        % Note: OtherPtags may be [] here too.
+        WholeInfo = whole_ptags_info(MainPtag, OtherPtags, _, _)
+    ;
+        PtagGroup = one_shared_ptag(SharedInfo),
+        SharedInfo = shared_ptag_info(MainPtag, _, _, _, _, _),
+        OtherPtags = []
+    ),
     (
         OtherPtags = [],
         Comment = BaseStr ++ ptag_to_string(MainPtag)
     ;
         OtherPtags = [_ | _],
         Comment = BaseStr ++ ptag_to_string(MainPtag)
-            ++ "(shared with " ++
+            ++ " (shared with " ++
             string.join_list(", ", list.map(ptag_to_string, OtherPtags))
             ++ ")"
     ).
