@@ -347,7 +347,6 @@ compute_ptag_rval(Globals, VarRval, PtagReg, NumPtagsUsed,
 
     % Generate a switch on a primary tag value using a try-me-else chain.
     %
-    % ZZZ lag, get group_cases_by_ptag to return one_or_more
 :- pred generate_primary_try_me_else_chain(rval::in, rval::in, lval::in,
     maybe(label)::in,
     ptag_case_group(label)::in, list(ptag_case_group(label))::in,
