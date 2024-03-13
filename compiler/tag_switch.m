@@ -68,12 +68,14 @@
 %---------------------------------------------------------------------------%
 
     % The idea is to generate two-level switches, first on the primary
-    % tag and then on the secondary tag. Since more than one function
-    % symbol can be eliminated by a failed primary tag test, this reduces
-    % the expected the number of comparisons required before finding the
-    % code corresponding to the actual value of the switch variable.
+    % tag and then (if the primary tag is shared) on the secondary tag.
+    % Since more than one function symbol can be eliminated by a
+    % failed primary tag test, this reduces the expected the number
+    % of comparisons required before finding the code corresponding to
+    % the actual value of the switch variable.
+    %
     % We also get a speedup compared to non-tag switches by extracting
-    % the primary and secondary tags once instead of repeatedly for
+    % the primary and secondary tags just once, instead of repeatedly for
     % each functor test.
     %
     % We have four methods we can use for generating the code for the
@@ -136,19 +138,19 @@
     %   architecture, and
     % - on the frequency with which the various alternatives are taken.
     %
-    % While the first two are in principle known at compile time, the third
-    % is not (at least not without feedback from a profiler). Nevertheless,
-    % for switches on primary tags we can use the heuristic that the more
-    % secondary tags assigned to a primary tag, the more likely that the
-    % switch variable will have that primary tag at runtime.
-    %
-    % Try chains are good for switches with small numbers of alternatives
-    % on architectures where untaken branches are cheaper than taken
-    % branches.
+    % While the first two can be known at compile time (at least in principle),
+    % the third is not (at least not without feedback from a profiler).
+    % Nevertheless, for switches on primary tags we can use the heuristic
+    % that the more secondary tags assigned to a primary tag, the more likely
+    % it is that the switch variable will have that primary tag at runtime.
     %
     % Try-me-else chains are good for switches with very small numbers of
     % alternatives on architectures where taken branches are cheaper than
     % untaken branches (which are rare these days).
+    %
+    % Try chains are good for switches with small numbers of alternatives
+    % on architectures where untaken branches are cheaper than taken
+    % branches.
     %
     % Jump tables are good for switches with large numbers of alternatives.
     % The cost of jumping through a jump table is relatively high, since
@@ -235,21 +237,8 @@ generate_tag_switch(TaggedCases, VarRval, VarType, VarName, CodeModel, CanFail,
         PtagGroups0, NumPtagsUsed, MaxPtagUint8),
 
     get_globals(!.CI, Globals),
-    globals.get_opt_tuple(Globals, OptTuple),
-    DenseSwitchSize = OptTuple ^ ot_dense_switch_size,
-    TrySwitchSize = OptTuple ^ ot_try_switch_size,
-    BinarySwitchSize = OptTuple ^ ot_binary_switch_size,
-    ( if NumPtagsUsed >= DenseSwitchSize then
-        PrimaryMethod = jump_table
-    else if NumPtagsUsed >= BinarySwitchSize then
-        PrimaryMethod = binary_search
-    else if NumPtagsUsed >= TrySwitchSize then
-        PrimaryMethod = try_chain
-    else
-        PrimaryMethod = try_me_else_chain
-    ),
-
-    compute_ptag_rval(Globals, VarRval, PtagReg, NumPtagsUsed, PrimaryMethod,
+    Method = choose_switch_method(Globals, NumPtagsUsed),
+    compute_ptag_rval(Globals, VarRval, PtagReg, NumPtagsUsed, Method,
         PtagRval, PtagRvalCode),
 
     % We must generate the failure code in the context in which
@@ -273,24 +262,13 @@ generate_tag_switch(TaggedCases, VarRval, VarType, VarName, CodeModel, CanFail,
     ),
 
     (
-        PrimaryMethod = binary_search,
-        order_ptag_specific_groups_by_value(PtagGroups0, PtagGroups),
-        generate_primary_binary_search(VarRval, PtagRval, SectagReg,
-            MaybeFailLabel, PtagGroups, 0u8, MaxPtagUint8,
-            CasesCode, CaseLabelMap0, CaseLabelMap, !CI)
+        Method = try_me_else_chain,
+        order_ptag_groups_by_count(PtagGroups0, PtagGroups),
+        generate_primary_try_me_else_chain(VarRval, PtagRval,
+            SectagReg, MaybeFailLabel, PtagGroups, CasesCode,
+            CaseLabelMap0, CaseLabelMap, !CI)
     ;
-        PrimaryMethod = jump_table,
-        order_ptag_specific_groups_by_value(PtagGroups0, PtagGroups),
-        generate_primary_jump_table(VarRval, SectagReg, MaybeFailLabel,
-            PtagGroups, 0u8, MaxPtagUint8,
-            TargetMaybeLabels, TableCode, CaseLabelMap0, CaseLabelMap, !CI),
-        SwitchCode = singleton(
-            llds_instr(computed_goto(PtagRval, TargetMaybeLabels),
-                "switch on ptag")
-        ),
-        CasesCode = SwitchCode ++ TableCode
-    ;
-        PrimaryMethod = try_chain,
+        Method = try_chain,
         order_ptag_groups_by_count(PtagGroups0, PtagGroups1),
         % ZZZ document the reason for the reorder, check if still valid
         ( if
@@ -305,11 +283,22 @@ generate_tag_switch(TaggedCases, VarRval, VarType, VarName, CodeModel, CanFail,
             MaybeFailLabel, PtagGroups, empty, empty, CasesCode,
             CaseLabelMap0, CaseLabelMap, !CI)
     ;
-        PrimaryMethod = try_me_else_chain,
-        order_ptag_groups_by_count(PtagGroups0, PtagGroups),
-        generate_primary_try_me_else_chain(VarRval, PtagRval,
-            SectagReg, MaybeFailLabel, PtagGroups, CasesCode,
-            CaseLabelMap0, CaseLabelMap, !CI)
+        Method = jump_table,
+        order_ptag_specific_groups_by_value(PtagGroups0, PtagGroups),
+        generate_primary_jump_table(VarRval, SectagReg, MaybeFailLabel,
+            PtagGroups, 0u8, MaxPtagUint8,
+            TargetMaybeLabels, TableCode, CaseLabelMap0, CaseLabelMap, !CI),
+        SwitchCode = singleton(
+            llds_instr(computed_goto(PtagRval, TargetMaybeLabels),
+                "switch on ptag")
+        ),
+        CasesCode = SwitchCode ++ TableCode
+    ;
+        Method = binary_search,
+        order_ptag_specific_groups_by_value(PtagGroups0, PtagGroups),
+        generate_primary_binary_search(VarRval, PtagRval, SectagReg,
+            MaybeFailLabel, PtagGroups, 0u8, MaxPtagUint8,
+            CasesCode, CaseLabelMap0, CaseLabelMap, !CI)
     ),
     % ZZZ move this to just the methods that leave remaining cases
     map.foldl(add_remaining_case, CaseLabelMap, empty, RemainingCasesCode),
@@ -323,8 +312,8 @@ generate_tag_switch(TaggedCases, VarRval, VarType, VarName, CodeModel, CanFail,
     switch_method::in, rval::out, llds_code::out) is det.
 
 compute_ptag_rval(Globals, VarRval, PtagReg, NumPtagsUsed,
-        PrimaryMethod, PtagRval, PtagRvalCode) :-
-    AccessCount = switch_method_tag_access_count(PrimaryMethod),
+        Method, PtagRval, PtagRvalCode) :-
+    AccessCount = switch_method_tag_access_count(Method),
     ( if
         AccessCount = more_than_one_access,
         NumPtagsUsed >= 2,
@@ -350,6 +339,9 @@ compute_ptag_rval(Globals, VarRval, PtagReg, NumPtagsUsed,
     ).
 
 %---------------------------------------------------------------------------%
+%
+% try-me-else chain switches on ptags.
+%
 
     % Generate a switch on a primary tag value using a try-me-else chain.
     %
@@ -415,6 +407,9 @@ generate_primary_try_me_else_chain_group(VarRval, PtagRval, SectagReg,
     Code = TestCode ++ CaseCode ++ ElseCode.
 
 %---------------------------------------------------------------------------%
+%
+% Try chain switches on ptags.
+%
 
     % Generate a switch on a primary tag value using a try chain.
     %
@@ -487,6 +482,11 @@ generate_primary_try_chain_case(VarRval, PtagRval, SectagReg, MaybeFailLabel,
     !:TryChainCode = !.TryChainCode ++ TestCode,
     !:GroupsCode = LabelledGroupCode ++ !.GroupsCode.
 
+%---------------------------------------------------------------------------%
+%
+% Infrastructure needed for both try-me-else and try chain switches on ptags.
+%
+
 :- pred test_ptag_is_in_case_group(rval::in, ptag_case_group(label)::in,
     rval::out) is det.
 
@@ -532,6 +532,9 @@ encode_ptags_as_bitmap_loop(HeadPtag, TailPtags, !Bitmap) :-
     ).
 
 %---------------------------------------------------------------------------%
+%
+% Jump table switches on ptags.
+%
 
     % Generate the cases for a primary tag using a dense jump table
     % that has an entry for all possible primary tag values.
@@ -589,6 +592,9 @@ ptag_case_group_main_ptag(PtagGroup) = MainPtag :-
     ).
 
 %---------------------------------------------------------------------------%
+%
+% Binary search switches on ptags.
+%
 
     % Generate the cases for a primary tag using a binary search.
     % This invocation looks after primary tag values in the range
@@ -668,6 +674,9 @@ generate_primary_binary_search(VarRval, PtagRval, SectagReg,
     ).
 
 %---------------------------------------------------------------------------%
+%
+% Infrastructure needed for all switch methods on ptags.
+%
 
     % Generate the code corresponding to a primary tag.
     %
@@ -700,26 +709,10 @@ generate_secondary_switch(VarRval, SectagReg, MaybeFailLabel,
         SharedInfo, Code, !CaseLabelMap, !CI) :-
     SharedInfo = shared_ptag_info(_Ptag, _SharedSectagLocn, MaxSectag,
         SectagSwitchComplete, _NF, SectagToLabelMap, LabelToSectagsMap),
-    % Which method should we use?
     get_globals(!.CI, Globals),
-    globals.get_opt_tuple(Globals, OptTuple),
-    DenseSwitchSize = OptTuple ^ ot_dense_switch_size,
-    TrySwitchSize = OptTuple ^ ot_try_switch_size,
-    BinarySwitchSize = OptTuple ^ ot_binary_switch_size,
-    MaxSectagInt = uint.cast_to_int(MaxSectag),
-    % ZZZ revisit the defaults of these parameters
-    ( if MaxSectagInt >= DenseSwitchSize then
-        SecondaryMethod = jump_table
-    else if MaxSectagInt >= BinarySwitchSize then
-        SecondaryMethod = binary_search
-    else if MaxSectagInt >= TrySwitchSize then
-        SecondaryMethod = try_chain
-    else
-        SecondaryMethod = try_me_else_chain
-    ),
-
+    Method = choose_switch_method(Globals, uint.cast_to_int(MaxSectag) + 1),
     compute_sectag_rval(Globals, VarRval, SectagReg, SharedInfo,
-        SecondaryMethod, SectagRval, SectagRvalCode),
+        Method, SectagRval, SectagRvalCode),
     (
         SectagSwitchComplete = complete_switch,
         MaybeSecFailLabel = no
@@ -743,7 +736,7 @@ generate_secondary_switch(VarRval, SectagReg, MaybeFailLabel,
         )
     ),
     (
-        SecondaryMethod = jump_table,
+        Method = jump_table,
         map.to_sorted_assoc_list(SectagToLabelMap, SectagToLabelAL),
         generate_secondary_jump_table(MaybeSecFailLabel, SectagToLabelAL,
             0u, MaxSectag, Targets),
@@ -752,17 +745,17 @@ generate_secondary_switch(VarRval, SectagReg, MaybeFailLabel,
                 "switch on secondary tag")
         )
     ;
-        SecondaryMethod = binary_search,
+        Method = binary_search,
         map.to_sorted_assoc_list(SectagToLabelMap, SectagToLabelAL),
         generate_secondary_binary_search(SectagRval, MaybeSecFailLabel,
             SectagToLabelAL, 0u, MaxSectag, CasesCode, !CaseLabelMap, !CI)
     ;
-        SecondaryMethod = try_chain,
+        Method = try_chain,
         map.to_sorted_assoc_list(LabelToSectagsMap, LabelToSectagsAL),
         generate_secondary_try_chain(SectagRval, MaybeSecFailLabel,
             LabelToSectagsAL, empty, CasesCode, !CaseLabelMap)
     ;
-        SecondaryMethod = try_me_else_chain,
+        Method = try_me_else_chain,
         map.to_sorted_assoc_list(LabelToSectagsMap, LabelToSectagsAL),
         generate_secondary_try_me_else_chain(SectagRval, MaybeSecFailLabel,
             LabelToSectagsAL, CasesCode, !CaseLabelMap, !CI)
@@ -773,7 +766,7 @@ generate_secondary_switch(VarRval, SectagReg, MaybeFailLabel,
     shared_ptag_info(label)::in, switch_method::in,
     rval::out, llds_code::out) is det.
 
-compute_sectag_rval(Globals, VarRval, SectagReg, SharedInfo, SecondaryMethod,
+compute_sectag_rval(Globals, VarRval, SectagReg, SharedInfo, Method,
         SectagRval, SectagRvalCode) :-
     SharedInfo = shared_ptag_info(Ptag, SharedSectagLocn, MaxSectag,
         _, _, _, _),
@@ -799,7 +792,7 @@ compute_sectag_rval(Globals, VarRval, SectagReg, SharedInfo, SecondaryMethod,
             unop(unmkbody, VarRval), const(llconst_uint(Mask))),
         Comment = "compute local sec tag bits to switch on"
     ),
-    AccessCount = switch_method_tag_access_count(SecondaryMethod),
+    AccessCount = switch_method_tag_access_count(Method),
     ( if
         AccessCount = more_than_one_access,
         MaxSectag >= 2u,
@@ -824,6 +817,10 @@ compute_sectag_rval(Globals, VarRval, SectagReg, SharedInfo, SecondaryMethod,
     ).
 
 %---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%
+% Try-me-else chain switches on sectags.
+%
 
     % Generate a switch on a secondary tag value using a try-me-else chain.
     %
@@ -894,6 +891,9 @@ generate_secondary_try_me_else_chain_case(SectagRval, Case,
     Code = TestCode ++ CaseCode ++ ElseLabelCode.
 
 %---------------------------------------------------------------------------%
+%
+% Try chain switches on sectags.
+%
 
     % Generate a switch on a secondary tag value using a try chain.
     %
@@ -949,6 +949,10 @@ generate_secondary_try_chain_case(CaseLabelMap, SectagRval, Case,
     !:TryChainCode = !.TryChainCode ++ TestCode.
 
 %---------------------------------------------------------------------------%
+%
+% Infrastructure needed for both try-me-else and try chain switches
+% on sectags.
+%
 
 :- pred test_sectag_is_in_case_group(rval::in, uint::in, list(uint)::in,
     rval::out) is det.
@@ -969,9 +973,12 @@ test_sectag_is_in_case_group(SectagRval, HeadSectag, TailSectags, TestRval) :-
     ).
 
 %---------------------------------------------------------------------------%
+%
+% Jump table switches on sectags.
+%
 
-    % Generate the cases for a primary tag using a dense jump table
-    % that has an entry for all possible secondary tag values.
+    % Generate the cases for a switch on the secondary tag value using
+    % a dense jump table that has an entry for all the possible values.
     %
 :- pred generate_secondary_jump_table(maybe(label)::in,
     sectag_goal_list(label)::in, uint::in, uint::in,
@@ -997,6 +1004,9 @@ generate_secondary_jump_table(MaybeFailLabel, Cases, CurSectag, MaxSectag,
     ).
 
 %---------------------------------------------------------------------------%
+%
+% Binary search switches on sectags.
+%
 
     % Generate the cases for a secondary tag using a binary search.
     % This invocation looks after secondary tag values in the range
@@ -1073,11 +1083,35 @@ generate_secondary_binary_search(SectagRval, MaybeFailLabel,
     ).
 
 %---------------------------------------------------------------------------%
+%
+% General utility operations.
+%
+
+:- func choose_switch_method(globals, int) = switch_method.
+
+choose_switch_method(Globals, NumAlternatives) = Method :-
+    globals.get_opt_tuple(Globals, OptTuple),
+    DenseSwitchSize = OptTuple ^ ot_dense_switch_size,
+    TrySwitchSize = OptTuple ^ ot_try_switch_size,
+    BinarySwitchSize = OptTuple ^ ot_binary_switch_size,
+    % ZZZ revisit the defaults of these parameters
+    ( if NumAlternatives >= DenseSwitchSize then
+        Method = jump_table
+    else if NumAlternatives >= BinarySwitchSize then
+        Method = binary_search
+    else if NumAlternatives >= TrySwitchSize then
+        Method = try_chain
+    else
+        Method = try_me_else_chain
+    ).
 
 :- type tag_access_count
     --->    just_one_access
     ;       more_than_one_access.
 
+    % Will the given method of implementing switches on tags
+    % access the tag just once, or several times?
+    %
 :- func switch_method_tag_access_count(switch_method) = tag_access_count.
 
 switch_method_tag_access_count(Method) = Count :-
