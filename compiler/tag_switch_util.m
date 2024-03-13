@@ -507,6 +507,24 @@ build_ptag_groups(PtagSectagMap, [Entry | Entries],
             SectagCaseList = [OneSectagCase],
             SectagSwitchComplete = complete_switch
         then
+            % By recording CaseRep as being in effect for *all* function
+            % symbols that use Ptag, we allow this specific ptag value
+            % to be grouped together with any *other* ptag values that
+            % also select CaseRep.
+            %
+            % This optimization is generally useful, but it is particularly
+            % important for compiler-generated comparison predicates created
+            % using the quadratic algorithm, because for those, all cons_ids
+            % in the type fall into two or three categories:
+            %
+            % - those less than the current cons_id,
+            % - those equal to (i.e. same as) the current cons_id,
+            % - those greater than the current cons_id.
+            %
+            % (One or the other of the first and third sets may be empty.)
+            % If all function symbols sharing a given ptag value all fall into
+            % (say) the first category, we don't want to test for that ptag
+            % value separately from all the other ptag values in that category.
             OneSectagCase = CaseRep - _SectagValues,
             record_whole_ptag(Ptag, NumFunctors, CaseRep, !WholePtagsMap)
         else
