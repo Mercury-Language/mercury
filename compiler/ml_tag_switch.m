@@ -86,9 +86,9 @@ ml_generate_tag_switch_if_possible(Var, VarEntry, CodeModel, CanFail, Context,
         map.init, CodeMap, [], ReachableConstVarMaps0,
         may_use_tag_switch, MayUseTagSwitch, !Info,
         PtagCaseGroups0, _NumPtagsUsed, MaxPtagUint8),
-    order_ptag_groups_by_count(PtagCaseGroups0, PtagCaseGroups),
     % Proceed only if we can do so safely.
     MayUseTagSwitch = may_use_tag_switch,
+    order_ptag_groups_by_count(PtagCaseGroups0, PtagCaseGroups),
     ml_generate_tag_switch(Var, VarEntry, CodeModel, CanFail, Context,
         MaxPtagUint8, CodeMap, ReachableConstVarMaps0, PtagCaseGroups, Stmts,
         !Info).
@@ -412,8 +412,8 @@ gen_ptag_case(Var, VarEntry, CanFail, CodeModel, Context, CodeMap,
         OtherPtagMatches = list.map(make_ptag_match, OtherPtags)
     ;
         PtagGroup = one_shared_ptag(SharedInfo),
-        SharedInfo = shared_ptag_info(Ptag, SharedSectagLocn, MaxSectag, _NF,
-            SectagToGoalMap, CaseIdToSectagsMap),
+        SharedInfo = shared_ptag_info(Ptag, SharedSectagLocn, _MaxSectag,
+            SectagSwitchComplete, _NF, _SectagToGoalMap, CaseIdToSectagsMap),
         MainPtagMatch = make_ptag_match(Ptag),
         OtherPtagMatches = [],
         (
@@ -421,12 +421,11 @@ gen_ptag_case(Var, VarEntry, CanFail, CodeModel, Context, CodeMap,
             CaseCanFail = cannot_fail
         ;
             CanFail = can_fail,
-            map.count(SectagToGoalMap, NumSectagsWithGoals),
-            % The +1 is to account for the fact that secondary tags go from
-            % 0 to MaxSecondary, both inclusive.
-            ( if uint.cast_from_int(NumSectagsWithGoals) = MaxSectag + 1u then
+            (
+                SectagSwitchComplete = complete_switch,
                 CaseCanFail = cannot_fail
-            else
+            ;
+                SectagSwitchComplete = incomplete_switch,
                 CaseCanFail = can_fail
             )
         ),

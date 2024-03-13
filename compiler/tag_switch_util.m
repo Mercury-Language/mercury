@@ -100,6 +100,10 @@
                 % will be MaxSectag + 1 (since sectag values start at 0u).
                 spi_max_sectag          :: uint,
 
+                % Does the switch on the secondary tag cover all possible
+                % sectag values?
+                spi_complete            :: is_switch_complete,
+
                 % The number of function symbols represented by this group.
                 spi_num_functors        :: uint,
 
@@ -144,6 +148,18 @@
     ;       sectag_local_bits(uint8, uint)              % #bits, mask
     ;       sectag_remote_word
     ;       sectag_remote_bits(uint8, uint).            % #bits, mask
+
+    % Does the switch (which in our case is on a secondary tag)
+    % cover all the possible values in the switched-on value's range?
+    %
+    % Note that this notion is subtly different from the notion
+    % "can this switch fail?". That is because it is possible for
+    % an incomplete_switch switch to be cannot_fail, if the values
+    % which are not covered by the switch's cases cannot occur as the
+    % switched-on value.
+:- type is_switch_complete
+    --->    incomplete_switch
+    ;       complete_switch.
 
     % Map each secondary tag value to the representation of the associated
     % code. A negative secondary tag "value" means "no secondary tag".
@@ -472,15 +488,23 @@ build_ptag_groups(PtagSectagMap, [Entry | Entries],
         SectagCaseMap =
             map.map_values_only(cord_to_one_or_more, SectagCaseCordMap),
         map.to_sorted_assoc_list(SectagCaseMap, SectagCaseList),
+        % The +1 is to account for the fact that secondary tags go from
+        % 0 to MaxSectag, both inclusive.
+        ( if NumFunctors = MaxSectag + 1u then
+            SectagSwitchComplete = complete_switch
+        else
+            SectagSwitchComplete = incomplete_switch
+        ),
         ( if
             SectagCaseList = [OneSectagCase],
-            NumFunctors = MaxSectag + 1u
+            SectagSwitchComplete = complete_switch
         then
             OneSectagCase = CaseRep - _SectagValues,
             record_whole_ptag(Ptag, NumFunctors, CaseRep, !WholePtagsMap)
         else
             SharedPtagInfo = shared_ptag_info(Ptag, SharedSectagLocn,
-                MaxSectag, NumFunctors, SectagGoalMap, SectagCaseMap),
+                MaxSectag, SectagSwitchComplete, NumFunctors,
+                SectagGoalMap, SectagCaseMap),
             !:SharedPtagInfos = [SharedPtagInfo | !.SharedPtagInfos]
         )
     ),
@@ -613,7 +637,7 @@ specialize_and_record_ptag_case_groups([Group | Groups], !SpecificMap) :-
             !SpecificMap)
     ;
         Group = one_shared_ptag(SharedInfo),
-        SharedInfo = shared_ptag_info(Ptag, _, _, _, _, _),
+        SharedInfo = shared_ptag_info(Ptag, _, _, _, _, _, _),
         map.det_insert(Ptag, Group, !SpecificMap)
     ),
     specialize_and_record_ptag_case_groups(Groups, !SpecificMap).

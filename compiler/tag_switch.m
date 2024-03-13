@@ -497,7 +497,7 @@ test_ptag_is_in_case_group(PtagRval, PtagGroup, TestRval) :-
         WholeInfo = whole_ptags_info(MainPtag, OtherPtags, _, _)
     ;
         PtagGroup = one_shared_ptag(SharedInfo),
-        SharedInfo = shared_ptag_info(MainPtag, _, _, _, _, _),
+        SharedInfo = shared_ptag_info(MainPtag, _, _, _, _, _, _),
         OtherPtags = []
     ),
     (
@@ -586,7 +586,7 @@ ptag_case_group_main_ptag(PtagGroup) = MainPtag :-
         WholeInfo = whole_ptags_info(MainPtag, _, _, _)
     ;
         PtagGroup = one_shared_ptag(SharedInfo),
-        SharedInfo = shared_ptag_info(MainPtag, _, _, _, _, _)
+        SharedInfo = shared_ptag_info(MainPtag, _, _, _, _, _, _)
     ).
 
 %---------------------------------------------------------------------------%
@@ -698,8 +698,8 @@ generate_ptag_group_code(VarRval, SectagReg, MaybeFailLabel,
 
 generate_secondary_switch(VarRval, SectagReg, MaybeFailLabel,
         SharedInfo, Code, !CaseLabelMap, !CI) :-
-    SharedInfo = shared_ptag_info(_Ptag, _SharedSectagLocn, MaxSectag, _NF,
-        SectagToLabelMap, LabelToSectagsMap),
+    SharedInfo = shared_ptag_info(_Ptag, _SharedSectagLocn, MaxSectag,
+        SectagSwitchComplete, _NF, SectagToLabelMap, LabelToSectagsMap),
     % Which method should we use?
     get_globals(!.CI, Globals),
     globals.get_opt_tuple(Globals, OptTuple),
@@ -721,18 +721,27 @@ generate_secondary_switch(VarRval, SectagReg, MaybeFailLabel,
     compute_sectag_rval(Globals, VarRval, SectagReg, SharedInfo,
         SecondaryMethod, SectagRval, SectagRvalCode),
     (
-        MaybeFailLabel = yes(FailLabel),
-        map.count(SectagToLabelMap, SectagGoalCount),
-        ( if SectagGoalCount = MaxSectagInt + 1 then
-            MaybeSecFailLabel = no
-        else
-            MaybeSecFailLabel = yes(FailLabel)
-        )
-    ;
-        MaybeFailLabel = no,
+        SectagSwitchComplete = complete_switch,
         MaybeSecFailLabel = no
+    ;
+        SectagSwitchComplete = incomplete_switch,
+        (
+            MaybeFailLabel = yes(FailLabel),
+            MaybeSecFailLabel = yes(FailLabel)
+        ;
+            MaybeFailLabel = no,
+            % This can happen when
+            %
+            % - the switch on the secondary tag is missing some sectag values
+            %   (which is why SectagSwitchCanFail = complete_switch), but
+            %
+            % - the inst of the switched-on variable at entry to the switch
+            %   says that the switched-on variable cannot be bound to the
+            %   function symbols corresponding to the missing sectags
+            %   (which is why it is possible for MaybeFailLabel to be "no").
+            MaybeSecFailLabel = no
+        )
     ),
-
     (
         SecondaryMethod = jump_table,
         map.to_sorted_assoc_list(SectagToLabelMap, SectagToLabelAL),
@@ -766,7 +775,8 @@ generate_secondary_switch(VarRval, SectagReg, MaybeFailLabel,
 
 compute_sectag_rval(Globals, VarRval, SectagReg, SharedInfo, SecondaryMethod,
         SectagRval, SectagRvalCode) :-
-    SharedInfo = shared_ptag_info(Ptag, SharedSectagLocn, MaxSectag, _, _, _),
+    SharedInfo = shared_ptag_info(Ptag, SharedSectagLocn, MaxSectag,
+        _, _, _, _),
     (
         SharedSectagLocn = sectag_remote_word,
         ZeroOffset = const(llconst_int(0)),
@@ -1092,7 +1102,7 @@ make_ptag_comment(BaseStr, PtagGroup, Comment) :-
         WholeInfo = whole_ptags_info(MainPtag, OtherPtags, _, _)
     ;
         PtagGroup = one_shared_ptag(SharedInfo),
-        SharedInfo = shared_ptag_info(MainPtag, _, _, _, _, _),
+        SharedInfo = shared_ptag_info(MainPtag, _, _, _, _, _, _),
         OtherPtags = []
     ),
     (
