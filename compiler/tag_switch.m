@@ -264,9 +264,10 @@ generate_tag_switch(TaggedCases, VarRval, VarType, VarName, CodeModel, CanFail,
     (
         Method = try_me_else_chain,
         order_ptag_groups_by_count(PtagGroups0, PtagGroups),
+        list.det_head_tail(PtagGroups, HeadPtagGroup, TailPtagGroups),
         generate_primary_try_me_else_chain(VarRval, PtagRval,
-            SectagReg, MaybeFailLabel, PtagGroups, CasesCode,
-            CaseLabelMap0, CaseLabelMap, !CI)
+            SectagReg, MaybeFailLabel, HeadPtagGroup, TailPtagGroups,
+            CasesCode, CaseLabelMap0, CaseLabelMap, !CI)
     ;
         Method = try_chain,
         order_ptag_groups_by_count(PtagGroups0, PtagGroups1),
@@ -279,9 +280,10 @@ generate_tag_switch(TaggedCases, VarRval, VarType, VarName, CodeModel, CanFail,
         else
             PtagGroups = PtagGroups1
         ),
+        list.det_head_tail(PtagGroups, HeadPtagGroup, TailPtagGroups),
         generate_primary_try_chain(VarRval, PtagRval, SectagReg,
-            MaybeFailLabel, PtagGroups, empty, empty, CasesCode,
-            CaseLabelMap0, CaseLabelMap, !CI)
+            MaybeFailLabel, HeadPtagGroup, TailPtagGroups,
+            empty, empty, CasesCode, CaseLabelMap0, CaseLabelMap, !CI)
     ;
         Method = jump_table,
         order_ptag_specific_groups_by_value(PtagGroups0, PtagGroups),
@@ -347,28 +349,28 @@ compute_ptag_rval(Globals, VarRval, PtagReg, NumPtagsUsed,
     %
     % ZZZ lag, get group_cases_by_ptag to return one_or_more
 :- pred generate_primary_try_me_else_chain(rval::in, rval::in, lval::in,
-    maybe(label)::in, list(ptag_case_group(label))::in, llds_code::out,
-    case_label_map::in, case_label_map::out,
+    maybe(label)::in,
+    ptag_case_group(label)::in, list(ptag_case_group(label))::in,
+    llds_code::out, case_label_map::in, case_label_map::out,
     code_info::in, code_info::out) is det.
 
-generate_primary_try_me_else_chain(_, _, _, _, [], _, !CaseLabelMap, !CI) :-
-    unexpected($pred, "empty switch").
 generate_primary_try_me_else_chain(VarRval, PtagRval, SectagReg,
-        MaybeFailLabel, [PtagGroup | PtagGroups], Code, !CaseLabelMap, !CI) :-
+        MaybeFailLabel, HeadPtagGroup, TailPtagGroups, Code,
+        !CaseLabelMap, !CI) :-
     (
-        PtagGroups = [_ | _],
-        generate_primary_try_me_else_chain_group(VarRval,
-            PtagRval, SectagReg, MaybeFailLabel, PtagGroup, ThisGroupCode,
-            !CaseLabelMap, !CI),
+        TailPtagGroups = [HeadTailPtagGroup | TailTailPtagGroups],
+        generate_primary_try_me_else_chain_group(VarRval, PtagRval, SectagReg,
+            MaybeFailLabel, HeadPtagGroup, HeadGroupCode, !CaseLabelMap, !CI),
         generate_primary_try_me_else_chain(VarRval, PtagRval, SectagReg,
-            MaybeFailLabel, PtagGroups, OtherGroupsCode, !CaseLabelMap, !CI),
-        Code = ThisGroupCode ++ OtherGroupsCode
+            MaybeFailLabel, HeadTailPtagGroup, TailTailPtagGroups,
+            TailGroupsCode, !CaseLabelMap, !CI),
+        Code = HeadGroupCode ++ TailGroupsCode
     ;
-        PtagGroups = [],
+        TailPtagGroups = [],
         (
             MaybeFailLabel = yes(FailLabel),
             generate_primary_try_me_else_chain_group(VarRval, PtagRval,
-                SectagReg, MaybeFailLabel, PtagGroup, ThisGroupCode,
+                SectagReg, MaybeFailLabel, HeadPtagGroup, HeadGroupCode,
                 !CaseLabelMap, !CI),
             % FailLabel ought to be the next label anyway, so this goto
             % will be optimized away (unless the layout of the failcode
@@ -377,11 +379,11 @@ generate_primary_try_me_else_chain(VarRval, PtagRval, SectagReg,
                 llds_instr(goto(code_label(FailLabel)),
                     "ptag with no code to handle it")
             ),
-            Code = ThisGroupCode ++ FailCode
+            Code = HeadGroupCode ++ FailCode
         ;
             MaybeFailLabel = no,
             generate_ptag_group_code(VarRval, SectagReg, MaybeFailLabel,
-                PtagGroup, Code, !CaseLabelMap, !CI)
+                HeadPtagGroup, Code, !CaseLabelMap, !CI)
         )
     ).
 
@@ -413,32 +415,30 @@ generate_primary_try_me_else_chain_group(VarRval, PtagRval, SectagReg,
 
     % Generate a switch on a primary tag value using a try chain.
     %
-    % ZZZ lag
 :- pred generate_primary_try_chain(rval::in, rval::in, lval::in,
-    maybe(label)::in, list(ptag_case_group(label))::in,
+    maybe(label)::in,
+    ptag_case_group(label)::in, list(ptag_case_group(label))::in,
     llds_code::in, llds_code::in, llds_code::out,
     case_label_map::in, case_label_map::out,
     code_info::in, code_info::out) is det.
 
-generate_primary_try_chain(_, _, _, _, [], _, _, _, !CaseLabelMap, !CI) :-
-     unexpected($pred, "empty list").
 generate_primary_try_chain(VarRval, PtagRval, SectagReg, MaybeFailLabel,
-        [PtagGroup | PtagGroups], !.TryChainCode, !.GroupsCode, Code,
+        HeadPtagGroup, TailPtagGroups, !.TryChainCode, !.GroupsCode, Code,
         !CaseLabelMap, !CI) :-
     (
-        PtagGroups = [_ | _],
+        TailPtagGroups = [HeadTailPtagGroup | TailTailPtagGroups],
         generate_primary_try_chain_case(VarRval, PtagRval, SectagReg,
-            MaybeFailLabel, PtagGroup, !TryChainCode, !GroupsCode,
+            MaybeFailLabel, HeadPtagGroup, !TryChainCode, !GroupsCode,
             !CaseLabelMap, !CI),
         generate_primary_try_chain(VarRval, PtagRval, SectagReg,
-            MaybeFailLabel, PtagGroups, !.TryChainCode, !.GroupsCode,
-            Code, !CaseLabelMap, !CI)
+            MaybeFailLabel, HeadTailPtagGroup, TailTailPtagGroups,
+            !.TryChainCode, !.GroupsCode, Code, !CaseLabelMap, !CI)
     ;
-        PtagGroups = [],
+        TailPtagGroups = [],
         (
             MaybeFailLabel = yes(FailLabel),
             generate_primary_try_chain_case(VarRval, PtagRval, SectagReg,
-                MaybeFailLabel, PtagGroup,
+                MaybeFailLabel, HeadPtagGroup,
                 !TryChainCode, !GroupsCode, !CaseLabelMap, !CI),
             FailCode = singleton(
                 llds_instr(goto(code_label(FailLabel)),
@@ -448,12 +448,12 @@ generate_primary_try_chain(VarRval, PtagRval, SectagReg, MaybeFailLabel,
         ;
             MaybeFailLabel = no,
             make_ptag_comment("fallthrough to last ptag value: ",
-                PtagGroup, Comment),
+                HeadPtagGroup, Comment),
             CommentCode = singleton(
                 llds_instr(comment(Comment), "")
             ),
             generate_ptag_group_code(VarRval, SectagReg, MaybeFailLabel,
-                PtagGroup, GroupCode, !CaseLabelMap, !CI),
+                HeadPtagGroup, GroupCode, !CaseLabelMap, !CI),
             Code = !.TryChainCode ++ CommentCode ++ GroupCode ++ !.GroupsCode
         )
     ).
@@ -736,6 +736,22 @@ generate_secondary_switch(VarRval, SectagReg, MaybeFailLabel,
         )
     ),
     (
+        Method = try_me_else_chain,
+        map.to_sorted_assoc_list(LabelToSectagsMap, LabelToSectagsAL),
+        list.det_head_tail(LabelToSectagsAL,
+            HeadLabelToSectagsAL, TailLabelToSectagsAL),
+        generate_secondary_try_me_else_chain(SectagRval, MaybeSecFailLabel,
+            HeadLabelToSectagsAL, TailLabelToSectagsAL, CasesCode,
+            !CaseLabelMap, !CI)
+    ;
+        Method = try_chain,
+        map.to_sorted_assoc_list(LabelToSectagsMap, LabelToSectagsAL),
+        list.det_head_tail(LabelToSectagsAL,
+            HeadLabelToSectagsAL, TailLabelToSectagsAL),
+        generate_secondary_try_chain(SectagRval, MaybeSecFailLabel,
+            HeadLabelToSectagsAL, TailLabelToSectagsAL,
+            empty, CasesCode, !CaseLabelMap)
+    ;
         Method = jump_table,
         map.to_sorted_assoc_list(SectagToLabelMap, SectagToLabelAL),
         generate_secondary_jump_table(MaybeSecFailLabel, SectagToLabelAL,
@@ -749,16 +765,6 @@ generate_secondary_switch(VarRval, SectagReg, MaybeFailLabel,
         map.to_sorted_assoc_list(SectagToLabelMap, SectagToLabelAL),
         generate_secondary_binary_search(SectagRval, MaybeSecFailLabel,
             SectagToLabelAL, 0u, MaxSectag, CasesCode, !CaseLabelMap, !CI)
-    ;
-        Method = try_chain,
-        map.to_sorted_assoc_list(LabelToSectagsMap, LabelToSectagsAL),
-        generate_secondary_try_chain(SectagRval, MaybeSecFailLabel,
-            LabelToSectagsAL, empty, CasesCode, !CaseLabelMap)
-    ;
-        Method = try_me_else_chain,
-        map.to_sorted_assoc_list(LabelToSectagsMap, LabelToSectagsAL),
-        generate_secondary_try_me_else_chain(SectagRval, MaybeSecFailLabel,
-            LabelToSectagsAL, CasesCode, !CaseLabelMap, !CI)
     ),
     Code = SectagRvalCode ++ CasesCode.
 
@@ -825,37 +831,34 @@ compute_sectag_rval(Globals, VarRval, SectagReg, SharedInfo, Method,
     % Generate a switch on a secondary tag value using a try-me-else chain.
     %
 :- pred generate_secondary_try_me_else_chain(rval::in, maybe(label)::in,
-    sectag_case_list(label)::in, llds_code::out,
+    sectag_case(label)::in, sectag_case_list(label)::in, llds_code::out,
     case_label_map::in, case_label_map::out,
     code_info::in, code_info::out) is det.
 
-% ZZZ lag, consistent both here and elsewhere in this module and in ml_tag_sw
-generate_secondary_try_me_else_chain(_, _, [], _, !CaseLabelMap, !CI) :-
-    unexpected($pred, "empty switch").
 generate_secondary_try_me_else_chain(SectagRval, MaybeFailLabel,
-        [Case | Cases], Code, !CaseLabelMap, !CI) :-
+        HeadCase, TailCases, Code, !CaseLabelMap, !CI) :-
     (
-        Cases = [_ | _],
-        generate_secondary_try_me_else_chain_case(SectagRval, Case,
-            ThisCode, !CaseLabelMap, !CI),
+        TailCases = [HeadTailCase | TailTailCases],
+        generate_secondary_try_me_else_chain_case(SectagRval, HeadCase,
+            HeadCode, !CaseLabelMap, !CI),
         generate_secondary_try_me_else_chain(SectagRval, MaybeFailLabel,
-            Cases, OtherCode, !CaseLabelMap, !CI),
-        Code = ThisCode ++ OtherCode
+            HeadTailCase, TailTailCases, TailCode, !CaseLabelMap, !CI),
+        Code = HeadCode ++ TailCode
     ;
-        Cases = [],
+        TailCases = [],
         (
             MaybeFailLabel = yes(FailLabel),
-            generate_secondary_try_me_else_chain_case(SectagRval, Case,
-                ThisCode, !CaseLabelMap, !CI),
+            generate_secondary_try_me_else_chain_case(SectagRval, HeadCase,
+                HeadCode, !CaseLabelMap, !CI),
             FailCode = singleton(
                 llds_instr(goto(code_label(FailLabel)),
                     "secondary tag does not match any case")
             ),
-            Code = ThisCode ++ FailCode
+            Code = HeadCode ++ FailCode
         ;
             MaybeFailLabel = no,
-            Case = CaseLabel - _OoMSectags,
-            generate_case_code_or_jump(CaseLabel, Code, !CaseLabelMap)
+            HeadCase = HeadCaseLabel - _OoMSectags,
+            generate_case_code_or_jump(HeadCaseLabel, Code, !CaseLabelMap)
         )
     ).
 
@@ -868,8 +871,7 @@ generate_secondary_try_me_else_chain_case(SectagRval, Case,
         Code, !CaseLabelMap, !CI) :-
     Case = CaseLabel - OoMSectags,
     generate_case_code_or_jump(CaseLabel, CaseCode, !CaseLabelMap),
-    % ZZZ
-    % XXX Optimize what we generate when CaseCode = goto(CaseLabel).
+    % ZZZ XXX Optimize what we generate when CaseCode = goto(CaseLabel).
     get_next_label(ElseLabel, !CI),
     OoMSectags = one_or_more(HeadSectag, TailSectags),
     test_sectag_is_in_case_group(SectagRval, HeadSectag, TailSectags,
@@ -898,25 +900,24 @@ generate_secondary_try_me_else_chain_case(SectagRval, Case,
     % Generate a switch on a secondary tag value using a try chain.
     %
 :- pred generate_secondary_try_chain(rval::in, maybe(label)::in,
-    sectag_case_list(label)::in, llds_code::in, llds_code::out,
+    sectag_case(label)::in, sectag_case_list(label)::in,
+    llds_code::in, llds_code::out,
     case_label_map::in, case_label_map::out) is det.
 
-generate_secondary_try_chain(_, _, [], _, _, !CaseLabelMap) :-
-    unexpected($pred, "empty switch").
-generate_secondary_try_chain(SectagRval, MaybeFailLabel, [Case | Cases],
+generate_secondary_try_chain(SectagRval, MaybeFailLabel, HeadCase, TailCases,
         !.TryChainCode, Code, !CaseLabelMap) :-
     (
-        Cases = [_ | _],
-        generate_secondary_try_chain_case(!.CaseLabelMap, SectagRval, Case,
+        TailCases = [HeadTailCase | TailTailCases],
+        generate_secondary_try_chain_case(!.CaseLabelMap, SectagRval, HeadCase,
             !TryChainCode),
-        generate_secondary_try_chain(SectagRval, MaybeFailLabel, Cases,
-            !.TryChainCode, Code, !CaseLabelMap)
+        generate_secondary_try_chain(SectagRval, MaybeFailLabel,
+            HeadTailCase, TailTailCases, !.TryChainCode, Code, !CaseLabelMap)
     ;
-        Cases = [],
+        TailCases = [],
         (
             MaybeFailLabel = yes(FailLabel),
-            generate_secondary_try_chain_case(!.CaseLabelMap, SectagRval, Case,
-                !TryChainCode),
+            generate_secondary_try_chain_case(!.CaseLabelMap, SectagRval,
+                HeadCase, !TryChainCode),
             FailCode = singleton(
                 llds_instr(goto(code_label(FailLabel)),
                     "secondary tag with no code to handle it")
@@ -924,9 +925,9 @@ generate_secondary_try_chain(SectagRval, MaybeFailLabel, [Case | Cases],
             Code = !.TryChainCode ++ FailCode
         ;
             MaybeFailLabel = no,
-            Case = CaseLabel - _OoMSectags,
-            generate_case_code_or_jump(CaseLabel, ThisCode, !CaseLabelMap),
-            Code = !.TryChainCode ++ ThisCode
+            HeadCase = HeadCaseLabel - _OoMSectags,
+            generate_case_code_or_jump(HeadCaseLabel, HeadCode, !CaseLabelMap),
+            Code = !.TryChainCode ++ HeadCode
         )
     ).
 
@@ -1055,14 +1056,10 @@ generate_secondary_binary_search(SectagRval, MaybeFailLabel,
             ),
         list.filter(InLoGroup, SectagGoals, LoGoals, EqHiGoals),
         get_next_label(NewLabel, !CI),
-        LoMinStr = string.uint_to_string(MinSectag),
-        LoMaxStr = string.uint_to_string(LoRangeMax),
-        EqHiMinStr = string.uint_to_string(EqHiRangeMin),
-        EqHiMaxStr = string.uint_to_string(MaxSectag),
-        IfComment = "fallthrough for stags " ++
-            LoMinStr ++ " to " ++ LoMaxStr,
-        LabelComment = "code for stags " ++
-            EqHiMinStr ++ " to " ++ EqHiMaxStr,
+        string.format("fallthrough for sectags %u to %u",
+            [u(MinSectag), u(LoRangeMax)], IfComment),
+        string.format("code for sectags %u to %u",
+            [u(EqHiRangeMin), u(MaxSectag)], LabelComment),
         LoRangeMaxConst = const(llconst_uint(LoRangeMax)),
         TestRval = binop(int_gt(int_type_int), SectagRval, LoRangeMaxConst),
         IfCode = singleton(

@@ -172,6 +172,7 @@
 :- type sectag_goal_list(CaseRep) == assoc_list(uint, CaseRep).
 
 :- type sectag_case_map(CaseRep)  == map(CaseRep, one_or_more(uint)).
+:- type sectag_case(CaseRep)      == pair(CaseRep, one_or_more(uint)).
 :- type sectag_case_list(CaseRep) == assoc_list(CaseRep, one_or_more(uint)).
 
     % group_cases_by_ptag(ModuleInfo, VarType, TaggedCases, RepresentCase,
