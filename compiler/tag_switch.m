@@ -537,23 +537,22 @@ encode_ptags_as_bitmap_loop(HeadPtag, TailPtags, !Bitmap) :-
     % that has an entry for all possible primary tag values.
     %
 :- pred generate_primary_jump_table(rval::in, lval::in, maybe(label)::in,
-    list(ptag_case_group(label))::in, uint8::in, uint8::in,
+    list(single_ptag_case(label))::in, uint8::in, uint8::in,
     list(maybe(label))::out, llds_code::out,
     case_label_map::in, case_label_map::out,
     code_info::in, code_info::out) is det.
 
 generate_primary_jump_table(VarRval, SectagReg, MaybeFailLabel,
-        PtagGroups, CurPtagUint8, MaxPtagUint8, TargetMaybeLabels, Code,
+        SinglePtagGroups, CurPtagUint8, MaxPtagUint8, TargetMaybeLabels, Code,
         !CaseLabelMap, !CI) :-
     ( if CurPtagUint8 > MaxPtagUint8 then
-        expect(unify(PtagGroups, []), $pred,
-            "PtagGroups != [] when Cur > Max"),
         TargetMaybeLabels = [],
         Code = empty
     else
         NextPtagUint8 = CurPtagUint8 + 1u8,
         ( if
-            PtagGroups = [PtagGroup | TailPtagGroups],
+            SinglePtagGroups = [SinglePtagGroup | TailSinglePtagGroups],
+            PtagGroup = coerce(SinglePtagGroup),
             ptag_case_group_main_ptag(PtagGroup) = ptag(CurPtagUint8)
         then
             get_next_label(ThisPtagLabel, !CI),
@@ -565,14 +564,14 @@ generate_primary_jump_table(VarRval, SectagReg, MaybeFailLabel,
             % ZZZ optimize: reuse labels if possible
             HeadMaybeTargetLabel = yes(ThisPtagLabel),
             HeadEntryCode = LabelCode ++ HeadEntryCode0,
-            NextPtagGroups = TailPtagGroups
+            NextSinglePtagGroups = TailSinglePtagGroups
         else
             HeadMaybeTargetLabel = MaybeFailLabel,
             HeadEntryCode = empty,
-            NextPtagGroups = PtagGroups
+            NextSinglePtagGroups = SinglePtagGroups
         ),
         generate_primary_jump_table(VarRval, SectagReg, MaybeFailLabel,
-            NextPtagGroups, NextPtagUint8, MaxPtagUint8,
+            NextSinglePtagGroups, NextPtagUint8, MaxPtagUint8,
             TailTargetMaybeLabels, TailEntriesCode, !CaseLabelMap, !CI),
         TargetMaybeLabels = [HeadMaybeTargetLabel | TailTargetMaybeLabels],
         Code = HeadEntryCode ++ TailEntriesCode
@@ -596,18 +595,18 @@ ptag_case_group_main_ptag(PtagGroup) = MainPtag :-
     % MinPtag to MaxPtag (including both boundary values).
     %
 :- pred generate_primary_binary_search(rval::in, rval::in, lval::in,
-    maybe(label)::in, list(ptag_case_group(label))::in,
+    maybe(label)::in, list(single_ptag_case(label))::in,
     uint8::in, uint8::in, llds_code::out,
     case_label_map::in, case_label_map::out,
     code_info::in, code_info::out) is det.
 
 generate_primary_binary_search(VarRval, PtagRval, SectagReg,
-        MaybeFailLabel, PtagGroups, MinPtag, MaxPtag, Code,
+        MaybeFailLabel, SinglePtagGroups, MinPtag, MaxPtag, Code,
         !CaseLabelMap, !CI) :-
     ( if MinPtag = MaxPtag then
         CurPtagUint8 = MinPtag,
         (
-            PtagGroups = [],
+            SinglePtagGroups = [],
             % There is no code for this tag.
             (
                 MaybeFailLabel = yes(FailLabel),
@@ -623,26 +622,27 @@ generate_primary_binary_search(VarRval, PtagRval, SectagReg,
                 Code = empty
             )
         ;
-            PtagGroups = [PtagGroup],
+            SinglePtagGroups = [SinglePtagGroup],
+            PtagGroup = coerce(SinglePtagGroup),
             MainPtag = ptag_case_group_main_ptag(PtagGroup),
             expect(unify(ptag(CurPtagUint8), MainPtag), $pred,
                 "cur_primary mismatch"),
             generate_ptag_group_code(VarRval, SectagReg, MaybeFailLabel,
                 PtagGroup, Code, !CaseLabelMap, !CI)
         ;
-            PtagGroups = [_, _ | _],
+            SinglePtagGroups = [_, _ | _],
             unexpected($pred,
-                "PtagGroups not singleton or empty when binary search ends")
+                "ptag groups not singleton or empty when binary search ends")
         )
     else
         LoRangeMax = (MinPtag + MaxPtag) // 2u8,
         EqHiRangeMin = LoRangeMax + 1u8,
         InLoGroup =
-            ( pred(PG::in) is semidet :-
-                ptag(MainPtagUint8) = ptag_case_group_main_ptag(PG),
+            ( pred(SPG::in) is semidet :-
+                ptag(MainPtagUint8) = ptag_case_group_main_ptag(coerce(SPG)),
                 MainPtagUint8 =< LoRangeMax
             ),
-        list.filter(InLoGroup, PtagGroups, LoGroups, EqHiGroups),
+        list.filter(InLoGroup, SinglePtagGroups, LoGroups, EqHiGroups),
         get_next_label(EqHiLabel, !CI),
         string.format("fallthrough for ptags %u to %u",
             [u8(MinPtag), u8(LoRangeMax)], IfLoComment),

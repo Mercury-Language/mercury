@@ -197,17 +197,24 @@
 :- pred order_ptag_groups_by_count(list(ptag_case_group(CaseRep))::in,
     list(ptag_case_group(CaseRep))::out) is det.
 
+:- type empty_ptag_list =< list(ptag)
+    --->    [].
+
+:- type whole_ptag_info(CaseRep) =< whole_ptags_info(CaseRep)
+    --->    whole_ptags_info(ptag, empty_ptag_list, uint, CaseRep).
+
+:- type single_ptag_case(CaseRep) =< ptag_case_group(CaseRep)
+    --->    one_or_more_whole_ptags(whole_ptag_info(CaseRep))
+    ;       one_shared_ptag(shared_ptag_info(CaseRep)).
+
     % Ensure that each ptag_case_group covers only one ptag value,
     % breaking up any entry in the input that lists two or more ptag values.
     % Put the resulting ptag_case_groups, which are now all specific
     % to one ptag value, into ascending order of those values.
     %
-    % ZZZ consider returning either a subtype that hardwires the wpi_tail_ptags
-    % field to nil, or a new type that just omits that field.
-    %
 :- pred order_ptag_specific_groups_by_value(
     list(ptag_case_group(CaseRep))::in,
-    list(ptag_case_group(CaseRep))::out) is det.
+    list(single_ptag_case(CaseRep))::out) is det.
 
 %---------------------------------------------------------------------------%
 
@@ -625,8 +632,8 @@ order_ptag_specific_groups_by_value(Groups0, SortedSpecificGroups) :-
 
 :- pred specialize_and_record_ptag_case_groups(
     list(ptag_case_group(CaseRep))::in,
-    map(ptag, ptag_case_group(CaseRep))::in,
-    map(ptag, ptag_case_group(CaseRep))::out) is det.
+    map(ptag, single_ptag_case(CaseRep))::in,
+    map(ptag, single_ptag_case(CaseRep))::out) is det.
 
 specialize_and_record_ptag_case_groups([], !SpecificMap).
 specialize_and_record_ptag_case_groups([Group | Groups], !SpecificMap) :-
@@ -638,13 +645,14 @@ specialize_and_record_ptag_case_groups([Group | Groups], !SpecificMap) :-
     ;
         Group = one_shared_ptag(SharedInfo),
         SharedInfo = shared_ptag_info(Ptag, _, _, _, _, _, _),
-        map.det_insert(Ptag, Group, !SpecificMap)
+        SingleGroup = one_shared_ptag(SharedInfo),
+        map.det_insert(Ptag, SingleGroup, !SpecificMap)
     ),
     specialize_and_record_ptag_case_groups(Groups, !SpecificMap).
 
 :- pred record_specialized_versions(CaseRep::in, list(ptag)::in,
-    map(ptag, ptag_case_group(CaseRep))::in,
-    map(ptag, ptag_case_group(CaseRep))::out) is det.
+    map(ptag, single_ptag_case(CaseRep))::in,
+    map(ptag, single_ptag_case(CaseRep))::out) is det.
 
 record_specialized_versions(_, [], !SpecificMap).
 record_specialized_versions(CaseRep, [Ptag | Ptags], !SpecificMap) :-
