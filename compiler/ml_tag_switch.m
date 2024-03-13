@@ -357,28 +357,6 @@ acc_dup_properties_of_func(FuncDefn, !HasLabel, !HasAuxPred, !HasLocalVars) :-
 
 %---------------------------------------------------------------------------%
 
-    % This type, as its name implies, is an extension of the mlds_switch_case
-    % type, the addition being the maybe(case_id) field. Its semantics is that
-    % if it contains "yes(CaseId)", then the case contains the implementation
-    % of the given arm of the switch we are implementing, and this MLDS case
-    % can be merged with any other MLDS case that implements the same CaseId.
-    % If this field contains "no", then the case contains code for more than
-    % one case_id of the original switch, and this MLDS case cannot be
-    % merged with any other.
-    %
-    % It is an invariant that if two mlds_switch_case_ids both contain
-    % "yes(CaseId)" for the same CaseId, then their statements will be
-    % identical. We guarantee this by setting this field to yes(CaseId) only
-    % when getting the mlds_stmt out of the CodeMap by looking up CaseId in it.
-    % Two lookups of the same key in the same map must yield the same result.
-:- type mlds_switch_case_id
-    --->    mlds_switch_case_id(
-                mlds_case_match_cond,
-                list(mlds_case_match_cond),
-                maybe(case_id),
-                mlds_stmt
-            ).
-
 :- pred gen_ptag_cases(prog_var::in, var_table_entry::in, can_fail::in,
     code_model::in, prog_context::in, code_map::in,
     list(ptag_case_group(case_id))::in, list(mlds_switch_case)::out,
