@@ -208,9 +208,9 @@ read_lines_loop(InputStream, Options, CurrentYear,
             !.ModState = unmodified,
             parse_copyright_line(Options, Line, Prefix, Ranges0, Suffix)
         then
-            % We could normalise ranges here.
-            sort(Ranges0, Ranges1),
-            ( if add_to_ranges(CurrentYear, Ranges1, Ranges) then
+            list.sort(Ranges0, Ranges1),
+            merge_adjacent_ranges_if_possible(Ranges1, Ranges2),
+            ( if add_to_ranges(CurrentYear, Ranges2, Ranges) then
                 make_copyright_line(Prefix, Ranges, Suffix, NewLine),
                 !:RevLines = [NewLine | !.RevLines],
                 !:ModState = found_modified
@@ -289,6 +289,13 @@ parse_ranges(Str, Ranges) :-
     Words = string.words_separator(is_whitespace_or_comma, Str),
     list.map(parse_range, Words, Ranges).
 
+:- pred is_whitespace_or_comma(char::in) is semidet.
+
+is_whitespace_or_comma(C) :-
+    ( char.is_whitespace(C)
+    ; C = (',')
+    ).
+
 :- pred parse_range(string::in, year_range::out) is semidet.
 
 parse_range(Str, Range) :-
@@ -305,11 +312,27 @@ parse_range(Str, Range) :-
         Range = years(N1, N2)
     ).
 
-:- pred is_whitespace_or_comma(char::in) is semidet.
+:- pred merge_adjacent_ranges_if_possible(
+    list(year_range)::in, list(year_range)::out) is det.
 
-is_whitespace_or_comma(C) :-
-    ( char.is_whitespace(C)
-    ; C = (',')
+merge_adjacent_ranges_if_possible(Ranges0, Ranges) :-
+    (
+        ( Ranges0 = []
+        ; Ranges0 = [_]
+        ),
+        Ranges = Ranges0
+    ;
+        Ranges0 = [Range1, Range2 | Ranges3plus],
+        Range1 = years(RangeLo1, RangeHi1),
+        Range2 = years(RangeLo2, RangeHi2),
+        ( if RangeLo2 =< RangeHi1 + 1 then
+            Range12 = years(RangeLo1, RangeHi2),
+            merge_adjacent_ranges_if_possible([Range12 | Ranges3plus], Ranges)
+        else
+            merge_adjacent_ranges_if_possible([Range2 | Ranges3plus],
+                TailRanges),
+            Ranges = [Range1 | TailRanges]
+        )
     ).
 
 :- pred add_to_ranges(int::in, list(year_range)::in, list(year_range)::out)
