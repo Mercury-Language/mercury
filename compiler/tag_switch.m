@@ -267,7 +267,9 @@ generate_tag_switch(TaggedCases, VarRval, VarType, VarName, CodeModel, CanFail,
         list.det_head_tail(PtagGroups, HeadPtagGroup, TailPtagGroups),
         generate_primary_try_me_else_chain(VarRval, PtagRval,
             SectagReg, MaybeFailLabel, HeadPtagGroup, TailPtagGroups,
-            CasesCode, CaseLabelMap0, CaseLabelMap, !CI)
+            CasesCode, CaseLabelMap0, CaseLabelMap1, !CI),
+        add_not_yet_included_cases(RemainingCasesCode,
+            CaseLabelMap1, _CaseLabelMap)
     ;
         Method = try_chain,
         order_ptag_groups_by_count(PtagGroups0, PtagGroups1),
@@ -283,13 +285,23 @@ generate_tag_switch(TaggedCases, VarRval, VarType, VarName, CodeModel, CanFail,
         list.det_head_tail(PtagGroups, HeadPtagGroup, TailPtagGroups),
         generate_primary_try_chain(VarRval, PtagRval, SectagReg,
             MaybeFailLabel, HeadPtagGroup, TailPtagGroups,
-            empty, empty, CasesCode, CaseLabelMap0, CaseLabelMap, !CI)
+            empty, empty, CasesCode, CaseLabelMap0, CaseLabelMap1, !CI),
+        add_not_yet_included_cases(RemainingCasesCode,
+            CaseLabelMap1, _CaseLabelMap)
     ;
         Method = jump_table,
         order_ptag_specific_groups_by_value(PtagGroups0, PtagGroups),
-        generate_primary_jump_table(VarRval, SectagReg, MaybeFailLabel,
-            PtagGroups, 0u8, MaxPtagUint8,
-            TargetMaybeLabels, TableCode, CaseLabelMap0, CaseLabelMap, !CI),
+        % Generate the code for all the cases now, even though we will add
+        % the resulting code at the end, so that we don't intersperse the
+        % code of the cases (RemainingCasesCode) with TableCode, which
+        % will contain the code for any needed switches on secondary tags.
+        % (Ptags that don't have an associated secondary tag won't have
+        % any code in TableCode.)
+        add_not_yet_included_cases(RemainingCasesCode,
+            CaseLabelMap0, CaseLabelMap),
+        generate_primary_jump_table(CaseLabelMap, VarRval, SectagReg,
+            MaybeFailLabel, PtagGroups, 0u8, MaxPtagUint8,
+            TargetMaybeLabels, TableCode, !CI),
         SwitchCode = singleton(
             llds_instr(computed_goto(PtagRval, TargetMaybeLabels),
                 "switch on ptag")
@@ -300,10 +312,10 @@ generate_tag_switch(TaggedCases, VarRval, VarType, VarName, CodeModel, CanFail,
         order_ptag_specific_groups_by_value(PtagGroups0, PtagGroups),
         generate_primary_binary_search(VarRval, PtagRval, SectagReg,
             MaybeFailLabel, PtagGroups, 0u8, MaxPtagUint8,
-            CasesCode, CaseLabelMap0, CaseLabelMap, !CI)
+            CasesCode, CaseLabelMap0, CaseLabelMap1, !CI),
+        add_not_yet_included_cases(RemainingCasesCode,
+            CaseLabelMap1, _CaseLabelMap)
     ),
-    % ZZZ move this to just the methods that leave remaining cases
-    map.foldl(add_remaining_case, CaseLabelMap, empty, RemainingCasesCode),
     EndCode = singleton(
         llds_instr(label(EndLabel), "end of tag switch")
     ),
@@ -538,15 +550,14 @@ encode_ptags_as_bitmap_loop(HeadPtag, TailPtags, !Bitmap) :-
     % Generate the cases for a primary tag using a dense jump table
     % that has an entry for all possible primary tag values.
     %
-:- pred generate_primary_jump_table(rval::in, lval::in, maybe(label)::in,
-    list(single_ptag_case(label))::in, uint8::in, uint8::in,
+:- pred generate_primary_jump_table(case_label_map::in, rval::in, lval::in,
+    maybe(label)::in, list(single_ptag_case(label))::in, uint8::in, uint8::in,
     list(maybe(label))::out, llds_code::out,
-    case_label_map::in, case_label_map::out,
     code_info::in, code_info::out) is det.
 
-generate_primary_jump_table(VarRval, SectagReg, MaybeFailLabel,
-        SinglePtagGroups, CurPtagUint8, MaxPtagUint8, TargetMaybeLabels, Code,
-        !CaseLabelMap, !CI) :-
+generate_primary_jump_table(CaseLabelMap, VarRval, SectagReg, MaybeFailLabel,
+        SinglePtagGroups, CurPtagUint8, MaxPtagUint8,
+        TargetMaybeLabels, Code, !CI) :-
     ( if CurPtagUint8 > MaxPtagUint8 then
         TargetMaybeLabels = [],
         Code = empty
@@ -554,27 +565,45 @@ generate_primary_jump_table(VarRval, SectagReg, MaybeFailLabel,
         NextPtagUint8 = CurPtagUint8 + 1u8,
         ( if
             SinglePtagGroups = [SinglePtagGroup | TailSinglePtagGroups],
-            PtagGroup = coerce(SinglePtagGroup),
-            ptag_case_group_main_ptag(PtagGroup) = ptag(CurPtagUint8)
+            (
+                SinglePtagGroup = one_or_more_whole_ptags(WholeInfo0),
+                WholeInfo0 = whole_ptags_info(MainPtag, _, _, _)
+            ;
+                SinglePtagGroup = one_shared_ptag(SharedInfo0),
+                SharedInfo0 = shared_ptag_info(MainPtag, _, _, _, _, _, _)
+            ),
+            MainPtag = ptag(CurPtagUint8)
         then
-            get_next_label(ThisPtagLabel, !CI),
-            Comment = "start of a case in ptag switch: ptag " ++
-                string.uint8_to_string(CurPtagUint8),
-            LabelCode = singleton(llds_instr(label(ThisPtagLabel), Comment)),
-            generate_ptag_group_code(VarRval, SectagReg, MaybeFailLabel,
-                PtagGroup, HeadEntryCode0, !CaseLabelMap, !CI),
-            % ZZZ optimize: reuse labels if possible
-            HeadMaybeTargetLabel = yes(ThisPtagLabel),
-            HeadEntryCode = LabelCode ++ HeadEntryCode0,
+            (
+                SinglePtagGroup = one_or_more_whole_ptags(WholeInfo),
+                WholeInfo = whole_ptags_info(_, _, _, Label),
+                HeadMaybeTargetLabel = yes(Label),
+                HeadEntryCode = empty
+            ;
+                SinglePtagGroup = one_shared_ptag(_),
+                get_next_label(ThisPtagLabel, !CI),
+                Comment = "start of a shared ptag in ptag jump table: " ++
+                    string.uint8_to_string(CurPtagUint8),
+                LabelCode = singleton(
+                    llds_instr(label(ThisPtagLabel), Comment)
+                ),
+                PtagGroup = coerce(SinglePtagGroup),
+                % Our caller has already generated the code for all the labels
+                % in CaseLabelMap.
+                generate_ptag_group_code(VarRval, SectagReg, MaybeFailLabel,
+                    PtagGroup, HeadEntryCode0, CaseLabelMap, _, !CI),
+                HeadMaybeTargetLabel = yes(ThisPtagLabel),
+                HeadEntryCode = LabelCode ++ HeadEntryCode0
+            ),
             NextSinglePtagGroups = TailSinglePtagGroups
         else
             HeadMaybeTargetLabel = MaybeFailLabel,
             HeadEntryCode = empty,
             NextSinglePtagGroups = SinglePtagGroups
         ),
-        generate_primary_jump_table(VarRval, SectagReg, MaybeFailLabel,
-            NextSinglePtagGroups, NextPtagUint8, MaxPtagUint8,
-            TailTargetMaybeLabels, TailEntriesCode, !CaseLabelMap, !CI),
+        generate_primary_jump_table(CaseLabelMap, VarRval, SectagReg,
+            MaybeFailLabel, NextSinglePtagGroups, NextPtagUint8, MaxPtagUint8,
+            TailTargetMaybeLabels, TailEntriesCode, !CI),
         TargetMaybeLabels = [HeadMaybeTargetLabel | TailTargetMaybeLabels],
         Code = HeadEntryCode ++ TailEntriesCode
     ).
@@ -754,9 +783,9 @@ generate_secondary_switch(VarRval, SectagReg, MaybeFailLabel,
         Method = jump_table,
         map.to_sorted_assoc_list(SectagToLabelMap, SectagToLabelAL),
         generate_secondary_jump_table(MaybeSecFailLabel, SectagToLabelAL,
-            0u, MaxSectag, Targets),
+            0u, MaxSectag, TargetMaybeLabels),
         CasesCode = singleton(
-            llds_instr(computed_goto(SectagRval, Targets),
+            llds_instr(computed_goto(SectagRval, TargetMaybeLabels),
                 "switch on secondary tag")
         )
     ;

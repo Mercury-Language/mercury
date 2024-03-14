@@ -67,13 +67,17 @@
     branch_end::in, branch_end::out, code_info::in, code_info::out,
     unit::in, unit::out) is det.
 
+%-----------------------------------------------------------------------------%
+
     % generate_case_code_or_jump(CaseLabel, Code, !CaseLabelMap):
     %
 :- pred generate_case_code_or_jump(label::in, llds_code::out,
     case_label_map::in, case_label_map::out) is det.
 
-:- pred add_remaining_case(label::in, case_label_info::in,
-    llds_code::in, llds_code::out) is det.
+%-----------------------------------------------------------------------------%
+
+:- pred add_not_yet_included_cases(llds_code::out,
+    case_label_map::in, case_label_map::out) is det.
 
 %-----------------------------------------------------------------------------%
 
@@ -88,6 +92,8 @@
 :- import_module cord.
 :- import_module list.
 :- import_module string.
+
+%-----------------------------------------------------------------------------%
 
 represent_tagged_case_for_llds(Params, TaggedCase, Label, !CaseLabelMap,
         !MaybeEnd, !CI, _, unit) :-
@@ -119,6 +125,8 @@ represent_tagged_case_for_llds(Params, TaggedCase, Label, !CaseLabelMap,
         map.det_insert(Label, CaseInfo, !CaseLabelMap)
     ).
 
+%-----------------------------------------------------------------------------%
+
 generate_case_code_or_jump(CaseLabel, Code, !CaseLabelMap) :-
     map.lookup(!.CaseLabelMap, CaseLabel, CaseInfo0),
     CaseInfo0 = case_label_info(Comment, CaseCode, CaseIncluded),
@@ -137,13 +145,25 @@ generate_case_code_or_jump(CaseLabel, Code, !CaseLabelMap) :-
         )
     ).
 
-add_remaining_case(_Label, CaseInfo, !Code) :-
-    CaseInfo = case_label_info(_Comment, CaseCode, CaseIncluded),
+%-----------------------------------------------------------------------------%
+
+add_not_yet_included_cases(Code, !CaseLabelMap) :-
+    map.map_values_foldl(add_not_yet_included_case,
+        !CaseLabelMap, empty, Code).
+
+:- pred add_not_yet_included_case(case_label_info::in, case_label_info::out,
+    llds_code::in, llds_code::out) is det.
+
+add_not_yet_included_case(CaseInfo0, CaseInfo, !Code) :-
+    CaseInfo0 = case_label_info(Comment, CaseCode, CaseIncluded0),
     (
-        CaseIncluded = case_code_not_yet_included,
-        !:Code = !.Code ++ CaseCode
+        CaseIncluded0 = case_code_not_yet_included,
+        !:Code = !.Code ++ CaseCode,
+        CaseIncluded = case_code_already_included,
+        CaseInfo = case_label_info(Comment, CaseCode, CaseIncluded)
     ;
-        CaseIncluded = case_code_already_included
+        CaseIncluded0 = case_code_already_included,
+        CaseInfo = CaseInfo0
     ).
 
 %-----------------------------------------------------------------------------%

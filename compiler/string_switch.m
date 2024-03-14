@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1994-2007, 2009-2011 The University of Melbourne.
-% Copyright (C) 2015, 2017-2018, 2020, 2022 The Mercury team.
+% Copyright (C) 2015, 2017-2018, 2020, 2022, 2024 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -156,7 +156,7 @@ generate_string_hash_switch(Cases, VarRval, VarName, CodeModel, CanFail,
         MatchCode, HashLookupCode),
 
     % Generate the code for the cases.
-    map.foldl(add_remaining_case, CaseLabelMap, empty, CasesCode),
+    add_not_yet_included_cases(CasesCode, CaseLabelMap, _),
     EndLabelCode = singleton(
         llds_instr(label(EndLabel), "end of hashed string switch")
     ),
@@ -741,7 +741,7 @@ generate_string_binary_switch(Cases, VarRval, VarName, CodeModel, CanFail,
     ),
 
     % Generate the code for the cases.
-    map.foldl(add_remaining_case, CaseLabelMap, empty, CasesCode),
+    add_not_yet_included_cases(CasesCode, CaseLabelMap, _),
     EndLabelCode = singleton(
         llds_instr(label(EndLabel), "end of binary string switch")
     ),
