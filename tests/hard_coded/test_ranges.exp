@@ -1,9 +1,44 @@
-search_member(0, Empty) ==> FAIL
-search_member(-1, TestRanges) ==> FAIL
-search_member(0, TestRanges) ==> FAIL
-search_member(1558, TestRanges) ==> FAIL
-search_member(1560, TestRanges) ==> (1559, 8460).
-search_member(8461, TestRanges) ==> FAIL
-search_member(95586, TestRanges) ==> (93719, 100620).
-search_member(100620, TestRanges) ==> (93719, 100620).
-search_member(100621, TestRanges) ==> FAIL
+*** Test search_range/4 ***
+
+search_range(0, Empty) ==> FAIL
+search_range(-1, TestRanges) ==> FAIL
+search_range(0, TestRanges) ==> FAIL
+search_range(1558, TestRanges) ==> FAIL
+search_range(1560, TestRanges) ==> (1559, 8460).
+search_range(8461, TestRanges) ==> FAIL
+search_range(95586, TestRanges) ==> (93719, 100620).
+search_range(100620, TestRanges) ==> (93719, 100620).
+search_range(100621, TestRanges) ==> FAIL
+
+*** Test compare/3 and lex_compare/3 ***
+
+compare_lex([], []) ==> '='
+    compare([], []) ==> '='
+compare_lex([], [1]) ==> '<'
+    compare([], [1]) ==> '<'
+compare_lex([1], []) ==> '>'
+    compare([1], []) ==> '>'
+compare_lex([1, 3], [2]) ==> '<'
+    compare([1, 3], [2]) ==> '<'
+compare_lex([2], [1, 3]) ==> '>'
+    compare([2], [1, 3]) ==> '>'
+compare_lex([1, 2], [1, 3]) ==> '<'
+    compare([1, 2], [1, 3]) ==> '>'
+compare_lex([1, 3], [1, 2]) ==> '>'
+    compare([1, 3], [1, 2]) ==> '<'
+compare_lex([1, 2, 3, 4], [1, 3]) ==> '<'
+    compare([1, 2, 3, 4], [1, 3]) ==> '>'
+compare_lex([1, 3], [1, 2, 3, 4]) ==> '>'
+    compare([1, 3], [1, 2, 3, 4]) ==> '<'
+compare_lex([1, 2, 3, 4], [1, 5]) ==> '<'
+    compare([1, 2, 3, 4], [1, 5]) ==> '>'
+compare_lex([1, 5], [1, 2, 3, 4]) ==> '>'
+    compare([1, 5], [1, 2, 3, 4]) ==> '<'
+compare_lex([1, 2, 3, 4], [1, 2, 3, 4, 5]) ==> '<'
+    compare([1, 2, 3, 4], [1, 2, 3, 4, 5]) ==> '<'
+compare_lex([1, 2, 3, 4, 5], [1, 2, 3, 4]) ==> '>'
+    compare([1, 2, 3, 4, 5], [1, 2, 3, 4]) ==> '>'
+
+*** Test restrict_min/2 ***
+
+restrict_min(3, [1, 3]) ==> [3]
