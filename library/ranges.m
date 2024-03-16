@@ -3,7 +3,7 @@
 %---------------------------------------------------------------------------%
 % Copyright (C) 2006-2009 The University of Melbourne.
 % Copyright (C) 2013-2016 Opturion Pty Ltd.
-% Copyright (C) 2017-2019, 2022 The Mercury team.
+% Copyright (C) 2017-2019, 2022-2024 The Mercury team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %---------------------------------------------------------------------------%
 %
@@ -108,6 +108,12 @@
     % Nondeterministically produce each element.
     %
 :- pred nondet_member(int::out, ranges::in) is nondet.
+
+    % search_range(N, Set, Lo, Hi):
+    % If N is in Set, then succeed, setting Lo and Hi to the endpoints
+    % of the range in which it is contained.
+    %
+:- pred search_range(int::in, ranges::in, int::out, int::out) is semidet.
 
     % subset(A, B) is true iff every value in A is in B.
     %
@@ -525,9 +531,24 @@ range_member(L, U, range(A0, A1, As)) :-
         range_member(L, U, As)
     ).
 
+%---------------------------------------------------------------------------%
+
 nondet_member(N, As) :-
     range_member(L, U, As),
     int.nondet_int_in_range(L, U, N).
+
+%---------------------------------------------------------------------------%
+
+search_range(N, range(Lo0, Hi0, Rest), Lo, Hi) :-
+    ( if
+        N > Lo0,
+        N =< Hi0
+    then
+        Lo = Lo0 + 1,
+        Hi = Hi0
+    else
+        search_range(N, Rest, Lo, Hi)
+    ).
 
 %---------------------------------------------------------------------------%
 

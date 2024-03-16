@@ -686,6 +686,12 @@ Changes to the Mercury standard library
     - pred `permutation/4`
             (replacement: `random.shuffle_list/4` or `random.shuffle_list/5`)
 
+### Changes to the `ranges` module
+
+* The following predicate has been added:
+
+    - pred `search_range/4`
+
 ### Changes to the `rbtree` module
 
 * The following predicates and functions have been added:

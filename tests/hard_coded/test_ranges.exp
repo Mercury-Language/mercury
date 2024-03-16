@@ -1,0 +1,9 @@
+search_member(0, Empty) ==> FAIL
+search_member(-1, TestRanges) ==> FAIL
+search_member(0, TestRanges) ==> FAIL
+search_member(1558, TestRanges) ==> FAIL
+search_member(1560, TestRanges) ==> (1559, 8460).
+search_member(8461, TestRanges) ==> FAIL
+search_member(95586, TestRanges) ==> (93719, 100620).
+search_member(100620, TestRanges) ==> (93719, 100620).
+search_member(100621, TestRanges) ==> FAIL
