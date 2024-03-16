@@ -511,36 +511,7 @@ test_ptag_is_in_case_group(PtagRval, PtagGroup, TestRval) :-
         SharedInfo = shared_ptag_info(MainPtag, _, _, _, _, _, _),
         OtherPtags = []
     ),
-    (
-        OtherPtags = [],
-        MainPtag = ptag(MainPtagUint8),
-        TestRval = binop(eq(int_type_int), PtagRval,
-            const(llconst_int(uint8.cast_to_int(MainPtagUint8))))
-    ;
-        OtherPtags = [_ | _],
-        encode_ptags_as_bitmap_loop(MainPtag, OtherPtags, 0u, Bitmap),
-        LeftShiftOp = unchecked_left_shift(int_type_uint, shift_by_int),
-        SelectedBitMaskRval = binop(LeftShiftOp,
-            const(llconst_uint(1u)), PtagRval),
-        SelectedBitRval = binop(bitwise_and(int_type_uint),
-            SelectedBitMaskRval, const(llconst_uint(Bitmap))),
-        TestRval = binop(ne(int_type_uint),
-            SelectedBitRval, const(llconst_uint(0u)))
-    ).
-
-:- pred encode_ptags_as_bitmap_loop(ptag::in, list(ptag)::in,
-    uint::in, uint::out) is det.
-
-encode_ptags_as_bitmap_loop(HeadPtag, TailPtags, !Bitmap) :-
-    HeadPtag = ptag(HeadPtagUint8),
-    !:Bitmap = !.Bitmap \/
-        (1u `unchecked_left_ushift` uint8.cast_to_uint(HeadPtagUint8)),
-    (
-        TailPtags = []
-    ;
-        TailPtags = [HeadTailPtag | TailTailPtags],
-        encode_ptags_as_bitmap_loop(HeadTailPtag, TailTailPtags, !Bitmap)
-    ).
+    test_ptag_is_in_set(PtagRval, MainPtag, OtherPtags, TestRval).
 
 %---------------------------------------------------------------------------%
 %
@@ -902,7 +873,7 @@ generate_secondary_try_me_else_chain_case(SectagRval, Case,
     % ZZZ XXX Optimize what we generate when CaseCode = goto(CaseLabel).
     get_next_label(ElseLabel, !CI),
     OoMSectags = one_or_more(HeadSectag, TailSectags),
-    test_sectag_is_in_case_group(SectagRval, HeadSectag, TailSectags,
+    test_sectag_is_in_set(SectagRval, HeadSectag, TailSectags,
         IsApplicableTestRval),
     IsNotApplicableTestRval = unop(logical_not, IsApplicableTestRval),
     SectagStrs =
@@ -968,7 +939,7 @@ generate_secondary_try_chain_case(CaseLabelMap, SectagRval, Case,
     map.lookup(CaseLabelMap, CaseLabel, CaseInfo0),
     CaseInfo0 = case_label_info(Comment, _CaseCode, _CaseGenerated),
     OoMSectags = one_or_more(HeadSectag, TailSectags),
-    test_sectag_is_in_case_group(SectagRval, HeadSectag, TailSectags,
+    test_sectag_is_in_set(SectagRval, HeadSectag, TailSectags,
         IsApplicableTestRval),
     TestCode = singleton(
         llds_instr(
@@ -976,30 +947,6 @@ generate_secondary_try_chain_case(CaseLabelMap, SectagRval, Case,
             "test sec tag only for " ++ Comment)
     ),
     !:TryChainCode = !.TryChainCode ++ TestCode.
-
-%---------------------------------------------------------------------------%
-%
-% Infrastructure needed for both try-me-else and try chain switches
-% on sectags.
-%
-
-:- pred test_sectag_is_in_case_group(rval::in, uint::in, list(uint)::in,
-    rval::out) is det.
-
-test_sectag_is_in_case_group(SectagRval, HeadSectag, TailSectags, TestRval) :-
-    % ZZZ bitmap IF THIS IS BETTER
-    HeadSectagInt = uint.cast_to_int(HeadSectag),
-    HeadTestRval = binop(eq(int_type_int),
-        SectagRval, const(llconst_int(HeadSectagInt))),
-    (
-        TailSectags = [],
-        TestRval = HeadTestRval
-    ;
-        TailSectags = [HeadTailSectag | TailTailSectags],
-        test_sectag_is_in_case_group(SectagRval,
-            HeadTailSectag, TailTailSectags, TailTestRval),
-        TestRval = binop(logical_or, HeadTestRval, TailTestRval)
-    ).
 
 %---------------------------------------------------------------------------%
 %
@@ -1106,6 +1053,230 @@ generate_secondary_binary_search(SectagRval, MaybeFailLabel,
 
         Code = IfCode ++ LoRangeCode ++ LabelCode ++ EqHiRangeCode
     ).
+
+%---------------------------------------------------------------------------%
+%
+% Infrastructure needed for both try-me-else and try chain switches
+% that test whether a tag (ptag or sectag) is in a given set.
+%
+% For ptags we know that all the sets in which we want to test for membership
+% will be subsets of {0 .. 7}, which means that
+%
+% - the bitmap form of the set will always fit into one word, and
+% - using the value of the ptag to index into this word will always be ok.
+%
+% Neither is true for secondary tags, because
+%
+% - testing a secondary tag for membership in the set {2, 5, 77, 80}
+%   will require looking in two words even on 64 bit machines, and
+%
+% - testing a secondary tag for membership in the set {12, 15, 33, 37}
+%   will require looking in either one or two words on 32 bit machines,
+%   but arranging things so that we look in only one word requires
+%   making the least significant bit of that word correspond to
+%   a sectag value that is *not* zero, requiring a subtraction
+%   of an initial offset from the actual sectag value.
+%
+% If we want to take advantage of the invariants applying to ptags (and we do),
+% these differences require separate code for testing ptags vs testing sectags.
+% We nevertheless group all that code together here, because this should make
+% understanding and modifying this code simpler.
+%
+% A note about the mixed use of both signed and unsigned integers here.
+%
+% - The macros we use to get the ptag or sectag bits of a word were designed
+%   before Mercury supported unsigned integers, and therefore they return
+%   signed integers.
+%
+% - On the other hand, we want to be able to use bitmaps that all the bits
+%   of a word, including the most-significant bit. If we used signed integer
+%   operations on a bitmap that had the most-significant bit set, we would
+%   be invoking undefined behavior, which would be bad, since I (zs) don't
+%   want the C compiler to either optimize away the test rval entirely,
+%   to to make demons fly out of my nose :-)
+%
+% The result is that we use unsigned integers to hold the bits being shifted,
+% masked and tested, but signed integers (that are always non-negative)
+% as the shift amounts.
+%
+
+:- pred test_ptag_is_in_set(rval::in, ptag::in, list(ptag)::in,
+    rval::out) is det.
+
+test_ptag_is_in_set(PtagRval, MainPtag, OtherPtags, TestRval) :-
+    (
+        OtherPtags = [],
+        MainPtag = ptag(MainPtagUint8),
+        TestRval = binop(eq(int_type_int), PtagRval,
+            const(llconst_int(uint8.cast_to_int(MainPtagUint8))))
+    ;
+        OtherPtags = [_ | _],
+        encode_ptags_as_bitmap_loop(MainPtag, OtherPtags, 0u, Bitmap),
+        LeftShiftOp = unchecked_left_shift(int_type_uint, shift_by_int),
+        SelectedBitMaskRval = binop(LeftShiftOp,
+            const(llconst_uint(1u)), PtagRval),
+        SelectedBitRval = binop(bitwise_and(int_type_uint),
+            SelectedBitMaskRval, const(llconst_uint(Bitmap))),
+        TestRval = binop(ne(int_type_uint),
+            SelectedBitRval, const(llconst_uint(0u)))
+    ).
+
+:- pred encode_ptags_as_bitmap_loop(ptag::in, list(ptag)::in,
+    uint::in, uint::out) is det.
+
+encode_ptags_as_bitmap_loop(HeadPtag, TailPtags, !Bitmap) :-
+    HeadPtag = ptag(HeadPtagUint8),
+    !:Bitmap = !.Bitmap \/
+        (1u `unchecked_left_ushift` uint8.cast_to_uint(HeadPtagUint8)),
+    (
+        TailPtags = []
+    ;
+        TailPtags = [HeadTailPtag | TailTailPtags],
+        encode_ptags_as_bitmap_loop(HeadTailPtag, TailTailPtags, !Bitmap)
+    ).
+
+%---------------------%
+
+:- pred test_sectag_is_in_set(rval::in, uint::in, list(uint)::in,
+    rval::out) is det.
+
+test_sectag_is_in_set(SectagRval, HeadSectag, TailSectags, TestRval) :-
+    (
+        TailSectags = [],
+        TestRval = make_sectag_eq_test(SectagRval, HeadSectag)
+    ;
+        TailSectags = [HeadTailSectag | TailTailSectags],
+        (
+            TailTailSectags = [],
+            HeadTestRval = make_sectag_eq_test(SectagRval, HeadSectag),
+            HeadTailTestRval = make_sectag_eq_test(SectagRval, HeadTailSectag),
+            TestRval = binop(logical_or, HeadTestRval, HeadTailTestRval)
+        ;
+            TailTailSectags = [_ | _],
+            BitmapWord0 = make_bitmap_word_starting_at(HeadSectag),
+            % XXX This should be set to the minimum of
+            % - the wordsize of the machine we are running on, and
+            % - the wordsize of the machine we are compiling to, if different.
+            WordSize = 32u,
+            encode_sectags_as_bitmaps_loop(WordSize,
+                HeadTailSectag, TailTailSectags, BitmapWord0, OoMBitmaps),
+            OoMBitmaps = one_or_more(HeadBitmap, TailBitmaps),
+            test_sectag_is_in_bitmaps(WordSize, SectagRval,
+                HeadBitmap, TailBitmaps, TestRval)
+        )
+    ).
+
+:- type bitmap_word
+    --->    bitmap_word(
+                bw_start_offset     :: uint,
+                bw_bitmap_word      :: uint,
+                bw_values           :: cord(uint)
+            ).
+
+:- pred encode_sectags_as_bitmaps_loop(uint::in, uint::in, list(uint)::in,
+    bitmap_word::in, one_or_more(bitmap_word)::out) is det.
+
+encode_sectags_as_bitmaps_loop(WordSize, HeadN, TailNs,
+        CurBitmapWord0, BitmapWords) :-
+    CurBitmapWord0 = bitmap_word(StartOffset, Bitmap0, ValuesCord0),
+    LocalOffset = HeadN - StartOffset,
+    ( if LocalOffset =< WordSize then
+        Bitmap1 = Bitmap0 \/ (1u `unchecked_left_ushift` LocalOffset),
+        cord.snoc(HeadN, ValuesCord0, ValuesCord1),
+        CurBitmapWord1 = bitmap_word(StartOffset, Bitmap1, ValuesCord1),
+        (
+            TailNs = [],
+            BitmapWords = one_or_more(CurBitmapWord1, [])
+        ;
+            TailNs = [HeadTailN | TailTailNs],
+            encode_sectags_as_bitmaps_loop(WordSize, HeadTailN, TailTailNs,
+                CurBitmapWord1, BitmapWords)
+        )
+    else
+        NextBitmapWord1 = make_bitmap_word_starting_at(HeadN),
+        (
+            TailNs = [],
+            BitmapWords = one_or_more(CurBitmapWord0, [NextBitmapWord1])
+        ;
+            TailNs = [HeadTailN | TailTailNs],
+            encode_sectags_as_bitmaps_loop(WordSize, HeadTailN, TailTailNs,
+                NextBitmapWord1, TailBitmapWords),
+            BitmapWords = one_or_more.cons(CurBitmapWord0, TailBitmapWords)
+        )
+    ).
+
+:- func make_bitmap_word_starting_at(uint) = bitmap_word.
+
+make_bitmap_word_starting_at(N) =
+    bitmap_word(N, 1u, cord.singleton(N)).
+
+:- pred test_sectag_is_in_bitmaps(uint::in, rval::in,
+    bitmap_word::in, list(bitmap_word)::in, rval::out) is det.
+
+test_sectag_is_in_bitmaps(WordSize, SectagRval, HeadBitmap, TailBitmaps,
+        TestRval) :-
+    HeadBitmap = bitmap_word(StartOffset, Bitmap0, ValuesCord),
+    Values = cord.list(ValuesCord),
+    % When we have just one sectag value, we just test for equality directly.
+    %
+    % For three or more sectag values, it is almost certainly cheaper
+    % to do a substraction, a shift, and bitwise and a test against zero
+    % than it is to do three equality tests and two logical ORs.
+    %
+    % For two sectag values, the answer to the question "which approach
+    % is faster" is reasonably likely to be both platform- and data-dependent.
+    (
+        Values = [],
+        unexpected($pred, "Values = []")
+    ;
+        Values = [ValueA],
+        HeadTestRval = make_sectag_eq_test(SectagRval, ValueA)
+    ;
+        Values = [ValueA, ValueB],
+        TestA = make_sectag_eq_test(SectagRval, ValueA),
+        TestB = make_sectag_eq_test(SectagRval, ValueB),
+        HeadTestRval = binop(logical_or, TestA, TestB)
+    ;
+        Values = [_, _, _ | _],
+        ( if StartOffset = 0u then
+            Bitmap = Bitmap0,
+            OffsetInWordRval = SectagRval
+        else if list.det_last(Values, LastValue), LastValue < WordSize then
+            % Avoid subtracting StartOffset from SectagRval, and compensate
+            % by shifting all the bits in Bitmap to the left by StartOffset.
+            Bitmap = Bitmap0 `unchecked_left_ushift` StartOffset,
+            OffsetInWordRval = SectagRval
+        else
+            Bitmap = Bitmap0,
+            SubOp = int_sub(int_type_uint),
+            StartOffsetInt = uint.cast_to_int(StartOffset),
+            OffsetInWordRval = binop(SubOp,
+                SectagRval, const(llconst_int(StartOffsetInt)))
+        ),
+        LeftShiftOp = unchecked_left_shift(int_type_uint, shift_by_int),
+        SelectedBitMaskRval = binop(LeftShiftOp,
+            const(llconst_uint(1u)), OffsetInWordRval),
+        SelectedBitRval = binop(bitwise_and(int_type_uint),
+            SelectedBitMaskRval, const(llconst_uint(Bitmap))),
+        HeadTestRval = binop(ne(int_type_uint),
+            SelectedBitRval, const(llconst_uint(0u)))
+    ),
+    (
+        TailBitmaps = [],
+        TestRval = HeadTestRval
+    ;
+        TailBitmaps = [HeadTailBitmap | TailTailBitmaps],
+        test_sectag_is_in_bitmaps(WordSize, SectagRval,
+            HeadTailBitmap, TailTailBitmaps, TailTestRval),
+        TestRval = binop(logical_or, HeadTestRval, TailTestRval)
+    ).
+
+:- func make_sectag_eq_test(rval, uint) = rval.
+
+make_sectag_eq_test(SectagRval, Sectag) = TestRval :-
+    SectagInt = uint.cast_to_int(Sectag),
+    TestRval = binop(eq(int_type_int),
+        SectagRval, const(llconst_int(SectagInt))).
 
 %---------------------------------------------------------------------------%
 %
