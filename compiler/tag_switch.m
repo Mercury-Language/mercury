@@ -736,18 +736,20 @@ generate_secondary_switch(VarRval, SectagReg, MaybeFailLabel,
     ),
     (
         Method = try_me_else_chain,
+        globals.get_word_size(Globals, WordSize),
         map.to_sorted_assoc_list(LabelToSectagsMap, LabelToSectagsAL),
         list.det_head_tail(LabelToSectagsAL,
             HeadLabelToSectagsAL, TailLabelToSectagsAL),
-        generate_secondary_try_me_else_chain(SectagRval, MaybeSecFailLabel,
-            HeadLabelToSectagsAL, TailLabelToSectagsAL, CasesCode,
-            !CaseLabelMap, !CI)
+        generate_secondary_try_me_else_chain(WordSize, SectagRval,
+            MaybeSecFailLabel, HeadLabelToSectagsAL, TailLabelToSectagsAL,
+            CasesCode, !CaseLabelMap, !CI)
     ;
         Method = try_chain,
+        globals.get_word_size(Globals, WordSize),
         map.to_sorted_assoc_list(LabelToSectagsMap, LabelToSectagsAL),
         list.det_head_tail(LabelToSectagsAL,
             HeadLabelToSectagsAL, TailLabelToSectagsAL),
-        generate_secondary_try_chain(SectagRval, MaybeSecFailLabel,
+        generate_secondary_try_chain(WordSize, SectagRval, MaybeSecFailLabel,
             HeadLabelToSectagsAL, TailLabelToSectagsAL,
             empty, CasesCode, !CaseLabelMap)
     ;
@@ -829,26 +831,27 @@ compute_sectag_rval(Globals, VarRval, SectagReg, SharedInfo, Method,
 
     % Generate a switch on a secondary tag value using a try-me-else chain.
     %
-:- pred generate_secondary_try_me_else_chain(rval::in, maybe(label)::in,
-    sectag_case(label)::in, sectag_case_list(label)::in, llds_code::out,
-    case_label_map::in, case_label_map::out,
+:- pred generate_secondary_try_me_else_chain(word_size::in, rval::in,
+    maybe(label)::in, sectag_case(label)::in, sectag_case_list(label)::in,
+    llds_code::out, case_label_map::in, case_label_map::out,
     code_info::in, code_info::out) is det.
 
-generate_secondary_try_me_else_chain(SectagRval, MaybeFailLabel,
+generate_secondary_try_me_else_chain(WordSize, SectagRval, MaybeFailLabel,
         HeadCase, TailCases, Code, !CaseLabelMap, !CI) :-
     (
         TailCases = [HeadTailCase | TailTailCases],
-        generate_secondary_try_me_else_chain_case(SectagRval, HeadCase,
-            HeadCode, !CaseLabelMap, !CI),
-        generate_secondary_try_me_else_chain(SectagRval, MaybeFailLabel,
-            HeadTailCase, TailTailCases, TailCode, !CaseLabelMap, !CI),
+        generate_secondary_try_me_else_chain_case(WordSize, SectagRval,
+            HeadCase, HeadCode, !CaseLabelMap, !CI),
+        generate_secondary_try_me_else_chain(WordSize, SectagRval,
+            MaybeFailLabel, HeadTailCase, TailTailCases, TailCode,
+            !CaseLabelMap, !CI),
         Code = HeadCode ++ TailCode
     ;
         TailCases = [],
         (
             MaybeFailLabel = yes(FailLabel),
-            generate_secondary_try_me_else_chain_case(SectagRval, HeadCase,
-                HeadCode, !CaseLabelMap, !CI),
+            generate_secondary_try_me_else_chain_case(WordSize, SectagRval,
+                HeadCase, HeadCode, !CaseLabelMap, !CI),
             FailCode = singleton(
                 llds_instr(goto(code_label(FailLabel)),
                     "secondary tag does not match any case")
@@ -861,19 +864,19 @@ generate_secondary_try_me_else_chain(SectagRval, MaybeFailLabel,
         )
     ).
 
-:- pred generate_secondary_try_me_else_chain_case(rval::in,
+:- pred generate_secondary_try_me_else_chain_case(word_size::in, rval::in,
     pair(label, one_or_more(uint))::in, llds_code::out,
     case_label_map::in, case_label_map::out,
     code_info::in, code_info::out) is det.
 
-generate_secondary_try_me_else_chain_case(SectagRval, Case,
-        Code, !CaseLabelMap, !CI) :-
+generate_secondary_try_me_else_chain_case(WordSize, SectagRval, Case, Code,
+        !CaseLabelMap, !CI) :-
     Case = CaseLabel - OoMSectags,
     generate_case_code_or_jump(CaseLabel, CaseCode, !CaseLabelMap),
     % ZZZ XXX Optimize what we generate when CaseCode = goto(CaseLabel).
     get_next_label(ElseLabel, !CI),
     OoMSectags = one_or_more(HeadSectag, TailSectags),
-    test_sectag_is_in_set(SectagRval, HeadSectag, TailSectags,
+    test_sectag_is_in_set(WordSize, SectagRval, HeadSectag, TailSectags,
         IsApplicableTestRval),
     IsNotApplicableTestRval = unop(logical_not, IsApplicableTestRval),
     SectagStrs =
@@ -898,25 +901,25 @@ generate_secondary_try_me_else_chain_case(SectagRval, Case,
 
     % Generate a switch on a secondary tag value using a try chain.
     %
-:- pred generate_secondary_try_chain(rval::in, maybe(label)::in,
+:- pred generate_secondary_try_chain(word_size::in, rval::in, maybe(label)::in,
     sectag_case(label)::in, sectag_case_list(label)::in,
     llds_code::in, llds_code::out,
     case_label_map::in, case_label_map::out) is det.
 
-generate_secondary_try_chain(SectagRval, MaybeFailLabel, HeadCase, TailCases,
-        !.TryChainCode, Code, !CaseLabelMap) :-
+generate_secondary_try_chain(WordSize, SectagRval, MaybeFailLabel,
+        HeadCase, TailCases, !.TryChainCode, Code, !CaseLabelMap) :-
     (
         TailCases = [HeadTailCase | TailTailCases],
-        generate_secondary_try_chain_case(!.CaseLabelMap, SectagRval, HeadCase,
-            !TryChainCode),
-        generate_secondary_try_chain(SectagRval, MaybeFailLabel,
+        generate_secondary_try_chain_case(WordSize, !.CaseLabelMap, SectagRval,
+            HeadCase, !TryChainCode),
+        generate_secondary_try_chain(WordSize, SectagRval, MaybeFailLabel,
             HeadTailCase, TailTailCases, !.TryChainCode, Code, !CaseLabelMap)
     ;
         TailCases = [],
         (
             MaybeFailLabel = yes(FailLabel),
-            generate_secondary_try_chain_case(!.CaseLabelMap, SectagRval,
-                HeadCase, !TryChainCode),
+            generate_secondary_try_chain_case(WordSize, !.CaseLabelMap,
+                SectagRval, HeadCase, !TryChainCode),
             FailCode = singleton(
                 llds_instr(goto(code_label(FailLabel)),
                     "secondary tag with no code to handle it")
@@ -930,16 +933,17 @@ generate_secondary_try_chain(SectagRval, MaybeFailLabel, HeadCase, TailCases,
         )
     ).
 
-:- pred generate_secondary_try_chain_case(case_label_map::in, rval::in,
-    pair(label, one_or_more(uint))::in, llds_code::in, llds_code::out) is det.
+:- pred generate_secondary_try_chain_case(word_size::in, case_label_map::in,
+    rval::in, pair(label, one_or_more(uint))::in,
+    llds_code::in, llds_code::out) is det.
 
-generate_secondary_try_chain_case(CaseLabelMap, SectagRval, Case,
+generate_secondary_try_chain_case(WordSize, CaseLabelMap, SectagRval, Case,
         !TryChainCode) :-
     Case = CaseLabel - OoMSectags,
     map.lookup(CaseLabelMap, CaseLabel, CaseInfo0),
     CaseInfo0 = case_label_info(Comment, _CaseCode, _CaseGenerated),
     OoMSectags = one_or_more(HeadSectag, TailSectags),
-    test_sectag_is_in_set(SectagRval, HeadSectag, TailSectags,
+    test_sectag_is_in_set(WordSize, SectagRval, HeadSectag, TailSectags,
         IsApplicableTestRval),
     TestCode = singleton(
         llds_instr(
@@ -1137,10 +1141,11 @@ encode_ptags_as_bitmap_loop(HeadPtag, TailPtags, !Bitmap) :-
 
 %---------------------%
 
-:- pred test_sectag_is_in_set(rval::in, uint::in, list(uint)::in,
-    rval::out) is det.
+:- pred test_sectag_is_in_set(word_size::in, rval::in, uint::in,
+    list(uint)::in, rval::out) is det.
 
-test_sectag_is_in_set(SectagRval, HeadSectag, TailSectags, TestRval) :-
+test_sectag_is_in_set(WordSizeKind, SectagRval, HeadSectag, TailSectags,
+        TestRval) :-
     (
         TailSectags = [],
         TestRval = make_sectag_eq_test(SectagRval, HeadSectag)
@@ -1154,10 +1159,12 @@ test_sectag_is_in_set(SectagRval, HeadSectag, TailSectags, TestRval) :-
         ;
             TailTailSectags = [_ | _],
             BitmapWord0 = make_bitmap_word_starting_at(HeadSectag),
-            % XXX This should be set to the minimum of
+            % We set the word size to the minimum of
             % - the wordsize of the machine we are running on, and
             % - the wordsize of the machine we are compiling to, if different.
-            WordSize = 32u,
+            ( WordSizeKind = word_size_32, WordSize = 32u
+            ; WordSizeKind = word_size_64, WordSize = 64u
+            ),
             encode_sectags_as_bitmaps_loop(WordSize,
                 HeadTailSectag, TailTailSectags, BitmapWord0, OoMBitmaps),
             OoMBitmaps = one_or_more(HeadBitmap, TailBitmaps),

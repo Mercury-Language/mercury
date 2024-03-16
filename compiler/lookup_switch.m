@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1996-2012 The University of Melbourne.
-% Copyright (C) 2015, 2017-2018, 2020-2022 The Mercury team.
+% Copyright (C) 2015, 2017-2018, 2020-2022, 2024 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -162,6 +162,7 @@
 
 :- implementation.
 
+:- import_module backend_libs.switch_util.
 :- import_module backend_libs.builtin_ops.
 :- import_module hlds.code_model.
 :- import_module hlds.goal_form.
@@ -867,7 +868,10 @@ construct_fail_row(OutTypes, MainRow, !FailCaseCount) :-
 generate_bitvec_test(IndexRval, CaseVals, Start, _End, CheckCode,
         !CI, !CLD) :-
     get_globals(!.CI, Globals),
-    get_word_bits(Globals, WordBits, Log2WordBits),
+    get_target_host_min_word_size(Globals, WordSize),
+    ( WordSize = word_size_32, WordBits = 32, Log2WordBits = 5
+    ; WordSize = word_size_64, WordBits = 64, Log2WordBits = 6
+    ),
     generate_bit_vec(CaseVals, Start, WordBits, BitVecArgs, BitVecRval, !CI),
 
     % Optimize the single-word case: if all the cases fit into a single word,

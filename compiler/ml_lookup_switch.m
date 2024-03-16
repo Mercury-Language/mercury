@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 2009-2012 The University of Melbourne.
-% Copyright (C) 2014-2018, 2020-2023 The Mercury team.
+% Copyright (C) 2014-2018, 2020-2024 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -120,6 +120,7 @@
 
 :- implementation.
 
+:- import_module backend_libs.switch_util.
 :- import_module backend_libs.builtin_ops.
 :- import_module hlds.goal_form.
 :- import_module hlds.hlds_module.
@@ -615,7 +616,10 @@ make_several_soln_lookup_vars(Context, SeveralSolnLookupVars, !Info) :-
 ml_generate_bitvec_test(MLDS_ModuleName, Context, IndexRval, CaseVals,
         Start, _End, CheckRval, !Info) :-
     ml_gen_info_get_globals(!.Info, Globals),
-    get_word_bits(Globals, WordBits, Log2WordBits),
+       get_target_host_min_word_size(Globals, WordSize),
+    ( WordSize = word_size_32, WordBits = 32, Log2WordBits = 5
+    ; WordSize = word_size_64, WordBits = 64, Log2WordBits = 6
+    ),
     ml_gen_info_get_global_data(!.Info, GlobalData0),
     ml_generate_bit_vec(MLDS_ModuleName, Context, CaseVals, Start, WordBits,
         BitVecArgRvals, BitVecRval, GlobalData0, GlobalData),

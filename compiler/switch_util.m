@@ -27,6 +27,8 @@
 :- import_module hlds.hlds_data.
 :- import_module hlds.hlds_goal.
 :- import_module hlds.hlds_module.
+:- import_module libs.
+:- import_module libs.globals.
 :- import_module parse_tree.
 :- import_module parse_tree.prog_data.
 
@@ -120,14 +122,30 @@
 
 %---------------------------------------------------------------------------%
 
+    % get_word_bits(Globals, MinWordSize):
+    %
+    % Return in MinWordSize the largest word_size that both the host machine
+    % and the target machine can handle.
+    %
+    % We use this predicate to prevent cross-compilation errors when generating
+    % bit vector tests for lookup switches by making sure that the bitvector
+    % uses a number of bits that will fit both on this machine (so that
+    % we can correctly generate it), and on the target machine (so that
+    % it can be executed correctly).
+    %
+    % Since the only two word sizes we support are 32 and 64 bits,
+    % the returned value will be one of these.
+    %
+:- pred get_target_host_min_word_size(globals::in, word_size::out) is det.
+
+%---------------------------------------------------------------------------%
+
 :- implementation.
 
 :- import_module check_hlds.
 :- import_module check_hlds.type_util.
 :- import_module hlds.hlds_code_util.
 :- import_module hlds.hlds_pred.
-:- import_module libs.
-:- import_module libs.globals.
 :- import_module libs.optimization_options.
 :- import_module parse_tree.prog_type.
 
@@ -685,6 +703,24 @@ type_ctor_cat_to_switch_cat(CtorCat) = SwitchCat :-
         % You can't have a switch without at least two arms, or without values
         % that can be deconstructed.
         unexpected($pred, "bad type ctor cat")
+    ).
+
+%---------------------------------------------------------------------------%
+
+get_target_host_min_word_size(Globals, MinWordSize) :-
+    globals.get_word_size(Globals, TargetWordSize),
+    int.bits_per_int(HostWordBits),
+    ( if HostWordBits = 64 then
+        HostWordSize = word_size_64
+    else if HostWordBits = 32 then
+        HostWordSize = word_size_32
+    else
+        unexpected($pred, "HostWordSize not 64 or 32 bits")
+    ),
+    ( if TargetWordSize = word_size_64, HostWordSize = word_size_64 then
+        MinWordSize = word_size_64
+    else
+        MinWordSize = word_size_32
     ).
 
 %---------------------------------------------------------------------------%

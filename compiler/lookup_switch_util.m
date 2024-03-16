@@ -23,8 +23,6 @@
 :- import_module hlds.hlds_data.
 :- import_module hlds.hlds_goal.
 :- import_module hlds.hlds_module.
-:- import_module libs.
-:- import_module libs.globals.
 :- import_module parse_tree.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_type.
@@ -117,24 +115,6 @@
 :- pred project_solns_to_rval_lists(assoc_list(T, soln_consts(Rval))::in,
     list(list(Rval))::in, list(list(Rval))::out) is det.
 
-    % get_word_bits(Globals, WordBits, Log2WordBits):
-    %
-    % Return in WordBits the largest number of bits that
-    % - fits into a word on the host machine
-    % - fits into a word on the target machine
-    % - is a power of 2.
-    %
-    % WordBits will be 2^Log2WordBits.
-    %
-    % We use this predicate to prevent cross-compilation errors when generating
-    % bit vector tests for lookup switches by making sure that the bitvector
-    % uses a number of bits that will fit both on this machine (so that
-    % we can correctly generate it), and on the target machine (so that
-    % it can be executed correctly). We require the number of bits to be
-    % a power of 2, so that we implement division as right-shift.
-    %
-:- pred get_word_bits(globals::in, int::out, int::out) is det.
-
 %---------------------------------------------------------------------------%
 %
 % These predicates are used in both the LLDS and MLDS backends
@@ -159,7 +139,8 @@
 :- import_module backend_libs.string_encoding.
 :- import_module check_hlds.
 :- import_module check_hlds.type_util.
-:- import_module libs.options.
+:- import_module libs.
+:- import_module libs.globals.
 
 :- import_module int.
 :- import_module maybe.
@@ -365,22 +346,6 @@ project_solns_to_rval_lists([Case | Cases], !RvalsList) :-
         !:RvalsList = [FirstSolnRvals | LaterSolnsRvalsList] ++ !.RvalsList
     ),
     project_solns_to_rval_lists(Cases, !RvalsList).
-
-%---------------------------------------------------------------------------%
-
-get_word_bits(Globals, WordBits, Log2WordBits) :-
-    int.bits_per_int(HostWordBits),
-    globals.lookup_int_option(Globals, bits_per_word, TargetWordBits),
-    int.min(HostWordBits, TargetWordBits, WordBits0),
-    % Round down to the nearest power of 2.
-    Log2WordBits = log2_rounded_down(WordBits0),
-    int.pow(2, Log2WordBits, WordBits).
-
-:- func log2_rounded_down(int) = int.
-
-% ZZZ
-log2_rounded_down(X) = Log :-
-    int.log2(X + 1, Log + 1).  % int.log2 rounds up
 
 %---------------------------------------------------------------------------%
 
