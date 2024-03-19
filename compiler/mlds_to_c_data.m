@@ -962,34 +962,34 @@ mlds_output_rval_const(_Opts, Stream, Const, !IO) :-
         ( Const = mlconst_int(N)
         ; Const = mlconst_enum(N, _)
         ),
-        c_util.output_int_expr(Stream, N, !IO)
+        c_util.output_int_as_c_expr(Stream, N, !IO)
     ;
         Const = mlconst_uint(U),
-        c_util.output_uint_expr(Stream, U, !IO)
+        c_util.output_uint_as_c_expr(Stream, U, !IO)
     ;
         Const = mlconst_int8(N),
-        c_util.output_int8_expr(Stream, N, !IO)
+        c_util.output_int8_as_c_expr(Stream, N, !IO)
     ;
         Const = mlconst_uint8(N),
-        c_util.output_uint8_expr(Stream, N, !IO)
+        c_util.output_uint8_as_c_expr(Stream, N, !IO)
     ;
         Const = mlconst_int16(N),
-        c_util.output_int16_expr(Stream, N, !IO)
+        c_util.output_int16_as_c_expr(Stream, N, !IO)
     ;
         Const = mlconst_uint16(N),
-        c_util.output_uint16_expr(Stream, N, !IO)
+        c_util.output_uint16_as_c_expr(Stream, N, !IO)
     ;
         Const = mlconst_int32(N),
-        c_util.output_int32_expr(Stream, N, !IO)
+        c_util.output_int32_as_c_expr(Stream, N, !IO)
     ;
         Const = mlconst_uint32(N),
-        c_util.output_uint32_expr(Stream, N, !IO)
+        c_util.output_uint32_as_c_expr(Stream, N, !IO)
     ;
         Const = mlconst_int64(N),
-        c_util.output_int64_expr(Stream, N, !IO)
+        c_util.output_int64_as_c_expr(Stream, N, !IO)
     ;
         Const = mlconst_uint64(N),
-        c_util.output_uint64_expr(Stream, N, !IO)
+        c_util.output_uint64_as_c_expr(Stream, N, !IO)
     ;
         Const = mlconst_char(C),
         io.format(Stream, "(MR_Char) %d", [i(C)], !IO)

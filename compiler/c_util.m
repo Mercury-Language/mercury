@@ -162,42 +162,42 @@
 
     % Write out an int as a C expression.
     %
-:- pred output_int_expr(io.text_output_stream::in, int::in,
+:- pred output_int_as_c_expr(io.text_output_stream::in, int::in,
     io::di, io::uo) is det.
 
     % Write out a uint as a C expression.
     %
-:- pred output_uint_expr(io.text_output_stream::in, uint::in,
+:- pred output_uint_as_c_expr(io.text_output_stream::in, uint::in,
     io::di, io::uo) is det.
 
     % Write out an int8 as a C expression.
     %
-:- pred output_int8_expr(io.text_output_stream::in, int8::in,
+:- pred output_int8_as_c_expr(io.text_output_stream::in, int8::in,
     io::di, io::uo) is det.
 
     % Write out a uint8 as a C expression.
     %
-:- pred output_uint8_expr(io.text_output_stream::in, uint8::in,
+:- pred output_uint8_as_c_expr(io.text_output_stream::in, uint8::in,
     io::di, io::uo) is det.
 
     % Write out an int16 as a C expression.
     %
-:- pred output_int16_expr(io.text_output_stream::in, int16::in,
+:- pred output_int16_as_c_expr(io.text_output_stream::in, int16::in,
     io::di, io::uo) is det.
 
     % Write out a uint16 as a C expression.
     %
-:- pred output_uint16_expr(io.text_output_stream::in, uint16::in,
+:- pred output_uint16_as_c_expr(io.text_output_stream::in, uint16::in,
     io::di, io::uo) is det.
 
     % Write out an int32 as a C expression.
     %
-:- pred output_int32_expr(io.text_output_stream::in, int32::in,
+:- pred output_int32_as_c_expr(io.text_output_stream::in, int32::in,
     io::di, io::uo) is det.
 
     % Write out a uint32 as a C expression.
     %
-:- pred output_uint32_expr(io.text_output_stream::in, uint32::in,
+:- pred output_uint32_as_c_expr(io.text_output_stream::in, uint32::in,
     io::di, io::uo) is det.
 
     % Convert a uint64 to a string suitable for use as a C uint64_t literal.
@@ -207,7 +207,7 @@
 
     % Write out an int64 as a C expression.
     %
-:- pred output_int64_expr(io.text_output_stream::in, int64::in,
+:- pred output_int64_as_c_expr(io.text_output_stream::in, int64::in,
     io::di, io::uo) is det.
 
     % Convert a uint64 to a string suitable for use as a C uint64_t literal.
@@ -217,7 +217,7 @@
 
     % Write out a uint64 as a C expression.
     %
-:- pred output_uint64_expr(io.text_output_stream::in, uint64::in,
+:- pred output_uint64_as_c_expr(io.text_output_stream::in, uint64::in,
     io::di, io::uo) is det.
 
 %---------------------------------------------------------------------------%
@@ -823,7 +823,7 @@ unicode_escape_any_char(CharInt, EscapeCodeChars) :-
 % Integer literals.
 %
 
-output_int_expr(Stream, N, !IO) :-
+output_int_as_c_expr(Stream, N, !IO) :-
     % We need to cast to (MR_Integer) to ensure things like 1 << 32 work
     % when `MR_Integer' is 64 bits but `int' is 32 bits.
     %
@@ -878,7 +878,7 @@ output_int_expr(Stream, N, !IO) :-
 % Unsigned integer literals.
 %
 
-output_uint_expr(Stream, N, !IO) :-
+output_uint_as_c_expr(Stream, N, !IO) :-
     % We need to cast to (MR_Unsigned) to ensure things like 1 << 32 work
     % when `MR_Unsigned' is 64 bits but `unsigned int' is 32 bits.
     io.format(Stream, "(MR_Unsigned) %uU", [u(N)], !IO).
@@ -890,26 +890,26 @@ output_uint_expr(Stream, N, !IO) :-
 
 % The INTn_C and UINTn_C macros used here are defined in stdint.h.
 
-output_int8_expr(Stream, N, !IO) :-
+output_int8_as_c_expr(Stream, N, !IO) :-
     io.format(Stream, "INT8_C(%d)", [i8(N)], !IO).
 
-output_uint8_expr(Stream, N, !IO) :-
+output_uint8_as_c_expr(Stream, N, !IO) :-
     io.format(Stream, "UINT8_C(%u)", [u8(N)], !IO).
 
-output_int16_expr(Stream, N, !IO) :-
+output_int16_as_c_expr(Stream, N, !IO) :-
     io.format(Stream, "INT16_C(%d)", [i16(N)], !IO).
 
-output_uint16_expr(Stream, N, !IO) :-
+output_uint16_as_c_expr(Stream, N, !IO) :-
     io.format(Stream, "UINT16_C(%u)", [u16(N)], !IO).
 
-output_int32_expr(Stream, N, !IO) :-
+output_int32_as_c_expr(Stream, N, !IO) :-
     ( if N = min_int32 then
         io.write_string(Stream, "INT32_MIN", !IO)
     else
         io.format(Stream, "INT32_C(%d)", [i32(N)], !IO)
     ).
 
-output_uint32_expr(Stream, N, !IO) :-
+output_uint32_as_c_expr(Stream, N, !IO) :-
     io.format(Stream, "UINT32_C(%u)", [u32(N)], !IO).
 
 make_int64_literal(N) = Literal :-
@@ -919,7 +919,7 @@ make_int64_literal(N) = Literal :-
         string.format("INT64_C(%d)", [i64(N)], Literal)
     ).
 
-output_int64_expr(Stream, N, !IO) :-
+output_int64_as_c_expr(Stream, N, !IO) :-
     ( if N = min_int64 then
         io.write_string(Stream, "INT64_MIN", !IO)
     else
@@ -929,7 +929,7 @@ output_int64_expr(Stream, N, !IO) :-
 make_uint64_literal(N) = Literal :-
     string.format("UINT64_C(%u)", [u64(N)], Literal).
 
-output_uint64_expr(Stream, N, !IO) :-
+output_uint64_as_c_expr(Stream, N, !IO) :-
     io.format(Stream, "UINT64_C(%u)", [u64(N)], !IO).
 
 %---------------------------------------------------------------------------%
