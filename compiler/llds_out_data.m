@@ -1005,7 +1005,6 @@ output_rval(Info, Rval, Stream, !IO) :-
     ;
         Rval = binop(BinOp, SubRvalA, SubRvalB),
         output_rval_binop(Stream, Info, BinOp, SubRvalA, SubRvalB, !IO)
-
     ;
         Rval = mkword(ptag(PtagUInt8), SubRval),
         ( if
@@ -1430,11 +1429,11 @@ output_rval_binop(Stream, Info, Op, SubRvalA, SubRvalB, !IO) :-
         ; Op = logical_or,  OpStr = "||"
         ),
         io.write_string(Stream, "(", !IO),
-        output_rval_as_type(Info, SubRvalA, lt_int(int_type_int), Stream, !IO),
+        output_test_rval(Info, SubRvalA, Stream, !IO),
         io.write_string(Stream, " ", !IO),
         io.write_string(Stream, OpStr, !IO),
         io.write_string(Stream, " ", !IO),
-        output_rval_as_type(Info, SubRvalB, lt_int(int_type_int), Stream, !IO),
+        output_test_rval(Info, SubRvalB, Stream, !IO),
         io.write_string(Stream, ")", !IO)
     ;
         % The second operand of the shift operators always has type
@@ -1838,189 +1837,233 @@ is_aligned_dword_ptr(lval(LvalA), lval(LvalB), MemRef) :-
         fail
     ).
 
+:- type maybe_negated_test
+    --->    plain_test
+    ;       negated_test.
+
 output_test_rval(Info, Test, Stream, !IO) :-
-    ( if
-        is_int_cmp(Test, Left, RightConst, OpStr, _)
-    then
-        io.write_string(Stream, OpStr, !IO),
-        io.write_string(Stream, "(", !IO),
-        output_rval(Info, Left, Stream, !IO),
-        io.write_string(Stream, ",", !IO),
-        io.write_int(Stream, RightConst, !IO),
-        io.write_string(Stream, ")", !IO)
-    else if
-        Test = unop(logical_not, InnerTest),
-        is_int_cmp(InnerTest, Left, RightConst, _, NegOpStr)
-    then
-        io.write_string(Stream, NegOpStr, !IO),
-        io.write_string(Stream, "(", !IO),
-        output_rval(Info, Left, Stream, !IO),
-        io.write_string(Stream, ",", !IO),
-        io.write_int(Stream, RightConst, !IO),
-        io.write_string(Stream, ")", !IO)
-    else if
-        is_ptag_test(Test, Rval, Ptag, Negated)
-    then
-        (
-            Negated = no,
-            io.write_string(Stream, "MR_PTAG_TEST(", !IO)
-        ;
-            Negated = yes,
-            io.write_string(Stream, "MR_PTAG_TESTR(", !IO)
-        ),
-        output_rval(Info, Rval, Stream, !IO),
-        io.write_string(Stream, ",", !IO),
-        write_ptag(Stream, Ptag, !IO),
-        io.write_string(Stream, ")", !IO)
-    else if
-        Test = unop(logical_not, InnerTest),
-        is_ptag_test(InnerTest, Rval, Ptag, Negated)
-    then
-        (
-            Negated = no,
-            io.write_string(Stream, "MR_PTAG_TESTR(", !IO)
-        ;
-            Negated = yes,
-            io.write_string(Stream, "MR_PTAG_TEST(", !IO)
-        ),
-        output_rval(Info, Rval, Stream, !IO),
-        io.write_string(Stream, ",", !IO),
-        write_ptag(Stream, Ptag, !IO),
-        io.write_string(Stream, ")", !IO)
-    else if
-        Test = binop(logical_and, Left, Right),
-        is_ptag_test(Left, Rval, Ptag, no),
-        is_remote_stag_test(Right, Rval, Ptag, Stag)
-    then
-        io.write_string(Stream, "MR_RTAGS_TEST(", !IO),
-        output_rval(Info, Rval, Stream, !IO),
-        io.write_string(Stream, ",", !IO),
-        write_ptag(Stream, Ptag, !IO),
-        io.write_string(Stream, ",", !IO),
-        io.write_uint(Stream, Stag, !IO),
-        io.write_string(Stream, ")", !IO)
-    else if
-        Test = unop(logical_not, InnerTest),
-        InnerTest = binop(logical_and, Left, Right),
-        is_ptag_test(Left, Rval, Ptag, no),
-        is_remote_stag_test(Right, Rval, Ptag, Stag)
-    then
-        io.write_string(Stream, "MR_RTAGS_TESTR(", !IO),
-        output_rval(Info, Rval, Stream, !IO),
-        io.write_string(Stream, ",", !IO),
-        write_ptag(Stream, Ptag, !IO),
-        io.write_string(Stream, ",", !IO),
-        io.write_uint(Stream, Stag, !IO),
-        io.write_string(Stream, ")", !IO)
-    else if
-        is_local_stag_test(Test, Rval, Ptag, Stag, Negated)
-    then
-        (
-            Negated = no,
-            io.write_string(Stream, "MR_LTAGS_TEST(", !IO)
-        ;
-            Negated = yes,
-            io.write_string(Stream, "MR_LTAGS_TESTR(", !IO)
-        ),
-        output_rval(Info, Rval, Stream, !IO),
-        io.write_string(Stream, ",", !IO),
-        write_ptag(Stream, Ptag, !IO),
-        io.write_string(Stream, ",", !IO),
-        io.write_uint(Stream, Stag, !IO),
-        io.write_string(Stream, ")", !IO)
-    else if
-        Test = unop(logical_not, InnerTest),
-        is_local_stag_test(InnerTest, Rval, Ptag, Stag, Negated)
-    then
-        (
-            Negated = no,
-            io.write_string(Stream, "MR_LTAGS_TESTR(", !IO)
-        ;
-            Negated = yes,
-            io.write_string(Stream, "MR_LTAGS_TEST(", !IO)
-        ),
-        output_rval(Info, Rval, Stream, !IO),
-        io.write_string(Stream, ",", !IO),
-        write_ptag(Stream, Ptag, !IO),
-        io.write_string(Stream, ",", !IO),
-        io.write_uint(Stream, Stag, !IO),
-        io.write_string(Stream, ")", !IO)
-    else
-        output_rval_as_type(Info, Test, lt_bool, Stream, !IO)
-    ).
+    do_output_test_rval(Stream, Info, plain_test, Test, !IO).
 
-:- pred is_int_cmp(rval::in, rval::out, int::out, string::out, string::out)
-    is semidet.
+:- pred do_output_test_rval(io.text_output_stream::in, llds_out_info::in,
+    maybe_negated_test::in, rval::in, io::di, io::uo) is det.
 
-is_int_cmp(Test, Left, RightConst, OpStr, NegOpStr) :-
-    Test = binop(Op, Left, Right),
-    Right = const(llconst_int(RightConst)),
+do_output_test_rval(Stream, Info, MaybeNegated, TestRval, !IO) :-
     (
-        Op = eq(int_type_int),
-        OpStr = "MR_INT_EQ",
-        NegOpStr = "MR_INT_NE"
+        TestRval = unop(Unop, SubRvalA),
+        ( if Unop = logical_not then
+            ( MaybeNegated = plain_test,    SubNegated = negated_test
+            ; MaybeNegated = negated_test,  SubNegated = plain_test
+            ),
+            do_output_test_rval(Stream, Info, SubNegated, SubRvalA, !IO)
+        else
+            do_output_test_rval_base(Stream, Info, MaybeNegated,
+                TestRval, !IO)
+        )
     ;
-        Op = ne(int_type_int),
-        OpStr = "MR_INT_NE",
-        NegOpStr = "MR_INT_EQ"
+        TestRval = binop(Binop, SubRvalA, SubRvalB),
+        (
+            Binop = logical_and,
+            ( if
+                is_ptag_test(SubRvalA, VarRval, Ptag, no),
+                is_remote_stag_test(SubRvalB, VarRval, Ptag, Sectag)
+            then
+                ( MaybeNegated = plain_test,    Macro = "MR_RTAGS_TEST"
+                ; MaybeNegated = negated_test,  Macro = "MR_RTAGS_TESTR"
+                ),
+                io.write_string(Stream, Macro, !IO),
+                io.write_string(Stream, "(", !IO),
+                output_rval(Info, VarRval, Stream, !IO),
+                io.write_string(Stream, ",", !IO),
+                write_ptag(Stream, Ptag, !IO),
+                io.write_string(Stream, ",", !IO),
+                io.write_uint(Stream, Sectag, !IO),
+                io.write_string(Stream, ")", !IO)
+            else
+                do_output_test_rval_base(Stream, Info, MaybeNegated,
+                    TestRval, !IO)
+            )
+        ;
+            ( Binop = eq(IntType), Negated0 = no
+            ; Binop = ne(IntType), Negated0 = yes
+            ),
+            ( if
+                args_are_of_ptag_test(SubRvalA, SubRvalB, VarRval, Ptag)
+            then
+                ( MaybeNegated = plain_test,    Negated = Negated0
+                ; MaybeNegated = negated_test,  Negated = bool.not(Negated0)
+                ),
+                ( Negated = no,     Macro = "MR_PTAG_TEST"
+                ; Negated = yes,    Macro = "MR_PTAG_TESTR"
+                ),
+                io.write_string(Stream, Macro, !IO),
+                io.write_string(Stream, "(", !IO),
+                output_rval(Info, VarRval, Stream, !IO),
+                io.write_string(Stream, ",", !IO),
+                write_ptag(Stream, Ptag, !IO),
+                io.write_string(Stream, ")", !IO)
+            else if
+                SubRvalB = mkword(Ptag, unop(mkbody, const(ConstB))),
+                ConstB = llconst_int(SectagInt),
+                uint.from_int(SectagInt, Sectag)
+            then
+                VarRval = SubRvalA,
+                ( MaybeNegated = plain_test,    Negated = Negated0
+                ; MaybeNegated = negated_test,  Negated = bool.not(Negated0)
+                ),
+                ( Negated = no,     Macro = "MR_LTAGS_TEST"
+                ; Negated = yes,    Macro = "MR_LTAGS_TESTR"
+                ),
+                io.write_string(Stream, Macro, !IO),
+                io.write_string(Stream, "(", !IO),
+                output_rval(Info, VarRval, Stream, !IO),
+                io.write_string(Stream, ",", !IO),
+                write_ptag(Stream, Ptag, !IO),
+                io.write_string(Stream, ",", !IO),
+                io.write_uint(Stream, Sectag, !IO),
+                io.write_string(Stream, ")", !IO)
+            else if
+                SubRvalB = const(llconst_int(ConstB)),
+                IntType = int_type_int
+            then
+                ( MaybeNegated = plain_test,    Negated = Negated0
+                ; MaybeNegated = negated_test,  Negated = bool.not(Negated0)
+                ),
+                ( Negated = no,     Macro = "MR_INT_EQ"
+                ; Negated = yes,    Macro = "MR_INT_NE"
+                ),
+                io.write_string(Stream, Macro, !IO),
+                io.write_string(Stream, "(", !IO),
+                output_rval(Info, SubRvalA, Stream, !IO),
+                io.write_string(Stream, ",", !IO),
+                io.write_int(Stream, ConstB, !IO),
+                io.write_string(Stream, ")", !IO)
+            else
+                do_output_test_rval_base(Stream, Info, MaybeNegated,
+                    TestRval, !IO)
+            )
+        ;
+            ( Binop = int_lt(IntType), PosM = "MR_INT_LT", NegM = "MR_INT_GE"
+            ; Binop = int_gt(IntType), PosM = "MR_INT_GT", NegM = "MR_INT_LT"
+            ; Binop = int_le(IntType), PosM = "MR_INT_LE", NegM = "MR_INT_GT"
+            ; Binop = int_ge(IntType), PosM = "MR_INT_GE", NegM = "MR_INT_LT"
+            ),
+            ( if
+                SubRvalB = const(llconst_int(ConstB)),
+                IntType = int_type_int
+            then
+                ( MaybeNegated = plain_test,    Macro = PosM
+                ; MaybeNegated = negated_test,  Macro = NegM
+                ),
+                io.write_string(Stream, Macro, !IO),
+                io.write_string(Stream, "(", !IO),
+                output_rval(Info, SubRvalA, Stream, !IO),
+                io.write_string(Stream, ",", !IO),
+                io.write_int(Stream, ConstB, !IO),
+                io.write_string(Stream, ")", !IO)
+            else
+                do_output_test_rval_base(Stream, Info, MaybeNegated,
+                    TestRval, !IO)
+            )
+        ;
+            ( Binop = int_add(_)
+            ; Binop = int_sub(_)
+            ; Binop = int_mul(_)
+            ; Binop = int_div(_)
+            ; Binop = int_mod(_)
+            ; Binop = unchecked_left_shift(_, _)
+            ; Binop = unchecked_right_shift(_, _)
+            ; Binop = bitwise_and(_)
+            ; Binop = bitwise_or(_)
+            ; Binop = bitwise_xor(_)
+            ; Binop = logical_or
+            ; Binop = body
+            ; Binop = array_index(_)
+            ; Binop = string_unsafe_index_code_unit
+            ; Binop = str_eq
+            ; Binop = str_ne
+            ; Binop = str_lt
+            ; Binop = str_gt
+            ; Binop = str_le
+            ; Binop = str_ge
+            ; Binop = str_cmp
+            ; Binop = offset_str_eq(_)
+            ; Binop = unsigned_lt
+            ; Binop = unsigned_le
+            ; Binop = float_add
+            ; Binop = float_sub
+            ; Binop = float_mul
+            ; Binop = float_div
+            ; Binop = float_eq
+            ; Binop = float_ne
+            ; Binop = float_lt
+            ; Binop = float_gt
+            ; Binop = float_le
+            ; Binop = float_ge
+            ; Binop = float_from_dword
+            ; Binop = int64_from_dword
+            ; Binop = uint64_from_dword
+            ; Binop = pointer_equal_conservative
+            ; Binop = compound_eq
+            ; Binop = compound_lt
+            ),
+            do_output_test_rval_base(Stream, Info, MaybeNegated, TestRval, !IO)
+        )
     ;
-        Op = int_lt(int_type_int),
-        OpStr = "MR_INT_LT",
-        NegOpStr = "MR_INT_GE"
-    ;
-        Op = int_gt(int_type_int),
-        OpStr = "MR_INT_GT",
-        NegOpStr = "MR_INT_LT"
-    ;
-        Op = int_le(int_type_int),
-        OpStr = "MR_INT_LE",
-        NegOpStr = "MR_INT_GT"
-    ;
-        Op = int_ge(int_type_int),
-        OpStr = "MR_INT_GE",
-        NegOpStr = "MR_INT_LT"
+        ( TestRval = lval(_)
+        ; TestRval = var(_)
+        ; TestRval = mkword(_, _)
+        ; TestRval = mkword_hole(_)
+        ; TestRval = const(_)
+        ; TestRval = cast(_, _)
+        ; TestRval = mem_addr(_)
+        ),
+        do_output_test_rval_base(Stream, Info, MaybeNegated, TestRval, !IO)
     ).
+
+:- pred do_output_test_rval_base(io.text_output_stream::in, llds_out_info::in,
+    maybe_negated_test::in, rval::in, io::di, io::uo) is det.
+
+do_output_test_rval_base(Stream, Info, MaybeNegated, Test0, !IO) :-
+    (
+        MaybeNegated = plain_test,
+        Test = Test0
+    ;
+        MaybeNegated = negated_test,
+        Test = unop(logical_not, Test0)
+    ),
+    output_rval_as_type(Info, Test, lt_bool, Stream, !IO).
 
 :- pred is_ptag_test(rval::in, rval::out, ptag::out, bool::out) is semidet.
 
-is_ptag_test(Test, Rval, Ptag, Negated) :-
-    Test = binop(Op, Left, Right),
-    Left = unop(tag, Rval),
-    Right = const(llconst_int(PtagInt)),
-    uint8.from_int(PtagInt, PtagUint8),
-    Ptag = ptag(PtagUint8),
+is_ptag_test(TestRval, VarRval, Ptag, Negated) :-
+    TestRval = binop(BinOp, SubRvalA, SubRvalB),
+    args_are_of_ptag_test(SubRvalA, SubRvalB, VarRval, Ptag),
     (
-        Op = eq(_),
+        BinOp = eq(_),
         Negated = no
     ;
-        Op = ne(_),
+        BinOp = ne(_),
         Negated = yes
     ).
+
+:- pred args_are_of_ptag_test(rval::in, rval::in, rval::out, ptag::out)
+    is semidet.
+    
+args_are_of_ptag_test(SubRvalA, SubRvalB, VarRval, Ptag) :-
+    SubRvalA = unop(tag, VarRval),
+    SubRvalB = const(llconst_int(PtagInt)),
+    uint8.from_int(PtagInt, PtagUint8),
+    Ptag = ptag(PtagUint8).
 
 :- pred is_remote_stag_test(rval::in, rval::in, ptag::in, uint::out)
     is semidet.
 
-is_remote_stag_test(Test, Rval, Ptag, Stag) :-
+is_remote_stag_test(Test, VarRval, Ptag, Sectag) :-
     Test = binop(eq(int_type_int), Left, Right),
-    Left = lval(field(yes(Ptag), Rval, Zero)),
+    Left = lval(field(yes(Ptag), VarRval, Zero)),
     Zero = const(llconst_int(0)),
-    Right = const(llconst_int(StagInt)),
-    uint.from_int(StagInt, Stag).
-
-:- pred is_local_stag_test(rval::in, rval::out, ptag::out, uint::out,
-    bool::out) is semidet.
-
-is_local_stag_test(Test, Rval, Ptag, Stag, Negated) :-
-    Test = binop(Op, Rval, Right),
-    Right = mkword(Ptag, unop(mkbody, const(llconst_int(StagInt)))),
-    uint.from_int(StagInt, Stag),
-    (
-        Op = eq(_),
-        Negated = no
-    ;
-        Op = ne(_),
-        Negated = yes
-    ).
+    Right = const(llconst_int(SectagInt)),
+    uint.from_int(SectagInt, Sectag).
 
 output_ptag(Stream, ptag(PtagUInt8), !IO) :-
     io.format(Stream, "MR_mktag(%u)", [u8(PtagUInt8)], !IO).
