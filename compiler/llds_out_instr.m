@@ -1986,7 +1986,8 @@ output_foreign_proc_input(Info, Stream, Input, !IO) :-
             ( if OrigType = builtin_type(BuiltinType) then
                 (
                     BuiltinType = builtin_type_string,
-                    output_llds_type_cast(Stream, lt_string, !IO),
+                    StringTypeStr = llds_type_to_string(lt_string),
+                    io.format(Stream, "(%s) ", [s(StringTypeStr)], !IO),
                     output_rval_as_type(Info, Rval, lt_word, Stream, !IO)
                 ;
                     BuiltinType = builtin_type_float,
@@ -2075,10 +2076,10 @@ output_foreign_proc_output(Info, Stream, Output, !IO) :-
             MaybeForeignType = yes(ForeignTypeInfo),
             ForeignTypeInfo = foreign_proc_type(ForeignType, Assertions),
             ( if asserted_can_pass_as_mercury_type(Assertions) then
+                WordTypeStr = llds_type_to_string(lt_word),
                 output_lval_as_word(Info, Stream, Lval, !IO),
-                io.write_string(Stream, " = ", !IO),
-                output_llds_type_cast(Stream, lt_word, !IO),
-                io.write_string(Stream, VarName, !IO)
+                io.format(Stream, " = (%s) %s",
+                    [s(WordTypeStr), s(VarName)], !IO)
             else
                 io.format(Stream,
                     "MR_MAYBE_BOX_FOREIGN_TYPE(%s, %s, ",
@@ -2091,10 +2092,10 @@ output_foreign_proc_output(Info, Stream, Output, !IO) :-
             ( if OrigType = builtin_type(BuiltinType) then
                 (
                     BuiltinType = builtin_type_string,
+                    WordTypeStr = llds_type_to_string(lt_word),
                     output_lval_as_word(Info, Stream, Lval, !IO),
-                    io.write_string(Stream, " = ", !IO),
-                    output_llds_type_cast(Stream, lt_word, !IO),
-                    io.write_string(Stream, VarName, !IO)
+                    io.format(Stream, " = (%s) %s",
+                        [s(WordTypeStr), s(VarName)], !IO)
                 ;
                     BuiltinType = builtin_type_float,
                     llds.lval_type(Lval, ActualType),

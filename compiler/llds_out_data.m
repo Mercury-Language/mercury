@@ -54,16 +54,10 @@
 :- pred output_lval_as_word(llds_out_info::in, io.text_output_stream::in,
     lval::in, io::di, io::uo) is det.
 
-    % Output the given llds_type with parentheses around it.
-    %
-:- pred output_llds_type_cast(io.text_output_stream::in, llds_type::in,
-    io::di, io::uo) is det.
-
-    % Output the given llds_type.
+    % Return the C "name" the given llds_type. (The "name" is in quotes
+    % because the result may be more than one word.)
     %
 :- func llds_type_to_string(llds_type) = string.
-:- pred output_llds_type(io.text_output_stream::in, llds_type::in,
-    io::di, io::uo) is det.
 
     % Convert an lval to a string description of that lval.
     %
@@ -572,10 +566,14 @@ llds_types_match(lt_bool, lt_int(int_type_uint)).
 llds_types_match(lt_bool, lt_word).
 llds_types_match(lt_int(int_type_int), lt_bool).
 
-output_llds_type_cast(Stream, LLDSType, !IO) :-
-    io.write_string(Stream, "(", !IO),
-    output_llds_type(Stream, LLDSType, !IO),
-    io.write_string(Stream, ") ", !IO).
+    % Output the given llds_type with parentheses around it.
+    %
+:- pred output_llds_type_cast(io.text_output_stream::in, llds_type::in,
+    io::di, io::uo) is det.
+
+output_llds_type_cast(Stream, Type, !IO) :-
+    TypeStr = llds_type_to_string(Type),
+    io.format(Stream, "(%s) ", [s(TypeStr)], !IO).
 
 llds_type_to_string(Type) = Str :-
     (
@@ -613,9 +611,6 @@ llds_type_to_string(Type) = Str :-
     ;
         Type = lt_code_ptr,             Str = "MR_Code *"
     ).
-
-output_llds_type(Stream, Type, !IO) :-
-    io.write_string(Stream, llds_type_to_string(Type), !IO).
 
 lval_to_string(Lval) = Str :-
     (
@@ -845,11 +840,9 @@ output_record_rval_decls_format(Info, Stream, Rval, FirstIndent, LaterIndent,
             then
                 output_indent(Stream, FirstIndent, LaterIndent, !.N, !IO),
                 !:N = !.N + 1,
-                io.write_string(Stream, "static const ", !IO),
-                output_llds_type(Stream, lt_float, !IO),
-                io.write_string(Stream, " mercury_float_const_", !IO),
-                io.write_string(Stream, FloatName, !IO),
-                io.write_string(Stream, " = ", !IO),
+                FloatTypeStr = llds_type_to_string(lt_float),
+                io.format(Stream, "static const %s mercury_float_const_%s = ",
+                    [s(FloatTypeStr), s(FloatName)], !IO),
                 % Note that we just output the expression here, and
                 % let the C compiler evaluate it, rather than evaluating
                 % it ourselves. This avoids having to deal with some nasty
@@ -989,8 +982,9 @@ output_rval(Info, Rval, Stream, !IO) :-
         output_rval_const(Info, Const, Stream, !IO)
     ;
         Rval = cast(Type, SubRval),
+        TypeStr = llds_type_to_string(Type),
         io.write_string(Stream, "((", !IO),
-        output_llds_type(Stream, Type, !IO),
+        io.write_string(Stream, TypeStr, !IO),
         io.write_string(Stream, ") ", !IO),
         output_rval(Info, SubRval, Stream, !IO),
         io.write_string(Stream, ")", !IO)

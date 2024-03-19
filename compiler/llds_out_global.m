@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %----------------------------------------------------------------------------%
 % Copyright (C) 2009-2012 The University of Melbourne.
-% Copyright (C) 2015-2018, 2020-2023 The Mercury team.
+% Copyright (C) 2015-2018, 2020-2024 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %----------------------------------------------------------------------------%
@@ -418,10 +418,10 @@ output_common_type_defn(Stream, TypeNum, CellType, !DeclSet, !IO) :-
         io.write_string(Stream, " {\n", !IO),
         (
             CellType = plain_type(Types),
-            output_cons_arg_types(Stream, Types, "\t", 1, !IO)
+            output_cons_arg_types(Stream, "\t", Types, 1, !IO)
         ;
             CellType = grouped_args_type(ArgGroups),
-            output_cons_arg_group_types(Stream, ArgGroups, "\t", 1, !IO)
+            output_cons_arg_group_types(Stream, "\t", ArgGroups, 1, !IO)
         ),
         io.write_string(Stream, "};\n", !IO),
         output_pragma_pack_pop(Stream, !IO)
@@ -511,39 +511,37 @@ common_cell_get_rvals(Value) = Rvals :-
 common_group_get_rvals(common_cell_grouped_args(_, _, Rvals)) = Rvals.
 common_group_get_rvals(common_cell_ungrouped_arg(_, Rval)) = [Rval].
 
-:- pred output_cons_arg_types(io.text_output_stream::in, list(llds_type)::in,
-    string::in, int::in, io::di, io::uo) is det.
+:- pred output_cons_arg_types(io.text_output_stream::in, string::in,
+    list(llds_type)::in, int::in, io::di, io::uo) is det.
 
-output_cons_arg_types(_, [], _, _, !IO).
-output_cons_arg_types(Stream, [Type | Types], Indent, ArgNum, !IO) :-
-    io.write_string(Stream, Indent, !IO),
+output_cons_arg_types(_, _, [], _, !IO).
+output_cons_arg_types(Stream, IndentStr, [Type | Types], ArgNum, !IO) :-
     ( if Type = lt_float then
         % Ensure float structure members are word-aligned.
-        io.write_string(Stream, "MR_Float_Aligned", !IO)
+        TypeStr = "MR_Float_Aligned"
     else
-        output_llds_type(Stream, Type, !IO)
+        TypeStr = llds_type_to_string(Type)
     ),
-    io.write_string(Stream, " f", !IO),
-    io.write_int(Stream, ArgNum, !IO),
-    io.write_string(Stream, ";\n", !IO),
-    output_cons_arg_types(Stream, Types, Indent, ArgNum + 1, !IO).
+    io.format(Stream, "%s%s f%d;\n",
+        [s(IndentStr), s(TypeStr), i(ArgNum)], !IO),
+    output_cons_arg_types(Stream, IndentStr, Types, ArgNum + 1, !IO).
 
-:- pred output_cons_arg_group_types(io.text_output_stream::in,
-    assoc_list(llds_type, int)::in, string::in,
-    int::in, io::di, io::uo) is det.
+:- pred output_cons_arg_group_types(io.text_output_stream::in, string::in,
+    assoc_list(llds_type, int)::in, int::in, io::di, io::uo) is det.
 
-output_cons_arg_group_types(_, [], _, _, !IO).
-output_cons_arg_group_types(Stream, [Group | Groups], Indent, ArgNum, !IO) :-
-    io.write_string(Stream, Indent, !IO),
+output_cons_arg_group_types(_, _, [], _, !IO).
+output_cons_arg_group_types(Stream, IndentStr, [Group | Groups], ArgNum,
+        !IO) :-
     Group = Type - ArraySize,
+    TypeStr = llds_type_to_string(Type),
     ( if ArraySize = 1 then
-        output_llds_type(Stream, Type, !IO),
-        io.format(Stream, " f%d;\n", [i(ArgNum)], !IO)
+        io.format(Stream, "%s%s f%d;\n",
+            [s(IndentStr), s(TypeStr), i(ArgNum)], !IO)
     else
-        output_llds_type(Stream, Type, !IO),
-        io.format(Stream, " f%d[%d];\n", [i(ArgNum), i(ArraySize)], !IO)
+        io.format(Stream, "%s%s f%d[%d];\n",
+            [s(IndentStr), s(TypeStr), i(ArgNum), i(ArraySize)], !IO)
     ),
-    output_cons_arg_group_types(Stream, Groups, Indent, ArgNum + 1, !IO).
+    output_cons_arg_group_types(Stream, IndentStr, Groups, ArgNum + 1, !IO).
 
 :- pred output_common_cell_value(llds_out_info::in, io.text_output_stream::in,
     common_cell_value::in, io::di, io::uo) is det.
