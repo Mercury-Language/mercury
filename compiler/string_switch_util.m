@@ -19,13 +19,88 @@
 :- interface.
 
 :- import_module backend_libs.builtin_ops.
+:- import_module backend_libs.string_encoding.
 :- import_module hlds.
 :- import_module hlds.hlds_goal.
 
 :- import_module assoc_list.
 :- import_module list.
 :- import_module map.
+:- import_module maybe.
 :- import_module pair.
+
+%---------------------------------------------------------------------------%
+%
+% Stuff for string trie switches.
+%
+
+:- type trie_node
+    --->    trie_leaf(
+                leaf_matched        :: list(int),
+                % The already matched code units, in reverse order.
+
+                leaf_unmatched      :: list(int),
+                % The not-yet matched code units, in forward order.
+                % Invariant: applying from_code_unit_list to
+                % list.reverse(leaf_matched) ++ leaf_unmatched
+                % should yield the original string.
+
+                case_id
+                % The case_id of the switch arm.
+            )
+    ;       trie_choice(
+                choice_matched      :: list(int),
+                % The already matched code units, in reverse order.
+
+                choice_next_level   :: map(int, trie_node),
+                % Maps the next code unit to the trie node reachable
+                % through it.
+
+                choice_end          :: maybe(case_id)
+                % The case number of the switch arm whose string ends here,
+                % if there is one.
+            ).
+
+    % create_trie(Encoding, TaggedCases, MaxCaseNum, TopTrieNode):
+    %
+    % Given a list of tagged cases, convert it to a trie that maps
+    % each string in those cases to the id of its case, with each node
+    % of the trie at depth N containing a branch on the code unit at offset N
+    % of the string in the given encoding (if we consider the root node
+    % to be at level 0).
+    %
+    % Returns also the highest case_id (in its integer form).
+    %
+:- pred create_trie(string_encoding::in, list(tagged_case)::in,
+    int::out, trie_node::out) is det.
+
+%---------------------------------------------------------------------------%
+%
+% Stuff for both string trie switches and string hash switches.
+%
+
+    % build_str_case_id_list(TaggedCases, MaxCaseNum, StrCaseIds):
+    %
+    % Convert the list of cases, each of contains one or more strings,
+    % into an assoc_list that maps each of those strings to its containing
+    % case's case_id. Also return the highest case_id (in its integer form).
+    %
+    % NOTE It would be nice to change the type of the last argument
+    % to a list of values of bespoke type, but
+    %
+    % - the value returned here is given by some callers to
+    %   construct_string_hash_cases, which accepts
+    %   "assoc_list(string, case_id)" as an instance of
+    %   "assoc_list(string, CaseRep)", while
+    %
+    % - some *other* callers of construct_string_hash_cases pass values
+    %   in that slot that use *other* types as the CaseRep type.
+    %
+    % This means that any such bespoke type would not be worthwhile, since
+    % it would be almost as general as the pair type constructor.
+    %   
+:- pred build_str_case_id_list(list(tagged_case)::in,
+    int::out, assoc_list(string, case_id)::out) is det.
 
 %---------------------------------------------------------------------------%
 %
@@ -75,10 +150,145 @@
 :- import_module parse_tree.
 :- import_module parse_tree.prog_data.
 
+:- import_module cord.
 :- import_module int.
 :- import_module io.
 :- import_module require.
 :- import_module string.
+
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%
+% Stuff for string trie switches.
+%
+
+create_trie(Encoding, TaggedCases, MaxCaseNum, TopTrieNode) :-
+    build_str_case_id_list(TaggedCases, MaxCaseNum, StrsCaseIds),
+    % The order of StrsCaseIds does not matter; we will build the same trie
+    % regardless of the order.
+    (
+        StrsCaseIds = [],
+        TopTrieNode = trie_choice([], map.init, no)
+    ;
+        StrsCaseIds = [HeadStrCaseId | TailStrCaseIds],
+        HeadStrCaseId = HeadStr - HeadCaseId,
+        to_code_unit_list_in_encoding(Encoding, HeadStr, HeadStrCodeUnits),
+        TopTrieNode1 = trie_leaf([], HeadStrCodeUnits, HeadCaseId),
+        insert_cases_into_trie(Encoding, TailStrCaseIds, TopTrieNode1,
+            TopTrieNode)
+    ).
+
+:- pred insert_cases_into_trie(string_encoding::in,
+    assoc_list(string, case_id)::in, trie_node::in, trie_node::out) is det.
+
+insert_cases_into_trie(_Encoding, [], !TrieNode).
+insert_cases_into_trie(Encoding, [Case | Cases], !TrieNode) :-
+    Case = Str - CaseId,
+    to_code_unit_list_in_encoding(Encoding, Str, StrCodeUnits),
+    insert_case_into_trie_node([], StrCodeUnits, CaseId, !TrieNode),
+    insert_cases_into_trie(Encoding, Cases, !TrieNode).
+
+:- pred insert_case_into_trie_node(list(int)::in, list(int)::in, case_id::in,
+    trie_node::in, trie_node::out) is det.
+
+insert_case_into_trie_node(InsertMatched, InsertNotYetMatched, InsertCaseId,
+        TrieNode0, TrieNode) :-
+    (
+        TrieNode0 = trie_leaf(LeafMatched, LeafNotYetMatched, LeafCaseId),
+        expect(unify(LeafMatched, InsertMatched), $pred, "LeafMatched didn't"),
+        (
+            LeafNotYetMatched = [],
+            ChoiceMap0 = map.init,
+            MaybeEnd0 = yes(LeafCaseId)
+        ;
+            LeafNotYetMatched = [LeafFirstCodeUnit | LeafLaterCodeUnits],
+            NewLeaf = trie_leaf([LeafFirstCodeUnit | LeafMatched],
+                LeafLaterCodeUnits, LeafCaseId),
+            ChoiceMap0 = map.singleton(LeafFirstCodeUnit, NewLeaf),
+            MaybeEnd0 = no
+        )
+    ;
+        TrieNode0 = trie_choice(ChoiceMatched, ChoiceMap0, MaybeEnd0),
+        expect(unify(ChoiceMatched, InsertMatched), $pred,
+            "ChoiceMatched didn't")
+    ),
+    insert_case_into_trie_choice(InsertMatched, InsertNotYetMatched,
+        InsertCaseId, ChoiceMap0, ChoiceMap, MaybeEnd0, MaybeEnd),
+    TrieNode = trie_choice(InsertMatched, ChoiceMap, MaybeEnd).
+
+:- pred insert_case_into_trie_choice(list(int)::in, list(int)::in, case_id::in,
+    map(int, trie_node)::in, map(int, trie_node)::out,
+    maybe(case_id)::in, maybe(case_id)::out) is det.
+
+insert_case_into_trie_choice(InsertMatched, InsertNotYetMatched, InsertCaseId,
+        ChoiceMap0, ChoiceMap, MaybeEnd0, MaybeEnd) :-
+    (
+        InsertNotYetMatched = [],
+        ChoiceMap = ChoiceMap0,
+        (
+            MaybeEnd0 = no,
+            MaybeEnd = yes(InsertCaseId)
+        ;
+            MaybeEnd0 = yes(_),
+            % You can't have more than one occurrence of a string
+            % as a cons_id in a switch.
+            unexpected($pred, "two strings end at same trie node")
+        )
+    ;
+        InsertNotYetMatched = [InsertFirstCodeUnit | InsertLaterCodeUnits],
+        MaybeEnd = MaybeEnd0,
+        ( if map.search(ChoiceMap0, InsertFirstCodeUnit, SubTrieNode0) then
+            insert_case_into_trie_node([InsertFirstCodeUnit | InsertMatched],
+                InsertLaterCodeUnits, InsertCaseId, SubTrieNode0, SubTrieNode),
+            map.det_update(InsertFirstCodeUnit, SubTrieNode,
+                ChoiceMap0, ChoiceMap)
+        else
+            SubTrieNode = trie_leaf([InsertFirstCodeUnit | InsertMatched],
+                InsertLaterCodeUnits, InsertCaseId),
+            map.det_insert(InsertFirstCodeUnit, SubTrieNode,
+                ChoiceMap0, ChoiceMap)
+        )
+    ).
+
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%
+% Stuff for both string trie switches and string hash switches.
+%
+
+build_str_case_id_list(TaggedCases, MaxCaseNum, StrCaseIds) :-
+    build_str_case_id_cord(TaggedCases, -1, MaxCaseNum,
+        cord.init, StrCaseIdCord),
+    StrCaseIds = cord.list(StrCaseIdCord).
+
+    % Values of this type specify the identity of the case that applies
+    % to a given string.
+:- type string_case_id == pair(string, case_id).
+
+:- pred build_str_case_id_cord(list(tagged_case)::in, int::in, int::out,
+    cord(string_case_id)::in, cord(string_case_id)::out) is det.
+
+build_str_case_id_cord([], !MaxCaseNum, !RevStrsCaseIds).
+build_str_case_id_cord([TaggedCase | TaggedCases],
+        !MaxCaseNum, !StrCaseIdCord) :-
+    TaggedCase = tagged_case(MainTaggedConsId, OtherTaggedConsIds, CaseId, _),
+    CaseId = case_id(CaseNum),
+    int.max(CaseNum, !MaxCaseNum),
+    add_to_strs_case_ids(CaseId, MainTaggedConsId, !StrCaseIdCord),
+    list.foldl(add_to_strs_case_ids(CaseId),
+        OtherTaggedConsIds, !StrCaseIdCord),
+    build_str_case_id_cord(TaggedCases, !MaxCaseNum, !StrCaseIdCord).
+
+:- pred add_to_strs_case_ids(case_id::in, tagged_cons_id::in,
+    cord(string_case_id)::in, cord(string_case_id)::out) is det.
+
+add_to_strs_case_ids(CaseId, TaggedConsId, !StrCaseIdCord) :-
+    TaggedConsId = tagged_cons_id(_ConsId, ConsTag),
+    ( if ConsTag = string_tag(String) then
+        cord.snoc(String - CaseId, !StrCaseIdCord)
+    else
+        unexpected($pred, "non-string tag")
+    ).
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%

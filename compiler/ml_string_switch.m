@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1994-2011 The University of Melbourne.
-% Copyright (C) 2015, 2017-2018, 2021-2023 The Mercury team.
+% Copyright (C) 2015, 2017-2018, 2021-2024 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -435,33 +435,6 @@ ml_gen_string_trie_several_soln_lookup_slots(
 % Code useful for both the jump and lookup versions of tries.
 %
 
-:- type trie_node
-    --->    trie_leaf(
-                leaf_matched        :: list(int),
-                % The already matched code units, in reverse order.
-
-                leaf_unmatched      :: list(int),
-                % The not-yet matched code units, in forward order.
-                % Invariant: applying from_code_unit_list to
-                % list.reverse(leaf_matched) ++ leaf_unmatched
-                % should yield the original string.
-
-                case_id
-                % The case_id of the switch arm.
-            )
-    ;       trie_choice(
-                choice_matched      :: list(int),
-                % The already matched code units, in reverse order.
-
-                choice_next_level   :: map(int, trie_node),
-                % Maps the next code unit to the trie node reachable
-                % through it.
-
-                choice_end          :: maybe(case_id)
-                % The case number of the switch arm whose string ends here,
-                % if there is one.
-            ).
-
 :- pred create_nested_switch_trie(list(tagged_case)::in, prog_context::in,
     mlds_rval::in, int::out, mlds_lval::out, mlds_local_var_defn::out,
     mlds_stmt::out, mlds_stmt::out, ml_gen_info::in, ml_gen_info::out) is det.
@@ -486,99 +459,6 @@ create_nested_switch_trie(TaggedCases, Context, VarRval, MaxCaseNum,
         CaseNumVarDefn, InitCaseNumVarStmt, !Info),
     convert_trie_to_nested_switches(Encoding, VarRval, CaseNumVarLval,
         Context, 0, TopTrieNode, GetCaseNumSwitchStmt).
-
-%---------------------------------------------------------------------------%
-
-:- pred create_trie(string_encoding::in, list(tagged_case)::in, int::out,
-    trie_node::out) is det.
-
-create_trie(Encoding, TaggedCases, MaxCaseNum, TopTrieNode) :-
-    build_str_case_id_assoc_list(TaggedCases, -1, MaxCaseNum, [], StrsCaseIds),
-    % The order of StrsCaseIds does not matter; we will build the same trie
-    % regardless of the order.
-    (
-        StrsCaseIds = [],
-        TopTrieNode = trie_choice([], map.init, no)
-    ;
-        StrsCaseIds = [HeadStrCaseId | TailStrCaseIds],
-        HeadStrCaseId = HeadStr - HeadCaseId,
-        to_code_unit_list_in_encoding(Encoding, HeadStr, HeadStrCodeUnits),
-        TopTrieNode1 = trie_leaf([], HeadStrCodeUnits, HeadCaseId),
-        insert_cases_into_trie(Encoding, TailStrCaseIds, TopTrieNode1,
-            TopTrieNode)
-    ).
-
-:- pred insert_cases_into_trie(string_encoding::in,
-    assoc_list(string, case_id)::in, trie_node::in, trie_node::out) is det.
-
-insert_cases_into_trie(_Encoding, [], !TrieNode).
-insert_cases_into_trie(Encoding, [Case | Cases], !TrieNode) :-
-    Case = Str - CaseId,
-    to_code_unit_list_in_encoding(Encoding, Str, StrCodeUnits),
-    insert_case_into_trie_node([], StrCodeUnits, CaseId, !TrieNode),
-    insert_cases_into_trie(Encoding, Cases, !TrieNode).
-
-:- pred insert_case_into_trie_node(list(int)::in, list(int)::in, case_id::in,
-    trie_node::in, trie_node::out) is det.
-
-insert_case_into_trie_node(InsertMatched, InsertNotYetMatched, InsertCaseId,
-        TrieNode0, TrieNode) :-
-    (
-        TrieNode0 = trie_leaf(LeafMatched, LeafNotYetMatched, LeafCaseId),
-        expect(unify(LeafMatched, InsertMatched), $pred, "LeafMatched didn't"),
-        (
-            LeafNotYetMatched = [],
-            ChoiceMap0 = map.init,
-            MaybeEnd0 = yes(LeafCaseId)
-        ;
-            LeafNotYetMatched = [LeafFirstCodeUnit | LeafLaterCodeUnits],
-            NewLeaf = trie_leaf([LeafFirstCodeUnit | LeafMatched],
-                LeafLaterCodeUnits, LeafCaseId),
-            ChoiceMap0 = map.singleton(LeafFirstCodeUnit, NewLeaf),
-            MaybeEnd0 = no
-        )
-    ;
-        TrieNode0 = trie_choice(ChoiceMatched, ChoiceMap0, MaybeEnd0),
-        expect(unify(ChoiceMatched, InsertMatched), $pred,
-            "ChoiceMatched didn't")
-    ),
-    insert_case_into_trie_choice(InsertMatched, InsertNotYetMatched,
-        InsertCaseId, ChoiceMap0, ChoiceMap, MaybeEnd0, MaybeEnd),
-    TrieNode = trie_choice(InsertMatched, ChoiceMap, MaybeEnd).
-
-:- pred insert_case_into_trie_choice(list(int)::in, list(int)::in, case_id::in,
-    map(int, trie_node)::in, map(int, trie_node)::out,
-    maybe(case_id)::in, maybe(case_id)::out) is det.
-
-insert_case_into_trie_choice(InsertMatched, InsertNotYetMatched, InsertCaseId,
-        ChoiceMap0, ChoiceMap, MaybeEnd0, MaybeEnd) :-
-    (
-        InsertNotYetMatched = [],
-        ChoiceMap = ChoiceMap0,
-        (
-            MaybeEnd0 = no,
-            MaybeEnd = yes(InsertCaseId)
-        ;
-            MaybeEnd0 = yes(_),
-            % You can't have more than one occurrence of a string
-            % as a cons_id in a switch.
-            unexpected($pred, "two strings end at same trie node")
-        )
-    ;
-        InsertNotYetMatched = [InsertFirstCodeUnit | InsertLaterCodeUnits],
-        MaybeEnd = MaybeEnd0,
-        ( if map.search(ChoiceMap0, InsertFirstCodeUnit, SubTrieNode0) then
-            insert_case_into_trie_node([InsertFirstCodeUnit | InsertMatched],
-                InsertLaterCodeUnits, InsertCaseId, SubTrieNode0, SubTrieNode),
-            map.det_update(InsertFirstCodeUnit, SubTrieNode,
-                ChoiceMap0, ChoiceMap)
-        else
-            SubTrieNode = trie_leaf([InsertFirstCodeUnit | InsertMatched],
-                InsertLaterCodeUnits, InsertCaseId),
-            map.det_insert(InsertFirstCodeUnit, SubTrieNode,
-                ChoiceMap0, ChoiceMap)
-        )
-    ).
 
     % Generate the following local variable declaration:
     %   int         case_num = -1;
@@ -753,9 +633,7 @@ ml_generate_string_hash_jump_switch(VarRval, TaggedCases, CodeModel, CanFail,
     gen_tagged_case_codes_for_string_switch(CodeModel, EntryPackedArgsMap,
         TaggedCases, map.init, CodeMap, [], ReachableConstVarMaps, !Info),
     ml_gen_record_consensus_const_var_map(ReachableConstVarMaps, !Info),
-    build_str_case_id_assoc_list(TaggedCases, -1, _MaxCaseNum,
-        [], RevStrsCaseIds),
-    list.reverse(RevStrsCaseIds, StrsCaseIds),
+    build_str_case_id_list(TaggedCases, _MaxCaseNum, StrsCaseIds),
 
     % Compute the hash table.
     construct_string_hash_cases(StrsCaseIds, allow_doubling,
@@ -843,33 +721,6 @@ ml_generate_string_hash_jump_switch(VarRval, TaggedCases, CodeModel, CanFail,
         HashOp, VectorCommon, StructType,
         StringFieldId, MaybeNextSlotFieldId, HashMask,
         [], FoundMatchStmts, Stmts, !Info).
-
-%---------------------------------------------------------------------------%
-
-:- pred build_str_case_id_assoc_list(list(tagged_case)::in, int::in, int::out,
-    assoc_list(string, case_id)::in, assoc_list(string, case_id)::out) is det.
-
-build_str_case_id_assoc_list([], !MaxCaseNum, !RevStrsCaseIds).
-build_str_case_id_assoc_list([TaggedCase | TaggedCases],
-        !MaxCaseNum, !RevStrsCaseIds) :-
-    TaggedCase = tagged_case(MainTaggedConsId, OtherTaggedConsIds, CaseId, _),
-    CaseId = case_id(CaseNum),
-    int.max(CaseNum, !MaxCaseNum),
-    add_to_strs_case_ids(CaseId, MainTaggedConsId, !RevStrsCaseIds),
-    list.foldl(add_to_strs_case_ids(CaseId),
-        OtherTaggedConsIds, !RevStrsCaseIds),
-    build_str_case_id_assoc_list(TaggedCases, !MaxCaseNum, !RevStrsCaseIds).
-
-:- pred add_to_strs_case_ids(case_id::in, tagged_cons_id::in,
-    assoc_list(string, case_id)::in, assoc_list(string, case_id)::out) is det.
-
-add_to_strs_case_ids(CaseId, TaggedConsId, !RevStrsCaseIds) :-
-    TaggedConsId = tagged_cons_id(_ConsId, ConsTag),
-    ( if ConsTag = string_tag(String) then
-        !:RevStrsCaseIds = [String - CaseId | !.RevStrsCaseIds]
-    else
-        unexpected($pred, "non-string tag")
-    ).
 
 %---------------------------------------------------------------------------%
 
