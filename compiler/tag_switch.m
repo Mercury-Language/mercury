@@ -50,6 +50,7 @@
 :- import_module libs.globals.
 :- import_module libs.optimization_options.
 :- import_module libs.options.
+:- import_module ll_backend.code_util.
 :- import_module ll_backend.switch_case.
 
 :- import_module assoc_list.
@@ -273,11 +274,12 @@ generate_tag_switch(TaggedCases, VarRval, VarType, VarName, CodeModel, CanFail,
     ;
         Method = try_chain,
         order_ptag_groups_by_count(PtagGroups0, PtagGroups1),
-        % ZZZ document the reason for the reorder, check if still valid
         ( if
             CanFail = cannot_fail,
             PtagGroups1 = [MostFreqGroup | OtherGroups]
         then
+            % NOTE See the end of the comment on put_an_expensive_test_last
+            % for the reason for this reordering.
             PtagGroups = OtherGroups ++ [MostFreqGroup]
         else
             PtagGroups = PtagGroups1
@@ -407,7 +409,7 @@ generate_primary_try_me_else_chain_group(VarRval, PtagRval, SectagReg,
         MaybeFailLabel, PtagGroup, Code, !CaseLabelMap, !CI) :-
     get_next_label(ElseLabel, !CI),
     test_ptag_is_in_case_group(PtagRval, PtagGroup, IsApplicableTestRval),
-    IsNotApplicableRval = unop(logical_not, IsApplicableTestRval),
+    neg_rval(IsApplicableTestRval, IsNotApplicableRval),
     TestCode = singleton(
         llds_instr(if_val(IsNotApplicableRval, code_label(ElseLabel)),
             "test ptag(s) only")
@@ -735,23 +737,42 @@ generate_secondary_switch(VarRval, SectagReg, MaybeFailLabel,
         )
     ),
     (
-        Method = try_me_else_chain,
+        ( Method = try_me_else_chain
+        ; Method = try_chain
+        ),
         globals.get_word_size(Globals, WordSize),
         map.to_sorted_assoc_list(LabelToSectagsMap, LabelToSectagsAL),
-        list.det_head_tail(LabelToSectagsAL,
-            HeadLabelToSectagsAL, TailLabelToSectagsAL),
-        generate_secondary_try_me_else_chain(WordSize, SectagRval,
-            MaybeSecFailLabel, HeadLabelToSectagsAL, TailLabelToSectagsAL,
-            CasesCode, !CaseLabelMap, !CI)
-    ;
-        Method = try_chain,
-        globals.get_word_size(Globals, WordSize),
-        map.to_sorted_assoc_list(LabelToSectagsMap, LabelToSectagsAL),
-        list.det_head_tail(LabelToSectagsAL,
-            HeadLabelToSectagsAL, TailLabelToSectagsAL),
-        generate_secondary_try_chain(WordSize, SectagRval, MaybeSecFailLabel,
-            HeadLabelToSectagsAL, TailLabelToSectagsAL,
-            empty, CasesCode, !CaseLabelMap)
+        list.map(compute_sectag_case_test_rval(WordSize, SectagRval),
+            LabelToSectagsAL, Cases0),
+        (
+            MaybeSecFailLabel = yes(_),
+            list.det_head_tail(Cases0, HeadCase, TailCases)
+        ;
+            MaybeSecFailLabel = no,
+            (
+                Cases0 = [],
+                unexpected($pred, "Cases0 = []")
+            ;
+                Cases0 = [Case1],
+                HeadCase = Case1,
+                TailCases = []
+            ;
+                Cases0 = [Case1, Case2 | Case3plus],
+                put_an_expensive_test_last(Case1, Case2, Case3plus,
+                    cord.init, CaseCord),
+                Cases = cord.list(CaseCord),
+                list.det_head_tail(Cases, HeadCase, TailCases)
+            )
+        ),
+        (
+            Method = try_me_else_chain,
+            generate_secondary_try_me_else_chain(MaybeSecFailLabel,
+                HeadCase, TailCases, CasesCode, !CaseLabelMap, !CI)
+        ;
+            Method = try_chain,
+            generate_secondary_try_chain(MaybeSecFailLabel,
+                HeadCase, TailCases, empty, CasesCode, !CaseLabelMap)
+        )
     ;
         Method = jump_table,
         map.to_sorted_assoc_list(SectagToLabelMap, SectagToLabelAL),
@@ -831,27 +852,26 @@ compute_sectag_rval(Globals, VarRval, SectagReg, SharedInfo, Method,
 
     % Generate a switch on a secondary tag value using a try-me-else chain.
     %
-:- pred generate_secondary_try_me_else_chain(word_size::in, rval::in,
-    maybe(label)::in, sectag_case(label)::in, sectag_case_list(label)::in,
+:- pred generate_secondary_try_me_else_chain(maybe(label)::in,
+    sectag_case_with_test::in, list(sectag_case_with_test)::in,
     llds_code::out, case_label_map::in, case_label_map::out,
     code_info::in, code_info::out) is det.
 
-generate_secondary_try_me_else_chain(WordSize, SectagRval, MaybeFailLabel,
-        HeadCase, TailCases, Code, !CaseLabelMap, !CI) :-
+generate_secondary_try_me_else_chain(MaybeFailLabel, HeadCase, TailCases,
+        Code, !CaseLabelMap, !CI) :-
     (
         TailCases = [HeadTailCase | TailTailCases],
-        generate_secondary_try_me_else_chain_case(WordSize, SectagRval,
-            HeadCase, HeadCode, !CaseLabelMap, !CI),
-        generate_secondary_try_me_else_chain(WordSize, SectagRval,
-            MaybeFailLabel, HeadTailCase, TailTailCases, TailCode,
+        generate_secondary_try_me_else_chain_case(HeadCase, HeadCode,
             !CaseLabelMap, !CI),
+        generate_secondary_try_me_else_chain(MaybeFailLabel,
+            HeadTailCase, TailTailCases, TailCode, !CaseLabelMap, !CI),
         Code = HeadCode ++ TailCode
     ;
         TailCases = [],
         (
             MaybeFailLabel = yes(FailLabel),
-            generate_secondary_try_me_else_chain_case(WordSize, SectagRval,
-                HeadCase, HeadCode, !CaseLabelMap, !CI),
+            generate_secondary_try_me_else_chain_case(HeadCase, HeadCode,
+                !CaseLabelMap, !CI),
             FailCode = singleton(
                 llds_instr(goto(code_label(FailLabel)),
                     "secondary tag does not match any case")
@@ -859,26 +879,22 @@ generate_secondary_try_me_else_chain(WordSize, SectagRval, MaybeFailLabel,
             Code = HeadCode ++ FailCode
         ;
             MaybeFailLabel = no,
-            HeadCase = HeadCaseLabel - _OoMSectags,
+            HeadCase = sectag_case_with_test(HeadCaseLabel, _, _, _, _),
             generate_case_code_or_jump(HeadCaseLabel, Code, !CaseLabelMap)
         )
     ).
 
-:- pred generate_secondary_try_me_else_chain_case(word_size::in, rval::in,
-    pair(label, one_or_more(uint))::in, llds_code::out,
-    case_label_map::in, case_label_map::out,
+:- pred generate_secondary_try_me_else_chain_case(sectag_case_with_test::in,
+    llds_code::out, case_label_map::in, case_label_map::out,
     code_info::in, code_info::out) is det.
 
-generate_secondary_try_me_else_chain_case(WordSize, SectagRval, Case, Code,
-        !CaseLabelMap, !CI) :-
-    Case = CaseLabel - OoMSectags,
+generate_secondary_try_me_else_chain_case(Case, Code, !CaseLabelMap, !CI) :-
+    Case = sectag_case_with_test(CaseLabel, OoMSectags, _,
+        IsApplicableTestRval, _),
     generate_case_code_or_jump(CaseLabel, CaseCode, !CaseLabelMap),
     % ZZZ XXX Optimize what we generate when CaseCode = goto(CaseLabel).
     get_next_label(ElseLabel, !CI),
-    OoMSectags = one_or_more(HeadSectag, TailSectags),
-    test_sectag_is_in_set(WordSize, SectagRval, HeadSectag, TailSectags,
-        IsApplicableTestRval),
-    IsNotApplicableTestRval = unop(logical_not, IsApplicableTestRval),
+    neg_rval(IsApplicableTestRval, IsNotApplicableTestRval),
     SectagStrs =
         list.map(string.uint_to_string, one_or_more_to_list(OoMSectags)),
     SectagsStr = string.join_list(", ", SectagStrs),
@@ -901,25 +917,25 @@ generate_secondary_try_me_else_chain_case(WordSize, SectagRval, Case, Code,
 
     % Generate a switch on a secondary tag value using a try chain.
     %
-:- pred generate_secondary_try_chain(word_size::in, rval::in, maybe(label)::in,
-    sectag_case(label)::in, sectag_case_list(label)::in,
+:- pred generate_secondary_try_chain(maybe(label)::in,
+    sectag_case_with_test::in, list(sectag_case_with_test)::in,
     llds_code::in, llds_code::out,
     case_label_map::in, case_label_map::out) is det.
 
-generate_secondary_try_chain(WordSize, SectagRval, MaybeFailLabel,
-        HeadCase, TailCases, !.TryChainCode, Code, !CaseLabelMap) :-
+generate_secondary_try_chain(MaybeFailLabel, HeadCase, TailCases,
+        !.TryChainCode, Code, !CaseLabelMap) :-
     (
         TailCases = [HeadTailCase | TailTailCases],
-        generate_secondary_try_chain_case(WordSize, !.CaseLabelMap, SectagRval,
-            HeadCase, !TryChainCode),
-        generate_secondary_try_chain(WordSize, SectagRval, MaybeFailLabel,
+        generate_secondary_try_chain_case(!.CaseLabelMap, HeadCase,
+            !TryChainCode),
+        generate_secondary_try_chain(MaybeFailLabel,
             HeadTailCase, TailTailCases, !.TryChainCode, Code, !CaseLabelMap)
     ;
         TailCases = [],
         (
             MaybeFailLabel = yes(FailLabel),
-            generate_secondary_try_chain_case(WordSize, !.CaseLabelMap,
-                SectagRval, HeadCase, !TryChainCode),
+            generate_secondary_try_chain_case(!.CaseLabelMap, HeadCase,
+                !TryChainCode),
             FailCode = singleton(
                 llds_instr(goto(code_label(FailLabel)),
                     "secondary tag with no code to handle it")
@@ -927,24 +943,19 @@ generate_secondary_try_chain(WordSize, SectagRval, MaybeFailLabel,
             Code = !.TryChainCode ++ FailCode
         ;
             MaybeFailLabel = no,
-            HeadCase = HeadCaseLabel - _OoMSectags,
+            HeadCase = sectag_case_with_test(HeadCaseLabel, _, _, _, _),
             generate_case_code_or_jump(HeadCaseLabel, HeadCode, !CaseLabelMap),
             Code = !.TryChainCode ++ HeadCode
         )
     ).
 
-:- pred generate_secondary_try_chain_case(word_size::in, case_label_map::in,
-    rval::in, pair(label, one_or_more(uint))::in,
-    llds_code::in, llds_code::out) is det.
+:- pred generate_secondary_try_chain_case(case_label_map::in,
+    sectag_case_with_test::in, llds_code::in, llds_code::out) is det.
 
-generate_secondary_try_chain_case(WordSize, CaseLabelMap, SectagRval, Case,
-        !TryChainCode) :-
-    Case = CaseLabel - OoMSectags,
+generate_secondary_try_chain_case(CaseLabelMap, Case, !TryChainCode) :-
+    Case = sectag_case_with_test(CaseLabel, _, _, IsApplicableTestRval, _),
     map.lookup(CaseLabelMap, CaseLabel, CaseInfo0),
     CaseInfo0 = case_label_info(Comment, _CaseCode, _CaseGenerated),
-    OoMSectags = one_or_more(HeadSectag, TailSectags),
-    test_sectag_is_in_set(WordSize, SectagRval, HeadSectag, TailSectags,
-        IsApplicableTestRval),
     TestCode = singleton(
         llds_instr(
             if_val(IsApplicableTestRval, code_label(CaseLabel)),
@@ -1063,6 +1074,157 @@ generate_secondary_binary_search(SectagRval, MaybeFailLabel,
 % Infrastructure needed for both try-me-else and try chain switches
 % that test whether a tag (ptag or sectag) is in a given set.
 %
+
+    % This predicate is designed to try to reduce the cost of the last test
+    % in a chain of tests. The scenario it is designed for is when we are
+    % generating code for a switch on sectags that cannot fail. (This means
+    % we have a case for every possible value of the secondary tag, even if
+    % the tag switch as a whole can fail, which would have to be because
+    % we don't have a case for a primary tag value)
+    %
+    % Obviously we have at least two cases, because if we had only one,
+    % we wouldn't need a switch at all. In general, we have two or more.
+    % If two cases, say A and B, have NumSectagsA and NumSectagsB sectag values
+    % corresponding to them respectively, we prioritize getting to the code
+    % of case A more cheaply than case B, simply because that minimizes
+    % the expected *average* cost. This is why we order sectag groups
+    % in descending order of number of sectags, leading to code structures
+    % such as the try chain
+    %
+    %   if sectag is in Case A's set, goto code of case A
+    %   if sectag is in Case B's set, goto code of case B
+    %   if sectag is in Case C's set, goto code of case B
+    %   ...
+    %
+    % where NumSectagsA >= NumSectagsB >= NumSectagsC >= ...
+    %
+    % (Try-me-else chains follow the same logic, but switch the role of
+    % the branch away and the fallthrough.)
+    %
+    % If the switch on the sectag cannot fail, then the test on the last
+    % case can be optimized away, since the failure of the previous tests
+    % guarantees its success. However, our ordering of the cases guarantees
+    % that the last case will correspond to at most as many sectags as
+    % the next-to-last case, and (since the cost of the set membership test
+    % *may* be higher for a larger set than for a smaller one), this means
+    % that optimizing away the test for the last case may leave some
+    % performance on the table. If indeed, the cost of the last case
+    % (call it case F) is cheaper than the cost of the next-to-last case
+    % (call it case E), then we don't want to generate code such as
+    %
+    %   ... code for previous cases ...
+    %   if sectag is in case E's set, goto code of case E
+    %   goto code of case F
+    %
+    % Instead, we want to generate code such as
+    %
+    %   ... code for previous cases ...
+    %   if sectag is in case F's set, goto code of case F
+    %   goto code of case E
+    %
+    % They both involve a test and a conditional branch. We do this
+    % transformation only if the test for F is cheaper than the test for E,
+    % and the cost of the conditional branch will depend on the performance
+    % of the CPU's branch prediction mechanisms either way. If for some reason
+    % it turned out that the structure that branches off to E is better
+    % for performance, we can still get that effect by using code such as
+    %
+    %   ... code for previous cases ...
+    %   if sectag is NOT in case F's set, goto code of case E
+    %   goto code of case F
+    %
+    % Note that the extra negation exists only in this pseudo-code.
+    % The actual code generated by neg_rval would replace each comparison
+    % operation by its opposite (e.g. replacing "eq" with "ne"), and update
+    % any connectives between the comparisons accordingly, keeping its cost
+    % the same.
+    %
+    % For ptags, the scope for this optimization is smaller, since
+    % the smaller set of possible values also constrains the number of cases.
+    % The reordering to put the most frequent case last for try_chain switches
+    % on ptags basically does what this predicate does, though
+    %
+    % - it does so *without* taking into account the number of ptags
+    %   that share a case (which is understandable, since it was written
+    %   before multi-cons-id switches were implemented), and
+    %
+    % - there is no similar logic for try-me-else chains on ptags.
+    %
+:- pred put_an_expensive_test_last(sectag_case_with_test::in,
+    sectag_case_with_test::in, list(sectag_case_with_test)::in,
+    cord(sectag_case_with_test)::in, cord(sectag_case_with_test)::out) is det.
+
+put_an_expensive_test_last(Case1, Case2, Case3plus, !CaseCord) :-
+    Case1 = sectag_case_with_test(_, _, NumSectags1, _, Cost1),
+    Case2 = sectag_case_with_test(_, _, NumSectags2, _, Cost2),
+    (
+        Case3plus = [],
+        % Case1 and Case2 are the two last cases. We want to put the one
+        % with the more expensive test last, even if it has fewer sectags
+        % (i.e. function symbols) than the other case.
+        ( if Cost1 > Cost2 then
+            cord.snoc(Case2, !CaseCord),
+            cord.snoc(Case1, !CaseCord)
+        else
+            cord.snoc(Case1, !CaseCord),
+            cord.snoc(Case2, !CaseCord)
+        )
+    ;
+        Case3plus = [Case3 | Case4plus],
+        % Case1 and Case2 are NOT the two last cases. In such cases,
+        % it is more important to have the case with more sectags
+        % (i.e. function symbols) first. Note that the list we are given
+        % as input is sorted on the number of sectags in a descending order,
+        % so Case2 cannot have more sectags than Case1.
+        ( if NumSectags1 > NumSectags2 then
+            cord.snoc(Case1, !CaseCord),
+            put_an_expensive_test_last(Case2, Case3, Case4plus, !CaseCord)
+        else
+            % NumSectags1 must equal NumSectags2.
+            ( if Cost1 > Cost2 then
+                cord.snoc(Case2, !CaseCord),
+                put_an_expensive_test_last(Case1, Case3, Case4plus, !CaseCord)
+            else
+                cord.snoc(Case1, !CaseCord),
+                put_an_expensive_test_last(Case2, Case3, Case4plus, !CaseCord)
+            )
+        )
+    ).
+
+:- type sectag_case_with_test
+    --->    sectag_case_with_test(
+                % The label for the code we want to execute in
+                % this arm of the switch.
+                label,
+
+                % The secondary tags for which we want to execute
+                % this arm of the switch.
+                one_or_more(uint),
+
+                % The number of sectags in the previous field.
+                int,
+
+                % The test for the actual sectag having one of the values
+                % in the second field.
+                rval,
+
+                % The cost of the test rval.
+                int
+            ).
+
+:- pred compute_sectag_case_test_rval(word_size::in, rval::in,
+    pair(label, one_or_more(uint))::in, sectag_case_with_test::out) is det.
+ 
+compute_sectag_case_test_rval(WordSize, SectagRval, Case, CaseWithTestRval) :-
+    Case = CaseLabel - OoMSectags,
+    test_sectag_is_in_set(WordSize, SectagRval, OoMSectags,
+        TestRval, TestRvalCost),
+    NumSectags = one_or_more.length(OoMSectags),
+    CaseWithTestRval = sectag_case_with_test(CaseLabel, OoMSectags,
+        NumSectags, TestRval, TestRvalCost).
+
+%---------------------%
+%
 % For ptags we know that all the sets in which we want to test for membership
 % will be subsets of {0 .. 7}, which means that
 %
@@ -1097,7 +1259,7 @@ generate_secondary_binary_search(SectagRval, MaybeFailLabel,
 %   operations on a bitmap that had the most-significant bit set, we would
 %   be invoking undefined behavior, which would be bad, since I (zs) don't
 %   want the C compiler to either optimize away the test rval entirely,
-%   to to make demons fly out of my nose :-)
+%   or to make demons fly out of my nose :-)
 %
 % The result is that we use unsigned integers to hold the bits being shifted,
 % masked and tested, but signed integers (that are always non-negative)
@@ -1141,21 +1303,31 @@ encode_ptags_as_bitmap_loop(HeadPtag, TailPtags, !Bitmap) :-
 
 %---------------------%
 
-:- pred test_sectag_is_in_set(word_size::in, rval::in, uint::in,
-    list(uint)::in, rval::out) is det.
+    % test_sectag_is_in_set(WordSizeKind, SectagRval, OoMSectags,
+    %   TestRval, TestRvalCost):
+    %
+    % Return in TestRval the code we want to use to test whether the value
+    % currently in SectagRval is in the set represented by OoMSectags.
+    % Return in TestRvalCost a measure of the cost of executing this test.
+    %
+:- pred test_sectag_is_in_set(word_size::in, rval::in, one_or_more(uint)::in,
+    rval::out, int::out) is det.
 
-test_sectag_is_in_set(WordSizeKind, SectagRval, HeadSectag, TailSectags,
-        TestRval) :-
+test_sectag_is_in_set(WordSizeKind, SectagRval, OoMSectags,
+        TestRval, TestRvalCost) :-
+    OoMSectags = one_or_more(HeadSectag, TailSectags),
     (
         TailSectags = [],
-        TestRval = make_sectag_eq_test(SectagRval, HeadSectag)
+        TestRval = make_sectag_eq_test(SectagRval, HeadSectag),
+        TestRvalCost = cost_of_eq_test
     ;
         TailSectags = [HeadTailSectag | TailTailSectags],
         (
             TailTailSectags = [],
             HeadTestRval = make_sectag_eq_test(SectagRval, HeadSectag),
             HeadTailTestRval = make_sectag_eq_test(SectagRval, HeadTailSectag),
-            TestRval = binop(logical_or, HeadTestRval, HeadTailTestRval)
+            TestRval = binop(logical_or, HeadTestRval, HeadTailTestRval),
+            TestRvalCost = 2 * cost_of_eq_test + cost_of_logical_or
         ;
             TailTailSectags = [_ | _],
             BitmapWord0 = make_bitmap_word_starting_at(HeadSectag),
@@ -1169,7 +1341,7 @@ test_sectag_is_in_set(WordSizeKind, SectagRval, HeadSectag, TailSectags,
                 HeadTailSectag, TailTailSectags, BitmapWord0, OoMBitmaps),
             OoMBitmaps = one_or_more(HeadBitmap, TailBitmaps),
             test_sectag_is_in_bitmaps(WordSize, SectagRval,
-                HeadBitmap, TailBitmaps, TestRval)
+                HeadBitmap, TailBitmaps, TestRval, TestRvalCost)
         )
     ).
 
@@ -1218,16 +1390,16 @@ make_bitmap_word_starting_at(N) =
     bitmap_word(N, 1u, cord.singleton(N)).
 
 :- pred test_sectag_is_in_bitmaps(uint::in, rval::in,
-    bitmap_word::in, list(bitmap_word)::in, rval::out) is det.
+    bitmap_word::in, list(bitmap_word)::in, rval::out, int::out) is det.
 
 test_sectag_is_in_bitmaps(WordSize, SectagRval, HeadBitmap, TailBitmaps,
-        TestRval) :-
+        TestRval, TestRvalCost) :-
     HeadBitmap = bitmap_word(StartOffset, Bitmap0, ValuesCord),
     Values = cord.list(ValuesCord),
     % When we have just one sectag value, we just test for equality directly.
     %
     % For three or more sectag values, it is almost certainly cheaper
-    % to do a substraction, a shift, and bitwise and a test against zero
+    % to do a subtraction, a shift, and bitwise and a test against zero
     % than it is to do three equality tests and two logical ORs.
     %
     % For two sectag values, the answer to the question "which approach
@@ -1237,28 +1409,33 @@ test_sectag_is_in_bitmaps(WordSize, SectagRval, HeadBitmap, TailBitmaps,
         unexpected($pred, "Values = []")
     ;
         Values = [ValueA],
-        HeadTestRval = make_sectag_eq_test(SectagRval, ValueA)
+        HeadTestRval = make_sectag_eq_test(SectagRval, ValueA),
+        HeadTestRvalCost = cost_of_eq_test
     ;
         Values = [ValueA, ValueB],
         TestA = make_sectag_eq_test(SectagRval, ValueA),
         TestB = make_sectag_eq_test(SectagRval, ValueB),
-        HeadTestRval = binop(logical_or, TestA, TestB)
+        HeadTestRval = binop(logical_or, TestA, TestB),
+        HeadTestRvalCost = 2 + cost_of_eq_test + cost_of_logical_or
     ;
         Values = [_, _, _ | _],
         ( if StartOffset = 0u then
             Bitmap = Bitmap0,
-            OffsetInWordRval = SectagRval
+            OffsetInWordRval = SectagRval,
+            SubtractCost = 0
         else if list.det_last(Values, LastValue), LastValue < WordSize then
             % Avoid subtracting StartOffset from SectagRval, and compensate
             % by shifting all the bits in Bitmap to the left by StartOffset.
             Bitmap = Bitmap0 `unchecked_left_ushift` StartOffset,
-            OffsetInWordRval = SectagRval
+            OffsetInWordRval = SectagRval,
+            SubtractCost = 0
         else
             Bitmap = Bitmap0,
             SubOp = int_sub(int_type_uint),
             StartOffsetInt = uint.cast_to_int(StartOffset),
             OffsetInWordRval = binop(SubOp,
-                SectagRval, const(llconst_int(StartOffsetInt)))
+                SectagRval, const(llconst_int(StartOffsetInt))),
+            SubtractCost = cost_of_subtract
         ),
         LeftShiftOp = unchecked_left_shift(int_type_uint, shift_by_int),
         SelectedBitMaskRval = binop(LeftShiftOp,
@@ -1266,17 +1443,34 @@ test_sectag_is_in_bitmaps(WordSize, SectagRval, HeadBitmap, TailBitmaps,
         SelectedBitRval = binop(bitwise_and(int_type_uint),
             SelectedBitMaskRval, const(llconst_uint(Bitmap))),
         HeadTestRval = binop(ne(int_type_uint),
-            SelectedBitRval, const(llconst_uint(0u)))
+            SelectedBitRval, const(llconst_uint(0u))),
+        HeadTestRvalCost = SubtractCost + cost_of_bitmap_test
     ),
     (
         TailBitmaps = [],
-        TestRval = HeadTestRval
+        TestRval = HeadTestRval,
+        TestRvalCost = HeadTestRvalCost
     ;
         TailBitmaps = [HeadTailBitmap | TailTailBitmaps],
         test_sectag_is_in_bitmaps(WordSize, SectagRval,
-            HeadTailBitmap, TailTailBitmaps, TailTestRval),
-        TestRval = binop(logical_or, HeadTestRval, TailTestRval)
+            HeadTailBitmap, TailTailBitmaps, TailTestRval, TailTestRvalCost),
+        TestRval = binop(logical_or, HeadTestRval, TailTestRval),
+        TestRvalCost = HeadTestRvalCost + TailTestRvalCost
     ).
+
+:- func cost_of_eq_test = int.
+:- func cost_of_subtract = int.
+:- func cost_of_bitmap_test = int.
+:- func cost_of_logical_or = int.
+:- pragma inline(func(cost_of_eq_test/0)).
+:- pragma inline(func(cost_of_subtract/0)).
+:- pragma inline(func(cost_of_bitmap_test/0)).
+:- pragma inline(func(cost_of_logical_or/0)).
+
+cost_of_eq_test = 1.
+cost_of_subtract = 1.
+cost_of_bitmap_test = 3.    % A shift, a bitwise AND, and a test for zero.
+cost_of_logical_or = 1.
 
 :- func make_sectag_eq_test(rval, uint) = rval.
 

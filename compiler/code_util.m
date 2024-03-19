@@ -362,38 +362,97 @@ neg_rval(Rval, NegRval) :-
 
 :- pred natural_neg_rval(rval::in, rval::out) is semidet.
 
-natural_neg_rval(const(Const), const(NegConst)) :-
+natural_neg_rval(TestRval0, TestRval) :-
+    require_complete_switch [TestRval0]
     (
-        Const = llconst_true,
-        NegConst = llconst_false
+        TestRval0 = const(Const0),
+        (
+            Const0 = llconst_true,
+            Const = llconst_false
+        ;
+            Const0 = llconst_false,
+            Const = llconst_true
+        ),
+        TestRval = const(Const)
     ;
-        Const = llconst_false,
-        NegConst = llconst_true
+        TestRval0 = unop(Unop, SubTestRval0),
+        Unop = logical_not,
+        TestRval = SubTestRval0
+    ;
+        TestRval0 = binop(Binop0, SubTestRvalA0, SubTestRvalB0),
+        require_complete_switch [Binop0]
+        (
+            ( Binop0 = eq(T),       Binop = ne(T)
+            ; Binop0 = ne(T),       Binop = eq(T)
+            ; Binop0 = int_lt(T),   Binop = int_ge(T)
+            ; Binop0 = int_le(T),   Binop = int_gt(T)
+            ; Binop0 = int_gt(T),   Binop = int_le(T)
+            ; Binop0 = int_ge(T),   Binop = int_lt(T)
+            ; Binop0 = str_eq,      Binop = str_ne
+            ; Binop0 = str_ne,      Binop = str_eq
+            ; Binop0 = str_lt,      Binop = str_ge
+            ; Binop0 = str_le,      Binop = str_gt
+            ; Binop0 = str_gt,      Binop = str_le
+            ; Binop0 = str_ge,      Binop = str_lt
+            ; Binop0 = float_eq,    Binop = float_ne
+            ; Binop0 = float_ne,    Binop = float_eq
+            ; Binop0 = float_lt,    Binop = float_ge
+            ; Binop0 = float_le,    Binop = float_gt
+            ; Binop0 = float_gt,    Binop = float_le
+            ; Binop0 = float_ge,    Binop = float_lt
+            ),
+            TestRval = binop(Binop, SubTestRvalA0, SubTestRvalB0)
+        ;
+            Binop0 = logical_and,
+            natural_neg_rval(SubTestRvalA0, SubTestRvalA),
+            natural_neg_rval(SubTestRvalB0, SubTestRvalB),
+            TestRval = binop(logical_or, SubTestRvalA, SubTestRvalB)
+        ;
+            Binop0 = logical_or,
+            natural_neg_rval(SubTestRvalA0, SubTestRvalA),
+            natural_neg_rval(SubTestRvalB0, SubTestRvalB),
+            TestRval = binop(logical_and, SubTestRvalA, SubTestRvalB)
+        ;
+            ( Binop0 = int_add(_)
+            ; Binop0 = int_sub(_)
+            ; Binop0 = int_mul(_)
+            ; Binop0 = int_div(_)
+            ; Binop0 = int_mod(_)
+            ; Binop0 = unchecked_left_shift(_, _)
+            ; Binop0 = unchecked_right_shift(_, _)
+            ; Binop0 = bitwise_and(_)
+            ; Binop0 = bitwise_or(_)
+            ; Binop0 = bitwise_xor(_)
+            ; Binop0 = body
+            ; Binop0 = array_index(_)
+            ; Binop0 = string_unsafe_index_code_unit
+            ; Binop0 = str_cmp
+            ; Binop0 = offset_str_eq(_)
+            ; Binop0 = unsigned_lt
+            ; Binop0 = unsigned_le
+            ; Binop0 = float_add
+            ; Binop0 = float_sub
+            ; Binop0 = float_mul
+            ; Binop0 = float_div
+            ; Binop0 = float_from_dword
+            ; Binop0 = int64_from_dword
+            ; Binop0 = uint64_from_dword
+            ; Binop0 = pointer_equal_conservative
+            ; Binop0 = compound_eq
+            ; Binop0 = compound_lt
+            ),
+            fail
+        )
+    ;
+        ( TestRval0 = lval(_)
+        ; TestRval0 = var(_)
+        ; TestRval0 = mkword(_, _)
+        ; TestRval0 = mkword_hole(_)
+        ; TestRval0 = cast(_, _)
+        ; TestRval0 = mem_addr(_)
+        ),
+        fail
     ).
-natural_neg_rval(unop(logical_not, Rval), Rval).
-natural_neg_rval(binop(Op, X, Y), binop(NegOp, X, Y)) :-
-    neg_op(Op, NegOp).
-
-:- pred neg_op(binary_op::in, binary_op::out) is semidet.
-
-neg_op(eq(T), ne(T)).
-neg_op(ne(T), eq(T)).
-neg_op(int_lt(T), int_ge(T)).
-neg_op(int_le(T), int_gt(T)).
-neg_op(int_gt(T), int_le(T)).
-neg_op(int_ge(T), int_lt(T)).
-neg_op(str_eq, str_ne).
-neg_op(str_ne, str_eq).
-neg_op(str_lt, str_ge).
-neg_op(str_le, str_gt).
-neg_op(str_gt, str_le).
-neg_op(str_ge, str_lt).
-neg_op(float_eq, float_ne).
-neg_op(float_ne, float_eq).
-neg_op(float_lt, float_ge).
-neg_op(float_le, float_gt).
-neg_op(float_gt, float_le).
-neg_op(float_ge, float_lt).
 
 negate_the_test([], _) :-
     unexpected($pred, "empty list").
