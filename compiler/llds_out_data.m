@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %----------------------------------------------------------------------------%
 % Copyright (C) 2009-2012 The University of Melbourne.
-% Copyright (C) 2013-2018 The Mercury team.
+% Copyright (C) 2013-2018, 2024 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %----------------------------------------------------------------------------%
@@ -61,6 +61,7 @@
 
     % Output the given llds_type.
     %
+:- func llds_type_to_string(llds_type) = string.
 :- pred output_llds_type(io.text_output_stream::in, llds_type::in,
     io::di, io::uo) is det.
 
@@ -576,68 +577,70 @@ output_llds_type_cast(Stream, LLDSType, !IO) :-
     output_llds_type(Stream, LLDSType, !IO),
     io.write_string(Stream, ") ", !IO).
 
-output_llds_type(Stream, lt_bool, !IO) :-
-    io.write_string(Stream, "MR_Integer", !IO).
-output_llds_type(Stream, lt_int_least(int_least8), !IO) :-
-    io.write_string(Stream, "MR_int_least8_t", !IO).
-output_llds_type(Stream, lt_int_least(uint_least8), !IO) :-
-    io.write_string(Stream, "MR_uint_least8_t", !IO).
-output_llds_type(Stream, lt_int_least(int_least16), !IO) :-
-    io.write_string(Stream, "MR_int_least16_t", !IO).
-output_llds_type(Stream, lt_int_least(uint_least16), !IO) :-
-    io.write_string(Stream, "MR_uint_least16_t", !IO).
-output_llds_type(Stream, lt_int_least(int_least32), !IO) :-
-    io.write_string(Stream, "MR_int_least32_t", !IO).
-output_llds_type(Stream, lt_int_least(uint_least32), !IO) :-
-    io.write_string(Stream, "MR_uint_least32_t", !IO).
-output_llds_type(Stream, lt_int(int_type_int), !IO) :-
-    io.write_string(Stream, "MR_Integer", !IO).
-output_llds_type(Stream, lt_int(int_type_uint), !IO) :-
-    io.write_string(Stream, "MR_Unsigned", !IO).
-output_llds_type(Stream, lt_int(int_type_int8), !IO) :-
-    io.write_string(Stream, "int8_t", !IO).
-output_llds_type(Stream, lt_int(int_type_uint8), !IO) :-
-    io.write_string(Stream, "uint8_t", !IO).
-output_llds_type(Stream, lt_int(int_type_int16), !IO) :-
-    io.write_string(Stream, "int16_t", !IO).
-output_llds_type(Stream, lt_int(int_type_uint16), !IO) :-
-    io.write_string(Stream, "uint16_t", !IO).
-output_llds_type(Stream, lt_int(int_type_int32), !IO) :-
-    io.write_string(Stream, "int32_t", !IO).
-output_llds_type(Stream, lt_int(int_type_uint32), !IO) :-
-    io.write_string(Stream, "uint32_t", !IO).
-output_llds_type(Stream, lt_int(int_type_int64), !IO) :-
-    io.write_string(Stream, "int64_t", !IO).
-output_llds_type(Stream, lt_int(int_type_uint64), !IO) :-
-    io.write_string(Stream, "uint64_t", !IO).
-output_llds_type(Stream, lt_float, !IO) :-
-    io.write_string(Stream, "MR_Float", !IO).
-output_llds_type(Stream, lt_word, !IO) :-
-    io.write_string(Stream, "MR_Word", !IO).
-output_llds_type(Stream, lt_string, !IO) :-
-    io.write_string(Stream, "MR_String", !IO).
-output_llds_type(Stream, lt_data_ptr, !IO) :-
-    io.write_string(Stream, "MR_Word *", !IO).
-output_llds_type(Stream, lt_code_ptr, !IO) :-
-    io.write_string(Stream, "MR_Code *", !IO).
-
-lval_to_string(reg(RegType, RegNum)) =
-    reg_to_string(RegType, RegNum).
-lval_to_string(framevar(N)) =
-    "MR_fv(" ++ int_to_string(N) ++ ")".
-lval_to_string(stackvar(N)) =
-    "MR_sv(" ++ int_to_string(N) ++ ")".
-lval_to_string(parent_stackvar(N)) =
-    "MR_parent_sv(" ++ int_to_string(N) ++ ")".
-lval_to_string(double_stackvar(Type, N)) = String :-
+llds_type_to_string(Type) = Str :-
     (
-        Type = double_stackvar,
-        Macro = "MR_sv"
+        Type = lt_int_least(IntLeastType),
+        ( IntLeastType = int_least8,    Str = "MR_int_least8_t"
+        ; IntLeastType = int_least16,   Str = "MR_int_least16_t"
+        ; IntLeastType = int_least32,   Str = "MR_int_least32_t"
+        ; IntLeastType = uint_least8,   Str = "MR_uint_least8_t"
+        ; IntLeastType = uint_least16,  Str = "MR_uint_least16_t"
+        ; IntLeastType = uint_least32,  Str = "MR_uint_least32_t"
+        )
     ;
-        Type = double_parent_stackvar,
-        Macro = "MR_parent_sv"
-    ),
-    string.format("%s(%d,%d)", [s(Macro), i(N), i(N + 1)], String).
+        Type = lt_int(IntType),
+        ( IntType = int_type_int,       Str = "MR_Integer"
+        ; IntType = int_type_int8,      Str = "int8_t"
+        ; IntType = int_type_int16,     Str = "int16_t"
+        ; IntType = int_type_int32,     Str = "int32_t"
+        ; IntType = int_type_int64,     Str = "int64_t"
+        ; IntType = int_type_uint,      Str = "MR_Unsigned"
+        ; IntType = int_type_uint8,     Str = "uint8_t"
+        ; IntType = int_type_uint16,    Str = "uint16_t"
+        ; IntType = int_type_uint32,    Str = "uint32_t"
+        ; IntType = int_type_uint64,    Str = "uint64_t"
+        )
+    ;
+        Type = lt_float,                Str = "MR_Float"
+    ;
+        Type = lt_string,               Str = "MR_String"
+    ;
+        Type = lt_bool,                 Str = "MR_Integer"
+    ;
+        Type = lt_word,                 Str = "MR_Word"
+    ;
+        Type = lt_data_ptr,             Str = "MR_Word *"
+    ;
+        Type = lt_code_ptr,             Str = "MR_Code *"
+    ).
+
+output_llds_type(Stream, Type, !IO) :-
+    io.write_string(Stream, llds_type_to_string(Type), !IO).
+
+lval_to_string(Lval) = Str :-
+    (
+        Lval = reg(RegType, RegNum),
+        Str = reg_to_string(RegType, RegNum)
+    ;
+        Lval = framevar(N),
+        Str = "MR_fv(" ++ int_to_string(N) ++ ")"
+    ;
+        Lval = stackvar(N),
+        Str = "MR_sv(" ++ int_to_string(N) ++ ")"
+    ;
+        Lval = parent_stackvar(N),
+        Str = "MR_parent_sv(" ++ int_to_string(N) ++ ")"
+    ;
+        Lval = double_stackvar(Type, N),
+        (
+            Type = double_stackvar,
+            Macro = "MR_sv"
+        ;
+            Type = double_parent_stackvar,
+            Macro = "MR_parent_sv"
+        ),
+        string.format("%s(%d,%d)", [s(Macro), i(N), i(N + 1)], Str)
+    ).
 
 reg_to_string(reg_r, N) =
     ( if N =< max_real_r_reg then
@@ -1000,303 +1003,9 @@ output_rval(Info, Rval, Stream, !IO) :-
         output_rval_as_type(Info, SubRval, ArgType, Stream, !IO),
         io.write_string(Stream, ")", !IO)
     ;
-        Rval = binop(Op, SubRvalA, SubRvalB),
-        (
-            Op = array_index(_),
-            io.write_string(Stream, "(", !IO),
-            output_rval_as_type(Info, SubRvalA, lt_data_ptr, Stream, !IO),
-            io.write_string(Stream, ")[", !IO),
-            output_rval_as_type(Info, SubRvalB, lt_int(int_type_int),
-                Stream, !IO),
-            io.write_string(Stream, "]", !IO)
-        ;
-            Op = string_unsafe_index_code_unit,
-            io.write_string(Stream, "MR_nth_code_unit(", !IO),
-            output_rval_as_type(Info, SubRvalA, lt_data_ptr, Stream, !IO),
-            io.write_string(Stream, ", ", !IO),
-            output_rval_as_type(Info, SubRvalB, lt_int(int_type_int),
-                Stream, !IO),
-            io.write_string(Stream, ")", !IO)
-        ;
-            Op = pointer_equal_conservative,
-            io.write_string(Stream, "(((MR_Word) ", !IO),
-            output_rval(Info, SubRvalA, Stream, !IO),
-            io.write_string(Stream, ") == ((MR_Word) ", !IO),
-            output_rval(Info, SubRvalB, Stream, !IO),
-            io.write_string(Stream, "))", !IO)
-        ;
-            ( Op = compound_lt
-            ; Op = compound_eq
-            ),
-            % These operators were intended to be generated only when using
-            % the now-deleted Erlang backend.
-            unexpected($file, $pred, "compound_compare_binop")
-        ;
-            ( Op = str_eq, OpStr = "=="
-            ; Op = str_ne, OpStr = "!="
-            ; Op = str_le, OpStr = "<="
-            ; Op = str_ge, OpStr = ">="
-            ; Op = str_lt, OpStr = "<"
-            ; Op = str_gt, OpStr = ">"
-            ),
-            io.write_string(Stream, "(strcmp(", !IO),
-            ( if SubRvalA = const(llconst_string(SubRvalAConst)) then
-                output_rval_const(Info, llconst_string(SubRvalAConst),
-                    Stream, !IO)
-            else
-                io.write_string(Stream, "(char *) ", !IO),
-                output_rval_as_type(Info, SubRvalA, lt_data_ptr, Stream, !IO)
-            ),
-            io.write_string(Stream, ", ", !IO),
-            ( if SubRvalB = const(llconst_string(SubRvalBConst)) then
-                output_rval_const(Info, llconst_string(SubRvalBConst),
-                    Stream, !IO)
-            else
-                io.write_string(Stream, "(char *) ", !IO),
-                output_rval_as_type(Info, SubRvalB, lt_data_ptr, Stream, !IO)
-            ),
-            io.write_string(Stream, ")", !IO),
-            io.write_string(Stream, " ", !IO),
-            io.write_string(Stream, OpStr, !IO),
-            io.write_string(Stream, " ", !IO),
-            io.write_string(Stream, "0)", !IO)
-        ;
-            ( Op = float_eq, OpStr = "=="
-            ; Op = float_ne, OpStr = "!="
-            ; Op = float_le, OpStr = "<="
-            ; Op = float_ge, OpStr = ">="
-            ; Op = float_lt, OpStr = "<"
-            ; Op = float_gt, OpStr = ">"
-            ; Op = float_add, OpStr = "+"
-            ; Op = float_sub, OpStr = "-"
-            ; Op = float_mul, OpStr = "*"
-            ; Op = float_div, OpStr = "/"
-            ),
-            io.write_string(Stream, "(", !IO),
-            output_rval_as_type(Info, SubRvalA, lt_float, Stream, !IO),
-            io.write_string(Stream, " ", !IO),
-            io.write_string(Stream, OpStr, !IO),
-            io.write_string(Stream, " ", !IO),
-            output_rval_as_type(Info, SubRvalB, lt_float, Stream, !IO),
-            io.write_string(Stream, ")", !IO)
-        ;
-            Op = unsigned_lt,
-            io.write_string(Stream, "(", !IO),
-            output_rval_as_type(Info, SubRvalA, lt_int(int_type_uint),
-                Stream, !IO),
-            io.write_string(Stream, " < ", !IO),
-            output_rval_as_type(Info, SubRvalB, lt_int(int_type_uint),
-                Stream, !IO),
-            io.write_string(Stream, ")", !IO)
-        ;
-            Op = unsigned_le,
-            io.write_string(Stream, "(", !IO),
-            output_rval_as_type(Info, SubRvalA, lt_int(int_type_uint),
-                Stream, !IO),
-            io.write_string(Stream, " <= ", !IO),
-            output_rval_as_type(Info, SubRvalB, lt_int(int_type_uint),
-                Stream, !IO),
-            io.write_string(Stream, ")", !IO)
-        ;
-            ( Op = int_add(IntType), OpStr = "+"
-            ; Op = int_sub(IntType), OpStr = "-"
-            ; Op = int_mul(IntType), OpStr = "*"
-            ),
-            (
-                (
-                    IntType = int_type_int,
-                    SignedType = "MR_Integer",
-                    UnsignedType = "MR_Unsigned"
-                ;
-                    IntType = int_type_int8,
-                    SignedType = "int8_t",
-                    UnsignedType = "uint8_t"
-                ;
-                    IntType = int_type_int16,
-                    SignedType = "int16_t",
-                    UnsignedType = "uint16_t"
-                ;
-                    IntType = int_type_int32,
-                    SignedType = "int32_t",
-                    UnsignedType = "uint32_t"
-                ;
-                    IntType = int_type_int64,
-                    SignedType = "int64_t",
-                    UnsignedType = "uint64_t"
-                ),
-                % We used to handle X + (-C) (for constant C) specially, by
-                % converting it to X - C, but we no longer do that since it
-                % would overflow in the case where C == min_int.
-                io.format(Stream, "(%s) ((%s) ",
-                    [s(SignedType), s(UnsignedType)], !IO),
-                output_rval_as_type(Info, SubRvalA, lt_int(IntType),
-                    Stream, !IO),
-                io.format(Stream, " %s (%s) ",
-                    [s(OpStr), s(UnsignedType)], !IO),
-                output_rval_as_type(Info, SubRvalB, lt_int(IntType),
-                    Stream, !IO),
-                io.write_string(Stream, ")", !IO)
-            ;
-                ( IntType = int_type_uint
-                ; IntType = int_type_uint8
-                ; IntType = int_type_uint16
-                ; IntType = int_type_uint32
-                ; IntType = int_type_uint64
-                ),
-                io.write_string(Stream, "(", !IO),
-                output_rval_as_type(Info, SubRvalA, lt_int(IntType),
-                    Stream, !IO),
-                io.format(Stream, " %s ", [s(OpStr)], !IO),
-                output_rval_as_type(Info, SubRvalB, lt_int(IntType),
-                    Stream, !IO),
-                io.write_string(Stream, ")", !IO)
-            )
-        ;
-            ( Op = int_div(IntType), OpStr = "/"
-            ; Op = int_mod(IntType), OpStr = "%"
-            ; Op = eq(IntType), OpStr = "=="
-            ; Op = ne(IntType), OpStr = "!="
-            ; Op = int_lt(IntType), OpStr = "<"
-            ; Op = int_gt(IntType), OpStr = ">"
-            ; Op = int_le(IntType), OpStr = "<="
-            ; Op = int_ge(IntType), OpStr = ">="
-            ; Op = bitwise_and(IntType), OpStr = "&"
-            ; Op = bitwise_or(IntType), OpStr = "|"
-            ; Op = bitwise_xor(IntType), OpStr = "^"
-            ),
-            ( if
-                % Special-case equality ops to avoid some unnecessary casts --
-                % there is no difference between signed and unsigned equality,
-                % so if both args are unsigned, we don't need to cast them to
-                % MR_Integer.
-                ( Op = eq(_) ; Op = ne(_) ),
+        Rval = binop(BinOp, SubRvalA, SubRvalB),
+        output_rval_binop(Stream, Info, BinOp, SubRvalA, SubRvalB, !IO)
 
-                require_complete_switch [IntType]
-                (
-                    ( IntType = int_type_int
-                    ; IntType = int_type_uint
-                    )
-                ;
-                    % Don't apply this special case for sub-word-sized types,
-                    % to avoid having any differences in the rest of the word
-                    % convert an "equal" result to a "not equal" result.
-                    %
-                    % Don't apply this special case for 64-bit integer types,
-                    % since they may be boxed.
-                    ( IntType = int_type_int8
-                    ; IntType = int_type_uint8
-                    ; IntType = int_type_int16
-                    ; IntType = int_type_uint16
-                    ; IntType = int_type_int32
-                    ; IntType = int_type_uint32
-                    ; IntType = int_type_int64
-                    ; IntType = int_type_uint64
-                    ),
-                    fail
-                ),
-                llds.rval_type(SubRvalA, SubRvalAType),
-                ( SubRvalAType = lt_word
-                ; SubRvalAType = lt_int(int_type_uint)
-                ),
-                llds.rval_type(SubRvalB, SubRvalBType),
-                ( SubRvalBType = lt_word
-                ; SubRvalBType = lt_int(int_type_uint)
-                )
-            then
-                io.write_string(Stream, "(", !IO),
-                output_rval(Info, SubRvalA, Stream, !IO),
-                io.write_string(Stream, " ", !IO),
-                io.write_string(Stream, OpStr, !IO),
-                io.write_string(Stream, " ", !IO),
-                output_rval(Info, SubRvalB, Stream, !IO),
-                io.write_string(Stream, ")", !IO)
-            else
-                io.write_string(Stream, "(", !IO),
-                output_rval_as_type(Info, SubRvalA, lt_int(IntType),
-                    Stream, !IO),
-                io.write_string(Stream, " ", !IO),
-                io.write_string(Stream, OpStr, !IO),
-                io.write_string(Stream, " ", !IO),
-                output_rval_as_type(Info, SubRvalB, lt_int(IntType),
-                    Stream, !IO),
-                io.write_string(Stream, ")", !IO)
-            )
-        ;
-            ( Op = logical_and, OpStr = "&&"
-            ; Op = logical_or, OpStr = "||"
-            ),
-            io.write_string(Stream, "(", !IO),
-            output_rval_as_type(Info, SubRvalA, lt_int(int_type_int),
-                Stream, !IO),
-            io.write_string(Stream, " ", !IO),
-            io.write_string(Stream, OpStr, !IO),
-            io.write_string(Stream, " ", !IO),
-            output_rval_as_type(Info, SubRvalB, lt_int(int_type_int),
-                Stream, !IO),
-            io.write_string(Stream, ")", !IO)
-        ;
-            % The second operand of the shift operators always has type
-            % `int' in C, but Mercury also allows it to be uint.
-            ( Op = unchecked_left_shift(IntType, ShiftType), OpStr = "<<"
-            ; Op = unchecked_right_shift(IntType, ShiftType), OpStr = ">>"
-            ),
-            io.write_string(Stream, "(", !IO),
-            output_rval_as_type(Info, SubRvalA, lt_int(IntType), Stream, !IO),
-            io.write_string(Stream, " ", !IO),
-            io.write_string(Stream, OpStr, !IO),
-            io.write_string(Stream, " ", !IO),
-            (
-                ShiftType = shift_by_int
-            ;
-                ShiftType = shift_by_uint,
-                io.write_string(Stream, "(int) ", !IO)
-            ),
-            output_rval_as_type(Info, SubRvalB, lt_int(int_type_int),
-                Stream, !IO),
-            io.write_string(Stream, ")", !IO)
-        ;
-            Op = str_cmp,
-            io.write_string(Stream, "MR_strcmp(", !IO),
-            output_rval_as_type(Info, SubRvalA, lt_data_ptr, Stream, !IO),
-            io.write_string(Stream, ", ", !IO),
-            output_rval_as_type(Info, SubRvalB, lt_data_ptr, Stream, !IO),
-            io.write_string(Stream, ")", !IO)
-        ;
-            Op = offset_str_eq(N),
-            io.write_string(Stream, "MR_offset_streq(", !IO),
-            io.write_int(Stream, N, !IO),
-            io.write_string(Stream, ", ", !IO),
-            output_rval_as_type(Info, SubRvalA, lt_data_ptr, Stream, !IO),
-            io.write_string(Stream, ", ", !IO),
-            output_rval_as_type(Info, SubRvalB, lt_data_ptr, Stream, !IO),
-            io.write_string(Stream, ")", !IO)
-        ;
-            Op = body,
-            io.write_string(Stream, "MR_body(", !IO),
-            output_rval_as_type(Info, SubRvalA, lt_int(int_type_int),
-                Stream, !IO),
-            io.write_string(Stream, ", ", !IO),
-            output_rval_as_type(Info, SubRvalB, lt_int(int_type_int),
-                Stream, !IO),
-            io.write_string(Stream, ")", !IO)
-        ;
-            ( Op = float_from_dword,  OpStr = "MR_float_from_dword"
-            ; Op = int64_from_dword,  OpStr = "MR_int64_from_dword"
-            ; Op = uint64_from_dword, OpStr = "MR_uint64_from_dword"
-            ),
-            io.write_string(Stream, OpStr, !IO),
-            ( if is_aligned_dword_ptr(SubRvalA, SubRvalB, MemRef) then
-                io.write_string(Stream, "_ptr(MR_dword_ptr(", !IO),
-                output_rval(Info, mem_addr(MemRef), Stream, !IO),
-                io.write_string(Stream, "))", !IO)
-            else
-                io.write_string(Stream, "(", !IO),
-                output_rval(Info, SubRvalA, Stream, !IO),
-                io.write_string(Stream, ", ", !IO),
-                output_rval(Info, SubRvalB, Stream, !IO),
-                io.write_string(Stream, ")", !IO)
-            )
-        )
     ;
         Rval = mkword(ptag(PtagUInt8), SubRval),
         ( if
@@ -1504,6 +1213,290 @@ output_rval_const(Info, Const, Stream, !IO) :-
         )
     ).
 
+:- pred output_rval_binop(io.text_output_stream::in, llds_out_info::in,
+    binary_op::in, rval::in, rval::in, io::di, io::uo) is det.
+
+output_rval_binop(Stream, Info, Op, SubRvalA, SubRvalB, !IO) :-
+    (
+        Op = array_index(_),
+        io.write_string(Stream, "(", !IO),
+        output_rval_as_type(Info, SubRvalA, lt_data_ptr, Stream, !IO),
+        io.write_string(Stream, ")[", !IO),
+        output_rval_as_type(Info, SubRvalB, lt_int(int_type_int), Stream, !IO),
+        io.write_string(Stream, "]", !IO)
+    ;
+        Op = string_unsafe_index_code_unit,
+        io.write_string(Stream, "MR_nth_code_unit(", !IO),
+        output_rval_as_type(Info, SubRvalA, lt_data_ptr, Stream, !IO),
+        io.write_string(Stream, ", ", !IO),
+        output_rval_as_type(Info, SubRvalB, lt_int(int_type_int), Stream, !IO),
+        io.write_string(Stream, ")", !IO)
+    ;
+        Op = pointer_equal_conservative,
+        io.write_string(Stream, "(((MR_Word) ", !IO),
+        output_rval(Info, SubRvalA, Stream, !IO),
+        io.write_string(Stream, ") == ((MR_Word) ", !IO),
+        output_rval(Info, SubRvalB, Stream, !IO),
+        io.write_string(Stream, "))", !IO)
+    ;
+        ( Op = compound_lt
+        ; Op = compound_eq
+        ),
+        % These operators were intended to be generated only when using
+        % the now-deleted Erlang backend.
+        unexpected($file, $pred, "compound_compare_binop")
+    ;
+        ( Op = str_eq, OpStr = "=="
+        ; Op = str_ne, OpStr = "!="
+        ; Op = str_le, OpStr = "<="
+        ; Op = str_ge, OpStr = ">="
+        ; Op = str_lt, OpStr = "<"
+        ; Op = str_gt, OpStr = ">"
+        ),
+        io.write_string(Stream, "(strcmp(", !IO),
+        ( if SubRvalA = const(llconst_string(SubRvalAConst)) then
+            output_rval_const(Info, llconst_string(SubRvalAConst), Stream, !IO)
+        else
+            io.write_string(Stream, "(char *) ", !IO),
+            output_rval_as_type(Info, SubRvalA, lt_data_ptr, Stream, !IO)
+        ),
+        io.write_string(Stream, ", ", !IO),
+        ( if SubRvalB = const(llconst_string(SubRvalBConst)) then
+            output_rval_const(Info, llconst_string(SubRvalBConst), Stream, !IO)
+        else
+            io.write_string(Stream, "(char *) ", !IO),
+            output_rval_as_type(Info, SubRvalB, lt_data_ptr, Stream, !IO)
+        ),
+        io.write_string(Stream, ")", !IO),
+        io.write_string(Stream, " ", !IO),
+        io.write_string(Stream, OpStr, !IO),
+        io.write_string(Stream, " ", !IO),
+        io.write_string(Stream, "0)", !IO)
+    ;
+        ( Op = float_eq,    OpStr = "=="
+        ; Op = float_ne,    OpStr = "!="
+        ; Op = float_le,    OpStr = "<="
+        ; Op = float_ge,    OpStr = ">="
+        ; Op = float_lt,    OpStr = "<"
+        ; Op = float_gt,    OpStr = ">"
+        ; Op = float_add,   OpStr = "+"
+        ; Op = float_sub,   OpStr = "-"
+        ; Op = float_mul,   OpStr = "*"
+        ; Op = float_div,   OpStr = "/"
+        ),
+        io.write_string(Stream, "(", !IO),
+        output_rval_as_type(Info, SubRvalA, lt_float, Stream, !IO),
+        io.write_string(Stream, " ", !IO),
+        io.write_string(Stream, OpStr, !IO),
+        io.write_string(Stream, " ", !IO),
+        output_rval_as_type(Info, SubRvalB, lt_float, Stream, !IO),
+        io.write_string(Stream, ")", !IO)
+    ;
+        Op = unsigned_lt,
+        io.write_string(Stream, "(", !IO),
+        output_rval_as_type(Info, SubRvalA, lt_int(int_type_uint),
+            Stream, !IO),
+        io.write_string(Stream, " < ", !IO),
+        output_rval_as_type(Info, SubRvalB, lt_int(int_type_uint),
+            Stream, !IO),
+        io.write_string(Stream, ")", !IO)
+    ;
+        Op = unsigned_le,
+        io.write_string(Stream, "(", !IO),
+        output_rval_as_type(Info, SubRvalA, lt_int(int_type_uint),
+            Stream, !IO),
+        io.write_string(Stream, " <= ", !IO),
+        output_rval_as_type(Info, SubRvalB, lt_int(int_type_uint),
+            Stream, !IO),
+        io.write_string(Stream, ")", !IO)
+    ;
+        ( Op = int_add(IntType), OpStr = "+"
+        ; Op = int_sub(IntType), OpStr = "-"
+        ; Op = int_mul(IntType), OpStr = "*"
+        ),
+        (
+            (
+                IntType = int_type_int,
+                SignedType = "MR_Integer",
+                UnsignedType = "MR_Unsigned"
+            ;
+                IntType = int_type_int8,
+                SignedType = "int8_t",
+                UnsignedType = "uint8_t"
+            ;
+                IntType = int_type_int16,
+                SignedType = "int16_t",
+                UnsignedType = "uint16_t"
+            ;
+                IntType = int_type_int32,
+                SignedType = "int32_t",
+                UnsignedType = "uint32_t"
+            ;
+                IntType = int_type_int64,
+                SignedType = "int64_t",
+                UnsignedType = "uint64_t"
+            ),
+            % We used to handle X + (-C) (for constant C) specially, by
+            % converting it to X - C, but we no longer do that since it
+            % would overflow in the case where C == min_int.
+            io.format(Stream, "(%s) ((%s) ",
+                [s(SignedType), s(UnsignedType)], !IO),
+            output_rval_as_type(Info, SubRvalA, lt_int(IntType), Stream, !IO),
+            io.format(Stream, " %s (%s) ", [s(OpStr), s(UnsignedType)], !IO),
+            output_rval_as_type(Info, SubRvalB, lt_int(IntType), Stream, !IO),
+            io.write_string(Stream, ")", !IO)
+        ;
+            ( IntType = int_type_uint
+            ; IntType = int_type_uint8
+            ; IntType = int_type_uint16
+            ; IntType = int_type_uint32
+            ; IntType = int_type_uint64
+            ),
+            io.write_string(Stream, "(", !IO),
+            output_rval_as_type(Info, SubRvalA, lt_int(IntType), Stream, !IO),
+            io.format(Stream, " %s ", [s(OpStr)], !IO),
+            output_rval_as_type(Info, SubRvalB, lt_int(IntType), Stream, !IO),
+            io.write_string(Stream, ")", !IO)
+        )
+    ;
+        ( Op = int_div(IntType),        OpStr = "/"
+        ; Op = int_mod(IntType),        OpStr = "%"
+        ; Op = eq(IntType),             OpStr = "=="
+        ; Op = ne(IntType),             OpStr = "!="
+        ; Op = int_lt(IntType),         OpStr = "<"
+        ; Op = int_gt(IntType),         OpStr = ">"
+        ; Op = int_le(IntType),         OpStr = "<="
+        ; Op = int_ge(IntType),         OpStr = ">="
+        ; Op = bitwise_and(IntType),    OpStr = "&"
+        ; Op = bitwise_or(IntType),     OpStr = "|"
+        ; Op = bitwise_xor(IntType),    OpStr = "^"
+        ),
+        ( if
+            % Special-case equality ops to avoid some unnecessary casts --
+            % there is no difference between signed and unsigned equality,
+            % so if both args are unsigned, we don't need to cast them to
+            % MR_Integer.
+            ( Op = eq(_) ; Op = ne(_) ),
+            require_complete_switch [IntType]
+            (
+                ( IntType = int_type_int
+                ; IntType = int_type_uint
+                )
+            ;
+                % Don't apply this special case for sub-word-sized types,
+                % to avoid having any differences in the rest of the word
+                % convert an "equal" result to a "not equal" result.
+                %
+                % Don't apply this special case for 64-bit integer types,
+                % since they may be boxed.
+                ( IntType = int_type_int8
+                ; IntType = int_type_uint8
+                ; IntType = int_type_int16
+                ; IntType = int_type_uint16
+                ; IntType = int_type_int32
+                ; IntType = int_type_uint32
+                ; IntType = int_type_int64
+                ; IntType = int_type_uint64
+                ),
+                fail
+            ),
+            llds.rval_type(SubRvalA, SubRvalAType),
+            ( SubRvalAType = lt_word
+            ; SubRvalAType = lt_int(int_type_uint)
+            ),
+            llds.rval_type(SubRvalB, SubRvalBType),
+            ( SubRvalBType = lt_word
+            ; SubRvalBType = lt_int(int_type_uint)
+            )
+        then
+            io.write_string(Stream, "(", !IO),
+            output_rval(Info, SubRvalA, Stream, !IO),
+            io.write_string(Stream, " ", !IO),
+            io.write_string(Stream, OpStr, !IO),
+            io.write_string(Stream, " ", !IO),
+            output_rval(Info, SubRvalB, Stream, !IO),
+            io.write_string(Stream, ")", !IO)
+        else
+            io.write_string(Stream, "(", !IO),
+            output_rval_as_type(Info, SubRvalA, lt_int(IntType), Stream, !IO),
+            io.write_string(Stream, " ", !IO),
+            io.write_string(Stream, OpStr, !IO),
+            io.write_string(Stream, " ", !IO),
+            output_rval_as_type(Info, SubRvalB, lt_int(IntType), Stream, !IO),
+            io.write_string(Stream, ")", !IO)
+        )
+    ;
+        ( Op = logical_and, OpStr = "&&"
+        ; Op = logical_or,  OpStr = "||"
+        ),
+        io.write_string(Stream, "(", !IO),
+        output_rval_as_type(Info, SubRvalA, lt_int(int_type_int), Stream, !IO),
+        io.write_string(Stream, " ", !IO),
+        io.write_string(Stream, OpStr, !IO),
+        io.write_string(Stream, " ", !IO),
+        output_rval_as_type(Info, SubRvalB, lt_int(int_type_int), Stream, !IO),
+        io.write_string(Stream, ")", !IO)
+    ;
+        % The second operand of the shift operators always has type
+        % `int' in C, but Mercury also allows it to be uint.
+        ( Op = unchecked_left_shift(IntType, ShiftType),    OpStr = "<<"
+        ; Op = unchecked_right_shift(IntType, ShiftType),   OpStr = ">>"
+        ),
+        io.write_string(Stream, "(", !IO),
+        output_rval_as_type(Info, SubRvalA, lt_int(IntType), Stream, !IO),
+        io.write_string(Stream, " ", !IO),
+        io.write_string(Stream, OpStr, !IO),
+        io.write_string(Stream, " ", !IO),
+        (
+            ShiftType = shift_by_int
+        ;
+            ShiftType = shift_by_uint,
+            io.write_string(Stream, "(int) ", !IO)
+        ),
+        output_rval_as_type(Info, SubRvalB, lt_int(int_type_int), Stream, !IO),
+        io.write_string(Stream, ")", !IO)
+    ;
+        Op = str_cmp,
+        io.write_string(Stream, "MR_strcmp(", !IO),
+        output_rval_as_type(Info, SubRvalA, lt_data_ptr, Stream, !IO),
+        io.write_string(Stream, ", ", !IO),
+        output_rval_as_type(Info, SubRvalB, lt_data_ptr, Stream, !IO),
+        io.write_string(Stream, ")", !IO)
+    ;
+        Op = offset_str_eq(N),
+        io.write_string(Stream, "MR_offset_streq(", !IO),
+        io.write_int(Stream, N, !IO),
+        io.write_string(Stream, ", ", !IO),
+        output_rval_as_type(Info, SubRvalA, lt_data_ptr, Stream, !IO),
+        io.write_string(Stream, ", ", !IO),
+        output_rval_as_type(Info, SubRvalB, lt_data_ptr, Stream, !IO),
+        io.write_string(Stream, ")", !IO)
+    ;
+        Op = body,
+        io.write_string(Stream, "MR_body(", !IO),
+        output_rval_as_type(Info, SubRvalA, lt_int(int_type_int), Stream, !IO),
+        io.write_string(Stream, ", ", !IO),
+        output_rval_as_type(Info, SubRvalB, lt_int(int_type_int), Stream, !IO),
+        io.write_string(Stream, ")", !IO)
+    ;
+        ( Op = float_from_dword,  OpStr = "MR_float_from_dword"
+        ; Op = int64_from_dword,  OpStr = "MR_int64_from_dword"
+        ; Op = uint64_from_dword, OpStr = "MR_uint64_from_dword"
+        ),
+        io.write_string(Stream, OpStr, !IO),
+        ( if is_aligned_dword_ptr(SubRvalA, SubRvalB, MemRef) then
+            io.write_string(Stream, "_ptr(MR_dword_ptr(", !IO),
+            output_rval(Info, mem_addr(MemRef), Stream, !IO),
+            io.write_string(Stream, "))", !IO)
+        else
+            io.write_string(Stream, "(", !IO),
+            output_rval(Info, SubRvalA, Stream, !IO),
+            io.write_string(Stream, ", ", !IO),
+            output_rval(Info, SubRvalB, Stream, !IO),
+            io.write_string(Stream, ")", !IO)
+        )
+    ).
+
 :- pred output_type_ctor_addr(io.text_output_stream::in,
     module_name::in, string::in, uint16::in, io::di, io::uo) is det.
 
@@ -1518,35 +1511,39 @@ output_type_ctor_addr(Stream, Module0, Name, Arity, !IO) :-
     ModuleStr = sym_name_mangle(Module),
     ( if Arity = 0u16 then
         ( if
-            ModuleStr = "builtin",
-            builtin_type_to_type_ctor_addr(Name, Macro)
+            require_switch_arms_semidet [ModuleStr]
+            (
+                ModuleStr = "builtin",
+                builtin_type_to_type_ctor_addr(Name, Macro)
+            ;
+                ModuleStr = "io",
+                Name = "state",
+                Macro = "MR_IO_CTOR_ADDR"
+            ;
+                ModuleStr = "bool",
+                Name = "bool",
+                Macro = "MR_BOOL_CTOR_ADDR"
+            )
         then
             io.write_string(Stream, Macro, !IO)
-        else if
-            ModuleStr = "io",
-            Name = "state"
-        then
-            io.write_string(Stream, "MR_IO_CTOR_ADDR", !IO)
-        else if
-            ModuleStr = "bool",
-            Name = "bool"
-        then
-            io.write_string(Stream, "MR_BOOL_CTOR_ADDR", !IO)
         else
             io.format(Stream, "MR_CTOR0_ADDR(%s, %s)",
                 [s(ModuleStr), s(Name)], !IO)
         )
     else if Arity = 1u16 then
         ( if
-            Name = "list",
-            ModuleStr = "list"
+            require_switch_arms_semidet [Name]
+            (
+                Name = "list",
+                ModuleStr = "list",
+                Macro = "MR_LIST_CTOR_ADDR"
+            ;
+                Name = "type_info",
+                ModuleStr = "private_builtin",
+                Macro = "MR_TYPE_INFO_CTOR_ADDR"
+            )
         then
-            io.write_string(Stream, "MR_LIST_CTOR_ADDR", !IO)
-        else if
-            Name = "private_builtin",
-            ModuleStr = "type_info"
-        then
-            io.write_string(Stream, "MR_TYPE_INFO_CTOR_ADDR", !IO)
+            io.write_string(Stream, Macro, !IO)
         else
             io.format(Stream, "MR_CTOR1_ADDR(%s, %s)",
                 [s(ModuleStr), s(Name)], !IO)
@@ -1559,46 +1556,25 @@ output_type_ctor_addr(Stream, Module0, Name, Arity, !IO) :-
 :- pred builtin_type_to_type_ctor_addr(string::in, string::out) is semidet.
 
 builtin_type_to_type_ctor_addr(Name, Macro) :-
-    (
-        Name = "int",
-        Macro = "MR_INT_CTOR_ADDR"
-    ;
-        Name = "uint",
-        Macro = "MR_UINT_CTOR_ADDR"
-    ;
-        Name = "int8",
-        Macro = "MR_INT8_CTOR_ADDR"
-    ;
-        Name = "uint8",
-        Macro = "MR_UINT8_CTOR_ADDR"
-    ;
-        Name = "int16",
-        Macro = "MR_INT16_CTOR_ADDR"
-    ;
-        Name = "uint16",
-        Macro = "MR_UINT16_CTOR_ADDR"
-    ;
-        Name = "int32",
-        Macro = "MR_INT32_CTOR_ADDR"
-    ;
-        Name = "uint32",
-        Macro = "MR_UINT32_CTOR_ADDR"
-    ;
-        Name = "int64",
-        Macro = "MR_INT64_CTOR_ADDR"
-    ;
-        Name = "uint64",
-        Macro = "MR_UINT64_CTOR_ADDR"
-    ;
-        Name = "float",
-        Macro = "MR_FLOAT_CTOR_ADDR"
-    ;
-        Name = "string",
-        Macro = "MR_STRING_CTOR_ADDR"
-    ;
-        Name = "character",
-        Macro = "MR_CHAR_CTOR_ADDR"
+    ( Name = "int",         Macro = "MR_INT_CTOR_ADDR"
+    ; Name = "int8",        Macro = "MR_INT8_CTOR_ADDR"
+    ; Name = "int16",       Macro = "MR_INT16_CTOR_ADDR"
+    ; Name = "int32",       Macro = "MR_INT32_CTOR_ADDR"
+    ; Name = "int64",       Macro = "MR_INT64_CTOR_ADDR"
+    ; Name = "uint",        Macro = "MR_UINT_CTOR_ADDR"
+    ; Name = "uint8",       Macro = "MR_UINT8_CTOR_ADDR"
+    ; Name = "uint16",      Macro = "MR_UINT16_CTOR_ADDR"
+    ; Name = "uint32",      Macro = "MR_UINT32_CTOR_ADDR"
+    ; Name = "uint64",      Macro = "MR_UINT64_CTOR_ADDR"
+    ; Name = "float",       Macro = "MR_FLOAT_CTOR_ADDR"
+    ; Name = "character",   Macro = "MR_CHAR_CTOR_ADDR"
+    ; Name = "string",      Macro = "MR_STRING_CTOR_ADDR"
     ).
+
+:- type dword_type
+    --->    dword_float
+    ;       dword_int64
+    ;       dword_uint64.
 
 output_rval_as_type(Info, Rval, DesiredType, Stream, !IO) :-
     llds.rval_type(Rval, ActualType),
@@ -1606,44 +1582,61 @@ output_rval_as_type(Info, Rval, DesiredType, Stream, !IO) :-
         % No casting needed.
         output_rval(Info, Rval, Stream, !IO)
     else
-        % We need to convert to the right type first.
+        % We need to convert Rval to DesiredType first.
         % Conversions to/from float, int64 and uint64 must be treated
         % specially; for the others, we can just use a cast.
-        ( if DesiredType = lt_float then
-            io.write_string(Stream, "MR_word_to_float(", !IO),
-            output_rval(Info, Rval, Stream, !IO),
-            io.write_string(Stream, ")", !IO)
-        else if ActualType = lt_float then
-            ( if DesiredType = lt_word then
-                output_float_rval_as_word(Info, Stream, Rval, !IO)
-            else if DesiredType = lt_data_ptr then
-                output_float_rval_as_data_ptr(Info, Stream, Rval, !IO)
-            else
-                unexpected($file, $pred, "type error")
+        ( if
+            (
+                DesiredType = lt_float,
+                ConvMacro = "MR_word_to_float"
+            ;
+                DesiredType = lt_int(int_type_int64),
+                ConvMacro = "MR_word_to_int64"
+            ;
+                DesiredType = lt_int(int_type_uint64),
+                ConvMacro = "MR_word_to_uint64"
             )
-        else if DesiredType = lt_int(int_type_int64) then
-            io.write_string(Stream, "MR_word_to_int64(", !IO),
+        then
+            io.write_string(Stream, ConvMacro, !IO),
+            io.write_string(Stream, "(", !IO),
             output_rval(Info, Rval, Stream, !IO),
             io.write_string(Stream, ")", !IO)
-        else if ActualType = lt_int(int_type_int64) then
-            ( if DesiredType = lt_word then
-                output_int64_rval_as_word(Info, Stream, Rval, !IO)
-            else if DesiredType = lt_data_ptr then
-                output_int64_rval_as_data_ptr(Info, Stream, Rval, !IO)
-            else
-                unexpected($file, $pred, "type error")
+        else if
+            ( ActualType = lt_float,                DwordType = dword_float
+            ; ActualType = lt_int(int_type_int64),  DwordType = dword_int64
+            ; ActualType = lt_int(int_type_uint64), DwordType = dword_uint64
             )
-        else if DesiredType = lt_int(int_type_uint64) then
-            io.write_string(Stream, "MR_word_to_uint64(", !IO),
-            output_rval(Info, Rval, Stream, !IO),
-            io.write_string(Stream, ")", !IO)
-        else if ActualType = lt_int(int_type_uint64) then
-            ( if DesiredType = lt_word then
-                output_uint64_rval_as_word(Info, Stream, Rval, !IO)
-            else if DesiredType = lt_data_ptr then
-                output_uint64_rval_as_data_ptr(Info, Stream, Rval, !IO)
-            else
-                unexpected($file, $pred, "type error")
+        then
+            % Note that we cannot switch on ActualType here, because
+            % once control leaves the switch above, the compiler forgets
+            % the fact that lt_int's argument can only be int_type_{u,}int64.
+            (
+                DwordType = dword_float,
+                ( if DesiredType = lt_word then
+                    output_float_rval_as_word(Info, Stream, Rval, !IO)
+                else if DesiredType = lt_data_ptr then
+                    output_float_rval_as_data_ptr(Info, Stream, Rval, !IO)
+                else
+                    unexpected($file, $pred, "type error")
+                )
+            ;
+                DwordType = dword_int64,
+                ( if DesiredType = lt_word then
+                    output_int64_rval_as_word(Info, Stream, Rval, !IO)
+                else if DesiredType = lt_data_ptr then
+                    output_int64_rval_as_data_ptr(Info, Stream, Rval, !IO)
+                else
+                    unexpected($file, $pred, "type error")
+                )
+            ;
+                DwordType = dword_uint64,
+                ( if DesiredType = lt_word then
+                    output_uint64_rval_as_word(Info, Stream, Rval, !IO)
+                else if DesiredType = lt_data_ptr then
+                    output_uint64_rval_as_data_ptr(Info, Stream, Rval, !IO)
+                else
+                    unexpected($file, $pred, "type error")
+                )
             )
         else
             ( if
