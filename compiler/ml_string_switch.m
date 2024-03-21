@@ -124,16 +124,34 @@
 
 ml_generate_string_trie_jump_switch(VarRval, TaggedCases, CodeModel, CanFail,
         EntryPackedArgsMap, Context, Stmts, !Info) :-
-    gen_tagged_case_codes_for_string_switch(CodeModel, EntryPackedArgsMap,
+    ml_gen_tagged_case_codes_for_string_switch(CodeModel, EntryPackedArgsMap,
         TaggedCases, map.init, CodeMap, [], ReachableConstVarMaps, !Info),
     ml_gen_record_consensus_const_var_map(ReachableConstVarMaps, !Info),
-    create_nested_switch_trie(TaggedCases, Context, VarRval, MaxCaseNum,
+    ml_create_nested_switch_trie(TaggedCases, Context, VarRval, MaxCaseNum,
         CaseNumVarLval, CaseNumVarDefn,
         InitCaseNumVarStmt, GetCaseNumSwitchStmt, !Info),
 
     map.to_assoc_list(CodeMap, CodeCases),
-    generate_trie_arms(CodeCases, [], RevCaseNumSwitchArms),
-    list.reverse(RevCaseNumSwitchArms, CaseNumSwitchArms),
+    ml_generate_arms_of_switch_on_case_id(CodeCases,
+        cord.init, CaseNumSwitchArmsCord),
+    CaseNumSwitchArms = cord.list(CaseNumSwitchArmsCord),
+    ml_gen_default_of_switch_on_case_id(CodeModel, CanFail, Context,
+        CaseNumDefault, !Info),
+    CaseNumSwitchRange = mlds_switch_range(0, MaxCaseNum),
+    CaseSwitchStmt = ml_stmt_switch(mlds_builtin_type_int(int_type_int),
+        ml_lval(CaseNumVarLval), CaseNumSwitchRange, CaseNumSwitchArms,
+        CaseNumDefault, Context),
+
+    Stmt = ml_stmt_block([CaseNumVarDefn], [],
+        [InitCaseNumVarStmt, GetCaseNumSwitchStmt, CaseSwitchStmt], Context),
+    Stmts = [Stmt].
+
+:- pred ml_gen_default_of_switch_on_case_id(code_model::in, can_fail::in,
+    prog_context::in, mlds_switch_default::out,
+    ml_gen_info::in, ml_gen_info::out) is det.
+
+ml_gen_default_of_switch_on_case_id(CodeModel, CanFail, Context,
+        CaseNumDefault, !Info) :-
     (
         CanFail = cannot_fail,
         CaseNumDefault = default_is_unreachable
@@ -166,15 +184,7 @@ ml_generate_string_trie_jump_switch(VarRval, TaggedCases, CodeModel, CanFail,
             ),
             CaseNumDefault = default_case(FailStmt)
         )
-    ),
-    CaseNumSwitchRange = mlds_switch_range(0, MaxCaseNum),
-    CaseSwitchStmt = ml_stmt_switch(mlds_builtin_type_int(int_type_int),
-        ml_lval(CaseNumVarLval), CaseNumSwitchRange, CaseNumSwitchArms,
-        CaseNumDefault, Context),
-
-    Stmt = ml_stmt_block([CaseNumVarDefn], [],
-        [InitCaseNumVarStmt, GetCaseNumSwitchStmt, CaseSwitchStmt], Context),
-    Stmts = [Stmt].
+    ).
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -184,7 +194,7 @@ ml_generate_string_trie_jump_switch(VarRval, TaggedCases, CodeModel, CanFail,
 
 ml_generate_string_trie_lookup_switch(VarRval, TaggedCases, LookupSwitchInfo,
         CodeModel, CanFail, Context, Stmts, !Info) :-
-    create_nested_switch_trie(TaggedCases, Context, VarRval, MaxCaseNum,
+    ml_create_nested_switch_trie(TaggedCases, Context, VarRval, MaxCaseNum,
         CaseNumVarLval, CaseNumVarDefn,
         InitCaseNumVarStmt, GetCaseNumSwitchStmt, !Info),
     LookupSwitchInfo = ml_lookup_switch_info(CaseIdConsts, OutVars, OutTypes),
@@ -233,10 +243,10 @@ ml_generate_string_trie_simple_lookup_switch(MaxCaseNum,
             OutTypes, StructTypeNum, StructType, OutFieldIds,
             GlobalData0, GlobalData1),
         ml_gen_string_trie_simple_lookup_slots(StructType, CaseIdValues,
-            0, AfterLastCaseNum, [], RevRowInitializers),
+            0, AfterLastCaseNum, cord.init, RowInitializersCord),
         expect(unify(MaxCaseNum + 1, AfterLastCaseNum), $pred,
             "MaxCaseNum + 1 != AfterLastCaseNum"),
-        list.reverse(RevRowInitializers, RowInitializers),
+        RowInitializers = cord.list(RowInitializersCord),
         ml_gen_static_vector_defn(MLDS_ModuleName, StructTypeNum,
             RowInitializers, VectorCommon, GlobalData1, GlobalData),
         ml_gen_info_set_global_data(GlobalData, !Info),
@@ -291,21 +301,21 @@ ml_generate_string_trie_simple_lookup_switch(MaxCaseNum,
 
 :- pred ml_gen_string_trie_simple_lookup_slots(mlds_type::in,
     assoc_list(case_id, list(mlds_rval))::in, int::in, int::out,
-    list(mlds_initializer)::in, list(mlds_initializer)::out) is det.
+    cord(mlds_initializer)::in, cord(mlds_initializer)::out) is det.
 
 ml_gen_string_trie_simple_lookup_slots(_StructType, [],
-        !CurCaseNum, !RevRowInitializers).
+        !CurCaseNum, !RowInitializersCord).
 ml_gen_string_trie_simple_lookup_slots(StructType,
-        [CaseIdValue | CaseIdValues], !CurCaseNum, !RevRowInitializers) :-
+        [CaseIdValue | CaseIdValues], !CurCaseNum, !RowInitializersCord) :-
     CaseIdValue = CaseId - OutRvals,
     CaseId = case_id(CaseIdNum),
     expect(unify(CaseIdNum, !.CurCaseNum), $pred, "CaseIdNum != !.CurCaseNum"),
     OutInitializers = list.map(wrap_init_obj, OutRvals),
     RowInitializer = init_struct(StructType, OutInitializers),
-    !:RevRowInitializers = [RowInitializer | !.RevRowInitializers],
+    cord.snoc(RowInitializer, !RowInitializersCord),
     !:CurCaseNum = !.CurCaseNum + 1,
     ml_gen_string_trie_simple_lookup_slots(StructType, CaseIdValues,
-        !CurCaseNum, !RevRowInitializers).
+        !CurCaseNum, !RowInitializersCord).
 
 %---------------------------------------------------------------------------%
 
@@ -347,11 +357,11 @@ ml_generate_string_trie_several_soln_lookup_switch(MaxCaseNum,
 
     ml_gen_string_trie_several_soln_lookup_slots(
         FirstSolnStructType, LaterSolnStructType, CaseIdSolns,
-        0, AfterLastCaseNum, 0, [], RevFirstSolnRowInitializers,
+        0, AfterLastCaseNum, 0, cord.init, FirstSolnRowInitializersCord,
         cord.init, LaterSolnRowInitializerCord),
     expect(unify(MaxCaseNum + 1, AfterLastCaseNum), $pred,
         "MaxCaseNum + 1 != AfterLastCaseNum"),
-    list.reverse(RevFirstSolnRowInitializers, FirstSolnRowInitializers),
+    FirstSolnRowInitializers = cord.list(FirstSolnRowInitializersCord),
     LaterSolnRowInitializers = cord.list(LaterSolnRowInitializerCord),
     ml_gen_static_vector_defn(MLDS_ModuleName, FirstSolnStructTypeNum,
         FirstSolnRowInitializers, FirstSolnVectorCommon,
@@ -387,17 +397,17 @@ ml_generate_string_trie_several_soln_lookup_switch(MaxCaseNum,
     mlds_type::in, mlds_type::in,
     assoc_list(case_id, soln_consts(mlds_rval))::in, int::in, int::out,
     int::in,
-    list(mlds_initializer)::in, list(mlds_initializer)::out,
+    cord(mlds_initializer)::in, cord(mlds_initializer)::out,
     cord(mlds_initializer)::in, cord(mlds_initializer)::out) is det.
 
 ml_gen_string_trie_several_soln_lookup_slots(
         _FirstSolnStructType, _LaterSolnStructType, [], !CurCaseNum,
         _CurLaterSolnIndex,
-        !RevFirstSolnRowInitializers, !LaterSolnRowInitializersCord).
+        !FirstSolnRowInitializersCord, !LaterSolnRowInitializersCord).
 ml_gen_string_trie_several_soln_lookup_slots(
         FirstSolnStructType, LaterSolnStructType,
         [CaseIdSolns | CaseIdsSolns], !CurCaseNum, !.CurLaterSolnIndex,
-        !RevFirstSolnRowInitializers, !LaterSolnRowInitializersCord) :-
+        !FirstSolnRowInitializersCord, !LaterSolnRowInitializersCord) :-
     CaseIdSolns = CaseId - Solns,
     CaseId = case_id(CaseIdNum),
     expect(unify(CaseIdNum, !.CurCaseNum), $pred, "CaseIdNum != !.CurCaseNum"),
@@ -421,13 +431,12 @@ ml_gen_string_trie_several_soln_lookup_slots(
         [NumLaterSolnsRval, FirstLaterSlotRval | FirstSolnRvals],
     FirstSolnRowInitializer = init_struct(FirstSolnStructType,
         list.map(wrap_init_obj, FirstSolnRowRvals)),
-    !:RevFirstSolnRowInitializers =
-        [FirstSolnRowInitializer | !.RevFirstSolnRowInitializers],
+    cord.snoc(FirstSolnRowInitializer, !FirstSolnRowInitializersCord),
     !:CurCaseNum = !.CurCaseNum + 1,
     ml_gen_string_trie_several_soln_lookup_slots(
         FirstSolnStructType, LaterSolnStructType,
         CaseIdsSolns, !CurCaseNum, !.CurLaterSolnIndex,
-        !RevFirstSolnRowInitializers, !LaterSolnRowInitializersCord).
+        !FirstSolnRowInitializersCord, !LaterSolnRowInitializersCord).
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -435,29 +444,23 @@ ml_gen_string_trie_several_soln_lookup_slots(
 % Code useful for both the jump and lookup versions of tries.
 %
 
-:- pred create_nested_switch_trie(list(tagged_case)::in, prog_context::in,
+:- pred ml_create_nested_switch_trie(list(tagged_case)::in, prog_context::in,
     mlds_rval::in, int::out, mlds_lval::out, mlds_local_var_defn::out,
     mlds_stmt::out, mlds_stmt::out, ml_gen_info::in, ml_gen_info::out) is det.
 
-create_nested_switch_trie(TaggedCases, Context, VarRval, MaxCaseNum,
+ml_create_nested_switch_trie(TaggedCases, Context, VarRval, MaxCaseNum,
         CaseNumVarLval, CaseNumVarDefn,
         InitCaseNumVarStmt, GetCaseNumSwitchStmt, !Info) :-
     ml_gen_info_get_target(!.Info, Target),
-    (
-        Target = ml_target_c,
-        CompilationTarget = target_c
-    ;
-        Target = ml_target_java,
-        CompilationTarget = target_java
-    ;
-        Target = ml_target_csharp,
-        CompilationTarget = target_csharp
+    ( Target = ml_target_c,         CompilationTarget = target_c
+    ; Target = ml_target_java,      CompilationTarget = target_java
+    ; Target = ml_target_csharp,    CompilationTarget = target_csharp
     ),
     Encoding = target_string_encoding(CompilationTarget),
     create_trie(Encoding, TaggedCases, MaxCaseNum, TopTrieNode),
     ml_gen_trie_case_num_var_and_init(Context, CaseNumVarLval,
         CaseNumVarDefn, InitCaseNumVarStmt, !Info),
-    convert_trie_to_nested_switches(Encoding, VarRval, CaseNumVarLval,
+    ml_convert_trie_to_nested_switches(Encoding, VarRval, CaseNumVarLval,
         Context, 0, TopTrieNode, GetCaseNumSwitchStmt).
 
     % Generate the following local variable declaration:
@@ -481,21 +484,16 @@ ml_gen_trie_case_num_var_and_init(Context, CaseNumVarLval, CaseNumVarDefn,
 
 %---------------------------------------------------------------------------%
 
-:- pred convert_trie_to_nested_switches(string_encoding::in, mlds_rval::in,
+:- pred ml_convert_trie_to_nested_switches(string_encoding::in, mlds_rval::in,
     mlds_lval::in, prog_context::in, int::in, trie_node::in, mlds_stmt::out)
     is det.
 
-convert_trie_to_nested_switches(Encoding, VarRval, CaseNumVarLval, Context,
+ml_convert_trie_to_nested_switches(Encoding, VarRval, CaseNumVarLval, Context,
         NumMatched, TrieNode, Stmt) :-
     (
         TrieNode = trie_leaf(RevMatchedCodeUnits, NotYetMatchedCodeUnits,
             CaseId),
         CaseId = case_id(CaseNum),
-
-        CaseNumRval = ml_const(mlconst_int(CaseNum)),
-        SetCaseNumVarAssign = assign(CaseNumVarLval, CaseNumRval),
-        SetCaseNumVarStmt = ml_stmt_atomic(SetCaseNumVarAssign, Context),
-
         AllCodeUnits =
             list.reverse(RevMatchedCodeUnits) ++ NotYetMatchedCodeUnits,
         list.length(RevMatchedCodeUnits, NumRevMatchedCodeUnits),
@@ -509,6 +507,11 @@ convert_trie_to_nested_switches(Encoding, VarRval, CaseNumVarLval, Context,
             unexpected($pred, "code units cannot be turned back into string")
         ),
         CondRval = ml_binop(offset_str_eq(NumMatched), VarRval, StringRval),
+
+        CaseNumRval = ml_const(mlconst_int(CaseNum)),
+        SetCaseNumVarAssign = assign(CaseNumVarLval, CaseNumRval),
+        SetCaseNumVarStmt = ml_stmt_atomic(SetCaseNumVarAssign, Context),
+
         Stmt = ml_stmt_if_then_else(CondRval, SetCaseNumVarStmt, no, Context)
     ;
         TrieNode = trie_choice(RevMatchedCodeUnits, ChoiceMap, MaybeEnd),
@@ -523,12 +526,12 @@ convert_trie_to_nested_switches(Encoding, VarRval, CaseNumVarLval, Context,
             OneCodeUnitConst = ml_const(mlconst_int(OneCodeUnit)),
             FirstCond = ml_binop(eq(int_type_int),
                 CurCodeUnitRval, OneCodeUnitConst),
-            chase_one_cond_trie_nodes(Encoding, VarRval, CaseNumVarLval,
+            ml_chase_one_cond_trie_nodes(Encoding, VarRval, CaseNumVarLval,
                 Context, NumMatched + 1, OneSubTrieNode, FirstCond, AllCond,
                 ThenStmt),
             Stmt = ml_stmt_if_then_else(AllCond, ThenStmt, no, Context)
         else
-            convert_trie_choices_to_nested_switches(Encoding, VarRval,
+            ml_convert_trie_choices_to_nested_switches(Encoding, VarRval,
                 CaseNumVarLval, Context, NumMatched + 1, ChoicePairs,
                 cord.init, SwitchArmsCord0),
             SwitchArms0 = cord.list(SwitchArmsCord0),
@@ -564,41 +567,42 @@ convert_trie_to_nested_switches(Encoding, VarRval, CaseNumVarLval, Context,
         )
     ).
 
-:- pred convert_trie_choices_to_nested_switches(string_encoding::in,
+:- pred ml_convert_trie_choices_to_nested_switches(string_encoding::in,
     mlds_rval::in, mlds_lval::in, prog_context::in, int::in,
     assoc_list(int, trie_node)::in,
     cord(mlds_switch_case)::in, cord(mlds_switch_case)::out) is det.
 
-convert_trie_choices_to_nested_switches(_, _, _, _, _, [], !SwitchArmsCord).
-convert_trie_choices_to_nested_switches(Encoding, VarRval, CaseNumVarLval,
+ml_convert_trie_choices_to_nested_switches(_, _, _, _, _, [], !SwitchArmsCord).
+ml_convert_trie_choices_to_nested_switches(Encoding, VarRval, CaseNumVarLval,
         Context, NumMatched, [ChoicePair | ChoicePairs], !SwitchArmsCord) :-
     ChoicePair = CodeUnit - SubTrieNode,
-    convert_trie_to_nested_switches(Encoding, VarRval, CaseNumVarLval, Context,
-        NumMatched, SubTrieNode, SwitchArmStmt),
+    ml_convert_trie_to_nested_switches(Encoding, VarRval, CaseNumVarLval,
+        Context, NumMatched, SubTrieNode, SwitchArmStmt),
     MatchCond = match_value(ml_const(mlconst_int(CodeUnit))),
     SwitchArm = mlds_switch_case(MatchCond, [], SwitchArmStmt),
     !:SwitchArmsCord = cord.snoc(!.SwitchArmsCord, SwitchArm),
-    convert_trie_choices_to_nested_switches(Encoding, VarRval, CaseNumVarLval,
-        Context, NumMatched, ChoicePairs, !SwitchArmsCord).
+    ml_convert_trie_choices_to_nested_switches(Encoding, VarRval,
+        CaseNumVarLval, Context, NumMatched, ChoicePairs, !SwitchArmsCord).
 
-:- pred generate_trie_arms(assoc_list(case_id, mlds_stmt)::in,
-    list(mlds_switch_case)::in, list(mlds_switch_case)::out) is det.
+:- pred ml_generate_arms_of_switch_on_case_id(
+    assoc_list(case_id, mlds_stmt)::in,
+    cord(mlds_switch_case)::in, cord(mlds_switch_case)::out) is det.
 
-generate_trie_arms([], !RevSwitchCases).
-generate_trie_arms([CasePair | CasePairs], !RevSwitchCases) :-
+ml_generate_arms_of_switch_on_case_id([], !CaseCord).
+ml_generate_arms_of_switch_on_case_id([CasePair | CasePairs], !CaseCord) :-
     CasePair = CaseId - CaseStmt,
     CaseId = case_id(CaseNum),
     MatchCond = match_value(ml_const(mlconst_int(CaseNum))),
     Case = mlds_switch_case(MatchCond, [], CaseStmt),
-    !:RevSwitchCases = [Case | !.RevSwitchCases],
-    generate_trie_arms(CasePairs, !RevSwitchCases).
+    cord.snoc(Case, !CaseCord),
+    ml_generate_arms_of_switch_on_case_id(CasePairs, !CaseCord).
 
-:- pred chase_one_cond_trie_nodes(string_encoding::in, mlds_rval::in,
+:- pred ml_chase_one_cond_trie_nodes(string_encoding::in, mlds_rval::in,
     mlds_lval::in, prog_context::in, int::in, trie_node::in,
     mlds_rval::in, mlds_rval::out, mlds_stmt::out) is det.
 
-chase_one_cond_trie_nodes(Encoding, VarRval, CaseNumVarLval, Context,
-        NumMatched, TrieNode, RevCond0, RevCond, ThenStmt) :-
+ml_chase_one_cond_trie_nodes(Encoding, VarRval, CaseNumVarLval, Context,
+        NumMatched, TrieNode, CondSoFar0, CondSoFar, ThenStmt) :-
     ( if
         TrieNode = trie_choice(RevMatchedCodeUnits, ChoiceMap, MaybeEnd),
         map.to_assoc_list(ChoiceMap, ChoicePairs),
@@ -613,12 +617,13 @@ chase_one_cond_trie_nodes(Encoding, VarRval, CaseNumVarLval, Context,
         OneCodeUnitConst = ml_const(mlconst_int(OneCodeUnit)),
         CurCond = ml_binop(eq(int_type_int), CurCodeUnitRval,
             OneCodeUnitConst),
-        RevCond1 = ml_binop(logical_and, RevCond0, CurCond),
-        chase_one_cond_trie_nodes(Encoding, VarRval, CaseNumVarLval, Context,
-            NumMatched + 1, OneSubTrieNode, RevCond1, RevCond, ThenStmt)
+        CondSoFar1 = ml_binop(logical_and, CondSoFar0, CurCond),
+        ml_chase_one_cond_trie_nodes(Encoding, VarRval, CaseNumVarLval,
+            Context, NumMatched + 1, OneSubTrieNode,
+            CondSoFar1, CondSoFar, ThenStmt)
     else
-        RevCond = RevCond0,
-        convert_trie_to_nested_switches(Encoding, VarRval, CaseNumVarLval,
+        CondSoFar = CondSoFar0,
+        ml_convert_trie_to_nested_switches(Encoding, VarRval, CaseNumVarLval,
             Context, NumMatched, TrieNode, ThenStmt)
     ).
 
@@ -630,7 +635,7 @@ chase_one_cond_trie_nodes(Encoding, VarRval, CaseNumVarLval, Context,
 
 ml_generate_string_hash_jump_switch(VarRval, TaggedCases, CodeModel, CanFail,
         EntryPackedArgsMap, Context, Defns, Stmts, !Info) :-
-    gen_tagged_case_codes_for_string_switch(CodeModel, EntryPackedArgsMap,
+    ml_gen_tagged_case_codes_for_string_switch(CodeModel, EntryPackedArgsMap,
         TaggedCases, map.init, CodeMap, [], ReachableConstVarMaps, !Info),
     ml_gen_record_consensus_const_var_map(ReachableConstVarMaps, !Info),
     build_str_case_id_list(TaggedCases, _MaxCaseNum, StrsCaseIds),
@@ -693,16 +698,17 @@ ml_generate_string_hash_jump_switch(VarRval, TaggedCases, CodeModel, CanFail,
     ),
     % Generate the rows of the hash table.
     ml_gen_string_hash_jump_slots(0, TableSize, HashSlotMap, StructType,
-        MaybeNextSlotFieldId, [], RevRowInitializers, map.init, RevMap),
-    list.reverse(RevRowInitializers, RowInitializers),
+        MaybeNextSlotFieldId, cord.init, RowInitializersCord,
+        map.init, RevMap),
+    RowInitializers = cord.list(RowInitializersCord),
     % Generate the hash table.
     ml_gen_static_vector_defn(MLDS_ModuleName, StructTypeNum, RowInitializers,
         VectorCommon, GlobalData1, GlobalData),
     ml_gen_info_set_global_data(GlobalData, !Info),
 
     % Generate code which does the hash table lookup.
-    map.to_assoc_list(RevMap, RevList),
-    generate_string_jump_switch_arms(CodeMap, RevList, [], SlotsCases0),
+    map.to_assoc_list(RevMap, RevMapEntries),
+    generate_string_jump_switch_arms(CodeMap, RevMapEntries, [], SlotsCases0),
     list.sort(SlotsCases0, SlotsCases),
 
     SwitchStmt0 = ml_stmt_switch(SlotVarType, ml_lval(SlotVarLval),
@@ -724,41 +730,41 @@ ml_generate_string_hash_jump_switch(VarRval, TaggedCases, CodeModel, CanFail,
 
 %---------------------------------------------------------------------------%
 
-:- pred gen_tagged_case_codes_for_string_switch(code_model::in,
+:- pred ml_gen_tagged_case_codes_for_string_switch(code_model::in,
     packed_word_map::in, list(tagged_case)::in,
     map(case_id, mlds_stmt)::in, map(case_id, mlds_stmt)::out,
     list(ml_ground_term_map)::in, list(ml_ground_term_map)::out,
     ml_gen_info::in, ml_gen_info::out) is det.
 
-gen_tagged_case_codes_for_string_switch(_CodeModel, _EntryPackedArgsMap, [],
+ml_gen_tagged_case_codes_for_string_switch(_CodeModel, _EntryPackedArgsMap, [],
         !CodeMap, !ReachableConstVarMaps, !Info).
-gen_tagged_case_codes_for_string_switch(CodeModel, EntryPackedArgsMap,
+ml_gen_tagged_case_codes_for_string_switch(CodeModel, EntryPackedArgsMap,
         [TaggedCase | TaggedCases], !CodeMap, !ReachableConstVarMaps, !Info) :-
-    gen_tagged_case_code_for_string_switch(CodeModel, EntryPackedArgsMap,
+    ml_gen_tagged_case_code_for_string_switch(CodeModel, EntryPackedArgsMap,
         TaggedCase, !CodeMap, !ReachableConstVarMaps, !Info),
-    gen_tagged_case_codes_for_string_switch(CodeModel, EntryPackedArgsMap,
+    ml_gen_tagged_case_codes_for_string_switch(CodeModel, EntryPackedArgsMap,
         TaggedCases, !CodeMap, !ReachableConstVarMaps, !Info).
 
-:- pred gen_tagged_case_code_for_string_switch_return_case_id(code_model::in,
-    packed_word_map::in, tagged_case::in, case_id::out,
+:- pred ml_gen_tagged_case_code_for_string_switch_return_case_id(
+    code_model::in, packed_word_map::in, tagged_case::in, case_id::out,
     map(case_id, mlds_stmt)::in, map(case_id, mlds_stmt)::out,
     list(ml_ground_term_map)::in, list(ml_ground_term_map)::out,
     ml_gen_info::in, ml_gen_info::out, unit::in, unit::out) is det.
 
-gen_tagged_case_code_for_string_switch_return_case_id(CodeModel,
+ml_gen_tagged_case_code_for_string_switch_return_case_id(CodeModel,
         EntryPackedArgsMap, TaggedCase, CaseId,
         !CodeMap, !ReachableConstVarMaps, !Info, _, unit) :-
     TaggedCase = tagged_case(_, _, CaseId, _),
-    gen_tagged_case_code_for_string_switch(CodeModel, EntryPackedArgsMap,
+    ml_gen_tagged_case_code_for_string_switch(CodeModel, EntryPackedArgsMap,
         TaggedCase, !CodeMap, !ReachableConstVarMaps, !Info).
 
-:- pred gen_tagged_case_code_for_string_switch(code_model::in,
+:- pred ml_gen_tagged_case_code_for_string_switch(code_model::in,
     packed_word_map::in, tagged_case::in,
     map(case_id, mlds_stmt)::in, map(case_id, mlds_stmt)::out,
     list(ml_ground_term_map)::in, list(ml_ground_term_map)::out,
     ml_gen_info::in, ml_gen_info::out) is det.
 
-gen_tagged_case_code_for_string_switch(CodeModel, EntryPackedArgsMap,
+ml_gen_tagged_case_code_for_string_switch(CodeModel, EntryPackedArgsMap,
         TaggedCase, !CodeMap, !ReachableConstVarMaps, !Info) :-
     ml_gen_info_set_packed_word_map(EntryPackedArgsMap, !Info),
     TaggedCase = tagged_case(MainTaggedConsId, OtherTaggedConsIds,
@@ -795,11 +801,10 @@ gen_string_switch_case_comment(TaggedConsId) = String :-
 
 %---------------------------------------------------------------------------%
 
-    % A list of all the hash slots that all have the same code. The list is
-    % stored in reversed form.
+    % A list of all the hash slots that all have the same code.
     %
 :- type hash_slots
-    --->    hash_slots(int, list(int)).
+    --->    hash_slots(int, cord(int)).
 
     % Maps case numbers (each of which identifies the code of one switch arm)
     % to the hash slots that share that code.
@@ -809,19 +814,19 @@ gen_string_switch_case_comment(TaggedConsId) = String :-
 :- pred ml_gen_string_hash_jump_slots(int::in, int::in,
     map(int, string_hash_slot(case_id))::in,
     mlds_type::in, maybe(mlds_field_id)::in,
-    list(mlds_initializer)::in, list(mlds_initializer)::out,
+    cord(mlds_initializer)::in, cord(mlds_initializer)::out,
     hash_slot_rev_map::in, hash_slot_rev_map::out) is det.
 
 ml_gen_string_hash_jump_slots(Slot, TableSize, HashSlotMap, StructType,
-        MaybeNextSlotId, !RevRowInitializers, !RevMap) :-
+        MaybeNextSlotId, !RowInitializersCord, !RevMap) :-
     ( if Slot = TableSize then
         true
     else
         ml_gen_string_hash_jump_slot(Slot, HashSlotMap,
             StructType, MaybeNextSlotId, RowInitializer, !RevMap),
-        !:RevRowInitializers = [RowInitializer | !.RevRowInitializers],
+        cord.snoc(RowInitializer, !RowInitializersCord),
         ml_gen_string_hash_jump_slots(Slot + 1, TableSize, HashSlotMap,
-            StructType, MaybeNextSlotId, !RevRowInitializers, !RevMap)
+            StructType, MaybeNextSlotId, !RowInitializersCord, !RevMap)
     ).
 
 :- pred ml_gen_string_hash_jump_slot(int::in,
@@ -836,11 +841,12 @@ ml_gen_string_hash_jump_slot(Slot, HashSlotMap, StructType,
         StringRval = ml_const(mlconst_string(String)),
         NextSlotRval = ml_const(mlconst_int(Next)),
         ( if map.search(!.RevMap, CaseId, OldEntry) then
-            OldEntry = hash_slots(OldFirstSlot, OldLaterSlots),
-            NewEntry = hash_slots(OldFirstSlot, [Slot | OldLaterSlots]),
+            OldEntry = hash_slots(OldFirstSlot, LaterSlotsCord0),
+            cord.snoc(Slot, LaterSlotsCord0, LaterSlotsCord),
+            NewEntry = hash_slots(OldFirstSlot, LaterSlotsCord),
             map.det_update(CaseId, NewEntry, !RevMap)
         else
-            NewEntry = hash_slots(Slot, []),
+            NewEntry = hash_slots(Slot, cord.init),
             map.det_insert(CaseId, NewEntry, !RevMap)
         )
     else
@@ -864,8 +870,8 @@ ml_gen_string_hash_jump_slot(Slot, HashSlotMap, StructType,
 generate_string_jump_switch_arms(_, [], !Cases).
 generate_string_jump_switch_arms(CodeMap, [Entry | Entries], !Cases) :-
     Entry = CaseId - HashSlots,
-    HashSlots = hash_slots(FirstHashSlot, RevLaterHashSlots),
-    list.reverse(RevLaterHashSlots, LaterHashSlots),
+    HashSlots = hash_slots(FirstHashSlot, LaterHashSlotsCord),
+    LaterHashSlots = cord.list(LaterHashSlotsCord),
     FirstMatchCond = make_hash_match(FirstHashSlot),
     LaterMatchConds = list.map(make_hash_match, LaterHashSlots),
     map.lookup(CodeMap, CaseId, CaseStmt),
@@ -974,8 +980,8 @@ ml_generate_string_hash_simple_lookup_switch(VarRval, CaseValues,
     DummyOutInitializers = list.map(wrap_init_obj, DummyOutRvals),
     ml_gen_string_hash_simple_lookup_slots(0, TableSize, StructType,
         HashSlotMap, MaybeNextSlotFieldId, DummyOutInitializers,
-        [], RevRowInitializers),
-    list.reverse(RevRowInitializers, RowInitializers),
+        cord.init, RowInitializersCord),
+    RowInitializers = cord.list(RowInitializersCord),
     % Generate the hash table.
     ml_gen_static_vector_defn(MLDS_ModuleName, StructTypeNum, RowInitializers,
         VectorCommon, GlobalData1, GlobalData),
@@ -1011,20 +1017,20 @@ ml_generate_string_hash_simple_lookup_switch(VarRval, CaseValues,
 :- pred ml_gen_string_hash_simple_lookup_slots(int::in, int::in, mlds_type::in,
     map(int, string_hash_slot(list(mlds_rval)))::in, maybe(mlds_field_id)::in,
     list(mlds_initializer)::in,
-    list(mlds_initializer)::in, list(mlds_initializer)::out) is det.
+    cord(mlds_initializer)::in, cord(mlds_initializer)::out) is det.
 
 ml_gen_string_hash_simple_lookup_slots(Slot, TableSize, StructType,
         HashSlotMap, MaybeNextSlotId, DummyOutInitializers,
-        !RevRowInitializers) :-
+        !RowInitializersCord) :-
     ( if Slot = TableSize then
         true
     else
         ml_gen_string_hash_simple_lookup_slot(Slot, StructType, HashSlotMap,
             MaybeNextSlotId, DummyOutInitializers, RowInitializer),
-        !:RevRowInitializers = [RowInitializer | !.RevRowInitializers],
+        cord.snoc(RowInitializer, !RowInitializersCord),
         ml_gen_string_hash_simple_lookup_slots(Slot + 1, TableSize,
             StructType, HashSlotMap, MaybeNextSlotId,
-            DummyOutInitializers, !RevRowInitializers)
+            DummyOutInitializers, !RowInitializersCord)
     ).
 
 :- pred ml_gen_string_hash_simple_lookup_slot(int::in, mlds_type::in,
@@ -1141,9 +1147,9 @@ ml_generate_string_hash_several_soln_lookup_switch(VarRval, CaseSolns,
     ml_gen_string_hash_several_soln_lookup_slots(0, TableSize, HashSlotMap,
         FirstSolnStructType, LaterSolnStructType,
         MaybeNextSlotFieldId, DummyOutInitializers,
-        [], RevFirstSolnRowInitializers,
+        cord.init, FirstSolnRowInitializersCord,
         cord.init, LaterSolnRowInitializersCord, 0),
-    list.reverse(RevFirstSolnRowInitializers, FirstSolnRowInitializers),
+    FirstSolnRowInitializers = cord.list(FirstSolnRowInitializersCord),
     LaterSolnRowInitializers = cord.list(LaterSolnRowInitializersCord),
     % Generate the hash table.
     ml_gen_static_vector_defn(MLDS_ModuleName, FirstSolnStructTypeNum,
@@ -1173,13 +1179,13 @@ ml_generate_string_hash_several_soln_lookup_switch(VarRval, CaseSolns,
     map(int, string_hash_slot(soln_consts(mlds_rval)))::in,
     mlds_type::in, mlds_type::in,
     maybe(mlds_field_id)::in, list(mlds_initializer)::in,
-    list(mlds_initializer)::in, list(mlds_initializer)::out,
+    cord(mlds_initializer)::in, cord(mlds_initializer)::out,
     cord(mlds_initializer)::in, cord(mlds_initializer)::out, int::in) is det.
 
 ml_gen_string_hash_several_soln_lookup_slots(Slot, TableSize,
         HashSlotMap, FirstSolnStructType, LaterSolnStructType,
         MaybeNextSlotId, DummyOutInitializers,
-        !RevFirstSolnRowInitializers, !LaterSolnRowInitializersCord,
+        !FirstSolnRowInitializersCord, !LaterSolnRowInitializersCord,
         !.CurLaterSolnIndex) :-
     ( if Slot = TableSize then
         true
@@ -1188,12 +1194,11 @@ ml_gen_string_hash_several_soln_lookup_slots(Slot, TableSize,
             FirstSolnStructType, LaterSolnStructType, MaybeNextSlotId,
             DummyOutInitializers, FirstSolnsRowInitializer,
             !LaterSolnRowInitializersCord, !CurLaterSolnIndex),
-        !:RevFirstSolnRowInitializers =
-            [FirstSolnsRowInitializer | !.RevFirstSolnRowInitializers],
+        cord.snoc(FirstSolnsRowInitializer, !FirstSolnRowInitializersCord),
         ml_gen_string_hash_several_soln_lookup_slots(Slot + 1, TableSize,
             HashSlotMap, FirstSolnStructType, LaterSolnStructType,
             MaybeNextSlotId,
-            DummyOutInitializers, !RevFirstSolnRowInitializers,
+            DummyOutInitializers, !FirstSolnRowInitializersCord,
             !LaterSolnRowInitializersCord, !.CurLaterSolnIndex)
     ).
 
@@ -1490,14 +1495,14 @@ ml_generate_string_binary_jump_switch(VarRval, Cases, CodeModel, CanFail,
     ),
     map.init(CaseLabelMap0),
     string_binary_cases(Cases,
-        gen_tagged_case_code_for_string_switch_return_case_id(CodeModel,
+        ml_gen_tagged_case_code_for_string_switch_return_case_id(CodeModel,
             EntryPackedArgsMap),
         CaseLabelMap0, CaseLabelMap, [], ReachableConstVarMaps, !Info,
         unit, _, SortedTable),
     ml_gen_record_consensus_const_var_map(ReachableConstVarMaps, !Info),
     ml_gen_string_binary_jump_initializers(SortedTable, StructType,
-        [], RevRowInitializers, 0, TableSize),
-    list.reverse(RevRowInitializers, RowInitializers),
+        cord.init, RowInitializersCord, 0, TableSize),
+    RowInitializers = cord.list(RowInitializersCord),
     % We need to get the globaldata out of !Info again, since the generation
     % of code for the switch arms can generate global data.
     ml_gen_info_get_global_data(!.Info, GlobalData2),
@@ -1528,22 +1533,22 @@ ml_generate_string_binary_jump_switch(VarRval, Cases, CodeModel, CanFail,
 
 :- pred ml_gen_string_binary_jump_initializers(assoc_list(string, case_id)::in,
     mlds_type::in,
-    list(mlds_initializer)::in, list(mlds_initializer)::out,
+    cord(mlds_initializer)::in, cord(mlds_initializer)::out,
     int::in, int::out) is det.
 
 ml_gen_string_binary_jump_initializers([],
-        _StructType, !RevRowInitializers, !CurIndex).
+        _StructType, !RowInitializersCord, !CurIndex).
 ml_gen_string_binary_jump_initializers([Str - CaseId | StrCaseIds],
-        StructType, !RevRowInitializers, !CurIndex) :-
+        StructType, !RowInitializersCord, !CurIndex) :-
     CaseId = case_id(CaseNum),
     StrRval = ml_const(mlconst_string(Str)),
     CaseNumRval = ml_const(mlconst_int(CaseNum)),
     RowInitializer = init_struct(StructType,
         [init_obj(StrRval), init_obj(CaseNumRval)]),
-    !:RevRowInitializers = [RowInitializer | !.RevRowInitializers],
+    cord.snoc(RowInitializer, !RowInitializersCord),
     !:CurIndex = !.CurIndex + 1,
     ml_gen_string_binary_jump_initializers(StrCaseIds,
-        StructType, !RevRowInitializers, !CurIndex).
+        StructType, !RowInitializersCord, !CurIndex).
 
 :- pred ml_gen_string_binary_jump_switch_arms(
     assoc_list(case_id, mlds_stmt)::in,
@@ -1618,8 +1623,8 @@ ml_generate_string_binary_simple_lookup_switch(VarRval, CaseValues0,
         unexpected($pred, "bad FieldIds")
     ),
     ml_gen_string_binary_simple_lookup_initializers(CaseValues, StructType,
-        [], RevRowInitializers, 0, TableSize),
-    list.reverse(RevRowInitializers, RowInitializers),
+        cord.init, RowInitializersCord, 0, TableSize),
+    RowInitializers = cord.list(RowInitializersCord),
     ml_gen_static_vector_defn(MLDS_ModuleName, StructTypeNum, RowInitializers,
         VectorCommon, GlobalData1, GlobalData),
     ml_gen_info_set_global_data(GlobalData, !Info),
@@ -1657,20 +1662,20 @@ ml_generate_string_binary_simple_lookup_switch(VarRval, CaseValues0,
 
 :- pred ml_gen_string_binary_simple_lookup_initializers(
     assoc_list(string, list(mlds_rval))::in, mlds_type::in,
-    list(mlds_initializer)::in, list(mlds_initializer)::out,
+    cord(mlds_initializer)::in, cord(mlds_initializer)::out,
     int::in, int::out) is det.
 
 ml_gen_string_binary_simple_lookup_initializers([],
-        _StructType, !RevRowInitializers, !CurIndex).
+        _StructType, !RowInitializersCord, !CurIndex).
 ml_gen_string_binary_simple_lookup_initializers([Str - Rvals | StrRvals],
-        StructType, !RevRowInitializers, !CurIndex) :-
+        StructType, !RowInitializersCord, !CurIndex) :-
     StrRval = ml_const(mlconst_string(Str)),
     RowInitializer = init_struct(StructType,
         [init_obj(StrRval) | list.map(wrap_init_obj, Rvals)]),
-    !:RevRowInitializers = [RowInitializer | !.RevRowInitializers],
+    cord.snoc(RowInitializer, !RowInitializersCord),
     !:CurIndex = !.CurIndex + 1,
     ml_gen_string_binary_simple_lookup_initializers(StrRvals,
-        StructType, !RevRowInitializers, !CurIndex).
+        StructType, !RowInitializersCord, !CurIndex).
 
 %---------------------------------------------------------------------------%
 
@@ -1715,10 +1720,10 @@ ml_generate_string_binary_several_soln_lookup_switch(VarRval, CaseSolns0,
     ),
     ml_gen_string_binary_several_lookup_initializers(CaseSolns,
         FirstSolnStructType, LaterSolnStructType,
-        [], RevFirstSolnRowInitializers,
+        cord.init, FirstSolnRowInitializersCord,
         cord.init, LaterSolnRowInitializersCord,
         0, FirstSolnTableSize, 0),
-    list.reverse(RevFirstSolnRowInitializers, FirstSolnRowInitializers),
+    FirstSolnRowInitializers = cord.list(FirstSolnRowInitializersCord),
     LaterSolnRowInitializers = cord.list(LaterSolnRowInitializersCord),
     ml_gen_static_vector_defn(MLDS_ModuleName, FirstSolnStructTypeNum,
         FirstSolnRowInitializers, FirstSolnVectorCommon,
@@ -1755,17 +1760,17 @@ ml_generate_string_binary_several_soln_lookup_switch(VarRval, CaseSolns0,
 :- pred ml_gen_string_binary_several_lookup_initializers(
     assoc_list(string, soln_consts(mlds_rval))::in,
     mlds_type::in, mlds_type::in,
-    list(mlds_initializer)::in, list(mlds_initializer)::out,
+    cord(mlds_initializer)::in, cord(mlds_initializer)::out,
     cord(mlds_initializer)::in, cord(mlds_initializer)::out,
     int::in, int::out, int::in) is det.
 
 ml_gen_string_binary_several_lookup_initializers([],
         _FirstSolnStructType, _LaterSolnStructType,
-        !RevFirstSolnRowInitializers, !LaterSolnRowInitializersCord,
+        !FirstSolnRowInitializersCord, !LaterSolnRowInitializersCord,
         !CurFirstSolnIndex, _CurLaterSolnIndex).
 ml_gen_string_binary_several_lookup_initializers([Str - Solns | StrSolns],
         FirstSolnStructType, LaterSolnStructType,
-        !RevFirstSolnRowInitializers, !LaterSolnRowInitializersCord,
+        !FirstSolnRowInitializersCord, !LaterSolnRowInitializersCord,
         !CurFirstSolnIndex, !.CurLaterSolnIndex) :-
     StrRval = ml_const(mlconst_string(Str)),
     (
@@ -1792,12 +1797,11 @@ ml_gen_string_binary_several_lookup_initializers([Str - Solns | StrSolns],
             from_list(LaterSolnRowInitializers),
         !:CurLaterSolnIndex = !.CurLaterSolnIndex + NumLaterSolns
     ),
-    !:RevFirstSolnRowInitializers =
-        [FirstSolnRowInitializer | !.RevFirstSolnRowInitializers],
+    cord.snoc(FirstSolnRowInitializer, !FirstSolnRowInitializersCord),
     !:CurFirstSolnIndex = !.CurFirstSolnIndex + 1,
     ml_gen_string_binary_several_lookup_initializers(StrSolns,
         FirstSolnStructType, LaterSolnStructType,
-        !RevFirstSolnRowInitializers, !LaterSolnRowInitializersCord,
+        !FirstSolnRowInitializersCord, !LaterSolnRowInitializersCord,
         !CurFirstSolnIndex, !.CurLaterSolnIndex).
 
 %---------------------------------------------------------------------------%
