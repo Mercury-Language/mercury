@@ -210,7 +210,7 @@ ml_gen_switch(SwitchVar, CanFail, CodeModel, GoalInfo, Context, Cases,
         Defns = []
     ;
         SwitchCategory = string_switch,
-        ml_gen_smart_string_switch(SwitchVar, SwitchVarEntry,
+        ml_gen_string_switch(SwitchVar, SwitchVarEntry,
             CanFail, CodeModel, GoalInfo, Context, TaggedCases,
             EntryPackedWordMap, Defns, Stmts, !Info)
     ;
@@ -269,12 +269,12 @@ ml_gen_smart_int_max_32_switch(SwitchVar, SwitchVarType, CanFail, TaggedCases,
             FilteredCanFail, LowerLimit, UpperLimit, NumValues,
             ReqDensity, NeedBitVecCheck, NeedRangeCheck, FirstVal, LastVal),
         ml_is_lookup_switch(SwitchVar, FilteredTaggedCases, GoalInfo,
-            CodeModel, MaybeLookupSwitchInfo, !Info),
+            CodeModel, !.Info, MaybeLookupSwitchInfo),
         MaybeLookupSwitchInfo = yes(LookupSwitchInfo)
     then
         ml_gen_int_max_32_lookup_switch(SwitchVar, TaggedCases,
             LookupSwitchInfo, CodeModel, Context, FirstVal, LastVal,
-            NeedBitVecCheck, NeedRangeCheck, LookupStmt, !Info),
+            NeedBitVecCheck, NeedRangeCheck, LookupStmt, !:Info),
         Stmts = [LookupStmt]
     else
         % All MLDS targets (as of 2023 april) support switches on integers
@@ -283,31 +283,29 @@ ml_gen_smart_int_max_32_switch(SwitchVar, SwitchVarType, CanFail, TaggedCases,
             CodeModel, CanFail, EntryPackedWordMap, Context, Stmts, !Info)
     ).
 
-:- pred ml_gen_smart_string_switch(prog_var::in, var_table_entry::in,
+:- pred ml_gen_string_switch(prog_var::in, var_table_entry::in,
     can_fail::in, code_model::in, hlds_goal_info::in, prog_context::in,
     list(tagged_case)::in, packed_word_map::in,
     list(mlds_local_var_defn)::out, list(mlds_stmt)::out,
     ml_gen_info::in, ml_gen_info::out) is det.
 
-ml_gen_smart_string_switch(SwitchVar, SwitchVarEntry, CanFail, CodeModel,
+ml_gen_string_switch(SwitchVar, SwitchVarEntry, CanFail, CodeModel,
         GoalInfo, Context, TaggedCases, EntryPackedWordMap,
         Defns, Stmts, !Info) :-
     filter_out_failing_cases_if_needed(CodeModel,
         TaggedCases, FilteredTaggedCases, CanFail, FilteredCanFail),
     num_cons_ids_in_tagged_cases(FilteredTaggedCases, NumConsIds, NumArms),
-    ml_gen_info_get_module_info(!.Info, ModuleInfo),
-    module_info_get_globals(ModuleInfo, Globals),
-    ( if
-        % If we don't have at least two arms, an if-then-else chain
-        % (which will contain at most one if-then-else) will be faster than
-        % any other method for implementing the "switch".
-        NumArms < 2
-    then
+    % If we don't have at least two arms, an if-then-else chain
+    % (which will contain at most one if-then-else) will be faster than
+    % any other method for implementing the "switch".
+    ( if NumArms < 2 then
         ml_switch_generate_if_then_else_chain(FilteredTaggedCases,
             SwitchVar, CodeModel, FilteredCanFail, EntryPackedWordMap, Context,
             Stmts, !Info),
         Defns = []
     else
+        ml_gen_info_get_module_info(!.Info, ModuleInfo),
+        module_info_get_globals(ModuleInfo, Globals),
         globals.get_target(Globals, Target),
         (
             ( Target = target_java
@@ -326,30 +324,30 @@ ml_gen_smart_string_switch(SwitchVar, SwitchVarEntry, CanFail, CodeModel,
             Defns = []
         ;
             Target = target_c,
-            ml_gen_smart_string_switch_c(Globals, SwitchVar, SwitchVarEntry,
+            ml_gen_smart_string_switch(Globals, SwitchVar, SwitchVarEntry,
                 FilteredCanFail, CodeModel, GoalInfo, Context, NumConsIds,
                 FilteredTaggedCases, EntryPackedWordMap, Defns, Stmts, !Info)
         )
     ).
 
-:- pred ml_gen_smart_string_switch_c(globals::in, prog_var::in,
+:- pred ml_gen_smart_string_switch(globals::in, prog_var::in,
     var_table_entry::in, can_fail::in, code_model::in, hlds_goal_info::in,
     prog_context::in, int::in, list(tagged_case)::in, packed_word_map::in,
     list(mlds_local_var_defn)::out, list(mlds_stmt)::out,
     ml_gen_info::in, ml_gen_info::out) is det.
 
-ml_gen_smart_string_switch_c(Globals, SwitchVar, SwitchVarEntry,
+ml_gen_smart_string_switch(Globals, SwitchVar, SwitchVarEntry,
         FilteredCanFail, CodeModel, GoalInfo, Context, NumConsIds,
         FilteredTaggedCases, EntryPackedWordMap, Defns, Stmts, !Info) :-
+    ml_gen_var(!.Info, SwitchVar, SwitchVarEntry, SwitchVarLval),
+    SwitchVarRval = ml_lval(SwitchVarLval),
     % We can use a trie, a hash switch or binary switch, and we prefer
     % them in that order.
     %
     % We can implement all three methods (tries, hash tables and binary
     % searches) using either computed gotos or int switches.
     ml_is_lookup_switch(SwitchVar, FilteredTaggedCases, GoalInfo,
-        CodeModel, MaybeLookupSwitchInfo, !Info),
-    ml_gen_var(!.Info, SwitchVar, SwitchVarEntry, SwitchVarLval),
-    SwitchVarRval = ml_lval(SwitchVarLval),
+        CodeModel, !.Info, MaybeLookupSwitchInfo),
     globals.get_opt_tuple(Globals, OptTuple),
     ( if
         StringTrieSwitchSize = OptTuple ^ ot_string_trie_switch_size,
@@ -359,7 +357,7 @@ ml_gen_smart_string_switch_c(Globals, SwitchVar, SwitchVarEntry,
             MaybeLookupSwitchInfo = yes(LookupSwitchInfo),
             ml_generate_string_trie_lookup_switch(SwitchVarRval,
                 FilteredTaggedCases, LookupSwitchInfo, CodeModel,
-                FilteredCanFail, Context, Stmts, !Info)
+                FilteredCanFail, Context, Stmts, !:Info)
         ;
             MaybeLookupSwitchInfo = no,
             ml_generate_string_trie_jump_switch(SwitchVarRval,
@@ -375,7 +373,7 @@ ml_gen_smart_string_switch_c(Globals, SwitchVar, SwitchVarEntry,
             MaybeLookupSwitchInfo = yes(LookupSwitchInfo),
             ml_generate_string_hash_lookup_switch(SwitchVarRval,
                 FilteredTaggedCases, LookupSwitchInfo, CodeModel,
-                FilteredCanFail, Context, Defns, Stmts, !Info)
+                FilteredCanFail, Context, Defns, Stmts, !:Info)
         ;
             MaybeLookupSwitchInfo = no,
             ml_generate_string_hash_jump_switch(SwitchVarRval,
@@ -390,7 +388,7 @@ ml_gen_smart_string_switch_c(Globals, SwitchVar, SwitchVarEntry,
             MaybeLookupSwitchInfo = yes(LookupSwitchInfo),
             ml_generate_string_binary_lookup_switch(SwitchVarRval,
                 FilteredTaggedCases, LookupSwitchInfo, CodeModel,
-                FilteredCanFail, Context, Defns, Stmts, !Info)
+                FilteredCanFail, Context, Defns, Stmts, !:Info)
         ;
             MaybeLookupSwitchInfo = no,
             ml_generate_string_binary_jump_switch(SwitchVarRval,

@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1994-2012 The University of Melbourne.
-% Copyright (C) 2013-2018 The Mercury team.
+% Copyright (C) 2013-2018, 2024 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -227,18 +227,16 @@ generate_int_switch(ModuleInfo, Globals, CodeModel, CanFail,
             FilteredCanFail, LowerLimit, UpperLimit, NumValues,
             ReqDensity, NeedBitVecCheck, NeedRangeCheck,
             FirstVal, LastVal),
-        remember_position(!.CLD, BranchStart),
         goal_info_get_store_map(GoalInfo, StoreMap),
-        is_lookup_switch(BranchStart, get_int_tag, FilteredTaggedCases,
-            GoalInfo, StoreMap, no, MaybeEnd1, LookupSwitchInfo, !CI)
+        is_lookup_switch(get_int_tag, FilteredTaggedCases, GoalInfo, StoreMap,
+            !.CI, !.CLD, MaybeLookupSwitchInfo),
+        MaybeLookupSwitchInfo = yes(LookupSwitchInfo)
     then
         % We update MaybeEnd1 to MaybeEnd to account for the possible
-        % reservation of temp slots for nondet switches.
-        reset_to_position(BranchStart, !.CI, !:CLD),
+        % reservation of temp slots for model_non switches.
         generate_int_lookup_switch(SwitchVarRval, LookupSwitchInfo,
             EndLabel, StoreMap, FirstVal, LastVal,
-            NeedBitVecCheck, NeedRangeCheck,
-            MaybeEnd1, MaybeEnd, SwitchCode, !CI, !.CLD)
+            NeedBitVecCheck, NeedRangeCheck, MaybeEnd, SwitchCode, !:CI)
     else if
         MaybeIntSwitchInfo = int_switch(IntSwitchInfo),
         IntSwitchInfo = int_switch_info(LowerLimit, UpperLimit, NumValues),
@@ -268,60 +266,70 @@ generate_int_switch(ModuleInfo, Globals, CodeModel, CanFail,
 generate_string_switch(Globals, CodeModel, CanFail,
         SwitchVarName, SwitchVarType, SwitchVarRval,
         TaggedCases, GoalInfo, EndLabel, MaybeEnd, SwitchCode, !CI, !.CLD) :-
-    goal_info_get_store_map(GoalInfo, StoreMap),
     filter_out_failing_cases_if_needed(CodeModel,
         TaggedCases, FilteredTaggedCases, CanFail, FilteredCanFail),
-    num_cons_ids_in_tagged_cases(FilteredTaggedCases,
-        NumConsIds, NumArms),
-    ( if NumArms > 1 then
-        globals.get_opt_tuple(Globals, OptTuple),
+    num_cons_ids_in_tagged_cases(FilteredTaggedCases, NumConsIds, NumArms),
+    % If we don't have at least two arms, an if-then-else chain
+    % (which will contain at most one if-then-else) will be faster than
+    % any other method for implementing the "switch".
+    ( if NumArms < 2 then
+        order_and_generate_cases(TaggedCases, SwitchVarRval,
+            SwitchVarType, SwitchVarName, CodeModel, CanFail,
+            GoalInfo, EndLabel, MaybeEnd, SwitchCode, !CI, !.CLD)
+    else
+        generate_smart_string_switch(Globals, CodeModel,
+            CanFail, FilteredCanFail, SwitchVarName, SwitchVarType,
+            SwitchVarRval, NumConsIds, TaggedCases, FilteredTaggedCases,
+            GoalInfo, EndLabel, MaybeEnd, SwitchCode, !CI, !.CLD)
+    ).
+
+:- pred generate_smart_string_switch(globals::in, code_model::in,
+    can_fail::in, can_fail::in,
+    string::in, mer_type::in, rval::in, int::in,
+    list(tagged_case)::in, list(tagged_case)::in,
+    hlds_goal_info::in, label::in, branch_end::out, llds_code::out,
+    code_info::in, code_info::out, code_loc_dep::in) is det.
+
+generate_smart_string_switch(Globals, CodeModel, CanFail, FilteredCanFail,
+        SwitchVarName, SwitchVarType, SwitchVarRval, NumConsIds,
+        TaggedCases, FilteredTaggedCases, GoalInfo, EndLabel, MaybeEnd,
+        SwitchCode, !CI, !.CLD) :-
+    is_lookup_switch(get_string_tag, FilteredTaggedCases, GoalInfo, StoreMap,
+        !.CI, !.CLD, MaybeLookupSwitchInfo),
+    goal_info_get_store_map(GoalInfo, StoreMap),
+    globals.get_opt_tuple(Globals, OptTuple),
+    ( if
         StringHashSwitchSize = OptTuple ^ ot_string_hash_switch_size,
+        NumConsIds >= StringHashSwitchSize
+    then
+        (
+            MaybeLookupSwitchInfo = yes(LookupSwitchInfo),
+            % We update MaybeEnd to account for the possible reservation
+            % of temp slots for nondet switches.
+            generate_string_hash_lookup_switch(SwitchVarRval,
+                LookupSwitchInfo, FilteredCanFail, EndLabel,
+                StoreMap, MaybeEnd, SwitchCode, !:CI)
+        ;
+            MaybeLookupSwitchInfo = no,
+            generate_string_hash_switch(TaggedCases, SwitchVarRval,
+                SwitchVarName, CodeModel, CanFail, GoalInfo,
+                EndLabel, MaybeEnd, SwitchCode, !CI, !.CLD)
+        )
+    else if
         StringBinarySwitchSize = OptTuple ^ ot_string_binary_switch_size,
-        ( if NumConsIds >= StringHashSwitchSize then
-            ( if
-                remember_position(!.CLD, BranchStart),
-                is_lookup_switch(BranchStart, get_string_tag,
-                    FilteredTaggedCases, GoalInfo, StoreMap,
-                    no, MaybeEnd1, LookupSwitchInfo, !CI)
-            then
-                % We update MaybeEnd1 to MaybeEnd to account for the
-                % possible reservation of temp slots for nondet
-                % switches.
-                reset_to_position(BranchStart, !.CI, !:CLD),
-                generate_string_hash_lookup_switch(SwitchVarRval,
-                    LookupSwitchInfo, FilteredCanFail, EndLabel,
-                    StoreMap, MaybeEnd1, MaybeEnd, SwitchCode,
-                    !CI, !.CLD)
-            else
-                generate_string_hash_switch(TaggedCases, SwitchVarRval,
-                    SwitchVarName, CodeModel, CanFail, GoalInfo,
-                    EndLabel, MaybeEnd, SwitchCode,
-                    !CI, !.CLD)
-            )
-        else if NumConsIds >= StringBinarySwitchSize then
-            ( if
-                remember_position(!.CLD, BranchStart),
-                is_lookup_switch(BranchStart, get_string_tag,
-                    FilteredTaggedCases, GoalInfo, StoreMap,
-                    no, MaybeEnd1, LookupSwitchInfo, !CI)
-            then
-                % We update MaybeEnd1 to MaybeEnd to account for the
-                % possible reservation of temp slots for nondet
-                % switches.
-                reset_to_position(BranchStart, !.CI, !:CLD),
-                generate_string_binary_lookup_switch(SwitchVarRval,
-                    LookupSwitchInfo, FilteredCanFail, EndLabel,
-                    StoreMap, MaybeEnd1, MaybeEnd, SwitchCode,
-                    !CI, !.CLD)
-            else
-                generate_string_binary_switch(TaggedCases,
-                    SwitchVarRval, SwitchVarName, CodeModel, CanFail,
-                    GoalInfo, EndLabel, MaybeEnd, SwitchCode,
-                    !CI, !.CLD)
-            )
-        else
-            order_and_generate_cases(TaggedCases, SwitchVarRval,
-                SwitchVarType, SwitchVarName, CodeModel, CanFail,
+        NumConsIds >= StringBinarySwitchSize
+    then
+        (
+            MaybeLookupSwitchInfo = yes(LookupSwitchInfo),
+            % We update MaybeEnd to account for the possible reservation
+            % of temp slots for nondet switches.
+            generate_string_binary_lookup_switch(SwitchVarRval,
+                LookupSwitchInfo, FilteredCanFail, EndLabel,
+                StoreMap, MaybeEnd, SwitchCode, !:CI)
+        ;
+            MaybeLookupSwitchInfo = no,
+            generate_string_binary_switch(TaggedCases,
+                SwitchVarRval, SwitchVarName, CodeModel, CanFail,
                 GoalInfo, EndLabel, MaybeEnd, SwitchCode, !CI, !.CLD)
         )
     else

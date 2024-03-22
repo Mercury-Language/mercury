@@ -52,14 +52,16 @@
                 mllsi_out_variables     ::  list(prog_var),
 
                 % The types of the fields holding output variables.
-                mllsi_out_types         ::  list(mlds_type)
+                mllsi_out_types         ::  list(mlds_type),
+
+                mllsi_gen_info          ::  ml_gen_info
             ).
 
     % Is the given list of cases implementable as a lookup switch?
     %
 :- pred ml_is_lookup_switch(prog_var::in, list(tagged_case)::in,
-    hlds_goal_info::in, code_model::in, maybe(ml_lookup_switch_info)::out,
-    ml_gen_info::in, ml_gen_info::out) is det.
+    hlds_goal_info::in, code_model::in, ml_gen_info::in,
+    maybe(ml_lookup_switch_info)::out) is det.
 
     % Given a case_id->V map, create the corresponding cons_id->V map.
     % Given an entry caseid1->values1 in the case_id->V map, if the case
@@ -78,7 +80,7 @@
     list(tagged_case)::in, ml_lookup_switch_info::in,
     code_model::in, prog_context::in, int::in, int::in,
     need_bit_vec_check::in, need_range_check::in, mlds_stmt::out,
-    ml_gen_info::in, ml_gen_info::out) is det.
+    ml_gen_info::out) is det.
 
 %---------------------------------------------------------------------------%
 %
@@ -143,20 +145,20 @@
 
 %---------------------------------------------------------------------------%
 
-ml_is_lookup_switch(SwitchVar, TaggedCases, GoalInfo, CodeModel,
-        MaybeLookupSwitchInfo, !Info) :-
+ml_is_lookup_switch(SwitchVar, TaggedCases, GoalInfo, CodeModel, Info0,
+        MaybeLookupSwitchInfo) :-
     NonLocals = goal_info_get_nonlocals(GoalInfo),
     % SwitchVar must be nonlocal to the switch, since it must be bound
     % *before* the switch.
     set_of_var.delete(SwitchVar, NonLocals, OtherNonLocals),
     set_of_var.to_sorted_list(OtherNonLocals, OutVars),
-    ml_gen_info_get_module_info(!.Info, ModuleInfo),
+    ml_gen_info_get_module_info(Info0, ModuleInfo),
     module_info_get_globals(ModuleInfo, Globals),
     globals.get_opt_tuple(Globals, OptTuple),
     ( if
         OptTuple ^ ot_use_static_ground_cells = use_static_ground_cells,
         ml_generate_constants_for_lookup_switch(CodeModel, OutVars,
-            OtherNonLocals, TaggedCases, map.init, CaseSolnMap, !Info)
+            OtherNonLocals, TaggedCases, map.init, CaseSolnMap, Info0, Info)
     then
         % While the LLDS backend has to worry about implementing trailing
         % for model_non lookup switches, we do not. The MLDS backend implements
@@ -169,12 +171,12 @@ ml_is_lookup_switch(SwitchVar, TaggedCases, GoalInfo, CodeModel,
         else
             CaseConsts = some_several_solns(CaseSolnMap, unit)
         ),
-        ml_gen_info_get_var_table(!.Info, VarTable),
+        ml_gen_info_get_var_table(Info, VarTable),
         lookup_var_entries(VarTable, OutVars, OutVarEntries),
         FieldTypes =
             list.map(var_table_entry_to_mlds_type(ModuleInfo), OutVarEntries),
         LookupSwitchInfo =
-            ml_lookup_switch_info(CaseConsts, OutVars, FieldTypes),
+            ml_lookup_switch_info(CaseConsts, OutVars, FieldTypes, Info),
         MaybeLookupSwitchInfo = yes(LookupSwitchInfo)
     else
         % We keep the original !.Info.
@@ -258,9 +260,9 @@ ml_record_lookup_for_tagged_cons_id(GetTag, SolnConsts, TaggedConsId,
 
 ml_gen_int_max_32_lookup_switch(SwitchVar, TaggedCases, LookupSwitchInfo,
         CodeModel, Context, StartVal, EndVal, NeedBitVecCheck, NeedRangeCheck,
-        Stmt, !Info) :-
+        Stmt, !:Info) :-
     LookupSwitchInfo =
-        ml_lookup_switch_info(CaseIdConstMap, OutVars, FieldTypes),
+        ml_lookup_switch_info(CaseIdConstMap, OutVars, FieldTypes, !:Info),
     ml_gen_var_direct(!.Info, SwitchVar, SwitchVarLval),
     SwitchVarRval = ml_lval(SwitchVarLval),
     ( if StartVal = 0 then

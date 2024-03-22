@@ -60,6 +60,7 @@
 :- import_module parse_tree.set_of_var.
 
 :- import_module list.
+:- import_module maybe.
 
 %---------------------------------------------------------------------------%
 
@@ -82,23 +83,26 @@
                 % The types of the fields holding output variables.
                 lsi_out_types           ::  list(llds_type),
 
-                lsi_liveness            ::  set_of_progvar
+                lsi_liveness            ::  set_of_progvar,
+
+                lsi_branch_end          ::  branch_end,
+                lsi_code_info           ::  code_info,
+                lsi_code_loc_dep        ::  code_loc_dep
             ).
 
     % Decide whether we can generate code for this switch using a lookup table.
     %
-:- pred is_lookup_switch(position_info::in, (func(cons_tag) = Key)::in,
+:- pred is_lookup_switch((func(cons_tag) = Key)::in,
     list(tagged_case)::in, hlds_goal_info::in, abs_store_map::in,
-    branch_end::in, branch_end::out, lookup_switch_info(Key)::out,
-    code_info::in, code_info::out) is semidet.
+    code_info::in, code_loc_dep::in, maybe(lookup_switch_info(Key))::out)
+    is det.
 
     % Generate code for the switch that the lookup_switch_info came from.
     %
 :- pred generate_int_lookup_switch(rval::in, lookup_switch_info(int)::in,
     label::in, abs_store_map::in, int::in, int::in,
     need_bit_vec_check::in, need_range_check::in,
-    branch_end::in, branch_end::out, llds_code::out,
-    code_info::in, code_info::out, code_loc_dep::in) is det.
+    branch_end::out, llds_code::out, code_info::out) is det.
 
 :- type case_kind
     --->    kind_zero_solns
@@ -179,7 +183,6 @@
 :- import_module cord.
 :- import_module int.
 :- import_module map.
-:- import_module maybe.
 :- import_module pair.
 :- import_module require.
 :- import_module set.
@@ -187,39 +190,48 @@
 
 %---------------------------------------------------------------------------%
 
-is_lookup_switch(BranchStart, GetTag, TaggedCases, GoalInfo, StoreMap,
-        !MaybeEnd, LookupSwitchInfo, !CI) :-
+is_lookup_switch(GetTag, TaggedCases, GoalInfo, StoreMap,
+        CI0, CLD0, MaybeLookupSwitchInfo) :-
     % Most of this predicate is taken from dense_switch.m.
 
     % We need the code_info structure to generate code for the cases to
     % get the constants (if they exist). We can't throw it away at the
     % end because we may have allocated some new static ground terms.
 
-    reset_to_position(BranchStart, !.CI, StartCLD),
-    figure_out_output_vars(!.CI, StartCLD, GoalInfo, OutVars),
+    remember_position(CLD0, BranchStart),
+    figure_out_output_vars(CI0, CLD0, GoalInfo, OutVars),
     set_of_var.list_to_set(OutVars, ArmNonLocals),
-    generate_constants_for_lookup_switch(BranchStart, GetTag, TaggedCases,
-        OutVars, ArmNonLocals, StoreMap, Liveness, map.init, CaseSolnMap,
-        !MaybeEnd, set_of_var.init, ResumeVars, no, GoalsMayModifyTrail, !CI),
-    get_var_table(!.CI, VarTable),
-    OutTypes = list.map(lookup_var_type_func(VarTable), OutVars),
-    ( if project_all_to_one_solution(CaseSolnMap, CaseValuePairsMap) then
-        CaseConsts = all_one_soln(CaseValuePairsMap)
+    ( if
+        MaybeEnd0 = no,
+        generate_constants_for_lookup_switch(BranchStart, GetTag, TaggedCases,
+            OutVars, ArmNonLocals, StoreMap, Liveness, map.init, CaseSolnMap,
+            MaybeEnd0, MaybeEnd, set_of_var.init, ResumeVars, no,
+            GoalsMayModifyTrail, CI0, CI),
+        get_var_table(CI, VarTable),
+        OutTypes = list.map(lookup_var_type_func(VarTable), OutVars),
+        ( if project_all_to_one_solution(CaseSolnMap, CaseValuePairsMap) then
+            CaseConsts = all_one_soln(CaseValuePairsMap)
+        else
+            CaseConsts = some_several_solns(CaseSolnMap,
+                case_consts_several_llds(ResumeVars, GoalsMayModifyTrail))
+        ),
+        get_exprn_opts(CI0, ExprnOpts),
+        UnboxFloats = get_unboxed_floats(ExprnOpts),
+        UnboxInt64s = get_unboxed_int64s(ExprnOpts),
+        map.to_assoc_list(CaseSolnMap, CaseSolns),
+        % This generates CaseValues in reverse order of index, but given that
+        % we only use CaseValues to find out the right OutLLDSTypes, this is OK.
+        project_solns_to_rval_lists(CaseSolns, [], CaseValues),
+        find_general_llds_types(UnboxFloats, UnboxInt64s, OutTypes, CaseValues,
+            OutLLDSTypes)
+    then
+        reset_to_position(BranchStart, CI, CLD),
+        LookupSwitchInfo = lookup_switch_info(CaseConsts, OutVars, OutLLDSTypes,
+            Liveness, MaybeEnd, CI, CLD),
+        MaybeLookupSwitchInfo = yes(LookupSwitchInfo)
     else
-        CaseConsts = some_several_solns(CaseSolnMap,
-            case_consts_several_llds(ResumeVars, GoalsMayModifyTrail))
-    ),
-    get_exprn_opts(!.CI, ExprnOpts),
-    UnboxFloats = get_unboxed_floats(ExprnOpts),
-    UnboxInt64s = get_unboxed_int64s(ExprnOpts),
-    map.to_assoc_list(CaseSolnMap, CaseSolns),
-    % This generates CaseValues in reverse order of index, but given that
-    % we only use CaseValues to find out the right OutLLDSTypes, this is OK.
-    project_solns_to_rval_lists(CaseSolns, [], CaseValues),
-    find_general_llds_types(UnboxFloats, UnboxInt64s, OutTypes, CaseValues,
-        OutLLDSTypes),
-    LookupSwitchInfo = lookup_switch_info(CaseConsts, OutVars, OutLLDSTypes,
-        Liveness).
+        MaybeLookupSwitchInfo = no
+    ).
 
 %---------------------------------------------------------------------------%
 
@@ -324,10 +336,10 @@ record_lookup_for_tagged_cons_id(GetTag, SolnConsts, TaggedConsId,
 %---------------------------------------------------------------------------%
 
 generate_int_lookup_switch(VarRval, LookupSwitchInfo, EndLabel, StoreMap,
-        StartVal, EndVal, NeedBitVecCheck, NeedRangeCheck, !MaybeEnd, Code,
-        !CI, !.CLD) :-
+        StartVal, EndVal, NeedBitVecCheck, NeedRangeCheck, !:MaybeEnd, Code,
+        !:CI) :-
     LookupSwitchInfo = lookup_switch_info(CaseConsts, OutVars, OutTypes,
-        Liveness),
+        Liveness, !:MaybeEnd, !:CI, CLD0),
 
     % If the case values start at some number other than 0,
     % then subtract that number to give us a zero-based index.
@@ -345,10 +357,11 @@ generate_int_lookup_switch(VarRval, LookupSwitchInfo, EndLabel, StoreMap,
         Difference = EndVal - StartVal,
         CmpRval = binop(unsigned_le, IndexRval,
             const(llconst_int(Difference))),
-        fail_if_rval_is_false(CmpRval, RangeCheckCode, !CI, !CLD)
+        fail_if_rval_is_false(CmpRval, RangeCheckCode, !CI, CLD0, CLD)
     ;
         NeedRangeCheck = dont_need_range_check,
-        RangeCheckCode = empty
+        RangeCheckCode = empty,
+        CLD = CLD0
     ),
 
     (
@@ -359,7 +372,7 @@ generate_int_lookup_switch(VarRval, LookupSwitchInfo, EndLabel, StoreMap,
         map.to_assoc_list(CaseValuesMap, CaseValues),
         generate_simple_int_lookup_switch(IndexRval, StoreMap,
             StartVal, EndVal, CaseValues, OutVars, OutTypes,
-            NeedBitVecCheck, Liveness, RestCode, !CI, !.CLD)
+            NeedBitVecCheck, Liveness, RestCode, !CI, CLD)
     ;
         CaseConsts = some_several_solns(CaseSolnMap,
             case_consts_several_llds(ResumeVars, GoalsMayModifyTrail)),
@@ -378,7 +391,7 @@ generate_int_lookup_switch(VarRval, LookupSwitchInfo, EndLabel, StoreMap,
         generate_several_soln_int_lookup_switch(IndexRval, EndLabel, StoreMap,
             StartVal, EndVal, CaseSolns, ResumeVars, AddTrailOps, OutVars,
             OutTypes, NeedBitVecCheck, Liveness, !MaybeEnd, RestCode,
-            !CI, !.CLD)
+            !CI, CLD)
     ),
     Code = Comment ++ RangeCheckCode ++ RestCode.
 

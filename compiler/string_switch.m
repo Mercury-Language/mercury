@@ -63,8 +63,7 @@
 
 :- pred generate_string_hash_lookup_switch(rval::in,
     lookup_switch_info(string)::in, can_fail::in, label::in, abs_store_map::in,
-    branch_end::in, branch_end::out, llds_code::out,
-    code_info::in, code_info::out, code_loc_dep::in) is det.
+    branch_end::out, llds_code::out, code_info::out) is det.
 
 :- pred generate_string_binary_switch(list(tagged_case)::in, rval::in,
     string::in, code_model::in, can_fail::in, hlds_goal_info::in, label::in,
@@ -73,8 +72,7 @@
 
 :- pred generate_string_binary_lookup_switch(rval::in,
     lookup_switch_info(string)::in, can_fail::in, label::in, abs_store_map::in,
-    branch_end::in, branch_end::out, llds_code::out,
-    code_info::in, code_info::out, code_loc_dep::in) is det.
+    branch_end::out, llds_code::out, code_info::out) is det.
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -226,9 +224,9 @@ add_to_strs_labels(Label, TaggedConsId, !StrsLabels) :-
 %---------------------------------------------------------------------------%
 
 generate_string_hash_lookup_switch(VarRval, LookupSwitchInfo,
-        CanFail, EndLabel, StoreMap, !MaybeEnd, Code, !CI, CLD) :-
+        CanFail, EndLabel, StoreMap, !:MaybeEnd, Code, !:CI) :-
     LookupSwitchInfo = lookup_switch_info(CaseConsts, OutVars, OutTypes,
-        Liveness),
+        Liveness, !:MaybeEnd, !:CI, CLD),
     (
         CaseConsts = all_one_soln(CaseValueMap),
         map.to_assoc_list(CaseValueMap, CaseValues),
@@ -768,9 +766,9 @@ gen_string_binary_jump_slots([Str - Label | StrLabels],
 %---------------------------------------------------------------------------%
 
 generate_string_binary_lookup_switch(VarRval, LookupSwitchInfo,
-        CanFail, EndLabel, StoreMap, !MaybeEnd, Code, !CI, CLD) :-
+        CanFail, EndLabel, StoreMap, !:MaybeEnd, Code, !:CI) :-
     LookupSwitchInfo = lookup_switch_info(CaseConsts, OutVars, OutTypes,
-        Liveness),
+        Liveness, !:MaybeEnd, !:CI, CLD),
     (
         CaseConsts = all_one_soln(CaseValueMap),
         map.to_assoc_list(CaseValueMap, CaseValues),

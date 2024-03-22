@@ -58,7 +58,7 @@
 :- pred ml_generate_string_trie_lookup_switch(mlds_rval::in,
     list(tagged_case)::in, ml_lookup_switch_info::in,
     code_model::in, can_fail::in, prog_context::in,
-    list(mlds_stmt)::out, ml_gen_info::in, ml_gen_info::out) is det.
+    list(mlds_stmt)::out, ml_gen_info::out) is det.
 
 :- pred ml_generate_string_hash_jump_switch(mlds_rval::in,
     list(tagged_case)::in, code_model::in, can_fail::in, packed_word_map::in,
@@ -69,7 +69,7 @@
     list(tagged_case)::in, ml_lookup_switch_info::in,
     code_model::in, can_fail::in, prog_context::in,
     list(mlds_local_var_defn)::out, list(mlds_stmt)::out,
-    ml_gen_info::in, ml_gen_info::out) is det.
+    ml_gen_info::out) is det.
 
 :- pred ml_generate_string_binary_jump_switch(mlds_rval::in,
     list(tagged_case)::in, code_model::in, can_fail::in, packed_word_map::in,
@@ -80,7 +80,7 @@
     list(tagged_case)::in, ml_lookup_switch_info::in,
     code_model::in, can_fail::in, prog_context::in,
     list(mlds_local_var_defn)::out, list(mlds_stmt)::out,
-    ml_gen_info::in, ml_gen_info::out) is det.
+    ml_gen_info::out) is det.
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -193,11 +193,12 @@ ml_gen_default_of_switch_on_case_id(CodeModel, CanFail, Context,
 %
 
 ml_generate_string_trie_lookup_switch(VarRval, TaggedCases, LookupSwitchInfo,
-        CodeModel, CanFail, Context, Stmts, !Info) :-
+        CodeModel, CanFail, Context, Stmts, !:Info) :-
+    LookupSwitchInfo = ml_lookup_switch_info(CaseIdConsts, OutVars, OutTypes,
+        !:Info),
     ml_create_nested_switch_trie(TaggedCases, Context, VarRval, MaxCaseNum,
         CaseNumVarLval, CaseNumVarDefn,
         InitCaseNumVarStmt, GetCaseNumSwitchStmt, !Info),
-    LookupSwitchInfo = ml_lookup_switch_info(CaseIdConsts, OutVars, OutTypes),
     (
         CaseIdConsts = all_one_soln(CaseIdValueMap),
         map.to_assoc_list(CaseIdValueMap, CaseIdValues),
@@ -890,8 +891,9 @@ make_hash_match(Slot) = match_value(ml_const(mlconst_int(Slot))).
 %
 
 ml_generate_string_hash_lookup_switch(VarRval, TaggedCases, LookupSwitchInfo,
-        CodeModel, CanFail, Context, Defns, Stmts, !Info) :-
-    LookupSwitchInfo = ml_lookup_switch_info(CaseIdConsts, OutVars, OutTypes),
+        CodeModel, CanFail, Context, Defns, Stmts, !:Info) :-
+    LookupSwitchInfo =
+        ml_lookup_switch_info(CaseIdConsts, OutVars, OutTypes, !:Info),
     (
         CaseIdConsts = all_one_soln(CaseIdValueMap),
         ml_case_id_soln_consts_to_tag_soln_consts(get_string_tag, TaggedCases,
@@ -1571,8 +1573,9 @@ ml_gen_string_binary_jump_switch_arms([CaseIdStmt | CaseIdsStmts],
 %
 
 ml_generate_string_binary_lookup_switch(VarRval, TaggedCases, LookupSwitchInfo,
-        CodeModel, CanFail, Context, Defns, Stmts, !Info) :-
-    LookupSwitchInfo = ml_lookup_switch_info(CaseIdConsts, OutVars, OutTypes),
+        CodeModel, CanFail, Context, Defns, Stmts, !:Info) :-
+    LookupSwitchInfo =
+        ml_lookup_switch_info(CaseIdConsts, OutVars, OutTypes, !:Info),
     (
         CaseIdConsts = all_one_soln(CaseIdValueMap),
         ml_case_id_soln_consts_to_tag_soln_consts(get_string_tag, TaggedCases,
