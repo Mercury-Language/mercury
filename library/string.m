@@ -549,8 +549,7 @@
     %  - one code unit that is part of an ill-formed sequence.
     %
     % Fails if StartOffset is out of range (negative, or greater than the
-    % length of String), or if there are fewer than Count steps possible
-    % in S.
+    % length of String), or if there are fewer than Count steps possible in S.
     %
 :- pred code_point_offset(string::in, int::in, int::in, int::out) is semidet.
 
@@ -2107,7 +2106,7 @@ from_rev_char_list(Chars, Str) :-
         MR_allocate_aligned_string_msg(Str, size, MR_ALLOC_ID);
 
         // Set size to be the offset of the end of the string
-        // (ie the \\0) and null terminate the string.
+        // (i.e. the \\0) and null terminate the string.
         Str[size] = '\\0';
 
         // Loop to copy the characters from the list_ptr to the string
@@ -2205,18 +2204,19 @@ encode_utf8(Char, StrCodeUnits0, StrCodeUnits) :-
 
 %---------------------%
 
-to_utf16_code_unit_list(String, CodeUnits) :-
+to_utf16_code_unit_list(String, Utf16CodeUnits) :-
     ( if internal_encoding_is_utf8 then
-        NumCodeUnits = string.count_code_units(String),
-        utf8_to_utf16_code_units_rev_loop(String, NumCodeUnits, [], CodeUnits)
+        NumUtf8CodeUnits = string.count_code_units(String),
+        utf8_to_utf16_code_units_rev_loop(String, NumUtf8CodeUnits,
+            [], Utf16CodeUnits)
     else
-        to_code_unit_list(String, CodeUnits)
+        to_code_unit_list(String, Utf16CodeUnits)
     ).
 
 :- pred utf8_to_utf16_code_units_rev_loop(string::in, int::in,
     list(int)::in, list(int)::out) is det.
 
-utf8_to_utf16_code_units_rev_loop(String, Index, StrCodeUnits0, StrCodeUnits) :-
+utf8_to_utf16_code_units_rev_loop(String, Index, !StrUtf16CodeUnits) :-
     ( if
         unsafe_prev_index_repl(String, Index, PrevIndex, Char, MaybeReplaced)
     then
@@ -2225,16 +2225,21 @@ utf8_to_utf16_code_units_rev_loop(String, Index, StrCodeUnits0, StrCodeUnits) :-
             unexpected($pred, "ill-formed code unit sequence")
         ;
             MaybeReplaced = not_replaced,
-            ( if char.to_utf16(Char, CharCodeUnits) then
-                StrCodeUnits1 = CharCodeUnits ++ StrCodeUnits0
+            ( if char.to_utf16(Char, CharUtf16CodeUnits) then
+                % We add CharUtf16CodeUnits to the start of !StrUtf16CodeUnits
+                % because we are iterating from the end of String backwards
+                % towards its start. We first add the CharUtf16CodeUnits
+                % of the last character in String to !StrUtf16CodeUnits,
+                % then the one before, and so on, until at the end, we add
+                % the CharUtf16CodeUnits of the first character.
+                !:StrUtf16CodeUnits = CharUtf16CodeUnits ++ !.StrUtf16CodeUnits
             else
                 unexpected($pred, "char.to_utf16 failed")
             )
         ),
-        utf8_to_utf16_code_units_rev_loop(String, PrevIndex,
-            StrCodeUnits1, StrCodeUnits)
+        utf8_to_utf16_code_units_rev_loop(String, PrevIndex, !StrUtf16CodeUnits)
     else
-        StrCodeUnits = StrCodeUnits0
+        true
     ).
 
 %---------------------%
@@ -2402,52 +2407,54 @@ from_utf8_code_unit_list(CodeUnits, String) :-
     ( if internal_encoding_is_utf8 then
         from_code_unit_list(CodeUnits, String)
     else
-        decode_utf8(CodeUnits, [], RevChars),
+        acc_rev_chars_from_utf8_code_units(CodeUnits, [], RevChars),
         % XXX This checks whether RevChars represents a well-formed string.
         % Why? The call to decode_utf8 should have ensured that already.
         semidet_from_rev_char_list(RevChars, String)
     ).
 
-:- pred decode_utf8(list(int)::in, list(char)::in, list(char)::out) is semidet.
+:- pred acc_rev_chars_from_utf8_code_units(list(int)::in,
+    list(char)::in, list(char)::out) is semidet.
 
-decode_utf8([], RevChars, RevChars).
-decode_utf8([A | FollowA], RevChars0, RevChars) :-
+acc_rev_chars_from_utf8_code_units([], !RevChars).
+acc_rev_chars_from_utf8_code_units([A | FollowA], !RevChars) :-
     ( if A < 0 then
         fail
     else if A =< 0x7f then  % 1-byte sequence
-        CharInt = A,
+        CodePointInt = A,
         Rest = FollowA
     else if A =< 0xc1 then
         fail
     else if A =< 0xdf then  % 2-byte sequence
         FollowA = [B | Rest],
         utf8_is_trail_byte(B),
-        CharInt = (A /\ 0x1f) << 6
-               \/ (B /\ 0x3f),
-        CharInt >= 0x80
+        CodePointInt = (A /\ 0x1f) << 6
+                    \/ (B /\ 0x3f),
+        CodePointInt >= 0x80
     else if A =< 0xef then  % 3-byte sequence
         FollowA = [B, C | Rest],
         utf8_is_trail_byte(B),
         utf8_is_trail_byte(C),
-        CharInt = (A /\ 0x0f) << 12
-               \/ (B /\ 0x3f) << 6
-               \/ (C /\ 0x3f),
-        CharInt >= 0x800
+        CodePointInt = (A /\ 0x0f) << 12
+                    \/ (B /\ 0x3f) << 6
+                    \/ (C /\ 0x3f),
+        CodePointInt >= 0x800
     else if A =< 0xf4 then  % 4-byte sequence
         FollowA = [B, C, D | Rest],
         utf8_is_trail_byte(B),
         utf8_is_trail_byte(C),
         utf8_is_trail_byte(D),
-        CharInt = (A /\ 0x07) << 18
-               \/ (B /\ 0x3f) << 12
-               \/ (C /\ 0x3f) << 6
-               \/ (D /\ 0x3f),
-        CharInt >= 0x10000
+        CodePointInt = (A /\ 0x07) << 18
+                    \/ (B /\ 0x3f) << 12
+                    \/ (C /\ 0x3f) << 6
+                    \/ (D /\ 0x3f),
+        CodePointInt >= 0x10000
     else
         fail
     ),
-    char.from_int(CharInt, Char),
-    decode_utf8(Rest, [Char | RevChars0], RevChars).
+    char.from_int(CodePointInt, Char),
+    !:RevChars = [Char | !.RevChars],
+    acc_rev_chars_from_utf8_code_units(Rest, !RevChars).
 
 :- pred utf8_is_trail_byte(int::in) is semidet.
 
@@ -2458,35 +2465,36 @@ utf8_is_trail_byte(C) :-
 
 from_utf16_code_unit_list(CodeUnits, String) :-
     ( if internal_encoding_is_utf8 then
-        decode_utf16(CodeUnits, [], RevChars),
+        acc_rev_chars_from_utf16_code_units(CodeUnits, [], RevChars),
         semidet_from_rev_char_list(RevChars, String)
     else
         from_code_unit_list(CodeUnits, String)
     ).
 
-:- pred decode_utf16(list(int)::in, list(char)::in, list(char)::out)
-    is semidet.
+:- pred acc_rev_chars_from_utf16_code_units(list(int)::in,
+    list(char)::in, list(char)::out) is semidet.
 
-decode_utf16([], RevChars, RevChars).
-decode_utf16([A | FollowA], RevChars0, RevChars) :-
+acc_rev_chars_from_utf16_code_units([], !RevChars).
+acc_rev_chars_from_utf16_code_units([A | FollowA], !RevChars) :-
     ( if A < 0 then
         fail
     else if A < 0xd800 then
-        CharInt = A,
+        CodePointInt = A,
         Rest = FollowA
     else if A < 0xdc00 then
         FollowA = [B | Rest],
         B >= 0xdc00,
         B =< 0xdfff,
-        CharInt = (A << 10) + B - 0x35fdc00
+        CodePointInt = (A << 10) + B - 0x35fdc00
     else if A =< 0xffff then
-        CharInt = A,
+        CodePointInt = A,
         Rest = FollowA
     else
         fail
     ),
-    char.from_int(CharInt, Char),
-    decode_utf16(Rest, [Char | RevChars0], RevChars).
+    char.from_int(CodePointInt, Char),
+    !:RevChars = [Char | !.RevChars],
+    acc_rev_chars_from_utf16_code_units(Rest, !RevChars).
 
 %---------------------%
 
@@ -2857,12 +2865,12 @@ set_char(Char, Index, Str0, Str) :-
         )
     ).
 
-det_set_char(C, N, S0) = S :-
-    det_set_char(C, N, S0, S).
+det_set_char(Char, Index, Str0) = Str :-
+    det_set_char(Char, Index, Str0, Str).
 
-det_set_char(Char, Int, String0, String) :-
-    ( if set_char(Char, Int, String0, String1) then
-        String = String1
+det_set_char(Char, Index, Str0, Str) :-
+    ( if set_char(Char, Index, Str0, StrPrime) then
+        Str = StrPrime
     else
         unexpected($pred, "index out of range")
     ).
@@ -3058,21 +3066,23 @@ count_codepoints(String, Count) :-
 
 %---------------------%
 
-count_utf8_code_units(String) = Length :-
+count_utf8_code_units(String) = NumUtf8CodeUnits :-
     ( if internal_encoding_is_utf8 then
-        Length = length(String)
+        NumUtf8CodeUnits = string.count_code_units(String)
     else
-        string.foldl(count_utf16_to_utf8_code_units, String, 0, Length)
+        string.foldl(count_utf16_to_utf8_code_units, String,
+            0, NumUtf8CodeUnits)
     ).
 
 :- pred count_utf16_to_utf8_code_units(char::in, int::in, int::out) is det.
 
-count_utf16_to_utf8_code_units(Char, !Length) :-
+count_utf16_to_utf8_code_units(Char, !NumUtf8CodeUnits) :-
     char.to_int(Char, CharInt),
     ( if CharInt =< 0x7f then
-        !:Length = !.Length + 1
-    else if char.to_utf8(Char, UTF8) then
-        !:Length = !.Length + list.length(UTF8)
+        !:NumUtf8CodeUnits = !.NumUtf8CodeUnits + 1
+    else if char.to_utf8(Char, CharUtf8CodeUnits) then
+        !:NumUtf8CodeUnits = !.NumUtf8CodeUnits +
+            list.length(CharUtf8CodeUnits)
     else
         error($pred, "surrogate code point")
     ).
@@ -3094,19 +3104,19 @@ count_utf16_to_utf8_code_units(Char, !Length) :-
 
 code_point_offset(String, StartOffset, N, Index) :-
     StartOffset >= 0,
-    Length = length(String),
-    code_point_offset_loop(String, StartOffset, Length, N, Index).
+    NumCodeUnits = string.count_code_units(String),
+    code_point_offset_loop(String, StartOffset, NumCodeUnits, N, Index).
 
 :- pred code_point_offset_loop(string::in, int::in, int::in, int::in, int::out)
     is semidet.
 
-code_point_offset_loop(String, Offset, Length, N, Index) :-
-    Offset < Length,
+code_point_offset_loop(String, Offset, NumCodeUnits, N, Index) :-
+    Offset < NumCodeUnits,
     ( if N = 0 then
         Index = Offset
     else
         unsafe_index_next(String, Offset, NextOffset, _),
-        code_point_offset_loop(String, NextOffset, Length, N - 1, Index)
+        code_point_offset_loop(String, NextOffset, NumCodeUnits, N - 1, Index)
     ).
 
 codepoint_offset(String, StartOffset, N, Index) :-
@@ -3680,7 +3690,7 @@ prefix_length_loop(P, S, I, Index) :-
     ).
 
 suffix_length(P, S) = End - Index :-
-    End = length(S),
+    End = string.length(S),
     suffix_length_loop(P, S, End, Index).
 
 :- pred suffix_length_loop(pred(char)::in(pred(in) is semidet),
@@ -3748,8 +3758,8 @@ sub_string_search_start(WholeString, Pattern, BeginAt, Index) :-
 ").
 
 unsafe_sub_string_search_start(String, SubString, BeginAt, Index) :-
-    Len = length(String),
-    SubLen = length(SubString),
+    Len = string.length(String),
+    SubLen = tringength(SubString),
     LastStart = Len - SubLen,
     unsafe_sub_string_search_start_loop(String, SubString, BeginAt, LastStart,
         SubLen, Index).
@@ -3760,8 +3770,8 @@ unsafe_sub_string_search_start(String, SubString, BeginAt, Index) :-
 :- pred unsafe_sub_string_search_start_loop(string::in, string::in, int::in,
     int::in, int::in, int::out) is semidet.
 
-unsafe_sub_string_search_start_loop(String, SubString, I, LastI, SubLen, Index)
-        :-
+unsafe_sub_string_search_start_loop(String, SubString, I, LastI,
+        SubLen, Index) :-
     I =< LastI,
     ( if unsafe_compare_substrings((=), String, I, SubString, 0, SubLen) then
         Index = I
@@ -3811,7 +3821,7 @@ append_ioi(S1, S2, S3) :-
         Len1 =< Len3,
         unsafe_compare_substrings((=), S1, 0, S3, 0, Len1)
     then
-        unsafe_between(S3, Len1, Len3, S2)
+        string.unsafe_between(S3, Len1, Len3, S2)
     else
         fail
     ).
@@ -3853,7 +3863,7 @@ append_oii(S1, S2, S3) :-
         Len1 = Len3 - Len2,
         compare_substrings((=), S3, Len1, S2, 0, Len2)
     then
-        unsafe_between(S3, 0, Len1, S1)
+        string.unsafe_between(S3, 0, Len1, S1)
     else
         fail
     ).
@@ -4159,10 +4169,10 @@ buffer_to_string(Buffer, Str) :-
     DestOffset = DestOffset0 + (SrcEnd - SrcStart);
 ").
 
-copy_into_buffer(Dest0, Dest, DestOffset0, DestOffset, Src, SrcStart, SrcEnd)
-        :-
+copy_into_buffer(Dest0, Dest, DestOffset0, DestOffset, Src,
+        SrcStart, SrcEnd) :-
     Dest0 = string_buffer(Buffer0),
-    Buffer = Buffer0 ++ unsafe_between(Src, SrcStart, SrcEnd),
+    Buffer = Buffer0 ++ string.unsafe_between(Src, SrcStart, SrcEnd),
     DestOffset = DestOffset0 + (SrcEnd - SrcStart),
     Dest = string_buffer(Buffer).
 
@@ -4181,10 +4191,9 @@ unsafe_append_string_pieces(Pieces, String) :-
 :- pred sum_piece_lengths(string::in, bool::in, list(string_piece)::in,
     int::in, int::out) is det.
 
-sum_piece_lengths(PredName, DoCheck, Pieces, Len0, Len) :-
+sum_piece_lengths(PredName, DoCheck, Pieces, !Len) :-
     (
-        Pieces = [],
-        Len = Len0
+        Pieces = []
     ;
         Pieces = [Piece | TailPieces],
         (
@@ -4210,8 +4219,8 @@ sum_piece_lengths(PredName, DoCheck, Pieces, Len0, Len) :-
             ),
             PieceLen = End - Start
         ),
-        Len1 = Len0 + PieceLen,
-        sum_piece_lengths(PredName, DoCheck, TailPieces, Len1, Len)
+        !:Len = !.Len + PieceLen,
+        sum_piece_lengths(PredName, DoCheck, TailPieces, !Len)
     ).
 
 :- pred do_append_string_pieces(list(string_piece)::in, int::in, string::uo)
@@ -5827,7 +5836,7 @@ int_to_base_string_group(N, Base, GroupLength, Sep) = Str :-
     % We can't use positive numbers, because -MININT overflows.
     ( if N < 0 then
         int_to_base_string_group_loop(N, Base, 0, GroupLength, Sep, Str1),
-        append("-", Str1, Str)
+        string.append("-", Str1, Str)
     else
         N1 = 0 - N,
         int_to_base_string_group_loop(N1, Base, 0, GroupLength, Sep, Str)
@@ -5851,20 +5860,20 @@ int_to_base_string_group_loop(NegN, Base, Curr, GroupLength, Sep, Str) :-
         GroupLength > 0
     then
         int_to_base_string_group_loop(NegN, Base, 0, GroupLength, Sep, Str1),
-        append(Str1, Sep, Str)
+        string.append(Str1, Sep, Str)
     else
         ( if NegN > -Base then
             N = -NegN,
             DigitChar = char.det_base_int_to_digit(Base, N),
-            char_to_string(DigitChar, Str)
+            string.char_to_string(DigitChar, Str)
         else
             NegN1 = NegN // Base,
             N10 = (NegN1 * Base) - NegN,
             DigitChar = char.det_base_int_to_digit(Base, N10),
-            char_to_string(DigitChar, DigitString),
+            string.char_to_string(DigitChar, DigitString),
             int_to_base_string_group_loop(NegN1, Base, Curr + 1,
                 GroupLength, Sep, Str1),
-            append(Str1, DigitString, Str)
+            string.append(Str1, DigitString, Str)
         )
     ).
 
