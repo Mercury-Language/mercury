@@ -2,7 +2,7 @@
 % vim: ts=4 sw=4 et ft=mercury
 %---------------------------------------------------------------------------%
 % Copyright (C) 1993-2012 The University of Melbourne.
-% Copyright (C) 2013-2022 The Mercury team.
+% Copyright (C) 2013-2024 The Mercury team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %---------------------------------------------------------------------------%
 %
@@ -1262,12 +1262,12 @@
 :- func replace_all(string::in, string::in, string::in) = (string::uo) is det.
 :- pred replace_all(string::in, string::in, string::in, string::uo) is det.
 
-    % word_wrap(Str, N) = Wrapped:
+    % word_wrap(Str, LineLen) = Wrapped:
     %
     % Wrapped is Str with newlines inserted between words (separated by ASCII
-    % space characters) so that at most N code points appear on any line,
+    % space characters) so that at most LineLen code points appear on any line,
     % and each line contains as many whole words as possible subject to that
-    % constraint. If any one word exceeds N code points in length, then
+    % constraint. If any one word exceeds LineLen code points in length, then
     % it will be broken over two (or more) lines. Sequences of whitespace
     % characters are replaced by a single space.
     %
@@ -1276,12 +1276,14 @@
     %
 :- func word_wrap(string, int) = string.
 
-    % word_wrap_separator(Str, N, WordSeparator) = Wrapped:
+    % word_wrap_separator(Str, LineLen, BrokenWordSeparator) = Wrapped:
     %
     % word_wrap_separator/3 is like word_wrap/2, except that words that
-    % need to be broken up over multiple lines have WordSeparator inserted
-    % between each piece. If the length of WordSeparator is greater than
-    % or equal to N code points, then no separator is used.
+    % need to be broken up over multiple lines have BrokenWordSeparator
+    % inserted between each pair of pieces. If the number of code points in
+    % BrokenWordSeparator is greater than or equal to LineLen, then this
+    % function ignores the separator, since it would leave no room on a line
+    % for any actual words.
     %
 :- func word_wrap_separator(string, int, string) = string.
 
@@ -1922,9 +1924,12 @@ do_to_rev_char_list_loop(Str, Index0, !RevCharList) :-
 
 %---------------------%
 %
-% XXX There is an inconsistency in that from_char_list/from_rev_char_list
-% throw exceptions unlike from_code_unit_list/from_{utf8,utf16}_code_unit_list
-% which fail when the list of code points cannot be encoded in a string.
+% XXX There is an inconsistency in that
+%
+% - from_char_list/from_rev_char_list throw exceptions
+% - but from_code_unit_list/from_{utf8,utf16}_code_unit_list fail
+%
+% when the list of code points cannot be encoded in a string.
 
 from_char_list(Cs) = S :-
     from_char_list(Cs, S).
@@ -2164,52 +2169,54 @@ semidet_from_rev_char_list(Chars, Str) :-
 
 %---------------------%
 
-to_code_unit_list(String, List) :-
-    to_code_unit_list_loop(String, 0, length(String), List).
+to_code_unit_list(String, CodeUnits) :-
+    NumCodeUnits = string.count_code_units(String),
+    to_code_unit_list_loop(String, 0, NumCodeUnits, CodeUnits).
 
 :- pred to_code_unit_list_loop(string::in, int::in, int::in,
     list(int)::out) is det.
 
-to_code_unit_list_loop(String, Index, End, List) :-
+to_code_unit_list_loop(String, Index, End, CodeUnits) :-
     ( if Index >= End then
-        List = []
+        CodeUnits = []
     else
-        unsafe_index_code_unit(String, Index, Code),
-        to_code_unit_list_loop(String, Index + 1, End, Tail),
-        List = [Code | Tail]
+        unsafe_index_code_unit(String, Index, CodeUnit),
+        to_code_unit_list_loop(String, Index + 1, End, TailCodeUnits),
+        CodeUnits = [CodeUnit | TailCodeUnits]
     ).
 
 %---------------------%
 
-to_utf8_code_unit_list(String, CodeList) :-
+to_utf8_code_unit_list(String, CodeUnits) :-
     ( if internal_encoding_is_utf8 then
-        to_code_unit_list(String, CodeList)
+        to_code_unit_list(String, CodeUnits)
     else
-        foldr(encode_utf8, String, [], CodeList)
+        string.foldr(encode_utf8, String, [], CodeUnits)
     ).
 
 :- pred encode_utf8(char::in, list(int)::in, list(int)::out) is det.
 
-encode_utf8(Char, CodeList0, CodeList) :-
-    ( if char.to_utf8(Char, CharCodes) then
-        CodeList = CharCodes ++ CodeList0
+encode_utf8(Char, StrCodeUnits0, StrCodeUnits) :-
+    ( if char.to_utf8(Char, CharCodeUnits) then
+        StrCodeUnits = CharCodeUnits ++ StrCodeUnits0
     else
         unexpected($pred, "surrogate code point")
     ).
 
 %---------------------%
 
-to_utf16_code_unit_list(String, CodeList) :-
+to_utf16_code_unit_list(String, CodeUnits) :-
     ( if internal_encoding_is_utf8 then
-        utf8_to_utf16_code_units_loop(String, length(String), [], CodeList)
+        NumCodeUnits = string.count_code_units(String),
+        utf8_to_utf16_code_units_rev_loop(String, NumCodeUnits, [], CodeUnits)
     else
-        to_code_unit_list(String, CodeList)
+        to_code_unit_list(String, CodeUnits)
     ).
 
-:- pred utf8_to_utf16_code_units_loop(string::in, int::in,
+:- pred utf8_to_utf16_code_units_rev_loop(string::in, int::in,
     list(int)::in, list(int)::out) is det.
 
-utf8_to_utf16_code_units_loop(String, Index, CodeList0, CodeList) :-
+utf8_to_utf16_code_units_rev_loop(String, Index, StrCodeUnits0, StrCodeUnits) :-
     ( if
         unsafe_prev_index_repl(String, Index, PrevIndex, Char, MaybeReplaced)
     then
@@ -2218,15 +2225,16 @@ utf8_to_utf16_code_units_loop(String, Index, CodeList0, CodeList) :-
             unexpected($pred, "ill-formed code unit sequence")
         ;
             MaybeReplaced = not_replaced,
-            ( if char.to_utf16(Char, CharCodes) then
-                CodeList1 = CharCodes ++ CodeList0
+            ( if char.to_utf16(Char, CharCodeUnits) then
+                StrCodeUnits1 = CharCodeUnits ++ StrCodeUnits0
             else
                 unexpected($pred, "char.to_utf16 failed")
             )
         ),
-        utf8_to_utf16_code_units_loop(String, PrevIndex, CodeList1, CodeList)
+        utf8_to_utf16_code_units_rev_loop(String, PrevIndex,
+            StrCodeUnits1, StrCodeUnits)
     else
-        CodeList = CodeList0
+        StrCodeUnits = StrCodeUnits0
     ).
 
 %---------------------%
@@ -2390,11 +2398,13 @@ from_code_unit_list_allow_ill_formed(CodeList, Str) :-
 
 %---------------------%
 
-from_utf8_code_unit_list(CodeList, String) :-
+from_utf8_code_unit_list(CodeUnits, String) :-
     ( if internal_encoding_is_utf8 then
-        from_code_unit_list(CodeList, String)
+        from_code_unit_list(CodeUnits, String)
     else
-        decode_utf8(CodeList, [], RevChars),
+        decode_utf8(CodeUnits, [], RevChars),
+        % XXX This checks whether RevChars represents a well-formed string.
+        % Why? The call to decode_utf8 should have ensured that already.
         semidet_from_rev_char_list(RevChars, String)
     ).
 
@@ -2446,12 +2456,12 @@ utf8_is_trail_byte(C) :-
 
 %---------------------%
 
-from_utf16_code_unit_list(CodeList, String) :-
+from_utf16_code_unit_list(CodeUnits, String) :-
     ( if internal_encoding_is_utf8 then
-        decode_utf16(CodeList, [], RevChars),
+        decode_utf16(CodeUnits, [], RevChars),
         semidet_from_rev_char_list(RevChars, String)
     else
-        from_code_unit_list(CodeList, String)
+        from_code_unit_list(CodeUnits, String)
     ).
 
 :- pred decode_utf16(list(int)::in, list(char)::in, list(char)::out)
@@ -3122,55 +3132,110 @@ hash(String) = HashVal :-
     hash(String, HashVal).
 
 hash(String, HashVal) :-
-    length(String, Length),
-    hash_loop(String, 0, Length, 0, HashVal1),
-    HashVal = HashVal1 `xor` Length.
+    string.count_code_units(String, NumCodeUnits),
+    hash_loop(String, 0, NumCodeUnits, 0, HashVal1),
+    HashVal = HashVal1 `xor` NumCodeUnits.
 
 :- pred hash_loop(string::in, int::in, int::in, int::in, int::out)
     is det.
 
-hash_loop(String, Index, Length, !HashVal) :-
-    ( if Index < Length then
+hash_loop(String, Index, NumCodeUnits, !HashVal) :-
+    ( if Index < NumCodeUnits then
         unsafe_index_code_unit(String, Index, C),
         !:HashVal = !.HashVal `xor` (!.HashVal `unchecked_left_shift` 5),
         !:HashVal = !.HashVal `xor` C,
-        hash_loop(String, Index + 1, Length, !HashVal)
+        hash_loop(String, Index + 1, NumCodeUnits, !HashVal)
     else
         true
     ).
 
 hash2(String) = HashVal :-
-    length(String, Length),
-    hash2_loop(String, 0, Length, 0, HashVal1),
-    HashVal = HashVal1 `xor` Length.
+    string.count_code_units(String, NumCodeUnits),
+    hash2_loop(String, 0, NumCodeUnits, 0, HashVal1),
+    HashVal = HashVal1 `xor` NumCodeUnits.
 
 :- pred hash2_loop(string::in, int::in, int::in, int::in, int::out)
     is det.
 
-hash2_loop(String, Index, Length, !HashVal) :-
-    ( if Index < Length then
+hash2_loop(String, Index, NumCodeUnits, !HashVal) :-
+    ( if Index < NumCodeUnits then
         unsafe_index_code_unit(String, Index, C),
         !:HashVal = !.HashVal * 37,
         !:HashVal = !.HashVal + C,
-        hash2_loop(String, Index + 1, Length, !HashVal)
+        hash2_loop(String, Index + 1, NumCodeUnits, !HashVal)
     else
         true
     ).
 
 hash3(String) = HashVal :-
-    length(String, Length),
-    hash3_loop(String, 0, Length, 0, HashVal1),
-    HashVal = HashVal1 `xor` Length.
+    string.count_code_units(String, NumCodeUnits),
+    hash3_loop(String, 0, NumCodeUnits, 0, HashVal1),
+    HashVal = HashVal1 `xor` NumCodeUnits.
 
 :- pred hash3_loop(string::in, int::in, int::in, int::in, int::out)
     is det.
 
-hash3_loop(String, Index, Length, !HashVal) :-
-    ( if Index < Length then
+hash3_loop(String, Index, NumCodeUnits, !HashVal) :-
+    ( if Index < NumCodeUnits then
         unsafe_index_code_unit(String, Index, C),
         !:HashVal = !.HashVal * 49,
         !:HashVal = !.HashVal + C,
-        hash3_loop(String, Index + 1, Length, !HashVal)
+        hash3_loop(String, Index + 1, NumCodeUnits, !HashVal)
+    else
+        true
+    ).
+
+hash4(String) = HashVal :-
+    string.count_code_units(String, NumCodeUnits),
+    hash4_loop(String, 0, NumCodeUnits, 0, HashVal1),
+    HashVal = HashVal1 `xor` NumCodeUnits.
+
+:- pred hash4_loop(string::in, int::in, int::in, int::in, int::out)
+    is det.
+
+hash4_loop(String, Index, NumCodeUnits, !HashVal) :-
+    ( if Index < NumCodeUnits then
+        unsafe_index_code_unit(String, Index, C),
+        !:HashVal = keep_30_bits(!.HashVal `xor`
+            (!.HashVal `unchecked_left_shift` 5)),
+        !:HashVal = !.HashVal `xor` C,
+        hash4_loop(String, Index + 1, NumCodeUnits, !HashVal)
+    else
+        true
+    ).
+
+hash5(String) = HashVal :-
+    string.count_code_units(String, NumCodeUnits),
+    hash5_loop(String, 0, NumCodeUnits, 0, HashVal1),
+    HashVal = HashVal1 `xor` NumCodeUnits.
+
+:- pred hash5_loop(string::in, int::in, int::in, int::in, int::out)
+    is det.
+
+hash5_loop(String, Index, NumCodeUnits, !HashVal) :-
+    ( if Index < NumCodeUnits then
+        unsafe_index_code_unit(String, Index, C),
+        !:HashVal = keep_30_bits(!.HashVal * 37),
+        !:HashVal = keep_30_bits(!.HashVal + C),
+        hash5_loop(String, Index + 1, NumCodeUnits, !HashVal)
+    else
+        true
+    ).
+
+hash6(String) = HashVal :-
+    string.count_code_units(String, NumCodeUnits),
+    hash6_loop(String, 0, NumCodeUnits, 0, HashVal1),
+    HashVal = HashVal1 `xor` NumCodeUnits.
+
+:- pred hash6_loop(string::in, int::in, int::in, int::in, int::out)
+    is det.
+
+hash6_loop(String, Index, NumCodeUnits, !HashVal) :-
+    ( if Index < NumCodeUnits then
+        unsafe_index_code_unit(String, Index, C),
+        !:HashVal = keep_30_bits(!.HashVal * 49),
+        !:HashVal = keep_30_bits(!.HashVal + C),
+        hash6_loop(String, Index + 1, NumCodeUnits, !HashVal)
     else
         true
     ).
@@ -3178,61 +3243,6 @@ hash3_loop(String, Index, Length, !HashVal) :-
 :- func keep_30_bits(int) = int.
 
 keep_30_bits(N) = N /\ ((1 `unchecked_left_shift` 30) - 1).
-
-hash4(String) = HashVal :-
-    length(String, Length),
-    hash4_loop(String, 0, Length, 0, HashVal1),
-    HashVal = HashVal1 `xor` Length.
-
-:- pred hash4_loop(string::in, int::in, int::in, int::in, int::out)
-    is det.
-
-hash4_loop(String, Index, Length, !HashVal) :-
-    ( if Index < Length then
-        unsafe_index_code_unit(String, Index, C),
-        !:HashVal = keep_30_bits(!.HashVal `xor`
-            (!.HashVal `unchecked_left_shift` 5)),
-        !:HashVal = !.HashVal `xor` C,
-        hash4_loop(String, Index + 1, Length, !HashVal)
-    else
-        true
-    ).
-
-hash5(String) = HashVal :-
-    length(String, Length),
-    hash5_loop(String, 0, Length, 0, HashVal1),
-    HashVal = HashVal1 `xor` Length.
-
-:- pred hash5_loop(string::in, int::in, int::in, int::in, int::out)
-    is det.
-
-hash5_loop(String, Index, Length, !HashVal) :-
-    ( if Index < Length then
-        unsafe_index_code_unit(String, Index, C),
-        !:HashVal = keep_30_bits(!.HashVal * 37),
-        !:HashVal = keep_30_bits(!.HashVal + C),
-        hash5_loop(String, Index + 1, Length, !HashVal)
-    else
-        true
-    ).
-
-hash6(String) = HashVal :-
-    length(String, Length),
-    hash6_loop(String, 0, Length, 0, HashVal1),
-    HashVal = HashVal1 `xor` Length.
-
-:- pred hash6_loop(string::in, int::in, int::in, int::in, int::out)
-    is det.
-
-hash6_loop(String, Index, Length, !HashVal) :-
-    ( if Index < Length then
-        unsafe_index_code_unit(String, Index, C),
-        !:HashVal = keep_30_bits(!.HashVal * 49),
-        !:HashVal = keep_30_bits(!.HashVal + C),
-        hash6_loop(String, Index + 1, Length, !HashVal)
-    else
-        true
-    ).
 
 %---------------------------------------------------------------------------%
 %
@@ -5007,26 +5017,25 @@ replace_all_loop(Str, Pat, PatLength, SubstPiece, BeginAt,
 
 word_wrap(Str, N) = word_wrap_separator(Str, N, "").
 
-word_wrap_separator(Str, N, WordSep0) = Wrapped :-
+word_wrap_separator(Str, N, BrokenWordSep0) = Wrapped :-
     Words = words_separator(char.is_whitespace, Str),
-    SepLen0 = count_code_points(WordSep0),
-    ( if SepLen0 < N then
-        WordSep = WordSep0,
-        SepLen = SepLen0
+    BrokenWordSepLen0 = count_code_points(BrokenWordSep0),
+    ( if BrokenWordSepLen0 >= N then
+        BrokenWordSep = "",
+        BrokenWordSepLen = 0
     else
-        WordSep = "",
-        SepLen = 0
+        BrokenWordSep = BrokenWordSep0,
+        BrokenWordSepLen = BrokenWordSepLen0
     ),
     CurCol = 1,
     MaxCol = N,
-    RevWordsSpacesNls0 = [],
-    word_wrap_loop(Words, WordSep, SepLen, CurCol, MaxCol,
-        RevWordsSpacesNls0, RevWordsSpacesNls),
-    list.reverse(RevWordsSpacesNls, WordsSpacesNls),
+    word_wrap_loop(Words, BrokenWordSep, BrokenWordSepLen, CurCol, MaxCol,
+        cord.init, WordsSpacesNlsCord),
+    WordsSpacesNls = cord.list(WordsSpacesNlsCord),
     Wrapped = append_list(WordsSpacesNls).
 
-    % word_wrap_loop(Words, WordSep, SepLen, CurCol, MaxCol,
-    %   !RevWordsSpacesNls):
+    % word_wrap_loop(Words, BrokenWordSep, BrokenWordSepLen, CurCol, MaxCol,
+    %   !WordsSpacesNlsCord):
     %
     % This predicate loops over a list of words to wrap and returns
     % a list of strings, with each containing a word, a spaces or a newline.
@@ -5034,20 +5043,21 @@ word_wrap_separator(Str, N, WordSep0) = Wrapped :-
     % is reversed and appended together, the result should be
     % the linewrapped version of the original word stream.
     %
-    % Words is the list of words to process. WordSep is the string to use
+    % Words is the list of words to process. BrokenWordSep is the string to use
     % as a separator of a word has to split between two lines, because it is
-    % too long to fit on one line. SepLin is the length of WordSep.
+    % too long to fit on one line. BrokenWordSepLin is the length of
+    % BrokenWordSep.
     %
     % CurCol is the column where the next character should be written
     % if there is space for a whole word, and MaxCol is the number of
     % columns in a line.
     %
 :- pred word_wrap_loop(list(string)::in, string::in, int::in,
-    int::in, int::in, list(string)::in, list(string)::out) is det.
+    int::in, int::in, cord(string)::in, cord(string)::out) is det.
 
-word_wrap_loop([], _, _, _, _, !RevWordsSpacesNls).
-word_wrap_loop([Word | Words], WordSep, SepLen, CurCol, MaxCol,
-        !RevWordsSpacesNls) :-
+word_wrap_loop([], _, _, _, _, !WordsSpacesNlsCord).
+word_wrap_loop([Word | Words], BrokenWordSep, BrokenWordSepLen, CurCol, MaxCol,
+        !WordsSpacesNlsCord) :-
     WordLen = count_code_points(Word),
     ( if
         % We are on the first column and the length of the word
@@ -5056,78 +5066,84 @@ word_wrap_loop([Word | Words], WordSep, SepLen, CurCol, MaxCol,
         WordLen < MaxCol
     then
         NewWords = Words,
-        NewCol = CurCol + WordLen,
-        !:RevWordsSpacesNls = [Word | !.RevWordsSpacesNls]
+        cord.snoc(Word, !WordsSpacesNlsCord),
+        NewCol = CurCol + WordLen
     else if
         % The word takes up the whole line.
         CurCol = 1,
         WordLen = MaxCol
     then
         NewWords = Words,
-        NewCol = 1,
+        cord.snoc(Word, !WordsSpacesNlsCord),
         % We only add a newline if there are more words to follow.
         (
-            NewWords = [],
-            !:RevWordsSpacesNls = [Word | !.RevWordsSpacesNls]
+            NewWords = []
         ;
             NewWords = [_ | _],
-            !:RevWordsSpacesNls = ["\n", Word | !.RevWordsSpacesNls]
-        )
+            cord.snoc("\n", !WordsSpacesNlsCord)
+        ),
+        NewCol = 1
     else if
         % If we add a space and the current word to the line,
         % we will still be within the line length limit.
         CurCol + WordLen < MaxCol
     then
         NewWords = Words,
-        NewCol = CurCol + WordLen + 1,
-        !:RevWordsSpacesNls = [Word, " " | !.RevWordsSpacesNls]
+        cord.snoc(" ", !WordsSpacesNlsCord),
+        cord.snoc(Word, !WordsSpacesNlsCord),
+        NewCol = CurCol + WordLen + 1
     else if
         % Adding the word and a space takes us to the end of the line exactly.
         CurCol + WordLen = MaxCol
     then
         NewWords = Words,
-        NewCol = 1,
+        cord.snoc(" ", !WordsSpacesNlsCord),
+        cord.snoc(Word, !WordsSpacesNlsCord),
         % We only add a newline if there are more words to follow.
         (
-            NewWords = [],
-            !:RevWordsSpacesNls = [Word, " " | !.RevWordsSpacesNls]
+            NewWords = []
         ;
             NewWords = [_ | _],
-            !:RevWordsSpacesNls = ["\n", Word, " " | !.RevWordsSpacesNls]
-        )
+            cord.snoc("\n", !WordsSpacesNlsCord)
+        ),
+        NewCol = 1
     else
         % Adding the word would take us over the line limit.
         ( if CurCol = 1 then
             % Break up words that are too big to fit on a line.
-            RevPieces = break_up_string_reverse(Word, MaxCol - SepLen, []),
-            (
-                RevPieces = [LastPiece | Rest]
-            ;
-                RevPieces = [],
-                unexpected($pred, "no pieces")
-            ),
-            NewWords = [LastPiece | Words],
-            NewCol = 1,
-            RestWithSep = list.map(func(S) = S ++ WordSep ++ "\n", Rest),
-            !:RevWordsSpacesNls = RestWithSep ++ !.RevWordsSpacesNls
+            % Here, we break off a piece that *just* fits on this line.
+            % We let the recursive call check whether the remainder
+            % is also too big to fit in a line.
+            %
+            % Note that we cannot handle the last piece resulting from
+            % breaking up Word here without duplicating the code above
+            % handling e.g. the case where the last word *just* fits on a line.
+            %
+            % Without duplicating the code above, we also cannot judge
+            % whether the last piece *should* be split off from the previous
+            % piece, because this depends on the relative lengths of the
+            % last piece and BrokenWordSep. (See the contents of tests/general/
+            % string_test.exp as of 2024 mar 23.)
+            %
+            % And in any case, leaving RightWordPiece to be handled by the
+            % recursive call is not a performance problem. Words that do not
+            % fit on one line are rare, but words that do not fit on *two*
+            % lines are practically nonexistent.
+            split_by_code_point(Word, MaxCol - BrokenWordSepLen,
+                LeftWordPiece, RightWordPiece),
+            NewWords = [RightWordPiece | Words],
+            cord.snoc(LeftWordPiece, !WordsSpacesNlsCord),
+            cord.snoc(BrokenWordSep, !WordsSpacesNlsCord),
+            cord.snoc("\n", !WordsSpacesNlsCord),
+            NewCol = 1
         else
             NewWords = [Word | Words],
-            NewCol = 1,
-            !:RevWordsSpacesNls = ["\n" | !.RevWordsSpacesNls]
+            cord.snoc("\n", !WordsSpacesNlsCord),
+            NewCol = 1
         )
     ),
-    word_wrap_loop(NewWords, WordSep, SepLen, NewCol, MaxCol,
-        !RevWordsSpacesNls).
-
-:- func break_up_string_reverse(string, int, list(string)) = list(string).
-
-break_up_string_reverse(Str, N, Prev) = Strs :-
-    ( if count_code_points(Str) =< N then
-        Strs = [Str | Prev]
-    else
-        split_by_code_point(Str, N, Left, Right),
-        Strs = break_up_string_reverse(Right, N, [Left | Prev])
-    ).
+    word_wrap_loop(NewWords, BrokenWordSep, BrokenWordSepLen, NewCol, MaxCol,
+        !WordsSpacesNlsCord).
 
 %---------------------------------------------------------------------------%
 %
@@ -5351,6 +5367,9 @@ pad_row([SenseWidth | SenseWidths], [ColumnStr0 | ColumnStrs0],
         Separator, SepLen, CurColumn, Line) :-
     SenseWidth = sense_width(JustifySense, ColumnWidth),
     NextColumn = CurColumn + ColumnWidth + SepLen,
+    % XXX Counting code points here is an approximation. What we actually want
+    % is the *width* of ColumnStr0, which may be less than ColumnWidth
+    % in the presence of combining characters.
     ( if count_code_points(ColumnStr0) =< ColumnWidth then
         (
             JustifySense = just_left,
@@ -5366,8 +5385,8 @@ pad_row([SenseWidth | SenseWidths], [ColumnStr0 | ColumnStrs0],
         % chance that the cut would come between two combining Unicode
         % characters.
         %
-        % As it its, leaving ColumnStr0 uncut makes this cell in the table
-        % bulge out to the right.
+        % As it is, leaving ColumnStr0 uncut will probably make this cell
+        % in the table bulge out to the right.
         ColumnStr = ColumnStr0
     ),
     (
@@ -5460,17 +5479,17 @@ det_to_int(S) = det_base_string_to_int(10, S).
 base_string_to_int(Base, String, Int) :-
     string.index(String, 0, Char),
     End = string.count_code_units(String),
-    ( if Char = ('-') then
+    ( if
+        ( Char = ('-'), FoldPred = base_negative_int_accumulator(Base)
+        ; Char = ('+'), FoldPred = base_positive_int_accumulator(Base)
+        )
+    then
+        % Start at the first digit, which *should* be just after the sign.
         End > 1,
-        foldl_between(base_negative_int_accumulator(Base), String,
-            1, End, 0, Int)
-    else if Char = ('+') then
-        End > 1,
-        foldl_between(base_positive_int_accumulator(Base), String,
-            1, End, 0, Int)
+        foldl_between(FoldPred, String, 1, End, 0, Int)
     else
-        foldl_between(base_positive_int_accumulator(Base), String,
-            0, End, 0, Int)
+        FoldPred = base_positive_int_accumulator(Base),
+        foldl_between(FoldPred, String, 0, End, 0, Int)
     ).
 
 det_base_string_to_int(Base, S) = N :-
@@ -5611,7 +5630,7 @@ accumulate_uint(Base, BaseInt, Char, N0, N) :-
         does_not_affect_liveness, no_sharing],
 "{
     // The %c checks for any erroneous characters appearing after the float;
-    // if there are then sscanf() will return 2 rather than 1.
+    // if there are some, then sscanf() will return 2 rather than 1.
     char    tmpc;
     SUCCESS_INDICATOR =
         (!MR_isspace(FloatString[0])) &&
@@ -5622,8 +5641,9 @@ accumulate_uint(Base, BaseInt, Char, N0, N) :-
     to_float(FloatString::in, FloatVal::out),
     [will_not_call_mercury, promise_pure, thread_safe],
 "{
-    FloatVal = 0.0;     // FloatVal must be initialized to suppress
-                        // error messages when the predicate fails.
+    // FloatVal must be initialized to suppress error messages
+    // when the predicate fails.
+    FloatVal = 0.0;
 
     // Leading or trailing whitespace is not allowed.
     if (FloatString.Length == 0 ||
@@ -5651,8 +5671,9 @@ accumulate_uint(Base, BaseInt, Char, N0, N) :-
     to_float(FloatString::in, FloatVal::out),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
-    FloatVal = 0.0;     // FloatVal must be initialized to suppress
-                        // error messages when the predicate fails.
+    // FloatVal must be initialized to suppress error messages
+    // when the predicate fails.
+    FloatVal = 0.0;
 
     // Leading or trailing whitespace is not allowed.
     if (FloatString.length() == 0 || FloatString.trim() != FloatString) {
@@ -5762,29 +5783,24 @@ int_to_base_string(N, Base, Str) :-
     else
         unexpected($pred, "invalid base")
     ),
-    int_to_base_string_1(N, Base, Str).
-
-:- pred int_to_base_string_1(int::in, int::in, string::uo) is det.
-
-int_to_base_string_1(N, Base, Str) :-
     % Note that in order to handle MININT correctly, we need to do the
-    % conversion of the absolute number into digits using negative numbers;
-    % we can't use positive numbers, since -MININT overflows.
+    % conversion of the absolute number into digits using negative numbers.
+    % we can't use positive numbers, because -MININT overflows.
     ( if N < 0 then
-        int_to_base_string_2(N, Base, ['-'], RevChars)
+        int_to_base_string_loop(N, Base, ['-'], RevChars)
     else
         NegN = 0 - N,
-        int_to_base_string_2(NegN, Base, [], RevChars)
+        int_to_base_string_loop(NegN, Base, [], RevChars)
     ),
     from_rev_char_list(RevChars, Str).
 
-:- pred int_to_base_string_2(int::in, int::in,
+:- pred int_to_base_string_loop(int::in, int::in,
     list(char)::in, list(char)::out) is det.
 
-int_to_base_string_2(NegN, Base, !RevChars) :-
-    % int_to_base_string_2/3 is almost identical to
-    % int_to_base_string_group_2/6 below so any changes here might
-    % also need to be applied to int_to_base_string_group_2/3.
+int_to_base_string_loop(NegN, Base, !RevChars) :-
+    % int_to_base_string_loop/3 is almost identical to
+    % int_to_base_string_group_loop/6 below so any changes here might
+    % also need to be applied to int_to_base_string_group_loop/3.
     ( if NegN > -Base then
         N = -NegN,
         DigitChar = char.det_base_int_to_digit(Base, N),
@@ -5793,7 +5809,7 @@ int_to_base_string_2(NegN, Base, !RevChars) :-
         NegN1 = NegN // Base,
         N10 = (NegN1 * Base) - NegN,
         DigitChar = char.det_base_int_to_digit(Base, N10),
-        int_to_base_string_2(NegN1, Base, !RevChars),
+        int_to_base_string_loop(NegN1, Base, !RevChars),
         !:RevChars = [DigitChar | !.RevChars]
     ).
 
@@ -5806,42 +5822,35 @@ int_to_base_string_group(N, Base, GroupLength, Sep) = Str :-
     else
         unexpected($pred, "invalid base")
     ),
-    int_to_base_string_group_1(N, Base, GroupLength, Sep, Str).
-
-:- pred int_to_base_string_group_1(int::in, int::in, int::in,
-    string::in, string::uo) is det.
-
-int_to_base_string_group_1(N, Base, GroupLength, Sep, Str) :-
     % Note that in order to handle MININT correctly, we need to do
-    % the conversion of the absolute number into digits using negative numbers
-    % (we can't use positive numbers, since -MININT overflows)
+    % the conversion of the absolute number into digits using negative numbers.
+    % We can't use positive numbers, because -MININT overflows.
     ( if N < 0 then
-        int_to_base_string_group_2(N, Base, 0, GroupLength, Sep, Str1),
+        int_to_base_string_group_loop(N, Base, 0, GroupLength, Sep, Str1),
         append("-", Str1, Str)
     else
         N1 = 0 - N,
-        int_to_base_string_group_2(N1, Base, 0, GroupLength, Sep, Str)
+        int_to_base_string_group_loop(N1, Base, 0, GroupLength, Sep, Str)
     ).
 
-    % int_to_base_string_group_2(NegN, Base, Curr, GroupLength, Sep, Str):
+    % int_to_base_string_group_loop(NegN, Base, Curr, GroupLength, Sep, Str):
     %
     % GroupLength is how many digits there should be between separators.
     % Curr is how many digits have been processed since the last separator
     % was inserted.
-    % int_to_base_string_group_2/6 is almost identical to
-    % int_to_base_string_2/3 above so any changes here might also
-    % need to be applied to int_to_base_string_2/3.
+    % int_to_base_string_group_loop/6 is almost identical to
+    % int_to_base_string_loop/3 above so any changes here might also
+    % need to be applied to int_to_base_string_loop/3.
     %
-:- pred int_to_base_string_group_2(int::in, int::in, int::in, int::in,
+:- pred int_to_base_string_group_loop(int::in, int::in, int::in, int::in,
     string::in, string::uo) is det.
 
-int_to_base_string_group_2(NegN, Base, Curr, GroupLength, Sep, Str) :-
+int_to_base_string_group_loop(NegN, Base, Curr, GroupLength, Sep, Str) :-
     ( if
         Curr = GroupLength,
         GroupLength > 0
     then
-        int_to_base_string_group_2(NegN, Base, 0, GroupLength,
-            Sep, Str1),
+        int_to_base_string_group_loop(NegN, Base, 0, GroupLength, Sep, Str1),
         append(Str1, Sep, Str)
     else
         ( if NegN > -Base then
@@ -5853,7 +5862,7 @@ int_to_base_string_group_2(NegN, Base, Curr, GroupLength, Sep, Str) :-
             N10 = (NegN1 * Base) - NegN,
             DigitChar = char.det_base_int_to_digit(Base, N10),
             char_to_string(DigitChar, DigitString),
-            int_to_base_string_group_2(NegN1, Base, Curr + 1,
+            int_to_base_string_group_loop(NegN1, Base, Curr + 1,
                 GroupLength, Sep, Str1),
             append(Str1, DigitString, Str)
         )
@@ -6284,7 +6293,7 @@ uint64_to_hex_string(UInt) =
     [will_not_call_mercury, promise_pure, thread_safe],
 "
     // We need to cast to a long here since C# does not provide an overloading
-    // of ToString() for ulongs.  This works since ToString() will use the
+    // of ToString() for ulongs. This works since ToString() will use the
     // unsigned representation for non-decimal bases.
     Str = System.Convert.ToString((long) U64, 8);
 ").
@@ -6306,7 +6315,7 @@ float_to_string(Float) = S2 :-
     [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
         does_not_affect_liveness, no_sharing],
 "{
-    // For efficiency reasons we duplicate the C implementation
+    // For efficiency reasons, we duplicate the C implementation
     // of lowlevel_float_to_string.
     MR_float_to_string(Flt, Str, MR_ALLOC_ID);
 }").
@@ -6322,7 +6331,6 @@ float_to_string(Float) = S2 :-
     } else if (System.Double.IsNegativeInfinity(Flt)) {
         Str = ""-infinity"";
     } else {
-
         Str = Flt.ToString(""R"");
 
         // Append '.0' if there is no 'e' or '.' in the string.
@@ -6361,9 +6369,9 @@ float_to_string(Float, unsafe_promise_unique(String)) :-
     % XXX This implementation has problems when the mantissa
     % cannot fit in an int.
     %
-    % XXX The unsafe_promise_unique is needed because in
-    % float_to_string_loop the call to to_float doesn't
-    % have a (ui, out) mode hence the output string cannot be unique.
+    % XXX The unsafe_promise_unique is needed because in float_to_string_loop,
+    % the call to to_float doesn't have a (ui, out) mode, which means that
+    % the output string cannot be unique.
     String = float_to_string_loop(min_precision, Float).
 
 :- func float_to_string_loop(int, float) = (string) is det.
