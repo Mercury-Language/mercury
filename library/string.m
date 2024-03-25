@@ -3759,7 +3759,7 @@ sub_string_search_start(WholeString, Pattern, BeginAt, Index) :-
 
 unsafe_sub_string_search_start(String, SubString, BeginAt, Index) :-
     Len = string.length(String),
-    SubLen = tringength(SubString),
+    SubLen = string.length(SubString),
     LastStart = Len - SubLen,
     unsafe_sub_string_search_start_loop(String, SubString, BeginAt, LastStart,
         SubLen, Index).
