@@ -403,6 +403,17 @@
 
 :- implementation.
 
+:- interface.
+
+    % A version of is_surrogate that takes the character in its integer form.
+    % Exported for use by string.m.
+    %
+:- pred char_int_is_surrogate(int::in) is semidet.
+
+%---------------------------------------------------------------------------%
+
+:- implementation.
+
 :- import_module int.
 :- import_module require.
 :- import_module uint.
@@ -1068,7 +1079,7 @@ to_utf8_code_units(Char, NumCodeUnits, A, B, C, D) :-
         D = 0u8,
         NumCodeUnits = 2
     else if Int =< 0xffff then
-        not is_surrogate(Char),
+        not char_int_is_surrogate(Int),
         A = uint8.cast_from_int(0xe0 \/ ((Int >> 12) /\ 0x0f)),
         B = uint8.cast_from_int(0x80 \/ ((Int >>  6) /\ 0x3f)),
         C = uint8.cast_from_int(0x80 \/  (Int        /\ 0x3f)),
@@ -1139,8 +1150,7 @@ to_utf16_code_units(Char, NumCodeUnits, A, B) :-
 
 is_surrogate(Char) :-
     Int = char.to_int(Char),
-    Int >= 0xd800,
-    Int =< 0xdfff.
+    char_int_is_surrogate(Int).
 
 is_leading_surrogate(Char) :-
     Int = char.to_int(Char),
@@ -1248,6 +1258,14 @@ hash(C) = H :-
 
 hash(C, H) :-
     H = hash(C).
+
+%---------------------------------------------------------------------------%
+
+char_int_is_surrogate(Int) :-
+    % This code is sort-of duplicated, in C, in runtime/mercury_string.h,
+    % in the macro MR_is_surrogate.
+    Int >= 0xd800,
+    Int =< 0xdfff.
 
 %---------------------------------------------------------------------------%
 :- end_module char.

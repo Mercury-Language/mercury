@@ -426,6 +426,8 @@ extern MR_bool MR_escape_string_quote(MR_String *ptr, const char * string);
 #define MR_is_ascii(c)              ((unsigned) (c) <= 0x7f)
 
 // True if c is a Unicode surrogate code point, i.e. U+D800..U+DFFF.
+// This code is sort-of duplicated, in mercury, in char.char_int_is_surrogate
+// in the Mercury standard library.
 
 #define MR_is_surrogate(c)          (((unsigned) (c) & 0x1FF800) == 0xD800)
 

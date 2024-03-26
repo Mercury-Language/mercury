@@ -2409,7 +2409,8 @@ from_utf8_code_unit_list(CodeUnits, String) :-
     else
         acc_rev_chars_from_utf8_code_units(CodeUnits, [], RevChars),
         % XXX This checks whether RevChars represents a well-formed string.
-        % Why? The call to decode_utf8 should have ensured that already.
+        % Why? The call to acc_rev_chars_from_utf8_code_units has ensured that
+        % already.
         semidet_from_rev_char_list(RevChars, String)
     ).
 
@@ -2438,7 +2439,8 @@ acc_rev_chars_from_utf8_code_units([A | FollowA], !RevChars) :-
         CodePointInt = (A /\ 0x0f) << 12
                     \/ (B /\ 0x3f) << 6
                     \/ (C /\ 0x3f),
-        CodePointInt >= 0x800
+        CodePointInt >= 0x800,
+        not char.char_int_is_surrogate(CodePointInt)
     else if A =< 0xf4 then  % 4-byte sequence
         FollowA = [B, C, D | Rest],
         utf8_is_trail_byte(B),
