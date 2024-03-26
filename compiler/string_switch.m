@@ -385,9 +385,9 @@ generate_string_hash_switch(Cases, VarRval, VarName, CodeModel, CanFail,
     % Generate the data structures for the hash table.
     FailLabel = HashSwitchInfo ^ shsi_fail_label,
     construct_string_hash_jump_vectors(0, TableSize, HashSlotsMap, FailLabel,
-        NumCollisions, [], RevTableRows, [], RevTargets),
-    list.reverse(RevTableRows, TableRows),
-    list.reverse(RevTargets, Targets),
+        NumCollisions, cord.init, TableRowsCord, cord.init, MaybeTargetsCord),
+    TableRows = cord.list(TableRowsCord),
+    MaybeTargets = cord.list(MaybeTargetsCord),
 
     % Generate the code for the hash table lookup.
     ( if NumCollisions = 0 then
@@ -407,7 +407,7 @@ generate_string_hash_switch(Cases, VarRval, VarName, CodeModel, CanFail,
     MatchCode = from_list([
         % See the comment at the top of the module about why we use
         % a computed_goto here.
-        llds_instr(computed_goto(lval(SlotReg), Targets),
+        llds_instr(computed_goto(lval(SlotReg), MaybeTargets),
             "jump to the corresponding code")
     ]),
 
@@ -425,11 +425,11 @@ generate_string_hash_switch(Cases, VarRval, VarName, CodeModel, CanFail,
 
 :- pred construct_string_hash_jump_vectors(int::in, int::in,
     map(int, string_hash_slot(label))::in, label::in, int::in,
-    list(list(rval))::in, list(list(rval))::out,
-    list(maybe(label))::in, list(maybe(label))::out) is det.
+    cord(list(rval))::in, cord(list(rval))::out,
+    cord(maybe(label))::in, cord(maybe(label))::out) is det.
 
 construct_string_hash_jump_vectors(Slot, TableSize, HashSlotMap, FailLabel,
-        NumCollisions, !RevTableRows, !RevMaybeTargets) :-
+        NumCollisions, !TableRowsCord, !MaybeTargetsCord) :-
     ( if Slot = TableSize then
         true
     else
@@ -448,10 +448,10 @@ construct_string_hash_jump_vectors(Slot, TableSize, HashSlotMap, FailLabel,
         else
             TableRow = [StringRval, NextSlotRval]
         ),
-        !:RevTableRows = [TableRow | !.RevTableRows],
-        !:RevMaybeTargets = [yes(Target) | !.RevMaybeTargets],
+        cord.snoc(TableRow, !TableRowsCord),
+        cord.snoc(yes(Target), !MaybeTargetsCord),
         construct_string_hash_jump_vectors(Slot + 1, TableSize, HashSlotMap,
-            FailLabel, NumCollisions, !RevTableRows, !RevMaybeTargets)
+            FailLabel, NumCollisions, !TableRowsCord, !MaybeTargetsCord)
     ).
 
 :- pred represent_tagged_cases_in_string_hash_switch(represent_params::in,
@@ -535,8 +535,8 @@ generate_string_hash_simple_lookup_switch(VarRval, CaseValues,
     HashMask = TableSize - 1,
 
     list.length(OutVars, NumOutVars),
-    % For the LLDS backend, array indexing ops don't need the element
-    % types, so it is ok to lie for OutElemTypes.
+    % For the LLDS backend, array indexing ops don't need the element types,
+    % so it is ok to lie for OutElemTypes.
     list.duplicate(NumOutVars, scalar_elem_generic, OutElemTypes),
     DummyOutRvals = list.map(default_value_for_type, OutTypes),
     ( if NumCollisions = 0 then
@@ -554,12 +554,12 @@ generate_string_hash_simple_lookup_switch(VarRval, CaseValues,
 
     % Generate the static lookup table for this switch.
     construct_string_hash_simple_lookup_vector(0, TableSize, HashSlotsMap,
-        NumCollisions, DummyOutRvals, [], RevVectorRvals),
-    list.reverse(RevVectorRvals, VectorRvals),
+        NumCollisions, DummyOutRvals, cord.init, VectorRvalsCord),
+    VectorRvals = cord.list(VectorRvalsCord),
     add_vector_static_cell(RowElemTypes, VectorRvals, VectorAddr, !CI),
     VectorAddrRval = const(llconst_data_addr(VectorAddr, no)),
 
-   (
+    (
         OutVars = [],
         SetBaseRegCode = empty
     ;
@@ -575,9 +575,10 @@ generate_string_hash_simple_lookup_switch(VarRval, CaseValues,
         % field in !CLD.
         RowStartReg = HashSwitchInfo ^ shsi_row_start_reg,
         SetBaseRegCode = singleton(
-            llds_instr(assign(BaseReg,
-                mem_addr(heap_ref(VectorAddrRval, yes(ptag(0u8)),
-                    lval(RowStartReg)))),
+            llds_instr(
+                assign(BaseReg,
+                    mem_addr(heap_ref(VectorAddrRval, yes(ptag(0u8)),
+                        lval(RowStartReg)))),
                 "set up base reg")
         ),
         generate_offset_assigns(OutVars, NumPrevColumns, BaseReg, !.CI, !CLD)
@@ -607,10 +608,10 @@ generate_string_hash_simple_lookup_switch(VarRval, CaseValues,
 
 :- pred construct_string_hash_simple_lookup_vector(int::in, int::in,
     map(int, string_hash_slot(list(rval)))::in, int::in, list(rval)::in,
-    list(list(rval))::in, list(list(rval))::out) is det.
+    cord(list(rval))::in, cord(list(rval))::out) is det.
 
 construct_string_hash_simple_lookup_vector(Slot, TableSize, HashSlotMap,
-        NumCollisions, DummyOutRvals, !RevRows) :-
+        NumCollisions, DummyOutRvals, !RowsCord) :-
     ( if Slot = TableSize then
         true
     else
@@ -628,9 +629,9 @@ construct_string_hash_simple_lookup_vector(Slot, TableSize, HashSlotMap,
         else
             Row = [StringRval, NextSlotRval | OutVarRvals]
         ),
-        !:RevRows = [Row | !.RevRows],
+        cord.snoc(Row, !RowsCord),
         construct_string_hash_simple_lookup_vector(Slot + 1, TableSize,
-            HashSlotMap, NumCollisions, DummyOutRvals, !RevRows)
+            HashSlotMap, NumCollisions, DummyOutRvals, !RowsCord)
     ).
 
 %---------------------------------------------------------------------------%
@@ -661,8 +662,8 @@ generate_string_hash_several_soln_lookup_switch(VarRval, CaseSolns,
     HashMask = TableSize - 1,
 
     list.length(OutVars, NumOutVars),
-    % For the LLDS backend, array indexing ops don't need the element
-    % types, so it is ok to lie for OutElemTypes.
+    % For the LLDS backend, array indexing ops don't need the element types,
+    % so it is ok to lie for OutElemTypes.
     list.duplicate(NumOutVars, scalar_elem_generic, OutElemTypes),
     ( if NumCollisions = 0 then
         NumColumns = 3 + NumOutVars,
@@ -699,10 +700,10 @@ generate_string_hash_several_soln_lookup_switch(VarRval, CaseSolns,
     LaterSolnArrayCord0 = singleton(DummyOutRvals),
     construct_string_hash_several_soln_lookup_vector(0, TableSize,
         HashSlotsMap, DummyOutRvals, NumOutVars, NumCollisions,
-        [], RevMainRows, InitLaterSolnRowNumber,
+        cord.init, MainRowsCord, InitLaterSolnRowNumber,
         LaterSolnArrayCord0, LaterSolnArrayCord,
         0, OneSolnCaseCount, 0, SeveralSolnsCaseCount),
-    list.reverse(RevMainRows, MainRows),
+    MainRows = cord.list(MainRowsCord),
     LaterSolnArray = cord.list(LaterSolnArrayCord),
 
     list.sort([OneSolnCaseCount - kind_one_soln,
@@ -727,9 +728,10 @@ generate_string_hash_several_soln_lookup_switch(VarRval, CaseSolns,
     % field in !CI.
     RowStartReg = HashSwitchInfo ^ shsi_row_start_reg,
     SetBaseRegCode = singleton(
-        llds_instr(assign(BaseReg,
-            mem_addr(heap_ref(MainVectorAddrRval, yes(ptag(0u8)),
-                lval(RowStartReg)))),
+        llds_instr(
+            assign(BaseReg,
+                mem_addr(heap_ref(MainVectorAddrRval, yes(ptag(0u8)),
+                    lval(RowStartReg)))),
             "set up base reg")
     ),
     generate_code_for_all_kinds(DescendingSortedKinds, NumPrevColumns,
@@ -749,13 +751,13 @@ generate_string_hash_several_soln_lookup_switch(VarRval, CaseSolns,
 
 :- pred construct_string_hash_several_soln_lookup_vector(int::in, int::in,
     map(int, string_hash_slot(soln_consts(rval)))::in, list(rval)::in,
-    int::in, int::in, list(list(rval))::in, list(list(rval))::out,
+    int::in, int::in, cord(list(rval))::in, cord(list(rval))::out,
     int::in, cord(list(rval))::in, cord(list(rval))::out,
     int::in, int::out, int::in, int::out) is det.
 
 construct_string_hash_several_soln_lookup_vector(Slot, TableSize, HashSlotMap,
         DummyOutRvals, NumOutVars, NumCollisions,
-        !RevMainRows, !.LaterNextRow, !LaterSolnArray,
+        !MainRowsCord, !.LaterNextRow, !LaterSolnArray,
         !OneSolnCaseCount, !SeveralSolnsCaseCount) :-
     ( if Slot = TableSize then
         true
@@ -807,10 +809,10 @@ construct_string_hash_several_soln_lookup_vector(Slot, TableSize, HashSlotMap,
                 MainRow = [StringRval, NextSlotRval | MainRowTail]
             )
         ),
-        !:RevMainRows = [MainRow | !.RevMainRows],
+        cord.snoc(MainRow, !MainRowsCord),
         construct_string_hash_several_soln_lookup_vector(Slot + 1, TableSize,
             HashSlotMap, DummyOutRvals, NumOutVars, NumCollisions,
-            !RevMainRows, !.LaterNextRow, !LaterSolnArray,
+            !MainRowsCord, !.LaterNextRow, !LaterSolnArray,
             !OneSolnCaseCount, !SeveralSolnsCaseCount)
     ).
 
@@ -879,73 +881,94 @@ generate_string_hash_switch_search(Info, VarRval, TableAddrRval,
         else
             BaseReg = RowStartReg,
             MultiplyInstrs = [
-                llds_instr(assign(RowStartReg,
-                    binop(int_mul(int_type_int), lval(SlotReg),
-                        const(llconst_int(NumColumns)))),
+                llds_instr(
+                    assign(RowStartReg,
+                        binop(int_mul(int_type_int),
+                            lval(SlotReg), const(llconst_int(NumColumns)))),
                     "find the start of the row")
             ]
         ),
-        Code = from_list([
-            llds_instr(assign(SlotReg,
-                binop(bitwise_and(int_type_int), unop(HashOp, VarRval),
-                    const(llconst_int(HashMask)))),
-                "compute the hash value of the input string") |
-            MultiplyInstrs]) ++
-        from_list([
-            llds_instr(assign(StringReg,
-                binop(array_index(ArrayElemType), TableAddrRval,
-                    lval(BaseReg))),
-                "lookup the string for this hash slot"),
-            llds_instr(if_val(
-                    binop(logical_or,
-                        binop(eq(int_type_int), lval(StringReg),
-                            const(llconst_int(0))),
-                        binop(str_ne, lval(StringReg), VarRval)),
-                code_label(FailLabel)),
-                "did we find a match? nofulljump")
-        ]) ++ MatchCode ++ from_list([
-            llds_instr(label(FailLabel),
-                "handle the failure of the table search")
-        ]) ++ FailCode
+        Code =
+            from_list([
+                llds_instr(
+                    assign(SlotReg,
+                        binop(bitwise_and(int_type_int),
+                            unop(HashOp, VarRval),
+                            const(llconst_int(HashMask)))),
+                    "compute the hash value of the input string") |
+                MultiplyInstrs]) ++
+            from_list([
+                llds_instr(
+                    assign(StringReg,
+                        binop(array_index(ArrayElemType),
+                            TableAddrRval, lval(BaseReg))),
+                    "lookup the string for this hash slot"),
+                llds_instr(
+                    if_val(
+                        binop(logical_or,
+                            binop(eq(int_type_int),
+                                lval(StringReg), const(llconst_int(0))),
+                            binop(str_ne, lval(StringReg), VarRval)),
+                    code_label(FailLabel)),
+                    "did we find a match? nofulljump")
+            ]) ++
+            MatchCode ++
+            from_list([
+                llds_instr(label(FailLabel),
+                    "handle the failure of the table search")
+            ]) ++
+            FailCode
     else
-        Code = from_list([
-            llds_instr(assign(SlotReg,
-                binop(bitwise_and(int_type_int), unop(HashOp, VarRval),
-                    const(llconst_int(HashMask)))),
-                "compute the hash value of the input string"),
-            llds_instr(label(LoopStartLabel),
-                "begin hash chain loop, nofulljump"),
-            llds_instr(assign(RowStartReg,
-                binop(int_mul(int_type_int), lval(SlotReg),
-                    const(llconst_int(NumColumns)))),
-                "find the start of the row"),
-            llds_instr(assign(StringReg,
-                binop(array_index(ArrayElemType), TableAddrRval,
-                    lval(RowStartReg))),
-                "lookup the string for this hash slot"),
-            llds_instr(if_val(
-                    binop(logical_or,
-                        binop(eq(int_type_int), lval(StringReg),
-                            const(llconst_int(0))),
-                        binop(str_ne, lval(StringReg), VarRval)),
-                code_label(NoMatchLabel)),
-                "did we find a match? nofulljump")
-        ]) ++ MatchCode ++ from_list([
-            llds_instr(label(NoMatchLabel),
-                "no match yet, nofulljump"),
-            llds_instr(assign(SlotReg,
-                binop(array_index(ArrayElemType), TableAddrRval,
-                    binop(int_add(int_type_int), lval(RowStartReg),
-                        const(llconst_int(1))))),
-                "get next slot in hash chain"),
-            llds_instr(
-                if_val(binop(int_ge(int_type_int), lval(SlotReg),
-                        const(llconst_int(0))),
-                    code_label(LoopStartLabel)),
-                "if we have not reached the end of the chain, keep searching"),
-            llds_instr(label(FailLabel),
-                "handle the failure of the table search")
-        ]) ++ FailCode
+        Code =
+            from_list([
+                llds_instr(
+                    assign(SlotReg,
+                        binop(bitwise_and(int_type_int),
+                            unop(HashOp, VarRval),
+                            const(llconst_int(HashMask)))),
+                    "compute the hash value of the input string"),
+                llds_instr(label(LoopStartLabel),
+                    "begin hash chain loop, nofulljump"),
+                llds_instr(
+                    assign(RowStartReg,
+                        binop(int_mul(int_type_int),
+                            lval(SlotReg), const(llconst_int(NumColumns)))),
+                    "find the start of the row"),
+                llds_instr(
+                    assign(StringReg,
+                        binop(array_index(ArrayElemType),
+                            TableAddrRval, lval(RowStartReg))),
+                    "lookup the string for this hash slot"),
+                llds_instr(
+                    if_val(
+                        binop(logical_or,
+                            binop(eq(int_type_int),
+                                lval(StringReg), const(llconst_int(0))),
+                            binop(str_ne, lval(StringReg), VarRval)),
+                        code_label(NoMatchLabel)),
+                    "did we find a match? nofulljump")
+            ]) ++
+            MatchCode ++
+            from_list([
+                llds_instr(label(NoMatchLabel),
+                    "no match yet, nofulljump"),
+                llds_instr(
+                    assign(SlotReg,
+                        binop(array_index(ArrayElemType),
+                            TableAddrRval,
+                            binop(int_add(int_type_int),
+                                lval(RowStartReg), const(llconst_int(1))))),
+                    "get next slot in hash chain"),
+                llds_instr(
+                    if_val(
+                        binop(int_ge(int_type_int),
+                            lval(SlotReg), const(llconst_int(0))),
+                        code_label(LoopStartLabel)),
+                    "if not at the end of the chain, keep searching"),
+                llds_instr(label(FailLabel),
+                    "handle the failure of the table search")
+            ]) ++
+            FailCode
     ).
 
 %---------------------------------------------------------------------------%
@@ -966,10 +989,11 @@ generate_string_binary_switch(Cases, VarRval, VarName, CodeModel, CanFail,
     string_binary_cases(Cases, represent_tagged_case_for_llds(Params),
         CaseLabelMap0, CaseLabelMap, no, MaybeEnd, !CI, unit, _, SortedTable),
 
-    gen_string_binary_jump_slots(SortedTable, [], RevTableRows, [], RevTargets,
+    gen_string_binary_jump_slots(SortedTable,
+        cord.init, TableRowsCord, cord.init, TargetsCord,
         0, TableSize),
-    list.reverse(RevTableRows, TableRows),
-    list.reverse(RevTargets, Targets),
+    TableRows = cord.list(TableRowsCord),
+    Targets = cord.list(TargetsCord),
     NumColumns = 2,
     RowElemTypes = [lt_string, lt_int(int_type_int)],
     add_vector_static_cell(RowElemTypes, TableRows, TableAddr, !CI),
@@ -984,15 +1008,16 @@ generate_string_binary_switch(Cases, VarRval, VarName, CodeModel, CanFail,
     MidReg = BinarySwitchInfo ^ sbsi_mid_reg,
     % See the comment at the top about why we use a computed_goto here.
     ComputedGotoCode = singleton(
-        llds_instr(computed_goto(
-            binop(array_index(ArrayElemType),
-                TableAddrRval,
-                binop(int_add(int_type_int),
-                    binop(int_mul(int_type_int),
-                        lval(MidReg),
-                        const(llconst_int(NumColumns))),
-                    const(llconst_int(1)))),
-            Targets),
+        llds_instr(
+            computed_goto(
+                binop(array_index(ArrayElemType),
+                    TableAddrRval,
+                    binop(int_add(int_type_int),
+                        binop(int_mul(int_type_int),
+                            lval(MidReg),
+                            const(llconst_int(NumColumns))),
+                        const(llconst_int(1)))),
+                Targets),
             "jump to the matching case")
     ),
 
@@ -1006,19 +1031,19 @@ generate_string_binary_switch(Cases, VarRval, VarName, CodeModel, CanFail,
         CasesCode ++ EndLabelCode.
 
 :- pred gen_string_binary_jump_slots(assoc_list(string, label)::in,
-    list(list(rval))::in, list(list(rval))::out,
-    list(maybe(label))::in, list(maybe(label))::out,
+    cord(list(rval))::in, cord(list(rval))::out,
+    cord(maybe(label))::in, cord(maybe(label))::out,
     int::in, int::out) is det.
 
-gen_string_binary_jump_slots([], !RevTableRows, !RevTargets, !CurIndex).
+gen_string_binary_jump_slots([], !TableRowsCord, !MaybeTargetsCord, !CurIndex).
 gen_string_binary_jump_slots([Str - Label | StrLabels],
-        !RevTableRows, !RevTargets, !CurIndex) :-
+        !TableRowsCord, !MaybeTargetsCord, !CurIndex) :-
     Row = [const(llconst_string(Str)), const(llconst_int(!.CurIndex))],
-    !:RevTableRows = [Row | !.RevTableRows],
-    !:RevTargets = [yes(Label) | !.RevTargets],
+    cord.snoc(Row, !TableRowsCord),
+    cord.snoc(yes(Label), !MaybeTargetsCord),
     !:CurIndex = !.CurIndex + 1,
     gen_string_binary_jump_slots(StrLabels,
-        !RevTableRows, !RevTargets, !CurIndex).
+        !TableRowsCord, !MaybeTargetsCord, !CurIndex).
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -1067,16 +1092,16 @@ generate_string_binary_simple_lookup_switch(VarRval, CaseValues,
     list.length(CaseValues, TableSize),
     list.length(OutVars, NumOutVars),
     NumColumns = 1 + NumOutVars,
-    % For the LLDS backend, array indexing ops don't need the element
-    % types, so it is ok to lie here.
+    % For the LLDS backend, array indexing ops don't need the element types,
+    % so it is ok to lie here.
     list.duplicate(NumOutVars, scalar_elem_generic, OutElemTypes),
     ArrayElemTypes = [scalar_elem_string | OutElemTypes],
     ArrayElemType = array_elem_struct(ArrayElemTypes),
 
     % Generate the static lookup table for this switch.
     construct_string_binary_simple_lookup_vector(CaseValues,
-        [], RevVectorRvals),
-    list.reverse(RevVectorRvals, VectorRvals),
+        cord.init, VectorRvalsCord),
+    VectorRvals = cord.list(VectorRvalsCord),
     RowElemTypes = [lt_string | OutTypes],
     add_vector_static_cell(RowElemTypes, VectorRvals, VectorAddr, !CI),
     VectorAddrRval = const(llconst_data_addr(VectorAddr, no)),
@@ -1128,14 +1153,14 @@ generate_string_binary_simple_lookup_switch(VarRval, CaseValues,
 
 :- pred construct_string_binary_simple_lookup_vector(
     assoc_list(string, list(rval))::in,
-    list(list(rval))::in, list(list(rval))::out) is det.
+    cord(list(rval))::in, cord(list(rval))::out) is det.
 
-construct_string_binary_simple_lookup_vector([], !RevRows).
-construct_string_binary_simple_lookup_vector([Str - OutRvals | Rest],
-        !RevRows) :-
+construct_string_binary_simple_lookup_vector([], !RowsCord).
+construct_string_binary_simple_lookup_vector([Str - OutRvals | StrsOutRvals],
+        !RowsCord) :-
     RowRvals = [const(llconst_string(Str)) | OutRvals],
-    !:RevRows = [RowRvals | !.RevRows],
-    construct_string_binary_simple_lookup_vector(Rest, !RevRows).
+    cord.snoc(RowRvals, !RowsCord),
+    construct_string_binary_simple_lookup_vector(StrsOutRvals, !RowsCord).
 
 %---------------------------------------------------------------------------%
 
@@ -1164,8 +1189,8 @@ generate_string_binary_several_soln_lookup_switch(VarRval, CaseSolns,
     % For the LLDS backend, array indexing ops don't need the element types,
     % so it is ok to lie here.
     list.duplicate(NumOutVars, scalar_elem_generic, OutElemTypes),
-    ArrayElemTypes = [scalar_elem_string, scalar_elem_int, scalar_elem_int
-        | OutElemTypes],
+    ArrayElemTypes =
+        [scalar_elem_string, scalar_elem_int, scalar_elem_int | OutElemTypes],
     ArrayElemType = array_elem_struct(ArrayElemTypes),
 
     % If there are no output variables, then how can the individual solutions
@@ -1190,10 +1215,10 @@ generate_string_binary_several_soln_lookup_switch(VarRval, CaseSolns,
     DummyLaterSolnRow = list.map(default_value_for_type, OutTypes),
     LaterSolnArrayCord0 = singleton(DummyLaterSolnRow),
     construct_string_binary_several_soln_lookup_vector(CaseSolns,
-        NumOutVars, [], RevMainRows,
+        NumOutVars, cord.init, MainRowsCord,
         InitLaterSolnRowNumber, LaterSolnArrayCord0, LaterSolnArrayCord,
         0, OneSolnCaseCount, 0, SeveralSolnsCaseCount),
-    list.reverse(RevMainRows, MainRows),
+    MainRows = cord.list(MainRowsCord),
     LaterSolnArray = cord.list(LaterSolnArrayCord),
 
     list.sort([OneSolnCaseCount - kind_one_soln,
@@ -1202,8 +1227,8 @@ generate_string_binary_several_soln_lookup_switch(VarRval, CaseSolns,
     list.reverse(AscendingSortedCountKinds, DescendingSortedCountKinds),
     assoc_list.values(DescendingSortedCountKinds, DescendingSortedKinds),
 
-    MainRowTypes = [lt_string, lt_int(int_type_int),
-        lt_int(int_type_int) | OutTypes],
+    MainRowTypes =
+        [lt_string, lt_int(int_type_int), lt_int(int_type_int) | OutTypes],
     list.length(MainRowTypes, MainNumColumns),
     add_vector_static_cell(MainRowTypes, MainRows, MainVectorAddr, !CI),
     MainVectorAddrRval = const(llconst_data_addr(MainVectorAddr, no)),
@@ -1241,15 +1266,15 @@ generate_string_binary_several_soln_lookup_switch(VarRval, CaseSolns,
 
 :- pred construct_string_binary_several_soln_lookup_vector(
     assoc_list(string, soln_consts(rval))::in, int::in,
-    list(list(rval))::in, list(list(rval))::out,
+    cord(list(rval))::in, cord(list(rval))::out,
     int::in, cord(list(rval))::in, cord(list(rval))::out,
     int::in, int::out, int::in, int::out) is det.
 
 construct_string_binary_several_soln_lookup_vector([],
-        _NumOutVars, !RevMainRows, _LaterNextRow, !LaterSolnArray,
+        _NumOutVars, !MainRowsCord, _LaterNextRow, !LaterSolnArray,
         !OneSolnCaseCount, !SeveralSolnCaseCount).
 construct_string_binary_several_soln_lookup_vector([Str - Soln | StrSolns],
-        NumOutVars, !RevMainRows, !.LaterNextRow, !LaterSolnArray,
+        NumOutVars, !MainRowsCord, !.LaterNextRow, !LaterSolnArray,
         !OneSolnCaseCount, !SeveralSolnsCaseCount) :-
     StrRval = const(llconst_string(Str)),
     (
@@ -1271,9 +1296,9 @@ construct_string_binary_several_soln_lookup_vector([Str - Soln | StrSolns],
         !:LaterNextRow = !.LaterNextRow + NumLaterSolns,
         !:LaterSolnArray = !.LaterSolnArray ++ from_list(LaterSolns)
     ),
-    !:RevMainRows = [MainRow | !.RevMainRows],
+    cord.snoc(MainRow, !MainRowsCord),
     construct_string_binary_several_soln_lookup_vector(StrSolns, NumOutVars,
-        !RevMainRows, !.LaterNextRow, !LaterSolnArray,
+        !MainRowsCord, !.LaterNextRow, !LaterSolnArray,
         !OneSolnCaseCount, !SeveralSolnsCaseCount).
 
 %---------------------------------------------------------------------------%
@@ -1347,59 +1372,68 @@ generate_string_binary_switch_search(Info, VarRval, TableAddrRval,
         LoopStartLabel, GtEqLabel, EqLabel, FailLabel, _BranchStart, FailCode),
 
     MaxIndex = TableSize - 1,
-    Code = from_list([
-        llds_instr(assign(LoReg, const(llconst_int(0))), ""),
-        llds_instr(assign(HiReg, const(llconst_int(MaxIndex))), ""),
-        llds_instr(label(LoopStartLabel),
-            "begin table search loop, nofulljump"),
-        llds_instr(if_val(binop(
-            int_gt(int_type_int), lval(LoReg), lval(HiReg)),
-            code_label(FailLabel)),
-            "have we searched all of the table?"),
-        llds_instr(assign(MidReg,
-            binop(int_div(int_type_int),
-                binop(int_add(int_type_int), lval(LoReg), lval(HiReg)),
-                const(llconst_int(2)))), ""),
-        llds_instr(assign(ResultReg,
-            binop(str_cmp,
-                VarRval,
-                binop(array_index(ArrayElemType),
-                    TableAddrRval,
-                        binop(int_mul(int_type_int),
-                            lval(MidReg),
-                            const(llconst_int(NumColumns)))))),
-            "compare with the middle element"),
+    Code =
+        from_list([
+            llds_instr(assign(LoReg, const(llconst_int(0))), ""),
+            llds_instr(assign(HiReg, const(llconst_int(MaxIndex))), ""),
+            llds_instr(label(LoopStartLabel),
+                "begin table search loop, nofulljump"),
+            llds_instr(
+                if_val(
+                    binop(int_gt(int_type_int), lval(LoReg), lval(HiReg)),
+                    code_label(FailLabel)),
+                "have we searched all of the table?"),
+            llds_instr(
+                assign(MidReg,
+                    binop(int_div(int_type_int),
+                        binop(int_add(int_type_int), lval(LoReg), lval(HiReg)),
+                        const(llconst_int(2)))), ""),
+            llds_instr(
+                assign(ResultReg,
+                    binop(str_cmp,
+                        VarRval,
+                        binop(array_index(ArrayElemType),
+                            TableAddrRval,
+                            binop(int_mul(int_type_int),
+                                lval(MidReg),
+                                const(llconst_int(NumColumns)))))),
+                "compare with the middle element"),
 
-        llds_instr(if_val(
-            binop(int_ge(int_type_int), lval(ResultReg),
-                const(llconst_int(0))),
-            code_label(GtEqLabel)),
-            "branch away unless key is in lo half"),
-        llds_instr(assign(HiReg,
-            binop(int_sub(int_type_int), lval(MidReg),
-                const(llconst_int(1)))),
-            ""),
-        llds_instr(goto(code_label(LoopStartLabel)),
-            "go back to search the remaining lo half"),
-        llds_instr(label(GtEqLabel), "nofulljump"),
+            llds_instr(
+                if_val(
+                    binop(int_ge(int_type_int),
+                        lval(ResultReg), const(llconst_int(0))),
+                    code_label(GtEqLabel)),
+                "branch away unless key is in lo half"),
+            llds_instr(
+                assign(HiReg,
+                    binop(int_sub(int_type_int),
+                        lval(MidReg), const(llconst_int(1)))),
+                ""),
+            llds_instr(goto(code_label(LoopStartLabel)),
+                "go back to search the remaining lo half"),
+            llds_instr(label(GtEqLabel), "nofulljump"),
 
-        llds_instr(if_val(
-            binop(int_le(int_type_int), lval(ResultReg),
-                const(llconst_int(0))),
-            code_label(EqLabel)),
-            "branch away unless key is in hi half"),
-        llds_instr(assign(LoReg,
-            binop(int_add(int_type_int), lval(MidReg), const(llconst_int(1)))),
-            ""),
-        llds_instr(goto(code_label(LoopStartLabel)),
-            "go back to search the remaining hi half"),
-        llds_instr(label(FailLabel),
-            "handle the failure of the table search")
-    ]) ++
-    FailCode ++
-    singleton(
-        llds_instr(label(EqLabel), "we found the key")
-    ).
+            llds_instr(
+                if_val(
+                    binop(int_le(int_type_int),
+                        lval(ResultReg), const(llconst_int(0))),
+                    code_label(EqLabel)),
+                "branch away unless key is in hi half"),
+            llds_instr(
+                assign(LoReg,
+                    binop(int_add(int_type_int),
+                        lval(MidReg), const(llconst_int(1)))),
+                ""),
+            llds_instr(goto(code_label(LoopStartLabel)),
+                "go back to search the remaining hi half"),
+            llds_instr(label(FailLabel),
+                "handle the failure of the table search")
+        ]) ++
+        FailCode ++
+        singleton(
+            llds_instr(label(EqLabel), "we found the key")
+        ).
 
 %---------------------------------------------------------------------------%
 
