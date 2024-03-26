@@ -835,12 +835,23 @@ mlds_output_binop(Opts, Stream, Op, X, Y, !IO) :-
         mlds_output_rval_as_op_arg(Opts, Stream, Y, !IO),
         io.write_string(Stream, ")", !IO)
     ;
-        Op = offset_str_eq(N),
-        io.format(Stream, "MR_offset_streq(%d, ", [i(N)], !IO),
-        mlds_output_rval_as_op_arg(Opts, Stream, X, !IO),
-        io.write_string(Stream, ", ", !IO),
-        mlds_output_rval_as_op_arg(Opts, Stream, Y, !IO),
-        io.write_string(Stream, ")", !IO)
+        Op = offset_str_eq(Offset, MaybeSize),
+        (
+            MaybeSize = no_size,
+            io.format(Stream, "MR_offset_streq(%d, ", [i(Offset)], !IO),
+            mlds_output_rval_as_op_arg(Opts, Stream, X, !IO),
+            io.write_string(Stream, ", ", !IO),
+            mlds_output_rval_as_op_arg(Opts, Stream, Y, !IO),
+            io.write_string(Stream, ")", !IO)
+        ;
+            MaybeSize = size(Size),
+            io.format(Stream, "MR_offset_strn_eq(%d, %d, ",
+                [i(Offset), i(Size)], !IO),
+            mlds_output_rval_as_op_arg(Opts, Stream, X, !IO),
+            io.write_string(Stream, ", ", !IO),
+            mlds_output_rval_as_op_arg(Opts, Stream, Y, !IO),
+            io.write_string(Stream, ")", !IO)
+        )
     ;
         Op = body,
         io.write_string(Stream, "MR_body(", !IO),

@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
 % Copyright (C) 1994-2012 The University of Melbourne.
-% Copyright (C) 2013-2021 The Mercury team.
+% Copyright (C) 2013-2021, 2024 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -869,7 +869,11 @@ dump_binop(array_index(_)) = "array_index".
 dump_binop(string_unsafe_index_code_unit) = "string_unsafe_index_code_unit".
 dump_binop(compound_lt) = "compound<".
 dump_binop(compound_eq) = "compound=".
-dump_binop(offset_str_eq(N)) = "offset("++string.int_to_string(N)++")str==".
+dump_binop(offset_str_eq(Offset, no_size)) =
+    "offset_str_eq(" ++ string.int_to_string(Offset) ++ ")".
+dump_binop(offset_str_eq(Offset, size(Size))) =
+    "offset_strn_eq(" ++ string.int_to_string(Offset) ++ ", " ++
+    string.int_to_string(Size) ++ ")".
 dump_binop(str_eq) = "str==".
 dump_binop(str_ne) = "str!=".
 dump_binop(str_le) = "str<=".

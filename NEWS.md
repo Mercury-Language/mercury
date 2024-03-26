@@ -779,6 +779,7 @@ Changes to the Mercury standard library
     - pred `code_point_offset/4`
     - func `count_code_points/1`
     - pred `count_code_points/2`
+    - func `internal_string_encoding/0`
     - func `left_by_code_point/2`
     - pred `left_by_code_point/3`
     - func `right_by_code_point/2`

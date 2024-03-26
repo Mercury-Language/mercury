@@ -427,7 +427,7 @@ natural_neg_rval(TestRval0, TestRval) :-
             ; Binop0 = array_index(_)
             ; Binop0 = string_unsafe_index_code_unit
             ; Binop0 = str_cmp
-            ; Binop0 = offset_str_eq(_)
+            ; Binop0 = offset_str_eq(_, _)
             ; Binop0 = unsigned_lt
             ; Binop0 = unsigned_le
             ; Binop0 = float_add

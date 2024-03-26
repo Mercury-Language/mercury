@@ -896,7 +896,7 @@ output_record_rval_decls_format(Info, Stream, Rval, FirstIndent, LaterIndent,
             ; Op = int_le(_)
             ; Op = int_ge(_)
             ; Op = str_cmp
-            ; Op = offset_str_eq(_)
+            ; Op = offset_str_eq(_, _)
             ; Op = body
             ; Op = float_from_dword
             ; Op = int64_from_dword
@@ -1456,14 +1456,28 @@ output_rval_binop(Stream, Info, Op, SubRvalA, SubRvalB, !IO) :-
         output_rval_as_type(Info, SubRvalB, lt_data_ptr, Stream, !IO),
         io.write_string(Stream, ")", !IO)
     ;
-        Op = offset_str_eq(N),
-        io.write_string(Stream, "MR_offset_streq(", !IO),
-        io.write_int(Stream, N, !IO),
-        io.write_string(Stream, ", ", !IO),
-        output_rval_as_type(Info, SubRvalA, lt_data_ptr, Stream, !IO),
-        io.write_string(Stream, ", ", !IO),
-        output_rval_as_type(Info, SubRvalB, lt_data_ptr, Stream, !IO),
-        io.write_string(Stream, ")", !IO)
+        Op = offset_str_eq(Offset, MaybeSize),
+        (
+            MaybeSize = no_size,
+            io.write_string(Stream, "MR_offset_streq(", !IO),
+            io.write_int(Stream, Offset, !IO),
+            io.write_string(Stream, ", ", !IO),
+            output_rval_as_type(Info, SubRvalA, lt_string, Stream, !IO),
+            io.write_string(Stream, ", ", !IO),
+            output_rval_as_type(Info, SubRvalB, lt_string, Stream, !IO),
+            io.write_string(Stream, ")", !IO)
+        ;
+            MaybeSize = size(Size),
+            io.write_string(Stream, "MR_offset_strn_eq(", !IO),
+            io.write_int(Stream, Offset, !IO),
+            io.write_string(Stream, ", ", !IO),
+            io.write_int(Stream, Size, !IO),
+            io.write_string(Stream, ", ", !IO),
+            output_rval_as_type(Info, SubRvalA, lt_string, Stream, !IO),
+            io.write_string(Stream, ", ", !IO),
+            output_rval_as_type(Info, SubRvalB, lt_string, Stream, !IO),
+            io.write_string(Stream, ")", !IO)
+        )
     ;
         Op = body,
         io.write_string(Stream, "MR_body(", !IO),
@@ -1980,7 +1994,7 @@ do_output_test_rval(Stream, Info, MaybeNegated, TestRval, !IO) :-
             ; Binop = str_le
             ; Binop = str_ge
             ; Binop = str_cmp
-            ; Binop = offset_str_eq(_)
+            ; Binop = offset_str_eq(_, _)
             ; Binop = unsigned_lt
             ; Binop = unsigned_le
             ; Binop = float_add

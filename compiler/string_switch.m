@@ -10,12 +10,18 @@
 % File: string_switch.m.
 % Authors: fjh, zs.
 %
-% For switches on strings, we can generate either
-% - a hash table using open addressing to resolve hash conflicts, or
+% For switches on strings, we can generate
+%
+% - a trie;
+% - a hash table using open addressing to resolve hash conflicts; or
 % - a sorted table for binary search.
 %
-% The hash table has a higher startup cost, but should use fewer comparisons,
-% so it is preferred for bigger tables.
+% The hash table has a higher startup cost than binary search, but should use
+% fewer comparisons, so it is preferred for bigger tables. The trie approach
+% does not need any startup code and examines each character just once,
+% so it does the least work, but it does do a hard-to-predict jump
+% for each character in the trie (which usually *won't* be all the characters
+% in the string being switched on).
 %
 % When the switch arms are general code, what we put into the hash table
 % or binary search table for each case is the offset of the relevant arm
@@ -31,12 +37,17 @@
 % duplicate them, and dupelim, which can replace them with other labels)
 % would have to be taught to reflect any changes they make in the global
 % data. It is the last step that is the killer in terms of difficulty
-% of implementation. One possible way around the problem would be to do
-% the code generation and optimization as we do now, just recording a bit
-% more information during code generation about which numbers in static data
-% refer to which computed_gotos, and then, after all the optimizations are
-% done, to go back and replace all the indicated numbers with the corresponding
+% of implementation.
+%
+% One possible way around the problem would be to do the code generation
+% and optimization as we do now, just recording a bit more information
+% during code generation about which numbers in static data refer to
+% which computed_gotos, and then, after all the optimizations are done,
+% to go back and replace all the indicated numbers with the corresponding
 % final labels.
+%
+% WARNING: the code here is quite similar to the code in ml_string_switch.m.
+% Any changes here may require similar changes there, and vice versa.
 %
 %---------------------------------------------------------------------------%
 
@@ -55,6 +66,11 @@
 :- import_module parse_tree.prog_data.
 
 :- import_module list.
+
+:- pred generate_string_trie_switch(list(tagged_case)::in, rval::in,
+    string::in, code_model::in, can_fail::in, hlds_goal_info::in, label::in,
+    branch_end::out, llds_code::out,
+    code_info::in, code_info::out, code_loc_dep::in) is det.
 
 :- pred generate_string_hash_switch(list(tagged_case)::in, rval::in,
     string::in, code_model::in, can_fail::in, hlds_goal_info::in, label::in,
@@ -82,8 +98,11 @@
 :- import_module backend_libs.
 :- import_module backend_libs.builtin_ops.
 :- import_module backend_libs.lookup_switch_util.
+:- import_module backend_libs.string_encoding.
 :- import_module backend_libs.string_switch_util.
 :- import_module hlds.hlds_data.
+:- import_module libs.
+:- import_module libs.globals.
 :- import_module ll_backend.lookup_util.
 :- import_module ll_backend.switch_case.
 :- import_module parse_tree.set_of_var.
@@ -96,7 +115,249 @@
 :- import_module maybe.
 :- import_module pair.
 :- import_module require.
+:- import_module string.
 :- import_module unit.
+
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+
+generate_string_trie_switch(TaggedCases, VarRval, VarName, CodeModel, CanFail,
+        SwitchGoalInfo, EndLabel, MaybeEnd, Code, !CI, CLD) :-
+    init_string_trie_switch_info(CanFail, TrieSwitchInfo, !CI, CLD),
+    BranchStart = TrieSwitchInfo ^ stsi_branch_start,
+    Params = represent_params(VarName, SwitchGoalInfo, CodeModel, BranchStart,
+        EndLabel),
+    CommentCode = singleton(
+        llds_instr(comment("string trie switch"), "")
+    ),
+
+    % Generate code for the cases, and remember the label of each case.
+    map.init(CaseIdToLabelMap0),
+    map.init(CaseLabelMap0),
+    represent_tagged_cases_in_string_trie_switch(Params, TaggedCases,
+        CaseIdToLabelMap0, CaseIdToLabelMap, CaseLabelMap0, CaseLabelMap,
+        no, MaybeEnd, !CI),
+
+    create_trie(TrieSwitchInfo ^ stsi_encoding, TaggedCases,
+        _MaxCaseNum, TopTrieNode),
+    % init_case_num_reg(TrieSwitchInfo, InitCaseNumRegCode),
+    convert_trie_to_nested_switches(TrieSwitchInfo, VarRval, CaseIdToLabelMap,
+        0, TopTrieNode, TopTrieLabel, TrieCode0, !CI),
+    ( if
+        cord.head_tail(TrieCode0, HeadTrieCodeInstr, TailTrieCodeInstrs),
+        HeadTrieCodeInstr = llds_instr(label(TopTrieLabel), _)
+    then
+        TrieCode = TailTrieCodeInstrs
+    else
+        unexpected($pred, "TrieCode0 does not start with TopTrieLabel")
+    ),
+
+    % Generate the code for the cases.
+    add_not_yet_included_cases(CasesCode, CaseLabelMap, _),
+    EndLabelCode = singleton(
+        llds_instr(label(EndLabel), "end of string trie string")
+    ),
+
+    FailLabel = TrieSwitchInfo ^ stsi_fail_label,
+    FailLabelCode = singleton(
+        llds_instr(label(FailLabel), "fail label")
+    ),
+    FailCode = TrieSwitchInfo ^ stsi_fail_code,
+
+    Code = CommentCode ++ TrieCode ++ CasesCode ++
+        FailLabelCode ++ FailCode ++ EndLabelCode.
+
+:- pred convert_trie_to_nested_switches(string_trie_switch_info::in, rval::in,
+    map(case_id, label)::in, int::in, trie_node::in,
+    label::out, llds_code::out, code_info::in, code_info::out) is det.
+
+convert_trie_to_nested_switches(TrieSwitchInfo, VarRval, CaseIdToLabelMap,
+        NumMatched, TrieNode, TrieNodeLabel, Code, !CI) :-
+    get_next_label(TrieNodeLabel, !CI),
+    (
+        TrieNode = trie_leaf(RevMatchedCodeUnits, NotYetMatchedCodeUnits,
+            CaseId),
+        list.reverse(RevMatchedCodeUnits, MatchedCodeUnits),
+        AllCodeUnits = MatchedCodeUnits ++ NotYetMatchedCodeUnits,
+        list.length(MatchedCodeUnits, NumMatchedCodeUnits),
+        expect(unify(NumMatchedCodeUnits, NumMatched), $pred,
+            "NumevMatchedCodeUnits != NumMatched"),
+        Encoding = TrieSwitchInfo ^ stsi_encoding,
+        det_from_code_unit_list_in_encoding_allow_ill_formed(Encoding,
+            AllCodeUnits, EndStr),
+        CondRval = binop(offset_str_eq(NumMatched, no_size),
+            VarRval, const(llconst_string(EndStr))),
+        map.lookup(CaseIdToLabelMap, CaseId, StrCaseLabel),
+        StrCaseCodeAddr = code_label(StrCaseLabel),
+        FailLabel = TrieSwitchInfo ^ stsi_fail_label,
+        Code = from_list([
+            llds_instr(label(TrieNodeLabel), ""),
+            llds_instr(if_val(CondRval, StrCaseCodeAddr), "match; goto case"),
+            llds_instr(goto(code_label(FailLabel)), "no match; goto fail")
+        ])
+    ;
+        TrieNode = trie_choice(RevMatchedCodeUnits, _ChoiceMap, MaybeEnd),
+        list.length(RevMatchedCodeUnits, NumRevMatchedCodeUnits),
+        expect(unify(NumRevMatchedCodeUnits, NumMatched), $pred,
+            "NumRevMatchedCodeUnits != NumMatched"),
+
+        CodeUnitLval = TrieSwitchInfo ^ stsi_code_unit_reg,
+        GetCurCodeUnitRval = binop(string_unsafe_index_code_unit,
+            VarRval, const(llconst_int(NumMatched))),
+        LabelCode = singleton(
+            llds_instr(label(TrieNodeLabel), "")
+        ),
+        SetCodeUnitCode = singleton(
+            llds_instr(assign(CodeUnitLval, GetCurCodeUnitRval), "")
+        ),
+        CodeUnitRval = lval(CodeUnitLval),
+        FailLabel = TrieSwitchInfo ^ stsi_fail_label,
+        GotoFailCode = singleton(
+            llds_instr(goto(code_label(FailLabel)), "no match; goto fail")
+        ),
+
+        chase_any_stick_in_trie(TrieNode, ChoicePairs,
+            StickCodeUnits, TrieNodeAfterStick),
+        (
+            StickCodeUnits = [_, _ | _],
+            list.length(StickCodeUnits, NumStickCodeUnits),
+            CmpOp = offset_str_eq(NumMatched, size(NumStickCodeUnits)),
+            list.reverse(RevMatchedCodeUnits, MatchedCodeUnits),
+            Encoding = TrieSwitchInfo ^ stsi_encoding,
+            det_from_code_unit_list_in_encoding_allow_ill_formed(Encoding,
+                MatchedCodeUnits ++ StickCodeUnits, MatchedStickStr),
+            TestRval = binop(CmpOp,
+                VarRval, const(llconst_string(MatchedStickStr))),
+            convert_trie_to_nested_switches(TrieSwitchInfo, VarRval,
+                CaseIdToLabelMap, NumMatched + NumStickCodeUnits,
+                TrieNodeAfterStick, TrieNodeLabelAfterStick,
+                CodeAfterStick, !CI),
+            TrieNodeCodeAddrAfterStick = code_label(TrieNodeLabelAfterStick),
+            TestCode = singleton(
+                llds_instr(if_val(TestRval, TrieNodeCodeAddrAfterStick), "")
+            ),
+            TestChainCode = TestCode ++ GotoFailCode,
+            Code = LabelCode ++ TestChainCode ++ CodeAfterStick
+        ;
+            ( StickCodeUnits = []
+            ; StickCodeUnits = [_]
+            ),
+            % This does a try-chain style switch on CodeUnitRval.
+            % XXX SWITCH This is ok for short chains, but we should look into
+            % using other switch implementations for longer chains.
+            convert_trie_choices_to_nested_switches(TrieSwitchInfo, VarRval,
+                CaseIdToLabelMap, CodeUnitRval, NumMatched + 1, ChoicePairs,
+                empty, TestChainCode0, empty, NestedTrieCode, !CI),
+            (
+                MaybeEnd = no,
+                TestChainCode1 = TestChainCode0
+            ;
+                MaybeEnd = yes(EndCaseId),
+                EndTestRval = binop(eq(int_type_int),
+                    CodeUnitRval, const(llconst_int(0))),
+                map.lookup(CaseIdToLabelMap, EndCaseId, EndCaseLabel),
+                EndCaseCodeAddr = code_label(EndCaseLabel),
+                EndTestCodeUnitCode = singleton(
+                    llds_instr(if_val(EndTestRval, EndCaseCodeAddr), "")
+                ),
+                TestChainCode1 = TestChainCode0 ++ EndTestCodeUnitCode
+            ),
+            TestChainCode = TestChainCode1 ++ GotoFailCode,
+            Code = LabelCode ++ SetCodeUnitCode ++
+                TestChainCode ++ NestedTrieCode
+        )
+    ).
+
+:- pred convert_trie_choices_to_nested_switches(string_trie_switch_info::in,
+    rval::in, map(case_id, label)::in, rval::in, int::in,
+    assoc_list(int, trie_node)::in,
+    llds_code::in, llds_code::out, llds_code::in, llds_code::out,
+    code_info::in, code_info::out) is det.
+
+convert_trie_choices_to_nested_switches(_, _, _, _, _, [],
+        !TestChainCode, !NestedTrieCode, !CI).
+convert_trie_choices_to_nested_switches(TrieSwitchInfo, VarRval,
+        CaseIdToLabelMap, CodeUnitRval, NumMatched, [Choice | Choices],
+        !TestChainCode, !NestedTrieCode, !CI) :-
+    Choice = CodeUnit - TrieNode,
+    convert_trie_to_nested_switches(TrieSwitchInfo, VarRval, CaseIdToLabelMap,
+        NumMatched, TrieNode, TrieNodeLabel, TrieNodeCode, !CI),
+    TestRval = binop(eq(int_type_int),
+        CodeUnitRval, const(llconst_int(CodeUnit))),
+    TestCodeUnitCode = singleton(
+        llds_instr(if_val(TestRval, code_label(TrieNodeLabel)), "")
+    ),
+    !:TestChainCode = !.TestChainCode ++ TestCodeUnitCode,
+    !:NestedTrieCode = !.NestedTrieCode ++ TrieNodeCode,
+    convert_trie_choices_to_nested_switches(TrieSwitchInfo, VarRval,
+        CaseIdToLabelMap, CodeUnitRval, NumMatched, Choices,
+        !TestChainCode, !NestedTrieCode, !CI).
+
+:- pred represent_tagged_cases_in_string_trie_switch(represent_params::in,
+    list(tagged_case)::in, map(case_id, label)::in, map(case_id, label)::out,
+    case_label_map::in, case_label_map::out,
+    branch_end::in, branch_end::out, code_info::in, code_info::out) is det.
+
+represent_tagged_cases_in_string_trie_switch(_, [],
+        !CaseIdToLabelMap, !CaseLabelMap, !MaybeEnd, !CI).
+represent_tagged_cases_in_string_trie_switch(Params,
+        [TaggedCase | TaggedCases],
+        !CaseIdToLabelMap, !CaseLabelMap, !MaybeEnd, !CI) :-
+    represent_tagged_case_for_llds(Params, TaggedCase, Label,
+        !CaseLabelMap, !MaybeEnd, !CI, unit, _),
+    TaggedCase = tagged_case(_, _, CaseId, _),
+    map.det_insert(CaseId, Label, !CaseIdToLabelMap),
+    represent_tagged_cases_in_string_trie_switch(Params, TaggedCases,
+        !CaseIdToLabelMap, !CaseLabelMap, !MaybeEnd, !CI).
+
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+
+:- type string_trie_switch_info
+    --->    string_trie_switch_info(
+                stsi_encoding           :: string_encoding,
+
+                stsi_code_unit_reg      :: lval,
+                stsi_branch_start       :: position_info,
+
+                stsi_fail_label         :: label,
+                stsi_fail_code          :: llds_code
+            ).
+
+:- pred  init_string_trie_switch_info(can_fail::in,
+    string_trie_switch_info::out,
+    code_info::in, code_info::out, code_loc_dep::in) is det.
+
+init_string_trie_switch_info(CanFail, Info, !CI, !.CLD) :-
+    Encoding = target_string_encoding(target_c),
+
+    % See the comment about acquire_reg/release_reg in the
+    % init_string_binary_switch_info predicate below.
+    acquire_reg(reg_r, CodeUnitReg, !CLD),
+    release_reg(CodeUnitReg, !CLD),
+
+    remember_position(!.CLD, BranchStart),
+
+    % We generate a fail label even if CanFail = cannot_fail, so that
+    % we have somewhere to go to throw an exception at runtime.
+    get_next_label(FailLabel, !CI),
+    % We must generate the failure code in the context in which
+    % none of the switch arms have been executed yet.
+    generate_string_switch_fail(CanFail, FailCode, !CI, !.CLD),
+
+    Info = string_trie_switch_info(Encoding, CodeUnitReg, BranchStart,
+        FailLabel, FailCode).
+
+/*
+:- pred init_case_num_reg(string_trie_switch_info::in, llds_code::out) is det.
+
+init_case_num_reg(TrieSwitchInfo, InitCaseNumRegCode) :-
+    CaseNumRegLval = TrieSwitchInfo ^ stsi_case_id_reg,
+    InitCaseNumRegCode = singleton(
+        llds_instr(assign(CaseNumRegLval, const(llconst_int(-1))),
+            "initialize case id")
+    ).
+*/
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -113,7 +374,7 @@ generate_string_hash_switch(Cases, VarRval, VarName, CodeModel, CanFail,
 
     % Generate code for the cases, and remember the label of each case.
     map.init(CaseLabelMap0),
-    represent_tagged_cases_in_string_switch(Params, Cases, StrsLabels,
+    represent_tagged_cases_in_string_hash_switch(Params, Cases, [], StrsLabels,
         CaseLabelMap0, CaseLabelMap, no, MaybeEnd, !CI),
 
     % Compute the hash table.
@@ -144,7 +405,8 @@ generate_string_hash_switch(Cases, VarRval, VarName, CodeModel, CanFail,
 
     SlotReg = HashSwitchInfo ^ shsi_slot_reg,
     MatchCode = from_list([
-        % See the comment at the top about why we use a computed_goto here.
+        % See the comment at the top of the module about why we use
+        % a computed_goto here.
         llds_instr(computed_goto(lval(SlotReg), Targets),
             "jump to the corresponding code")
     ]),
@@ -192,27 +454,30 @@ construct_string_hash_jump_vectors(Slot, TableSize, HashSlotMap, FailLabel,
             FailLabel, NumCollisions, !RevTableRows, !RevMaybeTargets)
     ).
 
-:- pred represent_tagged_cases_in_string_switch(represent_params::in,
-    list(tagged_case)::in, assoc_list(string, label)::out,
+:- pred represent_tagged_cases_in_string_hash_switch(represent_params::in,
+    list(tagged_case)::in,
+    assoc_list(string, label)::in, assoc_list(string, label)::out,
     case_label_map::in, case_label_map::out,
     branch_end::in, branch_end::out, code_info::in, code_info::out) is det.
 
-represent_tagged_cases_in_string_switch(_, [], [],
-        !CaseLabelMap, !MaybeEnd, !CI).
-represent_tagged_cases_in_string_switch(Params, [Case | Cases], !:StrsLabels,
-        !CaseLabelMap, !MaybeEnd, !CI) :-
-    represent_tagged_case_for_llds(Params, Case, Label,
+represent_tagged_cases_in_string_hash_switch(_, [],
+        !StrsLabels, !CaseLabelMap, !MaybeEnd, !CI).
+represent_tagged_cases_in_string_hash_switch(Params,
+        [TaggedCase | TaggedCases],
+        !StrsLabels, !CaseLabelMap, !MaybeEnd, !CI) :-
+    represent_tagged_case_for_llds(Params, TaggedCase, Label,
         !CaseLabelMap, !MaybeEnd, !CI, unit, _),
-    represent_tagged_cases_in_string_switch(Params, Cases, !:StrsLabels,
-        !CaseLabelMap, !MaybeEnd, !CI),
-    Case = tagged_case(MainTaggedConsId, OtherTaggedConsIds, _, _),
-    add_to_strs_labels(Label, MainTaggedConsId, !StrsLabels),
-    list.foldl(add_to_strs_labels(Label), OtherTaggedConsIds, !StrsLabels).
+    TaggedCase = tagged_case(MainTaggedConsId, OtherTaggedConsIds, _, _),
+    record_label_for_string(Label, MainTaggedConsId, !StrsLabels),
+    list.foldl(record_label_for_string(Label), OtherTaggedConsIds,
+        !StrsLabels),
+    represent_tagged_cases_in_string_hash_switch(Params, TaggedCases,
+        !StrsLabels, !CaseLabelMap, !MaybeEnd, !CI).
 
-:- pred add_to_strs_labels(label::in, tagged_cons_id::in,
+:- pred record_label_for_string(label::in, tagged_cons_id::in,
     assoc_list(string, label)::in, assoc_list(string, label)::out) is det.
 
-add_to_strs_labels(Label, TaggedConsId, !StrsLabels) :-
+record_label_for_string(Label, TaggedConsId, !StrsLabels) :-
     TaggedConsId = tagged_cons_id(_ConsId, Tag),
     ( if Tag = string_tag(String) then
         !:StrsLabels = [String - Label | !.StrsLabels]
@@ -571,15 +836,8 @@ construct_string_hash_several_soln_lookup_vector(Slot, TableSize, HashSlotMap,
     code_info::in, code_info::out, code_loc_dep::in) is det.
 
 init_string_hash_switch_info(CanFail, Info, !CI, !.CLD) :-
-    % We get the registers we use as working storage in the hash table lookup
-    % code now, before we generate the code of the switch arms, since the set
-    % of free registers will in general be different before and after that
-    % action. However, it is safe to release them immediately, even though
-    % we haven't yet generated all the code which uses them, because that
-    % code will *only* be executed before the code for the cases, and because
-    % that code is generated manually below. Releasing the registers early
-    % allows the code of the cases to make use of them.
-
+    % See the comment about acquire_reg/release_reg in the
+    % init_string_binary_switch_info predicate below.
     acquire_reg(reg_r, SlotReg, !CLD),
     acquire_reg(reg_r, RowStartReg, !CLD),
     acquire_reg(reg_r, StringReg, !CLD),
@@ -729,11 +987,11 @@ generate_string_binary_switch(Cases, VarRval, VarName, CodeModel, CanFail,
         llds_instr(computed_goto(
             binop(array_index(ArrayElemType),
                 TableAddrRval,
-                    binop(int_add(int_type_int),
-                        binop(int_mul(int_type_int),
-                            lval(MidReg),
-                            const(llconst_int(NumColumns))),
-                        const(llconst_int(1)))),
+                binop(int_add(int_type_int),
+                    binop(int_mul(int_type_int),
+                        lval(MidReg),
+                        const(llconst_int(NumColumns))),
+                    const(llconst_int(1)))),
             Targets),
             "jump to the matching case")
     ),
@@ -1042,14 +1300,16 @@ construct_string_binary_several_soln_lookup_vector([Str - Soln | StrSolns],
     code_info::in, code_info::out, code_loc_dep::in) is det.
 
 init_string_binary_switch_info(CanFail, Info, !CI, !.CLD) :-
-    % We get the registers we use as working storage in the hash table lookup
-    % code now, before we generate the code of the switch arms, since the set
-    % of free registers will in general be different before and after that
-    % action. However, it is safe to release them immediately, even though
-    % we haven't yet generated all the code which uses them, because that
-    % code will *only* be executed before the code for the cases, and because
-    % that code is generated manually below. Releasing the registers early
-    % allows the code of the cases to make use of them.
+    % We get the registers we use as working storage in the implementation
+    % of binary search, and in the implementation of trie and hash switches
+    % above. We get them now, before we generate the code of the switch arms,
+    % because the set of free registers will in general be different
+    % before and after that action. However, it is safe to release them
+    % immediately, even though we haven't yet generated all the code
+    % which uses them, because with all three implementation methods, that
+    % code will *only* be executed before the code for the cases.
+    % Releasing the registers early allows the code we generate for the cases
+    % to make use of them.
     acquire_reg(reg_r, LoReg, !CLD),
     acquire_reg(reg_r, HiReg, !CLD),
     acquire_reg(reg_r, MidReg, !CLD),
@@ -1153,8 +1413,8 @@ generate_string_switch_fail(CanFail, FailCode, !CI, !.CLD) :-
     ;
         CanFail = cannot_fail,
         FailCode = singleton(
-            llds_instr(comment("unreachable"),
-                "fail code in cannot_fail switch")
+            llds_instr(
+                comment("unreachable; fail code in cannot_fail switch"), "")
         )
     ).
 

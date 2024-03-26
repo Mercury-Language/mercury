@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 2010-2012 The University of Melbourne.
-% Copyright (C) 2013-2018, 2020-2022 The Mercury team.
+% Copyright (C) 2013-2018, 2020-2022, 2024 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -531,7 +531,7 @@ output_binop_for_csharp(Info, Stream, Op, X, Y, !IO) :-
     ;
         ( Op = body
         ; Op = string_unsafe_index_code_unit
-        ; Op = offset_str_eq(_)
+        ; Op = offset_str_eq(_, _)
         ; Op = float_from_dword
         ; Op = int64_from_dword
         ; Op = uint64_from_dword

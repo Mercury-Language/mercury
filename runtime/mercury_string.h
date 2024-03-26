@@ -1,7 +1,7 @@
 // vim: ts=4 sw=4 expandtab ft=c
 
 // Copyright (C) 1995-2005, 2007, 2011-2012 The University of Melbourne.
-// Copyright (C) 2015-2016, 2018-2019, 2021, 2023 The Mercury team.
+// Copyright (C) 2015-2016, 2018-2019, 2021, 2023-2024 The Mercury team.
 // This file is distributed under the terms specified in COPYING.LIB.
 
 // mercury_string.h - string handling
@@ -390,11 +390,14 @@ MR_Integer      MR_hash_string6(MR_ConstString);
 
 #define MR_strcmp(s, t)         strcmp((const char *)(s), (const char *)(t))
 
-// Assuming that the first n code units of s and t are equal,
-// are the rest of s and t equal?
-
-#define MR_offset_streq(n, s, t)                                        \
-    (strcmp((const char *)((s)+(n)), (const char *)((t)+(n))) == 0)
+// Assuming that the first o (offset) code units of sa and sb are equal,
+// are the rest of sa and sb equal?
+#define MR_offset_streq(o, sa, sb)                                      \
+    (strcmp((const char *) ((sa)+(o)), (const char *) ((sb)+(o))) == 0)
+// Assuming that the first o (offset) code units of sa and sb are equal,
+// are the next sz (size) code units of sa and sb equal?
+#define MR_offset_strn_eq(o, sz, sa, sb)                                \
+    (strncmp((const char *) ((sa)+(o)), (const char *) ((sb)+(o)), sz) == 0)
 
 // Return the kth code unit in a string.
 

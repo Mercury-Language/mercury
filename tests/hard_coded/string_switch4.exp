@@ -1,0 +1,72 @@
+jump a -> 51
+jump b -> 52
+jump c failed
+jump aa -> 11
+jump ab -> 11
+jump ac failed
+jump ba -> 62
+jump bb -> 62
+jump bc failed
+jump ca -> 13
+jump cb failed
+jump cc failed
+one a -> 1
+one b -> 2
+one c failed
+one aa -> 11
+one ab -> 11
+one ac failed
+one ba -> 12
+one bb -> 12
+one bc failed
+one ca -> 13
+one cb failed
+one cc failed
+one known a failed
+one known b failed
+one known c failed
+one known aa -> 11
+one known ab failed
+one known ac failed
+one known ba failed
+one known bb -> 12
+one known bc failed
+one known ca failed
+one known cb failed
+one known cc failed
+several a -> [1]
+several b -> [2]
+several c -> []
+several aa -> [11, 12]
+several ab -> [11, 12]
+several ac -> []
+several ba -> [13, 14, 15]
+several bb -> [13, 14, 15]
+several bc -> []
+several ca -> [16]
+several cb -> [16]
+several cc -> []
+several known a -> []
+several known b -> []
+several known c -> []
+several known aa -> [11, 12]
+several known ab -> []
+several known ac -> []
+several known ba -> []
+several known bb -> [13, 14, 15]
+several known bc -> []
+several known ca -> []
+several known cb -> []
+several known cc -> []
+several nested a -> [1001, 11001, 12001]
+several nested b -> [2002, 11002, 12002]
+several nested c -> []
+several nested aa -> [11011, 11012, 12011, 12012]
+several nested ab -> [11011, 11012, 12011, 12012]
+several nested ac -> []
+several nested ba -> [13013, 13014, 13015, 14013, 14014, 14015, 15013, 15014, 15015]
+several nested bb -> [13013, 13014, 13015, 14013, 14014, 14015, 15013, 15014, 15015]
+several nested bc -> []
+several nested ca -> [16016]
+several nested cb -> [16016]
+several nested cc -> []

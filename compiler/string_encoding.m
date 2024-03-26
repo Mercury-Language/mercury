@@ -13,11 +13,7 @@
 :- import_module libs.globals.
 
 :- import_module list.
-
-    % These are the encodings we support.
-:- type string_encoding
-    --->    utf8
-    ;       utf16.
+:- import_module string.
 
     % target_char_range(Target, Min, Max):
     %
@@ -40,13 +36,28 @@
     %
 :- pred from_code_unit_list_in_encoding(string_encoding::in, list(int)::in,
     string::out) is semidet.
+:- pred det_from_code_unit_list_in_encoding(string_encoding::in, list(int)::in,
+    string::out) is det.
+
+    % Convert a list of code units in the given encoding to a string.
+    % Allows ill-formed sequences, and will succeed *unless* the given list
+    % includes a zero, signifying a null character.
+    %
+    % At the moment, it works only when the encoding specified by the first
+    % argument is utf8, *and* the compiler's own encoding is utf8.
+    % If either encoding is utf16, it will throw an exception.
+    %
+:- pred from_code_unit_list_in_encoding_allow_ill_formed(string_encoding::in,
+    list(int)::in, string::out) is semidet.
+:- pred det_from_code_unit_list_in_encoding_allow_ill_formed(
+    string_encoding::in, list(int)::in, string::out) is det.
 
 %----------------------------------------------------------------------------%
 %----------------------------------------------------------------------------%
 
 :- implementation.
 
-:- import_module string.
+:- import_module require.
 
 target_char_range(_Target, Min, Max) :-
     % The range of `char' is the same for all existing targets.
@@ -82,6 +93,42 @@ from_code_unit_list_in_encoding(Encoding, CodeUnits, String) :-
     ;
         Encoding = utf16,
         string.from_utf16_code_unit_list(CodeUnits, String)
+    ).
+
+det_from_code_unit_list_in_encoding(Encoding, CodeUnits, String) :-
+    ( if from_code_unit_list_in_encoding(Encoding, CodeUnits, StringPrime) then
+        String = StringPrime
+    else
+        unexpected($pred, "from_code_unit_list_in_encoding failed")
+    ).
+
+from_code_unit_list_in_encoding_allow_ill_formed(Encoding, CodeUnits, String) :-
+    require_complete_switch [Encoding]
+    (
+        Encoding = utf8,
+        InternalEncoding = internal_string_encoding,
+        (
+            InternalEncoding = utf8,
+            string.from_code_unit_list_allow_ill_formed(CodeUnits, String)
+        ;
+            InternalEncoding = utf16,
+            unexpected($pred, "implementing on utf16 is nyi")
+        )
+    ;
+        Encoding = utf16,
+        unexpected($pred, "utf16 is nyi")
+    ).
+
+det_from_code_unit_list_in_encoding_allow_ill_formed(Encoding,
+        CodeUnits, String) :-
+    ( if
+        from_code_unit_list_in_encoding_allow_ill_formed(Encoding,
+            CodeUnits, StringPrime)
+    then
+        String = StringPrime
+    else
+        unexpected($pred,
+            "from_code_unit_list_in_encoding_allow_ill_formed failed")
     ).
 
 %----------------------------------------------------------------------------%

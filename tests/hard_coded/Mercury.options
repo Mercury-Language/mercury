@@ -115,18 +115,27 @@ MCFLAGS-prince_frameopt_helper_1    = --intermodule-optimization -O5
 MCFLAGS-prince_frameopt_helper_1.prince_frameopt_helper_2 = \
                                     --intermodule-optimization -O5
 
-# Compile string_switch with both binary and hash switches effectively
-# disabled, to test the basic indexing algorithm.
-# Compile string_switch2 with only hash switches effectively disabled,
-# to test the binary search algorithm.
-# Compile string_switch3 with only binary search switches effectively disabled,
-# to test the hash search algorithm.
+# Compile string_switch with trie, hash and binary search switches
+# all effectively disabled, to test the basic indexing algorithm.
+# Compile string_switch2 with only trie switches allowed.
+# Compile string_switch3 with only hash switches allowed.
+# Compile string_switch4 with only binary search switches allowed.
 MCFLAGS-string_switch =   \
-    --string-binary-switch-size=100 --string-hash-switch-size=100
+    --string-trie-switch-size=100 \
+    --string-hash-switch-size=100 \
+    --string-binary-switch-size=100
 MCFLAGS-string_switch2 =   \
-    --string-binary-switch-size=2   --string-hash-switch-size=100
+    --string-trie-switch-size=1 \
+    --string-hash-switch-size=100 \
+    --string-binary-switch-size=100
 MCFLAGS-string_switch3 =   \
-    --string-binary-switch-size=100 --string-hash-switch-size=2
+    --string-trie-switch-size=100 \
+    --string-hash-switch-size=1 \
+    --string-binary-switch-size=100
+MCFLAGS-string_switch4 =   \
+    --string-trie-switch-size=100 \
+    --string-hash-switch-size=100 \
+    --string-binary-switch-size=1
 
 # This bug only shows up at optimization levels -O2 and below.
 MCFLAGS-profdeep_seg_fault          = -O2

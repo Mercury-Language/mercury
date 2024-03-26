@@ -115,6 +115,16 @@
     --->    text_file(string).
 
 %---------------------------------------------------------------------------%
+
+:- type string_encoding
+    --->    utf8
+    ;       utf16.
+
+    % Return the internal string encoding on the current platform.
+    %
+:- func internal_string_encoding = string_encoding.
+
+%---------------------------------------------------------------------------%
 %
 % Conversions between strings and lists of characters.
 %
@@ -1856,28 +1866,27 @@
 % String encoding.
 %
 
-    % Succeed if the internal string encoding is UTF-8, fail if it is UTF-16.
-    % No other encodings are supported.
-    %
-:- pred internal_encoding_is_utf8 is semidet.
+:- pragma foreign_export_enum("C",    string_encoding/0, [uppercase]).
+:- pragma foreign_export_enum("C#",   string_encoding/0, [uppercase]).
+:- pragma foreign_export_enum("Java", string_encoding/0, [uppercase]).
 
 :- pragma foreign_proc("C",
-    internal_encoding_is_utf8,
+    internal_string_encoding = (Encoding::out),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
-    SUCCESS_INDICATOR = MR_TRUE;
+    Encoding = UTF8;
 ").
 :- pragma foreign_proc("C#",
-    internal_encoding_is_utf8,
+    internal_string_encoding = (Encoding::out),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
-    SUCCESS_INDICATOR = false;
+    Encoding = UTF16;
 ").
 :- pragma foreign_proc("Java",
-    internal_encoding_is_utf8,
+    internal_string_encoding = (Encoding::out),
     [will_not_call_mercury, promise_pure, thread_safe],
 "
-    SUCCESS_INDICATOR = false;
+    Encoding = UTF16;
 ").
 
 %---------------------------------------------------------------------------%
@@ -2187,9 +2196,12 @@ to_code_unit_list_loop(String, Index, End, CodeUnits) :-
 %---------------------%
 
 to_utf8_code_unit_list(String, CodeUnits) :-
-    ( if internal_encoding_is_utf8 then
+    Encoding = internal_string_encoding,
+    (
+        Encoding = utf8,
         to_code_unit_list(String, CodeUnits)
-    else
+    ;
+        Encoding = utf16,
         string.foldr(encode_utf8, String, [], CodeUnits)
     ).
 
@@ -2205,11 +2217,14 @@ encode_utf8(Char, StrCodeUnits0, StrCodeUnits) :-
 %---------------------%
 
 to_utf16_code_unit_list(String, Utf16CodeUnits) :-
-    ( if internal_encoding_is_utf8 then
+    Encoding = internal_string_encoding,
+    (
+        Encoding = utf8,
         NumUtf8CodeUnits = string.count_code_units(String),
         utf8_to_utf16_code_units_rev_loop(String, NumUtf8CodeUnits,
             [], Utf16CodeUnits)
-    else
+    ;
+        Encoding = utf16,
         to_code_unit_list(String, Utf16CodeUnits)
     ).
 
@@ -2404,9 +2419,12 @@ from_code_unit_list_allow_ill_formed(CodeList, Str) :-
 %---------------------%
 
 from_utf8_code_unit_list(CodeUnits, String) :-
-    ( if internal_encoding_is_utf8 then
+    Encoding = internal_string_encoding,
+    (
+        Encoding = utf8,
         from_code_unit_list(CodeUnits, String)
-    else
+    ;
+        Encoding = utf16,
         acc_rev_chars_from_utf8_code_units(CodeUnits, [], RevChars),
         % XXX This checks whether RevChars represents a well-formed string.
         % Why? The call to acc_rev_chars_from_utf8_code_units has ensured that
@@ -2466,10 +2484,13 @@ utf8_is_trail_byte(C) :-
 %---------------------%
 
 from_utf16_code_unit_list(CodeUnits, String) :-
-    ( if internal_encoding_is_utf8 then
+    Encoding = internal_string_encoding,
+    (
+        Encoding = utf8,
         acc_rev_chars_from_utf16_code_units(CodeUnits, [], RevChars),
         semidet_from_rev_char_list(RevChars, String)
-    else
+    ;
+        Encoding = utf16,
         from_code_unit_list(CodeUnits, String)
     ).
 
@@ -2854,7 +2875,7 @@ set_char(Char, Index, Str0, Str) :-
     ( if char.to_int(Char, 0) then
         unexpected($pred, "null character")
     else if
-        internal_encoding_is_utf8,
+        internal_string_encoding = utf8,
         char.is_surrogate(Char)
     then
         unexpected($pred, "surrogate code point")
@@ -2886,7 +2907,7 @@ unsafe_set_char(Char, Index, Str0, Str) :-
     ( if char.to_int(Char, 0) then
         unexpected($pred, "null character")
     else if
-        internal_encoding_is_utf8,
+        internal_string_encoding = utf8,
         char.is_surrogate(Char)
     then
         unexpected($pred, "surrogate code point")
@@ -3069,9 +3090,12 @@ count_codepoints(String, Count) :-
 %---------------------%
 
 count_utf8_code_units(String) = NumUtf8CodeUnits :-
-    ( if internal_encoding_is_utf8 then
+    Encoding = internal_string_encoding,
+    (
+        Encoding = utf8,
         NumUtf8CodeUnits = string.count_code_units(String)
-    else
+    ;
+        Encoding = utf16,
         string.foldl(count_utf16_to_utf8_code_units, String,
             0, NumUtf8CodeUnits)
     ).

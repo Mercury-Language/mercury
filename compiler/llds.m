@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
 % Copyright (C) 1993-2012 The University of Melbourne.
-% Copyright (C) 2014-2018 The Mercury team.
+% Copyright (C) 2014-2018, 2024 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -1235,10 +1235,27 @@
             % it is represented as string.
 
     ;       llconst_float(float)
+
     ;       llconst_string(string)
+            % A string constant that may not contain NULL characters,
+            % but for which the compiler will emit a NULL character
+            % at the end.
     ;       llconst_multi_string(list(string))
-            % A string containing an embedded NULL between each substring
-            % in the list.
+            % A sequence of zero or more of the above kind of string constants,
+            % for which the compiler will emit a NULL character after
+            % each and every one. There will thus be a NULL character
+            % between consecutive strings in the list, as well as at the end.
+
+            % As mentioned in the top-of-module comment in library/string.m,
+            % the strings in both kinds of constants may contain code unit
+            % sequences that are invalid according to the rules of the encoding
+            % (UTF-8 or UTF-16) used by the platform that the compiler is
+            % running on. This may happen accidentally, due to a string
+            % read in from a file not being vetted, but it can also happen
+            % deliberately: the trie method of implementing switches on strings
+            % sometimes constructs strings from code unit sequences *even when*
+            % it is known that those sequences may contain some but not all
+            % of the code units belonging to a single code point.
 
     ;       llconst_code_addr(code_addr)
     ;       llconst_data_addr(data_id, maybe(int)).
@@ -1761,7 +1778,7 @@ binop_return_type(eq(_), lt_bool).
 binop_return_type(ne(_), lt_bool).
 binop_return_type(array_index(_Type), lt_word).
 binop_return_type(string_unsafe_index_code_unit, lt_int(int_type_int)).
-binop_return_type(offset_str_eq(_), lt_bool).
+binop_return_type(offset_str_eq(_, _), lt_bool).
 binop_return_type(str_eq, lt_bool).
 binop_return_type(str_ne, lt_bool).
 binop_return_type(str_lt, lt_bool).

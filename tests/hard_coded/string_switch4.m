@@ -12,7 +12,7 @@
 % are all identical, but we compile them with different compilation options.
 %
 
-:- module string_switch3.
+:- module string_switch4.
 
 :- interface.
 

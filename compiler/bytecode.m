@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1996-2007, 2009-2012 The University of Melbourne.
-% Copyright (C) 2014-2018 The Mercury team.
+% Copyright (C) 2014-2018, 2024 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -1300,7 +1300,7 @@ binop_code(str_cmp,                 39).
 % was: binop_code(float_word_bits,         40).
 binop_code(float_from_dword,        41).
 binop_code(pointer_equal_conservative, 42).
-binop_code(offset_str_eq(_),        43).
+binop_code(offset_str_eq(_, _),     43).
 binop_code(string_unsafe_index_code_unit, 44).
 binop_code(eq(int_type_uint),       45).
 binop_code(ne(int_type_uint),       46).
@@ -1524,7 +1524,7 @@ binop_debug(float_from_dword,       "float_from_dword").
 binop_debug(int64_from_dword,       "int64_from_dword").
 binop_debug(uint64_from_dword,      "uint64_from_dword").
 binop_debug(pointer_equal_conservative, "pointer_equal_conservative").
-binop_debug(offset_str_eq(_),       "offset_str_eq").
+binop_debug(offset_str_eq(_, _),    "offset_str_eq").
 binop_debug(string_unsafe_index_code_unit, "string_unsafe_index_code_unit").
 binop_debug(eq(int_type_uint),      "==(uint)").
 binop_debug(ne(int_type_uint),      "!=(uint)").

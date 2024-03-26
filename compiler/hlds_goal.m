@@ -1201,6 +1201,8 @@
                 case_goal                   :: hlds_goal
             ).
 
+    % An id number that uniquely identifies each tagged case.
+    % We assign tagged cases consecutive id numbers, starting at zero.
 :- type case_id
     --->    case_id(int).
 

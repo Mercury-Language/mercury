@@ -910,9 +910,17 @@ binop_to_strcord(BinOp) = Cord :-
         BinOp = array_index(_Type),
         Cord = strcord("array_index")
     ;
-        BinOp = offset_str_eq(Offset),
-        Cord = strcord("offset_str_eq") ++
-            strcord("<") ++ intcord(Offset) ++ strcord(">")
+        BinOp = offset_str_eq(Offset, MaybeSize),
+        (
+            MaybeSize = no_size,
+            Cord = strcord("offset_str_eq") ++
+                strcord("<") ++ intcord(Offset) ++ strcord(">")
+        ;
+            MaybeSize = size(Size),
+            Cord = strcord("offset_strn_eq") ++
+                strcord("<") ++ intcord(Offset) ++ strcord(",") ++
+                intcord(Size) ++ strcord(">")
+        )
     ;
         BinOp = str_eq,
         Cord = strcord("str_eq")

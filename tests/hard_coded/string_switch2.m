@@ -2,8 +2,15 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 %
-% The code of this test is identical to the code of string_switch and
-% string_switch3, but we compile them with different compilation options.
+% The codes of the tests
+%
+%   string_switch.m
+%   string_switch2.m
+%   string_switch2.m
+%   string_switch4.m
+%
+% are all identical, but we compile them with different compilation options.
+%
 
 :- module string_switch2.
 

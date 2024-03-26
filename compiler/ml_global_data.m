@@ -576,7 +576,7 @@ ml_specialize_generic_array_binop(Op, IsFloat) :-
         ; Op = logical_or
         ; Op = eq(_)
         ; Op = ne(_)
-        ; Op = offset_str_eq(_)
+        ; Op = offset_str_eq(_, _)
         ; Op = str_eq
         ; Op = str_ne
         ; Op = str_lt

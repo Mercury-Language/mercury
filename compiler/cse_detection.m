@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1995-2012 The University of Melbourne.
-% Copyright (C) 2015-2017, 2019-2023 The Mercury team.
+% Copyright (C) 2015-2017, 2019-2024 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -156,10 +156,16 @@ detect_cse_in_pred(ProgressStream, PredId, PredInfo, !ModuleInfo) :-
     globals.lookup_bool_option(Globals, very_verbose, VeryVerbose),
     (
         VeryVerbose = yes,
+        NonImportedProcIds = pred_info_all_non_imported_procids(PredInfo),
         trace [io(!IO)] (
-            io.format(ProgressStream,
-                "%% Detecting common deconstructions for %s\n",
-                [s(pred_id_to_user_string(!.ModuleInfo, PredId))], !IO)
+            (
+                NonImportedProcIds = []
+            ;
+                NonImportedProcIds = [_ | _],
+                io.format(ProgressStream,
+                    "%% Detecting common deconstructions for %s\n",
+                    [s(pred_id_to_user_string(!.ModuleInfo, PredId))], !IO)
+            )
         )
     ;
         VeryVerbose = no

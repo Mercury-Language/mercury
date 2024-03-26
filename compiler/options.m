@@ -2675,6 +2675,7 @@ long_option("analysis-repeat",      analysis_repeat).
 long_option("analysis-file-cache",  analysis_file_cache).
 
 % HLDS->HLDS optimizations
+long_option("allow-inlining",       optopt_allow_inlining).
 long_option("inlining",             inlining).
 long_option("inline-simple",        optopt_inline_simple).
 long_option("inline-builtins",      optopt_inline_builtins).
@@ -5943,6 +5944,8 @@ options_help_hlds_hlds_optimization(Stream, !IO) :-
     io.write_string(Stream,
         "\n    High-level (HLDS -> HLDS) optimizations:\n", !IO),
     io.write_prefixed_lines(Stream, "\t", [
+        % "--no-allow-inlining",
+        % "\tDisable all forms of inlining.",
         "--no-inlining",
         "\tDisable all forms of inlining.",
         "--no-inline-simple",

@@ -19,7 +19,6 @@
 :- interface.
 
 :- import_module backend_libs.builtin_ops.
-:- import_module backend_libs.string_encoding.
 :- import_module hlds.
 :- import_module hlds.hlds_goal.
 
@@ -28,6 +27,7 @@
 :- import_module map.
 :- import_module maybe.
 :- import_module pair.
+:- import_module string.
 
 %---------------------------------------------------------------------------%
 %
@@ -73,6 +73,12 @@
     %
 :- pred create_trie(string_encoding::in, list(tagged_case)::in,
     int::out, trie_node::out) is det.
+
+:- inst trie_choice for trie_node/0
+    --->    trie_choice(ground, ground, ground).
+
+:- pred chase_any_stick_in_trie(trie_node::in(trie_choice),
+    assoc_list(int, trie_node)::out, list(int)::out, trie_node::out) is det.
 
 %---------------------------------------------------------------------------%
 %
@@ -146,6 +152,7 @@
 
 :- implementation.
 
+:- import_module backend_libs.string_encoding.
 :- import_module hlds.hlds_data.
 :- import_module parse_tree.
 :- import_module parse_tree.prog_data.
@@ -154,7 +161,6 @@
 :- import_module int.
 :- import_module io.
 :- import_module require.
-:- import_module string.
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -248,6 +254,32 @@ insert_case_into_trie_choice(InsertMatched, InsertNotYetMatched, InsertCaseId,
             map.det_insert(InsertFirstCodeUnit, SubTrieNode,
                 ChoiceMap0, ChoiceMap)
         )
+    ).
+
+%---------------------------------------------------------------------------%
+
+chase_any_stick_in_trie(TrieNode, ChoicePairs,
+        StickCodeUnits, TrieNodeAfterStick) :-
+    TrieNode = trie_choice(_, ChoiceMap, MaybeEnd),
+    map.to_assoc_list(ChoiceMap, ChoicePairs),
+    ( if
+        ChoicePairs = [OneChoicePair],
+        MaybeEnd = no
+    then
+        OneChoicePair = OneCodeUnit - OneSubTrieNode,
+        (
+            OneSubTrieNode = trie_leaf(_, _, _),
+            StickCodeUnits = [],
+            TrieNodeAfterStick = TrieNode
+        ;
+            OneSubTrieNode = trie_choice(_, _, _),
+            chase_any_stick_in_trie(OneSubTrieNode, _SubChoicePairs,
+                SubStickCodeUnits, TrieNodeAfterStick),
+            StickCodeUnits = [OneCodeUnit | SubStickCodeUnits]
+        )
+    else
+        StickCodeUnits = [],
+        TrieNodeAfterStick = TrieNode
     ).
 
 %---------------------------------------------------------------------------%

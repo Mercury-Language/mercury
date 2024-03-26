@@ -565,7 +565,7 @@ output_binop_for_java(Info, Stream, Op, X, Y, !IO) :-
     ;
         ( Op = body
         ; Op = string_unsafe_index_code_unit
-        ; Op = offset_str_eq(_)
+        ; Op = offset_str_eq(_, _)
         ; Op = float_from_dword
         ; Op = int64_from_dword
         ; Op = uint64_from_dword

@@ -423,6 +423,7 @@ ORDINARY_PROGS = \
 	string_switch \
 	string_switch2 \
 	string_switch3 \
+	string_switch4 \
 	string_to_float_overflow \
 	string_various \
 	string_well_formed \

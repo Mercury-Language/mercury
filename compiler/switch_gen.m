@@ -299,6 +299,22 @@ generate_smart_string_switch(Globals, CodeModel, CanFail, FilteredCanFail,
     goal_info_get_store_map(GoalInfo, StoreMap),
     globals.get_opt_tuple(Globals, OptTuple),
     ( if
+        % For now, string trie switches have been implemented only for C,
+        % and the code assumes that the host and the target use the same
+        % string encoding. This effectively requires that both the host and
+        % the target compile to C.
+        %
+        % Unlike ml_switch_gen.m, we don't need to check whether
+        % we are targeting C.
+        internal_string_encoding = utf8,  % host is C
+        StringTrieSwitchSize = OptTuple ^ ot_string_hash_switch_size,
+        NumConsIds >= StringTrieSwitchSize,
+        MaybeLookupSwitchInfo = no  % yes is not yet implemented
+    then
+        generate_string_trie_switch(TaggedCases, SwitchVarRval,
+            SwitchVarName, CodeModel, CanFail, GoalInfo,
+            EndLabel, MaybeEnd, SwitchCode, !CI, !.CLD)
+    else if
         StringHashSwitchSize = OptTuple ^ ot_string_hash_switch_size,
         NumConsIds >= StringHashSwitchSize
     then

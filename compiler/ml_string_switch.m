@@ -494,44 +494,47 @@ ml_convert_trie_to_nested_switches(Encoding, VarRval, CaseNumVarLval, Context,
     (
         TrieNode = trie_leaf(RevMatchedCodeUnits, NotYetMatchedCodeUnits,
             CaseId),
-        CaseId = case_id(CaseNum),
-        AllCodeUnits =
-            list.reverse(RevMatchedCodeUnits) ++ NotYetMatchedCodeUnits,
-        list.length(RevMatchedCodeUnits, NumRevMatchedCodeUnits),
-        expect(unify(NumRevMatchedCodeUnits, NumMatched), $pred,
-            "NumRevMatchedCodeUnits != NumMatched"),
-        ( if
-            from_code_unit_list_in_encoding(Encoding, AllCodeUnits, String)
-        then
-            StringRval = ml_const(mlconst_string(String))
-        else
-            unexpected($pred, "code units cannot be turned back into string")
-        ),
-        CondRval = ml_binop(offset_str_eq(NumMatched), VarRval, StringRval),
+        list.reverse(RevMatchedCodeUnits, MatchedCodeUnits),
+        AllCodeUnits = MatchedCodeUnits ++ NotYetMatchedCodeUnits,
+        list.length(MatchedCodeUnits, NumMatchedCodeUnits),
+        expect(unify(NumMatchedCodeUnits, NumMatched), $pred,
+            "NumMatchedCodeUnits != NumMatched"),
+        det_from_code_unit_list_in_encoding_allow_ill_formed(Encoding,
+            AllCodeUnits, EndStr),
+        CondRval = ml_binop(offset_str_eq(NumMatched, no_size),
+            VarRval, ml_const(mlconst_string(EndStr))),
 
+        CaseId = case_id(CaseNum),
         CaseNumRval = ml_const(mlconst_int(CaseNum)),
         SetCaseNumVarAssign = assign(CaseNumVarLval, CaseNumRval),
         SetCaseNumVarStmt = ml_stmt_atomic(SetCaseNumVarAssign, Context),
 
         Stmt = ml_stmt_if_then_else(CondRval, SetCaseNumVarStmt, no, Context)
     ;
-        TrieNode = trie_choice(RevMatchedCodeUnits, ChoiceMap, MaybeEnd),
-        CurCodeUnitRval = ml_binop(string_unsafe_index_code_unit,
-            VarRval, ml_const(mlconst_int(NumMatched))),
-        map.to_assoc_list(ChoiceMap, ChoicePairs),
-        ( if
-            ChoicePairs = [OneChoicePair],
-            MaybeEnd = no
-        then
-            OneChoicePair = OneCodeUnit - OneSubTrieNode,
-            OneCodeUnitConst = ml_const(mlconst_int(OneCodeUnit)),
-            FirstCond = ml_binop(eq(int_type_int),
-                CurCodeUnitRval, OneCodeUnitConst),
-            ml_chase_one_cond_trie_nodes(Encoding, VarRval, CaseNumVarLval,
-                Context, NumMatched + 1, OneSubTrieNode, FirstCond, AllCond,
-                ThenStmt),
-            Stmt = ml_stmt_if_then_else(AllCond, ThenStmt, no, Context)
-        else
+        TrieNode = trie_choice(RevMatchedCodeUnits, _ChoiceMap, MaybeEnd),
+        list.length(RevMatchedCodeUnits, NumRevMatchedCodeUnits),
+        expect(unify(NumRevMatchedCodeUnits, NumMatched), $pred,
+            "NumRevMatchedCodeUnits != NumMatched"),
+
+        chase_any_stick_in_trie(TrieNode, ChoicePairs, 
+            StickCodeUnits, TrieNodeAfterStick),
+        (
+            StickCodeUnits = [_, _ | _],
+            list.length(StickCodeUnits, NumStickCodeUnits),
+            CmpOp = offset_str_eq(NumMatched, size(NumStickCodeUnits)),
+            list.reverse(RevMatchedCodeUnits, MatchedCodeUnits),
+            det_from_code_unit_list_in_encoding_allow_ill_formed(Encoding,
+                MatchedCodeUnits ++ StickCodeUnits, MatchedStickStr),
+            CondRval = ml_binop(CmpOp,
+                VarRval, ml_const(mlconst_string(MatchedStickStr))),
+            ml_convert_trie_to_nested_switches(Encoding, VarRval,
+                CaseNumVarLval, Context, NumMatched + NumStickCodeUnits,
+                TrieNodeAfterStick, AfterStickStmt),
+            Stmt = ml_stmt_if_then_else(CondRval, AfterStickStmt, no, Context)
+        ;
+            ( StickCodeUnits = []
+            ; StickCodeUnits = [_]
+            ),
             ml_convert_trie_choices_to_nested_switches(Encoding, VarRval,
                 CaseNumVarLval, Context, NumMatched + 1, ChoicePairs,
                 cord.init, SwitchArmsCord0),
@@ -541,24 +544,23 @@ ml_convert_trie_to_nested_switches(Encoding, VarRval, CaseNumVarLval, Context,
                 SwitchArms = SwitchArms0
             ;
                 MaybeEnd = yes(EndCaseId),
-                EndCaseId = case_id(EndCaseNum),
 
+                NullCodeUnit = 0,    % Match the terminating NUL character.
+                NullMatchCond =
+                    match_value(ml_const(mlconst_int(NullCodeUnit))),
+
+                EndCaseId = case_id(EndCaseNum),
                 EndCaseNumRval = ml_const(mlconst_int(EndCaseNum)),
                 EndSetCaseNumVarAssign =
                     assign(CaseNumVarLval, EndCaseNumRval),
                 EndSetCaseNumVarStmt =
                     ml_stmt_atomic(EndSetCaseNumVarAssign, Context),
-                NullCodeUnit = 0,    % Match the terminating NUL character.
-                NullMatchCond =
-                    match_value(ml_const(mlconst_int(NullCodeUnit))),
                 EndSwitchArm = mlds_switch_case(NullMatchCond, [],
                     EndSetCaseNumVarStmt),
                 SwitchArms = [EndSwitchArm | SwitchArms0]
             ),
-            list.length(RevMatchedCodeUnits, NumRevMatchedCodeUnits),
-            expect(unify(NumRevMatchedCodeUnits, NumMatched), $pred,
-                "NumRevMatchedCodeUnits != NumMatched"),
-            SwitchCodeUnitRval = CurCodeUnitRval,
+            SwitchCodeUnitRval = ml_binop(string_unsafe_index_code_unit,
+                VarRval, ml_const(mlconst_int(NumMatched))),
             % Could we set this to a known range? If we could,
             % would it be useful?
             SwitchRange = mlds_switch_range_unknown,
@@ -581,7 +583,7 @@ ml_convert_trie_choices_to_nested_switches(Encoding, VarRval, CaseNumVarLval,
         Context, NumMatched, SubTrieNode, SwitchArmStmt),
     MatchCond = match_value(ml_const(mlconst_int(CodeUnit))),
     SwitchArm = mlds_switch_case(MatchCond, [], SwitchArmStmt),
-    !:SwitchArmsCord = cord.snoc(!.SwitchArmsCord, SwitchArm),
+    cord.snoc(SwitchArm, !SwitchArmsCord),
     ml_convert_trie_choices_to_nested_switches(Encoding, VarRval,
         CaseNumVarLval, Context, NumMatched, ChoicePairs, !SwitchArmsCord).
 
@@ -597,36 +599,6 @@ ml_generate_arms_of_switch_on_case_id([CasePair | CasePairs], !CaseCord) :-
     Case = mlds_switch_case(MatchCond, [], CaseStmt),
     cord.snoc(Case, !CaseCord),
     ml_generate_arms_of_switch_on_case_id(CasePairs, !CaseCord).
-
-:- pred ml_chase_one_cond_trie_nodes(string_encoding::in, mlds_rval::in,
-    mlds_lval::in, prog_context::in, int::in, trie_node::in,
-    mlds_rval::in, mlds_rval::out, mlds_stmt::out) is det.
-
-ml_chase_one_cond_trie_nodes(Encoding, VarRval, CaseNumVarLval, Context,
-        NumMatched, TrieNode, CondSoFar0, CondSoFar, ThenStmt) :-
-    ( if
-        TrieNode = trie_choice(RevMatchedCodeUnits, ChoiceMap, MaybeEnd),
-        map.to_assoc_list(ChoiceMap, ChoicePairs),
-        ChoicePairs = [OneChoicePair],
-        MaybeEnd = no
-    then
-        expect(unify(list.length(RevMatchedCodeUnits), NumMatched), $pred,
-            "length(RevMatchedCodeUnits) != NumMatched"),
-        OneChoicePair = OneCodeUnit - OneSubTrieNode,
-        CurCodeUnitRval = ml_binop(string_unsafe_index_code_unit,
-            VarRval, ml_const(mlconst_int(NumMatched))),
-        OneCodeUnitConst = ml_const(mlconst_int(OneCodeUnit)),
-        CurCond = ml_binop(eq(int_type_int), CurCodeUnitRval,
-            OneCodeUnitConst),
-        CondSoFar1 = ml_binop(logical_and, CondSoFar0, CurCond),
-        ml_chase_one_cond_trie_nodes(Encoding, VarRval, CaseNumVarLval,
-            Context, NumMatched + 1, OneSubTrieNode,
-            CondSoFar1, CondSoFar, ThenStmt)
-    else
-        CondSoFar = CondSoFar0,
-        ml_convert_trie_to_nested_switches(Encoding, VarRval, CaseNumVarLval,
-            Context, NumMatched, TrieNode, ThenStmt)
-    ).
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
