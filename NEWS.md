@@ -552,8 +552,9 @@ Changes to the Mercury standard library
 
 ### Changes to the `map` module
 
-* The following predicate has been added:
+* The following predicates have been added:
 
+    - pred `compose_maps/3`
     - pred `sorted_keys_match/2`
 
 ### Changes to the `ops` module

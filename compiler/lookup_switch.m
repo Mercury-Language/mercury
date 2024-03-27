@@ -60,20 +60,92 @@
 :- import_module parse_tree.set_of_var.
 
 :- import_module list.
+:- import_module map.
 :- import_module maybe.
 
 %---------------------------------------------------------------------------%
 
+    % NOTE The first two fields of a lookup_switch_info, when composed
+    % together, specify a map from the value of a Key (such as ints or strings)
+    % to the values of the output variables for that Key.
+    %
+    % Lookup_switch_infos have traditionally stored just this composed map.
+    % This was because this was the only map we needed before the addition of 
+    %
+    % - multi-cons-id switch arms, and
+    % - lookup trie switches.
+    %
+    % The lookup tables we generate for det or semidet switches have
+    % traditionally looked like this:
+    %
+    %       key1    A1  B1  C1
+    %       key2    A2  B2  C2
+    %       key3    A3  B3  C3
+    %       key4    A4  B4  C4
+    %       key5    A5  B5  C5
+    %
+    % where A, B and C are the three output variables, and e.g. B3
+    % is the value of the B output variable in the switch arm where
+    % the key is key3.
+    %
+    % This is the best you can do in switches where each case is for
+    % a single key. It is even the best you can do in switches where
+    % *most* cases are for a single key. However, if the #keys/#cases ratio
+    % is *much* higher than 1, then another arrangement may be better.
+    % For example, if key1, key4 and key5 belong to the same case
+    % (which implies that e.g. A1=A4, A1=A5, B1=B4, etc), then the setup
+    % with two tables may be better:
+    %
+    %       key1    caseL
+    %       key2    caseM
+    %       key3    caseN
+    %       key4    caseL
+    %       key5    caseL
+    %
+    %       caseL   A1  B1  C1
+    %       caseM   A2  B2  C2
+    %       caseN   A3  B3  C3
+    %
+    % This setup can take less space, and accesses to e.g. keys 1 and 4 will
+    % both get their values for the output variables from the same row
+    % in the second table. Both of these factors can improve the hit rate
+    % of the data cache.
+    %
+    % On the other hand, the fact that the values of the output variables
+    % are not next to the keys forces one extra cache miss.
+    %
+    % (The higher the #keys/#cases ratio, the more important the advantages
+    % of the second setup can be expected to be relative to the first.)
+    %
+    % While binary search and hash table based implementations of lookup
+    % switches benefit in this way from having the values of the output
+    % variables next to the key value, trie switches on strings do not;
+    % they do not even store each key in its entirety. Trie based lookup
+    % switches have two parts: the trie search, which needs the key to case id
+    % map, and the lookup part, which needs the case id to the values of
+    % the output variables part. The reason why the lookup_switch_info
+    % structure stores these two data structures is because
+    %
+    % - trie lookup switches want this info in this form, and
+    % - while binary search and hash lookup switches want this info
+    %   in another form (mapping keys to solutions directly),
+    %   it is easier to compute that form from the one we use
+    %   than vice versa.
+    %
 :- type lookup_switch_info(Key)
     --->    lookup_switch_info(
-                % The map from the switched-on value to the values of the
-                % variables in each solution.
+                % The map from the switched-on value to the corresponding
+                % case_id.
+                lsi_key_to_case_map     :: map(Key, case_id),
+
+                % The map from each case_id to the values of the variables
+                % in each solution in that case.
                 %
                 % XXX In the MLDS backend, the equivalent type maps case_ids
                 % to the values of the variables in each solution. This is
                 % to support tries, which the LLDS backend does not support
                 % (yet).
-                lsi_cases               ::  case_consts(Key, rval,
+                lsi_cases               ::  case_consts(case_id, rval,
                                                 case_consts_several_llds),
 
                 % The output variables, which become (some of) the fields
@@ -182,7 +254,6 @@
 :- import_module bool.
 :- import_module cord.
 :- import_module int.
-:- import_module map.
 :- import_module pair.
 :- import_module require.
 :- import_module set.
@@ -204,30 +275,31 @@ is_lookup_switch(GetTag, TaggedCases, GoalInfo, StoreMap,
     ( if
         MaybeEnd0 = no,
         generate_constants_for_lookup_switch(BranchStart, GetTag, TaggedCases,
-            OutVars, ArmNonLocals, StoreMap, Liveness, map.init, CaseSolnMap,
+            OutVars, ArmNonLocals, StoreMap, Liveness,
+            map.init, KeyToCaseIdMap, map.init, CaseIdToSolnsMap,
             MaybeEnd0, MaybeEnd, set_of_var.init, ResumeVars, no,
             GoalsMayModifyTrail, CI0, CI),
         get_var_table(CI, VarTable),
         OutTypes = list.map(lookup_var_type_func(VarTable), OutVars),
-        ( if project_all_to_one_solution(CaseSolnMap, CaseValuePairsMap) then
-            CaseConsts = all_one_soln(CaseValuePairsMap)
+        ( if project_all_to_one_solution(CaseIdToSolnsMap, CaseValuesMap) then
+            CaseConsts = all_one_soln(CaseValuesMap)
         else
-            CaseConsts = some_several_solns(CaseSolnMap,
+            CaseConsts = some_several_solns(CaseIdToSolnsMap,
                 case_consts_several_llds(ResumeVars, GoalsMayModifyTrail))
         ),
         get_exprn_opts(CI0, ExprnOpts),
         UnboxFloats = get_unboxed_floats(ExprnOpts),
         UnboxInt64s = get_unboxed_int64s(ExprnOpts),
-        map.to_assoc_list(CaseSolnMap, CaseSolns),
+        map.to_assoc_list(CaseIdToSolnsMap, CaseIdsSolns),
         % This generates CaseValues in reverse order of index, but given that
-        % we only use CaseValues to find out the right OutLLDSTypes, this is OK.
-        project_solns_to_rval_lists(CaseSolns, [], CaseValues),
+        % we only use CaseValues to find the right OutLLDSTypes, this is OK.
+        project_solns_to_rval_lists(CaseIdsSolns, [], CaseValues),
         find_general_llds_types(UnboxFloats, UnboxInt64s, OutTypes, CaseValues,
             OutLLDSTypes)
     then
         reset_to_position(BranchStart, CI, CLD),
-        LookupSwitchInfo = lookup_switch_info(CaseConsts, OutVars, OutLLDSTypes,
-            Liveness, MaybeEnd, CI, CLD),
+        LookupSwitchInfo = lookup_switch_info(KeyToCaseIdMap, CaseConsts,
+            OutVars, OutLLDSTypes, Liveness, MaybeEnd, CI, CLD),
         MaybeLookupSwitchInfo = yes(LookupSwitchInfo)
     else
         MaybeLookupSwitchInfo = no
@@ -238,17 +310,21 @@ is_lookup_switch(GetTag, TaggedCases, GoalInfo, StoreMap,
 :- pred generate_constants_for_lookup_switch(position_info::in,
     (func(cons_tag) = Key)::in, list(tagged_case)::in, list(prog_var)::in,
     set_of_progvar::in, abs_store_map::in, set_of_progvar::out,
-    map(Key, soln_consts(rval))::in, map(Key, soln_consts(rval))::out,
+    map(Key, case_id)::in, map(Key, case_id)::out,
+    map(case_id, soln_consts(rval))::in, map(case_id, soln_consts(rval))::out,
     branch_end::in, branch_end::out, set_of_progvar::in, set_of_progvar::out,
     bool::in, bool::out, code_info::in, code_info::out) is semidet.
 
 generate_constants_for_lookup_switch(_BranchStart, _GetTag,
         [], _Vars, _ArmNonLocals, _StoreMap, set_of_var.init,
-        !IndexMap, !MaybeEnd, !ResumeVars, !GoalsMayModifyTrail, !CI).
+        !KeyToCaseIdMap, !CaseIdToSolnsMap, !MaybeEnd, !ResumeVars,
+        !GoalsMayModifyTrail, !CI).
 generate_constants_for_lookup_switch(BranchStart, GetTag,
         [TaggedCase | TaggedCases], Vars, ArmNonLocals, StoreMap, Liveness,
-        !IndexMap, !MaybeEnd, !ResumeVars, !GoalsMayModifyTrail, !CI) :-
-    TaggedCase = tagged_case(TaggedMainConsId, TaggedOtherConsIds, _, Goal),
+        !KeyToCaseIdMap, !CaseIdToSolnsMap, !MaybeEnd, !ResumeVars,
+        !GoalsMayModifyTrail, !CI) :-
+    TaggedCase =
+        tagged_case(TaggedMainConsId, TaggedOtherConsIds, CaseId, Goal),
     Goal = hlds_goal(GoalExpr, GoalInfo),
 
     % Goals with these features need special treatment in generate_goal.
@@ -303,43 +379,45 @@ generate_constants_for_lookup_switch(BranchStart, GetTag,
             !MaybeEnd, Liveness, !CI),
         SolnConsts = one_soln(Soln)
     ),
-    record_lookup_for_tagged_cons_id(GetTag, SolnConsts,
-        TaggedMainConsId, !IndexMap),
-    record_lookup_for_tagged_cons_ids(GetTag, SolnConsts,
-        TaggedOtherConsIds, !IndexMap),
+    map.det_insert(CaseId, SolnConsts, !CaseIdToSolnsMap),
+    record_case_id_for_tagged_cons_id(GetTag, CaseId,
+        TaggedMainConsId, !KeyToCaseIdMap),
+    record_case_id_for_tagged_cons_ids(GetTag, CaseId,
+        TaggedOtherConsIds, !KeyToCaseIdMap),
     generate_constants_for_lookup_switch(BranchStart, GetTag,
         TaggedCases, Vars, ArmNonLocals, StoreMap, _LivenessRest,
-        !IndexMap, !MaybeEnd, !ResumeVars, !GoalsMayModifyTrail, !CI).
+        !KeyToCaseIdMap, !CaseIdToSolnsMap, !MaybeEnd, !ResumeVars,
+        !GoalsMayModifyTrail, !CI).
 
-:- pred record_lookup_for_tagged_cons_ids((func(cons_tag) = Key)::in,
-    soln_consts(rval)::in, list(tagged_cons_id)::in,
-    map(Key, soln_consts(rval))::in, map(Key, soln_consts(rval))::out) is det.
+:- pred record_case_id_for_tagged_cons_ids((func(cons_tag) = Key)::in,
+    case_id::in, list(tagged_cons_id)::in,
+    map(Key, case_id)::in, map(Key, case_id)::out) is det.
 
-record_lookup_for_tagged_cons_ids(_GetTag, _SolnConsts, [], !IndexMap).
-record_lookup_for_tagged_cons_ids(GetTag, SolnConsts,
-        [TaggedConsId | TaggedConsIds], !IndexMap) :-
-    record_lookup_for_tagged_cons_id(GetTag, SolnConsts,
-        TaggedConsId, !IndexMap),
-    record_lookup_for_tagged_cons_ids(GetTag, SolnConsts,
-        TaggedConsIds, !IndexMap).
+record_case_id_for_tagged_cons_ids(_GetTag, _CaseId, [], !KeyToCaseIdMap).
+record_case_id_for_tagged_cons_ids(GetTag, CaseId,
+        [TaggedConsId | TaggedConsIds], !KeyToCaseIdMap) :-
+    record_case_id_for_tagged_cons_id(GetTag, CaseId,
+        TaggedConsId, !KeyToCaseIdMap),
+    record_case_id_for_tagged_cons_ids(GetTag, CaseId,
+        TaggedConsIds, !KeyToCaseIdMap).
 
-:- pred record_lookup_for_tagged_cons_id((func(cons_tag) = Key)::in,
-    soln_consts(rval)::in, tagged_cons_id::in,
-    map(Key, soln_consts(rval))::in, map(Key, soln_consts(rval))::out) is det.
+:- pred record_case_id_for_tagged_cons_id((func(cons_tag) = Key)::in,
+    case_id::in, tagged_cons_id::in,
+    map(Key, case_id)::in, map(Key, case_id)::out) is det.
 
-record_lookup_for_tagged_cons_id(GetTag, SolnConsts, TaggedConsId,
-        !IndexMap) :-
+record_case_id_for_tagged_cons_id(GetTag, CaseId, TaggedConsId,
+        !KeyToCaseIdMap) :-
     TaggedConsId = tagged_cons_id(_ConsId, ConsTag),
     Index = GetTag(ConsTag),
-    map.det_insert(Index, SolnConsts, !IndexMap).
+    map.det_insert(Index, CaseId, !KeyToCaseIdMap).
 
 %---------------------------------------------------------------------------%
 
 generate_int_lookup_switch(VarRval, LookupSwitchInfo, EndLabel, StoreMap,
         StartVal, EndVal, NeedBitVecCheck, NeedRangeCheck, !:MaybeEnd, Code,
         !:CI) :-
-    LookupSwitchInfo = lookup_switch_info(CaseConsts, OutVars, OutTypes,
-        Liveness, !:MaybeEnd, !:CI, CLD0),
+    LookupSwitchInfo = lookup_switch_info(KeyToCaseMap, CaseConsts,
+        OutVars, OutTypes, Liveness, !:MaybeEnd, !:CI, CLD0),
 
     % If the case values start at some number other than 0,
     % then subtract that number to give us a zero-based index.
@@ -365,16 +443,17 @@ generate_int_lookup_switch(VarRval, LookupSwitchInfo, EndLabel, StoreMap,
     ),
 
     (
-        CaseConsts = all_one_soln(CaseValuesMap),
+        CaseConsts = all_one_soln(CaseIdToValuesMap),
         Comment = cord.singleton(
             llds_instr(comment("simple lookup switch"), "")
         ),
-        map.to_assoc_list(CaseValuesMap, CaseValues),
+        compose_maps(KeyToCaseMap, CaseIdToValuesMap, KeyToSolnsMap),
+        map.to_assoc_list(KeyToSolnsMap, KeySolnsAL),
         generate_simple_int_lookup_switch(IndexRval, StoreMap,
-            StartVal, EndVal, CaseValues, OutVars, OutTypes,
+            StartVal, EndVal, KeySolnsAL, OutVars, OutTypes,
             NeedBitVecCheck, Liveness, RestCode, !CI, CLD)
     ;
-        CaseConsts = some_several_solns(CaseSolnMap,
+        CaseConsts = some_several_solns(CaseIdToValuesListMap,
             case_consts_several_llds(ResumeVars, GoalsMayModifyTrail)),
         (
             GoalsMayModifyTrail = yes,
@@ -387,10 +466,11 @@ generate_int_lookup_switch(VarRval, LookupSwitchInfo, EndLabel, StoreMap,
         Comment = cord.singleton(
             llds_instr(comment("several soln lookup switch"), "")
         ),
-        map.to_assoc_list(CaseSolnMap, CaseSolns),
+        compose_maps(KeyToCaseMap, CaseIdToValuesListMap, KeyToSolnsListMap),
+        map.to_assoc_list(KeyToSolnsListMap, KeySolnsListAL),
         generate_several_soln_int_lookup_switch(IndexRval, EndLabel, StoreMap,
-            StartVal, EndVal, CaseSolns, ResumeVars, AddTrailOps, OutVars,
-            OutTypes, NeedBitVecCheck, Liveness, !MaybeEnd, RestCode,
+            StartVal, EndVal, KeySolnsListAL, ResumeVars, AddTrailOps,
+            OutVars, OutTypes, NeedBitVecCheck, Liveness, !MaybeEnd, RestCode,
             !CI, CLD)
     ),
     Code = Comment ++ RangeCheckCode ++ RestCode.
@@ -434,16 +514,16 @@ generate_simple_int_lookup_switch(IndexRval, StoreMap, StartVal, EndVal,
         % Generate the static lookup table for this switch.
         list.length(OutVars, NumOutVars),
         construct_simple_int_lookup_vector(CaseValues, StartVal, OutTypes,
-            [], RevVectorRvals),
-        list.reverse(RevVectorRvals, VectorRvals),
+            cord.init, VectorRvalsCord),
+        VectorRvals = cord.list(VectorRvalsCord),
         add_vector_static_cell(OutTypes, VectorRvals, VectorAddr, !CI),
         VectorAddrRval = const(llconst_data_addr(VectorAddr, no)),
 
-        % Generate code to look up each of the variables in OutVars
-        % in its slot in the table row IndexRval (which will be row
-        % VarRval - StartVal). Most of the change is done by
-        % generate_offset_assigns associating each var with the relevant field
-        % in !CI.
+        % Generate code to look up each of the variables in OutVars in its slot
+        % in the table row IndexRval (which will be row VarRval - StartVal).
+        % Here, we just set up the pointer to the right row; the code that
+        % picks up the values of OutVars from that row is generated by
+        % generate_offset_assigns.
         ( if NumOutVars = 1 then
             BaseRval = IndexRval
         else
@@ -471,23 +551,23 @@ generate_simple_int_lookup_switch(IndexRval, StoreMap, StartVal, EndVal,
 
 :- pred construct_simple_int_lookup_vector(assoc_list(int, list(rval))::in,
     int::in, list(llds_type)::in,
-    list(list(rval))::in, list(list(rval))::out) is det.
+    cord(list(rval))::in, cord(list(rval))::out) is det.
 
-construct_simple_int_lookup_vector([], _, _, !RevRows).
-construct_simple_int_lookup_vector([Index - Rvals | Rest], CurIndex, OutTypes,
-        !RevRows) :-
+construct_simple_int_lookup_vector([], _, _, !RowCord).
+construct_simple_int_lookup_vector([Index - Rvals | Rest0], CurIndex, OutTypes,
+        !RowCord) :-
     ( if CurIndex < Index then
         % If this argument (array element) is a place-holder and
         % will never be referenced, just fill it in with a dummy entry.
         Row = list.map(default_value_for_type, OutTypes),
-        Remainder = [Index - Rvals | Rest]
+        Rest = [Index - Rvals | Rest0]
     else
         Row = Rvals,
-        Remainder = Rest
+        Rest = Rest0
     ),
-    !:RevRows = [Row | !.RevRows],
-    construct_simple_int_lookup_vector( Remainder, CurIndex + 1, OutTypes,
-        !RevRows).
+    cord.snoc(Row, !RowCord),
+    construct_simple_int_lookup_vector(Rest, CurIndex + 1, OutTypes,
+        !RowCord).
 
 %---------------------------------------------------------------------------%
 

@@ -142,6 +142,7 @@
 :- import_module libs.
 :- import_module libs.globals.
 
+:- import_module cord.
 :- import_module int.
 :- import_module maybe.
 :- import_module one_or_more.
@@ -243,25 +244,25 @@ filter_out_failing_cases_if_needed(CodeModel, !TaggedCases, !SwitchCanFail) :-
     can_fail::in, can_fail::out) is det.
 
 filter_out_failing_cases(TaggedCases0, TaggedCases, !SwitchCanFail) :-
-    filter_out_failing_cases_loop(TaggedCases0, [], RevTaggedCases,
+    filter_out_failing_cases_loop(TaggedCases0, cord.init, TaggedCasesCord,
         !SwitchCanFail),
-    list.reverse(RevTaggedCases, TaggedCases).
+    TaggedCases = cord.list(TaggedCasesCord).
 
 :- pred filter_out_failing_cases_loop(list(tagged_case)::in,
-    list(tagged_case)::in, list(tagged_case)::out,
+    cord(tagged_case)::in, cord(tagged_case)::out,
     can_fail::in, can_fail::out) is det.
 
-filter_out_failing_cases_loop([], !RevTaggedCases, !SwitchCanFail).
-filter_out_failing_cases_loop([TaggedCase | TaggedCases], !RevTaggedCases,
+filter_out_failing_cases_loop([], !TaggedCasesCord, !SwitchCanFail).
+filter_out_failing_cases_loop([TaggedCase | TaggedCases], !TaggedCasesCord,
         !SwitchCanFail) :-
     TaggedCase = tagged_case(_, _, _, Goal),
     Goal = hlds_goal(GoalExpr, _),
     ( if GoalExpr = disj([]) then
         !:SwitchCanFail = can_fail
     else
-        !:RevTaggedCases = [TaggedCase | !.RevTaggedCases]
+        cord.snoc(TaggedCase, !TaggedCasesCord)
     ),
-    filter_out_failing_cases_loop(TaggedCases, !RevTaggedCases,
+    filter_out_failing_cases_loop(TaggedCases, !TaggedCasesCord,
         !SwitchCanFail).
 
 %---------------------------------------------------------------------------%
@@ -326,14 +327,17 @@ find_int_lookup_switch_params(ModuleInfo, SwitchVarType, SwitchCanFail,
 
 %---------------------------------------------------------------------------%
 
-project_all_to_one_solution(CaseSolns, CaseValuePairs) :-
-    map.map_values(project_soln_consts_to_one_soln, CaseSolns, CaseValuePairs).
+project_all_to_one_solution(CaseSolnsMap, CaseValuesMap) :-
+    map.map_values(project_soln_consts_to_one_soln,
+        CaseSolnsMap, CaseValuesMap).
 
 :- pred project_soln_consts_to_one_soln(Key::in,
     soln_consts(Rval)::in, list(Rval)::out) is semidet.
 
 project_soln_consts_to_one_soln(_Key, Solns, Values) :-
     Solns = one_soln(Values).
+
+%---------------------------------------------------------------------------%
 
 project_solns_to_rval_lists([], !RvalsList).
 project_solns_to_rval_lists([Case | Cases], !RvalsList) :-
@@ -355,7 +359,6 @@ get_int_tag(ConsTag) = Int :-
     else
         unexpected($pred, "not int_tag")
     ).
-
 
 get_string_tag(ConsTag) = Str :-
     ( if ConsTag = string_tag(StrPrime) then

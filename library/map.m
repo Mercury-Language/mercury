@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1993-2012 The University of Melbourne.
-% Copyright (C) 2013-2015, 2017-2022 The Mercury team.
+% Copyright (C) 2013-2015, 2017-2022, 2024 The Mercury team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %---------------------------------------------------------------------------%
 %
@@ -573,6 +573,19 @@
 :- pred union_list(pred(V, V, V), map(K, V), list(map(K, V)), map(K, V)).
 :- mode union_list(in(pred(in, in, out) is semidet), in, in, out) is semidet.
 :- mode union_list(in(pred(in, in, out) is det), in, in, out) is det.
+
+%---------------------------------------------------------------------------%
+%
+% Composing two maps.
+%
+
+    % compose_maps(MapAB, MapBC, MapAC):
+    %
+    % Given each A - B pair in MapAB, return the map that pairs
+    % each such A with the C corresponding to its B in MapBC.
+    % Throw an exception if there is no value associated with B in MapBC.
+    %
+:- pred compose_maps(map(A, B)::in, map(B, C)::in, map(A, C)::out) is det.
 
 %---------------------------------------------------------------------------%
 %
@@ -2125,6 +2138,22 @@ union_list_pass(HeadAssocList, TailAssocLists, CommonPred,
             LaterAssocLists = [HeadLaterAssocList | TailLaterAssocLists]
         )
     ).
+
+%---------------------------------------------------------------------------%
+
+compose_maps(MapAB, MapBC, MapAC) :-
+    map.to_sorted_assoc_list(MapAB, AssocListAB),
+    compose_maps_loop(MapBC, AssocListAB, [], RevAssocListAC),
+    map.from_rev_sorted_assoc_list(RevAssocListAC, MapAC).
+
+:- pred compose_maps_loop(map(B, C)::in, assoc_list(A, B)::in,
+    assoc_list(A, C)::in, assoc_list(A, C)::out) is det.
+
+compose_maps_loop(_MapBC, [], !RevAssocListAC).
+compose_maps_loop(MapBC, [A - B | ABs], !RevAssocListAC) :-
+    map.lookup(MapBC, B, C),
+    !:RevAssocListAC = [A - C | !.RevAssocListAC],
+    compose_maps_loop(MapBC, ABs, !RevAssocListAC).
 
 %---------------------------------------------------------------------------%
 

@@ -490,19 +490,21 @@ record_label_for_string(Label, TaggedConsId, !StrsLabels) :-
 
 generate_string_hash_lookup_switch(VarRval, LookupSwitchInfo,
         CanFail, EndLabel, StoreMap, !:MaybeEnd, Code, !:CI) :-
-    LookupSwitchInfo = lookup_switch_info(CaseConsts, OutVars, OutTypes,
-        Liveness, !:MaybeEnd, !:CI, CLD),
+    LookupSwitchInfo = lookup_switch_info(KeyToCaseIdMap, CaseConsts,
+        OutVars, OutTypes, Liveness, !:MaybeEnd, !:CI, CLD),
     (
-        CaseConsts = all_one_soln(CaseValueMap),
-        map.to_assoc_list(CaseValueMap, CaseValues),
-        generate_string_hash_simple_lookup_switch(VarRval, CaseValues,
+        CaseConsts = all_one_soln(CaseIdToValuesMap),
+        compose_maps(KeyToCaseIdMap, CaseIdToValuesMap, KeyToValuesMap),
+        map.to_assoc_list(KeyToValuesMap, KeyValuesAL),
+        generate_string_hash_simple_lookup_switch(VarRval, KeyValuesAL,
             OutVars, OutTypes, Liveness, CanFail, EndLabel, StoreMap,
             !MaybeEnd, Code, !CI, CLD)
     ;
-        CaseConsts = some_several_solns(CaseSolnMap,
+        CaseConsts = some_several_solns(CaseIdToSolnsMap,
             case_consts_several_llds(ResumeVars, GoalsMayModifyTrail)),
-        map.to_assoc_list(CaseSolnMap, CaseSolns),
-        generate_string_hash_several_soln_lookup_switch(VarRval, CaseSolns,
+        compose_maps(KeyToCaseIdMap, CaseIdToSolnsMap, KeyToSolnsMap),
+        map.to_assoc_list(KeyToSolnsMap, KeySolnsAL),
+        generate_string_hash_several_soln_lookup_switch(VarRval, KeySolnsAL,
             ResumeVars, GoalsMayModifyTrail, OutVars, OutTypes, Liveness,
             CanFail, EndLabel, StoreMap, !MaybeEnd, Code, !CI, CLD)
     ).
@@ -564,9 +566,9 @@ generate_string_hash_simple_lookup_switch(VarRval, CaseValues,
         SetBaseRegCode = empty
     ;
         OutVars = [_ | _],
-        % Since we release BaseReg only after the call to
-        % generate_branch_end, we must make sure that generate_branch_end
-        % won't want to overwrite BaseReg.
+        % Since we release BaseReg only after the call to generate_branch_end,
+        % we must make sure that generate_branch_end won't want to
+        % overwrite BaseReg.
         acquire_reg_not_in_storemap(StoreMap, reg_r, BaseReg, !CLD),
 
         % Generate code to look up each of the variables in OutVars
@@ -1050,19 +1052,21 @@ gen_string_binary_jump_slots([Str - Label | StrLabels],
 
 generate_string_binary_lookup_switch(VarRval, LookupSwitchInfo,
         CanFail, EndLabel, StoreMap, !:MaybeEnd, Code, !:CI) :-
-    LookupSwitchInfo = lookup_switch_info(CaseConsts, OutVars, OutTypes,
-        Liveness, !:MaybeEnd, !:CI, CLD),
+    LookupSwitchInfo = lookup_switch_info(KeyToCaseIdMap, CaseConsts,
+        OutVars, OutTypes, Liveness, !:MaybeEnd, !:CI, CLD),
     (
-        CaseConsts = all_one_soln(CaseValueMap),
-        map.to_assoc_list(CaseValueMap, CaseValues),
-        generate_string_binary_simple_lookup_switch(VarRval, CaseValues,
+        CaseConsts = all_one_soln(CaseIdToValuesMap),
+        compose_maps(KeyToCaseIdMap, CaseIdToValuesMap, KeyToValuesMap),
+        map.to_assoc_list(KeyToValuesMap, KeyValuesAL),
+        generate_string_binary_simple_lookup_switch(VarRval, KeyValuesAL,
             OutVars, OutTypes, Liveness, CanFail, EndLabel, StoreMap,
             !MaybeEnd, Code, !CI, CLD)
     ;
-        CaseConsts = some_several_solns(CaseSolnMap,
+        CaseConsts = some_several_solns(CaseIdToSolnsMap,
             case_consts_several_llds(ResumeVars, GoalsMayModifyTrail)),
-        map.to_assoc_list(CaseSolnMap, CaseSolns),
-        generate_string_binary_several_soln_lookup_switch(VarRval, CaseSolns,
+        compose_maps(KeyToCaseIdMap, CaseIdToSolnsMap, KeyToSolnsMap),
+        map.to_assoc_list(KeyToSolnsMap, KeySolnsAL),
+        generate_string_binary_several_soln_lookup_switch(VarRval, KeySolnsAL,
             ResumeVars, GoalsMayModifyTrail, OutVars, OutTypes, Liveness,
             CanFail, EndLabel, StoreMap, !MaybeEnd, Code, !CI, CLD)
     ).
@@ -1106,6 +1110,9 @@ generate_string_binary_simple_lookup_switch(VarRval, CaseValues,
     add_vector_static_cell(RowElemTypes, VectorRvals, VectorAddr, !CI),
     VectorAddrRval = const(llconst_data_addr(VectorAddr, no)),
 
+    generate_string_binary_switch_search(BinarySwitchInfo, VarRval,
+        VectorAddrRval, ArrayElemType, TableSize, NumColumns,
+        BinarySearchCode),
     (
         OutVars = [],
         SetBaseRegCode = empty
@@ -1117,9 +1124,11 @@ generate_string_binary_simple_lookup_switch(VarRval, CaseValues,
         acquire_reg_not_in_storemap(StoreMap, reg_r, BaseReg, !CLD),
 
         % Generate code to look up each of the variables in OutVars
-        % in its slot in the table row MidReg. Most of the change is done
-        % by generate_offset_assigns associating each var with the relevant
-        % field in !CLD.
+        % in its slot in the table row MidReg.
+        %
+        % Here, we just set up the pointer to the right row; the code that
+        % picks up the values of OutVars from that row is generated by
+        % generate_offset_assigns.
         MidReg = BinarySwitchInfo ^ sbsi_mid_reg,
         SetBaseRegCode = singleton(
             llds_instr(
@@ -1133,10 +1142,6 @@ generate_string_binary_simple_lookup_switch(VarRval, CaseValues,
         ),
         generate_offset_assigns(OutVars, 1, BaseReg, !.CI, !CLD)
     ),
-
-    generate_string_binary_switch_search(BinarySwitchInfo,
-        VarRval, VectorAddrRval, ArrayElemType, TableSize, NumColumns,
-        BinarySearchCode),
 
     % We keep track of what variables are supposed to be live at the end
     % of cases. We have to do this explicitly because generating a `fail'
@@ -1239,6 +1244,9 @@ generate_string_binary_several_soln_lookup_switch(VarRval, CaseSolns,
     % we must make sure that generate_branch_end won't want to overwrite
     % BaseReg.
     acquire_reg_not_in_storemap(StoreMap, reg_r, BaseReg, !CLD),
+    generate_string_binary_switch_search(BinarySwitchInfo, VarRval,
+        MainVectorAddrRval, ArrayElemType, MainTableSize, MainNumColumns,
+        BinarySearchCode),
     MidReg = BinarySwitchInfo ^ sbsi_mid_reg,
     SetBaseRegCode = singleton(
         llds_instr(
@@ -1250,9 +1258,6 @@ generate_string_binary_several_soln_lookup_switch(VarRval, CaseSolns,
                             const(llconst_int(MainNumColumns)))))),
             "set up base reg")
     ),
-    generate_string_binary_switch_search(BinarySwitchInfo,
-        VarRval, MainVectorAddrRval, ArrayElemType,
-        MainTableSize, MainNumColumns, BinarySearchCode),
 
     generate_code_for_all_kinds(DescendingSortedKinds, 1, OutVars, ResumeVars,
         EndLabel, StoreMap, Liveness, AddTrailOps, BaseReg,
@@ -1376,6 +1381,8 @@ generate_string_binary_switch_search(Info, VarRval, TableAddrRval,
         from_list([
             llds_instr(assign(LoReg, const(llconst_int(0))), ""),
             llds_instr(assign(HiReg, const(llconst_int(MaxIndex))), ""),
+
+% LoopStartLabel
             llds_instr(label(LoopStartLabel),
                 "begin table search loop, nofulljump"),
             llds_instr(
@@ -1398,7 +1405,6 @@ generate_string_binary_switch_search(Info, VarRval, TableAddrRval,
                                 lval(MidReg),
                                 const(llconst_int(NumColumns)))))),
                 "compare with the middle element"),
-
             llds_instr(
                 if_val(
                     binop(int_ge(int_type_int),
@@ -1412,8 +1418,9 @@ generate_string_binary_switch_search(Info, VarRval, TableAddrRval,
                 ""),
             llds_instr(goto(code_label(LoopStartLabel)),
                 "go back to search the remaining lo half"),
-            llds_instr(label(GtEqLabel), "nofulljump"),
 
+% GtEqLabel
+            llds_instr(label(GtEqLabel), "nofulljump"),
             llds_instr(
                 if_val(
                     binop(int_le(int_type_int),
@@ -1427,10 +1434,13 @@ generate_string_binary_switch_search(Info, VarRval, TableAddrRval,
                 ""),
             llds_instr(goto(code_label(LoopStartLabel)),
                 "go back to search the remaining hi half"),
+
+% FailLabel
             llds_instr(label(FailLabel),
                 "handle the failure of the table search")
         ]) ++
         FailCode ++
+% EqLabel
         singleton(
             llds_instr(label(EqLabel), "we found the key")
         ).
