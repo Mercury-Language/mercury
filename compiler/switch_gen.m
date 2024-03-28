@@ -294,9 +294,9 @@ generate_smart_string_switch(Globals, CodeModel, CanFail, FilteredCanFail,
         SwitchVarName, SwitchVarType, SwitchVarRval, NumConsIds,
         TaggedCases, FilteredTaggedCases, GoalInfo, EndLabel, MaybeEnd,
         SwitchCode, !CI, !.CLD) :-
+    goal_info_get_store_map(GoalInfo, StoreMap),
     is_lookup_switch(get_string_tag, FilteredTaggedCases, GoalInfo, StoreMap,
         !.CI, !.CLD, MaybeLookupSwitchInfo),
-    goal_info_get_store_map(GoalInfo, StoreMap),
     globals.get_opt_tuple(Globals, OptTuple),
     ( if
         % For now, string trie switches have been implemented only for C,
@@ -307,8 +307,9 @@ generate_smart_string_switch(Globals, CodeModel, CanFail, FilteredCanFail,
         % Unlike ml_switch_gen.m, we don't need to check whether
         % we are targeting C.
         internal_string_encoding = utf8,  % host is C
-        StringTrieSwitchSize = OptTuple ^ ot_string_hash_switch_size,
+        StringTrieSwitchSize = OptTuple ^ ot_string_trie_switch_size,
         NumConsIds >= StringTrieSwitchSize,
+        semidet_fail,
         MaybeLookupSwitchInfo = no  % yes is not yet implemented
     then
         generate_string_trie_switch(TaggedCases, SwitchVarRval,
