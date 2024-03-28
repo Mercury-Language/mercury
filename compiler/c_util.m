@@ -325,6 +325,7 @@
 :- import_module parse_tree.prog_foreign.
 
 :- import_module bool.
+:- import_module cord.
 :- import_module int.
 :- import_module int32.
 :- import_module int64.
@@ -472,13 +473,14 @@ can_print_without_quoting(_, no, !IO).
 %
 
 quote_string_c(String) = QuotedString :-
-    string.foldl(quote_one_char_acc_c, String, ['"'], RevQuotedChars0),
-    RevQuotedChars = ['"' | RevQuotedChars0],
-    string.from_rev_char_list(RevQuotedChars, QuotedString).
+    string.foldl(quote_one_char_acc_c, String,
+        cord.singleton('"'), QuotedCharCord1),
+    cord.snoc('"', QuotedCharCord1, QuotedCharCord),
+    string.from_char_list(cord.list(QuotedCharCord), QuotedString).
 
 prepare_to_quote_string_c(String) = QuotedString :-
-    string.foldl(quote_one_char_acc_c, String, [], RevQuotedChars),
-    string.from_rev_char_list(RevQuotedChars, QuotedString).
+    string.foldl(quote_one_char_acc_c, String, cord.init, QuotedCharCord),
+    string.from_char_list(cord.list(QuotedCharCord), QuotedString).
 
 %---------------------%
 
@@ -593,27 +595,27 @@ output_to_be_quoted_multi_string_csharp(Stream, [Str | Strs], !IO) :-
 %---------------------%
 
 quote_char_c(Char) = QuotedCharStr :-
-    quote_one_char_acc_c(Char, [''''], RevQuotedCharStr0),
-    RevQuotedCharStr = ['''' | RevQuotedCharStr0],
-    string.from_rev_char_list(RevQuotedCharStr, QuotedCharStr).
+    quote_one_char_acc_c(Char, cord.singleton(''''), QuotedCharCord1),
+    cord.snoc('''', QuotedCharCord1, QuotedCharCord),
+    string.from_char_list(cord.list(QuotedCharCord), QuotedCharStr).
 
 %---------------------%
 
 prepare_to_quote_char_c(Char) = QuotedCharStr :-
-    quote_one_char_acc_c(Char, [], RevQuotedCharStr),
-    string.from_rev_char_list(RevQuotedCharStr, QuotedCharStr).
+    quote_one_char_acc_c(Char, cord.init, QuotedCharCord),
+    string.from_char_list(cord.list(QuotedCharCord), QuotedCharStr).
 
 :- func prepare_to_quote_char_java(char) = string.
 
 prepare_to_quote_char_java(Char) = QuotedCharStr :-
-    quote_one_char_acc_java(Char, [], RevQuotedCharStr),
-    string.from_rev_char_list(RevQuotedCharStr, QuotedCharStr).
+    quote_one_char_acc_java(Char, cord.init, QuotedCharCord),
+    string.from_char_list(cord.list(QuotedCharCord), QuotedCharStr).
 
 :- func prepare_to_quote_char_csharp(char) = string.
 
 prepare_to_quote_char_csharp(Char) = QuotedCharStr :-
-    quote_one_char_acc_csharp(Char, [], RevQuotedCharStr),
-    string.from_rev_char_list(RevQuotedCharStr, QuotedCharStr).
+    quote_one_char_acc_csharp(Char, cord.init, QuotedCharCord),
+    string.from_char_list(cord.list(QuotedCharCord), QuotedCharStr).
 
 %---------------------%
 
@@ -651,124 +653,139 @@ output_to_be_quoted_char_csharp(Stream, Char, !IO) :-
 
 %---------------------%
 
-:- pred quote_one_char_acc_c(char::in, list(char)::in, list(char)::out) is det.
+:- pred quote_one_char_acc_c(char::in, cord(char)::in, cord(char)::out) is det.
 
-quote_one_char_acc_c(Char, RevChars0, RevChars) :-
-    ( if escape_special_char_c(Char, RevChars0, RevChars1) then
-        RevChars = RevChars1
+quote_one_char_acc_c(Char, !CharsCord) :-
+    ( if escape_special_char_c(Char, !CharsCord) then
+        true
     else if is_source_char_c_java_csharp(Char) then
-        RevChars = [Char | RevChars0]
+        cord.snoc(Char, !CharsCord)
     else
         char.to_int(Char, CharInt),
         ( if CharInt = 0 then
-            RevChars = ['0', '\\' | RevChars0]
+            cord.snoc('\\', !CharsCord),
+            cord.snoc('0', !CharsCord)
         else if CharInt >= 0x80 then
             ( if char.to_utf8(Char, CodeUnits) then
                 list.map(octal_escape_any_int, CodeUnits, EscapeCharss),
                 list.condense(EscapeCharss, EscapeChars),
-                reverse_prepend(EscapeChars, RevChars0, RevChars)
+                !:CharsCord = !.CharsCord ++ from_list(EscapeChars)
             else
                 unexpected($pred, "invalid Unicode code point")
             )
         else
             octal_escape_any_char(Char, EscapeChars),
-            reverse_prepend(EscapeChars, RevChars0, RevChars)
+            !:CharsCord = !.CharsCord ++ from_list(EscapeChars)
         )
     ).
 
-:- pred quote_one_char_acc_java(char::in, list(char)::in, list(char)::out)
+:- pred quote_one_char_acc_java(char::in, cord(char)::in, cord(char)::out)
     is det.
 
-quote_one_char_acc_java(Char, RevChars0, RevChars) :-
-    ( if escape_special_char_java(Char, RevChars0, RevChars1) then
-        RevChars = RevChars1
+quote_one_char_acc_java(Char, !CharsCord) :-
+    ( if escape_special_char_java(Char, !CharsCord) then
+        true
     else if is_source_char_c_java_csharp(Char) then
-        RevChars = [Char | RevChars0]
+        cord.snoc(Char, !CharsCord)
     else
         char.to_int(Char, CharInt),
         ( if CharInt = 0 then
-            RevChars = ['0', '\\' | RevChars0]
+            cord.snoc('\\', !CharsCord),
+            cord.snoc('0', !CharsCord)
         else if CharInt >= 0x80 then
-            RevChars = [Char | RevChars0]
+            cord.snoc(Char, !CharsCord)
         else
             octal_escape_any_char(Char, EscapeChars),
-            reverse_prepend(EscapeChars, RevChars0, RevChars)
+            !:CharsCord = !.CharsCord ++ from_list(EscapeChars)
         )
     ).
 
-:- pred quote_one_char_acc_csharp(char::in, list(char)::in, list(char)::out)
+:- pred quote_one_char_acc_csharp(char::in, cord(char)::in, cord(char)::out)
     is det.
 
-quote_one_char_acc_csharp(Char, RevChars0, RevChars) :-
-    ( if escape_special_char_csharp(Char, RevChars0, RevChars1) then
-        RevChars = RevChars1
+quote_one_char_acc_csharp(Char, !CharsCord) :-
+    ( if escape_special_char_csharp(Char, !CharsCord) then
+        true
     else if is_source_char_c_java_csharp(Char) then
-        RevChars = [Char | RevChars0]
+        cord.snoc(Char, !CharsCord)
     else
         char.to_int(Char, CharInt),
         ( if CharInt = 0 then
-            RevChars = ['0', '\\' | RevChars0]
+            cord.snoc('\\', !CharsCord),
+            cord.snoc('0', !CharsCord)
         else if CharInt >= 0x80 then
-            RevChars = [Char | RevChars0]
+            cord.snoc(Char, !CharsCord)
         else
             unicode_escape_any_char(CharInt, EscapeChars),
-            reverse_prepend(EscapeChars, RevChars0, RevChars)
+            !:CharsCord = !.CharsCord ++ from_list(EscapeChars)
         )
     ).
 
 %---------------------%
 
-:- pred escape_special_char_c(char::in, list(char)::in, list(char)::out)
+:- pred escape_special_char_c(char::in, cord(char)::in, cord(char)::out)
     is semidet.
 :- pragma inline(pred(escape_special_char_c/3)).
 
-escape_special_char_c(Char, RevChars0, RevChars) :-
-    ( Char = '"',    RevChars = ['"',  '\\'  | RevChars0]
-    ; Char = '''',   RevChars = ['''', '\\'  | RevChars0]
-    ; Char = ('\\'), RevChars = ['\\', '\\'  | RevChars0]
-    ; Char = '\n',   RevChars = ['n',  '\\'  | RevChars0]
-    ; Char = '\t',   RevChars = ['t',  '\\'  | RevChars0]
-    ; Char = '\b',   RevChars = ['b',  '\\'  | RevChars0]
-    ; Char = '\a',   RevChars = ['a',  '\\'  | RevChars0]
-    ; Char = '\v',   RevChars = ['v',  '\\'  | RevChars0]
-    ; Char = '\r',   RevChars = ['r',  '\\'  | RevChars0]
-    ; Char = '\f',   RevChars = ['f',  '\\'  | RevChars0]
-    ; Char = '?',    RevChars = ['?',  '\\'  | RevChars0]   % Avoid trigraphs.
-    ).
+escape_special_char_c(Char, !CharsCord) :-
+    ( Char = '"',    EscapeChar = '"'
+    ; Char = '''',   EscapeChar = ''''
+    ; Char = ('\\'), EscapeChar = ('\\')
+    ; Char = '\n',   EscapeChar = 'n'
+    ; Char = '\t',   EscapeChar = 't'
+    ; Char = '\b',   EscapeChar = 'b'
+    ; Char = '\a',   EscapeChar = 'a'
+    ; Char = '\v',   EscapeChar = 'v'
+    ; Char = '\r',   EscapeChar = 'r'
+    ; Char = '\f',   EscapeChar = 'f'
+    ; Char = '?',    EscapeChar = '?'   % Avoid trigraphs.
+    ),
+    cord.snoc('\\', !CharsCord),
+    cord.snoc(EscapeChar, !CharsCord).
 
-:- pred escape_special_char_java(char::in, list(char)::in, list(char)::out)
+:- pred escape_special_char_java(char::in, cord(char)::in, cord(char)::out)
     is semidet.
 :- pragma inline(pred(escape_special_char_java/3)).
 
-escape_special_char_java(Char, RevChars0, RevChars) :-
-    ( Char = '"',    RevChars = ['"',  '\\'  | RevChars0]
-    ; Char = '''',   RevChars = ['''', '\\'  | RevChars0]
-    ; Char = ('\\'), RevChars = ['\\', '\\'  | RevChars0]
-    ; Char = '\n',   RevChars = ['n',  '\\'  | RevChars0]
-    ; Char = '\t',   RevChars = ['t',  '\\'  | RevChars0]
-    ; Char = '\b',   RevChars = ['b',  '\\'  | RevChars0]
-    ; Char = '\a',   RevChars = ['7',  '0', '0', '\\' | RevChars0]
-    ; Char = '\v',   RevChars = ['3',  '1', '0', '\\' | RevChars0]
-    ; Char = '\r',   RevChars = ['r',  '\\'  | RevChars0]
-    ; Char = '\f',   RevChars = ['f',  '\\'  | RevChars0]
+escape_special_char_java(Char, !CharsCord) :-
+    (
+        ( Char = '"',    EscapeChar = '"'
+        ; Char = '''',   EscapeChar = ''''
+        ; Char = ('\\'), EscapeChar = ('\\')
+        ; Char = '\n',   EscapeChar = 'n'
+        ; Char = '\t',   EscapeChar = 't'
+        ; Char = '\b',   EscapeChar = 'b'
+        ; Char = '\r',   EscapeChar = 'r'
+        ; Char = '\f',   EscapeChar = 'f'
+        ),
+        cord.snoc('\\', !CharsCord),
+        cord.snoc(EscapeChar, !CharsCord)
+    ;
+        Char = '\a',
+        !:CharsCord = !.CharsCord ++ from_list(['\\', '0', '0', '7'])
+    ;
+        Char = '\v',
+        !:CharsCord = !.CharsCord ++ from_list(['\\', '0', '1', '3'])
     ).
 
-:- pred escape_special_char_csharp(char::in, list(char)::in, list(char)::out)
+:- pred escape_special_char_csharp(char::in, cord(char)::in, cord(char)::out)
     is semidet.
 :- pragma inline(pred(escape_special_char_csharp/3)).
 
-escape_special_char_csharp(Char, RevChars0, RevChars) :-
-    ( Char = '"',    RevChars = ['"',  '\\'  | RevChars0]
-    ; Char = '''',   RevChars = ['''', '\\'  | RevChars0]
-    ; Char = ('\\'), RevChars = ['\\', '\\'  | RevChars0]
-    ; Char = '\n',   RevChars = ['n',  '\\'  | RevChars0]
-    ; Char = '\t',   RevChars = ['t',  '\\'  | RevChars0]
-    ; Char = '\b',   RevChars = ['b',  '\\'  | RevChars0]
-    ; Char = '\a',   RevChars = ['a',  '\\'  | RevChars0]
-    ; Char = '\v',   RevChars = ['v',  '\\'  | RevChars0]
-    ; Char = '\r',   RevChars = ['r',  '\\'  | RevChars0]
-    ; Char = '\f',   RevChars = ['f',  '\\'  | RevChars0]
-    ).
+escape_special_char_csharp(Char, !CharsCord) :-
+    ( Char = '"',    EscapeChar = '"'
+    ; Char = '''',   EscapeChar = ''''
+    ; Char = ('\\'), EscapeChar = ('\\')
+    ; Char = '\n',   EscapeChar = 'n'
+    ; Char = '\t',   EscapeChar = 't'
+    ; Char = '\b',   EscapeChar = 'b'
+    ; Char = '\a',   EscapeChar = 'a'
+    ; Char = '\v',   EscapeChar = 'v'
+    ; Char = '\r',   EscapeChar = 'r'
+    ; Char = '\f',   EscapeChar = 'f'
+    ),
+    cord.snoc('\\', !CharsCord),
+    cord.snoc(EscapeChar, !CharsCord).
 
 %---------------------%
 
