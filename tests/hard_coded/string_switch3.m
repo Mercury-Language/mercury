@@ -30,23 +30,26 @@
 :- import_module string.
 
 main(!IO) :-
-    Keys =
-        ["a", "b", "c",
+    TestStrs = [
+        "a", "b", "c",
         "aa", "ab", "ac",
         "ba", "bb", "bc",
-        "ca", "cb", "cc"],
+        "ca", "cb", "cc",
+        "xxx", "xxxxxxΓ", "xxxxxxx",
+        "Γ", "Δ", "Θ", "Σ", "Σζ"
+    ],
 
     % Test jump tables.
-    list.foldl(test_jump, Keys, !IO),
+    list.foldl(test_jump, TestStrs, !IO),
 
     % Test semidet and det lookup tables.
-    list.foldl(test_one, Keys, !IO),
-    list.foldl(test_one_known, Keys, !IO),
+    list.foldl(test_one, TestStrs, !IO),
+    list.foldl(test_one_known, TestStrs, !IO),
 
     % Test nondet and multi lookup tables.
-    list.foldl(test_several, Keys, !IO),
-    list.foldl(test_several_known, Keys, !IO),
-    list.foldl(test_several_nested, Keys, !IO).
+    list.foldl(test_several, TestStrs, !IO),
+    list.foldl(test_several_known, TestStrs, !IO),
+    list.foldl(test_several_nested, TestStrs, !IO).
 
 %---------------------------------------------------------------------------%
 
@@ -142,12 +145,35 @@ jump(S, N0, N) :-
     ;
         S = "xyx",
         N = 24
+    ;
+        % The next two arms test the treatment of sticks by trie switches.
+        % The stick ends in the *middle* of the last code point, since
+        %
+        % - the last code point of each string has two UTF-8 code units, and
+        % - the first of those code units is the same in the two arms.
+        S = "xxxxxxΓ",
+        N = 25
+    ;
+        S = "xxxxxxΔ",
+        N = 26
+    ;
+        S = "Γ",    % greek capital gamma, UC+0393
+        N = 27
+    ;
+        S = "Δ",    % greek capital delta, UC+0394
+        N = 28
+    ;
+        ( S = "Θ"   % greek capital theta, UC+0398
+        ; S = "Σ"   % greek capital sigma, UC+03A3
+        ),
+        N = 29
     ).
 
 %---------------------------------------------------------------------------%
 
 :- inst aa_bb
-    --->    "aa" ; "bb".
+    --->    "aa"
+    ;       "bb".
 
 :- pred one(string, int).
 :- mode one(in(aa_bb), out) is det.
@@ -188,6 +214,23 @@ one(S, N) :-
     ;
         S = "xyx",
         N = 24
+    ;
+        S = "xxxxxxΓ",
+        N = 25
+    ;
+        S = "xxxxxxΔ",
+        N = 26
+    ;
+        S = "Γ",    % greek capital gamma, UC+0393
+        N = 27
+    ;
+        S = "Δ",    % greek capital delta, UC+0394
+        N = 28
+    ;
+        ( S = "Θ"   % greek capital theta, UC+0398
+        ; S = "Σ"   % greek capital sigma, UC+03A3
+        ),
+        N = 29
     ).
 
 %---------------------------------------------------------------------------%
@@ -253,6 +296,27 @@ several(S, N) :-
         ; N = 25
         ; N = 26
         )
+    ;
+        S = "xxxxxxΓ",
+        N = 25
+    ;
+        S = "xxxxxxΔ",
+        ( N = 26
+        ; N = 27
+        )
+    ;
+        S = "Γ",    % greek capital gamma, UC+0393
+        N = 27
+    ;
+        S = "Δ",    % greek capital delta, UC+0394
+        N = 28
+    ;
+        ( S = "Θ"   % greek capital theta, UC+0398
+        ; S = "Σ"   % greek capital sigma, UC+03A3
+        ),
+        ( N = 29
+        ; N = 30
+        )
     ).
 
 %---------------------------------------------------------------------------%
@@ -308,6 +372,23 @@ several_nested(S0, R) :-
         ; N = 25
         ; N = 26
         )
+    ;
+        S = "axxxxxxΓ",
+        N = 25
+    ;
+        S = "xxxxxxΔ",
+        N = 26
+    ;
+        S = "aΓ",   % greek capital gamma, UC+0393
+        N = 27
+    ;
+        S = "Δ",    % greek capital delta, UC+0394
+        N = 28
+    ;
+        ( S = "aΘ"  % greek capital theta, UC+0398
+        ; S = "Σ"   % greek capital sigma, UC+03A3
+        ),
+        N = 29
     ),
     (
         S0 = "a",
@@ -352,5 +433,22 @@ several_nested(S0, R) :-
         ; M = 25
         ; M = 26
         )
+    ;
+        S0 = "axxxxxxΓ",
+        M = 25
+    ;
+        S0 = "xxxxxxΔ",
+        M = 26
+    ;
+        S0 = "Γ",    % greek capital gamma, UC+0393
+        M = 27
+    ;
+        S0 = "Δ",    % greek capital delta, UC+0394
+        M = 28
+    ;
+        ( S0 = "xΘ"  % greek capital theta, UC+0398
+        ; S0 = "Σ"   % greek capital sigma, UC+03A3
+        ),
+        M = 29
     ),
     R = 1000 * N + M.

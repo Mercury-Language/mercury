@@ -10,6 +10,14 @@ jump bc failed
 jump ca -> 13
 jump cb failed
 jump cc failed
+jump xxx -> 21
+jump xxxxxxΓ -> 25
+jump xxxxxxx failed
+jump Γ -> 27
+jump Δ -> 28
+jump Θ -> 29
+jump Σ -> 29
+jump Σζ failed
 one a -> 1
 one b -> 2
 one c failed
@@ -22,6 +30,14 @@ one bc failed
 one ca -> 13
 one cb failed
 one cc failed
+one xxx -> 21
+one xxxxxxΓ -> 25
+one xxxxxxx failed
+one Γ -> 27
+one Δ -> 28
+one Θ -> 29
+one Σ -> 29
+one Σζ failed
 one known a failed
 one known b failed
 one known c failed
@@ -34,6 +50,14 @@ one known bc failed
 one known ca failed
 one known cb failed
 one known cc failed
+one known xxx failed
+one known xxxxxxΓ failed
+one known xxxxxxx failed
+one known Γ failed
+one known Δ failed
+one known Θ failed
+one known Σ failed
+one known Σζ failed
 several a -> [1]
 several b -> [2]
 several c -> []
@@ -46,6 +70,14 @@ several bc -> []
 several ca -> [16]
 several cb -> [16]
 several cc -> []
+several xxx -> [21]
+several xxxxxxΓ -> [25]
+several xxxxxxx -> []
+several Γ -> [27]
+several Δ -> [28]
+several Θ -> [29, 30]
+several Σ -> [29, 30]
+several Σζ -> []
 several known a -> []
 several known b -> []
 several known c -> []
@@ -58,6 +90,14 @@ several known bc -> []
 several known ca -> []
 several known cb -> []
 several known cc -> []
+several known xxx -> []
+several known xxxxxxΓ -> []
+several known xxxxxxx -> []
+several known Γ -> []
+several known Δ -> []
+several known Θ -> []
+several known Σ -> []
+several known Σζ -> []
 several nested a -> [1001, 11001, 12001]
 several nested b -> [2002, 11002, 12002]
 several nested c -> []
@@ -70,3 +110,11 @@ several nested bc -> []
 several nested ca -> [16016]
 several nested cb -> [16016]
 several nested cc -> []
+several nested xxx -> [21021]
+several nested xxxxxxΓ -> []
+several nested xxxxxxx -> []
+several nested Γ -> [27027]
+several nested Δ -> [28028]
+several nested Θ -> []
+several nested Σ -> [29029]
+several nested Σζ -> []
