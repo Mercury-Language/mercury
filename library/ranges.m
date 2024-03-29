@@ -34,70 +34,71 @@
     %
 :- func empty = ranges.
 
-    % is_empty(Set):
-    % Succeeds iff Set is the empty set.
+    % is_empty(Set) is true iff Set is the an empty set.
     %
 :- pred is_empty(ranges::in) is semidet.
 
-    % is_non_empty(Set):
-    % Succeeds iff Set is not the empty set.
+    % is_non_empty(Set) is true iff Set is not an empty set.
     %
 :- pred is_non_empty(ranges::in) is semidet.
 
     % universe returns the largest set that can be handled by this module.
-    % This is the set of integers (min_int+1)..max_int. Note that min_int
+    % This is the set of integers (min_int + 1)..max_int. Note that min_int
     % cannot be represented in any set.
     %
 :- func universe = ranges.
 
-    % range(Min, Max) is the set of all integers from Min to Max inclusive.
+    % range(Lo, Hi) is the set of all integers from Lo to Hi inclusive.
     %
 :- func range(int, int) = ranges.
 
-    % split(D, L, H, Rest) is true iff L..H is the first range
-    % in D, and Rest is the domain D with this range removed.
+    % split(Set, Lo, Hi, Rest) is true iff Lo..Hi is the first range
+    % in Set, and Rest is the set Set with this range removed.
     %
 :- pred split(ranges::in, int::out, int::out, ranges::out) is semidet.
 
-    % is_contiguous(R, L, H) <=> split(R, L, H, empty):
-    % Test if the set is a contiguous set of integers and return the endpoints
-    % of this set if this is the case.
+    % is_contiguous(Set, Lo, Hi) is true iff Set is a contiguous set
+    % of integers with endpoints Lo and Hi.
     %
 :- pred is_contiguous(ranges::in, int::out, int::out) is semidet.
 
-    % Add an integer to the set.
+    % insert(X, Set0, Set) is true iff Set is the union of Set0 and the set
+    % containing only X.
     %
 :- func insert(int, ranges) = ranges.
 :- pred insert(int::in, ranges::in, ranges::out) is det.
 
-    % Delete an integer from the set.
+    % delete(X, Set0, Set) is true iff Set is the relative
+    % complement of Set0 and the set containing only X, i.e.
+    % if Set is the set which contains all the elements of Set0
+    % except X.
     %
 :- func delete(int, ranges) = ranges.
 
-    % Return the number of distinct integers which are in the ranges
+    % Return the number of distinct integers that are in the set
     % (as opposed to the number of ranges).
     %
 :- func size(ranges) = int.
 
-    % Returns the median value of the set. In case of a tie, returns
-    % the lower of the two options.
+    % Returns the median value of the set. In the case of a tie, returns the
+    % lower of the two options.
     %
 :- func median(ranges) = int.
 
-    % least(A, N) is true iff N is the least element of A.
+    % least(Set, X) is true iff X is the least element of Set.
     %
 :- pred least(ranges::in, int::out) is semidet.
 
-    % greatest(A, N) is true iff N is the greatest element of A.
+    % greatest(Set, X) is true iff X is the greatest element of Set.
     %
 :- pred greatest(ranges::in, int::out) is semidet.
 
-    % next(A, N0, N) is true iff N is the least element of A greater
-    % than N0.
+    % next(Set, X0, X) is true iff X is the least element of Set greater
+    % than X0.
     %
 :- pred next(ranges::in, int::in, int::out) is semidet.
 
-    % Test set membership.
+    % member(X, Set) is true iff X is a member of Set.
     %
 :- pred member(int::in, ranges::in) is semidet.
 
@@ -105,69 +106,70 @@
     %
 :- pred range_member(int::out, int::out, ranges::in) is nondet.
 
-    % Nondeterministically produce each element.
+    % Nondeterministically produce each element in the set.
     %
 :- pred nondet_member(int::out, ranges::in) is nondet.
 
-    % search_range(N, Set, Lo, Hi):
-    % If N is in Set, then succeed, setting Lo and Hi to the endpoints
+    % search_range(X, Set, Lo, Hi):
+    %
+    % If X is in Set, then succeed, setting Lo and Hi to the endpoints
     % of the range in which it is contained.
     %
 :- pred search_range(int::in, ranges::in, int::out, int::out) is semidet.
 
-    % subset(A, B) is true iff every value in A is in B.
+    % subset(SetA, SetB) is true iff every value in SetA is in SetB.
     %
 :- pred subset(ranges::in, ranges::in) is semidet.
 
-    % disjoint(A, B) is true iff A and B have no values in common.
+    % disjoint(SetA, SetB) is true iff SetA and SetB have no values in common.
     %
 :- pred disjoint(ranges::in, ranges::in) is semidet.
 
-    % union(A, B) contains all the integers in either A or B.
+    % union(SetA, SetB) contains all the integers in either SetA or SetB.
     %
 :- func union(ranges, ranges) = ranges.
 
-    % intersection(A, B) contains all the integers in both A and B.
+    % intersection(SetA, SetB) contains all the integers in both SetA and SetB.
     %
 :- func intersection(ranges, ranges) = ranges.
 
-    % difference(A, B) contains all the integers which are in A but
-    % not in B.
+    % difference(SetA, SetB) contains all the integers which are in SetA but
+    % not in SetB.
     %
 :- func difference(ranges, ranges) = ranges.
 
-    % restrict_min(Min, A) contains all integers in A which are greater
+    % restrict_min(Min, Set) contains all integers in Set which are greater
     % than or equal to Min.
     %
 :- func restrict_min(int, ranges) = ranges.
 
-    % restrict_max(Max, A) contains all integers in A which are less than
+    % restrict_max(Max, Set) contains all integers in Set which are less than
     % or equal to Max.
     %
 :- func restrict_max(int, ranges) = ranges.
 
-    % restrict_range(Min, Max, A) contains all integers I in A which
-    % satisfy Min =< I =< Max.
+    % restrict_range(Min, Max, Set) contains all integers X in Set which
+    % satisfy Min =< X =< Max.
     %
 :- func restrict_range(int, int, ranges) = ranges.
 
-    % prune_to_next_non_member(A0, A, N0, N):
+    % prune_to_next_non_member(Set0, Set, X0, X):
     %
-    % N is the smallest integer larger than or equal to N0 which is not
-    % in A0. A is the set A0 restricted to values greater than N.
+    % X is the smallest integer larger than or equal to X0 that is not
+    % in Set0. Set is the set Set0 restricted to values greater than X.
     %
 :- pred prune_to_next_non_member(ranges::in, ranges::out,
     int::in, int::out) is det.
 
-    % prune_to_prev_non_member(A0, A, N0, N):
+    % prune_to_prev_non_member(Set0, Set, X0, X):
     %
-    % N is the largest integer smaller than or equal to N0 which is not
-    % in A0. A is the set A0 restricted to values less than N.
+    % X is the largest integer smaller than or equal to X0 which is not
+    % in Set0. Set is the set Set0 restricted to values less than X.
     %
 :- pred prune_to_prev_non_member(ranges::in, ranges::out,
     int::in, int::out) is det.
 
-    % Negate all numbers:  A in R  <=>  -A in negate(R)
+    % Negate all numbers: X in Set <=> -X in negate(Set)
     %
 :- func negate(ranges) = ranges.
 
@@ -175,15 +177,15 @@
     %
 :- func plus(ranges, ranges) = ranges.
 
-    % Shift a range by const C.
+    % Shift a range by a constant C.
     %
 :- func shift(ranges, int) = ranges.
 
-    % Dilate a range by const C.
+    % Dilate a range by a constant C.
     %
 :- func dilation(ranges, int) = ranges.
 
-    % Contract a range by const C.
+    % Contract a range by a constant C.
     %
 :- func contraction(ranges, int) = ranges.
 
