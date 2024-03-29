@@ -1898,7 +1898,7 @@ to_char_list(S) = Cs :-
     to_char_list(S, Cs).
 
 to_char_list(Str, CharList) :-
-    do_to_char_list_loop(Str, length(Str), [], CharList).
+    do_to_char_list_loop(Str, string.count_code_units(Str), [], CharList).
 
 :- pred do_to_char_list_loop(string::in, int::in,
     list(char)::in, list(char)::out) is det.
@@ -2252,7 +2252,8 @@ utf8_to_utf16_code_units_rev_loop(String, Index, !StrUtf16CodeUnits) :-
                 unexpected($pred, "char.to_utf16 failed")
             )
         ),
-        utf8_to_utf16_code_units_rev_loop(String, PrevIndex, !StrUtf16CodeUnits)
+        utf8_to_utf16_code_units_rev_loop(String, PrevIndex,
+            !StrUtf16CodeUnits)
     else
         true
     ).
@@ -2550,7 +2551,7 @@ duplicate_char(Char, Count, String) :-
 :- pragma inline(pred(unsafe_prev_index_repl_2/5)).
 
 index(Str, Index, Char) :-
-    Len = length(Str),
+    Len = string.count_code_units(Str),
     ( if string_index_is_in_bounds(Index, Len) then
         unsafe_index(Str, Index, Char)
     else
@@ -2619,7 +2620,7 @@ index_next(Str, Index, NextIndex, Char) :-
     index_next_repl(Str, Index, NextIndex, Char, _MaybeReplaced).
 
 index_next_repl(Str, Index, NextIndex, Char, MaybeReplaced) :-
-    Len = length(Str),
+    Len = string.count_code_units(Str),
     ( if string_index_is_in_bounds(Index, Len) then
         unsafe_index_next_repl(Str, Index, NextIndex, Char, MaybeReplaced)
     else
@@ -2713,7 +2714,7 @@ prev_index(Str, Index, PrevIndex, Char) :-
     prev_index_repl(Str, Index, PrevIndex, Char, _MaybeReplaced).
 
 prev_index_repl(Str, Index, PrevIndex, Char, MaybeReplaced) :-
-    Len = length(Str),
+    Len = string.count_code_units(Str),
     ( if string_index_is_in_bounds(Index - 1, Len) then
         unsafe_prev_index_repl(Str, Index, PrevIndex, Char, MaybeReplaced)
     else
@@ -2880,7 +2881,7 @@ set_char(Char, Index, Str0, Str) :-
     then
         unexpected($pred, "surrogate code point")
     else
-        Len0 = length(Str0),
+        Len0 = string.count_code_units(Str0),
         ( if string_index_is_in_bounds(Index, Len0) then
             unsafe_set_char_copy_string(Char, Index, Len0, Str0, Str)
         else
@@ -2912,7 +2913,7 @@ unsafe_set_char(Char, Index, Str0, Str) :-
     then
         unexpected($pred, "surrogate code point")
     else
-        Len0 = length(Str0),
+        Len0 = string.count_code_units(Str0),
         unsafe_set_char_copy_string(Char, Index, Len0, Str0, Str)
     ).
 
@@ -3596,8 +3597,8 @@ contains_char_loop(Str, Char, I) :-
 %---------------------%
 
 compare_substrings(Res, X, StartX, Y, StartY, Length) :-
-    LengthX = length(X),
-    LengthY = length(Y),
+    LengthX = string.count_code_units(X),
+    LengthY = string.count_code_units(Y),
     ( if
         Length >= 0,
         StartX >= 0,
@@ -3660,8 +3661,8 @@ unsafe_compare_substrings_loop(X, Y, IX, IY, Rem, Res) :-
 %---------------------%
 
 compare_ignore_case_ascii(Res, X, Y) :-
-    LenX = length(X),
-    LenY = length(Y),
+    LenX = string.count_code_units(X),
+    LenY = string.count_code_units(Y),
     CommonLen = min(LenX, LenY),
     compare_ignore_case_ascii_loop(X, Y, 0, CommonLen, Res0),
     (
@@ -3716,7 +3717,7 @@ prefix_length_loop(P, S, I, Index) :-
     ).
 
 suffix_length(P, S) = End - Index :-
-    End = string.length(S),
+    End = string.count_code_units(S),
     suffix_length_loop(P, S, End, Index).
 
 :- pred suffix_length_loop(pred(char)::in(pred(in) is semidet),
@@ -3743,7 +3744,7 @@ sub_string_search_start(WholeString, Pattern, BeginAt, Index) :-
             BeginAt = 0
         ;
             BeginAt > 0,
-            BeginAt =< length(WholeString)
+            BeginAt =< string.count_code_units(WholeString)
         )
     then
         unsafe_sub_string_search_start(WholeString, Pattern, BeginAt, Index)
@@ -3784,8 +3785,8 @@ sub_string_search_start(WholeString, Pattern, BeginAt, Index) :-
 ").
 
 unsafe_sub_string_search_start(String, SubString, BeginAt, Index) :-
-    Len = string.length(String),
-    SubLen = string.length(SubString),
+    Len = string.count_code_units(String),
+    SubLen = string.count_code_units(SubString),
     LastStart = Len - SubLen,
     unsafe_sub_string_search_start_loop(String, SubString, BeginAt, LastStart,
         SubLen, Index).
@@ -3828,9 +3829,9 @@ append(S1::uo, S2::in, S3::in) :-
 :- pred append_iii(string::in, string::in, string::in) is semidet.
 
 append_iii(S1, S2, S3) :-
-    Len1 = length(S1),
-    Len2 = length(S2),
-    Len3 = length(S3),
+    Len1 = string.count_code_units(S1),
+    Len2 = string.count_code_units(S2),
+    Len3 = string.count_code_units(S3),
     ( if Len3 = Len1 + Len2 then
         unsafe_compare_substrings((=), S1, 0, S3, 0, Len1),
         unsafe_compare_substrings((=), S2, 0, S3, Len1, Len2)
@@ -3841,8 +3842,8 @@ append_iii(S1, S2, S3) :-
 :- pred append_ioi(string::in, string::uo, string::in) is semidet.
 
 append_ioi(S1, S2, S3) :-
-    Len1 = length(S1),
-    Len3 = length(S3),
+    Len1 = string.count_code_units(S1),
+    Len3 = string.count_code_units(S3),
     ( if
         Len1 =< Len3,
         unsafe_compare_substrings((=), S1, 0, S3, 0, Len1)
@@ -3882,8 +3883,8 @@ append_ioi(S1, S2, S3) :-
 :- pred append_oii(string::uo, string::in, string::in) is semidet.
 
 append_oii(S1, S2, S3) :-
-    Len2 = length(S2),
-    Len3 = length(S3),
+    Len2 = string.count_code_units(S2),
+    Len3 = string.count_code_units(S3),
     ( if
         Len2 =< Len3,
         Len1 = Len3 - Len2,
@@ -3895,7 +3896,7 @@ append_oii(S1, S2, S3) :-
     ).
 
 nondet_append(S1, S2, S3) :-
-    Len3 = length(S3),
+    Len3 = string.count_code_units(S3),
     nondet_append_2(0, Len3, S1, S2, S3).
 
 :- pred nondet_append_2(int::in, int::in, string::out, string::out,
@@ -3983,7 +3984,7 @@ append_list(Strs, Str) :-
 
 :- func make_string_piece(string) = string_piece.
 
-make_string_piece(S) = substring(S, 0, length(S)).
+make_string_piece(S) = substring(S, 0, string.count_code_units(S)).
 
 %---------------------%
 %
@@ -4224,12 +4225,12 @@ sum_piece_lengths(PredName, DoCheck, Pieces, !Len) :-
         Pieces = [Piece | TailPieces],
         (
             Piece = string(Str),
-            PieceLen = length(Str)
+            PieceLen = string.count_code_units(Str)
         ;
             Piece = substring(BaseStr, Start, End),
             (
                 DoCheck = yes,
-                BaseLen = length(BaseStr),
+                BaseLen = string.count_code_units(BaseStr),
                 ( if
                     Start >= 0,
                     Start =< BaseLen,
@@ -4265,7 +4266,7 @@ copy_piece_into_buffer(Piece, !DestOffset, !DestBuffer) :-
     (
         Piece = string(Src),
         SrcStart = 0,
-        SrcEnd = length(Src)
+        SrcEnd = string.count_code_units(Src)
     ;
         Piece = substring(Src, SrcStart, SrcEnd)
     ),
@@ -4297,7 +4298,8 @@ first_char_rest_in(Str, First, Rest) :-
     index_next_repl(Str, 0, NextIndex, First0, not_replaced),
     not is_surrogate(First0),
     unsafe_promise_unique(First0, First),
-    unsafe_compare_substrings((=), Str, NextIndex, Rest, 0, length(Rest)).
+    unsafe_compare_substrings((=), Str, NextIndex, Rest,
+        0, string.count_code_units(Rest)).
 
 :- pred first_char_rest_out(string, char, string).
 :- mode first_char_rest_out(in, in, uo) is semidet.
@@ -4307,7 +4309,7 @@ first_char_rest_out(Str, First, Rest) :-
     index_next_repl(Str, 0, NextIndex, First0, not_replaced),
     not is_surrogate(First0),
     unsafe_promise_unique(First0, First),
-    unsafe_between(Str, NextIndex, length(Str), Rest).
+    unsafe_between(Str, NextIndex, string.count_code_units(Str), Rest).
 
 :- pred first_char_str_out(string, char, string).
 :- mode first_char_str_out(uo, in, in) is det.
@@ -4328,7 +4330,7 @@ split(Str, Index, Left, Right) :-
         Left = "",
         Right = Str
     else
-        Len = length(Str),
+        Len = string.count_code_units(Str),
         ( if Index >= Len then
             Left = Str,
             Right = ""
@@ -4376,7 +4378,7 @@ right(S1, N) = S2 :-
     right(S1, N, S2).
 
 right(String, RightCount, RightString) :-
-    length(String, Length),
+    string.count_code_units(String, Length),
     Start = Length - RightCount,
     between(String, Start, Length, RightString).
 
@@ -4400,7 +4402,7 @@ between(Str, Start, End) = SubString :-
     between(Str, Start, End, SubString).
 
 between(Str, Start, End, SubStr) :-
-    Len = length(Str),
+    Len = string.count_code_units(Str),
     ( if Start =< 0 then
         ClampStart = 0
     else if Start >= Len then
@@ -4428,14 +4430,14 @@ between_code_points(Str, Start, End, SubString) :-
     else if code_point_offset(Str, Start, StartOffset0) then
         StartOffset = StartOffset0
     else
-        StartOffset = length(Str)
+        StartOffset = string.count_code_units(Str)
     ),
     ( if End < 0 then
         EndOffset = 0
     else if code_point_offset(Str, End, EndOffset0) then
         EndOffset = EndOffset0
     else
-        EndOffset = length(Str)
+        EndOffset = string.count_code_units(Str)
     ),
     % between/4 will enforce StartOffset =< EndOffset.
     between(Str, StartOffset, EndOffset, SubString).
@@ -4544,7 +4546,7 @@ skip_to_word_end(SepP, String, CurPos, PastWordEndPos) :-
 %---------------------%
 
 split_at_separator(DelimP, Str) = Segments :-
-    Len = length(Str),
+    Len = string.count_code_units(Str),
     split_at_separator_loop(DelimP, Str, Len, Len, [], Segments).
 
 :- pred split_at_separator_loop(pred(char)::in(pred(in) is semidet),
@@ -4586,7 +4588,7 @@ split_at_char(C, String) =
 %---------------------%
 
 split_at_string(Separator, Str) = Segments :-
-    split_at_string_loop(Separator, string.length(Separator), Str, 0,
+    split_at_string_loop(Separator, string.count_code_units(Separator), Str, 0,
         Segments).
 
 :- pred split_at_string_loop(string::in, int::in, string::in, int::in,
@@ -4605,7 +4607,7 @@ split_at_string_loop(Separator, SeparatorLen, Str, CurPos, Segments) :-
             Str, SepPos + SeparatorLen, TailSegments),
         Segments = [HeadSegment | TailSegments]
     else
-        unsafe_between(Str, CurPos, string.length(Str), LastSegment),
+        unsafe_between(Str, CurPos, string.count_code_units(Str), LastSegment),
         Segments = [LastSegment]
     ).
 
@@ -4629,7 +4631,7 @@ split_into_lines_loop(Str, CurPos, !RevLines) :-
         % the call to list.reverse in our parent.
         split_into_lines_loop(Str, SepPos + 1, !RevLines)
     else
-        StrLen = string.length(Str),
+        StrLen = string.count_code_units(Str),
         ( if CurPos = StrLen then
             true
         else
@@ -4644,11 +4646,12 @@ split_into_lines_loop(Str, CurPos, !RevLines) :-
 %
 
 prefix(String, Prefix) :-
-    compare_substrings((=), String, 0, Prefix, 0, length(Prefix)).
+    compare_substrings((=), String, 0, Prefix, 0,
+        string.count_code_units(Prefix)).
 
 suffix(String, Suffix) :-
-    StringLength = length(String),
-    SuffixLength = length(Suffix),
+    StringLength = string.count_code_units(String),
+    SuffixLength = string.count_code_units(Suffix),
     StringStart = StringLength - SuffixLength,
     compare_substrings((=), String, StringStart, Suffix, 0, SuffixLength).
 
@@ -4742,8 +4745,8 @@ to_upper(StrIn::in, StrOut::uo) :-
     ).
 
 to_upper(X::in, Y::in) :-
-    length(X, LenX),
-    length(Y, LenY),
+    string.count_code_units(X, LenX),
+    string.count_code_units(Y, LenY),
     ( if LenX = LenY then
         check_upper_loop(X, Y, 0, LenX)
     else
@@ -4835,8 +4838,8 @@ to_lower(StrIn::in, StrOut::uo) :-
     ).
 
 to_lower(X::in, Y::in) :-
-    length(X, LenX),
-    length(Y, LenY),
+    string.count_code_units(X, LenX),
+    string.count_code_units(Y, LenY),
     ( if LenX = LenY then
         check_lower_loop(X, Y, 0, LenX)
     else
@@ -4938,7 +4941,7 @@ pad_right(String0, PadChar, Width, String) :-
     ).
 
 chomp(S) = Chomp :-
-    ( if prev_index(S, length(S), Index, '\n') then
+    ( if prev_index(S, string.count_code_units(S), Index, '\n') then
         Chomp = unsafe_between(S, 0, Index)
     else
         Chomp = S
@@ -4948,7 +4951,7 @@ strip(S0) = S :-
     L = prefix_length(char.is_whitespace, S0),
     R = suffix_length(char.is_whitespace, S0),
     Start = L,
-    End = max(L, length(S0) - R),
+    End = max(L, string.count_code_units(S0) - R),
     S = unsafe_between(S0, Start, End).
 
 lstrip(S) = lstrip_pred(char.is_whitespace, S).
@@ -4957,11 +4960,11 @@ rstrip(S) = rstrip_pred(char.is_whitespace, S).
 
 lstrip_pred(P, S0) = S :-
     L = prefix_length(P, S0),
-    S = unsafe_between(S0, L, length(S0)).
+    S = unsafe_between(S0, L, string.count_code_units(S0)).
 
 rstrip_pred(P, S0) = S :-
     R = suffix_length(P, S0),
-    S = unsafe_between(S0, 0, length(S0) - R).
+    S = unsafe_between(S0, 0, string.count_code_units(S0) - R).
 
 %---------------------%
 
@@ -4969,8 +4972,9 @@ replace(Str, Pat, Subst, Result) :-
     sub_string_search(Str, Pat, PatStart),
     Pieces = [
         substring(Str, 0, PatStart),
-        substring(Subst, 0, length(Subst)),
-        substring(Str, PatStart + length(Pat), length(Str))
+        substring(Subst, 0, string.count_code_units(Subst)),
+        substring(Str, PatStart + string.count_code_units(Pat),
+            string.count_code_units(Str))
     ],
     unsafe_append_string_pieces(Pieces, Result).
 
@@ -4983,8 +4987,9 @@ replace_all(Str, Pat, Subst, Result) :-
     else
         % Using substring instead of string avoids two calls to string.length
         % every time that SubstPiece appears in Pieces.
-        SubstPiece = substring(Subst, 0, length(Subst)),
-        replace_all_loop(Str, Pat, length(Pat), SubstPiece, 0, [], RevPieces),
+        SubstPiece = substring(Subst, 0, string.count_code_units(Subst)),
+        replace_all_loop(Str, Pat, string.count_code_units(Pat), SubstPiece, 0,
+            [], RevPieces),
         list.reverse(RevPieces, Pieces),
         unsafe_append_string_pieces(Pieces, Result)
     ).
@@ -4996,8 +5001,9 @@ replace_all_empty_pat(Str, Subst, Result) :-
     % to be used much in practice.
     to_code_unit_list(Subst, SubstCodes),
     Codes0 = SubstCodes,
-    replace_all_empty_pat_loop(Str, SubstCodes, length(Str), Codes0, Codes),
-    ( if from_code_unit_list_allow_ill_formed(Codes, ResultPrime) then
+    replace_all_empty_pat_loop(Str, SubstCodes, string.count_code_units(Str),
+        Codes0, Codes),
+    ( if string.from_code_unit_list_allow_ill_formed(Codes, ResultPrime) then
         Result = ResultPrime
     else
         unexpected($pred, "string.from_code_unit_list_allow_ill_formed failed")
@@ -5044,7 +5050,7 @@ replace_all_loop(Str, Pat, PatLength, SubstPiece, BeginAt,
         replace_all_loop(Str, Pat, PatLength, SubstPiece, PatStart + PatLength,
             RevPieces1, RevPieces)
     else
-        TailPiece = substring(Str, BeginAt, length(Str)),
+        TailPiece = substring(Str, BeginAt, string.count_code_units(Str)),
         RevPieces = [TailPiece | RevPieces0]
     ).
 
@@ -5190,11 +5196,11 @@ foldl(Func, S, A) = B :-
     foldl(Pred, S, A, B).
 
 foldl(Pred, String, !Acc) :-
-    string.length(String, Length),
+    string.count_code_units(String, Length),
     foldl_between(Pred, String, 0, Length, !Acc).
 
 foldl2(Pred, String, !Acc1, !Acc2) :-
-    string.length(String, Length),
+    string.count_code_units(String, Length),
     foldl2_between(Pred, String, 0, Length, !Acc1, !Acc2).
 
 foldl_between(Func, S, Start, End, A) = B :-
@@ -5202,62 +5208,62 @@ foldl_between(Func, S, Start, End, A) = B :-
     foldl_between(P, S, Start, End, A, B).
 
 foldl_between(Pred, String, Start0, End0, !Acc) :-
-    Start = max(0, Start0),
-    End = min(End0, length(String)),
-    foldl_between_2(Pred, String, Start, End, !Acc).
+    Start = int.max(0, Start0),
+    End = int.min(End0, string.count_code_units(String)),
+    foldl_between_loop(Pred, String, Start, End, !Acc).
 
 foldl2_between(Pred, String, Start0, End0, !Acc1, !Acc2) :-
     Start = max(0, Start0),
-    End = min(End0, length(String)),
-    foldl2_between_2(Pred, String, Start, End, !Acc1, !Acc2).
+    End = min(End0, string.count_code_units(String)),
+    foldl2_between_loop(Pred, String, Start, End, !Acc1, !Acc2).
 
-:- pred foldl_between_2(pred(char, A, A), string, int, int, A, A).
-:- mode foldl_between_2(in(pred(in, di, uo) is det), in, in, in,
+:- pred foldl_between_loop(pred(char, A, A), string, int, int, A, A).
+:- mode foldl_between_loop(in(pred(in, di, uo) is det), in, in, in,
     di, uo) is det.
-:- mode foldl_between_2(in(pred(in, in, out) is det), in, in, in,
+:- mode foldl_between_loop(in(pred(in, in, out) is det), in, in, in,
     in, out) is det.
-:- mode foldl_between_2(in(pred(in, in, out) is semidet), in, in, in,
+:- mode foldl_between_loop(in(pred(in, in, out) is semidet), in, in, in,
     in, out) is semidet.
-:- mode foldl_between_2(in(pred(in, in, out) is nondet), in, in, in,
+:- mode foldl_between_loop(in(pred(in, in, out) is nondet), in, in, in,
     in, out) is nondet.
-:- mode foldl_between_2(in(pred(in, in, out) is multi), in, in, in,
+:- mode foldl_between_loop(in(pred(in, in, out) is multi), in, in, in,
     in, out) is multi.
 
-foldl_between_2(Pred, String, I, End, !Acc) :-
+foldl_between_loop(Pred, String, I, End, !Acc) :-
     ( if
         I < End,
         unsafe_index_next(String, I, J, Char),
         J =< End
     then
         Pred(Char, !Acc),
-        foldl_between_2(Pred, String, J, End, !Acc)
+        foldl_between_loop(Pred, String, J, End, !Acc)
     else
         true
     ).
 
-:- pred foldl2_between_2(pred(char, A, A, B, B), string, int, int,
+:- pred foldl2_between_loop(pred(char, A, A, B, B), string, int, int,
     A, A, B, B).
-:- mode foldl2_between_2(in(pred(in, di, uo, di, uo) is det),
+:- mode foldl2_between_loop(in(pred(in, di, uo, di, uo) is det),
     in, in, in, di, uo, di, uo) is det.
-:- mode foldl2_between_2(in(pred(in, in, out, di, uo) is det),
+:- mode foldl2_between_loop(in(pred(in, in, out, di, uo) is det),
     in, in, in, in, out, di, uo) is det.
-:- mode foldl2_between_2(in(pred(in, in, out, in, out) is det),
+:- mode foldl2_between_loop(in(pred(in, in, out, in, out) is det),
     in, in, in, in, out, in, out) is det.
-:- mode foldl2_between_2(in(pred(in, in, out, in, out) is semidet),
+:- mode foldl2_between_loop(in(pred(in, in, out, in, out) is semidet),
     in, in, in, in, out, in, out) is semidet.
-:- mode foldl2_between_2(in(pred(in, in, out, in, out) is nondet),
+:- mode foldl2_between_loop(in(pred(in, in, out, in, out) is nondet),
     in, in, in, in, out, in, out) is nondet.
-:- mode foldl2_between_2(in(pred(in, in, out, in, out) is multi),
+:- mode foldl2_between_loop(in(pred(in, in, out, in, out) is multi),
     in, in, in, in, out, in, out) is multi.
 
-foldl2_between_2(Pred, String, I, End, !Acc1, !Acc2) :-
+foldl2_between_loop(Pred, String, I, End, !Acc1, !Acc2) :-
     ( if
         I < End,
         unsafe_index_next(String, I, J, Char),
         J =< End
     then
         Pred(Char, !Acc1, !Acc2),
-        foldl2_between_2(Pred, String, J, End, !Acc1, !Acc2)
+        foldl2_between_loop(Pred, String, J, End, !Acc1, !Acc2)
     else
         true
     ).
@@ -5269,7 +5275,7 @@ foldr(Func, String, Acc0) = Acc :-
     foldr(Pred, String, Acc0, Acc).
 
 foldr(Pred, String, !Acc) :-
-    foldr_between(Pred, String, 0, length(String), !Acc).
+    foldr_between(Pred, String, 0, string.count_code_units(String), !Acc).
 
 foldr_between(Func, String, Start, Count, Acc0) = Acc :-
     Pred = ( pred(X::in, Y::in, Z::out) is det :- Z = Func(X, Y) ),
@@ -5277,7 +5283,7 @@ foldr_between(Func, String, Start, Count, Acc0) = Acc :-
 
 foldr_between(Pred, String, Start0, End0, !Acc) :-
     Start = max(0, Start0),
-    End = min(End0, length(String)),
+    End = min(End0, string.count_code_units(String)),
     foldr_between_2(Pred, String, Start, End, !Acc).
 
 :- pred foldr_between_2(pred(char, T, T), string, int, int, T, T).
@@ -5772,7 +5778,8 @@ char_to_string(Char::in, String::uo) :-
     from_char_list([Char], String).
 char_to_string(Char::out, String::in) :-
     index_next_repl(String, 0, NextIndex, Char, not_replaced),
-    length(String, NextIndex).
+    % Check that String contains nothing else after Char.
+    string.count_code_units(String, NextIndex).
 
 from_char(Char) = char_to_string(Char).
 
