@@ -453,16 +453,20 @@ extern MR_bool MR_escape_string_quote(MR_String *ptr, const char * string);
 // Advance `*pos' to the beginning of the next code point in `s'.
 // If `*pos' is already at the end of the string, return MR_FALSE
 // without modifying `*pos'.
-// This function simply searches for a single or lead byte without decoding,
-// and so may skip over bytes in ill-formed sequences.
+//
+// This function simply searches for either single byte code point
+// or for the lead byte of a multi-byte code point; it does no decoding.
+// It may therefore skip over bytes in ill-formed sequences.
 
 extern MR_bool          MR_utf8_next(const MR_String s_, MR_Integer *pos);
 
 // Rewind `*pos' to the beginning of the previous code point in `s'.
 // If `*pos' is already at the beginning of the string, return MR_FALSE
 // without modifying `*pos'.
-// This function simply searches for a single or lead byte without decoding,
-// and so may skip over bytes in ill-formed sequences.
+//
+// This function simply searches for either single byte code point
+// or for the lead byte of a multi-byte code point; it does no decoding.
+// It may therefore skip over bytes in ill-formed sequences.
 
 extern MR_bool          MR_utf8_prev(const MR_String s_, MR_Integer *pos);
 
@@ -477,7 +481,21 @@ extern MR_int_least32_t MR_utf8_get(const MR_String s, MR_Integer pos);
 extern MR_int_least32_t MR_utf8_get_mb(const MR_String s, MR_Integer pos,
                             int *width);
 
-// Decode the code point beginning at `pos' in `s', and advance `*pos'.
+// Decode the code point beginning at `pos' in `s', and set `*pos'
+// to the position of the next code point, if
+//
+// - there *is* a next code point, i.e. if the code point is not NUL, and
+// - if there is a well formed code point starting at pos.
+//
+// If there is a code point at pos and it is NUL, then return it, but
+// do not update pos.
+//
+// If there is an ill-formed code point at pos, then return -2, and set pos
+// to the position of the next byte that is either
+//
+// - a single-byte code point (which may the string-ending NUL), or
+// - the lead byte of a multi-byte code point
+//
 // The _mb version requires s[pos] to be the lead byte of a multibyte code
 // point.
 
@@ -486,8 +504,10 @@ extern MR_int_least32_t MR_utf8_get_next_mb(const MR_String s,
                             MR_Integer *pos);
 
 // Rewind `*pos' to the beginning of the previous code point in `s'
-// and return that code code.
+// and return that code point.
 // Return -1 if `*pos' is already at the beginning of the string.
+// Return -2 if the code unit sequence beginning at the rewound `*pos'
+// is ill-formed.
 
 extern MR_int_least32_t MR_utf8_prev_get(const MR_String s, MR_Integer *pos);
 
@@ -497,8 +517,9 @@ extern MR_int_least32_t MR_utf8_prev_get(const MR_String s, MR_Integer *pos);
 extern size_t           MR_utf8_width(MR_Char c);
 
 // Encode the code point `c' into the buffer `s'.
-// Return the number of bytes used.
-// Returns 0 if `c' is a surrogate or not a valid code point.
+// Return the number of bytes used if this is successful.
+// If encoding fails because `c' is not a valid code point or is a surrogate,
+// then leave the buffer unchanged and return 0.
 
 extern size_t           MR_utf8_encode(char s[], MR_Char c);
 

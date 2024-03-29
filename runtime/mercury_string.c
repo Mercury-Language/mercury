@@ -1,7 +1,7 @@
 // vim: ts=4 sw=4 expandtab ft=c
 
 // Copyright (C) 2000-2002, 2006, 2011-2012 The University of Melbourne.
-// Copyright (C) 2015-2016, 2018-2019, 2023 The Mercury team.
+// Copyright (C) 2015-2016, 2018-2019, 2023-2024 The Mercury team.
 // This file is distributed under the terms specified in COPYING.LIB.
 
 // mercury_string.c - string handling
@@ -133,7 +133,9 @@ MR_escape_string_quote(MR_String *ptr, const char * string)
     MR_Char ch;
     MR_bool must_escape = MR_FALSE;
 
-    // Check if we need to add character escapes to the string.
+    // Check if we need to add character escapes to the string,
+    // and in case the answer turns out to be "yes", compute the number
+    // of code units that the escaped string would need space for.
     // XXX ILSEQ Check for surrogate code points.
     while ((ch = MR_utf8_get_next((MR_String) string, &pos)) > 0) {
         switch (ch) {
@@ -153,7 +155,7 @@ MR_escape_string_quote(MR_String *ptr, const char * string)
                 if (MR_is_control(ch)) {
                     // All control characters that do not have a specific
                     // backslash escape are octal escaped.
-                    // This takes five code units.
+                    // This takes five code units (see below).
                     num_code_units += 5;
                     must_escape = MR_TRUE;
                 } else {
@@ -171,9 +173,10 @@ MR_escape_string_quote(MR_String *ptr, const char * string)
     if (must_escape) {
         char *dst;
    
-        MR_allocate_aligned_string_saved_hp(*ptr,
-            num_code_units + 2 /* quotes */ + 1 /* \0 */,
-            NULL);
+        // We need two code units of space for the initial and final quotes,
+        // and one for the final NUL char.
+        num_code_units += 3;
+        MR_allocate_aligned_string_saved_hp(*ptr, num_code_units, NULL);
 
         dst = *ptr;
         dst[0] = '\"';
@@ -295,6 +298,8 @@ MR_hash_string6(MR_ConstString s)
 MR_bool
 MR_utf8_next(const MR_String s_, MR_Integer *pos)
 {
+    // XXX Several functions have this cast from const MR_String. Why?
+    // With gcc 7.5.0 a least, things work fine without the cast.
     const unsigned char *s = (const unsigned char *) s_;
     int c;
 
@@ -303,6 +308,14 @@ MR_utf8_next(const MR_String s_, MR_Integer *pos)
         return MR_FALSE;
     }
 
+    // NOTE In situations where the input string contains many
+    // multi-byte code points, it would be faster to replace all references
+    // to *pos in this loop with a local variable, copying the values of *pos
+    // to it and from it before loop entry and after loop exit respectively.
+    // However, since we expect the bulk of our input strings to consist
+    // of ASCII characters, there is no point.
+    //
+    // This consideration also applies to many of the functions below.
     for (;;) {
         ++(*pos);
         c = s[*pos];
@@ -354,7 +367,7 @@ MR_utf8_get_mb(const MR_String s_, MR_Integer pos, int *width)
     const unsigned char *s = (const unsigned char *) s_;
     int c;
     int d;
-    int minc;
+    int min_c;
 
     c = s[pos];
 
@@ -363,7 +376,6 @@ MR_utf8_get_mb(const MR_String s_, MR_Integer pos, int *width)
     if (c <= 0xC1) {
         // Trailing byte of multi-byte sequence or an overlong encoding for
         // code point <= 127.
-
         return -2;
     }
 
@@ -371,19 +383,19 @@ MR_utf8_get_mb(const MR_String s_, MR_Integer pos, int *width)
         // 2-byte sequence.
         c &= 0x1F;
         *width = 2;
-        minc = 0x80;
+        min_c = 0x80;
     }
     else if (c <= 0xEF) {
         // 3-byte sequence.
         c &= 0x0F;
         *width = 3;
-        minc = 0x800;
+        min_c = 0x800;
     }
     else if (c <= 0xF4) {
         // 4-byte sequence.
         c &= 0x07;
         *width = 4;
-        minc = 0x10000;
+        min_c = 0x10000;
     }
     else {
         // Otherwise invalid.
@@ -414,13 +426,9 @@ MR_utf8_get_mb(const MR_String s_, MR_Integer pos, int *width)
             break;
     }
 
-    // Check for overlong forms or code point out of range.
-    if (c < minc || c > 0x10FFFF) {
-        return -2;
-    }
-
-    // Check for surrogate code points.
-    if (MR_is_surrogate(c)) {
+    // Check for an overlong form, for a code point out of range, and
+    // for a surrogate code point.
+    if (c < min_c || c > 0x10FFFF || MR_is_surrogate(c)) {
         return -2;
     }
 
@@ -454,7 +462,7 @@ MR_utf8_get_next_mb(const MR_String s, MR_Integer *pos)
     }
 
     // Some invalid byte sequence. Skip to the start of the next character,
-    // but return the ill-formed character.
+    // but return the indication of the presence of an ill-formed character.
     MR_utf8_next(s, pos);
     return c;
 }
@@ -480,9 +488,8 @@ MR_utf8_prev_get(const MR_String s, MR_Integer *pos)
 size_t
 MR_utf8_width(MR_Char c)
 {
-    // So we don't need to check for negative values nor use unsigned ints
+    // So we don't need to check for negative values *or* use unsigned ints
     // in the interface, which are a pain.
-
     MR_UnsignedChar uc = c;
 
     if (uc <= 0x7f) {
@@ -497,6 +504,7 @@ MR_utf8_width(MR_Char c)
     if (uc <= 0x10ffff) {
         return 4;
     }
+
     // The rest are illegal.
     return 0;
 }
