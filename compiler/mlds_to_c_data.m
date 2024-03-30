@@ -1020,7 +1020,7 @@ mlds_output_rval_const(_Opts, Stream, Const, !IO) :-
         % The cast avoids the following gcc warning
         % "assignment discards qualifiers from pointer target type".
         io.write_string(Stream, "(MR_String) ", !IO),
-        output_quoted_string_c(Stream, String, !IO)
+        output_quoted_mmf_string_c(Stream, String, !IO)
     ;
         Const = mlconst_multi_string(String),
         output_quoted_multi_string_c(Stream, String, !IO)
