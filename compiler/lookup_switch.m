@@ -60,6 +60,7 @@
 :- import_module parse_tree.set_of_var.
 
 :- import_module list.
+:- import_module one_or_more.
 :- import_module map.
 :- import_module maybe.
 
@@ -183,7 +184,7 @@
 
     % generate_code_for_all_kinds(Kinds, NumPrevColumns, OutVars, ResumeVars,
     %   EndLabel, StoreMap, Liveness, AddTrailOps,
-    %   BaseReg, LaterVectorAddrRval, Code, !CI, !.CLD):
+    %   BaseReg, LaterVectorAddrRval, Code, !MaybeEnd, !CI, !.CLD):
     %
     % Generate code for the kinds of solution cardinalities listed in Kinds.
     %
@@ -225,10 +226,10 @@
     % LaterVectorAddrRval should be the address of the start of the later
     % solutions table.
     %
-:- pred generate_code_for_all_kinds(list(case_kind)::in, int::in,
+:- pred generate_code_for_all_kinds(one_or_more(case_kind)::in, int::in,
     list(prog_var)::in, set_of_progvar::in, label::in, abs_store_map::in,
-    set_of_progvar::in, add_trail_ops::in, lval::in, rval::in,
-    branch_end::in, branch_end::out, llds_code::out,
+    set_of_progvar::in, add_trail_ops::in, lval::in, rval::in, llds_code::out,
+    branch_end::in, branch_end::out,
     code_info::in, code_info::out, code_loc_dep::in) is det.
 
 :- func default_value_for_type(llds_type) = rval.
@@ -626,6 +627,7 @@ generate_several_soln_int_lookup_switch(IndexRval, EndLabel, StoreMap,
         SeveralSolnCaseCount - kind_several_solns], AscendingSortedCountKinds),
     list.reverse(AscendingSortedCountKinds, DescendingSortedCountKinds),
     assoc_list.values(DescendingSortedCountKinds, DescendingSortedKinds),
+    det_list_to_one_or_more(DescendingSortedKinds, OoMDescendingSortedKinds),
 
     % Since we release BaseReg only after the calls to generate_branch_end,
     % we must make sure that generate_branch_end won't want to overwrite
@@ -642,18 +644,18 @@ generate_several_soln_int_lookup_switch(IndexRval, EndLabel, StoreMap,
             "Compute base address for this case")
     ),
 
-    generate_code_for_all_kinds(DescendingSortedKinds, 0, OutVars, ResumeVars,
-        EndLabel, StoreMap, Liveness, AddTrailOps,
-        BaseReg, LaterVectorAddrRval, !MaybeEnd, KindsCode, !CI, !.CLD),
+    generate_code_for_all_kinds(OoMDescendingSortedKinds, 0, OutVars,
+        ResumeVars, EndLabel, StoreMap, Liveness, AddTrailOps,
+        BaseReg, LaterVectorAddrRval, KindsCode, !MaybeEnd, !CI, !.CLD),
     EndLabelCode = cord.singleton(
         llds_instr(label(EndLabel),
             "end of int several soln lookup switch")
     ),
     Code = BaseRegInitCode ++ KindsCode ++ EndLabelCode.
 
-generate_code_for_all_kinds(Kinds, NumPrevColumns, OutVars, ResumeVars,
+generate_code_for_all_kinds(OoMKinds, NumPrevColumns, OutVars, ResumeVars,
         EndLabel, StoreMap, Liveness, AddTrailOps,
-        BaseReg, LaterVectorAddrRval, !MaybeEnd, Code, !CI, !.CLD) :-
+        BaseReg, LaterVectorAddrRval, Code, !MaybeEnd, !CI, !.CLD) :-
     % We release BaseReg in each arm of generate_code_for_each_kind below.
     % We cannot release it at the bottom of this predicate, because in the
     % kind_several_solns arm of generate_code_for_each_kind the generation
@@ -667,9 +669,11 @@ generate_code_for_all_kinds(Kinds, NumPrevColumns, OutVars, ResumeVars,
         MaxSlot, !CI, !CLD),
 
     remember_position(!.CLD, BranchStart),
-    generate_code_for_each_kind(Kinds, NumPrevColumns,OutVars, ResumeVars,
-        BranchStart, EndLabel, StoreMap, Liveness, AddTrailOps, BaseReg,
-        CurSlot, MaxSlot, LaterVectorAddrRval, !MaybeEnd, Code, !CI).
+    OoMKinds = one_or_more(HeadKind, TailKinds),
+    generate_code_for_each_kind(HeadKind, TailKinds, NumPrevColumns,
+        OutVars, ResumeVars, BranchStart, EndLabel, StoreMap, Liveness,
+        AddTrailOps, BaseReg, CurSlot, MaxSlot, LaterVectorAddrRval, Code,
+        !MaybeEnd, !CI).
 
 :- func case_kind_to_string(case_kind) = string.
 
@@ -677,20 +681,15 @@ case_kind_to_string(kind_zero_solns) = "kind_zero_solns".
 case_kind_to_string(kind_one_soln) = "kind_one_soln".
 case_kind_to_string(kind_several_solns) = "kind_several_solns".
 
-:- pred generate_code_for_each_kind(list(case_kind)::in, int::in,
-    list(prog_var)::in, set_of_progvar::in, position_info::in,
+:- pred generate_code_for_each_kind(case_kind::in, list(case_kind)::in,
+    int::in, list(prog_var)::in, set_of_progvar::in, position_info::in,
     label::in, abs_store_map::in, set_of_progvar::in, add_trail_ops::in,
-    lval::in, lval::in, lval::in, rval::in,
-    branch_end::in, branch_end::out, llds_code::out,
-    code_info::in, code_info::out) is det.
+    lval::in, lval::in, lval::in, rval::in, llds_code::out,
+    branch_end::in, branch_end::out, code_info::in, code_info::out) is det.
 
-generate_code_for_each_kind([], _, _, _, _, _, _, _, _, _, _, _, _,
-        !MaybeEnd, _, !CI) :-
-    unexpected($pred, "no kinds").
-generate_code_for_each_kind([Kind | Kinds], NumPrevColumns,
-        OutVars, ResumeVars, BranchStart, EndLabel, StoreMap, Liveness,
-        AddTrailOps, BaseReg, CurSlot, MaxSlot, LaterVectorAddrRval,
-        !MaybeEnd, Code, !CI) :-
+generate_code_for_each_kind(Kind, Kinds, NumPrevColumns, OutVars, ResumeVars,
+        BranchStart, EndLabel, StoreMap, Liveness, AddTrailOps, BaseReg,
+        CurSlot, MaxSlot, LaterVectorAddrRval, Code, !MaybeEnd, !CI) :-
     (
         Kind = kind_zero_solns,
         TestOp = int_ge(int_type_int),
@@ -716,164 +715,177 @@ generate_code_for_each_kind([Kind | Kinds], NumPrevColumns,
         KindCode = BranchEndCode ++ GotoEndCode
     ;
         Kind = kind_several_solns,
-        TestOp = int_le(int_type_int),
-        get_globals(!.CI, Globals),
-        some [!CLD] (
-            reset_to_position(BranchStart, !.CI, !:CLD),
-
-            % The code below is modelled on the code in disj_gen, but is
-            % specialized for the situation here.
-
-            produce_vars(set_of_var.to_sorted_list(ResumeVars), ResumeMap,
-                FlushCode, !CLD),
-            MinOffsetColumnRval = const(llconst_int(NumPrevColumns)),
-            MaxOffsetColumnRval = const(llconst_int(NumPrevColumns + 1)),
-            SaveSlotsCode = cord.from_list([
-                llds_instr(assign(CurSlot,
-                    lval(field(yes(ptag(0u8)), lval(BaseReg),
-                        MinOffsetColumnRval))),
-                    "Setup current slot in the later solution array"),
-                llds_instr(assign(MaxSlot,
-                    lval(field(yes(ptag(0u8)), lval(BaseReg),
-                        MaxOffsetColumnRval))),
-                    "Setup maximum slot in the later solution array")
-            ]),
-            maybe_save_ticket(AddTrailOps, SaveTicketCode, MaybeTicketSlot,
-                !CI, !CLD),
-            globals.lookup_bool_option(Globals, reclaim_heap_on_nondet_failure,
-                ReclaimHeap),
-            maybe_save_hp(ReclaimHeap, SaveHpCode, MaybeHpSlot, !CI, !CLD),
-            prepare_for_disj_hijack(model_non, HijackInfo, PrepareHijackCode,
-                !CI, !CLD),
-
-            remember_position(!.CLD, DisjEntry),
-
-            % Generate code for the non-last disjunct.
-
-            make_resume_point(ResumeVars, resume_locs_stack_only, ResumeMap,
-                ResumePoint, !CI),
-            effect_resume_point(ResumePoint, model_non, UpdateRedoipCode,
-                !CLD),
-            generate_offset_assigns(OutVars, NumPrevColumns + 2, BaseReg,
-                !.CI, !CLD),
-            flush_resume_vars_to_stack(FirstFlushResumeVarsCode, !CLD),
-
-            % Forget the variables that are needed only at the resumption point
-            % at the start of the next disjunct, so that we don't generate
-            % exceptions when their storage is clobbered by the movement
-            % of the live variables to the places indicated in the store map.
-            pop_resume_point(!CLD),
-            pickup_zombies(FirstZombies, !CLD),
-            make_vars_forward_dead(FirstZombies, !CLD),
-
-            set_liveness_and_end_branch(StoreMap, Liveness, !MaybeEnd,
-                FirstBranchEndCode, !.CLD)
-        ),
-
-        GotoEndCode = cord.singleton(
-            llds_instr(goto(code_label(EndLabel)),
-                "goto end of switch from several_soln")
-        ),
-
-        some [!CLD] (
-            reset_to_position(DisjEntry, !.CI, !:CLD),
-            generate_resume_point(ResumePoint, ResumePointCode, !CI, !CLD),
-
-            maybe_reset_ticket(MaybeTicketSlot, reset_reason_undo,
-                RestoreTicketCode),
-            maybe_restore_hp(MaybeHpSlot, RestoreHpCode),
-
-            acquire_reg_not_in_storemap(StoreMap, reg_r, LaterBaseReg, !CLD),
-            get_next_label(UndoLabel, !CI),
-            get_next_label(AfterUndoLabel, !CI),
-            list.length(OutVars, NumOutVars),
-            TestMoreSolnsCode = cord.from_list([
-                llds_instr(assign(LaterBaseReg, lval(CurSlot)),
-                    "Init later base register"),
-                llds_instr(
-                    if_val(binop(int_ge(int_type_int),
-                        lval(LaterBaseReg), lval(MaxSlot)),
-                    code_label(UndoLabel)),
-                    "Jump to undo hijack code if there are no more solutions"),
-                llds_instr(assign(CurSlot,
-                    binop(int_add(int_type_int),
-                        lval(CurSlot),
-                        const(llconst_int(NumOutVars)))),
-                    "Update current slot in the later solution array"),
-                llds_instr(goto(code_label(AfterUndoLabel)),
-                    "Jump around undo hijack code"),
-                llds_instr(label(UndoLabel),
-                    "Undo hijack code")
-            ]),
-            undo_disj_hijack(HijackInfo, UndoHijackCode, !CLD),
-            AfterUndoLabelCode = cord.from_list([
-                llds_instr(label(AfterUndoLabel),
-                    "Return later answer code"),
-                llds_instr(assign(LaterBaseReg,
-                    mem_addr(heap_ref(LaterVectorAddrRval, yes(ptag(0u8)),
-                        lval(LaterBaseReg)))),
-                    "Compute base address in later array for this solution")
-            ]),
-
-            % We need to call effect_resume_point in order to push ResumePoint
-            % onto the failure continuation stack, so pop_resume_point can pop
-            % it off. However, since the redoip already points there, we don't
-            % need to execute _LaterUpdateRedoipCode.
-            effect_resume_point(ResumePoint, model_non,
-                _LaterUpdateRedoipCode, !CLD),
-
-            generate_offset_assigns(OutVars, 0, LaterBaseReg, !.CI, !CLD),
-            flush_resume_vars_to_stack(LaterFlushResumeVarsCode, !CLD),
-
-            % Forget the variables that are needed only at the resumption point
-            % at the start of the next disjunct, so that we don't generate
-            % exceptions when their storage is clobbered by the movement
-            % of the live variables to the places indicated in the store map.
-            pop_resume_point(!CLD),
-            pickup_zombies(LaterZombies, !CLD),
-            make_vars_forward_dead(LaterZombies, !CLD),
-
-            set_liveness_and_end_branch(StoreMap, Liveness, !MaybeEnd,
-                LaterBranchEndCode, !.CLD)
-        ),
-
-        KindCode = FlushCode ++ SaveSlotsCode ++
-            SaveTicketCode ++ SaveHpCode ++ PrepareHijackCode ++
-            UpdateRedoipCode ++ FirstFlushResumeVarsCode ++
-            FirstBranchEndCode ++ GotoEndCode ++ ResumePointCode ++
-            RestoreTicketCode ++ RestoreHpCode ++
-            TestMoreSolnsCode ++ UndoHijackCode ++ AfterUndoLabelCode ++
-            LaterFlushResumeVarsCode ++ LaterBranchEndCode ++ GotoEndCode
+        generate_code_for_kind_several_solns(NumPrevColumns, OutVars,
+            ResumeVars, BranchStart, EndLabel, StoreMap, Liveness,
+            AddTrailOps, BaseReg, CurSlot, MaxSlot, LaterVectorAddrRval,
+            TestOp, KindCode, !MaybeEnd, !CI)
     ),
     (
         Kinds = [],
         Code = KindCode
     ;
-        Kinds = [NextKind | _],
+        Kinds = [NextKind | LaterKinds],
         get_next_label(NextKindLabel, !CI),
         TestRval = binop(TestOp,
             lval(field(yes(ptag(0u8)), lval(BaseReg),
                 const(llconst_int(NumPrevColumns)))),
             const(llconst_int(0))),
+        KindComment = "This kind is " ++ case_kind_to_string(Kind),
+        NextKindComment = "Next kind is " ++ case_kind_to_string(NextKind),
         TestCode = cord.from_list([
             llds_instr(if_val(TestRval, code_label(NextKindLabel)),
                 "skip to next kind in several_soln lookup switch"),
-            llds_instr(comment("This kind is " ++ case_kind_to_string(Kind)),
-                "")
+            llds_instr(comment(KindComment), "")
         ]),
         NextKindLabelCode = cord.from_list([
             llds_instr(label(NextKindLabel),
                 "next kind in several_soln lookup switch"),
-            llds_instr(comment("Next kind is "
-                ++ case_kind_to_string(NextKind)),
-                "")
+            llds_instr(comment(NextKindComment), "")
         ]),
-        generate_code_for_each_kind(Kinds, NumPrevColumns, OutVars, ResumeVars,
-            BranchStart, EndLabel, StoreMap, Liveness, AddTrailOps,
-            BaseReg, CurSlot, MaxSlot, LaterVectorAddrRval,
-            !MaybeEnd, LaterKindsCode, !CI),
+        generate_code_for_each_kind(NextKind, LaterKinds, NumPrevColumns,
+            OutVars, ResumeVars, BranchStart, EndLabel, StoreMap, Liveness,
+            AddTrailOps, BaseReg, CurSlot, MaxSlot, LaterVectorAddrRval,
+            LaterKindsCode, !MaybeEnd, !CI),
         Code = TestCode ++ KindCode ++ NextKindLabelCode ++ LaterKindsCode
     ).
+
+:- pred generate_code_for_kind_several_solns(int::in, list(prog_var)::in,
+    set_of_progvar::in, position_info::in,
+    label::in, abs_store_map::in, set_of_progvar::in, add_trail_ops::in,
+    lval::in, lval::in, lval::in, rval::in, binary_op::out, llds_code::out,
+    branch_end::in, branch_end::out, code_info::in, code_info::out) is det.
+
+generate_code_for_kind_several_solns(NumPrevColumns, OutVars, ResumeVars,
+        BranchStart, EndLabel, StoreMap, Liveness, AddTrailOps, BaseReg,
+        CurSlot, MaxSlot, LaterVectorAddrRval, TestOp, KindCode,
+        !MaybeEnd, !CI) :-
+    TestOp = int_le(int_type_int),
+    get_globals(!.CI, Globals),
+    some [!CLD] (
+        reset_to_position(BranchStart, !.CI, !:CLD),
+
+        % The code below is modelled on the code in disj_gen, but is
+        % specialized for the situation here.
+
+        produce_vars(set_of_var.to_sorted_list(ResumeVars), ResumeMap,
+            FlushCode, !CLD),
+        MinOffsetColumnRval = const(llconst_int(NumPrevColumns)),
+        MaxOffsetColumnRval = const(llconst_int(NumPrevColumns + 1)),
+        SaveSlotsCode = cord.from_list([
+            llds_instr(assign(CurSlot,
+                lval(field(yes(ptag(0u8)), lval(BaseReg),
+                    MinOffsetColumnRval))),
+                "Setup current slot in the later solution array"),
+            llds_instr(assign(MaxSlot,
+                lval(field(yes(ptag(0u8)), lval(BaseReg),
+                    MaxOffsetColumnRval))),
+                "Setup maximum slot in the later solution array")
+        ]),
+        maybe_save_ticket(AddTrailOps, SaveTicketCode, MaybeTicketSlot,
+            !CI, !CLD),
+        globals.lookup_bool_option(Globals, reclaim_heap_on_nondet_failure,
+            ReclaimHeap),
+        maybe_save_hp(ReclaimHeap, SaveHpCode, MaybeHpSlot, !CI, !CLD),
+        prepare_for_disj_hijack(model_non, HijackInfo, PrepareHijackCode,
+            !CI, !CLD),
+
+        remember_position(!.CLD, DisjEntry),
+
+        % Generate code for the non-last disjunct.
+        make_resume_point(ResumeVars, resume_locs_stack_only, ResumeMap,
+            ResumePoint, !CI),
+        effect_resume_point(ResumePoint, model_non, UpdateRedoipCode,
+            !CLD),
+        generate_offset_assigns(OutVars, NumPrevColumns + 2, BaseReg,
+            !.CI, !CLD),
+        flush_resume_vars_to_stack(FirstFlushResumeVarsCode, !CLD),
+
+        % Forget the variables that are needed only at the resumption point
+        % at the start of the next disjunct, so that we don't generate
+        % exceptions when their storage is clobbered by the movement
+        % of the live variables to the places indicated in the store map.
+        pop_resume_point(!CLD),
+        pickup_zombies(FirstZombies, !CLD),
+        make_vars_forward_dead(FirstZombies, !CLD),
+
+        set_liveness_and_end_branch(StoreMap, Liveness, !MaybeEnd,
+            FirstBranchEndCode, !.CLD)
+    ),
+
+    GotoEndCode = cord.singleton(
+        llds_instr(goto(code_label(EndLabel)),
+            "goto end of switch from several_soln")
+    ),
+
+    some [!CLD] (
+        reset_to_position(DisjEntry, !.CI, !:CLD),
+        generate_resume_point(ResumePoint, ResumePointCode, !CI, !CLD),
+
+        maybe_reset_ticket(MaybeTicketSlot, reset_reason_undo,
+            RestoreTicketCode),
+        maybe_restore_hp(MaybeHpSlot, RestoreHpCode),
+
+        acquire_reg_not_in_storemap(StoreMap, reg_r, LaterBaseReg, !CLD),
+        get_next_label(UndoLabel, !CI),
+        get_next_label(AfterUndoLabel, !CI),
+        list.length(OutVars, NumOutVars),
+        TestMoreSolnsCode = cord.from_list([
+            llds_instr(assign(LaterBaseReg, lval(CurSlot)),
+                "Init later base register"),
+            llds_instr(
+                if_val(binop(int_ge(int_type_int),
+                    lval(LaterBaseReg), lval(MaxSlot)),
+                code_label(UndoLabel)),
+                "Jump to undo hijack code if there are no more solutions"),
+            llds_instr(assign(CurSlot,
+                binop(int_add(int_type_int),
+                    lval(CurSlot),
+                    const(llconst_int(NumOutVars)))),
+                "Update current slot in the later solution array"),
+            llds_instr(goto(code_label(AfterUndoLabel)),
+                "Jump around undo hijack code"),
+            llds_instr(label(UndoLabel),
+                "Undo hijack code")
+        ]),
+        undo_disj_hijack(HijackInfo, UndoHijackCode, !CLD),
+        AfterUndoLabelCode = cord.from_list([
+            llds_instr(label(AfterUndoLabel),
+                "Return later answer code"),
+            llds_instr(assign(LaterBaseReg,
+                mem_addr(heap_ref(LaterVectorAddrRval, yes(ptag(0u8)),
+                    lval(LaterBaseReg)))),
+                "Compute base address in later array for this solution")
+        ]),
+
+        % We need to call effect_resume_point in order to push ResumePoint
+        % onto the failure continuation stack, so pop_resume_point can pop
+        % it off. However, since the redoip already points there, we don't
+        % need to execute _LaterUpdateRedoipCode.
+        effect_resume_point(ResumePoint, model_non,
+            _LaterUpdateRedoipCode, !CLD),
+
+        generate_offset_assigns(OutVars, 0, LaterBaseReg, !.CI, !CLD),
+        flush_resume_vars_to_stack(LaterFlushResumeVarsCode, !CLD),
+
+        % Forget the variables that are needed only at the resumption point
+        % at the start of the next disjunct, so that we don't generate
+        % exceptions when their storage is clobbered by the movement
+        % of the live variables to the places indicated in the store map.
+        pop_resume_point(!CLD),
+        pickup_zombies(LaterZombies, !CLD),
+        make_vars_forward_dead(LaterZombies, !CLD),
+
+        set_liveness_and_end_branch(StoreMap, Liveness, !MaybeEnd,
+            LaterBranchEndCode, !.CLD)
+    ),
+
+    KindCode = FlushCode ++ SaveSlotsCode ++
+        SaveTicketCode ++ SaveHpCode ++ PrepareHijackCode ++
+        UpdateRedoipCode ++ FirstFlushResumeVarsCode ++
+        FirstBranchEndCode ++ GotoEndCode ++ ResumePointCode ++
+        RestoreTicketCode ++ RestoreHpCode ++
+        TestMoreSolnsCode ++ UndoHijackCode ++ AfterUndoLabelCode ++
+        LaterFlushResumeVarsCode ++ LaterBranchEndCode ++ GotoEndCode.
 
     % Note that we specify --optimise-constructor-last-call for this module
     % in order to make this predicate tail recursive.
