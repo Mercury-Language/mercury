@@ -54,16 +54,16 @@
 % Emptiness and other tests.
 %
 
-    % is_empty(Set) is true iff Set is the an empty set.
+    % is_empty(Set) is true iff Set is the empty set.
     %
 :- pred is_empty(ranges::in) is semidet.
 
-    % is_non_empty(Set) is true iff Set is not an empty set.
+    % is_non_empty(Set) is true iff Set is not the empty set.
     %
 :- pred is_non_empty(ranges::in) is semidet.
 
-    % is_contiguous(Set, Lo, Hi) is true iff Set is the set of all
-    % integers from Lo to Hi, both inclusive.
+    % is_contiguous(Set, Lo, Hi) is true iff Set is the set of all integers
+    % from Lo to Hi, both inclusive.
     %
 :- pred is_contiguous(ranges::in, int::out, int::out) is semidet.
 
@@ -75,12 +75,21 @@
     % member(X, Set) is true iff X is a member of Set.
     %
 :- pred member(int::in, ranges::in) is semidet.
+% NOTE_TO_IMPLEMENTORS XXX Should also have the arg-reversed contains version.
 
-    % Nondeterministically produce each range.
+    % range_member(Lo, Hi, Set):
+    %
+    % Nondeterministically produce each range in Set.
+    % Each time this call succeeds, Lo and Hi will be bound to
+    % the smallest and largest integers respectively in a range in Set.
     %
 :- pred range_member(int::out, int::out, ranges::in) is nondet.
+% NOTE_TO_IMPLEMENTORS XXX This predicate is also nondet, like the next.
 
-    % Nondeterministically produce each element in the set.
+    % nondet_member(X, Set):
+    %
+    % Nondeterministically produce each element in Set.
+    % Each time this call succeeds, X will be bound to an element in Set.
     %
 :- pred nondet_member(int::out, ranges::in) is nondet.
 
@@ -89,19 +98,20 @@
 % Insertions and deletions.
 %
 
-    % insert(X, Set0, Set) is true iff Set is the union of Set0 and the set
-    % containing only X.
+    % insert(X, Set0, Set) is true iff Set is the union of Set0 and
+    % the set containing only X.
     %
 :- func insert(int, ranges) = ranges.
 :- pred insert(int::in, ranges::in, ranges::out) is det.
 
-    % delete(X, Set0, Set) is true iff Set is the relative
-    % complement of Set0 and the set containing only X, i.e.
-    % if Set is the set which contains all the elements of Set0
-    % except X.
+    % delete(X, Set0, Set) is true iff Set is the relative complement
+    % of Set0 and the set containing only X, i.e. if Set is the set
+    % which contains all the elements of Set0 except X.
     %
 :- func delete(int, ranges) = ranges.
 % NOTE_TO_IMPLEMENTORS XXX add predicate version of delete.
+% NOTE_TO_IMPLEMENTORS XXX add semidet remove predicate,
+% NOTE_TO_IMPLEMENTORS which fails if the item to delete is not in the set
 
 %---------------------------------------------------------------------------%
 %
@@ -146,24 +156,30 @@
 % Operations that divide a set into two parts.
 %
 
-    % split(Set, Lo, Hi, Rest) is true iff Lo..Hi is the first range (i.e. the
-    % range containing the smallest integers) in Set, and Rest is the set Set
-    % with this range removed.
+    % split(Set, Lo, Hi, Rest) is true iff Lo..Hi is the first range
+    % (i.e. the range containing the smallest integers) in Set, and
+    % Rest is the set Set with this range removed.
+    %
+    % Fails if Set is empty.
     %
 :- pred split(ranges::in, int::out, int::out, ranges::out) is semidet.
 
     % prune_to_next_non_member(Set0, Set, X0, X):
     %
-    % Set X to the smallest integer greater than or equal to X0 that is not in
-    % Set0 and Set to the set of integers in Set0 that are greater than X.
+    % Bind X to the smallest integer greater than or equal to X0
+    % that is *not* in Set0, and bind Set to the set of integers in Set0
+    % that are greater than X.
+    % NOTE_TO_IMPLEMENTORS XXX This seems a strange predicate and name.
     %
 :- pred prune_to_next_non_member(ranges::in, ranges::out,
     int::in, int::out) is det.
 
     % prune_to_prev_non_member(Set0, Set, X0, X):
     %
-    % Set X to the largest integer less than or equal to X0 that is not in Set0
-    % and Set to the set of integers in Set0 that are less than X.
+    % Bind X to the largest integer less than or equal to X0
+    % that is *not* in Set0, and bind Set to the set of integers in Set0
+    % that are less than X.
+    % NOTE_TO_IMPLEMENTORS XXX This seems a strange predicate and name.
     %
 :- pred prune_to_prev_non_member(ranges::in, ranges::out,
     int::in, int::out) is det.
@@ -174,10 +190,13 @@
 %
 
     % Convert from a list of integers.
+    % NOTE_TO_IMPLEMENTORS XXX Should have list_to_ranges synonym.
+    % NOTE_TO_IMPLEMENTORS XXX Should have sorted_list_to_ranges version.
     %
 :- func from_list(list(int)) = ranges.
 
     % Convert from a set of integers.
+    % NOTE_TO_IMPLEMENTORS XXX Should have set_to_ranges synonym.
     %
 :- func from_set(set(int)) = ranges.
 
@@ -198,6 +217,7 @@
     % Return the number of distinct integers that are in the set
     % (as opposed to the number of ranges).
     % NOTE_TO_IMPLEMENTORS XXX this is called count in the other set modules.
+    %
 :- func size(ranges) = int.
 
 %---------------------------------------------------------------------------%
@@ -205,12 +225,12 @@
 % Selecting individual elements from a set.
 %
 
-    % Returns the median value of the set. In the case of a tie, return the
-    % lower of the two options.
+    % Returns the median value of the set. In the case of a tie,
+    % returns the smaller of the two integers in the middle of the set.
     %
 :- func median(ranges) = int.
 
-    % least(Set, X) is true iff X is the least element of Set.
+    % least(Set, X) is true iff X is the smallest element of Set.
     % Fails if the set is empty.
     %
 :- pred least(ranges::in, int::out) is semidet.
@@ -220,15 +240,15 @@
     %
 :- pred greatest(ranges::in, int::out) is semidet.
 
-    % next(Set, X0, X) is true iff X is the least element of Set greater
-    % than X0.
+    % next(Set, X0, X) is true iff X is the least element of Set
+    % greater than X0.
     %
 :- pred next(ranges::in, int::in, int::out) is semidet.
 
     % search_range(X, Set, Lo, Hi):
     %
     % If X is in Set, then succeed, setting Lo and Hi to the endpoints
-    % of the range in which it is contained, otherwise fail.
+    % of the range in which it is contained. If X is not in Set, fail.
     %
 :- pred search_range(int::in, ranges::in, int::out, int::out) is semidet.
 
@@ -237,24 +257,28 @@
 % Filtering elements in a set.
 %
 
-    % restrict_min(Min, Set): return the set that contains all of the integers
-    % in Set that are greater than or equal to Min.
+    % restrict_min(Min, Set): return the set that contains
+    % all the integers in Set that are greater than or equal to Min.
+    % NOTE_TO_IMPLEMENTORS Needs a state-var friendly predicate version
     %
 :- func restrict_min(int, ranges) = ranges.
 
-    % restrict_max(Max, Set): return the set that contains all integers in Set
-    % that are less than or equal to Max.
+    % restrict_max(Max, Set): return the set that contains
+    % all the integers in Set that are less than or equal to Max.
+    % NOTE_TO_IMPLEMENTORS Needs a state-var friendly predicate version
     %
 :- func restrict_max(int, ranges) = ranges.
 
-    % restrict_range(Min, Max, Set) return the set that contains all integers
-    % X in Set that satisfy Min =< X =< Max.
+    % restrict_range(Min, Max, Set) return the set that contains
+    % all the integers X in Set that satisfy Min =< X =< Max.
+    % NOTE_TO_IMPLEMENTORS Needs a state-var friendly predicate version
     %
 :- func restrict_range(int, int, ranges) = ranges.
 
 %---------------------------------------------------------------------------%
 %
 % Transformations of a set.
+% NOTE_TO_IMPLEMENTORS These names are unformative
 %
 
     % Negate all numbers: X in Set <=> -X in negate(Set)
@@ -372,45 +396,42 @@
 %
 % C interface to ranges.
 %
-
-% This section describes the C interface to the ranges/0 type that is exported
-% by this module.
+% This section describes the C interface to the ranges/0 type
+% that is exported by this module.
 %
 % In C the ranges/0 type is represented by the ML_Ranges type.
-% The following operations are exported and may be called from C or C++
-% code.
+% The following operations are exported and may be called from C or C++ code.
 %
-% ML_Ranges ML_ranges_empty(void);
-% Return the empty set.
+% ML_Ranges ML_ranges_empty(void)
+%   Return the empty set.
 %
-% ML_Ranges ML_ranges_universe(void);
-% Return the set of integers from (min_int+1)..max_int.
+% ML_Ranges ML_ranges_universe(void)
+%   Return the set of integers from (min_int+1)..max_int.
 %
-% ML_Ranges ML_ranges_range(MR_Integer l, MR_Integer h);
-% Return the set of integers from `l' to `h' inclusive.
+% ML_Ranges ML_ranges_range(MR_Integer l, MR_Integer h)
+%   Return the set of integers from `l' to `h' inclusive.
 %
-% int ML_ranges_is_empty(ML_Ranges r);
-% Return true iff `r` is the empty set.
+% int ML_ranges_is_empty(ML_Ranges r)
+%   Return true iff `r` is the empty set.
 %
-% MR_Integer ML_ranges_size(ML_Ranges r);
-% Return the number of distinct integers in `r'.
+% MR_Integer ML_ranges_size(ML_Ranges r)
+%   Return the number of distinct integers in `r'.
 %
 % int ML_ranges_split(ML_Ranges d, MR_Integer *l, MR_Integer *h,
-%       ML_Ranges *rest);
-% Return true if `d' is not the empty set, setting `l' and `h' to the
-% lower and upper bound of the first range in `d', and setting `rest'
-% to `d' with the first range removed.
-% Return false if `d' is the empty set.
+%       ML_Ranges *rest)
+%   Return true if `d' is not the empty set, setting `l' and `h' to the
+%   lower and upper bound of the first range in `d', and setting `rest'
+%   to `d' with the first range removed.
+%   Return false if `d' is the empty set.
 %
-% ML_Ranges ML_ranges_insert(MR_Integer i, ML_ranges r);
-% Return the ranges value that is the result of inserting the integer
-% `i' into the ranges value `r'.
-
+% ML_Ranges ML_ranges_insert(MR_Integer i, ML_ranges r)
+%   Return the ranges value that is the result of inserting
+%   the integer `i' into the ranges value `r'.
+%
 %---------------------------------------------------------------------------%
 %
 % Java interface to ranges.
 %
-
 % This section describes the Java interface to the ranges/0 type that is
 % exported by this module.
 %
@@ -418,34 +439,34 @@
 % The following operations are exported as public static methods of the ranges
 % module and may be called from Java code.
 %
-% ranges.Ranges_0 empty();
-% Return the empty set.
+% ranges.Ranges_0 empty()
+%   Return the empty set.
 %
-% ranges.Ranges_0 universe();
-% Return the set of integers from (min_int+1)..max_int.
+% ranges.Ranges_0 universe()
+%   Return the set of integers from (min_int+1)..max_int.
 %
-% ranges.Ranges_0 range(int l, int, h);
-% Return the set of integers from `l' to `h' inclusive.
+% ranges.Ranges_0 range(int l, int, h)
+%   Return the set of integers from `l' to `h' inclusive.
 %
-% boolean is_empty(ranges.Ranges_0 r);
-% Return true iff `r' is the empty set.
+% boolean is_empty(ranges.Ranges_0 r)
+%   Return true iff `r' is the empty set.
 %
-% int size(ranges.Ranges_0 r);
-% Return the number of distinct integers in `r'.
+% int size(ranges.Ranges_0 r)
+%   Return the number of distinct integers in `r'.
 %
 % boolean split(ranges.Ranges_0 d,
 %     jmercury.runtime.Ref<Integer> l,
 %     jmercury.runtime.Ref<Integer> h,
-%     jmercury.runtime.Ref<ranges.Ranges_0> rest);
-% Return true if `d' is not the empty set, setting `l' and `h' to the
-% lower and upper bound of the first range in `d', and setting `rest'
-% to `d' with the first range removed.
-% Return false if `d' is the empty set.
+%     jmercury.runtime.Ref<ranges.Ranges_0> rest)
+%   Return true if `d' is not the empty set, setting `l' and `h' to the
+%   lower and upper bound of the first range in `d', and setting `rest'
+%   to `d' with the first range removed.
+%   Return false if `d' is the empty set.
 %
-% ranges.Ranges_0 insert(int i, ranges.Ranges_0 r);
-% Return the ranges value that is the result of inserting the integer
-% `i' into the ranges value `r'.
-
+% ranges.Ranges_0 insert(int i, ranges.Ranges_0 r)
+%   Return the ranges value that is the result of inserting the integer
+%   `i' into the ranges value `r'.
+%
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
@@ -459,19 +480,19 @@
     % Values of this type represent finite sets of integers.
     % They are interpreted in the following way.
     %
-    %     S[[ nil ]]               = {}
-    %     S[[ range(L, H, Rest) ]] = {N | L < N =< H} \/ S[[ Rest ]]
+    %     S[[ nil ]]                 = {}
+    %     S[[ range(Lo, Hi, Rest) ]] = {N | Lo < N =< Hi} \/ S[[ Rest ]]
     %
-    % For example, `range(1, 4, nil)' is interpreted as {2, 3, 4}.
+    % For example, `range(1, 4, nil)' represents the set {2, 3, 4}.
     %
     % The invariants on this type are:
     %
-    %   1) Each range must be non-empty (i.e., L < H).
-    %   2) The ranges must not overlap or abut
+    %   1) Each range must be non-empty, i.e. Lo must be strictly less than Hi.
+    %   2) The ranges must not overlap or abut.
     %   3) The ranges must be in sorted order.
     %
     % The second and third invariants together require that for any value
-    % `range(_, H1, range(L2, _, _)', we must have H1 < L2.
+    % `range(_, Hi1, range(Lo2, _, _)', we must have Hi1 < Lo2.
     %
     % These invariants ensure that the representation is canonical.
     %
@@ -489,66 +510,70 @@ typedef MR_Word ML_Ranges;
 
 %---------------------------------------------------------------------------%
 
-:- pragma foreign_export("C", ranges.empty = out, "ML_ranges_empty").
+:- pragma foreign_export("C",    ranges.empty = out, "ML_ranges_empty").
 :- pragma foreign_export("Java", ranges.empty = out, "empty").
 
 empty = nil.
 
-:- pragma foreign_export("C", universe = out, "ML_ranges_universe").
-:- pragma foreign_export("Java", universe = out, "universe").
+:- pragma foreign_export("C",    ranges.universe = out, "ML_ranges_universe").
+:- pragma foreign_export("Java", ranges.universe = out, "universe").
 
 universe = range(min_int, max_int, nil).
 
-:- pragma foreign_export("C", range(in, in) = out, "ML_ranges_range").
-:- pragma foreign_export("Java", range(in, in) = out, "range").
+:- pragma foreign_export("C",
+    ranges.range(in, in) = out, "ML_ranges_range").
+:- pragma foreign_export("Java",
+    ranges.range(in, in) = out, "range").
 
-range(Min, Max) = Ranges :-
-    ( if Min = min_int then
+range(Lo, Hi) = Ranges :-
+    ( if Lo = min_int then
         error($pred, "cannot represent min_int")
-    else if Min > Max then
+    else if Lo > Hi then
         Ranges = nil
     else
-        Ranges = range(Min - 1, Max, nil)
+        Ranges = range(Lo - 1, Hi, nil)
     ).
 
 %---------------------------------------------------------------------------%
 
-:- pragma foreign_export("C", ranges.is_empty(in), "ML_ranges_is_empty").
+:- pragma foreign_export("C",    ranges.is_empty(in), "ML_ranges_is_empty").
 :- pragma foreign_export("Java", ranges.is_empty(in), "is_empty").
 
 is_empty(nil).
 
 is_non_empty(range(_, _, _)).
 
-is_contiguous(Range, Min + 1, Max) :-
-    Range = range(Min, Max, nil).
+is_contiguous(Range, Lo + 1, Hi) :-
+    Range = range(Lo, Hi, nil).
 
 %---------------------------------------------------------------------------%
 
-member(N, range(L, U, As)) :-
+member(N, range(Lo, Hi, Tail)) :-
     (
-        N > L,
-        N =< U
+        N > Lo,
+        N =< Hi
     ;
-        ranges.member(N, As)
+        ranges.member(N, Tail)
     ).
 
-range_member(L, U, range(A0, A1, As)) :-
+range_member(Lo, Hi, range(Lo0, Hi0, Tail)) :-
     (
-        L = A0 + 1,
-        U = A1
+        Lo = Lo0 + 1,
+        Hi = Hi0
     ;
-        range_member(L, U, As)
+        range_member(Lo, Hi, Tail)
     ).
 
 nondet_member(N, As) :-
-    range_member(L, U, As),
-    int.nondet_int_in_range(L, U, N).
+    range_member(Lo, Hi, As),
+    int.nondet_int_in_range(Lo, Hi, N).
 
 %---------------------------------------------------------------------------%
 
-:- pragma foreign_export("C", ranges.insert(in, in) = out, "ML_ranges_insert").
-:- pragma foreign_export("Java", ranges.insert(in, in) = out, "insert").
+:- pragma foreign_export("C",
+    ranges.insert(in, in) = out, "ML_ranges_insert").
+:- pragma foreign_export("Java",
+    ranges.insert(in, in) = out, "insert").
 
 insert(N, As) = union(As, range(N, N)).
 insert(N, As, Bs) :- Bs = insert(N, As).
@@ -557,13 +582,13 @@ delete(N, As) = difference(As, range(N, N)).
 
 %---------------------------------------------------------------------------%
 
-subset(A, B) :-
+subset(SetA, SetB) :-
     % XXX Should implement this more efficiently.
-    ranges.difference(A, B) = nil.
+    ranges.difference(SetA, SetB) = nil.
 
-disjoint(A, B) :-
+disjoint(SetA, SetB) :-
     % XXX Should implement this more efficiently.
-    ranges.intersection(A, B) = nil.
+    ranges.intersection(SetA, SetB) = nil.
 
 %---------------------------------------------------------------------------%
 
@@ -586,6 +611,9 @@ compare_lex(Result, A, B) :-
         % NOTE: when we unpack a range/3 constructor we must add one
         % to the first argument since that is the lowest value in that
         % subset.
+        % XXX Why? Given that compare_lex is a symmetrical operation,
+        % and the result of comparing X and Y is guaranteed to be the same
+        % as comparing X+1 and Y+1, why bother?
         compare_lex_2(Result, LBA + 1, UBA, LBB + 1, UBB, APrime, BPrime)
     ).
 
@@ -891,10 +919,10 @@ diff_na_nb(UA, As0, UB, Bs0) = Result :-
 
 %---------------------------------------------------------------------------%
 
-:- pragma foreign_export("C", ranges.split(in, out, out, out),
-    "ML_ranges_split").
-:- pragma foreign_export("Java", ranges.split(in, out, out, out),
-    "split").
+:- pragma foreign_export("C",
+    ranges.split(in, out, out, out), "ML_ranges_split").
+:- pragma foreign_export("Java",
+    ranges.split(in, out, out, out), "split").
 
 split(range(Min1, Max, Rest), Min1 + 1, Max, Rest).
 
@@ -948,8 +976,8 @@ to_sorted_list_2(L, H, Ints) =
 
 %---------------------------------------------------------------------------%
 
-:- pragma foreign_export("C", size(in) = out, "ML_ranges_size").
-:- pragma foreign_export("Java", size(in) = out, "size").
+:- pragma foreign_export("C",    ranges.size(in) = out, "ML_ranges_size").
+:- pragma foreign_export("Java", ranges.size(in) = out, "size").
 
 size(nil) = 0.
 size(range(L, U, Rest)) = (U - L) + size(Rest).
@@ -985,13 +1013,13 @@ element_index(range(L, U, Rest), I) = N :-
 least(range(L, _, _), L + 1).
 
 greatest(range(_, U0, As), U) :-
-    greatest_2(U0, As, U).
+    greatest_loop(U0, As, U).
 
-:- pred greatest_2(int::in, ranges::in, int::out) is det.
+:- pred greatest_loop(int::in, ranges::in, int::out) is det.
 
-greatest_2(U, nil, U).
-greatest_2(_, range(_, U0, As), U) :-
-    greatest_2(U0, As, U).
+greatest_loop(U, nil, U).
+greatest_loop(_, range(_, U0, As), U) :-
+    greatest_loop(U0, As, U).
 
 next(range(L, U, As), N0, N) :-
     ( if N0 < U then
