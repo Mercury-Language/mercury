@@ -454,7 +454,7 @@ extern MR_bool MR_escape_string_quote(MR_String *ptr, const char * string);
 // If `*pos' is already at the end of the string, return MR_FALSE
 // without modifying `*pos'.
 //
-// This function simply searches for either single byte code point
+// This function simply searches for either a single byte code point
 // or for the lead byte of a multi-byte code point; it does no decoding.
 // It may therefore skip over bytes in ill-formed sequences.
 
@@ -464,7 +464,7 @@ extern MR_bool          MR_utf8_next(const MR_String s_, MR_Integer *pos);
 // If `*pos' is already at the beginning of the string, return MR_FALSE
 // without modifying `*pos'.
 //
-// This function simply searches for either single byte code point
+// This function simply searches for either a single byte code point
 // or for the lead byte of a multi-byte code point; it does no decoding.
 // It may therefore skip over bytes in ill-formed sequences.
 
@@ -485,7 +485,7 @@ extern MR_int_least32_t MR_utf8_get_mb(const MR_String s, MR_Integer pos,
 // to the position of the next code point, if
 //
 // - there *is* a next code point, i.e. if the code point is not NUL, and
-// - if there is a well formed code point starting at pos.
+// - if there is a well-formed code point starting at pos.
 //
 // If there is a code point at pos and it is NUL, then return it, but
 // do not update pos.
