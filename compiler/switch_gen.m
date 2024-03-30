@@ -309,7 +309,6 @@ generate_smart_string_switch(Globals, CodeModel, CanFail, FilteredCanFail,
         internal_string_encoding = utf8,  % host is C
         StringTrieSwitchSize = OptTuple ^ ot_string_trie_switch_size,
         NumConsIds >= StringTrieSwitchSize,
-        semidet_fail,
         MaybeLookupSwitchInfo = no  % yes is not yet implemented
     then
         generate_string_trie_switch(TaggedCases, SwitchVarRval,

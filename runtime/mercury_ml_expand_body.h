@@ -1,7 +1,7 @@
 // vim: ts=4 sw=4 expandtab ft=c
 
 // Copyright (C) 2001-2007, 2012 The University of Melbourne.
-// Copyright (C) 2013, 2015-2018, 2021 The Mercury team.
+// Copyright (C) 2013, 2015-2018, 2021, 2024 The Mercury team.
 // This file is distributed under the terms specified in COPYING.LIB.
 
 // mercury_ml_expand_body.h
@@ -1193,12 +1193,35 @@ EXPAND_FUNCTION_NAME(MR_TypeInfo type_info, MR_Word *data_word_ptr,
         char    *str;
 
         data_word = *data_word_ptr;
-        if (MR_escape_string_quote(&str, (MR_ConstString)data_word)) {
+        // XXX There are two conflicting requirements on this code.
+        //
+        // Most general users who deconstruct a term and get back a string
+        // would probably like to be able to use that string however they like.
+        // This requires that the string we return be well formed, which
+        // means that checking for well-formedness here is the right thing
+        // to do. That is what we do, although throwing an exception
+        // (that can be caught) would be preferable to an abort (which
+        // cannot be caught).
+        //
+        // Users of the debugger, who are looking up the value of a term
+        // in an effort to try to track down a bug, would almost certainly
+        // prefer to be told "this is not a valid string" than getting
+        // their debugger session, which may have built up considerable state
+        // both within mdb and in their heads, abruptly ended by an abort.
+        // (I, zs, wrote the above just after such an experience.)
+        //
+        // XXX We should consider making the code in the else arm dependent
+        // on the setting of noncanon. Specifically, with MR_NONCANON_ALLOW,
+        // we should return a valid string that replaces any invalid parts
+        // of the string with octal escapes. By that I mean that it should
+        // represent a non-ASCII code unit such as 206 decimal, which is
+        // 316 octal, with the characters '\', '3', '1, '6'.
+        if (MR_escape_string_quote(&str, (MR_ConstString) data_word)) {
             expand_info->EXPAND_FUNCTOR_FIELD = str;
         } else {
             // XXX should throw an exception.
             MR_fatal_error(MR_STRINGIFY(EXPAND_FUNCTION_NAME)
-                ": invalid string encoding");
+                ": non-well-formed utf8 code unit sequence");
         }
 #endif  // EXPAND_FUNCTOR_FIELD
 

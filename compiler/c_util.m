@@ -102,7 +102,12 @@
     % Print out a string suitably escaped for use as a string literal in
     % C/Java/C#, with double quotes around it.
     %
+    % The _mmf (short for maybe malformed) version encodes any code units
+    % that do not belong to any well-formed code points using octal escapes.
+    %
 :- pred output_quoted_string_c(io.text_output_stream::in, string::in,
+    io::di, io::uo) is det.
+:- pred output_quoted_mmf_string_c(io.text_output_stream::in, string::in,
     io::di, io::uo) is det.
 :- pred output_quoted_string_java(io.text_output_stream::in, string::in,
     io::di, io::uo) is det.
@@ -332,6 +337,7 @@
 :- import_module integer.
 :- import_module require.
 :- import_module string.
+:- import_module uint8.
 
 %---------------------------------------------------------------------------%
 %
@@ -483,23 +489,52 @@ prepare_to_quote_string_c(String) = QuotedString :-
     string.from_char_list(cord.list(QuotedCharCord), QuotedString).
 
 %---------------------%
+%
+% The predicates that output quoted C strings break up the string
+% into chunks to avoid a limitation in the MSVC compiler, which
+% requires string literals to be no longer than 2048 chars.
+% However, it will accept a string longer than 2048 chars if we output
+% the string in chunks, as in e.g. "part a" "part b". Go figure!
+% XXX How does "limit is 2048" translate to "get me 160 codepoints"?
+%
 
 output_quoted_string_c(Stream, Str, !IO) :-
-    % Avoid a limitation in the MSVC compiler, which requires
-    % string literals to be no longer than 2048 chars. However,
-    % it will accept a string longer than 2048 chars if we output
-    % the string in chunks, as in e.g. "part a" "part b". Go figure!
-    % XXX How does "limit is 2048" translate to "get me 160 codepoints"?
     string.split_by_code_point(Str, 160, LeftSubStr, RightSubStr),
-    io.write_char(Stream, '"', !IO),
-    output_to_be_quoted_string_loop_c(Stream, LeftSubStr, 0, !IO),
-    io.write_char(Stream, '"', !IO),
+    output_quoted_string_c_chunk(Stream, LeftSubStr, !IO),
     ( if RightSubStr = "" then
         true
     else
         io.write_string(Stream, " ", !IO),
         output_quoted_string_c(Stream, RightSubStr, !IO)
     ).
+
+output_quoted_mmf_string_c(Stream, Str, !IO) :-
+    string.split_by_code_point(Str, 160, LeftSubStr, RightSubStr),
+    output_quoted_mmf_string_c_chunk(Stream, LeftSubStr, !IO),
+    ( if RightSubStr = "" then
+        true
+    else
+        io.write_string(Stream, " ", !IO),
+        output_quoted_mmf_string_c(Stream, RightSubStr, !IO)
+    ).
+
+%---------------------%
+
+:- pred output_quoted_string_c_chunk(io.text_output_stream::in, string::in,
+    io::di, io::uo) is det.
+
+output_quoted_string_c_chunk(Stream, Str, !IO) :-
+    io.write_char(Stream, '"', !IO),
+    output_to_be_quoted_string_loop_c(Stream, Str, 0, !IO),
+    io.write_char(Stream, '"', !IO).
+
+:- pred output_quoted_mmf_string_c_chunk(io.text_output_stream::in, string::in,
+    io::di, io::uo) is det.
+
+output_quoted_mmf_string_c_chunk(Stream, Str, !IO) :-
+    io.write_char(Stream, '"', !IO),
+    output_to_be_quoted_mmf_string_loop_c(Stream, Str, 0, !IO),
+    io.write_char(Stream, '"', !IO).
 
 output_quoted_string_java(Stream, Str, !IO) :-
     io.write_char(Stream, '"', !IO),
@@ -542,6 +577,26 @@ output_to_be_quoted_string_loop_csharp(Stream, Str, Cur, !IO) :-
     ( if string.unsafe_index_next(Str, Cur, Next, Char) then
         output_to_be_quoted_char_csharp(Stream, Char, !IO),
         output_to_be_quoted_string_loop_csharp(Stream, Str, Next, !IO)
+    else
+        true
+    ).
+
+%---------------------%
+
+:- pred output_to_be_quoted_mmf_string_loop_c(io.text_output_stream::in,
+    string::in, int::in, io::di, io::uo) is det.
+
+output_to_be_quoted_mmf_string_loop_c(Stream, Str, Cur, !IO) :-
+    ( if string.unsafe_index_next_repl(Str, Cur, Next, Char, MaybeRepl) then
+        (
+            MaybeRepl = not_replaced,
+            output_to_be_quoted_char_c(Stream, Char, !IO)
+        ;
+            MaybeRepl = replaced_code_unit(CodeUnit),
+            octal_escape_any_int(uint8.cast_to_int(CodeUnit), OctalEscChars),
+            list.foldl(io.write_char(Stream), OctalEscChars, !IO)
+        ),
+        output_to_be_quoted_mmf_string_loop_c(Stream, Str, Next, !IO)
     else
         true
     ).
@@ -638,6 +693,10 @@ output_quoted_char_csharp(Stream, Char, !IO) :-
     io.write_char(Stream, '''', !IO).
 
 %---------------------%
+
+:- pragma inline(pred(output_to_be_quoted_char_c/4)).
+:- pragma inline(pred(output_to_be_quoted_char_java/4)).
+:- pragma inline(pred(output_to_be_quoted_char_csharp/4)).
 
 output_to_be_quoted_char_c(Stream, Char, !IO) :-
     EscapedCharStr = prepare_to_quote_char_c(Char),

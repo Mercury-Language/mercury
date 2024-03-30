@@ -1149,7 +1149,7 @@ output_rval_const(Info, Const, Stream, !IO) :-
     ;
         Const = llconst_string(String),
         io.write_string(Stream, "MR_string_const(", !IO),
-        output_quoted_string_c(Stream, String, !IO),
+        output_quoted_mmf_string_c(Stream, String, !IO),
         io.write_string(Stream, ", ", !IO),
         io.write_int(Stream, string.count_utf8_code_units(String), !IO),
         io.write_string(Stream, ")", !IO)

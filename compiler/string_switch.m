@@ -167,6 +167,23 @@ generate_string_trie_switch(TaggedCases, VarRval, VarName, CodeModel, CanFail,
     Code = CommentCode ++ TrieCode ++ CasesCode ++
         FailLabelCode ++ FailCode ++ EndLabelCode.
 
+:- pred represent_tagged_cases_in_string_trie_switch(represent_params::in,
+    list(tagged_case)::in, map(case_id, label)::in, map(case_id, label)::out,
+    case_label_map::in, case_label_map::out,
+    branch_end::in, branch_end::out, code_info::in, code_info::out) is det.
+
+represent_tagged_cases_in_string_trie_switch(_, [],
+        !CaseIdToLabelMap, !CaseLabelMap, !MaybeEnd, !CI).
+represent_tagged_cases_in_string_trie_switch(Params,
+        [TaggedCase | TaggedCases],
+        !CaseIdToLabelMap, !CaseLabelMap, !MaybeEnd, !CI) :-
+    represent_tagged_case_for_llds(Params, TaggedCase, Label,
+        !CaseLabelMap, !MaybeEnd, !CI, unit, _),
+    TaggedCase = tagged_case(_, _, CaseId, _),
+    map.det_insert(CaseId, Label, !CaseIdToLabelMap),
+    represent_tagged_cases_in_string_trie_switch(Params, TaggedCases,
+        !CaseIdToLabelMap, !CaseLabelMap, !MaybeEnd, !CI).
+
 :- pred convert_trie_to_nested_switches(string_trie_switch_info::in, rval::in,
     map(case_id, label)::in, int::in, trie_node::in,
     label::out, llds_code::out, code_info::in, code_info::out) is det.
@@ -185,13 +202,14 @@ convert_trie_to_nested_switches(TrieSwitchInfo, VarRval, CaseIdToLabelMap,
         Encoding = TrieSwitchInfo ^ stsi_encoding,
         det_from_code_unit_list_in_encoding_allow_ill_formed(Encoding,
             AllCodeUnits, EndStr),
+        NodeComment = "AllCodeUnits " ++ string.string(AllCodeUnits),
         CondRval = binop(offset_str_eq(NumMatched, no_size),
             VarRval, const(llconst_string(EndStr))),
         map.lookup(CaseIdToLabelMap, CaseId, StrCaseLabel),
         StrCaseCodeAddr = code_label(StrCaseLabel),
         FailLabel = TrieSwitchInfo ^ stsi_fail_label,
         Code = from_list([
-            llds_instr(label(TrieNodeLabel), ""),
+            llds_instr(label(TrieNodeLabel), NodeComment),
             llds_instr(if_val(CondRval, StrCaseCodeAddr), "match; goto case"),
             llds_instr(goto(code_label(FailLabel)), "no match; goto fail")
         ])
@@ -224,8 +242,12 @@ convert_trie_to_nested_switches(TrieSwitchInfo, VarRval, CaseIdToLabelMap,
             CmpOp = offset_str_eq(NumMatched, size(NumStickCodeUnits)),
             list.reverse(RevMatchedCodeUnits, MatchedCodeUnits),
             Encoding = TrieSwitchInfo ^ stsi_encoding,
+            MatchedStickCodeUnits = MatchedCodeUnits ++ StickCodeUnits,
             det_from_code_unit_list_in_encoding_allow_ill_formed(Encoding,
-                MatchedCodeUnits ++ StickCodeUnits, MatchedStickStr),
+                MatchedStickCodeUnits, MatchedStickStr),
+            TestComment =
+                "MatchedCodeUnits " ++ string.string(MatchedCodeUnits) ++
+                " StickCodeUnits " ++ string.string(StickCodeUnits),
             TestRval = binop(CmpOp,
                 VarRval, const(llconst_string(MatchedStickStr))),
             convert_trie_to_nested_switches(TrieSwitchInfo, VarRval,
@@ -234,7 +256,8 @@ convert_trie_to_nested_switches(TrieSwitchInfo, VarRval, CaseIdToLabelMap,
                 CodeAfterStick, !CI),
             TrieNodeCodeAddrAfterStick = code_label(TrieNodeLabelAfterStick),
             TestCode = singleton(
-                llds_instr(if_val(TestRval, TrieNodeCodeAddrAfterStick), "")
+                llds_instr(if_val(TestRval, TrieNodeCodeAddrAfterStick),
+                    TestComment)
             ),
             TestChainCode = TestCode ++ GotoFailCode,
             Code = LabelCode ++ TestChainCode ++ CodeAfterStick
@@ -242,73 +265,112 @@ convert_trie_to_nested_switches(TrieSwitchInfo, VarRval, CaseIdToLabelMap,
             ( StickCodeUnits = []
             ; StickCodeUnits = [_]
             ),
-            % This does a try-chain style switch on CodeUnitRval.
-            % XXX SWITCH This is ok for short chains, but we should look into
-            % using other switch implementations for longer chains.
             convert_trie_choices_to_nested_switches(TrieSwitchInfo, VarRval,
-                CaseIdToLabelMap, CodeUnitRval, NumMatched + 1, ChoicePairs,
-                empty, TestChainCode0, empty, NestedTrieCode, !CI),
+                CaseIdToLabelMap, NumMatched + 1, ChoicePairs,
+                cord.init, NestedTrieInfosCord, 0, NumInfos0,
+                empty, NestedTrieCode, !CI),
+            NestedTrieInfos0 = cord.list(NestedTrieInfosCord),
             (
                 MaybeEnd = no,
-                TestChainCode1 = TestChainCode0
+                NestedTrieInfos = NestedTrieInfos0,
+                NumInfos = NumInfos0
             ;
                 MaybeEnd = yes(EndCaseId),
-                EndTestRval = binop(eq(int_type_int),
-                    CodeUnitRval, const(llconst_int(0))),
                 map.lookup(CaseIdToLabelMap, EndCaseId, EndCaseLabel),
-                EndCaseCodeAddr = code_label(EndCaseLabel),
-                EndTestCodeUnitCode = singleton(
-                    llds_instr(if_val(EndTestRval, EndCaseCodeAddr), "")
-                ),
-                TestChainCode1 = TestChainCode0 ++ EndTestCodeUnitCode
+                EndNestedTrieInfo = nested_trie_info(0, EndCaseLabel),
+                NestedTrieInfos = [EndNestedTrieInfo | NestedTrieInfos0],
+                NumInfos = NumInfos0 + 1
             ),
-            TestChainCode = TestChainCode1 ++ GotoFailCode,
-            Code = LabelCode ++ SetCodeUnitCode ++
-                TestChainCode ++ NestedTrieCode
+            ( if NumInfos =< 3 then
+                generate_nested_trie_try_chain(GotoFailCode, CodeUnitRval,
+                    NestedTrieInfos, empty, TestCode)
+            else
+                generate_nested_trie_binary_search(GotoFailCode, CodeUnitRval,
+                    NumInfos, NestedTrieInfos, TestCode, !CI)
+            ),
+            Code = LabelCode ++ SetCodeUnitCode ++ TestCode ++ NestedTrieCode
         )
     ).
 
-:- pred convert_trie_choices_to_nested_switches(string_trie_switch_info::in,
-    rval::in, map(case_id, label)::in, rval::in, int::in,
-    assoc_list(int, trie_node)::in,
-    llds_code::in, llds_code::out, llds_code::in, llds_code::out,
-    code_info::in, code_info::out) is det.
+:- type nested_trie_info
+    --->    nested_trie_info(int, label).
 
-convert_trie_choices_to_nested_switches(_, _, _, _, _, [],
-        !TestChainCode, !NestedTrieCode, !CI).
+%---------------------%
+
+:- pred convert_trie_choices_to_nested_switches(string_trie_switch_info::in,
+    rval::in, map(case_id, label)::in, int::in, assoc_list(int, trie_node)::in,
+    cord(nested_trie_info)::in, cord(nested_trie_info)::out, int::in, int::out,
+    llds_code::in, llds_code::out, code_info::in, code_info::out) is det.
+
+convert_trie_choices_to_nested_switches(_, _, _, _, [],
+        !NestedTrieInfosCord, !NumInfos, !NestedTrieCode, !CI).
 convert_trie_choices_to_nested_switches(TrieSwitchInfo, VarRval,
-        CaseIdToLabelMap, CodeUnitRval, NumMatched, [Choice | Choices],
-        !TestChainCode, !NestedTrieCode, !CI) :-
+        CaseIdToLabelMap, NumMatched, [Choice | Choices],
+        !NestedTrieInfosCord, !NumInfos, !NestedTrieCode, !CI) :-
     Choice = CodeUnit - TrieNode,
     convert_trie_to_nested_switches(TrieSwitchInfo, VarRval, CaseIdToLabelMap,
         NumMatched, TrieNode, TrieNodeLabel, TrieNodeCode, !CI),
+    cord.snoc(nested_trie_info(CodeUnit, TrieNodeLabel), !NestedTrieInfosCord),
+    !:NumInfos = !.NumInfos + 1,
+    !:NestedTrieCode = !.NestedTrieCode ++ TrieNodeCode,
+    convert_trie_choices_to_nested_switches(TrieSwitchInfo, VarRval,
+        CaseIdToLabelMap, NumMatched, Choices,
+        !NestedTrieInfosCord, !NumInfos, !NestedTrieCode, !CI).
+
+%---------------------%
+
+:- pred generate_nested_trie_try_chain(llds_code::in, rval::in,
+    list(nested_trie_info)::in, llds_code::in, llds_code::out) is det.
+
+generate_nested_trie_try_chain(GotoFailCode, _, [], !TryChainCode) :-
+    !:TryChainCode = !.TryChainCode ++ GotoFailCode.
+generate_nested_trie_try_chain(GotoFailCode, CodeUnitRval,
+        [NestedTrieInfo | NestedTrieInfos], !TryChainCode) :-
+    NestedTrieInfo = nested_trie_info(CodeUnit, NestedTrieNodeLabel),
     TestRval = binop(eq(int_type_int),
         CodeUnitRval, const(llconst_int(CodeUnit))),
     TestCodeUnitCode = singleton(
-        llds_instr(if_val(TestRval, code_label(TrieNodeLabel)), "")
+        llds_instr(if_val(TestRval, code_label(NestedTrieNodeLabel)), "")
     ),
-    !:TestChainCode = !.TestChainCode ++ TestCodeUnitCode,
-    !:NestedTrieCode = !.NestedTrieCode ++ TrieNodeCode,
-    convert_trie_choices_to_nested_switches(TrieSwitchInfo, VarRval,
-        CaseIdToLabelMap, CodeUnitRval, NumMatched, Choices,
-        !TestChainCode, !NestedTrieCode, !CI).
+    !:TryChainCode = !.TryChainCode ++ TestCodeUnitCode,
+    generate_nested_trie_try_chain(GotoFailCode, CodeUnitRval,
+        NestedTrieInfos, !TryChainCode).
 
-:- pred represent_tagged_cases_in_string_trie_switch(represent_params::in,
-    list(tagged_case)::in, map(case_id, label)::in, map(case_id, label)::out,
-    case_label_map::in, case_label_map::out,
-    branch_end::in, branch_end::out, code_info::in, code_info::out) is det.
+%---------------------%
 
-represent_tagged_cases_in_string_trie_switch(_, [],
-        !CaseIdToLabelMap, !CaseLabelMap, !MaybeEnd, !CI).
-represent_tagged_cases_in_string_trie_switch(Params,
-        [TaggedCase | TaggedCases],
-        !CaseIdToLabelMap, !CaseLabelMap, !MaybeEnd, !CI) :-
-    represent_tagged_case_for_llds(Params, TaggedCase, Label,
-        !CaseLabelMap, !MaybeEnd, !CI, unit, _),
-    TaggedCase = tagged_case(_, _, CaseId, _),
-    map.det_insert(CaseId, Label, !CaseIdToLabelMap),
-    represent_tagged_cases_in_string_trie_switch(Params, TaggedCases,
-        !CaseIdToLabelMap, !CaseLabelMap, !MaybeEnd, !CI).
+:- pred generate_nested_trie_binary_search(llds_code::in, rval::in, int::in,
+    list(nested_trie_info)::in, llds_code::out,
+    code_info::in, code_info::out) is det.
+
+generate_nested_trie_binary_search(GotoFailCode, CodeUnitRval,
+        NumInfos, NestedTrieInfos, TestCode, !CI) :-
+    ( if NumInfos =< 3 then
+        generate_nested_trie_try_chain(GotoFailCode, CodeUnitRval,
+            NestedTrieInfos, empty, TestCode)
+    else
+        NumInfosR = NumInfos / 2,
+        NumInfosL = NumInfos - NumInfosR,
+        list.det_split_list(NumInfosL, NestedTrieInfos,
+            NestedTrieInfosL, NestedTrieInfosR),
+        list.det_head(NestedTrieInfosR, HeadNestedTrieInfoR),
+        HeadNestedTrieInfoR = nested_trie_info(LeastCodeUnitR, _),
+        code_info.get_next_label(LabelR, !CI),
+
+        TestRvalLR = binop(int_ge(int_type_int),
+            CodeUnitRval, const(llconst_int(LeastCodeUnitR))),
+        CommentLR = "binary search on code unit",
+        TestCodeLR = singleton(
+            llds_instr(if_val(TestRvalLR, code_label(LabelR)), CommentLR)
+        ),
+        generate_nested_trie_binary_search(GotoFailCode, CodeUnitRval,
+            NumInfosL, NestedTrieInfosL, TestCodeL, !CI),
+        LabelCodeR = singleton(
+            llds_instr(label(LabelR), "")
+        ),
+        generate_nested_trie_binary_search(GotoFailCode, CodeUnitRval,
+            NumInfosR, NestedTrieInfosR, TestCodeR, !CI),
+        TestCode = TestCodeLR ++ TestCodeL ++ LabelCodeR ++ TestCodeR
+    ).
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
