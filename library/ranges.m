@@ -30,17 +30,14 @@
     %
 :- type ranges.
 
+%---------------------------------------------------------------------------%
+%
+% Initial creation of sets.
+%
+
     % empty returns the empty set.
     %
 :- func empty = ranges.
-
-    % is_empty(Set) is true iff Set is the an empty set.
-    %
-:- pred is_empty(ranges::in) is semidet.
-
-    % is_non_empty(Set) is true iff Set is not an empty set.
-    %
-:- pred is_non_empty(ranges::in) is semidet.
 
     % universe returns the largest set that can be handled by this module.
     % This is the set of integers (min_int + 1)..max_int. Note that min_int
@@ -52,16 +49,45 @@
     %
 :- func range(int, int) = ranges.
 
-    % split(Set, Lo, Hi, Rest) is true iff Lo..Hi is the first range (i.e. the
-    % range containing the smallest integers) in Set, and Rest is the set Set
-    % with this range removed.
+%---------------------------------------------------------------------------%
+%
+% Emptiness and other tests.
+%
+
+    % is_empty(Set) is true iff Set is the an empty set.
     %
-:- pred split(ranges::in, int::out, int::out, ranges::out) is semidet.
+:- pred is_empty(ranges::in) is semidet.
+
+    % is_non_empty(Set) is true iff Set is not an empty set.
+    %
+:- pred is_non_empty(ranges::in) is semidet.
 
     % is_contiguous(Set, Lo, Hi) is true iff Set is the set of all
     % integers from Lo to Hi, both inclusive.
     %
 :- pred is_contiguous(ranges::in, int::out, int::out) is semidet.
+
+%---------------------------------------------------------------------------%
+%
+% Membership tests.
+%
+
+    % member(X, Set) is true iff X is a member of Set.
+    %
+:- pred member(int::in, ranges::in) is semidet.
+
+    % Nondeterministically produce each range.
+    %
+:- pred range_member(int::out, int::out, ranges::in) is nondet.
+
+    % Nondeterministically produce each element in the set.
+    %
+:- pred nondet_member(int::out, ranges::in) is nondet.
+
+%---------------------------------------------------------------------------%
+%
+% Insertions and deletions.
+%
 
     % insert(X, Set0, Set) is true iff Set is the union of Set0 and the set
     % containing only X.
@@ -75,11 +101,109 @@
     % except X.
     %
 :- func delete(int, ranges) = ranges.
+% NOTE_TO_IMPLEMENTORS XXX add predicate version of delete.
+
+%---------------------------------------------------------------------------%
+%
+% Comparisons between sets.
+%
+
+    % subset(SetA, SetB) is true iff every value in SetA is in SetB.
+    %
+:- pred subset(ranges::in, ranges::in) is semidet.
+
+    % disjoint(SetA, SetB) is true iff SetA and SetB have no values in common.
+    %
+:- pred disjoint(ranges::in, ranges::in) is semidet.
+
+    % Compare the sets of integers given by the two ranges using lexicographic
+    % ordering on the sorted set form.
+    %
+:- pred compare_lex(comparison_result::uo, ranges::in, ranges::in) is det.
+
+%---------------------------------------------------------------------------%
+%
+% Operations on two or more sets.
+%
+
+    % union(SetA, SetB): return the set that contains all the integers in SetA
+    % and SetB.
+    %
+:- func union(ranges, ranges) = ranges.
+
+    % intersection(SetA, SetB): return the set that contains all the integers
+    % in both SetA and SetB.
+    % NOTE_TO_IMPLEMENTORS XXX this is called intersect elsewhere.
+:- func intersection(ranges, ranges) = ranges.
+
+    % difference(SetA, SetB): return the set that contains all of the integers
+    % that are in SetA but not in SetB.
+    %
+:- func difference(ranges, ranges) = ranges.
+
+%---------------------------------------------------------------------------%
+%
+% Operations that divide a set into two parts.
+%
+
+    % split(Set, Lo, Hi, Rest) is true iff Lo..Hi is the first range (i.e. the
+    % range containing the smallest integers) in Set, and Rest is the set Set
+    % with this range removed.
+    %
+:- pred split(ranges::in, int::out, int::out, ranges::out) is semidet.
+
+    % prune_to_next_non_member(Set0, Set, X0, X):
+    %
+    % Set X to the smallest integer greater than or equal to X0 that is not in
+    % Set0 and Set to the set of integers in Set0 that are greater than X.
+    %
+:- pred prune_to_next_non_member(ranges::in, ranges::out,
+    int::in, int::out) is det.
+
+    % prune_to_prev_non_member(Set0, Set, X0, X):
+    %
+    % Set X to the largest integer less than or equal to X0 that is not in Set0
+    % and Set to the set of integers in Set0 that are less than X.
+    %
+:- pred prune_to_prev_non_member(ranges::in, ranges::out,
+    int::in, int::out) is det.
+
+%---------------------------------------------------------------------------%
+%
+% Converting lists and sets to ranges.
+%
+
+    % Convert from a list of integers.
+    %
+:- func from_list(list(int)) = ranges.
+
+    % Convert from a set of integers.
+    %
+:- func from_set(set(int)) = ranges.
+
+%---------------------------------------------------------------------------%
+%
+% Converting sets to lists.
+%
+
+    % Convert to a sorted list of integers.
+    %
+:- func to_sorted_list(ranges) = list(int).
+
+%---------------------------------------------------------------------------%
+%
+% Counting.
+%
 
     % Return the number of distinct integers that are in the set
     % (as opposed to the number of ranges).
-    %
+    % NOTE_TO_IMPLEMENTORS XXX this is called count in the other set modules.
 :- func size(ranges) = int.
+
+%---------------------------------------------------------------------------%
+%
+% Selecting individual elements from a set.
+%
 
     % Returns the median value of the set. In the case of a tie, return the
     % lower of the two options.
@@ -101,18 +225,6 @@
     %
 :- pred next(ranges::in, int::in, int::out) is semidet.
 
-    % member(X, Set) is true iff X is a member of Set.
-    %
-:- pred member(int::in, ranges::in) is semidet.
-
-    % Nondeterministically produce each range.
-    %
-:- pred range_member(int::out, int::out, ranges::in) is nondet.
-
-    % Nondeterministically produce each element in the set.
-    %
-:- pred nondet_member(int::out, ranges::in) is nondet.
-
     % search_range(X, Set, Lo, Hi):
     %
     % If X is in Set, then succeed, setting Lo and Hi to the endpoints
@@ -120,28 +232,10 @@
     %
 :- pred search_range(int::in, ranges::in, int::out, int::out) is semidet.
 
-    % subset(SetA, SetB) is true iff every value in SetA is in SetB.
-    %
-:- pred subset(ranges::in, ranges::in) is semidet.
-
-    % disjoint(SetA, SetB) is true iff SetA and SetB have no values in common.
-    %
-:- pred disjoint(ranges::in, ranges::in) is semidet.
-
-    % union(SetA, SetB): return the set that contains all the integers in SetA
-    % and SetB.
-    %
-:- func union(ranges, ranges) = ranges.
-
-    % intersection(SetA, SetB): return the set that contains all the integers
-    % in both SetA and SetB.
-    %
-:- func intersection(ranges, ranges) = ranges.
-
-    % difference(SetA, SetB): return the set that contains all of the integers
-    % that are in SetA but not in SetB.
-    %
-:- func difference(ranges, ranges) = ranges.
+%---------------------------------------------------------------------------%
+%
+% Filtering elements in a set.
+%
 
     % restrict_min(Min, Set): return the set that contains all of the integers
     % in Set that are greater than or equal to Min.
@@ -158,21 +252,10 @@
     %
 :- func restrict_range(int, int, ranges) = ranges.
 
-    % prune_to_next_non_member(Set0, Set, X0, X):
-    %
-    % Set X to the smallest integer greater than or equal to X0 that is not in
-    % Set0 and Set to the set of integers in Set0 that are greater than X.
-    %
-:- pred prune_to_next_non_member(ranges::in, ranges::out,
-    int::in, int::out) is det.
-
-    % prune_to_prev_non_member(Set0, Set, X0, X):
-    %
-    % Set X to the largest integer less than or equal to X0 that is not in Set0
-    % and Set to the set of integers in Set0 that are less than X.
-    %
-:- pred prune_to_prev_non_member(ranges::in, ranges::out,
-    int::in, int::out) is det.
+%---------------------------------------------------------------------------%
+%
+% Transformations of a set.
+%
 
     % Negate all numbers: X in Set <=> -X in negate(Set)
     %
@@ -195,27 +278,9 @@
 :- func contraction(ranges, int) = ranges.
 
 %---------------------------------------------------------------------------%
-
-    % Convert to a sorted list of integers.
-    %
-:- func to_sorted_list(ranges) = list(int).
-
-    % Convert from a list of integers.
-    %
-:- func from_list(list(int)) = ranges.
-
-    % Convert from a set of integers.
-    %
-:- func from_set(set(int)) = ranges.
-
-%---------------------------------------------------------------------------%
-
-    % Compare the sets of integers given by the two ranges using lexicographic
-    % ordering on the sorted set form.
-    %
-:- pred compare_lex(comparison_result::uo, ranges::in, ranges::in) is det.
-
-%---------------------------------------------------------------------------%
+%
+% Standard higher-order functions on elements in a set.
+%
 
 :- pred foldl(pred(int, A, A), ranges, A, A).
 :- mode foldl(in(pred(in, in, out) is det), in, in, out) is det.
@@ -258,6 +323,9 @@
 :- mode foldr(in(pred(in, di, uo) is semidet), in, di, uo) is semidet.
 
 %---------------------------------------------------------------------------%
+%
+% Standard higher-order functions on range endpoint pairs in set.
+%
 
     % For each range, call the predicate, passing it the lower and
     % upper bound and threading through an accumulator.
@@ -414,24 +482,17 @@
     --->    nil
     ;       range(int, int, ranges).
 
-%---------------------------------------------------------------------------%
-
 :- pragma foreign_decl("C",
 "
 typedef MR_Word ML_Ranges;
 ").
 
+%---------------------------------------------------------------------------%
+
 :- pragma foreign_export("C", ranges.empty = out, "ML_ranges_empty").
 :- pragma foreign_export("Java", ranges.empty = out, "empty").
 
 empty = nil.
-
-:- pragma foreign_export("C", ranges.is_empty(in), "ML_ranges_is_empty").
-:- pragma foreign_export("Java", ranges.is_empty(in), "is_empty").
-
-is_empty(nil).
-
-is_non_empty(range(_, _, _)).
 
 :- pragma foreign_export("C", universe = out, "ML_ranges_universe").
 :- pragma foreign_export("Java", universe = out, "universe").
@@ -450,75 +511,17 @@ range(Min, Max) = Ranges :-
         Ranges = range(Min - 1, Max, nil)
     ).
 
-:- pragma foreign_export("C", ranges.split(in, out, out, out),
-    "ML_ranges_split").
-:- pragma foreign_export("Java", ranges.split(in, out, out, out),
-    "split").
+%---------------------------------------------------------------------------%
 
-split(range(Min1, Max, Rest), Min1 + 1, Max, Rest).
+:- pragma foreign_export("C", ranges.is_empty(in), "ML_ranges_is_empty").
+:- pragma foreign_export("Java", ranges.is_empty(in), "is_empty").
+
+is_empty(nil).
+
+is_non_empty(range(_, _, _)).
 
 is_contiguous(Range, Min + 1, Max) :-
     Range = range(Min, Max, nil).
-
-:- pragma foreign_export("C", ranges.insert(in, in) = out, "ML_ranges_insert").
-:- pragma foreign_export("Java", ranges.insert(in, in) = out, "insert").
-
-insert(N, As) = union(As, range(N, N)).
-insert(N, As, Bs) :- Bs = insert(N, As).
-
-delete(N, As) = difference(As, range(N, N)).
-
-%---------------------------------------------------------------------------%
-
-:- pragma foreign_export("C", size(in) = out, "ML_ranges_size").
-:- pragma foreign_export("Java", size(in) = out, "size").
-
-size(nil) = 0.
-size(range(L, U, Rest)) = (U - L) + size(Rest).
-
-median(As) = N :-
-    Size = size(As),
-    ( if Size > 0 then
-        MiddleIndex = (Size + 1) / 2
-    else
-        error($pred, "empty set")
-    ),
-    N = element_index(As, MiddleIndex).
-
-    % element_index(Intervals, I) returns the I'th largest value in the set
-    % represented by Intervals (the least item in the set having index 1).
-    %
-:- func element_index(ranges, int) = int.
-
-element_index(nil, _) =
-    func_error($pred, "index out of range").
-element_index(range(L, U, Rest), I) = N :-
-    N0 = L + I,
-    ( if N0 =< U then
-        N = N0
-    else
-        N = element_index(Rest, N0 - U)
-    ).
-
-%---------------------------------------------------------------------------%
-
-least(range(L, _, _), L + 1).
-
-greatest(range(_, U0, As), U) :-
-    greatest_2(U0, As, U).
-
-:- pred greatest_2(int::in, ranges::in, int::out) is det.
-
-greatest_2(U, nil, U).
-greatest_2(_, range(_, U0, As), U) :-
-    greatest_2(U0, As, U).
-
-next(range(L, U, As), N0, N) :-
-    ( if N0 < U then
-        N = int.max(L, N0) + 1
-    else
-        ranges.next(As, N0, N)
-    ).
 
 %---------------------------------------------------------------------------%
 
@@ -538,24 +541,19 @@ range_member(L, U, range(A0, A1, As)) :-
         range_member(L, U, As)
     ).
 
-%---------------------------------------------------------------------------%
-
 nondet_member(N, As) :-
     range_member(L, U, As),
     int.nondet_int_in_range(L, U, N).
 
 %---------------------------------------------------------------------------%
 
-search_range(N, range(Lo0, Hi0, Rest), Lo, Hi) :-
-    ( if
-        N > Lo0,
-        N =< Hi0
-    then
-        Lo = Lo0 + 1,
-        Hi = Hi0
-    else
-        search_range(N, Rest, Lo, Hi)
-    ).
+:- pragma foreign_export("C", ranges.insert(in, in) = out, "ML_ranges_insert").
+:- pragma foreign_export("Java", ranges.insert(in, in) = out, "insert").
+
+insert(N, As) = union(As, range(N, N)).
+insert(N, As, Bs) :- Bs = insert(N, As).
+
+delete(N, As) = difference(As, range(N, N)).
 
 %---------------------------------------------------------------------------%
 
@@ -566,6 +564,92 @@ subset(A, B) :-
 disjoint(A, B) :-
     % XXX Should implement this more efficiently.
     ranges.intersection(A, B) = nil.
+
+%---------------------------------------------------------------------------%
+
+compare_lex(Result, A, B) :-
+    (
+        A = nil,
+        B = nil,
+        Result = (=)
+    ;
+        A = nil,
+        B = range(_, _, _),
+        Result = (<)
+    ;
+        A = range(_, _, _),
+        B = nil,
+        Result = (>)
+    ;
+        A = range(LBA, UBA, APrime),
+        B = range(LBB, UBB, BPrime),
+        % NOTE: when we unpack a range/3 constructor we must add one
+        % to the first argument since that is the lowest value in that
+        % subset.
+        compare_lex_2(Result, LBA + 1, UBA, LBB + 1, UBB, APrime, BPrime)
+    ).
+
+:- pred compare_lex_2(comparison_result::uo, int::in, int::in,
+    int::in, int::in, ranges::in, ranges::in) is det.
+
+compare_lex_2(Result, !.LBA, !.UBA, !.LBB, !.UBB, !.NextA, !.NextB) :-
+    compare(LBResult, !.LBA, !.LBB),
+    (
+        ( LBResult = (<)
+        ; LBResult = (>)
+        ),
+        Result = LBResult
+    ;
+        LBResult = (=),
+        compare(UBResult, !.UBA, !.UBB),
+        (
+            UBResult = (=),
+            compare_lex(Result, !.NextA, !.NextB)
+        ;
+            ( UBResult = (<)
+            ; UBResult = (>)
+            ),
+            ( if
+                !.LBA = !.UBA,
+                !.LBB = !.UBB
+            then
+                compare_lex(Result, !.NextA, !.NextB)
+            else if
+                !.LBA < !.UBA,
+                !.LBB = !.UBB
+            then
+                !:LBA = !.LBA + 1,
+                (
+                    !.NextB = nil,
+                    Result = (>)
+                ;
+                    !.NextB = range(!:LBB, !:UBB, !:NextB),
+                    compare_lex_2(Result, !.LBA, !.UBA, !.LBB + 1, !.UBB,
+                        !.NextA, !.NextB)
+                )
+            else if
+                !.LBA = !.UBA,
+                !.LBB < !.UBB
+            then
+                !:LBB = !.LBB + 1,
+                (
+                    !.NextA = nil,
+                    Result = (<)
+                ;
+                    !.NextA = range(!:LBA, !:UBA, !:NextA),
+                    compare_lex_2(Result, !.LBA + 1, !.UBA, !.LBB, !.UBB,
+                        !.NextA, !.NextB)
+                )
+            else
+                !:LBA = !.LBA + 1,
+                !:LBB = !.LBB + 1,
+                disable_warning [suspicious_recursion] (
+                    compare_lex_2(Result, !.LBA, !.UBA, !.LBB, !.UBB,
+                        !.NextA, !.NextB)
+                )
+            )
+        )
+    ).
 
 %---------------------------------------------------------------------------%
 
@@ -648,6 +732,8 @@ n_union_na_nb(L, UA, As0, UB, Bs0) = Result :-
         Result = range(L, UB, diff_a_nb(Bs0, UA, As0))
     ).
 
+%---------------------------------------------------------------------------%
+
     % intersection(A, B) = A /\ B
     %
 intersection(nil, _) = nil.
@@ -724,6 +810,8 @@ int_a_nb(As @ range(LA, UA, As0), UB, Bs0) = Result :-
         R = (>),
         Result = ranges.difference(As, Bs0)
     ).
+
+%---------------------------------------------------------------------------%
 
     % difference(A, B) = A \ B
     %
@@ -803,28 +891,12 @@ diff_na_nb(UA, As0, UB, Bs0) = Result :-
 
 %---------------------------------------------------------------------------%
 
-restrict_min(_, nil) = nil.
-restrict_min(Min, As0 @ range(L, U, As1)) = As :-
-    ( if Min =< L then
-        As = As0
-    else if Min =< U then
-        As = range(Min - 1, U, As1)
-    else
-        As = restrict_min(Min, As1)
-    ).
+:- pragma foreign_export("C", ranges.split(in, out, out, out),
+    "ML_ranges_split").
+:- pragma foreign_export("Java", ranges.split(in, out, out, out),
+    "split").
 
-restrict_max(_, nil) = nil.
-restrict_max(Max, range(L, U, As0)) = As :-
-    ( if Max =< L then
-        As = nil
-    else if Max =< U then
-        As = range(L, Max, nil)
-    else
-        As = range(L, U, restrict_max(Max, As0))
-    ).
-
-restrict_range(Min, Max, As) =
-    ranges.intersection(range(Min - 1, Max, nil), As).
+split(range(Min1, Max, Rest), Min1 + 1, Max, Rest).
 
 %---------------------------------------------------------------------------%
 
@@ -850,6 +922,121 @@ prune_to_prev_non_member(range(LA, UA, As0), Result, !N) :-
         prune_to_prev_non_member(As0, Result0, !N),
         Result = range(LA, UA, Result0)
     ).
+
+%---------------------------------------------------------------------------%
+
+from_list(List) =
+    list.foldl(ranges.insert, List, ranges.empty).
+
+from_set(Set) =
+    ranges.from_list(set.to_sorted_list(Set)).
+
+%---------------------------------------------------------------------------%
+
+to_sorted_list(nil) = [].
+to_sorted_list(range(L, H, Rest)) =
+    to_sorted_list_2(L, H, to_sorted_list(Rest)).
+
+:- func to_sorted_list_2(int, int, list(int)) = list(int).
+
+to_sorted_list_2(L, H, Ints) =
+    ( if H = L then
+        Ints
+    else
+        to_sorted_list_2(L, H - 1, [H | Ints])
+    ).
+
+%---------------------------------------------------------------------------%
+
+:- pragma foreign_export("C", size(in) = out, "ML_ranges_size").
+:- pragma foreign_export("Java", size(in) = out, "size").
+
+size(nil) = 0.
+size(range(L, U, Rest)) = (U - L) + size(Rest).
+
+%---------------------------------------------------------------------------%
+
+median(As) = N :-
+    Size = size(As),
+    ( if Size > 0 then
+        MiddleIndex = (Size + 1) / 2
+    else
+        error($pred, "empty set")
+    ),
+    N = element_index(As, MiddleIndex).
+
+    % element_index(Intervals, I) returns the I'th largest value in the set
+    % represented by Intervals (the least item in the set having index 1).
+    %
+:- func element_index(ranges, int) = int.
+
+element_index(nil, _) =
+    func_error($pred, "index out of range").
+element_index(range(L, U, Rest), I) = N :-
+    N0 = L + I,
+    ( if N0 =< U then
+        N = N0
+    else
+        N = element_index(Rest, N0 - U)
+    ).
+
+%---------------------------------------------------------------------------%
+
+least(range(L, _, _), L + 1).
+
+greatest(range(_, U0, As), U) :-
+    greatest_2(U0, As, U).
+
+:- pred greatest_2(int::in, ranges::in, int::out) is det.
+
+greatest_2(U, nil, U).
+greatest_2(_, range(_, U0, As), U) :-
+    greatest_2(U0, As, U).
+
+next(range(L, U, As), N0, N) :-
+    ( if N0 < U then
+        N = int.max(L, N0) + 1
+    else
+        ranges.next(As, N0, N)
+    ).
+
+search_range(N, range(Lo0, Hi0, Rest), Lo, Hi) :-
+    ( if
+        N > Lo0,
+        N =< Hi0
+    then
+        Lo = Lo0 + 1,
+        Hi = Hi0
+    else
+        search_range(N, Rest, Lo, Hi)
+    ).
+
+%---------------------------------------------------------------------------%
+
+restrict_min(_, nil) = nil.
+restrict_min(Min, As0 @ range(L, U, As1)) = As :-
+    ( if Min =< L then
+        As = As0
+    else if Min =< U then
+        As = range(Min - 1, U, As1)
+    else
+        As = restrict_min(Min, As1)
+    ).
+
+restrict_max(_, nil) = nil.
+restrict_max(Max, range(L, U, As0)) = As :-
+    ( if Max =< L then
+        As = nil
+    else if Max =< U then
+        As = range(L, Max, nil)
+    else
+        As = range(L, U, restrict_max(Max, As0))
+    ).
+
+restrict_range(Min, Max, As) =
+    ranges.intersection(range(Min - 1, Max, nil), As).
+
+%---------------------------------------------------------------------------%
 
 negate(As) = negate_aux(As, nil).
 
@@ -956,113 +1143,6 @@ div_down_pp(A, B) = int.unchecked_quotient(A, B).
 :- func div_down_np(int::in, int::in) = (int::out) is det.
 
 div_down_np(A, B) = int.unchecked_quotient(A - B + 1, B).
-
-%---------------------------------------------------------------------------%
-
-to_sorted_list(nil) = [].
-to_sorted_list(range(L, H, Rest)) =
-    to_sorted_list_2(L, H, to_sorted_list(Rest)).
-
-:- func to_sorted_list_2(int, int, list(int)) = list(int).
-
-to_sorted_list_2(L, H, Ints) =
-    ( if   H = L then
-        Ints
-    else
-        to_sorted_list_2(L, H-1, [H | Ints])
-    ).
-
-from_list(List) =
-    list.foldl(ranges.insert, List, ranges.empty).
-
-from_set(Set) =
-    ranges.from_list(set.to_sorted_list(Set)).
-
-%---------------------------------------------------------------------------%
-
-compare_lex(Result, A, B) :-
-    (
-        A = nil,
-        B = nil,
-        Result = (=)
-    ;
-        A = nil,
-        B = range(_, _, _),
-        Result = (<)
-    ;
-        A = range(_, _, _),
-        B = nil,
-        Result = (>)
-    ;
-        A = range(LBA, UBA, APrime),
-        B = range(LBB, UBB, BPrime),
-        % NOTE: when we unpack a range/3 constructor we must add one
-        % to the first argument since that is the lowest value in that
-        % subset.
-        compare_lex_2(Result, LBA + 1, UBA, LBB + 1, UBB, APrime, BPrime)
-    ).
-
-:- pred compare_lex_2(comparison_result::uo, int::in, int::in,
-    int::in, int::in, ranges::in, ranges::in) is det.
-
-compare_lex_2(Result, !.LBA, !.UBA, !.LBB, !.UBB, !.NextA, !.NextB) :-
-    compare(LBResult, !.LBA, !.LBB),
-    (
-        ( LBResult = (<)
-        ; LBResult = (>)
-        ),
-        Result = LBResult
-    ;
-        LBResult = (=),
-        compare(UBResult, !.UBA, !.UBB),
-        (
-            UBResult = (=),
-            compare_lex(Result, !.NextA, !.NextB)
-        ;
-            ( UBResult = (<)
-            ; UBResult = (>)
-            ),
-            ( if
-                !.LBA = !.UBA,
-                !.LBB = !.UBB
-            then
-                compare_lex(Result, !.NextA, !.NextB)
-            else if
-                !.LBA < !.UBA,
-                !.LBB = !.UBB
-            then
-                !:LBA = !.LBA + 1,
-                (
-                    !.NextB = nil,
-                    Result = (>)
-                ;
-                    !.NextB = range(!:LBB, !:UBB, !:NextB),
-                    compare_lex_2(Result, !.LBA, !.UBA, !.LBB + 1, !.UBB,
-                        !.NextA, !.NextB)
-                )
-            else if
-                !.LBA = !.UBA,
-                !.LBB < !.UBB
-            then
-                !:LBB = !.LBB + 1,
-                (
-                    !.NextA = nil,
-                    Result = (<)
-                ;
-                    !.NextA = range(!:LBA, !:UBA, !:NextA),
-                    compare_lex_2(Result, !.LBA + 1, !.UBA, !.LBB, !.UBB,
-                        !.NextA, !.NextB)
-                )
-            else
-                !:LBA = !.LBA + 1,
-                !:LBB = !.LBB + 1,
-                disable_warning [suspicious_recursion] (
-                    compare_lex_2(Result, !.LBA, !.UBA, !.LBB, !.UBB,
-                        !.NextA, !.NextB)
-                )
-            )
-        )
-    ).
 
 %---------------------------------------------------------------------------%
 
