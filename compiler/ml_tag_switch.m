@@ -37,8 +37,8 @@
     % have more than one copy of a field.
     %
 :- pred ml_generate_tag_switch_if_possible(prog_var::in, var_table_entry::in,
-    code_model::in, can_fail::in, prog_context::in, packed_word_map::in,
-    list(tagged_case)::in, list(mlds_stmt)::out,
+    list(tagged_case)::in, code_model::in, can_fail::in, prog_context::in,
+    packed_word_map::in, list(mlds_stmt)::out,
     ml_gen_info::in, ml_gen_info::out) is semidet.
 
 %---------------------------------------------------------------------------%
@@ -74,8 +74,8 @@
 
 %---------------------------------------------------------------------------%
 
-ml_generate_tag_switch_if_possible(Var, VarEntry, CodeModel, CanFail, Context,
-        EntryPackedArgsMap, TaggedCases, Stmts, !Info) :-
+ml_generate_tag_switch_if_possible(Var, VarEntry, TaggedCases,
+        CodeModel, CanFail, Context, EntryPackedArgsMap, Stmts, !Info) :-
     % Group the cases based on primary tag value, find out how many
     % constructors share each primary tag value, and sort the cases so that
     % the groups covering the most function symbols come first.
@@ -90,8 +90,8 @@ ml_generate_tag_switch_if_possible(Var, VarEntry, CodeModel, CanFail, Context,
     MayUseTagSwitch = may_use_tag_switch,
     order_ptag_groups_by_count(PtagCaseGroups0, PtagCaseGroups),
     ml_generate_tag_switch(Var, VarEntry, CodeModel, CanFail, Context,
-        MaxPtagUint8, CodeMap, ReachableConstVarMaps0, PtagCaseGroups, Stmts,
-        !Info).
+        MaxPtagUint8, CodeMap, ReachableConstVarMaps0, PtagCaseGroups,
+        Stmts, !Info).
 
 :- pred ml_generate_tag_switch(prog_var::in, var_table_entry::in,
     code_model::in, can_fail::in, prog_context::in, uint8::in,

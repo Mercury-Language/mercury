@@ -67,23 +67,29 @@
 
 :- import_module list.
 
-:- pred generate_string_trie_switch(list(tagged_case)::in, rval::in,
-    string::in, code_model::in, can_fail::in, hlds_goal_info::in, label::in,
-    branch_end::out, llds_code::out,
+%---------------------%
+
+:- pred generate_string_trie_switch(rval::in, string::in,
+    list(tagged_case)::in, code_model::in, can_fail::in, hlds_goal_info::in,
+    label::in, branch_end::out, llds_code::out,
     code_info::in, code_info::out, code_loc_dep::in) is det.
 
-:- pred generate_string_hash_switch(list(tagged_case)::in, rval::in,
-    string::in, code_model::in, can_fail::in, hlds_goal_info::in, label::in,
-    branch_end::out, llds_code::out,
+%---------------------%
+
+:- pred generate_string_hash_switch(rval::in, string::in,
+    list(tagged_case)::in, code_model::in, can_fail::in, hlds_goal_info::in,
+    label::in, branch_end::out, llds_code::out,
     code_info::in, code_info::out, code_loc_dep::in) is det.
 
 :- pred generate_string_hash_lookup_switch(rval::in,
     lookup_switch_info(string)::in, can_fail::in, label::in, abs_store_map::in,
     branch_end::out, llds_code::out, code_info::out) is det.
 
-:- pred generate_string_binary_switch(list(tagged_case)::in, rval::in,
-    string::in, code_model::in, can_fail::in, hlds_goal_info::in, label::in,
-    branch_end::out, llds_code::out,
+%---------------------%
+
+:- pred generate_string_binary_switch(rval::in, string::in,
+    list(tagged_case)::in, code_model::in, can_fail::in, hlds_goal_info::in,
+    label::in, branch_end::out, llds_code::out,
     code_info::in, code_info::out, code_loc_dep::in) is det.
 
 :- pred generate_string_binary_lookup_switch(rval::in,
@@ -121,7 +127,7 @@
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
-generate_string_trie_switch(TaggedCases, VarRval, VarName, CodeModel, CanFail,
+generate_string_trie_switch(VarRval, VarName, TaggedCases, CodeModel, CanFail,
         SwitchGoalInfo, EndLabel, MaybeEnd, Code, !CI, CLD) :-
     init_string_trie_switch_info(CanFail, TrieSwitchInfo, !CI, CLD),
     BranchStart = TrieSwitchInfo ^ stsi_branch_start,
@@ -424,7 +430,7 @@ init_case_num_reg(TrieSwitchInfo, InitCaseNumRegCode) :-
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
-generate_string_hash_switch(Cases, VarRval, VarName, CodeModel, CanFail,
+generate_string_hash_switch(VarRval, VarName, TaggedCases, CodeModel, CanFail,
         SwitchGoalInfo, EndLabel, MaybeEnd, Code, !CI, CLD) :-
     init_string_hash_switch_info(CanFail, HashSwitchInfo, !CI, CLD),
     BranchStart = HashSwitchInfo ^ shsi_branch_start,
@@ -436,8 +442,8 @@ generate_string_hash_switch(Cases, VarRval, VarName, CodeModel, CanFail,
 
     % Generate code for the cases, and remember the label of each case.
     map.init(CaseLabelMap0),
-    represent_tagged_cases_in_string_hash_switch(Params, Cases, [], StrsLabels,
-        CaseLabelMap0, CaseLabelMap, no, MaybeEnd, !CI),
+    represent_tagged_cases_in_string_hash_switch(Params, TaggedCases,
+        [], StrsLabels, CaseLabelMap0, CaseLabelMap, no, MaybeEnd, !CI),
 
     % Compute the hash table.
     construct_string_hash_cases(StrsLabels, allow_doubling,
@@ -1038,8 +1044,9 @@ generate_string_hash_switch_search(Info, VarRval, TableAddrRval,
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
-generate_string_binary_switch(Cases, VarRval, VarName, CodeModel, CanFail,
-        SwitchGoalInfo, EndLabel, MaybeEnd, Code, !CI, CLD) :-
+generate_string_binary_switch(VarRval, VarName, TaggedCases,
+        CodeModel, CanFail, SwitchGoalInfo, EndLabel, MaybeEnd, Code,
+        !CI, CLD) :-
     init_string_binary_switch_info(CanFail, BinarySwitchInfo, !CI, CLD),
     BranchStart = BinarySwitchInfo ^ sbsi_branch_start,
     Params = represent_params(VarName, SwitchGoalInfo, CodeModel, BranchStart,
@@ -1050,7 +1057,7 @@ generate_string_binary_switch(Cases, VarRval, VarName, CodeModel, CanFail,
 
     % Compute and generate the binary search table.
     map.init(CaseLabelMap0),
-    string_binary_cases(Cases, represent_tagged_case_for_llds(Params),
+    string_binary_cases(TaggedCases, represent_tagged_case_for_llds(Params),
         CaseLabelMap0, CaseLabelMap, no, MaybeEnd, !CI, unit, _, SortedTable),
 
     gen_string_binary_jump_slots(SortedTable,

@@ -152,24 +152,24 @@ generate_switch(CodeModel, SwitchVar, CanFail, Cases, GoalInfo, Code,
         ( SwitchCategory = ite_chain_switch
         ; SwitchCategory = float_switch
         ),
-        order_and_generate_cases(TaggedCases, SwitchVarRval, SwitchVarType,
-            SwitchVarName, CodeModel, CanFail, GoalInfo, EndLabel, MaybeEnd,
-            SwitchCode, !CI, !.CLD)
+        order_and_generate_cases(SwitchVarRval, SwitchVarType, SwitchVarName,
+            TaggedCases, CodeModel, CanFail, GoalInfo,
+            EndLabel, MaybeEnd, SwitchCode, !CI, !.CLD)
     ;
         ( SwitchCategory = int_max_32_switch
         ; SwitchCategory = int_64_switch
         ),
         module_info_get_globals(ModuleInfo, Globals),
-        generate_int_switch(ModuleInfo, Globals,
-            CodeModel, CanFail, MaybeIntSwitchInfo, SwitchVarName,
-            SwitchVarType, SwitchVarRval, TaggedCases, GoalInfo,
+        generate_int_switch(ModuleInfo, Globals, SwitchVarRval, SwitchVarType,
+            SwitchVarName, TaggedCases, MaybeIntSwitchInfo,
+            CodeModel, CanFail, GoalInfo,
             EndLabel, MaybeEnd, SwitchCode, !CI, !.CLD)
     ;
         SwitchCategory = string_switch,
         module_info_get_globals(ModuleInfo, Globals),
-        generate_string_switch(Globals, CodeModel, CanFail,
-            SwitchVarName, SwitchVarType, SwitchVarRval, TaggedCases,
-            GoalInfo, EndLabel, MaybeEnd, SwitchCode, !CI, !.CLD)
+        generate_string_switch(Globals, SwitchVarRval, SwitchVarType,
+            SwitchVarName, TaggedCases, CodeModel, CanFail, GoalInfo,
+            EndLabel, MaybeEnd, SwitchCode, !CI, !.CLD)
     ;
         SwitchCategory = tag_switch,
         num_cons_ids_in_tagged_cases(TaggedCases, NumConsIds, NumArms),
@@ -177,27 +177,28 @@ generate_switch(CodeModel, SwitchVar, CanFail, Cases, GoalInfo, Code,
         globals.get_opt_tuple(Globals, OptTuple),
         TagSize = OptTuple ^ ot_tag_switch_size,
         ( if NumConsIds >= TagSize, NumArms > 1 then
-            generate_tag_switch(TaggedCases, SwitchVarRval, SwitchVarType,
-                SwitchVarName, CodeModel, CanFail, GoalInfo, EndLabel,
+            generate_tag_switch(SwitchVarRval, SwitchVarType, SwitchVarName,
+                TaggedCases, CodeModel, CanFail, GoalInfo, EndLabel,
                 no, MaybeEnd, SwitchCode, !CI, !.CLD)
         else
-            order_and_generate_cases(TaggedCases, SwitchVarRval,
-                SwitchVarType, SwitchVarName, CodeModel, CanFail,
-                GoalInfo, EndLabel, MaybeEnd, SwitchCode, !CI, !.CLD)
+            order_and_generate_cases(SwitchVarRval, SwitchVarType,
+                SwitchVarName, TaggedCases, CodeModel, CanFail, GoalInfo,
+                EndLabel, MaybeEnd, SwitchCode, !CI, !.CLD)
         )
     ),
     Code = SwitchVarCode ++ SwitchCode,
     after_all_branches(StoreMap, MaybeEnd, !.CI, !:CLD).
 
 :- pred generate_int_switch(module_info::in, globals::in,
-    code_model::in, can_fail::in, maybe_int_switch_info::in,
-    string::in, mer_type::in, rval::in, list(tagged_case)::in,
+    rval::in, mer_type::in, string::in, list(tagged_case)::in,
+    maybe_int_switch_info::in, code_model::in, can_fail::in,
     hlds_goal_info::in, label::in, branch_end::out, llds_code::out,
     code_info::in, code_info::out, code_loc_dep::in) is det.
 
-generate_int_switch(ModuleInfo, Globals, CodeModel, CanFail,
-        MaybeIntSwitchInfo, SwitchVarName, SwitchVarType, SwitchVarRval,
-        TaggedCases, GoalInfo, EndLabel, MaybeEnd, SwitchCode, !CI, !.CLD) :-
+generate_int_switch(ModuleInfo, Globals,
+        SwitchVarRval, SwitchVarType, SwitchVarName,
+        TaggedCases, MaybeIntSwitchInfo, CodeModel, CanFail, GoalInfo,
+        EndLabel, MaybeEnd, SwitchCode, !CI, !.CLD) :-
     num_cons_ids_in_tagged_cases(TaggedCases, NumConsIds, NumArms),
     ( if
         MaybeIntSwitchInfo = int_switch(IntSwitchInfo),
@@ -253,19 +254,19 @@ generate_int_switch(ModuleInfo, Globals, CodeModel, CanFail,
             SwitchVarName, CodeModel, GoalInfo, DenseSwitchInfo,
             EndLabel, no, MaybeEnd, SwitchCode, !CI, !.CLD)
     else
-        order_and_generate_cases(TaggedCases, SwitchVarRval,
-            SwitchVarType, SwitchVarName, CodeModel, CanFail,
-            GoalInfo, EndLabel, MaybeEnd, SwitchCode, !CI, !.CLD)
+        order_and_generate_cases(SwitchVarRval, SwitchVarType, SwitchVarName,
+            TaggedCases, CodeModel, CanFail, GoalInfo,
+            EndLabel, MaybeEnd, SwitchCode, !CI, !.CLD)
     ).
 
-:- pred generate_string_switch(globals::in, code_model::in, can_fail::in,
-    string::in, mer_type::in, rval::in, list(tagged_case)::in,
+:- pred generate_string_switch(globals::in, rval::in, mer_type::in, string::in,
+    list(tagged_case)::in, code_model::in, can_fail::in,
     hlds_goal_info::in, label::in, branch_end::out, llds_code::out,
     code_info::in, code_info::out, code_loc_dep::in) is det.
 
-generate_string_switch(Globals, CodeModel, CanFail,
-        SwitchVarName, SwitchVarType, SwitchVarRval,
-        TaggedCases, GoalInfo, EndLabel, MaybeEnd, SwitchCode, !CI, !.CLD) :-
+generate_string_switch(Globals, SwitchVarRval, SwitchVarType, SwitchVarName,
+        TaggedCases, CodeModel, CanFail, GoalInfo,
+        EndLabel, MaybeEnd, SwitchCode, !CI, !.CLD) :-
     filter_out_failing_cases_if_needed(CodeModel,
         TaggedCases, FilteredTaggedCases, CanFail, FilteredCanFail),
     num_cons_ids_in_tagged_cases(FilteredTaggedCases, NumConsIds, NumArms),
@@ -273,27 +274,27 @@ generate_string_switch(Globals, CodeModel, CanFail,
     % (which will contain at most one if-then-else) will be faster than
     % any other method for implementing the "switch".
     ( if NumArms < 2 then
-        order_and_generate_cases(TaggedCases, SwitchVarRval,
-            SwitchVarType, SwitchVarName, CodeModel, CanFail,
-            GoalInfo, EndLabel, MaybeEnd, SwitchCode, !CI, !.CLD)
+        order_and_generate_cases(SwitchVarRval, SwitchVarType, SwitchVarName,
+            TaggedCases, CodeModel, CanFail, GoalInfo,
+            EndLabel, MaybeEnd, SwitchCode, !CI, !.CLD)
     else
-        generate_smart_string_switch(Globals, CodeModel,
-            CanFail, FilteredCanFail, SwitchVarName, SwitchVarType,
-            SwitchVarRval, NumConsIds, TaggedCases, FilteredTaggedCases,
-            GoalInfo, EndLabel, MaybeEnd, SwitchCode, !CI, !.CLD)
+        generate_smart_string_switch(Globals, SwitchVarRval, SwitchVarType,
+            SwitchVarName, TaggedCases, FilteredTaggedCases,
+            CodeModel, CanFail, FilteredCanFail, NumConsIds, GoalInfo,
+            EndLabel, MaybeEnd, SwitchCode, !CI, !.CLD)
     ).
 
-:- pred generate_smart_string_switch(globals::in, code_model::in,
-    can_fail::in, can_fail::in,
-    string::in, mer_type::in, rval::in, int::in,
-    list(tagged_case)::in, list(tagged_case)::in,
-    hlds_goal_info::in, label::in, branch_end::out, llds_code::out,
+:- pred generate_smart_string_switch(globals::in, rval::in, mer_type::in,
+    string::in, list(tagged_case)::in, list(tagged_case)::in,
+    code_model::in, can_fail::in, can_fail::in, int::in, hlds_goal_info::in,
+    label::in, branch_end::out, llds_code::out,
     code_info::in, code_info::out, code_loc_dep::in) is det.
 
-generate_smart_string_switch(Globals, CodeModel, CanFail, FilteredCanFail,
-        SwitchVarName, SwitchVarType, SwitchVarRval, NumConsIds,
-        TaggedCases, FilteredTaggedCases, GoalInfo, EndLabel, MaybeEnd,
-        SwitchCode, !CI, !.CLD) :-
+generate_smart_string_switch(Globals,
+        SwitchVarRval, SwitchVarType, SwitchVarName,
+        TaggedCases, FilteredTaggedCases,
+        CodeModel, CanFail, FilteredCanFail, NumConsIds, GoalInfo,
+        EndLabel, MaybeEnd, SwitchCode, !CI, !.CLD) :-
     goal_info_get_store_map(GoalInfo, StoreMap),
     is_lookup_switch(get_string_tag, FilteredTaggedCases, GoalInfo, StoreMap,
         !.CI, !.CLD, MaybeLookupSwitchInfo),
@@ -311,8 +312,8 @@ generate_smart_string_switch(Globals, CodeModel, CanFail, FilteredCanFail,
         NumConsIds >= StringTrieSwitchSize,
         MaybeLookupSwitchInfo = no  % yes is not yet implemented
     then
-        generate_string_trie_switch(TaggedCases, SwitchVarRval,
-            SwitchVarName, CodeModel, CanFail, GoalInfo,
+        generate_string_trie_switch(SwitchVarRval, SwitchVarName, TaggedCases,
+            CodeModel, CanFail, GoalInfo,
             EndLabel, MaybeEnd, SwitchCode, !CI, !.CLD)
     else if
         StringHashSwitchSize = OptTuple ^ ot_string_hash_switch_size,
@@ -323,12 +324,12 @@ generate_smart_string_switch(Globals, CodeModel, CanFail, FilteredCanFail,
             % We update MaybeEnd to account for the possible reservation
             % of temp slots for nondet switches.
             generate_string_hash_lookup_switch(SwitchVarRval,
-                LookupSwitchInfo, FilteredCanFail, EndLabel,
-                StoreMap, MaybeEnd, SwitchCode, !:CI)
+                LookupSwitchInfo, FilteredCanFail,
+                EndLabel, StoreMap, MaybeEnd, SwitchCode, !:CI)
         ;
             MaybeLookupSwitchInfo = no,
-            generate_string_hash_switch(TaggedCases, SwitchVarRval,
-                SwitchVarName, CodeModel, CanFail, GoalInfo,
+            generate_string_hash_switch(SwitchVarRval, SwitchVarName,
+                TaggedCases, CodeModel, CanFail, GoalInfo,
                 EndLabel, MaybeEnd, SwitchCode, !CI, !.CLD)
         )
     else if
@@ -344,14 +345,14 @@ generate_smart_string_switch(Globals, CodeModel, CanFail, FilteredCanFail,
                 StoreMap, MaybeEnd, SwitchCode, !:CI)
         ;
             MaybeLookupSwitchInfo = no,
-            generate_string_binary_switch(TaggedCases,
-                SwitchVarRval, SwitchVarName, CodeModel, CanFail,
-                GoalInfo, EndLabel, MaybeEnd, SwitchCode, !CI, !.CLD)
+            generate_string_binary_switch(SwitchVarRval, SwitchVarName,
+                TaggedCases, CodeModel, CanFail, GoalInfo,
+                EndLabel, MaybeEnd, SwitchCode, !CI, !.CLD)
         )
     else
-        order_and_generate_cases(TaggedCases, SwitchVarRval,
-            SwitchVarType, SwitchVarName, CodeModel, CanFail,
-            GoalInfo, EndLabel, MaybeEnd, SwitchCode, !CI, !.CLD)
+        order_and_generate_cases(SwitchVarRval, SwitchVarType, SwitchVarName,
+            TaggedCases, CodeModel, CanFail, GoalInfo,
+            EndLabel, MaybeEnd, SwitchCode, !CI, !.CLD)
     ).
 
 %---------------------------------------------------------------------------%
@@ -381,13 +382,13 @@ generate_smart_string_switch(Globals, CodeModel, CanFail, FilteredCanFail,
     % and put that one first. This minimizes the number of pipeline
     % breaks caused by taken branches.
     %
-:- pred order_and_generate_cases(list(tagged_case)::in, rval::in, mer_type::in,
-    string::in, code_model::in, can_fail::in, hlds_goal_info::in, label::in,
-    branch_end::out, llds_code::out,
+:- pred order_and_generate_cases(rval::in, mer_type::in, string::in,
+    list(tagged_case)::in, code_model::in, can_fail::in, hlds_goal_info::in,
+    label::in, branch_end::out, llds_code::out,
     code_info::in, code_info::out, code_loc_dep::in) is det.
 
-order_and_generate_cases(TaggedCases, VarRval, VarType, VarName, CodeModel,
-        CanFail, GoalInfo, EndLabel, MaybeEnd, Code, !CI, !.CLD) :-
+order_and_generate_cases(VarRval, VarType, VarName, TaggedCases,
+        CodeModel, CanFail, GoalInfo, EndLabel, MaybeEnd, Code, !CI, !.CLD) :-
     order_cases(TaggedCases, OrderedTaggedCases, CodeModel, CanFail, !.CI),
     type_to_ctor_det(VarType, TypeCtor),
     get_module_info(!.CI, ModuleInfo),
@@ -399,9 +400,10 @@ order_and_generate_cases(TaggedCases, VarRval, VarType, VarName, CodeModel,
         CheaperTagTest = no_cheaper_tag_test
     ),
     remember_position(!.CLD, BranchStart),
-    generate_if_then_else_chain_cases(BranchStart, OrderedTaggedCases,
-        VarRval, VarType, VarName, CheaperTagTest, CodeModel, CanFail,
-        GoalInfo, EndLabel, no, MaybeEnd, Code, !CI).
+    generate_if_then_else_chain_cases(CheaperTagTest,
+        VarRval, VarType, VarName, OrderedTaggedCases,
+        CodeModel, CanFail, GoalInfo, BranchStart,
+        EndLabel, no, MaybeEnd, Code, !CI).
 
 :- pred order_cases(list(tagged_case)::in, list(tagged_case)::out,
     code_model::in, can_fail::in, code_info::in) is det.
@@ -570,15 +572,15 @@ estimate_cost_of_case_test(TaggedCase) = Cost - TaggedCase :-
 
 %---------------------------------------------------------------------------%
 
-:- pred generate_if_then_else_chain_cases(position_info::in,
-    list(tagged_case)::in, rval::in, mer_type::in, string::in,
-    maybe_cheaper_tag_test::in, code_model::in, can_fail::in,
-    hlds_goal_info::in, label::in, branch_end::in, branch_end::out,
+:- pred generate_if_then_else_chain_cases(maybe_cheaper_tag_test::in,
+    rval::in, mer_type::in, string::in, list(tagged_case)::in, 
+    code_model::in, can_fail::in, hlds_goal_info::in,
+    position_info::in, label::in, branch_end::in, branch_end::out,
     llds_code::out, code_info::in, code_info::out) is det.
 
-generate_if_then_else_chain_cases(BranchStart, Cases, VarRval, VarType,
-        VarName, CheaperTagTest, CodeModel, CanFail, SwitchGoalInfo, EndLabel,
-        !MaybeEnd, Code, !CI) :-
+generate_if_then_else_chain_cases(CheaperTagTest, VarRval, VarType, VarName,
+        Cases, CodeModel, CanFail, SwitchGoalInfo,
+        BranchStart, EndLabel, !MaybeEnd, Code, !CI) :-
     (
         Cases = [HeadCase | TailCases],
         HeadCase = tagged_case(MainTaggedConsId, OtherTaggedConsIds, _, Goal),
@@ -619,9 +621,10 @@ generate_if_then_else_chain_cases(BranchStart, Cases, VarRval, VarType,
         ),
         HeadCaseCode = TestCode ++ TraceCode ++ GoalCode ++ SaveCode ++
             ElseCode,
-        generate_if_then_else_chain_cases(BranchStart, TailCases,
-            VarRval, VarType, VarName, CheaperTagTest, CodeModel, CanFail,
-            SwitchGoalInfo, EndLabel, !MaybeEnd, TailCasesCode, !CI),
+        generate_if_then_else_chain_cases(CheaperTagTest,
+            VarRval, VarType, VarName, TailCases,
+            CodeModel, CanFail, SwitchGoalInfo,
+            BranchStart, EndLabel, !MaybeEnd, TailCasesCode, !CI),
         Code = HeadCaseCode ++ TailCasesCode
     ;
         Cases = [],

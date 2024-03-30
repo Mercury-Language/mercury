@@ -32,9 +32,9 @@
 
     % Generate intelligent indexing code for tag based switches.
     %
-:- pred generate_tag_switch(list(tagged_case)::in, rval::in, mer_type::in,
-    string::in, code_model::in, can_fail::in, hlds_goal_info::in, label::in,
-    branch_end::in, branch_end::out, llds_code::out,
+:- pred generate_tag_switch(rval::in, mer_type::in, string::in,
+    list(tagged_case)::in, code_model::in, can_fail::in, hlds_goal_info::in,
+    label::in, branch_end::in, branch_end::out, llds_code::out,
     code_info::in, code_info::out, code_loc_dep::in) is det.
 
 %---------------------------------------------------------------------------%
@@ -202,7 +202,7 @@
 
 %---------------------------------------------------------------------------%
 
-generate_tag_switch(TaggedCases, VarRval, VarType, VarName, CodeModel, CanFail,
+generate_tag_switch(VarRval, VarType, VarName, TaggedCases, CodeModel, CanFail,
         SwitchGoalInfo, EndLabel, !MaybeEnd, Code, !CI, CLD0) :-
     % We get registers for holding the primary and (if needed) the secondary
     % tag. The tags are needed only by the switch, and no other code gets

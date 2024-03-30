@@ -186,13 +186,13 @@ ml_gen_switch(SwitchVar, CanFail, CodeModel, GoalInfo, Context, Cases,
         ( SwitchCategory = ite_chain_switch
         ; SwitchCategory = float_switch
         ),
-        ml_switch_generate_if_then_else_chain(TaggedCases, SwitchVar,
+        ml_switch_generate_if_then_else_chain(SwitchVar, TaggedCases,
             CodeModel, CanFail, EntryPackedWordMap, Context, Stmts, !Info),
         Defns = []
     ;
         SwitchCategory = int_max_32_switch,
-        ml_gen_smart_int_max_32_switch(SwitchVar, SwitchVarType, CanFail,
-            TaggedCases, MaybeIntSwitchInfo, CodeModel, GoalInfo,
+        ml_gen_smart_int_max_32_switch(SwitchVar, SwitchVarType,
+            TaggedCases, MaybeIntSwitchInfo, CanFail, CodeModel, GoalInfo,
             EntryPackedWordMap, Context, Stmts, !Info),
         Defns = []
     ;
@@ -201,18 +201,18 @@ ml_gen_switch(SwitchVar, CanFail, CodeModel, GoalInfo, Context, Cases,
         Int64SwitchSupported = globals_target_supports_int64_switch(Globals),
         (
             Int64SwitchSupported = yes,
-            ml_switch_generate_mlds_switch(TaggedCases, SwitchVar,
+            ml_switch_generate_mlds_switch(SwitchVar, TaggedCases,
                 CodeModel, CanFail, EntryPackedWordMap, Context, Stmts, !Info)
         ;
             Int64SwitchSupported = no,
-            ml_switch_generate_if_then_else_chain(TaggedCases, SwitchVar,
+            ml_switch_generate_if_then_else_chain(SwitchVar, TaggedCases,
                 CodeModel, CanFail, EntryPackedWordMap, Context, Stmts, !Info)
         ),
         Defns = []
     ;
         SwitchCategory = string_switch,
-        ml_gen_string_switch(SwitchVar, SwitchVarEntry,
-            CanFail, CodeModel, GoalInfo, Context, TaggedCases,
+        ml_gen_string_switch(SwitchVar, SwitchVarEntry, TaggedCases,
+            CanFail, CodeModel, GoalInfo, Context,
             EntryPackedWordMap, Defns, Stmts, !Info)
     ;
         SwitchCategory = tag_switch,
@@ -224,14 +224,13 @@ ml_gen_switch(SwitchVar, CanFail, CodeModel, GoalInfo, Context, Cases,
             NumConsIds >= TagSize,
             NumArms > 1,
             ml_generate_tag_switch_if_possible(SwitchVar, SwitchVarEntry,
-                CodeModel, CanFail, Context, EntryPackedWordMap,
-                TaggedCases, StmtsPrime, !Info)
+                TaggedCases, CodeModel, CanFail,
+                Context, EntryPackedWordMap, StmtsPrime, !Info)
         then
             Stmts = StmtsPrime
         else
-            ml_switch_generate_if_then_else_chain(TaggedCases,
-                SwitchVar, CodeModel, CanFail, EntryPackedWordMap, Context,
-                Stmts, !Info)
+            ml_switch_generate_if_then_else_chain(SwitchVar, TaggedCases,
+                CodeModel, CanFail, EntryPackedWordMap, Context, Stmts, !Info)
         ),
         Defns = []
     ),
@@ -241,13 +240,14 @@ ml_gen_switch(SwitchVar, CanFail, CodeModel, GoalInfo, Context, Cases,
     ml_gen_info_set_packed_word_map(EntryPackedWordMap, !Info).
 
 :- pred ml_gen_smart_int_max_32_switch(prog_var::in, mer_type::in,
-    can_fail::in, list(tagged_case)::in, maybe_int_switch_info::in,
-    code_model::in, hlds_goal_info::in, packed_word_map::in, prog_context::in,
-    list(mlds_stmt)::out, ml_gen_info::in, ml_gen_info::out) is det.
+    list(tagged_case)::in, maybe_int_switch_info::in,
+    can_fail::in, code_model::in, hlds_goal_info::in,
+    packed_word_map::in, prog_context::in, list(mlds_stmt)::out,
+    ml_gen_info::in, ml_gen_info::out) is det.
 
-ml_gen_smart_int_max_32_switch(SwitchVar, SwitchVarType, CanFail, TaggedCases,
-        MaybeIntSwitchInfo, CodeModel, GoalInfo, EntryPackedWordMap, Context,
-        Stmts, !Info) :-
+ml_gen_smart_int_max_32_switch(SwitchVar, SwitchVarType, TaggedCases,
+        MaybeIntSwitchInfo, CanFail, CodeModel, GoalInfo,
+        EntryPackedWordMap, Context, Stmts, !Info) :-
     num_cons_ids_in_tagged_cases(TaggedCases, NumConsIds, NumArms),
     ml_gen_info_get_module_info(!.Info, ModuleInfo),
     module_info_get_globals(ModuleInfo, Globals),
@@ -280,19 +280,19 @@ ml_gen_smart_int_max_32_switch(SwitchVar, SwitchVarType, CanFail, TaggedCases,
     else
         % All MLDS targets (as of 2023 april) support switches on integers
         % whose size is at most 32 bits.
-        ml_switch_generate_mlds_switch(TaggedCases, SwitchVar,
+        ml_switch_generate_mlds_switch(SwitchVar, TaggedCases,
             CodeModel, CanFail, EntryPackedWordMap, Context, Stmts, !Info)
     ).
 
 :- pred ml_gen_string_switch(prog_var::in, var_table_entry::in,
-    can_fail::in, code_model::in, hlds_goal_info::in, prog_context::in,
-    list(tagged_case)::in, packed_word_map::in,
+    list(tagged_case)::in, can_fail::in, code_model::in, hlds_goal_info::in,
+    prog_context::in, packed_word_map::in,
     list(mlds_local_var_defn)::out, list(mlds_stmt)::out,
     ml_gen_info::in, ml_gen_info::out) is det.
 
-ml_gen_string_switch(SwitchVar, SwitchVarEntry, CanFail, CodeModel,
-        GoalInfo, Context, TaggedCases, EntryPackedWordMap,
-        Defns, Stmts, !Info) :-
+ml_gen_string_switch(SwitchVar, SwitchVarEntry, TaggedCases,
+        CanFail, CodeModel, GoalInfo, Context,
+        EntryPackedWordMap, Defns, Stmts, !Info) :-
     filter_out_failing_cases_if_needed(CodeModel,
         TaggedCases, FilteredTaggedCases, CanFail, FilteredCanFail),
     num_cons_ids_in_tagged_cases(FilteredTaggedCases, NumConsIds, NumArms),
@@ -300,8 +300,8 @@ ml_gen_string_switch(SwitchVar, SwitchVarEntry, CanFail, CodeModel,
     % (which will contain at most one if-then-else) will be faster than
     % any other method for implementing the "switch".
     ( if NumArms < 2 then
-        ml_switch_generate_if_then_else_chain(FilteredTaggedCases,
-            SwitchVar, CodeModel, FilteredCanFail, EntryPackedWordMap, Context,
+        ml_switch_generate_if_then_else_chain(SwitchVar, FilteredTaggedCases,
+            CodeModel, FilteredCanFail, EntryPackedWordMap, Context,
             Stmts, !Info),
         Defns = []
     else
@@ -319,27 +319,28 @@ ml_gen_string_switch(SwitchVar, SwitchVarEntry, CanFail, CodeModel,
             %   smart string switch implementations,
             % We therefore leave any implementation of smart indexing
             % to the Java/C# compilers.
-            ml_switch_generate_mlds_switch(FilteredTaggedCases, SwitchVar,
+            ml_switch_generate_mlds_switch(SwitchVar, FilteredTaggedCases,
                 CodeModel, FilteredCanFail, EntryPackedWordMap, Context,
                 Stmts, !Info),
             Defns = []
         ;
             Target = target_c,
             ml_gen_smart_string_switch(Globals, SwitchVar, SwitchVarEntry,
-                FilteredCanFail, CodeModel, GoalInfo, Context, NumConsIds,
-                FilteredTaggedCases, EntryPackedWordMap, Defns, Stmts, !Info)
+                FilteredTaggedCases, CodeModel, FilteredCanFail, GoalInfo,
+                Context, NumConsIds, EntryPackedWordMap, Defns, Stmts, !Info)
         )
     ).
 
-:- pred ml_gen_smart_string_switch(globals::in, prog_var::in,
-    var_table_entry::in, can_fail::in, code_model::in, hlds_goal_info::in,
-    prog_context::in, int::in, list(tagged_case)::in, packed_word_map::in,
+:- pred ml_gen_smart_string_switch(globals::in,
+    prog_var::in, var_table_entry::in, list(tagged_case)::in,
+    code_model::in, can_fail::in, hlds_goal_info::in,
+    prog_context::in, int::in, packed_word_map::in,
     list(mlds_local_var_defn)::out, list(mlds_stmt)::out,
     ml_gen_info::in, ml_gen_info::out) is det.
 
 ml_gen_smart_string_switch(Globals, SwitchVar, SwitchVarEntry,
-        FilteredCanFail, CodeModel, GoalInfo, Context, NumConsIds,
-        FilteredTaggedCases, EntryPackedWordMap, Defns, Stmts, !Info) :-
+        FilteredTaggedCases, CodeModel, FilteredCanFail, GoalInfo,
+        Context, NumConsIds, EntryPackedWordMap, Defns, Stmts, !Info) :-
     ml_gen_var(!.Info, SwitchVar, SwitchVarEntry, SwitchVarLval),
     SwitchVarRval = ml_lval(SwitchVarLval),
     % We can use a trie, a hash switch or binary switch, and we prefer
@@ -404,9 +405,9 @@ ml_gen_smart_string_switch(Globals, SwitchVar, SwitchVarEntry,
                 EntryPackedWordMap, Context, Defns, Stmts, !Info)
         )
     else
-        ml_switch_generate_if_then_else_chain(FilteredTaggedCases,
-            SwitchVar, CodeModel, FilteredCanFail, EntryPackedWordMap,
-            Context, Stmts, !Info),
+        ml_switch_generate_if_then_else_chain(SwitchVar, FilteredTaggedCases,
+            CodeModel, FilteredCanFail, EntryPackedWordMap, Context, Stmts,
+            !Info),
         Defns = []
     ).
 
@@ -437,12 +438,12 @@ estimate_cons_id_tag_test_cost(TaggedConsId, !CaseCost) :-
 
     % Generate a chain of if-then-elses to test each case in turn.
     %
-:- pred ml_switch_generate_if_then_else_chain(list(tagged_case)::in,
-    prog_var::in, code_model::in, can_fail::in, packed_word_map::in,
+:- pred ml_switch_generate_if_then_else_chain(prog_var::in,
+    list(tagged_case)::in, code_model::in, can_fail::in, packed_word_map::in,
     prog_context::in, list(mlds_stmt)::out,
     ml_gen_info::in, ml_gen_info::out) is det.
 
-ml_switch_generate_if_then_else_chain(TaggedCases0, Var,
+ml_switch_generate_if_then_else_chain(Var, TaggedCases0,
         CodeModel, CanFail, EntryPackedWordMap, Context, Stmts, !Info) :-
     % Associate each tagged case with the estimated cost of its tag tests.
     list.map(mark_tag_test_cost, TaggedCases0, CostTaggedCases0),
@@ -455,19 +456,20 @@ ml_switch_generate_if_then_else_chain(TaggedCases0, Var,
         unexpected($pred, "empty switch")
     ;
         TaggedCases = [FirstTaggedCase | LaterTaggedCases],
-        ml_switch_generate_if_then_else_chain_ites(FirstTaggedCase,
-            LaterTaggedCases, Var, CodeModel, CanFail, EntryPackedWordMap,
-            Context, Stmts, [], ReachableConstVarMaps, !Info),
+        ml_switch_generate_if_then_else_chain_ites(Var,
+            FirstTaggedCase, LaterTaggedCases, CodeModel, CanFail,
+            EntryPackedWordMap, Context, Stmts,
+            [], ReachableConstVarMaps, !Info),
         ml_gen_record_consensus_const_var_map(ReachableConstVarMaps, !Info)
     ).
 
-:- pred ml_switch_generate_if_then_else_chain_ites(tagged_case::in,
-    list(tagged_case)::in, prog_var::in, code_model::in, can_fail::in,
+:- pred ml_switch_generate_if_then_else_chain_ites(prog_var::in,
+    tagged_case::in, list(tagged_case)::in, code_model::in, can_fail::in,
     packed_word_map::in, prog_context::in, list(mlds_stmt)::out,
     list(ml_ground_term_map)::in, list(ml_ground_term_map)::out,
     ml_gen_info::in, ml_gen_info::out) is det.
 
-ml_switch_generate_if_then_else_chain_ites(TaggedCase, TaggedCases, Var,
+ml_switch_generate_if_then_else_chain_ites(Var, TaggedCase, TaggedCases,
         CodeModel, CanFail, EntryPackedWordMap, Context, [Stmt],
         !ReachableConstVarMaps, !Info) :-
     ml_gen_info_set_packed_word_map(EntryPackedWordMap, !Info),
@@ -488,7 +490,7 @@ ml_switch_generate_if_then_else_chain_ites(TaggedCase, TaggedCases, Var,
 
             % Generate the test for checking whether we are in the first
             % tagged case.
-            ml_switch_generate_if_then_else_cond(TaggedCase, Var, Cond, !Info),
+            ml_switch_generate_if_then_else_cond(Var, TaggedCase, Cond, !Info),
 
             % Generate code for the first tagged case.
             ml_gen_goal_as_branch_block(CodeModel, Goal, GoalBlock,
@@ -508,26 +510,27 @@ ml_switch_generate_if_then_else_chain_ites(TaggedCase, TaggedCases, Var,
 
         % Generate the test for checking whether we are in the first
         % tagged case.
-        ml_switch_generate_if_then_else_cond(TaggedCase, Var, Cond, !Info),
+        ml_switch_generate_if_then_else_cond(Var, TaggedCase, Cond, !Info),
 
         % Generate code for the first tagged case.
         ml_gen_goal_as_branch_block(CodeModel, Goal, GoalBlock,
             !ReachableConstVarMaps, !Info),
 
         % Generate code for the later tagged cases.
-        ml_switch_generate_if_then_else_chain_ites(LaterTaggedCase,
-            LaterTaggedCases, Var, CodeModel, CanFail, EntryPackedWordMap,
-            Context, LaterStmts, !ReachableConstVarMaps, !Info),
+        ml_switch_generate_if_then_else_chain_ites(Var,
+            LaterTaggedCase, LaterTaggedCases, CodeModel, CanFail,
+            EntryPackedWordMap, Context, LaterStmts,
+            !ReachableConstVarMaps, !Info),
         LaterBlock = ml_gen_block([], [], LaterStmts, Context),
 
         % Put the codes for the first and later tagged cases together.
         Stmt = ml_stmt_if_then_else(Cond, GoalBlock, yes(LaterBlock), Context)
     ).
 
-:- pred ml_switch_generate_if_then_else_cond(tagged_case::in, prog_var::in,
+:- pred ml_switch_generate_if_then_else_cond(prog_var::in, tagged_case::in,
     mlds_rval::out, ml_gen_info::in, ml_gen_info::out) is det.
 
-ml_switch_generate_if_then_else_cond(TaggedCase, Var, CondRval, !Info) :-
+ml_switch_generate_if_then_else_cond(Var, TaggedCase, CondRval, !Info) :-
     TaggedCase = tagged_case(MainTaggedConsId, OtherTaggedConsIds, _, _),
     ml_generate_test_var_has_one_tagged_cons_id(Var,
         MainTaggedConsId, OtherTaggedConsIds, CondRval, !Info).
@@ -538,12 +541,11 @@ ml_switch_generate_if_then_else_cond(TaggedCase, Var, CondRval, !Info) :-
     % where we map a Mercury switch directly to a switch in the target
     % language. (But see the post-processing done by ml_simplify_switch.)
     %
-:- pred ml_switch_generate_mlds_switch(list(tagged_case)::in,
-    prog_var::in, code_model::in, can_fail::in, packed_word_map::in,
-    prog_context::in, list(mlds_stmt)::out,
-    ml_gen_info::in, ml_gen_info::out) is det.
+:- pred ml_switch_generate_mlds_switch(prog_var::in, list(tagged_case)::in,
+    code_model::in, can_fail::in, packed_word_map::in, prog_context::in,
+    list(mlds_stmt)::out, ml_gen_info::in, ml_gen_info::out) is det.
 
-ml_switch_generate_mlds_switch(Cases, Var, CodeModel, CanFail,
+ml_switch_generate_mlds_switch(Var, Cases, CodeModel, CanFail,
         EntryPackedWordMap, Context, Stmts, !Info) :-
     ml_gen_info_get_var_table(!.Info, VarTable),
     lookup_var_entry(VarTable, Var, VarEntry),
@@ -566,8 +568,8 @@ ml_switch_generate_mlds_switch(Cases, Var, CodeModel, CanFail,
     mlds_switch_range::out) is det.
 
 ml_switch_gen_range(Info, MLDS_Type, Range) :-
+    ml_gen_info_get_module_info(Info, ModuleInfo),
     ( if
-        ml_gen_info_get_module_info(Info, ModuleInfo),
         MLDS_Type = mercury_nb_type(Type, TypeCategory),
         type_range(ModuleInfo, coerce(TypeCategory), Type,
             MinRange, MaxRange, _NumValuesInRange)
