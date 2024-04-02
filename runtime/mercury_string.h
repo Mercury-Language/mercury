@@ -482,18 +482,19 @@ extern MR_int_least32_t MR_utf8_get_mb(const MR_String s, MR_Integer pos,
                             int *width);
 
 // Decode the code point beginning at `pos' in `s', and set `*pos'
-// to the position of the next code point, if
+// as follows.
 //
-// - there *is* a next code point, i.e. if the code point is not NUL, and
-// - if there is a well-formed code point starting at pos.
+// If there is a well-formed code point at `pos' then return it,
+// and set pos to the position of the first byte following the decoded
+// code point.
 //
-// If there is a code point at pos and it is NUL, then return it, but
-// do not update pos.
+// WARNING: if the code point is the NUL terminator, then pos will end up
+// pointing past the end of the string.
 //
 // If there is an ill-formed code point at pos, then return -2, and set pos
 // to the position of the next byte that is either
 //
-// - a single-byte code point (which may the string-ending NUL), or
+// - a single-byte code point (which may be the string-ending NUL), or
 // - the lead byte of a multi-byte code point
 //
 // The _mb version requires s[pos] to be the lead byte of a multibyte code
