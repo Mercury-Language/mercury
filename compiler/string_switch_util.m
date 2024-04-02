@@ -61,18 +61,19 @@
                 % if there is one.
             ).
 
-    % create_trie(Encoding, TaggedCases, MaxCaseNum, TopTrieNode):
+    % create_trie(Encoding, StrsCaseIds, TopTrieNode):
     %
-    % Given a list of tagged cases, convert it to a trie that maps
-    % each string in those cases to the id of its case, with each node
-    % of the trie at depth N containing a branch on the code unit at offset N
-    % of the string in the given encoding (if we consider the root node
-    % to be at level 0).
+    % Given a map from strings to case_ids (in the form of an assoc_list),
+    % convert it to a trie that maps each string in those cases
+    % to the id of its case, with each node of the trie at depth N
+    % containing a branch on the code unit at offset N of the string
+    % in the given encoding (if we consider the root node to be at level 0).
     %
-    % Returns also the highest case_id (in its integer form).
+    % Note that the order of StrsCaseIds does not matter; we will build
+    % the same trie regardless of the order.
     %
-:- pred create_trie(string_encoding::in, list(tagged_case)::in,
-    int::out, trie_node::out) is det.
+:- pred create_trie(string_encoding::in, assoc_list(string, case_id)::in,
+    trie_node::out) is det.
 
 :- inst trie_choice for trie_node/0
     --->    trie_choice(ground, ground, ground).
@@ -90,6 +91,8 @@
     % Convert the list of cases, each of contains one or more strings,
     % into an assoc_list that maps each of those strings to its containing
     % case's case_id. Also return the highest case_id (in its integer form).
+    % The StrCaseIds output is intended to be given to the create_trie
+    % predicate.
     %
     % NOTE It would be nice to change the type of the last argument
     % to a list of values of bespoke type, but
@@ -168,10 +171,7 @@
 % Stuff for string trie switches.
 %
 
-create_trie(Encoding, TaggedCases, MaxCaseNum, TopTrieNode) :-
-    build_str_case_id_list(TaggedCases, MaxCaseNum, StrsCaseIds),
-    % The order of StrsCaseIds does not matter; we will build the same trie
-    % regardless of the order.
+create_trie(Encoding, StrsCaseIds, TopTrieNode) :-
     (
         StrsCaseIds = [],
         TopTrieNode = trie_choice([], map.init, no)

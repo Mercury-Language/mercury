@@ -409,7 +409,7 @@ generate_primary_try_me_else_chain_group(VarRval, PtagRval, SectagReg,
         MaybeFailLabel, PtagGroup, Code, !CaseLabelMap, !CI) :-
     get_next_label(ElseLabel, !CI),
     test_ptag_is_in_case_group(PtagRval, PtagGroup, IsApplicableTestRval),
-    neg_rval(IsApplicableTestRval, IsNotApplicableRval),
+    negate_rval(IsApplicableTestRval, IsNotApplicableRval),
     TestCode = singleton(
         llds_instr(if_val(IsNotApplicableRval, code_label(ElseLabel)),
             "test ptag(s) only")
@@ -894,7 +894,7 @@ generate_secondary_try_me_else_chain_case(Case, Code, !CaseLabelMap, !CI) :-
     generate_case_code_or_jump(CaseLabel, CaseCode, !CaseLabelMap),
     % ZZZ XXX Optimize what we generate when CaseCode = goto(CaseLabel).
     get_next_label(ElseLabel, !CI),
-    neg_rval(IsApplicableTestRval, IsNotApplicableTestRval),
+    negate_rval(IsApplicableTestRval, IsNotApplicableTestRval),
     SectagStrs =
         list.map(string.uint_to_string, one_or_more_to_list(OoMSectags)),
     SectagsStr = string.join_list(", ", SectagStrs),

@@ -1868,19 +1868,19 @@ generate_failure(Code, !CI, !.CLD) :-
         )
     ).
 
-fail_if_rval_is_false(Rval0, Code, !CI, !CLD) :-
+fail_if_rval_is_false(Rval, Code, !CI, !CLD) :-
     get_fail_info(!.CLD, FailInfo),
     FailInfo = fail_info(ResumePoints, ResumeKnown, _, _, _),
     (
         ResumeKnown = resume_point_known(_),
         stack.det_top(ResumePoints, TopResumePoint),
         ( if
-            pick_matching_resume_addr(!.CLD, TopResumePoint, FailureAddress0)
+            pick_matching_resume_addr(!.CLD, TopResumePoint, FailureAddr0)
         then
             % We branch away if the test *fails*
-            code_util.neg_rval(Rval0, Rval),
+            code_util.negate_rval(Rval, NegRval),
             Code = singleton(
-                llds_instr(if_val(Rval, FailureAddress0), "Test for failure")
+                llds_instr(if_val(NegRval, FailureAddr0), "Test for failure")
             )
         else
             pick_first_resume_point(TopResumePoint, Map, FailureAddress),
@@ -1896,7 +1896,8 @@ fail_if_rval_is_false(Rval0, Code, !CI, !CLD) :-
             % their failure locations and branches away to the failure
             % continuation.
             TestCode = singleton(
-                llds_instr(if_val(Rval0, SuccessAddress), "Test for failure")
+                llds_instr(if_val(Rval, SuccessAddress),
+                    "Branch around failure code")
             ),
             TailCode = from_list([
                 llds_instr(goto(FailureAddress), "Goto failure"),
@@ -1907,9 +1908,9 @@ fail_if_rval_is_false(Rval0, Code, !CI, !CLD) :-
     ;
         ResumeKnown = resume_point_unknown,
         % We branch away if the test *fails*
-        code_util.neg_rval(Rval0, Rval),
+        code_util.negate_rval(Rval, NegRval),
         Code = singleton(
-            llds_instr(if_val(Rval, do_redo), "Test for failure")
+            llds_instr(if_val(NegRval, do_redo), "Test for failure")
         )
     ).
 

@@ -1103,7 +1103,7 @@
             % anyway.)
             %
             % Note that after the how_to_construct field of a construction
-            % unification is set to construct_dynamically(marked_static),
+            % unification is set to construct_statically(marked_static),
             % that information remains valid *only* until the next compiler
             % pass modifies any of the information that mark_static_terms.m
             % used to arrive at that decision. When targeting the MLDS backend,

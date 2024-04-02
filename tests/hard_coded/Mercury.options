@@ -120,6 +120,10 @@ MCFLAGS-prince_frameopt_helper_1.prince_frameopt_helper_2 = \
 # Compile string_switch2 with only trie switches allowed.
 # Compile string_switch3 with only hash switches allowed.
 # Compile string_switch4 with only binary search switches allowed.
+#
+# Compiler space.m with only trie hashes allowed as well, since it has
+# a predicate (figure_key) that is a useful test for string trie lookup
+# switches.
 MCFLAGS-string_switch =   \
     --string-trie-switch-size=100 \
     --string-hash-switch-size=100 \
@@ -136,6 +140,10 @@ MCFLAGS-string_switch4 =   \
     --string-trie-switch-size=100 \
     --string-hash-switch-size=100 \
     --string-binary-switch-size=1
+MCFLAGS-space =   \
+    --string-trie-switch-size=1 \
+    --string-hash-switch-size=100 \
+    --string-binary-switch-size=100
 
 # This bug only shows up at optimization levels -O2 and below.
 MCFLAGS-profdeep_seg_fault          = -O2

@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------e
 % Copyright (C) 1994-2012 The University of Melbourne.
-% Copyright (C) 2013-2018 The Mercury team.
+% Copyright (C) 2013-2018, 2024 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -133,7 +133,7 @@ generate_test_var_has_cons_id_tag(VarRval, VarName, ConsId, ConsTag,
             " has functor " ++ ConsIdName ++ " (inverted test)",
         generate_test_rval_has_cons_tag(!.CI, VarRval, CheapConsTag,
             NegTestRval),
-        code_util.neg_rval(NegTestRval, TestRval)
+        code_util.negate_rval(NegTestRval, TestRval)
     else
         Comment = branch_sense_comment(Sense) ++ VarName ++
             " has functor " ++ ConsIdName,
@@ -158,7 +158,7 @@ generate_test_sense_branch(Sense, TestRval, Comment, ElseLabel, Code, !CI) :-
         BranchRval = TestRval
     ;
         Sense = branch_on_failure,
-        code_util.neg_rval(TestRval, BranchRval)
+        code_util.negate_rval(TestRval, BranchRval)
     ),
     Code = singleton(
         llds_instr(if_val(BranchRval, code_label(ElseLabel)), Comment)

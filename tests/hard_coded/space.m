@@ -5,6 +5,9 @@
 % A regression test: the Mercury compiler dated May 20 1997
 % generated incorrect code for this program.
 %
+% The figure_key predicate also serves as a test case for string trie
+% lookup switches.
+%
 %---------------------------------------------------------------------------%
 %
 % space : an ambient music generator
@@ -71,8 +74,8 @@
     ;       vii.
 
 :- type qualifier
-    --->    maj
-    ;       min.
+    --->    q_maj
+    ;       q_min.
 
 :- type chord
     --->    chord(interval, kind, inversion).
@@ -136,38 +139,36 @@ main(!IO) :-
 :- pred figure_key(string, note, qualifier, kind).
 :- mode figure_key(in, out, out, out) is semidet.
 
-figure_key("c", note(c, natural, 2), maj, maj).
-figure_key("cM", note(c, natural, 2), min, min).
-figure_key("c#", note(c, sharp, 2), maj, maj).
-figure_key("c#M", note(c, sharp, 2), min, min).
-figure_key("d", note(d, natural, 2), maj, maj).
-figure_key("dM", note(d, natural, 2), min, min).
-figure_key("d#", note(d, sharp, 2), maj, maj).
-figure_key("d#M", note(d, sharp, 2), min, min).
-figure_key("e", note(e, natural, 2), maj, maj).
-figure_key("eM", note(e, natural, 2), min, min).
-figure_key("f", note(f, natural, 2), maj, maj).
-figure_key("fM", note(f, natural, 2), min, min).
-figure_key("f#", note(f, sharp, 2), maj, maj).
-figure_key("f#M", note(f, sharp, 2), min, min).
-figure_key("g", note(g, natural, 2), maj, maj).
-figure_key("gM", note(g, natural, 2), min, min).
-figure_key("g#", note(g, sharp, 2), maj, maj).
-figure_key("g#M", note(g, sharp, 2), min, min).
-figure_key("a", note(a, natural, 2), maj, maj).
-figure_key("aM", note(a, natural, 2), min, min).
-figure_key("a#", note(a, sharp, 2), maj, maj).
-figure_key("a#M", note(a, sharp, 2), min, min).
-figure_key("b", note(b, natural, 2), maj, maj).
-figure_key("bM", note(b, natural, 2), min, min).
+figure_key("c",   note(c, natural, 2), q_maj, maj).
+figure_key("cM",  note(c, natural, 2), q_min, min).
+figure_key("c#",  note(c, sharp,   2), q_maj, maj).
+figure_key("c#M", note(c, sharp,   2), q_min, min).
+figure_key("d",   note(d, natural, 2), q_maj, maj).
+figure_key("dM",  note(d, natural, 2), q_min, min).
+figure_key("d#",  note(d, sharp,   2), q_maj, maj).
+figure_key("d#M", note(d, sharp,   2), q_min, min).
+figure_key("e",   note(e, natural, 2), q_maj, maj).
+figure_key("eM",  note(e, natural, 2), q_min, min).
+figure_key("f",   note(f, natural, 2), q_maj, maj).
+figure_key("fM",  note(f, natural, 2), q_min, min).
+figure_key("f#",  note(f, sharp,   2), q_maj, maj).
+figure_key("f#M", note(f, sharp,   2), q_min, min).
+figure_key("g",   note(g, natural, 2), q_maj, maj).
+figure_key("gM",  note(g, natural, 2), q_min, min).
+figure_key("g#",  note(g, sharp,   2), q_maj, maj).
+figure_key("g#M", note(g, sharp,   2), q_min, min).
+figure_key("a",   note(a, natural, 2), q_maj, maj).
+figure_key("aM",  note(a, natural, 2), q_min, min).
+figure_key("a#",  note(a, sharp,   2), q_maj, maj).
+figure_key("a#M", note(a, sharp,   2), q_min, min).
+figure_key("b",   note(b, natural, 2), q_maj, maj).
+figure_key("bM",  note(b, natural, 2), q_min, min).
 
 :- pred doit(int::in, note::in, qualifier::in, chord::in,
     random_supply::mdi, io::di, io::uo) is det.
 
 doit(N, Trans, Qual, Chord0, Rnd0, !IO) :-
-    ( if
-        N =< 0
-    then
+    ( if N =< 0 then
         true
     else
         chord_notes(Chord0, Qual, Notes0),
@@ -252,16 +253,6 @@ next_chord(Chord0, Qual, Pr, Chord) :-
     last(Notes0, TopNote0, _),
     Chord0 = chord(Int0, _, _),
 
-%   Lambda = lambda([Ch::out] is nondet, (
-%       next_interval(Int0, Qual, Int, Kind),
-%       next_inversion(Inv),
-%       Ch = chord(Int, Kind, Inv),
-%       chord_notes(Ch, Qual, Notes),
-%       last(Notes, TopNote, _),
-%       next_topnote(TopNote0, Qual, TopNote)
-%   )),
-%   solutions(Lambda, List),
-
     solutions(try_next_chord(Qual, Int0, TopNote0), List),
     list.length(List, Len),
     Len > 0,
@@ -285,12 +276,10 @@ rotate(_, [], []).
 rotate(I, [X | Xs], Zs) :-
     ( if I > 0 then
         list.append(Xs, [X], Ys),
-        I1 = I - 1,
-        rotate(I1, Ys, Zs)
+        rotate(I - 1, Ys, Zs)
     else if I < 0 then
         list.append(Xs, [X], Ys),
-        I1 = I + 1,
-        rotate(I1, Ys, Zs)
+        rotate(I + 1, Ys, Zs)
     else
         Zs = [X | Xs]
     ).
@@ -298,63 +287,63 @@ rotate(I, [X | Xs], Zs) :-
 :- pred next_interval(interval::in, qualifier::in, interval::out, kind::out)
     is nondet.
 
-next_interval(i, maj, iv, maj).
-next_interval(i, maj, v, maj).
-next_interval(i, maj, vi, min).
+next_interval(i,   q_maj, iv,  maj).
+next_interval(i,   q_maj, v,   maj).
+next_interval(i,   q_maj, vi,  min).
 
-next_interval(ii, maj, iv, maj).
-next_interval(ii, maj, v, maj).
-next_interval(ii, maj, i, maj).
+next_interval(ii,  q_maj, iv,  maj).
+next_interval(ii,  q_maj, v,   maj).
+next_interval(ii,  q_maj, i,   maj).
 
-next_interval(iii, maj, i, maj).
-next_interval(iii, maj, v, maj).
-next_interval(iii, maj, iv, maj).
+next_interval(iii, q_maj, i,   maj).
+next_interval(iii, q_maj, v,   maj).
+next_interval(iii, q_maj, iv,  maj).
 
-next_interval(iv, maj, i, maj).
-next_interval(iv, maj, ii, min).
-next_interval(iv, maj, v, maj).
+next_interval(iv,  q_maj, i,   maj).
+next_interval(iv,  q_maj, ii,  min).
+next_interval(iv,  q_maj, v,   maj).
 
-next_interval(v, maj, i, maj).
-next_interval(v, maj, iv, maj).
+next_interval(v,   q_maj, i,   maj).
+next_interval(v,   q_maj, iv,  maj).
 
-next_interval(vi, maj, v, maj).
-next_interval(vi, maj, i, maj).
+next_interval(vi,  q_maj, v,   maj).
+next_interval(vi,  q_maj, i,   maj).
 
-next_interval(i, min, iii, maj).
-next_interval(i, min, iv, min).
-next_interval(i, min, v, min).
-next_interval(i, min, vi, maj).
-next_interval(i, min, vii, maj).
+next_interval(i,   q_min, iii, maj).
+next_interval(i,   q_min, iv,  min).
+next_interval(i,   q_min, v,   min).
+next_interval(i,   q_min, vi,  maj).
+next_interval(i,   q_min, vii, maj).
 
-next_interval(iii, min, i, min).
-next_interval(iii, min, iv, min).
-next_interval(iii, min, v, min).
-next_interval(iii, min, vi, maj).
-next_interval(iii, min, vii, maj).
+next_interval(iii, q_min, i,   min).
+next_interval(iii, q_min, iv,  min).
+next_interval(iii, q_min, v,   min).
+next_interval(iii, q_min, vi,  maj).
+next_interval(iii, q_min, vii, maj).
 
-next_interval(iv, min, i, min).
-next_interval(iv, min, iii, maj).
-next_interval(iv, min, v, min).
-next_interval(iv, min, vi, maj).
-next_interval(iv, min, vii, maj).
+next_interval(iv,  q_min, i,   min).
+next_interval(iv,  q_min, iii, maj).
+next_interval(iv,  q_min, v,   min).
+next_interval(iv,  q_min, vi,  maj).
+next_interval(iv,  q_min, vii, maj).
 
-next_interval(v, min, i, min).
-next_interval(v, min, iii, min).
-next_interval(v, min, iv, min).
-next_interval(v, min, vi, maj).
-next_interval(v, min, vii, maj).
+next_interval(v,   q_min, i,   min).
+next_interval(v,   q_min, iii, min).
+next_interval(v,   q_min, iv,  min).
+next_interval(v,   q_min, vi,  maj).
+next_interval(v,   q_min, vii, maj).
 
-next_interval(vi, min, i, min).
-next_interval(vi, min, iii, maj).
-next_interval(vi, min, iv, min).
-next_interval(vi, min, v, min).
-next_interval(vi, min, vii, maj).
+next_interval(vi,  q_min, i,   min).
+next_interval(vi,  q_min, iii, maj).
+next_interval(vi,  q_min, iv,  min).
+next_interval(vi,  q_min, v,   min).
+next_interval(vi,  q_min, vii, maj).
 
-next_interval(vii, min, i, min).
-next_interval(vii, min, iii, maj).
-next_interval(vii, min, iv, min).
-next_interval(vii, min, v, min).
-next_interval(vii, min, vi, maj).
+next_interval(vii, q_min, i,   min).
+next_interval(vii, q_min, iii, maj).
+next_interval(vii, q_min, iv,  min).
+next_interval(vii, q_min, v,   min).
+next_interval(vii, q_min, vi,  maj).
 
 :- pred next_inversion(inversion::out) is multi.
 
@@ -377,39 +366,37 @@ next_topnote(Note0, Qual, Note) :-
 :- mode note_to_interval(in, in, out, out) is semidet.
 :- mode note_to_interval(out, in, in, in) is multi.
 
-note_to_interval(note(c, natural, Oct), _, i, Oct).
-note_to_interval(note(d, natural, Oct), _, ii, Oct).
-note_to_interval(note(d, sharp, Oct), min, iii, Oct).
-note_to_interval(note(e, flat, Oct), min, iii, Oct).
-note_to_interval(note(e, natural, Oct), maj, iii, Oct).
-note_to_interval(note(f, natural, Oct), _, iv, Oct).
-note_to_interval(note(g, natural, Oct), _, v, Oct).
-note_to_interval(note(g, sharp, Oct), min, vi, Oct).
-note_to_interval(note(a, flat, Oct), min, vi, Oct).
-note_to_interval(note(a, natural, Oct), maj, vi, Oct).
-note_to_interval(note(a, sharp, Oct), min, vii, Oct).
-note_to_interval(note(b, flat, Oct), min, vii, Oct).
-note_to_interval(note(b, natural, Oct), maj, vii, Oct).
+note_to_interval(note(c, natural, Oct), _,     i,   Oct).
+note_to_interval(note(d, natural, Oct), _,     ii,  Oct).
+note_to_interval(note(d, sharp,   Oct), q_min, iii, Oct).
+note_to_interval(note(e, flat,    Oct), q_min, iii, Oct).
+note_to_interval(note(e, natural, Oct), q_maj, iii, Oct).
+note_to_interval(note(f, natural, Oct), _,     iv,  Oct).
+note_to_interval(note(g, natural, Oct), _,     v,   Oct).
+note_to_interval(note(g, sharp,   Oct), q_min, vi,  Oct).
+note_to_interval(note(a, flat,    Oct), q_min, vi,  Oct).
+note_to_interval(note(a, natural, Oct), q_maj, vi,  Oct).
+note_to_interval(note(a, sharp,   Oct), q_min, vii, Oct).
+note_to_interval(note(b, flat,    Oct), q_min, vii, Oct).
+note_to_interval(note(b, natural, Oct), q_maj, vii, Oct).
 
 :- pred adj_interval(interval::in, octave::in, interval::out, octave::out)
     is multi.
 
-adj_interval(i, Oct, vii, Oct1) :-
-    Oct1 = Oct - 1.
-adj_interval(i, Oct, ii, Oct).
-adj_interval(ii, Oct, i, Oct).
-adj_interval(ii, Oct, iii, Oct).
-adj_interval(iii, Oct, ii, Oct).
-adj_interval(iii, Oct, iv, Oct).
-adj_interval(iv, Oct, iii, Oct).
-adj_interval(iv, Oct, v, Oct).
-adj_interval(v, Oct, iv, Oct).
-adj_interval(v, Oct, vi, Oct).
-adj_interval(vi, Oct, v, Oct).
-adj_interval(vi, Oct, vii, Oct).
-adj_interval(vii, Oct, vi, Oct).
-adj_interval(vii, Oct, i, Oct1) :-
-    Oct1 = Oct + 1.
+adj_interval(i,   Oct, vii, Oct - 1).
+adj_interval(i,   Oct, ii,  Oct).
+adj_interval(ii,  Oct, i,   Oct).
+adj_interval(ii,  Oct, iii, Oct).
+adj_interval(iii, Oct, ii,  Oct).
+adj_interval(iii, Oct, iv,  Oct).
+adj_interval(iv,  Oct, iii, Oct).
+adj_interval(iv,  Oct, v,   Oct).
+adj_interval(v,   Oct, iv,  Oct).
+adj_interval(v,   Oct, vi,  Oct).
+adj_interval(vi,  Oct, v,   Oct).
+adj_interval(vi,  Oct, vii, Oct).
+adj_interval(vii, Oct, vi,  Oct).
+adj_interval(vii, Oct, i,   Oct + 1).
 
 %---------------------------------------------------------------------------%
 
@@ -425,33 +412,30 @@ chord_notes(chord(Interval, Kind, Inversion), Qual, Notes) :-
 :- pred base_notes(kind::in, list(note)::out) is det.
 
 base_notes(maj, Notes) :-
-    Notes = [ note(c, natural, 0),
+    Notes = [
+        note(c, natural, 0),
         note(e, natural, 0),
         note(g, natural, 0)
     ].
-
 base_notes(min, Notes) :-
     Notes = [
         note(c, natural, 0),
-        note(e, flat, 0),
+        note(e, flat,    0),
         note(g, natural, 0)
     ].
-
 base_notes(open, Notes) :-
     Notes = [
         note(c, natural, 0),
         note(g, natural, 0),
         note(c, natural, 1)
     ].
-
 base_notes(seven, Notes) :-
     Notes = [
         note(c, natural, 0),
         note(e, natural, 0),
         note(g, natural, 0),
-        note(b, flat, 0)
+        note(b, flat,    0)
     ].
-
 base_notes(maj_seven, Notes) :-
     Notes = [
         note(c, natural, 0),
@@ -459,7 +443,6 @@ base_notes(maj_seven, Notes) :-
         note(g, natural, 0),
         note(b, natural, 0)
     ].
-
 base_notes(ninth, Notes) :-
     Notes = [
         note(c, natural, 0),
@@ -467,7 +450,6 @@ base_notes(ninth, Notes) :-
         note(e, natural, 0),
         note(g, natural, 0)
     ].
-
 base_notes(eleventh, Notes) :-
     Notes = [
         note(c, natural, 0),
@@ -475,12 +457,11 @@ base_notes(eleventh, Notes) :-
         note(g, natural, 0),
         note(a, natural, 0)
     ].
-
 base_notes(dim, Notes) :-
     Notes = [
         note(c, natural, 0),
-        note(e, flat, 0),
-        note(g, flat, 0),
+        note(e, flat,    0),
+        note(g, flat,    0),
         note(a, natural, 0)
     ].
 
@@ -528,25 +509,21 @@ invert_list(Notes0, Dir, N, Notes) :-
     then
         shift(Dir, Note0, Note),
         list.append(Notes1, [Note], Notes2),
-        N1 = N - 1,
-        invert_list(Notes2, Dir, N1, Notes)
+        invert_list(Notes2, Dir, N - 1, Notes)
     else if
         N < 0,
         last(Notes0, Note0, Notes1)
     then
         shift(Dir, Note0, Note),
-        N1 = N + 1,
-        invert_list([Note | Notes1], Dir, N1, Notes)
+        invert_list([Note | Notes1], Dir, N + 1, Notes)
     else
         Notes = Notes0
     ).
 
 :- pred shift(direction::in, note::in, note::out) is det.
 
-shift(up, note(Rank, Mod, Oct), note(Rank, Mod, Oct1)) :-
-    Oct1 = Oct + 1.
-shift(down, note(Rank, Mod, Oct), note(Rank, Mod, Oct1)) :-
-    Oct1 = Oct - 1.
+shift(up,   note(Rank, Mod, Oct), note(Rank, Mod, Oct + 1)).
+shift(down, note(Rank, Mod, Oct), note(Rank, Mod, Oct - 1)).
 
 :- pred last(list(T)::in, T::out, list(T)::out) is semidet.
 
@@ -573,16 +550,16 @@ degree_to_int(iii,  3).
 
 :- pred interval_to_int(interval::in, qualifier::in, int::out) is det.
 
-interval_to_int(i, _, 0).
-interval_to_int(ii, _, 2).
-interval_to_int(iii, min, 3).
-interval_to_int(iii, maj, 4).
-interval_to_int(iv, _, 5).
-interval_to_int(v, _, 7).
-interval_to_int(vi, min, 8).
-interval_to_int(vi, maj, 9).
-interval_to_int(vii, min, 10).
-interval_to_int(vii, maj, 11).
+interval_to_int(i,   _,     0).
+interval_to_int(ii,  _,     2).
+interval_to_int(iii, q_min, 3).
+interval_to_int(iii, q_maj, 4).
+interval_to_int(iv,  _,     5).
+interval_to_int(v,   _,     7).
+interval_to_int(vi,  q_min, 8).
+interval_to_int(vi,  q_maj, 9).
+interval_to_int(vii, q_min, 10).
+interval_to_int(vii, q_maj, 11).
 
 :- pred note_to_int(note::in, int::out) is det.
 
@@ -666,17 +643,17 @@ short('s', seed).
 
 :- pred long(string::in, option::out) is semidet.
 
-long("help", help).
-long("key", key).
-long("length", length).
-long("seed", seed).
+long("help",    help).
+long("key",     key).
+long("length",  length).
+long("seed",    seed).
 
 :- pred defaults(option::out, option_data::out) is multi.
 
-defaults(help, bool(no)).
-defaults(key, string("c")).
-defaults(length, int(16)).
-defaults(seed, int(0)).
+defaults(help,      bool(no)).
+defaults(key,       string("c")).
+defaults(length,    int(16)).
+defaults(seed,      int(0)).
 
 :- pred help(io::di, io::uo) is det.
 

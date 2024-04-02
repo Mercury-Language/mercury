@@ -453,9 +453,9 @@ generate_downloop_test([Instr0 | Instrs0], Target, Instrs) :-
             Instrs0 = [_ | _],
             unexpected($pred, "if_val followed by other instructions")
         ),
-        code_util.neg_rval(Test, NewTest),
+        code_util.negate_rval(Test, NegTest),
         Instrs = [
-            llds_instr(if_val(NewTest, code_label(Target)),
+            llds_instr(if_val(NegTest, code_label(Target)),
                 "test on downward loop")
         ]
     else

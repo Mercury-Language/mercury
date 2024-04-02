@@ -69,14 +69,18 @@
 
 %---------------------%
 
-:- pred generate_string_trie_switch(rval::in, string::in,
+:- pred generate_string_trie_jump_switch(rval::in, string::in,
     list(tagged_case)::in, code_model::in, can_fail::in, hlds_goal_info::in,
     label::in, branch_end::out, llds_code::out,
     code_info::in, code_info::out, code_loc_dep::in) is det.
 
+:- pred generate_string_trie_lookup_switch(rval::in,
+    lookup_switch_info(string)::in, can_fail::in, label::in, abs_store_map::in,
+    branch_end::out, llds_code::out, code_info::out) is det.
+
 %---------------------%
 
-:- pred generate_string_hash_switch(rval::in, string::in,
+:- pred generate_string_hash_jump_switch(rval::in, string::in,
     list(tagged_case)::in, code_model::in, can_fail::in, hlds_goal_info::in,
     label::in, branch_end::out, llds_code::out,
     code_info::in, code_info::out, code_loc_dep::in) is det.
@@ -87,7 +91,7 @@
 
 %---------------------%
 
-:- pred generate_string_binary_switch(rval::in, string::in,
+:- pred generate_string_binary_jump_switch(rval::in, string::in,
     list(tagged_case)::in, code_model::in, can_fail::in, hlds_goal_info::in,
     label::in, branch_end::out, llds_code::out,
     code_info::in, code_info::out, code_loc_dep::in) is det.
@@ -109,6 +113,7 @@
 :- import_module hlds.hlds_data.
 :- import_module libs.
 :- import_module libs.globals.
+:- import_module ll_backend.code_util.
 :- import_module ll_backend.lookup_util.
 :- import_module ll_backend.switch_case.
 :- import_module parse_tree.set_of_var.
@@ -128,14 +133,15 @@
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
-generate_string_trie_switch(VarRval, VarName, TaggedCases, CodeModel, CanFail,
-        SwitchGoalInfo, EndLabel, MaybeEnd, Code, !CI, CLD) :-
-    init_string_trie_switch_info(CanFail, TrieSwitchInfo, !CI, CLD),
-    BranchStart = TrieSwitchInfo ^ stsi_branch_start,
+generate_string_trie_jump_switch(VarRval, VarName, TaggedCases,
+        CodeModel, CanFail, SwitchGoalInfo, EndLabel, MaybeEnd, Code,
+        !CI, CLD) :-
+    init_string_trie_switch_info_jump(CanFail, JumpInfo0, !CI, CLD),
+    BranchStart = JumpInfo0 ^ stsij_branch_start,
     Params = represent_params(VarName, SwitchGoalInfo, CodeModel, BranchStart,
         EndLabel),
     CommentCode = singleton(
-        llds_instr(comment("string trie switch"), "")
+        llds_instr(comment("string trie jump switch"), "")
     ),
 
     % Generate code for the cases, and remember the label of each case.
@@ -144,32 +150,24 @@ generate_string_trie_switch(VarRval, VarName, TaggedCases, CodeModel, CanFail,
     represent_tagged_cases_in_string_trie_switch(Params, TaggedCases,
         CaseIdToLabelMap0, CaseIdToLabelMap, CaseLabelMap0, CaseLabelMap,
         no, MaybeEnd, !CI),
+    JumpInfo = JumpInfo0 ^ stsij_case_id_to_label_map := CaseIdToLabelMap,
 
-    create_trie(TrieSwitchInfo ^ stsi_encoding, TaggedCases,
-        _MaxCaseNum, TopTrieNode),
-    % init_case_num_reg(TrieSwitchInfo, InitCaseNumRegCode),
-    convert_trie_to_nested_switches(TrieSwitchInfo, VarRval, CaseIdToLabelMap,
-        0, TopTrieNode, TopTrieLabel, TrieCode0, !CI),
-    ( if
-        cord.head_tail(TrieCode0, HeadTrieCodeInstr, TailTrieCodeInstrs),
-        HeadTrieCodeInstr = llds_instr(label(TopTrieLabel), _)
-    then
-        TrieCode = TailTrieCodeInstrs
-    else
-        unexpected($pred, "TrieCode0 does not start with TopTrieLabel")
-    ),
+    Info = stsi_jump(JumpInfo),
+    build_str_case_id_list(TaggedCases, _MaxCaseNum, StrsCaseIds),
+    create_nested_trie_switch(Info, VarRval, StrsCaseIds, TrieCode, !CI),
 
     % Generate the code for the cases.
     add_not_yet_included_cases(CasesCode, CaseLabelMap, _),
-    EndLabelCode = singleton(
-        llds_instr(label(EndLabel), "end of string trie string")
-    ),
 
-    FailLabel = TrieSwitchInfo ^ stsi_fail_label,
+    FailLabel = JumpInfo ^ stsij_fail_label,
     FailLabelCode = singleton(
         llds_instr(label(FailLabel), "fail label")
     ),
-    FailCode = TrieSwitchInfo ^ stsi_fail_code,
+    FailCode = JumpInfo ^ stsij_fail_code,
+
+    EndLabelCode = singleton(
+        llds_instr(label(EndLabel), "end of string trie string")
+    ),
 
     Code = CommentCode ++ TrieCode ++ CasesCode ++
         FailLabelCode ++ FailCode ++ EndLabelCode.
@@ -191,12 +189,39 @@ represent_tagged_cases_in_string_trie_switch(Params,
     represent_tagged_cases_in_string_trie_switch(Params, TaggedCases,
         !CaseIdToLabelMap, !CaseLabelMap, !MaybeEnd, !CI).
 
-:- pred convert_trie_to_nested_switches(string_trie_switch_info::in, rval::in,
-    map(case_id, label)::in, int::in, trie_node::in,
+%---------------------%
+
+:- type code_unit_to_action
+    --->    code_unit_to_action(int, code_unit_action).
+
+:- type code_unit_action
+    --->    action_nested_trie(label)
+    ;       action_case(case_id).
+
+:- pred create_nested_trie_switch(string_trie_switch_info::in, rval::in,
+    assoc_list(string, case_id)::in, llds_code::out,
+    code_info::in, code_info::out) is det.
+
+create_nested_trie_switch(Info, VarRval, StrsCaseIds, TrieCode, !CI) :-
+    get_encoding(Info, Encoding),
+    create_trie(Encoding, StrsCaseIds, TopTrieNode),
+    convert_trie_to_nested_switches(Info, VarRval, 0,
+        TopTrieNode, TopTrieLabel, TrieCode0, !CI),
+    ( if
+        cord.head_tail(TrieCode0, HeadTrieCodeInstr, TailTrieCodeInstrs),
+        HeadTrieCodeInstr = llds_instr(label(TopTrieLabel), _)
+    then
+        TrieCode = TailTrieCodeInstrs
+    else
+        unexpected($pred, "TrieCode0 does not start with TopTrieLabel")
+    ).
+
+:- pred convert_trie_to_nested_switches(string_trie_switch_info::in,
+    rval::in, int::in, trie_node::in,
     label::out, llds_code::out, code_info::in, code_info::out) is det.
 
-convert_trie_to_nested_switches(TrieSwitchInfo, VarRval, CaseIdToLabelMap,
-        NumMatched, TrieNode, TrieNodeLabel, Code, !CI) :-
+convert_trie_to_nested_switches(Info, VarRval, NumMatched, TrieNode,
+        TrieNodeLabel, Code, !CI) :-
     get_next_label(TrieNodeLabel, !CI),
     (
         TrieNode = trie_leaf(RevMatchedCodeUnits, NotYetMatchedCodeUnits,
@@ -206,40 +231,36 @@ convert_trie_to_nested_switches(TrieSwitchInfo, VarRval, CaseIdToLabelMap,
         list.length(MatchedCodeUnits, NumMatchedCodeUnits),
         expect(unify(NumMatchedCodeUnits, NumMatched), $pred,
             "NumevMatchedCodeUnits != NumMatched"),
-        Encoding = TrieSwitchInfo ^ stsi_encoding,
+        get_encoding(Info, Encoding),
         det_from_code_unit_list_in_encoding_allow_ill_formed(Encoding,
             AllCodeUnits, EndStr),
         NodeComment = "AllCodeUnits " ++ string.string(AllCodeUnits),
         CondRval = binop(offset_str_eq(NumMatched, no_size),
             VarRval, const(llconst_string(EndStr))),
-        map.lookup(CaseIdToLabelMap, CaseId, StrCaseLabel),
-        StrCaseCodeAddr = code_label(StrCaseLabel),
-        FailLabel = TrieSwitchInfo ^ stsi_fail_label,
-        Code = from_list([
-            llds_instr(label(TrieNodeLabel), NodeComment),
-            llds_instr(if_val(CondRval, StrCaseCodeAddr), "match; goto case"),
-            llds_instr(goto(code_label(FailLabel)), "no match; goto fail")
-        ])
+        generate_trie_case_or_fall_through(Info, CondRval, CaseId,
+            CaseRepCode, !CI),
+        generate_trie_goto_fail_code(Info, GotoFailCode),
+        TrieNodeLabelCode = singleton(
+            llds_instr(label(TrieNodeLabel), NodeComment)
+        ),
+        Code = TrieNodeLabelCode ++ CaseRepCode ++ GotoFailCode
     ;
         TrieNode = trie_choice(RevMatchedCodeUnits, _ChoiceMap, MaybeEnd),
         list.length(RevMatchedCodeUnits, NumRevMatchedCodeUnits),
         expect(unify(NumRevMatchedCodeUnits, NumMatched), $pred,
             "NumRevMatchedCodeUnits != NumMatched"),
 
-        CodeUnitLval = TrieSwitchInfo ^ stsi_code_unit_reg,
+        get_code_unit_reg(Info, CodeUnitRegLval),
         GetCurCodeUnitRval = binop(string_unsafe_index_code_unit,
             VarRval, const(llconst_int(NumMatched))),
         LabelCode = singleton(
             llds_instr(label(TrieNodeLabel), "")
         ),
         SetCodeUnitCode = singleton(
-            llds_instr(assign(CodeUnitLval, GetCurCodeUnitRval), "")
+            llds_instr(assign(CodeUnitRegLval, GetCurCodeUnitRval), "")
         ),
-        CodeUnitRval = lval(CodeUnitLval),
-        FailLabel = TrieSwitchInfo ^ stsi_fail_label,
-        GotoFailCode = singleton(
-            llds_instr(goto(code_label(FailLabel)), "no match; goto fail")
-        ),
+        CodeUnitRval = lval(CodeUnitRegLval),
+        generate_trie_goto_fail_code(Info, GotoFailCode),
 
         chase_any_stick_in_trie(TrieNode, ChoicePairs,
             StickCodeUnits, TrieNodeAfterStick),
@@ -248,7 +269,7 @@ convert_trie_to_nested_switches(TrieSwitchInfo, VarRval, CaseIdToLabelMap,
             list.length(StickCodeUnits, NumStickCodeUnits),
             CmpOp = offset_str_eq(NumMatched, size(NumStickCodeUnits)),
             list.reverse(RevMatchedCodeUnits, MatchedCodeUnits),
-            Encoding = TrieSwitchInfo ^ stsi_encoding,
+            get_encoding(Info, Encoding),
             MatchedStickCodeUnits = MatchedCodeUnits ++ StickCodeUnits,
             det_from_code_unit_list_in_encoding_allow_ill_formed(Encoding,
                 MatchedStickCodeUnits, MatchedStickStr),
@@ -257,8 +278,8 @@ convert_trie_to_nested_switches(TrieSwitchInfo, VarRval, CaseIdToLabelMap,
                 " StickCodeUnits " ++ string.string(StickCodeUnits),
             TestRval = binop(CmpOp,
                 VarRval, const(llconst_string(MatchedStickStr))),
-            convert_trie_to_nested_switches(TrieSwitchInfo, VarRval,
-                CaseIdToLabelMap, NumMatched + NumStickCodeUnits,
+            convert_trie_to_nested_switches(Info, VarRval,
+                NumMatched + NumStickCodeUnits,
                 TrieNodeAfterStick, TrieNodeLabelAfterStick,
                 CodeAfterStick, !CI),
             TrieNodeCodeAddrAfterStick = code_label(TrieNodeLabelAfterStick),
@@ -272,95 +293,101 @@ convert_trie_to_nested_switches(TrieSwitchInfo, VarRval, CaseIdToLabelMap,
             ( StickCodeUnits = []
             ; StickCodeUnits = [_]
             ),
-            convert_trie_choices_to_nested_switches(TrieSwitchInfo, VarRval,
-                CaseIdToLabelMap, NumMatched + 1, ChoicePairs,
-                cord.init, NestedTrieInfosCord, 0, NumInfos0,
+            convert_trie_choices_to_nested_switches(Info, VarRval,
+                NumMatched + 1, ChoicePairs,
+                cord.init, NestedTrieInfosCord, 0, NumActions0,
                 empty, NestedTrieCode, !CI),
             NestedTrieInfos0 = cord.list(NestedTrieInfosCord),
             (
                 MaybeEnd = no,
                 NestedTrieInfos = NestedTrieInfos0,
-                NumInfos = NumInfos0
+                NumActions = NumActions0
             ;
                 MaybeEnd = yes(EndCaseId),
-                map.lookup(CaseIdToLabelMap, EndCaseId, EndCaseLabel),
-                EndNestedTrieInfo = nested_trie_info(0, EndCaseLabel),
+                EndNestedTrieInfo =
+                    code_unit_to_action(0, action_case(EndCaseId)),
                 NestedTrieInfos = [EndNestedTrieInfo | NestedTrieInfos0],
-                NumInfos = NumInfos0 + 1
+                NumActions = NumActions0 + 1
             ),
-            ( if NumInfos =< 3 then
-                generate_nested_trie_try_chain(GotoFailCode, CodeUnitRval,
-                    NestedTrieInfos, empty, TestCode)
+            ( if NumActions =< 3 then
+                generate_nested_trie_try_chain(Info, CodeUnitRval,
+                    NestedTrieInfos, empty, TestCode, !CI)
             else
-                generate_nested_trie_binary_search(GotoFailCode, CodeUnitRval,
-                    NumInfos, NestedTrieInfos, TestCode, !CI)
+                generate_nested_trie_binary_search(Info, CodeUnitRval,
+                    NumActions, NestedTrieInfos, TestCode, !CI)
             ),
             Code = LabelCode ++ SetCodeUnitCode ++ TestCode ++ NestedTrieCode
         )
     ).
 
-:- type nested_trie_info
-    --->    nested_trie_info(int, label).
-
-%---------------------%
-
 :- pred convert_trie_choices_to_nested_switches(string_trie_switch_info::in,
-    rval::in, map(case_id, label)::in, int::in, assoc_list(int, trie_node)::in,
-    cord(nested_trie_info)::in, cord(nested_trie_info)::out, int::in, int::out,
-    llds_code::in, llds_code::out, code_info::in, code_info::out) is det.
-
-convert_trie_choices_to_nested_switches(_, _, _, _, [],
-        !NestedTrieInfosCord, !NumInfos, !NestedTrieCode, !CI).
-convert_trie_choices_to_nested_switches(TrieSwitchInfo, VarRval,
-        CaseIdToLabelMap, NumMatched, [Choice | Choices],
-        !NestedTrieInfosCord, !NumInfos, !NestedTrieCode, !CI) :-
-    Choice = CodeUnit - TrieNode,
-    convert_trie_to_nested_switches(TrieSwitchInfo, VarRval, CaseIdToLabelMap,
-        NumMatched, TrieNode, TrieNodeLabel, TrieNodeCode, !CI),
-    cord.snoc(nested_trie_info(CodeUnit, TrieNodeLabel), !NestedTrieInfosCord),
-    !:NumInfos = !.NumInfos + 1,
-    !:NestedTrieCode = !.NestedTrieCode ++ TrieNodeCode,
-    convert_trie_choices_to_nested_switches(TrieSwitchInfo, VarRval,
-        CaseIdToLabelMap, NumMatched, Choices,
-        !NestedTrieInfosCord, !NumInfos, !NestedTrieCode, !CI).
-
-%---------------------%
-
-:- pred generate_nested_trie_try_chain(llds_code::in, rval::in,
-    list(nested_trie_info)::in, llds_code::in, llds_code::out) is det.
-
-generate_nested_trie_try_chain(GotoFailCode, _, [], !TryChainCode) :-
-    !:TryChainCode = !.TryChainCode ++ GotoFailCode.
-generate_nested_trie_try_chain(GotoFailCode, CodeUnitRval,
-        [NestedTrieInfo | NestedTrieInfos], !TryChainCode) :-
-    NestedTrieInfo = nested_trie_info(CodeUnit, NestedTrieNodeLabel),
-    TestRval = binop(eq(int_type_int),
-        CodeUnitRval, const(llconst_int(CodeUnit))),
-    TestCodeUnitCode = singleton(
-        llds_instr(if_val(TestRval, code_label(NestedTrieNodeLabel)), "")
-    ),
-    !:TryChainCode = !.TryChainCode ++ TestCodeUnitCode,
-    generate_nested_trie_try_chain(GotoFailCode, CodeUnitRval,
-        NestedTrieInfos, !TryChainCode).
-
-%---------------------%
-
-:- pred generate_nested_trie_binary_search(llds_code::in, rval::in, int::in,
-    list(nested_trie_info)::in, llds_code::out,
+    rval::in, int::in, assoc_list(int, trie_node)::in,
+    cord(code_unit_to_action)::in, cord(code_unit_to_action)::out,
+    int::in, int::out, llds_code::in, llds_code::out,
     code_info::in, code_info::out) is det.
 
-generate_nested_trie_binary_search(GotoFailCode, CodeUnitRval,
-        NumInfos, NestedTrieInfos, TestCode, !CI) :-
-    ( if NumInfos =< 3 then
-        generate_nested_trie_try_chain(GotoFailCode, CodeUnitRval,
-            NestedTrieInfos, empty, TestCode)
+convert_trie_choices_to_nested_switches(_, _, _, [],
+        !CodeUnitToActionsCord, !NumActions, !NestedTrieCode, !CI).
+convert_trie_choices_to_nested_switches(Info, VarRval,
+        NumMatched, [Choice | Choices],
+        !CodeUnitToActionsCord, !NumActions, !NestedTrieCode, !CI) :-
+    Choice = CodeUnit - TrieNode,
+    convert_trie_to_nested_switches(Info, VarRval, NumMatched,
+        TrieNode, TrieNodeLabel, TrieNodeCode, !CI),
+    CodeUnitToAction =
+        code_unit_to_action(CodeUnit, action_nested_trie(TrieNodeLabel)),
+    cord.snoc(CodeUnitToAction, !CodeUnitToActionsCord),
+    !:NumActions = !.NumActions + 1,
+    !:NestedTrieCode = !.NestedTrieCode ++ TrieNodeCode,
+    convert_trie_choices_to_nested_switches(Info, VarRval, NumMatched, Choices,
+        !CodeUnitToActionsCord, !NumActions, !NestedTrieCode, !CI).
+
+%---------------------%
+
+:- pred generate_nested_trie_try_chain(string_trie_switch_info::in, rval::in,
+    list(code_unit_to_action)::in, llds_code::in, llds_code::out,
+    code_info::in, code_info::out) is det.
+
+generate_nested_trie_try_chain(Info, _, [], !TryChainCode, !CI) :-
+    generate_trie_goto_fail_code(Info, GotoFailCode),
+    !:TryChainCode = !.TryChainCode ++ GotoFailCode.
+generate_nested_trie_try_chain(Info, CodeUnitRval,
+        [CodeUnitToAction | CodeUnitToActions], !TryChainCode, !CI) :-
+    CodeUnitToAction = code_unit_to_action(CodeUnit, Action),
+    CondRval = binop(eq(int_type_int),
+        CodeUnitRval, const(llconst_int(CodeUnit))),
+    (
+        Action = action_nested_trie(NestedTrieNodeLabel),
+        TestCodeUnitCode = singleton(
+            llds_instr(if_val(CondRval, code_label(NestedTrieNodeLabel)), "")
+        )
+    ;
+        Action = action_case(CaseId),
+        generate_trie_case_or_fall_through(Info, CondRval, CaseId,
+            TestCodeUnitCode, !CI)
+    ),
+    !:TryChainCode = !.TryChainCode ++ TestCodeUnitCode,
+    generate_nested_trie_try_chain(Info, CodeUnitRval,
+        CodeUnitToActions, !TryChainCode, !CI).
+
+%---------------------%
+
+:- pred generate_nested_trie_binary_search(string_trie_switch_info::in,
+    rval::in, int::in, list(code_unit_to_action)::in, llds_code::out,
+    code_info::in, code_info::out) is det.
+
+generate_nested_trie_binary_search(Info, CodeUnitRval,
+        NumActions, CodeUnitToActions, TestCode, !CI) :-
+    ( if NumActions =< 3 then
+        generate_nested_trie_try_chain(Info, CodeUnitRval,
+            CodeUnitToActions, empty, TestCode, !CI)
     else
-        NumInfosR = NumInfos / 2,
-        NumInfosL = NumInfos - NumInfosR,
-        list.det_split_list(NumInfosL, NestedTrieInfos,
-            NestedTrieInfosL, NestedTrieInfosR),
-        list.det_head(NestedTrieInfosR, HeadNestedTrieInfoR),
-        HeadNestedTrieInfoR = nested_trie_info(LeastCodeUnitR, _),
+        NumActionsR = NumActions / 2,
+        NumActionsL = NumActions - NumActionsR,
+        list.det_split_list(NumActionsL, CodeUnitToActions,
+            CodeUnitToActionsL, CodeUnitToActionsR),
+        list.det_head(CodeUnitToActionsR, HeadCodeUnitToActions),
+        HeadCodeUnitToActions = code_unit_to_action(LeastCodeUnitR, _),
         code_info.get_next_label(LabelR, !CI),
 
         TestRvalLR = binop(int_ge(int_type_int),
@@ -369,35 +396,34 @@ generate_nested_trie_binary_search(GotoFailCode, CodeUnitRval,
         TestCodeLR = singleton(
             llds_instr(if_val(TestRvalLR, code_label(LabelR)), CommentLR)
         ),
-        generate_nested_trie_binary_search(GotoFailCode, CodeUnitRval,
-            NumInfosL, NestedTrieInfosL, TestCodeL, !CI),
+        generate_nested_trie_binary_search(Info, CodeUnitRval,
+            NumActionsL, CodeUnitToActionsL, TestCodeL, !CI),
         LabelCodeR = singleton(
             llds_instr(label(LabelR), "")
         ),
-        generate_nested_trie_binary_search(GotoFailCode, CodeUnitRval,
-            NumInfosR, NestedTrieInfosR, TestCodeR, !CI),
+        generate_nested_trie_binary_search(Info, CodeUnitRval,
+            NumActionsR, CodeUnitToActionsR, TestCodeR, !CI),
         TestCode = TestCodeLR ++ TestCodeL ++ LabelCodeR ++ TestCodeR
     ).
 
 %---------------------------------------------------------------------------%
-%---------------------------------------------------------------------------%
 
-:- type string_trie_switch_info
-    --->    string_trie_switch_info(
-                stsi_encoding           :: string_encoding,
-
-                stsi_code_unit_reg      :: lval,
-                stsi_branch_start       :: position_info,
-
-                stsi_fail_label         :: label,
-                stsi_fail_code          :: llds_code
+:- type string_trie_switch_info_jump
+    --->    string_trie_switch_info_jump(
+                stsij_encoding              :: string_encoding,
+                stsij_case_id_to_label_map  :: map(case_id, label),
+                stsij_branch_start          :: position_info,
+                stsij_code_unit_reg         :: lval,
+                stsij_fail_label            :: label,
+                stsij_fail_code             :: llds_code,
+                stsij_goto_fail_code        :: llds_code
             ).
 
-:- pred  init_string_trie_switch_info(can_fail::in,
-    string_trie_switch_info::out,
+:- pred  init_string_trie_switch_info_jump(can_fail::in,
+    string_trie_switch_info_jump::out,
     code_info::in, code_info::out, code_loc_dep::in) is det.
 
-init_string_trie_switch_info(CanFail, Info, !CI, !.CLD) :-
+init_string_trie_switch_info_jump(CanFail, Info, !CI, !.CLD) :-
     Encoding = target_string_encoding(target_c),
 
     % See the comment about acquire_reg/release_reg in the
@@ -414,25 +440,288 @@ init_string_trie_switch_info(CanFail, Info, !CI, !.CLD) :-
     % none of the switch arms have been executed yet.
     generate_string_switch_fail(CanFail, FailCode, !CI, !.CLD),
 
-    Info = string_trie_switch_info(Encoding, CodeUnitReg, BranchStart,
-        FailLabel, FailCode).
+    GotoFailCode = singleton(
+        llds_instr(goto(code_label(FailLabel)), "no match; goto fail")
+    ),
 
-/*
-:- pred init_case_num_reg(string_trie_switch_info::in, llds_code::out) is det.
+    % The code that creates the case_id to label map needs the
+    % other fields of the string_trie_switch_info_jump structure as its inputs,
+    % so this field will be filled in with *real* data by our caller.
+    map.init(CaseIdToLabelMap0),
+    Info = string_trie_switch_info_jump(Encoding, CaseIdToLabelMap0,
+        BranchStart, CodeUnitReg, FailLabel, FailCode, GotoFailCode).
 
-init_case_num_reg(TrieSwitchInfo, InitCaseNumRegCode) :-
-    CaseNumRegLval = TrieSwitchInfo ^ stsi_case_id_reg,
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+
+generate_string_trie_lookup_switch(VarRval, LookupSwitchInfo, CanFail,
+        EndLabel, StoreMap, !:MaybeEnd, Code, !:CI) :-
+    LookupSwitchInfo = lookup_switch_info(KeyToCaseIdMap, CaseConsts,
+        OutVars, OutTypes, Liveness, !:MaybeEnd, !:CI, CLD),
+    init_string_trie_switch_info_lookup(CanFail, LookupInfo, !CI, CLD),
+    CaseNumRegLval = LookupInfo ^ stsil_case_id_reg,
     InitCaseNumRegCode = singleton(
         llds_instr(assign(CaseNumRegLval, const(llconst_int(-1))),
-            "initialize case id")
+            "initialize case id to invalid")
+    ),
+    Info = stsi_lookup(LookupInfo),
+    map.to_sorted_assoc_list(KeyToCaseIdMap, StrsCaseIds),
+    create_nested_trie_switch(Info, VarRval, StrsCaseIds, TrieCode, !CI),
+    AfterLabel = LookupInfo ^ stsil_after_label,
+    AfterLabelCode = singleton(
+        llds_instr(label(AfterLabel), "after the trie search")
+    ),
+    SetCaseNumCode = InitCaseNumRegCode ++ TrieCode ++ AfterLabelCode,
+    % We must generate the failure code in the context in which
+    % none of the switch arms have been executed yet.
+    (
+        CanFail = cannot_fail,
+        SetAndCheckCaseNumCode = SetCaseNumCode
+    ;
+        CanFail = can_fail,
+        get_next_label(NonFailLabel, !CI),
+        CaseNumIsValid = binop(int_ge(int_type_int),
+            lval(CaseNumRegLval), const(llconst_int(0))),
+        TestForFailCode = singleton(
+            llds_instr(if_val(CaseNumIsValid, code_label(NonFailLabel)),
+                "branch around fail code")
+        ),
+        FailCode = LookupInfo ^ stsil_fail_code,
+        NonFailLabelCode = singleton(
+            llds_instr(label(NonFailLabel), "non-fail label")
+        ),
+        SetAndCheckCaseNumCode = SetCaseNumCode ++
+            TestForFailCode ++ FailCode ++ NonFailLabelCode
+    ),
+
+    (
+        CaseConsts = all_one_soln(CaseIdToValuesMap),
+        map.to_assoc_list(CaseIdToValuesMap, CaseIdToValuesAL),
+        generate_string_trie_simple_lookup_switch(LookupInfo, CaseIdToValuesAL,
+            OutVars, OutTypes, Liveness, EndLabel, StoreMap,
+            SetAndCheckCaseNumCode, Code, !MaybeEnd, !CI, CLD)
+    ;
+        CaseConsts = some_several_solns(_, _),
+        unexpected($pred, "some_several_solns")
     ).
-*/
+
+%---------------------------------------------------------------------------%
+
+:- pred generate_string_trie_simple_lookup_switch(
+    string_trie_switch_info_lookup::in,
+    assoc_list(case_id, list(rval))::in, list(prog_var)::in,
+    list(llds_type)::in, set_of_progvar::in,
+    label::in, abs_store_map::in, llds_code::in, llds_code::out,
+    branch_end::in, branch_end::out,
+    code_info::in, code_info::out, code_loc_dep::in) is det.
+
+generate_string_trie_simple_lookup_switch(LookupInfo, CaseValues,
+        OutVars, OutTypes, Liveness, EndLabel, StoreMap,
+        SetAndCheckCaseNumCode, Code, !MaybeEnd, !CI, !.CLD) :-
+    (
+        OutVars = [],
+        SetBaseRegCode = empty
+    ;
+        OutVars = [_ | _],
+        RowElemTypes = OutTypes,
+
+        construct_string_trie_simple_lookup_vector(CaseValues, 0,
+            cord.init, VectorRvalsCord),
+        VectorRvals = cord.list(VectorRvalsCord),
+        add_vector_static_cell(RowElemTypes, VectorRvals, VectorAddr, !CI),
+        VectorAddrRval = const(llconst_data_addr(VectorAddr, no)),
+
+        % Since we release BaseReg only after the call to generate_branch_end,
+        % we must make sure that generate_branch_end won't want to
+        % overwrite BaseReg.
+        acquire_reg_not_in_storemap(StoreMap, reg_r, BaseRegLval, !CLD),
+
+        % Generate code to look up each of the variables in OutVars
+        % in its slot in the table row RowStartReg.
+        %
+        % Here, we just set up the pointer to the right row; the code that
+        % picks up the values of OutVars from that row is generated by
+        % the combination of record_offset_assigns (which updates
+        % the code generator state !CLD to tell it where OutVars are)
+        % and set_liveness_and_end_branch (which generates the code
+        % to pick up their values from there).
+        CaseIdRegLval = LookupInfo ^ stsil_case_id_reg,
+        list.length(OutVars, NumColumns),
+        SetBaseRegCode = singleton(
+            llds_instr(
+                assign(BaseRegLval,
+                    mem_addr(heap_ref(VectorAddrRval, yes(ptag(0u8)),
+                        binop(int_mul(int_type_int),
+                            lval(CaseIdRegLval),
+                            const(llconst_int(NumColumns)))))),
+                "set up base reg")
+        ),
+        NumPrevColumns = 0,
+        record_offset_assigns(OutVars, NumPrevColumns, BaseRegLval, !.CI, !CLD)
+    ),
+
+    % We keep track of what variables are supposed to be live at the end
+    % of cases. We have to do this explicitly because generating a `fail'
+    % slot last would yield the wrong liveness.
+    set_liveness_and_end_branch(StoreMap, Liveness, !MaybeEnd, BranchEndCode,
+        !.CLD),
+
+    EndLabelCode = singleton(
+        llds_instr(label(EndLabel),
+            "end of simple trie string lookup switch")
+    ),
+    MatchCode = SetBaseRegCode ++ BranchEndCode ++ EndLabelCode,
+    Code = SetAndCheckCaseNumCode ++ MatchCode.
+
+:- pred construct_string_trie_simple_lookup_vector(
+    assoc_list(case_id, list(rval))::in, int::in,
+    cord(list(rval))::in, cord(list(rval))::out) is det.
+
+construct_string_trie_simple_lookup_vector([], _, !RowsCord).
+construct_string_trie_simple_lookup_vector([CaseValues | CasesValues], RowNum,
+        !RowsCord) :-
+    CaseValues = CaseId - OutVarRvals,
+    CaseId = case_id(CaseIdNum),
+    expect(unify(RowNum, CaseIdNum), $pred, "RowNum != CaseIdNum"),
+    Row = OutVarRvals,
+    cord.snoc(Row, !RowsCord),
+    construct_string_trie_simple_lookup_vector(CasesValues, RowNum + 1,
+        !RowsCord).
+
+%---------------------%
+
+:- type string_trie_switch_info_lookup
+    --->    string_trie_switch_info_lookup(
+                stsil_encoding              :: string_encoding,
+                stsil_branch_start          :: position_info,
+                stsil_code_unit_reg         :: lval,
+                stsil_case_id_reg           :: lval,
+                stsil_after_label           :: label,
+                stsil_after_code_addr       :: code_addr,
+                stsil_goto_after_code       :: llds_code,
+                stsil_fail_code             :: llds_code
+            ).
+
+:- pred  init_string_trie_switch_info_lookup(can_fail::in,
+    string_trie_switch_info_lookup::out,
+    code_info::in, code_info::out, code_loc_dep::in) is det.
+
+init_string_trie_switch_info_lookup(CanFail, Info, !CI, !.CLD) :-
+    Encoding = target_string_encoding(target_c),
+
+    % See the comment about acquire_reg/release_reg in the
+    % init_string_binary_switch_info predicate below.
+    acquire_reg(reg_r, CodeUnitReg, !CLD),
+    acquire_reg(reg_r, CaseIdReg, !CLD),
+    release_reg(CodeUnitReg, !CLD),
+    release_reg(CaseIdReg, !CLD),
+
+    remember_position(!.CLD, BranchStart),
+
+    get_next_label(AfterLabel, !CI),
+    AfterCodeAddr = code_label(AfterLabel),
+
+    GotoAfterCode = singleton(
+        llds_instr(goto(AfterCodeAddr), "go to the code after the trie")
+    ),
+
+    (
+        CanFail = cannot_fail,
+        FailCode = empty
+    ;
+        CanFail = can_fail,
+        generate_failure(FailCode, !CI, !.CLD)
+    ),
+
+    Info = string_trie_switch_info_lookup(Encoding, BranchStart,
+        CodeUnitReg, CaseIdReg, AfterLabel, AfterCodeAddr, GotoAfterCode,
+        FailCode).
+
+%---------------------------------------------------------------------------%
+
+:- type string_trie_switch_info
+    --->    stsi_jump(string_trie_switch_info_jump)
+    ;       stsi_lookup(string_trie_switch_info_lookup).
+
+%---------------------%
+
+:- pred generate_trie_case_or_fall_through(string_trie_switch_info::in,
+    rval::in, case_id::in, llds_code::out, code_info::in, code_info::out)
+    is det.
+
+generate_trie_case_or_fall_through(Info, CondRval, CaseId, CaseCode, !CI) :-
+    (
+        Info = stsi_jump(JumpInfo),
+        JumpInfo = string_trie_switch_info_jump(_Encoding, CaseIdToLabelMap,
+            _CodeUnitRegLval, _BranchStart, _FailLabel, _FailCode,
+            _GotoFailCode),
+        map.lookup(CaseIdToLabelMap, CaseId, CaseLabel),
+        CaseCodeAddr = code_label(CaseLabel),
+        CaseCode = singleton(
+            llds_instr(if_val(CondRval, CaseCodeAddr), "if match; goto case")
+        )
+        % If the test fails, fall through
+    ;
+        Info = stsi_lookup(LookupInfo),
+        get_next_label(FallThroughLabel, !CI),
+        CaseIdRegLval = LookupInfo ^ stsil_case_id_reg,
+        AfterCodeAddr = LookupInfo ^ stsil_after_code_addr,
+        negate_rval(CondRval, NegCondRval),
+        CaseId = case_id(CaseIdNum),
+        CaseIdRval = const(llconst_int(CaseIdNum)),
+        CaseCode = from_list([
+            llds_instr(if_val(NegCondRval, code_label(FallThroughLabel)),
+                "if not match; fall through"),
+            llds_instr(assign(CaseIdRegLval, CaseIdRval), "assign CaseId"),
+            llds_instr(goto(AfterCodeAddr), "match; goto end"),
+            llds_instr(label(FallThroughLabel), "fall through label")
+        ])
+    ).
+
+:- pred generate_trie_goto_fail_code(string_trie_switch_info::in,
+    llds_code::out) is det.
+
+generate_trie_goto_fail_code(Info, GotoFailCode) :-
+    (
+        Info = stsi_jump(JumpInfo),
+        GotoFailCode = JumpInfo ^ stsij_goto_fail_code
+    ;
+        Info = stsi_lookup(LookupInfo),
+        AfterCodeAddr = LookupInfo ^ stsil_after_code_addr,
+        GotoFailCode = singleton(
+            llds_instr(goto(AfterCodeAddr),
+                "no match; goto after with no case id set")
+        )
+    ).
+
+:- pred get_encoding(string_trie_switch_info::in, string_encoding::out) is det.
+
+get_encoding(Info, Encoding) :-
+    (
+        Info = stsi_jump(JumpInfo),
+        Encoding = JumpInfo ^ stsij_encoding
+    ;
+        Info = stsi_lookup(LookupInfo),
+        Encoding = LookupInfo ^ stsil_encoding
+    ).
+
+:- pred get_code_unit_reg(string_trie_switch_info::in, lval::out) is det.
+
+get_code_unit_reg(Info, CodeUnitReg) :-
+    (
+        Info = stsi_jump(JumpInfo),
+        CodeUnitReg = JumpInfo ^ stsij_code_unit_reg
+    ;
+        Info = stsi_lookup(LookupInfo),
+        CodeUnitReg = LookupInfo ^ stsil_code_unit_reg
+    ).
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
-generate_string_hash_switch(VarRval, VarName, TaggedCases, CodeModel, CanFail,
-        SwitchGoalInfo, EndLabel, MaybeEnd, Code, !CI, CLD) :-
+generate_string_hash_jump_switch(VarRval, VarName, TaggedCases,
+        CodeModel, CanFail, SwitchGoalInfo, EndLabel, MaybeEnd, Code,
+        !CI, CLD) :-
     init_string_hash_switch_info(CanFail, HashSwitchInfo, !CI, CLD),
     BranchStart = HashSwitchInfo ^ shsi_branch_start,
     Params = represent_params(VarName, SwitchGoalInfo, CodeModel, BranchStart,
@@ -559,7 +848,7 @@ generate_string_hash_lookup_switch(VarRval, LookupSwitchInfo,
         map.to_assoc_list(KeyToValuesMap, KeyValuesAL),
         generate_string_hash_simple_lookup_switch(VarRval, KeyValuesAL,
             OutVars, OutTypes, Liveness, CanFail, EndLabel, StoreMap,
-            !MaybeEnd, Code, !CI, CLD)
+            Code, !MaybeEnd, !CI, CLD)
     ;
         CaseConsts = some_several_solns(CaseIdToSolnsMap,
             case_consts_several_llds(ResumeVars, GoalsMayModifyTrail)),
@@ -567,7 +856,7 @@ generate_string_hash_lookup_switch(VarRval, LookupSwitchInfo,
         map.to_assoc_list(KeyToSolnsMap, KeySolnsAL),
         generate_string_hash_several_soln_lookup_switch(VarRval, KeySolnsAL,
             ResumeVars, GoalsMayModifyTrail, OutVars, OutTypes, Liveness,
-            CanFail, EndLabel, StoreMap, !MaybeEnd, Code, !CI, CLD)
+            CanFail, EndLabel, StoreMap, Code, !MaybeEnd, !CI, CLD)
     ).
 
 %---------------------------------------------------------------------------%
@@ -576,12 +865,12 @@ generate_string_hash_lookup_switch(VarRval, LookupSwitchInfo,
     assoc_list(string, list(rval))::in, list(prog_var)::in,
     list(llds_type)::in, set_of_progvar::in,
     can_fail::in, label::in, abs_store_map::in,
-    branch_end::in, branch_end::out, llds_code::out,
+    llds_code::out, branch_end::in, branch_end::out,
     code_info::in, code_info::out, code_loc_dep::in) is det.
 
 generate_string_hash_simple_lookup_switch(VarRval, CaseValues,
         OutVars, OutTypes, Liveness, CanFail, EndLabel, StoreMap,
-        !MaybeEnd, Code, !CI, !.CLD) :-
+        Code, !MaybeEnd, !CI, !.CLD) :-
     % This predicate, generate_string_hash_several_soln_lookup_switch,
     % and generate_string_hash_lookup_switch do similar tasks using
     % similar code, so if you need to update one, you probably need to
@@ -633,7 +922,7 @@ generate_string_hash_simple_lookup_switch(VarRval, CaseValues,
         %
         % Here, we just set up the pointer to the right row; the code that
         % picks up the values of OutVars from that row is generated by
-        % the combination of generate_offset_assigns (which updates
+        % the combination of record_offset_assigns (which updates
         % the code generator state !CLD to tell it where OutVars are)
         % and set_liveness_and_end_branch (which generates the code
         % to pick up their values from there).
@@ -645,7 +934,7 @@ generate_string_hash_simple_lookup_switch(VarRval, CaseValues,
                         lval(RowStartReg)))),
                 "set up base reg")
         ),
-        generate_offset_assigns(OutVars, NumPrevColumns, BaseReg, !.CI, !CLD)
+        record_offset_assigns(OutVars, NumPrevColumns, BaseReg, !.CI, !CLD)
     ),
 
     % We keep track of what variables are supposed to be live at the end
@@ -697,12 +986,12 @@ construct_string_hash_simple_lookup_vector(Slot, TableSize, HashSlotMap,
     assoc_list(string, soln_consts(rval))::in, set_of_progvar::in, bool::in,
     list(prog_var)::in, list(llds_type)::in, set_of_progvar::in,
     can_fail::in, label::in, abs_store_map::in,
-    branch_end::in, branch_end::out, llds_code::out,
+    llds_code::out, branch_end::in, branch_end::out,
     code_info::in, code_info::out, code_loc_dep::in) is det.
 
 generate_string_hash_several_soln_lookup_switch(VarRval, CaseSolns,
         ResumeVars, GoalsMayModifyTrail, OutVars, OutTypes, Liveness,
-        CanFail, EndLabel, StoreMap, !MaybeEnd, Code, !CI, !.CLD) :-
+        CanFail, EndLabel, StoreMap, Code, !MaybeEnd, !CI, !.CLD) :-
     % This predicate, generate_string_hash_simple_lookup_switch,
     % and generate_string_hash_lookup_switch do similar tasks using
     % similar code, so if you need to update one, you probably need to
@@ -781,7 +1070,7 @@ generate_string_hash_several_soln_lookup_switch(VarRval, CaseSolns,
     %
     % Here, we just set up the pointer to the right row; the code that
     % picks up the values of OutVars from that row is generated by
-    % the combination of generate_offset_assigns (which updates
+    % the combination of record_offset_assigns (which updates
     % the code generator state !CLD to tell it where OutVars are)
     % and set_liveness_and_end_branch (which generates the code
     % to pick up their values from there). Both are invoked by code inside
@@ -1039,7 +1328,7 @@ generate_string_hash_switch_search(Info, VarRval, TableAddrRval,
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
-generate_string_binary_switch(VarRval, VarName, TaggedCases,
+generate_string_binary_jump_switch(VarRval, VarName, TaggedCases,
         CodeModel, CanFail, SwitchGoalInfo, EndLabel, MaybeEnd, Code,
         !CI, CLD) :-
     init_string_binary_switch_info(CanFail, BinarySwitchInfo, !CI, CLD),
@@ -1124,7 +1413,7 @@ generate_string_binary_lookup_switch(VarRval, LookupSwitchInfo,
         map.to_assoc_list(KeyToValuesMap, KeyValuesAL),
         generate_string_binary_simple_lookup_switch(VarRval, KeyValuesAL,
             OutVars, OutTypes, Liveness, CanFail, EndLabel, StoreMap,
-            !MaybeEnd, Code, !CI, CLD)
+            Code, !MaybeEnd, !CI, CLD)
     ;
         CaseConsts = some_several_solns(CaseIdToSolnsMap,
             case_consts_several_llds(ResumeVars, GoalsMayModifyTrail)),
@@ -1132,7 +1421,7 @@ generate_string_binary_lookup_switch(VarRval, LookupSwitchInfo,
         map.to_assoc_list(KeyToSolnsMap, KeySolnsAL),
         generate_string_binary_several_soln_lookup_switch(VarRval, KeySolnsAL,
             ResumeVars, GoalsMayModifyTrail, OutVars, OutTypes, Liveness,
-            CanFail, EndLabel, StoreMap, !MaybeEnd, Code, !CI, CLD)
+            CanFail, EndLabel, StoreMap, Code, !MaybeEnd, !CI, CLD)
     ).
 
 %---------------------------------------------------------------------------%
@@ -1141,12 +1430,12 @@ generate_string_binary_lookup_switch(VarRval, LookupSwitchInfo,
     assoc_list(string, list(rval))::in, list(prog_var)::in,
     list(llds_type)::in, set_of_progvar::in,
     can_fail::in, label::in, abs_store_map::in,
-    branch_end::in, branch_end::out, llds_code::out,
+    llds_code::out, branch_end::in, branch_end::out,
     code_info::in, code_info::out, code_loc_dep::in) is det.
 
 generate_string_binary_simple_lookup_switch(VarRval, CaseValues,
         OutVars, OutTypes, Liveness, CanFail, EndLabel, StoreMap,
-        !MaybeEnd, Code, !CI, !.CLD) :-
+        Code, !MaybeEnd, !CI, !.CLD) :-
     % This predicate, generate_string_binary_several_soln_lookup_switch,
     % and generate_string_binary_lookup_switch do similar tasks using
     % similar code, so if you need to update one, you probably need to
@@ -1192,7 +1481,7 @@ generate_string_binary_simple_lookup_switch(VarRval, CaseValues,
         %
         % Here, we just set up the pointer to the right row; the code that
         % picks up the values of OutVars from that row is generated by
-        % the combination of generate_offset_assigns (which updates
+        % the combination of record_offset_assigns (which updates
         % the code generator state !CLD to tell it where OutVars are)
         % and set_liveness_and_end_branch (which generates the code
         % to pick up their values from there).
@@ -1207,7 +1496,7 @@ generate_string_binary_simple_lookup_switch(VarRval, CaseValues,
                                 const(llconst_int(NumColumns)))))),
                 "set up base reg")
         ),
-        generate_offset_assigns(OutVars, 1, BaseReg, !.CI, !CLD)
+        record_offset_assigns(OutVars, 1, BaseReg, !.CI, !CLD)
     ),
 
     % We keep track of what variables are supposed to be live at the end
@@ -1239,12 +1528,12 @@ construct_string_binary_simple_lookup_vector([Str - OutRvals | StrsOutRvals],
     assoc_list(string, soln_consts(rval))::in, set_of_progvar::in, bool::in,
     list(prog_var)::in, list(llds_type)::in, set_of_progvar::in,
     can_fail::in, label::in, abs_store_map::in,
-    branch_end::in, branch_end::out, llds_code::out,
+    llds_code::out, branch_end::in, branch_end::out,
     code_info::in, code_info::out, code_loc_dep::in) is det.
 
 generate_string_binary_several_soln_lookup_switch(VarRval, CaseSolns,
         ResumeVars, GoalsMayModifyTrail, OutVars, OutTypes, Liveness,
-        CanFail, EndLabel, StoreMap, !MaybeEnd, Code, !CI, !.CLD) :-
+        CanFail, EndLabel, StoreMap, Code, !MaybeEnd, !CI, !.CLD) :-
     % This predicate, generate_string_binary_simple_lookup_switch,
     % and generate_string_binary_lookup_switch do similar tasks using
     % similar code, so if you need to update one, you probably need to
@@ -1320,7 +1609,7 @@ generate_string_binary_several_soln_lookup_switch(VarRval, CaseSolns,
     %
     % Here, we just set up the pointer to the right row; the code that
     % picks up the values of OutVars from that row is generated by
-    % the combination of generate_offset_assigns (which updates
+    % the combination of record_offset_assigns (which updates
     % the code generator state !CLD to tell it where OutVars are)
     % and set_liveness_and_end_branch (which generates the code
     % to pick up their values from there). Both are invoked by code inside

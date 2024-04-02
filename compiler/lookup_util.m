@@ -76,7 +76,7 @@
 :- pred set_liveness_and_end_branch(abs_store_map::in, set_of_progvar::in,
     branch_end::in, branch_end::out, llds_code::out, code_loc_dep::in) is det.
 
-:- pred generate_offset_assigns(list(prog_var)::in, int::in, lval::in,
+:- pred record_offset_assigns(list(prog_var)::in, int::in, lval::in,
     code_info::in, code_loc_dep::in, code_loc_dep::out) is det.
 
 %-----------------------------------------------------------------------------%
@@ -218,13 +218,13 @@ set_liveness_and_end_branch(StoreMap, Liveness, !MaybeEnd, BranchEndCode,
     maybe_make_vars_forward_dead(DeadVars, no, !CLD),
     generate_branch_end(StoreMap, !MaybeEnd, BranchEndCode, !.CLD).
 
-generate_offset_assigns([], _, _, _CI, !CLD).
-generate_offset_assigns([Var | Vars], Offset, BaseReg, CI, !CLD) :-
+record_offset_assigns([], _, _, _CI, !CLD).
+record_offset_assigns([Var | Vars], Offset, BaseReg, CI, !CLD) :-
     LookupLval = field(yes(ptag(0u8)), lval(BaseReg),
         const(llconst_int(Offset))),
     assign_lval_to_var(Var, LookupLval, Code, CI, !CLD),
     expect(cord.is_empty(Code), $pred, "nonempty code"),
-    generate_offset_assigns(Vars, Offset + 1, BaseReg, CI, !CLD).
+    record_offset_assigns(Vars, Offset + 1, BaseReg, CI, !CLD).
 
 %---------------------------------------------------------------------------%
 :- end_module ll_backend.lookup_util.

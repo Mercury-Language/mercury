@@ -85,7 +85,7 @@
     % Negate a condition.
     % This is used mostly just to make the generated code more readable.
     %
-:- pred neg_rval(rval::in, rval::out) is det.
+:- pred negate_rval(rval::in, rval::out) is det.
 
 :- pred negate_the_test(list(instruction)::in, list(instruction)::out) is det.
 
@@ -353,16 +353,16 @@ cases_may_alloc_temp_frame([case(_, _, Goal) | Cases], May) :-
 
 %-----------------------------------------------------------------------------%
 
-neg_rval(Rval, NegRval) :-
-    ( if natural_neg_rval(Rval, NegRval0) then
+negate_rval(Rval, NegRval) :-
+    ( if natural_negate_rval(Rval, NegRval0) then
         NegRval = NegRval0
     else
         NegRval = unop(logical_not, Rval)
     ).
 
-:- pred natural_neg_rval(rval::in, rval::out) is semidet.
+:- pred natural_negate_rval(rval::in, rval::out) is semidet.
 
-natural_neg_rval(TestRval0, TestRval) :-
+natural_negate_rval(TestRval0, TestRval) :-
     require_complete_switch [TestRval0]
     (
         TestRval0 = const(Const0),
@@ -404,13 +404,13 @@ natural_neg_rval(TestRval0, TestRval) :-
             TestRval = binop(Binop, SubTestRvalA0, SubTestRvalB0)
         ;
             Binop0 = logical_and,
-            natural_neg_rval(SubTestRvalA0, SubTestRvalA),
-            natural_neg_rval(SubTestRvalB0, SubTestRvalB),
+            natural_negate_rval(SubTestRvalA0, SubTestRvalA),
+            natural_negate_rval(SubTestRvalB0, SubTestRvalB),
             TestRval = binop(logical_or, SubTestRvalA, SubTestRvalB)
         ;
             Binop0 = logical_or,
-            natural_neg_rval(SubTestRvalA0, SubTestRvalA),
-            natural_neg_rval(SubTestRvalB0, SubTestRvalB),
+            natural_negate_rval(SubTestRvalA0, SubTestRvalA),
+            natural_negate_rval(SubTestRvalB0, SubTestRvalB),
             TestRval = binop(logical_and, SubTestRvalA, SubTestRvalB)
         ;
             ( Binop0 = int_add(_)
@@ -458,7 +458,7 @@ negate_the_test([], _) :-
     unexpected($pred, "empty list").
 negate_the_test([Instr0 | Instrs0], Instrs) :-
     ( if Instr0 = llds_instr(if_val(Test, Target), Comment) then
-        neg_rval(Test, NewTest),
+        negate_rval(Test, NewTest),
         Instrs = [llds_instr(if_val(NewTest, Target), Comment)]
     else
         negate_the_test(Instrs0, Instrs1),

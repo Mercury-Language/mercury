@@ -251,7 +251,7 @@ generate_lookup_disj(ResumeVars, LookupDisjInfo, Code, !CI, !CLD) :-
     make_resume_point(ResumeVars, resume_locs_stack_only, ResumeMap,
         ResumePoint, !CI),
     effect_resume_point(ResumePoint, model_non, UpdateRedoipCode, !CLD),
-    generate_offset_assigns(OutVars, 0, BaseReg, !.CI, !CLD),
+    record_offset_assigns(OutVars, 0, BaseReg, !.CI, !CLD),
     flush_resume_vars_to_stack(FirstFlushResumeVarsCode, !CLD),
 
     % Forget the variables that are needed only at the resumption point at
@@ -311,7 +311,7 @@ generate_lookup_disj(ResumeVars, LookupDisjInfo, Code, !CI, !CLD) :-
     % to execute _LaterUpdateRedoipCode.
     effect_resume_point(ResumePoint, model_non, _LaterUpdateRedoipCode, !CLD),
 
-    generate_offset_assigns(OutVars, 0, LaterBaseReg, !.CI, !CLD),
+    record_offset_assigns(OutVars, 0, LaterBaseReg, !.CI, !CLD),
     flush_resume_vars_to_stack(LaterFlushResumeVarsCode, !CLD),
 
     % Forget the variables that are needed only at the resumption point at

@@ -310,11 +310,27 @@ generate_smart_string_switch(Globals,
         internal_string_encoding = utf8,  % host is C
         StringTrieSwitchSize = OptTuple ^ ot_string_trie_switch_size,
         NumConsIds >= StringTrieSwitchSize,
-        MaybeLookupSwitchInfo = no  % yes is not yet implemented
+        (
+            MaybeLookupSwitchInfo = no
+        ;
+            MaybeLookupSwitchInfo = yes(LookupSwitchInfo0),
+            LookupSwitchInfo0 = lookup_switch_info(_, CaseConsts,
+                _, _, _, _, _, _),
+            CaseConsts = all_one_soln(_)
+            % some_several_solns is not yet implemented
+        )
     then
-        generate_string_trie_switch(SwitchVarRval, SwitchVarName, TaggedCases,
-            CodeModel, CanFail, GoalInfo,
-            EndLabel, MaybeEnd, SwitchCode, !CI, !.CLD)
+        (
+            MaybeLookupSwitchInfo = yes(LookupSwitchInfo),
+            generate_string_trie_lookup_switch(SwitchVarRval,
+                LookupSwitchInfo, FilteredCanFail,
+                EndLabel, StoreMap, MaybeEnd, SwitchCode, !:CI)
+        ;
+            MaybeLookupSwitchInfo = no,
+            generate_string_trie_jump_switch(SwitchVarRval, SwitchVarName,
+                TaggedCases, CodeModel, CanFail, GoalInfo,
+                EndLabel, MaybeEnd, SwitchCode, !CI, !.CLD)
+        )
     else if
         StringHashSwitchSize = OptTuple ^ ot_string_hash_switch_size,
         NumConsIds >= StringHashSwitchSize
@@ -328,7 +344,7 @@ generate_smart_string_switch(Globals,
                 EndLabel, StoreMap, MaybeEnd, SwitchCode, !:CI)
         ;
             MaybeLookupSwitchInfo = no,
-            generate_string_hash_switch(SwitchVarRval, SwitchVarName,
+            generate_string_hash_jump_switch(SwitchVarRval, SwitchVarName,
                 TaggedCases, CodeModel, CanFail, GoalInfo,
                 EndLabel, MaybeEnd, SwitchCode, !CI, !.CLD)
         )
@@ -345,7 +361,7 @@ generate_smart_string_switch(Globals,
                 StoreMap, MaybeEnd, SwitchCode, !:CI)
         ;
             MaybeLookupSwitchInfo = no,
-            generate_string_binary_switch(SwitchVarRval, SwitchVarName,
+            generate_string_binary_jump_switch(SwitchVarRval, SwitchVarName,
                 TaggedCases, CodeModel, CanFail, GoalInfo,
                 EndLabel, MaybeEnd, SwitchCode, !CI, !.CLD)
         )

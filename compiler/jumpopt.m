@@ -789,7 +789,7 @@ jump_opt_if_val(Uinstr0, Comment0, Instrs0, _PrevInstr, JumpOptInfo,
             AfterGotoComments = [LabelInstr | _],
             LabelInstr = llds_instr(label(TargetLabel), _)
         then
-            code_util.neg_rval(Cond, NotCond),
+            code_util.negate_rval(Cond, NotCond),
             NewInstr = llds_instr(if_val(NotCond, GotoTarget), GotoComment),
             NewInstrs = [],
             % The transformed code may fit the pattern again, so make sure that
@@ -829,7 +829,7 @@ jump_opt_if_val(Uinstr0, Comment0, Instrs0, _PrevInstr, JumpOptInfo,
                 map.search(BlockMap, GotoLabel, _)
             )
         then
-            code_util.neg_rval(Cond, NotCond),
+            code_util.negate_rval(Cond, NotCond),
             NewIfInstr = llds_instr(if_val(NotCond, GotoAddr), GotoComment),
             NewInstrs = [NewIfInstr],
             NewGotoComment = Comment0 ++ " (switched)",
@@ -866,7 +866,7 @@ jump_opt_if_val(Uinstr0, Comment0, Instrs0, _PrevInstr, JumpOptInfo,
                 (
                     SuccessFT = llconst_true,
                     SuccessBR = llconst_false,
-                    code_util.neg_rval(Cond, NewCond)
+                    code_util.negate_rval(Cond, NewCond)
                 ;
                     SuccessFT = llconst_false,
                     SuccessBR = llconst_true,
