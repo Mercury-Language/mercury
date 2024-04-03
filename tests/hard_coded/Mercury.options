@@ -121,7 +121,7 @@ MCFLAGS-prince_frameopt_helper_1.prince_frameopt_helper_2 = \
 # Compile string_switch3 with only hash switches allowed.
 # Compile string_switch4 with only binary search switches allowed.
 #
-# Compiler space.m with only trie hashes allowed as well, since it has
+# Compile space.m with only trie hashes allowed as well, since it has
 # a predicate (figure_key) that is a useful test for string trie lookup
 # switches.
 MCFLAGS-string_switch =   \
