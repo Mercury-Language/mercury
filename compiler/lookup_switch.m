@@ -177,8 +177,8 @@
     ;       kind_one_soln
     ;       kind_several_solns.
 
-    % generate_code_for_all_kinds(Kinds, NumPrevColumns, OutVars, ResumeVars,
-    %   EndLabel, StoreMap, Liveness, AddTrailOps,
+    % generate_table_lookup_code_for_all_kinds(Kinds, NumPrevColumns, OutVars,
+    %   ResumeVars, EndLabel, StoreMap, Liveness, AddTrailOps,
     %   BaseReg, LaterVectorAddrRval, Code, !MaybeEnd, !CI, !.CLD):
     %
     % Generate code for the kinds of solution cardinalities listed in Kinds.
@@ -198,11 +198,17 @@
     %
     % - The first group of NumPrevColumns columns are ignored by this
     %   predicate.
-    %   - For int switches, there will be no previous columns.
-    %   - For binary string switches, there is one containing the string.
-    %   - For hash string switches, there are one or two, the first containing
-    %     the string, and the second (if it is needed) the number of the next
-    %     slot in the open addressing sequence.
+    %
+    %   - For int switches and for string trie switches, there will be
+    %     zero previous columns.
+    %
+    %   - For binary string switches, there is one previous column, which
+    %     contains the string.
+    %
+    %   - For hash string switches, there are one or two previous columns,
+    %     the first column containing the string, and the second (if it is
+    %     needed) containing the number of the next slot in the open
+    %     addressing sequence.
     %
     % - The second group contains two columns, which contain respectively
     %   the offsets of the first and last later solutions in the later
@@ -221,10 +227,10 @@
     % LaterVectorAddrRval should be the address of the start of the later
     % solutions table.
     %
-:- pred generate_code_for_all_kinds(one_or_more(case_kind)::in, int::in,
-    list(prog_var)::in, set_of_progvar::in, label::in, abs_store_map::in,
-    set_of_progvar::in, add_trail_ops::in, lval::in, rval::in, llds_code::out,
-    branch_end::in, branch_end::out,
+:- pred generate_table_lookup_code_for_all_kinds(one_or_more(case_kind)::in,
+    int::in, list(prog_var)::in, set_of_progvar::in, label::in,
+    abs_store_map::in, set_of_progvar::in, add_trail_ops::in,
+    lval::in, rval::in, llds_code::out, branch_end::in, branch_end::out,
     code_info::in, code_info::out, code_loc_dep::in) is det.
 
 :- func default_value_for_type(llds_type) = rval.
@@ -640,8 +646,8 @@ generate_several_soln_int_lookup_switch(IndexRval, EndLabel, StoreMap,
             "Compute base address for this case")
     ),
 
-    generate_code_for_all_kinds(OoMDescendingSortedKinds, 0, OutVars,
-        ResumeVars, EndLabel, StoreMap, Liveness, AddTrailOps,
+    generate_table_lookup_code_for_all_kinds(OoMDescendingSortedKinds, 0,
+        OutVars, ResumeVars, EndLabel, StoreMap, Liveness, AddTrailOps,
         BaseReg, LaterVectorAddrRval, KindsCode, !MaybeEnd, !CI, !.CLD),
     EndLabelCode = cord.singleton(
         llds_instr(label(EndLabel),
@@ -649,8 +655,8 @@ generate_several_soln_int_lookup_switch(IndexRval, EndLabel, StoreMap,
     ),
     Code = BaseRegInitCode ++ KindsCode ++ EndLabelCode.
 
-generate_code_for_all_kinds(OoMKinds, NumPrevColumns, OutVars, ResumeVars,
-        EndLabel, StoreMap, Liveness, AddTrailOps,
+generate_table_lookup_code_for_all_kinds(OoMKinds, NumPrevColumns, OutVars,
+        ResumeVars, EndLabel, StoreMap, Liveness, AddTrailOps,
         BaseReg, LaterVectorAddrRval, Code, !MaybeEnd, !CI, !.CLD) :-
     % We release BaseReg in each arm of generate_code_for_each_kind below.
     % We cannot release it at the bottom of this predicate, because in the
@@ -666,10 +672,10 @@ generate_code_for_all_kinds(OoMKinds, NumPrevColumns, OutVars, ResumeVars,
 
     remember_position(!.CLD, BranchStart),
     OoMKinds = one_or_more(HeadKind, TailKinds),
-    generate_code_for_each_kind(HeadKind, TailKinds, NumPrevColumns,
-        OutVars, ResumeVars, BranchStart, EndLabel, StoreMap, Liveness,
-        AddTrailOps, BaseReg, CurSlot, MaxSlot, LaterVectorAddrRval, Code,
-        !MaybeEnd, !CI).
+    generate_table_lookup_code_for_each_kind(HeadKind, TailKinds,
+        NumPrevColumns, OutVars, ResumeVars, BranchStart, EndLabel, StoreMap,
+        Liveness, AddTrailOps, BaseReg, CurSlot, MaxSlot, LaterVectorAddrRval,
+        Code, !MaybeEnd, !CI).
 
 :- func case_kind_to_string(case_kind) = string.
 
@@ -677,18 +683,19 @@ case_kind_to_string(kind_zero_solns) = "kind_zero_solns".
 case_kind_to_string(kind_one_soln) = "kind_one_soln".
 case_kind_to_string(kind_several_solns) = "kind_several_solns".
 
-:- pred generate_code_for_each_kind(case_kind::in, list(case_kind)::in,
-    int::in, list(prog_var)::in, set_of_progvar::in, position_info::in,
-    label::in, abs_store_map::in, set_of_progvar::in, add_trail_ops::in,
-    lval::in, lval::in, lval::in, rval::in, llds_code::out,
+:- pred generate_table_lookup_code_for_each_kind(case_kind::in,
+    list(case_kind)::in, int::in, list(prog_var)::in, set_of_progvar::in,
+    position_info::in, label::in, abs_store_map::in, set_of_progvar::in,
+    add_trail_ops::in, lval::in, lval::in, lval::in, rval::in, llds_code::out,
     branch_end::in, branch_end::out, code_info::in, code_info::out) is det.
 
-generate_code_for_each_kind(Kind, Kinds, NumPrevColumns, OutVars, ResumeVars,
-        BranchStart, EndLabel, StoreMap, Liveness, AddTrailOps, BaseReg,
-        CurSlot, MaxSlot, LaterVectorAddrRval, Code, !MaybeEnd, !CI) :-
+generate_table_lookup_code_for_each_kind(Kind, Kinds, NumPrevColumns, OutVars,
+        ResumeVars, BranchStart, EndLabel, StoreMap, Liveness, AddTrailOps,
+        BaseReg, CurSlot, MaxSlot, LaterVectorAddrRval, Code,
+        !MaybeEnd, !CI) :-
     (
         Kind = kind_zero_solns,
-        TestOp = int_ge(int_type_int),
+        SkipToNextKindTestOp = int_ge(int_type_int),
         some [!CLD] (
             reset_to_position(BranchStart, !.CI, !:CLD),
             release_reg(BaseReg, !CLD),
@@ -696,7 +703,7 @@ generate_code_for_each_kind(Kind, Kinds, NumPrevColumns, OutVars, ResumeVars,
         )
     ;
         Kind = kind_one_soln,
-        TestOp = ne(int_type_int),
+        SkipToNextKindTestOp = ne(int_type_int),
         some [!CLD] (
             reset_to_position(BranchStart, !.CI, !:CLD),
             record_offset_assigns(OutVars, NumPrevColumns + 2, BaseReg,
@@ -711,10 +718,10 @@ generate_code_for_each_kind(Kind, Kinds, NumPrevColumns, OutVars, ResumeVars,
         KindCode = BranchEndCode ++ GotoEndCode
     ;
         Kind = kind_several_solns,
-        generate_code_for_kind_several_solns(NumPrevColumns, OutVars,
-            ResumeVars, BranchStart, EndLabel, StoreMap, Liveness,
+        generate_table_lookup_code_for_kind_several_solns(NumPrevColumns,
+            OutVars, ResumeVars, BranchStart, EndLabel, StoreMap, Liveness,
             AddTrailOps, BaseReg, CurSlot, MaxSlot, LaterVectorAddrRval,
-            TestOp, KindCode, !MaybeEnd, !CI)
+            SkipToNextKindTestOp, KindCode, !MaybeEnd, !CI)
     ),
     (
         Kinds = [],
@@ -722,7 +729,7 @@ generate_code_for_each_kind(Kind, Kinds, NumPrevColumns, OutVars, ResumeVars,
     ;
         Kinds = [NextKind | LaterKinds],
         get_next_label(NextKindLabel, !CI),
-        TestRval = binop(TestOp,
+        TestRval = binop(SkipToNextKindTestOp,
             lval(field(yes(ptag(0u8)), lval(BaseReg),
                 const(llconst_int(NumPrevColumns)))),
             const(llconst_int(0))),
@@ -738,22 +745,22 @@ generate_code_for_each_kind(Kind, Kinds, NumPrevColumns, OutVars, ResumeVars,
                 "next kind in several_soln lookup switch"),
             llds_instr(comment(NextKindComment), "")
         ]),
-        generate_code_for_each_kind(NextKind, LaterKinds, NumPrevColumns,
-            OutVars, ResumeVars, BranchStart, EndLabel, StoreMap, Liveness,
-            AddTrailOps, BaseReg, CurSlot, MaxSlot, LaterVectorAddrRval,
-            LaterKindsCode, !MaybeEnd, !CI),
+        generate_table_lookup_code_for_each_kind(NextKind, LaterKinds,
+            NumPrevColumns, OutVars, ResumeVars, BranchStart, EndLabel,
+            StoreMap, Liveness, AddTrailOps, BaseReg, CurSlot, MaxSlot,
+            LaterVectorAddrRval, LaterKindsCode, !MaybeEnd, !CI),
         Code = TestCode ++ KindCode ++ NextKindLabelCode ++ LaterKindsCode
     ).
 
-:- pred generate_code_for_kind_several_solns(int::in, list(prog_var)::in,
-    set_of_progvar::in, position_info::in,
+:- pred generate_table_lookup_code_for_kind_several_solns(int::in,
+    list(prog_var)::in, set_of_progvar::in, position_info::in,
     label::in, abs_store_map::in, set_of_progvar::in, add_trail_ops::in,
     lval::in, lval::in, lval::in, rval::in, binary_op::out, llds_code::out,
     branch_end::in, branch_end::out, code_info::in, code_info::out) is det.
 
-generate_code_for_kind_several_solns(NumPrevColumns, OutVars, ResumeVars,
-        BranchStart, EndLabel, StoreMap, Liveness, AddTrailOps, BaseReg,
-        CurSlot, MaxSlot, LaterVectorAddrRval, TestOp, KindCode,
+generate_table_lookup_code_for_kind_several_solns(NumPrevColumns, OutVars,
+        ResumeVars, BranchStart, EndLabel, StoreMap, Liveness, AddTrailOps,
+        BaseReg, CurSlot, MaxSlot, LaterVectorAddrRval, TestOp, KindCode,
         !MaybeEnd, !CI) :-
     TestOp = int_le(int_type_int),
     get_globals(!.CI, Globals),

@@ -309,16 +309,7 @@ generate_smart_string_switch(Globals,
         % we are targeting C.
         internal_string_encoding = utf8,  % host is C
         StringTrieSwitchSize = OptTuple ^ ot_string_trie_switch_size,
-        NumConsIds >= StringTrieSwitchSize,
-        (
-            MaybeLookupSwitchInfo = no
-        ;
-            MaybeLookupSwitchInfo = yes(LookupSwitchInfo0),
-            LookupSwitchInfo0 = lookup_switch_info(_, CaseConsts,
-                _, _, _, _, _, _),
-            CaseConsts = all_one_soln(_)
-            % some_several_solns is not yet implemented
-        )
+        NumConsIds >= StringTrieSwitchSize
     then
         (
             MaybeLookupSwitchInfo = yes(LookupSwitchInfo),
