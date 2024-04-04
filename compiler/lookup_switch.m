@@ -60,9 +60,9 @@
 :- import_module parse_tree.set_of_var.
 
 :- import_module list.
-:- import_module one_or_more.
 :- import_module map.
 :- import_module maybe.
+:- import_module pair.
 
 %---------------------------------------------------------------------------%
 
@@ -227,7 +227,8 @@
     % LaterVectorAddrRval should be the address of the start of the later
     % solutions table.
     %
-:- pred generate_table_lookup_code_for_all_kinds(one_or_more(case_kind)::in,
+:- pred generate_table_lookup_code_for_all_kinds(
+    pair(int, case_kind)::in, list(pair(int, case_kind))::in,
     int::in, list(prog_var)::in, set_of_progvar::in, label::in,
     abs_store_map::in, set_of_progvar::in, add_trail_ops::in,
     lval::in, rval::in, llds_code::out, branch_end::in, branch_end::out,
@@ -256,7 +257,6 @@
 :- import_module bool.
 :- import_module cord.
 :- import_module int.
-:- import_module pair.
 :- import_module require.
 :- import_module set.
 :- import_module string.
@@ -624,13 +624,6 @@ generate_several_soln_int_lookup_switch(IndexRval, EndLabel, StoreMap,
     add_vector_static_cell(OutTypes, LaterSolnArray, LaterVectorAddr, !CI),
     LaterVectorAddrRval = const(llconst_data_addr(LaterVectorAddr, no)),
 
-    list.sort([FailCaseCount - kind_zero_solns,
-        OneSolnCaseCount - kind_one_soln,
-        SeveralSolnCaseCount - kind_several_solns], AscendingSortedCountKinds),
-    list.reverse(AscendingSortedCountKinds, DescendingSortedCountKinds),
-    assoc_list.values(DescendingSortedCountKinds, DescendingSortedKinds),
-    det_list_to_one_or_more(DescendingSortedKinds, OoMDescendingSortedKinds),
-
     % Since we release BaseReg only after the calls to generate_branch_end,
     % we must make sure that generate_branch_end won't want to overwrite
     % BaseReg.
@@ -646,18 +639,29 @@ generate_several_soln_int_lookup_switch(IndexRval, EndLabel, StoreMap,
             "Compute base address for this case")
     ),
 
-    generate_table_lookup_code_for_all_kinds(OoMDescendingSortedKinds, 0,
-        OutVars, ResumeVars, EndLabel, StoreMap, Liveness, AddTrailOps,
-        BaseReg, LaterVectorAddrRval, KindsCode, !MaybeEnd, !CI, !.CLD),
+    NumPrevColumns = 0,
+    generate_table_lookup_code_for_all_kinds(FailCaseCount - kind_zero_solns,
+        [OneSolnCaseCount - kind_one_soln,
+        SeveralSolnCaseCount - kind_several_solns],
+        NumPrevColumns, OutVars, ResumeVars, EndLabel, StoreMap, Liveness,
+        AddTrailOps, BaseReg, LaterVectorAddrRval, KindsCode,
+        !MaybeEnd, !CI, !.CLD),
     EndLabelCode = cord.singleton(
         llds_instr(label(EndLabel),
             "end of int several soln lookup switch")
     ),
     Code = BaseRegInitCode ++ KindsCode ++ EndLabelCode.
 
-generate_table_lookup_code_for_all_kinds(OoMKinds, NumPrevColumns, OutVars,
-        ResumeVars, EndLabel, StoreMap, Liveness, AddTrailOps,
+%---------------------------------------------------------------------------%
+
+generate_table_lookup_code_for_all_kinds(CountKind, CountKinds, NumPrevColumns,
+        OutVars, ResumeVars, EndLabel, StoreMap, Liveness, AddTrailOps,
         BaseReg, LaterVectorAddrRval, Code, !MaybeEnd, !CI, !.CLD) :-
+    list.sort([CountKind | CountKinds], AscendingSortedCountKinds),
+    list.reverse(AscendingSortedCountKinds, DescendingSortedCountKinds),
+    assoc_list.values(DescendingSortedCountKinds, DescendingSortedKinds),
+    list.det_head_tail(DescendingSortedKinds, HeadKind, TailKinds),
+
     % We release BaseReg in each arm of generate_code_for_each_kind below.
     % We cannot release it at the bottom of this predicate, because in the
     % kind_several_solns arm of generate_code_for_each_kind the generation
@@ -671,7 +675,6 @@ generate_table_lookup_code_for_all_kinds(OoMKinds, NumPrevColumns, OutVars,
         MaxSlot, !CI, !CLD),
 
     remember_position(!.CLD, BranchStart),
-    OoMKinds = one_or_more(HeadKind, TailKinds),
     generate_table_lookup_code_for_each_kind(HeadKind, TailKinds,
         NumPrevColumns, OutVars, ResumeVars, BranchStart, EndLabel, StoreMap,
         Liveness, AddTrailOps, BaseReg, CurSlot, MaxSlot, LaterVectorAddrRval,

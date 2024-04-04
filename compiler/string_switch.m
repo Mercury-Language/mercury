@@ -124,7 +124,6 @@
 :- import_module int.
 :- import_module map.
 :- import_module maybe.
-:- import_module one_or_more.
 :- import_module pair.
 :- import_module require.
 :- import_module string.
@@ -624,13 +623,6 @@ generate_string_trie_several_soln_lookup_switch(LookupInfo,
     MainRows = cord.list(MainRowsCord),
     LaterSolnsRows = cord.list(LaterSolnsRowsCord),
 
-    list.sort([OneSolnCaseCount - kind_one_soln,
-        SeveralSolnsCaseCount - kind_several_solns],
-        AscendingSortedCountKinds),
-    list.reverse(AscendingSortedCountKinds, DescendingSortedCountKinds),
-    assoc_list.values(DescendingSortedCountKinds, DescendingSortedKinds),
-    det_list_to_one_or_more(DescendingSortedKinds, OoMDescendingSortedKinds),
-
     add_vector_static_cell(MainRowTypes, MainRows, MainVectorAddr, !CI),
     MainVectorAddrRval = const(llconst_data_addr(MainVectorAddr, no)),
     add_vector_static_cell(OutTypes, LaterSolnsRows, LaterVectorAddr, !CI),
@@ -677,7 +669,8 @@ generate_string_trie_several_soln_lookup_switch(LookupInfo,
     ),
 
     NumPrevColumns = 0,
-    generate_table_lookup_code_for_all_kinds(OoMDescendingSortedKinds,
+    generate_table_lookup_code_for_all_kinds(OneSolnCaseCount - kind_one_soln,
+        [SeveralSolnsCaseCount - kind_several_solns],
         NumPrevColumns, OutVars, ResumeVars, EndLabel, StoreMap, Liveness,
         AddTrailOps, BaseReg, LaterVectorAddrRval, LookupResultsCode,
         !MaybeEnd, !CI, !.CLD),
@@ -1191,13 +1184,6 @@ generate_string_hash_several_soln_lookup_switch(VarRval, CaseSolns,
     MainRows = cord.list(MainRowsCord),
     LaterSolnArray = cord.list(LaterSolnArrayCord),
 
-    list.sort([OneSolnCaseCount - kind_one_soln,
-        SeveralSolnsCaseCount - kind_several_solns],
-        AscendingSortedCountKinds),
-    list.reverse(AscendingSortedCountKinds, DescendingSortedCountKinds),
-    assoc_list.values(DescendingSortedCountKinds, DescendingSortedKinds),
-    det_list_to_one_or_more(DescendingSortedKinds, OoMDescendingSortedKinds),
-
     add_vector_static_cell(MainRowTypes, MainRows, MainVectorAddr, !CI),
     MainVectorAddrRval = const(llconst_data_addr(MainVectorAddr, no)),
     add_vector_static_cell(OutTypes, LaterSolnArray, LaterVectorAddr, !CI),
@@ -1226,7 +1212,9 @@ generate_string_hash_several_soln_lookup_switch(VarRval, CaseSolns,
                     lval(RowStartReg)))),
             "set up base reg")
     ),
-    generate_table_lookup_code_for_all_kinds(OoMDescendingSortedKinds,
+
+    generate_table_lookup_code_for_all_kinds(OneSolnCaseCount - kind_one_soln,
+        [SeveralSolnsCaseCount - kind_several_solns],
         NumPrevColumns, OutVars, ResumeVars, EndLabel, StoreMap, Liveness,
         AddTrailOps, BaseReg, LaterVectorAddrRval, LookupResultsCode,
         !MaybeEnd, !CI, !.CLD),
@@ -1724,14 +1712,6 @@ generate_string_binary_several_soln_lookup_switch(VarRval, CaseSolns,
     MainRows = cord.list(MainRowsCord),
     LaterSolnArray = cord.list(LaterSolnArrayCord),
 
-    % ZZZ move to generate_table_lookup_code_for_all_kinds
-    list.sort([OneSolnCaseCount - kind_one_soln,
-        SeveralSolnsCaseCount - kind_several_solns],
-        AscendingSortedCountKinds),
-    list.reverse(AscendingSortedCountKinds, DescendingSortedCountKinds),
-    assoc_list.values(DescendingSortedCountKinds, DescendingSortedKinds),
-    det_list_to_one_or_more(DescendingSortedKinds, OoMDescendingSortedKinds),
-
     MainRowTypes =
         [lt_string, lt_int(int_type_int), lt_int(int_type_int) | OutTypes],
     list.length(MainRowTypes, MainNumColumns),
@@ -1771,9 +1751,11 @@ generate_string_binary_several_soln_lookup_switch(VarRval, CaseSolns,
             "set up base reg")
     ),
 
-    generate_table_lookup_code_for_all_kinds(OoMDescendingSortedKinds, 1,
-        OutVars, ResumeVars, EndLabel, StoreMap, Liveness, AddTrailOps,
-        BaseReg, LaterVectorAddrRval, LookupResultsCode,
+    NumPrevColumns = 1,
+    generate_table_lookup_code_for_all_kinds(OneSolnCaseCount - kind_one_soln,
+        [SeveralSolnsCaseCount - kind_several_solns],
+        NumPrevColumns, OutVars, ResumeVars, EndLabel, StoreMap, Liveness,
+        AddTrailOps, BaseReg, LaterVectorAddrRval, LookupResultsCode,
         !MaybeEnd, !CI, !.CLD),
     EndLabelCode = singleton(
         llds_instr(label(EndLabel),
