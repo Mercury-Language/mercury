@@ -87,7 +87,7 @@ MCFLAGS-string_alignment_bug        = --no-warn-obsolete
 MCFLAGS-subtype_pack                = --allow-packing-dummies
 MCFLAGS-subtype_rtti = \
                 --allow-packing-local-sectags --allow-packing-remote-sectags
-MCFLAGS-tail-rec-scc                = --inine-linear-tail-rec-sccs
+MCFLAGS-tail_rec_scc                = --inline-linear-tail-rec-sccs
 MCFLAGS-term_io_test                = --no-warn-unresolved-polymorphism
 MCFLAGS-test_imported_no_tag        = --no-warn-interface-imports
 MCFLAGS-test_split_switch_arms      = --split-switch-arms
