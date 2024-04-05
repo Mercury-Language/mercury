@@ -118,7 +118,6 @@
 :- import_module parse_tree.set_of_var.
 
 :- import_module assoc_list.
-:- import_module bool.
 :- import_module cord.
 :- import_module int.
 :- import_module map.
@@ -138,9 +137,6 @@ generate_string_trie_jump_switch(VarRval, VarName, TaggedCases,
     BranchStart = JumpInfo0 ^ stsij_branch_start,
     Params = represent_params(VarName, SwitchGoalInfo, CodeModel, BranchStart,
         EndLabel),
-    CommentCode = singleton(
-        llds_instr(comment("string trie jump switch"), "")
-    ),
 
     % Generate code for the cases, and remember the label of each case.
     map.init(CaseIdToLabelMap0),
@@ -162,13 +158,9 @@ generate_string_trie_jump_switch(VarRval, VarName, TaggedCases,
         llds_instr(label(FailLabel), "fail label")
     ),
     FailCode = JumpInfo ^ stsij_fail_code,
-
-    EndLabelCode = singleton(
-        llds_instr(label(EndLabel), "end of string trie string")
-    ),
-
-    Code = CommentCode ++ TrieCode ++ CasesCode ++
-        FailLabelCode ++ FailCode ++ EndLabelCode.
+    Code0 = TrieCode ++ CasesCode ++ FailLabelCode ++ FailCode,
+    add_switch_kind_comment_and_end_label("string trie jump switch", EndLabel,
+        Code0, Code).
 
 :- pred represent_tagged_cases_in_string_trie_switch(represent_params::in,
     list(tagged_case)::in, map(case_id, label)::in, map(case_id, label)::out,
@@ -494,36 +486,40 @@ generate_string_trie_lookup_switch(VarRval, LookupSwitchInfo, CanFail,
 
     (
         CaseConsts = all_one_soln(CaseIdToValuesMap),
+        SwitchKindStr = "string trie singlesoln lookup switch",
         map.to_assoc_list(CaseIdToValuesMap, CaseIdToValuesAL),
         generate_string_trie_simple_lookup_switch(LookupInfo, CaseIdToValuesAL,
-            OutVars, OutTypes, Liveness, EndLabel, StoreMap,
-            SetAndCheckCaseNumCode, Code, !MaybeEnd, !CI, CLD)
+            OutVars, OutTypes, Liveness, StoreMap, LookupCode,
+            !MaybeEnd, !CI, CLD)
     ;
         CaseConsts = some_several_solns(CaseIdToValuesListMap,
-            case_consts_several_llds(ResumeVars, GoalsMayModifyTrail)),
+            CaseConstsSeveralLlds),
+        SwitchKindStr = "string trie multisoln lookup switch",
         map.to_assoc_list(CaseIdToValuesListMap, CaseIdToValuesListAL),
         generate_string_trie_several_soln_lookup_switch(LookupInfo,
-            CaseIdToValuesListAL, ResumeVars, GoalsMayModifyTrail,
-            OutVars, OutTypes, Liveness, EndLabel, StoreMap,
-            SetAndCheckCaseNumCode, Code, !MaybeEnd, !CI, CLD)
-    ).
+            CaseConstsSeveralLlds, CaseIdToValuesListAL,
+            OutVars, OutTypes, Liveness, EndLabel, StoreMap, LookupCode,
+            !MaybeEnd, !CI, CLD)
+    ),
+    Code0 = SetAndCheckCaseNumCode ++ LookupCode,
+    add_switch_kind_comment_and_end_label(SwitchKindStr, EndLabel,
+        Code0, Code).
 
 %---------------------------------------------------------------------------%
 
 :- pred generate_string_trie_simple_lookup_switch(
     string_trie_switch_info_lookup::in,
     assoc_list(case_id, list(rval))::in, list(prog_var)::in,
-    list(llds_type)::in, set_of_progvar::in,
-    label::in, abs_store_map::in, llds_code::in, llds_code::out,
-    branch_end::in, branch_end::out,
+    list(llds_type)::in, set_of_progvar::in, abs_store_map::in,
+    llds_code::out, branch_end::in, branch_end::out,
     code_info::in, code_info::out, code_loc_dep::in) is det.
 
 generate_string_trie_simple_lookup_switch(LookupInfo, CaseValues,
-        OutVars, OutTypes, Liveness, EndLabel, StoreMap,
-        SetAndCheckCaseNumCode, Code, !MaybeEnd, !CI, !.CLD) :-
+        OutVars, OutTypes, Liveness, StoreMap, LookupCode,
+        !MaybeEnd, !CI, !.CLD) :-
     (
         OutVars = [],
-        Code = SetAndCheckCaseNumCode
+        LookupCode = empty
     ;
         OutVars = [_ | _],
         RowElemTypes = OutTypes,
@@ -539,13 +535,7 @@ generate_string_trie_simple_lookup_switch(LookupInfo, CaseValues,
         MainRowSelect = main_row_number_reg(lval(CaseIdRegLval), RowElemTypes),
         generate_simple_table_lookup_code(NumPrevColumns, do_not_need_goto_end,
             OutVars, StoreMap, Liveness, MainRowSelect, VectorAddrRval,
-            LookupCode, !MaybeEnd, !CI, !.CLD),
-        EndLabelCode = singleton(
-            llds_instr(label(EndLabel),
-                "end of simple trie string lookup switch")
-        ),
-        MatchCode = LookupCode ++ EndLabelCode,
-        Code = SetAndCheckCaseNumCode ++ MatchCode
+            LookupCode, !MaybeEnd, !CI, !.CLD)
     ).
 
 :- pred construct_string_trie_simple_lookup_vector(
@@ -566,22 +556,17 @@ construct_string_trie_simple_lookup_vector([CaseValues | CasesValues], RowNum,
 %---------------------%
 
 :- pred generate_string_trie_several_soln_lookup_switch(
-    string_trie_switch_info_lookup::in,
+    string_trie_switch_info_lookup::in, case_consts_several_llds::in,
     assoc_list(case_id, soln_consts(rval))::in,
-    set_of_progvar::in, bool::in,
     list(prog_var)::in, list(llds_type)::in, set_of_progvar::in,
-    label::in, abs_store_map::in, llds_code::in, llds_code::out,
+    label::in, abs_store_map::in, llds_code::out,
     branch_end::in, branch_end::out,
     code_info::in, code_info::out, code_loc_dep::in) is det.
 
 generate_string_trie_several_soln_lookup_switch(LookupInfo,
-        CaseIdToValuesListAL, ResumeVars, GoalsMayModifyTrail,
+        CaseConstsSeveralLlds, CaseIdToValuesListAL,
         OutVars, OutTypes, Liveness, EndLabel, StoreMap,
-        SetAndCheckCaseNumCode, Code, !MaybeEnd, !CI, !.CLD) :-
-    CommentCode = singleton(
-        llds_instr(comment("string trie multi soln lookup switch"), "")
-    ),
-
+        LookupResultsCode, !MaybeEnd, !CI, !.CLD) :-
     list.length(OutVars, NumOutVars),
     MainRowTypes = [lt_int(int_type_int), lt_int(int_type_int) | OutTypes],
     LaterSolnsRowNumber0 = 1,
@@ -594,37 +579,19 @@ generate_string_trie_several_soln_lookup_switch(LookupInfo,
     MainRows = cord.list(MainRowsCord),
     LaterSolnsRows = cord.list(LaterSolnsRowsCord),
 
-    add_vector_static_cell(MainRowTypes, MainRows, MainVectorAddr, !CI),
-    MainVectorAddrRval = const(llconst_data_addr(MainVectorAddr, no)),
-    add_vector_static_cell(OutTypes, LaterSolnsRows, LaterVectorAddr, !CI),
-    LaterVectorAddrRval = const(llconst_data_addr(LaterVectorAddr, no)),
-
-    % ZZZ common code
-    % If there are no output variables, then how can the individual solutions
-    % differ from each other?
-    expect_not(unify(OutVars, []), $pred, "no OutVars"),
-    (
-        GoalsMayModifyTrail = yes,
-        get_emit_trail_ops(!.CI, AddTrailOps)
-    ;
-        GoalsMayModifyTrail = no,
-        AddTrailOps = do_not_add_trail_ops
-    ),
+    add_vector_static_cell(MainRowTypes, MainRows, MainVectorDataId, !CI),
+    add_vector_static_cell(OutTypes, LaterSolnsRows, LaterVectorDataId, !CI),
+    MainVectorAddrRval = const(llconst_data_addr(MainVectorDataId, no)),
 
     NumPrevColumns = 0,
     CaseIdReg = LookupInfo ^ stsil_case_id_reg,
     MainRowSelect = main_row_number_reg(lval(CaseIdReg), MainRowTypes),
-    generate_several_soln_table_lookup_code(OneSolnCaseCount - kind_one_soln,
+    generate_several_soln_table_lookup_code(CaseConstsSeveralLlds,
+        OneSolnCaseCount - kind_one_soln,
         [SeveralSolnsCaseCount - kind_several_solns],
-        NumPrevColumns, OutVars, ResumeVars, EndLabel, StoreMap, Liveness,
-        AddTrailOps, MainRowSelect, MainVectorAddrRval, LaterVectorAddrRval,
-        LookupResultsCode, !MaybeEnd, !CI, !.CLD),
-    EndLabelCode = singleton(
-        llds_instr(label(EndLabel),
-            "end of string trie multi soln lookup switch")
-    ),
-    Code = CommentCode ++ SetAndCheckCaseNumCode ++ LookupResultsCode ++
-        EndLabelCode.
+        NumPrevColumns, OutVars, EndLabel, StoreMap, Liveness,
+        MainRowSelect, MainVectorAddrRval, LaterVectorDataId,
+        LookupResultsCode, !MaybeEnd, !CI, !.CLD).
 
 :- pred construct_string_trie_several_soln_lookup_vector(int::in,
     assoc_list(case_id, soln_consts(rval))::in, int::in,
@@ -932,12 +899,12 @@ generate_string_hash_lookup_switch(VarRval, LookupSwitchInfo,
             Code, !MaybeEnd, !CI, CLD)
     ;
         CaseConsts = some_several_solns(CaseIdToSolnsMap,
-            case_consts_several_llds(ResumeVars, GoalsMayModifyTrail)),
+            CaseConstsSeveralLlds),
         compose_maps(KeyToCaseIdMap, CaseIdToSolnsMap, KeyToSolnsMap),
         map.to_assoc_list(KeyToSolnsMap, KeySolnsAL),
-        generate_string_hash_several_soln_lookup_switch(VarRval, KeySolnsAL,
-            ResumeVars, GoalsMayModifyTrail, OutVars, OutTypes, Liveness,
-            CanFail, EndLabel, StoreMap, Code, !MaybeEnd, !CI, CLD)
+        generate_string_hash_several_soln_lookup_switch(CaseConstsSeveralLlds,
+            VarRval, KeySolnsAL, OutVars, OutTypes, Liveness, CanFail,
+            EndLabel, StoreMap, Code, !MaybeEnd, !CI, CLD)
     ).
 
 %---------------------------------------------------------------------------%
@@ -1029,16 +996,17 @@ construct_string_hash_simple_lookup_vector(Slot, TableSize, HashSlotMap,
 
 %---------------------------------------------------------------------------%
 
-:- pred generate_string_hash_several_soln_lookup_switch(rval::in,
-    assoc_list(string, soln_consts(rval))::in, set_of_progvar::in, bool::in,
+:- pred generate_string_hash_several_soln_lookup_switch(
+    case_consts_several_llds::in, rval::in,
+    assoc_list(string, soln_consts(rval))::in,
     list(prog_var)::in, list(llds_type)::in, set_of_progvar::in,
     can_fail::in, label::in, abs_store_map::in,
     llds_code::out, branch_end::in, branch_end::out,
     code_info::in, code_info::out, code_loc_dep::in) is det.
 
-generate_string_hash_several_soln_lookup_switch(VarRval, CaseSolns,
-        ResumeVars, GoalsMayModifyTrail, OutVars, OutTypes, Liveness,
-        CanFail, EndLabel, StoreMap, Code, !MaybeEnd, !CI, !.CLD) :-
+generate_string_hash_several_soln_lookup_switch(CaseConstsSeveralLlds,
+        VarRval, CaseSolns, OutVars, OutTypes, Liveness, CanFail, EndLabel,
+        StoreMap, Code, !MaybeEnd, !CI, !.CLD) :-
     % This predicate, generate_string_hash_simple_lookup_switch,
     % and generate_string_hash_lookup_switch do similar tasks using
     % similar code, so if you need to update one, you probably need to
@@ -1071,17 +1039,6 @@ generate_string_hash_several_soln_lookup_switch(VarRval, CaseSolns,
     ),
     ArrayElemType = array_elem_struct(ArrayElemTypes),
 
-    % If there are no output variables, then how can the individual solutions
-    % differ from each other?
-    expect_not(unify(OutVars, []), $pred, "no OutVars"),
-    (
-        GoalsMayModifyTrail = yes,
-        get_emit_trail_ops(!.CI, AddTrailOps)
-    ;
-        GoalsMayModifyTrail = no,
-        AddTrailOps = do_not_add_trail_ops
-    ),
-
     % Generate the static lookup table for this switch.
     InitLaterSolnRowNumber = 1,
     DummyOutRvals = list.map(default_value_for_type, OutTypes),
@@ -1094,17 +1051,17 @@ generate_string_hash_several_soln_lookup_switch(VarRval, CaseSolns,
     MainRows = cord.list(MainRowsCord),
     LaterSolnArray = cord.list(LaterSolnArrayCord),
 
-    add_vector_static_cell(MainRowTypes, MainRows, MainVectorAddr, !CI),
-    MainVectorAddrRval = const(llconst_data_addr(MainVectorAddr, no)),
-    add_vector_static_cell(OutTypes, LaterSolnArray, LaterVectorAddr, !CI),
-    LaterVectorAddrRval = const(llconst_data_addr(LaterVectorAddr, no)),
+    add_vector_static_cell(MainRowTypes, MainRows, MainVectorDataId, !CI),
+    add_vector_static_cell(OutTypes, LaterSolnArray, LaterVectorDataId, !CI),
+    MainVectorAddrRval = const(llconst_data_addr(MainVectorDataId, no)),
 
     RowStartReg = HashSwitchInfo ^ shsi_row_start_reg,
     MainRowSelect = main_row_start_offset_reg(lval(RowStartReg)),
-    generate_several_soln_table_lookup_code(OneSolnCaseCount - kind_one_soln,
+    generate_several_soln_table_lookup_code(CaseConstsSeveralLlds,
+        OneSolnCaseCount - kind_one_soln,
         [SeveralSolnsCaseCount - kind_several_solns],
-        NumPrevColumns, OutVars, ResumeVars, EndLabel, StoreMap, Liveness,
-        AddTrailOps, MainRowSelect, MainVectorAddrRval, LaterVectorAddrRval,
+        NumPrevColumns, OutVars, EndLabel, StoreMap, Liveness,
+        MainRowSelect, MainVectorAddrRval, LaterVectorDataId,
         LookupResultsCode, !MaybeEnd, !CI, !.CLD),
     generate_string_hash_switch_search(HashSwitchInfo, VarRval,
         MainVectorAddrRval, ArrayElemType, NumColumns, HashOp, HashMask,
@@ -1228,7 +1185,7 @@ init_string_hash_switch_info(CanFail, Info, !CI, !.CLD) :-
 
 generate_string_hash_switch_search(Info, VarRval, TableAddrRval,
         ArrayElemType, NumColumns, HashOp, HashMask, NumCollisions,
-        EndLabel, SwitchKindStr, CasesCode, MatchCode, Code) :-
+        EndLabel, HashSwitchKindStr, CasesCode, MatchCode, Code) :-
     SlotReg = Info ^ shsi_slot_reg,
     RowStartReg = Info ^ shsi_row_start_reg,
     StringReg = Info ^ shsi_string_reg,
@@ -1331,18 +1288,11 @@ generate_string_hash_switch_search(Info, VarRval, TableAddrRval,
                     "handle the failure of the table search")
             ])
     ),
-    string.format("string hash %s switch",
-        [s(SwitchKindStr)], StartComment),
-    string.format("end of string hash %s switch",
-        [s(SwitchKindStr)], EndLabelComment),
-    StartCommentCode = singleton(
-        llds_instr(comment(StartComment), "")
-    ),
-    EndLabelCode = singleton(
-        llds_instr(label(EndLabel), EndLabelComment)
-    ),
-    Code = StartCommentCode ++ HashSearchCode ++ FailCode ++
-        CasesCode ++ EndLabelCode.
+    string.format("string hash %s switch", [s(HashSwitchKindStr)],
+        SwitchKindStr),
+    Code0 = HashSearchCode ++ FailCode ++ CasesCode,
+    add_switch_kind_comment_and_end_label(SwitchKindStr, EndLabel,
+        Code0, Code).
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -1354,9 +1304,6 @@ generate_string_binary_jump_switch(VarRval, VarName, TaggedCases,
     BranchStart = BinarySwitchInfo ^ sbsi_branch_start,
     Params = represent_params(VarName, SwitchGoalInfo, CodeModel, BranchStart,
         EndLabel),
-    CommentCode = singleton(
-        llds_instr(comment("string binary jump switch"), "")
-    ),
 
     % Compute and generate the binary search table.
     map.init(CaseLabelMap0),
@@ -1395,14 +1342,11 @@ generate_string_binary_jump_switch(VarRval, VarName, TaggedCases,
             "jump to the matching case")
     ),
 
-    % Generate the code for the cases.
+    % Generate the code for the cases, and put it all together.
     add_not_yet_included_cases(CasesCode, CaseLabelMap, _),
-    EndLabelCode = singleton(
-        llds_instr(label(EndLabel), "end of binary string switch")
-    ),
-
-    Code = CommentCode ++ BinarySearchCode ++ ComputedGotoCode ++
-        CasesCode ++ EndLabelCode.
+    Code0 = BinarySearchCode ++ ComputedGotoCode ++ CasesCode,
+    add_switch_kind_comment_and_end_label("string binary jump switch",
+        EndLabel, Code0, Code).
 
 :- pred gen_string_binary_jump_slots(assoc_list(string, label)::in,
     cord(list(rval))::in, cord(list(rval))::out,
@@ -1428,42 +1372,44 @@ generate_string_binary_lookup_switch(VarRval, LookupSwitchInfo,
         OutVars, OutTypes, Liveness, !:MaybeEnd, !:CI, CLD),
     (
         CaseConsts = all_one_soln(CaseIdToValuesMap),
+        SwitchKindStr = "string binary singlesoln lookup switch",
         compose_maps(KeyToCaseIdMap, CaseIdToValuesMap, KeyToValuesMap),
         map.to_assoc_list(KeyToValuesMap, KeyValuesAL),
         generate_string_binary_simple_lookup_switch(VarRval, KeyValuesAL,
-            OutVars, OutTypes, Liveness, CanFail, EndLabel, StoreMap,
-            Code, !MaybeEnd, !CI, CLD)
+            OutVars, OutTypes, Liveness, CanFail, StoreMap,
+            LookupCode, !MaybeEnd, !CI, CLD)
     ;
         CaseConsts = some_several_solns(CaseIdToSolnsMap,
-            case_consts_several_llds(ResumeVars, GoalsMayModifyTrail)),
+            CaseConstsSeveralLlds),
+        SwitchKindStr = "string binary multisoln lookup switch",
         compose_maps(KeyToCaseIdMap, CaseIdToSolnsMap, KeyToSolnsMap),
         map.to_assoc_list(KeyToSolnsMap, KeySolnsAL),
-        generate_string_binary_several_soln_lookup_switch(VarRval, KeySolnsAL,
-            ResumeVars, GoalsMayModifyTrail, OutVars, OutTypes, Liveness,
-            CanFail, EndLabel, StoreMap, Code, !MaybeEnd, !CI, CLD)
-    ).
+        generate_string_binary_several_soln_lookup_switch(
+            CaseConstsSeveralLlds, VarRval, KeySolnsAL,
+            OutVars, OutTypes, Liveness, CanFail, EndLabel, StoreMap,
+            LookupCode, !MaybeEnd, !CI, CLD)
+    ),
+    add_switch_kind_comment_and_end_label(SwitchKindStr, EndLabel,
+        LookupCode, Code).
 
 %---------------------------------------------------------------------------%
 
 :- pred generate_string_binary_simple_lookup_switch(rval::in,
     assoc_list(string, list(rval))::in, list(prog_var)::in,
     list(llds_type)::in, set_of_progvar::in,
-    can_fail::in, label::in, abs_store_map::in,
+    can_fail::in, abs_store_map::in,
     llds_code::out, branch_end::in, branch_end::out,
     code_info::in, code_info::out, code_loc_dep::in) is det.
 
 generate_string_binary_simple_lookup_switch(VarRval, CaseValues,
-        OutVars, OutTypes, Liveness, CanFail, EndLabel, StoreMap,
-        Code, !MaybeEnd, !CI, !.CLD) :-
+        OutVars, OutTypes, Liveness, CanFail, StoreMap, Code,
+        !MaybeEnd, !CI, !.CLD) :-
     % This predicate, generate_string_binary_several_soln_lookup_switch,
     % and generate_string_binary_lookup_switch do similar tasks using
     % similar code, so if you need to update one, you probably need to
     % update them all.
 
     init_string_binary_switch_info(CanFail, BinarySwitchInfo, !CI, !.CLD),
-    CommentCode = singleton(
-        llds_instr(comment("string binary simple lookup switch"), "")
-    ),
 
     list.length(CaseValues, TableSize),
     list.length(OutVars, NumOutVars),
@@ -1492,11 +1438,7 @@ generate_string_binary_simple_lookup_switch(VarRval, CaseValues,
     generate_simple_table_lookup_code(NumPrevColumns, do_not_need_goto_end,
         OutVars, StoreMap, Liveness, MainRowSelect, VectorAddrRval, LookupCode,
         !MaybeEnd, !CI, !.CLD),
-    EndLabelCode = singleton(
-        llds_instr(label(EndLabel),
-            "end of string binary single soln lookup switch")
-    ),
-    Code = CommentCode ++ BinarySearchCode ++ LookupCode ++ EndLabelCode.
+    Code = BinarySearchCode ++ LookupCode.
 
 :- pred construct_string_binary_simple_lookup_vector(
     assoc_list(string, list(rval))::in,
@@ -1511,15 +1453,16 @@ construct_string_binary_simple_lookup_vector([Str - OutRvals | StrsOutRvals],
 
 %---------------------------------------------------------------------------%
 
-:- pred generate_string_binary_several_soln_lookup_switch(rval::in,
-    assoc_list(string, soln_consts(rval))::in, set_of_progvar::in, bool::in,
+:- pred generate_string_binary_several_soln_lookup_switch(
+    case_consts_several_llds::in, rval::in,
+    assoc_list(string, soln_consts(rval))::in,
     list(prog_var)::in, list(llds_type)::in, set_of_progvar::in,
     can_fail::in, label::in, abs_store_map::in,
     llds_code::out, branch_end::in, branch_end::out,
     code_info::in, code_info::out, code_loc_dep::in) is det.
 
-generate_string_binary_several_soln_lookup_switch(VarRval, CaseSolns,
-        ResumeVars, GoalsMayModifyTrail, OutVars, OutTypes, Liveness,
+generate_string_binary_several_soln_lookup_switch(CaseConstsSeveralLlds,
+        VarRval, CaseSolns, OutVars, OutTypes, Liveness,
         CanFail, EndLabel, StoreMap, Code, !MaybeEnd, !CI, !.CLD) :-
     % This predicate, generate_string_binary_simple_lookup_switch,
     % and generate_string_binary_lookup_switch do similar tasks using
@@ -1527,9 +1470,6 @@ generate_string_binary_several_soln_lookup_switch(VarRval, CaseSolns,
     % update them all.
 
     init_string_binary_switch_info(CanFail, BinarySwitchInfo, !CI, !.CLD),
-    CommentCode = singleton(
-        llds_instr(comment("string binary multi soln lookup switch"), "")
-    ),
 
     list.length(CaseSolns, MainTableSize),
     list.length(OutVars, NumOutVars),
@@ -1539,18 +1479,6 @@ generate_string_binary_several_soln_lookup_switch(VarRval, CaseSolns,
     ArrayElemTypes =
         [scalar_elem_string, scalar_elem_int, scalar_elem_int | OutElemTypes],
     ArrayElemType = array_elem_struct(ArrayElemTypes),
-
-    % If there are no output variables, then how can the individual solutions
-    % differ from each other?
-    expect_not(unify(OutVars, []), $pred, "no OutVars"),
-    (
-        GoalsMayModifyTrail = yes,
-        get_emit_trail_ops(!.CI, EmitTrailOps),
-        AddTrailOps = EmitTrailOps
-    ;
-        GoalsMayModifyTrail = no,
-        AddTrailOps = do_not_add_trail_ops
-    ),
 
     % Now generate the static cells into which we do the lookups of the values
     % of the output variables, if there are any.
@@ -1571,10 +1499,9 @@ generate_string_binary_several_soln_lookup_switch(VarRval, CaseSolns,
     MainRowTypes =
         [lt_string, lt_int(int_type_int), lt_int(int_type_int) | OutTypes],
     list.length(MainRowTypes, MainNumColumns),
-    add_vector_static_cell(MainRowTypes, MainRows, MainVectorAddr, !CI),
-    MainVectorAddrRval = const(llconst_data_addr(MainVectorAddr, no)),
-    add_vector_static_cell(OutTypes, LaterSolnArray, LaterVectorAddr, !CI),
-    LaterVectorAddrRval = const(llconst_data_addr(LaterVectorAddr, no)),
+    add_vector_static_cell(MainRowTypes, MainRows, MainVectorDataId, !CI),
+    add_vector_static_cell(OutTypes, LaterSolnArray, LaterVectorDataId, !CI),
+    MainVectorAddrRval = const(llconst_data_addr(MainVectorDataId, no)),
 
     generate_string_binary_switch_search(BinarySwitchInfo, VarRval,
         MainVectorAddrRval, ArrayElemType, MainTableSize, MainNumColumns,
@@ -1583,17 +1510,13 @@ generate_string_binary_several_soln_lookup_switch(VarRval, CaseSolns,
     NumPrevColumns = 1,
     MidReg = BinarySwitchInfo ^ sbsi_mid_reg,
     MainRowSelect = main_row_number_reg(lval(MidReg), MainRowTypes),
-    generate_several_soln_table_lookup_code(OneSolnCaseCount - kind_one_soln,
+    generate_several_soln_table_lookup_code(CaseConstsSeveralLlds,
+        OneSolnCaseCount - kind_one_soln,
         [SeveralSolnsCaseCount - kind_several_solns],
-        NumPrevColumns, OutVars, ResumeVars, EndLabel, StoreMap, Liveness,
-        AddTrailOps, MainRowSelect, MainVectorAddrRval, LaterVectorAddrRval,
+        NumPrevColumns, OutVars, EndLabel, StoreMap, Liveness,
+        MainRowSelect, MainVectorAddrRval, LaterVectorDataId,
         LookupResultsCode, !MaybeEnd, !CI, !.CLD),
-    EndLabelCode = singleton(
-        llds_instr(label(EndLabel),
-            "end of string binary multi soln lookup switch")
-    ),
-    Code = CommentCode ++ BinarySearchCode ++ LookupResultsCode ++
-        EndLabelCode.
+    Code = BinarySearchCode ++ LookupResultsCode.
 
 :- pred construct_string_binary_several_soln_lookup_vector(
     assoc_list(string, soln_consts(rval))::in, int::in,

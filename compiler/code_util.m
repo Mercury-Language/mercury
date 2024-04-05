@@ -119,6 +119,9 @@
 :- pred instrs_rvals_and_lvals(list(instruction)::in, set(rval)::out,
     set(lval)::out) is det.
 
+:- pred add_switch_kind_comment_and_end_label(string::in, label::in,
+    llds_code::in, llds_code::out) is det.
+
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
@@ -130,10 +133,12 @@
 :- import_module hlds.code_model.
 :- import_module hlds.hlds_proc_util.
 
+:- import_module cord.
 :- import_module int.
 :- import_module maybe.
 :- import_module pair.
 :- import_module require.
+:- import_module string.
 :- import_module term.
 
 %---------------------------------------------------------------------------%
@@ -732,6 +737,15 @@ foreign_proc_outputs_get_lvals([Output | Outputs]) = [Lval | Lvals] :-
     Output = foreign_proc_output(Lval, _VarType, _IsDummy, _OrigType,
         _Name, _, _),
     Lvals = foreign_proc_outputs_get_lvals(Outputs).
+
+add_switch_kind_comment_and_end_label(SwitchKindStr, EndLabel, Code0, Code) :-
+    CommentCode = singleton(
+        llds_instr(comment(SwitchKindStr), "")
+    ),
+    EndLabelCode = singleton(
+        llds_instr(label(EndLabel), "end of " ++ SwitchKindStr)
+    ),
+    Code = CommentCode ++ Code0 ++ EndLabelCode.
 
 %-----------------------------------------------------------------------------%
 :- end_module ll_backend.code_util.

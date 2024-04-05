@@ -264,11 +264,10 @@
     % LaterVectorAddrRval should be the address of the start of the later
     % solutions table.
     %
-:- pred generate_several_soln_table_lookup_code(
-    pair(int, case_kind)::in, list(pair(int, case_kind))::in,
-    int::in, list(prog_var)::in, set_of_progvar::in, label::in,
-    abs_store_map::in, set_of_progvar::in, add_trail_ops::in,
-    main_table_row_select::in, rval::in, rval::in,
+:- pred generate_several_soln_table_lookup_code(case_consts_several_llds::in,
+    pair(int, case_kind)::in, list(pair(int, case_kind))::in, int::in,
+    list(prog_var)::in, label::in, abs_store_map::in, set_of_progvar::in,
+    main_table_row_select::in, rval::in, data_id::in,
     llds_code::out, branch_end::in, branch_end::out,
     code_info::in, code_info::out, code_loc_dep::in) is det.
 
@@ -515,22 +514,14 @@ generate_int_lookup_switch(VarRval, LookupSwitchInfo, EndLabel, StoreMap,
             NeedBitVecCheck, Liveness, RestCode, !CI, CLD)
     ;
         CaseConsts = some_several_solns(CaseIdToValuesListMap,
-            case_consts_several_llds(ResumeVars, GoalsMayModifyTrail)),
-        (
-            GoalsMayModifyTrail = yes,
-            get_emit_trail_ops(!.CI, EmitTrailOps),
-            AddTrailOps = EmitTrailOps
-        ;
-            GoalsMayModifyTrail = no,
-            AddTrailOps = do_not_add_trail_ops
-        ),
+            CaseConstsSeveralLlds),
         Comment = cord.singleton(
             llds_instr(comment("several soln lookup switch"), "")
         ),
         compose_maps(KeyToCaseMap, CaseIdToValuesListMap, KeyToSolnsListMap),
         map.to_assoc_list(KeyToSolnsListMap, KeySolnsListAL),
         generate_several_soln_int_lookup_switch(IndexRval, EndLabel, StoreMap,
-            StartVal, EndVal, KeySolnsListAL, ResumeVars, AddTrailOps,
+            StartVal, EndVal, KeySolnsListAL, CaseConstsSeveralLlds,
             OutVars, OutTypes, NeedBitVecCheck, Liveness, !MaybeEnd, RestCode,
             !CI, CLD)
     ),
@@ -635,16 +626,15 @@ construct_simple_int_lookup_vector([Index - Rvals | Rest0], CurIndex, OutTypes,
 
 :- pred generate_several_soln_int_lookup_switch(rval::in, label::in,
     abs_store_map::in, int::in, int::in,
-    assoc_list(int, soln_consts(rval))::in, set_of_progvar::in,
-    add_trail_ops::in, list(prog_var)::in, list(llds_type)::in,
+    assoc_list(int, soln_consts(rval))::in, case_consts_several_llds::in,
+    list(prog_var)::in, list(llds_type)::in,
     need_bit_vec_check::in, set_of_progvar::in,
     branch_end::in, branch_end::out, llds_code::out,
     code_info::in, code_info::out, code_loc_dep::in) is det.
 
 generate_several_soln_int_lookup_switch(IndexRval, EndLabel, StoreMap,
-        StartVal, EndVal, CaseSolns, ResumeVars, AddTrailOps,
-        OutVars, OutTypes, NeedBitVecCheck, Liveness, !MaybeEnd, Code,
-        !CI, !.CLD) :-
+        StartVal, EndVal, CaseSolns, CaseConstsSeveralLlds, OutVars, OutTypes,
+        NeedBitVecCheck, Liveness, !MaybeEnd, Code, !CI, !.CLD) :-
     % If there are no output variables, then how can the individual solutions
     % differ from each other?
     expect_not(unify(OutVars, []), $pred, "no OutVars"),
@@ -677,19 +667,19 @@ generate_several_soln_int_lookup_switch(IndexRval, EndLabel, StoreMap,
     ),
 
     MainRowTypes = [lt_int(int_type_int), lt_int(int_type_int) | OutTypes],
-    add_vector_static_cell(MainRowTypes, MainRows, MainVectorAddr, !CI),
-    MainVectorAddrRval = const(llconst_data_addr(MainVectorAddr, no)),
-    add_vector_static_cell(OutTypes, LaterSolnArray, LaterVectorAddr, !CI),
-    LaterVectorAddrRval = const(llconst_data_addr(LaterVectorAddr, no)),
+    add_vector_static_cell(MainRowTypes, MainRows, MainVectorDataId, !CI),
+    add_vector_static_cell(OutTypes, LaterSolnArray, LaterVectorDataId, !CI),
+    MainVectorAddrRval = const(llconst_data_addr(MainVectorDataId, no)),
 
     NumPrevColumns = 0,
     % IndexRval has already had Start subtracted from it.
     MainRowSelect = main_row_number_reg(IndexRval, MainRowTypes),
-    generate_several_soln_table_lookup_code(FailCaseCount - kind_zero_solns,
+    generate_several_soln_table_lookup_code(CaseConstsSeveralLlds,
+        FailCaseCount - kind_zero_solns,
         [OneSolnCaseCount - kind_one_soln,
         SeveralSolnCaseCount - kind_several_solns],
-        NumPrevColumns, OutVars, ResumeVars, EndLabel, StoreMap, Liveness,
-        AddTrailOps, MainRowSelect, MainVectorAddrRval, LaterVectorAddrRval,
+        NumPrevColumns, OutVars, EndLabel, StoreMap, Liveness,
+        MainRowSelect, MainVectorAddrRval, LaterVectorDataId,
         LookupCode, !MaybeEnd, !CI, !.CLD),
     EndLabelCode = cord.singleton(
         llds_instr(label(EndLabel),
@@ -699,14 +689,25 @@ generate_several_soln_int_lookup_switch(IndexRval, EndLabel, StoreMap,
 
 %---------------------------------------------------------------------------%
 
-generate_several_soln_table_lookup_code(CountKind, CountKinds, NumPrevColumns,
-        OutVars, ResumeVars, EndLabel, StoreMap, Liveness, AddTrailOps,
-        MainRowSelect, MainVectorAddrRval, LaterVectorAddrRval, Code,
+generate_several_soln_table_lookup_code(CaseConstsSeveralLlds,
+        CountKind, CountKinds, NumPrevColumns, OutVars, EndLabel, StoreMap,
+        Liveness, MainRowSelect, MainVectorAddrRval, LaterVectorDataId, Code,
         !MaybeEnd, !CI, !.CLD) :-
     list.sort([CountKind | CountKinds], AscendingSortedCountKinds),
     list.reverse(AscendingSortedCountKinds, DescendingSortedCountKinds),
     assoc_list.values(DescendingSortedCountKinds, DescendingSortedKinds),
     list.det_head_tail(DescendingSortedKinds, HeadKind, TailKinds),
+
+    CaseConstsSeveralLlds =
+        case_consts_several_llds(ResumeVars, GoalsMayModifyTrail),
+    (
+        GoalsMayModifyTrail = yes,
+        get_emit_trail_ops(!.CI, EmitTrailOps),
+        AddTrailOps = EmitTrailOps
+    ;
+        GoalsMayModifyTrail = no,
+        AddTrailOps = do_not_add_trail_ops
+    ),
 
     % We release BaseReg in each arm of generate_code_for_each_kind below.
     % We cannot release it at the bottom of this predicate, because in the
@@ -724,6 +725,7 @@ generate_several_soln_table_lookup_code(CountKind, CountKinds, NumPrevColumns,
         MainVectorAddrRval, BaseReg, SetBaseRegCode, !CI, !CLD),
 
     remember_position(!.CLD, BranchStart),
+    LaterVectorAddrRval = const(llconst_data_addr(LaterVectorDataId, no)),
     generate_table_lookup_code_for_each_kind(HeadKind, TailKinds,
         NumPrevColumns, OutVars, ResumeVars, EndLabel, StoreMap,
         Liveness, AddTrailOps, BaseReg, CurSlot, MaxSlot, LaterVectorAddrRval,
