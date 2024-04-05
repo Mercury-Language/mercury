@@ -15,7 +15,8 @@
 % but does not express the invariant maintained by the relevant operations,
 % which is that these lists are never empty. A one_or_more_map is a multi_map
 % in which the range type is not list(V) but one_or_more(V), which *does*
-% express this invariant.
+% express this invariant. Multiple occurrences of the same Value can be
+% associated with a given Key.
 %
 %---------------------------------------------------------------------------%
 

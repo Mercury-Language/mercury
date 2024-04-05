@@ -2,7 +2,7 @@
 % vim: ts=4 sw=4 et ft=mercury
 %---------------------------------------------------------------------------%
 % Copyright (C) 1995, 1997, 2000, 2002-2006, 2011 The University of Melbourne.
-% Copyright (C) 2014-2022 The Mercury team.
+% Copyright (C) 2014-2024 The Mercury team.
 % This file is distributed under the terms specified in COPYING.LIB.
 %---------------------------------------------------------------------------%
 %
@@ -14,6 +14,7 @@
 % A map (also known as a dictionary or an associative array) is a collection
 % of (Key, Value) pairs which allows you to look up any Value given the Key.
 % A multi_map is similar, but it allows more than one Value for each Key.
+% Multiple occurrences of the same Value can be associated with a given Key.
 %
 % This is implemented almost as a special case of map.m.
 %
