@@ -177,7 +177,7 @@
     ;       kind_one_soln
     ;       kind_several_solns.
 
-    % generate_table_lookup_code_for_all_kinds(Kinds, NumPrevColumns, OutVars,
+    % generate_multi_soln_table_lookup_code(Kinds, NumPrevColumns, OutVars,
     %   ResumeVars, EndLabel, StoreMap, Liveness, AddTrailOps,
     %   BaseReg, LaterVectorAddrRval, Code, !MaybeEnd, !CI, !.CLD):
     %
@@ -227,10 +227,9 @@
     % LaterVectorAddrRval should be the address of the start of the later
     % solutions table.
     %
-:- pred generate_table_lookup_code_for_all_kinds(
-    pair(int, case_kind)::in, list(pair(int, case_kind))::in,
-    int::in, list(prog_var)::in, set_of_progvar::in, label::in,
-    abs_store_map::in, set_of_progvar::in, add_trail_ops::in,
+:- pred generate_multi_soln_table_lookup_code(case_consts_several_llds::in,
+    pair(int, case_kind)::in, list(pair(int, case_kind))::in, int::in,
+    list(prog_var)::in, label::in, abs_store_map::in, set_of_progvar::in,
     lval::in, rval::in, llds_code::out, branch_end::in, branch_end::out,
     code_info::in, code_info::out, code_loc_dep::in) is det.
 
@@ -456,22 +455,14 @@ generate_int_lookup_switch(VarRval, LookupSwitchInfo, EndLabel, StoreMap,
             NeedBitVecCheck, Liveness, RestCode, !CI, CLD)
     ;
         CaseConsts = some_several_solns(CaseIdToValuesListMap,
-            case_consts_several_llds(ResumeVars, GoalsMayModifyTrail)),
-        (
-            GoalsMayModifyTrail = yes,
-            get_emit_trail_ops(!.CI, EmitTrailOps),
-            AddTrailOps = EmitTrailOps
-        ;
-            GoalsMayModifyTrail = no,
-            AddTrailOps = do_not_add_trail_ops
-        ),
+            CaseConstsSeveralLlds),
         Comment = cord.singleton(
             llds_instr(comment("several soln lookup switch"), "")
         ),
         compose_maps(KeyToCaseMap, CaseIdToValuesListMap, KeyToSolnsListMap),
         map.to_assoc_list(KeyToSolnsListMap, KeySolnsListAL),
-        generate_several_soln_int_lookup_switch(IndexRval, EndLabel, StoreMap,
-            StartVal, EndVal, KeySolnsListAL, ResumeVars, AddTrailOps,
+        generate_several_soln_int_lookup_switch(CaseConstsSeveralLlds,
+            IndexRval, EndLabel, StoreMap, StartVal, EndVal, KeySolnsListAL,
             OutVars, OutTypes, NeedBitVecCheck, Liveness, !MaybeEnd, RestCode,
             !CI, CLD)
     ),
@@ -574,16 +565,16 @@ construct_simple_int_lookup_vector([Index - Rvals | Rest0], CurIndex, OutTypes,
 
 %---------------------------------------------------------------------------%
 
-:- pred generate_several_soln_int_lookup_switch(rval::in, label::in,
-    abs_store_map::in, int::in, int::in,
-    assoc_list(int, soln_consts(rval))::in, set_of_progvar::in,
-    add_trail_ops::in, list(prog_var)::in, list(llds_type)::in,
+:- pred generate_several_soln_int_lookup_switch(case_consts_several_llds::in,
+    rval::in, label::in, abs_store_map::in, int::in, int::in,
+    assoc_list(int, soln_consts(rval))::in,
+    list(prog_var)::in, list(llds_type)::in,
     need_bit_vec_check::in, set_of_progvar::in,
     branch_end::in, branch_end::out, llds_code::out,
     code_info::in, code_info::out, code_loc_dep::in) is det.
 
-generate_several_soln_int_lookup_switch(IndexRval, EndLabel, StoreMap,
-        StartVal, EndVal, CaseSolns, ResumeVars, AddTrailOps,
+generate_several_soln_int_lookup_switch(CaseConstsSeveralLlds, IndexRval,
+        EndLabel, StoreMap, StartVal, EndVal, CaseSolns,
         OutVars, OutTypes, NeedBitVecCheck, Liveness, !MaybeEnd, Code,
         !CI, !.CLD) :-
     % If there are no output variables, then how can the individual solutions
@@ -640,11 +631,12 @@ generate_several_soln_int_lookup_switch(IndexRval, EndLabel, StoreMap,
     ),
 
     NumPrevColumns = 0,
-    generate_table_lookup_code_for_all_kinds(FailCaseCount - kind_zero_solns,
+    generate_multi_soln_table_lookup_code(CaseConstsSeveralLlds,
+        FailCaseCount - kind_zero_solns,
         [OneSolnCaseCount - kind_one_soln,
         SeveralSolnCaseCount - kind_several_solns],
-        NumPrevColumns, OutVars, ResumeVars, EndLabel, StoreMap, Liveness,
-        AddTrailOps, BaseReg, LaterVectorAddrRval, KindsCode,
+        NumPrevColumns, OutVars, EndLabel, StoreMap, Liveness,
+        BaseReg, LaterVectorAddrRval, KindsCode,
         !MaybeEnd, !CI, !.CLD),
     EndLabelCode = cord.singleton(
         llds_instr(label(EndLabel),
@@ -654,9 +646,9 @@ generate_several_soln_int_lookup_switch(IndexRval, EndLabel, StoreMap,
 
 %---------------------------------------------------------------------------%
 
-generate_table_lookup_code_for_all_kinds(CountKind, CountKinds, NumPrevColumns,
-        OutVars, ResumeVars, EndLabel, StoreMap, Liveness, AddTrailOps,
-        BaseReg, LaterVectorAddrRval, Code, !MaybeEnd, !CI, !.CLD) :-
+generate_multi_soln_table_lookup_code(CaseConstsSeveralLlds,
+        CountKind, CountKinds, NumPrevColumns, OutVars, EndLabel, StoreMap,
+        Liveness, BaseReg, LaterVectorAddrRval, Code, !MaybeEnd, !CI, !.CLD) :-
     list.sort([CountKind | CountKinds], AscendingSortedCountKinds),
     list.reverse(AscendingSortedCountKinds, DescendingSortedCountKinds),
     assoc_list.values(DescendingSortedCountKinds, DescendingSortedKinds),
@@ -675,9 +667,9 @@ generate_table_lookup_code_for_all_kinds(CountKind, CountKinds, NumPrevColumns,
         MaxSlot, !CI, !CLD),
 
     remember_position(!.CLD, BranchStart),
-    generate_table_lookup_code_for_each_kind(HeadKind, TailKinds,
-        NumPrevColumns, OutVars, ResumeVars, BranchStart, EndLabel, StoreMap,
-        Liveness, AddTrailOps, BaseReg, CurSlot, MaxSlot, LaterVectorAddrRval,
+    generate_table_lookup_code_for_each_kind(CaseConstsSeveralLlds,
+        HeadKind, TailKinds, NumPrevColumns, OutVars, BranchStart, EndLabel,
+        StoreMap, Liveness, BaseReg, CurSlot, MaxSlot, LaterVectorAddrRval,
         Code, !MaybeEnd, !CI).
 
 :- func case_kind_to_string(case_kind) = string.
@@ -686,14 +678,14 @@ case_kind_to_string(kind_zero_solns) = "kind_zero_solns".
 case_kind_to_string(kind_one_soln) = "kind_one_soln".
 case_kind_to_string(kind_several_solns) = "kind_several_solns".
 
-:- pred generate_table_lookup_code_for_each_kind(case_kind::in,
-    list(case_kind)::in, int::in, list(prog_var)::in, set_of_progvar::in,
+:- pred generate_table_lookup_code_for_each_kind(case_consts_several_llds::in,
+    case_kind::in, list(case_kind)::in, int::in, list(prog_var)::in,
     position_info::in, label::in, abs_store_map::in, set_of_progvar::in,
-    add_trail_ops::in, lval::in, lval::in, lval::in, rval::in, llds_code::out,
+    lval::in, lval::in, lval::in, rval::in, llds_code::out,
     branch_end::in, branch_end::out, code_info::in, code_info::out) is det.
 
-generate_table_lookup_code_for_each_kind(Kind, Kinds, NumPrevColumns, OutVars,
-        ResumeVars, BranchStart, EndLabel, StoreMap, Liveness, AddTrailOps,
+generate_table_lookup_code_for_each_kind(CaseConstsSeveralLlds, Kind, Kinds,
+        NumPrevColumns, OutVars, BranchStart, EndLabel, StoreMap, Liveness,
         BaseReg, CurSlot, MaxSlot, LaterVectorAddrRval, Code,
         !MaybeEnd, !CI) :-
     (
@@ -721,9 +713,10 @@ generate_table_lookup_code_for_each_kind(Kind, Kinds, NumPrevColumns, OutVars,
         KindCode = BranchEndCode ++ GotoEndCode
     ;
         Kind = kind_several_solns,
-        generate_table_lookup_code_for_kind_several_solns(NumPrevColumns,
-            OutVars, ResumeVars, BranchStart, EndLabel, StoreMap, Liveness,
-            AddTrailOps, BaseReg, CurSlot, MaxSlot, LaterVectorAddrRval,
+        generate_table_lookup_code_for_kind_several_solns(
+            CaseConstsSeveralLlds, NumPrevColumns,
+            OutVars, BranchStart, EndLabel, StoreMap, Liveness,
+            BaseReg, CurSlot, MaxSlot, LaterVectorAddrRval,
             SkipToNextKindTestOp, KindCode, !MaybeEnd, !CI)
     ),
     (
@@ -748,27 +741,37 @@ generate_table_lookup_code_for_each_kind(Kind, Kinds, NumPrevColumns, OutVars,
                 "next kind in several_soln lookup switch"),
             llds_instr(comment(NextKindComment), "")
         ]),
-        generate_table_lookup_code_for_each_kind(NextKind, LaterKinds,
-            NumPrevColumns, OutVars, ResumeVars, BranchStart, EndLabel,
-            StoreMap, Liveness, AddTrailOps, BaseReg, CurSlot, MaxSlot,
+        generate_table_lookup_code_for_each_kind(CaseConstsSeveralLlds,
+            NextKind, LaterKinds, NumPrevColumns, OutVars, BranchStart,
+            EndLabel, StoreMap, Liveness, BaseReg, CurSlot, MaxSlot,
             LaterVectorAddrRval, LaterKindsCode, !MaybeEnd, !CI),
         Code = TestCode ++ KindCode ++ NextKindLabelCode ++ LaterKindsCode
     ).
 
-:- pred generate_table_lookup_code_for_kind_several_solns(int::in,
-    list(prog_var)::in, set_of_progvar::in, position_info::in,
-    label::in, abs_store_map::in, set_of_progvar::in, add_trail_ops::in,
+:- pred generate_table_lookup_code_for_kind_several_solns(
+    case_consts_several_llds::in, int::in, list(prog_var)::in,
+    position_info::in, label::in, abs_store_map::in, set_of_progvar::in,
     lval::in, lval::in, lval::in, rval::in, binary_op::out, llds_code::out,
     branch_end::in, branch_end::out, code_info::in, code_info::out) is det.
 
-generate_table_lookup_code_for_kind_several_solns(NumPrevColumns, OutVars,
-        ResumeVars, BranchStart, EndLabel, StoreMap, Liveness, AddTrailOps,
+generate_table_lookup_code_for_kind_several_solns(CaseConstsSeveralLlds,
+        NumPrevColumns, OutVars, BranchStart, EndLabel, StoreMap, Liveness,
         BaseReg, CurSlot, MaxSlot, LaterVectorAddrRval, TestOp, KindCode,
         !MaybeEnd, !CI) :-
     TestOp = int_le(int_type_int),
     get_globals(!.CI, Globals),
     some [!CLD] (
         reset_to_position(BranchStart, !.CI, !:CLD),
+
+        CaseConstsSeveralLlds =
+            case_consts_several_llds(ResumeVars, GoalsMayModifyTrail),
+        (
+            GoalsMayModifyTrail = yes,
+            get_emit_trail_ops(!.CI, AddTrailOps)
+        ;
+            GoalsMayModifyTrail = no,
+            AddTrailOps = do_not_add_trail_ops
+        ),
 
         % The code below is modelled on the code in disj_gen, but is
         % specialized for the situation here.
