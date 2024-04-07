@@ -83,6 +83,7 @@
 :- import_module pair.
 :- import_module require.
 :- import_module set.
+:- import_module string.
 :- import_module term.
 
 %----------------------------------------------------------------------------%
@@ -226,8 +227,8 @@ create_substitution_map(Ids, IdToProgVar, SizeVarMap, IdToSizeVar) :-
 create_arg_size_polyhedron(_, no, no).
 create_arg_size_polyhedron(SubstMap, yes(PragmaArgSizeInfo),
         yes(Polyhedron)) :-
-    list.map(create_arg_size_constraint(SubstMap), PragmaArgSizeInfo,
-        Constraints),
+    list.map(create_arg_size_constraint(SubstMap),
+        PragmaArgSizeInfo, Constraints),
     Polyhedron = polyhedron.from_constraints(Constraints).
 
 :- pred create_arg_size_constraint(map(int, var)::in, arg_size_constr::in,
@@ -284,8 +285,8 @@ process_builtin_procs(BelieveCheckTerm, ModuleInfo, PredId, !PredInfo) :-
         pred_info_get_proc_table(!.PredInfo, !:ProcTable),
         ProcIds = pred_info_all_procids(!.PredInfo),
         ( if
-            set_compiler_gen_terminates(!.PredInfo, ProcIds, PredId,
-                ModuleInfo, !ProcTable)
+            set_compiler_gen_terminates(ModuleInfo, !.PredInfo, PredId,
+                ProcIds, !ProcTable)
         then
             true
         else if
@@ -355,18 +356,18 @@ process_builtin_procs(BelieveCheckTerm, ModuleInfo, PredId, !PredInfo) :-
         pred_info_set_proc_table(!.ProcTable, !PredInfo)
     ).
 
-:- pred set_compiler_gen_terminates(pred_info::in, list(proc_id)::in,
-    pred_id::in, module_info::in, proc_table::in, proc_table::out)
+:- pred set_compiler_gen_terminates(module_info::in, pred_info::in,
+    pred_id::in, list(proc_id)::in, proc_table::in, proc_table::out)
     is semidet.
 
-set_compiler_gen_terminates(PredInfo, ProcIds, PredId, ModuleInfo,
+set_compiler_gen_terminates(ModuleInfo, PredInfo, PredId, ProcIds,
         !ProcTable) :-
     % XXX This code looks to be a near-identical copy of the predicate
     % of the same name in termination.m.
     ( if
         hlds_pred.pred_info_is_builtin(PredInfo)
     then
-        set_builtin_terminates(ProcIds, PredId, PredInfo, ModuleInfo,
+        set_builtin_terminates(ModuleInfo, PredInfo, PredId, ProcIds,
             !ProcTable)
     else if
         % XXX The origin test should be the only one needed;
@@ -489,11 +490,11 @@ make_spec_pred_constr_term_info(HeadProgVars, ModuleInfo, VarTable,
     % Set the termination information for builtin predicates.
     % The list of proc_ids must refer to builtin predicates.
     %
-:- pred set_builtin_terminates(list(proc_id)::in, pred_id::in, pred_info::in,
-    module_info::in, proc_table::in, proc_table::out) is det.
+:- pred set_builtin_terminates(module_info::in, pred_info::in,
+    pred_id::in, list(proc_id)::in, proc_table::in, proc_table::out) is det.
 
-set_builtin_terminates([], _, _, _, !ProcTable).
-set_builtin_terminates([ProcId | ProcIds], PredId, PredInfo, ModuleInfo,
+set_builtin_terminates(_, _, _, [], !ProcTable).
+set_builtin_terminates(ModuleInfo, PredInfo, PredId, [ProcId | ProcIds],
         !ProcTable) :-
     map.lookup(!.ProcTable, ProcId, ProcInfo0),
     proc_info_get_headvars(ProcInfo0, HeadVars),
@@ -523,7 +524,7 @@ set_builtin_terminates([ProcId | ProcIds], PredId, PredInfo, ModuleInfo,
         proc_info_set_termination2_info(!.Term2Info, ProcInfo0, ProcInfo)
     ),
     map.det_update(ProcId, ProcInfo, !ProcTable),
-    set_builtin_terminates(ProcIds, PredId, PredInfo, ModuleInfo, !ProcTable).
+    set_builtin_terminates(ModuleInfo, PredInfo, PredId, ProcIds, !ProcTable).
 
 :- func process_no_type_info_builtin(string, prog_vars, size_var_map)
     = lp_constraint_conj.
@@ -536,10 +537,12 @@ process_no_type_info_builtin(PredName, HeadVars, SizeVarMap) = Constraints :-
     % which is a fragile assumption.
     (
         HeadVars = [],
-        unexpected($pred, "unrecognised arity-0 no_type_info_builtin")
+        unexpected($pred,
+            "unrecognised arity-0 no_type_info_builtin " ++ PredName)
     ;
         HeadVars = [_],
-        unexpected($pred, "unrecognised arity-1 no_type_info_builtin")
+        unexpected($pred,
+            "unrecognised arity-1 no_type_info_builtin " ++ PredName)
     ;
         HeadVars = [HeadVar1, HeadVar2],
         ( if
@@ -577,7 +580,8 @@ process_no_type_info_builtin(PredName, HeadVars, SizeVarMap) = Constraints :-
                 Constraints = []
             )
         else
-            unexpected($pred, "unrecognised arity-2 no_type_info_builtin")
+            unexpected($pred,
+                "unrecognised arity-2 no_type_info_builtin " ++ PredName)
         )
     ;
         HeadVars = [_, _, _],
@@ -594,7 +598,8 @@ process_no_type_info_builtin(PredName, HeadVars, SizeVarMap) = Constraints :-
         then
             Constraints = []
         else
-            unexpected($pred, "unrecognised arity-3 no_type_info_builtin")
+            unexpected($pred,
+                "unrecognised arity-3 no_type_info_builtin " ++ PredName)
         )
     ;
         HeadVars = [_, _, _, _],
@@ -611,7 +616,8 @@ process_no_type_info_builtin(PredName, HeadVars, SizeVarMap) = Constraints :-
         then
             Constraints = []
         else
-            unexpected($pred, "unrecognised arity-4 no_type_info_builtin")
+            unexpected($pred,
+                "unrecognised arity-4 no_type_info_builtin " ++ PredName)
         )
     ;
         HeadVars = [_, _, _, _, _],
@@ -624,7 +630,8 @@ process_no_type_info_builtin(PredName, HeadVars, SizeVarMap) = Constraints :-
         then
             Constraints = []
         else
-            unexpected($pred, "unrecognised arity-5 no_type_info_builtin")
+            unexpected($pred,
+                "unrecognised arity-5 no_type_info_builtin " ++ PredName)
         )
     ;
         HeadVars = [_, _, _, _, _, _],
@@ -638,7 +645,8 @@ process_no_type_info_builtin(PredName, HeadVars, SizeVarMap) = Constraints :-
         then
             Constraints = []
         else
-            unexpected($pred, "unrecognised arity-6 no_type_info_builtin")
+            unexpected($pred,
+                "unrecognised arity-6 no_type_info_builtin " ++ PredName)
         )
     ;
         HeadVars = [_, _, _, _, _, _, _],
@@ -650,7 +658,8 @@ process_no_type_info_builtin(PredName, HeadVars, SizeVarMap) = Constraints :-
         then
             Constraints = []
         else
-            unexpected($pred, "unrecognised arity-7 no_type_info_builtin")
+            unexpected($pred,
+                "unrecognised arity-7 no_type_info_builtin " ++ PredName)
         )
     ;
         HeadVars = [_, _, _, _, _, _, _, _],
@@ -661,7 +670,8 @@ process_no_type_info_builtin(PredName, HeadVars, SizeVarMap) = Constraints :-
         then
             Constraints = []
         else
-            unexpected($pred, "unrecognised arity-8 no_type_info_builtin")
+            unexpected($pred,
+                "unrecognised arity-8 no_type_info_builtin " ++ PredName)
         )
     ;
         HeadVars = [_, _, _, _, _, _, _, _, _],
@@ -670,11 +680,13 @@ process_no_type_info_builtin(PredName, HeadVars, SizeVarMap) = Constraints :-
         then
             Constraints = []
         else
-            unexpected($pred, "unrecognised arity-9 no_type_info_builtin")
+            unexpected($pred,
+                "unrecognised arity-9 no_type_info_builtin " ++ PredName)
         )
     ;
         HeadVars = [_, _, _, _, _, _, _, _, _, _ | _],
-        unexpected($pred, "unrecognised arity-10+ no_type_info_builtin")
+        unexpected($pred,
+            "unrecognised arity-10+ no_type_info_builtin " ++ PredName)
     ).
 
 %----------------------------------------------------------------------------%
