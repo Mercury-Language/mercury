@@ -625,8 +625,7 @@ ml_gen_static_vector_type(MLDS_ModuleName, Context, Target, ArgTypes,
         TypeNum = OldTypeNum,
         CellGroupMap = !.GlobalData ^ mgd_vector_cell_group_map,
         map.lookup(CellGroupMap, TypeNum, CellGroup),
-        CellGroup = ml_vector_cell_group(StructType, _TypeDefn, FieldIds,
-            _, _)
+        CellGroup = ml_vector_cell_group(StructType, _TypeDefn, FieldIds, _, _)
     else
         TypeNumCounter0 = !.GlobalData ^ mgd_cell_type_counter,
         counter.allocate(TypeRawNum, TypeNumCounter0, TypeNumCounter),
@@ -652,7 +651,7 @@ ml_gen_static_vector_type(MLDS_ModuleName, Context, Target, ArgTypes,
             ),
             CtorDefn = ml_gen_struct_constructor_function(StructId,
                 MLDS_ModuleName, FieldInfos, Context),
-            MaybeCtorDefn = yes(CtorDefn)
+            MaybeCtorDefn = maybe.yes(CtorDefn)
         ),
         StructDefn = mlds_struct_defn(StructName, Context,
             FieldDefns, MaybeCtorDefn),
