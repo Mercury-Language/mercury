@@ -838,40 +838,39 @@ acc_implicit_avail_needs_in_term(Term, !ImplicitAvailNeeds) :-
         (
             Const = atom(Atom),
             ( if
-                Atom = "format"
-            then
-                !ImplicitAvailNeeds ^ ian_string_format
-                    := do_need_string_format,
-                !ImplicitAvailNeeds ^ ian_stream_format
-                    := do_need_stream_format
-            else if
-                ( Atom = "string.format"
-                ; Atom = "string__format"
-                ; Atom = "io.format"
-                ; Atom = "io__format"
+                (
+                    ( Atom = "string.format"
+                    ; Atom = "string__format"
+                    ; Atom = "io.format"
+                    ; Atom = "io__format"
+                    ),
+                    !ImplicitAvailNeeds ^ ian_string_format
+                        := do_need_string_format
+                ;
+                    ( Atom = "format"
+                    ; Atom = "stream.format"
+                    ; Atom = "stream__format"
+                    ; Atom = "string_writer.format"
+                    ; Atom = "string_writer__format"
+                    ; Atom = "stream.string_writer.format"
+                    ; Atom = "stream.string_writer__format"
+                    ; Atom = "stream__string_writer.format"
+                    ; Atom = "stream__string_writer__format"
+                    ),
+                    % The replacement of calls to stream.string_writer.format
+                    % needs everything that the replacement of calls to
+                    % string.format or io.format needs.
+                    !ImplicitAvailNeeds ^ ian_string_format
+                        := do_need_string_format,
+                    !ImplicitAvailNeeds ^ ian_stream_format
+                        := do_need_stream_format
                 )
             then
-                !ImplicitAvailNeeds ^ ian_string_format
-                    := do_need_string_format
-            else if
-                ( Atom = "stream.format"
-                ; Atom = "stream__format"
-                ; Atom = "string_writer.format"
-                ; Atom = "string_writer__format"
-                ; Atom = "stream.string_writer.format"
-                ; Atom = "stream.string_writer__format"
-                ; Atom = "stream__string_writer.format"
-                ; Atom = "stream__string_writer__format"
-                )
-            then
-                % The replacement of calls to stream.string_writer.format
-                % needs everything that the replacement of calls to
-                % string.format or io.format needs.
-                !ImplicitAvailNeeds ^ ian_string_format
-                    := do_need_string_format,
-                !ImplicitAvailNeeds ^ ian_stream_format
-                    := do_need_stream_format
+                % This "true" effectuates all the updates done to
+                % !ImplicitAvailNeeds in the condition, while ...
+                true
             else
+                % ... this "true" does not.
                 true
             )
         ;
