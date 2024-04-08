@@ -526,19 +526,20 @@ generate_string_trie_simple_lookup_switch(LookupInfo, CaseValues,
         SetBaseRegCode = empty
     ;
         OutVars = [_ | _],
-        RowElemTypes = OutTypes,
+        NumPrevColumns = 0,
+        MainRowTypes = OutTypes,
 
         construct_string_trie_simple_lookup_vector(CaseValues, 0,
-            cord.init, VectorRvalsCord),
-        VectorRvals = cord.list(VectorRvalsCord),
-        add_vector_static_cell(RowElemTypes, VectorRvals, VectorDataId, !CI),
+            cord.init, MainTableRvalsCord),
+        MainTableRvals = cord.list(MainTableRvalsCord),
+        add_vector_static_cell(MainRowTypes, MainTableRvals,
+            MainTableDataId, !CI),
 
         CaseIdRegLval = LookupInfo ^ stsil_case_id_reg,
         MainRowSelect = main_row_number_reg(lval(CaseIdRegLval), OutTypes),
-        acquire_and_setup_lookup_base_reg(VectorDataId, StoreMap,
+        acquire_and_setup_lookup_base_reg(MainTableDataId, StoreMap,
             MainRowSelect, BaseRegLval, SetBaseRegCode, !CLD),
 
-        NumPrevColumns = 0,
         record_offset_assigns(OutVars, NumPrevColumns, BaseRegLval, !.CI, !CLD)
     ),
 
@@ -559,16 +560,16 @@ generate_string_trie_simple_lookup_switch(LookupInfo, CaseValues,
     assoc_list(case_id, list(rval))::in, int::in,
     cord(list(rval))::in, cord(list(rval))::out) is det.
 
-construct_string_trie_simple_lookup_vector([], _, !RowsCord).
+construct_string_trie_simple_lookup_vector([], _, !RvalsCord).
 construct_string_trie_simple_lookup_vector([CaseValues | CasesValues], RowNum,
-        !RowsCord) :-
+        !RvalsCord) :-
     CaseValues = CaseId - OutVarRvals,
     CaseId = case_id(CaseIdNum),
     expect(unify(RowNum, CaseIdNum), $pred, "RowNum != CaseIdNum"),
-    Row = OutVarRvals,
-    cord.snoc(Row, !RowsCord),
+    RowRvals = OutVarRvals,
+    cord.snoc(RowRvals, !RvalsCord),
     construct_string_trie_simple_lookup_vector(CasesValues, RowNum + 1,
-        !RowsCord).
+        !RvalsCord).
 
 %---------------------%
 
@@ -588,33 +589,37 @@ generate_string_trie_several_soln_lookup_switch(LookupInfo,
         llds_instr(comment("string trie multi soln lookup switch"), "")
     ),
 
-    list.length(OutVars, NumOutVars),
+    NumPrevColumns = 0,
     MainRowTypes = [lt_int(int_type_int), lt_int(int_type_int) | OutTypes],
+
+    list.length(OutVars, NumOutVars),
+    % The later solutions table has one column for each output var,
+    % and no other columns.
+    NumLaterColumns = NumOutVars,
     LaterSolnsRowNumber0 = 1,
     DummyOutRvals = list.map(default_value_for_type, OutTypes),
     LaterSolnsRowsCord0 = cord.singleton(DummyOutRvals),
-    construct_string_trie_several_soln_lookup_vector(NumOutVars,
-        CaseIdToValuesListAL, 0, cord.init, MainRowsCord,
+    construct_string_trie_several_soln_lookup_vector(NumLaterColumns,
+        CaseIdToValuesListAL, 0, cord.init, MainRvalsCord,
         LaterSolnsRowNumber0, LaterSolnsRowsCord0, LaterSolnsRowsCord,
         0, OneSolnCaseCount, 0, SeveralSolnsCaseCount),
-    MainRows = cord.list(MainRowsCord),
+    MainRvals = cord.list(MainRvalsCord),
     LaterSolnsRows = cord.list(LaterSolnsRowsCord),
 
-    add_vector_static_cell(MainRowTypes, MainRows, MainVectorDataId, !CI),
-    add_vector_static_cell(OutTypes, LaterSolnsRows, LaterVectorDataId, !CI),
-    LaterVectorAddrRval = const(llconst_data_addr(LaterVectorDataId)),
+    add_vector_static_cell(MainRowTypes, MainRvals, MainTableDataId, !CI),
+    add_vector_static_cell(OutTypes, LaterSolnsRows, LaterTableDataId, !CI),
+    LaterTableAddrRval = const(llconst_data_addr(LaterTableDataId)),
 
     CaseIdRegLval = LookupInfo ^ stsil_case_id_reg,
     MainRowSelect = main_row_number_reg(lval(CaseIdRegLval), MainRowTypes),
-    acquire_and_setup_lookup_base_reg(MainVectorDataId, StoreMap,
+    acquire_and_setup_lookup_base_reg(MainTableDataId, StoreMap,
         MainRowSelect, BaseRegLval, SetBaseRegCode, !CLD),
 
-    NumPrevColumns = 0,
     generate_multi_soln_table_lookup_code(CaseConstsSeveralLlds,
         OneSolnCaseCount - kind_one_soln,
         [SeveralSolnsCaseCount - kind_several_solns],
         NumPrevColumns, OutVars, EndLabel, StoreMap, Liveness, BaseRegLval,
-        LaterVectorAddrRval, LookupResultsCode, !MaybeEnd, !CI, !.CLD),
+        LaterTableAddrRval, LookupResultsCode, !MaybeEnd, !CI, !.CLD),
     EndLabelCode = singleton(
         llds_instr(label(EndLabel),
             "end of string trie multi soln lookup switch")
@@ -630,10 +635,10 @@ generate_string_trie_several_soln_lookup_switch(LookupInfo,
     int::in, int::out, int::in, int::out) is det.
 
 construct_string_trie_several_soln_lookup_vector(_, [],
-        _, !MainRowsCord, _, !LaterSolnsRowsCord,
+        _, !MainRvalsCord, _, !LaterSolnsRowsCord,
         !OneSolnCaseCount, !SeveralSolnsCaseCount).
-construct_string_trie_several_soln_lookup_vector(NumOutVars,
-        [CaseValues | CasesValues], MainRowNum, !MainRowsCord,
+construct_string_trie_several_soln_lookup_vector(NumLaterColumns,
+        [CaseValues | CasesValues], MainRowNum, !MainRvalsCord,
         !.LaterNextRowNum, !LaterSolnsRowsCord,
         !OneSolnCaseCount, !SeveralSolnsCaseCount) :-
     CaseValues = CaseId - SolnConsts,
@@ -646,23 +651,24 @@ construct_string_trie_several_soln_lookup_vector(NumOutVars,
         % The first ZeroRval means there is exactly one solution for
         % this case; the second ZeroRval is a dummy that won't be
         % referenced.
-        MainRow = [ZeroRval, ZeroRval | OutVarRvals]
+        MainRowRvals = [ZeroRval, ZeroRval | OutVarRvals]
     ;
         SolnConsts = several_solns(FirstSolnRvals, LaterSolns),
         !:SeveralSolnsCaseCount = !.SeveralSolnsCaseCount + 1,
         list.length(LaterSolns, NumLaterSolns),
-        FirstRowOffset = !.LaterNextRowNum * NumOutVars,
-        LastRowOffset = (!.LaterNextRowNum + NumLaterSolns - 1) * NumOutVars,
+        FirstRowOffset = !.LaterNextRowNum * NumLaterColumns,
+        LastRowOffset = (!.LaterNextRowNum + NumLaterSolns - 1) *
+            NumLaterColumns,
         FirstRowRval = const(llconst_int(FirstRowOffset)),
         LastRowRval = const(llconst_int(LastRowOffset)),
-        MainRow = [FirstRowRval, LastRowRval | FirstSolnRvals],
+        MainRowRvals = [FirstRowRval, LastRowRval | FirstSolnRvals],
         !:LaterNextRowNum = !.LaterNextRowNum + NumLaterSolns,
-        !:LaterSolnsRowsCord = !.LaterSolnsRowsCord ++
-            cord.from_list(LaterSolns)
+        !:LaterSolnsRowsCord =
+            !.LaterSolnsRowsCord ++ cord.from_list(LaterSolns)
     ),
-    cord.snoc(MainRow, !MainRowsCord),
-    construct_string_trie_several_soln_lookup_vector(NumOutVars,
-        CasesValues, MainRowNum + 1, !MainRowsCord,
+    cord.snoc(MainRowRvals, !MainRvalsCord),
+    construct_string_trie_several_soln_lookup_vector(NumLaterColumns,
+        CasesValues, MainRowNum + 1, !MainRvalsCord,
         !.LaterNextRowNum, !LaterSolnsRowsCord,
         !OneSolnCaseCount, !SeveralSolnsCaseCount).
 
@@ -818,23 +824,24 @@ generate_string_hash_jump_switch(VarRval, VarName, TaggedCases,
     % Generate the data structures for the hash table.
     FailLabel = HashSwitchInfo ^ shsi_fail_label,
     construct_string_hash_jump_vectors(0, TableSize, HashSlotsMap, FailLabel,
-        NumCollisions, cord.init, TableRowsCord, cord.init, MaybeTargetsCord),
-    TableRows = cord.list(TableRowsCord),
+        NumCollisions, cord.init, MainTableRvalsCord,
+        cord.init, MaybeTargetsCord),
+    MainTableRvals = cord.list(MainTableRvalsCord),
     MaybeTargets = cord.list(MaybeTargetsCord),
 
     % Generate the code for the hash table lookup.
     ( if NumCollisions = 0 then
         NumColumns = 1,
-        RowElemTypes = [lt_string],
+        MainRowTypes = [lt_string],
         ArrayElemTypes = [scalar_elem_string]
     else
         NumColumns = 2,
-        RowElemTypes = [lt_string, lt_int(int_type_int)],
+        MainRowTypes = [lt_string, lt_int(int_type_int)],
         ArrayElemTypes = [scalar_elem_string, scalar_elem_int]
     ),
-    add_vector_static_cell(RowElemTypes, TableRows, TableAddr, !CI),
+    add_vector_static_cell(MainRowTypes, MainTableRvals, MainTableDataId, !CI),
+    MainTableAddrRval = const(llconst_data_addr(MainTableDataId)),
     ArrayElemType = array_elem_struct(ArrayElemTypes),
-    TableAddrRval = const(llconst_data_addr(TableAddr)),
 
     SlotReg = HashSwitchInfo ^ shsi_slot_reg,
     MatchCode = from_list([
@@ -844,12 +851,11 @@ generate_string_hash_jump_switch(VarRval, VarName, TaggedCases,
             "jump to the corresponding code")
     ]),
 
-    % Generate the code for the cases.
+    % Generate the code for the cases, and put it all together.
     add_not_yet_included_cases(CasesCode, CaseLabelMap, _),
-    % Put it all together.
-    generate_string_hash_switch_search(HashSwitchInfo, VarRval, TableAddrRval,
-        ArrayElemType, NumColumns, HashOp, HashMask, NumCollisions,
-        EndLabel, "jump", CasesCode, MatchCode, Code).
+    generate_string_hash_switch_search(HashSwitchInfo, VarRval,
+        MainTableAddrRval, ArrayElemType, NumColumns, HashOp, HashMask,
+        NumCollisions, EndLabel, "jump", CasesCode, MatchCode, Code).
 
 :- pred construct_string_hash_jump_vectors(int::in, int::in,
     map(int, string_hash_slot(label))::in, label::in, int::in,
@@ -857,7 +863,7 @@ generate_string_hash_jump_switch(VarRval, VarName, TaggedCases,
     cord(maybe(label))::in, cord(maybe(label))::out) is det.
 
 construct_string_hash_jump_vectors(Slot, TableSize, HashSlotMap, FailLabel,
-        NumCollisions, !TableRowsCord, !MaybeTargetsCord) :-
+        NumCollisions, !TableRvalsCord, !MaybeTargetsCord) :-
     ( if Slot = TableSize then
         true
     else
@@ -872,14 +878,14 @@ construct_string_hash_jump_vectors(Slot, TableSize, HashSlotMap, FailLabel,
             Target = FailLabel
         ),
         ( if NumCollisions = 0 then
-            TableRow = [StringRval]
+            TableRowRvals = [StringRval]
         else
-            TableRow = [StringRval, NextSlotRval]
+            TableRowRvals = [StringRval, NextSlotRval]
         ),
-        cord.snoc(TableRow, !TableRowsCord),
+        cord.snoc(TableRowRvals, !TableRvalsCord),
         cord.snoc(yes(Target), !MaybeTargetsCord),
         construct_string_hash_jump_vectors(Slot + 1, TableSize, HashSlotMap,
-            FailLabel, NumCollisions, !TableRowsCord, !MaybeTargetsCord)
+            FailLabel, NumCollisions, !TableRvalsCord, !MaybeTargetsCord)
     ).
 
 :- pred represent_tagged_cases_in_string_hash_switch(represent_params::in,
@@ -969,50 +975,34 @@ generate_string_hash_simple_lookup_switch(VarRval, CaseValues,
         NumPrevColumns = 1,
         NumColumns = 1 + NumOutVars,
         ArrayElemTypes = [scalar_elem_string | OutElemTypes],
-        RowElemTypes = [lt_string | OutTypes]
+        MainRowTypes = [lt_string | OutTypes]
     else
         NumPrevColumns = 2,
         NumColumns = 2 + NumOutVars,
         ArrayElemTypes = [scalar_elem_string, scalar_elem_int | OutElemTypes],
-        RowElemTypes = [lt_string, lt_int(int_type_int) | OutTypes]
+        MainRowTypes = [lt_string, lt_int(int_type_int) | OutTypes]
     ),
     ArrayElemType = array_elem_struct(ArrayElemTypes),
 
     % Generate the static lookup table for this switch.
     construct_string_hash_simple_lookup_vector(0, TableSize, HashSlotsMap,
-        NumCollisions, DummyOutRvals, cord.init, VectorRvalsCord),
-    VectorRvals = cord.list(VectorRvalsCord),
-    add_vector_static_cell(RowElemTypes, VectorRvals, VectorAddr, !CI),
-    VectorAddrRval = const(llconst_data_addr(VectorAddr)),
+        NumCollisions, DummyOutRvals, cord.init, MainTableRvalsCord),
+    MainTableRvals = cord.list(MainTableRvalsCord),
+    add_vector_static_cell(MainRowTypes, MainTableRvals,
+        MainTableDataId, !CI),
+    MainTableAddrRval = const(llconst_data_addr(MainTableDataId)),
 
     (
         OutVars = [],
         SetBaseRegCode = empty
     ;
         OutVars = [_ | _],
-        % Since we release BaseReg only after the call to generate_branch_end,
-        % we must make sure that generate_branch_end won't want to
-        % overwrite BaseReg.
-        acquire_reg_not_in_storemap(StoreMap, reg_r, BaseReg, !CLD),
+        RowStartRegLval = HashSwitchInfo ^ shsi_row_start_reg,
+        MainRowSelect = main_row_start_offset_reg(lval(RowStartRegLval)),
+        acquire_and_setup_lookup_base_reg(MainTableDataId, StoreMap,
+            MainRowSelect, BaseRegLval, SetBaseRegCode, !CLD),
 
-        % Generate code to look up each of the variables in OutVars
-        % in its slot in the table row RowStartReg.
-        %
-        % Here, we just set up the pointer to the right row; the code that
-        % picks up the values of OutVars from that row is generated by
-        % the combination of record_offset_assigns (which updates
-        % the code generator state !CLD to tell it where OutVars are)
-        % and set_liveness_and_end_branch (which generates the code
-        % to pick up their values from there).
-        RowStartReg = HashSwitchInfo ^ shsi_row_start_reg,
-        SetBaseRegCode = singleton(
-            llds_instr(
-                assign(BaseReg,
-                    mem_addr(heap_ref(VectorAddrRval, yes(ptag(0u8)),
-                        lval(RowStartReg)))),
-                "set up base reg")
-        ),
-        record_offset_assigns(OutVars, NumPrevColumns, BaseReg, !.CI, !CLD)
+        record_offset_assigns(OutVars, NumPrevColumns, BaseRegLval, !.CI, !CLD)
     ),
 
     % We keep track of what variables are supposed to be live at the end
@@ -1027,7 +1017,7 @@ generate_string_hash_simple_lookup_switch(VarRval, CaseValues,
     ),
     MatchCode = SetBaseRegCode ++ BranchEndCode ++ GotoEndLabelCode,
     generate_string_hash_switch_search(HashSwitchInfo, VarRval,
-        VectorAddrRval, ArrayElemType, NumColumns, HashOp, HashMask,
+        MainTableAddrRval, ArrayElemType, NumColumns, HashOp, HashMask,
         NumCollisions, EndLabel, "single soln lookup", empty, MatchCode, Code).
 
 :- pred construct_string_hash_simple_lookup_vector(int::in, int::in,
@@ -1035,7 +1025,7 @@ generate_string_hash_simple_lookup_switch(VarRval, CaseValues,
     cord(list(rval))::in, cord(list(rval))::out) is det.
 
 construct_string_hash_simple_lookup_vector(Slot, TableSize, HashSlotMap,
-        NumCollisions, DummyOutRvals, !RowsCord) :-
+        NumCollisions, DummyOutRvals, !RvalsCord) :-
     ( if Slot = TableSize then
         true
     else
@@ -1049,13 +1039,13 @@ construct_string_hash_simple_lookup_vector(Slot, TableSize, HashSlotMap,
             OutVarRvals = DummyOutRvals
         ),
         ( if NumCollisions = 0 then
-            Row = [StringRval | OutVarRvals]
+            RowRvals = [StringRval | OutVarRvals]
         else
-            Row = [StringRval, NextSlotRval | OutVarRvals]
+            RowRvals = [StringRval, NextSlotRval | OutVarRvals]
         ),
-        cord.snoc(Row, !RowsCord),
+        cord.snoc(RowRvals, !RvalsCord),
         construct_string_hash_simple_lookup_vector(Slot + 1, TableSize,
-            HashSlotMap, NumCollisions, DummyOutRvals, !RowsCord)
+            HashSlotMap, NumCollisions, DummyOutRvals, !RvalsCord)
     ).
 
 %---------------------------------------------------------------------------%
@@ -1106,52 +1096,33 @@ generate_string_hash_several_soln_lookup_switch(CaseConstsSeveralLlds,
     % Generate the static lookup table for this switch.
     InitLaterSolnRowNumber = 1,
     DummyOutRvals = list.map(default_value_for_type, OutTypes),
-    LaterSolnArrayCord0 = singleton(DummyOutRvals),
+    LaterSolnsRowsCord0 = singleton(DummyOutRvals),
     construct_string_hash_several_soln_lookup_vector(0, TableSize,
         HashSlotsMap, DummyOutRvals, NumOutVars, NumCollisions,
-        cord.init, MainRowsCord, InitLaterSolnRowNumber,
-        LaterSolnArrayCord0, LaterSolnArrayCord,
+        cord.init, MainTableRvalsCord, InitLaterSolnRowNumber,
+        LaterSolnsRowsCord0, LaterSolnsRowsCord,
         0, OneSolnCaseCount, 0, SeveralSolnsCaseCount),
-    MainRows = cord.list(MainRowsCord),
-    LaterSolnArray = cord.list(LaterSolnArrayCord),
+    MainTableRvals = cord.list(MainTableRvalsCord),
+    LaterSolnsRows = cord.list(LaterSolnsRowsCord),
 
-    add_vector_static_cell(MainRowTypes, MainRows, MainVectorAddr, !CI),
-    MainVectorAddrRval = const(llconst_data_addr(MainVectorAddr)),
-    add_vector_static_cell(OutTypes, LaterSolnArray, LaterVectorAddr, !CI),
-    LaterVectorAddrRval = const(llconst_data_addr(LaterVectorAddr)),
+    add_vector_static_cell(MainRowTypes, MainTableRvals, MainTableDataId, !CI),
+    add_vector_static_cell(OutTypes, LaterSolnsRows, LaterTableDataId, !CI),
+    MainTableAddrRval = const(llconst_data_addr(MainTableDataId)),
+    LaterTableAddrRval = const(llconst_data_addr(LaterTableDataId)),
 
-    % Since we release BaseReg only after the calls to generate_branch_end,
-    % we must make sure that generate_branch_end won't want to overwrite
-    % BaseReg.
-    acquire_reg_not_in_storemap(StoreMap, reg_r, BaseReg, !CLD),
-
-    % Generate code to look up each of the variables in OutVars
-    % in its slot in the table row RowStartReg.
-    %
-    % Here, we just set up the pointer to the right row; the code that
-    % picks up the values of OutVars from that row is generated by
-    % the combination of record_offset_assigns (which updates
-    % the code generator state !CLD to tell it where OutVars are)
-    % and set_liveness_and_end_branch (which generates the code
-    % to pick up their values from there). Both are invoked by code inside
-    % generate_table_lookup_code_for_all_kinds.
-    RowStartReg = HashSwitchInfo ^ shsi_row_start_reg,
-    SetBaseRegCode = singleton(
-        llds_instr(
-            assign(BaseReg,
-                mem_addr(heap_ref(MainVectorAddrRval, yes(ptag(0u8)),
-                    lval(RowStartReg)))),
-            "set up base reg")
-    ),
+    RowStartRegLval = HashSwitchInfo ^ shsi_row_start_reg,
+    MainRowSelect = main_row_start_offset_reg(lval(RowStartRegLval)),
+    acquire_and_setup_lookup_base_reg(MainTableDataId, StoreMap,
+        MainRowSelect, BaseRegLval, SetBaseRegCode, !CLD),
 
     generate_multi_soln_table_lookup_code(CaseConstsSeveralLlds,
         OneSolnCaseCount - kind_one_soln,
         [SeveralSolnsCaseCount - kind_several_solns],
-        NumPrevColumns, OutVars, EndLabel, StoreMap, Liveness, BaseReg,
-        LaterVectorAddrRval, LookupResultsCode, !MaybeEnd, !CI, !.CLD),
+        NumPrevColumns, OutVars, EndLabel, StoreMap, Liveness, BaseRegLval,
+        LaterTableAddrRval, LookupResultsCode, !MaybeEnd, !CI, !.CLD),
     MatchCode = SetBaseRegCode ++ LookupResultsCode,
     generate_string_hash_switch_search(HashSwitchInfo, VarRval,
-        MainVectorAddrRval, ArrayElemType, NumColumns, HashOp, HashMask,
+        MainTableAddrRval, ArrayElemType, NumColumns, HashOp, HashMask,
         NumCollisions, EndLabel, "multi soln lookup", empty, MatchCode, Code).
 
 :- pred construct_string_hash_several_soln_lookup_vector(int::in, int::in,
@@ -1162,7 +1133,7 @@ generate_string_hash_several_soln_lookup_switch(CaseConstsSeveralLlds,
 
 construct_string_hash_several_soln_lookup_vector(Slot, TableSize, HashSlotMap,
         DummyOutRvals, NumOutVars, NumCollisions,
-        !MainRowsCord, !.LaterNextRow, !LaterSolnArray,
+        !MainRvalsCord, !.LaterNextRow, !LaterSolnRowsCord,
         !OneSolnCaseCount, !SeveralSolnsCaseCount) :-
     ( if Slot = TableSize then
         true
@@ -1180,9 +1151,9 @@ construct_string_hash_several_soln_lookup_vector(Slot, TableSize, HashSlotMap,
                 % referenced.
                 MainRowTail = [ZeroRval, ZeroRval | OutVarRvals],
                 ( if NumCollisions = 0 then
-                    MainRow = [StringRval | MainRowTail]
+                    MainRowRvals = [StringRval | MainRowTail]
                 else
-                    MainRow = [StringRval, NextSlotRval | MainRowTail]
+                    MainRowRvals = [StringRval, NextSlotRval | MainRowTail]
                 )
             ;
                 Soln = several_solns(FirstSolnRvals, LaterSolns),
@@ -1195,12 +1166,13 @@ construct_string_hash_several_soln_lookup_vector(Slot, TableSize, HashSlotMap,
                 LastRowRval = const(llconst_int(LastRowOffset)),
                 MainRowTail = [FirstRowRval, LastRowRval | FirstSolnRvals],
                 ( if NumCollisions = 0 then
-                    MainRow = [StringRval | MainRowTail]
+                    MainRowRvals = [StringRval | MainRowTail]
                 else
-                    MainRow = [StringRval, NextSlotRval | MainRowTail]
+                    MainRowRvals = [StringRval, NextSlotRval | MainRowTail]
                 ),
                 !:LaterNextRow = !.LaterNextRow + NumLaterSolns,
-                !:LaterSolnArray = !.LaterSolnArray ++ from_list(LaterSolns)
+                !:LaterSolnRowsCord =
+                    !.LaterSolnRowsCord ++ from_list(LaterSolns)
             )
         else
             % The zero in the StringRval slot means that this bucket is empty.
@@ -1209,15 +1181,15 @@ construct_string_hash_several_soln_lookup_vector(Slot, TableSize, HashSlotMap,
             ZeroRval = const(llconst_int(0)),
             MainRowTail = [ZeroRval, ZeroRval | DummyOutRvals],
             ( if NumCollisions = 0 then
-                MainRow = [StringRval | MainRowTail]
+                MainRowRvals = [StringRval | MainRowTail]
             else
-                MainRow = [StringRval, NextSlotRval | MainRowTail]
+                MainRowRvals = [StringRval, NextSlotRval | MainRowTail]
             )
         ),
-        cord.snoc(MainRow, !MainRowsCord),
+        cord.snoc(MainRowRvals, !MainRvalsCord),
         construct_string_hash_several_soln_lookup_vector(Slot + 1, TableSize,
             HashSlotMap, DummyOutRvals, NumOutVars, NumCollisions,
-            !MainRowsCord, !.LaterNextRow, !LaterSolnArray,
+            !MainRvalsCord, !.LaterNextRow, !LaterSolnRowsCord,
             !OneSolnCaseCount, !SeveralSolnsCaseCount)
     ).
 
@@ -1407,13 +1379,13 @@ generate_string_binary_jump_switch(VarRval, VarName, TaggedCases,
         CaseLabelMap0, CaseLabelMap, no, MaybeEnd, !CI, unit, _, SortedTable),
 
     gen_string_binary_jump_slots(SortedTable,
-        cord.init, TableRowsCord, cord.init, TargetsCord,
+        cord.init, MainTableRvalsCord, cord.init, TargetsCord,
         0, TableSize),
-    TableRows = cord.list(TableRowsCord),
+    MainTableRvals = cord.list(MainTableRvalsCord),
     Targets = cord.list(TargetsCord),
     NumColumns = 2,
-    RowElemTypes = [lt_string, lt_int(int_type_int)],
-    add_vector_static_cell(RowElemTypes, TableRows, TableAddr, !CI),
+    MainRowTypes = [lt_string, lt_int(int_type_int)],
+    add_vector_static_cell(MainRowTypes, MainTableRvals, TableAddr, !CI),
     ArrayElemTypes = [scalar_elem_string, scalar_elem_int],
     ArrayElemType = array_elem_struct(ArrayElemTypes),
     TableAddrRval = const(llconst_data_addr(TableAddr)),
@@ -1452,15 +1424,15 @@ generate_string_binary_jump_switch(VarRval, VarName, TaggedCases,
     cord(maybe(label))::in, cord(maybe(label))::out,
     int::in, int::out) is det.
 
-gen_string_binary_jump_slots([], !TableRowsCord, !MaybeTargetsCord, !CurIndex).
+gen_string_binary_jump_slots([], !TableRvalsCord, !MaybeTargetsCord, !CurIndex).
 gen_string_binary_jump_slots([Str - Label | StrLabels],
-        !TableRowsCord, !MaybeTargetsCord, !CurIndex) :-
+        !TableRvalsCord, !MaybeTargetsCord, !CurIndex) :-
     Row = [const(llconst_string(Str)), const(llconst_int(!.CurIndex))],
-    cord.snoc(Row, !TableRowsCord),
+    cord.snoc(Row, !TableRvalsCord),
     cord.snoc(yes(Label), !MaybeTargetsCord),
     !:CurIndex = !.CurIndex + 1,
     gen_string_binary_jump_slots(StrLabels,
-        !TableRowsCord, !MaybeTargetsCord, !CurIndex).
+        !TableRvalsCord, !MaybeTargetsCord, !CurIndex).
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -1510,55 +1482,35 @@ generate_string_binary_simple_lookup_switch(VarRval, CaseValues,
 
     list.length(CaseValues, TableSize),
     list.length(OutVars, NumOutVars),
-    NumColumns = 1 + NumOutVars,
     % For the LLDS backend, array indexing ops don't need the element types,
     % so it is ok to lie here.
     list.duplicate(NumOutVars, scalar_elem_generic, OutElemTypes),
     ArrayElemTypes = [scalar_elem_string | OutElemTypes],
     ArrayElemType = array_elem_struct(ArrayElemTypes),
+    NumPrevColumns = 1,
+    NumColumns = NumPrevColumns + NumOutVars,
 
     % Generate the static lookup table for this switch.
     construct_string_binary_simple_lookup_vector(CaseValues,
-        cord.init, VectorRvalsCord),
-    VectorRvals = cord.list(VectorRvalsCord),
-    RowElemTypes = [lt_string | OutTypes],
-    add_vector_static_cell(RowElemTypes, VectorRvals, VectorAddr, !CI),
-    VectorAddrRval = const(llconst_data_addr(VectorAddr)),
+        cord.init, MainTableRvalsCord),
+    MainTableRvals = cord.list(MainTableRvalsCord),
+    MainRowTypes = [lt_string | OutTypes],
+    add_vector_static_cell(MainRowTypes, MainTableRvals, MainTableDataId, !CI),
+    MainTableAddrRval = const(llconst_data_addr(MainTableDataId)),
 
     generate_string_binary_switch_search(BinarySwitchInfo, VarRval,
-        VectorAddrRval, ArrayElemType, TableSize, NumColumns,
+        MainTableAddrRval, ArrayElemType, TableSize, NumColumns,
         BinarySearchCode),
     (
         OutVars = [],
         SetBaseRegCode = empty
     ;
         OutVars = [_ | _],
-        % Since we release BaseReg only after the call to
-        % generate_branch_end, we must make sure that generate_branch_end
-        % won't want to overwrite BaseReg.
-        acquire_reg_not_in_storemap(StoreMap, reg_r, BaseReg, !CLD),
-
-        % Generate code to look up each of the variables in OutVars
-        % in its slot in the table row MidReg.
-        %
-        % Here, we just set up the pointer to the right row; the code that
-        % picks up the values of OutVars from that row is generated by
-        % the combination of record_offset_assigns (which updates
-        % the code generator state !CLD to tell it where OutVars are)
-        % and set_liveness_and_end_branch (which generates the code
-        % to pick up their values from there).
-        MidReg = BinarySwitchInfo ^ sbsi_mid_reg,
-        SetBaseRegCode = singleton(
-            llds_instr(
-                assign(BaseReg,
-                    mem_addr(
-                        heap_ref(VectorAddrRval, yes(ptag(0u8)),
-                            binop(int_mul(int_type_int),
-                                lval(MidReg),
-                                const(llconst_int(NumColumns)))))),
-                "set up base reg")
-        ),
-        record_offset_assigns(OutVars, 1, BaseReg, !.CI, !CLD)
+        MidRegLval = BinarySwitchInfo ^ sbsi_mid_reg,
+        MainRowSelect = main_row_number_reg(lval(MidRegLval), MainRowTypes),
+        acquire_and_setup_lookup_base_reg(MainTableDataId, StoreMap,
+            MainRowSelect, BaseRegLval, SetBaseRegCode, !CLD),
+        record_offset_assigns(OutVars, NumPrevColumns, BaseRegLval, !.CI, !CLD)
     ),
 
     % We keep track of what variables are supposed to be live at the end
@@ -1577,12 +1529,12 @@ generate_string_binary_simple_lookup_switch(VarRval, CaseValues,
     assoc_list(string, list(rval))::in,
     cord(list(rval))::in, cord(list(rval))::out) is det.
 
-construct_string_binary_simple_lookup_vector([], !RowsCord).
+construct_string_binary_simple_lookup_vector([], !RvalsCord).
 construct_string_binary_simple_lookup_vector([Str - OutRvals | StrsOutRvals],
-        !RowsCord) :-
+        !RvalsCord) :-
     RowRvals = [const(llconst_string(Str)) | OutRvals],
-    cord.snoc(RowRvals, !RowsCord),
-    construct_string_binary_simple_lookup_vector(StrsOutRvals, !RowsCord).
+    cord.snoc(RowRvals, !RvalsCord),
+    construct_string_binary_simple_lookup_vector(StrsOutRvals, !RvalsCord).
 
 %---------------------------------------------------------------------------%
 
@@ -1626,57 +1578,35 @@ generate_string_binary_several_soln_lookup_switch(CaseConstsSeveralLlds,
     DummyLaterSolnRow = list.map(default_value_for_type, OutTypes),
     LaterSolnArrayCord0 = singleton(DummyLaterSolnRow),
     construct_string_binary_several_soln_lookup_vector(CaseSolns,
-        NumOutVars, cord.init, MainRowsCord,
+        NumOutVars, cord.init, MainRvalsCord,
         InitLaterSolnRowNumber, LaterSolnArrayCord0, LaterSolnArrayCord,
         0, OneSolnCaseCount, 0, SeveralSolnsCaseCount),
-    MainRows = cord.list(MainRowsCord),
+    MainRvals = cord.list(MainRvalsCord),
     LaterSolnArray = cord.list(LaterSolnArrayCord),
 
     MainRowTypes =
         [lt_string, lt_int(int_type_int), lt_int(int_type_int) | OutTypes],
     list.length(MainRowTypes, MainNumColumns),
-    add_vector_static_cell(MainRowTypes, MainRows, MainVectorAddr, !CI),
-    MainVectorAddrRval = const(llconst_data_addr(MainVectorAddr)),
-    add_vector_static_cell(OutTypes, LaterSolnArray, LaterVectorAddr, !CI),
-    LaterVectorAddrRval = const(llconst_data_addr(LaterVectorAddr)),
+    add_vector_static_cell(MainRowTypes, MainRvals, MainTableDataId, !CI),
+    MainTableAddrRval = const(llconst_data_addr(MainTableDataId)),
+    add_vector_static_cell(OutTypes, LaterSolnArray, LaterTableDataId, !CI),
+    LaterTableAddrRval = const(llconst_data_addr(LaterTableDataId)),
 
     generate_string_binary_switch_search(BinarySwitchInfo, VarRval,
-        MainVectorAddrRval, ArrayElemType, MainTableSize, MainNumColumns,
+        MainTableAddrRval, ArrayElemType, MainTableSize, MainNumColumns,
         BinarySearchCode),
 
-    % Since we release BaseReg only after the calls to generate_branch_end,
-    % we must make sure that generate_branch_end won't want to overwrite
-    % BaseReg.
-    acquire_reg_not_in_storemap(StoreMap, reg_r, BaseReg, !CLD),
-
-    % Generate code to look up each of the variables in OutVars
-    % in its slot in the table row MidReg.
-    %
-    % Here, we just set up the pointer to the right row; the code that
-    % picks up the values of OutVars from that row is generated by
-    % the combination of record_offset_assigns (which updates
-    % the code generator state !CLD to tell it where OutVars are)
-    % and set_liveness_and_end_branch (which generates the code
-    % to pick up their values from there). Both are invoked by code inside
-    % generate_table_lookup_code_for_all_kinds.
-    MidReg = BinarySwitchInfo ^ sbsi_mid_reg,
-    SetBaseRegCode = singleton(
-        llds_instr(
-            assign(BaseReg,
-                mem_addr(
-                    heap_ref(MainVectorAddrRval, yes(ptag(0u8)),
-                        binop(int_mul(int_type_int),
-                            lval(MidReg),
-                            const(llconst_int(MainNumColumns)))))),
-            "set up base reg")
-    ),
+    MidRegLval = BinarySwitchInfo ^ sbsi_mid_reg,
+    MainRowSelect = main_row_number_reg(lval(MidRegLval), MainRowTypes),
+    acquire_and_setup_lookup_base_reg(MainTableDataId, StoreMap,
+        MainRowSelect, BaseRegLval, SetBaseRegCode, !CLD),
 
     NumPrevColumns = 1,
     generate_multi_soln_table_lookup_code(CaseConstsSeveralLlds,
         OneSolnCaseCount - kind_one_soln,
         [SeveralSolnsCaseCount - kind_several_solns],
         NumPrevColumns, OutVars, EndLabel, StoreMap, Liveness,
-        BaseReg, LaterVectorAddrRval, LookupResultsCode,
+        BaseRegLval, LaterTableAddrRval, LookupResultsCode,
         !MaybeEnd, !CI, !.CLD),
     EndLabelCode = singleton(
         llds_instr(label(EndLabel),
@@ -1692,10 +1622,10 @@ generate_string_binary_several_soln_lookup_switch(CaseConstsSeveralLlds,
     int::in, int::out, int::in, int::out) is det.
 
 construct_string_binary_several_soln_lookup_vector([],
-        _NumOutVars, !MainRowsCord, _LaterNextRow, !LaterSolnArray,
+        _NumOutVars, !MainRvalsCord, _LaterNextRow, !LaterSolnArray,
         !OneSolnCaseCount, !SeveralSolnCaseCount).
 construct_string_binary_several_soln_lookup_vector([Str - Soln | StrSolns],
-        NumOutVars, !MainRowsCord, !.LaterNextRow, !LaterSolnArray,
+        NumOutVars, !MainRvalsCord, !.LaterNextRow, !LaterSolnArray,
         !OneSolnCaseCount, !SeveralSolnsCaseCount) :-
     StrRval = const(llconst_string(Str)),
     (
@@ -1717,9 +1647,9 @@ construct_string_binary_several_soln_lookup_vector([Str - Soln | StrSolns],
         !:LaterNextRow = !.LaterNextRow + NumLaterSolns,
         !:LaterSolnArray = !.LaterSolnArray ++ from_list(LaterSolns)
     ),
-    cord.snoc(MainRow, !MainRowsCord),
+    cord.snoc(MainRow, !MainRvalsCord),
     construct_string_binary_several_soln_lookup_vector(StrSolns, NumOutVars,
-        !MainRowsCord, !.LaterNextRow, !LaterSolnArray,
+        !MainRvalsCord, !.LaterNextRow, !LaterSolnArray,
         !OneSolnCaseCount, !SeveralSolnsCaseCount).
 
 %---------------------------------------------------------------------------%

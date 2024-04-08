@@ -691,11 +691,11 @@ generate_several_soln_int_lookup_switch(CaseConstsSeveralLlds, IndexRval,
 %---------------------------------------------------------------------------%
 
 acquire_and_setup_lookup_base_reg(MainVectorDataId, StoreMap, MainRowSelect,
-        BaseReg, SetBaseRegCode, !CLD) :-
+        BaseRegLval, SetBaseRegCode, !CLD) :-
     % Since we release BaseReg only after the calls to generate_branch_end,
     % we must make sure that generate_branch_end won't want to overwrite
     % BaseReg.
-    acquire_reg_not_in_storemap(StoreMap, reg_r, BaseReg, !CLD),
+    acquire_reg_not_in_storemap(StoreMap, reg_r, BaseRegLval, !CLD),
     (
         MainRowSelect = main_row_number_reg(MainRowNumRval, MainRowTypes),
         list.length(MainRowTypes, MainNumColumns),
@@ -707,7 +707,7 @@ acquire_and_setup_lookup_base_reg(MainVectorDataId, StoreMap, MainRowSelect,
     MainVectorAddrRval = const(llconst_data_addr(MainVectorDataId)),
     SetBaseRegCode = singleton(
         llds_instr(
-            assign(BaseReg,
+            assign(BaseRegLval,
                 mem_addr(
                     heap_ref(MainVectorAddrRval, yes(ptag(0u8)),
                         MainRowStartOffsetRval))),
