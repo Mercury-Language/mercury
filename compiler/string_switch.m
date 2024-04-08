@@ -1399,7 +1399,8 @@ generate_string_binary_jump_switch(VarRval, VarName, TaggedCases,
     cord(maybe(label))::in, cord(maybe(label))::out,
     int::in, int::out) is det.
 
-gen_string_binary_jump_slots([], !TableRvalsCord, !MaybeTargetsCord, !CurIndex).
+gen_string_binary_jump_slots([],
+        !TableRvalsCord, !MaybeTargetsCord, !CurIndex).
 gen_string_binary_jump_slots([Str - Label | StrLabels],
         !TableRvalsCord, !MaybeTargetsCord, !CurIndex) :-
     Row = [const(llconst_string(Str)), const(llconst_int(!.CurIndex))],

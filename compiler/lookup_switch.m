@@ -684,7 +684,8 @@ acquire_and_setup_lookup_base_reg(MainTableDataId, StoreMap, MainRowSelect,
 
 generate_multi_soln_table_lookup_code(CaseConstsSeveralLlds,
         CountKind, CountKinds, NumPrevColumns, OutVars, EndLabel, StoreMap,
-        Liveness, BaseReg, LaterSolnsTableAddrRval, Code, !MaybeEnd, !CI, !.CLD) :-
+        Liveness, BaseReg, LaterSolnsTableAddrRval, Code,
+        !MaybeEnd, !CI, !.CLD) :-
     list.sort([CountKind | CountKinds], AscendingSortedCountKinds),
     list.reverse(AscendingSortedCountKinds, DescendingSortedCountKinds),
     assoc_list.values(DescendingSortedCountKinds, DescendingSortedKinds),
