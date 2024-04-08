@@ -165,12 +165,54 @@
     code_info::in, code_loc_dep::in, maybe(lookup_switch_info(Key))::out)
     is det.
 
+%---------------------------------------------------------------------------%
+
     % Generate code for the switch that the lookup_switch_info came from.
     %
 :- pred generate_int_lookup_switch(rval::in, lookup_switch_info(int)::in,
     label::in, abs_store_map::in, int::in, int::in,
     need_bit_vec_check::in, need_range_check::in,
     branch_end::out, llds_code::out, code_info::out) is det.
+
+%---------------------------------------------------------------------------%
+
+    % We conceptualize lookup tables as two-dimensional arrays. However,
+    % the LLDS has no mechanism either for describing 2D arrays, or for
+    % accessing their elements. Instead, we have to flatten the 2D array
+    % into a 1D array that contains the rows of the conceptual 2D table
+    % one after the other, in the usual row-major form. We can then access
+    % the item at a given 2D coordinate (say row R, column C) by
+    %
+    % - computing the offset of the start of the 2D row R in the 1D flattened
+    %   array,
+    % - adding this offset to the address of the start of the whole 1D array,
+    %   giving the address of the embedded 1D array for row R, and then
+    % - accessing the item at offset C in that row.
+    %
+    % Most of our callers want to give us (the id of the register that
+    % at runtime will contain) the row number directly. They can do this
+    % because they don't need to access anything in that row themselves.
+    % On the other hand, string hash switches *do* want to access something
+    % in that row, so they also need to know where that row of the 2D table
+    % is stored in the 1D array. It therefore gives us (the id of the register
+    % that at runtime will contain) the starting offset of the row.
+:- type main_table_row_select
+    --->    main_row_number_reg(rval, list(llds_type))
+            % We select the row we want in the main table by specifying
+            % the rval containing the number of the row, and the types
+            % of the row's elements. The number of these types specifies
+            % the number of columns in each row.
+    ;       main_row_start_offset_reg(rval).
+            % We select the row we want in the main table by specifying
+            % the rval containing the offset of its first column in the
+            % 1D array. The given register will therefore contain the
+            % row number multiplied by the number of columns in each row.
+
+:- pred acquire_and_setup_lookup_base_reg(data_id::in, abs_store_map::in,
+    main_table_row_select::in, lval::out, llds_code::out,
+    code_loc_dep::in, code_loc_dep::out) is det.
+
+%---------------------------------------------------------------------------%
 
 :- type case_kind
     --->    kind_zero_solns
@@ -232,6 +274,8 @@
     list(prog_var)::in, label::in, abs_store_map::in, set_of_progvar::in,
     lval::in, rval::in, llds_code::out, branch_end::in, branch_end::out,
     code_info::in, code_info::out, code_loc_dep::in) is det.
+
+%---------------------------------------------------------------------------%
 
 :- func default_value_for_type(llds_type) = rval.
 
@@ -646,6 +690,32 @@ generate_several_soln_int_lookup_switch(CaseConstsSeveralLlds, IndexRval,
 
 %---------------------------------------------------------------------------%
 
+acquire_and_setup_lookup_base_reg(MainVectorDataId, StoreMap, MainRowSelect,
+        BaseReg, SetBaseRegCode, !CLD) :-
+    % Since we release BaseReg only after the calls to generate_branch_end,
+    % we must make sure that generate_branch_end won't want to overwrite
+    % BaseReg.
+    acquire_reg_not_in_storemap(StoreMap, reg_r, BaseReg, !CLD),
+    (
+        MainRowSelect = main_row_number_reg(MainRowNumRval, MainRowTypes),
+        list.length(MainRowTypes, MainNumColumns),
+        MainRowStartOffsetRval = binop(int_mul(int_type_int),
+            MainRowNumRval, const(llconst_int(MainNumColumns)))
+    ;
+        MainRowSelect = main_row_start_offset_reg(MainRowStartOffsetRval)
+    ),
+    MainVectorAddrRval = const(llconst_data_addr(MainVectorDataId)),
+    SetBaseRegCode = singleton(
+        llds_instr(
+            assign(BaseReg,
+                mem_addr(
+                    heap_ref(MainVectorAddrRval, yes(ptag(0u8)),
+                        MainRowStartOffsetRval))),
+            "set up base reg")
+    ).
+
+%---------------------------------------------------------------------------%
+
 generate_multi_soln_table_lookup_code(CaseConstsSeveralLlds,
         CountKind, CountKinds, NumPrevColumns, OutVars, EndLabel, StoreMap,
         Liveness, BaseReg, LaterVectorAddrRval, Code, !MaybeEnd, !CI, !.CLD) :-
@@ -672,12 +742,6 @@ generate_multi_soln_table_lookup_code(CaseConstsSeveralLlds,
         StoreMap, Liveness, BaseReg, CurSlot, MaxSlot, LaterVectorAddrRval,
         Code, !MaybeEnd, !CI).
 
-:- func case_kind_to_string(case_kind) = string.
-
-case_kind_to_string(kind_zero_solns) = "kind_zero_solns".
-case_kind_to_string(kind_one_soln) = "kind_one_soln".
-case_kind_to_string(kind_several_solns) = "kind_several_solns".
-
 :- pred generate_table_lookup_code_for_each_kind(case_consts_several_llds::in,
     case_kind::in, list(case_kind)::in, int::in, list(prog_var)::in,
     position_info::in, label::in, abs_store_map::in, set_of_progvar::in,
@@ -699,18 +763,10 @@ generate_table_lookup_code_for_each_kind(CaseConstsSeveralLlds, Kind, Kinds,
     ;
         Kind = kind_one_soln,
         SkipToNextKindTestOp = ne(int_type_int),
-        some [!CLD] (
-            reset_to_position(BranchStart, !.CI, !:CLD),
-            record_offset_assigns(OutVars, NumPrevColumns + 2, BaseReg,
-                !.CI, !CLD),
-            set_liveness_and_end_branch(StoreMap, Liveness, !MaybeEnd,
-                BranchEndCode, !.CLD)
-        ),
-        GotoEndCode = cord.singleton(
-            llds_instr(goto(code_label(EndLabel)),
-                "goto end of switch from one_soln")
-        ),
-        KindCode = BranchEndCode ++ GotoEndCode
+        NumSeveralColumns = 2,
+        generate_table_lookup_code_for_kind_one_soln(NumPrevColumns,
+            NumSeveralColumns, OutVars, BranchStart, EndLabel, StoreMap,
+            Liveness, BaseReg, KindCode, !MaybeEnd, !CI)
     ;
         Kind = kind_several_solns,
         generate_table_lookup_code_for_kind_several_solns(
@@ -748,6 +804,34 @@ generate_table_lookup_code_for_each_kind(CaseConstsSeveralLlds, Kind, Kinds,
         Code = TestCode ++ KindCode ++ NextKindLabelCode ++ LaterKindsCode
     ).
 
+:- func case_kind_to_string(case_kind) = string.
+
+case_kind_to_string(kind_zero_solns) = "kind_zero_solns".
+case_kind_to_string(kind_one_soln) = "kind_one_soln".
+case_kind_to_string(kind_several_solns) = "kind_several_solns".
+
+:- pred generate_table_lookup_code_for_kind_one_soln(int::in, int::in,
+    list(prog_var)::in,
+    position_info::in, label::in, abs_store_map::in, set_of_progvar::in,
+    lval::in, llds_code::out,
+    branch_end::in, branch_end::out, code_info::in, code_info::out) is det.
+
+generate_table_lookup_code_for_kind_one_soln(NumPrevColumns, NumSeveralColumns,
+        OutVars, BranchStart, EndLabel, StoreMap, Liveness, BaseReg, KindCode,
+        !MaybeEnd, !CI) :-
+    some [!CLD] (
+        reset_to_position(BranchStart, !.CI, !:CLD),
+        record_offset_assigns(OutVars, NumPrevColumns + NumSeveralColumns,
+            BaseReg, !.CI, !CLD),
+        set_liveness_and_end_branch(StoreMap, Liveness, !MaybeEnd,
+            BranchEndCode, !.CLD)
+    ),
+    GotoEndCode = cord.singleton(
+        llds_instr(goto(code_label(EndLabel)),
+            "goto end of switch from one_soln")
+    ),
+    KindCode = BranchEndCode ++ GotoEndCode.
+
 :- pred generate_table_lookup_code_for_kind_several_solns(
     case_consts_several_llds::in, int::in, list(prog_var)::in,
     position_info::in, label::in, abs_store_map::in, set_of_progvar::in,
@@ -780,6 +864,7 @@ generate_table_lookup_code_for_kind_several_solns(CaseConstsSeveralLlds,
             FlushCode, !CLD),
         MinOffsetColumnRval = const(llconst_int(NumPrevColumns)),
         MaxOffsetColumnRval = const(llconst_int(NumPrevColumns + 1)),
+        NumSeveralColumns = 2,
         SaveSlotsCode = cord.from_list([
             llds_instr(assign(CurSlot,
                 lval(field(yes(ptag(0u8)), lval(BaseReg),
@@ -803,10 +888,9 @@ generate_table_lookup_code_for_kind_several_solns(CaseConstsSeveralLlds,
         % Generate code for the non-last disjunct.
         make_resume_point(ResumeVars, resume_locs_stack_only, ResumeMap,
             ResumePoint, !CI),
-        effect_resume_point(ResumePoint, model_non, UpdateRedoipCode,
-            !CLD),
-        record_offset_assigns(OutVars, NumPrevColumns + 2, BaseReg,
-            !.CI, !CLD),
+        effect_resume_point(ResumePoint, model_non, UpdateRedoipCode, !CLD),
+        record_offset_assigns(OutVars, NumPrevColumns + NumSeveralColumns,
+            BaseReg, !.CI, !CLD),
         flush_resume_vars_to_stack(FirstFlushResumeVarsCode, !CLD),
 
         % Forget the variables that are needed only at the resumption point
