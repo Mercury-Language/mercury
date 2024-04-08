@@ -886,7 +886,7 @@ output_short_var_label_layout_slot(Info, Stream, LabelLayout, !Slot, !IO) :-
                 [s(ModuleName),
                 i(PTIsSlot), i(HLDSVarNumsSlot), i(ShortLocnsSlot)], !IO)
         else if
-            TypeParams = const(llconst_data_addr(TPDataId, no)),
+            TypeParams = const(llconst_data_addr(TPDataId)),
             TPDataId = scalar_common_data_id(type_num(TPTypeNum), TPCellNum)
         then
             io.format(Stream, "MR_LLVSC(%s,%d,%d,%d,%d,%d)",
@@ -991,7 +991,7 @@ output_long_var_label_layout_slot(Info, Stream, LabelLayout, !Slot, !IO) :-
                 [s(ModuleName), i(PTIsSlot), i(HLDSVarNumsSlot),
                 i(ShortLocnsSlot), i(LongLocnsSlot)], !IO)
         else if
-            TypeParams = const(llconst_data_addr(TPDataId, no)),
+            TypeParams = const(llconst_data_addr(TPDataId)),
             TPDataId = scalar_common_data_id(type_num(TPTypeNum), TPCellNum)
         then
             io.format(Stream, "MR_LLVLC(%s,%d,%d,%d,%d,%d,%d)",
@@ -2298,7 +2298,7 @@ output_layout_array_name_storage_type_name(Stream, ModuleName, Name,
 output_rval_as_addr(Info, Stream, Rval, !IO) :-
     ( if Rval = const(llconst_int(0)) then
         io.write_string(Stream, "0", !IO)
-    else if Rval = const(llconst_data_addr(DataId, no)) then
+    else if Rval = const(llconst_data_addr(DataId)) then
         output_data_id_addr(Info, Stream, DataId, !IO)
     else
         io.write_string(Stream, "\n", !IO),

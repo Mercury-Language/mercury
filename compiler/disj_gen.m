@@ -226,7 +226,7 @@ generate_lookup_disj(ResumeVars, LookupDisjInfo, Code, !CI, !CLD) :-
     list.length(OutVars, NumOutVars),
 
     add_vector_static_cell(LLDSTypes, Solns, SolnVectorAddr, !CI),
-    SolnVectorAddrRval = const(llconst_data_addr(SolnVectorAddr, no)),
+    SolnVectorAddrRval = const(llconst_data_addr(SolnVectorAddr)),
 
     get_next_label(EndLabel, !CI),
 

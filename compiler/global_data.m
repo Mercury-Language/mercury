@@ -1392,33 +1392,13 @@ remap_rval(Remap, Rval0, Rval) :-
 
 remap_rval_const(Remap, Const0, Const) :-
     (
-        Const0 = llconst_data_addr(DataId0, MaybeOffset),
-        (
-            DataId0 = scalar_common_data_id(TypeNum0, _CellNum),
-            Remap = static_cell_remap_info(TypeNumRemap, ScalarCellGroupRemap),
-            ( if map.contains(TypeNumRemap, TypeNum0) then
-                map.lookup(ScalarCellGroupRemap, TypeNum0, ScalarCellGroup),
-                map.lookup(ScalarCellGroup, DataId0, DataId)
-            else
-                DataId = DataId0
-            )
-        ;
-            DataId0 = vector_common_data_id(TypeNum0, CellNum),
-            Remap = static_cell_remap_info(TypeNumRemap, _),
-            ( if map.search(TypeNumRemap, TypeNum0, TypeNum) then
-                DataId = vector_common_data_id(TypeNum, CellNum)
-            else
-                DataId = DataId0
-            )
-        ;
-            ( DataId0 = rtti_data_id(_)
-            ; DataId0 = proc_tabling_data_id(_, _)
-            ; DataId0 = layout_id(_)
-            ; DataId0 = layout_slot_id(_, _)
-            ),
-            DataId = DataId0
-        ),
-        Const = llconst_data_addr(DataId,  MaybeOffset)
+        Const0 = llconst_data_addr(DataId0),
+        remap_data_id(Remap, DataId0, DataId),
+        Const = llconst_data_addr(DataId)
+    ;
+        Const0 = llconst_data_addr_word_offset(DataId0, Offset),
+        remap_data_id(Remap, DataId0, DataId),
+        Const = llconst_data_addr_word_offset(DataId,  Offset)
     ;
         ( Const0 = llconst_true
         ; Const0 = llconst_false
@@ -1439,6 +1419,36 @@ remap_rval_const(Remap, Const0, Const) :-
         ; Const0 = llconst_code_addr(_)
         ),
         Const = Const0
+    ).
+
+:- pred remap_data_id(static_cell_remap_info::in,
+    data_id::in, data_id::out) is det.
+
+remap_data_id(Remap, DataId0, DataId) :-
+    (
+        DataId0 = scalar_common_data_id(TypeNum0, _CellNum),
+        Remap = static_cell_remap_info(TypeNumRemap, ScalarCellGroupRemap),
+        ( if map.contains(TypeNumRemap, TypeNum0) then
+            map.lookup(ScalarCellGroupRemap, TypeNum0, ScalarCellGroup),
+            map.lookup(ScalarCellGroup, DataId0, DataId)
+        else
+            DataId = DataId0
+        )
+    ;
+        DataId0 = vector_common_data_id(TypeNum0, CellNum),
+        Remap = static_cell_remap_info(TypeNumRemap, _),
+        ( if map.search(TypeNumRemap, TypeNum0, TypeNum) then
+            DataId = vector_common_data_id(TypeNum, CellNum)
+        else
+            DataId = DataId0
+        )
+    ;
+        ( DataId0 = rtti_data_id(_)
+        ; DataId0 = proc_tabling_data_id(_, _)
+        ; DataId0 = layout_id(_)
+        ; DataId0 = layout_slot_id(_, _)
+        ),
+        DataId = DataId0
     ).
 
 :- pred remap_mem_ref(static_cell_remap_info::in, mem_ref::in, mem_ref::out)

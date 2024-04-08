@@ -352,7 +352,7 @@ build_event_arg_type_info_map(EventSpec, !EventArgTypeInfoMap,
     list.map_foldl(build_event_arg_type_info, Attrs, RvalsAndTypes,
         !StaticCellInfo),
     add_scalar_static_cell(RvalsAndTypes, TypesDataAddr, !StaticCellInfo),
-    Rval = const(llconst_data_addr(TypesDataAddr, no)),
+    Rval = const(llconst_data_addr(TypesDataAddr)),
     map.det_insert(EventNumber, Rval, !EventArgTypeInfoMap).
 
 :- pred build_event_arg_type_info(event_attribute::in, typed_rval::out,
@@ -1123,7 +1123,7 @@ convert_table_arg_info(TableArgInfos, NumPTIs,
     list.map_foldl(construct_table_arg_pti_rval, Args, PTIRvalsTypes,
         !StaticCellInfo),
     add_scalar_static_cell(PTIRvalsTypes, PTIVectorAddr, !StaticCellInfo),
-    PTIVectorRval = const(llconst_data_addr(PTIVectorAddr, no)),
+    PTIVectorRval = const(llconst_data_addr(PTIVectorAddr)),
     map.map_values_only(convert_slot_to_locn_map, TVarSlotMap, TVarLocnMap),
     construct_tvar_vector(TVarLocnMap, TVarVectorRval, !StaticCellInfo).
 
@@ -1442,7 +1442,7 @@ construct_internal_layout(Params, ProcLabel, ProcLayoutName, VarNumMap,
 
         add_scalar_static_cell(UserLocnsArray, UserLocnsDataAddr,
             !StaticCellInfo),
-        UserLocnsRval = const(llconst_data_addr(UserLocnsDataAddr, no)),
+        UserLocnsRval = const(llconst_data_addr(UserLocnsDataAddr)),
 
         list.length(UserAttrMaybeVarNums, NumVarNums),
         VarNumSlotNum0 = !.LabelLayoutInfo ^ lli_next_user_event_var_num,
@@ -1944,7 +1944,7 @@ construct_tvar_vector(TVarLocnMap, TypeParamRval, !StaticCellInfo) :-
     else
         construct_tvar_rvals(TVarLocnMap, Vector),
         add_scalar_static_cell(Vector, DataAddr, !StaticCellInfo),
-        TypeParamRval = const(llconst_data_addr(DataAddr, no))
+        TypeParamRval = const(llconst_data_addr(DataAddr))
     ).
 
 :- pred construct_tvar_rvals(map(tvar, set(layout_locn))::in,
@@ -1974,7 +1974,7 @@ construct_closure_layout(CallerProcLabel, SeqNo,
     DataId = layout_id(ClosureId),
     Data = closure_proc_id_data(CallerProcLabel, SeqNo, ClosureProcLabel,
         ModuleName, FileName, LineNumber, Origin, GoalPath),
-    ProcIdRval = const(llconst_data_addr(DataId, no)),
+    ProcIdRval = const(llconst_data_addr(DataId)),
     ProcIdTypedRval = typed_rval(ProcIdRval, lt_data_ptr),
     ClosureLayoutInfo = closure_layout_info(ClosureArgs, TVarLocnMap),
     construct_closure_arg_rvals(ClosureArgs,
@@ -2090,7 +2090,7 @@ represent_special_live_value_type(SpecialTypeName, Rval) :-
     RttiTypeCtor = rtti_type_ctor(unqualified(""), SpecialTypeName, 0u16),
     DataId =
         rtti_data_id(ctor_rtti_id(RttiTypeCtor, type_ctor_type_ctor_info)),
-    Rval = const(llconst_data_addr(DataId, no)).
+    Rval = const(llconst_data_addr(DataId)).
 
 :- pred convert_var_to_int(var_num_map::in, prog_var::in, int::out) is det.
 
@@ -2124,7 +2124,7 @@ represent_locn_or_const_as_int_rval(Params, LvalOrConst, Rval, Type,
             LvalOrConst),
         add_scalar_static_cell([typed_rval(LvalOrConst, LLDSType)], DataId,
             !StaticCellInfo),
-        Rval = const(llconst_data_addr(DataId, no)),
+        Rval = const(llconst_data_addr(DataId)),
         Type = lt_data_ptr
     ;
         LvalOrConst = mkword(Tag, LvalOrConstBase),

@@ -1258,9 +1258,11 @@
             % of the code units belonging to a single code point.
 
     ;       llconst_code_addr(code_addr)
-    ;       llconst_data_addr(data_id, maybe(int)).
-            % If the second arg is yes(Offset), then increment the address
-            % of the first by Offset words.
+    ;       llconst_data_addr(data_id)
+    ;       llconst_data_addr_word_offset(data_id, int).
+            % The second version of llconst_data_addr specifies that the
+            % effective address should be the given number of words *past*
+            % the start of the given data_id.
 
     % A data_id is an lval representing the given variable or array slot.
     % Most references to the data_ref will want to take the address of this
@@ -1722,7 +1724,8 @@ const_type(llconst_float(_), lt_float).
 const_type(llconst_string(_), lt_string).
 const_type(llconst_multi_string(_), lt_string).
 const_type(llconst_code_addr(_), lt_code_ptr).
-const_type(llconst_data_addr(_, _), lt_data_ptr).
+const_type(llconst_data_addr(_), lt_data_ptr).
+const_type(llconst_data_addr_word_offset(_, _), lt_data_ptr).
 
 unop_return_type(tag, lt_word).
 unop_return_type(strip_tag, lt_word).

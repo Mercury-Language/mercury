@@ -2724,7 +2724,8 @@ replace_labels_rval_const(Const0, Const, ReplMap) :-
         ; Const0 = llconst_float(_)
         ; Const0 = llconst_string(_)
         ; Const0 = llconst_multi_string(_)
-        ; Const0 = llconst_data_addr(_, _)
+        ; Const0 = llconst_data_addr(_)
+        ; Const0 = llconst_data_addr_word_offset(_, _)
         ),
         Const = Const0
     ;

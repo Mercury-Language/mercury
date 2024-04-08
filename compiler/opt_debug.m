@@ -496,16 +496,14 @@ dump_const(MaybeProcLabel, Const) = Str :-
         Str = "code_addr_const(" ++
             dump_code_addr(MaybeProcLabel, CodeAddr) ++ ")"
     ;
-        Const = llconst_data_addr(DataId, MaybeOffset),
+        Const = llconst_data_addr(DataId),
         DataIdStr = dump_data_id(DataId),
-        (
-            MaybeOffset = no,
-            Str = "data_addr_const(" ++ DataIdStr ++ ")"
-        ;
-            MaybeOffset = yes(Offset),
-            Str = "data_addr_const(" ++ DataIdStr ++ ", "
-                ++ int_to_string(Offset) ++ ")"
-        )
+        Str = "data_addr_const(" ++ DataIdStr ++ ")"
+    ;
+        Const = llconst_data_addr_word_offset(DataId, Offset),
+        DataIdStr = dump_data_id(DataId),
+        Str = "data_addr_const_word_offset(" ++ DataIdStr ++ ", "
+            ++ int_to_string(Offset) ++ ")"
     ).
 
 dump_data_id(DataId) = Str :-

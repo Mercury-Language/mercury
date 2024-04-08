@@ -1168,21 +1168,22 @@ short_circuit_labels_const(InstrMap, RvalConst0, RvalConst) :-
     (
         ( RvalConst0 = llconst_true
         ; RvalConst0 = llconst_false
-        ; RvalConst0 = llconst_int(_I)
-        ; RvalConst0 = llconst_uint(_U)
-        ; RvalConst0 = llconst_int8(_I8)
-        ; RvalConst0 = llconst_uint8(_U8)
-        ; RvalConst0 = llconst_int16(_I16)
-        ; RvalConst0 = llconst_uint16(_U16)
-        ; RvalConst0 = llconst_int32(_I32)
-        ; RvalConst0 = llconst_uint32(_U32)
-        ; RvalConst0 = llconst_int64(_I64)
-        ; RvalConst0 = llconst_uint64(_U64)
-        ; RvalConst0 = llconst_foreign(_V, _T)
-        ; RvalConst0 = llconst_float(_F)
-        ; RvalConst0 = llconst_string(_S)
-        ; RvalConst0 = llconst_multi_string(_S)
-        ; RvalConst0 = llconst_data_addr(_D, _O)
+        ; RvalConst0 = llconst_int(_)
+        ; RvalConst0 = llconst_uint(_)
+        ; RvalConst0 = llconst_int8(_)
+        ; RvalConst0 = llconst_uint8(_)
+        ; RvalConst0 = llconst_int16(_)
+        ; RvalConst0 = llconst_uint16(_)
+        ; RvalConst0 = llconst_int32(_)
+        ; RvalConst0 = llconst_uint32(_)
+        ; RvalConst0 = llconst_int64(_)
+        ; RvalConst0 = llconst_uint64(_)
+        ; RvalConst0 = llconst_foreign(_, _)
+        ; RvalConst0 = llconst_float(_)
+        ; RvalConst0 = llconst_string(_)
+        ; RvalConst0 = llconst_multi_string(_)
+        ; RvalConst0 = llconst_data_addr(_)
+        ; RvalConst0 = llconst_data_addr_word_offset(_, _)
         ),
         RvalConst = RvalConst0
     ;

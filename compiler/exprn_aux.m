@@ -116,7 +116,8 @@ const_is_constant(Const, ExprnOpts, IsConst) :-
         ; Const = llconst_foreign(_, _)
         ; Const = llconst_string(_)
         ; Const = llconst_multi_string(_)
-        ; Const = llconst_data_addr(_, _)
+        ; Const = llconst_data_addr(_)
+        ; Const = llconst_data_addr_word_offset(_, _)
         ),
         IsConst = yes
     ;
@@ -867,7 +868,7 @@ rval_addrs(Rval, CodeAddrs, DataIds) :-
         ( if Const = llconst_code_addr(CodeAddress) then
             CodeAddrs = [CodeAddress],
             DataIds = []
-        else if Const = llconst_data_addr(DataId, _) then
+        else if Const = llconst_data_addr(DataId) then
             CodeAddrs = [],
             DataIds = [DataId]
         else

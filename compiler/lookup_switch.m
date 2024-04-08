@@ -510,7 +510,7 @@ generate_simple_int_lookup_switch(IndexRval, StoreMap, StartVal, EndVal,
             cord.init, VectorRvalsCord),
         VectorRvals = cord.list(VectorRvalsCord),
         add_vector_static_cell(OutTypes, VectorRvals, VectorAddr, !CI),
-        VectorAddrRval = const(llconst_data_addr(VectorAddr, no)),
+        VectorAddrRval = const(llconst_data_addr(VectorAddr)),
 
         % Generate code to look up each of the variables in OutVars in its slot
         % in the table row IndexRval (which will be row VarRval - StartVal).
@@ -611,9 +611,9 @@ generate_several_soln_int_lookup_switch(CaseConstsSeveralLlds, IndexRval,
     MainRowTypes = [lt_int(int_type_int), lt_int(int_type_int) | OutTypes],
     list.length(MainRowTypes, MainNumColumns),
     add_vector_static_cell(MainRowTypes, MainRows, MainVectorAddr, !CI),
-    MainVectorAddrRval = const(llconst_data_addr(MainVectorAddr, no)),
+    MainVectorAddrRval = const(llconst_data_addr(MainVectorAddr)),
     add_vector_static_cell(OutTypes, LaterSolnArray, LaterVectorAddr, !CI),
-    LaterVectorAddrRval = const(llconst_data_addr(LaterVectorAddr, no)),
+    LaterVectorAddrRval = const(llconst_data_addr(LaterVectorAddr)),
 
     % Since we release BaseReg only after the calls to generate_branch_end,
     % we must make sure that generate_branch_end won't want to overwrite
@@ -1029,7 +1029,7 @@ generate_bit_vec(CaseVals, Start, WordBits, Args, BitVec, !CI) :-
     map.to_assoc_list(BitMap, WordVals),
     generate_bit_vec_args(WordVals, 0, Args),
     add_scalar_static_cell_natural_types(Args, DataAddr, !CI),
-    BitVec = const(llconst_data_addr(DataAddr, no)).
+    BitVec = const(llconst_data_addr(DataAddr)).
 
 :- pred generate_bit_vec_2(assoc_list(int, T)::in, int::in, int::in,
     map(int, int)::in, map(int, int)::out) is det.

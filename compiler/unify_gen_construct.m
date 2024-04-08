@@ -157,13 +157,13 @@ generate_construction_unification(LHSVar, ConsId, RHSVars, ArgModes,
                 uint16.det_from_int(TypeArity)),
             DataId = rtti_data_id(ctor_rtti_id(RttiTypeCtor,
                 type_ctor_type_ctor_info)),
-            ConstRval = const(llconst_data_addr(DataId, no))
+            ConstRval = const(llconst_data_addr(DataId))
         ;
             ConsTag = base_typeclass_info_tag(ModuleName, ClassId, Instance),
             TCName = generate_class_name(ClassId),
             DataId = rtti_data_id(tc_rtti_id(TCName,
                 type_class_base_typeclass_info(ModuleName, Instance))),
-            ConstRval = const(llconst_data_addr(DataId, no))
+            ConstRval = const(llconst_data_addr(DataId))
         ;
             ConsTag = deep_profiling_proc_layout_tag(PredId, ProcId),
             RttiProcLabel = make_rtti_proc_label(ModuleInfo, PredId, ProcId),
@@ -175,17 +175,17 @@ generate_construction_unification(LHSVar, ConsId, RHSVars, ArgModes,
             ),
             ProcKind = proc_layout_proc_id(UserOrUCI),
             DataId = layout_id(proc_layout(RttiProcLabel, ProcKind)),
-            ConstRval = const(llconst_data_addr(DataId, no))
+            ConstRval = const(llconst_data_addr(DataId))
         ;
             ConsTag = tabling_info_tag(PredId, ProcId),
             ProcLabel = make_proc_label(ModuleInfo, PredId, ProcId),
             DataId = proc_tabling_data_id(ProcLabel, tabling_info),
-            ConstRval = const(llconst_data_addr(DataId, no))
+            ConstRval = const(llconst_data_addr(DataId))
         ;
             ConsTag = table_io_entry_tag(PredId, ProcId),
             PredProcId = proc(PredId, ProcId),
             DataId = layout_slot_id(table_io_entry_id, PredProcId),
-            ConstRval = const(llconst_data_addr(DataId, no))
+            ConstRval = const(llconst_data_addr(DataId))
         ),
         assign_const_to_var(LHSVar, ConstRval, !.CI, !CLD),
         Code = empty
@@ -978,8 +978,7 @@ generate_ground_term_conjunct(ModuleInfo, ExprnOpts, Goal,
             unexpected($pred, "remote_args_ctor")
         ),
         add_scalar_static_cell(AllRHSTypedRvals, DataAddr, !StaticCellInfo),
-        MaybeOffset = no,
-        CellPtrConst = const(llconst_data_addr(DataAddr, MaybeOffset)),
+        CellPtrConst = const(llconst_data_addr(DataAddr)),
         LHSRval = mkword(Ptag, CellPtrConst),
         ActiveGroundTerm = typed_rval(LHSRval, lt_data_ptr),
         map.det_insert(LHSVar, ActiveGroundTerm, !ActiveMap)
@@ -1208,8 +1207,7 @@ generate_const_struct_rval(ModuleInfo, UnboxedFloats, UnboxedInt64s,
             unexpected($pred, "remote_args_ctor")
         ),
         add_scalar_static_cell(RHSTypedRvals, DataAddr, !StaticCellInfo),
-        MaybeOffset = no,
-        CellPtrConst = const(llconst_data_addr(DataAddr, MaybeOffset)),
+        CellPtrConst = const(llconst_data_addr(DataAddr)),
         Rval = mkword(Ptag, CellPtrConst),
         TypedRval = typed_rval(Rval, lt_data_ptr)
     ;
@@ -1412,7 +1410,7 @@ generate_const_struct_arg_tag(UnboxedFloats, UnboxedInt64s,
             uint16.det_from_int(TypeArity)),
         DataId = rtti_data_id(ctor_rtti_id(RttiTypeCtor,
             type_ctor_type_ctor_info)),
-        Rval = const(llconst_data_addr(DataId, no)),
+        Rval = const(llconst_data_addr(DataId)),
         Type = lt_data_ptr,
         TypedRval = typed_rval(Rval, Type)
     ;
@@ -1420,7 +1418,7 @@ generate_const_struct_arg_tag(UnboxedFloats, UnboxedInt64s,
         TCName = generate_class_name(ClassId),
         DataId = rtti_data_id(tc_rtti_id(TCName,
             type_class_base_typeclass_info(ModuleName, Instance))),
-        Rval = const(llconst_data_addr(DataId, no)),
+        Rval = const(llconst_data_addr(DataId)),
         Type = lt_data_ptr,
         TypedRval = typed_rval(Rval, Type)
     ;

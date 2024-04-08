@@ -853,10 +853,7 @@ var_locn_assign_lval_to_var(Var, Lval0, StaticCellInfo, Code, !VLI) :-
         ( if
             MaybeConstBaseVarRval = yes(BaseVarRval),
             BaseVarRval = mkword(Ptag, BaseConst),
-            BaseConst = const(llconst_data_addr(DataAddr, MaybeBaseOffset)),
-            % XXX We could drop the MaybeBaseOffset = no condition,
-            % but this would require more complex code below.
-            MaybeBaseOffset = no,
+            BaseConst = const(llconst_data_addr(DataAddr)),
             search_scalar_static_cell_offset(StaticCellInfo, DataAddr, Offset,
                 SelectedArgRval)
         then
@@ -1045,7 +1042,13 @@ var_locn_assign_cell_to_var(ExprnOpts, Var, ReserveWordAtStart,
         cell_is_constant(VarStateMap, ExprnOpts, CellArgs, TypedRvals)
     then
         add_scalar_static_cell(TypedRvals, DataAddr, !StaticCellInfo),
-        CellPtrConst = const(llconst_data_addr(DataAddr, MaybeOffset)),
+        (
+            MaybeSize = yes(_),
+            CellPtrConst = const(llconst_data_addr_word_offset(DataAddr, 1))
+        ;
+            MaybeSize = no,
+            CellPtrConst = const(llconst_data_addr(DataAddr))
+        ),
         CellPtrRval = mkword(Ptag, CellPtrConst),
         var_locn_assign_const_to_var(ExprnOpts, Var, CellPtrRval, !VLI),
         Code = empty

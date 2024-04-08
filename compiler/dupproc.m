@@ -431,7 +431,8 @@ apply_dup_proc_map_in_rval_const(Const, StdConst, DupProcMap) :-
         ; Const = llconst_float(_)
         ; Const = llconst_string(_)
         ; Const = llconst_multi_string(_)
-        ; Const = llconst_data_addr(_, _)
+        ; Const = llconst_data_addr(_)
+        ; Const = llconst_data_addr_word_offset(_, _)
         ),
         StdConst = Const
     ;

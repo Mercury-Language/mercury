@@ -723,7 +723,9 @@ output_record_rval_decls_format(Info, Stream, Rval, FirstIndent, LaterIndent,
             output_record_code_addr_decls_format(Info, Stream, CodeAddress,
                 FirstIndent, LaterIndent, !N, !DeclSet, !IO)
         ;
-            Const = llconst_data_addr(DataId, _),
+            ( Const = llconst_data_addr(DataId)
+            ; Const = llconst_data_addr_word_offset(DataId, _)
+            ),
             output_record_data_id_decls_format(Info, Stream, DataId,
                 FirstIndent, LaterIndent, !N, !DeclSet, !IO)
         ;
@@ -1002,7 +1004,7 @@ output_rval(Info, Rval, Stream, !IO) :-
     ;
         Rval = mkword(ptag(PtagUInt8), SubRval),
         ( if
-            SubRval = const(llconst_data_addr(DataId, no)),
+            SubRval = const(llconst_data_addr(DataId)),
             DataId = scalar_common_data_id(type_num(TypeNum), CellNum)
         then
             io.format(Stream, "MR_TAG_COMMON(%u, %d, %d)",
@@ -1168,42 +1170,40 @@ output_rval_const(Info, Const, Stream, !IO) :-
         Const = llconst_code_addr(CodeAddress),
         output_code_addr(Stream, CodeAddress, !IO)
     ;
-        Const = llconst_data_addr(DataId, MaybeOffset),
+        Const = llconst_data_addr(DataId),
         % Data addresses are all assumed to be of type `MR_Word *'; we need to
         % cast them here to avoid type errors. The offset is also in MR_Words.
-        (
-            MaybeOffset = no,
-            % The tests for special cases below increase the runtime of the
-            % compiler very slightly, but the use of shorter names reduces
-            % the size of the generated C source file, which has a
-            % considerably longer lifetime. In debugging grades, the
-            % file size difference can be very substantial.
-            ( if
-                DataId = scalar_common_data_id(type_num(TypeNum), CellNum)
-            then
-                io.format(Stream, "MR_COMMON(%d, %d)",
-                    [i(TypeNum), i(CellNum)], !IO)
-            else if
-                DataId = rtti_data_id(RttiId),
-                rtti_id_emits_type_ctor_info(RttiId, Ctor),
-                Ctor = rtti_type_ctor(Module, Name, Arity),
-                sym_name_doesnt_need_mangling(Module),
-                name_doesnt_need_mangling(Name)
-            then
-                output_type_ctor_addr(Stream, Module, Name, Arity, !IO)
-            else
-                output_llds_type_cast(Stream, lt_data_ptr, !IO),
-                output_data_id_addr(Info, Stream, DataId, !IO)
-            )
-        ;
-            MaybeOffset = yes(Offset),
-            io.write_string(Stream, "((", !IO),
+        %
+        % The tests for special cases below increase the runtime of the
+        % compiler very slightly, but the use of shorter names reduces
+        % the size of the generated C source file, which has a
+        % considerably longer lifetime. In debugging grades, the
+        % file size difference can be very substantial.
+        ( if
+            DataId = scalar_common_data_id(type_num(TypeNum), CellNum)
+        then
+            io.format(Stream, "MR_COMMON(%d, %d)",
+                [i(TypeNum), i(CellNum)], !IO)
+        else if
+            DataId = rtti_data_id(RttiId),
+            rtti_id_emits_type_ctor_info(RttiId, Ctor),
+            Ctor = rtti_type_ctor(Module, Name, Arity),
+            sym_name_doesnt_need_mangling(Module),
+            name_doesnt_need_mangling(Name)
+        then
+            output_type_ctor_addr(Stream, Module, Name, Arity, !IO)
+        else
             output_llds_type_cast(Stream, lt_data_ptr, !IO),
-            output_data_id_addr(Info, Stream, DataId, !IO),
-            io.write_string(Stream, ") + ", !IO),
-            io.write_int(Stream, Offset, !IO),
-            io.write_string(Stream, ")", !IO)
+            output_data_id_addr(Info, Stream, DataId, !IO)
         )
+    ;
+        Const = llconst_data_addr_word_offset(DataId, Offset),
+        io.write_string(Stream, "((", !IO),
+        output_llds_type_cast(Stream, lt_data_ptr, !IO),
+        output_data_id_addr(Info, Stream, DataId, !IO),
+        io.write_string(Stream, ") + ", !IO),
+        io.write_int(Stream, Offset, !IO),
+        io.write_string(Stream, ")", !IO)
     ).
 
 :- pred output_rval_binop(io.text_output_stream::in, llds_out_info::in,

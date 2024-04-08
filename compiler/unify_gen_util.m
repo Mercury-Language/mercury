@@ -322,7 +322,8 @@ is_zero_const(Const) = IsZero :-
         ; Const = llconst_string(_)
         ; Const = llconst_multi_string(_)
         ; Const = llconst_code_addr(_)
-        ; Const = llconst_data_addr(_, _)
+        ; Const = llconst_data_addr(_)
+        ; Const = llconst_data_addr_word_offset(_, _)
         ),
         IsZero = is_not_zero_const
     ).
