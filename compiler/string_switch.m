@@ -138,9 +138,6 @@ generate_string_trie_jump_switch(VarRval, VarName, TaggedCases,
     BranchStart = JumpInfo0 ^ stsij_branch_start,
     Params = represent_params(VarName, SwitchGoalInfo, CodeModel, BranchStart,
         EndLabel),
-    CommentCode = singleton(
-        llds_instr(comment("string trie jump switch"), "")
-    ),
 
     % Generate code for the cases, and remember the label of each case.
     map.init(CaseIdToLabelMap0),
@@ -163,12 +160,10 @@ generate_string_trie_jump_switch(VarRval, VarName, TaggedCases,
     ),
     FailCode = JumpInfo ^ stsij_fail_code,
 
-    EndLabelCode = singleton(
-        llds_instr(label(EndLabel), "end of string trie string")
-    ),
-
-    Code = CommentCode ++ TrieCode ++ CasesCode ++
-        FailLabelCode ++ FailCode ++ EndLabelCode.
+    MainCode = TrieCode ++ CasesCode ++ FailLabelCode ++ FailCode,
+    SwitchKindStr = "string trie jump switch",
+    add_switch_kind_comment_and_end_label(SwitchKindStr, EndLabel,
+        MainCode, Code).
 
 :- pred represent_tagged_cases_in_string_trie_switch(represent_params::in,
     list(tagged_case)::in, map(case_id, label)::in, map(case_id, label)::out,
@@ -549,12 +544,10 @@ generate_string_trie_simple_lookup_switch(LookupInfo, CaseValues,
     set_liveness_and_end_branch(StoreMap, Liveness, !MaybeEnd, BranchEndCode,
         !.CLD),
 
-    EndLabelCode = singleton(
-        llds_instr(label(EndLabel),
-            "end of simple trie string lookup switch")
-    ),
-    MatchCode = SetBaseRegCode ++ BranchEndCode ++ EndLabelCode,
-    Code = SetAndCheckCaseNumCode ++ MatchCode.
+    MainCode = SetAndCheckCaseNumCode ++ SetBaseRegCode ++ BranchEndCode,
+    SwitchKindStr = "string trie single soln lookup switch",
+    add_switch_kind_comment_and_end_label(SwitchKindStr, EndLabel,
+        MainCode, Code).
 
 :- pred construct_string_trie_simple_lookup_vector(
     assoc_list(case_id, list(rval))::in, int::in,
@@ -585,10 +578,6 @@ generate_string_trie_several_soln_lookup_switch(LookupInfo,
         CaseConstsSeveralLlds, CaseIdToValuesListAL,
         OutVars, OutTypes, Liveness, EndLabel, StoreMap,
         SetAndCheckCaseNumCode, Code, !MaybeEnd, !CI, !.CLD) :-
-    CommentCode = singleton(
-        llds_instr(comment("string trie multi soln lookup switch"), "")
-    ),
-
     NumPrevColumns = 0,
     MainRowTypes = [lt_int(int_type_int), lt_int(int_type_int) | OutTypes],
 
@@ -620,13 +609,11 @@ generate_string_trie_several_soln_lookup_switch(LookupInfo,
         [SeveralSolnsCaseCount - kind_several_solns],
         NumPrevColumns, OutVars, EndLabel, StoreMap, Liveness, BaseRegLval,
         LaterTableAddrRval, LookupResultsCode, !MaybeEnd, !CI, !.CLD),
-    EndLabelCode = singleton(
-        llds_instr(label(EndLabel),
-            "end of string trie multi soln lookup switch")
-    ),
 
-    Code = CommentCode ++ SetAndCheckCaseNumCode ++ SetBaseRegCode ++
-        LookupResultsCode ++ EndLabelCode.
+    MainCode = SetAndCheckCaseNumCode ++ SetBaseRegCode ++ LookupResultsCode,
+    SwitchKindStr = "string trie multi soln lookup switch",
+    add_switch_kind_comment_and_end_label(SwitchKindStr, EndLabel,
+        MainCode, Code).
 
 :- pred construct_string_trie_several_soln_lookup_vector(int::in,
     assoc_list(case_id, soln_consts(rval))::in, int::in,
@@ -1243,7 +1230,7 @@ init_string_hash_switch_info(CanFail, Info, !CI, !.CLD) :-
 
 generate_string_hash_switch_search(Info, VarRval, TableAddrRval,
         ArrayElemType, NumColumns, HashOp, HashMask, NumCollisions,
-        EndLabel, SwitchKindStr, CasesCode, MatchCode, Code) :-
+        EndLabel, KindStr, CasesCode, MatchCode, Code) :-
     SlotReg = Info ^ shsi_slot_reg,
     RowStartReg = Info ^ shsi_row_start_reg,
     StringReg = Info ^ shsi_string_reg,
@@ -1346,18 +1333,11 @@ generate_string_hash_switch_search(Info, VarRval, TableAddrRval,
                     "handle the failure of the table search")
             ])
     ),
-    string.format("string hash %s switch",
-        [s(SwitchKindStr)], StartComment),
-    string.format("end of string hash %s switch",
-        [s(SwitchKindStr)], EndLabelComment),
-    StartCommentCode = singleton(
-        llds_instr(comment(StartComment), "")
-    ),
-    EndLabelCode = singleton(
-        llds_instr(label(EndLabel), EndLabelComment)
-    ),
-    Code = StartCommentCode ++ HashSearchCode ++ FailCode ++
-        CasesCode ++ EndLabelCode.
+
+    MainCode = HashSearchCode ++ FailCode ++ CasesCode,
+    string.format("string hash %s switch", [s(KindStr)], SwitchKindStr),
+    add_switch_kind_comment_and_end_label(SwitchKindStr, EndLabel,
+        MainCode, Code).
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -1369,9 +1349,6 @@ generate_string_binary_jump_switch(VarRval, VarName, TaggedCases,
     BranchStart = BinarySwitchInfo ^ sbsi_branch_start,
     Params = represent_params(VarName, SwitchGoalInfo, CodeModel, BranchStart,
         EndLabel),
-    CommentCode = singleton(
-        llds_instr(comment("string binary jump switch"), "")
-    ),
 
     % Compute and generate the binary search table.
     map.init(CaseLabelMap0),
@@ -1410,14 +1387,12 @@ generate_string_binary_jump_switch(VarRval, VarName, TaggedCases,
             "jump to the matching case")
     ),
 
-    % Generate the code for the cases.
+    % Generate the code for the cases, and put it all together.
     add_not_yet_included_cases(CasesCode, CaseLabelMap, _),
-    EndLabelCode = singleton(
-        llds_instr(label(EndLabel), "end of binary string switch")
-    ),
-
-    Code = CommentCode ++ BinarySearchCode ++ ComputedGotoCode ++
-        CasesCode ++ EndLabelCode.
+    MainCode = BinarySearchCode ++ ComputedGotoCode ++ CasesCode,
+    SwitchKindStr = "string binary jump switch",
+    add_switch_kind_comment_and_end_label(SwitchKindStr, EndLabel,
+        MainCode, Code).
 
 :- pred gen_string_binary_jump_slots(assoc_list(string, label)::in,
     cord(list(rval))::in, cord(list(rval))::out,
@@ -1476,9 +1451,6 @@ generate_string_binary_simple_lookup_switch(VarRval, CaseValues,
     % update them all.
 
     init_string_binary_switch_info(CanFail, BinarySwitchInfo, !CI, !.CLD),
-    CommentCode = singleton(
-        llds_instr(comment("string binary simple lookup switch"), "")
-    ),
 
     list.length(CaseValues, TableSize),
     list.length(OutVars, NumOutVars),
@@ -1518,12 +1490,11 @@ generate_string_binary_simple_lookup_switch(VarRval, CaseValues,
     % slot last would yield the wrong liveness.
     set_liveness_and_end_branch(StoreMap, Liveness, no, _MaybeEnd,
         BranchEndCode, !.CLD),
-    EndLabelCode = singleton(
-        llds_instr(label(EndLabel),
-            "end of string binary single soln lookup switch")
-    ),
-    Code = CommentCode ++ BinarySearchCode ++ SetBaseRegCode ++
-        BranchEndCode ++ EndLabelCode.
+
+    MainCode = BinarySearchCode ++ SetBaseRegCode ++ BranchEndCode,
+    SwitchKindStr = "string binary single soln lookup switch",
+    add_switch_kind_comment_and_end_label(SwitchKindStr, EndLabel,
+        MainCode, Code).
 
 :- pred construct_string_binary_simple_lookup_vector(
     assoc_list(string, list(rval))::in,
@@ -1555,9 +1526,6 @@ generate_string_binary_several_soln_lookup_switch(CaseConstsSeveralLlds,
     % update them all.
 
     init_string_binary_switch_info(CanFail, BinarySwitchInfo, !CI, !.CLD),
-    CommentCode = singleton(
-        llds_instr(comment("string binary multi soln lookup switch"), "")
-    ),
 
     list.length(CaseSolns, MainTableSize),
     list.length(OutVars, NumOutVars),
@@ -1608,12 +1576,11 @@ generate_string_binary_several_soln_lookup_switch(CaseConstsSeveralLlds,
         NumPrevColumns, OutVars, EndLabel, StoreMap, Liveness,
         BaseRegLval, LaterTableAddrRval, LookupResultsCode,
         !MaybeEnd, !CI, !.CLD),
-    EndLabelCode = singleton(
-        llds_instr(label(EndLabel),
-            "end of string binary multi soln lookup switch")
-    ),
-    Code = CommentCode ++ BinarySearchCode ++ SetBaseRegCode ++
-        LookupResultsCode ++ EndLabelCode.
+
+    MainCode = BinarySearchCode ++ SetBaseRegCode ++ LookupResultsCode,
+    SwitchKindStr = "string binary multi soln lookup switch",
+    add_switch_kind_comment_and_end_label(SwitchKindStr, EndLabel,
+        MainCode, Code).
 
 :- pred construct_string_binary_several_soln_lookup_vector(
     assoc_list(string, soln_consts(rval))::in, int::in,

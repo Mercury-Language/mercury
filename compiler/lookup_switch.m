@@ -291,6 +291,7 @@
 :- import_module libs.
 :- import_module libs.globals.
 :- import_module libs.options.
+:- import_module ll_backend.code_util.
 :- import_module ll_backend.continuation_info.
 :- import_module ll_backend.global_data.
 :- import_module ll_backend.lookup_util.
@@ -489,38 +490,31 @@ generate_int_lookup_switch(VarRval, LookupSwitchInfo, EndLabel, StoreMap,
 
     (
         CaseConsts = all_one_soln(CaseIdToValuesMap),
-        Comment = cord.singleton(
-            llds_instr(comment("simple lookup switch"), "")
-        ),
         compose_maps(KeyToCaseMap, CaseIdToValuesMap, KeyToSolnsMap),
         map.to_assoc_list(KeyToSolnsMap, KeySolnsAL),
         generate_simple_int_lookup_switch(IndexRval, StoreMap,
             StartVal, EndVal, KeySolnsAL, OutVars, OutTypes,
-            NeedBitVecCheck, Liveness, RestCode, !CI, CLD)
+            NeedBitVecCheck, Liveness, RangeCheckCode, Code, !CI, CLD)
     ;
         CaseConsts = some_several_solns(CaseIdToValuesListMap,
             CaseConstsSeveralLlds),
-        Comment = cord.singleton(
-            llds_instr(comment("several soln lookup switch"), "")
-        ),
         compose_maps(KeyToCaseMap, CaseIdToValuesListMap, KeyToSolnsListMap),
         map.to_assoc_list(KeyToSolnsListMap, KeySolnsListAL),
         generate_several_soln_int_lookup_switch(CaseConstsSeveralLlds,
             IndexRval, EndLabel, StoreMap, StartVal, EndVal, KeySolnsListAL,
-            OutVars, OutTypes, NeedBitVecCheck, Liveness, !MaybeEnd, RestCode,
-            !CI, CLD)
-    ),
-    Code = Comment ++ RangeCheckCode ++ RestCode.
+            OutVars, OutTypes, NeedBitVecCheck, Liveness,
+            RangeCheckCode, Code, !MaybeEnd, !CI, CLD)
+    ).
 
 :- pred generate_simple_int_lookup_switch(rval::in, abs_store_map::in,
     int::in, int::in, assoc_list(int, list(rval))::in,
     list(prog_var)::in, list(llds_type)::in, need_bit_vec_check::in,
-    set_of_progvar::in, llds_code::out,
+    set_of_progvar::in, llds_code::in, llds_code::out,
     code_info::in, code_info::out, code_loc_dep::in) is det.
 
 generate_simple_int_lookup_switch(IndexRval, StoreMap, StartVal, EndVal,
-        CaseValues, OutVars, OutTypes, NeedBitVecCheck, Liveness, Code,
-        !CI, !.CLD) :-
+        CaseValues, OutVars, OutTypes, NeedBitVecCheck, Liveness,
+        RangeCheckCode, Code, !CI, !.CLD) :-
     (
         NeedBitVecCheck = need_bit_vec_check,
         generate_bitvec_test(IndexRval, CaseValues, StartVal, EndVal,
@@ -565,7 +559,12 @@ generate_simple_int_lookup_switch(IndexRval, StoreMap, StartVal, EndVal,
     % last would yield the wrong liveness.
     set_liveness_and_end_branch(StoreMap, Liveness, no, _MaybeEnd,
         BranchEndCode, !.CLD),
-    Code = CheckBitVecCode ++ SetBaseRegCode ++ BranchEndCode.
+    CommentCode = cord.singleton(
+        llds_instr(comment("int single soln lookup switch"), "")
+    ),
+    % Note: we do not need an end label.
+    Code = CommentCode ++ RangeCheckCode ++ CheckBitVecCode ++
+        SetBaseRegCode ++ BranchEndCode.
 
 %---------------------------------------------------------------------------%
 
@@ -596,13 +595,13 @@ construct_simple_int_lookup_vector([Index - Rvals | Rest0], CurIndex, OutTypes,
     assoc_list(int, soln_consts(rval))::in,
     list(prog_var)::in, list(llds_type)::in,
     need_bit_vec_check::in, set_of_progvar::in,
-    branch_end::in, branch_end::out, llds_code::out,
+    llds_code::in, llds_code::out, branch_end::in, branch_end::out,
     code_info::in, code_info::out, code_loc_dep::in) is det.
 
 generate_several_soln_int_lookup_switch(CaseConstsSeveralLlds, IndexRval,
         EndLabel, StoreMap, StartVal, EndVal, CaseSolns,
-        OutVars, OutTypes, NeedBitVecCheck, Liveness, !MaybeEnd, Code,
-        !CI, !.CLD) :-
+        OutVars, OutTypes, NeedBitVecCheck, Liveness, RangeCheckCode, Code,
+        !MaybeEnd, !CI, !.CLD) :-
     % If there are no output variables, then how can the individual solutions
     % differ from each other?
     expect_not(unify(OutVars, []), $pred, "no OutVars"),
@@ -622,13 +621,7 @@ generate_several_soln_int_lookup_switch(CaseConstsSeveralLlds, IndexRval,
         InitLaterSolnRowNumber, LaterSolnsRowsCord0, LaterSolnsRowsCord,
         0, FailCaseCount, 0, OneSolnCaseCount, 0, SeveralSolnCaseCount),
     LaterSolnsRows = cord.list(LaterSolnsRowsCord),
-    ( if
-        (
-            NeedBitVecCheck = need_bit_vec_check
-        <=>
-            FailCaseCount > 0
-        )
-    then
+    ( if (NeedBitVecCheck = need_bit_vec_check <=> FailCaseCount > 0) then
         true
     else
         unexpected($pred, "bad FailCaseCount")
@@ -652,11 +645,10 @@ generate_several_soln_int_lookup_switch(CaseConstsSeveralLlds, IndexRval,
         NumPrevColumns, OutVars, EndLabel, StoreMap, Liveness,
         BaseRegLval, LaterSolnsTableAddrRval, KindsCode,
         !MaybeEnd, !CI, !.CLD),
-    EndLabelCode = cord.singleton(
-        llds_instr(label(EndLabel),
-            "end of int several soln lookup switch")
-    ),
-    Code = SetBaseRegCode ++ KindsCode ++ EndLabelCode.
+    MainCode = RangeCheckCode ++ SetBaseRegCode ++ KindsCode,
+    SwitchKindStr = "int multi soln lookup switch",
+    add_switch_kind_comment_and_end_label(SwitchKindStr, EndLabel,
+        MainCode, Code).
 
 %---------------------------------------------------------------------------%
 
