@@ -85,8 +85,8 @@
 :- type interval_id
     --->    interval_id(int).
 
-:- type branch_end_info
-    --->    branch_end_info(
+:- type interval_branch_end
+    --->    interval_branch_end(
                 flushed_after_branch    :: set_of_progvar,
                 accessed_after_branch   :: set_of_progvar,
                 interval_after_branch   :: interval_id
@@ -119,7 +119,7 @@
                 ii_flushed_later        :: set_of_progvar,
                 ii_accessed_later       :: set_of_progvar,
                 ii_branch_resume_map    :: map(goal_id, resume_save_status),
-                ii_branch_end_map       :: map(goal_id, branch_end_info),
+                ii_branch_end_map       :: map(goal_id, interval_branch_end),
                 ii_cond_end_map         :: map(goal_id, interval_id),
                 ii_cur_interval         :: interval_id,
                 ii_interval_counter     :: counter,
@@ -551,7 +551,7 @@ reached_branch_end(GoalInfo, MaybeResumeGoal, Construct,
         StartAnchor, EndAnchor, BeforeIntervalId, AfterIntervalId,
         MaybeResumeVars, !IntervalInfo, !Acc) :-
     GoalId = goal_info_get_goal_id(GoalInfo),
-    record_branch_end_info(GoalId, !IntervalInfo),
+    record_branch_end(GoalId, !IntervalInfo),
     ( if
         MaybeResumeGoal = yes(hlds_goal(_ResumeGoalExpr, ResumeGoalInfo)),
         goal_info_maybe_get_resume_point(ResumeGoalInfo, ResumePoint),
@@ -730,16 +730,17 @@ new_interval_id(Id, !IntervalInfo) :-
     !IntervalInfo ^ ii_interval_counter := Counter,
     !IntervalInfo ^ ii_interval_vars := IntervalVars.
 
-:- pred record_branch_end_info(goal_id::in,
+:- pred record_branch_end(goal_id::in,
     interval_info::in, interval_info::out) is det.
 
-record_branch_end_info(GoalId, !IntervalInfo) :-
+record_branch_end(GoalId, !IntervalInfo) :-
     FlushedLater = !.IntervalInfo ^ ii_flushed_later,
     AccessedLater = !.IntervalInfo ^ ii_accessed_later,
     CurInterval = !.IntervalInfo ^ ii_cur_interval,
     BranchEndMap0 = !.IntervalInfo ^ ii_branch_end_map,
-    BranchEndInfo = branch_end_info(FlushedLater, AccessedLater, CurInterval),
-    map.det_insert(GoalId, BranchEndInfo, BranchEndMap0, BranchEndMap),
+    IntervalBranchEnd =
+        interval_branch_end(FlushedLater, AccessedLater, CurInterval),
+    map.det_insert(GoalId, IntervalBranchEnd, BranchEndMap0, BranchEndMap),
     !IntervalInfo ^ ii_branch_end_map := BranchEndMap.
 
 :- pred record_cond_end(goal_id::in, interval_info::in, interval_info::out)
