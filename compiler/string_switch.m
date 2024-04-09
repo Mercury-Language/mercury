@@ -114,7 +114,6 @@
 :- import_module libs.
 :- import_module libs.globals.
 :- import_module ll_backend.code_util.
-:- import_module ll_backend.lookup_util.
 :- import_module ll_backend.switch_case.
 :- import_module parse_tree.set_of_var.
 
@@ -518,7 +517,8 @@ generate_string_trie_simple_lookup_switch(LookupInfo, CaseValues,
         SetAndCheckCaseNumCode, Code, !MaybeEnd, !CI, !.CLD) :-
     (
         OutVars = [],
-        SetBaseRegCode = empty
+        generate_single_soln_table_lookup_code_no_vars(StoreMap, Liveness,
+            LookupCode, !MaybeEnd, !.CLD)
     ;
         OutVars = [_ | _],
         NumPrevColumns = 0,
@@ -532,19 +532,11 @@ generate_string_trie_simple_lookup_switch(LookupInfo, CaseValues,
 
         CaseIdRegLval = LookupInfo ^ stsil_case_id_reg,
         MainRowSelect = main_row_number_reg(lval(CaseIdRegLval), OutTypes),
-        acquire_and_setup_lookup_base_reg(MainTableDataId, StoreMap,
-            MainRowSelect, BaseRegLval, SetBaseRegCode, !CLD),
-
-        record_offset_assigns(OutVars, NumPrevColumns, BaseRegLval, !.CI, !CLD)
+        generate_single_soln_table_lookup_code_some_vars(MainTableDataId,
+            MainRowSelect, NumPrevColumns, OutVars, StoreMap, Liveness,
+            LookupCode, !MaybeEnd, !.CI, !.CLD)
     ),
-
-    % We keep track of what variables are supposed to be live at the end
-    % of cases. We have to do this explicitly because generating a `fail'
-    % slot last would yield the wrong liveness.
-    set_liveness_and_end_branch(StoreMap, Liveness, !MaybeEnd, BranchEndCode,
-        !.CLD),
-
-    MainCode = SetAndCheckCaseNumCode ++ SetBaseRegCode ++ BranchEndCode,
+    MainCode = SetAndCheckCaseNumCode ++ LookupCode,
     SwitchKindStr = "string trie single soln lookup switch",
     add_switch_kind_comment_and_end_label(SwitchKindStr, EndLabel,
         MainCode, Code).
@@ -981,31 +973,22 @@ generate_string_hash_simple_lookup_switch(VarRval, CaseValues,
 
     (
         OutVars = [],
-        SetBaseRegCode = empty
+        generate_single_soln_table_lookup_code_no_vars(StoreMap, Liveness,
+            LookupCode, !MaybeEnd, !.CLD)
     ;
         OutVars = [_ | _],
         RowStartRegLval = HashSwitchInfo ^ shsi_row_start_reg,
         MainRowSelect = main_row_start_offset_reg(lval(RowStartRegLval)),
-        acquire_and_setup_lookup_base_reg(MainTableDataId, StoreMap,
-            MainRowSelect, BaseRegLval, SetBaseRegCode, !CLD),
-
-        record_offset_assigns(OutVars, NumPrevColumns, BaseRegLval, !.CI, !CLD)
+        generate_single_soln_table_lookup_code_some_vars(MainTableDataId,
+            MainRowSelect, NumPrevColumns, OutVars, StoreMap, Liveness,
+            LookupCode, !MaybeEnd, !.CI, !.CLD)
     ),
 
-    % We keep track of what variables are supposed to be live at the end
-    % of cases. We have to do this explicitly because generating a `fail'
-    % slot last would yield the wrong liveness.
-    set_liveness_and_end_branch(StoreMap, Liveness, !MaybeEnd, BranchEndCode,
-        !.CLD),
-
-    GotoEndLabelCode = singleton(
-        llds_instr(goto(code_label(EndLabel)),
-            "go to end of simple hash string lookup switch")
-    ),
-    MatchCode = SetBaseRegCode ++ BranchEndCode ++ GotoEndLabelCode,
+    append_goto_end(EndLabel, LookupCode, LookupGotoEndCode),
     generate_string_hash_switch_search(HashSwitchInfo, VarRval,
         MainTableAddrRval, ArrayElemType, NumColumns, HashOp, HashMask,
-        NumCollisions, EndLabel, "single soln lookup", empty, MatchCode, Code).
+        NumCollisions, EndLabel, "single soln lookup",
+        empty, LookupGotoEndCode, Code).
 
 :- pred construct_string_hash_simple_lookup_vector(int::in, int::in,
     map(int, string_hash_slot(list(rval)))::in, int::in, list(rval)::in,
@@ -1476,23 +1459,18 @@ generate_string_binary_simple_lookup_switch(VarRval, CaseValues,
         BinarySearchCode),
     (
         OutVars = [],
-        SetBaseRegCode = empty
+        generate_single_soln_table_lookup_code_no_vars(StoreMap, Liveness,
+            LookupCode, !MaybeEnd, !.CLD)
     ;
         OutVars = [_ | _],
         MidRegLval = BinarySwitchInfo ^ sbsi_mid_reg,
         MainRowSelect = main_row_number_reg(lval(MidRegLval), MainRowTypes),
-        acquire_and_setup_lookup_base_reg(MainTableDataId, StoreMap,
-            MainRowSelect, BaseRegLval, SetBaseRegCode, !CLD),
-        record_offset_assigns(OutVars, NumPrevColumns, BaseRegLval, !.CI, !CLD)
+        generate_single_soln_table_lookup_code_some_vars(MainTableDataId,
+            MainRowSelect, NumPrevColumns, OutVars, StoreMap, Liveness,
+            LookupCode, !MaybeEnd, !.CI, !.CLD)
     ),
 
-    % We keep track of what variables are supposed to be live at the end
-    % of cases. We have to do this explicitly because generating a `fail'
-    % slot last would yield the wrong liveness.
-    set_liveness_and_end_branch(StoreMap, Liveness, no, _MaybeEnd,
-        BranchEndCode, !.CLD),
-
-    MainCode = BinarySearchCode ++ SetBaseRegCode ++ BranchEndCode,
+    MainCode = BinarySearchCode ++ LookupCode,
     SwitchKindStr = "string binary single soln lookup switch",
     add_switch_kind_comment_and_end_label(SwitchKindStr, EndLabel,
         MainCode, Code).

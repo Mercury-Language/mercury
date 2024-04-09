@@ -214,6 +214,46 @@
 
 %---------------------------------------------------------------------------%
 
+    % generate_single_soln_table_lookup_code_no_vars(StoreMap, Liveness, Code,
+    %   !MaybeEnd, CLD):
+    %
+    % Generate the "lookup code" for lookup switch that has no output
+    % variables. The returned Code will ensure that all live variables
+    % (which could have been bound *before* the switch) get put where
+    % StoreMap says they should be at the end of the switch.
+    %
+    % ZZZ package StoreMap and Liveness together, document them together.
+    %
+:- pred generate_single_soln_table_lookup_code_no_vars(abs_store_map::in,
+    set_of_progvar::in, llds_code::out,
+    branch_end::in, branch_end::out, code_loc_dep::in) is det.
+
+    % generate_single_soln_table_lookup_code_some_vars(TableDataId,
+    %     RowSelect, NumPrevColumns, OutVars, StoreMap, Liveness, Code,
+    %     !MaybeEnd, CI, !.CLD):
+    %
+    % Generate the lookup code for lookup switch that has one or more
+    % output variables. The returned Code will ensure that all live variables,
+    % including OutVars, which should be the output variables of the switch,
+    % get put where StoreMap says they should be at the end of the switch.
+    % We get the values of OutVars from a row in the table identified by
+    % TableDataId. The row is identified by RowSelect. We ignore the first
+    % NumPrevColumns columns in that row, and use the following columns
+    % as the sources of the values of OutVars.
+    %
+:- pred generate_single_soln_table_lookup_code_some_vars(data_id::in,
+    main_table_row_select::in, int::in, list(prog_var)::in,
+    abs_store_map::in, set_of_progvar::in, llds_code::out,
+    branch_end::in, branch_end::out, code_info::in, code_loc_dep::in) is det.
+
+    % append_goto_end(EndLabel, Code0, Code):
+    %
+    % Append a "goto EndLabel" after Code0.
+    %
+:- pred append_goto_end(label::in, llds_code::in, llds_code::out) is det.
+
+%---------------------------------------------------------------------------%
+
 :- type case_kind
     --->    kind_zero_solns
     ;       kind_one_soln
@@ -534,37 +574,33 @@ generate_simple_int_lookup_switch(IndexRval, StoreMap, StartVal, EndVal,
     % This can happen for semidet switches.
     (
         OutVars = [],
-        SetBaseRegCode = empty
+        % ZZZ _MaybeEnd other copies
+        generate_single_soln_table_lookup_code_no_vars(StoreMap, Liveness,
+            LookupCode, no, _MaybeEnd, !.CLD)
     ;
         OutVars = [_ | _],
 
         % Generate the static lookup table for this switch.
         construct_simple_int_lookup_vector(CaseValues, StartVal, OutTypes,
-            cord.init, VectorRvalsCord),
-        VectorRvals = cord.list(VectorRvalsCord),
-        add_vector_static_cell(OutTypes, VectorRvals, VectorDataId, !CI),
+            cord.init, TableRvalsCord),
+        TableRvals = cord.list(TableRvalsCord),
+        add_vector_static_cell(OutTypes, TableRvals, TableDataId, !CI),
 
         % Generate code to look up each of the variables in OutVars in its slot
         % in the table row IndexRval (which will be row VarRval - StartVal).
         % IndexRval has already had StartVal subtracted from it.
         RowSelect = main_row_number_reg(IndexRval, OutTypes),
-        acquire_and_setup_lookup_base_reg(VectorDataId, StoreMap,
-            RowSelect, BaseRegLval, SetBaseRegCode, !CLD),
-
-        record_offset_assigns(OutVars, 0, BaseRegLval, !.CI, !CLD)
+        NumPrevColumns = 0,
+        generate_single_soln_table_lookup_code_some_vars(TableDataId,
+            RowSelect, NumPrevColumns, OutVars, StoreMap, Liveness,
+            LookupCode, no, _MaybeEnd, !.CI, !.CLD)
     ),
 
-    % We keep track of what variables are supposed to be live at the end
-    % of cases. We have to do this explicitly because generating a `fail' slot
-    % last would yield the wrong liveness.
-    set_liveness_and_end_branch(StoreMap, Liveness, no, _MaybeEnd,
-        BranchEndCode, !.CLD),
     CommentCode = cord.singleton(
         llds_instr(comment("int single soln lookup switch"), "")
     ),
     % Note: we do not need an end label.
-    Code = CommentCode ++ RangeCheckCode ++ CheckBitVecCode ++
-        SetBaseRegCode ++ BranchEndCode.
+    Code = CommentCode ++ RangeCheckCode ++ CheckBitVecCode ++ LookupCode.
 
 %---------------------------------------------------------------------------%
 
@@ -682,6 +718,55 @@ acquire_and_setup_lookup_base_reg(MainTableDataId, StoreMap, MainRowSelect,
 
 %---------------------------------------------------------------------------%
 
+generate_single_soln_table_lookup_code_no_vars(StoreMap, Liveness, Code,
+        !MaybeEnd, CLD) :-
+    % ZZZ arg order
+    set_liveness_and_end_branch(StoreMap, Liveness, !MaybeEnd, Code, CLD).
+
+generate_single_soln_table_lookup_code_some_vars(MainTableDataId,
+        MainRowSelect, NumPrevColumns, OutVars, StoreMap, Liveness, LookupCode,
+        !MaybeEnd, CI, !.CLD) :-
+    % The predicates generate_single_soln_table_lookup_code_some_vars and
+    % generate_table_lookup_code_for_kind_one_soln do the same job
+    % in slightly different circumstances. They both implement lookups
+    % that return one solution, i.e. one value bound to each var in OutVars,
+    % where OutVars is not []. generate_single_soln_table_lookup_code_some_vars
+    % does so in a switch in which *all* arms are like that, while
+    % generate_table_lookup_code_for_kind_one_soln does so in a switch
+    % in which some arms return more than one solution.
+    %
+    % The differences between the two predicates come about because
+    % with different kinds of switch arms in the terms of solution
+    % cardinality, generate_table_lookup_code_for_kind_one_soln
+    %
+    % - does not have to set up SetBaseRegCode, that task having been
+    %   done earlier,
+    %
+    % - it does have to start by setting the location-dependent part
+    %   of the code generator state to the branch start, since that state
+    %   could have been by other code, and
+    %
+    % - it always has to add a goto to the end of the switch, since
+    %   it is not guaranteed that the end label will immediately follow
+    %   the code it returns.
+    acquire_and_setup_lookup_base_reg(MainTableDataId, StoreMap,
+        MainRowSelect, BaseRegLval, SetBaseRegCode, !CLD),
+    record_offset_assigns(OutVars, NumPrevColumns, BaseRegLval, CI, !CLD),
+    % We keep track of what variables are supposed to be live at the end
+    % of cases. We have to do this explicitly because generating a `fail'
+    % slot last would yield the wrong liveness.
+    set_liveness_and_end_branch(StoreMap, Liveness, !MaybeEnd,
+        BranchEndCode, !.CLD),
+    LookupCode = SetBaseRegCode ++ BranchEndCode.
+
+append_goto_end(EndLabel, Code0, Code) :-
+    GotoEndCode = singleton(
+        llds_instr(goto(code_label(EndLabel)), "go to end of switch")
+    ),
+    Code = Code0 ++ GotoEndCode.
+
+%---------------------------------------------------------------------------%
+
 generate_multi_soln_table_lookup_code(CaseConstsSeveralLlds,
         CountKind, CountKinds, NumPrevColumns, OutVars, EndLabel, StoreMap,
         Liveness, BaseReg, LaterSolnsTableAddrRval, Code,
@@ -733,7 +818,7 @@ generate_table_lookup_code_for_each_kind(CaseConstsSeveralLlds, Kind, Kinds,
         NumSeveralColumns = 2,
         generate_table_lookup_code_for_kind_one_soln(NumPrevColumns,
             NumSeveralColumns, OutVars, BranchStart, EndLabel, StoreMap,
-            Liveness, BaseReg, KindCode, !MaybeEnd, !CI)
+            Liveness, BaseReg, KindCode, !MaybeEnd, !.CI)
     ;
         Kind = kind_several_solns,
         generate_table_lookup_code_for_kind_several_solns(
@@ -777,27 +862,26 @@ case_kind_to_string(kind_zero_solns) = "kind_zero_solns".
 case_kind_to_string(kind_one_soln) = "kind_one_soln".
 case_kind_to_string(kind_several_solns) = "kind_several_solns".
 
+%---------------------------------------------------------------------------%
+
 :- pred generate_table_lookup_code_for_kind_one_soln(int::in, int::in,
     list(prog_var)::in,
     position_info::in, label::in, abs_store_map::in, set_of_progvar::in,
     lval::in, llds_code::out,
-    branch_end::in, branch_end::out, code_info::in, code_info::out) is det.
+    branch_end::in, branch_end::out, code_info::in) is det.
 
 generate_table_lookup_code_for_kind_one_soln(NumPrevColumns, NumSeveralColumns,
-        OutVars, BranchStart, EndLabel, StoreMap, Liveness, BaseReg, KindCode,
-        !MaybeEnd, !CI) :-
+        OutVars, BranchStart, EndLabel, StoreMap, Liveness, BaseRegLval,
+        KindCode, !MaybeEnd, CI) :-
+    % See the comment in generate_single_soln_table_lookup_code_some_vars.
     some [!CLD] (
-        reset_to_position(BranchStart, !.CI, !:CLD),
+        reset_to_position(BranchStart, CI, !:CLD),
         record_offset_assigns(OutVars, NumPrevColumns + NumSeveralColumns,
-            BaseReg, !.CI, !CLD),
+            BaseRegLval, CI, !CLD),
         set_liveness_and_end_branch(StoreMap, Liveness, !MaybeEnd,
             BranchEndCode, !.CLD)
     ),
-    GotoEndCode = cord.singleton(
-        llds_instr(goto(code_label(EndLabel)),
-            "goto end of switch from one_soln")
-    ),
-    KindCode = BranchEndCode ++ GotoEndCode.
+    append_goto_end(EndLabel, BranchEndCode, KindCode).
 
 :- pred generate_table_lookup_code_for_kind_several_solns(
     case_consts_several_llds::in, int::in, list(prog_var)::in,
