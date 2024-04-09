@@ -14,7 +14,10 @@
 % of the code generator. The other part of the code generator state,
 % the persistent part, is in code_info.m.
 %
-% This file is organized into ten submodules:
+% This file is organized into ten parts, which this module calls "submodules".
+% The parts are not in actual submodules because when this code was originally
+% written (as part of code_info.m), Mercury did not yet support nested modules.
+% The "submodules" are:
 %
 %   - the code_loc_dep structure and its access predicates
 %   - simple wrappers around access predicates
@@ -27,6 +30,9 @@
 %     e.g. garbage collection
 %   - managing stack slots
 %   - support for debugging the code generator itself.
+%
+% The submodule for dealing with failure continuations is by far the largest,
+% accounting for about half this module's lines.
 %
 %---------------------------------------------------------------------------%
 
@@ -312,7 +318,7 @@ set_follow_vars(FollowVars, !CLD) :-
 pre_goal_update(GoalInfo, HasSubGoals, !CLD) :-
     % The liveness pass puts resume_point annotations on some kinds of goals.
     % The parts of the code generator that handle those kinds of goals
-    % should handle the resume point annotation as well; when they do,
+    % should handle the resume_point annotation as well; when they do,
     % they remove the annotation. The following code is a sanity check
     % to make sure that this has in fact been done.
     goal_info_get_resume_point(GoalInfo, ResumePoint),
@@ -329,7 +335,7 @@ pre_goal_update(GoalInfo, HasSubGoals, !CLD) :-
     ;
         MaybeFollowVars = no
     ),
-    % NOTE: We must be careful to apply deaths before births.
+    % NOTE We must be careful to apply deaths before births.
     goal_info_get_pre_deaths(GoalInfo, PreDeaths),
     rem_forward_live_vars(PreDeaths, !CLD),
     maybe_make_vars_forward_dead(PreDeaths, no, !CLD),
@@ -344,13 +350,14 @@ pre_goal_update(GoalInfo, HasSubGoals, !CLD) :-
     ).
 
 post_goal_update(GoalInfo, CI, !CLD) :-
-    % note: we must be careful to apply deaths before births
+    % NOTE We must be careful to apply deaths before births.
     goal_info_get_post_deaths(GoalInfo, PostDeaths),
     rem_forward_live_vars(PostDeaths, !CLD),
     maybe_make_vars_forward_dead(PostDeaths, no, !CLD),
     goal_info_get_post_births(GoalInfo, PostBirths),
     add_forward_live_vars(PostBirths, !CLD),
     make_vars_forward_live(PostBirths, CI, !CLD),
+
     InstMapDelta = goal_info_get_instmap_delta(GoalInfo),
     get_instmap(!.CLD, InstMap0),
     apply_instmap_delta(InstMapDelta, InstMap0, InstMap),
@@ -411,15 +418,15 @@ get_active_temps_data(CI, CLD, Temps) :-
 
 :- type position_info
     --->    position_info(
-                % The location-dependent part of the code_info
+                % The location-dependent part of the code generator state
                 % at a given position.
                 code_loc_dep
             ).
 
 :- type branch_end_info
     --->    branch_end_info(
-                % The code_info at the end of a branch.
-                % code_info
+                % The location-dependent part of the code generator state
+                % at the end of a branch.
                 code_loc_dep
             ).
 
@@ -436,8 +443,8 @@ reset_resume_known(BranchStart, !CLD) :-
     get_fail_info(BranchStartCLD, BranchStartFailInfo),
     get_fail_info(!.CLD, CurFailInfo),
     BranchStartFailInfo = fail_info(_, BSResumeKnown, _, _, _),
-    CurFailInfo = fail_info(CurFailStack, _, CurCurfMaxfr, CurCondEnv,
-        CurHijack),
+    CurFailInfo = fail_info(CurFailStack, _CurResumeKnown, CurCurfMaxfr,
+        CurCondEnv, CurHijack),
     NewFailInfo = fail_info(CurFailStack, BSResumeKnown, CurCurfMaxfr,
         CurCondEnv, CurHijack),
     set_fail_info(NewFailInfo, !CLD).
