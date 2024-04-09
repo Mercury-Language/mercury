@@ -57,7 +57,6 @@
 :- import_module hlds.
 :- import_module hlds.code_model.
 :- import_module hlds.hlds_goal.
-:- import_module hlds.hlds_llds.
 :- import_module ll_backend.code_info.
 :- import_module ll_backend.code_loc_dep.
 :- import_module ll_backend.llds.
@@ -75,7 +74,7 @@
     code_info::in, code_info::out, code_loc_dep::in) is det.
 
 :- pred generate_string_trie_lookup_switch(rval::in,
-    lookup_switch_info(string)::in, can_fail::in, label::in, abs_store_map::in,
+    lookup_switch_info(string)::in, can_fail::in, label::in,
     branch_end::out, llds_code::out, code_info::out) is det.
 
 %---------------------%
@@ -86,7 +85,7 @@
     code_info::in, code_info::out, code_loc_dep::in) is det.
 
 :- pred generate_string_hash_lookup_switch(rval::in,
-    lookup_switch_info(string)::in, can_fail::in, label::in, abs_store_map::in,
+    lookup_switch_info(string)::in, can_fail::in, label::in,
     branch_end::out, llds_code::out, code_info::out) is det.
 
 %---------------------%
@@ -97,7 +96,7 @@
     code_info::in, code_info::out, code_loc_dep::in) is det.
 
 :- pred generate_string_binary_lookup_switch(rval::in,
-    lookup_switch_info(string)::in, can_fail::in, label::in, abs_store_map::in,
+    lookup_switch_info(string)::in, can_fail::in, label::in,
     branch_end::out, llds_code::out, code_info::out) is det.
 
 %---------------------------------------------------------------------------%
@@ -111,11 +110,12 @@
 :- import_module backend_libs.string_encoding.
 :- import_module backend_libs.string_switch_util.
 :- import_module hlds.hlds_data.
+:- import_module hlds.hlds_llds.
 :- import_module libs.
 :- import_module libs.globals.
 :- import_module ll_backend.code_util.
+:- import_module ll_backend.lookup_util.
 :- import_module ll_backend.switch_case.
-:- import_module parse_tree.set_of_var.
 
 :- import_module assoc_list.
 :- import_module cord.
@@ -447,9 +447,9 @@ init_string_trie_switch_info_jump(CanFail, Info, !CI, !.CLD) :-
 %---------------------------------------------------------------------------%
 
 generate_string_trie_lookup_switch(VarRval, LookupSwitchInfo, CanFail,
-        EndLabel, StoreMap, !:MaybeEnd, Code, !:CI) :-
+        EndLabel, !:MaybeEnd, Code, !:CI) :-
     LookupSwitchInfo = lookup_switch_info(KeyToCaseIdMap, CaseConsts,
-        OutVars, OutTypes, Liveness, !:MaybeEnd, !:CI, CLD),
+        OutVars, OutTypes, EndBranch, !:MaybeEnd, !:CI, CLD),
     init_string_trie_switch_info_lookup(CanFail, LookupInfo, !CI, CLD),
     CaseNumRegLval = LookupInfo ^ stsil_case_id_reg,
     InitCaseNumRegCode = singleton(
@@ -490,7 +490,7 @@ generate_string_trie_lookup_switch(VarRval, LookupSwitchInfo, CanFail,
         CaseConsts = all_one_soln(CaseIdToValuesMap),
         map.to_assoc_list(CaseIdToValuesMap, CaseIdToValuesAL),
         generate_string_trie_simple_lookup_switch(LookupInfo, CaseIdToValuesAL,
-            OutVars, OutTypes, Liveness, EndLabel, StoreMap,
+            OutVars, OutTypes, EndLabel, EndBranch,
             SetAndCheckCaseNumCode, Code, !MaybeEnd, !CI, CLD)
     ;
         CaseConsts = some_several_solns(CaseIdToValuesListMap,
@@ -498,7 +498,7 @@ generate_string_trie_lookup_switch(VarRval, LookupSwitchInfo, CanFail,
         map.to_assoc_list(CaseIdToValuesListMap, CaseIdToValuesListAL),
         generate_string_trie_several_soln_lookup_switch(LookupInfo,
             CaseConstsSeveralLlds, CaseIdToValuesListAL,
-            OutVars, OutTypes, Liveness, EndLabel, StoreMap,
+            OutVars, OutTypes, EndLabel, EndBranch,
             SetAndCheckCaseNumCode, Code, !MaybeEnd, !CI, CLD)
     ).
 
@@ -507,18 +507,17 @@ generate_string_trie_lookup_switch(VarRval, LookupSwitchInfo, CanFail,
 :- pred generate_string_trie_simple_lookup_switch(
     string_trie_switch_info_lookup::in,
     assoc_list(case_id, list(rval))::in, list(prog_var)::in,
-    list(llds_type)::in, set_of_progvar::in,
-    label::in, abs_store_map::in, llds_code::in, llds_code::out,
-    branch_end::in, branch_end::out,
+    list(llds_type)::in, label::in, end_branch_info::in,
+    llds_code::in, llds_code::out, branch_end::in, branch_end::out,
     code_info::in, code_info::out, code_loc_dep::in) is det.
 
 generate_string_trie_simple_lookup_switch(LookupInfo, CaseValues,
-        OutVars, OutTypes, Liveness, EndLabel, StoreMap,
-        SetAndCheckCaseNumCode, Code, !MaybeEnd, !CI, !.CLD) :-
+        OutVars, OutTypes, EndLabel, EndBranch, SetAndCheckCaseNumCode, Code,
+        !MaybeEnd, !CI, !.CLD) :-
     (
         OutVars = [],
-        generate_single_soln_table_lookup_code_no_vars(StoreMap, Liveness,
-            LookupCode, !MaybeEnd, !.CLD)
+        generate_single_soln_table_lookup_code_no_vars(EndBranch, LookupCode,
+            !MaybeEnd, !.CLD)
     ;
         OutVars = [_ | _],
         NumPrevColumns = 0,
@@ -533,8 +532,8 @@ generate_string_trie_simple_lookup_switch(LookupInfo, CaseValues,
         CaseIdRegLval = LookupInfo ^ stsil_case_id_reg,
         MainRowSelect = main_row_number_reg(lval(CaseIdRegLval), OutTypes),
         generate_single_soln_table_lookup_code_some_vars(MainTableDataId,
-            MainRowSelect, NumPrevColumns, OutVars, StoreMap, Liveness,
-            LookupCode, !MaybeEnd, !.CI, !.CLD)
+            MainRowSelect, NumPrevColumns, OutVars, EndBranch, LookupCode,
+            !MaybeEnd, !.CI, !.CLD)
     ),
     MainCode = SetAndCheckCaseNumCode ++ LookupCode,
     SwitchKindStr = "string trie single soln lookup switch",
@@ -561,15 +560,14 @@ construct_string_trie_simple_lookup_vector([CaseValues | CasesValues], RowNum,
 :- pred generate_string_trie_several_soln_lookup_switch(
     string_trie_switch_info_lookup::in, case_consts_several_llds::in,
     assoc_list(case_id, soln_consts(rval))::in,
-    list(prog_var)::in, list(llds_type)::in, set_of_progvar::in,
-    label::in, abs_store_map::in, llds_code::in, llds_code::out,
-    branch_end::in, branch_end::out,
+    list(prog_var)::in, list(llds_type)::in, label::in, end_branch_info::in,
+    llds_code::in, llds_code::out, branch_end::in, branch_end::out,
     code_info::in, code_info::out, code_loc_dep::in) is det.
 
 generate_string_trie_several_soln_lookup_switch(LookupInfo,
-        CaseConstsSeveralLlds, CaseIdToValuesListAL,
-        OutVars, OutTypes, Liveness, EndLabel, StoreMap,
-        SetAndCheckCaseNumCode, Code, !MaybeEnd, !CI, !.CLD) :-
+        CaseConstsSeveralLlds, CaseIdToValuesListAL, OutVars, OutTypes,
+        EndLabel, EndBranch, SetAndCheckCaseNumCode, Code,
+        !MaybeEnd, !CI, !.CLD) :-
     NumPrevColumns = 0,
     MainRowTypes = [lt_int(int_type_int), lt_int(int_type_int) | OutTypes],
 
@@ -593,14 +591,14 @@ generate_string_trie_several_soln_lookup_switch(LookupInfo,
 
     CaseIdRegLval = LookupInfo ^ stsil_case_id_reg,
     MainRowSelect = main_row_number_reg(lval(CaseIdRegLval), MainRowTypes),
-    acquire_and_setup_lookup_base_reg(MainTableDataId, StoreMap,
+    acquire_and_setup_lookup_base_reg(MainTableDataId, EndBranch,
         MainRowSelect, BaseRegLval, SetBaseRegCode, !CLD),
 
     generate_multi_soln_table_lookup_code(CaseConstsSeveralLlds,
         OneSolnCaseCount - kind_one_soln,
         [SeveralSolnsCaseCount - kind_several_solns],
-        NumPrevColumns, OutVars, EndLabel, StoreMap, Liveness, BaseRegLval,
-        LaterTableAddrRval, LookupResultsCode, !MaybeEnd, !CI, !.CLD),
+        NumPrevColumns, OutVars, EndLabel, BaseRegLval, LaterTableAddrRval,
+        EndBranch, LookupResultsCode, !MaybeEnd, !CI, !.CLD),
 
     MainCode = SetAndCheckCaseNumCode ++ SetBaseRegCode ++ LookupResultsCode,
     SwitchKindStr = "string trie multi soln lookup switch",
@@ -902,38 +900,37 @@ record_label_for_string(Label, TaggedConsId, !StrsLabels) :-
 %---------------------------------------------------------------------------%
 
 generate_string_hash_lookup_switch(VarRval, LookupSwitchInfo,
-        CanFail, EndLabel, StoreMap, !:MaybeEnd, Code, !:CI) :-
+        CanFail, EndLabel, !:MaybeEnd, Code, !:CI) :-
     LookupSwitchInfo = lookup_switch_info(KeyToCaseIdMap, CaseConsts,
-        OutVars, OutTypes, Liveness, !:MaybeEnd, !:CI, CLD),
+        OutVars, OutTypes, EndBranch, !:MaybeEnd, !:CI, CLD),
     (
         CaseConsts = all_one_soln(CaseIdToValuesMap),
         compose_maps(KeyToCaseIdMap, CaseIdToValuesMap, KeyToValuesMap),
         map.to_assoc_list(KeyToValuesMap, KeyValuesAL),
         generate_string_hash_simple_lookup_switch(VarRval, KeyValuesAL,
-            OutVars, OutTypes, Liveness, CanFail, EndLabel, StoreMap,
-            Code, !MaybeEnd, !CI, CLD)
+            OutVars, OutTypes, CanFail, EndLabel, EndBranch, Code,
+            !MaybeEnd, !CI, CLD)
     ;
         CaseConsts = some_several_solns(CaseIdToSolnsMap,
             CaseConstsSeveralLlds),
         compose_maps(KeyToCaseIdMap, CaseIdToSolnsMap, KeyToSolnsMap),
         map.to_assoc_list(KeyToSolnsMap, KeySolnsAL),
         generate_string_hash_several_soln_lookup_switch(CaseConstsSeveralLlds,
-            VarRval, KeySolnsAL, OutVars, OutTypes, Liveness,
-            CanFail, EndLabel, StoreMap, Code, !MaybeEnd, !CI, CLD)
+            VarRval, KeySolnsAL, OutVars, OutTypes, CanFail, EndLabel,
+            EndBranch, Code, !MaybeEnd, !CI, CLD)
     ).
 
 %---------------------------------------------------------------------------%
 
 :- pred generate_string_hash_simple_lookup_switch(rval::in,
     assoc_list(string, list(rval))::in, list(prog_var)::in,
-    list(llds_type)::in, set_of_progvar::in,
-    can_fail::in, label::in, abs_store_map::in,
+    list(llds_type)::in, can_fail::in, label::in, end_branch_info::in,
     llds_code::out, branch_end::in, branch_end::out,
     code_info::in, code_info::out, code_loc_dep::in) is det.
 
 generate_string_hash_simple_lookup_switch(VarRval, CaseValues,
-        OutVars, OutTypes, Liveness, CanFail, EndLabel, StoreMap,
-        Code, !MaybeEnd, !CI, !.CLD) :-
+        OutVars, OutTypes, CanFail, EndLabel, EndBranch, Code,
+        !MaybeEnd, !CI, !.CLD) :-
     % This predicate, generate_string_hash_several_soln_lookup_switch,
     % and generate_string_hash_lookup_switch do similar tasks using
     % similar code, so if you need to update one, you probably need to
@@ -973,15 +970,15 @@ generate_string_hash_simple_lookup_switch(VarRval, CaseValues,
 
     (
         OutVars = [],
-        generate_single_soln_table_lookup_code_no_vars(StoreMap, Liveness,
-            LookupCode, !MaybeEnd, !.CLD)
+        generate_single_soln_table_lookup_code_no_vars(EndBranch, LookupCode,
+            !MaybeEnd, !.CLD)
     ;
         OutVars = [_ | _],
         RowStartRegLval = HashSwitchInfo ^ shsi_row_start_reg,
         MainRowSelect = main_row_start_offset_reg(lval(RowStartRegLval)),
         generate_single_soln_table_lookup_code_some_vars(MainTableDataId,
-            MainRowSelect, NumPrevColumns, OutVars, StoreMap, Liveness,
-            LookupCode, !MaybeEnd, !.CI, !.CLD)
+            MainRowSelect, NumPrevColumns, OutVars, EndBranch, LookupCode,
+            !MaybeEnd, !.CI, !.CLD)
     ),
 
     append_goto_end(EndLabel, LookupCode, LookupGotoEndCode),
@@ -1023,14 +1020,14 @@ construct_string_hash_simple_lookup_vector(Slot, TableSize, HashSlotMap,
 :- pred generate_string_hash_several_soln_lookup_switch(
     case_consts_several_llds::in, rval::in,
     assoc_list(string, soln_consts(rval))::in,
-    list(prog_var)::in, list(llds_type)::in, set_of_progvar::in,
-    can_fail::in, label::in, abs_store_map::in,
+    list(prog_var)::in, list(llds_type)::in,
+    can_fail::in, label::in, end_branch_info::in,
     llds_code::out, branch_end::in, branch_end::out,
     code_info::in, code_info::out, code_loc_dep::in) is det.
 
 generate_string_hash_several_soln_lookup_switch(CaseConstsSeveralLlds,
-        VarRval, CaseSolns, OutVars, OutTypes, Liveness,
-        CanFail, EndLabel, StoreMap, Code, !MaybeEnd, !CI, !.CLD) :-
+        VarRval, CaseSolns, OutVars, OutTypes, CanFail, EndLabel, EndBranch,
+        Code, !MaybeEnd, !CI, !.CLD) :-
     % This predicate, generate_string_hash_simple_lookup_switch,
     % and generate_string_hash_lookup_switch do similar tasks using
     % similar code, so if you need to update one, you probably need to
@@ -1082,14 +1079,14 @@ generate_string_hash_several_soln_lookup_switch(CaseConstsSeveralLlds,
 
     RowStartRegLval = HashSwitchInfo ^ shsi_row_start_reg,
     MainRowSelect = main_row_start_offset_reg(lval(RowStartRegLval)),
-    acquire_and_setup_lookup_base_reg(MainTableDataId, StoreMap,
+    acquire_and_setup_lookup_base_reg(MainTableDataId, EndBranch,
         MainRowSelect, BaseRegLval, SetBaseRegCode, !CLD),
 
     generate_multi_soln_table_lookup_code(CaseConstsSeveralLlds,
         OneSolnCaseCount - kind_one_soln,
         [SeveralSolnsCaseCount - kind_several_solns],
-        NumPrevColumns, OutVars, EndLabel, StoreMap, Liveness, BaseRegLval,
-        LaterTableAddrRval, LookupResultsCode, !MaybeEnd, !CI, !.CLD),
+        NumPrevColumns, OutVars, EndLabel, BaseRegLval, LaterTableAddrRval,
+        EndBranch, LookupResultsCode, !MaybeEnd, !CI, !.CLD),
     MatchCode = SetBaseRegCode ++ LookupResultsCode,
     generate_string_hash_switch_search(HashSwitchInfo, VarRval,
         MainTableAddrRval, ArrayElemType, NumColumns, HashOp, HashMask,
@@ -1397,16 +1394,16 @@ gen_string_binary_jump_slots([Str - Label | StrLabels],
 %---------------------------------------------------------------------------%
 
 generate_string_binary_lookup_switch(VarRval, LookupSwitchInfo,
-        CanFail, EndLabel, StoreMap, !:MaybeEnd, Code, !:CI) :-
+        CanFail, EndLabel, !:MaybeEnd, Code, !:CI) :-
     LookupSwitchInfo = lookup_switch_info(KeyToCaseIdMap, CaseConsts,
-        OutVars, OutTypes, Liveness, !:MaybeEnd, !:CI, CLD),
+        OutVars, OutTypes, EndBranch, !:MaybeEnd, !:CI, CLD),
     (
         CaseConsts = all_one_soln(CaseIdToValuesMap),
         compose_maps(KeyToCaseIdMap, CaseIdToValuesMap, KeyToValuesMap),
         map.to_assoc_list(KeyToValuesMap, KeyValuesAL),
         generate_string_binary_simple_lookup_switch(VarRval, KeyValuesAL,
-            OutVars, OutTypes, Liveness, CanFail, EndLabel, StoreMap,
-            Code, !MaybeEnd, !CI, CLD)
+            OutVars, OutTypes, CanFail, EndLabel, EndBranch, Code,
+            !MaybeEnd, !CI, CLD)
     ;
         CaseConsts = some_several_solns(CaseIdToSolnsMap,
             CaseConstsSeveralLlds),
@@ -1414,21 +1411,20 @@ generate_string_binary_lookup_switch(VarRval, LookupSwitchInfo,
         map.to_assoc_list(KeyToSolnsMap, KeySolnsAL),
         generate_string_binary_several_soln_lookup_switch(
             CaseConstsSeveralLlds, VarRval, KeySolnsAL, OutVars, OutTypes,
-            Liveness, CanFail, EndLabel, StoreMap, Code, !MaybeEnd, !CI, CLD)
+            CanFail, EndLabel, EndBranch, Code, !MaybeEnd, !CI, CLD)
     ).
 
 %---------------------------------------------------------------------------%
 
 :- pred generate_string_binary_simple_lookup_switch(rval::in,
     assoc_list(string, list(rval))::in, list(prog_var)::in,
-    list(llds_type)::in, set_of_progvar::in,
-    can_fail::in, label::in, abs_store_map::in,
+    list(llds_type)::in, can_fail::in, label::in, end_branch_info::in,
     llds_code::out, branch_end::in, branch_end::out,
     code_info::in, code_info::out, code_loc_dep::in) is det.
 
 generate_string_binary_simple_lookup_switch(VarRval, CaseValues,
-        OutVars, OutTypes, Liveness, CanFail, EndLabel, StoreMap,
-        Code, !MaybeEnd, !CI, !.CLD) :-
+        OutVars, OutTypes, CanFail, EndLabel, EndBranch, Code,
+        !MaybeEnd, !CI, !.CLD) :-
     % This predicate, generate_string_binary_several_soln_lookup_switch,
     % and generate_string_binary_lookup_switch do similar tasks using
     % similar code, so if you need to update one, you probably need to
@@ -1459,14 +1455,14 @@ generate_string_binary_simple_lookup_switch(VarRval, CaseValues,
         BinarySearchCode),
     (
         OutVars = [],
-        generate_single_soln_table_lookup_code_no_vars(StoreMap, Liveness,
-            LookupCode, !MaybeEnd, !.CLD)
+        generate_single_soln_table_lookup_code_no_vars(EndBranch, LookupCode,
+            !MaybeEnd, !.CLD)
     ;
         OutVars = [_ | _],
         MidRegLval = BinarySwitchInfo ^ sbsi_mid_reg,
         MainRowSelect = main_row_number_reg(lval(MidRegLval), MainRowTypes),
         generate_single_soln_table_lookup_code_some_vars(MainTableDataId,
-            MainRowSelect, NumPrevColumns, OutVars, StoreMap, Liveness,
+            MainRowSelect, NumPrevColumns, OutVars, EndBranch,
             LookupCode, !MaybeEnd, !.CI, !.CLD)
     ),
 
@@ -1491,14 +1487,14 @@ construct_string_binary_simple_lookup_vector([Str - OutRvals | StrsOutRvals],
 :- pred generate_string_binary_several_soln_lookup_switch(
     case_consts_several_llds::in, rval::in,
     assoc_list(string, soln_consts(rval))::in,
-    list(prog_var)::in, list(llds_type)::in, set_of_progvar::in,
-    can_fail::in, label::in, abs_store_map::in,
+    list(prog_var)::in, list(llds_type)::in,
+    can_fail::in, label::in, end_branch_info::in,
     llds_code::out, branch_end::in, branch_end::out,
     code_info::in, code_info::out, code_loc_dep::in) is det.
 
 generate_string_binary_several_soln_lookup_switch(CaseConstsSeveralLlds,
-        VarRval, CaseSolns, OutVars, OutTypes, Liveness,
-        CanFail, EndLabel, StoreMap, Code, !MaybeEnd, !CI, !.CLD) :-
+        VarRval, CaseSolns, OutVars, OutTypes, 
+        CanFail, EndLabel, EndBranch, Code, !MaybeEnd, !CI, !.CLD) :-
     % This predicate, generate_string_binary_simple_lookup_switch,
     % and generate_string_binary_lookup_switch do similar tasks using
     % similar code, so if you need to update one, you probably need to
@@ -1545,16 +1541,15 @@ generate_string_binary_several_soln_lookup_switch(CaseConstsSeveralLlds,
 
     MidRegLval = BinarySwitchInfo ^ sbsi_mid_reg,
     MainRowSelect = main_row_number_reg(lval(MidRegLval), MainRowTypes),
-    acquire_and_setup_lookup_base_reg(MainTableDataId, StoreMap,
+    acquire_and_setup_lookup_base_reg(MainTableDataId, EndBranch,
         MainRowSelect, BaseRegLval, SetBaseRegCode, !CLD),
 
     NumPrevColumns = 1,
     generate_multi_soln_table_lookup_code(CaseConstsSeveralLlds,
         OneSolnCaseCount - kind_one_soln,
         [SeveralSolnsCaseCount - kind_several_solns],
-        NumPrevColumns, OutVars, EndLabel, StoreMap, Liveness,
-        BaseRegLval, LaterTableAddrRval, LookupResultsCode,
-        !MaybeEnd, !CI, !.CLD),
+        NumPrevColumns, OutVars, EndLabel, BaseRegLval, LaterTableAddrRval,
+        EndBranch, LookupResultsCode, !MaybeEnd, !CI, !.CLD),
 
     MainCode = BinarySearchCode ++ SetBaseRegCode ++ LookupResultsCode,
     SwitchKindStr = "string binary multi soln lookup switch",

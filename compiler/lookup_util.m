@@ -66,15 +66,19 @@
     list(list(rval))::out, branch_end::in, branch_end::out,
     code_info::in, code_info::out) is semidet.
 
-    % set_liveness_and_end_branch(StoreMap, Liveness, !MaybeEnd, Code,
-    %   !CI, !.CLD):
+:- type end_branch_info
+    --->    end_branch_info(abs_store_map, set_of_progvar).
+            % The store map and the liveness at the end of a branch.
+
+    % set_liveness_and_end_branch(EndBranch, Code, !MaybeEnd, !CI, !.CLD):
     %
-    % Set the liveness to Liveness, move all the variables listed in StoreMap
+    % Given EndBranch which contains StoreMap and Liveness,
+    % set the liveness to Liveness, move all the variables listed in StoreMap
     % to their indicated locations, and end the current branch, updating
     % !MaybeEnd in the process.
     %
-:- pred set_liveness_and_end_branch(abs_store_map::in, set_of_progvar::in,
-    branch_end::in, branch_end::out, llds_code::out, code_loc_dep::in) is det.
+:- pred set_liveness_and_end_branch(end_branch_info::in, llds_code::out,
+    branch_end::in, branch_end::out, code_loc_dep::in) is det.
 
 :- pred record_offset_assigns(list(prog_var)::in, int::in, lval::in,
     code_info::in, code_loc_dep::in, code_loc_dep::out) is det.
@@ -205,8 +209,8 @@ rval_is_constant(mkword(_, Exprn0), ExprnOpts) :-
 
 %---------------------------------------------------------------------------%
 
-set_liveness_and_end_branch(StoreMap, Liveness, !MaybeEnd, BranchEndCode,
-        !.CLD) :-
+set_liveness_and_end_branch(EndBranch, BranchEndCode, !MaybeEnd, !.CLD) :-
+    EndBranch = end_branch_info(StoreMap, Liveness),
     % We keep track of what variables are supposed to be live at the end
     % of cases. We have to do this explicitly because generating a `fail' slot
     % last would yield the wrong liveness. Also, by killing the variables

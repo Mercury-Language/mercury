@@ -228,16 +228,15 @@ generate_int_switch(ModuleInfo, Globals,
             FilteredCanFail, LowerLimit, UpperLimit, NumValues,
             ReqDensity, NeedBitVecCheck, NeedRangeCheck,
             FirstVal, LastVal),
-        goal_info_get_store_map(GoalInfo, StoreMap),
-        is_lookup_switch(get_int_tag, FilteredTaggedCases, GoalInfo, StoreMap,
+        is_lookup_switch(get_int_tag, FilteredTaggedCases, GoalInfo,
             !.CI, !.CLD, MaybeLookupSwitchInfo),
         MaybeLookupSwitchInfo = yes(LookupSwitchInfo)
     then
         % We update MaybeEnd1 to MaybeEnd to account for the possible
         % reservation of temp slots for model_non switches.
         generate_int_lookup_switch(SwitchVarRval, LookupSwitchInfo,
-            EndLabel, StoreMap, FirstVal, LastVal,
-            NeedBitVecCheck, NeedRangeCheck, MaybeEnd, SwitchCode, !:CI)
+            EndLabel, FirstVal, LastVal, NeedBitVecCheck, NeedRangeCheck,
+            MaybeEnd, SwitchCode, !:CI)
     else if
         MaybeIntSwitchInfo = int_switch(IntSwitchInfo),
         IntSwitchInfo = int_switch_info(LowerLimit, UpperLimit, NumValues),
@@ -295,8 +294,7 @@ generate_smart_string_switch(Globals,
         TaggedCases, FilteredTaggedCases,
         CodeModel, CanFail, FilteredCanFail, NumConsIds, GoalInfo,
         EndLabel, MaybeEnd, SwitchCode, !CI, !.CLD) :-
-    goal_info_get_store_map(GoalInfo, StoreMap),
-    is_lookup_switch(get_string_tag, FilteredTaggedCases, GoalInfo, StoreMap,
+    is_lookup_switch(get_string_tag, FilteredTaggedCases, GoalInfo,
         !.CI, !.CLD, MaybeLookupSwitchInfo),
     globals.get_opt_tuple(Globals, OptTuple),
     ( if
@@ -315,7 +313,7 @@ generate_smart_string_switch(Globals,
             MaybeLookupSwitchInfo = yes(LookupSwitchInfo),
             generate_string_trie_lookup_switch(SwitchVarRval,
                 LookupSwitchInfo, FilteredCanFail,
-                EndLabel, StoreMap, MaybeEnd, SwitchCode, !:CI)
+                EndLabel, MaybeEnd, SwitchCode, !:CI)
         ;
             MaybeLookupSwitchInfo = no,
             generate_string_trie_jump_switch(SwitchVarRval, SwitchVarName,
@@ -332,7 +330,7 @@ generate_smart_string_switch(Globals,
             % of temp slots for nondet switches.
             generate_string_hash_lookup_switch(SwitchVarRval,
                 LookupSwitchInfo, FilteredCanFail,
-                EndLabel, StoreMap, MaybeEnd, SwitchCode, !:CI)
+                EndLabel, MaybeEnd, SwitchCode, !:CI)
         ;
             MaybeLookupSwitchInfo = no,
             generate_string_hash_jump_switch(SwitchVarRval, SwitchVarName,
@@ -349,7 +347,7 @@ generate_smart_string_switch(Globals,
             % of temp slots for nondet switches.
             generate_string_binary_lookup_switch(SwitchVarRval,
                 LookupSwitchInfo, FilteredCanFail, EndLabel,
-                StoreMap, MaybeEnd, SwitchCode, !:CI)
+                MaybeEnd, SwitchCode, !:CI)
         ;
             MaybeLookupSwitchInfo = no,
             generate_string_binary_jump_switch(SwitchVarRval, SwitchVarName,

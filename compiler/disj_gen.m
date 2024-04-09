@@ -262,8 +262,9 @@ generate_lookup_disj(ResumeVars, LookupDisjInfo, Code, !CI, !CLD) :-
     pickup_zombies(FirstZombies, !CLD),
     make_vars_forward_dead(FirstZombies, !CLD),
 
-    set_liveness_and_end_branch(StoreMap, Liveness, MaybeEnd0, MaybeEnd1,
-        FirstBranchEndCode, !.CLD),
+    EndBranch = end_branch_info(StoreMap, Liveness),
+    set_liveness_and_end_branch(EndBranch, FirstBranchEndCode,
+        MaybeEnd0, MaybeEnd1, !.CLD),
 
     GotoEndCode = singleton(
         llds_instr(goto(code_label(EndLabel)), "goto end of lookup disj")
@@ -322,8 +323,8 @@ generate_lookup_disj(ResumeVars, LookupDisjInfo, Code, !CI, !CLD) :-
     pickup_zombies(LaterZombies, !CLD),
     make_vars_forward_dead(LaterZombies, !CLD),
 
-    set_liveness_and_end_branch(StoreMap, Liveness, MaybeEnd1, MaybeEnd,
-        LaterBranchEndCode, !.CLD),
+    set_liveness_and_end_branch(EndBranch, LaterBranchEndCode,
+        MaybeEnd1, MaybeEnd, !.CLD),
 
     after_all_branches(StoreMap, MaybeEnd, !.CI, !:CLD),
 
