@@ -753,7 +753,7 @@ CLOSURE_LAYOUT_PROGS = \
 
 # The following tests are passed only in some grades.
 
-# The following tests do not work in the the .profdeep grades.
+# The following tests do not work in the .profdeep grades.
 # All of them, aside from backend_external and backjump_test, don't work
 # because deep profiling cannot yet handle exceptions being caught and
 # these test cases do that.
