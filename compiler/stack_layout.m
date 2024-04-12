@@ -2,6 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1997-2012 University of Melbourne.
+% Copyright (C) 2013-2024 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -1719,7 +1720,7 @@ construct_type_param_locn_vector([TVar - Locns | TVarLocns], CurSlot,
 
                 % This is the variable number of a live value. Contains zero
                 % if the live value is not a variable, and contains the
-                % hightest possible uint_least16 value if the variable number
+                % highest possible uint_least16 value if the variable number
                 % does not fit in 16 bits.
                 lai_hlds_var_num    :: int,
 

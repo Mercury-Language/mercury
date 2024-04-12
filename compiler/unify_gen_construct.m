@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------e
 % Copyright (C) 1994-2012 The University of Melbourne.
-% Copyright (C) 2013-2018 The Mercury team.
+% Copyright (C) 2013-2022, 2024 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -432,10 +432,10 @@ generate_and_pack_one_cons_word([], [], [], [], CurArgNum, LeftOverArgNum,
     LeftOverArgNum = CurArgNum.
 generate_and_pack_one_cons_word([], [_ | _], _, _, _, _,
         !TakeAddr, !RevToOrRvals, !Completeness, !Code, _, !CLD) :-
-    unexpected($pred, "length misnatch").
+    unexpected($pred, "length mismatch").
 generate_and_pack_one_cons_word([_ | _], [], _, _, _, _,
         !TakeAddr, !RevToOrRvals, !Completeness, !Code, _, !CLD) :-
-    unexpected($pred, "length misnatch").
+    unexpected($pred, "length mismatch").
 generate_and_pack_one_cons_word([RHSVarWidth | RHSVarsWidths],
         [ArgMode | ArgModes], LeftOverRHSVarsWidths, LeftOverArgModes,
         CurArgNum, LeftOverArgNum,
@@ -487,9 +487,9 @@ generate_and_pack_one_cons_word([RHSVarWidth | RHSVarsWidths],
 
 generate_and_pack_tagword([], [], !RevToOrRvals, _).
 generate_and_pack_tagword([], [_ | _], !RevToOrRvals, _) :-
-    unexpected($pred, "length misnatch").
+    unexpected($pred, "length mismatch").
 generate_and_pack_tagword([_ | _], [], !RevToOrRvals, _) :-
-    unexpected($pred, "length misnatch").
+    unexpected($pred, "length mismatch").
 generate_and_pack_tagword([RHSVarWidth | RHSVarsWidths], [ArgMode | ArgModes],
         !RevToOrRvals, CI) :-
     RHSVarWidth = arg_and_width(RHSVar, ArgPosWidth),

@@ -2,6 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
 % Copyright (C) 2002, 2005-2011 The University of Melbourne.
+% Copyright (C) 2015-2023 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -529,7 +530,7 @@ simplify_abstract_rep(Goal0, Goal) :-
         Goal = Goal0
     ).
 
-    % Given a conjuntion of abstract goals take the intersection
+    % Given a conjunction of abstract goals take the intersection
     % of all consecutive primitive goals in the list of abstract goals.
     %
     % e.g if we have
@@ -578,7 +579,7 @@ flatten_conjuncts_2([Goal0 | Goals0], !RevGoals) :-
     ),
     flatten_conjuncts_2(NextNonPrimitive, !RevGoals).
 
-    % Test whether an abstract goal is a primtive.
+    % Test whether an abstract goal is a primitive.
     %
 :- pred is_primitive(abstract_goal::in) is semidet.
 

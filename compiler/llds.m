@@ -906,7 +906,7 @@
 
 :- type embedded_stack_frame_id
     --->    embedded_stack_frame_id(
-                % The emdedded stack frame consists of the lvals
+                % The embedded stack frame consists of the lvals
                 %
                 %   stack_slot_num_to_lval(StackId, FirstSlot)
                 % to

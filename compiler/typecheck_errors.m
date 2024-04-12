@@ -2,6 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 2005-2012 The University of Melbourne.
+% Copyright (C) 2014-2024 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -1840,9 +1841,9 @@ higher_order_diff_pieces(ContextPieces, ExistQTVars, ActualPorF, ExpectedPorF,
 
 arg_type_list_diff_pieces_loop(_, _, _, _, [], []) = [].
 arg_type_list_diff_pieces_loop(_, _, _, _, [], [_ | _]) = _ :-
-    unexpected($pred, "list length misnatch").
+    unexpected($pred, "list length mismatch").
 arg_type_list_diff_pieces_loop(_, _, _, _, [_ | _], []) = _ :-
-    unexpected($pred, "list length misnatch").
+    unexpected($pred, "list length mismatch").
 arg_type_list_diff_pieces_loop(ContextPieces, TypeCtorPieces,
         ExistQTVars, CurArgNum, [ActualArgType | ActualArgTypes],
         [ExpectedArgType | ExpectedArgTypes]) = DiffPieces :-

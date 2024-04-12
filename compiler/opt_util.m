@@ -2,6 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1994-2012 The University of Melbourne.
+% Copyright (C) 2013-2019, 2021-2022, 2024 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -116,7 +117,7 @@
 :- pred is_forkproceed_next(list(instruction)::in, tailmap::in,
     list(instruction)::out) is semidet.
 
-    % Does the following code consist of straighline instructions that do not
+    % Does the following code consist of straightline instructions that do not
     % modify nondet frame linkages, plus possibly if_val(..., dofail), and then
     % a succeed? If yes, then return all the instructions up to the succeed,
     % and all the following instructions.
