@@ -1614,7 +1614,7 @@ parse_type_defn_head(ContextPieces, ModuleName, VarSet, Term,
             Context, Pieces),
         MaybeTypeCtorAndArgs = error2([Spec])
     ;
-        Term = term.functor(_Functor, _ArgTerms, Context),
+        Term = term.functor(Functor, _ArgTerms, Context),
         parse_implicitly_qualified_sym_name_and_args(ModuleName, VarSet,
             ContextPieces, Term, MaybeSymNameArgs),
         (
@@ -1669,18 +1669,35 @@ parse_type_defn_head(ContextPieces, ModuleName, VarSet, Term,
                     )
                 ;
                     NonVarArgTerms = [_ | _],
-                    NonVarArgTermStrs = list.map(describe_error_term(VarSet),
-                        NonVarArgTerms),
-                    IsOrAre = is_or_are(NonVarArgTermStrs),
-                    Pieces = cord.list(ContextPieces) ++
-                        [lower_case_next_if_not_first,
-                        words("Error: type parameters must be variables,"),
-                        words("but")] ++
-                        list_to_quoted_pieces(NonVarArgTermStrs) ++
-                        [words(IsOrAre), words("not."), nl],
-                    Spec = simplest_spec($pred, severity_error,
-                        phase_term_to_parse_tree, Context, Pieces),
-                    MaybeTypeCtorAndArgs = error2([Spec | NameSpecs])
+                    ( if Functor = atom(";") then
+                        % ContextPieces would say "On the left hand side
+                        % of a type definition", but the error we are
+                        % reporting is the fact that the ---> sign,
+                        % which should divide the left side from the right,
+                        % is missing. Printing ContextPieces would therefore
+                        % be at least somewhat misleading.
+                        Pieces = [words("Error: in a type definition,"),
+                            words("the first constructor must be preceded"),
+                            words("by"), quote("--->"), suffix(","),
+                            words("not by a semicolon."), nl],
+                        Spec = simplest_spec($pred, severity_error,
+                            phase_term_to_parse_tree, Context, Pieces),
+                        MaybeTypeCtorAndArgs = error2([Spec])
+                    else
+                        NonVarArgTermStrs =
+                            list.map(describe_error_term(VarSet),
+                                NonVarArgTerms),
+                        IsOrAre = is_or_are(NonVarArgTermStrs),
+                        Pieces = cord.list(ContextPieces) ++
+                            [lower_case_next_if_not_first,
+                            words("Error: type parameters must be variables,"),
+                            words("but")] ++
+                            list_to_quoted_pieces(NonVarArgTermStrs) ++
+                            [words(IsOrAre), words("not."), nl],
+                        Spec = simplest_spec($pred, severity_error,
+                            phase_term_to_parse_tree, Context, Pieces),
+                        MaybeTypeCtorAndArgs = error2([Spec | NameSpecs])
+                    )
                 )
             )
         )

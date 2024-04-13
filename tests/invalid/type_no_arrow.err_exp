@@ -1,0 +1,2 @@
+type_no_arrow.m:009: Error: in a type definition, the first constructor must be
+type_no_arrow.m:009:   preceded by `--->', not by a semicolon.

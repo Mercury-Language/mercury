@@ -293,6 +293,7 @@ BORING_SINGLEMODULE_PROGS = \
 	type_inf_loop \
 	type_loop \
 	type_mismatch \
+	type_no_arrow \
 	type_with_no_defn \
 	typeclass_bad_method_mode \
 	typeclass_bogus_method \
