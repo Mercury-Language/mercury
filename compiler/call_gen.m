@@ -207,12 +207,12 @@ generate_generic_call(OuterCodeModel, GenericCall, ArgVars, Modes,
                 % that we don't need to allocate space for an existentially
                 % typed version of a dummy type. Using the constant zero
                 % also avoids keeping pointers to memory that could be freed.
-                InputArgRval = int_const(0)
+                Assigned = assign_const(int_const(0))
             ;
                 InputArgVarIsDummy = is_not_dummy_type,
-                InputArgRval = leaf(InputArgVar)
+                Assigned = assign_copy(InputArgVar)
             ),
-            generate_assign_builtin(OutputArgVar, InputArgRval, Code, !CLD)
+            generate_assign_builtin(OutputArgVar, Assigned, Code, !CLD)
         else
             unexpected($pred, "invalid type/inst cast call")
         )
@@ -744,75 +744,65 @@ generate_builtin(CodeModel, PredId, ProcId, Args, GoalInfo, Code, !CI, !CLD) :-
         unexpected($pred, "model_non builtin predicate")
     ).
 
-:- pred generate_assign_builtin(prog_var::in, simple_expr(prog_var)::in,
-    llds_code::out, code_loc_dep::in, code_loc_dep::out) is det.
+:- pred generate_assign_builtin(prog_var::in,
+    simple_assigned_expr(prog_var)::in, llds_code::out,
+    code_loc_dep::in, code_loc_dep::out) is det.
 
-generate_assign_builtin(Var, AssignExpr, Code, !CLD) :-
+generate_assign_builtin(Var, AssignedExpr, Code, !CLD) :-
     ( if variable_is_forward_live(!.CLD, Var) then
-        Rval = convert_simple_expr(AssignExpr),
+        Rval = convert_simple_assigned_expr(AssignedExpr),
         assign_expr_to_var(Var, Rval, Code, !CLD)
     else
         Code = empty
     ).
 
-:- func convert_simple_expr(simple_expr(prog_var)) = rval.
+:- func convert_simple_assigned_expr(simple_assigned_expr(prog_var)) = rval.
 
-convert_simple_expr(leaf(Var)) = var(Var).
-convert_simple_expr(int_const(Int)) = const(llconst_int(Int)).
-convert_simple_expr(uint_const(UInt)) = const(llconst_uint(UInt)).
-convert_simple_expr(int8_const(Int8)) = const(llconst_int8(Int8)).
-convert_simple_expr(uint8_const(UInt8)) = const(llconst_uint8(UInt8)).
-convert_simple_expr(int16_const(Int16)) = const(llconst_int16(Int16)).
-convert_simple_expr(uint16_const(UInt16)) = const(llconst_uint16(UInt16)).
-convert_simple_expr(int32_const(Int32)) = const(llconst_int32(Int32)).
-convert_simple_expr(uint32_const(UInt32)) = const(llconst_uint32(UInt32)).
-convert_simple_expr(int64_const(Int64)) = const(llconst_int64(Int64)).
-convert_simple_expr(uint64_const(UInt64)) = const(llconst_uint64(UInt64)).
-convert_simple_expr(float_const(Float)) = const(llconst_float(Float)).
-convert_simple_expr(unary(UnOp, Expr)) =
-    unop(UnOp, convert_simple_expr(Expr)).
-convert_simple_expr(binary(BinOp, Expr1, Expr2)) =
-    binop(BinOp, convert_simple_expr(Expr1), convert_simple_expr(Expr2)).
+convert_simple_assigned_expr(AssignedExpr) = Rval :-
+    (
+        AssignedExpr = assign_copy(Var),
+        Rval = var(Var)
+    ;
+        AssignedExpr = assign_const(Const),
+        Rval = convert_simple_const(Const)
+    ;
+        AssignedExpr = assign_binary(BinOp, X, Y),
+        Rval = binop(BinOp, var(X), var(Y))
+    ;
+        AssignedExpr = assign_binary_lc(BinOp, Const, Y),
+        Rval = binop(BinOp, convert_simple_const(Const), var(Y))
+    ;
+        AssignedExpr = assign_unary(UnOp, X),
+        Rval = unop(UnOp, var(X))
+    ).
 
-:- pred generate_simple_test(simple_expr(prog_var)::in(simple_test_expr),
-    rval::out, llds_code::out, code_loc_dep::in, code_loc_dep::out) is det.
+    % This function is needed because simple_const is defined in
+    % backend_libs.builtin_ops.m, which is not supposed to know about
+    % backend-specific types such as rval.
+    %
+:- func convert_simple_const(simple_const) = rval.
+
+convert_simple_const(int_const(Int)) =          const(llconst_int(Int)).
+convert_simple_const(int8_const(Int8)) =        const(llconst_int8(Int8)).
+convert_simple_const(int16_const(Int16)) =      const(llconst_int16(Int16)).
+convert_simple_const(int32_const(Int32)) =      const(llconst_int32(Int32)).
+convert_simple_const(int64_const(Int64)) =      const(llconst_int64(Int64)).
+convert_simple_const(uint_const(UInt)) =        const(llconst_uint(UInt)).
+convert_simple_const(uint8_const(UInt8)) =      const(llconst_uint8(UInt8)).
+convert_simple_const(uint16_const(UInt16)) =    const(llconst_uint16(UInt16)).
+convert_simple_const(uint32_const(UInt32)) =    const(llconst_uint32(UInt32)).
+convert_simple_const(uint64_const(UInt64)) =    const(llconst_uint64(UInt64)).
+convert_simple_const(float_const(Float)) =      const(llconst_float(Float)).
+
+:- pred generate_simple_test(simple_test_expr(prog_var)::in, rval::out,
+    llds_code::out, code_loc_dep::in, code_loc_dep::out) is det.
 
 generate_simple_test(TestExpr, Rval, ArgCode, !CLD) :-
-    (
-        TestExpr = binary(BinOp, X0, Y0),
-        X1 = convert_simple_expr(X0),
-        Y1 = convert_simple_expr(Y0),
-        generate_builtin_arg(X1, X, CodeX, !CLD),
-        generate_builtin_arg(Y1, Y, CodeY, !CLD),
-        Rval = binop(BinOp, X, Y),
-        ArgCode = CodeX ++ CodeY
-    ;
-        TestExpr = unary(UnOp, X0),
-        X1 = convert_simple_expr(X0),
-        generate_builtin_arg(X1, X, ArgCode, !CLD),
-        Rval = unop(UnOp, X)
-    ).
-
-:- pred generate_builtin_arg(rval::in, rval::out, llds_code::out,
-    code_loc_dep::in, code_loc_dep::out) is det.
-
-generate_builtin_arg(Rval0, Rval, Code, !CLD) :-
-    (
-        Rval0 = var(Var),
-        produce_variable(Var, Code, Rval, !CLD)
-    ;
-        ( Rval0 = const(_)
-        ; Rval0 = cast(_, _)
-        ; Rval0 = unop(_, _)
-        ; Rval0 = binop(_, _, _)
-        ; Rval0 = mkword(_, _)
-        ; Rval0 = mkword_hole(_)
-        ; Rval0 = mem_addr(_)
-        ; Rval0 = lval(_)
-        ),
-        Rval = Rval0,
-        Code = empty
-    ).
+    TestExpr = binary_test(BinOp, VarX, VarY),
+    produce_variable(VarX, CodeX, RvalX, !CLD),
+    produce_variable(VarY, CodeY, RvalY, !CLD),
+    Rval = binop(BinOp, RvalX, RvalY),
+    ArgCode = CodeX ++ CodeY.
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%

@@ -920,7 +920,7 @@ ml_gen_builtin(PredId, ProcId, ArgVars, CodeModel, Context,
     (
         CodeModel = model_det,
         (
-            SimpleCode = assign(Lval, SimpleExpr),
+            SimpleCode = assign(Lval, SimpleAssignedExpr),
             ( if
                 % We need to avoid generating assignments to dummy variables
                 % introduced for types such as io.state.
@@ -930,7 +930,7 @@ ml_gen_builtin(PredId, ProcId, ArgVars, CodeModel, Context,
             then
                 Stmts = []
             else
-                Rval = ml_gen_simple_expr(SimpleExpr),
+                Rval = ml_gen_simple_assigned_expr(SimpleAssignedExpr),
                 Stmt = ml_gen_assign(Lval, Rval, Context),
                 Stmts = [Stmt]
             )
@@ -955,7 +955,8 @@ ml_gen_builtin(PredId, ProcId, ArgVars, CodeModel, Context,
         CodeModel = model_semi,
         (
             SimpleCode = test(SimpleTest),
-            TestRval = ml_gen_simple_expr(SimpleTest),
+            SimpleTest = binary_test(BinOp, LvalX, LvalY),
+            TestRval = ml_binop(BinOp, ml_lval(LvalX), ml_lval(LvalY)),
             ml_gen_set_success(TestRval, Context, Stmt, !Info),
             Stmts = [Stmt]
         ;
@@ -972,24 +973,44 @@ ml_gen_builtin(PredId, ProcId, ArgVars, CodeModel, Context,
     LocalVarDefns = [],
     FuncDefns = [].
 
-:- func ml_gen_simple_expr(simple_expr(mlds_lval)) = mlds_rval.
+:- func ml_gen_simple_assigned_expr(simple_assigned_expr(mlds_lval))
+    = mlds_rval.
 
-ml_gen_simple_expr(leaf(Lval)) = ml_lval(Lval).
-ml_gen_simple_expr(int_const(Int)) = ml_const(mlconst_int(Int)).
-ml_gen_simple_expr(uint_const(UInt)) = ml_const(mlconst_uint(UInt)).
-ml_gen_simple_expr(int8_const(Int8)) = ml_const(mlconst_int8(Int8)).
-ml_gen_simple_expr(uint8_const(UInt8)) = ml_const(mlconst_uint8(UInt8)).
-ml_gen_simple_expr(int16_const(Int16)) = ml_const(mlconst_int16(Int16)).
-ml_gen_simple_expr(uint16_const(UInt16)) = ml_const(mlconst_uint16(UInt16)).
-ml_gen_simple_expr(int32_const(Int32)) = ml_const(mlconst_int32(Int32)).
-ml_gen_simple_expr(uint32_const(UInt32)) = ml_const(mlconst_uint32(UInt32)).
-ml_gen_simple_expr(int64_const(Int64)) = ml_const(mlconst_int64(Int64)).
-ml_gen_simple_expr(uint64_const(UInt64)) = ml_const(mlconst_uint64(UInt64)).
-ml_gen_simple_expr(float_const(Float)) = ml_const(mlconst_float(Float)).
-ml_gen_simple_expr(unary(Op, Expr)) =
-    ml_unop(Op, ml_gen_simple_expr(Expr)).
-ml_gen_simple_expr(binary(Op, ExprA, ExprB)) =
-    ml_binop(Op, ml_gen_simple_expr(ExprA), ml_gen_simple_expr(ExprB)).
+ml_gen_simple_assigned_expr(AssignedExpr) = Rval :-
+    (
+        AssignedExpr = assign_copy(Lval),
+        Rval = ml_lval(Lval)
+    ;
+        AssignedExpr = assign_const(Const),
+        Rval = convert_simple_const(Const)
+    ;
+        AssignedExpr = assign_binary(BinOp, LvalX, LvalY),
+        Rval = ml_binop(BinOp, ml_lval(LvalX), ml_lval(LvalY))
+    ;
+        AssignedExpr = assign_binary_lc(BinOp, Const, LvalY),
+        Rval = ml_binop(BinOp, convert_simple_const(Const), ml_lval(LvalY))
+    ;
+        AssignedExpr = assign_unary(UnOp, LvalX),
+        Rval = ml_unop(UnOp, ml_lval(LvalX))
+    ).
+
+    % This function is needed because simple_const is defined in
+    % backend_libs.builtin_ops.m, which is not supposed to know about
+    % backend-specific types such as mlds_rval.
+    %
+:- func convert_simple_const(simple_const) = mlds_rval.
+
+convert_simple_const(int_const(Int)) =       ml_const(mlconst_int(Int)).
+convert_simple_const(int8_const(Int8)) =     ml_const(mlconst_int8(Int8)).
+convert_simple_const(int16_const(Int16)) =   ml_const(mlconst_int16(Int16)).
+convert_simple_const(int32_const(Int32)) =   ml_const(mlconst_int32(Int32)).
+convert_simple_const(int64_const(Int64)) =   ml_const(mlconst_int64(Int64)).
+convert_simple_const(uint_const(UInt)) =     ml_const(mlconst_uint(UInt)).
+convert_simple_const(uint8_const(UInt8)) =   ml_const(mlconst_uint8(UInt8)).
+convert_simple_const(uint16_const(UInt16)) = ml_const(mlconst_uint16(UInt16)).
+convert_simple_const(uint32_const(UInt32)) = ml_const(mlconst_uint32(UInt32)).
+convert_simple_const(uint64_const(UInt64)) = ml_const(mlconst_uint64(UInt64)).
+convert_simple_const(float_const(Float)) =   ml_const(mlconst_float(Float)).
 
 %---------------------------------------------------------------------------%
 %

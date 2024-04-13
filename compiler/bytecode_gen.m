@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1996-2012 The University of Melbourne.
-% Copyright (C) 2014-2018 The Mercury team.
+% Copyright (C) 2014-2018, 2024 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -473,85 +473,86 @@ generate_bytecode_for_builtin(PredId, ProcId, Args, ByteInfo, Code) :-
         Code = empty
     ).
 
-:- pred map_test(byte_info::in, simple_expr(prog_var)::in(simple_test_expr),
+:- pred map_test(byte_info::in, simple_test_expr(prog_var)::in,
     cord(byte_code)::out) is det.
 
 map_test(ByteInfo, TestExpr, Code) :-
-    (
-        TestExpr = binary(Binop, X, Y),
-        arg_to_bytecode(ByteInfo, X, ByteX),
-        arg_to_bytecode(ByteInfo, Y, ByteY),
-        Code = cord.singleton(byte_builtin_bintest(Binop, ByteX, ByteY))
-    ;
-        TestExpr = unary(Unop, X),
-        arg_to_bytecode(ByteInfo, X, ByteX),
-        Code = cord.singleton(byte_builtin_untest(Unop, ByteX))
-    ).
+    TestExpr = binary_test(Binop, X, Y),
+    var_to_arg_bytecode(ByteInfo, X, ByteX),
+    var_to_arg_bytecode(ByteInfo, Y, ByteY),
+    Code = cord.singleton(byte_builtin_bintest(Binop, ByteX, ByteY)).
 
 :- pred map_assign(byte_info::in, prog_var::in,
-    simple_expr(prog_var)::in(simple_assign_expr), cord(byte_code)::out)
-    is det.
+    simple_assigned_expr(prog_var)::in, cord(byte_code)::out) is det.
 
 map_assign(ByteInfo, Var, Expr, Code) :-
     (
-        Expr = binary(Binop, X, Y),
-        arg_to_bytecode(ByteInfo, X, ByteX),
-        arg_to_bytecode(ByteInfo, Y, ByteY),
-        map_var(ByteInfo, Var, ByteVar),
-        Code = cord.singleton(byte_builtin_binop(Binop, ByteX, ByteY, ByteVar))
-    ;
-        Expr = unary(Unop, X),
-        arg_to_bytecode(ByteInfo, X, ByteX),
-        map_var(ByteInfo, Var, ByteVar),
-        Code = cord.singleton(byte_builtin_unop(Unop, ByteX, ByteVar))
-    ;
-        Expr = leaf(X),
+        Expr = assign_copy(X),
         map_var(ByteInfo, X, ByteX),
         map_var(ByteInfo, Var, ByteVar),
         Code = cord.singleton(byte_assign(ByteVar, ByteX))
+    ;
+        Expr = assign_const(_),
+        unexpected($pred, "nyi assign_const")
+    ;
+        Expr = assign_binary(Binop, X, Y),
+        var_to_arg_bytecode(ByteInfo, X, ByteX),
+        var_to_arg_bytecode(ByteInfo, Y, ByteY),
+        map_var(ByteInfo, Var, ByteVar),
+        Code = cord.singleton(byte_builtin_binop(Binop, ByteX, ByteY, ByteVar))
+    ;
+        Expr = assign_binary_lc(_, _, _),
+        unexpected($pred, "nyi assign_binary_lc")
+    ;
+        Expr = assign_unary(Unop, X),
+        var_to_arg_bytecode(ByteInfo, X, ByteX),
+        map_var(ByteInfo, Var, ByteVar),
+        Code = cord.singleton(byte_builtin_unop(Unop, ByteX, ByteVar))
     ).
 
-:- pred arg_to_bytecode(byte_info::in,
-    simple_expr(prog_var)::in(simple_arg_expr), byte_arg::out) is det.
+:- pred var_to_arg_bytecode(byte_info::in, prog_var::in, byte_arg::out) is det.
 
-arg_to_bytecode(ByteInfo, Expr, ByteArg) :-
+var_to_arg_bytecode(ByteInfo, Var, ByteArg) :-
+    map_var(ByteInfo, Var, ByteVar),
+    ByteArg = byte_arg_var(ByteVar).
+
+:- pred simple_const_to_arg_bytecode(simple_const::in, byte_arg::out) is det.
+:- pragma consider_used(pred(simple_const_to_arg_bytecode/2)).
+
+simple_const_to_arg_bytecode(SimpleConst, ByteArg) :-
     (
-        Expr = leaf(Var),
-        map_var(ByteInfo, Var, ByteVar),
-        ByteArg = byte_arg_var(ByteVar)
-    ;
-        Expr = int_const(IntVal),
+        SimpleConst = int_const(IntVal),
         ByteArg = byte_arg_int_const(IntVal)
     ;
-        Expr = float_const(FloatVal),
-        ByteArg = byte_arg_float_const(FloatVal)
-    ;
-        Expr = uint_const(UIntVal),
-        ByteArg = byte_arg_uint_const(UIntVal)
-    ;
-        Expr = int8_const(Int8Val),
+        SimpleConst = int8_const(Int8Val),
         ByteArg = byte_arg_int8_const(Int8Val)
     ;
-        Expr = uint8_const(UInt8Val),
-        ByteArg = byte_arg_uint8_const(UInt8Val)
-    ;
-        Expr = int16_const(Int16Val),
+        SimpleConst = int16_const(Int16Val),
         ByteArg = byte_arg_int16_const(Int16Val)
     ;
-        Expr = uint16_const(UInt16Val),
-        ByteArg = byte_arg_uint16_const(UInt16Val)
-    ;
-        Expr = int32_const(Int32Val),
+        SimpleConst = int32_const(Int32Val),
         ByteArg = byte_arg_int32_const(Int32Val)
     ;
-        Expr = uint32_const(UInt32Val),
-        ByteArg = byte_arg_uint32_const(UInt32Val)
-    ;
-        Expr = int64_const(Int64Val),
+        SimpleConst = int64_const(Int64Val),
         ByteArg = byte_arg_int64_const(Int64Val)
     ;
-        Expr = uint64_const(UInt64Val),
+        SimpleConst = uint_const(UIntVal),
+        ByteArg = byte_arg_uint_const(UIntVal)
+    ;
+        SimpleConst = uint8_const(UInt8Val),
+        ByteArg = byte_arg_uint8_const(UInt8Val)
+    ;
+        SimpleConst = uint16_const(UInt16Val),
+        ByteArg = byte_arg_uint16_const(UInt16Val)
+    ;
+        SimpleConst = uint32_const(UInt32Val),
+        ByteArg = byte_arg_uint32_const(UInt32Val)
+    ;
+        SimpleConst = uint64_const(UInt64Val),
         ByteArg = byte_arg_uint64_const(UInt64Val)
+    ;
+        SimpleConst = float_const(FloatVal),
+        ByteArg = byte_arg_float_const(FloatVal)
     ).
 
 %---------------------------------------------------------------------------%

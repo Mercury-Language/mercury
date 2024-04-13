@@ -239,17 +239,28 @@
     % (bytecode_gen.m depends on these guarantees.)
     %
 :- pred translate_builtin(module_name::in, string::in, proc_id::in,
-    list(T)::in, simple_code(T)::out(simple_code)) is det.
+    list(T)::in, simple_code(T)::out) is det.
 
 :- type simple_code(T)
-    --->    assign(T, simple_expr(T))
+    --->    assign(T, simple_assigned_expr(T))
     ;       ref_assign(T, T)
-    ;       test(simple_expr(T))
+    ;       test(simple_test_expr(T))
     ;       noop(list(T)).
 
-:- type simple_expr(T)
-    --->    leaf(T)
-    ;       int_const(int)
+    % Note that assign_const is not used for any builtins, but it *is* used
+    % in call_gen.m to implement casts involving dummy types. (The code that
+    % implements casts reuses the machinery for implementing builtins.)
+    %
+    % Note: _lc means "left arg is a constant".
+:- type simple_assigned_expr(T)
+    --->    assign_copy(T)
+    ;       assign_const(simple_const)
+    ;       assign_binary(binary_op, T, T)
+    ;       assign_binary_lc(binary_op, simple_const, T)
+    ;       assign_unary(unary_op, T).
+
+:- type simple_const
+    --->    int_const(int)
     ;       uint_const(uint)
     ;       int8_const(int8)
     ;       uint8_const(uint8)
@@ -259,45 +270,10 @@
     ;       uint32_const(uint32)
     ;       int64_const(int64)
     ;       uint64_const(uint64)
-    ;       float_const(float)
-    ;       unary(unary_op, simple_expr(T))
-    ;       binary(binary_op, simple_expr(T), simple_expr(T)).
+    ;       float_const(float).
 
-    % Each test expression returned is guaranteed to be either a unary
-    % or binary operator, applied to arguments that are either variables
-    % (from the argument list) or constants.
-    %
-    % Each to be assigned expression is guaranteed to be either in a form
-    % acceptable for a test rval, or in the form of a variable.
-
-:- inst simple_code for simple_code/1
-    --->    assign(ground, simple_assign_expr)
-    ;       ref_assign(ground, ground)
-    ;       test(simple_test_expr)
-    ;       noop(ground).
-
-:- inst simple_assign_expr for simple_expr/1
-    --->    unary(ground, simple_arg_expr)
-    ;       binary(ground, simple_arg_expr, simple_arg_expr)
-    ;       leaf(ground).
-
-:- inst simple_test_expr for simple_expr/1
-    --->    unary(ground, simple_arg_expr)
-    ;       binary(ground, simple_arg_expr, simple_arg_expr).
-
-:- inst simple_arg_expr for simple_expr/1
-    --->    leaf(ground)
-    ;       int_const(ground)
-    ;       uint_const(ground)
-    ;       int8_const(ground)
-    ;       uint8_const(ground)
-    ;       int16_const(ground)
-    ;       uint16_const(ground)
-    ;       int32_const(ground)
-    ;       uint32_const(ground)
-    ;       int64_const(ground)
-    ;       uint64_const(ground)
-    ;       float_const(ground).
+:- type simple_test_expr(T)
+    --->    binary_test(binary_op, T, T).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -336,14 +312,14 @@ translate_builtin(FullyQualifiedModule, PredName, ProcId, Args, Code) :-
     ).
 
 :- pred builtin_translation(string::in, string::in, int::in, list(T)::in,
-    simple_code(T)::out(simple_code)) is semidet.
+    simple_code(T)::out) is semidet.
 :- pragma inline(pred(builtin_translation/5)).
 
 builtin_translation(ModuleName, PredName, ProcNum, Args, Code) :-
     (
         ModuleName = "builtin",
         PredName = "unsafe_promise_unique", ProcNum = 0, Args = [X, Y],
-        Code = assign(Y, leaf(X))
+        Code = assign(Y, assign_copy(X))
     ;
         ModuleName = "io",
         (
@@ -372,7 +348,7 @@ builtin_translation(ModuleName, PredName, ProcNum, Args, Code) :-
             % intermediate code (e.g. the MLDS back-end) must handle
             % unsafe_type_cast separately, rather than by calling
             % builtin_translation.
-            Code = assign(Y, leaf(X))
+            Code = assign(Y, assign_copy(X))
         ;
             ( PredName = "builtin_int_gt",    CmpOp = int_gt(int_type_int)
             ; PredName = "builtin_int_lt",    CmpOp = int_lt(int_type_int)
@@ -398,13 +374,13 @@ builtin_translation(ModuleName, PredName, ProcNum, Args, Code) :-
             ; PredName = "unsigned_le",       CmpOp = unsigned_le
             ),
             ProcNum = 0, Args = [X, Y],
-            Code = test(binary(CmpOp, leaf(X), leaf(Y)))
+            Code = test(binary_test(CmpOp, X, Y))
         ;
             ( PredName = "builtin_compound_eq", CmpOp = compound_eq
             ; PredName = "builtin_compound_lt", CmpOp = compound_lt
             ),
             ProcNum = 0, Args = [X, Y],
-            Code = test(binary(CmpOp, leaf(X), leaf(Y)))
+            Code = test(binary_test(CmpOp, X, Y))
         ;
             PredName = "pointer_equal", ProcNum = 0,
             % The arity of this predicate is two during parsing,
@@ -412,15 +388,15 @@ builtin_translation(ModuleName, PredName, ProcNum, Args, Code) :-
             ( Args = [X, Y]
             ; Args = [_TypeInfo, X, Y]
             ),
-            Code = test(binary(pointer_equal_conservative, leaf(X), leaf(Y)))
+            Code = test(binary_test(pointer_equal_conservative, X, Y))
         ;
             PredName = "partial_inst_copy", ProcNum = 0, Args = [X, Y],
-            Code = assign(Y, leaf(X))
+            Code = assign(Y, assign_copy(X))
         )
     ;
         ModuleName = "term_size_prof_builtin",
         PredName = "term_size_plus", ProcNum = 0, Args = [X, Y, Z],
-        Code = assign(Z, binary(int_add(int_type_int), leaf(X), leaf(Y)))
+        Code = assign(Z, assign_binary(int_add(int_type_int), X, Y))
     ;
         ( ModuleName = "int",    IntType = int_type_int
         ; ModuleName = "int8",   IntType = int_type_int8
@@ -439,21 +415,18 @@ builtin_translation(ModuleName, PredName, ProcNum, Args, Code) :-
                 Args = [X, Y, Z],
                 (
                     ProcNum = 0,
-                    Code = assign(Z,
-                        binary(int_add(IntType), leaf(X), leaf(Y)))
+                    Code = assign(Z, assign_binary(int_add(IntType), X, Y))
                 ;
                     ProcNum = 1,
-                    Code = assign(X,
-                        binary(int_sub(IntType), leaf(Z), leaf(Y)))
+                    Code = assign(X, assign_binary(int_sub(IntType), Z, Y))
                 ;
                     ProcNum = 2,
-                    Code = assign(Y,
-                        binary(int_sub(IntType), leaf(Z), leaf(X)))
+                    Code = assign(Y, assign_binary(int_sub(IntType), Z, X))
                 )
             ;
                 Args = [X, Y],
                 ProcNum = 0,
-                Code = assign(Y, leaf(X))
+                Code = assign(Y, assign_copy(X))
             )
         ;
             PredName = "-",
@@ -461,38 +434,32 @@ builtin_translation(ModuleName, PredName, ProcNum, Args, Code) :-
                 Args = [X, Y, Z],
                 (
                     ProcNum = 0,
-                    Code = assign(Z,
-                        binary(int_sub(IntType), leaf(X), leaf(Y)))
+                    Code = assign(Z, assign_binary(int_sub(IntType), X, Y))
                 ;
                     ProcNum = 1,
-                    Code = assign(X,
-                        binary(int_add(IntType), leaf(Y), leaf(Z)))
+                    Code = assign(X, assign_binary(int_add(IntType), Y, Z))
                 ;
                     ProcNum = 2,
-                    Code = assign(Y,
-                        binary(int_sub(IntType), leaf(X), leaf(Z)))
+                    Code = assign(Y, assign_binary(int_sub(IntType), X, Z))
                 )
             ;
                 Args = [X, Y],
                 ProcNum = 0,
                 IntZeroConst = make_int_zero_const(IntType),
                 Code = assign(Y,
-                    binary(int_sub(IntType), IntZeroConst, leaf(X)))
+                    assign_binary_lc(int_sub(IntType), IntZeroConst, X))
             )
         ;
             PredName = "xor", Args = [X, Y, Z],
             (
                 ProcNum = 0,
-                Code = assign(Z,
-                    binary(bitwise_xor(IntType), leaf(X), leaf(Y)))
+                Code = assign(Z, assign_binary(bitwise_xor(IntType), X, Y))
             ;
                 ProcNum = 1,
-                Code = assign(Y,
-                    binary(bitwise_xor(IntType), leaf(X), leaf(Z)))
+                Code = assign(Y, assign_binary(bitwise_xor(IntType), X, Z))
             ;
                 ProcNum = 2,
-                Code = assign(X,
-                    binary(bitwise_xor(IntType), leaf(Y), leaf(Z)))
+                Code = assign(X, assign_binary(bitwise_xor(IntType), Y, Z))
             )
         ;
             ( PredName = "plus",  ArithOp = int_add(IntType)
@@ -513,10 +480,10 @@ builtin_translation(ModuleName, PredName, ProcNum, Args, Code) :-
             ; PredName = "\\/", ArithOp = bitwise_or(IntType)
             ),
             ProcNum = 0, Args = [X, Y, Z],
-            Code = assign(Z, binary(ArithOp, leaf(X), leaf(Y)))
+            Code = assign(Z, assign_binary(ArithOp, X, Y))
         ;
             PredName = "\\", ProcNum = 0, Args = [X, Y],
-            Code = assign(Y, unary(bitwise_complement(IntType), leaf(X)))
+            Code = assign(Y, assign_unary(bitwise_complement(IntType), X))
         ;
             ( PredName = ">", CmpOp = int_gt(IntType)
             ; PredName = "<", CmpOp = int_lt(IntType)
@@ -524,7 +491,7 @@ builtin_translation(ModuleName, PredName, ProcNum, Args, Code) :-
             ; PredName = "=<", CmpOp = int_le(IntType)
             ),
             ProcNum = 0, Args = [X, Y],
-            Code = test(binary(CmpOp, leaf(X), leaf(Y)))
+            Code = test(binary_test(CmpOp, X, Y))
         )
     ;
         ModuleName = "float",
@@ -533,11 +500,11 @@ builtin_translation(ModuleName, PredName, ProcNum, Args, Code) :-
             (
                 Args = [X, Y],
                 ProcNum = 0,
-                Code = assign(Y, leaf(X))
+                Code = assign(Y, assign_copy(X))
             ;
                 Args = [X, Y, Z],
                 ProcNum = 0,
-                Code = assign(Z, binary(float_add, leaf(X), leaf(Y)))
+                Code = assign(Z, assign_binary(float_add, X, Y))
             )
         ;
             PredName = "-",
@@ -545,18 +512,18 @@ builtin_translation(ModuleName, PredName, ProcNum, Args, Code) :-
                 Args = [X, Y],
                 ProcNum = 0,
                 Code = assign(Y,
-                    binary(float_sub, float_const(0.0), leaf(X)))
+                    assign_binary_lc(float_sub, float_const(0.0), X))
             ;
                 Args = [X, Y, Z],
                 ProcNum = 0,
-                Code = assign(Z, binary(float_sub, leaf(X), leaf(Y)))
+                Code = assign(Z, assign_binary(float_sub, X, Y))
             )
         ;
             ( PredName = "*", ArithOp = float_mul
             ; PredName = "unchecked_quotient", ArithOp = float_div
             ),
             ProcNum = 0, Args = [X, Y, Z],
-            Code = assign(Z, binary(ArithOp, leaf(X), leaf(Y)))
+            Code = assign(Z, assign_binary(ArithOp, X, Y))
         ;
             ( PredName = ">",  CmpOp = float_gt
             ; PredName = "<",  CmpOp = float_lt
@@ -564,14 +531,13 @@ builtin_translation(ModuleName, PredName, ProcNum, Args, Code) :-
             ; PredName = "=<", CmpOp = float_le
             ),
             ProcNum = 0, Args = [X, Y],
-            Code = test(binary(CmpOp, leaf(X), leaf(Y)))
+            Code = test(binary_test(CmpOp, X, Y))
         )
     ).
 
 %-----------------------------------------------------------------------------%
 
-:- func make_int_zero_const(int_type::in)
-    = (simple_expr(T)::out(simple_arg_expr)) is det.
+:- func make_int_zero_const(int_type) = simple_const.
 
 make_int_zero_const(int_type_int)    = int_const(0).
 make_int_zero_const(int_type_int8)   = int8_const(0i8).
