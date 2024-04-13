@@ -65,50 +65,50 @@
 %
 % [Rationale: the reason for keeping structured names rather than flattened
 % names at the MLDS level is that since we do not know what restrictions
-% the target language will impose, we do want to do name mangling at the
+% the target language will impose, we want to do name mangling at the
 % MLDS -> target stage, not at the HLDS -> MLDS stage. For example,
-% some target languages (e.g. C++, Java) support overloading, while others
-% (e.g. C) do not.]
+% some target languages (such as C++, Java) support overloading, while others
+% (such as C) do not.]
 %
 % 3. Procedure signatures
 %
 % MLDS function signatures are determined by the HLDS procedure's
 % argument types, modes, and determinism.
 %
-% Procedures arguments with dummy types (such as `io.state' or `store(_)')
-% are not passed.
+% We omit from procedure signatures any arguments
 %
-% Procedure arguments with top_unused modes are not passed.
+% - whose types are dummy types (such as `io.state' or `store(_)'), or
+% - whose top_mode is top_unused.
 %
-% Procedures arguments with top_in modes are passed as input.
+% We pass procedure arguments with top_in modes as input.
 %
-% Procedures arguments with top_out modes are normally passed by reference.
+% We normally pass procedure arguments with top_out modes by reference.
 % However, several alternative approaches are also supported (see below).
 %
 % Procedures with determinism model_det need no special handling.
 % Procedures with determinism model_semi must return a boolean.
 % Procedures with determinism model_non get passed a continuation;
-% if the procedure succeeds, it must call the continuation (once for each
-% success), and if it fails, it must return.
+% the procedure must call the continuation once for each success,
+% and when it fails, it must return.
 %
 % With the `--copy-out' option, arguments with top_out modes will be returned
 % by value. This requires the target language to support multiple return
 % values. The MLDS->target code generator can of course handle that by mapping
 % functions with multiple return values into functions that return a struct,
 % array, or tuple.
-% With the `--nondet-copy-out' option, arguments for nondet procedures with
+% With the `--nondet-copy-out' option, arguments for model_non procedures with
 % top_out modes will be passed as arguments to the continuation.
 %
 % [Rationale: this mapping is designed to be as simple as possible,
 % and to map as naturally to the target language as possible.
 % The complication with the `--copy-out' and `--nondet-copy-out'
 % options is needed to cater to different target languages.
-% Some target languages (e.g. C) fully support pass-by-reference,
+% Some target languages (such as C) fully support pass-by-reference,
 % and then it is most consistent to use it everywhere.
-% Some (e.g. IL) support pass-by-reference, but do not allow references
+% Some (such as MSIL) support pass-by-reference, but do not allow references
 % to be stored in the environment structs needed for continuations,
 % and so cannot use pass-by-reference for nondet procedures.
-% Others (e.g. Java) do not support pass-by-reference at all.]
+% Others (such as Java) do not support pass-by-reference at all.]
 %
 % 4. Variables
 %
@@ -127,17 +127,17 @@
 % 5. Global data
 %
 % MLDS names for global data are structured; they hold some information
-% about the kind of global data (see the mlds_data_name type).
+% about the kind of global data (see the mlds_global_var_name type).
 %
 % 6. Types
 %
 % If there is an MLDS type corresponding to a Mercury type, then the Mercury
 % type name maps directly to the MLDS type name, suitably module-qualified
-% of course. The MLDS type name includes the type arity (arity overloading
-% is allowed). However, if a low-level data representation scheme is used,
-% then some Mercury types may not have corresponding MLDS type names
-% (that is, the corresponding MLDS type may be just `MR_Word' or its
-% equivalent).
+% of course. The MLDS type name includes the type constructor arity
+% (arity overloading is allowed). However, when we are using a low-level
+% data representation scheme, then some Mercury types may not have
+% corresponding MLDS type names (in other words, the corresponding MLDS type
+% may just be a generic type such `MR_Word' or `MR_Box').
 %
 % 7. Data constructors.
 %
@@ -197,6 +197,8 @@
 % the MLDS interface for `foo' -- instead, there will be a new MLDS type
 % for `instance foo(bar)' which implements that interface.
 %
+% XXX The discussion about type class above looks to be quite out-of-date.
+%
 %---------------------------------------------------------------------------%
 %
 % Mapping MLDS names to the target language.
@@ -223,7 +225,7 @@
 % in the target language, if possible.
 %
 % If the target does not have a notion of packages, then they should be
-% mapped to names of the form "foo.bar.baz" or if dots are not allowed
+% mapped to names of the form "foo.bar.baz", or, if dots are not allowed,
 % then to "foo__bar__baz".
 %
 % 3. Overloading.
