@@ -729,12 +729,33 @@ check_io_state_proc_detism(ModuleInfo, PredProcId, PredInfo, ProcInfo,
         !Specs) :-
     ( if
         proc_info_has_io_state_pair(ModuleInfo, ProcInfo, _InArg, _OutArg),
-        proc_info_get_inferred_determinism(ProcInfo, Detism),
-        not
-            ( Detism = detism_det
-            ; Detism = detism_cc_multi
-            ; Detism = detism_erroneous
+        proc_info_get_inferred_determinism(ProcInfo, ActualDetism),
+        proc_info_get_declared_determinism(ProcInfo, MaybeDeclaredDetism),
+        is_detism_ok_for_io(ActualDetism) = no,
+        (
+            MaybeDeclaredDetism = no,
+            DetismToReport = ActualDetism
+        ;
+            MaybeDeclaredDetism = yes(DeclaredDetism),
+            DeclaredDetismOk = is_detism_ok_for_io(DeclaredDetism),
+            (
+                DeclaredDetismOk = yes,
+                % Do not generate the message below. The actual error
+                % the programmer should fix is whatever issue is causing
+                % the mismatch between DeclaredDetism and ActualDetism;
+                % a reminder about ActualDetism not being allowed with I/O
+                % would just be a nuisance, rather than being helpful.
+                fail
+            ;
+                DeclaredDetismOk = no,
+                % In this case, the programmer has the problems that
+                % even the declared detism is not allowed with I/O.
+                % This is what we report here. If the actual and declared
+                % determinisms differ, that is a *different* problem,
+                % which would get its own separate error message.
+                DetismToReport = DeclaredDetism
             )
+        )
     then
         pred_info_get_module_name(PredInfo, PredModuleName),
         module_info_get_name(ModuleInfo, ModuleName),
@@ -757,7 +778,7 @@ check_io_state_proc_detism(ModuleInfo, PredProcId, PredInfo, ProcInfo,
         % error will probably need that extra help, so don't make them
         % ask for it with -E.
         Pieces = [words("In")] ++ ProcPieces ++ [suffix(":"), nl,
-            words("error:"), quote(determinism_to_string(Detism)),
+            words("error:"), quote(determinism_to_string(DetismToReport)),
             words("is not a valid determinism"),
             words("for a predicate that has I/O state arguments."),
             words("The valid determinisms for such predicates are"),
@@ -771,6 +792,25 @@ check_io_state_proc_detism(ModuleInfo, PredProcId, PredInfo, ProcInfo,
         !:Specs = [Spec | !.Specs]
     else
         true
+    ).
+
+:- func is_detism_ok_for_io(determinism) = bool.
+
+is_detism_ok_for_io(Detism) = Ok :-
+    (
+        ( Detism = detism_det
+        ; Detism = detism_cc_multi
+        ; Detism = detism_erroneous
+        ),
+        Ok = yes
+    ;
+        ( Detism = detism_semi
+        ; Detism = detism_multi
+        ; Detism = detism_non
+        ; Detism = detism_cc_non
+        ; Detism = detism_failure
+        ),
+        Ok = no
     ).
 
 %---------------------------------------------------------------------------%

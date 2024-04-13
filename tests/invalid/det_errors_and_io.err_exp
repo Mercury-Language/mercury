@@ -1,0 +1,6 @@
+det_errors_and_io.m:038: In `bad_pred'(in, di, uo):
+det_errors_and_io.m:038:   error: determinism declaration not satisfied.
+det_errors_and_io.m:038:   Declared `det', inferred `semidet'.
+det_errors_and_io.m:038:   The reason for the difference is the following.
+det_errors_and_io.m:042:   The switch on T does not cover
+det_errors_and_io.m:042:     `d'/0.
