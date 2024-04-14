@@ -372,7 +372,6 @@
 
     ;       stack_trace_higher_order
     ;       force_disable_ssdebug
-    ;       generate_bytecode
     ;       line_numbers
     ;       line_numbers_around_foreign_code
     ;       line_numbers_for_c_headers
@@ -1429,7 +1428,6 @@ optdef(oc_aux_output, delay_death,                      bool(yes)).
 optdef(oc_aux_output, delay_death_max_vars,             int(1000)).
 optdef(oc_aux_output, stack_trace_higher_order,         bool(no)).
 optdef(oc_aux_output, force_disable_ssdebug,            bool(no)).
-optdef(oc_aux_output, generate_bytecode,                bool(no)).
 optdef(oc_aux_output, line_numbers,                     bool(no)).
 optdef(oc_aux_output, line_numbers_around_foreign_code, bool(yes)).
 optdef(oc_aux_output, line_numbers_for_c_headers,       bool(no)).
@@ -2392,7 +2390,6 @@ long_option("delay-death",              delay_death).
 long_option("delay-death-max-vars",     delay_death_max_vars).
 long_option("stack-trace-higher-order", stack_trace_higher_order).
 long_option("force-disable-ssdebug",    force_disable_ssdebug).
-long_option("generate-bytecode",        generate_bytecode).
 long_option("line-numbers",             line_numbers).
 long_option("line-numbers-around-foreign-code",
                                         line_numbers_around_foreign_code).
@@ -4874,9 +4871,6 @@ options_help_aux_output(Stream, !IO) :-
 %       "\tGenerate output via extra_args in foreign_procs.",
 %       "--allow-table-reset",
 %       "\tGenerate C code for resetting tabling data structures.",
-        "--generate-bytecode",
-        "\tOutput a bytecode form of the module for use",
-        "\tby an experimental debugger.",
         "-n, --line-numbers",
         "\tPut source line numbers into the generated code.",
         "\tThe generated code may be in C (the usual case),",

@@ -1900,7 +1900,6 @@ module_to_link(BurdenedModule, ModuleToLink) :-
     %   100 to 299  middle pass
     %   300 to 399  LLDS back end pass
     %   400 to 499  MLDS back end pass
-    %   500 to 599  bytecode back end pass
     %
     % The initial arrangement had the stage numbers increasing by five
     % so that new stages can be slotted in without too much trouble.

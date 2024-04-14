@@ -292,11 +292,6 @@
     ;       ext_cur_ngs_mf_dv                   % ".dv"
     ;       ext_cur_ngs_mf_dep                  % ".dep"
 
-            % Compiler-generated files that represent bytecode
-            % for a long-ago attempt at a bytecode based Mercury debugger.
-    ;       ext_cur_ngs_bc_mbc                  % ".bc"
-    ;       ext_cur_ngs_bc_bytedebug            % ".bytedebug"
-
             % Misc extensions.
     ;       ext_cur_ngs_misc_module_dep         % ".module_dep"
             % XXX DODGY What is the correctness argument for making this
@@ -786,8 +781,6 @@ ext_cur_ngs_extension_dir(Ext, Str, Dir) :-
     % rule is intentional, though I (zs) don't know the full reason.
     ; Ext = ext_cur_ngs_mf_dv,          Str = ".dv",        Dir = "deps"
     ; Ext = ext_cur_ngs_mf_dep,         Str = ".dep",       Dir = "deps"
-    ; Ext = ext_cur_ngs_bc_mbc,         Str = ".mbc",       Dir = "mbcs"
-    ; Ext = ext_cur_ngs_bc_bytedebug,   Str = ".bytedebug", Dir = "bytedebugs"
     ; Ext = ext_cur_ngs_misc_module_dep,
                                         Str = ".module_dep",Dir = "module_deps"
     ; Ext = ext_cur_ngs_misc_err_date,  Str = ".err_date",  Dir = "err_dates"

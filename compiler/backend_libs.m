@@ -16,7 +16,6 @@
 
 :- include_module base_typeclass_info.
 :- include_module builtin_ops.
-:- include_module bytecode_data.
 :- include_module c_util.
 :- include_module compile_target_code.
 :- include_module export.

@@ -23,11 +23,10 @@ see <a href="overall_design.html">overall_design.html</a>.
 
 <p>
 The main job of the compiler is to translate Mercury into a target language,
-which can be C, Java or C#,
-although it can also translate Mercury to Mercury bytecode,
-for a once-planned but never implemented bytecode interpreter,
-and once upon a time it could also translate a subset of it
-to Aditi, to Erlang, and to .NET's IL.
+which can be C, Java or C#.
+Once upon a time, it could also translate
+a (smaller or larger) subset of Mercury to Aditi, to Erlang, to .NET's IL,
+and to bytecode for a once-planned but never implemented bytecode interpreter.
 <p>
 The top-level of the compiler is in the file mercury_compile.m.
 This forwards all of the work to the file mercury_compiler_main.m,
@@ -189,14 +188,6 @@ depend on data structures defined in earlier passes, but not vice versa.
         <li>
             6b. output code
             (MLDS -&gt; C or MLDS -&gt; C# or MLDS -&gt; Java, etc.)
-        </ul>
-    <li>
-        c. bytecode back-end
-        <br>
-        Package: bytecode_backend.m
-        <ul type="disc">
-        <li>
-            4c. code generation (annotated HLDS -&gt; bytecode)
         </ul>
     <li>
         There is also the backend_libs.m package which contains modules
@@ -2374,31 +2365,6 @@ used by the other modules above.
 <p>
 The mlds_to_target_util.m module contains types, functions and predicates
 that are needed by more than one of these MLDS backends.
-
-<h2>c. Bytecode backend</h2>
-
-<p>
-This is the bytecode_backend.m package.
-<p>
-The Mercury compiler can translate Mercury programs into bytecode
-for interpretation by a bytecode interpreter.
-The intent of this is to achieve faster turn-around time during development.
-However, the bytecode interpreter has not yet been written.
-
-<ul>
-<li>
-bytecode.m defines the internal representation of bytecodes,
-and contains the predicates to emit them in two forms.
-The raw bytecode form is emitted into
-.bytecode files for interpretation,
-while a human-readable form is emitted into
-.bytedebug files for visual inspection.
-<li>
-bytecode_gen.m contains the predicates that translate HLDS into bytecode.
-<li>
-bytecode_data.m contains the predicates
-that translate ints, strings and floats into bytecode.
-</ul>
 
 <h2>Smart recompilation</h2>
 

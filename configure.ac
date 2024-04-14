@@ -5553,11 +5553,11 @@ case $reconfiguring in no)
     # The following rm commands are here to ensure that things will work
     # correctly if you rerun configure with a new --prefix and then
     # don't do a `make clean' before running `make'.
-    rm -f runtime/libmer_rt.so library/libmer_std.so bytecode/libmbi.so
+    rm -f runtime/libmer_rt.so library/libmer_std.so
     rm -f trace/libmer_trace.so browser/libmer_browser.so
     rm -f mdbcomp/libmer_mdbcomp.so
     rm -f runtime/libmer_rt.dylib library/libmer_std.dylib
-    rm -f boehm_gc/libgc.dylib bytecode/libmbi.dylib
+    rm -f boehm_gc/libgc.dylib
     rm -f trace/libmer_trace.dylib browser/libmer_browser.dylib
     rm -f mdbcomp/libmer_mdbcomp.dylib
     ;;

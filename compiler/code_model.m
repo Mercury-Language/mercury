@@ -16,7 +16,7 @@
 %
 % We define this in a different module than the `determinism' type because
 % it is only used by some of the different back-ends, not all of them.
-% It is used by the MLDS, LLDS, and bytecode back-ends.
+% It is used by the MLDS and LLDS back-ends.
 %
 %-----------------------------------------------------------------------------%
 

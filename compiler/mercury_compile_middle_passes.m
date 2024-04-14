@@ -56,9 +56,6 @@
 :- import_module analysis.
 :- import_module backend_libs.
 :- import_module backend_libs.type_ctor_info.
-:- import_module bytecode_backend.
-:- import_module bytecode_backend.bytecode.
-:- import_module bytecode_backend.bytecode_gen.
 :- import_module hlds.hlds_error_util.
 :- import_module hlds.hlds_pred.
 :- import_module hlds.mark_static_terms.
@@ -74,7 +71,6 @@
 :- import_module parse_tree.parse_tree_out.
 :- import_module parse_tree.parse_tree_out_info.
 :- import_module top_level.mercury_compile_front_end.
-:- import_module top_level.mercury_compile_llds_back_end.
 :- import_module transform_hlds.
 :- import_module transform_hlds.accumulator.
 :- import_module transform_hlds.closure_analysis.
@@ -204,8 +200,6 @@ middle_pass(ProgressStream, ErrorStream, !HLDS, !DumpInfo, !Specs, !IO) :-
     maybe_warn_dead_procs(ProgressStream, Verbose, Stats, !HLDS, !Specs, !IO),
     maybe_dump_hlds(ProgressStream, !.HLDS, 130, "warn_dead_procs",
         !DumpInfo, !IO),
-
-    maybe_bytecodes(ProgressStream, !.HLDS, Verbose, Stats, !DumpInfo, !IO),
 
     maybe_untuple_arguments(ProgressStream, Verbose, Stats, !HLDS, !IO),
     maybe_dump_hlds(ProgressStream, !.HLDS, 133, "untupling", !DumpInfo, !IO),
@@ -863,51 +857,6 @@ maybe_warn_dead_procs(ProgressStream, Verbose, Stats, !HLDS, !Specs, !IO) :-
         maybe_report_stats(ProgressStream, Stats, !IO)
     else
         true
-    ).
-
-%---------------------------------------------------------------------------%
-
-:- pred maybe_bytecodes(io.text_output_stream::in, module_info::in,
-    bool::in, bool::in, dump_info::in, dump_info::out, io::di, io::uo) is det.
-
-maybe_bytecodes(ProgressStream, HLDS0, Verbose, Stats, !DumpInfo, !IO) :-
-    module_info_get_globals(HLDS0, Globals),
-    globals.lookup_bool_option(Globals, generate_bytecode, GenBytecode),
-    (
-        GenBytecode = yes,
-        map_args_to_regs(ProgressStream, Verbose, Stats, HLDS0, HLDS1, !IO),
-        maybe_dump_hlds(ProgressStream, HLDS1, 505,
-            "bytecode_args_to_regs", !DumpInfo, !IO),
-        maybe_write_string(ProgressStream, Verbose,
-            "% Generating bytecodes...\n", !IO),
-        maybe_flush_output(ProgressStream, Verbose, !IO),
-        bytecode_gen.generate_bytecode_for_module(ProgressStream, HLDS1,
-            Bytecode, !IO),
-        maybe_write_string(ProgressStream, Verbose, "% done.\n", !IO),
-        maybe_report_stats(ProgressStream, Stats, !IO),
-        module_info_get_name(HLDS1, ModuleName),
-        module_name_to_file_name_create_dirs(Globals, $pred,
-            ext_cur_ngs(ext_cur_ngs_bc_bytedebug),
-            ModuleName, BytedebugFile, !IO),
-        maybe_write_string(ProgressStream, Verbose,
-            "% Writing bytecodes to `", !IO),
-        maybe_write_string(ProgressStream, Verbose, BytedebugFile, !IO),
-        maybe_write_string(ProgressStream, Verbose, "'...", !IO),
-        maybe_flush_output(ProgressStream, Verbose, !IO),
-        debug_bytecode_file(ProgressStream, BytedebugFile, Bytecode, !IO),
-        maybe_write_string(ProgressStream, Verbose, " done.\n", !IO),
-        module_name_to_file_name_create_dirs(Globals, $pred,
-            ext_cur_ngs(ext_cur_ngs_bc_mbc), ModuleName, BytecodeFile, !IO),
-        maybe_write_string(ProgressStream, Verbose,
-            "% Writing bytecodes to `", !IO),
-        maybe_write_string(ProgressStream, Verbose, BytecodeFile, !IO),
-        maybe_write_string(ProgressStream, Verbose, "'...", !IO),
-        maybe_flush_output(ProgressStream, Verbose, !IO),
-        output_bytecode_file(ProgressStream, BytecodeFile, Bytecode, !IO),
-        maybe_write_string(ProgressStream, Verbose, " done.\n", !IO),
-        maybe_report_stats(ProgressStream, Stats, !IO)
-    ;
-        GenBytecode = no
     ).
 
 %---------------------------------------------------------------------------%

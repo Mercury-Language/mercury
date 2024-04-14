@@ -76,7 +76,6 @@
 :- import_module backend_libs.builtin_ops.
 :- import_module backend_libs.proc_label.
 :- import_module hlds.code_model.
-:- import_module hlds.goal_form.
 :- import_module hlds.goal_path.
 :- import_module hlds.goal_util.
 :- import_module hlds.hlds_clauses.
@@ -575,34 +574,12 @@ generate_proc_code(ProgressStream, ModuleInfo0, ConstStructMap,
         ProcTraceEvents = yes,
         MayAlterRtti = must_not_alter_rtti
     ),
-
-    globals.lookup_bool_option(Globals, generate_bytecode, GenBytecode),
-    ( if
-        % XXX: There is a mass of calls above that the bytecode doesn't need;
-        % work out which is and isn't needed and put inside the else case
-        % below.
-        GenBytecode = yes,
-        % We don't generate bytecode for unify and compare preds.
-        % The automatically generated unify and compare predicates
-        % are correct by construction; for user-defined unify and
-        % compare predicates, we *assume* their correctness for now
-        % (perhaps not wisely).
-        not is_unify_index_or_compare_pred(PredInfo),
-        % Don't generate bytecode for procs with foreign code.
-        goal_has_foreign(Goal) = no
-    then
-        bytecode_stub(ModuleInfo, PredId, ProcId, ProcInstructions),
-        ProcLabelCounter = counter.init(0)
-    else
-        ProcInstructions = Instructions,
-        ProcLabelCounter = LabelCounter
-    ),
     pred_info_get_is_pred_or_func(PredInfo, PredOrFunc),
     user_arity_pred_form_arity(PredOrFunc, UserArity, PredFormArity),
     get_used_env_vars(CodeInfo, UsedEnvVars),
     CProc = c_procedure(PredOrFunc, Name, UserArity, proc(PredId, ProcId),
-        ProcLabel, CodeModel, EffTraceLevel, ProcInstructions,
-        ProcLabelCounter, MayAlterRtti, UsedEnvVars).
+        ProcLabel, CodeModel, EffTraceLevel, Instructions, LabelCounter,
+        MayAlterRtti, UsedEnvVars).
 
 :- pred maybe_set_trace_level(pred_info::in,
     module_info::in, module_info::out) is det.
@@ -1335,75 +1312,6 @@ add_saved_succip([Instr0 | Instrs0], StackLoc, [Instr | Instrs]) :-
         Instr = Instr0
     ),
     add_saved_succip(Instrs0, StackLoc, Instrs).
-
-%---------------------------------------------------------------------------%
-
-:- pred bytecode_stub(module_info::in, pred_id::in, proc_id::in,
-    list(instruction)::out) is det.
-
-bytecode_stub(ModuleInfo, PredId, ProcId, BytecodeInstructions) :-
-    module_info_pred_info(ModuleInfo, PredId, PredInfo),
-    ModuleSymName = pred_info_module(PredInfo),
-
-    ModuleName = sym_name_to_string_sep(ModuleSymName, "__"),
-
-    EntryLabel = make_local_entry_label(ModuleInfo, PredId, ProcId,
-        for_from_everywhere),
-
-    PredName = pred_info_name(PredInfo),
-    proc_id_to_int(ProcId, ProcNum),
-    string.int_to_string(ProcNum, ProcStr),
-    user_arity(UserArityInt) = pred_info_user_arity(PredInfo),
-    int_to_string(UserArityInt, ArityStr),
-    PredOrFunc = pred_info_is_pred_or_func(PredInfo),
-
-    CallStructName = "bytecode_call_info",
-
-    (
-        PredOrFunc = pf_function,
-        IsFuncStr = "MR_TRUE"
-    ;
-        PredOrFunc = pf_predicate,
-        IsFuncStr = "MR_FALSE"
-    ),
-    string.append_list([
-        "\t\tstatic MB_Call ", CallStructName, " = {\n",
-        "\t\t\t(MB_Word)NULL,\n",
-        "\t\t\t""", ModuleName, """,\n",
-        "\t\t\t""", PredName, """,\n",
-        "\t\t\t", ProcStr, ",\n",
-        "\t\t\t", ArityStr, ",\n",
-        "\t\t\t", IsFuncStr, "\n",
-        "\t\t};\n"
-        ], CallStruct),
-
-    string.append_list([
-        "\t\tMB_Native_Addr return_addr;\n",
-        "\t\tMR_save_registers();\n",
-        "\t\treturn_addr = MB_bytecode_call_entry(", "&",CallStructName,");\n",
-        "\t\tMR_restore_registers();\n",
-        "\t\tMR_GOTO(return_addr);\n"
-        ], BytecodeCall),
-
-    BytecodeInstructionsComponents = [
-        foreign_proc_raw_code(cannot_branch_away,
-            proc_does_not_affect_liveness, live_lvals_info(set.init), "\t{\n"),
-        foreign_proc_raw_code(cannot_branch_away,
-            proc_does_not_affect_liveness, live_lvals_info(set.init),
-            CallStruct),
-        foreign_proc_raw_code(cannot_branch_away,
-            proc_does_not_affect_liveness, no_live_lvals_info, BytecodeCall),
-        foreign_proc_raw_code(cannot_branch_away,
-            proc_does_not_affect_liveness, live_lvals_info(set.init), "\t}\n")
-    ],
-
-    BytecodeInstructions = [
-        llds_instr(label(EntryLabel), "Procedure entry point"),
-        llds_instr(foreign_proc_code([], BytecodeInstructionsComponents,
-            proc_may_call_mercury, no, no, no, no, no,
-            does_not_refer_to_llds_stack, proc_may_not_duplicate),
-            "Entry stub")
-    ].
 
 %---------------------------------------------------------------------------%
 

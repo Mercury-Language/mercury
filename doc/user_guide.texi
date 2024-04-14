@@ -7631,16 +7631,6 @@ supported in general.
 @c @findex --allow-table-reset
 @c Generate C code for resetting tabling data structures.
 
-@item --generate-bytecode
-@findex --generate-bytecode
-@c Output a bytecode version of the module
-@c into the @file{@var{module}.bytecode} file,
-@c and a human-readable version of the bytecode
-@c into the @file{@var{module}.bytedebug} file.
-@c The bytecode is for an experimental debugger.
-Output a bytecode form of the module for use
-by an experimental debugger.
-
 @item --auto-comments
 @findex --auto-comments
 Output comments in the generated target language file.

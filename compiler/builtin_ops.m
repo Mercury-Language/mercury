@@ -11,8 +11,8 @@
 % Main author: fjh.
 %
 % This module defines various types which enumerate the different builtin
-% operators. Several of the different back-ends -- the bytecode back-end,
-% the LLDS, and the MLDS -- all use the same set of builtin operators.
+% operators. The different back-ends -- the LLDS and and MLDS backends,
+% and others when we had them -- all use the same set of builtin operators.
 % These operators are defined here.
 %
 %-----------------------------------------------------------------------------%
@@ -233,10 +233,6 @@
     % that can be used to evaluate a call to the predicate or function
     % with the given arguments, which will be either an assignment or a noop
     % (if the builtin is det) or a test (if the builtin is semidet).
-    %
-    % There are some further guarantees on the form of the expressions
-    % in the code returned, expressed in the form of the insts below.
-    % (bytecode_gen.m depends on these guarantees.)
     %
 :- pred translate_builtin(module_name::in, string::in, proc_id::in,
     list(T)::in, simple_code(T)::out) is det.

@@ -252,13 +252,6 @@ output_c_file_mercury_headers(Info, Stream, !IO) :-
         io.write_string(Stream, "#include ""mercury_deep_profiling.h""\n", !IO)
     ;
         DeepProfile = no
-    ),
-    GenerateBytecode = Info ^ lout_generate_bytecode,
-    (
-        GenerateBytecode = yes,
-        io.write_string(Stream, "#include ""mb_interface_stub.h""\n", !IO)
-    ;
-        GenerateBytecode = no
     ).
 
 %----------------------------------------------------------------------------%
