@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1993-2012 The University of Melbourne.
-% Copyright (C) 2014-2021 The Mercury team.
+% Copyright (C) 2014-2021, 2024 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -105,7 +105,7 @@ construct_type_inference_message(ModuleInfo, PredId, PredInfo) = Spec :-
     pred_info_get_context(PredInfo, Context),
     pred_info_get_arg_types(PredInfo, VarSet, ExistQVars, Types0),
     strip_module_names_from_type_list(strip_builtin_module_name,
-        Types0, Types),
+        set_default_func, Types0, Types),
     pred_info_get_class_context(PredInfo, ClassContext),
     pred_info_get_purity(PredInfo, Purity),
     MaybeDet = no,

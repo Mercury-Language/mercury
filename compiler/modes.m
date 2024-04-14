@@ -1959,7 +1959,7 @@ report_mode_inference_message(ModuleInfo, OutputDetism, PredInfo, ProcInfo,
             !:MaybeDet = no
         ),
         strip_module_names_from_mode_list(strip_builtin_module_name,
-            !ArgModes),
+            set_default_func, !ArgModes),
         (
             PredOrFunc = pf_predicate,
             MaybeWithInst = maybe.no,

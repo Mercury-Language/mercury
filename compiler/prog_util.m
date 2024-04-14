@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1994-2001, 2003-2012 The University of Melbourne.
-% Copyright (C) 2014-2017 The Mercury team.
+% Copyright (C) 2014-2017, 2024 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -129,6 +129,12 @@
 :- type strip_what_module_names
     --->    strip_builtin_module_name
     ;       strip_all_module_names.
+
+    % Should we replace ho_inst_infos that spell out the details of
+    % a default function with just none_or_default_func?
+:- type maybe_set_default_func
+    --->    do_not_set_default_func     % No, we shouldn't.
+    ;       set_default_func.           % Yes, we should.
 
     % Strip the specified set of module names from the given cons_id
     % or sym_name.

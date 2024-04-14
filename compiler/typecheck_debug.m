@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
-% Copyright (C) 2014-2015, 2018, 2020-2021 The Mercury team.
+% Copyright (C) 2014-2015, 2018, 2020-2021, 2024 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -157,7 +157,8 @@ write_type_assign_types(Stream, VarSet, TypeVarSet, VarTypes, TypeBindings,
 
 write_type_with_bindings(Stream, TypeVarSet, TypeBindings, Type0, !IO) :-
     apply_rec_subst_to_type(TypeBindings, Type0, Type1),
-    strip_module_names_from_type(strip_builtin_module_name, Type1, Type),
+    strip_module_names_from_type(strip_builtin_module_name,
+        do_not_set_default_func, Type1, Type),
     mercury_output_type(TypeVarSet, print_name_and_num, Type, Stream, !IO).
 
 :- pred write_type_assign_hlds_constraints(io.text_output_stream::in,

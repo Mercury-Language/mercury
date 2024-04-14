@@ -75,8 +75,10 @@
     % or types, regardless of how deeply they are nested.
     %
 :- pred strip_module_names_from_type(strip_what_module_names::in,
+    maybe_set_default_func::in,
     mer_type::in, mer_type::out) is det.
 :- pred strip_module_names_from_type_list(strip_what_module_names::in,
+    maybe_set_default_func::in,
     list(mer_type)::in, list(mer_type)::out) is det.
 
 %---------------------------------------------------------------------------%
@@ -310,7 +312,7 @@ var_list_to_type_list(KindMap, [Var | Vars], [Type | Types]) :-
 
 %---------------------------------------------------------------------------%
 
-strip_module_names_from_type(StripWhat, Type0, Type) :-
+strip_module_names_from_type(StripWhat, SetDefaultFunc, Type0, Type) :-
     (
         ( Type0 = type_variable(_, _)
         ; Type0 = builtin_type(_)
@@ -319,30 +321,36 @@ strip_module_names_from_type(StripWhat, Type0, Type) :-
     ;
         Type0 = defined_type(SymName0, ArgTypes0, Kind),
         strip_module_names_from_sym_name(StripWhat, SymName0, SymName),
-        strip_module_names_from_type_list(StripWhat, ArgTypes0, ArgTypes),
+        strip_module_names_from_type_list(StripWhat, SetDefaultFunc,
+            ArgTypes0, ArgTypes),
         Type = defined_type(SymName, ArgTypes, Kind)
     ;
         Type0 = higher_order_type(PorF, ArgTypes0, HOInstInfo0, Purity, EM),
-        strip_module_names_from_type_list(StripWhat, ArgTypes0, ArgTypes),
-        strip_module_names_from_ho_inst_info(StripWhat,
+        strip_module_names_from_type_list(StripWhat, SetDefaultFunc,
+            ArgTypes0, ArgTypes),
+        strip_module_names_from_ho_inst_info(StripWhat, SetDefaultFunc,
             HOInstInfo0, HOInstInfo),
         Type = higher_order_type(PorF, ArgTypes, HOInstInfo, Purity, EM)
     ;
         Type0 = tuple_type(ArgTypes0, Kind),
-        strip_module_names_from_type_list(StripWhat, ArgTypes0, ArgTypes),
+        strip_module_names_from_type_list(StripWhat, SetDefaultFunc,
+            ArgTypes0, ArgTypes),
         Type = tuple_type(ArgTypes, Kind)
     ;
         Type0 = apply_n_type(Var, ArgTypes0, Kind),
-        strip_module_names_from_type_list(StripWhat, ArgTypes0, ArgTypes),
+        strip_module_names_from_type_list(StripWhat, SetDefaultFunc,
+            ArgTypes0, ArgTypes),
         Type = apply_n_type(Var, ArgTypes, Kind)
     ;
         Type0 = kinded_type(SubType0, Kind),
-        strip_module_names_from_type(StripWhat, SubType0, SubType),
+        strip_module_names_from_type(StripWhat, SetDefaultFunc,
+            SubType0, SubType),
         Type = kinded_type(SubType, Kind)
     ).
 
-strip_module_names_from_type_list(StripWhat, Types0, Types) :-
-    list.map(strip_module_names_from_type(StripWhat), Types0, Types).
+strip_module_names_from_type_list(StripWhat, SetDefaultFunc, Types0, Types) :-
+    list.map(strip_module_names_from_type(StripWhat, SetDefaultFunc),
+        Types0, Types).
 
 %---------------------------------------------------------------------------%
 

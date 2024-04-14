@@ -2366,7 +2366,7 @@ report_abstract_instance_without_concrete(ClassId, InstanceDefn, !Specs) :-
 report_local_vs_nonlocal_clash(ClassId, LocalInstance, NonLocalInstance,
         !Specs) :-
     InstanceName = instance_name(orig_types, print_all_types, keep_all,
-        ClassId, LocalInstance),
+        set_default_func, ClassId, LocalInstance),
     % XXX Should we mention any constraints on the instance declaration?
     LocalPieces = [words("Error: this instance declaration"),
         words("for"), quote(InstanceName), words("clashes with"),
@@ -2674,7 +2674,7 @@ in_instance_decl_pieces(WhichTypes, ClassId, InstanceDefn) = Pieces :-
     % Likewise, we could mention the constraints (if any) on the
     % instance declaration, but it would also be very likely to be clutter.
     InstanceName = instance_name(WhichTypes, print_few_types, delete_all,
-        ClassId, InstanceDefn),
+        set_default_func, ClassId, InstanceDefn),
     Pieces = [words("In instance declaration for"),
         words_quote(InstanceName), suffix(":"), nl].
 
@@ -2692,9 +2692,9 @@ in_instance_decl_pieces(WhichTypes, ClassId, InstanceDefn) = Pieces :-
     ;       delete_all.
 
 :- func instance_name(which_types, type_limit, module_quals,
-    class_id, hlds_instance_defn) = string.
+    maybe_set_default_func, class_id, hlds_instance_defn) = string.
 
-instance_name(WhichTypes, Limit, Quals, ClassId, InstanceDefn)
+instance_name(WhichTypes, Limit, Quals, SetDefaultFunc, ClassId, InstanceDefn)
         = InstanceName :-
     ClassId = class_id(ClassName, _),
     ClassNameStr = unqualify_name(ClassName),
@@ -2718,11 +2718,11 @@ instance_name(WhichTypes, Limit, Quals, ClassId, InstanceDefn)
         ;
             Quals = delete_builtin,
             strip_module_names_from_type_list(strip_builtin_module_name,
-                Types0, Types)
+                SetDefaultFunc, Types0, Types)
         ;
             Quals = delete_all,
             strip_module_names_from_type_list(strip_all_module_names,
-                Types0, Types)
+                SetDefaultFunc, Types0, Types)
         ),
         TVarSet = InstanceDefn ^ instdefn_tvarset,
         TypesStr = mercury_types_to_string(TVarSet, print_name_only, Types),

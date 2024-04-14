@@ -548,7 +548,7 @@ find_mismatched_args(AddQuotes, InstVarSet, TypeAssignSet,
     % since the call to list.sort_and_remove_dups below should make it
     % semantically unnecessary.
     get_all_type_stuffs_remove_dups(TypeAssignSet, Arg, TypeStuffList),
-    strip_module_names_from_type(strip_builtin_module_name,
+    strip_module_names_from_type(strip_builtin_module_name, set_default_func,
         ExpType, StrippedExpType),
     list.foldl2(
         substitute_types_check_match(AddQuotes, InstVarSet, StrippedExpType),
@@ -598,7 +598,7 @@ find_mismatched_args(AddQuotes, InstVarSet, TypeAssignSet,
 substitute_types_check_match(AddQuotes, InstVarSet, StrippedExpType, TypeStuff,
         !TypeMismatches, !DoesSomeTypeStuffMatch) :-
     TypeStuff = type_stuff(ArgType, TVarSet, TypeBindings, ExistQTVars),
-    strip_module_names_from_type(strip_builtin_module_name,
+    strip_module_names_from_type(strip_builtin_module_name, set_default_func,
         ArgType, StrippedArgType),
     apply_rec_subst_to_type(TypeBindings, StrippedArgType, FullArgType),
     apply_rec_subst_to_type(TypeBindings, StrippedExpType, FullExpType),

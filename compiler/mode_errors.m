@@ -2249,7 +2249,7 @@ mode_info_context_preamble(ModeInfo) = Pieces :-
     pred_info_get_markers(PredInfo, PredMarkers),
     proc_info_declared_argmodes(ProcInfo, Modes0),
     strip_module_names_from_mode_list(strip_builtin_module_name,
-        Modes0, Modes),
+        do_not_set_default_func, Modes0, Modes),
     MaybeDet = no,
     ModeSubDeclStr = mercury_mode_subdecl_to_string(output_debug, PredOrFunc,
         InstVarSet, SymName, Modes, MaybeDet),
@@ -2327,7 +2327,7 @@ mode_decl_to_string(Lang, ProcId, PredInfo) = String :-
     proc_info_get_declared_determinism(ProcInfo, MaybeDet),
     varset.init(InstVarSet),
     strip_module_names_from_mode_list(strip_builtin_module_name,
-        Modes0, Modes),
+        do_not_set_default_func, Modes0, Modes),
     String = mercury_mode_subdecl_to_string(Lang, PredOrFunc,
         InstVarSet, SymName, Modes, MaybeDet).
 

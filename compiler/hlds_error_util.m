@@ -151,7 +151,6 @@
 :- import_module parse_tree.write_error_spec.
 
 :- import_module map.
-:- import_module require.
 :- import_module set.
 :- import_module string.
 :- import_module term_context.
@@ -224,12 +223,9 @@ describe_one_pred_name_mode(ModuleInfo, Lang, ShouldModuleQualify, PredId,
     NumExtraArgs = num_extra_args(PredFormArity, ArgModes0),
     % We need to strip off the extra type_info arguments inserted at the
     % front by polymorphism.m - we only want the last `PredFormArity' of them.
-    ( if list.drop(NumExtraArgs, ArgModes0, ArgModes) then
-        strip_module_names_from_mode_list(strip_builtin_module_name,
-            ArgModes, StrippedArgModes)
-    else
-        unexpected($pred, "bad argument list")
-    ),
+    list.det_drop(NumExtraArgs, ArgModes0, ArgModes),
+    strip_module_names_from_mode_list(strip_builtin_module_name,
+        set_default_func, ArgModes, StrippedArgModes),
     PredOrFunc = pred_info_is_pred_or_func(PredInfo),
     (
         PredOrFunc = pf_predicate,

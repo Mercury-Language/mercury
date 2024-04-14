@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1994-2012 The University of Melbourne.
-% Copyright (C) 2015 The Mercury team.
+% Copyright (C) 2015, 2024 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -623,9 +623,9 @@ mercury_format_mode(Lang, InstVarSet, Mode0, S, !U) :-
                 (
                     Mode1 = from_to_mode(FromInst1, ToInst1),
                     strip_module_names_from_inst(strip_builtin_module_name,
-                        FromInst1, FromInst),
+                        do_not_set_default_func, FromInst1, FromInst),
                     strip_module_names_from_inst(strip_builtin_module_name,
-                        ToInst1, ToInst),
+                        do_not_set_default_func, ToInst1, ToInst),
                     mercury_format_from_to_mode(Lang, InstVarSet,
                         FromInst, ToInst, S, !U)
                 ;
