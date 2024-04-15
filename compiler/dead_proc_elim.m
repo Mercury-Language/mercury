@@ -1462,8 +1462,8 @@ dead_pred_elim(!ModuleInfo) :-
     % to force type specialization are also not needed. Here we add in those
     % which are needed.
 
-    module_info_get_type_spec_info(!.ModuleInfo, TypeSpecInfo0),
-    TypeSpecInfo0 = type_spec_info(TypeSpecProcs0, TypeSpecForcePreds0,
+    module_info_get_type_spec_tables(!.ModuleInfo, TypeSpecTables0),
+    TypeSpecTables0 = type_spec_tables(TypeSpecProcs0, TypeSpecForcePreds0,
         SpecMap0, PragmaMap0),
     NeededPredList3 = set_tree234.to_sorted_list(NeededPreds3),
     list.foldl(
@@ -1482,9 +1482,9 @@ dead_pred_elim(!ModuleInfo) :-
     TypeSpecForcePreds =
         set.filter(set_tree234.contains(NeededPreds), TypeSpecForcePreds0),
 
-    TypeSpecInfo = type_spec_info(TypeSpecProcs0, TypeSpecForcePreds,
+    TypeSpecTables = type_spec_tables(TypeSpecProcs0, TypeSpecForcePreds,
         SpecMap0, PragmaMap0),
-    module_info_set_type_spec_info(TypeSpecInfo, !ModuleInfo),
+    module_info_set_type_spec_tables(TypeSpecTables, !ModuleInfo),
 
     module_info_get_predicate_table(!.ModuleInfo, PredTable0),
     module_info_get_partial_qualifier_info(!.ModuleInfo, PartialQualInfo),

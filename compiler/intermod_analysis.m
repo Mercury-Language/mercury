@@ -381,8 +381,8 @@ gather_pragma_termination_for_pred(ModuleInfo, OrderPredInfo,
     OrderPredInfo = order_pred_info(_PredName, _PredArity, _PredOrFunc,
         PredId, PredInfo),
     pred_info_get_status(PredInfo, PredStatus),
-    module_info_get_type_spec_info(ModuleInfo, TypeSpecInfo),
-    TypeSpecInfo = type_spec_info(_, TypeSpecForcePreds, _, _),
+    module_info_get_type_spec_tables(ModuleInfo, TypeSpecTables),
+    TypeSpecTables = type_spec_tables(_, TypeSpecForcePreds, _, _),
     ( if
         ( PredStatus = pred_status(status_exported)
         ; PredStatus = pred_status(status_opt_exported)
@@ -481,8 +481,8 @@ gather_pragma_termination2_for_pred(ModuleInfo, OrderPredInfo,
         !TermInfo2sCord) :-
     OrderPredInfo = order_pred_info(_, _, _, PredId, PredInfo),
     pred_info_get_status(PredInfo, PredStatus),
-    module_info_get_type_spec_info(ModuleInfo, TypeSpecInfo),
-    TypeSpecInfo = type_spec_info(_, TypeSpecForcePreds, _, _),
+    module_info_get_type_spec_tables(ModuleInfo, TypeSpecTables),
+    TypeSpecTables = type_spec_tables(_, TypeSpecForcePreds, _, _),
     ( if
         ( PredStatus = pred_status(status_exported)
         ; PredStatus = pred_status(status_opt_exported)
@@ -624,8 +624,8 @@ gather_pragma_exceptions_for_proc(ModuleInfo, OrderPredInfo,
         procedure_is_exported(ModuleInfo, PredInfo, ProcId),
         not is_unify_index_or_compare_pred(PredInfo),
 
-        module_info_get_type_spec_info(ModuleInfo, TypeSpecInfo),
-        TypeSpecInfo = type_spec_info(_, TypeSpecForcePreds, _, _),
+        module_info_get_type_spec_tables(ModuleInfo, TypeSpecTables),
+        TypeSpecTables = type_spec_tables(_, TypeSpecForcePreds, _, _),
         not set.member(PredId, TypeSpecForcePreds),
 
         % XXX Writing out pragmas for the automatically generated class
@@ -862,8 +862,8 @@ should_write_exception_info(ModuleInfo, PredId, ProcId, PredInfo,
             WhatFor = for_analysis_framework
         ;
             WhatFor = for_pragma,
-            module_info_get_type_spec_info(ModuleInfo, TypeSpecInfo),
-            TypeSpecInfo = type_spec_info(_, TypeSpecForcePreds, _, _),
+            module_info_get_type_spec_tables(ModuleInfo, TypeSpecTables),
+            TypeSpecTables = type_spec_tables(_, TypeSpecForcePreds, _, _),
             not set.member(PredId, TypeSpecForcePreds),
 
             % XXX Writing out pragmas for the automatically generated class
@@ -890,8 +890,8 @@ should_write_trailing_info(ModuleInfo, PredId, ProcId, PredInfo, WhatFor,
             WhatFor = for_analysis_framework
         ;
             WhatFor = for_pragma,
-            module_info_get_type_spec_info(ModuleInfo, TypeSpecInfo),
-            TypeSpecInfo = type_spec_info(_, TypeSpecForcePreds, _, _),
+            module_info_get_type_spec_tables(ModuleInfo, TypeSpecTables),
+            TypeSpecTables = type_spec_tables(_, TypeSpecForcePreds, _, _),
             not set.member(PredId, TypeSpecForcePreds),
             %
             % XXX Writing out pragmas for the automatically generated class
@@ -919,8 +919,8 @@ should_write_mm_tabling_info(ModuleInfo, PredId, ProcId, PredInfo, WhatFor,
             WhatFor = for_analysis_framework
         ;
             WhatFor = for_pragma,
-            module_info_get_type_spec_info(ModuleInfo, TypeSpecInfo),
-            TypeSpecInfo = type_spec_info(_, TypeSpecForcePreds, _, _),
+            module_info_get_type_spec_tables(ModuleInfo, TypeSpecTables),
+            TypeSpecTables = type_spec_tables(_, TypeSpecForcePreds, _, _),
             not set.member(PredId, TypeSpecForcePreds),
 
             % XXX Writing out pragmas for the automatically generated class
@@ -957,8 +957,8 @@ should_write_reuse_info(ModuleInfo, PredId, ProcId, PredInfo, WhatFor,
             % the specialized predicate is not produced before the structure
             % reuse pragmas are read in, resulting in an undefined predicate
             % error.
-            module_info_get_type_spec_info(ModuleInfo, TypeSpecInfo),
-            TypeSpecInfo = type_spec_info(_, TypeSpecForcePreds, _, _),
+            module_info_get_type_spec_tables(ModuleInfo, TypeSpecTables),
+            TypeSpecTables = type_spec_tables(_, TypeSpecForcePreds, _, _),
             not set.member(PredId, TypeSpecForcePreds)
         )
     then
@@ -982,8 +982,8 @@ should_write_sharing_info(ModuleInfo, PredId, ProcId, PredInfo, WhatFor,
             % the specialized predicate is not produced before the structure
             % sharing pragmas are read in, resulting in an undefined predicate
             % error.
-            module_info_get_type_spec_info(ModuleInfo, TypeSpecInfo),
-            TypeSpecInfo = type_spec_info(_, TypeSpecForcePreds, _, _),
+            module_info_get_type_spec_tables(ModuleInfo, TypeSpecTables),
+            TypeSpecTables = type_spec_tables(_, TypeSpecForcePreds, _, _),
             not set.member(PredId, TypeSpecForcePreds)
         )
     then

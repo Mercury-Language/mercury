@@ -115,8 +115,8 @@
     % List of procedures for which there are user-requested type
     % specializations, and a list of predicates which should be processed
     % by higher_order.m to ensure the production of those versions.
-:- type type_spec_info
-    --->    type_spec_info(
+:- type type_spec_tables
+    --->    type_spec_tables(
                 % Procedures for which there are user-requested type
                 % specializations.
                 user_req_procs      :: set(pred_proc_id),
@@ -305,8 +305,8 @@
 :- pred module_info_get_class_table(module_info::in, class_table::out) is det.
 :- pred module_info_get_instance_table(module_info::in,
     instance_table::out) is det.
-:- pred module_info_get_type_spec_info(module_info::in,
-    type_spec_info::out) is det.
+:- pred module_info_get_type_spec_tables(module_info::in,
+    type_spec_tables::out) is det.
 :- pred module_info_get_const_struct_db(module_info::in,
     const_struct_db::out) is det.
 :- pred module_info_get_c_j_cs_fims(module_info::in,
@@ -417,7 +417,7 @@
     module_info::in, module_info::out) is det.
 :- pred module_info_set_instance_table(instance_table::in,
     module_info::in, module_info::out) is det.
-:- pred module_info_set_type_spec_info(type_spec_info::in,
+:- pred module_info_set_type_spec_tables(type_spec_tables::in,
     module_info::in, module_info::out) is det.
 :- pred module_info_set_const_struct_db(const_struct_db::in,
     module_info::in, module_info::out) is det.
@@ -770,7 +770,7 @@
                 msi_instance_table              :: instance_table,
 
                 % Data used for user-guided type specialization.
-                msi_type_spec_info              :: type_spec_info,
+                msi_type_spec_tables            :: type_spec_tables,
 
                 % The database of constant structures the code generator
                 % will generate independently, outside all the procedures
@@ -1065,7 +1065,7 @@
 % 37      3135         0         0          indirectly_imported_mod_specs
 % 38         1         0         0          interface_module_names
 % 39      6568         0      3767   0.00%  used_modules
-% 40   1656135         0    126058   0.00%  type_spec_info
+% 40   1656135         0    126058   0.00%  type_spec_tables
 % 41  22588003         0     87106   0.00%  no_tag_types
 % 42    171993         0         0          complexity_proc_map
 % 43      2821         0         0          complexity_proc_infos
@@ -1091,7 +1091,7 @@ module_info_init(Globals, ModuleName, ModuleNameContext, DumpBaseFileName,
     set.init(TypeSpecForcePreds),
     map.init(SpecMap),
     map.init(PragmaMap),
-    TypeSpecInfo = type_spec_info(TypeSpecPreds, TypeSpecForcePreds,
+    TypeSpecInfo = type_spec_tables(TypeSpecPreds, TypeSpecForcePreds,
         SpecMap, PragmaMap),
 
     const_struct_db_init(Globals, ConstStructDb),
@@ -1320,8 +1320,8 @@ module_info_get_class_table(MI, X) :-
     X = MI ^ mi_sub_info ^ msi_class_table.
 module_info_get_instance_table(MI, X) :-
     X = MI ^ mi_sub_info ^ msi_instance_table.
-module_info_get_type_spec_info(MI, X) :-
-    X = MI ^ mi_sub_info ^ msi_type_spec_info.
+module_info_get_type_spec_tables(MI, X) :-
+    X = MI ^ mi_sub_info ^ msi_type_spec_tables.
 module_info_get_const_struct_db(MI, X) :-
     X = MI ^ mi_sub_info ^ msi_const_struct_db.
 module_info_get_c_j_cs_fims(MI, X) :-
@@ -1445,8 +1445,8 @@ module_info_set_class_table(X, !MI) :-
     !MI ^ mi_sub_info ^ msi_class_table := X.
 module_info_set_instance_table(X, !MI) :-
     !MI ^ mi_sub_info ^ msi_instance_table := X.
-module_info_set_type_spec_info(X, !MI) :-
-    !MI ^ mi_sub_info ^ msi_type_spec_info := X.
+module_info_set_type_spec_tables(X, !MI) :-
+    !MI ^ mi_sub_info ^ msi_type_spec_tables := X.
 module_info_set_const_struct_db(X, !MI) :-
     ( if
         private_builtin.pointer_equal(X,

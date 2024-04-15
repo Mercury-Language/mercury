@@ -800,8 +800,8 @@ find_items_used_by_pred(PredOrFunc, NameArity, PredId - PredModule, !Info) :-
         find_items_used_by_class_context(ClassContext, !Info),
 
         % Record items used by `:- pragma type_spec' declarations.
-        module_info_get_type_spec_info(ModuleInfo, TypeSpecInfo),
-        TypeSpecInfo = type_spec_info(_, _, _, PragmaMap),
+        module_info_get_type_spec_tables(ModuleInfo, TypeSpecTables),
+        TypeSpecTables = type_spec_tables(_, _, _, PragmaMap),
         ( if map.search(PragmaMap, PredId, OoMTypeSpecPragmas) then
             TypeSpecPragmas = one_or_more_to_list(OoMTypeSpecPragmas),
             list.foldl(find_items_used_by_type_spec, TypeSpecPragmas, !Info)

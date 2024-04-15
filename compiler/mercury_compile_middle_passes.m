@@ -917,8 +917,8 @@ maybe_higher_order(ProgressStream, Verbose, Stats, !HLDS, !IO) :-
     % Always produce the specialized versions for which
     % `:- pragma type_spec' declarations exist, because
     % importing modules might call them.
-    module_info_get_type_spec_info(!.HLDS, TypeSpecInfo),
-    TypeSpecInfo = type_spec_info(TypeSpecPreds, _, _, _),
+    module_info_get_type_spec_tables(!.HLDS, TypeSpecTables),
+    TypeSpecTables = type_spec_tables(TypeSpecPreds, _, _, _),
     ( if
         ( HigherOrder = opt_higher_order
         ; UserTypeSpec = spec_types_user_guided

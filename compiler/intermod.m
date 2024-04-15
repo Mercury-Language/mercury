@@ -914,8 +914,8 @@ intermod_gather_pred_marker_pragmas_loop(PredOrFunc, PredSymName, UserArity,
     list(decl_pragma_type_spec_info)::out) is det.
 
 intermod_gather_pred_type_spec_pragmas(ModuleInfo, PredId, TypeSpecs) :-
-    module_info_get_type_spec_info(ModuleInfo, TypeSpecInfo),
-    PragmaMap = TypeSpecInfo ^ pragma_map,
+    module_info_get_type_spec_tables(ModuleInfo, TypeSpecTables),
+    PragmaMap = TypeSpecTables ^ pragma_map,
     ( if one_or_more_map.search(PragmaMap, PredId, OoMTypeSpecs) then
         TypeSpecs = one_or_more_to_list(OoMTypeSpecs)
     else

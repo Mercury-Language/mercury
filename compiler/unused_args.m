@@ -1829,8 +1829,8 @@ gather_warnings_and_pragmas(ModuleInfo, UnusedArgInfo, DoWarn, DoPragma,
                 string.right(Name, IdLen, Id),
                 string.to_int(Id, _)
             ),
-            module_info_get_type_spec_info(ModuleInfo, TypeSpecInfo),
-            TypeSpecInfo = type_spec_info(_, TypeSpecForcePreds, _, _),
+            module_info_get_type_spec_tables(ModuleInfo, TypeSpecTables),
+            TypeSpecTables = type_spec_tables(_, TypeSpecForcePreds, _, _),
             not set.member(PredId, TypeSpecForcePreds),
 
             % Don't warn for a loop-invariant hoisting-generated procedure.

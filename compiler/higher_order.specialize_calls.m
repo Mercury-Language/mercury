@@ -1024,8 +1024,8 @@ maybe_specialize_call(hlds_goal(GoalExpr0, GoalInfo),
     else if
         (
             pred_info_is_imported(CalleePredInfo),
-            module_info_get_type_spec_info(ModuleInfo0, TypeSpecInfo),
-            TypeSpecInfo = type_spec_info(TypeSpecProcs, _, _, _),
+            module_info_get_type_spec_tables(ModuleInfo0, TypeSpecTables),
+            TypeSpecTables = type_spec_tables(TypeSpecProcs, _, _, _),
             not set.member(proc(CalleePredId, CalleeProcId), TypeSpecProcs)
         ;
             pred_info_is_pseudo_imported(CalleePredInfo),
@@ -1214,8 +1214,8 @@ maybe_specialize_ordinary_call(CanRequest, CalleePredProcId,
     HigherOrderArgs = cord.list(HigherOrderArgsCord),
 
     proc(CallerPredId, _) = hoi_get_pred_proc_id(!.Info),
-    module_info_get_type_spec_info(ModuleInfo0, TypeSpecInfo),
-    TypeSpecInfo = type_spec_info(_, ForceVersions, _, _),
+    module_info_get_type_spec_tables(ModuleInfo0, TypeSpecTables),
+    TypeSpecTables = type_spec_tables(_, ForceVersions, _, _),
     ( if set.contains(ForceVersions, CallerPredId) then
         RequestKind = user_type_spec
     else

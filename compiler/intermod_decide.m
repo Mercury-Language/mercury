@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
-% Copyright (C) 2023 The Mercury team.
+% Copyright (C) 2023-2024 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -160,8 +160,8 @@ gather_opt_export_preds_in_list(_, [], !IntermodInfo).
 gather_opt_export_preds_in_list(Params, [PredId | PredIds], !IntermodInfo) :-
     intermod_info_get_module_info(!.IntermodInfo, ModuleInfo),
     module_info_pred_info(ModuleInfo, PredId, PredInfo),
-    module_info_get_type_spec_info(ModuleInfo, TypeSpecInfo),
-    TypeSpecInfo = type_spec_info(_, TypeSpecForcePreds, _, _),
+    module_info_get_type_spec_tables(ModuleInfo, TypeSpecTables),
+    TypeSpecTables = type_spec_tables(_, TypeSpecForcePreds, _, _),
     pred_info_get_clauses_info(PredInfo, ClausesInfo),
     ( if
         clauses_info_get_explicit_vartypes(ClausesInfo, ExplicitVarTypes),

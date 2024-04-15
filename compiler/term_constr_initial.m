@@ -147,8 +147,8 @@ process_imported_preds(PredIds, !ModuleInfo) :-
     is det.
 
 process_imported_pred(PredId, !ModuleInfo) :-
-    module_info_get_type_spec_info(!.ModuleInfo, TypeSpecInfo),
-    TypeSpecInfo = type_spec_info(_, TypeSpecPredIds, _, _),
+    module_info_get_type_spec_tables(!.ModuleInfo, TypeSpecTables),
+    TypeSpecTables = type_spec_tables(_, TypeSpecPredIds, _, _),
     ( if set.member(PredId, TypeSpecPredIds) then
         true
     else

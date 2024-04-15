@@ -1655,11 +1655,11 @@ tvar_subst_desc(tvar_subst(TVar, Type)) = var_to_int(TVar) - Type.
     type_subst::in, tvarset::in, pred_func_or_unknown_maybe_modes::in,
     module_info::in, module_info::out) is det.
 
-record_type_specialization(TSInfo0, PredId, SpecPredId, SpecPredStatus,
+record_type_specialization(TypeSpecInfo0, PredId, SpecPredId, SpecPredStatus,
         SpecProcIds, RenamedSubst, TVarSet, PFUMM, !ModuleInfo) :-
     % Record the type specialisation in the module_info.
-    module_info_get_type_spec_info(!.ModuleInfo, TypeSpecInfo0),
-    TypeSpecInfo0 = type_spec_info(ProcsToSpec0, ForceVersions0, SpecMap0,
+    module_info_get_type_spec_tables(!.ModuleInfo, TypeSpecTables0),
+    TypeSpecTables0 = type_spec_tables(ProcsToSpec0, ForceVersions0, SpecMap0,
         PragmaMap0),
     list.map(
         ( pred(ProcId::in, PredProcId::out) is det :-
@@ -1676,14 +1676,14 @@ record_type_specialization(TSInfo0, PredId, SpecPredId, SpecPredStatus,
     else
         SpecMap = SpecMap0
     ),
-    TSInfo = (((TSInfo0
-        ^ tspec_pfumm := PFUMM)
-        ^ tspec_tsubst := RenamedSubst)
-        ^ tspec_tvarset := TVarSet),
-    one_or_more_map.add(PredId, TSInfo, PragmaMap0, PragmaMap),
-    TypeSpecInfo = type_spec_info(ProcsToSpec, ForceVersions, SpecMap,
+    TypeSpecInfo0 = decl_pragma_type_spec_info(_PFUMM0, SymName, SpecModuleName,
+        _Subst, _TVarSet0, ExpandedItems, Context, SeqNum),
+    TypeSpecInfo = decl_pragma_type_spec_info(PFUMM, SymName, SpecModuleName,
+        RenamedSubst, TVarSet, ExpandedItems, Context, SeqNum),
+    one_or_more_map.add(PredId, TypeSpecInfo, PragmaMap0, PragmaMap),
+    TypeSpecTables = type_spec_tables(ProcsToSpec, ForceVersions, SpecMap,
         PragmaMap),
-    module_info_set_type_spec_info(TypeSpecInfo, !ModuleInfo).
+    module_info_set_type_spec_tables(TypeSpecTables, !ModuleInfo).
 
 :- pred maybe_record_type_spec_in_qual_info(pred_or_func::in, sym_name::in,
     user_arity::in, pred_status::in, decl_pragma_type_spec_info::in,

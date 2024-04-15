@@ -82,8 +82,8 @@ specialize_higher_order(ProgressStream, !ModuleInfo, !IO) :-
         ho_params(HigherOrder, TypeSpec, UserTypeSpec, SizeLimit, ArgLimit),
     some [!GlobalInfo] (
         module_info_get_valid_pred_ids(!.ModuleInfo, ValidPredIds),
-        module_info_get_type_spec_info(!.ModuleInfo, TypeSpecInfo),
-        TypeSpecInfo = type_spec_info(_, UserSpecPredIdSet, _, _),
+        module_info_get_type_spec_tables(!.ModuleInfo, TypeSpecTables),
+        TypeSpecTables = type_spec_tables(_, UserSpecPredIdSet, _, _),
 
         globals.lookup_bool_option(Globals, debug_higher_order_specialization,
             DebugSpec),
