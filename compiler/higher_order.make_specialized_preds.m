@@ -49,7 +49,6 @@
 :- import_module hlds.status.
 :- import_module hlds.var_table_hlds.
 :- import_module libs.
-:- import_module libs.file_util.
 :- import_module libs.indent.
 :- import_module libs.optimization_options.
 :- import_module mdbcomp.
@@ -129,6 +128,30 @@ process_ho_spec_requests(MaybeProgressStream, !GlobalInfo, !IO) :-
         )
     ).
 
+    % If we were not allowed to create a specialized version because the
+    % loop check failed, check whether the version was created for another
+    % request for which the loop check succeeded.
+    %
+:- pred check_loop_request(higher_order_global_info::in, ho_request::in,
+    set(pred_proc_id)::in, set(pred_proc_id)::out) is det.
+
+check_loop_request(GlobalInfo, Request, !PredsToFix) :-
+    CallerPredProcId = Request ^ rq_caller,
+    CalleePredProcId = Request ^ rq_callee,
+    NewPredMap0 = hogi_get_new_pred_map(GlobalInfo),
+    ( if
+        map.search(NewPredMap0, CalleePredProcId, SpecVersions0),
+        some [Version] (
+            set.member(Version, SpecVersions0),
+            version_matches(hogi_get_params(GlobalInfo),
+                hogi_get_module_info(GlobalInfo), Request, Version, _)
+        )
+    then
+        set.insert(CallerPredProcId, !PredsToFix)
+    else
+        true
+    ).
+
 %---------------------------------------------------------------------------%
 
     % Filter out requests for higher-order specialization for preds which are
@@ -148,108 +171,121 @@ process_ho_spec_requests(MaybeProgressStream, !GlobalInfo, !IO) :-
 filter_request(MaybeProgressStream, GlobalInfo, Request,
         !AcceptedRequests, !LoopRequests, !IO) :-
     ModuleInfo = hogi_get_module_info(GlobalInfo),
-    Request = ho_request(CallingPredProcId, CalledPredProcId, _, _, HOArgs,
+    Request = ho_request(_, CalleePredProcId, _, _, HOArgs,
         _, _, RequestKind, Context),
-    CalledPredProcId = proc(CalledPredId, _),
-    module_info_pred_info(ModuleInfo, CalledPredId, PredInfo),
-    PredModule = pred_info_module(PredInfo),
-    PredName = pred_info_name(PredInfo),
-    PredFormArity = pred_info_pred_form_arity(PredInfo),
-    pred_info_get_arg_types(PredInfo, Types),
-    ActualArity = arg_list_arity(Types),
-    (
-        MaybeProgressStream = no
-    ;
-        MaybeProgressStream = yes(ProgressStream),
-        write_request(ProgressStream, ModuleInfo, "Request for",
-            qualified(PredModule, PredName), PredFormArity, ActualArity,
-            no, HOArgs, Context, !IO)
-    ),
+    CalleePredProcId = proc(CalleePredId, _),
+    module_info_pred_info(ModuleInfo, CalleePredId, CalleePredInfo),
+    Preamble = "Request for",
     (
         RequestKind = user_type_spec,
-        % Ignore the size limit for user specified specializations.
-        maybe_write_string_to_stream(MaybeProgressStream,
-            "%    request specialized (user-requested specialization)\n", !IO),
+        % Ignore the size limits for user specified specializations.
+        % We also don't need to test for recursive specialization here,
+        % since that cannot happen without at least one non-user-requested
+        % specialization in the loop.
+        maybe_report_specialized(MaybeProgressStream, ModuleInfo,
+            CalleePredInfo, Preamble, HOArgs, Context, !IO),
         list.cons(Request, !AcceptedRequests)
     ;
         RequestKind = non_user_type_spec,
         GoalSizeMap = hogi_get_goal_size_map(GlobalInfo),
-        ( if map.search(GoalSizeMap, CalledPredId, GoalSize0) then
+        ( if map.search(GoalSizeMap, CalleePredId, GoalSize0) then
             GoalSize = GoalSize0
         else
             % This can happen for a specialized version.
             GoalSize = 0
         ),
-        Params = hogi_get_params(GlobalInfo),
         ( if
-            GoalSize > Params ^ param_size_limit
+            does_something_prevent_specialization(GlobalInfo, Request,
+                GoalSize, Msg, !LoopRequests)
         then
-            maybe_write_string_to_stream(MaybeProgressStream,
-                "%    not specializing (goal too large).\n", !IO)
-        else if
-            higher_order_max_args_size(HOArgs) > Params ^ param_arg_limit
-        then
-            % If the arguments are too large, we can end up producing a
-            % specialized version with massive numbers of arguments, because
-            % all of the curried arguments are passed as separate arguments.
-            % Without this extras/xml/xml.parse.chars.m takes forever to
-            % compile.
-            maybe_write_string_to_stream(MaybeProgressStream,
-                "%    not specializing (args too large).\n", !IO)
-        else if
-            % To ensure termination of the specialization process, the depth
-            % of the higher-order arguments must strictly decrease compared
-            % to parents with the same original pred_proc_id.
-            VersionInfoMap = hogi_get_version_info_map(GlobalInfo),
-            ( if
-                map.search(VersionInfoMap, CalledPredProcId, CalledVersionInfo)
-            then
-                CalledVersionInfo = version_info(OrigPredProcId, _, _, _)
-            else
-                OrigPredProcId = CalledPredProcId
-            ),
-            map.search(VersionInfoMap, CallingPredProcId, CallingVersionInfo),
-            CallingVersionInfo = version_info(_, _, _, ParentVersions),
-            ArgDepth = higher_order_max_args_depth(HOArgs),
-            some [ParentVersion] (
-                list.member(ParentVersion, ParentVersions),
-                ParentVersion = parent_version_info(OrigPredProcId,
-                    OldArgDepth),
-                ArgDepth >= OldArgDepth
-            )
-        then
-            !:LoopRequests = [Request | !.LoopRequests],
-            maybe_write_string_to_stream(MaybeProgressStream,
-                "%    not specializing (recursive specialization).\n", !IO)
+            % We keep the updated !LoopRequests.
+            maybe_report_not_specialized(MaybeProgressStream, ModuleInfo,
+                CalleePredInfo, Preamble, Msg, HOArgs, Context, !IO)
         else
-            maybe_write_string_to_stream(MaybeProgressStream,
-                "%    request specialized.\n", !IO),
+            maybe_report_specialized(MaybeProgressStream, ModuleInfo,
+                CalleePredInfo, Preamble, HOArgs, Context, !IO),
             list.cons(Request, !AcceptedRequests)
         )
     ).
 
-    % If we were not allowed to create a specialized version because the
-    % loop check failed, check whether the version was created for another
-    % request for which the loop check succeeded.
-    %
-:- pred check_loop_request(higher_order_global_info::in, ho_request::in,
-    set(pred_proc_id)::in, set(pred_proc_id)::out) is det.
+:- pred does_something_prevent_specialization(higher_order_global_info::in,
+    ho_request::in, int::in,
+    string::out, list(ho_request)::in, list(ho_request)::out) is semidet.
 
-check_loop_request(GlobalInfo, Request, !PredsToFix) :-
-    CallingPredProcId = Request ^ rq_caller,
-    CalledPredProcId = Request ^ rq_callee,
-    NewPredMap0 = hogi_get_new_pred_map(GlobalInfo),
+does_something_prevent_specialization(GlobalInfo, Request, GoalSize,
+        Msg, !LoopRequests) :-
+    Params = hogi_get_params(GlobalInfo),
+    Request = ho_request(CallerPredProcId, CalleePredProcId, _, _, HOArgs,
+        _, _, _, _),
     ( if
-        map.search(NewPredMap0, CalledPredProcId, SpecVersions0),
-        some [Version] (
-            set.member(Version, SpecVersions0),
-            version_matches(hogi_get_params(GlobalInfo),
-                hogi_get_module_info(GlobalInfo), Request, Version, _)
+        GoalSize > Params ^ param_size_limit
+    then
+        Msg = "goal too large"
+    else if
+        higher_order_max_args_size(HOArgs) > Params ^ param_arg_limit
+    then
+        % If the arguments are too large, we can end up producing a
+        % specialized version with massive numbers of arguments, because
+        % all of the curried arguments are passed as separate arguments.
+        % Without this extras/xml/xml.parse.chars.m takes forever to
+        % compile.
+        Msg = "args too large"
+    else if
+        % To ensure termination of the specialization process, the depth
+        % of the higher-order arguments must strictly decrease compared
+        % to parents with the same original pred_proc_id.
+        VersionInfoMap = hogi_get_version_info_map(GlobalInfo),
+        ( if
+            map.search(VersionInfoMap, CalleePredProcId, CalleeVersionInfo)
+        then
+            CalleeVersionInfo = version_info(OrigPredProcId, _, _, _)
+        else
+            OrigPredProcId = CalleePredProcId
+        ),
+        map.search(VersionInfoMap, CallerPredProcId, CallerVersionInfo),
+        CallerVersionInfo = version_info(_, _, _, ParentVersions),
+        ArgDepth = higher_order_max_args_depth(HOArgs),
+        some [ParentVersion] (
+            list.member(ParentVersion, ParentVersions),
+            ParentVersion = parent_version_info(OrigPredProcId, OldArgDepth),
+            ArgDepth >= OldArgDepth
         )
     then
-        set.insert(CallingPredProcId, !PredsToFix)
+        !:LoopRequests = [Request | !.LoopRequests],
+        Msg = "recursive specialization"
     else
-        true
+        fail
+    ).
+
+:- pred maybe_report_specialized(maybe(io.text_output_stream)::in,
+    module_info::in, pred_info::in, string::in,
+    list(higher_order_arg)::in, prog_context::in, io::di, io::uo) is det.
+
+maybe_report_specialized(MaybeProgressStream, ModuleInfo, PredInfo, Preamble,
+        HOArgs, Context, !IO) :-
+    (
+        MaybeProgressStream = no
+    ;
+        MaybeProgressStream = yes(ProgressStream),
+        write_request(ProgressStream, ModuleInfo, PredInfo, Preamble,
+            no, HOArgs, Context, !IO),
+        io.write_string(ProgressStream, "%    request specialized.\n", !IO)
+    ).
+
+:- pred maybe_report_not_specialized(maybe(io.text_output_stream)::in,
+    module_info::in, pred_info::in, string::in, string::in,
+    list(higher_order_arg)::in, prog_context::in, io::di, io::uo) is det.
+
+maybe_report_not_specialized(MaybeProgressStream, ModuleInfo, PredInfo,
+        Preamble, Msg, HOArgs, Context, !IO) :-
+    (
+        MaybeProgressStream = no
+    ;
+        MaybeProgressStream = yes(ProgressStream),
+        write_request(ProgressStream, ModuleInfo, PredInfo, Preamble,
+            no, HOArgs, Context, !IO),
+        io.format(ProgressStream, "%%    request not specialized (%s).\n",
+            [s(Msg)], !IO)
     ).
 
 %---------------------------------------------------------------------------%
@@ -264,15 +300,15 @@ maybe_create_new_ho_spec_preds(_, [],
         !NewPreds, !PredsToFix, !GlobalInfo, !IO).
 maybe_create_new_ho_spec_preds(MaybeProgressStream, [Request | Requests],
         !NewPreds, !PredsToFix, !GlobalInfo, !IO) :-
-    Request = ho_request(CallingPredProcId, CalledPredProcId,
+    Request = ho_request(CallerPredProcId, CalleePredProcId,
         _, _, _, _, _, _, _),
-    set.insert(CallingPredProcId, !PredsToFix),
+    set.insert(CallerPredProcId, !PredsToFix),
     NewPredMap = hogi_get_new_pred_map(!.GlobalInfo),
     ( if
         % Check that we are not redoing the same pred.
         % SpecVersions0 are pred_proc_ids of the specialized versions
         % of the current pred.
-        map.search(NewPredMap, CalledPredProcId, SpecVersions0),
+        map.search(NewPredMap, CalleePredProcId, SpecVersions0),
         some [Version] (
             set.member(Version, SpecVersions0),
             version_matches(hogi_get_params(!.GlobalInfo),
@@ -350,9 +386,7 @@ create_new_ho_spec_pred(MaybeProgressStream, Request, NewPred,
         MaybeProgressStream = no
     ;
         MaybeProgressStream = yes(ProgressStream),
-        ActualArity = arg_list_arity(Types),
-        write_request(ProgressStream, ModuleInfo0, "Specializing",
-            qualified(PredModuleName, Name0), PredFormArity, ActualArity,
+        write_request(ProgressStream, ModuleInfo0, PredInfo0, "Specializing",
             yes(SpecName), HOArgs, Context, !IO)
     ),
 
@@ -725,12 +759,12 @@ construct_higher_order_terms(ModuleInfo, HeadVars0, NewHeadVars, ArgModes0,
         % Add the curried arguments to the procedure's argument list.
         proc(PredId, ProcId) = unshroud_pred_proc_id(ShroudedPredProcId),
         module_info_pred_proc_info(ModuleInfo, PredId, ProcId,
-            CalledPredInfo, CalledProcInfo),
-        PredOrFunc = pred_info_is_pred_or_func(CalledPredInfo),
-        proc_info_get_argmodes(CalledProcInfo, CalledArgModes),
-        list.det_split_list(NumArgs, CalledArgModes,
+            CalleePredInfo, CalleeProcInfo),
+        PredOrFunc = pred_info_is_pred_or_func(CalleePredInfo),
+        proc_info_get_argmodes(CalleeProcInfo, CalleeArgModes),
+        list.det_split_list(NumArgs, CalleeArgModes,
             CurriedArgModes1, NonCurriedArgModes),
-        proc_info_interface_determinism(CalledProcInfo, ProcDetism),
+        proc_info_interface_determinism(CalleeProcInfo, ProcDetism),
         GroundInstInfo = higher_order(pred_inst_info(PredOrFunc,
             NonCurriedArgModes, arg_reg_types_unset, ProcDetism))
     else
@@ -962,15 +996,21 @@ maybe_add_constraint(Constraint, !RevConstraints) :-
 %
 
 :- pred write_request(io.text_output_stream::in, module_info::in,
-    string::in, sym_name::in, pred_form_arity::in, pred_form_arity::in,
-    maybe(string)::in, list(higher_order_arg)::in, prog_context::in,
-    io::di, io::uo) is det.
+    pred_info::in, string::in, maybe(string)::in,
+    list(higher_order_arg)::in, prog_context::in, io::di, io::uo) is det.
 
-write_request(OutputStream, ModuleInfo, Msg, SymName, PredArity, ActualArity,
-        MaybeNewName, HOArgs, Context, !IO) :-
+write_request(OutputStream, ModuleInfo, PredInfo, Msg, MaybeNewName,
+        HOArgs, Context, !IO) :-
+    PredModule = pred_info_module(PredInfo),
+    PredName = pred_info_name(PredInfo),
+    PredFormArity = pred_info_pred_form_arity(PredInfo),
+    pred_info_get_arg_types(PredInfo, ArgTypes),
+    ActualArity = arg_list_arity(ArgTypes),
+    PredSymName = qualified(PredModule, PredName),
+
+    OldName = sym_name_to_string(PredSymName),
+    PredFormArity = pred_form_arity(PredFormArityInt),
     ContextStr = context_to_string(Context),
-    OldName = sym_name_to_string(SymName),
-    PredArity = pred_form_arity(PredArityInt),
     (
         MaybeNewName = yes(NewName),
         string.format(" into %s", [s(NewName)], IntoStr)
@@ -979,9 +1019,10 @@ write_request(OutputStream, ModuleInfo, Msg, SymName, PredArity, ActualArity,
         IntoStr = ""
     ),
     io.format(OutputStream, "%% %s%s `%s'/%d%s with higher-order arguments:\n",
-        [s(ContextStr), s(Msg), s(OldName), i(PredArityInt), s(IntoStr)], !IO),
+        [s(ContextStr), s(Msg), s(OldName), i(PredFormArityInt), s(IntoStr)],
+        !IO),
     ActualArity = pred_form_arity(ActualArityInt),
-    NumToDrop = ActualArityInt - PredArityInt,
+    NumToDrop = ActualArityInt - PredFormArityInt,
     output_higher_order_args(OutputStream, ModuleInfo, NumToDrop, 0u,
         HOArgs, !IO).
 
