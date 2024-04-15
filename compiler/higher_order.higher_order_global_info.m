@@ -332,9 +332,9 @@
 
 %---------------------%
 
-:- func higher_order_args_size(list(higher_order_arg)) = int.
+:- func higher_order_max_args_size(list(higher_order_arg)) = int.
 :- func higher_order_arg_size(higher_order_arg) = int.
-:- func higher_order_args_depth(list(higher_order_arg)) = int.
+:- func higher_order_max_args_depth(list(higher_order_arg)) = int.
 :- func higher_order_arg_depth(higher_order_arg) = int.
 
 %---------------------------------------------------------------------------%
@@ -656,17 +656,24 @@ mode_to_unify_mode(ModuleInfo, Mode) = UnifyMode :-
 
 %---------------------------------------------------------------------------%
 
-higher_order_args_size(Args) =
+higher_order_max_args_size(Args) =
     list.foldl(int.max, list.map(higher_order_arg_size, Args), 0).
 
 higher_order_arg_size(HOArg) =
-    1 + higher_order_args_size(HOArg ^ hoa_known_curry_args).
+    1 + higher_order_total_args_size(HOArg ^ hoa_known_curry_args).
 
-higher_order_args_depth(Args) =
+:- func higher_order_total_args_size(list(higher_order_arg)) = int.
+
+higher_order_total_args_size(Args) =
+    list.foldl(int.plus, list.map(higher_order_arg_size, Args), 0).
+
+%---------------------%
+
+higher_order_max_args_depth(Args) =
     list.foldl(int.max, list.map(higher_order_arg_depth, Args), 0).
 
 higher_order_arg_depth(HOArg) =
-    1 + higher_order_args_depth(HOArg ^ hoa_known_curry_args).
+    1 + higher_order_max_args_depth(HOArg ^ hoa_known_curry_args).
 
 %---------------------------------------------------------------------------%
 :- end_module transform_hlds.higher_order.higher_order_global_info.

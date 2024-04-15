@@ -187,7 +187,7 @@ filter_request(MaybeProgressStream, GlobalInfo, Request,
             maybe_write_string_to_stream(MaybeProgressStream,
                 "%    not specializing (goal too large).\n", !IO)
         else if
-            higher_order_args_size(HOArgs) > Params ^ param_arg_limit
+            higher_order_max_args_size(HOArgs) > Params ^ param_arg_limit
         then
             % If the arguments are too large, we can end up producing a
             % specialized version with massive numbers of arguments, because
@@ -210,7 +210,7 @@ filter_request(MaybeProgressStream, GlobalInfo, Request,
             ),
             map.search(VersionInfoMap, CallingPredProcId, CallingVersionInfo),
             CallingVersionInfo = version_info(_, _, _, ParentVersions),
-            ArgDepth = higher_order_args_depth(HOArgs),
+            ArgDepth = higher_order_max_args_depth(HOArgs),
             some [ParentVersion] (
                 list.member(ParentVersion, ParentVersions),
                 ParentVersion = parent_version_info(OrigPredProcId,
@@ -583,7 +583,7 @@ higher_order_create_new_proc(NewPred, !.NewProcInfo,
 
     % Record extra information about this version.
     VersionInfoMap0 = hogi_get_version_info_map(!.GlobalInfo),
-    ArgsDepth = higher_order_args_depth(HOArgs),
+    ArgsDepth = higher_order_max_args_depth(HOArgs),
 
     ( if map.search(VersionInfoMap0, OldPredProcId, OldProcVersionInfo) then
         OldProcVersionInfo = version_info(OrigPredProcId, _, _, _)
