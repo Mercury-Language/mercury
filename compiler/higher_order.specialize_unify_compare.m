@@ -25,7 +25,7 @@
     % Succeed if the called pred is "unify" or "compare" and is specializable,
     % returning a specialized goal.
     %
-:- pred specialize_call_to_unify_or_compare(pred_id::in, proc_id::in,
+:- pred specialize_call_to_unify_or_compare(pred_info::in, proc_id::in,
     list(prog_var)::in, maybe(call_unify_context)::in,
     hlds_goal_info::in, hlds_goal_expr::out,
     higher_order_info::in, higher_order_info::out) is semidet.
@@ -62,16 +62,15 @@
 
 %---------------------------------------------------------------------------%
 
-specialize_call_to_unify_or_compare(CalledPred, CalledProc, Args, MaybeContext,
-        OrigGoalInfo, Goal, !Info) :-
+specialize_call_to_unify_or_compare(CalleePredInfo, CalleeProcId,
+        Args, MaybeContext, OrigGoalInfo, Goal, !Info) :-
     ModuleInfo = hogi_get_module_info(hoi_get_global_info(!.Info)),
     ProcInfo0 = hoi_get_proc_info(!.Info),
     KnownVarMap = hoi_get_known_var_map(!.Info),
     proc_info_get_var_table(ProcInfo0, VarTable),
-    module_info_pred_info(ModuleInfo, CalledPred, CalledPredInfo),
-    mercury_public_builtin_module = pred_info_module(CalledPredInfo),
-    PredName = pred_info_name(CalledPredInfo),
-    pred_info_get_orig_arity(CalledPredInfo,
+    mercury_public_builtin_module = pred_info_module(CalleePredInfo),
+    PredName = pred_info_name(CalleePredInfo),
+    pred_info_get_orig_arity(CalleePredInfo,
         pred_form_arity(PredFormArityInt)),
     special_pred_name_arity(SpecialId, PredName, _, PredFormArityInt),
     special_pred_get_type(SpecialId, Args, Var),
@@ -87,8 +86,8 @@ specialize_call_to_unify_or_compare(CalledPred, CalledProc, Args, MaybeContext,
     Type \= tuple_type(_, _),
 
     Args = [TypeInfoVar | SpecialPredArgs],
-    map.search(KnownVarMap, TypeInfoVar,
-        known_const(_TypeInfoConsId, TypeInfoVarArgs)),
+    map.search(KnownVarMap, TypeInfoVar, KnownConst),
+    KnownConst = known_const(_TypeInfoConsId, TypeInfoVarArgs),
     type_to_ctor(Type, TypeCtor),
     TypeCtor = type_ctor(_, TypeArity),
     ( if TypeArity = 0 then
@@ -98,8 +97,8 @@ specialize_call_to_unify_or_compare(CalledPred, CalledProc, Args, MaybeContext,
     ),
     ( if
         not type_has_user_defined_equality_pred(ModuleInfo, Type, _),
-        proc_id_to_int(CalledProc, CalledProcInt),
-        CalledProcInt = 0,
+        proc_id_to_int(CalleeProcId, CalleeProcIdInt),
+        CalleeProcIdInt = 0,
         (
             SpecialId = spec_pred_unify,
             SpecialPredArgs = [Arg1, Arg2],

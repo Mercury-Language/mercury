@@ -318,12 +318,17 @@
 
 %---------------------%
 
-:- pred remove_const_higher_order_args(int::in, list(T)::in,
-    list(higher_order_arg)::in, list(T)::out) is det.
+    % remove_const_higher_order_args(HOArgs, Args0, Args):
+    %
+    % Look through every ho arg in HOArgs. For every ho arg that is constant,
+    % remove the corresponding arg from Args0, returning the result as Args.
+    %
+:- pred remove_const_higher_order_args(list(higher_order_arg)::in,
+    list(T)::in, list(T)::out) is det.
 
 %---------------------%
 
-:- func mode_both_sides_to_unify_mode(module_info, mer_mode) = unify_mode.
+:- func mode_to_unify_mode(module_info, mer_mode) = unify_mode.
 
 %---------------------%
 
@@ -460,10 +465,9 @@ both_constants(IsConstA, IsConstB) = IsConst :-
 %---------------------------------------------------------------------------%
 
 version_matches(Params, ModuleInfo, Request, Version, Match) :-
-    Match = match(Version, MatchCompleteness, Args, ExtraTypeInfoTypes),
-    Request = ho_request(_, Callee, ArgsTypes0, _, RequestHigherOrderArgs,
-        RequestTVarSet, _, _, _),
-    Callee = proc(CalleePredId, _),
+    Request = ho_request(_, CalleePredProcId, ArgsTypes0, _,
+        RequestHigherOrderArgs, RequestTVarSet, _, _, _),
+    CalleePredProcId = proc(CalleePredId, _),
     module_info_pred_info(ModuleInfo, CalleePredId, CalleePredInfo),
     Version = new_pred(_, _, _, _, VersionHigherOrderArgs, VersionArgsTypes0,
         VersionExtraTypeInfoTVars, VersionTVarSet, _, _),
@@ -476,18 +480,24 @@ version_matches(Params, ModuleInfo, Request, Version, Match) :-
         MatchCompleteness = complete_match
     ;
         FullOrPartial = match_is_full,
-        list.length(HigherOrderArgs, NumHOArgs),
-        MatchCompleteness = partial_match(NumHOArgs),
         pred_info_get_markers(CalleePredInfo, Markers),
 
         % Always fully specialize calls to class methods.
+        % XXX This block of code was added by Simon on 2003 May 17, but
+        % - the code seems to *prevent* the specialization of class methods
+        %   in the match_is_full case, and
+        % - it seems to have nothing to do with the log message of that diff.
         not check_marker(Markers, marker_class_method),
         not check_marker(Markers, marker_class_instance_method),
+
         (
             Params ^ param_do_type_spec = do_not_spec_types
         ;
             pred_info_is_imported(CalleePredInfo)
-        )
+        ),
+
+        list.length(HigherOrderArgs, NumHOArgs),
+        MatchCompleteness = partial_match(NumHOArgs)
     ),
 
     % Rename apart type variables.
@@ -496,22 +506,28 @@ version_matches(Params, ModuleInfo, Request, Version, Match) :-
     apply_variable_renaming_to_type_list(TVarRenaming,
         VersionArgTypes0, VersionArgTypes),
     assoc_list.keys_and_values(ArgsTypes0, Args0, ArgTypes),
+
     type_list_subsumes(VersionArgTypes, ArgTypes, TypeSubn),
 
-    % Work out the types of the extra type-info variables that
-    % need to be passed to the specialized version.
-    %
-    % XXX kind inference:
-    % we assume all tvars have kind `star'
+    require_det (
+        % We know the version matches; work out the details.
+        % Specifically, work out the types of the extra type-info variables
+        % that we need to pass to the specialized version.
+        %
+        % XXX kind inference:
+        % we assume all tvars have kind `star'
 
-    map.init(KindMap),
-    apply_variable_renaming_to_tvar_kind_map(TVarRenaming, KindMap,
-        RenamedKindMap),
-    apply_variable_renaming_to_tvar_list(TVarRenaming,
-        VersionExtraTypeInfoTVars, ExtraTypeInfoTVars0),
-    apply_rec_subst_to_tvar_list(RenamedKindMap, TypeSubn, ExtraTypeInfoTVars0,
-        ExtraTypeInfoTypes),
-    get_extra_arguments(HigherOrderArgs, Args0, Args).
+        map.init(KindMap),
+        apply_variable_renaming_to_tvar_kind_map(TVarRenaming, KindMap,
+            RenamedKindMap),
+        apply_variable_renaming_to_tvar_list(TVarRenaming,
+            VersionExtraTypeInfoTVars, ExtraTypeInfoTVars0),
+        apply_rec_subst_to_tvar_list(RenamedKindMap, TypeSubn,
+            ExtraTypeInfoTVars0, ExtraTypeInfoTypes),
+        get_extra_arguments(HigherOrderArgs, Args0, Args),
+
+        Match = match(Version, MatchCompleteness, Args, ExtraTypeInfoTypes)
+    ).
 
 :- type match_is_full
     --->    match_is_full
@@ -525,39 +541,43 @@ higher_order_args_match([], [], [], match_is_full).
 higher_order_args_match(RequestArgs, [], [], match_is_partial) :-
     RequestArgs = [_ | _],
     not (
-        list.member(RequestArg, RequestArgs),
-        RequestConsId = RequestArg ^ hoa_cons_id,
-        RequestConsId = closure_cons(_, _)
+        some [RequestArg] (
+            list.member(RequestArg, RequestArgs),
+            RequestArg ^ hoa_cons_id = closure_cons(_, _)
+        )
     ).
 higher_order_args_match([RequestArg | RequestArgs], [VersionArg | VersionArgs],
         Args, FullOrPartial) :-
-    RequestArg = higher_order_arg(ConsId1, ArgNo1, _, _, _, _, _,
+    RequestArg = higher_order_arg(ConsIdR, ArgNoR, _, _, _, _, _,
         RequestIsConst),
-    VersionArg = higher_order_arg(ConsId2, ArgNo2, _, _, _, _, _,
+    VersionArg = higher_order_arg(ConsIdV, ArgNoV, _, _, _, _, _,
         VersionIsConst),
 
-    ( if ArgNo1 = ArgNo2 then
-        ConsId1 = ConsId2,
-        RequestArg = higher_order_arg(_, _, NumArgs, CurriedArgs,
-            CurriedArgTypes, CurriedArgRttiInfo, HOCurriedRequestArgs, _),
-        VersionArg = higher_order_arg(_, _, NumArgs,
-            _, _, _, HOCurriedVersionArgs, _),
+    ( if ArgNoR = ArgNoV then
+        ConsIdR = ConsIdV,
+        RequestArg = higher_order_arg(_, _, NumArgs,
+            CurriedArgs, CurriedArgTypes, CurriedArgRttiInfo,
+            HOCurriedRequestArgs, _),
+        VersionArg = higher_order_arg(_, _, NumArgs, _, _, _,
+            HOCurriedVersionArgs, _),
         higher_order_args_match(HOCurriedRequestArgs, HOCurriedVersionArgs,
             NewHOCurriedArgs, FullOrPartial),
         higher_order_args_match(RequestArgs, VersionArgs, TailArgs, _),
-        NewRequestArg = higher_order_arg(ConsId1, ArgNo1, NumArgs,
+        NewRequestArg = higher_order_arg(ConsIdR, ArgNoR, NumArgs,
             CurriedArgs, CurriedArgTypes, CurriedArgRttiInfo,
             NewHOCurriedArgs, both_constants(RequestIsConst, VersionIsConst)),
         Args = [NewRequestArg | TailArgs]
     else
-        % Type-info arguments present in the request may be missing from the
-        % version if we are doing user-guided type specialization. All of the
-        % arguments in the version must be present in the request for a match.
-        ArgNo1 < ArgNo2,
+        % Typeinfo arguments that are present in the request may be
+        % missing from the version, if we are doing user-guided type
+        % specialization. All of the arguments in the version must be present
+        % in the request for a match.
+        ArgNoR < ArgNoV,
 
-        % All the higher-order arguments must be present in the version
-        % otherwise we should create a new one.
-        ConsId1 \= closure_cons(_, _),
+        % All the higher-order arguments in the request must be present
+        % in the version for a match. If there is no such version, we should
+        % create a new one.
+        ConsIdR \= closure_cons(_, _),
         higher_order_args_match(RequestArgs, [VersionArg | VersionArgs],
             Args, _),
         FullOrPartial = match_is_partial
@@ -567,7 +587,7 @@ higher_order_args_match([RequestArg | RequestArgs], [VersionArg | VersionArgs],
 
 get_extra_arguments(HOArgs, Args0, ExtraArgs ++ Args) :-
     get_extra_arguments_2(HOArgs, ExtraArgs),
-    remove_const_higher_order_args(1, Args0, HOArgs, Args).
+    remove_const_higher_order_args(HOArgs, Args0, Args).
 
 :- pred get_extra_arguments_2(list(higher_order_arg)::in, list(prog_var)::out)
     is det.
@@ -578,13 +598,13 @@ get_extra_arguments_2([HOArg | HOArgs], Args) :-
         IsConst),
     (
         IsConst = arg_is_const,
-        % If this argument is constant, all its sub-terms must be constant,
+        % If this argument is constant, all its subterms must be constant,
         % so there won't be anything more to add.
         get_extra_arguments_2(HOArgs, Args)
     ;
         IsConst = arg_is_not_const,
-        remove_const_higher_order_args(1, CurriedArgs0,
-            HOCurriedArgs, CurriedArgs),
+        remove_const_higher_order_args(HOCurriedArgs,
+            CurriedArgs0, CurriedArgs),
         get_extra_arguments_2(HOCurriedArgs, ExtraCurriedArgs),
         get_extra_arguments_2(HOArgs, Args1),
         list.condense([CurriedArgs, ExtraCurriedArgs, Args1], Args)
@@ -592,34 +612,44 @@ get_extra_arguments_2([HOArg | HOArgs], Args) :-
 
 %---------------------------------------------------------------------------%
 
-remove_const_higher_order_args(_, [], _, []).
-remove_const_higher_order_args(Index, [Arg | Args0], HOArgs0, Args) :-
+remove_const_higher_order_args(HOArgs, Args0, Args) :-
+    remove_const_higher_order_args_loop(1, HOArgs, Args0, Args).
+
+:- pred remove_const_higher_order_args_loop(int::in,
+    list(higher_order_arg)::in, list(T)::in, list(T)::out) is det.
+
+remove_const_higher_order_args_loop(_, _, [], []).
+remove_const_higher_order_args_loop(Index, HOArgs,
+        [HeadArg0 | TailArgs0], Args) :-
     (
-        HOArgs0 = [HOArg | HOArgs],
-        HOArg = higher_order_arg(_, HOIndex, _, _, _, _, _, IsConst),
-        ( if HOIndex = Index then
-            remove_const_higher_order_args(Index + 1, Args0, HOArgs, Args1),
+        HOArgs = [HeadHOArg | TailHOArgs],
+        HeadHOArg =
+            higher_order_arg(_, HeadHOIndex, _, _, _, _, _, HeadIsConst),
+        ( if HeadHOIndex = Index then
+            remove_const_higher_order_args_loop(Index + 1, TailHOArgs,
+                TailArgs0, TailArgs),
             (
-                IsConst = arg_is_const,
-                Args = Args1
+                HeadIsConst = arg_is_const,
+                Args = TailArgs
             ;
-                IsConst = arg_is_not_const,
-                Args = [Arg | Args1]
+                HeadIsConst = arg_is_not_const,
+                Args = [HeadArg0 | TailArgs]
             )
-        else if HOIndex > Index then
-            remove_const_higher_order_args(Index + 1, Args0, HOArgs0, Args1),
-            Args = [Arg | Args1]
+        else if HeadHOIndex > Index then
+            remove_const_higher_order_args_loop(Index + 1, HOArgs,
+                TailArgs0, TailArgs),
+            Args = [HeadArg0 | TailArgs]
         else
             unexpected($pred, "unordered indexes")
         )
     ;
-        HOArgs0 = [],
-        Args = [Arg | Args0]
+        HOArgs = [],
+        Args = [HeadArg0 | TailArgs0]
     ).
 
 %---------------------------------------------------------------------------%
 
-mode_both_sides_to_unify_mode(ModuleInfo, Mode) = UnifyMode :-
+mode_to_unify_mode(ModuleInfo, Mode) = UnifyMode :-
     mode_get_insts(ModuleInfo, Mode, InitInst, FinalInst),
     UnifyMode = unify_modes_li_lf_ri_rf(InitInst, FinalInst,
         InitInst, FinalInst).
