@@ -17,7 +17,7 @@
 
     % Process requests until there are no new requests to process.
     %
-:- pred recursively_process_ho_spec_requests(maybe(io.text_output_stream)::in,
+:- pred process_ho_spec_requests_to_fixpoint(maybe(io.text_output_stream)::in,
     higher_order_global_info::in, higher_order_global_info::out,
     io::di, io::uo) is det.
 
@@ -86,13 +86,13 @@
 % new predicates that are required.
 %
 
-recursively_process_ho_spec_requests(MaybeProgressStream, !GlobalInfo, !IO) :-
+process_ho_spec_requests_to_fixpoint(MaybeProgressStream, !GlobalInfo, !IO) :-
     RequestSet0 = hogi_get_requests(!.GlobalInfo),
     ( if set.is_empty(RequestSet0) then
         true
     else
         process_ho_spec_requests(MaybeProgressStream, !GlobalInfo, !IO),
-        recursively_process_ho_spec_requests(MaybeProgressStream,
+        process_ho_spec_requests_to_fixpoint(MaybeProgressStream,
             !GlobalInfo, !IO)
     ).
 
@@ -106,16 +106,16 @@ process_ho_spec_requests(MaybeProgressStream, !GlobalInfo, !IO) :-
         Requests = []
     ;
         Requests = [_ | _],
-        some [!PredProcsToFix] (
-            set.init(!:PredProcsToFix),
+        some [!PredProcIdsToFix] (
+            set.init(!:PredProcIdsToFix),
             maybe_create_new_ho_spec_preds(MaybeProgressStream, Requests,
-                [], NewPredList, !PredProcsToFix, !GlobalInfo, !IO),
+                [], NewPredList, !PredProcIdsToFix, !GlobalInfo, !IO),
             list.foldl(check_loop_request(!.GlobalInfo), LoopRequests,
-                !PredProcsToFix),
-            set.to_sorted_list(!.PredProcsToFix, PredProcs)
+                !PredProcIdsToFix),
+            set.to_sorted_list(!.PredProcIdsToFix, PredProcIdsToFix)
         ),
         ho_fixup_specialized_versions(NewPredList, !GlobalInfo),
-        ho_fixup_preds(PredProcs, !GlobalInfo),
+        ho_fixup_preds(PredProcIdsToFix, !GlobalInfo),
         (
             NewPredList = [_ | _],
             % The dependencies may have changed, so the dependency graph
@@ -132,22 +132,16 @@ process_ho_spec_requests(MaybeProgressStream, !GlobalInfo, !IO) :-
     % loop check failed, check whether the version was created for another
     % request for which the loop check succeeded.
     %
+    % XXX This predicate needs a more descriptive name. Note: the body
+    % does not even *mention* loop checks.
+    %
 :- pred check_loop_request(higher_order_global_info::in, ho_request::in,
     set(pred_proc_id)::in, set(pred_proc_id)::out) is det.
 
-check_loop_request(GlobalInfo, Request, !PredsToFix) :-
-    CallerPredProcId = Request ^ rq_caller,
-    CalleePredProcId = Request ^ rq_callee,
-    NewPredMap0 = hogi_get_new_pred_map(GlobalInfo),
-    ( if
-        map.search(NewPredMap0, CalleePredProcId, SpecVersions0),
-        some [Version] (
-            set.member(Version, SpecVersions0),
-            version_matches(hogi_get_params(GlobalInfo),
-                hogi_get_module_info(GlobalInfo), Request, Version, _)
-        )
-    then
-        set.insert(CallerPredProcId, !PredsToFix)
+check_loop_request(GlobalInfo, Request, !PredProcIdsToFix) :-
+    ( if request_already_matches_a_version(GlobalInfo, Request) then
+        CallerPredProcId = Request ^ rq_caller,
+        set.insert(CallerPredProcId, !PredProcIdsToFix)
     else
         true
     ).
@@ -300,21 +294,9 @@ maybe_create_new_ho_spec_preds(_, [],
         !NewPreds, !PredsToFix, !GlobalInfo, !IO).
 maybe_create_new_ho_spec_preds(MaybeProgressStream, [Request | Requests],
         !NewPreds, !PredsToFix, !GlobalInfo, !IO) :-
-    Request = ho_request(CallerPredProcId, CalleePredProcId,
-        _, _, _, _, _, _, _),
-    set.insert(CallerPredProcId, !PredsToFix),
-    NewPredMap = hogi_get_new_pred_map(!.GlobalInfo),
-    ( if
-        % Check that we are not redoing the same pred.
-        % SpecVersions0 are pred_proc_ids of the specialized versions
-        % of the current pred.
-        map.search(NewPredMap, CalleePredProcId, SpecVersions0),
-        some [Version] (
-            set.member(Version, SpecVersions0),
-            version_matches(hogi_get_params(!.GlobalInfo),
-                hogi_get_module_info(!.GlobalInfo), Request, Version, _)
-        )
-    then
+    set.insert(Request ^ rq_caller, !PredsToFix),
+    % Do not try to redo the same pred.
+    ( if request_already_matches_a_version(!.GlobalInfo, Request) then
         true
     else
         create_new_ho_spec_pred(MaybeProgressStream, Request, NewPred,
@@ -336,52 +318,10 @@ create_new_ho_spec_pred(MaybeProgressStream, Request, NewPred,
     Request = ho_request(CallerPPId, CalleePPId, CallArgsTypes,
         ExtraTypeInfoTVars, HOArgs, CallerTVarSet, TypeInfoLiveness,
         RequestKind, Context),
-    CallerPPId = proc(CallerPredId, CallerProcId),
     ModuleInfo0 = hogi_get_module_info(!.GlobalInfo),
     module_info_pred_proc_info(ModuleInfo0, CalleePPId, PredInfo0, ProcInfo0),
-
-    Name0 = pred_info_name(PredInfo0),
-    PredFormArity = pred_info_pred_form_arity(PredInfo0),
-    PredOrFunc = pred_info_is_pred_or_func(PredInfo0),
-    PredModuleName = pred_info_module(PredInfo0),
-    pred_info_get_arg_types(PredInfo0, ArgTVarSet, ExistQVars, Types),
-
-    (
-        RequestKind = user_type_spec,
-        % If this is a user-guided type specialisation, the new name comes from
-        % the name and mode number of the requesting predicate. The mode number
-        % is included because we want to avoid the creation of more than one
-        % predicate with the same name if more than one mode of a predicate
-        % is specialized. Since the names of e.g. deep profiling proc_static
-        % structures are derived from the names of predicates, duplicate
-        % predicate names lead to duplicate global variable names and hence to
-        % link errors.
-        CallerPredName0 = predicate_name(ModuleInfo0, CallerPredId),
-
-        % The higher_order_arg_order_version part is to avoid segmentation
-        % faults or other errors when the order or number of extra arguments
-        % changes. If the user does not recompile all affected code, the
-        % program will not link.
-        Transform = tn_user_type_spec(PredOrFunc, CallerPredId, CallerProcId,
-            higher_order_arg_order_version),
-        make_transformed_pred_name(CallerPredName0, Transform, SpecName),
-        ProcTransform =
-            proc_transform_user_type_spec(CallerPredId, CallerProcId),
-        NewProcId = CallerProcId,
-        % For exported predicates, the type specialization must be exported.
-        % For opt_imported predicates, we only want to keep this version
-        % if we do some other useful specialization on it.
-        pred_info_get_status(PredInfo0, PredStatus)
-    ;
-        RequestKind = non_user_type_spec,
-        NewProcId = hlds_pred.initial_proc_id,
-        hogi_allocate_id(SeqNum, !GlobalInfo),
-        Transform = tn_higher_order(PredOrFunc, SeqNum),
-        make_transformed_pred_name(Name0, Transform, SpecName),
-        ProcTransform = proc_transform_higher_order_spec(SeqNum),
-        PredStatus = pred_status(status_local)
-    ),
-
+    construct_created_spec_name_status(ModuleInfo0, Request, PredInfo0,
+        SpecName, Origin, PredStatus, NewProcId, !GlobalInfo),
     (
         MaybeProgressStream = no
     ;
@@ -390,7 +330,6 @@ create_new_ho_spec_pred(MaybeProgressStream, Request, NewPred,
             yes(SpecName), HOArgs, Context, !IO)
     ),
 
-    pred_info_get_origin(PredInfo0, OrigOrigin),
     pred_info_get_typevarset(PredInfo0, TypeVarSet),
     pred_info_get_markers(PredInfo0, MarkerList),
     pred_info_get_goal_type(PredInfo0, GoalType),
@@ -404,9 +343,10 @@ create_new_ho_spec_pred(MaybeProgressStream, Request, NewPred,
     vars_types_to_var_table(ModuleInfo0, EmptyVarSet, CallArgsTypes, VarTable),
     clauses_info_set_var_table(VarTable, ClausesInfo0, ClausesInfo),
 
-    CalleePPId = proc(CalleePredId, CalleeProcId),
-    Origin = origin_proc_transform(ProcTransform, OrigOrigin,
-        CalleePredId, CalleeProcId),
+    PredFormArity = pred_info_pred_form_arity(PredInfo0),
+    PredOrFunc = pred_info_is_pred_or_func(PredInfo0),
+    PredModuleName = pred_info_module(PredInfo0),
+    pred_info_get_arg_types(PredInfo0, ArgTVarSet, ExistQVars, Types),
     CurUserDecl = maybe.no,
     map.init(EmptyProofs),
     map.init(EmptyConstraintMap),
@@ -427,18 +367,72 @@ create_new_ho_spec_pred(MaybeProgressStream, Request, NewPred,
         SpecSymName, HOArgs, CallArgsTypes, ExtraTypeInfoTVars, CallerTVarSet,
         TypeInfoLiveness, RequestKind),
 
-    higher_order_add_new_pred(CalleePPId, NewPred, !GlobalInfo),
+    higher_order_record_new_specialized_pred(CalleePPId, NewPred, !GlobalInfo),
 
-    higher_order_create_new_proc(NewPred, ProcInfo0,
+    specialize_and_add_new_proc(NewPred, ProcInfo0,
         NewPredInfo1, NewPredInfo, !GlobalInfo),
     ModuleInfo2 = hogi_get_module_info(!.GlobalInfo),
     module_info_set_pred_info(NewPredId, NewPredInfo, ModuleInfo2, ModuleInfo),
     hogi_set_module_info(ModuleInfo, !GlobalInfo).
 
-:- pred higher_order_add_new_pred(pred_proc_id::in, new_pred::in,
+:- pred construct_created_spec_name_status(module_info::in, ho_request::in,
+    pred_info::in, string::out, pred_origin::out, pred_status::out,
+    proc_id::out,
     higher_order_global_info::in, higher_order_global_info::out) is det.
 
-higher_order_add_new_pred(CalleePPId, NewPred, !GlobalInfo) :-
+construct_created_spec_name_status(ModuleInfo, Request, PredInfo0,
+        SpecName, Origin, PredStatus, NewProcId, !GlobalInfo) :-
+    PredOrFunc = pred_info_is_pred_or_func(PredInfo0),
+    Request = ho_request(CallerPPId, CalleePPId, _, _, _, _, _,
+        RequestKind, _),
+    (
+        RequestKind = user_type_spec,
+        % If this is a user-guided type specialisation, the new name comes from
+        % the name and mode number of the requesting predicate. The mode number
+        % is included because we want to avoid the creation of more than one
+        % predicate with the same name if more than one mode of a predicate
+        % is specialized. Since the names of e.g. deep profiling proc_static
+        % structures are derived from the names of predicates, duplicate
+        % predicate names lead to duplicate global variable names and hence to
+        % link errors.
+        CallerPPId = proc(CallerPredId, CallerProcId),
+        CallerPredName0 = predicate_name(ModuleInfo, CallerPredId),
+
+        % The higher_order_arg_order_version part is to avoid segmentation
+        % faults or other errors when the order or number of extra arguments
+        % changes. If the user does not recompile all affected code, the
+        % program will not link.
+        Transform = tn_user_type_spec(PredOrFunc, CallerPredId, CallerProcId,
+            higher_order_arg_order_version),
+        make_transformed_pred_name(CallerPredName0, Transform, SpecName),
+        ProcTransform =
+            proc_transform_user_type_spec(CallerPredId, CallerProcId),
+        NewProcId = CallerProcId,
+        % For exported predicates, the type specialization must be exported.
+        % For opt_imported predicates, we only want to keep this version
+        % if we do some other useful specialization on it.
+        pred_info_get_status(PredInfo0, PredStatus)
+    ;
+        RequestKind = non_user_type_spec,
+        NewProcId = hlds_pred.initial_proc_id,
+        hogi_allocate_id(SeqNum, !GlobalInfo),
+        Transform = tn_higher_order(PredOrFunc, SeqNum),
+        Name0 = pred_info_name(PredInfo0),
+        make_transformed_pred_name(Name0, Transform, SpecName),
+        ProcTransform = proc_transform_higher_order_spec(SeqNum),
+        PredStatus = pred_status(status_local)
+    ),
+    pred_info_get_origin(PredInfo0, OrigOrigin),
+    CalleePPId = proc(CalleePredId, CalleeProcId),
+    Origin = origin_proc_transform(ProcTransform, OrigOrigin,
+        CalleePredId, CalleeProcId).
+
+%---------------------%
+
+:- pred higher_order_record_new_specialized_pred(pred_proc_id::in, new_pred::in,
+    higher_order_global_info::in, higher_order_global_info::out) is det.
+
+higher_order_record_new_specialized_pred(CalleePPId, NewPred, !GlobalInfo) :-
     NewPredMap0 = hogi_get_new_pred_map(!.GlobalInfo),
     ( if map.search(NewPredMap0, CalleePPId, SpecVersions0) then
         set.insert(NewPred, SpecVersions0, SpecVersions),
@@ -448,6 +442,25 @@ higher_order_add_new_pred(CalleePPId, NewPred, !GlobalInfo) :-
         map.det_insert(CalleePPId, SpecVersions, NewPredMap0, NewPredMap)
     ),
     hogi_set_new_pred_map(NewPredMap, !GlobalInfo).
+
+:- pred request_already_matches_a_version(higher_order_global_info::in,
+    ho_request::in) is semidet.
+
+request_already_matches_a_version(GlobalInfo, Request) :-
+    NewPredMap = hogi_get_new_pred_map(GlobalInfo),
+    CalleePredProcId = Request ^ rq_callee,
+    map.search(NewPredMap, CalleePredProcId, SpecVersions),
+    Params = hogi_get_params(GlobalInfo),
+    ModuleInfo = hogi_get_module_info(GlobalInfo),
+    some [Version] (
+        % SpecVersions are pred_proc_ids of the specialized versions
+        % of the current pred.
+        % XXX The wording of this comment (specifically, "current pred")
+        % implies that it is talking about the calleR, but its position
+        % just after a lookup of the calleE in NewPredMap implies otherwise.
+        set.member(Version, SpecVersions),
+        version_matches(Params, ModuleInfo, Request, Version, _)
+    ).
 
 %---------------------------------------------------------------------------%
 
@@ -485,14 +498,13 @@ ho_fixup_pred(MustRecompute, proc(PredId, ProcId), !GlobalInfo) :-
 
     % Build a proc_info for a specialized version.
     %
-:- pred higher_order_create_new_proc(new_pred::in, proc_info::in,
+:- pred specialize_and_add_new_proc(new_pred::in, proc_info::in,
     pred_info::in, pred_info::out,
     higher_order_global_info::in, higher_order_global_info::out) is det.
 
-higher_order_create_new_proc(NewPred, !.NewProcInfo,
+specialize_and_add_new_proc(NewPred, !.NewProcInfo,
         !NewPredInfo, !GlobalInfo) :-
     ModuleInfo = hogi_get_module_info(!.GlobalInfo),
-
     NewPred = new_pred(NewPredProcId, OldPredProcId, CallerPredProcId, _Name,
         HOArgs0, CallArgsTypes0, ExtraTypeInfoTVars0, _, _, _),
 
@@ -557,7 +569,7 @@ higher_order_create_new_proc(NewPred, !.NewProcInfo,
         apply_rec_subst_to_type_list(TypeSubn, ExtraTypeInfoTVarTypes0,
             ExtraTypeInfoTVarTypes),
         % The substitution should never bind any of the type variables
-        % for which extra type-infos are needed, otherwise it would not be
+        % for which extra typeinfos are needed, otherwise it would not be
         % necessary to add them.
         ( if
             prog_type.type_list_to_var_list(ExtraTypeInfoTVarTypes,
@@ -575,7 +587,7 @@ higher_order_create_new_proc(NewPred, !.NewProcInfo,
     proc_info_create_vars_from_types(ModuleInfo, ExtraTypeInfoTypes,
         ExtraTypeInfoVars, !NewProcInfo),
 
-    % Add any extra type-infos or typeclass-infos we have added
+    % Add any extra typeinfos or typeclass-infos we have added
     % to the typeinfo_varmap and typeclass_info_varmap.
     proc_info_get_rtti_varmaps(!.NewProcInfo, RttiVarMaps0),
 
@@ -586,7 +598,7 @@ higher_order_create_new_proc(NewPred, !.NewProcInfo,
     apply_substitutions_to_rtti_varmaps(TypeRenaming, TypeSubn,
         EmptyVarRenaming, RttiVarMaps0, RttiVarMaps1),
 
-    % Add entries in the typeinfo_varmap for the extra type-infos.
+    % Add entries in the typeinfo_varmap for the extra typeinfos.
     list.foldl_corresponding(rtti_det_insert_type_info_type,
         ExtraTypeInfoVars, ExtraTypeInfoTVarTypes,
         RttiVarMaps1, RttiVarMaps2),
@@ -646,8 +658,8 @@ higher_order_create_new_proc(NewPred, !.NewProcInfo,
 
     remove_const_higher_order_args(HOArgs, HeadVars0, HeadVars1),
     remove_const_higher_order_args(HOArgs, ArgModes0, ArgModes1),
-    list.condense([ExtraTypeInfoVars, ExtraHeadVars, HeadVars1], HeadVars),
-    list.condense([ExtraTypeInfoModes, ExtraArgModes, ArgModes1], ArgModes),
+    HeadVars = ExtraTypeInfoVars ++ ExtraHeadVars ++ HeadVars1,
+    ArgModes = ExtraTypeInfoModes ++ ExtraArgModes ++ ArgModes1,
     proc_info_set_headvars(HeadVars, !NewProcInfo),
     proc_info_set_argmodes(ArgModes, !NewProcInfo),
 
@@ -666,8 +678,8 @@ higher_order_create_new_proc(NewPred, !.NewProcInfo,
     lookup_var_types(VarTable7, ExtraHeadVars, ExtraHeadVarTypes0),
     remove_const_higher_order_args(HOArgs,
         OriginalArgTypes, ModifiedOriginalArgTypes),
-    list.condense([ExtraTypeInfoTypes, ExtraHeadVarTypes0,
-        ModifiedOriginalArgTypes], ArgTypes),
+    ArgTypes = ExtraTypeInfoTypes ++ ExtraHeadVarTypes0 ++
+        ModifiedOriginalArgTypes,
     pred_info_set_arg_types(TypeVarSet, ExistQVars, ArgTypes, !NewPredInfo),
     pred_info_set_typevarset(TypeVarSet, !NewPredInfo),
 
@@ -841,7 +853,7 @@ construct_higher_order_terms(ModuleInfo, HeadVars0, NewHeadVars, ArgModes0,
 
 %---------------------%
 
-    % Add any new type-infos or typeclass-infos to the rtti_varmaps.
+    % Add any new typeinfos or typeclass-infos to the rtti_varmaps.
     %
 :- pred add_rtti_info(prog_var::in, rtti_var_info::in,
     rtti_varmaps::in, rtti_varmaps::out) is det.

@@ -10,7 +10,8 @@
 % File: higher_order.m.
 % Main author: stayl.
 %
-% Specializes calls to higher order or polymorphic predicates where we know
+% This module is the top layer of its package. The job of the package is to
+% specializes calls to higher order or polymorphic predicates where we know
 % the value of one or more arguments that
 %
 % - have a higher order type,
@@ -134,7 +135,7 @@ specialize_higher_order(ProgressStream, !ModuleInfo, !IO) :-
             % are generated.
             list.foldl(get_specialization_requests, NonUserSpecPredIds,
                 !GlobalInfo),
-            recursively_process_ho_spec_requests(MaybeProgressStream,
+            process_ho_spec_requests_to_fixpoint(MaybeProgressStream,
                 !GlobalInfo, !IO)
         else
             true
