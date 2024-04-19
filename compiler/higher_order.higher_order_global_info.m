@@ -42,13 +42,10 @@
 :- func hogi_get_module_info(higher_order_global_info) = module_info.
 :- func hogi_get_params(higher_order_global_info) = ho_params.
 :- func hogi_get_goal_size_map(higher_order_global_info) = goal_size_map.
-:- func hogi_get_requests(higher_order_global_info) = set(ho_request).
 :- func hogi_get_new_pred_map(higher_order_global_info) = new_pred_map.
 :- func hogi_get_version_info_map(higher_order_global_info) = version_info_map.
 
 :- pred hogi_set_module_info(module_info::in,
-    higher_order_global_info::in, higher_order_global_info::out) is det.
-:- pred hogi_set_requests(set(ho_request)::in,
     higher_order_global_info::in, higher_order_global_info::out) is det.
 :- pred hogi_set_new_pred_map(new_pred_map::in,
     higher_order_global_info::in, higher_order_global_info::out) is det.
@@ -56,8 +53,6 @@
     higher_order_global_info::in, higher_order_global_info::out) is det.
 
 :- pred hogi_add_goal_size(pred_id::in, int::in,
-    higher_order_global_info::in, higher_order_global_info::out) is det.
-:- pred hogi_add_request(ho_request::in,
     higher_order_global_info::in, higher_order_global_info::out) is det.
 :- pred hogi_add_version(pred_proc_id::in, version_info::in,
     higher_order_global_info::in, higher_order_global_info::out) is det.
@@ -361,9 +356,6 @@
                 hogi_module_info        :: module_info,
                 hogi_goal_size_map      :: goal_size_map,
 
-                % Requested versions.
-                hogi_requests           :: set(ho_request),
-
                 % Specialized versions for each predicate
                 % not changed by ho_traverse_proc_body.
                 hogi_new_pred_map       :: new_pred_map,
@@ -380,11 +372,10 @@
 
 init_higher_order_global_info(Params, ModuleInfo) = Info :-
     map.init(GoalSizeMap),
-    set.init(Requests),
     map.init(NewPredMap),
     map.init(VersionInfoMap),
     NextIdCounter = counter.init(1),
-    Info = higher_order_global_info(Params, ModuleInfo, GoalSizeMap, Requests,
+    Info = higher_order_global_info(Params, ModuleInfo, GoalSizeMap,
         NewPredMap, VersionInfoMap, NextIdCounter).
 
 %---------------------%
@@ -397,8 +388,6 @@ hogi_get_params(Info) = X :-
     X = Info ^ hogi_params.
 hogi_get_goal_size_map(Info) = X :-
     X = Info ^ hogi_goal_size_map.
-hogi_get_requests(Info) = X :-
-    X = Info ^ hogi_requests.
 hogi_get_new_pred_map(Info) = X :-
     X = Info ^ hogi_new_pred_map.
 hogi_get_version_info_map(Info) = X :-
@@ -417,8 +406,6 @@ hogi_set_module_info(X, !Info) :-
     !Info ^ hogi_module_info := X.
 hogi_set_goal_size_map(X, !Info) :-
     !Info ^ hogi_goal_size_map := X.
-hogi_set_requests(X, !Info) :-
-    !Info ^ hogi_requests := X.
 hogi_set_new_pred_map(X, !Info) :-
     !Info ^ hogi_new_pred_map := X.
 hogi_set_version_info_map(X, !Info) :-
@@ -432,11 +419,6 @@ hogi_add_goal_size(PredId, GoalSize, !Info) :-
     GoalSizeMap0 = hogi_get_goal_size_map(!.Info),
     map.set(PredId, GoalSize, GoalSizeMap0, GoalSizeMap),
     hogi_set_goal_size_map(GoalSizeMap, !Info).
-
-hogi_add_request(Request, !Info) :-
-    Requests0 = hogi_get_requests(!.Info),
-    set.insert(Request, Requests0, Requests),
-    hogi_set_requests(Requests, !Info).
 
 hogi_add_version(PredProcId, Version, !Info) :-
     VersionInfoMap0 = hogi_get_version_info_map(!.Info),

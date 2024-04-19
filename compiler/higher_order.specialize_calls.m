@@ -14,13 +14,16 @@
 :- import_module hlds.hlds_pred.
 :- import_module transform_hlds.higher_order.higher_order_global_info.
 
+:- import_module set.
+
 %---------------------------------------------------------------------------%
 %
 % This is the main predicate of this module. It is exported to the
 % top module of the higher_order package, specialize_in_modules.
 %
 
-:- pred get_specialization_requests(pred_id::in,
+:- pred acc_specialization_requests(pred_id::in,
+    set(ho_request)::in, set(ho_request)::out,
     higher_order_global_info::in, higher_order_global_info::out) is det.
 
 %---------------------------------------------------------------------------%
@@ -32,6 +35,7 @@
     % "fixes up" mean?), and is quite likely to have suffered bit rot.
     %
 :- pred ho_traverse_proc(must_recompute::in, pred_id::in, proc_id::in,
+    set(ho_request)::out,
     higher_order_global_info::in, higher_order_global_info::out) is det.
 
 %---------------------------------------------------------------------------%
@@ -83,13 +87,12 @@
 :- import_module maybe.
 :- import_module pair.
 :- import_module require.
-:- import_module set.
 :- import_module term_context.
 :- import_module varset.
 
 %---------------------------------------------------------------------------%
 
-get_specialization_requests(PredId, !GlobalInfo) :-
+acc_specialization_requests(PredId, !Requests, !GlobalInfo) :-
     ModuleInfo0 = hogi_get_module_info(!.GlobalInfo),
     module_info_pred_info(ModuleInfo0, PredId, PredInfo0),
     NonImportedProcs = pred_info_all_non_imported_procids(PredInfo0),
@@ -97,8 +100,10 @@ get_specialization_requests(PredId, !GlobalInfo) :-
         NonImportedProcs = []
     ;
         NonImportedProcs = [FirstProcId | _],
-        list.foldl(ho_traverse_proc(need_not_recompute, PredId),
-            NonImportedProcs, !GlobalInfo),
+        list.map_foldl(ho_traverse_proc(need_not_recompute, PredId),
+            NonImportedProcs, NewRequestSets, !GlobalInfo),
+        NewRequests = set.union_list(NewRequestSets),
+        set.union(NewRequests, !Requests),
 
         ModuleInfo1 = hogi_get_module_info(!.GlobalInfo),
         module_info_proc_info(ModuleInfo1, PredId, FirstProcId, FirstProcInfo),
@@ -124,10 +129,10 @@ get_specialization_requests(PredId, !GlobalInfo) :-
 % XXX Document the *purpose* of the traversal.
 %
 
-ho_traverse_proc(MustRecompute, PredId, ProcId, !GlobalInfo) :-
+ho_traverse_proc(MustRecompute, PredId, ProcId, Requests, !GlobalInfo) :-
     Info0 = hoi_init(!.GlobalInfo, PredId, ProcId),
     ho_traverse_proc_body(MustRecompute, Info0, Info),
-    hoi_results(Info, !:GlobalInfo, PredInfo, ProcInfo),
+    hoi_results(Info, !:GlobalInfo, PredInfo, ProcInfo, Requests),
     ModuleInfo1 = hogi_get_module_info(!.GlobalInfo),
     module_info_set_pred_proc_info(PredId, ProcId, PredInfo, ProcInfo,
         ModuleInfo1, ModuleInfo),
@@ -1282,14 +1287,7 @@ maybe_specialize_ordinary_call(CanRequest, CalleePredProcId,
             Result = not_specialized,
             (
                 CanRequest = can_request,
-
-                GlobalInfo0 = hoi_get_global_info(!.Info),
-                hogi_add_request(Request, GlobalInfo0, GlobalInfo),
-                hoi_set_global_info(GlobalInfo, !Info),
-
-                Changed0 = hoi_get_changed(!.Info),
-                update_changed_status(Changed0, hoc_request, Changed),
-                hoi_set_changed(Changed, !Info)
+                hoi_add_request(Request, !Info)
             ;
                 CanRequest = can_not_request
             )
@@ -1301,15 +1299,6 @@ maybe_specialize_ordinary_call(CanRequest, CalleePredProcId,
     else
         Result = not_specialized
     ).
-
-:- pred update_changed_status(ho_changed::in, ho_changed::in, ho_changed::out)
-    is det.
-
-update_changed_status(hoc_changed, _, hoc_changed).
-update_changed_status(hoc_request, hoc_changed, hoc_changed).
-update_changed_status(hoc_request, hoc_request, hoc_request).
-update_changed_status(hoc_request, hoc_unchanged, hoc_request).
-update_changed_status(hoc_unchanged, Changed, Changed).
 
 %---------------------%
 

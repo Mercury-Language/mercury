@@ -16,6 +16,8 @@
 :- import_module parse_tree.prog_data.
 :- import_module transform_hlds.higher_order.higher_order_global_info.
 
+:- import_module set.
+
 %---------------------------------------------------------------------------%
 
     % Returned by ho_traverse_proc_body.
@@ -33,7 +35,7 @@
     = higher_order_info.
 
 :- pred hoi_results(higher_order_info::in, higher_order_global_info::out,
-    pred_info::out, proc_info::out) is det.
+    pred_info::out, proc_info::out, set(ho_request)::out) is det.
 
 :- func hoi_get_global_info(higher_order_info) = higher_order_global_info.
 :- func hoi_get_pred_proc_id(higher_order_info) = pred_proc_id.
@@ -51,6 +53,9 @@
 :- pred hoi_set_known_var_map(known_var_map::in,
     higher_order_info::in, higher_order_info::out) is det.
 :- pred hoi_set_changed(ho_changed::in,
+    higher_order_info::in, higher_order_info::out) is det.
+
+:- pred hoi_add_request(ho_request::in,
     higher_order_info::in, higher_order_info::out) is det.
 
 %---------------------------------------------------------------------------%
@@ -81,6 +86,7 @@
                 % Higher order variables with unique known values.
                 hoi_known_var_map       :: known_var_map,
 
+                hoi_requests            :: set(ho_request),
                 hoi_changed             :: ho_changed
             ).
 
@@ -90,13 +96,17 @@ hoi_init(GlobalInfo0, PredId, ProcId) = Info :-
         PredInfo0, ProcInfo0),
     PredProcId = proc(PredId, ProcId),
     map.init(KnownVarMap0),
+    set.init(Requests0),
     Info = higher_order_info(GlobalInfo0, PredProcId, PredInfo0, ProcInfo0,
-        KnownVarMap0, hoc_unchanged).
+        KnownVarMap0, Requests0, hoc_unchanged).
 
-hoi_results(Info, GlobalInfo, PredInfo, ProcInfo) :-
-    Info = higher_order_info(GlobalInfo, _, PredInfo, ProcInfo, _, _).
+hoi_results(Info, GlobalInfo, PredInfo, ProcInfo, Requests) :-
+    Info = higher_order_info(GlobalInfo, _, PredInfo, ProcInfo, _,
+        Requests, _).
 
 %---------------------------------------------------------------------------%
+
+:- func hoi_get_requests(higher_order_info) = set(ho_request).
 
 hoi_get_global_info(Info) = X :-
     X = Info ^ hoi_global_info.
@@ -108,8 +118,13 @@ hoi_get_proc_info(Info) = X :-
     X = Info ^ hoi_proc_info.
 hoi_get_known_var_map(Info) = X :-
     X = Info ^ hoi_known_var_map.
+hoi_get_requests(Info) = X :-
+    X = Info ^ hoi_requests.
 hoi_get_changed(Info) = X :-
     X = Info ^ hoi_changed.
+
+:- pred hoi_set_requests(set(ho_request)::in,
+    higher_order_info::in, higher_order_info::out) is det.
 
 hoi_set_global_info(X, !Info) :-
     !Info ^ hoi_global_info := X.
@@ -119,8 +134,26 @@ hoi_set_proc_info(X, !Info) :-
     !Info ^ hoi_proc_info := X.
 hoi_set_known_var_map(X, !Info) :-
     !Info ^ hoi_known_var_map := X.
+hoi_set_requests(X, !Info) :-
+    !Info ^ hoi_requests := X.
 hoi_set_changed(X, !Info) :-
     !Info ^ hoi_changed := X.
+
+hoi_add_request(Request, !Info) :-
+    Requests0 = hoi_get_requests(!.Info),
+    set.insert(Request, Requests0, Requests),
+    hoi_set_requests(Requests, !Info),
+
+    Changed0 = hoi_get_changed(!.Info),
+    (
+        ( Changed0 = hoc_changed
+        ; Changed0 = hoc_request
+        )
+        % The existing status is still correct.
+    ;
+        Changed0 = hoc_unchanged,
+        hoi_set_changed(hoc_request, !Info)
+    ).
 
 %---------------------------------------------------------------------------%
 :- end_module transform_hlds.higher_order.higher_order_info.

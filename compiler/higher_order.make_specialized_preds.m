@@ -14,10 +14,12 @@
 
 :- import_module maybe.
 :- import_module io.
+:- import_module set.
 
     % Process requests until there are no new requests to process.
     %
 :- pred process_ho_spec_requests_to_fixpoint(maybe(io.text_output_stream)::in,
+    set(ho_request)::in,
     higher_order_global_info::in, higher_order_global_info::out,
     io::di, io::uo) is det.
 
@@ -25,6 +27,7 @@
     % new specializations made possible by the first lot.
     %
 :- pred process_ho_spec_requests(maybe(io.text_output_stream)::in,
+    set(ho_request)::in, set(ho_request)::out,
     higher_order_global_info::in, higher_order_global_info::out,
     io::di, io::uo) is det.
 
@@ -74,7 +77,6 @@
 :- import_module map.
 :- import_module pair.
 :- import_module require.
-:- import_module set.
 :- import_module string.
 :- import_module term_context.
 :- import_module uint.
@@ -86,40 +88,40 @@
 % new predicates that are required.
 %
 
-process_ho_spec_requests_to_fixpoint(MaybeProgressStream, !GlobalInfo, !IO) :-
-    RequestSet0 = hogi_get_requests(!.GlobalInfo),
-    ( if set.is_empty(RequestSet0) then
+process_ho_spec_requests_to_fixpoint(MaybeProgressStream, Requests0,
+        !GlobalInfo, !IO) :-
+    ( if set.is_empty(Requests0) then
         true
     else
-        process_ho_spec_requests(MaybeProgressStream, !GlobalInfo, !IO),
-        process_ho_spec_requests_to_fixpoint(MaybeProgressStream,
+        process_ho_spec_requests(MaybeProgressStream, Requests0, Requests1,
+            !GlobalInfo, !IO),
+        process_ho_spec_requests_to_fixpoint(MaybeProgressStream, Requests1,
             !GlobalInfo, !IO)
     ).
 
-process_ho_spec_requests(MaybeProgressStream, !GlobalInfo, !IO) :-
-    RequestSet0 = hogi_get_requests(!.GlobalInfo),
-    Requests0 = set.to_sorted_list(RequestSet0),
-    hogi_set_requests(set.init, !GlobalInfo),
-    list.foldl3(filter_request(MaybeProgressStream, !.GlobalInfo), Requests0,
+process_ho_spec_requests(MaybeProgressStream, Requests0, NewRequests,
+        !GlobalInfo, !IO) :-
+    set.foldl3(filter_request(MaybeProgressStream, !.GlobalInfo), Requests0,
         [], Requests, [], LoopRequests, !IO),
     (
-        Requests = []
+        Requests = [],
+        set.init(NewRequests)
     ;
         Requests = [_ | _],
-        some [!PredProcIdsToFix] (
-            set.init(!:PredProcIdsToFix),
-            maybe_create_new_ho_spec_preds(MaybeProgressStream, Requests,
-                [], NewPredList, !PredProcIdsToFix, !GlobalInfo, !IO),
-            list.foldl(check_loop_request(!.GlobalInfo), LoopRequests,
-                !PredProcIdsToFix),
-            set.to_sorted_list(!.PredProcIdsToFix, PredProcIdsToFix)
-        ),
-        ho_fixup_specialized_versions(NewPredList, !GlobalInfo),
+
+        set.init(PredProcIdsToFix0),
+        maybe_create_new_ho_spec_preds(MaybeProgressStream, Requests,
+            [], NewPredList, PredProcIdsToFix0, PredProcIdsToFix1,
+            !GlobalInfo, !IO),
+        list.foldl(check_loop_request(!.GlobalInfo), LoopRequests,
+            PredProcIdsToFix1, PredProcIdsToFix),
+
+        ho_fixup_specialized_versions(NewPredList, NewRequests, !GlobalInfo),
         ho_fixup_preds(PredProcIdsToFix, !GlobalInfo),
         (
             NewPredList = [_ | _],
             % The dependencies may have changed, so the dependency graph
-            % needs to rebuilt for inlining to work properly.
+            % will need to be rebuilt for inlining to work properly.
             ModuleInfo0 = hogi_get_module_info(!.GlobalInfo),
             module_info_clobber_dependency_info(ModuleInfo0, ModuleInfo),
             hogi_set_module_info(ModuleInfo, !GlobalInfo)
@@ -464,23 +466,23 @@ request_already_matches_a_version(GlobalInfo, Request) :-
 
 %---------------------------------------------------------------------------%
 
-:- pred ho_fixup_preds(list(pred_proc_id)::in,
+:- pred ho_fixup_preds(set(pred_proc_id)::in,
     higher_order_global_info::in, higher_order_global_info::out) is det.
 
 ho_fixup_preds(PredProcIds, !GlobalInfo) :-
-    Requests0 = hogi_get_requests(!.GlobalInfo),
-    list.foldl(ho_fixup_pred(need_not_recompute), PredProcIds, !GlobalInfo),
     % Any additional requests must have already been denied.
-    hogi_set_requests(Requests0, !GlobalInfo).
+    set.foldl2(ho_fixup_pred(need_not_recompute), PredProcIds,
+        set.init, _Requests, !GlobalInfo).
 
-:- pred ho_fixup_specialized_versions(list(new_pred)::in,
+:- pred ho_fixup_specialized_versions(list(new_pred)::in, set(ho_request)::out,
     higher_order_global_info::in, higher_order_global_info::out) is det.
 
-ho_fixup_specialized_versions(NewPredList, !GlobalInfo) :-
+ho_fixup_specialized_versions(NewPredList, Requests, !GlobalInfo) :-
     NewPredProcIds = list.map(get_np_version_ppid, NewPredList),
     % Reprocess the goals to find any new specializations made
     % possible by the specializations performed in this pass.
-    list.foldl(ho_fixup_pred(must_recompute), NewPredProcIds, !GlobalInfo).
+    list.foldl2(ho_fixup_pred(must_recompute), NewPredProcIds,
+        set.init, Requests, !GlobalInfo).
 
 :- func get_np_version_ppid(new_pred) = pred_proc_id.
 
@@ -489,10 +491,12 @@ get_np_version_ppid(NewPred) = NewPred ^ np_version_ppid.
     % Fixup calls to specialized predicates.
     %
 :- pred ho_fixup_pred(must_recompute::in, pred_proc_id::in,
+    set(ho_request)::in, set(ho_request)::out,
     higher_order_global_info::in, higher_order_global_info::out) is det.
 
-ho_fixup_pred(MustRecompute, proc(PredId, ProcId), !GlobalInfo) :-
-    ho_traverse_proc(MustRecompute, PredId, ProcId, !GlobalInfo).
+ho_fixup_pred(MustRecompute, proc(PredId, ProcId), !Requests, !GlobalInfo) :-
+    ho_traverse_proc(MustRecompute, PredId, ProcId, NewRequests, !GlobalInfo),
+    set.union(NewRequests, !Requests).
 
 %---------------------------------------------------------------------------%
 

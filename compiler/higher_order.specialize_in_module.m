@@ -109,20 +109,23 @@ specialize_higher_order(ProgressStream, !ModuleInfo, !IO) :-
             UserSpecPredIds = [],
             !:GlobalInfo =
                 init_higher_order_global_info(Params0, !.ModuleInfo),
-            NonUserSpecPredIds = ValidPredIds
+            NonUserSpecPredIds = ValidPredIds,
+            set.init(GeneralRequests)
         ;
             UserSpecPredIds = [_ | _],
             Params = Params0 ^ param_do_user_type_spec
                 := spec_types_user_guided,
             !:GlobalInfo = init_higher_order_global_info(Params, !.ModuleInfo),
 
+            list.foldl2(acc_specialization_requests, UserSpecPredIds,
+                set.init, RequestsFromUserSpec, !GlobalInfo),
+            process_ho_spec_requests(MaybeProgressStream,
+                RequestsFromUserSpec, GeneralRequests, !GlobalInfo, !IO),
+
             set.list_to_set(ValidPredIds, ValidPredIdSet),
             set.difference(ValidPredIdSet, UserSpecPredIdSet,
                 NonUserSpecPredIdSet),
-            set.to_sorted_list(NonUserSpecPredIdSet, NonUserSpecPredIds),
-            list.foldl(get_specialization_requests, UserSpecPredIds,
-                !GlobalInfo),
-            process_ho_spec_requests(MaybeProgressStream, !GlobalInfo, !IO)
+            set.to_sorted_list(NonUserSpecPredIdSet, NonUserSpecPredIds)
         ),
 
         ( if
@@ -131,11 +134,14 @@ specialize_higher_order(ProgressStream, !ModuleInfo, !IO) :-
             ; UserTypeSpec = spec_types_user_guided
             )
         then
-            % Process all other specializations until no more requests
-            % are generated.
-            list.foldl(get_specialization_requests, NonUserSpecPredIds,
-                !GlobalInfo),
-            process_ho_spec_requests_to_fixpoint(MaybeProgressStream,
+            % Get specialization requests from all the pred_ids that are
+            % not in UserSpecPredIds, completing the pass through all the
+            % pred_ids in the module that was started above.
+            list.foldl2(acc_specialization_requests, NonUserSpecPredIds,
+                GeneralRequests, Requests, !GlobalInfo),
+            % Process all the specialization requests we have gathered so far
+            % until no more actionable requests are generated.
+            process_ho_spec_requests_to_fixpoint(MaybeProgressStream, Requests,
                 !GlobalInfo, !IO)
         else
             true
