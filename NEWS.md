@@ -772,6 +772,7 @@ Changes to the Mercury standard library
 
 * The following predicates and functions have been added:
 
+    - func `add_prefix/2`
     - func `between_code_points/3`
     - pred `between_code_points/4`
     - pred `check_well_formedness/2`

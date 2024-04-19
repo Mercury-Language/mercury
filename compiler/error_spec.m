@@ -626,6 +626,9 @@
 :- pred maybe_construct_did_you_mean_pieces(string::in, list(string)::in,
     list(format_piece)::out) is det.
 
+:- pred maybe_construct_prefixed_did_you_mean_pieces(string::in, string::in,
+    list(string)::in, list(format_piece)::out) is det.
+
 %---------------------------------------------------------------------------%
 
 :- pred extract_spec_phase(error_spec::in, error_phase::out) is det.
@@ -647,6 +650,7 @@
 :- import_module edit_distance.
 :- import_module getopt.
 :- import_module require.
+:- import_module std_util.
 :- import_module string.
 :- import_module term_context.
 :- import_module uint.
@@ -775,6 +779,19 @@ add_quotes(Str) = "`" ++ Str ++ "'".
 
 maybe_construct_did_you_mean_pieces(BaseName, CandidateNames,
         DidYouMeanPieces) :-
+    do_maybe_construct_did_you_mean_pieces(BaseName, CandidateNames,
+        std_util.id, DidYouMeanPieces).
+
+maybe_construct_prefixed_did_you_mean_pieces(Prefix, BaseName, CandidateNames,
+        DidYouMeanPieces) :-
+    do_maybe_construct_did_you_mean_pieces(BaseName, CandidateNames,
+        add_prefix(Prefix), DidYouMeanPieces).
+
+:- pred do_maybe_construct_did_you_mean_pieces(string::in, list(string)::in,
+    (func(string) = string)::in, list(format_piece)::out) is det.
+
+do_maybe_construct_did_you_mean_pieces(BaseName, CandidateNames,
+        TransformFunc, DidYouMeanPieces) :-
     % Note: name_is_close_enough below depends on all costs here
     % except for case changes being 2u.
     Params = edit_params(2u, 2u, case_sensitive_replacement_cost, 2u),
@@ -824,12 +841,13 @@ maybe_construct_did_you_mean_pieces(BaseName, CandidateNames,
             SuggestedNames0, NonSuggestedNames),
         (
             NonSuggestedNames = [],
-            SuggestedNames = SuggestedNames0
+            SuggestedNames = list.map(TransformFunc, SuggestedNames0)
         ;
             NonSuggestedNames = [_ | _],
             % This should cause the message we create below
             % to end with "or `...'?".
-            SuggestedNames = SuggestedNames0 ++ ["..."]
+            SuggestedNames =
+                list.map(TransformFunc, SuggestedNames0) ++ ["..."]
         ),
         SuggestionPieces = list_to_quoted_pieces_or(SuggestedNames),
         DidYouMeanPieces =

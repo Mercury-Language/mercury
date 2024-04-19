@@ -90,12 +90,12 @@
 % option, that predicate will report an error when processing a command line
 % that contains that option.
 %
-% Boolean (i.e. bool or bool_special), maybe_int, maybe_string and
-% accumulating options can be negated. Negating an accumulating option
-% empties the accumulated list of strings. Single-character options
-% can be negated by following them with another `-', e.g. `-x-' will negate
-% the `-x' option. Long options can be negated by preceding them with `--no-',
-% e.g. `--no-foo' will negate the `--foo' option.
+% Boolean (i.e. bool or bool_special), maybe_int, maybe_string,
+% maybe_string_special and accumulating options can be negated. Negating an
+% accumulating option empties the accumulated list of strings. Single-character
+% options can be negated by following them with another `-', e.g. `-x-' will
+% negate the `-x' option. Long options can be negated by preceding them with
+% `--no-', e.g. `--no-foo' will negate the `--foo' option.
 %
 % Note that arguments following an option may be separated from the option by
 % either whitespace or the equals character `=', so that e.g. `--foo 3' and

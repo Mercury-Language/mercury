@@ -36,7 +36,7 @@
 %   option is a style warning option, in the second that handles
 %   inhibit_style_warnings.
 %
-% - Every option should have a clause in the long_options predicate
+% - Every option should have a clause in the long_table predicate
 %   that converts the user-visible name of the option into its internal
 %   representation as a value in the options type. For options whose names
 %   include words that whose spelling differs in American vs British English,
@@ -77,6 +77,16 @@
 :- pred option_defaults(option::out, option_data::out) is nondet.
 :- pred short_option(char::in, option::out) is semidet.
 :- pred long_option(string::in, option::out) is semidet.
+
+    % Return the list of all long option strings excluding the "--"
+    % or "--no-" prefixes.
+    %
+:- pred all_long_option_strings(list(string)::out) is det.
+
+    % Return the list of all long options strings that can be preceded
+    % with the "--no-" prefix. The strings do not include the prefix.
+    %
+:- pred all_negatable_long_option_strings(list(string)::out) is det.
 
     % special_handler(Option, ValueForThatOption, OptionTableIn,
     %   MaybeOptionTableOut):
@@ -154,7 +164,7 @@
     %
     % - in this definition of the `option' type
     % - in the clauses of the `optdef' predicate
-    % - in the clauses of `long_option' predicate
+    % - in the clauses of `long_table' predicate
     %   (not in the clauses of the `short_option' predicate, since
     %   that is sorted alphabetically on the option letter)
     % - in the special_handler predicate, if they appear there
@@ -2144,1135 +2154,1222 @@ short_option('w', inhibit_warnings).
 short_option('x', only_opmode_make_xml_documentation).
 short_option('?', help).
 
+long_option(String, Option) :-
+    long_table(String, Option).
+
+all_long_option_strings(OptionStrings) :-
+    Pred = (pred(OptionString::out) is multi :-
+        long_table(OptionString, _)
+    ),
+    solutions(Pred, OptionStrings).
+
+all_negatable_long_option_strings(OptionStrings) :-
+    Pred = (pred(OptionString::out) is nondet :-
+        long_table(OptionString, Option),
+        optdef(_, Option, OptionData),
+        ( OptionData = bool(_)
+        ; OptionData = maybe_int(_)
+        ; OptionData = maybe_string(_)
+        ; OptionData = accumulating(_)
+        ; OptionData = bool_special
+        ; OptionData = maybe_string_special
+        )
+    ),
+    solutions(Pred, OptionStrings).
+
+:- pred long_table(string, option).
+:- mode long_table(in, out) is semidet.
+:- mode long_table(out, out) is multi.
+
 % warning options
-long_option("inhibit-warnings",         inhibit_warnings).
-long_option("inhibit-style-warnings",   inhibit_style_warnings).
-long_option("warn-accumulator-swaps",   warn_accumulator_swaps).
-long_option("halt-at-warn",             halt_at_warn).
-long_option("halt-at-warn-make-int",    halt_at_warn_make_int).
-long_option("halt-at-warn-make-interface",  halt_at_warn_make_int).
-long_option("halt-at-warn-make-opt",    halt_at_warn_make_opt).
-long_option("halt-at-syntax-errors",    halt_at_syntax_errors).
-long_option("halt-at-auto-parallel-failure", halt_at_auto_parallel_failure).
-long_option("halt-at-invalid-interface",    halt_at_invalid_interface).
-long_option("warn-singleton-variables", warn_singleton_vars).
-long_option("warn-singleton-vars",      warn_singleton_vars).
-long_option("warn-overlapping-scopes",  warn_overlapping_scopes).
-long_option("warn-det-decls-too-lax",   warn_det_decls_too_lax).
-long_option("warn-inferred-erroneous",  warn_inferred_erroneous).
-long_option("warn-nothing-exported",    warn_nothing_exported).
-long_option("warn-unused-args",         warn_unused_args).
-long_option("warn-interface-imports",   warn_interface_imports).
-long_option("warn-interface-imports-in-parents",
+long_table("inhibit-warnings",         inhibit_warnings).
+long_table("inhibit-style-warnings",   inhibit_style_warnings).
+long_table("warn-accumulator-swaps",   warn_accumulator_swaps).
+long_table("halt-at-warn",             halt_at_warn).
+long_table("halt-at-warn-make-int",    halt_at_warn_make_int).
+long_table("halt-at-warn-make-interface",  halt_at_warn_make_int).
+long_table("halt-at-warn-make-opt",    halt_at_warn_make_opt).
+long_table("halt-at-syntax-errors",    halt_at_syntax_errors).
+long_table("halt-at-auto-parallel-failure",
+                    halt_at_auto_parallel_failure).
+long_table("halt-at-invalid-interface",    halt_at_invalid_interface).
+long_table("warn-singleton-variables", warn_singleton_vars).
+long_table("warn-singleton-vars",      warn_singleton_vars).
+long_table("warn-overlapping-scopes",  warn_overlapping_scopes).
+long_table("warn-det-decls-too-lax",   warn_det_decls_too_lax).
+long_table("warn-inferred-erroneous",  warn_inferred_erroneous).
+long_table("warn-nothing-exported",    warn_nothing_exported).
+long_table("warn-unused-args",         warn_unused_args).
+long_table("warn-interface-imports",   warn_interface_imports).
+long_table("warn-interface-imports-in-parents",
                                         warn_interface_imports_in_parents).
-long_option("warn-inconsistent-pred-order",
+long_table("warn-inconsistent-pred-order",
                     warn_inconsistent_pred_order_clauses).
-long_option("warn-inconsistent-pred-order-clauses",
+long_table("warn-inconsistent-pred-order-clauses",
                     warn_inconsistent_pred_order_clauses).
-long_option("warn-inconsistent-pred-order-foreign-procs",
+long_table("warn-inconsistent-pred-order-foreign-procs",
                     warn_inconsistent_pred_order_foreign_procs).
-long_option("warn-non-contiguous-decls",    warn_non_contiguous_decls).
-long_option("warn-non-contiguous-clauses",  warn_non_contiguous_clauses).
-long_option("warn-non-contiguous-foreign-procs",
+long_table("warn-non-contiguous-decls",    warn_non_contiguous_decls).
+long_table("warn-non-contiguous-clauses",  warn_non_contiguous_clauses).
+long_table("warn-non-contiguous-foreign-procs",
                                         warn_non_contiguous_foreign_procs).
-long_option("warn-non-stratification",  warn_non_stratification).
-long_option("warn-missing-opt-files",   warn_missing_opt_files).
-long_option("warn-missing-trans-opt-files", warn_missing_trans_opt_files).
-long_option("warn-missing-trans-opt-deps",  warn_missing_trans_opt_deps).
-long_option("warn-unification-cannot-succeed",
+long_table("warn-non-stratification",  warn_non_stratification).
+long_table("warn-missing-opt-files",   warn_missing_opt_files).
+long_table("warn-missing-trans-opt-files",
+                                        warn_missing_trans_opt_files).
+long_table("warn-missing-trans-opt-deps",  warn_missing_trans_opt_deps).
+long_table("warn-unification-cannot-succeed",
                                         warn_unification_cannot_succeed).
-long_option("warn-simple-code",         warn_simple_code).
-long_option("warn-duplicate-calls",     warn_duplicate_calls).
-long_option("warn-implicit-stream-calls",   warn_implicit_stream_calls).
-long_option("warn-missing-module-name", warn_missing_module_name).
-long_option("warn-wrong-module-name",   warn_wrong_module_name).
-long_option("warn-smart-recompilation", warn_smart_recompilation).
-long_option("warn-undefined-options-variables",
+long_table("warn-simple-code",         warn_simple_code).
+long_table("warn-duplicate-calls",     warn_duplicate_calls).
+long_table("warn-implicit-stream-calls",   warn_implicit_stream_calls).
+long_table("warn-missing-module-name", warn_missing_module_name).
+long_table("warn-wrong-module-name",   warn_wrong_module_name).
+long_table("warn-smart-recompilation", warn_smart_recompilation).
+long_table("warn-undefined-options-variables",
                                         warn_undefined_options_variables).
-long_option("warn-undefined-options-vars",
+long_table("warn-undefined-options-vars",
                                         warn_undefined_options_variables).
-long_option("warn-suspicious-recursion", warn_suspicious_recursion).
-long_option("warn-non-tail-recursion-self",
+long_table("warn-suspicious-recursion", warn_suspicious_recursion).
+long_table("warn-non-tail-recursion-self",
                                         warn_non_tail_recursion_self).
-long_option("warn-non-tail-recursion-mutual",
+long_table("warn-non-tail-recursion-mutual",
                                         warn_non_tail_recursion_mutual).
-long_option("warn-non-tail-recursion",  warn_non_tail_recursion).
-long_option("warn-obvious-non-tail-recursion",
+long_table("warn-non-tail-recursion",  warn_non_tail_recursion).
+long_table("warn-obvious-non-tail-recursion",
                                         warn_obvious_non_tail_recursion).
-long_option("warn-target-code",         warn_target_code).
-long_option("warn-up-to-date",          warn_up_to_date).
-long_option("warn-stubs",               warn_stubs).
-long_option("warn-dead-procs",          warn_dead_procs).
-long_option("warn-dead-procedures",     warn_dead_procs).
-long_option("warn-dead-preds",          warn_dead_preds).
-long_option("warn-dead-predicates",     warn_dead_preds).
-long_option("warn-table-with-inline",   warn_table_with_inline).
-long_option("warn-non-term-special-preds", warn_non_term_special_preds).
-long_option("warn-known-bad-format-calls", warn_known_bad_format_calls).
-long_option("warn-only-one-format-string-error",
+long_table("warn-target-code",         warn_target_code).
+long_table("warn-up-to-date",          warn_up_to_date).
+long_table("warn-stubs",               warn_stubs).
+long_table("warn-dead-procs",          warn_dead_procs).
+long_table("warn-dead-procedures",     warn_dead_procs).
+long_table("warn-dead-preds",          warn_dead_preds).
+long_table("warn-dead-predicates",     warn_dead_preds).
+long_table("warn-table-with-inline",   warn_table_with_inline).
+long_table("warn-non-term-special-preds", warn_non_term_special_preds).
+long_table("warn-known-bad-format-calls", warn_known_bad_format_calls).
+long_table("warn-only-one-format-string-error",
                     warn_only_one_format_string_error).
-long_option("warn-unknown-format-calls", warn_unknown_format_calls).
-long_option("warn-obsolete",            warn_obsolete).
-long_option("warn-insts-without-matching-type",
-                                        warn_insts_without_matching_type).
-long_option("warn-insts-with-functors-without-type",
+long_table("warn-unknown-format-calls", warn_unknown_format_calls).
+long_table("warn-obsolete",            warn_obsolete).
+long_table("warn-insts-without-matching-type",
+                    warn_insts_without_matching_type).
+long_table("warn-insts-with-functors-without-type",
                     warn_insts_with_functors_without_type).
-long_option("warn-unused-imports",      warn_unused_imports).
-long_option("warn-unused-interface-imports",    warn_unused_interface_imports).
-long_option("inform-ite-instead-of-switch", inform_ite_instead_of_switch).
-long_option("inform-incomplete-switch", inform_incomplete_switch).
-long_option("inform-incomplete-switch-threshold",
+long_table("warn-unused-imports",      warn_unused_imports).
+long_table("warn-unused-interface-imports",
+                    warn_unused_interface_imports).
+long_table("inform-ite-instead-of-switch",
+                    inform_ite_instead_of_switch).
+long_table("inform-incomplete-switch", inform_incomplete_switch).
+long_table("inform-incomplete-switch-threshold",
                     inform_incomplete_switch_threshold).
-long_option("warn-unresolved-polymorphism", warn_unresolved_polymorphism).
-long_option("warn-suspicious-foreign-procs", warn_suspicious_foreign_procs).
-long_option("warn-suspicious-foreign-code", warn_suspicious_foreign_code).
-long_option("warn-state-var-shadowing", warn_state_var_shadowing).
-long_option("warn-unneeded-mode-specific-clause",
+long_table("warn-unresolved-polymorphism",
+                    warn_unresolved_polymorphism).
+long_table("warn-suspicious-foreign-procs",
+                    warn_suspicious_foreign_procs).
+long_table("warn-suspicious-foreign-code",
+                    warn_suspicious_foreign_code).
+long_table("warn-state-var-shadowing", warn_state_var_shadowing).
+long_table("warn-unneeded-mode-specific-clause",
                                         warn_unneeded_mode_specific_clause).
-long_option("warn-suspected-occurs-failure",
+long_table("warn-suspected-occurs-failure",
                                         warn_suspected_occurs_check_failure).
-long_option("warn-suspected-occurs-check-failure",
+long_table("warn-suspected-occurs-check-failure",
                                         warn_suspected_occurs_check_failure).
-long_option("warn-potentially-ambiguous-pragma",
+long_table("warn-potentially-ambiguous-pragma",
                                         warn_potentially_ambiguous_pragma).
-long_option("warn-potentially-ambiguous-pragmas",
+long_table("warn-potentially-ambiguous-pragmas",
                                         warn_potentially_ambiguous_pragma).
-long_option("warn-ambiguous-pragma",    warn_ambiguous_pragma).
-long_option("warn-ambiguous-pragmas",   warn_ambiguous_pragma).
-long_option("warn-stdlib-shadowing",    warn_stdlib_shadowing).
-long_option("inform-inferred",          inform_inferred).
-long_option("inform-inferred-types",    inform_inferred_types).
-long_option("inform-inferred-modes",    inform_inferred_modes).
-long_option("inform-suboptimal-packing",    inform_suboptimal_packing).
-long_option("print-error-spec-id",      print_error_spec_id).
-long_option("inform-ignored-pragma-errors", inform_ignored_pragma_errors).
-long_option("inform-generated-type-spec-pragmas",
+long_table("warn-ambiguous-pragma",    warn_ambiguous_pragma).
+long_table("warn-ambiguous-pragmas",   warn_ambiguous_pragma).
+long_table("warn-stdlib-shadowing",    warn_stdlib_shadowing).
+long_table("inform-inferred",          inform_inferred).
+long_table("inform-inferred-types",    inform_inferred_types).
+long_table("inform-inferred-modes",    inform_inferred_modes).
+long_table("inform-suboptimal-packing",    inform_suboptimal_packing).
+long_table("print-error-spec-id",      print_error_spec_id).
+long_table("inform-ignored-pragma-errors",
+                                        inform_ignored_pragma_errors).
+long_table("inform-generated-type-spec-pragmas",
                                         inform_generated_type_spec_pragmas).
 
 % verbosity options
-long_option("verbose",                  verbose).
-long_option("very-verbose",             very_verbose).
-long_option("verbose-error-messages",   verbose_errors).
-long_option("verbose-recompilation",    verbose_recompilation).
-long_option("find-all-recompilation-reasons",
+long_table("verbose",                  verbose).
+long_table("very-verbose",             very_verbose).
+long_table("verbose-error-messages",   verbose_errors).
+long_table("verbose-recompilation",    verbose_recompilation).
+long_table("find-all-recompilation-reasons",
                                         find_all_recompilation_reasons).
-long_option("verbose-make",             verbose_make).
-long_option("verbose-commands",         verbose_commands).
-long_option("output-compile-error-lines",   output_compile_error_lines).
-long_option("report-cmd-line-args",     report_cmd_line_args).
-long_option("report-cmd-line-args-in-doterr",
+long_table("verbose-make",             verbose_make).
+long_table("verbose-commands",         verbose_commands).
+long_table("output-compile-error-lines",   output_compile_error_lines).
+long_table("report-cmd-line-args",     report_cmd_line_args).
+long_table("report-cmd-line-args-in-doterr",
                                         report_cmd_line_args_in_doterr).
-long_option("statistics",               statistics).
-long_option("detailed-statistics",      detailed_statistics).
-long_option("proc-size-statistics",     proc_size_statistics).
-long_option("inst-statistics",          inst_statistics).
-long_option("limit-error-contexts",     limit_error_contexts).
-long_option("debug-types",              debug_types).
-long_option("debug-types-pred-name",    debug_types_pred_name).
-long_option("debug-modes",              debug_modes).
-long_option("debug-modes-statistics",   debug_modes_statistics).
-long_option("debug-modes-minimal",      debug_modes_minimal).
-long_option("debug-modes-verbose",      debug_modes_verbose).
-long_option("debug-modes-pred-id",      debug_modes_pred_id).
-long_option("debug-dep-par-conj",       debug_dep_par_conj).
-long_option("debug-determinism",        debug_det).
-long_option("debug-det",                debug_det).
-long_option("debug-code-gen-pred-id",   debug_code_gen_pred_id).
-long_option("debug-termination",        debug_term).
-long_option("debug-term",               debug_term).
-long_option("debug-dead-proc-elim",     debug_dead_proc_elim).
-long_option("debug-higher-order-specialization",
+long_table("statistics",               statistics).
+long_table("detailed-statistics",      detailed_statistics).
+long_table("proc-size-statistics",     proc_size_statistics).
+long_table("inst-statistics",          inst_statistics).
+long_table("limit-error-contexts",     limit_error_contexts).
+long_table("debug-types",              debug_types).
+long_table("debug-types-pred-name",    debug_types_pred_name).
+long_table("debug-modes",              debug_modes).
+long_table("debug-modes-statistics",   debug_modes_statistics).
+long_table("debug-modes-minimal",      debug_modes_minimal).
+long_table("debug-modes-verbose",      debug_modes_verbose).
+long_table("debug-modes-pred-id",      debug_modes_pred_id).
+long_table("debug-dep-par-conj",       debug_dep_par_conj).
+long_table("debug-determinism",        debug_det).
+long_table("debug-det",                debug_det).
+long_table("debug-code-gen-pred-id",   debug_code_gen_pred_id).
+long_table("debug-termination",        debug_term).
+long_table("debug-term",               debug_term).
+long_table("debug-dead-proc-elim",     debug_dead_proc_elim).
+long_table("debug-higher-order-specialization",
                                         debug_higher_order_specialization).
-long_option("debug-opt",                debug_opt).
-long_option("debug-opt-pred-id",        debug_opt_pred_id).
-long_option("debug-opt-pred-name",      debug_opt_pred_name).
-long_option("debug-pd",                 debug_pd).
-long_option("debug-liveness",           debug_liveness).
-long_option("debug-stack-opt",          debug_stack_opt).
-long_option("debug-make",               debug_make).
-long_option("debug-closure",            debug_closure).
-long_option("debug-trail-usage",        debug_trail_usage).
-long_option("debug-mode-constraints",   debug_mode_constraints).
-long_option("debug-intermodule-analysis",   debug_intermodule_analysis).
-long_option("debug-mm-tabling-analysis",    debug_mm_tabling_analysis).
-long_option("debug-indirect-reuse",         debug_indirect_reuse).
-long_option("debug-type-rep",               debug_type_rep).
+long_table("debug-opt",                debug_opt).
+long_table("debug-opt-pred-id",        debug_opt_pred_id).
+long_table("debug-opt-pred-name",      debug_opt_pred_name).
+long_table("debug-pd",                 debug_pd).
+long_table("debug-liveness",           debug_liveness).
+long_table("debug-stack-opt",          debug_stack_opt).
+long_table("debug-make",               debug_make).
+long_table("debug-closure",            debug_closure).
+long_table("debug-trail-usage",        debug_trail_usage).
+long_table("debug-mode-constraints",   debug_mode_constraints).
+long_table("debug-intermodule-analysis",   debug_intermodule_analysis).
+long_table("debug-mm-tabling-analysis",    debug_mm_tabling_analysis).
+long_table("debug-indirect-reuse",         debug_indirect_reuse).
+long_table("debug-type-rep",               debug_type_rep).
 
 % output options (mutually exclusive)
-long_option("generate-source-file-mapping",
+long_table("generate-source-file-mapping",
     only_opmode_generate_source_file_mapping).
-long_option("generate-dependency-file", only_opmode_generate_dependency_file).
-long_option("generate-dependencies",    only_opmode_generate_dependencies).
-long_option("generate-dependencies-ints",
+long_table("generate-dependency-file",
+    only_opmode_generate_dependency_file).
+long_table("generate-dependencies",  only_opmode_generate_dependencies).
+long_table("generate-dependencies-ints",
                                     only_opmode_generate_dependencies_ints).
-long_option("generate-module-order",    generate_module_order).
-long_option("generate-standalone-interface", generate_standalone_interface).
-long_option("make-short-interface",     only_opmode_make_short_interface).
-long_option("make-short-int",           only_opmode_make_short_interface).
-long_option("make-interface",           only_opmode_make_interface).
-long_option("make-int",                 only_opmode_make_interface).
-long_option("make-private-interface",   only_opmode_make_private_interface).
-long_option("make-priv-int",            only_opmode_make_private_interface).
-long_option("make-optimization-interface",
+long_table("generate-module-order",    generate_module_order).
+long_table("generate-standalone-interface",
+    generate_standalone_interface).
+long_table("make-short-interface",   only_opmode_make_short_interface).
+long_table("make-short-int",         only_opmode_make_short_interface).
+long_table("make-interface",         only_opmode_make_interface).
+long_table("make-int",               only_opmode_make_interface).
+long_table("make-private-interface",
+    only_opmode_make_private_interface).
+long_table("make-priv-int",
+    only_opmode_make_private_interface).
+long_table("make-optimization-interface",
     only_opmode_make_optimization_interface).
-long_option("make-optimisation-interface",
+long_table("make-optimisation-interface",
     only_opmode_make_optimization_interface).
-long_option("make-opt-int",
+long_table("make-opt-int",
     only_opmode_make_optimization_interface).
-long_option("make-transitive-optimization-interface",
+long_table("make-transitive-optimization-interface",
     only_opmode_make_transitive_opt_interface).
-long_option("make-transitive-optimisation-interface",
+long_table("make-transitive-optimisation-interface",
     only_opmode_make_transitive_opt_interface).
-long_option("make-trans-opt",
+long_table("make-trans-opt",
     only_opmode_make_transitive_opt_interface).
-long_option("make-analysis-registry",   only_opmode_make_analysis_registry).
-long_option("make-xml-doc",             only_opmode_make_xml_documentation).
-long_option("make-xml-documentation",   only_opmode_make_xml_documentation).
-long_option("convert-to-mercury",       only_opmode_convert_to_mercury).
-long_option("convert-to-Mercury",       only_opmode_convert_to_mercury).
-long_option("pretty-print",             only_opmode_convert_to_mercury).
-long_option("typecheck-only",           only_opmode_typecheck_only).
-long_option("errorcheck-only",          only_opmode_errorcheck_only).
-long_option("target-code-only",         only_opmode_target_code_only).
-long_option("compile-only",             only_opmode_compile_only).
-long_option("compile-to-shared-lib",    compile_to_shared_lib).
-long_option("output-grade-string",      only_opmode_output_grade_string).
-long_option("output-link-command",      only_opmode_output_link_command).
-long_option("output-shared-lib-link-command",
+long_table("make-analysis-registry",
+    only_opmode_make_analysis_registry).
+long_table("make-xml-doc",
+    only_opmode_make_xml_documentation).
+long_table("make-xml-documentation",
+    only_opmode_make_xml_documentation).
+long_table("convert-to-mercury",       only_opmode_convert_to_mercury).
+long_table("convert-to-Mercury",       only_opmode_convert_to_mercury).
+long_table("pretty-print",             only_opmode_convert_to_mercury).
+long_table("typecheck-only",           only_opmode_typecheck_only).
+long_table("errorcheck-only",          only_opmode_errorcheck_only).
+long_table("target-code-only",         only_opmode_target_code_only).
+long_table("compile-only",             only_opmode_compile_only).
+long_table("compile-to-shared-lib",    compile_to_shared_lib).
+long_table("output-grade-string",      only_opmode_output_grade_string).
+long_table("output-link-command",      only_opmode_output_link_command).
+long_table("output-shared-lib-link-command",
     only_opmode_output_shared_lib_link_command).
-long_option("output-stdlib-grades",     only_opmode_output_stdlib_grades).
-long_option("output-libgrades",         only_opmode_output_libgrades).
-long_option("output-cc",                only_opmode_output_cc).
-long_option("output-cc-type",           only_opmode_output_c_compiler_type).
-long_option("output-c-compiler-type",   only_opmode_output_c_compiler_type).
-long_option("output-csharp-compiler",   only_opmode_output_csharp_compiler).
-long_option("output-csharp-compiler-type",
+long_table("output-stdlib-grades",
+    only_opmode_output_stdlib_grades).
+long_table("output-libgrades",         only_opmode_output_libgrades).
+long_table("output-cc",                only_opmode_output_cc).
+long_table("output-cc-type",
+    only_opmode_output_c_compiler_type).
+long_table("output-c-compiler-type",
+    only_opmode_output_c_compiler_type).
+long_table("output-csharp-compiler",
+    only_opmode_output_csharp_compiler).
+long_table("output-csharp-compiler-type",
     only_opmode_output_csharp_compiler_type).
-long_option("output-cflags",            only_opmode_output_cflags).
-long_option("output-library-link-flags",
+long_table("output-cflags",            only_opmode_output_cflags).
+long_table("output-library-link-flags",
     only_opmode_output_library_link_flags).
-long_option("output-grade-defines",     only_opmode_output_grade_defines).
-long_option("output-c-include-directory-flags",
+long_table("output-grade-defines",
+    only_opmode_output_grade_defines).
+long_table("output-c-include-directory-flags",
     only_opmode_output_c_include_directory_flags).
-long_option("output-c-include-dir-flags",
+long_table("output-c-include-dir-flags",
     only_opmode_output_c_include_directory_flags).
-long_option("output-target-arch",       only_opmode_output_target_arch).
-long_option("output-class-directory",   only_opmode_output_java_class_dir).
-long_option("output-class-dir",         only_opmode_output_java_class_dir).
-long_option("output-java-class-directory",  only_opmode_output_java_class_dir).
-long_option("output-java-class-dir",        only_opmode_output_java_class_dir).
-long_option("output-stdlib-modules",    only_opmode_output_stdlib_modules).
+long_table("output-target-arch",       only_opmode_output_target_arch).
+long_table("output-class-directory",   only_opmode_output_java_class_dir).
+long_table("output-class-dir",         only_opmode_output_java_class_dir).
+long_table("output-java-class-directory",
+    only_opmode_output_java_class_dir).
+long_table("output-java-class-dir",    only_opmode_output_java_class_dir).
+long_table("output-stdlib-modules",    only_opmode_output_stdlib_modules).
 
 % aux output options
-long_option("smart-recompilation",      smart_recompilation).
-long_option("generate-mmc-make-module-dependencies",
+long_table("smart-recompilation",      smart_recompilation).
+long_table("generate-mmc-make-module-dependencies",
                                         generate_mmc_make_module_dependencies).
-long_option("generate-mmc-deps",        generate_mmc_make_module_dependencies).
-long_option("ssdb-trace",               ssdb_trace_level).
-long_option("link-ssdb-libs",           link_ssdb_libs).
-long_option("link-ssdebug-libs",        link_ssdb_libs).
-long_option("trace",                    trace_level).
-long_option("trace-optimised",          trace_optimized).
-long_option("trace-optimized",          trace_optimized).
-long_option("trace-prof",               trace_prof).
-long_option("trace-table-io",           trace_table_io).
-long_option("trace-table-io-only-retry",    trace_table_io_only_retry).
-long_option("trace-table-io-states",    trace_table_io_states).
-long_option("trace-table-io-require",   trace_table_io_require).
-long_option("trace-table-io-all",       trace_table_io_all).
-long_option("trace-flag",               trace_goal_flags).
-long_option("profile-optimised",        prof_optimized).
-long_option("profile-optimized",        prof_optimized).
-long_option("exec-trace-tail-rec",      exec_trace_tail_rec).
-long_option("suppress-trace",           suppress_trace).
-long_option("force-disable-tracing",    force_disable_tracing).
-long_option("delay-death",              delay_death).
-long_option("delay-death-max-vars",     delay_death_max_vars).
-long_option("stack-trace-higher-order", stack_trace_higher_order).
-long_option("force-disable-ssdebug",    force_disable_ssdebug).
-long_option("line-numbers",             line_numbers).
-long_option("line-numbers-around-foreign-code",
+long_table("generate-mmc-deps",
+                                        generate_mmc_make_module_dependencies).
+long_table("ssdb-trace",               ssdb_trace_level).
+long_table("link-ssdb-libs",           link_ssdb_libs).
+long_table("link-ssdebug-libs",        link_ssdb_libs).
+long_table("trace",                    trace_level).
+long_table("trace-optimised",          trace_optimized).
+long_table("trace-optimized",          trace_optimized).
+long_table("trace-prof",               trace_prof).
+long_table("trace-table-io",           trace_table_io).
+long_table("trace-table-io-only-retry",    trace_table_io_only_retry).
+long_table("trace-table-io-states",    trace_table_io_states).
+long_table("trace-table-io-require",   trace_table_io_require).
+long_table("trace-table-io-all",       trace_table_io_all).
+long_table("trace-flag",               trace_goal_flags).
+long_table("profile-optimised",        prof_optimized).
+long_table("profile-optimized",        prof_optimized).
+long_table("exec-trace-tail-rec",      exec_trace_tail_rec).
+long_table("suppress-trace",           suppress_trace).
+long_table("force-disable-tracing",    force_disable_tracing).
+long_table("delay-death",              delay_death).
+long_table("delay-death-max-vars",     delay_death_max_vars).
+long_table("stack-trace-higher-order", stack_trace_higher_order).
+long_table("force-disable-ssdebug",    force_disable_ssdebug).
+long_table("line-numbers",             line_numbers).
+long_table("line-numbers-around-foreign-code",
                                         line_numbers_around_foreign_code).
-long_option("line-numbers-for-c-headers", line_numbers_for_c_headers).
-long_option("type-repns-for-humans",    type_repns_for_humans).
-long_option("auto-comments",            auto_comments).
-long_option("frameopt-comments",        frameopt_comments).
-long_option("max-error-line-width",     max_error_line_width).
-long_option("reverse-error-order",      reverse_error_order).
-long_option("show-definitions",         show_definitions).
-long_option("show-definition-line-counts",  show_definition_line_counts).
-long_option("show-definition-extents",  show_definition_extents).
-long_option("show-local-call-tree",     show_local_call_tree).
-long_option("show-all-type-repns",              show_all_type_repns).
-long_option("show-all-type-representations",    show_all_type_repns).
-long_option("show-local-type-repns",            show_local_type_repns).
-long_option("show-local-type-representations",  show_local_type_repns).
-long_option("show-developer-type-repns",            show_developer_type_repns).
-long_option("show-developer-type-representations",  show_developer_type_repns).
-long_option("show-dependency-graph",    show_dependency_graph).
-long_option("show-pred-movability",     show_pred_movability).
-long_option("imports-graph",            imports_graph).
-long_option("trans-opt-deps-spec",      trans_opt_deps_spec).
-long_option("dump-trace-counts",        dump_trace_counts).
-long_option("dump-hlds",                dump_hlds).
-long_option("hlds-dump",                dump_hlds).
-long_option("dump-hlds-pred-id",        dump_hlds_pred_id).
-long_option("dump-hlds-pred-name",      dump_hlds_pred_name).
-long_option("dump-hlds-pred-name-order", dump_hlds_pred_name_order).
-long_option("dump-hlds-alias",          dump_hlds_alias).
-long_option("dump-hlds-spec-preds",     dump_hlds_spec_preds).
-long_option("dump-hlds-spec-preds-for", dump_hlds_spec_preds_for).
-long_option("dump-hlds-options",        dump_hlds_options).
-long_option("dump-hlds-inst-limit",     dump_hlds_inst_limit).
-long_option("dump-hlds-inst-size-limit", dump_hlds_inst_size_limit).
-long_option("dump-hlds-file-suffix",    dump_hlds_file_suffix).
-long_option("dump-same-hlds",           dump_same_hlds).
-long_option("dump-mlds",                dump_mlds).
-long_option("dump-mlds-pred-name",      dump_mlds_pred_name).
-long_option("mlds-dump",                dump_mlds).
-long_option("verbose-dump-mlds",        verbose_dump_mlds).
-long_option("verbose-mlds-dump",        verbose_dump_mlds).
-long_option("dump-options-file",        dump_options_file).
-long_option("mode-constraints",         mode_constraints).
-long_option("simple-mode-constraints",  simple_mode_constraints).
-long_option("prop-mode-constraints",    prop_mode_constraints).
-long_option("compute-goal-modes",       compute_goal_modes).
-long_option("propagate-mode-constraints",   prop_mode_constraints).
-long_option("benchmark-modes",          benchmark_modes).
-long_option("benchmark-modes-repeat",   benchmark_modes_repeat).
-long_option("unneeded-code-debug",      unneeded_code_debug).
-long_option("unneeded-code-debug-pred-name",  unneeded_code_debug_pred_name).
-long_option("common-struct-preds",      common_struct_preds).
+long_table("line-numbers-for-c-headers", line_numbers_for_c_headers).
+long_table("type-repns-for-humans",    type_repns_for_humans).
+long_table("auto-comments",            auto_comments).
+long_table("frameopt-comments",        frameopt_comments).
+long_table("max-error-line-width",     max_error_line_width).
+long_table("reverse-error-order",      reverse_error_order).
+long_table("show-definitions",         show_definitions).
+long_table("show-definition-line-counts",  show_definition_line_counts).
+long_table("show-definition-extents",  show_definition_extents).
+long_table("show-local-call-tree",     show_local_call_tree).
+long_table("show-all-type-repns",              show_all_type_repns).
+long_table("show-all-type-representations",    show_all_type_repns).
+long_table("show-local-type-repns",            show_local_type_repns).
+long_table("show-local-type-representations",  show_local_type_repns).
+long_table("show-developer-type-repns",
+        show_developer_type_repns).
+long_table("show-developer-type-representations",
+        show_developer_type_repns).
+long_table("show-dependency-graph",    show_dependency_graph).
+long_table("show-pred-movability",     show_pred_movability).
+long_table("imports-graph",            imports_graph).
+long_table("trans-opt-deps-spec",      trans_opt_deps_spec).
+long_table("dump-trace-counts",        dump_trace_counts).
+long_table("dump-hlds",                dump_hlds).
+long_table("hlds-dump",                dump_hlds).
+long_table("dump-hlds-pred-id",        dump_hlds_pred_id).
+long_table("dump-hlds-pred-name",      dump_hlds_pred_name).
+long_table("dump-hlds-pred-name-order", dump_hlds_pred_name_order).
+long_table("dump-hlds-alias",          dump_hlds_alias).
+long_table("dump-hlds-spec-preds",     dump_hlds_spec_preds).
+long_table("dump-hlds-spec-preds-for", dump_hlds_spec_preds_for).
+long_table("dump-hlds-options",        dump_hlds_options).
+long_table("dump-hlds-inst-limit",     dump_hlds_inst_limit).
+long_table("dump-hlds-inst-size-limit", dump_hlds_inst_size_limit).
+long_table("dump-hlds-file-suffix",    dump_hlds_file_suffix).
+long_table("dump-same-hlds",           dump_same_hlds).
+long_table("dump-mlds",                dump_mlds).
+long_table("dump-mlds-pred-name",      dump_mlds_pred_name).
+long_table("mlds-dump",                dump_mlds).
+long_table("verbose-dump-mlds",        verbose_dump_mlds).
+long_table("verbose-mlds-dump",        verbose_dump_mlds).
+long_table("dump-options-file",        dump_options_file).
+long_table("mode-constraints",         mode_constraints).
+long_table("simple-mode-constraints",  simple_mode_constraints).
+long_table("prop-mode-constraints",    prop_mode_constraints).
+long_table("compute-goal-modes",       compute_goal_modes).
+long_table("propagate-mode-constraints",   prop_mode_constraints).
+long_table("benchmark-modes",          benchmark_modes).
+long_table("benchmark-modes-repeat",   benchmark_modes_repeat).
+long_table("unneeded-code-debug",      unneeded_code_debug).
+long_table("unneeded-code-debug-pred-name",
+    unneeded_code_debug_pred_name).
+long_table("common-struct-preds",      common_struct_preds).
 
 % language semantics options
-long_option("reorder-conj",         reorder_conj).
-long_option("reorder-disj",         reorder_disj).
-long_option("fully-strict",         fully_strict).
-long_option("strict-sequential",    strict_sequential).
-long_option("allow-stubs",          allow_stubs).
-long_option("infer-all",            infer_all).
-long_option("infer-types",          infer_types).
-long_option("infer-modes",          infer_modes).
-long_option("infer-determinism",    infer_det).
-long_option("infer-det",            infer_det).
-long_option("type-inference-iteration-limit", type_inference_iteration_limit).
-long_option("mode-inference-iteration-limit", mode_inference_iteration_limit).
-long_option("event-set-file-name",  event_set_file_name).
+long_table("reorder-conj",         reorder_conj).
+long_table("reorder-disj",         reorder_disj).
+long_table("fully-strict",         fully_strict).
+long_table("strict-sequential",    strict_sequential).
+long_table("allow-stubs",          allow_stubs).
+long_table("infer-all",            infer_all).
+long_table("infer-types",          infer_types).
+long_table("infer-modes",          infer_modes).
+long_table("infer-determinism",    infer_det).
+long_table("infer-det",            infer_det).
+long_table("type-inference-iteration-limit",
+    type_inference_iteration_limit).
+long_table("mode-inference-iteration-limit",
+    mode_inference_iteration_limit).
+long_table("event-set-file-name",  event_set_file_name).
 
 % compilation model options
-long_option("grade",                grade).
+long_table("grade",                grade).
 % target selection options
-long_option("target",               target).
-long_option("compile-to-c",         compile_to_c).
-long_option("compile-to-C",         compile_to_c).
-long_option("java",                 java).
-long_option("Java",                 java).
-long_option("java-only",            java_only).
-long_option("Java-only",            java_only).
-long_option("csharp",               csharp).
-long_option("C#",                   csharp).
-long_option("csharp-only",          csharp_only).
-long_option("C#-only",              csharp_only).
+long_table("target",               target).
+long_table("compile-to-c",         compile_to_c).
+long_table("compile-to-C",         compile_to_c).
+long_table("java",                 java).
+long_table("Java",                 java).
+long_table("java-only",            java_only).
+long_table("Java-only",            java_only).
+long_table("csharp",               csharp).
+long_table("C#",                   csharp).
+long_table("csharp-only",          csharp_only).
+long_table("C#-only",              csharp_only).
 % Optional features compilation model options:
 % (a) debugging
-long_option("debug",                exec_trace).
-long_option("decl-debug",           decl_debug).
-long_option("ssdb",                 source_to_source_debug).
-long_option("ss-debug",             source_to_source_debug).
-long_option("source-to-source-debug", source_to_source_debug).
+long_table("debug",                exec_trace).
+long_table("decl-debug",           decl_debug).
+long_table("ssdb",                 source_to_source_debug).
+long_table("ss-debug",             source_to_source_debug).
+long_table("source-to-source-debug", source_to_source_debug).
 % (b) profiling
-long_option("profiling",            profiling).
-long_option("time-profiling",       time_profiling).
-long_option("memory-profiling",     memory_profiling).
-long_option("deep-profiling",       deep_profiling).
-long_option("profile-calls",        profile_calls).
-long_option("profile-time",         profile_time).
-long_option("profile-memory",       profile_memory).
-long_option("profile-deep",         profile_deep).
-long_option("use-activation-counts",    use_activation_counts).
-long_option("pre-prof-transforms-simplify", pre_prof_transforms_simplify).
-long_option("pre-implicit-parallelism-simplify",
+long_table("profiling",            profiling).
+long_table("time-profiling",       time_profiling).
+long_table("memory-profiling",     memory_profiling).
+long_table("deep-profiling",       deep_profiling).
+long_table("profile-calls",        profile_calls).
+long_table("profile-time",         profile_time).
+long_table("profile-memory",       profile_memory).
+long_table("profile-deep",         profile_deep).
+long_table("use-activation-counts",    use_activation_counts).
+long_table("pre-prof-transforms-simplify",
+    pre_prof_transforms_simplify).
+long_table("pre-implicit-parallelism-simplify",
     pre_implicit_parallelism_simplify).
-long_option("coverage-profiling",   coverage_profiling).
-long_option("coverage-profiling-via-calls",
+long_table("coverage-profiling",   coverage_profiling).
+long_table("coverage-profiling-via-calls",
     coverage_profiling_via_calls).
-long_option("coverage-profiling-static",
+long_table("coverage-profiling-static",
     coverage_profiling_static).
-long_option("profile-deep-coverage-after-goal",
+long_table("profile-deep-coverage-after-goal",
     profile_deep_coverage_after_goal).
-long_option("profile-deep-coverage-branch-ite",
+long_table("profile-deep-coverage-branch-ite",
     profile_deep_coverage_branch_ite).
-long_option("profile-deep-coverage-branch-switch",
+long_table("profile-deep-coverage-branch-switch",
     profile_deep_coverage_branch_switch).
-long_option("profile-deep-coverage-branch-disj",
+long_table("profile-deep-coverage-branch-disj",
     profile_deep_coverage_branch_disj).
-long_option("profile-deep-coverage-use-portcounts",
+long_table("profile-deep-coverage-use-portcounts",
     profile_deep_coverage_use_portcounts).
-long_option("profile-deep-coverage-use-trivial",
+long_table("profile-deep-coverage-use-trivial",
     profile_deep_coverage_use_trivial).
-long_option("profile-for-implicit-parallelism",
+long_table("profile-for-implicit-parallelism",
     profile_for_feedback).
-long_option("profile-for-feedback",
+long_table("profile-for-feedback",
     profile_for_feedback).
-long_option("use-zeroing-for-ho-cycles",
+long_table("use-zeroing-for-ho-cycles",
     use_zeroing_for_ho_cycles).
-long_option("use-lots-of-ho-specialization",
+long_table("use-lots-of-ho-specialization",
     use_lots_of_ho_specialization).
-long_option("deep-profile-tail-recursion",
+long_table("deep-profile-tail-recursion",
     deep_profile_tail_recursion).
-long_option("record-term-sizes-as-words", record_term_sizes_as_words).
-long_option("record-term-sizes-as-cells", record_term_sizes_as_cells).
-long_option("experimental-complexity",  experimental_complexity).
+long_table("record-term-sizes-as-words", record_term_sizes_as_words).
+long_table("record-term-sizes-as-cells", record_term_sizes_as_cells).
+long_table("experimental-complexity",  experimental_complexity).
 % (c) miscellaneous optional features
-long_option("gc",                   gc).
-long_option("garbage-collection",   gc).
-long_option("parallel",             parallel).
-long_option("use-trail",            use_trail).
-long_option("type-layout",          type_layout).
-long_option("maybe-thread-safe",    maybe_thread_safe_opt).
-long_option("extend-stacks-when-needed",    extend_stacks_when_needed).
-long_option("stack-segments",       stack_segments).
-long_option("use-regions",          use_regions).
-long_option("use-alloc-regions",    use_alloc_regions).
-long_option("use-regions-debug",    use_regions_debug).
-long_option("use-regions-profiling",use_regions_profiling).
+long_table("gc",                   gc).
+long_table("garbage-collection",   gc).
+long_table("parallel",             parallel).
+long_table("use-trail",            use_trail).
+long_table("type-layout",          type_layout).
+long_table("maybe-thread-safe",    maybe_thread_safe_opt).
+long_table("extend-stacks-when-needed",    extend_stacks_when_needed).
+long_table("stack-segments",       stack_segments).
+long_table("use-regions",          use_regions).
+long_table("use-alloc-regions",    use_alloc_regions).
+long_table("use-regions-debug",    use_regions_debug).
+long_table("use-regions-profiling",use_regions_profiling).
 % Data representation options
-long_option("use-minimal-model-stack-copy", use_minimal_model_stack_copy).
-long_option("use-minimal-model-own-stacks", use_minimal_model_own_stacks).
-long_option("minimal-model-debug",  minimal_model_debug).
-long_option("pregenerated-dist",    pregenerated_dist).
-long_option("single-prec-float",    single_prec_float).
-long_option("single-precision-float",   single_prec_float).
-long_option("num-tag-bits",         num_ptag_bits). % for historical reasons
-long_option("num-ptag-bits",        num_ptag_bits).
-long_option("bits-per-word",        bits_per_word).
-long_option("bytes-per-word",       bytes_per_word).
-long_option("conf-low-tag-bits",    conf_low_ptag_bits). % for historical ...
-long_option("conf-low-ptag-bits",   conf_low_ptag_bits).
-long_option("unboxed-float",        unboxed_float).
-long_option("unboxed-int64s",       unboxed_int64s).
-long_option("unboxed-no-tag-types", unboxed_no_tag_types).
-long_option("arg-pack-bits",        arg_pack_bits).
-long_option("pack-everything",      pack_everything).
-long_option("allow-direct-args",    allow_direct_args).
-long_option("allow-double-word-fields", allow_double_word_fields).
-long_option("allow-double-word-ints", allow_double_word_ints).
-long_option("allow-packing-dummies", allow_packing_dummies).
-long_option("allow-packing-ints",   allow_packing_ints).
-long_option("allow-packing-chars",  allow_packing_chars).
-long_option("allow-packing-local-sectags",  allow_packing_local_sectags).
-long_option("allow-packing-remote-sectags", allow_packing_remote_sectags).
-long_option("allow-packing-mini-types",     allow_packing_mini_types).
-long_option("allow-packed-unify-compare",   allow_packed_unify_compare).
-long_option("sync-term-size",       sync_term_size).
+long_table("use-minimal-model-stack-copy",
+        use_minimal_model_stack_copy).
+long_table("use-minimal-model-own-stacks",
+        use_minimal_model_own_stacks).
+long_table("minimal-model-debug",  minimal_model_debug).
+long_table("pregenerated-dist",    pregenerated_dist).
+long_table("single-prec-float",    single_prec_float).
+long_table("single-precision-float",   single_prec_float).
+long_table("num-tag-bits",         num_ptag_bits). % for historical reasons
+long_table("num-ptag-bits",        num_ptag_bits).
+long_table("bits-per-word",        bits_per_word).
+long_table("bytes-per-word",       bytes_per_word).
+long_table("conf-low-tag-bits",    conf_low_ptag_bits). % for historical ...
+long_table("conf-low-ptag-bits",   conf_low_ptag_bits).
+long_table("unboxed-float",        unboxed_float).
+long_table("unboxed-int64s",       unboxed_int64s).
+long_table("unboxed-no-tag-types", unboxed_no_tag_types).
+long_table("arg-pack-bits",        arg_pack_bits).
+long_table("pack-everything",      pack_everything).
+long_table("allow-direct-args",    allow_direct_args).
+long_table("allow-double-word-fields", allow_double_word_fields).
+long_table("allow-double-word-ints", allow_double_word_ints).
+long_table("allow-packing-dummies", allow_packing_dummies).
+long_table("allow-packing-ints",   allow_packing_ints).
+long_table("allow-packing-chars",  allow_packing_chars).
+long_table("allow-packing-local-sectags",  allow_packing_local_sectags).
+long_table("allow-packing-remote-sectags",
+        allow_packing_remote_sectags).
+long_table("allow-packing-mini-types",     allow_packing_mini_types).
+long_table("allow-packed-unify-compare",   allow_packed_unify_compare).
+long_table("sync-term-size",       sync_term_size).
 % LLDS back-end compilation model options
-long_option("gcc-non-local-gotos",  gcc_non_local_gotos).
-long_option("gcc-global-registers", gcc_global_registers).
-long_option("asm-labels",           asm_labels).
-long_option("use-float-registers",  use_float_registers).
+long_table("gcc-non-local-gotos",  gcc_non_local_gotos).
+long_table("gcc-global-registers", gcc_global_registers).
+long_table("asm-labels",           asm_labels).
+long_table("use-float-registers",  use_float_registers).
 % MLDS back-end compilation model options
-long_option("highlevel-code",       highlevel_code).
-long_option("high-level-code",      highlevel_code).
-long_option("highlevel-C",          highlevel_code).
-long_option("highlevel-c",          highlevel_code).
-long_option("high-level-C",         highlevel_code).
-long_option("high-level-c",         highlevel_code).
-long_option("c-debug-grade",        c_debug_grade).
-long_option("det-copy-out",         det_copy_out).
-long_option("nondet-copy-out",      nondet_copy_out).
-long_option("put-commit-in-own-func",   put_commit_in_own_func).
+long_table("highlevel-code",       highlevel_code).
+long_table("high-level-code",      highlevel_code).
+long_table("highlevel-C",          highlevel_code).
+long_table("highlevel-c",          highlevel_code).
+long_table("high-level-C",         highlevel_code).
+long_table("high-level-c",         highlevel_code).
+long_table("c-debug-grade",        c_debug_grade).
+long_table("det-copy-out",         det_copy_out).
+long_table("nondet-copy-out",      nondet_copy_out).
+long_table("put-commit-in-own-func",   put_commit_in_own_func).
 
 % internal use options
-long_option("backend-foreign-languages", backend_foreign_languages).
-long_option("agc-stack-layout",     agc_stack_layout).
-long_option("basic-stack-layout",   basic_stack_layout).
-long_option("procid-stack-layout",  procid_stack_layout).
-long_option("trace-stack-layout",   trace_stack_layout).
-long_option("body-typeinfo-liveness",   body_typeinfo_liveness).
-long_option("can-compare-constants-as-ints",  can_compare_constants_as_ints).
-long_option("pretest-equality-cast-pointers", pretest_equality_cast_pointers).
-long_option("delay-partial-instantiations",   delay_partial_instantiations).
-long_option("allow-defn-of-builtins",         allow_defn_of_builtins).
-long_option("type-ctor-info",       type_ctor_info).
-long_option("type-ctor-layout",     type_ctor_layout).
-long_option("type-ctor-functors",   type_ctor_functors).
-long_option("new-type-class-rtti",  new_type_class_rtti).
-long_option("rtti-line-numbers",    rtti_line_numbers).
-long_option("disable-mm-pneg",      disable_minimal_model_stack_copy_pneg).
-long_option("disable-mm-cut",       disable_minimal_model_stack_copy_cut).
-long_option("disable-trail-ops",    disable_trail_ops).
-long_option("size-region-ite-fixed",            size_region_ite_fixed).
-long_option("size-region-disj-fixed",           size_region_disj_fixed).
-long_option("size-region-commit-fixed",         size_region_commit_fixed).
-long_option("size-region-ite-protect",          size_region_ite_protect).
-long_option("size-region-ite-snapshot",         size_region_ite_snapshot).
-long_option("size-region-semi-disj-protect",    size_region_semi_disj_protect).
-long_option("size-region-disj-snapshot",        size_region_disj_snapshot).
-long_option("size-region-commit-entry",         size_region_commit_entry).
-long_option("allow-multi-arm-switches", allow_multi_arm_switches).
-long_option("type-check-constraints",   type_check_constraints).
+long_table("backend-foreign-languages", backend_foreign_languages).
+long_table("agc-stack-layout",     agc_stack_layout).
+long_table("basic-stack-layout",   basic_stack_layout).
+long_table("procid-stack-layout",  procid_stack_layout).
+long_table("trace-stack-layout",   trace_stack_layout).
+long_table("body-typeinfo-liveness",   body_typeinfo_liveness).
+long_table("can-compare-constants-as-ints",
+        can_compare_constants_as_ints).
+long_table("pretest-equality-cast-pointers",
+        pretest_equality_cast_pointers).
+long_table("delay-partial-instantiations",
+        delay_partial_instantiations).
+long_table("allow-defn-of-builtins",
+        allow_defn_of_builtins).
+long_table("type-ctor-info",       type_ctor_info).
+long_table("type-ctor-layout",     type_ctor_layout).
+long_table("type-ctor-functors",   type_ctor_functors).
+long_table("new-type-class-rtti",  new_type_class_rtti).
+long_table("rtti-line-numbers",    rtti_line_numbers).
+long_table("disable-mm-pneg",   disable_minimal_model_stack_copy_pneg).
+long_table("disable-mm-cut",    disable_minimal_model_stack_copy_cut).
+long_table("disable-trail-ops", disable_trail_ops).
+long_table("size-region-ite-fixed",        size_region_ite_fixed).
+long_table("size-region-disj-fixed",       size_region_disj_fixed).
+long_table("size-region-commit-fixed",     size_region_commit_fixed).
+long_table("size-region-ite-protect",      size_region_ite_protect).
+long_table("size-region-ite-snapshot",     size_region_ite_snapshot).
+long_table("size-region-semi-disj-protect",
+        size_region_semi_disj_protect).
+long_table("size-region-disj-snapshot",
+        size_region_disj_snapshot).
+long_table("size-region-commit-entry",
+        size_region_commit_entry).
+long_table("allow-multi-arm-switches", allow_multi_arm_switches).
+long_table("type-check-constraints",   type_check_constraints).
 
 % code generation options
-long_option("table-debug",          table_debug).
-long_option("trad-passes",          trad_passes).
-long_option("parallel-liveness",    parallel_liveness).
-long_option("parallel-code-gen",    parallel_code_gen).
-long_option("reclaim-heap-on-failure",  reclaim_heap_on_failure).
-long_option("reclaim-heap-on-semidet-failure",
+long_table("table-debug",          table_debug).
+long_table("trad-passes",          trad_passes).
+long_table("parallel-liveness",    parallel_liveness).
+long_table("parallel-code-gen",    parallel_code_gen).
+long_table("reclaim-heap-on-failure",  reclaim_heap_on_failure).
+long_table("reclaim-heap-on-semidet-failure",
                                     reclaim_heap_on_semidet_failure).
-long_option("reclaim-heap-on-nondet-failure",
+long_table("reclaim-heap-on-nondet-failure",
                                     reclaim_heap_on_nondet_failure).
-long_option("branch-delay-slot",    have_delay_slot).
-long_option("have-delay-slot",      have_delay_slot).
-long_option("num-real-r-regs",      num_real_r_regs).
-long_option("num-real-f-regs",      num_real_f_regs).
-long_option("num-real-r-temps",     num_real_r_temps).
-long_option("num-real-f-temps",     num_real_f_temps).
-long_option("num-real-temps",       num_real_r_temps).  % obsolete
-long_option("max-jump-table-size",  max_jump_table_size).
-% long_option("max-spec-do-call-closure",
+long_table("branch-delay-slot",    have_delay_slot).
+long_table("have-delay-slot",      have_delay_slot).
+long_table("num-real-r-regs",      num_real_r_regs).
+long_table("num-real-f-regs",      num_real_f_regs).
+long_table("num-real-r-temps",     num_real_r_temps).
+long_table("num-real-f-temps",     num_real_f_temps).
+long_table("num-real-temps",       num_real_r_temps).  % obsolete
+long_table("max-jump-table-size",  max_jump_table_size).
+% long_table("max-spec-do-call-closure",
 %                   max_specialized_do_call_closure).
-% long_option("max-spec-do-call-class-method",
+% long_table("max-spec-do-call-class-method",
 %                   max_specialized_do_call_class_method).
-long_option("compare-specialization",   compare_specialization).
-long_option("should-pretest-equality",  should_pretest_equality).
-long_option("fact-table-max-array-size",fact_table_max_array_size).
-long_option("fact-table-hash-percent-full",
+long_table("compare-specialization",   compare_specialization).
+long_table("should-pretest-equality",  should_pretest_equality).
+long_table("fact-table-max-array-size",fact_table_max_array_size).
+long_table("fact-table-hash-percent-full",
                     fact_table_hash_percent_full).
-long_option("prefer-switch",        prefer_switch).
-long_option("prefer-while-loop-over-jump-self",
+long_table("prefer-switch",        prefer_switch).
+long_table("prefer-while-loop-over-jump-self",
                                     prefer_while_loop_over_jump_self).
-long_option("prefer-while-loop-over-jump-mutual",
+long_table("prefer-while-loop-over-jump-mutual",
                                     prefer_while_loop_over_jump_mutual).
-long_option("opt-no-return-calls",  opt_no_return_calls).
-long_option("debug-class-init",     debug_class_init).
+long_table("opt-no-return-calls",  opt_no_return_calls).
+long_table("debug-class-init",     debug_class_init).
 
 % optimization options
 
-long_option("default-opt-level",    default_opt_level).
-long_option("opt-level",            opt_level).
-long_option("optimization-level",   opt_level).
-long_option("optimisation-level",   opt_level).
-long_option("opt-space",            opt_space).
-long_option("optimize-space",       opt_space).
-long_option("optimise-space",       opt_space).
-long_option("intermod-opt",        intermodule_optimization).
-long_option("intermodule-optimization", intermodule_optimization).
-long_option("intermodule-optimisation", intermodule_optimization).
-long_option("read-opt-files-transitively", read_opt_files_transitively).
-long_option("use-opt-files",        use_opt_files).
-long_option("use-trans-opt-files",  use_trans_opt_files).
-long_option("transitive-intermodule-optimization",
+long_table("default-opt-level",    default_opt_level).
+long_table("opt-level",            opt_level).
+long_table("optimization-level",   opt_level).
+long_table("optimisation-level",   opt_level).
+long_table("opt-space",            opt_space).
+long_table("optimize-space",       opt_space).
+long_table("optimise-space",       opt_space).
+long_table("intermod-opt",        intermodule_optimization).
+long_table("intermodule-optimization", intermodule_optimization).
+long_table("intermodule-optimisation", intermodule_optimization).
+long_table("read-opt-files-transitively", read_opt_files_transitively).
+long_table("use-opt-files",        use_opt_files).
+long_table("use-trans-opt-files",  use_trans_opt_files).
+long_table("transitive-intermodule-optimization",
                     transitive_optimization).
-long_option("transitive-intermodule-optimisation",
+long_table("transitive-intermodule-optimisation",
                     transitive_optimization).
-long_option("trans-intermod-opt",   transitive_optimization).
-long_option("intermodule-analysis", intermodule_analysis).
-long_option("analysis-repeat",      analysis_repeat).
-long_option("analysis-file-cache",  analysis_file_cache).
+long_table("trans-intermod-opt",   transitive_optimization).
+long_table("intermodule-analysis", intermodule_analysis).
+long_table("analysis-repeat",      analysis_repeat).
+long_table("analysis-file-cache",  analysis_file_cache).
 
 % HLDS->HLDS optimizations
-long_option("allow-inlining",       optopt_allow_inlining).
-long_option("inlining",             inlining).
-long_option("inline-simple",        optopt_inline_simple).
-long_option("inline-builtins",      optopt_inline_builtins).
-long_option("inline-single-use",    optopt_inline_single_use).
-long_option("inline-call-cost",     optopt_inline_call_cost).
-long_option("inline-compound-threshold",    optopt_inline_compound_threshold).
-long_option("inline-simple-threshold",      optopt_inline_simple_threshold).
-long_option("intermod-inline-simple-threshold",
-                                    optopt_intermod_inline_simple_threshold).
-long_option("inline-linear-tail-rec-sccs", optopt_inline_linear_tail_rec_sccs).
-long_option("inline-linear-tail-rec-sccs-max-extra",
-                                 optopt_inline_linear_tail_rec_sccs_max_extra).
-long_option("from-ground-term-threshold",
-                                    optopt_from_ground_term_threshold).
-long_option("inline-vars-threshold",        optopt_inline_vars_threshold).
+long_table("allow-inlining",       optopt_allow_inlining).
+long_table("inlining",             inlining).
+long_table("inline-simple",        optopt_inline_simple).
+long_table("inline-builtins",      optopt_inline_builtins).
+long_table("inline-single-use",    optopt_inline_single_use).
+long_table("inline-call-cost",     optopt_inline_call_cost).
+long_table("inline-compound-threshold", optopt_inline_compound_threshold).
+long_table("inline-simple-threshold",   optopt_inline_simple_threshold).
+long_table("intermod-inline-simple-threshold",
+                                optopt_intermod_inline_simple_threshold).
+long_table("inline-linear-tail-rec-sccs",
+                                optopt_inline_linear_tail_rec_sccs).
+long_table("inline-linear-tail-rec-sccs-max-extra",
+                                optopt_inline_linear_tail_rec_sccs_max_extra).
+long_table("from-ground-term-threshold",
+                                optopt_from_ground_term_threshold).
+long_table("inline-vars-threshold",  optopt_inline_vars_threshold).
 % This option is only for internal use by the compiler.
-% long_option("const-struct-poly",    optopt_enable_const_struct_poly).
-long_option("const-struct",         optopt_enable_const_struct_user).
-long_option("common-struct",        optopt_common_struct).
-long_option("excess-assign",        optopt_excess_assign).
-long_option("merge-code-after-switch",      optopt_merge_code_after_switch).
-long_option("optimize-format-calls",        optopt_optimize_format_calls).
-long_option("split-switch-arms",        optopt_split_switch_arms).
-long_option("optimize-duplicate-calls", optopt_optimize_duplicate_calls).
-long_option("optimise-duplicate-calls", optopt_optimize_duplicate_calls).
-long_option("optimise-constant-propagation", optopt_constant_propagation).
-long_option("optimize-constant-propagation", optopt_constant_propagation).
-long_option("optimize-saved-vars",  optimize_saved_vars).
-long_option("optimise-saved-vars",  optimize_saved_vars).
-long_option("loop-invariants",      optopt_loop_invariants).
-long_option("optimize-saved-vars-const",    optopt_optimize_saved_vars_const).
-long_option("optimise-saved-vars-const",    optopt_optimize_saved_vars_const).
-long_option("optimize-saved-vars-cell", optopt_optimize_saved_vars_cell).
-long_option("optimise-saved-vars-cell", optopt_optimize_saved_vars_cell).
-long_option("osv-loop",             optopt_optimize_saved_vars_cell_loop).
-long_option("osv-full-path",        optopt_optimize_saved_vars_cell_full_path).
-long_option("osv-on-stack",         optopt_optimize_saved_vars_cell_on_stack).
-long_option("osv-cand-head",
+% long_table("const-struct-poly",    optopt_enable_const_struct_poly).
+long_table("const-struct",         optopt_enable_const_struct_user).
+long_table("common-struct",        optopt_common_struct).
+long_table("excess-assign",        optopt_excess_assign).
+long_table("merge-code-after-switch",  optopt_merge_code_after_switch).
+long_table("optimize-format-calls",    optopt_optimize_format_calls).
+long_table("split-switch-arms",        optopt_split_switch_arms).
+long_table("optimize-duplicate-calls", optopt_optimize_duplicate_calls).
+long_table("optimise-duplicate-calls", optopt_optimize_duplicate_calls).
+long_table("optimise-constant-propagation",
+                        optopt_constant_propagation).
+long_table("optimize-constant-propagation",
+                        optopt_constant_propagation).
+long_table("optimize-saved-vars",  optimize_saved_vars).
+long_table("optimise-saved-vars",  optimize_saved_vars).
+long_table("loop-invariants",      optopt_loop_invariants).
+long_table("optimize-saved-vars-const", optopt_optimize_saved_vars_const).
+long_table("optimise-saved-vars-const", optopt_optimize_saved_vars_const).
+long_table("optimize-saved-vars-cell", optopt_optimize_saved_vars_cell).
+long_table("optimise-saved-vars-cell", optopt_optimize_saved_vars_cell).
+long_table("osv-loop",      optopt_optimize_saved_vars_cell_loop).
+long_table("osv-full-path", optopt_optimize_saved_vars_cell_full_path).
+long_table("osv-on-stack",  optopt_optimize_saved_vars_cell_on_stack).
+long_table("osv-cand-head",
                         optopt_optimize_saved_vars_cell_candidate_headvars).
 % The next four options are used by tupling.m as well; changes to them
 % may require changes there as well.
-long_option("osv-cvstore-cost",
+long_table("osv-cvstore-cost",
                         optopt_optimize_saved_vars_cell_cv_store_cost).
-long_option("osv-cvload-cost",
+long_table("osv-cvload-cost",
                         optopt_optimize_saved_vars_cell_cv_load_cost).
-long_option("osv-fvstore-cost",
+long_table("osv-fvstore-cost",
                         optopt_optimize_saved_vars_cell_fv_store_cost).
-long_option("osv-fvload-cost",
+long_table("osv-fvload-cost",
                         optopt_optimize_saved_vars_cell_fv_load_cost).
-long_option("osv-op-ratio",
+long_table("osv-op-ratio",
                         optopt_optimize_saved_vars_cell_op_ratio).
-long_option("osv-node-ratio",
+long_table("osv-node-ratio",
                         optopt_optimize_saved_vars_cell_node_ratio).
-long_option("osv-allpath-node-ratio",
+long_table("osv-allpath-node-ratio",
                         optopt_optimize_saved_vars_cell_all_path_node_ratio).
-long_option("osv-all-cand",
+long_table("osv-all-cand",
                     optopt_optimize_saved_vars_cell_include_all_candidates).
-long_option("delay-construct",      optopt_delay_construct).
-long_option("delay-constructs",     optopt_delay_construct).
-long_option("follow-code",          optopt_follow_code).
-long_option("constraint-propagation",   optopt_constraint_propagation).
-long_option("local-constraint-propagation",
+long_table("delay-construct",      optopt_delay_construct).
+long_table("delay-constructs",     optopt_delay_construct).
+long_table("follow-code",          optopt_follow_code).
+long_table("constraint-propagation",   optopt_constraint_propagation).
+long_table("local-constraint-propagation",
                                      optopt_local_constraint_propagation).
-long_option("optimize-unused-args", optopt_optimize_unused_args).
-long_option("optimise-unused-args", optopt_optimize_unused_args).
-long_option("intermod-unused-args", optopt_intermod_unused_args).
-long_option("optimize-higher-order",    optopt_optimize_higher_order).
-long_option("optimise-higher-order",    optopt_optimize_higher_order).
-long_option("higher-order-size-limit",  optopt_higher_order_size_limit).
-long_option("higher-order-arg-limit",   optopt_higher_order_arg_limit).
-long_option("unneeded-code",        optopt_unneeded_code).
-long_option("unneeded-code-copy-limit", optopt_unneeded_code_copy_limit).
-long_option("type-specialization",  optopt_type_specialization).
-long_option("type-specialisation",  optopt_type_specialization).
-long_option("user-guided-type-specialization",
+long_table("optimize-unused-args", optopt_optimize_unused_args).
+long_table("optimise-unused-args", optopt_optimize_unused_args).
+long_table("intermod-unused-args", optopt_intermod_unused_args).
+long_table("optimize-higher-order",    optopt_optimize_higher_order).
+long_table("optimise-higher-order",    optopt_optimize_higher_order).
+long_table("higher-order-size-limit",  optopt_higher_order_size_limit).
+long_table("higher-order-arg-limit",   optopt_higher_order_arg_limit).
+long_table("unneeded-code",        optopt_unneeded_code).
+long_table("unneeded-code-copy-limit", optopt_unneeded_code_copy_limit).
+long_table("type-specialization",  optopt_type_specialization).
+long_table("type-specialisation",  optopt_type_specialization).
+long_table("user-guided-type-specialization",
                     optopt_user_guided_type_specialization).
-long_option("user-guided-type-specialisation",
+long_table("user-guided-type-specialisation",
                     optopt_user_guided_type_specialization).
 % This option is for use in configure.in to test for some bug-fixes for
 % type-specialization which are needed to compile the library. It's not
 % documented, and should eventually be removed.
-long_option("fixed-user-guided-type-specialization",
+long_table("fixed-user-guided-type-specialization",
                     optopt_user_guided_type_specialization).
-long_option("introduce-accumulators",   optopt_introduce_accumulators).
-long_option("optimise-constructor-last-call-accumulator",
+long_table("introduce-accumulators",   optopt_introduce_accumulators).
+long_table("optimise-constructor-last-call-accumulator",
                     optopt_optimize_constructor_last_call_accumulator).
-long_option("optimize-constructor-last-call-accumulator",
+long_table("optimize-constructor-last-call-accumulator",
                     optopt_optimize_constructor_last_call_accumulator).
-long_option("optimise-constructor-last-call-null",
+long_table("optimise-constructor-last-call-null",
                     optopt_optimize_constructor_last_call_null).
-long_option("optimize-constructor-last-call-null",
+long_table("optimize-constructor-last-call-null",
                     optopt_optimize_constructor_last_call_null).
-long_option("optimise-constructor-last-call",
+long_table("optimise-constructor-last-call",
                     optopt_optimize_constructor_last_call).
-long_option("optimize-constructor-last-call",
+long_table("optimize-constructor-last-call",
                     optopt_optimize_constructor_last_call).
-long_option("optimize-dead-procs",  optopt_optimize_dead_procs).
-long_option("optimise-dead-procs",  optopt_optimize_dead_procs).
-long_option("deforestation",        optopt_deforestation).
-long_option("deforestation-depth-limit",    optopt_deforestation_depth_limit).
-long_option("deforestation-cost-factor",    optopt_deforestation_cost_factor).
-long_option("deforestation-vars-threshold",
+long_table("optimize-dead-procs",  optopt_optimize_dead_procs).
+long_table("optimise-dead-procs",  optopt_optimize_dead_procs).
+long_table("deforestation",        optopt_deforestation).
+long_table("deforestation-depth-limit", optopt_deforestation_depth_limit).
+long_table("deforestation-cost-factor", optopt_deforestation_cost_factor).
+long_table("deforestation-vars-threshold",
                                     optopt_deforestation_vars_threshold).
-long_option("deforestation-size-threshold",
+long_table("deforestation-size-threshold",
                                     optopt_deforestation_size_threshold).
 
-long_option("untuple",              optopt_untuple).
-long_option("tuple",                optopt_tuple).
-long_option("tuple-trace-counts-file",  optopt_tuple_trace_counts_file).
-long_option("tuple-costs-ratio",    optopt_tuple_costs_ratio).
-long_option("tuple-min-args",       optopt_tuple_min_args).
-long_option("inline-par-builtins",  optopt_inline_par_builtins).
-long_option("always-specialize-in-dep-par-conjs",
+long_table("untuple",              optopt_untuple).
+long_table("tuple",                optopt_tuple).
+long_table("tuple-trace-counts-file",  optopt_tuple_trace_counts_file).
+long_table("tuple-costs-ratio",    optopt_tuple_costs_ratio).
+long_table("tuple-min-args",       optopt_tuple_min_args).
+long_table("inline-par-builtins",  optopt_inline_par_builtins).
+long_table("always-specialize-in-dep-par-conjs",
                                     optopt_always_specialize_in_dep_par_conjs).
-long_option("allow-some-paths-only-waits",
+long_table("allow-some-paths-only-waits",
                                     optopt_allow_some_paths_only_waits).
-long_option("region-analysis",      optopt_region_analysis).
+long_table("region-analysis",      optopt_region_analysis).
 
 % HLDS->LLDS optimizations
-long_option("smart-indexing",       optopt_smart_indexing).
-long_option("smart-atomic-indexing", optopt_smart_atomic_indexing).
-long_option("smart-string-indexing", optopt_smart_string_indexing).
-long_option("smart-tag-indexing",    optopt_smart_tag_indexing).
-long_option("smart-float-indexing",  optopt_smart_float_indexing).
-long_option("dense-switch-req-density", optopt_dense_switch_req_density).
-long_option("lookup-switch-req-density",optopt_lookup_switch_req_density).
-long_option("dense-switch-size",    optopt_dense_switch_size).
-long_option("lookup-switch-size",   optopt_lookup_switch_size).
-long_option("string-switch-size",   optopt_string_hash_switch_size).
-long_option("string-trie-size",     optopt_string_trie_switch_size).
-long_option("string-trie-switch-size",      optopt_string_trie_switch_size).
-long_option("string-hash-switch-size",      optopt_string_hash_switch_size).
-long_option("string-binary-switch-size",    optopt_string_binary_switch_size).
-long_option("tag-switch-size",      optopt_tag_switch_size).
-long_option("try-switch-size",      optopt_try_switch_size).
-long_option("binary-switch-size",   optopt_binary_switch_size).
-long_option("switch-single-rec-base-first",
+long_table("smart-indexing",       optopt_smart_indexing).
+long_table("smart-atomic-indexing", optopt_smart_atomic_indexing).
+long_table("smart-string-indexing", optopt_smart_string_indexing).
+long_table("smart-tag-indexing",    optopt_smart_tag_indexing).
+long_table("smart-float-indexing",  optopt_smart_float_indexing).
+long_table("dense-switch-req-density", optopt_dense_switch_req_density).
+long_table("lookup-switch-req-density",
+                                    optopt_lookup_switch_req_density).
+long_table("dense-switch-size",    optopt_dense_switch_size).
+long_table("lookup-switch-size",   optopt_lookup_switch_size).
+long_table("string-switch-size",   optopt_string_hash_switch_size).
+long_table("string-trie-size",     optopt_string_trie_switch_size).
+long_table("string-trie-switch-size",   optopt_string_trie_switch_size).
+long_table("string-hash-switch-size",   optopt_string_hash_switch_size).
+long_table("string-binary-switch-size", optopt_string_binary_switch_size).
+long_table("tag-switch-size",      optopt_tag_switch_size).
+long_table("try-switch-size",      optopt_try_switch_size).
+long_table("binary-switch-size",   optopt_binary_switch_size).
+long_table("switch-single-rec-base-first",
                                     optopt_switch_single_rec_base_first).
-long_option("switch-multi-rec-base-first",
+long_table("switch-multi-rec-base-first",
                                     optopt_switch_multi_rec_base_first).
-long_option("static-ground-terms",  optopt_static_ground_cells).
+long_table("static-ground-terms",  optopt_static_ground_cells).
 % static_ground_floats should be set only in handle_options.m.
-% long_option("static-ground-floats", static_ground_floats).
+% long_table("static-ground-floats", static_ground_floats).
 % static_ground_int64s should be set only in handle_options.m.
-% long_option("static-ground-int64s", static_ground_int64s).
+% long_table("static-ground-int64s", static_ground_int64s).
 % static_code_addresses should be set only in handle_options.m.
-% long_option("static-code-addresses", static_code_addresses).
-long_option("use-atomic-cells",     optopt_use_atomic_cells).
-long_option("middle-rec",           optopt_middle_rec).
-long_option("simple-neg",           optopt_simple_neg).
-long_option("allow-hijacks",        optopt_allow_hijacks).
+% long_table("static-code-addresses", static_code_addresses).
+long_table("use-atomic-cells",     optopt_use_atomic_cells).
+long_table("middle-rec",           optopt_middle_rec).
+long_table("simple-neg",           optopt_simple_neg).
+long_table("allow-hijacks",        optopt_allow_hijacks).
 
 % MLDS optimizations
 % Option `optimize' is used for both MLDS and LLDS optimizations, but since
 % you can't use both at the same time it doesn't really matter.
-long_option("mlds-optimize",        optopt_optimize).
-long_option("mlds-optimise",        optopt_optimize).
-long_option("mlds-peephole",        optopt_optimize_peep).
-long_option("optimize-tailcalls",   optopt_optimize_mlds_tailcalls).
-long_option("optimise-tailcalls",   optopt_optimize_mlds_tailcalls).
-long_option("optimize-initializations", optopt_optimize_initializations).
-long_option("optimise-initializations", optopt_optimize_initializations).
-long_option("eliminate-unused-mlds-assigns",
+long_table("mlds-optimize",        optopt_optimize).
+long_table("mlds-optimise",        optopt_optimize).
+long_table("mlds-peephole",        optopt_optimize_peep).
+long_table("optimize-tailcalls",   optopt_optimize_mlds_tailcalls).
+long_table("optimise-tailcalls",   optopt_optimize_mlds_tailcalls).
+long_table("optimize-initializations", optopt_optimize_initializations).
+long_table("optimise-initializations", optopt_optimize_initializations).
+long_table("eliminate-unused-mlds-assigns",
                                     optopt_eliminate_unused_mlds_assigns).
-long_option("eliminate-local-vars", optopt_eliminate_local_vars).
-long_option("generate-trail-ops-inline", optopt_generate_trail_ops_inline).
+long_table("eliminate-local-vars", optopt_eliminate_local_vars).
+long_table("generate-trail-ops-inline", optopt_generate_trail_ops_inline).
 
 % LLDS optimizations
-long_option("common-data",          optopt_common_data).
-long_option("common-layout-data",   optopt_common_layout_data).
-long_option("llds-optimize",        optopt_optimize).
-long_option("llds-optimise",        optopt_optimize).
-long_option("optimize-peep",        optopt_optimize_peep).
-long_option("optimise-peep",        optopt_optimize_peep).
-long_option("optimize-peep-mkword", optopt_optimize_peep_mkword).
-long_option("optimise-peep-mkword", optopt_optimize_peep_mkword).
-long_option("optimize-jumps",       optopt_optimize_jumps).
-long_option("optimise-jumps",       optopt_optimize_jumps).
-long_option("optimize-fulljumps",   optopt_optimize_fulljumps).
-long_option("optimise-fulljumps",   optopt_optimize_fulljumps).
-long_option("pessimize-tailcalls",  optopt_pessimize_tailcalls).
-long_option("checked-nondet-tailcalls", optopt_checked_nondet_tailcalls).
-long_option("use-local-vars",       optopt_use_local_vars).
-long_option("local-var-access-threshold", optopt_local_var_access_threshold).
-long_option("standardise-labels",   optopt_standardize_labels).
-long_option("standardize-labels",   optopt_standardize_labels).
-long_option("optimize-labels",      optopt_optimize_labels).
-long_option("optimise-labels",      optopt_optimize_labels).
-long_option("optimize-dups",        optopt_optimize_dups).
-long_option("optimise-dups",        optopt_optimize_dups).
-long_option("optimize-proc-dups",   optopt_optimize_proc_dups).
-long_option("optimise-proc-dups",   optopt_optimize_proc_dups).
-%%% long_option("optimize-copyprop",    optimize_copyprop).
-%%% long_option("optimise-copyprop",    optimize_copyprop).
-long_option("optimize-frames",      optopt_optimize_frames).
-long_option("optimise-frames",      optopt_optimize_frames).
-long_option("optimize-delay-slot",  optopt_optimize_delay_slot).
-long_option("optimise-delay-slot",  optopt_optimize_delay_slot).
-long_option("optimize-reassign",    optopt_optimize_reassign).
-long_option("optimise-reassign",    optopt_optimize_reassign).
-long_option("optimize-repeat",      optopt_optimize_repeat).
-long_option("optimise-repeat",      optopt_optimize_repeat).
-long_option("layout-compression-limit",      optopt_layout_compression_limit).
+long_table("common-data",          optopt_common_data).
+long_table("common-layout-data",   optopt_common_layout_data).
+long_table("llds-optimize",        optopt_optimize).
+long_table("llds-optimise",        optopt_optimize).
+long_table("optimize-peep",        optopt_optimize_peep).
+long_table("optimise-peep",        optopt_optimize_peep).
+long_table("optimize-peep-mkword", optopt_optimize_peep_mkword).
+long_table("optimise-peep-mkword", optopt_optimize_peep_mkword).
+long_table("optimize-jumps",       optopt_optimize_jumps).
+long_table("optimise-jumps",       optopt_optimize_jumps).
+long_table("optimize-fulljumps",   optopt_optimize_fulljumps).
+long_table("optimise-fulljumps",   optopt_optimize_fulljumps).
+long_table("pessimize-tailcalls",  optopt_pessimize_tailcalls).
+long_table("checked-nondet-tailcalls", optopt_checked_nondet_tailcalls).
+long_table("use-local-vars",       optopt_use_local_vars).
+long_table("local-var-access-threshold",
+        optopt_local_var_access_threshold).
+long_table("standardise-labels",   optopt_standardize_labels).
+long_table("standardize-labels",   optopt_standardize_labels).
+long_table("optimize-labels",      optopt_optimize_labels).
+long_table("optimise-labels",      optopt_optimize_labels).
+long_table("optimize-dups",        optopt_optimize_dups).
+long_table("optimise-dups",        optopt_optimize_dups).
+long_table("optimize-proc-dups",   optopt_optimize_proc_dups).
+long_table("optimise-proc-dups",   optopt_optimize_proc_dups).
+%%% long_table("optimize-copyprop",    optimize_copyprop).
+%%% long_table("optimise-copyprop",    optimize_copyprop).
+long_table("optimize-frames",      optopt_optimize_frames).
+long_table("optimise-frames",      optopt_optimize_frames).
+long_table("optimize-delay-slot",  optopt_optimize_delay_slot).
+long_table("optimise-delay-slot",  optopt_optimize_delay_slot).
+long_table("optimize-reassign",    optopt_optimize_reassign).
+long_table("optimise-reassign",    optopt_optimize_reassign).
+long_table("optimize-repeat",      optopt_optimize_repeat).
+long_table("optimise-repeat",      optopt_optimize_repeat).
+long_table("layout-compression-limit",
+        optopt_layout_compression_limit).
 
 % LLDS->C optimizations
-long_option("use-macro-for-redo-fail",  optopt_use_macro_for_redo_fail).
-long_option("emit-c-loops",         optopt_emit_c_loops).
-long_option("procs-per-c-function", optopt_procs_per_c_function).
-long_option("procs-per-C-function", optopt_procs_per_c_function).
-long_option("everything-in-one-c-function",
+long_table("use-macro-for-redo-fail",  optopt_use_macro_for_redo_fail).
+long_table("emit-c-loops",         optopt_emit_c_loops).
+long_table("procs-per-c-function", optopt_procs_per_c_function).
+long_table("procs-per-C-function", optopt_procs_per_c_function).
+long_table("everything-in-one-c-function",
                                     optopt_everything_in_one_c_function).
-long_option("everything-in-one-C-function",
+long_table("everything-in-one-C-function",
                                     optopt_everything_in_one_c_function).
-long_option("inline-alloc",         optopt_inline_alloc).
-long_option("local-thread-engine-base", optopt_local_thread_engine_base).
+long_table("inline-alloc",         optopt_inline_alloc).
+long_table("local-thread-engine-base", optopt_local_thread_engine_base).
 
-long_option("enable-termination",   termination).
-long_option("enable-term",          termination).
-long_option("check-termination",    termination_check).
-long_option("check-term",           termination_check).
-long_option("chk-term",             termination_check).
-long_option("verbose-check-termination", termination_check_verbose).
-long_option("verb-check-term",      termination_check_verbose).
-long_option("verb-chk-term",        termination_check_verbose).
-long_option("termination-single-argument-analysis",
+long_table("enable-termination",   termination).
+long_table("enable-term",          termination).
+long_table("check-termination",    termination_check).
+long_table("check-term",           termination_check).
+long_table("chk-term",             termination_check).
+long_table("verbose-check-termination", termination_check_verbose).
+long_table("verb-check-term",      termination_check_verbose).
+long_table("verb-chk-term",        termination_check_verbose).
+long_table("termination-single-argument-analysis",
                     termination_single_args).
-long_option("term-single-arg",      termination_single_args).
-long_option("termination-norm",     termination_norm).
-long_option("term-norm",            termination_norm).
-long_option("termination-error-limit",  termination_error_limit).
-long_option("term-err-limit",       termination_error_limit).
-long_option("termination-path-limit",   termination_path_limit).
-long_option("term-path-limit",      termination_path_limit).
-long_option("enable-termination2",  termination2).
-long_option("enable-term2",         termination2).
-long_option("check-termination2",   termination2_check).
-long_option("check-term2",          termination2_check).
-long_option("chk-term2",            termination2_check).
-long_option("verbose-check-termination2", termination2_check_verbose).
-long_option("verb-check-term2",     termination2_check_verbose).
-long_option("verb-chk-term2",       termination2_check_verbose).
-long_option("termination2-widening-limit", widening_limit).
-long_option("term2-widening-limit",     widening_limit).
-long_option("arg-size-analysis-only",   arg_size_analysis_only).
-long_option("termination2-propagate-failure-constraints",
+long_table("term-single-arg",      termination_single_args).
+long_table("termination-norm",     termination_norm).
+long_table("term-norm",            termination_norm).
+long_table("termination-error-limit",  termination_error_limit).
+long_table("term-err-limit",       termination_error_limit).
+long_table("termination-path-limit",   termination_path_limit).
+long_table("term-path-limit",      termination_path_limit).
+long_table("enable-termination2",  termination2).
+long_table("enable-term2",         termination2).
+long_table("check-termination2",   termination2_check).
+long_table("check-term2",          termination2_check).
+long_table("chk-term2",            termination2_check).
+long_table("verbose-check-termination2", termination2_check_verbose).
+long_table("verb-check-term2",     termination2_check_verbose).
+long_table("verb-chk-term2",       termination2_check_verbose).
+long_table("termination2-widening-limit", widening_limit).
+long_table("term2-widening-limit",     widening_limit).
+long_table("arg-size-analysis-only",   arg_size_analysis_only).
+long_table("termination2-propagate-failure-constraints",
                     propagate_failure_constrs).
-long_option("term2-propagate-failure-constraints",
+long_table("term2-propagate-failure-constraints",
                     propagate_failure_constrs).
-long_option("term2-propagate-failure-constrs", propagate_failure_constrs).
-long_option("termination2-norm", termination2_norm).
-long_option("term2-norm", termination2_norm).
-long_option("termination2-maximum-matrix-size", term2_maximum_matrix_size).
-long_option("term2-max-matrix-size", term2_maximum_matrix_size).
-long_option("analyse-exceptions",   analyse_exceptions).
-long_option("analyse-closures",     analyse_closures).
-long_option("analyse-local-closures",   analyse_closures).
-long_option("analyse-trail-usage",  analyse_trail_usage).
-long_option("optimize-trail-usage", optimize_trail_usage).
-long_option("optimize-region-ops",  optimize_region_ops).
-long_option("analyse-mm-tabling",   analyse_mm_tabling).
+long_table("term2-propagate-failure-constrs",
+                    propagate_failure_constrs).
+long_table("termination2-norm", termination2_norm).
+long_table("term2-norm", termination2_norm).
+long_table("termination2-maximum-matrix-size", term2_maximum_matrix_size).
+long_table("term2-max-matrix-size", term2_maximum_matrix_size).
+long_table("analyse-exceptions",   analyse_exceptions).
+long_table("analyse-closures",     analyse_closures).
+long_table("analyse-local-closures",   analyse_closures).
+long_table("analyse-trail-usage",  analyse_trail_usage).
+long_table("optimize-trail-usage", optimize_trail_usage).
+long_table("optimize-region-ops",  optimize_region_ops).
+long_table("analyse-mm-tabling",   analyse_mm_tabling).
 
 % CTGC related options.
-long_option("structure-sharing",    structure_sharing_analysis).
-long_option("structure-sharing-widening", structure_sharing_widening).
-long_option("structure-reuse",      structure_reuse_analysis).
-long_option("ctgc",                 structure_reuse_analysis).
-long_option("structure-reuse-constraint", structure_reuse_constraint).
-long_option("ctgc-constraint",      structure_reuse_constraint).
-long_option("structure-reuse-constraint-arg", structure_reuse_constraint_arg).
-long_option("ctgc-constraint-arg",  structure_reuse_constraint_arg).
-long_option("structure-reuse-max-conditions", structure_reuse_max_conditions).
-long_option("structure-reuse-repeat", structure_reuse_repeat).
-long_option("structure-reuse-free-cells", structure_reuse_free_cells).
+long_table("structure-sharing",    structure_sharing_analysis).
+long_table("structure-sharing-widening", structure_sharing_widening).
+long_table("structure-reuse",      structure_reuse_analysis).
+long_table("ctgc",                 structure_reuse_analysis).
+long_table("structure-reuse-constraint", structure_reuse_constraint).
+long_table("ctgc-constraint",      structure_reuse_constraint).
+long_table("structure-reuse-constraint-arg",
+            structure_reuse_constraint_arg).
+long_table("ctgc-constraint-arg",  structure_reuse_constraint_arg).
+long_table("structure-reuse-max-conditions",
+            structure_reuse_max_conditions).
+long_table("structure-reuse-repeat", structure_reuse_repeat).
+long_table("structure-reuse-free-cells", structure_reuse_free_cells).
 
 % Target code compilation options
-long_option("target-debug",         target_debug).
+long_table("target-debug",         target_debug).
 
-long_option("cc",                   cc).
-long_option("c-optimise",           optopt_c_optimize).
-long_option("c-optimize",           optopt_c_optimize).
+long_table("cc",                   cc).
+long_table("c-optimise",           optopt_c_optimize).
+long_table("c-optimize",           optopt_c_optimize).
 % XXX we should consider the relationship between c_debug and target_debug
 % more carefully. Perhaps target_debug could imply C debug if the target is C.
 % However for the moment they are just synonyms.
-long_option("c-debug",              target_debug).
-long_option("c-include-directory",  c_include_directory).
-long_option("c-include-dir",        c_include_directory).
-long_option("ansi-c",               ansi_c).
-long_option("cflags",               cflags).
-long_option("cflag",                quoted_cflag).
+long_table("c-debug",              target_debug).
+long_table("c-include-directory",  c_include_directory).
+long_table("c-include-dir",        c_include_directory).
+long_table("ansi-c",               ansi_c).
+long_table("cflags",               cflags).
+long_table("cflag",                quoted_cflag).
 
-long_option("gcc-flags",            gcc_flags).
-long_option("gcc-flag",             quoted_gcc_flag).
-long_option("clang-flags",          clang_flags).
-long_option("clang-flag",           quoted_clang_flag).
-long_option("msvc-flags",           msvc_flags).
-long_option("msvc-flag",            quoted_msvc_flag).
+long_table("gcc-flags",            gcc_flags).
+long_table("gcc-flag",             quoted_gcc_flag).
+long_table("clang-flags",          clang_flags).
+long_table("clang-flag",           quoted_clang_flag).
+long_table("msvc-flags",           msvc_flags).
+long_table("msvc-flag",            quoted_msvc_flag).
 
-long_option("cflags-for-warnings",  cflags_for_warnings).
-long_option("cflags-for-optimization",  cflags_for_optimization).
-long_option("cflags-for-ansi",      cflags_for_ansi).
-long_option("cflags-for-regs",      cflags_for_regs).
-long_option("cflags-for-gotos",     cflags_for_gotos).
-long_option("cflags-for-threads",   cflags_for_threads).
-long_option("cflags-for-debug",     cflags_for_debug).
-long_option("cflags-for-sanitizers", cflags_for_sanitizers).
-long_option("cflags-for-pic",       cflags_for_pic).
-long_option("cflags-for-lto",       cflags_for_lto).
-long_option("c-flag-to-name-object-file", c_flag_to_name_object_file).
-long_option("object-file-extension",    object_file_extension).
-long_option("pic-object-file-extension", pic_object_file_extension).
-long_option("c-compiler-type",      c_compiler_type).
-long_option("csharp-compiler-type", csharp_compiler_type).
+long_table("cflags-for-warnings",  cflags_for_warnings).
+long_table("cflags-for-optimization",  cflags_for_optimization).
+long_table("cflags-for-ansi",      cflags_for_ansi).
+long_table("cflags-for-regs",      cflags_for_regs).
+long_table("cflags-for-gotos",     cflags_for_gotos).
+long_table("cflags-for-threads",   cflags_for_threads).
+long_table("cflags-for-debug",     cflags_for_debug).
+long_table("cflags-for-sanitizers", cflags_for_sanitizers).
+long_table("cflags-for-pic",       cflags_for_pic).
+long_table("cflags-for-lto",       cflags_for_lto).
+long_table("c-flag-to-name-object-file", c_flag_to_name_object_file).
+long_table("object-file-extension",    object_file_extension).
+long_table("pic-object-file-extension", pic_object_file_extension).
+long_table("c-compiler-type",      c_compiler_type).
+long_table("csharp-compiler-type", csharp_compiler_type).
 
-long_option("java-compiler",        java_compiler).
-long_option("javac",                java_compiler).
-long_option("java-interpreter",     java_interpreter).
-long_option("javac-flags",          java_compiler_flags).
-long_option("javac-flag",           quoted_java_compiler_flag).
-long_option("java-flags",           java_compiler_flags).
-long_option("java-flag",            quoted_java_compiler_flag).
+long_table("java-compiler",        java_compiler).
+long_table("javac",                java_compiler).
+long_table("java-interpreter",     java_interpreter).
+long_table("javac-flags",          java_compiler_flags).
+long_table("javac-flag",           quoted_java_compiler_flag).
+long_table("java-flags",           java_compiler_flags).
+long_table("java-flag",            quoted_java_compiler_flag).
 % XXX we should consider the relationship between java_debug and target_debug
 % more carefully. Perhaps target_debug could imply Java debug if the target
 % is Java. However for the moment they are just synonyms.
-long_option("java-debug",           target_debug).
-long_option("java-classpath",       java_classpath).
-long_option("java-runtime-flags",   java_runtime_flags).
-long_option("java-runtime-flag",    quoted_java_runtime_flag).
+long_table("java-debug",           target_debug).
+long_table("java-classpath",       java_classpath).
+long_table("java-runtime-flags",   java_runtime_flags).
+long_table("java-runtime-flag",    quoted_java_runtime_flag).
 
-long_option("csharp-compiler",      csharp_compiler).
-long_option("csharp-flags",         csharp_flags).
-long_option("csharp-flag",          quoted_csharp_flag).
-long_option("cli-interpreter",      cli_interpreter).
+long_table("csharp-compiler",      csharp_compiler).
+long_table("csharp-flags",         csharp_flags).
+long_table("csharp-flag",          quoted_csharp_flag).
+long_table("cli-interpreter",      cli_interpreter).
 
 % link options
-long_option("output-file",          output_file_name).
-long_option("ld-flags",             ld_flags).
-long_option("ld-flag",              quoted_ld_flag).
-long_option("ld-libflags",          ld_libflags).
-long_option("ld-libflag",           quoted_ld_libflag).
-long_option("library-directory",    link_library_directories).
-long_option("runtime-library-directory", runtime_link_library_directories).
-long_option("default-runtime-library-directory",
+long_table("output-file",          output_file_name).
+long_table("ld-flags",             ld_flags).
+long_table("ld-flag",              quoted_ld_flag).
+long_table("ld-libflags",          ld_libflags).
+long_table("ld-libflag",           quoted_ld_libflag).
+long_table("library-directory",    link_library_directories).
+long_table("runtime-library-directory", runtime_link_library_directories).
+long_table("default-runtime-library-directory",
                                     default_runtime_library_directory).
-long_option("library",              link_libraries).
-long_option("link-object",          link_objects).
-long_option("mercury-library",      mercury_library_special).
-long_option("ml",                   mercury_library_special).
-long_option("mercury-library-directory", mercury_library_directory_special).
-long_option("mld",                  mercury_library_directory_special).
-long_option("search-library-files-directory",
+long_table("library",              link_libraries).
+long_table("link-object",          link_objects).
+long_table("mercury-library",      mercury_library_special).
+long_table("ml",                   mercury_library_special).
+long_table("mercury-library-directory",
+                mercury_library_directory_special).
+long_table("mld",                  mercury_library_directory_special).
+long_table("search-library-files-directory",
                 search_library_files_directory_special).
-long_option("search-lib-files-dir",
+long_table("search-lib-files-dir",
                 search_library_files_directory_special).
-long_option("mercury-standard-library-directory",
+long_table("mercury-standard-library-directory",
                 mercury_standard_library_directory_special).
-long_option("mercury-stdlib-dir",
+long_table("mercury-stdlib-dir",
                 mercury_standard_library_directory_special).
-long_option("init-file-directory",  init_file_directories).
-long_option("init-file",            init_files).
-long_option("trace-init-file",      trace_init_files).
-long_option("linkage",              linkage_special).
-long_option("mercury-linkage",      mercury_linkage_special).
-long_option("demangle",             demangle).
-long_option("strip",                strip).
-long_option("main",                 main).
-long_option("allow-undefined",      allow_undefined).
-long_option("use-readline",         use_readline).
-long_option("runtime-flags",        runtime_flags).
-long_option("extra-initialization-functions",
+long_table("init-file-directory",  init_file_directories).
+long_table("init-file",            init_files).
+long_table("trace-init-file",      trace_init_files).
+long_table("linkage",              linkage_special).
+long_table("mercury-linkage",      mercury_linkage_special).
+long_table("demangle",             demangle).
+long_table("strip",                strip).
+long_table("main",                 main).
+long_table("allow-undefined",      allow_undefined).
+long_table("use-readline",         use_readline).
+long_table("runtime-flags",        runtime_flags).
+long_table("extra-initialization-functions",
                     extra_initialization_functions).
-long_option("extra-inits",      extra_initialization_functions).
-long_option("framework",        frameworks).
-long_option("framework-directory", framework_directories).
-long_option("sign-assembly", sign_assembly).
-long_option("cstack-reserve-size", cstack_reserve_size).
+long_table("extra-inits",      extra_initialization_functions).
+long_table("framework",        frameworks).
+long_table("framework-directory", framework_directories).
+long_table("sign-assembly", sign_assembly).
+long_table("cstack-reserve-size", cstack_reserve_size).
 
-long_option("shared-library-extension", shared_library_extension).
-long_option("library-extension",    library_extension).
-long_option("executable-file-extension", executable_file_extension).
-long_option("create-archive-command",   create_archive_command).
-long_option("create-archive-command-output-flag",
+long_table("shared-library-extension", shared_library_extension).
+long_table("library-extension",    library_extension).
+long_table("executable-file-extension", executable_file_extension).
+long_table("create-archive-command",   create_archive_command).
+long_table("create-archive-command-output-flag",
                     create_archive_command_output_flag).
-long_option("create-archive-command-flags", create_archive_command_flags).
-long_option("link-executable-command",  link_executable_command).
-long_option("link-shared-lib-command",  link_shared_lib_command).
-long_option("ranlib-command",       ranlib_command).
-long_option("ranlib-flags",         ranlib_flags).
-long_option("mkinit-command",       mkinit_command).
-long_option("mkinit-erl-command",   mkinit_erl_command).
-long_option("demangle-command",     demangle_command).
-long_option("filtercc-command",     filtercc_command).
-long_option("filterjavac-command",  filterjavac_command).
-long_option("trace-libs",           trace_libs).
-long_option("thread-libs",          thread_libs).
-long_option("hwloc-libs",           hwloc_libs).
-long_option("hwloc-static-libs",    hwloc_static_libs).
-long_option("shared-libs",          shared_libs).
-long_option("math-lib",             math_lib).
-long_option("readline-libs",        readline_libs).
-long_option("linker-opt-separator", linker_opt_separator).
-long_option("linker-debug-flags",   linker_debug_flags).
-long_option("shlib-linker-debug-flags", shlib_linker_debug_flags).
-long_option("linker-sanitizer-flags", linker_sanitizer_flags).
-long_option("linker-trace-flags",   linker_trace_flags).
-long_option("shlib-linker-trace-flags", shlib_linker_trace_flags).
-long_option("linker-thread-flags",  linker_thread_flags).
-long_option("shlib-linker-thread-flags", shlib_linker_thread_flags).
-long_option("linker-lto-flags",     linker_lto_flags).
-long_option("linker-static-flags",  linker_static_flags).
-long_option("linker-strip-flag",    linker_strip_flag).
-long_option("linker-link-lib-flag", linker_link_lib_flag).
-long_option("linker-link-lib-suffix",   linker_link_lib_suffix).
-long_option("shlib-linker-link-lib-flag", shlib_linker_link_lib_flag).
-long_option("shlib-linker-link-lib-suffix", shlib_linker_link_lib_suffix).
-long_option("linker-path-flag",     linker_path_flag).
-long_option("linker-rpath-flag",    linker_rpath_flag).
-long_option("linker-rpath-separator",   linker_rpath_separator).
-long_option("shlib-linker-rpath-flag",  shlib_linker_rpath_flag).
-long_option("shlib-linker-rpath-separator", shlib_linker_rpath_separator).
-long_option("linker-allow-undefined-flag", linker_allow_undefined_flag).
-long_option("linker-error-undefined-flag", linker_error_undefined_flag).
-long_option("shlib-linker-use-install-name", shlib_linker_use_install_name).
-long_option("shlib-linker-install-name-flag", shlib_linker_install_name_flag).
-long_option("shlib-linker-install-name-path", shlib_linker_install_name_path).
-long_option("strip-executable-command", strip_executable_command).
-long_option("strip-executable-shared-flags", strip_executable_shared_flags).
-long_option("strip-executable-static-flags", strip_executable_static_flags).
-long_option("java-archive-command", java_archive_command).
+long_table("create-archive-command-flags",
+                    create_archive_command_flags).
+long_table("link-executable-command",  link_executable_command).
+long_table("link-shared-lib-command",  link_shared_lib_command).
+long_table("ranlib-command",       ranlib_command).
+long_table("ranlib-flags",         ranlib_flags).
+long_table("mkinit-command",       mkinit_command).
+long_table("mkinit-erl-command",   mkinit_erl_command).
+long_table("demangle-command",     demangle_command).
+long_table("filtercc-command",     filtercc_command).
+long_table("filterjavac-command",  filterjavac_command).
+long_table("trace-libs",           trace_libs).
+long_table("thread-libs",          thread_libs).
+long_table("hwloc-libs",           hwloc_libs).
+long_table("hwloc-static-libs",    hwloc_static_libs).
+long_table("shared-libs",          shared_libs).
+long_table("math-lib",             math_lib).
+long_table("readline-libs",        readline_libs).
+long_table("linker-opt-separator", linker_opt_separator).
+long_table("linker-debug-flags",   linker_debug_flags).
+long_table("shlib-linker-debug-flags", shlib_linker_debug_flags).
+long_table("linker-sanitizer-flags", linker_sanitizer_flags).
+long_table("linker-trace-flags",   linker_trace_flags).
+long_table("shlib-linker-trace-flags", shlib_linker_trace_flags).
+long_table("linker-thread-flags",  linker_thread_flags).
+long_table("shlib-linker-thread-flags", shlib_linker_thread_flags).
+long_table("linker-lto-flags",     linker_lto_flags).
+long_table("linker-static-flags",  linker_static_flags).
+long_table("linker-strip-flag",    linker_strip_flag).
+long_table("linker-link-lib-flag", linker_link_lib_flag).
+long_table("linker-link-lib-suffix",   linker_link_lib_suffix).
+long_table("shlib-linker-link-lib-flag", shlib_linker_link_lib_flag).
+long_table("shlib-linker-link-lib-suffix",
+                    shlib_linker_link_lib_suffix).
+long_table("linker-path-flag",     linker_path_flag).
+long_table("linker-rpath-flag",    linker_rpath_flag).
+long_table("linker-rpath-separator",   linker_rpath_separator).
+long_table("shlib-linker-rpath-flag",  shlib_linker_rpath_flag).
+long_table("shlib-linker-rpath-separator",
+                    shlib_linker_rpath_separator).
+long_table("linker-allow-undefined-flag", linker_allow_undefined_flag).
+long_table("linker-error-undefined-flag", linker_error_undefined_flag).
+long_table("shlib-linker-use-install-name",
+                    shlib_linker_use_install_name).
+long_table("shlib-linker-install-name-flag",
+                    shlib_linker_install_name_flag).
+long_table("shlib-linker-install-name-path",
+                     shlib_linker_install_name_path).
+long_table("strip-executable-command", strip_executable_command).
+long_table("strip-executable-shared-flags",
+                    strip_executable_shared_flags).
+long_table("strip-executable-static-flags",
+                    strip_executable_static_flags).
+long_table("java-archive-command", java_archive_command).
 
 % build system options
-long_option("make",                 only_opmode_make).
-long_option("invoked-by-mmc-make",  only_opmode_invoked_by_mmc_make).
-long_option("keep-going",           keep_going).
-long_option("rebuild",              rebuild).
-long_option("jobs",                 jobs).
-long_option("track-flags",          track_flags).
-long_option("track-options",        track_flags).
-long_option("pre-link-command",     pre_link_command).
-long_option("extra-init-command",   extra_init_command).
-long_option("mercury-configuration-directory",
+long_table("make",                 only_opmode_make).
+long_table("invoked-by-mmc-make",  only_opmode_invoked_by_mmc_make).
+long_table("keep-going",           keep_going).
+long_table("rebuild",              rebuild).
+long_table("jobs",                 jobs).
+long_table("track-flags",          track_flags).
+long_table("track-options",        track_flags).
+long_table("pre-link-command",     pre_link_command).
+long_table("extra-init-command",   extra_init_command).
+long_table("mercury-configuration-directory",
                 mercury_configuration_directory_special).
-long_option("mercury-config-dir",
+long_table("mercury-config-dir",
                 mercury_configuration_directory_special).
-long_option("install-prefix",       install_prefix).
-long_option("install-method",       install_method).
-long_option("install-command",      install_command).
-long_option("install-command-dir-option", install_command_dir_option).
-long_option("use-symlinks",         use_symlinks).
-long_option("library-grade",        libgrades).
-long_option("detect-libgrades",     detect_libgrades).
-long_option("libgrade",             libgrades).
-long_option("libgrades-include-component", libgrades_include_components).
-long_option("libgrades-include",           libgrades_include_components).
-long_option("libgrades-exclude-component", libgrades_exclude_components).
-long_option("libgrades-exclude",           libgrades_exclude_components).
-long_option("library-linkage",      lib_linkages).
-long_option("lib-linkage",          lib_linkages).
-long_option("flags",                flags_file).
-long_option("flags-file",           flags_file).
-long_option("options-file",         options_files).
-long_option("config-file",          config_file).
-long_option("options-search-directory", options_search_directories).
-long_option("use-subdirs",          setting_only_use_subdirs).
-long_option("use-grade-subdirs",    setting_only_use_grade_subdirs).
-long_option("std-int-file-not-written-msgs",    std_int_file_not_written_msgs).
-long_option("search-directory",     search_directories).
-long_option("intermod-directory",   intermod_directories).
-long_option("use-search-directories-for-intermod",
+long_table("install-prefix",       install_prefix).
+long_table("install-method",       install_method).
+long_table("install-command",      install_command).
+long_table("install-command-dir-option", install_command_dir_option).
+long_table("use-symlinks",         use_symlinks).
+long_table("library-grade",        libgrades).
+long_table("detect-libgrades",     detect_libgrades).
+long_table("libgrade",             libgrades).
+long_table("libgrades-include-component", libgrades_include_components).
+long_table("libgrades-include",           libgrades_include_components).
+long_table("libgrades-exclude-component", libgrades_exclude_components).
+long_table("libgrades-exclude",           libgrades_exclude_components).
+long_table("library-linkage",      lib_linkages).
+long_table("lib-linkage",          lib_linkages).
+long_table("flags",                flags_file).
+long_table("flags-file",           flags_file).
+long_table("options-file",         options_files).
+long_table("config-file",          config_file).
+long_table("options-search-directory", options_search_directories).
+long_table("use-subdirs",          setting_only_use_subdirs).
+long_table("use-grade-subdirs",    setting_only_use_grade_subdirs).
+long_table("std-int-file-not-written-msgs",
+                    std_int_file_not_written_msgs).
+long_table("search-directory",     search_directories).
+long_table("intermod-directory",   intermod_directories).
+long_table("use-search-directories-for-intermod",
                     use_search_directories_for_intermod).
-long_option("libgrade-install-check", libgrade_install_check).
-long_option("order-make-by-timestamp", order_make_by_timestamp).
-long_option("show-make-times",      show_make_times).
-long_option("extra-lib-header",     extra_library_header).
-long_option("extra-library-header", extra_library_header).
-long_option("restricted-command-line", restricted_command_line).
-long_option("env-type",                env_type).
-long_option("host-env-type",           host_env_type).
-long_option("system-env-type",         system_env_type).
-long_option("target-env-type",         target_env_type).
+long_table("libgrade-install-check", libgrade_install_check).
+long_table("order-make-by-timestamp", order_make_by_timestamp).
+long_table("show-make-times",      show_make_times).
+long_table("extra-lib-header",     extra_library_header).
+long_table("extra-library-header", extra_library_header).
+long_table("restricted-command-line", restricted_command_line).
+long_table("env-type",                env_type).
+long_table("host-env-type",           host_env_type).
+long_table("system-env-type",         system_env_type).
+long_table("target-env-type",         target_env_type).
 
 % misc options
-long_option("typecheck-ambiguity-warn-limit",
+long_table("typecheck-ambiguity-warn-limit",
                                     typecheck_ambiguity_warn_limit).
-long_option("typecheck-ambiguity-error-limit",
+long_table("typecheck-ambiguity-error-limit",
                                     typecheck_ambiguity_error_limit).
-long_option("help",                 help).
-long_option("version",              version).
-long_option("filenames-from-stdin", filenames_from_stdin).
-long_option("target-arch",          target_arch).
-long_option("cross-compiling",      cross_compiling).
-long_option("local-module-id",      local_module_id).
-long_option("analysis-file-cache-dir",  analysis_file_cache_dir).
-long_option("bug-intermod-2002-06-13",  compiler_sufficiently_recent).
-long_option("bug-intermod-2006-09-28",  compiler_sufficiently_recent).
-long_option("bug-foreign_import-2002-08-06", compiler_sufficiently_recent).
-long_option("install-opt-files-2002-08-30", compiler_sufficiently_recent).
-long_option("read-config-file-2003-03-01", compiler_sufficiently_recent).
+long_table("help",                 help).
+long_table("version",              version).
+long_table("filenames-from-stdin", filenames_from_stdin).
+long_table("target-arch",          target_arch).
+long_table("cross-compiling",      cross_compiling).
+long_table("local-module-id",      local_module_id).
+long_table("analysis-file-cache-dir",  analysis_file_cache_dir).
+long_table("bug-intermod-2002-06-13",  compiler_sufficiently_recent).
+long_table("bug-intermod-2006-09-28",  compiler_sufficiently_recent).
+long_table("bug-foreign_import-2002-08-06", compiler_sufficiently_recent).
+long_table("install-opt-files-2002-08-30",
+                                    compiler_sufficiently_recent).
+long_table("read-config-file-2003-03-01", compiler_sufficiently_recent).
 % XXX this option won't be recognised because of the "no-" prefix,
 % but "no-no-" will be recognised.
-long_option("no-noncompact-ho-call-2004-01-15", compiler_sufficiently_recent).
-long_option("trace-io-builtins-2006-08-14", compiler_sufficiently_recent).
-long_option("compound-compare-builtins-2007-07-09",
+long_table("no-noncompact-ho-call-2004-01-15",
+                                    compiler_sufficiently_recent).
+long_table("trace-io-builtins-2006-08-14",
+                                    compiler_sufficiently_recent).
+long_table("compound-compare-builtins-2007-07-09",
                                     compiler_sufficiently_recent).
 % XXX this option won't be recognised because of the "no-" prefix,
 % but "no-no-" will be recognised.
-long_option("no-det-warning-compound-compare-2007-07-17",
+long_table("no-det-warning-compound-compare-2007-07-17",
                                     compiler_sufficiently_recent).
-long_option("foreign-enum-switch-fix",
+long_table("foreign-enum-switch-fix",
                                     compiler_sufficiently_recent).
-long_option("failing-disjunct-in-switch-dup-fix",
+long_table("failing-disjunct-in-switch-dup-fix",
                                     compiler_sufficiently_recent).
-long_option("store-at-ref-impure-2008-09-11",
+long_table("store-at-ref-impure-2008-09-11",
                                     compiler_sufficiently_recent).
-long_option("java-export-ref-out",  compiler_sufficiently_recent).
-long_option("java-generics-2010-04-13",
+long_table("java-export-ref-out",  compiler_sufficiently_recent).
+long_table("java-generics-2010-04-13",
                                     compiler_sufficiently_recent).
-long_option("strip-executable-2014-05-05",
+long_table("strip-executable-2014-05-05",
                                     compiler_sufficiently_recent).
-long_option("trace-goal-only-locals-2017-07-05",
+long_table("trace-goal-only-locals-2017-07-05",
                                     compiler_sufficiently_recent).
-long_option("no-reserved-addrs",
+long_table("no-reserved-addrs",
                                     compiler_sufficiently_recent).
-long_option("builtin-lt-gt-2018-10-08",
+long_table("builtin-lt-gt-2018-10-08",
                                     compiler_sufficiently_recent).
-long_option("fixed-contiguity-2018-10-19",
+long_table("fixed-contiguity-2018-10-19",
                                     compiler_sufficiently_recent).
-long_option("simplest-msg-2019-09-22",
+long_table("simplest-msg-2019-09-22",
                                     compiler_sufficiently_recent).
-long_option("unqual-foreign-enums-in-int-files-2019-10-04",
+long_table("unqual-foreign-enums-in-int-files-2019-10-04",
                                     compiler_sufficiently_recent).
-long_option("obsolete-proc-2019-10-23",
+long_table("obsolete-proc-2019-10-23",
                                     compiler_sufficiently_recent).
-long_option("type-repn-int3-2020-03-22",
+long_table("type-repn-int3-2020-03-22",
                                     compiler_sufficiently_recent).
-long_option("github-85--2020-03-24",
+long_table("github-85--2020-03-24",
                                     compiler_sufficiently_recent).
-long_option("foreign-proc-typeinfo-2020-04-08",
+long_table("foreign-proc-typeinfo-2020-04-08",
                                     compiler_sufficiently_recent).
-long_option("ushift-2020-04-30",
+long_table("ushift-2020-04-30",
                                     compiler_sufficiently_recent).
-long_option("unsigned_lt-2020-05-02",
+long_table("unsigned_lt-2020-05-02",
                                     compiler_sufficiently_recent).
-long_option("format-uint-2020-05-23",
+long_table("format-uint-2020-05-23",
                                     compiler_sufficiently_recent).
-long_option("mmake-all-2020-05-25",
+long_table("mmake-all-2020-05-25",
                                     compiler_sufficiently_recent).
-long_option("unsigned-lt-2020-05-25",
+long_table("unsigned-lt-2020-05-25",
                                     compiler_sufficiently_recent).
-long_option("may-ignore-without-warning-2020-08-18",
+long_table("may-ignore-without-warning-2020-08-18",
                                     compiler_sufficiently_recent).
-long_option("prolog-is-2020-08-21",
+long_table("prolog-is-2020-08-21",
                                     compiler_sufficiently_recent).
-long_option("partial-inst-copy-2021-01-04",
+long_table("partial-inst-copy-2021-01-04",
                                     compiler_sufficiently_recent).
-long_option("mantis-bug-529-2021-02-25",
+long_table("mantis-bug-529-2021-02-25",
                                     compiler_sufficiently_recent).
-long_option("subtype-opt-2022-02-19",
+long_table("subtype-opt-2022-02-19",
                                     compiler_sufficiently_recent).
-long_option("typespec-pragma-2022-07-20",
+long_table("typespec-pragma-2022-07-20",
                                     compiler_sufficiently_recent).
-long_option("ushift-2022-12-06",
+long_table("ushift-2022-12-06",
                                     compiler_sufficiently_recent).
-long_option("ushift-2022-12-07",
+long_table("ushift-2022-12-07",
                                     compiler_sufficiently_recent).
-long_option("strtrie-2022-12-08",
+long_table("strtrie-2022-12-08",
                                     compiler_sufficiently_recent).
-long_option("term-pass2-2022-12-28",
+long_table("term-pass2-2022-12-28",
                                     compiler_sufficiently_recent).
-long_option("format-2023-01-27",
+long_table("format-2023-01-27",
                                     compiler_sufficiently_recent).
-long_option("singleton-2023-06-10",
+long_table("singleton-2023-06-10",
                                     compiler_sufficiently_recent).
-long_option("warn-obsolete-transform-2023-07-03",
+long_table("warn-obsolete-transform-2023-07-03",
                                     compiler_sufficiently_recent).
-long_option("gen-dep-ints-2023-10-15",
+long_table("gen-dep-ints-2023-10-15",
                                     compiler_sufficiently_recent).
-long_option("tscp-2024-02-07",
+long_table("tscp-2024-02-07",
                                     compiler_sufficiently_recent).
-long_option("format-2024-02-07",
+long_table("format-2024-02-07",
                                     compiler_sufficiently_recent).
-long_option("dym-2024-02-08",
+long_table("dym-2024-02-08",
                                     compiler_sufficiently_recent).
-long_option("wne-2024-02-21",
+long_table("wne-2024-02-21",
                                     compiler_sufficiently_recent).
-long_option("experiment",           experiment).
-long_option("experiment1",          experiment1).
-long_option("experiment2",          experiment2).
-long_option("experiment3",          experiment3).
-long_option("experiment4",          experiment4).
-long_option("experiment5",          experiment5).
-long_option("allow-ho-insts-as-modes",
+long_table("experiment",           experiment).
+long_table("experiment1",          experiment1).
+long_table("experiment2",          experiment2).
+long_table("experiment3",          experiment3).
+long_table("experiment4",          experiment4).
+long_table("experiment5",          experiment5).
+long_table("allow-ho-insts-as-modes",
                                     allow_ho_insts_as_modes).
-long_option("ignore-par-conjunctions",
+long_table("ignore-par-conjunctions",
                                     ignore_par_conjunctions).
-long_option("control-granularity",  control_granularity).
-long_option("distance-granularity", distance_granularity).
-long_option("implicit-parallelism", implicit_parallelism).
-long_option("feedback-file",        feedback_file).
-long_option("par-loop-control",     par_loop_control).
-long_option("par-loop-control-preserve-tail-recursion",
+long_table("control-granularity",  control_granularity).
+long_table("distance-granularity", distance_granularity).
+long_table("implicit-parallelism", implicit_parallelism).
+long_table("feedback-file",        feedback_file).
+long_table("par-loop-control",     par_loop_control).
+long_table("par-loop-control-preserve-tail-recursion",
                                     par_loop_control_preserve_tail_recursion).
 
 %---------------------------------------------------------------------------%

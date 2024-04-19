@@ -392,10 +392,8 @@ process_options_std(ProgressStream, ErrorStream, DefaultOptionTable,
         DefaultOptionTable, ArgsOptionTable, cord.init, _UserData, !IO),
     (
         MaybeError = yes(OptionError),
-        OptionErrorStr = option_error_to_string(OptionError),
-        Spec = simplest_no_context_spec($pred, severity_error,
-            phase_options, [words(OptionErrorStr), suffix("."), nl]),
-        Result = opr_failure([Spec])
+        Specs = report_option_error(OptionError),
+        Result = opr_failure(Specs)
     ;
         MaybeError = no,
         getopt.lookup_accumulating_option(ArgsOptionTable,
@@ -573,6 +571,47 @@ maybe_dump_options_file(OutStream, ArgsOptionTable, OptionsVariables, !IO) :-
     else
         dump_options_file(OutStream, DumpOptionsFile, OptionsVariables, !IO)
     ).
+
+%---------------------------------------------------------------------------%
+
+:- func report_option_error(option_error(option)) = list(error_spec).
+
+report_option_error(OptionError) = Specs :-
+    OptionErrorStr = option_error_to_string(OptionError),
+    ( if
+        OptionError = unrecognized_option(OptionStr),
+        ( if string.remove_prefix("--no-", OptionStr, BaseOptionStr0) then
+            IsNegatedOption = yes,
+            BaseOptionStr = BaseOptionStr0
+        else if string.remove_prefix("--", OptionStr, BaseOptionStr0) then
+            IsNegatedOption = no,
+            BaseOptionStr = BaseOptionStr0
+        else
+            % The option was a short option and we cannot meaningfully
+            % find good "Did you mean ..." suggestions for those.
+            fail
+        ),
+        BaseOptionStr \= ""
+    then
+        (
+            IsNegatedOption = yes,
+            Prefix = "--no-",
+            all_negatable_long_option_strings(OptionStrs)
+        ;
+            IsNegatedOption = no,
+            Prefix = "--",
+            all_long_option_strings(OptionStrs)
+        ),
+        maybe_construct_prefixed_did_you_mean_pieces(Prefix, BaseOptionStr,
+            OptionStrs, DidYouMeanPieces0),
+        DidYouMeanPieces = [nl_indent_delta(-1) | DidYouMeanPieces0]
+    else
+        DidYouMeanPieces = []
+    ),
+    Spec = simplest_no_context_spec($pred, severity_error,
+        phase_options,
+        [words(OptionErrorStr), suffix("."), nl | DidYouMeanPieces]),
+    Specs = [Spec].
 
 %---------------------------------------------------------------------------%
 

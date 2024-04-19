@@ -1099,6 +1099,13 @@
     %
 :- func remove_prefix_if_present(string, string) = string.
 
+    % add_prefix(Prefix, Str) = PrefixStr:
+    %
+    % Does the same job as Prefix ++ Str = PrefixStr, but allows
+    % using list.map to add the same prefix to many strings.
+    %
+:- func add_prefix(string, string) = string.
+
     % remove_suffix(String, Suffix, Prefix):
     %
     % The same as append(Prefix, Suffix, String).
@@ -4673,6 +4680,8 @@ remove_prefix_if_present(Prefix, String) = Out :-
     else
         Out = String
     ).
+
+add_prefix(Prefix, String) = Prefix ++ String.
 
 remove_suffix(String, Suffix, Prefix) :-
     append(Prefix, Suffix, String).
