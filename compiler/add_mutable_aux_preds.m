@@ -218,8 +218,8 @@ check_mutable(ModuleInfo, ModuleParams, ItemMutable, !Specs) :-
     then
         TrailPieces = [words("Error: trailed"), decl("mutable"),
             words("declaration in non-trailing grade."), nl],
-        TrailSpec = simplest_spec($pred, severity_error,
-            phase_parse_tree_to_hlds, Context, TrailPieces),
+        TrailSpec = spec($pred, severity_error, phase_pt2h,
+            Context, TrailPieces),
         !:Specs = [TrailSpec | !.Specs]
     else
         true
@@ -459,8 +459,7 @@ invalid_inst_in_mutable(ModuleInfo, Context, InstVarSet, ParentInsts, Inst,
         [nl_indent_delta(1)], [nl_indent_delta(-1)], Inst),
     Pieces = [words("Error:") | ParentPieces] ++
         [words("the inst") | InstPieces] ++ ProblemPieces ++ [nl],
-    Spec = simplest_spec($pred, severity_error, phase_parse_tree_to_hlds,
-        Context, Pieces),
+    Spec = spec($pred, severity_error, phase_pt2h, Context, Pieces),
     !:Specs = [Spec | !.Specs].
 
 :- pred named_parents_to_pieces(list(inst_ctor)::in,

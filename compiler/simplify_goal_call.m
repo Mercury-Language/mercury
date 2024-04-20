@@ -385,7 +385,7 @@ maybe_generate_warning_for_implicit_stream_predicate(ModuleInfo,
             words("explicitly specifying a stream."), nl],
         Spec = conditional_spec($pred, warn_implicit_stream_calls, yes,
             severity_warning, phase_simplify(report_in_any_mode),
-            [simplest_msg(GoalContext, Pieces)]),
+            [msg(GoalContext, Pieces)]),
         MaybeSpec = yes(Spec)
     else if
         % We want to warn about calls to predicates that update
@@ -424,7 +424,7 @@ maybe_generate_warning_for_implicit_stream_predicate(ModuleInfo,
             words("to later I/O operations."), nl],
         Spec = conditional_spec($pred, warn_implicit_stream_calls, yes,
             severity_warning, phase_simplify(report_in_any_mode),
-            [simplest_msg(GoalContext, Pieces)]),
+            [msg(GoalContext, Pieces)]),
         MaybeSpec = yes(Spec)
     else
         MaybeSpec = no
@@ -529,7 +529,7 @@ maybe_generate_warning_for_call_to_obsolete_predicate(PredId, ProcId,
         ),
         Spec = conditional_spec($pred, warn_obsolete, yes, severity_warning,
             phase_simplify(report_in_any_mode),
-            [simplest_msg(GoalContext, Pieces)]),
+            [msg(GoalContext, Pieces)]),
         simplify_info_add_message(Spec, !Info)
     else
         true
@@ -874,7 +874,7 @@ maybe_generate_warning_for_useless_comparison(PredInfo, InstMap, Args,
             PredPieces = describe_one_pred_info_name(should_module_qualify,
                 PredInfo),
             Pieces = [words("Warning: call to")] ++ PredPieces ++ WarnPieces,
-            Spec = simplest_spec($pred, severity_warning,
+            Spec = spec($pred, severity_warning,
                 phase_simplify(report_in_any_mode), GoalContext, Pieces),
             simplify_info_add_message(Spec, !Info)
         else
@@ -1417,7 +1417,7 @@ simplify_improve_arith_shift_cmp_ops(IntType, InstMap0, ModuleName, PredName,
                 SymName = qualified(unqualified(ModuleName), PredName),
                 Pieces = [words("Error: call to"), qual_sym_name(SymName),
                     words("with a zero divisor."), nl],
-                Spec = simplest_spec($pred, severity_error,
+                Spec = spec($pred, severity_error,
                     phase_simplify(report_in_any_mode), Context, Pieces),
                 simplify_info_add_message(Spec, !Info)
             else if is_int_const(IntType, ConsY) then
@@ -1464,7 +1464,7 @@ simplify_improve_arith_shift_cmp_ops(IntType, InstMap0, ModuleName, PredName,
                         words("outside of the range"),
                         fixed("0 (inclusive)"), words("to"),
                         fixed(Exclusive), nl],
-                    Spec = simplest_spec($pred, severity_error,
+                    Spec = spec($pred, severity_error,
                         phase_simplify(report_in_any_mode), Context, Pieces),
                     simplify_info_add_message(Spec, !Info)
                 )
@@ -1481,7 +1481,7 @@ simplify_improve_arith_shift_cmp_ops(IntType, InstMap0, ModuleName, PredName,
                         words("with a shift amount that is equal to"),
                         words("or greater than"), int_fixed(NumTargetBits),
                         suffix("."), nl],
-                    Spec = simplest_spec($pred, severity_error,
+                    Spec = spec($pred, severity_error,
                         phase_simplify(report_in_any_mode), Context, Pieces),
                     simplify_info_add_message(Spec, !Info)
                 )

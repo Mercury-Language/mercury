@@ -95,11 +95,11 @@ warning_or_error_severity(we_error, severity_error).
 %-----------------------------------------------------------------------------%
 
 add_error(Phase, Pieces, !Specs) :-
-    Spec = simplest_no_context_spec($pred, severity_error, Phase, Pieces),
+    Spec = no_ctxt_spec($pred, severity_error, Phase, Pieces),
     !:Specs = [Spec | !.Specs].
 
 add_warning(Phase, Pieces, !Specs) :-
-    Spec = simplest_no_context_spec($pred, severity_warning, Phase, Pieces),
+    Spec = no_ctxt_spec($pred, severity_warning, Phase, Pieces),
     !:Specs = [Spec | !.Specs].
 
 %-----------------------------------------------------------------------------%

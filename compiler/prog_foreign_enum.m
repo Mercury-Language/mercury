@@ -162,8 +162,7 @@ build_ctor_name_to_foreign_name_map(ForWhat, Context, ContextPieces,
                 [suffix("."), nl_indent_delta(-2)]
         ),
         Pieces = MainPieces ++ CtorNamePieces ++ ForeignNamePieces,
-        Spec = simplest_spec($pred, severity_error, phase_parse_tree_to_hlds,
-            Context, Pieces),
+        Spec = spec($pred, severity_error, phase_pt2h, Context, Pieces),
         !:Specs = [Spec | !.Specs]
     ),
     (
@@ -254,8 +253,8 @@ add_bad_qual_ctors_error(Context, ContextPieces, Ctors, !Specs) :-
         words("that is not compatible with the type definition:"),
         nl_indent_delta(2)] ++
         qual_ctors_to_line_pieces(Ctors, [suffix("."), nl]),
-    Spec = simplest_spec($pred, severity_error, phase_parse_tree_to_hlds,
-        Context, ContextPieces ++ ErrorPieces),
+    Spec = spec($pred, severity_error, phase_pt2h, Context,
+        ContextPieces ++ ErrorPieces),
     !:Specs = [Spec | !.Specs].
 
 %---------------------%
@@ -289,8 +288,8 @@ add_unknown_ctors_error(Context, ContextPieces, Ctors, !Specs) :-
         words("error: the following"), words(IsOrAre),
         words("of the type:"), nl_indent_delta(2)] ++
         unqual_ctors_to_line_pieces(Ctors, [suffix("."), nl]),
-    Spec = simplest_spec($pred, severity_error, phase_parse_tree_to_hlds,
-        Context, ContextPieces ++ ErrorPieces),
+    Spec = spec($pred, severity_error, phase_pt2h, Context,
+        ContextPieces ++ ErrorPieces),
     !:Specs = [Spec | !.Specs].
 
 %---------------------%
@@ -353,7 +352,7 @@ add_foreign_enum_unmapped_ctors_error(Context, ContextPieces, CtorNames0,
             verbose_and_nonverbose(VerboseCtorsPieces, NonVerboseCtorsPieces)
     ),
     Msg = simple_msg(Context, [always(PrefixPieces), CtorsComponent]),
-    Spec = error_spec($pred, severity_error, phase_parse_tree_to_hlds, [Msg]),
+    Spec = error_spec($pred, severity_error, phase_pt2h, [Msg]),
     !:Specs = [Spec | !.Specs].
 
 %---------------------%

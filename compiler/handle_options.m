@@ -181,7 +181,7 @@ convert_option_table_result_to_globals(ProgressStream, DefaultOptionTable,
     (
         MaybeError = yes(Error),
         ErrorMessage = option_error_to_string(Error),
-        OptionTableSpec = simplest_no_context_spec($pred, severity_error,
+        OptionTableSpec = no_ctxt_spec($pred, severity_error,
             phase_options, [words(ErrorMessage)]),
         !:Specs = [OptionTableSpec],
         generate_default_globals(ProgressStream, DefaultOptionTable,
@@ -772,7 +772,7 @@ record_linked_target_extension(OptionExt, OptionName, LinkedTargetKind,
                     quote(OldOptionName), words("and"),
                     quote(OptionName), suffix("."), nl]
             ),
-            Spec = simplest_no_context_spec($pred, severity_error,
+            Spec = no_ctxt_spec($pred, severity_error,
                 phase_options, Pieces),
             !:Specs = [Spec | !.Specs]
         )

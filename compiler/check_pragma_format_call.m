@@ -279,8 +279,7 @@ format_call_error_too_large_arg_num(PredInfo, Context, NumFormatArgs,
         quote("format_string_values"), words("specifies argument number"),
         int_fixed(ArgNum), suffix(","), words("but the"), p_or_f(PredOrFunc),
         words("has only"), int_fixed(MaxArgNum), words("arguments."), nl],
-    Spec = simplest_spec($pred, severity_error, phase_parse_tree_to_hlds,
-        Context, Pieces).
+    Spec = spec($pred, severity_error, phase_pt2h, Context, Pieces).
 
 :- func format_call_error_too_small_arg_num(pred_info, prog_context,
     int, int, int, string) = error_spec.
@@ -293,8 +292,7 @@ format_call_error_too_small_arg_num(PredInfo, Context, NumFormatArgs,
         quote("format_string_values"), words("specifies argument number"),
         int_fixed(ArgNum), suffix(","),
         words("but argument numbers start at 1."), nl],
-    Spec = simplest_spec($pred, severity_error, phase_parse_tree_to_hlds,
-        Context, Pieces).
+    Spec = spec($pred, severity_error, phase_pt2h, Context, Pieces).
 
 :- func format_call_error_wrong_type(pred_info, prog_context,
         int, int, int, string, string, string) = error_spec.
@@ -308,8 +306,7 @@ format_call_error_wrong_type(PredInfo, Context, NumFormatArgs, FormatArgNum,
         int_fixed(ArgNum), words("as holding"), words(Role), suffix(","),
         words("but the type of that argument is not"),
         quote(ExpectedType), suffix("."), nl],
-    Spec = simplest_spec($pred, severity_error, phase_parse_tree_to_hlds,
-        Context, Pieces).
+    Spec = spec($pred, severity_error, phase_pt2h, Context, Pieces).
 
 :- func format_call_error_wrong_mode(pred_info, prog_context,
         int, int, int, string, string, int, list(int)) = error_spec.
@@ -334,8 +331,7 @@ format_call_error_wrong_mode(PredInfo, Context, NumFormatArgs, FormatArgNum,
             words("in the")] ++ BadModeNumPieces ++
             [words("modes of the"), p_or_f(PredOrFunc), suffix("."), nl]
     ),
-    Spec = simplest_spec($pred, severity_error, phase_parse_tree_to_hlds,
-        Context, Pieces).
+    Spec = spec($pred, severity_error, phase_pt2h, Context, Pieces).
 
 %---------------------%
 

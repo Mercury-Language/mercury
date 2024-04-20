@@ -183,7 +183,7 @@ report_error_pred_wrong_arity(ClauseContext, Context, PFSymNameArity,
     else
         SpecialPieces = []
     ),
-    Spec = simplest_spec($pred, severity_error, phase_type_check,
+    Spec = spec($pred, severity_error, phase_type_check,
         Context, MainPieces ++ SpecialPieces).
 
 %---------------------%
@@ -416,7 +416,7 @@ report_error_pred_wrong_full_name(ClauseContext, Context, PredicateTable,
             Msgs = [UndefMsg]
         ;
             DidYouMeanPieces = [_ | _],
-            DidyouMeanMsg = simplest_msg(Context, DidYouMeanPieces),
+            DidyouMeanMsg = msg(Context, DidYouMeanPieces),
             Msgs = [UndefMsg, DidyouMeanMsg]
         )
     else
@@ -435,7 +435,7 @@ report_error_pred_wrong_full_name(ClauseContext, Context, PredicateTable,
 report_error_func_instead_of_pred(Context) = Msg :-
     Pieces = [words("(There is a *function* with that name, however."), nl,
         words("Perhaps you forgot to add"), quote(" = ..."), suffix("?)"), nl],
-    Msg = simplest_msg(Context, Pieces).
+    Msg = msg(Context, Pieces).
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -681,7 +681,7 @@ report_error_undef_cons_std(ClauseContext, Context, InitComp, ConsErrors,
                     QualSuggestionMsgs = []
                 ;
                     DidYouMeanPieces = [_ | _],
-                    DidyouMeanMsg = simplest_msg(Context, DidYouMeanPieces),
+                    DidyouMeanMsg = msg(Context, DidYouMeanPieces),
                     QualSuggestionMsgs = [DidyouMeanMsg]
                 )
             else
@@ -757,7 +757,7 @@ report_cons_error(Context, ConsError) = Msgs :-
             words("in all predicates and functions"),
             words("which are not implemented"),
             words("for those foreign types."), nl],
-        Msgs = [simplest_msg(Context, Pieces)]
+        Msgs = [msg(Context, Pieces)]
     ;
         ConsError = abstract_imported_type,
         % For `abstract_imported_type' errors, the "undefined symbol" error
@@ -787,13 +787,13 @@ report_cons_error(Context, ConsError) = Msgs :-
             words("in definition of constructor"),
             qual_cons_id_and_maybe_arity(ConsId), suffix("."), nl],
         Pieces = Pieces1 ++ Pieces2 ++ Pieces3,
-        Msgs = [simplest_msg(DefnContext, Pieces)]
+        Msgs = [msg(DefnContext, Pieces)]
     ;
         ConsError = new_on_non_existential_type(TypeCtor),
         Pieces = [words("Invalid use of"), quote("new"),
             words("on a constructor of type"), qual_type_ctor(TypeCtor),
             words("which is not existentially typed."), nl],
-        Msgs = [simplest_msg(Context, Pieces)]
+        Msgs = [msg(Context, Pieces)]
     ).
 
 %---------------------------------------------------------------------------%
@@ -805,7 +805,7 @@ report_cons_error(Context, ConsError) = Msgs :-
 report_error_undef_event(Context, EventName) = Spec :-
     Pieces = [words("Error: there is no event named"),
         quote(EventName), suffix("."), nl],
-    Spec = simplest_spec($pred, severity_error, phase_type_check,
+    Spec = spec($pred, severity_error, phase_type_check,
         Context, Pieces).
 
 report_error_undef_event_arity(Context, EventName, EventArgTypes, Args)
@@ -815,7 +815,7 @@ report_error_undef_event_arity(Context, EventName, EventArgTypes, Args)
     Pieces = [words("Error:")] ++
         arity_error_to_pieces(pf_predicate, ActualArity, [ExpectedArity]) ++
         [words("in event"), quote(EventName), suffix("."), nl],
-    Spec = simplest_spec($pred, severity_error, phase_type_check,
+    Spec = spec($pred, severity_error, phase_type_check,
         Context, Pieces).
 
 %---------------------------------------------------------------------------%
@@ -834,7 +834,7 @@ maybe_report_no_clauses(ModuleInfo, PredId, PredInfo) = Specs :-
             [suffix("."), nl],
         pred_info_get_context(PredInfo, Context),
 
-        Spec = simplest_spec($pred, severity_error, phase_type_check,
+        Spec = spec($pred, severity_error, phase_type_check,
             Context, Pieces),
         Specs = [Spec]
     ;
@@ -855,7 +855,7 @@ maybe_report_no_clauses_stub(ModuleInfo, PredId, PredInfo) = Specs :-
             Pieces = [words("Warning: no clauses for ") | PredPieces] ++
                 [suffix("."), nl],
             pred_info_get_context(PredInfo, Context),
-            Spec = simplest_spec($pred, severity_warning,
+            Spec = spec($pred, severity_warning,
                 phase_type_check, Context, Pieces),
             Specs = [Spec]
         ;
@@ -972,7 +972,7 @@ report_any_missing_module_qualifiers(ClauseContext, Context,
                 words("none of which have"),
                 decl("import_module"), words("declarations."), nl]
         ),
-        MainMsg = simplest_msg(Context, MainPieces),
+        MainMsg = msg(Context, MainPieces),
         VerbosePieces = [words("Note that symbols defined in modules"),
             words("accessed via"), decl("use_module"), words("declarations"),
             words("must always be fully module qualified."), nl],

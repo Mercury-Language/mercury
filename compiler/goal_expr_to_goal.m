@@ -434,8 +434,7 @@ transform_dcg_record_syntax(LocKind, AccessType, ArgTerms0, Context, HLDSGoal,
             words_quote("Field =^ field1 ^ ... ^ fieldN"),
             words("or"), words_quote("^ field1 ^ ... ^ fieldN := Field"),
             words("in DCG field access goal."), nl],
-        Spec = simplest_spec($pred, severity_error, phase_parse_tree_to_hlds,
-            Context, Pieces),
+        Spec = spec($pred, severity_error, phase_pt2h, Context, Pieces),
         !:Specs = [Spec | !.Specs]
     ).
 
@@ -854,8 +853,7 @@ transform_parse_tree_goal_to_hlds_try(LocKind, Goal, Renaming, HLDSGoal,
             Pieces = [words("Error: a"), quote("try"), words("goal"),
                 words("with an"), quote("io"), words("parameter"),
                 words("cannot have an"), quote("else"), words("part."), nl],
-            Spec = simplest_spec($pred, severity_error,
-                phase_parse_tree_to_hlds, Context, Pieces),
+            Spec = spec($pred, severity_error, phase_pt2h, Context, Pieces),
             !:Specs = [Spec | !.Specs],
             HLDSGoal = true_goal_with_context(Context)
         )

@@ -151,8 +151,8 @@ parse_type(AllowHOInstInfo, VarSet, ContextPieces, Term, Result) :-
             TermStr = describe_error_term(VarSet, Term),
             Pieces = cord.list(ContextPieces) ++ [lower_case_next_if_not_first,
                 words("Error:"), quote(TermStr), words("is not a type."), nl],
-            Spec = simplest_spec($pred, severity_error,
-                phase_term_to_parse_tree, FunctorContext, Pieces),
+            Spec = spec($pred, severity_error,
+                phase_t2pt, FunctorContext, Pieces),
             Result = error1([Spec])
         ;
             Functor = term.atom(Name),
@@ -173,8 +173,8 @@ parse_type(AllowHOInstInfo, VarSet, ContextPieces, Term, Result) :-
                         quote(Name), words("should not be used"),
                         words("with any arity other than"),
                         int_fixed(ExpectedArity), suffix("."), nl],
-                    Spec = simplest_spec($pred, severity_error,
-                        phase_term_to_parse_tree, FunctorContext, Pieces),
+                    Spec = spec($pred, severity_error,
+                        phase_t2pt, FunctorContext, Pieces),
                     Result = error1([Spec])
                 )
             else
@@ -228,7 +228,7 @@ parse_compound_type(AllowHOInstInfo, Term, VarSet, ContextPieces,
         TermStr = describe_error_term(VarSet, Term),
         Pieces = cord.list(ContextPieces) ++ [lower_case_next_if_not_first,
             words("Error: ill-formed type"), quote(TermStr), suffix("."), nl],
-        Spec = simplest_spec($pred, severity_error, phase_term_to_parse_tree,
+        Spec = spec($pred, severity_error, phase_t2pt,
             get_term_context(Term), Pieces),
         Result = error1([Spec])
     ;
@@ -273,8 +273,8 @@ parse_compound_type(AllowHOInstInfo, Term, VarSet, ContextPieces,
                 words("Error: in a function type declaration,"),
                 words("the operator"), quote("="), words("should be preceded"),
                 words("by"), quote("func(<arguments>)"), suffix("."), nl],
-            Spec = simplest_spec($pred, severity_error,
-                phase_term_to_parse_tree,
+            Spec = spec($pred, severity_error,
+                phase_t2pt,
                 get_term_context(BeforeEqTerm), Pieces),
             Result = error1([Spec])
         )
@@ -381,8 +381,8 @@ parse_compound_type(AllowHOInstInfo, Term, VarSet, ContextPieces,
                 words("which should be of one of the following forms:"),
                 nl_indent_delta(1)] ++
                 FormPieces ++ [suffix("."), nl_indent_delta(-1)],
-            Spec = simplest_spec($pred, severity_error,
-                phase_term_to_parse_tree, get_term_context(SubTerm), Pieces),
+            Spec = spec($pred, severity_error,
+                phase_t2pt, get_term_context(SubTerm), Pieces),
             Result = error1([Spec])
         )
     ).
@@ -427,7 +427,7 @@ parse_ho_type_and_inst(VarSet, ContextPieces, BeforeIsTerm, AfterIsTerm,
             quote("func(<arguments>) = <return_argument> is det"),
             suffix(","), nl_indent_delta(-1),
             words("but"), quote(BeforeIsTermStr), words("is neither."), nl],
-        HOSpec = simplest_spec($pred, severity_error, phase_term_to_parse_tree,
+        HOSpec = spec($pred, severity_error, phase_t2pt,
             get_term_context(AfterIsTerm), HOPieces),
         MaybeType = error1([HOSpec])
     ).
@@ -521,7 +521,7 @@ parse_type_no_mode(AllowHOInstInfo, Varset, ContextPieces, Term, MaybeType) :-
             words("Error: unexpected"), quote("::mode"),
             words("suffix."), nl],
         Pieces = cord.list(ContextPieces ++ cord.from_list(ErrorPieces)),
-        Spec = simplest_spec($pred, severity_error, phase_term_to_parse_tree,
+        Spec = spec($pred, severity_error, phase_t2pt,
             get_term_context(Term), Pieces),
         MaybeType = error1([Spec])
     else
@@ -628,8 +628,8 @@ parse_type_and_maybe_mode(MaybeInstConstraints, MaybeRequireMode, Why, VarSet,
                 words("Error: missing"), quote("::mode"),
                 words("suffix."), nl],
             Pieces = cord.list(ContextPieces ++ cord.from_list(MissingPieces)),
-            Spec = simplest_spec($pred, severity_error,
-                phase_term_to_parse_tree, get_term_context(Term), Pieces),
+            Spec = spec($pred, severity_error,
+                phase_t2pt, get_term_context(Term), Pieces),
             MaybeTypeAndMode = error1([Spec])
         ;
             MaybeRequireMode = dont_require_tm_mode,
@@ -859,7 +859,7 @@ no_ho_inst_allowed_result(ContextPieces, Why, VarSet, Term) = Result :-
         words("Error: the type"), quote(TermStr), words("contains"),
         words("higher order inst information,"),
         words("but this is not allowed in"), words(Place), suffix("."), nl],
-    Spec = simplest_spec($pred, severity_error, phase_term_to_parse_tree,
+    Spec = spec($pred, severity_error, phase_t2pt,
         get_term_context(Term), Pieces),
     Result = error1([Spec]).
 

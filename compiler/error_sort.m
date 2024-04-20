@@ -95,15 +95,15 @@ remove_conditionals_in_spec(OptionTable, Spec0, Spec) :-
             list.filter_map(remove_conditionals_in_msg(OptionTable),
                 Msgs0, Msgs)
         ;
-            Spec0 = simplest_spec(Id, Severity0, Phase, Context0, Pieces0),
+            Spec0 = spec(Id, Severity0, Phase, Context0, Pieces0),
             MaybeActualSeverity =
                 actual_error_severity_opt_table(OptionTable, Severity0),
-            Msgs = [simplest_msg(Context0, Pieces0)]
+            Msgs = [msg(Context0, Pieces0)]
         ;
-            Spec0 = simplest_no_context_spec(Id, Severity0, Phase, Pieces0),
+            Spec0 = no_ctxt_spec(Id, Severity0, Phase, Pieces0),
             MaybeActualSeverity =
                 actual_error_severity_opt_table(OptionTable, Severity0),
-            Msgs = [simplest_no_context_msg(Pieces0)]
+            Msgs = [no_ctxt_msg(Pieces0)]
         ;
             Spec0 = conditional_spec(Id, Option, MatchValue,
                 Severity0, Phase, Msgs0),
@@ -146,13 +146,13 @@ remove_conditionals_in_spec(OptionTable, Spec0, Spec) :-
 remove_conditionals_in_msg(OptionTable, Msg0, Msg) :-
     require_det (
         (
-            Msg0 = simplest_msg(Context, Pieces0),
+            Msg0 = msg(Context, Pieces0),
             MaybeContext = yes(Context),
             TreatAsFirst = treat_based_on_posn,
             ExtraIndent = 0,
             Components0 = [always(Pieces0)]
         ;
-            Msg0 = simplest_no_context_msg(Pieces0),
+            Msg0 = no_ctxt_msg(Pieces0),
             MaybeContext = no,
             TreatAsFirst = treat_based_on_posn,
             ExtraIndent = 0,
@@ -320,10 +320,10 @@ compare_error_msgs(ReverseErrorOrder, MsgA, MsgB, Result) :-
 
 project_msg_context(Msg) = MaybeContext :-
     (
-        Msg = simplest_msg(Context, _),
+        Msg = msg(Context, _),
         MaybeContext = yes(Context)
     ;
-        Msg = simplest_no_context_msg(_),
+        Msg = no_ctxt_msg(_),
         MaybeContext = no
     ;
         Msg = simple_msg(Context, _),
@@ -336,8 +336,8 @@ project_msg_context(Msg) = MaybeContext :-
 
 project_msg_components(Msg) = Components :-
     (
-        ( Msg = simplest_msg(_, Pieces)
-        ; Msg = simplest_no_context_msg(Pieces)
+        ( Msg = msg(_, Pieces)
+        ; Msg = no_ctxt_msg(Pieces)
         ),
         Components = [always(Pieces)]
     ;

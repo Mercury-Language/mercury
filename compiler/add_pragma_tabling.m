@@ -159,8 +159,8 @@ module_add_pragma_tabled(ProgressStream, TabledInfo,
                     suffix(","),
                     words("since the compiler-generated statistics predicate"),
                     words("would have an ambiguous name too."), nl],
-                StatsSpec = simplest_spec($pred, severity_error,
-                    phase_parse_tree_to_hlds, Context, StatsPieces),
+                StatsSpec = spec($pred, severity_error, phase_pt2h,
+                    Context, StatsPieces),
                 !:Specs = [StatsSpec | !.Specs]
             ;
                 Statistics = table_dont_gather_statistics
@@ -174,8 +174,8 @@ module_add_pragma_tabled(ProgressStream, TabledInfo,
                     suffix(","),
                     words("since the compiler-generated reset predicate"),
                     words("would have an ambiguous name too."), nl],
-                ResetSpec = simplest_spec($pred, severity_error,
-                    phase_parse_tree_to_hlds, Context, ResetPieces),
+                ResetSpec = spec($pred, severity_error, phase_pt2h,
+                    Context, ResetPieces),
                 !:Specs = [ResetSpec | !.Specs]
             ;
                 AllowReset = table_dont_allow_reset
@@ -263,8 +263,8 @@ module_add_pragma_tabled_for_pred(ProgressStream, TabledMethod0, PFUMM,
             words("since tabled predicates cannot be inlined."), nl,
             words("You can use the"), quote("--no-warn-table-with-inline"),
             words("option to suppress this warning."), nl],
-        InlineWarningSpec = simplest_spec($pred, severity_warning,
-            phase_parse_tree_to_hlds, Context, InlineWarningPieces),
+        InlineWarningSpec = spec($pred, severity_warning, phase_pt2h,
+            Context, InlineWarningPieces),
         !:Specs = [InlineWarningSpec | !.Specs]
     else
         true
@@ -273,8 +273,7 @@ module_add_pragma_tabled_for_pred(ProgressStream, TabledMethod0, PFUMM,
         Pieces = [words("Error: "), pragma_decl(TabledMethodStr),
             words("declaration for imported"),
             qual_pf_sym_name_user_arity(PFSymNameArity), suffix("."), nl],
-        Spec = simplest_spec($pred, severity_error, phase_parse_tree_to_hlds,
-            Context, Pieces),
+        Spec = spec($pred, severity_error, phase_pt2h, Context, Pieces),
         !:Specs = [Spec | !.Specs]
     else
         % Do we have to make sure the tabled preds are stratified?
@@ -310,8 +309,8 @@ module_add_pragma_tabled_for_pred(ProgressStream, TabledMethod0, PFUMM,
                     words("declaration for undeclared mode of"),
                     qual_pf_sym_name_user_arity(PFSymNameArity),
                     suffix("."), nl],
-                Spec = simplest_spec($pred, severity_error,
-                    phase_parse_tree_to_hlds, Context, Pieces),
+                Spec = spec($pred, severity_error, phase_pt2h,
+                    Context, Pieces),
                 !:Specs = [Spec | !.Specs]
             )
         ;
@@ -323,8 +322,8 @@ module_add_pragma_tabled_for_pred(ProgressStream, TabledMethod0, PFUMM,
                     pragma_decl(TabledMethodStr), words("declaration for"),
                     qual_pf_sym_name_user_arity(PFSymNameArity),
                     words("with no declared modes."), nl],
-                Spec = simplest_spec($pred, severity_error,
-                    phase_parse_tree_to_hlds, Context, Pieces),
+                Spec = spec($pred, severity_error, phase_pt2h,
+                    Context, Pieces),
                 !:Specs = [Spec | !.Specs]
             ;
                 ExistingProcs = [_ | ExistingProcsTail],
@@ -417,8 +416,7 @@ set_eval_method_create_aux_preds(ProgressStream, PredOrFunc,
                 pragma_decl(TabledMethodStr), words("declaration for"),
                 qual_pf_sym_name_user_arity(PFSymNameArity), suffix(","),
                 words("which has no declared modes."), nl],
-            Spec = simplest_spec($pred, severity_error,
-                phase_parse_tree_to_hlds, Context, Pieces),
+            Spec = spec($pred, severity_error, phase_pt2h, Context, Pieces),
             !:Specs = [Spec | !.Specs]
         ;
             MaybeDeclaredArgModes = yes(DeclaredArgModes),
@@ -454,8 +452,8 @@ set_eval_method_create_aux_preds(ProgressStream, PredOrFunc,
                     pragma_decl(TabledMethodStr), words("declaration for"),
                     qual_pf_sym_name_user_arity(PFSymNameArity),
                     suffix(":"), nl | ArgErrorPieces],
-                Spec = simplest_spec($pred, severity_error,
-                    phase_parse_tree_to_hlds, Context, Pieces),
+                Spec = spec($pred, severity_error, phase_pt2h,
+                    Context, Pieces),
                 !:Specs = [Spec | !.Specs]
             ),
             EvalMethod = eval_tabled(TabledMethod),
@@ -513,8 +511,7 @@ set_eval_method_create_aux_preds(ProgressStream, PredOrFunc,
                 words("Only one kind of tabling pragma may be applied to it."),
                 nl]
         ),
-        Spec = simplest_spec($pred, severity_error, phase_parse_tree_to_hlds,
-            Context, Pieces),
+        Spec = spec($pred, severity_error, phase_pt2h, Context, Pieces),
         !:Specs = [Spec | !.Specs]
     ).
 

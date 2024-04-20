@@ -163,8 +163,8 @@ add_pragma_foreign_enum(ModuleInfo, ImsItem, !TypeCtorForeignEnumMap,
                 NotThisModulePieces = ContextPieces ++
                     [words("error: "), qual_sym_name_arity(TypeSNA),
                     words("is not defined in this module."), nl],
-                NotThisModuleSpec = simplest_spec($pred, severity_error,
-                    phase_parse_tree_to_hlds, Context, NotThisModulePieces),
+                NotThisModuleSpec = spec($pred, severity_error, phase_pt2h,
+                    Context, NotThisModulePieces),
                 !:Specs = [NotThisModuleSpec | !.Specs]
             ),
 
@@ -414,8 +414,7 @@ build_export_enum_name_map(ContextPieces, Context, Lang, Prefix, MakeUpperCase,
         Msg = simple_msg(Context,
             [always(AlwaysPieces),
             verbose_only(verbose_always, VerbosePieces)]),
-        Spec = error_spec($pred, severity_error, phase_parse_tree_to_hlds,
-            [Msg]),
+        Spec = error_spec($pred, severity_error, phase_pt2h, [Msg]),
         !:Specs = [Spec | !.Specs]
     ).
 
@@ -520,10 +519,9 @@ maybe_add_duplicate_foreign_enum_error(TypeSymame, TypeArity, Lang,
         OldPieces = [words("The first foreign_enum pragma"),
             words("for"), qual_sym_name_arity(TypeSymNameArity),
             words("and"), fixed(LangStr), words("was here."), nl],
-        CurMsg = simplest_msg(Context, CurPieces),
-        OldMsg = simplest_msg(OldContext, OldPieces),
-        Spec = error_spec($pred, severity_error, phase_parse_tree_to_hlds,
-            [CurMsg, OldMsg]),
+        CurMsg = msg(Context, CurPieces),
+        OldMsg = msg(OldContext, OldPieces),
+        Spec = error_spec($pred, severity_error, phase_pt2h, [CurMsg, OldMsg]),
         !:Specs = [Spec | !.Specs]
     ).
 
@@ -544,8 +542,7 @@ report_if_builtin_type(Context, ContextPieces, TypeSymame, TypeArity,
         Pieces = ContextPieces ++ [words("error: "),
             unqual_sym_name_arity(sym_name_arity(TypeSymame, TypeArity)),
             words("is a builtin type."), nl],
-        Spec = simplest_spec($pred, severity_error, phase_parse_tree_to_hlds,
-            Context, Pieces),
+        Spec = spec($pred, severity_error, phase_pt2h, Context, Pieces),
         !:Specs = [Spec | !.Specs]
     else
         true
@@ -602,8 +599,7 @@ report_not_enum_type(Context, ContextPieces, TypeSymName, TypeArity,
             qual_sym_name_arity(TypeSNA),
             words("is not an enumeration type;"),
             words("it is"), words(TypeKindDesc), suffix("."), nl],
-        Spec = simplest_spec($pred, severity_error, phase_parse_tree_to_hlds,
-            Context, Pieces),
+        Spec = spec($pred, severity_error, phase_pt2h, Context, Pieces),
         !:Specs = [Spec | !.Specs]
     ;
         NotEnumInfo = not_enum_du(NonEnumSNAs),
@@ -629,8 +625,7 @@ report_not_enum_type(Context, ContextPieces, TypeSymName, TypeArity,
                 words("is not an enumeration type."), nl,
                 ItHasThese, nl_indent_delta(2)] ++ SNAPieces ++
                 [suffix("."), nl_indent_delta(-2)],
-            Spec = simplest_spec($pred, severity_error,
-                phase_parse_tree_to_hlds, Context, Pieces),
+            Spec = spec($pred, severity_error, phase_pt2h, Context, Pieces),
             !:Specs = [Spec | !.Specs]
         )
     ).

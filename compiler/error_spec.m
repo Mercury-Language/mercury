@@ -54,11 +54,11 @@
 % this fact in the duplicate declaration's context, while printing another
 % message giving the original declaration's context.
 %
-% simplest_spec(Id, Severity, Phase, Context, Pieces) is a shorthand for
+% spec(Id, Severity, Phase, Context, Pieces) is a shorthand for
 % (and equivalent in every respect to) error_spec(Id, Severity, Phase,
 % [simple_msg(Context, always(Pieces)])]).
 %
-% simplest_no_context_spec(Id, Severity, Phase, Pieces) is shorthand for
+% no_ctxt_spec(Id, Severity, Phase, Pieces) is shorthand for
 % (and equivalent in every respect to) error_spec(Id, Severity, Phase,
 % error_msg(maybe.no, treat_based_on_posn, 0, [always(Pieces)])).
 %
@@ -76,8 +76,8 @@
 % However, grepping for a single word will usually get many false hits,
 % while grepping for two or more consecutive words in the message may miss
 % the code generating the message, because in that code, some of those
-% consecutive words are on different lines. On the other hand, if every
-% place that constructs an error_spec, of any of these three varieties,
+% consecutive words may be on different lines. On the other hand, if every
+% place that constructs an error_spec, of any of these varieties,
 % fills in the id field with $pred, then finding the right place is easy:
 % just specify the developer-only option --print-error-spec-id, and
 % the identity of the predicate or function that generated each error_spec
@@ -87,24 +87,25 @@
 % the one you are looking for will be easily manageable.
 
 :- type error_spec
-    --->    error_spec(
-                error_id                :: string,
-                error_severity          :: error_severity,
-                error_phase             :: error_phase,
-                error_msgs              :: list(error_msg)
-            )
-    ;       simplest_spec(
+    --->    spec(
+                % ZZZ field name prefixes
                 simp_id                 :: string,
                 simp_spec_severity      :: error_severity,
                 simp_spec_phase         :: error_phase,
                 simp_spec_context       :: prog_context,
                 simp_spec_pieces        :: list(format_piece)
             )
-    ;       simplest_no_context_spec(
+    ;       no_ctxt_spec(
                 simpnc_id               :: string,
                 simpnc_spec_severity    :: error_severity,
                 simpnc_spec_phase       :: error_phase,
                 simpnc_spec_pieces      :: list(format_piece)
+            )
+    ;       error_spec(
+                error_id                :: string,
+                error_severity          :: error_severity,
+                error_phase             :: error_phase,
+                error_msgs              :: list(error_msg)
             )
     ;       conditional_spec(
                 cond_id                 :: string,
@@ -117,6 +118,7 @@
             ).
 
     % An error_spec that is *intended* to contain a warning,
+    % XXX We can now enforce that intention using subtypes.
     %
 :- type warning_spec == error_spec.
 
@@ -174,15 +176,16 @@
             % to find files with a single, shorter message to that effect.
     ;       phase_read_files
     ;       phase_module_name
-    ;       phase_term_to_parse_tree
+    ;       phase_t2pt              % short for "term to parse tree"
+    % The "tim" in the next few phase names is short for "type inst mode".
     % Some errors in check_type_inst_mode_defns.m report an invalid type, ...
-    ;       phase_type_inst_mode_check_invalid_type
+    ;       phase_tim_check_invalid_type
     % some report an invalid inst or mode, ...
-    ;       phase_type_inst_mode_check_invalid_inst_mode
+    ;       phase_tim_check_invalid_inst_mode
     % and some do neither.
-    ;       phase_type_inst_mode_check
+    ;       phase_tim_check
     ;       phase_type_repn
-    ;       phase_parse_tree_to_hlds
+    ;       phase_pt2h              % short for "parse tree to HLDS"
     ;       phase_expand_types
     ;       phase_type_check
     ;       phase_inst_check
@@ -229,7 +232,7 @@
 % in every respect to) the term error_msg(yes(Context), treat_based_on_posn,
 % 0, Components).
 %
-% The term simplest_msg(Context, Pieces) is a shorthand for (and equivalent
+% The term msg(Context, Pieces) is a shorthand for (and equivalent
 % in every respect to) the term simple_msg(Context, [always(Pieces)]).
 
 :- type maybe_always_treat_as_first
@@ -237,11 +240,11 @@
     ;       treat_based_on_posn.
 
 :- type error_msg
-    --->    simplest_msg(
+    --->    msg(
                 simplest_context        :: prog_context,
                 simplest_pieces         :: list(format_piece)
             )
-    ;       simplest_no_context_msg(
+    ;       no_ctxt_msg(
                 simplestnc_pieces       :: list(format_piece)
             )
     ;       simple_msg(
@@ -916,9 +919,9 @@ extract_spec_phase(Spec, Phase) :-
     (
         Spec = error_spec(_, _, Phase, _)
     ;
-        Spec = simplest_spec(_, _, Phase, _, _)
+        Spec = spec(_, _, Phase, _, _)
     ;
-        Spec = simplest_no_context_spec(_, _, Phase, _)
+        Spec = no_ctxt_spec(_, _, Phase, _)
     ;
         Spec = conditional_spec(_, _, _, _, Phase, _)
     ).
@@ -927,11 +930,11 @@ extract_spec_msgs(Globals, Spec, Msgs) :-
     (
         Spec = error_spec(_Id, _Severity, _Phase, Msgs)
     ;
-        Spec = simplest_spec(_Id, _Severity, _Phase, Context, Pieces),
-        Msgs = [simplest_msg(Context, Pieces)]
+        Spec = spec(_Id, _Severity, _Phase, Context, Pieces),
+        Msgs = [msg(Context, Pieces)]
     ;
-        Spec = simplest_no_context_spec(_Id, _Severity, _Phase, Pieces),
-        Msgs = [simplest_no_context_msg(Pieces)]
+        Spec = no_ctxt_spec(_Id, _Severity, _Phase, Pieces),
+        Msgs = [no_ctxt_msg(Pieces)]
     ;
         Spec = conditional_spec(_Id, Option, MatchValue, _Severity, _Phase,
             Msgs0),
@@ -947,11 +950,11 @@ extract_spec_msgs_opt_table(OptionTable, Spec, Msgs) :-
     (
         Spec = error_spec(_Id, _Severity, _Phase, Msgs)
     ;
-        Spec = simplest_spec(_Id, _Severity, _Phase, Context, Pieces),
-        Msgs = [simplest_msg(Context, Pieces)]
+        Spec = spec(_Id, _Severity, _Phase, Context, Pieces),
+        Msgs = [msg(Context, Pieces)]
     ;
-        Spec = simplest_no_context_spec(_Id, _Severity, _Phase, Pieces),
-        Msgs = [simplest_no_context_msg(Pieces)]
+        Spec = no_ctxt_spec(_Id, _Severity, _Phase, Pieces),
+        Msgs = [no_ctxt_msg(Pieces)]
     ;
         Spec = conditional_spec(_Id, Option, MatchValue, _Severity, _Phase,
             Msgs0),
@@ -970,10 +973,10 @@ accumulate_contexts(Spec, !Contexts) :-
         ),
         list.foldl(accumulate_contexts_in_msg, Msgs, !Contexts)
     ;
-        Spec = simplest_spec(_, _, _, Context, _),
+        Spec = spec(_, _, _, Context, _),
         set.insert(Context, !Contexts)
     ;
-        Spec = simplest_no_context_spec(_, _, _, _)
+        Spec = no_ctxt_spec(_, _, _, _)
     ).
 
 :- pred accumulate_contexts_in_msg(error_msg::in,
@@ -981,9 +984,9 @@ accumulate_contexts(Spec, !Contexts) :-
 
 accumulate_contexts_in_msg(Msg, !Contexts) :-
     (
-        Msg = simplest_no_context_msg(_)
+        Msg = no_ctxt_msg(_)
     ;
-        ( Msg = simplest_msg(Context, _)
+        ( Msg = msg(Context, _)
         ; Msg = simple_msg(Context, _)
         ),
         set.insert(Context, !Contexts)

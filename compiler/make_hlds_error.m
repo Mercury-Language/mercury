@@ -113,16 +113,16 @@ report_multiply_defined(EntityKind, SymName, UserArity, Context, OrigContext,
         qual_sym_name_arity(SNA), words("multiply defined."), nl],
     FirstDeclPieces = [words("Here is the previous definition of"),
         fixed(EntityKind), qual_sym_name_arity(SNA), suffix("."), nl],
-    SecondDeclMsg = simplest_msg(SecondContext, SecondDeclPieces),
-    FirstDeclMsg = simplest_msg(FirstContext, FirstDeclPieces),
+    SecondDeclMsg = msg(SecondContext, SecondDeclPieces),
+    FirstDeclMsg = msg(FirstContext, FirstDeclPieces),
     (
         ExtraPieces = [],
         ExtraMsgs = []
     ;
         ExtraPieces = [_ | _],
-        ExtraMsgs = [simplest_msg(SecondContext, ExtraPieces)]
+        ExtraMsgs = [msg(SecondContext, ExtraPieces)]
     ),
-    Spec = error_spec($pred, severity_error, phase_parse_tree_to_hlds,
+    Spec = error_spec($pred, severity_error, phase_pt2h,
         [SecondDeclMsg, FirstDeclMsg | ExtraMsgs]),
     !:Specs = [Spec | !.Specs].
 
@@ -160,8 +160,8 @@ report_undefined_pred_or_func_error(MaybePorF, SymName,
             list_to_pieces(OtherArityStrs) ++
             [suffix("."), nl]
     ),
-    Spec = simplest_spec($pred, severity_error, phase_parse_tree_to_hlds,
-        Context, MainPieces ++ OtherArityPieces),
+    Spec = spec($pred, severity_error, phase_pt2h, Context,
+        MainPieces ++ OtherArityPieces),
     !:Specs = [Spec | !.Specs].
 
 %---------------------------------------------------------------------------%
@@ -209,7 +209,7 @@ report_undeclared_mode_error(ModuleInfo, PredId, PredInfo, VarSet, ArgModes,
     ),
     Msg = simple_msg(Context,
         [always(MainPieces), verbose_only(verbose_always, VerbosePieces)]),
-    Spec = error_spec($pred, severity_error, phase_parse_tree_to_hlds, [Msg]),
+    Spec = error_spec($pred, severity_error, phase_pt2h, [Msg]),
     !:Specs = [Spec | !.Specs].
 
 :- func mode_decl_for_pred_info_to_pieces(pred_info, proc_id)
@@ -261,7 +261,7 @@ maybe_report_undefined_pred_error(ModuleInfo, PredOrFunc, SymName,
             unqual_pf_sym_name_pred_form_arity(PFSymNameArity), nl,
             words("without corresponding"),
             decl(PredOrFuncStr), words("declaration."), nl],
-        MainMsg = simplest_msg(Context, MainPieces),
+        MainMsg = msg(Context, MainPieces),
 
         module_info_get_predicate_table(ModuleInfo, PredicateTable),
         predicate_table_lookup_pf_sym(PredicateTable,
@@ -276,8 +276,7 @@ maybe_report_undefined_pred_error(ModuleInfo, PredOrFunc, SymName,
         FullPredOrFuncStr = pred_or_func_to_full_str(PredOrFunc),
         (
             OtherPredFormAritiesList = [],
-            Spec = error_spec($pred, severity_error, phase_parse_tree_to_hlds,
-                [MainMsg])
+            Spec = error_spec($pred, severity_error, phase_pt2h, [MainMsg])
         ;
             (
                 OtherPredFormAritiesList = [OtherPredFormArity],
@@ -297,8 +296,8 @@ maybe_report_undefined_pred_error(ModuleInfo, PredOrFunc, SymName,
                             OtherPredFormAritiesList))] ++
                     [suffix("."), nl]
             ),
-            OtherAritiesMsg = simplest_msg(Context, OtherAritiesPieces),
-            Spec = error_spec($pred, severity_error, phase_parse_tree_to_hlds,
+            OtherAritiesMsg = msg(Context, OtherAritiesPieces),
+            Spec = error_spec($pred, severity_error, phase_pt2h,
                 [MainMsg, OtherAritiesMsg])
         ),
         !:Specs = [Spec | !.Specs]

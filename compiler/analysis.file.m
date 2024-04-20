@@ -450,7 +450,7 @@ parse_result_entry(Compiler, VarSet, Term, !Results, !Specs) :-
         TermStr = describe_error_term(VarSet, Term),
         Pieces = [words("Error: expected a result entry, got"),
             quote(TermStr), suffix("."), nl],
-        Spec = simplest_spec($pred, severity_error, phase_read_files,
+        Spec = spec($pred, severity_error, phase_read_files,
             get_term_context(Term), Pieces),
         !:Specs = [Spec | !.Specs]
     ).
@@ -559,7 +559,7 @@ parse_request_entry(Compiler, VarSet, Term, !Requests, !Specs) :-
         TermStr = describe_error_term(VarSet, Term),
         Pieces = [words("Error: expected a request entry, got"),
             quote(TermStr), suffix("."), nl],
-        Spec = simplest_spec($pred, severity_error, phase_read_files,
+        Spec = spec($pred, severity_error, phase_read_files,
             get_term_context(Term), Pieces),
         !:Specs = [Spec | !.Specs]
     ).
@@ -699,7 +699,7 @@ parse_imdg_arc(Compiler, VarSet, Term, !Arcs, !Specs) :-
         TermStr = describe_error_term(VarSet, Term),
         Pieces = [words("Error: expected an imdb arc, got"),
             quote(TermStr), suffix("."), nl],
-        Spec = simplest_spec($pred, severity_error, phase_read_files,
+        Spec = spec($pred, severity_error, phase_read_files,
             get_term_context(Term), Pieces),
         !:Specs = [Spec | !.Specs]
     ).
@@ -856,7 +856,7 @@ check_analysis_file_version_number(FileName, FileStr, MaxOffset,
                 words("got"), int_fixed(Number), suffix("."), nl],
             LineContext0 = line_context(LineNumber, _),
             Context = context(FileName, LineNumber),
-            Spec = simplest_spec($pred, severity_error, phase_read_files,
+            Spec = spec($pred, severity_error, phase_read_files,
                 Context, Pieces),
             !:Specs = [Spec | !.Specs]
         )
@@ -867,7 +867,7 @@ check_analysis_file_version_number(FileName, FileStr, MaxOffset,
             words("but it does not."), nl],
         LineContext0 = line_context(LineNumber, _),
         Context = context(FileName, LineNumber),
-        Spec = simplest_spec($pred, severity_error, phase_read_files,
+        Spec = spec($pred, severity_error, phase_read_files,
             Context, Pieces),
         !:Specs = [Spec | !.Specs]
     ).
@@ -894,7 +894,7 @@ parse_analysis_file_entries(FileName, FileStr, MaxOffset, ParseEntry,
         Pieces = [words(Msg), nl],
         LineContext0 = line_context(LineNumber, _),
         Context = context(FileName, LineNumber),
-        Spec = simplest_spec($pred, severity_error, phase_read_files,
+        Spec = spec($pred, severity_error, phase_read_files,
             Context, Pieces),
         !:Specs = [Spec | !.Specs]
     ).

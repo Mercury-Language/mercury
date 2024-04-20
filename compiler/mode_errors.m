@@ -553,7 +553,7 @@ mode_error_unify_var_var_to_spec(ModeInfo, X, Y, InstX, InstY) = Spec :-
         [words("variable"),
         quote(mercury_var_to_name_only(VarTable, Y)) |
         has_instantiatedness(ModeInfo, InstY, ".")],
-    Spec = simplest_spec($pred, severity_error,
+    Spec = spec($pred, severity_error,
         phase_mode_check(report_in_any_mode), Context, Preamble ++ Pieces).
 
 %---------------------------------------------------------------------------%
@@ -611,7 +611,7 @@ mode_error_unify_var_functor_to_spec(ModeInfo, X, ConsId, ArgVars,
         has_instantiatedness(ModeInfo, InstX, ",")] ++
         [words("term"), words_quote(FunctorConsIdStr) |
         has_instantiatedness(ModeInfo, FakeTermInst, ".")],
-    Spec = simplest_spec($pred, severity_error,
+    Spec = spec($pred, severity_error,
         phase_mode_check(report_in_any_mode), Context, Preamble ++ Pieces).
 
 %---------------------------------------------------------------------------%
@@ -630,7 +630,7 @@ mode_error_unify_var_lambda_to_spec(ModeInfo, X, InstX, InstY) = Spec :-
         has_instantiatedness(ModeInfo, InstX, ",")] ++
         [words("lambda expression") |
         has_instantiatedness(ModeInfo, InstY, ".")],
-    Spec = simplest_spec($pred, severity_error,
+    Spec = spec($pred, severity_error,
         phase_mode_check(report_in_any_mode), Context, Preamble ++ Pieces).
 
 %---------------------------------------------------------------------------%
@@ -682,7 +682,7 @@ mode_error_unify_var_multimode_pf_to_spec(ModeInfo, X, PredMultiModeError)
             MatchPieces ++ [words("of the called"),
             p_or_f(PredOrFunc), suffix("'s"), words("modes."), nl]
     ),
-    Spec = simplest_spec($pred, severity_error,
+    Spec = spec($pred, severity_error,
         phase_mode_check(report_in_any_mode),
         Context, Preamble ++ StartPieces ++ DetailPieces).
 
@@ -726,7 +726,7 @@ mode_error_non_ground_non_local_lambda_var_to_spec(ModeInfo, Var, VarInst)
         has_instantiatedness(ModeInfo, VarInst, ",")] ++
         [words("expected instantiatedness for non-local variables"),
         words("of lambda goals is"), quote("ground"), suffix("."), nl],
-    Spec = simplest_spec($pred, severity_error,
+    Spec = spec($pred, severity_error,
         phase_mode_check(report_in_any_mode), Context, Preamble ++ Pieces).
 
 %---------------------------------------------------------------------------%
@@ -796,7 +796,7 @@ mode_error_var_is_not_sufficiently_instantiated_to_spec(ModeInfo, Var,
     MainPieces = [words("mode error: variable"),
         quote(mercury_var_to_name_only(VarTable, Var)) |
         has_inst_expected_inst_was(ModeInfo, VarInst, ExpectedInst)],
-    MainMsgs = [simplest_msg(Context, Preamble ++ MainPieces)],
+    MainMsgs = [msg(Context, Preamble ++ MainPieces)],
     Phase = phase_mode_check(report_in_any_mode),
     ( if
         inst_has_uniqueness(VarInst, mostly_unique),
@@ -807,7 +807,7 @@ mode_error_var_is_not_sufficiently_instantiated_to_spec(ModeInfo, Var,
             words("or some other kind of destructive update"),
             words("in a context where it can be backtracked over,"),
             words("such as the condition of an if-then-else."), nl],
-        UniqMsgs = [simplest_msg(Context, UniqPieces)]
+        UniqMsgs = [msg(Context, UniqPieces)]
     else
         UniqMsgs = []
     ),
@@ -818,7 +818,7 @@ mode_error_var_is_not_sufficiently_instantiated_to_spec(ModeInfo, Var,
         MaybeMultiModeError = yes(PredMultiModeError),
         ConnectPieces = [words("This may have been caused by"),
             words("the following error."), nl],
-        ConnectMsgs = [simplest_msg(Context, ConnectPieces)],
+        ConnectMsgs = [msg(Context, ConnectPieces)],
         SubSpec0 = mode_error_unify_var_multimode_pf_to_spec(ModeInfo, Var,
             PredMultiModeError),
         mode_info_get_module_info(ModeInfo, ModuleInfo),
@@ -870,7 +870,7 @@ mode_error_clobbered_var_is_live_to_spec(ModeInfo, Var) = Spec :-
         words("would clobber its argument, but variable"),
         quote(mercury_var_to_name_only(VarTable, Var)),
         words("is still live."), nl],
-    Spec = simplest_spec($pred, severity_error,
+    Spec = spec($pred, severity_error,
         phase_mode_check(report_in_any_mode), Context, Preamble ++ Pieces).
 
 %---------------------------------------------------------------------------%
@@ -883,7 +883,7 @@ mode_error_callee_pred_has_no_mode_decl_to_spec(ModeInfo) = Spec :-
     mode_info_get_context(ModeInfo, Context),
     % Functions have a default mode, so they do not need a mode declaration,
     Pieces = [words("no mode declaration for called predicate."), nl],
-    Spec = simplest_spec($pred, severity_error,
+    Spec = spec($pred, severity_error,
         phase_mode_check(report_in_any_mode), Context, Preamble ++ Pieces).
 
 %---------------------------------------------------------------------------%
@@ -978,7 +978,7 @@ mode_error_no_matching_mode_to_spec(ModeInfo, InstMap, Vars, ProcInitialInsts)
     Pieces = PrefixPieces ++ VarListInstPieces ++ NoMatchPieces ++
         BadArgPieces,
     mode_info_get_context(ModeInfo, Context),
-    Spec = simplest_spec($pred, severity_error,
+    Spec = spec($pred, severity_error,
         phase_mode_check(report_in_any_mode), Context, Pieces).
 
 :- pred var_insts_are_all_ground(module_info::in, instmap::in,
@@ -1243,7 +1243,7 @@ mode_error_bad_higher_order_inst_to_spec(ModeInfo, PredVar, PredVarInst,
             ActArityPiece, suffix("."), nl]
     ),
     Phase = phase_mode_check(report_in_any_mode),
-    Spec = simplest_spec($pred, severity_error, Phase,
+    Spec = spec($pred, severity_error, Phase,
         Context, PreamblePieces ++ MismatchPieces).
 
 %---------------------------------------------------------------------------%
@@ -1301,7 +1301,7 @@ mode_error_unschedulable_conjuncts_to_spec(ModeInfo, OoMErrors, Culprit)
             ConjPieces = [words("mode error in conjunction. The next"),
                 fixed(NumErrorsStr), words("error messages"),
                 words("indicate possible causes of this error."), nl],
-            Msgs1Start = [simplest_msg(Context, Preamble ++ ConjPieces)],
+            Msgs1Start = [msg(Context, Preamble ++ ConjPieces)],
             Msgs1Rest0 = list.map(
                 mode_error_conjunct_to_msgs(Context, ModeInfo),
                 ImportantErrors ++ OtherErrors),
@@ -1320,7 +1320,7 @@ mode_error_unschedulable_conjuncts_to_spec(ModeInfo, OoMErrors, Culprit)
         Culprit = goal_itself_was_impure,
         Pieces = [words("The goal could not be reordered,"),
             words("because it was impure."), nl],
-        Msgs2 = [simplest_msg(Context, Pieces)]
+        Msgs2 = [msg(Context, Pieces)]
     ;
         Culprit = goals_followed_by_impure_goal(ImpureGoal),
         ImpureGoal = hlds_goal(_, ImpureGoalInfo),
@@ -1328,8 +1328,8 @@ mode_error_unschedulable_conjuncts_to_spec(ModeInfo, OoMErrors, Culprit)
         Pieces1 = [words("The goal could not be reordered,"),
             words("because it was followed by an impure goal."), nl],
         Pieces2 = [words("This is the location of the impure goal."), nl],
-        Msgs2 = [simplest_msg(Context, Pieces1),
-            simplest_msg(ImpureGoalContext, Pieces2)]
+        Msgs2 = [msg(Context, Pieces1),
+            msg(ImpureGoalContext, Pieces2)]
     ),
     Phase = phase_mode_check(report_in_any_mode),
     Spec = error_spec($pred, severity_error, Phase, Msgs1 ++ Msgs2).
@@ -1338,7 +1338,7 @@ mode_error_unschedulable_conjuncts_to_spec(ModeInfo, OoMErrors, Culprit)
     = list(error_msg).
 
 prefix_with_blank_line(Context, Msgs) = [BlankMsg | Msgs] :-
-    BlankMsg = simplest_msg(Context, [blank_line]).
+    BlankMsg = msg(Context, [blank_line]).
 
 :- pred is_error_important(delayed_goal::in) is semidet.
 
@@ -1385,7 +1385,7 @@ mode_error_conjunct_to_msgs(Context, !.ModeInfo, DelayedGoal) = Msgs :-
         VarNames = mercury_vars_to_name_only(VarTable, VarList),
         Pieces1 = [words("Floundered goal, waiting on {"),
             words(VarNames), words("}:"), nl],
-        Msg1 = simplest_msg(Context, Pieces1),
+        Msg1 = msg(Context, Pieces1),
         % XXX Shouldn't we check debug_modes_verbose instead of very_verbose?
         globals.lookup_bool_option(Globals, very_verbose, VeryVerbose),
         (
@@ -1439,7 +1439,7 @@ mode_error_merge_par_conj_to_spec(ModeInfo, MergeErrors) = Spec :-
     list.condense(MergeMsgLists, MergeMsgs),
     Spec = error_spec($pred, severity_error,
         phase_mode_check(report_in_any_mode),
-        [simplest_msg(Context, Preamble ++ MainPieces) | MergeMsgs]).
+        [msg(Context, Preamble ++ MainPieces) | MergeMsgs]).
 
 %---------------------------------------------------------------------------%
 
@@ -1457,7 +1457,7 @@ mode_error_merge_disj_to_spec(ModeInfo, MergeContext, MergeErrors) = Spec :-
     list.condense(MergeMsgLists, MergeMsgs),
     Spec = error_spec($pred, severity_error,
         phase_mode_check(report_in_any_mode),
-        [simplest_msg(Context, Preamble ++ MainPieces) | MergeMsgs]).
+        [msg(Context, Preamble ++ MainPieces) | MergeMsgs]).
 
 :- func merge_context_to_string(merge_context) = string.
 
@@ -1531,7 +1531,7 @@ mode_error_coerce_error_to_spec(ModeInfo, Error) = Spec :-
             suffix("."), nl]
     ),
     Pieces = [words("mode error:")] ++ TermPathPieces ++ ReasonPieces,
-    Spec = simplest_spec($pred, severity_error,
+    Spec = spec($pred, severity_error,
         phase_mode_check(report_in_any_mode), Context, Preamble ++ Pieces).
 
 :- func make_term_path_piece(coerce_error_term_path_step) =
@@ -1700,7 +1700,7 @@ mode_error_unexpected_final_inst_to_spec(ModeInfo, RawArgNum, Var,
         report_inst(ModeInfo, quote_short_inst, [suffix("."), nl],
             [nl_indent_delta(1)], [suffix("."), nl_indent_delta(-1)],
             ExpectedInst)],
-    Spec = simplest_spec($pred, severity_error,
+    Spec = spec($pred, severity_error,
         phase_mode_check(report_in_any_mode), Context, Preamble ++ Pieces).
 
 %---------------------------------------------------------------------------%
@@ -1768,11 +1768,11 @@ mode_error_in_callee_to_spec(!.ModeInfo, Vars, Insts,
         ;
             LaterMsgs0 = [LaterHead0 | LaterTail],
             (
-                LaterHead0 = simplest_msg(LaterContext, Pieces),
+                LaterHead0 = msg(LaterContext, Pieces),
                 LaterHead = error_msg(yes(LaterContext), always_treat_as_first,
                     0, [always(Pieces)])
             ;
-                LaterHead0 = simplest_no_context_msg(Pieces),
+                LaterHead0 = no_ctxt_msg(Pieces),
                 LaterHead = error_msg(no, always_treat_as_first,
                     0, [always(Pieces)])
             ;
@@ -1825,7 +1825,7 @@ mode_error_cannot_create_implied_mode_to_spec(ModeInfo, Reason, Var, VarInst,
             quote(mercury_var_to_name_only(VarTable, Var)) |
             has_inst_expected_inst_was(ModeInfo, VarInst,
                 NonImpliedInitialInst)],
-        Spec = simplest_spec($pred, severity_error, Phase, Context,
+        Spec = spec($pred, severity_error, Phase, Context,
             Preamble ++ Pieces)
     else
         Spec = error_spec($pred, severity_informational, Phase,
@@ -1857,7 +1857,7 @@ purity_error_should_be_in_promise_purity_scope_to_spec(NegCtxtDesc,
             words("has inst"), quote("any"),
             words("and appears in the body."), nl]
     ),
-    Spec = simplest_spec($pred, severity_error,
+    Spec = spec($pred, severity_error,
         phase_mode_check(report_in_any_mode), Context, Preamble ++ Pieces).
 
 %---------------------------------------------------------------------------%
@@ -1944,7 +1944,7 @@ merge_error_to_msgs(ModeInfo, MainContext, IsDisjunctive, MergeError) = Msgs :-
     then
         VarPieces = [words("The variable"), VarNamePiece,
             words("is ground in some branches but not others."), nl],
-        VarMsg = simplest_msg(MainContext, VarPieces),
+        VarMsg = msg(MainContext, VarPieces),
         InstMsgs = list.map(
             report_inst_in_context(ModeInfo, VarNamePiece,
                 report_ground_vs_nonground_only),
@@ -1953,7 +1953,7 @@ merge_error_to_msgs(ModeInfo, MainContext, IsDisjunctive, MergeError) = Msgs :-
     else
         VarPieces = [words("The variable"), VarNamePiece,
             words("has the following instantiation states."), nl],
-        VarMsg = simplest_msg(MainContext, VarPieces),
+        VarMsg = msg(MainContext, VarPieces),
         InstMsgs = list.map(
             report_inst_in_context(ModeInfo, VarNamePiece, report_inst_only),
             ContextsInsts),
@@ -1994,7 +1994,7 @@ report_inst_in_context(ModeInfo, VarNamePiece, ReportIsGround, Context - Inst)
     (
         ReportIsGround = report_inst_only,
         Pieces = report_inst_in_branch(ModeInfo, VarNamePiece, no, Inst),
-        Msg = simplest_msg(Context, Pieces)
+        Msg = msg(Context, Pieces)
     ;
         ReportIsGround = report_ground_vs_nonground_only,
         mode_info_get_module_info(ModeInfo, ModuleInfo),
@@ -2005,7 +2005,7 @@ report_inst_in_context(ModeInfo, VarNamePiece, ReportIsGround, Context - Inst)
         else
             Pieces = report_inst_in_branch_simple(VarNamePiece, "not ground")
         ),
-        Msg = simplest_msg(Context, Pieces)
+        Msg = msg(Context, Pieces)
     ;
         ReportIsGround = report_inst_and_ground_vs_nonground,
         mode_info_get_module_info(ModeInfo, ModuleInfo),
@@ -2016,7 +2016,7 @@ report_inst_in_context(ModeInfo, VarNamePiece, ReportIsGround, Context - Inst)
         else
             Pieces = report_inst_in_branch(ModeInfo, VarNamePiece,
                 yes(nonground), Inst),
-            Msg = simplest_msg(Context, Pieces)
+            Msg = msg(Context, Pieces)
         )
     ).
 
@@ -2174,7 +2174,7 @@ mode_warning_cannot_succeed_var_var(ModeInfo, X, Y, InstX, InstY) = Spec :-
         has_instantiatedness(ModeInfo, InstX, ",")] ++
         [quote(mercury_var_to_name_only(VarTable, Y)) |
         has_instantiatedness(ModeInfo, InstY, ".")],
-    Spec = simplest_spec($pred, severity_warning,
+    Spec = spec($pred, severity_warning,
         phase_mode_check(report_only_if_in_all_modes),
         Context, Preamble ++ Pieces).
 
@@ -2194,7 +2194,7 @@ mode_warning_cannot_succeed_var_functor(ModeInfo, X, InstX, ConsId) = Spec :-
         words(ConsIdStr), words("cannot succeed."), nl,
         quote(mercury_var_to_name_only(VarTable, X)) |
         has_instantiatedness(ModeInfo, InstX, ".")],
-    Spec = simplest_spec($pred, severity_warning,
+    Spec = spec($pred, severity_warning,
         phase_mode_check(report_only_if_in_all_modes),
         Context, Preamble ++ Pieces).
 
@@ -2214,7 +2214,7 @@ mode_warning_cannot_succeed_ground_occur_check(ModeInfo, X, ConsId) = Spec :-
         words(ConsIdStr), words("cannot succeed, because"),
         quote(mercury_var_to_name_only(VarTable, X)),
         words("cannot be equal to a term containing itself."), nl],
-    Spec = simplest_spec($pred, severity_warning,
+    Spec = spec($pred, severity_warning,
         phase_mode_check(report_in_any_mode), Context, Preamble ++ Pieces).
 
 %---------------------------------------------------------------------------%

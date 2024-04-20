@@ -106,8 +106,8 @@ parse_type_repn_item(ModuleName, VarSet, ArgTerms, Context, SeqNum,
                         decl("type_representation"), words("item:"),
                         quote(AtomStr), words("should have"),
                         words("one argument."), nl],
-                    DuSpec = simplest_spec($pred, severity_error,
-                        phase_term_to_parse_tree, RepnContext, DuPieces),
+                    DuSpec = spec($pred, severity_error, phase_t2pt,
+                        RepnContext, DuPieces),
                     MaybeRepn = error1([DuSpec])
                 )
             ;
@@ -131,8 +131,7 @@ parse_type_repn_item(ModuleName, VarSet, ArgTerms, Context, SeqNum,
                 quote("du_repn"), words("and"),
                 quote("maybe_foreign_type_repn"), suffix(","),
                 words("got"), quote(RepnTermStr), suffix("."), nl],
-            RepnSpec = simplest_spec($pred, severity_error,
-                phase_term_to_parse_tree,
+            RepnSpec = spec($pred, severity_error, phase_t2pt,
                 get_term_context(RepnTerm), RepnPieces),
             MaybeRepn = error1([RepnSpec])
         ),
@@ -158,8 +157,7 @@ parse_type_repn_item(ModuleName, VarSet, ArgTerms, Context, SeqNum,
             decl("type_representation"), words("item"),
             words("should have two arguments: the type,"),
             words("and a description of its representation."), nl],
-        Spec = simplest_spec($pred, severity_error, phase_term_to_parse_tree,
-            Context, Pieces),
+        Spec = spec($pred, severity_error, phase_t2pt, Context, Pieces),
         MaybeIOM = error1([Spec])
     ).
 
@@ -178,8 +176,7 @@ parse_no_arg_type_repn(RepnStr, RepnArgs, RepnContext,
         RepnArgs = [_ | _],
         Pieces = [words("Error:"), quote(RepnStr),
             words("should have zero arguments."), nl],
-        Spec = simplest_spec($pred, severity_error, phase_term_to_parse_tree,
-            RepnContext, Pieces),
+        Spec = spec($pred, severity_error, phase_t2pt, RepnContext, Pieces),
         MaybeRepn = error1([Spec])
     ).
 
@@ -208,8 +205,7 @@ parse_type_repn_eqv_to(VarSet, RepnStr, RepnArgs, RepnContext, MaybeRepn) :-
         ),
         Pieces = [words("Error:"), quote(RepnStr),
             words("should have one argument, a type."), nl],
-        Spec = simplest_spec($pred, severity_error, phase_term_to_parse_tree,
-            RepnContext, Pieces),
+        Spec = spec($pred, severity_error, phase_t2pt, RepnContext, Pieces),
         MaybeRepn = error1([Spec])
     ).
 
@@ -228,8 +224,8 @@ parse_type_repn_subtype_of(RepnStr, RepnArgs, RepnContext, MaybeRepn) :-
             Pieces = [words("Error:"), quote(RepnStr),
                 words("should have one argument, a symbol name and arity."),
                 nl],
-            Spec = simplest_spec($pred, severity_error,
-                phase_term_to_parse_tree, RepnContext, Pieces),
+            Spec = spec($pred, severity_error, phase_t2pt,
+                RepnContext, Pieces),
             MaybeRepn = error1([Spec])
         )
     ;
@@ -238,8 +234,7 @@ parse_type_repn_subtype_of(RepnStr, RepnArgs, RepnContext, MaybeRepn) :-
         ),
         Pieces = [words("Error:"), quote(RepnStr),
             words("should have one argument, a type."), nl],
-        Spec = simplest_spec($pred, severity_error, phase_term_to_parse_tree,
-            RepnContext, Pieces),
+        Spec = spec($pred, severity_error, phase_t2pt, RepnContext, Pieces),
         MaybeRepn = error1([Spec])
     ).
 
@@ -286,7 +281,7 @@ parse_type_repn_du(VarSet, Term, MaybeDuRepn) :-
             quote("gen_du_only_functor(...)"),  words("and"),
             quote("gen_du_more_functors(...)"), suffix(","),
             words("got"), quote(TermStr), suffix("."), nl],
-        Spec = simplest_spec($pred, severity_error, phase_term_to_parse_tree,
+        Spec = spec($pred, severity_error, phase_t2pt,
             get_term_context(Term), Pieces),
         MaybeDuRepn = error1([Spec])
     ).
@@ -326,8 +321,7 @@ parse_type_repn_du_direct_dummy(VarSet, TermContext, ArgTerms, MaybeDuRepn) :-
         ),
         Pieces = [words("Error:"), quote("direct_dummy"),
             words("should have two arguments."), nl],
-        Spec = simplest_spec($pred, severity_error, phase_term_to_parse_tree,
-            TermContext, Pieces),
+        Spec = spec($pred, severity_error, phase_t2pt, TermContext, Pieces),
         MaybeDuRepn = error1([Spec])
     ).
 
@@ -357,8 +351,7 @@ parse_type_repn_du_enum(VarSet, TermContext, ArgTerms, MaybeDuRepn) :-
             LaterEnumPieces = [words("Error: the third argument of"),
                 quote("enum"), words("should be"),
                 words("a list of function symbols."), nl],
-            LaterEnumSpec = simplest_spec($pred, severity_error,
-                phase_term_to_parse_tree,
+            LaterEnumSpec = spec($pred, severity_error, phase_t2pt,
                 get_term_context(ArgTerm3), LaterEnumPieces),
             LaterEnumSpecs = [LaterEnumSpec]
         ),
@@ -391,8 +384,7 @@ parse_type_repn_du_enum(VarSet, TermContext, ArgTerms, MaybeDuRepn) :-
         ),
         Pieces = [words("Error:"), quote("enum"),
             words("should have four arguments."), nl],
-        Spec = simplest_spec($pred, severity_error, phase_term_to_parse_tree,
-            TermContext, Pieces),
+        Spec = spec($pred, severity_error, phase_t2pt, TermContext, Pieces),
         MaybeDuRepn = error1([Spec])
     ).
 
@@ -452,8 +444,7 @@ parse_type_repn_du_notag(VarSet, TermContext, ArgTerms, MaybeDuRepn) :-
         ),
         Pieces = [words("Error:"), quote("notag"),
             words("should have three arguments."), nl],
-        Spec = simplest_spec($pred, severity_error, phase_term_to_parse_tree,
-            TermContext, Pieces),
+        Spec = spec($pred, severity_error, phase_t2pt, TermContext, Pieces),
         MaybeDuRepn = error1([Spec])
     ).
 
@@ -478,9 +469,8 @@ parse_type_repn_du_gen_du_only_functor(VarSet, TermContext, AtomStr, ArgTerms,
         else
             ArgTypePieces = [words("Error: the second argument of"),
                 quote(AtomStr), words("should be a list of types."), nl],
-            ArgTypeSpec = simplest_spec($pred, severity_error,
-                phase_term_to_parse_tree, get_term_context(ArgTerm2),
-                ArgTypePieces),
+            ArgTypeSpec = spec($pred, severity_error, phase_t2pt,
+                get_term_context(ArgTerm2), ArgTypePieces),
             MaybeArgTypes = error1([ArgTypeSpec])
         ),
         DescPieces3 = [words("third argument of"),
@@ -516,8 +506,7 @@ parse_type_repn_du_gen_du_only_functor(VarSet, TermContext, AtomStr, ArgTerms,
         ),
         Pieces = [words("Error:"), quote("gen_du_only_functor"),
             words("should have four arguments."), nl],
-        Spec = simplest_spec($pred, severity_error, phase_term_to_parse_tree,
-            TermContext, Pieces),
+        Spec = spec($pred, severity_error, phase_t2pt, TermContext, Pieces),
         MaybeDuRepn = error1([Spec])
     ).
 
@@ -546,8 +535,8 @@ parse_type_repn_du_gen_du_more_functors(VarSet, TermContext, AtomStr, ArgTerms,
             Pieces = [words("Error: the third argument of"), quote(AtomStr),
                 words("should be a list of function symbol representations."),
                 nl],
-            Spec = simplest_spec($pred, severity_error,
-                phase_term_to_parse_tree, get_term_context(ArgTerm3), Pieces),
+            Spec = spec($pred, severity_error, phase_t2pt,
+                get_term_context(ArgTerm3), Pieces),
             MaybeOtherFunctors = error1([Spec])
         ),
         DescPieces4 = [words("fourth argument of"),
@@ -579,8 +568,7 @@ parse_type_repn_du_gen_du_more_functors(VarSet, TermContext, AtomStr, ArgTerms,
         ),
         Pieces = [words("Error:"), quote(AtomStr),
             words("should have four arguments."), nl],
-        Spec = simplest_spec($pred, severity_error, phase_term_to_parse_tree,
-            TermContext, Pieces),
+        Spec = spec($pred, severity_error, phase_t2pt, TermContext, Pieces),
         MaybeDuRepn = error1([Spec])
     ).
 
@@ -643,8 +631,8 @@ parse_du_functor(VarSet, Term, MaybeDuFunctor) :-
                 ),
                 Pieces = [words("Error:"), quote(AtomStr),
                     words("should have two arguments."), nl],
-                Spec = simplest_spec($pred, severity_error,
-                    phase_term_to_parse_tree, TermContext, Pieces),
+                Spec = spec($pred, severity_error, phase_t2pt,
+                    TermContext, Pieces),
                 MaybeDuFunctor = error1([Spec])
             )
         ;
@@ -665,9 +653,8 @@ parse_du_functor(VarSet, Term, MaybeDuFunctor) :-
                     ArgTypePieces = [words("Error: the second argument of"),
                         quote(AtomStr),
                         words("should be a list of types."), nl],
-                    ArgTypeSpec = simplest_spec($pred, severity_error,
-                        phase_term_to_parse_tree, get_term_context(ArgTerm2),
-                        ArgTypePieces),
+                    ArgTypeSpec = spec($pred, severity_error, phase_t2pt,
+                        get_term_context(ArgTerm2), ArgTypePieces),
                     MaybeArgTypes = error1([ArgTypeSpec])
                 ),
                 DescPieces3 = [words("third argument of"), quote(AtomStr)],
@@ -696,8 +683,8 @@ parse_du_functor(VarSet, Term, MaybeDuFunctor) :-
                 ),
                 Pieces = [words("Error:"), quote(AtomStr),
                     words("should have three arguments."), nl],
-                Spec = simplest_spec($pred, severity_error,
-                    phase_term_to_parse_tree, TermContext, Pieces),
+                Spec = spec($pred, severity_error, phase_t2pt,
+                    TermContext, Pieces),
                 MaybeDuFunctor = error1([Spec])
             )
         )
@@ -707,7 +694,7 @@ parse_du_functor(VarSet, Term, MaybeDuFunctor) :-
             quote("constant_functor(...)"), words("and"),
             quote("nonconstant_functor(...)"), suffix(","),
             words("got"), quote(TermStr), suffix("."), nl],
-        Spec = simplest_spec($pred, severity_error, phase_term_to_parse_tree,
+        Spec = spec($pred, severity_error, phase_t2pt,
             get_term_context(Term), Pieces),
         MaybeDuFunctor = error1([Spec])
     ).
@@ -740,8 +727,8 @@ parse_constant_repn(VarSet, Term, MaybeConstantRepn) :-
             ),
             Pieces = [words("Error:"), quote("constant"),
                 words("should have two arguments."), nl],
-            Spec = simplest_spec($pred, severity_error,
-                phase_term_to_parse_tree, TermContext, Pieces),
+            Spec = spec($pred, severity_error, phase_t2pt,
+                TermContext, Pieces),
             MaybeConstantRepn = error1([Spec])
         )
     else
@@ -749,7 +736,7 @@ parse_constant_repn(VarSet, Term, MaybeConstantRepn) :-
         Pieces = [words("Error: expected"),
             quote("constant(...)"), suffix(","),
             words("got"), quote(TermStr), suffix("."), nl],
-        Spec = simplest_spec($pred, severity_error, phase_term_to_parse_tree,
+        Spec = spec($pred, severity_error, phase_t2pt,
             get_term_context(Term), Pieces),
         MaybeConstantRepn = error1([Spec])
     ).
@@ -796,8 +783,8 @@ parse_only_nonconstant_repn(VarSet, Term, MaybeNonConstantRepn) :-
                     Pieces = [words("Error: the argument of"),
                         quote(AtomStr), words("should be a nonempty list"),
                         words("of local cell argument representations."), nl],
-                    Spec = simplest_spec($pred, severity_error,
-                        phase_term_to_parse_tree, TermContext, Pieces),
+                    Spec = spec($pred, severity_error, phase_t2pt,
+                        TermContext, Pieces),
                     MaybeNonConstantRepn = error1([Spec])
                 )
             ;
@@ -806,8 +793,8 @@ parse_only_nonconstant_repn(VarSet, Term, MaybeNonConstantRepn) :-
                 ),
                 Pieces = [words("Error:"), quote(AtomStr),
                     words("should have one argument."), nl],
-                Spec = simplest_spec($pred, severity_error,
-                    phase_term_to_parse_tree, TermContext, Pieces),
+                Spec = spec($pred, severity_error, phase_t2pt,
+                    TermContext, Pieces),
                 MaybeNonConstantRepn = error1([Spec])
             )
         ;
@@ -842,8 +829,8 @@ parse_only_nonconstant_repn(VarSet, Term, MaybeNonConstantRepn) :-
                     Pieces = [words("Error: the argument of"),
                         quote(AtomStr), words("should be a nonempty list"),
                         words("of remote cell argument representations."), nl],
-                    Spec = simplest_spec($pred, severity_error,
-                        phase_term_to_parse_tree, TermContext, Pieces),
+                    Spec = spec($pred, severity_error, phase_t2pt,
+                        TermContext, Pieces),
                     MaybeNonConstantRepn = error1([Spec])
                 )
             ;
@@ -852,8 +839,8 @@ parse_only_nonconstant_repn(VarSet, Term, MaybeNonConstantRepn) :-
                 ),
                 Pieces = [words("Error:"), quote(AtomStr),
                     words("should have one argument."), nl],
-                Spec = simplest_spec($pred, severity_error,
-                    phase_term_to_parse_tree, TermContext, Pieces),
+                Spec = spec($pred, severity_error, phase_t2pt,
+                    TermContext, Pieces),
                 MaybeNonConstantRepn = error1([Spec])
             )
         )
@@ -863,7 +850,7 @@ parse_only_nonconstant_repn(VarSet, Term, MaybeNonConstantRepn) :-
             quote("only_local_cell(...)"), words("and"),
             quote("only_remote_cell(...)"), suffix(","),
             words("got"), quote(TermStr), suffix("."), nl],
-        Spec = simplest_spec($pred, severity_error, phase_term_to_parse_tree,
+        Spec = spec($pred, severity_error, phase_t2pt,
             get_term_context(Term), Pieces),
         MaybeNonConstantRepn = error1([Spec])
     ).
@@ -914,8 +901,8 @@ parse_more_nonconstant_repn(VarSet, Term, MaybeNonConstantRepn) :-
                     Pieces = [words("Error: the second argument of"),
                         quote(AtomStr), words("should be a nonempty list"),
                         words("of local cell argument representations."), nl],
-                    Spec = simplest_spec($pred, severity_error,
-                        phase_term_to_parse_tree, TermContext, Pieces),
+                    Spec = spec($pred, severity_error, phase_t2pt,
+                        TermContext, Pieces),
                     Specs = [Spec | get_any_errors1(MaybeLocalSectag)],
                     MaybeNonConstantRepn = error1(Specs)
                 )
@@ -926,8 +913,8 @@ parse_more_nonconstant_repn(VarSet, Term, MaybeNonConstantRepn) :-
                 ),
                 Pieces = [words("Error:"), quote(AtomStr),
                     words("should have two arguments."), nl],
-                Spec = simplest_spec($pred, severity_error,
-                    phase_term_to_parse_tree, TermContext, Pieces),
+                Spec = spec($pred, severity_error, phase_t2pt,
+                    TermContext, Pieces),
                 MaybeNonConstantRepn = error1([Spec])
             )
         ;
@@ -968,8 +955,8 @@ parse_more_nonconstant_repn(VarSet, Term, MaybeNonConstantRepn) :-
                     Pieces = [words("Error: the second argument of"),
                         quote(AtomStr), words("should be a nonempty list"),
                         words("of remote cell argument representations."), nl],
-                    Spec = simplest_spec($pred, severity_error,
-                        phase_term_to_parse_tree, TermContext, Pieces),
+                    Spec = spec($pred, severity_error, phase_t2pt,
+                        TermContext, Pieces),
                     Specs = [Spec] ++
                         get_any_errors1(MaybePtag) ++
                         get_any_errors1(MaybeRemoteSectag),
@@ -983,8 +970,8 @@ parse_more_nonconstant_repn(VarSet, Term, MaybeNonConstantRepn) :-
                 ),
                 Pieces = [words("Error:"), quote(AtomStr),
                     words("should have three arguments."), nl],
-                Spec = simplest_spec($pred, severity_error,
-                    phase_term_to_parse_tree, TermContext, Pieces),
+                Spec = spec($pred, severity_error, phase_t2pt,
+                    TermContext, Pieces),
                 MaybeNonConstantRepn = error1([Spec])
             )
         ;
@@ -1006,8 +993,8 @@ parse_more_nonconstant_repn(VarSet, Term, MaybeNonConstantRepn) :-
                 ),
                 Pieces = [words("Error:"), quote(AtomStr),
                     words("should have one argument."), nl],
-                Spec = simplest_spec($pred, severity_error,
-                    phase_term_to_parse_tree, TermContext, Pieces),
+                Spec = spec($pred, severity_error, phase_t2pt,
+                    TermContext, Pieces),
                 MaybeNonConstantRepn = error1([Spec])
             )
         )
@@ -1018,7 +1005,7 @@ parse_more_nonconstant_repn(VarSet, Term, MaybeNonConstantRepn) :-
             quote("remote_cell(...)"), words("and"),
             quote("direct_arg"), suffix(","),
             words("got"), quote(TermStr), suffix("."), nl],
-        Spec = simplest_spec($pred, severity_error, phase_term_to_parse_tree,
+        Spec = spec($pred, severity_error, phase_t2pt,
             get_term_context(Term), Pieces),
         MaybeNonConstantRepn = error1([Spec])
     ).
@@ -1040,8 +1027,8 @@ parse_ptag(VarSet, Term, MaybePtag) :-
             Pieces = [words("Error: expected a ptag value"),
                 words("in the range [0 .. 7],"),
                 words("got"), quote(TermStr), suffix("."), nl],
-            Spec = simplest_spec($pred, severity_error,
-                phase_term_to_parse_tree, get_term_context(Term), Pieces),
+            Spec = spec($pred, severity_error, phase_t2pt,
+                get_term_context(Term), Pieces),
             MaybePtag = error1([Spec])
         )
     ;
@@ -1078,7 +1065,7 @@ parse_local_sectag(VarSet, Term, MaybeLocalSectag) :-
         Pieces = [words("Error: expected"),
             quote("local_sectag(Sectag, NumBits)"), suffix(","),
             words("got"), quote(TermStr), suffix("."), nl],
-        Spec = simplest_spec($pred, severity_error, phase_term_to_parse_tree,
+        Spec = spec($pred, severity_error, phase_t2pt,
             get_term_context(Term), Pieces),
         MaybeLocalSectag = error1([Spec])
     ).
@@ -1102,8 +1089,8 @@ parse_remote_sectag(VarSet, Term, MaybeRemoteSectag) :-
                 ArgTerms = [_ | _],
                 Pieces = [words("Error:"), quote(AtomStr),
                     words("should have no arguments."), nl],
-                Spec = simplest_spec($pred, severity_error,
-                    phase_term_to_parse_tree, TermContext, Pieces),
+                Spec = spec($pred, severity_error, phase_t2pt,
+                    TermContext, Pieces),
                 MaybeRemoteSectag = error1([Spec])
             )
         ;
@@ -1133,8 +1120,8 @@ parse_remote_sectag(VarSet, Term, MaybeRemoteSectag) :-
                 ),
                 Pieces = [words("Error:"), quote(AtomStr),
                     words("should have two arguments."), nl],
-                Spec = simplest_spec($pred, severity_error,
-                    phase_term_to_parse_tree, TermContext, Pieces),
+                Spec = spec($pred, severity_error, phase_t2pt,
+                    TermContext, Pieces),
                 MaybeRemoteSectag = error1([Spec])
             )
         )
@@ -1144,7 +1131,7 @@ parse_remote_sectag(VarSet, Term, MaybeRemoteSectag) :-
             quote("remote_no_sectag"), words("and"),
             quote("remote_sectag(...)"), suffix(","),
             words("got"), quote(TermStr), suffix("."), nl],
-        Spec = simplest_spec($pred, severity_error, phase_term_to_parse_tree,
+        Spec = spec($pred, severity_error, phase_t2pt,
             get_term_context(Term), Pieces),
         MaybeRemoteSectag = error1([Spec])
     ).
@@ -1183,8 +1170,8 @@ parse_local_sectag_word_or_size(VarSet, Term, MaybeSectagSize) :-
             ),
             Pieces = [words("Error:"), quote(AtomStr),
                 words("should have one argument."), nl],
-            Spec = simplest_spec($pred, severity_error,
-                phase_term_to_parse_tree, TermContext, Pieces),
+            Spec = spec($pred, severity_error, phase_t2pt,
+                TermContext, Pieces),
             MaybeSectagSize = error1([Spec])
         )
     else
@@ -1193,7 +1180,7 @@ parse_local_sectag_word_or_size(VarSet, Term, MaybeSectagSize) :-
             quote("lst_rest(...)"), words("and"),
             quote("lst_part(...)"), suffix(","),
             words("got"), quote(TermStr), suffix("."), nl],
-        Spec = simplest_spec($pred, severity_error, phase_term_to_parse_tree,
+        Spec = spec($pred, severity_error, phase_t2pt,
             get_term_context(Term), Pieces),
         MaybeSectagSize = error1([Spec])
     ).
@@ -1217,8 +1204,8 @@ parse_remote_sectag_word_or_size(VarSet, Term, MaybeSectagSize) :-
                 ArgTerms = [_ | _],
                 Pieces = [words("Error:"), quote(AtomStr),
                     words("should have no argument."), nl],
-                Spec = simplest_spec($pred, severity_error,
-                    phase_term_to_parse_tree, TermContext, Pieces),
+                Spec = spec($pred, severity_error, phase_t2pt,
+                    TermContext, Pieces),
                 MaybeSectagSize = error1([Spec])
             )
         ;
@@ -1241,8 +1228,8 @@ parse_remote_sectag_word_or_size(VarSet, Term, MaybeSectagSize) :-
                 ),
                 Pieces = [words("Error:"), quote(AtomStr),
                     words("should have one argument."), nl],
-                Spec = simplest_spec($pred, severity_error,
-                    phase_term_to_parse_tree, TermContext, Pieces),
+                Spec = spec($pred, severity_error, phase_t2pt,
+                    TermContext, Pieces),
                 MaybeSectagSize = error1([Spec])
             )
         )
@@ -1252,7 +1239,7 @@ parse_remote_sectag_word_or_size(VarSet, Term, MaybeSectagSize) :-
             quote("rst_full"), words("and"),
             quote("rst_part(...)"), suffix(","),
             words("got"), quote(TermStr), suffix("."), nl],
-        Spec = simplest_spec($pred, severity_error, phase_term_to_parse_tree,
+        Spec = spec($pred, severity_error, phase_t2pt,
             get_term_context(Term), Pieces),
         MaybeSectagSize = error1([Spec])
     ).
@@ -1299,8 +1286,8 @@ parse_local_arg_repn(VarSet, Term, MaybeLocalArgRepn) :-
                 ArgTerms = [_ | _],
                 Pieces = [words("Error:"), quote(AtomStr),
                     words("should have no arguments."), nl],
-                Spec = simplest_spec($pred, severity_error,
-                    phase_term_to_parse_tree, TermContext, Pieces),
+                Spec = spec($pred, severity_error, phase_t2pt,
+                    TermContext, Pieces),
                 MaybeLocalArgRepn = error1([Spec])
             )
         )
@@ -1310,7 +1297,7 @@ parse_local_arg_repn(VarSet, Term, MaybeLocalArgRepn) :-
             quote("local_partial(...)"),  words("and"),
             quote("local_none"), suffix(","),
             words("got"), quote(TermStr), suffix("."), nl],
-        Spec = simplest_spec($pred, severity_error, phase_term_to_parse_tree,
+        Spec = spec($pred, severity_error, phase_t2pt,
             get_term_context(Term), Pieces),
         MaybeLocalArgRepn = error1([Spec])
     ).
@@ -1344,7 +1331,7 @@ parse_local_arg_repn_partial(VarSet, AtomStr, ArgTerms, TermContext,
         ),
         Pieces = [words("Error:"), quote(AtomStr),
             words("should have two arguments."), nl],
-        Spec = simplest_spec($pred, severity_error, phase_term_to_parse_tree,
+        Spec = spec($pred, severity_error, phase_t2pt,
             TermContext, Pieces),
         MaybeLocalArgRepn = error1([Spec])
     ).
@@ -1410,8 +1397,8 @@ parse_remote_arg_repn(VarSet, Term, MaybeRemoteArgRepn) :-
                 ArgTerms = [_ | _],
                 Pieces = [words("Error:"), quote(AtomStr),
                     words("should have no arguments."), nl],
-                Spec = simplest_spec($pred, severity_error,
-                    phase_term_to_parse_tree, TermContext, Pieces),
+                Spec = spec($pred, severity_error, phase_t2pt,
+                    TermContext, Pieces),
                 MaybeRemoteArgRepn = error1([Spec])
             )
         )
@@ -1425,7 +1412,7 @@ parse_remote_arg_repn(VarSet, Term, MaybeRemoteArgRepn) :-
             quote("none_shifted(...)"), words("and"),
             quote("none_nowhere"), suffix(","),
             words("got"), quote(TermStr), suffix("."), nl],
-        Spec = simplest_spec($pred, severity_error, phase_term_to_parse_tree,
+        Spec = spec($pred, severity_error, phase_t2pt,
             get_term_context(Term), Pieces),
         MaybeRemoteArgRepn = error1([Spec])
     ).
@@ -1469,8 +1456,7 @@ parse_remote_arg_repn_full_or_none(VarSet, AtomStr, ArgTerms, TermContext,
         ),
         Pieces = [words("Error:"), quote(AtomStr),
             words("should have two arguments."), nl],
-        Spec = simplest_spec($pred, severity_error, phase_term_to_parse_tree,
-            TermContext, Pieces),
+        Spec = spec($pred, severity_error, phase_t2pt, TermContext, Pieces),
         MaybeRemoteArgRepn = error1([Spec])
     ).
 
@@ -1494,8 +1480,7 @@ parse_remote_arg_repn_double(VarSet, AtomStr, ArgTerms, TermContext,
                 quote("dw_float"), suffix(","),
                 quote("dw_int64"), words("and"),
                 quote("dw_uint64"), suffix("."), nl],
-            DwSpec = simplest_spec($pred, severity_error,
-                phase_term_to_parse_tree,
+            DwSpec = spec($pred, severity_error, phase_t2pt,
                 get_term_context(ArgTerm3), DwPieces),
             MaybeDW = error1([DwSpec])
         ),
@@ -1521,8 +1506,7 @@ parse_remote_arg_repn_double(VarSet, AtomStr, ArgTerms, TermContext,
         ),
         Pieces = [words("Error:"), quote(AtomStr),
             words("should have three arguments."), nl],
-        Spec = simplest_spec($pred, severity_error, phase_term_to_parse_tree,
-            TermContext, Pieces),
+        Spec = spec($pred, severity_error, phase_t2pt, TermContext, Pieces),
         MaybeRemoteArgRepn = error1([Spec])
     ).
 
@@ -1576,8 +1560,7 @@ parse_remote_arg_repn_partial(VarSet, AtomStr, ArgTerms, TermContext,
         ),
         Pieces = [words("Error:"), quote(AtomStr),
             words("should have four arguments."), nl],
-        Spec = simplest_spec($pred, severity_error, phase_term_to_parse_tree,
-            TermContext, Pieces),
+        Spec = spec($pred, severity_error, phase_t2pt, TermContext, Pieces),
         MaybeRemoteArgRepn = error1([Spec])
     ).
 
@@ -1596,8 +1579,8 @@ parse_arg_only_offset(VarSet, Term, MaybeArgOnlyOffset) :-
             TermStr = describe_error_term(VarSet, Term),
             Pieces = [words("Error: expected an integer that is"),
                 words("at least -2, got"), quote(TermStr), suffix("."), nl],
-            Spec = simplest_spec($pred, severity_error,
-                phase_term_to_parse_tree, get_term_context(Term), Pieces),
+            Spec = spec($pred, severity_error, phase_t2pt,
+                get_term_context(Term), Pieces),
             MaybeArgOnlyOffset = error1([Spec])
         )
     ;
@@ -1618,8 +1601,8 @@ parse_cell_offset(VarSet, Term, MaybeCellOffset) :-
             TermStr = describe_error_term(VarSet, Term),
             Pieces = [words("Error: expected an integer that is"),
                 words("at least -2, got"), quote(TermStr), suffix("."), nl],
-            Spec = simplest_spec($pred, severity_error,
-                phase_term_to_parse_tree, get_term_context(Term), Pieces),
+            Spec = spec($pred, severity_error, phase_t2pt,
+                get_term_context(Term), Pieces),
             MaybeCellOffset = error1([Spec])
         )
     ;
@@ -1661,8 +1644,8 @@ parse_fill_kind_size(VarSet, Term, MaybeFillKindSize) :-
                 ),
                 Pieces = [words("Error:"), quote(AtomStr),
                     words("should have one argument."), nl],
-                Spec = simplest_spec($pred, severity_error,
-                    phase_term_to_parse_tree, TermContext, Pieces),
+                Spec = spec($pred, severity_error, phase_t2pt,
+                    TermContext, Pieces),
                 MaybeFillKindSize = error1([Spec])
             )
         ;
@@ -1698,7 +1681,7 @@ parse_fill_kind_size(VarSet, Term, MaybeFillKindSize) :-
         TermStr = describe_error_term(VarSet, Term),
         Pieces = [words("Error: expected a fill kind and size, got"),
             quote(TermStr), suffix("."), nl],
-        Spec = simplest_spec($pred, severity_error, phase_term_to_parse_tree,
+        Spec = spec($pred, severity_error, phase_t2pt,
             get_term_context(Term), Pieces),
         MaybeFillKindSize = error1([Spec])
     ).
@@ -1715,8 +1698,7 @@ ok_if_arity_zero(AtomStr, TermContext, ArgTerms, FillKindSize,
         ArgTerms = [_ | _],
         Pieces = [words("Error:"), quote(AtomStr),
             words("must not have any one arguments."), nl],
-        Spec = simplest_spec($pred, severity_error, phase_term_to_parse_tree,
-            TermContext, Pieces),
+        Spec = spec($pred, severity_error, phase_t2pt, TermContext, Pieces),
         MaybeFillKindSize = error1([Spec])
     ).
 
@@ -1764,8 +1746,8 @@ parse_c_j_cs_repn_or_enum(DescPieces, VarSet, Term, MaybeCJCsRepnOrEnum) :-
                 Pieces = [words("In")] ++ DescPieces ++ [suffix(":"),
                     words("error:"), quote(AtomStr),
                     words("should have zero arguments."), nl],
-                Spec = simplest_spec($pred, severity_error,
-                    phase_term_to_parse_tree, TermContext, Pieces),
+                Spec = spec($pred, severity_error, phase_t2pt,
+                    TermContext, Pieces),
                 MaybeCJCsRepnOrEnum = error1([Spec])
             )
         ;
@@ -1802,8 +1784,8 @@ parse_c_j_cs_repn_or_enum(DescPieces, VarSet, Term, MaybeCJCsRepnOrEnum) :-
                 Pieces = [words("In")] ++ DescPieces ++ [suffix(":"),
                     words("error:"), quote(AtomStr),
                     words("should have three arguments."), nl],
-                Spec = simplest_spec($pred, severity_error,
-                    phase_term_to_parse_tree, TermContext, Pieces),
+                Spec = spec($pred, severity_error, phase_t2pt,
+                    TermContext, Pieces),
                 MaybeCJCsRepnOrEnum = error1([Spec])
             )
         )
@@ -1813,7 +1795,7 @@ parse_c_j_cs_repn_or_enum(DescPieces, VarSet, Term, MaybeCJCsRepnOrEnum) :-
             words("error: expected either"), quote("no_c_j_cs"),
             words("or"), quote("c_j_cs(...)"), suffix(","),
             words("got"), quote(TermStr), suffix("."), nl],
-        Spec = simplest_spec($pred, severity_error, phase_term_to_parse_tree,
+        Spec = spec($pred, severity_error, phase_t2pt,
             get_term_context(Term), Pieces),
         MaybeCJCsRepnOrEnum = error1([Spec])
     ).
@@ -1839,8 +1821,8 @@ parse_c_j_cs_repn(DescPieces, VarSet, Term, MaybeCJCsRepn) :-
                 Pieces = [words("In")] ++ DescPieces ++ [suffix(":"),
                     words("error:"), quote(AtomStr),
                     words("should have zero arguments."), nl],
-                Spec = simplest_spec($pred, severity_error,
-                    phase_term_to_parse_tree, TermContext, Pieces),
+                Spec = spec($pred, severity_error, phase_t2pt,
+                    TermContext, Pieces),
                 MaybeCJCsRepn = error1([Spec])
             )
         ;
@@ -1877,8 +1859,8 @@ parse_c_j_cs_repn(DescPieces, VarSet, Term, MaybeCJCsRepn) :-
                 Pieces = [words("In")] ++ DescPieces ++ [suffix(":"),
                     words("error:"), quote(AtomStr),
                     words("should have three arguments."), nl],
-                Spec = simplest_spec($pred, severity_error,
-                    phase_term_to_parse_tree, TermContext, Pieces),
+                Spec = spec($pred, severity_error, phase_t2pt,
+                    TermContext, Pieces),
                 MaybeCJCsRepn = error1([Spec])
             )
         )
@@ -1888,7 +1870,7 @@ parse_c_j_cs_repn(DescPieces, VarSet, Term, MaybeCJCsRepn) :-
             words("error: expected either"), quote("no_c_j_cs"),
             words("or"), quote("c_j_cs(...)"), suffix(","),
             words("got"), quote(TermStr), suffix("."), nl],
-        Spec = simplest_spec($pred, severity_error, phase_term_to_parse_tree,
+        Spec = spec($pred, severity_error, phase_t2pt,
             get_term_context(Term), Pieces),
         MaybeCJCsRepn = error1([Spec])
     ).
@@ -1920,8 +1902,8 @@ parse_maybe_enum_foreign_repn(DescPieces, Nth, VarSet, Term,
                     quote("c_j_cs"), suffix(":"),
                     words("error:"), quote(AtomStr),
                     words("should have zero arguments."), nl],
-                Spec = simplest_spec($pred, severity_error,
-                    phase_term_to_parse_tree, TermContext, Pieces),
+                Spec = spec($pred, severity_error, phase_t2pt,
+                    TermContext, Pieces),
                 MaybeMaybeRepnOrEnum = error1([Spec])
             )
         ;
@@ -1950,8 +1932,8 @@ parse_maybe_enum_foreign_repn(DescPieces, Nth, VarSet, Term,
                     quote("c_j_cs"), suffix(":"),
                     words("error:"), quote(AtomStr),
                     words("should have one argument."), nl],
-                Spec = simplest_spec($pred, severity_error,
-                    phase_term_to_parse_tree, TermContext, Pieces),
+                Spec = spec($pred, severity_error, phase_t2pt,
+                    TermContext, Pieces),
                 MaybeMaybeRepnOrEnum = error1([Spec])
             )
         ;
@@ -1977,7 +1959,7 @@ parse_maybe_enum_foreign_repn(DescPieces, Nth, VarSet, Term,
             quote("foreign_enum(...)"), words("and"),
             quote("foreign_type(...)"), suffix(","),
             words("got"), quote(TermStr), suffix("."), nl],
-        Spec = simplest_spec($pred, severity_error, phase_term_to_parse_tree,
+        Spec = spec($pred, severity_error, phase_t2pt,
             get_term_context(Term), Pieces),
         MaybeMaybeRepnOrEnum = error1([Spec])
     ).
@@ -2006,8 +1988,8 @@ parse_maybe_foreign_repn(DescPieces, Nth, VarSet, Term,
                     quote("c_j_cs"), suffix(":"),
                     words("error:"), quote(AtomStr),
                     words("should have zero arguments."), nl],
-                Spec = simplest_spec($pred, severity_error,
-                    phase_term_to_parse_tree, TermContext, Pieces),
+                Spec = spec($pred, severity_error, phase_t2pt,
+                    TermContext, Pieces),
                 MaybeMaybeRepnOrEnum = error1([Spec])
             )
         ;
@@ -2032,7 +2014,7 @@ parse_maybe_foreign_repn(DescPieces, Nth, VarSet, Term,
             quote("no_foreign"), words("and"),
             quote("foreign_type(...)"), suffix(","),
             words("got"), quote(TermStr), suffix("."), nl],
-        Spec = simplest_spec($pred, severity_error, phase_term_to_parse_tree,
+        Spec = spec($pred, severity_error, phase_t2pt,
             get_term_context(Term), Pieces),
         MaybeMaybeRepnOrEnum = error1([Spec])
     ).
@@ -2061,8 +2043,7 @@ parse_type_repn_foreign_type(VarSet, RepnStr, RepnArgs, RepnContext,
         ),
         Pieces = [words("Error:"), quote(RepnStr),
             words("should have one argument."), nl],
-        Spec = simplest_spec($pred, severity_error, phase_term_to_parse_tree,
-            RepnContext, Pieces),
+        Spec = spec($pred, severity_error, phase_t2pt, RepnContext, Pieces),
         MaybeRepn = error1([Spec])
     ).
 
@@ -2087,9 +2068,8 @@ parse_foreign_type_repn(DescPieces, Nth, VarSet, AtomStr, ArgTerms,
                 quote("c_j_cs"), suffix(":"),
                 words("error: expected the first argument of"), quote(AtomStr),
                 words("to be a string, got"), quote(TermStr), suffix("."), nl],
-            TypeNameSpec = simplest_spec($pred, severity_error,
-                phase_term_to_parse_tree, get_term_context(TypeNameTerm),
-                TypeNamePieces),
+            TypeNameSpec = spec($pred, severity_error, phase_t2pt,
+                get_term_context(TypeNameTerm), TypeNamePieces),
             MaybeTypeName = error1([TypeNameSpec])
         ),
         ContextPieces2 = [words("In")] ++ DescPieces ++ [suffix(":"),
@@ -2120,8 +2100,7 @@ parse_foreign_type_repn(DescPieces, Nth, VarSet, AtomStr, ArgTerms,
             quote("c_j_cs"), suffix(":"),
             words("error:"), quote(AtomStr),
             words("should have zero arguments."), nl],
-        Spec = simplest_spec($pred, severity_error,
-            phase_term_to_parse_tree, TermContext, Pieces),
+        Spec = spec($pred, severity_error, phase_t2pt, TermContext, Pieces),
         MaybeForeignTypeRepn = error1([Spec])
     ).
 
@@ -2143,8 +2122,8 @@ parse_one_or_more_strings(DescPieces, VarSet, Term, MaybeOoMStrings) :-
                 Pieces = [words("In")] ++ DescPieces ++ [suffix(":"),
                     words("error: expected a nonempty list of strings,"),
                     words("got an empty list."), nl],
-                Spec = simplest_spec($pred, severity_error,
-                    phase_term_to_parse_tree, get_term_context(Term), Pieces),
+                Spec = spec($pred, severity_error, phase_t2pt,
+                    get_term_context(Term), Pieces),
                 MaybeOoMStrings = error1([Spec])
             ;
                 StringTerms = [_ | _],
@@ -2170,7 +2149,7 @@ parse_one_or_more_strings(DescPieces, VarSet, Term, MaybeOoMStrings) :-
         Pieces = [words("In") | DescPieces] ++ [suffix(":"),
             words("error: expected a list of strings, got"),
             quote(TermStr), suffix("."), nl],
-        Spec = simplest_spec($pred, severity_error, phase_term_to_parse_tree,
+        Spec = spec($pred, severity_error, phase_t2pt,
             get_term_context(Term), Pieces),
         MaybeOoMStrings = error1([Spec])
     ).
@@ -2210,8 +2189,8 @@ parse_c_repns(DescPieces, ParseRepn, VarSet, Term, MaybeCRepns) :-
                 Pieces = [words("In") | DescPieces] ++ [suffix(":"),
                     quote("c_repns_same"),
                     words("should have one argument."), nl],
-                Spec = simplest_spec($pred, severity_error,
-                    phase_term_to_parse_tree, get_term_context(Term), Pieces),
+                Spec = spec($pred, severity_error, phase_t2pt,
+                    get_term_context(Term), Pieces),
                 MaybeCRepns = error1([Spec])
             )
         ;
@@ -2239,8 +2218,8 @@ parse_c_repns(DescPieces, ParseRepn, VarSet, Term, MaybeCRepns) :-
                 Pieces = [words("In") | DescPieces] ++ [suffix(":"),
                     quote("c_repns_64_32"),
                     words("should have two arguments."), nl],
-                Spec = simplest_spec($pred, severity_error,
-                    phase_term_to_parse_tree, get_term_context(Term), Pieces),
+                Spec = spec($pred, severity_error, phase_t2pt,
+                    get_term_context(Term), Pieces),
                 MaybeCRepns = error1([Spec])
             )
         ;
@@ -2286,8 +2265,8 @@ parse_c_repns(DescPieces, ParseRepn, VarSet, Term, MaybeCRepns) :-
                 Pieces = [words("In") | DescPieces] ++ [suffix(":"),
                     quote("c_repns_all"),
                     words("should have six arguments."), nl],
-                Spec = simplest_spec($pred, severity_error,
-                    phase_term_to_parse_tree, get_term_context(Term), Pieces),
+                Spec = spec($pred, severity_error, phase_t2pt,
+                    get_term_context(Term), Pieces),
                 MaybeCRepns = error1([Spec])
             )
         )
@@ -2299,7 +2278,7 @@ parse_c_repns(DescPieces, ParseRepn, VarSet, Term, MaybeCRepns) :-
             quote("c_repns_64_32(...)"), words("or"),
             quote("c_repns_all(...)"), suffix(","),
             words("got"), quote(TermStr), suffix("."), nl],
-        Spec = simplest_spec($pred, severity_error, phase_term_to_parse_tree,
+        Spec = spec($pred, severity_error, phase_t2pt,
             get_term_context(Term), Pieces),
         MaybeCRepns = error1([Spec])
     ).
@@ -2320,7 +2299,7 @@ parse_strings(DescPieces, Nth, VarSet, [Term | Terms], !:Strs, !:Specs) :-
             words("in the"), nth_fixed(Nth), words("element of the list:"),
             words("error: expected a string, got"),
             quote(TermStr), suffix("."), nl],
-        Spec = simplest_spec($pred, severity_error, phase_term_to_parse_tree,
+        Spec = spec($pred, severity_error, phase_t2pt,
             get_term_context(Term), Pieces),
         !:Specs = [Spec | !.Specs]
     ).
@@ -2336,7 +2315,7 @@ parse_string(VarSet, ContextPieces, Desc, Term, MaybeFunctorName) :-
         Pieces = ContextPieces ++ [lower_case_next_if_not_first,
             words("Error: expected"), words(Desc), suffix(","),
             words("got"), quote(TermStr), suffix("."), nl],
-        Spec = simplest_spec($pred, severity_error, phase_term_to_parse_tree,
+        Spec = spec($pred, severity_error, phase_t2pt,
             get_term_context(Term), Pieces),
         MaybeFunctorName = error1([Spec])
     ).
@@ -2358,7 +2337,7 @@ parse_unlimited_int(VarSet, Term, MaybeInt) :-
         TermStr = describe_error_term(VarSet, Term),
         Pieces = [words("Error: expected an integer,"),
             words("got"), quote(TermStr), suffix("."), nl],
-        Spec = simplest_spec($pred, severity_error, phase_term_to_parse_tree,
+        Spec = spec($pred, severity_error, phase_t2pt,
             get_term_context(Term), Pieces),
         MaybeInt = error1([Spec])
     ).
@@ -2379,7 +2358,7 @@ parse_unlimited_uint(VarSet, Term, MaybeUint) :-
         TermStr = describe_error_term(VarSet, Term),
         Pieces = [words("Error: expected a nonnegative integer,"),
             words("got"), quote(TermStr), suffix("."), nl],
-        Spec = simplest_spec($pred, severity_error, phase_term_to_parse_tree,
+        Spec = spec($pred, severity_error, phase_t2pt,
             get_term_context(Term), Pieces),
         MaybeUint = error1([Spec])
     ).
@@ -2403,7 +2382,7 @@ parse_uint_in_range(Max, VarSet, Term, MaybeUint) :-
         Pieces = [words("Error: expected integer between 0 and"),
             int_fixed(uint.cast_to_int(Max)),
             words("got"), quote(TermStr), suffix("."), nl],
-        Spec = simplest_spec($pred, severity_error, phase_term_to_parse_tree,
+        Spec = spec($pred, severity_error, phase_t2pt,
             get_term_context(Term), Pieces),
         MaybeUint = error1([Spec])
     ).

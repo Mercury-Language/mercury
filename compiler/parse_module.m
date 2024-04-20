@@ -593,7 +593,7 @@ report_module_has_unexpected_name(FileName, ExpectedName, ExpectationContexts,
 
 expectation_context_to_msg(Context, SubMsg) :-
     SubPieces = [words("The expected name is specified here."), nl],
-    SubMsg = simplest_msg(Context, SubPieces).
+    SubMsg = msg(Context, SubPieces).
 
 %---------------------%
 
@@ -964,8 +964,8 @@ parse_int_file_sections(FileString, FileStringLen,
                     Pieces = [words("Error: an interface file"),
                         words("should not have two consecutive"),
                         words("interface sections."), nl],
-                    Spec = simplest_spec($pred, severity_error,
-                        phase_term_to_parse_tree, SectionContext, Pieces),
+                    Spec = spec($pred, severity_error, phase_t2pt,
+                        SectionContext, Pieces),
                     add_nonfatal_error(rme_nec, [Spec], !Errors),
                     MaybeParseTreeInt = no
                 ;
@@ -1059,8 +1059,7 @@ parse_int_file_section(FileString, FileStringLen,
             Pieces = [words("Error: expected the start of an"),
                 words(ExpectedSectionKindStr), words("section, got")] ++
                 IOMPieces ++ [suffix("."), nl],
-            Spec = simplest_spec($pred, severity_error,
-                phase_term_to_parse_tree, Context, Pieces),
+            Spec = spec($pred, severity_error, phase_t2pt, Context, Pieces),
             add_nonfatal_error(rme_nec, [Spec], !Errors),
             FinalLookAhead = lookahead(ReadIOMResult),
             MaybeRawItemBlock = no
@@ -1233,7 +1232,7 @@ parse_src_file_components(FileString, FileStringLen,
             IOM = iom_marker_version_numbers(_),
             Pieces = [words("Error: unexpected version_numbers record"),
                 words("in source file."), nl],
-            Spec = simplest_spec($pred, severity_error, phase_read_files,
+            Spec = spec($pred, severity_error, phase_read_files,
                 get_term_context(IOMTerm), Pieces),
             add_nonfatal_error(rme_nec, [Spec], !Errors),
             parse_src_file_components(FileString, FileStringLen,
@@ -1259,8 +1258,8 @@ parse_src_file_components(FileString, FileStringLen,
                         qual_sym_name(RawStartModuleName),
                         words("does not match the then-current module,"),
                         qual_sym_name(CurModuleName), suffix("."), nl],
-                    Spec = simplest_spec($pred, severity_error,
-                        phase_term_to_parse_tree, StartContext, Pieces),
+                    Spec = spec($pred, severity_error, phase_t2pt,
+                        StartContext, Pieces),
                     add_nonfatal_error(rme_nec, [Spec], !Errors),
                     % Recover partially by ignoring the bad module
                     % qualification. The recovery is only partial because
@@ -1398,8 +1397,7 @@ generate_missing_start_section_warning_src(CurModuleName,
             words("The following assumes that"),
             words("the missing declaration is an"),
             decl("implementation"), words("declaration."), nl],
-        Spec = simplest_spec($pred, severity_error, phase_term_to_parse_tree,
-            Context, Pieces),
+        Spec = spec($pred, severity_error, phase_t2pt, Context, Pieces),
         add_nonfatal_error(rme_no_section_decl_at_start, [Spec], !Errors)
     ;
         !.MissingStartSectionWarning =
@@ -1431,8 +1429,8 @@ parse_src_file_submodule(FileString, FileStringLen, ContainingModules,
             words("The following assumes that"),
             words("the missing declaration is an"),
             decl("interface"), words("declaration."), nl],
-        NoSectionSpec = simplest_spec($pred, severity_error,
-            phase_term_to_parse_tree, StartContext, NoSectionPieces),
+        NoSectionSpec = spec($pred, severity_error, phase_t2pt,
+            StartContext, NoSectionPieces),
         % XXX ITEM_LIST Should this be a situation-specific rme_X value?
         add_nonfatal_error(rme_no_section_decl_at_start, [NoSectionSpec],
             !Errors),
@@ -1468,8 +1466,7 @@ handle_module_end_marker(CurModuleName, ContainingModules, ReadIOMResult,
         Pieces = [words("Error: missing"), decl("end_module"),
             words("declaration for"), qual_sym_name(CurModuleName),
             suffix("."), nl],
-        Spec = simplest_spec($pred, severity_error, phase_term_to_parse_tree,
-            EndContext, Pieces),
+        Spec = spec($pred, severity_error, phase_t2pt, EndContext, Pieces),
         add_fatal_error(frme_bad_module_end, [Spec], !Errors),
         FinalLookAhead = lookahead(ReadIOMResult)
     else
@@ -1477,8 +1474,7 @@ handle_module_end_marker(CurModuleName, ContainingModules, ReadIOMResult,
             words("declaration for"), qual_sym_name(EndedModuleName),
             words("is not for the module at whose end it appears,"),
             words("which is"), qual_sym_name(CurModuleName), suffix("."), nl],
-        Spec = simplest_spec($pred, severity_error, phase_term_to_parse_tree,
-            EndContext, Pieces),
+        Spec = spec($pred, severity_error, phase_t2pt, EndContext, Pieces),
         add_fatal_error(frme_bad_module_end, [Spec], !Errors),
         % Eat the bad end_module declaration.
         FinalLookAhead = no_lookahead
@@ -1797,8 +1793,8 @@ parse_item_sequence_inner(FileString, FileStringLen, ModuleName,
                     Pieces = [words("Error: version number records"),
                         words("should not appear anywhere except in"),
                         words("automatically generated interface files."), nl],
-                    Spec = simplest_spec($pred, severity_error,
-                        phase_read_files, get_term_context(IOMTerm), Pieces),
+                    Spec = spec($pred, severity_error, phase_read_files,
+                        get_term_context(IOMTerm), Pieces),
                     add_nonfatal_error(rme_nec, [Spec], !Errors)
                 ;
                     IOM = iom_marker_include(Incls),
@@ -1903,8 +1899,7 @@ read_term_to_iom_result(ModuleName, FileName, ReadTermResult, ReadIOMResult,
         Context = term_context.context_init(FileName, LineNumber),
         % XXX Do we need to add an "Error:" prefix?
         Pieces = [words(ErrorMsg), suffix("."), nl],
-        Spec = simplest_spec($pred, severity_error, phase_term_to_parse_tree,
-            Context, Pieces),
+        Spec = spec($pred, severity_error, phase_t2pt, Context, Pieces),
         ReadIOMResult = read_iom_parse_term_error(Spec)
     ;
         ReadTermResult = term(VarSet, Term),
@@ -1928,8 +1923,7 @@ report_missing_module_start(FirstContext) = Spec :-
     Pieces = [invis_order_default_start(0, ""),
         words("Error: module must start with a"),
         decl("module"), words("declaration."), nl],
-    Spec = simplest_spec($pred, severity_error, phase_term_to_parse_tree,
-        FirstContext, Pieces).
+    Spec = spec($pred, severity_error, phase_t2pt, FirstContext, Pieces).
 
 :- func report_wrong_module_start(prog_context, module_name, module_name)
     = error_spec.
@@ -1939,8 +1933,7 @@ report_wrong_module_start(FirstContext, Expected, Actual) = Spec :-
         decl("module"), words("declaration."), nl,
         words("Expected module"), qual_sym_name(Expected), suffix(","),
         words("found module"), qual_sym_name(Actual), suffix("."), nl],
-    Spec = simplest_spec($pred, severity_error, phase_term_to_parse_tree,
-        FirstContext, Pieces).
+    Spec = spec($pred, severity_error, phase_t2pt, FirstContext, Pieces).
 
     % The predicate that reads in source file handles all items and markers
     % it reads in, and stops only at an end_module declaration that matches
@@ -1999,8 +1992,7 @@ report_unexpected_term_at_end(FileKind, Term, !Errors) :-
         Error = rme_unexpected_term_in_int_or_opt,
         Pieces = [words("Error: unexpected item in optimization file"), nl]
     ),
-    Spec = simplest_spec($pred, severity_error, phase_term_to_parse_tree,
-        Context, Pieces),
+    Spec = spec($pred, severity_error, phase_t2pt, Context, Pieces),
     add_nonfatal_error(Error, [Spec], !Errors).
 
 %---------------------------------------------------------------------------%

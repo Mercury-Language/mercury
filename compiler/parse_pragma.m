@@ -84,8 +84,7 @@ parse_pragma(ModuleName, VarSet, PragmaTerms, Context, SeqNum, MaybeIOM) :-
         else
             Pieces = [words("Error:"), quote(PragmaName),
                 words("is not a recognized pragma name."), nl],
-            Spec = simplest_spec($pred, severity_error,
-                phase_term_to_parse_tree, Context, Pieces),
+            Spec = spec($pred, severity_error, phase_t2pt, Context, Pieces),
             MaybeIOM = error1([Spec])
         )
     else
@@ -302,8 +301,7 @@ report_unrecognized_pragma(Context) = Spec :-
     Pieces = [words("Error: a"), decl("pragma"), words("declaration"),
         words("should have the form"),
         quote(":- pragma pragma_name(pragma_arguments)."), nl],
-    Spec = simplest_spec($pred, severity_error, phase_term_to_parse_tree,
-        Context, Pieces).
+    Spec = spec($pred, severity_error, phase_t2pt, Context, Pieces).
 
 %---------------------------------------------------------------------------%
 %
@@ -338,7 +336,7 @@ parse_name_arity_decl_pragma(ModuleName, PragmaName, MarkerKind,
         ),
         Pieces = [words("Error: a"), pragma_decl(PragmaName),
             words("declaration must have exactly one argument."), nl],
-        Spec = simplest_spec($pred, severity_error, phase_term_to_parse_tree,
+        Spec = spec($pred, severity_error, phase_t2pt,
             get_term_context(ErrorTerm), Pieces),
         MaybeIOM = error1([Spec])
    ).
@@ -370,7 +368,7 @@ parse_name_arity_impl_pragma(ModuleName, PragmaName, MarkerKind,
         ),
         Pieces = [words("Error: a"), pragma_decl(PragmaName),
             words("declaration must have exactly one argument."), nl],
-        Spec = simplest_spec($pred, severity_error, phase_term_to_parse_tree,
+        Spec = spec($pred, severity_error, phase_t2pt,
             get_term_context(ErrorTerm), Pieces),
         MaybeIOM = error1([Spec])
    ).
@@ -399,15 +397,13 @@ parse_pragma_source_file(PragmaTerms, Context, MaybeIOM) :-
             Pieces = [words("Error: the argument of a"),
                 pragma_decl("source_file"),
                 words("declaration should be a string."), nl],
-            Spec = simplest_spec($pred, severity_error,
-                phase_term_to_parse_tree, Context, Pieces),
+            Spec = spec($pred, severity_error, phase_t2pt, Context, Pieces),
             MaybeIOM = error1([Spec])
         )
     else
         Pieces = [words("Error: a"), pragma_decl("source_file"),
             words("declaration must have exactly one argument."), nl],
-        Spec = simplest_spec($pred, severity_error, phase_term_to_parse_tree,
-            Context, Pieces),
+        Spec = spec($pred, severity_error, phase_t2pt, Context, Pieces),
         MaybeIOM = error1([Spec])
     ).
 
@@ -457,8 +453,7 @@ parse_pragma_external(ModuleName, VarSet, ErrorTerm, PragmaName, PragmaTerms,
                     cord.list(ContextPieces1) ++
                     [words("is not for the expected module, which is"),
                     qual_sym_name(ModuleName), suffix("."), nl],
-                Spec = simplest_spec($pred, severity_error,
-                    phase_term_to_parse_tree,
+                Spec = spec($pred, severity_error, phase_t2pt,
                     get_term_context(ErrorTerm), Pieces),
                 MaybeIOM = error1([Spec])
             )
@@ -470,7 +465,7 @@ parse_pragma_external(ModuleName, VarSet, ErrorTerm, PragmaName, PragmaTerms,
     else
         Pieces = [words("Error: a"), pragma_decl(PragmaName),
             words("declaration must have one or two arguments."), nl],
-        Spec = simplest_spec($pred, severity_error, phase_term_to_parse_tree,
+        Spec = spec($pred, severity_error, phase_t2pt,
             get_term_context(ErrorTerm), Pieces),
         MaybeIOM = error1([Spec])
     ).
@@ -486,8 +481,7 @@ parse_symname_arity(VarSet, PredTerm, ContextPieces, MaybeSymNameArity) :-
         else
             ArityPieces = [words("Error: in")] ++ cord.list(ContextPieces) ++
                 [suffix(":"), words("the arity must be an integer."), nl],
-            AritySpec = simplest_spec($pred, severity_error,
-                phase_term_to_parse_tree,
+            AritySpec = spec($pred, severity_error, phase_t2pt,
                 get_term_context(ArityTerm), ArityPieces),
             MaybeArity = error1([AritySpec])
         ),
@@ -504,7 +498,7 @@ parse_symname_arity(VarSet, PredTerm, ContextPieces, MaybeSymNameArity) :-
     else
         Pieces = [words("Error:") | cord.list(ContextPieces)] ++
             [words("should be Name/Arity."), nl],
-        Spec = simplest_spec($pred, severity_error, phase_term_to_parse_tree,
+        Spec = spec($pred, severity_error, phase_t2pt,
             get_term_context(PredTerm), Pieces),
         MaybeSymNameArity = error2([Spec])
     ).
@@ -547,8 +541,7 @@ parse_pragma_external_options(VarSet, MaybeOptionsTerm, ContextPieces,
                 quote("low_level_backend"), words("or"),
                 quote("high_level_backend"), suffix(","),
                 words("got"), words(OptionsTermStr), suffix("."), nl],
-            Spec = simplest_spec($pred, severity_error,
-                phase_term_to_parse_tree,
+            Spec = spec($pred, severity_error, phase_t2pt,
                 get_term_context(OptionsTerm), Pieces),
             MaybeMaybeBackend = error1([Spec])
         )
@@ -596,7 +589,7 @@ parse_pragma_obsolete(ModuleName, PragmaTerms, ErrorTerm, VarSet,
         ),
         Pieces = [words("Error: an"), pragma_decl("obsolete"),
             words("declaration must have one or two arguments."), nl],
-        Spec = simplest_spec($pred, severity_error, phase_term_to_parse_tree,
+        Spec = spec($pred, severity_error, phase_t2pt,
             get_term_context(ErrorTerm), Pieces),
         MaybeIOM = error1([Spec])
    ).
@@ -643,7 +636,7 @@ parse_pragma_obsolete_proc(ModuleName, PragmaTerms, ErrorTerm, VarSet,
         ),
         Pieces = [words("Error: an"), pragma_decl("obsolete_proc"),
             words("declaration must have one or two arguments."), nl],
-        Spec = simplest_spec($pred, severity_error, phase_term_to_parse_tree,
+        Spec = spec($pred, severity_error, phase_t2pt,
             get_term_context(ErrorTerm), Pieces),
         MaybeIOM = error1([Spec])
    ).
@@ -660,7 +653,7 @@ parse_pragma_obsolete_in_favour_of(Term, VarSet, MaybeObsoleteInFavourOf) :-
             pragma_decl("obsolete"), words("declaration"),
             words("should be a list of the names and arities of the"),
             words("suggested replacement predicates and/or functions."), nl],
-        Spec = simplest_spec($pred, severity_error, phase_term_to_parse_tree,
+        Spec = spec($pred, severity_error, phase_t2pt,
             get_term_context(Term), Pieces),
         MaybeObsoleteInFavourOf = error1([Spec])
     ).
@@ -679,7 +672,7 @@ parse_pragma_obsolete_in_favour_of_snas(ArgNum, [Term | Terms], VarSet,
             pragma_decl("obsolete"), words("declaration:"), nl,
             words("error: expected a name/arity pair, got"),
             quote(describe_error_term(VarSet, Term)), suffix("."), nl],
-        Spec = simplest_spec($pred, severity_error, phase_term_to_parse_tree,
+        Spec = spec($pred, severity_error, phase_t2pt,
             get_term_context(Term), Pieces),
         MaybeHeadSNA = error1([Spec])
     ),
@@ -730,9 +723,8 @@ parse_pragma_format_call(ModuleName, PragmaTerms, ErrorTerm, VarSet,
                 quote("format_string_values(N, M)"),
                 words("where N and M are strictly positive integers"),
                 words("or a nonempty list of such terms."), nl],
-            FormatCallSpec = simplest_spec($pred, severity_error,
-                phase_term_to_parse_tree, get_term_context(FormatCallTerm),
-                FormatCallPieces),
+            FormatCallSpec = spec($pred, severity_error, phase_t2pt,
+                get_term_context(FormatCallTerm), FormatCallPieces),
             MaybeFormatCall = error1([FormatCallSpec])
         ),
         ( if
@@ -756,7 +748,7 @@ parse_pragma_format_call(ModuleName, PragmaTerms, ErrorTerm, VarSet,
         ),
         Pieces = [words("Error: a"), pragma_decl("format_call"),
             words("declaration must have two arguments."), nl],
-        Spec = simplest_spec($pred, severity_error, phase_term_to_parse_tree,
+        Spec = spec($pred, severity_error, phase_t2pt,
             get_term_context(ErrorTerm), Pieces),
         MaybeIOM = error1([Spec])
    ).
@@ -828,8 +820,8 @@ parse_format_string_values_terms(VarSet, ListPos, HeadTerm, TailTerms,
             quote("format_string_values(N, M)"),
             words("where N and M are strictly positive integers,"),
             words("got"), quote(ErrorTermStr), suffix("."), nl],
-        HeadSpec = simplest_spec($pred, severity_error,
-            phase_term_to_parse_tree, get_term_context(HeadTerm), HeadPieces),
+        HeadSpec = spec($pred, severity_error, phase_t2pt,
+            get_term_context(HeadTerm), HeadPieces),
         Specs = [HeadSpec | TailSpecs],
         MaybeOoMFormatStringValues = error1(Specs)
     ).
@@ -863,8 +855,8 @@ parse_format_string_values_args(MaybeListPos, ErrorTerm, ArgTerms,
         ),
         Pieces = format_string_values_context(MaybeListPos) ++
             [words("format_string_values must have two arguments."), nl],
-        Spec = simplest_spec($pred, severity_error,
-            phase_term_to_parse_tree, get_term_context(ErrorTerm), Pieces),
+        Spec = spec($pred, severity_error, phase_t2pt,
+            get_term_context(ErrorTerm), Pieces),
         MaybeFormatStringValues = error1([Spec])
     ).
 
@@ -884,8 +876,8 @@ parse_arg_num(MaybeListPos, FS_VL, Term, MaybeArgNum) :-
     else
         Pieces = arg_num_context(MaybeListPos, FS_VL) ++
             [words("the argument number must be an integer."), nl],
-        Spec = simplest_spec($pred, severity_error,
-            phase_term_to_parse_tree, get_term_context(Term), Pieces),
+        Spec = spec($pred, severity_error, phase_t2pt,
+            get_term_context(Term), Pieces),
         MaybeArgNum = error1([Spec])
     ).
 
@@ -959,8 +951,8 @@ parse_pragma_require_tail_recursion(ModuleName, PragmaName, PragmaTerms,
                     words("declaration:"), nl,
                     words("error: expected attribute list, got"),
                     quote(OptionsTermStr), suffix("."), nl],
-                Spec = simplest_spec($pred, severity_error,
-                    phase_term_to_parse_tree, OptionsContext, Pieces),
+                Spec = spec($pred, severity_error, phase_t2pt,
+                    OptionsContext, Pieces),
                 MaybeOptions = error1([Spec])
             )
         ;
@@ -987,8 +979,7 @@ parse_pragma_require_tail_recursion(ModuleName, PragmaName, PragmaTerms,
         ),
         Pieces = [words("Error: a"), pragma_decl(PragmaName),
             words("declaration must have one or two arguments."), nl],
-        Spec = simplest_spec($pred, severity_error, phase_term_to_parse_tree,
-            Context, Pieces),
+        Spec = spec($pred, severity_error, phase_t2pt, Context, Pieces),
         MaybeIOM = error1([Spec])
     ).
 
@@ -1125,8 +1116,7 @@ conflicting_attributes_error(ThisName, EarlierName, Context) = Spec :-
         pragma_decl("require_tail_recursion"), words("attributes: "),
         quote(ThisName), words("conflicts with earlier attribute"),
         quote(EarlierName), suffix("."), nl],
-    Spec = simplest_spec($pred, severity_error, phase_term_to_parse_tree,
-        Context, Pieces).
+    Spec = spec($pred, severity_error, phase_t2pt, Context, Pieces).
 
 :- func pragma_require_tailrec_unknown_term_error(term, prog_context) =
     error_spec.
@@ -1136,8 +1126,7 @@ pragma_require_tailrec_unknown_term_error(Term, Context) = Spec :-
     Pieces = [words("Error: unrecognised "),
         pragma_decl("require_tail_recursion"), words("attribute: "),
         quote(describe_error_term(VarSet, Term)), suffix("."), nl],
-    Spec = simplest_spec($pred, severity_error, phase_term_to_parse_tree,
-        Context, Pieces).
+    Spec = spec($pred, severity_error, phase_t2pt, Context, Pieces).
 
 %---------------------------------------------------------------------------%
 %
@@ -1175,8 +1164,8 @@ parse_oisu_pragma(ModuleName, VarSet, ErrorTerm, PragmaTerms, Context, SeqNum,
                 pragma_decl("oisu"), words("declaration:"), nl,
                 words("error: expected predicate name/arity, got"),
                 quote(TypeCtorTermStr), suffix("."), nl],
-            TypeCtorSpec = simplest_spec($pred, severity_error,
-                phase_term_to_parse_tree, get_term_context(ErrorTerm), Pieces),
+            TypeCtorSpec = spec($pred, severity_error, phase_t2pt,
+                get_term_context(ErrorTerm), Pieces),
             MaybeTypeCtor = error1([TypeCtorSpec])
         ),
         parse_oisu_preds_term(ModuleName, VarSet, "second", "creators",
@@ -1217,7 +1206,7 @@ parse_oisu_pragma(ModuleName, VarSet, ErrorTerm, PragmaTerms, Context, SeqNum,
         ),
         Pieces = [words("Error: a"), pragma_decl("oisu"),
             words("declaration must have three or four arguments."), nl],
-        Spec = simplest_spec($pred, severity_error, phase_term_to_parse_tree,
+        Spec = spec($pred, severity_error, phase_t2pt,
             get_term_context(ErrorTerm), Pieces),
         MaybeIOM = error1([Spec])
    ).
@@ -1242,7 +1231,7 @@ parse_oisu_preds_term(ModuleName, VarSet, ArgNum, ExpectedFunctor, Term,
             quote(ExpectedFunctor ++
                 "([pred(name1/arity1), ..., pred(namen/arityn)])"),
             suffix("."), nl],
-        Spec = simplest_spec($pred, severity_error, phase_term_to_parse_tree,
+        Spec = spec($pred, severity_error, phase_t2pt,
             get_term_context(Term), Pieces),
         MaybePredSpecs = error1([Spec])
     ).
@@ -1300,7 +1289,7 @@ parse_pragma_type_spec_constr(ModuleName, VarSet0, ErrorTerm, PragmaTerms,
         Pieces = [words("Error: a"),
             pragma_decl("type_spec_constrained_preds"),
             words("declaration must have three arguments."), nl],
-        Spec = simplest_spec($pred, severity_error, phase_term_to_parse_tree,
+        Spec = spec($pred, severity_error, phase_t2pt,
             get_term_context(ErrorTerm), Pieces),
         MaybeIOM = error1([Spec])
     ).
@@ -1322,8 +1311,8 @@ parse_var_or_ground_constraint_list(NamedVarNames, Term, Constraints, Specs,
                 words("declaration:"),
                 words("error: the list of type class constraints"),
                 words("must not be empty."), nl],
-            Spec = simplest_spec($pred, severity_error,
-                phase_term_to_parse_tree, get_term_context(Term), Pieces),
+            Spec = spec($pred, severity_error, phase_t2pt,
+                get_term_context(Term), Pieces),
             Specs = [Spec]
         ;
             ConstraintTerms = [HeadConstraintTerm | TailConstraintTerms],
@@ -1342,8 +1331,8 @@ parse_var_or_ground_constraint_list(NamedVarNames, Term, Constraints, Specs,
             words("declaration:"),
             words("error: expected a list of type class constraints, got"),
             quote(describe_error_term(!.VarSet, Term)), suffix("."), nl],
-        Spec = simplest_spec($pred, severity_error,
-            phase_term_to_parse_tree, get_term_context(Term), Pieces),
+        Spec = spec($pred, severity_error, phase_t2pt,
+            get_term_context(Term), Pieces),
         Specs = [Spec]
     ).
 
@@ -1365,8 +1354,8 @@ parse_var_or_ground_constraint_acc(NamedVarNames, Term,
                 words("got the class name"),
                 quote(sym_name_to_string(ClassSymName)),
                 words("without any argument types."), nl],
-            Spec = simplest_spec($pred, severity_error,
-                phase_term_to_parse_tree, get_term_context(Term), Pieces),
+            Spec = spec($pred, severity_error, phase_t2pt,
+                get_term_context(Term), Pieces),
             !:Specs = [Spec | !.Specs]
         ;
             ArgTerms = [_ | _],
@@ -1401,8 +1390,8 @@ parse_var_or_ground_constraint_acc(NamedVarNames, Term,
             quote("class_name(argtype1, argtype2, ...)"),
             words("got"), quote(describe_error_term(!.VarSet, Term)),
             suffix("."), nl],
-        Spec = simplest_spec($pred, severity_error,
-            phase_term_to_parse_tree, get_term_context(Term), Pieces),
+        Spec = spec($pred, severity_error, phase_t2pt,
+            get_term_context(Term), Pieces),
         !:Specs = [Spec | !.Specs]
     ).
 
@@ -1435,8 +1424,8 @@ parse_var_or_ground_types(AllowHOInstInfo, VarSet, ContextPieces, ClassId,
                 quote("expect ground types as arguments,"),
                 words("got"), quote(describe_error_term(VarSet, HeadTerm)),
                 suffix("."), nl],
-            Spec = simplest_spec($pred, severity_error,
-                phase_term_to_parse_tree, get_term_context(HeadTerm), Pieces),
+            Spec = spec($pred, severity_error, phase_t2pt,
+                get_term_context(HeadTerm), Pieces),
             HeadResult = error1([Spec])
         )
     ;
@@ -1468,8 +1457,8 @@ parse_type_subst_list(NamedVarNames, Term, TypeSubsts, Specs,
                 words("declaration:"),
                 words("error: the list of type substitutions"),
                 words("must not be empty."), nl],
-            Spec = simplest_spec($pred, severity_error,
-                phase_term_to_parse_tree, get_term_context(Term), Pieces),
+            Spec = spec($pred, severity_error, phase_t2pt,
+                get_term_context(Term), Pieces),
             Specs = [Spec]
         ;
             TypeSubstTerms = [HeadTypeSubstTerm | TailTypeSubstTerms],
@@ -1493,8 +1482,8 @@ parse_type_subst_list(NamedVarNames, Term, TypeSubsts, Specs,
             words("declaration:"),
             words("error: expected a list of type substitutions, got"),
             quote(describe_error_term(!.VarSet, Term)), suffix("."), nl],
-        Spec = simplest_spec($pred, severity_error,
-            phase_term_to_parse_tree, get_term_context(Term), Pieces),
+        Spec = spec($pred, severity_error, phase_t2pt,
+            get_term_context(Term), Pieces),
         Specs = [Spec]
     ).
 
@@ -1532,8 +1521,8 @@ parse_type_subst(WNHII, PrefixPieces, NamedVarNames, Term, MaybeTypeSubst,
                 words("which should have the form"), nl_indent_delta(1),
                 quote("[V1 = <type1>, ...]"), suffix("."),
                 nl_indent_delta(-1)],
-            Spec = simplest_spec($pred, severity_error,
-                phase_term_to_parse_tree, get_term_context(Term), Pieces),
+            Spec = spec($pred, severity_error, phase_t2pt,
+                get_term_context(Term), Pieces),
             MaybeTypeSubst = error1([Spec])
         ;
             ArgTerms = [ArgTerm],
@@ -1543,9 +1532,8 @@ parse_type_subst(WNHII, PrefixPieces, NamedVarNames, Term, MaybeTypeSubst,
                     Pieces = PrefixPieces ++
                         [words("error: the list of type variable"),
                         words("substitutions must not be empty."), nl],
-                    Spec = simplest_spec($pred, severity_error,
-                        phase_term_to_parse_tree, get_term_context(Term),
-                        Pieces),
+                    Spec = spec($pred, severity_error, phase_t2pt,
+                        get_term_context(Term), Pieces),
                     MaybeTypeSubst = error1([Spec])
                 ;
                     TypeSubstTerms = [HeadTypeSubstTerm | TailTypeSubstTerms],
@@ -1579,8 +1567,8 @@ parse_type_subst(WNHII, PrefixPieces, NamedVarNames, Term, MaybeTypeSubst,
                     quote("[V1 = <type1>, ...]"), suffix(","),
                     nl_indent_delta(-1),
                     words("got"), quote(ErrorTermStr), suffix("."), nl],
-                Spec = simplest_spec($pred, severity_error,
-                    phase_term_to_parse_tree, get_term_context(Term), Pieces),
+                Spec = spec($pred, severity_error, phase_t2pt,
+                    get_term_context(Term), Pieces),
                 MaybeTypeSubst = error1([Spec])
             )
         )
@@ -1591,8 +1579,8 @@ parse_type_subst(WNHII, PrefixPieces, NamedVarNames, Term, MaybeTypeSubst,
             quote("subst([V1 = <type1>, ...])"), suffix(","),
             nl_indent_delta(-1),
             words("got"), quote(ErrorTermStr), suffix("."), nl],
-        Spec = simplest_spec($pred, severity_error,
-            phase_term_to_parse_tree, get_term_context(Term), Pieces),
+        Spec = spec($pred, severity_error, phase_t2pt,
+            get_term_context(Term), Pieces),
         MaybeTypeSubst = error1([Spec])
     ).
 
@@ -1622,8 +1610,8 @@ parse_apply_to_supers(Term, MaybeApplyToSupers) :-
                 pragma_decl("type_spec_constrained_preds"),
                 words("declaration:"), quote(AtomStr),
                 words("may not have any arguments."), nl],
-            Spec = simplest_spec($pred, severity_error,
-                phase_term_to_parse_tree, get_term_context(Term), Pieces),
+            Spec = spec($pred, severity_error, phase_t2pt,
+                get_term_context(Term), Pieces),
             MaybeApplyToSupers = error1([Spec])
         )
     else
@@ -1632,8 +1620,8 @@ parse_apply_to_supers(Term, MaybeApplyToSupers) :-
             words("declaration must be either"),
             quote("do_not_apply_to_superclasses"), words("or"),
             quote("apply_to_superclasses"), suffix("."), nl],
-        Spec = simplest_spec($pred, severity_error,
-            phase_term_to_parse_tree, get_term_context(Term), Pieces),
+        Spec = spec($pred, severity_error, phase_t2pt,
+            get_term_context(Term), Pieces),
         MaybeApplyToSupers = error1([Spec])
     ).
 
@@ -1715,8 +1703,8 @@ check_type_subst(TVarSet, ConstraintTVars, ErrorTerm, SubstNum, TypeSubst,
             words(TheTypeVar)] ++ BadLHSTVarsPieces ++ [words("must occur"),
             words("in the constraints listed in the first argument,"),
             words("but"), words(ItDoesNot), nl],
-        LHSSpec = simplest_spec($pred, severity_error,
-            phase_term_to_parse_tree, get_term_context(ErrorTerm), LHSPieces),
+        LHSSpec = spec($pred, severity_error, phase_t2pt,
+            get_term_context(ErrorTerm), LHSPieces),
         !:Specs = [LHSSpec | !.Specs]
     ),
     (
@@ -1742,8 +1730,8 @@ check_type_subst(TVarSet, ConstraintTVars, ErrorTerm, SubstNum, TypeSubst,
             words("any type variables that occur on the right hand side"),
             words("of a substitution must be anonymous, but")] ++
             BadRHSTVarsPieces ++ [words(IsNot), nl],
-        RHSSpec = simplest_spec($pred, severity_error,
-            phase_term_to_parse_tree, get_term_context(ErrorTerm), RHSPieces),
+        RHSSpec = spec($pred, severity_error, phase_t2pt,
+            get_term_context(ErrorTerm), RHSPieces),
         !:Specs = [RHSSpec | !.Specs]
     ).
 
@@ -1851,7 +1839,7 @@ parse_pragma_type_spec(ModuleName, VarSet0, ErrorTerm, PragmaTerms,
     else
         Pieces = [words("Error: a"), pragma_decl("type_spec"),
             words("declaration must have two arguments."), nl],
-        Spec = simplest_spec($pred, severity_error, phase_term_to_parse_tree,
+        Spec = spec($pred, severity_error, phase_t2pt,
             get_term_context(ErrorTerm), Pieces),
         MaybeIOM = error1([Spec])
     ).
@@ -1932,9 +1920,8 @@ parse_tvar_subst_acc(WNHII, ContextPieces, VarSet, Term,
                 words(AtomStr), suffix(":"), nl,
                 words("error: expected a variable, got"),
                 quote(TypeVarTermStr), suffix("."), nl],
-            Spec = simplest_spec($pred, severity_error,
-                phase_term_to_parse_tree, get_term_context(TypeVarTerm),
-                Pieces),
+            Spec = spec($pred, severity_error, phase_t2pt,
+                get_term_context(TypeVarTerm), Pieces),
             !:Specs = [Spec | !.Specs]
         )
     else
@@ -1946,7 +1933,7 @@ parse_tvar_subst_acc(WNHII, ContextPieces, VarSet, Term,
             % pragmas.
             quote("V1 = <type1>"), suffix(","), nl_indent_delta(-11),
             words("got"), quote(TermStr), suffix("."), nl],
-        Spec = simplest_spec($pred, severity_error, phase_term_to_parse_tree,
+        Spec = spec($pred, severity_error, phase_t2pt,
             get_term_context(Term), Pieces),
         !:Specs = [Spec | !.Specs]
     ).
@@ -2044,8 +2031,7 @@ parse_pragma_fact_table(ModuleName, VarSet, ErrorTerm, PragmaTerms,
                     pragma_decl("fact_table"), words("declaration:"), nl,
                     words("error: expected a string specifying a filename,"),
                     words("got"), quote(FileNameTermStr), suffix("."), nl],
-                Spec = simplest_spec($pred, severity_error,
-                    phase_term_to_parse_tree,
+                Spec = spec($pred, severity_error, phase_t2pt,
                     get_term_context(FileNameTerm), Pieces),
                 MaybeIOM = error1([Spec])
             )
@@ -2060,7 +2046,7 @@ parse_pragma_fact_table(ModuleName, VarSet, ErrorTerm, PragmaTerms,
         ),
         Pieces = [words("Error: a"), pragma_decl("fact_table"),
             words("declaration must have two arguments."), nl],
-        Spec = simplest_spec($pred, severity_error, phase_term_to_parse_tree,
+        Spec = spec($pred, severity_error, phase_t2pt,
             get_term_context(ErrorTerm), Pieces),
         MaybeIOM = error1([Spec])
     ).
@@ -2119,7 +2105,7 @@ parse_pragma_require_feature_set(VarSet, ErrorTerm, PragmaTerms,
         ),
         Pieces = [words("Error: a"), pragma_decl("require_feature_set"),
             words("declaration must have exactly one argument."), nl],
-        Spec = simplest_spec($pred, severity_error, phase_term_to_parse_tree,
+        Spec = spec($pred, severity_error, phase_t2pt,
             get_term_context(ErrorTerm), Pieces),
         MaybeIOM = error1([Spec])
     ).
@@ -2146,7 +2132,7 @@ parse_required_feature(VarSet, Term, MaybeReqFeature) :-
             quote("strict_sequential"), suffix(","), words("and"),
             quote("conservative_gc"), suffix(","),
             words("got"), quote(TermStr), suffix("."), nl],
-        Spec = simplest_spec($pred, severity_error, phase_term_to_parse_tree,
+        Spec = spec($pred, severity_error, phase_t2pt,
             get_term_context(Term), Pieces),
         MaybeReqFeature = error1([Spec])
     ).

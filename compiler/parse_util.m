@@ -291,7 +291,7 @@ parse_pred_pf_name_arity(ModuleName, PragmaName, VarSet,
             quote("pred(name/arity)"), words("and"), nl,
             quote("func(name/arity)"), suffix(","), nl,
             words("got"), quote(TermStr), suffix("."), nl],
-        Spec = simplest_spec($pred, severity_error, phase_term_to_parse_tree,
+        Spec = spec($pred, severity_error, phase_t2pt,
             get_term_context(Term), Pieces),
         MaybePredSpec = error1([Spec])
     ).
@@ -318,7 +318,7 @@ parse_pred_pfu_name_arity(ModuleName, PragmaName, VarSet,
             quote("func(name/arity)"), words("and"), nl,
             quote("name/arity"), suffix(","), nl,
             words("got"), quote(TermStr), suffix("."), nl],
-        Spec = simplest_spec($pred, severity_error, phase_term_to_parse_tree,
+        Spec = spec($pred, severity_error, phase_t2pt,
             get_term_context(Term), Pieces),
         MaybePredSpec = error1([Spec])
     ).
@@ -382,8 +382,8 @@ parse_pred_pfu_name_arity_maybe_modes(ModuleName, ContextPieces, VarSet,
                     quote("func(mode1, mode2, ..., moden) = retmode"),
                         suffix(","), nl_indent_delta(-1),
                     words("got"), quote(TermStr), suffix("."), nl],
-                Spec = simplest_spec($pred, severity_error,
-                    phase_term_to_parse_tree, get_term_context(Term), Pieces),
+                Spec = spec($pred, severity_error, phase_t2pt,
+                    get_term_context(Term), Pieces),
                 MaybePredOrProcSpec = error1([Spec])
             else
                 MaybePredOrProcSpec = error1(PredAndModeSpecs)
@@ -630,8 +630,8 @@ make_expected_got_spec(VarSet, What, Term, Spec) :-
     TermStr = describe_error_term(VarSet, Term),
     Pieces = [words("Error: expected"), words(What), suffix(","),
         words("got"), quote(TermStr), suffix("."), nl],
-    Spec = simplest_spec($pred, severity_error,
-        phase_term_to_parse_tree, get_term_context(Term), Pieces).
+    Spec = spec($pred, severity_error, phase_t2pt,
+        get_term_context(Term), Pieces).
 
 %---------------------------------------------------------------------------%
 
@@ -654,8 +654,7 @@ accumulate_conflict_specs(Context, ConflictingWhatInWhat, Specified,
     then
         Pieces = [words("Error:"), words(ConflictingWhatInWhat),
             suffix(":"), nl, words(Diagnosis), suffix("."), nl],
-        Spec = simplest_spec($pred, severity_error, phase_term_to_parse_tree,
-            Context, Pieces),
+        Spec = spec($pred, severity_error, phase_t2pt, Context, Pieces),
         !:Specs = [Spec | !.Specs]
     else
         true
@@ -749,8 +748,7 @@ parse_integer_const(Context, Base, Integer, IntTypeDesc, IntSuffixStr,
         Pieces = [words("Error: the"),
             words(IntTypeDesc), words("integer literal"), quote(LiteralStr),
             words("is outside the range of that type."), nl],
-        Spec = simplest_spec($pred, severity_error, phase_parse_tree_to_hlds,
-            Context, Pieces),
+        Spec = spec($pred, severity_error, phase_pt2h, Context, Pieces),
         MaybeConsId = error1([Spec])
     ).
 
@@ -764,8 +762,8 @@ parse_decimal_int(ContextPieces, VarSet, Term, MaybeInt) :-
         Pieces = cord.list(ContextPieces) ++ [lower_case_next_if_not_first,
             words("Error: expected a decimal integer,"),
             words("got"), quote(TermStr), suffix("."), nl],
-        Spec = simplest_spec($pred, severity_error,
-            phase_term_to_parse_tree, get_term_context(Term), Pieces),
+        Spec = spec($pred, severity_error, phase_t2pt,
+            get_term_context(Term), Pieces),
         MaybeInt = error1([Spec])
     ).
 

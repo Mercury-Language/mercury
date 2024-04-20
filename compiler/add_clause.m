@@ -142,8 +142,7 @@ module_add_clause(ProgressStream, PredStatus, ClauseType, ClauseInfo,
                 words("This is usually caused by"),
                 words("inadvertently writing a period instead of a comma"),
                 words("at the end of the preceding line."), nl],
-            Spec = simplest_spec($pred, severity_error,
-                phase_parse_tree_to_hlds, Context, Pieces),
+            Spec = spec($pred, severity_error, phase_pt2h, Context, Pieces),
             !:Specs = [Spec | !.Specs]
         else
             % A promise will not have a corresponding pred declaration.
@@ -343,8 +342,8 @@ maybe_add_error_for_field_access_function(ModuleInfo, PredStatus,
         FieldAccessMsg = simple_msg(Context,
             [always(FieldAccessMainPieces),
             verbose_only(verbose_always, FieldAccessVerbosePieces)]),
-        FieldAccessSpec = error_spec($pred, severity_error,
-            phase_parse_tree_to_hlds, [FieldAccessMsg]),
+        FieldAccessSpec = error_spec($pred, severity_error, phase_pt2h,
+            [FieldAccessMsg]),
         !:Specs = [FieldAccessSpec | !.Specs]
     else
         true
@@ -365,8 +364,7 @@ maybe_add_error_for_builtin(ModuleInfo, PredInfo, Context, !Specs) :-
         ),
         (
             AllowDefnOfBuiltin = no,
-            BuiltinSpec = simplest_spec($pred, severity_error,
-                phase_parse_tree_to_hlds, Context,
+            BuiltinSpec = spec($pred, severity_error, phase_pt2h, Context,
                 [words("Error: clause for builtin.")]),
             !:Specs = [BuiltinSpec | !.Specs]
         ;
@@ -456,8 +454,8 @@ select_applicable_modes(MaybeAnnotatedArgTerms, VarSet, PredStatus, Context,
                             [words("has only one mode,"),
                             words("so there is no need to restrict"),
                             words("a clause for it to that mode."), nl],
-                        Spec = simplest_spec($pred, severity_warning,
-                            phase_parse_tree_to_hlds, Context, Pieces),
+                        Spec = spec($pred, severity_warning, phase_pt2h,
+                            Context, Pieces),
                         !:Specs = [Spec | !.Specs]
                     ;
                         Warn = no
@@ -490,8 +488,7 @@ select_applicable_modes(MaybeAnnotatedArgTerms, VarSet, PredStatus, Context,
                 fixed(PredIdStr), suffix(":"), nl,
                 words("syntax error: some but not all arguments"),
                 words("have mode annotations."), nl],
-            Spec = simplest_spec($pred, severity_error,
-                phase_parse_tree_to_hlds, Context, Pieces),
+            Spec = spec($pred, severity_error, phase_pt2h, Context, Pieces),
             !:Specs = [Spec | !.Specs],
 
             % Apply the clause to all modes.

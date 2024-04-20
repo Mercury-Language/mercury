@@ -137,8 +137,8 @@ does_spec_print_anything(Globals, Spec) :-
 
 does_spec_print_anything_2(Globals, Spec) = Prints :-
     (
-        ( Spec = simplest_spec(_, _, _, _, _)
-        ; Spec = simplest_no_context_spec(_, _, _, _)
+        ( Spec = spec(_, _, _, _, _)
+        ; Spec = no_ctxt_spec(_, _, _, _)
         ),
         Prints = yes
     ;
@@ -160,8 +160,8 @@ does_spec_print_anything_2(Globals, Spec) = Prints :-
 
 does_msg_print_anything(Globals, Msg) = Prints :-
     (
-        ( Msg = simplest_msg(_, _)
-        ; Msg = simplest_no_context_msg(_)
+        ( Msg = msg(_, _)
+        ; Msg = no_ctxt_msg(_)
         ),
         Prints = yes
     ;
@@ -259,8 +259,8 @@ actual_spec_severity(Globals, Spec) = MaybeSeverity :-
 actual_spec_severity_opt_table(OptionTable, Spec) = MaybeSeverity :-
     (
         ( Spec = error_spec(_, Severity, _, _)
-        ; Spec = simplest_spec(_, Severity, _, _, _)
-        ; Spec = simplest_no_context_spec(_, Severity, _, _)
+        ; Spec = spec(_, Severity, _, _, _)
+        ; Spec = no_ctxt_spec(_, Severity, _, _)
         ),
         MaybeSeverity = actual_error_severity_opt_table(OptionTable, Severity)
     ;
@@ -431,9 +431,9 @@ project_spec_phase(Spec) = Phase :-
     (
         Spec = error_spec(_, _, Phase, _)
     ;
-        Spec = simplest_spec(_, _, Phase, _, _)
+        Spec = spec(_, _, Phase, _, _)
     ;
-        Spec = simplest_no_context_spec(_, _, Phase, _)
+        Spec = no_ctxt_spec(_, _, Phase, _)
     ;
         Spec = conditional_spec(_, _, _, _, Phase, _)
     ).
@@ -452,13 +452,13 @@ get_maybe_mode_report_control(phase_make_int) = no.
 get_maybe_mode_report_control(phase_find_files(_)) = no.
 get_maybe_mode_report_control(phase_read_files) = no.
 get_maybe_mode_report_control(phase_module_name) = no.
-get_maybe_mode_report_control(phase_term_to_parse_tree) = no.
-get_maybe_mode_report_control(phase_type_inst_mode_check) = no.
-get_maybe_mode_report_control(phase_type_inst_mode_check_invalid_type) = no.
-get_maybe_mode_report_control(phase_type_inst_mode_check_invalid_inst_mode)
+get_maybe_mode_report_control(phase_t2pt) = no.
+get_maybe_mode_report_control(phase_tim_check) = no.
+get_maybe_mode_report_control(phase_tim_check_invalid_type) = no.
+get_maybe_mode_report_control(phase_tim_check_invalid_inst_mode)
     = no.
 get_maybe_mode_report_control(phase_type_repn) = no.
-get_maybe_mode_report_control(phase_parse_tree_to_hlds) = no.
+get_maybe_mode_report_control(phase_pt2h) = no.
 get_maybe_mode_report_control(phase_expand_types) = no.
 get_maybe_mode_report_control(phase_type_check) = no.
 get_maybe_mode_report_control(phase_inst_check) = no.

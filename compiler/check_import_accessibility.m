@@ -915,7 +915,7 @@ report_missing_ancestor(ModuleName, MissingWhere,
         [words("for its"), words(ChildOrDescendant), words(ModuleS)] ++
         component_list_to_pieces("and", DescendantPieces) ++
         [suffix("."), nl],
-    MainMsg = simplest_msg(LeastContext, MainPieces),
+    MainMsg = msg(LeastContext, MainPieces),
     ( if
         MissingWhere = missing_in_src_int(SrcImpImportUseMap),
         map.search(SrcImpImportUseMap, MissingModuleName, IoUCs)
@@ -929,12 +929,12 @@ report_missing_ancestor(ModuleName, MissingWhere,
         ImpPieces = [words("Adding such a declaration would obsolete"),
             words("this"), decl(ImportOrUseDecl), words("declaration"),
             words("in the implementation section."), nl],
-        ImpMsg = simplest_msg(ImpContext, ImpPieces),
+        ImpMsg = msg(ImpContext, ImpPieces),
         Msgs = [MainMsg, ImpMsg]
     else
         Msgs = [MainMsg]
     ),
-    Spec = error_spec($pred, severity_error, phase_parse_tree_to_hlds, Msgs),
+    Spec = error_spec($pred, severity_error, phase_pt2h, Msgs),
     !:Specs = [Spec | !.Specs].
 
 %---------------------%
@@ -1021,7 +1021,7 @@ report_abstract_include(ParentModule, SubModule, Context, !Specs) :-
         words("module"), qual_sym_name(ParentModule),
         words("has a submodule named"), quote(SubModule), suffix(","),
         words("but it is visible only to its other submodules."), nl],
-    Spec = simplest_spec($pred, severity_error, phase_parse_tree_to_hlds,
+    Spec = spec($pred, severity_error, phase_pt2h,
         Context, Pieces),
     !:Specs = [Spec | !.Specs].
 
@@ -1040,7 +1040,7 @@ report_missing_include(SeenIncludes, ParentModule, SubModule, Context,
     Pieces = [words("Error:"), words("module"),
         qual_sym_name(ParentModule), words("does not have")] ++
         SubmodulePieces ++ [words("named"), quote(SubModule), suffix("."), nl],
-    Spec = simplest_spec($pred, severity_error, phase_parse_tree_to_hlds,
+    Spec = spec($pred, severity_error, phase_pt2h,
         Context, Pieces),
     !:Specs = [Spec | !.Specs].
 

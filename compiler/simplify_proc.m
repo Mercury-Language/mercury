@@ -528,7 +528,7 @@ maybe_warn_about_may_duplicate_attributes(MayDuplicate, Markers, Context,
             Pieces = [words("Error: the"), quote("may_duplicate"),
                 words("attribute on the foreign_proc contradicts the"),
                 quote("no_inline"), words("pragma on the predicate.")],
-            Spec = simplest_spec($pred, severity_error,
+            Spec = spec($pred, severity_error,
                 phase_simplify(report_in_any_mode), Context, Pieces),
             !:Specs = [Spec | !.Specs]
         else
@@ -540,7 +540,7 @@ maybe_warn_about_may_duplicate_attributes(MayDuplicate, Markers, Context,
             Pieces = [words("Error: the"), quote("may_not_duplicate"),
                 words("attribute on the foreign_proc contradicts the"),
                 quote("inline"), words("pragma on the predicate.")],
-            Spec = simplest_spec($pred, severity_error,
+            Spec = spec($pred, severity_error,
                 phase_simplify(report_in_any_mode), Context, Pieces),
             !:Specs = [Spec | !.Specs]
         else
@@ -560,7 +560,7 @@ maybe_warn_about_may_export_body_attribute(MayExportBody, Markers, Context,
             Pieces = [words("Error: the"), quote("may_export_body"),
                 words("attribute on the foreign_proc contradicts the"),
                 quote("no_inline"), words("pragma on the predicate.")],
-            Spec = simplest_spec($pred, severity_error,
+            Spec = spec($pred, severity_error,
                 phase_simplify(report_in_any_mode), Context, Pieces),
             !:Specs = [Spec | !.Specs]
         else

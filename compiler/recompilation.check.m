@@ -215,18 +215,18 @@ write_used_file_error(Globals, ModuleName, UsedFileError, Stream, !IO) :-
     (
         UsedFileError = uf_read_error(FileName, _IOError),
         Pieces = [words("file"), quote(FileName), words("not found."), nl],
-        Spec = simplest_no_context_spec($pred, severity_informational,
+        Spec = no_ctxt_spec($pred, severity_informational,
             phase_read_files, PrefixPieces ++ Pieces)
     ;
         UsedFileError = uf_invalid_file_format(FileName),
         Pieces = [words("invalid version number in"), quote(FileName),
             suffix("."), nl],
-        Spec = simplest_no_context_spec($pred, severity_informational,
+        Spec = no_ctxt_spec($pred, severity_informational,
             phase_read_files, PrefixPieces ++ Pieces)
     ;
         UsedFileError = uf_syntax_error(Context, Message),
         AllPieces = PrefixPieces ++ [words(Message), suffix("."), nl],
-        Spec = simplest_spec($pred, severity_informational, phase_read_files,
+        Spec = spec($pred, severity_informational, phase_read_files,
             Context, AllPieces)
     ;
         UsedFileError = uf_unreadable_used_items(UsedItemSpecs),
@@ -1586,7 +1586,7 @@ write_recompile_reason(Globals, Stream, ThisModuleName, Reason, !IO) :-
             words("was removed."), nl]
     ),
     AllPieces = PrefixPieces ++ Pieces,
-    Spec = simplest_no_context_spec($pred, severity_informational,
+    Spec = no_ctxt_spec($pred, severity_informational,
         phase_read_files, AllPieces),
     % Since these messages are informational, there should be no warnings
     % or errors.

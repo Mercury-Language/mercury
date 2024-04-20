@@ -1830,7 +1830,7 @@ replace_in_type_defn_eqv(MaybeRecord, TypeEqvMap, _InstEqvMap, TypeCtor,
 report_circular_eqv_type(TypeCtor, Context) = Spec :-
     Pieces = [words("Error: circular equivalence type"),
         qual_type_ctor(TypeCtor), suffix("."), nl],
-    Spec = simplest_spec($pred, severity_error, phase_expand_types,
+    Spec = spec($pred, severity_error, phase_expand_types,
         Context, Pieces).
 
 :- func report_contains_circular_eqv_type(tvarset, mer_type, prog_context,
@@ -1855,7 +1855,7 @@ report_contains_circular_eqv_type(TVarSet, Type, Context,
             [suffix("."), nl]
     ),
     Pieces = MainPieces ++ CircSpecs,
-    Spec = simplest_spec($pred, severity_error, phase_expand_types,
+    Spec = spec($pred, severity_error, phase_expand_types,
         Context, Pieces).
 
 :- pred replace_in_type_defn_du(maybe_record_sym_name_use::in,
@@ -1920,7 +1920,7 @@ replace_in_type_defn_solver(MaybeRecord, TypeEqvMap, InstEqvMap, TypeCtor,
         Pieces = [words("Error: circular type expansion"),
             words("in the representation of solver type"),
             qual_type_ctor(TypeCtor), suffix("."), nl],
-        Specs = [simplest_spec($pred, severity_error, phase_expand_types,
+        Specs = [spec($pred, severity_error, phase_expand_types,
             Context, Pieces)]
     ;
         CircTypes = [],
@@ -2541,7 +2541,7 @@ replace_in_pred_types_and_maybe_modes(MaybeRecord, PredName, PredOrFunc,
                 p_or_f(PredOrFunc), qual_sym_name(PredName), suffix(":"), nl,
                 words("error: expected higher order"), p_or_f(PredOrFunc),
                 words("type after `with_type`."), nl],
-            Spec1 = simplest_spec($pred, severity_error, phase_expand_types,
+            Spec1 = spec($pred, severity_error, phase_expand_types,
                 Context, Pieces1),
             !:Specs = [Spec1]
         )
@@ -2608,7 +2608,7 @@ replace_in_pred_types_and_maybe_modes(MaybeRecord, PredName, PredOrFunc,
                         words("has a `with_inst` annotation,"),
                         words("but the declaration does not specify"),
                         words("the mode of any of the other arguments."), nl],
-                    Spec = simplest_spec($pred, severity_error,
+                    Spec = spec($pred, severity_error,
                         phase_expand_types, Context, Pieces),
                     !:Specs = [Spec | !.Specs]
                 )
@@ -2691,7 +2691,7 @@ try_to_pair_extra_types_and_modes(PredOrFunc, PredName, Context,
                 words(choose_number(ExtraModes, "mode", "modes")),
                 suffix("."), nl]
         ),
-        Spec = simplest_spec($pred, severity_error,
+        Spec = spec($pred, severity_error,
             phase_expand_types, Context, Pieces),
         MaybeExtraTypesAndModes = error1([Spec])
     ).
@@ -2779,7 +2779,7 @@ replace_in_with_inst(MaybeRecord, InstEqvMap, PredName, PredFormArity, Context,
                 PredOrFuncPieces ++ [qual_sym_name(PredName), suffix(":"), nl,
                 words("error: expected higher order ")] ++ PredOrFuncPieces ++
                 [words("inst after `with_inst`."), nl],
-            Spec = simplest_spec($pred, severity_error, phase_expand_types,
+            Spec = spec($pred, severity_error, phase_expand_types,
                 Context, Pieces),
             Specs = [Spec]
         )

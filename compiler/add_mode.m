@@ -116,9 +116,8 @@ insts_add(VarSet, InstSymName, InstParams, MaybeForType, eqv_inst(EqvInst),
                     words("but does not declare what type constructor"),
                     words("it is for."), nl],
                 Option = warn_insts_with_functors_without_type,
-                Spec = conditional_spec($pred, Option, yes,
-                    severity_warning, phase_parse_tree_to_hlds,
-                    [simplest_msg(Context, Pieces)]),
+                Spec = conditional_spec($pred, Option, yes, severity_warning,
+                    phase_pt2h, [msg(Context, Pieces)]),
                 !:Specs = [Spec | !.Specs]
             ;
                 Here = no
@@ -145,8 +144,7 @@ insts_add(VarSet, InstSymName, InstParams, MaybeForType, eqv_inst(EqvInst),
                 words("is specified to be for a given type constructor,"),
                 words("but it is not defined to be equivalent to a"),
                 quote("bound"), words("inst."), nl],
-            Spec = simplest_spec($pred, severity_error,
-                phase_parse_tree_to_hlds, Context, Pieces),
+            Spec = spec($pred, severity_error, phase_pt2h, Context, Pieces),
             !:Specs = [Spec | !.Specs]
         else
             true
@@ -475,8 +473,8 @@ cycle_to_error_spec(ModuleInfo, InstOrMode, Cycle, Spec) :-
         HeadPieces = PreludePieces ++ [words("through"), nl]
             ++ CyclePieces ++ ConsequencePieces
     ),
-    HeadMsg = simplest_msg(HeadContext, HeadPieces),
-    Spec = error_spec($pred, severity_error, phase_parse_tree_to_hlds,
+    HeadMsg = msg(HeadContext, HeadPieces),
+    Spec = error_spec($pred, severity_error, phase_pt2h,
         [HeadMsg | ContextMsgs]).
 
 :- pred sna_context_is_for_module(module_name::in,
@@ -522,7 +520,7 @@ local_sna_and_context_to_piece_and_msg(ModuleInfo, InstOrMode, SNA - Context,
         )
     ),
     MsgPieces = [words("The definition of"), SNAPiece, words("is here."), nl],
-    Msg = simplest_msg(Context, MsgPieces).
+    Msg = msg(Context, MsgPieces).
 
 :- pred other_sna_and_context_to_piece(pair(sym_name_arity, prog_context)::in,
     format_piece::out) is det.

@@ -168,7 +168,7 @@ report_unsatisfiable_constraints(ClauseContext, Context, TypeAssignSet)
             component_list_to_line_pieces(UnprovenConstraintPieceLists,
                 [suffix("."), nl])]
     ),
-    Spec = simplest_spec($pred, severity_error, phase_type_check, Context,
+    Spec = spec($pred, severity_error, phase_type_check, Context,
         InClauseForPieces ++ ErrorPieces).
 
 :- pred unproven_constraints_to_pieces(type_assign::in,
@@ -215,7 +215,7 @@ report_missing_tvar_in_foreign_code(ClauseContext, Context, VarName) = Spec :-
     Pieces = [words("The foreign language code for") |
         describe_one_pred_name(ModuleInfo, should_module_qualify, PredId)] ++
         [words("should define the variable"), quote(VarName), suffix(".")],
-    Spec = simplest_spec($pred, severity_error, phase_type_check,
+    Spec = spec($pred, severity_error, phase_type_check,
         Context, Pieces).
 
 %---------------------------------------------------------------------------%
@@ -227,7 +227,7 @@ report_invalid_coerce_from_to(ClauseContext, Context, TVarSet,
     ToTypeStr = mercury_type_to_string(TVarSet, print_num_only, ToType),
     ErrorPieces = [words("cannot coerce from"), quote(FromTypeStr),
         words("to"), quote(ToTypeStr), suffix("."), nl],
-    Spec = simplest_spec($pred, severity_error, phase_type_check,
+    Spec = spec($pred, severity_error, phase_type_check,
         Context, InClauseForPieces ++ ErrorPieces).
 
 %---------------------------------------------------------------------------%

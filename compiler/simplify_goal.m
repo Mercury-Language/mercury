@@ -389,7 +389,7 @@ simplify_goal_expr(!GoalExpr, !GoalInfo, NestedContext0,
                 StmPieces = [words("Error: atomic goals are"),
                     words("not implemented yet when targeting"),
                     words(TargetStr), suffix("."), nl],
-                StmSpec = simplest_spec($pred, severity_error, Phase,
+                StmSpec = spec($pred, severity_error, Phase,
                     goal_info_get_context(!.GoalInfo), StmPieces),
                 simplify_info_add_message(StmSpec, !Info)
             ),

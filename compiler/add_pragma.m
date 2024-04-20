@@ -381,13 +381,13 @@ mark_pred_as_format_call(FormatCallInfo, PragmaStatus, !ModuleInfo, !Specs) :-
             FirstPieces = [words("Error: duplicate"),
                 pragma_decl("format_call"), words("declaration for"),
                 unqual_pf_sym_name_user_arity(PredSpec), suffix("."), nl],
-            FirstMsg = simplest_msg(Context, FirstPieces),
+            FirstMsg = msg(Context, FirstPieces),
             SecondPieces = [words("The original"),
                 pragma_decl("format_call"), words("declaration"),
                 words("was here."), nl],
-            SecondMsg = simplest_msg(OldContext, SecondPieces),
-            Spec = error_spec($pred, severity_error,
-                phase_parse_tree_to_hlds, [FirstMsg, SecondMsg]),
+            SecondMsg = msg(OldContext, SecondPieces),
+            Spec = error_spec($pred, severity_error, phase_pt2h,
+                [FirstMsg, SecondMsg]),
             !:Specs = [Spec | !.Specs]
         )
     ).
@@ -415,8 +415,8 @@ add_pragma_oisu(OISUInfo, ItemMercuryStatus, !ModuleInfo, !Specs) :-
                 ),
                 StatusPieces = [quote("pragma oisu"),
                     words("declarations must always be exported."), nl],
-                StatusSpec = simplest_spec($pred, severity_error,
-                    phase_parse_tree_to_hlds, Context, StatusPieces),
+                StatusSpec = spec($pred, severity_error, phase_pt2h,
+                    Context, StatusPieces),
                 !:OISUSpecs = [StatusSpec | !.OISUSpecs]
             ),
             module_info_get_type_table(!.ModuleInfo, TypeTable),
@@ -428,16 +428,15 @@ add_pragma_oisu(OISUInfo, ItemMercuryStatus, !ModuleInfo, !Specs) :-
                     TypePieces = [words("The type in a"), quote("pragma oisu"),
                         words("declaration must always be abstract exported."),
                         nl],
-                    TypeSpec = simplest_spec($pred, severity_error,
-                        phase_parse_tree_to_hlds, Context, TypePieces),
+                    TypeSpec = spec($pred, severity_error, phase_pt2h,
+                        Context, TypePieces),
                     !:OISUSpecs = [TypeSpec | !.OISUSpecs]
                 )
             else
 %               TypePieces = [words("The type in this"), quote("pragma oisu"),
 %                   words("declaration is undefined."), nl],
 %               TypeMsg = simple_msg(Context, [always(TypePieces)]),
-%               TypeSpec = error_spec(severity_error, phase_parse_tree_to_hlds,
-%                   [TypeMsg]),
+%               TypeSpec = error_spec(severity_error, phase_pt2h, [TypeMsg]),
 %               !:OISUSpecs = [TypeSpec | !.OISUSpecs]
                 % Module qualification will already have reported the error.
                 % Any message we could generate here would be a duplicate.
@@ -467,8 +466,8 @@ add_pragma_oisu(OISUInfo, ItemMercuryStatus, !ModuleInfo, !Specs) :-
                 DupPieces = [words("Duplicate"), pragma_decl("oisu"),
                     words("declaration for"), qual_type_ctor(TypeCtor),
                     suffix("."), nl],
-                DupSpec = simplest_spec($pred, severity_error,
-                    phase_parse_tree_to_hlds, Context, DupPieces),
+                DupSpec = spec($pred, severity_error, phase_pt2h,
+                    Context, DupPieces),
                 !:Specs = [DupSpec | !.Specs]
             )
         ;
@@ -505,8 +504,7 @@ find_unique_pred_for_oisu(ModuleInfo, Context, TypeCtor, Kind,
                 words("error: predicate"),
                 qual_sym_name_arity(sym_name_arity(PredName, UserArityInt)),
                 words("is undefined."), nl],
-            Spec = simplest_spec($pred, severity_error,
-                phase_parse_tree_to_hlds, Context, Pieces)
+            Spec = spec($pred, severity_error, phase_pt2h, Context, Pieces)
         ;
             LooseArityPredIds = [_ | _],
             list.map(lookup_pred_orig_arity(ModuleInfo),
@@ -533,8 +531,7 @@ find_unique_pred_for_oisu(ModuleInfo, Context, TypeCtor, Kind,
                 words("has the wrong arity."),
                 words("Actual arity is"), int_fixed(UserArityInt), suffix(","),
                 words("expected arity is")] ++ ExpArities ++ [suffix("."), nl],
-            Spec = simplest_spec($pred, severity_error,
-                phase_parse_tree_to_hlds, Context, Pieces)
+            Spec = spec($pred, severity_error, phase_pt2h, Context, Pieces)
         ),
         !:Specs = [Spec | !.Specs],
         PredId = invalid_pred_id
@@ -551,8 +548,7 @@ find_unique_pred_for_oisu(ModuleInfo, Context, TypeCtor, Kind,
             words("error: ambiguous"), words(PredOrFuncStr), words("name"),
             qual_sym_name_arity(sym_name_arity(PredName, UserArityInt)),
             suffix("."), nl],
-        Spec = simplest_spec($pred, severity_error, phase_parse_tree_to_hlds,
-            Context, Pieces),
+        Spec = spec($pred, severity_error, phase_pt2h, Context, Pieces),
         !:Specs = [Spec | !.Specs],
         PredId = invalid_pred_id
     ),
@@ -880,8 +876,8 @@ add_pragma_foreign_proc_export(FPEInfo, !ModuleInfo, !Specs) :-
                     words("for a procedure that has"),
                     words("a declared determinism of"),
                     fixed(determinism_to_string(Detism)), suffix("."), nl],
-                Spec = simplest_spec($pred, severity_error,
-                    phase_parse_tree_to_hlds, Context, Pieces),
+                Spec = spec($pred, severity_error, phase_pt2h,
+                    Context, Pieces),
                 !:Specs = [Spec | !.Specs]
             else
                 % Only add the foreign export if the specified language matches
@@ -1017,8 +1013,7 @@ mark_pred_as_external(Context, PredId, !ModuleInfo, !Specs) :-
         Pieces = [words("The"), unqual_pf_sym_name_user_arity(PFSNA),
             words("has clauses,"),
             words("so it cannot be marked as external."), nl],
-        Spec = simplest_spec($pred, severity_error, phase_parse_tree_to_hlds,
-            Context, Pieces),
+        Spec = spec($pred, severity_error, phase_pt2h, Context, Pieces),
         !:Specs = [Spec | !.Specs]
     ).
 
@@ -1220,8 +1215,8 @@ add_pragma_require_tail_rec(Pragma, !ModuleInfo, !Specs) :-
                     pragma_decl("require_tail_recursion"),
                     words("declaration for undeclared mode of"),
                     qual_pf_sym_name_user_arity(PFNameArity), suffix("."), nl],
-                Spec = simplest_spec($pred, severity_error,
-                    phase_parse_tree_to_hlds, Context, Pieces),
+                Spec = spec($pred, severity_error, phase_pt2h,
+                    Context, Pieces),
                 !:Specs = [Spec | !.Specs]
             )
         ;
@@ -1263,9 +1258,9 @@ add_pragma_require_tail_rec_proc(RequireTailrec, Context, MaybePredOrFunc, SNA,
         ( RequireTailrecOrig = suppress_tailrec_warnings(ContextOrig)
         ; RequireTailrecOrig = enable_tailrec_warnings(_, _, ContextOrig)
         ),
-        Spec = error_spec($pred, severity_error, phase_parse_tree_to_hlds,
-            [simplest_msg(Context, MainPieces),
-            simplest_msg(ContextOrig, OrigPieces)]),
+        Spec = error_spec($pred, severity_error, phase_pt2h,
+            [msg(Context, MainPieces),
+            msg(ContextOrig, OrigPieces)]),
         !:Specs = [Spec | !.Specs]
     ;
         MaybeRequireTailrecOrig = no,
@@ -1306,8 +1301,7 @@ check_required_feature(Globals, Context, Feature, !Specs) :-
             IsConcurrencySupported = no,
             Pieces = [words("Error: this module must be compiled in a grade"),
                 words("that supports concurrent execution."), nl],
-            Spec = simplest_spec($pred, severity_error,
-                phase_parse_tree_to_hlds, Context, Pieces),
+            Spec = spec($pred, severity_error, phase_pt2h, Context, Pieces),
             !:Specs = [Spec | !.Specs]
         ;
             IsConcurrencySupported = yes
@@ -1325,8 +1319,7 @@ check_required_feature(Globals, Context, Feature, !Specs) :-
                 quote("spf"), suffix("."), nl],
             Msg = simple_msg(Context,
                 [always(Pieces), verbose_only(verbose_once, VerbosePieces)]),
-            Spec = error_spec($pred, severity_error, phase_parse_tree_to_hlds,
-                [Msg]),
+            Spec = error_spec($pred, severity_error, phase_pt2h, [Msg]),
             !:Specs = [Spec | !.Specs]
         ;
             SinglePrecFloat = yes
@@ -1344,8 +1337,7 @@ check_required_feature(Globals, Context, Feature, !Specs) :-
                 quote("spf"), suffix("."), nl],
             Msg = simple_msg(Context,
                 [always(Pieces), verbose_only(verbose_once, VerbosePieces)]),
-            Spec = error_spec($pred, severity_error, phase_parse_tree_to_hlds,
-                [Msg]),
+            Spec = error_spec($pred, severity_error, phase_pt2h, [Msg]),
             !:Specs = [Spec | !.Specs]
         ;
             SinglePrecFloat = no
@@ -1358,8 +1350,7 @@ check_required_feature(Globals, Context, Feature, !Specs) :-
             IsTablingSupported = no,
             Pieces = [words("Error: this module must be compiled in a grade"),
                 words("that supports memoisation."), nl],
-            Spec = simplest_spec($pred, severity_error,
-                phase_parse_tree_to_hlds, Context, Pieces),
+            Spec = spec($pred, severity_error, phase_pt2h, Context, Pieces),
             !:Specs = [Spec | !.Specs]
         ;
             IsTablingSupported = yes
@@ -1371,8 +1362,7 @@ check_required_feature(Globals, Context, Feature, !Specs) :-
             IsParConjSupported = no,
             Pieces = [words("Error: this module must be compiled in a grade"),
                 words("that supports executing conjuntions in parallel."), nl],
-            Spec = simplest_spec($pred, severity_error,
-                phase_parse_tree_to_hlds, Context, Pieces),
+            Spec = spec($pred, severity_error, phase_pt2h, Context, Pieces),
             !:Specs = [Spec | !.Specs]
         ;
             IsParConjSupported = yes
@@ -1388,8 +1378,7 @@ check_required_feature(Globals, Context, Feature, !Specs) :-
                 words("the grade modifier"), quote("tr"), suffix("."), nl],
             Msg = simple_msg(Context,
                 [always(Pieces), verbose_only(verbose_once, VerbosePieces)]),
-            Spec = error_spec($pred, severity_error, phase_parse_tree_to_hlds,
-                [Msg]),
+            Spec = error_spec($pred, severity_error, phase_pt2h, [Msg]),
             !:Specs = [Spec | !.Specs]
         ;
             UseTrail = yes
@@ -1408,8 +1397,7 @@ check_required_feature(Globals, Context, Feature, !Specs) :-
         else
             Pieces = [words("Error: this module must be compiled using"),
                 words("the strict sequential semantics."), nl],
-            Spec = simplest_spec($pred, severity_error,
-                phase_parse_tree_to_hlds, Context, Pieces),
+            Spec = spec($pred, severity_error, phase_pt2h, Context, Pieces),
             !:Specs = [Spec | !.Specs]
         )
     ;
@@ -1430,8 +1418,7 @@ check_required_feature(Globals, Context, Feature, !Specs) :-
             ),
             Pieces = [words("Error: this module must be compiled in a grade"),
                 words("that uses conservative garbage collection."), nl],
-            Spec = simplest_spec($pred, severity_error,
-                phase_parse_tree_to_hlds, Context, Pieces),
+            Spec = spec($pred, severity_error, phase_pt2h, Context, Pieces),
             !:Specs = [Spec | !.Specs]
         )
     ).
@@ -1459,8 +1446,7 @@ add_impl_pragma_tabled(ProgressStream, ItemMercuryStatus, Tabled,
             pragma_decl(tabled_eval_method_to_pragma_name(TabledMethod)),
             words("declaration requires type_ctor_layout structures."),
             words("Don't use --no-type-layout to disable them."), nl],
-        Spec = simplest_spec($pred, severity_error, phase_parse_tree_to_hlds,
-            Context, Pieces),
+        Spec = spec($pred, severity_error, phase_pt2h, Context, Pieces),
         !:Specs = [Spec | !.Specs]
     ).
 
@@ -1750,8 +1736,7 @@ pragma_conflict_error(PredSpec, Context, PragmaName, ConflictMarkers,
         list_to_pieces(ConflictNames) ++
         [words(choose_number(ConflictNames, "pragma for", "pragmas for"))]
         ++ PorFPieces ++ [unqual_sym_name_arity(SNA), suffix("."), nl],
-    Spec = simplest_spec($pred, severity_error, phase_parse_tree_to_hlds,
-        Context, Pieces),
+    Spec = spec($pred, severity_error, phase_pt2h, Context, Pieces),
     !:Specs = [Spec | !.Specs].
 
 %---------------------%
@@ -1855,8 +1840,8 @@ get_matching_pred_ids(ModuleInfo, Pragma, RequireOneMatch, PragmaAllowsModes,
                         unqual_sym_name_arity(SNA), suffix(":"), nl,
                         words("warning: ambiguous name could refer to"),
                         words("either a predicate or a function."), nl],
-                    ActualSpec = simplest_spec($pred, severity_warning,
-                        phase_parse_tree_to_hlds, Context, ActualPieces),
+                    ActualSpec = spec($pred, severity_warning, phase_pt2h,
+                        Context, ActualPieces),
                     % There is no point in printing WarnSpecs warning about
                     % *possible* ambiguity when ActualSpec reports a warning
                     % about an *actual* ambiguity, since the latter implies
@@ -1871,8 +1856,8 @@ get_matching_pred_ids(ModuleInfo, Pragma, RequireOneMatch, PragmaAllowsModes,
                     unqual_sym_name_arity(SNA), suffix(":"), nl,
                     words("error: ambiguous name could refer to"),
                     words("either a predicate or a function."), nl],
-                ErrorSpec = simplest_spec($pred, severity_error,
-                    phase_parse_tree_to_hlds, Context, ErrorPieces),
+                ErrorSpec = spec($pred, severity_error, phase_pt2h,
+                    Context, ErrorPieces),
                 Result = mpids_error([ErrorSpec])
             )
         )
@@ -1903,8 +1888,7 @@ transform_selected_mode_of_pred(PredId, PFNameArity, Modes,
         Pieces = [words("Error:"), pragma_decl(PragmaName),
             words("declaration for undeclared mode of"),
             qual_pf_sym_name_user_arity(PFNameArity), suffix("."), nl],
-        Spec = simplest_spec($pred, severity_error, phase_parse_tree_to_hlds,
-            Context, Pieces),
+        Spec = spec($pred, severity_error, phase_pt2h, Context, Pieces),
         !:Specs = [Spec | !.Specs]
     ).
 
@@ -1985,8 +1969,7 @@ look_up_pragma_pf_sym_arity(ModuleInfo, IsFullyQualified, FailHandling,
             Msg = simple_msg(Context,
                 [always(MainPieces),
                 verbose_only(verbose_always, VerbosePieces)]),
-            Spec = error_spec($pred, severity_error, phase_parse_tree_to_hlds,
-                [Msg]),
+            Spec = error_spec($pred, severity_error, phase_pt2h, [Msg]),
             Specs = [Spec]
         ;
             FailHandling = lfh_internal_error,
@@ -2022,8 +2005,7 @@ report_unknown_pred_or_func(Severity, PragmaName, Context,
         words("unknown"), words(pred_or_func_to_full_str(PredOrFunc)),
         qual_sym_name_arity(SNA), words("in"),
         pragma_decl(PragmaName), words("declaration."), nl],
-    Spec = simplest_spec($pred, Severity, phase_parse_tree_to_hlds,
-        Context, Pieces).
+    Spec = spec($pred, Severity, phase_pt2h, Context, Pieces).
 
 :- func report_ambiguous_pred_or_func(error_severity, string, prog_context,
     pred_or_func, sym_name, user_arity) = error_spec.
@@ -2036,8 +2018,7 @@ report_ambiguous_pred_or_func(Severity, PragmaName, Context,
         words("ambiguous"), words(pred_or_func_to_full_str(PredOrFunc)),
         words("name"), qual_sym_name_arity(SNA), words("in"),
         pragma_decl(PragmaName), words("declaration."), nl],
-    Spec = simplest_spec($pred, Severity, phase_parse_tree_to_hlds,
-        Context, Pieces).
+    Spec = spec($pred, Severity, phase_pt2h, Context, Pieces).
 
 :- pred look_up_pragma_pf_sym_arity_mode_num(module_info::in,
     is_fully_qualified::in, lookup_failure_handling::in, prog_context::in,
@@ -2060,8 +2041,7 @@ look_up_pragma_pf_sym_arity_mode_num(ModuleInfo, IsFullyQualified,
             Pieces = [words("Internal compiler error:"),
                 words("ambiguous predicate name in"), pragma_decl(PragmaName),
                 words("declaration."), nl],
-            Spec = simplest_spec($pred, severity_error,
-                phase_parse_tree_to_hlds, Context, Pieces),
+            Spec = spec($pred, severity_error, phase_pt2h, Context, Pieces),
             MaybePredProcId = error4([Spec])
         )
     ;
@@ -2111,8 +2091,7 @@ warn_about_pfu_unknown(ModuleInfo, PragmaName, PragmaAllowsModes,
                 quote("func(...)"), suffix(","),
                 words("or by specifying its argument modes.)"), nl]
         ),
-        Spec = simplest_spec($pred, severity_warning,
-            phase_parse_tree_to_hlds, Context, Pieces),
+        Spec = spec($pred, severity_warning, phase_pt2h, Context, Pieces),
         Specs = [Spec]
     else
         Specs = []
@@ -2215,8 +2194,8 @@ check_pragma_status(PragmaName, StatusClass, PragmaStatus, Context,
                     PredNamePieces ++ [words("is not exported, the"),
                     pragma_decl(PragmaName), words("declaration for it"),
                     words("may not be exported either."), nl],
-                Spec = simplest_spec($pred, severity_error,
-                    phase_parse_tree_to_hlds, Context, Pieces),
+                Spec = spec($pred, severity_error, phase_pt2h,
+                    Context, Pieces),
                 !:Specs = [Spec | !.Specs]
             )
         ;
@@ -2232,8 +2211,8 @@ check_pragma_status(PragmaName, StatusClass, PragmaStatus, Context,
                         PredNamePieces ++ [words("is exported, the"),
                         pragma_decl(PragmaName), words("declaration for it"),
                         words("should also be exported."), nl],
-                    Spec = simplest_spec($pred, severity_warning,
-                        phase_parse_tree_to_hlds, Context, Pieces),
+                    Spec = spec($pred, severity_warning, phase_pt2h,
+                        Context, Pieces),
                     !:Specs = [Spec | !.Specs]
                 ;
                     StatusClass = psc_impl
@@ -2256,8 +2235,8 @@ check_pragma_status(PragmaName, StatusClass, PragmaStatus, Context,
                         words("may not be exported, even if"),
                         words("the predicate or function it refers to"),
                         words("is exported."), nl],
-                    Spec = simplest_spec($pred, severity_error,
-                        phase_parse_tree_to_hlds, Context, Pieces),
+                    Spec = spec($pred, severity_error, phase_pt2h,
+                        Context, Pieces),
                     !:Specs = [Spec | !.Specs]
                 )
             )

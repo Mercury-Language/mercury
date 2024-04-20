@@ -534,7 +534,7 @@ find_variable_type(Context, ProgVarSet, TVarSet, VarMap, DomainMap,
                     words("ambiguous overloading causes type ambiguity."),
                     nl, words("Possible type assignments include:"), nl,
                     fixed(VarName), suffix(":"), words(TypesString), nl],
-                Msg = simplest_msg(Context, Pieces),
+                Msg = msg(Context, Pieces),
                 MaybeMsg = yes(Msg)
             )
         )
@@ -664,7 +664,7 @@ unify_goal_to_constraint(Environment, GoalExpr, GoalInfo, !TCInfo) :-
                 Pieces = [words("The constructor"),
                     qual_sym_name_arity(sym_name_arity(Name, Arity)),
                     words("has not been defined."), nl],
-                ErrMsg = simplest_msg(Context, Pieces),
+                ErrMsg = msg(Context, Pieces),
                 add_message_to_spec(ErrMsg, !TCInfo)
             ;
                 Constraints = [_ | _]
@@ -673,7 +673,7 @@ unify_goal_to_constraint(Environment, GoalExpr, GoalInfo, !TCInfo) :-
         else
             Pieces = [words("The given type is not supported"),
                 words("by constraint-based type checking."), nl],
-            ErrMsg = simplest_msg(Context, Pieces),
+            ErrMsg = msg(Context, Pieces),
             add_message_to_spec(ErrMsg, !TCInfo),
             RelevantTVars = [],
             Constraints = []
@@ -774,7 +774,7 @@ ho_pred_unif_constraint(PredTable, Info, LHSTVar, ArgTVars, PredId, Constraint,
         Pieces = [words("The predicate with id"),
             int_fixed(pred_id_to_int(PredId)),
             words("has not been defined."), nl],
-        ErrMsg = simplest_msg(Context, Pieces),
+        ErrMsg = msg(Context, Pieces),
         add_message_to_spec(ErrMsg, !TCInfo),
         Constraints = []
     ),
@@ -841,21 +841,21 @@ generic_call_goal_to_constraint(Environment, GoalExpr, GoalInfo, !TCInfo) :-
                         words("of typeclass"),
                         qual_sym_name_arity(sym_name_arity(Name, Arity)),
                         suffix("."), nl],
-                    ErrMsg = simplest_msg(Context, Pieces),
+                    ErrMsg = msg(Context, Pieces),
                     add_message_to_spec(ErrMsg, !TCInfo)
                 )
             else
                 Pieces = [words("The typeclass"),
                     qual_sym_name_arity(sym_name_arity(Name, Arity)),
                     words("does not have the given method."), nl],
-                ErrMsg = simplest_msg(Context, Pieces),
+                ErrMsg = msg(Context, Pieces),
                 add_message_to_spec(ErrMsg, !TCInfo)
             )
         else
             Pieces = [words("The typeclass"),
                 qual_sym_name_arity(sym_name_arity(Name, Arity)),
                 words("is undefined."), nl],
-            ErrMsg = simplest_msg(Context, Pieces),
+            ErrMsg = msg(Context, Pieces),
             add_message_to_spec(ErrMsg, !TCInfo)
         )
     ;
@@ -863,12 +863,12 @@ generic_call_goal_to_constraint(Environment, GoalExpr, GoalInfo, !TCInfo) :-
         ( if event_arg_types(Environment ^ tce_event_env, Name, _ArgTypes) then
             Pieces = [words("Event calls are not yet supported"),
                 words("by constraint-based typechecking."), nl],
-            ErrMsg = simplest_msg(Context, Pieces),
+            ErrMsg = msg(Context, Pieces),
             add_message_to_spec(ErrMsg, !TCInfo)
         else
             Pieces = [words("There is not event named"), words(Name),
                 suffix("."), nl],
-            ErrMsg = simplest_msg(Context, Pieces),
+            ErrMsg = msg(Context, Pieces),
             add_message_to_spec(ErrMsg, !TCInfo)
         )
     ;
@@ -912,7 +912,7 @@ pred_call_constraint(PredTable, Info, ArgTVars, PredId, Constraint, TVars,
         Pieces = [words("The predicate with id"),
             int_fixed(pred_id_to_int(PredId)),
             words("has not been defined."), nl],
-        ErrMsg = simplest_msg(Context, Pieces),
+        ErrMsg = msg(Context, Pieces),
         add_message_to_spec(ErrMsg, !TCInfo),
         TVars = [],
         Constraints = []
@@ -2139,7 +2139,7 @@ diagnose_unsatisfiability_error(TCInfo, Context, ProgVarSet, TypeVar, Msg) :-
         words("The problem is most likely due to one of the following"),
         words("sets of goals"), nl, prefix("(")] ++ ErrorLocations ++
         [suffix(")"), nl],
-    Msg = simplest_msg(Context, Pieces).
+    Msg = msg(Context, Pieces).
 
 :- pred error_from_one_min_set(type_constraint_map::in,
     set(type_constraint_id)::in, list(format_piece)::out) is det.

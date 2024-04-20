@@ -352,7 +352,7 @@ generate_warning(ModuleInfo, VarTable, Warning, Msg) :-
         [words("has had the location of the variables"),
         quote(VarAName), words("and"), quote(VarBName),
         words("swapped to allow accumulator introduction."), nl],
-    Msg = simplest_msg(Context, Pieces).
+    Msg = msg(Context, Pieces).
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%

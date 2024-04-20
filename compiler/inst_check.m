@@ -767,8 +767,7 @@ maybe_issue_no_such_type_error(InstCtor, InstDefn, TypeCtor, !Specs) :-
             words("is specified to be for"),
             qual_type_ctor(TypeCtor), suffix(","),
             words("but that type constructor is not visible here."), nl],
-        Spec = simplest_spec($pred, severity_error, phase_inst_check,
-            Context, Pieces),
+        Spec = spec($pred, severity_error, phase_inst_check, Context, Pieces),
         !:Specs = [Spec | !.Specs]
     ).
 
@@ -798,7 +797,7 @@ maybe_issue_type_match_error(WarnInstsWithoutMatchingType, InstCtor, InstDefn,
                 words("is exported, but the type it is for,"),
                 qual_type_ctor(ForTypeCtor), suffix(","),
                 words("is not visible outside this module."), nl],
-            VisSpec = simplest_spec($pred, severity_error, phase_inst_check,
+            VisSpec = spec($pred, severity_error, phase_inst_check,
                 Context, VisPieces),
             VisSpecs = [VisSpec]
         else
@@ -830,8 +829,8 @@ maybe_issue_type_match_error(WarnInstsWithoutMatchingType, InstCtor, InstDefn,
                     words("to the type constructor that"),
                     qual_type_ctor(ForTypeCtor),
                     words("expands to."), nl],
-                EqvSpec = simplest_spec($pred, severity_error,
-                    phase_inst_check, Context, EqvPieces),
+                EqvSpec = spec($pred, severity_error, phase_inst_check,
+                    Context, EqvPieces),
                 EqvSpecs = [EqvSpec]
             ),
             Mismatches = []
@@ -878,7 +877,7 @@ maybe_issue_type_match_error(WarnInstsWithoutMatchingType, InstCtor, InstDefn,
                     list.map(project_if_several, NearMisses))
             )
         ),
-        MismatchSpec = simplest_spec($pred, severity_error, phase_inst_check,
+        MismatchSpec = spec($pred, severity_error, phase_inst_check,
             Context, MismatchPieces ++ NearMissPieces),
         MismatchSpecs = [MismatchSpec]
     else
@@ -980,7 +979,7 @@ maybe_issue_no_matching_types_warning(WarnInstsWithoutMatchingType,
                 MismatchPieces),
 
             Pieces = NoMatchPieces ++ MismatchPieces,
-            Spec = simplest_spec($pred, severity_warning, phase_inst_check,
+            Spec = spec($pred, severity_warning, phase_inst_check,
                 Context, Pieces),
             !:Specs = [Spec | !.Specs]
         ;
@@ -1032,7 +1031,7 @@ maybe_issue_no_matching_types_warning(WarnInstsWithoutMatchingType,
                         prefix("("), words(PossibleTypesStr), suffix(")"),
                         words("are visible from outside this module."), nl]
                 ),
-                Spec = simplest_spec($pred, severity_warning, phase_inst_check,
+                Spec = spec($pred, severity_warning, phase_inst_check,
                     Context, Pieces),
                 !:Specs = [Spec | !.Specs]
             )

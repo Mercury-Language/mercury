@@ -1134,7 +1134,7 @@ add_message_for_nontail_self_recursive_call(PFSymNameArity, ProcId, Context,
         words("of"), unqual_pf_sym_name_pred_form_arity(PFSymNameArity),
         suffix(":"), nl,
         WarnOrErrorWord, words("self-recursive call")] ++ ReasonPieces,
-    MainMsg = simplest_msg(Context, MainPieces),
+    MainMsg = msg(Context, MainPieces),
     Spec = error_spec($pred, Severity, phase_code_gen,
         [MainMsg | VerboseMsgs]),
     !:Specs = [Spec | !.Specs].
@@ -1150,7 +1150,7 @@ add_message_for_nontail_mutual_recursive_call(CallerId, CallerProcId,
         unqual_pf_sym_name_pred_form_arity(CallerId), suffix(":"), nl,
         WarnOrErrorWord, words("mutually recursive call to"),
         unqual_pf_sym_name_pred_form_arity(CalleeId)] ++ ReasonPieces,
-    MainMsg = simplest_msg(Context, MainPieces),
+    MainMsg = msg(Context, MainPieces),
     Spec = error_spec($pred, Severity, phase_code_gen,
         [MainMsg | VerboseMsgs]),
     !:Specs = [Spec | !.Specs].
@@ -1235,7 +1235,7 @@ report_no_tail_or_nontail_recursive_calls(PFSymNameArity, Context, !Specs) :-
         words("warning: the code defining this"), p_or_f(PredOrFunc),
         words("contains no recursive calls at all,"),
         words("tail-recursive or otherwise."), nl],
-    Spec = simplest_spec($pred, severity_warning, phase_code_gen,
+    Spec = spec($pred, severity_warning, phase_code_gen,
         Context, Pieces),
     !:Specs = [Spec | !.Specs].
 

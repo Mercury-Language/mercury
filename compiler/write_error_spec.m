@@ -263,13 +263,13 @@ do_write_error_spec(Stream, OptionTable, LimitErrorContextsMap, Spec,
         Spec = error_spec(Id, Severity, _Phase, Msgs1),
         MaybeActual = actual_error_severity_opt_table(OptionTable, Severity)
     ;
-        Spec = simplest_spec(Id, Severity, _Phase, Context, Pieces),
+        Spec = spec(Id, Severity, _Phase, Context, Pieces),
         MaybeActual = actual_error_severity_opt_table(OptionTable, Severity),
-        Msgs1 = [simplest_msg(Context, Pieces)]
+        Msgs1 = [msg(Context, Pieces)]
     ;
-        Spec = simplest_no_context_spec(Id, Severity, _Phase, Pieces),
+        Spec = no_ctxt_spec(Id, Severity, _Phase, Pieces),
         MaybeActual = actual_error_severity_opt_table(OptionTable, Severity),
-        Msgs1 = [simplest_no_context_msg(Pieces)]
+        Msgs1 = [no_ctxt_msg(Pieces)]
     ;
         Spec = conditional_spec(Id, Option, MatchValue,
             Severity, _Phase, Msgs0),
@@ -297,12 +297,12 @@ do_write_error_spec(Stream, OptionTable, LimitErrorContextsMap, Spec,
         ;
             Msgs1 = [HeadMsg | _],
             (
-                ( HeadMsg = simplest_msg(HeadContext, _Pieces)
+                ( HeadMsg = msg(HeadContext, _Pieces)
                 ; HeadMsg = simple_msg(HeadContext, _)
                 ),
                 MaybeHeadContext = yes(HeadContext)
             ;
-                HeadMsg = simplest_no_context_msg(_),
+                HeadMsg = no_ctxt_msg(_),
                 MaybeHeadContext = no
             ;
                 HeadMsg = error_msg(MaybeHeadContext, _, _, _)
@@ -371,13 +371,13 @@ do_write_error_msgs(_Stream, _, _, [], _, !PrintedSome,
 do_write_error_msgs(Stream, OptionTable, LimitErrorContextsMap, [Msg | Msgs],
         !.First, !PrintedSome, !AlreadyPrintedVerbose, !IO) :-
     (
-        Msg = simplest_msg(SimpleContext, Pieces),
+        Msg = msg(SimpleContext, Pieces),
         Components = [always(Pieces)],
         MaybeContext = yes(SimpleContext),
         TreatAsFirst = treat_based_on_posn,
         ExtraIndentLevel = 0u
     ;
-        Msg = simplest_no_context_msg(Pieces),
+        Msg = no_ctxt_msg(Pieces),
         Components = [always(Pieces)],
         MaybeContext = no,
         TreatAsFirst = treat_based_on_posn,

@@ -201,7 +201,7 @@ generate_no_exports_warning(ModuleName, Context, NumIntIncls, !Specs) :-
             ]),
         Msgs = [MainMsg, InclMsg]
     ),
-    Spec = error_spec($pred, severity_warning, phase_term_to_parse_tree, Msgs),
+    Spec = error_spec($pred, severity_warning, phase_t2pt, Msgs),
     !:Specs = [Spec | !.Specs].
 
 %---------------------------------------------------------------------------%

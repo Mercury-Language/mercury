@@ -264,9 +264,9 @@ split_parse_tree_discover_submodules(ParseTree, ModuleAncestors,
                     words("should not have its name reused."), nl],
                 OldPieces = [words("This is the location of the reuse."), nl]
             ),
-            Msg = simplest_msg(Context, Pieces),
-            OldMsg = simplest_msg(OldContext, OldPieces),
-            Spec = error_spec($pred, severity_error, phase_parse_tree_to_hlds,
+            Msg = msg(Context, Pieces),
+            OldMsg = msg(OldContext, OldPieces),
+            Spec = error_spec($pred, severity_error, phase_pt2h,
                 [Msg, OldMsg]),
             !:Specs = [Spec | !.Specs]
         else
@@ -489,8 +489,8 @@ split_component_discover_submodules(ModuleName, Component, SectionAncestors,
                     words("the interface section of"), words(PorA),
                     words("module"), qual_sym_name(InterfaceAncestor),
                     suffix("."), nl],
-                Spec = simplest_spec($pred, severity_error,
-                    phase_parse_tree_to_hlds, SectionContext, Pieces),
+                Spec = spec($pred, severity_error, phase_pt2h,
+                    SectionContext, Pieces),
                 !:Specs = [Spec | !.Specs]
             )
         )
@@ -553,10 +553,9 @@ discover_included_submodules([Include | Includes], SectionAncestors,
         ),
         OldPieces = [words("This is the location"),
             words("of that previous declaration."), nl],
-        Msg = simplest_msg(Context, Pieces1 ++ Pieces2),
-        OldMsg = simplest_msg(OldContext, OldPieces),
-        Spec = error_spec($pred, severity_error, phase_parse_tree_to_hlds,
-            [Msg, OldMsg]),
+        Msg = msg(Context, Pieces1 ++ Pieces2),
+        OldMsg = msg(OldContext, OldPieces),
+        Spec = error_spec($pred, severity_error, phase_pt2h, [Msg, OldMsg]),
         !:Specs = [Spec | !.Specs]
     else
         Entry = split_included(Context),
@@ -726,8 +725,7 @@ create_component_modules_depth_first(Globals, ModuleName,
             NestedInfo = split_nested_only_imp(Context),
             Pieces = [words("Submodule"), qual_sym_name(ModuleName),
                 words("is missing its interface section."), nl],
-            Spec = simplest_spec($pred, severity_error,
-                phase_parse_tree_to_hlds, Context, Pieces),
+            Spec = spec($pred, severity_error, phase_pt2h, Context, Pieces),
             !:Specs = [Spec | !.Specs]
         ),
         ( if map.remove(ModuleName, SubModulesCord, !SubModulesMap) then
@@ -832,8 +830,7 @@ warn_empty_submodule(ModuleName, Context, ParentModuleName, !Specs) :-
     Pieces = [words("Warning: submodule"), qual_sym_name(ModuleName),
         words("of"), words("module"), qual_sym_name(ParentModuleName),
         words("is empty."), nl],
-    Spec = simplest_spec($pred, severity_warning, phase_parse_tree_to_hlds,
-        Context, Pieces),
+    Spec = spec($pred, severity_warning, phase_pt2h, Context, Pieces),
     !:Specs = [Spec | !.Specs].
 
 %---------------------%
@@ -847,11 +844,10 @@ warn_duplicate_of_empty_submodule(ModuleName, ParentModuleName,
     Pieces1 = [words("Warning: submodule"), qual_sym_name(ModuleName),
         words("of"), words("module"), qual_sym_name(ParentModuleName),
         words("duplicates an empty submodule."), nl],
-    Msg1 = simplest_msg(Context, Pieces1),
+    Msg1 = msg(Context, Pieces1),
     Pieces2 = [words("This is the location of the empty submodule,"), nl],
-    Msg2 = simplest_msg(EmptyContext, Pieces2),
-    Spec = error_spec($pred, severity_warning, phase_parse_tree_to_hlds,
-        [Msg1, Msg2]),
+    Msg2 = msg(EmptyContext, Pieces2),
+    Spec = error_spec($pred, severity_warning, phase_pt2h, [Msg1, Msg2]),
     !:Specs = [Spec | !.Specs].
 
 %---------------------%
@@ -877,10 +873,9 @@ report_duplicate_submodule(ModuleName, Context, DupSection,
             words("was previously declared to be a separate submodule."), nl],
         OldPieces = [words("This is the location"),
             words("of that previous declaration."), nl],
-        Msg = simplest_msg(Context, Pieces),
-        OldMsg = simplest_msg(OldContext, OldPieces),
-        Spec = error_spec($pred, severity_error, phase_parse_tree_to_hlds,
-            [Msg, OldMsg])
+        Msg = msg(Context, Pieces),
+        OldMsg = msg(OldContext, OldPieces),
+        Spec = error_spec($pred, severity_error, phase_pt2h, [Msg, OldMsg])
     ;
         OldEntry = split_nested(SplitNested, _, _),
         (
@@ -892,10 +887,9 @@ report_duplicate_submodule(ModuleName, Context, DupSection,
                 qual_sym_name(ModuleName), words("is a duplicate"),
                 words("of a previous declaration of that module."), nl],
             OldPieces = [words("That previous declaration was here."), nl],
-            Msg = simplest_msg(Context, Pieces),
-            OldMsg = simplest_msg(OldContext, OldPieces),
-            Spec = error_spec($pred, severity_error, phase_parse_tree_to_hlds,
-                [Msg, OldMsg])
+            Msg = msg(Context, Pieces),
+            OldMsg = msg(OldContext, OldPieces),
+            Spec = error_spec($pred, severity_error, phase_pt2h, [Msg, OldMsg])
         ;
             DupSection = dup_int_only,
             report_duplicate_submodule_one_section(ModuleName, Context,
@@ -1000,10 +994,9 @@ report_duplicate_submodule_one_section_2(ModuleName, Context,
         words("has its"), fixed(SectionWord), words("declared here.")],
     OldPieces = [words("However, its"), fixed(SectionWord),
         words("was also declarated here."), nl],
-    Msg = simplest_msg(Context, Pieces),
-    OldMsg = simplest_msg(OldContext, OldPieces),
-    Spec = error_spec($pred, severity_error, phase_parse_tree_to_hlds,
-        [Msg, OldMsg]).
+    Msg = msg(Context, Pieces),
+    OldMsg = msg(OldContext, OldPieces),
+    Spec = error_spec($pred, severity_error, phase_pt2h, [Msg, OldMsg]).
 
 :- pred report_duplicate_submodule_both_sections(module_name::in,
     prog_context::in, module_name::in, prog_context::in, prog_context::in,
@@ -1019,19 +1012,18 @@ report_duplicate_submodule_both_sections(ModuleName, Context,
     ( if OldIntContext = OldImpContext then
         OldPieces = [words("However, its interface and implementation"),
             words("were also declarated here."), nl],
-        Msg = simplest_msg(Context, Pieces),
-        OldMsg = simplest_msg(OldIntContext, OldPieces),
-        Spec = error_spec($pred, severity_error, phase_parse_tree_to_hlds,
-            [Msg, OldMsg])
+        Msg = msg(Context, Pieces),
+        OldMsg = msg(OldIntContext, OldPieces),
+        Spec = error_spec($pred, severity_error, phase_pt2h, [Msg, OldMsg])
     else
         OldIntPieces = [words("However, its interface"),
             words("was also declarated here,"), nl],
         OldImpPieces = [words("and its implementation"),
             words("was also declarated here."), nl],
-        Msg = simplest_msg(Context, Pieces),
-        OldIntMsg = simplest_msg(OldIntContext, OldIntPieces),
-        OldImpMsg = simplest_msg(OldImpContext, OldImpPieces),
-        Spec = error_spec($pred, severity_error, phase_parse_tree_to_hlds,
+        Msg = msg(Context, Pieces),
+        OldIntMsg = msg(OldIntContext, OldIntPieces),
+        OldImpMsg = msg(OldImpContext, OldImpPieces),
+        Spec = error_spec($pred, severity_error, phase_pt2h,
             [Msg, OldIntMsg, OldImpMsg])
     ).
 
@@ -1044,8 +1036,7 @@ report_duplicate_submodule_vs_top(ModuleName, Context, ParentModuleName,
         suffix(":"), nl,
         words("error: nested submodule"), qual_sym_name(ModuleName),
         words("has the same name as its ancestor module."), nl],
-    Spec = simplest_spec($pred, severity_error, phase_parse_tree_to_hlds,
-        Context, Pieces).
+    Spec = spec($pred, severity_error, phase_pt2h, Context, Pieces).
 
 %---------------------------------------------------------------------------%
 :- end_module parse_tree.split_parse_tree_src.

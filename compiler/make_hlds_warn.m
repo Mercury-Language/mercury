@@ -141,8 +141,8 @@ quant_warning_to_spec(PfSymNameArity, VarSet, Warning) = Spec :-
             words("each have overlapping scopes."), nl]
     ),
     Spec = conditional_spec($pred, warn_overlapping_scopes, yes,
-        severity_warning, phase_parse_tree_to_hlds,
-        [simplest_msg(Context, Pieces1 ++ Pieces2)]).
+        severity_warning, phase_pt2h,
+        [msg(Context, Pieces1 ++ Pieces2)]).
 
 %---------------------------------------------------------------------------%
 
@@ -583,8 +583,8 @@ generate_variable_warning(SingleMulti, Context, PfSymNameArity, VarSet,
             words("occur"), words(Count), words("in this scope."), nl]
     ),
     Spec = conditional_spec($pred, warn_singleton_vars, yes,
-        severity_warning, phase_parse_tree_to_hlds,
-        [simplest_msg(Context, PreamblePieces ++ WarnPieces)]).
+        severity_warning, phase_pt2h,
+        [msg(Context, PreamblePieces ++ WarnPieces)]).
 
 :- pred add_warn_spec(error_spec::in, warn_info::in, warn_info::out) is det.
 
@@ -611,8 +611,8 @@ warn_singletons_in_pragma_foreign_proc(ModuleInfo, PragmaImpl, Lang,
             variable_warning_start(UnmentionedVars) ++
             [words("not occur in the"), words(LangStr), words("code."), nl],
         Spec = conditional_spec($pred, warn_singleton_vars, yes,
-            severity_warning, phase_parse_tree_to_hlds,
-            [simplest_msg(Context, Pieces)]),
+            severity_warning, phase_pt2h,
+            [msg(Context, Pieces)]),
         !:Specs = [Spec | !.Specs]
     ),
     pragma_foreign_proc_body_checks(ModuleInfo, Lang, Context, PFSymNameArity,
@@ -756,8 +756,8 @@ check_fp_body_for_success_indicator(ModuleInfo, Lang, Context, PFSymNameArity,
                     words("but it cannot fail.")],
                 Spec = conditional_spec($pred,
                     warn_suspicious_foreign_procs, yes,
-                    severity_warning, phase_parse_tree_to_hlds,
-                    [simplest_msg(Context, Pieces)]),
+                    severity_warning, phase_pt2h,
+                    [msg(Context, Pieces)]),
                 !:Specs = [Spec | !.Specs]
             else
                 true
@@ -778,8 +778,8 @@ check_fp_body_for_success_indicator(ModuleInfo, Lang, Context, PFSymNameArity,
                     words("but it can fail.")],
                 Spec = conditional_spec($pred,
                     warn_suspicious_foreign_procs, yes,
-                    severity_warning, phase_parse_tree_to_hlds,
-                    [simplest_msg(Context, Pieces)]),
+                    severity_warning, phase_pt2h,
+                    [msg(Context, Pieces)]),
                 !:Specs = [Spec | !.Specs]
             )
         ;
@@ -808,8 +808,8 @@ check_fp_body_for_return(Lang, Context, PFSymNameArity, BodyPieces, !Specs) :-
             words("may contain a"), quote("return"),
             words("statement."), nl],
         Spec = conditional_spec($pred, warn_suspicious_foreign_procs, yes,
-            severity_warning, phase_parse_tree_to_hlds,
-            [simplest_msg(Context, Pieces)]),
+            severity_warning, phase_pt2h,
+            [msg(Context, Pieces)]),
         !:Specs = [Spec | !.Specs]
     else
         true
@@ -939,7 +939,7 @@ promise_ex_error(PromiseType, Context, Message, !Specs) :-
         quote(parse_tree_out_misc.promise_to_string(PromiseType)),
         words("declaration:"), nl,
         words("error:"), words(Message), nl],
-    Spec = simplest_spec($pred, severity_error, phase_parse_tree_to_hlds,
+    Spec = spec($pred, severity_error, phase_pt2h,
         Context, Pieces),
     !:Specs = [Spec | !.Specs].
 
@@ -963,8 +963,8 @@ warn_suspicious_foreign_code(Lang, BodyCode, Context, !Specs) :-
                     pragma_decl("foreign_proc"), words("declarations.")
                 ],
                 Spec = conditional_spec($pred, warn_suspicious_foreign_code,
-                    yes, severity_warning, phase_parse_tree_to_hlds,
-                    [simplest_msg(Context, Pieces)]),
+                    yes, severity_warning, phase_pt2h,
+                    [msg(Context, Pieces)]),
                 !:Specs = [Spec | !.Specs]
             else
                 true

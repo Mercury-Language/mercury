@@ -228,8 +228,7 @@ report_unbound_inst_var_error(ModuleInfo, PredId, ProcId - UnboundInstVars,
         list_to_pieces(UnboundInstVarStrs) ++
         [words(IsAreUnbound), suffix("."), nl,
         words("(Sorry, polymorphic modes are not supported.)"), nl],
-    Spec = simplest_spec($pred, severity_error, phase_type_check,
-        Context, Pieces),
+    Spec = spec($pred, severity_error, phase_type_check, Context, Pieces),
     !:Specs = [Spec | !.Specs],
     % Delete this mode, to avoid internal errors.
     map.det_remove(ProcId, _, Procs0, Procs).
@@ -283,7 +282,7 @@ report_unsatisfied_constraints(ModuleInfo, PredId, PredInfo, Constraints,
         component_list_to_line_pieces(
             list.map(constraint_to_error_piece(TVarSet), Constraints),
                 [nl_indent_delta(-1)]),
-    MainMsg = simplest_msg(Context, MainPieces),
+    MainMsg = msg(Context, MainPieces),
 
     ConstrainedGoals = find_constrained_goals(PredInfo, Constraints),
     (
@@ -300,7 +299,7 @@ report_unsatisfied_constraints(ModuleInfo, PredId, PredInfo, Constraints,
         DueToPieces = choose_number(Constraints,
             [words("The constraint is due to:")],
             [words("The constraints are due to:")]),
-        ContextMsgsPrefix = simplest_msg(Context, DueToPieces),
+        ContextMsgsPrefix = msg(Context, DueToPieces),
         ContextMsgsList = constrained_goals_to_error_msgs(ModuleInfo,
             ConstrainedGoals),
         ContextMsgs = [ContextMsgsPrefix | ContextMsgsList]
@@ -738,7 +737,7 @@ check_type_of_main(PredInfo, !Specs) :-
             pred_info_get_context(PredInfo, Context),
             Pieces = [words("Error: both arguments of"), quote("main/2"),
                 words("must have type"), quote("io.state"), suffix("."), nl],
-            Spec = simplest_spec($pred, severity_error, phase_type_check,
+            Spec = spec($pred, severity_error, phase_type_check,
                 Context, Pieces),
             !:Specs = [Spec | !.Specs]
         )
@@ -900,7 +899,7 @@ report_indistinguishable_modes_error(ModuleInfo, OldProcId, NewProcId,
         phase_mode_check(report_in_any_mode),
         [simple_msg(NewContext,
             [always(MainPieces), verbose_only(verbose_always, VerbosePieces)]),
-        simplest_msg(OldContext, OldPieces)]).
+        msg(OldContext, OldPieces)]).
 
 %---------------------------------------------------------------------------%
 :- end_module check_hlds.post_typecheck.

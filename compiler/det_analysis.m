@@ -870,7 +870,7 @@ det_infer_par_conj(Goals0, Goals, GoalInfo, InstMap0, SolnContext,
         det_diagnose_conj(Goals, InstMap0, detism_det, [], !DetInfo, GoalMsgs),
         sort_error_msgs(GoalMsgs, SortedGoalMsgs),
         Spec = error_spec($pred, severity_error, phase_detism_check,
-            [simplest_msg(Context, Pieces)] ++ SortedGoalMsgs),
+            [msg(Context, Pieces)] ++ SortedGoalMsgs),
         det_info_add_error_spec(Spec, !DetInfo)
     ).
 
@@ -1124,7 +1124,7 @@ det_infer_call(PredId, ProcId0, ProcId, ArgVars, GoalInfo, SolnContext,
             ContextMsgs = failing_contexts_description(ModuleInfo, VarTable,
                 RightFailingContexts),
             Spec = error_spec($pred, severity_error, phase_detism_check,
-                [simplest_msg(GoalContext, FirstPieces) | ContextMsgs]),
+                [msg(GoalContext, FirstPieces) | ContextMsgs]),
             det_info_add_error_spec(Spec, !DetInfo),
 
             ProcId = ProcId0,
@@ -1171,7 +1171,7 @@ det_infer_generic_call(GenericCall, CallDetism, GoalInfo,
         ContextMsgs = failing_contexts_description(ModuleInfo, VarTable,
             RightFailingContexts),
         Spec = error_spec($pred, severity_error, phase_detism_check,
-            [simplest_msg(Context, FirstPieces) | ContextMsgs]),
+            [msg(Context, FirstPieces) | ContextMsgs]),
         det_info_add_error_spec(Spec, !DetInfo),
 
         % Code elsewhere relies on the assumption that
@@ -1222,7 +1222,7 @@ det_infer_foreign_proc(Attributes, PredId, ProcId, _PragmaCode,
                 quote("will_not_throw_exception"), words("attribute."),
                 words("This attribute cannot be applied"),
                 words("to erroneous procedures."), nl],
-            WillNotThrowSpec = simplest_spec($pred, severity_error,
+            WillNotThrowSpec = spec($pred, severity_error,
                 phase_detism_check, ProcContext, WillNotThrowPieces),
             det_info_add_error_spec(WillNotThrowSpec, !DetInfo)
         else
@@ -1245,7 +1245,7 @@ det_infer_foreign_proc(Attributes, PredId, ProcId, _PragmaCode,
             ContextMsgs = failing_contexts_description(ModuleInfo, VarTable,
                 RightFailingContexts),
             Spec = error_spec($pred, severity_error, phase_detism_check,
-                [simplest_msg(GoalContext, WrongContextFirstPieces) |
+                [msg(GoalContext, WrongContextFirstPieces) |
                     ContextMsgs]),
             det_info_add_error_spec(Spec, !DetInfo),
             NumSolns = at_most_many
@@ -1276,7 +1276,7 @@ det_infer_foreign_proc(Attributes, PredId, ProcId, _PragmaCode,
             pragma_decl("foreign_proc"), words("declaration"),
             words("is missing the final"),
             quote("is <determinism>"), words("part."), nl],
-        Spec = simplest_spec($pred, severity_error, phase_detism_check,
+        Spec = spec($pred, severity_error, phase_detism_check,
             Context, Pieces),
         det_info_add_error_spec(Spec, !DetInfo),
         Detism = detism_erroneous,
@@ -1573,7 +1573,7 @@ det_infer_atomic_goal(Goal0, Goal, InstMap0,
         Pieces = [words("Error: atomic goal has determinism"),
             quote(DetismStr), suffix(","),
             words("should be det or cc_multi."), nl],
-        Spec = simplest_spec($pred, severity_error, phase_detism_check,
+        Spec = spec($pred, severity_error, phase_detism_check,
             Context, Pieces),
         det_info_add_error_spec(Spec, !DetInfo)
     ).
@@ -1641,8 +1641,8 @@ det_infer_scope(Reason, Goal0, Goal, GoalInfo, InstMap0, SolnContext,
                     severity_warning, no),
                 NestedSpec = conditional_spec($pred, warn_simple_code, yes,
                     NestedSeverity, phase_detism_check,
-                    [simplest_msg(Context, NestedPieces),
-                    simplest_msg(OuterContext, NestedOuterPieces)]),
+                    [msg(Context, NestedPieces),
+                    msg(OuterContext, NestedOuterPieces)]),
                 det_info_add_error_spec(NestedSpec, !DetInfo),
                 AllVars = set_of_var.list_to_set(OuterVars ++ Vars),
                 MaybePromiseEqvSolutionSets =
@@ -1658,7 +1658,7 @@ det_infer_scope(Reason, Goal0, Goal, GoalInfo, InstMap0, SolnContext,
                     words("scope is not nested inside a"),
                     quote("promise_equivalent_solution_sets"),
                     words("scope."), nl],
-                ArbitrarySpec = simplest_spec($pred, severity_error,
+                ArbitrarySpec = spec($pred, severity_error,
                     phase_detism_check, Context, ArbitraryPieces),
                 det_info_add_error_spec(ArbitrarySpec, !DetInfo)
             ;
@@ -1694,8 +1694,8 @@ det_infer_scope(Reason, Goal0, Goal, GoalInfo, InstMap0, SolnContext,
                         words("scope."), nl],
                     OverlapSpec = error_spec($pred, severity_error,
                         phase_detism_check,
-                        [simplest_msg(Context, OverlapPieces),
-                        simplest_msg(PromiseContext, OverlapPromisePieces)]),
+                        [msg(Context, OverlapPieces),
+                        msg(PromiseContext, OverlapPromisePieces)]),
                     det_info_add_error_spec(OverlapSpec, !DetInfo)
                 )
             ),
@@ -1748,7 +1748,7 @@ det_infer_scope(Reason, Goal0, Goal, GoalInfo, InstMap0, SolnContext,
             MissingPieces = [words("Error: the"), quote(MissingKindStr),
                 words(BindsWords), words(MissingListStr)]
                 ++ list_to_pieces(MissingVarNames) ++ [suffix("."), nl],
-            MissingSpec = simplest_spec($pred, severity_error,
+            MissingSpec = spec($pred, severity_error,
                 phase_detism_check, Context, MissingPieces),
             det_info_add_error_spec(MissingSpec, !DetInfo)
         ),
@@ -1781,7 +1781,7 @@ det_infer_scope(Reason, Goal0, Goal, GoalInfo, InstMap0, SolnContext,
             ExtraPieces = [words("Error: the"), quote(ExtraKindStr),
                 words("goal lists"), words(ExtraListStr)] ++
                 list_to_pieces(ExtraVarNames) ++ [suffix("."), nl],
-            ExtraSpec = simplest_spec($pred, severity_error,
+            ExtraSpec = spec($pred, severity_error,
                 phase_detism_check, Context, ExtraPieces),
             det_info_add_error_spec(ExtraSpec, !DetInfo)
         ),
@@ -1817,7 +1817,7 @@ det_infer_scope(Reason, Goal0, Goal, GoalInfo, InstMap0, SolnContext,
             Pieces = [words("Error: trace goal has determinism"),
                 quote(DetismStr), suffix(","),
                 words("should be det or cc_multi."), nl],
-            Spec = simplest_spec($pred, severity_error, phase_detism_check,
+            Spec = spec($pred, severity_error, phase_detism_check,
                 Context, Pieces),
             det_info_add_error_spec(Spec, !DetInfo)
         )

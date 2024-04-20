@@ -359,7 +359,7 @@ process_options_arg_file(ProgressStream, DefaultOptionTable, ArgFile,
         (
             MaybeError = found_option_error(OptionError),
             OptionErrorStr = option_error_to_string(OptionError),
-            Spec = simplest_no_context_spec($pred, severity_error,
+            Spec = no_ctxt_spec($pred, severity_error,
                 phase_options, [words(OptionErrorStr), suffix("."), nl]),
             Result = opr_failure([Spec])
         ;
@@ -578,7 +578,7 @@ maybe_dump_options_file(OutStream, ArgsOptionTable, OptionsVariables, !IO) :-
 
 report_option_error(OptionError) = Specs :-
     OptionErrorStr = option_error_to_string(OptionError),
-    MainMsg = simplest_no_context_msg([words("Error:"), words(OptionErrorStr),
+    MainMsg = no_ctxt_msg([words("Error:"), words(OptionErrorStr),
         suffix("."), nl]),
     ( if
         OptionError = unrecognized_option(OptionStr),
@@ -722,7 +722,7 @@ do_op_mode_standalone_interface(ProgressStream, ErrorStream, Globals,
             words("Error:"), quote("--generate-standalone-interface"),
             words("is not required for target language"),
             words(compilation_target_string(Target)), suffix("."), nl],
-        Spec = simplest_no_context_spec($pred, severity_error, phase_options,
+        Spec = no_ctxt_spec($pred, severity_error, phase_options,
             Pieces),
         write_error_spec(ErrorStream, Globals, Spec, !IO)
     ;
@@ -1032,7 +1032,7 @@ setup_and_process_compiler_stdin_args(ProgressStream, ErrorStream, StdIn,
         io.error_message(Error, Msg),
         Pieces = [words("Error reading module name from standard input:"),
             words(Msg), suffix("."), nl],
-        Spec = simplest_no_context_spec($pred, severity_error,
+        Spec = no_ctxt_spec($pred, severity_error,
             phase_read_files, Pieces),
         !:Specs = [Spec | !.Specs]
     ).
@@ -1441,7 +1441,7 @@ handle_not_found_files(Specs0, Specs, Continue) :-
         ),
         Pieces = NotFoundPieces ++
             [words("and thus could not create some interface files."), nl],
-        Spec = simplest_no_context_spec($pred, severity_informational,
+        Spec = no_ctxt_spec($pred, severity_informational,
             phase_read_files, Pieces),
         Specs = [Spec | OtherSpecs],
         Continue = no

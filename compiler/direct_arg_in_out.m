@@ -1994,7 +1994,7 @@ generate_problem_proc_error(ModuleInfo, PredProcId, OoMProblemArgs, Spec) :-
     ),
     module_info_proc_info(ModuleInfo, PredProcId, ProcInfo),
     proc_info_get_context(ProcInfo, Context),
-    Spec = simplest_spec($pred, severity_error, phase_direct_arg_in_out,
+    Spec = spec($pred, severity_error, phase_direct_arg_in_out,
         Context, Pieces).
 
 %---------------------%
@@ -2040,7 +2040,7 @@ generate_foreign_export_error(PFSNA, ExportedName, Context, Spec) :-
         words("partially instantiated data structures"),
         words("and the"), quote("direct_arg"),
         words("data representation optimization."), nl],
-    Spec = simplest_spec($pred, severity_error, phase_direct_arg_in_out,
+    Spec = spec($pred, severity_error, phase_direct_arg_in_out,
         Context, Pieces).
 
 %---------------------%
@@ -2108,7 +2108,7 @@ generate_call_foreign_proc_error(ModuleInfo, PredProcId, DirectArgProc,
     ),
     module_info_proc_info(ModuleInfo, PredProcId, ProcInfo),
     proc_info_get_context(ProcInfo, Context),
-    Spec = simplest_spec($pred, severity_error, phase_direct_arg_in_out,
+    Spec = spec($pred, severity_error, phase_direct_arg_in_out,
         Context, Pieces).
 
 :- func args_violate_prohibition_pieces(list(format_piece),

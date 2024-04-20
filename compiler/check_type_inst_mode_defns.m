@@ -1042,9 +1042,9 @@ non_enum_du_report_any_foreign_enum(TypeCtor, DuDefn, NonEnumSNAs,
         words("so there must not be any"),
         pragma_decl("foreign_enum"), words("declarations for it."), nl],
     DuPieces = [words("That Mercury definition is here."), nl | CtorPieces],
-    Spec = error_spec($pred, severity_error, phase_type_inst_mode_check,
-        [simplest_msg(Enum ^ fe_context, EnumPieces),
-        simplest_msg(DuDefn ^ td_context, DuPieces)]),
+    Spec = error_spec($pred, severity_error, phase_tim_check,
+        [msg(Enum ^ fe_context, EnumPieces),
+        msg(DuDefn ^ td_context, DuPieces)]),
     !:Specs = [Spec | !.Specs].
 
 :- pred subtype_report_any_foreign_type(type_ctor::in,
@@ -1057,9 +1057,9 @@ subtype_report_any_foreign_type(TypeCtor, SubTypeDefn, Foreign, !Specs) :-
         words("so there must not be any"),
         pragma_decl("foreign_type"), words("declarations for it."), nl],
     SubTypePieces = [words("That subtype definition is here."), nl],
-    Spec = error_spec($pred, severity_error, phase_type_inst_mode_check,
-        [simplest_msg(Foreign ^ td_context, ForeignPieces),
-        simplest_msg(SubTypeDefn ^ td_context, SubTypePieces)]),
+    Spec = error_spec($pred, severity_error, phase_tim_check,
+        [msg(Foreign ^ td_context, ForeignPieces),
+        msg(SubTypeDefn ^ td_context, SubTypePieces)]),
     !:Specs = [Spec | !.Specs].
 
 :- pred subtype_report_any_foreign_enum(type_ctor::in,
@@ -1072,9 +1072,9 @@ subtype_report_any_foreign_enum(TypeCtor, SubTypeDefn, Enum, !Specs) :-
         words("so there must not be any"),
         pragma_decl("foreign_enum"), words("declarations for it."), nl],
     SubTypePieces = [words("That subtype definition is here."), nl],
-    Spec = error_spec($pred, severity_error, phase_type_inst_mode_check,
-        [simplest_msg(Enum ^ fe_context, EnumPieces),
-        simplest_msg(SubTypeDefn ^ td_context, SubTypePieces)]),
+    Spec = error_spec($pred, severity_error, phase_tim_check,
+        [msg(Enum ^ fe_context, EnumPieces),
+        msg(SubTypeDefn ^ td_context, SubTypePieces)]),
     !:Specs = [Spec | !.Specs].
 
 :- pred report_mer_foreign_section_mismatch(type_ctor::in,
@@ -1091,9 +1091,9 @@ report_mer_foreign_section_mismatch(TypeCtor, DeclOrDefn, MerSection, MerDefn,
         words("in the"), words(MerSection), words("section as well."), nl],
     DuPieces = [words("That Mercury"), words(DeclOrDefn),
         words("is here."), nl],
-    Spec = error_spec($pred, severity_error, phase_type_inst_mode_check,
-        [simplest_msg(ForeignDefn ^ td_context, ForeignPieces),
-        simplest_msg(MerDefn ^ td_context, DuPieces)]),
+    Spec = error_spec($pred, severity_error, phase_tim_check,
+        [msg(ForeignDefn ^ td_context, ForeignPieces),
+        msg(MerDefn ^ td_context, DuPieces)]),
     !:Specs = [Spec | !.Specs].
 
 :- pred report_any_foreign_type_without_declaration(type_ctor::in,
@@ -1106,8 +1106,7 @@ report_any_foreign_type_without_declaration(TypeCtor, ForeignDefn, !Specs) :-
         unqual_type_ctor(TypeCtor), words("without either"),
         words("a Mercury definition or a Mercury declaration for"),
         unqual_type_ctor(TypeCtor), suffix("."), nl],
-    Spec = simplest_spec($pred, severity_error,
-        phase_type_inst_mode_check_invalid_type,
+    Spec = spec($pred, severity_error, phase_tim_check_invalid_type,
         ForeignDefn ^ td_context, Pieces),
     !:Specs = [Spec | !.Specs].
 
@@ -1124,9 +1123,9 @@ foreign_int_report_any_foreign_defn_in_imp(TypeCtor, IntForeignContext,
         words("must be in the interface section as well."), nl],
     IntPieces = [words("That foreign definition in the interface"),
         words("is here."), nl],
-    Spec = error_spec($pred, severity_error, phase_type_inst_mode_check,
-        [simplest_msg(ImpForeignDefn ^ td_context, ImpPieces),
-        simplest_msg(IntForeignContext, IntPieces)]),
+    Spec = error_spec($pred, severity_error, phase_tim_check,
+        [msg(ImpForeignDefn ^ td_context, ImpPieces),
+        msg(IntForeignContext, IntPieces)]),
     !:Specs = [Spec | !.Specs].
 
 :- pred report_any_nonabstract_solver_type_in_int(type_ctor::in,
@@ -1150,8 +1149,8 @@ report_any_nonabstract_solver_type_in_int(TypeCtor, IntMaybeDefn,
             unqual_type_ctor(TypeCtor), words("may be defined"),
             words("(as opposed to declared)"),
             words("only in the implementation section."), nl],
-        Spec = simplest_spec($pred, severity_error,
-            phase_type_inst_mode_check, IntDefn ^ td_context, Pieces),
+        Spec = spec($pred, severity_error, phase_tim_check,
+            IntDefn ^ td_context, Pieces),
         !:Specs = [Spec | !.Specs],
         % To avoid avalanche errors about this solver type being unknown,
         % ensure that it has a declaration.
@@ -1189,8 +1188,8 @@ report_any_redundant_abstract_type_in_imp(TypeCtor, Section,
             unqual_type_ctor(TypeCtor), words("is redundant,"),
             words("since the type has a definition in the"),
             words(Section), words("section."), nl],
-        Spec = simplest_spec($pred, severity_warning,
-            phase_type_inst_mode_check, ImpAbstractDefn ^ td_context, Pieces),
+        Spec = spec($pred, severity_warning, phase_tim_check,
+            ImpAbstractDefn ^ td_context, Pieces),
         !:Specs = [Spec | !.Specs]
     ).
 
@@ -1211,10 +1210,9 @@ report_any_incompatible_type_decl_or_defn(TypeCtor, UsedContext, Kind, Section,
             words("in the"), words(Section), words("section."), nl],
         UsedPieces = [words("That"), words(SectionDeclOrDefn),
             words("is here."), nl],
-        Spec = error_spec($pred, severity_error,
-            phase_type_inst_mode_check_invalid_type,
-            [simplest_msg(DefnContext, MainPieces),
-            simplest_msg(UsedContext, UsedPieces)]),
+        Spec = error_spec($pred, severity_error, phase_tim_check_invalid_type,
+            [msg(DefnContext, MainPieces),
+            msg(UsedContext, UsedPieces)]),
         !:Specs = [Spec | !.Specs]
     ).
 
@@ -1229,9 +1227,9 @@ report_incompatible_foreign_enum(TypeCtor, UsedContext, Kind, Section, Enum,
         words("is incompatible with the"), words(Kind),
         words("definition in the"), words(Section), words("section."), nl],
     UsedPieces = [words("That definition is here."), nl],
-    Spec = error_spec($pred, severity_error, phase_type_inst_mode_check,
-        [simplest_msg(Enum ^ fe_context, MainPieces),
-        simplest_msg(UsedContext, UsedPieces)]),
+    Spec = error_spec($pred, severity_error, phase_tim_check,
+        [msg(Enum ^ fe_context, MainPieces),
+        msg(UsedContext, UsedPieces)]),
     !:Specs = [Spec | !.Specs].
 
 :- pred report_foreign_enum_for_undefined_type(type_ctor::in, string::in,
@@ -1243,7 +1241,7 @@ report_foreign_enum_for_undefined_type(TypeCtor, UndefOrUndecl, Enum,
     Pieces = [words("Error:"), pragma_decl("foreign_enum"),
         words("declaration for the"), words(UndefOrUndecl),
         words("type"), unqual_type_ctor(TypeCtor), suffix("."), nl],
-    Spec = simplest_spec($pred, severity_error, phase_type_inst_mode_check,
+    Spec = spec($pred, severity_error, phase_tim_check,
         Enum ^ fe_context, Pieces),
     !:Specs = [Spec | !.Specs].
 
@@ -1268,9 +1266,8 @@ maybe_report_declared_but_undefined_type(InsistOnDefn, TypeCtor, AbsTypeDefn,
     then
         Pieces = [words("Error: the type"), unqual_type_ctor(TypeCtor),
             words("has this declaration, but it has no definition."), nl],
-        Spec = simplest_spec($pred, severity_error,
-            % XXX should be phase_type_inst_mode_check_invalid_type,
-            phase_type_inst_mode_check,
+        % XXX should be phase_tim_check_invalid_type
+        Spec = spec($pred, severity_error, phase_tim_check,
             AbsTypeDefn ^ td_context, Pieces),
         !:Specs = [Spec | !.Specs]
     else
@@ -1419,9 +1416,9 @@ report_duplicate_type_decl_or_defn(DeclOrDefn, Kind, TypeCtor,
         words("for"), unqual_type_ctor(TypeCtor), suffix("."), nl],
     LeastPieces = [words("The original"), words(DeclOrDefnWord),
         words("is here."), nl],
-    Spec = error_spec($pred, Severity, phase_type_inst_mode_check,
-        [simplest_msg(TypeDefn ^ td_context, MainPieces),
-        simplest_msg(OrigTypeDefn ^ td_context, LeastPieces)]),
+    Spec = error_spec($pred, Severity, phase_tim_check,
+        [msg(TypeDefn ^ td_context, MainPieces),
+        msg(OrigTypeDefn ^ td_context, LeastPieces)]),
     !:Specs = [Spec | !.Specs].
 
 :- pred at_most_one_foreign_type_for_lang(type_ctor::in, foreign_language::in,
@@ -1517,9 +1514,9 @@ report_duplicate_foreign_defn(TypeOrEnum, TypeCtor, Lang,
         words("definition in"), fixed(foreign_language_string(Lang)),
         words("for"), unqual_type_ctor(TypeCtor), suffix("."), nl],
     LeastPieces = [words("The original definition is here."), nl],
-    Spec = error_spec($pred, severity_error, phase_type_inst_mode_check,
-        [simplest_msg(Context, MainPieces),
-        simplest_msg(LeastContext, LeastPieces)]),
+    Spec = error_spec($pred, severity_error, phase_tim_check,
+        [msg(Context, MainPieces),
+        msg(LeastContext, LeastPieces)]),
     !:Specs = [Spec | !.Specs].
 
 :- func get_maybe_type_defns(list(maybe(item_type_defn_info_general(T))))
@@ -1685,9 +1682,9 @@ report_duplicate_field_name(FieldNameTypeCtor, FirstFNLocn, FNLocn, !Specs) :-
     ),
     FirstPieces = [words("The first occurrence of this field name"),
         words("is here."), nl],
-    Spec = error_spec($pred, severity_error, phase_type_inst_mode_check,
-        [simplest_msg(Context, MainPieces),
-        simplest_msg(FirstContext, FirstPieces)]),
+    Spec = error_spec($pred, severity_error, phase_tim_check,
+        [msg(Context, MainPieces),
+        msg(FirstContext, FirstPieces)]),
     !:Specs = [Spec | !.Specs].
 
 %---------------------------------------------------------------------------%
@@ -1857,9 +1854,9 @@ report_duplicate_inst_defn(Kind, InstCtor, OrigInstDefn, InstDefn, !Specs) :-
     MainPieces = [words("Error: duplicate"), words(Kind),
         words("definition for"), unqual_inst_ctor(InstCtor), suffix("."), nl],
     LeastPieces = [words("The original definition is here."), nl],
-    Spec = error_spec($pred, severity_error, phase_type_inst_mode_check,
-        [simplest_msg(InstDefn ^ id_context, MainPieces),
-        simplest_msg(OrigInstDefn ^ id_context, LeastPieces)]),
+    Spec = error_spec($pred, severity_error, phase_tim_check,
+        [msg(InstDefn ^ id_context, MainPieces),
+        msg(OrigInstDefn ^ id_context, LeastPieces)]),
     !:Specs = [Spec | !.Specs].
 
 :- pred report_any_redundant_abstract_inst_in_imp(inst_ctor::in,
@@ -1877,8 +1874,8 @@ report_any_redundant_abstract_inst_in_imp(TypeCtor, DeclOrDefn, Section,
             unqual_inst_ctor(TypeCtor), words("is redundant,"),
             words("since the inst has a"), words(DeclOrDefn),
             words("in the"), words(Section), words("section."), nl],
-        Spec = simplest_spec($pred, severity_warning,
-            phase_type_inst_mode_check, ImpAbstractDefn ^ id_context, Pieces),
+        Spec = spec($pred, severity_warning, phase_tim_check,
+            ImpAbstractDefn ^ id_context, Pieces),
         !:Specs = [Spec | !.Specs]
     ).
 
@@ -1889,8 +1886,7 @@ report_any_redundant_abstract_inst_in_imp(TypeCtor, DeclOrDefn, Section,
 report_declared_but_undefined_inst(InstCtor, AbsInstDefn, !Specs) :-
     Pieces = [words("Error: the inst"), unqual_inst_ctor(InstCtor),
         words("has this declaration, but it has no definition."), nl],
-    Spec = simplest_spec($pred, severity_error,
-        phase_type_inst_mode_check_invalid_inst_mode,
+    Spec = spec($pred, severity_error, phase_tim_check_invalid_inst_mode,
         AbsInstDefn ^ id_context, Pieces),
     !:Specs = [Spec | !.Specs].
 
@@ -2061,9 +2057,9 @@ report_duplicate_mode_defn(Kind, ModeCtor, OrigModeDefn, ModeDefn, !Specs) :-
     MainPieces = [words("Error: duplicate"), words(Kind),
         words("definition for"), unqual_mode_ctor(ModeCtor), suffix("."), nl],
     LeastPieces = [words("The original definition is here."), nl],
-    Spec = error_spec($pred, severity_error, phase_type_inst_mode_check,
-        [simplest_msg(ModeDefn ^ md_context, MainPieces),
-        simplest_msg(OrigModeDefn ^ md_context, LeastPieces)]),
+    Spec = error_spec($pred, severity_error, phase_tim_check,
+        [msg(ModeDefn ^ md_context, MainPieces),
+        msg(OrigModeDefn ^ md_context, LeastPieces)]),
     !:Specs = [Spec | !.Specs].
 
 :- pred report_any_redundant_abstract_mode_in_imp(mode_ctor::in,
@@ -2081,8 +2077,8 @@ report_any_redundant_abstract_mode_in_imp(TypeCtor, DeclOrDefn, Section,
             unqual_mode_ctor(TypeCtor), words("is redundant,"),
             words("since the mode has a"), words(DeclOrDefn),
             words("in the"), words(Section), words("section."), nl],
-        Spec = simplest_spec($pred, severity_warning,
-            phase_type_inst_mode_check, ImpAbstractDefn ^ md_context, Pieces),
+        Spec = spec($pred, severity_warning, phase_tim_check,
+            ImpAbstractDefn ^ md_context, Pieces),
         !:Specs = [Spec | !.Specs]
     ).
 
@@ -2093,8 +2089,7 @@ report_any_redundant_abstract_mode_in_imp(TypeCtor, DeclOrDefn, Section,
 report_declared_but_undefined_mode(ModeCtor, AbsModeDefn, !Specs) :-
     Pieces = [words("Error: the mode"), unqual_mode_ctor(ModeCtor),
         words("has this declaration, but it has no definition."), nl],
-    Spec = simplest_spec($pred, severity_error,
-        phase_type_inst_mode_check_invalid_inst_mode,
+    Spec = spec($pred, severity_error, phase_tim_check_invalid_inst_mode,
         AbsModeDefn ^ md_context, Pieces),
     !:Specs = [Spec | !.Specs].
 

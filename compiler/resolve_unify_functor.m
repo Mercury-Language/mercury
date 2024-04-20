@@ -224,7 +224,7 @@ resolve_unify_functor(ModuleInfo, X0, ConsId0, ArgVars0, Mode0,
             Pieces = [words("Error: reference to"),
                 words("undeclared function or predicate"),
                 qual_sym_name_arity(SNA), suffix("."), nl],
-            Spec = simplest_spec($pred, severity_error, phase_type_check,
+            Spec = spec($pred, severity_error, phase_type_check,
                 Context, Pieces),
             IsPlainUnify = is_unknown_ref(Spec)
         ),

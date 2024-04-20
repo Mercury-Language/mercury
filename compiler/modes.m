@@ -554,7 +554,7 @@ report_max_iterations_exceeded(ModuleInfo) = Spec :-
         words("option to increase the limit."),
         words("(The current limit is"), int_fixed(MaxIterations),
         words("iterations.)"), nl],
-    Spec = simplest_no_context_spec($pred, severity_error,
+    Spec = no_ctxt_spec($pred, severity_error,
         phase_mode_check(report_in_any_mode), Pieces).
 
     % copy_pred_bodies(OldPredIdTable, ProcId, !ModuleInfo):
@@ -791,7 +791,7 @@ maybe_report_error_no_modes(ModuleInfo, PredId, PredInfo) = Specs :-
         Pieces = [words("Error: no mode declaration for exported")] ++
             describe_one_pred_name(ModuleInfo, should_module_qualify, PredId)
             ++ [suffix("."), nl],
-        Spec = simplest_spec($pred, severity_error,
+        Spec = spec($pred, severity_error,
             phase_mode_check(report_in_any_mode), Context, Pieces),
         Specs = [Spec]
     ).
@@ -1831,7 +1831,7 @@ report_wrong_mode_for_main(ProcInfo) = Spec :-
     Pieces = [words("Error:"),
         unqual_sym_name_arity(sym_name_arity(unqualified("main"), 2)),
         words("must have mode"), quote("(di, uo)"), suffix("."), nl],
-    Spec = simplest_spec($pred, severity_error,
+    Spec = spec($pred, severity_error,
         phase_mode_check(report_in_any_mode), Context, Pieces).
 
 %-----------------------------------------------------------------------------%
@@ -1974,7 +1974,7 @@ report_mode_inference_message(ModuleInfo, OutputDetism, PredInfo, ProcInfo,
         Pieces = [words(Verb), words(Detail), nl],
         Spec = conditional_spec($pred, inform_inferred_modes, yes,
             severity_informational, phase_mode_check(report_in_any_mode),
-            [simplest_msg(Context, Pieces)])
+            [msg(Context, Pieces)])
     ).
 
 %-----------------------------------------------------------------------------%

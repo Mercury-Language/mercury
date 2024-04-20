@@ -206,7 +206,7 @@ lambda_modes_and_det(PredInfo, ProcInfo, Context, LambdaVars, MaybeResult) :-
             qual_sym_name(PredSymName), words("has no declared determinism,"),
             words("so a curried call to it"),
             words("may not be used as a lambda expression."), nl],
-        Spec = simplest_spec($pred, severity_error, phase_polymorphism,
+        Spec = spec($pred, severity_error, phase_polymorphism,
             Context, Pieces),
         MaybeResult = error2([Spec])
     ).

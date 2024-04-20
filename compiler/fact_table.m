@@ -331,7 +331,7 @@ fact_table_check_args(ModuleInfo, PragmaContext, PredId, PredInfo, Result) :-
         % the result.
         Pieces = [words("Error:"), pragma_decl("fact_table"),
             words("declaration for a predicate without arguments."), nl],
-        Spec = simplest_spec($pred, severity_error, phase_fact_table_check,
+        Spec = spec($pred, severity_error, phase_fact_table_check,
             PragmaContext, Pieces),
         % Since there are no arguments, they cannot have an unsupported
         % type or mode.
@@ -345,7 +345,7 @@ fact_table_check_args(ModuleInfo, PragmaContext, PredId, PredInfo, Result) :-
             ModePieces = [words("Error:"), pragma_decl("fact_table"),
                 words("declaration for a predicate with no declared modes."),
                 nl],
-            ModeSpec = simplest_spec($pred, severity_error,
+            ModeSpec = spec($pred, severity_error,
                 phase_fact_table_check, PragmaContext, ModePieces),
             ModeSpecs = [ModeSpec],
             FactArgInfos = FactArgInfos0,       % dummy; won't be used
@@ -374,7 +374,7 @@ fact_table_check_args(ModuleInfo, PragmaContext, PredId, PredInfo, Result) :-
                     words("declaration for a predicate"),
                     words("with more than one mode"),
                     words("in which all arguments are input."), nl],
-                AllInSpec = simplest_spec($pred, severity_error,
+                AllInSpec = spec($pred, severity_error,
                     phase_fact_table_check, PragmaContext, AllInPieces),
                 ModeSpecs = [AllInSpec | ModeSpecs0],
                 MaybeAllInProcId = no   % dummy; won't be used
@@ -506,7 +506,7 @@ check_proc_arg_modes(ModuleInfo, PredProcId, ProcInfo, [Mode | Modes], ArgNum,
                 [words("to be either fully input or fully output,"),
                 words("but the"), nth_fixed(ArgNum), words("argument"),
                 words("is neither."), nl],
-            Spec = simplest_spec($pred, severity_error, phase_fact_table_check,
+            Spec = spec($pred, severity_error, phase_fact_table_check,
                 Context, Pieces),
             !:Specs = [Spec | !.Specs],
             FactTableMode = fully_in        % dummy; won't be used.
@@ -523,7 +523,7 @@ check_proc_arg_modes(ModuleInfo, PredProcId, ProcInfo, [Mode | Modes], ArgNum,
         % fact table code for this procedure, and we have to signal this
         % by an error_spec. So we generate and return an empty error_spec.
         proc_info_get_context(ProcInfo, Context),
-        Spec = simplest_spec($pred, severity_error, phase_fact_table_check,
+        Spec = spec($pred, severity_error, phase_fact_table_check,
             Context, []),
         !:Specs = [Spec | !.Specs],
         FactTableMode = fully_in,       % dummy; won't be used.
@@ -1468,7 +1468,7 @@ infer_determinism_pass_2(MaybeProgressStream, GenInfo,
                 words("in ether the"), quote("sort"),
                 words("or the"), quote("cut"), words("program"),
                 words("during fact table determinism inference."), nl],
-            Spec = simplest_no_context_spec($pred, severity_error,
+            Spec = no_ctxt_spec($pred, severity_error,
                 phase_fact_table_check, Pieces),
             !:Specs = [Spec | !.Specs],
             Determinism = detism_erroneous
@@ -1652,7 +1652,7 @@ append_data_table(MaybeProgressStream, OutputFileName, DataFileName,
         else
             Pieces = [words("An error occurred while concatenating"),
                 words("fact table output files."), nl],
-            Spec = simplest_no_context_spec($pred, severity_error,
+            Spec = no_ctxt_spec($pred, severity_error,
                 phase_fact_table_check, Pieces),
             !:Specs = [Spec | !.Specs]
         )
@@ -1830,7 +1830,7 @@ read_sort_file_line(InputStream, InputFileName,
             [words("Error reading file"), quote(InputFileName),
             suffix(":"), nl,
             words(ErrorMessage), nl],
-        Spec = simplest_no_context_spec($pred, severity_error,
+        Spec = no_ctxt_spec($pred, severity_error,
             phase_fact_table_check, Pieces),
         !:Specs = [Spec | !.Specs],
         MaybeSortFileLine = no
@@ -3872,7 +3872,7 @@ add_file_open_error(MaybeContext, FileName, InOrOut, Error, !Specs, !IO) :-
     list(error_spec)::in, list(error_spec)::out) is det.
 
 add_error_context_and_pieces(Context, Pieces, !Specs) :-
-    Spec = simplest_spec($pred, severity_error, phase_fact_table_check,
+    Spec = spec($pred, severity_error, phase_fact_table_check,
         Context, Pieces),
     !:Specs = [Spec | !.Specs].
 
@@ -3880,7 +3880,7 @@ add_error_context_and_pieces(Context, Pieces, !Specs) :-
     list(error_spec)::in, list(error_spec)::out) is det.
 
 add_error_pieces(Pieces, !Specs) :-
-    Spec = simplest_no_context_spec($pred, severity_error,
+    Spec = no_ctxt_spec($pred, severity_error,
         phase_fact_table_check, Pieces),
     !:Specs = [Spec | !.Specs].
 

@@ -146,7 +146,7 @@ parse_pragma_unused_args(ModuleName, VarSet, ErrorTerm, PragmaTerms,
         ),
         Pieces = [words("Error: an"), pragma_decl("unused_args"),
             words("declaration must have five arguments."), nl],
-        Spec = simplest_spec($pred, severity_error, phase_term_to_parse_tree,
+        Spec = spec($pred, severity_error, phase_t2pt,
             get_term_context(ErrorTerm), Pieces),
         MaybeIOM = error1([Spec])
     ).
@@ -183,8 +183,7 @@ parse_pragma_termination_info(ModuleName, VarSet, ErrorTerm, PragmaTerms,
                     NotSetPieces = cord.list(ArgSizeContextPieces) ++
                         [words("error:"), quote("not_set"),
                         words("must have no arguments."), nl],
-                    NotSetSpec = simplest_spec($pred, severity_error,
-                        phase_term_to_parse_tree,
+                    NotSetSpec = spec($pred, severity_error, phase_t2pt,
                         get_term_context(ArgSizeTerm), NotSetPieces),
                     MaybeMaybeArgSizeInfo = error1([NotSetSpec])
                 )
@@ -199,8 +198,7 @@ parse_pragma_termination_info(ModuleName, VarSet, ErrorTerm, PragmaTerms,
                     InfinitePieces = cord.list(ArgSizeContextPieces) ++
                         [words("error:"), quote("infinite"),
                         words("must have no arguments."), nl],
-                    InfiniteSpec = simplest_spec($pred, severity_error,
-                        phase_term_to_parse_tree,
+                    InfiniteSpec = spec($pred, severity_error, phase_t2pt,
                         get_term_context(ArgSizeTerm), InfinitePieces),
                     MaybeMaybeArgSizeInfo = error1([InfiniteSpec])
                 )
@@ -239,8 +237,7 @@ parse_pragma_termination_info(ModuleName, VarSet, ErrorTerm, PragmaTerms,
                         words("declaration:"), nl,
                         quote("finite"),
                         words("must have two arguments."), nl],
-                    FiniteSpec = simplest_spec($pred, severity_error,
-                        phase_term_to_parse_tree,
+                    FiniteSpec = spec($pred, severity_error, phase_t2pt,
                         get_term_context(ArgSizeTerm), FinitePieces),
                     MaybeMaybeArgSizeInfo = error1([FiniteSpec])
                 )
@@ -254,9 +251,8 @@ parse_pragma_termination_info(ModuleName, VarSet, ErrorTerm, PragmaTerms,
                 quote("infinite"), suffix(","), words("and"),
                 quote("finite(N, <used_args>)"), suffix(","),
                 words("got"), quote(ArgSizeTermStr), suffix("."), nl],
-            ArgSizeSpec = simplest_spec($pred, severity_error,
-                phase_term_to_parse_tree, get_term_context(ArgSizeTerm),
-                ArgSizePieces),
+            ArgSizeSpec = spec($pred, severity_error, phase_t2pt,
+                get_term_context(ArgSizeTerm), ArgSizePieces),
             MaybeMaybeArgSizeInfo = error1([ArgSizeSpec])
         ),
         TIContextPieces = [words("In the third argument of"),
@@ -287,7 +283,7 @@ parse_pragma_termination_info(ModuleName, VarSet, ErrorTerm, PragmaTerms,
         ),
         Pieces = [words("Error: a"), pragma_decl("termination_info"),
             words("declaration must have three arguments."), nl],
-        Spec = simplest_spec($pred, severity_error, phase_term_to_parse_tree,
+        Spec = spec($pred, severity_error, phase_t2pt,
             get_term_context(ErrorTerm), Pieces),
         MaybeIOM = error1([Spec])
     ).
@@ -308,8 +304,8 @@ parse_bool(ContextPieces, VarSet, Term, MaybeBool) :-
         Pieces = cord.list(ContextPieces) ++ [lower_case_next_if_not_first,
             words("Error: expected a boolean (yes or no),"),
             words("got"), quote(TermStr), suffix("."), nl],
-        Spec = simplest_spec($pred, severity_error,
-            phase_term_to_parse_tree, get_term_context(Term), Pieces),
+        Spec = spec($pred, severity_error, phase_t2pt,
+            get_term_context(Term), Pieces),
         MaybeBool = error1([Spec])
     ).
 
@@ -360,7 +356,7 @@ parse_pragma_termination2_info(ModuleName, VarSet, ErrorTerm, PragmaTerms,
         ),
         Pieces = [words("Error: a"), pragma_decl("termination2_info"),
             words("declaration must have four arguments."), nl],
-        Spec = simplest_spec($pred, severity_error, phase_term_to_parse_tree,
+        Spec = spec($pred, severity_error, phase_t2pt,
             get_term_context(ErrorTerm), Pieces),
         MaybeIOM = error1([Spec])
     ).
@@ -392,7 +388,7 @@ parse_termination_info(ContextPieces, VarSet, Term,
             quote("can_loop"), suffix(","), words("and"),
             quote("cannot_loop"), suffix(","),
             words("got"), quote(TermStr), suffix("."), nl],
-        Spec = simplest_spec($pred, severity_error, phase_term_to_parse_tree,
+        Spec = spec($pred, severity_error, phase_t2pt,
             get_term_context(Term), Pieces),
         MaybeMaybeTerminationInfo = error1([Spec])
     ).
@@ -423,8 +419,8 @@ parse_arg_size_constraints(VarSet, Term, MaybeMaybeArgSizeConstraints) :-
         Pieces = [words("Error: expected a description of"),
             words("argument size constraints,"),
             words("got"), quote(TermStr), suffix("."), nl],
-        Spec = simplest_spec($pred, severity_error,
-            phase_term_to_parse_tree, get_term_context(Term), Pieces),
+        Spec = spec($pred, severity_error, phase_t2pt,
+            get_term_context(Term), Pieces),
         MaybeMaybeArgSizeConstraints = error1([Spec])
     ).
 
@@ -462,8 +458,8 @@ parse_arg_size_constraint(VarSet, Term, MaybeConstr) :-
         TermStr = describe_error_term(VarSet, Term),
         Pieces = [words("Error: expected an argument size constraint,"),
             words("got"), quote(TermStr), suffix("."), nl],
-        Spec = simplest_spec($pred, severity_error,
-            phase_term_to_parse_tree, get_term_context(Term), Pieces),
+        Spec = spec($pred, severity_error, phase_t2pt,
+            get_term_context(Term), Pieces),
         MaybeConstr = error1([Spec])
     ).
 
@@ -479,8 +475,8 @@ parse_lp_term(VarSet, Term, MaybeLpTerm) :-
             VarIdTermStr = describe_error_term(VarSet, VarIdTerm),
             Pieces = [words("Error: expected an integer,"),
                 words("got"), quote(VarIdTermStr), suffix("."), nl],
-            Spec = simplest_spec($pred, severity_error,
-                phase_term_to_parse_tree, get_term_context(VarIdTerm), Pieces),
+            Spec = spec($pred, severity_error, phase_t2pt,
+                get_term_context(VarIdTerm), Pieces),
             MaybeVarId = error1([Spec])
         ),
         parse_rational(VarSet, CoeffTerm, MaybeCoeff),
@@ -500,8 +496,8 @@ parse_lp_term(VarSet, Term, MaybeLpTerm) :-
         Pieces = [words("Error: expected a linear term of the form"),
             quote("term(<varnum>, <rational_coeff>)"), suffix(","),
             words("got"), quote(TermStr), suffix("."), nl],
-        Spec = simplest_spec($pred, severity_error,
-            phase_term_to_parse_tree, get_term_context(Term), Pieces),
+        Spec = spec($pred, severity_error, phase_t2pt,
+            get_term_context(Term), Pieces),
         MaybeLpTerm = error1([Spec])
     ).
 
@@ -520,8 +516,8 @@ parse_rational(VarSet, Term, MaybeRational) :-
         Pieces = [words("Error: expected a rational number of the form"),
             quote("r(N, M)"), suffix(","),
             words("got"), quote(TermStr), suffix("."), nl],
-        Spec = simplest_spec($pred, severity_error,
-            phase_term_to_parse_tree, get_term_context(Term), Pieces),
+        Spec = spec($pred, severity_error, phase_t2pt,
+            get_term_context(Term), Pieces),
         MaybeRational = error1([Spec])
     ).
 
@@ -572,7 +568,7 @@ parse_pragma_structure_sharing(ModuleName, VarSet, ErrorTerm, PragmaTerms,
     else
         Pieces = [words("Syntax error in"),
             pragma_decl("structure_sharing"), words("declaration."), nl],
-        Spec = simplest_spec($pred, severity_error, phase_term_to_parse_tree,
+        Spec = spec($pred, severity_error, phase_t2pt,
             get_term_context(ErrorTerm), Pieces),
         MaybeIOM = error1([Spec])
     ).
@@ -624,7 +620,7 @@ parse_pragma_structure_reuse(ModuleName, VarSet, ErrorTerm, PragmaTerms,
     else
         Pieces = [words("Syntax error in"),
             pragma_decl("structure_reuse"), words("declaration."), nl],
-        Spec = simplest_spec($pred, severity_error, phase_term_to_parse_tree,
+        Spec = spec($pred, severity_error, phase_t2pt,
             get_term_context(ErrorTerm), Pieces),
         MaybeIOM = error1([Spec])
     ).
@@ -671,8 +667,7 @@ parse_pragma_exceptions(ModuleName, VarSet, ErrorTerm, PragmaTerms,
                         pragma_decl("exceptions"), words("declaration:"), nl,
                         words("error:"), quote("will_not_throw"),
                         words("must have no arguments."), nl],
-                    WillNotThrowSpec = simplest_spec($pred, severity_error,
-                        phase_term_to_parse_tree,
+                    WillNotThrowSpec = spec($pred, severity_error, phase_t2pt,
                         get_term_context(ThrowStatusTerm), WillNotThrowPieces),
                     MaybeThrowStatus = error1([WillNotThrowSpec])
                 )
@@ -700,8 +695,7 @@ parse_pragma_exceptions(ModuleName, VarSet, ErrorTerm, PragmaTerms,
                         words("which must be either"),
                         quote("user_exception"), words("or"),
                         quote("type_exception"), suffix("."), nl],
-                    MayThrowSpec = simplest_spec($pred, severity_error,
-                        phase_term_to_parse_tree,
+                    MayThrowSpec = spec($pred, severity_error, phase_t2pt,
                         get_term_context(ThrowStatusTerm), MayThrowPieces),
                     MaybeThrowStatus = error1([MayThrowSpec])
                 )
@@ -717,8 +711,7 @@ parse_pragma_exceptions(ModuleName, VarSet, ErrorTerm, PragmaTerms,
                         pragma_decl("exceptions"), words("declaration:"), nl,
                         words("error:"), quote("conditional"),
                         words("must have no arguments."), nl],
-                    ConditionalSpec = simplest_spec($pred, severity_error,
-                        phase_term_to_parse_tree,
+                    ConditionalSpec = spec($pred, severity_error, phase_t2pt,
                         get_term_context(ThrowStatusTerm), ConditionalPieces),
                     MaybeThrowStatus = error1([ConditionalSpec])
                 )
@@ -732,9 +725,8 @@ parse_pragma_exceptions(ModuleName, VarSet, ErrorTerm, PragmaTerms,
                 quote("may_throw"), suffix(","), words("and"),
                 quote("conditional"), suffix(","),
                 words("got"), quote(ThrowStatusTermStr), suffix("."), nl],
-            ThrowStatusSpec = simplest_spec($pred, severity_error,
-                phase_term_to_parse_tree, get_term_context(ThrowStatusTerm),
-                ThrowStatusPieces),
+            ThrowStatusSpec = spec($pred, severity_error, phase_t2pt,
+                get_term_context(ThrowStatusTerm), ThrowStatusPieces),
             MaybeThrowStatus = error1([ThrowStatusSpec])
         ),
         ( if
@@ -768,7 +760,7 @@ parse_pragma_exceptions(ModuleName, VarSet, ErrorTerm, PragmaTerms,
         ),
         Pieces = [words("Error: an"), pragma_decl("exceptions"),
             words("declaration must have five arguments."), nl],
-        Spec = simplest_spec($pred, severity_error, phase_term_to_parse_tree,
+        Spec = spec($pred, severity_error, phase_t2pt,
             get_term_context(ErrorTerm), Pieces),
         MaybeIOM = error1([Spec])
     ).
@@ -820,9 +812,8 @@ parse_pragma_trailing_info(ModuleName, VarSet, ErrorTerm, PragmaTerms,
                 quote("may_modify_trail"), suffix(","), words("and"),
                 quote("conditional"), suffix(","),
                 words("got"), quote(TrailingStatusTermStr), suffix("."), nl],
-            TrailingStatusSpec = simplest_spec($pred, severity_error,
-                phase_term_to_parse_tree, get_term_context(TrailingStatusTerm),
-                TrailingStatusPieces),
+            TrailingStatusSpec = spec($pred, severity_error, phase_t2pt,
+                get_term_context(TrailingStatusTerm), TrailingStatusPieces),
             MaybeTrailingStatus = error1([TrailingStatusSpec])
         ),
         ( if
@@ -856,7 +847,7 @@ parse_pragma_trailing_info(ModuleName, VarSet, ErrorTerm, PragmaTerms,
         ),
         Pieces = [words("Error:"), pragma_decl("trailing_info"),
             words("declaration must have five arguments."), nl],
-        Spec = simplest_spec($pred, severity_error, phase_term_to_parse_tree,
+        Spec = spec($pred, severity_error, phase_t2pt,
             get_term_context(ErrorTerm), Pieces),
         MaybeIOM = error1([Spec])
     ).
@@ -908,8 +899,7 @@ parse_pragma_mm_tabling_info(ModuleName, VarSet, ErrorTerm, PragmaTerms,
                 quote("may_modify_trail"), suffix(","), words("and"),
                 quote("conditional"), suffix(","),
                 words("got"), quote(MMTablingStatusTermStr), suffix("."), nl],
-            MMTablingStatusSpec = simplest_spec($pred, severity_error,
-                phase_term_to_parse_tree,
+            MMTablingStatusSpec = spec($pred, severity_error, phase_t2pt,
                 get_term_context(MMTablingStatusTerm), MMTablingStatusPieces),
             MaybeMMTablingStatus = error1([MMTablingStatusSpec])
         ),
@@ -944,7 +934,7 @@ parse_pragma_mm_tabling_info(ModuleName, VarSet, ErrorTerm, PragmaTerms,
         ),
         Pieces = [words("Error: an"), pragma_decl("mm_tabling_info"),
             words("declaration must have five arguments."), nl],
-        Spec = simplest_spec($pred, severity_error, phase_term_to_parse_tree,
+        Spec = spec($pred, severity_error, phase_t2pt,
             get_term_context(ErrorTerm), Pieces),
         MaybeIOM = error1([Spec])
     ).
@@ -971,8 +961,8 @@ parse_predicate_or_function(VarSet, Term, MaybePredOrFunc) :-
         Pieces = [words("Error: expected either"),
             quote("predicate"), words("or"), quote("function"), suffix(","),
             words("got"), quote(TermStr), suffix("."), nl],
-        Spec = simplest_spec($pred, severity_error,
-            phase_term_to_parse_tree, get_term_context(Term), Pieces),
+        Spec = spec($pred, severity_error, phase_t2pt,
+            get_term_context(Term), Pieces),
         MaybePredOrFunc = error1([Spec])
     ).
 

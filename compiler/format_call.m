@@ -789,7 +789,7 @@ check_fmt_str_val_vars(ModuleInfo, PredInfo, ProcInfo, ConjMaps, PredMap,
                         list.map(string_format_error_to_words, TailErrors)]
                 ),
 
-                MismatchSpec = simplest_spec($pred, severity_warning,
+                MismatchSpec = spec($pred, severity_warning,
                     phase_simplify(report_in_any_mode),
                     Context, PrefixPieces ++ ErrorPieces),
                 Result = error3([MismatchSpec])
@@ -854,7 +854,7 @@ follow_format_string_handle_unknown(ModuleInfo, ConjMaps, PredMap,
                 should_module_qualify, PredId),
             Pieces = [words("Unknown format string in call to")] ++
                 PredNamePieces ++ [suffix("."), nl],
-            Spec = simplest_spec($pred, severity_warning,
+            Spec = spec($pred, severity_warning,
                 phase_simplify(report_in_any_mode), Context, Pieces),
             Specs = [Spec]
         ),
@@ -983,7 +983,7 @@ follow_values_handle_unknown(ModuleInfo, ConjMaps, PredMap, FormatCallSite,
                 should_module_qualify, PredId),
             Pieces = [words("Unknown format values in call to")] ++
                 PredNamePieces ++ [suffix("."), nl],
-            Spec = simplest_spec($pred, severity_warning,
+            Spec = spec($pred, severity_warning,
                 phase_simplify(report_in_any_mode), Context, Pieces),
             Specs = [Spec]
         ),

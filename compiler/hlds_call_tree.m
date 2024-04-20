@@ -955,8 +955,8 @@ generate_movability_report(ModuleInfo, CallTreeInfo, WantToMovePredNames,
             list_to_pieces(UnknownNames) ++
             [words(choose_number(UnknownNames, "does not", "do not")),
             words("name any predicate or function in this module."), nl],
-        UnknownSpec = simplest_no_context_spec($pred, severity_error,
-            phase_style, UnknownPieces),
+        UnknownSpec = no_ctxt_spec($pred, severity_error, phase_style,
+            UnknownPieces),
         UnknownSpecs = [UnknownSpec]
     ),
     (
@@ -971,8 +971,8 @@ generate_movability_report(ModuleInfo, CallTreeInfo, WantToMovePredNames,
             list_to_pieces(AmbigNames) ++
             [words(choose_number(AmbigNames,
                 "is ambiguous.", "are ambiguous.")), nl],
-        AmbigSpec = simplest_no_context_spec($pred, severity_error,
-            phase_style, AmbigPieces),
+        AmbigSpec = no_ctxt_spec($pred, severity_error, phase_style,
+            AmbigPieces),
         AmbigSpecs = [AmbigSpec]
     ),
     ( if
@@ -1286,8 +1286,8 @@ construct_movability_report(ModuleInfo, Report, InfoSpec) :-
 
     InfoPieces = WantToMovePieces ++ ConflictExportedPieces ++ MovingPieces ++
         MovingTypePieces ++ MovingStayingPieces,
-    InfoSpec = simplest_no_context_spec($pred, severity_informational,
-        phase_style, InfoPieces).
+    InfoSpec = no_ctxt_spec($pred, severity_informational, phase_style,
+        InfoPieces).
 
 %---------------------------------------------------------------------------%
 

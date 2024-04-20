@@ -134,7 +134,7 @@ too_much_overloading_to_msgs(ClauseContext, Context, OverloadedSymbolMap,
                 [words("The following symbols were overloaded"),
                 words("in the following contexts."), nl]
         ),
-        SecondMsg = simplest_msg(Context, SecondPieces),
+        SecondMsg = msg(Context, SecondPieces),
         ModuleInfo = ClauseContext ^ tecc_module_info,
         DetailMsgsList = list.map(describe_overloaded_symbol(ModuleInfo),
             OverloadedSymbolsSortedContexts),
@@ -190,14 +190,14 @@ describe_overloaded_symbol(ModuleInfo, Symbol - SortedContexts) = Msgs :-
                 qual_cons_id_and_maybe_arity(ConsId),
                 words("is also overloaded here."), nl]
         ),
-        FirstMsg = simplest_msg(FirstContext, FirstPieces),
+        FirstMsg = msg(FirstContext, FirstPieces),
         LaterMsgs = list.map(context_to_error_msg(LaterPieces), LaterContexts),
         Msgs = [FirstMsg | LaterMsgs]
     ).
 
 :- func context_to_error_msg(list(format_piece), prog_context) = error_msg.
 
-context_to_error_msg(Pieces, Context) = simplest_msg(Context, Pieces).
+context_to_error_msg(Pieces, Context) = msg(Context, Pieces).
 
 %---------------------------------------------------------------------------%
 

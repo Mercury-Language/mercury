@@ -210,7 +210,7 @@ check_foreign_code_attributes_of_proc(ModuleInfo, PPId, Attributes,
                 pragma_decl("terminates"), words("declaration"),
                 words("but also has the"), quote("does_not_terminate"),
                 words("foreign code attribute set.")],
-            Spec = simplest_spec($pred, severity_warning, phase_read_files,
+            Spec = spec($pred, severity_warning, phase_read_files,
                 Context, Pieces),
             !:Specs = [Spec | !.Specs]
         ;
@@ -237,7 +237,7 @@ check_foreign_code_attributes_of_proc(ModuleInfo, PPId, Attributes,
                 pragma_decl("does_not_terminate"), words("declaration"),
                 words("but also has the"), quote("terminates"),
                 words("foreign code attribute set.")],
-            Spec = simplest_spec($pred, severity_warning, phase_read_files,
+            Spec = spec($pred, severity_warning, phase_read_files,
                 Context, Pieces),
             !:Specs = [Spec | !.Specs]
         ;
@@ -313,7 +313,7 @@ check_scc_pragmas_are_consistent(SCC, !ModuleInfo, !Specs) :-
             [words("Warning:") | PredNamePieces ] ++
             [words("are mutually recursive but some of their"),
             words( "termination pragmas are inconsistent.")],
-        Spec = simplest_spec($pred, severity_warning, phase_read_files,
+        Spec = spec($pred, severity_warning, phase_read_files,
             LeastContext, Pieces),
         !:Specs = [Spec | !.Specs]
     ).

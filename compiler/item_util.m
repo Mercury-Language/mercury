@@ -386,11 +386,10 @@ classify_include_module(Section, ItemInclude, !InclMap, !Specs) :-
 report_duplicate_include(ModuleName, PrevContext, Context, !Specs) :-
     MainPieces = [words("Error: duplicate inclusion of submodule"),
         qual_sym_name(ModuleName), suffix("."), nl],
-    MainMsg = simplest_msg(Context, MainPieces),
+    MainMsg = msg(Context, MainPieces),
     PrevPieces = [words("The previous inclusion was here."), nl],
-    PrevMsg = simplest_msg(PrevContext, PrevPieces),
-    Spec = error_spec($pred, severity_error, phase_parse_tree_to_hlds,
-        [MainMsg, PrevMsg]),
+    PrevMsg = msg(PrevContext, PrevPieces),
+    Spec = error_spec($pred, severity_error, phase_pt2h, [MainMsg, PrevMsg]),
     !:Specs = [Spec | !.Specs].
 
 %---------------------%
@@ -567,10 +566,9 @@ report_duplicate_avail_context(Section, DeclName, ModuleName, PrevContext,
         words("declaration for module"), qual_sym_name(ModuleName),
         words("in the"), words(Section), words("section."), nl],
     PrevPieces = [words("The previous declaration is here."), nl],
-    DupMsg = simplest_msg(DuplicateContext, DupPieces),
-    PrevMsg = simplest_msg(PrevContext, PrevPieces),
-    Spec = error_spec($pred, severity_warning, phase_parse_tree_to_hlds,
-        [DupMsg, PrevMsg]),
+    DupMsg = msg(DuplicateContext, DupPieces),
+    PrevMsg = msg(PrevContext, PrevPieces),
+    Spec = error_spec($pred, severity_warning, phase_pt2h, [DupMsg, PrevMsg]),
     !:Specs = [Spec | !.Specs].
 
 :- pred record_int_import(module_name::in, prog_context::in,
@@ -594,10 +592,10 @@ record_int_use(ModuleName, Context, !ImportUseMap, !Specs) :-
                 decl("import_module"), words("declaration"),
                 words("for the same module in the same section."), nl],
             PrevPieces = [words("The previous declaration is here."), nl],
-            DupMsg = simplest_msg(Context, DupPieces),
-            PrevMsg = simplest_msg(PrevContext, PrevPieces),
-            Spec = error_spec($pred, severity_warning,
-                phase_parse_tree_to_hlds, [DupMsg, PrevMsg]),
+            DupMsg = msg(Context, DupPieces),
+            PrevMsg = msg(PrevContext, PrevPieces),
+            Spec = error_spec($pred, severity_warning, phase_pt2h,
+                [DupMsg, PrevMsg]),
             !:Specs = [Spec | !.Specs]
         ;
             ( OldEntry = int_use(_)
@@ -628,10 +626,10 @@ record_imp_import(ModuleName, Context, !ImportUseMap, !Specs) :-
                 decl("import_module"), words("declaration"),
                 words("for the same module in the interface section."), nl],
             PrevPieces = [words("The previous declaration is here."), nl],
-            DupMsg = simplest_msg(Context, DupPieces),
-            PrevMsg = simplest_msg(PrevContext, PrevPieces),
-            Spec = error_spec($pred, severity_warning,
-                phase_parse_tree_to_hlds, [DupMsg, PrevMsg]),
+            DupMsg = msg(Context, DupPieces),
+            PrevMsg = msg(PrevContext, PrevPieces),
+            Spec = error_spec($pred, severity_warning, phase_pt2h,
+                [DupMsg, PrevMsg]),
             !:Specs = [Spec | !.Specs]
         ;
             OldEntry = int_use(IntUseContext),
@@ -690,10 +688,10 @@ record_imp_use(ModuleName, Context, !ImportUseMap, !Specs) :-
                 words("in the implementation section is redundant, given the")]
                 ++ OldPieces,
             PrevPieces = [words("The previous declaration is here."), nl],
-            DupMsg = simplest_msg(Context, DupPieces),
-            PrevMsg = simplest_msg(PrevContext, PrevPieces),
-            Spec = error_spec($pred, severity_warning,
-                phase_parse_tree_to_hlds, [DupMsg, PrevMsg]),
+            DupMsg = msg(Context, DupPieces),
+            PrevMsg = msg(PrevContext, PrevPieces),
+            Spec = error_spec($pred, severity_warning, phase_pt2h,
+                [DupMsg, PrevMsg]),
             !:Specs = [Spec | !.Specs]
         ;
             OldEntry = imp_use(_),
@@ -739,10 +737,10 @@ record_imp_use_only(ModuleName, Context, !UseMap, !Specs) :-
                 decl("use_module"), words("declaration"),
                 words("for the same module in the interface section."), nl],
             PrevPieces = [words("The previous declaration is here."), nl],
-            DupMsg = simplest_msg(Context, DupPieces),
-            PrevMsg = simplest_msg(PrevContext, PrevPieces),
-            Spec = error_spec($pred, severity_warning,
-                phase_parse_tree_to_hlds, [DupMsg, PrevMsg]),
+            DupMsg = msg(Context, DupPieces),
+            PrevMsg = msg(PrevContext, PrevPieces),
+            Spec = error_spec($pred, severity_warning, phase_pt2h,
+                [DupMsg, PrevMsg]),
             !:Specs = [Spec | !.Specs]
         ;
             OldEntry = imp_use(_),
@@ -768,9 +766,9 @@ warn_if_import_for_self(ModuleName, !SectionImportOrUseMap, !Specs) :-
         Context = section_import_or_use_first_context(ImportOrUse),
         Pieces = [words("Warning: module"), qual_sym_name(ModuleName),
             words("imports itself!"), nl],
-        Msg = simplest_msg(Context, Pieces),
+        Msg = msg(Context, Pieces),
         Spec = conditional_spec($pred, warn_simple_code, yes, severity_warning,
-            phase_parse_tree_to_hlds, [Msg]),
+            phase_pt2h, [Msg]),
         !:Specs = [Spec | !.Specs]
     else
         true
@@ -795,7 +793,7 @@ warn_if_import_for_ancestor(ModuleName, AncestorName,
         Msg = simple_msg(Context,
             [always(MainPieces), verbose_only(verbose_once, VerbosePieces)]),
         Spec = conditional_spec($pred, warn_simple_code, yes, severity_warning,
-            phase_parse_tree_to_hlds, [Msg]),
+            phase_pt2h, [Msg]),
         !:Specs = [Spec | !.Specs]
     else
         true
@@ -834,7 +832,7 @@ error_if_use_for_self(ModuleName, !UseMap, !Specs) :-
     ( if map.remove(ModuleName, Use, !UseMap) then
         Pieces = [words("Error: module"), qual_sym_name(ModuleName),
             words("imports itself."), nl],
-        Spec = simplest_spec($pred, severity_error, phase_parse_tree_to_hlds,
+        Spec = spec($pred, severity_error, phase_pt2h,
             section_use_first_context(Use), Pieces),
         !:Specs = [Spec | !.Specs]
     else
@@ -852,7 +850,7 @@ error_if_use_for_ancestor(ModuleName, AncestorName, !UseMap, !Specs) :-
         Pieces = [words("Error: module"), qual_sym_name(ModuleName),
             words("imports its own ancestor, module"),
             qual_sym_name(AncestorName), suffix("."), nl],
-        Spec = simplest_spec($pred, severity_error, phase_parse_tree_to_hlds,
+        Spec = spec($pred, severity_error, phase_pt2h,
             section_use_first_context(Use), Pieces),
         !:Specs = [Spec | !.Specs]
     else

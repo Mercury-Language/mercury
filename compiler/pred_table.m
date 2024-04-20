@@ -1223,7 +1223,7 @@ find_matching_pred_id(ModuleInfo, PredIds, TVarSet, ExistQTVars,
             % errors caused by our assumption. However, it is better to warn
             % about avalanche errors that won't happen than to not warn
             % about avalanche errors that *do* happen.
-            Spec = simplest_spec($pred, severity_error, phase_type_check,
+            Spec = spec($pred, severity_error, phase_type_check,
                 Context, Pieces),
             Specs = [Spec]
         )

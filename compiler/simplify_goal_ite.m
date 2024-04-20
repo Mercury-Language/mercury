@@ -203,7 +203,7 @@ maybe_warn_about_condition(GoalInfo0, NestedContext0, Problem, !Info) :-
             words(Problem), suffix("."), nl],
         Spec = conditional_spec($pred, warn_simple_code, yes,
             severity_warning, phase_simplify(report_only_if_in_all_modes),
-            [simplest_msg(Context, Pieces)]),
+            [msg(Context, Pieces)]),
         simplify_info_add_message(Spec, !Info)
     ),
     simplify_info_set_rerun_quant_instmap_delta(!Info),
@@ -293,7 +293,7 @@ simplify_goal_ordinary_ite(Vars, Cond0, Then0, Else0, GoalExpr,
             Pieces = Pieces0 ++ OnPieces ++ [suffix("."), nl],
             Spec = conditional_spec($pred, inform_ite_instead_of_switch, yes,
                 severity_informational, phase_simplify(report_in_any_mode),
-                [simplest_msg(Context, Pieces)]),
+                [msg(Context, Pieces)]),
             simplify_info_add_message(Spec, !Info)
         ;
             CanSwitch = cond_can_switch_uncommitted
@@ -482,13 +482,13 @@ simplify_goal_neg(GoalExpr0, GoalExpr, GoalInfo0, GoalInfo,
             Pieces = [words("Warning: the negated goal cannot fail.")],
             Spec = conditional_spec($pred, warn_simple_code, yes,
                 severity_warning, phase_simplify(report_only_if_in_all_modes),
-                [simplest_msg(Context, Pieces)]),
+                [msg(Context, Pieces)]),
             simplify_info_add_message(Spec, !Info)
         else if MaxSoln = at_most_zero then
             Pieces = [words("Warning: the negated goal cannot succeed.")],
             Spec = conditional_spec($pred, warn_simple_code, yes,
                 severity_warning, phase_simplify(report_only_if_in_all_modes),
-                [simplest_msg(Context, Pieces)]),
+                [msg(Context, Pieces)]),
             simplify_info_add_message(Spec, !Info)
         else
             true

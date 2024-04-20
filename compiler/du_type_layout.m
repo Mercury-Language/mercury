@@ -294,7 +294,7 @@ fill_in_non_sub_type_repn(Globals, ModuleName, RepnTarget, TypeCtorRepnMap,
                 Pieces = [words("Error: unexpected"), words(RepnStr),
                     words("type_repn item for"), qual_type_ctor(TypeCtor),
                     suffix("."), nl],
-                Spec = simplest_spec($pred, severity_error, phase_type_repn,
+                Spec = spec($pred, severity_error, phase_type_repn,
                     RepnContext, Pieces),
                 !:Specs = [Spec | !.Specs],
                 set.insert(TypeCtor, !BadRepnTypeCtors),
@@ -311,7 +311,7 @@ fill_in_non_sub_type_repn(Globals, ModuleName, RepnTarget, TypeCtorRepnMap,
                     Pieces = [words("Error: tcrepn_du type_repn item"),
                         words("for subtype"), qual_type_ctor(TypeCtor),
                         suffix("."), nl],
-                    Spec = simplest_spec($pred, severity_error,
+                    Spec = spec($pred, severity_error,
                         phase_type_repn, RepnContext, Pieces),
                     !:Specs = [Spec | !.Specs],
                     set.insert(TypeCtor, !BadRepnTypeCtors),
@@ -371,7 +371,7 @@ fill_in_non_sub_type_repn(Globals, ModuleName, RepnTarget, TypeCtorRepnMap,
                     Pieces = [words("Error: tcrepn_is_subtype_of"),
                         words("type_repn item for"), qual_type_ctor(TypeCtor),
                         suffix(","), words("which is NOT a subtype."), nl],
-                    Spec = simplest_spec($pred, severity_error,
+                    Spec = spec($pred, severity_error,
                         phase_type_repn, RepnContext, Pieces),
                     !:Specs = [Spec | !.Specs],
                     set.insert(TypeCtor, !BadRepnTypeCtors),
@@ -506,7 +506,7 @@ fill_in_non_sub_du_type_repn(_Globals, _ModuleName, RepnTarget, TypeCtor,
                         words("functors, but the"), words(LangStr),
                         words("foreign enum definition for it has"),
                         int_fixed(NumForeignNames), suffix("."), nl],
-                    Spec = simplest_spec($pred, severity_error,
+                    Spec = spec($pred, severity_error,
                         phase_type_repn, RepnContext, Pieces),
                     ForeignMaybeDuRepn = have_errors([Spec])
                 )
@@ -585,7 +585,7 @@ check_and_record_du_direct_dummy(TypeCtor, Context, OoMCtors, MaybeCanon,
             Pieces = [words("Error: the type representation item for"),
                 qual_type_ctor(TypeCtor), words("says it is direct_dummy,"),
                 words("but the type is noncanonical."), nl],
-            Spec = simplest_spec($pred, severity_error, phase_type_repn,
+            Spec = spec($pred, severity_error, phase_type_repn,
                 Context, Pieces),
             MaybeDuRepn = have_errors([Spec])
         ;
@@ -607,7 +607,7 @@ check_and_record_du_direct_dummy(TypeCtor, Context, OoMCtors, MaybeCanon,
             qual_type_ctor(TypeCtor), words("is incorrect: it says that"),
             words("the type has a single function symbol,"),
             words("a constant named"), quote(RepnCtorName), suffix("."), nl],
-        Spec = simplest_spec($pred, severity_error, phase_type_repn,
+        Spec = spec($pred, severity_error, phase_type_repn,
             Context, Pieces),
         MaybeDuRepn = have_errors([Spec])
     ).
@@ -653,7 +653,7 @@ check_and_record_du_enum(TypeCtor, Context, Ctors, EnumRepn,
             qual_type_ctor(TypeCtor), words("is incorrect: it says that"),
             words("the type is an enum, with function symbols named")] ++
             list_to_pieces(RepnCtorNames) ++ [suffix("."), nl],
-        Spec = simplest_spec($pred, severity_error, phase_type_repn,
+        Spec = spec($pred, severity_error, phase_type_repn,
             Context, Pieces),
         MaybeDuRepn = have_errors([Spec])
     ).
@@ -720,7 +720,7 @@ check_and_record_du_notag(TypeCtor, Context, Ctors, MaybeCanon,
             Pieces = [words("Error: the type representation item for"),
                 qual_type_ctor(TypeCtor), words("says it is notag,"),
                 words("but the type is noncanonical."), nl],
-            Spec = simplest_spec($pred, severity_error, phase_type_repn,
+            Spec = spec($pred, severity_error, phase_type_repn,
                 Context, Pieces),
             MaybeDuRepn = have_errors([Spec])
         ;
@@ -758,7 +758,7 @@ check_and_record_du_notag(TypeCtor, Context, Ctors, MaybeCanon,
             qual_type_ctor(TypeCtor), words("is incorrect: it says that"),
             words("the type has a single function symbol named"),
             quote(RepnCtorName), words("with one argument."), nl],
-        Spec = simplest_spec($pred, severity_error, phase_type_repn,
+        Spec = spec($pred, severity_error, phase_type_repn,
             Context, Pieces),
         MaybeDuRepn = have_errors([Spec])
     ).
@@ -842,7 +842,7 @@ check_and_record_du_only_functor(RepnTarget, TypeCtor, Context,
             words("the type has a single function symbol named"),
             quote(RepnCtorName), words("with"),
             int_fixed(NumRepnArgTypes), words("arguments."), nl],
-        Spec = simplest_spec($pred, severity_error, phase_type_repn,
+        Spec = spec($pred, severity_error, phase_type_repn,
             Context, Pieces),
         MaybeDuRepn = have_errors([Spec])
     ).
@@ -896,7 +896,7 @@ check_and_record_du_more_functors(RepnTarget, TypeCtor, Context,
             words("the type is a non-enum du type,"),
             words("with function symbols named")] ++
             list_to_pieces(RepnCtorNames) ++ [suffix("."), nl],
-        Spec = simplest_spec($pred, severity_error, phase_type_repn,
+        Spec = spec($pred, severity_error, phase_type_repn,
             Context, Pieces),
         MaybeDuRepn = have_errors([Spec])
     ).
@@ -944,7 +944,7 @@ check_du_functor(TypeCtor, Ctor, RepnCtorName, RepnCtorArity, ExpectedOrdinal,
             name_arity(RepnCtorSNA0), suffix(","),
             words("but actually it is"), name_arity(CtorSNA), suffix("."), nl],
         % XXX Context should be for Repn, not Ctor.
-        SNASpec = simplest_spec($pred, severity_error, phase_type_repn,
+        SNASpec = spec($pred, severity_error, phase_type_repn,
             CtorContext, SNAPieces),
         !:Specs = [SNASpec | !.Specs]
     ),
@@ -960,7 +960,7 @@ check_du_functor(TypeCtor, Ctor, RepnCtorName, RepnCtorArity, ExpectedOrdinal,
             words("but it should be"),
             int_fixed(uint32.cast_to_int(ExpectedOrdinal)), suffix("."), nl],
         % XXX Context should be for Repn, not Ctor.
-        OrdinalSpec = simplest_spec($pred, severity_error, phase_type_repn,
+        OrdinalSpec = spec($pred, severity_error, phase_type_repn,
             CtorContext, OrdinalPieces),
         !:Specs = [OrdinalSpec | !.Specs]
     ).
@@ -1910,7 +1910,7 @@ decide_simple_type_foreign_enum(_ModuleInfo, Params, TypeCtor, TypeDefn0,
             words("has both a"), pragma_decl("foreign_enum"),
             words("declaration and a direct_arg specification."), nl],
         % XXX Should have a non-dummy context.
-        DirectArgSpec = simplest_spec($pred, severity_error, phase_type_check,
+        DirectArgSpec = spec($pred, severity_error, phase_type_check,
             dummy_context, DirectArgPieces),
         !:Specs = [DirectArgSpec | !.Specs]
     else
@@ -1924,7 +1924,7 @@ decide_simple_type_foreign_enum(_ModuleInfo, Params, TypeCtor, TypeDefn0,
             words("has a"), pragma_decl("foreign_enum"), words("declaration,"),
             words("but it has function symbols whose arity is not zero."), nl],
         % XXX Should have the foreign_enum's context.
-        NonEnumArgSpec = simplest_spec($pred, severity_error, phase_type_check,
+        NonEnumArgSpec = spec($pred, severity_error, phase_type_check,
             dummy_context, NonEnumArgPieces),
         !:Specs = [NonEnumArgSpec | !.Specs]
     ),
@@ -2002,7 +2002,7 @@ decide_simple_type_dummy_or_mercury_enum(_ModuleInfo, Params,
         Pieces = [words("Error: all the function symbols of"),
             qual_type_ctor(TypeCtor), words("have arity zero,"),
             words("yet it has a direct_arg specification."), nl],
-        Spec = simplest_spec($pred, severity_error, phase_type_check,
+        Spec = spec($pred, severity_error, phase_type_check,
             dummy_context, Pieces),
         !:Specs = [Spec | !.Specs]
     else
@@ -2078,7 +2078,7 @@ decide_simple_type_notag(_ModuleInfo, Params, TypeCtor, TypeDefn0, BodyDu0,
         Pieces = [words("Error:"), qual_type_ctor(TypeCtor),
             words("is a no_tag type,"),
             words("yet it has a direct_arg specification."), nl],
-        Spec = simplest_spec($pred, severity_error, phase_type_check,
+        Spec = spec($pred, severity_error, phase_type_check,
             dummy_context, Pieces),
         !:Specs = [Spec | !.Specs]
     else
@@ -2159,7 +2159,7 @@ add_foreign_if_word_aligned_ptr(ModuleInfo, Params, TypeCtor,
         DirectArgPieces = [words("Error:"), qual_type_ctor(TypeCtor),
             words("has a foreign language representation on this backend,"),
             words("but it also has a direct_arg specification."), nl],
-        DirectArgSpec = simplest_spec($pred, severity_error, phase_type_check,
+        DirectArgSpec = spec($pred, severity_error, phase_type_check,
             dummy_context, DirectArgPieces),
         !:Specs = [DirectArgSpec | !.Specs]
     else
@@ -4081,7 +4081,7 @@ check_direct_arg_assertions(AssertedDirectArgCtors, [Ctor | Ctors], !Specs) :-
             unqual_sym_name_arity(sym_name_arity(SymName, Arity)),
             words("cannot be represented as a direct pointer"),
             words("to its sole argument."), nl],
-        Spec = simplest_spec($pred, severity_error, phase_type_check,
+        Spec = spec($pred, severity_error, phase_type_check,
             Context, Pieces),
         !:Specs = [Spec | !.Specs]
     else
@@ -4188,7 +4188,7 @@ inform_about_any_suboptimal_packing(Params, CtorSymName, CtorContext,
         list.map(describe_sub_word_bin, SubWordBins, SubWordBinPieceLists),
         Pieces = StartPieces ++ list.condense(SubWordBinPieceLists)
             ++ EndPieces,
-        Spec = simplest_spec($pred, severity_informational, phase_type_check,
+        Spec = spec($pred, severity_informational, phase_type_check,
             CtorContext, Pieces),
         !:Specs = [Spec | !.Specs]
     else

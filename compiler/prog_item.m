@@ -298,13 +298,13 @@
                 % The error messages generated during the construction
                 % of ptms_type_defns. We have found some invalid types if
                 % some of these error_specs (a) are severity_error, and
-                % (b) are phase_type_inst_mode_check_invalid_type.
+                % (b) are phase_tim_check_invalid_type.
                 ptms_type_specs             :: list(error_spec),
                 % The error messages generated during the construction
                 % of ptms_inst_defns and ptms_mode_defns. We have found
                 % some invalid insts and/or modes if some of these error_specs
                 % (a) are severity_error, and (b) are
-                % phase_type_inst_mode_check_invalid_inst_mode.
+                % phase_tim_check_invalid_inst_mode.
                 ptms_inst_mode_specs        :: list(error_spec),
 
                 % Items of various kinds in the interface.

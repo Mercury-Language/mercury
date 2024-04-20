@@ -282,8 +282,8 @@ report_any_inc_gaps(PredInfo, FirstINC, SecondINC, LaterINCs,
             SecondPieces = [words("The"), nth_fixed(FirstProcNum + 1),
                 words("mode declaration is here."), nl]
         ),
-        FirstMsg = simplest_msg(FirstContext, FirstPieces),
-        SecondMsg = simplest_msg(SecondContext, SecondPieces),
+        FirstMsg = msg(FirstContext, FirstPieces),
+        SecondMsg = msg(SecondContext, SecondPieces),
         Spec = error_spec($pred, severity_warning, phase_style,
             [FirstMsg, SecondMsg]),
         Specs0 = !.StyleInfo ^ style_specs,
@@ -368,8 +368,7 @@ chunks_to_spec(ModuleContext, ExportedOrNotStr, ChangeHunks, Spec) :-
     list.map(change_hunk_to_pieces, ChangeHunks, ChangeHunkPieceLists),
     list.condense(ChangeHunkPieceLists, ChangeHunkPieces),
     Pieces = HeadPieces ++ ChangeHunkPieces,
-    Spec = simplest_spec($pred, severity_warning, phase_style,
-        ModuleContext, Pieces).
+    Spec = spec($pred, severity_warning, phase_style, ModuleContext, Pieces).
 
 %---------------------------------------------------------------------------%
 :- end_module check_hlds.style_checks.

@@ -161,8 +161,8 @@ module_add_type_defn(TypeStatus0, NeedQual, ItemTypeDefnInfo,
                 words("(as opposed to the name) of a solver type such as"),
                 unqual_type_ctor(TypeCtor),
                 words("must not be exported from its defining module."), nl],
-            SolverSpec = simplest_spec($pred, severity_error,
-                phase_parse_tree_to_hlds, Context, SolverPieces),
+            SolverSpec = spec($pred, severity_error, phase_pt2h,
+                Context, SolverPieces),
             Specs0 = [SolverSpec]
         else
             Specs0 = []
@@ -273,11 +273,10 @@ check_for_duplicate_type_declaration(TypeCtor, OldDefn, NewStatus, NewContext,
                     words("the previous declaration says it is exported."), nl]
             )
         ),
-        DupMsg = simplest_msg(SecondContext, DupPieces),
+        DupMsg = msg(SecondContext, DupPieces),
         FirstPieces = [words("The previous declaration was here."), nl],
-        FirstMsg = simplest_msg(FirstContext, FirstPieces),
-        DupSpec = error_spec($pred, Severity, phase_parse_tree_to_hlds,
-            [DupMsg, FirstMsg]),
+        FirstMsg = msg(FirstContext, FirstPieces),
+        DupSpec = error_spec($pred, Severity, phase_pt2h, [DupMsg, FirstMsg]),
         !:Specs = [DupSpec | !.Specs]
     else
         true
@@ -404,8 +403,8 @@ module_add_type_defn_foreign(TypeStatus0, TypeStatus1, TypeCtor,
     else
         ForeignDeclPieces = [words("Error: type"), unqual_type_ctor(TypeCtor),
             words("defined as foreign_type without being declared."), nl],
-        ForeignDeclSpec = simplest_spec($pred, severity_error,
-            phase_parse_tree_to_hlds, Context, ForeignDeclPieces),
+        ForeignDeclSpec = spec($pred, severity_error, phase_pt2h,
+            Context, ForeignDeclPieces),
         !:Specs = [ForeignDeclSpec | !.Specs],
         !:FoundInvalidType = found_invalid_type
     ).
@@ -668,8 +667,8 @@ check_for_invalid_user_defined_unify_compare(TypeStatus, TypeCtor, DetailsDu,
                 words("cannot have user-defined equality or comparison."), nl],
             DummyMsg = simple_msg(Context, [always(MainPieces),
                 verbose_only(verbose_once, VerbosePieces)]),
-            DummySpec = error_spec($pred, severity_error,
-                phase_parse_tree_to_hlds, [DummyMsg]),
+            DummySpec = error_spec($pred, severity_error, phase_pt2h,
+                [DummyMsg]),
             !:Specs = [DummySpec | !.Specs],
             !:FoundInvalidType = found_invalid_type
         else
@@ -708,8 +707,8 @@ check_for_polymorphic_eqv_type_with_monomorphic_body(TypeStatus, TypeCtor,
         PolyEqvMsg = simple_msg(Context,
             [always(PolyEqvPieces),
             verbose_only(verbose_once, abstract_monotype_workaround)]),
-        PolyEqvSpec = error_spec($pred, severity_error,
-            phase_parse_tree_to_hlds, [PolyEqvMsg]),
+        PolyEqvSpec = error_spec($pred, severity_error, phase_pt2h,
+            [PolyEqvMsg]),
         !:Specs = [PolyEqvSpec | !.Specs],
         !:FoundInvalidType = found_invalid_type
     else
@@ -789,9 +788,9 @@ check_for_inconsistent_solver_nosolver_type(TypeCtor, OldDefn, NewBody,
             words(OldIsOrIsnt), suffix("."), nl],
         OldPieces = [words("The"), words(OldDeclOrDefn), words("is here."),
             nl],
-        MainMsg = simplest_msg(NewContext, MainPieces),
-        OldMsg = simplest_msg(OldContext, OldPieces),
-        Spec = error_spec($pred, severity_error, phase_parse_tree_to_hlds,
+        MainMsg = msg(NewContext, MainPieces),
+        OldMsg = msg(OldContext, OldPieces),
+        Spec = error_spec($pred, severity_error, phase_pt2h,
             [MainMsg, OldMsg]),
         !:Specs = [Spec | !.Specs],
         !:FoundInvalidType = found_invalid_type
@@ -880,8 +879,7 @@ check_for_inconsistent_foreign_type_visibility(TypeCtor,
             CmpRes = (>),
             Context = OldContext
         ),
-        Spec = simplest_spec($pred, severity_error, phase_parse_tree_to_hlds,
-            Context, Pieces),
+        Spec = spec($pred, severity_error, phase_pt2h, Context, Pieces),
         !:Specs = [Spec | !.Specs],
         !:FoundInvalidType = found_invalid_type,
         set_type_defn_prev_errors(type_defn_prev_errors, !TypeDefn)
@@ -1057,8 +1055,7 @@ add_type_defn_ctor(Ctor, TypeCtor, TypeCtorModuleName, TVarSet,
         Pieces = [words("Error: constructor"), quote(QualifiedConsIdStr),
             words("for type"), quote(TypeCtorStr),
             words("multiply defined."), nl],
-        Spec = simplest_spec($pred, severity_error, phase_parse_tree_to_hlds,
-            Context, Pieces),
+        Spec = spec($pred, severity_error, phase_pt2h, Context, Pieces),
         !:Specs = [Spec | !.Specs]
     else
         some [!OtherConsIds] (
@@ -1151,11 +1148,11 @@ add_ctor_field_name(FieldName, FieldDefn, NeedQual, PartialQuals,
         % FieldString = sym_name_to_string(FieldName),
         % Pieces = [words("Error: field"), quote(FieldString),
         %     words("multiply defined."), nl],
-        % HereMsg = simplest_msg(Context, Pieces),
+        % HereMsg = msg(Context, Pieces),
         % PrevPieces = [words("Here is the previous definition of field"),
         %     quote(FieldString), suffix("."), nl],
-        % PrevMsg = simplest_msg(OrigContext, PrevPieces),
-        % Spec = error_spec($pred, severity_error, phase_parse_tree_to_hlds,
+        % PrevMsg = msg(OrigContext, PrevPieces),
+        % Spec = error_spec($pred, severity_error, phase_pt2h,
         %     [HereMsg, PrevMsg]),
         % !:Specs = [Spec | !.Specs]
         true
@@ -1227,8 +1224,7 @@ check_foreign_type_for_current_target(TypeCtor, ForeignTypeBody, PrevErrors,
             words("on other back-ends, but none for this back-end."), nl],
         Msg = simple_msg(Context,
             [always(MainPieces), verbose_only(verbose_always, VerbosePieces)]),
-        Spec = error_spec($pred, severity_error, phase_parse_tree_to_hlds,
-            [Msg]),
+        Spec = error_spec($pred, severity_error, phase_pt2h, [Msg]),
         !:Specs = [Spec | !.Specs],
         FoundInvalidType = found_invalid_type
     ).
@@ -1287,8 +1283,7 @@ check_subtype_defn(TypeTable, TVarSet, TypeCtor, TypeDefn, TypeBodyDu,
             words("supertype part of subtype definition, got"),
             quote(SuperTypeStr), suffix("."), nl],
         hlds_data.get_type_defn_context(TypeDefn, Context),
-        Spec = simplest_spec($pred, severity_error, phase_parse_tree_to_hlds,
-            Context, Pieces),
+        Spec = spec($pred, severity_error, phase_pt2h, Context, Pieces),
         !:Specs = [Spec | !.Specs],
         !:FoundInvalidType = found_invalid_type,
         MaybeSetSubtypeNoncanon = do_not_set_subtype_noncanon
@@ -1330,8 +1325,8 @@ check_supertypes_up_to_base_type(TypeTable, OrigTypeCtor, OrigTypeDefn,
             Pieces = report_non_du_supertype(TVarSet, OrigTypeCtor,
                 PrevSuperTypeCtors1, NextSuperType),
             get_type_defn_context(OrigTypeDefn, OrigTypeContext),
-            Spec = simplest_spec($pred, severity_error,
-                phase_parse_tree_to_hlds, OrigTypeContext, Pieces),
+            Spec = spec($pred, severity_error, phase_pt2h,
+                OrigTypeContext, Pieces),
             MaybeBaseMaybeCanon = error1([Spec])
         )
     ).
@@ -1422,8 +1417,7 @@ check_supertype_is_du_not_foreign(TypeDefn, SuperTypeCtor, SuperTypeDefn,
                 words("cannot be a supertype"),
                 words("because it has a foreign type definition."), nl],
             hlds_data.get_type_defn_context(TypeDefn, Context),
-            Spec = simplest_spec($pred, severity_error,
-                phase_parse_tree_to_hlds, Context, Pieces),
+            Spec = spec($pred, severity_error, phase_pt2h, Context, Pieces),
             MaybeSuperTypeBodyDu = error1([Spec])
         )
     ;
@@ -1444,8 +1438,7 @@ check_supertype_is_du_not_foreign(TypeDefn, SuperTypeCtor, SuperTypeDefn,
             words("cannot be a supertype because it is"),
             words(SuperTypeDesc), suffix("."), nl],
         hlds_data.get_type_defn_context(TypeDefn, Context),
-        Spec = simplest_spec($pred, severity_error, phase_parse_tree_to_hlds,
-            Context, Pieces),
+        Spec = spec($pred, severity_error, phase_pt2h, Context, Pieces),
         MaybeSuperTypeBodyDu = error1([Spec])
     ).
 
@@ -1483,8 +1476,7 @@ supertype_ctor_defn_error_to_spec(OrigTypeCtor, OrigTypeDefn,
             [suffix("."), nl]
     ),
     hlds_data.get_type_defn_context(OrigTypeDefn, OrigTypeContext),
-    Spec = simplest_spec($pred, severity_error, phase_parse_tree_to_hlds,
-        OrigTypeContext, Pieces).
+    Spec = spec($pred, severity_error, phase_pt2h, OrigTypeContext, Pieces).
 
 :- pred special_type_ctor_not_du(type_ctor::in) is semidet.
 
@@ -1620,8 +1612,7 @@ look_up_and_check_subtype_ctor(TypeTable, TVarSet, TypeStatus,
             unqual_sym_name_arity(sym_name_arity(CtorName, Arity)),
             words("is not a constructor of the supertype"),
             unqual_type_ctor(SuperTypeCtor), suffix("."), nl],
-        Spec = simplest_spec($pred, severity_error, phase_parse_tree_to_hlds,
-            Context, Pieces),
+        Spec = spec($pred, severity_error, phase_pt2h, Context, Pieces),
         !:Specs = [Spec | !.Specs],
         !:FoundInvalidType = found_invalid_type
     ).
@@ -1721,8 +1712,7 @@ check_subtype_ctor_arg(TypeTable, TVarSet, OrigTypeStatus, CtorSymName,
             words("has a type,"), quote(ArgTypeStr), suffix(","),
             words("which is not a subtype of the corresponding argument type"),
             quote(SuperArgTypeStr), words("in the supertype."), nl],
-        Spec = simplest_spec($pred, severity_error, phase_parse_tree_to_hlds,
-            Context, Pieces),
+        Spec = spec($pred, severity_error, phase_pt2h, Context, Pieces),
         !:Specs = [Spec | !.Specs],
         !:FoundInvalidType = found_invalid_type
     ).
@@ -1950,8 +1940,7 @@ check_subtype_ctor_exist_constraints(CtorSymNameArity,
         Pieces = [words("Error: existential class constraints for"),
             unqual_sym_name_arity(CtorSymNameArity),
             words("differ in the subtype and supertype."), nl],
-        Spec = simplest_spec($pred, severity_error, phase_parse_tree_to_hlds,
-            Context, Pieces),
+        Spec = spec($pred, severity_error, phase_pt2h, Context, Pieces),
         !:Specs = [Spec | !.Specs],
         !:FoundInvalidType = found_invalid_type
     ).
@@ -1978,8 +1967,7 @@ check_subtype_ctors_order(TypeCtor, Ctors, SuperTypeCtor, SuperCtors, Context,
             words("which are present in the subtype:"), nl,
             blank_line] ++
             ChangeHunkPieces,
-        Spec = simplest_spec($pred, severity_warning,
-            phase_parse_tree_to_hlds, Context, Pieces),
+        Spec = spec($pred, severity_warning, phase_pt2h, Context, Pieces),
         !:Specs = [Spec | !.Specs]
     ).
 

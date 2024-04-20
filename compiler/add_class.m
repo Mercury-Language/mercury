@@ -551,8 +551,7 @@ pred_method_with_no_modes_error(PredInfo, !Specs) :-
     pred_info_get_context(PredInfo, Context),
     Pieces = [words("Error: no mode declaration for method"),
         unqual_pf_sym_name_pred_form_arity(PFSNA), suffix("."), nl],
-    Spec = simplest_spec($pred, severity_error, phase_parse_tree_to_hlds,
-        Context, Pieces),
+    Spec = spec($pred, severity_error, phase_pt2h, Context, Pieces),
     !:Specs = [Spec | !.Specs].
 
 :- pred report_instance_for_undefined_typeclass(class_id::in, prog_context::in,
@@ -562,8 +561,7 @@ report_instance_for_undefined_typeclass(ClassId, Context, !Specs) :-
     Pieces = [words("Error:"), decl("instance"), words("declaration"),
         words("for"), qual_class_id(ClassId), words("without corresponding"),
         decl("typeclass"), words("declaration."), nl],
-    Spec = simplest_spec($pred, severity_error, phase_parse_tree_to_hlds,
-        Context, Pieces),
+    Spec = spec($pred, severity_error, phase_pt2h, Context, Pieces),
     !:Specs = [Spec | !.Specs].
 
 :- pred report_mode_decls_for_undeclared_method(pred_pf_name_arity::in,
@@ -587,8 +585,7 @@ report_mode_decl_for_undeclared_method(MethodPredName, ModeInfo, !Specs) :-
         unqual_pf_sym_name_user_arity(MethodPredName),
         words("without corresponding"), p_or_f(PredOrFunc),
         words("declaration."), nl],
-    Spec = simplest_spec($pred, severity_error, phase_parse_tree_to_hlds,
-        Context, Pieces),
+    Spec = spec($pred, severity_error, phase_pt2h, Context, Pieces),
     !:Specs = [Spec | !.Specs].
 
 %-----------------------------------------------------------------------------%

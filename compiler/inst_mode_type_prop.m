@@ -1297,8 +1297,7 @@ do_record_bad_use_of_user_inst(InstCtor, ForTypeCtor, TypeCtor,
         nl_indent_delta(1),
         qual_type_ctor(TypeCtor), suffix("."),
         nl_indent_delta(-1)],
-    Spec = simplest_spec($pred, severity_error, phase_inst_check,
-        Context, Pieces),
+    Spec = spec($pred, severity_error, phase_inst_check, Context, Pieces),
     Specs = [Spec | Specs0],
     !:Errors = tprop_errors(Specs).
 

@@ -257,7 +257,7 @@ read_args_file(ProgressStream, OptionsFile, MaybeMCFlags,
         ( if Specs0 = [], UndefSpecs = [] then
             Pieces = [words("mercury_compile: internal error:"),
                 words("arguments file does not set MCFLAGS."), nl],
-            Spec = simplest_no_context_spec($pred, severity_error,
+            Spec = no_ctxt_spec($pred, severity_error,
                 phase_read_files, Pieces),
             Specs = [Spec | Specs0]
         else
@@ -506,7 +506,7 @@ pathname_occurs_in_incl_stack(InclStack0, PathName, Context, Spec) :-
         ( if PathName = StackPathName0 then
             Pieces = [words("Error: options file"), quote(PathName),
                 words("includes itself."), nl],
-            Spec = simplest_spec($pred, severity_error, phase_read_files,
+            Spec = spec($pred, severity_error, phase_read_files,
                 Context, Pieces)
         else
             fail
@@ -516,7 +516,7 @@ pathname_occurs_in_incl_stack(InclStack0, PathName, Context, Spec) :-
         ( if PathName = StackPathName0 then
             Pieces = [words("Error: options file"), quote(PathName),
                 words("includes itself."), nl],
-            Spec = simplest_spec($pred, severity_error, phase_read_files,
+            Spec = spec($pred, severity_error, phase_read_files,
                 Context, Pieces)
         else
             ( if
@@ -527,7 +527,7 @@ pathname_occurs_in_incl_stack(InclStack0, PathName, Context, Spec) :-
                 MainPieces = [words("Error: options file"), quote(TopPathName),
                     words("indirectly includes itself through"),
                     words("the following chain of include directives."), nl],
-                MainMsg = simplest_msg(TopContext, MainPieces),
+                MainMsg = msg(TopContext, MainPieces),
                 InclMsgs = list.map(include_context_msg, TopDownIncludes),
                 LastMsg = include_context_msg(PathName - Context),
                 Spec = error_spec($pred, severity_error, phase_read_files,
@@ -562,7 +562,7 @@ pathname_occurs_in_incl_stack_2(InclStack0, PathName, !TopDownIncludes) :-
 include_context_msg(FileName - Context) = Msg :-
     Pieces = [words("The include directive for"), quote(FileName),
         words("here."), nl],
-    Msg = simplest_msg(Context, Pieces).
+    Msg = msg(Context, Pieces).
 
 %---------------------------------------------------------------------------%
 
@@ -710,7 +710,7 @@ read_options_line_loop(InStream, FileName, !LineNumber, !.RevChars,
                 CharResult2 = eof,
                 Context = term_context.context(FileName, !.LineNumber),
                 Pieces = [words("Error: attempt to escape end-of-file."), nl],
-                Spec = simplest_spec($pred, severity_error, phase_read_files,
+                Spec = spec($pred, severity_error, phase_read_files,
                     Context, Pieces),
                 Result = pr_error(Spec)
             ;
@@ -749,7 +749,7 @@ io_error_to_parse_error(FileName, LineNumber, Error) = Spec :-
     Context = term_context.context(FileName, LineNumber),
     Msg = io.error_message(Error),
     Pieces = [words("I/O error:"), words(Msg), suffix("."), nl],
-    Spec = simplest_spec($pred, severity_error, phase_read_files,
+    Spec = spec($pred, severity_error, phase_read_files,
         Context, Pieces).
 
 :- func report_split_error(file_name, int, string) = error_spec.
@@ -757,7 +757,7 @@ io_error_to_parse_error(FileName, LineNumber, Error) = Spec :-
 report_split_error(FileName, LineNumber, Msg) = Spec :-
     Context = term_context.context_init(FileName, LineNumber),
     Pieces = [words("Error:"), words(Msg), suffix("."), nl],
-    Spec = simplest_spec($pred, severity_error, phase_read_files,
+    Spec = spec($pred, severity_error, phase_read_files,
         Context, Pieces).
 
 %---------------------------------------------------------------------------%
@@ -850,7 +850,7 @@ parse_options_line(FileName, LineNumber, Line0, MaybeOptionsFileLine) :-
                     quote(":="), words("or"), quote("+="),
                     words("after"), quote(VarName), suffix(","),
                     words("got"), quote(Line2Str), suffix("."), nl],
-                Spec = simplest_spec($pred, severity_error, phase_read_files,
+                Spec = spec($pred, severity_error, phase_read_files,
                     Context, Pieces),
                 MaybeOptionsFileLine = ofl_error(Spec)
             )
@@ -872,7 +872,7 @@ parse_variable_name(FileName, LineNumber, Chars0, Chars, MaybeVarName) :-
         Pieces = [words("expected variable name before"),
             quote(string.from_char_list(FirstWordChars)), suffix("."), nl],
         Context = term_context.context(FileName, LineNumber),
-        Spec = simplest_spec($pred, severity_error, phase_read_files,
+        Spec = spec($pred, severity_error, phase_read_files,
             Context, Pieces),
         MaybeVarName = ovos_spec(Spec)
     else
@@ -1212,7 +1212,7 @@ report_unterminated_variable_reference(FileName, LineNumber, RevChars)
     Context = term_context.context_init(FileName, LineNumber),
     Pieces = [words("Error: unterminated reference to a variable after"),
         quote(string.from_rev_char_list(RevChars)), suffix("."), nl],
-    Spec = simplest_spec($pred, severity_error, phase_read_files,
+    Spec = spec($pred, severity_error, phase_read_files,
         Context, Pieces).
 
 :- pred report_any_undefined_variables(file_name::in, int::in,
@@ -1231,7 +1231,7 @@ report_any_undefined_variables(FileName, LineNumber, UndefVarNamesSet,
         Context = term_context.context_init(FileName, LineNumber),
         Pieces = [words("Warning:"), words(VarVars) | UndefVarNamesPieces] ++
             [words(IsAre), words("undefined."), nl],
-        Spec = simplest_spec($pred, severity_warning, phase_read_files,
+        Spec = spec($pred, severity_warning, phase_read_files,
             Context, Pieces),
         !:UndefSpecs = [Spec | !.UndefSpecs]
     ).
@@ -1532,7 +1532,7 @@ lookup_options_variable(Variables, OptionsVariableClass, FlagsVar,
                     list_to_pieces(
                         list.map(func(Lib) = add_quotes(Lib), BadLibs))]
                     ++ [suffix(".")],
-                Spec = simplest_no_context_spec($pred, severity_error,
+                Spec = no_ctxt_spec($pred, severity_error,
                     phase_read_files, Pieces),
                 !:Specs = [Spec | !.Specs]
             )
@@ -1591,7 +1591,7 @@ lookup_variable_words(Variables, VarName, Result) :-
             SplitResult = error(Msg),
             Pieces = [words("Error: in environment variable"),
                 quote(VarName), suffix(":"), words(Msg), nl],
-            ErrorSpec = simplest_no_context_spec($pred, severity_error,
+            ErrorSpec = no_ctxt_spec($pred, severity_error,
                 phase_read_files, Pieces),
             Result = var_result_error(one_or_more(ErrorSpec, []))
         )

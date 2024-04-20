@@ -262,7 +262,7 @@ get_read_module_specs(Errors) = Specs :-
 io_error_to_error_spec(Phase, ErrorMsg, Spec, !IO) :-
     io.progname_base("mercury_compile", ProgName, !IO),
     Pieces = [fixed(ProgName), suffix(":"), words(ErrorMsg), nl],
-    Spec = simplest_no_context_spec($pred, severity_error, Phase, Pieces).
+    Spec = no_ctxt_spec($pred, severity_error, Phase, Pieces).
 
 io_error_to_read_module_errors(FatalError, Phase, ErrorMsg, Errors, !IO) :-
     io_error_to_error_spec(Phase, ErrorMsg, Spec, !IO),

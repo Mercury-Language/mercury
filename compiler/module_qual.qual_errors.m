@@ -338,7 +338,7 @@ report_undefined_mq_id(Info, ErrorContext, Id, IdType, ThisModuleName,
     AllPieces = InPieces ++ UndefPieces ++ ThisIntPieces ++ OtherIntPieces ++
         QualPieces ++ NonImportedPieces ++ OtherArityPieces ++
         DidYouMeanPieces,
-    Spec = simplest_spec($pred, severity_error, phase_parse_tree_to_hlds,
+    Spec = spec($pred, severity_error, phase_pt2h,
         Context, AllPieces),
     !:Specs = [Spec | !.Specs].
 
@@ -387,7 +387,7 @@ report_ambiguous_match(ErrorContext, Id, IdType,
     Msg = simple_msg(Context,
         [always(MainPieces), always(UnusablePieces),
         verbose_only(verbose_always, VerbosePieces)]),
-    Spec = error_spec($pred, severity_error, phase_parse_tree_to_hlds, [Msg]),
+    Spec = error_spec($pred, severity_error, phase_pt2h, [Msg]),
     !:Specs = [Spec | !.Specs].
 
 %---------------------------------------------------------------------------%
@@ -397,7 +397,7 @@ report_invalid_user_inst(_SymName, _Insts, ErrorContext, !Specs) :-
         ErrorContextPieces),
     Pieces = [words("In")] ++ ErrorContextPieces ++ [suffix(":"), nl,
         words("error: variable used as inst constructor."), nl],
-    Spec = simplest_spec($pred, severity_error, phase_parse_tree_to_hlds,
+    Spec = spec($pred, severity_error, phase_pt2h,
         Context, Pieces),
     !:Specs = [Spec | !.Specs].
 
@@ -413,7 +413,7 @@ warn_unused_interface_import(ParentModuleName,
         words("warning: module"), qual_sym_name(ImportedModuleName),
         words("is imported in the interface,"),
         words("but it is not used in the interface."), nl],
-    HeadMsg = simplest_msg(HeadContext, HeadPieces),
+    HeadMsg = msg(HeadContext, HeadPieces),
     % TailContexts is almost always [], we add TailMsgs just in case it isn't.
     list.map(warn_redundant_import_context(ImportedModuleName),
         TailContexts, TailMsgs),
@@ -422,7 +422,7 @@ warn_unused_interface_import(ParentModuleName,
     % and it will be more precise than we can do here, because it will know
     % whether the imported module is used in the *implementation* section.
     Spec = conditional_spec($pred, warn_unused_interface_imports, yes,
-        severity_warning, phase_parse_tree_to_hlds, [HeadMsg | TailMsgs]),
+        severity_warning, phase_pt2h, [HeadMsg | TailMsgs]),
     !:Specs = [Spec | !.Specs].
 
 :- pred warn_redundant_import_context(module_name::in, prog_context::in,
@@ -431,7 +431,7 @@ warn_unused_interface_import(ParentModuleName,
 warn_redundant_import_context(ImportedModuleName, Context, Msg) :-
     Pieces = [words("Module"), qual_sym_name(ImportedModuleName),
         words("is also redundantly imported here."), nl],
-    Msg = simplest_msg(Context, Pieces).
+    Msg = msg(Context, Pieces).
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%

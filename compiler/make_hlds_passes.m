@@ -151,12 +151,12 @@ parse_tree_to_hlds(ProgressStream, AugCompUnit, Globals, DumpBaseFileName,
     IsInvalidTypeSpec =
         ( pred(Spec::in) is semidet :-
             extract_spec_phase(Spec, Phase),
-            Phase = phase_type_inst_mode_check_invalid_type
+            Phase = phase_tim_check_invalid_type
         ),
     IsInvalidInstModeSpec =
         ( pred(Spec::in) is semidet :-
             extract_spec_phase(Spec, Phase),
-            Phase = phase_type_inst_mode_check_invalid_inst_mode
+            Phase = phase_tim_check_invalid_inst_mode
         ),
     list.filter(IsInvalidTypeSpec, TypeSpecs, InvalidTypeSpecs),
     list.filter(IsInvalidInstModeSpec, InstModeSpecs, InvalidInstModeSpecs),
@@ -1139,7 +1139,7 @@ implement_initialise_finalise(ModuleInfo, InitOrFinal, SymName, UserArity,
             words("used in"), decl(DeclName), words("declaration"),
             words("does not have a corresponding"),
             decl("pred"), words("declaration."), nl],
-        Spec = simplest_spec($pred, severity_error, phase_parse_tree_to_hlds,
+        Spec = spec($pred, severity_error, phase_pt2h,
             Context, Pieces),
         !:Specs = [Spec | !.Specs]
     ;
@@ -1175,8 +1175,8 @@ implement_initialise_finalise(ModuleInfo, InitOrFinal, SymName, UserArity,
                 nl_indent_delta(-1),
                 words("where"), quote("<detism>"), words("is either"),
                 quote("det"), words("or"), quote("cc_multi"), suffix("."), nl],
-            Spec = simplest_spec($pred, severity_error,
-                phase_parse_tree_to_hlds, Context, Pieces),
+            Spec = spec($pred, severity_error,
+                phase_pt2h, Context, Pieces),
             !:Specs = [Spec | !.Specs]
         )
     ;
@@ -1185,7 +1185,7 @@ implement_initialise_finalise(ModuleInfo, InitOrFinal, SymName, UserArity,
             qual_sym_name_arity(sym_name_arity(SymName, UserArityInt)),
             words("used in"), decl(DeclName), words("declaration"),
             words("has multiple"), decl("pred"), words("declarations."), nl],
-        Spec = simplest_spec($pred, severity_error, phase_parse_tree_to_hlds,
+        Spec = spec($pred, severity_error, phase_pt2h,
             Context, Pieces),
         !:Specs = [Spec | !.Specs]
     ).

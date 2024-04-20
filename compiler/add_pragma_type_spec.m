@@ -252,8 +252,7 @@ build_class_constraint_map(ClassTable, ApplyToSupers, PragmaTVarSet,
         % class names
         % XXX Make any code for doing that general enough to handle
         % all other error messages about references to unknown classes.
-        Spec = simplest_spec($pred, severity_error, phase_parse_tree_to_hlds,
-            Context, Pieces),
+        Spec = spec($pred, severity_error, phase_pt2h, Context, Pieces),
         !:Specs = [Spec | !.Specs]
     ).
 
@@ -1718,8 +1717,7 @@ report_subst_existq_tvars(PredInfo, Context, SubExistQVars, Spec) :-
         [words("error: the substitution includes"),
         words("the existentially quantified type")] ++
         report_variables(SubExistQVars, TVarSet) ++ [suffix(".")],
-    Spec = simplest_spec($pred, severity_error, phase_parse_tree_to_hlds,
-        Context, Pieces).
+    Spec = spec($pred, severity_error, phase_pt2h, Context, Pieces).
 
 :- pred report_recursive_subst(pred_info::in, prog_context::in, tvarset::in,
     list(tvar)::in, error_spec::out) is det.
@@ -1729,8 +1727,7 @@ report_recursive_subst(PredInfo, Context, TVarSet, RecursiveVars, Spec) :-
         [words("error:")] ++ report_variables(RecursiveVars, TVarSet) ++
         [words(choose_number(RecursiveVars, "occurs", "occur")),
         words("on both sides of the substitution.")],
-    Spec = simplest_spec($pred, severity_error, phase_parse_tree_to_hlds,
-        Context, Pieces).
+    Spec = spec($pred, severity_error, phase_pt2h, Context, Pieces).
 
 :- pred report_multiple_subst_vars(pred_info::in, prog_context::in,
     tvarset::in, list(tvar)::in, error_spec::out) is det.
@@ -1740,8 +1737,7 @@ report_multiple_subst_vars(PredInfo, Context, TVarSet, MultiSubstVars, Spec) :-
         [words("error:")] ++ report_variables(MultiSubstVars, TVarSet) ++
         [words(choose_number(MultiSubstVars, "has", "have")),
         words("multiple replacement types.")],
-    Spec = simplest_spec($pred, severity_error, phase_parse_tree_to_hlds,
-        Context, Pieces).
+    Spec = spec($pred, severity_error, phase_pt2h, Context, Pieces).
 
 :- pred report_unknown_vars_to_subst(pred_info::in, prog_context::in,
     tvarset::in, list(tvar)::in, error_spec::out) is det.
@@ -1759,8 +1755,7 @@ report_unknown_vars_to_subst(PredInfo, Context, TVarSet, UnknownVars, Spec) :-
         [words("error:")] ++ report_variables(UnknownVars, TVarSet) ++
         [words(choose_number(UnknownVars, "does not", "do not")),
         words("occur in the"), decl(Decl), words("declaration.")],
-    Spec = simplest_spec($pred, severity_error, phase_parse_tree_to_hlds,
-        Context, Pieces).
+    Spec = spec($pred, severity_error, phase_pt2h, Context, Pieces).
 
 :- func pragma_type_spec_to_pieces(pred_info) = list(format_piece).
 

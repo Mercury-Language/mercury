@@ -150,7 +150,7 @@ find_mercury_stdlib(OptionTable, Variables, MaybeMerStdLibDir, !IO) :-
                     words("to the compiler, nor by any definition of the"),
                     quote("MERCURY_STDLIB_DIR"), words("variable in the"),
                     quote("Mercury.config"), words("file."), nl],
-                Spec = simplest_no_context_spec($pred, severity_error,
+                Spec = no_ctxt_spec($pred, severity_error,
                     phase_options, Pieces),
                 MaybeMerStdLibDir = error1([Spec])
             ;
@@ -159,7 +159,7 @@ find_mercury_stdlib(OptionTable, Variables, MaybeMerStdLibDir, !IO) :-
                     quote("MERCURY_STDLIB_DIR"), words("variable in the"),
                     quote("Mercury.config"), words("file"),
                     words("contains more than one string."), nl],
-                Spec = simplest_no_context_spec($pred, severity_error,
+                Spec = no_ctxt_spec($pred, severity_error,
                     phase_options, Pieces),
                 MaybeMerStdLibDir = error1([Spec])
             )
@@ -182,7 +182,7 @@ can_you_read_dir(MerStdLibDir, MaybeMerStdLibDir, !IO) :-
         io.error_message(ReadError, ReadErrorMsg),
         Pieces = [words("Error:"), fixed(MerStdLibDir), suffix(":"), nl,
             words(ReadErrorMsg), suffix("."), nl],
-        Spec = simplest_no_context_spec($pred, severity_error,
+        Spec = no_ctxt_spec($pred, severity_error,
             phase_options, Pieces),
         MaybeMerStdLibDir = error1([Spec])
     ).
@@ -356,7 +356,7 @@ check_stdlib_is_installed(Globals, GradeDirName, !Specs, !IO) :-
             Pieces = [fixed(ProgName), suffix(":"), words("error:"),
                 words("the Mercury standard library cannot be found"),
                 words("in grade"), quote(GradeDirName), suffix("."), nl],
-            Spec = simplest_no_context_spec($pred, severity_error,
+            Spec = no_ctxt_spec($pred, severity_error,
                 phase_check_libs, Pieces),
             !:Specs = [Spec | !.Specs]
         )
@@ -406,7 +406,7 @@ check_library_is_installed(Globals, GradeDirName, LibName, !Specs, !IO) :-
         Pieces = [fixed(ProgName), suffix(":"), words("error:"),
             words("the library"), quote(LibName), words("cannot be found"),
             words("in grade"), quote(GradeDirName), suffix("."), nl],
-        Spec = simplest_no_context_spec($pred, severity_error,
+        Spec = no_ctxt_spec($pred, severity_error,
             phase_check_libs, Pieces),
         !:Specs = [Spec | !.Specs]
     ).

@@ -1410,8 +1410,7 @@ update_opt_error_status_on_failure(Globals, WarnOption, FileName,
         else
             Phase = phase_read_files
         ),
-        Spec = simplest_no_context_spec($pred, severity_warning,
-            Phase, Pieces),
+        Spec = no_ctxt_spec($pred, severity_warning, Phase, Pieces),
         !:Specs = [Spec | !.Specs]
     ).
     % NOTE: We do NOT update !Error, since a missing optimization

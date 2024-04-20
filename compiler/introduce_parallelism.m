@@ -107,7 +107,7 @@ apply_implicit_parallelism_transformation(Specs, !ModuleInfo) :-
         Pieces = [words("Implicit parallelism was requested but the"),
             words("feedback file does not have the candidate parallel"),
             words("conjunctions feedback information.")],
-        Specs = [simplest_spec($pred, severity_error, phase_auto_parallelism,
+        Specs = [spec($pred, severity_error, phase_auto_parallelism,
             Context, Pieces)]
     ).
 
@@ -565,7 +565,7 @@ report_failed_parallelisation(PredInfo, GoalPath, Error) = Spec :-
     pred_info_get_context(PredInfo, Context),
     % XXX Make this a warning or error if the user wants compilation to
     % abort.
-    Spec = simplest_spec($pred, severity_informational, phase_auto_parallelism,
+    Spec = spec($pred, severity_informational, phase_auto_parallelism,
         Context, Pieces).
 
 :- func report_already_parallelised(pred_info) = error_spec.
@@ -583,7 +583,7 @@ report_already_parallelised(PredInfo) = Spec :-
         words("Warning: this procedure contains explicit parallel"),
         words("conjunctions, it will not be automatically parallelised."), nl],
     pred_info_get_context(PredInfo, Context),
-    Spec = simplest_spec($pred, severity_warning, phase_auto_parallelism,
+    Spec = spec($pred, severity_warning, phase_auto_parallelism,
         Context, Pieces).
 
 %-----------------------------------------------------------------------------%

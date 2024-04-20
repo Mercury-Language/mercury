@@ -308,7 +308,7 @@ maybe_add_heap_ops(ProgressStream, ErrorStream, Verbose, Stats, !HLDS, !IO) :-
             quote("--reclaim-heap-on-nondet-failure"), suffix("."),
             words("Use"), quote("--(no-)reclaim-heap-on-failure"),
             words("instead."), nl],
-        Spec = simplest_no_context_spec($pred, severity_error,
+        Spec = no_ctxt_spec($pred, severity_error,
             phase_read_files, Pieces),
         write_error_spec(ErrorStream, Globals, Spec, !IO)
     ).

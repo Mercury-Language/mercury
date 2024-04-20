@@ -369,8 +369,7 @@ report_missing_tabled_for_io(ModuleInfo, PredInfo, PredId, ProcId) = Spec :-
     ProcPieces = describe_one_proc_name(ModuleInfo,
         should_not_module_qualify, proc(PredId, ProcId)),
     Pieces = ProcPieces ++ [words("contains untabled I/O primitive."), nl],
-    Spec = simplest_spec($pred, severity_error, phase_code_gen,
-        Context, Pieces).
+    Spec = spec($pred, severity_error, phase_code_gen, Context, Pieces).
 
 %---------------------------------------------------------------------------%
 
@@ -513,7 +512,7 @@ general_cannot_table_reason_spec(ModuleInfo, PredId, ProcId, TabledMethod,
         Pieces = [words("Ignoring the"), pragma_decl(TabledMethodStr),
             words("declaration for")] ++ ProcPieces ++ [suffix(","),
             words("because tabling")] ++ gen_cannot_table_reason_desc(Reason),
-        Spec = simplest_spec($pred, severity_informational, phase_code_gen,
+        Spec = spec($pred, severity_informational, phase_code_gen,
             Context, Pieces)
     ;
         TabledMethod = tabled_io(_, _),
@@ -523,7 +522,7 @@ general_cannot_table_reason_spec(ModuleInfo, PredId, ProcId, TabledMethod,
             words("all predicates that perform I/O"),
             words("(to make the mdb command `retry' safe across I/O),"),
             words("but tabling")] ++ gen_cannot_table_reason_desc(Reason),
-        Spec = simplest_spec($pred, severity_informational, phase_code_gen,
+        Spec = spec($pred, severity_informational, phase_code_gen,
             Context, Pieces)
     ;
         TabledMethod = tabled_minimal(_),
@@ -531,8 +530,7 @@ general_cannot_table_reason_spec(ModuleInfo, PredId, ProcId, TabledMethod,
             gen_cannot_table_reason_desc(Reason),
         % We generate one no-context error_spec for each affected predicate,
         % but we print only one copy of each duplicated error_spec.
-        Spec = simplest_no_context_spec($pred, severity_error, phase_code_gen,
-            Pieces)
+        Spec = no_ctxt_spec($pred, severity_error, phase_code_gen, Pieces)
     ).
 
 :- type general_cannot_table_reason
@@ -569,8 +567,7 @@ mm_cannot_table_reason_spec(Reason, Spec) :-
         mm_cannot_table_reason_desc(Reason),
     % We generate one no-context error_spec for each affected predicate,
     % but we print only one copy of each duplicated error_spec.
-    Spec = simplest_no_context_spec($pred, severity_error, phase_code_gen,
-        Pieces).
+    Spec = no_ctxt_spec($pred, severity_error, phase_code_gen, Pieces).
 
 :- type mm_cannot_table_reason
     --->    mm_reason_hlc

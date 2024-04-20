@@ -150,8 +150,8 @@ get_main_target_if_needed(ProgName, Variables, Targets0, MaybeTargets) :-
                 Pieces = [fixed(ProgName), suffix(":"),
                     words("*** Error: no target or MAIN_TARGET specified."),
                     nl],
-                Spec = simplest_no_context_spec($pred, severity_error,
-                    phase_options, Pieces),
+                Spec = no_ctxt_spec($pred, severity_error, phase_options,
+                    Pieces),
                 MaybeTargets = error1([Spec])
             )
         )
@@ -197,8 +197,7 @@ report_target_with_dir_component(ProgName, Target) = Spec :-
     Pieces = [fixed(ProgName), suffix(":"),
         words("a make target may not contain a directory component,"),
         words("but"), quote(Target), words("does."), nl],
-    Spec = simplest_no_context_spec($pred, severity_error,
-        phase_make_target, Pieces).
+    Spec = no_ctxt_spec($pred, severity_error, phase_make_target, Pieces).
 
 %---------------------%
 

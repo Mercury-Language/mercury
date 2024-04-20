@@ -69,7 +69,7 @@ typecheck_report_max_iterations_exceeded(MaxIterations) = Spec :-
         words("iterations."),
         words("You can use the"), quote("--type-inference-iteration-limit"),
         words("option to increase the limit)."), nl],
-    Spec = simplest_no_context_spec($pred, severity_error, phase_type_check,
+    Spec = no_ctxt_spec($pred, severity_error, phase_type_check,
         Pieces).
 
 %---------------------------------------------------------------------------%
@@ -144,7 +144,7 @@ construct_type_inference_message(ModuleInfo, PredId, PredInfo) = Spec :-
         AllOtherDeclaredPredIds = [],
         Spec = conditional_spec($pred, inform_inferred_types, yes,
             severity_informational, phase_type_check,
-            [simplest_msg(Context, InferredPieces)])
+            [msg(Context, InferredPieces)])
     ;
         AllOtherDeclaredPredIds = [_ | _],
         list.map(
@@ -152,7 +152,7 @@ construct_type_inference_message(ModuleInfo, PredId, PredInfo) = Spec :-
             AllOtherDeclaredPredIds, DiffPieceLists),
         Pieces = [invis_order_default_start(2, "")] ++ InferredPieces ++
             list.condense(DiffPieceLists),
-        Spec = simplest_spec($pred, severity_informational, phase_type_check,
+        Spec = spec($pred, severity_informational, phase_type_check,
             Context, Pieces)
     ).
 
@@ -308,7 +308,7 @@ report_non_contiguous_clauses(ModuleInfo, PredId, PredInfo,
     FrontPieces = [words("Warning: non-contiguous clauses for ") | PredPieces]
         ++ [suffix("."), nl],
     pred_info_get_context(PredInfo, Context),
-    FrontMsg = simplest_msg(Context, FrontPieces),
+    FrontMsg = msg(Context, FrontPieces),
     report_non_contiguous_clause_contexts(PredPieces, 1,
         FirstRegion, SecondRegion, LaterRegions, ContextMsgs),
     Msgs = [FrontMsg | ContextMsgs],
@@ -345,8 +345,8 @@ report_non_contiguous_clause_contexts(PredPieces, GapNumber,
     SecondPieces = [words("Gap") | GapPieces] ++
         [words("in clauses of") | PredPieces] ++
         [words("ends with this clause."), nl],
-    FirstMsg = simplest_msg(FirstUpperContext, FirstPieces),
-    SecondMsg = simplest_msg(SecondLowerContext, SecondPieces),
+    FirstMsg = msg(FirstUpperContext, FirstPieces),
+    SecondMsg = msg(SecondLowerContext, SecondPieces),
     (
         LaterRegions = [],
         Msgs = [FirstMsg, SecondMsg]

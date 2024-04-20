@@ -804,8 +804,7 @@ parse_dcg_goal_else(ArgTerms, Context, ContextPieces,
         Pieces = [words("Error: the "), quote("else"), words("operator"),
             words("should occur in expressions of the form"),
             quote("( if goal then goal else goal )"), suffix("."), nl],
-        Spec = simplest_spec($pred, severity_error,
-            phase_term_to_parse_tree, Context, Pieces),
+        Spec = spec($pred, severity_error, phase_t2pt, Context, Pieces),
         MaybeGoal = error2([Spec])
     ).
 
@@ -880,8 +879,7 @@ parse_dcg_goal_if(ArgTerms, Context, ContextPieces,
         Pieces = [words("Error: the "), quote("else"), words("operator"),
             words("should occur in expressions of the form"),
             quote("( if goal then goal else goal )"), suffix("."), nl],
-        Spec = simplest_spec($pred, severity_error, phase_term_to_parse_tree,
-            Context, Pieces),
+        Spec = spec($pred, severity_error, phase_t2pt, Context, Pieces),
         MaybeGoal = error2([Spec])
     ).
 
@@ -900,8 +898,7 @@ parse_dcg_goal_braces(ArgTerms, Context, ContextPieces,
         ArgTerms = [],
         Pieces = [words("Error: there should be at least one goal"),
             words("between the curly braces."), nl],
-        Spec = simplest_spec($pred, severity_error, phase_term_to_parse_tree,
-            Context, Pieces),
+        Spec = spec($pred, severity_error, phase_t2pt, Context, Pieces),
         MaybeGoal = error2([Spec])
     ;
         ArgTerms = [HeadTerm | TailTerm],
@@ -941,8 +938,7 @@ parse_dcg_goal_nil(ArgTerms, Context, _ContextPieces,
             words("may only be used to match the input"),
             words("against a list of zero items,"),
             words("and must therefore be used with arity 0."), nl],
-        Spec = simplest_spec($pred, severity_error, phase_term_to_parse_tree,
-            Context, Pieces),
+        Spec = spec($pred, severity_error, phase_t2pt, Context, Pieces),
         MaybeGoal = error2([Spec])
     ).
 
@@ -975,8 +971,7 @@ parse_dcg_goal_cons(ArgTerms, Context, _ContextPieces,
         else
             Pieces = [words("Error: there is no"),
                 quote("[]"), words("at the end of the list."), nl],
-            Spec = simplest_spec($pred, severity_error,
-                phase_term_to_parse_tree, Context, Pieces),
+            Spec = spec($pred, severity_error, phase_t2pt, Context, Pieces),
             MaybeGoal = error2([Spec])
         )
     else
@@ -985,8 +980,7 @@ parse_dcg_goal_cons(ArgTerms, Context, _ContextPieces,
             words("may only be used to match the input"),
             words("against a list of one or more items,"),
             words("and must therefore be used with arity 2."), nl],
-        Spec = simplest_spec($pred, severity_error, phase_term_to_parse_tree,
-            Context, Pieces),
+        Spec = spec($pred, severity_error, phase_t2pt, Context, Pieces),
         MaybeGoal = error2([Spec])
     ).
 

@@ -404,7 +404,7 @@ cse_nopull_msgs(ProcInfo, Msgs) :-
         Msgs = []
     ;
         SortedCseNoPullContexts = [FirstNoPullContext | _],
-        Msgs = [simplest_msg(FirstNoPullContext, cse_nopull_pieces)]
+        Msgs = [msg(FirstNoPullContext, cse_nopull_pieces)]
     ).
 
 :- func cse_nopull_pieces = list(format_piece).
@@ -655,7 +655,7 @@ check_determinism_if_pred_is_main(PredInfo, ProcInfo, !Specs) :-
             unqual_sym_name_arity(sym_name_arity(unqualified("main"), 2)),
             words("must be"), quote("det"), words("or"), quote("cc_multi"),
             suffix("."), nl],
-        Spec = simplest_spec($pred, severity_error, phase_detism_check,
+        Spec = spec($pred, severity_error, phase_detism_check,
             ProcContext, Pieces),
         !:Specs = [Spec | !.Specs]
     else
@@ -787,7 +787,7 @@ check_io_state_proc_detism(ModuleInfo, PredProcId, PredInfo, ProcInfo,
             words("since the I/O state can be neither duplicated"),
             words("nor destroyed."), nl],
         proc_info_get_context(ProcInfo, ProcContext),
-        Spec = simplest_spec($pred, severity_error, phase_detism_check,
+        Spec = spec($pred, severity_error, phase_detism_check,
             ProcContext, Pieces),
         !:Specs = [Spec | !.Specs]
     else
@@ -844,7 +844,7 @@ check_exported_proc_detism(PredProcId, ProcInfo, !ModuleInfo, !Specs) :-
             pragma_decl("foreign_export"), words("declaration"),
             words("for a procedure whose determinism is"),
             quote(determinism_to_string(Detism)), suffix("."), nl],
-        Spec = simplest_spec($pred, severity_error, phase_detism_check,
+        Spec = spec($pred, severity_error, phase_detism_check,
             ExportContext, Pieces),
         !:Specs = [Spec | !.Specs]
     else
@@ -886,7 +886,7 @@ det_check_lambda(DeclaredDetism, InferredDetism, Goal, GoalInfo, InstMap0,
             GoalMsgs),
         sort_error_msgs(GoalMsgs, SortedGoalMsgs),
         Spec = error_spec($pred, severity_error, phase_detism_check,
-            [simplest_msg(Context, Pieces) | SortedGoalMsgs]),
+            [msg(Context, Pieces) | SortedGoalMsgs]),
         det_info_add_error_spec(Spec, !DetInfo)
     ;
         ( Cmp = first_detism_same_as
@@ -913,7 +913,7 @@ report_determinism_problem(ModuleInfo, PredProcId, MessagePieces, ReasonPieces,
         [words("Declared"), quote(DeclaredStr), suffix(","),
         words("inferred"), quote(InferredStr), suffix("."), nl] ++
         ReasonPieces,
-    Msg = simplest_msg(Context, Pieces).
+    Msg = msg(Context, Pieces).
 
 %---------------------------------------------------------------------------%
 
@@ -978,7 +978,7 @@ det_diagnose_goal_expr(GoalExpr, GoalInfo, InstMap0, Desired, Actual,
         Pieces = [words("Determinism declaration not satisfied."),
             words("Desired determinism is"), words(DesiredStr),
             suffix("."), nl],
-        Msgs = [simplest_msg(Context, Pieces)]
+        Msgs = [msg(Context, Pieces)]
     ;
         GoalExpr = conj(_, Goals),
         det_diagnose_conj(Goals, InstMap0, Desired, SwitchContexts, !DetInfo,
@@ -1006,13 +1006,13 @@ det_diagnose_goal_expr(GoalExpr, GoalInfo, InstMap0, Desired, Actual,
                 words("Disjunction has more than one disjunct"),
                 words("with solutions."), nl],
             FirstMsg =
-                simplest_msg(FirstContext, NestingPieces ++ FirstDisjPieces),
+                msg(FirstContext, NestingPieces ++ FirstDisjPieces),
             MakeLaterMsgs =
                 ( func(LaterContext) = LaterMsg :-
                     LaterDisjPieces = [
                         words("This later disjunct may have a solution."), nl],
                     LaterMsg =
-                        simplest_msg(LaterContext, LaterDisjPieces)
+                        msg(LaterContext, LaterDisjPieces)
                 ),
             LaterMsgs = list.map(MakeLaterMsgs, LaterContexts),
             Msgs = [FirstMsg | LaterMsgs] ++ Msgs1
@@ -1089,14 +1089,14 @@ det_diagnose_goal_expr(GoalExpr, GoalInfo, InstMap0, Desired, Actual,
         then
             Context = goal_info_get_context(GoalInfo),
             Pieces = [words("Negated goal can succeed."), nl],
-            Msgs = [simplest_msg(Context, Pieces)]
+            Msgs = [msg(Context, Pieces)]
         else if
             DesiredSolns = at_most_zero,
             ActualSolns \= at_most_zero
         then
             Context = goal_info_get_context(GoalInfo),
             Pieces = [words("Negated goal can fail."), nl],
-            Msgs = [simplest_msg(Context, Pieces)]
+            Msgs = [msg(Context, Pieces)]
         else
             Msgs = []
         )
@@ -1189,7 +1189,7 @@ det_diagnose_primitive_goal(Desired, Actual, Context, StartingPieces, Msgs) :-
             words("while actual determinism is"),
             fixed(determinism_to_string(Actual)), suffix("."), nl]
     ),
-    Msgs = [simplest_msg(Context, StartingPieces ++ Pieces)].
+    Msgs = [msg(Context, StartingPieces ++ Pieces)].
 
 det_diagnose_conj([], _InstMap0, _Desired, _SwitchContexts, !DetInfo, []).
 det_diagnose_conj([Goal | Goals], InstMap0, Desired, SwitchContexts, !DetInfo,
@@ -1877,7 +1877,7 @@ reqscope_check_goal_detism(RequiredDetism, Goal, CheckKind, InstMap0,
                 words("of the arm for")] ++ ConsIdsPieces ++
                 [words("is"), quote(ActualDetismStr), suffix("."), nl]
         ),
-        Msg = simplest_msg(Context, Pieces),
+        Msg = msg(Context, Pieces),
         det_diagnose_goal(Goal, InstMap0, RequiredDetism, [], !DetInfo,
             SubMsgs),
         Spec = error_spec($pred, severity_error, phase_detism_check,
@@ -1920,7 +1920,7 @@ generate_error_not_switch_on_required_var(SwitchContexts, RequiredVar,
         words(ScopeWord), fixed("[" ++ RequiredVarStr ++ "]"), words("scope"),
         words("is not a switch on"), quote(RequiredVarStr), suffix("."), nl],
     Context = goal_info_get_context(ScopeGoalInfo),
-    Spec = simplest_spec($pred, severity_error, phase_detism_check,
+    Spec = spec($pred, severity_error, phase_detism_check,
         Context, Pieces),
     det_info_add_error_spec(Spec, !DetInfo).
 
@@ -2282,7 +2282,7 @@ det_report_call_context(Context, CallUnifyContext, DetInfo, PredId, ProcId,
             det_report_unify_context(is_first, is_not_last, Context, UC,
                 DetInfo, LHS, RHS, UnifyPieces0),
             UnifyPieces = UnifyPieces0 ++ [suffix(":")],
-            UnifyMsg = simplest_msg(Context, UnifyPieces),
+            UnifyMsg = msg(Context, UnifyPieces),
             InitMsgs = [UnifyMsg]
         ;
             CallUnifyContext = no,
@@ -2417,7 +2417,7 @@ failing_context_description(ModuleInfo, VarTable, FailingContext) = Msg :-
         FailingGoal = negated_goal,
         Pieces = [words("Negated goal can fail."), nl]
     ),
-    Msg = simplest_msg(Context, Pieces).
+    Msg = msg(Context, Pieces).
 
 %---------------------------------------------------------------------------%
 

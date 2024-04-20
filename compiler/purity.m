@@ -1481,8 +1481,7 @@ warn_pred_body_too_pure(ModuleInfo, PredInfo, PredId,
     Pieces = PredContextPieces ++
         [words("warning: declared"), fixed(DeclaredPurityName),
         words("but actually"), fixed(ActualPurityName), suffix("."), nl],
-    Spec = simplest_spec($pred, severity_warning, phase_purity_check,
-        Context, Pieces).
+    Spec = spec($pred, severity_warning, phase_purity_check, Context, Pieces).
 
 :- func warn_unnecessary_purity_promise(module_info, pred_info, pred_id,
     purity) = error_spec.
@@ -1535,8 +1534,8 @@ error_not_pure_enough(ModuleInfo, PredInfo, PredId, Purity) = Spec :-
         Pieces2 = [words("It must be declared"), quote(PurityName),
             words("or promised"), fixed(DeclaredPurityName), suffix("."), nl]
     ),
-    Spec = simplest_spec($pred, severity_error, phase_purity_check,
-        Context, PredContextPieces ++ Pieces1 ++ Pieces2).
+    Spec = spec($pred, severity_error, phase_purity_check, Context,
+        PredContextPieces ++ Pieces1 ++ Pieces2).
 
 :- func error_missing_body_impurity_decl(module_info, pred_id, prog_context)
     = error_spec.
@@ -1560,8 +1559,8 @@ error_missing_body_impurity_decl(ModuleInfo, PredId, Context) = Spec :-
             words("an explicit unification which is preceded by"),
             quote(PurityName), words("indicator."), nl]
     ),
-    Spec = simplest_spec($pred, severity_error, phase_purity_check,
-        Context, Pieces1 ++ Pieces2).
+    Spec = spec($pred, severity_error, phase_purity_check, Context,
+        Pieces1 ++ Pieces2).
 
 :- func warn_unnecessary_body_impurity_decl(module_info, pred_id, prog_context,
     purity) = error_spec.
@@ -1587,8 +1586,8 @@ warn_unnecessary_body_impurity_decl(ModuleInfo, PredId, Context,
         Pieces2 = [words("A purity indicator of"), quote(ActualPurityName),
             words("is sufficient."), nl]
     ),
-    Spec = simplest_spec($pred, severity_warning, phase_purity_check,
-        Context, Pieces1 ++ Pieces2).
+    Spec = spec($pred, severity_warning, phase_purity_check, Context,
+        Pieces1 ++ Pieces2).
 
 :- func report_error_closure_purity(prog_context, purity, purity) = error_spec.
 
@@ -1598,16 +1597,14 @@ report_error_closure_purity(Context, _DeclaredPurity, ActualPurity) = Spec :-
         fixed(ActualPurityName), suffix(","),
         words("but closure was not declared"),
         fixed(ActualPurityName), suffix("."), nl],
-    Spec = simplest_spec($pred, severity_error, phase_purity_check,
-        Context, Pieces).
+    Spec = spec($pred, severity_error, phase_purity_check, Context, Pieces).
 
 impure_unification_expr_error(Context, Purity) = Spec :-
     purity_name(Purity, PurityName),
     Pieces = [words("Purity error: unification with expression"),
         words("was declared"), fixed(PurityName), suffix(","),
         words("but expression was not a function call."), nl],
-    Spec = simplest_spec($pred, severity_error, phase_purity_check,
-        Context, Pieces).
+    Spec = spec($pred, severity_error, phase_purity_check, Context, Pieces).
 
 :- func impure_parallel_conjunct_error(prog_context, purity) = error_spec.
 
@@ -1616,8 +1613,7 @@ impure_parallel_conjunct_error(Context, Purity) = Spec :-
     Pieces = [words("Purity error: parallel conjunct is"),
         fixed(PurityName), suffix(","),
         words("but parallel conjuncts must be pure or semipure."), nl],
-    Spec = simplest_spec($pred, severity_error, phase_purity_check,
-        Context, Pieces).
+    Spec = spec($pred, severity_error, phase_purity_check, Context, Pieces).
 
 :- func bad_outer_var_type_error(prog_context, var_table, prog_var)
     = error_spec.
@@ -1626,15 +1622,13 @@ bad_outer_var_type_error(Context, VarTable, Var) = Spec :-
     Pieces = [words("The type of outer variable"),
         fixed(mercury_var_to_name_only(VarTable, Var)),
         words("must be either io.state or stm_builtin.stm."), nl],
-    Spec = simplest_spec($pred, severity_error, phase_type_check,
-        Context, Pieces).
+    Spec = spec($pred, severity_error, phase_type_check, Context, Pieces).
 
 :- func mismatched_outer_var_types(prog_context) = error_spec.
 
 mismatched_outer_var_types(Context) = Spec :-
     Pieces = [words("The types of the two outer variables differ."), nl],
-    Spec = simplest_spec($pred, severity_error, phase_type_check,
-        Context, Pieces).
+    Spec = spec($pred, severity_error, phase_type_check, Context, Pieces).
 
 %-----------------------------------------------------------------------------%
 

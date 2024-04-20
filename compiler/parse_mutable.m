@@ -86,8 +86,8 @@ parse_initialise_item(_ModuleName, VarSet, ArgTerms, Context, SeqNum,
                     words("declaration:"),
                     words("expected"), quote("predname/arity"), suffix(","),
                     words("got"), quote(TermStr), suffix("."), nl],
-                Spec = simplest_spec($pred, severity_error,
-                    phase_term_to_parse_tree, get_term_context(Term), Pieces),
+                Spec = spec($pred, severity_error, phase_t2pt,
+                    get_term_context(Term), Pieces),
                 MaybeIOM = error1([Spec])
             ;
                 SymNameSpecifier =
@@ -104,8 +104,7 @@ parse_initialise_item(_ModuleName, VarSet, ArgTerms, Context, SeqNum,
                         words("declaration specifies a predicate,"),
                         quote(TermStr), suffix(","), words("whose arity"),
                         words("is not zero or two."), nl],
-                    Spec = simplest_spec($pred, severity_error,
-                        phase_term_to_parse_tree,
+                    Spec = spec($pred, severity_error, phase_t2pt,
                         get_term_context(Term), Pieces),
                     MaybeIOM = error1([Spec])
                 )
@@ -115,8 +114,7 @@ parse_initialise_item(_ModuleName, VarSet, ArgTerms, Context, SeqNum,
         Pieces = [words("Error: an"), decl("initialise"), words("declaration"),
             words("should have the form"),
             quote(":- initialise pred_name/pred_arity."), nl],
-        Spec = simplest_spec($pred, severity_error, phase_term_to_parse_tree,
-            Context, Pieces),
+        Spec = spec($pred, severity_error, phase_t2pt, Context, Pieces),
         MaybeIOM = error1([Spec])
     ).
 
@@ -138,8 +136,8 @@ parse_finalise_item(_ModuleName, VarSet, ArgTerms, Context, SeqNum,
                     words("declaration:"),
                     words("expected"), quote("predname/arity"), suffix(","),
                     words("got"), quote(TermStr), suffix("."), nl],
-                Spec = simplest_spec($pred, severity_error,
-                    phase_term_to_parse_tree, get_term_context(Term), Pieces),
+                Spec = spec($pred, severity_error, phase_t2pt,
+                    get_term_context(Term), Pieces),
                 MaybeIOM = error1([Spec])
             ;
                 SymNameSpecifier =
@@ -156,8 +154,7 @@ parse_finalise_item(_ModuleName, VarSet, ArgTerms, Context, SeqNum,
                         words("declaration specifies a predicate"),
                         words("whose arity is not zero or two:"),
                         quote(TermStr), suffix("."), nl],
-                    Spec = simplest_spec($pred, severity_error,
-                        phase_term_to_parse_tree,
+                    Spec = spec($pred, severity_error, phase_t2pt,
                         get_term_context(Term), Pieces),
                     MaybeIOM = error1([Spec])
                 )
@@ -167,8 +164,7 @@ parse_finalise_item(_ModuleName, VarSet, ArgTerms, Context, SeqNum,
         Pieces = [words("Error: a"), decl("finalise"), words("declaration"),
             words("should have the form"),
             quote(":- finalise pred_name/pred_arity."), nl],
-        Spec = simplest_spec($pred, severity_error, phase_term_to_parse_tree,
-            Context, Pieces),
+        Spec = spec($pred, severity_error, phase_t2pt, Context, Pieces),
         MaybeIOM = error1([Spec])
     ).
 
@@ -251,8 +247,7 @@ parse_mutable_decl_info(_ModuleName, VarSet, ArgTerms, Context, SeqNum,
         Pieces = [words("Error:") | WhatPieces] ++
             [words("should have the form"), quote(Prefix ++ Form1 ++ Suffix1),
             words("or the form"), quote(Prefix ++ Form2 ++ "."), nl],
-        Spec = simplest_spec($pred, severity_error, phase_term_to_parse_tree,
-            Context, Pieces),
+        Spec = spec($pred, severity_error, phase_t2pt, Context, Pieces),
         MaybeItemMutableInfo = error1([Spec])
     ).
 
@@ -263,7 +258,7 @@ parse_mutable_name(NameTerm, MaybeName) :-
         MaybeName = ok1(Name)
     else
         Pieces = [words("Error: invalid mutable name."), nl],
-        Spec = simplest_spec($pred, severity_error, phase_term_to_parse_tree,
+        Spec = spec($pred, severity_error, phase_t2pt,
             get_term_context(NameTerm), Pieces),
         MaybeName = error1([Spec])
     ).
@@ -276,7 +271,7 @@ parse_mutable_type(VarSet, TypeTerm, MaybeType) :-
         Pieces = [words("Error: the type in a"), decl("mutable"),
             words("declaration may not contain variables, but"),
             quote(TypeTermStr), words("does."), nl],
-        Spec = simplest_spec($pred, severity_error, phase_term_to_parse_tree,
+        Spec = spec($pred, severity_error, phase_t2pt,
             get_term_context(TypeTerm), Pieces),
         MaybeType = error1([Spec])
     else
@@ -296,7 +291,7 @@ parse_mutable_inst(VarSet, InstTerm, MaybeInst) :-
         Pieces = [words("Error: the inst in a"), decl("mutable"),
             words("declaration cannot contain variables:"),
             quote(InstTermStr), suffix("."), nl],
-        Spec = simplest_spec($pred, severity_error, phase_term_to_parse_tree,
+        Spec = spec($pred, severity_error, phase_t2pt,
             get_term_context(InstTerm), Pieces),
         MaybeInst = error1([Spec])
     else
@@ -356,7 +351,7 @@ parse_mutable_attrs(VarSet, MutAttrsTerm, MaybeMutAttrs) :-
             decl("mutable"), words("declaration:"),
             words("error: expected a list of attributes, got"),
             quote(MutAttrsStr), suffix("."), nl],
-        Spec = simplest_spec($pred, severity_error, phase_term_to_parse_tree,
+        Spec = spec($pred, severity_error, phase_t2pt,
             get_term_context(MutAttrsTerm), Pieces),
         MaybeMutAttrs = error1([Spec])
     ).
@@ -389,8 +384,8 @@ record_mutable_attributes(VarSet, [Term - Attr | TermAttrs], !LangMap,
                 mercury_term_to_string_vs(VarSet, print_name_only, Term),
             Pieces = [words("Error: attributes"), quote(TermStr0),
                 words("and"), quote(TermStr), words("conflict."), nl],
-            Spec = simplest_spec($pred, severity_error,
-                phase_term_to_parse_tree, get_term_context(Term), Pieces),
+            Spec = spec($pred, severity_error, phase_t2pt,
+                get_term_context(Term), Pieces),
             !:Specs = [Spec | !.Specs]
         else
             map.det_insert(Lang, Term - Name, !LangMap)
@@ -480,9 +475,8 @@ check_attribute_fit(VarSet, OnlyLangMap, MaybeTrailed, MaybeConst, MaybeIO,
                         words("which is that updates are trailed."),
                         words("You need to specify the"), quote("untrailed"),
                         words("attribute explicitly."), nl],
-                    Spec = simplest_spec($pred, severity_error,
-                        phase_term_to_parse_tree, get_term_context(LocalTerm),
-                        Pieces),
+                    Spec = spec($pred, severity_error, phase_t2pt,
+                        get_term_context(LocalTerm), Pieces),
                     !:Specs = [Spec | !.Specs]
                 )
             ;
@@ -558,7 +552,7 @@ report_repeated_or_conflicting_attributes(VarSet, Term0, Attr0, Term, Attr,
         Pieces = [words("Error: attributes"), quote(TermStr0),
             words("and"), quote(TermStr), words("conflict."), nl]
     ),
-    Spec = simplest_spec($pred, severity_error, phase_term_to_parse_tree,
+    Spec = spec($pred, severity_error, phase_t2pt,
         get_term_context(Term), Pieces),
     !:Specs = [Spec | !.Specs].
 
@@ -570,7 +564,7 @@ report_conflicting_attributes(VarSet, Term0, Term, !Specs) :-
     TermStr = mercury_term_to_string_vs(VarSet, print_name_only, Term),
     Pieces = [words("Error: attributes"), quote(TermStr0),
         words("and"), quote(TermStr), words("conflict."), nl],
-    Spec = simplest_spec($pred, severity_error, phase_term_to_parse_tree,
+    Spec = spec($pred, severity_error, phase_t2pt,
         get_term_context(Term), Pieces),
     !:Specs = [Spec | !.Specs].
 
@@ -618,7 +612,7 @@ parse_mutable_attr(VarSet, MutAttrTerm, MutAttrResult) :-
     then
         Pieces = [words("Error in"), decl("mutable"), words("declaration:"),
             nl, words("support for Erlang has been discontinued."), nl],
-        Spec = simplest_spec($pred, severity_error, phase_term_to_parse_tree,
+        Spec = spec($pred, severity_error, phase_t2pt,
             get_term_context(MutAttrTerm), Pieces),
         MutAttrResult = error1([Spec])
     else
@@ -626,7 +620,7 @@ parse_mutable_attr(VarSet, MutAttrTerm, MutAttrResult) :-
         Pieces = [words("Error in"), decl("mutable"), words("declaration:"),
             nl, words("unrecognised attribute"), quote(MutAttrStr),
             suffix("."), nl],
-        Spec = simplest_spec($pred, severity_error, phase_term_to_parse_tree,
+        Spec = spec($pred, severity_error, phase_t2pt,
             get_term_context(MutAttrTerm), Pieces),
         MutAttrResult = error1([Spec])
     ).

@@ -136,8 +136,8 @@ add_foreign_proc(ProgressStream, ItemMercurystatus, PredStatus, FPInfo,
         AmbiPieces = [words("Error: ambiguous predicate name"),
             qual_pf_sym_name_pred_form_arity(PFSymNameArity), words("in"),
             quote("pragma foreign_proc"), suffix("."), nl],
-        AmbiSpec = simplest_spec($pred, severity_error,
-            phase_parse_tree_to_hlds, Context, AmbiPieces),
+        AmbiSpec = spec($pred, severity_error, phase_pt2h,
+            Context, AmbiPieces),
         !:Specs = [AmbiSpec | !.Specs]
     ),
 
@@ -200,8 +200,7 @@ add_foreign_proc(ProgressStream, ItemMercurystatus, PredStatus, FPInfo,
                 words("declaration for imported"),
                 qual_pf_sym_name_pred_form_arity(PFSymNameArity),
                 suffix("."), nl],
-            Spec = simplest_spec($pred, severity_error,
-                phase_parse_tree_to_hlds, Context, Pieces),
+            Spec = spec($pred, severity_error, phase_pt2h, Context, Pieces),
             !:Specs = [Spec | !.Specs]
         else if
             ( if
@@ -301,8 +300,8 @@ add_foreign_proc(ProgressStream, ItemMercurystatus, PredStatus, FPInfo,
                     words("for undeclared mode of"),
                     qual_pf_sym_name_pred_form_arity(PFSymNameArity),
                     suffix("."), nl],
-                Spec = simplest_spec($pred, severity_error,
-                    phase_parse_tree_to_hlds, Context, Pieces),
+                Spec = spec($pred, severity_error, phase_pt2h,
+                    Context, Pieces),
                 !:Specs = [Spec | !.Specs]
             )
         )
@@ -351,8 +350,7 @@ report_bad_foreign_proc_in_dot_opt_file(RejectCause, Context, !Specs) :-
         words("was generated for a different grade."),
         words("You will need to rebuild this file"),
         words("for the current grade."), nl],
-    Spec = simplest_spec($pred, severity_error, phase_parse_tree_to_hlds,
-        Context, Pieces),
+    Spec = spec($pred, severity_error, phase_pt2h, Context, Pieces),
     !:Specs = [Spec | !.Specs].
 
     % Add the pragma_foreign_proc goal to the clauses_info for this procedure.
@@ -383,8 +381,7 @@ clauses_info_add_foreign_proc(PredOrFunc, PredModuleName, PredName,
         (
             AllowDefnOfBuiltin = no,
             Pieces = [words("Error: foreign_proc for builtin."), nl],
-            Spec = simplest_spec($pred, severity_error,
-                phase_parse_tree_to_hlds, Context, Pieces),
+            Spec = spec($pred, severity_error, phase_pt2h, Context, Pieces),
             !:Specs = [Spec | !.Specs]
         ;
             AllowDefnOfBuiltin = yes
@@ -472,7 +469,7 @@ clauses_info_do_add_foreign_proc(PredOrFunc, PredModuleName, PredName,
             Pieces2 = [words("error: variables"), quote(BadVarsStr),
                 words("each occur more than once in the argument list."), nl]
         ),
-        Spec = simplest_spec($pred, severity_error, phase_parse_tree_to_hlds,
+        Spec = spec($pred, severity_error, phase_pt2h,
             Context, Pieces1 ++ Pieces2),
         !:Specs = [Spec | !.Specs]
     ;
@@ -507,8 +504,8 @@ clauses_info_do_add_foreign_proc(PredOrFunc, PredModuleName, PredName,
                     words("but that"), p_or_f(PredOrFunc),
                     words("has been declared"), words(PurityStr),
                     suffix("."), nl],
-                Spec = simplest_spec($pred, severity_error,
-                    phase_parse_tree_to_hlds, Context, Pieces),
+                Spec = spec($pred, severity_error, phase_pt2h,
+                    Context, Pieces),
                 !:Specs = [Spec | !.Specs]
             )
         ),
@@ -706,11 +703,11 @@ add_foreign_proc_update_existing_clauses(Globals, PredOrFunc,
                             unqual_pf_sym_name_pred_form_arity(PFSymNameArity),
                             words("in"), words(OldLangStr), suffix("."), nl],
                         PiecesB = [words("The first one was here."), nl],
-                        MsgA = simplest_msg(NewContext, PiecesA),
+                        MsgA = msg(NewContext, PiecesA),
                         MsgB = error_msg(yes(FirstClauseContext),
                             always_treat_as_first, 0, [always(PiecesB)]),
-                        Spec = error_spec($pred, severity_error,
-                            phase_parse_tree_to_hlds, [MsgA, MsgB]),
+                        Spec = error_spec($pred, severity_error, phase_pt2h,
+                            [MsgA, MsgB]),
                         !:Specs = [Spec | !.Specs]
                     else
                         true

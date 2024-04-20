@@ -1401,8 +1401,7 @@ warn_dead_proc(ModuleInfo, PredId, ProcId, Context) = Spec :-
         should_not_module_qualify, proc(PredId, ProcId)),
     Pieces = [words("Warning:")] ++ ProcPieces ++
         [words("is never called."), nl],
-    Spec = simplest_spec($pred, severity_warning, phase_dead_code,
-        Context, Pieces).
+    Spec = spec($pred, severity_warning, phase_dead_code, Context, Pieces).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

@@ -419,8 +419,7 @@ find_module_name(ProgressStream, Globals, FileName, MaybeModuleName, !IO) :-
         io.progname_base("mercury_compile", Progname, !IO),
         Pieces = [fixed(Progname), suffix(":"), words("error opening"),
             quote(FileName), suffix(":"), words(ErrorMsg), suffix("."), nl],
-        Spec = simplest_no_context_spec($pred, severity_error,
-            phase_read_files, Pieces),
+        Spec = no_ctxt_spec($pred, severity_error, phase_read_files, Pieces),
         % XXX Should return maybe1(module_name), not maybe(module_name).
         write_error_spec(ProgressStream, Globals, Spec, !IO),
         MaybeModuleName = no

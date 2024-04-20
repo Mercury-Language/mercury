@@ -657,7 +657,7 @@ read_trans_opt_deps_spec_file(FileName, Result, !IO) :-
             IgnorePieces = [invis_order_default_end(0, ""),
                 words("Ignoring"), quote(FileName),
                 words("due to the presence of errors."), nl],
-            IgnoreSpec = simplest_spec($pred, severity_error, phase_read_files,
+            IgnoreSpec = spec($pred, severity_error, phase_read_files,
                 LastContext, IgnorePieces),
             FileSpecs = [IgnoreSpec | FileSpecs0],
             Result = error1(FileSpecs)
@@ -666,8 +666,7 @@ read_trans_opt_deps_spec_file(FileName, Result, !IO) :-
         ReadResult = error(Error),
         Pieces = [words("Error: cannot open"), quote(FileName), suffix(":"),
             words(io.error_message(Error)), suffix("."), nl],
-        Spec = simplest_no_context_spec($pred, severity_error,
-            phase_read_files, Pieces),
+        Spec = no_ctxt_spec($pred, severity_error, phase_read_files, Pieces),
         Result = error1([Spec])
     ).
 
@@ -684,8 +683,7 @@ parse_trans_opt_deps_spec_file(FileName, Contents, ContentsLen,
         ReadTerm = error(Error, LineNum),
         Pieces = [words("Read error:"), words(Error), suffix("."), nl],
         Context = context(FileName, LineNum),
-        Spec = simplest_spec($pred, severity_error, phase_read_files,
-            Context, Pieces),
+        Spec = spec($pred, severity_error, phase_read_files, Context, Pieces),
         !:Specs = [Spec | !.Specs]
     ;
         ReadTerm = term(VarSet, Term),
@@ -747,8 +745,8 @@ parse_trans_opt_deps_spec_term(VarSet, Term, !EdgesToRemove, !Specs) :-
                 Pieces1 = [words("Error: duplicate entry for source module"),
                     qual_sym_name(SourceName), suffix("."), nl],
                 Pieces2 = [words("The original entry is here."), nl],
-                Msg1 = simplest_msg(LeftTermContext, Pieces1),
-                Msg2 = simplest_msg(OldContext, Pieces2),
+                Msg1 = msg(LeftTermContext, Pieces1),
+                Msg2 = msg(OldContext, Pieces2),
                 Spec = error_spec($pred, severity_error, phase_read_files,
                     [Msg1, Msg2]),
                 !:Specs = [Spec | !.Specs]
@@ -768,7 +766,7 @@ parse_trans_opt_deps_spec_term(VarSet, Term, !EdgesToRemove, !Specs) :-
             quote("module_disallow_deps(module_name, module_name_list)"),
             suffix(","), nl_indent_delta(-1),
             words("got"), quote(TermStr), suffix("."), nl],
-        Spec = simplest_spec($pred, severity_error, phase_read_files,
+        Spec = spec($pred, severity_error, phase_read_files,
             get_term_context(Term), Pieces),
         !:Specs = [Spec | !.Specs]
     ).
@@ -786,7 +784,7 @@ parse_trans_opt_deps_spec_module_list(VarSet, Term, !ModuleNameCord, !Specs) :-
         TermStr = describe_error_term(VarSet, Term),
         Pieces = [words("Error: expected a list, got"),
             quote(TermStr), suffix("."), nl],
-        Spec = simplest_spec($pred, severity_error, phase_read_files,
+        Spec = spec($pred, severity_error, phase_read_files,
             get_term_context(Term), Pieces),
         !:Specs = [Spec | !.Specs]
     ).
@@ -805,7 +803,7 @@ parse_trans_opt_deps_spec_module_names(VarSet, [Term | Terms],
         TermStr = describe_error_term(VarSet, Term),
         Pieces = [words("Error: expected a module name, got"),
             quote(TermStr), suffix("."), nl],
-        Spec = simplest_spec($pred, severity_error, phase_read_files,
+        Spec = spec($pred, severity_error, phase_read_files,
             get_term_context(Term), Pieces),
         !:Specs = [Spec | !.Specs]
     ),
@@ -840,7 +838,7 @@ report_unknown_module_names_in_allow_disallow(KnownModules,
     else
         Pieces = [words("Warning: the module name"), qual_sym_name(Module),
             words("does not occur in the dependency graph."), nl],
-        Spec = simplest_spec($pred, severity_warning, phase_read_files,
+        Spec = spec($pred, severity_warning, phase_read_files,
             Context, Pieces),
         !:Specs = [Spec | !.Specs]
     ),
@@ -865,7 +863,7 @@ report_unknown_module_names_in_module_names(KnownModules, AoD, N,
                 words("module name"), qual_sym_name(Module),
                 words("is the same as the"), nth_fixed(OldN), words(AoD),
                 words("module name."), nl],
-            Spec = simplest_spec($pred, severity_warning, phase_read_files,
+            Spec = spec($pred, severity_warning, phase_read_files,
                 Context, Pieces),
             !:Specs = [Spec | !.Specs]
         )
@@ -873,7 +871,7 @@ report_unknown_module_names_in_module_names(KnownModules, AoD, N,
         Pieces = [words("Warning: the"), nth_fixed(N), words(AoD),
             words("module name"), qual_sym_name(Module),
             words("does not occur in the dependency graph."), nl],
-        Spec = simplest_spec($pred, severity_warning, phase_read_files,
+        Spec = spec($pred, severity_warning, phase_read_files,
             Context, Pieces),
         !:Specs = [Spec | !.Specs]
     ),

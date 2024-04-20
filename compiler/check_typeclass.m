@@ -598,7 +598,7 @@ generate_instance_method_procs_for_class(ClassTable, ClassId,
             MaybeBadDefn = has_no_bad_class_defn,
             Pieces = [words("Error: no definition for typeclass"),
                 unqual_class_id(ClassId), suffix("."), nl],
-            Spec = simplest_spec($pred, severity_error, phase_type_check,
+            Spec = spec($pred, severity_error, phase_type_check,
                 ClassContext, Pieces),
             !:Specs = [Spec | !.Specs]
         ;
@@ -644,7 +644,7 @@ generate_instance_method_procs_for_class_instance(ClassId, ClassTVarSet,
             Pieces =
                 [words("Error: instance declaration for abstract typeclass"),
                 unqual_class_id(ClassId), suffix("."), nl],
-            Spec = simplest_spec($pred, severity_error, phase_type_check,
+            Spec = spec($pred, severity_error, phase_type_check,
                 InstanceContext, Pieces),
             !:Specs = [Spec | !.Specs]
         ;
@@ -2052,7 +2052,7 @@ report_cyclic_classes(ClassTable, ClassPath, !Specs) :-
             qual_class_id(HeadClassId), nl],
         list.foldl(add_path_element, TailClassIds, cord.init, LaterLinesCord),
         Pieces = StartPieces ++ cord.list(LaterLinesCord),
-        Spec = simplest_spec($pred, severity_error, phase_type_check,
+        Spec = spec($pred, severity_error, phase_type_check,
             Context, Pieces),
         !:Specs = [Spec | !.Specs]
     ).
@@ -2135,7 +2135,7 @@ report_bad_type_in_instance(ClassId, InstanceDefn, EndPieces, Kind, !Specs) :-
     ),
     PrefixPieces = in_instance_decl_pieces(WhichTypes, ClassId, InstanceDefn),
     InstanceContext = InstanceDefn ^ instdefn_context,
-    Spec = simplest_spec($pred, severity_error, phase_type_check,
+    Spec = spec($pred, severity_error, phase_type_check,
         InstanceContext, PrefixPieces ++ EndPieces),
     !:Specs = [Spec | !.Specs].
 
@@ -2157,11 +2157,11 @@ report_duplicate_method_defn(ClassId, InstanceDefn, MethodName,
     HeaderPieces = PrefixPieces ++
         [words("multiple implementations of") | PFMethodNamePieces] ++
         [suffix("."), nl],
-    HeaderMsg = simplest_msg(InstanceDefn ^ instdefn_context, HeaderPieces),
+    HeaderMsg = msg(InstanceDefn ^ instdefn_context, HeaderPieces),
     FirstPieces = [words("First definition appears here."), nl],
-    FirstMsg = simplest_msg(FirstContext, FirstPieces),
+    FirstMsg = msg(FirstContext, FirstPieces),
     LaterPieces = [words("Later definition appears here."), nl],
-    LaterMsg = simplest_msg(LaterContext, LaterPieces),
+    LaterMsg = msg(LaterContext, LaterPieces),
     Spec = error_spec($pred, severity_error, phase_type_check,
         [HeaderMsg, FirstMsg, LaterMsg]),
     !:Specs = [Spec | !.Specs].
@@ -2178,7 +2178,7 @@ report_undefined_method(ClassId, InstanceDefn, MethodName, !Specs) :-
     Pieces = PrefixPieces ++
         [words("no implementation for") | PFMethodNamePieces] ++
         [suffix("."), nl],
-    Spec = simplest_spec($pred, severity_error, phase_type_check,
+    Spec = spec($pred, severity_error, phase_type_check,
         InstanceDefn ^ instdefn_context, Pieces),
     !:Specs = [Spec | !.Specs].
 
@@ -2215,7 +2215,7 @@ report_unknown_instance_methods(ClassId, InstanceDefn,
             component_list_to_line_pieces(MethodPieces,
                 [suffix("."), nl_indent_delta(-1)])
     ),
-    Spec = simplest_spec($pred, severity_error, phase_type_check,
+    Spec = spec($pred, severity_error, phase_type_check,
         SelectedContext, Pieces),
     !:Specs = [Spec | !.Specs].
 
@@ -2237,7 +2237,7 @@ report_unsatistfied_superclass_constraint(ClassId, InstanceDefn, ClassTVarSet,
         words("not satisfied:"), nl,
         words(ConstraintsStr), suffix("."), nl],
     Context = InstanceDefn ^ instdefn_context,
-    Spec = simplest_spec($pred, severity_error, phase_type_check,
+    Spec = spec($pred, severity_error, phase_type_check,
         Context, Pieces),
     !:Specs = [Spec | !.Specs].
 
@@ -2275,9 +2275,9 @@ report_overlapping_instances(ClassId, ContextA, ContextB, !Specs) :-
     PiecesA = [words("Error: overlapping instance declarations"),
         words("for class"), qual_class_id(ClassId), suffix("."), nl,
         words("One instance declaration is here, ..."), nl],
-    MsgA = simplest_msg(ContextA, PiecesA),
+    MsgA = msg(ContextA, PiecesA),
     PiecesB = [words("... and the other is here."), nl],
-    MsgB = simplest_msg(ContextB, PiecesB),
+    MsgB = msg(ContextB, PiecesB),
     Spec = error_spec($pred, severity_error, phase_type_check, [MsgA, MsgB]),
     !:Specs = [Spec | !.Specs].
 
@@ -2311,7 +2311,7 @@ report_duplicate_instance_defn(ClassId, Severity, SeverityWord, Category,
     LaterPieces = [words(SeverityWord), suffix(":"),
         words("duplicate"), words(Category), words("instance declaration"),
         words("for class"), qual_class_id(ClassId), suffix("."), nl],
-    LaterMsg = simplest_msg(LaterContext, LaterPieces),
+    LaterMsg = msg(LaterContext, LaterPieces),
     FirstPieces = [words("Previous instance declaration was here."), nl],
     FirstMsg = error_msg(yes(FirstContext), always_treat_as_first, 0,
         [always(FirstPieces)]),
@@ -2331,10 +2331,10 @@ report_abstract_concrete_constraints_mismatch(ClassId,
         words("for class"), qual_class_id(ClassId),
         words("do not match the instance constraints"),
         words("on the corresponding concrete instance declaration."), nl],
-    AbstractMsg = simplest_msg(AbstractContext, AbstractPieces),
+    AbstractMsg = msg(AbstractContext, AbstractPieces),
     ConcretePieces = [words("The corresponding"),
         words("concrete instance declaration is here."), nl],
-    ConcreteMsg = simplest_msg(ConcreteContext, ConcretePieces),
+    ConcreteMsg = msg(ConcreteContext, ConcretePieces),
     Spec = error_spec($pred, severity_error, phase_type_check,
         [AbstractMsg, ConcreteMsg]),
     !:Specs = [Spec | !.Specs].
@@ -2355,7 +2355,7 @@ report_abstract_instance_without_concrete(ClassId, InstanceDefn, !Specs) :-
         words("has no corresponding concrete instance declaration"),
         words("in the implementation section."), nl],
     Context = InstanceDefn ^ instdefn_context,
-    Spec = simplest_spec($pred, severity_error, phase_type_check,
+    Spec = spec($pred, severity_error, phase_type_check,
         Context, Pieces),
     !:Specs = [Spec | !.Specs].
 
@@ -2372,10 +2372,10 @@ report_local_vs_nonlocal_clash(ClassId, LocalInstance, NonLocalInstance,
         words("for"), quote(InstanceName), words("clashes with"),
         words("an instance declaration in another module."), nl],
     LocalContext = LocalInstance ^ instdefn_context,
-    LocalMsg = simplest_msg(LocalContext, LocalPieces),
+    LocalMsg = msg(LocalContext, LocalPieces),
     NonLocalPieces = [words("The other instance declaration is here."), nl],
     NonLocalContext = NonLocalInstance ^ instdefn_context,
-    NonLocalMsg = simplest_msg(NonLocalContext, NonLocalPieces),
+    NonLocalMsg = msg(NonLocalContext, NonLocalPieces),
     Spec = error_spec($pred, severity_error, phase_type_check,
         [LocalMsg, NonLocalMsg]),
     !:Specs = [Spec | !.Specs].
@@ -2409,7 +2409,7 @@ report_coverage_error(ClassId, InstanceDefn, Vars, !Specs) :-
         words(choose_number(Vars, "is", "are")),
         words("not determined by the domain."), nl],
     Context = InstanceDefn ^ instdefn_context,
-    Spec = simplest_spec($pred, severity_error, phase_type_check,
+    Spec = spec($pred, severity_error, phase_type_check,
         Context, Pieces),
     !:Specs = [Spec | !.Specs].
 
@@ -2435,7 +2435,7 @@ report_consistency_error(ClassId, ClassDefn, InstanceA, InstanceB, FunDep,
         quote("(" ++ Domains ++ " -> " ++ Ranges ++ ")"), suffix("."), nl],
     PiecesB = [words("Here is the conflicting instance."), nl],
 
-    MsgA = simplest_msg(ContextA, PiecesA),
+    MsgA = msg(ContextA, PiecesA),
     MsgB = error_msg(yes(ContextB), always_treat_as_first, 0,
         [always(PiecesB)]),
     Spec = error_spec($pred, severity_error, phase_type_check, [MsgA, MsgB]),
@@ -2526,7 +2526,7 @@ report_bad_class_ids_in_pred_decl(ModuleInfo, PredInfo,
         unqual_pf_sym_name_pred_form_arity(PFSymNameArity), suffix(":"), nl],
     Pieces = StartPieces ++
         error_classes_do_not_exist_pieces(HeadBadClassId, TailBadClassIds),
-    Spec = simplest_spec($pred, severity_error, phase_type_check,
+    Spec = spec($pred, severity_error, phase_type_check,
         Context, Pieces),
     !:Specs = [Spec | !.Specs].
 
@@ -2560,7 +2560,7 @@ report_badly_quantified_vars(PredInfo, QuantErrorType, TVars, !Specs) :-
     Pieces = InDeclaration ++ TypeVariables ++ TVarsPart ++
         [Are, BlahConstrained, suffix(","), words("but"), Are,
         BlahQuantified, suffix("."), nl],
-    Spec = simplest_spec($pred, severity_error, phase_type_check,
+    Spec = spec($pred, severity_error, phase_type_check,
         Context, Pieces),
     !:Specs = [Spec | !.Specs].
 
@@ -2603,7 +2603,7 @@ report_bad_class_ids_in_data_ctor(TypeCtor, TypeDefn,
         suffix(":"), nl],
     Pieces = StartPieces ++
         error_classes_do_not_exist_pieces(HeadBadClassId, TailBadClassIds),
-    Spec = simplest_spec($pred, severity_error, phase_type_check,
+    Spec = spec($pred, severity_error, phase_type_check,
         Context, Pieces),
     !:Specs = [Spec | !.Specs].
 
