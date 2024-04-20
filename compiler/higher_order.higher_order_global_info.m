@@ -23,7 +23,6 @@
 :- import_module parse_tree.prog_data.
 
 :- import_module assoc_list.
-:- import_module bool.
 :- import_module counter.
 :- import_module list.
 :- import_module map.
@@ -66,7 +65,7 @@
                 % Propagate higher-order constants.
                 param_do_higher_order_spec  :: maybe_opt_higher_order,
 
-                % Propagate type-info constants.
+                % Propagate typeinfo constants.
                 param_do_type_spec          :: maybe_spec_types,
 
                 % User-guided type specialization.
@@ -116,12 +115,6 @@
 
                 % Caller's typevarset.
                 np_call_tvarset         :: tvarset,
-
-                % Does the interface of the specialized version use type-info
-                % liveness?
-                % XXX Unfortunately, this field is not doing its job;
-                % its value is never used for anything.
-                np_typeinfo_liveness    :: bool,
 
                 % Is this a user-specified type specialization?
                 np_is_user_spec         :: ho_request_kind
@@ -190,7 +183,7 @@
                 % The call's arguments, and their types.
                 rq_args                 :: assoc_list(prog_var, mer_type),
 
-                % Type variables for which extra type-infos must be passed
+                % Type variables for which extra typeinfos must be passed
                 % from the caller if --typeinfo-liveness is set.
                 rq_tvars                :: list(tvar),
 
@@ -199,15 +192,6 @@
 
                 % Caller's typevarset.
                 rq_caller_tvarset       :: tvarset,
-
-                % Should the interface of the specialized procedure
-                % use typeinfo liveness?
-                % XXX Unfortunately, this field is not doing its job.
-                % First, it is only ever set to "yes", so it is redundant.
-                % Second, its value is only ever used for one thing, which
-                % is to set the value of the np_typeinfo_liveness field
-                % in the new_pred type, which is itself never used.
-                rq_typeinfo_liveness    :: bool,
 
                 % Is this a user-requested specialization?
                 rq_request_kind         :: ho_request_kind,
@@ -285,7 +269,7 @@
                 % The arguments to the specialised call.
                 list(prog_var),
 
-                % Type variables for which extra type-infos must be added
+                % Type variables for which extra typeinfos must be added
                 % to the start of the argument list.
                 list(mer_type)
             ).
@@ -448,11 +432,11 @@ both_constants(IsConstA, IsConstB) = IsConst :-
 
 version_matches(Params, ModuleInfo, Request, Version, Match) :-
     Request = ho_request(_, CalleePredProcId, ArgsTypes0, _,
-        RequestHigherOrderArgs, RequestTVarSet, _, _, _),
+        RequestHigherOrderArgs, RequestTVarSet, _, _),
     CalleePredProcId = proc(CalleePredId, _),
     module_info_pred_info(ModuleInfo, CalleePredId, CalleePredInfo),
     Version = new_pred(_, _, _, _, VersionHigherOrderArgs, VersionArgsTypes0,
-        VersionExtraTypeInfoTVars, VersionTVarSet, _, _),
+        VersionExtraTypeInfoTVars, VersionTVarSet, _),
     higher_order_args_match(RequestHigherOrderArgs,
         VersionHigherOrderArgs, HigherOrderArgs, FullOrPartial),
     (
@@ -493,7 +477,7 @@ version_matches(Params, ModuleInfo, Request, Version, Match) :-
 
     require_det (
         % We know the version matches; work out the details.
-        % Specifically, work out the types of the extra type-info variables
+        % Specifically, work out the types of the extra typeinfo variables
         % that we need to pass to the specialized version.
         %
         % XXX kind inference:

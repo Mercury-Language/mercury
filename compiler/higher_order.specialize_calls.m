@@ -1269,7 +1269,7 @@ maybe_specialize_ordinary_call(CanRequest, CalleePredProcId,
             % Yes, we have created it. Return the code to call it.
             Match = match(MatchedNewPred, _, Args1, ExtraTypeInfoTypes),
             MatchedNewPred =
-                new_pred(NewPredProcId, _, _, NewName, _, _, _, _, _, _),
+                new_pred(NewPredProcId, _, _, NewName, _, _, _, _, _),
 
             construct_extra_type_infos(ExtraTypeInfoTypes,
                 ExtraTypeInfoVars, ExtraTypeInfoGoals, !Info),
@@ -1491,8 +1491,7 @@ find_matching_version(Info, CalleePredProcId, Args0, HigherOrderArgs,
     pred_info_get_typevarset(PredInfo, TVarSet),
 
     Request = ho_request(CallerPredProcId, CalleePredProcId, ArgsTypes0,
-        ExtraTypeInfoTVars, HigherOrderArgs, TVarSet, yes, RequestKind,
-        Context),
+        ExtraTypeInfoTVars, HigherOrderArgs, TVarSet, RequestKind, Context),
 
     % Check to see if any of the specialized versions of the called pred
     % apply here.

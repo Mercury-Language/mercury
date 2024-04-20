@@ -71,7 +71,6 @@
 :- import_module transform_hlds.higher_order.specialize_calls.
 
 :- import_module assoc_list.
-:- import_module bool.
 :- import_module int.
 :- import_module list.
 :- import_module map.
@@ -168,7 +167,7 @@ filter_request(MaybeProgressStream, GlobalInfo, Request,
         !AcceptedRequests, !LoopRequests, !IO) :-
     ModuleInfo = hogi_get_module_info(GlobalInfo),
     Request = ho_request(_, CalleePredProcId, _, _, HOArgs,
-        _, _, RequestKind, Context),
+        _, RequestKind, Context),
     CalleePredProcId = proc(CalleePredId, _),
     module_info_pred_info(ModuleInfo, CalleePredId, CalleePredInfo),
     Preamble = "Request for",
@@ -212,7 +211,7 @@ does_something_prevent_specialization(GlobalInfo, Request, GoalSize,
         Msg, !LoopRequests) :-
     Params = hogi_get_params(GlobalInfo),
     Request = ho_request(CallerPredProcId, CalleePredProcId, _, _, HOArgs,
-        _, _, _, _),
+        _, _, _),
     ( if
         GoalSize > Params ^ param_size_limit
     then
@@ -318,8 +317,7 @@ maybe_create_new_ho_spec_preds(MaybeProgressStream, [Request | Requests],
 create_new_ho_spec_pred(MaybeProgressStream, Request, NewPred,
         !GlobalInfo, !IO) :-
     Request = ho_request(CallerPPId, CalleePPId, CallArgsTypes,
-        ExtraTypeInfoTVars, HOArgs, CallerTVarSet, TypeInfoLiveness,
-        RequestKind, Context),
+        ExtraTypeInfoTVars, HOArgs, CallerTVarSet, RequestKind, Context),
     ModuleInfo0 = hogi_get_module_info(!.GlobalInfo),
     module_info_pred_proc_info(ModuleInfo0, CalleePPId, PredInfo0, ProcInfo0),
     construct_created_spec_name_status(ModuleInfo0, Request, PredInfo0,
@@ -367,7 +365,7 @@ create_new_ho_spec_pred(MaybeProgressStream, Request, NewPred,
     SpecSymName = qualified(PredModuleName, SpecName),
     NewPred = new_pred(proc(NewPredId, NewProcId), CalleePPId, CallerPPId,
         SpecSymName, HOArgs, CallArgsTypes, ExtraTypeInfoTVars, CallerTVarSet,
-        TypeInfoLiveness, RequestKind),
+        RequestKind),
 
     higher_order_record_new_specialized_pred(CalleePPId, NewPred, !GlobalInfo),
 
@@ -385,8 +383,7 @@ create_new_ho_spec_pred(MaybeProgressStream, Request, NewPred,
 construct_created_spec_name_status(ModuleInfo, Request, PredInfo0,
         SpecName, Origin, PredStatus, NewProcId, !GlobalInfo) :-
     PredOrFunc = pred_info_is_pred_or_func(PredInfo0),
-    Request = ho_request(CallerPPId, CalleePPId, _, _, _, _, _,
-        RequestKind, _),
+    Request = ho_request(CallerPPId, CalleePPId, _, _, _, _, RequestKind, _),
     (
         RequestKind = user_type_spec,
         % If this is a user-guided type specialisation, the new name comes from
@@ -510,7 +507,7 @@ specialize_and_add_new_proc(NewPred, !.NewProcInfo,
         !NewPredInfo, !GlobalInfo) :-
     ModuleInfo = hogi_get_module_info(!.GlobalInfo),
     NewPred = new_pred(NewPredProcId, OldPredProcId, CallerPredProcId, _Name,
-        HOArgs0, CallArgsTypes0, ExtraTypeInfoTVars0, _, _, _),
+        HOArgs0, CallArgsTypes0, ExtraTypeInfoTVars0, _, _),
 
     proc_info_get_headvars(!.NewProcInfo, HeadVars0),
     proc_info_get_argmodes(!.NewProcInfo, ArgModes0),
