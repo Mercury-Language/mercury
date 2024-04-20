@@ -578,6 +578,8 @@ maybe_dump_options_file(OutStream, ArgsOptionTable, OptionsVariables, !IO) :-
 
 report_option_error(OptionError) = Specs :-
     OptionErrorStr = option_error_to_string(OptionError),
+    MainMsg = simplest_no_context_msg([words("Error:"), words(OptionErrorStr),
+        suffix("."), nl]),
     ( if
         OptionError = unrecognized_option(OptionStr),
         ( if string.remove_prefix("--no-", OptionStr, BaseOptionStr0) then
@@ -603,15 +605,14 @@ report_option_error(OptionError) = Specs :-
             all_long_option_strings(OptionStrs)
         ),
         maybe_construct_prefixed_did_you_mean_pieces(Prefix, BaseOptionStr,
-            OptionStrs, DidYouMeanPieces0),
-        DidYouMeanPieces = [nl_indent_delta(-1) | DidYouMeanPieces0]
+            OptionStrs, DidYouMeanPieces),
+        DidYouMeanMsg = error_msg(no, always_treat_as_first, 0,
+            [always(DidYouMeanPieces)]),
+        Msgs = [MainMsg, DidYouMeanMsg]
     else
-        DidYouMeanPieces = []
+        Msgs = [MainMsg]
     ),
-    Spec = simplest_no_context_spec($pred, severity_error,
-        phase_options,
-        [words(OptionErrorStr), suffix("."), nl | DidYouMeanPieces]),
-    Specs = [Spec].
+    Specs = [error_spec($pred, severity_error, phase_options, Msgs)].
 
 %---------------------------------------------------------------------------%
 
