@@ -2158,23 +2158,25 @@ long_option(String, Option) :-
     long_table(String, Option).
 
 all_long_option_strings(OptionStrings) :-
-    Pred = (pred(OptionString::out) is multi :-
-        long_table(OptionString, _)
-    ),
+    Pred =
+        ( pred(OptionString::out) is multi :-
+            long_table(OptionString, _)
+        ),
     solutions(Pred, OptionStrings).
 
 all_negatable_long_option_strings(OptionStrings) :-
-    Pred = (pred(OptionString::out) is nondet :-
-        long_table(OptionString, Option),
-        optdef(_, Option, OptionData),
-        ( OptionData = bool(_)
-        ; OptionData = maybe_int(_)
-        ; OptionData = maybe_string(_)
-        ; OptionData = accumulating(_)
-        ; OptionData = bool_special
-        ; OptionData = maybe_string_special
-        )
-    ),
+    Pred =
+        ( pred(OptionString::out) is nondet :-
+            long_table(OptionString, Option),
+            optdef(_, Option, OptionData),
+            ( OptionData = bool(_)
+            ; OptionData = maybe_int(_)
+            ; OptionData = maybe_string(_)
+            ; OptionData = accumulating(_)
+            ; OptionData = bool_special
+            ; OptionData = maybe_string_special
+            )
+        ),
     solutions(Pred, OptionStrings).
 
 :- pred long_table(string, option).
