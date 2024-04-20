@@ -512,7 +512,7 @@ Changes to the Mercury standard library
 
     - func `architecture/0`
     - func `mercury_version/0`
-    - func `package_version/`
+    - func `package_version/0`
 
 ### Changes to the `list` module
 
