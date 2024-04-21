@@ -146,8 +146,7 @@ make_linked_target(ProgressStream, Globals, LinkedTargetFile,
         (
             LibgradeCheckSpecs = [],
             maybe_with_analysis_cache_dir_3(ProgressStream, Globals,
-                make_linked_target_1(Globals, LinkedTargetFile,
-                    ExtraOptions),
+                make_linked_target_1(Globals, LinkedTargetFile, ExtraOptions),
                 LinkedTargetSucceeded, !Info, !Specs, !IO)
         ;
             LibgradeCheckSpecs = [_ | _],
