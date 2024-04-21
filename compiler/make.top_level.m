@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 2002-2012 The University of Melbourne.
-% Copyright (C) 2013-2021 The Mercury team.
+% Copyright (C) 2013-2024 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -94,13 +94,16 @@ make_process_compiler_args(ProgressStream, Globals, DetectedGradeFlags,
         ),
         globals.lookup_int_option(Globals, analysis_repeat, AnalysisRepeat),
 
-        ModuleIndexMap = module_index_map(
-            version_hash_table.init_default(module_name_hash),
-            version_array.empty, 0u),
-        DepIndexMap = dependency_file_index_map(
-            version_hash_table.init_default(
-                dependency_file_with_module_index_hash),
-            version_array.empty, 0u),
+        HashPredMI = module_name_hash,
+        ForwardMI = version_hash_table.init_default(HashPredMI),
+        ReverseMI = version_array.empty,
+        ModuleIndexMap = module_index_map(ForwardMI, ReverseMI, 0u),
+
+        HashPredDI = dependency_file_with_module_index_hash,
+        ForwardDI = version_hash_table.init_default(HashPredDI),
+        ReverseDI = version_array.empty,
+        DepIndexMap = dependency_file_index_map(ForwardDI, ReverseDI, 0u),
+
         DepStatusMap = version_hash_table.init_default(dependency_file_hash),
 
         % Accept and ignore `.depend' targets. `mmc --make' does not need
@@ -135,12 +138,12 @@ make_process_compiler_args(ProgressStream, Globals, DetectedGradeFlags,
 
 get_main_target_if_needed(ProgName, Variables, Targets0, MaybeTargets) :-
     (
+        Targets0 = [_ | _],
+        MaybeTargets = ok1(Targets0)
+    ;
         Targets0 = [],
         lookup_main_target(Variables, MaybeMainTargets),
         (
-            MaybeMainTargets = error1(Specs),
-            MaybeTargets = error1(Specs)
-        ;
             MaybeMainTargets = ok1(MainTargets),
             (
                 MainTargets = [_ | _],
@@ -154,10 +157,10 @@ get_main_target_if_needed(ProgName, Variables, Targets0, MaybeTargets) :-
                     Pieces),
                 MaybeTargets = error1([Spec])
             )
+        ;
+            MaybeMainTargets = error1(Specs),
+            MaybeTargets = error1(Specs)
         )
-    ;
-        Targets0 = [_ | _],
-        MaybeTargets = ok1(Targets0)
     ).
 
 %---------------------%
