@@ -591,7 +591,10 @@ parse_types_and_maybe_modes(MaybeInstConstraints, MaybeRequireMode, Why,
 parse_type_and_maybe_mode(MaybeInstConstraints, MaybeRequireMode, Why, VarSet,
         ContextPieces, Term, MaybeTypeAndMode) :-
     ( if
-        Term = term.functor(term.atom("::"), [TypeTerm, ModeTerm], _Context)
+        Term = term.functor(term.atom(Colons), [TypeTerm, ModeTerm], _Context),
+        ( Colons = "::"
+        ; Colons = ":"
+        )
     then
         parse_type(no_allow_ho_inst_info(Why), VarSet, ContextPieces,
             TypeTerm, MaybeType),
@@ -612,25 +615,39 @@ parse_type_and_maybe_mode(MaybeInstConstraints, MaybeRequireMode, Why, VarSet,
             parse_mode(no_allow_constrained_inst_var(wnciv_type_and_mode),
                 VarSet, ContextPieces, ModeTerm, MaybeMode)
         ),
+        (
+            Colons = "::",
+            ColonSpecs = []
+        ;
+            Colons = ":",
+            ColonPieces = cord.list(ContextPieces) ++
+                [lower_case_next_if_not_first,
+                words("Error: the type and mode are separated by"),
+                words("one colon, not two."), nl],
+            ColonSpecs = [spec($pred, severity_error, phase_t2pt,
+                get_term_context(Term), ColonPieces)]
+        ),
         ( if
             MaybeType = ok1(Type),
-            MaybeMode = ok1(Mode)
+            MaybeMode = ok1(Mode),
+            ColonSpecs = []
         then
             MaybeTypeAndMode = ok1(type_and_mode(Type, Mode))
         else
-            Specs = get_any_errors1(MaybeType) ++ get_any_errors1(MaybeMode),
+            Specs = get_any_errors1(MaybeType) ++ get_any_errors1(MaybeMode) ++
+                ColonSpecs,
             MaybeTypeAndMode = error1(Specs)
         )
     else
         (
             MaybeRequireMode = require_tm_mode,
-            MissingPieces = [lower_case_next_if_not_first,
+            MissingPieces = cord.list(ContextPieces) ++
+                [lower_case_next_if_not_first,
                 words("Error: missing"), quote("::mode"),
                 words("suffix."), nl],
-            Pieces = cord.list(ContextPieces ++ cord.from_list(MissingPieces)),
-            Spec = spec($pred, severity_error,
-                phase_t2pt, get_term_context(Term), Pieces),
-            MaybeTypeAndMode = error1([Spec])
+            MissingSpec = spec($pred, severity_error, phase_t2pt,
+                get_term_context(Term), MissingPieces),
+            MaybeTypeAndMode = error1([MissingSpec])
         ;
             MaybeRequireMode = dont_require_tm_mode,
             parse_type(no_allow_ho_inst_info(Why), VarSet, ContextPieces, Term,

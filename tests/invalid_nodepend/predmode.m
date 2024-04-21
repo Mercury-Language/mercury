@@ -14,4 +14,4 @@
 
 q(1).
 
-:- pred r(1::2, "bad"::"worse") is det.
+:- pred r(1::2, int:in, "bad"::"worse") is det.
