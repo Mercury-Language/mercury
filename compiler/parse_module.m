@@ -89,6 +89,7 @@
 :- import_module mdbcomp.sym_name.
 :- import_module parse_tree.error_spec.
 :- import_module parse_tree.find_module.
+:- import_module parse_tree.maybe_error.
 :- import_module parse_tree.parse_error.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_item.
@@ -99,19 +100,21 @@
 
 %---------------------------------------------------------------------------%
 
-    % peek_at_file(DefaultModuleName, DefaultExpectationContexts,
-    %   SourceFileName, ModuleName, Specs, !IO):
+    % peek_at_file(FileStream, SourceFileName, DefaultModuleName,
+    %   MaybeModuleName, !IO):
     %
-    % When looking for a module, we sometimes want to see what the file says
-    % about what Mercury module is stored in it. So we read the first thing
-    % in it, and see whether it is a module declaration. If it is, return
-    % the name of the module as ModuleName. If it isn't, return
-    % DefaultModuleName as ModuleName.
-    % XXX ITEM_LIST In the latter case, we should return an error indication.
+    % "mmc -f", which creates the Mercury.module file that later compiler
+    % compiler invocations will use to map modules to the name of the file
+    % containing them, uses this predicate to peek into a file to try to read
+    % its first Mercury item.
     %
-:- pred peek_at_file(io.text_input_stream::in,
-    module_name::in, list(prog_context)::in, file_name::in,
-    module_name::out, list(error_spec)::out, io::di, io::uo) is det.
+    % It this attempt succeeds and finds a ":- module" declaration giving
+    % the name of the module as ModuleName, then return ok1(ModuleName).
+    % If any part of this process fails, return error1(Spec) where Specs
+    % describes the problem.
+    %
+:- pred peek_at_file(io.text_input_stream::in, file_name::in, module_name::in,
+    maybe1(module_name)::out, io::di, io::uo) is det.
 
     % actually_read_module_src(Globals, FileNameAndStream,
     %   DefaultModuleName, DefaultExpectationContexts,
@@ -224,7 +227,6 @@
 :- import_module parse_tree.convert_parse_tree.
 :- import_module parse_tree.file_kind.
 :- import_module parse_tree.item_util.
-:- import_module parse_tree.maybe_error.
 :- import_module parse_tree.parse_item.
 :- import_module parse_tree.parse_types.
 :- import_module recompilation.
@@ -250,11 +252,12 @@
 
 %---------------------------------------------------------------------------%
 
-peek_at_file(FileStream, DefaultModuleName, DefaultExpectationContexts,
-        SourceFileName0, ModuleName, Specs, !IO) :-
+peek_at_file(FileStream, SourceFileName0, DefaultModuleName,
+        MaybeModuleName, !IO) :-
     io.read_file_as_string_and_num_code_units(FileStream, MaybeResult, !IO),
     (
         MaybeResult = ok2(FileString, FileStringLen),
+        DefaultExpectationContexts = [],
         counter.init(1, SeqNumCounter0),
         LineContext0 = line_context(1, 0),
         LinePosn0 = line_posn(0),
@@ -267,22 +270,26 @@ peek_at_file(FileStream, DefaultModuleName, DefaultExpectationContexts,
         (
             ModuleDeclPresent = no_module_decl_present(_MaybeLookAhead,
                 _Context, _NoModuleSpec),
-            ModuleName = DefaultModuleName
+            Pieces = [words("Error:"), quote(SourceFileName0),
+                words("does not start with a module declaration."), nl],
+            Spec = no_ctxt_spec($pred, severity_error, phase_read_files,
+                Pieces),
+            MaybeModuleName = error1([Spec])
         ;
             ModuleDeclPresent = wrong_module_decl_present(ModuleName,
-                _ModuleNameContext, _WrongSpec)
+                _ModuleNameContext, _WrongSpec),
+            MaybeModuleName = ok1(ModuleName)
         ;
             ModuleDeclPresent = right_module_decl_present(ModuleName,
-                _ModuleNameContext)
-        ),
-        Specs = []
+                _ModuleNameContext),
+            MaybeModuleName = ok1(ModuleName)
+        )
     ;
         MaybeResult = error2(_PartialFileString, _FileStringLen, ErrorCode),
-        ModuleName = DefaultModuleName,
         io.error_message(ErrorCode, ErrorMsg0),
         ErrorMsg = "I/O error: " ++ ErrorMsg0,
         io_error_to_error_spec(phase_read_files, ErrorMsg, Spec, !IO),
-        Specs = [Spec]
+        MaybeModuleName = error1([Spec])
     ).
 
 %---------------------------------------------------------------------------%

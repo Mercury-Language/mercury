@@ -96,7 +96,9 @@
 
 :- import_module parse_tree.file_names.
 :- import_module parse_tree.find_module.
+:- import_module parse_tree.maybe_error.
 :- import_module parse_tree.parse_tree_out_sym_name.
+:- import_module parse_tree.write_error_spec.
 
 :- import_module bimap.
 :- import_module dir.
@@ -153,9 +155,9 @@ write_source_file_map(ProgressStream, Globals, FileNames, !IO) :-
 
 write_source_file_map_line(ProgressStream, MapFileStream, Globals,
         FileName, SeenModules0, SeenModules, !IO) :-
-    find_module_name(ProgressStream, Globals, FileName, MaybeModuleName, !IO),
+    find_module_name(FileName, MaybeModuleName, !IO),
     (
-        MaybeModuleName = yes(ModuleName),
+        MaybeModuleName = ok1(ModuleName),
         ( if
             bimap.search(SeenModules0, ModuleName, PrevFileName),
             PrevFileName \= FileName
@@ -189,7 +191,8 @@ write_source_file_map_line(ProgressStream, MapFileStream, Globals,
                 [s(escaped_sym_name_to_string(ModuleName)), s(FileName)], !IO)
         )
     ;
-        MaybeModuleName = no,
+        MaybeModuleName = error1(Specs),
+        write_error_specs(ProgressStream, Globals, Specs, !IO),
         SeenModules = SeenModules0
     ).
 
