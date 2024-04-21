@@ -416,7 +416,6 @@ gather_c_compiler_flags(Globals, PIC, AllCFlags) :-
         %
         % Note that this will also affect the untagged version of the trail,
         % but that shouldn't matter.
-        %
         (
             C_CompilerType = cc_gcc(_, _, _),
             globals.lookup_int_option(Globals, bytes_per_word, BytesPerWord),
@@ -476,7 +475,6 @@ gather_c_compiler_flags(Globals, PIC, AllCFlags) :-
 
     % Last resort workarounds for C compiler bugs.
     % Changes here need to be reflected in scripts/mgnuc.in.
-    %
     globals.lookup_bool_option(Globals, exec_trace, ExecTrace),
     globals.lookup_string_option(Globals, target_arch, TargetArch),
     ( if
@@ -490,14 +488,12 @@ gather_c_compiler_flags(Globals, PIC, AllCFlags) :-
             %
             % XXX we are also enabling this for clang; does it have the
             % same performance problems?
-            %
             arch_is_apple_darwin(TargetArch)
         ;
             % 2. There is a bug in GCC 9.[12] that results in an internal error
             % in the LRA pass when compiling generated C files in debugging
             % grades that also use global registers on x86_64 machines.
             % See: <https://gcc.gnu.org/bugzilla/show_bug.cgi?id=91430>
-            %
             GCC_Regs = yes,
             C_CompilerType = cc_gcc(yes(9), _, _),
             string.prefix(TargetArch, "x86_64")
@@ -508,7 +504,7 @@ gather_c_compiler_flags(Globals, PIC, AllCFlags) :-
         OverrideOpts = ""
     ),
 
-    % Be careful with the order here!  Some options override others,
+    % Be careful with the order here! Some options override others,
     % e.g. CFLAGS_FOR_REGS must come after OptimizeOpt so that
     % it can override -fomit-frame-pointer with -fno-omit-frame-pointer.
     % Also be careful that each option is separated by spaces.
@@ -517,10 +513,9 @@ gather_c_compiler_flags(Globals, PIC, AllCFlags) :-
     % CC_Specific_CFLAGS below, should be able to override those introduced by
     % the Mercury compiler.
     % In some circumstances we want to prevent the user doing this, typically
-    % where we know the behaviour of a particular C compiler is buggy; the
-    % last option, OverrideOpts, does this -- because of this it must be
-    % listed after CFLAGS and CC_Specific_CFLAGS.
-    %
+    % where we know the behaviour of a particular C compiler is buggy.
+    % The last option, OverrideOpts, does this, and because of this,
+    % it must be listed after CFLAGS and CC_Specific_CFLAGS.
     string.append_list([
         SubDirInclOpt, InclOpt, " ",
         FrameworkInclOpt, " ",
@@ -881,7 +876,7 @@ gather_compiler_specific_flags(Globals, Flags) :-
 get_maybe_filtercc_command(Globals, MaybeFilterCmd) :-
     % At this time we only need to filter the compiler output when using
     % assembler labels with gcc 4.x. Mercury.config.bootstrap doesn't specify
-    % the gcc version so we don't check for it.
+    % the gcc version, so we don't check for it.
     ( if
         globals.lookup_bool_option(Globals, asm_labels, yes),
         globals.lookup_string_option(Globals, filtercc_command, FilterCmd),
@@ -1185,9 +1180,9 @@ make_library_init_file(Globals, ProgressStream, MainModuleName, AllModules,
     ;
         InitFileRes = error(Error),
         io.progname_base("mercury_compile", ProgName, !IO),
+        ErrorMsg = io.error_message(Error),
         io.format(ProgressStream, "%s: can't open `%s' for output: %s\n",
-            [s(ProgName), s(TmpFullInitFileName), s(io.error_message(Error))],
-            !IO),
+            [s(ProgName), s(TmpFullInitFileName), s(ErrorMsg)], !IO),
         Succeeded = did_not_succeed
     ).
 
@@ -3072,8 +3067,7 @@ make_standalone_interface(Globals, ProgressStream, BaseName, !IO) :-
     make_standalone_int_header(ProgressStream, BaseName, HdrSucceeded, !IO),
     (
         HdrSucceeded = succeeded,
-        make_standalone_int_body(Globals, ProgressStream,
-            BaseName, !IO)
+        make_standalone_int_body(Globals, ProgressStream, BaseName, !IO)
     ;
         HdrSucceeded = did_not_succeed
     ).
@@ -3145,7 +3139,7 @@ make_standalone_int_body(Globals, ProgressStream, BaseName, !IO) :-
     ;
         % Supporting `--no-mercury-standard-library-directory' is necessary
         % in order to use `--generate-standalone-interface' with the
-        % the lmc script.
+        % lmc script.
         MaybeStdLibDir = no,
         InitFiles2 = InitFiles1,
         TraceInitFiles = TraceInitFiles0,
