@@ -83,7 +83,6 @@
 :- import_module require.
 :- import_module set.
 :- import_module term_int.
-:- import_module term_subst.
 
 %---------------------------------------------------------------------------%
 
@@ -377,38 +376,30 @@ parse_unconstrained_class(ModuleName, TVarSet, NameTerm, Context, SeqNum,
         parse_implicitly_qualified_sym_name_and_args(ModuleName, VarSet,
             ContextPieces, NameTerm, MaybeClassName),
         (
-            MaybeClassName = ok2(ClassName, TermVars0),
-            list.map(term.coerce, TermVars0, TermVars),
+            MaybeClassName = ok2(ClassName, ArgTerms0),
+            list.map(term.coerce, ArgTerms0, ArgTerms),
             (
-                TermVars = [],
+                ArgTerms = [],
                 Pieces = [words("Error: typeclass declarations require"),
                     words("at least one class parameter."), nl],
                 Spec = spec($pred, severity_error, phase_t2pt,
                     get_term_context(NameTerm), Pieces),
                 MaybeTypeClassInfo = error1([Spec])
             ;
-                TermVars = [_ | _],
-                ( if
-                    term_subst.term_list_to_var_list(TermVars, Vars),
-                    list.sort_and_remove_dups(TermVars, SortedTermVars),
-                    list.length(SortedTermVars, NumSortedTermVars),
-                    list.length(TermVars, NumTermVars),
-                    NumSortedTermVars = NumTermVars
-                then
+                ArgTerms = [_ | _],
+                terms_to_distinct_vars(TVarSet, "typeclass declaration",
+                    ArgTerms, MaybeVars),
+                (
+                    MaybeVars = ok1(Vars),
                     % XXX Would this be a better context?
                     % Context = get_term_context(NameTerm),
-                    TypeClassInfo = item_typeclass_info(ClassName, Vars, [],
-                        [], class_interface_abstract, TVarSet,
+                    TypeClassInfo = item_typeclass_info(ClassName, Vars,
+                        [], [], class_interface_abstract, TVarSet,
                         Context, SeqNum),
                     MaybeTypeClassInfo = ok1(TypeClassInfo)
-                else
-                    Pieces = [words("Error: expected distinct variables"),
-                        words("as class parameters."), nl],
-                    % XXX Would Context be better than
-                    % get_term_context(NameTerm)?
-                    Spec = spec($pred, severity_error, phase_t2pt,
-                        get_term_context(NameTerm), Pieces),
-                    MaybeTypeClassInfo = error1([Spec])
+                ;
+                    MaybeVars = error1(Specs),
+                    MaybeTypeClassInfo = error1(Specs)
                 )
             )
         ;
@@ -975,7 +966,7 @@ parse_arbitrary_constraint(VarSet, ConstraintTerm, Result) :-
             Result = error1(Specs)
         )
     else if
-        parse_fundep(ConstraintTerm, Result0)
+        parse_fundep(VarSet, ConstraintTerm, Result0)
     then
         Result = Result0
     else if
@@ -1006,32 +997,35 @@ parse_arbitrary_constraint(VarSet, ConstraintTerm, Result) :-
         Result = error1([Spec])
     ).
 
-:- pred parse_fundep(term::in, maybe1(arbitrary_constraint)::out) is semidet.
+:- pred parse_fundep(varset::in, term::in,
+    maybe1(arbitrary_constraint)::out) is semidet.
 
-parse_fundep(Term, Result) :-
+parse_fundep(VarSet, Term, Result) :-
     Term = term.functor(term.atom("->"), [DomainTerm, RangeTerm], Context),
+    parse_fundep_side(VarSet, "functional dependency domain",
+        DomainTerm, MaybeDomain),
+    parse_fundep_side(VarSet, "functional dependency range",
+        RangeTerm, MaybeRange),
     ( if
-        parse_fundep_side(DomainTerm, Domain),
-        parse_fundep_side(RangeTerm, Range)
+        MaybeDomain = ok1(Domain),
+        MaybeRange = ok1(Range)
     then
         Result = ok1(ac_fundep(fundep(Domain, Range), Context))
     else
-        Pieces = [words("Error: the domain and range"),
-            words("of a functional dependency"),
-            words("must be comma-separated lists of variables."), nl],
-        Spec = spec($pred, severity_error, phase_t2pt,
-            get_term_context(Term), Pieces),
-        Result = error1([Spec])
+        Specs = get_any_errors1(MaybeDomain) ++ get_any_errors1(MaybeRange),
+        Result = error1(Specs)
     ).
 
-    % XXX ITEM_LIST Should return one_or_more(tvar).
+    % XXX ITEM_LIST Should return maybe1(one_or_more(tvar)).
     %
-:- pred parse_fundep_side(term::in, list(tvar)::out) is semidet.
+:- pred parse_fundep_side(varset::in, string::in, term::in,
+    maybe1(list(tvar))::out) is det.
 
-parse_fundep_side(TypesTerm0, TypeVars) :-
+parse_fundep_side(VarSet0, Kind, TypesTerm0, MaybeTypeVars) :-
+    VarSet = varset.coerce(VarSet0),
     TypesTerm = term.coerce(TypesTerm0),
     conjunction_to_list(TypesTerm, TypeTerms),
-    term_subst.term_list_to_var_list(TypeTerms, TypeVars).
+    terms_to_distinct_vars(VarSet, Kind, TypeTerms, MaybeTypeVars).
 
 :- pred classify_types_as_var_ground_or_neither(tvarset::in,
     list(mer_type)::in,

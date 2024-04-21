@@ -59,11 +59,9 @@
 :- import_module parse_tree.parse_util.
 :- import_module parse_tree.prog_item.
 
-:- import_module bag.
 :- import_module cord.
 :- import_module maybe.
 :- import_module set.
-:- import_module term_subst.
 :- import_module term_vars.
 
 %-----------------------------------------------------------------------------e
@@ -145,7 +143,7 @@ parse_inst_defn_eqv(ModuleName, VarSet, HeadTerm, BodyTerm, Context, SeqNum,
 
         HeadTermContext = get_term_context(HeadTerm),
         check_user_inst_name(SymName, HeadTermContext, NameSpecs),
-        check_inst_mode_defn_args("inst definition", VarSet, HeadTermContext,
+        check_inst_mode_defn_args("inst definition", VarSet,
             ArgTerms, yes(BodyTerm), MaybeInstArgVars),
         NamedContextPieces = cord.from_list(
             [words("In the definition of the inst"),
@@ -189,7 +187,7 @@ parse_abstract_inst_defn_item(ModuleName, VarSet, HeadTerms, Context, SeqNum,
             HeadTermContext = get_term_context(HeadTerm),
             check_user_inst_name(SymName, HeadTermContext, NameSpecs),
             check_inst_mode_defn_args("abstract_inst definition", VarSet,
-                HeadTermContext, ArgTerms, no, MaybeInstArgVars),
+                ArgTerms, no, MaybeInstArgVars),
             ( if
                 NameSpecs = [],
                 MaybeInstArgVars = ok1(InstArgVars)
@@ -238,7 +236,7 @@ parse_mode_defn(ModuleName, VarSet, HeadTerm, BodyTerm, Context, SeqNum,
         MaybeSymNameAndArgs = ok2(SymName, ArgTerms),
         HeadTermContext = get_term_context(HeadTerm),
         check_user_mode_name(SymName, HeadTermContext, NameSpecs),
-        check_inst_mode_defn_args("mode definition", VarSet, HeadTermContext,
+        check_inst_mode_defn_args("mode definition", VarSet,
             ArgTerms, yes(BodyTerm), MaybeInstArgVars),
         NamedContextPieces = cord.from_list(
             [words("In the definition of the mode"),
@@ -279,7 +277,7 @@ parse_abstract_mode_defn_item(ModuleName, VarSet, HeadTerms, Context, SeqNum,
             HeadTermContext = get_term_context(HeadTerm),
             check_user_mode_name(SymName, HeadTermContext, NameSpecs),
             check_inst_mode_defn_args("abstract_mode definition", VarSet,
-                HeadTermContext, ArgTerms, no, MaybeInstArgVars),
+                ArgTerms, no, MaybeInstArgVars),
             ( if
                 NameSpecs = [],
                 MaybeInstArgVars = ok1(InstArgVars)
@@ -342,42 +340,17 @@ check_user_mode_name(SymName, Context, NameSpecs) :-
         NameSpecs = []
     ).
 
-:- pred check_inst_mode_defn_args(string::in, varset::in, term.context::in,
+:- pred check_inst_mode_defn_args(string::in, varset::in,
     list(term)::in, maybe(term)::in, maybe1(list(inst_var))::out) is det.
 
-check_inst_mode_defn_args(DefnKind, VarSet, HeadTermContext,
+check_inst_mode_defn_args(DefnKind, VarSet,
         ArgTerms, MaybeBodyTerm, MaybeArgVars) :-
     % Check that all the head arguments are variables.
-    ( if term_subst.term_list_to_var_list(ArgTerms, ArgVars) then
+    terms_to_distinct_vars(VarSet, DefnKind, ArgTerms, MaybeArgVars0),
+    (
+        MaybeArgVars0 = ok1(ArgVars),
         some [!Specs] (
             !:Specs = [],
-
-            % Check that all the head variables are distinct.
-            % The common cases are zero variable and one variable;
-            % fail fast in those cases.
-            ( if
-                ArgVars = [_, _ | _], % Optimize the common case.
-                bag.from_list(ArgVars, ArgVarsBag),
-                bag.to_list_only_duplicates(ArgVarsBag, DupArgVars),
-                DupArgVars = [_ | _]
-            then
-                ParamWord = choose_number(DupArgVars,
-                    "parameter", "parameters"),
-                IsAreWord = choose_number(DupArgVars,
-                    "is", "are"),
-                DupVarNames =
-                    list.map(mercury_var_to_name_only_vs(VarSet), DupArgVars),
-                RepeatPieces = [words("Error: inst"), words(ParamWord)] ++
-                    list_to_quoted_pieces(DupVarNames) ++
-                    [words(IsAreWord), words("repeated on left hand side of"),
-                    words(DefnKind), suffix("."), nl],
-                RepeatSpec = spec($pred, severity_error, phase_t2pt,
-                    HeadTermContext, RepeatPieces),
-                !:Specs = [RepeatSpec | !.Specs]
-            else
-                true
-            ),
-
             % Check that all the variables in the body occur in the head.
             % The common case is BodyVars = []; fail fast in that case.
             ( if
@@ -414,13 +387,9 @@ check_inst_mode_defn_args(DefnKind, VarSet, HeadTermContext,
                 MaybeArgVars = error1(!.Specs)
             )
         )
-    else
-        % XXX If term_list_to_var_list returned the non-var's term
-        % or context, we could use it here.
-        VarPieces = [words("Error: inst parameters must be variables."), nl],
-        VarSpec = spec($pred, severity_error, phase_t2pt,
-            HeadTermContext, VarPieces),
-        MaybeArgVars = error1([VarSpec])
+    ;
+        MaybeArgVars0 = error1(Specs),
+        MaybeArgVars = error1(Specs)
     ).
 
 %-----------------------------------------------------------------------------e

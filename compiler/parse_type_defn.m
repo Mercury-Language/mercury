@@ -86,7 +86,6 @@
 :- import_module parse_tree.prog_type.
 :- import_module parse_tree.prog_type_scan.
 
-:- import_module bag.
 :- import_module maybe.
 :- import_module one_or_more.
 :- import_module require.
@@ -1615,43 +1614,20 @@ parse_type_defn_head(ContextPieces, ModuleName, VarSet, Term,
                 % suggest that the arguments must be variables.
                 MaybeTypeCtorAndArgs = error2(NameSpecs)
             else
-                % Check that all the ArgTerms are variables.
-                term_list_to_var_list_and_nonvars(ArgTerms, ParamVars,
-                    NonVarArgTerms),
+                terms_to_distinct_vars(VarSet, "type definition", ArgTerms,
+                    MaybeParamVars),
                 (
-                    NonVarArgTerms = [],
-                    % Check that all the ParamVars are distinct.
-                    bag.from_list(ParamVars, ParamsBag),
-                    bag.to_list_only_duplicates(ParamsBag, DupParamVars),
+                    MaybeParamVars = ok1(ParamVars),
                     (
-                        DupParamVars = [],
-                        (
-                            NameSpecs = [],
-                            list.map(term.coerce_var, ParamVars, PrgParamVars),
-                            MaybeTypeCtorAndArgs = ok2(SymName, PrgParamVars)
-                        ;
-                            NameSpecs = [_ | _],
-                            MaybeTypeCtorAndArgs = error2(NameSpecs)
-                        )
+                        NameSpecs = [],
+                        list.map(term.coerce_var, ParamVars, PrgParamVars),
+                        MaybeTypeCtorAndArgs = ok2(SymName, PrgParamVars)
                     ;
-                        DupParamVars = [_ | _],
-                        DupParamVarNames = list.map(
-                            mercury_var_to_name_only_vs(VarSet), DupParamVars),
-                        Params = choose_number(DupParamVars,
-                            "the parameter", "the parameters"),
-                        IsOrAre = is_or_are(DupParamVars),
-                        Pieces = cord.list(ContextPieces) ++
-                            [lower_case_next_if_not_first,
-                            words("Error: type parameters must be unique,"),
-                            words("but"), words(Params)] ++
-                            list_to_pieces(DupParamVarNames) ++
-                            [words(IsOrAre), words("duplicated."), nl],
-                        Spec = spec($pred, severity_error, phase_t2pt,
-                            Context, Pieces),
-                        MaybeTypeCtorAndArgs = error2([Spec | NameSpecs])
+                        NameSpecs = [_ | _],
+                        MaybeTypeCtorAndArgs = error2(NameSpecs)
                     )
                 ;
-                    NonVarArgTerms = [_ | _],
+                    MaybeParamVars = error1(ParamsSpecs),
                     ( if Functor = atom(";") then
                         % ContextPieces would say "On the left hand side
                         % of a type definition", but the error we are
@@ -1665,41 +1641,25 @@ parse_type_defn_head(ContextPieces, ModuleName, VarSet, Term,
                             words("not by a semicolon."), nl],
                         Spec = spec($pred, severity_error, phase_t2pt,
                             Context, Pieces),
-                        MaybeTypeCtorAndArgs = error2([Spec])
-                    else
-                        NonVarArgTermStrs =
-                            list.map(describe_error_term(VarSet),
-                                NonVarArgTerms),
-                        IsOrAre = is_or_are(NonVarArgTermStrs),
-                        Pieces = cord.list(ContextPieces) ++
-                            [lower_case_next_if_not_first,
-                            words("Error: type parameters must be variables,"),
-                            words("but")] ++
-                            list_to_quoted_pieces(NonVarArgTermStrs) ++
-                            [words(IsOrAre), words("not."), nl],
-                        Spec = spec($pred, severity_error, phase_t2pt,
-                            Context, Pieces),
+                        % Most likely, the problems reported by ParamSpecs
+                        % are caused by the absence of the arrow.
                         MaybeTypeCtorAndArgs = error2([Spec | NameSpecs])
+                    else
+                        (
+                            NameSpecs = [],
+                            MaybeTypeCtorAndArgs = error2(ParamsSpecs)
+                        ;
+                            NameSpecs = [_ | _],
+                            % The problem reported by NameSpecs is probably
+                            % the error that led to ParamsSpecs. Reporting
+                            % ParamsSpecs here would be more confusing than
+                            % helpful.
+                            MaybeTypeCtorAndArgs = error2(NameSpecs)
+                        )
                     )
                 )
             )
         )
-    ).
-
-:- pred term_list_to_var_list_and_nonvars(list(term(T))::in,
-    list(var(T))::out, list(term(T))::out) is det.
-
-term_list_to_var_list_and_nonvars([], [], []).
-term_list_to_var_list_and_nonvars([Term | Terms], Vars, NonVars) :-
-    term_list_to_var_list_and_nonvars(Terms, TailVars, TailNonVars),
-    (
-        Term = variable(Var, _),
-        Vars = [Var | TailVars],
-        NonVars = TailNonVars
-    ;
-        Term = functor(_, _, _),
-        Vars = TailVars,
-        NonVars = [Term | TailNonVars]
     ).
 
     % Check that the type name is available to users.

@@ -7747,7 +7747,7 @@ Type class constraints may include any number of functional dependencies.
 A @dfn{functional dependency} constraint
 takes the form @code{(@var{Domain} -> @var{Range})}.
 The @var{Domain} and @var{Range} arguments are either single type variables,
-or conjunctions of type variables separated by commas.
+or conjunctions of distinct type variables separated by commas.
 
 @example
 	:- typeclass @var{Typeclass}(@var{Var}, @dots{})@
@@ -7828,6 +7828,12 @@ However, variables which are in the range of a functional dependency
 need not appear in the signature,
 since it is known that their bindings will be determined
 from the bindings of the variables in the domain.
+@c XXX What about a class with two fundeps: A -> B, and B -> A.
+@c Both A and B are in the range of a fundep.
+@c The above text seems to imply that it is ok for *neither* to appear
+@c in the signature.
+@c Should we replace "since it is known that their bindings will be determined"
+@c with "provided that their bindings are determined"?
 
 More formally, the constraints on a predicate or function signature
 @emph{induce} a set of functional dependencies

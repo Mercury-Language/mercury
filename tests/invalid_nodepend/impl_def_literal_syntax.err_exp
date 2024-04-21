@@ -18,7 +18,8 @@ impl_def_literal_syntax.m:027:   an implementation defined literal such as
 impl_def_literal_syntax.m:027:   `$file' may not be a used as a bound inst.
 impl_def_literal_syntax.m:030: In the definition of the inst `myinst2': error:
 impl_def_literal_syntax.m:030:   `$file' is not a valid inst.
-impl_def_literal_syntax.m:032: Error: inst parameters must be variables.
+impl_def_literal_syntax.m:032: Error: expected a variable as inst definition
+impl_def_literal_syntax.m:032:   parameter, got `$file'.
 impl_def_literal_syntax.m:034: In inst definition: error: expected a symbol
 impl_def_literal_syntax.m:034:   name, got `$file'.
 impl_def_literal_syntax.m:041: Syntax error at token 'file': expected `,', `)',

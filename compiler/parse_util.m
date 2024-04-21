@@ -188,6 +188,11 @@
     maybe1(int)::out) is det.
 
 %---------------------------------------------------------------------------%
+
+:- pred terms_to_distinct_vars(varset(T)::in, string::in, list(term(T))::in,
+    maybe1(list(var(T)))::out) is det.
+
+%---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
 :- implementation.
@@ -198,6 +203,7 @@
 :- import_module parse_tree.prog_mode.
 :- import_module parse_tree.prog_util.
 
+:- import_module set.
 :- import_module string.
 :- import_module term_int.
 :- import_module term_io.
@@ -766,6 +772,63 @@ parse_decimal_int(ContextPieces, VarSet, Term, MaybeInt) :-
             get_term_context(Term), Pieces),
         MaybeInt = error1([Spec])
     ).
+
+%---------------------------------------------------------------------------%
+
+terms_to_distinct_vars(VarSet, Kind, Terms, MaybeVars) :-
+    terms_to_distinct_vars_loop(VarSet, Kind, set.init, Terms, Vars, Specs),
+    (
+        Specs = [],
+        MaybeVars = ok1(Vars)
+    ;
+        Specs = [_ | _],
+        MaybeVars = error1(Specs)
+    ).
+
+:- pred terms_to_distinct_vars_loop(varset(T)::in, string::in, set(var(T))::in,
+    list(term(T))::in, list(var(T))::out, list(error_spec)::out) is det.
+
+terms_to_distinct_vars_loop(_, _, _, [], [], []).
+terms_to_distinct_vars_loop(VarSet, Kind, !.SeenVars, [Term | Terms],
+        Vars, Specs) :-
+    (
+        Term = variable(Var, _),
+        ( if set.insert_new(Var, !SeenVars) then
+            terms_to_distinct_vars_loop(VarSet, Kind, !.SeenVars, Terms,
+                TailVars, Specs),
+            Vars = [Var | TailVars]
+        else
+            terms_to_distinct_vars_loop(VarSet, Kind, !.SeenVars, Terms,
+                Vars, TailSpecs),
+            Spec = report_repeated_parameter(VarSet, Kind, Term),
+            Specs = [Spec | TailSpecs]
+        )
+    ;
+        Term = functor(_, _, _),
+        terms_to_distinct_vars_loop(VarSet, Kind, !.SeenVars, Terms,
+            Vars, TailSpecs),
+        Spec = report_nonvar_parameter(VarSet, Kind, Term),
+        Specs = [Spec | TailSpecs]
+    ).
+
+:- func report_nonvar_parameter(varset(T), string, term(T)) = error_spec.
+
+report_nonvar_parameter(VarSet, Kind, Term) = Spec :-
+    TermStr = describe_error_term(VarSet, Term),
+    Pieces = [words("Error: expected a variable as"), words(Kind),
+        words("parameter, got"), quote(TermStr), suffix("."), nl],
+    TermContext = get_term_context(Term),
+    Spec = spec($pred, severity_error, phase_t2pt, TermContext, Pieces).
+
+:- func report_repeated_parameter(varset(T), string, term(T)) = error_spec.
+
+report_repeated_parameter(VarSet, Kind, Term) = Spec :-
+    TermStr = describe_error_term(VarSet, Term),
+    Pieces = [words("Error: expected distinct variables as"), words(Kind),
+        words("parameters, but the variable"), quote(TermStr),
+        words("is repeated."), nl],
+    TermContext = get_term_context(Term),
+    Spec = spec($pred, severity_error, phase_t2pt, TermContext, Pieces).
 
 %---------------------------------------------------------------------------%
 :- end_module parse_tree.parse_util.
