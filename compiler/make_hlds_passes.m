@@ -679,8 +679,8 @@ add_item_avail(ItemMercuryStatus, Avail, !AncestorAvailModules, !ModuleInfo) :-
             ),
             Section = ms_implementation
         ),
-        module_add_avail_module_name(ModuleName, Section, ImportOrUse,
-            yes(Context), !ModuleInfo)
+        module_add_avail_module(ModuleName, Section, ImportOrUse, yes(Context),
+            !ModuleInfo)
     ;
         ItemMercuryStatus = item_defined_in_other_module(ItemImport),
         (
@@ -693,8 +693,8 @@ add_item_avail(ItemMercuryStatus, Avail, !AncestorAvailModules, !ModuleInfo) :-
                     ImportLocn = import_locn_ancestor_int0_implementation,
                     Section = ms_implementation
                 ),
-                module_add_avail_module_name(ModuleName, Section,
-                    ImportOrUse, no, !ModuleInfo),
+                module_add_avail_module(ModuleName, Section, ImportOrUse, no,
+                    !ModuleInfo),
                 set.insert(ModuleName, !AncestorAvailModules)
             ;
                 ( ImportLocn = import_locn_interface
@@ -707,14 +707,13 @@ add_item_avail(ItemMercuryStatus, Avail, !AncestorAvailModules, !ModuleInfo) :-
                 % of *this* module, so neither import_locn_interface
                 % nor import_locn_implementation should be possible
                 % without misuse of those import_locns.
-                module_add_indirectly_imported_module_name(ModuleName,
-                    !ModuleInfo)
+                module_add_indirectly_imported_module(ModuleName, !ModuleInfo)
             )
         ;
             ( ItemImport = item_import_int_abstract
             ; ItemImport = item_import_opt_int
             ),
-            module_add_indirectly_imported_module_name(ModuleName, !ModuleInfo)
+            module_add_indirectly_imported_module(ModuleName, !ModuleInfo)
         )
     ).
 

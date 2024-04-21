@@ -615,11 +615,11 @@
 
 %---------------------%
 
-:- pred module_add_avail_module_name(module_name::in,
+:- pred module_add_avail_module(module_name::in,
     module_section::in, import_or_use::in, maybe(prog_context)::in,
     module_info::in, module_info::out) is det.
 
-:- pred module_add_indirectly_imported_module_name(module_name::in,
+:- pred module_add_indirectly_imported_module(module_name::in,
     module_info::in, module_info::out) is det.
 
     % Return the set of the visible modules. These are
@@ -915,22 +915,35 @@
                 % - by xml_documentation to prettyprint a module as XML;
                 %
                 % and possibly more.
+                %
+                % XXX ITEM_LIST The import_and_or_use_map type in prog_item.m
+                % would be an improvement over this type, for several reasons.
+                %
+                % - It contains more detailed information. It may be possible
+                %   to use the extra detail to eliminate or at least reduce
+                %   some overapproximations we now do.
+                %
+                % - Copying the import_and_or_use_map from the parse tree
+                %   of the module would be simpler than building this data
+                %   structure from it. It would probably allow us to delete
+                %   the code that now does that building, and it would
+                %   eliminate a possible source of unwanted differences
+                %   between the parse tree and HLDS representations
+                %   of the module.
                 mri_avail_module_map            :: avail_module_map,
 
-                % The names of all the indirectly imported modules
-                % (used by the MLDS back-end).
+                % The names of all the indirectly imported/used modules.
+                % This field never used on its own; it is always used together
+                % with the previous one, which records info about the
+                % directly imported/used modules, to compute the set of modules
+                % that are imported or used either directly or indirectly.
                 %
-                % XXX CLEANUP The above is misleading.
-                % When added to the info in the previous field, the value
-                % in this field is used to for two purposes, both of which
-                % need the full set of modules imported and/or used both
-                % directly and indirectly, and both explicitly or implicitly.
-                % The purposes are:
+                % This is used for purposes such as:
                 %
-                % - #including those the .mh and .mih files of those modules;
-                % - reading and writing the .analysis files of those modules.
-                mri_indirectly_imported_module_names
-                                                :: set(module_name),
+                % - including references to those modules in .d files;
+                % - reading and writing the .analysis files of those modules;
+                % - #including the .mh and .mih files of those modules.
+                mri_indirectly_imported_modules :: set(module_name),
 
                 % The modules which have already been calculated as being used.
                 % This slot is initialized to the set of modules that have
@@ -943,7 +956,7 @@
                 % We used to add these to mri_used_modules, but that prevented
                 % the compiler from generating useful warnings about unused
                 % local imports/uses of those modules. We now keep this info
-                % on a "may be useful later" basis; it is current unused.
+                % on a "may be useful later" basis; it is currently unused.
                 mri_ancestor_avail_modules      :: set(module_name),
 
                 % Information about the procedures we are performing
@@ -1133,12 +1146,6 @@ module_info_init(Globals, ModuleName, ModuleNameContext, DumpBaseFileName,
     % XXX ITEM_LIST Should a tabled predicate declared in a .int* or .*opt
     % file generate an implicit dependency?
 
-    % XXX ITEM_LIST We should record ImportDeps and UseDeps separately.
-    % XXX ITEM_LIST Should we record implicitly and explicitly imported
-    % separately, or at least record for each import (and use) whether
-    % it was explicit or implicit, and one (or more) context where either
-    % the explicit imported was requested, or the implicit import was required.
-
     map.init(AvailModuleMap0),
     add_implicit_avail_module(import_decl, mercury_public_builtin_module,
         AvailModuleMap0, AvailModuleMap1),
@@ -1280,7 +1287,7 @@ module_info_optimize(!ModuleInfo) :-
     map(prog_context, counter)::out) is det.
 :- pred module_info_get_loop_invs_per_context(module_info::in,
     map(prog_context, counter)::out) is det.
-:- pred module_info_get_indirectly_imported_module_names(module_info::in,
+:- pred module_info_get_indirectly_imported_modules(module_info::in,
     set(module_name)::out) is det.
 
 :- pred module_info_set_maybe_dependency_info(maybe(hlds_dependency_info)::in,
@@ -1290,6 +1297,8 @@ module_info_optimize(!ModuleInfo) :-
 :- pred module_info_set_atomics_per_context(map(prog_context, counter)::in,
     module_info::in, module_info::out) is det.
 :- pred module_info_set_loop_invs_per_context(map(prog_context, counter)::in,
+    module_info::in, module_info::out) is det.
+:- pred module_info_set_indirectly_imported_modules(set(module_name)::in,
     module_info::in, module_info::out) is det.
 
 %---------------------------------------------------------------------------%
@@ -1381,8 +1390,8 @@ module_info_get_loop_invs_per_context(MI, X) :-
     X = MI ^ mi_rare_info ^ mri_loop_invs_per_context.
 module_info_get_avail_module_map(MI, X) :-
     X = MI ^ mi_rare_info ^ mri_avail_module_map.
-module_info_get_indirectly_imported_module_names(MI, X) :-
-    X = MI ^ mi_rare_info ^ mri_indirectly_imported_module_names.
+module_info_get_indirectly_imported_modules(MI, X) :-
+    X = MI ^ mi_rare_info ^ mri_indirectly_imported_modules.
 module_info_get_used_modules(MI, X) :-
     X = MI ^ mi_rare_info ^ mri_used_modules.
 module_info_get_ancestor_avail_modules(MI, X) :-
@@ -1515,6 +1524,8 @@ module_info_set_atomics_per_context(X, !MI) :-
     !MI ^ mi_rare_info ^ mri_atomics_per_context := X.
 module_info_set_loop_invs_per_context(X, !MI) :-
     !MI ^ mi_rare_info ^ mri_loop_invs_per_context := X.
+module_info_set_indirectly_imported_modules(X, !MI) :-
+    !MI ^ mi_rare_info ^ mri_indirectly_imported_modules := X.
 module_info_set_used_modules(X, !MI) :-
     !MI ^ mi_rare_info ^ mri_used_modules := X.
 module_info_set_ancestor_avail_modules(X, !MI) :-
@@ -1745,7 +1756,7 @@ module_info_next_loop_inv_count(Context, Count, !MI) :-
 
 %---------------------%
 
-module_add_avail_module_name(ModuleName, NewSection, NewImportOrUse,
+module_add_avail_module(ModuleName, NewSection, NewImportOrUse,
         MaybeContext, !MI) :-
     (
         MaybeContext = no,
@@ -1800,10 +1811,10 @@ combine_old_new_avail_attrs(OldSection, NewSection,
         ImportOrUse = use_decl
     ).
 
-module_add_indirectly_imported_module_name(AddedModuleSpecifier, !MI) :-
-    Modules0 = !.MI ^ mi_rare_info ^ mri_indirectly_imported_module_names,
-    set.insert(AddedModuleSpecifier, Modules0, Modules),
-    !MI ^ mi_rare_info ^ mri_indirectly_imported_module_names := Modules.
+module_add_indirectly_imported_module(AddedModule, !MI) :-
+    module_info_get_indirectly_imported_modules(!.MI, Modules0),
+    set.insert(AddedModule, Modules0, Modules),
+    module_info_set_indirectly_imported_modules(Modules, !MI).
 
 module_info_get_visible_modules(ModuleInfo, !:VisibleModules) :-
     module_info_get_name(ModuleInfo, ThisModule),
@@ -1819,8 +1830,7 @@ module_info_get_all_deps(ModuleInfo, AllImports) :-
     Parents = get_ancestors(ModuleName),
     module_info_get_avail_module_map(ModuleInfo, AvailModuleMap),
     map.keys(AvailModuleMap, DirectImports),
-    module_info_get_indirectly_imported_module_names(ModuleInfo,
-        IndirectImports),
+    module_info_get_indirectly_imported_modules(ModuleInfo, IndirectImports),
     AllImports = set.union_list([IndirectImports,
         set.list_to_set(DirectImports), set.list_to_set(Parents)]).
 
