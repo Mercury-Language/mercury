@@ -842,43 +842,8 @@ do_op_mode_query(ErrorStream, Globals, OpModeQuery, OptionVariables, !IO) :-
 do_op_mode_args(ProgressStream, ErrorStream, Globals,
         OpModeArgs, InvokedByMmcMake, FileNamesFromStdin, DetectedGradeFlags,
         OptionVariables, OptionArgs, Args, !HaveParseTreeMaps, !Specs, !IO) :-
-    (
-        InvokedByMmcMake = op_mode_not_invoked_by_mmc_make,
-        % We used to do this check once per compiler arg, which was
-        % quite wasteful. However, there was an almost-justifiable
-        % reason for that. The check used to be done in the now-deleted
-        % predicate process_compiler_arg_build, the part of what is now
-        % setup_and_process_compiler_arg that happens after the setup.
-        % This meant that maybe_check_libraries_are_installed was called
-        % not with the original globals (which is Globals here), but with
-        % the globals created by setup_for_build_with_module_options.
-        % However, the only options in the globals structure that
-        % maybe_check_libraries_are_installed pays attention to are
-        %
-        % - global settings, such as libgrade_install_check and
-        %   mercury_libraries, and
-        %
-        % - grade options.
-        %
-        % No sensible Mercury.options file will contain options that
-        % touch the value of any option in either of those categories.
-        % It shouldn't be able to touch the values of the relevant options
-        % in the first category, because they don't have any names which
-        % would allow them to be specified. They *could* touch the values
-        % of grade options, but the result will be a program whose modules
-        % can't be linked together due to incompatible grades.
-        % (XXX It would be nice if we detected such errors in Mercury.options
-        % files *without* letting the issue through to the linker.)
-        %
-        % We do this check only when not invoked by mmc --make, because during
-        % compiler invocations that *set* --invoked-by-mmc-make,
-        % make_linked_target in make.program_target.m should have
-        % done it already.
-        maybe_check_libraries_are_installed(Globals, LibgradeCheckSpecs, !IO)
-    ;
-        InvokedByMmcMake = op_mode_invoked_by_mmc_make,
-        LibgradeCheckSpecs = []
-    ),
+    maybe_check_libraries_are_installed(Globals, LibgradeCheckSpecs, !IO),
+    io.stderr_stream(StdErr, !IO),
     (
         LibgradeCheckSpecs = [],
         (
@@ -911,74 +876,41 @@ do_op_mode_args(ProgressStream, ErrorStream, Globals,
                     cord.empty, ExtraObjFilesCord, !HaveParseTreeMaps, !IO)
             )
         ),
-        ModulesToLink = cord.list(ModulesToLinkCord),
-        ExtraObjFiles = cord.list(ExtraObjFilesCord)
-    ;
-        LibgradeCheckSpecs = [_ | _],
-        !:Specs = LibgradeCheckSpecs ++ !.Specs,
-        ModulesToLink = [],
-        ExtraObjFiles = []
-    ),
 
-    io.get_exit_status(ExitStatus, !IO),
-    ( if ExitStatus = 0 then
-        ( if
-            OpModeArgs = opma_augment(opmau_generate_code(
-                opmcg_target_object_and_executable)),
-            ModulesToLink = [FirstModule | _]
-        then
-            file_name_to_module_name(FirstModule, MainModuleName),
-            globals.get_target(Globals, Target),
-            (
-                Target = target_java,
-                % For Java, at the "link" step we just generate a shell script;
-                % the actual linking will be done at runtime by
-                % the Java interpreter.
-                create_java_shell_script(ProgressStream, Globals,
-                    MainModuleName, Succeeded, !IO)
-            ;
-                ( Target = target_c
-                ; Target = target_csharp
-                ),
-                % XXX STREAM
-                % Should we go from non-main-module-specific
-                % progress and error streams to main-module-specific streams?
-                (
-                    InvokedByMmcMake = op_mode_invoked_by_mmc_make,
-                    % `mmc --make' has already set up the options.
-                    link_module_list(ProgressStream, ModulesToLink,
-                        ExtraObjFiles, Globals, Succeeded, !IO)
-                ;
-                    InvokedByMmcMake = op_mode_not_invoked_by_mmc_make,
-                    get_default_options(Globals, DefaultOptionTable),
-                    setup_for_build_with_module_options(ProgressStream,
-                        DefaultOptionTable, not_invoked_by_mmc_make,
-                        MainModuleName, DetectedGradeFlags,
-                        OptionVariables, OptionArgs, [], MayBuild, !IO),
-                    (
-                        MayBuild = may_not_build(SetupSpecs),
-                        write_error_specs(ErrorStream, Globals,
-                            SetupSpecs, !IO),
-                        Succeeded = did_not_succeed
-                    ;
-                        MayBuild = may_build(_AllOptionArgs, BuildGlobals),
-                        link_module_list(ProgressStream, ModulesToLink,
-                            ExtraObjFiles, BuildGlobals, Succeeded, !IO)
-                    )
-                )
-            ),
-            maybe_set_exit_status(Succeeded, !IO)
+        % Print all remaining module-specific error_specs,
+        % as well as the ones generated just above.
+        write_error_specs(ErrorStream, Globals, !.Specs, !IO),
+        maybe_print_delayed_error_messages(ErrorStream, Globals, !IO),
+
+        io.get_exit_status(ExitStatus, !IO),
+        ( if ExitStatus = 0 then
+            ModulesToLink = cord.list(ModulesToLinkCord),
+            ExtraObjFiles = cord.list(ExtraObjFilesCord),
+            ( if
+                OpModeArgs = opma_augment(opmau_generate_code(
+                    opmcg_target_object_and_executable)),
+                ModulesToLink = [FirstModule | _]
+            then
+                generate_executable(ProgressStream, ErrorStream, Globals,
+                    InvokedByMmcMake, DetectedGradeFlags, OptionVariables,
+                    OptionArgs, ModulesToLink, ExtraObjFiles, FirstModule, !IO)
+            else
+                true
+            )
         else
             true
         )
-    else
-        true
+    ;
+        LibgradeCheckSpecs = [_ | _],
+        % Print all remaining module-specific error_specs.
+        write_error_specs(ErrorStream, Globals, !.Specs, !IO),
+        maybe_print_delayed_error_messages(ErrorStream, Globals, !IO),
+
+        % Print the error_specs from the library check, which is
+        % not specific to any module.
+        write_error_specs(StdErr, Globals, LibgradeCheckSpecs, !IO)
     ),
-    % This output is not specific to any module.
-    % NOTE I (zs) am not sure whether there *can* be any delayed error messages
-    % at this point.
-    io.stderr_stream(StdErr, !IO),
-    maybe_print_delayed_error_messages(StdErr, Globals, !IO),
+
     globals.lookup_bool_option(Globals, statistics, Statistics),
     (
         Statistics = yes,
@@ -990,6 +922,54 @@ do_op_mode_args(ProgressStream, ErrorStream, Globals,
     ;
         Statistics = no
     ).
+
+:- pred generate_executable(io.text_output_stream::in,
+    io.text_output_stream::in, globals::in, op_mode_invoked_by_mmc_make::in,
+    list(string)::in, options_variables::in, list(string)::in,
+    list(string)::in, list(string)::in, string::in, io::di, io::uo) is det.
+
+generate_executable(ProgressStream, ErrorStream, Globals, InvokedByMmcMake,
+        DetectedGradeFlags, OptionVariables, OptionArgs,
+        ModulesToLink, ExtraObjFiles, FirstModule, !IO) :-
+    file_name_to_module_name(FirstModule, MainModuleName),
+    globals.get_target(Globals, Target),
+    (
+        Target = target_java,
+        % For Java, at the "link" step we just generate a shell script;
+        % the actual linking will be done at runtime by the Java interpreter.
+        create_java_shell_script(ProgressStream, Globals, MainModuleName,
+            Succeeded, !IO)
+    ;
+        ( Target = target_c
+        ; Target = target_csharp
+        ),
+        % XXX STREAM
+        % Should we go from non-main-module-specific
+        % progress and error streams to main-module-specific streams?
+        (
+            InvokedByMmcMake = op_mode_invoked_by_mmc_make,
+            % `mmc --make' has already set up the options.
+            link_module_list(ProgressStream, ModulesToLink, ExtraObjFiles,
+                Globals, Succeeded, !IO)
+        ;
+            InvokedByMmcMake = op_mode_not_invoked_by_mmc_make,
+            get_default_options(Globals, DefaultOptionTable),
+            setup_for_build_with_module_options(ProgressStream,
+                DefaultOptionTable, not_invoked_by_mmc_make, MainModuleName,
+                DetectedGradeFlags, OptionVariables, OptionArgs,
+                [], MayBuild, !IO),
+            (
+                MayBuild = may_not_build(SetupSpecs),
+                write_error_specs(ErrorStream, Globals, SetupSpecs, !IO),
+                Succeeded = did_not_succeed
+            ;
+                MayBuild = may_build(_AllOptionArgs, BuildGlobals),
+                link_module_list(ProgressStream, ModulesToLink, ExtraObjFiles,
+                    BuildGlobals, Succeeded, !IO)
+            )
+        )
+    ),
+    maybe_set_exit_status(Succeeded, !IO).
 
 %---------------------------------------------------------------------------%
 

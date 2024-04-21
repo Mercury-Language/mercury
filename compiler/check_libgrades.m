@@ -300,31 +300,93 @@ report_detected_libgrade(Stream, Grade, !IO) :-
 
 %---------------------------------------------------------------------------%
 
-maybe_check_libraries_are_installed(Globals, !:Specs, !IO) :-
-    globals.lookup_bool_option(Globals, libgrade_install_check,
-        LibgradeCheck),
+maybe_check_libraries_are_installed(Globals, Specs, !IO) :-
+    globals.lookup_bool_option(Globals, libgrade_install_check, LibgradeCheck),
     (
         LibgradeCheck = yes,
-        globals.lookup_accumulating_option(Globals, mercury_libraries, Libs),
+        % Get all the components of Globals that are inputs to our job,
+        % so we can make sure that we use any cached result only if its
+        % actually applicable.
+        globals.get_target(Globals, Target),
         grade_directory_component(Globals, GradeDirName),
-        !:Specs = [],
-        check_stdlib_is_installed(Globals, GradeDirName, !Specs, !IO),
-        list.foldl2(check_library_is_installed(Globals, GradeDirName), Libs,
-            !Specs, !IO)
+        globals.lookup_accumulating_option(Globals,
+            mercury_library_directories, MercuryLibDirs),
+        globals.lookup_accumulating_option(Globals, init_file_directories,
+            InitFileDirs),
+        globals.lookup_accumulating_option(Globals, mercury_libraries, Libs),
+        globals.lookup_maybe_string_option(Globals,
+            mercury_standard_library_directory, MaybeStdLibDir),
+
+        get_has_check_libraries_been_done(Cache0, !IO),
+        ( if
+            Cache0 = check_libraries_done(CacheTarget, CacheGradeDirName,
+                CacheMaybeStdLibDir, CacheMercuryLibDirs, CacheInitFileDirs,
+                CacheLibs, CacheSpecs),
+            Target = CacheTarget,
+            GradeDirName = CacheGradeDirName,
+            MaybeStdLibDir = CacheMaybeStdLibDir,
+            MercuryLibDirs = CacheMercuryLibDirs,
+            InitFileDirs = CacheInitFileDirs,
+            Libs = CacheLibs
+        then
+            Specs = CacheSpecs
+        else
+            check_libraries_are_installed(Target, GradeDirName, MaybeStdLibDir,
+                MercuryLibDirs, InitFileDirs, Libs, Specs, !IO),
+            Cache = check_libraries_done(Target, GradeDirName, MaybeStdLibDir,
+                MercuryLibDirs, InitFileDirs, Libs, Specs),
+            set_has_check_libraries_been_done(Cache, !IO)
+        )
     ;
         LibgradeCheck = no,
-        !:Specs = []
+        Specs = []
     ).
 
-:- pred check_stdlib_is_installed(globals::in, string::in,
-    list(error_spec)::in, list(error_spec)::out, io::di, io::uo) is det.
+:- pred check_libraries_are_installed(compilation_target::in, string::in,
+    maybe(string)::in, list(string)::in, list(string)::in, list(string)::in,
+    list(error_spec)::out, io::di, io::uo) is det.
 
-check_stdlib_is_installed(Globals, GradeDirName, !Specs, !IO) :-
-    globals.lookup_maybe_string_option(Globals,
-        mercury_standard_library_directory, MaybeStdLibDir),
+check_libraries_are_installed(Target, GradeDirName, MaybeStdLibDir,
+        MercuryLibDirs, InitFileDirs, Libs, !:Specs, !IO) :-
+    !:Specs = [],
+    check_stdlib_is_installed(Target, GradeDirName, MaybeStdLibDir,
+        !Specs, !IO),
+    list.foldl2(
+        check_library_is_installed(Target, GradeDirName,
+            MercuryLibDirs, InitFileDirs),
+        Libs, !Specs, !IO).
+
+:- type check_libraries_maybe_done
+    --->    check_libraries_not_done
+            % We have not yet called check_libraries_are_installed.
+    ;       check_libraries_done(
+                % We have called check_libraries_are_installed with these
+                % values of Target, GradeDirName, MaybeStdLibDir,
+                % MercuryLibDirs, InitFileDirs and Libs ...
+                compilation_target,     % Target
+                string,                 % GradeDirName
+                maybe(string),          % MaybeStdLibDir
+                list(string),           % MercuryLibDirs
+                list(string),           % InitFileDirs
+                list(string),           % Libs
+
+                % ... and result was this.
+                list(error_spec)
+            ).
+
+:- mutable(has_check_libraries_been_done, check_libraries_maybe_done,
+    check_libraries_not_done, ground,
+    [untrailed, attach_to_io_state, thread_local]).
+
+%---------------------------------------------------------------------------%
+
+:- pred check_stdlib_is_installed(compilation_target::in, string::in,
+    maybe(string)::in, list(error_spec)::in, list(error_spec)::out,
+    io::di, io::uo) is det.
+
+check_stdlib_is_installed(Target, GradeDirName, MaybeStdLibDir, !Specs, !IO) :-
     (
         MaybeStdLibDir = yes(StdLibDir),
-        globals.get_target(Globals, Target),
         (
             Target = target_c,
             % In C grades, check for the presence of mer_std.init in the
@@ -349,9 +411,6 @@ check_stdlib_is_installed(Globals, GradeDirName, !Specs, !IO) :-
             io.close_input(StdLibCheckFileStream, !IO)
         ;
             StdLibCheckFileResult = error(_),
-            % XXX It would be better for our *caller* to print this kind of
-            % message, since it may know a more appropriate target stream
-            % than stderr.
             io.progname_base("mercury_compile", ProgName, !IO),
             Pieces = [fixed(ProgName), suffix(":"), words("error:"),
                 words("the Mercury standard library cannot be found"),
@@ -364,40 +423,36 @@ check_stdlib_is_installed(Globals, GradeDirName, !Specs, !IO) :-
         MaybeStdLibDir = no
     ).
 
-:- pred check_library_is_installed(globals::in, string::in, string::in,
+:- pred check_library_is_installed(compilation_target::in, string::in,
+    list(string)::in, list(string)::in, string::in,
     list(error_spec)::in, list(error_spec)::out, io::di, io::uo) is det.
 
-check_library_is_installed(Globals, GradeDirName, LibName, !Specs, !IO) :-
-    globals.get_target(Globals, Target),
+check_library_is_installed(Target, GradeDirName, MercuryLibDirs, InitFileDirs,
+        LibName, !Specs, !IO) :-
     (
         % In C grades, check for the presence of a library by seeing
         % if its .init files exists.
         Target = target_c,
-        CheckFileName = LibName ++ ".init",
+        TestFileName = LibName ++ ".init",
         % NOTE: we don't look up the value of the option init_files here
         % because that may include .init files other than those associated with
         % any libraries.
-        globals.lookup_accumulating_option(Globals, init_file_directories,
-            SearchDirs)
+        SearchDirs = InitFileDirs
     ;
         (
             % In Java grades, check for the presence of the JAR for library.
             Target = target_java,
-            CheckFileName = LibName ++ ".jar"
+            TestFileName = LibName ++ ".jar"
         ;
             % In C# grades, check for the presence of the DLL for the library.
             Target = target_csharp,
-            CheckFileName = LibName ++ ".dll"
+            TestFileName = LibName ++ ".dll"
         ),
-        globals.lookup_accumulating_option(Globals,
-            mercury_library_directories, MercuryLibDirs),
-        grade_directory_component(Globals, GradeDirNameDir),
         SearchDirs = list.map(
-            (func(LibDir) = LibDir / "lib" / GradeDirNameDir),
+            (func(LibDir) = LibDir / "lib" / GradeDirName),
             MercuryLibDirs)
     ),
-    search_for_file_returning_dir(SearchDirs, CheckFileName, MaybeDirName,
-        !IO),
+    search_for_file_returning_dir(SearchDirs, TestFileName, MaybeDirName, !IO),
     (
         MaybeDirName = ok(_)
     ;
