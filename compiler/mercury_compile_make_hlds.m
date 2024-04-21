@@ -136,25 +136,8 @@ make_hlds_pass(ProgressStream, ErrorStream, Globals,
 
     globals.lookup_string_option(Globals, event_set_file_name,
         EventSetFileName),
-    ( if EventSetFileName = "" then
-        EventSetName = "",
-        EventSpecMap1 = map.init,
-        EventSetErrors = no
-    else
-        read_event_set(EventSetFileName, EventSetName0, EventSpecMap0,
-            EventSetSpecs, !IO),
-        !:Specs = EventSetSpecs ++ !.Specs,
-        EventSetErrors = contains_errors(Globals, EventSetSpecs),
-        (
-            EventSetErrors = no,
-            EventSetName = EventSetName0,
-            EventSpecMap1 = EventSpecMap0
-        ;
-            EventSetErrors = yes,
-            EventSetName = "",
-            EventSpecMap1 = map.init
-        )
-    ),
+    maybe_read_event_set(Globals, EventSetFileName, EventSetName,
+        EventSpecMap0, EventSetErrors, !Specs, !IO),
 
     pre_hlds_maybe_write_out_errors(ErrorStream, Verbose, Globals,
         !Specs, !IO),
@@ -162,7 +145,7 @@ make_hlds_pass(ProgressStream, ErrorStream, Globals,
         "% Module qualifying items...\n", !IO),
     maybe_flush_output(ProgressStream, Verbose, !IO),
     module_qualify_aug_comp_unit(Globals, AugCompUnit1, AugCompUnit2,
-        EventSpecMap1, EventSpecMap2, EventSetFileName, MQInfo0,
+        EventSpecMap0, EventSpecMap1, EventSetFileName, MQInfo0,
         MQUndefTypes, MQUndefInsts, MQUndefModes, MQUndefTypeClasses,
         [], QualifySpecs),
     !:Specs = QualifySpecs ++ !.Specs,
@@ -176,7 +159,7 @@ make_hlds_pass(ProgressStream, ErrorStream, Globals,
         "% Expanding equivalence types and insts...\n", !IO),
     maybe_flush_output(ProgressStream, Verbose, !IO),
     expand_eqv_types_insts(AugCompUnit2, AugCompUnit,
-        EventSpecMap2, EventSpecMap, TypeEqvMap, UsedModules,
+        EventSpecMap1, EventSpecMap, TypeEqvMap, UsedModules,
         RecompInfo0, RecompInfo, ExpandSpecs),
     ExpandErrors = contains_errors(Globals, ExpandSpecs),
     !:Specs = ExpandSpecs ++ !.Specs,
@@ -226,9 +209,10 @@ make_hlds_pass(ProgressStream, ErrorStream, Globals,
         WriteDFile = do_not_write_d_file
     ;
         WriteDFile = write_d_file,
-        % XXX When creating the .d and .module_dep files, why are we using
-        % BurdenedAugCompUnit0 instead of BurdenedAugCompUnit1?
-        BurdenedAugCompUnit0 = burdened_aug_comp_unit(Baggage0, AugCompUnit0),
+        % The original Baggage0 will do just fine for write_dependency_file,
+        % since it accesses only the parts of Baggage0 that identify
+        % the properties of the source file containing the module.
+        BurdenedAugCompUnit = burdened_aug_comp_unit(Baggage0, AugCompUnit),
         module_info_get_all_deps(HLDS0, AllDeps),
         (
             MaybeDFileTransOptDeps = yes(DFileTransOptDepsList),
@@ -239,7 +223,7 @@ make_hlds_pass(ProgressStream, ErrorStream, Globals,
             MaybeDFileTransOptDeps = no,
             MaybeInclTransOptRule = do_not_include_trans_opt_rule
         ),
-        write_dependency_file(ProgressStream, Globals, BurdenedAugCompUnit0,
+        write_dependency_file(ProgressStream, Globals, BurdenedAugCompUnit,
             no_intermod_deps, AllDeps, MaybeInclTransOptRule, !IO),
         globals.lookup_bool_option(Globals,
             generate_mmc_make_module_dependencies, OutputMMCMakeDeps),
@@ -337,6 +321,34 @@ maybe_mention_undoc(DocUndoc, Pieces0, Pieces) :-
             [words("The Mercury standard library module in question"),
             words("is part of the Mercury implementation,"),
             words("and is not publically documented."), nl]
+    ).
+
+%---------------------%
+
+:- pred maybe_read_event_set(globals::in, string::in,
+    string::out, event_spec_map::out, bool::out,
+    list(error_spec)::in, list(error_spec)::out, io::di, io::uo) is det.
+
+maybe_read_event_set(Globals, EventSetFileName, EventSetName, EventSpecMap,
+        Errors, !Specs, !IO) :-
+    ( if EventSetFileName = "" then
+        EventSetName = "",
+        EventSpecMap = map.init,
+        Errors = no
+    else
+        read_event_set(EventSetFileName, EventSetName0, EventSpecMap0,
+            EventSetSpecs, !IO),
+        !:Specs = EventSetSpecs ++ !.Specs,
+        Errors = contains_errors(Globals, EventSetSpecs),
+        (
+            Errors = no,
+            EventSetName = EventSetName0,
+            EventSpecMap = EventSpecMap0
+        ;
+            Errors = yes,
+            EventSetName = "",
+            EventSpecMap = map.init
+        )
     ).
 
 %---------------------%
