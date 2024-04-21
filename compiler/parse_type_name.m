@@ -623,7 +623,7 @@ parse_type_and_maybe_mode(MaybeInstConstraints, MaybeRequireMode, Why, VarSet,
             ColonPieces = cord.list(ContextPieces) ++
                 [lower_case_next_if_not_first,
                 words("Error: the type and mode are separated by"),
-                words("one colon, not two."), nl],
+                words("one colon (\":\"), not two (\"::\")."), nl],
             ColonSpecs = [spec($pred, severity_error, phase_t2pt,
                 get_term_context(Term), ColonPieces)]
         ),
