@@ -129,6 +129,7 @@
 :- import_module pair.
 :- import_module require.
 :- import_module set.
+:- import_module set_tree234.
 :- import_module string.
 :- import_module term.
 :- import_module term_context.
@@ -217,7 +218,9 @@ generate_dot_dx_files(ProgressStream, Globals, Mode, Search, ModuleName,
         DepsMap0, DepsMap, !:Specs, !IO) :-
     % First, build up a map of the dependencies.
     generate_deps_map(ProgressStream, Globals, Search, ModuleName,
-        DepsMap0, DepsMap, [], !:Specs, !IO),
+        ReadModules, UnreadModules, DepsMap0, DepsMap, [], !:Specs, !IO),
+    warn_about_any_unread_modules_with_read_ancestors(ReadModules,
+        UnreadModules, !Specs),
 
     % Check whether we could read the main `.m' file.
     map.lookup(DepsMap, ModuleName, ModuleDep),
@@ -262,8 +265,8 @@ generate_dot_dx_files(ProgressStream, Globals, Mode, Search, ModuleName,
             )
         ),
 
-        % Compute the interface deps graph and the implementation deps
-        % graph from the deps map.
+        % Compute the interface deps graph and the implementation deps graph
+        % from the deps map.
         digraph.init(IntDepsGraph0),
         digraph.init(ImpDepsGraph0),
         map.values(DepsMap, DepsList),
@@ -287,6 +290,23 @@ generate_dot_dx_files(ProgressStream, Globals, Mode, Search, ModuleName,
         trace [compiletime(flag("deps_graph")), runtime(env("DEPS_GRAPH")),
             io(!TIO)]
         (
+            io.format(ProgressStream, "generate_dot_dx_files for %s\n",
+                [s(sym_name_to_string(ModuleName))], !TIO),
+
+            set_tree234.to_sorted_list(ReadModules, ReadModuleList),
+            set_tree234.to_sorted_list(UnreadModules, UnreadModuleList),
+            ReadStrs = list.map(sym_name_to_string, ReadModuleList),
+            UnreadStrs = list.map(sym_name_to_string, UnreadModuleList),
+
+            io.write_string(ProgressStream, "ReadModules\n", !TIO),
+            io.write_line(ProgressStream, ReadStrs, !TIO),
+            io.write_string(ProgressStream, "UnreadModules\n", !TIO),
+            io.write_line(ProgressStream, UnreadStrs, !TIO),
+
+            digraph.to_assoc_list(IntDepsGraph, IntDepsAL),
+            io.write_string(ProgressStream, "IntDepsAL:\n", !TIO),
+            list.foldl(io.write_line(ProgressStream), IntDepsAL, !TIO),
+
             digraph.to_assoc_list(ImpDepsGraph, ImpDepsAL),
             io.write_string(ProgressStream, "ImpDepsAL:\n", !TIO),
             list.foldl(io.write_line(ProgressStream), ImpDepsAL, !TIO)
@@ -311,22 +331,23 @@ generate_dot_dx_files(ProgressStream, Globals, Mode, Search, ModuleName,
         digraph.tc(ImpDepsGraph, IndirectOptDepsGraph),
 
         % Compute the trans-opt deps for the purpose of making `.trans_opt'
-        % files. This is normally equal to transitive closure of the indirect
-        % dependencies (i.e. IndirectOptDepsGraph) since a module may read the
-        % `.trans_opt' file of any directly or indirectly imported module.
+        % files. This is normally equal to the transitive closure of the
+        % indirect dependencies (i.e. IndirectOptDepsGraph) since a module
+        % may read the `.trans_opt' file of any directly or indirectly
+        % imported module.
         %
         % To deal with cycles in the graph, by default, we impose an arbitrary
-        % order on modules so that when making the trans-opt file for a module
-        % "earlier" in the cycle, the compiler may read the trans-opt files
+        % order on modules so that when making the .trans_opt file for a module
+        % "earlier" in the cycle, the compiler may read the .trans_opt files
         % of modules "later" in the cycle, but not vice versa.
         %
         % This has two problems.
         %
-        % - Lack of parallelism. The trans-opt files for modules within a
+        % - Lack of parallelism. The .trans_opt files for modules within a
         %   single SCC have to be made one after another.
         %
         % - The arbitrary ordering is likely to produce sub-optimal
-        %   information transfer between trans-opt files.
+        %   information transfer between .trans_opt files.
         %
         % To help the user fix both problems at least partially,
         % we allow them to specify a list of edges (in a file read in by
@@ -424,6 +445,157 @@ deps_list_to_deps_graph(DepsMap,
 lookup_burdened_module_in_deps_map(DepsMap, ModuleName) = ModuleDepInfo :-
     map.lookup(DepsMap, ModuleName, deps(_, _, BurdenedModule)),
     ModuleDepInfo = module_dep_info_full(BurdenedModule).
+
+%---------------------------------------------------------------------------%
+
+:- pred warn_about_any_unread_modules_with_read_ancestors(
+    set_tree234(module_name)::in, set_tree234(module_name)::in,
+    list(error_spec)::in, list(error_spec)::out) is det.
+
+warn_about_any_unread_modules_with_read_ancestors(ReadModules, UnreadModules0,
+        !Specs) :-
+    % When module mod_a.mod_b is nested inside mod_a.m, the source file
+    % containing module mod_a, then it is possible for an attempt to read
+    % mod_a.mod_b.m to fail (since module mod_a.mod_b is not there),
+    % but for the module to be later found by reading mod_a.m.
+    % This would result in mod_a.mod_b being included in both
+    % ReadModules and UnreadModules0.
+    set_tree234.difference(UnreadModules0, ReadModules, UnreadModules),
+    set_tree234.to_sorted_list(UnreadModules, UnreadModuleList),
+    find_read_ancestors_of_unread_modules(ReadModules, UnreadModuleList,
+        set_tree234.init, Parents, set_tree234.init, Ancestors, 
+        set_tree234.init, BadUnreads),
+    set_tree234.to_sorted_list(BadUnreads, BadUnreadList),
+    (
+        BadUnreadList = []
+    ;
+        BadUnreadList = [_ | _],
+        BadUnreadModulePieces = list.map(wrap_module_name, BadUnreadList),
+        list.intersperse(nl, BadUnreadModulePieces, BadUnreadModuleListPieces),
+        BadUnreadPieces =
+            [words("the modules"), nl_indent_delta(1), blank_line] ++
+            BadUnreadModuleListPieces ++ [nl_indent_delta(-1), blank_line],
+
+        set_tree234.to_sorted_list(Parents, ParentList),
+        set_tree234.to_sorted_list(Ancestors, AncestorList),
+        ParentModulePieces = list.map(wrap_module_name, ParentList),
+        AncestorModulePieces = list.map(wrap_module_name, AncestorList),
+        (
+            ParentModulePieces = [],
+            ParentPieces = []
+        ;
+            ParentModulePieces = [_ | TailParentModulePieces],
+            (
+                TailParentModulePieces = [],
+                ParentWords = "a parent module,"
+            ;
+                TailParentModulePieces = [_ | _],
+                ParentWords = "parent modules,"
+            ),
+            list.intersperse(nl, ParentModulePieces, ParentModuleListPieces),
+            ParentPieces =
+                [words(ParentWords), words("specifically"),
+                    nl_indent_delta(1), blank_line] ++
+                ParentModuleListPieces ++ [nl_indent_delta(-1), blank_line]
+        ),
+        (
+            AncestorModulePieces = [],
+            AncestorPieces = []
+        ;
+            AncestorModulePieces = [_ | TailAncestorModulePieces],
+            (
+                TailAncestorModulePieces = [],
+                AncestorWords = "an ancestor module,"
+            ;
+                TailAncestorModulePieces = [_ | _],
+                AncestorWords = "ancestor modules,"
+            ),
+            list.intersperse(nl, AncestorModulePieces,
+                AncestorModuleListPieces),
+            AncestorPieces0 =
+                [words(AncestorWords), words("specifically"),
+                    nl_indent_delta(1), blank_line] ++
+                AncestorModuleListPieces ++ [nl_indent_delta(-1), blank_line],
+            (
+                ParentModulePieces = [],
+                AncestorPieces = AncestorPieces0
+            ;
+                ParentModulePieces = [_ | _],
+                AncestorPieces = [words("and") | AncestorPieces0]
+            )
+        ),
+        Pieces =
+            [words("Warning:")] ++ BadUnreadPieces ++
+            [words("which the compiler could not find"),
+            words("in the current directory,"), words("have")] ++
+            ParentPieces ++ AncestorPieces ++
+            [words("which the compiler *did* find in the current directory."),
+            blank_line,
+            words("This usually indicates that the Mercury.modules file,"),
+            words("which contains the module name to source file name map,"),
+            words("is either missing or out-of-date."),
+            words("You need to rebuild it."),
+            words("This is usually done using a command such as"),
+            quote("mmc -f *.m"), suffix("."), nl],
+        Spec = no_ctxt_spec($pred, severity_warning, phase_read_files, Pieces),
+        !:Specs = [Spec | !.Specs]
+    ).
+
+:- func wrap_module_name(module_name) = format_piece.
+
+wrap_module_name(ModuleName) = fixed(sym_name_to_string(ModuleName)).
+
+:- pred find_read_ancestors_of_unread_modules(set_tree234(module_name)::in,
+    list(module_name)::in,
+    set_tree234(module_name)::in, set_tree234(module_name)::out,
+    set_tree234(module_name)::in, set_tree234(module_name)::out,
+    set_tree234(module_name)::in, set_tree234(module_name)::out) is det.
+
+find_read_ancestors_of_unread_modules(_ReadModules, [],
+        !Parents, !Ancestors, !BadUnreads).
+find_read_ancestors_of_unread_modules(ReadModules,
+        [UnreadModule | UnreadModules],
+        !Parents, !Ancestors, !BadUnreads) :-
+    (
+        UnreadModule = unqualified(_)
+    ;
+        UnreadModule = qualified(ParentModule, _),
+        ( if
+            find_first_read_ancestor(ReadModules, ParentModule, parent,
+                AncestorModule, PoA)
+        then
+            set_tree234.insert(UnreadModule, !BadUnreads),
+            (
+                PoA = parent,
+                set_tree234.insert(AncestorModule, !Parents)
+            ;
+                PoA = ancestor,
+                set_tree234.insert(AncestorModule, !Ancestors)
+            )
+        else
+            true
+        )
+    ),
+    find_read_ancestors_of_unread_modules(ReadModules, UnreadModules,
+        !Parents, !Ancestors, !BadUnreads).
+
+:- type parent_or_ancestor
+    --->    parent
+    ;       ancestor.
+
+:- pred find_first_read_ancestor(set_tree234(module_name)::in,
+    module_name::in, parent_or_ancestor::in,
+    module_name::out, parent_or_ancestor::out) is semidet.
+
+find_first_read_ancestor(ReadModules, Module, CurPoA, AncestorModule, PoA) :-
+    ( if set_tree234.contains(ReadModules, Module) then
+        AncestorModule = Module,
+        PoA = CurPoA
+    else
+        Module = qualified(ParentModule, _),
+        find_first_read_ancestor(ReadModules, ParentModule, ancestor,
+            AncestorModule, PoA)
+    ).
 
 %---------------------------------------------------------------------------%
 

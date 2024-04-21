@@ -298,32 +298,46 @@ split_parse_tree_discover_submodules(ParseTree, ModuleAncestors,
             SeenInt = yes,
             SeenImp = no,
             ( if map.search(!.SplitModuleMap, ModuleName, OldEntry) then
-                ( if
+                (
                     OldEntry = split_nested(OldSplitNested, OldItemBlockCord,
                         OldSubInclInfoMap),
-                    OldSplitNested = split_nested_only_imp(ImpContext)
-                then
-                    NewSplitNested = split_nested_int_imp(Context, ImpContext),
-                    NewItemBlockCord = ItemBlockCord0 ++ OldItemBlockCord,
-                    map.union(combine_submodule_include_infos,
-                        SubInclInfoMap0, OldSubInclInfoMap, NewSubInclInfoMap),
-                    NewEntry = split_nested(NewSplitNested, NewItemBlockCord,
-                        NewSubInclInfoMap),
-                    map.det_update(ModuleName, NewEntry, !SplitModuleMap)
-                else if
-                    OldEntry = split_nested(OldSplitNested, _OldItemBlockCord,
-                        _OldSubInclInfoMap),
-                    OldSplitNested = split_nested_empty(EmptyContext)
-                then
-                    warn_duplicate_of_empty_submodule(ModuleName,
-                        ParentModuleName, Context, EmptyContext, !Specs),
+                    (
+                        OldSplitNested = split_nested_only_imp(ImpContext),
+                        NewSplitNested =
+                            split_nested_int_imp(Context, ImpContext),
+                        NewItemBlockCord = ItemBlockCord0 ++ OldItemBlockCord,
+                        map.union(combine_submodule_include_infos,
+                            SubInclInfoMap0,
+                            OldSubInclInfoMap, NewSubInclInfoMap),
+                        NewEntry = split_nested(NewSplitNested,
+                            NewItemBlockCord, NewSubInclInfoMap),
+                        map.det_update(ModuleName, NewEntry, !SplitModuleMap)
+                    ;
+                        OldSplitNested = split_nested_empty(EmptyContext),
+                        warn_duplicate_of_empty_submodule(ModuleName,
+                            ParentModuleName, Context, EmptyContext, !Specs),
+                        NewSplitNested = split_nested_only_int(Context),
+                        NewEntry = split_nested(NewSplitNested, ItemBlockCord0,
+                            SubInclInfoMap0),
+                        map.det_update(ModuleName, NewEntry, !SplitModuleMap)
+                    ;
+                        ( OldSplitNested = split_nested_top_module(_)
+                        ; OldSplitNested = split_nested_only_int(_)
+                        ; OldSplitNested = split_nested_int_imp(_, _)
+                        ),
+                        report_duplicate_submodule(ModuleName, Context,
+                            dup_int_only, ParentModuleName, OldEntry, !Specs)
+                    )
+                ;
+                    OldEntry = split_included(_),
+                    report_duplicate_submodule(ModuleName, Context,
+                        dup_int_only, ParentModuleName, OldEntry, !Specs),
+                    % Record the nested module, to prevent any complaints by
+                    % warn_about_any_unread_modules_with_read_ancestors.
                     NewSplitNested = split_nested_only_int(Context),
                     NewEntry = split_nested(NewSplitNested, ItemBlockCord0,
                         SubInclInfoMap0),
                     map.det_update(ModuleName, NewEntry, !SplitModuleMap)
-                else
-                    report_duplicate_submodule(ModuleName, Context,
-                        dup_int_only, ParentModuleName, OldEntry, !Specs)
                 )
             else
                 NewSplitNested = split_nested_only_int(Context),
@@ -335,32 +349,46 @@ split_parse_tree_discover_submodules(ParseTree, ModuleAncestors,
             SeenInt = no,
             SeenImp = yes,
             ( if map.search(!.SplitModuleMap, ModuleName, OldEntry) then
-                ( if
+                (
                     OldEntry = split_nested(OldSplitNested, OldItemBlockCord,
                         OldSubInclInfoMap),
-                    OldSplitNested = split_nested_only_int(IntContext)
-                then
-                    NewSplitNested = split_nested_int_imp(IntContext, Context),
-                    NewItemBlockCord = OldItemBlockCord ++ ItemBlockCord0,
-                    map.union(combine_submodule_include_infos,
-                        SubInclInfoMap0, OldSubInclInfoMap, NewSubInclInfoMap),
-                    NewEntry = split_nested(NewSplitNested, NewItemBlockCord,
-                        NewSubInclInfoMap),
-                    map.det_update(ModuleName, NewEntry, !SplitModuleMap)
-                else if
-                    OldEntry = split_nested(OldSplitNested, _OldItemBlockCord,
-                        _OldSubInclInfoMap),
-                    OldSplitNested = split_nested_empty(EmptyContext)
-                then
-                    warn_duplicate_of_empty_submodule(ModuleName,
-                        ParentModuleName, Context, EmptyContext, !Specs),
+                    (
+                        OldSplitNested = split_nested_only_int(IntContext),
+                        NewSplitNested =
+                            split_nested_int_imp(IntContext, Context),
+                        NewItemBlockCord = OldItemBlockCord ++ ItemBlockCord0,
+                        map.union(combine_submodule_include_infos,
+                            SubInclInfoMap0,
+                            OldSubInclInfoMap, NewSubInclInfoMap),
+                        NewEntry = split_nested(NewSplitNested,
+                            NewItemBlockCord, NewSubInclInfoMap),
+                        map.det_update(ModuleName, NewEntry, !SplitModuleMap)
+                    ;
+                        OldSplitNested = split_nested_empty(EmptyContext),
+                        warn_duplicate_of_empty_submodule(ModuleName,
+                            ParentModuleName, Context, EmptyContext, !Specs),
+                        NewSplitNested = split_nested_only_imp(Context),
+                        NewEntry = split_nested(NewSplitNested, ItemBlockCord0,
+                            SubInclInfoMap0),
+                        map.det_update(ModuleName, NewEntry, !SplitModuleMap)
+                    ;
+                        ( OldSplitNested = split_nested_top_module(_)
+                        ; OldSplitNested = split_nested_only_imp(_)
+                        ; OldSplitNested = split_nested_int_imp(_, _)
+                        ),
+                        report_duplicate_submodule(ModuleName, Context,
+                            dup_imp_only, ParentModuleName, OldEntry, !Specs)
+                    )
+                ;
+                    OldEntry = split_included(_),
+                    report_duplicate_submodule(ModuleName, Context,
+                        dup_int_only, ParentModuleName, OldEntry, !Specs),
+                    % Record the nested module, to prevent any complaints by
+                    % warn_about_any_unread_modules_with_read_ancestors.
                     NewSplitNested = split_nested_only_imp(Context),
                     NewEntry = split_nested(NewSplitNested, ItemBlockCord0,
                         SubInclInfoMap0),
                     map.det_update(ModuleName, NewEntry, !SplitModuleMap)
-                else
-                    report_duplicate_submodule(ModuleName, Context,
-                        dup_imp_only, ParentModuleName, OldEntry, !Specs)
                 )
             else
                 NewSplitNested = split_nested_only_imp(Context),
@@ -372,20 +400,36 @@ split_parse_tree_discover_submodules(ParseTree, ModuleAncestors,
             SeenInt = yes,
             SeenImp = yes,
             ( if map.search(!.SplitModuleMap, ModuleName, OldEntry) then
-                ( if
+                (
                     OldEntry = split_nested(OldSplitNested, _OldItemBlockCord,
                         _OldSubInclInfoMap),
-                    OldSplitNested = split_nested_empty(EmptyContext)
-                then
-                    warn_duplicate_of_empty_submodule(ModuleName,
-                        ParentModuleName, Context, EmptyContext, !Specs),
+                    (
+                        OldSplitNested = split_nested_empty(EmptyContext),
+                        warn_duplicate_of_empty_submodule(ModuleName,
+                            ParentModuleName, Context, EmptyContext, !Specs),
+                        NewSplitNested = split_nested_int_imp(Context, Context),
+                        NewEntry = split_nested(NewSplitNested, ItemBlockCord0,
+                            SubInclInfoMap0),
+                        map.det_update(ModuleName, NewEntry, !SplitModuleMap)
+                    ;
+                        ( OldSplitNested = split_nested_top_module(_)
+                        ; OldSplitNested = split_nested_only_int(_)
+                        ; OldSplitNested = split_nested_only_imp(_)
+                        ; OldSplitNested = split_nested_int_imp(_, _)
+                        ),
+                        report_duplicate_submodule(ModuleName, Context,
+                            dup_int_imp, ParentModuleName, OldEntry, !Specs)
+                    )
+                ;
+                    OldEntry = split_included(_),
+                    report_duplicate_submodule(ModuleName, Context,
+                        dup_int_only, ParentModuleName, OldEntry, !Specs),
+                    % Record the nested module, to prevent any complaints by
+                    % warn_about_any_unread_modules_with_read_ancestors.
                     NewSplitNested = split_nested_int_imp(Context, Context),
                     NewEntry = split_nested(NewSplitNested, ItemBlockCord0,
                         SubInclInfoMap0),
                     map.det_update(ModuleName, NewEntry, !SplitModuleMap)
-                else
-                    report_duplicate_submodule(ModuleName, Context,
-                        dup_int_imp, ParentModuleName, OldEntry, !Specs)
                 )
             else
                 NewSplitNested = split_nested_int_imp(Context, Context),
@@ -708,19 +752,7 @@ create_component_modules_depth_first(Globals, ModuleName,
             ; NestedInfo = split_nested_only_int(Context)
             ; NestedInfo = split_nested_int_imp(Context, _)
             ; NestedInfo = split_nested_empty(Context)
-            ),
-            % The reason why we do this even for split_nested_empty is that
-            % if we don't create and return ParseTreeModuleSrc (which will
-            % be empty in this case, except for whatever may have been added
-            % by the call to add_includes_for_nested_submodules above),
-            % then the rest of the compiler won't know that e.g. it needs to
-            % create interface files for the empty module. That would lead to
-            % the failure of the submodule/deeply_nested test case.
-            RawCompUnit = raw_compilation_unit(ModuleName, Context,
-                RawItemBlocks),
-            check_convert_raw_comp_unit_to_module_src(Globals, RawCompUnit,
-                ParseTreeModuleSrc, !Specs),
-            cord.snoc(ParseTreeModuleSrc, !ParseTreeModuleSrcCord)
+            )
         ;
             NestedInfo = split_nested_only_imp(Context),
             Pieces = [words("Submodule"), qual_sym_name(ModuleName),
@@ -728,6 +760,23 @@ create_component_modules_depth_first(Globals, ModuleName,
             Spec = spec($pred, severity_error, phase_pt2h, Context, Pieces),
             !:Specs = [Spec | !.Specs]
         ),
+
+        % The reason why we do this even for split_nested_empty is that
+        % if we don't create and return ParseTreeModuleSrc (which will
+        % be empty in this case, except for whatever may have been added
+        % by the call to add_includes_for_nested_submodules above),
+        % then the rest of the compiler won't know that e.g. it needs to
+        % create interface files for the empty module. That would lead to
+        % the failure of the submodule/deeply_nested test case.
+        %
+        % The reason why we do this for split_nested_only_imp is to prevent
+        % any complaints by warn_about_any_unread_modules_with_read_ancestors.
+        RawCompUnit = raw_compilation_unit(ModuleName, Context,
+            RawItemBlocks),
+        check_convert_raw_comp_unit_to_module_src(Globals, RawCompUnit,
+            ParseTreeModuleSrc, !Specs),
+        cord.snoc(ParseTreeModuleSrc, !ParseTreeModuleSrcCord),
+
         ( if map.remove(ModuleName, SubModulesCord, !SubModulesMap) then
             list.sort_and_remove_dups(cord.list(SubModulesCord), SubModules),
             list.foldl4(

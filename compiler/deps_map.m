@@ -29,6 +29,7 @@
 :- import_module io.
 :- import_module list.
 :- import_module map.
+:- import_module set_tree234.
 
 % This is the data structure we use to record the dependencies.
 % We keep a map from module name to information about the module.
@@ -64,8 +65,10 @@
 %---------------------------------------------------------------------------%
 
 :- pred generate_deps_map(io.text_output_stream::in, globals::in,
-    maybe_search::in, module_name::in, deps_map::in, deps_map::out,
-    list(error_spec)::in, list(error_spec)::out, io::di, io::uo) is det.
+    maybe_search::in, module_name::in,
+    set_tree234(module_name)::out, set_tree234(module_name)::out,
+    deps_map::in, deps_map::out, list(error_spec)::in, list(error_spec)::out,
+    io::di, io::uo) is det.
 
     % Insert a new entry into the deps_map. If the module already occurred
     % in the deps_map, then we just replace the old entry (presumed to be
@@ -104,7 +107,7 @@
 :- import_module cord.
 :- import_module maybe.
 :- import_module set.
-:- import_module set_tree234.
+:- import_module string.
 :- import_module term_context.
 
 %---------------------------------------------------------------------------%
@@ -131,11 +134,14 @@ get_submodule_kind(ModuleName, DepsMap) = Kind :-
 %---------------------------------------------------------------------------%
 
 generate_deps_map(ProgressStream, Globals, Search, ModuleName,
-        !DepsMap, !Specs, !IO) :-
+        !:ReadModules, !:UnreadModules, !DepsMap, !Specs, !IO) :-
     SeenModules0 = set_tree234.init,
     ModuleExpectationContexts0 = map.singleton(ModuleName, []),
+    !:ReadModules = set_tree234.init,
+    !:UnreadModules = set_tree234.init,
     generate_deps_map_loop(ProgressStream, Globals, Search, SeenModules0,
-        ModuleExpectationContexts0, !DepsMap, !Specs, !IO).
+        ModuleExpectationContexts0, !ReadModules, !UnreadModules,
+        !DepsMap, !Specs, !IO).
 
     % Values of this type map each module name to the list of contexts
     % that mention it, and thus establish an expectation that a module
@@ -148,18 +154,22 @@ generate_deps_map(ProgressStream, Globals, Search, ModuleName,
 
 :- pred generate_deps_map_loop(io.text_output_stream::in, globals::in,
     maybe_search::in, set_tree234(module_name)::in,
-    expectation_contexts_map::in, deps_map::in, deps_map::out,
+    expectation_contexts_map::in,
+    set_tree234(module_name)::in, set_tree234(module_name)::out,
+    set_tree234(module_name)::in, set_tree234(module_name)::out,
+    deps_map::in, deps_map::out,
     list(error_spec)::in, list(error_spec)::out, io::di, io::uo) is det.
 
 generate_deps_map_loop(ProgressStream, Globals, Search,
-        !.SeenModules, !.ModuleExpCs, !DepsMap, !Specs, !IO) :-
+        !.SeenModules, !.ModuleExpCs, !ReadModules, !UnreadModules,
+        !DepsMap, !Specs, !IO) :-
     ( if map.remove_smallest(Module, ExpectationContexts, !ModuleExpCs) then
         set_tree234.insert(Module, !SeenModules),
         generate_deps_map_step(ProgressStream, Globals, Search,
             Module, ExpectationContexts, !.SeenModules,
-            !ModuleExpCs, !DepsMap, !Specs, !IO),
+            !ModuleExpCs, !ReadModules, !UnreadModules, !DepsMap, !Specs, !IO),
         generate_deps_map_loop(ProgressStream, Globals, Search, !.SeenModules,
-            !.ModuleExpCs, !DepsMap, !Specs, !IO)
+            !.ModuleExpCs, !ReadModules, !UnreadModules, !DepsMap, !Specs, !IO)
     else
         % If we can't remove the smallest, then the set of modules to be
         % processed is empty.
@@ -191,16 +201,21 @@ generate_deps_map_loop(ProgressStream, Globals, Search,
     maybe_search::in, module_name::in, expectation_contexts::in,
     set_tree234(module_name)::in,
     expectation_contexts_map::in, expectation_contexts_map::out,
+    set_tree234(module_name)::in, set_tree234(module_name)::out,
+    set_tree234(module_name)::in, set_tree234(module_name)::out,
     deps_map::in, deps_map::out, list(error_spec)::in, list(error_spec)::out,
     io::di, io::uo) is det.
 
 generate_deps_map_step(ProgressStream, Globals, Search,
-        Module, ExpectationContexts, SeenModules0,
-        !ModuleExpCs, !DepsMap, !Specs, !IO) :-
+        Module, ExpectationContexts, SeenModules0, !ModuleExpCs,
+        !ReadModules, !UnreadModules, !DepsMap, !Specs, !IO) :-
     % Look up the module's dependencies, and determine whether
     % it has been processed yet.
     lookup_or_find_dependency_info_for_module(ProgressStream, Globals, Search,
-        Module, ExpectationContexts, MaybeDeps0, !DepsMap, !Specs, !IO),
+        Module, ExpectationContexts, MaybeDeps0, NewBurdenedModules,
+        !DepsMap, !Specs, !IO),
+    update_read_unread_modules(ProgressStream, Module,
+        MaybeDeps0, NewBurdenedModules, !ReadModules, !UnreadModules),
 
     % If the module hadn't been processed yet, then add its imports, parents,
     % and public children to the list of dependencies we need to generate,
@@ -238,6 +253,39 @@ generate_deps_map_step(ProgressStream, Globals, Search,
     else
         % Either MaybeDeps0 = no, or Done0 = already_processed.
         true
+    ).
+
+:- pred update_read_unread_modules(io.text_output_stream::in,
+    module_name::in, maybe(deps)::in, list(burdened_module)::in,
+    set_tree234(module_name)::in, set_tree234(module_name)::out,
+    set_tree234(module_name)::in, set_tree234(module_name)::out) is det.
+
+update_read_unread_modules(ProgressStream, Module,
+        MaybeDeps, NewBurdenedModules, !ReadModules, !UnreadModules) :-
+    ( if
+        MaybeDeps = yes(Deps),
+        Deps = deps(_, MaybeDummy, _),
+        MaybeDummy = non_dummy_burdened_module
+    then
+        NewReadModules =
+            list.map((func(BM) = BM ^ bm_module ^ ptms_module_name),
+                NewBurdenedModules),
+        set_tree234.insert_list(NewReadModules, !ReadModules),
+        trace [compiletime(flag("deps_graph")), runtime(env("DEPS_GRAPH")),
+            io(!TIO)]
+        (
+            NewReadModuleStrs = list.map(sym_name_to_string, NewReadModules),
+            io.format(ProgressStream, "read %s\n",
+                [s(string.join_list(", ", NewReadModuleStrs))], !TIO)
+        )
+    else
+        set_tree234.insert(Module, !UnreadModules),
+        trace [compiletime(flag("deps_graph")), runtime(env("DEPS_GRAPH")),
+            io(!TIO)]
+        (
+            io.format(ProgressStream, "unread %s\n",
+                [s(sym_name_to_string(Module))], !TIO)
+        )
     ).
 
 :- pred add_public_include_module_with_context(set_tree234(module_name)::in,
@@ -332,28 +380,30 @@ add_module_name_and_context(SeenModules0, Context, ModuleName, !ModuleExpCs) :-
     %
 :- pred lookup_or_find_dependency_info_for_module(io.text_output_stream::in,
     globals::in, maybe_search::in, module_name::in, expectation_contexts::in,
-    maybe(deps)::out, deps_map::in, deps_map::out,
+    maybe(deps)::out, list(burdened_module)::out, deps_map::in, deps_map::out,
     list(error_spec)::in, list(error_spec)::out, io::di, io::uo) is det.
 
 lookup_or_find_dependency_info_for_module(ProgressStream, Globals, Search,
-        ModuleName, ExpectationContexts, MaybeDeps, !DepsMap, !Specs, !IO) :-
+        ModuleName, ExpectationContexts, MaybeDeps, NewBurdenedModules,
+        !DepsMap, !Specs, !IO) :-
     ( if map.search(!.DepsMap, ModuleName, Deps) then
-        MaybeDeps = yes(Deps)
+        MaybeDeps = yes(Deps),
+        NewBurdenedModules = []
     else
         read_src_file_for_dependency_info(ProgressStream, Globals, Search,
-            ModuleName, ExpectationContexts, MaybeDummy, BurdenedModules,
+            ModuleName, ExpectationContexts, MaybeDummy, NewBurdenedModules,
             !Specs, !IO),
         (
-            BurdenedModules = [_ | _],
+            NewBurdenedModules = [_ | _],
             list.foldl(insert_into_deps_map(MaybeDummy),
-                BurdenedModules, !DepsMap),
+                NewBurdenedModules, !DepsMap),
             % We can do a map.lookup here even though a map.search above
-            % failed because ModuleName should be one of the BurdenedModules
+            % failed, because ModuleName should be one of the BurdenedModules
             % the call above just added to !DepsMap.
             map.lookup(!.DepsMap, ModuleName, Deps),
             MaybeDeps = yes(Deps)
         ;
-            BurdenedModules = [],
+            NewBurdenedModules = [],
             MaybeDeps = no
         )
     ).
