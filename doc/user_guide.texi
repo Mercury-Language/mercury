@@ -283,7 +283,7 @@ To avoid the name clash on these systems,
 you can either invoke the Mercury compiler
 by the alternative name @samp{mercury},
 or adjust your @env{PATH} to ensure that
-the @file{bin} directory precedes the Windows system directory.)
+the Mercury @file{bin} directory precedes the Windows system directory.)
 
 Arguments to @samp{mmc} may be either file names (ending in @samp{.m}),
 or module names, with @samp{.} (rather than @samp{__})
@@ -339,7 +339,7 @@ On Windows, this process assembly can be run directly.
 On non-Windows systems,
 @samp{mmc} will also generate a shell script called @file{@var{filename}}
 that invokes the CLI execution environment on the process assembly.
-(See the file @file{README.CSharp} included in the Mercury distribution
+(See the file @file{README.CSharp.md} included in the Mercury distribution
 for further details.)
 
 When targeting Java,
