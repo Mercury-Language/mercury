@@ -84,11 +84,9 @@
 :- import_module libs.
 :- import_module libs.file_util.
 :- import_module libs.globals.
-:- import_module libs.timestamp.
 :- import_module mdbcomp.
 :- import_module mdbcomp.sym_name.
 :- import_module parse_tree.error_spec.
-:- import_module parse_tree.find_module.
 :- import_module parse_tree.maybe_error.
 :- import_module parse_tree.parse_error.
 :- import_module parse_tree.prog_data.
@@ -116,74 +114,11 @@
 :- pred peek_at_file(io.text_input_stream::in, file_name::in, module_name::in,
     maybe1(module_name)::out, io::di, io::uo) is det.
 
-    % actually_read_module_src(Globals, FileNameAndStream,
-    %   DefaultModuleName, DefaultExpectationContexts,
-    %   ReadModuleAndTimestamps, MaybeModuleTimestampRes,
-    %   ParseTree, Errors, !IO):
-    %
-    % Read a Mercury source program from FileNameAndStream.
-    % Close the stream when the reading is done. Return the parse tree
-    % of that module in ParseTree (which may be a dummy if the file
-    % couldn't be opened), and an indication of the errors found
-    % in Specs and Errors.
-    %
-    % For the meaning of ReadModuleAndTimestamps and MaybeModuleTimestampRes,
-    % read the comments on read_module_src in read_modules.m.
-    % XXX ITEM_LIST Move actually_read_module_{src,int,opt} to read_modules.m.
-    %
-:- pred actually_read_module_src(globals::in, path_name_and_stream::in,
-    module_name::in, list(prog_context)::in,
-    read_module_and_timestamps::in, maybe(io.res(timestamp))::out,
-    maybe(parse_tree_src)::out, read_module_errors::out,
-    io::di, io::uo) is det.
-
-    % actually_read_module_intN(Globals, FileNameAndStream,
-    %   DefaultModuleName, DefaultExpectationContexts,
-    %   ReadModuleAndTimestamps, MaybeModuleTimestampRes,
-    %   ParseTree, Errors, !IO):
-    %
-    % Analogous to actually_read_module_src, but opens the specified kind
-    % of interface file for DefaultModuleName.
-    %
-:- pred actually_read_module_int0(globals::in, path_name_and_stream::in,
-    module_name::in, list(prog_context)::in,
-    read_module_and_timestamps::in, maybe(io.res(timestamp))::out,
-    maybe(parse_tree_int0)::out, read_module_errors::out,
-    io::di, io::uo) is det.
-:- pred actually_read_module_int1(globals::in, path_name_and_stream::in,
-    module_name::in, list(prog_context)::in,
-    read_module_and_timestamps::in, maybe(io.res(timestamp))::out,
-    maybe(parse_tree_int1)::out, read_module_errors::out,
-    io::di, io::uo) is det.
-:- pred actually_read_module_int2(globals::in, path_name_and_stream::in,
-    module_name::in, list(prog_context)::in,
-    read_module_and_timestamps::in, maybe(io.res(timestamp))::out,
-    maybe(parse_tree_int2)::out, read_module_errors::out,
-    io::di, io::uo) is det.
-:- pred actually_read_module_int3(globals::in, path_name_and_stream::in,
-    module_name::in, list(prog_context)::in,
-    read_module_and_timestamps::in, maybe(io.res(timestamp))::out,
-    maybe(parse_tree_int3)::out, read_module_errors::out,
-    io::di, io::uo) is det.
-
-    % actually_read_module_{plain,trans}_opt(Globals, FileNameAndStream,
-    %   DefaultModuleName, ParseTree, Errors, !IO):
-    %
-    % Analogous to actually_read_module_src, but opens the specified kind
-    % of optimization file for DefaultModuleName.
-    %
-:- pred actually_read_module_plain_opt(globals::in, path_name_and_stream::in,
-    module_name::in, maybe(parse_tree_plain_opt)::out, read_module_errors::out,
-    io::di, io::uo) is det.
-:- pred actually_read_module_trans_opt(globals::in, path_name_and_stream::in,
-    module_name::in, maybe(parse_tree_trans_opt)::out, read_module_errors::out,
-    io::di, io::uo) is det.
-
 %---------------------------------------------------------------------------%
 
     % parse_intN_file(Globals, FileName, FileStr, FileStrLen,
     %   DefaultModuleName, DefaultExpectationContexts,
-    %   MaybeParseTreeIntN, Errors, !IO):
+    %   MaybeParseTreeIntN, Errors):
     %
     % Given FileName's its contents (FileStr, whose length is FileStrLen code
     % units), try to parse those contents as a .intN file.
@@ -202,7 +137,7 @@
     maybe(parse_tree_int3)::out, read_module_errors::out) is det.
 
     % parse_{plain,trans}_opt_file(FileName, FileStr, FileStrLen,
-    %   DefaultModuleName, MaybeParseTree{Plain,Trans}Opt, Errors, !IO):
+    %   DefaultModuleName, MaybeParseTree{Plain,Trans}Opt, Errors):
     %
     % Given FileName's its contents (FileStr, whose length is FileStrLen code
     % units), try to parse those contents as a .*opt file.
@@ -214,9 +149,16 @@
     module_name::in,
     maybe(parse_tree_trans_opt)::out, read_module_errors::out) is det.
 
-:- type maybe_require_module_decl
-    --->    dont_require_module_decl
-    ;       require_module_decl.
+    % parse_src_file(FileName, FileString, FileStringLen,
+    %   DefaultModuleName, DefaultExpectationContexts,
+    %   MaybeParseTreeSrc, Errors):
+    %
+    % Given FileName's contents (FileStr, whose length is FileStrLen code
+    % units), try to parse those contents as a Mercury source file.
+    %
+:- pred parse_src_file(file_name::in, string::in, int::in,
+    module_name::in, list(prog_context)::in,
+    maybe(parse_tree_src)::out, read_module_errors::out) is det.
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -235,7 +177,6 @@
 :- import_module cord.
 :- import_module counter.
 :- import_module int.
-:- import_module io.file.
 :- import_module mercury_term_lexer.
 :- import_module mercury_term_parser.
 :- import_module one_or_more.
@@ -245,6 +186,10 @@
 :- import_module term.
 :- import_module term_context.
 :- import_module varset.
+
+:- type maybe_require_module_decl
+    --->    dont_require_module_decl
+    ;       require_module_decl.
 
 :- type missing_section_start_warning
     --->    have_not_given_missing_section_start_warning
@@ -290,145 +235,6 @@ peek_at_file(FileStream, SourceFileName0, DefaultModuleName,
         ErrorMsg = "I/O error: " ++ ErrorMsg0,
         io_error_to_error_spec(phase_read_files, ErrorMsg, Spec, !IO),
         MaybeModuleName = error1([Spec])
-    ).
-
-%---------------------------------------------------------------------------%
-
-actually_read_module_src(_Globals, FileNameAndStream,
-        DefaultModuleName, DefaultExpectationContexts,
-        ReadModuleAndTimestamps, MaybeModuleTimestampRes,
-        MaybeParseTreeSrc, Errors, !IO) :-
-    do_actually_read_file(FileNameAndStream, ReadModuleAndTimestamps,
-        ReadFileResult, !IO),
-    (
-        ReadFileResult = drfr_ok(FileStr, FileStrLen, MaybeModuleTimestampRes),
-        FileNameAndStream = path_name_and_stream(FileName, _FileStream),
-        LineContext0 = line_context(1, 0),
-        LinePosn0 = line_posn(0),
-        parse_src_file(FileName, FileStr, FileStrLen,
-            LineContext0, LinePosn0,
-            DefaultModuleName, DefaultExpectationContexts,
-            MaybeParseTreeSrc, Errors)
-    ;
-        ReadFileResult = drfr_error(Errors, MaybeModuleTimestampRes),
-        MaybeParseTreeSrc = no
-    ).
-
-%---------------------------------------------------------------------------%
-
-actually_read_module_int0(Globals, FileNameAndStream,
-        DefaultModuleName, DefaultExpectationContexts,
-        ReadModuleAndTimestamps, MaybeModuleTimestampRes,
-        MaybeParseTreeInt0, Errors, !IO) :-
-    do_actually_read_file(FileNameAndStream, ReadModuleAndTimestamps,
-        ReadFileResult, !IO),
-    (
-        ReadFileResult = drfr_ok(FileStr, FileStrLen, MaybeModuleTimestampRes),
-        FileNameAndStream = path_name_and_stream(FileName, _FileStream),
-        parse_int0_file(Globals, FileName, FileStr, FileStrLen,
-            DefaultModuleName, DefaultExpectationContexts,
-            MaybeParseTreeInt0, Errors)
-    ;
-        ReadFileResult = drfr_error(Errors, MaybeModuleTimestampRes),
-        MaybeParseTreeInt0 = no
-    ).
-
-actually_read_module_int1(Globals, FileNameAndStream,
-        DefaultModuleName, DefaultExpectationContexts,
-        ReadModuleAndTimestamps, MaybeModuleTimestampRes,
-        MaybeParseTreeInt1, Errors, !IO) :-
-    do_actually_read_file(FileNameAndStream, ReadModuleAndTimestamps,
-        ReadFileResult, !IO),
-    (
-        ReadFileResult = drfr_ok(FileStr, FileStrLen, MaybeModuleTimestampRes),
-        FileNameAndStream = path_name_and_stream(FileName, _FileStream),
-        parse_int1_file(Globals, FileName, FileStr, FileStrLen,
-            DefaultModuleName, DefaultExpectationContexts,
-            MaybeParseTreeInt1, Errors)
-    ;
-        ReadFileResult = drfr_error(Errors, MaybeModuleTimestampRes),
-        MaybeParseTreeInt1 = no
-    ).
-
-actually_read_module_int2(Globals, FileNameAndStream,
-        DefaultModuleName, DefaultExpectationContexts,
-        ReadModuleAndTimestamps, MaybeModuleTimestampRes,
-        MaybeParseTreeInt2, Errors, !IO) :-
-    do_actually_read_file(FileNameAndStream, ReadModuleAndTimestamps,
-        ReadFileResult, !IO),
-    (
-        ReadFileResult = drfr_ok(FileStr, FileStrLen, MaybeModuleTimestampRes),
-        FileNameAndStream = path_name_and_stream(FileName, _FileStream),
-        parse_int2_file(Globals, FileName, FileStr, FileStrLen,
-            DefaultModuleName, DefaultExpectationContexts,
-            MaybeParseTreeInt2, Errors)
-    ;
-        ReadFileResult = drfr_error(Errors, MaybeModuleTimestampRes),
-        MaybeParseTreeInt2 = no
-    ).
-
-actually_read_module_int3(Globals, FileNameAndStream,
-        DefaultModuleName, DefaultExpectationContexts,
-        ReadModuleAndTimestamps, MaybeModuleTimestampRes,
-        MaybeParseTreeInt3, Errors, !IO) :-
-    do_actually_read_file(FileNameAndStream, ReadModuleAndTimestamps,
-        ReadFileResult, !IO),
-    (
-        ReadFileResult = drfr_ok(FileStr, FileStrLen, MaybeModuleTimestampRes),
-        FileNameAndStream = path_name_and_stream(FileName, _FileStream),
-        parse_int3_file(Globals, FileName, FileStr, FileStrLen,
-            DefaultModuleName, DefaultExpectationContexts,
-            MaybeParseTreeInt3, Errors)
-    ;
-        ReadFileResult = drfr_error(Errors, MaybeModuleTimestampRes),
-        MaybeParseTreeInt3 = no
-    ).
-
-%---------------------%
-
-:- pred maybe_add_convert_specs(globals::in, list(error_spec)::in,
-    read_module_errors::in, read_module_errors::out) is det.
-
-maybe_add_convert_specs(Globals, ConvertSpecs, !Errors) :-
-    globals.lookup_bool_option(Globals, halt_at_invalid_interface,
-        HaltAtInvalidInterface),
-    (
-        HaltAtInvalidInterface = no
-    ;
-        HaltAtInvalidInterface = yes,
-        add_any_nec_errors(ConvertSpecs, !Errors)
-    ).
-
-%---------------------------------------------------------------------------%
-
-actually_read_module_plain_opt(_Globals, FileNameAndStream, DefaultModuleName,
-        MaybeParseTreePlainOpt, Errors, !IO) :-
-    ReadModuleAndTimestamps = always_read_module(dont_return_timestamp),
-    do_actually_read_file(FileNameAndStream, ReadModuleAndTimestamps,
-        ReadFileResult, !IO),
-    (
-        ReadFileResult = drfr_ok(FileStr, FileStrLen, _),
-        FileNameAndStream = path_name_and_stream(FileName, _FileStream),
-        parse_plain_opt_file(FileName, FileStr, FileStrLen, DefaultModuleName,
-            MaybeParseTreePlainOpt, Errors)
-    ;
-        ReadFileResult = drfr_error(Errors, _),
-        MaybeParseTreePlainOpt = no
-    ).
-
-actually_read_module_trans_opt(_Globals, FileNameAndStream, DefaultModuleName,
-        MaybeParseTreeTransOpt, Errors, !IO) :-
-    ReadModuleAndTimestamps = always_read_module(dont_return_timestamp),
-    do_actually_read_file(FileNameAndStream, ReadModuleAndTimestamps,
-        ReadFileResult, !IO),
-    (
-        ReadFileResult = drfr_ok(FileStr, FileStrLen, _),
-        FileNameAndStream = path_name_and_stream(FileName, _FileStream),
-        parse_trans_opt_file(FileName, FileStr, FileStrLen, DefaultModuleName,
-            MaybeParseTreeTransOpt, Errors)
-    ;
-        ReadFileResult = drfr_error(Errors, _),
-        MaybeParseTreeTransOpt = no
     ).
 
 %---------------------------------------------------------------------------%
@@ -559,6 +365,21 @@ parse_trans_opt_file(FileName, FileStr, FileStrLen, DefaultModuleName,
 
 %---------------------------------------------------------------------------%
 
+:- pred maybe_add_convert_specs(globals::in, list(error_spec)::in,
+    read_module_errors::in, read_module_errors::out) is det.
+
+maybe_add_convert_specs(Globals, ConvertSpecs, !Errors) :-
+    globals.lookup_bool_option(Globals, halt_at_invalid_interface,
+        HaltAtInvalidInterface),
+    (
+        HaltAtInvalidInterface = no
+    ;
+        HaltAtInvalidInterface = yes,
+        add_any_nec_errors(ConvertSpecs, !Errors)
+    ).
+
+%---------------------------------------------------------------------------%
+
 :- pred report_module_has_unexpected_name(file_name::in,
     module_name::in, list(prog_context)::in,
     module_name::in, maybe(term.context)::in, error_spec::out) is det.
@@ -612,129 +433,6 @@ expectation_context_to_msg(Context, SubMsg) :-
 
 :- type make_dummy_parse_tree(PT) == pred(module_name, PT).
 :- inst make_dummy_parse_tree == (pred(in, out) is det).
-
-%---------------------------------------------------------------------------%
-
-:- type do_read_file_result
-    --->    drfr_ok(
-                % The contents of the file, and its length.
-                %
-                % XXX When the compiler is compiled to C, this string will be
-                % byte-for-byte identical to the contents of the file.
-                % But when the compiler is compiled to C# or Java, the byte
-                % sequence in the file will need to be TRANSLATED from UTF-8
-                % to UTF-16. When the only reason we want to read e.g. a int
-                % file is to compare its old contents to its new intended
-                % contents, which will have to be converted from its UTF-16
-                % version to UTF-8 anyway, this is wasteful, because it
-                % requires the sequence
-                %
-                % - create new contents as UTF-16
-                % - read old contents of the file, which is UTF-8
-                % - convert old contents to UTF-16 (CONVERSION 1)
-                % - test whether the old UTF-16 contents as the same as the new
-                % - if the same then
-                %   - done
-                % - otherwise
-                %   - convert the UTF-16 new contents to UTF-8 (CONVERSION 2)
-                %   - write out the resulting UTF-8 string
-                %
-                % whereas if we returned the raw UTF-8 string directly as
-                % a byte array, we could use the sequence
-                %
-                % - create new contents as UTF-16
-                % - convert the UTF-16 new contents to UTF-8 (CONVERSION 1)
-                % - read old contents of the file, which is UTF-8
-                % - test whether the old UTF-8 contents as the same as the new
-                % - if the same then
-                %   - done
-                % - otherwise
-                %   - write out the new UTF-8 string
-                %
-                % This does the same number of conversions in the case where
-                % the old and the new contents are the same, i.e. one
-                % (though that conversion is in the opposite direction,
-                % and the string it is applied to may be either shorter
-                % or longer), but in the frequent case of the new contents
-                % differing from the old, it does one fewer conversion.
-                drfro_file_contents         :: string,
-                drfro_num_code_units        :: int,
-
-                % The timestamp of the file, if our caller requested it,
-                drfro_maybe_file_timestamp  :: maybe(io.res(timestamp))
-            )
-    ;       drfr_error(
-                drfre_errors                :: read_module_errors,
-
-                % The timestamp of the file, if our caller requested it,
-                % XXX This should not be needed if we can't read the file,
-                % since it means nothing useful.
-                drfre_maybe_file_timestamp  :: maybe(io.res(timestamp))
-            ).
-
-    % This predicate implements all three of actually_read_module_{src,int,opt}
-    % through the polymorphism provided by the ReadParseTree (sometimes the
-    % MakeDummyParseTree) higher order variables. All the actual parsing
-    % takes place inside ReadParseTree, which will be one of
-    % parse_src_file, parse_int_file and parse_opt_file.
-    %
-:- pred do_actually_read_file(path_name_and_stream::in,
-    read_module_and_timestamps::in, do_read_file_result::out,
-    io::di, io::uo) is det.
-
-do_actually_read_file(FileNameAndStream, ReadModuleAndTimestamps,
-        Result, !IO) :-
-    FileNameAndStream = path_name_and_stream(FileName, FileStream),
-    (
-        ( ReadModuleAndTimestamps = always_read_module(do_return_timestamp)
-        ; ReadModuleAndTimestamps = dont_read_module_if_match(_)
-        ),
-        io.file.file_modification_time(FileName, TimestampResult, !IO),
-        (
-            TimestampResult = ok(Timestamp),
-            MaybeModuleTimestampRes =
-                yes(ok(time_t_to_timestamp(Timestamp)))
-        ;
-            TimestampResult = error(IOError),
-            MaybeModuleTimestampRes = yes(error(IOError))
-        )
-    ;
-        ReadModuleAndTimestamps = always_read_module(dont_return_timestamp),
-        MaybeModuleTimestampRes = no
-    ),
-    ( if
-        ReadModuleAndTimestamps = dont_read_module_if_match(OldTimestamp),
-        MaybeModuleTimestampRes = yes(ok(OldTimestamp))
-    then
-        % XXX Currently smart recompilation won't work
-        % if ModuleName \= DefaultModuleName.
-        % In that case, smart recompilation will be disabled
-        % and actually_read_module should never be passed an old timestamp.
-        Result = drfr_error(init_read_module_errors, MaybeModuleTimestampRes)
-    else
-        io.read_file_as_string_and_num_code_units(FileStream,
-            MaybeResult, !IO),
-        (
-            MaybeResult = ok2(FileString, NumCodeUnits),
-            FileStringLen = string.length(FileString),
-            ( if NumCodeUnits = FileStringLen then
-                true
-            else
-                Msg = string.format(
-                    "NumCodeUnits = %d, FileStringLen = %d\n<<<\n%s>>>\n",
-                    [i(NumCodeUnits), i(FileStringLen), s(FileString)]),
-                unexpected($pred, Msg)
-            ),
-            Result = drfr_ok(FileString, NumCodeUnits, MaybeModuleTimestampRes)
-        ;
-            MaybeResult = error2(_PartialStr, _PartialLen, ErrorCode),
-            io.error_message(ErrorCode, ErrorMsg0),
-            ErrorMsg = "I/O error: " ++ ErrorMsg0,
-            io_error_to_read_module_errors(frme_could_not_read_file,
-                phase_read_files, ErrorMsg, Errors, !IO),
-            Result = drfr_error(Errors, MaybeModuleTimestampRes)
-        )
-    ).
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -1099,15 +797,13 @@ parse_int_file_section(FileString, FileStringLen,
 %
 %---------------------------------------------------------------------------%
 
-:- pred parse_src_file(file_name::in, string::in, int::in,
-    line_context::in, line_posn::in, module_name::in, list(prog_context)::in,
-    maybe(parse_tree_src)::out, read_module_errors::out) is det.
-
 parse_src_file(!.SourceFileName, FileString, FileStringLen,
-        !.LineContext, !.LinePosn,
         DefaultModuleName, DefaultExpectationContexts,
         MaybeParseTree, !:Errors) :-
-    some [!SeqNumCounter] (
+    some [!LineContext, !LinePosn, !SeqNumCounter] (
+        !:LineContext = line_context(1, 0),
+        !:LinePosn = line_posn(0),
+
         !:Errors = init_read_module_errors,
         counter.init(1, !:SeqNumCounter),
 
@@ -1123,14 +819,9 @@ parse_src_file(!.SourceFileName, FileString, FileStringLen,
                 InitLookAheadContext, NoModuleSpec),
             add_nonfatal_error(rme_no_module_decl_at_start, [NoModuleSpec],
                 !Errors),
-            % Reparse the first term, this time treating it as occuring within
-            % the scope of the implicit `:- module' decl rather than in the
-            % root module.
             ModuleName = DefaultModuleName,
             ModuleNameContext = InitLookAheadContext
         ;
-            % XXX ITEM_LIST wrong_module_decl_present and
-            % right_module_decl_present do the same thing.
             ModuleDeclPresent = wrong_module_decl_present(ModuleName,
                 ModuleNameContext, WrongSpec),
             add_nonfatal_error(rme_unexpected_module_name, [WrongSpec],
@@ -1598,21 +1289,9 @@ parse_module_header(FileString, FileStringLen,
 
     % We used to have to jump through a few hoops when reading the first item,
     % to allow us to recover from a missing initial `:- module' declaration.
-    %
-    % We used to solve this dilemma by first parsing the first item
-    % in the root scope, and then if it turns out to not be a `:- module'
-    % declaration, we used special code to reparse it in the default module
-    % scope. We now also reparse it in the default module context, but
-    % using the general lookahead mechanism that the rest of the parser
-    % also uses.
-    %
-    % XXX ITEM_LIST SHOULD we recover from a missing initial `:- module'
-    % declaration? The reason is that in order to parse an item, we need
-    % to know which module it is defined in (because we do some module
-    % qualification and checking of module qualifiers at parse time),
-    % but the initial `:- module' declaration and the declaration
-    % that follows it occur in different scopes, so we need to know
-    % what it is that we are parsing before we can parse it!
+    % Now we don't bother trying to recover in such cases. The only special
+    % treatment that the first declaration gets is that we check whether
+    % the actual module name matches the expected (default) module name.
     %
 :- pred parse_first_module_decl(string::in, int::in,
     maybe_require_module_decl::in, module_name::in, list(prog_context)::in,
@@ -1624,9 +1303,6 @@ parse_first_module_decl(FileString, FileStringLen, RequireModuleDecl,
         DefaultModuleName, DefaultExpectationContexts,
         ModuleDeclPresent, MayChangeSourceFileName, !SourceFileName,
         !SeqNumCounter, !LineContext, !LinePosn) :-
-    % Parse the first term, treating it as occurring within the scope
-    % of the special "root" module (so that any `:- module' declaration
-    % is taken to be a non-nested module unless explicitly qualified).
     mercury_term_parser.read_term_from_linestr(!.SourceFileName,
         FileString, FileStringLen, !LineContext, !LinePosn, FirstReadTerm),
     read_term_to_iom_result(DefaultModuleName, !.SourceFileName,
@@ -1656,7 +1332,6 @@ parse_first_module_decl(FileString, FileStringLen, RequireModuleDecl,
                 ModuleNameContext, _ModuleNameSeqNum),
             % The first term is a `:- module' decl, as expected.
             % Check whether it matches the expected module name.
-            % If it doesn't, report a (conditionally enabled) error.
             ( if DefaultModuleName = StartModuleName then
                 ModuleDeclPresent = right_module_decl_present(StartModuleName,
                     ModuleNameContext)
@@ -1701,7 +1376,6 @@ parse_first_module_decl(FileString, FileStringLen, RequireModuleDecl,
         FirstContext = term_context.context_init(!.SourceFileName, 1),
         ModuleDeclPresent = no_module_decl_present(no_lookahead,
             dummy_context, report_missing_module_start(FirstContext))
-        % XXX ITEM_LIST Should report "stop processing".
     ).
 
 %---------------------------------------------------------------------------%

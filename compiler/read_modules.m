@@ -392,11 +392,13 @@
 :- import_module parse_tree.file_kind.
 :- import_module parse_tree.find_module.
 :- import_module parse_tree.parse_module.
+:- import_module parse_tree.prog_data.
 :- import_module parse_tree.source_file_map.
 
 :- import_module bool.
 :- import_module cord.
 :- import_module dir.
+:- import_module io.file.
 :- import_module require.
 :- import_module set.
 :- import_module string.
@@ -809,6 +811,312 @@ read_module_trans_opt(ProgressStream, Globals, ModuleName,
             ReadDoneMsg, FileName0, FileName,
             MaybeTimestampRes, _MaybeTimestamp, Errors0, Errors, !IO),
         HaveModule = have_not_read_module(FileName, Errors)
+    ).
+
+%---------------------------------------------------------------------------%
+
+    % actually_read_module_src(Globals, FileNameAndStream,
+    %   DefaultModuleName, DefaultExpectationContexts,
+    %   ReadModuleAndTimestamps, MaybeModuleTimestampRes,
+    %   ParseTree, Errors, !IO):
+    %
+    % Read a Mercury source program from FileNameAndStream.
+    % Close the stream when the reading is done. Return the parse tree
+    % of that module in ParseTree (which may be a dummy if the file
+    % couldn't be opened), and an indication of the errors found
+    % in Specs and Errors.
+    %
+    % For the meaning of ReadModuleAndTimestamps and MaybeModuleTimestampRes,
+    % read the comments on read_module_src in read_modules.m.
+    %
+:- pred actually_read_module_src(globals::in, path_name_and_stream::in,
+    module_name::in, list(prog_context)::in,
+    read_module_and_timestamps::in, maybe(io.res(timestamp))::out,
+    maybe(parse_tree_src)::out, read_module_errors::out,
+    io::di, io::uo) is det.
+
+actually_read_module_src(_Globals, FileNameAndStream,
+        DefaultModuleName, DefaultExpectationContexts,
+        ReadModuleAndTimestamps, MaybeModuleTimestampRes,
+        MaybeParseTreeSrc, Errors, !IO) :-
+    do_actually_read_file(FileNameAndStream, ReadModuleAndTimestamps,
+        ReadFileResult, !IO),
+    (
+        ReadFileResult = drfr_ok(FileStr, FileStrLen, MaybeModuleTimestampRes),
+        FileNameAndStream = path_name_and_stream(FileName, _FileStream),
+        parse_src_file(FileName, FileStr, FileStrLen,
+            DefaultModuleName, DefaultExpectationContexts,
+            MaybeParseTreeSrc, Errors)
+    ;
+        ReadFileResult = drfr_error(Errors, MaybeModuleTimestampRes),
+        MaybeParseTreeSrc = no
+    ).
+
+%---------------------------------------------------------------------------%
+%
+% actually_read_module_intN(Globals, FileNameAndStream,
+%   DefaultModuleName, DefaultExpectationContexts,
+%   ReadModuleAndTimestamps, MaybeModuleTimestampRes,
+%   ParseTree, Errors, !IO):
+%
+% Analogous to actually_read_module_src, but opens the specified kind
+% of interface file for DefaultModuleName.
+%
+
+:- pred actually_read_module_int0(globals::in, path_name_and_stream::in,
+    module_name::in, list(prog_context)::in,
+    read_module_and_timestamps::in, maybe(io.res(timestamp))::out,
+    maybe(parse_tree_int0)::out, read_module_errors::out,
+    io::di, io::uo) is det.
+
+actually_read_module_int0(Globals, FileNameAndStream,
+        DefaultModuleName, DefaultExpectationContexts,
+        ReadModuleAndTimestamps, MaybeModuleTimestampRes,
+        MaybeParseTreeInt0, Errors, !IO) :-
+    do_actually_read_file(FileNameAndStream, ReadModuleAndTimestamps,
+        ReadFileResult, !IO),
+    (
+        ReadFileResult = drfr_ok(FileStr, FileStrLen, MaybeModuleTimestampRes),
+        FileNameAndStream = path_name_and_stream(FileName, _FileStream),
+        parse_int0_file(Globals, FileName, FileStr, FileStrLen,
+            DefaultModuleName, DefaultExpectationContexts,
+            MaybeParseTreeInt0, Errors)
+    ;
+        ReadFileResult = drfr_error(Errors, MaybeModuleTimestampRes),
+        MaybeParseTreeInt0 = no
+    ).
+
+:- pred actually_read_module_int1(globals::in, path_name_and_stream::in,
+    module_name::in, list(prog_context)::in,
+    read_module_and_timestamps::in, maybe(io.res(timestamp))::out,
+    maybe(parse_tree_int1)::out, read_module_errors::out,
+    io::di, io::uo) is det.
+
+actually_read_module_int1(Globals, FileNameAndStream,
+        DefaultModuleName, DefaultExpectationContexts,
+        ReadModuleAndTimestamps, MaybeModuleTimestampRes,
+        MaybeParseTreeInt1, Errors, !IO) :-
+    do_actually_read_file(FileNameAndStream, ReadModuleAndTimestamps,
+        ReadFileResult, !IO),
+    (
+        ReadFileResult = drfr_ok(FileStr, FileStrLen, MaybeModuleTimestampRes),
+        FileNameAndStream = path_name_and_stream(FileName, _FileStream),
+        parse_int1_file(Globals, FileName, FileStr, FileStrLen,
+            DefaultModuleName, DefaultExpectationContexts,
+            MaybeParseTreeInt1, Errors)
+    ;
+        ReadFileResult = drfr_error(Errors, MaybeModuleTimestampRes),
+        MaybeParseTreeInt1 = no
+    ).
+
+:- pred actually_read_module_int2(globals::in, path_name_and_stream::in,
+    module_name::in, list(prog_context)::in,
+    read_module_and_timestamps::in, maybe(io.res(timestamp))::out,
+    maybe(parse_tree_int2)::out, read_module_errors::out,
+    io::di, io::uo) is det.
+
+actually_read_module_int2(Globals, FileNameAndStream,
+        DefaultModuleName, DefaultExpectationContexts,
+        ReadModuleAndTimestamps, MaybeModuleTimestampRes,
+        MaybeParseTreeInt2, Errors, !IO) :-
+    do_actually_read_file(FileNameAndStream, ReadModuleAndTimestamps,
+        ReadFileResult, !IO),
+    (
+        ReadFileResult = drfr_ok(FileStr, FileStrLen, MaybeModuleTimestampRes),
+        FileNameAndStream = path_name_and_stream(FileName, _FileStream),
+        parse_int2_file(Globals, FileName, FileStr, FileStrLen,
+            DefaultModuleName, DefaultExpectationContexts,
+            MaybeParseTreeInt2, Errors)
+    ;
+        ReadFileResult = drfr_error(Errors, MaybeModuleTimestampRes),
+        MaybeParseTreeInt2 = no
+    ).
+
+:- pred actually_read_module_int3(globals::in, path_name_and_stream::in,
+    module_name::in, list(prog_context)::in,
+    read_module_and_timestamps::in, maybe(io.res(timestamp))::out,
+    maybe(parse_tree_int3)::out, read_module_errors::out,
+    io::di, io::uo) is det.
+
+actually_read_module_int3(Globals, FileNameAndStream,
+        DefaultModuleName, DefaultExpectationContexts,
+        ReadModuleAndTimestamps, MaybeModuleTimestampRes,
+        MaybeParseTreeInt3, Errors, !IO) :-
+    do_actually_read_file(FileNameAndStream, ReadModuleAndTimestamps,
+        ReadFileResult, !IO),
+    (
+        ReadFileResult = drfr_ok(FileStr, FileStrLen, MaybeModuleTimestampRes),
+        FileNameAndStream = path_name_and_stream(FileName, _FileStream),
+        parse_int3_file(Globals, FileName, FileStr, FileStrLen,
+            DefaultModuleName, DefaultExpectationContexts,
+            MaybeParseTreeInt3, Errors)
+    ;
+        ReadFileResult = drfr_error(Errors, MaybeModuleTimestampRes),
+        MaybeParseTreeInt3 = no
+    ).
+
+%---------------------------------------------------------------------------%
+%
+% actually_read_module_{plain,trans}_opt(Globals, FileNameAndStream,
+%   DefaultModuleName, ParseTree, Errors, !IO):
+%
+% Analogous to actually_read_module_src, but opens the specified kind
+% of optimization file for DefaultModuleName.
+%
+
+:- pred actually_read_module_plain_opt(globals::in, path_name_and_stream::in,
+    module_name::in, maybe(parse_tree_plain_opt)::out, read_module_errors::out,
+    io::di, io::uo) is det.
+
+actually_read_module_plain_opt(_Globals, FileNameAndStream, DefaultModuleName,
+        MaybeParseTreePlainOpt, Errors, !IO) :-
+    ReadModuleAndTimestamps = always_read_module(dont_return_timestamp),
+    do_actually_read_file(FileNameAndStream, ReadModuleAndTimestamps,
+        ReadFileResult, !IO),
+    (
+        ReadFileResult = drfr_ok(FileStr, FileStrLen, _),
+        FileNameAndStream = path_name_and_stream(FileName, _FileStream),
+        parse_plain_opt_file(FileName, FileStr, FileStrLen, DefaultModuleName,
+            MaybeParseTreePlainOpt, Errors)
+    ;
+        ReadFileResult = drfr_error(Errors, _),
+        MaybeParseTreePlainOpt = no
+    ).
+
+:- pred actually_read_module_trans_opt(globals::in, path_name_and_stream::in,
+    module_name::in, maybe(parse_tree_trans_opt)::out, read_module_errors::out,
+    io::di, io::uo) is det.
+
+actually_read_module_trans_opt(_Globals, FileNameAndStream, DefaultModuleName,
+        MaybeParseTreeTransOpt, Errors, !IO) :-
+    ReadModuleAndTimestamps = always_read_module(dont_return_timestamp),
+    do_actually_read_file(FileNameAndStream, ReadModuleAndTimestamps,
+        ReadFileResult, !IO),
+    (
+        ReadFileResult = drfr_ok(FileStr, FileStrLen, _),
+        FileNameAndStream = path_name_and_stream(FileName, _FileStream),
+        parse_trans_opt_file(FileName, FileStr, FileStrLen, DefaultModuleName,
+            MaybeParseTreeTransOpt, Errors)
+    ;
+        ReadFileResult = drfr_error(Errors, _),
+        MaybeParseTreeTransOpt = no
+    ).
+
+%---------------------------------------------------------------------------%
+
+:- type do_read_file_result
+    --->    drfr_ok(
+                % The contents of the file, and its length.
+                %
+                % XXX When the compiler is compiled to C, this string will be
+                % byte-for-byte identical to the contents of the file.
+                % But when the compiler is compiled to C# or Java, the byte
+                % sequence in the file will need to be TRANSLATED from UTF-8
+                % to UTF-16. When the only reason we want to read e.g. a .intN
+                % file is to compare its old contents to its new intended
+                % contents, which will have to be converted from its UTF-16
+                % version to UTF-8 anyway, this is wasteful, because it
+                % requires the sequence
+                %
+                % - create new contents as UTF-16
+                % - read old contents of the file, which is UTF-8
+                % - convert old contents to UTF-16 (CONVERSION 1)
+                % - test whether the old UTF-16 contents as the same as the new
+                % - if the same then
+                %   - done
+                % - otherwise
+                %   - convert the UTF-16 new contents to UTF-8 (CONVERSION 2)
+                %   - write out the resulting UTF-8 string
+                %
+                % whereas if we returned the raw UTF-8 string directly as
+                % a byte array, we could use the sequence
+                %
+                % - create new contents as UTF-16
+                % - convert the UTF-16 new contents to UTF-8 (CONVERSION 1)
+                % - read old contents of the file, which is UTF-8
+                % - test whether the old UTF-8 contents as the same as the new
+                % - if the same then
+                %   - done
+                % - otherwise
+                %   - write out the new UTF-8 string
+                %
+                % This does the same number of conversions in the case where
+                % the old and the new contents are the same, i.e. one
+                % (though that conversion is in the opposite direction,
+                % and the string it is applied to may be either shorter
+                % or longer), but in the frequent case of the new contents
+                % differing from the old, it does one fewer conversion.
+                drfro_file_contents         :: string,
+                drfro_num_code_units        :: int,
+
+                % The timestamp of the file, if our caller requested it,
+                drfro_maybe_file_timestamp  :: maybe(io.res(timestamp))
+            )
+    ;       drfr_error(
+                drfre_errors                :: read_module_errors,
+
+                % The timestamp of the file, if our caller requested it,
+                % XXX This should not be needed if we can't read the file,
+                % since it means nothing useful.
+                drfre_maybe_file_timestamp  :: maybe(io.res(timestamp))
+            ).
+
+:- pred do_actually_read_file(path_name_and_stream::in,
+    read_module_and_timestamps::in, do_read_file_result::out,
+    io::di, io::uo) is det.
+
+do_actually_read_file(FileNameAndStream, ReadModuleAndTimestamps,
+        Result, !IO) :-
+    FileNameAndStream = path_name_and_stream(FileName, FileStream),
+    (
+        ( ReadModuleAndTimestamps = always_read_module(do_return_timestamp)
+        ; ReadModuleAndTimestamps = dont_read_module_if_match(_)
+        ),
+        io.file.file_modification_time(FileName, TimestampResult, !IO),
+        (
+            TimestampResult = ok(Timestamp),
+            MaybeModuleTimestampRes =
+                yes(ok(time_t_to_timestamp(Timestamp)))
+        ;
+            TimestampResult = error(IOError),
+            MaybeModuleTimestampRes = yes(error(IOError))
+        )
+    ;
+        ReadModuleAndTimestamps = always_read_module(dont_return_timestamp),
+        MaybeModuleTimestampRes = no
+    ),
+    ( if
+        ReadModuleAndTimestamps = dont_read_module_if_match(OldTimestamp),
+        MaybeModuleTimestampRes = yes(ok(OldTimestamp))
+    then
+        % XXX Currently smart recompilation won't work
+        % if ModuleName \= DefaultModuleName.
+        % In that case, smart recompilation will be disabled
+        % and actually_read_module should never be passed an old timestamp.
+        Result = drfr_error(init_read_module_errors, MaybeModuleTimestampRes)
+    else
+        io.read_file_as_string_and_num_code_units(FileStream,
+            MaybeResult, !IO),
+        (
+            MaybeResult = ok2(FileString, NumCodeUnits),
+            FileStringLen = string.length(FileString),
+            ( if NumCodeUnits = FileStringLen then
+                true
+            else
+                Msg = string.format(
+                    "NumCodeUnits = %d, FileStringLen = %d\n<<<\n%s>>>\n",
+                    [i(NumCodeUnits), i(FileStringLen), s(FileString)]),
+                unexpected($pred, Msg)
+            ),
+            Result = drfr_ok(FileString, NumCodeUnits, MaybeModuleTimestampRes)
+        ;
+            MaybeResult = error2(_PartialStr, _PartialLen, ErrorCode),
+            io.error_message(ErrorCode, ErrorMsg0),
+            ErrorMsg = "I/O error: " ++ ErrorMsg0,
+            io_error_to_read_module_errors(frme_could_not_read_file,
+                phase_read_files, ErrorMsg, Errors, !IO),
+            Result = drfr_error(Errors, MaybeModuleTimestampRes)
+        )
     ).
 
 %---------------------------------------------------------------------------%
