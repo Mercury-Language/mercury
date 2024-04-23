@@ -81,6 +81,7 @@
     %
 :- pred write_error_pieces_plain(io.text_output_stream::in, globals::in,
     list(format_piece)::in, io::di, io::uo) is det.
+:- pragma obsolete(pred(write_error_pieces_plain/5)).
 
     % write_error_pieces(Globals, Context, Indent, Pieces):
     %
@@ -89,11 +90,13 @@
     %
 :- pred write_error_pieces(io.text_output_stream::in, globals::in,
     prog_context::in, indent::in, list(format_piece)::in,
-        io::di, io::uo) is det.
+    io::di, io::uo) is det.
+:- pragma obsolete(pred(write_error_pieces/7)).
 
 :- pred write_error_pieces_maybe_with_context(io.text_output_stream::in,
     globals::in, maybe(prog_context)::in, indent::in, list(format_piece)::in,
     io::di, io::uo) is det.
+:- pragma obsolete(pred(write_error_pieces_maybe_with_context/7)).
 
 %---------------------------------------------------------------------------%
 
@@ -159,15 +162,6 @@
 :- pred pre_hlds_maybe_write_out_errors(io.text_output_stream::in,
     bool::in, globals::in,
     list(error_spec)::in, list(error_spec)::out, io::di, io::uo) is det.
-
-%---------------------------------------------------------------------------%
-
-    % Report a warning, and set the exit status to error if the
-    % --halt-at-warn option is set.
-    %
-:- pred report_warning(io.text_output_stream::in, globals::in,
-    prog_context::in, indent::in, list(format_piece)::in,
-    io::di, io::uo) is det.
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -1699,12 +1693,6 @@ pre_hlds_maybe_write_out_errors(Stream, Verbose, Globals, !Specs, !IO) :-
         write_error_specs(Stream, Globals, !.Specs, !IO),
         !:Specs = []
     ).
-
-%---------------------------------------------------------------------------%
-
-report_warning(Stream, Globals, Context, Indent, Pieces, !IO) :-
-    record_warning(Globals, !IO),
-    write_error_pieces(Stream, Globals, Context, Indent, Pieces, !IO).
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%

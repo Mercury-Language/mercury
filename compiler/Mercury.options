@@ -85,6 +85,10 @@ MCFLAGS-make.util                        += --no-halt-at-warn
 
 MCFLAGS-top_level.mercury_compile_main   += --no-warn-implicit-stream-calls
 
+MCFLAGS-check_hlds.abstract_mode_constraints += --no-warn-obsolete
+MCFLAGS-check_hlds.ordering_mode_constraints += --no-warn-obsolete
+MCFLAGS-check_hlds.prop_mode_constraints += --no-warn-obsolete
+
 # Bug workarounds.
 
 # XXX work around a bug that sometimes appears at -O4 and above.
