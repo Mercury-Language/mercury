@@ -30,19 +30,19 @@
     is det.
 
 :- pred construct_higher_order_type(purity::in, pred_or_func::in,
-    lambda_eval_method::in, list(mer_type)::in, mer_type::out) is det.
-
-:- pred construct_higher_order_pred_type(purity::in, lambda_eval_method::in,
     list(mer_type)::in, mer_type::out) is det.
 
-:- pred construct_higher_order_pred_type(purity::in, lambda_eval_method::in,
+:- pred construct_higher_order_pred_type(purity::in,
+    list(mer_type)::in, mer_type::out) is det.
+
+:- pred construct_higher_order_pred_type(purity::in,
     list(mer_type)::in, list(mer_mode)::in, determinism::in, mer_type::out)
     is det.
 
-:- pred construct_higher_order_func_type(purity::in, lambda_eval_method::in,
+:- pred construct_higher_order_func_type(purity::in,
     list(mer_type)::in, mer_type::in, mer_type::out) is det.
 
-:- pred construct_higher_order_func_type(purity::in, lambda_eval_method::in,
+:- pred construct_higher_order_func_type(purity::in,
     list(mer_type)::in, mer_type::in, list(mer_mode)::in, mer_mode::in,
     determinism::in, mer_type::out) is det.
 
@@ -64,10 +64,9 @@ construct_type(TypeCtor, ArgTypes, Type) :-
     then
         Type = builtin_type(BuiltinType)
     else if
-        type_ctor_is_higher_order(TypeCtor, Purity, PredOrFunc, EvalMethod)
+        type_ctor_is_higher_order(TypeCtor, Purity, PredOrFunc)
     then
-        construct_higher_order_type(Purity, PredOrFunc, EvalMethod, ArgTypes,
-            Type)
+        construct_higher_order_type(Purity, PredOrFunc, ArgTypes, Type)
     else if
         type_ctor_is_tuple(TypeCtor)
     then
@@ -79,39 +78,37 @@ construct_type(TypeCtor, ArgTypes, Type) :-
         Type = defined_type(SymName, ArgTypes, kind_star)
     ).
 
-construct_higher_order_type(Purity, PredOrFunc, EvalMethod, ArgTypes, Type) :-
+construct_higher_order_type(Purity, PredOrFunc, ArgTypes, Type) :-
     (
         PredOrFunc = pf_predicate,
-        construct_higher_order_pred_type(Purity, EvalMethod, ArgTypes, Type)
+        construct_higher_order_pred_type(Purity, ArgTypes, Type)
     ;
         PredOrFunc = pf_function,
         pred_args_to_func_args(ArgTypes, FuncArgTypes, FuncRetType),
-        construct_higher_order_func_type(Purity, EvalMethod, FuncArgTypes,
-            FuncRetType, Type)
+        construct_higher_order_func_type(Purity, FuncArgTypes, FuncRetType,
+            Type)
     ).
 
-construct_higher_order_pred_type(Purity, EvalMethod, ArgTypes, Type) :-
+construct_higher_order_pred_type(Purity, ArgTypes, Type) :-
     Type = higher_order_type(pf_predicate, ArgTypes, none_or_default_func,
-        Purity, EvalMethod).
+        Purity).
 
-construct_higher_order_pred_type(Purity, EvalMethod, ArgTypes, ArgModes,
-        Detism, Type) :-
+construct_higher_order_pred_type(Purity, ArgTypes, ArgModes, Detism, Type) :-
     PredInstInfo = pred_inst_info(pf_predicate, ArgModes, arg_reg_types_unset,
         Detism),
     Type = higher_order_type(pf_predicate, ArgTypes,
-        higher_order(PredInstInfo), Purity, EvalMethod).
+        higher_order(PredInstInfo), Purity).
 
-construct_higher_order_func_type(Purity, EvalMethod, ArgTypes, RetType,
-        Type) :-
+construct_higher_order_func_type(Purity, ArgTypes, RetType, Type) :-
     Type = higher_order_type(pf_function, ArgTypes ++ [RetType],
-        none_or_default_func, Purity, EvalMethod).
+        none_or_default_func, Purity).
 
-construct_higher_order_func_type(Purity, EvalMethod, ArgTypes, RetType,
-        ArgModes, RetMode, Detism, Type) :-
+construct_higher_order_func_type(Purity, ArgTypes, RetType, ArgModes, RetMode,
+        Detism, Type) :-
     PredInstInfo = pred_inst_info(pf_function, ArgModes ++ [RetMode],
         arg_reg_types_unset, Detism),
     Type = higher_order_type(pf_function, ArgTypes ++ [RetType],
-        higher_order(PredInstInfo), Purity, EvalMethod).
+        higher_order(PredInstInfo), Purity).
 
 %---------------------------------------------------------------------------%
 :- end_module parse_tree.prog_type_construct.

@@ -738,14 +738,14 @@ gather_entities_to_opt_export_in_unify_rhs(RHS, MayOptExportPred,
         RHS = rhs_var(_),
         MayOptExportPred = may_opt_export_pred
     ;
-        RHS = rhs_lambda_goal(_Purity, _HOGroundness, _PorF, _EvalMethod,
-            _NonLocals, _ArgVarsModes, _Detism, Goal),
+        RHS = rhs_lambda_goal(_Purity, _HOGroundness, _PorF, _NonLocals,
+            _ArgVarsModes, _Detism, Goal),
         gather_entities_to_opt_export_in_goal(Goal, MayOptExportPred,
             !IntermodInfo)
     ;
         RHS = rhs_functor(Functor, _Exist, _Vars),
         % Is this a higher-order predicate or higher-order function term?
-        ( if Functor = closure_cons(ShroudedPredProcId, _) then
+        ( if Functor = closure_cons(ShroudedPredProcId) then
             % Yes, the unification creates a higher-order term.
             % Make sure that the predicate/function is exported.
             proc(PredId, _) = unshroud_pred_proc_id(ShroudedPredProcId),

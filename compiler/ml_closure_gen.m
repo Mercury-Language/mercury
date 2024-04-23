@@ -999,8 +999,7 @@ gen_closure_gc_statement(ClosureName, ClosureDeclType,
         c_pointer_type),
     (
         ClosureKind = higher_order_proc_closure,
-        LambdaEvalMethod = lambda_normal,
-        construct_higher_order_type(Purity, PredOrFunc, LambdaEvalMethod,
+        construct_higher_order_type(Purity, PredOrFunc,
             HigherOrderArgTypes, ClosureActualType)
     ;
         ClosureKind = typeclass_info_closure,

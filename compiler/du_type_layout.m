@@ -2632,7 +2632,7 @@ set_remote_args_sectag_size(SectagSize,
         ; ConsTag0 = local_args_tag(_)
         ; ConsTag0 = no_tag
         ; ConsTag0 = direct_arg_tag(_)
-        ; ConsTag0 = closure_tag(_, _, _)
+        ; ConsTag0 = closure_tag(_, _)
         ),
         CtorRepn = CtorRepn0
     ),
@@ -2707,7 +2707,7 @@ decide_complex_du_type_ctor(ModuleInfo, Params, ComponentTypeMap,
         ; CtorTag = type_info_const_tag(_)
         ; CtorTag = typeclass_info_const_tag(_)
         ; CtorTag = base_typeclass_info_tag(_, _, _)
-        ; CtorTag = closure_tag(_, _, _)
+        ; CtorTag = closure_tag(_, _)
         ; CtorTag = deep_profiling_proc_layout_tag(_, _)
         ; CtorTag = table_io_entry_tag(_, _)
         ; CtorTag = tabling_info_tag(_, _)
@@ -4685,7 +4685,7 @@ show_decisions_for_ctor(Stream, MaybePrimaryTags, ForDevelopers, TypeCtorStr,
         ; ConsTag = tabling_info_tag(_, _)
         ; ConsTag = table_io_entry_tag(_, _)
         ; ConsTag = no_tag
-        ; ConsTag = closure_tag(_, _, _)
+        ; ConsTag = closure_tag(_, _)
         ),
         unexpected($pred, "unexpected kind of tag for general du type")
     ),

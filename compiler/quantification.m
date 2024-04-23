@@ -1083,7 +1083,7 @@ quantify_unify_rhs(NonLocalsToRecompute, ReuseArgs, GoalInfo0,
             RHSNonLocals = set_of_var.list_to_set(ArgVars)
         )
     ;
-        !.RHS = rhs_lambda_goal(Purity, Groundness, PredOrFunc, EvalMethod,
+        !.RHS = rhs_lambda_goal(Purity, Groundness, PredOrFunc,
             LambdaNonLocals0, ArgVarsModes0, Det, Goal0),
         assoc_list.keys_and_values(ArgVarsModes0, ArgVars0, Modes),
 
@@ -1150,7 +1150,7 @@ quantify_unify_rhs(NonLocalsToRecompute, ReuseArgs, GoalInfo0,
             LambdaNonLocals0, LambdaNonLocals),
 
         assoc_list.from_corresponding_lists(ArgVars, Modes, ArgVarsModes),
-        !:RHS = rhs_lambda_goal(Purity, Groundness, PredOrFunc, EvalMethod,
+        !:RHS = rhs_lambda_goal(Purity, Groundness, PredOrFunc,
             LambdaNonLocals, ArgVarsModes, Det, Goal),
 
         % For a unification that constructs a lambda expression, the argument
@@ -2352,7 +2352,7 @@ unify_rhs_vars_maybe_lambda(NonLocalsToRecompute, RHS, !Set, !LambdaSet) :-
         RHS = rhs_functor(_, _, ArgVars),
         set_of_var.insert_list(ArgVars, !Set)
     ;
-        RHS = rhs_lambda_goal(_, _, _, _, _, ArgVarsModes, _, Goal),
+        RHS = rhs_lambda_goal(_, _, _, _, ArgVarsModes, _, Goal),
         assoc_list.keys(ArgVarsModes, ArgVars),
         % Note that the NonLocals list is not counted, since all the
         % variables in that list must occur in the goal.
@@ -2374,7 +2374,7 @@ unify_rhs_vars_maybe_lambda_and_bi_impl(RHS, !Set, !LambdaSet) :-
         RHS = rhs_functor(_, _, ArgVars),
         set_of_var.insert_list(ArgVars, !Set)
     ;
-        RHS = rhs_lambda_goal(_, _, _, _, _, ArgVarsModes, _, Goal),
+        RHS = rhs_lambda_goal(_, _, _, _, ArgVarsModes, _, Goal),
         assoc_list.keys(ArgVarsModes, ArgVars),
         % Note that the NonLocals list is not counted, since all the
         % variables in that list must occur in the goal.
@@ -2407,7 +2407,7 @@ unify_rhs_vars_no_lambda(NonLocalsToRecompute, RHS, MaybeSetArgs, !Set) :-
             set_of_var.insert_list(ArgVars, !Set)
         )
     ;
-        RHS = rhs_lambda_goal(_, _, _, _, _, _, _, _),
+        RHS = rhs_lambda_goal(_, _, _, _, _, _, _),
         unexpected($pred, "found lambda")
     ).
 

@@ -135,7 +135,7 @@
             % similar occurrences in bound_insts in those procedures' mode
             % declarations.
 
-    ;       closure_cons(shrouded_pred_proc_id, lambda_eval_method)
+    ;       closure_cons(shrouded_pred_proc_id)
             % Note that a closure_cons represents a closure, not just
             % a code address.
             % XXX We should have a pred_or_func field as well.
@@ -204,13 +204,6 @@
 
 :- func type_of_int_const(some_int_const) = int_type.
 :- func type_name_of_int_const(some_int_const) = string.
-
-    % Describe how a lambda expression is to be evaluated.
-    %
-    % `normal' is the top-down Mercury execution algorithm.
-    %
-:- type lambda_eval_method
-    --->    lambda_normal.
 
 :- type impl_defined_const_kind
     --->    idc_file        % $file
@@ -313,7 +306,7 @@ cons_id_is_const_struct(ConsId, ConstNum) :-
     ;
         ( ConsId = cons(_, _, _)
         ; ConsId = tuple_cons(_)
-        ; ConsId = closure_cons(_, _)
+        ; ConsId = closure_cons(_)
         ; ConsId = some_int_const(_)
         ; ConsId = float_const(_)
         ; ConsId = char_const(_)
@@ -858,8 +851,7 @@ cons_id_is_const_struct(ConsId, ConstNum) :-
                 pred_or_func,
                 list(mer_type),
                 ho_inst_info,
-                purity,
-                lambda_eval_method
+                purity
             )
 
     ;       apply_n_type(tvar, list(mer_type), kind)
@@ -876,7 +868,7 @@ cons_id_is_const_struct(ConsId, ConstNum) :-
     ;       builtin_type(builtin_type)
     ;       tuple_type(list(ground_type), kind)
     ;       higher_order_type(pred_or_func, list(ground_type), ho_inst_info,
-                purity, lambda_eval_method)
+                purity)
     ;       apply_n_type(tvar, list(ground_type), kind)
     ;       kinded_type(ground_type, kind).
 
@@ -888,7 +880,7 @@ cons_id_is_const_struct(ConsId, ConstNum) :-
 %   ;       defined_type(sym_name, list(mer_type), kind)
 %   ;       tuple_type(list(mer_type), kind)
 %   ;       higher_order_type(pred_or_func, list(mer_type), ho_inst_info,
-%               purity, lambda_eval_method)
+%               purity)
 %   ;       apply_n_type(tvar, list(mer_type), kind)
 %   ;       kinded_type(mer_type, kind).
 
@@ -1131,7 +1123,7 @@ get_tvar_kind(Map, TVar, Kind) :-
 get_type_kind(type_variable(_, Kind)) = Kind.
 get_type_kind(defined_type(_, _, Kind)) = Kind.
 get_type_kind(builtin_type(_)) = kind_star.
-get_type_kind(higher_order_type(_, _, _, _, _)) = kind_star.
+get_type_kind(higher_order_type(_, _, _, _)) = kind_star.
 get_type_kind(tuple_type(_, Kind)) = Kind.
 get_type_kind(apply_n_type(_, _, Kind)) = Kind.
 get_type_kind(kinded_type(_, Kind)) = Kind.

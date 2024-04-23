@@ -561,7 +561,7 @@ cons_id_arity(ConsId) = Arity :-
         ),
         Arity = 0
     ;
-        ( ConsId = closure_cons(_, _)
+        ( ConsId = closure_cons(_)
         ; ConsId = type_ctor_info_const(_, _, _)
         ; ConsId = base_typeclass_info_const(_, _, _, _)
         ; ConsId = type_info_cell_constructor(_)
@@ -582,7 +582,7 @@ cons_id_maybe_arity(float_const(_)) = yes(0).
 cons_id_maybe_arity(char_const(_)) = yes(0).
 cons_id_maybe_arity(string_const(_)) = yes(0).
 cons_id_maybe_arity(impl_defined_const(_)) = yes(0).
-cons_id_maybe_arity(closure_cons(_, _)) = no.
+cons_id_maybe_arity(closure_cons(_)) = no.
 cons_id_maybe_arity(type_ctor_info_const(_, _, _)) = no.
 cons_id_maybe_arity(base_typeclass_info_const(_, _, _, _)) = no.
 cons_id_maybe_arity(type_info_cell_constructor(_)) = no.

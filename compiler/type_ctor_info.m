@@ -532,7 +532,7 @@ make_notag_details(ModuleInfo, TypeArity, MaybeSuperType, SymName, ArgType,
     ExistTVars = [],
     pseudo_type_info.construct_maybe_pseudo_type_info(ArgType,
         NumUnivTVars, ExistTVars, MaybePseudoTypeInfo),
-    ( if ArgType = higher_order_type(_, _, higher_order(_), _, _) then
+    ( if ArgType = higher_order_type(_, _, higher_order(_), _) then
         FunctorSubtypeInfo = functor_subtype_exists
     else
         FunctorSubtypeInfo = functor_subtype_none
@@ -710,7 +710,7 @@ make_foreign_enum_functors(Lang, [FunctorRepn | FunctorRepns], CurOrdinal,
         ( ConsTag = string_tag(_)
         ; ConsTag = float_tag(_)
         ; ConsTag = int_tag(_)
-        ; ConsTag = closure_tag(_, _, _)
+        ; ConsTag = closure_tag(_, _)
         ; ConsTag = type_ctor_info_tag(_, _, _)
         ; ConsTag = base_typeclass_info_tag(_, _, _)
         ; ConsTag = type_info_const_tag(_)
@@ -881,7 +881,7 @@ get_du_rep(ConsTag, DuRep) :-
         ; ConsTag = int_tag(_)
         ; ConsTag = foreign_tag(_, _)
         ; ConsTag = float_tag(_)
-        ; ConsTag = closure_tag(_, _, _)
+        ; ConsTag = closure_tag(_, _)
         ; ConsTag = type_ctor_info_tag(_, _, _)
         ; ConsTag = base_typeclass_info_tag(_, _, _)
         ; ConsTag = type_info_const_tag(_)
@@ -921,7 +921,7 @@ generate_du_arg_info(NumUnivTVars, ExistTVars, ConsArgRepn, ArgInfo,
         MaybePseudoTypeInfoOrSelf = arg_pseudo(PseudoTypeInfo)
     ),
     ArgInfo = du_arg_info(MaybeArgName, MaybePseudoTypeInfoOrSelf, ArgWidth),
-    ( if ArgType = higher_order_type(_, _, higher_order(_), _, _) then
+    ( if ArgType = higher_order_type(_, _, higher_order(_), _) then
         !:FunctorSubtypeInfo = functor_subtype_exists
     else
         true

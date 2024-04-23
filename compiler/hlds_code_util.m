@@ -129,9 +129,9 @@ cons_id_to_tag(ModuleInfo, ConsId) = ConsTag:-
         ConsId = impl_defined_const(_),
         unexpected($pred, "implementation_defined_const")
     ;
-        ConsId = closure_cons(ShroudedPredProcId, EvalMethod),
+        ConsId = closure_cons(ShroudedPredProcId),
         proc(PredId, ProcId) = unshroud_pred_proc_id(ShroudedPredProcId),
-        ConsTag = closure_tag(PredId, ProcId, EvalMethod)
+        ConsTag = closure_tag(PredId, ProcId)
     ;
         ConsId = type_ctor_info_const(ModuleName, TypeName, Arity),
         ConsTag = type_ctor_info_tag(ModuleName, TypeName, Arity)

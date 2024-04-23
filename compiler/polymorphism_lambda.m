@@ -34,8 +34,7 @@
 
     % Convert a higher order pred term to a lambda goal.
     %
-:- pred convert_pred_to_lambda_goal(module_info::in,
-    purity::in, lambda_eval_method::in,
+:- pred convert_pred_to_lambda_goal(module_info::in, purity::in,
     prog_var::in, pred_id::in, proc_id::in, list(prog_var)::in,
     list(mer_type)::in, unify_context::in, hlds_goal_info::in, context::in,
     maybe1(unify_rhs)::out, var_table::in, var_table::out) is det.
@@ -73,8 +72,8 @@
 
 %---------------------------------------------------------------------------%
 
-convert_pred_to_lambda_goal(ModuleInfo0, Purity, EvalMethod, X0,
-        PredId, ProcId, ArgVars0, PredArgTypes, UnifyContext, GoalInfo0,
+convert_pred_to_lambda_goal(ModuleInfo0, Purity, X0, PredId, ProcId,
+        ArgVars0, PredArgTypes, UnifyContext, GoalInfo0,
         Context, MaybeRHS, !VarTable) :-
     % Create the new lambda-quantified variables.
     create_fresh_vars(ModuleInfo0, PredArgTypes, LambdaVars, !VarTable),
@@ -122,8 +121,8 @@ convert_pred_to_lambda_goal(ModuleInfo0, Purity, EvalMethod, X0,
         PredOrFunc = pred_info_is_pred_or_func(PredInfo),
         % Higher-order values created in this fashion are always ground.
         Groundness = ho_ground,
-        RHS = rhs_lambda_goal(Purity, Groundness, PredOrFunc, EvalMethod,
-            ArgVars0, LambdaVarsModes, LambdaDet, LambdaGoal),
+        RHS = rhs_lambda_goal(Purity, Groundness, PredOrFunc, ArgVars0,
+            LambdaVarsModes, LambdaDet, LambdaGoal),
         MaybeRHS = ok1(RHS)
     ;
         MaybeLambdaVarsModesDet = error2(Specs),
@@ -141,8 +140,8 @@ create_fresh_vars(ModuleInfo, [Type | Types], [Var | Vars], !VarTable) :-
     create_fresh_vars(ModuleInfo, Types, Vars, !VarTable).
 
 fix_undetermined_mode_lambda_goal(ModuleInfo, ProcId, RHS0, MaybeRHS) :-
-    RHS0 = rhs_lambda_goal(Purity, Groundness, PredOrFunc, EvalMethod,
-        ArgVars0, LambdaVarsModes0, _LambdaDet0, LambdaGoal0),
+    RHS0 = rhs_lambda_goal(Purity, Groundness, PredOrFunc, ArgVars0,
+        LambdaVarsModes0, _LambdaDet0, LambdaGoal0),
     assoc_list.keys(LambdaVarsModes0, LambdaVars),
     LambdaGoal0 = hlds_goal(_, LambdaGoalInfo),
     goal_to_conj_list(LambdaGoal0, LambdaGoalList0),
@@ -172,8 +171,8 @@ fix_undetermined_mode_lambda_goal(ModuleInfo, ProcId, RHS0, MaybeRHS) :-
         MaybeLambdaVarsModesDet),
     (
         MaybeLambdaVarsModesDet = ok2(LambdaVarsModes, LambdaDet),
-        RHS = rhs_lambda_goal(Purity, Groundness, PredOrFunc, EvalMethod,
-            ArgVars0, LambdaVarsModes, LambdaDet, LambdaGoal),
+        RHS = rhs_lambda_goal(Purity, Groundness, PredOrFunc, ArgVars0,
+            LambdaVarsModes, LambdaDet, LambdaGoal),
         MaybeRHS = ok1(RHS)
     ;
         MaybeLambdaVarsModesDet = error2(Specs),

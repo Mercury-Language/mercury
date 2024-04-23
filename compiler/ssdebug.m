@@ -315,7 +315,7 @@ ssdebug_first_pass_in_goal(!Goal, !VarTable, !ProxyMap, !ModuleInfo) :-
         GoalExpr0 = unify(_, _, _, Unification0, _),
         ( if
             Unification0 = construct(_, ConsId0, _, _, _, _, _),
-            ConsId0 = closure_cons(ShroudedPredProcId, lambda_normal)
+            ConsId0 = closure_cons(ShroudedPredProcId)
         then
             PredProcId = unshroud_pred_proc_id(ShroudedPredProcId),
             PredProcId = proc(PredId, ProcId),
@@ -324,7 +324,7 @@ ssdebug_first_pass_in_goal(!Goal, !VarTable, !ProxyMap, !ModuleInfo) :-
                 MaybeNewPredId = yes(NewPredId),
                 NewPredProcId = proc(NewPredId, ProcId),
                 NewShroundPredProcId = shroud_pred_proc_id(NewPredProcId),
-                ConsId = closure_cons(NewShroundPredProcId, lambda_normal),
+                ConsId = closure_cons(NewShroundPredProcId),
                 Unification = Unification0 ^ construct_cons_id := ConsId,
                 GoalExpr = GoalExpr0 ^ unify_kind := Unification,
                 !:Goal = hlds_goal(GoalExpr, GoalInfo0)

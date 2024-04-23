@@ -1011,7 +1011,7 @@ ml_tag_uses_base_class(ConsTag) = UsesBaseClass :-
         ; ConsTag = float_tag(_)
         ; ConsTag = int_tag(_)
         ; ConsTag = foreign_tag(_, _)
-        ; ConsTag = closure_tag(_, _, _)
+        ; ConsTag = closure_tag(_, _)
         ; ConsTag = type_ctor_info_tag(_, _, _)
         ; ConsTag = base_typeclass_info_tag(_, _, _)
         ; ConsTag = type_info_const_tag(_)
@@ -1124,7 +1124,7 @@ enum_cons_tag_to_ml_const_rval(MLDS_Type, ConsTag, EnumConst, ConstRval) :-
     ;
         ( ConsTag = string_tag(_)
         ; ConsTag = float_tag(_)
-        ; ConsTag = closure_tag(_, _, _)
+        ; ConsTag = closure_tag(_, _)
         ; ConsTag = type_ctor_info_tag(_, _, _)
         ; ConsTag = base_typeclass_info_tag(_, _, _)
         ; ConsTag = type_info_const_tag(_)

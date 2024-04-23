@@ -486,8 +486,8 @@ get_higher_order_inst_match(ModeInfo, ExpectedPredOrFunc, PredVar, PredVarInst,
             lookup_var_type(VarTable, PredVar, Type0),
             Type = strip_kind_annotation(Type0),
             ( if
-                Type = higher_order_type(TypePredOrFunc,
-                    ArgTypes, TypeHOInstInfo, _Purity, _EvalMethod)
+                Type = higher_order_type(TypePredOrFunc, ArgTypes,
+                    TypeHOInstInfo, _Purity)
             then
                 (
                     TypeHOInstInfo = higher_order(PredInstInfo0),

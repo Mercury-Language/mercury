@@ -1177,7 +1177,7 @@ strip_headvar_unifications_from_goal_list([Goal | Goals0], HeadVars,
                 construct_qualified_term(SymName, ArgTerms, RHSTerm)
             ;
                 ( ConsId = base_typeclass_info_const(_, _, _, _)
-                ; ConsId = closure_cons(_, _)
+                ; ConsId = closure_cons(_)
                 ; ConsId = deep_profiling_proc_layout(_)
                 ; ConsId = ground_term_const(_, _)
                 ; ConsId = tabling_info_const(_)
@@ -1193,7 +1193,7 @@ strip_headvar_unifications_from_goal_list([Goal | Goals0], HeadVars,
                 fail
             )
         ;
-            RHS = rhs_lambda_goal(_, _, _, _, _, _, _, _),
+            RHS = rhs_lambda_goal(_, _, _, _, _, _, _),
             fail
         )
     then

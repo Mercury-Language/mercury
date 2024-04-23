@@ -761,8 +761,7 @@ hlds_replace_in_type_2(TypeEqvMap, TypeCtorsAlreadyExpanded,
         hlds_replace_type_ctor(TypeEqvMap, TypeCtorsAlreadyExpanded, Type0,
             TypeCtor, TypeArgs, Kind, Type, ArgsChanged, Changed, !TVarSet)
     ;
-        Type0 = higher_order_type(PorF, ArgTypes0, HOInstInfo, Purity,
-            EvalMethod),
+        Type0 = higher_order_type(PorF, ArgTypes0, HOInstInfo, Purity),
         % XXX replace in HOInstInfo
         HOInstInfoChanged = unchanged,
         hlds_replace_in_type_list_2(TypeEqvMap, TypeCtorsAlreadyExpanded,
@@ -772,8 +771,7 @@ hlds_replace_in_type_2(TypeEqvMap, TypeCtorsAlreadyExpanded,
             Type = Type0
         ;
             Changed = changed,
-            Type = higher_order_type(PorF, ArgTypes, HOInstInfo, Purity,
-                EvalMethod)
+            Type = higher_order_type(PorF, ArgTypes, HOInstInfo, Purity)
         )
     ;
         Type0 = tuple_type(Args0, Kind),

@@ -439,7 +439,7 @@ acc_pred_ids_in_goal(Goal, !CalleeCord) :-
             RHS = rhs_functor(RHSConsId, _, _),
             acc_pred_ids_in_cons_id(RHSConsId, !CalleeCord)
         ;
-            RHS = rhs_lambda_goal(_, _, _, _, _, _, _, SubGoal),
+            RHS = rhs_lambda_goal(_, _, _, _, _, _, SubGoal),
             acc_pred_ids_in_goal(SubGoal, !CalleeCord)
         )
     ;
@@ -493,7 +493,7 @@ acc_pred_ids_in_goal(Goal, !CalleeCord) :-
     cord(pred_id)::in, cord(pred_id)::out) is det.
 
 acc_pred_ids_in_cons_id(ConsId, !CalleeCord) :-
-    ( if ConsId = closure_cons(ShroudedPredProcId, _) then
+    ( if ConsId = closure_cons(ShroudedPredProcId) then
         ShroudedPredProcId = shrouded_pred_proc_id(PredIdInt, _),
         ShroudedPredId = shrouded_pred_id(PredIdInt),
         PredId = unshroud_pred_id(ShroudedPredId),
@@ -1178,7 +1178,7 @@ acc_local_type_ctors_in_type(ModuleName, Type, !TypeCtorNameArities) :-
             !TypeCtorNameArities)
     ;
         ( Type = apply_n_type(_, ArgTypes, _)
-        ; Type = higher_order_type(_, ArgTypes, _, _, _)
+        ; Type = higher_order_type(_, ArgTypes, _, _)
         ; Type = tuple_type(ArgTypes, _)
         ),
         acc_local_type_ctors_in_types(ModuleName, ArgTypes,

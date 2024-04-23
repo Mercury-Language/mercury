@@ -789,9 +789,6 @@
 
                 rhs_p_or_f          :: pred_or_func,
 
-                % Currently, we don't support any other value than `normal'.
-                rhs_eval_method     :: lambda_eval_method,
-
                 % The nonlocals of the goal excluding the lambda arg vars,
                 % in *some* order, without duplicates. These are the nonlocals
                 % "captured" by the lambda: when we construct a closure
@@ -808,7 +805,7 @@
             ).
 
 :- inst rhs_lambda_goal for unify_rhs/0
-    --->    rhs_lambda_goal(ground, ground, ground, ground, ground, ground,
+    --->    rhs_lambda_goal(ground, ground, ground, ground, ground,
                 ground, ground).
 
     % Was the constructor originally of the form 'new ctor'(...).
@@ -2530,14 +2527,14 @@ rename_var_in_unify_rhs(Must, Subn, RHS0, RHS) :-
         rename_var_list(Must, Subn, ArgVars0, ArgVars),
         RHS = rhs_functor(Functor, E, ArgVars)
     ;
-        RHS0 = rhs_lambda_goal(Purity, Groundness, PredOrFunc, EvalMethod,
+        RHS0 = rhs_lambda_goal(Purity, Groundness, PredOrFunc,
             NonLocals0, VarsModes0, Det, Goal0),
         rename_var_list(Must, Subn, NonLocals0, NonLocals),
         assoc_list.keys_and_values(VarsModes0, Vars0, Modes),
         rename_var_list(Must, Subn, Vars0, Vars),
         assoc_list.from_corresponding_lists(Vars, Modes, VarsModes),
         rename_vars_in_goal(Must, Subn, Goal0, Goal),
-        RHS = rhs_lambda_goal(Purity, Groundness, PredOrFunc, EvalMethod,
+        RHS = rhs_lambda_goal(Purity, Groundness, PredOrFunc,
             NonLocals, VarsModes, Det, Goal)
     ).
 
@@ -2902,14 +2899,14 @@ incremental_rename_var_in_unify_rhs(Subn, SubnUpdates, RHS0, RHS) :-
         rename_var_list(need_not_rename, Subn, ArgVars0, ArgVars),
         RHS = rhs_functor(Functor, E, ArgVars)
     ;
-        RHS0 = rhs_lambda_goal(Purity, Groundness, PredOrFunc, EvalMethod,
+        RHS0 = rhs_lambda_goal(Purity, Groundness, PredOrFunc,
             NonLocals0, VarsModes0, Det, Goal0),
         rename_var_list(need_not_rename, Subn, NonLocals0, NonLocals),
         assoc_list.keys_and_values(VarsModes0, Vars0, Modes),
         rename_var_list(need_not_rename, Subn, Vars0, Vars),
         assoc_list.from_corresponding_lists(Vars, Modes, VarsModes),
         incremental_rename_vars_in_goal(Subn, SubnUpdates, Goal0, Goal),
-        RHS = rhs_lambda_goal(Purity, Groundness, PredOrFunc, EvalMethod,
+        RHS = rhs_lambda_goal(Purity, Groundness, PredOrFunc,
             NonLocals, VarsModes, Det, Goal)
     ).
 

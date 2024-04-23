@@ -238,8 +238,7 @@ parse_compound_type(AllowHOInstInfo, Term, VarSet, ContextPieces,
             VarSet, ArgContextFunc, Args, 1, ArgTypes, [], Specs),
         (
             Specs = [],
-            construct_higher_order_pred_type(purity_pure, lambda_normal,
-                ArgTypes, PredType),
+            construct_higher_order_pred_type(purity_pure, ArgTypes, PredType),
             Result = ok1(PredType)
         ;
             Specs = [_ | _],
@@ -260,7 +259,7 @@ parse_compound_type(AllowHOInstInfo, Term, VarSet, ContextPieces,
                 ArgSpecs = [],
                 MaybeRetType = ok1(RetType)
             then
-                construct_higher_order_func_type(purity_pure, lambda_normal,
+                construct_higher_order_func_type(purity_pure,
                     ArgTypes, RetType, FuncType),
                 Result = ok1(FuncType)
             else
@@ -316,8 +315,8 @@ parse_compound_type(AllowHOInstInfo, Term, VarSet, ContextPieces,
                 ArgSpecs = [],
                 MaybeRetType = ok1(RetType)
             then
-                construct_higher_order_func_type(Purity, lambda_normal,
-                    ArgTypes, RetType, Type),
+                construct_higher_order_func_type(Purity, ArgTypes, RetType,
+                    Type),
                 Result = ok1(Type)
             else
                 Specs = ArgSpecs ++ get_any_errors1(MaybeRetType),
@@ -332,8 +331,7 @@ parse_compound_type(AllowHOInstInfo, Term, VarSet, ContextPieces,
                 VarSet, ArgContextFunc, Args, 1, ArgTypes, [], Specs),
             (
                 Specs = [],
-                construct_higher_order_pred_type(Purity, lambda_normal,
-                    ArgTypes, Type),
+                construct_higher_order_pred_type(Purity, ArgTypes, Type),
                 Result = ok1(Type)
             ;
                 Specs = [_ | _],
@@ -462,9 +460,8 @@ parse_ho_type_and_inst_2(_VarSet, _ContextPieces, Purity, ArgTypeAndModes,
         ),
         MaybeDetism = ok1(Detism)
     then
-        EvalMethod = lambda_normal,
         Type = higher_order_type(PredOrFunc, ArgTypes,
-            higher_order(PredInstInfo), Purity, EvalMethod),
+            higher_order(PredInstInfo), Purity),
         MaybeType = ok1(Type)
     else
         (

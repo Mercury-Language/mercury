@@ -679,13 +679,12 @@ unify_goal_to_constraint(Environment, GoalExpr, GoalInfo, !TCInfo) :-
             Constraints = []
         )
     ;
-        RHS = rhs_lambda_goal(Purity, _, PredOrFunc, EvalMethod, _,
+        RHS = rhs_lambda_goal(Purity, _, PredOrFunc, _,
             ArgVarsModes, _, LambdaGoal),
         assoc_list.keys(ArgVarsModes, ArgVars),
         list.map_foldl(get_var_type, ArgVars, ArgTVars, !TCInfo),
         ArgTypes = list.map(tvar_to_type, ArgTVars),
-        construct_higher_order_type(Purity, PredOrFunc, EvalMethod,
-            ArgTypes, LambdaType),
+        construct_higher_order_type(Purity, PredOrFunc, ArgTypes, LambdaType),
         Constraints = [ctconstr([stconstr(LTVar, LambdaType)],
             tconstr_active, Context, no, no)],
         RelevantTVars = [LTVar | ArgTVars],
@@ -763,7 +762,7 @@ ho_pred_unif_constraint(PredTable, Info, LHSTVar, ArgTVars, PredId, Constraint,
                 Type = ReturnType
             else
                 Type = higher_order_type(PredOrFunc, LambdaTypes,
-                    none_or_default_func, Purity, lambda_normal)
+                    none_or_default_func, Purity)
             ),
             LHSConstraint = stconstr(LHSTVar, Type),
             Constraints = [LHSConstraint | ArgConstraints]
@@ -815,7 +814,7 @@ generic_call_goal_to_constraint(Environment, GoalExpr, GoalInfo, !TCInfo) :-
     (
         Details = higher_order(CallVar, Purity, PredOrFunc, _),
         HOType = higher_order_type(PredOrFunc, ArgTypes, none_or_default_func,
-            Purity, lambda_normal),
+            Purity),
         variable_assignment_constraint(Context, CallVar, HOType, !TCInfo)
     ;
         % Class methods are handled by looking up the method number in the
@@ -1505,10 +1504,9 @@ simple_find_domain(stconstr(TVarA, TypeA), !DomainMap) :-
         NewTypeA = tuple_type(ArgTypes, Kind),
         restrict_domain(TVarA, NewTypeA, !DomainMap)
     ;
-        TypeA = higher_order_type(PorF, ArgTypes0, HOInstInfo, Purity, Lambda),
+        TypeA = higher_order_type(PorF, ArgTypes0, HOInstInfo, Purity),
         list.map(find_type_of_tvar(!.DomainMap), ArgTypes0, ArgTypes),
-        NewTypeA = higher_order_type(PorF, ArgTypes, HOInstInfo, Purity,
-            Lambda),
+        NewTypeA = higher_order_type(PorF, ArgTypes, HOInstInfo, Purity),
         restrict_domain(TVarA, NewTypeA, !DomainMap)
     ;
         TypeA = apply_n_type(Return, ArgTypes0, Kind),
@@ -1775,12 +1773,11 @@ unify_types(A, B, Type) :-
                 fail
             )
         ;
-            A = higher_order_type(PorF, ArgsA, HOInstInfo, Purity, Lambda),
-            B = higher_order_type(PorF, ArgsB, HOInstInfo, Purity, Lambda),
+            A = higher_order_type(PorF, ArgsA, HOInstInfo, Purity),
+            B = higher_order_type(PorF, ArgsB, HOInstInfo, Purity),
             ( if list.same_length(ArgsA, ArgsB) then
                 list.map_corresponding(unify_types, ArgsA, ArgsB, Args),
-                Type = higher_order_type(PorF, Args, HOInstInfo, Purity,
-                    Lambda)
+                Type = higher_order_type(PorF, Args, HOInstInfo, Purity)
             else
                 fail
             )

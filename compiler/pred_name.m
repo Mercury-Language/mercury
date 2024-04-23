@@ -1918,7 +1918,7 @@ type_to_txq_mrtq_stuffed_string(Type) = Str :-
             Type = apply_n_type(TVar, ArgTypes, _),
             string.format("txq_a_%d", [i(var_to_int(TVar))], StartStr)
         ;
-            Type = higher_order_type(PorF, ArgTypes, _HOInst, Purity, _Eval),
+            Type = higher_order_type(PorF, ArgTypes, _HOInst, Purity),
             ( PorF = pf_predicate, PorFStr = "p"
             ; PorF = pf_function,  PorFStr = "f"
             ),

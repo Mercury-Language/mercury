@@ -465,7 +465,7 @@ is_orig_type_non_eqv_type(ModuleInfo, ClassId, InstanceDefn, Type,
         )
     ;
         ( Type = builtin_type(_)
-        ; Type = higher_order_type(_, _, _, _, _)
+        ; Type = higher_order_type(_, _, _, _)
         ; Type = apply_n_type(_, _, _)
         ; Type = type_variable(_, _)
         ; Type = tuple_type(_, _)
@@ -490,7 +490,7 @@ is_valid_instance_type(ModuleInfo, ClassId, InstanceDefn, Type,
         Type = builtin_type(_)
     ;
         (
-            Type = higher_order_type(_, _, _, _, _),
+            Type = higher_order_type(_, _, _, _),
             KindPiece = words("is a higher order type;")
         ;
             Type = apply_n_type(_, _, _),
@@ -545,7 +545,7 @@ find_non_type_variables([ArgType | ArgTypes], ArgNum, NonTVarArgs) :-
     ;
         ( ArgType = defined_type(_, _, _)
         ; ArgType = builtin_type(_)
-        ; ArgType = higher_order_type(_, _, _, _, _)
+        ; ArgType = higher_order_type(_, _, _, _)
         ; ArgType = tuple_type(_, _)
         ; ArgType = apply_n_type(_, _, _)
         ; ArgType = kinded_type(_, _)

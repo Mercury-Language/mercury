@@ -237,7 +237,7 @@ execution_paths_covered_cases(ProcInfo, Switch, [Case | Cases], !ExecPaths) :-
             [[pair(ProgPoint, Switch)]], ExecPathsBeforeCase)
     ;
         ( MainConsId = tuple_cons(_)
-        ; MainConsId = closure_cons(_, _)
+        ; MainConsId = closure_cons(_)
         ; MainConsId = impl_defined_const(_)
         ; MainConsId = type_ctor_info_const(_, _, _)
         ; MainConsId = base_typeclass_info_const(_, _, _, _)

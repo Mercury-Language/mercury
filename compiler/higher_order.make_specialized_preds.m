@@ -768,7 +768,7 @@ construct_higher_order_terms(ModuleInfo, HeadVars0, NewHeadVars, ArgModes0,
         CurriedArgTypes, CurriedArgRttiInfo, CurriedHOArgs, IsConst),
 
     list.det_index1(HeadVars0, Index, LVar),
-    ( if ConsId = closure_cons(ShroudedPredProcId, _) then
+    ( if ConsId = closure_cons(ShroudedPredProcId) then
         % Add the curried arguments to the procedure's argument list.
         proc(PredId, ProcId) = unshroud_pred_proc_id(ShroudedPredProcId),
         module_info_pred_proc_info(ModuleInfo, PredId, ProcId,
@@ -894,7 +894,7 @@ update_type_info_locn(Var, ConstraintType, Index, Index + 1, !RttiVarMaps) :-
         ( ConstraintType = defined_type(_, _, _)
         ; ConstraintType = builtin_type(_)
         ; ConstraintType = tuple_type(_, _)
-        ; ConstraintType = higher_order_type(_, _, _, _, _)
+        ; ConstraintType = higher_order_type(_, _, _, _)
         ; ConstraintType = apply_n_type(_, _, _)
         ; ConstraintType = kinded_type(_, _)
         )
@@ -1055,7 +1055,7 @@ output_higher_order_args(OutputStream, ModuleInfo, NumToDrop, Indent,
     ;
         IsConst = arg_is_not_const
     ),
-    ( if ConsId = closure_cons(ShroudedPredProcId, _) then
+    ( if ConsId = closure_cons(ShroudedPredProcId) then
         proc(PredId, _) = unshroud_pred_proc_id(ShroudedPredProcId),
         module_info_pred_info(ModuleInfo, PredId, PredInfo),
         Name = pred_info_name(PredInfo),

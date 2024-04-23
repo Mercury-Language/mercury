@@ -171,7 +171,7 @@ mercury_format_cons_id(Lang, NeedsBrackets, ConsId, S, !U) :-
         ConsId = impl_defined_const(IDCKind),
         add_string(impl_defined_const_kind_to_str(IDCKind), S, !U)
     ;
-        ConsId = closure_cons(ShroudedPredProcId, _EvalMethod),
+        ConsId = closure_cons(ShroudedPredProcId),
         % XXX Should probably print this out in name/arity form.
         ShroudedPredProcId = shrouded_pred_proc_id(PredInt, ProcInt),
         add_string("<closure_cons(", S, !U),
@@ -327,7 +327,7 @@ cons_id_and_arity_to_string_maybe_quoted(MangleCons, QuoteCons, StripQual,
             String = "`" ++ impl_defined_const_kind_to_str(IDCKind) ++ "'"
         )
     ;
-        ConsId = closure_cons(PredProcId, _),
+        ConsId = closure_cons(PredProcId),
         PredProcId = shrouded_pred_proc_id(PredId, ProcId),
         String =
             "closure_cons<pred " ++ int_to_string(PredId) ++

@@ -93,7 +93,7 @@ construct_pseudo_type_info(Type, NumUnivQTvars, ExistQTvars, PseudoTypeInfo) :-
         ( Type = defined_type(_, _, _)
         ; Type = builtin_type(_)
         ; Type = tuple_type(_, _)
-        ; Type = higher_order_type(_, _, _, _, _)
+        ; Type = higher_order_type(_, _, _, _)
         ; Type = apply_n_type(_, _, _)
         ; Type = kinded_type(_, _)
         ),
@@ -250,7 +250,7 @@ generate_plain_args(TypeArgs, PseudoArgs) :-
 :- pred type_is_var_arity(mer_type::in, var_arity_ctor_id::out) is semidet.
 
 type_is_var_arity(Type, VarArityCtorId) :-
-    ( if type_is_higher_order_details(Type, _Purity, PredOrFunc, _, _) then
+    ( if type_is_higher_order_details(Type, _Purity, PredOrFunc, _) then
         (
             PredOrFunc = pf_predicate,
             VarArityCtorId = pred_type_info

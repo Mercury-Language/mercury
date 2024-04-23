@@ -104,7 +104,7 @@ type_vars_in_type_acc(Type, !RevTVars) :-
     ;
         ( Type = defined_type(_, ArgTypes, _)
         ; Type = tuple_type(ArgTypes, _)
-        ; Type = higher_order_type(_, ArgTypes, _, _, _)
+        ; Type = higher_order_type(_, ArgTypes, _, _)
         ),
         type_vars_in_types_acc(ArgTypes, !RevTVars)
     ;
@@ -132,7 +132,7 @@ type_contains_var(Type, Var) :-
     ;
         ( Type = defined_type(_, ArgTypes, _)
         ; Type = tuple_type(ArgTypes, _)
-        ; Type = higher_order_type(_, ArgTypes, _, _, _)
+        ; Type = higher_order_type(_, ArgTypes, _, _)
         ),
         type_list_contains_var(ArgTypes, Var)
     ;

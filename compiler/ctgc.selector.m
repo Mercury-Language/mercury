@@ -116,7 +116,7 @@ selector_init(ConsId, Index) = [TermSel] :-
         ),
         TermSel = termsel(ConsId, Index)
     ;
-        ( ConsId = closure_cons(_, _)
+        ( ConsId = closure_cons(_)
         ; ConsId = some_int_const(_)
         ; ConsId = float_const(_)
         ; ConsId = char_const(_)

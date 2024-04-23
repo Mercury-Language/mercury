@@ -688,7 +688,7 @@ functor_cons_id_to_string(ModuleInfo, VarNameSrc, VarNamePrint,
         ConsId = impl_defined_const(IDCKind),
         Str = impl_defined_const_kind_to_str(IDCKind)
     ;
-        ConsId = closure_cons(ShroudedPredProcId, _),
+        ConsId = closure_cons(ShroudedPredProcId),
         proc(PredId, _) = unshroud_pred_proc_id(ShroudedPredProcId),
         module_info_pred_info(ModuleInfo, PredId, PredInfo),
         PredModule = pred_info_module(PredInfo),
@@ -825,7 +825,7 @@ cons_id_and_vars_or_arity_to_string(VarTable, Qual, ConsId, MaybeArgVars)
         ConsId = impl_defined_const(IDCKind),
         String = impl_defined_const_kind_to_str(IDCKind)
     ;
-        ConsId = closure_cons(PredProcId, _),
+        ConsId = closure_cons(PredProcId),
         PredProcId = shrouded_pred_proc_id(PredId, ProcId),
         String =
             "<pred " ++ int_to_string(PredId) ++

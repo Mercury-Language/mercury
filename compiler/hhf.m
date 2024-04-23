@@ -291,9 +291,9 @@ convert_goal_expr_to_hhf(NonLocals, GoalInfo, GoalExpr0, GoalExpr, !HI) :-
 convert_unify_to_hhf(RHS0, NonLocals, GoalInfo0, X, Mode, Unif, Context,
         GoalExpr, !HI) :-
     (
-        RHS0 = rhs_lambda_goal(A, B, C, D, E, F, G, LambdaGoal0),
+        RHS0 = rhs_lambda_goal(A, B, C, D, E, F, LambdaGoal0),
         convert_goal_to_hhf(NonLocals, LambdaGoal0, LambdaGoal, !HI),
-        RHS = rhs_lambda_goal(A, B, C, D, E, F, G, LambdaGoal),
+        RHS = rhs_lambda_goal(A, B, C, D, E, F, LambdaGoal),
         GoalExpr = unify(X, RHS, Mode, Unif, Context)
     ;
         RHS0 = rhs_var(_),
@@ -475,8 +475,8 @@ same_type_2(type_variable(_, _), type_variable(_, _)).
 same_type_2(defined_type(Name, ArgsA, _), defined_type(Name, ArgsB, _)) :-
     same_type_list(ArgsA, ArgsB).
 same_type_2(builtin_type(BuiltinType), builtin_type(BuiltinType)).
-same_type_2(higher_order_type(PorF, ArgsA, HOInstInfo, Purity, EvalMethod),
-        higher_order_type(PorF, ArgsB, HOInstInfo, Purity, EvalMethod)) :-
+same_type_2(higher_order_type(PorF, ArgsA, HOInstInfo, Purity),
+        higher_order_type(PorF, ArgsB, HOInstInfo, Purity)) :-
     same_type_list(ArgsA, ArgsB).
 same_type_2(tuple_type(ArgsA, _), tuple_type(ArgsB, _)) :-
     same_type_list(ArgsA, ArgsB).

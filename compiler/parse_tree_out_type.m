@@ -225,7 +225,7 @@ type_to_debug_string(TVarSet, Type, Name) :-
         list.map(type_to_debug_string(TVarSet), Subtypes, SubtypeNames),
         Name = "{" ++  string.join_list(", ", SubtypeNames) ++ "}"
     ;
-        Type = higher_order_type(PorF, Types, _, _, _),
+        Type = higher_order_type(PorF, Types, _, _),
         list.map(type_to_debug_string(TVarSet), Types, TypeNames),
         (
             PorF = pf_predicate,

@@ -1493,7 +1493,7 @@ special_type_ctor_not_du(TypeCtor) :-
         ),
         is_builtin_type_name(TypeName)
     ;
-        type_ctor_is_higher_order(TypeCtor, _, _, _)
+        type_ctor_is_higher_order(TypeCtor, _, _)
     ;
         type_ctor_is_tuple(TypeCtor)
     ).
@@ -1793,10 +1793,8 @@ check_is_subtype(TypeTable, TVarSet0, OrigTypeStatus, TypeA, TypeB,
             OrigTypeStatus, ArgTypesA, ArgTypesB,
             MaybeExistConstraintsA, MaybeExistConstraintsB, !ExistQVarsMapping)
     ;
-        TypeA = higher_order_type(PredOrFunc, ArgTypesA, HOInstInfoA, Purity,
-            EvalMethod),
-        TypeB = higher_order_type(PredOrFunc, ArgTypesB, HOInstInfoB, Purity,
-            EvalMethod),
+        TypeA = higher_order_type(PredOrFunc, ArgTypesA, HOInstInfoA, Purity),
+        TypeB = higher_order_type(PredOrFunc, ArgTypesB, HOInstInfoB, Purity),
         list.length(ArgTypesA, Arity),
         list.length(ArgTypesB, Arity),
         (

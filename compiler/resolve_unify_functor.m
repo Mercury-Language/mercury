@@ -175,8 +175,7 @@ resolve_unify_functor(ModuleInfo, X0, ConsId0, ArgVars0, Mode0,
     else if
         % Is the function symbol a higher-order predicate or function constant?
         ConsId0 = cons(Name, _, _),
-        type_is_higher_order_details(TypeOfX, _Purity, PredOrFunc,
-            EvalMethod, HOArgTypes),
+        type_is_higher_order_details(TypeOfX, _Purity, PredOrFunc, HOArgTypes),
 
         % We don't do this for the clause introduced by the compiler
         % for a field access function -- that needs to be expanded
@@ -211,7 +210,7 @@ resolve_unify_functor(ModuleInfo, X0, ConsId0, ArgVars0, Mode0,
         (
             MaybeProcId = yes(ProcId),
             ShroudedPredProcId = shroud_pred_proc_id(proc(PredId, ProcId)),
-            ConsId = closure_cons(ShroudedPredProcId, EvalMethod),
+            ConsId = closure_cons(ShroudedPredProcId),
             GoalExpr = unify(X0,
                 rhs_functor(ConsId, is_not_exist_constr, ArgVars0),
                 Mode0, Unification0, UnifyContext),

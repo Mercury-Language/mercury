@@ -3084,7 +3084,7 @@ compute_maybe_packable_args_locn(ConsTag) = ArgsLocn :-
         ; ConsTag = deep_profiling_proc_layout_tag(_, _)
         ; ConsTag = tabling_info_tag(_, _)
         ; ConsTag = table_io_entry_tag(_, _)
-        ; ConsTag = closure_tag(_, _, _)
+        ; ConsTag = closure_tag(_, _)
         ),
         % These ConsTags are for terms that have no arguments.
         % *If* we can compare constants as ints, we should never get here,

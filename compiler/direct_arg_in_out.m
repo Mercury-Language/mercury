@@ -1119,7 +1119,7 @@ expand_daio_in_goal(Goal0, Goal, InstMap0, !VarMap, !Info) :-
         GoalExpr0 = unify(_, _, _, Unification, _),
         ( if
             Unification = construct(_, ConsId, _, _, _, _, _),
-            ConsId = closure_cons(ShroudedPredProcId, _EvalMethod),
+            ConsId = closure_cons(ShroudedPredProcId),
             ClosurePredProcId = unshroud_pred_proc_id(ShroudedPredProcId),
             ProcMap = !.Info ^ daio_proc_map,
             map.contains(ProcMap, ClosurePredProcId)

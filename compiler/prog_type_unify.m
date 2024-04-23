@@ -221,8 +221,8 @@ type_unify_nonvar(TypeX, TypeY, HeadTypeParams, !Bindings) :-
         TypeX = builtin_type(BuiltinType),
         TypeY = builtin_type(BuiltinType)
     ;
-        TypeX = higher_order_type(PorF, ArgTypesX, _, Purity, EvalMethod),
-        TypeY = higher_order_type(PorF, ArgTypesY, _, Purity, EvalMethod),
+        TypeX = higher_order_type(PorF, ArgTypesX, _, Purity),
+        TypeY = higher_order_type(PorF, ArgTypesY, _, Purity),
         type_unify_list(ArgTypesX, ArgTypesY, HeadTypeParams, !Bindings)
     ;
         TypeX = tuple_type(ArgTypesX, _),
@@ -278,7 +278,7 @@ type_unify_apply(TypeY, VarX, ArgTypesX0, HeadTypeParams, !Bindings) :-
         ArgTypesX0 = [],
         type_unify_var(VarX, TypeY, HeadTypeParams, !Bindings)
     ;
-        TypeY = higher_order_type(_, _, _, _, _),
+        TypeY = higher_order_type(_, _, _, _),
         ArgTypesX0 = [],
         type_unify_var(VarX, TypeY, HeadTypeParams, !Bindings)
     ;
@@ -369,7 +369,7 @@ type_occurs(TypeX, Y, Bindings) :-
         TypeX = defined_type(_, ArgTypes, _),
         type_occurs_list(ArgTypes, Y, Bindings)
     ;
-        TypeX = higher_order_type(_, ArgTypes, _, _, _),
+        TypeX = higher_order_type(_, ArgTypes, _, _),
         type_occurs_list(ArgTypes, Y, Bindings)
     ;
         TypeX = tuple_type(ArgTypes, _),

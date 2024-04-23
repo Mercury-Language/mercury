@@ -93,8 +93,7 @@ unparse_type(Type, Term) :-
         builtin_type_name(BuiltinType, Name),
         Term = term.functor(term.atom(Name), [], Context)
     ;
-        Type = higher_order_type(PorF, PredArgTypes, HOInstInfo, Purity,
-            EvalMethod),
+        Type = higher_order_type(PorF, PredArgTypes, HOInstInfo, Purity),
         unparse_type_list(PredArgTypes, PredArgTypeTerms),
         (
             HOInstInfo = higher_order(pred_inst_info(_, PredArgModes, _, _)),
@@ -108,12 +107,12 @@ unparse_type(Type, Term) :-
         (
             PorF = pf_predicate,
             Term0 = term.functor(term.atom("pred"), PredArgTerms, Context),
-            maybe_add_lambda_eval_method(EvalMethod, Term0, Term2)
+            maybe_add_lambda_eval_method(Term0, Term2)
         ;
             PorF = pf_function,
             list.det_split_last(PredArgTerms, ArgTerms, RetTerm),
             Term0 = term.functor(term.atom("func"), ArgTerms, Context),
-            maybe_add_lambda_eval_method(EvalMethod, Term0, Term1),
+            maybe_add_lambda_eval_method(Term0, Term1),
             Term2 = term.functor(term.atom("="), [Term1, RetTerm], Context)
         ),
         maybe_add_purity_annotation(Purity, Term2, Term3),
@@ -160,10 +159,9 @@ combine_type_and_mode_terms([Type | Types], [Mode | Modes], [Term | Terms]) :-
     Term = term.functor(term.atom("::"), [Type, Mode], dummy_context),
     combine_type_and_mode_terms(Types, Modes, Terms).
 
-:- pred maybe_add_lambda_eval_method(lambda_eval_method::in, term::in,
-    term::out) is det.
+:- pred maybe_add_lambda_eval_method(term::in, term::out) is det.
 
-maybe_add_lambda_eval_method(lambda_normal, Term, Term).
+maybe_add_lambda_eval_method(Term, Term).
 
 :- pred maybe_add_purity_annotation(purity::in, term::in, term::out) is det.
 
@@ -987,7 +985,7 @@ cons_id_and_args_to_term_full(ConsId, ArgTerms, Term) :-
         SymName = unqualified("{}"),
         construct_qualified_term(SymName, ArgTerms, Term)
     ;
-        ConsId = closure_cons(_, _),
+        ConsId = closure_cons(_),
         FunctorName = "closure_cons",
         Term = term.functor(term.string(FunctorName), [], Context)
     ;

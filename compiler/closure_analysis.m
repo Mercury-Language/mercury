@@ -259,10 +259,7 @@ closure_analyse_goal(ModuleInfo, VarTable, Goal0, Goal, !ClosureInfo) :-
         GoalExpr0 = unify(_, _, _, Unification, _),
         (
             Unification = construct(LHS, RHS, _, _, _, _, _),
-            ( if
-                RHS = closure_cons(ShroudedPPId, EvalMethod),
-                EvalMethod = lambda_normal
-            then
+            ( if RHS = closure_cons(ShroudedPPId) then
                 PPId = unshroud_pred_proc_id(ShroudedPPId),
                 HO_Value = set.make_singleton_set(PPId),
                 map.det_insert(LHS, exclusive(HO_Value), !ClosureInfo)

@@ -524,7 +524,7 @@ number_robdd_variables_in_rhs(_, _, Vars, !RHS, !NRInfo) :-
     !.RHS = rhs_functor(_, _, Args),
     Vars = Args.
 number_robdd_variables_in_rhs(InstGraph, GoalId, Vars, !RHS, !NRInfo) :-
-    !.RHS = rhs_lambda_goal(_, _, _, _, LambdaNonLocals, ArgVarsModes,
+    !.RHS = rhs_lambda_goal(_, _, _, LambdaNonLocals, ArgVarsModes,
         _, LambdaGoal0),
     Vars = LambdaNonLocals,
     assoc_list.keys(ArgVarsModes, ArgVars),
@@ -1696,7 +1696,7 @@ unify_constraints(LHSVar, GoalId, RHS0, RHS, !Constraint, !GCInfo) :-
         ),
         RHS = RHS0
     ;
-        RHS0 = rhs_lambda_goal(_, _, _, _, NonLocals, ArgVarsModes, _, Goal0),
+        RHS0 = rhs_lambda_goal(_, _, _, NonLocals, ArgVarsModes, _, Goal0),
         assoc_list.keys_and_values(ArgVarsModes, ArgVars, Modes),
         InstGraph = !.GCInfo ^ inst_graph,
 

@@ -330,7 +330,7 @@ polymorphism_process_unify(LHSVar, RHS0, Mode, Unification0, UnifyContext,
         polymorphism_process_unify_functor(LHSVar, ConsId, Args, Mode,
             Unification0, UnifyContext, GoalInfo0, Goal, _Changed, !Info)
     ;
-        RHS0 = rhs_lambda_goal(Purity, Groundness, PredOrFunc, EvalMethod,
+        RHS0 = rhs_lambda_goal(Purity, Groundness, PredOrFunc,
             LambdaNonLocals0, ArgVarsModes, Det, LambdaGoal0),
         % For lambda expressions, we must recursively traverse the lambda goal.
         % Any type_info variables needed by the lambda goal are created in the
@@ -354,7 +354,7 @@ polymorphism_process_unify(LHSVar, RHS0, Mode, Unification0, UnifyContext,
             set_of_var.to_sorted_list(PossibleNonLocalTiTciVars) ++
             LambdaNonLocals0,
         list.sort_and_remove_dups(LambdaNonLocals1, LambdaNonLocals),
-        RHS = rhs_lambda_goal(Purity, Groundness, PredOrFunc, EvalMethod,
+        RHS = rhs_lambda_goal(Purity, Groundness, PredOrFunc,
             LambdaNonLocals, ArgVarsModes, Det, LambdaGoal),
         NonLocals0 = goal_info_get_nonlocals(GoalInfo0),
         set_of_var.union(PossibleNonLocalTiTciVars, NonLocals0, NonLocals),
@@ -471,9 +471,9 @@ polymorphism_process_unify_functor(X0, ConsId0, ArgVars0, Mode0, Unification0,
 
     ( if
         % Check if variable has a higher order type.
-        ConsId0 = closure_cons(ShroudedPredProcId, _),
+        ConsId0 = closure_cons(ShroudedPredProcId),
         proc(PredId, ProcId0) = unshroud_pred_proc_id(ShroudedPredProcId),
-        type_is_higher_order_details(TypeOfX, Purity, _PredOrFunc, EvalMethod,
+        type_is_higher_order_details(TypeOfX, Purity, _PredOrFunc,
             CalleeArgTypes)
     then
         % An `invalid_proc_id' means the predicate is multi-moded. We can't
@@ -497,8 +497,8 @@ polymorphism_process_unify_functor(X0, ConsId0, ArgVars0, Mode0, Unification0,
         ),
         % Convert the higher order pred term to a lambda goal.
         Context = goal_info_get_context(GoalInfo0),
-        convert_pred_to_lambda_goal(ModuleInfo0, Purity, EvalMethod, X0,
-            PredId, ProcId, ArgVars0, CalleeArgTypes, UnifyContext,
+        convert_pred_to_lambda_goal(ModuleInfo0, Purity, X0, PredId, ProcId,
+            ArgVars0, CalleeArgTypes, UnifyContext,
             GoalInfo1, Context, MaybeRHS0, VarTable0, VarTable),
         poly_info_set_var_table(VarTable, !Info),
         (

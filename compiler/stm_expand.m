@@ -2332,9 +2332,8 @@ create_simple_call(ModuleName, ProcName, PredOrFunc, TIArgVars, NonTIArgVars,
 create_closure(PredProcID, Args, ArgTypes, ArgModes, ClosureVar,
         ClosureAssignGoal, !NewPredInfo) :-
     ShroudPredProcID = shroud_pred_proc_id(PredProcID),
-    construct_higher_order_pred_type(purity_pure, lambda_normal, ArgTypes,
-        ClosureType),
-    ClosureCons = closure_cons(ShroudPredProcID, lambda_normal),
+    construct_higher_order_pred_type(purity_pure, ArgTypes, ClosureType),
+    ClosureCons = closure_cons(ShroudPredProcID),
     create_aux_variable(ClosureType, yes("Closure"), ClosureVar, !NewPredInfo),
     construct_functor(ClosureVar, ClosureCons, Args, ClosureAssignGoal0),
 

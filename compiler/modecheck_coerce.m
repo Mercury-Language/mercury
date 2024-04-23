@@ -508,7 +508,7 @@ modecheck_coerce_from_bound_make_bound_functor(ModuleInfo, TVarSet, LiveX,
             MaybeFunctorY = other_error
         )
     ;
-        ( ConsIdX = closure_cons(_, _)
+        ( ConsIdX = closure_cons(_)
         ; ConsIdX = impl_defined_const(_)
         ; ConsIdX = type_ctor_info_const(_, _, _)
         ; ConsIdX = base_typeclass_info_const(_, _, _, _)
@@ -614,7 +614,7 @@ get_bound_functor_cons_and_arg_types(ModuleInfo, TypeX, TypeY,
         )
     ;
         ( TypeX = type_variable(_, _)
-        ; TypeX = higher_order_type(_, _, _, _, _)
+        ; TypeX = higher_order_type(_, _, _, _)
         ; TypeX = apply_n_type(_, _, _)
         ),
         Res = bad_cons_id_for_input_type
@@ -925,10 +925,8 @@ compare_types_nonvar(TypeTable, TVarSet, Comparison, TypeA, TypeB) :-
         compare_types_corresponding(TypeTable, TVarSet, Comparison,
             ArgsA, ArgsB)
     ;
-        TypeA = higher_order_type(PredOrFunc, ArgsA, _HOInstInfoA,
-            Purity, EvalMethod),
-        TypeB = higher_order_type(PredOrFunc, ArgsB, _HOInstInfoB,
-            Purity, EvalMethod),
+        TypeA = higher_order_type(PredOrFunc, ArgsA, _HOInstInfoA, Purity),
+        TypeB = higher_order_type(PredOrFunc, ArgsB, _HOInstInfoB, Purity),
         % We do not allow subtyping in higher order argument types.
         compare_types_corresponding(TypeTable, TVarSet, compare_equal,
             ArgsA, ArgsB)

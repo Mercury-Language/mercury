@@ -1269,7 +1269,7 @@ format_call_traverse_conj(Params, [Goal | Goals], CurId, !FormatCallSites,
             !ConjMaps, !PredMap, !RelevantVars),
         (
             RHS = rhs_lambda_goal(_Purity, _HOGroundness, _PredFunc,
-                _EvalMethod, _LambdaNonLocals, _LambdaArgVarsModes,
+                _LambdaNonLocals, _LambdaArgVarsModes,
                 _LambdaDetism, LambdaGoal),
             format_call_traverse_goal(Params, LambdaGoal, LambdaGoalId,
                 !FormatCallSites, !Counter, !ConjMaps, !PredMap,

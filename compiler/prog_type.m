@@ -242,7 +242,7 @@ type_to_ctor_and_args(Type, TypeCtor, ArgTypes) :-
         ArgTypes = [],
         TypeCtor = type_ctor(SymName, Arity)
     ;
-        Type = higher_order_type(PorF, ArgTypes, _HO, Purity, _EvalMethod),
+        Type = higher_order_type(PorF, ArgTypes, _HO, Purity),
         list.length(ArgTypes, NumArgTypes),
         (
             PorF = pf_predicate,
@@ -325,12 +325,12 @@ strip_module_names_from_type(StripWhat, SetDefaultFunc, Type0, Type) :-
             ArgTypes0, ArgTypes),
         Type = defined_type(SymName, ArgTypes, Kind)
     ;
-        Type0 = higher_order_type(PorF, ArgTypes0, HOInstInfo0, Purity, EM),
+        Type0 = higher_order_type(PorF, ArgTypes0, HOInstInfo0, Purity),
         strip_module_names_from_type_list(StripWhat, SetDefaultFunc,
             ArgTypes0, ArgTypes),
         strip_module_names_from_ho_inst_info(StripWhat, SetDefaultFunc,
             HOInstInfo0, HOInstInfo),
-        Type = higher_order_type(PorF, ArgTypes, HOInstInfo, Purity, EM)
+        Type = higher_order_type(PorF, ArgTypes, HOInstInfo, Purity)
     ;
         Type0 = tuple_type(ArgTypes0, Kind),
         strip_module_names_from_type_list(StripWhat, SetDefaultFunc,
@@ -501,7 +501,7 @@ qualify_cons_id(Args, ConsId0, ConsId, InstConsId) :-
         InstConsId = cell_inst_cons_id(typeclass_info_cell, list.length(Args))
     ;
         ( ConsId0 = tuple_cons(_)
-        ; ConsId0 = closure_cons(_, _)
+        ; ConsId0 = closure_cons(_)
         ; ConsId0 = some_int_const(_)
         ; ConsId0 = float_const(_)
         ; ConsId0 = char_const(_)

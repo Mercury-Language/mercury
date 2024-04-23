@@ -232,7 +232,7 @@ maybe_foreign_type_to_c_string(Type, MaybeForeignType) = String :-
             % XXX Is MR_Word the right thing for any of these kinds of
             % types for high level code, with or without high level data?
             ( Type = defined_type(_, _, _)
-            ; Type = higher_order_type(_, _, _, _, _)
+            ; Type = higher_order_type(_, _, _, _)
             ; Type = apply_n_type(_, _, _)
             ),
             String = "MR_Word"
@@ -266,7 +266,7 @@ maybe_foreign_type_to_csharp_string(Type, MaybeForeignType) = String :-
         ;
             ( Type = tuple_type(_, _)
             ; Type = defined_type(_, _, _)
-            ; Type = higher_order_type(_, _, _, _, _)
+            ; Type = higher_order_type(_, _, _, _)
             ; Type = apply_n_type(_, _, _)
             ; Type = type_variable(_, _)
             ; Type = kinded_type(_, _)
@@ -289,7 +289,7 @@ maybe_foreign_type_to_java_string(Type, MaybeForeignType) = String :-
         ;
             ( Type = tuple_type(_, _)
             ; Type = defined_type(_, _, _)
-            ; Type = higher_order_type(_, _, _, _, _)
+            ; Type = higher_order_type(_, _, _, _)
             ; Type = apply_n_type(_, _, _)
             ; Type = type_variable(_, _)
             ; Type = kinded_type(_, _)

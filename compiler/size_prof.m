@@ -982,11 +982,8 @@ make_type_ctor_info(TypeCtor, TypeArgs, TypeCtorVar, TypeCtorGoals, !Info) :-
         TypeCtorVar = TypeCtorVarPrime,
         TypeCtorGoals = []
     else
-        ( if
-            type_ctor_is_higher_order(TypeCtor, Purity, PredOrFunc, EvalMethod)
-        then
-            construct_higher_order_type(Purity, PredOrFunc, EvalMethod,
-                TypeArgs, Type)
+        ( if type_ctor_is_higher_order(TypeCtor, Purity, PredOrFunc) then
+            construct_higher_order_type(Purity, PredOrFunc, TypeArgs, Type)
         else
             construct_type(TypeCtor, [], Type)
         ),

@@ -770,8 +770,7 @@ stratify_analyze_goal(Goal, !Calls, !HasAT, !CallsHO) :-
             % should be a suitable approximation for the stratification
             % analysis.
             RHS = rhs_lambda_goal(_Purity, _Groundness, _PredOrFunc,
-                _EvalMethod, _NonLocals, _ArgVarsModes, _Determinism,
-                LambdaGoal),
+                _NonLocals, _ArgVarsModes, _Determinism, LambdaGoal),
             stratify_get_called_procs(LambdaGoal, [], CalledProcs),
             set.insert_list(CalledProcs, !HasAT)
         ;
@@ -784,7 +783,7 @@ stratify_analyze_goal(Goal, !Calls, !HasAT, !CallsHO) :-
             % happen as higher order constants have been transformed to
             % lambda goals. See above.
             Unification = construct(_, ConsId, _, _, _, _, _),
-            ( if ConsId = closure_cons(ShroudedPredProcId, _) then
+            ( if ConsId = closure_cons(ShroudedPredProcId) then
                 PredProcId = unshroud_pred_proc_id(ShroudedPredProcId),
                 set.insert(PredProcId, !HasAT)
             else
@@ -898,8 +897,7 @@ stratify_get_called_procs(Goal, !Calls) :-
             % should be a suitable approximation for the stratification
             % analysis.
             RHS = rhs_lambda_goal(_Purity, _Groundness, _PredOrFunc,
-                _EvalMethod, _NonLocals, _ArgVarsModes, _Determinism,
-                LambdaGoal),
+                _NonLocals, _ArgVarsModes, _Determinism, LambdaGoal),
             stratify_get_called_procs(LambdaGoal, !Calls)
         ;
             RHS = rhs_var(_)
@@ -911,7 +909,7 @@ stratify_get_called_procs(Goal, !Calls) :-
             % happen as higher order constants have been transformed to lambda
             % goals. See above.
             Unification = construct(_, ConsId, _, _, _, _, _),
-            ( if ConsId = closure_cons(ShroudedPredProcId, _) then
+            ( if ConsId = closure_cons(ShroudedPredProcId) then
                 PredProcId = unshroud_pred_proc_id(ShroudedPredProcId),
                 !:Calls = [PredProcId | !.Calls]
             else

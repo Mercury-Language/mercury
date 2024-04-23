@@ -84,8 +84,6 @@
     pred add_quoted_atom(string::in, S::in, U::di, U::uo) is det,
     pred add_constant(const::in, S::in, U::di, U::uo) is det,
     pred add_eval_method(eval_method::in, S::in, U::di, U::uo) is det,
-    pred add_lambda_eval_method(lambda_eval_method::in, S::in,
-        U::di, U::uo) is det,
 
     % The add_list predicate calls the predicate argument to add each
     % element of the list to the specified stream, printing the specified
@@ -141,7 +139,6 @@
     pred(add_quoted_atom/4) is write_quoted_atom,
     pred(add_constant/4) is write_constant,
     pred(add_eval_method/4) is write_eval_eval_method,
-    pred(add_lambda_eval_method/4) is write_lambda_eval_method,
 
     pred(add_list/6) is write_out_list
 ].
@@ -173,7 +170,6 @@
     pred(add_quoted_atom/4) is build_quoted_atom,
     pred(add_constant/4) is build_constant,
     pred(add_eval_method/4) is build_eval_eval_method,
-    pred(add_lambda_eval_method/4) is build_lambda_eval_method,
 
     pred(add_list/6) is build_list
 ].
@@ -320,12 +316,6 @@ write_constant(Const, Stream, !IO) :-
 write_eval_eval_method(EvalMethod, Stream, !IO) :-
     io.write_string(Stream, "eval_", !IO),
     io.write_string(Stream, eval_method_to_string(EvalMethod), !IO).
-
-:- pred write_lambda_eval_method(lambda_eval_method::in,
-    io.text_output_stream::in, io::di, io::uo) is det.
-
-write_lambda_eval_method(lambda_normal, Stream, !IO) :-
-    io.write_string(Stream, "normal", !IO).
 
 %---------------------%
 
@@ -490,13 +480,6 @@ build_constant(C, _, !State) :-
 build_eval_eval_method(EvalMethod, _, !State) :-
     string.builder.append_string("eval_", !State),
     string.builder.append_string(eval_method_to_string(EvalMethod), !State).
-
-:- pred build_lambda_eval_method(lambda_eval_method::in,
-    string.builder.handle::in,
-    string.builder.state::di, string.builder.state::uo) is det.
-
-build_lambda_eval_method(lambda_normal, _, !State) :-
-    string.builder.append_string("normal", !State).
 
 %---------------------%
 

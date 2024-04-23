@@ -227,15 +227,15 @@ recompute_instmap_delta_1(Params, InstMap0, InstMapDelta, Goal0, Goal, !RI) :-
     ;
         GoalExpr0 = unify(LHS, RHS0, UniMode0, Uni, Context),
         (
-            RHS0 = rhs_lambda_goal(Purity, Groundness, PorF, EvalMethod,
-                LambdaNonLocals, ArgVarsModes, Det, SubGoal0),
+            RHS0 = rhs_lambda_goal(Purity, Groundness, PorF, LambdaNonLocals,
+                ArgVarsModes, Det, SubGoal0),
             ModuleInfo0 = !.RI ^ ri_module_info,
             instmap.pre_lambda_update(ModuleInfo0, ArgVarsModes,
                 InstMap0, InstMap),
             recompute_instmap_delta_1(Params, InstMap, _,
                 SubGoal0, SubGoal, !RI),
-            RHS = rhs_lambda_goal(Purity, Groundness, PorF, EvalMethod,
-                LambdaNonLocals, ArgVarsModes, Det, SubGoal)
+            RHS = rhs_lambda_goal(Purity, Groundness, PorF, LambdaNonLocals,
+                ArgVarsModes, Det, SubGoal)
         ;
             ( RHS0 = rhs_var(_)
             ; RHS0 = rhs_functor(_, _, _)
@@ -657,7 +657,7 @@ cons_id_to_shared_inst(ModuleInfo, ConsId, NumArgs) = MaybeInst :-
         ConsId = impl_defined_const(_),
         unexpected($pred, "impl_defined_const")
     ;
-        ConsId = closure_cons(PredProcId, _),
+        ConsId = closure_cons(PredProcId),
         module_info_pred_proc_info(ModuleInfo,
             unshroud_pred_proc_id(PredProcId), PredInfo, ProcInfo),
         PorF = pred_info_is_pred_or_func(PredInfo),

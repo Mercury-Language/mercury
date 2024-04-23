@@ -485,7 +485,7 @@ java_builtin_type(MLDS_Type, JavaUnboxedType, JavaBoxedType, UnboxMethod) :-
         ;
             ( MerType = type_variable(_, _)
             ; MerType = tuple_type(_, _)
-            ; MerType = higher_order_type(_, _, _, _, _)
+            ; MerType = higher_order_type(_, _, _, _)
             ; MerType = apply_n_type(_, _, _)
             ; MerType = kinded_type(_, _)
             ),

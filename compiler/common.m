@@ -1490,8 +1490,8 @@ types_match_exactly(TypeA, TypeB) :-
         TypeA = builtin_type(BuiltinType),
         TypeB = builtin_type(BuiltinType)
     ;
-        TypeA = higher_order_type(PorF, ArgTypesA, H, P, E),
-        TypeB = higher_order_type(PorF, ArgTypesB, H, P, E),
+        TypeA = higher_order_type(PorF, ArgTypesA, H, P),
+        TypeB = higher_order_type(PorF, ArgTypesB, H, P),
         types_match_exactly_list(ArgTypesA, ArgTypesB)
     ;
         TypeA = tuple_type(ArgTypesA, _),

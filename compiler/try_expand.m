@@ -844,7 +844,7 @@ make_try_lambda(Body0, OutputVarsSet, OutputTupleType, MaybeIO,
         NonLocals = NonLocals0
     ),
     LambdaType = higher_order_type(pf_predicate, LambdaParamTypes,
-        none_or_default_func, purity_pure, lambda_normal),
+        none_or_default_func, purity_pure),
     proc_info_create_var_from_type("TryLambda", LambdaType,
         is_not_dummy_type, LambdaVar, !ProcInfo),
 
@@ -866,7 +866,7 @@ make_try_lambda(Body0, OutputVarsSet, OutputTupleType, MaybeIO,
     detism_to_try_lambda_detism(BodyDetism, LambdaDetism),
 
     % Make the lambda assignment.
-    RHS = rhs_lambda_goal(purity_pure, ho_ground, pf_predicate, lambda_normal,
+    RHS = rhs_lambda_goal(purity_pure, ho_ground, pf_predicate,
         set_of_var.to_sorted_list(NonLocals), LambdaParamsModes,
         LambdaDetism, LambdaBody),
     create_pure_atomic_complicated_unification(LambdaVar, RHS,

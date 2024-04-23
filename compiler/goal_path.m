@@ -167,11 +167,11 @@ fill_goal_id_slots(SlotInfo, ContainingGoal, !GoalNumCounter,
     ;
         GoalExpr0 = unify(LHS, RHS0, Mode, Kind, Context),
         (
-            RHS0 = rhs_lambda_goal(Purity, Groundness, PredOrFunc, EvalMethod,
+            RHS0 = rhs_lambda_goal(Purity, Groundness, PredOrFunc,
                 NonLocals, ArgVarsModes, Detism, LambdaGoal0),
             fill_goal_id_slots(SlotInfo, containing_goal(GoalId, step_lambda),
                 !GoalNumCounter, !ContainingGoalList, LambdaGoal0, LambdaGoal),
-            RHS = rhs_lambda_goal(Purity, Groundness, PredOrFunc, EvalMethod,
+            RHS = rhs_lambda_goal(Purity, Groundness, PredOrFunc,
                 NonLocals, ArgVarsModes, Detism, LambdaGoal),
             GoalExpr = unify(LHS, RHS,  Mode, Kind, Context)
         ;
@@ -393,7 +393,7 @@ fill_goal_path_slots(RevGoalPath, SlotInfo, Goal0, Goal) :-
     ;
         GoalExpr0 = unify(LHS, RHS0, Mode, Kind, Context),
         (
-            RHS0 = rhs_lambda_goal(Purity, Groundness, PredOrFunc, EvalMethod,
+            RHS0 = rhs_lambda_goal(Purity, Groundness, PredOrFunc,
                 LambdaNonLocals, ArgVarsModes, Detism, LambdaGoal0),
             % This assigns RevGoalPath to LambdaGoal as well as to Goal.
             % This is ok only because the only user of rev goal paths that are
@@ -401,7 +401,7 @@ fill_goal_path_slots(RevGoalPath, SlotInfo, Goal0, Goal) :-
             % only after lambda goals have been expanded out.
             fill_goal_path_slots(RevGoalPath, SlotInfo,
                 LambdaGoal0, LambdaGoal),
-            RHS = rhs_lambda_goal(Purity, Groundness, PredOrFunc, EvalMethod,
+            RHS = rhs_lambda_goal(Purity, Groundness, PredOrFunc,
                 LambdaNonLocals, ArgVarsModes, Detism, LambdaGoal)
         ;
             ( RHS0 = rhs_var(_)

@@ -206,7 +206,7 @@ propagate_checked_types_into_lambda_modes_in_goal(ModuleInfo, VarTable,
             ),
             Goal = Goal0
         ;
-            RHS0 = rhs_lambda_goal(Purity0, HOGroundness0, PorF0, EvalMethod0,
+            RHS0 = rhs_lambda_goal(Purity0, HOGroundness0, PorF0,
                 ClosureVars0, ArgVarsModes0, Detism0, LambdaGoal0),
             PredFormArity = arg_list_arity(ArgVarsModes0),
             Context = goal_info_get_context(GoalInfo0),
@@ -216,7 +216,7 @@ propagate_checked_types_into_lambda_modes_in_goal(ModuleInfo, VarTable,
                 !Cache, !Specs),
             propagate_checked_types_into_lambda_modes_in_goal(ModuleInfo,
                 VarTable, LambdaGoal0, LambdaGoal, !Cache, !Specs),
-            RHS = rhs_lambda_goal(Purity0, HOGroundness0, PorF0, EvalMethod0,
+            RHS = rhs_lambda_goal(Purity0, HOGroundness0, PorF0,
                 ClosureVars0, ArgVarsModes, Detism0, LambdaGoal),
             GoalExpr = unify(LHS0, RHS, UnifyMode0, Unification0, UniContext0),
             Goal = hlds_goal(GoalExpr, GoalInfo0)

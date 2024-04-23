@@ -502,7 +502,7 @@ mer_type_to_xml(_, builtin_type(builtin_type_float)) = elem("float", [], []).
 mer_type_to_xml(_, builtin_type(builtin_type_string)) = elem("string", [], []).
 mer_type_to_xml(_, builtin_type(builtin_type_char)) =
     elem("character", [], []).
-mer_type_to_xml(TVarset, higher_order_type(PorF, Types, _, _, _)) = Xml :-
+mer_type_to_xml(TVarset, higher_order_type(PorF, Types, _, _)) = Xml :-
     (
         PorF = pf_predicate,
         XmlTypes = xml_list("higher_order_type_args", mer_type_to_xml(TVarset),
@@ -735,7 +735,7 @@ cons_id_to_xml(float_const(F)) = tagged_float("float", F).
 cons_id_to_xml(char_const(C)) = tagged_char("char", C).
 cons_id_to_xml(string_const(S)) = tagged_string("string", S).
 cons_id_to_xml(impl_defined_const(_)) = nyi("impl_defined_const").
-cons_id_to_xml(closure_cons(_, _)) = nyi("closure_cons").
+cons_id_to_xml(closure_cons(_)) = nyi("closure_cons").
 cons_id_to_xml(type_ctor_info_const(_, _, _)) = nyi("type_ctor_info_const").
 cons_id_to_xml(base_typeclass_info_const(_,_,_,_)) =
     nyi("base_typeclass_info_const").

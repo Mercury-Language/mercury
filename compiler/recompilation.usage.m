@@ -933,7 +933,7 @@ find_items_used_by_type_ctor(TypeCtor, !Info) :-
     ( if
         % Unqualified type constructor names are builtins.
         TypeCtor = type_ctor(qualified(_, _), _),
-        not type_ctor_is_higher_order(TypeCtor, _, _, _)
+        not type_ctor_is_higher_order(TypeCtor, _, _)
     then
         TypeCtorItem = type_ctor_to_recomp_item_name(TypeCtor),
         maybe_record_item_to_process(recomp_type_name, TypeCtorItem, !Info)

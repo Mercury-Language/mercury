@@ -370,7 +370,7 @@ detect_switches_in_goal_expr(InstMap0, MaybeRequiredVar, GoalInfo,
     ;
         GoalExpr0 = unify(_, RHS0, _, _, _),
         (
-            RHS0 = rhs_lambda_goal(_, _, _, _, _, VarsModes, _, LambdaGoal0),
+            RHS0 = rhs_lambda_goal(_, _, _, _, VarsModes, _, LambdaGoal0),
             % We need to insert the initial insts for the lambda variables
             % in the instmap before processing the lambda goal.
             ModuleInfo = !.LocalInfo ^ lsdi_module_info,

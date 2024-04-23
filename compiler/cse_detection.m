@@ -376,13 +376,13 @@ detect_cse_in_goal_update_instmap(Goal0, Goal, !CseInfo, InstMap0, InstMap) :-
     ;
         GoalExpr0 = unify(LHS, RHS0, Mode, Unify,  UnifyContext),
         (
-            RHS0 = rhs_lambda_goal(Purity, Groundness, PredOrFunc, EvalMethod,
+            RHS0 = rhs_lambda_goal(Purity, Groundness, PredOrFunc,
                 NonLocalVars, VarsModes, Det, LambdaGoal0),
             ModuleInfo = !.CseInfo ^ csei_module_info,
             instmap.pre_lambda_update(ModuleInfo, VarsModes,
                 InstMap0, InstMap1),
             detect_cse_in_goal(LambdaGoal0, LambdaGoal, !CseInfo, InstMap1),
-            RHS = rhs_lambda_goal(Purity, Groundness, PredOrFunc, EvalMethod,
+            RHS = rhs_lambda_goal(Purity, Groundness, PredOrFunc,
                 NonLocalVars, VarsModes, Det, LambdaGoal)
         ;
             ( RHS0 = rhs_var(_)
@@ -886,7 +886,7 @@ construct_common_unify(Var, GoalExpr0, GoalInfo0, !CseInfo,
         GoalExpr1 = unify(Var, RHS, UnifyMode, Unification, UnifyContext)
     ;
         ( RHS = rhs_var(_)
-        ; RHS = rhs_lambda_goal(_, _, _, _, _, _, _, _)
+        ; RHS = rhs_lambda_goal(_, _, _, _, _, _, _)
         ),
         unexpected($pred, "non-functor unify")
     ),

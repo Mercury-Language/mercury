@@ -1523,9 +1523,8 @@ parse_lambda_purity_pf_args_det_term(PurityPFArgsDetTerm, MaybeDCGVars,
                 ArgModeTerms = ArgModeTerms0,
                 parse_lambda_args_pred(Context, ArgModeTerms,
                     LambdaArgs, !VarSet, BadModeSpecs, SVarSpecs),
-                LambdaHead = lambda_head(LambdaPurity, Groundness,
-                    PredOrFunc, lambda_normal, LambdaArgs,
-                    BadModeSpecs, SVarSpecs, MaybeDetism),
+                LambdaHead = lambda_head(LambdaPurity, Groundness, PredOrFunc,
+                    LambdaArgs, BadModeSpecs, SVarSpecs, MaybeDetism),
                 MaybeLambdaHead = ok1(LambdaHead)
             ;
                 MaybeDCGVars = dcg_vars(DCGVar0, DCGVarN),
@@ -1561,7 +1560,7 @@ parse_lambda_purity_pf_args_det_term(PurityPFArgsDetTerm, MaybeDCGVars,
                     parse_lambda_args_pred(Context, ArgModeTerms,
                         LambdaArgs, !VarSet, BadModeSpecs, SVarSpecs),
                     LambdaHead = lambda_head(LambdaPurity, Groundness,
-                        PredOrFunc, lambda_normal, LambdaArgs,
+                        PredOrFunc, LambdaArgs,
                         BadModeSpecs, SVarSpecs, MaybeDetism),
                     MaybeLambdaHead = ok1(LambdaHead)
                 )
@@ -1575,8 +1574,7 @@ parse_lambda_purity_pf_args_det_term(PurityPFArgsDetTerm, MaybeDCGVars,
                     ArgModeTerms0, FuncRetArgModeTerm,
                     LambdaArgs, !VarSet, BadModeSpecs, SVarSpecs),
                 LambdaHead = lambda_head(LambdaPurity, Groundness, PredOrFunc,
-                    lambda_normal, LambdaArgs, BadModeSpecs, SVarSpecs,
-                    MaybeDetism),
+                    LambdaArgs, BadModeSpecs, SVarSpecs, MaybeDetism),
                 MaybeLambdaHead = ok1(LambdaHead)
             ;
                 MaybeDCGVars = dcg_vars(_, _),
@@ -1616,8 +1614,7 @@ parse_lambda_purity_pf_args_det_term(PurityPFArgsDetTerm, MaybeDCGVars,
                 LambdaArgs, !VarSet, BadModeSpecs, SVarSpecs),
             MaybeDetism = ok1(detism_det),
             LambdaHead = lambda_head(LambdaPurity, Groundness, PredOrFunc,
-                lambda_normal, LambdaArgs, BadModeSpecs, SVarSpecs,
-                MaybeDetism),
+                LambdaArgs, BadModeSpecs, SVarSpecs, MaybeDetism),
             MaybeLambdaHead = ok1(LambdaHead)
         ;
             MaybeDCGVars = dcg_vars(_, _),
@@ -1961,7 +1958,6 @@ parse_lambda_detism(VarSet, DetismTerm, MaybeDetism) :-
                 purity,
                 ho_groundness,
                 pred_or_func,
-                lambda_eval_method,
                 list(lambda_arg),
                 list(error_spec),       % Errors about unparseable and/or
                                         % missing arg modes.
@@ -2021,7 +2017,7 @@ build_lambda_expression(LHSVar, UnificationPurity,
     % arguments) should *not* be locally quantified.
 
     LambdaHead = lambda_head(LambdaPurity, Groundness, PredOrFunc,
-        EvalMethod, LambdaArgs0, BadModeSpecs, SVarSpecs, MaybeDetism),
+        LambdaArgs0, BadModeSpecs, SVarSpecs, MaybeDetism),
     qualify_lambda_arg_modes_if_not_opt_imported(LambdaArgs0, LambdaArgs1,
         Modes, !QualInfo, !Specs),
     inconsistent_constrained_inst_vars_in_modes(Modes, InconsistentVars),
@@ -2179,8 +2175,7 @@ build_lambda_expression(LHSVar, UnificationPurity,
             ),
 
             LambdaRHS = rhs_lambda_goal(LambdaPurity, Groundness, PredOrFunc,
-                EvalMethod, LambdaNonLocals, LambdaVarsModes, Detism,
-                HLDS_Goal),
+                LambdaNonLocals, LambdaVarsModes, Detism, HLDS_Goal),
             make_atomic_unification(LHSVar, LambdaRHS, Context, MainContext,
                 SubContext, UnificationPurity, Goal, !QualInfo)
         )

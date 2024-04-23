@@ -381,8 +381,7 @@ add_type_to_table(Type, TypeCode, !StringTable, !TypeTable) :-
         encode_arg_type_codes(ArgTypeCodes, ArgTypeBytesCord),
         TypeBytesCord = cord.singleton(Selector) ++ ArgTypeBytesCord
     ;
-        Type = higher_order_type(PorF, ArgTypes, _HOInstInfo, _Purity,
-            _EvalMethod),
+        Type = higher_order_type(PorF, ArgTypes, _HOInstInfo, _Purity),
         list.map_foldl2(lookup_type_in_table, ArgTypes, ArgTypeCodes,
             !StringTable, !TypeTable),
         encode_arg_type_codes(ArgTypeCodes, ArgTypeBytesCord),

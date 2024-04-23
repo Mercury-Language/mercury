@@ -453,7 +453,7 @@ add_dependency_arcs_in_cases(DepGraph, WhatEdges, Caller, [Case | Cases],
 
 add_dependency_arcs_in_cons(DepGraph, WhatEdges, Caller, ConsId, !DepArcs) :-
     (
-        ConsId = closure_cons(ShroudedPredProcId, _),
+        ConsId = closure_cons(ShroudedPredProcId),
         PredProcId = unshroud_pred_proc_id(ShroudedPredProcId),
         maybe_add_dependency_arc(DepGraph, WhatEdges, edge_unify,
             Caller, PredProcId, !DepArcs)

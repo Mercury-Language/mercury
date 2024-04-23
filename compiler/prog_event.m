@@ -635,7 +635,7 @@ build_dep_map(EventName, FileName, AttrNameMap, KeyMap, [AttrTerm | AttrTerms],
                         FuncAttrPurity = event_attr_impure_function,
                         FuncPurity = purity_impure
                     ),
-                    construct_higher_order_func_type(FuncPurity, lambda_normal,
+                    construct_higher_order_func_type(FuncPurity,
                         ArgTypes, AttrType, FuncAttrType),
                     ( if
                         map.search(!.AttrTypeMap, FuncAttrName,
@@ -907,7 +907,7 @@ describe_attr_type(Type) = Desc :-
         Type = builtin_type(BuiltinType),
         builtin_type_name(BuiltinType, Desc)
     ;
-        Type = higher_order_type(_, _, _, _, _),
+        Type = higher_order_type(_, _, _, _),
         Desc = "function"
     ;
         ( Type = type_variable(_, _)

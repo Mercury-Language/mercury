@@ -907,15 +907,13 @@ compute_unify_expr_purity(GoalExpr0, GoalExpr, GoalInfo,
     GoalExpr0 = unify(LHSVar, RHS0, Mode, Unification, UnifyContext),
     (
         RHS0 = rhs_lambda_goal(LambdaPurity, Groundness, PredOrFunc,
-            EvalMethod, LambdaNonLocals, LambdaArgVarsModes,
-            LambdaDetism, LambdaGoal0),
+            LambdaNonLocals, LambdaArgVarsModes, LambdaDetism, LambdaGoal0),
         LambdaGoal0 = hlds_goal(LambdaGoalExpr0, LambdaGoalInfo0),
         compute_expr_purity(LambdaGoalExpr0, LambdaGoalExpr,
             LambdaGoalInfo0, GoalPurity, _, !Info),
         LambdaGoal = hlds_goal(LambdaGoalExpr, LambdaGoalInfo0),
         RHS = rhs_lambda_goal(LambdaPurity, Groundness, PredOrFunc,
-            EvalMethod, LambdaNonLocals, LambdaArgVarsModes,
-            LambdaDetism, LambdaGoal),
+            LambdaNonLocals, LambdaArgVarsModes, LambdaDetism, LambdaGoal),
 
         check_closure_purity(GoalInfo, LambdaPurity, GoalPurity,
             ClosureSpecs),
@@ -998,7 +996,7 @@ check_var_functor_unify_purity(Info, GoalInfo, Var, ConsId, Args, Specs) :-
     ( if
         ConsId = cons(PName, _, _),
         type_is_higher_order_details(TypeOfVar, TypePurity, PredOrFunc,
-            _EvalMethod, VarArgTypes)
+            VarArgTypes)
     then
         pred_info_get_typevarset(PredInfo, TVarSet),
         pred_info_get_exist_quant_tvars(PredInfo, ExistQTVars),

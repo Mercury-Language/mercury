@@ -306,11 +306,11 @@ mode_order_goal_2(GoalExpr0, GoalExpr, !GoalInfo, !MOI) :-
             % Unification = construct(VarA, _ConsId, _ArgVars,
             %   _UniModes, _HowTo, _CellUniq, _MaybeRLExprId),
             Unification = Unification0, % XXX
-            RHS0 = rhs_lambda_goal(A, B, C, D, NonLocals, ArgVarsModes0,
-                H, SubGoal0),
+            RHS0 = rhs_lambda_goal(A, B, C, NonLocals, ArgVarsModes0,
+                F, SubGoal0),
             ArgVarsModes = ArgVarsModes0, % XXX
-            RHS = rhs_lambda_goal(A, B, C, D, NonLocals, ArgVarsModes,
-                H, SubGoal),
+            RHS = rhs_lambda_goal(A, B, C, NonLocals, ArgVarsModes,
+                F, SubGoal),
 
             GoalId = goal_info_get_goal_id(!.GoalInfo),
             enter_lambda_goal(GoalId, !MOI),

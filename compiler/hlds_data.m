@@ -179,12 +179,12 @@
     % The kinds of non-constants that cannot appear in user code,
     % being generated only inside the compiler.
 
-    ;       closure_tag(pred_id, proc_id, lambda_eval_method).
+    ;       closure_tag(pred_id, proc_id).
             % Higher-order pred closures tags. These are represented as
-            % a pointer to an argument vector. For closures with
-            % lambda_eval_method `normal', the first two words of the argument
-            % vector hold the number of args and the address of the procedure
-            % respectively. The remaining words hold the arguments.
+            % a pointer to an argument vector. For closures, the first
+            % two words of the argument vector hold the number of args
+            % and the address of the procedure respectively. The remaining
+            % words hold the arguments.
 
 :- type int_tag
     --->    int_tag_int(int)
@@ -393,7 +393,7 @@ get_maybe_primary_tag(Tag) = MaybePtag :-
         ; Tag = float_tag(_)
         ; Tag = string_tag(_)
         ; Tag = foreign_tag(_, _)
-        ; Tag = closure_tag(_, _, _)
+        ; Tag = closure_tag(_, _)
         ; Tag = no_tag
         ; Tag = dummy_tag
         ; Tag = type_ctor_info_tag(_, _, _)
@@ -448,7 +448,7 @@ get_maybe_secondary_tag(Tag) = MaybeSectag :-
         ; Tag = float_tag(_)
         ; Tag = string_tag(_)
         ; Tag = foreign_tag(_, _)
-        ; Tag = closure_tag(_, _, _)
+        ; Tag = closure_tag(_, _)
         ; Tag = type_ctor_info_tag(_, _, _)
         ; Tag = base_typeclass_info_tag(_, _, _)
         ; Tag = type_info_const_tag(_)

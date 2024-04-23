@@ -102,7 +102,7 @@ subst_literals_in_goal(Info, Goal0, Goal) :-
             ;
                 ( ConsId = cons(_, _, _)
                 ; ConsId = tuple_cons(_)
-                ; ConsId = closure_cons(_, _)
+                ; ConsId = closure_cons(_)
                 ; ConsId = some_int_const(_)
                 ; ConsId = float_const(_)
                 ; ConsId = char_const(_)
@@ -122,12 +122,10 @@ subst_literals_in_goal(Info, Goal0, Goal) :-
             )
         ;
             RHS0 = rhs_lambda_goal(LambdaPurity, Groundness, PredOrFunc,
-                EvalMethod, LambdaNonLocals, LambdaArgVarsModes,
-                LambdaDetism, LambdaGoal0),
+                LambdaNonLocals, LambdaArgVarsModes, LambdaDetism, LambdaGoal0),
             subst_literals_in_goal(Info, LambdaGoal0, LambdaGoal),
             RHS = rhs_lambda_goal(LambdaPurity, Groundness, PredOrFunc,
-                EvalMethod, LambdaNonLocals, LambdaArgVarsModes,
-                LambdaDetism, LambdaGoal),
+                LambdaNonLocals, LambdaArgVarsModes, LambdaDetism, LambdaGoal),
             GoalExpr = unify(Var, RHS, Mode, Kind, UnifyContext),
             Goal = hlds_goal(GoalExpr, GoalInfo0)
         ;

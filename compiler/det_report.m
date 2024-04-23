@@ -1527,7 +1527,7 @@ reqscope_check_goal(Goal, InstMap0, IIS, MaybeReportedSwitch,
             ; RHS = rhs_functor(_, _, _)
             )
         ;
-            RHS = rhs_lambda_goal(_Purity, _Groundness, _PorF, _EvalMethod,
+            RHS = rhs_lambda_goal(_Purity, _Groundness, _PorF,
                 _LambdaNonLocals, ArgVarsModes, _Detism, LambdaGoal),
             det_info_get_module_info(!.DetInfo, ModuleInfo),
             lambda_update_instmap(ModuleInfo, ArgVarsModes,

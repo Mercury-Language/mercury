@@ -314,7 +314,7 @@ ho_traverse_goal(Goal0, Goal, !Info) :-
     ;
         GoalExpr0 = unify(_, _, _, Unification0, _),
         ( if
-            Unification0 = construct(_, closure_cons(_, _), _, _, _, _, _)
+            Unification0 = construct(_, closure_cons(_), _, _, _, _, _)
         then
             maybe_specialize_pred_const(Goal0, Goal, !Info)
         else
@@ -709,7 +709,7 @@ is_interesting_cons_id(Params, ConsId) = IsInteresting :-
             IsInteresting = no
         )
     ;
-        ConsId = closure_cons(_, _),
+        ConsId = closure_cons(_),
         HigherOrder = Params ^ param_do_higher_order_spec,
         (
             HigherOrder = opt_higher_order,
@@ -733,7 +733,7 @@ maybe_specialize_higher_order_call(PredVar, Args, Goal0, Goal, !Info) :-
     KnownVarMap0 = hoi_get_known_var_map(!.Info),
     ( if
         map.search(KnownVarMap0, PredVar, known_const(ConsId, CurriedArgs)),
-        ConsId = closure_cons(ShroudedPredProcId, _)
+        ConsId = closure_cons(ShroudedPredProcId)
     then
         proc(PredId, ProcId) = unshroud_pred_proc_id(ShroudedPredProcId),
         AllArgs = CurriedArgs ++ Args,
@@ -1087,12 +1087,12 @@ maybe_specialize_pred_const(Goal0, Goal, !Info) :-
         ;
             SubInfo = construct_sub_info(no, no)
         ),
-        ConsId0 = closure_cons(ShroudedPredProcId, EvalMethod),
+        ConsId0 = closure_cons(ShroudedPredProcId),
         CalleePredProcId = unshroud_pred_proc_id(ShroudedPredProcId),
         map.contains(NewPredMap, CalleePredProcId),
         proc_info_get_var_table(ProcInfo0, VarTable0),
         lookup_var_type(VarTable0, LVar, LVarType),
-        type_is_higher_order_details(LVarType, _, _, _, ArgTypes)
+        type_is_higher_order_details(LVarType, _, _, ArgTypes)
     then
         proc_info_create_vars_from_types(ModuleInfo, ArgTypes, UncurriedArgs,
             ProcInfo0, ProcInfo1),
@@ -1150,7 +1150,7 @@ maybe_specialize_pred_const(Goal0, Goal, !Info) :-
 
             NewPredProcId = proc(NewPredId, NewProcId),
             NewShroudedPredProcId = shroud_pred_proc_id(NewPredProcId),
-            NewConsId = closure_cons(NewShroudedPredProcId, EvalMethod),
+            NewConsId = closure_cons(NewShroudedPredProcId),
             Unify = construct(LVar, NewConsId, NewArgs, ArgModes,
                 HowToConstruct, CellIsUnique, no_construct_sub_info),
             GoalExpr2 = unify(LVar,
@@ -1329,7 +1329,7 @@ find_higher_order_args(ModuleInfo, CalleeStatus, [Arg | Args],
         % typeclass_infos).
         ConsId \= some_int_const(int_const(_)),
 
-        ( if ConsId = closure_cons(_, _) then
+        ( if ConsId = closure_cons(_) then
             % If we don't have clauses for the callee, we can't specialize
             % any higher-order arguments. We may be able to do user guided
             % type specialization.
@@ -1345,7 +1345,7 @@ find_higher_order_args(ModuleInfo, CalleeStatus, [Arg | Args],
         lookup_var_types(VarTable, CurriedArgs, CurriedArgTypes),
         list.map(rtti_varmaps_var_info(RttiVarMaps), CurriedArgs,
             CurriedArgRttiInfo),
-        ( if ConsId = closure_cons(ShroudedPredProcId, _) then
+        ( if ConsId = closure_cons(ShroudedPredProcId) then
             proc(PredId, _) = unshroud_pred_proc_id(ShroudedPredProcId),
             module_info_pred_info(ModuleInfo, PredId, PredInfo),
             pred_info_get_arg_types(PredInfo, CurriedCalleeArgTypes)
@@ -1529,7 +1529,7 @@ find_matching_version(Info, CalleePredProcId, Args0, HigherOrderArgs,
                 HigherOrder = opt_higher_order,
                 some [HOArg] (
                     list.member(HOArg, HigherOrderArgs),
-                    HOArg ^ hoa_cons_id = closure_cons(_, _)
+                    HOArg ^ hoa_cons_id = closure_cons(_)
                 )
             ;
                 TypeSpec = spec_types

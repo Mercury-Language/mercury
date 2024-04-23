@@ -296,7 +296,7 @@ ml_generate_test_rval_has_cons_tag_direct(Info, VarRval, Type,
                 MaskedVarRval, ConstPrimSecRval)
         )
     ;
-        ( ConsTag = closure_tag(_, _, _)
+        ( ConsTag = closure_tag(_, _)
         ; ConsTag = type_ctor_info_tag(_, _, _)
         ; ConsTag = base_typeclass_info_tag(_, _, _)
         ; ConsTag = type_info_const_tag(_)

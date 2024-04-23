@@ -239,7 +239,7 @@ ml_generate_construction_unification(LHSVar, ConsId, RHSVars, ArgModes,
             RHSVars, ArgModes, Context, Stmts, !Info),
         Defns = []
     ;
-        ConsTag = closure_tag(PredId, ProcId, _EvalMethod),
+        ConsTag = closure_tag(PredId, ProcId),
         ml_construct_closure(PredId, ProcId, LHSVar, RHSVars, ArgModes,
             HowToConstruct, Context, Defns, Stmts, !Info)
     ).
@@ -772,7 +772,7 @@ ml_gen_box_or_unbox_const_rval_hld(ModuleInfo, Context, ArgType, FieldType,
         ( FieldType = defined_type(_, _, _)
         ; FieldType = builtin_type(_)
         ; FieldType = tuple_type(_, _)
-        ; FieldType = higher_order_type(_, _, _, _, _)
+        ; FieldType = higher_order_type(_, _, _, _)
         ; FieldType = apply_n_type(_, _, _)
         ; FieldType = kinded_type(_, _)
         ),
@@ -1389,7 +1389,7 @@ ml_generate_ground_term_conjunct(ModuleInfo, Target, HighLevelData, VarTable,
         % Lambda expressions cannot occur in from_ground_term_construct scopes
         % during code generation, because if they do occur there originally,
         % semantic analysis will change the scope reason to something else.
-        ConsTag = closure_tag(_, _, _),
+        ConsTag = closure_tag(_, _),
         unexpected($pred, "unexpected closure")
     ).
 
@@ -1657,7 +1657,7 @@ ml_gen_const_struct(Info, ConstNum - ConstStruct, !ConstStructMap,
         GroundTerm = ml_ground_term(Rval, Type, MLDS_Type),
         map.det_insert(ConstNum, GroundTerm, !ConstStructMap)
     ;
-        ConsTag = closure_tag(_, _, _),
+        ConsTag = closure_tag(_, _),
         % We do not put closures into static data.
         unexpected($pred, "unexpected closure")
     ).
@@ -1889,7 +1889,7 @@ ml_gen_const_struct_arg_tag(ConsTag, Type, MLDS_Type, Rval) :-
         % build structures.
         ; ConsTag = local_args_tag(_)
         % These tag should never occur in constant data.
-        ; ConsTag = closure_tag(_, _, _)
+        ; ConsTag = closure_tag(_, _)
         ; ConsTag = tabling_info_tag(_, _)
         % These tags should never occur in MLDS grades.
         ; ConsTag = deep_profiling_proc_layout_tag(_, _)

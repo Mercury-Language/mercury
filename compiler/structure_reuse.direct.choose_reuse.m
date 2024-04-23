@@ -1053,7 +1053,7 @@ cons_has_normal_fields(ModuleInfo, ConsId) :-
         % as not having normal fields more by accident than by design.
         fail
     ;
-        ( ConsId = closure_cons(_, _)
+        ( ConsId = closure_cons(_)
         ; ConsId = some_int_const(_)
         ; ConsId = float_const(_)
         ; ConsId = char_const(_)

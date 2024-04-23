@@ -554,7 +554,7 @@ check_for_type_bound_insts(ForTypeKind, [BoundInst | BoundInsts],
         )
     ;
         ( ConsId = tuple_cons(_)
-        ; ConsId = closure_cons(_, _)
+        ; ConsId = closure_cons(_)
         ; ConsId = impl_defined_const(_)
         ; ConsId = type_ctor_info_const(_, _, _)
         ; ConsId = base_typeclass_info_const(_, _, _, _)
@@ -702,7 +702,7 @@ get_possible_types_for_bound_inst(FunctorsToTypesMap, BoundInst, MaybeTypes) :-
         ConsId = string_const(_),
         MaybeTypes = yes([type_builtin(builtin_type_string)])
     ;
-        ( ConsId = closure_cons(_, _)
+        ( ConsId = closure_cons(_)
         ; ConsId = impl_defined_const(_)
         ; ConsId = type_ctor_info_const(_, _, _)
         ; ConsId = base_typeclass_info_const(_, _, _, _)

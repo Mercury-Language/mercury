@@ -67,8 +67,8 @@ simplify_goal_unify(GoalExpr0, GoalExpr, GoalInfo0, GoalInfo,
         NestedContext0, InstMap0, !Common, !Info) :-
     GoalExpr0 = unify(LHSVar0, RHS0, UnifyMode, Unification0, UnifyContext),
     (
-        RHS0 = rhs_lambda_goal(Purity, Groundness, PredOrFunc, EvalMethod,
-            NonLocals, VarsModes, LambdaDeclaredDetism, LambdaGoal0),
+        RHS0 = rhs_lambda_goal(Purity, Groundness, PredOrFunc, NonLocals,
+            VarsModes, LambdaDeclaredDetism, LambdaGoal0),
         determinism_to_code_model(LambdaDeclaredDetism, LambdaCodeModel),
         (
             ( LambdaCodeModel = model_det
@@ -105,8 +105,8 @@ simplify_goal_unify(GoalExpr0, GoalExpr, GoalInfo0, GoalInfo,
         simplify_goal(LambdaGoal0, LambdaGoal, LambdaNestedContext,
             LambdaInstMap0, LambdaCommon0, _, !Info),
 
-        RHS = rhs_lambda_goal(Purity, Groundness, PredOrFunc, EvalMethod,
-            NonLocals, VarsModes, LambdaDeclaredDetism, LambdaGoal),
+        RHS = rhs_lambda_goal(Purity, Groundness, PredOrFunc, NonLocals,
+            VarsModes, LambdaDeclaredDetism, LambdaGoal),
         GoalExpr = unify(LHSVar0, RHS, UnifyMode, Unification0, UnifyContext),
         GoalInfo = GoalInfo0
     ;

@@ -1997,14 +1997,13 @@ replace_in_type_maybe_record_use_2(MaybeRecord, TypeEqvMap,
         Changed = unchanged,
         Circ = set.init
     ;
-        Type0 = higher_order_type(PorF, Args0, HOInstInfo, Purity, EvalMethod),
+        Type0 = higher_order_type(PorF, Args0, HOInstInfo, Purity),
         replace_in_type_list_location_circ_2(MaybeRecord, TypeEqvMap,
             TypeCtorsAlreadyExpanded, Args0, Args, Changed, set.init, Circ,
             !TVarSet, !EquivTypeInfo, !UsedModules),
         (
             Changed = changed,
-            Type = higher_order_type(PorF, Args, HOInstInfo, Purity,
-                EvalMethod)
+            Type = higher_order_type(PorF, Args, HOInstInfo, Purity)
         ;
             Changed = unchanged,
             Type = Type0
@@ -2531,7 +2530,7 @@ replace_in_pred_types_and_maybe_modes(MaybeRecord, PredName, PredOrFunc,
             WithType0, WithType, _, !TVarSet, !EquivTypeInfo, !UsedModules),
         ( if
             type_is_higher_order_details(WithType, _Purity, PredOrFunc,
-                _EvalMethod, ExtraTypesPrime)
+                ExtraTypesPrime)
         then
             ExtraTypes = ExtraTypesPrime,
             !:Specs = []

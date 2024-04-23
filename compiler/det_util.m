@@ -195,7 +195,7 @@ interpret_unify(LHSVar, RHS, !Subst) :-
         cons_id_and_args_to_term(ConsId, RHSArgTerms, RHSTerm),
         unify_terms(variable(LHSVar, dummy_context), RHSTerm, !Subst)
     ;
-        RHS = rhs_lambda_goal(_, _, _, _, _, _, _, _)
+        RHS = rhs_lambda_goal(_, _, _, _, _, _, _)
         % For ease of implementation, we just ignore unifications
         % with lambda terms. This is a safe approximation, it just prevents us
         % from optimizing them as well as we would like.

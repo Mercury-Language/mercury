@@ -870,7 +870,7 @@ convert_type_to_mercury(RvalStr, Type, TargetArgLoc, ConvertedRvalStr) :-
     ;
         ( Type = type_variable(_, _)
         ; Type = defined_type(_, _, _)
-        ; Type = higher_order_type(_, _, _, _, _)
+        ; Type = higher_order_type(_, _, _, _)
         ; Type = tuple_type(_, _)
         ; Type = apply_n_type(_, _, _)
         ; Type = kinded_type(_, _)
@@ -924,7 +924,7 @@ convert_type_from_mercury(SourceArgLoc, RvalStr, Type, ConvertedRvalStr) :-
     ;
         ( Type = type_variable(_, _)
         ; Type = defined_type(_, _, _)
-        ; Type = higher_order_type(_, _, _, _, _)
+        ; Type = higher_order_type(_, _, _, _)
         ; Type = tuple_type(_, _)
         ; Type = apply_n_type(_, _, _)
         ; Type = kinded_type(_, _)
@@ -1032,7 +1032,7 @@ foreign_const_name_and_tag(Mapping, CtorRepn, !NamesAndTagsCord) :-
     ;
         ( ConsTag = string_tag(_)
         ; ConsTag = float_tag(_)
-        ; ConsTag = closure_tag(_, _, _)
+        ; ConsTag = closure_tag(_, _)
         ; ConsTag = type_ctor_info_tag(_, _, _)
         ; ConsTag = base_typeclass_info_tag(_, _, _)
         ; ConsTag = type_info_const_tag(_)

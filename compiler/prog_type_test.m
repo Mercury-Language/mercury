@@ -50,20 +50,16 @@
     %
 :- pred type_is_higher_order(mer_type::in) is semidet.
 
-    % type_is_higher_order_details(Type, Purity, PredOrFunc, ArgTypes,
-    %   EvalMethod):
+    % type_is_higher_order_details(Type, Purity, PredOrFunc, ArgTypes):
     %
     % Succeeds iff Type is a higher-order predicate or function type with
     % the specified argument types (for functions, the return type is appended
     % to the end of the argument types), purity, and evaluation method.
     %
 :- pred type_is_higher_order_details(mer_type::in, purity::out,
-    pred_or_func::out, lambda_eval_method::out, list(mer_type)::out)
-    is semidet.
-
+    pred_or_func::out, list(mer_type)::out) is semidet.
 :- pred type_is_higher_order_details_det(mer_type::in, purity::out,
-    pred_or_func::out, lambda_eval_method::out, list(mer_type)::out)
-    is det.
+    pred_or_func::out, list(mer_type)::out) is det.
 
 %---------------------------------------------------------------------------%
 
@@ -89,7 +85,7 @@
     % TypeCtor is a higher-order predicate or function type.
     %
 :- pred type_ctor_is_higher_order(type_ctor::in, purity::out,
-    pred_or_func::out, lambda_eval_method::out) is semidet.
+    pred_or_func::out) is semidet.
 
     % type_ctor_is_tuple(TypeCtor) succeeds iff TypeCtor is a tuple type.
     %
@@ -120,7 +116,7 @@
     ;       builtin_type(builtin_type)
     ;       tuple_type(list(mer_type), kind)
     ;       higher_order_type(pred_or_func, list(mer_type), ho_inst_info,
-                purity, lambda_eval_method)
+                purity)
     ;       apply_n_type(tvar, list(mer_type), kind).
 
     % Remove the kind annotation at the top-level if there is one,
@@ -153,18 +149,17 @@ type_is_tuple(Type, ArgTypes) :-
     strip_kind_annotation(Type) = tuple_type(ArgTypes, _).
 
 type_is_higher_order(Type) :-
-    strip_kind_annotation(Type) = higher_order_type(_, _, _, _, _).
+    strip_kind_annotation(Type) = higher_order_type(_, _, _, _).
 
-type_is_higher_order_details(Type, Purity, PredOrFunc, EvalMethod, ArgTypes) :-
+type_is_higher_order_details(Type, Purity, PredOrFunc, ArgTypes) :-
     strip_kind_annotation(Type) =
-        higher_order_type(PredOrFunc, ArgTypes, _HOInstInfo, Purity,
-            EvalMethod).
+        higher_order_type(PredOrFunc, ArgTypes, _HOInstInfo, Purity).
 
-type_is_higher_order_details_det(Type, !:Purity, !:PredOrFunc, !:EvalMethod,
+type_is_higher_order_details_det(Type, !:Purity, !:PredOrFunc,
         !:PredArgTypes) :-
     ( if
         type_is_higher_order_details(Type, !:Purity, !:PredOrFunc,
-            !:EvalMethod, !:PredArgTypes)
+            !:PredArgTypes)
     then
         true
     else
@@ -195,10 +190,10 @@ type_is_ground(Type, GroundType) :-
         types_are_ground(ArgTypes, GroundArgTypes),
         GroundType = tuple_type(GroundArgTypes, Kind)
     ;
-        Type = higher_order_type(PorF, ArgTypes, HoInstInfo, Purity, EM),
+        Type = higher_order_type(PorF, ArgTypes, HoInstInfo, Purity),
         types_are_ground(ArgTypes, GroundArgTypes),
-        GroundType = higher_order_type(PorF, GroundArgTypes, HoInstInfo,
-            Purity, EM)
+        GroundType =
+            higher_order_type(PorF, GroundArgTypes, HoInstInfo, Purity)
     ;
         Type = kinded_type(SubType, Kind),
         type_is_ground(SubType, GroundSubType),
@@ -225,7 +220,7 @@ type_is_nonground(Type) :-
 
 %---------------------------------------------------------------------------%
 
-type_ctor_is_higher_order(TypeCtor, Purity, PredOrFunc, EvalMethod) :-
+type_ctor_is_higher_order(TypeCtor, Purity, PredOrFunc) :-
     % Please keep this code in sync with classify_type_ctor_if_special.
     % XXX Unlike classify_type_ctor_if_special, this code here does NOT test
     % for mercury_public_builtin_module as ModuleSymName. This preserves
@@ -237,16 +232,13 @@ type_ctor_is_higher_order(TypeCtor, Purity, PredOrFunc, EvalMethod) :-
         ModuleSymName = unqualified(Qualifier),
         (
             Qualifier = "impure",
-            Purity = purity_impure,
-            EvalMethod = lambda_normal
+            Purity = purity_impure
         ;
             Qualifier = "semipure",
-            Purity = purity_semipure,
-            EvalMethod = lambda_normal
+            Purity = purity_semipure
         )
     ;
         SymName = unqualified(PorFStr),
-        EvalMethod = lambda_normal,
         Purity = purity_pure
     ),
     (
@@ -273,7 +265,7 @@ type_ctor_is_bitmap(type_ctor(qualified(unqualified("bitmap"), "bitmap"), 0)).
 
 type_has_variable_arity_ctor(Type, TypeCtor, ArgTypes) :-
     ( if
-        type_is_higher_order_details(Type, _Purity, PredOrFunc, _, ArgTypes0)
+        type_is_higher_order_details(Type, _Purity, PredOrFunc, ArgTypes0)
     then
         ArgTypes = ArgTypes0,
         PredOrFuncStr = parse_tree_out_misc.pred_or_func_to_str(PredOrFunc),
@@ -299,7 +291,7 @@ strip_kind_annotation(Type0) = Type :-
         ; Type0 = defined_type(_, _, _)
         ; Type0 = builtin_type(_)
         ; Type0 = tuple_type(_, _)
-        ; Type0 = higher_order_type(_, _, _, _, _)
+        ; Type0 = higher_order_type(_, _, _, _)
         ; Type0 = apply_n_type(_, _, _)
         ),
         Type = coerce(Type0)

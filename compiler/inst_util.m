@@ -387,7 +387,7 @@ get_cons_id_arg_types(ModuleInfo, Type, ConsId, Arity, Types) :-
     ).
 
 get_higher_order_arg_types(Type, Arity, Types) :-
-    ( if type_is_higher_order_details(Type, _, _, _, ArgTypes) then
+    ( if type_is_higher_order_details(Type, _, _, ArgTypes) then
         Types = ArgTypes
     else
         list.duplicate(Arity, no_type_available, Types)

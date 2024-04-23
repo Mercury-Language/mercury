@@ -337,7 +337,7 @@ propagate_type_into_inst_eagerly(ModuleInfo, Context, Type, Constructors,
         (
             HOInstInfo0 = none_or_default_func,
             ( if
-                type_is_higher_order_details(Type, _, pf_function, _, ArgTypes)
+                type_is_higher_order_details(Type, _, pf_function, ArgTypes)
             then
                 default_higher_order_func_inst(ModuleInfo, Context, ArgTypes,
                     HigherOrderInstInfo, !Cache, !Errors),
@@ -362,7 +362,7 @@ propagate_type_into_inst_eagerly(ModuleInfo, Context, Type, Constructors,
             PredInstInfo0 =
                 pred_inst_info(PredOrFunc, Modes0, MaybeArgRegs, Detism),
             ( if
-                type_is_higher_order_details(Type, _, PredOrFunc, _, ArgTypes),
+                type_is_higher_order_details(Type, _, PredOrFunc, ArgTypes),
                 list.same_length(ArgTypes, Modes0)
             then
                 PredFormArity = arg_list_arity(ArgTypes),
@@ -385,7 +385,7 @@ propagate_type_into_inst_eagerly(ModuleInfo, Context, Type, Constructors,
         (
             HOInstInfo0 = none_or_default_func,
             ( if
-                type_is_higher_order_details(Type, _, pf_function, _, ArgTypes)
+                type_is_higher_order_details(Type, _, pf_function, ArgTypes)
             then
                 default_higher_order_func_inst(ModuleInfo, Context, ArgTypes,
                     PredInstInfo, !Cache, !Errors),
@@ -413,7 +413,7 @@ propagate_type_into_inst_eagerly(ModuleInfo, Context, Type, Constructors,
             PredInstInfo0 =
                 pred_inst_info(PredOrFunc, Modes0, MaybeArgRegs, Detism),
             ( if
-                type_is_higher_order_details(Type, _, PredOrFunc, _, ArgTypes),
+                type_is_higher_order_details(Type, _, PredOrFunc, ArgTypes),
                 list.same_length(ArgTypes, Modes0)
             then
                 PredFormArity = arg_list_arity(ArgTypes),
@@ -475,7 +475,7 @@ propagate_type_into_inst_lazily(ModuleInfo, Context, Type, Inst0, Inst,
         (
             HOInstInfo0 = none_or_default_func,
             ( if
-                type_is_higher_order_details(Type, _, pf_function, _, ArgTypes)
+                type_is_higher_order_details(Type, _, pf_function, ArgTypes)
             then
                 default_higher_order_func_inst(ModuleInfo, Context, ArgTypes,
                     HOInstInfo, !Cache, !Errors),
@@ -492,7 +492,7 @@ propagate_type_into_inst_lazily(ModuleInfo, Context, Type, Inst0, Inst,
             PredInstInfo0 =
                 pred_inst_info(PredOrFunc, Modes0, MaybeArgRegs, Detism),
             ( if
-                type_is_higher_order_details(Type, _, PredOrFunc, _, ArgTypes),
+                type_is_higher_order_details(Type, _, PredOrFunc, ArgTypes),
                 list.same_length(ArgTypes, Modes0)
             then
                 PredFormArity = arg_list_arity(ArgTypes),
@@ -515,7 +515,7 @@ propagate_type_into_inst_lazily(ModuleInfo, Context, Type, Inst0, Inst,
         (
             HOInstInfo0 = none_or_default_func,
             ( if
-                type_is_higher_order_details(Type, _, pf_function, _, ArgTypes)
+                type_is_higher_order_details(Type, _, pf_function, ArgTypes)
             then
                 default_higher_order_func_inst(ModuleInfo, Context, ArgTypes,
                     HOInstInfo, !Cache, !Errors),
@@ -528,7 +528,7 @@ propagate_type_into_inst_lazily(ModuleInfo, Context, Type, Inst0, Inst,
             PredInstInfo0 =
                 pred_inst_info(PredOrFunc, Modes0, MaybeArgRegs, Detism),
             ( if
-                type_is_higher_order_details(Type, _, PredOrFunc, _, ArgTypes),
+                type_is_higher_order_details(Type, _, PredOrFunc, ArgTypes),
                 list.same_length(ArgTypes, Modes0)
             then
                 PredFormArity = arg_list_arity(ArgTypes),
@@ -692,7 +692,7 @@ propagate_type_into_bound_inst(ModuleInfo, Context, Type, Inst0, Inst,
             BoundInsts, Inst)
     ;
         ( Type = type_variable(_, _)
-        ; Type = higher_order_type(_, _, _, _, _)
+        ; Type = higher_order_type(_, _, _, _)
         ; Type = apply_n_type(_, _, _)
         ),
         % Type variables have no info to propagate into an inst.

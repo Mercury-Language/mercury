@@ -223,7 +223,7 @@ ml_generate_det_deconstruction(LHSVar, ConsId, RHSVars, ArgModes, Context,
         ; ConsTag = deep_profiling_proc_layout_tag(_, _)
         ; ConsTag = tabling_info_tag(_, _)
         ; ConsTag = table_io_entry_tag(_, _)
-        ; ConsTag = closure_tag(_, _, _)
+        ; ConsTag = closure_tag(_, _)
         ),
         unexpected($pred, "unexpected tag")
     ;

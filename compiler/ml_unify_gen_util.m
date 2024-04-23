@@ -478,7 +478,7 @@ ml_tag_ptag_and_initial_offset(ConsTag, Ptag, InitOffset) :-
         ; ConsTag = foreign_tag(_, _)
         ; ConsTag = float_tag(_Float)
         ; ConsTag = dummy_tag
-        ; ConsTag = closure_tag(_, _, _)
+        ; ConsTag = closure_tag(_, _)
         ; ConsTag = type_ctor_info_tag(_, _, _)
         ; ConsTag = base_typeclass_info_tag(_, _, _)
         ; ConsTag = type_info_const_tag(_)

@@ -509,7 +509,7 @@ higher_order_args_match(RequestArgs, [], [], match_is_partial) :-
     not (
         some [RequestArg] (
             list.member(RequestArg, RequestArgs),
-            RequestArg ^ hoa_cons_id = closure_cons(_, _)
+            RequestArg ^ hoa_cons_id = closure_cons(_)
         )
     ).
 higher_order_args_match([RequestArg | RequestArgs], [VersionArg | VersionArgs],
@@ -543,7 +543,7 @@ higher_order_args_match([RequestArg | RequestArgs], [VersionArg | VersionArgs],
         % All the higher-order arguments in the request must be present
         % in the version for a match. If there is no such version, we should
         % create a new one.
-        ConsIdR \= closure_cons(_, _),
+        ConsIdR \= closure_cons(_),
         higher_order_args_match(RequestArgs, [VersionArg | VersionArgs],
             Args, _),
         FullOrPartial = match_is_partial

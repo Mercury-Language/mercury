@@ -1869,7 +1869,7 @@ do_own_stack_transform(Detism, OrigGoal, Statistics, PredId, ProcId,
         !VarTable, ConsumerVar),
 
     ShroudedPredProcId = shroud_pred_proc_id(proc(GeneratorPredId, ProcId)),
-    GeneratorConsId = closure_cons(ShroudedPredProcId, lambda_normal),
+    GeneratorConsId = closure_cons(ShroudedPredProcId),
     make_const_construction(Context, GeneratorPredVar, GeneratorConsId,
         MakeGeneratorVarGoal),
 

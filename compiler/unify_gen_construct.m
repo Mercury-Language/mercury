@@ -276,11 +276,11 @@ generate_construction_unification(LHSVar, ConsId, RHSVars, ArgModes,
         generate_direct_arg_construct(LHSVar, RHSVar, Ptag,
             ArgMode, Type, Code, !.CI, !CLD)
     ;
-        ConsTag = closure_tag(PredId, ProcId, EvalMethod),
+        ConsTag = closure_tag(PredId, ProcId),
         expect(unify(TakeAddr, []), $pred, "closure_tag has take_addr"),
         expect(unify(MaybeSize, no), $pred, "closure_tag has size"),
-        construct_closure(PredId, ProcId, EvalMethod, LHSVar, RHSVars,
-            GoalInfo, Code, !CI, !CLD)
+        construct_closure(PredId, ProcId, LHSVar, RHSVars, GoalInfo, Code,
+            !CI, !CLD)
     ).
 
     % Create a list of cell_args for the argument words or double words
@@ -1015,7 +1015,7 @@ generate_ground_term_conjunct(ModuleInfo, ExprnOpts, Goal,
         % Lambda expressions cannot occur in from_ground_term_construct scopes
         % during code generation, because if they do occur there originally,
         % semantic analysis will change the scope reason to something else.
-        ConsTag = closure_tag(_, _, _),
+        ConsTag = closure_tag(_, _),
         unexpected($pred, "unexpected closure")
     ).
 
@@ -1256,7 +1256,7 @@ generate_const_struct_rval(ModuleInfo, UnboxedFloats, UnboxedInt64s,
         ; ConsTag = deep_profiling_proc_layout_tag(_, _)
         ; ConsTag = tabling_info_tag(_, _)
         ; ConsTag = table_io_entry_tag(_, _)
-        ; ConsTag = closure_tag(_, _, _)
+        ; ConsTag = closure_tag(_, _)
         ),
         unexpected($pred, "unexpected tag")
     ).
@@ -1439,7 +1439,7 @@ generate_const_struct_arg_tag(UnboxedFloats, UnboxedInt64s,
         ; ConsTag = local_args_tag(_)
         ; ConsTag = no_tag
         ; ConsTag = direct_arg_tag(_)
-        ; ConsTag = closure_tag(_, _, _)
+        ; ConsTag = closure_tag(_, _)
         ),
         unexpected($pred, "unexpected tag")
     ).

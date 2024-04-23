@@ -870,7 +870,7 @@ arg_insts_match_ctor_subtypes_2(ModuleInfo,
         ( Inst = ground(_, HOInstInfo)
         ; Inst = any(_, HOInstInfo)
         ),
-        ConsArg ^ arg_type = higher_order_type(_, _, TypeHOInstInfo, _, _),
+        ConsArg ^ arg_type = higher_order_type(_, _, TypeHOInstInfo, _),
         TypeHOInstInfo = higher_order(TypePredInst)
     then
         HOInstInfo = higher_order(PredInst),
@@ -914,7 +914,7 @@ propagate_ctor_subtypes_into_arg_insts_2([_ | _], [], _) :-
 propagate_ctor_subtypes_into_arg_insts_2([ConsArg | ConsArgs],
         [Inst0 | Insts0], [Inst | Insts]) :-
     ( if
-        ConsArg ^ arg_type = higher_order_type(_, _, TypeHOInstInfo, _, _),
+        ConsArg ^ arg_type = higher_order_type(_, _, TypeHOInstInfo, _),
         TypeHOInstInfo = higher_order(_),
         (
             Inst0 = ground(Uniq, _),

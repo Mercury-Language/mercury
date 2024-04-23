@@ -355,13 +355,13 @@ expand_lambdas_in_cases([Case0 | Cases0], [Case | Cases], !Info) :-
 expand_lambdas_in_unify_goal(LHSVar, RHS0, UnifyMode, Unification0,
         UnifyContext, GoalExpr, !Info) :-
     (
-        RHS0 = rhs_lambda_goal(Purity, Groundness, PredOrFunc, EvalMethod,
-            NonLocals, ArgVarsModes, Detism, LambdaGoal0),
+        RHS0 = rhs_lambda_goal(Purity, Groundness, PredOrFunc, NonLocals,
+            ArgVarsModes, Detism, LambdaGoal0),
         % First, process the lambda goal recursively, in case it contains
         % some nested lambda expressions.
         expand_lambdas_in_goal(LambdaGoal0, LambdaGoal, !Info),
-        RHS = rhs_lambda_goal(Purity, Groundness, PredOrFunc, EvalMethod,
-            NonLocals, ArgVarsModes, Detism, LambdaGoal),
+        RHS = rhs_lambda_goal(Purity, Groundness, PredOrFunc, NonLocals,
+            ArgVarsModes, Detism, LambdaGoal),
         (
             Unification0 = construct(_, _, _, _, _, _, _),
             % Then, convert the lambda expression into a new predicate.
@@ -390,8 +390,8 @@ expand_lambda(RegWrapperProc, LHSVar, RHS0, UnifyMode,
     LambdaInfo0 = lambda_info(ModuleInfo0, OrigPredInfo, TVarSet, InstVarSet,
         VarTable, RttiVarMaps, HasParallelConj,
         MustRecomputeNonLocals0, _HaveExpandedLambdas),
-    RHS0 = rhs_lambda_goal(_Purity, _Groundness, PredOrFunc, EvalMethod,
-        RHSNonLocals, VarsModes, Detism, LambdaGoal),
+    RHS0 = rhs_lambda_goal(_Purity, _Groundness, PredOrFunc, RHSNonLocals,
+        VarsModes, Detism, LambdaGoal),
     assoc_list.keys(VarsModes, Vars),
     Unification0 = construct(Var, _, ArgVars0, ArgUnifyModes0, _, _, _),
     trace [compiletime(flag("lambda_sanity_check"))]
@@ -424,7 +424,7 @@ expand_lambda(RegWrapperProc, LHSVar, RHS0, UnifyMode,
             LambdaInfo0, ModuleInfo)
     ),
     ShroudedPredProcId = shroud_pred_proc_id(proc(PredId, ProcId)),
-    ConsId = closure_cons(ShroudedPredProcId, EvalMethod),
+    ConsId = closure_cons(ShroudedPredProcId),
     RHS = rhs_functor(ConsId, is_not_exist_constr, ArgVars),
     Unification = construct(Var, ConsId, ArgVars, ArgUnifyModes,
         construct_dynamically, cell_is_unique, no_construct_sub_info),
@@ -519,8 +519,8 @@ create_new_pred_for_lambda(RegWrapperProc, RHS0, OrigVars, ArgVars,
     LambdaInfo0 = lambda_info(!:ModuleInfo, OrigPredInfo, TVarSet,
         InstVarSet, VarTable, RttiVarMaps, HasParallelConj,
         MustRecomputeNonLocals0, _HaveExpandedLambdas),
-    RHS0 = rhs_lambda_goal(Purity, _Groundness, PredOrFunc, _EvalMethod,
-        _ClosureVars, LambdaVarsModes, Detism, LambdaGoal),
+    RHS0 = rhs_lambda_goal(Purity, _Groundness, PredOrFunc, _ClosureVars,
+        LambdaVarsModes, Detism, LambdaGoal),
     assoc_list.keys_and_values(LambdaVarsModes, LambdaVars, LambdaVarModes),
     LambdaGoal = hlds_goal(_, LambdaGoalInfo),
 
@@ -893,8 +893,7 @@ find_used_vars_in_unify_rhs(RHS, !VarUses) :-
         RHS = rhs_functor(_, _, ArgVars),
         mark_vars_as_used(ArgVars, !VarUses)
     ;
-        RHS = rhs_lambda_goal(_, _, _, _, NonLocals, ArgVarsModes,
-            _, LambdaGoal),
+        RHS = rhs_lambda_goal(_, _, _, NonLocals, ArgVarsModes, _, LambdaGoal),
         assoc_list.keys(ArgVarsModes, ArgVars),
         mark_vars_as_used(NonLocals, !VarUses),
         mark_vars_as_used(ArgVars, !VarUses),

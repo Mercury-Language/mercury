@@ -926,7 +926,7 @@ unify_rhs_used_modules(RHS, !UsedModules) :-
         RHS = rhs_functor(ConsId, _, _),
         cons_id_used_modules(visibility_private, ConsId, !UsedModules)
     ;
-        RHS = rhs_lambda_goal(_, _, _, _, _, _, _, Goal),
+        RHS = rhs_lambda_goal(_, _, _, _, _, _, Goal),
         hlds_goal_used_modules(Goal, !UsedModules)
     ).
 
@@ -947,7 +947,7 @@ cons_id_used_modules(Visibility, ConsId, !UsedModules) :-
             !UsedModules)
     ;
         ( ConsId = tuple_cons(_)
-        ; ConsId = closure_cons(_, _)
+        ; ConsId = closure_cons(_)
         ; ConsId = some_int_const(_)
         ; ConsId = float_const(_)
         ; ConsId = char_const(_)
@@ -999,7 +999,7 @@ mer_type_used_modules(Visibility, Type, !UsedModules) :-
                 !UsedModules)
         )
     ;
-        Type = higher_order_type(_, Args, HOInstInfo, _, _),
+        Type = higher_order_type(_, Args, HOInstInfo, _),
         list.foldl(mer_type_used_modules(Visibility), Args, !UsedModules),
         ho_inst_info_used_modules(Visibility, HOInstInfo, !UsedModules)
     ;

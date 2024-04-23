@@ -754,7 +754,7 @@ cons_id_to_alloc_site_string(ConsId) = TypeStr :-
         ConsId = tuple_cons(Arity),
         TypeStr = "{}/" ++ string.from_int(Arity)
     ;
-        ConsId = closure_cons(_, _),
+        ConsId = closure_cons(_),
         TypeStr = "closure"
     ;
         ConsId = type_info_cell_constructor(_),

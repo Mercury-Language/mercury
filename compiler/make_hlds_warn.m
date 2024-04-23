@@ -458,7 +458,7 @@ warn_singletons_in_unify(X, RHS, GoalInfo, QuantVars, !Info) :-
             !Info)
     ;
         RHS = rhs_lambda_goal(_Purity, _Groundness, _PredOrFunc,
-            _Eval, _NonLocals, ArgVarsModes, _Det, LambdaGoal),
+            _NonLocals, ArgVarsModes, _Det, LambdaGoal),
         assoc_list.keys(ArgVarsModes, ArgVars),
         % Warn if any lambda-quantified variables occur only in the quantifier.
         LambdaGoal = hlds_goal(_, LambdaGoalInfo),

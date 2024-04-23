@@ -758,9 +758,9 @@ equal_unification(RhsA, RhsB, !Subst) :-
         RhsB = rhs_functor(ConsId, E, VarsB),
         equal_vars(VarsA, VarsB, !Subst)
     ;
-        RhsA = rhs_lambda_goal(Purity, Groundness, PredOrFunc, EvalMethod,
+        RhsA = rhs_lambda_goal(Purity, Groundness, PredOrFunc,
             NonLocalVarsA, ArgVarsModesA, Det, GoalA),
-        RhsB = rhs_lambda_goal(Purity, Groundness, PredOrFunc, EvalMethod,
+        RhsB = rhs_lambda_goal(Purity, Groundness, PredOrFunc,
             NonLocalVarsB, ArgVarsModesB, Det, GoalB),
         assoc_list.keys(ArgVarsModesA, ArgVarsA),
         assoc_list.keys(ArgVarsModesB, ArgVarsB),

@@ -50,8 +50,8 @@
     prog_var, prog_var, type_assign_set) = error_spec.
 
 :- func report_error_unify_var_lambda(typecheck_info, unify_context,
-    prog_context, pred_or_func, lambda_eval_method, prog_var, list(prog_var),
-    type_assign_set) = error_spec.
+    prog_context, pred_or_func, prog_var, list(prog_var), type_assign_set)
+    = error_spec.
 
 :- func report_error_unify_var_functor_result(typecheck_info,
     unify_context, prog_context, prog_var, list(cons_type_info), cons_id,
@@ -259,8 +259,8 @@ report_error_unify_var_var(Info, UnifyContext, Context, X, Y, TypeAssignSet)
 
 %---------------------------------------------------------------------------%
 
-report_error_unify_var_lambda(Info, UnifyContext, Context,
-        PredOrFunc, _EvalMethod, Var, ArgVars, TypeAssignSet) = Spec :-
+report_error_unify_var_lambda(Info, UnifyContext, Context, PredOrFunc,
+        Var, ArgVars, TypeAssignSet) = Spec :-
     typecheck_info_get_error_clause_context(Info, ClauseContext),
     InClauseForPieces = in_clause_for_pieces(ClauseContext),
     unify_context_to_pieces(UnifyContext, InClauseForPieces, ContextPieces),
@@ -1193,7 +1193,7 @@ acc_builtin_type(Type, !BuiltinTypes) :-
         ( Type = type_variable(_, _)
         ; Type = defined_type(_, _, _)
         ; Type = tuple_type(_, _)
-        ; Type = higher_order_type(_, _, _, _, _)
+        ; Type = higher_order_type(_, _, _, _)
         ; Type = apply_n_type(_, _, _)
         ; Type = kinded_type(_, _)
         )
@@ -1620,9 +1620,9 @@ type_diff_pieces(ContextPieces, ExistQTVars, ActualType0, ExpectedType0)
                 ExistQTVars, ActualArgTypes, ExpectedArgTypes)
         ;
             ActualType = higher_order_type(ActualPorF, ActualArgTypes,
-                ActualInstInfo, ActualPurity, _ActualLambdaEvalMethod),
+                ActualInstInfo, ActualPurity),
             ExpectedType = higher_order_type(ExpectedPorF, ExpectedArgTypes,
-                ExpectedInstInfo, ExpectedPurity, _ExpectedLambdaEvalMethod),
+                ExpectedInstInfo, ExpectedPurity),
             % There is only one lambda_eval_method, so that field
             % cannot contain a difference.
             DiffPiecesPrime = higher_order_diff_pieces(ContextPieces,

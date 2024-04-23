@@ -165,7 +165,7 @@ type_pieces(TVarSet, InstVarSet, VarNamePrint, SuffixPieces, Type) = Pieces :-
                 SuffixPieces
         )
     ;
-        Type = higher_order_type(_, _, _, _, _),
+        Type = higher_order_type(_, _, _, _),
         Pieces = higher_order_type_pieces(TVarSet, InstVarSet, VarNamePrint,
             SuffixPieces, Type)
     ).
@@ -185,7 +185,7 @@ maybe_quote_name(Name0) = Name :-
     ).
 
 :- inst mer_type_higher_order for mer_type/0
-    --->    higher_order_type(ground, ground, ground, ground, ground).
+    --->    higher_order_type(ground, ground, ground, ground).
 
 :- func higher_order_type_pieces(tvarset::in, inst_varset::in,
     var_name_print::in, list(format_piece)::in,
@@ -194,8 +194,7 @@ maybe_quote_name(Name0) = Name :-
 
 higher_order_type_pieces(TVarSet, InstVarSet, VarNamePrint, SuffixPieces,
         HigherOrderType) = Pieces :-
-    HigherOrderType = higher_order_type(PorF, ArgTypes, HOInstInfo, Purity,
-        _LambdaEvalMethod),
+    HigherOrderType = higher_order_type(PorF, ArgTypes, HOInstInfo, Purity),
     ( Purity = purity_pure,     PurityPieces = []
     ; Purity = purity_semipure, PurityPieces = [words("semipure")]
     ; Purity = purity_impure,   PurityPieces = [words("impure")]

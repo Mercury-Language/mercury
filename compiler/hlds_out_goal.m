@@ -1113,7 +1113,7 @@ format_unify_rhs_2(InfoGoal, Indent, MaybeType, RHS, !State) :-
             true
         )
     ;
-        RHS = rhs_lambda_goal(Purity, Groundness, PredOrFunc, _EvalMethod,
+        RHS = rhs_lambda_goal(Purity, Groundness, PredOrFunc,
             NonLocals, VarsModes, Det, Goal),
         IndentStr = indent2_string(Indent),
         Indent1 = Indent + 1u,
@@ -1219,7 +1219,7 @@ unify_rhs_to_string(ModuleInfo, VarTable, VarNamePrint, RHS) = Str :-
         Str = functor_cons_id_to_string(ModuleInfo, vns_var_table(VarTable),
             VarNamePrint, ConsId, ArgVars)
     ;
-        RHS = rhs_lambda_goal(_, _, _, _, _, _, _, _),
+        RHS = rhs_lambda_goal(_, _, _, _, _, _, _),
         Str = "lambda goal"
     ).
 

@@ -1231,8 +1231,7 @@ mercury_type_to_strcord(MerType) = Cord :-
                 strcord("}")
         )
     ;
-        MerType = higher_order_type(PorF, ArgTypes, _HoInstInfo, Purity,
-            _LambdaEvalMethod),
+        MerType = higher_order_type(PorF, ArgTypes, _HoInstInfo, Purity),
         (
             Purity = purity_pure,
             PurityCord = cord.init

@@ -878,7 +878,7 @@ dead_proc_examine_goal(ModuleInfo, CurPredProcId, Goal, !Queue, !Needed) :-
             Unification = construct(_, ConsId, _, _, _, _, _),
             (
                 (
-                    ConsId = closure_cons(ShroudedPredProcId, _),
+                    ConsId = closure_cons(ShroudedPredProcId),
                     proc(PredId, ProcId) =
                         unshroud_pred_proc_id(ShroudedPredProcId),
                     Entity = entity_proc(proc(PredId, ProcId)),
@@ -1783,7 +1783,7 @@ pre_modecheck_examine_unify_rhs(RHS, !DeadInfo) :-
             true
         )
     ;
-        RHS = rhs_lambda_goal(_, _, _, _, _, _, _, Goal),
+        RHS = rhs_lambda_goal(_, _, _, _, _, _, Goal),
         pre_modecheck_examine_goal(Goal, !DeadInfo)
     ).
 

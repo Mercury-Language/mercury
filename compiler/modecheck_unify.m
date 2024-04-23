@@ -126,8 +126,7 @@ modecheck_unification(LHSVar, RHS, Unification0, UnifyContext, UnifyGoalInfo0,
             Unification0, UnifyContext, UnifyGoalInfo0, Goal, !ModeInfo)
     ;
         RHS = rhs_lambda_goal(Purity, HOGroundness, _PredOrFunc,
-            _LambdaEvalMethod, LambdaNonLocals, _ArgVarsModes,
-            _Detism, _LambdaGoal),
+            LambdaNonLocals, _ArgVarsModes, _Detism, _LambdaGoal),
         ( if
             Purity \= purity_impure,
             HOGroundness = ho_ground,
@@ -249,16 +248,15 @@ modecheck_unification_functor(X, ConsId, IsExistConstruction, ArgVars0,
         % Note that any changes to this code here will probably need to be
         % duplicated there too.
 
-        type_is_higher_order_details(TypeOfX, Purity, _, EvalMethod,
-            PredArgTypes),
-        ConsId = closure_cons(ShroudedPredProcId, _)
+        type_is_higher_order_details(TypeOfX, Purity, _, PredArgTypes),
+        ConsId = closure_cons(ShroudedPredProcId)
     then
         % Convert the pred term to a lambda expression.
         mode_info_get_module_info(!.ModeInfo, ModuleInfo0),
         mode_info_get_context(!.ModeInfo, Context),
         proc(PredId, ProcId) = unshroud_pred_proc_id(ShroudedPredProcId),
-        convert_pred_to_lambda_goal(ModuleInfo0, Purity, EvalMethod, X,
-            PredId, ProcId, ArgVars0, PredArgTypes, UnifyContext, GoalInfo0,
+        convert_pred_to_lambda_goal(ModuleInfo0, Purity, X, PredId, ProcId,
+            ArgVars0, PredArgTypes, UnifyContext, GoalInfo0,
             Context, MaybeRHS0, VarTable0, VarTable),
         mode_info_set_var_table(VarTable, !ModeInfo),
 
@@ -300,7 +298,7 @@ modecheck_unification_functor(X, ConsId, IsExistConstruction, ArgVars0,
 
 modecheck_unification_rhs_lambda(X, LambdaRHS, Unification0, UnifyContext, _,
         UnifyGoalExpr, !ModeInfo) :-
-    LambdaRHS = rhs_lambda_goal(Purity, Groundness, PredOrFunc, EvalMethod,
+    LambdaRHS = rhs_lambda_goal(Purity, Groundness, PredOrFunc,
         LambdaNonLocals, VarsModes, Det, Goal0),
 
     % First modecheck the lambda goal itself:
@@ -443,7 +441,7 @@ modecheck_unification_rhs_lambda(X, LambdaRHS, Unification0, UnifyContext, _,
         mode_info_set_instmap(InstMap11, !ModeInfo),
 
         % Now modecheck the unification of X with the lambda-expression.
-        RHS0 = rhs_lambda_goal(Purity, Groundness, PredOrFunc, EvalMethod,
+        RHS0 = rhs_lambda_goal(Purity, Groundness, PredOrFunc,
             LambdaNonLocals, VarsModes, Det, Goal),
         modecheck_unify_lambda(X, PredOrFunc, LambdaNonLocals, Modes, Det,
             RHS0, RHS, Unification0, Unification, UnifyMode, !ModeInfo)
@@ -463,7 +461,7 @@ modecheck_unification_rhs_lambda(X, LambdaRHS, Unification0, UnifyContext, _,
             unexpected($pred, "very strange var")
         ),
         % Return any old garbage.
-        RHS = rhs_lambda_goal(Purity, Groundness, PredOrFunc, EvalMethod,
+        RHS = rhs_lambda_goal(Purity, Groundness, PredOrFunc,
             LambdaNonLocals, VarsModes, Det, Goal0),
         UnifyMode = unify_modes_li_lf_ri_rf(free, free, free, free),
         Unification = Unification0
@@ -535,7 +533,7 @@ modecheck_unify_lambda(X, PredOrFunc, ArgVars, LambdaModes, LambdaDetism,
 modecheck_unification_rhs_undetermined_mode_lambda(X, RHS0, Unification,
         UnifyContext, GoalInfo0, Goal, !ModeInfo) :-
     mode_info_get_module_info(!.ModeInfo, ModuleInfo),
-    RHS0 = rhs_lambda_goal(_, _, _, _, _, _, _, Goal0),
+    RHS0 = rhs_lambda_goal(_, _, _, _, _, _, Goal0),
     % Find out the predicate called in the lambda goal.
     ( if
         pred_ids_args_called_from_goal(Goal0, PredIdsArgs0),
@@ -1253,7 +1251,7 @@ modecheck_complicated_unify(X, Y, Type, InitInstX, InitInstY, UnifiedInst,
         mode_info_error(WaitingVars, ModeError, !ModeInfo)
     else if
         % Check that we are not trying to do a higher-order unification.
-        type_is_higher_order_details(Type, _, PredOrFunc, _, _)
+        type_is_higher_order_details(Type, _, PredOrFunc, _)
     then
         % We do not want to report this as an error if it occurs in a
         % compiler-generated predicate. Instead, we delay the error until
@@ -1341,12 +1339,12 @@ categorize_unify_var_lambda(InitInstX, FinalInstX, ArgInsts, X, ArgVars,
             % is considered to be bound. In this case the lambda_goal may
             % not be converted back to a predicate constant, but that does not
             % matter since the code will be pruned away later by simplify.m.
-            ConsId = closure_cons(ShroudedPredProcId, EvalMethod),
+            ConsId = closure_cons(ShroudedPredProcId),
             instmap_is_reachable(InstMap)
         then
             proc(PredId, ProcId) = unshroud_pred_proc_id(ShroudedPredProcId),
             ( if
-                RHS0 = rhs_lambda_goal(_, _, _, EvalMethod, _, _, _, Goal),
+                RHS0 = rhs_lambda_goal(_, _, _, _, _, _, Goal),
                 Goal = hlds_goal(plain_call(PredId, ProcId, _, _, _, _), _)
             then
                 % XXX We used to construct RHS as a rhs_functor whose cons_id
@@ -1466,7 +1464,7 @@ categorize_unify_var_functor(InitInstOfX, FinalInstOfX, FromToInstsOfXArgs,
             CanFail = can_fail,
             mode_info_get_instmap(!.ModeInfo, InstMap0),
             ( if
-                type_is_higher_order_details(TypeOfX, _, PredOrFunc, _, _),
+                type_is_higher_order_details(TypeOfX, _, PredOrFunc, _),
                 instmap_is_reachable(InstMap0)
             then
                 set_of_var.init(WaitingVars),

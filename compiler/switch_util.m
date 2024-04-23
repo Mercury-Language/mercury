@@ -536,7 +536,7 @@ estimate_switch_tag_test_cost(ConsTag) = Cost :-
     ;
         ( ConsTag = no_tag
         ; ConsTag = dummy_tag
-        ; ConsTag = closure_tag(_, _, _)
+        ; ConsTag = closure_tag(_, _)
         ; ConsTag = type_ctor_info_tag(_, _, _)
         ; ConsTag = base_typeclass_info_tag(_, _, _)
         ; ConsTag = type_info_const_tag(_)

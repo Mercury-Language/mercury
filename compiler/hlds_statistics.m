@@ -156,7 +156,7 @@ accumulate_proc_stats_in_goal(Goal, !UsedVars, !Stats) :-
                 !Stats ^ ps_unify_complicateds :=
                     !.Stats ^ ps_unify_complicateds + 1
             ;
-                RHS = rhs_lambda_goal(_, _, _, _, NonLocals, ArgVarsModes,
+                RHS = rhs_lambda_goal(_, _, _, NonLocals, ArgVarsModes,
                     _, LambdaGoal),
                 assoc_list.keys(ArgVarsModes, ArgVars),
                 set_tree234.insert_list(NonLocals, !UsedVars),

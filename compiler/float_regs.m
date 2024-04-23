@@ -290,12 +290,10 @@ add_arg_regs_in_proc_arg(ModuleInfo, RealVarType, ArgMode0, ArgMode) :-
 
 make_generic_type(PolymorphicContext, Type0, Type) :-
     ( if
-        type_is_higher_order_details(Type0, Purity, PredOrFunc, EvalMethod,
-            ArgTypes0)
+        type_is_higher_order_details(Type0, Purity, PredOrFunc, ArgTypes0)
     then
         list.map(make_generic_type(PolymorphicContext), ArgTypes0, ArgTypes),
-        construct_higher_order_type(Purity, PredOrFunc, EvalMethod, ArgTypes,
-            Type)
+        construct_higher_order_type(Purity, PredOrFunc, ArgTypes, Type)
     else if
         type_to_ctor_and_args(Type0, TypeCtor, ArgTypes0)
     then
@@ -381,7 +379,7 @@ add_arg_regs_in_mode_seen(ModuleInfo, Seen, VarType, ArgMode0, ArgMode) :-
 add_arg_regs_in_inst(ModuleInfo, Seen0, Type, Inst0, Inst) :-
     (
         Inst0 = ground(Uniq, higher_order(PredInstInfo0)),
-        ( if type_is_higher_order_details(Type, _, _, _, ArgTypes) then
+        ( if type_is_higher_order_details(Type, _, _, ArgTypes) then
             add_arg_regs_in_pred_inst_info(ModuleInfo, Seen0, ArgTypes,
                 PredInstInfo0, PredInstInfo)
         else
@@ -390,7 +388,7 @@ add_arg_regs_in_inst(ModuleInfo, Seen0, Type, Inst0, Inst) :-
         Inst = ground(Uniq, higher_order(PredInstInfo))
     ;
         Inst0 = any(Uniq, higher_order(PredInstInfo0)),
-        ( if type_is_higher_order_details(Type, _, _, _, ArgTypes) then
+        ( if type_is_higher_order_details(Type, _, _, ArgTypes) then
             add_arg_regs_in_pred_inst_info(ModuleInfo, Seen0, ArgTypes,
                 PredInstInfo0, PredInstInfo)
         else
@@ -775,7 +773,7 @@ insert_reg_wrappers_unify_goal(GoalExpr0, GoalInfo0, Goal, !InstMap, !Info,
             RHS0 = rhs_var(_),
             unexpected($pred, "construct rhs_var")
         ;
-            RHS0 = rhs_lambda_goal(_, _, _, _, _, _, _, _),
+            RHS0 = rhs_lambda_goal(_, _, _, _, _, _, _),
             unexpected($pred, "construct rhs_lambda_goal")
         ),
         (
@@ -900,13 +898,11 @@ insert_reg_wrappers_construct(CellVar, ConsId, OrigVars, Vars,
 
 replace_type_params_by_dummy_vars(Type0, Type, !TVarSet) :-
     ( if
-        type_is_higher_order_details(Type0, Purity, PredOrFunc, EvalMethod,
-            ArgTypes0)
+        type_is_higher_order_details(Type0, Purity, PredOrFunc, ArgTypes0)
     then
         list.map_foldl(replace_type_params_by_dummy_vars, ArgTypes0, ArgTypes,
             !TVarSet),
-        construct_higher_order_type(Purity, PredOrFunc, EvalMethod, ArgTypes,
-            Type)
+        construct_higher_order_type(Purity, PredOrFunc, ArgTypes, Type)
     else
         varset.new_var(TVar, !TVarSet),
         Type = type_variable(TVar, kind_star)
@@ -946,7 +942,7 @@ rebuild_cell_inst(ModuleInfo, InstMap, ConsId, Args, Inst0, Inst) :-
             Inst0 = any(Uniq, higher_order(PredInstInfo0))
         ),
         PredInstInfo0 = pred_inst_info(PredOrFunc, Modes, _, Determinism),
-        ( if ConsId = closure_cons(ShroudedPredProcId, _EvalMethod) then
+        ( if ConsId = closure_cons(ShroudedPredProcId) then
             proc(PredId, _) = unshroud_pred_proc_id(ShroudedPredProcId),
             module_info_pred_info(ModuleInfo, PredId, PredInfo),
             pred_info_get_arg_types(PredInfo, ArgTypes),
@@ -1194,7 +1190,7 @@ insert_reg_wrappers_higher_order_call(CallVar, Vars0, Vars, ArgModes, ArgRegs,
     lambda_info_get_var_table(!.Info, VarTable),
     lookup_var_type(VarTable, CallVar, CallVarType),
     instmap_lookup_var(InstMap0, CallVar, CallVarInst),
-    type_is_higher_order_details_det(CallVarType, _, PredOrFunc, _, ArgTypes),
+    type_is_higher_order_details_det(CallVarType, _, PredOrFunc, ArgTypes),
     list.length(ArgTypes, Arity),
     lookup_pred_inst_info(ModuleInfo, CallVarInst, PredOrFunc, Arity,
         CallVarPredInstInfo),
@@ -1333,13 +1329,11 @@ match_arg(InstMapBefore, Context, ArgType, ExpectInst, OrigVar, Var,
     lambda_info_get_var_table(!.Info, VarTable),
     ( if
         inst_is_bound(ModuleInfo, ExpectInst),
-        type_is_higher_order_details(ArgType, _, PredOrFunc, _,
-            ArgPredArgTypes),
+        type_is_higher_order_details(ArgType, _, PredOrFunc, ArgPredArgTypes),
         ArgPredArgTypes = [_ | _]
     then
         lookup_var_type(VarTable, OrigVar, OrigVarType),
-        type_is_higher_order_details_det(OrigVarType, _, _, _,
-            OrigPredArgTypes),
+        type_is_higher_order_details_det(OrigVarType, _, _, OrigPredArgTypes),
         list.length(OrigPredArgTypes, Arity),
         ( if
             search_pred_inst_info(ModuleInfo, ExpectInst, PredOrFunc, Arity,
@@ -1605,7 +1599,7 @@ create_reg_wrapper(OrigVar, OrigVarPredInstInfo, OuterArgRegs, InnerArgRegs,
     lookup_var_entry(VarTable0, OrigVar, OrigVarEntry),
     OrigVarEntry = vte(_, OrigVarType, OrigVarIsDummy),
     type_is_higher_order_details_det(OrigVarType, Purity, PredOrFunc,
-        EvalMethod, PredArgTypes),
+        PredArgTypes),
 
     % Create variables for the head variables of the wrapper procedure.
     % These are also the variables in the call in the procedure body.
@@ -1640,7 +1634,7 @@ create_reg_wrapper(OrigVar, OrigVarPredInstInfo, OuterArgRegs, InnerArgRegs,
     % Create the wrapper procedure.
     DummyPPId = proc(invalid_pred_id, invalid_proc_id),
     DummyShroudedPPId = shroud_pred_proc_id(DummyPPId),
-    ConsId = closure_cons(DummyShroudedPPId, EvalMethod),
+    ConsId = closure_cons(DummyShroudedPPId),
     LambdaNonLocals = [CallVar],
     InInst = ground(shared, higher_order(OrigVarPredInstInfo)),
     ArgUnifyModes0 = [unify_modes_li_lf_ri_rf(InInst, InInst, InInst, InInst)],
@@ -1651,7 +1645,7 @@ create_reg_wrapper(OrigVar, OrigVarPredInstInfo, OuterArgRegs, InnerArgRegs,
     MainContext = umc_implicit("reg_wrapper"),
     UnifyContext = unify_context(MainContext, []),
     assoc_list.from_corresponding_lists(CallVars, ArgModes, CallVarsArgModes),
-    RHS = rhs_lambda_goal(Purity, ho_ground, PredOrFunc, EvalMethod,
+    RHS = rhs_lambda_goal(Purity, ho_ground, PredOrFunc,
         LambdaNonLocals, CallVarsArgModes, Determinism, CallGoal),
     lambda.expand_lambda(reg_wrapper_proc(RegR_HeadVars), LHSVar, RHS,
         UnifyMode, Unification0, UnifyContext, UnifyGoalExpr, !Info),
