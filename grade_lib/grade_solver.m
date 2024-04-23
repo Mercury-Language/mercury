@@ -249,7 +249,7 @@ solve_absolute(SolverInfo, SolveCounts, Soln) :-
 solve_absolute_loop(AllRequirements, !CurRequirements,
         !.SolverVarPriorities, !.SolverVarMap, !SolveCounts, Soln) :-
     propagate_to_fixpoint(!CurRequirements, !SolverVarMap, !SolveCounts),
-    at_solution(AllRequirements, !.SolverVarMap, MaybeSoln),
+    are_we_at_solution(AllRequirements, !.SolverVarMap, MaybeSoln),
     (
         MaybeSoln = yes(Soln)
     ;
@@ -268,7 +268,7 @@ solve_absolute_loop(AllRequirements, !CurRequirements,
     ;       changed.
 
 :- type maybe_found_failure
-    --->    havent_found_failure
+    --->    have_not_found_failure
     ;       found_failure.
 
 :- pred propagate_to_fixpoint(list(requirement)::in, list(requirement)::out,
@@ -285,12 +285,12 @@ propagate_to_fixpoint(Requirements0, Requirements, !SolverVarMap,
     !SolveCounts ^ sc_num_req_tests := NumReqTests,
 
     propagate_pass(Requirements0, [], RevRequirements1, !SolverVarMap,
-        not_changed, Changed, havent_found_failure, FoundFailure),
+        not_changed, Changed, have_not_found_failure, FoundFailure),
     list.reverse(RevRequirements1, Requirements1),
     trace [compile_time(flag("debug_solver")), io(!IO)]
     (
         (
-            FoundFailure = havent_found_failure,
+            FoundFailure = have_not_found_failure,
             FoundFailureSuffix = ""
         ;
             FoundFailure = found_failure,
@@ -309,7 +309,7 @@ propagate_to_fixpoint(Requirements0, Requirements, !SolverVarMap,
         % The next pass may have one of two results. Either it will return
         % not_changed, in which case the pass is wasted, or it will return
         % changed, with some of the changes being implications of the failure
-        % we have already found. (For example, If X = x1 implies Y in {y1,y2},
+        % we have already found. (For example, if X = x1 implies Y in {y1,y2},
         % then having no possible value left for Y in this pass may leave
         % no possible value for X in the next pass.) However, no further
         % pass can turn the failure back to a success, so there is no point
@@ -321,7 +321,7 @@ propagate_to_fixpoint(Requirements0, Requirements, !SolverVarMap,
         % them from unrelated failures in the same pass?
         Requirements = Requirements1
     ;
-        FoundFailure = havent_found_failure,
+        FoundFailure = have_not_found_failure,
         (
             Changed = not_changed,
             Requirements = Requirements1
@@ -621,12 +621,11 @@ set_values_not_possible_labeling([Value0 | Values0], [Value | Values]) :-
 
 %---------------------------------------------------------------------------%
 
-:- pred at_solution(list(requirement)::in, solver_var_map::in,
+:- pred are_we_at_solution(list(requirement)::in, solver_var_map::in,
     maybe(solution)::out) is det.
 
-at_solution(Requirements, SolverVarMap, MaybeSoln) :-
-    map.foldl2(cnt_poss_classes, SolverVarMap, [], ZeroCntVarIds,
-        0, NumMore),
+are_we_at_solution(Requirements, SolverVarMap, MaybeSoln) :-
+    map.foldl2(cnt_poss_classes, SolverVarMap, [], ZeroCntVarIds, 0, NumMore),
     (
         ZeroCntVarIds = [HeadZeroCntVarId | TailZeroCntVarIds],
         FailureInfo = failure_info(Requirements, SolverVarMap,
@@ -690,13 +689,14 @@ get_poss_values([SolverVarValue | SolverVarValues], PossValueIds) :-
 
 solve_best_installed_grade(SolverInfo, Commit, InstalledGrades0, SolveCounts,
         InstalledGradeSoln) :-
+    list.sort_and_remove_dups(InstalledGrades0, InstalledGrades),
+
     SolverInfo = solver_info(Requirements, SolverVarPriorities, SolverVarMap0),
     SolveCounts0 = solve_counts(0, 0, 0),
     propagate_to_fixpoint(Requirements, _Requirements,
         SolverVarMap0, SolverVarMap, SolveCounts0, SolveCounts),
-    at_solution(Requirements, SolverVarMap, MaybeSoln),
+    are_we_at_solution(Requirements, SolverVarMap, MaybeSoln),
 
-    list.sort_and_remove_dups(InstalledGrades0, InstalledGrades),
     (
         MaybeSoln = yes(Soln),
         (
@@ -732,8 +732,7 @@ solve_best_installed_grade(SolverInfo, Commit, InstalledGrades0, SolveCounts,
         ;
             ViableInstalledGrades =
                 [HeadViableInstalledGrade | TailViableInstalledGrades],
-            pick_best_viable_grade(SolverVarMap,
-                SolverVarPriorities, Commit,
+            pick_best_viable_grade(SolverVarMap, SolverVarPriorities, Commit,
                 HeadViableInstalledGrade, TailViableInstalledGrades,
                 MaybeBestInstalledGrade),
             (
@@ -1125,8 +1124,7 @@ solver_var_value_in_set(ValueIds, VarValue) :-
     solver_var_id::in, solver_var_value::in,
     list(why_var_is_not_value)::in, list(why_var_is_not_value)::out) is det.
 
-accumulate_why_var_is_not_values(FailureInfo, _VarId, VarValue,
-        !RevWhyNots) :-
+accumulate_why_var_is_not_values(FailureInfo, _VarId, VarValue, !RevWhyNots) :-
     VarValue = solver_var_value(ValueId, Possible),
     (
         Possible = is_possible

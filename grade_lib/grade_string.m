@@ -98,7 +98,8 @@ link_grade_str_llc_par_version = "1".
 
 grade_structure_to_grade_string(WhichGradeString, GradeStructure) = GradeStr :-
     (
-        GradeStructure = grade_pregen(PregenKind),
+        GradeStructure = grade_pregen(PregenGrade),
+        PregenGrade = pregen_grade(PregenKind),
         ( PregenKind = pregen_mlds_hlc,             BaseStr = "hlc"
         ; PregenKind = pregen_llds_none,            BaseStr = "none"
         ; PregenKind = pregen_llds_reg,             BaseStr = "reg"
@@ -112,7 +113,8 @@ grade_structure_to_grade_string(WhichGradeString, GradeStructure) = GradeStr :-
             GradeComponents = [BaseStr, "tags2", "pregen"]
         )
     ;
-        GradeStructure = grade_llds(GccConf, StackLen, LLDSTSMinModel,
+        GradeStructure = grade_llds(LldsGrade),
+        LldsGrade = llds_grade(GccConf, StackLen, LLDSTSMinModel,
             MercFile, LowTagBits, MercFloat),
 
         BinaryCompatStrs = binary_compat_version_to_strs(WhichGradeString),
@@ -124,13 +126,13 @@ grade_structure_to_grade_string(WhichGradeString, GradeStructure) = GradeStr :-
         ; GccConf = grade_var_gcc_conf_asm_fast,    BaseStr = "asm_fast"
         ),
         (
-            LLDSTSMinModel = llds_thread_safe_no_minmodel_no(CGc, CTrail,
+            LLDSTSMinModel = llds_thread_safe_no_minmodel_no(CGc, Trail,
                 LLDSPerfProf, TermSizeProf, Debug, LLDSRBMM),
             ThreadSafeStrs = [],
             MinimalModelStrs = [],
             Gc = c_gc_to_gc(CGc),
             GcStrs = gc_to_strs(Gc),
-            TrailStrs = c_trail_to_strs(CTrail),
+            TrailStrs = grade_var_trail_to_strs(Trail),
             (
                 LLDSPerfProf = llds_perf_prof_none,
                 LLDSPerfProfStrs = []
@@ -207,14 +209,14 @@ grade_structure_to_grade_string(WhichGradeString, GradeStructure) = GradeStr :-
             RBMMStrs = []
         ;
             LLDSTSMinModel = llds_thread_safe_yes_minmodel_no(ThreadSafeGc,
-                CTrail, TScopeProf),
+                Trail, TScopeProf),
             ThreadSafeStrs =
                 thread_safe_to_strs(tsb_llds(WhichGradeString),
                     grade_var_thread_safe_c_yes),
             MinimalModelStrs = [],
             Gc = thread_safe_c_gc_to_gc(ThreadSafeGc),
             GcStrs = gc_to_strs(Gc),
-            TrailStrs = c_trail_to_strs(CTrail),
+            TrailStrs = grade_var_trail_to_strs(Trail),
             LLDSPerfProfStrs = [],
             TermSizeProfStrs = [],
             DebugStrs = [],
@@ -242,41 +244,42 @@ grade_structure_to_grade_string(WhichGradeString, GradeStructure) = GradeStr :-
             ++ TrailStrs ++ MinimalModelStrs ++ MercFileStrs
             ++ DebugStrs ++ StackLenStrs ++ RBMMStrs ++ TScopeProfStrs
     ;
-        GradeStructure = grade_mlds(MLDSTarget, TargetDebug),
+        GradeStructure = grade_mlds(MldsGrade),
+        MldsGrade = mlds_grade(MldsTarget, TargetDebug),
         TargetDebugStrs = target_debug_to_strs(TargetDebug),
         (
-            MLDSTarget = mlds_target_c(MLDSCThreadSafe, CTrail,
+            MldsTarget = mlds_target_c(MldsCThreadSafe, Trail,
                 MercFile, LowTagBits, MercFloat),
             BinaryCompatStrs =
                 binary_compat_version_to_strs(WhichGradeString),
             BaseStr = "hlc",
-            TrailStrs = c_trail_to_strs(CTrail),
+            TrailStrs = grade_var_trail_to_strs(Trail),
             LowTagBitStrs =
                 low_tag_bits_use_to_strs(WhichGradeString, LowTagBits),
             MercFloatStrs = merc_float_to_strs(WhichGradeString, MercFloat),
             (
-                MLDSCThreadSafe = mlds_c_thread_safe_no(CGc, MLDSPerfProf,
+                MldsCThreadSafe = mlds_c_thread_safe_no(CGc, MldsPerfProf,
                     SSDebug),
                 ThreadSafeStrs = thread_safe_to_strs(tsb_mlds,
                     grade_var_thread_safe_c_no),
                 Gc = c_gc_to_gc(CGc),
                 GcStrs = gc_to_strs(Gc),
                 (
-                    MLDSPerfProf = mlds_c_perf_prof_none,
-                    MLDSPerfProfStrs = []
+                    MldsPerfProf = mlds_c_perf_prof_none,
+                    MldsPerfProfStrs = []
                 ;
-                    MLDSPerfProf =
+                    MldsPerfProf =
                         mlds_c_perf_prof_mprof(MprofTime, MprofMemory),
-                    MLDSPerfProfStrs = [mprof_to_str(MprofTime, MprofMemory)]
+                    MldsPerfProfStrs = [mprof_to_str(MprofTime, MprofMemory)]
                 ),
                 SSDebugStrs = ssdebug_to_strs(WhichGradeString, SSDebug)
             ;
-                MLDSCThreadSafe = mlds_c_thread_safe_yes(ThreadSafeGc),
+                MldsCThreadSafe = mlds_c_thread_safe_yes(ThreadSafeGc),
                 ThreadSafeStrs = thread_safe_to_strs(tsb_mlds,
                     grade_var_thread_safe_c_yes),
                 Gc = thread_safe_c_gc_to_gc(ThreadSafeGc),
                 GcStrs = gc_to_strs(Gc),
-                MLDSPerfProfStrs = [],
+                MldsPerfProfStrs = [],
                 SSDebugStrs = []
             ),
             MercFileStrs = merc_file_to_strs(WhichGradeString, MercFile),
@@ -286,13 +289,13 @@ grade_structure_to_grade_string(WhichGradeString, GradeStructure) = GradeStr :-
                 ++ LowTagBitStrs ++ MercFloatStrs
                 ++ ThreadSafeStrs ++ SSDebugStrs
                 ++ TargetDebugStrs ++ GcStrs ++ TrailStrs
-                ++ MLDSPerfProfStrs ++ MercFileStrs
+                ++ MldsPerfProfStrs ++ MercFileStrs
         ;
-            MLDSTarget = mlds_target_csharp(SSDebug),
+            MldsTarget = mlds_target_csharp(SSDebug),
             SSDebugStrs = ssdebug_to_strs(WhichGradeString, SSDebug),
             GradeComponents = ["csharp" | SSDebugStrs] ++ TargetDebugStrs
         ;
-            MLDSTarget = mlds_target_java(SSDebug),
+            MldsTarget = mlds_target_java(SSDebug),
             SSDebugStrs = ssdebug_to_strs(WhichGradeString, SSDebug),
             GradeComponents = ["java" | SSDebugStrs] ++ TargetDebugStrs
         )
@@ -333,10 +336,10 @@ gc_to_strs(grade_var_gc_bdw_debug) = ["gcd"].
 gc_to_strs(grade_var_gc_accurate) = ["agc"].
 gc_to_strs(grade_var_gc_history) = ["hgc"].
 
-:- func c_trail_to_strs(c_trail) = list(string).
+:- func grade_var_trail_to_strs(grade_var_trail) = list(string).
 
-c_trail_to_strs(c_trail_no) = [].
-c_trail_to_strs(c_trail_yes) = ["tr"].
+grade_var_trail_to_strs(grade_var_trail_no) = [].
+grade_var_trail_to_strs(grade_var_trail_yes) = ["tr"].
 
 :- type thread_safe_backend
     --->    tsb_llds(which_grade_string)

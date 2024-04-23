@@ -89,13 +89,23 @@
     --->    grade_var_nested_funcs_no
     ;       grade_var_nested_funcs_yes.
 
-:- type grade_var_gcc_conf
-    --->    grade_var_gcc_conf_none
-    ;       grade_var_gcc_conf_reg
-    ;       grade_var_gcc_conf_jump
-    ;       grade_var_gcc_conf_fast
-    ;       grade_var_gcc_conf_asm_jump
-    ;       grade_var_gcc_conf_asm_fast.
+    % We could record whether we use gcc registers and gcc gotos independently.
+    % (We use gcc labels only if we use gcc gotos, so our choices on those
+    % two grade variables are not independent.) However, we choose to use
+    % this flat representation, because we may not wish to support all
+    % of the possible combinations. Some gcc bugs may show up only in
+    % the presence of certain combinations, and since some combinations
+    % (jump, fast and asm_jump in particular) are rarely used and thus
+    % not well tested, we wouldn't necessarily find out about them.
+    % This flat representation allows us to pick and choose which
+    % combinations we support.
+:- type grade_var_gcc_conf                 % labels, gotos,  regs
+    --->    grade_var_gcc_conf_none        % no      no      no
+    ;       grade_var_gcc_conf_reg         % no      no      yes
+    ;       grade_var_gcc_conf_jump        % no      yes     no
+    ;       grade_var_gcc_conf_fast        % no      yes     yes
+    ;       grade_var_gcc_conf_asm_jump    % yes     yes     no
+    ;       grade_var_gcc_conf_asm_fast.   % yes     yes     yes
 
 :- type grade_var_low_tag_bits_use
     --->    grade_var_low_tag_bits_use_0

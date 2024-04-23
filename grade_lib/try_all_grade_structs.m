@@ -84,7 +84,8 @@ generate_pregen_tests(GradeStructure) :-
     ; PregenKind = pregen_llds_reg
     ; PregenKind = pregen_llds_asm_fast
     ),
-    GradeStructure = grade_pregen(PregenKind).
+    PregenGrade = pregen_grade(PregenKind),
+    GradeStructure = grade_pregen(PregenGrade).
 
 %---------------------%
 
@@ -104,8 +105,8 @@ generate_llds_tests(GradeStructure) :-
     ),
     (
         generate_c_gc(CGc),
-        ( CTrail = c_trail_no
-        ; CTrail = c_trail_yes
+        ( Trail = grade_var_trail_no
+        ; Trail = grade_var_trail_yes
         ),
         (
             LLDSPerfProf = llds_perf_prof_none
@@ -139,7 +140,7 @@ generate_llds_tests(GradeStructure) :-
             ),
             RBMM = llds_rbmm_yes(RBMMDebug, RBMMProf)
         ),
-        LLDSTSMinModel = llds_thread_safe_no_minmodel_no(CGc, CTrail,
+        LLDSTSMinModel = llds_thread_safe_no_minmodel_no(CGc, Trail,
             LLDSPerfProf, TermSizeProf, Debug, RBMM)
     ;
         ( MinModelKind = lmk_stack_copy
@@ -158,20 +159,21 @@ generate_llds_tests(GradeStructure) :-
             LLDSMMGc, Debug)
     ;
         generate_thread_safe_c_gc(ThreadSafeCGc),
-        ( CTrail = c_trail_no
-        ; CTrail = c_trail_yes
+        ( Trail = grade_var_trail_no
+        ; Trail = grade_var_trail_yes
         ),
         ( TScopeProf = grade_var_tscope_prof_no
         ; TScopeProf = grade_var_tscope_prof_yes
         ),
         LLDSTSMinModel = llds_thread_safe_yes_minmodel_no(ThreadSafeCGc,
-            CTrail, TScopeProf)
+            Trail, TScopeProf)
     ),
     MercFile = grade_var_merc_file_no,
     generate_grade_var_low_tag_bits_use(LowTagBitsUse),
     generate_grade_var_merc_float(MercFloat),
-    GradeStructure = grade_llds(GccConf, StackLen, LLDSTSMinModel,
-        MercFile, LowTagBitsUse, MercFloat).
+    LldsGrade = llds_grade(GccConf, StackLen, LLDSTSMinModel,
+        MercFile, LowTagBitsUse, MercFloat),
+    GradeStructure = grade_llds(LldsGrade).
 
 %---------------------%
 
@@ -179,24 +181,25 @@ generate_llds_tests(GradeStructure) :-
 
 generate_mlds_tests(GradeStructure) :-
     (
-        generate_mlds_c_target(MLDSTarget)
+        generate_mlds_c_target(MldsTarget)
     ;
         generate_grade_var_ssdebug(SSDebug),
-        MLDSTarget = mlds_target_csharp(SSDebug)
+        MldsTarget = mlds_target_csharp(SSDebug)
     ;
         generate_grade_var_ssdebug(SSDebug),
-        MLDSTarget = mlds_target_java(SSDebug)
+        MldsTarget = mlds_target_java(SSDebug)
     ),
     generate_grade_var_target_debug(TargetDebug),
-    GradeStructure = grade_mlds(MLDSTarget, TargetDebug).
+    MldsGrade = mlds_grade(MldsTarget, TargetDebug),
+    GradeStructure = grade_mlds(MldsGrade).
 
 :- pred generate_mlds_c_target(mlds_target::out) is multi.
 
-generate_mlds_c_target(MLDSCTarget) :-
+generate_mlds_c_target(MldsCTarget) :-
     (
         generate_c_gc(CGc),
         (
-            MLDSCPerfProf = mlds_c_perf_prof_none
+            MldsCPerfProf = mlds_c_perf_prof_none
         ;
             ( MProfTime = grade_var_mprof_time_no
             ; MProfTime = grade_var_mprof_time_yes
@@ -204,21 +207,21 @@ generate_mlds_c_target(MLDSCTarget) :-
             ( MProfMemory = grade_var_mprof_memory_no
             ; MProfMemory = grade_var_mprof_memory_yes
             ),
-            MLDSCPerfProf = mlds_c_perf_prof_mprof(MProfTime, MProfMemory)
+            MldsCPerfProf = mlds_c_perf_prof_mprof(MProfTime, MProfMemory)
         ),
         generate_grade_var_ssdebug(SSDebug),
-        MLDSCThreadSafe = mlds_c_thread_safe_no(CGc, MLDSCPerfProf, SSDebug)
+        MldsCThreadSafe = mlds_c_thread_safe_no(CGc, MldsCPerfProf, SSDebug)
     ;
         generate_thread_safe_c_gc(ThreadSafeCGc),
-        MLDSCThreadSafe = mlds_c_thread_safe_yes(ThreadSafeCGc)
+        MldsCThreadSafe = mlds_c_thread_safe_yes(ThreadSafeCGc)
     ),
-    ( CTrail = c_trail_no
-    ; CTrail = c_trail_yes
+    ( Trail = grade_var_trail_no
+    ; Trail = grade_var_trail_yes
     ),
     MercFile = grade_var_merc_file_no,
     generate_grade_var_low_tag_bits_use(LowTagBitsUse),
     generate_grade_var_merc_float(MercFloat),
-    MLDSCTarget = mlds_target_c(MLDSCThreadSafe, CTrail, MercFile,
+    MldsCTarget = mlds_target_c(MldsCThreadSafe, Trail, MercFile,
         LowTagBitsUse, MercFloat).
 
 %---------------------%

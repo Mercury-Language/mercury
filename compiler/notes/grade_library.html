@@ -29,8 +29,9 @@ However, for some other options, such combinations do not work.
 This is typically because the option governs some aspect of the contract
 between a predicate A on the one hand and another predicate B that it calls.
 Some of these aspects are obvious:
-compiling the predicates to different target languages (e.g. Java and Erlang)
-makes linking them together effectively impossible.
+compiling the predicates to different target languages (e.g. Java and C)
+makes linking them together effectively impossible
+(since neither knows about the need for using a foreign language interface).
 Some other aspects are not obvious:
 if predicate A expects B to use the trail to record the bindings it makes,
 but B does not do so,
@@ -107,23 +108,25 @@ the resulting assignments may not be compatible.
 For example, "hlc.debug" is inconsistent,
 because "hlc" selects the use of the MLDS backend,
 but "debug" is implemented only for the LLDS backend.
-A grade is valid only if satisfies a set of constraints,
+A grade is valid only if it satisfies a set of constraints,
 of which "debug is implemented only for the LLDS backend" is only one.
 These constraints arise because not all combinations of options make sense,
 and of the combinations that do make sense,
 not all have been implemented, or are even worth implementing.
 <p>
 compiler/handle_options.m has traditionally been the place
-where we tried to implement these constraints.
-The constraints are of the form
+where we tried to implement these constraints,
+later partially succeeded by compiler/compute_grade.m.
+The constraints have the form of an implication:
 if compilation model option A has value Ai,
 then compilation model option B must have one of the values Bjs.
-If Bjs is a singleton set, then this constraint is effectively an implication.
 Such implications can be used in either direction:
-if we know that A=Ai, then we can set B=Bj,
+if we know that A=Ai, then we can know that B has to be one of the Bjs,
+ruling out any other possible value for it
+(and fully determining B's value if Bjs is a singleton set),
 while if we know that B is not in Bjs, then we can rule out A=Ai.
 <p>
-The code in compiler/handle_options.m has several problems:
+The code in handle_options.m and compute_grade.m has several problems:
 
 <ul>
 <li>
@@ -142,7 +145,7 @@ which options were explicitly specified, which have their default values,
 and which were set earlier by its own code.
 This can lead to misleading error messages,
 which attribute to the user a setting of a compilation model option
-that was actually set by handle_options.m itself.
+that was actually set by the compiler itself.
 <li>
 Because of this problem of being unable to distinguish
 between an option value specified by a user
@@ -198,7 +201,7 @@ before the grade library, we did not do that.
 The grade var representation of a grade
 is very similar to the old representation of compilation model options,
 with the only difference being that it represents
-that value of every compilation model option using a grade variable,
+the value of every compilation model option using a grade variable,
 with each grade variable being of a separate, purpose-specific enum type.
 This means that e.g. we replace the bool option named use_trail
 with a grade variable whose value is
@@ -235,7 +238,7 @@ The whole setup looks like this:
 The grade var representation of a grade
 allows the parts of the compiler
 that need to make simple decisions
-(such as "should the generated high level C code use nested functions?")
+(such as "should the generated high level C code use the trail?")
 make them a bit more safely,
 since mixing up two purpose-specific enums will generate a compiler error
 while mixing up two booleans will not.
@@ -307,9 +310,9 @@ which has both grade_var_target=grade_var_target_java and
 grade_var_deep_prof=grade_var_deep_prof_yes,
 the grade structure cannot,
 because it can record "the grade supports deep profiling"
-only in an argument of the grade_llds function symbol,
+only inside a term whose top function symbol is grade_llds,
 while it can record "the target language is Java"
-only in an argument of the grade_mlds function symbol,
+only inside a term whose top function symbol is grade_mlds,
 and a variable of type grade_structure cannot be bound
 to both function symbols at the same time.
 <p>
@@ -328,7 +331,7 @@ as being implied by the values of other grade string components.
 <li>
 The grade structure type is effectively a template
 that can be instantiated to any valid grade, and to no invalid grade.
-This should make useful in documenting the set of valid grades
+This should make it useful in documenting the set of valid grades
 in the user manual.
 </ul>
 

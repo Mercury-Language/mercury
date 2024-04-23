@@ -249,7 +249,7 @@ setup_solver_vars(SpecsVersion, SolverVarMap, SolverVarPriority) :-
 init_solver_vars([], !SolverVarMap, !SolverVarPriorityCord).
 init_solver_vars([Spec | Specs], !SolverVarMap, !SolverVarPriorityCord) :-
     Spec = solver_var_spec(SolverVarId, SolverValueIds),
-    !:SolverVarPriorityCord = cord.snoc(!.SolverVarPriorityCord, SolverVarId),
+    cord.snoc(SolverVarId, !SolverVarPriorityCord),
     init_solver_var_values(0, NumValues, SolverValueIds, Values),
     SolverVar = solver_var(NumValues, NumValues, Values),
     expect_not(unify(0, NumValues), $pred, "no values for solver var"),

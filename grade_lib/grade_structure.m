@@ -34,7 +34,14 @@
 %
 
 :- type grade_structure
-    --->    grade_pregen(
+    --->    grade_pregen(pregen_grade)
+    ;       grade_llds(llds_grade)
+    ;       grade_mlds(mlds_grade).
+
+%---------------------%
+
+:- type pregen_grade
+    --->    pregen_grade(
                 pregen_kind
                 % implies grade_var_low_tag_bits_use_2
                 % implies grade_var_stack_len_std
@@ -53,18 +60,6 @@
                 % implies grade_var_rbmm_prof_no
                 % implies grade_var_tscope_prof_no
                 % implies grade_var_merc_float_is_boxed_c_double
-            )
-    ;       grade_llds(
-                grade_var_gcc_conf,
-                grade_var_stack_len,
-                llds_thread_safe_minmodel,
-                grade_var_merc_file,
-                grade_var_low_tag_bits_use,
-                grade_var_merc_float
-            )
-    ;       grade_mlds(
-                mlds_target,
-                grade_var_target_debug
             ).
 
 :- type pregen_kind
@@ -73,10 +68,22 @@
     ;       pregen_llds_reg
     ;       pregen_llds_asm_fast.
 
+%---------------------%
+
+:- type llds_grade
+    --->    llds_grade(
+                grade_var_gcc_conf,
+                grade_var_stack_len,
+                llds_thread_safe_minmodel,
+                grade_var_merc_file,
+                grade_var_low_tag_bits_use,
+                grade_var_merc_float
+            ).
+
 :- type llds_thread_safe_minmodel
     --->    llds_thread_safe_no_minmodel_no(
                 c_gc,
-                c_trail,
+                grade_var_trail,
                 llds_perf_prof,
                 grade_var_term_size_prof,
                 grade_var_debug,
@@ -86,7 +93,7 @@
     ;       llds_thread_safe_no_minmodel_yes(
                 llds_minmodel_kind,
                 llds_minmodel_gc,
-                % implicitly c_trail_no
+                % implicitly grade_var_trail_no
                 % implicitly llds_perf_prof_none
                 % implicitly grade_var_term_size_prof_no
                 grade_var_debug
@@ -95,7 +102,7 @@
             )
     ;       llds_thread_safe_yes_minmodel_no(
                 thread_safe_c_gc,
-                c_trail,                    % trailing works only in the
+                grade_var_trail,            % trailing works only in the
                                             % absence of parallel conjunction
                 % implicitly llds_perf_prof_none
                 % implicitly grade_var_term_size_prof_no
@@ -104,34 +111,8 @@
                 grade_var_tscope_prof
             ).
 
-:- type c_trail
-    --->    c_trail_no
-    ;       c_trail_yes.
-
-:- type llds_minmodel_kind
-    --->    lmk_stack_copy
-    ;       lmk_stack_copy_debug
-    ;       lmk_own_stack
-    ;       lmk_own_stack_debug.
-
-    % We could record whether we use gcc registers and gcc gotos independently.
-    % (We use gcc labels only if we use gcc gotos, so our choices on those
-    % two grade variables are not independent.) However, we choose to use
-    % this flat representation, because we may not wish to support all
-    % of the possible combinations. Some gcc bugs may show up only in
-    % the presence of certain combinations, and since some combinations
-    % (jump, fast and asm_jump in particular) are rarely used and thus
-    % not well tested, we wouldn't necessarily find out about them.
-    % This flat representation allows us to pick and choose which
-    % combinations we support.
-:- type llds_gcc_conf                 % labels, gotos,  regs
-    --->    llds_gcc_conf_none        % no      no      no
-    ;       llds_gcc_conf_reg         % no      no      yes
-    ;       llds_gcc_conf_jump        % no      yes     no
-    ;       llds_gcc_conf_fast        % no      yes     yes
-    ;       llds_gcc_conf_asm_jump    % yes     yes     no
-    ;       llds_gcc_conf_asm_fast.   % yes     yes     yes
-
+    % This type differs from grade_var_gc in not having
+    % grade_var_gc_target_native, since C has no native gc.
 :- type c_gc
     --->    c_gc_none
     ;       c_gc_bdw
@@ -139,15 +120,8 @@
     ;       c_gc_accurate
     ;       c_gc_history.
 
-:- type thread_safe_c_gc
-    --->    thread_safe_c_gc_none
-    ;       thread_safe_c_gc_bdw
-    ;       thread_safe_c_gc_bdw_debug.
-
-:- type llds_minmodel_gc
-    --->    llds_mm_gc_bdw
-    ;       llds_mm_gc_bdw_debug.
-
+    % This type encodes the allowed combinations of the values of
+    % grade_var_deep_prof and grade_var_mprof_{call,time,memory}.
 :- type llds_perf_prof
     --->    llds_perf_prof_none
     ;       llds_perf_prof_deep
@@ -156,6 +130,8 @@
                 grade_var_mprof_memory
             ).
 
+    % This type encodes the allowed combinations of the values of
+    % grade_var_rbmm and grade_var_rbmm_{debug,prof}.
 :- type llds_rbmm
     --->    llds_rbmm_no
     ;       llds_rbmm_yes(
@@ -163,10 +139,40 @@
                 grade_var_rbmm_prof
             ).
 
+    % This type differs from grade_var_minmodel in not having
+    % grade_var_minmodel_no, since this type is not used when that is
+    % the selected value of grade_var_minmodel.
+:- type llds_minmodel_kind
+    --->    lmk_stack_copy
+    ;       lmk_stack_copy_debug
+    ;       lmk_own_stack
+    ;       lmk_own_stack_debug.
+
+    % This type differs from c_gc in being restricted to just the gc systems
+    % that thread safe LLDS grades can work with.
+:- type thread_safe_c_gc
+    --->    thread_safe_c_gc_none
+    ;       thread_safe_c_gc_bdw
+    ;       thread_safe_c_gc_bdw_debug.
+
+    % This type differs from c_gc in being restricted to just the gc systems
+    % that minimal model tabling can work with.
+:- type llds_minmodel_gc
+    --->    llds_mm_gc_bdw
+    ;       llds_mm_gc_bdw_debug.
+
+%---------------------%
+
+:- type mlds_grade
+    --->    mlds_grade(
+                mlds_target,
+                grade_var_target_debug
+            ).
+
 :- type mlds_target
     --->    mlds_target_c(
                 mlds_c_thread_safe,
-                c_trail,
+                grade_var_trail,
                 grade_var_merc_file,
                 grade_var_low_tag_bits_use,
                 grade_var_merc_float
@@ -177,10 +183,6 @@
     ;       mlds_target_java(
                 grade_var_ssdebug
             ).
-
-:- type mlds_c_dararep
-    --->    mlds_c_datarep_heap_cells
-    ;       mlds_c_datarep_classes.
 
 :- type mlds_c_thread_safe
     --->    mlds_c_thread_safe_no(
@@ -194,6 +196,8 @@
                 % implies no ssdebug
             ).
 
+    % This type encodes the allowed combinations of the values of
+    % grade_var_mprof_{call,time,memory}.
 :- type mlds_c_perf_prof
     --->    mlds_c_perf_prof_none
     ;       mlds_c_perf_prof_mprof(
@@ -201,10 +205,13 @@
                 grade_var_mprof_memory
             ).
 
+%---------------------------------------------------------------------------%
+
     % See the main comment at the top of the module.
     %
 :- func grade_vars_to_grade_structure(grade_vars) = grade_structure.
 
+%---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
 :- implementation.
@@ -215,7 +222,7 @@
 
 grade_vars_to_grade_structure(GradeVars) = GradeStructure :-
     % XXX We want to verify that every grade variable is used on every path,
-    % for one of these three things: (a) to make a decision, (c) to check
+    % for one of these three purposes: (a) to make a decision, (c) to check
     % that it has the expected value, or (c) to record its value in the
     % structured grade.
     %
@@ -309,11 +316,12 @@ grade_vars_to_grade_structure(GradeVars) = GradeStructure :-
             Backend = grade_var_backend_mlds,
             PregenKind = pregen_mlds_hlc
         ),
-        GradeStructure = grade_pregen(PregenKind)
+        PregenGrade = pregen_grade(PregenKind),
+        GradeStructure = grade_pregen(PregenGrade)
     ;
         Pregen = grade_var_pregen_no,
 
-        % XXX The order of the arguments of grade_llds and grade_mlds
+        % XXX The order of the arguments of llds_grade and mlds_grade
         % we generate may differ from the order in runtime/mercury_grade.h,
         % or the canonical order when targeting non-C languages.
         % XXX We should consider imposing a standard order.
@@ -341,7 +349,6 @@ grade_vars_to_grade_structure(GradeVars) = GradeStructure :-
                 (
                     MinimalModel = grade_var_minmodel_no,
                     encode_c_gc(Gc, CGc),
-                    encode_c_trail(Trail, CTrail),
                     (
                         DeepProf = grade_var_deep_prof_no,
                         (
@@ -352,10 +359,10 @@ grade_vars_to_grade_structure(GradeVars) = GradeStructure :-
                                 unify(MprofMemory, grade_var_mprof_memory_no),
                                 $pred,
                                 "MprofMemory != grade_var_mprof_memory_no"),
-                            LLDSPerfProf = llds_perf_prof_none
+                            LldsPerfProf = llds_perf_prof_none
                         ;
                             MprofCall = grade_var_mprof_call_yes,
-                            LLDSPerfProf =
+                            LldsPerfProf =
                                 llds_perf_prof_mprof(MprofTime, MprofMemory)
                         )
                     ;
@@ -369,7 +376,7 @@ grade_vars_to_grade_structure(GradeVars) = GradeStructure :-
                         expect(unify(MprofMemory, grade_var_mprof_memory_no),
                             $pred,
                             "MprofMemory != grade_var_mprof_memory_no"),
-                        LLDSPerfProf = llds_perf_prof_deep
+                        LldsPerfProf = llds_perf_prof_deep
                     ),
                     (
                         RBMM = grade_var_rbmm_no,
@@ -379,15 +386,15 @@ grade_vars_to_grade_structure(GradeVars) = GradeStructure :-
                         expect(unify(RBMMProf, grade_var_rbmm_prof_no),
                             $pred,
                             "RBMMProf != grade_var_rbmm_prof_no"),
-                        LLDSRBMM = llds_rbmm_no
+                        LldsRBMM = llds_rbmm_no
                     ;
                         RBMM = grade_var_rbmm_yes,
-                        LLDSRBMM = llds_rbmm_yes(RBMMDebug, RBMMProf)
+                        LldsRBMM = llds_rbmm_yes(RBMMDebug, RBMMProf)
                     ),
                     expect(unify(TScopeProf, grade_var_tscope_prof_no), $pred,
                         "TScopeProf != grade_var_tscope_prof_no"),
-                    LLDSTSMinModel = llds_thread_safe_no_minmodel_no(CGc,
-                        CTrail, LLDSPerfProf, TermSizeProf, Debug, LLDSRBMM)
+                    LldsTSMinModel = llds_thread_safe_no_minmodel_no(CGc,
+                        Trail, LldsPerfProf, TermSizeProf, Debug, LldsRBMM)
                 ;
                     (
                         MinimalModel = grade_var_minmodel_stack_copy,
@@ -441,7 +448,7 @@ grade_vars_to_grade_structure(GradeVars) = GradeStructure :-
                         "RBMMDebug != grade_var_rbmm_debug_no"),
                     expect(unify(RBMMProf, grade_var_rbmm_prof_no), $pred,
                         "RBMMProf != grade_var_rbmm_prof_no"),
-                    LLDSTSMinModel = llds_thread_safe_no_minmodel_yes(
+                    LldsTSMinModel = llds_thread_safe_no_minmodel_yes(
                         MinimalModelKind, MinModelGc, Debug)
                 )
             ;
@@ -450,7 +457,6 @@ grade_vars_to_grade_structure(GradeVars) = GradeStructure :-
                     "MinModel != grade_var_minmodel_no"),
 
                 encode_thread_safe_c_gc(Gc, ThreadSafeCGc),
-                encode_c_trail(Trail, CTrail),
                 expect(unify(DeepProf, grade_var_deep_prof_no), $pred,
                     "DeepProf != grade_var_deep_prof_no"),
                 expect(unify(MprofCall, grade_var_mprof_call_no), $pred,
@@ -469,12 +475,13 @@ grade_vars_to_grade_structure(GradeVars) = GradeStructure :-
                     "RBMMDebug != grade_var_rbmm_debug_no"),
                 expect(unify(RBMMProf, grade_var_rbmm_prof_no), $pred,
                     "RBMMProf != grade_var_rbmm_prof_no"),
-                LLDSTSMinModel =
+                LldsTSMinModel =
                     llds_thread_safe_yes_minmodel_no(ThreadSafeCGc,
-                        CTrail, TScopeProf)
+                        Trail, TScopeProf)
             ),
-            GradeStructure = grade_llds(GccConf, StackLen, LLDSTSMinModel,
-                MercFile, LowTagBitsUse, MercFloat)
+            LldsGrade = llds_grade(GccConf, StackLen, LldsTSMinModel,
+                MercFile, LowTagBitsUse, MercFloat),
+            GradeStructure = grade_llds(LldsGrade)
         ;
             Backend = grade_var_backend_mlds,
 
@@ -518,14 +525,14 @@ grade_vars_to_grade_structure(GradeVars) = GradeStructure :-
                         expect(unify(MprofMemory, grade_var_mprof_memory_no),
                             $pred,
                             "mprof_call = no but mprof_memory != no"),
-                        MLDSPerfProf = mlds_c_perf_prof_none
+                        MldsPerfProf = mlds_c_perf_prof_none
                     ;
                         MprofCall = grade_var_mprof_call_yes,
-                        MLDSPerfProf =
+                        MldsPerfProf =
                             mlds_c_perf_prof_mprof(MprofTime, MprofMemory)
                     ),
-                    MLDSCThreadSafe =
-                        mlds_c_thread_safe_no(CGc, MLDSPerfProf, SSDebug)
+                    MldsCThreadSafe =
+                        mlds_c_thread_safe_no(CGc, MldsPerfProf, SSDebug)
                 ;
                     ThreadSafe = grade_var_thread_safe_c_yes,
                     encode_thread_safe_c_gc(Gc, ThreadSafeCGc),
@@ -538,21 +545,15 @@ grade_vars_to_grade_structure(GradeVars) = GradeStructure :-
                         "thread_safe = yes but mprof_memory != no"),
                     expect(unify(SSDebug, grade_var_ssdebug_no), $pred,
                         "thread_safe = yes but ssdebug != no"),
-                    MLDSCThreadSafe = mlds_c_thread_safe_yes(ThreadSafeCGc)
+                    MldsCThreadSafe = mlds_c_thread_safe_yes(ThreadSafeCGc)
                 ;
                     ThreadSafe = grade_var_thread_safe_target_native,
                     unexpected($pred, "mlds c but thread_safe_target_native")
                 ),
-                (
-                    Trail = grade_var_trail_no,
-                    CTrail = c_trail_no
-                ;
-                    Trail = grade_var_trail_yes,
-                    CTrail = c_trail_yes
-                ),
-                TargetC = mlds_target_c(MLDSCThreadSafe, CTrail, MercFile,
+                TargetC = mlds_target_c(MldsCThreadSafe, Trail, MercFile,
                     LowTagBitsUse, MercFloat),
-                GradeStructure = grade_mlds(TargetC, TargetDebug)
+                MldsGrade = mlds_grade(TargetC, TargetDebug),
+                GradeStructure = grade_mlds(MldsGrade)
             ;
                 ( Target = grade_var_target_csharp
                 ; Target = grade_var_target_java
@@ -589,12 +590,13 @@ grade_vars_to_grade_structure(GradeVars) = GradeStructure :-
                 % mlds_target_java.
                 (
                     Target = grade_var_target_csharp,
-                    MLDSTarget = mlds_target_csharp(SSDebug)
+                    MldsTarget = mlds_target_csharp(SSDebug)
                 ;
                     Target = grade_var_target_java,
-                    MLDSTarget = mlds_target_java(SSDebug)
+                    MldsTarget = mlds_target_java(SSDebug)
                 ),
-                GradeStructure = grade_mlds(MLDSTarget, TargetDebug)
+                MldsGrade = mlds_grade(MldsTarget, TargetDebug),
+                GradeStructure = grade_mlds(MldsGrade)
             )
         )
     ).
@@ -644,17 +646,6 @@ encode_thread_safe_c_gc(Gc, ThreadSafeCGc) :-
     ;
         Gc = grade_var_gc_history,
         unexpected($pred, "thread safe, Gc = history")
-    ).
-
-:- pred encode_c_trail(grade_var_trail::in, c_trail::out) is det.
-
-encode_c_trail(Trail, CTrail) :-
-    (
-        Trail = grade_var_trail_no,
-        CTrail = c_trail_no
-    ;
-        Trail = grade_var_trail_yes,
-        CTrail = c_trail_yes
     ).
 
 %---------------------------------------------------------------------------%
