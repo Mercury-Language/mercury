@@ -197,9 +197,11 @@
 :- import_module map.
 :- import_module require.
 :- import_module set.
+:- import_module stack.
 :- import_module string.
 :- import_module term_context.
 :- import_module uint.
+:- import_module uint8.
 
 %---------------------------------------------------------------------------%
 %
@@ -537,20 +539,20 @@ do_write_error_pieces(Stream, OptionTable, LimitErrorContextsMap, MaybeContext,
         then
             set_some_errors_were_context_limited(
                 some_errors_were_context_limited, !IO),
-            MaybeContextStr = no
+            MaybePrintWithContextStr = no
         else
             ContextStr0 = context_to_string(Context),
-            MaybeContextStr = yes(ContextStr0)
+            MaybePrintWithContextStr = yes(ContextStr0)
         )
     ;
         MaybeContext = no,
-        MaybeContextStr = yes("")
+        MaybePrintWithContextStr = yes("")
     ),
     (
-        MaybeContextStr = no
+        MaybePrintWithContextStr = no
         % Suppress the printing of the error pieces.
     ;
-        MaybeContextStr = yes(ContextStr),
+        MaybePrintWithContextStr = yes(ContextStr),
         (
             Pieces = []
             % There are no error pieces to print. Don't print the context
@@ -561,8 +563,9 @@ do_write_error_pieces(Stream, OptionTable, LimitErrorContextsMap, MaybeContext,
             % invocation is not printing verbose errors.
         ;
             Pieces = [_ | _],
-            convert_pieces_to_lines(MaybeMaxWidth, ContextStr, TreatAsFirst,
-                FixedIndent, Pieces, PrefixStr, Lines),
+            ColourDb = init_colour_db(OptionTable),
+            convert_pieces_to_lines(ColourDb, MaybeMaxWidth, ContextStr,
+                TreatAsFirst, FixedIndent, Pieces, PrefixStr, Lines),
             write_msg_lines(Stream, PrefixStr, Lines, !IO)
         )
     ).
@@ -593,6 +596,7 @@ line_number_is_in_a_range([Range | Ranges], LineNumber) = IsInARange :-
 
 %---------------------%
 
+% ZZZ move to end, next to convert_line_words_to_string
 :- pred write_msg_lines(io.text_output_stream::in, string::in,
     list(error_line)::in, io::di, io::uo) is det.
 
@@ -605,12 +609,12 @@ write_msg_lines(Stream, PrefixStr, [Line | Lines], !IO) :-
     io::di, io::uo) is det.
 
 write_msg_line(Stream, PrefixStr, Line, !IO) :-
-    Line = error_line(_MaybeAvail, LineIndent, LineWordsStr, _LineWordsLen,
-        _LineParen),
+    LineWordsStr = convert_line_words_to_string(Line),
     ( if LineWordsStr = "" then
         % Don't bother to print out indents that are followed by nothing.
         io.format(Stream, "%s\n", [s(PrefixStr)], !IO)
     else
+        LineIndent = Line ^ line_indent_level,
         IndentStr = indent2_string(LineIndent),
         % If ContextStr is non-empty, it will end with a space,
         % which guarantees that PrefixStr, which is ContextStr possibly with
@@ -628,27 +632,26 @@ write_msg_line(Stream, PrefixStr, Line, !IO) :-
 % - optimize the lines.
 %
 
-:- pred convert_pieces_to_lines(maybe(int)::in, string::in,
+:- pred convert_pieces_to_lines(colour_db::in, maybe(int)::in, string::in,
     maybe_treat_as_first::in, indent::in, list(format_piece)::in,
     string::out, list(error_line)::out) is det.
 
-convert_pieces_to_lines(MaybeMaxWidth, ContextStr, TreatAsFirst, FixedIndent,
-        Pieces, PrefixStr, Lines) :-
-    convert_pieces_to_paragraphs(Pieces, Paragraphs),
+convert_pieces_to_lines(ColourDb, MaybeMaxWidth, ContextStr, TreatAsFirst,
+        FixedIndent, Pieces, PrefixStr, Lines) :-
+    convert_pieces_to_paragraphs(ColourDb, Pieces, Paragraphs),
     string.pad_left("", ' ', uint.cast_to_int(FixedIndent), FixedIndentStr),
     PrefixStr = ContextStr ++ FixedIndentStr,
     PrefixLen = string.count_code_points(PrefixStr),
     (
         MaybeMaxWidth = yes(MaxWidth),
-        AvailLen = MaxWidth - PrefixLen,
-        MaybeAvailLen = yes(AvailLen)
+        AvailLen = MaxWidth - PrefixLen
     ;
         MaybeMaxWidth = no,
-        MaybeAvailLen = no
+        int.max_int(AvailLen)
     ),
     FirstIndent = (if TreatAsFirst = treat_as_first then 0u else 1u),
-    divide_paragraphs_into_lines(MaybeAvailLen, TreatAsFirst,
-        FirstIndent, Paragraphs, Lines0),
+    divide_paragraphs_into_lines(AvailLen, TreatAsFirst, FirstIndent,
+        Paragraphs, Lines0),
     try_to_join_lp_to_rp_lines(Lines0, Lines),
     trace [compile_time(flag("debug_try_join_lp_to_rp")), io(!TIO)] (
         io.stderr_stream(StdErr, !TIO),
@@ -667,11 +670,15 @@ convert_pieces_to_lines(MaybeMaxWidth, ContextStr, TreatAsFirst, FixedIndent,
 
 :- type paragraph
     --->    paragraph(
-                % The list of words to print in the paragraph.
-                % It should not be empty.
-                list(string),
+                % The list of words to print in the paragraph, possibly
+                % together with colour changes.
+                %
+                % The list should contain at least one string.
+                list(sc_unit),
 
                 % The number of blank lines to print after the paragraph.
+                % (This is actually a uint, but its only use is to call
+                % a standard library predicate that expects an int.)
                 int,
 
                 % The indent delta to apply for the next paragraph.
@@ -683,16 +690,21 @@ convert_pieces_to_lines(MaybeMaxWidth, ContextStr, TreatAsFirst, FixedIndent,
                 paren_status
             ).
 
+:- type sc_unit
+    --->    sc_str(string)
+    ;       sc_colour_start(colour)
+    ;       sc_colour_end.
+
 :- type paren_status
     --->    paren_none
     ;       paren_lp_end    % This paragraph/line ends with a left paren.
     ;       paren_end_rp.   % Next paragraph/line starts with a right paren.
 
-:- pred convert_pieces_to_paragraphs(list(format_piece)::in,
+:- pred convert_pieces_to_paragraphs(colour_db::in, list(format_piece)::in,
     list(paragraph)::out) is det.
 
-convert_pieces_to_paragraphs(Pieces, Paras) :-
-    convert_pieces_to_paragraphs_acc(first_in_msg, Pieces,
+convert_pieces_to_paragraphs(ColourDb, Pieces, Paras) :-
+    convert_pieces_to_paragraphs_acc(ColourDb, first_in_msg, Pieces,
         [], cord.empty, ParasCord),
     Paras = cord.list(ParasCord).
 
@@ -700,16 +712,18 @@ convert_pieces_to_paragraphs(Pieces, Paras) :-
     --->    plain_word(string)
     ;       prefix_word(string)
     ;       suffix_word(string)
-    ;       lower_next_word.
+    ;       lower_next_word
+    ;       colour_start_word(colour)
+    ;       colour_end_word.
 
-:- pred convert_pieces_to_paragraphs_acc(maybe_first_in_msg::in,
+:- pred convert_pieces_to_paragraphs_acc(colour_db::in, maybe_first_in_msg::in,
     list(format_piece)::in, list(word)::in,
     cord(paragraph)::in, cord(paragraph)::out) is det.
 
-convert_pieces_to_paragraphs_acc(_, [], RevWords0, !Paras) :-
-    Strings = rev_words_to_strings(RevWords0),
-    add_paragraph(paragraph(Strings, 0, 0, paren_none), !Paras).
-convert_pieces_to_paragraphs_acc(FirstInMsg, [Piece | Pieces],
+convert_pieces_to_paragraphs_acc(_, _, [], RevWords0, !Paras) :-
+    SCUnits = rev_words_to_sc_units(RevWords0),
+    add_paragraph(paragraph(SCUnits, 0, 0, paren_none), !Paras).
+convert_pieces_to_paragraphs_acc(ColourDb, FirstInMsg, [Piece | Pieces],
         RevWords0, !Paras) :-
     (
         Piece = words(WordsStr),
@@ -865,18 +879,18 @@ convert_pieces_to_paragraphs_acc(FirstInMsg, [Piece | Pieces],
         RevWords1 = [plain_word(Word) | RevWords0]
     ;
         Piece = nl,
-        Strings = rev_words_to_strings(RevWords0),
-        add_paragraph(paragraph(Strings, 0, 0, paren_none), !Paras),
+        SCUnits = rev_words_to_sc_units(RevWords0),
+        add_paragraph(paragraph(SCUnits, 0, 0, paren_none), !Paras),
         RevWords1 = []
     ;
         Piece = nl_indent_delta(IndentDelta),
-        Strings = rev_words_to_strings(RevWords0),
-        add_paragraph(paragraph(Strings, 0, IndentDelta, paren_none), !Paras),
+        SCUnits = rev_words_to_sc_units(RevWords0),
+        add_paragraph(paragraph(SCUnits, 0, IndentDelta, paren_none), !Paras),
         RevWords1 = []
     ;
         Piece = blank_line,
-        Strings = rev_words_to_strings(RevWords0),
-        add_paragraph(paragraph(Strings, 1, 0, paren_none), !Paras),
+        SCUnits = rev_words_to_sc_units(RevWords0),
+        add_paragraph(paragraph(SCUnits, 1, 0, paren_none), !Paras),
         RevWords1 = []
     ;
         Piece = left_paren_maybe_nl_inc(LP, LPWordKind),
@@ -887,13 +901,13 @@ convert_pieces_to_paragraphs_acc(FirstInMsg, [Piece | Pieces],
             LPWordKind = lp_suffix,
             LPWord = suffix_word(LP)
         ),
-        Strings = rev_words_to_strings([LPWord | RevWords0]),
-        add_paragraph(paragraph(Strings, 0, 1, paren_lp_end), !Paras),
+        SCUnits = rev_words_to_sc_units([LPWord | RevWords0]),
+        add_paragraph(paragraph(SCUnits, 0, 1, paren_lp_end), !Paras),
         RevWords1 = []
     ;
         Piece = maybe_nl_dec_right_paren(RP, RPWordKind),
-        Strings = rev_words_to_strings(RevWords0),
-        add_paragraph(paragraph(Strings, 0, -1, paren_end_rp), !Paras),
+        SCUnits = rev_words_to_sc_units(RevWords0),
+        add_paragraph(paragraph(SCUnits, 0, -1, paren_end_rp), !Paras),
         (
             RPWordKind = rp_plain,
             RPWord = plain_word(RP)
@@ -903,14 +917,39 @@ convert_pieces_to_paragraphs_acc(FirstInMsg, [Piece | Pieces],
         ),
         RevWords1 = [RPWord]
     ;
+        Piece = not_for_general_use_start_colour(ColourName),
+        (
+            ColourDb = no_colour_db,
+            RevWords1 = RevWords0
+        ;
+            ColourDb = colour_db(ColourNameMap),
+            (
+                ColourName = colour_incorrect,
+                Colour = ColourNameMap ^ cnm_incorrect
+            ;
+                ColourName = colour_correct,
+                Colour = ColourNameMap ^ cnm_correct
+            ),
+            RevWords1 = [colour_start_word(Colour) | RevWords0]
+        )
+    ;
+        Piece = not_for_general_use_end_colour,
+        (
+            ColourDb = no_colour_db,
+            RevWords1 = RevWords0
+        ;
+            ColourDb = colour_db(_ColourNameMap),
+            RevWords1 = [colour_end_word | RevWords0]
+        )
+    ;
         ( Piece = invis_order_default_start(_, _)
         ; Piece = invis_order_default_end(_, _)
         ; Piece = treat_next_as_first
         ),
         RevWords1 = RevWords0
     ),
-    first_in_msg_after_piece(Piece, FirstInMsg, TailFirstInMsg),
-    convert_pieces_to_paragraphs_acc(TailFirstInMsg, Pieces,
+    update_first_in_msg_after_piece(Piece, FirstInMsg, TailFirstInMsg),
+    convert_pieces_to_paragraphs_acc(ColourDb, TailFirstInMsg, Pieces,
         RevWords1, !Paras).
 
 :- pred add_paragraph(paragraph::in, cord(paragraph)::in, cord(paragraph)::out)
@@ -933,35 +972,52 @@ add_paragraph(Para, !Paras) :-
 :- type plain_or_prefix
     --->    plain(string)
     ;       prefix(string)
-    ;       lower_next.
+    ;       lower_next
+    ;       colour_start(colour)
+    ;       colour_end.
 
-:- func rev_words_to_strings(list(word)) = list(string).
+:- func rev_words_to_sc_units(list(word)) = list(sc_unit).
 
-rev_words_to_strings(RevWords) = Strings :-
+rev_words_to_sc_units(RevWords) = SCUnits :-
     PorPs = list.reverse(rev_words_to_rev_plain_or_prefix(RevWords)),
-    Strings = join_prefixes(PorPs).
+    SCUnits = join_prefixes(PorPs).
 
 :- func rev_words_to_rev_plain_or_prefix(list(word)) = list(plain_or_prefix).
 
 rev_words_to_rev_plain_or_prefix([]) = [].
-rev_words_to_rev_plain_or_prefix([Word | Words]) = PorPs :-
+rev_words_to_rev_plain_or_prefix([Word | Words]) = RevPorPs :-
     (
         Word = plain_word(String),
-        PorPs = [plain(String) | rev_words_to_rev_plain_or_prefix(Words)]
+        RevPorPs = [plain(String) | rev_words_to_rev_plain_or_prefix(Words)]
+    ;
+        Word = colour_start_word(Colour),
+        RevPorPs = [colour_start(Colour) |
+            rev_words_to_rev_plain_or_prefix(Words)]
+    ;
+        Word = colour_end_word,
+        RevPorPs = [colour_end | rev_words_to_rev_plain_or_prefix(Words)]
     ;
         Word = lower_next_word,
-        PorPs = [lower_next | rev_words_to_rev_plain_or_prefix(Words)]
+        RevPorPs = [lower_next | rev_words_to_rev_plain_or_prefix(Words)]
     ;
         Word = prefix_word(Prefix),
-        PorPs = [prefix(Prefix) | rev_words_to_rev_plain_or_prefix(Words)]
+        RevPorPs = [prefix(Prefix) | rev_words_to_rev_plain_or_prefix(Words)]
     ;
         Word = suffix_word(Suffix),
         (
             Words = [],
-            PorPs = [plain(Suffix)]
+            RevPorPs = [plain(Suffix)]
+        ;
+            Words = [colour_start_word(Colour) | Tail],
+            RevPorPs = [plain(Suffix), colour_start(Colour)
+                | rev_words_to_rev_plain_or_prefix(Tail)]
+        ;
+            Words = [colour_end_word | Tail],
+            RevPorPs = [plain(Suffix), colour_end
+                | rev_words_to_rev_plain_or_prefix(Tail)]
         ;
             Words = [plain_word(String) | Tail],
-            PorPs = [plain(String ++ Suffix)
+            RevPorPs = [plain(String ++ Suffix)
                 | rev_words_to_rev_plain_or_prefix(Tail)]
         ;
             Words = [lower_next_word | Tail],
@@ -970,48 +1026,62 @@ rev_words_to_rev_plain_or_prefix([Word | Words]) = PorPs :-
             % no effect, since the initial character of a suffix is usually
             % not a letter).
             NewWords = [suffix_word(uncapitalize_first(Suffix)) | Tail],
-            PorPs = rev_words_to_rev_plain_or_prefix(NewWords)
+            RevPorPs = rev_words_to_rev_plain_or_prefix(NewWords)
         ;
             Words = [prefix_word(Prefix) | Tail],
             % Convert the prefix/suffix combination into a plain word.
             % We could convert it into a prefix, but since prefix/suffix
             % combinations shouldn't come up at all, what we do here probably
             % doesn't matter.
-            PorPs = [plain(Prefix ++ Suffix)
+            RevPorPs = [plain(Prefix ++ Suffix)
                 | rev_words_to_rev_plain_or_prefix(Tail)]
         ;
             Words = [suffix_word(MoreSuffix) | Tail],
-            PorPs = rev_words_to_rev_plain_or_prefix(
+            RevPorPs = rev_words_to_rev_plain_or_prefix(
                 [suffix_word(MoreSuffix ++ Suffix) | Tail])
         )
     ).
 
-:- func join_prefixes(list(plain_or_prefix)) = list(string).
+:- func join_prefixes(list(plain_or_prefix)) = list(sc_unit).
 
 join_prefixes([]) = [].
-join_prefixes([Head | Tail]) = Strings :-
-    TailStrings = join_prefixes(Tail),
+join_prefixes([Head | Tail]) = SCUnits :-
+    TailSCUnits = join_prefixes(Tail),
     (
         Head = plain(String),
-        Strings = [String | TailStrings]
+        SCUnits = [sc_str(String) | TailSCUnits]
     ;
         Head = prefix(Prefix),
         (
-            TailStrings = [First | Later],
-            Strings = [Prefix ++ First | Later]
+            TailSCUnits = [HeadTailSCUnit | TailTailSCUnits],
+            (
+                HeadTailSCUnit = sc_str(HeadTailStr),
+                SCUnits = [sc_str(Prefix ++ HeadTailStr) | TailTailSCUnits]
+            ;
+                ( HeadTailSCUnit = sc_colour_start(_)
+                ; HeadTailSCUnit = sc_colour_end
+                ),
+                SCUnits = [sc_str(Prefix), HeadTailSCUnit | TailTailSCUnits]
+            )
         ;
-            TailStrings = [],
-            Strings = [Prefix | TailStrings]
+            TailSCUnits = [],
+            SCUnits = [sc_str(Prefix) | TailSCUnits]
         )
     ;
         Head = lower_next,
         (
-            TailStrings = [],
-            Strings = TailStrings
+            TailSCUnits = [],
+            SCUnits = TailSCUnits
         ;
-            TailStrings = [FirstTailString | LaterTailStrings],
-            Strings = [uncapitalize_first(FirstTailString) | LaterTailStrings]
+            TailSCUnits = [FirstTailSCUnits | LaterTailSCUnits],
+            SCUnits = [lower_next_sc_unit(FirstTailSCUnits) | LaterTailSCUnits]
         )
+    ;
+        Head = colour_start(Colour),
+        SCUnits = [sc_colour_start(Colour) | TailSCUnits]
+    ;
+        Head = colour_end,
+        SCUnits = [sc_colour_end | TailSCUnits]
     ).
 
 :- pred break_into_words(string::in, list(word)::in, list(word)::out) is det.
@@ -1055,20 +1125,38 @@ find_word_end(String, Cur, WordEnd) :-
         WordEnd = Cur
     ).
 
+:- func lower_next_sc_unit(sc_unit) = sc_unit.
+
+lower_next_sc_unit(SCUnit0) = SCUnit :-
+    (
+        SCUnit0 = sc_str(String0),
+        SCUnit = sc_str(uncapitalize_first(String0))
+    ;
+        ( SCUnit0 = sc_colour_start(_)
+        ; SCUnit0 = sc_colour_end
+        ),
+        SCUnit = SCUnit0
+    ).
+
 %---------------------------------------------------------------------------%
 %
 % Divide paragraphs into lines.
 %
 
+:- type colour_stack == stack(colour).
+
+:- type line_end_reset
+    --->    line_end_reset_nothing
+    ;       line_end_reset_colour.
+
 :- type error_line
     --->    error_line(
-                % In the usual case, this will be yes(AvailLen) where
-                % AvailLen is the Total space available on the line
-                % after the context and the fixed indent.
+                % This will be AvailLen, the total number of code points
+                % available on the line after the context and the fixed indent.
                 %
-                % The absence of an integer here means that there is
-                % no limit on the lengths of lines.
-                maybe_avail_len     :: maybe(int),
+                % In the absence of a limit on the lengths of lines,
+                % this will be int.max_int.
+                maybe_avail_len     :: int,
 
                 % Indent level of the line; multiply by indent2_increment
                 % to get the number of spaces this turns into.
@@ -1079,9 +1167,25 @@ find_word_end(String, Cur, WordEnd) :-
                 line_words_str      :: string,
 
                 % The length of the line_words_str field.
-                %
-                % This field is meaningful only if maybe_avail_len is yes(...).
                 line_words_len      :: int,
+
+                % Have we made any colour changes on the line? If yes,
+                % then we want to reset the colours at the end of the line,
+                % because we don't want them to affect how we print either
+                % - the context of the next line, if there is one, or
+                % - whatever follows after, if there is no next line.
+                line_end_reset       :: line_end_reset,
+
+                % The colour stack at the start of the line.
+                %
+                % We need to know whether we were in the middle of the scope
+                % of a colour at the end of the previous line. If there was
+                % none, we need not do anything at the start of this one.
+                % If there was one, we need switch to it before we print
+                % this line. We therefore technically need a maybe(colour)
+                % here, but we can get that same info from a colour_stack,
+                % and this way requires no data format conversion.
+                line_start_colours   :: colour_stack,
 
                 % If this field is paren_none, this a normal line.
                 % If this field is paren_lp_end, this line ends a left
@@ -1110,16 +1214,13 @@ find_word_end(String, Cur, WordEnd) :-
     % can have up to Max characters on it; the later lines (if any) up
     % to Max-2 characters.
     %
-    % If MaybeAvailLen is `no', handle it as if AvailLen were infinity,
-    % which means putting everything in each paragraph on one line.
-    %
     % The given list of paragraphs should be nonempty, since we always return
     % at least one line.
     %
-:- pred divide_paragraphs_into_lines(maybe(int)::in, maybe_treat_as_first::in,
+:- pred divide_paragraphs_into_lines(int::in, maybe_treat_as_first::in,
     indent::in, list(paragraph)::in, list(error_line)::out) is det.
 
-divide_paragraphs_into_lines(MaybeAvailLen, TreatAsFirst, CurIndent, Paras,
+divide_paragraphs_into_lines(AvailLen, TreatAsFirst, CurIndent, Paras,
         Lines) :-
     (
         Paras = [],
@@ -1135,13 +1236,14 @@ divide_paragraphs_into_lines(MaybeAvailLen, TreatAsFirst, CurIndent, Paras,
             TreatAsFirst = do_not_treat_as_first,
             RestIndent = CurIndent
         ),
+        stack.init(ColourStack0),
         NextIndentInt = uint.cast_to_int(RestIndent) + FirstIndentDelta,
         ( if uint.from_int(NextIndentInt, NextIndentPrime) then
             NextIndent = NextIndentPrime,
             FirstParaWarningLines = []
         else
             % This indicates a bug in the code constructing the error_spec
-            % that we are trying to output here, with the being a
+            % that we are trying to output here, with the bug being a
             % nl_indent_delta with a negative delta that exceeds the current
             % indent level.
             %
@@ -1149,13 +1251,15 @@ divide_paragraphs_into_lines(MaybeAvailLen, TreatAsFirst, CurIndent, Paras,
             % would be drastic. Adding this warning to the output should grab
             % just as much attention, but it also allows the problem to be
             % addressed at a time chosen by the programmer.
-            WarningLine = error_line(MaybeAvailLen, CurIndent,
-                "WARNING: NEGATIVE INDENT", 0, paren_none),
+            WarningLine = error_line(AvailLen, CurIndent,
+                "WARNING: NEGATIVE INDENT", 0,
+                line_end_reset_nothing, ColourStack0, paren_none),
             FirstParaWarningLines = [WarningLine],
             NextIndent = 0u
         ),
 
-        BlankLine = error_line(MaybeAvailLen, CurIndent, "", 0, paren_none),
+        BlankLine = error_line(AvailLen, CurIndent, "", 0,
+            line_end_reset_nothing, ColourStack0, paren_none),
         list.duplicate(NumBlankLines, BlankLine, FirstParaBlankLines),
         (
             FirstParaWords = [],
@@ -1164,92 +1268,258 @@ divide_paragraphs_into_lines(MaybeAvailLen, TreatAsFirst, CurIndent, Paras,
         ;
             FirstParaWords = [FirstWord | LaterWords],
             NextTreatAsFirst = do_not_treat_as_first,
+            get_line_of_words(AvailLen, FirstWord, LaterWords,
+                CurIndent, LineWordsLen, LineWords, RestWords,
+                ColourStack0, ColourStack1, LineEndReset),
+            LineWordsStr = string.append_list(LineWords),
             (
-                MaybeAvailLen = yes(AvailLen),
-                get_line_of_words(AvailLen, FirstWord, LaterWords, CurIndent,
-                    LineWordsLen, LineWords, RestWords),
-                LineWordsStr = line_words_to_str(LineWords),
-                (
-                    RestWords = [],
-                    CurLine = error_line(MaybeAvailLen, CurIndent,
-                        LineWordsStr, LineWordsLen, ParaParen),
-                    FirstParaLines = [CurLine]
-                ;
-                    RestWords = [FirstRestWord | LaterRestWords],
-                    CurLine = error_line(MaybeAvailLen, CurIndent,
-                        LineWordsStr, LineWordsLen, paren_none),
-                    group_nonfirst_line_words(AvailLen,
-                        FirstRestWord, LaterRestWords, RestIndent, ParaParen,
-                        FirstParaRestLines),
-                    FirstParaLines = [CurLine | FirstParaRestLines]
-                )
+                RestWords = [],
+                CurLine = error_line(AvailLen, CurIndent, LineWordsStr,
+                    LineWordsLen, LineEndReset, ColourStack0, ParaParen),
+                FirstParaLines = [CurLine]
             ;
-                MaybeAvailLen = no,
-                FirstParaLines = [error_line(MaybeAvailLen, CurIndent,
-                    line_words_to_str(FirstParaWords), -1, ParaParen)]
+                RestWords = [FirstRestWord | LaterRestWords],
+                CurLine = error_line(AvailLen, CurIndent, LineWordsStr,
+                    LineWordsLen, LineEndReset, ColourStack0, paren_none),
+                group_nonfirst_line_words(AvailLen,
+                    FirstRestWord, LaterRestWords, RestIndent, ParaParen,
+                    FirstParaRestLines, ColourStack1),
+                FirstParaLines = [CurLine | FirstParaRestLines]
             )
         ),
-        divide_paragraphs_into_lines(MaybeAvailLen, NextTreatAsFirst,
+        divide_paragraphs_into_lines(AvailLen, NextTreatAsFirst,
             NextIndent, LaterParas, LaterParaLines),
         Lines = FirstParaWarningLines ++ FirstParaLines ++
             FirstParaBlankLines ++ LaterParaLines
     ).
 
-:- pred group_nonfirst_line_words(int::in, string::in, list(string)::in,
-    indent::in, paren_status::in, list(error_line)::out) is det.
+:- pred group_nonfirst_line_words(int::in, sc_unit::in, list(sc_unit)::in,
+    indent::in, paren_status::in, list(error_line)::out,
+    colour_stack::in) is det.
 
 group_nonfirst_line_words(AvailLen, FirstWord, LaterWords,
-        Indent, LastParen, Lines) :-
+        Indent, LastParen, Lines, ColourStack0) :-
     get_line_of_words(AvailLen, FirstWord, LaterWords, Indent,
-        LineWordsLen, LineWords, RestWords),
-    LineWordsStr = line_words_to_str(LineWords),
+        LineWordsLen, LineWords, RestWords, ColourStack0, ColourStack1,
+        EndLineReset),
+    LineWordsStr = string.append_list(LineWords),
     (
         RestWords = [],
-        Line = error_line(yes(AvailLen), Indent, LineWordsStr, LineWordsLen,
-            LastParen),
+        Line = error_line(AvailLen, Indent, LineWordsStr, LineWordsLen,
+            EndLineReset, ColourStack0, LastParen),
         Lines = [Line]
     ;
         RestWords = [FirstRestWord | LaterRestWords],
-        Line = error_line(yes(AvailLen), Indent, LineWordsStr, LineWordsLen,
-            paren_none),
+        Line = error_line(AvailLen, Indent, LineWordsStr, LineWordsLen,
+            EndLineReset, ColourStack0, paren_none),
         group_nonfirst_line_words(AvailLen, FirstRestWord, LaterRestWords,
-            Indent, LastParen, RestLines),
+            Indent, LastParen, RestLines, ColourStack1),
         Lines = [Line | RestLines]
     ).
 
-:- pred get_line_of_words(int::in, string::in, list(string)::in,
-    indent::in, int::out, list(string)::out, list(string)::out) is det.
+% The rules for colour starts and ends:
+%
+% When we see one, we always look for and process all following consecutive
+% colour starts and ends, and handle their aggregrate effect. These "spans"
+% of colour changes are always both preceded and followed by sc_str units;
+% if they were preceded or followed by colour change units, those units
+% would have been included in the span.
+% 
+% If code always creates colour changes using the colour_pieces_as_X
+% functions in error_spec.m, then a colour change span whose first unit
+% is sc_colour_start will end up with a stack that is at least as high
+% as it started with, while a span whose first unit is sc_colour_end
+% will end up with a stack stack that is at most as high as it started with.
+% Therefore the total effect of each span is given by its initial unit.
+%
+% We want to limit colour changes to apply to just the pieces they are
+% supposed to cover, not to any spaces around them. We therefore added
+% the NextSpace parameter to get_later_words, which should contain
+% either zero spaces or one space, to allow the addition of spaces
+% to be delayed. We exploit this capability using the following rules
+% for how spaces should be handled around colour changes:
+%
+% at left margin (get_line_of_words)
+% str:          add the string, NextSpace := 1
+% colour_start: add new colour, NextSpace := 0
+% colour_end:   add new colour, NextSpace := 0
+%
+% not at left margin (get_later_words)
+% str:          add NextSpace spaces, add the string, NextSpace := 1
+% colour_start: check NextSpace=1, add 1 space, add top colour, NextSpace := 0
+% colour_end:   check NextSpace=1, add top colour, NextSpace := 1
+%
+% Note how with colour_start, get_later_words add the space *before*
+% the colour change, while with colour_end, it adds the space *after*.
+%
+% (The checks for NextSpace=1 in get_later_words when the first unit
+% is a colour change must succeed, because the first unit is a colour change
+% *only* if was not included in a previously-started span of colour changes,
+% which means that the previous unit (which was handled by get_later_words)
+% was sc_str.)
 
-get_line_of_words(AvailLen, FirstWord, LaterWords, Indent, LineWordsLen,
-        LineWords, RestWords) :-
-    string.count_code_points(FirstWord, FirstWordLen),
+:- pred get_line_of_words(int::in, sc_unit::in, list(sc_unit)::in,
+    indent::in, int::out, list(string)::out, list(sc_unit)::out,
+    colour_stack::in, colour_stack::out, line_end_reset::out) is det.
+
+get_line_of_words(AvailLen, FirstSCUnit, LaterSCUnits0, Indent, LineWordsLen,
+        LineStrs, RestSCUnits, !ColourStack, LineEndReset) :-
     AvailLeft = AvailLen - uint.cast_to_int(Indent * indent2_increment),
-    get_later_words(AvailLeft, LaterWords, FirstWordLen, LineWordsLen,
-        cord.singleton(FirstWord), LineWordsCord, RestWords),
-    LineWords = cord.list(LineWordsCord).
+    (
+        FirstSCUnit = sc_str(FirstStr),
+        LineEndReset1 = line_end_reset_nothing,
+        NextSpace = " ",
+        string.count_code_points(FirstStr, LenSoFar),
+        LaterSCUnits0 = LaterSCUnits
+    ;
+        ( FirstSCUnit = sc_colour_start(_Colour)
+        ; FirstSCUnit = sc_colour_end
+        ),
+        LineEndReset1 = line_end_reset_colour,
+        NextSpace = "",
+        merge_adjacent_colour_changes(FirstSCUnit, LaterSCUnits0, LaterSCUnits,
+            !ColourStack),
+        FirstStr = top_colour_to_string(!.ColourStack),
+        LenSoFar = 0
+    ),
+    LineStrsCord0 = cord.singleton(FirstStr),
+    get_later_words(AvailLeft, NextSpace, LaterSCUnits, LenSoFar, LineWordsLen,
+        LineStrsCord0, LineStrsCord, RestSCUnits, !ColourStack,
+        LineEndReset1, LineEndReset),
+    LineStrs = cord.list(LineStrsCord).
 
-:- pred get_later_words(int::in, list(string)::in, int::in, int::out,
-    cord(string)::in, cord(string)::out, list(string)::out) is det.
+:- pred get_later_words(int::in, string::in, list(sc_unit)::in,
+    int::in, int::out, cord(string)::in, cord(string)::out, list(sc_unit)::out,
+    colour_stack::in, colour_stack::out,
+    line_end_reset::in, line_end_reset::out) is det.
 
-get_later_words(_, [], CurLen, FinalLen, LineWords, LineWords, []) :-
+get_later_words(_, _, [], CurLen, FinalLen,
+        LineStrs, LineStrs, [], !ColourStack, LineEndReset, LineEndReset) :-
     FinalLen = CurLen.
-get_later_words(Avail, [Word | Words], CurLen, FinalLen,
-        LineWords0, LineWords, RestWords) :-
-    string.count_code_points(Word, WordLen),
-    NextLen = CurLen + 1 + WordLen,
+get_later_words(Avail, NextSpace0, [SCUnit | SCUnits0], CurLen, FinalLen,
+        LineStrs0, LineStrs, RestSCUnits, !ColourStack,
+        LineEndReset0, LineEndReset) :-
+    (
+        SCUnit = sc_str(Str0),
+        LineEndReset1 = LineEndReset0,
+        SCUnits = SCUnits0,
+        FirstStr = NextSpace0 ++ Str0,
+        string.count_code_points(FirstStr, FirstStrLen),
+        NextLen = CurLen + FirstStrLen,
+        NextSpace = " "
+    ;
+        SCUnit = sc_colour_start(_),
+        LineEndReset1 = line_end_reset_colour,
+        expect(unify(NextSpace0, " "), $pred,
+            "NextSpace0 != 1 for colour start"),
+        merge_adjacent_colour_changes(SCUnit, SCUnits0, SCUnits, !ColourStack),
+        % We put the space between the previous actual word and the next one
+        % *before* the colour change.
+        FirstStr = NextSpace0 ++ top_colour_to_string(!.ColourStack),
+        NextLen0 = CurLen + 1, % The 1 is for NextSpace0.
+        NextSpace = "",
+        % Check whether the next actual word fits on the line.
+        PeekWordLen = peek_and_find_len_of_next_word(SCUnits),
+        ( if NextLen0 + PeekWordLen =< Avail then
+            % It does, so let the recursive call proceed.
+            NextLen = NextLen0
+        else
+            % It does not, so force the check against Avail to fail *now*,
+            % *not* in the recursive call, so that we change the colour
+            % just before the next word.
+            NextLen = Avail + 1
+        )
+    ;
+        SCUnit = sc_colour_end,
+        LineEndReset1 = line_end_reset_colour,
+        expect(unify(NextSpace0, " "), $pred, "NextSpace0 != 1 for colour end"),
+        merge_adjacent_colour_changes(SCUnit, SCUnits0, SCUnits, !ColourStack),
+        % We put the space between the previous actual word and the next one
+        % *after* the colour change. (Actually, the recursive call takes
+        % care of that, *if* there are any words on the rest of the line.)
+        FirstStr = top_colour_to_string(!.ColourStack),
+        NextLen = CurLen,
+        NextSpace = " "
+    ),
     ( if NextLen =< Avail then
-        cord.snoc(Word, LineWords0, LineWords1),
-        get_later_words(Avail, Words, NextLen, FinalLen,
-            LineWords1, LineWords, RestWords)
+        cord.snoc(FirstStr, LineStrs0, LineStrs1),
+        get_later_words(Avail, NextSpace, SCUnits, NextLen, FinalLen,
+            LineStrs1, LineStrs, RestSCUnits, !ColourStack,
+            LineEndReset1, LineEndReset)
     else
         FinalLen = CurLen,
-        LineWords = LineWords0,
-        RestWords = [Word | Words]
+        LineStrs = LineStrs0,
+        RestSCUnits = [SCUnit | SCUnits],
+        LineEndReset = LineEndReset0
     ).
 
-:- func line_words_to_str(list(string)) = string.
+:- inst colour_unit for sc_unit/0
+    --->    sc_colour_start(ground)
+    ;       sc_colour_end.
 
-line_words_to_str(LineWords) = string.join_list(" ", LineWords).
+:- pred merge_adjacent_colour_changes(sc_unit::in(colour_unit),
+    list(sc_unit)::in, list(sc_unit)::out,
+    colour_stack::in, colour_stack::out) is det.
+
+merge_adjacent_colour_changes(HeadSCUnit, TailSCUnits0, SCUnits,
+        !ColourStack) :-
+    (
+        HeadSCUnit = sc_colour_start(Colour),
+        stack.push(Colour, !ColourStack)
+    ;
+        HeadSCUnit = sc_colour_end,
+        ( if stack.pop(_OldTopColour, !ColourStack) then
+            % Keep the stack with the top colour popped off.
+            true
+        else
+            % Keep the original stack.
+            true
+        )
+    ),
+    (
+        TailSCUnits0 = [],
+        SCUnits = []
+    ;
+        TailSCUnits0 = [HeadTailSCUnit0 | TailTailSCUnits0],
+        (
+            HeadTailSCUnit0 = sc_str(_),
+            SCUnits = TailSCUnits0
+        ;
+            ( HeadTailSCUnit0 = sc_colour_start(_)
+            ; HeadTailSCUnit0 = sc_colour_end
+            ),
+            merge_adjacent_colour_changes(HeadTailSCUnit0, TailTailSCUnits0,
+                SCUnits, !ColourStack)
+        )
+    ).
+
+:- func peek_and_find_len_of_next_word(list(sc_unit)) = int.
+
+peek_and_find_len_of_next_word([]) = 0.
+peek_and_find_len_of_next_word([SCUnit | _]) = Len :-
+    (
+        SCUnit = sc_str(Str),
+        string.count_code_points(Str, Len)
+    ;
+        ( SCUnit = sc_colour_start(_)
+        ; SCUnit = sc_colour_end
+        ),
+        unexpected($pred, "next sc_unit after colour change is not sc_str")
+    ).
+
+:- func top_colour_of_stack(colour_stack) = colour.
+
+top_colour_of_stack(ColourStack) = TopColour :-
+    ( if stack.top(ColourStack, TopColourPrime) then
+        TopColour = TopColourPrime
+    else
+        TopColour= colour_reset
+    ).
+
+:- func top_colour_to_string(colour_stack) = string.
+
+top_colour_to_string(ColourStack) = Str :-
+    Str = colour_to_string(top_colour_of_stack(ColourStack)).
 
 %---------------------------------------------------------------------------%
 
@@ -1270,8 +1540,8 @@ line_words_to_str(LineWords) = string.join_list(" ", LineWords).
 
 try_to_join_lp_to_rp_lines([], []).
 try_to_join_lp_to_rp_lines([HeadLine0 | TailLines0], Lines) :-
-    HeadLine0 = error_line(_MaybeAvailLen, _HeadIndent, _HeadLineWords,
-        _HeadLineWordsLen, HeadParen),
+    HeadLine0 = error_line(_AvailLen, _HeadIndent, _HeadLineWords,
+        _HeadLineWordsLen, _LineEndReset, _HeadStartCS, HeadParen),
     (
         ( HeadParen = paren_none
         ; HeadParen = paren_end_rp  % This is an unbalanced right paren.
@@ -1313,15 +1583,15 @@ try_to_join_lp_to_rp_lines([HeadLine0 | TailLines0], Lines) :-
 
 find_matching_rp_and_maybe_join(LPLine, TailLines0, ReplacementLines,
         LeftOverLines) :-
-    LPLine = error_line(MaybeAvailLen, LPIndent, LPLineWordsStr,
-        LPLineWordsLen, LPParen),
+    LPLine = error_line(AvailLen, LPIndent, LPLineWordsStr,
+        LPLineWordsLen, LPLineEndReset, LPStartCS, LPParen),
     expect(unify(LPParen, paren_lp_end), $pred, "LPParen != paren_lp_end"),
     ( if
         find_matching_rp(TailLines0, cord.init, MidLinesCord, 0, MidLinesLen,
             RPLine, LeftOverLinesPrime)
     then
         RPLine = error_line(_, _RPIndent, RPLineWordsStr, RPLineWordsLen,
-            RPParen),
+            RPLineEndReset, _RPStartCS, RPParen),
         MidLines = cord.list(MidLinesCord),
         list.length(MidLines, NumMidLines),
         MidLineSpaces = (if NumMidLines = 0 then 0 else NumMidLines - 1),
@@ -1329,13 +1599,8 @@ find_matching_rp_and_maybe_join(LPLine, TailLines0, ReplacementLines,
             LPLineWordsLen + MidLinesLen + MidLineSpaces + RPLineWordsLen,
         ChunkLines = [LPLine | MidLines] ++ [RPLine],
         ( if
-            (
-                MaybeAvailLen = no
-            ;
-                MaybeAvailLen = yes(AvailLen),
-                uint.cast_to_int(LPIndent * indent2_increment) + TotalLpRpLen
-                    =< AvailLen
-            )
+            uint.cast_to_int(LPIndent * indent2_increment) + TotalLpRpLen
+                =< AvailLen
         then
             % We insert spaces
             % - between the middle lines, but
@@ -1348,8 +1613,17 @@ find_matching_rp_and_maybe_join(LPLine, TailLines0, ReplacementLines,
             string.count_code_points(ReplacementLineStr, ReplacementLineLen),
             expect(unify(TotalLpRpLen, ReplacementLineLen), $pred,
                 "TotalLpRpLen != ReplacementLineLen"),
-            ReplacementLine = error_line(MaybeAvailLen, LPIndent,
-                ReplacementLineStr, TotalLpRpLen, RPParen),
+            ( if
+                LPLineEndReset = line_end_reset_nothing,
+                RPLineEndReset = line_end_reset_nothing
+            then
+                LPRPLineEndReset = line_end_reset_nothing
+            else
+                LPRPLineEndReset = line_end_reset_colour
+            ),
+            ReplacementLine = error_line(AvailLen, LPIndent,
+                ReplacementLineStr, TotalLpRpLen, LPRPLineEndReset, LPStartCS,
+                RPParen),
             ReplacementLines = [ReplacementLine]
         else
             ReplacementLines = ChunkLines
@@ -1383,8 +1657,8 @@ find_matching_rp([], !MidLinesCord, !MidLinesLen, _, _) :-
     fail.
 find_matching_rp([HeadLine0 | TailLines0], !MidLinesCord, !MidLinesLen,
         RPLine, LeftOverLines) :-
-    HeadLine0 = error_line(_HeadMaybeAvailLen, _HeadIndent, _HeadLineWordsStr,
-        HeadLineWordsLen, HeadParen),
+    HeadLine0 = error_line(_HeadAvailLen, _HeadIndent, _HeadLineWordsStr,
+        HeadLineWordsLen, _HeadLineEndReset, _HeadStartCS, HeadParen),
     (
         HeadParen = paren_none,
         cord.snoc(HeadLine0, !MidLinesCord),
@@ -1446,10 +1720,53 @@ find_matching_rp([HeadLine0 | TailLines0], !MidLinesCord, !MidLinesLen,
     ).
 
 %---------------------------------------------------------------------------%
+%
+% Colour management.
+%
+
+:- type colour
+    --->    colour_8bit(uint8)
+    ;       colour_reset.
+
+:- type colour_db
+    --->    no_colour_db
+            % Never use any colour, and ignore all colour changes.
+    ;       colour_db(colour_name_map).
+            % Do use colour.
+
+:- type colour_name_map
+    --->    colour_name_map(
+                cnm_incorrect   :: colour,
+                cnm_correct     :: colour
+            ).
+
+:- func init_colour_db(option_table) = colour_db.
+
+init_colour_db(_OptionTable) = ColourDb :-
+%   % We should get these from option values.
+%   % XXX What should the names of the options be?
+%   ColourIncorrect = colour_8bit(203u8),     % This is red.
+%   ColourCorrect =   colour_8bit(40u8),      % This is green.
+%   ColourNameMap = colour_name_map(ColourIncorrect, ColourCorrect),
+%   ColourDb = colour_db(ColourNameMap).
+    ColourDb = no_colour_db.
+
+    % The terminal control codes we use here are described by
+    % https://en.wikipedia.org/wiki/ANSI_escape_code#Colors.
+    %
+:- func colour_to_string(colour) = string.
+
+colour_to_string(colour_8bit(ColourNum)) = Str :-
+    string.format("\033\[38;5;%dm", [i(uint8.cast_to_int(ColourNum))], Str).
+colour_to_string(colour_reset) = Str :-
+    Str =  "\033\[39;49m".
+
+%---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
 error_pieces_to_std_lines(Pieces) = Lines :-
-    convert_pieces_to_lines(yes(80), "", treat_as_first, 0u, Pieces, _, Lines).
+    convert_pieces_to_lines(no_colour_db, yes(80), "",
+        treat_as_first, 0u, Pieces, _, Lines).
 
 do_lines_fit_in_n_code_points(_Max, []).
 do_lines_fit_in_n_code_points(Max, [Line1 | Lines2plus]) :-
@@ -1468,8 +1785,8 @@ do_lines_fit_in_n_code_points(Max, [Line1 | Lines2plus]) :-
 
 do_spaces_lines_fit_in_n_code_points(Max, Line1, Lines2plus) :-
     LineLen1 = error_line_len(Line1),
-    % The extra -1 accounts for the space before Line1.
-    MaxLeft = Max - LineLen1 - 1,
+    % The -1 accounts for the space before Line1.
+    MaxLeft = Max - 1 - LineLen1,
     MaxLeft >= 0,
     (
         Lines2plus = []
@@ -1481,15 +1798,9 @@ do_spaces_lines_fit_in_n_code_points(Max, Line1, Lines2plus) :-
 :- func error_line_len(error_line) = int.
 
 error_line_len(Line) = LineLen :-
-    Line = error_line(MaybeAvail, _LineIndent, LineWordsStr, LineWordsLen,
-        _LineParen),
-    (
-        MaybeAvail = no,
-        LineLen = string.count_code_points(LineWordsStr)
-    ;
-        MaybeAvail = yes(_),
-        LineLen = LineWordsLen
-    ).
+    Line = error_line(_AvailLen, _LineIndent, _LineWordsStr, LineWordsLen,
+        _LineEndReset, _StartCS, _LineParen),
+    LineLen = LineWordsLen.
 
 %---------------------%
 
@@ -1516,20 +1827,37 @@ error_pieces_to_multi_line_string(Prefix, Pieces) = Str :-
 :- func convert_line_words_to_string(error_line) = string.
 
 convert_line_words_to_string(Line) = Str :-
-    Line = error_line(_MaybeAvail, _LineIndent, LineWordsStr, _LineWordsLen,
-        _LineParen),
-    Str = LineWordsStr.
+    Line = error_line(_AvailLen, _LineIndent, LineWordsStr, _LineWordsLen,
+        LineEndReset, StartColourStack, _LineParen),
+    ( if LineWordsStr = "" then
+        Str = ""
+    else
+        ( if stack.top(StartColourStack, StartColour) then
+            StartColourStr = colour_to_string(StartColour)
+        else
+            StartColourStr = ""
+        ),
+        (
+            LineEndReset = line_end_reset_nothing,
+            EndColourResetStr = ""
+        ;
+            LineEndReset = line_end_reset_colour,
+            EndColourResetStr = colour_to_string(colour_reset)
+        ),
+        Str = StartColourStr ++ LineWordsStr ++ EndColourResetStr
+    ).
 
 :- func convert_line_and_nl_to_string(string, error_line) = string.
 
 convert_line_and_nl_to_string(Prefix, Line) = Str :-
-    Line = error_line(_MaybeAvail, LineIndent, LineWordsStr, _LineWordsLen,
-        _LineParen),
-    ( if LineWordsStr = "" then
+    Line = error_line(_AvailLen, LineIndent, RawLineWordsStr, _LineWordsLen,
+        _LineEndReset, _StartColourStack, _LineParen),
+    ( if RawLineWordsStr = "" then
         % Don't include the indent.
         Str = Prefix ++ "\n"
     else
         IndentStr = indent2_string(LineIndent),
+        LineWordsStr = convert_line_words_to_string(Line),
         Str = Prefix ++ IndentStr ++ LineWordsStr ++ "\n"
     ).
 
@@ -1542,10 +1870,10 @@ convert_line_and_nl_to_string(Prefix, Line) = Str :-
     --->    first_in_msg
     ;       not_first_in_msg.
 
-:- pred first_in_msg_after_piece(format_piece::in,
+:- pred update_first_in_msg_after_piece(format_piece::in,
     maybe_first_in_msg::in, maybe_first_in_msg::out) is det.
 
-first_in_msg_after_piece(Piece, FirstInMsg, TailFirstInMsg) :-
+update_first_in_msg_after_piece(Piece, FirstInMsg, TailFirstInMsg) :-
     (
         ( Piece = treat_next_as_first
         ; Piece = blank_line
@@ -1555,6 +1883,8 @@ first_in_msg_after_piece(Piece, FirstInMsg, TailFirstInMsg) :-
         ( Piece = lower_case_next_if_not_first
         ; Piece = nl
         ; Piece = nl_indent_delta(_)
+        ; Piece = not_for_general_use_start_colour(_)
+        ; Piece = not_for_general_use_end_colour
         ; Piece = invis_order_default_start(_, _)
         ; Piece = invis_order_default_end(_, _)
         ),

@@ -501,6 +501,9 @@
     ;       blank_line
             % Create a blank line.
 
+    ;       not_for_general_use_start_colour(colour_name)
+    ;       not_for_general_use_end_colour
+
     ;       invis_order_default_end(int, string).
             % See the documentation of invis_order_default_start above.
 
@@ -519,6 +522,13 @@
     ;       rp_prefix.
             % The right parenthesis should be added to the following pieces
             % as if it were in a prefix(...) piece.
+
+    % Exported for use by write_error_spec.m. This definition should be
+    % ignored by every part of the compiler other than error_spec.m
+    % and write_error_spec.m.
+:- type colour_name
+    --->    colour_incorrect
+    ;       colour_correct.
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -605,6 +615,11 @@
     % if the list is a singleton, and otherwise returns "are".
     %
 :- func is_or_are(list(T)) = string.
+
+%---------------------------------------------------------------------------%
+
+:- func colour_pieces_as_correct(list(format_piece)) = list(format_piece).
+:- func colour_pieces_as_incorrect(list(format_piece)) = list(format_piece).
 
 %---------------------------------------------------------------------------%
 
@@ -744,6 +759,18 @@ is_or_are([_, _ | _]) = "are".
 
 %---------------------------------------------------------------------------%
 
+colour_pieces_as_correct(Pieces) =
+    [not_for_general_use_start_colour(colour_correct)] ++
+    Pieces ++
+    [not_for_general_use_end_colour].
+
+colour_pieces_as_incorrect(Pieces) =
+    [not_for_general_use_start_colour(colour_incorrect)] ++
+    Pieces ++
+    [not_for_general_use_end_colour].
+
+%---------------------------------------------------------------------------%
+
 change_hunk_to_pieces(ChangeHunk, ChangeHunkPieces) :-
     ChangeHunk = change_hunk(StartA, LenA, StartB, LenB, Diffs),
     string.format("@@ -%d,%d +%d,%d @@",
@@ -758,15 +785,15 @@ change_hunk_to_pieces(ChangeHunk, ChangeHunkPieces) :-
 diff_seq_line_to_pieces(Diff, Pieces) :-
     (
         Diff = unchanged(Str),
-        Line = " " ++ Str
+        LinePieces = [fixed(" " ++ Str)]
     ;
         Diff = deleted(Str),
-        Line = "-" ++ Str
+        LinePieces = colour_pieces_as_correct([fixed("-" ++ Str)])
     ;
         Diff = inserted(Str),
-        Line = "+" ++ Str
+        LinePieces = colour_pieces_as_incorrect([fixed("+" ++ Str)])
     ),
-    Pieces = [fixed(Line), nl].
+    Pieces = LinePieces ++ [nl].
 
 %---------------------------------------------------------------------------%
 
