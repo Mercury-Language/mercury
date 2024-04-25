@@ -501,8 +501,8 @@
     ;       blank_line
             % Create a blank line.
 
-    ;       not_for_general_use_start_colour(colour_name)
-    ;       not_for_general_use_end_colour
+    ;       not_for_general_use_start_color(color_name)
+    ;       not_for_general_use_end_color
 
     ;       invis_order_default_end(int, string).
             % See the documentation of invis_order_default_start above.
@@ -526,9 +526,9 @@
     % Exported for use by write_error_spec.m. This definition should be
     % ignored by every part of the compiler other than error_spec.m
     % and write_error_spec.m.
-:- type colour_name
-    --->    colour_incorrect
-    ;       colour_correct.
+:- type color_name
+    --->    color_incorrect
+    ;       color_correct.
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -618,8 +618,8 @@
 
 %---------------------------------------------------------------------------%
 
-:- func colour_pieces_as_correct(list(format_piece)) = list(format_piece).
-:- func colour_pieces_as_incorrect(list(format_piece)) = list(format_piece).
+:- func color_pieces_as_correct(list(format_piece)) = list(format_piece).
+:- func color_pieces_as_incorrect(list(format_piece)) = list(format_piece).
 
 %---------------------------------------------------------------------------%
 
@@ -759,15 +759,15 @@ is_or_are([_, _ | _]) = "are".
 
 %---------------------------------------------------------------------------%
 
-colour_pieces_as_correct(Pieces) =
-    [not_for_general_use_start_colour(colour_correct)] ++
+color_pieces_as_correct(Pieces) =
+    [not_for_general_use_start_color(color_correct)] ++
     Pieces ++
-    [not_for_general_use_end_colour].
+    [not_for_general_use_end_color].
 
-colour_pieces_as_incorrect(Pieces) =
-    [not_for_general_use_start_colour(colour_incorrect)] ++
+color_pieces_as_incorrect(Pieces) =
+    [not_for_general_use_start_color(color_incorrect)] ++
     Pieces ++
-    [not_for_general_use_end_colour].
+    [not_for_general_use_end_color].
 
 %---------------------------------------------------------------------------%
 
@@ -788,10 +788,10 @@ diff_seq_line_to_pieces(Diff, Pieces) :-
         LinePieces = [fixed(" " ++ Str)]
     ;
         Diff = deleted(Str),
-        LinePieces = colour_pieces_as_correct([fixed("-" ++ Str)])
+        LinePieces = color_pieces_as_correct([fixed("-" ++ Str)])
     ;
         Diff = inserted(Str),
-        LinePieces = colour_pieces_as_incorrect([fixed("+" ++ Str)])
+        LinePieces = color_pieces_as_incorrect([fixed("+" ++ Str)])
     ),
     Pieces = LinePieces ++ [nl].
 

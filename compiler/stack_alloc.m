@@ -16,9 +16,9 @@
 % looking for sets of variables that must be saved on the stack at the same
 % time. If --optimize-stack-slots is set, then this phase is done by
 % stack_opt.m; if --optimize-stack-slots is not set, then it is done by this
-% module. Then we use a graph colouring algorithm to find an allocation of
-% stack slots (colours) to variables such that in each set of variables that
-% must be saved at the same time, each variable has a different colour.
+% module. Then we use a graph coloring algorithm to find an allocation of
+% stack slots (colors) to variables such that in each set of variables that
+% must be saved at the same time, each variable has a different color.
 %
 %-----------------------------------------------------------------------------%
 
@@ -109,7 +109,7 @@ allocate_stack_slots_in_proc(ModuleInfo, proc(PredId, ProcId), !ProcInfo) :-
         MaybeReservedVarInfo = no,
         LiveSets = LiveSets0
     ),
-    graph_colour_group_elements(LiveSets, ColourSets),
+    graph_color_group_elements(LiveSets, ColourSets),
     set.to_sorted_list(ColourSets, ColourList),
 
     CodeModel = proc_info_interface_code_model(!.ProcInfo),
@@ -232,27 +232,27 @@ allocate_stack_slots(Globals, VarTable, MainStack, NumReservedSlots,
     % The reserved slots are referred to by fixed number
     % (e.g. framevar(1)) in trace.setup.
     FirstFreeSlot = NumReservedSlots + 1,
-    allocate_stack_slots_to_colours(MainStack, MaybeDoubleWidthFloats,
+    allocate_stack_slots_to_colors(MainStack, MaybeDoubleWidthFloats,
         MaybeReservedVarInfo, Colours, FirstFreeSlot, map.init, StackSlots).
 
-:- pred allocate_stack_slots_to_colours(main_stack::in, maybe(var_table)::in,
+:- pred allocate_stack_slots_to_colors(main_stack::in, maybe(var_table)::in,
     maybe(pair(prog_var, int))::in, list(set_of_progvar)::in,
     int::in, stack_slots::in, stack_slots::out) is det.
 
-allocate_stack_slots_to_colours(_, _, _, [], _, !StackSlots).
-allocate_stack_slots_to_colours(MainStack, MaybeDoubleWidthFloats,
+allocate_stack_slots_to_colors(_, _, _, [], _, !StackSlots).
+allocate_stack_slots_to_colors(MainStack, MaybeDoubleWidthFloats,
         MaybeReservedVarInfo, [FirstColour | LaterColours],
         !.FirstFreeSlot, !StackSlots) :-
-    allocate_stack_slots_to_colour(MainStack, MaybeDoubleWidthFloats,
+    allocate_stack_slots_to_color(MainStack, MaybeDoubleWidthFloats,
         MaybeReservedVarInfo, FirstColour, !FirstFreeSlot, !StackSlots),
-    allocate_stack_slots_to_colours(MainStack, MaybeDoubleWidthFloats,
+    allocate_stack_slots_to_colors(MainStack, MaybeDoubleWidthFloats,
         MaybeReservedVarInfo, LaterColours, !.FirstFreeSlot, !StackSlots).
 
-:- pred allocate_stack_slots_to_colour(main_stack::in, maybe(var_table)::in,
+:- pred allocate_stack_slots_to_color(main_stack::in, maybe(var_table)::in,
     maybe(pair(prog_var, int))::in, set_of_progvar::in,
     int::in, int::out, stack_slots::in, stack_slots::out) is det.
 
-allocate_stack_slots_to_colour(MainStack, MaybeDoubleWidthFloats,
+allocate_stack_slots_to_color(MainStack, MaybeDoubleWidthFloats,
         MaybeReservedVarInfo, ColourVars, !FirstFreeSlot, !StackSlots) :-
     (
         MaybeDoubleWidthFloats = no,

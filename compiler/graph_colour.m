@@ -9,12 +9,12 @@
 % File: graph_colour.m.
 % Main author: conway.
 %
-% This file contains functionality to find a 'good' colouring of a graph.
+% This file contains functionality to find a 'good' coloring of a graph.
 % The predicate group_elements(set(set(T)), set(set(T))),
 % takes a set of sets each containing elements that touch, and returns
-% a set of sets each containing elements that can be assigned the same
-% colour, ensuring that touching elements have different colours.
-% ("Good" means using as few colours as possible.)
+% a set of sets each containing elements that can be assigned the same color,
+% ensuring that touching elements have different colors.
+% ("Good" means using as few colors as possible.)
 %
 % XXX We do not use this module anymore. Instead, we use set_of_var.m,
 % which uses a more efficient representation of sets of elements. Since that
@@ -49,11 +49,11 @@ group_elements(!.Constraints, Colours) :-
     set.init(EmptySet),
     set.delete(EmptySet, !Constraints),
     set.to_sorted_list(!.Constraints, ConstraintList),
-    find_all_colours(ConstraintList, AllVars, ColourList),
+    find_all_colors(ConstraintList, AllVars, ColourList),
     set.list_to_set(ColourList, Colours),
 
     % Performance reducing sanity check.
-    trace [compile_time(flag("graph_colour_assertions"))] (
+    trace [compile_time(flag("graph_color_assertions"))] (
         ( if
             set.power_union(Colours, AllColours),
             (
@@ -70,76 +70,76 @@ group_elements(!.Constraints, Colours) :-
 
 %-----------------------------------------------------------------------------%
 
-    % Iterate the assignment of a new colour until all constraints
+    % Iterate the assignment of a new color until all constraints
     % are satisfied.
     %
-:- pred find_all_colours(list(set(T))::in, set(T)::in,
+:- pred find_all_colors(list(set(T))::in, set(T)::in,
     list(set(T))::out) is det.
 
-find_all_colours(ConstraintList, Vars, ColourList) :-
+find_all_colors(ConstraintList, Vars, ColourList) :-
     (
         ConstraintList = [],
         ColourList = []
     ;
         ConstraintList = [_ | _],
-        next_colour(Vars, ConstraintList, RemainingConstraints, Colour),
+        next_color(Vars, ConstraintList, RemainingConstraints, Colour),
         set.difference(Vars, Colour, RestVars),
-        find_all_colours(RemainingConstraints, RestVars, ColourList0),
+        find_all_colors(RemainingConstraints, RestVars, ColourList0),
         ColourList = [Colour | ColourList0]
     ).
 
 %-----------------------------------------------------------------------------%
 
-:- pred next_colour(set(T)::in, list(set(T))::in,
+:- pred next_color(set(T)::in, list(set(T))::in,
     list(set(T))::out, set(T)::out) is det.
 
-next_colour(Vars0, ConstraintList, Remainder, SameColour) :-
+next_color(Vars0, ConstraintList, Remainder, SameColour) :-
     % Check if there are any constraints left to be satisfied.
     (
         ConstraintList = [_ | _],
-        % Select a variable to assign a colour, ...
+        % Select a variable to assign a color, ...
         choose_var(Vars0, Var, Vars1),
 
         % ... and divide the constraints into those that
-        % may be the same colour as that var and those
+        % may be the same color as that var and those
         % that may not.
         divide_constraints(Var, ConstraintList, WereContaining, NotContaining,
             Vars1, RestVars),
         (
-            % See if there are sets that can share a colour with the
+            % See if there are sets that can share a color with the
             % selected var.
             NotContaining = [_ | _],
             ( if set.is_empty(RestVars) then
-                % There were no variables left that could share a colour,
+                % There were no variables left that could share a color,
                 % so create a singleton set containing this variable.
                 SameColour = set.make_singleton_set(Var),
                 ResidueSets = NotContaining
             else
-                % If there is at least one variable that can share a colour
+                % If there is at least one variable that can share a color
                 % with the selected variable, then recursively use the
-                % remaining constraints to assign a colour to one of the
+                % remaining constraints to assign a color to one of the
                 % remaining vars, and assemble the constraint residues.
-                next_colour(RestVars, NotContaining, ResidueSets, SameColour0),
+                next_color(RestVars, NotContaining, ResidueSets, SameColour0),
 
-                % Add this variable to the variables of the current colour.
+                % Add this variable to the variables of the current color.
                 set.insert(Var, SameColour0, SameColour)
             )
         ;
             NotContaining = [],
             % There were no more constraints which could be satisfied
-            % by assigning any variable a colour the same as the current
+            % by assigning any variable a color the same as the current
             % variable, so create a signleton set with the current var,
             % and assign the residue to the empty set.
             SameColour = set.make_singleton_set(Var),
             ResidueSets = []
         ),
         % The remaining constraints are the residue sets that could not be
-        % satisfied by assigning any variable to the current colour, and the
+        % satisfied by assigning any variable to the current color, and the
         % constraints that were already satisfied by the assignment of the
-        % current variable to this colour.
+        % current variable to this color.
         list.append(ResidueSets, WereContaining, Remainder)
     ;
-        % If there were no constraints, then no colours were needed.
+        % If there were no constraints, then no colors were needed.
         ConstraintList = [],
         Remainder = [],
         set.init(SameColour)
