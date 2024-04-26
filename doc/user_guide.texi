@@ -7158,6 +7158,30 @@ the same file, only the last one will have an effect.
 If the file name and colon are missing, the limit will apply
 to all files.
 
+
+@c This option should be used only by the configure script.
+@c @item --config-enable-color-diagnostics
+
+@c XXX The documentation of the options controlling color should be made public
+@c only when we have modified "enough" diagnostics for it to be generally
+
+@c useful.
+@c @item --enable-color-diagnostics
+@c @findex --enable-color-diagnostics
+@c Enable the use of colors in diagnostic messages.
+
+@c @item --set-color-correct @var{N}
+@c @item --set-color-incorrect @var{N}
+@c @item --set-color-possible-cause @var{N}
+@c @findex --set-color-correct
+@c @findex --set-color-incorrect
+@c @findex --set-color-possible-cause
+@c Set the color that diagnostics use for correct code, incorrect code,
+@c or the possible cause of an error, to the given integer,
+@c which should be between 0 and 255.
+@c The table in which this integer will be looked at is in the
+@c 8-bit color section of the wikipedia page on ANSI escape codes.
+
 @c @sp 1
 @c @item -T
 @c @itemx --debug-types
