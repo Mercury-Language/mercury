@@ -527,8 +527,9 @@
     % ignored by every part of the compiler other than error_spec.m
     % and write_error_spec.m.
 :- type color_name
-    --->    color_incorrect
-    ;       color_correct.
+    --->    color_correct
+    ;       color_incorrect
+    ;       color_cause.
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%

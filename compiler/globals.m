@@ -29,6 +29,8 @@
 :- import_module mdbcomp.feedback.
 :- import_module mdbcomp.sym_name. % for module_name
 :- import_module parse_tree.
+:- import_module parse_tree.error_spec.
+:- import_module parse_tree.maybe_error.
 :- import_module parse_tree.prog_data_pragma.
 
 :- import_module bool.
@@ -333,6 +335,23 @@
     ;       ltk_library_install.
 
 %---------------------------------------------------------------------------%
+
+:- type color_spec
+    --->    color_8bit(uint8).
+
+:- type color_specs
+    --->    color_specs(
+                % If any of these maybes is set to "no", that means that
+                % diagnostics should use the default color for that role.
+                % (Provided color is enabled for diagnostics at all.)
+                color_spec_correct ::           maybe(color_spec),
+                color_spec_incorrect ::         maybe(color_spec),
+                color_spec_possible_cause ::    maybe(color_spec)
+            ).
+
+:- func convert_color_spec_options(option_table) = maybe1(color_specs).
+
+%---------------------------------------------------------------------------%
 %
 % Access predicates for the `globals' structure.
 %
@@ -499,6 +518,7 @@
 :- import_module int.
 :- import_module require.
 :- import_module string.
+:- import_module uint8.
 
 %---------------------------------------------------------------------------%
 
@@ -800,6 +820,64 @@ convert_line_number_range(RangeStr, line_number_range(MaybeMin, MaybeMax)) :-
     else
         string.to_int(MaxStr, Max),
         MaybeMax = yes(Max)
+    ).
+
+%---------------------------------------------------------------------------%
+
+convert_color_spec_options(OptionTable) = MaybeColorSpecs :-
+    getopt.lookup_string_option(OptionTable,
+        set_color_correct, OptCorrect),
+    getopt.lookup_string_option(OptionTable,
+        set_color_incorrect, OptIncorrect),
+    getopt.lookup_string_option(OptionTable,
+        set_color_possible_cause, OptCause),
+    % There is no simple way to convert each option to its name.
+    MaybeCorrect =
+        convert_color_spec_option("--set-color-correct", OptCorrect),
+    MaybeIncorrect =
+        convert_color_spec_option("--set-color-incorrect", OptIncorrect),
+    MaybeCause =
+        convert_color_spec_option("--set-color-possible-cause", OptCause),
+    ( if
+        MaybeCorrect = ok1(Correct),
+        MaybeIncorrect = ok1(Incorrect),
+        MaybeCause = ok1(Cause)
+    then
+        Colors = color_specs(Correct, Incorrect, Cause),
+        MaybeColorSpecs = ok1(Colors)
+    else
+        Specs = get_any_errors1(MaybeCorrect) ++
+            get_any_errors1(MaybeIncorrect) ++ get_any_errors1(MaybeCause),
+        MaybeColorSpecs = error1(Specs)
+    ).
+
+:- func convert_color_spec_option(string, string) = maybe1(maybe(color_spec)).
+
+convert_color_spec_option(OptionName, OptionValue) = MaybeColorSpec :-
+    % If/when we want to support 24-bit color, or indeed any form of
+    % color specification beyond 8-bit, we would do it here.
+    % (The options that specify colors are strings, not integers,
+    % specifically to make it possible to specify 24-bit colors
+    % as strings of the form "R-G-B".)
+    ( if OptionValue = "" then
+        Color = no,
+        MaybeColorSpec = ok1(Color)
+    else if string.to_int(OptionValue, N) then
+        % The value range we want is exactly the range of uint8s.
+        ( if uint8.from_int(N, ColorNum) then
+            Color = yes(color_8bit(ColorNum)),
+            MaybeColorSpec = ok1(Color)
+        else
+            Pieces = [words("Error: the argument of"), fixed(OptionName),
+                words("is outside the range 0 to 255."), nl],
+            Spec = no_ctxt_spec($pred, severity_error, phase_options, Pieces),
+            MaybeColorSpec = error1([Spec])
+        )
+    else
+        Pieces = [words("Error: the argument of"), fixed(OptionName),
+            words("is not an integer."), nl],
+        Spec = no_ctxt_spec($pred, severity_error, phase_options, Pieces),
+        MaybeColorSpec = error1([Spec])
     ).
 
 %---------------------------------------------------------------------------%

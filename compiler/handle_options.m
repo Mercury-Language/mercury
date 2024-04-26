@@ -74,6 +74,7 @@
 :- import_module libs.trace_params.
 :- import_module mdbcomp.
 :- import_module mdbcomp.feedback.
+:- import_module parse_tree.maybe_error.
 :- import_module parse_tree.write_error_spec.
 
 :- import_module bool.
@@ -660,7 +661,15 @@ check_option_values(!OptionTable, Target, WordSize, GC_Method,
         add_error(phase_options, LECSpec, !Specs)
     ),
 
-    check_linked_target_extensions(!.OptionTable, LinkExtMap, !Specs).
+    check_linked_target_extensions(!.OptionTable, LinkExtMap, !Specs),
+
+    MaybeColorSpecs = convert_color_spec_options(!.OptionTable),
+    (
+        MaybeColorSpecs = ok1(_)
+    ;
+        MaybeColorSpecs = error1(ColorSpecs),
+        !:Specs = ColorSpecs ++ !.Specs
+    ).
 
 :- pred check_linked_target_extensions(option_table::in,
     linked_target_ext_info_map::out,
@@ -948,6 +957,7 @@ convert_options_to_globals(ProgressStream, DefaultOptionTable, OptionTable0,
     handle_target_compile_link_symlink_options(!Globals),
     handle_compiler_developer_options(!Globals, !IO),
     handle_compare_specialization(!Globals),
+    handle_colors(!Globals, !IO),
 
     (
         OT_Optimize0 = do_not_optimize,
@@ -3073,6 +3083,48 @@ handle_compare_specialization(!Globals) :-
     else
         true
     ).
+
+%---------------------%
+
+    % Options updated:
+    %   use_color_diagnostics
+    %
+:- pred handle_colors(globals::in, globals::out, io::di, io::uo) is det.
+
+handle_colors(!Globals, !IO) :-
+    % NOTE This predicate does not yet handle the issue of whether
+    % the output is going to a tty or not. If and when it does want to do so,
+    % it will first have to *figure out* where the output is going.
+    % Given that
+    %
+    % - mmc --make first puts all diagnostics in .err files, but then
+    % - copies the first N lines of those diagnostics to stderr,
+    %
+    % do we want to enable colors only in the first N lines of diagnostics?
+    io.environment.get_environment_var("NO_COLOR", NoColor, !IO),
+    (
+        NoColor = yes(_),
+        % The value that the environment variable is set to does not matter.
+        UseColor = no
+    ;
+        NoColor = no,
+        globals.lookup_bool_option(!.Globals,
+            enable_color_diagnostics_is_set, EnableIsSet),
+        globals.lookup_bool_option(!.Globals,
+            enable_color_diagnostics_is_set_to, EnableValue),
+        globals.lookup_bool_option(!.Globals,
+            config_default_color_diagnostics, ConfigDefault),
+        (
+            EnableIsSet = yes,
+            % If the user set the enable option, obey its value.
+            UseColor = EnableValue
+        ;
+            EnableIsSet = no,
+            % If the user dod not set the enable option, use the default.
+            UseColor = ConfigDefault
+        )
+    ),
+    globals.set_option(use_color_diagnostics, bool(UseColor), !Globals).
 
 %---------------------%
 

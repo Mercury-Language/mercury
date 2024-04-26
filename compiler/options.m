@@ -269,6 +269,14 @@
     ;       proc_size_statistics
     ;       inst_statistics
     ;       limit_error_contexts
+    ;       config_default_color_diagnostics
+    ;       enable_color_diagnostics
+    ;       enable_color_diagnostics_is_set
+    ;       enable_color_diagnostics_is_set_to
+    ;       use_color_diagnostics
+    ;       set_color_correct
+    ;       set_color_incorrect
+    ;       set_color_possible_cause
     ;       debug_types
     ;       debug_types_pred_name
     ;       debug_modes
@@ -1350,6 +1358,14 @@ optdef(oc_verbosity, detailed_statistics,               bool(no)).
 optdef(oc_verbosity, proc_size_statistics,              string("")).
 optdef(oc_verbosity, inst_statistics,                   string("")).
 optdef(oc_verbosity, limit_error_contexts,              accumulating([])).
+optdef(oc_verbosity, config_default_color_diagnostics,  bool(no)).
+optdef(oc_verbosity, enable_color_diagnostics,          bool_special).
+optdef(oc_verbosity, enable_color_diagnostics_is_set,   bool(no)).
+optdef(oc_verbosity, enable_color_diagnostics_is_set_to, bool(no)).
+optdef(oc_verbosity, use_color_diagnostics,             bool(no)).
+optdef(oc_verbosity, set_color_correct,                 string("")).
+optdef(oc_verbosity, set_color_incorrect,               string("")).
+optdef(oc_verbosity, set_color_possible_cause,          string("")).
 optdef(oc_verbosity, debug_types,                       bool(no)).
 optdef(oc_verbosity, debug_types_pred_name,             accumulating([])).
 optdef(oc_verbosity, debug_modes,                       bool(no)).
@@ -2314,6 +2330,13 @@ long_table("detailed-statistics",      detailed_statistics).
 long_table("proc-size-statistics",     proc_size_statistics).
 long_table("inst-statistics",          inst_statistics).
 long_table("limit-error-contexts",     limit_error_contexts).
+long_table("config-default-color-diagnostics",
+                                       config_default_color_diagnostics).
+long_table("enable-color-diagnostics", enable_color_diagnostics).
+% use_color_diagnostics is an internal-use-only option.
+long_table("set-color-correct",        set_color_correct).
+long_table("set-color-incorrect",      set_color_incorrect).
+long_table("set-color-possible-cause", set_color_possible_cause).
 long_table("debug-types",              debug_types).
 long_table("debug-types-pred-name",    debug_types_pred_name).
 long_table("debug-modes",              debug_modes).
@@ -2329,7 +2352,7 @@ long_table("debug-termination",        debug_term).
 long_table("debug-term",               debug_term).
 long_table("debug-dead-proc-elim",     debug_dead_proc_elim).
 long_table("debug-higher-order-specialization",
-                                        debug_higher_order_specialization).
+                                       debug_higher_order_specialization).
 long_table("debug-opt",                debug_opt).
 long_table("debug-opt-pred-id",        debug_opt_pred_id).
 long_table("debug-opt-pred-name",      debug_opt_pred_name).
@@ -3411,6 +3434,12 @@ special_handler(Option, SpecialData, !.OptionTable, Result, !OptOptions) :-
         )
     ;
         (
+            Option = enable_color_diagnostics,
+            SpecialData = bool(Enable),
+            map.set(enable_color_diagnostics_is_set, bool(yes), !OptionTable),
+            map.set(enable_color_diagnostics_is_set_to, bool(Enable),
+                !OptionTable)
+        ;
             Option = compile_to_c,
             SpecialData = none,
             map.set(target, string("c"), !OptionTable),
@@ -4627,6 +4656,21 @@ options_help_verbosity(Stream, !IO) :-
         "\tthe same file, only the last one will have an effect.",
         "\tIf the file name and colon are missing, the limit will apply",
         "\tto all files.",
+% XXX This option should be used only by the configure script.
+%       "--config-enable-color-diagnostics",
+% XXX The documentation of the options controlling color should be made public
+% only when we have modified "enough" diagnostics for it to be generally
+% useful.
+%       "--enable-color-diagnostics",
+%       "\tEnable the use of colors in diagnostic messages.",
+%       "--set-color-correct <N>",
+%       "--set-color-incorrect <N>",
+%       "--set-color-possible-cause <N>",
+%       "\tSet the color that diagnostics use for correct code, incorrect",
+%       "\tcode, or the possible cause of an error, to the given integer,",
+%       "\twhich should be between 0 and 255.",
+%       "\tThe table in which this integer will be looked at is in the",
+%       "\t8-bit color section of the wikipedia page on ANSI escape codes.",
 % These work only if the compiler was compiled with
 % "--trace-flag type_checkpoint".
 %       "-T, --debug-types",
