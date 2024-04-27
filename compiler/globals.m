@@ -853,32 +853,56 @@ convert_color_spec_options(OptionTable) = MaybeColorSpecs :-
 
 :- func convert_color_spec_option(string, string) = maybe1(maybe(color_spec)).
 
-convert_color_spec_option(OptionName, OptionValue) = MaybeColorSpec :-
+convert_color_spec_option(OptionName, OptionValue) = MaybeMaybeColorSpec :-
     % If/when we want to support 24-bit color, or indeed any form of
     % color specification beyond 8-bit, we would do it here.
     % (The options that specify colors are strings, not integers,
     % specifically to make it possible to specify 24-bit colors
     % as strings of the form "R-G-B".)
     ( if OptionValue = "" then
-        Color = no,
-        MaybeColorSpec = ok1(Color)
+        MaybeColor = no,
+        MaybeMaybeColorSpec = ok1(MaybeColor)
     else if string.to_int(OptionValue, N) then
         % The value range we want is exactly the range of uint8s.
         ( if uint8.from_int(N, ColorNum) then
-            Color = yes(color_8bit(ColorNum)),
-            MaybeColorSpec = ok1(Color)
+            Color = color_8bit(ColorNum),
+            MaybeMaybeColorSpec = ok1(yes(Color))
         else
             Pieces = [words("Error: the argument of"), fixed(OptionName),
                 words("is outside the range 0 to 255."), nl],
             Spec = no_ctxt_spec($pred, severity_error, phase_options, Pieces),
-            MaybeColorSpec = error1([Spec])
+            MaybeMaybeColorSpec = error1([Spec])
         )
+    else if standard_color_name(OptionValue, Color) then
+        MaybeMaybeColorSpec = ok1(yes(Color))
     else
         Pieces = [words("Error: the argument of"), fixed(OptionName),
-            words("is not an integer."), nl],
+            words("is neither an integer nor the name of a color."), nl],
         Spec = no_ctxt_spec($pred, severity_error, phase_options, Pieces),
-        MaybeColorSpec = error1([Spec])
+        MaybeMaybeColorSpec = error1([Spec])
     ).
+
+:- pred standard_color_name(string::in, color_spec::out) is semidet.
+
+standard_color_name("black",            color_8bit(0u8)).
+standard_color_name("red",              color_8bit(1u8)).
+standard_color_name("green",            color_8bit(2u8)).
+standard_color_name("yellow",           color_8bit(3u8)).
+standard_color_name("blue",             color_8bit(4u8)).
+standard_color_name("magenta",          color_8bit(5u8)).
+standard_color_name("cyan",             color_8bit(6u8)).
+standard_color_name("white",            color_8bit(7u8)).
+
+standard_color_name("gray",             color_8bit(8u8)).
+standard_color_name("grey",             color_8bit(8u8)).
+standard_color_name("bright black",     color_8bit(8u8)).
+standard_color_name("bright red",       color_8bit(9u8)).
+standard_color_name("bright green",     color_8bit(10u8)).
+standard_color_name("bright yellow",    color_8bit(11u8)).
+standard_color_name("bright blue",      color_8bit(12u8)).
+standard_color_name("bright magenta",   color_8bit(13u8)).
+standard_color_name("bright cyan",      color_8bit(14u8)).
+standard_color_name("bright white",     color_8bit(15u8)).
 
 %---------------------------------------------------------------------------%
 
