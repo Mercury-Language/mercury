@@ -2332,11 +2332,17 @@ long_table("inst-statistics",          inst_statistics).
 long_table("limit-error-contexts",     limit_error_contexts).
 long_table("config-default-color-diagnostics",
                                        config_default_color_diagnostics).
+long_table("config-default-colour-diagnostics",
+                                       config_default_color_diagnostics).
 long_table("enable-color-diagnostics", enable_color_diagnostics).
+long_table("enable-colour-diagnostics", enable_color_diagnostics).
 % use_color_diagnostics is an internal-use-only option.
 long_table("set-color-correct",        set_color_correct).
+long_table("set-colour-correct",       set_color_correct).
 long_table("set-color-incorrect",      set_color_incorrect).
+long_table("set-colour-incorrect",     set_color_incorrect).
 long_table("set-color-possible-cause", set_color_possible_cause).
+long_table("set-colour-possible-cause", set_color_possible_cause).
 long_table("debug-types",              debug_types).
 long_table("debug-types-pred-name",    debug_types_pred_name).
 long_table("debug-modes",              debug_modes).
