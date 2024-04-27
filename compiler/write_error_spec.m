@@ -1371,7 +1371,14 @@ get_line_of_words(AvailLen, FirstSCUnit, LaterSCUnits0, Indent, LineWordsLen,
     AvailLeft = AvailLen - uint.cast_to_int(Indent * indent2_increment),
     (
         FirstSCUnit = sc_str(FirstStr),
-        LineEndReset1 = line_end_reset_nothing,
+        ( if stack.is_empty(!.ColorStack) then
+            LineEndReset1 = line_end_reset_nothing
+        else
+            % If the initial stack contains a color, then we need to reset
+            % colors at the end of the line even if the line itself
+            % contains no color changes.
+            LineEndReset1 = line_end_reset_color
+        ),
         NextSpace = " ",
         string.count_code_points(FirstStr, LenSoFar),
         LaterSCUnits0 = LaterSCUnits
