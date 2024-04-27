@@ -4669,14 +4669,30 @@ options_help_verbosity(Stream, !IO) :-
 % useful.
 %       "--enable-color-diagnostics",
 %       "\tEnable the use of colors in diagnostic messages.",
-%       "--set-color-correct <N>",
-%       "--set-color-incorrect <N>",
-%       "--set-color-possible-cause <N>",
+%       "--set-color-correct <Color>",
+%       "--set-color-incorrect <Color>",
+%       "--set-color-possible-cause <Color>",
 %       "\tSet the color that diagnostics use for correct code, incorrect",
-%       "\tcode, or the possible cause of an error, to the given integer,",
-%       "\twhich should be between 0 and 255.",
-%       "\tThe table in which this integer will be looked at is in the",
-%       "\t8-bit color section of the wikipedia page on ANSI escape codes.",
+%       "\tcode, or the possible cause of an error, to the given color.",
+%       "\tThe colors available are listed in the 8-bit color section",
+%       "\tof the wikipedia page on ANSI escape codes.",
+%
+%       "\tThe color can be specified either by name or by number.",
+%       "\tThe name can be one of the first sixteen colors in that table,",
+%       "\twhich are `black', `red', `green', `yellow', `blue', `magenta',",
+%       "\t`cyan', `white',, `bright-black', `bright-red', `bright-green',",
+%       "\t`bright-yellow',, `bright-blue', `bright-magenta',",
+%       "\t`bright-cyan', and `bright-white'. The hyphens in names",
+%       "\tcan be replaced with spaces, but the resulting names will need",
+%       "\tto be quoted on the command line.",
+%
+%       "\tNote that color names will select the intended color only if",
+%       "\tthe terminal is set up to use the standard color scheme.",
+%
+%       "\tThe color can also be specified as a number between 0 and 255.",
+%       "\tThe table in which this integer will select a color",
+%       "\tis the 256-color mode table in the wikipedia page mentioned above.",
+
 % These work only if the compiler was compiled with
 % "--trace-flag type_checkpoint".
 %       "-T, --debug-types",

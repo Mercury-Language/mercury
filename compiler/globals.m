@@ -895,13 +895,21 @@ standard_color_name("white",            color_8bit(7u8)).
 
 standard_color_name("gray",             color_8bit(8u8)).
 standard_color_name("grey",             color_8bit(8u8)).
+standard_color_name("bright-black",     color_8bit(8u8)).
 standard_color_name("bright black",     color_8bit(8u8)).
+standard_color_name("bright-red",       color_8bit(9u8)).
 standard_color_name("bright red",       color_8bit(9u8)).
+standard_color_name("bright-green",     color_8bit(10u8)).
 standard_color_name("bright green",     color_8bit(10u8)).
+standard_color_name("bright-yellow",    color_8bit(11u8)).
 standard_color_name("bright yellow",    color_8bit(11u8)).
+standard_color_name("bright-blue",      color_8bit(12u8)).
 standard_color_name("bright blue",      color_8bit(12u8)).
+standard_color_name("bright-magenta",   color_8bit(13u8)).
 standard_color_name("bright magenta",   color_8bit(13u8)).
+standard_color_name("bright-cyan",      color_8bit(14u8)).
 standard_color_name("bright cyan",      color_8bit(14u8)).
+standard_color_name("bright-white",     color_8bit(15u8)).
 standard_color_name("bright white",     color_8bit(15u8)).
 
 %---------------------------------------------------------------------------%

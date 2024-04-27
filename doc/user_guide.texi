@@ -7194,12 +7194,14 @@ to all files.
 @c The name can be one of the first sixteen colors in that table, which are
 @c @samp{black}, @samp{red}, @samp{green}, @samp{yellow},
 @c @samp{blue}, @samp{magenta}, @samp{cyan}, @samp{white},
-@c @samp{bright black}, @samp{bright red},
-@c @samp{bright green}, @samp{bright yellow},
-@c @samp{bright blue}, @samp{bright magenta},
-@c @samp{bright cyan}, and @samp{bright white}.
-@c The names containing spaces will need to be quoted on the command line,
-@c and they will select the intended color only if
+@c @samp{bright-black}, @samp{bright-red},
+@c @samp{bright-green}, @samp{bright-yellow},
+@c @samp{bright-blue}, @samp{bright-magenta},
+@c @samp{bright-cyan}, and @samp{bright-white}.
+@c The hyphens in names can be replaced with spaces, but the
+@c resulting names will need to be quoted on the command line.
+@c
+@c Note that color names will select the intended color only if
 @c the terminal is set up to use the standard color scheme.
 @c
 @c The color can also be specified as a number between 0 and 255.
