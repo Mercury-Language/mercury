@@ -7161,26 +7161,50 @@ to all files.
 
 @c This option should be used only by the configure script.
 @c @item --config-enable-color-diagnostics
+@c @itemx --config-enable-colour-diagnostics
 
 @c XXX The documentation of the options controlling color should be made public
 @c only when we have modified "enough" diagnostics for it to be generally
 
 @c useful.
 @c @item --enable-color-diagnostics
+@c @itemx --enable-colour-diagnostics
 @c @findex --enable-color-diagnostics
+@c @findex --enable-colour-diagnostics
 @c Enable the use of colors in diagnostic messages.
 
-@c @item --set-color-correct @var{N}
-@c @item --set-color-incorrect @var{N}
-@c @item --set-color-possible-cause @var{N}
+@c @item --set-color-correct @var{Color}
+@c @itemx --set-color-incorrect @var{Color}
+@c @itemx --set-color-possible-cause @var{Color}
+@c @itemx --set-colour-correct @var{Color}
+@c @itemx --set-colour-incorrect @var{Color}
+@c @itemx --set-colour-possible-cause @var{Color}
 @c @findex --set-color-correct
 @c @findex --set-color-incorrect
 @c @findex --set-color-possible-cause
+@c @findex --set-colour-correct
+@c @findex --set-colour-incorrect
+@c @findex --set-colour-possible-cause
 @c Set the color that diagnostics use for correct code, incorrect code,
-@c or the possible cause of an error, to the given integer,
-@c which should be between 0 and 255.
-@c The table in which this integer will be looked at is in the
-@c 8-bit color section of the wikipedia page on ANSI escape codes.
+@c or the possible cause of an error, to the given color.
+@c The colors available are listed in the 8-bit color section
+@c of the wikipedia page on ANSI escape codes.
+@c
+@c The color can be specified either by name or by number.
+@c The name can be one of the first sixteen colors in that table, which are
+@c @samp{black}, @samp{red}, @samp{green}, @samp{yellow},
+@c @samp{blue}, @samp{magenta}, @samp{cyan}, @samp{white},
+@c @samp{bright black}, @samp{bright red},
+@c @samp{bright green}, @samp{bright yellow},
+@c @samp{bright blue}, @samp{bright magenta},
+@c @samp{bright cyan}, and @samp{bright white}.
+@c The names containing spaces will need to be quoted on the command line,
+@c and they will select the intended color only if
+@c the terminal is set up to use the standard color scheme.
+@c
+@c The color can also be specified as a number between 0 and 255.
+@c The table in which this integer will select a color
+@c is the 256-color mode table in the wikipedia page mentioned above.
 
 @c @sp 1
 @c @item -T
