@@ -5,9 +5,9 @@ multimode_syntax.m:017: In clause for predicate `::'/2:
 multimode_syntax.m:017:   in argument 1 of clause head:
 multimode_syntax.m:017:   error: the language construct `='/2 should be used as
 multimode_syntax.m:017:   a goal, not as an expression.
-multimode_syntax.m:017:   If you are trying to use a goal as a boolean
-multimode_syntax.m:017:   function, you should write `if <goal> then yes else
-multimode_syntax.m:017:   no' instead.
+multimode_syntax.m:017:   [38;5;226mIf you are trying to use a goal as a boolean[39;49m
+multimode_syntax.m:017:   [38;5;226mfunction, you should write `if <goal> then yes else[39;49m
+multimode_syntax.m:017:   [38;5;226mno' instead.[39;49m
 multimode_syntax.m:017: In clause for predicate `::'/2:
 multimode_syntax.m:017:   in argument 2 of clause head:
 multimode_syntax.m:017:   error: undefined symbol `out'/0.

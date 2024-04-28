@@ -2,14 +2,14 @@ type_error_use_module.m:018: In clause for predicate `main'/2:
 type_error_use_module.m:018:   in argument 1 of call to predicate
 type_error_use_module.m:018:   `io.write_line'/3:
 type_error_use_module.m:018:   error: undefined symbol `init'/0.
-type_error_use_module.m:018:   That symbol is defined in modules `map' and
-type_error_use_module.m:018:   `type_error_use_module_helper_1', none of which
-type_error_use_module.m:018:   have `:- import_module' declarations.
+type_error_use_module.m:018:   [38;5;226mThat symbol is defined in modules `map' and[39;49m
+type_error_use_module.m:018:   [38;5;226m`type_error_use_module_helper_1', neither of[39;49m
+type_error_use_module.m:018:   [38;5;226mwhich has an `:- import_module' declaration.[39;49m
 type_error_use_module.m:018:   Note that symbols defined in modules accessed
 type_error_use_module.m:018:   via `:- use_module' declarations must always be
 type_error_use_module.m:018:   fully module qualified.
 type_error_use_module.m:019: In clause for predicate `main'/2:
 type_error_use_module.m:019:   error: undefined predicate `do_main'/2.
-type_error_use_module.m:019:   That predicate is defined in module
-type_error_use_module.m:019:   `type_error_use_module_helper_1', which does not
-type_error_use_module.m:019:   have an `:- import_module' declaration.
+type_error_use_module.m:019:   [38;5;226mThat predicate is defined in module[39;49m
+type_error_use_module.m:019:   [38;5;226m`type_error_use_module_helper_1', which does not[39;49m
+type_error_use_module.m:019:   [38;5;226mhave an `:- import_module' declaration.[39;49m

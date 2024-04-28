@@ -13,7 +13,7 @@ type_diff.m:038:     [38;5;203mlist.list(type_diff.tx(string));[39;49m
 type_diff.m:038:   expected type was
 type_diff.m:038:     [38;5;40mlist.list(type_diff.tx(T, U)).[39;49m
 type_diff.m:038:   In the first argument of type constructor `list':
-type_diff.m:038:     [38;5;226mArity mismatch for type constructor `tx': expected two[39;49m
+type_diff.m:038:     [38;5;226marity mismatch for type constructor `tx': expected two[39;49m
 type_diff.m:038:     [38;5;226marguments, got one.[39;49m
 type_diff.m:039: In clause for predicate `p1'/1:
 type_diff.m:039:   in argument 1 of call to predicate
@@ -24,7 +24,7 @@ type_diff.m:039:   expected type was
 type_diff.m:039:     [38;5;40mlist.list(list.list(type_diff.tx(T, U))).[39;49m
 type_diff.m:039:   In the first argument of type constructor `list':
 type_diff.m:039:   in the first argument of type constructor `list':
-type_diff.m:039:     [38;5;226mArity mismatch for type constructor `tx': expected two[39;49m
+type_diff.m:039:     [38;5;226marity mismatch for type constructor `tx': expected two[39;49m
 type_diff.m:039:     [38;5;226marguments, got one.[39;49m
 type_diff.m:071: In clause for predicate `p2'/4:
 type_diff.m:071:   in argument 1 (i.e. the predicate term) of higher-order

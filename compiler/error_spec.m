@@ -906,9 +906,10 @@ do_maybe_construct_did_you_mean_pieces(BaseName, CandidateNames,
                 list.map(TransformFunc, SuggestedNames0) ++ ["..."]
         ),
         SuggestionPieces = list_to_quoted_pieces_or(SuggestedNames),
-        DidYouMeanPieces =
+        DidYouMeanPieces0 =
             [words("(Did you mean")] ++ SuggestionPieces ++
-            [suffix("?)"), nl]
+            [suffix("?)"), nl],
+        DidYouMeanPieces = color_pieces_as_possible_cause(DidYouMeanPieces0)
     else
         DidYouMeanPieces = []
     ).

@@ -595,35 +595,6 @@ line_number_is_in_a_range([Range | Ranges], LineNumber) = IsInARange :-
         IsInARange = line_number_is_in_a_range(Ranges, LineNumber)
     ).
 
-%---------------------%
-
-% ZZZ move to end, next to convert_line_words_to_string
-:- pred write_msg_lines(io.text_output_stream::in, string::in,
-    list(error_line)::in, io::di, io::uo) is det.
-
-write_msg_lines(_Stream, _, [], !IO).
-write_msg_lines(Stream, PrefixStr, [Line | Lines], !IO) :-
-    write_msg_line(Stream, PrefixStr, Line, !IO),
-    write_msg_lines(Stream, PrefixStr, Lines, !IO).
-
-:- pred write_msg_line(io.text_output_stream::in, string::in, error_line::in,
-    io::di, io::uo) is det.
-
-write_msg_line(Stream, PrefixStr, Line, !IO) :-
-    LineWordsStr = convert_line_words_to_string(Line),
-    ( if LineWordsStr = "" then
-        % Don't bother to print out indents that are followed by nothing.
-        io.format(Stream, "%s\n", [s(PrefixStr)], !IO)
-    else
-        LineIndent = Line ^ line_indent_level,
-        IndentStr = indent2_string(LineIndent),
-        % If ContextStr is non-empty, it will end with a space,
-        % which guarantees that PrefixStr, which is ContextStr possibly with
-        % some indentation added, will be separated from LineWords.
-        io.format(Stream, "%s%s%s\n",
-            [s(PrefixStr), s(IndentStr), s(LineWordsStr)], !IO)
-    ).
-
 %---------------------------------------------------------------------------%
 %
 % Oversee the whole process of converting
@@ -661,6 +632,9 @@ convert_pieces_to_lines(ColorDb, MaybeMaxWidth, ContextStr, TreatAsFirst,
     (
         io.stderr_stream(StdErr, !TIO),
         io.nl(StdErr, !TIO),
+        io.write_string(StdErr, "PIECES\n", !TIO),
+        list.foldl(io.write_line(StdErr), Pieces, !TIO),
+        io.nl(StdErr, !TIO),
         io.write_string(StdErr, "PARAGRAPHS\n", !TIO),
         list.foldl(io.write_line(StdErr), Paragraphs, !TIO),
         io.nl(StdErr, !TIO),
@@ -671,7 +645,8 @@ convert_pieces_to_lines(ColorDb, MaybeMaxWidth, ContextStr, TreatAsFirst,
         list.foldl(io.write_line(StdErr), Lines, !TIO),
         io.nl(StdErr, !TIO),
         io.write_string(StdErr, "END\n", !TIO),
-        io.nl(StdErr, !TIO)
+        io.nl(StdErr, !TIO),
+        io.flush_output(StdErr, !TIO)
     ).
 
 %---------------------------------------------------------------------------%
@@ -715,8 +690,10 @@ convert_pieces_to_lines(ColorDb, MaybeMaxWidth, ContextStr, TreatAsFirst,
     list(paragraph)::out) is det.
 
 convert_pieces_to_paragraphs(ColorDb, Pieces, Paras) :-
+    WordsCord0 = cord.init,
+    ParasCord0 = cord.init,
     convert_pieces_to_paragraphs_acc(ColorDb, first_in_msg, Pieces,
-        [], cord.empty, ParasCord),
+        WordsCord0, ParasCord0, ParasCord),
     Paras = cord.list(ParasCord).
 
 :- type word
@@ -728,14 +705,14 @@ convert_pieces_to_paragraphs(ColorDb, Pieces, Paras) :-
     ;       color_end_word.
 
 :- pred convert_pieces_to_paragraphs_acc(color_db::in, maybe_first_in_msg::in,
-    list(format_piece)::in, list(word)::in,
+    list(format_piece)::in, cord(word)::in,
     cord(paragraph)::in, cord(paragraph)::out) is det.
 
-convert_pieces_to_paragraphs_acc(_, _, [], RevWords0, !Paras) :-
-    SCUnits = rev_words_to_sc_units(RevWords0),
+convert_pieces_to_paragraphs_acc(_, _, [], !.WordsCord, !Paras) :-
+    SCUnits = words_cord_to_sc_units(!.WordsCord),
     add_paragraph(paragraph(SCUnits, 0, 0, paren_none), !Paras).
 convert_pieces_to_paragraphs_acc(ColorDb, FirstInMsg, [Piece0 | Pieces0],
-        RevWords0, !Paras) :-
+        !.WordsCord, !Paras) :-
     ( if
         ( Piece0 = nl
         ; Piece0 = nl_indent_delta(_)
@@ -744,7 +721,7 @@ convert_pieces_to_paragraphs_acc(ColorDb, FirstInMsg, [Piece0 | Pieces0],
         HeadPiece0 = not_for_general_use_end_color
     then
         % The pattern [nl, end_color, ...] happens when one of the
-        % color_pieces functions in error_spec.m is given a piece list 
+        % color_pieces functions in error_spec.m is given a piece list
         % that includes the end of a line. This leads to unnecessary
         % color changes:
         %
@@ -784,40 +761,41 @@ convert_pieces_to_paragraphs_acc(ColorDb, FirstInMsg, [Piece0 | Pieces0],
     ),
     (
         Piece = words(WordsStr),
-        break_into_words(WordsStr, RevWords0, RevWords1)
+        break_into_words(WordsStr, PieceWordsCord),
+        !:WordsCord = !.WordsCord ++ PieceWordsCord
     ;
         Piece = words_quote(WordsStr),
-        break_into_words(add_quotes(WordsStr), RevWords0, RevWords1)
+        break_into_words(add_quotes(WordsStr), PieceWordsCord),
+        !:WordsCord = !.WordsCord ++ PieceWordsCord
     ;
         Piece = fixed(Word),
-        RevWords1 = [plain_word(Word) | RevWords0]
+        cord.snoc(plain_word(Word), !WordsCord)
     ;
         Piece = quote(Word),
-        RevWords1 = [plain_word(add_quotes(Word)) | RevWords0]
+        cord.snoc(plain_word(add_quotes(Word)), !WordsCord)
     ;
         Piece = int_fixed(Int),
-        RevWords1 = [plain_word(int_to_string(Int)) | RevWords0]
+        cord.snoc(plain_word(int_to_string(Int)), !WordsCord)
     ;
         Piece = int_name(Int),
-        RevWords1 = [plain_word(int_name_str(Int)) | RevWords0]
+        cord.snoc(plain_word(int_name_str(Int)), !WordsCord)
     ;
         Piece = nth_fixed(Int),
-        RevWords1 = [plain_word(nth_fixed_str(Int)) | RevWords0]
+        cord.snoc(plain_word(nth_fixed_str(Int)), !WordsCord)
     ;
         Piece = lower_case_next_if_not_first,
         (
-            FirstInMsg = first_in_msg,
-            RevWords1 = RevWords0
+            FirstInMsg = first_in_msg
         ;
             FirstInMsg = not_first_in_msg,
-            RevWords1 = [lower_next_word | RevWords0]
+            cord.snoc(lower_next_word, !WordsCord)
         )
     ;
         Piece = prefix(Word),
-        RevWords1 = [prefix_word(Word) | RevWords0]
+        cord.snoc(prefix_word(Word), !WordsCord)
     ;
         Piece = suffix(Word),
-        RevWords1 = [suffix_word(Word) | RevWords0]
+        cord.snoc(suffix_word(Word), !WordsCord)
     ;
         (
             Piece = qual_sym_name(SymName)
@@ -826,11 +804,11 @@ convert_pieces_to_paragraphs_acc(ColorDb, FirstInMsg, [Piece0 | Pieces0],
             SymName = unqualified(unqualify_name(SymName0))
         ),
         Word = sym_name_to_word(SymName),
-        RevWords1 = [plain_word(Word) | RevWords0]
+        cord.snoc(plain_word(Word), !WordsCord)
     ;
         Piece = name_arity(NameAndArity),
         Word = name_arity_to_word(NameAndArity),
-        RevWords1 = [plain_word(Word) | RevWords0]
+        cord.snoc(plain_word(Word), !WordsCord)
     ;
         (
             Piece = qual_sym_name_arity(SymNameAndArity)
@@ -841,7 +819,7 @@ convert_pieces_to_paragraphs_acc(ColorDb, FirstInMsg, [Piece0 | Pieces0],
             SymNameAndArity = sym_name_arity(SymName, Arity)
         ),
         Word = sym_name_arity_to_word(SymNameAndArity),
-        RevWords1 = [plain_word(Word) | RevWords0]
+        cord.snoc(plain_word(Word), !WordsCord)
     ;
         (
             Piece = qual_pf_sym_name_pred_form_arity(PFSymNameArity)
@@ -852,7 +830,8 @@ convert_pieces_to_paragraphs_acc(ColorDb, FirstInMsg, [Piece0 | Pieces0],
             PFSymNameArity = pf_sym_name_arity(PF, SymName, PredFormArity)
         ),
         WordsStr = pf_sym_name_pred_form_arity_to_string(PFSymNameArity),
-        break_into_words(WordsStr, RevWords0, RevWords1)
+        break_into_words(WordsStr, PieceWordsCord),
+        !:WordsCord = !.WordsCord ++ PieceWordsCord
     ;
         (
             Piece = qual_pf_sym_name_user_arity(PFSymNameArity)
@@ -863,7 +842,8 @@ convert_pieces_to_paragraphs_acc(ColorDb, FirstInMsg, [Piece0 | Pieces0],
             PFSymNameArity = pred_pf_name_arity(PF, SymName, UserArity)
         ),
         WordsStr = pf_sym_name_user_arity_to_string(PFSymNameArity),
-        break_into_words(WordsStr, RevWords0, RevWords1)
+        break_into_words(WordsStr, PieceWordsCord),
+        !:WordsCord = !.WordsCord ++ PieceWordsCord
     ;
         (
             Piece = qual_cons_id_and_maybe_arity(ConsId0),
@@ -873,7 +853,7 @@ convert_pieces_to_paragraphs_acc(ColorDb, FirstInMsg, [Piece0 | Pieces0],
             strip_module_qualifier_from_cons_id(ConsId0, ConsId)
         ),
         Word = maybe_quoted_cons_id_and_arity_to_string(ConsId),
-        RevWords1 = [plain_word(Word) | RevWords0]
+        cord.snoc(plain_word(Word), !WordsCord)
     ;
         (
             Piece = qual_type_ctor(TypeCtor),
@@ -906,49 +886,49 @@ convert_pieces_to_paragraphs_acc(ColorDb, FirstInMsg, [Piece0 | Pieces0],
         ),
         SymNameAndArity = sym_name_arity(SymName, Arity),
         Word = sym_name_arity_to_word(SymNameAndArity),
-        RevWords1 = [plain_word(Word) | RevWords0]
+        cord.snoc(plain_word(Word), !WordsCord)
     ;
         Piece = qual_top_ctor_of_type(Type),
         type_to_ctor_det(Type, TypeCtor),
         TypeCtor = type_ctor(TypeCtorName, TypeCtorArity),
         SymNameArity = sym_name_arity(TypeCtorName, TypeCtorArity),
         Word = sym_name_arity_to_word(SymNameArity),
-        RevWords1 = [plain_word(Word) | RevWords0]
+        cord.snoc(plain_word(Word), !WordsCord)
     ;
         Piece = p_or_f(PredOrFunc),
         Word = pred_or_func_to_string(PredOrFunc),
-        RevWords1 = [plain_word(Word) | RevWords0]
+        cord.snoc(plain_word(Word), !WordsCord)
     ;
         Piece = purity_desc(Purity),
         Word = purity_to_string(Purity),
-        RevWords1 = [plain_word(Word) | RevWords0]
+        cord.snoc(plain_word(Word), !WordsCord)
     ;
         Piece = a_purity_desc(Purity),
         Word = a_purity_to_string(Purity),
-        RevWords1 = [plain_word(Word) | RevWords0]
+        cord.snoc(plain_word(Word), !WordsCord)
     ;
         Piece = decl(DeclName),
         Word = add_quotes(":- " ++ DeclName),
-        RevWords1 = [plain_word(Word) | RevWords0]
+        cord.snoc(plain_word(Word), !WordsCord)
     ;
         Piece = pragma_decl(PragmaName),
         Word = add_quotes(":- pragma " ++ PragmaName),
-        RevWords1 = [plain_word(Word) | RevWords0]
+        cord.snoc(plain_word(Word), !WordsCord)
     ;
         Piece = nl,
-        SCUnits = rev_words_to_sc_units(RevWords0),
+        SCUnits = words_cord_to_sc_units(!.WordsCord),
         add_paragraph(paragraph(SCUnits, 0, 0, paren_none), !Paras),
-        RevWords1 = []
+        !:WordsCord = cord.init
     ;
         Piece = nl_indent_delta(IndentDelta),
-        SCUnits = rev_words_to_sc_units(RevWords0),
+        SCUnits = words_cord_to_sc_units(!.WordsCord),
         add_paragraph(paragraph(SCUnits, 0, IndentDelta, paren_none), !Paras),
-        RevWords1 = []
+        !:WordsCord = cord.init
     ;
         Piece = blank_line,
-        SCUnits = rev_words_to_sc_units(RevWords0),
+        SCUnits = words_cord_to_sc_units(!.WordsCord),
         add_paragraph(paragraph(SCUnits, 1, 0, paren_none), !Paras),
-        RevWords1 = []
+        !:WordsCord = cord.init
     ;
         Piece = left_paren_maybe_nl_inc(LP, LPWordKind),
         (
@@ -958,12 +938,13 @@ convert_pieces_to_paragraphs_acc(ColorDb, FirstInMsg, [Piece0 | Pieces0],
             LPWordKind = lp_suffix,
             LPWord = suffix_word(LP)
         ),
-        SCUnits = rev_words_to_sc_units([LPWord | RevWords0]),
+        cord.snoc(LPWord, !WordsCord),
+        SCUnits = words_cord_to_sc_units(!.WordsCord),
         add_paragraph(paragraph(SCUnits, 0, 1, paren_lp_end), !Paras),
-        RevWords1 = []
+        !:WordsCord = cord.init
     ;
         Piece = maybe_nl_dec_right_paren(RP, RPWordKind),
-        SCUnits = rev_words_to_sc_units(RevWords0),
+        SCUnits = words_cord_to_sc_units(!.WordsCord),
         add_paragraph(paragraph(SCUnits, 0, -1, paren_end_rp), !Paras),
         (
             RPWordKind = rp_plain,
@@ -972,12 +953,11 @@ convert_pieces_to_paragraphs_acc(ColorDb, FirstInMsg, [Piece0 | Pieces0],
             RPWordKind = rp_prefix,
             RPWord = prefix_word(RP)
         ),
-        RevWords1 = [RPWord]
+        !:WordsCord = cord.singleton(RPWord)
     ;
         Piece = not_for_general_use_start_color(ColorName),
         (
-            ColorDb = no_color_db,
-            RevWords1 = RevWords0
+            ColorDb = no_color_db
         ;
             ColorDb = color_db(ColorNameMap),
             (
@@ -990,27 +970,25 @@ convert_pieces_to_paragraphs_acc(ColorDb, FirstInMsg, [Piece0 | Pieces0],
                 ColorName = color_cause,
                 Color = ColorNameMap ^ cnm_cause
             ),
-            RevWords1 = [color_start_word(Color) | RevWords0]
+            cord.snoc(color_start_word(Color), !WordsCord)
         )
     ;
         Piece = not_for_general_use_end_color,
         (
-            ColorDb = no_color_db,
-            RevWords1 = RevWords0
+            ColorDb = no_color_db
         ;
             ColorDb = color_db(_ColorNameMap),
-            RevWords1 = [color_end_word | RevWords0]
+            cord.snoc(color_end_word, !WordsCord)
         )
     ;
         ( Piece = invis_order_default_start(_, _)
         ; Piece = invis_order_default_end(_, _)
         ; Piece = treat_next_as_first
-        ),
-        RevWords1 = RevWords0
+        )
     ),
     update_first_in_msg_after_piece(Piece, FirstInMsg, TailFirstInMsg),
     convert_pieces_to_paragraphs_acc(ColorDb, TailFirstInMsg, Pieces,
-        RevWords1, !Paras).
+        !.WordsCord, !Paras).
 
 :- pred add_paragraph(paragraph::in, cord(paragraph)::in, cord(paragraph)::out)
     is det.
@@ -1036,59 +1014,64 @@ add_paragraph(Para, !Paras) :-
     ;       color_start(color_spec)
     ;       color_end.
 
-:- func rev_words_to_sc_units(list(word)) = list(sc_unit).
+:- func words_cord_to_sc_units(cord(word)) = list(sc_unit).
 
-rev_words_to_sc_units(RevWords) = SCUnits :-
+words_cord_to_sc_units(WordsCord) = SCUnits :-
+    Words = cord.list(WordsCord),
+    list.reverse(Words, RevWords),
     PorPs = list.reverse(rev_words_to_rev_plain_or_prefix(RevWords)),
     SCUnits = join_prefixes(PorPs).
 
+    % This function implements suffixes.
+    %
 :- func rev_words_to_rev_plain_or_prefix(list(word)) = list(plain_or_prefix).
 
 rev_words_to_rev_plain_or_prefix([]) = [].
-rev_words_to_rev_plain_or_prefix([Word | Words]) = RevPorPs :-
+rev_words_to_rev_plain_or_prefix([RevWord | RevWords]) = RevPorPs :-
     (
-        Word = plain_word(String),
-        RevPorPs = [plain(String) | rev_words_to_rev_plain_or_prefix(Words)]
+        RevWord = plain_word(String),
+        RevPorPs = [plain(String) | rev_words_to_rev_plain_or_prefix(RevWords)]
     ;
-        Word = color_start_word(Color),
+        RevWord = color_start_word(Color),
         RevPorPs = [color_start(Color) |
-            rev_words_to_rev_plain_or_prefix(Words)]
+            rev_words_to_rev_plain_or_prefix(RevWords)]
     ;
-        Word = color_end_word,
-        RevPorPs = [color_end | rev_words_to_rev_plain_or_prefix(Words)]
+        RevWord = color_end_word,
+        RevPorPs = [color_end | rev_words_to_rev_plain_or_prefix(RevWords)]
     ;
-        Word = lower_next_word,
-        RevPorPs = [lower_next | rev_words_to_rev_plain_or_prefix(Words)]
+        RevWord = lower_next_word,
+        RevPorPs = [lower_next | rev_words_to_rev_plain_or_prefix(RevWords)]
     ;
-        Word = prefix_word(Prefix),
-        RevPorPs = [prefix(Prefix) | rev_words_to_rev_plain_or_prefix(Words)]
+        RevWord = prefix_word(Prefix),
+        RevPorPs = [prefix(Prefix) |
+            rev_words_to_rev_plain_or_prefix(RevWords)]
     ;
-        Word = suffix_word(Suffix),
+        RevWord = suffix_word(Suffix),
         (
-            Words = [],
+            RevWords = [],
             RevPorPs = [plain(Suffix)]
         ;
-            Words = [color_start_word(Color) | Tail],
+            RevWords = [color_start_word(Color) | Tail],
             RevPorPs = [plain(Suffix), color_start(Color)
                 | rev_words_to_rev_plain_or_prefix(Tail)]
         ;
-            Words = [color_end_word | Tail],
+            RevWords = [color_end_word | Tail],
             RevPorPs = [plain(Suffix), color_end
                 | rev_words_to_rev_plain_or_prefix(Tail)]
         ;
-            Words = [plain_word(String) | Tail],
+            RevWords = [plain_word(String) | Tail],
             RevPorPs = [plain(String ++ Suffix)
                 | rev_words_to_rev_plain_or_prefix(Tail)]
         ;
-            Words = [lower_next_word | Tail],
+            RevWords = [lower_next_word | Tail],
             % Convert the lower_next_word/suffix combination into just the
             % suffix after lowercasing the suffix (which will probably have
             % no effect, since the initial character of a suffix is usually
             % not a letter).
-            NewWords = [suffix_word(uncapitalize_first(Suffix)) | Tail],
-            RevPorPs = rev_words_to_rev_plain_or_prefix(NewWords)
+            NewRevWords = [suffix_word(uncapitalize_first(Suffix)) | Tail],
+            RevPorPs = rev_words_to_rev_plain_or_prefix(NewRevWords)
         ;
-            Words = [prefix_word(Prefix) | Tail],
+            RevWords = [prefix_word(Prefix) | Tail],
             % Convert the prefix/suffix combination into a plain word.
             % We could convert it into a prefix, but since prefix/suffix
             % combinations shouldn't come up at all, what we do here probably
@@ -1096,12 +1079,14 @@ rev_words_to_rev_plain_or_prefix([Word | Words]) = RevPorPs :-
             RevPorPs = [plain(Prefix ++ Suffix)
                 | rev_words_to_rev_plain_or_prefix(Tail)]
         ;
-            Words = [suffix_word(MoreSuffix) | Tail],
+            RevWords = [suffix_word(MoreSuffix) | Tail],
             RevPorPs = rev_words_to_rev_plain_or_prefix(
                 [suffix_word(MoreSuffix ++ Suffix) | Tail])
         )
     ).
 
+    % This function implements prefixes.
+    %
 :- func join_prefixes(list(plain_or_prefix)) = list(sc_unit).
 
 join_prefixes([]) = [].
@@ -1129,13 +1114,7 @@ join_prefixes([Head | Tail]) = SCUnits :-
         )
     ;
         Head = lower_next,
-        (
-            TailSCUnits = [],
-            SCUnits = TailSCUnits
-        ;
-            TailSCUnits = [FirstTailSCUnits | LaterTailSCUnits],
-            SCUnits = [lower_next_sc_unit(FirstTailSCUnits) | LaterTailSCUnits]
-        )
+        SCUnits = lower_next_sc_unit(TailSCUnits)
     ;
         Head = color_start(Color),
         SCUnits = [sc_color_start(Color) | TailSCUnits]
@@ -1144,22 +1123,22 @@ join_prefixes([Head | Tail]) = SCUnits :-
         SCUnits = [sc_color_end | TailSCUnits]
     ).
 
-:- pred break_into_words(string::in, list(word)::in, list(word)::out) is det.
+:- pred break_into_words(string::in, cord(word)::out) is det.
 
-break_into_words(String, Words0, Words) :-
-    break_into_words_from(String, 0, Words0, Words).
+break_into_words(String, WordsCord) :-
+    break_into_words_from(String, 0, cord.init, WordsCord).
 
-:- pred break_into_words_from(string::in, int::in, list(word)::in,
-    list(word)::out) is det.
+:- pred break_into_words_from(string::in, int::in,
+        cord(word)::in, cord(word)::out) is det.
 
-break_into_words_from(String, Cur, Words0, Words) :-
+break_into_words_from(String, Cur, !WordsCord) :-
     ( if find_word_start(String, Cur, Start) then
         find_word_end(String, Start, End),
         string.between(String, Start, End, WordStr),
-        Words1 = [plain_word(WordStr) | Words0],
-        break_into_words_from(String, End, Words1, Words)
+        cord.snoc(plain_word(WordStr), !WordsCord),
+        break_into_words_from(String, End, !WordsCord)
     else
-        Words = Words0
+        true
     ).
 
 :- pred find_word_start(string::in, int::in, int::out) is semidet.
@@ -1185,17 +1164,25 @@ find_word_end(String, Cur, WordEnd) :-
         WordEnd = Cur
     ).
 
-:- func lower_next_sc_unit(sc_unit) = sc_unit.
+:- func lower_next_sc_unit(list(sc_unit)) = list(sc_unit).
 
-lower_next_sc_unit(SCUnit0) = SCUnit :-
+lower_next_sc_unit(SCUnits0) = SCUnits :-
     (
-        SCUnit0 = sc_str(String0),
-        SCUnit = sc_str(uncapitalize_first(String0))
+        SCUnits0 = [],
+        SCUnits = []
     ;
-        ( SCUnit0 = sc_color_start(_)
-        ; SCUnit0 = sc_color_end
-        ),
-        SCUnit = SCUnit0
+        SCUnits0 = [HeadSCUnit0 | TailSCUnits0],
+        (
+            HeadSCUnit0 = sc_str(String0),
+            HeadSCUnit = sc_str(uncapitalize_first(String0)),
+            SCUnits = [HeadSCUnit | TailSCUnits0]
+        ;
+            ( HeadSCUnit0 = sc_color_start(_)
+            ; HeadSCUnit0 = sc_color_end
+            ),
+            TailSCUnits = lower_next_sc_unit(TailSCUnits0),
+            SCUnits = [HeadSCUnit0 | TailSCUnits]
+        )
     ).
 
 %---------------------------------------------------------------------------%
@@ -1404,7 +1391,7 @@ group_nonfirst_line_words(AvailLen, FirstWord, LaterWords,
 % of color changes are always both preceded and followed by sc_str units;
 % if they were preceded or followed by color change units, those units
 % would have been included in the span.
-% 
+%
 % If code always creates color changes using the color_pieces_as_X
 % functions in error_spec.m, then a color change span whose first unit
 % is sc_color_start will end up with a stack that is at least as high
@@ -1937,6 +1924,34 @@ error_line_len(Line) = LineLen :-
     Line = error_line(_AvailLen, _LineIndent, _LineWordsStr, LineWordsLen,
         _LineEndReset, _StartCS, _EndCS, _LineParen),
     LineLen = LineWordsLen.
+
+%---------------------%
+
+:- pred write_msg_lines(io.text_output_stream::in, string::in,
+    list(error_line)::in, io::di, io::uo) is det.
+
+write_msg_lines(_Stream, _, [], !IO).
+write_msg_lines(Stream, PrefixStr, [Line | Lines], !IO) :-
+    write_msg_line(Stream, PrefixStr, Line, !IO),
+    write_msg_lines(Stream, PrefixStr, Lines, !IO).
+
+:- pred write_msg_line(io.text_output_stream::in, string::in, error_line::in,
+    io::di, io::uo) is det.
+
+write_msg_line(Stream, PrefixStr, Line, !IO) :-
+    LineWordsStr = convert_line_words_to_string(Line),
+    ( if LineWordsStr = "" then
+        % Don't bother to print out indents that are followed by nothing.
+        io.format(Stream, "%s\n", [s(PrefixStr)], !IO)
+    else
+        LineIndent = Line ^ line_indent_level,
+        IndentStr = indent2_string(LineIndent),
+        % If ContextStr is non-empty, it will end with a space,
+        % which guarantees that PrefixStr, which is ContextStr possibly with
+        % some indentation added, will be separated from LineWords.
+        io.format(Stream, "%s%s%s\n",
+            [s(PrefixStr), s(IndentStr), s(LineWordsStr)], !IO)
+    ).
 
 %---------------------%
 

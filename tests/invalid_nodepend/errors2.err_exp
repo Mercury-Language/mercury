@@ -16,9 +16,9 @@ errors2.m:011:   However, a predicate of that name does exist with arity 2.
 errors2.m:011: Inferred :- pred bind_type_param(int).
 errors2.m:011:   The argument list difference from the arity 2 version is
 errors2.m:011:     pred(
-errors2.m:011:   -     V_1,
-errors2.m:011:   -     V_2
-errors2.m:011:   +     int
+errors2.m:011:   [38;5;40m-     V_1,[39;49m
+errors2.m:011:   [38;5;40m-     V_2[39;49m
+errors2.m:011:   [38;5;203m+     int[39;49m
 errors2.m:011:     )
 errors2.m:025: Error: no clauses for predicate `produce_string'/1.
 errors2.m:027: Error: no clauses for predicate `expect_int'/1.
@@ -134,16 +134,16 @@ errors2.m:085:     B_4: int
 errors2.m:085:     C_5: string
 errors2.m:092: In clause for predicate `type_error_8'/0:
 errors2.m:092:   error: undefined predicate `from_char_list'/2.
-errors2.m:092:   That predicate is defined in module `string', which does not
-errors2.m:092:   have an `:- import_module' declaration.
+errors2.m:092:   [38;5;226mThat predicate is defined in module `string', which does not[39;49m
+errors2.m:092:   [38;5;226mhave an `:- import_module' declaration.[39;49m
 errors2.m:092:   Note that symbols defined in modules accessed via
 errors2.m:092:   `:- use_module' declarations must always be fully module
 errors2.m:092:   qualified.
 errors2.m:092: In clause for predicate `type_error_8'/0:
 errors2.m:092:   in argument 1 of call to predicate `from_char_list'/2:
 errors2.m:092:   error: undefined symbol `[]'/0.
-errors2.m:092:   That symbol is defined in module `list', which does not have
-errors2.m:092:   an `:- import_module' declaration.
+errors2.m:092:   [38;5;226mThat symbol is defined in module `list', which does not have[39;49m
+errors2.m:092:   [38;5;226man `:- import_module' declaration.[39;49m
 errors2.m:100: In clause for predicate `type_error_9'/0:
 errors2.m:100:   type error in unification of variable `X'
 errors2.m:100:   and variable `Y'.

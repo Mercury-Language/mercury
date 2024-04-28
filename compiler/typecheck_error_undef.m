@@ -174,12 +174,13 @@ report_error_pred_wrong_arity(ClauseContext, Context, PFSymNameArity,
             PredFormArityInt = 9
         )
     then
-        SpecialPieces =
+        SpecialPieces0 =
             [words("One possible reason for the error is that"),
             words("the predicate in the"), quote(StdLibModuleName),
             words("module that used to be named"), quote(PredName),
             words("has been renamed to"), quote(PredName ++ "_io"),
-            suffix("."), nl]
+            suffix("."), nl],
+        SpecialPieces = color_pieces_as_possible_cause(SpecialPieces0)
     else
         SpecialPieces = []
     ),
@@ -433,8 +434,9 @@ report_error_pred_wrong_full_name(ClauseContext, Context, PredicateTable,
 :- func report_error_func_instead_of_pred(prog_context) = error_msg.
 
 report_error_func_instead_of_pred(Context) = Msg :-
-    Pieces = [words("(There is a *function* with that name, however."), nl,
+    Pieces0 = [words("(There is a *function* with that name, however."), nl,
         words("Perhaps you forgot to add"), quote(" = ..."), suffix("?)"), nl],
+    Pieces = color_pieces_as_possible_cause(Pieces0),
     Msg = msg(Context, Pieces).
 
 %---------------------------------------------------------------------------%
@@ -500,11 +502,12 @@ language_builtin_functor_components(Name, Arity, Components) :-
     MainPieces = [words("error: the language construct"),
         unqual_sym_name_arity(sym_name_arity(unqualified(Name), Arity)),
         words("should be used as a goal, not as an expression."), nl],
-    VerbosePieces = [words("If you are trying to use a goal"),
+    VerbosePieces0 = [words("If you are trying to use a goal"),
         words("as a boolean function, you should write"),
         words_quote("if <goal> then yes else no"), words("instead."), nl],
+    VerbosePieces = color_pieces_as_possible_cause(VerbosePieces0),
     ( if Name = "call" then
-        VerboseCallPieces =
+        VerboseCallPieces0 =
             [words("If you are trying to invoke a higher-order function,"),
             words("you should use"), quote("apply"), suffix(","),
             words("not"), quote("call"), suffix("."), nl,
@@ -518,7 +521,8 @@ language_builtin_functor_components(Name, Arity, Components) :-
             words("and that the functor"), quote("call"),
             words("is actually defined."),
             words("(If it is defined in a separate module,"),
-            words("check that the module is correctly imported.)"), nl]
+            words("check that the module is correctly imported.)"), nl],
+        VerboseCallPieces = color_pieces_as_possible_cause(VerboseCallPieces0)
     else
         VerboseCallPieces = []
     ),
@@ -691,9 +695,9 @@ report_error_undef_cons_std(ClauseContext, Context, InitComp, ConsErrors,
             QualSuggestionMsgs = []
         )
     ),
+    FirstMsg = simple_msg(Context, [InitComp | FunctorComps]),
     Spec = error_spec($pred, severity_error, phase_type_check,
-        [simple_msg(Context,
-            [InitComp | FunctorComps]) | ConsMsgs] ++ QualSuggestionMsgs).
+        [FirstMsg | ConsMsgs] ++ QualSuggestionMsgs).
 
 :- pred return_function_arities(module_info::in, list(pred_id)::in,
     list(int)::in, list(int)::out) is det.
@@ -955,23 +959,37 @@ report_any_missing_module_qualifiers(ClauseContext, Context,
         Msgs = []
     ;
         ModuleNames = [HeadModuleName | TailModuleNames],
+        IsDefinedInPieces =
+            [words("That"), words(ItemName), words("is defined in")],
         (
             TailModuleNames = [],
-            MainPieces = [words("That"), words(ItemName), words("is defined"),
-                words("in module"), qual_sym_name(HeadModuleName), suffix(","),
+            ModulesPieces =
+                [words("module"), qual_sym_name(HeadModuleName), suffix(","),
                 words("which does not have an"),
                 decl("import_module"), words("declaration."), nl]
         ;
-            TailModuleNames = [_ | _],
+            TailModuleNames = [_ | TailTailModuleNames],
             ModuleNamePieces =
                 list.map(func(MN) = qual_sym_name(MN), ModuleNames),
             ModuleNamesPieces =
                 component_list_to_pieces("and", ModuleNamePieces),
-            MainPieces = [words("That"), words(ItemName), words("is defined"),
-                words("in modules")] ++ ModuleNamesPieces ++ [suffix(","),
-                words("none of which have"),
-                decl("import_module"), words("declarations."), nl]
+            (
+                TailTailModuleNames = [],
+                NoImportsPieces =
+                    [words("neither of which has an"),
+                    decl("import_module"), words("declaration."), nl]
+            ;
+                TailTailModuleNames = [_ | _],
+                NoImportsPieces =
+                    [words("none of which have"),
+                    decl("import_module"), words("declarations."), nl]
+            ),
+            ModulesPieces =
+                [words("modules")] ++ ModuleNamesPieces ++ [suffix(",")] ++
+                NoImportsPieces
         ),
+        MainPieces0 = IsDefinedInPieces ++ ModulesPieces,
+        MainPieces = color_pieces_as_possible_cause(MainPieces0),
         MainMsg = msg(Context, MainPieces),
         VerbosePieces = [words("Note that symbols defined in modules"),
             words("accessed via"), decl("use_module"), words("declarations"),
@@ -998,8 +1016,9 @@ maybe_report_missing_import_addendum(ClauseContext, ModuleQualifier,
     ( if set.is_empty(MatchingVisibleModules) then
         % The module qualifier does not match any of the visible modules,
         % so we report that the module has not been imported.
-        Pieces = [nl, words("(The module"), qual_sym_name(ModuleQualifier),
-            words("has not been imported.)"), nl],
+        Pieces0 = [words("(The module"), qual_sym_name(ModuleQualifier),
+            words("has not been imported.)")],
+        Pieces = [nl | color_pieces_as_possible_cause(Pieces0)] ++ [nl],
         MissingImportModules = [ModuleQualifier]
     else
         % The module qualifier matches one or more of the visible modules.
@@ -1085,10 +1104,16 @@ arity_error_to_pieces(PredOrFunc, Arity0, Arities0) = Pieces :-
             ),
         list.map(ReverseAdjust, Arities0, Arities)
     ),
-    RightAritiesPieces = arities_to_pieces(Arities),
-    Pieces = [words("wrong number of arguments ("),
-        suffix(int_to_string(Arity)), suffix(";"),
-        words("should be") | RightAritiesPieces] ++ [suffix(")")].
+    ActualArityPieces = [suffix(int_to_string(Arity))],
+    ExpectedAritiesPieces = arities_to_pieces(Arities),
+    % XXX TYPECHECK_ERRORS
+    % Coloring here results in prefixes and suffixes next to color changes
+    % not being respected by write_error_spec.m.
+    % ActualArityPieces = color_pieces_as_incorrect(ActualArityPieces0),
+    % ExpectedAritiesPieces = color_pieces_as_correct(ExpectedAritiesPieces0),
+    Pieces = [words("wrong number of arguments (") | ActualArityPieces] ++
+        [suffix(";"),
+        words("should be") | ExpectedAritiesPieces] ++ [suffix(")")].
 
 :- func arities_to_pieces(list(int)) = list(format_piece).
 
