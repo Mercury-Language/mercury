@@ -621,6 +621,12 @@
 
 :- func color_pieces_as_correct(list(format_piece)) = list(format_piece).
 :- func color_pieces_as_incorrect(list(format_piece)) = list(format_piece).
+:- func color_pieces_as_possible_cause(list(format_piece)) =
+    list(format_piece).
+
+:- func color_pieces(color_name, list(format_piece)) = list(format_piece).
+:- func maybe_color_pieces(maybe(color_name), list(format_piece))
+    = list(format_piece).
 
 %---------------------------------------------------------------------------%
 
@@ -769,6 +775,25 @@ color_pieces_as_incorrect(Pieces) =
     [not_for_general_use_start_color(color_incorrect)] ++
     Pieces ++
     [not_for_general_use_end_color].
+
+color_pieces_as_possible_cause(Pieces) =
+    [not_for_general_use_start_color(color_cause)] ++
+    Pieces ++
+    [not_for_general_use_end_color].
+
+color_pieces(Color, Pieces) =
+    [not_for_general_use_start_color(Color)] ++
+    Pieces ++
+    [not_for_general_use_end_color].
+
+maybe_color_pieces(MaybeColor, Pieces) = MaybeColorPieces :-
+    (
+        MaybeColor = no,
+        MaybeColorPieces = Pieces
+    ;
+        MaybeColor = yes(Color),
+        MaybeColorPieces = color_pieces(Color, Pieces)
+    ).
 
 %---------------------------------------------------------------------------%
 

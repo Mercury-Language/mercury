@@ -8,10 +8,10 @@ inconsistent_pred_order.m:010:   @@ -1,8 +1,8 @@
 inconsistent_pred_order.m:010:    predicate `data'/1
 inconsistent_pred_order.m:010:    predicate `queen'/2
 inconsistent_pred_order.m:010:    predicate `qperm'/2
-inconsistent_pred_order.m:010:   -predicate `safe'/1
+inconsistent_pred_order.m:010:   [38;5;40m-predicate `safe'/1[39;49m
 inconsistent_pred_order.m:010:    predicate `qdelete'/3
-inconsistent_pred_order.m:010:   -predicate `print_list'/3
-inconsistent_pred_order.m:010:   +predicate `safe'/1
+inconsistent_pred_order.m:010:   [38;5;40m-predicate `print_list'/3[39;49m
+inconsistent_pred_order.m:010:   [38;5;203m+predicate `safe'/1[39;49m
 inconsistent_pred_order.m:010:    predicate `nodiag'/3
-inconsistent_pred_order.m:010:   +predicate `print_list'/3
+inconsistent_pred_order.m:010:   [38;5;203m+predicate `print_list'/3[39;49m
 inconsistent_pred_order.m:010:    predicate `print_list_elements'/4

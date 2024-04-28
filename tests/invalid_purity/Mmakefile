@@ -40,6 +40,8 @@ override EXTRA_MCFLAGS += \
 # by `mmc --make'.
 include Mercury.options
 
+MCFLAGS += --enable-color-diagnostics
+
 %.runtest: %.err_res ;
 
 .PRECIOUS: %.err_res

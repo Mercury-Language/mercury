@@ -2,11 +2,11 @@ impure_pred_t1_fixed.m:029: In clause for predicate `main'/2:
 impure_pred_t1_fixed.m:029:   in argument 1 (i.e. the predicate term) of
 impure_pred_t1_fixed.m:029:   higher-order predicate call:
 impure_pred_t1_fixed.m:029:   type error: variable `X' has type
-impure_pred_t1_fixed.m:029:     impure pred(int, int);
+impure_pred_t1_fixed.m:029:     [38;5;203mimpure pred(int, int);[39;49m
 impure_pred_t1_fixed.m:029:   expected type was
-impure_pred_t1_fixed.m:029:     pred(V_1, V_2).
-impure_pred_t1_fixed.m:029:   Purity mismatch: expected a pure predicate, got
-impure_pred_t1_fixed.m:029:   an impure predicate.
+impure_pred_t1_fixed.m:029:     [38;5;40mpred(V_1, V_2).[39;49m
+impure_pred_t1_fixed.m:029:   [38;5;226mPurity mismatch: expected a pure predicate, got[39;49m
+impure_pred_t1_fixed.m:029:   [38;5;226man impure predicate.[39;49m
 impure_pred_t1_fixed.m:029:   The partial type assignment was:
 impure_pred_t1_fixed.m:029:     Y_3: impure_pred_t1_fixed.foo
 impure_pred_t1_fixed.m:029:     X_4: (impure pred(int, int))

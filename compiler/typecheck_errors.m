@@ -215,8 +215,7 @@ report_missing_tvar_in_foreign_code(ClauseContext, Context, VarName) = Spec :-
     Pieces = [words("The foreign language code for") |
         describe_one_pred_name(ModuleInfo, should_module_qualify, PredId)] ++
         [words("should define the variable"), quote(VarName), suffix(".")],
-    Spec = spec($pred, severity_error, phase_type_check,
-        Context, Pieces).
+    Spec = spec($pred, severity_error, phase_type_check, Context, Pieces).
 
 %---------------------------------------------------------------------------%
 
@@ -227,8 +226,8 @@ report_invalid_coerce_from_to(ClauseContext, Context, TVarSet,
     ToTypeStr = mercury_type_to_string(TVarSet, print_num_only, ToType),
     ErrorPieces = [words("cannot coerce from"), quote(FromTypeStr),
         words("to"), quote(ToTypeStr), suffix("."), nl],
-    Spec = spec($pred, severity_error, phase_type_check,
-        Context, InClauseForPieces ++ ErrorPieces).
+    Spec = spec($pred, severity_error, phase_type_check, Context,
+        InClauseForPieces ++ ErrorPieces).
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -241,15 +240,23 @@ report_error_unify_var_var(Info, UnifyContext, Context, X, Y, TypeAssignSet)
 
     VarSet = ClauseContext ^ tecc_varset,
     get_inst_varset(ClauseContext, InstVarSet),
+    % The function reports a disagreement between the types of X and Y.
+    % Since neither is known to be correct, we cannot use the correct/incorrect
+    % colors for their types.
+    % XXX TYPECHECK_ERRORS Should we add two more named colors, possibly
+    % version_a and version_b, or
+    % should_match_a and should_match_b, or
+    % incompatible_a and incompatible_b?
+    MaybeColor = maybe.no,
     MainPieces = [words("type error in unification of variable"),
         quote(mercury_var_to_name_only_vs(VarSet, X)), nl,
         words("and variable"),
         quote(mercury_var_to_name_only_vs(VarSet, Y)), suffix("."), nl,
         quote(mercury_var_to_name_only_vs(VarSet, X))] ++
-        type_of_var_to_pieces(InstVarSet, TypeAssignSet,
+        type_of_var_to_pieces(InstVarSet, MaybeColor, TypeAssignSet,
             [suffix(",")], X) ++ [nl] ++
         [quote(mercury_var_to_name_only_vs(VarSet, Y))] ++
-        type_of_var_to_pieces(InstVarSet, TypeAssignSet,
+        type_of_var_to_pieces(InstVarSet, MaybeColor, TypeAssignSet,
             [suffix(".")], Y) ++ [nl],
     type_assign_set_msg_to_verbose_component(Info, VarSet, TypeAssignSet,
         VerboseComponent),
@@ -266,9 +273,9 @@ report_error_unify_var_lambda(Info, UnifyContext, Context, PredOrFunc,
     unify_context_to_pieces(UnifyContext, InClauseForPieces, ContextPieces),
 
     VarSet = ClauseContext ^ tecc_varset,
+    VarNamePieces = argument_name_to_pieces(VarSet, Var),
     get_inst_varset(ClauseContext, InstVarSet),
-    Pieces1 = [words("type error in unification of")] ++
-        argument_name_to_pieces(VarSet, Var) ++ [nl],
+    Pieces1 = [words("type error in unification of")] ++ VarNamePieces ++ [nl],
     (
         PredOrFunc = pf_predicate,
         Pieces2 = [words("and"), prefix("pred("),
@@ -284,8 +291,12 @@ report_error_unify_var_lambda(Info, UnifyContext, Context, PredOrFunc,
             words(":- ...':"), nl]
     ),
 
-    Pieces3 = argument_name_to_pieces(VarSet, Var) ++
-        type_of_var_to_pieces(InstVarSet, TypeAssignSet, [suffix(",")], Var) ++
+    % XXX There is no test case that tests the output of this function,
+    % so it is hard to decide what should be colored.
+    MaybeColor = maybe.no,
+    Pieces3 = VarNamePieces ++
+        type_of_var_to_pieces(InstVarSet, MaybeColor, TypeAssignSet,
+            [suffix(",")], Var) ++
         [nl],
 
     (
@@ -296,9 +307,9 @@ report_error_unify_var_lambda(Info, UnifyContext, Context, PredOrFunc,
         ;
             ArgVars = [_ | _],
             list.length(ArgVars, NumArgVars),
-            list.duplicate(NumArgVars - 1, ", _", Strings),
-            JoinedString = string.join_list("", Strings),
-            LambdaTypePieces = [words("pred(_" ++ JoinedString ++ ")")]
+            list.duplicate(NumArgVars, "_", Unders),
+            CommaUnders = string.join_list(", ", Unders),
+            LambdaTypePieces = [words("pred(_" ++ CommaUnders ++ ")")]
         )
     ;
         PredOrFunc = pf_function,
@@ -309,9 +320,9 @@ report_error_unify_var_lambda(Info, UnifyContext, Context, PredOrFunc,
         ;
             FuncArgVars = [_ | _],
             list.length(FuncArgVars, NumArgVars),
-            list.duplicate(NumArgVars - 1, ", _", Strings),
-            JoinedString = string.join_list("", Strings),
-            LambdaTypePieces = [words("func(_" ++ JoinedString ++ ") = _")]
+            list.duplicate(NumArgVars, "_", Unders),
+            CommaUnders = string.join_list(", ", Unders),
+            LambdaTypePieces = [words("func(_" ++ CommaUnders ++ ") = _")]
         )
     ),
     Pieces4 = [words("lambda expression has type") | LambdaTypePieces] ++
@@ -334,18 +345,25 @@ report_error_unify_var_functor_result(Info, UnifyContext, Context,
 
     VarSet = ClauseContext ^ tecc_varset,
     get_inst_varset(ClauseContext, InstVarSet),
+
+    VarTypePieces = type_of_var_to_pieces(InstVarSet,
+        yes(color_incorrect), TypeAssignSet, [suffix(",")], Var),
+    FunctorTypePieces = type_of_functor_to_pieces(InstVarSet,
+        yes(color_correct), Functor, Arity, ConsDefnList, [suffix(".")]),
+    % XXX TYPECHECK_ERRORS If all elements of TypeAssignSet agree on the type
+    % of Var, and if ConsDefnList contains only a single element, then
+    % we should be able to print the diff between the two types,
+    % including pointers such as the arity we expected vs what we got.
+
     MainPieces = [words("type error in unification of")] ++
         argument_name_to_pieces(VarSet, Var) ++ [nl, words("and")] ++
         functor_name_to_pieces(Functor, Arity) ++ [suffix("."), nl] ++
 
         argument_name_to_pieces(VarSet, Var) ++
-        type_of_var_to_pieces(InstVarSet, TypeAssignSet, [suffix(",")], Var) ++
-            [nl] ++
+        VarTypePieces ++ [nl] ++
 
         functor_name_to_pieces(Functor, Arity) ++
-        type_of_functor_to_pieces(InstVarSet, Functor, Arity, ConsDefnList,
-            [suffix(".")]) ++
-        [nl],
+        FunctorTypePieces ++ [nl],
 
     ( if
         Functor = some_int_const(int_const(_)),
@@ -444,28 +462,32 @@ report_error_unify_var_functor_args(Info, UnifyContext, Context,
             )
         then
             % If so, print out the type of `Var'.
+            % XXX Should this be in color, and if so, *which* color?
+            ResultColor = maybe.no,
             ResultTypePieces = argument_name_to_pieces(VarSet, Var) ++
-                type_of_var_to_pieces(InstVarSet, TypeAssignSet,
+                type_of_var_to_pieces(InstVarSet, ResultColor, TypeAssignSet,
                     [suffix(",")], Var) ++
                 [nl]
         else
             ResultTypePieces = []
         ),
+        FunctorColor = yes(color_correct),
         (
             ArgVars = [],
             AllTypesPieces =
                 functor_name_to_pieces(Functor, Arity) ++
-                type_of_functor_to_pieces(InstVarSet, Functor, Arity,
-                    ConsDefnList, [suffix(".")]) ++
+                type_of_functor_to_pieces(InstVarSet, FunctorColor,
+                    Functor, Arity, ConsDefnList, [suffix(".")]) ++
                 [nl]
         ;
             ArgVars = [HeadArgVar | TailArgVars],
+            VarColor = yes(color_incorrect),
             AllTypesPieces =
                 functor_name_to_pieces(Functor, Arity) ++
-                type_of_functor_to_pieces(InstVarSet, Functor, Arity,
-                    ConsDefnList, [suffix(",")]) ++
-                types_of_vars_to_pieces(VarSet, InstVarSet, TypeAssignSet,
-                    [suffix("."), nl], HeadArgVar, TailArgVars)
+                type_of_functor_to_pieces(InstVarSet, FunctorColor,
+                    Functor, Arity, ConsDefnList, [suffix(",")]) ++
+                types_of_vars_to_pieces(VarSet, InstVarSet, VarColor,
+                    TypeAssignSet, [suffix("."), nl], HeadArgVar, TailArgVars)
         ),
         ErrorPieces = ResultTypePieces ++ AllTypesPieces,
         type_assign_set_msg_to_verbose_component(Info, VarSet,
@@ -699,24 +721,35 @@ mismatched_args_to_pieces(VarSet, Functor, First, [Mismatch | Mismatches])
         type_mismatch_exp_act(HeadExpectedTypePieces, HeadActualTypePieces,
             _ActualSubsumesExpected, _MaybeSpecial),
     ( if
-        expected_types_match(HeadExpectedTypePieces, TailTypeMismatches,
-            TailActualTypePieces)
+        expected_types_all_same_return_actuals(HeadExpectedTypePieces,
+            TailTypeMismatches, TailActualTypePieces)
     then
+        % XXX TYPECHECK_ERRORS We should look into whether it is a good idea
+        % to delete all mismatches where the expected type is just a type
+        % variable, since those cannot be the root causes of a type error.
+        ExpectedDotPieces = HeadExpectedTypePieces ++ [suffix(".")],
         (
             TailActualTypePieces = [],
+            ActualCommaPieces = HeadActualTypePieces ++ [suffix(",")],
             ErrorDescPieces = [words("has type"), nl_indent_delta(1)] ++
-                HeadActualTypePieces ++ [suffix(","), nl_indent_delta(-1)] ++
+                color_pieces_as_incorrect(ActualCommaPieces) ++
+                    [nl_indent_delta(-1)] ++
                 [words("expected type was"), nl_indent_delta(1)] ++
-                HeadExpectedTypePieces ++ [suffix("."), nl_indent_delta(-1)]
+                color_pieces_as_correct(ExpectedDotPieces) ++
+                    [nl_indent_delta(-1)]
         ;
             TailActualTypePieces =
                 [SecondActualTypePieces | ThirdPlusActualTypePieces],
-            ErrorDescPieces = [words("has type"), nl_indent_delta(1)] ++
+            ActualCommaPieces =
                 report_actual_types(HeadActualTypePieces,
                     SecondActualTypePieces, ThirdPlusActualTypePieces) ++
-                [suffix(","), nl_indent_delta(-1)] ++
+                [suffix(",")],
+            ErrorDescPieces = [words("has type"), nl_indent_delta(1)] ++
+                color_pieces_as_incorrect(ActualCommaPieces) ++
+                    [nl_indent_delta(-1)] ++
                 [words("expected type was"), nl_indent_delta(1)] ++
-                HeadExpectedTypePieces ++ [suffix("."), nl_indent_delta(-1)]
+                color_pieces_as_correct(ExpectedDotPieces) ++
+                    [nl_indent_delta(-1)]
         )
     else
         AllMismatches = [HeadTypeMismatch | TailTypeMismatches],
@@ -742,17 +775,19 @@ mismatched_args_to_pieces(VarSet, Functor, First, [Mismatch | Mismatches])
     ),
     Pieces = ThisMismatchPieces ++ FollowingMismatchPieces.
 
-:- pred expected_types_match(list(format_piece)::in,
+:- pred expected_types_all_same_return_actuals(list(format_piece)::in,
     list(type_mismatch)::in, list(list(format_piece))::out) is semidet.
 
-expected_types_match(_ExpTypePieces, [], []).
-expected_types_match(ExpTypePieces, [HeadMismatch | TailMismatches],
+expected_types_all_same_return_actuals(_ExpTypePieces, [], []).
+expected_types_all_same_return_actuals(ExpTypePieces,
+        [HeadMismatch | TailMismatches],
         [HeadActualTypePieces | TailActualTypePieces]) :-
     HeadMismatch =
         type_mismatch_exp_act(HeadExpTypePieces, HeadActualTypePieces,
             _ActualSubsumesExpected, _MaybeSpecial),
     ExpTypePieces = HeadExpTypePieces,
-    expected_types_match(ExpTypePieces, TailMismatches, TailActualTypePieces).
+    expected_types_all_same_return_actuals(ExpTypePieces,
+        TailMismatches, TailActualTypePieces).
 
 :- func report_actual_types(list(format_piece),
     list(format_piece), list(list(format_piece))) =
@@ -783,8 +818,10 @@ report_possible_expected_actual_types(CurPossNum, [Mismatch | Mismatches])
         _ActualSubsumesExpected, _MaybeSpecial),
     HeadPieces =
         [words("Possibility"), int_fixed(CurPossNum), suffix(":")] ++
-        [words("actual type")] ++ ActualTypePieces ++ [suffix(",")] ++
-        [words("expected type")] ++ ExpectedTypePieces ++ [suffix("."), nl],
+        [words("actual type")] ++
+            color_pieces_as_incorrect(ActualTypePieces ++ [suffix(",")]) ++
+        [words("expected type")] ++
+            color_pieces_as_correct(ExpectedTypePieces ++ [suffix("."), nl]),
     TailPieces = report_possible_expected_actual_types(CurPossNum + 1,
         Mismatches),
     Pieces = HeadPieces ++ TailPieces.
@@ -839,13 +876,14 @@ report_special_type_mismatch(IsFirst, MismatchSpecial) = Pieces :-
     ),
     (
         MismatchSpecial = type_mismatch_special_getopt_error(GetoptModule),
-        Pieces = ReasonIsPieces ++
+        Pieces0 = ReasonIsPieces ++
             [words("the signatures of the option processing predicates"),
             words("in the"), quote(GetoptModule), words("module"),
             words("have changed recently."),
             words("Errors are now returned in a structured form,"),
             words("which can be converted to a string by calling the"),
-            quote("option_error_to_string"), words("function."), nl]
+            quote("option_error_to_string"), words("function."), nl],
+        Pieces = color_pieces_as_possible_cause(Pieces0)
     ).
 
 %---------------------------------------------------------------------------%
@@ -1067,7 +1105,7 @@ expected_type_needs_int_constant_suffix(Type) :-
 :- func nosuffix_integer_pieces = list(format_piece).
 
 nosuffix_integer_pieces = Pieces :-
-    Pieces = [words("A integer constant that consists only of digits"),
+    Pieces0 = [words("A integer constant that consists only of digits"),
         words("is always of type"), quote("int"), suffix("."),
         words("Unsigned integer constants of the default size"),
         words("should have the suffix"), quote("u"), suffix(";"),
@@ -1077,7 +1115,8 @@ nosuffix_integer_pieces = Pieces :-
         words("if they are signed, and"),
         words("an"), quote("u8"), suffix(","), quote("u16"), suffix(","),
         quote("u32"), words("or"), quote("u64"), words("suffix"),
-        words("if they are unsigned."), nl].
+        words("if they are unsigned."), nl],
+    Pieces = color_pieces_as_possible_cause(Pieces0).
 
 %---------------------------------------------------------------------------%
 
@@ -1222,7 +1261,7 @@ report_any_invisible_int_types(ClauseContext, BuiltinTypes) = Pieces :-
             TailInvisIntTypes, TailInvisIntTypeStrs),
         (
             TailInvisIntTypeStrs = [],
-            Pieces = [words("Note that operations on values of type"),
+            Pieces0 = [words("Note that operations on values of type"),
                 quote(HeadInvisIntTypeStr), words("are available"),
                 words("only if the"), quote(HeadInvisIntTypeStr),
                 words("module is imported."), nl]
@@ -1230,11 +1269,12 @@ report_any_invisible_int_types(ClauseContext, BuiltinTypes) = Pieces :-
             TailInvisIntTypeStrs = [_ | _],
             InvisIntTypeStrs = [HeadInvisIntTypeStr | TailInvisIntTypeStrs],
             InvisIntTypePieces = list_to_quoted_pieces(InvisIntTypeStrs),
-            Pieces = [words("Note that operations on values of types") |
+            Pieces0 = [words("Note that operations on values of types") |
                 InvisIntTypePieces] ++ [words("are available"),
                 words("only if the") | InvisIntTypePieces] ++
                 [words("modules respectively are imported."), nl]
-        )
+        ),
+        Pieces = color_pieces_as_possible_cause(Pieces0)
     else
         Pieces = []
     ).
@@ -1247,25 +1287,26 @@ is_int_n_module(ModuleSymName, IntType) :-
 
 %---------------------------------------------------------------------------%
 
-:- func types_of_vars_to_pieces(prog_varset, inst_varset, type_assign_set,
-    list(format_piece), prog_var, list(prog_var)) = list(format_piece).
+:- func types_of_vars_to_pieces(prog_varset, inst_varset, maybe(color_name),
+    type_assign_set, list(format_piece), prog_var, list(prog_var))
+    = list(format_piece).
 
-types_of_vars_to_pieces(VarSet, InstVarSet, TypeAssignSet, FinalPieces,
-        HeadVar, TailVars) = Pieces :-
+types_of_vars_to_pieces(VarSet, InstVarSet, MaybeColor, TypeAssignSet,
+        FinalPieces, HeadVar, TailVars) = Pieces :-
     (
         TailVars = [],
         Pieces =
             argument_name_to_pieces(VarSet, HeadVar) ++
-            type_of_var_to_pieces(InstVarSet, TypeAssignSet,
+            type_of_var_to_pieces(InstVarSet, MaybeColor, TypeAssignSet,
                 FinalPieces, HeadVar)
     ;
         TailVars = [HeadTailVar | TailTailVars],
         Pieces =
             argument_name_to_pieces(VarSet, HeadVar) ++
-            type_of_var_to_pieces(InstVarSet, TypeAssignSet,
+            type_of_var_to_pieces(InstVarSet, MaybeColor, TypeAssignSet,
                 [suffix(","), nl], HeadVar) ++
-            types_of_vars_to_pieces(VarSet, InstVarSet, TypeAssignSet,
-                FinalPieces, HeadTailVar, TailTailVars)
+            types_of_vars_to_pieces(VarSet, InstVarSet, MaybeColor,
+                TypeAssignSet, FinalPieces, HeadTailVar, TailTailVars)
     ).
 
 :- func argument_name_to_pieces(prog_varset, prog_var)
@@ -1298,39 +1339,49 @@ functor_name_to_pieces(Functor, Arity) = Pieces :-
         Pieces = [words("functor"), qual_cons_id_and_maybe_arity(Functor)]
     ).
 
-:- func type_of_var_to_pieces(inst_varset, type_assign_set,
+:- func type_of_var_to_pieces(inst_varset, maybe(color_name), type_assign_set,
     list(format_piece), prog_var) = list(format_piece).
 
-type_of_var_to_pieces(InstVarSet, TypeAssignSet, SuffixPieces, Var) = Pieces :-
+type_of_var_to_pieces(InstVarSet, MaybeColor, TypeAssignSet, SuffixPieces, Var)
+        = Pieces :-
     get_all_transformed_type_stuffs(
         typestuff_to_pieces(do_not_add_quotes, InstVarSet),
         TypeAssignSet, Var, TypePiecesLists0),
     list.sort_and_remove_dups(TypePiecesLists0, TypePiecesLists),
     ( if TypePiecesLists = [TypePieces] then
         Pieces = [words("has type"), nl_indent_delta(1)] ++
-            component_list_to_line_pieces([TypePieces],
-                SuffixPieces ++ [nl_indent_delta(-1)])
+            maybe_color_pieces(MaybeColor,
+                component_list_to_line_pieces([TypePieces],
+                    SuffixPieces ++ [nl_indent_delta(-1)]))
     else
         Pieces = [words("has overloaded type {"), nl_indent_delta(1)] ++
-            component_list_to_line_pieces(TypePiecesLists,
-                [nl_indent_delta(-1)]) ++
+            maybe_color_pieces(MaybeColor,
+                component_list_to_line_pieces(TypePiecesLists,
+                    [nl_indent_delta(-1)])) ++
             [words("}")] ++ SuffixPieces
     ).
 
-:- func type_of_functor_to_pieces(inst_varset, cons_id, arity,
-    list(cons_type_info), list(format_piece)) = list(format_piece).
+:- func type_of_functor_to_pieces(inst_varset, maybe(color_name),
+    cons_id, arity, list(cons_type_info), list(format_piece))
+    = list(format_piece).
 
-type_of_functor_to_pieces(InstVarSet, Functor, Arity, ConsDefnList,
+type_of_functor_to_pieces(InstVarSet, MaybeColor, Functor, Arity, ConsDefnList,
         SuffixPieces) = Pieces :-
     ( if ConsDefnList = [SingleDefn] then
         ConsTypePieces = cons_type_to_pieces(InstVarSet, SingleDefn, Functor),
-        Pieces = [words("has type"), nl_indent_delta(1)] ++
-            ConsTypePieces ++ SuffixPieces ++ [nl_indent_delta(-1)]
+        Pieces =
+            [words("has type"),
+                nl_indent_delta(1)] ++
+            maybe_color_pieces(MaybeColor, ConsTypePieces ++ SuffixPieces) ++
+                [nl_indent_delta(-1)]
     else
         ConsTypeListPieces =
             cons_type_list_to_pieces(InstVarSet, ConsDefnList, Functor, Arity),
-        Pieces = [words("has overloaded type {"), nl_indent_delta(1)] ++
-            ConsTypeListPieces ++ [nl_indent_delta(-1)] ++
+        Pieces =
+            [words("has overloaded type {"),
+                nl_indent_delta(1)] ++
+            maybe_color_pieces(MaybeColor, ConsTypeListPieces) ++
+                [nl_indent_delta(-1)] ++
             [fixed("}")] ++ SuffixPieces ++ [nl]
     ).
 
@@ -1409,24 +1460,37 @@ report_actual_expected_types(ClauseContext, Var, ActualExpectedList,
         argument_name_to_pieces(VarSet, Var),
     is_actual_or_expected_single_type(ActualExpectedList,
         MaybeSingleActual, MaybeSingleExpected),
+    % XXX TYPECHECK_ERRORS If both MaybeSingles are yes(), then
+    % we could try to print the diff of the two types, though that would
+    % probably help only if their outermost type_ctors are different.
     (
         MaybeSingleActual = yes(SingleActualPieces),
-        ActualPartPieces = [words("has type"), nl_indent_delta(1)] ++
-            SingleActualPieces ++ [suffix(";"), nl_indent_delta(-1)]
+        % Technically, it is a *semi*colon, but ...
+        ActualColonPieces0 = SingleActualPieces ++ [suffix(";")],
+        ActualColonPieces = color_pieces_as_incorrect(ActualColonPieces0),
+        ActualPartPieces =
+            [words("has type"), nl_indent_delta(1)] ++
+            ActualColonPieces ++ [nl_indent_delta(-1)]
     ;
         MaybeSingleActual = no,
         ActualPieceLists = list.map((func(AE) = AE ^ actual_type_pieces),
             ActualExpectedList),
-        ActualPieces = component_list_to_line_pieces(ActualPieceLists,
-            [suffix(";"), nl_indent_delta(-1)]),
-        ActualPartPieces = [words("has one of the following inferred types:"),
-            nl_indent_delta(1)] ++ ActualPieces
+        ActualColonPieces0 = component_list_to_line_pieces(ActualPieceLists,
+            [suffix(";")]),
+        ActualColonPieces = color_pieces_as_incorrect(ActualColonPieces0),
+        ActualPartPieces =
+            [words("has one of the following inferred types:"),
+                nl_indent_delta(1)] ++
+            ActualColonPieces ++
+                [nl_indent_delta(-1)]
     ),
     (
         MaybeSingleExpected = yes(SingleExpectedPieces),
-        ExpectedPartPieces = [words("expected type was"),
-            nl_indent_delta(1)] ++ SingleExpectedPieces ++
-            [suffix("."), nl_indent_delta(-1)]
+        ExpectedDotPieces0 = SingleExpectedPieces ++ [suffix(".")],
+        ExpectedDotPieces = color_pieces_as_correct(ExpectedDotPieces0),
+        ExpectedPartPieces =
+            [words("expected type was"), nl_indent_delta(1)] ++
+            ExpectedDotPieces ++ [nl_indent_delta(-1)]
     ;
         MaybeSingleExpected = no,
         should_we_print_expectation_sources(ActualExpectedList,
@@ -1436,10 +1500,13 @@ report_actual_expected_types(ClauseContext, Var, ActualExpectedList,
             ExpectedPieceLists = list.map(
                 (func(AE) = AE ^ expected_type_pieces),
                 ActualExpectedList),
-            ExpectedPieces = component_list_to_line_pieces(ExpectedPieceLists,
-                [suffix("."), nl_indent_delta(-1)]),
-            ExpectedPartPieces = [words("expected type was one of"),
-                nl_indent_delta(1)] ++ ExpectedPieces
+            ExpectedDotPieces0 =
+                component_list_to_line_pieces(ExpectedPieceLists,
+                    [suffix(".")]),
+            ExpectedDotPieces = color_pieces_as_correct(ExpectedDotPieces0),
+            ExpectedPartPieces =
+                [words("expected type was one of"), nl_indent_delta(1)] ++
+                ExpectedDotPieces ++ [nl_indent_delta(-1)]
         ;
             MaybePrintSource = print_expectation_source,
             ModuleInfo = ClauseContext ^ tecc_module_info,
@@ -1542,6 +1609,9 @@ acc_expected_type_source_pieces(ModuleInfo,
     (
         MaybeSource = yes(Source),
         SourcePieces = describe_args_type_assign_source(ModuleInfo, Source),
+        ExpectedCommaOrDotPieces0 = ExpectedPieces ++ [suffix(CommaOrPeriod)],
+        ExpectedCommaOrDotPieces =
+            color_pieces_as_correct(ExpectedCommaOrDotPieces0),
         % We add a newline after the "(expected by ...):" text for two reasons:
         %
         % - because SourcePieces is likely to take up a large chunk
@@ -1549,9 +1619,11 @@ acc_expected_type_source_pieces(ModuleInfo,
         % - because this (or something very similar) is needed to ensure
         %   that the different expected type pieces line up exactly with
         %   (a) the inferred type pieces, and (b) each other.
-        HeadTaggedPieces = [words("the type expected by") | SourcePieces] ++
-            [words("is:"), nl_indent_delta(1) | ExpectedPieces] ++
-            [suffix(CommaOrPeriod), nl_indent_delta(-1)]
+        HeadTaggedPieces =
+            [words("the type expected by") | SourcePieces] ++ [words("is:")] ++
+                [nl_indent_delta(1)] ++
+            ExpectedCommaOrDotPieces ++
+                [nl_indent_delta(-1)]
     ;
         MaybeSource = no,
         % Our caller should invoke this predicate only if all
@@ -1559,7 +1631,7 @@ acc_expected_type_source_pieces(ModuleInfo,
         unexpected($pred, "MaybeSource = no")
     ),
     % We can't test whether we have printed a SourcePieces/ExpectedPieces
-    % pair by testing TailTaggedPieceLists due to the possibility of false
+    % pair by testing TailTaggedPieceLists, due to the possibility of false
     % negatives due to a comma vs period mismatch, so we test it directly.
     SourceExpectedPair = SourcePieces - ExpectedPieces,
     ( if set.member(SourceExpectedPair, TailSourceExpectedPairs) then
@@ -1681,10 +1753,12 @@ arg_type_list_diff_pieces(ContextPieces, TypeCtorPieces, ExistQTVars,
         DiffPieces = arg_type_list_diff_pieces_loop(ContextPieces,
             TypeCtorPieces, ExistQTVars, 1, ActualArgTypes, ExpectedArgTypes)
     else
-        DiffPieces = wrap_diff_pieces(ContextPieces,
+        CausePieces =
             [words("Arity mismatch for")] ++ TypeCtorPieces ++ [suffix(":"),
             words("expected"), int_name(ExpectedNumArgs), words("arguments,"),
-            words("got"), int_name(ActualNumArgs), suffix(".")])
+            words("got"), int_name(ActualNumArgs), suffix(".")],
+        DiffPieces = wrap_diff_pieces(ContextPieces,
+            color_pieces_as_possible_cause(CausePieces))
     ).
 
 :- func higher_order_diff_pieces(list(format_piece), list(tvar),
@@ -1698,19 +1772,23 @@ higher_order_diff_pieces(ContextPieces, ExistQTVars, ActualPorF, ExpectedPorF,
     ( if ActualPorF = ExpectedPorF then
         true
     else
-        !:DiffPieces = !.DiffPieces ++ wrap_diff_pieces(ContextPieces,
+        ExpActPredFuncCausePieces =
             [words("Predicate vs function mismatch:"),
             words("expected a"), p_or_f(ExpectedPorF), suffix(","),
-            words("got a"), p_or_f(ActualPorF), suffix(".")])
+            words("got a"), p_or_f(ActualPorF), suffix(".")],
+        !:DiffPieces = !.DiffPieces ++ wrap_diff_pieces(ContextPieces,
+            color_pieces_as_possible_cause(ExpActPredFuncCausePieces))
     ),
     ( if ActualPurity = ExpectedPurity then
         true
     else
-        !:DiffPieces = !.DiffPieces ++ wrap_diff_pieces(ContextPieces,
+        ExpActPurityCausePieces =
             [words("Purity mismatch:"),
             words("expected"), a_purity_desc(ExpectedPurity),
             p_or_f(ExpectedPorF), suffix(","), words("got"),
-            a_purity_desc(ActualPurity), p_or_f(ActualPorF), suffix(".")])
+            a_purity_desc(ActualPurity), p_or_f(ActualPorF), suffix(".")],
+        !:DiffPieces = !.DiffPieces ++ wrap_diff_pieces(ContextPieces,
+            color_pieces_as_possible_cause(ExpActPurityCausePieces))
     ),
     ( if ActualArgTypes = ExpectedArgTypes then
         true
@@ -1743,22 +1821,28 @@ higher_order_diff_pieces(ContextPieces, ExistQTVars, ActualPorF, ExpectedPorF,
             ( if ActualHOPorF = ActualPorF then
                 true
             else
-                !:DiffPieces = !.DiffPieces ++ wrap_diff_pieces(ContextPieces,
+                ActPredFuncTypeModeCausePieces =
                     [words("Predicate vs function mismatch:"),
                     words("the actual type"),
                     words("is a"), p_or_f(ActualPorF), suffix(","),
                     words("but its mode says"),
-                    words("it is a"), p_or_f(ActualHOPorF), suffix(".")])
+                    words("it is a"), p_or_f(ActualHOPorF), suffix(".")],
+                !:DiffPieces = !.DiffPieces ++ wrap_diff_pieces(ContextPieces,
+                    color_pieces_as_possible_cause(
+                        ActPredFuncTypeModeCausePieces))
             ),
             ( if ExpectedHOPorF = ExpectedPorF then
                 true
             else
-                !:DiffPieces = !.DiffPieces ++ wrap_diff_pieces(ContextPieces,
-                    [ words("Predicate vs function mismatch:"),
+                ExpPredFuncTypeModeCausePieces =
+                    [words("Predicate vs function mismatch:"),
                     words("the expected type"),
                     words("is a"), p_or_f(ActualPorF), suffix(","),
                     words("but its mode says"),
-                    words("it is a"), p_or_f(ActualHOPorF), suffix(".")])
+                    words("it is a"), p_or_f(ActualHOPorF), suffix(".")],
+                !:DiffPieces = !.DiffPieces ++ wrap_diff_pieces(ContextPieces,
+                    color_pieces_as_possible_cause(
+                        ExpPredFuncTypeModeCausePieces))
             ),
             ( if ActualNumArgTypes = ActualNumArgModes then
                 true
@@ -1767,13 +1851,15 @@ higher_order_diff_pieces(ContextPieces, ExistQTVars, ActualPorF, ExpectedPorF,
                     ActualTypeArity, ActualNumArgTypes),
                 adjust_func_arity(ActualPorF,
                     ActualModeArity, ActualNumArgModes),
-                !:DiffPieces = !.DiffPieces ++ wrap_diff_pieces(ContextPieces,
+                ActArityCausePieces =
                     [words("Arity mismatch:"),
                     words("the actual"), p_or_f(ActualPorF),
                     words("type has"), int_name(ActualTypeArity),
                     words("arguments"), suffix(","),
                     words("but its mode information says it has"),
-                    int_name(ActualModeArity), words("arguments.")])
+                    int_name(ActualModeArity), words("arguments.")],
+                !:DiffPieces = !.DiffPieces ++ wrap_diff_pieces(ContextPieces,
+                    color_pieces_as_possible_cause(ActArityCausePieces))
             ),
             ( if ExpectedNumArgTypes = ExpectedNumArgModes then
                 true
@@ -1782,35 +1868,41 @@ higher_order_diff_pieces(ContextPieces, ExistQTVars, ActualPorF, ExpectedPorF,
                     ExpectedTypeArity, ExpectedNumArgTypes),
                 adjust_func_arity(ExpectedPorF,
                     ExpectedModeArity, ExpectedNumArgModes),
-                !:DiffPieces = !.DiffPieces ++ wrap_diff_pieces(ContextPieces,
+                ExpArityCausePieces =
                     [words("Arity mismatch:"),
                     words("the actual"), p_or_f(ExpectedPorF),
                     words("type has"), int_name(ExpectedTypeArity),
                     words("arguments"), suffix(","),
                     words("but its mode information says it has"),
-                    int_name(ExpectedModeArity), words("arguments.")])
+                    int_name(ExpectedModeArity), words("arguments.")],
+                !:DiffPieces = !.DiffPieces ++ wrap_diff_pieces(ContextPieces,
+                    color_pieces_as_possible_cause(ExpArityCausePieces))
             ),
             ( if ActualArgModes = ExpectedArgModes then
                 true
             else
                 % We could try to report which argument(s), or even which
                 % piece(s) of which argument(s), contain the difference ...
-                !:DiffPieces = !.DiffPieces ++ wrap_diff_pieces(ContextPieces,
+                ModeCausePieces =
                     [words("Mode mismatch:"),
                     words("the actual and expected modes of the"),
-                    p_or_f(ActualPorF), words("differ.")])
+                    p_or_f(ActualPorF), words("differ.")],
+                !:DiffPieces = !.DiffPieces ++ wrap_diff_pieces(ContextPieces,
+                    color_pieces_as_possible_cause(ModeCausePieces))
             ),
             ( if ActualDetism = ExpectedDetism then
                 true
             else
                 ActualDetismStr = determinism_to_string(ActualDetism),
                 ExpectedDetismStr = determinism_to_string(ExpectedDetism),
-                !:DiffPieces = !.DiffPieces ++ wrap_diff_pieces(ContextPieces,
+                DetismCausePieces =
                     [words("Determinism mismatch:"),
                     words("the actual"), p_or_f(ActualPorF), words("has"),
                     words("determinism"), words(ActualDetismStr), suffix(","),
                     words("but the expected determinism is"),
-                    words(ExpectedDetismStr), suffix(".")])
+                    words(ExpectedDetismStr), suffix(".")],
+                !:DiffPieces = !.DiffPieces ++ wrap_diff_pieces(ContextPieces,
+                    color_pieces_as_possible_cause(DetismCausePieces))
             )
         else
             % XXX We could do better here, but as long as the compiler

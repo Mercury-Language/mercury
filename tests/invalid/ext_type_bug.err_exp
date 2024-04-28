@@ -2,9 +2,9 @@ ext_type_bug.m:021: In clause for predicate `foo'/1:
 ext_type_bug.m:021:   in argument 1 of call to predicate
 ext_type_bug.m:021:   `ext_type_bug.make_bar'/1:
 ext_type_bug.m:021:   type error: variable `Bar' has type
-ext_type_bug.m:021:     ext_type_bug.bar(int);
+ext_type_bug.m:021:     [38;5;203mext_type_bug.bar(int);[39;49m
 ext_type_bug.m:021:   expected type was
-ext_type_bug.m:021:     some [T] (ext_type_bug.bar(T)).
+ext_type_bug.m:021:     [38;5;40msome [T] (ext_type_bug.bar(T)).[39;49m
 ext_type_bug.m:021:   In the first argument of type constructor `bar':
 ext_type_bug.m:021:     the context requires a specific type, but this is not
 ext_type_bug.m:021:     allowed for existentially typed arguments.
@@ -15,11 +15,11 @@ ext_type_bug.m:030: In clause for predicate `foo_tuple'/1:
 ext_type_bug.m:030:   in argument 1 of call to predicate
 ext_type_bug.m:030:   `ext_type_bug.make_bar_tuple'/1:
 ext_type_bug.m:030:   type error: variable `BarTuple' has type
-ext_type_bug.m:030:     {ext_type_bug.bar(int), ext_type_bug.bar(float)};
+ext_type_bug.m:030:     [38;5;203m{ext_type_bug.bar(int), ext_type_bug.bar(float)};[39;49m
 ext_type_bug.m:030:   expected type was
-ext_type_bug.m:030:     some [T, U] (
-ext_type_bug.m:030:       {ext_type_bug.bar(T), ext_type_bug.bar(U)}
-ext_type_bug.m:030:     ).
+ext_type_bug.m:030:     [38;5;40msome [T, U] ([39;49m
+ext_type_bug.m:030:       [38;5;40m{ext_type_bug.bar(T), ext_type_bug.bar(U)}[39;49m
+ext_type_bug.m:030:     [38;5;40m).[39;49m
 ext_type_bug.m:030:   In the first argument of the tuple type constructor:
 ext_type_bug.m:030:   in the first argument of type constructor `bar':
 ext_type_bug.m:030:     the context requires a specific type, but this is not

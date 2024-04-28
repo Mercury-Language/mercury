@@ -2,15 +2,15 @@ actual_expected.m:110: In clause for predicate `find_compulsory_lvals'/5:
 actual_expected.m:110:   in argument 2 of call to predicate
 actual_expected.m:110:   `actual_expected.find_compulsory_lvals'/5:
 actual_expected.m:110:   type error: variable `LiveMap' has type
-actual_expected.m:110:     tree234.tree234(
-actual_expected.m:110:       actual_expected.label,
-actual_expected.m:110:       set_ordlist.set_ordlist(actual_expected.lval)
-actual_expected.m:110:     );
+actual_expected.m:110:     [38;5;203mtree234.tree234([39;49m
+actual_expected.m:110:       [38;5;203mactual_expected.label,[39;49m
+actual_expected.m:110:       [38;5;203mset_ordlist.set_ordlist(actual_expected.lval)[39;49m
+actual_expected.m:110:     [38;5;203m);[39;49m
 actual_expected.m:110:   expected type was
-actual_expected.m:110:     maybe.maybe(
-actual_expected.m:110:       tree234.tree234(
-actual_expected.m:110:         actual_expected.label,
-actual_expected.m:110:         set_ordlist.set_ordlist(actual_expected.lval)
-actual_expected.m:110:       )
-actual_expected.m:110:     ).
+actual_expected.m:110:     [38;5;40mmaybe.maybe([39;49m
+actual_expected.m:110:       [38;5;40mtree234.tree234([39;49m
+actual_expected.m:110:         [38;5;40mactual_expected.label,[39;49m
+actual_expected.m:110:         [38;5;40mset_ordlist.set_ordlist(actual_expected.lval)[39;49m
+actual_expected.m:110:       [38;5;40m)[39;49m
+actual_expected.m:110:     [38;5;40m).[39;49m
 For more information, recompile with `-E'.

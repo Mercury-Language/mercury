@@ -3,6 +3,6 @@ type_error_in_arg.m:038:   in unification of variable `X'
 type_error_in_arg.m:038:   and term `t(A, B, C)':
 type_error_in_arg.m:038:   type error in argument of functor `t'/3.
 type_error_in_arg.m:038:   Argument 3 (C) has type
-type_error_in_arg.m:038:     list.list(T),
+type_error_in_arg.m:038:     [38;5;203mlist.list(T),[39;49m
 type_error_in_arg.m:038:   expected type was
-type_error_in_arg.m:038:     cord.cord(int).
+type_error_in_arg.m:038:     [38;5;40mcord.cord(int).[39;49m

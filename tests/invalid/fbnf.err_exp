@@ -2,16 +2,16 @@ fbnf.m:214: In clause for predicate `execute'/7:
 fbnf.m:214:   in argument 1 (i.e. the predicate term) of higher-order predicate
 fbnf.m:214:   call:
 fbnf.m:214:   type error: variable `Entry' has type
-fbnf.m:214:     pred(
-fbnf.m:214:       fbnf.fstate :: in,
-fbnf.m:214:       fbnf.fstate :: out,
-fbnf.m:214:       io.state :: di,
-fbnf.m:214:       io.state :: uo,
-fbnf.m:214:       list.list(string) :: in,
-fbnf.m:214:       list.list(string) :: out
-fbnf.m:214:     ) is det;
+fbnf.m:214:     [38;5;203mpred([39;49m
+fbnf.m:214:       [38;5;203mfbnf.fstate :: in,[39;49m
+fbnf.m:214:       [38;5;203mfbnf.fstate :: out,[39;49m
+fbnf.m:214:       [38;5;203mio.state :: di,[39;49m
+fbnf.m:214:       [38;5;203mio.state :: uo,[39;49m
+fbnf.m:214:       [38;5;203mlist.list(string) :: in,[39;49m
+fbnf.m:214:       [38;5;203mlist.list(string) :: out[39;49m
+fbnf.m:214:     [38;5;203m) is det;[39;49m
 fbnf.m:214:   expected type was
-fbnf.m:214:     pred(V_7, V_8, V_9, V_10).
-fbnf.m:214:   Arity mismatch for the predicate: expected four arguments, got
-fbnf.m:214:   six.
+fbnf.m:214:     [38;5;40mpred(V_7, V_8, V_9, V_10).[39;49m
+fbnf.m:214:   [38;5;226mArity mismatch for the predicate: expected four arguments, got[39;49m
+fbnf.m:214:   [38;5;226msix.[39;49m
 For more information, recompile with `-E'.
