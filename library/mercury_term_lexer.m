@@ -2063,14 +2063,30 @@ linestr_get_quoted_name_escape(String, Len, QuoteChar, !.RevChars,
         linestr_get_context(LineContext0, Context)
     ).
 
+    % If you add a new escape character sequence, you must also update
+    %
+    %   library/rtti_implementation.m       quote_special_escape_char in
+    %   library/term_io.m                   mercury_escape_special_char
+    %   compiler/parse_tree_out_pragma.m    escape_special_char in
+    %   runtime/mercury_ml_expand_body.h    case MR_TYPECTOR_REP_CHAR
+    %   runtime/mercury_string.c            MR_escape_string_quote
+    %
+    % Any changes here may require changes at those places as well.
+    %
+    % XXX ESCAPE Consider moving all the Mercury predicates to one central
+    % place, which should probably be here. However, this central multi-mode
+    % predicate would need additional arguments that say things such as
+    % "can this escape sequence appear in foreign code strings".
+    %
 :- pred escape_char(char::in, char::out) is semidet.
 
 escape_char('a', '\a').
 escape_char('b', '\b').
-escape_char('r', '\r').
+escape_char('e', '\033\').  % XXX ESCAPE Replace with '\e' after bootstrap.
 escape_char('f', '\f').
-escape_char('t', '\t').
 escape_char('n', '\n').
+escape_char('r', '\r').
+escape_char('t', '\t').
 escape_char('v', '\v').
 escape_char('\\', '\\').
 escape_char('''', '''').

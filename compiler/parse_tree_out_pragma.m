@@ -466,6 +466,10 @@ mercury_format_escaped_char(S, Char, !U) :-
     % character EscapeChar that can be used after a backslash in Mercury
     % foreign_code string literals to represent Char.
     %
+    % Note: the code here is similar (but not identical) to escape_char
+    % in mercury_term_lexer.m, and the places listed there.
+    % Any changes here may require similar changes there.
+    %
 :- pred escape_special_char(char::in, char::out) is semidet.
 
 escape_special_char('\\', '\\').

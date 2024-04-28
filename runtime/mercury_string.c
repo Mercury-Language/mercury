@@ -143,9 +143,11 @@ MR_escape_string_quote(MR_String *ptr, const char * string)
             case '\b':
             case '\f':
             case '\n':
-            case '\t':
             case '\r':
+            case '\t':
             case '\v':
+            // While gcc and clang support '\e', some other C compilers do not.
+            case '\x1B':
             case '\"':
             case '\\':
                 num_code_units += 2;
@@ -204,19 +206,25 @@ MR_escape_string_quote(MR_String *ptr, const char * string)
                     dst[1] = 'n';
                     dst += 2;
                     break; 
-                case '\t':
-                    dst[0] = '\\';
-                    dst[1] = 't';
-                    dst += 2;
-                    break; 
                 case '\r':
                     dst[0] = '\\';
                     dst[1] = 'r';
                     dst += 2;
                     break; 
+                case '\t':
+                    dst[0] = '\\';
+                    dst[1] = 't';
+                    dst += 2;
+                    break; 
                 case '\v':
                     dst[0] = '\\';
                     dst[1] = 'v';
+                    dst += 2;
+                    break; 
+                // See the comment above.
+                case '\x1B':
+                    dst[0] = '\\';
+                    dst[1] = 'e';
                     dst += 2;
                     break; 
                 case '\"':

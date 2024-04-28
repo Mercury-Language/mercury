@@ -3369,20 +3369,22 @@ univ_named_arg_2(Term, TypeInfo, TypeCtorInfo, TypeCtorRep, NonCanon, Name,
 
 %---------------------------------------------------------------------------%
 
-    % Note: changes to this predicate may require changes to the similar
-    % predicate in library/term_io.m.
+    % Note: the code here is similar (but not identical) to escape_char
+    % in mercury_term_lexer.m, and the places listed there.
+    % Any changes here may require similar changes there.
     %
 :- pred quote_special_escape_char(character::in, string::out) is semidet.
 
-quote_special_escape_char('\\', "'\\\\'").
-quote_special_escape_char('\'', "'\\''").
 quote_special_escape_char('\a', "'\\a'").
 quote_special_escape_char('\b', "'\\b'").
-quote_special_escape_char('\r', "'\\r'").
+% quote_special_escape_char('\e', "'\\e'"). XXX ESCAPE Enable after bootstrap.
 quote_special_escape_char('\f', "'\\f'").
-quote_special_escape_char('\t', "'\\t'").
 quote_special_escape_char('\n', "'\\n'").
+quote_special_escape_char('\r', "'\\r'").
+quote_special_escape_char('\t', "'\\t'").
 quote_special_escape_char('\v', "'\\v'").
+quote_special_escape_char('\\', "'\\\\'").
+quote_special_escape_char('\'', "'\\''").
 
 :- pred det_dynamic_cast(T::in, U::out) is det.
 

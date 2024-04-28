@@ -1367,27 +1367,25 @@ encode_escaped_char(Char::out, Str::in) :-
     % EscapeChar that can be used after a backslash in string literals or
     % atoms to represent Char.
     %
-    % Note: the code here is similar (but not identical) to
-    %
-    % - escape_special_char in compiler/parse_tree_out_pragma.m, and
-    % - quote_special_escape_char in library/rtti_implementation.m.
-    %
+    % Note: the code here is similar (but not identical) to escape_char
+    % in mercury_term_lexer.m, and the places listed there.
     % Any changes here may require similar changes there.
     %
 :- pred mercury_escape_special_char(char, char).
 :- mode mercury_escape_special_char(in, out) is semidet.
 :- mode mercury_escape_special_char(out, in) is semidet.
 
-mercury_escape_special_char('\\', '\\').
-mercury_escape_special_char('''', '''').
-mercury_escape_special_char('"', '"').
 mercury_escape_special_char('\a', 'a').
 mercury_escape_special_char('\b', 'b').
+% mercury_escape_special_char('\e', 'e'). XXX ESCAPE Enable after bootstrap.
 mercury_escape_special_char('\f', 'f').
 mercury_escape_special_char('\n', 'n').
 mercury_escape_special_char('\r', 'r').
 mercury_escape_special_char('\t', 't').
 mercury_escape_special_char('\v', 'v').
+mercury_escape_special_char('\\', '\\').
+mercury_escape_special_char('''', '''').
+mercury_escape_special_char('"', '"').
 
 %---------------------------------------------------------------------------%
 :- end_module term_io.

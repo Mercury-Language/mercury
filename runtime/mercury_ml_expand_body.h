@@ -1130,10 +1130,13 @@ EXPAND_FUNCTION_NAME(MR_TypeInfo type_info, MR_Word *data_word_ptr,
             case '\'': str_ptr = "'\\''";  break;
             case '\a': str_ptr = "'\\a'";  break;
             case '\b': str_ptr = "'\\b'";  break;
-            case '\r': str_ptr = "'\\r'";  break;
+            // While gcc and clang support '\e', some other C compilers do not.
+            // case '\e': str_ptr = "'\\e'";  break;
+            case '\x1B': str_ptr = "'\\e'";  break;
             case '\f': str_ptr = "'\\f'";  break;
-            case '\t': str_ptr = "'\\t'";  break;
             case '\n': str_ptr = "'\\n'";  break;
+            case '\r': str_ptr = "'\\r'";  break;
+            case '\t': str_ptr = "'\\t'";  break;
             case '\v': str_ptr = "'\\v'";  break;
             default:
                 // Print remaining control characters using octal escapes.
@@ -1275,6 +1278,7 @@ EXPAND_FUNCTION_NAME(MR_TypeInfo type_info, MR_Word *data_word_ptr,
 
     // This label handles the MR_NONCANON_CC case of both predicates
     // and functions.
+    // XXX This 142-line block of code should be a function of its own.
     predfunc:
     {
         MR_Closure          *closure;

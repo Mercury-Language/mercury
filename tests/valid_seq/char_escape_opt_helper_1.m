@@ -11,5 +11,6 @@
 
 :- implementation.
 
-p('\r').
+p('\e').
 p('\n').
+p('\r').
