@@ -2070,6 +2070,8 @@ linestr_get_quoted_name_escape(String, Len, QuoteChar, !.RevChars,
     %   compiler/parse_tree_out_pragma.m    escape_special_char in
     %   runtime/mercury_ml_expand_body.h    case MR_TYPECTOR_REP_CHAR
     %   runtime/mercury_string.c            MR_escape_string_quote
+    %   runtime/mercury_trace_base.c        MR_trace_write_quoted_atom
+    %   runtime/mercury_trace_base.c        MR_trace_write_string
     %
     % Any changes here may require changes at those places as well.
     %

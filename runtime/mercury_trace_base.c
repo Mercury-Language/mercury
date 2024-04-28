@@ -628,6 +628,30 @@ MR_trace_write_quoted_atom(FILE *fp, const char *atom)
     fputc('\'', fp);
     for (c = atom; *c != '\0'; c++) {
         switch (*c) {
+            case '\a':
+                fputs("\\a", fp);
+                break;
+            case '\b':
+                fputs("\\b", fp);
+                break;
+            case '\x1B':
+                fputs("\\e", fp);
+                break;
+            case '\f':
+                fputs("\\f", fp);
+                break;
+            case '\n':
+                fputs("\\n", fp);
+                break;
+            case '\r':
+                fputs("\\r", fp);
+                break;
+            case '\t':
+                fputs("\\t", fp);
+                break;
+            case '\v':
+                fputs("\\v", fp);
+                break;
             case '\'':
                 fputs("\\'", fp);
                 break;
@@ -636,27 +660,6 @@ MR_trace_write_quoted_atom(FILE *fp, const char *atom)
                 break;
             case '\\':
                 fputs("\\\\", fp);
-                break;
-            case '\n':
-                fputs("\\n", fp);
-                break;
-            case '\t':
-                fputs("\\t", fp);
-                break;
-            case '\b':
-                fputs("\\b", fp);
-                break;
-            case '\a':
-                fputs("\\a", fp);
-                break;
-            case '\r':
-                fputs("\\r", fp);
-                break;
-            case '\f':
-                fputs("\\f", fp);
-                break;
-            case '\v':
-                fputs("\\v", fp);
                 break;
             default:
                 // This assumes isalnum is the same as char.isalnum.
@@ -689,32 +692,35 @@ MR_trace_write_string(FILE *fp, const char *atom)
     fputc('\"', fp);
     for (c = atom; *c != '\0'; c++) {
         switch (*c) {
+            case '\a':
+                fputs("\\a", fp);
+                break;
+            case '\b':
+                fputs("\\b", fp);
+                break;
+            case '\x1B':
+                fputs("\\e", fp);
+                break;
+            case '\f':
+                fputs("\\f", fp);
+                break;
+            case '\n':
+                fputs("\\n", fp);
+                break;
+            case '\r':
+                fputs("\\r", fp);
+                break;
+            case '\t':
+                fputs("\\t", fp);
+                break;
+            case '\v':
+                fputs("\\v", fp);
+                break;
             case '"':
                 fputs("\\\"", fp);
                 break;
             case '\\':
                 fputs("\\\\", fp);
-                break;
-            case '\n':
-                fputs("\\n", fp);
-                break;
-            case '\t':
-                fputs("\\t", fp);
-                break;
-            case '\b':
-                fputs("\\b", fp);
-                break;
-            case '\a':
-                fputs("\\a", fp);
-                break;
-            case '\r':
-                fputs("\\b", fp);
-                break;
-            case '\f':
-                fputs("\\f", fp);
-                break;
-            case '\v':
-                fputs("\\v", fp);
                 break;
             default:
                 fputc(*c, fp);
