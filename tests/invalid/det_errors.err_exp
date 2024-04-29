@@ -1,81 +1,82 @@
 det_errors.m:009: In `p1'(in):
 det_errors.m:009:   error: determinism declaration not satisfied.
-det_errors.m:009:   Declared `det', inferred `semidet'.
+det_errors.m:009:   Declared [38;5;40m`det',[39;49m inferred [38;5;203m`semidet'.[39;49m
 det_errors.m:009:   The reason for the difference is the following.
 det_errors.m:042:   In argument 1 of clause head:
-det_errors.m:042:   unification of `HeadVar__1' and `42' can fail.
+det_errors.m:042:   [38;5;226munification of `HeadVar__1' and `42' can fail.[39;49m
 det_errors.m:010: In `p2'(in):
 det_errors.m:010:   error: determinism declaration not satisfied.
-det_errors.m:010:   Declared `det', inferred `semidet'.
+det_errors.m:010:   Declared [38;5;40m`det',[39;49m inferred [38;5;203m`semidet'.[39;49m
 det_errors.m:010:   The reason for the difference is the following.
-det_errors.m:043:   Unification of `X' and `42' can fail.
+det_errors.m:043:   [38;5;226mUnification of `X' and `42' can fail.[39;49m
 det_errors.m:011: In `p3'(in):
 det_errors.m:011:   error: determinism declaration not satisfied.
-det_errors.m:011:   Declared `det', inferred `semidet'.
+det_errors.m:011:   Declared [38;5;40m`det',[39;49m inferred [38;5;203m`semidet'.[39;49m
 det_errors.m:011:   The reason for the difference is the following.
-det_errors.m:044:   Unification of `X' and `42' can fail.
+det_errors.m:044:   [38;5;226mUnification of `X' and `42' can fail.[39;49m
 det_errors.m:012: In `p4'(in):
 det_errors.m:012:   error: determinism declaration not satisfied.
-det_errors.m:012:   Declared `det', inferred `semidet'.
+det_errors.m:012:   Declared [38;5;40m`det',[39;49m inferred [38;5;203m`semidet'.[39;49m
 det_errors.m:012:   The reason for the difference is the following.
 det_errors.m:045:   In argument 2 of functor `+/2':
-det_errors.m:045:   unification with `21' can fail.
+det_errors.m:045:   [38;5;226munification with `21' can fail.[39;49m
 det_errors.m:026: In `q'(in, out):
 det_errors.m:026:   error: determinism declaration not satisfied.
-det_errors.m:026:   Declared `det', inferred `semidet'.
+det_errors.m:026:   Declared [38;5;40m`det',[39;49m inferred [38;5;203m`semidet'.[39;49m
 det_errors.m:026:   The reason for the difference is the following.
-det_errors.m:048:   The switch on HeadVar__1 does not cover
-det_errors.m:048:     `d'/0,
-det_errors.m:048:     `e'/0,
-det_errors.m:048:     `f'/0,
-det_errors.m:048:     `g'/0,
-det_errors.m:048:     `h'/1 or
-det_errors.m:048:     `i'/1.
+det_errors.m:048:   [38;5;226mThe switch on HeadVar__1 does not cover[38;5;226m[39;49m
+det_errors.m:048:     [38;5;226m`d'/0,[39;49m
+det_errors.m:048:     [38;5;226m`e'/0,[39;49m
+det_errors.m:048:     [38;5;226m`f'/0,[39;49m
+det_errors.m:048:     [38;5;226m`g'/0,[39;49m
+det_errors.m:048:     [38;5;226m`h'/1 or[39;49m
+det_errors.m:048:     [38;5;226m`i'/1.[39;49m
 det_errors.m:034: In `r'(in, out):
 det_errors.m:034:   error: determinism declaration not satisfied.
-det_errors.m:034:   Declared `det', inferred `nondet'.
+det_errors.m:034:   Declared [38;5;40m`det',[39;49m inferred [38;5;203m`nondet'.[39;49m
 det_errors.m:034:   The reasons for the difference are the following.
-det_errors.m:054:   The switch on U does not cover
-det_errors.m:054:     `u2'/0.
+det_errors.m:054:   [38;5;226mThe switch on U does not cover[38;5;226m[39;49m
+det_errors.m:054:     [38;5;226m`u2'/0.[39;49m
 det_errors.m:057:   Inside the case u3(V_16) of the switch on U:
-det_errors.m:057:   the switch on V_16 does not cover
-det_errors.m:057:     `d'/0,
-det_errors.m:057:     `e'/0,
-det_errors.m:057:     `f'/0,
-det_errors.m:057:     `g'/0,
-det_errors.m:057:     `h'/1 or
-det_errors.m:057:     `i'/1.
+det_errors.m:057:   [38;5;226mthe switch on V_16 does not cover[38;5;226m[39;49m
+det_errors.m:057:     [38;5;226m`d'/0,[39;49m
+det_errors.m:057:     [38;5;226m`e'/0,[39;49m
+det_errors.m:057:     [38;5;226m`f'/0,[39;49m
+det_errors.m:057:     [38;5;226m`g'/0,[39;49m
+det_errors.m:057:     [38;5;226m`h'/1 or[39;49m
+det_errors.m:057:     [38;5;226m`i'/1.[39;49m
 det_errors.m:066:   Inside the case u4(V_17) of the switch on U:
-det_errors.m:066:   the switch on V_17 does not cover
-det_errors.m:066:     `h'/1 or
-det_errors.m:066:     `i'/1.
+det_errors.m:066:   [38;5;226mthe switch on V_17 does not cover[38;5;226m[39;49m
+det_errors.m:066:     [38;5;226m`h'/1 or[39;49m
+det_errors.m:066:     [38;5;226m`i'/1.[39;49m
 det_errors.m:075:   Inside the case u4(V_17) of the switch on U:
 det_errors.m:075:   inside the case d/0 of the switch on V_17:
 det_errors.m:075:   disjunction has more than one disjunct with solutions.
-det_errors.m:078:   This later disjunct may have a solution.
+det_errors.m:078:   [38;5;226mThis later disjunct may have a solution.[39;49m
 det_errors.m:035: In `s'(in, out):
 det_errors.m:035:   error: determinism declaration not satisfied.
-det_errors.m:035:   Declared `det', inferred `nondet'.
+det_errors.m:035:   Declared [38;5;40m`det',[39;49m inferred [38;5;203m`nondet'.[39;49m
 det_errors.m:035:   The reasons for the difference are the following.
-det_errors.m:093:   The switch on U does not cover
-det_errors.m:093:     `u2'/0.
+det_errors.m:093:   [38;5;226mThe switch on U does not cover[38;5;226m[39;49m
+det_errors.m:093:     [38;5;226m`u2'/0.[39;49m
 det_errors.m:096:   Inside the case u3(V_11) of the switch on U:
-det_errors.m:096:   the switch on V_11 does not cover
-det_errors.m:096:     `d'/0,
-det_errors.m:096:     `e'/0,
-det_errors.m:096:     `f'/0,
-det_errors.m:096:     `g'/0,
-det_errors.m:096:     `h'/1 or
-det_errors.m:096:     `i'/1.
+det_errors.m:096:   [38;5;226mthe switch on V_11 does not cover[38;5;226m[39;49m
+det_errors.m:096:     [38;5;226m`d'/0,[39;49m
+det_errors.m:096:     [38;5;226m`e'/0,[39;49m
+det_errors.m:096:     [38;5;226m`f'/0,[39;49m
+det_errors.m:096:     [38;5;226m`g'/0,[39;49m
+det_errors.m:096:     [38;5;226m`h'/1 or[39;49m
+det_errors.m:096:     [38;5;226m`i'/1.[39;49m
 det_errors.m:116:   Inside the case u4(V) of the switch on U:
 det_errors.m:116:   inside the case d/0 of the switch on V:
 det_errors.m:116:   disjunction has more than one disjunct with solutions.
-det_errors.m:119:   This later disjunct may have a solution.
+det_errors.m:119:   [38;5;226mThis later disjunct may have a solution.[39;49m
 det_errors.m:125:   Inside the case u4(V) of the switch on U:
 det_errors.m:125:   inside the case e/0, f/0 of the switch on V:
 det_errors.m:125:   disjunction has more than one disjunct with solutions.
-det_errors.m:126:   This later disjunct may have a solution.
+det_errors.m:126:   [38;5;226mThis later disjunct may have a solution.[39;49m
 det_errors.m:135:   Inside the case u4(V) of the switch on U:
 det_errors.m:135:   inside the case h/1, i/1 of the switch on V:
 det_errors.m:135:   disjunction has more than one disjunct with solutions.
-det_errors.m:136:   This later disjunct may have a solution.
+det_errors.m:136:   [38;5;226mThis later disjunct may have a solution.[39;49m
+For more information, recompile with `-E'.

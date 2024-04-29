@@ -1,6 +1,6 @@
 ref_to_implicit_comma.m:008: In `test':
 ref_to_implicit_comma.m:008:   error: determinism declaration not satisfied.
-ref_to_implicit_comma.m:008:   Declared `det', inferred `failure'.
+ref_to_implicit_comma.m:008:   Declared [38;5;40m`det',[39;49m inferred [38;5;203m`failure'.[39;49m
 ref_to_implicit_comma.m:013: Attempt to define a clause for `,'/2. This is
 ref_to_implicit_comma.m:013:   usually caused by inadvertently writing a period
 ref_to_implicit_comma.m:013:   instead of a comma at the end of the preceding

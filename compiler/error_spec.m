@@ -619,9 +619,9 @@
 
 %---------------------------------------------------------------------------%
 
-:- func color_pieces_as_correct(list(format_piece)) = list(format_piece).
-:- func color_pieces_as_incorrect(list(format_piece)) = list(format_piece).
-:- func color_pieces_as_possible_cause(list(format_piece)) =
+:- func color_as_correct(list(format_piece)) = list(format_piece).
+:- func color_as_incorrect(list(format_piece)) = list(format_piece).
+:- func color_as_possible_cause(list(format_piece)) =
     list(format_piece).
 
 :- func color_pieces(color_name, list(format_piece)) = list(format_piece).
@@ -766,17 +766,17 @@ is_or_are([_, _ | _]) = "are".
 
 %---------------------------------------------------------------------------%
 
-color_pieces_as_correct(Pieces) =
+color_as_correct(Pieces) =
     [not_for_general_use_start_color(color_correct)] ++
     Pieces ++
     [not_for_general_use_end_color].
 
-color_pieces_as_incorrect(Pieces) =
+color_as_incorrect(Pieces) =
     [not_for_general_use_start_color(color_incorrect)] ++
     Pieces ++
     [not_for_general_use_end_color].
 
-color_pieces_as_possible_cause(Pieces) =
+color_as_possible_cause(Pieces) =
     [not_for_general_use_start_color(color_cause)] ++
     Pieces ++
     [not_for_general_use_end_color].
@@ -814,10 +814,10 @@ diff_seq_line_to_pieces(Diff, Pieces) :-
         LinePieces = [fixed(" " ++ Str)]
     ;
         Diff = deleted(Str),
-        LinePieces = color_pieces_as_correct([fixed("-" ++ Str)])
+        LinePieces = color_as_correct([fixed("-" ++ Str)])
     ;
         Diff = inserted(Str),
-        LinePieces = color_pieces_as_incorrect([fixed("+" ++ Str)])
+        LinePieces = color_as_incorrect([fixed("+" ++ Str)])
     ),
     Pieces = LinePieces ++ [nl].
 
@@ -909,7 +909,7 @@ do_maybe_construct_did_you_mean_pieces(BaseName, CandidateNames,
         DidYouMeanPieces0 =
             [words("(Did you mean")] ++ SuggestionPieces ++
             [suffix("?)"), nl],
-        DidYouMeanPieces = color_pieces_as_possible_cause(DidYouMeanPieces0)
+        DidYouMeanPieces = color_as_possible_cause(DidYouMeanPieces0)
     else
         DidYouMeanPieces = []
     ).

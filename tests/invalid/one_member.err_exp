@@ -2,7 +2,7 @@ one_member.m:046: Error: this `arbitrary' scope is not nested inside a
 one_member.m:046:   `promise_equivalent_solution_sets' scope.
 one_member.m:049: In `one_member2'(in, out):
 one_member.m:049:   warning: determinism declaration could be tighter.
-one_member.m:049:   Declared `nondet', inferred `semidet'.
+one_member.m:049:   Declared [38;5;40m`nondet',[39;49m inferred [38;5;203m`semidet'.[39;49m
 one_member.m:053: Error: the `arbitrary' goal lists an extra variable: Tree.
 one_member.m:053: Error: this `arbitrary' scope and the
 one_member.m:053:   `promise_equivalent_solution_sets' scope it is nested

@@ -8,4 +8,4 @@ invalid_main.m:009: Error: both arguments of `main/2' must have type
 invalid_main.m:009:   `io.state'.
 invalid_main.m:009: In `main'(di, out):
 invalid_main.m:009:   warning: determinism declaration could be tighter.
-invalid_main.m:009:   Declared `multi', inferred `det'.
+invalid_main.m:009:   Declared [38;5;40m`multi',[39;49m inferred [38;5;203m`det'.[39;49m

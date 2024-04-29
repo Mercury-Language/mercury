@@ -204,11 +204,11 @@ diff_to_pieces(Diff) = Pieces :-
     ;
         Diff = deleted(Line),
         Pieces0 = [fixed("- " ++ Line), nl],
-        Pieces = color_pieces_as_correct(Pieces0)
+        Pieces = color_as_correct(Pieces0)
     ;
         Diff = inserted(Line),
         Pieces0 = [fixed("+ " ++ Line), nl],
-        Pieces = color_pieces_as_incorrect(Pieces0)
+        Pieces = color_as_incorrect(Pieces0)
     ).
 
 :- pred pred_decl_lines(tvarset::in, list(mer_type)::in,

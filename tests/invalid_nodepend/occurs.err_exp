@@ -14,7 +14,7 @@ occurs.m:014: Warning: the variable `X' is unified with a term containing
 occurs.m:014:   itself.
 occurs.m:016: In `p2':
 occurs.m:016:   warning: determinism declaration could be tighter.
-occurs.m:016:   Declared `semidet', inferred `failure'.
+occurs.m:016:   Declared [38;5;40m`semidet',[39;49m inferred [38;5;203m`failure'.[39;49m
 occurs.m:019: Warning: the variable `X' is unified with a term containing
 occurs.m:019:   itself.
 occurs.m:024: In clause for `p3':

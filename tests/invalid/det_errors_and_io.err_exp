@@ -1,6 +1,7 @@
 det_errors_and_io.m:038: In `bad_pred'(in, di, uo):
 det_errors_and_io.m:038:   error: determinism declaration not satisfied.
-det_errors_and_io.m:038:   Declared `det', inferred `semidet'.
+det_errors_and_io.m:038:   Declared [38;5;40m`det',[39;49m inferred [38;5;203m`semidet'.[39;49m
 det_errors_and_io.m:038:   The reason for the difference is the following.
-det_errors_and_io.m:042:   The switch on T does not cover
-det_errors_and_io.m:042:     `d'/0.
+det_errors_and_io.m:042:   [38;5;226mThe switch on T does not cover[38;5;226m[39;49m
+det_errors_and_io.m:042:     [38;5;226m`d'/0.[39;49m
+For more information, recompile with `-E'.

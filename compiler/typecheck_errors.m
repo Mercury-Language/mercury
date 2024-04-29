@@ -732,10 +732,10 @@ mismatched_args_to_pieces(VarSet, Functor, First, [Mismatch | Mismatches])
             TailActualTypePieces = [],
             ActualCommaPieces = HeadActualTypePieces ++ [suffix(",")],
             ErrorDescPieces = [words("has type"), nl_indent_delta(1)] ++
-                color_pieces_as_incorrect(ActualCommaPieces) ++
+                color_as_incorrect(ActualCommaPieces) ++
                     [nl_indent_delta(-1)] ++
                 [words("expected type was"), nl_indent_delta(1)] ++
-                color_pieces_as_correct(ExpectedDotPieces) ++
+                color_as_correct(ExpectedDotPieces) ++
                     [nl_indent_delta(-1)]
         ;
             TailActualTypePieces =
@@ -745,10 +745,10 @@ mismatched_args_to_pieces(VarSet, Functor, First, [Mismatch | Mismatches])
                     SecondActualTypePieces, ThirdPlusActualTypePieces) ++
                 [suffix(",")],
             ErrorDescPieces = [words("has type"), nl_indent_delta(1)] ++
-                color_pieces_as_incorrect(ActualCommaPieces) ++
+                color_as_incorrect(ActualCommaPieces) ++
                     [nl_indent_delta(-1)] ++
                 [words("expected type was"), nl_indent_delta(1)] ++
-                color_pieces_as_correct(ExpectedDotPieces) ++
+                color_as_correct(ExpectedDotPieces) ++
                     [nl_indent_delta(-1)]
         )
     else
@@ -819,9 +819,9 @@ report_possible_expected_actual_types(CurPossNum, [Mismatch | Mismatches])
     HeadPieces =
         [words("Possibility"), int_fixed(CurPossNum), suffix(":")] ++
         [words("actual type")] ++
-            color_pieces_as_incorrect(ActualTypePieces ++ [suffix(",")]) ++
+            color_as_incorrect(ActualTypePieces ++ [suffix(",")]) ++
         [words("expected type")] ++
-            color_pieces_as_correct(ExpectedTypePieces ++ [suffix("."), nl]),
+            color_as_correct(ExpectedTypePieces ++ [suffix("."), nl]),
     TailPieces = report_possible_expected_actual_types(CurPossNum + 1,
         Mismatches),
     Pieces = HeadPieces ++ TailPieces.
@@ -883,7 +883,7 @@ report_special_type_mismatch(IsFirst, MismatchSpecial) = Pieces :-
             words("Errors are now returned in a structured form,"),
             words("which can be converted to a string by calling the"),
             quote("option_error_to_string"), words("function."), nl],
-        Pieces = color_pieces_as_possible_cause(Pieces0)
+        Pieces = color_as_possible_cause(Pieces0)
     ).
 
 %---------------------------------------------------------------------------%
@@ -1116,7 +1116,7 @@ nosuffix_integer_pieces = Pieces :-
         words("an"), quote("u8"), suffix(","), quote("u16"), suffix(","),
         quote("u32"), words("or"), quote("u64"), words("suffix"),
         words("if they are unsigned."), nl],
-    Pieces = color_pieces_as_possible_cause(Pieces0).
+    Pieces = color_as_possible_cause(Pieces0).
 
 %---------------------------------------------------------------------------%
 
@@ -1274,7 +1274,7 @@ report_any_invisible_int_types(ClauseContext, BuiltinTypes) = Pieces :-
                 words("only if the") | InvisIntTypePieces] ++
                 [words("modules respectively are imported."), nl]
         ),
-        Pieces = color_pieces_as_possible_cause(Pieces0)
+        Pieces = color_as_possible_cause(Pieces0)
     else
         Pieces = []
     ).
@@ -1467,7 +1467,7 @@ report_actual_expected_types(ClauseContext, Var, ActualExpectedList,
         MaybeSingleActual = yes(SingleActualPieces),
         % Technically, it is a *semi*colon, but ...
         ActualColonPieces0 = SingleActualPieces ++ [suffix(";")],
-        ActualColonPieces = color_pieces_as_incorrect(ActualColonPieces0),
+        ActualColonPieces = color_as_incorrect(ActualColonPieces0),
         ActualPartPieces =
             [words("has type"), nl_indent_delta(1)] ++
             ActualColonPieces ++ [nl_indent_delta(-1)]
@@ -1477,7 +1477,7 @@ report_actual_expected_types(ClauseContext, Var, ActualExpectedList,
             ActualExpectedList),
         ActualColonPieces0 = component_list_to_line_pieces(ActualPieceLists,
             [suffix(";")]),
-        ActualColonPieces = color_pieces_as_incorrect(ActualColonPieces0),
+        ActualColonPieces = color_as_incorrect(ActualColonPieces0),
         ActualPartPieces =
             [words("has one of the following inferred types:"),
                 nl_indent_delta(1)] ++
@@ -1487,7 +1487,7 @@ report_actual_expected_types(ClauseContext, Var, ActualExpectedList,
     (
         MaybeSingleExpected = yes(SingleExpectedPieces),
         ExpectedDotPieces0 = SingleExpectedPieces ++ [suffix(".")],
-        ExpectedDotPieces = color_pieces_as_correct(ExpectedDotPieces0),
+        ExpectedDotPieces = color_as_correct(ExpectedDotPieces0),
         ExpectedPartPieces =
             [words("expected type was"), nl_indent_delta(1)] ++
             ExpectedDotPieces ++ [nl_indent_delta(-1)]
@@ -1503,7 +1503,7 @@ report_actual_expected_types(ClauseContext, Var, ActualExpectedList,
             ExpectedDotPieces0 =
                 component_list_to_line_pieces(ExpectedPieceLists,
                     [suffix(".")]),
-            ExpectedDotPieces = color_pieces_as_correct(ExpectedDotPieces0),
+            ExpectedDotPieces = color_as_correct(ExpectedDotPieces0),
             ExpectedPartPieces =
                 [words("expected type was one of"), nl_indent_delta(1)] ++
                 ExpectedDotPieces ++ [nl_indent_delta(-1)]
@@ -1610,8 +1610,7 @@ acc_expected_type_source_pieces(ModuleInfo,
         MaybeSource = yes(Source),
         SourcePieces = describe_args_type_assign_source(ModuleInfo, Source),
         ExpectedCommaOrDotPieces0 = ExpectedPieces ++ [suffix(CommaOrPeriod)],
-        ExpectedCommaOrDotPieces =
-            color_pieces_as_correct(ExpectedCommaOrDotPieces0),
+        ExpectedCommaOrDotPieces = color_as_correct(ExpectedCommaOrDotPieces0),
         % We add a newline after the "(expected by ...):" text for two reasons:
         %
         % - because SourcePieces is likely to take up a large chunk
@@ -1758,7 +1757,7 @@ arg_type_list_diff_pieces(ContextPieces, TypeCtorPieces, ExistQTVars,
             words("expected"), int_name(ExpectedNumArgs), words("arguments,"),
             words("got"), int_name(ActualNumArgs), suffix(".")],
         DiffPieces = wrap_diff_pieces(ContextPieces,
-            color_pieces_as_possible_cause(CausePieces))
+            color_as_possible_cause(CausePieces))
     ).
 
 :- func higher_order_diff_pieces(list(format_piece), list(tvar),
@@ -1777,7 +1776,7 @@ higher_order_diff_pieces(ContextPieces, ExistQTVars, ActualPorF, ExpectedPorF,
             words("expected a"), p_or_f(ExpectedPorF), suffix(","),
             words("got a"), p_or_f(ActualPorF), suffix(".")],
         !:DiffPieces = !.DiffPieces ++ wrap_diff_pieces(ContextPieces,
-            color_pieces_as_possible_cause(ExpActPredFuncCausePieces))
+            color_as_possible_cause(ExpActPredFuncCausePieces))
     ),
     ( if ActualPurity = ExpectedPurity then
         true
@@ -1788,7 +1787,7 @@ higher_order_diff_pieces(ContextPieces, ExistQTVars, ActualPorF, ExpectedPorF,
             p_or_f(ExpectedPorF), suffix(","), words("got"),
             a_purity_desc(ActualPurity), p_or_f(ActualPorF), suffix(".")],
         !:DiffPieces = !.DiffPieces ++ wrap_diff_pieces(ContextPieces,
-            color_pieces_as_possible_cause(ExpActPurityCausePieces))
+            color_as_possible_cause(ExpActPurityCausePieces))
     ),
     ( if ActualArgTypes = ExpectedArgTypes then
         true
@@ -1828,8 +1827,7 @@ higher_order_diff_pieces(ContextPieces, ExistQTVars, ActualPorF, ExpectedPorF,
                     words("but its mode says"),
                     words("it is a"), p_or_f(ActualHOPorF), suffix(".")],
                 !:DiffPieces = !.DiffPieces ++ wrap_diff_pieces(ContextPieces,
-                    color_pieces_as_possible_cause(
-                        ActPredFuncTypeModeCausePieces))
+                    color_as_possible_cause(ActPredFuncTypeModeCausePieces))
             ),
             ( if ExpectedHOPorF = ExpectedPorF then
                 true
@@ -1841,8 +1839,7 @@ higher_order_diff_pieces(ContextPieces, ExistQTVars, ActualPorF, ExpectedPorF,
                     words("but its mode says"),
                     words("it is a"), p_or_f(ActualHOPorF), suffix(".")],
                 !:DiffPieces = !.DiffPieces ++ wrap_diff_pieces(ContextPieces,
-                    color_pieces_as_possible_cause(
-                        ExpPredFuncTypeModeCausePieces))
+                    color_as_possible_cause(ExpPredFuncTypeModeCausePieces))
             ),
             ( if ActualNumArgTypes = ActualNumArgModes then
                 true
@@ -1859,7 +1856,7 @@ higher_order_diff_pieces(ContextPieces, ExistQTVars, ActualPorF, ExpectedPorF,
                     words("but its mode information says it has"),
                     int_name(ActualModeArity), words("arguments.")],
                 !:DiffPieces = !.DiffPieces ++ wrap_diff_pieces(ContextPieces,
-                    color_pieces_as_possible_cause(ActArityCausePieces))
+                    color_as_possible_cause(ActArityCausePieces))
             ),
             ( if ExpectedNumArgTypes = ExpectedNumArgModes then
                 true
@@ -1876,7 +1873,7 @@ higher_order_diff_pieces(ContextPieces, ExistQTVars, ActualPorF, ExpectedPorF,
                     words("but its mode information says it has"),
                     int_name(ExpectedModeArity), words("arguments.")],
                 !:DiffPieces = !.DiffPieces ++ wrap_diff_pieces(ContextPieces,
-                    color_pieces_as_possible_cause(ExpArityCausePieces))
+                    color_as_possible_cause(ExpArityCausePieces))
             ),
             ( if ActualArgModes = ExpectedArgModes then
                 true
@@ -1888,7 +1885,7 @@ higher_order_diff_pieces(ContextPieces, ExistQTVars, ActualPorF, ExpectedPorF,
                     words("the actual and expected modes of the"),
                     p_or_f(ActualPorF), words("differ.")],
                 !:DiffPieces = !.DiffPieces ++ wrap_diff_pieces(ContextPieces,
-                    color_pieces_as_possible_cause(ModeCausePieces))
+                    color_as_possible_cause(ModeCausePieces))
             ),
             ( if ActualDetism = ExpectedDetism then
                 true
@@ -1902,7 +1899,7 @@ higher_order_diff_pieces(ContextPieces, ExistQTVars, ActualPorF, ExpectedPorF,
                     words("but the expected determinism is"),
                     words(ExpectedDetismStr), suffix(".")],
                 !:DiffPieces = !.DiffPieces ++ wrap_diff_pieces(ContextPieces,
-                    color_pieces_as_possible_cause(DetismCausePieces))
+                    color_as_possible_cause(DetismCausePieces))
             )
         else
             % XXX We could do better here, but as long as the compiler

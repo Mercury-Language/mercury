@@ -1,14 +1,14 @@
 bug496.m:022: In `options_to_action'(in, in, out):
 bug496.m:022:   error: determinism declaration not satisfied.
-bug496.m:022:   Declared `det', inferred `nondet'.
+bug496.m:022:   Declared [38;5;40m`det',[39;49m inferred [38;5;203m`nondet'.[39;49m
 bug496.m:022:   The reasons for the difference are the following.
 bug496.m:050:   Inside the case [|]/2 of the switch on AllActions:
 bug496.m:050:   disjunction has more than one disjunct with solutions.
 bug496.m:050:   In argument 2 of functor `[|]/2':
-bug496.m:050:   unification with `list.[]' can fail.
+bug496.m:050:   [38;5;226munification with `list.[]' can fail.[39;49m
 bug496.m:053:   In argument 2 of functor `[|]/2':
-bug496.m:053:   unification with `list.[V_11 | V_12]' can fail.
-bug496.m:053:   This later disjunct may have a solution.
+bug496.m:053:   [38;5;226munification with `list.[V_11 | V_12]' can fail.[39;49m
+bug496.m:053:   [38;5;226mThis later disjunct may have a solution.[39;49m
 bug496.m:050:   It is possible that the cause of the declared determinism not
 bug496.m:050:   being satisfied is the inability of determinism analysis to
 bug496.m:050:   recognize that a disjunction (usually created by the compiler

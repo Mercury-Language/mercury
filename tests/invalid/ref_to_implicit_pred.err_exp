@@ -1,6 +1,6 @@
 ref_to_implicit_pred.m:008: In `test':
 ref_to_implicit_pred.m:008:   error: determinism declaration not satisfied.
-ref_to_implicit_pred.m:008:   Declared `det', inferred `failure'.
+ref_to_implicit_pred.m:008:   Declared [38;5;40m`det',[39;49m inferred [38;5;203m`failure'.[39;49m
 ref_to_implicit_pred.m:013: Error: clause for predicate `p'/2
 ref_to_implicit_pred.m:013:   without corresponding `:- pred' declaration.
 ref_to_implicit_pred.m:013: Inferred :- pred p((pred), (pred)).

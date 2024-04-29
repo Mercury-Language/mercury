@@ -1,4 +1,4 @@
 require_det_in_lambda.m:018: Error: the required determinism of the goal in
-require_det_in_lambda.m:018:   this scope is `det', but its actual determinism
-require_det_in_lambda.m:018:   is `semidet'.
-require_det_in_lambda.m:019:   Call to `int.<'(in, in) can fail.
+require_det_in_lambda.m:018:   this scope is [38;5;40m`det',[39;49m but its actual determinism
+require_det_in_lambda.m:018:   is [38;5;203m`semidet'.[39;49m
+require_det_in_lambda.m:019:   [38;5;226mCall to `int.<'(in, in) can fail.[39;49m

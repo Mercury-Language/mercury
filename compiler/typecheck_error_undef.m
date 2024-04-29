@@ -180,7 +180,7 @@ report_error_pred_wrong_arity(ClauseContext, Context, PFSymNameArity,
             words("module that used to be named"), quote(PredName),
             words("has been renamed to"), quote(PredName ++ "_io"),
             suffix("."), nl],
-        SpecialPieces = color_pieces_as_possible_cause(SpecialPieces0)
+        SpecialPieces = color_as_possible_cause(SpecialPieces0)
     else
         SpecialPieces = []
     ),
@@ -436,7 +436,7 @@ report_error_pred_wrong_full_name(ClauseContext, Context, PredicateTable,
 report_error_func_instead_of_pred(Context) = Msg :-
     Pieces0 = [words("(There is a *function* with that name, however."), nl,
         words("Perhaps you forgot to add"), quote(" = ..."), suffix("?)"), nl],
-    Pieces = color_pieces_as_possible_cause(Pieces0),
+    Pieces = color_as_possible_cause(Pieces0),
     Msg = msg(Context, Pieces).
 
 %---------------------------------------------------------------------------%
@@ -505,7 +505,7 @@ language_builtin_functor_components(Name, Arity, Components) :-
     VerbosePieces0 = [words("If you are trying to use a goal"),
         words("as a boolean function, you should write"),
         words_quote("if <goal> then yes else no"), words("instead."), nl],
-    VerbosePieces = color_pieces_as_possible_cause(VerbosePieces0),
+    VerbosePieces = color_as_possible_cause(VerbosePieces0),
     ( if Name = "call" then
         VerboseCallPieces0 =
             [words("If you are trying to invoke a higher-order function,"),
@@ -522,7 +522,7 @@ language_builtin_functor_components(Name, Arity, Components) :-
             words("is actually defined."),
             words("(If it is defined in a separate module,"),
             words("check that the module is correctly imported.)"), nl],
-        VerboseCallPieces = color_pieces_as_possible_cause(VerboseCallPieces0)
+        VerboseCallPieces = color_as_possible_cause(VerboseCallPieces0)
     else
         VerboseCallPieces = []
     ),
@@ -989,7 +989,7 @@ report_any_missing_module_qualifiers(ClauseContext, Context,
                 NoImportsPieces
         ),
         MainPieces0 = IsDefinedInPieces ++ ModulesPieces,
-        MainPieces = color_pieces_as_possible_cause(MainPieces0),
+        MainPieces = color_as_possible_cause(MainPieces0),
         MainMsg = msg(Context, MainPieces),
         VerbosePieces = [words("Note that symbols defined in modules"),
             words("accessed via"), decl("use_module"), words("declarations"),
@@ -1018,7 +1018,7 @@ maybe_report_missing_import_addendum(ClauseContext, ModuleQualifier,
         % so we report that the module has not been imported.
         Pieces0 = [words("(The module"), qual_sym_name(ModuleQualifier),
             words("has not been imported.)")],
-        Pieces = [nl | color_pieces_as_possible_cause(Pieces0)] ++ [nl],
+        Pieces = [nl | color_as_possible_cause(Pieces0)] ++ [nl],
         MissingImportModules = [ModuleQualifier]
     else
         % The module qualifier matches one or more of the visible modules.
@@ -1109,8 +1109,8 @@ arity_error_to_pieces(PredOrFunc, Arity0, Arities0) = Pieces :-
     % XXX TYPECHECK_ERRORS
     % Coloring here results in prefixes and suffixes next to color changes
     % not being respected by write_error_spec.m.
-    % ActualArityPieces = color_pieces_as_incorrect(ActualArityPieces0),
-    % ExpectedAritiesPieces = color_pieces_as_correct(ExpectedAritiesPieces0),
+    % ActualArityPieces = color_as_incorrect(ActualArityPieces0),
+    % ExpectedAritiesPieces = color_as_correct(ExpectedAritiesPieces0),
     Pieces = [words("wrong number of arguments (") | ActualArityPieces] ++
         [suffix(";"),
         words("should be") | ExpectedAritiesPieces] ++ [suffix(")")].
