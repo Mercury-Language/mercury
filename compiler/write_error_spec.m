@@ -1486,22 +1486,26 @@ get_later_words(Avail, NextSpace0, [SCUnit | SCUnits0], CurLen, FinalLen,
         LineEndReset1 = line_end_reset_color,
         expect(unify(NextSpace0, " "), $pred,
             "NextSpace0 != 1 for color start"),
-        merge_adjacent_color_changes(SCUnit, SCUnits0, SCUnits, !ColorStack),
+        ColorStack0 = !.ColorStack,
+        merge_adjacent_color_changes(SCUnit, SCUnits0, SCUnits1, !ColorStack),
         % We put the space between the previous actual word and the next one
         % *before* the color change.
         FirstStr = NextSpace0 ++ top_color_to_string(!.ColorStack),
         NextLen0 = CurLen + 1, % The 1 is for NextSpace0.
         NextSpace = "",
         % Check whether the next actual word fits on the line.
-        PeekWordLen = peek_and_find_len_of_next_word(SCUnits),
+        PeekWordLen = peek_and_find_len_of_next_word(SCUnits1),
         ( if NextLen0 + PeekWordLen =< Avail then
             % It does, so let the recursive call proceed.
+            SCUnits = SCUnits1,
             NextLen = NextLen0
         else
             % It does not, so force the check against Avail to fail *now*,
             % *not* in the recursive call, so that we change the color
             % just before the next word.
-            NextLen = Avail + 1
+            SCUnits = SCUnits0,
+            NextLen = Avail + 1,
+            !:ColorStack = ColorStack0
         )
     ;
         SCUnit = sc_color_end,

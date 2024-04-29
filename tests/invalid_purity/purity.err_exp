@@ -1,28 +1,22 @@
-purity.m:115: In predicate `w1'/0:
-purity.m:115:   warning: declared impure but actually pure.
-purity.m:119: In predicate `w2'/0:
-purity.m:119:   warning: declared semipure but actually pure.
-purity.m:123: In predicate `w3'/0:
-purity.m:123:   warning: declared impure but actually semipure.
-purity.m:128: In predicate `w4'/0:
-purity.m:128:   warning: unnecessary `promise_pure' pragma.
-purity.m:133: In predicate `w5'/0:
-purity.m:133:   error: declared impure but promised pure.
-purity.m:139: In predicate `w6'/0:
-purity.m:139:   error: declared semipure but promised pure.
-purity.m:148: In predicate `e1'/0:
-purity.m:148:   purity error: predicate is impure.
-purity.m:148:   It must be declared `impure' or promised pure.
-purity.m:153: In predicate `e2'/0:
-purity.m:153:   purity error: predicate is semipure.
-purity.m:153:   It must be declared `semipure' or promised pure.
-purity.m:158: In predicate `e3'/0:
-purity.m:158:   purity error: predicate is impure.
-purity.m:158:   It must be declared `impure' or promised semipure.
+purity.m:115: Warning: predicate `w1'/0 is declared [38;5;40mimpure,[39;49m but is actually
+purity.m:115:   [38;5;203mpure.[39;49m
+purity.m:119: Warning: predicate `w2'/0 is declared [38;5;40msemipure,[39;49m but is actually
+purity.m:119:   [38;5;203mpure.[39;49m
+purity.m:123: Warning: predicate `w3'/0 is declared [38;5;40mimpure,[39;49m but is actually
+purity.m:123:   [38;5;203msemipure.[39;49m
+purity.m:128: Warning: [38;5;203munnecessary `promise_pure' pragma[39;49m for predicate `w4'/0.
+purity.m:133: Error: predicate `w5'/0 is declared [38;5;40mimpure[39;49m but promised [38;5;203mpure.[39;49m
+purity.m:139: Error: predicate `w6'/0 is declared [38;5;40msemipure[39;49m but promised [38;5;203mpure.[39;49m
+purity.m:148: Error: predicate `e1'/0 is [38;5;203mimpure.[39;49m It must either be [38;5;40mdeclared[39;49m
+purity.m:148:   [38;5;40mimpure,[39;49m or [38;5;40mpromised pure.[39;49m
+purity.m:153: Error: predicate `e2'/0 is [38;5;203msemipure.[39;49m It must either be [38;5;40mdeclared[39;49m
+purity.m:153:   [38;5;40msemipure,[39;49m or [38;5;40mpromised pure.[39;49m
+purity.m:158: Error: predicate `e3'/0 is [38;5;203mimpure.[39;49m It must either be [38;5;40mdeclared[39;49m
+purity.m:158:   [38;5;40mimpure,[39;49m or [38;5;40mpromised semipure.[39;49m
 purity.m:166: In call to impure predicate `purity.imp'/0:
-purity.m:166:   purity error: call must be preceded by `impure' indicator.
+purity.m:166:   purity error: call [38;5;203mmust be preceded by an `impure' indicator.[39;49m
 purity.m:171: In call to semipure predicate `purity.semi'/0:
-purity.m:171:   purity error: call must be preceded by `semipure' indicator.
+purity.m:171:   purity error: call [38;5;203mmust be preceded by a `semipure' indicator.[39;49m
 purity.m:176: In clause for `e6':
 purity.m:176:   in argument 1 of call to predicate `purity.in'/1:
 purity.m:176:   mode error: variable `X' has instantiatedness `free',
@@ -35,18 +29,16 @@ purity.m:183:   in argument 1 of call to predicate `purity.imp1'/1:
 purity.m:183:   mode error: variable `X' has instantiatedness `free',
 purity.m:183:   expected instantiatedness was `ground'.
 purity.m:183:   The goal could not be reordered, because it was impure.
-purity.m:186: In unification predicate for type `e8':
-purity.m:186:   purity error: predicate is impure.
-purity.m:186:   It must be pure.
-purity.m:201: In unification predicate for type `e9':
-purity.m:201:   purity error: predicate is semipure.
-purity.m:201:   It must be pure.
+purity.m:186: Error: unification predicate for type `e8' is [38;5;203mimpure,[39;49m but it must
+purity.m:186:   be [38;5;40mpure.[39;49m
+purity.m:201: Error: unification predicate for type `e9' is [38;5;203msemipure,[39;49m but it
+purity.m:201:   must be [38;5;40mpure.[39;49m
 purity.m:219: In call to impure predicate `purity.imp1'/1:
-purity.m:219:   purity error: call must be preceded by `impure' indicator.
-purity.m:219: Purity error in closure: closure body is impure, but closure was
-purity.m:219:   not declared impure.
+purity.m:219:   purity error: call [38;5;203mmust be preceded by an `impure' indicator.[39;49m
+purity.m:219: Purity error: the body of the lambda expression is [38;5;40mimpure,[39;49m but
+purity.m:219:   the lambda expression itself was declared [38;5;203mpure.[39;49m
 purity.m:225: In call to semipure predicate `purity.semi'/1:
-purity.m:225:   purity error: call must be preceded by `semipure' indicator.
-purity.m:225: Purity error in closure: closure body is semipure, but closure
-purity.m:225:   was not declared semipure.
+purity.m:225:   purity error: call [38;5;203mmust be preceded by a `semipure' indicator.[39;49m
+purity.m:225: Purity error: the body of the lambda expression is [38;5;40msemipure,[39;49m but
+purity.m:225:   the lambda expression itself was declared [38;5;203mpure.[39;49m
 For more information, recompile with `-E'.

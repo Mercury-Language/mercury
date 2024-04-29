@@ -1,3 +1,2 @@
-pragma_c_and_mercury.m:012: In predicate `c_int_unify'/2:
-pragma_c_and_mercury.m:012:   purity error: predicate is impure.
-pragma_c_and_mercury.m:012:   It must be declared `impure' or promised pure.
+pragma_c_and_mercury.m:012: Error: predicate `c_int_unify'/2 is [38;5;203mimpure.[39;49m It must
+pragma_c_and_mercury.m:012:   either be [38;5;40mdeclared impure,[39;49m or [38;5;40mpromised pure.[39;49m

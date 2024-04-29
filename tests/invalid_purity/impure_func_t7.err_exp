@@ -1,8 +1,15 @@
-impure_func_t7.m:032: Purity error: unification with expression was declared
-impure_func_t7.m:032:   impure, but expression was not a function call.
-impure_func_t7.m:040: Purity error: unification with expression was declared
-impure_func_t7.m:040:   impure, but expression was not a function call.
-impure_func_t7.m:049: Purity error: unification with expression was declared
-impure_func_t7.m:049:   impure, but expression was not a function call.
-impure_func_t7.m:057: Purity error: unification with expression was declared
-impure_func_t7.m:057:   impure, but expression was not a function call.
+impure_func_t7.m:032: Purity error: the unification of Z with 4 was declared
+impure_func_t7.m:032:   [38;5;203mimpure,[39;49m but the term Z is unified with is not a
+impure_func_t7.m:032:   function call.
+impure_func_t7.m:032: Purity error: the unification of Z with 5 was declared
+impure_func_t7.m:032:   [38;5;203mimpure,[39;49m but the term Z is unified with is not a
+impure_func_t7.m:032:   function call.
+impure_func_t7.m:040: Purity error: the unification of L with lambda expression
+impure_func_t7.m:040:   was declared [38;5;203mimpure,[39;49m but the term L is unified with is
+impure_func_t7.m:040:   not a function call.
+impure_func_t7.m:049: Purity error: the unification of M with `foo'/1 was
+impure_func_t7.m:049:   declared [38;5;203mimpure,[39;49m but the term M is unified with is not
+impure_func_t7.m:049:   a function call.
+impure_func_t7.m:057: Purity error: the unification of B with 4 was declared
+impure_func_t7.m:057:   [38;5;203mimpure,[39;49m but the term B is unified with is not a
+impure_func_t7.m:057:   function call.

@@ -131,7 +131,6 @@
 :- import_module hlds.hlds_pred.
 :- import_module parse_tree.
 :- import_module parse_tree.error_spec.
-:- import_module parse_tree.prog_data.
 
 :- import_module io.
 :- import_module list.
@@ -161,11 +160,6 @@
 :- pred repuritycheck_proc(module_info::in, pred_proc_id::in, pred_info::in,
     pred_info::out) is det.
 
-    % Generate an error message for unifications marked impure/semipure
-    % that are not function calls (e.g. impure X = 4).
-    %
-:- func impure_unification_expr_error(prog_context, purity) = error_spec.
-
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
 
@@ -190,6 +184,7 @@
 :- import_module parse_tree.builtin_lib_types.
 :- import_module parse_tree.parse_tree_out_misc.
 :- import_module parse_tree.parse_tree_out_term.
+:- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_data_foreign.
 :- import_module parse_tree.prog_mode.
 :- import_module parse_tree.prog_type.
@@ -385,15 +380,15 @@ perform_pred_purity_checks(ModuleInfo, PredId, PredInfo,
 
 :- func compare_purity(purity, purity) = comparison_result.
 
-compare_purity(purity_pure, purity_pure) = (=).
-compare_purity(purity_pure, purity_semipure) = (>).
-compare_purity(purity_pure, purity_impure) = (>).
-compare_purity(purity_semipure, purity_pure) = (<).
-compare_purity(purity_semipure, purity_semipure) = (=).
-compare_purity(purity_semipure, purity_impure) = (>).
-compare_purity(purity_impure, purity_pure) = (<).
-compare_purity(purity_impure, purity_semipure) = (<).
-compare_purity(purity_impure, purity_impure) = (=).
+compare_purity(purity_pure,     purity_pure) =      (=).
+compare_purity(purity_pure,     purity_semipure) =  (>).
+compare_purity(purity_pure,     purity_impure) =    (>).
+compare_purity(purity_semipure, purity_pure) =      (<).
+compare_purity(purity_semipure, purity_semipure) =  (=).
+compare_purity(purity_semipure, purity_impure) =    (>).
+compare_purity(purity_impure,   purity_pure) =      (<).
+compare_purity(purity_impure,   purity_semipure) =  (<).
+compare_purity(purity_impure,   purity_impure) =    (=).
 
 :- func warn_about_purity_for(pred_origin) = bool.
 
@@ -821,17 +816,22 @@ compute_plain_call_expr_purity(GoalExpr0, GoalExpr, GoalInfo,
     pred_id::out, sym_name::out, list(error_spec)::out) is det.
 
 finally_resolve_pred_overloading(ModuleInfo, CallerPredInfo,
-        PredId0, PredSymName0, Args0, Context, PredId, PredSymName, Specs) :-
-    % In the case of a call to an overloaded predicate, typecheck.m
+        PredId0, PredSymName0, ArgVars0, Context,
+        PredId, PredSymName, Specs) :-
+    % In the case of a call to an overloaded predicate, the typechecking pass
     % does not figure out the correct pred_id. We must do that here.
     ( if PredId0 = invalid_pred_id then
+        % The reason we get all these things out of CallerPredInfo and
+        % ClausesInfo *here*, instead of letting resolve_pred_overloading
+        % do it, is that resolve_pred_overloading has some other callers,
+        % and they don't get the parameters they pass from the same places.
         pred_info_get_typevarset(CallerPredInfo, TVarSet),
         pred_info_get_exist_quant_tvars(CallerPredInfo, ExistQVars),
         pred_info_get_external_type_params(CallerPredInfo, ExternalTypeParams),
         pred_info_get_markers(CallerPredInfo, Markers),
         pred_info_get_clauses_info(CallerPredInfo, ClausesInfo),
         clauses_info_get_var_table(ClausesInfo, VarTable),
-        lookup_var_types(VarTable, Args0, ArgTypes),
+        lookup_var_types(VarTable, ArgVars0, ArgTypes),
         resolve_pred_overloading(ModuleInfo, Markers, TVarSet, ExistQVars,
             ArgTypes, ExternalTypeParams, Context, PredSymName0, PredSymName,
             PredId, Specs)
@@ -915,8 +915,7 @@ compute_unify_expr_purity(GoalExpr0, GoalExpr, GoalInfo,
         RHS = rhs_lambda_goal(LambdaPurity, Groundness, PredOrFunc,
             LambdaNonLocals, LambdaArgVarsModes, LambdaDetism, LambdaGoal),
 
-        check_closure_purity(GoalInfo, LambdaPurity, GoalPurity,
-            ClosureSpecs),
+        check_lambda_purity(GoalInfo, LambdaPurity, GoalPurity, ClosureSpecs),
         purity_info_add_messages(ClosureSpecs, !Info),
         GoalExpr = unify(LHSVar, RHS, Mode, Unification, UnifyContext),
         % The unification itself is always pure,
@@ -926,8 +925,10 @@ compute_unify_expr_purity(GoalExpr0, GoalExpr, GoalInfo,
             ( DeclaredPurity = purity_impure
             ; DeclaredPurity = purity_semipure
             ),
+            VarTable0 = !.Info ^ pi_var_table,
             Context = goal_info_get_context(GoalInfo),
-            Spec = impure_unification_expr_error(Context, DeclaredPurity),
+            Spec = impure_unification_expr_error(VarTable0, LHSVar,
+                bad_impure_rhs_lambda, DeclaredPurity, Context),
             purity_info_add_message(Spec, !Info)
         ;
             DeclaredPurity = purity_pure
@@ -935,14 +936,14 @@ compute_unify_expr_purity(GoalExpr0, GoalExpr, GoalInfo,
         ActualPurity = purity_pure,
         ContainsTrace = contains_no_trace_goal
     ;
-        RHS0 = rhs_functor(ConsId, _, Args),
+        RHS0 = rhs_functor(ConsId, _, ArgVars),
         RunPostTypecheck = !.Info ^ pi_run_post_typecheck,
         (
             RunPostTypecheck = run_post_typecheck_tasks,
             ModuleInfo = !.Info ^ pi_module_info,
             PredInfo0 = !.Info ^ pi_pred_info,
             VarTable0 = !.Info ^ pi_var_table,
-            resolve_unify_functor(ModuleInfo, LHSVar, ConsId, Args, Mode,
+            resolve_unify_functor(ModuleInfo, LHSVar, ConsId, ArgVars, Mode,
                 Unification, UnifyContext, GoalInfo, Goal1, IsPlainUnify,
                 ResolveSpecs, VarTable0, VarTable, PredInfo0, PredInfo),
             purity_info_add_messages(ResolveSpecs, !Info),
@@ -963,7 +964,7 @@ compute_unify_expr_purity(GoalExpr0, GoalExpr, GoalInfo,
         ),
         ( if Goal1 = hlds_goal(unify(_, _, _, _, _), _) then
             check_var_functor_unify_purity(!.Info, GoalInfo,
-                LHSVar, ConsId, Args, UnifySpecs),
+                LHSVar, ConsId, ArgVars, UnifySpecs),
             purity_info_add_messages(UnifySpecs, !Info),
             ActualPurity = purity_pure,
             ContainsTrace = contains_no_trace_goal,
@@ -985,7 +986,7 @@ compute_unify_expr_purity(GoalExpr0, GoalExpr, GoalInfo,
     prog_var::in, cons_id::in, list(prog_var)::in, list(error_spec)::out)
     is det.
 
-check_var_functor_unify_purity(Info, GoalInfo, Var, ConsId, Args, Specs) :-
+check_var_functor_unify_purity(Info, GoalInfo, Var, ConsId, ArgVars, Specs) :-
     % If the unification involves a higher order RHS, check that
     % the purity of the ConsId matches the purity of the variable's type.
     VarTable = Info ^ pi_var_table,
@@ -1001,7 +1002,7 @@ check_var_functor_unify_purity(Info, GoalInfo, Var, ConsId, Args, Specs) :-
         pred_info_get_typevarset(PredInfo, TVarSet),
         pred_info_get_exist_quant_tvars(PredInfo, ExistQTVars),
         pred_info_get_external_type_params(PredInfo, ExternalTypeParams),
-        lookup_var_types(VarTable, Args, ArgTypes0),
+        lookup_var_types(VarTable, ArgVars, ArgTypes0),
         list.append(ArgTypes0, VarArgTypes, PredArgTypes),
         ModuleInfo = Info ^ pi_module_info,
         ( if
@@ -1012,8 +1013,8 @@ check_var_functor_unify_purity(Info, GoalInfo, Var, ConsId, Args, Specs) :-
         then
             module_info_pred_info(ModuleInfo, CalleePredId, CalleePredInfo),
             pred_info_get_purity(CalleePredInfo, CalleePurity),
-            check_closure_purity(GoalInfo, TypePurity, CalleePurity,
-                ClosurePuritySpecs),
+            check_higher_order_var_purity(VarTable, Var, GoalInfo,
+                TypePurity, CalleePurity, ClosurePuritySpecs),
             ClosureSpecs = GetCalleeSpecs ++ ClosurePuritySpecs
         else
             % If we can't find the type of the function, it is because
@@ -1039,7 +1040,8 @@ check_var_functor_unify_purity(Info, GoalInfo, Var, ConsId, Args, Specs) :-
         ( if check_marker(CallerMarkers, marker_mutable_access_pred) then
             Specs = ClosureSpecs
         else
-            Spec = impure_unification_expr_error(Context, DeclaredPurity),
+            Spec = impure_unification_expr_error(VarTable, Var,
+                bad_impure_rhs_cons_id(ConsId), DeclaredPurity, Context),
             Specs = [Spec | ClosureSpecs]
         )
     ;
@@ -1047,14 +1049,30 @@ check_var_functor_unify_purity(Info, GoalInfo, Var, ConsId, Args, Specs) :-
         Specs = ClosureSpecs
     ).
 
-:- pred check_closure_purity(hlds_goal_info::in, purity::in, purity::in,
+:- pred check_lambda_purity(hlds_goal_info::in, purity::in, purity::in,
     list(error_spec)::out) is det.
 
-check_closure_purity(GoalInfo, DeclaredPurity, ActualPurity, Specs) :-
+check_lambda_purity(GoalInfo, DeclaredPurity, ActualPurity, Specs) :-
     ( if less_pure(ActualPurity, DeclaredPurity) then
         Context = goal_info_get_context(GoalInfo),
-        Spec = report_error_closure_purity(Context,
-            DeclaredPurity, ActualPurity),
+        Spec = report_error_lambda_purity(DeclaredPurity, ActualPurity,
+            Context),
+        Specs = [Spec]
+    else
+        % We don't bother to warn if the DeclaredPurity is less pure than the
+        % ActualPurity; that would lead to too many spurious warnings.
+        Specs = []
+    ).
+
+:- pred check_higher_order_var_purity(var_table::in, prog_var::in,
+    hlds_goal_info::in, purity::in, purity::in, list(error_spec)::out) is det.
+
+check_higher_order_var_purity(VarTable, Var, GoalInfo,
+        TypePurity, CalleePurity, Specs) :-
+    ( if less_pure(CalleePurity, TypePurity) then
+        Context = goal_info_get_context(GoalInfo),
+        Spec = report_error_higher_order_var_purity(VarTable, Var,
+            TypePurity, CalleePurity, Context),
         Specs = [Spec]
     else
         % We don't bother to warn if the DeclaredPurity is less pure than the
@@ -1439,13 +1457,6 @@ wrap_inner_outer_goals(Outer, Goal0 - Inner, Goal, !Info) :-
 % This part of the module is for generating error messages.
 %
 
-:- func pred_context(module_info, pred_info, pred_id) = list(format_piece).
-
-pred_context(ModuleInfo, _PredInfo, PredId) = Pieces :-
-    PredPieces = describe_one_pred_name(ModuleInfo, should_not_module_qualify,
-        PredId),
-    Pieces = [words("In")] ++ PredPieces ++ [suffix(":"), nl].
-
 :- func error_inconsistent_purity_promise(module_info, pred_info, pred_id,
     purity) = error_spec.
 
@@ -1455,10 +1466,13 @@ error_inconsistent_purity_promise(ModuleInfo, PredInfo, PredId, Purity)
     PredOrFunc = pred_info_is_pred_or_func(PredInfo),
     PredOrFuncStr = pred_or_func_to_full_str(PredOrFunc),
     purity_name(Purity, PurityName),
-    PredContextPieces = pred_context(ModuleInfo, PredInfo, PredId),
-    MainPieces = PredContextPieces ++
-        [words("error: declared"), fixed(PurityName),
-        words("but promised pure."), nl],
+    PredPieces = describe_one_pred_name(ModuleInfo, should_not_module_qualify,
+        PredId),
+    MainPieces =
+        [words("Error:")] ++ PredPieces ++
+        [words("is declared")] ++ color_as_correct([fixed(PurityName)]) ++
+        [words("but promised")] ++ color_as_incorrect([words("pure.")]) ++
+        [nl],
     VerbosePieces = [words("A pure"), fixed(PredOrFuncStr),
         words("that invokes impure or semipure code"),
         words("should be promised pure and should have"),
@@ -1473,12 +1487,16 @@ error_inconsistent_purity_promise(ModuleInfo, PredInfo, PredId, Purity)
 warn_pred_body_too_pure(ModuleInfo, PredInfo, PredId,
         ActualPurity, DeclaredPurity) = Spec :-
     pred_info_get_context(PredInfo, Context),
-    PredContextPieces = pred_context(ModuleInfo, PredInfo, PredId),
+    PredPieces = describe_one_pred_name(ModuleInfo, should_not_module_qualify,
+        PredId),
     purity_name(DeclaredPurity, DeclaredPurityName),
     purity_name(ActualPurity, ActualPurityName),
-    Pieces = PredContextPieces ++
-        [words("warning: declared"), fixed(DeclaredPurityName),
-        words("but actually"), fixed(ActualPurityName), suffix("."), nl],
+    Pieces = [words("Warning:")] ++ PredPieces ++
+        [words("is declared")] ++
+            color_as_correct([fixed(DeclaredPurityName), suffix(",")]) ++
+        [words("but is actually")] ++
+            color_as_incorrect([fixed(ActualPurityName), suffix(".")]) ++
+        [nl],
     Spec = spec($pred, severity_warning, phase_purity_check, Context, Pieces).
 
 :- func warn_unnecessary_purity_promise(module_info, pred_info, pred_id,
@@ -1487,7 +1505,8 @@ warn_pred_body_too_pure(ModuleInfo, PredInfo, PredId,
 warn_unnecessary_purity_promise(ModuleInfo, PredInfo, PredId, PromisedPurity)
         = Spec :-
     pred_info_get_context(PredInfo, Context),
-    PredContextPieces = pred_context(ModuleInfo, PredInfo, PredId),
+    PredPieces = describe_one_pred_name(ModuleInfo, should_not_module_qualify,
+        PredId),
     (
         PromisedPurity = purity_pure,
         Pragma = "promise_pure",
@@ -1501,39 +1520,46 @@ warn_unnecessary_purity_promise(ModuleInfo, PredInfo, PredId, PromisedPurity)
         unexpected($pred, "promise_impure")
     ),
     PredOrFunc = pred_info_is_pred_or_func(PredInfo),
-    MainPieces = [words("warning: unnecessary"), quote(Pragma),
-        words("pragma."), nl],
+    MainPieces = [words("Warning:")] ++
+        color_as_incorrect([words("unnecessary"), quote(Pragma),
+            words("pragma")]) ++
+        [words("for")] ++ PredPieces ++ [suffix("."), nl],
     VerbosePieces = [words("This"), p_or_f(PredOrFunc),
         words("does not invoke any"), fixed(CodeStr), words("code,"),
         words("so there is no need for a"), quote(Pragma), words("pragma."),
         nl],
     Msg = simple_msg(Context,
-        [always(PredContextPieces), always(MainPieces),
-            verbose_only(verbose_always, VerbosePieces)]),
+        [always(MainPieces), verbose_only(verbose_always, VerbosePieces)]),
     Spec = error_spec($pred, severity_warning, phase_purity_check, [Msg]).
 
 :- func error_not_pure_enough(module_info, pred_info, pred_id, purity)
     = error_spec.
 
-error_not_pure_enough(ModuleInfo, PredInfo, PredId, Purity) = Spec :-
+error_not_pure_enough(ModuleInfo, PredInfo, PredId, ActualPurity) = Spec :-
     pred_info_get_context(PredInfo, Context),
-    PredOrFunc = pred_info_is_pred_or_func(PredInfo),
-    PredOrFuncStr = pred_or_func_to_full_str(PredOrFunc),
-    PredContextPieces = pred_context(ModuleInfo, PredInfo, PredId),
+    PredPieces = describe_one_pred_name(ModuleInfo, should_not_module_qualify,
+        PredId),
     pred_info_get_purity(PredInfo, DeclaredPurity),
-    purity_name(Purity, PurityName),
+    purity_name(ActualPurity, ActualPurityName),
     purity_name(DeclaredPurity, DeclaredPurityName),
 
-    Pieces1 = [words("purity error:"), fixed(PredOrFuncStr),
-        words("is"), fixed(PurityName), suffix("."), nl],
     ( if is_unify_index_or_compare_pred(PredInfo) then
-        Pieces2 = [words("It must be pure.")]
+        Pieces = [words("Error:")] ++ PredPieces ++ [words("is")] ++
+            color_as_incorrect([fixed(ActualPurityName), suffix(",")]) ++
+            [words("but it must be")] ++
+                color_as_correct([words("pure.")]) ++ [nl]
     else
-        Pieces2 = [words("It must be declared"), quote(PurityName),
-            words("or promised"), fixed(DeclaredPurityName), suffix("."), nl]
+        Pieces = [words("Error:")] ++ PredPieces ++ [words("is")] ++
+            color_as_incorrect([fixed(ActualPurityName), suffix(".")]) ++
+            [words("It must either be")] ++
+            color_as_correct([words("declared"), fixed(ActualPurityName),
+                suffix(",")]) ++
+            [words("or")] ++
+            color_as_correct([words("promised"), fixed(DeclaredPurityName),
+                suffix(".")]) ++
+            [nl]
     ),
-    Spec = spec($pred, severity_error, phase_purity_check, Context,
-        PredContextPieces ++ Pieces1 ++ Pieces2).
+    Spec = spec($pred, severity_error, phase_purity_check, Context, Pieces).
 
 :- func error_missing_body_impurity_decl(module_info, pred_id, prog_context)
     = error_spec.
@@ -1541,21 +1567,23 @@ error_not_pure_enough(ModuleInfo, PredInfo, PredId, Purity) = Spec :-
 error_missing_body_impurity_decl(ModuleInfo, PredId, Context) = Spec :-
     module_info_pred_info(ModuleInfo, PredId, PredInfo),
     PredOrFunc = pred_info_is_pred_or_func(PredInfo),
-    pred_info_get_purity(PredInfo, Purity),
-    purity_name(Purity, PurityName),
     PredPieces = describe_one_pred_name(ModuleInfo, should_module_qualify,
         PredId),
-    Pieces1 = [words("In call to "), fixed(PurityName)] ++
+    pred_info_get_purity(PredInfo, Purity),
+    purity_article_name(Purity, Article, PurityName),
+    MustBePrecededByIndicator = [words("must be preceded by"),
+        words(Article), quote(PurityName), words("indicator.")],
+    Pieces1 = [words("In call to"), fixed(PurityName)] ++
         PredPieces ++ [suffix(":"), nl],
     (
         PredOrFunc = pf_predicate,
-        Pieces2 = [words("purity error: call must be preceded by"),
-            quote(PurityName), words("indicator."), nl]
+        Pieces2 = [words("purity error: call")] ++
+            color_as_incorrect(MustBePrecededByIndicator) ++ [nl]
     ;
         PredOrFunc = pf_function,
         Pieces2 = [words("purity error: call must be in"),
-            words("an explicit unification which is preceded by"),
-            quote(PurityName), words("indicator."), nl]
+            words("an explicit unification, which in turn")] ++
+            color_as_incorrect(MustBePrecededByIndicator) ++ [nl]
     ),
     Spec = spec($pred, severity_error, phase_purity_check, Context,
         Pieces1 ++ Pieces2).
@@ -1572,8 +1600,10 @@ warn_unnecessary_body_impurity_decl(ModuleInfo, PredId, Context,
     PredPieces = describe_one_pred_name(ModuleInfo, should_module_qualify,
         PredId),
     Pieces1 = [words("In call to")] ++ PredPieces ++ [suffix(":"), nl,
-        words("warning: unnecessary"), quote(DeclaredPurityName),
-        words("indicator."), nl],
+        words("warning:")] ++
+        color_as_incorrect([words("unnecessary"), quote(DeclaredPurityName),
+            words("indicator.")]) ++
+        [nl],
     (
         ActualPurity = purity_pure,
         Pieces2 = [words("No purity indicator is necessary."), nl]
@@ -1587,37 +1617,80 @@ warn_unnecessary_body_impurity_decl(ModuleInfo, PredId, Context,
     Spec = spec($pred, severity_warning, phase_purity_check, Context,
         Pieces1 ++ Pieces2).
 
-:- func report_error_closure_purity(prog_context, purity, purity) = error_spec.
+:- func report_error_lambda_purity(purity, purity, prog_context)
+    = error_spec.
 
-report_error_closure_purity(Context, _DeclaredPurity, ActualPurity) = Spec :-
+report_error_lambda_purity(DeclaredPurity, ActualPurity, Context) = Spec :-
+    purity_name(DeclaredPurity, DeclaredPurityName),
     purity_name(ActualPurity, ActualPurityName),
-    Pieces = [words("Purity error in closure: closure body is"),
-        fixed(ActualPurityName), suffix(","),
-        words("but closure was not declared"),
-        fixed(ActualPurityName), suffix("."), nl],
+    Pieces =
+        [words("Purity error: the body of the lambda expression is")] ++
+        color_as_correct([fixed(ActualPurityName), suffix(",")]) ++
+        [words("but the lambda expression itself was declared")] ++
+        color_as_incorrect([fixed(DeclaredPurityName), suffix(".")]) ++ [nl],
     Spec = spec($pred, severity_error, phase_purity_check, Context, Pieces).
 
-impure_unification_expr_error(Context, Purity) = Spec :-
+:- func report_error_higher_order_var_purity(var_table, prog_var,
+    purity, purity, prog_context) = error_spec.
+
+report_error_higher_order_var_purity(VarTable, Var,
+        TypePurity, CalleePurity, Context) = Spec :-
+    purity_name(TypePurity, TypePurityName),
+    purity_name(CalleePurity, CalleePurityName),
+    VarName = mercury_var_to_string(VarTable, print_name_only, Var),
+    Pieces =
+        [words("Purity error: the variable"), fixed(VarName), words("is")] ++
+        color_as_correct([fixed(TypePurityName), suffix(",")]) ++
+        [words("but the higher order value it is unified with is")] ++
+        color_as_incorrect([fixed(CalleePurityName), suffix(".")]) ++ [nl],
+    Spec = spec($pred, severity_error, phase_purity_check, Context, Pieces).
+
+:- type bad_impure_unify_rhs
+    --->    bad_impure_rhs_lambda
+    ;       bad_impure_rhs_cons_id(cons_id).
+
+    % Generate an error message for unifications marked impure/semipure
+    % that are not function calls (e.g. impure X = 4).
+    %
+:- func impure_unification_expr_error(var_table, prog_var,
+    bad_impure_unify_rhs, purity, prog_context) = error_spec.
+
+impure_unification_expr_error(VarTable, Var, BadRHS, Purity, Context) = Spec :-
+    VarName = mercury_var_to_string(VarTable, print_name_only, Var),
+    (
+        BadRHS = bad_impure_rhs_cons_id(ConsId),
+        RHSDescPiece = unqual_cons_id_and_maybe_arity(ConsId)
+    ;
+        BadRHS = bad_impure_rhs_lambda,
+        RHSDescPiece = words("lambda expression")
+    ),
     purity_name(Purity, PurityName),
-    Pieces = [words("Purity error: unification with expression"),
-        words("was declared"), fixed(PurityName), suffix(","),
-        words("but expression was not a function call."), nl],
+    % XXX The wording of the second half of this sentence seems uninformative,
+    % but I (zs) have nothing better to propose.
+    Pieces = [words("Purity error: the unification of"),
+        fixed(VarName), words("with"), RHSDescPiece, words("was declared")] ++
+        color_as_incorrect([fixed(PurityName), suffix(",")]) ++
+        [words("but the term"), fixed(VarName), words("is unified with"),
+        words("is not a function call."), nl],
     Spec = spec($pred, severity_error, phase_purity_check, Context, Pieces).
 
 :- func impure_parallel_conjunct_error(prog_context, purity) = error_spec.
 
 impure_parallel_conjunct_error(Context, Purity) = Spec :-
     purity_name(Purity, PurityName),
-    Pieces = [words("Purity error: parallel conjunct is"),
-        fixed(PurityName), suffix(","),
-        words("but parallel conjuncts must be pure or semipure."), nl],
+    Pieces = [words("Purity error: parallel conjunct is")] ++
+        color_as_incorrect([fixed(PurityName), suffix(",")]) ++
+        [words("but parallel conjuncts must be")] ++
+        color_as_correct([words("pure or semipure.")]) ++ [nl],
     Spec = spec($pred, severity_error, phase_purity_check, Context, Pieces).
 
 :- func bad_outer_var_type_error(prog_context, var_table, prog_var)
     = error_spec.
 
 bad_outer_var_type_error(Context, VarTable, Var) = Spec :-
-    Pieces = [words("The type of outer variable"),
+    % XXX Adding color here properly needs the actual type of Var.
+    % Fixing this can wait until STM is usable :-(
+    Pieces = [words("The type of the outer variable"),
         fixed(mercury_var_to_name_only(VarTable, Var)),
         words("must be either io.state or stm_builtin.stm."), nl],
     Spec = spec($pred, severity_error, phase_type_check, Context, Pieces).
@@ -1627,6 +1700,12 @@ bad_outer_var_type_error(Context, VarTable, Var) = Spec :-
 mismatched_outer_var_types(Context) = Spec :-
     Pieces = [words("The types of the two outer variables differ."), nl],
     Spec = spec($pred, severity_error, phase_type_check, Context, Pieces).
+
+:- pred purity_article_name(purity::in, string::out, string::out) is det.
+
+purity_article_name(purity_pure, "a", "pure").
+purity_article_name(purity_semipure, "a", "semipure").
+purity_article_name(purity_impure, "an", "impure").
 
 %-----------------------------------------------------------------------------%
 
