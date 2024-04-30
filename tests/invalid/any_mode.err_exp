@@ -2,5 +2,5 @@ any_mode.m:009: Error: a solver type such as `foo'/0 may be defined (as opposed
 any_mode.m:009:   to declared) only in the implementation section.
 any_mode.m:020: In clause for `p((any >> ground))':
 any_mode.m:020:   in argument 1 of call to predicate `any_mode.q'/1:
-any_mode.m:020:   mode error: variable `X' has instantiatedness `any',
-any_mode.m:020:   expected instantiatedness was `ground'.
+any_mode.m:020:   mode error: variable `X' has instantiatedness [38;5;203m`any',[39;49m
+any_mode.m:020:   expected instantiatedness was [38;5;40m`ground'.[39;49m

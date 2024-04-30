@@ -1,8 +1,8 @@
 functor_ho_inst_bad_3.m:038: In clause for `main(di, uo)':
 functor_ho_inst_bad_3.m:038:   mode error in unification of `Job' and
 functor_ho_inst_bad_3.m:038:   `functor_ho_inst_bad_3.job(J)'.
-functor_ho_inst_bad_3.m:038:   Variable `Job' has instantiatedness `free',
+functor_ho_inst_bad_3.m:038:   Variable `Job' has instantiatedness [38;5;226m`free',[39;49m
 functor_ho_inst_bad_3.m:038:   term `functor_ho_inst_bad_3.job(J)' has
 functor_ho_inst_bad_3.m:038:   instantiatedness
-functor_ho_inst_bad_3.m:038:   `functor_ho_inst_bad_3.job(ground)'.
+functor_ho_inst_bad_3.m:038:   [38;5;226m`functor_ho_inst_bad_3.job(ground)'.[39;49m
 For more information, recompile with `-E'.

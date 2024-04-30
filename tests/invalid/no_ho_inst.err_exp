@@ -1,14 +1,14 @@
 no_ho_inst.m:044: In clause for `run_loop(in, in, out, di, uo)':
 no_ho_inst.m:044:   in argument 1 (i.e. the predicate term) of higher-order
 no_ho_inst.m:044:   predicate call:
-no_ho_inst.m:044:   mode error: context requires a predicate of arity 4. The
-no_ho_inst.m:044:   type of AppHandler does match that expectation. However, to
-no_ho_inst.m:044:   check the correctness of the call, the compiler also needs
-no_ho_inst.m:044:   to know the modes of the arguments and the determinism of
-no_ho_inst.m:044:   the predicate that AppHandler represents. The insts of
-no_ho_inst.m:044:   higher order values should contain this information, but
-no_ho_inst.m:044:   AppHandler's inst, which is `ground' at this point, does
-no_ho_inst.m:044:   not.
+no_ho_inst.m:044:   mode error: context requires a [38;5;40mpredicate of arity 4,[39;49m and
+no_ho_inst.m:044:   the type of AppHandler does match that expectation.
+no_ho_inst.m:044:   However, to check the correctness of the call, the compiler
+no_ho_inst.m:044:   also needs to know the modes of the arguments and the
+no_ho_inst.m:044:   determinism of the predicate that AppHandler represents.
+no_ho_inst.m:044:   The insts of higher order values should contain this
+no_ho_inst.m:044:   information, but AppHandler's inst, which is [38;5;203m`ground'[39;49m at
+no_ho_inst.m:044:   this point, [38;5;203mdoes not.[39;49m
 no_ho_inst.m:044: 
 no_ho_inst.m:044:   The fix for this error is to add this information. For
 no_ho_inst.m:044:   example, given a higher order type such as

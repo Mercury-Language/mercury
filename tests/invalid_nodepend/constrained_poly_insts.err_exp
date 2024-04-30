@@ -23,6 +23,6 @@ constrained_poly_insts.m:033: In clause for `u(in((I =< ground)), out((I =<
 constrained_poly_insts.m:033:   ground)))':
 constrained_poly_insts.m:033:   mode error: argument 2 became too instantiated.
 constrained_poly_insts.m:033:   Final instantiatedness of `HeadVar__2' was
-constrained_poly_insts.m:033:   `unique(42)',
+constrained_poly_insts.m:033:   [38;5;203m`unique(42)',[39;49m
 constrained_poly_insts.m:033:   expected final instantiatedness was
-constrained_poly_insts.m:033:   `( I =< ground )'.
+constrained_poly_insts.m:033:   [38;5;40m`( I =< ground )'.[39;49m

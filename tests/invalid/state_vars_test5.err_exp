@@ -2,8 +2,8 @@ state_vars_test5.m:020: In clause for `p(out)':
 state_vars_test5.m:020:   mode error: argument 1 did not get sufficiently
 state_vars_test5.m:020:   instantiated.
 state_vars_test5.m:020:   Final instantiatedness of `STATE_VARIABLE_X' was
-state_vars_test5.m:020:   `free',
-state_vars_test5.m:020:   expected final instantiatedness was `ground'.
+state_vars_test5.m:020:   [38;5;203m`free',[39;49m
+state_vars_test5.m:020:   expected final instantiatedness was [38;5;40m`ground'.[39;49m
 state_vars_test5.m:020: In clause for predicate `p'/1:
 state_vars_test5.m:020:   warning: variable `STATE_VARIABLE_X' occurs only once
 state_vars_test5.m:020:   in this scope.

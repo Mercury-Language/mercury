@@ -549,10 +549,10 @@ mode_error_unify_var_var_to_spec(ModeInfo, X, Y, InstX, InstY) = Spec :-
         quote(mercury_var_to_name_only(VarTable, Y)), suffix("."), nl,
         words("Variable"),
         quote(mercury_var_to_name_only(VarTable, X)) |
-        has_instantiatedness(ModeInfo, InstX, ",")] ++
+        has_instantiatedness(ModeInfo, no, InstX, ",")] ++
         [words("variable"),
         quote(mercury_var_to_name_only(VarTable, Y)) |
-        has_instantiatedness(ModeInfo, InstY, ".")],
+        has_instantiatedness(ModeInfo, no, InstY, ".")],
     Spec = spec($pred, severity_error,
         phase_mode_check(report_in_any_mode), Context, Preamble ++ Pieces).
 
@@ -565,12 +565,15 @@ mode_error_unify_var_poly_to_spec(ModeInfo, Var, VarInst) = Spec :-
     Preamble = mode_info_context_preamble(ModeInfo),
     mode_info_get_context(ModeInfo, Context),
     mode_info_get_var_table(ModeInfo, VarTable),
+    ExpectedInstPieces0 =
+        [quote("ground"), words("or"), quote("any"), suffix(".")],
+    ExpectedInstPieces = color_as_correct(ExpectedInstPieces0),
     MainPieces = [words("in polymorphically-typed unification:"), nl,
         words("mode error: variable"),
-        quote(mercury_var_to_name_only(VarTable, Var)) |
-        has_instantiatedness(ModeInfo, VarInst, ",")] ++
-        [words("expected instantiatedness was"), quote("ground"),
-        words("or"), quote("any"), suffix("."), nl],
+        quote(mercury_var_to_name_only(VarTable, Var))] ++
+        has_instantiatedness(ModeInfo, yes(color_incorrect), VarInst, ",") ++
+        [words("expected instantiatedness was")] ++
+        ExpectedInstPieces ++ [nl],
     VerbosePieces = [words("When unifying two variables whose type"),
         words("will not be known until runtime, the variables must both"),
         words("be ground (or have inst"), quote("any"), suffix(")."),
@@ -604,13 +607,14 @@ mode_error_unify_var_functor_to_spec(ModeInfo, X, ConsId, ArgVars,
     FakeTermInstModuleName = unqualified("FAKE_CONS_ID"),
     FakeTermInstSymName = qualified(FakeTermInstModuleName, ConsIdStr),
     FakeTermInst = defined_inst(user_inst(FakeTermInstSymName, ArgInsts)),
+    MaybeColor = yes(color_cause),
     Pieces = [words("mode error in unification of"),
         quote(mercury_var_to_name_only(VarTable, X)),
         words("and"), words_quote(FunctorConsIdStr), suffix("."), nl,
         words("Variable"), quote(mercury_var_to_name_only(VarTable, X)) |
-        has_instantiatedness(ModeInfo, InstX, ",")] ++
+        has_instantiatedness(ModeInfo, MaybeColor, InstX, ",")] ++
         [words("term"), words_quote(FunctorConsIdStr) |
-        has_instantiatedness(ModeInfo, FakeTermInst, ".")],
+        has_instantiatedness(ModeInfo, MaybeColor, FakeTermInst, ".")],
     Spec = spec($pred, severity_error,
         phase_mode_check(report_in_any_mode), Context, Preamble ++ Pieces).
 
@@ -623,13 +627,14 @@ mode_error_unify_var_lambda_to_spec(ModeInfo, X, InstX, InstY) = Spec :-
     Preamble = mode_info_context_preamble(ModeInfo),
     mode_info_get_context(ModeInfo, Context),
     mode_info_get_var_table(ModeInfo, VarTable),
+    MaybeColor = yes(color_cause),
     Pieces = [words("mode error in unification of"),
         quote(mercury_var_to_name_only(VarTable, X)),
         words("and lambda expression."), nl,
         words("Variable"), quote(mercury_var_to_name_only(VarTable, X)) |
-        has_instantiatedness(ModeInfo, InstX, ",")] ++
+        has_instantiatedness(ModeInfo, MaybeColor, InstX, ",")] ++
         [words("lambda expression") |
-        has_instantiatedness(ModeInfo, InstY, ".")],
+        has_instantiatedness(ModeInfo, MaybeColor, InstY, ".")],
     Spec = spec($pred, severity_error,
         phase_mode_check(report_in_any_mode), Context, Preamble ++ Pieces).
 
@@ -652,6 +657,9 @@ mode_error_unify_var_multimode_pf_to_spec(ModeInfo, X, PredMultiModeError)
     pred_info_get_orig_arity(PredInfo, PredFormArity),
     SymName = qualified(PredModule, PredName),
     PFSNA = pf_sym_name_arity(PredOrFunc, SymName, PredFormArity),
+    % XXX What should we color as incorrect or as possible causehere?
+    % The variable X? PFSNA, the name of the predicate or function?
+    % Both? Neither? Something else?
     StartPieces = [words("mode error in unification of"),
         quote(mercury_var_to_name_only(VarTable, X)),
         words("and higher-order term based on multi-moded"),
@@ -721,11 +729,12 @@ mode_error_non_ground_non_local_lambda_var_to_spec(ModeInfo, Var, VarInst)
     Preamble = mode_info_context_preamble(ModeInfo),
     mode_info_get_context(ModeInfo, Context),
     mode_info_get_var_table(ModeInfo, VarTable),
+    Ground = color_as_correct([quote("ground"), suffix(".")]),
     Pieces = [words("mode error: variable"),
         quote(mercury_var_to_name_only(VarTable, Var)) |
-        has_instantiatedness(ModeInfo, VarInst, ",")] ++
+        has_instantiatedness(ModeInfo, yes(color_incorrect), VarInst, ",")] ++
         [words("expected instantiatedness for non-local variables"),
-        words("of lambda goals is"), quote("ground"), suffix("."), nl],
+        words("of lambda goals is")] ++ Ground ++ [nl],
     Spec = spec($pred, severity_error,
         phase_mode_check(report_in_any_mode), Context, Preamble ++ Pieces).
 
@@ -802,11 +811,12 @@ mode_error_var_is_not_sufficiently_instantiated_to_spec(ModeInfo, Var,
         inst_has_uniqueness(VarInst, mostly_unique),
         inst_has_uniqueness(ExpectedInst, unique)
     then
-        UniqPieces = [words("This kind of uniqueness mismatch"),
+        UniqPieces0 = [words("This kind of uniqueness mismatch"),
             words("is usually caused by doing input/output"),
             words("or some other kind of destructive update"),
             words("in a context where it can be backtracked over,"),
             words("such as the condition of an if-then-else."), nl],
+        UniqPieces = color_as_possible_cause(UniqPieces0),
         UniqMsgs = [msg(Context, UniqPieces)]
     else
         UniqMsgs = []
@@ -860,7 +870,7 @@ inst_has_uniqueness(Inst, SearchUniq) :-
 %---------------------------------------------------------------------------%
 
 :- func mode_error_clobbered_var_is_live_to_spec(mode_info, prog_var)
-        = error_spec.
+    = error_spec.
 
 mode_error_clobbered_var_is_live_to_spec(ModeInfo, Var) = Spec :-
     Preamble = mode_info_context_preamble(ModeInfo),
@@ -1165,28 +1175,27 @@ mode_error_bad_higher_order_inst_to_spec(ModeInfo, PredVar, PredVarInst,
     % Don't let the specification of the expected arity be broken up,
     % since that would make the error message harder to read.
     ExpArityPiece = fixed("arity " ++ int_to_string(ExpUserArityInt)),
+    ExpPieces0 = [words(ExpPFStr), words("of"), ExpArityPiece, suffix(",")],
+    ExpPieces = color_as_correct(ExpPieces0),
     (
         Mismatch = mismatch_not_higher_order_type,
-        MismatchPieces = [words("mode error: context requires a"),
-            words(ExpPFStr), words("of"), ExpArityPiece, suffix(","),
-            words("but the type of"), words(PredVarName),
-            words("is not a higher order type."), nl]
+        ActPieces =
+            [words("but the type of"), words(PredVarName), words("is")] ++
+            color_as_incorrect([words("not a higher order type.")]) ++ [nl]
     ;
         Mismatch = mismatch_no_higher_order_inst_info,
         ( if PredVarInst = free then
-            MismatchPieces = [words("mode error: context requires a"),
-                words(ExpPFStr), words("of"), ExpArityPiece, suffix(","),
-                words("but"), fixed(PredVarName),
-                words("is a free variable."), nl]
+            FreeVarPieces = [words("free variable.")],
+            ActPieces = [words("but"), fixed(PredVarName), words("is a")] ++
+                color_as_incorrect(FreeVarPieces) ++ [nl]
         else
             mode_info_get_module_info(ModeInfo, ModuleInfo),
             mode_info_get_instvarset(ModeInfo, InstVarSet),
             PredVarInstPieces = error_msg_inst(ModuleInfo, InstVarSet,
                 dont_expand_named_insts, uod_user, quote_short_inst, [],
                 [nl_indent_delta(1)], [nl_indent_delta(-1)], PredVarInst),
-            MismatchPieces = [words("mode error: context requires a"),
-                words(ExpPFStr), words("of"), ExpArityPiece, suffix("."),
-                words("The type of"), fixed(PredVarName),
+            ActPieces =
+                [words("and the type of"), fixed(PredVarName),
                 words("does match that expectation."),
                 words("However, to check the correctness of the call,"),
                 words("the compiler also needs to know"),
@@ -1196,9 +1205,10 @@ mode_error_bad_higher_order_inst_to_spec(ModeInfo, PredVar, PredVarInst,
                 words("The insts of higher order values"),
                 words("should contain this information, but"),
                 fixed(PredVarName), suffix("'s"), words("inst, which is")] ++
-                PredVarInstPieces ++
-                [words("at this point, does not."), nl,
-                blank_line,
+                color_as_incorrect(PredVarInstPieces) ++
+                [words("at this point,")] ++
+                color_as_incorrect([words("does not.")]) ++
+                [blank_line,
                 words("The fix for this error is to add this information."),
                 words("For example, given a higher order type such as"),
                 nl_indent_delta(1),
@@ -1229,22 +1239,19 @@ mode_error_bad_higher_order_inst_to_spec(ModeInfo, PredVar, PredVarInst,
     ;
         Mismatch = mismatch_pred_vs_func(ActualPredOrFunc),
         ActPFStr = pred_or_func_to_full_str(ActualPredOrFunc),
-        MismatchPieces = [words("mode error: context requires a"),
-            words(ExpPFStr), words("of"), ExpArityPiece, suffix(","),
-            words("but"), words(PredVarName), words("is a"),
-            words(ActPFStr), words("variable."), nl]
+        ActPieces = [words("but"), words(PredVarName), words("is a")] ++
+            color_as_incorrect([words(ActPFStr), words("variable.")]) ++ [nl]
     ;
         Mismatch = mismatch_on_arity(ActualUserArity),
         ActualUserArity = user_arity(ActUserArityInt),
         ActArityPiece = fixed("arity " ++ int_to_string(ActUserArityInt)),
-        MismatchPieces = [words("mode error: context requires a"),
-            words(ExpPFStr), words("of"), ExpArityPiece, suffix(","),
-            words("but"), words(PredVarName), words("has"),
-            ActArityPiece, suffix("."), nl]
+        ActPieces = [words("but"), words(PredVarName), words("has")] ++
+            color_as_incorrect([ActArityPiece, suffix(".")]) ++ [nl]
     ),
+    Pieces = PreamblePieces ++ [words("mode error: context requires a")]
+        ++ ExpPieces ++ ActPieces,
     Phase = phase_mode_check(report_in_any_mode),
-    Spec = spec($pred, severity_error, Phase,
-        Context, PreamblePieces ++ MismatchPieces).
+    Spec = spec($pred, severity_error, Phase, Context, Pieces).
 
 %---------------------------------------------------------------------------%
 
@@ -1493,29 +1500,32 @@ mode_error_coerce_error_to_spec(ModeInfo, Error) = Spec :-
         Reason = input_inst_not_ground(Inst),
         ReasonPieces =
             [TheTerm, words("has instantiatedness")] ++
-            report_inst(ModeInfo, quote_short_inst, [suffix(",")],
-                [nl_indent_delta(1)], [suffix(","), nl_indent_delta(-1)],
-                Inst) ++
-            [words("but it must have a ground inst."), nl]
+            color_as_incorrect(
+                report_inst(ModeInfo, quote_short_inst, [suffix(",")],
+                    [nl_indent_delta(1)], [suffix(","), nl_indent_delta(-1)],
+                    Inst)) ++
+            [words("but it must have a")] ++
+            color_as_correct([words("ground")]) ++ [words("inst."), nl]
     ;
         Reason = invalid_inst_for_input_type(Inst),
         ReasonPieces =
             [words("the instantiatedness of"), TheTerm] ++
-            report_inst(ModeInfo, quote_short_inst, [],
-                [nl_indent_delta(1)], [nl_indent_delta(-1)], Inst) ++
+            color_as_incorrect(
+                report_inst(ModeInfo, quote_short_inst, [],
+                    [nl_indent_delta(1)], [nl_indent_delta(-1)], Inst)) ++
             [words("is invalid for the type of"), TheTerm,
             quote(FromTypeStr), suffix("."), nl]
     ;
         Reason = invalid_cons_ids_for_result_type(ConsIds),
         ConsIdsStrs = list.map(unqualify_cons_id_to_string, ConsIds),
+        ConsIdsStrsDot = list_to_quoted_pieces(ConsIdsStrs) ++ [suffix(".")],
         ReasonPieces =
             [words("cannot convert"), TheTerm,
             words("from type"), quote(FromTypeStr),
             words("to"), quote(ToTypeStr),
             words("because its instantiatedness includes the function"),
             words(choose_number(ConsIds, "symbol", "symbols"))] ++
-            list_to_quoted_pieces(ConsIdsStrs) ++
-            [suffix("."), nl]
+            color_as_incorrect(ConsIdsStrsDot) ++ [nl]
     ;
         Reason = has_inst_expect_upcast(Inst),
         ReasonPieces =
@@ -1523,12 +1533,12 @@ mode_error_coerce_error_to_spec(ModeInfo, Error) = Spec :-
             words("from type"), quote(FromTypeStr),
             words("to"), quote(ToTypeStr),
             words("because it has instantiatedness")] ++
-            report_inst(ModeInfo, quote_short_inst, [suffix(",")],
-                [nl_indent_delta(1)], [suffix(","), nl_indent_delta(-1)],
-                Inst) ++
-            [words("and"), quote(FromTypeStr),
-            words("is not a subtype of"), quote(ToTypeStr),
-            suffix("."), nl]
+            color_as_incorrect(
+                report_inst(ModeInfo, quote_short_inst, [suffix(",")],
+                    [nl_indent_delta(1)], [suffix(","), nl_indent_delta(-1)],
+                    Inst)) ++
+            [words("and")] ++ color_as_incorrect([quote(FromTypeStr)]) ++
+            [words("is not a subtype of"), quote(ToTypeStr), suffix("."), nl]
     ),
     Pieces = [words("mode error:")] ++ TermPathPieces ++ ReasonPieces,
     Spec = spec($pred, severity_error,
@@ -1604,40 +1614,41 @@ mode_error_bind_locked_var_to_spec(ModeInfo, Reason, Var, VarInst, Inst)
         has_inst_expected_inst_was(ModeInfo, VarInst, Inst)],
     (
         Reason = var_lock_negation,
-        VerbosePieces =
+        VerbosePieces0 =
             [words("A negation is only allowed to bind variables"),
             words("which are local to the negation, i.e. those which are"),
             words("implicitly existentially quantified"),
             words("inside the scope of the negation."), nl]
     ;
         Reason = var_lock_if_then_else,
-        VerbosePieces =
+        VerbosePieces0 =
             [words("The condition of an if-then-else is only"),
             words("allowed to bind variables which are local to the"),
-            words("condition or which occur only in the condition"),
+            words("condition, or which occur only in the condition"),
             words("and the"), quote("then"), words("part."), nl]
     ;
         Reason = var_lock_lambda(_),
-        VerbosePieces =
+        VerbosePieces0 =
             [words("A lambda goal is only allowed to bind"),
             words("its arguments and variables local to the "),
             words("lambda expression."), nl]
     ;
         Reason = var_lock_trace_goal,
-        VerbosePieces =
+        VerbosePieces0 =
             [words("A trace goal is only allowed to bind variables"),
             words("which are local to the trace goal."), nl]
     ;
         Reason = var_lock_atomic_goal,
-        VerbosePieces =
+        VerbosePieces0 =
             [words("An atomic goal may not use the state variables"),
             words("belonging to the outer scope."), nl]
     ;
         Reason = var_lock_par_conj,
-        VerbosePieces =
+        VerbosePieces0 =
             [words("A nonlocal variable of a parallel conjunction"),
             words("may be bound in at most one conjunct."), nl]
     ),
+    VerbosePieces = color_as_possible_cause(VerbosePieces0),
     Spec = error_spec($pred, severity_error,
         phase_mode_check(report_in_any_mode),
         [simple_msg(Context,
@@ -1692,14 +1703,16 @@ mode_error_unexpected_final_inst_to_spec(ModeInfo, RawArgNum, Var,
     ),
     Pieces = [words("mode error:")] ++ ArgNumPieces ++ [words(Problem), nl,
         words("Final instantiatedness of"),
-        quote(mercury_var_to_name_only(VarTable, Var)), words("was") |
-        report_inst(ModeInfo, quote_short_inst, [suffix(","), nl],
-            [nl_indent_delta(1)], [suffix(","), nl_indent_delta(-1)],
-            ActualInst)] ++
-        [words("expected final instantiatedness was") |
-        report_inst(ModeInfo, quote_short_inst, [suffix("."), nl],
-            [nl_indent_delta(1)], [suffix("."), nl_indent_delta(-1)],
-            ExpectedInst)],
+        quote(mercury_var_to_name_only(VarTable, Var)), words("was")] ++
+        color_as_incorrect(
+            report_inst(ModeInfo, quote_short_inst, [suffix(","), nl],
+                [nl_indent_delta(1)], [suffix(","), nl_indent_delta(-1)],
+                ActualInst)) ++
+        [words("expected final instantiatedness was")] ++
+        color_as_correct(
+            report_inst(ModeInfo, quote_short_inst, [suffix("."), nl],
+                [nl_indent_delta(1)], [suffix("."), nl_indent_delta(-1)],
+                ExpectedInst)),
     Spec = spec($pred, severity_error,
         phase_mode_check(report_in_any_mode), Context, Preamble ++ Pieces).
 
@@ -1847,15 +1860,15 @@ purity_error_should_be_in_promise_purity_scope_to_spec(NegCtxtDesc,
         Pieces = [words("purity error: if-then-else should be inside"),
             words("a promise_purity scope because non-local variable"),
             quote(mercury_var_to_name_only(VarTable, Var)),
-            words("has inst"), quote("any"),
-            words("and appears in the condition."), nl]
+            words("has inst")] ++ color_as_incorrect([quote("any")]) ++
+            [words("and appears in the condition."), nl]
     ;
         NegCtxtDesc = negation,
         Pieces = [words("purity error: negation should be inside"),
             words("a promise_purity scope because non-local variable"),
             quote(mercury_var_to_name_only(VarTable, Var)),
-            words("has inst"), quote("any"),
-            words("and appears in the body."), nl]
+            words("has inst")] ++ color_as_incorrect([quote("any")]) ++
+            [words("and appears in the body."), nl]
     ),
     Spec = spec($pred, severity_error,
         phase_mode_check(report_in_any_mode), Context, Preamble ++ Pieces).
@@ -1915,9 +1928,10 @@ merge_error_to_msgs(ModeInfo, MainContext, IsDisjunctive, MergeError) = Msgs :-
         % More than half the insts are ground, so it is likely that they
         % were *all* intended to be ground, but not all actually *are* ground,
         % which is likely to be the bug.
-        CommonPieces = [words("The variable"), VarNamePiece,
-            words("is ground"), words("in"), int_fixed(NumGroundInsts),
-            words("out of"), int_fixed(NumAllInsts), words("branches."), nl],
+        CommonPieces = [words("The variable"), VarNamePiece, words("is")] ++
+            color_as_possible_cause([words("ground")]) ++
+            [words("in"), int_fixed(NumGroundInsts), words("out of"),
+            int_fixed(NumAllInsts), words("branches."), nl],
         VerbosePieces =
             [words("It has the following instantiation states."), nl],
         ( if NumAllInsts - NumGroundInsts > 1 then
@@ -1933,7 +1947,7 @@ merge_error_to_msgs(ModeInfo, MainContext, IsDisjunctive, MergeError) = Msgs :-
             [always(CommonPieces),
             verbose_and_nonverbose(VerbosePieces, NonVerbosePieces)]),
         InstMsgs = list.map(
-            report_inst_in_context(ModeInfo, VarNamePiece,
+            report_inst_in_context(ModeInfo, yes(color_cause), VarNamePiece,
                 report_inst_and_ground_vs_nonground),
             ContextsInsts),
         Msgs = [VarMsg | InstMsgs]
@@ -1946,7 +1960,7 @@ merge_error_to_msgs(ModeInfo, MainContext, IsDisjunctive, MergeError) = Msgs :-
             words("is ground in some branches but not others."), nl],
         VarMsg = msg(MainContext, VarPieces),
         InstMsgs = list.map(
-            report_inst_in_context(ModeInfo, VarNamePiece,
+            report_inst_in_context(ModeInfo, yes(color_cause), VarNamePiece,
                 report_ground_vs_nonground_only),
             ContextsInsts),
         Msgs = [VarMsg | InstMsgs]
@@ -1955,7 +1969,8 @@ merge_error_to_msgs(ModeInfo, MainContext, IsDisjunctive, MergeError) = Msgs :-
             words("has the following instantiation states."), nl],
         VarMsg = msg(MainContext, VarPieces),
         InstMsgs = list.map(
-            report_inst_in_context(ModeInfo, VarNamePiece, report_inst_only),
+            report_inst_in_context(ModeInfo, no, VarNamePiece,
+                report_inst_only),
             ContextsInsts),
         Msgs = [VarMsg | InstMsgs]
     ).
@@ -1986,35 +2001,39 @@ count_ground_insts(ModuleInfo, [ContextInst | ContextsInsts],
     ;       report_ground_vs_nonground_only
     ;       report_inst_and_ground_vs_nonground.
 
-:- func report_inst_in_context(mode_info, format_piece,
+:- func report_inst_in_context(mode_info, maybe(color_name), format_piece,
     report_inst_how, pair(prog_context, mer_inst)) = error_msg.
 
-report_inst_in_context(ModeInfo, VarNamePiece, ReportIsGround, Context - Inst)
-        = Msg :-
+report_inst_in_context(ModeInfo, MaybeColor, VarNamePiece, ReportIsGround,
+        Context - Inst) = Msg :-
     (
         ReportIsGround = report_inst_only,
-        Pieces = report_inst_in_branch(ModeInfo, VarNamePiece, no, Inst),
+        Pieces = report_inst_in_branch(ModeInfo, MaybeColor, VarNamePiece,
+            no, Inst),
         Msg = msg(Context, Pieces)
     ;
         ReportIsGround = report_ground_vs_nonground_only,
         mode_info_get_module_info(ModeInfo, ModuleInfo),
         ( if inst_is_ground(ModuleInfo, Inst) then
-            Pieces = report_inst_in_branch_simple(VarNamePiece, "ground")
+            Pieces = report_inst_in_branch_simple(MaybeColor, VarNamePiece,
+                "ground")
         else if Inst = free then
-            Pieces = report_inst_in_branch_simple(VarNamePiece, "free")
+            Pieces = report_inst_in_branch_simple(MaybeColor, VarNamePiece,
+                "free")
         else
-            Pieces = report_inst_in_branch_simple(VarNamePiece, "not ground")
+            Pieces = report_inst_in_branch_simple(MaybeColor, VarNamePiece,
+                "not ground")
         ),
         Msg = msg(Context, Pieces)
     ;
         ReportIsGround = report_inst_and_ground_vs_nonground,
         mode_info_get_module_info(ModeInfo, ModuleInfo),
         ( if inst_is_ground(ModuleInfo, Inst) then
-            Pieces = report_inst_in_branch(ModeInfo, VarNamePiece,
+            Pieces = report_inst_in_branch(ModeInfo, MaybeColor, VarNamePiece,
                 yes(ground), Inst),
             Msg = simple_msg(Context, [verbose_and_nonverbose(Pieces, [])])
         else
-            Pieces = report_inst_in_branch(ModeInfo, VarNamePiece,
+            Pieces = report_inst_in_branch(ModeInfo, MaybeColor, VarNamePiece,
                 yes(nonground), Inst),
             Msg = msg(Context, Pieces)
         )
@@ -2024,61 +2043,69 @@ report_inst_in_context(ModeInfo, VarNamePiece, ReportIsGround, Context - Inst)
     --->    ground
     ;       nonground.
 
-:- func report_inst_in_branch(mode_info, format_piece,
+:- func report_inst_in_branch(mode_info, maybe(color_name), format_piece,
     maybe(ground_or_nonground), mer_inst) = list(format_piece).
 
-report_inst_in_branch(ModeInfo, VarNamePiece, MaybeGroundOrNonGround, Inst)
-        = Pieces :-
+report_inst_in_branch(ModeInfo, MaybeColor, VarNamePiece,
+        MaybeGroundOrNonGround, Inst) = Pieces :-
     (
         MaybeGroundOrNonGround = no,
         ( if Inst = ground(shared, none_or_default_func) then
-            Pieces = report_inst_in_branch_simple(VarNamePiece, "ground")
+            Pieces = report_inst_in_branch_simple(MaybeColor, VarNamePiece,
+                "ground")
         else if Inst = free then
-            Pieces = report_inst_in_branch_simple(VarNamePiece, "free")
+            Pieces = report_inst_in_branch_simple(MaybeColor, VarNamePiece,
+                "free")
         else
             IntroPieces = [words("In this branch,"), VarNamePiece,
                 words("has instantiatedness")],
-            Pieces = report_inst_in_branch_detail(ModeInfo,
-                IntroPieces, Inst)
+            Pieces = report_inst_in_branch_detail(ModeInfo, IntroPieces,
+                MaybeColor, Inst)
         )
     ;
         MaybeGroundOrNonGround = yes(ground),
         ( if Inst = ground(shared, none_or_default_func) then
-            Pieces = report_inst_in_branch_simple(VarNamePiece, "ground")
+            Pieces = report_inst_in_branch_simple(MaybeColor, VarNamePiece,
+                "ground")
         else
             IntroPieces = [words("In this branch,"), VarNamePiece,
                 words("has the ground instantiatedness")],
-            Pieces = report_inst_in_branch_detail(ModeInfo,
-                IntroPieces, Inst)
+            Pieces = report_inst_in_branch_detail(ModeInfo, IntroPieces,
+                MaybeColor, Inst)
         )
     ;
         MaybeGroundOrNonGround = yes(nonground),
         ( if Inst = free then
-            Pieces = report_inst_in_branch_simple(VarNamePiece, "free")
+            Pieces = report_inst_in_branch_simple(MaybeColor, VarNamePiece,
+                "free")
         else
             IntroPieces = [words("In this branch,"), VarNamePiece,
                 words("has the non-ground instantiatedness")],
-            Pieces = report_inst_in_branch_detail(ModeInfo,
-                IntroPieces, Inst)
+            Pieces = report_inst_in_branch_detail(ModeInfo, IntroPieces,
+                MaybeColor, Inst)
         )
     ).
 
-:- func report_inst_in_branch_simple(format_piece, string)
+:- func report_inst_in_branch_simple(maybe(color_name), format_piece, string)
     = list(format_piece).
 
-report_inst_in_branch_simple(VarNamePiece, FreeOrGround) = Pieces :-
-    MainPieces = [words("In this branch,"), VarNamePiece,
-        words("is"), words(FreeOrGround), suffix("."), nl],
+report_inst_in_branch_simple(MaybeColor, VarNamePiece, FreeOrGround)
+        = Pieces :-
+    MainPieces = [words("In this branch,"), VarNamePiece, words("is")] ++
+        maybe_color_pieces(MaybeColor, [words(FreeOrGround), suffix(".")]) ++
+        [nl],
     Pieces = [nl_indent_delta(1) | MainPieces] ++ [nl_indent_delta(-1)].
 
 :- func report_inst_in_branch_detail(mode_info, list(format_piece),
-    mer_inst) = list(format_piece).
+    maybe(color_name), mer_inst) = list(format_piece).
 
-report_inst_in_branch_detail(ModeInfo, IntroPieces, Inst) = Pieces :-
-    Pieces = [nl_indent_delta(1) | IntroPieces] ++ [nl_indent_delta(1) |
-        report_inst(ModeInfo, fixed_short_inst,
-            [suffix("."), nl_indent_delta(-2)],
-            [], [suffix("."), nl_indent_delta(-2)], Inst)].
+report_inst_in_branch_detail(ModeInfo, IntroPieces, MaybeColor, Inst)
+        = Pieces :-
+    Pieces = [nl_indent_delta(1) | IntroPieces] ++ [nl_indent_delta(1)] ++
+        maybe_color_pieces(MaybeColor,
+            report_inst(ModeInfo, fixed_short_inst,
+                [suffix("."), nl_indent_delta(-2)],
+                [], [suffix("."), nl_indent_delta(-2)], Inst)).
 
 %------------%
 
@@ -2105,24 +2132,25 @@ inst_list_to_sep_lines(ModeInfo, [Inst | Insts]) = Pieces :-
     = list(format_piece).
 
 has_inst_expected_inst_was(ModeInfo, ActualInst, ExpectedInst) =
-    has_instantiatedness(ModeInfo, ActualInst, ",") ++
+    has_instantiatedness(ModeInfo, yes(color_incorrect), ActualInst, ",") ++
     expected_inst_was(ModeInfo, ExpectedInst).
 
-:- func has_instantiatedness(mode_info, mer_inst, string)
+:- func has_instantiatedness(mode_info, maybe(color_name), mer_inst, string)
     = list(format_piece).
 
-has_instantiatedness(ModeInfo, Inst, Suffix) =
-    [words("has instantiatedness") |
-        report_inst(ModeInfo, quote_short_inst, [suffix(Suffix), nl],
-            [nl_indent_delta(1)], [suffix(Suffix), nl_indent_delta(-1)],
-            Inst)].
+has_instantiatedness(ModeInfo, MaybeColor, Inst, Suffix) = Pieces :-
+    InstPieces0 = report_inst(ModeInfo, quote_short_inst, [suffix(Suffix), nl],
+        [nl_indent_delta(1)], [suffix(Suffix), nl_indent_delta(-1)], Inst),
+    InstPieces = maybe_color_pieces(MaybeColor, InstPieces0),
+    Pieces = [words("has instantiatedness") | InstPieces].
 
 :- func expected_inst_was(mode_info, mer_inst) = list(format_piece).
 
-expected_inst_was(ModeInfo, Inst) =
-    [words("expected instantiatedness was") |
-        report_inst(ModeInfo, quote_short_inst, [suffix("."), nl],
-            [nl_indent_delta(1)], [suffix("."), nl_indent_delta(-1)], Inst)].
+expected_inst_was(ModeInfo, Inst) = Pieces :-
+    InstPieces0 = report_inst(ModeInfo, quote_short_inst, [suffix("."), nl],
+        [nl_indent_delta(1)], [suffix("."), nl_indent_delta(-1)], Inst),
+    InstPieces = color_as_correct(InstPieces0),
+    Pieces = [words("expected instantiatedness was") | InstPieces].
 
 :- func report_inst(mode_info, short_inst,
     list(format_piece), list(format_piece), list(format_piece),
@@ -2166,14 +2194,15 @@ mode_warning_cannot_succeed_var_var(ModeInfo, X, Y, InstX, InstY) = Spec :-
     Preamble = mode_info_context_preamble(ModeInfo),
     mode_info_get_context(ModeInfo, Context),
     mode_info_get_var_table(ModeInfo, VarTable),
+    MaybeColor = yes(color_cause),
     Pieces = [words("warning: unification of"),
         quote(mercury_var_to_name_only(VarTable, X)),
         words("and"), quote(mercury_var_to_name_only(VarTable, Y)),
         words("cannot succeed."), nl,
         quote(mercury_var_to_name_only(VarTable, X)) |
-        has_instantiatedness(ModeInfo, InstX, ",")] ++
+        has_instantiatedness(ModeInfo, MaybeColor, InstX, ",")] ++
         [quote(mercury_var_to_name_only(VarTable, Y)) |
-        has_instantiatedness(ModeInfo, InstY, ".")],
+        has_instantiatedness(ModeInfo, MaybeColor, InstY, ".")],
     Spec = spec($pred, severity_warning,
         phase_mode_check(report_only_if_in_all_modes),
         Context, Preamble ++ Pieces).
@@ -2193,7 +2222,7 @@ mode_warning_cannot_succeed_var_functor(ModeInfo, X, InstX, ConsId) = Spec :-
         quote(mercury_var_to_name_only(VarTable, X)), words("and"),
         words(ConsIdStr), words("cannot succeed."), nl,
         quote(mercury_var_to_name_only(VarTable, X)) |
-        has_instantiatedness(ModeInfo, InstX, ".")],
+        has_instantiatedness(ModeInfo, yes(color_incorrect), InstX, ".")],
     Spec = spec($pred, severity_warning,
         phase_mode_check(report_only_if_in_all_modes),
         Context, Preamble ++ Pieces).
@@ -2207,13 +2236,14 @@ mode_warning_cannot_succeed_ground_occur_check(ModeInfo, X, ConsId) = Spec :-
     Preamble = mode_info_context_preamble(ModeInfo),
     mode_info_get_context(ModeInfo, Context),
     mode_info_get_var_table(ModeInfo, VarTable),
+    NameX = mercury_var_to_name_only(VarTable, X),
     ConsIdStr = mercury_cons_id_to_string(output_mercury,
         does_not_need_brackets, ConsId),
-    Pieces = [words("warning: unification of"),
-        quote(mercury_var_to_name_only(VarTable, X)), words("and"),
-        words(ConsIdStr), words("cannot succeed, because"),
-        quote(mercury_var_to_name_only(VarTable, X)),
-        words("cannot be equal to a term containing itself."), nl],
+    Pieces = [words("warning: unification of"), quote(NameX), words("and"),
+        words(ConsIdStr), words("cannot succeed, because")] ++
+        color_as_incorrect([quote(NameX), words("cannot be equal"),
+            words("to a term containing itself.")]) ++
+        [nl],
     Spec = spec($pred, severity_warning,
         phase_mode_check(report_in_any_mode), Context, Preamble ++ Pieces).
 

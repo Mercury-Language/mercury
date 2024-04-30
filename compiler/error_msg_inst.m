@@ -455,6 +455,9 @@ bound_insts_to_pieces(Info, MaybeInline, HeadBoundInst, TailBoundInsts,
         % The module names of the cons_ids are uniquely specified
         % by the types of the variables whose we are printing. Printing them
         % would therefore generate more clutter than enlightenment.
+        % XXX This is true *most* of the time, but it is not true *all*
+        % of the time. For tests/invalid/qualified_cons_id2.m, it yields
+        % a confusing error message, at least as of 2024 apr 30.
         SymName = qualified(_ModuleName, BaseName)
     then
         ConsId = cons(unqualified(BaseName), Arity, TypeCtor)

@@ -7,8 +7,8 @@ coerce_recursive_inst.m:042:   in the first argument of function symbol `cons':
 coerce_recursive_inst.m:042:   cannot convert the subterm from type
 coerce_recursive_inst.m:042:   `coerce_recursive_inst.fruit' to
 coerce_recursive_inst.m:042:   `coerce_recursive_inst.citrus' because it has
-coerce_recursive_inst.m:042:   instantiatedness `ground', and
-coerce_recursive_inst.m:042:   `coerce_recursive_inst.fruit' is not a subtype
+coerce_recursive_inst.m:042:   instantiatedness [38;5;203m`ground',[39;49m and
+coerce_recursive_inst.m:042:   [38;5;203m`coerce_recursive_inst.fruit'[39;49m is not a subtype
 coerce_recursive_inst.m:042:   of `coerce_recursive_inst.citrus'.
 coerce_recursive_inst.m:048: In clause for
 coerce_recursive_inst.m:048:   `bad2(in(coerce_recursive_inst.cons)) = out':
@@ -18,6 +18,6 @@ coerce_recursive_inst.m:048:   in the first argument of function symbol `cons':
 coerce_recursive_inst.m:048:   cannot convert the subterm from type
 coerce_recursive_inst.m:048:   `coerce_recursive_inst.fruit' to
 coerce_recursive_inst.m:048:   `coerce_recursive_inst.citrus' because it has
-coerce_recursive_inst.m:048:   instantiatedness `ground', and
-coerce_recursive_inst.m:048:   `coerce_recursive_inst.fruit' is not a subtype
+coerce_recursive_inst.m:048:   instantiatedness [38;5;203m`ground',[39;49m and
+coerce_recursive_inst.m:048:   [38;5;203m`coerce_recursive_inst.fruit'[39;49m is not a subtype
 coerce_recursive_inst.m:048:   of `coerce_recursive_inst.citrus'.

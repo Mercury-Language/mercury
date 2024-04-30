@@ -2,47 +2,47 @@ bug415.m:046: In clause for `ip_chunk_2(in(list.list((I =< ground))), in,
 bug415.m:046:   in(list.list((I =< ground))), in, out(list.list((I =<
 bug415.m:046:   ground))))':
 bug415.m:046:   mode error: argument 5 became too instantiated.
-bug415.m:046:   Final instantiatedness of `HeadVar__5' was
-bug415.m:046:     bound(
-bug415.m:046:       []
-bug415.m:046:     ;
-bug415.m:046:       '[|]'(
-bug415.m:046:         ground,
-bug415.m:046:         bound(
-bug415.m:046:           []
-bug415.m:046:         ;
-bug415.m:046:           '[|]'(
-bug415.m:046:             ( I =< ground ),
-bug415.m:046:             internal $merge_inst #1
-bug415.m:046:             which expands to
-bug415.m:046:               bound(
-bug415.m:046:                 []
-bug415.m:046:               ;
-bug415.m:046:                 '[|]'(
-bug415.m:046:                   ( I =< ground ),
-bug415.m:046:                   internal $merge_inst #1
-bug415.m:046:                 )
-bug415.m:046:               )
-bug415.m:046:           )
-bug415.m:046:         )
-bug415.m:046:       )
-bug415.m:046:     ),
-bug415.m:046:   expected final instantiatedness was
-bug415.m:046:     named inst list.list(
-bug415.m:046:       ( I =< ground )
-bug415.m:046:     )
-bug415.m:046:     which expands to
-bug415.m:046:       named inst list.list_skel(
-bug415.m:046:         ( I =< ground )
-bug415.m:046:       )
-bug415.m:046:       which expands to
-bug415.m:046:         bound(
-bug415.m:046:           []
-bug415.m:046:         ;
-bug415.m:046:           '[|]'(
-bug415.m:046:             ( I =< ground ),
-bug415.m:046:             named inst list.list_skel(
-bug415.m:046:               ( I =< ground )
-bug415.m:046:             )
-bug415.m:046:           )
-bug415.m:046:         ).
+bug415.m:046:   Final instantiatedness of `HeadVar__5' was [38;5;203m[39;49m
+bug415.m:046:     [38;5;203mbound([39;49m
+bug415.m:046:       [38;5;203m[][39;49m
+bug415.m:046:     [38;5;203m;[39;49m
+bug415.m:046:       [38;5;203m'[|]'([39;49m
+bug415.m:046:         [38;5;203mground,[39;49m
+bug415.m:046:         [38;5;203mbound([39;49m
+bug415.m:046:           [38;5;203m[][39;49m
+bug415.m:046:         [38;5;203m;[39;49m
+bug415.m:046:           [38;5;203m'[|]'([39;49m
+bug415.m:046:             [38;5;203m( I =< ground ),[39;49m
+bug415.m:046:             [38;5;203minternal $merge_inst #1[39;49m
+bug415.m:046:             [38;5;203mwhich expands to[39;49m
+bug415.m:046:               [38;5;203mbound([39;49m
+bug415.m:046:                 [38;5;203m[][39;49m
+bug415.m:046:               [38;5;203m;[39;49m
+bug415.m:046:                 [38;5;203m'[|]'([39;49m
+bug415.m:046:                   [38;5;203m( I =< ground ),[39;49m
+bug415.m:046:                   [38;5;203minternal $merge_inst #1[39;49m
+bug415.m:046:                 [38;5;203m)[39;49m
+bug415.m:046:               [38;5;203m)[39;49m
+bug415.m:046:           [38;5;203m)[39;49m
+bug415.m:046:         [38;5;203m)[39;49m
+bug415.m:046:       [38;5;203m)[39;49m
+bug415.m:046:     [38;5;203m),[39;49m
+bug415.m:046:   expected final instantiatedness was [38;5;40m[39;49m
+bug415.m:046:     [38;5;40mnamed inst list.list([39;49m
+bug415.m:046:       [38;5;40m( I =< ground )[39;49m
+bug415.m:046:     [38;5;40m)[39;49m
+bug415.m:046:     [38;5;40mwhich expands to[39;49m
+bug415.m:046:       [38;5;40mnamed inst list.list_skel([39;49m
+bug415.m:046:         [38;5;40m( I =< ground )[39;49m
+bug415.m:046:       [38;5;40m)[39;49m
+bug415.m:046:       [38;5;40mwhich expands to[39;49m
+bug415.m:046:         [38;5;40mbound([39;49m
+bug415.m:046:           [38;5;40m[][39;49m
+bug415.m:046:         [38;5;40m;[39;49m
+bug415.m:046:           [38;5;40m'[|]'([39;49m
+bug415.m:046:             [38;5;40m( I =< ground ),[39;49m
+bug415.m:046:             [38;5;40mnamed inst list.list_skel([39;49m
+bug415.m:046:               [38;5;40m( I =< ground )[39;49m
+bug415.m:046:             [38;5;40m)[39;49m
+bug415.m:046:           [38;5;40m)[39;49m
+bug415.m:046:         [38;5;40m).[39;49m

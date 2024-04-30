@@ -1,14 +1,14 @@
 char_inst.m:017: In clause for `main(di, uo)':
 char_inst.m:017:   in argument 1 of call to predicate `char_inst.test'/3:
 char_inst.m:017:   mode error: variable `V_8' has instantiatedness
-char_inst.m:017:   `unique('x')',
-char_inst.m:017:   expected instantiatedness was
-char_inst.m:017:     named inst key_char
-char_inst.m:017:     which expands to
-char_inst.m:017:       bound(
-char_inst.m:017:         f
-char_inst.m:017:       ;
-char_inst.m:017:         i
-char_inst.m:017:       ;
-char_inst.m:017:         s
-char_inst.m:017:       ).
+char_inst.m:017:   [38;5;203m`unique('x')',[39;49m
+char_inst.m:017:   expected instantiatedness was [38;5;40m[39;49m
+char_inst.m:017:     [38;5;40mnamed inst key_char[39;49m
+char_inst.m:017:     [38;5;40mwhich expands to[39;49m
+char_inst.m:017:       [38;5;40mbound([39;49m
+char_inst.m:017:         [38;5;40mf[39;49m
+char_inst.m:017:       [38;5;40m;[39;49m
+char_inst.m:017:         [38;5;40mi[39;49m
+char_inst.m:017:       [38;5;40m;[39;49m
+char_inst.m:017:         [38;5;40ms[39;49m
+char_inst.m:017:       [38;5;40m).[39;49m

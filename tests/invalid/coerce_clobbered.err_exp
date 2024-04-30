@@ -1,4 +1,4 @@
 coerce_clobbered.m:021: In clause for `bad(in(clobbered), out)':
 coerce_clobbered.m:021:   in coerce expression:
 coerce_clobbered.m:021:   mode error: the argument term has instantiatedness
-coerce_clobbered.m:021:   `clobbered', but it must have a ground inst.
+coerce_clobbered.m:021:   [38;5;203m`clobbered',[39;49m but it must have a [38;5;40mground[39;49m inst.

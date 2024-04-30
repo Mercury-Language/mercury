@@ -1,12 +1,12 @@
 anys_in_negated_contexts.m:042: In clause for `bad_if_then_else1(ia, out)':
 anys_in_negated_contexts.m:042:   purity error: if-then-else should be inside a
 anys_in_negated_contexts.m:042:   promise_purity scope because non-local
-anys_in_negated_contexts.m:042:   variable `X' has inst `any' and appears in
+anys_in_negated_contexts.m:042:   variable `X' has inst [38;5;203m`any'[39;49m and appears in
 anys_in_negated_contexts.m:042:   the condition.
 anys_in_negated_contexts.m:060: In clause for `bad_negation1(ia)':
 anys_in_negated_contexts.m:060:   purity error: negation should be inside a
 anys_in_negated_contexts.m:060:   promise_purity scope because non-local
-anys_in_negated_contexts.m:060:   variable `X' has inst `any' and appears in
+anys_in_negated_contexts.m:060:   variable `X' has inst [38;5;203m`any'[39;49m and appears in
 anys_in_negated_contexts.m:060:   the body.
 anys_in_negated_contexts.m:083: In clause for `bad_lambda(in)':
 anys_in_negated_contexts.m:083:   mode error in conjunction. The next 2 error
@@ -26,5 +26,5 @@ anys_in_negated_contexts.m:083:
 anys_in_negated_contexts.m:083:   In clause for `bad_lambda(in)':
 anys_in_negated_contexts.m:083:   in argument 1 (i.e. the predicate term) of
 anys_in_negated_contexts.m:083:   higher-order predicate call:
-anys_in_negated_contexts.m:083:   mode error: context requires a predicate of
-anys_in_negated_contexts.m:083:   arity 1, but P is a free variable.
+anys_in_negated_contexts.m:083:   mode error: context requires a [38;5;40mpredicate of[39;49m
+anys_in_negated_contexts.m:083:   [38;5;40marity 1,[39;49m but P is a [38;5;203mfree variable.[39;49m

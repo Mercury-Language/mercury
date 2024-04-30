@@ -1,20 +1,20 @@
 polymorphic_unification.m:023: In clause for `p(in, (list.list_skel >> dead))':
 polymorphic_unification.m:023:   in polymorphically-typed unification:
-polymorphic_unification.m:023:   mode error: variable `X' has instantiatedness
-polymorphic_unification.m:023:     named inst list.list_skel
-polymorphic_unification.m:023:     which expands to
-polymorphic_unification.m:023:       named inst list.list_skel(free)
-polymorphic_unification.m:023:       which expands to
-polymorphic_unification.m:023:         bound(
-polymorphic_unification.m:023:           []
-polymorphic_unification.m:023:         ;
-polymorphic_unification.m:023:           '[|]'(
-polymorphic_unification.m:023:             free,
-polymorphic_unification.m:023:             named inst list.list_skel(free)
-polymorphic_unification.m:023:           )
-polymorphic_unification.m:023:         ),
-polymorphic_unification.m:023:   expected instantiatedness was `ground' or
-polymorphic_unification.m:023:   `any'.
+polymorphic_unification.m:023:   mode error: variable `X' has instantiatedness [38;5;203m[39;49m
+polymorphic_unification.m:023:     [38;5;203mnamed inst list.list_skel[39;49m
+polymorphic_unification.m:023:     [38;5;203mwhich expands to[39;49m
+polymorphic_unification.m:023:       [38;5;203mnamed inst list.list_skel(free)[39;49m
+polymorphic_unification.m:023:       [38;5;203mwhich expands to[39;49m
+polymorphic_unification.m:023:         [38;5;203mbound([39;49m
+polymorphic_unification.m:023:           [38;5;203m[][39;49m
+polymorphic_unification.m:023:         [38;5;203m;[39;49m
+polymorphic_unification.m:023:           [38;5;203m'[|]'([39;49m
+polymorphic_unification.m:023:             [38;5;203mfree,[39;49m
+polymorphic_unification.m:023:             [38;5;203mnamed inst list.list_skel(free)[39;49m
+polymorphic_unification.m:023:           [38;5;203m)[39;49m
+polymorphic_unification.m:023:         [38;5;203m),[39;49m
+polymorphic_unification.m:023:   expected instantiatedness was [38;5;40m`ground' or[39;49m
+polymorphic_unification.m:023:   [38;5;40m`any'.[39;49m
 polymorphic_unification.m:023:   When unifying two variables whose type will
 polymorphic_unification.m:023:   not be known until runtime, the variables must
 polymorphic_unification.m:023:   both be ground (or have inst `any').

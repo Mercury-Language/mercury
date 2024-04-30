@@ -767,24 +767,31 @@ is_or_are([_, _ | _]) = "are".
 %---------------------------------------------------------------------------%
 
 color_as_correct(Pieces) =
-    [not_for_general_use_start_color(color_correct)] ++
-    Pieces ++
-    [not_for_general_use_end_color].
+    color_pieces(color_correct, Pieces).
 
 color_as_incorrect(Pieces) =
-    [not_for_general_use_start_color(color_incorrect)] ++
-    Pieces ++
-    [not_for_general_use_end_color].
+    color_pieces(color_incorrect, Pieces).
 
 color_as_possible_cause(Pieces) =
-    [not_for_general_use_start_color(color_cause)] ++
-    Pieces ++
-    [not_for_general_use_end_color].
+    color_pieces(color_cause, Pieces).
 
-color_pieces(Color, Pieces) =
-    [not_for_general_use_start_color(Color)] ++
-    Pieces ++
-    [not_for_general_use_end_color].
+color_pieces(Color, Pieces0) = Pieces :-
+    list.reverse(Pieces0, RevPieces0),
+    list.take_while(is_nl_piece, RevPieces0, RevNlPieces0, RevMainPieces0),
+    list.reverse(RevNlPieces0, NlPieces),
+    list.reverse(RevMainPieces0, MainPieces),
+    Pieces =
+        [not_for_general_use_start_color(Color)] ++
+        MainPieces ++
+        [not_for_general_use_end_color] ++
+        NlPieces.
+
+:- pred is_nl_piece(format_piece::in) is semidet.
+
+is_nl_piece(Piece) :-
+    ( Piece = nl
+    ; Piece = nl_indent_delta(_)
+    ).
 
 maybe_color_pieces(MaybeColor, Pieces) = MaybeColorPieces :-
     (

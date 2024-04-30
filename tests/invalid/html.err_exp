@@ -1,73 +1,73 @@
 html.m:053: In clause for `init_body_elem =
 html.m:053:   out(html.non_empty_list(html.top_body_elem))':
 html.m:053:   mode error: the function result had the wrong instantiatedness.
-html.m:053:   Final instantiatedness of `HeadVar__1' was `unique',
-html.m:053:   expected final instantiatedness was
-html.m:053:     named inst non_empty_list(top_body_elem)
-html.m:053:     which expands to
-html.m:053:       bound(
-html.m:053:         '[|]'(
-html.m:053:           named inst top_body_elem
-html.m:053:           which expands to
-html.m:053:             bound(
-html.m:053:               text(ground)
-html.m:053:             ;
-html.m:053:               ul(
-html.m:053:                 named inst non_empty_list(
-html.m:053:                   li(
-html.m:053:                     named inst top_body_elem
-html.m:053:                   )
-html.m:053:                 )
-html.m:053:                 which expands to
-html.m:053:                   bound(
-html.m:053:                     '[|]'(
-html.m:053:                       named inst li(
-html.m:053:                         named inst top_body_elem
-html.m:053:                       )
-html.m:053:                       which expands to
-html.m:053:                         bound(
-html.m:053:                           li(
-html.m:053:                             named inst
-html.m:053:                             non_empty_list(top_body_elem)
-html.m:053:                           )
-html.m:053:                         ),
-html.m:053:                       named inst list.list_skel(
-html.m:053:                         named inst li(
-html.m:053:                           named inst top_body_elem
-html.m:053:                         )
-html.m:053:                       )
-html.m:053:                       which expands to
-html.m:053:                         bound(
-html.m:053:                           []
-html.m:053:                         ;
-html.m:053:                           '[|]'(
-html.m:053:                             named inst li(
-html.m:053:                               named inst top_body_elem
-html.m:053:                             ),
-html.m:053:                             named inst list.list_skel(
-html.m:053:                               named inst li(
-html.m:053:                                 named inst top_body_elem
-html.m:053:                               )
-html.m:053:                             )
-html.m:053:                           )
-html.m:053:                         )
-html.m:053:                     )
-html.m:053:                   )
-html.m:053:               )
-html.m:053:             ),
-html.m:053:           named inst list.list_skel(
-html.m:053:             named inst top_body_elem
-html.m:053:           )
-html.m:053:           which expands to
-html.m:053:             bound(
-html.m:053:               []
-html.m:053:             ;
-html.m:053:               '[|]'(
-html.m:053:                 named inst top_body_elem,
-html.m:053:                 named inst list.list_skel(
-html.m:053:                   named inst top_body_elem
-html.m:053:                 )
-html.m:053:               )
-html.m:053:             )
-html.m:053:         )
-html.m:053:       ).
+html.m:053:   Final instantiatedness of `HeadVar__1' was [38;5;203m`unique',[39;49m
+html.m:053:   expected final instantiatedness was [38;5;40m[39;49m
+html.m:053:     [38;5;40mnamed inst non_empty_list(top_body_elem)[39;49m
+html.m:053:     [38;5;40mwhich expands to[39;49m
+html.m:053:       [38;5;40mbound([39;49m
+html.m:053:         [38;5;40m'[|]'([39;49m
+html.m:053:           [38;5;40mnamed inst top_body_elem[39;49m
+html.m:053:           [38;5;40mwhich expands to[39;49m
+html.m:053:             [38;5;40mbound([39;49m
+html.m:053:               [38;5;40mtext(ground)[39;49m
+html.m:053:             [38;5;40m;[39;49m
+html.m:053:               [38;5;40mul([39;49m
+html.m:053:                 [38;5;40mnamed inst non_empty_list([39;49m
+html.m:053:                   [38;5;40mli([39;49m
+html.m:053:                     [38;5;40mnamed inst top_body_elem[39;49m
+html.m:053:                   [38;5;40m)[39;49m
+html.m:053:                 [38;5;40m)[39;49m
+html.m:053:                 [38;5;40mwhich expands to[39;49m
+html.m:053:                   [38;5;40mbound([39;49m
+html.m:053:                     [38;5;40m'[|]'([39;49m
+html.m:053:                       [38;5;40mnamed inst li([39;49m
+html.m:053:                         [38;5;40mnamed inst top_body_elem[39;49m
+html.m:053:                       [38;5;40m)[39;49m
+html.m:053:                       [38;5;40mwhich expands to[39;49m
+html.m:053:                         [38;5;40mbound([39;49m
+html.m:053:                           [38;5;40mli([39;49m
+html.m:053:                             [38;5;40mnamed inst[39;49m
+html.m:053:                             [38;5;40mnon_empty_list(top_body_elem)[39;49m
+html.m:053:                           [38;5;40m)[39;49m
+html.m:053:                         [38;5;40m),[39;49m
+html.m:053:                       [38;5;40mnamed inst list.list_skel([39;49m
+html.m:053:                         [38;5;40mnamed inst li([39;49m
+html.m:053:                           [38;5;40mnamed inst top_body_elem[39;49m
+html.m:053:                         [38;5;40m)[39;49m
+html.m:053:                       [38;5;40m)[39;49m
+html.m:053:                       [38;5;40mwhich expands to[39;49m
+html.m:053:                         [38;5;40mbound([39;49m
+html.m:053:                           [38;5;40m[][39;49m
+html.m:053:                         [38;5;40m;[39;49m
+html.m:053:                           [38;5;40m'[|]'([39;49m
+html.m:053:                             [38;5;40mnamed inst li([39;49m
+html.m:053:                               [38;5;40mnamed inst top_body_elem[39;49m
+html.m:053:                             [38;5;40m),[39;49m
+html.m:053:                             [38;5;40mnamed inst list.list_skel([39;49m
+html.m:053:                               [38;5;40mnamed inst li([39;49m
+html.m:053:                                 [38;5;40mnamed inst top_body_elem[39;49m
+html.m:053:                               [38;5;40m)[39;49m
+html.m:053:                             [38;5;40m)[39;49m
+html.m:053:                           [38;5;40m)[39;49m
+html.m:053:                         [38;5;40m)[39;49m
+html.m:053:                     [38;5;40m)[39;49m
+html.m:053:                   [38;5;40m)[39;49m
+html.m:053:               [38;5;40m)[39;49m
+html.m:053:             [38;5;40m),[39;49m
+html.m:053:           [38;5;40mnamed inst list.list_skel([39;49m
+html.m:053:             [38;5;40mnamed inst top_body_elem[39;49m
+html.m:053:           [38;5;40m)[39;49m
+html.m:053:           [38;5;40mwhich expands to[39;49m
+html.m:053:             [38;5;40mbound([39;49m
+html.m:053:               [38;5;40m[][39;49m
+html.m:053:             [38;5;40m;[39;49m
+html.m:053:               [38;5;40m'[|]'([39;49m
+html.m:053:                 [38;5;40mnamed inst top_body_elem,[39;49m
+html.m:053:                 [38;5;40mnamed inst list.list_skel([39;49m
+html.m:053:                   [38;5;40mnamed inst top_body_elem[39;49m
+html.m:053:                 [38;5;40m)[39;49m
+html.m:053:               [38;5;40m)[39;49m
+html.m:053:             [38;5;40m)[39;49m
+html.m:053:         [38;5;40m)[39;49m
+html.m:053:       [38;5;40m).[39;49m
