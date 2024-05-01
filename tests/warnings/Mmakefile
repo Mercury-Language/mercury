@@ -76,11 +76,11 @@ ERRORCHECK_PROGS = \
 
 # We do not pass these two tests, which were intended to test the shadowing
 # of standard library modules. Ironically, the reason why we compare the
-# actual .err files of these test cases with their .exp files is that
+# actual .err files of these test cases with their .err_exp files is that
 # mmake finds what it thinks are *their* .err files in the stage2/library
 # directory, and thus does not actually compile them. This leaves no .err
 # file in *this* directory for the %.res_error rule to compare against
-# the .exp file.
+# the .err_exp file.
 #
 #	profiling_builtin
 #	time
@@ -117,32 +117,32 @@ unused_args_analysis.err: unused_args_analysis_helper_1.c
 # Check that `mmc --make up_to_date.m' generates a warning.
 up_to_date.runtest:
 	$(MCM) up_to_date.m > up_to_date.err_make 2>&1
-	diff $(DIFF_OPTS) up_to_date.exp up_to_date.err_make \
+	diff $(DIFF_OPTS) up_to_date.err_exp up_to_date.err_make \
 		> up_to_date.res_make || \
 		{ cat up_to_date.err_make; cat up_to_date.res_make; exit 1; }
 
 #-----------------------------------------------------------------------------#
 
-%.res_error:	%.exp %.err
+%.res_error:	%.err_exp %.err
 	-rm -f $@
-	diff $(DIFF_OPTS) $*.exp $*.err > $@ || \
-		{ [ -f $*.exp2 ] && \
-		  diff $(DIFF_OPTS) $*.exp2 $*.err > $@; } || \
-		{ [ -f $*.exp3 ] && \
-		  diff $(DIFF_OPTS) $*.exp3 $*.err > $@; } || \
-		{ [ -f $*.exp4 ] && \
-		  diff $(DIFF_OPTS) $*.exp4 $*.err > $@; } || \
+	diff $(DIFF_OPTS) $*.err_exp $*.err > $@ || \
+		{ test -f $*.err_exp2 && \
+		  diff $(DIFF_OPTS) $*.err_exp2 $*.err > $@; } || \
+		{ test -f $*.err_exp3 && \
+		  diff $(DIFF_OPTS) $*.err_exp3 $*.err > $@; } || \
+		{ test -f $*.err_exp4 && \
+		  diff $(DIFF_OPTS) $*.err_exp4 $*.err > $@; } || \
 		{ cat $*.err; cat $@; exit 1; }
 
-%.res_compile:	%.exp %.c
+%.res_compile:	%.err_exp %.c
 	-rm -f $@
-	diff $(DIFF_OPTS) $*.exp $*.err > $@ || \
-		{ [ -f $*.exp2 ] && \
-		  diff $(DIFF_OPTS) $*.exp2 $*.err > $@; } || \
-		{ [ -f $*.exp3 ] && \
-		  diff $(DIFF_OPTS) $*.exp3 $*.err > $@; } || \
-		{ [ -f $*.exp4 ] && \
-		  diff $(DIFF_OPTS) $*.exp4 $*.err > $@; } || \
+	diff $(DIFF_OPTS) $*.err_exp $*.err > $@ || \
+		{ test -f $*.err_exp2 && \
+		  diff $(DIFF_OPTS) $*.err_exp2 $*.err > $@; } || \
+		{ test -f $*.err_exp3 && \
+		  diff $(DIFF_OPTS) $*.err_exp3 $*.err > $@; } || \
+		{ test -f $*.err_exp4 && \
+		  diff $(DIFF_OPTS) $*.err_exp4 $*.err > $@; } || \
 		{ cat $*.err; cat $@; exit 1; }
 
 ifeq ($(MMAKE_USE_MMC_MAKE),yes)
