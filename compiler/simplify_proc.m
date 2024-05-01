@@ -525,9 +525,13 @@ maybe_warn_about_may_duplicate_attributes(MayDuplicate, Markers, Context,
     (
         MayDuplicate = proc_may_duplicate,
         ( if check_marker(Markers, marker_user_marked_no_inline) then
-            Pieces = [words("Error: the"), quote("may_duplicate"),
-                words("attribute on the foreign_proc contradicts the"),
-                quote("no_inline"), words("pragma on the predicate.")],
+            AttrPieces = [quote("may_duplicate"), words("attribute")],
+            PragmaPieces = [quote("no_inline"), words("pragma")],
+            Pieces = [words("Error: the")] ++
+                color_as_possible_cause(AttrPieces) ++
+                [words("on the foreign_proc contradicts the")] ++
+                color_as_possible_cause(PragmaPieces) ++
+                [words("on the predicate."), nl],
             Spec = spec($pred, severity_error,
                 phase_simplify(report_in_any_mode), Context, Pieces),
             !:Specs = [Spec | !.Specs]
@@ -537,9 +541,13 @@ maybe_warn_about_may_duplicate_attributes(MayDuplicate, Markers, Context,
     ;
         MayDuplicate = proc_may_not_duplicate,
         ( if check_marker(Markers, marker_user_marked_inline) then
-            Pieces = [words("Error: the"), quote("may_not_duplicate"),
-                words("attribute on the foreign_proc contradicts the"),
-                quote("inline"), words("pragma on the predicate.")],
+            AttrPieces = [quote("may_not_duplicate"), words("attribute")],
+            PragmaPieces = [quote("inline"), words("pragma")],
+            Pieces = [words("Error: the")] ++
+                color_as_possible_cause(AttrPieces) ++
+                [words("on the foreign_proc contradicts the")] ++
+                color_as_possible_cause(PragmaPieces) ++
+                [words("on the predicate."), nl],
             Spec = spec($pred, severity_error,
                 phase_simplify(report_in_any_mode), Context, Pieces),
             !:Specs = [Spec | !.Specs]
@@ -557,9 +565,13 @@ maybe_warn_about_may_export_body_attribute(MayExportBody, Markers, Context,
     (
         MayExportBody = proc_may_export_body,
         ( if check_marker(Markers, marker_user_marked_no_inline) then
-            Pieces = [words("Error: the"), quote("may_export_body"),
-                words("attribute on the foreign_proc contradicts the"),
-                quote("no_inline"), words("pragma on the predicate.")],
+            AttrPieces = [quote("may_export_body"), words("attribute")],
+            PragmaPieces = [quote("no_inline"), words("pragma")],
+            Pieces = [words("Error: the")] ++
+                color_as_possible_cause(AttrPieces) ++
+                [words("on the foreign_proc contradicts the")] ++
+                color_as_possible_cause(PragmaPieces) ++
+                [words("on the predicate."), nl],
             Spec = spec($pred, severity_error,
                 phase_simplify(report_in_any_mode), Context, Pieces),
             !:Specs = [Spec | !.Specs]

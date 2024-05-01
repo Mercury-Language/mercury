@@ -280,8 +280,9 @@ simplify_disj([Goal0 | Goals0], RevGoals0, Goals,
             NestedContext0 ^ snc_inside_dupl_for_switch = no
         then
             Context = goal_info_get_context(GoalInfo),
-            MainPieces = [words("Warning: this disjunct"),
-                words("will never have any solutions.")],
+            NeverPieces = [words("will never have any solutions.")],
+            MainPieces = [words("Warning: this disjunct")] ++
+                color_as_incorrect(NeverPieces) ++ [nl],
             simplify_info_get_module_info(!.Info, ModuleInfo),
             simplify_info_get_pred_proc_id(!.Info, PredProcId),
             PredProcId = proc(PredId, ProcId),

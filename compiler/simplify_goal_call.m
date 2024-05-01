@@ -485,8 +485,9 @@ maybe_generate_warning_for_call_to_obsolete_predicate(PredId, ProcId,
             MaybeObsolete = yes(InFavourOfPrime)
         then
             InFavourOf = InFavourOfPrime,
-            PredOrProcPieces = describe_one_proc_name_mode(ModuleInfo,
-                output_mercury, should_module_qualify, proc(PredId, ProcId))
+            PredOrProcPieces = [words("procedure")] ++
+                describe_one_proc_name_mode(ModuleInfo, output_mercury,
+                    should_module_qualify, proc(PredId, ProcId))
         else
             fail
         ),
@@ -510,22 +511,24 @@ maybe_generate_warning_for_call_to_obsolete_predicate(PredId, ProcId,
     then
         GoalContext = goal_info_get_context(GoalInfo),
         MainPieces = [words("Warning: call to obsolete")] ++
-            PredOrProcPieces ++ [suffix("."), nl],
+            color_as_incorrect(PredOrProcPieces ++ [suffix(".")]) ++ [nl],
         (
             InFavourOf = [],
             Pieces = MainPieces
         ;
             InFavourOf = [OnlyInFavourOf],
+            InFavourOfPieces =
+                [qual_sym_name_arity(OnlyInFavourOf), suffix(".")],
             Pieces = MainPieces ++
-                [words("The suggested replacement is"),
-                qual_sym_name_arity(OnlyInFavourOf), suffix("."), nl]
+                [words("The suggested replacement is")] ++
+                color_as_correct(InFavourOfPieces) ++ [nl]
         ;
             InFavourOf = [_, _ | _],
             InFavourOfPieces = component_list_to_pieces("and",
-                list.map(wrap_sym_name_arity, InFavourOf)),
+                list.map(wrap_sym_name_arity, InFavourOf)) ++ [suffix(".")],
             Pieces = MainPieces ++
                 [words("The possible suggested replacements are")] ++
-                InFavourOfPieces ++ [suffix("."), nl]
+                color_as_correct(InFavourOfPieces) ++ [nl]
         ),
         Spec = conditional_spec($pred, warn_obsolete, yes, severity_warning,
             phase_simplify(report_in_any_mode),
@@ -612,8 +615,9 @@ maybe_generate_warning_for_infinite_loop_call(PredId, ProcId, ArgVars,
         pred_info_get_purity(PredInfo, Purity),
         Purity \= purity_impure
     then
-        NamePieces = describe_one_pred_info_name(should_not_module_qualify,
+        NamePieces0 = describe_one_pred_info_name(should_not_module_qualify,
             PredInfo),
+        NamePieces = color_as_incorrect(NamePieces0),
         (
             AllInputsEqvOrSvar = all_inputs_eqv_or_svar,
             (

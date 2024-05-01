@@ -5,10 +5,10 @@ hawkins_mm_fail_reset.m:024:   Declared [38;5;40m`nondet',[39;49m inferred [3
 hawkins_mm_fail_reset.m:031: Error: `:- pragma minimal_model' declaration not
 hawkins_mm_fail_reset.m:031:   allowed for procedure with determinism
 hawkins_mm_fail_reset.m:031:   `failure'.
-hawkins_mm_fail_reset.m:034: Warning: this disjunct will never have any
-hawkins_mm_fail_reset.m:034:   solutions.
-hawkins_mm_fail_reset.m:037: Warning: this disjunct will never have any
-hawkins_mm_fail_reset.m:037:   solutions.
+hawkins_mm_fail_reset.m:034: Warning: this disjunct [38;5;203mwill never have any[39;49m
+hawkins_mm_fail_reset.m:034:   [38;5;203msolutions.[39;49m
+hawkins_mm_fail_reset.m:037: Warning: this disjunct [38;5;203mwill never have any[39;49m
+hawkins_mm_fail_reset.m:037:   [38;5;203msolutions.[39;49m
 hawkins_mm_fail_reset.m:040: Error: `:- pragma minimal_model' declaration not
 hawkins_mm_fail_reset.m:040:   allowed for procedure with determinism
 hawkins_mm_fail_reset.m:040:   `failure'.

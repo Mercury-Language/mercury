@@ -199,8 +199,8 @@ maybe_warn_about_condition(GoalInfo0, NestedContext0, Problem, !Info) :-
     ;
         InsideDuplForSwitch = no,
         Context = goal_info_get_context(GoalInfo0),
-        Pieces = [words("Warning: the condition of this if-then-else"),
-            words(Problem), suffix("."), nl],
+        Pieces = [words("Warning: the condition of this if-then-else")] ++
+            color_as_incorrect([words(Problem), suffix(".")]) ++ [nl],
         Spec = conditional_spec($pred, warn_simple_code, yes,
             severity_warning, phase_simplify(report_only_if_in_all_modes),
             [msg(Context, Pieces)]),

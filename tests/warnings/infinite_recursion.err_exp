@@ -1,7 +1,7 @@
-infinite_recursion.m:025: Warning: recursive call to predicate `main'/2 will
+infinite_recursion.m:025: Warning: recursive call to [38;5;203mpredicate `main'/2[39;49m will
 infinite_recursion.m:025:   lead to infinite recursion.
-infinite_recursion.m:034: Warning: recursive call to predicate `loop'/0 will
+infinite_recursion.m:034: Warning: recursive call to [38;5;203mpredicate `loop'/0[39;49m will
 infinite_recursion.m:034:   lead to infinite recursion.
-infinite_recursion.m:046: Warning: recursive call to predicate `funny_append'/3
+infinite_recursion.m:046: Warning: recursive call to [38;5;203mpredicate `funny_append'/3[39;49m
 infinite_recursion.m:046:   will lead to infinite recursion.
 For more information, recompile with `-E'.

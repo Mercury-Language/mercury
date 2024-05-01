@@ -1,2 +1,2 @@
-spurious_obsolete.m:026: Warning: call to obsolete predicate
-spurious_obsolete.m:026:   `spurious_obsolete.foo'/1.
+spurious_obsolete.m:026: Warning: call to obsolete [38;5;203mpredicate[39;49m
+spurious_obsolete.m:026:   [38;5;203m`spurious_obsolete.foo'/1.[39;49m

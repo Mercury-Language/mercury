@@ -1,7 +1,7 @@
-obsolete_proc_pragma.m:024: Warning: call to obsolete
-obsolete_proc_pragma.m:024:   `obsolete_proc_pragma.bool_vs_int'(in, out).
-obsolete_proc_pragma.m:024:   The suggested replacement is `xyzzy'/2.
-obsolete_proc_pragma.m:037: Warning: call to obsolete
-obsolete_proc_pragma.m:037:   `obsolete_proc_pragma.bool_vs_int_func'(out) =
-obsolete_proc_pragma.m:037:   in.
-obsolete_proc_pragma.m:037:   The suggested replacement is `xyzzy_func'/1.
+obsolete_proc_pragma.m:024: Warning: call to obsolete [38;5;203mprocedure[39;49m
+obsolete_proc_pragma.m:024:   [38;5;203m`obsolete_proc_pragma.bool_vs_int'(in, out).[39;49m
+obsolete_proc_pragma.m:024:   The suggested replacement is [38;5;40m`xyzzy'/2.[39;49m
+obsolete_proc_pragma.m:037: Warning: call to obsolete [38;5;203mprocedure[39;49m
+obsolete_proc_pragma.m:037:   [38;5;203m`obsolete_proc_pragma.bool_vs_int_func'(out) =[39;49m
+obsolete_proc_pragma.m:037:   [38;5;203min.[39;49m
+obsolete_proc_pragma.m:037:   The suggested replacement is [38;5;40m`xyzzy_func'/1.[39;49m
