@@ -41,17 +41,17 @@
     ;       fixed_short_inst.
 
     % error_msg_inst(ModuleInfo, InstVarSet, ExpandNamedInsts, UserOrDeveloper,
-    %   QuoteShortInst, ShortInstSuffix, LongInstPrefix, LongInstSuffix,
-    %   Inst0) = Pieces:
+    %   QuoteShortInst, ShortInstPrefix, ShortInstSuffix,
+    %   LongInstPrefix, LongInstSuffix, Inst0) = Pieces:
     %
     % Format Inst0 for use in an error message, in a short form that fits at
     % the end of the current line if possible, and in a long form that starts
     % on a separate line, if it is not.
     %
     % When using the short form, put the inst's text representation into quotes
-    % if QuoteShortInst = quote_short_inst. Don't put anything before it
-    % (our caller will do that), but add ShortInstSuffix after it. Normally,
-    % ShortInstSuffix will end with either nl or nl_indent_delta.
+    % if QuoteShortInst = quote_short_inst. Put ShortInstPrefix before it
+    % and add ShortInstSuffix after it. Normally, ShortInstSuffix will end
+    % with either nl or nl_indent_delta.
     %
     % When using the long form, leave the inst's text representation as is,
     % without quotations, put LongInstPrefix before it, and LongInstSuffix
@@ -61,13 +61,13 @@
     % undo the effect of the first.)
     %
 :- func error_msg_inst(module_info, inst_varset, maybe_expand_named_insts,
-    user_or_developer, short_inst, list(format_piece),
+    user_or_developer, short_inst, list(format_piece), list(format_piece),
     list(format_piece), list(format_piece), mer_inst) = list(format_piece).
 
     % Do the same job as error_msg_inst, but for inst names.
     %
 :- func error_msg_inst_name(module_info, inst_varset, maybe_expand_named_insts,
-    user_or_developer, short_inst, list(format_piece),
+    user_or_developer, short_inst, list(format_piece), list(format_piece),
     list(format_piece), list(format_piece), inst_name) = list(format_piece).
 
 %---------------------------------------------------------------------------%
@@ -145,8 +145,8 @@
             ).
 
 error_msg_inst(ModuleInfo, InstVarSet, ExpandNamedInsts, UserOrDeveloper,
-        QuoteShortInst, ShortInstSuffix, LongInstPrefix, LongInstSuffix,
-        Inst) = Pieces :-
+        QuoteShortInst, ShortInstPrefix, ShortInstSuffix,
+        LongInstPrefix, LongInstSuffix, Inst) = Pieces :-
     Info = inst_msg_info(ModuleInfo, InstVarSet, ExpandNamedInsts,
         UserOrDeveloper),
     % We used to call strip_module_names_from_inst to strip builtin
@@ -241,7 +241,7 @@ error_msg_inst(ModuleInfo, InstVarSet, ExpandNamedInsts, UserOrDeveloper,
             % Our caller has told us that it ensured this separation already.
             InlinePiece = fixed(InlineStr)
         ),
-        Pieces = [InlinePiece | ShortInstSuffix]
+        Pieces = ShortInstPrefix ++ [InlinePiece | ShortInstSuffix]
     else
         % Showing the inst on a separate line from the English text
         % provides enough separation by itself.
@@ -253,8 +253,8 @@ error_msg_inst(ModuleInfo, InstVarSet, ExpandNamedInsts, UserOrDeveloper,
 %---------------------%
 
 error_msg_inst_name(ModuleInfo, InstVarSet, ExpandNamedInsts, UserOrDeveloper,
-        QuoteShortInst, ShortInstSuffix, LongInstPrefix, LongInstSuffix,
-        InstName) = Pieces :-
+        QuoteShortInst, ShortInstPrefix, ShortInstSuffix,
+        LongInstPrefix, LongInstSuffix, InstName) = Pieces :-
     Info = inst_msg_info(ModuleInfo, InstVarSet, ExpandNamedInsts,
         UserOrDeveloper),
     Expansions0 = expansions_info(map.init, counter.init(1)),
@@ -291,7 +291,7 @@ error_msg_inst_name(ModuleInfo, InstVarSet, ExpandNamedInsts, UserOrDeveloper,
             QuoteShortInst = fixed_short_inst,
             InlinePiece = fixed(InlineStr)
         ),
-        Pieces = [InlinePiece | ShortInstSuffix]
+        Pieces = ShortInstPrefix ++ [InlinePiece | ShortInstSuffix]
     else
         % Showing the inst on a separate line from the English text
         % provides enough separation by itself.

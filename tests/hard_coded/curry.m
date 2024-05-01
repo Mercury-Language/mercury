@@ -44,7 +44,7 @@ my_plus(A, B) = A + B.
 
 :- func my_map(func(T1) = T2, list(T1)) = list(T2).
 % :- mode my_map(func(in) = out is det, in) = out is det.
-:- mode my_map(func(in) = out(func(in) = out is det) is det, in) = out is det.
+:- mode my_map(func(in) = out is det, in) = out is det.
 
 my_map(_F, []) = [].
 my_map(F, [X | Xs]) = [apply(F, X) | my_map(F, Xs)].

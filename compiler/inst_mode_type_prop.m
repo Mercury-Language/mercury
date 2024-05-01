@@ -79,6 +79,13 @@
 % Propagating type information into modes.
 %
 
+:- type tprop_info
+    --->    tprop_info(
+                module_info,
+                tvarset,
+                inst_varset
+            ).
+
 :- type tprop_context
     --->    tprop_arg_list_slot(tprop_args, int)
             % The inst is in the argument list specified by the first argument
@@ -165,7 +172,7 @@
     % of modes which includes the information provided by the
     % corresponding types.
     %
-:- pred propagate_checked_types_into_modes(module_info::in, tprop_args::in,
+:- pred propagate_checked_types_into_modes(tprop_info::in, tprop_args::in,
     list(mer_type)::in, list(mer_mode)::in, list(mer_mode)::out,
     tprop_cache::in, tprop_cache::out,
     list(error_spec)::in, list(error_spec)::out) is det.
@@ -173,7 +180,7 @@
     % Given a type and a mode, produce a new mode that includes the
     % information provided by the type.
     %
-:- pred propagate_checked_type_into_mode(module_info::in,
+:- pred propagate_checked_type_into_mode(tprop_info::in,
     tprop_context::in, mer_type::in, mer_mode::in, mer_mode::out,
     tprop_cache::in, tprop_cache::out,
     list(error_spec)::in, list(error_spec)::out) is det.
@@ -186,9 +193,12 @@
 :- import_module check_hlds.inst_lookup.
 :- import_module check_hlds.mode_util.
 :- import_module check_hlds.type_util.
+:- import_module hlds.error_msg_inst.
 :- import_module hlds.hlds_data.
 :- import_module hlds.hlds_error_util.
 :- import_module hlds.hlds_inst_mode.
+:- import_module parse_tree.builtin_lib_types.
+:- import_module parse_tree.error_type_util.
 :- import_module parse_tree.parse_tree_out_type.
 :- import_module parse_tree.prog_mode.
 :- import_module parse_tree.prog_type.
@@ -211,14 +221,15 @@
     % and insts, produce a new list of insts which includes the information
     % provided by the substituted versions of the corresponding types.
     %
-:- pred propagate_subst_types_into_insts(module_info::in, Args::in, int::in,
+:- pred propagate_subst_types_into_insts(Info::in, Args::in, int::in,
     tsubst::in, list(mer_type)::in, list(mer_inst)::in, list(mer_inst)::out,
     tprop_cache::in, tprop_cache::out, Errors::in, Errors::out) is det
-    <= tprop_record(Context, Args, Errors).
+    <= tprop_record(Info, Context, Args, Errors).
 :- pragma type_spec(pred(propagate_subst_types_into_insts/11),
-    (Context = tprop_context, Args = tprop_args, Errors = tprop_errors)).
+    (Info = tprop_info, Context = tprop_context, Args = tprop_args,
+    Errors = tprop_errors)).
 :- pragma type_spec(pred(propagate_subst_types_into_insts/11),
-    (Context = unit, Args = unit, Errors = unit)).
+    (Info = unit, Context = unit, Args = unit, Errors = unit)).
 
 propagate_subst_types_into_insts(_, _, _, _, [], [], [], !Cache, !Errors).
 propagate_subst_types_into_insts(_, _, _, _, [], [_ | _], [],
@@ -227,26 +238,27 @@ propagate_subst_types_into_insts(_, _, _, _, [], [_ | _], [],
 propagate_subst_types_into_insts(_, _, _, _, [_ | _], [], [],
         !Cache, !Errors) :-
     unexpected($pred, "length mismatch").
-propagate_subst_types_into_insts(ModuleInfo, Args, ArgNum, Subst,
+propagate_subst_types_into_insts(Info, Args, ArgNum, Subst,
         [Type | Types], [Inst0 | Insts0], [Inst | Insts], !Cache, !Errors) :-
     args_slot_to_context(Args, ArgNum, Context),
-    propagate_subst_type_into_inst(ModuleInfo, Context, Subst, Type,
+    propagate_subst_type_into_inst(Info, Context, Subst, Type,
         Inst0, Inst, !Cache, !Errors),
-    propagate_subst_types_into_insts(ModuleInfo, Args, ArgNum + 1, Subst,
+    propagate_subst_types_into_insts(Info, Args, ArgNum + 1, Subst,
         Types, Insts0, Insts, !Cache, !Errors).
 
 %---------------------%
 
-:- pred propagate_subst_type_into_inst(module_info::in, Context::in,
+:- pred propagate_subst_type_into_inst(Info::in, Context::in,
     tsubst::in, mer_type::in, mer_inst::in, mer_inst::out,
     tprop_cache::in, tprop_cache::out, Errors::in, Errors::out) is det
-    <= tprop_record(Context, Args, Errors).
+    <= tprop_record(Info, Context, Args, Errors).
 :- pragma type_spec(pred(propagate_subst_type_into_inst/10),
-    (Context = tprop_context, Args = tprop_args, Errors = tprop_errors)).
+    (Info = tprop_info, Context = tprop_context, Args = tprop_args,
+    Errors = tprop_errors)).
 :- pragma type_spec(pred(propagate_subst_type_into_inst/10),
-    (Context = unit, Args = unit, Errors = unit)).
+    (Info = unit, Context = unit, Args = unit, Errors = unit)).
 
-propagate_subst_type_into_inst(ModuleInfo, Context, Subst, Type0, Inst0, Inst,
+propagate_subst_type_into_inst(Info, Context, Subst, Type0, Inst0, Inst,
         !Cache, !Errors) :-
     % Optimize common case.
     ( if map.is_empty(Subst) then
@@ -254,7 +266,7 @@ propagate_subst_type_into_inst(ModuleInfo, Context, Subst, Type0, Inst0, Inst,
     else
         apply_subst_to_type(Subst, Type0, Type)
     ),
-    propagate_type_into_inst(ModuleInfo, Context, Type, Inst0, Inst,
+    propagate_type_into_inst(Info, Context, Type, Inst0, Inst,
         !Cache, !Errors).
 
 %---------------------%
@@ -263,83 +275,87 @@ propagate_subst_type_into_inst(ModuleInfo, Context, Subst, Type0, Inst0, Inst,
     % and insts, produce a new list of insts which includes the information
     % provided by the corresponding types.
     %
-:- pred propagate_types_into_insts(module_info::in, Args::in, int::in,
+:- pred propagate_types_into_insts(Info::in, Args::in, int::in,
     list(mer_type)::in, list(mer_inst)::in, list(mer_inst)::out,
     tprop_cache::in, tprop_cache::out, Errors::in, Errors::out) is det
-    <= tprop_record(Context, Args, Errors).
+    <= tprop_record(Info, Context, Args, Errors).
 :- pragma type_spec(pred(propagate_types_into_insts/10),
-    (Context = tprop_context, Args = tprop_args, Errors = tprop_errors)).
+    (Info = tprop_info, Context = tprop_context, Args = tprop_args,
+    Errors = tprop_errors)).
 :- pragma type_spec(pred(propagate_types_into_insts/10),
-    (Context = unit, Args = unit, Errors = unit)).
+    (Info = unit, Context = unit, Args = unit, Errors = unit)).
 
 propagate_types_into_insts(_, _, _, [], [], [], !Cache, !Errors).
 propagate_types_into_insts(_, _, _, [], [_ | _], [], !Cache, !Errors) :-
     unexpected($pred, "length mismatch").
 propagate_types_into_insts(_, _, _, [_ | _], [], [], !Cache, !Errors) :-
     unexpected($pred, "length mismatch").
-propagate_types_into_insts(ModuleInfo, Args, ArgNum,
+propagate_types_into_insts(Info, Args, ArgNum,
         [Type | Types], [Inst0 | Insts0], [Inst | Insts], !Cache, !Errors) :-
     args_slot_to_context(Args, ArgNum, Context),
-    propagate_type_into_inst(ModuleInfo, Context,
+    propagate_type_into_inst(Info, Context,
         Type, Inst0, Inst, !Cache, !Errors),
-    propagate_types_into_insts(ModuleInfo, Args, ArgNum + 1,
+    propagate_types_into_insts(Info, Args, ArgNum + 1,
         Types, Insts0, Insts, !Cache, !Errors).
 
 propagate_unchecked_type_into_inst(ModuleInfo, Type, Inst0, Inst) :-
-    propagate_type_into_inst(ModuleInfo, unit, Type, Inst0, Inst,
+    Info = base_info(ModuleInfo),
+    propagate_type_into_inst(Info, unit, Type, Inst0, Inst,
         map.init, _, unit, _).
 
-:- pred propagate_type_into_inst(module_info::in, Context::in,
+:- pred propagate_type_into_inst(Info::in, Context::in,
     mer_type::in, mer_inst::in, mer_inst::out,
     tprop_cache::in, tprop_cache::out, Errors::in, Errors::out) is det
-    <= tprop_record(Context, Args, Errors).
+    <= tprop_record(Info, Context, Args, Errors).
 :- pragma type_spec(pred(propagate_type_into_inst/9),
-    (Context = tprop_context, Args = tprop_args, Errors = tprop_errors)).
+    (Info = tprop_info, Context = tprop_context, Args = tprop_args,
+    Errors = tprop_errors)).
 :- pragma type_spec(pred(propagate_type_into_inst/9),
-    (Context = unit, Args = unit, Errors = unit)).
+    (Info = unit, Context = unit, Args = unit, Errors = unit)).
 
-propagate_type_into_inst(ModuleInfo, Context, Type, Inst0, Inst,
-        !Cache, !Errors) :-
+propagate_type_into_inst(Info, Context, Type, Inst0, Inst, !Cache, !Errors) :-
     ( if semidet_fail then
         % XXX We ought to expand things eagerly here, using this code.
         % However, that causes efficiency problems, so for the moment
         % we always do propagation lazily.
+        ModuleInfo = get_module_info(Info),
         ( if type_constructors(ModuleInfo, Type, Constructors) then
-            propagate_type_into_inst_eagerly(ModuleInfo, Context,
+            propagate_type_into_inst_eagerly(Info, Context,
                 Type, Constructors, Inst0, Inst, !Cache, !Errors)
         else
             Inst = Inst0
         )
     else
-        propagate_type_into_inst_lazily(ModuleInfo, Context,
+        propagate_type_into_inst_lazily(Info, Context,
             Type, Inst0, Inst, !Cache, !Errors)
     ).
 
 %---------------------%
 
-:- pred propagate_type_into_inst_eagerly(module_info::in, Context::in,
+:- pred propagate_type_into_inst_eagerly(Info::in, Context::in,
     mer_type::in, list(constructor)::in, mer_inst::in, mer_inst::out,
     tprop_cache::in, tprop_cache::out, Errors::in, Errors::out) is det
-    <= tprop_record(Context, Args, Errors).
+    <= tprop_record(Info, Context, Args, Errors).
 :- pragma type_spec(pred(propagate_type_into_inst_eagerly/10),
-    (Context = tprop_context, Args = tprop_args, Errors = tprop_errors)).
+    (Info = tprop_info, Context = tprop_context, Args = tprop_args,
+    Errors = tprop_errors)).
 :- pragma type_spec(pred(propagate_type_into_inst_eagerly/10),
-    (Context = unit, Args = unit, Errors = unit)).
+    (Info = unit, Context = unit, Args = unit, Errors = unit)).
 
-propagate_type_into_inst_eagerly(ModuleInfo, Context, Type, Constructors,
+propagate_type_into_inst_eagerly(Info, Context, Type, Constructors,
         Inst0, Inst, !Cache, !Errors) :-
     (
         Inst0 = free,
-        % Inst = free(Type)
-        Inst = free             % XXX temporary hack (since 1994!)
+        Inst = free
     ;
         Inst0 = ground(Uniq, HOInstInfo0),
+        ModuleInfo = get_module_info(Info),
         (
             HOInstInfo0 = none_or_default_func,
             ( if
                 type_is_higher_order_details(Type, _, pf_function, ArgTypes)
             then
-                default_higher_order_func_inst(ModuleInfo, Context, ArgTypes,
+                default_higher_order_func_inst(Info, Context, ArgTypes,
                     HigherOrderInstInfo, !Cache, !Errors),
                 Inst = ground(Uniq, higher_order(HigherOrderInstInfo))
             else
@@ -367,7 +383,7 @@ propagate_type_into_inst_eagerly(ModuleInfo, Context, Type, Constructors,
             then
                 PredFormArity = arg_list_arity(ArgTypes),
                 step_into_ho_inst(PredOrFunc, PredFormArity, Context, Args),
-                propagate_types_into_modes(ModuleInfo, Args, 1,
+                propagate_types_into_modes(Info, Args, 1,
                     ArgTypes, Modes0, Modes, !Cache, !Errors)
             else
                 % The inst is not a valid inst for the type, so leave it alone.
@@ -382,12 +398,13 @@ propagate_type_into_inst_eagerly(ModuleInfo, Context, Type, Constructors,
         )
     ;
         Inst0 = any(Uniq, HOInstInfo0),
+        ModuleInfo = get_module_info(Info),
         (
             HOInstInfo0 = none_or_default_func,
             ( if
                 type_is_higher_order_details(Type, _, pf_function, ArgTypes)
             then
-                default_higher_order_func_inst(ModuleInfo, Context, ArgTypes,
+                default_higher_order_func_inst(Info, Context, ArgTypes,
                     PredInstInfo, !Cache, !Errors),
                 Inst = any(Uniq, higher_order(PredInstInfo))
             else
@@ -418,7 +435,7 @@ propagate_type_into_inst_eagerly(ModuleInfo, Context, Type, Constructors,
             then
                 PredFormArity = arg_list_arity(ArgTypes),
                 step_into_ho_inst(PredOrFunc, PredFormArity, Context, Args),
-                propagate_types_into_modes(ModuleInfo, Args, 1,
+                propagate_types_into_modes(Info, Args, 1,
                     ArgTypes, Modes0, Modes, !Cache, !Errors)
             else
                 % The inst is not a valid inst for the type, so leave it alone.
@@ -433,7 +450,7 @@ propagate_type_into_inst_eagerly(ModuleInfo, Context, Type, Constructors,
         )
     ;
         Inst0 = bound(_Uniq, _InstResult, _BoundInsts0),
-        propagate_type_into_bound_inst(ModuleInfo, Context,
+        propagate_type_into_bound_inst(Info, Context,
             Type, Inst0, Inst, !Cache, !Errors)
     ;
         Inst0 = not_reached,
@@ -443,33 +460,34 @@ propagate_type_into_inst_eagerly(ModuleInfo, Context, Type, Constructors,
         Inst = Inst0
     ;
         Inst0 = constrained_inst_vars(InstVars, SubInst0),
-        propagate_type_into_inst_eagerly(ModuleInfo, Context,
+        propagate_type_into_inst_eagerly(Info, Context,
             Type, Constructors, SubInst0, SubInst, !Cache, !Errors),
         Inst = constrained_inst_vars(InstVars, SubInst)
     ;
         Inst0 = defined_inst(InstName),
-        check_for_bad_use_of_user_inst(ModuleInfo, Context, InstName, Type,
+        check_for_bad_use_of_user_inst(Info, Context, InstName, Type,
             !Cache, !Errors),
+        ModuleInfo = get_module_info(Info),
         inst_lookup(ModuleInfo, InstName, NamedInst),
-        propagate_type_into_inst_eagerly(ModuleInfo, Context,
+        propagate_type_into_inst_eagerly(Info, Context,
             Type, Constructors, NamedInst, Inst, !Cache, !Errors)
     ).
 
-:- pred propagate_type_into_inst_lazily(module_info::in, Context::in,
+:- pred propagate_type_into_inst_lazily(Info::in, Context::in,
     mer_type::in, mer_inst::in, mer_inst::out,
     tprop_cache::in, tprop_cache::out, Errors::in, Errors::out) is det
-    <= tprop_record(Context, Args, Errors).
+    <= tprop_record(Info, Context, Args, Errors).
 :- pragma type_spec(pred(propagate_type_into_inst_lazily/9),
-    (Context = tprop_context, Args = tprop_args, Errors = tprop_errors)).
+    (Info = tprop_info, Context = tprop_context, Args = tprop_args,
+    Errors = tprop_errors)).
 :- pragma type_spec(pred(propagate_type_into_inst_lazily/9),
-    (Context = unit, Args = unit, Errors = unit)).
+    (Info = unit, Context = unit, Args = unit, Errors = unit)).
 
-propagate_type_into_inst_lazily(ModuleInfo, Context, Type, Inst0, Inst,
+propagate_type_into_inst_lazily(Info, Context, Type, Inst0, Inst,
         !Cache, !Errors) :-
     (
         Inst0 = free,
-        % Inst = free(Type0)
-        Inst = free             % XXX temporary hack (since 1994!)
+        Inst = free
     ;
         Inst0 = ground(Uniq, HOInstInfo0),
         (
@@ -477,7 +495,7 @@ propagate_type_into_inst_lazily(ModuleInfo, Context, Type, Inst0, Inst,
             ( if
                 type_is_higher_order_details(Type, _, pf_function, ArgTypes)
             then
-                default_higher_order_func_inst(ModuleInfo, Context, ArgTypes,
+                default_higher_order_func_inst(Info, Context, ArgTypes,
                     HOInstInfo, !Cache, !Errors),
                 Inst = ground(Uniq, higher_order(HOInstInfo))
             else
@@ -492,18 +510,26 @@ propagate_type_into_inst_lazily(ModuleInfo, Context, Type, Inst0, Inst,
             PredInstInfo0 =
                 pred_inst_info(PredOrFunc, Modes0, MaybeArgRegs, Detism),
             ( if
-                type_is_higher_order_details(Type, _, PredOrFunc, ArgTypes),
-                list.same_length(ArgTypes, Modes0)
+                type_is_higher_order_details(Type, _, PredOrFunc, ArgTypes)
             then
-                PredFormArity = arg_list_arity(ArgTypes),
-                step_into_ho_inst(PredOrFunc, PredFormArity, Context, Args),
-                propagate_types_into_modes(ModuleInfo, Args, 1,
-                    ArgTypes, Modes0, Modes, !Cache, !Errors)
+                ( if list.same_length(ArgTypes, Modes0) then
+                    PredFormArity = arg_list_arity(ArgTypes),
+                    step_into_ho_inst(PredOrFunc, PredFormArity, Context,
+                        Args),
+                    propagate_types_into_modes(Info, Args, 1,
+                        ArgTypes, Modes0, Modes, !Cache, !Errors)
+                else
+                    report_wrong_arity_ho_inst(Info, Context, Type, ArgTypes,
+                        Inst0, Modes0, !Errors),
+                    % The inst is not a valid inst for the type, so leave it
+                    % alone. This can only happen if the user has made a
+                    % mistake. A mode error should hopefully be reported
+                    % if anything tries to match with the inst.
+                    Modes = Modes0
+                )
             else
-                % The inst is not a valid inst for the type, so leave it alone.
-                % This can only happen if the user has made a mistake.
-                % A mode error should hopefully be reported if anything
-                % tries to match with the inst.
+                report_ho_inst_for_non_ho_type(Info, Context, Type, Inst0,
+                    !Errors),
                 Modes = Modes0
             ),
             PredInstInfo =
@@ -517,7 +543,7 @@ propagate_type_into_inst_lazily(ModuleInfo, Context, Type, Inst0, Inst,
             ( if
                 type_is_higher_order_details(Type, _, pf_function, ArgTypes)
             then
-                default_higher_order_func_inst(ModuleInfo, Context, ArgTypes,
+                default_higher_order_func_inst(Info, Context, ArgTypes,
                     HOInstInfo, !Cache, !Errors),
                 Inst = any(Uniq, higher_order(HOInstInfo))
             else
@@ -533,7 +559,7 @@ propagate_type_into_inst_lazily(ModuleInfo, Context, Type, Inst0, Inst,
             then
                 PredFormArity = arg_list_arity(ArgTypes),
                 step_into_ho_inst(PredOrFunc, PredFormArity, Context, Args),
-                propagate_types_into_modes(ModuleInfo, Args, 1,
+                propagate_types_into_modes(Info, Args, 1,
                     ArgTypes, Modes0, Modes, !Cache, !Errors)
             else
                 % The inst is not a valid inst for the type, so leave it alone.
@@ -548,7 +574,7 @@ propagate_type_into_inst_lazily(ModuleInfo, Context, Type, Inst0, Inst,
         )
     ;
         Inst0 = bound(_Uniq, _InstResult, _BoundInsts0),
-        propagate_type_into_bound_inst(ModuleInfo, Context,
+        propagate_type_into_bound_inst(Info, Context,
             Type, Inst0, Inst, !Cache, !Errors)
     ;
         Inst0 = not_reached,
@@ -558,12 +584,12 @@ propagate_type_into_inst_lazily(ModuleInfo, Context, Type, Inst0, Inst,
         Inst = Inst0
     ;
         Inst0 = constrained_inst_vars(InstVars, SubInst0),
-        propagate_type_into_inst_lazily(ModuleInfo, Context,
+        propagate_type_into_inst_lazily(Info, Context,
             Type, SubInst0, SubInst, !Cache, !Errors),
         Inst = constrained_inst_vars(InstVars, SubInst)
     ;
         Inst0 = defined_inst(InstName0),
-        check_for_bad_use_of_user_inst(ModuleInfo, Context, InstName0, Type,
+        check_for_bad_use_of_user_inst(Info, Context, InstName0, Type,
             !Cache, !Errors),
         ( if InstName0 = typed_inst(_, _) then
             % If this happens, it means that we have already lazily propagated
@@ -578,14 +604,15 @@ propagate_type_into_inst_lazily(ModuleInfo, Context, Type, Inst0, Inst,
         )
     ).
 
-:- pred check_user_inst_args(module_info::in, mer_type::in,
+:- pred check_user_inst_args(Info::in, mer_type::in,
     Context::in, user_inst_info::in,
     tprop_cache::in, tprop_cache::out, Errors::in, Errors::out) is det
-    <= tprop_record(Context, Args, Errors).
+    <= tprop_record(Info, Context, Args, Errors).
 :- pragma type_spec(pred(check_user_inst_args/8),
-    (Context = tprop_context, Args = tprop_args, Errors = tprop_errors)).
+    (Info = tprop_info, Context = tprop_context, Args = tprop_args,
+    Errors = tprop_errors)).
 :- pragma type_spec(pred(check_user_inst_args/8),
-    (Context = unit, Args = unit, Errors = unit)).
+    (Info = unit, Context = unit, Args = unit, Errors = unit)).
 
 check_user_inst_args(ModuleInfo, Type, Context, UserInstInfo,
         !Cache, !Errors) :-
@@ -612,16 +639,17 @@ check_user_inst_args(ModuleInfo, Type, Context, UserInstInfo,
     % This applies recursively to the arguments and return
     % value too.
     %
-:- pred default_higher_order_func_inst(module_info::in, Context::in,
+:- pred default_higher_order_func_inst(Info::in, Context::in,
     list(mer_type)::in, pred_inst_info::out,
     tprop_cache::in, tprop_cache::out, Errors::in, Errors::out) is det
-    <= tprop_record(Context, Args, Errors).
+    <= tprop_record(Info, Context, Args, Errors).
 :- pragma type_spec(pred(default_higher_order_func_inst/8),
-    (Context = tprop_context, Args = tprop_args, Errors = tprop_errors)).
+    (Info = tprop_info, Context = tprop_context, Args = tprop_args,
+    Errors = tprop_errors)).
 :- pragma type_spec(pred(default_higher_order_func_inst/8),
-    (Context = unit, Args = unit, Errors = unit)).
+    (Info = unit, Context = unit, Args = unit, Errors = unit)).
 
-default_higher_order_func_inst(ModuleInfo, Context, PredArgTypes, PredInstInfo,
+default_higher_order_func_inst(Info, Context, PredArgTypes, PredInstInfo,
         !Cache, !Errors) :-
     Ground = ground(shared, none_or_default_func),
     In = from_to_mode(Ground, Ground),
@@ -633,7 +661,7 @@ default_higher_order_func_inst(ModuleInfo, Context, PredArgTypes, PredInstInfo,
     PredArgModes0 = FuncArgModes ++ [FuncRetMode],
     step_into_ho_inst(pf_function, pred_form_arity(NumPredArgs),
         Context, Args),
-    propagate_types_into_modes(ModuleInfo, Args, 1, PredArgTypes,
+    propagate_types_into_modes(Info, Args, 1, PredArgTypes,
         PredArgModes0, PredArgModes, !Cache, !Errors),
     PredInstInfo = pred_inst_info(pf_function, PredArgModes,
         arg_reg_types_unset, detism_det).
@@ -641,30 +669,32 @@ default_higher_order_func_inst(ModuleInfo, Context, PredArgTypes, PredInstInfo,
 %---------------------------------------------------------------------------%
 
 propagate_unchecked_type_into_bound_inst(ModuleInfo, Type, Inst0, Inst) :-
-    propagate_type_into_bound_inst(ModuleInfo, unit, Type, Inst0, Inst,
+    Info = base_info(ModuleInfo),
+    propagate_type_into_bound_inst(Info, unit, Type, Inst0, Inst,
         map.init, _, unit, _).
 
-:- pred propagate_type_into_bound_inst(module_info::in, Context::in,
+:- pred propagate_type_into_bound_inst(Info::in, Context::in,
     mer_type::in, mer_inst::in(mer_inst_is_bound), mer_inst::out,
     tprop_cache::in, tprop_cache::out, Errors::in, Errors::out) is det
-    <= tprop_record(Context, Args, Errors).
+    <= tprop_record(Info, Context, Args, Errors).
 :- pragma type_spec(pred(propagate_type_into_bound_inst/9),
-    (Context = tprop_context, Args = tprop_args, Errors = tprop_errors)).
+    (Info = tprop_info, Context = tprop_context, Args = tprop_args,
+    Errors = tprop_errors)).
 :- pragma type_spec(pred(propagate_type_into_bound_inst/9),
-    (Context = unit, Args = unit, Errors = unit)).
+    (Info = unit, Context = unit, Args = unit, Errors = unit)).
 
-propagate_type_into_bound_inst(ModuleInfo, Context, Type, Inst0, Inst,
+propagate_type_into_bound_inst(Info, Context, Type, Inst0, Inst,
         !Cache, !Errors) :-
     Inst0 = bound(Uniq, InstResults0, BoundInsts0),
     % Test for the most frequent kinds of type_ctors first.
-    % XXX Replace with a switch on Type.
     (
         Type = builtin_type(BuiltinType),
         (
             BuiltinType = builtin_type_char,
             % There is no need to sort BoundInsts; if BoundInsts0 is sorted,
             % which it should be, then BoundInsts will be sorted too.
-            list.map(propagate_char_type, BoundInsts0, BoundInsts),
+            list.map_foldl(propagate_char_type(Context),
+                BoundInsts0, BoundInsts, !Errors),
             % Tuples don't have a *conventional* type_ctor.
             % XXX Tuples?
             PropagatedResult = inst_result_no_type_ctor_propagated,
@@ -684,7 +714,7 @@ propagate_type_into_bound_inst(ModuleInfo, Context, Type, Inst0, Inst,
         % There is no need to sort BoundInsts; if BoundInsts0 is sorted,
         % which it should be, then BoundInsts will be sorted too.
         list.map_foldl2(
-            propagate_types_into_tuple(ModuleInfo, Context, ArgTypes),
+            propagate_types_into_tuple(Info, Context, ArgTypes),
             BoundInsts0, BoundInsts, !Cache, !Errors),
         % Tuples don't have a *conventional* type_ctor.
         PropagatedResult = inst_result_no_type_ctor_propagated,
@@ -703,6 +733,7 @@ propagate_type_into_bound_inst(ModuleInfo, Context, Type, Inst0, Inst,
         Type = defined_type(SymName, ArgTypes, _Kind),
         ( if
             SymName = qualified(TypeModule, _),
+            ModuleInfo = get_module_info(Info),
             module_info_get_type_table(ModuleInfo, TypeTable),
             TypeCtor = type_ctor(SymName, list.length(ArgTypes)),
             search_type_ctor_defn(TypeTable, TypeCtor, TypeDefn),
@@ -724,7 +755,7 @@ propagate_type_into_bound_inst(ModuleInfo, Context, Type, Inst0, Inst,
                 map.from_corresponding_lists(TypeParams, ArgTypes, ArgSubst),
                 OoMConstructors = TypeBodyDu ^ du_type_ctors,
                 Constructors = one_or_more_to_list(OoMConstructors),
-                propagate_subst_type_ctor_into_bound_insts(ModuleInfo, Context,
+                propagate_subst_type_ctor_into_bound_insts(Info, Context,
                     ArgSubst, TypeCtor, TypeModule, Constructors,
                     BoundInsts0, BoundInsts1, !Cache, !Errors),
                 list.sort(BoundInsts1, BoundInsts),
@@ -740,7 +771,7 @@ propagate_type_into_bound_inst(ModuleInfo, Context, Type, Inst0, Inst,
         )
     ;
         Type = kinded_type(KindedType, _Kind),
-        propagate_type_into_bound_inst(ModuleInfo, Context, KindedType,
+        propagate_type_into_bound_inst(Info, Context, KindedType,
             Inst0, Inst, !Cache, !Errors)
     ).
 
@@ -786,14 +817,15 @@ construct_new_bound_inst(Uniq, InstResults0, PropagatedResult, BoundInsts,
         Inst = bound(Uniq, InstResults, BoundInsts)
     ).
 
-:- pred propagate_types_into_tuple(module_info::in, Context::in,
+:- pred propagate_types_into_tuple(Info::in, Context::in,
     list(mer_type)::in, bound_inst::in, bound_inst::out,
     tprop_cache::in, tprop_cache::out, Errors::in, Errors::out) is det
-    <= tprop_record(Context, Args, Errors).
+    <= tprop_record(Info, Context, Args, Errors).
 :- pragma type_spec(pred(propagate_types_into_tuple/9),
-    (Context = tprop_context, Args = tprop_args, Errors = tprop_errors)).
+    (Info = tprop_info, Context = tprop_context, Args = tprop_args,
+    Errors = tprop_errors)).
 :- pragma type_spec(pred(propagate_types_into_tuple/9),
-    (Context = unit, Args = unit, Errors = unit)).
+    (Info = unit, Context = unit, Args = unit, Errors = unit)).
 
 propagate_types_into_tuple(ModuleInfo, Context, TupleArgTypes,
         BoundInst0, BoundInst, !Cache, !Errors) :-
@@ -818,19 +850,22 @@ propagate_types_into_tuple(ModuleInfo, Context, TupleArgTypes,
     ),
     BoundInst = bound_functor(Functor, ArgInsts).
 
-:- pred propagate_char_type(bound_inst::in, bound_inst::out) is det.
+:- pred propagate_char_type(Context::in, bound_inst::in, bound_inst::out,
+    Errors::in, Errors::out) is det
+    <= tprop_record(Info, Context, Args, Errors).
 
-propagate_char_type(BoundInst0, BoundInst) :-
-    BoundInst0 = bound_functor(Functor0, ArgInsts0),
+propagate_char_type(Context, BoundInst0, BoundInst, !Errors) :-
+    BoundInst0 = bound_functor(ConsId0, ArgInsts0),
     ( if
-        Functor0 = cons(unqualified(Name), 0, _),
+        ConsId0 = cons(unqualified(Name), 0, _),
         string.to_char_list(Name, NameChars),
         NameChars = [NameChar],
         ArgInsts0 = []
     then
-        Functor = char_const(NameChar),
-        BoundInst = bound_functor(Functor, [])
+        ConsId = char_const(NameChar),
+        BoundInst = bound_functor(ConsId, [])
     else
+        report_missing_cons_id(Context, char_type_ctor, ConsId0, !Errors),
         % The bound_inst is not a valid one for chars, so leave it alone.
         % This can only happen in a user defined bound_inst.
         % A mode error should be reported if anything tries to match with
@@ -838,49 +873,59 @@ propagate_char_type(BoundInst0, BoundInst) :-
         BoundInst = BoundInst0
     ).
 
-:- pred propagate_subst_type_ctor_into_bound_insts(module_info::in,
+:- pred propagate_subst_type_ctor_into_bound_insts(Info::in,
     Context::in, tsubst::in, type_ctor::in, module_name::in,
     list(constructor)::in, list(bound_inst)::in, list(bound_inst)::out,
     tprop_cache::in, tprop_cache::out, Errors::in, Errors::out) is det
-    <= tprop_record(Context, Args, Errors).
+    <= tprop_record(Info, Context, Args, Errors).
 :- pragma type_spec(pred(propagate_subst_type_ctor_into_bound_insts/12),
-    (Context = tprop_context, Args = tprop_args, Errors = tprop_errors)).
+    (Info = tprop_info, Context = tprop_context, Args = tprop_args,
+    Errors = tprop_errors)).
 :- pragma type_spec(pred(propagate_subst_type_ctor_into_bound_insts/12),
-    (Context = unit, Args = unit, Errors = unit)).
+    (Info = unit, Context = unit, Args = unit, Errors = unit)).
 
 propagate_subst_type_ctor_into_bound_insts(_, _, _, _, _, _, [], [],
         !Cache, !Errors).
-propagate_subst_type_ctor_into_bound_insts(ModuleInfo, Context, Subst,
+propagate_subst_type_ctor_into_bound_insts(Info, Context, Subst,
         TypeCtor, TypeModule, Constructors,
         [BoundInst0 | BoundInsts0], [BoundInst | BoundInsts],
         !Cache, !Errors) :-
     BoundInst0 = bound_functor(ConsId0, ArgInsts0),
-    ( if ConsId0 = cons(unqualified(Name), ConsArity, _ConsTypeCtor) then
-        % _ConsTypeCtor should be either TypeCtor or cons_id_dummy_type_ctor.
-        ConsId = cons(qualified(TypeModule, Name), ConsArity, TypeCtor)
+    ( if ConsId0 = cons(ConsSymName0, ConsArity, _ConsTypeCtor) then
+        (
+            ConsSymName0 = unqualified(ConsName),
+            ConsSymName = qualified(TypeModule, ConsName)
+        ;
+            ConsSymName0 = qualified(ConsModule0, ConsName),
+            check_cons_id_qualifier(Context, TypeCtor, TypeModule,
+                ConsModule0, ConsName, ConsArity, !Errors),
+            ConsSymName = qualified(TypeModule, ConsName)
+        ),
+        ConsId = cons(ConsSymName, ConsArity, TypeCtor),
+        ( if
+            find_first_matching_constructor(ConsSymName, ConsArity,
+                Constructors, MatchingConstructor)
+        then
+            MatchingConstructor = ctor(_Ordinal, _MaybeExistConstraints,
+                _Name, CtorArgs, _Arity, _Ctxt),
+            get_constructor_arg_types(CtorArgs, ArgTypes),
+            step_into_bound_inst(ConsId, Context, Args),
+            propagate_subst_types_into_insts(Info, Args, 1, Subst,
+                ArgTypes, ArgInsts0, ArgInsts, !Cache, !Errors),
+            BoundInst = bound_functor(ConsId, ArgInsts)
+        else
+            % The cons_id is not a valid constructor for the type,
+            % so leave it alone. This can only happen in a user defined
+            % bound_inst. A mode error should be reported if anything
+            % tries to match with the inst.
+            report_missing_cons_id(Context, TypeCtor, ConsId0, !Errors),
+            BoundInst = bound_functor(ConsId, ArgInsts0)
+        )
     else
-        ConsId = ConsId0
+        report_missing_cons_id(Context, TypeCtor, ConsId0, !Errors),
+        BoundInst = bound_functor(ConsId0, ArgInsts0)
     ),
-    ( if
-        ConsId = cons(ConsName, Arity, _),
-        find_first_matching_constructor(ConsName, Arity, Constructors,
-            MatchingConstructor)
-    then
-        MatchingConstructor = ctor(_Ordinal, _MaybeExistConstraints,
-            _Name, CtorArgs, _Arity, _Ctxt),
-        get_constructor_arg_types(CtorArgs, ArgTypes),
-        step_into_bound_inst(ConsId, Context, Args),
-        propagate_subst_types_into_insts(ModuleInfo, Args, 1, Subst,
-            ArgTypes, ArgInsts0, ArgInsts, !Cache, !Errors),
-        BoundInst = bound_functor(ConsId, ArgInsts)
-    else
-        % The cons_id is not a valid constructor for the type,
-        % so leave it alone. This can only happen in a user defined
-        % bound_inst. A mode error should be reported if anything
-        % tries to match with the inst.
-        BoundInst = bound_functor(ConsId, ArgInsts0)
-    ),
-    propagate_subst_type_ctor_into_bound_insts(ModuleInfo, Context, Subst,
+    propagate_subst_type_ctor_into_bound_insts(Info, Context, Subst,
         TypeCtor, TypeModule, Constructors, BoundInsts0, BoundInsts,
         !Cache, !Errors).
 
@@ -912,17 +957,17 @@ get_constructor_arg_types([Arg | Args], [ArgType | ArgTypes]) :-
 
 %---------------------------------------------------------------------------%
 
-propagate_checked_types_into_modes(ModuleInfo, Args,
+propagate_checked_types_into_modes(Info, Args,
         Types, Modes0, Modes, !Cache, !Specs) :-
     Errors0 = tprop_errors(!.Specs),
-    propagate_types_into_modes(ModuleInfo, Args, 1,
+    propagate_types_into_modes(Info, Args, 1,
         Types, Modes0, Modes, !Cache, Errors0, Errors),
     Errors = tprop_errors(!:Specs).
 
-propagate_checked_type_into_mode(ModuleInfo, Context,
+propagate_checked_type_into_mode(Info, Context,
         Type, Mode0, Mode, !Cache, !Specs) :-
     Errors0 = tprop_errors(!.Specs),
-    propagate_type_into_mode(ModuleInfo, Context,
+    propagate_type_into_mode(Info, Context,
         Type, Mode0, Mode, !Cache, Errors0, Errors),
     Errors = tprop_errors(!:Specs).
 
@@ -932,14 +977,15 @@ propagate_checked_type_into_mode(ModuleInfo, Context,
     % of modes which includes the information provided by the
     % corresponding types.
     %
-:- pred propagate_types_into_modes(module_info::in, Args::in, int::in,
+:- pred propagate_types_into_modes(Info::in, Args::in, int::in,
     list(mer_type)::in, list(mer_mode)::in, list(mer_mode)::out,
     tprop_cache::in, tprop_cache::out, Errors::in, Errors::out) is det
-    <= tprop_record(Context, Args, Errors).
+    <= tprop_record(Info, Context, Args, Errors).
 :- pragma type_spec(pred(propagate_types_into_modes/10),
-    (Context = tprop_context, Args = tprop_args, Errors = tprop_errors)).
+    (Info = tprop_info, Context = tprop_context, Args = tprop_args,
+    Errors = tprop_errors)).
 :- pragma type_spec(pred(propagate_types_into_modes/10),
-    (Context = unit, Args = unit, Errors = unit)).
+    (Info = unit, Context = unit, Args = unit, Errors = unit)).
 
 propagate_types_into_modes(_, _, _, [], [], [], !Cache, !Errors).
 propagate_types_into_modes(_, _, _, [], [_ | _], [], !Cache, !Errors) :-
@@ -957,21 +1003,22 @@ propagate_types_into_modes(ModuleInfo, Args, ArgNum, [Type | Types],
     % Given a type and a mode, produce a new mode that includes the
     % information provided by the type.
     %
-:- pred propagate_type_into_mode(module_info::in, Context::in,
+:- pred propagate_type_into_mode(Info::in, Context::in,
     mer_type::in, mer_mode::in, mer_mode::out,
     tprop_cache::in, tprop_cache::out, Errors::in, Errors::out) is det
-    <= tprop_record(Context, Args, Errors).
+    <= tprop_record(Info, Context, Args, Errors).
 :- pragma type_spec(pred(propagate_type_into_mode/9),
-    (Context = tprop_context, Args = tprop_args, Errors = tprop_errors)).
+    (Info = tprop_info, Context = tprop_context, Args = tprop_args,
+    Errors = tprop_errors)).
 :- pragma type_spec(pred(propagate_type_into_mode/9),
-    (Context = unit, Args = unit, Errors = unit)).
+    (Info = unit, Context = unit, Args = unit, Errors = unit)).
 
-propagate_type_into_mode(ModuleInfo, Context, Type, Mode0, Mode,
-        !Cache, !Errors) :-
+propagate_type_into_mode(Info, Context, Type, Mode0, Mode, !Cache, !Errors) :-
+    ModuleInfo = get_module_info(Info),
     mode_get_insts(ModuleInfo, Mode0, InitialInst0, FinalInst0),
-    propagate_type_into_inst_lazily(ModuleInfo, Context, Type,
+    propagate_type_into_inst_lazily(Info, Context, Type,
         InitialInst0, InitialInst, !Cache, !Errors),
-    propagate_type_into_inst_lazily(ModuleInfo, Context, Type,
+    propagate_type_into_inst_lazily(Info, Context, Type,
         FinalInst0, FinalInst, !Cache, !Errors),
     Mode = from_to_mode(InitialInst, FinalInst).
 
@@ -979,16 +1026,27 @@ propagate_type_into_mode(ModuleInfo, Context, Type, Mode0, Mode,
 %---------------------------------------------------------------------------%
 
 % Some of the exported predicates of this module want to generate error
-% messages for applications of inst_names to type constructors differ
-% from the "for type_ctor" annotation on that inst_name, but some do not.
+% messages for errors such as the application of an inst_name to a
+% type constructor that differ from the "for type_ctor" annotation
+% on that inst_name, but some do not.
+%
 % To avoid excessive performance impact on the latter, we make the checking
 % optional through a typeclass with two instances, one of which prepares for
 % and then does the checking, while the other replaces all those operations
 % with no-ops.
 
-:- typeclass tprop_record(Context, Args, Errors)
-    <= ((Context -> Args, Errors), (Args -> Context, Errors))
+:- typeclass tprop_record(Info, Context, Args, Errors)
+    <= (
+        (Info -> Context, Args, Errors),
+        (Context -> Info, Args, Errors),
+        (Args -> Info, Context, Errors)
+    )
 where [
+        % Return the module_info being threaded through
+        % the entire propagation process.
+        %
+    func get_module_info(Info) = module_info,
+
         % Return a representation of the argument list inside
         % the bound_inst of the given cons_id at the given context.
         %
@@ -1019,7 +1077,7 @@ where [
     pred user_inst_expansion_to_context(Context::in, sym_name_arity::in,
         Context::out) is semidet,
 
-        % check_for_bad_use_of_user_inst(ModuleInfo, Context, InstName, Type,
+        % check_for_bad_use_of_user_inst(Info, Context, InstName, Type,
         %   !Cache, !Errors):
         %
         % Check whether InstName has the form user_inst(SymName, ArgInsts),
@@ -1038,9 +1096,23 @@ where [
         % !.Cache shows that we have not processed the current combination
         % before.
         %
-    pred check_for_bad_use_of_user_inst(module_info::in, Context::in,
+    pred check_for_bad_use_of_user_inst(Info::in, Context::in,
         inst_name::in, mer_type::in, tprop_cache::in, tprop_cache::out,
-        Errors::in, Errors::out) is det
+        Errors::in, Errors::out) is det,
+
+    pred check_cons_id_qualifier(Context::in, type_ctor::in, module_name::in,
+        module_name::in, string::in, arity::in, Errors::in, Errors::out)
+        is det,
+
+    pred report_missing_cons_id(Context::in, type_ctor::in, cons_id::in,
+        Errors::in, Errors::out) is det,
+
+    pred report_wrong_arity_ho_inst(Info::in, Context::in,
+        mer_type::in, list(mer_type)::in, mer_inst::in, list(mer_mode)::in,
+        Errors::in, Errors::out) is det,
+
+    pred report_ho_inst_for_non_ho_type(Info::in, Context::in,
+        mer_type::in, mer_inst::in, Errors::in, Errors::out) is det
 ].
 
     % Values of this type hold the information needed to check
@@ -1060,14 +1132,23 @@ where [
 
 %---------------------%
 
-    % This instance defines all operations as no-ops.
-:- instance tprop_record(unit, unit, unit) where [
+:- type base_info
+    --->    base_info(module_info).
+
+    % This instance defines all operations as no-ops,
+    % with the exception of returning the module_info.
+:- instance tprop_record(base_info, unit, unit, unit) where [
+    (get_module_info(base_info(ModuleInfo)) = ModuleInfo),
     (step_into_bound_inst(_, _, unit)),
     (step_into_tuple_inst(_, unit)),
     (step_into_ho_inst(_, _, _, unit)),
     (args_slot_to_context(_, _, unit)),
     (user_inst_expansion_to_context(_, _, _) :- fail),
-    (check_for_bad_use_of_user_inst(_, _, _, _, Cache, Cache, Errors, Errors))
+    (check_for_bad_use_of_user_inst(_, _, _, _, Cache, Cache, Errors, Errors)),
+    (check_cons_id_qualifier(_, _, _, _, _, _, Errors, Errors)),
+    (report_missing_cons_id(_, _, _, Errors, Errors)),
+    (report_wrong_arity_ho_inst(_, _, _, _, _, _, Errors, Errors)),
+    (report_ho_inst_for_non_ho_type(_, _, _, _, Errors, Errors))
 ].
 
     % This instance does all the work.
@@ -1076,7 +1157,10 @@ where [
     % We need the separate type because each type in an instance
     % may contain only a single type constructor, and list(error_spec)
     % contains two.
-:- instance tprop_record(tprop_context, tprop_args, tprop_errors) where [
+:- instance tprop_record(tprop_info, tprop_context, tprop_args, tprop_errors)
+    where
+[
+    (get_module_info(tprop_info(ModuleInfo, _, _)) = ModuleInfo),
     pred(step_into_bound_inst/3) is do_step_into_bound_inst,
     pred(step_into_tuple_inst/2) is do_step_into_tuple_inst,
     pred(step_into_ho_inst/4) is do_step_into_ho_inst,
@@ -1084,7 +1168,15 @@ where [
     pred(user_inst_expansion_to_context/3)
         is do_user_inst_expansion_to_context,
     pred(check_for_bad_use_of_user_inst/8)
-        is do_check_for_bad_use_of_user_inst
+        is do_check_for_bad_use_of_user_inst,
+    pred(check_cons_id_qualifier/8)
+        is do_check_cons_id_qualifier,
+    pred(report_missing_cons_id/5)
+        is do_report_missing_cons_id,
+    pred(report_wrong_arity_ho_inst/8)
+        is do_report_wrong_arity_ho_inst,
+    pred(report_ho_inst_for_non_ho_type/6)
+        is do_report_ho_inst_for_non_ho_type
 ].
 
 :- type tprop_errors
@@ -1136,9 +1228,10 @@ do_user_inst_expansion_to_context(Context, InstNameArity, SubContext) :-
 :- func are_we_already_inside_user_inst_expansion(tprop_context,
     sym_name_arity) = maybe_inside_user_inst.
 
-are_we_already_inside_user_inst_expansion(Context, SymNameArity) = Inside :-
+are_we_already_inside_user_inst_expansion(LocnContext, SymNameArity)
+        = Inside :-
     (
-        Context = tprop_arg_list_slot(Args, _ArgNum),
+        LocnContext = tprop_arg_list_slot(Args, _ArgNum),
         (
             ( Args = ta_pred(_)
             ; Args = ta_lambda(_, _, _)
@@ -1153,7 +1246,7 @@ are_we_already_inside_user_inst_expansion(Context, SymNameArity) = Inside :-
                 SymNameArity)
         )
     ;
-        Context = tprop_inst_name_expansion(InstNameArity, OuterContext),
+        LocnContext = tprop_inst_name_expansion(InstNameArity, OuterContext),
         ( if SymNameArity = InstNameArity then
             Inside = inside_user_inst
         else
@@ -1164,11 +1257,11 @@ are_we_already_inside_user_inst_expansion(Context, SymNameArity) = Inside :-
 
 %---------------------%
 
-:- pred do_check_for_bad_use_of_user_inst(module_info::in, tprop_context::in,
+:- pred do_check_for_bad_use_of_user_inst(tprop_info::in, tprop_context::in,
     inst_name::in, mer_type::in, tprop_cache::in, tprop_cache::out,
     tprop_errors::in, tprop_errors::out) is det.
 
-do_check_for_bad_use_of_user_inst(ModuleInfo, TPropContext, InstName, Type,
+do_check_for_bad_use_of_user_inst(Info, TPropContext, InstName, Type,
         !Cache, !Errors) :-
     (
         ( InstName = unify_inst(_, _, _, _)
@@ -1182,7 +1275,7 @@ do_check_for_bad_use_of_user_inst(ModuleInfo, TPropContext, InstName, Type,
         )
     ;
         InstName = user_inst(SymName, ArgInsts),
-        % For the tests/valid/inst_per_bug_2 test case, this cache reduces
+        % For the tests/valid/inst_perf_bug_2 test case, this cache reduces
         % the number of checks done from above 16 million to just 12.
         ( if
             result_is_in_tprop_cache(!.Cache, Type, SymName, ArgInsts, Result)
@@ -1192,8 +1285,8 @@ do_check_for_bad_use_of_user_inst(ModuleInfo, TPropContext, InstName, Type,
             ;
                 Result = tprop_cache_result_error(InstCtor, InstForTypeCtor,
                     TypeCtor),
-                do_record_bad_use_of_user_inst(InstCtor, InstForTypeCtor,
-                    TypeCtor, TPropContext, !Errors)
+                do_record_bad_use_of_user_inst(TPropContext, InstCtor,
+                    InstForTypeCtor, TypeCtor, !Errors)
             )
         else
             trace [compile_time(flag("user_inst_checks")), io(!IO)] (
@@ -1204,6 +1297,7 @@ do_check_for_bad_use_of_user_inst(ModuleInfo, TPropContext, InstName, Type,
                     [s(sym_name_to_string(SymName)), s(string(ArgInsts)),
                     s(TypeStr)], !IO)
             ),
+            Info = tprop_info(ModuleInfo, _, _),
             module_info_get_inst_table(ModuleInfo, InstTable),
             inst_table_get_user_insts(InstTable, UserInstTable),
             list.length(ArgInsts, Arity),
@@ -1221,8 +1315,8 @@ do_check_for_bad_use_of_user_inst(ModuleInfo, TPropContext, InstName, Type,
                 then
                     Result = tprop_cache_result_error(InstCtor,
                         InstForTypeCtor, TypeCtor),
-                    do_record_bad_use_of_user_inst(InstCtor, InstForTypeCtor,
-                        TypeCtor, TPropContext, !Errors)
+                    do_record_bad_use_of_user_inst(TPropContext,
+                        InstCtor, InstForTypeCtor, TypeCtor, !Errors)
                     % XXX
                     % We have found an error in this application of InstName.
                     % We do still check whether InstName's argument insts
@@ -1235,7 +1329,7 @@ do_check_for_bad_use_of_user_inst(ModuleInfo, TPropContext, InstName, Type,
                 ),
                 record_result_in_tprop_cache(Type, SymName, ArgInsts, Result,
                     !Cache),
-                check_user_inst_args(ModuleInfo, Type, TPropContext,
+                check_user_inst_args(Info, Type, TPropContext,
                     UserInstInfo, !Cache, !Errors)
             else
                 true
@@ -1276,15 +1370,14 @@ record_result_in_tprop_cache(Type, SymName, ArgInsts, Result, !Cache) :-
 
 %---------------------%
 
-:- pred do_record_bad_use_of_user_inst(inst_ctor::in,
-    type_ctor::in, type_ctor::in, tprop_context::in,
+:- pred do_record_bad_use_of_user_inst(tprop_context::in,
+    inst_ctor::in, type_ctor::in, type_ctor::in,
     tprop_errors::in, tprop_errors::out) is det.
 
-do_record_bad_use_of_user_inst(InstCtor, ForTypeCtor, TypeCtor,
-        TPropContext, !Errors) :-
-    !.Errors = tprop_errors(Specs0),
-    tprop_context_to_pieces(TPropContext, Context, TPropContextPieces),
-    Pieces = TPropContextPieces ++
+do_record_bad_use_of_user_inst(TPropContext, InstCtor, ForTypeCtor, TypeCtor,
+        !Errors) :-
+    tprop_context_to_pieces(TPropContext, Context, LocnPieces),
+    Pieces = LocnPieces ++
         [words("error: the user defined inst"),
         nl_indent_delta(1),
         qual_inst_ctor(InstCtor),
@@ -1298,8 +1391,113 @@ do_record_bad_use_of_user_inst(InstCtor, ForTypeCtor, TypeCtor,
         qual_type_ctor(TypeCtor), suffix("."),
         nl_indent_delta(-1)],
     Spec = spec($pred, severity_error, phase_inst_check, Context, Pieces),
+    !.Errors = tprop_errors(Specs0),
     Specs = [Spec | Specs0],
     !:Errors = tprop_errors(Specs).
+
+%---------------------------------------------------------------------------%
+
+:- pred do_check_cons_id_qualifier(tprop_context::in, type_ctor::in,
+    module_name::in, module_name::in, string::in, arity::in,
+    tprop_errors::in, tprop_errors::out) is det.
+
+do_check_cons_id_qualifier(TPropContext, TypeCtor, TypeModule,
+        ConsIdModule0, ConsName, ConsArity, !Errors) :-
+    ( if partial_sym_name_matches_full(ConsIdModule0, TypeModule) then
+        true
+    else
+        tprop_context_to_pieces(TPropContext, Context, LocnPieces),
+        ConsNA = name_arity(ConsName, ConsArity),
+        Pieces = LocnPieces ++
+            [words("error in bound inst: the constructor"), name_arity(ConsNA),
+            words("has a module qualifier,")] ++
+            color_as_incorrect([qual_sym_name(ConsIdModule0), suffix(",")]) ++
+            [words("that is incompatible with the type of the value"),
+            words("whose instantiation state it is supposed to represent,"),
+            words("that type being")] ++
+            color_as_correct([qual_type_ctor(TypeCtor), suffix(".")]) ++ [nl],
+        Spec = spec($pred, severity_error, phase_inst_check, Context, Pieces),
+        !.Errors = tprop_errors(Specs0),
+        Specs = [Spec | Specs0],
+        !:Errors = tprop_errors(Specs)
+    ).
+
+:- pred do_report_missing_cons_id(tprop_context::in, type_ctor::in,
+    cons_id::in, tprop_errors::in, tprop_errors::out) is det.
+
+do_report_missing_cons_id(TPropContext, TypeCtor, ConsId, !Errors) :-
+    tprop_context_to_pieces(TPropContext, Context, TPropContextPieces),
+    Pieces = TPropContextPieces ++
+        [words("error in bound inst: the constructor")] ++
+        color_as_incorrect([unqual_cons_id_and_maybe_arity(ConsId)]) ++
+        [words("is supposed to describe the instantiation state"),
+        words("of a value of type"), qual_type_ctor(TypeCtor), suffix(","),
+        words("but that type has no such constructor."), nl],
+    Spec = spec($pred, severity_error, phase_inst_check, Context, Pieces),
+    !.Errors = tprop_errors(Specs0),
+    Specs = [Spec | Specs0],
+    !:Errors = tprop_errors(Specs).
+
+:- pred do_report_wrong_arity_ho_inst(tprop_info::in, tprop_context::in,
+    mer_type::in, list(mer_type)::in, mer_inst::in, list(mer_mode)::in,
+    tprop_errors::in, tprop_errors::out) is det.
+
+do_report_wrong_arity_ho_inst(TPropInfo, TPropContext, Type, ArgTypes,
+        Inst, ArgModes, !Errors) :-
+    TPropInfo = tprop_info(ModuleInfo, TypeVarSet, InstVarSet),
+    tprop_context_to_pieces(TPropContext, Context, LocnPieces),
+    InstPieces0 = error_msg_inst(ModuleInfo, InstVarSet,
+        dont_expand_named_insts, uod_user, quote_short_inst,
+        [nl_indent_delta(1)], [nl_indent_delta(-1)],
+        [nl_indent_delta(1)], [nl_indent_delta(-1)], Inst),
+    InstPieces = color_as_incorrect(InstPieces0),
+    ExistQTVars = [],
+    TypePieces = type_to_pieces(TypeVarSet, InstVarSet, print_name_only,
+        add_quotes, ExistQTVars, Type),
+    list.length(ArgTypes, TypeArity),
+    list.length(ArgModes, InstArity),
+    Pieces = LocnPieces ++
+        [words("error: the higher order inst")] ++ InstPieces ++
+        [words("cannot describe the instantiation state of a value"),
+        words("of the higher-order type"), nl_indent_delta(1)] ++
+        color_as_correct(TypePieces ++ [suffix(",")]) ++ [nl_indent_delta(-1),
+        words("because they have different arities,"),
+        words("The higher order type has")] ++
+        color_as_correct([int_fixed(TypeArity)]) ++ [words("arguments"),
+        words("while the higher order inst has")] ++
+        color_as_incorrect([int_fixed(InstArity)]) ++ [words("arguments."),
+        nl],
+    Spec = spec($pred, severity_error, phase_inst_check, Context, Pieces),
+    !.Errors = tprop_errors(Specs0),
+    Specs = [Spec | Specs0],
+    !:Errors = tprop_errors(Specs).
+
+:- pred do_report_ho_inst_for_non_ho_type(tprop_info::in, tprop_context::in,
+    mer_type::in, mer_inst::in, tprop_errors::in, tprop_errors::out) is det.
+
+do_report_ho_inst_for_non_ho_type(TPropInfo, TPropContext, Type, Inst,
+        !Errors) :-
+    TPropInfo = tprop_info(ModuleInfo, TypeVarSet, InstVarSet),
+    tprop_context_to_pieces(TPropContext, Context, LocnPieces),
+    ExistQTVars = [],
+    TypePieces = type_to_pieces(TypeVarSet, InstVarSet, print_name_only,
+        add_quotes, ExistQTVars, Type),
+    InstPieces0 = error_msg_inst(ModuleInfo, InstVarSet,
+        dont_expand_named_insts, uod_user, quote_short_inst,
+        [nl_indent_delta(1)], [nl_indent_delta(-1)],
+        [nl_indent_delta(1)], [nl_indent_delta(-1)], Inst),
+    InstPieces = color_as_incorrect(InstPieces0),
+    Pieces = LocnPieces ++
+        [words("error: the higher order inst")] ++ InstPieces ++
+        [words("cannot describe the instantiation state of a value"),
+        words("of the non-higher-order type"), nl_indent_delta(1)] ++
+        color_as_correct(TypePieces ++ [suffix(",")]) ++ [nl_indent_delta(-1)],
+    Spec = spec($pred, severity_error, phase_inst_check, Context, Pieces),
+    !.Errors = tprop_errors(Specs0),
+    Specs = [Spec | Specs0],
+    !:Errors = tprop_errors(Specs).
+
+%---------------------------------------------------------------------------%
 
 :- pred tprop_context_to_pieces(tprop_context::in,
     prog_context::out, list(format_piece)::out) is det.

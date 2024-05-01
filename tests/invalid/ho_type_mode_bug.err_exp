@@ -1,3 +1,12 @@
+ho_type_mode_bug.m:020: In the first argument of predicate `my_foldl2'/6:
+ho_type_mode_bug.m:020:   error: the higher order inst [38;5;203m[39;49m
+ho_type_mode_bug.m:020:     [38;5;203m`(pred(in, in, out) is det)'[39;49m
+ho_type_mode_bug.m:020:   cannot describe the instantiation state of a value of
+ho_type_mode_bug.m:020:   the higher-order type
+ho_type_mode_bug.m:020:     [38;5;40m`pred(X, Y, Y, Z, Z)',[39;49m
+ho_type_mode_bug.m:020:   because they have different arities, The higher order
+ho_type_mode_bug.m:020:   type has [38;5;40m5[39;49m arguments while the higher order inst has
+ho_type_mode_bug.m:020:   [38;5;203m3[39;49m arguments.
 ho_type_mode_bug.m:029: In clause for `my_foldl2((pred(in, in, out) is det),
 ho_type_mode_bug.m:029:   in, in, out, di, uo)':
 ho_type_mode_bug.m:029:   mode error in conjunction. The next 4 error messages

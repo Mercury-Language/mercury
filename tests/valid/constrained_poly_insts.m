@@ -9,7 +9,8 @@
 :- mode search(in(tree(K, V =< any)), in(K), out(V =< any)) is semidet.
 
 :- inst k == bound(a ; b ; c).
-:- inst v == (pred(in, out) is det).
+% :- inst v == (pred(in, out) is det). This leads to a error message.
+:- inst v == bound(d ; e).
 
 :- func call_search(tree(K, V), K) = V.
 :- mode call_search(in(tree(k, v)), in(k)) = out(v) is semidet.

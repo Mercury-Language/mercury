@@ -1192,7 +1192,7 @@ mode_error_bad_higher_order_inst_to_spec(ModeInfo, PredVar, PredVarInst,
             mode_info_get_module_info(ModeInfo, ModuleInfo),
             mode_info_get_instvarset(ModeInfo, InstVarSet),
             PredVarInstPieces = error_msg_inst(ModuleInfo, InstVarSet,
-                dont_expand_named_insts, uod_user, quote_short_inst, [],
+                dont_expand_named_insts, uod_user, quote_short_inst, [], [],
                 [nl_indent_delta(1)], [nl_indent_delta(-1)], PredVarInst),
             ActPieces =
                 [words("and the type of"), fixed(PredVarName),
@@ -2161,7 +2161,7 @@ report_inst(ModeInfo, ShortInstQF, ShortInstSuffix,
     mode_info_get_module_info(ModeInfo, ModuleInfo),
     mode_info_get_instvarset(ModeInfo, InstVarSet),
     Pieces = error_msg_inst(ModuleInfo, InstVarSet, expand_named_insts,
-        uod_user, ShortInstQF, ShortInstSuffix,
+        uod_user, ShortInstQF, [], ShortInstSuffix,
         LongInstPrefix, LongInstSuffix, Inst0).
 
 %---------------------------------------------------------------------------%

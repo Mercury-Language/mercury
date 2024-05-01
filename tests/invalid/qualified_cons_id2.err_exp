@@ -1,17 +1,19 @@
-qualified_cons_id2.m:020: In `test'(in(bound(qualified_cons_id2.yes(ground))),
-qualified_cons_id2.m:020:   out):
-qualified_cons_id2.m:020:   error: determinism declaration not satisfied.
-qualified_cons_id2.m:020:   Declared [38;5;40m`det',[39;49m inferred [38;5;203m`failure'.[39;49m
+qualified_cons_id2.m:019: In the first argument of predicate `test'/2:
+qualified_cons_id2.m:019:   error in bound inst: the constructor `yes'/1 has a
+qualified_cons_id2.m:019:   module qualifier, [38;5;203m`qualified_cons_id2',[39;49m that is
+qualified_cons_id2.m:019:   incompatible with the type of the value whose
+qualified_cons_id2.m:019:   instantiation state it is supposed to represent,
+qualified_cons_id2.m:019:   that type being [38;5;40m`maybe.maybe'/1.[39;49m
+qualified_cons_id2.m:019: In the first argument of predicate `test'/2:
+qualified_cons_id2.m:019:   in the expansion of the user-defined inst
+qualified_cons_id2.m:019:   `qualified_cons_id2.yes'/0:
+qualified_cons_id2.m:019:   error in bound inst: the constructor `yes'/1 has a
+qualified_cons_id2.m:019:   module qualifier, [38;5;203m`qualified_cons_id2',[39;49m that is
+qualified_cons_id2.m:019:   incompatible with the type of the value whose
+qualified_cons_id2.m:019:   instantiation state it is supposed to represent,
+qualified_cons_id2.m:019:   that type being [38;5;40m`maybe.maybe'/1.[39;49m
 qualified_cons_id2.m:020: In mode declarations for predicate
 qualified_cons_id2.m:020:   `qualified_cons_id2.test'/2:
 qualified_cons_id2.m:020:   error: duplicate mode declaration.
 qualified_cons_id2.m:021:   Here is the conflicting mode declaration.
-qualified_cons_id2.m:025: In clause for
-qualified_cons_id2.m:025:   `test(in(bound(qualified_cons_id2.yes(ground))),
-qualified_cons_id2.m:025:   out)':
-qualified_cons_id2.m:025:   in argument 1 of clause head:
-qualified_cons_id2.m:025:   warning: unification of `HeadVar__1' and maybe.yes
-qualified_cons_id2.m:025:   cannot succeed.
-qualified_cons_id2.m:025:   `HeadVar__1' has instantiatedness
-qualified_cons_id2.m:025:   [38;5;203m`bound(yes(ground))'.[39;49m
 For more information, recompile with `-E'.

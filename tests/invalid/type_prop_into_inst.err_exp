@@ -1,0 +1,19 @@
+type_prop_into_inst.m:014: In the second argument of predicate
+type_prop_into_inst.m:014:   `convert_list'/2:
+type_prop_into_inst.m:014:   in the expansion of the user-defined inst
+type_prop_into_inst.m:014:   `list.list_skel'/1:
+type_prop_into_inst.m:014:   in the first argument of `[|]'/2:
+type_prop_into_inst.m:014:   in the expansion of the user-defined inst
+type_prop_into_inst.m:014:   `type_prop_into_inst.mypred'/0:
+type_prop_into_inst.m:014:   error: the higher order inst [38;5;203m[39;49m
+type_prop_into_inst.m:014:     [38;5;203m`(pred(in, in, out) is det)'[39;49m
+type_prop_into_inst.m:014:   cannot describe the instantiation state of a value
+type_prop_into_inst.m:014:   of the non-higher-order type
+type_prop_into_inst.m:014:     [38;5;40m`T',[39;49m
+type_prop_into_inst.m:018: In the first argument of function `my_map'/2:
+type_prop_into_inst.m:018:   in the result argument of the higher order inst:
+type_prop_into_inst.m:018:   error: the higher order inst [38;5;203m[39;49m
+type_prop_into_inst.m:018:     [38;5;203m`(func(in) = out is det)'[39;49m
+type_prop_into_inst.m:018:   cannot describe the instantiation state of a value
+type_prop_into_inst.m:018:   of the non-higher-order type
+type_prop_into_inst.m:018:     [38;5;40m`T2',[39;49m

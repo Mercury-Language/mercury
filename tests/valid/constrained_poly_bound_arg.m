@@ -13,10 +13,15 @@
     --->    nil
     ;       list(X2, val_closure(closure_list(X2))).
 
-:- inst val_closure(X3) == bound(error3.val_closure(pred(out(X3)) is det)).
+:- inst val_closure(X3) ==
+    bound(constrained_poly_bound_arg.val_closure(pred(out(X3)) is det)).
 
-:- inst closure_list(X4) == bound(error3.nil ;
-    error3.list(X4, val_closure(closure_list(X4)))).
+:- inst closure_list(X4) ==
+    bound(
+        constrained_poly_bound_arg.nil
+    ;
+        constrained_poly_bound_arg.list(X4, val_closure(closure_list(X4)))
+    ).
 
 :- implementation.
 

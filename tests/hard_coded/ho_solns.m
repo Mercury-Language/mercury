@@ -37,30 +37,26 @@ main(!IO) :-
 :- type mypred == (pred(int, int, int)).
 :- inst mypred == (pred(in, in, out) is det).
 
-:- pred convert_list(list(T), list(T)).
+:- pred convert_list(list(T), list(mypred)).
 :- mode convert_list(in, out(list_skel(mypred))) is det.
 
 :- pragma foreign_proc("C",
     convert_list(L0 :: in, L :: out(list_skel(mypred))),
     [will_not_call_mercury, promise_pure],
 "
-{
     L = L0;
-}
 ").
 :- pragma foreign_proc("C#",
     convert_list(L0 :: in, L :: out(list_skel(mypred))),
-    [promise_pure], "
-{
+    [promise_pure],
+"
     L = L0;
-}
 ").
 :- pragma foreign_proc("Java",
     convert_list(L0 :: in, L :: out(list_skel(mypred))),
-    [promise_pure], "
-{
+    [promise_pure],
+"
     L = L0;
-}
 ").
 
 :- pred use_list(list(mypred)::in(list_skel(mypred)), io::di, io::uo) is det.

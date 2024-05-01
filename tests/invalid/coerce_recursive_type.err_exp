@@ -21,6 +21,23 @@ coerce_recursive_type.m:051:   `coerce_recursive_type.citrus' because it has
 coerce_recursive_type.m:051:   instantiatedness [38;5;203m`ground',[39;49m and
 coerce_recursive_type.m:051:   [38;5;203m`coerce_recursive_type.fruit'[39;49m is not a subtype
 coerce_recursive_type.m:051:   of `coerce_recursive_type.citrus'.
+coerce_recursive_type.m:055: In the first argument of function `bad3'/1:
+coerce_recursive_type.m:055:   in the expansion of the user-defined inst
+coerce_recursive_type.m:055:   `coerce_recursive_type.cons_apple3'/0:
+coerce_recursive_type.m:055:   in the second argument of `cons'/2:
+coerce_recursive_type.m:055:   in the expansion of the user-defined inst
+coerce_recursive_type.m:055:   `coerce_recursive_type.cons_apple2'/0:
+coerce_recursive_type.m:055:   in the second argument of `cons'/2:
+coerce_recursive_type.m:055:   in the expansion of the user-defined inst
+coerce_recursive_type.m:055:   `coerce_recursive_type.cons_apple'/0:
+coerce_recursive_type.m:055:   in the first argument of `cons'/2:
+coerce_recursive_type.m:055:   in the expansion of the user-defined inst
+coerce_recursive_type.m:055:   `coerce_recursive_type.apple'/0:
+coerce_recursive_type.m:055:   error in bound inst: the constructor [38;5;203m`apple'/0[39;49m
+coerce_recursive_type.m:055:   is supposed to describe the instantiation state
+coerce_recursive_type.m:055:   of a value of type
+coerce_recursive_type.m:055:   `coerce_recursive_type.citrus'/0, but that type
+coerce_recursive_type.m:055:   has no such constructor.
 coerce_recursive_type.m:058: In clause for
 coerce_recursive_type.m:058:   `bad3(in(coerce_recursive_type.cons_apple3)) =
 coerce_recursive_type.m:058:   out':
