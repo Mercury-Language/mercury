@@ -1377,7 +1377,7 @@ encode_escaped_char(Char::out, Str::in) :-
 
 mercury_escape_special_char('\a', 'a').
 mercury_escape_special_char('\b', 'b').
-% mercury_escape_special_char('\e', 'e'). XXX ESCAPE Enable after bootstrap.
+mercury_escape_special_char('\e', 'e').
 mercury_escape_special_char('\f', 'f').
 mercury_escape_special_char('\n', 'n').
 mercury_escape_special_char('\r', 'r').

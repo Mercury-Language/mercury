@@ -2084,7 +2084,7 @@ linestr_get_quoted_name_escape(String, Len, QuoteChar, !.RevChars,
 
 escape_char('a', '\a').
 escape_char('b', '\b').
-escape_char('e', '\033\').  % XXX ESCAPE Replace with '\e' after bootstrap.
+escape_char('e', '\e').
 escape_char('f', '\f').
 escape_char('n', '\n').
 escape_char('r', '\r').

@@ -1217,6 +1217,9 @@ Changes to the Mercury language
   between the digits forming the fraction part and the `e` or `E` that
   introduces the exponent part.
 
+* You can now use the escape sequence '\e' to refer to the ESC (escape)
+  character, just as you can use '\n' to refer to the newline character.
+
 Changes to the Mercury compiler
 -------------------------------
 

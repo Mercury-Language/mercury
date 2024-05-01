@@ -330,10 +330,11 @@ and the innermost pair stand for a single double quote.
 Strings may also contain backslash escapes.
 @samp{\a} stands for ``alert'' (a beep character),
 @samp{\b} for backspace,
-@samp{\r} for carriage-return,
+@samp{\e} for escape,
 @samp{\f} for form-feed,
-@samp{\t} for tab,
 @samp{\n} for newline,
+@samp{\r} for carriage-return,
+@samp{\t} for tab,
 @samp{\v} for vertical-tab.
 An escaped backslash, single-quote, or double-quote stands for itself.
 

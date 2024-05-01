@@ -210,7 +210,7 @@ syn match   mercuryEscErr       /\v\\([ \t]+$)@=/ contained " matching escaped n
 syn match   mercuryEscErr       /\v\\[uUx]/ contained " must come before \\u\x{4}
 syn match   mercuryEscErr       /\v\\0/     contained " \0 literals are not allowed
 syn match   mercuryStringEsc    /\\$/       contained " matching escaped newline
-syn match   mercuryStringEsc    /\v\\[abfnrtv\\"]/     contained
+syn match   mercuryStringEsc    /\v\\[abefnrtv\\"]/    contained
 syn match   mercuryStringEsc    /\v\\u\x{4}/           contained
 syn match   mercuryStringEsc    /\v\\U00(10|0\x)\x{4}/ contained
 syn match   mercuryStringEsc    /\v\\x\x+\\/           contained

@@ -3377,7 +3377,7 @@ univ_named_arg_2(Term, TypeInfo, TypeCtorInfo, TypeCtorRep, NonCanon, Name,
 
 quote_special_escape_char('\a', "'\\a'").
 quote_special_escape_char('\b', "'\\b'").
-% quote_special_escape_char('\e', "'\\e'"). XXX ESCAPE Enable after bootstrap.
+quote_special_escape_char('\e', "'\\e'").
 quote_special_escape_char('\f', "'\\f'").
 quote_special_escape_char('\n', "'\\n'").
 quote_special_escape_char('\r', "'\\r'").
