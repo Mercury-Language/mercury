@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1996-2012 The University of Melbourne.
-% Copyright (C) 2014-2021 The Mercury team.
+% Copyright (C) 2014-2024 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -407,9 +407,9 @@ construct_type_ctor_info(TypeCtorGenInfo, ModuleInfo, RttiData) :-
                 LayoutIndexable = IndexableByEnumValue
             ;
                 DuTypeKind = du_type_kind_notag(FunctorName, ArgType,
-                    MaybeArgName),
+                    MaybeArgFieldName),
                 make_notag_details(ModuleInfo, TypeArity, MaybeSuperType,
-                    FunctorName, ArgType, MaybeArgName, EqualityAxioms,
+                    FunctorName, ArgType, MaybeArgFieldName, EqualityAxioms,
                     Details),
                 LayoutIndexable = no
             ;
@@ -900,7 +900,8 @@ get_du_rep(ConsTag, DuRep) :-
 
 generate_du_arg_info(NumUnivTVars, ExistTVars, ConsArgRepn, ArgInfo,
         !FunctorSubtypeInfo) :-
-    ConsArgRepn = ctor_arg_repn(MaybeCtorFieldName, ArgType, ArgWidth, _Ctxt),
+    ConsArgRepn = ctor_arg_repn(MaybeCtorFieldName, _MaybeBaseCtorArg,
+        ArgType, ArgWidth, _Ctxt),
     (
         MaybeCtorFieldName = yes(ctor_field_name(SymName, _)),
         ArgName = unqualify_name(SymName),

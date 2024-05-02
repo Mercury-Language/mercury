@@ -844,7 +844,7 @@ ml_gen_hld_du_ctor_typeclass_info_field(ModuleInfo, Context, _Constraint,
         Defn, FieldInfo, !ArgNum) :-
     Type = typeclass_info_type,
     ml_gen_hld_du_ctor_field_gen(ModuleInfo, Context, !.ArgNum,
-        no, Type, aw_full_word, Defn, FieldInfo),
+        no, no_base_ctor_arg, Type, aw_full_word, Defn, FieldInfo),
     !:ArgNum = !.ArgNum + 1.
 
 :- pred ml_gen_hld_du_ctor_type_info_field(module_info::in,
@@ -858,7 +858,7 @@ ml_gen_hld_du_ctor_type_info_field(ModuleInfo, Context, TypeVar,
     % and won't be used in any other way.
     Type = build_type_info_type(type_variable(TypeVar, kind_star)),
     ml_gen_hld_du_ctor_field_gen(ModuleInfo, Context, !.ArgNum,
-        no, Type, aw_full_word, Defn, FieldInfo),
+        no, no_base_ctor_arg, Type, aw_full_word, Defn, FieldInfo),
     !:ArgNum = !.ArgNum + 1.
 
 :- pred ml_gen_hld_du_ctor_field(module_info::in, prog_context::in,
@@ -867,21 +867,24 @@ ml_gen_hld_du_ctor_type_info_field(ModuleInfo, Context, TypeVar,
 
 ml_gen_hld_du_ctor_field(ModuleInfo, Context, ArgRepn, Defn, FieldInfo,
         !ArgNum) :-
-    ArgRepn = ctor_arg_repn(MaybeFieldName, Type, PosWidth, _Context),
+    ArgRepn = ctor_arg_repn(MaybeFieldName, MaybeBaseCtorArg, Type, PosWidth,
+        _Context),
     Width = arg_pos_width_to_width_only(PosWidth),
     ml_gen_hld_du_ctor_field_gen(ModuleInfo, Context, !.ArgNum,
-        MaybeFieldName, Type, Width, Defn, FieldInfo),
+        MaybeFieldName, MaybeBaseCtorArg, Type, Width, Defn, FieldInfo),
     !:ArgNum = !.ArgNum + 1.
 
 %---------------------%
 
 :- pred ml_gen_hld_du_ctor_field_gen(module_info::in, prog_context::in,
-    int::in, maybe(ctor_field_name)::in, mer_type::in, arg_width::in,
-    mlds_field_var_defn::out, mlds_field_info::out) is det.
+    int::in, maybe(ctor_field_name)::in, maybe_base_ctor_arg::in, mer_type::in,
+    arg_width::in, mlds_field_var_defn::out, mlds_field_info::out) is det.
 
 ml_gen_hld_du_ctor_field_gen(ModuleInfo, Context, ArgNum,
-        MaybeFieldName, Type, Width, FieldVarDefn, FieldInfo) :-
-    FieldVarName = ml_gen_hld_field_name(MaybeFieldName, ArgNum),
+        MaybeFieldName, MaybeBaseCtorArg, Type, Width, FieldVarDefn,
+        FieldInfo) :-
+    FieldVarName = ml_gen_hld_field_name(MaybeFieldName, MaybeBaseCtorArg,
+        ArgNum),
     DeclFlags = ml_gen_public_field_decl_flags,
     ( if ml_must_box_field_type(ModuleInfo, Type, Width) then
         MLDS_Type = mlds_generic_type

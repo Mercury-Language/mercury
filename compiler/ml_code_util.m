@@ -235,14 +235,21 @@
 %
 % Routines for dealing with fields.
 %
-
-    % Given the user-specified field name, if any, and the argument number
-    % (starting from one), generate an MLDS field name for the target language
-    % type that represents the function symbol's cell when we are generating
-    % code with --high-level-data.
+    % ml_gen_hld_field_name(MaybeFieldName, MaybeBaseCtorArg, ArgNum) =
+    %   FieldName:
     %
-:- func ml_gen_hld_field_name(maybe(ctor_field_name), int) =
-    mlds_field_var_name.
+    % Generate an MLDS field name for the target language type that represents
+    % the function symbol's cell when we are generating code with
+    % --high-level-data.
+    %
+    % MaybeFieldName is the user-specified field name (if any).
+    % MaybeBaseCtorArg says whether this is a field in a subtype, and if so,
+    % the field name (if any) of the corresponding constructor argument in the
+    % base type.
+    % ArgNum is the argument number (starting from one).
+    %
+:- func ml_gen_hld_field_name(maybe(ctor_field_name), maybe_base_ctor_arg, int)
+    = mlds_field_var_name.
 
     % Succeed iff the specified type must be boxed when used as a field.
     % XXX Currently we box such types even for the other MLDS based back-ends
@@ -958,15 +965,27 @@ ml_gen_public_field_decl_flags =
 % Code for dealing with fields.
 %
 
-ml_gen_hld_field_name(MaybeFieldName, ArgNum) = FieldVarName :-
-    % If the programmer specified a field name, we use that,
-    % otherwise we just use `F' followed by the field number.
+ml_gen_hld_field_name(MaybeFieldName, MaybeBaseCtorArg, ArgNum) =
+        FieldVarName :-
+    % Subtypes share the data representation with their base types.
+    % If this is the field of a subtype, we must translate the reference to the
+    % corresponding constructor arg in the base type (which may or may not
+    % have a field name).
     (
-        MaybeFieldName = yes(ctor_field_name(QualifiedFieldName,
+        MaybeBaseCtorArg = no_base_ctor_arg,
+        FieldNameToUse = MaybeFieldName
+    ;
+        MaybeBaseCtorArg = base_ctor_arg(MaybeBaseFieldName),
+        FieldNameToUse = MaybeBaseFieldName
+    ),
+    % Use the field name if we have one, otherwise we just use `F' followed by
+    % the field number.
+    (
+        FieldNameToUse = yes(ctor_field_name(QualifiedFieldName,
             _FieldNameCtxt)),
         FieldName = unqualify_name(QualifiedFieldName)
     ;
-        MaybeFieldName = no,
+        FieldNameToUse = no,
         FieldName = "F" ++ string.int_to_string(ArgNum)
     ),
     FieldVarName = fvn_du_ctor_field_hld(FieldName).

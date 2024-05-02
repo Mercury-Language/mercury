@@ -982,10 +982,19 @@ set_type_defn_prev_errors(X, !Defn) :-
 :- type constructor_arg_repn
     --->    ctor_arg_repn(
                 car_field_name      :: maybe(ctor_field_name),
+                % car_maybe_base_arg says whether this constructor argument
+                % belongs to a subtype. If so, it must have a corresponding
+                % constructor argument in the base type, which may or may not
+                % have a field name.
+                car_maybe_base_arg  :: maybe_base_ctor_arg,
                 car_type            :: mer_type,
                 car_pos_width       :: arg_pos_width,
                 car_context         :: prog_context
             ).
+
+:- type maybe_base_ctor_arg
+    --->    no_base_ctor_arg
+    ;       base_ctor_arg(maybe(ctor_field_name)).
 
 :- type du_type_kind
     --->    du_type_kind_mercury_enum

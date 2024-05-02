@@ -281,7 +281,7 @@ ml_field_names_and_types(Info, Type, ConsId, InitOffset, ArgVars,
         % Fields in tuples are all word-sized, and have no extra type_infos
         % and/or typeclass_infos in front of them. Their types are all
         % unbound type variables.
-        allocate_consecutive_full_word_ctor_arg_repns_boxed(InitOffsetInt,
+        allocate_consecutive_ctor_arg_repns_for_tuple(InitOffsetInt,
             ArgVars, ArgVarRepns)
     else
         ml_gen_info_get_module_info(Info, ModuleInfo),
@@ -299,7 +299,7 @@ ml_field_names_and_types(Info, Type, ConsId, InitOffset, ArgVars,
                 ExtraArgVars, NonExtraArgVars),
             % The extra type_infos and/or typeclass_infos are all stored
             % in one full word each.
-            allocate_consecutive_full_word_ctor_arg_repns_lookup(Info,
+            allocate_consecutive_ctor_arg_repns_for_extra_args(Info,
                 InitOffsetInt, ExtraArgVars, ExtraArgVarRepns),
             assoc_list.from_corresponding_lists(NonExtraArgVars, CtorArgRepns,
                 NonExtraArgVarRepns),
@@ -310,32 +310,34 @@ ml_field_names_and_types(Info, Type, ConsId, InitOffset, ArgVars,
         )
     ).
 
-:- pred allocate_consecutive_full_word_ctor_arg_repns_boxed(int::in,
+:- pred allocate_consecutive_ctor_arg_repns_for_tuple(int::in,
     list(prog_var)::in,
     assoc_list(prog_var, constructor_arg_repn)::out) is det.
 
-allocate_consecutive_full_word_ctor_arg_repns_boxed(_, [], []).
-allocate_consecutive_full_word_ctor_arg_repns_boxed(CurOffset,
+allocate_consecutive_ctor_arg_repns_for_tuple(_, [], []).
+allocate_consecutive_ctor_arg_repns_for_tuple(CurOffset,
         [Var | Vars], [VarArgRepn | VarArgRepns]) :-
     Type = ml_make_boxed_type,
     ArgPosWidth = apw_full(arg_only_offset(CurOffset), cell_offset(CurOffset)),
-    ArgRepn = ctor_arg_repn(no, Type, ArgPosWidth, dummy_context),
+    ArgRepn = ctor_arg_repn(no, no_base_ctor_arg, Type, ArgPosWidth,
+        dummy_context),
     VarArgRepn = Var - ArgRepn,
-    allocate_consecutive_full_word_ctor_arg_repns_boxed(CurOffset + 1,
+    allocate_consecutive_ctor_arg_repns_for_tuple(CurOffset + 1,
         Vars, VarArgRepns).
 
-:- pred allocate_consecutive_full_word_ctor_arg_repns_lookup(ml_gen_info::in,
+:- pred allocate_consecutive_ctor_arg_repns_for_extra_args(ml_gen_info::in,
     int::in, list(prog_var)::in,
     assoc_list(prog_var, constructor_arg_repn)::out) is det.
 
-allocate_consecutive_full_word_ctor_arg_repns_lookup(_, _, [], []).
-allocate_consecutive_full_word_ctor_arg_repns_lookup(Info, CurOffset,
+allocate_consecutive_ctor_arg_repns_for_extra_args(_, _, [], []).
+allocate_consecutive_ctor_arg_repns_for_extra_args(Info, CurOffset,
         [Var | Vars], [VarArgRepn | VarArgRepns]) :-
     ml_variable_type_direct(Info, Var, Type),
     ArgPosWidth = apw_full(arg_only_offset(CurOffset), cell_offset(CurOffset)),
-    ArgRepn = ctor_arg_repn(no, Type, ArgPosWidth, dummy_context),
+    ArgRepn = ctor_arg_repn(no, no_base_ctor_arg, Type, ArgPosWidth,
+        dummy_context),
     VarArgRepn = Var - ArgRepn,
-    allocate_consecutive_full_word_ctor_arg_repns_lookup(Info, CurOffset + 1,
+    allocate_consecutive_ctor_arg_repns_for_extra_args(Info, CurOffset + 1,
         Vars, VarArgRepns).
 
 %---------------------------------------------------------------------------%

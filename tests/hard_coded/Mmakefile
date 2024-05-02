@@ -429,6 +429,7 @@ ORDINARY_PROGS = \
 	string_well_formed \
 	string_well_formed_utf8 \
 	subtype_abstract \
+	subtype_field_names \
 	subtype_order \
 	subtype_pack \
 	subtype_rtti \

@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1993-2012 The University of Melbourne.
-% Copyright (C) 2015, 2017-2023 The Mercury team.
+% Copyright (C) 2015, 2017-2024 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -460,12 +460,12 @@ fill_in_non_sub_du_type_repn(_Globals, _ModuleName, RepnTarget, TypeCtor,
     (
         (
             DuRepnInfo = dur_direct_dummy(DirectDummyRepn),
-            check_and_record_du_direct_dummy(TypeCtor, RepnContext, OoMCtors,
-                MaybeCanon, DirectDummyRepn, MercuryMaybeDuRepn),
+            check_and_record_non_sub_du_direct_dummy(TypeCtor, RepnContext,
+                OoMCtors, MaybeCanon, DirectDummyRepn, MercuryMaybeDuRepn),
             DirectDummyRepn = direct_dummy_repn(_RepnCtorName, MaybeCJCsEnum)
         ;
             DuRepnInfo = dur_enum(EnumRepn),
-            check_and_record_du_enum(TypeCtor, RepnContext, OoMCtors,
+            check_and_record_non_sub_du_enum(TypeCtor, RepnContext, OoMCtors,
                 EnumRepn, MercuryMaybeDuRepn),
             EnumRepn = enum_repn(_RepnHeadCtorName, _RepnHeadTailCtorName,
                 _RepnTailTailCtorNames, MaybeCJCsEnum)
@@ -519,8 +519,8 @@ fill_in_non_sub_du_type_repn(_Globals, _ModuleName, RepnTarget, TypeCtor,
         )
     ;
         DuRepnInfo = dur_notag(NoTagRepn),
-        check_and_record_du_notag(TypeCtor, RepnContext, OoMCtors, MaybeCanon,
-            NoTagRepn, MercuryMaybeDuRepn),
+        check_and_record_non_sub_du_notag(TypeCtor, RepnContext, OoMCtors,
+            MaybeCanon, NoTagRepn, MercuryMaybeDuRepn),
         NoTagRepn = notag_repn(_FunctorName, _ArgType, MaybeCJCs),
         foreign_target_specific_repn(RepnTarget, MaybeCJCs,
             _ForeignLang, MaybeForeign),
@@ -539,11 +539,11 @@ fill_in_non_sub_du_type_repn(_Globals, _ModuleName, RepnTarget, TypeCtor,
         )
     ;
         DuRepnInfo = dur_gen_only_functor(OnlyFunctorRepn),
-        check_and_record_du_only_functor(RepnTarget, TypeCtor,
+        check_and_record_non_sub_du_only_functor(RepnTarget, TypeCtor,
             RepnContext, OoMCtors, OnlyFunctorRepn, MaybeDuRepn)
     ;
         DuRepnInfo = dur_gen_more_functors(MoreFunctorsRepn),
-        check_and_record_du_more_functors(RepnTarget, TypeCtor,
+        check_and_record_non_sub_du_more_functors(RepnTarget, TypeCtor,
             RepnContext, OoMCtors, MoreFunctorsRepn, MaybeDuRepn)
     ).
 
@@ -568,12 +568,12 @@ combine_mercury_foreign_du_repns(MerMaybeDuRepn, ForMaybeDuRepn,
 
 %---------------------%
 
-:- pred check_and_record_du_direct_dummy(type_ctor::in, prog_context::in,
-    one_or_more(constructor)::in, maybe_canonical::in,
+:- pred check_and_record_non_sub_du_direct_dummy(type_ctor::in,
+    prog_context::in, one_or_more(constructor)::in, maybe_canonical::in,
     direct_dummy_repn::in, maybe_du_type_repn::out) is det.
 
-check_and_record_du_direct_dummy(TypeCtor, Context, OoMCtors, MaybeCanon,
-        DirectDummyRepn, MaybeDuRepn) :-
+check_and_record_non_sub_du_direct_dummy(TypeCtor, Context, OoMCtors,
+        MaybeCanon, DirectDummyRepn, MaybeDuRepn) :-
     DirectDummyRepn = direct_dummy_repn(RepnCtorName, _MaybeCJCsEnum),
     ( if
         OoMCtors = one_or_more(Ctor, []),
@@ -614,11 +614,11 @@ check_and_record_du_direct_dummy(TypeCtor, Context, OoMCtors, MaybeCanon,
 
 %---------------------%
 
-:- pred check_and_record_du_enum(type_ctor::in, prog_context::in,
+:- pred check_and_record_non_sub_du_enum(type_ctor::in, prog_context::in,
     one_or_more(constructor)::in, enum_repn::in,
     maybe_du_type_repn::out) is det.
 
-check_and_record_du_enum(TypeCtor, Context, Ctors, EnumRepn,
+check_and_record_non_sub_du_enum(TypeCtor, Context, Ctors, EnumRepn,
         MaybeDuRepn) :-
     EnumRepn = enum_repn(RepnHeadCtorName, RepnHeadTailCtorName,
         RepnTailTailCtorNames, _MaybeCJCs),
@@ -701,11 +701,11 @@ record_foreign_enums(Lang, [ForeignName | ForeignNames], [Ctor | Ctors],
 
 %---------------------%
 
-:- pred check_and_record_du_notag(type_ctor::in, prog_context::in,
+:- pred check_and_record_non_sub_du_notag(type_ctor::in, prog_context::in,
     one_or_more(constructor)::in, maybe_canonical::in, notag_repn::in,
     maybe_du_type_repn::out) is det.
 
-check_and_record_du_notag(TypeCtor, Context, Ctors, MaybeCanon,
+check_and_record_non_sub_du_notag(TypeCtor, Context, Ctors, MaybeCanon,
         NoTagRepn, MaybeDuRepn) :-
     NoTagRepn = notag_repn(RepnCtorName, RepnArgType, _MaybeCJCs),
     ( if
@@ -725,6 +725,8 @@ check_and_record_du_notag(TypeCtor, Context, Ctors, MaybeCanon,
             MaybeDuRepn = have_errors([Spec])
         ;
             MaybeCanon = canon,
+            % We can only get here for a non-subtype du type.
+            MaybeBaseCtorArg = no_base_ctor_arg,
             % XXX TYPE_REPN The apw_full is a *lie*
             % if RepnArgType is a 64 bit float on a 32 bit platform.
             % XXX TYPE_REPN Since the ArgPosWidth of the only argument
@@ -732,8 +734,8 @@ check_and_record_du_notag(TypeCtor, Context, Ctors, MaybeCanon,
             % it would be practical to use a CtorArgRepn that does not have
             % this field.
             ArgPosWidth = apw_full(arg_only_offset(0), cell_offset(0)),
-            CtorArgRepn = ctor_arg_repn(MaybeFieldName, RepnArgType,
-                ArgPosWidth, ArgContext),
+            CtorArgRepn = ctor_arg_repn(MaybeFieldName, MaybeBaseCtorArg,
+                RepnArgType, ArgPosWidth, ArgContext),
             CtorTag = no_tag,
             CtorRepn = ctor_repn(Ordinal, no_exist_constraints, CtorSymName,
                 CtorTag, [CtorArgRepn], 1, CtorContext),
@@ -765,11 +767,11 @@ check_and_record_du_notag(TypeCtor, Context, Ctors, MaybeCanon,
 
 %---------------------%
 
-:- pred check_and_record_du_only_functor(repn_target::in, type_ctor::in,
+:- pred check_and_record_non_sub_du_only_functor(repn_target::in, type_ctor::in,
     prog_context::in, one_or_more(constructor)::in,
     gen_du_only_functor_repn::in, maybe_du_type_repn::out) is det.
 
-check_and_record_du_only_functor(RepnTarget, TypeCtor, Context,
+check_and_record_non_sub_du_only_functor(RepnTarget, TypeCtor, Context,
         Ctors, OnlyFunctorRepn, MaybeDuRepn) :-
     OnlyFunctorRepn = gen_du_only_functor_repn(RepnCtorName, RepnArgTypes,
         CNonConstantRepns, _MaybeCJCs),
@@ -782,8 +784,8 @@ check_and_record_du_only_functor(RepnTarget, TypeCtor, Context,
         list.length(CtorArgs, NumArgs),
         NumArgs = NumRepnArgTypes
     then
-        check_du_functor(TypeCtor, Ctor, RepnCtorName, NumRepnArgTypes, 0u32,
-            [], CtorSpecs),
+        check_non_sub_du_functor(TypeCtor, Ctor, RepnCtorName, NumRepnArgTypes,
+            0u32, [], CtorSpecs),
         (
             CtorSpecs = [_ | _],
             MaybeDuRepn = have_errors(CtorSpecs)
@@ -798,7 +800,7 @@ check_and_record_du_only_functor(RepnTarget, TypeCtor, Context,
                     NumExtraWords),
                 FirstAOWordNum = 0,
                 FirstCellWordNum = NumExtraWords,
-                record_high_level_data_ctor_args(FirstAOWordNum,
+                record_non_sub_du_high_level_data_ctor_args(FirstAOWordNum,
                     FirstCellWordNum, CtorArgs, CtorArgRepns)
             ;
                 RepnTarget = repn_target_c(CRepnTarget),
@@ -814,16 +816,16 @@ check_and_record_du_only_functor(RepnTarget, TypeCtor, Context,
                     % but next to the ptag and any local sectag.
                     ArgOnlyOffset = arg_only_offset(-2),
                     CellOffset = cell_offset(-2),
-                    record_local_ctor_args(ArgOnlyOffset, CellOffset,
-                        not_seen_nondummy_arg, CtorArgs, RepnArgTypes,
-                        LocalArgRepns, CtorArgRepns)
+                    record_non_sub_du_local_ctor_args(ArgOnlyOffset,
+                        CellOffset, not_seen_nondummy_arg, CtorArgs,
+                        RepnArgTypes, LocalArgRepns, CtorArgRepns)
                 ;
                     NonConstantRepn = oncr_remote_cell(NCRemoteRepn),
                     NCRemoteRepn =
                         only_nonconstant_remote_cell_repn(OoMRemoteArgRepns),
                     RemoteArgRepns = one_or_more_to_list(OoMRemoteArgRepns),
                     CtorTag = remote_args_tag(remote_args_only_functor),
-                    record_remote_ctor_args(CtorArgs, RepnArgTypes,
+                    record_non_sub_du_remote_ctor_args(CtorArgs, RepnArgTypes,
                         RemoteArgRepns, CtorArgRepns)
                 )
             ),
@@ -849,11 +851,11 @@ check_and_record_du_only_functor(RepnTarget, TypeCtor, Context,
 
 %---------------------%
 
-:- pred check_and_record_du_more_functors(repn_target::in, type_ctor::in,
-    prog_context::in, one_or_more(constructor)::in,
+:- pred check_and_record_non_sub_du_more_functors(repn_target::in,
+    type_ctor::in, prog_context::in, one_or_more(constructor)::in,
     gen_du_more_functors_repn::in, maybe_du_type_repn::out) is det.
 
-check_and_record_du_more_functors(RepnTarget, TypeCtor, Context,
+check_and_record_non_sub_du_more_functors(RepnTarget, TypeCtor, Context,
         OoMCtors, MoreFunctorsRepn, MaybeDuRepn) :-
     MoreFunctorsRepn = gen_du_more_functors_repn(HeadCtorMFRepn,
         HeadTailCtorMFRepn, TailTailCtorMFRepns, _MaybeCJCs),
@@ -863,7 +865,7 @@ check_and_record_du_more_functors(RepnTarget, TypeCtor, Context,
         assoc_list.maybe_from_corresponding_lists(Ctors, CtorMFRepns,
             CtorPairs)
     then
-        list.foldl2(check_gen_du_functor(TypeCtor), CtorPairs,
+        list.foldl2(check_non_sub_gen_du_functor(TypeCtor), CtorPairs,
             0u32, _, [], CtorSpecs),
         (
             CtorSpecs = [_ | _],
@@ -874,11 +876,11 @@ check_and_record_du_more_functors(RepnTarget, TypeCtor, Context,
                 ( RepnTarget = repn_target_java
                 ; RepnTarget = repn_target_csharp
                 ),
-                record_high_level_data_ctors(Ctors, CtorRepns),
+                record_non_sub_du_high_level_data_ctors(Ctors, CtorRepns),
                 MaybeDirectArgFunctors = maybe.no
             ;
                 RepnTarget = repn_target_c(CRepnTarget),
-                record_low_level_data_ctors(CRepnTarget, CtorPairs,
+                record_non_sub_du_low_level_data_ctors(CRepnTarget, CtorPairs,
                     CtorRepns, MaybeDirectArgFunctors)
             ),
             list.foldl(insert_ctor_repn_into_map, CtorRepns,
@@ -903,11 +905,11 @@ check_and_record_du_more_functors(RepnTarget, TypeCtor, Context,
 
 %---------------------%
 
-:- pred check_gen_du_functor(type_ctor::in,
+:- pred check_non_sub_gen_du_functor(type_ctor::in,
     pair(constructor, gen_du_functor_repn)::in, uint32::in, uint32::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-check_gen_du_functor(TypeCtor, Ctor - GenDuFunctorRepn,
+check_non_sub_gen_du_functor(TypeCtor, Ctor - GenDuFunctorRepn,
         !ExpectedOrdinal, !Specs) :-
     (
         GenDuFunctorRepn = gen_du_constant_functor_repn(RepnCtorName, _),
@@ -917,15 +919,15 @@ check_gen_du_functor(TypeCtor, Ctor - GenDuFunctorRepn,
             RepnArgTypes0, _),
         list.length(RepnArgTypes0, RepnCtorArity)
     ),
-    check_du_functor(TypeCtor, Ctor, RepnCtorName, RepnCtorArity,
+    check_non_sub_du_functor(TypeCtor, Ctor, RepnCtorName, RepnCtorArity,
         !.ExpectedOrdinal, !Specs),
     !:ExpectedOrdinal = !.ExpectedOrdinal + 1u32.
 
-:- pred check_du_functor(type_ctor::in, constructor::in, string::in, int::in,
-    uint32::in, list(error_spec)::in, list(error_spec)::out) is det.
+:- pred check_non_sub_du_functor(type_ctor::in, constructor::in, string::in,
+    int::in, uint32::in, list(error_spec)::in, list(error_spec)::out) is det.
 
-check_du_functor(TypeCtor, Ctor, RepnCtorName, RepnCtorArity, ExpectedOrdinal,
-        !Specs) :-
+check_non_sub_du_functor(TypeCtor, Ctor, RepnCtorName, RepnCtorArity,
+        ExpectedOrdinal, !Specs) :-
     Ctor = ctor(Ordinal, _MaybeExistConstraints, CtorSymName,
         _CtorArgs, CtorArity, CtorContext),
     CtorName = unqualify_name(CtorSymName),
@@ -967,11 +969,12 @@ check_du_functor(TypeCtor, Ctor, RepnCtorName, RepnCtorArity, ExpectedOrdinal,
 
 %---------------------%
 
-:- pred record_high_level_data_ctors(list(constructor)::in,
+:- pred record_non_sub_du_high_level_data_ctors(list(constructor)::in,
     list(constructor_repn)::out) is det.
 
-record_high_level_data_ctors([], []).
-record_high_level_data_ctors([Ctor | Ctors], [CtorRepn | CtorRepns]) :-
+record_non_sub_du_high_level_data_ctors([], []).
+record_non_sub_du_high_level_data_ctors([Ctor | Ctors], [CtorRepn | CtorRepns])
+        :-
     Ctor = ctor(Ordinal, MaybeExistConstraints, CtorSymName,
         CtorArgs, CtorArity, CtorContext),
     OrdinalUint = uint32.cast_to_uint(Ordinal),
@@ -980,32 +983,36 @@ record_high_level_data_ctors([Ctor | Ctors], [CtorRepn | CtorRepns]) :-
         NumExtraWords),
     FirstAOWordNum = 0,
     FirstCellWordNum = NumExtraWords,
-    record_high_level_data_ctor_args(FirstAOWordNum, FirstCellWordNum,
-        CtorArgs, CtorArgRepns),
+    record_non_sub_du_high_level_data_ctor_args(FirstAOWordNum,
+        FirstCellWordNum, CtorArgs, CtorArgRepns),
     CtorRepn = ctor_repn(Ordinal, MaybeExistConstraints, CtorSymName, CtorTag,
         CtorArgRepns, CtorArity, CtorContext),
-    record_high_level_data_ctors(Ctors, CtorRepns).
+    record_non_sub_du_high_level_data_ctors(Ctors, CtorRepns).
 
-:- pred record_high_level_data_ctor_args(int::in, int::in,
+:- pred record_non_sub_du_high_level_data_ctor_args(int::in, int::in,
     list(constructor_arg)::in, list(constructor_arg_repn)::out) is det.
 
-record_high_level_data_ctor_args(_, _, [], []).
-record_high_level_data_ctor_args(CurAOWordNum, CurCellWordNum,
+record_non_sub_du_high_level_data_ctor_args(_, _, [], []).
+record_non_sub_du_high_level_data_ctor_args(CurAOWordNum, CurCellWordNum,
         [CtorArg | CtorArgs], [CtorArgRepn | CtorArgRepns]) :-
     CtorArg = ctor_arg(MaybeFieldName, ArgType, ArgContext),
+    % We can only get here for a non-subtype du type.
+    MaybeBaseCtorArg = no_base_ctor_arg,
     ArgRepn = apw_full(arg_only_offset(CurAOWordNum),
         cell_offset(CurCellWordNum)),
-    CtorArgRepn = ctor_arg_repn(MaybeFieldName, ArgType, ArgRepn, ArgContext),
-    record_high_level_data_ctor_args(CurAOWordNum + 1, CurCellWordNum + 1,
-        CtorArgs, CtorArgRepns).
+    CtorArgRepn = ctor_arg_repn(MaybeFieldName, MaybeBaseCtorArg,
+        ArgType, ArgRepn, ArgContext),
+    record_non_sub_du_high_level_data_ctor_args(CurAOWordNum + 1,
+        CurCellWordNum + 1, CtorArgs, CtorArgRepns).
 
 %---------------------%
 
-:- pred record_low_level_data_ctors(c_repn_target::in,
+:- pred record_non_sub_du_low_level_data_ctors(c_repn_target::in,
     assoc_list(constructor, gen_du_functor_repn)::in,
     list(constructor_repn)::out, maybe(list(sym_name_arity))::out) is det.
 
-record_low_level_data_ctors(CRepnTarget, CtorsDuRepns, CtorRepns, no) :-
+record_non_sub_du_low_level_data_ctors(CRepnTarget, CtorsDuRepns, CtorRepns,
+        no) :-
     % XXX TYPE_REPN Record NumLocalSectagBits and LocalMustMask in CRepnTarget.
     select_gen_du_repns_for_target(CRepnTarget, CtorsDuRepns,
         ConstantCtors, LocalCtors, DirectArgCtors, RemoteCtors),
@@ -1022,10 +1029,10 @@ record_low_level_data_ctors(CRepnTarget, CtorsDuRepns, CtorRepns, no) :-
         map.init(!:CtorOrdRepnMap),
         record_constant_ctors(NumPtagBits, LocalSectagBits,
             ConstantCtors, !CtorOrdRepnMap),
-        record_local_ctors(NumPtagBits, LocalSectagBits,
+        record_non_sub_du_local_ctors(NumPtagBits, LocalSectagBits,
             LocalCtors, !CtorOrdRepnMap),
-        record_direct_arg_ctors(DirectArgCtors, !CtorOrdRepnMap),
-        record_remote_ctors(RemoteCtors, !CtorOrdRepnMap),
+        record_non_sub_du_direct_arg_ctors(DirectArgCtors, !CtorOrdRepnMap),
+        record_non_sub_du_remote_ctors(RemoteCtors, !CtorOrdRepnMap),
         flatten_ctor_ord_repn_map(!.CtorOrdRepnMap, CtorsDuRepns, CtorRepns)
     ).
 
@@ -1126,14 +1133,14 @@ record_constant_ctors(NumPtagBits, LocalSectagBits,
     record_constant_ctors(NumPtagBits, LocalSectagBits,
         ConstantCtors, !CtorOrdRepnMap).
 
-:- pred record_local_ctors(int::in, sectag_bits::in,
+:- pred record_non_sub_du_local_ctors(int::in, sectag_bits::in,
     list({constructor, list(mer_type), more_nonconstant_local_cell_repn})::in,
     map(uint32, constructor_repn)::in, map(uint32, constructor_repn)::out)
     is det.
 
-record_local_ctors(_, _, [], !CtorOrdRepnMap).
-record_local_ctors(NumPtagBits, LocalSectagBits, [LocalCtor | LocalCtors],
-        !CtorOrdRepnMap) :-
+record_non_sub_du_local_ctors(_, _, [], !CtorOrdRepnMap).
+record_non_sub_du_local_ctors(NumPtagBits, LocalSectagBits,
+        [LocalCtor | LocalCtors], !CtorOrdRepnMap) :-
     LocalCtor = {Ctor, ArgTypes, LocalRepn},
     Ctor = ctor(Ordinal, MaybeExistConstraints, CtorSymName,
         CtorArgs, CtorArity, CtorContext),
@@ -1156,24 +1163,24 @@ record_local_ctors(NumPtagBits, LocalSectagBits, [LocalCtor | LocalCtors],
     ArgOnlyOffset = arg_only_offset(-2),
     CellOffset = cell_offset(-2),
     ArgRepns = one_or_more_to_list(OoMArgRepns),
-    record_local_ctor_args(ArgOnlyOffset, CellOffset, not_seen_nondummy_arg,
-        CtorArgs, ArgTypes, ArgRepns, CtorArgRepns),
+    record_non_sub_du_local_ctor_args(ArgOnlyOffset, CellOffset,
+        not_seen_nondummy_arg, CtorArgs, ArgTypes, ArgRepns, CtorArgRepns),
     CtorRepn = ctor_repn(Ordinal, MaybeExistConstraints, CtorSymName,
         CtorTag, CtorArgRepns, CtorArity, CtorContext),
     map.det_insert(Ordinal, CtorRepn, !CtorOrdRepnMap),
-    record_local_ctors(NumPtagBits, LocalSectagBits, LocalCtors,
+    record_non_sub_du_local_ctors(NumPtagBits, LocalSectagBits, LocalCtors,
         !CtorOrdRepnMap).
 
 :- type maybe_seen_nondummy_arg
     --->    not_seen_nondummy_arg
     ;       seen_nondummy_arg.
 
-:- pred record_local_ctor_args(arg_only_offset::in, cell_offset::in,
+:- pred record_non_sub_du_local_ctor_args(arg_only_offset::in, cell_offset::in,
     maybe_seen_nondummy_arg::in, list(constructor_arg)::in,
     list(mer_type)::in, list(local_arg_repn)::in,
     list(constructor_arg_repn)::out) is det.
 
-record_local_ctor_args(ArgOnlyOffset, CellOffset, SeenNonDummyArg0,
+record_non_sub_du_local_ctor_args(ArgOnlyOffset, CellOffset, SeenNonDummyArg0,
         CtorArgs, RepnArgTypes, ArgRepns, CtorArgRepns) :-
     ( if
         CtorArgs = [HeadCtorArg | TailCtorArgs],
@@ -1181,6 +1188,8 @@ record_local_ctor_args(ArgOnlyOffset, CellOffset, SeenNonDummyArg0,
         ArgRepns = [HeadArgRepn | TailArgRepns]
     then
         HeadCtorArg = ctor_arg(MaybeFieldName, _ArgType, Context),
+        % We can only get here for a non-subtype du type.
+        MaybeBaseCtorArg = no_base_ctor_arg,
         (
             HeadArgRepn = local_partial(Shift, FillKindSize),
             ArgShift = uint.cast_to_int(Shift),
@@ -1212,10 +1221,11 @@ record_local_ctor_args(ArgOnlyOffset, CellOffset, SeenNonDummyArg0,
             ),
             SeenNonDummyArg = SeenNonDummyArg0
         ),
-        HeadCtorArgRepn = ctor_arg_repn(MaybeFieldName, HeadRepnArgType,
-            ArgPosWidth, Context),
-        record_local_ctor_args(ArgOnlyOffset, CellOffset, SeenNonDummyArg,
-            TailCtorArgs, TailRepnArgTypes, TailArgRepns, TailCtorArgRepns),
+        HeadCtorArgRepn = ctor_arg_repn(MaybeFieldName, MaybeBaseCtorArg,
+            HeadRepnArgType, ArgPosWidth, Context),
+        record_non_sub_du_local_ctor_args(ArgOnlyOffset, CellOffset,
+            SeenNonDummyArg, TailCtorArgs, TailRepnArgTypes, TailArgRepns,
+            TailCtorArgRepns),
         CtorArgRepns = [HeadCtorArgRepn | TailCtorArgRepns]
     else if
         CtorArgs = [],
@@ -1229,12 +1239,14 @@ record_local_ctor_args(ArgOnlyOffset, CellOffset, SeenNonDummyArg0,
 
 %---------------------%
 
-:- pred record_direct_arg_ctors(list({constructor, mer_type, ptag})::in,
+:- pred record_non_sub_du_direct_arg_ctors(
+    list({constructor, mer_type, ptag})::in,
     map(uint32, constructor_repn)::in, map(uint32, constructor_repn)::out)
     is det.
 
-record_direct_arg_ctors([], !CtorOrdRepnMap).
-record_direct_arg_ctors([DirectArgCtor | DirectArgCtors], !CtorOrdRepnMap) :-
+record_non_sub_du_direct_arg_ctors([], !CtorOrdRepnMap).
+record_non_sub_du_direct_arg_ctors([DirectArgCtor | DirectArgCtors],
+        !CtorOrdRepnMap) :-
     DirectArgCtor = {Ctor, ArgType, Ptag},
     Ctor = ctor(Ordinal, MaybeExistConstraints, CtorSymName,
         CtorArgs, CtorArity, CtorContext),
@@ -1252,26 +1264,28 @@ record_direct_arg_ctors([DirectArgCtor | DirectArgCtors], !CtorOrdRepnMap) :-
     expect(unify(CtorArity, 1), $pred, "CtorArity != 1"),
     CtorTag = direct_arg_tag(Ptag),
     CtorArg = ctor_arg(MaybeFieldName, _Type, ArgContext),
+    % We can only get here when checking a non-subtype du type.
+    MaybeBaseCtorArg = no_base_ctor_arg,
     % The CtorArgRepn, and therefore the ArgPosWidth, will never be used
     % for direct_arg_tag functors. The CtorArgRepn we construct here is
     % designed to be the same as what the decide_type_repns_old constructs.
     ArgPosWidth = apw_full(arg_only_offset(0), cell_offset(0)),
-    CtorArgRepn =
-        ctor_arg_repn(MaybeFieldName, ArgType, ArgPosWidth, ArgContext),
+    CtorArgRepn = ctor_arg_repn(MaybeFieldName, MaybeBaseCtorArg, ArgType,
+        ArgPosWidth, ArgContext),
     CtorRepn = ctor_repn(Ordinal, MaybeExistConstraints, CtorSymName, CtorTag,
         [CtorArgRepn], CtorArity, CtorContext),
     map.det_insert(Ordinal, CtorRepn, !CtorOrdRepnMap),
-    record_direct_arg_ctors(DirectArgCtors, !CtorOrdRepnMap).
+    record_non_sub_du_direct_arg_ctors(DirectArgCtors, !CtorOrdRepnMap).
 
 %---------------------%
 
-:- pred record_remote_ctors(
+:- pred record_non_sub_du_remote_ctors(
     list({constructor, list(mer_type), more_nonconstant_remote_cell_repn})::in,
     map(uint32, constructor_repn)::in, map(uint32, constructor_repn)::out)
     is det.
 
-record_remote_ctors([], !CtorOrdRepnMap).
-record_remote_ctors([RemoteCtor | RemoteCtors], !CtorOrdRepnMap) :-
+record_non_sub_du_remote_ctors([], !CtorOrdRepnMap).
+record_non_sub_du_remote_ctors([RemoteCtor | RemoteCtors], !CtorOrdRepnMap) :-
     RemoteCtor = {Ctor, ArgTypes, Repn},
     Ctor = ctor(Ordinal, MaybeExistConstraints, CtorSymName,
         CtorArgs, CtorArity, CtorContext),
@@ -1296,16 +1310,19 @@ record_remote_ctors([RemoteCtor | RemoteCtors], !CtorOrdRepnMap) :-
     ),
     CtorTag = remote_args_tag(RemoteArgsTagInfo),
     RemoteArgRepns = one_or_more_to_list(OoMRemoteArgRepns),
-    record_remote_ctor_args(CtorArgs, ArgTypes, RemoteArgRepns, CtorArgRepns),
+    record_non_sub_du_remote_ctor_args(CtorArgs, ArgTypes, RemoteArgRepns,
+        CtorArgRepns),
     CtorRepn = ctor_repn(Ordinal, MaybeExistConstraints, CtorSymName, CtorTag,
         CtorArgRepns, CtorArity, CtorContext),
     map.det_insert(Ordinal, CtorRepn, !CtorOrdRepnMap),
-    record_remote_ctors(RemoteCtors, !CtorOrdRepnMap).
+    record_non_sub_du_remote_ctors(RemoteCtors, !CtorOrdRepnMap).
 
-:- pred record_remote_ctor_args(list(constructor_arg)::in, list(mer_type)::in,
-    list(remote_arg_repn)::in, list(constructor_arg_repn)::out) is det.
+:- pred record_non_sub_du_remote_ctor_args(list(constructor_arg)::in,
+    list(mer_type)::in, list(remote_arg_repn)::in,
+    list(constructor_arg_repn)::out) is det.
 
-record_remote_ctor_args(CtorArgs, RepnArgTypes, ArgRepns, CtorArgRepns) :-
+record_non_sub_du_remote_ctor_args(CtorArgs, RepnArgTypes, ArgRepns,
+        CtorArgRepns) :-
     ( if
         CtorArgs = [HeadCtorArg | TailCtorArgs],
         RepnArgTypes = [HeadRepnArgType | TailRepnArgTypes],
@@ -1345,10 +1362,10 @@ record_remote_ctor_args(CtorArgs, RepnArgTypes, ArgRepns, CtorArgRepns) :-
             HeadArgRepn = remote_none_nowhere,
             ArgPosWidth = apw_none_nowhere
         ),
-        HeadCtorArgRepn = ctor_arg_repn(MaybeFieldName, HeadRepnArgType,
-            ArgPosWidth, Context),
-        record_remote_ctor_args(TailCtorArgs, TailRepnArgTypes, TailArgRepns,
-            TailCtorArgRepns),
+        HeadCtorArgRepn = ctor_arg_repn(MaybeFieldName, no_base_ctor_arg,
+            HeadRepnArgType, ArgPosWidth, Context),
+        record_non_sub_du_remote_ctor_args(TailCtorArgs, TailRepnArgTypes,
+            TailArgRepns, TailCtorArgRepns),
         CtorArgRepns = [HeadCtorArgRepn | TailCtorArgRepns]
     else if
         CtorArgs = [],
@@ -1738,7 +1755,8 @@ decide_type_repns_old(ModuleInfo, TypeRepnDec, TypeTable0,
 
     % Pass 2.
     list.map_foldl(
-        decide_if_complex_du_type(ModuleInfo, Params, ComponentTypeMap),
+        decide_if_complex_non_sub_du_type(ModuleInfo, Params,
+            ComponentTypeMap),
         NonSubTypeCtorsTypeDefns1, NonSubTypeCtorsTypeDefns2, !Specs),
 
     % Pass 2b.
@@ -1836,7 +1854,7 @@ decide_if_simple_du_type(ModuleInfo, Params, TypeCtorToForeignEnumMap,
                     Params ^ ddp_unboxed_no_tag_types =
                         use_unboxed_no_tag_types
                 then
-                    decide_simple_type_notag(ModuleInfo, Params,
+                    decide_simple_type_non_sub_notag(ModuleInfo, Params,
                         TypeCtor, TypeDefn0, BodyDu0,
                         SingleCtorSymName, SingleArg, SingleCtorContext,
                         TypeCtorTypeDefn, !NoTagTypeMap, !Specs)
@@ -1952,17 +1970,19 @@ add_repn_to_foreign_enum_ctor(TypeCtor, ConsTagMap, Ctor, CtorRepn,
     % All function symbols of a foreign enum type should have arity zero.
     % If any have a nonzero arity, our caller will generate an error message,
     % and won't proceed to code generation.
-    ArgRepns = list.map(add_dummy_repn_to_ctor_arg, Args),
+    ArgRepns = list.map(add_dummy_repn_to_foreign_enum_ctor_arg, Args),
     CtorRepn = ctor_repn(Ordinal, MaybeExistConstraints, SymName, ConsTag,
         ArgRepns, Arity, Context),
     insert_ctor_repn_into_map(CtorRepn, !CtorRepnMap).
 
-:- func add_dummy_repn_to_ctor_arg(constructor_arg) = constructor_arg_repn.
+:- func add_dummy_repn_to_foreign_enum_ctor_arg(constructor_arg) =
+    constructor_arg_repn.
 
-add_dummy_repn_to_ctor_arg(ConsArg) = ConsArgRepn :-
+add_dummy_repn_to_foreign_enum_ctor_arg(ConsArg) = ConsArgRepn :-
     ConsArg = ctor_arg(MaybeFieldName, Type, Context),
     DummyWidth = apw_full(arg_only_offset(-3), cell_offset(-3)),
-    ConsArgRepn = ctor_arg_repn(MaybeFieldName, Type, DummyWidth, Context).
+    ConsArgRepn = ctor_arg_repn(MaybeFieldName, no_base_ctor_arg, Type,
+        DummyWidth, Context).
 
 %---------------------%
 
@@ -2040,23 +2060,27 @@ assign_tags_to_enum_constants([Ctor | Ctors], [CtorRepn | CtorRepns],
 
 %---------------------%
 
-:- pred decide_simple_type_notag(module_info::in, decide_du_params::in,
+:- pred decide_simple_type_non_sub_notag(module_info::in, decide_du_params::in,
     type_ctor::in, hlds_type_defn::in, type_body_du::in,
     sym_name::in, constructor_arg::in, prog_context::in,
     pair(type_ctor, hlds_type_defn)::out,
     no_tag_type_table::in, no_tag_type_table::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-decide_simple_type_notag(_ModuleInfo, Params, TypeCtor, TypeDefn0, BodyDu0,
+decide_simple_type_non_sub_notag(_ModuleInfo, Params,
+        TypeCtor, TypeDefn0, BodyDu0,
         SingleCtorSymName, SingleArg, SingleCtorContext,
         TypeCtorTypeDefn, !NoTagTypeMap, !Specs) :-
     SingleCtorTag = no_tag,
     SingleArg = ctor_arg(MaybeSingleArgFieldName, SingleArgType,
         SingleArgContext),
+    % This predicate only deals with non-subtype du types.
+    MaybeBaseCtorArg = no_base_ctor_arg,
     % XXX TYPE_REPN The apw_full is a *lie*
     % if the arg type is a 64 bit float on a 32 bit platform.
-    SingleArgRepn = ctor_arg_repn(MaybeSingleArgFieldName, SingleArgType,
-        apw_full(arg_only_offset(0), cell_offset(0)), SingleArgContext),
+    SingleArgPosWidth = apw_full(arg_only_offset(0), cell_offset(0)),
+    SingleArgRepn = ctor_arg_repn(MaybeSingleArgFieldName, MaybeBaseCtorArg,
+        SingleArgType, SingleArgPosWidth, SingleArgContext),
     SingleCtorRepn = ctor_repn(0u32, no_exist_constraints,
         SingleCtorSymName, SingleCtorTag, [SingleArgRepn], 1,
         SingleCtorContext),
@@ -2344,12 +2368,12 @@ maybe_copy_no_tag_type_from_base(BaseTypeCtor, TypeCtor, TypeParams0,
 % Pass 2.
 %
 
-:- pred decide_if_complex_du_type(module_info::in, decide_du_params::in,
-    component_type_map::in,
+:- pred decide_if_complex_non_sub_du_type(module_info::in,
+    decide_du_params::in, component_type_map::in,
     pair(type_ctor, hlds_type_defn)::in, pair(type_ctor, hlds_type_defn)::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-decide_if_complex_du_type(ModuleInfo, Params, ComponentTypeMap,
+decide_if_complex_non_sub_du_type(ModuleInfo, Params, ComponentTypeMap,
         TypeCtorTypeDefn0, TypeCtorTypeDefn, !Specs) :-
     TypeCtorTypeDefn0 = TypeCtor - TypeDefn0,
     get_type_defn_body(TypeDefn0, Body0),
@@ -2366,8 +2390,9 @@ decide_if_complex_du_type(ModuleInfo, Params, ComponentTypeMap,
             TypeCtorTypeDefn = TypeCtorTypeDefn0
         ;
             MaybeRepn0 = no,
-            decide_complex_du_type(ModuleInfo, Params, ComponentTypeMap,
-                TypeCtor, TypeDefn0, one_or_more_to_list(Ctors), Repn, !Specs),
+            decide_complex_non_sub_du_type(ModuleInfo, Params,
+                ComponentTypeMap, TypeCtor, TypeDefn0,
+                one_or_more_to_list(Ctors), Repn, !Specs),
             BodyDu = BodyDu0 ^ du_type_repn := yes(Repn),
             Body = hlds_du_type(BodyDu),
             set_type_defn_body(Body, TypeDefn0, TypeDefn),
@@ -2383,31 +2408,31 @@ decide_if_complex_du_type(ModuleInfo, Params, ComponentTypeMap,
         TypeCtorTypeDefn = TypeCtorTypeDefn0
     ).
 
-:- pred decide_complex_du_type(module_info::in, decide_du_params::in,
+:- pred decide_complex_non_sub_du_type(module_info::in, decide_du_params::in,
     component_type_map::in, type_ctor::in, hlds_type_defn::in,
     list(constructor)::in, du_type_repn::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-decide_complex_du_type(ModuleInfo, Params, ComponentTypeMap, TypeCtor,
+decide_complex_non_sub_du_type(ModuleInfo, Params, ComponentTypeMap, TypeCtor,
         TypeDefn0, Ctors, Repn, !Specs) :-
     get_type_defn_status(TypeDefn0, TypeStatus),
     ( if Ctors = [SingleCtor] then
-        decide_complex_du_type_single_ctor(ModuleInfo, Params,
+        decide_complex_non_sub_du_type_single_ctor(ModuleInfo, Params,
             ComponentTypeMap, TypeStatus, SingleCtor, Repn, !Specs)
     else
-        decide_complex_du_type_general(ModuleInfo, Params, ComponentTypeMap,
-            TypeCtor, TypeStatus, Ctors, Repn, !Specs)
+        decide_complex_non_sub_du_type_general(ModuleInfo, Params,
+            ComponentTypeMap, TypeCtor, TypeStatus, Ctors, Repn, !Specs)
     ).
 
 %---------------------------------------------------------------------------%
 
-:- pred decide_complex_du_type_single_ctor(module_info::in,
+:- pred decide_complex_non_sub_du_type_single_ctor(module_info::in,
     decide_du_params::in, component_type_map::in,
     type_status::in, constructor::in, du_type_repn::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-decide_complex_du_type_single_ctor(ModuleInfo, Params, ComponentTypeMap,
-        TypeStatus, SingleCtor, Repn, !Specs) :-
+decide_complex_non_sub_du_type_single_ctor(ModuleInfo, Params,
+        ComponentTypeMap, TypeStatus, SingleCtor, Repn, !Specs) :-
     SingleCtor = ctor(Ordinal, MaybeExistConstraints, SingleCtorSymName,
         SingleCtorArgs, SingleCtorArity, SingleCtorContext),
     % Check whether we could pack SingleCtorArgs into a single word
@@ -2429,12 +2454,12 @@ decide_complex_du_type_single_ctor(ModuleInfo, Params, ComponentTypeMap,
         % and its value is zero both without and with the primary tag
         % (which is therefore also zero).
         LocalSectag = local_sectag(0u, 0u, sectag_bits(0u8, 0u)),
-        decide_complex_du_ctor_local_args(Params, ComponentTypeMap,
+        decide_complex_non_sub_du_ctor_local_args(Params, ComponentTypeMap,
             LocalSectag, SingleCtorArgs, SingleCtorArgRepns)
     else
         SingleCtorTag = remote_args_tag(remote_args_only_functor),
         NumRemoteSectagBits = 0,
-        decide_complex_du_ctor_remote_args(ModuleInfo, Params,
+        decide_complex_non_sub_du_ctor_remote_args(ModuleInfo, Params,
             ComponentTypeMap, TypeStatus, NumRemoteSectagBits, SingleCtorTag,
             MaybeExistConstraints, SingleCtorSymName, SingleCtorContext,
             SingleCtorArgs, SingleCtorArgRepns, _MaybeTagwordArgs, !Specs)
@@ -2452,12 +2477,12 @@ decide_complex_du_type_single_ctor(ModuleInfo, Params, ComponentTypeMap,
 
 %---------------------------------------------------------------------------%
 
-:- pred decide_complex_du_type_general(module_info::in, decide_du_params::in,
-    component_type_map::in, type_ctor::in, type_status::in,
-    list(constructor)::in, du_type_repn::out,
+:- pred decide_complex_non_sub_du_type_general(module_info::in,
+    decide_du_params::in, component_type_map::in, type_ctor::in,
+    type_status::in, list(constructor)::in, du_type_repn::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-decide_complex_du_type_general(ModuleInfo, Params, ComponentTypeMap,
+decide_complex_non_sub_du_type_general(ModuleInfo, Params, ComponentTypeMap,
         TypeCtor, TypeStatus, Ctors, Repn, !Specs) :-
     Target = Params ^ ddp_target,
     UsesConstructors = target_uses_constructors(Target),
@@ -2552,8 +2577,9 @@ decide_complex_du_type_general(ModuleInfo, Params, ComponentTypeMap,
         NumRemoteSectagBits = uint8.det_from_int(NumRemoteSectagBitsInt)
     ),
     list.map_foldl2(
-        decide_complex_du_type_ctor(ModuleInfo, Params, ComponentTypeMap,
-            TypeCtor, TypeStatus, CtorTagMap, NumRemoteSectagBitsInt),
+        decide_complex_non_sub_du_type_ctor(ModuleInfo, Params,
+            ComponentTypeMap, TypeCtor, TypeStatus, CtorTagMap,
+            NumRemoteSectagBitsInt),
         Ctors, CtorRepns0, no_tagword_args, MaybeTagwordArgs, !Specs),
     (
         MaybeTagwordArgs = no_tagword_args,
@@ -2640,13 +2666,13 @@ set_remote_args_sectag_size(SectagSize,
 
 %---------------------------------------------------------------------------%
 
-:- pred decide_complex_du_type_ctor(module_info::in, decide_du_params::in,
-    component_type_map::in, type_ctor::in, type_status::in,
-    cons_id_to_tag_map::in, int::in, constructor::in, constructor_repn::out,
-    maybe_tagword_args::in, maybe_tagword_args::out,
+:- pred decide_complex_non_sub_du_type_ctor(module_info::in,
+    decide_du_params::in, component_type_map::in, type_ctor::in,
+    type_status::in, cons_id_to_tag_map::in, int::in, constructor::in,
+    constructor_repn::out, maybe_tagword_args::in, maybe_tagword_args::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-decide_complex_du_type_ctor(ModuleInfo, Params, ComponentTypeMap,
+decide_complex_non_sub_du_type_ctor(ModuleInfo, Params, ComponentTypeMap,
         TypeCtor, TypeStatus, CtorTagMap, NumRemoteSectagBits,
         Ctor, CtorRepn, !MaybeTagwordArgs, !Specs) :-
     Ctor = ctor(Ordinal, MaybeExistConstraints, CtorSymName,
@@ -2665,7 +2691,7 @@ decide_complex_du_type_ctor(ModuleInfo, Params, ComponentTypeMap,
             expect(unify(MaybeExistConstraints, no_exist_constraints), $pred,
                 "direct_arg_tag but exist_constraints")
         ),
-        decide_complex_du_ctor_remote_args(ModuleInfo, Params,
+        decide_complex_non_sub_du_ctor_remote_args(ModuleInfo, Params,
             ComponentTypeMap, TypeStatus, NumRemoteSectagBits, CtorTag,
             MaybeExistConstraints, CtorSymName, CtorContext,
             CtorArgs, CtorArgRepns, CtorMaybeTagwordArgs, !Specs),
@@ -2689,7 +2715,7 @@ decide_complex_du_type_ctor(ModuleInfo, Params, ComponentTypeMap,
         ),
         expect(unify(MaybeExistConstraints, no_exist_constraints), $pred,
             "shared_local_tag_with_args but exist_constraints"),
-        decide_complex_du_ctor_local_args(Params, ComponentTypeMap,
+        decide_complex_non_sub_du_ctor_local_args(Params, ComponentTypeMap,
             LocalSectag, CtorArgs, CtorArgRepns)
     ;
         ( CtorTag = dummy_tag
@@ -2729,7 +2755,7 @@ decide_complex_du_type_ctor(ModuleInfo, Params, ComponentTypeMap,
     --->    no_tagword_args
     ;       some_tagword_args.
 
-:- pred decide_complex_du_ctor_remote_args(module_info::in,
+:- pred decide_complex_non_sub_du_ctor_remote_args(module_info::in,
     decide_du_params::in, component_type_map::in, type_status::in,
     int::in, cons_tag::in(sortof_remote_args_tag),
     maybe_cons_exist_constraints::in, sym_name::in, prog_context::in,
@@ -2737,10 +2763,10 @@ decide_complex_du_type_ctor(ModuleInfo, Params, ComponentTypeMap,
     maybe_tagword_args::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-decide_complex_du_ctor_remote_args(ModuleInfo, Params, ComponentTypeMap,
-        TypeStatus, NumRemoteSectagBits, CtorTag, MaybeExistConstraints,
-        CtorSymName, CtorContext, CtorArgs, CtorArgRepns, MaybeTagwordArgs,
-        !Specs) :-
+decide_complex_non_sub_du_ctor_remote_args(ModuleInfo, Params,
+        ComponentTypeMap, TypeStatus, NumRemoteSectagBits, CtorTag,
+        MaybeExistConstraints, CtorSymName, CtorContext, CtorArgs,
+        CtorArgRepns, MaybeTagwordArgs, !Specs) :-
     maybe_exist_constraints_num_extra_words(MaybeExistConstraints,
         NumExtraArgWords),
 
@@ -2810,7 +2836,7 @@ decide_complex_du_ctor_remote_args(ModuleInfo, Params, ComponentTypeMap,
             % packed next to the sectag allows such code to still work.
             ArgOnlyOffset = arg_only_offset(-1),
             CellOffset = cell_offset(0),
-            decide_tagword_args(Params, ComponentTypeMap,
+            decide_non_sub_du_tagword_args(Params, ComponentTypeMap,
                 ArgOnlyOffset, CellOffset, NumRemoteSectagBits,
                 PackableCtorArgs, TagwordCtorArgRepns),
             NonTagwordCtorArgs = LeftOverCtorArgs
@@ -2824,7 +2850,7 @@ decide_complex_du_ctor_remote_args(ModuleInfo, Params, ComponentTypeMap,
 
     FirstArgWordNum = 0,
     FirstCellWordNum = NumTagwords + NumExtraArgWords,
-    decide_complex_du_ctor_remote_args_loop(ModuleInfo, Params,
+    decide_complex_non_sub_du_ctor_remote_args_loop(ModuleInfo, Params,
         ComponentTypeMap, FirstArgWordNum, FirstCellWordNum,
         NonTagwordCtorArgs, NonTagwordCtorArgRepns),
     CtorArgRepns = TagwordCtorArgRepns ++ NonTagwordCtorArgRepns,
@@ -2855,13 +2881,14 @@ target_uses_constructors(target_java) = yes.
 % NOTE The information here is repeated in ml_target_uses_constructors in
 % ml_type_gen.m; any changes here will require corresponding changes there.
 
-:- pred decide_complex_du_ctor_remote_args_loop(module_info::in,
+:- pred decide_complex_non_sub_du_ctor_remote_args_loop(module_info::in,
     decide_du_params::in, component_type_map::in, int::in, int::in,
     list(constructor_arg)::in, list(constructor_arg_repn)::out) is det.
 
-decide_complex_du_ctor_remote_args_loop(_, _, _, _, _, [], []).
-decide_complex_du_ctor_remote_args_loop(ModuleInfo, Params, ComponentTypeMap,
-        CurAOWordNum, CurCellWordNum, [Arg | Args], ArgRepns) :-
+decide_complex_non_sub_du_ctor_remote_args_loop(_, _, _, _, _, [], []).
+decide_complex_non_sub_du_ctor_remote_args_loop(ModuleInfo, Params,
+        ComponentTypeMap, CurAOWordNum, CurCellWordNum,
+        [Arg | Args], ArgRepns) :-
     ArgOnlyOffset = arg_only_offset(CurAOWordNum),
     CellOffset = cell_offset(CurCellWordNum),
     NumAvailBits = Params ^ ddp_arg_pack_bits,
@@ -2872,7 +2899,7 @@ decide_complex_du_ctor_remote_args_loop(ModuleInfo, Params, ComponentTypeMap,
     (
         ArgsPackables = [_ | _],
         NumPrefixBits = 0,
-        decide_packed_arg_word_loop(treat_as_first_arg,
+        decide_non_sub_du_packed_arg_word_loop(treat_as_first_arg,
             ArgOnlyOffset, CellOffset, NumPrefixBits, _,
             ArgsPackables, WordArgRepns),
         ( if NumUsedBits > 0 then
@@ -2882,13 +2909,15 @@ decide_complex_du_ctor_remote_args_loop(ModuleInfo, Params, ComponentTypeMap,
             NextAOWordNum = CurAOWordNum,
             NextCellWordNum = CurCellWordNum
         ),
-        decide_complex_du_ctor_remote_args_loop(ModuleInfo, Params,
+        decide_complex_non_sub_du_ctor_remote_args_loop(ModuleInfo, Params,
             ComponentTypeMap, NextAOWordNum, NextCellWordNum,
             LeftOverArgs, TailArgRepns),
         ArgRepns = WordArgRepns ++ TailArgRepns
     ;
         ArgsPackables = [],
-        Arg = ctor_arg(ArgName, ArgType, ArgContext),
+        Arg = ctor_arg(MaybeFieldName, ArgType, ArgContext),
+        % This predicate only deals with non-subtype du types.
+        MaybeBaseCtorArg = no_base_ctor_arg,
         deref_eqv_types(ModuleInfo, ArgType, DerefArgType),
         ( if
             DerefArgType = builtin_type(BuiltinType),
@@ -2918,8 +2947,9 @@ decide_complex_du_ctor_remote_args_loop(ModuleInfo, Params, ComponentTypeMap,
             NextAOWordNum = CurAOWordNum + 1,
             NextCellWordNum = CurCellWordNum + 1
         ),
-        HeadArgRepn = ctor_arg_repn(ArgName, ArgType, ArgPosWidth, ArgContext),
-        decide_complex_du_ctor_remote_args_loop(ModuleInfo, Params,
+        HeadArgRepn = ctor_arg_repn(MaybeFieldName, MaybeBaseCtorArg, ArgType,
+            ArgPosWidth, ArgContext),
+        decide_complex_non_sub_du_ctor_remote_args_loop(ModuleInfo, Params,
             ComponentTypeMap, NextAOWordNum, NextCellWordNum,
             Args, TailArgRepns),
         ArgRepns = [HeadArgRepn | TailArgRepns]
@@ -2927,11 +2957,11 @@ decide_complex_du_ctor_remote_args_loop(ModuleInfo, Params, ComponentTypeMap,
 
 %---------------------------------------------------------------------------%
 
-:- pred decide_complex_du_ctor_local_args(decide_du_params::in,
+:- pred decide_complex_non_sub_du_ctor_local_args(decide_du_params::in,
     component_type_map::in, local_sectag::in,
     list(constructor_arg)::in, list(constructor_arg_repn)::out) is det.
 
-decide_complex_du_ctor_local_args(Params, ComponentTypeMap,
+decide_complex_non_sub_du_ctor_local_args(Params, ComponentTypeMap,
         LocalSectag, CtorArgs, CtorArgRepns) :-
     % A word representing a constructor with locally packed arguments contains,
     % in order:
@@ -2974,18 +3004,18 @@ decide_complex_du_ctor_local_args(Params, ComponentTypeMap,
     LocalSectag = local_sectag(_, _, SectagBits),
     SectagBits = sectag_bits(NumSectagBits, _),
     NumPrimSectagBits = NumPtagBits + uint8.cast_to_int(NumSectagBits),
-    decide_tagword_args(Params, ComponentTypeMap,
+    decide_non_sub_du_tagword_args(Params, ComponentTypeMap,
         ArgOnlyOffset, CellOffset, NumPrimSectagBits, CtorArgs, CtorArgRepns).
 
-:- pred decide_tagword_args(decide_du_params::in, component_type_map::in,
-    arg_only_offset::in, cell_offset::in, int::in,
+:- pred decide_non_sub_du_tagword_args(decide_du_params::in,
+    component_type_map::in, arg_only_offset::in, cell_offset::in, int::in,
     list(constructor_arg)::in, list(constructor_arg_repn)::out) is det.
 
-decide_tagword_args(Params, ComponentTypeMap,
+decide_non_sub_du_tagword_args(Params, ComponentTypeMap,
         ArgOnlyOffset, CellOffset, NumFixedBits, CtorArgs, CtorArgRepns) :-
     pair_args_with_packable(Params, ComponentTypeMap,
         CtorArgs, CtorArgsPackables),
-    decide_packed_arg_word_loop(do_not_treat_as_first_arg,
+    decide_non_sub_du_packed_arg_word_loop(do_not_treat_as_first_arg,
         ArgOnlyOffset, CellOffset, NumFixedBits, _,
         CtorArgsPackables, CtorArgRepns).
 
@@ -3009,20 +3039,20 @@ decide_tagword_args(Params, ComponentTypeMap,
     % *starts* with a nondummy argument, but we assign the apw_none_nowhere
     % representation to any dummy in any such initial subsequence.
     %
-:- pred decide_packed_arg_word_loop(maybe_treat_as_first_arg::in,
+:- pred decide_non_sub_du_packed_arg_word_loop(maybe_treat_as_first_arg::in,
     arg_only_offset::in, cell_offset::in, int::in, int::out,
     assoc_list(constructor_arg, packable_kind)::in,
     list(constructor_arg_repn)::out) is det.
 
-decide_packed_arg_word_loop(_, _, _, NumPrefixBits, NumPrefixBits,
+decide_non_sub_du_packed_arg_word_loop(_, _, _, NumPrefixBits, NumPrefixBits,
         [], []).
-decide_packed_arg_word_loop(TreatAsFirst, ArgOnlyOffset, CellOffset,
+decide_non_sub_du_packed_arg_word_loop(TreatAsFirst, ArgOnlyOffset, CellOffset,
         NumPrefixBits, NextShift,
         [ArgPackable | ArgsPackables], [ArgRepn | ArgRepns]) :-
     ArgPackable = Arg - Packable,
     (
         Packable = packable_n_bits(NumArgBits, FillKind),
-        decide_packed_arg_word_loop(do_not_treat_as_first_arg,
+        decide_non_sub_du_packed_arg_word_loop(do_not_treat_as_first_arg,
             ArgOnlyOffset, CellOffset, NumPrefixBits, CurShift,
             ArgsPackables, ArgRepns),
         ArgMask = (1 << NumArgBits) - 1,
@@ -3040,7 +3070,7 @@ decide_packed_arg_word_loop(TreatAsFirst, ArgOnlyOffset, CellOffset,
         NextShift = CurShift + NumArgBits
     ;
         Packable = packable_dummy,
-        decide_packed_arg_word_loop(TreatAsFirst,
+        decide_non_sub_du_packed_arg_word_loop(TreatAsFirst,
             ArgOnlyOffset, CellOffset, NumPrefixBits, CurShift,
             ArgsPackables, ArgRepns),
         (
@@ -3052,8 +3082,11 @@ decide_packed_arg_word_loop(TreatAsFirst, ArgOnlyOffset, CellOffset,
         ),
         NextShift = CurShift
     ),
-    Arg = ctor_arg(ArgName, ArgType, ArgContext),
-    ArgRepn = ctor_arg_repn(ArgName, ArgType, ArgPosWidth, ArgContext).
+    Arg = ctor_arg(MaybeFieldName, ArgType, ArgContext),
+    % This predicate only deals with non-subtype du types.
+    MaybeBaseCtorArg = no_base_ctor_arg,
+    ArgRepn = ctor_arg_repn(MaybeFieldName, MaybeBaseCtorArg, ArgType,
+        ArgPosWidth, ArgContext).
 
 %---------------------------------------------------------------------------%
 
@@ -3704,7 +3737,8 @@ make_subtype_type_repn(TypeCtor, OoMCtors, BaseRepn, Repn) :-
                 SingleFunctorName, _ConsTag, [SingleArgRepn], 1, _Context)
         then
             SingleArgRepn = ctor_arg_repn(MaybeSingleArgFieldName,
-                SingleArgType, _SingleArgPosWidth, _SingleArgContext),
+                _MaybeBaseCtorArg, SingleArgType, _SingleArgPosWidth,
+                _SingleArgContext),
             (
                 MaybeSingleArgFieldName = no,
                 MaybeSingleArgName = no
@@ -3781,9 +3815,12 @@ search_ctor_repn_by_unqual_name([CtorRepn | CtorRepns], UnqualName, Arity,
 
 make_subtype_constructor_arg_repn(CtorArg, BaseCtorArgRepn, CtorArgRepn) :-
     CtorArg = ctor_arg(MaybeFieldName, ArgType, Context),
-    BaseCtorArgRepn = ctor_arg_repn(_MaybeBaseFieldName, _BaseArgType,
-        ArgPosWidth, _BaseContext),
-    CtorArgRepn = ctor_arg_repn(MaybeFieldName, ArgType, ArgPosWidth, Context).
+    BaseCtorArgRepn = ctor_arg_repn(MaybeBaseFieldName, BaseMaybeBaseCtorArg,
+        _BaseArgType, ArgPosWidth, _BaseContext),
+    expect(unify(BaseMaybeBaseCtorArg, no_base_ctor_arg), $pred,
+        "BaseMaybeBaseCtorArg != no_base_ctor_arg"),
+    CtorArgRepn = ctor_arg_repn(MaybeFieldName,
+        base_ctor_arg(MaybeBaseFieldName), ArgType, ArgPosWidth, Context).
 
 :- pred has_matching_constructor(list(constructor)::in, sym_name_arity::in)
     is semidet.
@@ -4213,7 +4250,8 @@ inform_about_any_suboptimal_packing(Params, CtorSymName, CtorContext,
 record_subword_args_and_count_their_words([], _, !SubWords, !NumWords).
 record_subword_args_and_count_their_words([ArgRepn | ArgRepns], CurArgNum,
         !SubWords, !NumWords) :-
-    ArgRepn = ctor_arg_repn(MaybeFieldName, _Type, PosWidth, _Context),
+    ArgRepn = ctor_arg_repn(MaybeFieldName, _MaybeBaseCtorArg, _Type, PosWidth,
+        _Context),
     (
         ( PosWidth = apw_full(_, _)
         ; PosWidth = apw_double(_, _, _)
@@ -4756,7 +4794,7 @@ show_decisions_for_ctor_args(Stream, ForDevelopers, TypeCtorStr, CtorStr,
         io.format(Stream, "    CTOR_ARG %s %s arg %d: ",
             [s(TypeCtorStr), s(CtorStr), i(ArgNum)], !IO)
     ),
-    CtorArgRepn = ctor_arg_repn(_, _, ArgPosWidth, _),
+    CtorArgRepn = ctor_arg_repn(_, _, _, ArgPosWidth, _),
     (
         ArgPosWidth = apw_full(_, CellOffset),
         expect(unify(ArgsLocn, args_remote), $pred, "apw_full not remote"),

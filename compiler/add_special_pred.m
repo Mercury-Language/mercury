@@ -542,7 +542,8 @@ make_tuple_args_and_repns_loop(Context, [ArgType | ArgTypes], ArgNum,
         [CtorArg | CtorArgs], [CtorArgRepn | CtorArgRepns]) :-
     CtorArg = ctor_arg(no, ArgType, Context),
     ArgPosWidth = apw_full(arg_only_offset(ArgNum), cell_offset(ArgNum)),
-    CtorArgRepn = ctor_arg_repn(no, ArgType, ArgPosWidth, Context),
+    CtorArgRepn = ctor_arg_repn(no, no_base_ctor_arg, ArgType, ArgPosWidth,
+        Context),
     make_tuple_args_and_repns_loop(Context, ArgTypes, ArgNum + 1,
         CtorArgs, CtorArgRepns).
 

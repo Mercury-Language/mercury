@@ -280,7 +280,8 @@ replace_in_ctor_repn(TypeEqvMap, CtorRepn0, CtorRepn, !CtorNameToRepnMap,
 
 replace_in_ctor_arg_repn(TypeEqvMap, CtorArgRepn0, CtorArgRepn,
         !TVarSet, !EquivTypeInfo) :-
-    CtorArgRepn0 = ctor_arg_repn(Name, Type0, Width, Context),
+    CtorArgRepn0 = ctor_arg_repn(MaybeFieldName, MaybeBaseCtorArg,
+        Type0, Width, Context),
     replace_in_type(TypeEqvMap, Type0, Type, Changed,
         !TVarSet, !EquivTypeInfo),
     (
@@ -288,7 +289,8 @@ replace_in_ctor_arg_repn(TypeEqvMap, CtorArgRepn0, CtorArgRepn,
         CtorArgRepn = CtorArgRepn0
     ;
         Changed = changed,
-        CtorArgRepn = ctor_arg_repn(Name, Type, Width, Context)
+        CtorArgRepn = ctor_arg_repn(MaybeFieldName, MaybeBaseCtorArg,
+            Type, Width, Context)
     ).
 
 %-----------------------------------------------------------------------------%

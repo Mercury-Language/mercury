@@ -590,7 +590,8 @@ format_ctor_args(TVarSet, IndentStr, AnyFieldName,
 
 format_ctor_arg_repns(TVarSet, IndentStr, AnyFieldName,
         CurArgNum, HeadArgRepn, TailArgRepns, !State) :-
-    HeadArgRepn = ctor_arg_repn(MaybeFieldName, Type, ArgPosWidth, _Context),
+    HeadArgRepn = ctor_arg_repn(MaybeFieldName, _MaybeBaseCtorArg, Type,
+        ArgPosWidth, _Context),
     string.builder.append_string(IndentStr, !State),
     (
         AnyFieldName = no
@@ -639,7 +640,7 @@ does_any_arg_have_a_field_name([Arg | Args]) = SomeArgHasFieldName :-
 does_any_arg_repn_have_a_field_name([]) = no.
 does_any_arg_repn_have_a_field_name([ArgRepn | ArgRepns])
         = SomeArgHasFieldName :-
-    ArgRepn = ctor_arg_repn(MaybeFieldName, _, _, _),
+    ArgRepn = ctor_arg_repn(MaybeFieldName, _, _, _, _),
     (
         MaybeFieldName = yes(_),
         SomeArgHasFieldName = yes

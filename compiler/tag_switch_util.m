@@ -203,11 +203,6 @@
 
 :- type whole_ptag_info(CaseRep) =< whole_ptags_info(CaseRep)
     --->    whole_ptags_info(
-                % XXX The field names here duplicate the field names
-                % in the supertype. When targeting Java or C#, which use
-                % the high level data representation, these field names
-                % (which are otherwise unnecessary) are needed to avoid
-                % the generation of incorrect code.
                 wpi_head_ptag           :: ptag,
                 wpi_tail_ptags          :: empty_ptag_list,
                 wpi_num_functors        :: uint,

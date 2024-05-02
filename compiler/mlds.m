@@ -2340,7 +2340,8 @@
             % When compiling with --high-level-data, we generate a type
             % in the target language for each data constructor in a
             % discriminated union type. This is the name of one of the fields
-            % of this type.
+            % of this type. For a subtype, this has to be the name of the
+            % corresponding field in the base type.
             % NOTE: See the XXX on the code that turns these variables
             % into strings.
 

@@ -1,0 +1,3 @@
+foo(111, lemon, "str")
+bar(222, lemon, "str")
+bar(333, lemon, "str")

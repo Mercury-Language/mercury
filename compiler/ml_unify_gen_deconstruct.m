@@ -654,8 +654,9 @@ ml_gen_dynamic_deconstruct_arg(FieldGen, ArgVar, CtorArgRepn, ArgMode,
         FieldId = ml_field_offset(ml_const(mlconst_int(CellOffsetInt)))
     ;
         FieldVia = field_via_name(FieldQualifier, ClassPtrType),
-        MaybeFieldName = CtorArgRepn ^ car_field_name,
-        FieldName = ml_gen_hld_field_name(MaybeFieldName, ArgNum),
+        CtorArgRepn = ctor_arg_repn(MaybeFieldName, MaybeBaseCtorArg, _, _, _),
+        FieldName = ml_gen_hld_field_name(MaybeFieldName, MaybeBaseCtorArg,
+            ArgNum),
         QualifiedFieldName =
             qual_field_var_name(FieldQualifier, type_qual, FieldName),
         FieldId = ml_field_named(QualifiedFieldName, ClassPtrType)
