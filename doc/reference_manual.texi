@@ -12797,7 +12797,7 @@ In general, this pragma may take these four forms.
 
 @example
 :- pragma format_call(pred(@var{Name}/@var{Arity}),
-    format_string_values(@var{FormatStringArgNum}, @var{(ValuesArgNum})).
+    format_string_values(@var{FormatStringArgNum}, @var{ValuesArgNum})).
 :- pragma format_call(func(@var{Name}/@var{Arity}),
     format_string_values(@var{FormatStringArgNum}, @var{ValuesArgNum})).
 :- pragma format_call(pred(@var{Name}/@var{Arity}),
