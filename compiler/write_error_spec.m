@@ -1011,6 +1011,21 @@ convert_words_to_paragraphs_acc(ColorDb, [Word | Words],
         record_text_word(TextWord, !Done, !InWork)
     ;
         Word = word_color(ColorChange),
+        % Note how with color_start, we want to put any space *before*
+        % the color change, while with color_end, we want to put any space
+        % *after* the color change. The objective is to enable color
+        % only for the shortest span of characters to accomplish the
+        % intended coloring effect. This may not matter much when the
+        % output we generate gets viewed by a user, but it matters when
+        % we as developers work with .err_exp files in the test directories
+        % that test diagnostic outputs.
+        %
+        % It simply easier to visually check whether the output of a diff
+        % between an .err file containing new or updated diagnostic output
+        % and the existing .err_exp file contains just the expected changes
+        % if neither file contains color change escape sequences that are
+        % effectively no-ops. (The addition or deletion of such a no-op
+        % sequence would show up in the diff as a red herring.)
         (
             ColorChange = color_start(_),
             Done0 = !.Done,
@@ -1491,47 +1506,6 @@ group_nonfirst_line_words(AvailLen, FirstWord, LaterWords,
             Indent, LastParen, RestLines, ColorStack1, ColorStack),
         Lines = [Line | RestLines]
     ).
-
-% The rules for color starts and ends:
-%
-% When we see one, we always look for and process all following consecutive
-% color starts and ends, and handle their aggregrate effect. These "spans"
-% of color changes are always both preceded and followed by sc_str units;
-% if they were preceded or followed by color change units, those units
-% would have been included in the span.
-%
-% If code always creates color changes using the color_pieces_as_X
-% functions in error_spec.m, then a color change span whose first unit
-% is sc_color_start will end up with a stack that is at least as high
-% as it started with, while a span whose first unit is sc_color_end
-% will end up with a stack stack that is at most as high as it started with.
-% Therefore the total effect of each span is given by its initial unit.
-%
-% We want to limit color changes to apply to just the pieces they are
-% supposed to cover, not to any spaces around them. We therefore added
-% the NextSpace parameter to get_later_words, which should contain
-% either zero spaces or one space, to allow the addition of spaces
-% to be delayed. We exploit this capability using the following rules
-% for how spaces should be handled around color changes:
-%
-% at left margin (get_line_of_words)
-% str:          add the string, NextSpace := 1
-% color_start: add new color, NextSpace := 0
-% color_end:   add new color, NextSpace := 0
-%
-% not at left margin (get_later_words)
-% str:          add NextSpace spaces, add the string, NextSpace := 1
-% color_start: check NextSpace=1, add 1 space, add top color, NextSpace := 0
-% color_end:   check NextSpace=1, add top color, NextSpace := 1
-%
-% Note how with color_start, get_later_words add the space *before*
-% the color change, while with color_end, it adds the space *after*.
-%
-% (The checks for NextSpace=1 in get_later_words when the first unit
-% is a color change must succeed, because the first unit is a color change
-% *only* if was not included in a previously-started span of color changes,
-% which means that the previous unit (which was handled by get_later_words)
-% was sc_str.)
 
 :- pred get_line_of_words(int::in, ssc_unit::in, list(ssc_unit)::in,
     indent::in, int::out, list(string)::out, list(ssc_unit)::out,
