@@ -1717,6 +1717,7 @@
 % for their absences.
 %
 % - pred is_empty/1
+% - pred is_non_empty/1
 % - pred is_not_empty/1
 %
 %   When applied to known-to-be-nonempty lists, the outcomes of these tests

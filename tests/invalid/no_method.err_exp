@@ -1,5 +1,5 @@
 no_method.m:035: In clause for type class method implementation:
-no_method.m:035:   error: wrong number of arguments (3; should be 2) in use of
+no_method.m:035:   error: wrong number of arguments ([38;5;203m3[39;49m; should be [38;5;40m2[39;49m) in use of
 no_method.m:035:   constructor `one_str'.
 no_method.m:043: In clause for type class method implementation:
 no_method.m:043:   type error in unification of variable `HeadVar__4'

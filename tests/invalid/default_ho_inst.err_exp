@@ -1,7 +1,7 @@
 default_ho_inst.m:026: In clause for `main(di, uo)':
 default_ho_inst.m:026:   in argument 1 of call to predicate
 default_ho_inst.m:026:   `default_ho_inst.callfoo'/3:
-default_ho_inst.m:026:   mode error: variable `V_7' has instantiatedness [38;5;203m[39;49m
+default_ho_inst.m:026:   mode error: variable `V_7' has instantiatedness
 default_ho_inst.m:026:     [38;5;203munique([39;49m
 default_ho_inst.m:026:       [38;5;203mfoo([39;49m
 default_ho_inst.m:026:         [38;5;203m/* unique */ (func([39;49m

@@ -776,15 +776,24 @@ color_as_possible_cause(Pieces) =
     color_pieces(color_cause, Pieces).
 
 color_pieces(Color, Pieces0) = Pieces :-
-    list.reverse(Pieces0, RevPieces0),
-    list.take_while(is_nl_piece, RevPieces0, RevNlPieces0, RevMainPieces0),
-    list.reverse(RevNlPieces0, NlPieces),
-    list.reverse(RevMainPieces0, MainPieces),
-    Pieces =
-        [not_for_general_use_start_color(Color)] ++
-        MainPieces ++
-        [not_for_general_use_end_color] ++
-        NlPieces.
+    list.take_while(is_nl_piece, Pieces0, HeadNlPieces, Pieces1),
+    list.reverse(Pieces1, RevPieces1),
+    list.take_while(is_nl_piece, RevPieces1, RevTailNlPieces1, RevMainPieces1),
+    list.reverse(RevTailNlPieces1, TailNlPieces),
+    list.reverse(RevMainPieces1, MainPieces),
+    (
+        MainPieces = [_ | _],
+        Pieces =
+            HeadNlPieces ++
+            [not_for_general_use_start_color(Color)] ++
+            MainPieces ++
+            [not_for_general_use_end_color] ++
+            TailNlPieces
+    ;
+        MainPieces = [],
+        % There are no pieces to apply color to.
+        Pieces = HeadNlPieces ++ TailNlPieces
+    ).
 
 :- pred is_nl_piece(format_piece::in) is semidet.
 

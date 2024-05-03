@@ -78,6 +78,7 @@
 
     % Succeed iff the given random access list is not empty.
     %
+:- pred is_non_empty(ra_list(T)::in) is semidet.
 :- pred is_not_empty(ra_list(T)::in) is semidet.
 
     % Succeed iff the given random access list contains only one item.
@@ -321,6 +322,9 @@ head_tail(cons(Size, node(X, T1, T2), Rest), X, Tail) :-
 
 is_empty(RA) :-
     RA = nil.
+
+is_non_empty(RA) :-
+    RA = cons(_, _, _).
 
 is_not_empty(RA) :-
     RA = cons(_, _, _).

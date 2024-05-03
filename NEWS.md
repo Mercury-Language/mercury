@@ -153,6 +153,7 @@ Changes to the Mercury standard library
 
 * The following predicates have been added:
 
+    - pred `is_non_empty/1`
     - pred `foldr2/6`
     - pred `foldr3/8`
     - pred `head/2`
@@ -531,6 +532,7 @@ Changes to the Mercury standard library
     - pred `intersperse/3`
     - pred `intersperse_list/3`
     - pred `intersperse_list_last/4`
+    - pred `is_non_empty/1`
     - pred `is_singleton/2`
     - pred `last_gap_foldl/6`
     - func `map_corresponding4/5`
@@ -544,6 +546,10 @@ Changes to the Mercury standard library
     - func `list_to_doc/1`  (replacement: `pretty_printer.list_to_doc`/1)
 
 ### Changes to the `one_or_more` module
+
+* The following predicate has been added:
+
+    - pred `is_non_empty/1`
 
 * The following function has been marked obsolete:
 

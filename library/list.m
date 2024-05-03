@@ -71,6 +71,7 @@
 
 :- pred is_empty(list(T)::in) is semidet.
 
+:- pred is_non_empty(list(T)::in) is semidet.
 :- pred is_not_empty(list(T)::in) is semidet.
 
 :- pred is_singleton(list(T)::in, T::out) is semidet.
@@ -2374,6 +2375,8 @@
 %---------------------------------------------------------------------------%
 
 is_empty([]).
+
+is_non_empty([_ | _]).
 
 is_not_empty([_ | _]).
 

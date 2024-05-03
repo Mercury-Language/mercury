@@ -1,5 +1,5 @@
 ho_type_mode_bug.m:020: In the first argument of predicate `my_foldl2'/6:
-ho_type_mode_bug.m:020:   error: the higher order inst [38;5;203m[39;49m
+ho_type_mode_bug.m:020:   error: the higher order inst
 ho_type_mode_bug.m:020:     [38;5;203m`(pred(in, in, out) is det)'[39;49m
 ho_type_mode_bug.m:020:   cannot describe the instantiation state of a value of
 ho_type_mode_bug.m:020:   the higher-order type

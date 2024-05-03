@@ -4,7 +4,7 @@ coerce_int.m:026:   mode error: the function result had the wrong
 coerce_int.m:026:   instantiatedness.
 coerce_int.m:026:   Final instantiatedness of `HeadVar__2' was
 coerce_int.m:026:   [38;5;203m`bound(wrap(bound(1 ; 2)))',[39;49m
-coerce_int.m:026:   expected final instantiatedness was [38;5;40m[39;49m
+coerce_int.m:026:   expected final instantiatedness was
 coerce_int.m:026:     [38;5;40mnamed inst wrap([39;49m
 coerce_int.m:026:       [38;5;40mbound([39;49m
 coerce_int.m:026:         [38;5;40m1[39;49m

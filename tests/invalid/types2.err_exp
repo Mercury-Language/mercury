@@ -11,7 +11,7 @@ types2.m:020:   The partial type assignment was:
 types2.m:020:     V_1: (pred)
 types2.m:020:     V_2: int
 types2.m:021: In clause for predicate `q'/0:
-types2.m:021:   error: wrong number of arguments (0; should be 1)
+types2.m:021:   error: wrong number of arguments ([38;5;203m0[39;49m; should be [38;5;40m1[39;49m)
 types2.m:021:   in call to predicate `p'.
 types2.m:023: Error: clause for predicate `r'/0
 types2.m:023:   without corresponding `:- pred' declaration.
@@ -42,5 +42,5 @@ types2.m:053: Error: the type `t'/2 has this declaration, but it has no
 types2.m:053:   definition.
 types2.m:055: Error: no clauses for predicate `bar2'/1.
 types2.m:072: In clause for predicate `repeated_arity'/3:
-types2.m:072:   error: wrong number of arguments (2; should be 3)
+types2.m:072:   error: wrong number of arguments ([38;5;203m2[39;49m; should be [38;5;40m3[39;49m)
 types2.m:072:   in call to predicate `append'.

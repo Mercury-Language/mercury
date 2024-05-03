@@ -87,6 +87,7 @@
 :- import_module bool.
 :- import_module int.
 :- import_module map.
+:- import_module maybe.
 :- import_module require.
 :- import_module set.
 :- import_module string.
@@ -1104,32 +1105,35 @@ arity_error_to_pieces(PredOrFunc, Arity0, Arities0) = Pieces :-
             ),
         list.map(ReverseAdjust, Arities0, Arities)
     ),
-    ActualArityPieces = [suffix(int_to_string(Arity))],
-    ExpectedAritiesPieces = arities_to_pieces(Arities),
-    % XXX TYPECHECK_ERRORS
+    ActualArityPieces0 = [suffix(int_to_string(Arity))],
+    ExpectedAritiesPieces = arities_to_pieces(yes(color_correct), Arities),
+    % ZZZ XXX TYPECHECK_ERRORS
     % Coloring here results in prefixes and suffixes next to color changes
     % not being respected by write_error_spec.m.
-    % ActualArityPieces = color_as_incorrect(ActualArityPieces0),
-    % ExpectedAritiesPieces = color_as_correct(ExpectedAritiesPieces0),
-    Pieces = [words("wrong number of arguments (") | ActualArityPieces] ++
-        [suffix(";"),
+    ActualArityPieces = color_as_incorrect(ActualArityPieces0),
+    Pieces = [words("wrong number of arguments"),
+        prefix("(") | ActualArityPieces] ++ [suffix(";"),
         words("should be") | ExpectedAritiesPieces] ++ [suffix(")")].
 
-:- func arities_to_pieces(list(int)) = list(format_piece).
+:- func arities_to_pieces(maybe(color_name), list(int)) = list(format_piece).
 
-arities_to_pieces([]) = [].
-arities_to_pieces([Arity | Arities]) = Pieces :-
-    TailPieces = arities_to_pieces(Arities),
+arities_to_pieces(_, []) = [].
+arities_to_pieces(MaybeColor, [Arity | Arities]) = Pieces :-
+    TailPieces = arities_to_pieces(MaybeColor, Arities),
     ArityPiece = fixed(int_to_string(Arity)),
     (
         Arities = [],
-        Pieces = [ArityPiece | TailPieces]
+        ArityPieces = maybe_color_pieces(MaybeColor, [ArityPiece]),
+        Pieces = ArityPieces ++ TailPieces
     ;
         Arities = [_],
-        Pieces = [ArityPiece, words("or") | TailPieces]
+        ArityPieces = maybe_color_pieces(MaybeColor, [ArityPiece]),
+        Pieces = ArityPieces ++ [words("or") | TailPieces]
     ;
         Arities = [_, _ | _],
-        Pieces = [ArityPiece, suffix(",") | TailPieces]
+        ArityCommaPieces = maybe_color_pieces(MaybeColor,
+            [ArityPiece, suffix(",")]),
+        Pieces = ArityCommaPieces ++ TailPieces
     ).
 
 %---------------------------------------------------------------------------%

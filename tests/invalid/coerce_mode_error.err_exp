@@ -18,8 +18,8 @@ coerce_mode_error.m:051:   `coerce_mode_error.non_empty_list(coerce_mode_error.f
 coerce_mode_error.m:051:   to
 coerce_mode_error.m:051:   `coerce_mode_error.list(coerce_mode_error.citrus)'
 coerce_mode_error.m:051:   because it has instantiatedness [38;5;203m`ground',[39;49m and
-coerce_mode_error.m:051:   [38;5;203m`coerce_mode_error.non_empty_list(coerce_mode_error.fruit)'
-coerce_mode_error.m:051:   [39;49mis not a subtype of
+coerce_mode_error.m:051:   [38;5;203m`coerce_mode_error.non_empty_list(coerce_mode_error.fruit)'[39;49m
+coerce_mode_error.m:051:   is not a subtype of
 coerce_mode_error.m:051:   `coerce_mode_error.list(coerce_mode_error.citrus)'.
 coerce_mode_error.m:063: In clause for `bad_from_list_to_least2(in, out)':
 coerce_mode_error.m:063:   in coerce expression:

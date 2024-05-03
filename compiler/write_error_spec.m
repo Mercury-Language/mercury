@@ -943,11 +943,12 @@ add_word_to_cord(Word, !Lower, !WordsCord) :-
 
 :- type paragraph
     --->    paragraph(
-                % The list of words to print in the paragraph, possibly
-                % together with color changes.
+                % The list of words to print in the paragraph, together
+                % with any color changes, with spaces between them
+                % explicitly listed at all the appropriate points,
                 %
-                % The list should contain at least one string.
-                list(sc_unit),
+                % The list should contain at least one ssc_string element.
+                list(ssc_unit),
 
                 % The number of blank lines to print after the paragraph.
                 % (This is actually a uint, but its only use is to call
@@ -963,10 +964,10 @@ add_word_to_cord(Word, !Lower, !WordsCord) :-
                 paren_status
             ).
 
-:- type sc_unit
-    --->    sc_str(string)
-    ;       sc_color_start(color_spec)
-    ;       sc_color_end.
+:- type ssc_unit
+    --->    ssc_space
+    ;       ssc_str(string)
+    ;       ssc_color(color_change).
 
 :- type paren_status
     --->    paren_none
@@ -979,27 +980,66 @@ add_word_to_cord(Word, !Lower, !WordsCord) :-
 convert_words_to_paragraphs(ColorDb, Words, Paras) :-
     WordsCord0 = cord.init,
     ParasCord0 = cord.init,
-    convert_words_to_paragraphs_acc(ColorDb, Words, WordsCord0,
+    InWork0 = empty_slate,
+    convert_words_to_paragraphs_acc(ColorDb, Words, WordsCord0, InWork0,
         ParasCord0, ParasCord),
     Paras = cord.list(ParasCord).
 
-:- type line_word =< word
-    --->    word_text(text_word)
-    ;       word_color(color_change).
+:- type in_work
+    --->    empty_slate
+    ;       in_work(
+                iw_text_word        :: string,
+                iw_text_word_prefix :: is_in_work_text_prefix
+            ).
+
+:- type is_in_work_text_prefix
+    --->    in_work_text_is_plain
+    ;       in_work_text_is_prefix
+    ;       in_work_text_is_pure_suffix.
 
 :- pred convert_words_to_paragraphs_acc(color_db::in, list(word)::in,
-    cord(line_word)::in, cord(paragraph)::in, cord(paragraph)::out) is det.
+    cord(ssc_unit)::in, in_work::in,
+    cord(paragraph)::in, cord(paragraph)::out) is det.
 
-convert_words_to_paragraphs_acc(_, [], !.WordsCord, !Paras) :-
-    SCUnits = words_cord_to_sc_units(!.WordsCord),
-    add_paragraph(paragraph(SCUnits, 0, 0, paren_none), !Paras).
+convert_words_to_paragraphs_acc(_, [], !.Done, !.InWork, !Paras) :-
+    end_work_on_one_paragraphs_ssc_units(SSCUnits, !.Done, _, !.InWork, _),
+    add_paragraph(paragraph(SSCUnits, 0, 0, paren_none), !Paras).
 convert_words_to_paragraphs_acc(ColorDb, [Word | Words],
-        !.WordsCord, !Paras) :-
+        !.Done, !.InWork, !Paras) :-
     (
-        ( Word = word_text(_)
-        ; Word = word_color(_)
-        ),
-        cord.snoc(coerce(Word), !WordsCord)
+        Word = word_text(TextWord),
+        record_text_word(TextWord, !Done, !InWork)
+    ;
+        Word = word_color(ColorChange),
+        (
+            ColorChange = color_start(_),
+            Done0 = !.Done,
+            InWork0 = !.InWork,
+            (
+                InWork0 = empty_slate,
+                ( if cord.is_non_empty(Done0) then
+                    cord.snoc(ssc_space, !Done)
+                else
+                    true
+                )
+            ;
+                InWork0 = in_work(_, InWorkTextKind),
+                mark_in_work_as_done(!Done, !InWork),
+                (
+                    ( InWorkTextKind = in_work_text_is_plain
+                    ; InWorkTextKind = in_work_text_is_pure_suffix
+                    ),
+                    cord.snoc(ssc_space, !Done)
+                ;
+                    InWorkTextKind = in_work_text_is_prefix
+                )
+            ),
+            cord.snoc(ssc_color(ColorChange), !Done)
+        ;
+            ColorChange = color_end,
+            mark_in_work_as_done(!Done, !InWork),
+            cord.snoc(ssc_color(ColorChange), !Done)
+        )
     ;
         Word = word_nl(NewlineWord),
         (
@@ -1015,10 +1055,9 @@ convert_words_to_paragraphs_acc(ColorDb, [Word | Words],
                 Blank = 1,
                 Delta = 0
             ),
-            SCUnits = words_cord_to_sc_units(!.WordsCord),
-            Para = paragraph(SCUnits, Blank, Delta, paren_none),
-            add_paragraph(Para, !Paras),
-            !:WordsCord = cord.init
+            end_work_on_one_paragraphs_ssc_units(SSCUnits, !Done, !InWork),
+            Para = paragraph(SSCUnits, Blank, Delta, paren_none),
+            add_paragraph(Para, !Paras)
         ;
             NewlineWord = lp_maybe_nl_inc(LP, LPWordKind),
             (
@@ -1028,14 +1067,13 @@ convert_words_to_paragraphs_acc(ColorDb, [Word | Words],
                 LPWordKind = lp_suffix,
                 LPTextWord = suffix(LP)
             ),
-            cord.snoc(word_text(LPTextWord), !WordsCord),
-            SCUnits = words_cord_to_sc_units(!.WordsCord),
-            add_paragraph(paragraph(SCUnits, 0, 1, paren_lp_end), !Paras),
-            !:WordsCord = cord.init
+            record_text_word(LPTextWord, !Done, !InWork),
+            end_work_on_one_paragraphs_ssc_units(SSCUnits, !Done, !InWork),
+            add_paragraph(paragraph(SSCUnits, 0, 1, paren_lp_end), !Paras)
         ;
             NewlineWord = maybe_nl_dec_rp(RP, RPWordKind),
-            SCUnits = words_cord_to_sc_units(!.WordsCord),
-            add_paragraph(paragraph(SCUnits, 0, -1, paren_end_rp), !Paras),
+            end_work_on_one_paragraphs_ssc_units(SSCUnits, !Done, !InWork),
+            add_paragraph(paragraph(SSCUnits, 0, -1, paren_end_rp), !Paras),
             (
                 RPWordKind = rp_plain,
                 RPTextWord = plain(RP)
@@ -1043,10 +1081,156 @@ convert_words_to_paragraphs_acc(ColorDb, [Word | Words],
                 RPWordKind = rp_prefix,
                 RPTextWord = prefix(RP)
             ),
-            !:WordsCord = cord.singleton(word_text(RPTextWord))
+            record_text_word(RPTextWord, !Done, !InWork)
         )
     ),
-    convert_words_to_paragraphs_acc(ColorDb, Words, !.WordsCord, !Paras).
+    convert_words_to_paragraphs_acc(ColorDb, Words, !.Done, !.InWork, !Paras).
+
+:- pred record_text_word(text_word::in,
+    cord(ssc_unit)::in, cord(ssc_unit)::out, in_work::in, in_work::out) is det.
+
+record_text_word(TextWord, Done0, Done, InWork0, InWork) :-
+    (
+        InWork0 = empty_slate,
+        Done = Done0,
+        (
+            TextWord = plain(Text),
+            InWork = in_work(Text, in_work_text_is_plain)
+        ;
+            TextWord = suffix(Text),
+            % There is nothing to add the suffix to.
+            InWork = in_work(Text, in_work_text_is_pure_suffix)
+        ;
+            TextWord = prefix(Text),
+            InWork = in_work(Text, in_work_text_is_prefix)
+        )
+    ;
+        InWork0 = in_work(InWorkText0, InWorkTextKind0),
+        (
+            InWorkTextKind0 = in_work_text_is_plain,
+            (
+                TextWord = plain(Text),
+                % We can't add Text to InWorkText0, so move InWorkText0
+                % to Done, and make Text the new in-work text.
+                add_space_if_needed(Done0, Done1),
+                cord.snoc(ssc_str(InWorkText0), Done1, Done),
+                InWork = in_work(Text, in_work_text_is_plain)
+            ;
+                TextWord = prefix(Text),
+                % Do the same as for plain, but record the new in-work text
+                % as prefix.
+                add_space_if_needed(Done0, Done1),
+                cord.snoc(ssc_str(InWorkText0), Done1, Done),
+                InWork = in_work(Text, in_work_text_is_prefix)
+            ;
+                TextWord = suffix(Suffix),
+                Done = Done0,
+                InWorkText = InWorkText0 ++ Suffix,
+                InWork = in_work(InWorkText, in_work_text_is_plain)
+            )
+        ;
+            InWorkTextKind0 = in_work_text_is_pure_suffix,
+            (
+                TextWord = plain(Text),
+                % We can't add Text to InWorkText0, so move InWorkText0
+                % to Done, and make Text the new in-work text.
+                cord.snoc(ssc_str(InWorkText0), Done0, Done),
+                InWork = in_work(Text, in_work_text_is_plain)
+            ;
+                TextWord = prefix(Text),
+                % Do the same as for plain, but record the new in-work text
+                % as prefix.
+                cord.snoc(ssc_str(InWorkText0), Done0, Done),
+                InWork = in_work(Text, in_work_text_is_prefix)
+            ;
+                TextWord = suffix(Suffix),
+                Done = Done0,
+                InWorkText = InWorkText0 ++ Suffix,
+                InWork = in_work(InWorkText, in_work_text_is_pure_suffix)
+            )
+        ;
+            InWorkTextKind0 = in_work_text_is_prefix,
+            Done = Done0,
+            (
+                TextWord = plain(Text),
+                InWorkText = InWorkText0 ++ Text,
+                InWork = in_work(InWorkText, in_work_text_is_plain)
+            ;
+                TextWord = prefix(AdditionalPrefix),
+                InWorkText = InWorkText0 ++ AdditionalPrefix,
+                InWork = in_work(InWorkText, in_work_text_is_prefix)
+            ;
+                TextWord = suffix(Text),
+                InWorkText = InWorkText0 ++ Text,
+                % prefix + suffix is not PURE suffix
+                InWork = in_work(InWorkText, in_work_text_is_plain)
+            )
+        )
+    ).
+
+:- pred mark_in_work_as_done(cord(ssc_unit)::in, cord(ssc_unit)::out,
+    in_work::in, in_work::out) is det.
+
+mark_in_work_as_done(Done0, Done, InWork0, InWork) :-
+    (
+        InWork0 = empty_slate,
+        Done = Done0
+    ;
+        InWork0 = in_work(InWorkText0, InWorkTextKind0),
+        (
+            ( InWorkTextKind0 = in_work_text_is_plain
+            ; InWorkTextKind0 = in_work_text_is_prefix
+            ),
+            add_space_if_needed(Done0, Done1)
+        ;
+            InWorkTextKind0 = in_work_text_is_pure_suffix,
+            % If this suffix were preceded by other non-suffix text,
+            % it would have been glued to its end, and the InWorkTextKind0
+            % would have been changed to in_work_text_is_plain. So the
+            % ssc_unit preceding it would be a color change. We want
+            % the suffix to be printed immediately after thet color change.
+            Done1 = Done0
+        ),
+        cord.snoc(ssc_str(InWorkText0), Done1, Done)
+    ),
+    InWork = empty_slate.
+
+:- pred add_space_if_needed(cord(ssc_unit)::in, cord(ssc_unit)::out) is det.
+
+add_space_if_needed(Done0, Done) :-
+    ( if cord.get_last(Done0, Last) then
+        (
+            Last = ssc_str(_),
+            cord.snoc(ssc_space, Done0, Done)
+        ;
+            Last = ssc_space,
+            Done = Done0
+        ;
+            Last = ssc_color(ColorChange),
+            (
+                ColorChange = color_start(_),
+                Done = Done0
+            ;
+                ColorChange = color_end,
+                cord.snoc(ssc_space, Done0, Done)
+            )
+        )
+    else
+        % There is no last ssc_unit, so visual separation is not needed.
+        Done = Done0
+    ).
+
+    % Return the ssc_units we have gathered so far for inclusion in a
+    % new paragraph, and set up  Done and InWork for starting work
+    % on the next paragraph.
+    %
+:- pred end_work_on_one_paragraphs_ssc_units(list(ssc_unit)::out,
+    cord(ssc_unit)::in, cord(ssc_unit)::out, in_work::in, in_work::out) is det.
+
+end_work_on_one_paragraphs_ssc_units(SSCUnits, Done0, Done, InWork0, InWork) :-
+    mark_in_work_as_done(Done0, Done1, InWork0, InWork),
+    SSCUnits = cord.list(Done1),
+    Done = cord.init.
 
 :- pred add_paragraph(paragraph::in, cord(paragraph)::in, cord(paragraph)::out)
     is det.
@@ -1063,104 +1247,6 @@ add_paragraph(Para, !Paras) :-
         true
     else
         !:Paras = snoc(!.Paras, Para)
-    ).
-
-:- type plain_or_prefix
-    --->    plain(string)
-    ;       prefix(string)
-    ;       color_change(color_change).
-
-:- func words_cord_to_sc_units(cord(line_word)) = list(sc_unit).
-
-words_cord_to_sc_units(WordsCord) = SCUnits :-
-    Words = cord.list(WordsCord),
-    list.reverse(Words, RevWords),
-    PorPs = list.reverse(rev_words_to_rev_plain_or_prefix(RevWords)),
-    SCUnits = join_prefixes(PorPs).
-
-    % This function implements suffixes.
-    %
-:- func rev_words_to_rev_plain_or_prefix(list(line_word))
-    = list(plain_or_prefix).
-
-rev_words_to_rev_plain_or_prefix([]) = [].
-rev_words_to_rev_plain_or_prefix([RevWord | RevWords]) = RevPorPs :-
-    (
-        RevWord = word_text(RevTextWord),
-        (
-            RevTextWord = plain(String),
-            RevPorPs = [plain(String) |
-                rev_words_to_rev_plain_or_prefix(RevWords)]
-        ;
-            RevTextWord = prefix(Prefix),
-            RevPorPs = [prefix(Prefix) |
-                rev_words_to_rev_plain_or_prefix(RevWords)]
-        ;
-            RevTextWord = suffix(Suffix),
-            (
-                RevWords = [],
-                RevPorPs = [plain(Suffix)]
-            ;
-                RevWords = [word_text(plain(String)) | Tail],
-                RevPorPs = [plain(String ++ Suffix)
-                    | rev_words_to_rev_plain_or_prefix(Tail)]
-            ;
-                RevWords = [word_text(prefix(Prefix)) | Tail],
-                % Convert the prefix/suffix combination into a plain word.
-                % We could convert it into a prefix, but since prefix/suffix
-                % combinations shouldn't come up at all, what we do here
-                % probably doesn't matter.
-                RevPorPs = [plain(Prefix ++ Suffix)
-                    | rev_words_to_rev_plain_or_prefix(Tail)]
-            ;
-                RevWords = [word_text(suffix(MoreSuffix)) | Tail],
-                RevPorPs = rev_words_to_rev_plain_or_prefix(
-                    [word_text(suffix(MoreSuffix ++ Suffix)) | Tail])
-            ;
-                RevWords = [word_color(ColorChange) | Tail],
-                RevPorPs = [plain(Suffix), color_change(ColorChange)
-                    | rev_words_to_rev_plain_or_prefix(Tail)]
-            )
-        )
-    ;
-        RevWord = word_color(ColorChange),
-        RevPorPs = [color_change(ColorChange) |
-            rev_words_to_rev_plain_or_prefix(RevWords)]
-    ).
-
-    % This function implements prefixes.
-    %
-:- func join_prefixes(list(plain_or_prefix)) = list(sc_unit).
-
-join_prefixes([]) = [].
-join_prefixes([Head | Tail]) = SCUnits :-
-    TailSCUnits = join_prefixes(Tail),
-    (
-        Head = plain(String),
-        SCUnits = [sc_str(String) | TailSCUnits]
-    ;
-        Head = prefix(Prefix),
-        (
-            TailSCUnits = [HeadTailSCUnit | TailTailSCUnits],
-            (
-                HeadTailSCUnit = sc_str(HeadTailStr),
-                SCUnits = [sc_str(Prefix ++ HeadTailStr) | TailTailSCUnits]
-            ;
-                ( HeadTailSCUnit = sc_color_start(_)
-                ; HeadTailSCUnit = sc_color_end
-                ),
-                SCUnits = [sc_str(Prefix), HeadTailSCUnit | TailTailSCUnits]
-            )
-        ;
-            TailSCUnits = [],
-            SCUnits = [sc_str(Prefix) | TailSCUnits]
-        )
-    ;
-        Head = color_change(color_start(Color)),
-        SCUnits = [sc_color_start(Color) | TailSCUnits]
-    ;
-        Head = color_change(color_end),
-        SCUnits = [sc_color_end | TailSCUnits]
     ).
 
 :- pred break_into_words(string::in,
@@ -1381,7 +1467,7 @@ divide_paragraphs_into_lines(AvailLen, TreatAsFirst, CurIndent, Paras,
             FirstParaBlankLines ++ LaterParaLines
     ).
 
-:- pred group_nonfirst_line_words(int::in, sc_unit::in, list(sc_unit)::in,
+:- pred group_nonfirst_line_words(int::in, ssc_unit::in, list(ssc_unit)::in,
     indent::in, paren_status::in, list(error_line)::out,
     color_stack::in, color_stack::out) is det.
 
@@ -1447,15 +1533,24 @@ group_nonfirst_line_words(AvailLen, FirstWord, LaterWords,
 % which means that the previous unit (which was handled by get_later_words)
 % was sc_str.)
 
-:- pred get_line_of_words(int::in, sc_unit::in, list(sc_unit)::in,
-    indent::in, int::out, list(string)::out, list(sc_unit)::out,
+:- pred get_line_of_words(int::in, ssc_unit::in, list(ssc_unit)::in,
+    indent::in, int::out, list(string)::out, list(ssc_unit)::out,
     color_stack::in, color_stack::out, line_end_reset::out) is det.
 
-get_line_of_words(AvailLen, FirstSCUnit, LaterSCUnits0, Indent, LineWordsLen,
-        LineStrs, RestSCUnits, !ColorStack, LineEndReset) :-
+get_line_of_words(AvailLen, FirstSSCUnit, LaterSSCUnits0, Indent, LineWordsLen,
+        LineStrs, RestSSCUnits, !ColorStack, LineEndReset) :-
     AvailLeft = AvailLen - uint.cast_to_int(Indent * indent2_increment),
     (
-        FirstSCUnit = sc_str(FirstStr),
+        FirstSSCUnit = ssc_space,
+        LaterSSCUnits1 = LaterSSCUnits0,
+        LenSoFar = 0,
+        LineStrsCord0 = cord.init,
+        LineEndReset1 = line_end_reset_nothing
+        % This shouldn't happen, but we don't put spaces at the start of
+        % a line, so ignore it if it does happen.
+    ;
+        FirstSSCUnit = ssc_str(FirstStr),
+        LineStrsCord0 = cord.singleton(FirstStr),
         ( if stack.is_empty(!.ColorStack) then
             LineEndReset1 = line_end_reset_nothing
         else
@@ -1464,160 +1559,249 @@ get_line_of_words(AvailLen, FirstSCUnit, LaterSCUnits0, Indent, LineWordsLen,
             % contains no color changes.
             LineEndReset1 = line_end_reset_color
         ),
-        NextSpace = " ",
         string.count_code_points(FirstStr, LenSoFar),
-        LaterSCUnits0 = LaterSCUnits
+        LaterSSCUnits1 = LaterSSCUnits0
     ;
-        ( FirstSCUnit = sc_color_start(_Color)
-        ; FirstSCUnit = sc_color_end
-        ),
+        FirstSSCUnit = ssc_color(_),
+        LenSoFar = 0,
         LineEndReset1 = line_end_reset_color,
-        NextSpace = "",
-        merge_adjacent_color_changes(FirstSCUnit, LaterSCUnits0, LaterSCUnits,
-            !ColorStack),
+        merge_adjacent_color_changes(FirstSSCUnit,
+            LaterSSCUnits0, LaterSSCUnits1, !ColorStack),
         FirstStr = top_color_to_string(!.ColorStack),
-        LenSoFar = 0
+        LineStrsCord0 = cord.singleton(FirstStr)
     ),
-    LineStrsCord0 = cord.singleton(FirstStr),
-    get_later_words(AvailLeft, NextSpace, LaterSCUnits, LenSoFar, LineWordsLen,
-        LineStrsCord0, LineStrsCord, RestSCUnits, !ColorStack,
-        LineEndReset1, LineEndReset),
+    get_later_words(AvailLeft, LaterSSCUnits1, LenSoFar,
+        LineWordsLen, LineStrsCord0, LineStrsCord, RestSSCUnits,
+        !ColorStack, LineEndReset1, LineEndReset),
     LineStrs = cord.list(LineStrsCord).
 
-:- pred get_later_words(int::in, string::in, list(sc_unit)::in,
-    int::in, int::out, cord(string)::in, cord(string)::out, list(sc_unit)::out,
-    color_stack::in, color_stack::out,
+:- pred get_later_words(int::in, list(ssc_unit)::in,
+    int::in, int::out, cord(string)::in, cord(string)::out,
+    list(ssc_unit)::out, color_stack::in, color_stack::out,
     line_end_reset::in, line_end_reset::out) is det.
 
-get_later_words(_, _, [], CurLen, FinalLen,
+get_later_words(_, [], CurLen, FinalLen,
         LineStrs, LineStrs, [], !ColorStack, LineEndReset, LineEndReset) :-
     FinalLen = CurLen.
-get_later_words(Avail, NextSpace0, [SCUnit | SCUnits0], CurLen, FinalLen,
-        LineStrs0, LineStrs, RestSCUnits, !ColorStack,
+get_later_words(Avail, [SSCUnit | SSCUnits0], CurLen, FinalLen,
+        LineStrs0, LineStrs, RestSSCUnits, !ColorStack,
         LineEndReset0, LineEndReset) :-
+    ColorStack0 = !.ColorStack,
     (
-        SCUnit = sc_str(Str0),
-        LineEndReset1 = LineEndReset0,
-        SCUnits = SCUnits0,
-        FirstStr = NextSpace0 ++ Str0,
-        string.count_code_points(FirstStr, FirstStrLen),
-        NextLen = CurLen + FirstStrLen,
-        NextSpace = " "
-    ;
-        SCUnit = sc_color_start(_),
-        LineEndReset1 = line_end_reset_color,
-        expect(unify(NextSpace0, " "), $pred,
-            "NextSpace0 != 1 for color start"),
-        ColorStack0 = !.ColorStack,
-        merge_adjacent_color_changes(SCUnit, SCUnits0, SCUnits1, !ColorStack),
-        % We put the space between the previous actual word and the next one
-        % *before* the color change.
-        FirstStr = NextSpace0 ++ top_color_to_string(!.ColorStack),
-        NextLen0 = CurLen + 1, % The 1 is for NextSpace0.
-        NextSpace = "",
+        SSCUnit = ssc_space,
+        PeekWordLen = peek_and_find_len_of_next_word(SSCUnits0),
         % Check whether the next actual word fits on the line.
-        PeekWordLen = peek_and_find_len_of_next_word(SCUnits1),
-        ( if NextLen0 + PeekWordLen =< Avail then
+        ( if CurLen + 1 + PeekWordLen =< Avail then
             % It does, so let the recursive call proceed.
-            SCUnits = SCUnits1,
-            NextLen = NextLen0
+            cord.snoc(" ", LineStrs0, LineStrs1),
+            get_later_words(Avail, SSCUnits0, CurLen + 1, FinalLen,
+                LineStrs1, LineStrs, RestSSCUnits, !ColorStack,
+                LineEndReset0, LineEndReset)
         else
             % It does not, so force the check against Avail to fail *now*,
             % *not* in the recursive call, so that we change the color
             % just before the next word.
-            SCUnits = SCUnits0,
-            NextLen = Avail + 1,
-            !:ColorStack = ColorStack0
+            SSCUnits = SSCUnits0,
+            merge_adjacent_color_ends(SSCUnits, !.ColorStack, MaybeEndResult),
+            (
+                MaybeEndResult = no,
+                FinalLen = CurLen,
+                LineStrs = LineStrs0,
+                % Throw away the space, since there is no need for it at the
+                % start of the next line (if there is one).
+                RestSSCUnits = SSCUnits0,
+                % There are no changes to !ColorStack.
+                LineEndReset = LineEndReset0
+            ;
+                MaybeEndResult = yes({RestSSCUnits, !:ColorStack}),
+                % Throw away the space, since there is no need for it at the
+                % start of the next line (if there is one), *and* all the
+                % initial color_ends in SSCUnits0, since we include their
+                % cumulative effect here.
+                ColorStr = top_color_to_string(!.ColorStack),
+                cord.snoc(ColorStr, LineStrs0, LineStrs),
+                % The color reset takes zero columns.
+                FinalLen = CurLen,
+                LineEndReset = line_end_reset_color
+            )
         )
     ;
-        SCUnit = sc_color_end,
-        LineEndReset1 = line_end_reset_color,
-        expect(unify(NextSpace0, " "), $pred, "NextSpace0 != 1 for color end"),
-        merge_adjacent_color_changes(SCUnit, SCUnits0, SCUnits, !ColorStack),
-        % We put the space between the previous actual word and the next one
-        % *after* the color change. (Actually, the recursive call takes
-        % care of that, *if* there are any words on the rest of the line.)
-        FirstStr = top_color_to_string(!.ColorStack),
-        NextLen = CurLen,
-        NextSpace = " "
-    ),
-    ( if
-        % Include FirstStr on the current line if either ...
-        (
-            NextLen =< Avail
-            % ... there is room for it, or ...
-        ;
-            CurLen = 0
-            % ... if FirstStr is too long for a line overall.
-            % Before we added support for color, this latter condition
-            % could happen only in get_line_of_words, but now, that
-            % predicate can put a color change on the line (which takes up
-            % zero columns) and call *us* with a too-long-to-fit sc_str unit.
+        SSCUnit = ssc_str(Str),
+        LineEndReset1 = LineEndReset0,
+        string.count_code_points(Str, StrLen),
+        NextLen = CurLen + StrLen,
+        ( if append_to_current_line(Avail, CurLen, NextLen) then
+            cord.snoc(Str, LineStrs0, LineStrs1),
+            get_later_words(Avail, SSCUnits0, NextLen, FinalLen,
+                LineStrs1, LineStrs, RestSSCUnits, !ColorStack,
+                LineEndReset1, LineEndReset)
+        else
+            FinalLen = CurLen,
+            LineStrs = LineStrs0,
+            RestSSCUnits = [SSCUnit | SSCUnits0],
+            % There were no changes to !ColorStack.
+            LineEndReset = LineEndReset0
         )
-    then
-        cord.snoc(FirstStr, LineStrs0, LineStrs1),
-        get_later_words(Avail, NextSpace, SCUnits, NextLen, FinalLen,
-            LineStrs1, LineStrs, RestSCUnits, !ColorStack,
-            LineEndReset1, LineEndReset)
-    else
-        FinalLen = CurLen,
-        LineStrs = LineStrs0,
-        RestSCUnits = [SCUnit | SCUnits],
-        LineEndReset = LineEndReset0
+    ;
+        SSCUnit = ssc_color(ColorChange),
+        (
+            ColorChange = color_start(_),
+            merge_adjacent_color_changes(SSCUnit, SSCUnits0, SSCUnits1,
+                !ColorStack),
+            ColorStr = top_color_to_string(!.ColorStack),
+            PeekWordLen = peek_and_find_len_of_next_word(SSCUnits1),
+            % Check whether the next actual word fits on the line.
+            ( if CurLen + PeekWordLen =< Avail then
+                % It does, so let the recursive call proceed.
+                cord.snoc(ColorStr, LineStrs0, LineStrs1),
+                LineEndReset1 = line_end_reset_color,
+                get_later_words(Avail, SSCUnits1, CurLen, FinalLen,
+                    LineStrs1, LineStrs, RestSSCUnits, !ColorStack,
+                    LineEndReset1, LineEndReset)
+            else
+                % It does not, so force the check against Avail to fail *now*,
+                % *not* in the recursive call, so that we change the color
+                % just before the next word.
+                FinalLen = CurLen,
+                LineStrs = LineStrs0,
+                RestSSCUnits = [SSCUnit | SSCUnits0],
+                !:ColorStack = ColorStack0,
+                LineEndReset = LineEndReset0
+            )
+        ;
+            ColorChange = color_end,
+            merge_adjacent_color_ends([SSCUnit | SSCUnits0], !.ColorStack,
+                MaybeEndResult),
+            (
+                MaybeEndResult = no,
+                unexpected($pred, "MaybeEndResult = no")
+            ;
+                MaybeEndResult = yes({SSCUnits1, !:ColorStack}),
+                ColorStr = top_color_to_string(!.ColorStack),
+                cord.snoc(ColorStr, LineStrs0, LineStrs1),
+                LineEndReset1 = line_end_reset_color,
+
+                PeekWordLen = peek_and_find_len_of_next_word(SSCUnits1),
+                ( if CurLen + PeekWordLen =< Avail then
+                    get_later_words(Avail, SSCUnits1, CurLen, FinalLen,
+                        LineStrs1, LineStrs, RestSSCUnits, !ColorStack,
+                        LineEndReset1, LineEndReset)
+                else
+                    FinalLen = CurLen,  % The color reset uses zero columns.
+                    RestSSCUnits = SSCUnits1,
+                    LineStrs = LineStrs1,
+                    LineEndReset = LineEndReset1
+                )
+            )
+        )
     ).
 
-:- inst color_unit for sc_unit/0
-    --->    sc_color_start(ground)
-    ;       sc_color_end.
+:- pred append_to_current_line(int::in, int::in, int::in) is semidet.
 
-:- pred merge_adjacent_color_changes(sc_unit::in(color_unit),
-    list(sc_unit)::in, list(sc_unit)::out,
+append_to_current_line(Avail, CurLen, NextLen) :-
+    % Include the new string on the current line if either ...
+    (
+        NextLen =< Avail
+        % ... there is room for it, or ...
+    ;
+        CurLen = 0
+        % ... if the new string is too long for a line overall
+        % (since its length must be NextLen - CurLen, and CurLen = 0).
+        %
+        % Before we added support for color, this latter condition
+        % could happen only in get_line_of_words, but now, that
+        % predicate can put a color change on the line (which takes up
+        % zero columns) and call *us* with a too-long-to-fit sc_str unit.
+    ).
+
+    % If the given list of SSCUnits starts with a color_end, then
+    % process all the color_ends adjacent to it, and return the remaining
+    % scc_inits and the updated color stack. Otherwise, fail.
+:- pred merge_adjacent_color_ends(list(ssc_unit)::in, color_stack::in,
+    maybe({list(ssc_unit), color_stack})::out) is det.
+
+merge_adjacent_color_ends(SSCUnits, ColorStack0, MaybeResult) :-
+    (
+        SSCUnits = [],
+        MaybeResult = no
+    ;
+        SSCUnits = [HeadSSCUnit | TailSSCUnits],
+        (
+            ( HeadSSCUnit = ssc_space
+            ; HeadSSCUnit = ssc_str(_)
+            ),
+            MaybeResult = no
+        ;
+            HeadSSCUnit = ssc_color(ColorChange),
+            (
+                ColorChange = color_start(_),
+                MaybeResult = no
+            ;
+                ColorChange = color_end,
+                pop_stack_ignore_empty(ColorStack0, ColorStack1),
+                merge_adjacent_color_ends(TailSSCUnits, ColorStack1,
+                    TailResult),
+                (
+                    TailResult = yes(_),
+                    MaybeResult = TailResult
+                ;
+                    TailResult = no,
+                    MaybeResult = yes({TailSSCUnits, ColorStack1})
+                )
+            )
+        )
+    ).
+
+:- inst color_unit for ssc_unit/0
+    --->    ssc_color(ground).
+
+:- pred merge_adjacent_color_changes(ssc_unit::in(color_unit),
+    list(ssc_unit)::in, list(ssc_unit)::out,
     color_stack::in, color_stack::out) is det.
 
-merge_adjacent_color_changes(HeadSCUnit, TailSCUnits0, SCUnits,
+merge_adjacent_color_changes(HeadSSCUnit, TailSSCUnits0, SSCUnits,
         !ColorStack) :-
+    HeadSSCUnit = ssc_color(ColorChange),
     (
-        HeadSCUnit = sc_color_start(Color),
+        ColorChange = color_start(Color),
         stack.push(Color, !ColorStack)
     ;
-        HeadSCUnit = sc_color_end,
-        ( if stack.pop(_OldTopColor, !ColorStack) then
-            % Keep the stack with the top color popped off.
-            true
-        else
-            % Keep the original stack.
-            true
-        )
+        ColorChange = color_end,
+        pop_stack_ignore_empty(!ColorStack)
     ),
     (
-        TailSCUnits0 = [],
-        SCUnits = []
+        TailSSCUnits0 = [],
+        SSCUnits = []
     ;
-        TailSCUnits0 = [HeadTailSCUnit0 | TailTailSCUnits0],
+        TailSSCUnits0 = [HeadTailSSCUnit0 | TailTailSSCUnits0],
         (
-            HeadTailSCUnit0 = sc_str(_),
-            SCUnits = TailSCUnits0
-        ;
-            ( HeadTailSCUnit0 = sc_color_start(_)
-            ; HeadTailSCUnit0 = sc_color_end
+            ( HeadTailSSCUnit0 = ssc_space
+            ; HeadTailSSCUnit0 = ssc_str(_)
             ),
-            merge_adjacent_color_changes(HeadTailSCUnit0, TailTailSCUnits0,
-                SCUnits, !ColorStack)
+            SSCUnits = TailSSCUnits0
+        ;
+            HeadTailSSCUnit0 = ssc_color(_),
+            merge_adjacent_color_changes(HeadTailSSCUnit0, TailTailSSCUnits0,
+                SSCUnits, !ColorStack)
         )
     ).
 
-:- func peek_and_find_len_of_next_word(list(sc_unit)) = int.
+:- func peek_and_find_len_of_next_word(list(ssc_unit)) = int.
 
 peek_and_find_len_of_next_word([]) = 0.
-peek_and_find_len_of_next_word([SCUnit | _]) = Len :-
+peek_and_find_len_of_next_word([SSCUnit | SSCUnits]) = Len :-
     (
-        SCUnit = sc_str(Str),
+        SSCUnit = ssc_str(Str),
         string.count_code_points(Str, Len)
     ;
-        ( SCUnit = sc_color_start(_)
-        ; SCUnit = sc_color_end
-        ),
-        unexpected($pred, "next sc_unit after color change is not sc_str")
+        SSCUnit = ssc_space,
+        TailLen = peek_and_find_len_of_next_word(SSCUnits),
+        % The space itself consumes one column.
+        Len = 1 + TailLen
+    ;
+        SSCUnit = ssc_color(_),
+        % The color change itself consumes zero columns.
+        Len = peek_and_find_len_of_next_word(SSCUnits)
     ).
 
 :- func top_color_of_stack(color_stack) = color.
@@ -2192,6 +2376,15 @@ purity_to_string(purity_impure) = "impure".
 a_purity_to_string(purity_pure) = "a pure".
 a_purity_to_string(purity_semipure) = "a semipure".
 a_purity_to_string(purity_impure) = "an impure".
+
+:- pred pop_stack_ignore_empty(stack(T)::in, stack(T)::out) is det.
+
+pop_stack_ignore_empty(Stack0, Stack) :-
+    ( if stack.pop(_OldTopItem, Stack0, StackPrime) then
+        Stack = StackPrime
+    else
+        Stack = Stack0
+    ).
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%

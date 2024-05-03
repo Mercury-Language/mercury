@@ -2,7 +2,7 @@ bug117.m:028: In clause for `extract(in) = out(list.non_empty_list)':
 bug117.m:028:   mode error: the function result did not get sufficiently
 bug117.m:028:   instantiated.
 bug117.m:028:   Final instantiatedness of `X' was [38;5;203m`ground',[39;49m
-bug117.m:028:   expected final instantiatedness was [38;5;40m[39;49m
+bug117.m:028:   expected final instantiatedness was
 bug117.m:028:     [38;5;40mnamed inst list.non_empty_list[39;49m
 bug117.m:028:     [38;5;40mwhich expands to[39;49m
 bug117.m:028:       [38;5;40mbound([39;49m

@@ -2,7 +2,7 @@ bug191.m:035: In clause for type class method implementation for `baz(in, in,
 bug191.m:035:   out(bug191.a))':
 bug191.m:035:   mode error: argument 3 did not get sufficiently instantiated.
 bug191.m:035:   Final instantiatedness of `HeadVar__3' was [38;5;203m`ground',[39;49m
-bug191.m:035:   expected final instantiatedness was [38;5;40m[39;49m
+bug191.m:035:   expected final instantiatedness was
 bug191.m:035:     [38;5;40mnamed inst a[39;49m
 bug191.m:035:     [38;5;40mwhich expands to[39;49m
 bug191.m:035:       [38;5;40mbound([39;49m

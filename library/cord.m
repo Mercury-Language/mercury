@@ -54,6 +54,10 @@
     %
 :- pred is_empty(cord(T)::in) is semidet.
 
+    % Succeed iff the given cord is not empty.
+    %
+:- pred is_non_empty(cord(T)::in) is semidet.
+
     % list(singleton(X)) = [X]
     %
 :- func singleton(T) = cord(T).
@@ -365,6 +369,8 @@ init = empty_cord.
 empty = empty_cord.
 
 is_empty(empty_cord).
+
+is_non_empty(nonempty_cord(_)).
 
 %---------------------------------------------------------------------------%
 
