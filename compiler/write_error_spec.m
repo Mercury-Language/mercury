@@ -1020,7 +1020,7 @@ convert_words_to_paragraphs_acc(ColorDb, [Word | Words],
         % we as developers work with .err_exp files in the test directories
         % that test diagnostic outputs.
         %
-        % It simply easier to visually check whether the output of a diff
+        % It is simply easier to visually check whether the output of a diff
         % between an .err file containing new or updated diagnostic output
         % and the existing .err_exp file contains just the expected changes
         % if neither file contains color change escape sequences that are
