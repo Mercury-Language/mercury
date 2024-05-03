@@ -565,9 +565,9 @@ mode_error_unify_var_poly_to_spec(ModeInfo, Var, VarInst) = Spec :-
     Preamble = mode_info_context_preamble(ModeInfo),
     mode_info_get_context(ModeInfo, Context),
     mode_info_get_var_table(ModeInfo, VarTable),
-    ExpectedInstPieces0 =
-        [quote("ground"), words("or"), quote("any"), suffix(".")],
-    ExpectedInstPieces = color_as_correct(ExpectedInstPieces0),
+    ExpectedInstPieces =
+        color_as_correct([quote("ground")]) ++ [words("or")] ++
+        color_as_correct([quote("any"), suffix(".")]),
     MainPieces = [words("in polymorphically-typed unification:"), nl,
         words("mode error: variable"),
         quote(mercury_var_to_name_only(VarTable, Var))] ++
@@ -1195,18 +1195,18 @@ mode_error_bad_higher_order_inst_to_spec(ModeInfo, PredVar, PredVarInst,
                 dont_expand_named_insts, uod_user, quote_short_inst, [], [],
                 [nl_indent_delta(1)], [nl_indent_delta(-1)], PredVarInst),
             ActPieces =
-                [words("and the type of"), fixed(PredVarName),
+                [words("and the type of"), quote(PredVarName),
                 words("does match that expectation."),
                 words("However, to check the correctness of the call,"),
                 words("the compiler also needs to know"),
                 words("the modes of the arguments and the determinism"),
                 words("of the"), words(ExpPFStr),
-                words("that"), fixed(PredVarName), words("represents."),
+                words("that"), quote(PredVarName), words("represents."),
                 words("The insts of higher order values"),
-                words("should contain this information, but"),
-                fixed(PredVarName), suffix("'s"), words("inst, which is")] ++
-                color_as_incorrect(PredVarInstPieces) ++
-                [words("at this point,")] ++
+                words("should contain this information, but")] ++
+                color_as_incorrect(PredVarInstPieces ++ [suffix(",")]) ++
+                [words("which is the inst of"), quote(PredVarName),
+                words("at this point,")] ++
                 color_as_incorrect([words("does not.")]) ++
                 [blank_line,
                 words("The fix for this error is to add this information."),

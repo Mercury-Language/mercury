@@ -13,7 +13,7 @@ polymorphic_unification.m:023:             [38;5;203mfree,[39;49m
 polymorphic_unification.m:023:             [38;5;203mnamed inst list.list_skel(free)[39;49m
 polymorphic_unification.m:023:           [38;5;203m)[39;49m
 polymorphic_unification.m:023:         [38;5;203m),[39;49m
-polymorphic_unification.m:023:   expected instantiatedness was [38;5;40m`ground' or[39;49m
+polymorphic_unification.m:023:   expected instantiatedness was [38;5;40m`ground'[39;49m or
 polymorphic_unification.m:023:   [38;5;40m`any'.[39;49m
 polymorphic_unification.m:023:   When unifying two variables whose type will
 polymorphic_unification.m:023:   not be known until runtime, the variables must
