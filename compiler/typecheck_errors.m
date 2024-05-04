@@ -212,20 +212,35 @@ wrap_quote(Str) = quote(Str).
 report_missing_tvar_in_foreign_code(ClauseContext, Context, VarName) = Spec :-
     ModuleInfo = ClauseContext ^ tecc_module_info,
     PredId = ClauseContext ^ tecc_pred_id,
-    Pieces = [words("The foreign language code for") |
-        describe_one_pred_name(ModuleInfo, should_module_qualify, PredId)] ++
-        [words("should define the variable"), quote(VarName), suffix(".")],
+    Pieces = [words("The foreign language code for")] ++
+        describe_one_pred_name(ModuleInfo, should_module_qualify, PredId) ++
+        [words("should define the variable")] ++
+        color_as_incorrect([quote(VarName), suffix(".")]) ++ [nl],
     Spec = spec($pred, severity_error, phase_type_check, Context, Pieces).
 
 %---------------------------------------------------------------------------%
 
 report_invalid_coerce_from_to(ClauseContext, Context, TVarSet,
         FromType, ToType) = Spec :-
+    % XXX TYPECHECK_ERRORS
+    % This code can generate some less-than-helpful diagnostics.
+    %
+    % - For tests/invalid/coerce_infer.m and some others, it says that
+    %   you cannot coerce from one anonymous type variable to another.
+    %
+    % - For tests/invalid/coerce_non_du.m, it says that you cannot coerce
+    %   from a given type to itself.
+    %
+    % For the first kind of error, is there something we can report
+    % that would be more helpful?
+    %
+    % For the second kind, should it even be an error, or just a warning?
     InClauseForPieces = in_clause_for_pieces(ClauseContext),
     FromTypeStr = mercury_type_to_string(TVarSet, print_num_only, FromType),
     ToTypeStr = mercury_type_to_string(TVarSet, print_num_only, ToType),
-    ErrorPieces = [words("cannot coerce from"), quote(FromTypeStr),
-        words("to"), quote(ToTypeStr), suffix("."), nl],
+    ErrorPieces = [words("cannot coerce from")] ++
+        color_as_possible_cause([quote(FromTypeStr)]) ++ [words("to")] ++
+        color_as_possible_cause([quote(ToTypeStr), suffix(".")]) ++ [nl],
     Spec = spec($pred, severity_error, phase_type_check, Context,
         InClauseForPieces ++ ErrorPieces).
 
@@ -240,24 +255,17 @@ report_error_unify_var_var(Info, UnifyContext, Context, X, Y, TypeAssignSet)
 
     VarSet = ClauseContext ^ tecc_varset,
     get_inst_varset(ClauseContext, InstVarSet),
-    % The function reports a disagreement between the types of X and Y.
-    % Since neither is known to be correct, we cannot use the correct/incorrect
-    % colors for their types.
-    % XXX TYPECHECK_ERRORS Should we add two more named colors, possibly
-    % version_a and version_b, or
-    % should_match_a and should_match_b, or
-    % incompatible_a and incompatible_b?
-    MaybeColor = maybe.no,
+    MaybeColor = yes(color_cause),
     MainPieces = [words("type error in unification of variable"),
         quote(mercury_var_to_name_only_vs(VarSet, X)), nl,
         words("and variable"),
-        quote(mercury_var_to_name_only_vs(VarSet, Y)), suffix("."), nl,
-        quote(mercury_var_to_name_only_vs(VarSet, X))] ++
-        type_of_var_to_pieces(InstVarSet, MaybeColor, TypeAssignSet,
-            [suffix(",")], X) ++ [nl] ++
-        [quote(mercury_var_to_name_only_vs(VarSet, Y))] ++
-        type_of_var_to_pieces(InstVarSet, MaybeColor, TypeAssignSet,
-            [suffix(".")], Y) ++ [nl],
+        quote(mercury_var_to_name_only_vs(VarSet, Y)), suffix("."), nl] ++
+        color_as_subject([quote(mercury_var_to_name_only_vs(VarSet, X))]) ++
+        type_of_var_to_pieces(InstVarSet, MaybeColor,
+            TypeAssignSet, [suffix(",")], X) ++ [nl] ++
+        color_as_subject([quote(mercury_var_to_name_only_vs(VarSet, Y))]) ++
+        type_of_var_to_pieces(InstVarSet, MaybeColor,
+            TypeAssignSet, [suffix(".")], Y) ++ [nl],
     type_assign_set_msg_to_verbose_component(Info, VarSet, TypeAssignSet,
         VerboseComponent),
     Msg = simple_msg(Context,
@@ -359,10 +367,10 @@ report_error_unify_var_functor_result(Info, UnifyContext, Context,
         argument_name_to_pieces(VarSet, Var) ++ [nl, words("and")] ++
         functor_name_to_pieces(Functor, Arity) ++ [suffix("."), nl] ++
 
-        argument_name_to_pieces(VarSet, Var) ++
+        color_as_subject(argument_name_to_pieces(VarSet, Var)) ++
         VarTypePieces ++ [nl] ++
 
-        functor_name_to_pieces(Functor, Arity) ++
+        color_as_subject(functor_name_to_pieces(Functor, Arity)) ++
         FunctorTypePieces ++ [nl],
 
     ( if
@@ -506,8 +514,10 @@ report_error_unify_var_functor_args(Info, UnifyContext, Context,
         )
     ),
     VarAndTermPieces = [words("in unification of")] ++
-        argument_name_to_pieces(VarSet, Var) ++ [nl, words("and term"),
-        words_quote(StrippedFunctorStr), suffix(":"), nl,
+        color_as_subject(argument_name_to_pieces(VarSet, Var)) ++ [nl,
+        words("and term")] ++
+        color_as_subject([words_quote(StrippedFunctorStr), suffix(":")]) ++
+            [nl,
         words("type error in"), words(Arguments), words("of")] ++
         functor_name_to_pieces(StrippedFunctor, Arity) ++ [suffix("."), nl],
 
@@ -762,8 +772,8 @@ mismatched_args_to_pieces(VarSet, Functor, First, [Mismatch | Mismatches])
         SpecialMismatches),
     SpecialReasonPieces = report_special_type_mismatches(SpecialMismatches),
 
-    ThisMismatchPieces = ArgNumPieces ++ VarNamePieces ++ ErrorDescPieces ++
-        SpecialReasonPieces,
+    ThisMismatchPieces = color_as_subject(ArgNumPieces ++ VarNamePieces) ++
+        ErrorDescPieces ++ SpecialReasonPieces,
 
     (
         Mismatches = [],
@@ -1017,24 +1027,27 @@ arg_vector_type_errors_to_pieces(VarSet, AllErrors, HeadError, TailErrors,
     ),
     HeadError = arg_vector_type_error(ArgNum, Var, ActualExpected),
     ActualExpected = actual_expected_types(ActualPieces, _ActualType,
-        ExpectedPieces, _ExpectedType, _ExistQTVars, _Source),
+        ExpectedPieces0, _ExpectedType, _ExistQTVars, _Source),
     find_possible_switched_positions(VarSet, ActualPieces, AllErrors,
         SwitchedPosPieces),
     (
         SwitchedPosPieces = [],
-        NlSwitchedPosSuffixPieces = [SuffixPiece, nl_indent_delta(-1)]
+        ExpectedPieces = ExpectedPieces0 ++ [SuffixPiece],
+        NlSwitchedPosPieces = [nl_indent_delta(-1)]
     ;
         SwitchedPosPieces = [_ | _],
-        NlSwitchedPosSuffixPieces = [nl_indent_delta(-1)] ++
+        ExpectedPieces = ExpectedPieces0,
+        NlSwitchedPosPieces = [nl_indent_delta(-1)] ++
             SwitchedPosPieces ++ [SuffixPiece]
     ),
     Pieces = [words("in argument"), int_fixed(ArgNum), suffix(":"),
         nl_indent_delta(1) |
-        argument_name_to_pieces(VarSet, Var)] ++
+        color_as_subject(argument_name_to_pieces(VarSet, Var))] ++
         [words("has type"), nl_indent_delta(1)] ++
-        ActualPieces ++ [suffix(","), nl_indent_delta(-1),
+        color_as_incorrect(ActualPieces ++ [suffix(",")]) ++
+            [nl_indent_delta(-1),
         words("expected type was"), nl_indent_delta(1)] ++
-        ExpectedPieces ++ NlSwitchedPosSuffixPieces ++
+        color_as_correct(ExpectedPieces) ++ NlSwitchedPosPieces ++
         [nl_indent_delta(-1) | TailPieces].
 
 :- pred find_possible_switched_positions(prog_varset::in,
@@ -1050,9 +1063,9 @@ find_possible_switched_positions(VarSet, SearchActualPieces, AllErrors,
         Pieces = []
     ;
         SwitchedPosPieces = [_ | _],
-        Pieces = [prefix("("),
-            words("the actual type is the same as the expected type of")] ++
-            SwitchedPosPieces ++ [suffix(")")]
+        Pieces = color_as_possible_cause(
+            [words("(the actual type is the same as the expected type of")] ++
+            SwitchedPosPieces ++ [suffix(")")])
     ).
 
 :- pred find_expecteds_matching_actual(prog_varset::in,
@@ -1322,21 +1335,21 @@ argument_name_to_pieces(VarSet, Var) = Pieces :-
 
 :- func functor_name_to_pieces(cons_id, arity) = list(format_piece).
 
-functor_name_to_pieces(Functor, Arity) = Pieces :-
-    strip_builtin_qualifier_from_cons_id(Functor, StrippedFunctor),
+functor_name_to_pieces(ConsId, Arity) = Pieces :-
+    strip_builtin_qualifier_from_cons_id(ConsId, StrippedConsId),
     ( if Arity = 0 then
         Piece1 = words("constant"),
-        ( if Functor = cons(Name, _, _) then
+        ( if ConsId = cons(Name, _, _) then
             Piece2 = qual_sym_name(Name)
         else
-            Piece2 = quote(cons_id_and_arity_to_string(StrippedFunctor))
+            Piece2 = quote(cons_id_and_arity_to_string(StrippedConsId))
         ),
         Pieces = [Piece1, Piece2]
-    else if Functor = cons(unqualified(""), _, _) then
+    else if ConsId = cons(unqualified(""), _, _) then
         Pieces = [words("higher-order term (with arity"),
             int_fixed(Arity - 1), suffix(")")]
     else
-        Pieces = [words("functor"), qual_cons_id_and_maybe_arity(Functor)]
+        Pieces = [words("functor"), qual_cons_id_and_maybe_arity(ConsId)]
     ).
 
 :- func type_of_var_to_pieces(inst_varset, maybe(color_name), type_assign_set,
@@ -1457,7 +1470,7 @@ report_actual_expected_types(ClauseContext, Var, ActualExpectedList,
         MaybeActualExpected, ActualExpectedPieces, DiffPieces) :-
     VarSet = ClauseContext ^ tecc_varset,
     TypeErrorPieces = [words("type error:")] ++
-        argument_name_to_pieces(VarSet, Var),
+        color_as_subject(argument_name_to_pieces(VarSet, Var)),
     is_actual_or_expected_single_type(ActualExpectedList,
         MaybeSingleActual, MaybeSingleExpected),
     % XXX TYPECHECK_ERRORS If both MaybeSingles are yes(), then

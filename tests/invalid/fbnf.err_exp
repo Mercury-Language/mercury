@@ -1,7 +1,7 @@
 fbnf.m:214: In clause for predicate `execute'/7:
 fbnf.m:214:   in argument 1 (i.e. the predicate term) of higher-order predicate
 fbnf.m:214:   call:
-fbnf.m:214:   type error: variable `Entry' has type
+fbnf.m:214:   type error: [38;5;87mvariable `Entry'[39;49m has type
 fbnf.m:214:     [38;5;203mpred([39;49m
 fbnf.m:214:       [38;5;203mfbnf.fstate :: in,[39;49m
 fbnf.m:214:       [38;5;203mfbnf.fstate :: out,[39;49m

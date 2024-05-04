@@ -1,6 +1,6 @@
 actual_more_expected.m:029: In clause for predicate `p1'/3:
 actual_more_expected.m:029:   in argument 1 of call to predicate `foldl'/4:
-actual_more_expected.m:029:   type error: argument has type
+actual_more_expected.m:029:   type error: [38;5;87margument[39;49m has type
 actual_more_expected.m:029:     [38;5;203mpred(int, actual_more_expected.dir, int);[39;49m
 actual_more_expected.m:029:   the type expected by predicate `list.foldl'/4 is:
 actual_more_expected.m:029:     [38;5;40mpred(L, A, A),[39;49m

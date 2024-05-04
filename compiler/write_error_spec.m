@@ -875,6 +875,9 @@ convert_pieces_to_words_acc(ColorDb, FirstInMsg, !.Lower, [Piece | Pieces],
         ;
             ColorDb = color_db(ColorNameMap),
             (
+                ColorName = color_subject,
+                Color = ColorNameMap ^ cnm_subject
+            ;
                 ColorName = color_correct,
                 Color = ColorNameMap ^ cnm_correct
             ;
@@ -2006,6 +2009,7 @@ find_matching_rp([HeadLine0 | TailLines0], !MidLinesCord, !MidLinesLen,
 
 :- type color_name_map
     --->    color_name_map(
+                cnm_subject     :: color_spec,
                 cnm_correct     :: color_spec,
                 cnm_incorrect   :: color_spec,
                 cnm_cause       :: color_spec
@@ -2029,7 +2033,14 @@ init_color_db(OptionTable) = ColorDb :-
             ColorDb = no_color_db
         ;
             MaybeColorSpecs = ok1(ColorSpecs),
-            ColorSpecs = color_specs(MaybeCorrect, MaybeIncorrect, MaybeCause),
+            ColorSpecs = color_specs(MaybeSubject, MaybeCorrect,
+                MaybeIncorrect, MaybeCause),
+            (
+                MaybeSubject = yes(Subject)
+            ;
+                MaybeSubject = no,
+                Subject = color_8bit(87u8)          % This is cyan (blue).
+            ),
             (
                 MaybeCorrect = yes(Correct)
             ;
@@ -2048,7 +2059,7 @@ init_color_db(OptionTable) = ColorDb :-
                 MaybeCause = no,
                 Cause = color_8bit(226u8)           % This is yellow.
             ),
-            ColorNameMap = color_name_map(Correct, Incorrect, Cause),
+            ColorNameMap = color_name_map(Subject, Correct, Incorrect, Cause),
             ColorDb = color_db(ColorNameMap)
         )
     ).

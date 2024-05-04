@@ -344,9 +344,10 @@
                 % If any of these maybes is set to "no", that means that
                 % diagnostics should use the default color for that role.
                 % (Provided color is enabled for diagnostics at all.)
-                color_spec_correct ::           maybe(color_spec),
-                color_spec_incorrect ::         maybe(color_spec),
-                color_spec_possible_cause ::    maybe(color_spec)
+                color_spec_subject          ::  maybe(color_spec),
+                color_spec_correct          ::  maybe(color_spec),
+                color_spec_incorrect        ::  maybe(color_spec),
+                color_spec_possible_cause   ::  maybe(color_spec)
             ).
 
 :- func convert_color_spec_options(option_table) = maybe1(color_specs).
@@ -826,12 +827,16 @@ convert_line_number_range(RangeStr, line_number_range(MaybeMin, MaybeMax)) :-
 
 convert_color_spec_options(OptionTable) = MaybeColorSpecs :-
     getopt.lookup_string_option(OptionTable,
+        set_color_subject, OptSubject),
+    getopt.lookup_string_option(OptionTable,
         set_color_correct, OptCorrect),
     getopt.lookup_string_option(OptionTable,
         set_color_incorrect, OptIncorrect),
     getopt.lookup_string_option(OptionTable,
         set_color_possible_cause, OptCause),
     % There is no simple way to convert each option to its name.
+    MaybeSubject =
+        convert_color_spec_option("--set-color-subject", OptSubject),
     MaybeCorrect =
         convert_color_spec_option("--set-color-correct", OptCorrect),
     MaybeIncorrect =
@@ -839,15 +844,17 @@ convert_color_spec_options(OptionTable) = MaybeColorSpecs :-
     MaybeCause =
         convert_color_spec_option("--set-color-possible-cause", OptCause),
     ( if
+        MaybeSubject = ok1(Subject),
         MaybeCorrect = ok1(Correct),
         MaybeIncorrect = ok1(Incorrect),
         MaybeCause = ok1(Cause)
     then
-        Colors = color_specs(Correct, Incorrect, Cause),
+        Colors = color_specs(Subject, Correct, Incorrect, Cause),
         MaybeColorSpecs = ok1(Colors)
     else
-        Specs = get_any_errors1(MaybeCorrect) ++
-            get_any_errors1(MaybeIncorrect) ++ get_any_errors1(MaybeCause),
+        Specs = get_any_errors1(MaybeSubject) ++
+            get_any_errors1(MaybeCorrect) ++ get_any_errors1(MaybeIncorrect)
+            ++ get_any_errors1(MaybeCause),
         MaybeColorSpecs = error1(Specs)
     ).
 

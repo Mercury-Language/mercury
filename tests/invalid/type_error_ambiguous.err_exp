@@ -1,7 +1,7 @@
 type_error_ambiguous.m:039: In clause for predicate `main'/2:
 type_error_ambiguous.m:039:   in argument 1 of call to predicate
 type_error_ambiguous.m:039:   `io.write_int'/3:
-type_error_ambiguous.m:039:   type error: variable `X' has one of the following
+type_error_ambiguous.m:039:   type error: [38;5;87mvariable `X'[39;49m has one of the following
 type_error_ambiguous.m:039:   inferred types:
 type_error_ambiguous.m:039:     [38;5;203mcharacter,[39;49m
 type_error_ambiguous.m:039:     [38;5;203mpred(int, string),[39;49m

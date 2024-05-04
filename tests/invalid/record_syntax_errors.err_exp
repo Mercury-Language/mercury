@@ -17,10 +17,10 @@ record_syntax_errors.m:010:   field in definition of constructor
 record_syntax_errors.m:010:   `record_syntax_errors.exist_cons'/3.
 record_syntax_errors.m:051: In clause for predicate `arg_type_error'/1:
 record_syntax_errors.m:051:   in argument 2 of functor `field6 :=/2':
-record_syntax_errors.m:051:   in unification of argument
-record_syntax_errors.m:051:   and term `'field7 :='(V_10, V_9)':
+record_syntax_errors.m:051:   in unification of [38;5;87margument[39;49m
+record_syntax_errors.m:051:   and term [38;5;87m`'field7 :='(V_10, V_9)':[39;49m
 record_syntax_errors.m:051:   type error in argument of functor `field7 :='/2.
-record_syntax_errors.m:051:   Argument 2 has type
+record_syntax_errors.m:051:   [38;5;87mArgument 2[39;49m has type
 record_syntax_errors.m:051:     [38;5;203mstring,[39;49m
 record_syntax_errors.m:051:   expected type was
 record_syntax_errors.m:051:     [38;5;40mint.[39;49m
@@ -28,10 +28,10 @@ record_syntax_errors.m:053: Error: clause for predicate `term_type_error'/1
 record_syntax_errors.m:053:   without corresponding `:- pred' declaration.
 record_syntax_errors.m:055: In clause for predicate `term_type_error'/1:
 record_syntax_errors.m:055:   in argument 2 of functor `field6 :=/2':
-record_syntax_errors.m:055:   in unification of argument
-record_syntax_errors.m:055:   and term `'field4 :='(V_10, V_9)':
+record_syntax_errors.m:055:   in unification of [38;5;87margument[39;49m
+record_syntax_errors.m:055:   and term [38;5;87m`'field4 :='(V_10, V_9)':[39;49m
 record_syntax_errors.m:055:   type error in argument of functor `field4 :='/2.
-record_syntax_errors.m:055:   Argument 1 has type
+record_syntax_errors.m:055:   [38;5;87mArgument 1[39;49m has type
 record_syntax_errors.m:055:     [38;5;203mrecord_syntax_errors.cons2,[39;49m
 record_syntax_errors.m:055:   expected type was
 record_syntax_errors.m:055:     [38;5;40mrecord_syntax_errors.cons.[39;49m

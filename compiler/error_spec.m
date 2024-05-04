@@ -527,7 +527,8 @@
     % ignored by every part of the compiler other than error_spec.m
     % and write_error_spec.m.
 :- type color_name
-    --->    color_correct
+    --->    color_subject
+    ;       color_correct
     ;       color_incorrect
     ;       color_cause.
 
@@ -619,6 +620,7 @@
 
 %---------------------------------------------------------------------------%
 
+:- func color_as_subject(list(format_piece)) = list(format_piece).
 :- func color_as_correct(list(format_piece)) = list(format_piece).
 :- func color_as_incorrect(list(format_piece)) = list(format_piece).
 :- func color_as_possible_cause(list(format_piece)) =
@@ -765,6 +767,9 @@ is_or_are([_]) = "is".
 is_or_are([_, _ | _]) = "are".
 
 %---------------------------------------------------------------------------%
+
+color_as_subject(Pieces) =
+    color_pieces(color_subject, Pieces).
 
 color_as_correct(Pieces) =
     color_pieces(color_correct, Pieces).

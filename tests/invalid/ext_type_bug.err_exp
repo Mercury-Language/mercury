@@ -1,7 +1,7 @@
 ext_type_bug.m:021: In clause for predicate `foo'/1:
 ext_type_bug.m:021:   in argument 1 of call to predicate
 ext_type_bug.m:021:   `ext_type_bug.make_bar'/1:
-ext_type_bug.m:021:   type error: variable `Bar' has type
+ext_type_bug.m:021:   type error: [38;5;87mvariable `Bar'[39;49m has type
 ext_type_bug.m:021:     [38;5;203mext_type_bug.bar(int);[39;49m
 ext_type_bug.m:021:   expected type was
 ext_type_bug.m:021:     [38;5;40msome [T] (ext_type_bug.bar(T)).[39;49m
@@ -14,7 +14,7 @@ ext_type_bug.m:021:     Bar_2: ext_type_bug.bar(int)
 ext_type_bug.m:030: In clause for predicate `foo_tuple'/1:
 ext_type_bug.m:030:   in argument 1 of call to predicate
 ext_type_bug.m:030:   `ext_type_bug.make_bar_tuple'/1:
-ext_type_bug.m:030:   type error: variable `BarTuple' has type
+ext_type_bug.m:030:   type error: [38;5;87mvariable `BarTuple'[39;49m has type
 ext_type_bug.m:030:     [38;5;203m{ext_type_bug.bar(int), ext_type_bug.bar(float)};[39;49m
 ext_type_bug.m:030:   expected type was
 ext_type_bug.m:030:     [38;5;40msome [T, U] ([39;49m

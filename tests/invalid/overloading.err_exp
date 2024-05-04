@@ -1,10 +1,10 @@
 overloading.m:057: In clause for predicate `p'/4:
-overloading.m:057:   in unification of variable `OptInfo'
-overloading.m:057:   and term `opt_info(MustHaveOwnSlot, EverOnStack,
-overloading.m:057:   CurIntervalId, V_22, Counter1, StartMap0, EndMap0,
-overloading.m:057:   VarsMap0, SuccMap0)':
+overloading.m:057:   in unification of [38;5;87mvariable `OptInfo'[39;49m
+overloading.m:057:   and term [38;5;87m`opt_info(MustHaveOwnSlot, EverOnStack,[39;49m
+overloading.m:057:   [38;5;87mCurIntervalId, V_22, Counter1, StartMap0, EndMap0,[39;49m
+overloading.m:057:   [38;5;87mVarsMap0, SuccMap0)':[39;49m
 overloading.m:057:   type error in argument of functor `opt_info'/9.
-overloading.m:057:   Argument 3 (CurIntervalId) has type
+overloading.m:057:   [38;5;87mArgument 3 (CurIntervalId)[39;49m has type
 overloading.m:057:     [38;5;203moverloading.interval_id,[39;49m
 overloading.m:057:   expected type was
 overloading.m:057:     [38;5;40mtree234.tree234([39;49m

@@ -1,2 +1,2 @@
 coerce_infer.m:026: In clause for function `f'/1:
-coerce_infer.m:026:   cannot coerce from `V_1' to `V_2'.
+coerce_infer.m:026:   cannot coerce from [38;5;226m`V_1'[39;49m to [38;5;226m`V_2'.[39;49m

@@ -4,7 +4,7 @@ bug197.m:025:   without corresponding `:- pred' declaration.
 bug197.m:025:   However, a predicate of that name does exist with arity 4.
 bug197.m:026: In clause for predicate `foo'/3:
 bug197.m:026:   in argument 1 of call to predicate `list.foldl'/4:
-bug197.m:026:   type error: argument has type
+bug197.m:026:   type error: [38;5;87margument[39;49m has type
 bug197.m:026:     [38;5;203mpred(string, T, V_6, V_6);[39;49m
 bug197.m:026:   expected type was
 bug197.m:026:     [38;5;40mpred(L, A, A).[39;49m

@@ -274,6 +274,7 @@
     ;       enable_color_diagnostics_is_set
     ;       enable_color_diagnostics_is_set_to
     ;       use_color_diagnostics
+    ;       set_color_subject
     ;       set_color_correct
     ;       set_color_incorrect
     ;       set_color_possible_cause
@@ -1363,6 +1364,7 @@ optdef(oc_verbosity, enable_color_diagnostics,          bool_special).
 optdef(oc_verbosity, enable_color_diagnostics_is_set,   bool(no)).
 optdef(oc_verbosity, enable_color_diagnostics_is_set_to, bool(no)).
 optdef(oc_verbosity, use_color_diagnostics,             bool(no)).
+optdef(oc_verbosity, set_color_subject,                 string("")).
 optdef(oc_verbosity, set_color_correct,                 string("")).
 optdef(oc_verbosity, set_color_incorrect,               string("")).
 optdef(oc_verbosity, set_color_possible_cause,          string("")).
@@ -2337,6 +2339,8 @@ long_table("config-default-colour-diagnostics",
 long_table("enable-color-diagnostics", enable_color_diagnostics).
 long_table("enable-colour-diagnostics", enable_color_diagnostics).
 % use_color_diagnostics is an internal-use-only option.
+long_table("set-color-subject",        set_color_subject).
+long_table("set-colour-subject",       set_color_subject).
 long_table("set-color-correct",        set_color_correct).
 long_table("set-colour-correct",       set_color_correct).
 long_table("set-color-incorrect",      set_color_incorrect).
@@ -4673,10 +4677,12 @@ options_help_verbosity(Stream, !IO) :-
 %       "\tEnable the use of colors in diagnostic messages.",
 %       "--set-color-correct <Color>",
 %       "--set-color-incorrect <Color>",
+%       "--set-color-subject <Color>",
 %       "--set-color-possible-cause <Color>",
 %       "\tSet the color that diagnostics use for correct code, incorrect",
-%       "\tcode, or the possible cause of an error, to the given color.",
-%       "\tThe colors available are listed in the 8-bit color section",
+%       "\tcode, the subject of an error, or the possible cause of an error,",
+%       "\tto the given color number.",
+%       "\tThe color numbers available are listed in the 8-bit color section",
 %       "\tof the wikipedia page on ANSI escape codes.",
 %
 %       "\tThe color can be specified either by name or by number.",

@@ -1,10 +1,10 @@
 getopt_old.m:027: In clause for predicate `main'/2:
 getopt_old.m:027:   in argument 2 of call to predicate `io.format'/4:
 getopt_old.m:027:   in list element #1:
-getopt_old.m:027:   in unification of argument
-getopt_old.m:027:   and term `s(ErrorMsg)':
+getopt_old.m:027:   in unification of [38;5;87margument[39;49m
+getopt_old.m:027:   and term [38;5;87m`s(ErrorMsg)':[39;49m
 getopt_old.m:027:   type error in argument of functor `s'/1.
-getopt_old.m:027:   Argument 1 (ErrorMsg) has type
+getopt_old.m:027:   [38;5;87mArgument 1 (ErrorMsg)[39;49m has type
 getopt_old.m:027:     [38;5;203mgetopt.option_error(getopt_old.option),[39;49m
 getopt_old.m:027:   expected type was
 getopt_old.m:027:     [38;5;40mstring.[39;49m

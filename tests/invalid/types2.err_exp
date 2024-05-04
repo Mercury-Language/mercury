@@ -3,7 +3,7 @@ types2.m:019: In clause for predicate `q'/0:
 types2.m:019:   error: undefined predicate `zzzzzzzz'/0.
 types2.m:020: In clause for predicate `q'/0:
 types2.m:020:   in argument 1 of call to predicate `types2.p'/1:
-types2.m:020:   type error: argument has type
+types2.m:020:   type error: [38;5;87margument[39;49m has type
 types2.m:020:     [38;5;203mint;[39;49m
 types2.m:020:   expected type was
 types2.m:020:     [38;5;40mpred.[39;49m
@@ -29,9 +29,9 @@ types2.m:027:   [38;5;226m(Did you mean `<', `>', `a', `p', `q', `r' or `z'?)[
 types2.m:046: In clause for predicate `bar'/1:
 types2.m:046:   type error in unification of variable `X'
 types2.m:046:   and constant `0'.
-types2.m:046:   variable `X' has type
+types2.m:046:   [38;5;87mvariable `X'[39;49m has type
 types2.m:046:     [38;5;203msome [BarTypeParam] (BarTypeParam),[39;49m
-types2.m:046:   constant `0' has type
+types2.m:046:   [38;5;87mconstant `0'[39;49m has type
 types2.m:046:     [38;5;40mint.[39;49m
 types2.m:046:   The partial type assignment was:
 types2.m:046:     some [BarTypeParam_1]

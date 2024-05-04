@@ -7175,19 +7175,24 @@ to all files.
 
 @c @item --set-color-correct @var{Color}
 @c @itemx --set-color-incorrect @var{Color}
+@c @itemx --set-color-subject @var{Color}
 @c @itemx --set-color-possible-cause @var{Color}
 @c @itemx --set-colour-correct @var{Color}
 @c @itemx --set-colour-incorrect @var{Color}
+@c @itemx --set-colour-subject @var{Color}
 @c @itemx --set-colour-possible-cause @var{Color}
 @c @findex --set-color-correct
 @c @findex --set-color-incorrect
+@c @findex --set-color-subject
 @c @findex --set-color-possible-cause
 @c @findex --set-colour-correct
 @c @findex --set-colour-incorrect
+@c @findex --set-colour-subject
 @c @findex --set-colour-possible-cause
 @c Set the color that diagnostics use for correct code, incorrect code,
-@c or the possible cause of an error, to the given color.
-@c The colors available are listed in the 8-bit color section
+@c the subject of an error, or the possible cause of an error,
+@c to the given color number.
+@c The color numbers available are listed in the 8-bit color section
 @c of the wikipedia page on ANSI escape codes.
 @c
 @c The color can be specified either by name or by number.
