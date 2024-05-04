@@ -409,22 +409,23 @@ gather_c_compiler_flags(Globals, PIC, AllCFlags) :-
         UseTrail = yes,
         % With tagged trail entries function trailing will not work unless the
         % C functions stored on the trail are aligned on word boundaries (or a
-        % multiple thereof). The assemblers on some systems, and some gcc
-        % optimisation settings, do not align functions, so we need to
+        % multiple thereof). The assemblers on some systems, and some gcc or
+        % clang optimisation settings, do not align functions, so we need to
         % explicitly pass -falign-functions in trailing grades to ensure that
         % C functions are appropriately aligned.
         %
         % Note that this will also affect the untagged version of the trail,
         % but that shouldn't matter.
         (
-            C_CompilerType = cc_gcc(_, _, _),
+            ( C_CompilerType = cc_gcc(_, _, _)
+            ; C_CompilerType = cc_clang(_)
+            ),
             globals.lookup_int_option(Globals, bytes_per_word, BytesPerWord),
             C_FnAlignOpt = string.format("-falign-functions=%d ",
                 [i(BytesPerWord)])
         ;
             % XXX Check whether we need to do anything for these C compilers?
-            ( C_CompilerType = cc_clang(_)
-            ; C_CompilerType = cc_cl_x86(_)
+            ( C_CompilerType = cc_cl_x86(_)
             ; C_CompilerType = cc_cl_x64(_)
             ),
             C_FnAlignOpt = ""

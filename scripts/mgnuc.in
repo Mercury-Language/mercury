@@ -393,8 +393,8 @@ case ${use_trail} in
         # See the comment in compile_c_file/7 in compiler/compile_target_code.m
         # for an explanation of this.
         case ${COMPILER} in
-            gcc)    FN_ALIGN_OPTS="-falign-functions=${BYTES_PER_WORD}" ;;
-            *)      FN_ALIGN_OPTS="" ;;
+            gcc|clang) FN_ALIGN_OPTS="-falign-functions=${BYTES_PER_WORD}" ;;
+            *)         FN_ALIGN_OPTS="" ;;
         esac
         ;;
     false)
