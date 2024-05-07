@@ -22,7 +22,7 @@ constrained_poly_insts.m:032: Inferred :- pred t(T1, T1, T3, T3).
 constrained_poly_insts.m:033: In clause for `u(in((I =< ground)), out((I =<
 constrained_poly_insts.m:033:   ground)))':
 constrained_poly_insts.m:033:   mode error: argument 2 became too instantiated.
-constrained_poly_insts.m:033:   Final instantiatedness of `HeadVar__2' was
+constrained_poly_insts.m:033:   Final instantiatedness of [38;5;87m`HeadVar__2'[39;49m was
 constrained_poly_insts.m:033:   [38;5;203m`unique(42)',[39;49m
 constrained_poly_insts.m:033:   expected final instantiatedness was
 constrained_poly_insts.m:033:   [38;5;40m`( I =< ground )'.[39;49m

@@ -1463,9 +1463,9 @@ do_report_wrong_arity_ho_inst(TPropInfo, TPropContext, Type, ArgTypes,
         color_as_correct(TypePieces ++ [suffix(",")]) ++ [nl_indent_delta(-1),
         words("because they have different arities,"),
         words("The higher order type has")] ++
-        color_as_correct([int_fixed(TypeArity)]) ++ [words("arguments"),
+        color_as_correct([int_name(TypeArity)]) ++ [words("arguments"),
         words("while the higher order inst has")] ++
-        color_as_incorrect([int_fixed(InstArity)]) ++ [words("arguments."),
+        color_as_incorrect([int_name(InstArity)]) ++ [words("arguments."),
         nl],
     Spec = spec($pred, severity_error, phase_inst_check, Context, Pieces),
     !.Errors = tprop_errors(Specs0),

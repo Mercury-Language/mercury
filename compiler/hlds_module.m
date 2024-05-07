@@ -1881,6 +1881,8 @@ get_unique_pred_proc_id_for_pred_sym_name_arity(MI, SNA, PredProcId) :-
     module_info_get_predicate_table(MI, PredTable),
     SNA = sym_name_arity(SymName, Arity),
     UserArity = user_arity(Arity),
+    % XXX If the names we are looking up may be only partially qualified,
+    % then why are insisting on there being at most one match?
     predicate_table_lookup_pred_sym_arity(PredTable,
         may_be_partially_qualified, SymName, UserArity, PredIds),
     ( if PredIds = [PredId] then

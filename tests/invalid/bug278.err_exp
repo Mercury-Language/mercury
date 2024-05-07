@@ -1,7 +1,7 @@
 bug278.m:032: In clause for `build_map((pred(in, out, in, out) is semidet), in,
 bug278.m:032:   out, in, out)':
 bug278.m:032:   mode error: argument 3 did not get sufficiently instantiated.
-bug278.m:032:   Final instantiatedness of `LambdaHeadVar__5' was [38;5;203m`free',[39;49m
+bug278.m:032:   Final instantiatedness of [38;5;87m`LambdaHeadVar__5'[39;49m was [38;5;203m`free',[39;49m
 bug278.m:032:   expected final instantiatedness was [38;5;40m`ground'.[39;49m
 bug278.m:032: In clause for predicate `build_map'/5:
 bug278.m:032:   warning: variable `STATE_VARIABLE_MemoTable' occurs only once

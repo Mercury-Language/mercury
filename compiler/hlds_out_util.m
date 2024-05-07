@@ -499,8 +499,8 @@ context_to_brief_string(Context) = Str :-
 % Write out ids of calls.
 %
 
-call_id_to_string(plain_call_id(PredCallId)) =
-    pf_sym_name_pred_form_arity_to_string(PredCallId).
+call_id_to_string(plain_call_id(PFSNA)) =
+    pf_sym_name_pred_form_arity_to_string(PFSNA).
 call_id_to_string(generic_call_id(GenericCallId)) =
     generic_call_id_to_string(GenericCallId).
 

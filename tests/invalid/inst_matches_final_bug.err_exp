@@ -1,6 +1,6 @@
 inst_matches_final_bug.m:023: In clause for `return_three = out(bound(3))':
 inst_matches_final_bug.m:023:   mode error: the function result did not get
 inst_matches_final_bug.m:023:   sufficiently instantiated.
-inst_matches_final_bug.m:023:   Final instantiatedness of `HeadVar__1' was
+inst_matches_final_bug.m:023:   Final instantiatedness of [38;5;87m`HeadVar__1'[39;49m was
 inst_matches_final_bug.m:023:   [38;5;203m`ground',[39;49m
 inst_matches_final_bug.m:023:   expected final instantiatedness was [38;5;40m`bound(3)'.[39;49m

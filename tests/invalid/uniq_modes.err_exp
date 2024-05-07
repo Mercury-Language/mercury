@@ -1,6 +1,6 @@
 uniq_modes.m:015: In clause for `main(di, uo)':
 uniq_modes.m:015:   in argument 2 of call to predicate `io.write'/3:
-uniq_modes.m:015:   mode error: variable `In' has instantiatedness
+uniq_modes.m:015:   mode error: [38;5;87mvariable `In'[39;49m has instantiatedness
 uniq_modes.m:015:   [38;5;203m`mostly_unique',[39;49m
 uniq_modes.m:015:   expected instantiatedness was [38;5;40m`unique'.[39;49m
 uniq_modes.m:015:   [38;5;226mThis kind of uniqueness mismatch is usually caused by doing[39;49m

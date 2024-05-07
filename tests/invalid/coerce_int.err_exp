@@ -2,7 +2,7 @@ coerce_int.m:026: In clause for `bad(in(coerce_int.wrap(bound(1 ; 2)))) =
 coerce_int.m:026:   out(coerce_int.wrap(bound(1 ; 3)))':
 coerce_int.m:026:   mode error: the function result had the wrong
 coerce_int.m:026:   instantiatedness.
-coerce_int.m:026:   Final instantiatedness of `HeadVar__2' was
+coerce_int.m:026:   Final instantiatedness of [38;5;87m`HeadVar__2'[39;49m was
 coerce_int.m:026:   [38;5;203m`bound(wrap(bound(1 ; 2)))',[39;49m
 coerce_int.m:026:   expected final instantiatedness was
 coerce_int.m:026:     [38;5;40mnamed inst wrap([39;49m
@@ -25,7 +25,8 @@ coerce_int.m:026:       [38;5;40m).[39;49m
 coerce_int.m:032: In clause for `bad_wrong_type(in(coerce_int.wrap(bound(1 ;
 coerce_int.m:032:   2)))) = out(coerce_int.wrap(bound(1 ; 2)))':
 coerce_int.m:032:   in coerce expression:
-coerce_int.m:032:   mode error: in the argument term:
+coerce_int.m:032:   mode error: in the coerced term:
 coerce_int.m:032:   in the argument of function symbol `wrap':
-coerce_int.m:032:   the instantiatedness of the subterm [38;5;203m`bound(1 ; 2)'[39;49m is
-coerce_int.m:032:   invalid for the type of the subterm `uint'.
+coerce_int.m:032:   the instantiatedness of [38;5;87mthe coerced subterm,[39;49m
+coerce_int.m:032:   [38;5;203m`bound(1 ; 2)',[39;49m is invalid for the type of the coerced
+coerce_int.m:032:   subterm `uint'.

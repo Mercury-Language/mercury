@@ -11,7 +11,7 @@ try_detism.m:023:   Unification of X and V_17 can fail.
 try_detism.m:022: In clause for `p(out, di, uo)':
 try_detism.m:022:   in call to predicate `exception.try_io'/4:
 try_detism.m:022:   mode error: arguments
-try_detism.m:022:   `TryLambda, TryResult, STATE_VARIABLE_IO_10, TryIOOutput'
+try_detism.m:022:   [38;5;87m`TryLambda, TryResult, STATE_VARIABLE_IO_10, TryIOOutput'[39;49m
 try_detism.m:022:   have the following insts:
 try_detism.m:022:     /* unique */ (pred(out, di, uo) is semidet),
 try_detism.m:022:     free,
@@ -19,8 +19,8 @@ try_detism.m:022:     unique,
 try_detism.m:022:     free
 try_detism.m:022:   which does not match any of the modes for predicate
 try_detism.m:022:   `exception.try_io'/4.
-try_detism.m:022:   The first argument `TryLambda' has inst
-try_detism.m:022:     /* unique */ (pred(out, di, uo) is semidet),
+try_detism.m:022:   The [38;5;87mfirst argument `TryLambda'[39;49m has inst
+try_detism.m:022:     [38;5;203m/* unique */ (pred(out, di, uo) is semidet),[39;49m
 try_detism.m:022:   which does not match any of those modes.
 try_detism.m:022:   (For higher order insts like this, the mismatch is
 try_detism.m:022:   sometimes caused by the arity of the predicate or function

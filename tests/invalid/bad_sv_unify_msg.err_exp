@@ -8,7 +8,7 @@ bad_sv_unify_msg.m:021: Error: !D cannot appear as a unification argument.
 bad_sv_unify_msg.m:021:   You probably meant !.D or !:D.
 bad_sv_unify_msg.m:022: In clause for `x(di, uo)':
 bad_sv_unify_msg.m:022:   in argument 1 of call to predicate `io.write'/3:
-bad_sv_unify_msg.m:022:   mode error: variable `STATE_VARIABLE_D_0' has
+bad_sv_unify_msg.m:022:   mode error: [38;5;87mvariable `STATE_VARIABLE_D_0'[39;49m has
 bad_sv_unify_msg.m:022:   instantiatedness [38;5;203m`free',[39;49m
 bad_sv_unify_msg.m:022:   expected instantiatedness was [38;5;40m`ground'.[39;49m
 bad_sv_unify_msg.m:022: In clause for predicate `x'/2:

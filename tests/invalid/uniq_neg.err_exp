@@ -1,6 +1,6 @@
 uniq_neg.m:031: In clause for `unify(in, in, in, in, di, uo)':
 uniq_neg.m:031:   in argument 3 of call to predicate `uniq_neg.occurs'/4:
-uniq_neg.m:031:   mode error: variable `STATE_VARIABLE_Store_0' has
+uniq_neg.m:031:   mode error: [38;5;87mvariable `STATE_VARIABLE_Store_0'[39;49m has
 uniq_neg.m:031:   instantiatedness [38;5;203m`mostly_unique',[39;49m
 uniq_neg.m:031:   expected instantiatedness was [38;5;40m`unique'.[39;49m
 uniq_neg.m:031:   [38;5;226mThis kind of uniqueness mismatch is usually caused by doing[39;49m

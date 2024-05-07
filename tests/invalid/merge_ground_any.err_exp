@@ -3,7 +3,7 @@ merge_ground_any.m:019:   in(merge_ground_any.hpair(ground, any)),
 merge_ground_any.m:019:   out(merge_ground_any.hpair(ground, any)))':
 merge_ground_any.m:019:   mode error: argument 3 did not get sufficiently
 merge_ground_any.m:019:   instantiated.
-merge_ground_any.m:019:   Final instantiatedness of `HeadVar__3' was
+merge_ground_any.m:019:   Final instantiatedness of [38;5;87m`HeadVar__3'[39;49m was
 merge_ground_any.m:019:     [38;5;203mbound([39;49m
 merge_ground_any.m:019:       [38;5;203m+(ground, ground)[39;49m
 merge_ground_any.m:019:     [38;5;203m;[39;49m

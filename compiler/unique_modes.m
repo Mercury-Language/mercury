@@ -386,8 +386,8 @@ unique_modes_check_goal_generic_call(GoalExpr0, GoalExpr, !ModeInfo) :-
         GenericCall = cast(_),
         ArgOffset = 0
     ),
-    unique_modes_check_call_modes(ArgVars, ArgModes, ArgOffset, Detism,
-        CanProcSucceed, !ModeInfo),
+    unique_modes_check_call_modes(match_higher_order_call(GenericCallId),
+        ArgVars, ArgModes, ArgOffset, Detism, CanProcSucceed, !ModeInfo),
     GoalExpr = GoalExpr0,
     mode_info_unset_call_context(!ModeInfo),
     mode_checkpoint(exit, "generic_call", !ModeInfo).
@@ -440,8 +440,8 @@ unique_modes_check_call(PredId, ProcId0, ArgVars, GoalInfo, ProcId,
     proc_info_get_argmodes(ProcInfo, ProcArgModes0),
     proc_info_interface_determinism(ProcInfo, InterfaceDeterminism),
     proc_info_never_succeeds(ProcInfo, CanSucceed),
-    unique_modes_check_call_modes(ArgVars, ProcArgModes0, ArgOffset,
-        InterfaceDeterminism, CanSucceed, !ModeInfo),
+    unique_modes_check_call_modes(match_plain_call(PredId), ArgVars,
+        ProcArgModes0, ArgOffset, InterfaceDeterminism, CanSucceed, !ModeInfo),
     look_up_proc_mode_errors(!.ModeInfo, PredId, ProcId0, ModeErrors),
     (
         ModeErrors = [_ | _],
@@ -509,16 +509,16 @@ unique_modes_check_call(PredId, ProcId0, ArgVars, GoalInfo, ProcId,
     % arguments of the call, and then check for each argument if the variable
     % is nondet-live and the required initial inst was unique.
     %
-:- pred unique_modes_check_call_modes(list(prog_var)::in, list(mer_mode)::in,
-    int::in, determinism::in, can_proc_succeed::in,
-    mode_info::in, mode_info::out) is det.
+:- pred unique_modes_check_call_modes(match_what::in,
+    list(prog_var)::in, list(mer_mode)::in, int::in, determinism::in,
+    can_proc_succeed::in, mode_info::in, mode_info::out) is det.
 
-unique_modes_check_call_modes(ArgVars, ProcArgModes, ArgOffset, Determinism,
-        CanProcSucceed, !ModeInfo) :-
+unique_modes_check_call_modes(MatchWhat, ArgVars, ProcArgModes, ArgOffset,
+        Determinism, CanProcSucceed, !ModeInfo) :-
     mode_info_get_module_info(!.ModeInfo, ModuleInfo),
     mode_list_get_initial_insts(ModuleInfo, ProcArgModes, InitialInsts),
-    modecheck_var_has_inst_list_no_exact_match(ArgVars, InitialInsts,
-        ArgOffset, InstVarSub, !ModeInfo),
+    modecheck_var_has_inst_list_no_exact_match(MatchWhat,
+        ArgVars, InitialInsts, ArgOffset, InstVarSub, !ModeInfo),
     mode_list_get_final_insts(ModuleInfo, ProcArgModes, FinalInsts0),
     inst_list_apply_substitution(InstVarSub, FinalInsts0, FinalInsts),
     modecheck_set_var_inst_list(ArgVars, InitialInsts, FinalInsts,

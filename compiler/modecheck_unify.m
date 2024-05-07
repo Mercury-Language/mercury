@@ -1218,10 +1218,11 @@ modecheck_complicated_unify(X, Y, Type, InitInstX, InitInstY, UnifiedInst,
         mode_info_set_call_context(call_context_unify(UnifyContext),
             !ModeInfo),
         InitialArgNum = 0,
-        modecheck_var_has_inst_list_no_exact_match(UnifyTypeInfoVars,
-            ExpectedInsts, InitialArgNum, _InstVarSub, !ModeInfo),
-            % we can ignore _InstVarSub since type_info variables
-            % should not have variable insts.
+        modecheck_var_has_inst_list_no_exact_match(match_unify,
+            UnifyTypeInfoVars, ExpectedInsts, InitialArgNum, _InstVarSub,
+            !ModeInfo),
+        % We can ignore _InstVarSub since type_info variables
+        % should not have variable insts.
         mode_info_unset_call_context(!ModeInfo)
     ),
     mode_info_get_module_info(!.ModeInfo, ModuleInfo0),

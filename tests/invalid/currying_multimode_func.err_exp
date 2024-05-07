@@ -1,7 +1,7 @@
 currying_multimode_func.m:022: In clause for `main(di, uo)':
 currying_multimode_func.m:022:   in argument 1 of call to predicate
 currying_multimode_func.m:022:   `currying_multimode_func.run_binop_test'/3:
-currying_multimode_func.m:022:   mode error: variable `V_6' has
+currying_multimode_func.m:022:   mode error: [38;5;87mvariable `V_6'[39;49m has
 currying_multimode_func.m:022:   instantiatedness [38;5;203m`free',[39;49m
 currying_multimode_func.m:022:   expected instantiatedness was
 currying_multimode_func.m:022:   [38;5;40m`(func(in, in) = out is det)'.[39;49m

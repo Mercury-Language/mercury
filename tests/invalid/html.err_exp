@@ -1,7 +1,7 @@
 html.m:053: In clause for `init_body_elem =
 html.m:053:   out(html.non_empty_list(html.top_body_elem))':
 html.m:053:   mode error: the function result had the wrong instantiatedness.
-html.m:053:   Final instantiatedness of `HeadVar__1' was [38;5;203m`unique',[39;49m
+html.m:053:   Final instantiatedness of [38;5;87m`HeadVar__1'[39;49m was [38;5;203m`unique',[39;49m
 html.m:053:   expected final instantiatedness was
 html.m:053:     [38;5;40mnamed inst non_empty_list(top_body_elem)[39;49m
 html.m:053:     [38;5;40mwhich expands to[39;49m

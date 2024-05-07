@@ -301,7 +301,7 @@ modecheck_goal_generic_call(GoalExpr0, GoalInfo0, GoalExpr, !ModeInfo) :-
     mode_info_set_call_context(call_context_call(CallId), !ModeInfo),
     (
         GenericCall = higher_order(PredVar, _, PredOrFunc, _),
-        modecheck_higher_order_call(PredOrFunc, PredVar,
+        modecheck_higher_order_call(GenericCallId, PredOrFunc, PredVar,
             Args0, Args, Modes, Det, ExtraGoals, !ModeInfo),
         GoalExpr1 =
             generic_call(GenericCall, Args, Modes, arg_reg_types_unset, Det),

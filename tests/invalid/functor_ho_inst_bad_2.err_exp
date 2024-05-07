@@ -1,7 +1,7 @@
 functor_ho_inst_bad_2.m:031: In clause for `run(in, di, uo)':
 functor_ho_inst_bad_2.m:031:   in argument 2 (i.e. argument 1 of the called
 functor_ho_inst_bad_2.m:031:   predicate) of higher-order predicate call:
-functor_ho_inst_bad_2.m:031:   mode error: variable `Result' has
+functor_ho_inst_bad_2.m:031:   mode error: [38;5;87mvariable `Result'[39;49m has
 functor_ho_inst_bad_2.m:031:   instantiatedness [38;5;203m`free',[39;49m
 functor_ho_inst_bad_2.m:031:   expected instantiatedness was [38;5;40m`ground'.[39;49m
 For more information, recompile with `-E'.

@@ -5,7 +5,7 @@ mode_error_arg_number.m:040:   in(list.non_empty_list), in,
 mode_error_arg_number.m:040:   out(list.non_empty_list))':
 mode_error_arg_number.m:040:   mode error: argument 4 did not get sufficiently
 mode_error_arg_number.m:040:   instantiated.
-mode_error_arg_number.m:040:   Final instantiatedness of `Frags' was [38;5;203m`ground',[39;49m
+mode_error_arg_number.m:040:   Final instantiatedness of [38;5;87m`Frags'[39;49m was [38;5;203m`ground',[39;49m
 mode_error_arg_number.m:040:   expected final instantiatedness was
 mode_error_arg_number.m:040:     [38;5;40mnamed inst list.non_empty_list[39;49m
 mode_error_arg_number.m:040:     [38;5;40mwhich expands to[39;49m
@@ -19,7 +19,7 @@ mode_error_arg_number.m:053:   in(list.non_empty_list), in) =
 mode_error_arg_number.m:053:   out(list.non_empty_list)':
 mode_error_arg_number.m:053:   mode error: the function result did not get
 mode_error_arg_number.m:053:   sufficiently instantiated.
-mode_error_arg_number.m:053:   Final instantiatedness of `Frags' was [38;5;203m`ground',[39;49m
+mode_error_arg_number.m:053:   Final instantiatedness of [38;5;87m`Frags'[39;49m was [38;5;203m`ground',[39;49m
 mode_error_arg_number.m:053:   expected final instantiatedness was
 mode_error_arg_number.m:053:     [38;5;40mnamed inst list.non_empty_list[39;49m
 mode_error_arg_number.m:053:     [38;5;40mwhich expands to[39;49m

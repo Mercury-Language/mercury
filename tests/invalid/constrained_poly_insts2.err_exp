@@ -1,13 +1,13 @@
 constrained_poly_insts2.m:042: In clause for `test6':
 constrained_poly_insts2.m:042:   in argument 2 of call to predicate
 constrained_poly_insts2.m:042:   `constrained_poly_insts2.q'/2:
-constrained_poly_insts2.m:042:   mode error: variable `V_2' has
+constrained_poly_insts2.m:042:   mode error: [38;5;87mvariable `V_2'[39;49m has
 constrained_poly_insts2.m:042:   instantiatedness [38;5;203m`unique(orange)',[39;49m
 constrained_poly_insts2.m:042:   expected instantiatedness was [38;5;40m`bound(apple)'.[39;49m
 constrained_poly_insts2.m:044: In clause for `test8':
 constrained_poly_insts2.m:044:   in argument 2 of call to predicate
 constrained_poly_insts2.m:044:   `constrained_poly_insts2.q'/2:
-constrained_poly_insts2.m:044:   mode error: variable `V_2' has
+constrained_poly_insts2.m:044:   mode error: [38;5;87mvariable `V_2'[39;49m has
 constrained_poly_insts2.m:044:   instantiatedness [38;5;203m`unique(orange)',[39;49m
 constrained_poly_insts2.m:044:   expected instantiatedness was
 constrained_poly_insts2.m:044:   [38;5;40m`( I =< bound(apple) )'.[39;49m
@@ -15,19 +15,19 @@ constrained_poly_insts2.m:049: In clause for `p((pred(in((I =< ground))) is
 constrained_poly_insts2.m:049:   det), in)':
 constrained_poly_insts2.m:049:   in argument 2 (i.e. argument 1 of the called
 constrained_poly_insts2.m:049:   predicate) of higher-order predicate call:
-constrained_poly_insts2.m:049:   mode error: argument `X' has the following
+constrained_poly_insts2.m:049:   mode error: argument [38;5;87m`X'[39;49m has the following
 constrained_poly_insts2.m:049:   inst:
 constrained_poly_insts2.m:049:     ground
-constrained_poly_insts2.m:049:   which does not match any of the modes for
+constrained_poly_insts2.m:049:   which does not match the mode of this
 constrained_poly_insts2.m:049:   higher-order predicate call.
-constrained_poly_insts2.m:049:   The first argument `X' has inst `ground',
+constrained_poly_insts2.m:049:   The [38;5;87mfirst argument `X'[39;49m has inst [38;5;203m`ground',[39;49m
 constrained_poly_insts2.m:049:   which does not match any of those modes.
 constrained_poly_insts2.m:054: In clause for `p2((pred(in((I =< ground))) is
 constrained_poly_insts2.m:054:   det), in((J =<
 constrained_poly_insts2.m:054:   constrained_poly_insts2.apple)))':
 constrained_poly_insts2.m:054:   in argument 2 (i.e. argument 1 of the called
 constrained_poly_insts2.m:054:   predicate) of higher-order predicate call:
-constrained_poly_insts2.m:054:   mode error: argument `X' has the following
+constrained_poly_insts2.m:054:   mode error: argument [38;5;87m`X'[39;49m has the following
 constrained_poly_insts2.m:054:   inst:
 constrained_poly_insts2.m:054:     ( J =< named inst apple
 constrained_poly_insts2.m:054:     which expands to
@@ -35,22 +35,22 @@ constrained_poly_insts2.m:054:       bound(
 constrained_poly_insts2.m:054:         apple
 constrained_poly_insts2.m:054:       )
 constrained_poly_insts2.m:054:     )
-constrained_poly_insts2.m:054:   which does not match any of the modes for
+constrained_poly_insts2.m:054:   which does not match the mode of this
 constrained_poly_insts2.m:054:   higher-order predicate call.
-constrained_poly_insts2.m:054:   The first argument `X' has inst
-constrained_poly_insts2.m:054:     ( J =< named inst apple
-constrained_poly_insts2.m:054:     which expands to
-constrained_poly_insts2.m:054:       bound(
-constrained_poly_insts2.m:054:         apple
-constrained_poly_insts2.m:054:       )
-constrained_poly_insts2.m:054:     ),
+constrained_poly_insts2.m:054:   The [38;5;87mfirst argument `X'[39;49m has inst
+constrained_poly_insts2.m:054:     [38;5;203m( J =< named inst apple[39;49m
+constrained_poly_insts2.m:054:     [38;5;203mwhich expands to[39;49m
+constrained_poly_insts2.m:054:       [38;5;203mbound([39;49m
+constrained_poly_insts2.m:054:         [38;5;203mapple[39;49m
+constrained_poly_insts2.m:054:       [38;5;203m)[39;49m
+constrained_poly_insts2.m:054:     [38;5;203m),[39;49m
 constrained_poly_insts2.m:054:   which does not match any of those modes.
 constrained_poly_insts2.m:059: In clause for `p3((pred(in((I =<
 constrained_poly_insts2.m:059:   constrained_poly_insts2.apple))) is det),
 constrained_poly_insts2.m:059:   in(constrained_poly_insts2.orange))':
 constrained_poly_insts2.m:059:   in argument 2 (i.e. argument 1 of the called
 constrained_poly_insts2.m:059:   predicate) of higher-order predicate call:
-constrained_poly_insts2.m:059:   mode error: variable `X' has instantiatedness
+constrained_poly_insts2.m:059:   mode error: [38;5;87mvariable `X'[39;49m has instantiatedness
 constrained_poly_insts2.m:059:     [38;5;203mnamed inst orange[39;49m
 constrained_poly_insts2.m:059:     [38;5;203mwhich expands to[39;49m
 constrained_poly_insts2.m:059:       [38;5;203mbound([39;49m
@@ -68,7 +68,7 @@ constrained_poly_insts2.m:064:   constrained_poly_insts2.apple))) is det),
 constrained_poly_insts2.m:064:   in((J =< constrained_poly_insts2.apple)))':
 constrained_poly_insts2.m:064:   in argument 2 (i.e. argument 1 of the called
 constrained_poly_insts2.m:064:   predicate) of higher-order predicate call:
-constrained_poly_insts2.m:064:   mode error: argument `X' has the following
+constrained_poly_insts2.m:064:   mode error: argument [38;5;87m`X'[39;49m has the following
 constrained_poly_insts2.m:064:   inst:
 constrained_poly_insts2.m:064:     ( J =< named inst apple
 constrained_poly_insts2.m:064:     which expands to
@@ -76,34 +76,34 @@ constrained_poly_insts2.m:064:       bound(
 constrained_poly_insts2.m:064:         apple
 constrained_poly_insts2.m:064:       )
 constrained_poly_insts2.m:064:     )
-constrained_poly_insts2.m:064:   which does not match any of the modes for
+constrained_poly_insts2.m:064:   which does not match the mode of this
 constrained_poly_insts2.m:064:   higher-order predicate call.
-constrained_poly_insts2.m:064:   The first argument `X' has inst
-constrained_poly_insts2.m:064:     ( J =< named inst apple
-constrained_poly_insts2.m:064:     which expands to
-constrained_poly_insts2.m:064:       bound(
-constrained_poly_insts2.m:064:         apple
-constrained_poly_insts2.m:064:       )
-constrained_poly_insts2.m:064:     ),
+constrained_poly_insts2.m:064:   The [38;5;87mfirst argument `X'[39;49m has inst
+constrained_poly_insts2.m:064:     [38;5;203m( J =< named inst apple[39;49m
+constrained_poly_insts2.m:064:     [38;5;203mwhich expands to[39;49m
+constrained_poly_insts2.m:064:       [38;5;203mbound([39;49m
+constrained_poly_insts2.m:064:         [38;5;203mapple[39;49m
+constrained_poly_insts2.m:064:       [38;5;203m)[39;49m
+constrained_poly_insts2.m:064:     [38;5;203m),[39;49m
 constrained_poly_insts2.m:064:   which does not match any of those modes.
 constrained_poly_insts2.m:069: In clause for `p5((pred(in((I =<
 constrained_poly_insts2.m:069:   constrained_poly_insts2.apple))) is det),
 constrained_poly_insts2.m:069:   in(constrained_poly_insts2.apple))':
 constrained_poly_insts2.m:069:   in argument 2 (i.e. argument 1 of the called
 constrained_poly_insts2.m:069:   predicate) of higher-order predicate call:
-constrained_poly_insts2.m:069:   mode error: argument `X' has the following
+constrained_poly_insts2.m:069:   mode error: argument [38;5;87m`X'[39;49m has the following
 constrained_poly_insts2.m:069:   inst:
 constrained_poly_insts2.m:069:     named inst apple
 constrained_poly_insts2.m:069:     which expands to
 constrained_poly_insts2.m:069:       bound(
 constrained_poly_insts2.m:069:         apple
 constrained_poly_insts2.m:069:       )
-constrained_poly_insts2.m:069:   which does not match any of the modes for
+constrained_poly_insts2.m:069:   which does not match the mode of this
 constrained_poly_insts2.m:069:   higher-order predicate call.
-constrained_poly_insts2.m:069:   The first argument `X' has inst
-constrained_poly_insts2.m:069:     named inst apple
-constrained_poly_insts2.m:069:     which expands to
-constrained_poly_insts2.m:069:       bound(
-constrained_poly_insts2.m:069:         apple
-constrained_poly_insts2.m:069:       ),
+constrained_poly_insts2.m:069:   The [38;5;87mfirst argument `X'[39;49m has inst
+constrained_poly_insts2.m:069:     [38;5;203mnamed inst apple[39;49m
+constrained_poly_insts2.m:069:     [38;5;203mwhich expands to[39;49m
+constrained_poly_insts2.m:069:       [38;5;203mbound([39;49m
+constrained_poly_insts2.m:069:         [38;5;203mapple[39;49m
+constrained_poly_insts2.m:069:       [38;5;203m),[39;49m
 constrained_poly_insts2.m:069:   which does not match any of those modes.

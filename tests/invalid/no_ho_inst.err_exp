@@ -1,8 +1,8 @@
 no_ho_inst.m:044: In clause for `run_loop(in, in, out, di, uo)':
 no_ho_inst.m:044:   in argument 1 (i.e. the predicate term) of higher-order
 no_ho_inst.m:044:   predicate call:
-no_ho_inst.m:044:   mode error: context requires a [38;5;40mpredicate of arity 4,[39;49m and
-no_ho_inst.m:044:   the type of `AppHandler' does match that expectation.
+no_ho_inst.m:044:   mode error: context requires a [38;5;40mpredicate of arity four,[39;49m and
+no_ho_inst.m:044:   the type of [38;5;87m`AppHandler'[39;49m does match that expectation.
 no_ho_inst.m:044:   However, to check the correctness of the call, the compiler
 no_ho_inst.m:044:   also needs to know the modes of the arguments and the
 no_ho_inst.m:044:   determinism of the predicate that `AppHandler' represents.

@@ -1,6 +1,6 @@
 mode_inf.m:014: In clause for `p(out, out)':
 mode_inf.m:014:   in call to predicate `mode_inf.q'/2:
-mode_inf.m:014:   mode error: arguments `X, Y' have the following insts:
+mode_inf.m:014:   mode error: arguments [38;5;87m`X, Y'[39;49m have the following insts:
 mode_inf.m:014:     free,
 mode_inf.m:014:     free
 mode_inf.m:014:   which does not match any of the valid modes for the callee
@@ -9,6 +9,6 @@ mode_inf.m:014:   because of the following error.
 mode_inf.m:016: In clause for `q(out(not_reached), out(not_reached))':
 mode_inf.m:016:   in argument 2 of clause head:
 mode_inf.m:016:   mode error in unification of `Z' and `Z'.
-mode_inf.m:016:   Variable `Z' has instantiatedness `free',
-mode_inf.m:016:   variable `Z' has instantiatedness `free'.
+mode_inf.m:016:   [38;5;87mVariable `Z'[39;49m has instantiatedness [38;5;226m`free',[39;49m
+mode_inf.m:016:   [38;5;87mvariable `Z'[39;49m has instantiatedness [38;5;226m`free'.[39;49m
 mode_inf.m:016: REJECTED :- mode q(out(...), out(...)).

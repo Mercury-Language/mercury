@@ -618,6 +618,16 @@
     %
 :- func is_or_are(list(T)) = string.
 
+    % Return the name of the given integer as zero, one, two, three etc,
+    % up to ten. For integers other than 0..10, return the value as digits.
+    %
+:- func int_name_str(int) = string.
+
+    % The ordinal version of int_name_str, returning first, second etc
+    % for 1..10.
+    %
+:- func nth_fixed_str(int) = string.
+
 %---------------------------------------------------------------------------%
 
 :- func color_as_subject(list(format_piece)) = list(format_piece).
@@ -676,6 +686,7 @@
 :- import_module char.
 :- import_module edit_distance.
 :- import_module getopt.
+:- import_module int.
 :- import_module require.
 :- import_module std_util.
 :- import_module string.
@@ -765,6 +776,55 @@ is_or_are([]) = "" :-
     unexpected($pred, "[]").
 is_or_are([_]) = "is".
 is_or_are([_, _ | _]) = "are".
+
+int_name_str(N) = Str :-
+    ( if
+        ( N = 0,  StrPrime = "zero"
+        ; N = 1,  StrPrime = "one"
+        ; N = 2,  StrPrime = "two"
+        ; N = 3,  StrPrime = "three"
+        ; N = 4,  StrPrime = "four"
+        ; N = 5,  StrPrime = "five"
+        ; N = 6,  StrPrime = "six"
+        ; N = 7,  StrPrime = "seven"
+        ; N = 8,  StrPrime = "eight"
+        ; N = 9,  StrPrime = "nine"
+        ; N = 10, StrPrime = "ten"
+        )
+    then
+        Str = StrPrime
+    else
+        Str = int_to_string(N)
+    ).
+
+nth_fixed_str(N) = Str :-
+    ( if
+        ( N = 1,  StrPrime = "first"
+        ; N = 2,  StrPrime = "second"
+        ; N = 3,  StrPrime = "third"
+        ; N = 4,  StrPrime = "fourth"
+        ; N = 5,  StrPrime = "fifth"
+        ; N = 6,  StrPrime = "sixth"
+        ; N = 7,  StrPrime = "seventh"
+        ; N = 8,  StrPrime = "eighth"
+        ; N = 9,  StrPrime = "ninth"
+        ; N = 10, StrPrime = "tenth"
+        )
+    then
+        Str = StrPrime
+    else
+        % We want to print 12th and 13th, not 12nd and 13rd,
+        % but 42nd and 43rd instead of 42th and 43th.
+        NStr = int_to_string(N),
+        LastDigit = N mod 10,
+        ( if N > 20, LastDigit = 2 then
+            Str = NStr ++ "nd"
+        else if N > 20, LastDigit = 3 then
+            Str = NStr ++ "rd"
+        else
+            Str = NStr ++ "th"
+        )
+    ).
 
 %---------------------------------------------------------------------------%
 

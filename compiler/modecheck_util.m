@@ -14,6 +14,7 @@
 :- module check_hlds.modecheck_util.
 :- interface.
 
+:- import_module check_hlds.mode_errors.
 :- import_module check_hlds.mode_info.
 :- import_module hlds.
 :- import_module hlds.hlds_goal.
@@ -89,11 +90,11 @@
     % while the second we allow the var to be more instantiated than the inst
     % (using inst_matches_initial).
     %
-:- pred modecheck_var_has_inst_list_exact_match(list(prog_var)::in,
-    list(mer_inst)::in, int::in, inst_var_sub::out,
+:- pred modecheck_var_has_inst_list_exact_match(match_what::in,
+    list(prog_var)::in, list(mer_inst)::in, int::in, inst_var_sub::out,
     mode_info::in, mode_info::out) is det.
-:- pred modecheck_var_has_inst_list_no_exact_match(list(prog_var)::in,
-    list(mer_inst)::in, int::in, inst_var_sub::out,
+:- pred modecheck_var_has_inst_list_no_exact_match(match_what::in,
+    list(prog_var)::in, list(mer_inst)::in, int::in, inst_var_sub::out,
     mode_info::in, mode_info::out) is det.
 
     % This is a special-cased, cut-down version of
@@ -206,7 +207,6 @@
 :- import_module check_hlds.inst_lookup.
 :- import_module check_hlds.inst_match.
 :- import_module check_hlds.inst_test.
-:- import_module check_hlds.mode_errors.
 :- import_module check_hlds.mode_util.
 :- import_module check_hlds.modecheck_goal.
 :- import_module check_hlds.modecheck_unify.
@@ -424,17 +424,17 @@ modecheck_var_is_live_exact_match(Var, ExpectedIsLive, !ModeInfo) :-
 
 %-----------------------------------------------------------------------------%
 
-modecheck_var_has_inst_list_exact_match(Vars, Insts, ArgNum, Subst,
-        !ModeInfo) :-
+modecheck_var_has_inst_list_exact_match(MatchWhat, Vars, Insts, ArgNum,
+        Subst, !ModeInfo) :-
     modecheck_var_has_inst_list_exact_match_2(Vars, Insts, ArgNum,
         map.init, Subst, !ModeInfo),
-    modecheck_head_inst_vars(Vars, Subst, !ModeInfo).
+    modecheck_head_inst_vars(MatchWhat, Vars, Subst, !ModeInfo).
 
-modecheck_var_has_inst_list_no_exact_match(Vars, Insts, ArgNum, Subst,
-        !ModeInfo) :-
+modecheck_var_has_inst_list_no_exact_match(MatchWhat, Vars, Insts, ArgNum,
+        Subst, !ModeInfo) :-
     modecheck_var_has_inst_list_no_exact_match_2(Vars, Insts, ArgNum,
         map.init, Subst, !ModeInfo),
-    modecheck_head_inst_vars(Vars, Subst, !ModeInfo).
+    modecheck_head_inst_vars(MatchWhat, Vars, Subst, !ModeInfo).
 
 :- pred modecheck_var_has_inst_list_exact_match_2(list(prog_var)::in,
     list(mer_inst)::in, int::in, inst_var_sub::in, inst_var_sub::out,
@@ -554,10 +554,10 @@ modecheck_introduced_type_info_var_has_inst_no_exact_match(Var, Type, Inst,
 
 %-----------------------------------------------------------------------------%
 
-:- pred modecheck_head_inst_vars(list(prog_var)::in, inst_var_sub::in,
-    mode_info::in, mode_info::out) is det.
+:- pred modecheck_head_inst_vars(match_what::in, list(prog_var)::in,
+    inst_var_sub::in, mode_info::in, mode_info::out) is det.
 
-modecheck_head_inst_vars(Vars, InstVarSub, !ModeInfo) :-
+modecheck_head_inst_vars(MatchWhat, Vars, InstVarSub, !ModeInfo) :-
     mode_info_get_head_inst_vars(!.ModeInfo, HeadInstVars),
     ( if
         map.foldl(modecheck_head_inst_var(HeadInstVars), InstVarSub, unit, _)
@@ -566,7 +566,7 @@ modecheck_head_inst_vars(Vars, InstVarSub, !ModeInfo) :-
     else
         mode_info_get_instmap(!.ModeInfo, InstMap),
         WaitingVars = set_of_var.list_to_set(Vars),
-        ModeError = mode_error_no_matching_mode(InstMap, Vars, []),
+        ModeError = mode_error_no_matching_mode(MatchWhat, InstMap, Vars, []),
         mode_info_error(WaitingVars, ModeError, !ModeInfo)
     ).
 

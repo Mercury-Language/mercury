@@ -1,7 +1,7 @@
 coerce_implied_mode.m:034: In clause for
 coerce_implied_mode.m:034:   `coerce_implied_mode3(in(bound(orange)))':
 coerce_implied_mode.m:034:   in coerce expression:
-coerce_implied_mode.m:034:   warning: unification of `Y' and `V_4' cannot
+coerce_implied_mode.m:034:   warning: unification of [38;5;87m`Y'[39;49m and [38;5;87m`V_4'[39;49m cannot
 coerce_implied_mode.m:034:   succeed.
-coerce_implied_mode.m:034:   `Y' has instantiatedness [38;5;226m`bound(orange)',[39;49m
-coerce_implied_mode.m:034:   `V_4' has instantiatedness [38;5;226m`unique(lemon)'.[39;49m
+coerce_implied_mode.m:034:   [38;5;87m`Y'[39;49m has instantiatedness [38;5;226m`bound(orange)',[39;49m
+coerce_implied_mode.m:034:   [38;5;87m`V_4'[39;49m has instantiatedness [38;5;226m`unique(lemon)'.[39;49m

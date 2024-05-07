@@ -1,16 +1,16 @@
 modes_erroneous.m:020: In clause for `p(in, out)':
-modes_erroneous.m:020:   mode error in conjunction. The next 2 error messages
+modes_erroneous.m:020:   mode error in conjunction. The next two error messages
 modes_erroneous.m:020:   indicate possible causes of this error.
 modes_erroneous.m:020: 
 modes_erroneous.m:020:   In clause for `p(in, out)':
 modes_erroneous.m:020:   in argument 1 of call to predicate
 modes_erroneous.m:020:   `modes_erroneous.p'/2:
-modes_erroneous.m:020:   mode error: variable `V_5' has instantiatedness
+modes_erroneous.m:020:   mode error: [38;5;87mvariable `V_5'[39;49m has instantiatedness
 modes_erroneous.m:020:   [38;5;203m`free',[39;49m
 modes_erroneous.m:020:   expected instantiatedness was [38;5;40m`ground'.[39;49m
 modes_erroneous.m:020: 
 modes_erroneous.m:019:   In clause for `p(in, out)':
 modes_erroneous.m:019:   in argument 2 of clause head:
 modes_erroneous.m:019:   mode error in unification of `HeadVar__2' and `X'.
-modes_erroneous.m:019:   Variable `HeadVar__2' has instantiatedness `free',
-modes_erroneous.m:019:   variable `X' has instantiatedness `free'.
+modes_erroneous.m:019:   [38;5;87mVariable `HeadVar__2'[39;49m has instantiatedness [38;5;226m`free',[39;49m
+modes_erroneous.m:019:   [38;5;87mvariable `X'[39;49m has instantiatedness [38;5;226m`free'.[39;49m
