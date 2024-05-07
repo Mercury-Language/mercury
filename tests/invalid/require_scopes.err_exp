@@ -3,15 +3,15 @@ require_scopes.m:036:   is [38;5;40m`det',[39;49m but its actual determinism i
 require_scopes.m:037:   [38;5;226mCall to `int.>'(in, in) can fail.[39;49m
 require_scopes.m:040: Error: the required determinism of the goal in this scope
 require_scopes.m:040:   is [38;5;40m`nondet',[39;49m but its actual determinism is [38;5;203m`semidet'.[39;49m
-require_scopes.m:064: Error: the switch on `A' is required to be complete, but
+require_scopes.m:064: Error: the [38;5;87mswitch on `A'[39;49m is required to be complete, but
 require_scopes.m:064:   [38;5;226mit does not cover[39;49m
 require_scopes.m:064:     [38;5;226m`f1'/0.[39;49m
-require_scopes.m:097: Error: the arms of the switch on A are required have a
+require_scopes.m:097: Error: the arms of the [38;5;87mswitch on A[39;49m are required have a
 require_scopes.m:097:   determinism that is acceptable in a [38;5;40m`det'[39;49m context, but
 require_scopes.m:097:   the actual determinism of the arm for
 require_scopes.m:097:   require_scopes.f3/1 is [38;5;203m`semidet'.[39;49m
 require_scopes.m:098:   [38;5;226mCall to `int.>'(in, in) can fail.[39;49m
-require_scopes.m:109: Error: the arms of the switch on B are required have a
+require_scopes.m:109: Error: the arms of the [38;5;87mswitch on B[39;49m are required have a
 require_scopes.m:109:   determinism that is acceptable in a [38;5;40m`semidet'[39;49m context,
 require_scopes.m:109:   but the actual determinism of the arm for 10 is
 require_scopes.m:109:   [38;5;203m`multi'.[39;49m

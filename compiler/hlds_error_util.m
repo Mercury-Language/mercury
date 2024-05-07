@@ -190,6 +190,28 @@ describe_one_pred_info_name(ShouldModuleQualify, PredInfo) = Pieces :-
             Pieces = [words(Descr), words("for type constructor"),
                 qual_sym_name(TypeSymName)]
         )
+    else if Origin = origin_user(user_made_class_method(_, PFNA0)) then
+        (
+            ShouldModuleQualify = should_module_qualify,
+            PFNA = PFNA0
+        ;
+            ShouldModuleQualify = should_not_module_qualify,
+            PFNA0 = pred_pf_name_arity(PorF, SymName0, UserArity),
+            SymName = unqualified(unqualify_name(SymName0)),
+            PFNA = pred_pf_name_arity(PorF, SymName, UserArity)
+        ),
+        Pieces = [words("typeclass method"), qual_pf_sym_name_user_arity(PFNA)]
+    else if Origin = origin_user(user_made_instance_method(PFNA0, _)) then
+        (
+            ShouldModuleQualify = should_module_qualify,
+            PFNA = PFNA0
+        ;
+            ShouldModuleQualify = should_not_module_qualify,
+            PFNA0 = pred_pf_name_arity(PorF, SymName0, UserArity),
+            SymName = unqualified(unqualify_name(SymName0)),
+            PFNA = pred_pf_name_arity(PorF, SymName, UserArity)
+        ),
+        Pieces = [words("instance method"), qual_pf_sym_name_user_arity(PFNA)]
     else if check_marker(Markers, marker_class_instance_method) then
         Pieces = [words("type class method implementation")]
     else if pred_info_is_promise(PredInfo, PromiseType) then

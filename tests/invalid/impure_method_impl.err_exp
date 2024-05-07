@@ -1,11 +1,11 @@
-impure_method_impl.m:026: Error: type class method implementation is [38;5;203msemipure.[39;49m
+impure_method_impl.m:026: Error: [38;5;87minstance method predicate `m1'/2[39;49m is [38;5;203msemipure.[39;49m
 impure_method_impl.m:026:   It must either be [38;5;40mdeclared semipure,[39;49m or [38;5;40mpromised[39;49m
 impure_method_impl.m:026:   [38;5;40mpure.[39;49m
 impure_method_impl.m:026: In call to semipure predicate
 impure_method_impl.m:026:   `impure_method_impl.foo_m1'/2:
 impure_method_impl.m:026:   purity error: call [38;5;203mmust be preceded by a `semipure'[39;49m
 impure_method_impl.m:026:   [38;5;203mindicator.[39;49m
-impure_method_impl.m:027: Error: type class method implementation is [38;5;203mimpure.[39;49m It
+impure_method_impl.m:027: Error: [38;5;87minstance method predicate `m2'/2[39;49m is [38;5;203mimpure.[39;49m It
 impure_method_impl.m:027:   must either be [38;5;40mdeclared impure,[39;49m or [38;5;40mpromised[39;49m
 impure_method_impl.m:027:   [38;5;40msemipure.[39;49m
 impure_method_impl.m:027: In call to impure predicate

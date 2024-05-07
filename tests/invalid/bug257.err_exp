@@ -3,6 +3,6 @@ bug257.m:017:   warning: unresolved polymorphism.
 bug257.m:017:   The variable with an unbound type was:
 bug257.m:017:     Gee
 bug257.m:017:   Its type will be implicitly set to the builtin type `void'.
-bug257.m:022: Error: the goal inside the require_complete_switch [Gee] scope is
-bug257.m:022:   not a switch on `Gee'.
+bug257.m:022: Error: the goal inside the [38;5;87mrequire_complete_switch [Gee] scope[39;49m is
+bug257.m:022:   [38;5;203mnot a switch on `Gee'.[39;49m
 For more information, recompile with `-E'.

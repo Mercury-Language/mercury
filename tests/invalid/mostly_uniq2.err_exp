@@ -1,7 +1,7 @@
 mostly_uniq2.m:009: In `foo'(di, uo):
 mostly_uniq2.m:009:   error: [38;5;203m`multi'[39;49m is not a valid determinism for a predicate
 mostly_uniq2.m:009:   that has I/O state arguments. The valid determinisms for
-mostly_uniq2.m:009:   such predicates are [38;5;40m`det', `cc_multi' and `erroneous',[39;49m
+mostly_uniq2.m:009:   such predicates are [38;5;40m`det',[39;49m [38;5;40m`cc_multi'[39;49m and [38;5;40m`erroneous',[39;49m
 mostly_uniq2.m:009:   since the I/O state can be neither duplicated nor
 mostly_uniq2.m:009:   destroyed.
 mostly_uniq2.m:017: In clause for `foo(di, uo)':

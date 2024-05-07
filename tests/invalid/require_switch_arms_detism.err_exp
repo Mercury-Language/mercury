@@ -1,4 +1,4 @@
-require_switch_arms_detism.m:042: Error: the arms of the switch on Functor are
+require_switch_arms_detism.m:042: Error: the arms of the [38;5;87mswitch on Functor[39;49m are
 require_switch_arms_detism.m:042:   required have a determinism that is
 require_switch_arms_detism.m:042:   acceptable in a [38;5;40m`det'[39;49m context, but the
 require_switch_arms_detism.m:042:   actual determinism of the arm for ":-" is
@@ -11,7 +11,7 @@ require_switch_arms_detism.m:043:   [38;5;226mfail.[39;49m
 require_switch_arms_detism.m:043:   In argument 2 of functor `[|]/2':
 require_switch_arms_detism.m:043:   in argument 2 of functor `[|]/2':
 require_switch_arms_detism.m:043:   [38;5;226munification with `list.[]' can fail.[39;49m
-require_switch_arms_detism.m:046: Error: the arms of the switch on Functor are
+require_switch_arms_detism.m:046: Error: the arms of the [38;5;87mswitch on Functor[39;49m are
 require_switch_arms_detism.m:046:   required have a determinism that is
 require_switch_arms_detism.m:046:   acceptable in a [38;5;40m`det'[39;49m context, but the
 require_switch_arms_detism.m:046:   actual determinism of the arm for "--->" is
@@ -24,7 +24,7 @@ require_switch_arms_detism.m:047:   [38;5;226mfail.[39;49m
 require_switch_arms_detism.m:047:   In argument 2 of functor `[|]/2':
 require_switch_arms_detism.m:047:   in argument 2 of functor `[|]/2':
 require_switch_arms_detism.m:047:   [38;5;226munification with `list.[]' can fail.[39;49m
-require_switch_arms_detism.m:050: Error: the arms of the switch on Functor are
+require_switch_arms_detism.m:050: Error: the arms of the [38;5;87mswitch on Functor[39;49m are
 require_switch_arms_detism.m:050:   required have a determinism that is
 require_switch_arms_detism.m:050:   acceptable in a [38;5;40m`det'[39;49m context, but the
 require_switch_arms_detism.m:050:   actual determinism of the arm for "=" is

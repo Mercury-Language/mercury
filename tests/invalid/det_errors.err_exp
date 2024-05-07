@@ -29,7 +29,7 @@ det_errors.m:048:     [38;5;226m`d'/0,[39;49m
 det_errors.m:048:     [38;5;226m`e'/0,[39;49m
 det_errors.m:048:     [38;5;226m`f'/0,[39;49m
 det_errors.m:048:     [38;5;226m`g'/0,[39;49m
-det_errors.m:048:     [38;5;226m`h'/1 or[39;49m
+det_errors.m:048:     [38;5;226m`h'/1[39;49m or
 det_errors.m:048:     [38;5;226m`i'/1.[39;49m
 det_errors.m:034: In `r'(in, out):
 det_errors.m:034:   error: determinism declaration not satisfied.
@@ -43,11 +43,11 @@ det_errors.m:057:     [38;5;226m`d'/0,[39;49m
 det_errors.m:057:     [38;5;226m`e'/0,[39;49m
 det_errors.m:057:     [38;5;226m`f'/0,[39;49m
 det_errors.m:057:     [38;5;226m`g'/0,[39;49m
-det_errors.m:057:     [38;5;226m`h'/1 or[39;49m
+det_errors.m:057:     [38;5;226m`h'/1[39;49m or
 det_errors.m:057:     [38;5;226m`i'/1.[39;49m
 det_errors.m:066:   Inside the case u4(V_17) of the switch on U:
 det_errors.m:066:   [38;5;226mthe switch on V_17 does not cover[39;49m
-det_errors.m:066:     [38;5;226m`h'/1 or[39;49m
+det_errors.m:066:     [38;5;226m`h'/1[39;49m or
 det_errors.m:066:     [38;5;226m`i'/1.[39;49m
 det_errors.m:075:   Inside the case u4(V_17) of the switch on U:
 det_errors.m:075:   inside the case d/0 of the switch on V_17:
@@ -65,7 +65,7 @@ det_errors.m:096:     [38;5;226m`d'/0,[39;49m
 det_errors.m:096:     [38;5;226m`e'/0,[39;49m
 det_errors.m:096:     [38;5;226m`f'/0,[39;49m
 det_errors.m:096:     [38;5;226m`g'/0,[39;49m
-det_errors.m:096:     [38;5;226m`h'/1 or[39;49m
+det_errors.m:096:     [38;5;226m`h'/1[39;49m or
 det_errors.m:096:     [38;5;226m`i'/1.[39;49m
 det_errors.m:116:   Inside the case u4(V) of the switch on U:
 det_errors.m:116:   inside the case d/0 of the switch on V:

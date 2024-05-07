@@ -1469,7 +1469,7 @@ error_inconsistent_purity_promise(ModuleInfo, PredInfo, PredId, Purity)
     PredPieces = describe_one_pred_name(ModuleInfo, should_not_module_qualify,
         PredId),
     MainPieces =
-        [words("Error:")] ++ PredPieces ++
+        [words("Error:")] ++ color_as_subject(PredPieces) ++
         [words("is declared")] ++ color_as_correct([fixed(PurityName)]) ++
         [words("but promised")] ++ color_as_incorrect([words("pure.")]) ++
         [nl],
@@ -1491,7 +1491,7 @@ warn_pred_body_too_pure(ModuleInfo, PredInfo, PredId,
         PredId),
     purity_name(DeclaredPurity, DeclaredPurityName),
     purity_name(ActualPurity, ActualPurityName),
-    Pieces = [words("Warning:")] ++ PredPieces ++
+    Pieces = [words("Warning:")] ++ color_as_subject(PredPieces) ++
         [words("is declared")] ++
             color_as_correct([fixed(DeclaredPurityName), suffix(",")]) ++
         [words("but is actually")] ++
@@ -1544,19 +1544,21 @@ error_not_pure_enough(ModuleInfo, PredInfo, PredId, ActualPurity) = Spec :-
     purity_name(DeclaredPurity, DeclaredPurityName),
 
     ( if is_unify_index_or_compare_pred(PredInfo) then
-        Pieces = [words("Error:")] ++ PredPieces ++ [words("is")] ++
-            color_as_incorrect([fixed(ActualPurityName), suffix(",")]) ++
+        Pieces = [words("Error:")] ++ color_as_subject(PredPieces) ++
+            [words("is")] ++
+                color_as_incorrect([fixed(ActualPurityName), suffix(",")]) ++
             [words("but it must be")] ++
                 color_as_correct([words("pure.")]) ++ [nl]
     else
-        Pieces = [words("Error:")] ++ PredPieces ++ [words("is")] ++
-            color_as_incorrect([fixed(ActualPurityName), suffix(".")]) ++
+        Pieces = [words("Error:")] ++ color_as_subject(PredPieces) ++
+            [words("is")] ++
+                color_as_incorrect([fixed(ActualPurityName), suffix(".")]) ++
             [words("It must either be")] ++
-            color_as_correct([words("declared"), fixed(ActualPurityName),
-                suffix(",")]) ++
+                color_as_correct([words("declared"), fixed(ActualPurityName),
+                    suffix(",")]) ++
             [words("or")] ++
-            color_as_correct([words("promised"), fixed(DeclaredPurityName),
-                suffix(".")]) ++
+                color_as_correct([words("promised"), fixed(DeclaredPurityName),
+                    suffix(".")]) ++
             [nl]
     ),
     Spec = spec($pred, severity_error, phase_purity_check, Context, Pieces).
@@ -1639,7 +1641,9 @@ report_error_higher_order_var_purity(VarTable, Var,
     purity_name(CalleePurity, CalleePurityName),
     VarName = mercury_var_to_string(VarTable, print_name_only, Var),
     Pieces =
-        [words("Purity error: the variable"), fixed(VarName), words("is")] ++
+        [words("Purity error: the")] ++
+        color_as_subject([words("variable"), fixed(VarName)]) ++
+        [words("is")] ++
         color_as_correct([fixed(TypePurityName), suffix(",")]) ++
         [words("but the higher order value it is unified with is")] ++
         color_as_incorrect([fixed(CalleePurityName), suffix(".")]) ++ [nl],
@@ -1667,8 +1671,9 @@ impure_unification_expr_error(VarTable, Var, BadRHS, Purity, Context) = Spec :-
     purity_name(Purity, PurityName),
     % XXX The wording of the second half of this sentence seems uninformative,
     % but I (zs) have nothing better to propose.
-    Pieces = [words("Purity error: the unification of"),
-        fixed(VarName), words("with"), RHSDescPiece, words("was declared")] ++
+    Pieces = [words("Purity error: the unification of")] ++
+        color_as_subject([fixed(VarName)]) ++ [words("with")] ++
+        color_as_subject([RHSDescPiece]) ++ [words("was declared")] ++
         color_as_incorrect([fixed(PurityName), suffix(",")]) ++
         [words("but the term"), fixed(VarName), words("is unified with"),
         words("is not a function call."), nl],

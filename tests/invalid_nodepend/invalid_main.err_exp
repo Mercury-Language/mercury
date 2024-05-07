@@ -2,8 +2,9 @@ invalid_main.m:006: Error: module `invalid_main' should start with either an
 invalid_main.m:006:   `:- interface' or an `:- implementation' declaration.
 invalid_main.m:006:   The following assumes that the missing declaration is an
 invalid_main.m:006:   `:- implementation' declaration.
-invalid_main.m:009: Error: `main'/2 must be `det' or `cc_multi'.
 invalid_main.m:009: Error: `main'/2 must have mode `(di, uo)'.
+invalid_main.m:009: Error: [38;5;87m`main'/2[39;49m must be either [38;5;40m`det'[39;49m or [38;5;40m`cc_multi',[39;49m not
+invalid_main.m:009:   [38;5;203m`multi'.[39;49m
 invalid_main.m:009: Error: both arguments of `main/2' must have type
 invalid_main.m:009:   `io.state'.
 invalid_main.m:009: In `main'(di, out):

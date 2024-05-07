@@ -10,3 +10,4 @@ no_exports.m:012: Error: module `no_exports' should start with either an
 no_exports.m:012:   `:- interface' or an `:- implementation' declaration.
 no_exports.m:012:   The following assumes that the missing declaration is an
 no_exports.m:012:   `:- implementation' declaration.
+no_exports.m:014: Error: [38;5;87m`main'/2[39;49m must be [38;5;40mexported,[39;49m but [38;5;203mit is not.[39;49m

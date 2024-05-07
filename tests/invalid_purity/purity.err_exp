@@ -1,17 +1,17 @@
-purity.m:115: Warning: predicate `w1'/0 is declared [38;5;40mimpure,[39;49m but is actually
+purity.m:115: Warning: [38;5;87mpredicate `w1'/0[39;49m is declared [38;5;40mimpure,[39;49m but is actually
 purity.m:115:   [38;5;203mpure.[39;49m
-purity.m:119: Warning: predicate `w2'/0 is declared [38;5;40msemipure,[39;49m but is actually
+purity.m:119: Warning: [38;5;87mpredicate `w2'/0[39;49m is declared [38;5;40msemipure,[39;49m but is actually
 purity.m:119:   [38;5;203mpure.[39;49m
-purity.m:123: Warning: predicate `w3'/0 is declared [38;5;40mimpure,[39;49m but is actually
+purity.m:123: Warning: [38;5;87mpredicate `w3'/0[39;49m is declared [38;5;40mimpure,[39;49m but is actually
 purity.m:123:   [38;5;203msemipure.[39;49m
 purity.m:128: Warning: [38;5;203munnecessary `promise_pure' pragma[39;49m for predicate `w4'/0.
-purity.m:133: Error: predicate `w5'/0 is declared [38;5;40mimpure[39;49m but promised [38;5;203mpure.[39;49m
-purity.m:139: Error: predicate `w6'/0 is declared [38;5;40msemipure[39;49m but promised [38;5;203mpure.[39;49m
-purity.m:148: Error: predicate `e1'/0 is [38;5;203mimpure.[39;49m It must either be [38;5;40mdeclared[39;49m
+purity.m:133: Error: [38;5;87mpredicate `w5'/0[39;49m is declared [38;5;40mimpure[39;49m but promised [38;5;203mpure.[39;49m
+purity.m:139: Error: [38;5;87mpredicate `w6'/0[39;49m is declared [38;5;40msemipure[39;49m but promised [38;5;203mpure.[39;49m
+purity.m:148: Error: [38;5;87mpredicate `e1'/0[39;49m is [38;5;203mimpure.[39;49m It must either be [38;5;40mdeclared[39;49m
 purity.m:148:   [38;5;40mimpure,[39;49m or [38;5;40mpromised pure.[39;49m
-purity.m:153: Error: predicate `e2'/0 is [38;5;203msemipure.[39;49m It must either be [38;5;40mdeclared[39;49m
+purity.m:153: Error: [38;5;87mpredicate `e2'/0[39;49m is [38;5;203msemipure.[39;49m It must either be [38;5;40mdeclared[39;49m
 purity.m:153:   [38;5;40msemipure,[39;49m or [38;5;40mpromised pure.[39;49m
-purity.m:158: Error: predicate `e3'/0 is [38;5;203mimpure.[39;49m It must either be [38;5;40mdeclared[39;49m
+purity.m:158: Error: [38;5;87mpredicate `e3'/0[39;49m is [38;5;203mimpure.[39;49m It must either be [38;5;40mdeclared[39;49m
 purity.m:158:   [38;5;40mimpure,[39;49m or [38;5;40mpromised semipure.[39;49m
 purity.m:166: In call to impure predicate `purity.imp'/0:
 purity.m:166:   purity error: call [38;5;203mmust be preceded by an `impure' indicator.[39;49m
@@ -29,9 +29,9 @@ purity.m:183:   in argument 1 of call to predicate `purity.imp1'/1:
 purity.m:183:   mode error: [38;5;87mvariable `X'[39;49m has instantiatedness [38;5;203m`free',[39;49m
 purity.m:183:   expected instantiatedness was [38;5;40m`ground'.[39;49m
 purity.m:183:   The goal could not be reordered, because it was impure.
-purity.m:186: Error: unification predicate for type `e8' is [38;5;203mimpure,[39;49m but it must
+purity.m:186: Error: [38;5;87munification predicate for type `e8'[39;49m is [38;5;203mimpure,[39;49m but it must
 purity.m:186:   be [38;5;40mpure.[39;49m
-purity.m:201: Error: unification predicate for type `e9' is [38;5;203msemipure,[39;49m but it
+purity.m:201: Error: [38;5;87munification predicate for type `e9'[39;49m is [38;5;203msemipure,[39;49m but it
 purity.m:201:   must be [38;5;40mpure.[39;49m
 purity.m:219: In call to impure predicate `purity.imp1'/1:
 purity.m:219:   purity error: call [38;5;203mmust be preceded by an `impure' indicator.[39;49m

@@ -643,23 +643,62 @@ check_determinism_if_pred_is_main(PredInfo, ProcInfo, !Specs) :-
     proc_info_get_declared_determinism(ProcInfo, MaybeDetism),
     ( if
         pred_info_name(PredInfo) = "main",
-        pred_info_pred_form_arity(PredInfo) = pred_form_arity(2),
-        pred_info_is_exported(PredInfo),
-        MaybeDetism = yes(DeclaredDetism),
-        not (
-            DeclaredDetism = detism_det
-        ;
-            DeclaredDetism = detism_cc_multi
-        )
+        pred_info_pred_form_arity(PredInfo) = pred_form_arity(2)
     then
+        MainSNA = sym_name_arity(unqualified("main"), 2),
+        MainSNAPiece = unqual_sym_name_arity(MainSNA),
         proc_info_get_context(ProcInfo, ProcContext),
-        Pieces = [words("Error:"),
-            unqual_sym_name_arity(sym_name_arity(unqualified("main"), 2)),
-            words("must be"), quote("det"), words("or"), quote("cc_multi"),
-            suffix("."), nl],
-        Spec = spec($pred, severity_error, phase_detism_check,
-            ProcContext, Pieces),
-        !:Specs = [Spec | !.Specs]
+        ( if pred_info_is_exported(PredInfo) then
+            true
+        else
+            ExportPieces =
+                [words("Error:")] ++ color_as_subject([MainSNAPiece]) ++
+                [words("must be")] ++ color_as_correct([words("exported,")]) ++
+                [words("but")] ++ color_as_incorrect([words("it is not.")]) ++
+                [nl],
+            ExportSpec = spec($pred, severity_error, phase_detism_check,
+                ProcContext, ExportPieces),
+            !:Specs = [ExportSpec | !.Specs]
+        ),
+        (
+            MaybeDetism = no,
+            DetismPieces =
+                [words("Error:")] ++ color_as_subject([MainSNAPiece]) ++
+                [words("must have a")] ++
+                color_as_correct([words("declared determinism,")]) ++
+                [words("but")] ++ color_as_correct([words("it does not.")]) ++
+                [nl],
+            DetismSpec = spec($pred, severity_error, phase_detism_check,
+                ProcContext, DetismPieces),
+            !:Specs = [DetismSpec | !.Specs]
+        ;
+            MaybeDetism = yes(DeclaredDetism),
+            (
+                ( DeclaredDetism = detism_det
+                ; DeclaredDetism = detism_cc_multi
+                )
+            ;
+                ( DeclaredDetism = detism_semi
+                ; DeclaredDetism = detism_multi
+                ; DeclaredDetism = detism_non
+                ; DeclaredDetism = detism_cc_non
+                ; DeclaredDetism = detism_erroneous
+                ; DeclaredDetism = detism_failure
+                ),
+                DetismStr = determinism_to_string(DeclaredDetism),
+                DetismPieces =
+                    [words("Error:")] ++ color_as_subject([MainSNAPiece]) ++
+                    [words("must be either")] ++
+                    color_as_correct([quote("det")]) ++ [words("or")] ++
+                    color_as_correct([quote("cc_multi"), suffix(",")]) ++
+                    [words("not")] ++
+                    color_as_incorrect([quote(DetismStr), suffix(".")]) ++
+                    [nl],
+                DetismSpec = spec($pred, severity_error, phase_detism_check,
+                    ProcContext, DetismPieces),
+                !:Specs = [DetismSpec | !.Specs]
+            )
+        )
     else
         true
     ).
@@ -696,10 +735,12 @@ check_for_multisoln_func(ModuleInfo, PredProcId, PredInfo, ProcInfo, !Specs) :-
         PredModePieces = describe_one_pred_name_mode(ModuleInfo,
             output_mercury, should_not_module_qualify, PredId,
             InstVarSet, PredArgModes),
-        MainPieces = [words("Error: invalid determinism for")]
-            ++ PredModePieces ++ [suffix(":"), nl,
-            words("the primary mode of a function cannot be"),
-            quote(mercury_det_to_string(InferredDetism)), suffix("."), nl],
+        InferredDetismStr = mercury_det_to_string(InferredDetism),
+        MainPieces = [words("Error: invalid determinism for")] ++
+            color_as_subject(PredModePieces ++ [suffix(":")]) ++ [nl,
+            words("the primary mode of a function cannot be")] ++
+            color_as_incorrect([quote((InferredDetismStr)), suffix(".")]) ++
+            [nl],
         VerbosePieces = func_primary_mode_det_msg,
         Spec = error_spec($pred, severity_error, phase_detism_check,
             [simple_msg(FuncContext,
@@ -781,9 +822,9 @@ check_io_state_proc_detism(ModuleInfo, PredProcId, PredInfo, ProcInfo,
         % ask for it with -E.
         BadDetismPieces0 = [quote(determinism_to_string(DetismToReport))],
         BadDetismPieces = color_as_incorrect(BadDetismPieces0),
-        GoodDetismPieces0 = [quote("det"), suffix(","), quote("cc_multi"),
-            words("and"), quote("erroneous"), suffix(",")],
-        GoodDetismPieces = color_as_correct(GoodDetismPieces0),
+        GoodDetismPieces = color_as_correct([quote("det"), suffix(",")]) ++
+            color_as_correct([quote("cc_multi")]) ++ [words("and")] ++
+            color_as_correct([quote("erroneous"), suffix(",")]),
         Pieces = [words("In")] ++ ProcPieces ++ [suffix(":"), nl,
             words("error:")] ++ BadDetismPieces ++
             [words("is not a valid determinism"),
@@ -846,10 +887,11 @@ check_exported_proc_detism(PredProcId, ProcInfo, !ModuleInfo, !Specs) :-
         ; Detism = detism_non
         )
     then
+        DetismStr = determinism_to_string(Detism),
         Pieces = [words("Error:"),
             pragma_decl("foreign_export"), words("declaration"),
-            words("for a procedure whose determinism is"),
-            quote(determinism_to_string(Detism)), suffix("."), nl],
+            words("for a procedure whose determinism is")] ++
+            color_as_incorrect([quote(DetismStr), suffix(".")]) ++ [nl],
         Spec = spec($pred, severity_error, phase_detism_check,
             ExportContext, Pieces),
         !:Specs = [Spec | !.Specs]
@@ -887,7 +929,7 @@ det_check_lambda(DeclaredDetism, InferredDetism, Goal, GoalInfo, InstMap0,
         DeclaredPieces = color_as_correct([quote(DeclaredStr), suffix(",")]),
         InferredPieces = color_as_incorrect([quote(InferredStr), suffix(".")]),
         Pieces = [words("In")] ++ PredPieces ++ [suffix(":"), nl,
-            words("Determinism error in lambda expression."), nl] ++
+            words("determinism error in lambda expression."), nl] ++
             [words("Declared")] ++ DeclaredPieces ++
             [words("inferred")] ++ InferredPieces ++ [nl],
         det_diagnose_goal(Goal, InstMap0, DeclaredDetism, [], !DetInfo,
@@ -1761,8 +1803,9 @@ generate_incomplete_switch_spec(Why, MaybeLimit, InstMap0, SwitchContexts,
         (
             Why = switch_required_to_be_complete,
             ErrorPieces = [lower_case_next_if_not_first,
-                words("Error: the switch on"), quote(SwitchVarStr),
-                words("is required to be complete, but")],
+                words("Error: the")] ++
+                color_as_subject([words("switch on"), quote(SwitchVarStr)]) ++
+                [words("is required to be complete, but")],
             NoCoverPieces = [words("it does not cover")],
             append_prefix_and_maybe_verbose(yes(color_cause),
                 NestingPieces ++ ErrorPieces, NoCoverPieces,
@@ -1795,8 +1838,9 @@ generate_incomplete_switch_spec(Why, MaybeLimit, InstMap0, SwitchContexts,
         (
             Why = switch_required_to_be_complete,
             NoCoverPieces = [lower_case_next_if_not_first,
-                words("Error: the switch on"), quote(SwitchVarStr),
-                words("is required to be complete, but it is not."), nl],
+                words("Error: the")] ++
+                color_as_subject([words("switch on"), quote(SwitchVarStr)]) ++
+                [words("is required to be complete, but it is not."), nl],
             Component = always(NestingPieces ++ NoCoverPieces),
             MaybeSeverityComponents = yes({severity_error, [Component]})
         ;
@@ -1819,12 +1863,10 @@ generate_incomplete_switch_spec(Why, MaybeLimit, InstMap0, SwitchContexts,
     error_msg_component::out) is det.
 
 append_prefix_and_maybe_verbose(MaybeColor,
-        NeutralPrefixPieces, ColorPrefixPieces0, MainPieces0, VerbosePieces0,
+        NeutralPrefixPieces, ColorPrefixPieces0, MainPieces, VerbosePieces,
         Component) :-
     PrefixPieces = NeutralPrefixPieces ++
         maybe_color_pieces(MaybeColor, ColorPrefixPieces0),
-    MainPieces = maybe_color_pieces(MaybeColor, MainPieces0),
-    VerbosePieces = maybe_color_pieces(MaybeColor, VerbosePieces0),
     (
         VerbosePieces = [],
         Component = always(PrefixPieces ++ MainPieces)
@@ -1896,9 +1938,11 @@ reqscope_check_goal_detism(RequiredDetism, Goal, CheckKind, InstMap0,
             OtherConsIdStrs =
                 list.map(cons_id_and_arity_to_string, OtherConsIds),
             ConsIdsPieces = list_to_pieces([MainConsIdStr | OtherConsIdStrs]),
-            Pieces = [words("Error: the arms of the switch on"),
-                words(SwitchVarName), words("are required have"),
-                words("a determinism that is acceptable in a")] ++
+            Pieces = [words("Error: the arms of the")] ++
+                color_as_subject([words("switch on"),
+                    words(SwitchVarName)]) ++
+                [words("are required have a determinism that is"),
+                words("acceptable in a")] ++
                 color_as_correct([quote(ReqDetismStr)]) ++ [words("context,"),
                 words("but the actual determinism"),
                 words("of the arm for")] ++ ConsIdsPieces ++
@@ -1942,10 +1986,14 @@ generate_error_not_switch_on_required_var(SwitchContexts, RequiredVar,
     det_info_get_var_table(!.DetInfo, VarTable),
     RequiredVarStr =
         mercury_var_to_string(VarTable, print_name_only, RequiredVar),
+    ScopePieces = [words(ScopeWord), fixed("[" ++ RequiredVarStr ++ "]"),
+        words("scope")],
     Pieces = NestingPieces ++ [lower_case_next_if_not_first,
-        words("Error: the goal inside the"),
-        words(ScopeWord), fixed("[" ++ RequiredVarStr ++ "]"), words("scope"),
-        words("is not a switch on"), quote(RequiredVarStr), suffix("."), nl],
+        words("Error: the goal inside the")] ++
+        color_as_subject(ScopePieces) ++ [words("is")] ++
+        color_as_incorrect([words("not a switch on"),
+            quote(RequiredVarStr), suffix(".")]) ++
+        [nl],
     Context = goal_info_get_context(ScopeGoalInfo),
     Spec = spec($pred, severity_error, phase_detism_check,
         Context, Pieces),
@@ -2142,11 +2190,12 @@ find_missing_cons_ids(DetInfo, MaybeLimit, InstMap0, SwitchContexts,
             MaybeMissingInfo = no
         ;
             PrintedConsIds = [HeadPrintedConsId | TailPrintedConsIds],
+            MaybeCause = yes(color_cause),
             (
                 NonPrintedConsIds = [],
                 MainPieces =
                     [nl_indent_delta(1)] ++
-                    cons_id_list_to_pieces(HeadPrintedConsId,
+                    cons_id_list_to_pieces(MaybeCause, HeadPrintedConsId,
                         TailPrintedConsIds, [suffix(".")]) ++
                     [nl_indent_delta(-1)],
                 VerbosePieces = []
@@ -2155,13 +2204,15 @@ find_missing_cons_ids(DetInfo, MaybeLimit, InstMap0, SwitchContexts,
                 list.length(NonPrintedConsIds, NumNonPrintedConsIds),
                 MainPieces =
                     [nl_indent_delta(1)] ++
-                    cons_id_list_to_pieces(HeadPrintedConsId,
+                    cons_id_list_to_pieces(MaybeCause, HeadPrintedConsId,
                         TailPrintedConsIds, [suffix(","), fixed("...")]) ++
-                    [nl_indent_delta(-1), words("and"),
-                    int_fixed(NumNonPrintedConsIds), words("more."), nl],
+                    [nl_indent_delta(-1)] ++
+                    color_as_possible_cause([words("and"),
+                        int_fixed(NumNonPrintedConsIds), words("more.")]) ++
+                    [nl],
                 VerbosePieces =
                     [nl_indent_delta(1)] ++
-                    cons_id_list_to_pieces(HeadPrintedConsId,
+                    cons_id_list_to_pieces(MaybeCause, HeadPrintedConsId,
                         TailPrintedConsIds ++ NonPrintedConsIds,
                         [suffix(".")]) ++
                     [nl_indent_delta(-1)]
@@ -2184,10 +2235,11 @@ compute_covered_cons_ids([Case | Cases], !CoveredConsIds) :-
     set_tree234.insert_list(OtherConsIds, !CoveredConsIds),
     compute_covered_cons_ids(Cases, !CoveredConsIds).
 
-:- func cons_id_list_to_pieces(cons_id, list(cons_id), list(format_piece))
-    = list(format_piece).
+:- func cons_id_list_to_pieces(maybe(color_name), cons_id, list(cons_id),
+    list(format_piece)) = list(format_piece).
 
-cons_id_list_to_pieces(ConsId1, ConsIds2Plus, EndCommaPieces) = Pieces :-
+cons_id_list_to_pieces(MaybeColor, ConsId1, ConsIds2Plus, EndCommaPieces)
+        = Pieces :-
     % If we invoked determinism analysis on this procedure, then it must be
     % type correct. Since users will know the type of the switched-on variable,
     % they will know which module defined it, and hence which modules defined
@@ -2198,19 +2250,22 @@ cons_id_list_to_pieces(ConsId1, ConsIds2Plus, EndCommaPieces) = Pieces :-
         ConsIds2Plus = [ConsId2 | ConsIds3Plus],
         (
             ConsIds3Plus = [_ | _],
-            Pieces1 = [ConsIdPiece1, suffix(","), nl]
+            Pieces1 = maybe_color_pieces(MaybeColor,
+                [ConsIdPiece1, suffix(",")]) ++ [nl]
         ;
             ConsIds3Plus = [],
-            Pieces1 = [ConsIdPiece1, words("or"), nl]
+            Pieces1 = maybe_color_pieces(MaybeColor, [ConsIdPiece1]) ++
+                [words("or"), nl]
         ),
-        Pieces2Plus = cons_id_list_to_pieces(ConsId2, ConsIds3Plus,
+        Pieces2Plus = cons_id_list_to_pieces(MaybeColor, ConsId2, ConsIds3Plus,
             EndCommaPieces),
         Pieces = Pieces1 ++ Pieces2Plus
     ;
         ConsIds2Plus = [],
         % Our caller will append the newline, with a negative indent
         % to undo the positive indent before the start of the list of cons_ids.
-        Pieces = [ConsIdPiece1 | EndCommaPieces]
+        Pieces = maybe_color_pieces(MaybeColor,
+            [ConsIdPiece1 | EndCommaPieces])
     ).
 
 %---------------------------------------------------------------------------%

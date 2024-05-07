@@ -1,8 +1,8 @@
 io_in_ite_cond.m:013: In `foo'(di, uo):
 io_in_ite_cond.m:013:   error: [38;5;203m`semidet'[39;49m is not a valid determinism for a
 io_in_ite_cond.m:013:   predicate that has I/O state arguments. The valid
-io_in_ite_cond.m:013:   determinisms for such predicates are [38;5;40m`det', `cc_multi'[39;49m
-io_in_ite_cond.m:013:   [38;5;40mand `erroneous',[39;49m since the I/O state can be neither
+io_in_ite_cond.m:013:   determinisms for such predicates are [38;5;40m`det',[39;49m [38;5;40m`cc_multi'[39;49m
+io_in_ite_cond.m:013:   and [38;5;40m`erroneous',[39;49m since the I/O state can be neither
 io_in_ite_cond.m:013:   duplicated nor destroyed.
 io_in_ite_cond.m:020: In clause for `main(di, uo)':
 io_in_ite_cond.m:020:   in argument 1 of call to predicate
