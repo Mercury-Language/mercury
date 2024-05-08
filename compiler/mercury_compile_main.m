@@ -2221,17 +2221,13 @@ after_front_end_passes(ProgressStream, ErrorStream, Globals, OpModeCodeGen,
     then
         (
             Target = target_csharp,
-            mlds_backend(ProgressStream, ErrorStream, !.HLDS, _, MLDS,
-                NewSpecs, !DumpInfo, !IO),
-            !:Specs = NewSpecs ++ !.Specs,
+            mlds_backend(ProgressStream, !.HLDS, MLDS, !Specs, !DumpInfo, !IO),
             % mlds_to_csharp never goes beyond generating C# code.
             mlds_to_csharp(ProgressStream, !.HLDS, MLDS, Succeeded, !IO),
             ExtraObjFiles = []
         ;
             Target = target_java,
-            mlds_backend(ProgressStream, ErrorStream, !.HLDS, _, MLDS,
-                NewSpecs, !DumpInfo, !IO),
-            !:Specs = NewSpecs ++ !.Specs,
+            mlds_backend(ProgressStream, !.HLDS, MLDS, !Specs, !DumpInfo, !IO),
             mlds_to_java(ProgressStream, !.HLDS, MLDS, TargetCodeSucceeded,
                 !IO),
             (
@@ -2265,9 +2261,8 @@ after_front_end_passes(ProgressStream, ErrorStream, Globals, OpModeCodeGen,
                 ModuleName, !IO),
             (
                 HighLevelCode = yes,
-                mlds_backend(ProgressStream, ErrorStream, !.HLDS, _, MLDS,
-                    NewSpecs, !DumpInfo, !IO),
-                !:Specs = NewSpecs ++ !.Specs,
+                mlds_backend(ProgressStream, !.HLDS, MLDS,
+                    !Specs, !DumpInfo, !IO),
                 mlds_to_high_level_c(ProgressStream, Globals, MLDS,
                     TargetCodeSucceeded, !IO),
                 (

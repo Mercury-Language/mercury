@@ -1820,7 +1820,29 @@ handle_gc_options(!Globals, GC_Method, OT_OptFrames0, OT_OptFrames, !Specs) :-
             globals.set_option(reclaim_heap_on_nondet_failure, bool(no),
                 !Globals)
         ;
-            GCIsConservative = bool.no
+            GCIsConservative = bool.no,
+            globals.lookup_bool_option(!.Globals, highlevel_code,
+                HighLevelCode),
+            globals.lookup_bool_option(!.Globals,
+                reclaim_heap_on_semidet_failure, SemidetReclaim),
+            globals.lookup_bool_option(!.Globals,
+                reclaim_heap_on_nondet_failure, NondetReclaim),
+            % The LLDS backend can tolerate SemidetReclaim \= NondetReclaim,
+            % but the MLDS backend cannot.
+            ( if
+                HighLevelCode = yes,
+                SemidetReclaim \= NondetReclaim
+            then
+                ReclaimPieces = [words("Sorry, not implemented:"),
+                    quote("--high-level-code"), words("and just one of"),
+                    quote("--reclaim-heap-on-semidet-failure"), words("and"),
+                    quote("--reclaim-heap-on-nondet-failure"), suffix("."),
+                    words("Use"), quote("--(no-)reclaim-heap-on-failure"),
+                    words("instead."), nl],
+                add_error(phase_options, ReclaimPieces, !Specs)
+            else
+                true
+            )
         )
     ).
 

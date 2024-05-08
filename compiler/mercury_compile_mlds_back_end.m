@@ -30,8 +30,8 @@
 :- import_module io.
 :- import_module list.
 
-:- pred mlds_backend(io.text_output_stream::in, io.text_output_stream::in,
-    module_info::in, module_info::out, mlds::out, list(error_spec)::out,
+:- pred mlds_backend(io.text_output_stream::in, module_info::in, mlds::out,
+    list(error_spec)::in, list(error_spec)::out,
     dump_info::in, dump_info::out, io::di, io::uo) is det.
 
 :- pred mlds_to_high_level_c(io.text_output_stream::in, globals::in, mlds::in,
@@ -69,7 +69,6 @@
 :- import_module ml_backend.mlds_to_java_file.      % MLDS -> Java
 :- import_module ml_backend.rtti_to_mlds.           % HLDS/RTTI -> MLDS
 :- import_module parse_tree.file_names.
-:- import_module parse_tree.write_error_spec.
 :- import_module top_level.mercury_compile_front_end.
 :- import_module top_level.mercury_compile_llds_back_end.
 
@@ -80,8 +79,7 @@
 
 %---------------------------------------------------------------------------%
 
-mlds_backend(ProgressStream, ErrorStream, !HLDS, !:MLDS, !:Specs,
-        !DumpInfo, !IO) :-
+mlds_backend(ProgressStream, !.HLDS, !:MLDS, !Specs, !DumpInfo, !IO) :-
     module_info_get_globals(!.HLDS, Globals),
     globals.lookup_bool_option(Globals, verbose, Verbose),
     globals.lookup_bool_option(Globals, statistics, Stats),
@@ -98,8 +96,7 @@ mlds_backend(ProgressStream, ErrorStream, !HLDS, !:MLDS, !:Specs,
     maybe_dump_hlds(ProgressStream, !.HLDS, 410, "add_trail_ops",
         !DumpInfo, !IO),
 
-    maybe_add_heap_ops(ProgressStream, ErrorStream, Verbose, Stats,
-        !HLDS, !IO),
+    maybe_add_heap_ops(ProgressStream, Verbose, Stats, !HLDS, !IO),
     maybe_dump_hlds(ProgressStream, !.HLDS, 415, "add_heap_ops",
         !DumpInfo, !IO),
 
@@ -115,7 +112,6 @@ mlds_backend(ProgressStream, ErrorStream, !HLDS, !:MLDS, !:Specs,
     maybe_dump_hlds(ProgressStream, !.HLDS, 425, "args_to_regs",
         !DumpInfo, !IO),
 
-    !:Specs = [],
     maybe_mark_tail_rec_calls_hlds(ProgressStream, Verbose, Stats,
         !HLDS, !Specs, !IO),
     maybe_dump_hlds(ProgressStream, !.HLDS, 430, "mark_tail_calls",
@@ -270,47 +266,27 @@ maybe_add_trail_ops(ProgressStream, Verbose, Stats, !HLDS, !IO) :-
         EmitTrailOps = no
     ).
 
-:- pred maybe_add_heap_ops(io.text_output_stream::in,
-    io.text_output_stream::in, bool::in, bool::in,
+:- pred maybe_add_heap_ops(io.text_output_stream::in, bool::in, bool::in,
     module_info::in, module_info::out, io::di, io::uo) is det.
 
-maybe_add_heap_ops(ProgressStream, ErrorStream, Verbose, Stats, !HLDS, !IO) :-
+maybe_add_heap_ops(ProgressStream, Verbose, Stats, !HLDS, !IO) :-
     module_info_get_globals(!.HLDS, Globals),
-    globals.get_gc_method(Globals, GC),
     globals.lookup_bool_option(Globals, reclaim_heap_on_semidet_failure,
         SemidetReclaim),
-    globals.lookup_bool_option(Globals, reclaim_heap_on_nondet_failure,
-        NondetReclaim),
-    ( if
-        gc_is_conservative(GC) = yes
-    then
-        % We can't do heap reclamation with conservative GC.
-        true
-    else if
-        SemidetReclaim = no,
-        NondetReclaim = no
-    then
-        true
-    else if
+    % We require that the options reclaim_heap_on_{semi,non}det_failure
+    % must have the same value in MLDS grades, but this is ensured by
+    % handle_gc_options in handle_options.m. That predicate also turns off
+    % both options if gc is conservative.
+    (
         SemidetReclaim = yes,
-        NondetReclaim = yes
-    then
         maybe_write_string(ProgressStream, Verbose,
             "% Adding heap reclamation operations...\n", !IO),
         maybe_flush_output(ProgressStream, Verbose, !IO),
         process_valid_nonimported_procs(update_proc(add_heap_ops), !HLDS),
         maybe_write_string(ProgressStream, Verbose, "% done.\n", !IO),
         maybe_report_stats(ProgressStream, Stats, !IO)
-    else
-        Pieces = [words("Sorry, not implemented:"),
-            quote("--high-level-code"), words("and just one of"),
-            quote("--reclaim-heap-on-semidet-failure"), words("and"),
-            quote("--reclaim-heap-on-nondet-failure"), suffix("."),
-            words("Use"), quote("--(no-)reclaim-heap-on-failure"),
-            words("instead."), nl],
-        Spec = no_ctxt_spec($pred, severity_error,
-            phase_read_files, Pieces),
-        write_error_spec(ErrorStream, Globals, Spec, !IO)
+    ;
+        SemidetReclaim = no
     ).
 
 :- pred maybe_mark_tail_rec_calls_hlds(io.text_output_stream::in,
