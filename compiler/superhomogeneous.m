@@ -930,12 +930,14 @@ parse_ordinary_cons_id(VarSet, Functor, ArgTerms, Context, ConsId, !Specs) :-
             ErrorTerm = functor(Functor, ArgTerms, Context),
             TermStr = describe_error_term(VarSet, ErrorTerm),
             Pieces = [words("Error:"),
-                words("unexpected implementation defined literal"),
-                quote(TermStr), suffix("."), nl,
-                words("The only valid implementation defined literals are"),
-                quote("$line"), suffix(","), quote("$file"), suffix(","),
-                quote("$module"), suffix(","), quote("$pred"), words("and"),
-                quote("$grade"), suffix("."), nl],
+                words("unexpected implementation defined literal")] ++
+                color_as_incorrect([quote(TermStr), suffix(".")]) ++ [nl,
+                words("The only valid implementation defined literals are")] ++
+                color_as_correct([quote("$line"), suffix(","),
+                    quote("$file"), suffix(","),
+                    quote("$module"), suffix(","), quote("$pred")]) ++
+                [words("and")] ++
+                color_as_correct([quote("$grade"), suffix(".")]) ++ [nl],
             Spec = spec($pred, severity_error, phase_pt2h, Context, Pieces),
             !:Specs = [Spec | !.Specs],
             % This is a dummy.
@@ -1534,7 +1536,7 @@ parse_lambda_purity_pf_args_det_term(PurityPFArgsDetTerm, MaybeDCGVars,
                     ),
                     Pieces = [words("Error: the head of a lambda expression"),
                         words("that is defined by a DCG clause"),
-                        words("must have at least arguments."), nl],
+                        words("must have at least two arguments."), nl],
                     Spec = spec($pred, severity_error, phase_pt2h,
                         Context, Pieces),
                     MaybeLambdaHead =
@@ -1742,10 +1744,14 @@ classify_lambda_arg_modes_present_absent([LambdaArg | LambdaArgs],
     list(lambda_arg)::in,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-add_some_not_all_args_have_modes_error(Context, _AbsentArgs, !Specs) :-
-    % We could use _AbsentArgs to make the error message more detailed.
+add_some_not_all_args_have_modes_error(Context, AbsentArgs, !Specs) :-
+    AbsentArgPieces =
+        list.map(func(Arg) = nth_fixed(Arg ^ la_arg_num), AbsentArgs),
+    AbsentArgsPieces = component_list_to_pieces("and", AbsentArgPieces),
     Pieces = [words("Error: in head of lambda expression:"),
-        words("some but not all arguments have modes."), nl],
+        words("some but not all arguments have modes."), nl,
+        words("The arguments without modes are the")] ++
+        AbsentArgsPieces ++ [suffix("."), nl],
     Spec = spec($pred, severity_error, phase_pt2h, Context, Pieces),
     !:Specs = [Spec | !.Specs].
 
@@ -1941,8 +1947,8 @@ parse_lambda_detism(VarSet, DetismTerm, MaybeDetism) :-
     else
         varset.coerce(VarSet, GenericVarSet),
         TermStr = describe_error_term(GenericVarSet, DetismTerm),
-        Pieces = [words("Error:"), words(TermStr),
-            words("is not a valid determinism."), nl],
+        Pieces = [words("Error:")] ++ color_as_incorrect([words(TermStr)]) ++
+            [words("is not a valid determinism."), nl],
         Spec = spec($pred, severity_error, phase_t2pt,
             get_term_context(DetismTerm), Pieces),
         MaybeDetism = error1([Spec])
@@ -2389,8 +2395,12 @@ occurs_check(ModuleInfo, VarSet, AncestorVarMap, Var, !Specs) :-
         ;
             WarnOccursCheck = yes,
             varset.lookup_name(VarSet, Var, VarName),
-            Pieces = [words("Warning: the variable"), quote(VarName),
-                words("is unified with a term containing itself."), nl],
+            Pieces = [words("Warning: the")] ++
+                color_as_subject([words("variable"), quote(VarName)]) ++
+                [words("is")] ++
+                color_as_incorrect(
+                    [words("unified with a term containing itself.")]) ++
+                [nl],
             Spec = spec($pred, severity_warning, phase_pt2h,
                 AncestorContext, Pieces),
             !:Specs = [Spec | !.Specs]
