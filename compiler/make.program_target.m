@@ -196,8 +196,12 @@ make_linked_target_1(Globals, LinkedTargetFile, ExtraOptions,
                 LinkedTargetFile, Succeeded, !Info, !IO)
         ;
             MayBuild = may_not_build(Specs),
-            get_error_output_stream(Globals, MainModuleName, ErrorStream, !IO),
-            write_error_specs(ErrorStream, Globals, Specs, !IO),
+            % The errors we can get here report problems we encounter
+            % while trying to set up to compile a module, and not specific
+            % to the Mercury module itself, except insofar as the problem
+            % may be caused by e.g. an unrecognized option name in a
+            % module-specific MCFLAGS make variable.
+            write_error_specs(ProgressStream, Globals, Specs, !IO),
             Succeeded = did_not_succeed
         )
     ;
@@ -741,7 +745,7 @@ rebuild_linked_target(ProgressStream, NoLinkObjsGlobals,
         % Run the link in a separate process so it can be killed
         % if an interrupt is received.
         call_in_forked_process(
-            compile_target_code.link(NoLinkObjsGlobals, ProgressStream,
+            link_and_write_error_specs(NoLinkObjsGlobals, ProgressStream,
                 FileType, MainModuleName, AllObjects),
             Succeeded, !IO)
     ),
@@ -784,6 +788,17 @@ get_module_foreign_object_files(ProgressStream, Globals, PIC,
         % This error should have been detected earlier.
         unexpected($pred, "error in dependencies")
     ).
+
+:- pred link_and_write_error_specs(globals::in, io.text_output_stream::in,
+    linked_target_type::in, module_name::in, list(string)::in,
+    maybe_succeeded::out, io::di, io::uo) is det.
+
+link_and_write_error_specs(Globals, ProgressStream,
+        LinkTargetType, ModuleName, ObjectsList, Succeeded, !IO) :-
+    compile_target_code.link(Globals, ProgressStream,
+        LinkTargetType, ModuleName, ObjectsList, Specs, Succeeded, !IO),
+    % The errors we can get here are not specific to any Mercury module.
+    write_error_specs(ProgressStream, Globals, Specs, !IO).
 
 :- pred linked_target_cleanup(io.text_output_stream::in, globals::in,
     module_name::in, linked_target_type::in, file_name::in, file_name::in,

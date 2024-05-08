@@ -464,8 +464,8 @@ build_target_2(ProgressStream, ErrorStream, Globals, Task, ModuleName,
         % Run the compilation in a child process, so it can be killed
         % if an interrupt arrives.
         call_in_forked_process(
-            build_object_code(ProgressStream, Globals, CompilationTarget, PIC,
-                ModuleName, ModuleDepInfo),
+            build_object_code(ProgressStream, ErrorStream, Globals,
+                CompilationTarget, PIC, ModuleName, ModuleDepInfo),
             Succeeded, !IO)
     ;
         Task = fact_table_code_to_object_code(PIC, FactTableFileName),
@@ -481,11 +481,11 @@ build_target_2(ProgressStream, ErrorStream, Globals, Task, ModuleName,
             Succeeded, !IO)
     ).
 
-:- pred build_object_code(io.text_output_stream::in, globals::in,
-    compilation_target::in, pic::in, module_name::in, module_dep_info::in,
-    maybe_succeeded::out, io::di, io::uo) is det.
+:- pred build_object_code(io.text_output_stream::in, io.text_output_stream::in,
+    globals::in, compilation_target::in, pic::in, module_name::in,
+    module_dep_info::in, maybe_succeeded::out, io::di, io::uo) is det.
 
-build_object_code(ProgressStream, Globals, Target, PIC,
+build_object_code(ProgressStream, ErrorStream, Globals, Target, PIC,
         ModuleName, _ModuleDepInfo, Succeeded, !IO) :-
     (
         Target = target_c,
@@ -504,7 +504,11 @@ build_object_code(ProgressStream, Globals, Target, PIC,
             ext_cur_ngs_gs(ext_cur_ngs_gs_target_cs),
             ModuleName, CsharpFile, !IO),
         compile_target_code.link(Globals, ProgressStream, csharp_library,
-            ModuleName, [CsharpFile], Succeeded, !IO)
+            ModuleName, [CsharpFile], Specs, Succeeded, !IO),
+        % XXX MAKE This predicate, build_object_code, is invoked only as the
+        % top call in a newly-spawned-off process. We cannot return Specs
+        % to our caller, because our caller is in a separate process.
+        write_error_specs(ErrorStream, Globals, Specs, !IO)
     ).
 
 :- pred compile_foreign_code_file(globals::in, io.text_output_stream::in,

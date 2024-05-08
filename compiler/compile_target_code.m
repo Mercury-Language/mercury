@@ -24,6 +24,7 @@
 :- import_module mdbcomp.
 :- import_module mdbcomp.sym_name.
 :- import_module parse_tree.
+:- import_module parse_tree.error_spec.
 :- import_module parse_tree.file_names.
 :- import_module parse_tree.module_dep_info.
 
@@ -84,7 +85,7 @@
     io::di, io::uo) is det.
 
     % link_module_list(ProgressStream, ModulesToLink, ExtraObjFiles,
-    %   Globals, Succeeded, !IO):
+    %   Globals, Specs, Succeeded, !IO):
     %
     % The elements of ModulesToLink are the output of
     % `module_name_to_filename(ModuleName, "", no, ModuleToLink)'
@@ -94,8 +95,8 @@
     % partially apply the preceding arguments.
     %
 :- pred link_module_list(io.text_output_stream::in,
-    list(string)::in, list(string)::in, globals::in, maybe_succeeded::out,
-    io::di, io::uo) is det.
+    list(string)::in, list(string)::in, globals::in,
+    list(error_spec)::out, maybe_succeeded::out, io::di, io::uo) is det.
 
 :- type linked_target_type
     --->    executable
@@ -107,11 +108,11 @@
     ;       java_archive.
 
     % link(Globals, ProgressStream, TargetType, MainModuleName,
-    %   ObjectFileNames, Succeeded, !IO)
+    %   ObjectFileNames, Specs, Succeeded, !IO)
     %
 :- pred link(globals::in, io.text_output_stream::in,
     linked_target_type::in, module_name::in, list(string)::in,
-    maybe_succeeded::out, io::di, io::uo) is det.
+    list(error_spec)::out, maybe_succeeded::out, io::di, io::uo) is det.
 
 :- pred linked_target_file_name(globals::in, module_name::in,
     linked_target_type::in, file_name::out, io::di, io::uo) is det.
@@ -232,8 +233,12 @@
     % This predicate is used to implement the `--output-library-link-flags'
     % option.
     %
+    % It is a bit strange that task this can generate error messages,
+    % but it does do a search in the filesystem for libraries that are
+    % named in the values of options, and those searches can fail.
+    %
 :- pred output_library_link_flags(globals::in, io.text_output_stream::in,
-    io::di, io::uo) is det.
+    list(error_spec)::out, io::di, io::uo) is det.
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -246,12 +251,10 @@
 :- import_module libs.shell_util.
 :- import_module libs.system_cmds.
 :- import_module libs.trace_params.
-:- import_module parse_tree.error_spec.
 :- import_module parse_tree.find_module.
 :- import_module parse_tree.module_cmds.
 :- import_module parse_tree.prog_data_foreign.
 :- import_module parse_tree.prog_foreign.
-:- import_module parse_tree.write_error_spec.
 
 :- import_module dir.
 :- import_module io.file.
@@ -1502,7 +1505,7 @@ compare_file_timestamps(FileNameA, FileNameB, MaybeCompare, !IO) :-
 %---------------------------------------------------------------------------%
 
 link_module_list(ProgressStream, Modules, ExtraObjFiles, Globals,
-        Succeeded, !IO) :-
+        Specs, Succeeded, !IO) :-
     globals.lookup_string_option(Globals, output_file_name, OutputFileName0),
     ( if OutputFileName0 = "" then
         (
@@ -1556,10 +1559,11 @@ link_module_list(ProgressStream, Modules, ExtraObjFiles, Globals,
         else
             AllObjects = [InitObjFileName | AllObjects0]
         ),
-        link(Globals, ProgressStream, TargetType, MainModuleName,
-            AllObjects, Succeeded, !IO)
+        link(Globals, ProgressStream, TargetType, MainModuleName, AllObjects,
+            Specs, Succeeded, !IO)
     ;
         InitObjResult = no,
+        Specs = [],
         Succeeded = did_not_succeed
     ).
 
@@ -1569,7 +1573,7 @@ link_module_list(ProgressStream, Modules, ExtraObjFiles, Globals,
 % Any changes there may also require changes here, and vice versa.
 
 link(Globals, ProgressStream, LinkTargetType, ModuleName, ObjectsList,
-        Succeeded, !IO) :-
+        Specs, Succeeded, !IO) :-
     globals.lookup_bool_option(Globals, verbose, Verbose),
     globals.lookup_bool_option(Globals, statistics, Stats),
 
@@ -1580,16 +1584,17 @@ link(Globals, ProgressStream, LinkTargetType, ModuleName, ObjectsList,
         LinkTargetType = executable,
         link_exe_or_shared_lib(Globals, ProgressStream,
             LinkTargetType, ModuleName, FullOutputFileName, ObjectsList,
-            LinkSucceeded, !IO)
+            Specs, LinkSucceeded, !IO)
     ;
         LinkTargetType = static_library,
         create_archive(Globals, ProgressStream,
-            FullOutputFileName, yes, ObjectsList, LinkSucceeded, !IO)
+            FullOutputFileName, yes, ObjectsList, LinkSucceeded, !IO),
+        Specs = []
     ;
         LinkTargetType = shared_library,
         link_exe_or_shared_lib(Globals, ProgressStream,
             LinkTargetType, ModuleName, FullOutputFileName, ObjectsList,
-            LinkSucceeded, !IO)
+            Specs, LinkSucceeded, !IO)
     ;
         ( LinkTargetType = csharp_executable
         ; LinkTargetType = csharp_library
@@ -1597,14 +1602,15 @@ link(Globals, ProgressStream, LinkTargetType, ModuleName, ObjectsList,
         % XXX C# see also older predicate compile_csharp_file
         create_csharp_exe_or_lib(Globals, ProgressStream,
             LinkTargetType, ModuleName, FullOutputFileName, ObjectsList,
-            LinkSucceeded, !IO)
+            Specs, LinkSucceeded, !IO)
     ;
         ( LinkTargetType = java_executable
         ; LinkTargetType = java_archive
         ),
         create_java_exe_or_lib(Globals, ProgressStream,
             LinkTargetType, ModuleName, FullOutputFileName, ObjectsList,
-            LinkSucceeded, !IO)
+            LinkSucceeded, !IO),
+        Specs = []
     ),
     maybe_report_stats(ProgressStream, Stats, !IO),
     (
@@ -1707,10 +1713,10 @@ get_launcher_script_extension(Globals, Ext) :-
 :- pred link_exe_or_shared_lib(globals::in, io.text_output_stream::in,
     linked_target_type::in(c_exe_or_shared_lib),
     module_name::in, file_name::in, list(string)::in,
-    maybe_succeeded::out, io::di, io::uo) is det.
+    list(error_spec)::out, maybe_succeeded::out, io::di, io::uo) is det.
 
 link_exe_or_shared_lib(Globals, ProgressStream, LinkTargetType,
-        ModuleName, FullOutputFileName, ObjectsList, Succeeded, !IO) :-
+        ModuleName, FullOutputFileName, ObjectsList, Specs, Succeeded, !IO) :-
     (
         LinkTargetType = shared_library,
         CommandOpt = link_shared_lib_command,
@@ -1874,7 +1880,7 @@ link_exe_or_shared_lib(Globals, ProgressStream, LinkTargetType,
     ),
 
     get_frameworks(Globals, Frameworks),
-    get_link_libraries(Globals, MaybeLinkLibraries, !IO),
+    get_link_opts_for_libraries(Globals, MaybeLinkLibraries, Specs, !IO),
     globals.lookup_string_option(Globals, linker_opt_separator, LinkOptSep),
     (
         MaybeLinkLibraries = maybe.yes(LinkLibrariesList),
@@ -2190,10 +2196,10 @@ link_lib_args(Globals, TargetType, StdLibDir, GradeDir, Ext,
     % Pass either `-llib' or `PREFIX/lib/GRADE/liblib.a', depending on
     % whether we are linking with static or shared Mercury libraries.
     %
-:- pred get_link_libraries(globals::in, maybe(list(string))::out,
-    io::di, io::uo) is det.
+:- pred get_link_opts_for_libraries(globals::in, maybe(list(string))::out,
+    list(error_spec)::out, io::di, io::uo) is det.
 
-get_link_libraries(Globals, MaybeLinkLibraries, !IO) :-
+get_link_opts_for_libraries(Globals, MaybeLinkLibraries, Specs, !IO) :-
     globals.lookup_accumulating_option(Globals, mercury_library_directories,
         MercuryLibDirs0),
     grade_directory_component(Globals, GradeDir),
@@ -2201,9 +2207,10 @@ get_link_libraries(Globals, MaybeLinkLibraries, !IO) :-
         MercuryLibDirs0),
     globals.lookup_accumulating_option(Globals, link_libraries,
         LinkLibrariesList0),
-    list.map_foldl2(process_link_library(Globals, MercuryLibDirs),
-        LinkLibrariesList0, LinkLibrariesList,
+    list.map2_foldl2(get_link_opts_for_library(Globals, MercuryLibDirs),
+        LinkLibrariesList0, LinkLibrariesList, SpecsList,
         succeeded, LibrariesSucceeded, !IO),
+    list.condense(SpecsList, Specs),
     (
         LibrariesSucceeded = succeeded,
         MaybeLinkLibraries = yes(LinkLibrariesList)
@@ -2549,12 +2556,13 @@ reserve_stack_size_flags(Globals) = Flags :-
 
 %---------------------------------------------------------------------------%
 
-:- pred process_link_library(globals::in, list(dir_name)::in, string::in,
-    string::out, maybe_succeeded::in, maybe_succeeded::out,
-    io::di, io::uo) is det.
+:- pred get_link_opts_for_library(globals::in, list(dir_name)::in, string::in,
+    string::out, list(error_spec)::out,
+    maybe_succeeded::in, maybe_succeeded::out, io::di, io::uo) is det.
 
-process_link_library(Globals, MercuryLibDirs, LibName, LinkerOpt,
-        !Succeeded, !IO) :-
+get_link_opts_for_library(Globals, MercuryLibDirs, LibName, LinkerOpt,
+        !:Specs, !Succeeded, !IO) :-
+    !:Specs = [],
     globals.get_target(Globals, Target),
     (
         Target = target_c,
@@ -2607,8 +2615,7 @@ process_link_library(Globals, MercuryLibDirs, LibName, LinkerOpt,
             Pieces = [words(Error), suffix("."), nl],
             Spec = no_ctxt_spec($pred, severity_error,
                 phase_find_files(LibFileName), Pieces),
-            io.stderr_stream(StdErr, !IO),
-            write_error_spec(StdErr, Globals, Spec, !IO),
+            !:Specs = [Spec],
             !:Succeeded = did_not_succeed
         )
     else
@@ -2684,10 +2691,11 @@ create_archive(Globals, ProgressStream, FullLibFileName, Quote,
 :- pred create_csharp_exe_or_lib(globals::in, io.text_output_stream::in,
     linked_target_type::in(csharp_linked_target_type),
     module_name::in, file_name::in, list(file_name)::in,
-    maybe_succeeded::out, io::di, io::uo) is det.
+    list(error_spec)::out, maybe_succeeded::out, io::di, io::uo) is det.
 
 create_csharp_exe_or_lib(Globals, ProgressStream, LinkTargetType,
-        MainModuleName, FullOutputFileName0, SourceList0, Succeeded, !IO) :-
+        MainModuleName, FullOutputFileName0, SourceList0,
+        Specs, Succeeded, !IO) :-
     get_system_env_type(Globals, EnvType),
     get_csharp_compiler_type(Globals, CSharpCompilerType),
 
@@ -2754,7 +2762,7 @@ create_csharp_exe_or_lib(Globals, ProgressStream, LinkTargetType,
     join_quoted_string_list(LinkLibraryDirectoriesList, LinkerPathFlag, "",
         " ", LinkLibraryDirectories),
 
-    get_link_libraries(Globals, MaybeLinkLibraries, !IO),
+    get_link_opts_for_libraries(Globals, MaybeLinkLibraries, Specs, !IO),
     (
         MaybeLinkLibraries = yes(LinkLibrariesList0),
         LinkLibrariesList =
@@ -3261,7 +3269,7 @@ output_c_include_directory_flags(Globals, Stream, !IO) :-
 % Library link flags.
 %
 
-output_library_link_flags(Globals, Stream, !IO) :-
+output_library_link_flags(Globals, Stream, Specs, !IO) :-
     % We output the library link flags as they are for when we are linking
     % an executable.
     LinkTargetType = executable,
@@ -3275,7 +3283,7 @@ output_library_link_flags(Globals, Stream, !IO) :-
         " ", LinkLibraryDirectories),
     get_runtime_library_path_opts(Globals, LinkTargetType,
         RpathFlagOpt, RpathSepOpt, RpathOpts),
-    get_link_libraries(Globals, MaybeLinkLibraries, !IO),
+    get_link_opts_for_libraries(Globals, MaybeLinkLibraries, Specs, !IO),
     (
         MaybeLinkLibraries = yes(LinkLibrariesList),
         join_string_list(LinkLibrariesList, "", "", " ", LinkLibraries)

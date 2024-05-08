@@ -781,7 +781,8 @@ do_op_mode_query(ErrorStream, Globals, OpModeQuery, OptionVariables, !IO) :-
         io.print_line(StdOutStream, LinkCommand, !IO)
     ;
         OpModeQuery = opmq_output_library_link_flags,
-        output_library_link_flags(Globals, StdOutStream, !IO)
+        output_library_link_flags(Globals, StdOutStream, Specs, !IO),
+        write_error_specs(ErrorStream, Globals, Specs, !IO)
     ;
         OpModeQuery = opmq_output_grade_string,
         % When Mmake asks for the grade, it really wants the directory
@@ -950,7 +951,7 @@ generate_executable(ProgressStream, ErrorStream, Globals, InvokedByMmcMake,
             InvokedByMmcMake = op_mode_invoked_by_mmc_make,
             % `mmc --make' has already set up the options.
             link_module_list(ProgressStream, ModulesToLink, ExtraObjFiles,
-                Globals, Succeeded, !IO)
+                Globals, Specs, Succeeded, !IO)
         ;
             InvokedByMmcMake = op_mode_not_invoked_by_mmc_make,
             get_default_options(Globals, DefaultOptionTable),
@@ -959,15 +960,15 @@ generate_executable(ProgressStream, ErrorStream, Globals, InvokedByMmcMake,
                 DetectedGradeFlags, OptionVariables, OptionArgs,
                 [], MayBuild, !IO),
             (
-                MayBuild = may_not_build(SetupSpecs),
-                write_error_specs(ErrorStream, Globals, SetupSpecs, !IO),
+                MayBuild = may_not_build(Specs),
                 Succeeded = did_not_succeed
             ;
                 MayBuild = may_build(_AllOptionArgs, BuildGlobals),
                 link_module_list(ProgressStream, ModulesToLink, ExtraObjFiles,
-                    BuildGlobals, Succeeded, !IO)
+                    BuildGlobals, Specs, Succeeded, !IO)
             )
-        )
+        ),
+        write_error_specs(ErrorStream, Globals, Specs, !IO)
     ),
     maybe_set_exit_status(Succeeded, !IO).
 
