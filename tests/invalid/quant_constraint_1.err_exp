@@ -1,6 +1,6 @@
 quant_constraint_1.m:019: In declaration of predicate `quant_constraint_1.p'/2:
-quant_constraint_1.m:019:   type variable `T1' is existentially constrained,
-quant_constraint_1.m:019:   but is universally quantified.
+quant_constraint_1.m:019:   [38;5;87mtype variable `T1'[39;49m is [38;5;226mexistentially constrained,[39;49m
+quant_constraint_1.m:019:   but is [38;5;226muniversally quantified.[39;49m
 quant_constraint_1.m:019: In declaration of predicate `quant_constraint_1.p'/2:
-quant_constraint_1.m:019:   type variable `T2' is universally constrained, but
-quant_constraint_1.m:019:   is existentially quantified.
+quant_constraint_1.m:019:   [38;5;87mtype variable `T2'[39;49m is [38;5;226muniversally constrained,[39;49m but
+quant_constraint_1.m:019:   is [38;5;226mexistentially quantified.[39;49m

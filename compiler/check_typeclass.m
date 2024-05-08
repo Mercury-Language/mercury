@@ -447,8 +447,8 @@ is_orig_type_non_eqv_type(ModuleInfo, ClassId, InstanceDefn, Type,
                     % concrete instance definition.
                     InstanceDefn ^ instdefn_body = instance_body_concrete(_)
                 then
-                    report_eqv_type_in_abstract_exported_instance(
-                        ClassId, InstanceDefn, ArgNum, Type, !Specs)
+                    report_eqv_type_in_abstract_exported_instance(ClassId,
+                        InstanceDefn, ArgNum, Type, !Specs)
                 else
                     true
                 )
@@ -501,10 +501,14 @@ is_valid_instance_type(ModuleInfo, ClassId, InstanceDefn, Type,
         ),
         TVarSet = InstanceDefn ^ instdefn_tvarset,
         TypeStr = mercury_type_to_string(TVarSet, print_name_only, Type),
-        EndPieces = [words("the"), nth_fixed(ArgNum), words("instance type"),
-            quote(TypeStr), KindPiece, words("it should be"),
-            words("a type constructor applied to zero or more"),
-            words("type variables."), nl],
+        EndPieces =
+            color_as_subject([words("the"), nth_fixed(ArgNum),
+                words("instance type"), quote(TypeStr)]) ++
+            color_as_incorrect([KindPiece]) ++
+            [words("it should be")] ++
+            color_as_correct([words("a type constructor"),
+                words("applied to zero or more type variables.")]) ++
+            [nl],
         report_bad_type_in_instance(ClassId, InstanceDefn, EndPieces,
             badly_formed, !Specs)
     ;
@@ -515,10 +519,10 @@ is_valid_instance_type(ModuleInfo, ClassId, InstanceDefn, Type,
         (
             NonTVarArgs = []
         ;
-            NonTVarArgs = [_ | _],
+            NonTVarArgs = [HeadNonTVarArg | TailNonTVarArgs],
             TypeCtor = type_ctor(TypeCtorSymName, list.length(ArgTypes)),
             report_badly_formed_type_in_instance(ClassId, InstanceDefn,
-                TypeCtor, ArgNum, NonTVarArgs, !Specs)
+                TypeCtor, ArgNum, HeadNonTVarArg, TailNonTVarArgs, !Specs)
         ),
         % For defined types, report an error if the type_ctor is defined
         % to be equivalence type that for some reason was not expanded out
@@ -2071,33 +2075,55 @@ add_path_element(ClassId, !LaterLines) :-
 
 :- pred report_badly_formed_type_in_instance(class_id::in,
     hlds_instance_defn::in, type_ctor::in, int::in,
-    assoc_list(int, mer_type)::in,
+    pair(int, mer_type)::in, assoc_list(int, mer_type)::in,
     list(error_spec)::in, list(error_spec)::out) is det.
 
 report_badly_formed_type_in_instance(ClassId, InstanceDefn, TypeCtor, ArgNum,
-        NonTVarArgs, !Specs) :-
+        HeadNonTVarArg, TailNonTVarArgs, !Specs) :-
     TVarSet = InstanceDefn ^ instdefn_tvarset,
-    NonTVarArgPieceLists =
-        list.map(non_tvar_arg_to_pieces(TVarSet), NonTVarArgs),
-    NonTVarArgPieces = component_lists_to_pieces("and", NonTVarArgPieceLists),
+    NonTVarArgs = [HeadNonTVarArg | TailNonTVarArgs],
+    NotTVar = words(choose_number(NonTVarArgs,
+        "is not a type variable,", "are not type variables")),
+    IsAre = words(choose_number(NonTVarArgs, "This is", "These are")),
+    NonTVarArgPieces = non_tvar_args_to_pieces(TVarSet,
+        HeadNonTVarArg, TailNonTVarArgs),
     EndPieces = [words("in the"), nth_fixed(ArgNum), words("instance type,"),
         words(choose_number(NonTVarArgs, "one", "some")),
         words("of the arguments of the type constructor"),
-        unqual_type_ctor(TypeCtor),
-        words(choose_number(NonTVarArgs,
-            "is not a type variable, but should be. This is",
-            "are not type variables, but should be. These are"))
-        | NonTVarArgPieces] ++ [suffix("."), nl],
+        unqual_type_ctor(TypeCtor)] ++
+        color_as_incorrect([NotTVar]) ++
+        color_as_correct([words("but should be.")]) ++
+        [IsAre | NonTVarArgPieces] ++ [nl],
     report_bad_type_in_instance(ClassId, InstanceDefn, EndPieces,
         badly_formed, !Specs).
 
-:- func non_tvar_arg_to_pieces(tvarset, pair(int, mer_type))
-    = list(format_piece).
+:- func non_tvar_args_to_pieces(tvarset,
+    pair(int, mer_type), assoc_list(int, mer_type)) = list(format_piece).
 
-non_tvar_arg_to_pieces(TVarSet, ArgNum - ArgType) = Pieces :-
+non_tvar_args_to_pieces(TVarSet, HeadArgNumType, TailArgNumTypes) = Pieces :-
+    HeadArgNumType = ArgNum - ArgType,
     TypeStr = mercury_type_to_string(TVarSet, print_name_only, ArgType),
-    Pieces = [words("the"), nth_fixed(ArgNum), words("argument,"),
-        quote(TypeStr)].
+    HeadTypePieces0 = [nth_fixed(ArgNum), words("argument,"), quote(TypeStr)],
+    (
+        TailArgNumTypes = [],
+        HeadTypePieces = color_as_subject(HeadTypePieces0 ++ [suffix(".")]),
+        Pieces = [words("the")] ++ HeadTypePieces
+    ;
+        TailArgNumTypes = [HeadTailArgNumType | TailTailArgNumTypes],
+        (
+            TailTailArgNumTypes = [],
+            MaybeComma = [],
+            MaybeAnd = [words("and")]
+        ;
+            TailTailArgNumTypes = [_ | _],
+            MaybeComma = [suffix(",")],
+            MaybeAnd = []
+        ),
+        HeadTypePieces = color_as_subject(HeadTypePieces0 ++ MaybeComma),
+        Pieces = [words("the")] ++ HeadTypePieces ++ MaybeAnd ++
+            non_tvar_args_to_pieces(TVarSet,
+                HeadTailArgNumType, TailTailArgNumTypes)
+    ).
 
 :- pred report_eqv_type_in_abstract_exported_instance(class_id::in,
     hlds_instance_defn::in, int::in, mer_type::in,
@@ -2107,9 +2133,11 @@ report_eqv_type_in_abstract_exported_instance(ClassId, InstanceDefn, ArgNum,
         Type, !Specs) :-
     TVarSet = InstanceDefn ^ instdefn_tvarset,
     TypeStr = mercury_type_to_string(TVarSet, print_name_only, Type),
-    EndPieces = [words("the"), nth_fixed(ArgNum), words("instance type"),
-        quote(TypeStr),
-        words("is an abstract exported equivalence type."), nl],
+    EndPieces = [words("the"), nth_fixed(ArgNum), words("instance type,")] ++
+        color_as_subject([quote(TypeStr), suffix(",")]) ++
+        [words("is an")] ++
+        color_as_incorrect([words("abstract exported equivalence type.")]) ++
+        [nl],
     report_bad_type_in_instance(ClassId, InstanceDefn, EndPieces,
         abstract_exported_eqv, !Specs).
 
@@ -2398,19 +2426,22 @@ report_local_vs_nonlocal_clash(ClassId, LocalInstance, NonLocalInstance,
 
 report_coverage_error(ClassId, InstanceDefn, Vars, !Specs) :-
     TVarSet = InstanceDefn ^ instdefn_tvarset,
-    VarsStrs = list.map(mercury_var_to_name_only_vs(TVarSet), Vars),
+    TypeVars = choose_number(Vars, "type variable", "type variables"),
+    VarToPiece =
+        (func(V) = quote(mercury_var_to_name_only_vs(TVarSet, V))),
+    VarPieces = list.map(VarToPiece, Vars),
+    VarsPieces =
+        component_list_to_color_pieces(yes(color_subject), "and", VarPieces),
     Pieces = [words("In instance for typeclass"),
         unqual_class_id(ClassId), suffix(":"), nl,
-        words("functional dependency not satisfied:"),
-        words(choose_number(Vars, "type variable", "type variables"))]
-        ++ list_to_quoted_pieces(VarsStrs) ++
+        words("functional dependency not satisfied:")] ++
+        color_as_subject([words(TypeVars)]) ++ VarsPieces ++
         [words(choose_number(Vars, "occurs", "occur")),
-        words("in the range of the functional dependency, but"),
-        words(choose_number(Vars, "is", "are")),
-        words("not determined by the domain."), nl],
+        words("in the range of the functional dependency, but")] ++
+        color_as_incorrect([words(choose_number(Vars, "is", "are")),
+            words("not determined by the domain.")]) ++ [nl],
     Context = InstanceDefn ^ instdefn_context,
-    Spec = spec($pred, severity_error, phase_type_check,
-        Context, Pieces),
+    Spec = spec($pred, severity_error, phase_type_check, Context, Pieces),
     !:Specs = [Spec | !.Specs].
 
 :- pred report_consistency_error(class_id::in, hlds_class_defn::in,
@@ -2479,15 +2510,17 @@ report_unbound_tvars_in_pred_context(PredInfo, Vars, !Specs) :-
     VarsStrs = list.map(mercury_var_to_name_only_vs(TVarSet), Vars),
 
     PFSymNameArity = pf_sym_name_arity(PredOrFunc, SymName, PredFormArity),
+    TypeVars = choose_number(Vars, "type variable", "type variables"),
+    VarsPieces = list_to_quoted_pieces(VarsStrs),
     Pieces0 = [words("In declaration for"),
         unqual_pf_sym_name_pred_form_arity(PFSymNameArity), suffix(":"), nl,
-        words("error in type class constraints:"),
-        words(choose_number(Vars, "type variable", "type variables"))]
-        ++ list_to_quoted_pieces(VarsStrs) ++
+        words("error in type class constraints:")] ++
+        color_as_subject([words(TypeVars) | VarsPieces]) ++
         [words(choose_number(Vars, "occurs", "occur")),
-        words("in the constraints, but"),
-        words(choose_number(Vars, "is", "are")),
-        words("not determined by the")],
+        words("in the constraints, but")] ++
+        color_as_incorrect([words(choose_number(Vars, "is", "are")),
+            words("not determined")]) ++
+        [words("by the")],
     (
         PredOrFunc = pf_predicate,
         Pieces = Pieces0 ++ [words("predicate's argument types."), nl]
@@ -2543,10 +2576,10 @@ report_badly_quantified_vars(PredInfo, QuantErrorType, TVars, !Specs) :-
     InDeclaration = [words("In declaration of")] ++
         describe_one_pred_info_name(should_module_qualify, PredInfo) ++
         [suffix(":"), nl],
-    TypeVariables = [words("type variable"),
-        suffix(choose_number(TVars, "", "s"))],
+    TypeVariables =
+        [words(choose_number(TVars, "type variable", "type variables"))],
     TVarsStrs = list.map(mercury_var_to_name_only_vs(TVarSet), TVars),
-    TVarsPart = list_to_quoted_pieces(TVarsStrs),
+    TVarsPieces = list_to_quoted_pieces(TVarsStrs),
     Are = words(choose_number(TVars, "is", "are")),
     (
         QuantErrorType = universal_constraint,
@@ -2557,9 +2590,11 @@ report_badly_quantified_vars(PredInfo, QuantErrorType, TVars, !Specs) :-
         BlahConstrained = words("existentially constrained"),
         BlahQuantified = words("universally quantified")
     ),
-    Pieces = InDeclaration ++ TypeVariables ++ TVarsPart ++
-        [Are, BlahConstrained, suffix(","), words("but"), Are,
-        BlahQuantified, suffix("."), nl],
+    Pieces = InDeclaration ++
+        color_as_subject(TypeVariables ++ TVarsPieces) ++ [Are] ++
+        color_as_possible_cause([BlahConstrained, suffix(",")]) ++
+        [words("but"), Are] ++
+        color_as_possible_cause([BlahQuantified, suffix(".")]) ++ [nl],
     Spec = spec($pred, severity_error, phase_type_check,
         Context, Pieces),
     !:Specs = [Spec | !.Specs].
@@ -2575,17 +2610,18 @@ report_badly_quantified_vars(PredInfo, QuantErrorType, TVars, !Specs) :-
 report_unbound_tvars_in_ctor_context(Vars, TypeCtor, TypeDefn, !Specs) :-
     get_type_defn_context(TypeDefn, Context),
     get_type_defn_tvarset(TypeDefn, TVarSet),
+    TypeVars = choose_number(Vars, "type variable", "type variables"),
     VarsStrs = list.map(mercury_var_to_name_only_vs(TVarSet), Vars),
-
+    VarsPieces = list_to_quoted_pieces(VarsStrs),
     Pieces = [words("In declaration for type"),
         unqual_type_ctor(TypeCtor), suffix(":"), nl,
-        words("error in type class constraints:"),
-        words(choose_number(Vars, "type variable", "type variables"))]
-        ++ list_to_quoted_pieces(VarsStrs) ++
+        words("error in type class constraints:")] ++
+        color_as_subject([words(TypeVars) | VarsPieces]) ++
         [words(choose_number(Vars, "occurs", "occur")),
-        words("in the constraints, but"),
-        words(choose_number(Vars, "is", "are")),
-        words("not determined by the constructor's argument types."), nl],
+        words("in the constraints, but")] ++
+        color_as_incorrect([words(choose_number(Vars, "is", "are")),
+            words("not determined")]) ++
+        [words("by the constructor's argument types."), nl],
     Msg = simple_msg(Context,
         [always(Pieces),
         verbose_only(verbose_once, unbound_tvars_explanation_pieces)]),

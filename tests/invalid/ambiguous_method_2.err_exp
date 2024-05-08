@@ -1,5 +1,5 @@
 ambiguous_method_2.m:030: In declaration for function `e'/0:
-ambiguous_method_2.m:030:   error in type class constraints: type variable `E'
-ambiguous_method_2.m:030:   occurs in the constraints, but is not determined by
+ambiguous_method_2.m:030:   error in type class constraints: [38;5;87mtype variable `E'[39;49m
+ambiguous_method_2.m:030:   occurs in the constraints, but [38;5;203mis not determined[39;49m by
 ambiguous_method_2.m:030:   the function's argument or result types.
 For more information, recompile with `-E'.

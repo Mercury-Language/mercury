@@ -1,7 +1,7 @@
 fundeps_unbound_in_ctor.m:012: In declaration for type `bar'/0:
-fundeps_unbound_in_ctor.m:012:   error in type class constraints: type variable
-fundeps_unbound_in_ctor.m:012:   `C' occurs in the constraints, but is not
-fundeps_unbound_in_ctor.m:012:   determined by the constructor's argument
+fundeps_unbound_in_ctor.m:012:   error in type class constraints: [38;5;87mtype variable[39;49m
+fundeps_unbound_in_ctor.m:012:   [38;5;87m`C'[39;49m occurs in the constraints, but [38;5;203mis not[39;49m
+fundeps_unbound_in_ctor.m:012:   [38;5;203mdetermined[39;49m by the constructor's argument
 fundeps_unbound_in_ctor.m:012:   types.
 fundeps_unbound_in_ctor.m:012:   All types occurring in typeclass constraints
 fundeps_unbound_in_ctor.m:012:   must be fully determined. A type is fully

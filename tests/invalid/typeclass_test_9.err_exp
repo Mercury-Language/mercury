@@ -1,10 +1,10 @@
 typeclass_test_9.m:007: In declaration for predicate `p'/0:
-typeclass_test_9.m:007:   error in type class constraints: type variable `T'
-typeclass_test_9.m:007:   occurs in the constraints, but is not determined by
+typeclass_test_9.m:007:   error in type class constraints: [38;5;87mtype variable `T'[39;49m
+typeclass_test_9.m:007:   occurs in the constraints, but [38;5;203mis not determined[39;49m by
 typeclass_test_9.m:007:   the predicate's argument types.
 typeclass_test_9.m:009: In declaration for predicate `q'/0:
-typeclass_test_9.m:009:   error in type class constraints: type variable `T'
-typeclass_test_9.m:009:   occurs in the constraints, but is not determined by
+typeclass_test_9.m:009:   error in type class constraints: [38;5;87mtype variable `T'[39;49m
+typeclass_test_9.m:009:   occurs in the constraints, but [38;5;203mis not determined[39;49m by
 typeclass_test_9.m:009:   the predicate's argument types.
 typeclass_test_9.m:012: Warning: duplicate abstract instance declaration for
 typeclass_test_9.m:012:   class `typeclass_test_9.foo'/1.

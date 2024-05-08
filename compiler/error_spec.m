@@ -579,6 +579,12 @@
 :- func component_list_to_pieces(string, list(format_piece)) =
     list(format_piece).
 
+    % This is a version of component_list_to_pieces that applies
+    % the supplied color, if any, to each component.
+    %
+:- func component_list_to_color_pieces(maybe(color_name), string,
+    list(format_piece)) = list(format_piece).
+
     % Convert a list of format_pieces into a list of format_pieces
     % separated by commas. Even the last pair of list elements will be
     % separated by commas.
@@ -745,6 +751,18 @@ component_list_to_pieces(LastSep, [Comp1, Comp2]) =
 component_list_to_pieces(LastSep, [Comp1, Comp2, Comp3 | Comps]) =
     [Comp1, suffix(",")]
     ++ component_list_to_pieces(LastSep, [Comp2, Comp3 | Comps]).
+
+component_list_to_color_pieces(_, _, []) = [].
+component_list_to_color_pieces(MaybeColor, _, [Comp]) =
+    maybe_color_pieces(MaybeColor, [Comp]).
+component_list_to_color_pieces(MaybeColor, LastSep, [Comp1, Comp2]) =
+    maybe_color_pieces(MaybeColor, [Comp1]) ++ [words(LastSep)] ++
+    maybe_color_pieces(MaybeColor, [Comp2]).
+component_list_to_color_pieces(MaybeColor, LastSep,
+        [Comp1, Comp2, Comp3 | Comps]) =
+    maybe_color_pieces(MaybeColor, [Comp1, suffix(",")]) 
+    ++ component_list_to_color_pieces(MaybeColor, LastSep,
+        [Comp2, Comp3 | Comps]).
 
 strict_component_list_to_pieces([]) = [].
 strict_component_list_to_pieces([Comp]) = [Comp].

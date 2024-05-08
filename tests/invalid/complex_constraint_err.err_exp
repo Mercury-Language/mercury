@@ -1,7 +1,7 @@
 complex_constraint_err.m:016: In declaration for predicate `t'/1:
-complex_constraint_err.m:016:   error in type class constraints: type variable
-complex_constraint_err.m:016:   `C' occurs in the constraints, but is not
-complex_constraint_err.m:016:   determined by the predicate's argument types.
+complex_constraint_err.m:016:   error in type class constraints: [38;5;87mtype variable[39;49m
+complex_constraint_err.m:016:   [38;5;87m`C'[39;49m occurs in the constraints, but [38;5;203mis not[39;49m
+complex_constraint_err.m:016:   [38;5;203mdetermined[39;49m by the predicate's argument types.
 complex_constraint_err.m:016:   All types occurring in typeclass constraints
 complex_constraint_err.m:016:   must be fully determined. A type is fully
 complex_constraint_err.m:016:   determined if one of the following holds:
@@ -22,7 +22,7 @@ complex_constraint_err.m:016:   fully determined.
 complex_constraint_err.m:016:   See the "Functional dependencies" section of
 complex_constraint_err.m:016:   the reference manual for details.
 complex_constraint_err.m:020: In declaration for predicate `u'/1:
-complex_constraint_err.m:020:   error in type class constraints: type variables
-complex_constraint_err.m:020:   `Z' and `X' occur in the constraints, but are
-complex_constraint_err.m:020:   not determined by the predicate's argument
+complex_constraint_err.m:020:   error in type class constraints: [38;5;87mtype variables[39;49m
+complex_constraint_err.m:020:   [38;5;87m`Z' and `X'[39;49m occur in the constraints, but [38;5;203mare[39;49m
+complex_constraint_err.m:020:   [38;5;203mnot determined[39;49m by the predicate's argument
 complex_constraint_err.m:020:   types.

@@ -1,6 +1,6 @@
 typeclass_test_12.m:007: In declaration for predicate `p'/0:
-typeclass_test_12.m:007:   error in type class constraints: type variable `T'
-typeclass_test_12.m:007:   occurs in the constraints, but is not determined by
+typeclass_test_12.m:007:   error in type class constraints: [38;5;87mtype variable `T'[39;49m
+typeclass_test_12.m:007:   occurs in the constraints, but [38;5;203mis not determined[39;49m by
 typeclass_test_12.m:007:   the predicate's argument types.
 typeclass_test_12.m:007:   All types occurring in typeclass constraints must be
 typeclass_test_12.m:007:   fully determined. A type is fully determined if one
@@ -22,6 +22,6 @@ typeclass_test_12.m:007:   determined.
 typeclass_test_12.m:007:   See the "Functional dependencies" section of the
 typeclass_test_12.m:007:   reference manual for details.
 typeclass_test_12.m:009: In declaration for function `q'/0:
-typeclass_test_12.m:009:   error in type class constraints: type variable `T'
-typeclass_test_12.m:009:   occurs in the constraints, but is not determined by
+typeclass_test_12.m:009:   error in type class constraints: [38;5;87mtype variable `T'[39;49m
+typeclass_test_12.m:009:   occurs in the constraints, but [38;5;203mis not determined[39;49m by
 typeclass_test_12.m:009:   the function's argument or result types.
