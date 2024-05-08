@@ -211,26 +211,30 @@ report_unbound_inst_vars(ModuleInfo, PredId, ErrorProcs, !PredInfo,
 
 report_unbound_inst_var_error(ModuleInfo, PredId, ProcId - UnboundInstVars,
         Procs0, Procs, !Specs) :-
+    PredPieces =
+        describe_one_pred_name(ModuleInfo, should_not_module_qualify, PredId),
     map.lookup(Procs0, ProcId, ProcInfo),
     proc_info_get_inst_varset(ProcInfo, InstVarSet),
-    UnboundInstVarStrs =
-        list.map(mercury_var_to_string_vs(InstVarSet, print_name_only),
-            UnboundInstVars),
-    InstVarVars = choose_number(UnboundInstVarStrs,
+    InstVarToPiece =
+        ( func(V) = quote(VN) :-
+            VN = mercury_var_to_string_vs(InstVarSet, print_name_only, V)
+        ),
+    UnboundInstVarPieces = list.map(InstVarToPiece, UnboundInstVars),
+    UnboundInstVarsPieces = component_list_to_color_pieces(yes(color_subject),
+        "and", UnboundInstVarPieces),
+    InstVarVars = choose_number(UnboundInstVars,
         "inst variable", "inst variables"),
-    IsAreUnbound = choose_number(UnboundInstVarStrs,
+    IsAreUnbound = choose_number(UnboundInstVars,
         "is unbound", "are unbound"),
     proc_info_get_context(ProcInfo, Context),
     Pieces = [words("In"), decl("mode"), words("declaration for")] ++
-        describe_one_pred_name(ModuleInfo, should_not_module_qualify, PredId)
-        ++ [suffix(":"), nl,
-        words("error:"), words(InstVarVars)] ++
-        list_to_pieces(UnboundInstVarStrs) ++
+        PredPieces ++ [suffix(":"), nl, words("error:")] ++
+        color_as_subject([words(InstVarVars)]) ++ UnboundInstVarsPieces ++
         [words(IsAreUnbound), suffix("."), nl,
         words("(Sorry, polymorphic modes are not supported.)"), nl],
     Spec = spec($pred, severity_error, phase_type_check, Context, Pieces),
     !:Specs = [Spec | !.Specs],
-    % Delete this mode, to avoid internal errors.
+    % Delete this mode, to avoid internal errors from later passes.
     map.det_remove(ProcId, _, Procs0, Procs).
 
 %---------------------------------------------------------------------------%
@@ -279,9 +283,9 @@ report_unsatisfied_constraints(ModuleInfo, PredId, PredInfo, Constraints,
         fixed("type error: unsatisfied typeclass " ++
         choose_number(Constraints, "constraint:", "constraints:")),
         nl_indent_delta(1)] ++
-        component_list_to_line_pieces(
-            list.map(constraint_to_error_piece(TVarSet), Constraints),
-                [nl_indent_delta(-1)]),
+        component_list_to_color_line_pieces(yes(color_incorrect),
+            [], [nl_indent_delta(-1)],
+            list.map(constraint_to_error_pieces(TVarSet), Constraints)),
     MainMsg = msg(Context, MainPieces),
 
     ConstrainedGoals = find_constrained_goals(PredInfo, Constraints),
@@ -308,10 +312,10 @@ report_unsatisfied_constraints(ModuleInfo, PredId, PredInfo, Constraints,
         [MainMsg | ContextMsgs]),
     !:Specs = [Spec | !.Specs].
 
-:- func constraint_to_error_piece(tvarset, prog_constraint)
+:- func constraint_to_error_pieces(tvarset, prog_constraint)
     = list(format_piece).
 
-constraint_to_error_piece(TVarset, Constraint) =
+constraint_to_error_pieces(TVarset, Constraint) =
     [quote(mercury_constraint_to_string(TVarset, print_name_only,
         Constraint))].
 
@@ -372,20 +376,23 @@ constrained_goals_to_error_msgs(ModuleInfo, [Goal | Goals]) = [Msg | Msgs] :-
     (
         Goals = [_, _ | _],
         Words = describe_constrained_goal(ModuleInfo, Goal),
-        Suffix = suffix(",")
+        Suffix = suffix(","),
+        And = []
     ;
         Goals = [_],
         Words = describe_constrained_goal(ModuleInfo, Goal),
-        Suffix = suffix(", and")
+        Suffix = suffix(","),
+        And = [words("and")]
     ;
         Goals = [],
         Words = describe_constrained_goal(ModuleInfo, Goal),
-        Suffix = suffix(".")
+        Suffix = suffix("."),
+        And = []
     ),
     Goal = hlds_goal(_, GoalInfo),
     Context = goal_info_get_context(GoalInfo),
     Msg = error_msg(yes(Context), treat_based_on_posn, 1,
-        [always(Words ++ [Suffix])]),
+        [always(Words ++ [Suffix | And])]),
     Msgs = constrained_goals_to_error_msgs(ModuleInfo, Goals).
 
 :- func describe_constrained_goal(module_info, hlds_goal)
@@ -594,14 +601,14 @@ fill_in_is_dummy_slot(ModuleInfo, !Entry) :-
 
 report_unresolved_type_warning(ModuleInfo, PredId, PredInfo, VarsEntries,
         !Specs) :-
-    pred_info_get_typevarset(PredInfo, TypeVarSet),
+    pred_info_get_typevarset(PredInfo, TVarSet),
     pred_info_get_context(PredInfo, Context),
 
     PredIdPieces =
         describe_one_pred_name(ModuleInfo, should_not_module_qualify, PredId),
-    list.map_foldl2(var_vte_to_name_and_type_strs(TypeVarSet),
+    list.map_foldl3(var_vte_to_name_and_type_strs(TVarSet),
         VarsEntries, VarTypeStrs0,
-        0, MaxVarNameLen0, all_tvars, MaybeAllTVars),
+        0, MaxVarNameLen0, all_tvars, MaybeAllTVars, set.init, TVars),
     list.sort(VarTypeStrs0, VarTypeStrs),
     (
         MaybeAllTVars = all_tvars,
@@ -638,12 +645,17 @@ report_unresolved_type_warning(ModuleInfo, PredId, PredInfo, VarsEntries,
         ),
         VarTypePieceLists =
             list.map(var_and_type_to_pieces(MaxVarNameLen), VarTypeStrs),
-        % XXX Just because the is only entry in VarsEntries does NOT
-        % necessarily that there is only one type variable; the type
-        % of that one variable could be something like "map(T, U)".
+        TVarToStr =
+            ( func(TV) = quote(Name) :-
+                Name = mercury_var_to_string_vs(TVarSet, print_name_only, TV)
+            ),
+        TVarStrs = set.map(TVarToStr, TVars),
+        set.to_sorted_list(TVarStrs, TVarStrList),
         SetPieces = [words("The unbound type"),
-            words(choose_number(VarsEntries, "variable", "variables")),
-            words("will be implicitly bound to the builtin type"),
+            words(choose_number(TVarStrList, "variable", "variables"))] ++
+            component_list_to_color_pieces(yes(color_incorrect), "and",
+                TVarStrList) ++
+            [words("will be implicitly bound to the builtin type"),
             quote("void"), suffix("."), nl],
         Known = "fully known"
     ),
@@ -681,10 +693,11 @@ report_unresolved_type_warning(ModuleInfo, PredId, PredInfo, VarsEntries,
 
 :- pred var_vte_to_name_and_type_strs(tvarset::in,
     pair(prog_var, var_table_entry)::in, pair(string, string)::out,
-    int::in, int::out, maybe_all_tvars::in, maybe_all_tvars::out) is det.
+    int::in, int::out, maybe_all_tvars::in, maybe_all_tvars::out,
+    set(tvar)::in, set(tvar)::out) is det.
 
 var_vte_to_name_and_type_strs(TVarSet, Var - Entry, VarStr - TypeStr,
-        !MaxVarNameLen, !AllTVars) :-
+        !MaxVarNameLen, !AllTVars, !TVars) :-
     Entry = vte(Name, Type, _IsDummy),
     VarStr = mercury_var_raw_to_string(print_name_only, Var, Name),
     TypeStr = mercury_type_to_string(TVarSet, print_name_only, Type),
@@ -694,22 +707,29 @@ var_vte_to_name_and_type_strs(TVarSet, Var - Entry, VarStr - TypeStr,
     else
         true
     ),
-    ( if Type = type_variable(_, _) then
-        true
+    ( if Type = type_variable(TVar, _) then
+        set.insert(TVar, !TVars)
     else
-        !:AllTVars = not_all_tvars
+        !:AllTVars = not_all_tvars,
+        set_of_type_vars_in_type(Type, TVarsInType),
+        set.union(TVarsInType, !TVars)
     ).
 
 :- func var_only_to_pieces(pair(string, string)) = list(format_piece).
 
 var_only_to_pieces(VarStr - _TypeStr) = Pieces :-
-    Pieces = [fixed(VarStr), nl].
+    Pieces = color_as_incorrect([fixed(VarStr)]) ++ [nl].
 
 :- func var_and_type_to_pieces(int, pair(string, string)) = list(format_piece).
 
 var_and_type_to_pieces(MaxVarNameLen, VarStr - TypeStr) = Pieces :-
-    string.pad_right(VarStr ++ ":", ' ', MaxVarNameLen, VarColonStr),
-    Pieces = [fixed(VarColonStr), words(TypeStr), nl].
+    % The +1 is to account for the colon. Without it, the VarColonStr
+    % we construct for the longest variable name would have MaxVarNameLen + 1
+    % code points, while the VarColonStrs we construct for all shorter
+    % variable names would have only MaxVarNameLen code points.
+    string.pad_right(VarStr ++ ":", ' ', MaxVarNameLen + 1, VarColonStr),
+    Pieces = color_as_subject([fixed(VarColonStr)]) ++
+        color_as_incorrect([words(TypeStr)]) ++[nl].
 
 %---------------------------------------------------------------------------%
 
@@ -735,8 +755,10 @@ check_type_of_main(PredInfo, !Specs) :-
             true
         else
             pred_info_get_context(PredInfo, Context),
-            Pieces = [words("Error: both arguments of"), quote("main/2"),
-                words("must have type"), quote("io.state"), suffix("."), nl],
+            Pieces = [words("Error: both arguments of")] ++
+                color_as_subject([quote("main/2")]) ++
+                [words("must have type")] ++
+                color_as_correct([quote("io.state"), suffix(".")]) ++ [nl],
             Spec = spec($pred, severity_error, phase_type_check,
                 Context, Pieces),
             !:Specs = [Spec | !.Specs]
@@ -889,12 +911,15 @@ report_indistinguishable_modes_error(ModuleInfo, OldProcId, NewProcId,
     MainPieces = [words("In mode declarations for ")] ++
         describe_one_pred_name(ModuleInfo, should_module_qualify, PredId)
         ++ [suffix(":"), nl, words("error: duplicate mode declaration."), nl],
-    VerbosePieces = [words("Modes"),
-        words_quote(mode_decl_to_string(output_mercury, OldProcId, PredInfo)),
-        words("and"),
-        words_quote(mode_decl_to_string(output_mercury, NewProcId, PredInfo)),
-        words("are indistinguishable.")],
-    OldPieces = [words("Here is the conflicting mode declaration.")],
+    OldDecl = mode_decl_to_string(output_mercury, OldProcId, PredInfo),
+    NewDecl = mode_decl_to_string(output_mercury, NewProcId, PredInfo),
+    % XXX Should we print OldDecl and NewDecl each on their own line?
+    VerbosePieces = [words("Modes")] ++
+        color_as_possible_cause([words_quote(OldDecl)]) ++
+        [words("and")] ++
+        color_as_possible_cause([words_quote(NewDecl)]) ++
+        [words("are indistinguishable."), nl],
+    OldPieces = [words("Here is the conflicting mode declaration."), nl],
     Spec = error_spec($pred, severity_error,
         phase_mode_check(report_in_any_mode),
         [simple_msg(NewContext,

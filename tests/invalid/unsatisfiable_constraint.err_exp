@@ -1,8 +1,8 @@
 unsatisfiable_constraint.m:039: In predicate `test'/1:
 unsatisfiable_constraint.m:039:   type error: unsatisfied typeclass constraints:
-unsatisfiable_constraint.m:039:     `unsatisfiable_constraint.a(A, B, A, V_8)',
-unsatisfiable_constraint.m:039:     `unsatisfiable_constraint.a(A, B, C, V_14)',
-unsatisfiable_constraint.m:039:     `unsatisfiable_constraint.b(A, C)'
+unsatisfiable_constraint.m:039:     [38;5;203m`unsatisfiable_constraint.a(A, B, A, V_8)',[39;49m
+unsatisfiable_constraint.m:039:     [38;5;203m`unsatisfiable_constraint.a(A, B, C, V_14)',[39;49m
+unsatisfiable_constraint.m:039:     [38;5;203m`unsatisfiable_constraint.b(A, C)'[39;49m
 unsatisfiable_constraint.m:039:   The constraints are due to:
 unsatisfiable_constraint.m:043:     a goal here,
 unsatisfiable_constraint.m:044:     a goal here, and
@@ -10,8 +10,8 @@ unsatisfiable_constraint.m:045:     a goal here.
 unsatisfiable_constraint.m:039: In predicate `test'/1:
 unsatisfiable_constraint.m:039:   warning: unresolved polymorphism.
 unsatisfiable_constraint.m:039:   The variables with unbound types were:
-unsatisfiable_constraint.m:039:     B
-unsatisfiable_constraint.m:039:     C
+unsatisfiable_constraint.m:039:     [38;5;203mB[39;49m
+unsatisfiable_constraint.m:039:     [38;5;203mC[39;49m
 unsatisfiable_constraint.m:039:   Their types will be implicitly set to the
 unsatisfiable_constraint.m:039:   builtin type `void'.
 unsatisfiable_constraint.m:039:   The body of the clause contains a call to a

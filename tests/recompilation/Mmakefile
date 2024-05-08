@@ -46,7 +46,9 @@ TESTS_SHOULD_FAIL = \
 	type_qual_re \
 	with_type_re
 
-PROGS = $(TESTS_SHOULD_SUCCEED) $(NO_PARALLEL_MAKE_TESTS) \
+PROGS = \
+	$(TESTS_SHOULD_SUCCEED) \
+	$(NO_PARALLEL_MAKE_TESTS) \
 	$(TESTS_SHOULD_FAIL)
 
 TESTS = $(sort $(PROGS:%=%-nodepend))
@@ -55,6 +57,8 @@ include ../Mmake.common
 # Module-specific options should go in Mercury.options so they
 # can be found by `mmc --make'.
 include Mercury.options
+
+MCFLAGS += --enable-color-diagnostics
 
 $(TESTS_SHOULD_SUCCEED:%=%.runtest): %.runtest:
 	+@if ./two_module_test should_succeed $* $*_2; then \

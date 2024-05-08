@@ -1,6 +1,6 @@
 typeclass_test_8.m:009: In predicate `main'/2:
 typeclass_test_8.m:009:   type error: unsatisfied typeclass constraint:
-typeclass_test_8.m:009:     `typeclass_test_8.fooable(T)'
+typeclass_test_8.m:009:     [38;5;203m`typeclass_test_8.fooable(T)'[39;49m
 typeclass_test_8.m:009:   The constraint is due to:
 typeclass_test_8.m:019:     the call to typeclass method predicate
 typeclass_test_8.m:019:     `typeclass_test_8.foo'/1, and
@@ -9,7 +9,7 @@ typeclass_test_8.m:020:     `typeclass_test_8.bar'/1.
 typeclass_test_8.m:009: In predicate `main'/2:
 typeclass_test_8.m:009:   warning: unresolved polymorphism.
 typeclass_test_8.m:009:   The variable with an unbound type was:
-typeclass_test_8.m:009:     X
+typeclass_test_8.m:009:     [38;5;203mX[39;49m
 typeclass_test_8.m:009:   Its type will be implicitly set to the builtin type
 typeclass_test_8.m:009:   `void'.
 typeclass_test_8.m:009:   The body of the clause contains a call to a
