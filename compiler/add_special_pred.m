@@ -99,7 +99,6 @@
 :- import_module check_hlds.post_typecheck.
 :- import_module check_hlds.types_into_modes.
 :- import_module check_hlds.unify_proc.
-:- import_module hlds.add_pred.
 :- import_module hlds.hlds_clauses.
 :- import_module hlds.pred_name.
 :- import_module hlds.pred_table.

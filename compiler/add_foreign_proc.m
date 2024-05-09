@@ -32,7 +32,7 @@
 
 :- implementation.
 
-:- import_module hlds.add_pred.
+:- import_module hlds.make_hlds.add_pred.
 :- import_module hlds.hlds_args.
 :- import_module hlds.hlds_clauses.
 :- import_module hlds.hlds_code_util.

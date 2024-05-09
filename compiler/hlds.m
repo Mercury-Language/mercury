@@ -39,7 +39,6 @@
 
 % Modules for creating the HLDS.
 :- include_module add_foreign_enum.
-:- include_module add_pred.
 :- include_module add_special_pred.
 :- include_module du_type_layout.
 :- include_module default_func_mode.

@@ -582,6 +582,13 @@
     list(prog_var)::in, list(prog_var)::out, hlds_goal::in, hlds_goal::out,
     module_info::in, module_info::out) is det.
 
+:- pred add_new_proc(module_info::in, prog_context::in, item_seq_num::in,
+    inst_varset::in, list(mer_mode)::in,
+    maybe(list(mer_mode))::in, maybe(list(is_live))::in,
+    detism_decl::in, maybe(determinism)::in,
+    is_address_taken::in, has_parallel_conj::in,
+    pred_info::in, pred_info::out, proc_id::out) is det.
+
     % Various predicates for accessing the information stored in the
     % pred_id and pred_info data structures.
     %
@@ -1448,6 +1455,22 @@ compute_arg_types_modes(VarTable, InstMapInit, InstMapFinal,
     Mode = from_to_mode(InstInit, InstFinal),
     compute_arg_types_modes(VarTable, InstMapInit, InstMapFinal,
         Vars, Types, Modes).
+
+add_new_proc(ModuleInfo, Context, SeqNum, InstVarSet, ArgModes,
+        MaybeDeclaredArgModes, MaybeArgLives, DetismDecl, MaybeDetism,
+        IsAddressTaken, HasParallelConj, !PredInfo, ProcId) :-
+    pred_info_get_arg_types(!.PredInfo, ArgTypes),
+    pred_info_get_var_name_remap(!.PredInfo, VarNameRemap),
+    proc_info_init(ModuleInfo, Context, SeqNum, ArgTypes,
+        MaybeDeclaredArgModes, ArgModes, MaybeArgLives,
+        DetismDecl, MaybeDetism, IsAddressTaken, HasParallelConj,
+        VarNameRemap, ProcInfo0),
+    proc_info_set_inst_varset(InstVarSet, ProcInfo0, ProcInfo),
+
+    pred_info_get_proc_table(!.PredInfo, ProcTable0),
+    next_proc_id(ProcTable0, ProcId),
+    map.det_insert(ProcId, ProcInfo, ProcTable0, ProcTable),
+    pred_info_set_proc_table(ProcTable, !PredInfo).
 
 %---------------------------------------------------------------------------%
 

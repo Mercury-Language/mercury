@@ -30,7 +30,7 @@
 :- import_module backend_libs.rtti.
 :- import_module check_hlds.
 :- import_module check_hlds.mode_test.
-:- import_module hlds.add_pred.
+:- import_module hlds.make_hlds.add_pred.
 :- import_module hlds.hlds_code_util.
 :- import_module hlds.make_hlds.add_clause.
 :- import_module hlds.make_hlds.add_foreign_proc.

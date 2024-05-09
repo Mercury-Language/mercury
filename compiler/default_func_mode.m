@@ -33,7 +33,6 @@
 
 :- implementation.
 
-:- import_module hlds.add_pred.
 :- import_module mdbcomp.
 :- import_module mdbcomp.prim_data.
 :- import_module parse_tree.

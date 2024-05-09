@@ -49,7 +49,7 @@
 
 :- implementation.
 
-:- import_module hlds.add_pred.
+:- import_module hlds.make_hlds.add_pred.
 :- import_module hlds.default_func_mode.
 :- import_module hlds.goal_util.
 :- import_module hlds.hlds_args.

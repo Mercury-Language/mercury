@@ -696,9 +696,6 @@ It handles their addition to procedures,
 which is nontrivial in the presence of mode-specific clauses.
 <li>
 add_pred.m handles type and mode declarations for predicates.
-(Actually this is in the hlds package
-because it is called by add_special_pred.m,
-but does most of its work for the other modules in the make_hlds package.)
 <li>
 default_func_mode.m: if a function has no declared mode,
 this module adds to it the standard default mode.

@@ -14,7 +14,7 @@
 %
 %---------------------------------------------------------------------------%
 
-:- module hlds.add_pred.
+:- module hlds.make_hlds.add_pred.
 :- interface.
 
 :- import_module hlds.hlds_clauses.
@@ -50,13 +50,6 @@
     maybe(pair(pred_id, maybe(proc_id)))::out,
     module_info::in, module_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
-
-:- pred add_new_proc(module_info::in, prog_context::in, item_seq_num::in,
-    inst_varset::in, list(mer_mode)::in,
-    maybe(list(mer_mode))::in, maybe(list(is_live))::in,
-    detism_decl::in, maybe(determinism)::in,
-    is_address_taken::in, has_parallel_conj::in,
-    pred_info::in, pred_info::out, proc_id::out) is det.
 
     % Is the mode declaration we are adding to the HLDS derived from
     % a combined predmode declaration?
@@ -757,25 +750,6 @@ add_builtin(ModuleInfo, CompilationTarget, PredId, HeadTypes0, !PredInfo) :-
 
 %---------------------------------------------------------------------------%
 
-add_new_proc(ModuleInfo, Context, SeqNum, InstVarSet, ArgModes,
-        MaybeDeclaredArgModes, MaybeArgLives, DetismDecl, MaybeDetism,
-        IsAddressTaken, HasParallelConj, !PredInfo, ProcId) :-
-    pred_info_get_arg_types(!.PredInfo, ArgTypes),
-    pred_info_get_var_name_remap(!.PredInfo, VarNameRemap),
-    proc_info_init(ModuleInfo, Context, SeqNum, ArgTypes,
-        MaybeDeclaredArgModes, ArgModes, MaybeArgLives,
-        DetismDecl, MaybeDetism, IsAddressTaken, HasParallelConj,
-        VarNameRemap, ProcInfo0),
-    proc_info_set_inst_varset(InstVarSet, ProcInfo0, ProcInfo),
-
-    pred_info_get_proc_table(!.PredInfo, ProcTable0),
-    % XXX ARITY rename to next_proc_id
-    next_proc_id(ProcTable0, ProcId),
-    map.det_insert(ProcId, ProcInfo, ProcTable0, ProcTable),
-    pred_info_set_proc_table(ProcTable, !PredInfo).
-
-%---------------------------------------------------------------------------%
-
 module_add_mode_decl(PartOfPredmode, IsClassMethod,
         ItemMercuryStatus, PredStatus, ItemModeDecl, PredProcId,
         !ModuleInfo, !Specs) :-
@@ -1182,5 +1156,5 @@ report_field_status_mismatch(Context, PFSymNameArity, !Specs) :-
     !:Specs = [Spec | !.Specs].
 
 %---------------------------------------------------------------------------%
-:- end_module hlds.add_pred.
+:- end_module hlds.make_hlds.add_pred.
 %---------------------------------------------------------------------------%
