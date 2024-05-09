@@ -100,7 +100,6 @@
 :- import_module hlds.status.
 :- import_module libs.options.
 :- import_module parse_tree.parse_tree_out_misc.
-:- import_module parse_tree.parse_tree_out_term.
 :- import_module parse_tree.set_of_var.
 :- import_module parse_tree.var_db.
 
@@ -985,13 +984,6 @@ warn_suspicious_foreign_code(Lang, BodyCode, Context, !Specs) :-
             )
         )
     ).
-
-%---------------------------------------------------------------------------%
-
-:- func var_to_quote_piece(prog_varset, prog_var) = format_piece.
-
-var_to_quote_piece(VarSet, Var) =
-    quote(mercury_var_to_name_only_vs(VarSet, Var)).
 
 %---------------------------------------------------------------------------%
 :- end_module hlds.make_hlds.make_hlds_warn.

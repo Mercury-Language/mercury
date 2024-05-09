@@ -539,6 +539,8 @@
     %
 :- func string_to_words_piece(string) = format_piece.
 
+:- func var_to_quote_piece(prog_varset, prog_var) = format_piece.
+
     % Convert a list of strings into a list of format_pieces
     % separated by commas, with the last two elements separated by `and'.
     %
@@ -717,6 +719,8 @@
 
 :- implementation.
 
+:- import_module parse_tree.parse_tree_out_term.
+
 :- import_module char.
 :- import_module edit_distance.
 :- import_module getopt.
@@ -730,6 +734,9 @@
 %---------------------------------------------------------------------------%
 
 string_to_words_piece(Str) = words(Str).
+
+var_to_quote_piece(VarSet, Var) =
+    quote(mercury_var_to_name_only_vs(VarSet, Var)).
 
 list_to_pieces([]) = [].
 list_to_pieces([Elem]) = [fixed(Elem)].

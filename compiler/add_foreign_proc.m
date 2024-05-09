@@ -51,7 +51,6 @@
 :- import_module mdbcomp.sym_name.
 :- import_module parse_tree.parse_tree_out_misc.
 :- import_module parse_tree.parse_tree_out_sym_name.
-:- import_module parse_tree.parse_tree_out_term.
 :- import_module parse_tree.prog_ctgc.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_data_foreign.
@@ -455,22 +454,27 @@ clauses_info_do_add_foreign_proc(PredOrFunc, PredModuleName, PredName,
             pred_pf_name_arity(PredOrFunc, PredSymName, UserArity),
         Pieces1 = [words("In"), pragma_decl("foreign_proc"),
             words("declaration for"),
-            unqual_pf_sym_name_user_arity(PFSymNameArity), suffix(":"), nl],
+            unqual_pf_sym_name_user_arity(PFSymNameArity), suffix(":"), nl,
+            words("error:")],
         (
             MultiplyOccurringArgVars = [MultiplyOccurringArgVar],
-            BadVarStr = mercury_var_to_name_only_vs(PVarSet,
-                MultiplyOccurringArgVar),
-            Pieces2 = [words("error: variable"), quote(BadVarStr),
-                words("occurs more than once in the argument list."), nl]
+            BadVarPiece = var_to_quote_piece(PVarSet, MultiplyOccurringArgVar),
+            Pieces2 =
+                color_as_subject([words("variable"), BadVarPiece]) ++
+                color_as_incorrect([words("occurs more than once")])
         ;
             MultiplyOccurringArgVars = [_, _ | _],
-            BadVarsStr = mercury_vars_to_name_only_vs(PVarSet,
+            BadVarPieces = list.map(var_to_quote_piece(PVarSet),
                 MultiplyOccurringArgVars),
-            Pieces2 = [words("error: variables"), quote(BadVarsStr),
-                words("each occur more than once in the argument list."), nl]
+            BadVarsPieces = component_list_to_color_pieces(yes(color_subject),
+                "and", BadVarPieces),
+            Pieces2 =
+                color_as_subject([words("variables")]) ++ BadVarsPieces ++
+                color_as_incorrect([words("each occur more than once")])
         ),
+        Pieces3 = [words("in the argument list."), nl],
         Spec = spec($pred, severity_error, phase_pt2h,
-            Context, Pieces1 ++ Pieces2),
+            Context, Pieces1 ++ Pieces2 ++ Pieces3),
         !:Specs = [Spec | !.Specs]
     ;
         MultiplyOccurringArgVars = [],
@@ -500,10 +504,12 @@ clauses_info_do_add_foreign_proc(PredOrFunc, PredModuleName, PredName,
                 purity_name(Purity, PurityStr),
                 Pieces = [words("Error: foreign clause for"),
                     unqual_pf_sym_name_user_arity(PFSymNameArity),
-                    words("has purity"), words(ForeignAttributePurityStr),
-                    words("but that"), p_or_f(PredOrFunc),
-                    words("has been declared"), words(PurityStr),
-                    suffix("."), nl],
+                    words("has purity")] ++
+                    color_as_incorrect([words(ForeignAttributePurityStr),
+                        suffix(",")]) ++
+                    [words("but that"), p_or_f(PredOrFunc),
+                    words("has been declared")] ++
+                    color_as_correct([words(PurityStr), suffix(".")]) ++ [nl],
                 Spec = spec($pred, severity_error, phase_pt2h,
                     Context, Pieces),
                 !:Specs = [Spec | !.Specs]
