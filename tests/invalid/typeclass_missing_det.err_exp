@@ -1,2 +1,2 @@
-typeclass_missing_det.m:014: Error: no determinism declaration for type class
-typeclass_missing_det.m:014:   method predicate `typeclass_missing_det.p'/1.
+typeclass_missing_det.m:014: Error: [38;5;203mno determinism declaration[39;49m for type class
+typeclass_missing_det.m:014:   method predicate [38;5;87m`p'/1.[39;49m

@@ -164,8 +164,9 @@ module_add_pred_decl(ItemMercuryStatus, PredStatus, NeedQual, ItemPredDecl,
         % The only way PredName could be "" is if this happened in the
         % predicate or function declaration.
         PredOrFuncStr = pred_or_func_to_full_str(PredOrFunc),
-        Pieces = [words("Error: you cannot declare a"), words(PredOrFuncStr),
-            words("whose name is a variable."), nl],
+        Pieces = [words("Error: you cannot declare")] ++
+            color_as_subject([words("a"), words(PredOrFuncStr)]) ++
+            color_as_incorrect([words("whose name is a variable.")]) ++ [nl],
         Spec = spec($pred, severity_error, phase_pt2h, Context, Pieces),
         !:Specs = [Spec | !.Specs],
         MaybePredMaybeProcId = no
@@ -372,12 +373,14 @@ check_for_modeless_predmode_decl(PredStatus, PredOrFunc,
         else
             list.length(ArgTypes, PredFormArity),
             SNA = sym_name_arity(PredSymName, PredFormArity),
-            DetPieces = [words("Error: predicate"), unqual_sym_name_arity(SNA),
-                words("declares a determinism without declaring"),
-                words("the modes of its arguments."), nl],
-            DetSpec = spec($pred, severity_error, phase_pt2h,
-                Context, DetPieces),
-            !:Specs = [DetSpec | !.Specs]
+            Pieces = [words("Error: predicate")] ++
+                color_as_subject([unqual_sym_name_arity(SNA)]) ++
+                [words("declares a determinism")] ++
+                color_as_incorrect([words("without declaring"),
+                    words("the modes of its arguments.")]) ++
+                [nl],
+            Spec = spec($pred, severity_error, phase_pt2h, Context, Pieces),
+            !:Specs = [Spec | !.Specs]
         )
     else
         true
@@ -799,8 +802,9 @@ module_add_mode_decl(PartOfPredmode, IsClassMethod,
     ( if PredName = "" then
         % This dummy PredProcId won't be used due to the error.
         PredProcId = proc(invalid_pred_id, invalid_proc_id),
-        Pieces = [words("Error: you cannot declare a mode"),
-            words("for a predicate whose name is a variable."), nl],
+        Pieces = [words("Error: you cannot declare a mode for a")] ++
+            color_as_subject([words("predicate")]) ++
+            color_as_incorrect([words("whose name is a variable.")]) ++ [nl],
         Spec = spec($pred, severity_error, phase_pt2h, Context, Pieces),
         !:Specs = [Spec | !.Specs]
     else
@@ -857,20 +861,21 @@ module_do_add_mode(ModuleInfo, PartOfPredmode, IsClassMethod,
         pred_info_get_status(!.PredInfo, PredStatus),
         PredModule = pred_info_module(!.PredInfo),
         PredSymName = qualified(PredModule, PredName),
-        PFSymNameArity =
-            pf_sym_name_arity(PredOrFunc, PredSymName, PredFormArity),
         (
             IsClassMethod = is_a_class_method,
-            unspecified_det_for_method(PFSymNameArity, Context, !Specs)
+            unspecified_det_for_method(PredOrFunc, PredSymName, PredFormArity,
+                Context, !Specs)
         ;
             IsClassMethod = is_not_a_class_method,
             IsExported = pred_status_is_exported(PredStatus),
             (
                 IsExported = yes,
-                unspecified_det_for_exported(PFSymNameArity, Context, !Specs)
+                unspecified_det_for_exported(PredOrFunc, PredSymName,
+                    PredFormArity, Context, !Specs)
             ;
                 IsExported = no,
-                unspecified_det_for_local(PFSymNameArity, Context, !Specs)
+                unspecified_det_for_local(PredOrFunc, PredSymName,
+                    PredFormArity, Context, !Specs)
             )
         )
     ;
@@ -892,14 +897,18 @@ module_do_add_mode(ModuleInfo, PartOfPredmode, IsClassMethod,
             else
                 ModeSectionStr = decl_section_to_string(ModeDeclSection),
                 PredSectionStr = decl_section_to_string(PredDeclSection),
-                PFSNA1 = pf_sym_name_arity(PredOrFunc, unqualified(PredName),
-                    PredFormArity),
-                SectionPieces = [words("Error: mode declaration in the"),
-                    fixed(ModeSectionStr), words("section for"),
-                    unqual_pf_sym_name_pred_form_arity(PFSNA1), suffix(","),
-                    words("whose"), p_or_f(PredOrFunc), words("declaration"),
-                    words("is in the"), fixed(PredSectionStr), suffix("."),
-                    nl],
+                user_arity_pred_form_arity(PredOrFunc,
+                    user_arity(UserArityInt), PredFormArity),
+                NA = name_arity(PredName, UserArityInt),
+                SectionPieces = [words("Error: mode declaration in the")] ++
+                    color_as_incorrect([fixed(ModeSectionStr),
+                        words("section")]) ++
+                    [words("for"), p_or_f(PredOrFunc)] ++
+                    color_as_subject([name_arity(NA), suffix(",")]) ++
+                    [words("whose"), p_or_f(PredOrFunc), words("declaration"),
+                    words("is in the")] ++
+                    color_as_correct([fixed(PredSectionStr), suffix(".")]) ++
+                    [nl],
                 SectionSpec = spec($pred, severity_error, phase_pt2h,
                     Context, SectionPieces),
                 !:Specs = [SectionSpec | !.Specs]
@@ -939,40 +948,63 @@ decl_section_to_string(decl_interface) = "interface".
 decl_section_to_string(decl_implementation) = "implementation".
 
 report_mode_decl_after_predmode(PFNameArity, Context) = Spec :-
-    PFNameArity = pred_pf_name_arity(PredOrFunc, _SymName, _UserArity),
-    Pieces = [words("Error:"), unqual_pf_sym_name_user_arity(PFNameArity),
-        words("has its"), p_or_f(PredOrFunc), words("declaration"),
-        words("combined with a mode declaration,"),
-        words("so it may not have a separate mode declaration."), nl],
+    PFNameArity = pred_pf_name_arity(PredOrFunc, SymName, UserArity),
+    UserArity = user_arity(UserArityInt),
+    NA = name_arity(unqualify_name(SymName), UserArityInt),
+    Pieces = [words("Error:"), p_or_f(PredOrFunc)] ++
+        color_as_subject([name_arity(NA)]) ++
+        [words("has its"), p_or_f(PredOrFunc), words("declaration"),
+        words("combined with a mode declaration, so")] ++
+        color_as_incorrect(
+            [words("it may not have a separate mode declaration.")]) ++
+        [nl],
     Spec = spec($pred, severity_error, phase_pt2h, Context, Pieces).
 
 %---------------------------------------------------------------------------%
 
-:- pred unspecified_det_for_method(pf_sym_name_arity::in, prog_context::in,
+:- pred unspecified_det_for_method(pred_or_func::in, sym_name::in,
+    pred_form_arity::in, prog_context::in,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-unspecified_det_for_method(PFSymNameArity, Context, !Specs) :-
-    Pieces = [words("Error: no determinism declaration"),
-        words("for type class method"),
-        qual_pf_sym_name_pred_form_arity(PFSymNameArity), suffix("."), nl],
+unspecified_det_for_method(PorF, SymName, PredFormArity, Context, !Specs) :-
+    user_arity_pred_form_arity(PorF, user_arity(UserArityInt), PredFormArity),
+    SNA = sym_name_arity(SymName, UserArityInt),
+    Pieces = [words("Error:")] ++
+        color_as_incorrect([words("no determinism declaration")]) ++
+        [words("for type class method"), p_or_f(PorF)] ++
+        % We used to qualify (the predecessor of) SNA.
+        color_as_subject([unqual_sym_name_arity(SNA), suffix(".")]) ++
+        [nl],
     Spec = spec($pred, severity_error, phase_pt2h, Context, Pieces),
     !:Specs = [Spec | !.Specs].
 
-:- pred unspecified_det_for_exported(pf_sym_name_arity::in, prog_context::in,
+:- pred unspecified_det_for_exported(pred_or_func::in, sym_name::in,
+    pred_form_arity::in, prog_context::in,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-unspecified_det_for_exported(PFSymNameArity, Context, !Specs) :-
-    Pieces = [words("Error: no determinism declaration for exported"),
-        unqual_pf_sym_name_pred_form_arity(PFSymNameArity), suffix("."), nl],
+unspecified_det_for_exported(PorF, SymName, PredFormArity, Context, !Specs) :-
+    user_arity_pred_form_arity(PorF, user_arity(UserArityInt), PredFormArity),
+    SNA = sym_name_arity(SymName, UserArityInt),
+    Pieces = [words("Error:")] ++
+        color_as_incorrect([words("no determinism declaration")]) ++
+        [words("for exported"), p_or_f(PorF)] ++
+        color_as_subject([unqual_sym_name_arity(SNA), suffix(".")]) ++
+        [nl],
     Spec = spec($pred, severity_error, phase_pt2h, Context, Pieces),
     !:Specs = [Spec | !.Specs].
 
-:- pred unspecified_det_for_local(pf_sym_name_arity::in,
-    prog_context::in, list(error_spec)::in, list(error_spec)::out) is det.
+:- pred unspecified_det_for_local(pred_or_func::in, sym_name::in,
+    pred_form_arity::in, prog_context::in,
+    list(error_spec)::in, list(error_spec)::out) is det.
 
-unspecified_det_for_local(PFSymNameArity, Context, !Specs) :-
-    MainPieces = [words("Error: no determinism declaration for local"),
-        unqual_pf_sym_name_pred_form_arity(PFSymNameArity), suffix("."), nl],
+unspecified_det_for_local(PorF, SymName, PredFormArity, Context, !Specs) :-
+    user_arity_pred_form_arity(PorF, user_arity(UserArityInt), PredFormArity),
+    SNA = sym_name_arity(SymName, UserArityInt),
+    MainPieces = [words("Error:")] ++
+        color_as_incorrect([words("no determinism declaration")]) ++
+        [words("for local"), p_or_f(PorF)] ++
+        color_as_subject([unqual_sym_name_arity(SNA), suffix(".")]) ++
+        [nl],
     VerbosePieces = [words("(This is an error because"),
         words("you specified the"), quote("--no-infer-det"), words("option."),
         words("Use the"), quote("--infer-det"),
@@ -1142,8 +1174,10 @@ check_field_access_function(ModuleInfo, _AccessType, FieldName, FuncSymName,
 report_field_status_mismatch(Context, PFSymNameArity, !Specs) :-
     Pieces = [words("In declaration of"),
         unqual_pf_sym_name_pred_form_arity(PFSymNameArity), suffix(":"), nl,
-        words("error: a field access function for an exported field"),
-        words("must also be exported."), nl],
+        words("error:")] ++
+        color_as_subject(
+            [words("a field access function for an exported field")]) ++
+        color_as_incorrect([words("must also be exported.")]) ++ [nl],
     Spec = spec($pred, severity_error, phase_pt2h, Context, Pieces),
     !:Specs = [Spec | !.Specs].
 

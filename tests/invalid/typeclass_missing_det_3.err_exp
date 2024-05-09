@@ -8,6 +8,5 @@ typeclass_missing_det_3.m:008:   its interface section(s). This would normally
 typeclass_missing_det_3.m:008:   be a `:- pred' or `:- func' declaration, or a
 typeclass_missing_det_3.m:008:   `:- type', `:- inst', `:- mode',
 typeclass_missing_det_3.m:008:   `:- typeclass' or `:- instance' definition.
-typeclass_missing_det_3.m:017: Error: no determinism declaration for type class
-typeclass_missing_det_3.m:017:   method predicate
-typeclass_missing_det_3.m:017:   `typeclass_missing_det_3.write'/3.
+typeclass_missing_det_3.m:017: Error: [38;5;203mno determinism declaration[39;49m for type class
+typeclass_missing_det_3.m:017:   method predicate [38;5;87m`write'/3.[39;49m

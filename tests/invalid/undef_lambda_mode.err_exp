@@ -1,4 +1,4 @@
-undef_lambda_mode.m:009: Error: predicate `test'/1 declares a determinism
-undef_lambda_mode.m:009:   without declaring the modes of its arguments.
+undef_lambda_mode.m:009: Error: predicate [38;5;87m`test'/1[39;49m declares a determinism
+undef_lambda_mode.m:009:   [38;5;203mwithout declaring the modes of its arguments.[39;49m
 undef_lambda_mode.m:014: In mode declaration for lambda expression:
 undef_lambda_mode.m:014:   error: undefined mode `junk'/0.

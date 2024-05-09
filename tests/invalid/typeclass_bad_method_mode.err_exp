@@ -1,4 +1,4 @@
-typeclass_bad_method_mode.m:010: Error: predicate `p'/1 has its predicate
+typeclass_bad_method_mode.m:010: Error: predicate [38;5;87m`p'/1[39;49m has its predicate
 typeclass_bad_method_mode.m:010:   declaration combined with a mode
-typeclass_bad_method_mode.m:010:   declaration, so it may not have a separate
-typeclass_bad_method_mode.m:010:   mode declaration.
+typeclass_bad_method_mode.m:010:   declaration, so [38;5;203mit may not have a separate[39;49m
+typeclass_bad_method_mode.m:010:   [38;5;203mmode declaration.[39;49m

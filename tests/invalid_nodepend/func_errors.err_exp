@@ -5,7 +5,7 @@ func_errors.m:012: Error: some but not all arguments have modes.
 func_errors.m:012:   The argument without a mode is the return value.
 func_errors.m:013: Error: some but not all arguments have modes.
 func_errors.m:013:   The arguments without modes are the first and second.
-func_errors.m:017: Error: predicate `p'/2 declares a determinism without
-func_errors.m:017:   declaring the modes of its arguments.
+func_errors.m:017: Error: predicate [38;5;87m`p'/2[39;49m declares a determinism [38;5;203mwithout[39;49m
+func_errors.m:017:   [38;5;203mdeclaring the modes of its arguments.[39;49m
 func_errors.m:019: Error: some but not all arguments have modes.
 func_errors.m:019:   The arguments without modes are the second and third.

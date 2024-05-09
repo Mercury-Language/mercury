@@ -1,7 +1,7 @@
-tc_err1.m:026: Error: predicate `handle_typedefs'/3 declares a determinism
-tc_err1.m:026:   without declaring the modes of its arguments.
-tc_err1.m:027: Error: no determinism declaration for type class method
-tc_err1.m:027:   predicate `tc_err1.handle_typedefs'/3.
+tc_err1.m:026: Error: predicate [38;5;87m`handle_typedefs'/3[39;49m declares a determinism
+tc_err1.m:026:   [38;5;203mwithout declaring the modes of its arguments.[39;49m
+tc_err1.m:027: Error: [38;5;203mno determinism declaration[39;49m for type class method
+tc_err1.m:027:   predicate [38;5;87m`handle_typedefs'/3.[39;49m
 tc_err1.m:034: In instance declaration for `actions(pstate)':
 tc_err1.m:034:   no implementation for predicate method `handle_typedefs'/3.
 tc_err1.m:035: In instance declaration for `actions(pstate)':

@@ -36,8 +36,8 @@ record_syntax_errors.m:055:     [38;5;203mrecord_syntax_errors.cons2,[39;49m
 record_syntax_errors.m:055:   expected type was
 record_syntax_errors.m:055:     [38;5;40mrecord_syntax_errors.cons.[39;49m
 record_syntax_errors.m:059: In declaration of function `field4'/1:
-record_syntax_errors.m:059:   error: a field access function for an exported
-record_syntax_errors.m:059:   field must also be exported.
+record_syntax_errors.m:059:   error: [38;5;87ma field access function for an exported[39;49m
+record_syntax_errors.m:059:   [38;5;87mfield[39;49m [38;5;203mmust also be exported.[39;49m
 record_syntax_errors.m:062: Error: clause for automatically generated field
 record_syntax_errors.m:062:   access function `field4'/1.
 record_syntax_errors.m:062:   Clauses for field access functions are

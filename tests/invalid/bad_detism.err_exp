@@ -1,2 +1,2 @@
-bad_detism.m:011: Error: predicate `p'/1 declares a determinism without
-bad_detism.m:011:   declaring the modes of its arguments.
+bad_detism.m:011: Error: predicate [38;5;87m`p'/1[39;49m declares a determinism [38;5;203mwithout[39;49m
+bad_detism.m:011:   [38;5;203mdeclaring the modes of its arguments.[39;49m

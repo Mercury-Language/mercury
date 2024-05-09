@@ -1,16 +1,16 @@
 missing_det_decls.m:008: Error: no clauses for predicate `exp1'/0.
-missing_det_decls.m:009: Error: no determinism declaration for exported
-missing_det_decls.m:009:   predicate `exp1'/0.
+missing_det_decls.m:009: Error: [38;5;203mno determinism declaration[39;49m for exported
+missing_det_decls.m:009:   predicate [38;5;87m`exp1'/0.[39;49m
 missing_det_decls.m:011: Error: no clauses for predicate `exp2'/1.
-missing_det_decls.m:012: Error: no determinism declaration for exported
-missing_det_decls.m:012:   predicate `exp2'/1.
+missing_det_decls.m:012: Error: [38;5;203mno determinism declaration[39;49m for exported
+missing_det_decls.m:012:   predicate [38;5;87m`exp2'/1.[39;49m
 missing_det_decls.m:016: Error: no clauses for predicate `loc1'/0.
-missing_det_decls.m:017: Error: no determinism declaration for local predicate
-missing_det_decls.m:017:   `loc1'/0.
+missing_det_decls.m:017: Error: [38;5;203mno determinism declaration[39;49m for local predicate
+missing_det_decls.m:017:   [38;5;87m`loc1'/0.[39;49m
 missing_det_decls.m:017:   (This is an error because you specified the
 missing_det_decls.m:017:   `--no-infer-det' option. Use the `--infer-det'
 missing_det_decls.m:017:   option if you want the compiler to automatically
 missing_det_decls.m:017:   infer the determinism of local predicates.)
 missing_det_decls.m:019: Error: no clauses for predicate `loc2'/1.
-missing_det_decls.m:020: Error: no determinism declaration for local predicate
-missing_det_decls.m:020:   `loc2'/1.
+missing_det_decls.m:020: Error: [38;5;203mno determinism declaration[39;49m for local predicate
+missing_det_decls.m:020:   [38;5;87m`loc2'/1.[39;49m
