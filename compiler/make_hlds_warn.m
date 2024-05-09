@@ -130,15 +130,21 @@ quant_warning_to_spec(PfSymNameArity, VarSet, Warning) = Spec :-
         Vars = [],
         unexpected($pred, "Vars = []")
     ;
-        Vars = [Var],
-        Pieces2 = [words("warning: variable"),
-            quote(mercury_var_to_name_only_vs(VarSet, Var)),
-            words("has overlapping scopes."), nl]
-    ;
-        Vars = [_, _ | _],
-        Pieces2 = [words("warning: variables"),
-            quote(mercury_vars_to_name_only_vs(VarSet, Vars)),
-            words("each have overlapping scopes."), nl]
+        Vars = [HeadVar | TailVars],
+        (
+            TailVars = [],
+            VarPiece = var_to_quote_piece(VarSet, HeadVar),
+            Pieces2 = [words("warning: variable")] ++
+                color_as_subject([VarPiece]) ++
+                [words("has overlapping scopes."), nl]
+        ;
+            TailVars = [_ | _],
+            VarsPieces = list.map(var_to_quote_piece(VarSet), Vars),
+            Pieces2 = [words("warning: variables")] ++
+                component_list_to_color_pieces(yes(color_subject), "and",
+                    VarsPieces) ++
+                [words("each have overlapping scopes."), nl]
+        )
     ),
     Spec = conditional_spec($pred, warn_overlapping_scopes, yes,
         severity_warning, phase_pt2h,
@@ -563,24 +569,26 @@ generate_variable_warning(SingleMulti, Context, PfSymNameArity, VarSet,
     ),
     PreamblePieces = [words("In clause for"),
         unqual_pf_sym_name_pred_form_arity(PfSymNameArity), suffix(":"), nl],
-    VarStrs0 = list.map(mercury_var_to_name_only_vs(VarSet), [Var | Vars]),
-    list.sort_and_remove_dups(VarStrs0, VarStrs),
-    VarsStr = "`" ++ string.join_list(", ", VarStrs) ++ "'",
-    % We want VarsPiece to be breakable into two or more lines
-    % in case VarsStr does not fit on one line.
-    VarsPiece = words(VarsStr),
+    VarPieces0 = list.map(var_to_quote_piece(VarSet), [Var | Vars]),
+    list.sort_and_remove_dups(VarPieces0, VarPieces),
     (
-        VarStrs = [],
+        VarPieces = [],
         % Sorting a nonempty list must yield a nonempty list.
-        unexpected($pred, "VarStrs = []")
+        unexpected($pred, "VarPieces = []")
     ;
-        VarStrs = [_],
-        WarnPieces = [words("warning: variable"), VarsPiece,
-            words("occurs"), words(Count), words("in this scope."), nl]
+        VarPieces = [VarPiece],
+        WarnPieces = [words("warning:")] ++
+            color_as_subject([words("variable"), VarPiece]) ++
+            color_as_incorrect([words("occurs"), words(Count)]) ++
+            [words("in this scope."), nl]
     ;
-        VarStrs = [_, _ | _],
-        WarnPieces = [words("warning: variables"), VarsPiece,
-            words("occur"), words(Count), words("in this scope."), nl]
+        VarPieces = [_, _ | _],
+        VarsPieces = component_list_to_color_pieces(yes(color_subject), "and",
+            VarPieces),
+        WarnPieces = [words("warning:")] ++
+            color_as_subject([words("variables")]) ++ VarsPieces ++
+            color_as_incorrect([words("occur"), words(Count)]) ++
+            [words("in this scope."), nl]
     ),
     Spec = conditional_spec($pred, warn_singleton_vars, yes,
         severity_warning, phase_pt2h,
@@ -605,14 +613,15 @@ warn_singletons_in_pragma_foreign_proc(ModuleInfo, PragmaImpl, Lang,
         UnmentionedVars = []
     ;
         UnmentionedVars = [_ | _],
+        variable_warning_start(UnmentionedVars, VarPieces, DoDoes),
         Pieces = [words("In the"), words(LangStr), words("code for"),
             unqual_pf_sym_name_pred_form_arity(PFSymNameArity),
-            suffix(":"), nl] ++
-            variable_warning_start(UnmentionedVars) ++
-            [words("not occur in the"), words(LangStr), words("code."), nl],
+            suffix(":"), nl,
+            words("warning:")] ++ VarPieces ++
+            color_as_incorrect([words(DoDoes), words("not occur")]) ++
+            [words("in the"), words(LangStr), words("code."), nl],
         Spec = conditional_spec($pred, warn_singleton_vars, yes,
-            severity_warning, phase_pt2h,
-            [msg(Context, Pieces)]),
+            severity_warning, phase_pt2h, [msg(Context, Pieces)]),
         !:Specs = [Spec | !.Specs]
     ),
     pragma_foreign_proc_body_checks(ModuleInfo, Lang, Context, PFSymNameArity,
@@ -626,15 +635,19 @@ var_is_unmentioned(NameList1, MaybeArg, Name) :-
     not string.prefix(Name, "_"),
     not list.member(Name, NameList1).
 
-:- func variable_warning_start(list(string)) = list(format_piece).
+:- pred variable_warning_start(list(string)::in, list(format_piece)::out,
+    string::out) is det.
 
-variable_warning_start(UnmentionedVars) = Pieces :-
+variable_warning_start(UnmentionedVars, Pieces, DoDoes) :-
     ( if UnmentionedVars = [Var] then
-        Pieces = [words("warning: variable"), quote(Var), words("does")]
+        Pieces = color_as_subject([words("variable"), quote(Var)]),
+        DoDoes = "does"
     else
-        Pieces = [words("warning: variables"),
-            words(add_quotes(string.join_list(", ", UnmentionedVars))),
-            words("do")]
+        QuotedVars = list.map(func(VN) = quote(VN), UnmentionedVars),
+        Pieces = color_as_subject([words("variables")]) ++
+            component_list_to_color_pieces(yes(color_subject), "and",
+                QuotedVars),
+        DoDoes = "do"
     ).
 
     % c_code_to_name_list(Code, List) is true iff List is a list of the
@@ -751,13 +764,13 @@ check_fp_body_for_success_indicator(ModuleInfo, Lang, Context, PFSymNameArity,
                 LangStr = foreign_language_string(Lang),
                 Pieces = [words("Warning: the"), fixed(LangStr),
                     words("code for"),
-                    unqual_pf_sym_name_pred_form_arity(PFSymNameArity),
-                    words("may set"), quote(SuccIndStr), suffix(","),
-                    words("but it cannot fail.")],
-                Spec = conditional_spec($pred,
-                    warn_suspicious_foreign_procs, yes,
-                    severity_warning, phase_pt2h,
-                    [msg(Context, Pieces)]),
+                    unqual_pf_sym_name_pred_form_arity(PFSymNameArity)] ++
+                    color_as_possible_cause([words("may set"),
+                        quote(SuccIndStr), suffix(",")]) ++
+                    [words("but")] ++
+                    color_as_incorrect([words("it cannot fail.")]) ++ [nl],
+                Spec = conditional_spec($pred, warn_suspicious_foreign_procs,
+                    yes, severity_warning, phase_pt2h, [msg(Context, Pieces)]),
                 !:Specs = [Spec | !.Specs]
             else
                 true
@@ -772,14 +785,13 @@ check_fp_body_for_success_indicator(ModuleInfo, Lang, Context, PFSymNameArity,
                 LangStr = foreign_language_string(Lang),
                 Pieces = [words("Warning: the"), fixed(LangStr),
                     words("code for"),
-                    unqual_pf_sym_name_pred_form_arity(PFSymNameArity),
-                    words("does not appear to set"),
-                    quote(SuccIndStr), suffix(","),
-                    words("but it can fail.")],
-                Spec = conditional_spec($pred,
-                    warn_suspicious_foreign_procs, yes,
-                    severity_warning, phase_pt2h,
-                    [msg(Context, Pieces)]),
+                    unqual_pf_sym_name_pred_form_arity(PFSymNameArity)] ++
+                    color_as_possible_cause([words("does not appear to set"),
+                        quote(SuccIndStr), suffix(",")]) ++
+                    [words("but")] ++
+                    color_as_incorrect([words("it can fail.")]) ++ [nl],
+                Spec = conditional_spec($pred, warn_suspicious_foreign_procs,
+                    yes, severity_warning, phase_pt2h, [msg(Context, Pieces)]),
                 !:Specs = [Spec | !.Specs]
             )
         ;
@@ -802,11 +814,9 @@ check_fp_body_for_success_indicator(ModuleInfo, Lang, Context, PFSymNameArity,
 check_fp_body_for_return(Lang, Context, PFSymNameArity, BodyPieces, !Specs) :-
     ( if list.member("return", BodyPieces) then
         LangStr = foreign_language_string(Lang),
-        Pieces = [words("Warning: the"), fixed(LangStr),
-            words("code for"),
+        Pieces = [words("Warning: the"), fixed(LangStr), words("code for"),
             unqual_pf_sym_name_pred_form_arity(PFSymNameArity),
-            words("may contain a"), quote("return"),
-            words("statement."), nl],
+            words("may contain a"), quote("return"), words("statement."), nl],
         Spec = conditional_spec($pred, warn_suspicious_foreign_procs, yes,
             severity_warning, phase_pt2h,
             [msg(Context, Pieces)]),
@@ -975,6 +985,13 @@ warn_suspicious_foreign_code(Lang, BodyCode, Context, !Specs) :-
             )
         )
     ).
+
+%---------------------------------------------------------------------------%
+
+:- func var_to_quote_piece(prog_varset, prog_var) = format_piece.
+
+var_to_quote_piece(VarSet, Var) =
+    quote(mercury_var_to_name_only_vs(VarSet, Var)).
 
 %---------------------------------------------------------------------------%
 :- end_module hlds.make_hlds.make_hlds_warn.

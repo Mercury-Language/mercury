@@ -29,7 +29,7 @@ errors1.m:064:   `errors1.indirectly_circular_eqv_type_1'/0.
 errors1.m:065: Error: circular equivalence type
 errors1.m:065:   `errors1.indirectly_circular_eqv_type_2'/0.
 errors1.m:079: In clause for predicate `pred_with_unresolved_polymorphism'/0:
-errors1.m:079:   warning: variable `Arg' occurs only once in this scope.
+errors1.m:079:   warning: [38;5;87mvariable `Arg'[39;49m [38;5;203moccurs only once[39;49m in this scope.
 errors1.m:095: In clause for predicate `pred_with_singleton_vars'/1:
-errors1.m:095:   warning: variable `X' occurs only once in this scope.
+errors1.m:095:   warning: [38;5;87mvariable `X'[39;49m [38;5;203moccurs only once[39;49m in this scope.
 For more information, recompile with `-E'.

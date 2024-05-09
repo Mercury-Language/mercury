@@ -9,7 +9,7 @@ occurs.m:014:   mode error in unification of `X' and `occurs.f(X)'.
 occurs.m:014:   [38;5;87mVariable `X'[39;49m has instantiatedness [38;5;226m`free',[39;49m
 occurs.m:014:   [38;5;87mterm `occurs.f(X)'[39;49m has instantiatedness [38;5;226m`occurs.f(free)'.[39;49m
 occurs.m:014: In clause for predicate `p'/0:
-occurs.m:014:   warning: variable `X' occurs only once in this scope.
+occurs.m:014:   warning: [38;5;87mvariable `X'[39;49m [38;5;203moccurs only once[39;49m in this scope.
 occurs.m:014: Warning: the [38;5;87mvariable `X'[39;49m is [38;5;203munified with a term containing[39;49m
 occurs.m:014:   [38;5;203mitself.[39;49m
 occurs.m:016: In `p2':

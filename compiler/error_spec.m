@@ -547,7 +547,7 @@
     % list_to_colored_pieces(MaybeColor, LastSepWord, LastColorSuffix, String)
     %   = Pieces:
     %
-    % A version of list_to_pieces that 
+    % A version of list_to_pieces that
     %
     % - uses the user-specified LastSepWord as the separator between
     %   the last two strings, and
