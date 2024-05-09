@@ -544,6 +544,21 @@
     %
 :- func list_to_pieces(list(string)) = list(format_piece).
 
+    % list_to_colored_pieces(MaybeColor, LastSepWord, LastColorSuffix, String)
+    %   = Pieces:
+    %
+    % A version of list_to_pieces that 
+    %
+    % - uses the user-specified LastSepWord as the separator between
+    %   the last two strings, and
+    %
+    % - allows the specification of a color to be applied to each string,
+    %   including the comma following it, if it has one, and the specified
+    %   LastColorSuffix for the last string.
+    %
+:- func list_to_colored_pieces(maybe(color_name), string,
+    list(format_piece), list(string)) = list(format_piece).
+
     % Convert a list of strings into a list of format_pieces
     % separated by commas. Even the last pair of strings will be
     % separated by commas.
@@ -722,6 +737,15 @@ list_to_pieces([Elem1, Elem2]) = [fixed(Elem1), words("and"), fixed(Elem2)].
 list_to_pieces([Elem1, Elem2, Elem3 | Elems]) =
     [fixed(Elem1 ++ ",") | list_to_pieces([Elem2, Elem3 | Elems])].
 
+list_to_colored_pieces(MaybeColor, LastSepWord, LastColorSuffix, Items)
+        = Pieces :-
+    ItemToPieces =
+        (pred(Str::in, ItemPieces::out) is det :- ItemPieces = [fixed(Str)]),
+    NonLastSep = [suffix(",")],
+    LastSep = [words(LastSepWord)],
+    general_list_to_pieces(ItemToPieces, MaybeColor, NonLastSep, LastSep,
+        LastColorSuffix, Items, Pieces).
+
 strict_list_to_pieces([]) = [].
 strict_list_to_pieces([Elem]) = [fixed(Elem)].
 strict_list_to_pieces([Elem1, Elem2 | Elems]) =
@@ -773,9 +797,47 @@ component_list_to_color_pieces(MaybeColor, LastSep, [Comp1, Comp2]) =
     maybe_color_pieces(MaybeColor, [Comp2]).
 component_list_to_color_pieces(MaybeColor, LastSep,
         [Comp1, Comp2, Comp3 | Comps]) =
-    maybe_color_pieces(MaybeColor, [Comp1, suffix(",")]) 
+    maybe_color_pieces(MaybeColor, [Comp1, suffix(",")])
     ++ component_list_to_color_pieces(MaybeColor, LastSep,
         [Comp2, Comp3 | Comps]).
+
+%---------------------------------------------------------------------------%
+
+    % A general predicate for converting any list of items to the specification
+    % of a nicely formatted and possibly colored output.
+    %
+    % The functions above should probably be reimplemented using this.
+    %
+:- pred general_list_to_pieces(
+    pred(T, list(format_piece))::in(pred(in, out) is det),
+    maybe(color_name)::in, list(format_piece)::in, list(format_piece)::in,
+    list(format_piece)::in, list(T)::in, list(format_piece)::out) is det.
+
+general_list_to_pieces(ItemToPieces, MaybeColor, NonLastSep, LastSep,
+        LastColorSuffix, Items, Pieces) :-
+    (
+        Items = [],
+        Pieces = []
+    ;
+        Items = [Item1],
+        ItemToPieces(Item1, Pieces1),
+        Pieces = maybe_color_pieces(MaybeColor, Pieces1 ++ LastColorSuffix)
+    ;
+        Items = [Item1, Item2],
+        ItemToPieces(Item1, Pieces1),
+        ItemToPieces(Item2, Pieces2),
+        Pieces = maybe_color_pieces(MaybeColor, Pieces1) ++ LastSep ++
+            maybe_color_pieces(MaybeColor, Pieces2 ++ LastColorSuffix)
+    ;
+        Items = [Item1, Item2, Item3 | Items4plus],
+        ItemToPieces(Item1, Pieces1),
+        general_list_to_pieces(ItemToPieces, MaybeColor, NonLastSep, LastSep,
+            LastColorSuffix, [Item2, Item3 | Items4plus], TailPieces),
+        Pieces = maybe_color_pieces(MaybeColor, Pieces1 ++ NonLastSep) ++
+            TailPieces
+    ).
+
+%---------------------------------------------------------------------------%
 
 strict_component_list_to_pieces([]) = [].
 strict_component_list_to_pieces([Comp]) = [Comp].

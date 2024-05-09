@@ -10,8 +10,8 @@ bug197.m:026:   expected type was
 bug197.m:026:     [38;5;40mpred(L, A, A).[39;49m
 bug197.m:026:   [38;5;226mArity mismatch for the predicate: expected three arguments, got[39;49m
 bug197.m:026:   [38;5;226mfour.[39;49m
-bug197.m:032: Error: cannot use !:SS here due to the surrounding lambda
-bug197.m:032:   expression; you may only refer to !.SS.
+bug197.m:032: Error: cannot use [38;5;203m!:SS[39;49m here due to the surrounding lambda
+bug197.m:032:   expression; you may only refer to [38;5;40m!.SS.[39;49m
 bug197.m:026:   Here is the surrounding context that makes state variable SS
 bug197.m:026:   readonly.
 bug197.m:032: In clause for predicate `foo'/3:
