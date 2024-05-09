@@ -472,8 +472,9 @@ warn_about_any_unread_modules_with_read_ancestors(ReadModules, UnreadModules0,
         BadUnreadList = [_ | _],
         BadUnreadModulePieces = list.map(wrap_module_name, BadUnreadList),
         list.intersperse(nl, BadUnreadModulePieces, BadUnreadModuleListPieces),
+        TheModules = choose_number(BadUnreadList, "the module", "the modules"),
         BadUnreadPieces =
-            [words("the modules"), nl_indent_delta(1), blank_line] ++
+            [words(TheModules), nl_indent_delta(1), blank_line] ++
             BadUnreadModuleListPieces ++ [nl_indent_delta(-1), blank_line],
 
         set_tree234.to_sorted_list(Parents, ParentList),
