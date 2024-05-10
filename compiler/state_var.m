@@ -2306,7 +2306,7 @@ report_state_var_shadow(Context, VarSet, StateVar, !Specs) :-
 
 report_missing_inits_in_ite(Context, NextStateVars,
         WhenMissing, WhenNotMissing, !Specs) :-
-    NextStateVarsPieces = list_to_colored_pieces(yes(color_subject),
+    NextStateVarsPieces = list_to_color_pieces(yes(color_subject),
         "and", [suffix(",")], NextStateVars),
     Pieces = [words("When the condition"), words(WhenNotMissing), suffix(","),
         words("the if-then-else")] ++

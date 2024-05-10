@@ -1680,8 +1680,8 @@ det_infer_scope(Reason, Goal0, Goal, GoalInfo, InstMap0, SolnContext,
                     OverlapVarNames = list.map(
                         mercury_var_to_string(VarTable, print_name_only),
                         set_of_var.to_sorted_list(OverlapVars)),
-                    OverlapVarDotPieces = list_to_colored_pieces(
-                        yes(color_subject), "and",  [suffix(".")],
+                    OverlapVarDotPieces = list_to_color_pieces(
+                        yes(color_subject), "and", [suffix(".")],
                         OverlapVarNames),
                     (
                         OverlapVarNames = [],
@@ -1737,9 +1737,8 @@ det_infer_scope(Reason, Goal0, Goal, GoalInfo, InstMap0, SolnContext,
             MissingVarNames = list.map(
                 mercury_var_to_string(VarTable, print_name_only),
                 set_of_var.to_sorted_list(MissingVars)),
-            MissingVarDotPieces = list_to_colored_pieces(
-                yes(color_subject), "and",  [suffix(".")],
-                MissingVarNames),
+            MissingVarDotPieces = list_to_color_pieces(yes(color_subject),
+                "and", [suffix(".")], MissingVarNames),
             MissingKindStr = promise_solutions_kind_str(Kind),
             (
                 MissingVarNames = [],
@@ -1782,9 +1781,8 @@ det_infer_scope(Reason, Goal0, Goal, GoalInfo, InstMap0, SolnContext,
             ExtraVarNames = list.map(
                 mercury_var_to_string(VarTable, print_name_only),
                 set_of_var.to_sorted_list(ExtraVars)),
-            ExtraVarDotPieces = list_to_colored_pieces(
-                yes(color_subject), "and",  [suffix(".")],
-                ExtraVarNames),
+            ExtraVarDotPieces = list_to_color_pieces(yes(color_subject),
+                "and",  [suffix(".")], ExtraVarNames),
             ExtraKindStr = promise_solutions_kind_str(Kind),
             (
                 ExtraVarNames = [],

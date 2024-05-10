@@ -467,7 +467,7 @@ clauses_info_do_add_foreign_proc(PredOrFunc, PredModuleName, PredName,
             BadVarPieces = list.map(var_to_quote_piece(PVarSet),
                 MultiplyOccurringArgVars),
             BadVarsPieces = component_list_to_color_pieces(yes(color_subject),
-                "and", BadVarPieces),
+                "and", [], BadVarPieces),
             Pieces2 =
                 color_as_subject([words("variables")]) ++ BadVarsPieces ++
                 color_as_incorrect([words("each occur more than once")])

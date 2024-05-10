@@ -763,10 +763,14 @@ maybe_issue_no_such_type_error(InstCtor, InstDefn, TypeCtor, !Specs) :-
     ;
         InstDefinedInThisModule = yes,
         Context = InstDefn ^ inst_context,
-        Pieces = [words("Error: inst"), unqual_inst_ctor(InstCtor),
-            words("is specified to be for"),
-            qual_type_ctor(TypeCtor), suffix(","),
-            words("but that type constructor is not visible here."), nl],
+        Pieces = [words("Error: inst")] ++
+            color_as_subject([unqual_inst_ctor(InstCtor)]) ++
+            [words("is specified to be for")] ++
+            color_as_subject([qual_type_ctor(TypeCtor), suffix(",")]) ++
+            [words("but")] ++
+            color_as_incorrect([words("that type constructor"),
+                words("is not visible here.")]) ++
+            [nl],
         Spec = spec($pred, severity_error, phase_inst_check, Context, Pieces),
         !:Specs = [Spec | !.Specs]
     ).
@@ -793,10 +797,13 @@ maybe_issue_type_match_error(WarnInstsWithoutMatchingType, InstCtor, InstDefn,
             InstIsExported = yes,
             not type_is_user_visible(ms_interface, ForTypeDefn)
         then
-            VisPieces = [words("Error: inst"), unqual_inst_ctor(InstCtor),
-                words("is exported, but the type it is for,"),
-                qual_type_ctor(ForTypeCtor), suffix(","),
-                words("is not visible outside this module."), nl],
+            VisPieces = [words("Error: inst")] ++
+                color_as_subject([unqual_inst_ctor(InstCtor)]) ++
+                [words("is exported, but the type it is for,")] ++
+                color_as_subject([qual_type_ctor(ForTypeCtor), suffix(",")]) ++
+                color_as_incorrect([words("is not visible"),
+                    words("outside this module.")]) ++
+                [nl],
             VisSpec = spec($pred, severity_error, phase_inst_check,
                 Context, VisPieces),
             VisSpecs = [VisSpec]
@@ -819,16 +826,17 @@ maybe_issue_type_match_error(WarnInstsWithoutMatchingType, InstCtor, InstDefn,
                 EqvSpecs = []
             ;
                 Mismatches0 = [_ | _],
-                EqvPieces = [words("Error: inst"),
-                    unqual_inst_ctor(InstCtor),
-                    words("is declared to be for type"),
-                    qual_type_ctor(ForTypeCtor), suffix(","),
-                    words("but that type is an equivalence type,"),
-                    words("and thus has no function symbols of its own."),
+                EqvPieces = [words("Error: inst")] ++
+                    color_as_subject([unqual_inst_ctor(InstCtor)]) ++
+                    [words("is declared to be for type")] ++
+                    color_as_subject([qual_type_ctor(ForTypeCtor),
+                        suffix(",")]) ++
+                    [words("but that type")] ++
+                    color_as_incorrect([words("is an equivalence type,")]) ++
+                    [words("and thus has no function symbols of its own."),
                     words("Change the inst definition to refer"),
                     words("to the type constructor that"),
-                    qual_type_ctor(ForTypeCtor),
-                    words("expands to."), nl],
+                    qual_type_ctor(ForTypeCtor), words("expands to."), nl],
                 EqvSpec = spec($pred, severity_error, phase_inst_check,
                     Context, EqvPieces),
                 EqvSpecs = [EqvSpec]
@@ -854,14 +862,17 @@ maybe_issue_type_match_error(WarnInstsWithoutMatchingType, InstCtor, InstDefn,
             "function symbol", "function symbols"),
         IsAreNotPhrase = choose_number(Mismatches,
             "is not a function symbol", "are not function symbols"),
-        MismatchConsIdPieces =
-            component_list_to_pieces("and", MismatchConsIdComponents),
-        MismatchPieces = [words("Error: inst"),
-            unqual_inst_ctor(InstCtor), words("is declared to be"),
-            words("for type"), qual_type_ctor(ForTypeCtor), suffix(","),
-            words("but its top level"), words(FuncSymbolPhrase)] ++
+        MismatchConsIdPieces = component_list_to_color_pieces(
+            yes(color_subject), "and", [], MismatchConsIdComponents),
+        MismatchPieces = [words("Error: inst")] ++
+            color_as_subject([unqual_inst_ctor(InstCtor)]) ++
+            [words("is declared to be for type")] ++
+            color_as_subject([qual_type_ctor(ForTypeCtor), suffix(",")]) ++
+            [words("but its top level"), words(FuncSymbolPhrase)] ++
             MismatchConsIdPieces ++
-            [words(IsAreNotPhrase), words("of that type."), nl],
+            color_as_incorrect([words(IsAreNotPhrase),
+                words("of that type.")]) ++
+            [nl],
         (
             NearMisses = [],
             NearMissPieces = []
@@ -877,8 +888,8 @@ maybe_issue_type_match_error(WarnInstsWithoutMatchingType, InstCtor, InstDefn,
                     list.map(project_if_several, NearMisses))
             )
         ),
-        MismatchSpec = spec($pred, severity_error, phase_inst_check,
-            Context, MismatchPieces ++ NearMissPieces),
+        MismatchSpec = spec($pred, severity_error, phase_inst_check, Context,
+            MismatchPieces ++ color_as_possible_cause(NearMissPieces)),
         MismatchSpecs = [MismatchSpec]
     else
         MismatchSpecs = []
@@ -965,9 +976,10 @@ maybe_issue_no_matching_types_warning(WarnInstsWithoutMatchingType,
         (
             PossibleTypes = [],
             Context = InstDefn ^ inst_context,
-            NoMatchPieces = [words("Warning: inst"),
-                unqual_inst_ctor(InstCtor),
-                words("does not match any of the types in scope."), nl],
+            NoMatchPieces = [words("Warning: inst")] ++
+                color_as_subject([unqual_inst_ctor(InstCtor)]) ++
+                color_as_incorrect([words("does not match")]) ++
+                [words("any of the types in scope."), nl],
 
             AllPossibleTypesSet = set.union_list(PossibleTypeSets),
             set.to_sorted_list(AllPossibleTypesSet, AllPossibleTypes),
@@ -1012,24 +1024,32 @@ maybe_issue_no_matching_types_warning(WarnInstsWithoutMatchingType,
                 Context = InstDefn ^ inst_context,
                 (
                     PossibleTypes = [OnePossibleType],
-                    OnePossibleTypeStr =
+                    OnePossibleTypeStr0 =
                         type_defn_or_builtin_to_string(OnePossibleType),
-                    Pieces = [words("Warning: inst"),
-                        unqual_inst_ctor(InstCtor),
-                        words("is exported, but the one type it matches"),
-                        prefix("("), words(OnePossibleTypeStr), suffix(")"),
-                        words("is not visible from outside this module."), nl]
+                    OnePossibleTypeStr = "(" ++ OnePossibleTypeStr0 ++ ")",
+                    Pieces = [words("Warning: inst")] ++
+                        color_as_subject([unqual_inst_ctor(InstCtor)]) ++
+                        [words("is exported, but the one type it matches")] ++
+                        color_as_subject([words(OnePossibleTypeStr)]) ++
+                        [words("is")] ++
+                        color_as_incorrect([words("not visible from"),
+                            words("outside this module.")]) ++
+                        [nl]
                 ;
                     PossibleTypes = [_, _ | _],
                     PossibleTypeStrs = list.map(type_defn_or_builtin_to_string,
                         PossibleTypes),
-                    PossibleTypesStr =
+                    PossibleTypesStr0 =
                         string.join_list(", ", PossibleTypeStrs),
-                    Pieces = [words("Warning: inst"),
-                        unqual_inst_ctor(InstCtor),
-                        words("is exported, but none of the types it matches"),
-                        prefix("("), words(PossibleTypesStr), suffix(")"),
-                        words("are visible from outside this module."), nl]
+                    PossibleTypesStr = "(" ++ PossibleTypesStr0 ++ ")",
+                    Pieces = [words("Warning: inst")] ++
+                        color_as_subject([unqual_inst_ctor(InstCtor)]) ++
+                        [words("is exported, but"),
+                        words("none of the types it matches"),
+                        words(PossibleTypesStr), words("are")] ++
+                        color_as_incorrect([words("visible from"),
+                            words("outside this module.")]) ++
+                        [nl]
                 ),
                 Spec = spec($pred, severity_warning, phase_inst_check,
                     Context, Pieces),
@@ -1095,13 +1115,9 @@ find_mismatches_from_user(_Ctors, _CurNum,
 find_mismatches_from_user(Ctors, CurNum,
         [BoundInst | BoundInsts], !NumMismatches, !PiecesCord) :-
     BoundInst = bound_functor(ConsId, _SubInsts),
-    ( if
-        ConsId = cons(SymName, Arity, _)
-    then
+    ( if ConsId = cons(SymName, Arity, _) then
         FunctorName = unqualify_name(SymName),
-        ( if
-            some_ctor_matches_exactly(Ctors, FunctorName, Arity)
-        then
+        ( if some_ctor_matches_exactly(Ctors, FunctorName, Arity) then
             true
         else
             find_matching_name_wrong_arities(Ctors, FunctorName, Arity,
@@ -1241,15 +1257,18 @@ record_arity_mismatch(CurNum, FunctorName, ActualArity, ExpectedAritiesSet,
         !NumMismatches, !PiecesCord) :-
     !:NumMismatches = !.NumMismatches + 1,
     string.format("In bound functor #%d:", [i(CurNum)], InFunctorStr),
-    list.map(string.int_to_string, ExpectedArities, ExpectedArityStrs),
-    ExpectedArityOrStr = string.join_list("or", ExpectedArityStrs),
-    string.format("function symbol %s has arity %d,",
-        [s(FunctorName), i(ActualArity)], ActualStr),
-    string.format("expected arity was %s.",
-        [s(ExpectedArityOrStr)], ExpectedStr),
+    ExpectedArityPieces = list.map((func(N) = int_fixed(N)), ExpectedArities),
+    ExpectedAritiesPieces = component_list_to_color_pieces(yes(color_correct),
+        "or", [suffix(".")], ExpectedArityPieces),
     set.to_sorted_list(ExpectedAritiesSet, ExpectedArities),
-    Pieces = [words(InFunctorStr), nl, words(ActualStr), nl,
-        words(ExpectedStr), nl],
+    Pieces = [words(InFunctorStr), nl,
+        words("function symbol")] ++
+        color_as_subject([fixed(FunctorName)]) ++
+        color_as_incorrect([words("has arity"), int_fixed(ActualArity),
+            suffix(",")]) ++ [nl] ++
+        color_as_correct([words("expected arity was") |
+            ExpectedAritiesPieces]) ++
+        [nl],
     !:PiecesCord = !.PiecesCord ++ cord.from_list(Pieces).
 
 :- pred record_mismatch(int::in, bound_inst::in, int::in, int::out,
@@ -1260,10 +1279,12 @@ record_mismatch(CurNum, BoundInst, !NumMismatches, !PiecesCord) :-
     BoundInst = bound_functor(ConsId, SubInsts),
     ConsIdStr = mercury_cons_id_to_string(output_mercury,
         does_not_need_brackets, ConsId),
+    list.length(SubInsts, NumSubInsts),
     string.format("In bound functor #%d:", [i(CurNum)], InFunctorStr),
-    string.format("function symbol is %s/%d.",
-        [s(ConsIdStr), i(list.length(SubInsts))], ActualStr),
-    Pieces = [words(InFunctorStr), nl, words(ActualStr), nl],
+    string.format("%s/%d.", [s(ConsIdStr), i(NumSubInsts)], ActualStr),
+    Pieces = [words(InFunctorStr), nl,
+        words("function symbol is")] ++
+        color_as_incorrect([words(ActualStr)]) ++ [nl],
     !:PiecesCord = !.PiecesCord ++ cord.from_list(Pieces).
 
 %---------------------------------------------------------------------------%

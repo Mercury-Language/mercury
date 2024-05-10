@@ -2429,8 +2429,8 @@ report_coverage_error(ClassId, InstanceDefn, Vars, !Specs) :-
     VarToPiece =
         (func(V) = quote(mercury_var_to_name_only_vs(TVarSet, V))),
     VarPieces = list.map(VarToPiece, Vars),
-    VarsPieces =
-        component_list_to_color_pieces(yes(color_subject), "and", VarPieces),
+    VarsPieces = component_list_to_color_pieces(yes(color_subject),
+        "and", [], VarPieces),
     Pieces = [words("In instance for typeclass"),
         unqual_class_id(ClassId), suffix(":"), nl,
         words("functional dependency not satisfied:")] ++

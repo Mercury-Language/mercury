@@ -546,7 +546,7 @@
     %
 :- func list_to_pieces(list(string)) = list(format_piece).
 
-    % list_to_colored_pieces(MaybeColor, LastSepWord, LastColorSuffix, Strings)
+    % list_to_color_pieces(MaybeColor, LastSepWord, LastColorSuffix, Strings)
     %   = Pieces:
     %
     % A version of list_to_pieces that
@@ -558,7 +558,7 @@
     %   including the comma following it, if it has one, and the specified
     %   LastColorSuffix for the last string.
     %
-:- func list_to_colored_pieces(maybe(color_name), string,
+:- func list_to_color_pieces(maybe(color_name), string,
     list(format_piece), list(string)) = list(format_piece).
 
     % Convert a list of strings into a list of format_pieces
@@ -596,11 +596,20 @@
 :- func component_list_to_pieces(string, list(format_piece)) =
     list(format_piece).
 
-    % This is a version of component_list_to_pieces that applies
-    % the supplied color, if any, to each component.
+    % component_list_to_color_pieces(MaybeColor, LastSepWord,
+    %   LastColorSuffix, ComponentPieces) = Pieces:
+    %
+    % A version of component_list_to_pieces that
+    %
+    % - uses the user-specified LastSepWord as the separator between
+    %   the last two component pieces, and
+    %
+    % - allows the specification of a color to be applied to each component
+    %   piece, including the comma following it, if it has one, and the
+    %   specified LastColorSuffix for the last string.
     %
 :- func component_list_to_color_pieces(maybe(color_name), string,
-    list(format_piece)) = list(format_piece).
+    list(format_piece), list(format_piece)) = list(format_piece).
 
     % Convert a list of format_pieces into a list of format_pieces
     % separated by commas. Even the last pair of list elements will be
@@ -744,7 +753,7 @@ list_to_pieces([Elem1, Elem2]) = [fixed(Elem1), words("and"), fixed(Elem2)].
 list_to_pieces([Elem1, Elem2, Elem3 | Elems]) =
     [fixed(Elem1 ++ ",") | list_to_pieces([Elem2, Elem3 | Elems])].
 
-list_to_colored_pieces(MaybeColor, LastSepWord, LastColorSuffix, Strings)
+list_to_color_pieces(MaybeColor, LastSepWord, LastColorSuffix, Strings)
         = Pieces :-
     ItemToPieces =
         (pred(Str::in, ItemPieces::out) is det :- ItemPieces = [fixed(Str)]),
@@ -796,17 +805,16 @@ component_list_to_pieces(LastSep, [Comp1, Comp2, Comp3 | Comps]) =
     [Comp1, suffix(",")]
     ++ component_list_to_pieces(LastSep, [Comp2, Comp3 | Comps]).
 
-component_list_to_color_pieces(_, _, []) = [].
-component_list_to_color_pieces(MaybeColor, _, [Comp]) =
-    maybe_color_pieces(MaybeColor, [Comp]).
-component_list_to_color_pieces(MaybeColor, LastSep, [Comp1, Comp2]) =
-    maybe_color_pieces(MaybeColor, [Comp1]) ++ [words(LastSep)] ++
-    maybe_color_pieces(MaybeColor, [Comp2]).
-component_list_to_color_pieces(MaybeColor, LastSep,
-        [Comp1, Comp2, Comp3 | Comps]) =
-    maybe_color_pieces(MaybeColor, [Comp1, suffix(",")])
-    ++ component_list_to_color_pieces(MaybeColor, LastSep,
-        [Comp2, Comp3 | Comps]).
+component_list_to_color_pieces(MaybeColor, LastSepWord, LastColorSuffix,
+        ComponentPieces) = Pieces :-
+    ItemToPieces =
+        ( pred(ItemPiece::in, ItemPieces::out) is det :-
+            ItemPieces = [ItemPiece]
+        ),
+    NonLastSep = [suffix(",")],
+    LastSep = [words(LastSepWord)],
+    general_list_to_pieces(ItemToPieces, MaybeColor, NonLastSep, LastSep,
+        LastColorSuffix, ComponentPieces, Pieces).
 
 %---------------------------------------------------------------------------%
 
