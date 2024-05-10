@@ -56,7 +56,7 @@ BORING_SINGLEMODULE_PROGS = \
 	abstract_solver_type \
 	actual_expected \
 	actual_more_expected \
-	ambiguous_method \
+	ambiguous_method_1 \
 	ambiguous_method_2 \
 	ambiguous_overloading_error \
 	any_mode \
@@ -101,19 +101,19 @@ BORING_SINGLEMODULE_PROGS = \
 	bug83 \
 	builtin_proc \
 	char_inst \
-	circ_inst \
-	circ_inst2 \
-	circ_inst3 \
-	circ_inst4 \
-	circ_inst5 \
-	circ_mode \
-	circ_mode2 \
-	circ_mode3 \
-	circ_mode4 \
-	circ_type \
-	circ_type2 \
-	circ_type3 \
-	circ_type5 \
+	circ_inst_1 \
+	circ_inst_2 \
+	circ_inst_3 \
+	circ_inst_4 \
+	circ_inst_5 \
+	circ_mode_1 \
+	circ_mode_2 \
+	circ_mode_3 \
+	circ_mode_4 \
+	circ_type_1 \
+	circ_type_2 \
+	circ_type_3 \
+	circ_type_5 \
 	coerce_ambig \
 	coerce_clobbered \
 	coerce_disambig \
@@ -138,11 +138,11 @@ BORING_SINGLEMODULE_PROGS = \
 	constraint_proof_bug_lib \
 	constructor_warning \
 	currying_multimode_func \
-	cyclic_typeclass \
+	cyclic_typeclass_1 \
 	cyclic_typeclass_2 \
 	cyclic_typeclass_3 \
 	dcg_context \
-	default_ho_inst \
+	default_ho_inst_1 \
 	default_ho_inst_2 \
 	det_atomic_goal_msgs \
 	det_errors \
@@ -168,7 +168,7 @@ BORING_SINGLEMODULE_PROGS = \
 	foreign_type_visibility \
 	fp_dup_bug \
 	freefree \
-	functor_ho_inst_bad \
+	functor_ho_inst_bad_1 \
 	functor_ho_inst_bad_2 \
 	functor_ho_inst_bad_3 \
 	fundeps_coverage \
@@ -241,7 +241,7 @@ BORING_SINGLEMODULE_PROGS = \
 	polymorphic_unification \
 	pragma_c_code_dup_var \
 	pragma_c_code_no_det \
-	promise_equivalent_solutions_test \
+	promise_equivalent_solutions_test_1 \
 	promise_equivalent_solutions_test_2 \
 	qual_basic_test2 \
 	qualified_cons_id2 \
@@ -258,11 +258,11 @@ BORING_SINGLEMODULE_PROGS = \
 	require_scopes \
 	require_switch_arms_detism \
 	spurious_mode_error \
-	state_vars_test1 \
-	state_vars_test2 \
-	state_vars_test3 \
-	state_vars_test4 \
-	state_vars_test5 \
+	state_vars_test_1 \
+	state_vars_test_2 \
+	state_vars_test_3 \
+	state_vars_test_4 \
+	state_vars_test_5 \
 	string_format_bad \
 	string_format_unknown \
 	subtype_abstract \
@@ -272,8 +272,8 @@ BORING_SINGLEMODULE_PROGS = \
 	subtype_exist_constraints \
 	subtype_exist_vars \
 	subtype_foreign \
-	subtype_foreign_supertype \
-	subtype_foreign_supertype2 \
+	subtype_foreign_supertype_1 \
+	subtype_foreign_supertype_2 \
 	subtype_ho \
 	subtype_not_subset \
 	subtype_user_compare \
@@ -300,12 +300,12 @@ BORING_SINGLEMODULE_PROGS = \
 	typeclass_bogus_method \
 	typeclass_constraint_extra_var \
 	typeclass_dup_method_mode \
-	typeclass_missing_det \
+	typeclass_missing_det_1 \
 	typeclass_missing_det_2 \
 	typeclass_missing_det_3 \
-	typeclass_missing_mode \
+	typeclass_missing_mode_1 \
 	typeclass_missing_mode_2 \
-	typeclass_mode \
+	typeclass_mode_1 \
 	typeclass_mode_2 \
 	typeclass_mode_3 \
 	typeclass_mode_4 \
@@ -318,7 +318,7 @@ BORING_SINGLEMODULE_PROGS = \
 	typeclass_test_7 \
 	typeclass_test_8 \
 	typeclass_test_9 \
-	types2	\
+	types2 \
 	undeclared_mode \
 	undef_impl_def_literal \
 	undef_lambda_mode \
@@ -334,8 +334,8 @@ BORING_SINGLEMODULE_PROGS = \
 	unsatisfiable_super \
 	user_eq_dummy \
 	user_field_access_decl_conflict \
-	user_field_access_decl_override \
-	user_field_access_decl_override2 \
+	user_field_access_decl_override_1 \
+	user_field_access_decl_override_2 \
 	wrong_arity_function \
 	wrong_type_arity
 

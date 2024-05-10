@@ -1,0 +1,7 @@
+state_vars_test_2.m:018: Warning: the condition of this if-then-else [38;5;203mcannot[39;49m
+state_vars_test_2.m:018:   [38;5;203mfail.[39;49m
+state_vars_test_2.m:019: Error: state variable [38;5;203m!:Y[39;49m is not visible in this
+state_vars_test_2.m:019:   context.
+state_vars_test_2.m:019: In clause for predicate `p'/2:
+state_vars_test_2.m:019:   warning: [38;5;87mvariable `Y'[39;49m [38;5;203moccurs only once[39;49m in this
+state_vars_test_2.m:019:   scope.

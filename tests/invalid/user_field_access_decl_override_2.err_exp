@@ -1,0 +1,38 @@
+user_field_access_decl_override_2.m:030: In clause for function `get_foo_f1'/1:
+user_field_access_decl_override_2.m:030:   in unification of [38;5;87mvariable `X'[39;49m
+user_field_access_decl_override_2.m:030:   and term [38;5;87m`f1(Foo)':[39;49m
+user_field_access_decl_override_2.m:030:   type error in argument of functor
+user_field_access_decl_override_2.m:030:   `f1'/1.
+user_field_access_decl_override_2.m:030:   [38;5;87mArgument 1 (Foo)[39;49m has type
+user_field_access_decl_override_2.m:030:     [38;5;203msome [T] ([39;49m
+user_field_access_decl_override_2.m:030:       [38;5;203muser_field_access_decl_override_2.foo([39;49m
+user_field_access_decl_override_2.m:030:         [38;5;203mT[39;49m
+user_field_access_decl_override_2.m:030:       [38;5;203m)[39;49m
+user_field_access_decl_override_2.m:030:     [38;5;203m),[39;49m
+user_field_access_decl_override_2.m:030:   expected type was
+user_field_access_decl_override_2.m:030:     [38;5;40muser_field_access_decl_override_2.foo([39;49m
+user_field_access_decl_override_2.m:030:       [38;5;40mint[39;49m
+user_field_access_decl_override_2.m:030:     [38;5;40m).[39;49m
+user_field_access_decl_override_2.m:037: In clause for predicate
+user_field_access_decl_override_2.m:037:   `set_foo_f1'/3:
+user_field_access_decl_override_2.m:037:   type error in unification of
+user_field_access_decl_override_2.m:037:   variable `STATE_VARIABLE_Foo'
+user_field_access_decl_override_2.m:037:   and functor `f1 :='/2.
+user_field_access_decl_override_2.m:037:   [38;5;87mvariable `STATE_VARIABLE_Foo'[39;49m has
+user_field_access_decl_override_2.m:037:   type
+user_field_access_decl_override_2.m:037:     [38;5;203msome [T] ([39;49m
+user_field_access_decl_override_2.m:037:       [38;5;203muser_field_access_decl_override_2.foo([39;49m
+user_field_access_decl_override_2.m:037:         [38;5;203mT[39;49m
+user_field_access_decl_override_2.m:037:       [38;5;203m)[39;49m
+user_field_access_decl_override_2.m:037:     [38;5;203m),[39;49m
+user_field_access_decl_override_2.m:037:   [38;5;87mfunctor `f1 :='/2[39;49m has type
+user_field_access_decl_override_2.m:037:     [38;5;40m`f1 :='([39;49m
+user_field_access_decl_override_2.m:037:       [38;5;40muser_field_access_decl_override_2.foo([39;49m
+user_field_access_decl_override_2.m:037:         [38;5;40mint[39;49m
+user_field_access_decl_override_2.m:037:       [38;5;40m),[39;49m
+user_field_access_decl_override_2.m:037:       [38;5;40mint[39;49m
+user_field_access_decl_override_2.m:037:     [38;5;40m):[39;49m
+user_field_access_decl_override_2.m:037:     [38;5;40muser_field_access_decl_override_2.foo([39;49m
+user_field_access_decl_override_2.m:037:       [38;5;40mint[39;49m
+user_field_access_decl_override_2.m:037:     [38;5;40m).[39;49m
+For more information, recompile with `-E'.

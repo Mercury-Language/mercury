@@ -1,0 +1,2 @@
+circ_type_5.m:012: Error: circular equivalence type `circ_type_5.c'/1.
+circ_type_5.m:013: Error: circular equivalence type `circ_type_5.c'/0.

@@ -1,0 +1,8 @@
+circ_mode_3.m:014: Error: mode name `circ'/0 expands to a mode containing
+circ_mode_3.m:014:   itself, which means that processing any reference to it
+circ_mode_3.m:014:   would require an infinite sequence of expansions.
+circ_mode_3.m:016: Error: mode name `circ1'/0 expands to a mode containing
+circ_mode_3.m:016:   itself through `circ2'/0, which means that processing any
+circ_mode_3.m:016:   reference to it would require an infinite sequence of
+circ_mode_3.m:016:   expansions.
+circ_mode_3.m:018:   The definition of `circ2'/0 is here.

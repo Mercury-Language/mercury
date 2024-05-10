@@ -1,0 +1,8 @@
+circ_type_2.m:016: Error: circular equivalence type `circ_type_2.circ1'/1.
+circ_type_2.m:017: Error: circular equivalence type `circ_type_2.circ2'/1.
+circ_type_2.m:018: Error: circular equivalence type `circ_type_2.circ3'/1.
+circ_type_2.m:019: Error: circular equivalence type `circ_type_2.circ4'/1.
+circ_type_2.m:021: Error: circular equivalence type `circ_type_2.left'/1.
+circ_type_2.m:022: Error: circular equivalence type `circ_type_2.right'/1.
+circ_type_2.m:024: Error: circular equivalence type `circ_type_2.circ_left'/1.
+circ_type_2.m:025: Error: circular equivalence type `circ_type_2.circ_right'/1.

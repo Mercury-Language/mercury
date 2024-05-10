@@ -35,6 +35,7 @@ MCFLAGS-foreign_decl_line_number = --no-errorcheck-only --line-numbers \
 MCFLAGS-foreign_enum_invalid    = --verbose-error-messages
 MCFLAGS-foreign_type_line_number = --no-errorcheck-only --line-numbers \
                                     --compile-only
+# XXX There is no foreign_type.m.
 MCFLAGS-foreign_type            = --compile-only
 MCFLAGS-foreign_type_2          = --no-intermodule-optimization
 MCFLAGS-foreign_type_visibility = --no-intermodule-optimization
@@ -90,7 +91,7 @@ MCFLAGS-typeclass_mode          = --infer-all
 MCFLAGS-undef_symbol            = --no-intermodule-optimization
 
 # Include the verbose part of the error message where we have one.
-MCFLAGS-ambiguous_method        = --verbose-error-messages
+MCFLAGS-ambiguous_method_1      = --verbose-error-messages
 MCFLAGS-anys_in_negated_contexts = --verbose-error-messages
 MCFLAGS-bind_in_negated         = --verbose-error-messages
 MCFLAGS-bug83                   = --verbose-error-messages

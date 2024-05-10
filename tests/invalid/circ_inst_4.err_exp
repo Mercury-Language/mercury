@@ -1,0 +1,14 @@
+circ_inst_4.m:015: Error: inst name `circ1'/1 expands to an inst containing
+circ_inst_4.m:015:   itself, which means that processing any reference to it
+circ_inst_4.m:015:   would require an infinite sequence of expansions.
+circ_inst_4.m:016: Error: inst name `circ2'/1 expands to an inst containing
+circ_inst_4.m:016:   itself, which means that processing any reference to it
+circ_inst_4.m:016:   would require an infinite sequence of expansions.
+circ_inst_4.m:018: Error: inst name `circ4'/1 expands to an inst containing
+circ_inst_4.m:018:   itself, which means that processing any reference to it
+circ_inst_4.m:018:   would require an infinite sequence of expansions.
+circ_inst_4.m:020: Error: inst name `left'/1 expands to an inst containing
+circ_inst_4.m:020:   itself through `right'/1, which means that processing any
+circ_inst_4.m:020:   reference to it would require an infinite sequence of
+circ_inst_4.m:020:   expansions.
+circ_inst_4.m:021:   The definition of `right'/1 is here.

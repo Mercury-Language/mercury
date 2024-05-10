@@ -1,2 +1,0 @@
-subtype_foreign_supertype.m:013: Error: `fruit'/0 cannot be a supertype because
-subtype_foreign_supertype.m:013:   it is a foreign type.
