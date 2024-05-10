@@ -108,13 +108,11 @@ insts_add(VarSet, InstSymName, InstParams, MaybeForType, eqv_inst(EqvInst),
             Here = inst_status_defined_in_this_module(InstStatus),
             (
                 Here = yes,
-                ShortInstSymName = unqualified(unqualify_name(InstSymName)),
-                Pieces = [words("Warning: inst"),
-                    qual_sym_name_arity(
-                        sym_name_arity(ShortInstSymName, InstArity)),
-                    words("includes references to function symbols,"),
-                    words("but does not declare what type constructor"),
-                    words("it is for."), nl],
+                SNA = sym_name_arity(InstSymName, InstArity),
+                Pieces = [words("Warning: inst"), unqual_sym_name_arity(SNA),
+                    words("includes references to function symbols, but")] ++
+                    color_as_incorrect([words("does not declare")]) ++
+                    [words("what type constructor it is for."), nl],
                 Option = warn_insts_with_functors_without_type,
                 Spec = conditional_spec($pred, Option, yes, severity_warning,
                     phase_pt2h, [msg(Context, Pieces)]),
@@ -140,10 +138,14 @@ insts_add(VarSet, InstSymName, InstParams, MaybeForType, eqv_inst(EqvInst),
             MaybeForType = yes(_ForType),
             inst_status_defined_in_this_module(InstStatus) = yes
         then
-            Pieces = [words("Error: inst"), unqual_inst_ctor(InstCtor),
-                words("is specified to be for a given type constructor,"),
-                words("but it is not defined to be equivalent to a"),
-                quote("bound"), words("inst."), nl],
+            Pieces = [words("Error: inst")] ++
+                color_as_subject([unqual_inst_ctor(InstCtor)]) ++
+                [words("is specified to be for a given type constructor,"),
+                words("but")] ++
+                color_as_incorrect([words("it is not defined to be"),
+                    words("equivalent to a"), quote("bound"),
+                    words("inst.")]) ++
+                [nl],
             Spec = spec($pred, severity_error, phase_pt2h, Context, Pieces),
             !:Specs = [Spec | !.Specs]
         else
@@ -157,7 +159,6 @@ insts_add(VarSet, InstSymName, InstParams, MaybeForType, eqv_inst(EqvInst),
     else
         % If abstract insts are implemented, this will need to change
         % to update the hlds_inst_defn to the non-abstract inst.
-
         InstStatus = inst_status(InstModeStatus),
         ReportDup = should_report_duplicate_inst_or_mode(InstModeStatus),
         (
@@ -433,9 +434,9 @@ cycle_to_error_spec(ModuleInfo, InstOrMode, Cycle, Spec) :-
         ;
             OtherSNAsContexts = [HeadOtherSNAContext | TailOtherSNAsContexts],
             HeadOtherSNAContext = _HeadSNA - HeadContext,
-            other_sna_and_context_to_piece(HeadOtherSNAContext, HeadSNAPiece),
-            list.map(other_sna_and_context_to_piece,
-                TailOtherSNAsContexts, LaterSNAPieces),
+            HeadSNAPiece = sna_and_context_to_piece(HeadOtherSNAContext),
+            LaterSNAPieces =
+                list.map(sna_and_context_to_piece, TailOtherSNAsContexts),
             ContextMsgs = []
         )
     ;
@@ -446,20 +447,27 @@ cycle_to_error_spec(ModuleInfo, InstOrMode, Cycle, Spec) :-
         list.map2(
             local_sna_and_context_to_piece_and_msg(ModuleInfo, InstOrMode),
             TailLocalSNAsContexts, TailLocalSNAPieces, ContextMsgs),
-        list.map(other_sna_and_context_to_piece,
-            OtherSNAsContexts, OtherSNAPieces),
+        OtherSNAPieces = list.map(sna_and_context_to_piece, OtherSNAsContexts),
         LaterSNAPieces = TailLocalSNAPieces ++ OtherSNAPieces
     ),
-    PreludePieces = [words("Error:"),
-        words(InstOrModeWord), words("name"), HeadSNAPiece,
-        words("expands to"), words(AnInstOrModeWord),
-        words("containing itself")],
+    (
+        LaterSNAPieces = [],
+        EndPreludeMaybeComma = [suffix(",")]
+    ;
+        LaterSNAPieces = [_ | _],
+        EndPreludeMaybeComma = []
+    ),
+    PreludePieces = [words("Error:")] ++
+        color_as_subject([words(InstOrModeWord), words("name"),
+            HeadSNAPiece]) ++
+        color_as_incorrect([words("expands to"), words(AnInstOrModeWord),
+            words("containing itself")] ++ EndPreludeMaybeComma),
     ConsequencePieces = [words("which means that"),
         words("processing any reference to it"),
         words("would require an infinite sequence of expansions."), nl],
     (
         LaterSNAPieces = [],
-        HeadPieces = PreludePieces ++ [suffix(",")] ++ ConsequencePieces
+        HeadPieces = PreludePieces ++ ConsequencePieces
     ;
         LaterSNAPieces = [LaterSNAPiece],
         HeadPieces = PreludePieces ++
@@ -522,11 +530,11 @@ local_sna_and_context_to_piece_and_msg(ModuleInfo, InstOrMode, SNA - Context,
     MsgPieces = [words("The definition of"), SNAPiece, words("is here."), nl],
     Msg = msg(Context, MsgPieces).
 
-:- pred other_sna_and_context_to_piece(pair(sym_name_arity, prog_context)::in,
-    format_piece::out) is det.
+:- func sna_and_context_to_piece(pair(sym_name_arity, prog_context))
+    = format_piece.
 
-other_sna_and_context_to_piece(SNA - _Context, SNAPiece) :-
-    SNAPiece = qual_sym_name_arity(SNA).
+sna_and_context_to_piece(SNA - _Context) = Piece :-
+    Piece = qual_sym_name_arity(SNA).
 
 :- func make_singleton_list(T) = list(T).
 

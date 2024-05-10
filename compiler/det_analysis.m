@@ -1118,9 +1118,10 @@ det_infer_call(PredId, ProcId0, ProcId, ArgVars, GoalInfo, SolnContext,
                 should_module_qualify, PredId),
             FirstPieces = [words("Error: call to")] ++ PredPieces ++
                 [words("with determinism"),
-                quote(mercury_det_to_string(Detism0)),
-                words("occurs in a context which requires all solutions."),
-                nl],
+                quote(mercury_det_to_string(Detism0))] ++
+                color_as_incorrect([words("occurs in a context"),
+                    words("which requires all solutions.")]) ++
+                [nl],
             ContextMsgs = failing_contexts_description(ModuleInfo, VarTable,
                 RightFailingContexts),
             Spec = error_spec($pred, severity_error, phase_detism_check,
@@ -1165,8 +1166,10 @@ det_infer_generic_call(GenericCall, CallDetism, GoalInfo,
         % Class method calls are only introduced by polymorphism.
         det_info_get_var_table(!.DetInfo, VarTable),
         FirstPieces = [words("Error: higher-order call to predicate with"),
-            words("determinism"), quote(mercury_det_to_string(CallDetism)),
-            words("occurs in a context which requires all solutions."), nl],
+            words("determinism"), quote(mercury_det_to_string(CallDetism))] ++
+            color_as_incorrect([words("occurs in a context"),
+                words("which requires all solutions.")]) ++
+            [nl],
         det_info_get_module_info(!.DetInfo, ModuleInfo),
         ContextMsgs = failing_contexts_description(ModuleInfo, VarTable,
             RightFailingContexts),
@@ -1239,9 +1242,10 @@ det_infer_foreign_proc(Attributes, PredId, ProcId, _PragmaCode,
             WrongContextFirstPieces = [words("Error: call to")] ++
                 WrongContextPredPieces ++
                 [words("with determinism"),
-                quote(mercury_det_to_string(Detism0)),
-                words("occurs in a context which requires all solutions."),
-                nl],
+                quote(mercury_det_to_string(Detism0))] ++
+                color_as_incorrect([words("occurs in a context"),
+                    words("which requires all solutions.")]) ++
+                [nl],
             ContextMsgs = failing_contexts_description(ModuleInfo, VarTable,
                 RightFailingContexts),
             Spec = error_spec($pred, severity_error, phase_detism_check,
@@ -1633,7 +1637,9 @@ det_infer_scope(Reason, Goal0, Goal, GoalInfo, InstMap0, SolnContext,
                 PESSInfo = pess_info(OuterVars, OuterContext),
                 NestedPieces = [words("Error: "),
                     quote("promise_equivalent_solution_sets"),
-                    words("scope is nested inside another.")],
+                    words("scope is")] ++
+                    color_as_incorrect([words("nested")]) ++
+                    [words("inside another."), nl],
                 NestedOuterPieces = [words("This is the outer"),
                     quote("promise_equivalent_solution_sets"),
                     words("scope."), nl],
@@ -1653,9 +1659,10 @@ det_infer_scope(Reason, Goal0, Goal, GoalInfo, InstMap0, SolnContext,
             Kind = equivalent_solution_sets_arbitrary,
             (
                 MaybePromiseEqvSolutionSets0 = no,
-                ArbitraryPieces = [words("Error: "),
-                    words("this"), quote("arbitrary"),
-                    words("scope is not nested inside a"),
+                ArbitraryPieces = [words("Error: "), words("this"),
+                    quote("arbitrary"), words("scope is")] ++
+                    color_as_incorrect([words("not nested")]) ++
+                    [words("inside a"),
                     quote("promise_equivalent_solution_sets"),
                     words("scope."), nl],
                 ArbitrarySpec = spec($pred, severity_error,
@@ -1673,6 +1680,9 @@ det_infer_scope(Reason, Goal0, Goal, GoalInfo, InstMap0, SolnContext,
                     OverlapVarNames = list.map(
                         mercury_var_to_string(VarTable, print_name_only),
                         set_of_var.to_sorted_list(OverlapVars)),
+                    OverlapVarDotPieces = list_to_colored_pieces(
+                        yes(color_subject), "and",  [suffix(".")],
+                        OverlapVarNames),
                     (
                         OverlapVarNames = [],
                         unexpected($pred, "arbitrary_promise_overlap empty")
@@ -1686,9 +1696,10 @@ det_infer_scope(Reason, Goal0, Goal, GoalInfo, InstMap0, SolnContext,
                     OverlapPieces = [words("Error: this"), quote("arbitrary"),
                         words("scope and the"),
                         quote("promise_equivalent_solution_sets"),
-                        words("scope it is nested inside overlap on"),
-                        words(OverlapVarStr)] ++
-                        list_to_pieces(OverlapVarNames) ++ [suffix("."), nl],
+                        words("scope it is nested inside")] ++
+                        color_as_incorrect([words("overlap")]) ++
+                        [words("on"), words(OverlapVarStr)] ++
+                        OverlapVarDotPieces ++ [nl],
                     OverlapPromisePieces = [words("This is the outer"),
                         quote("promise_equivalent_solution_sets"),
                         words("scope."), nl],
@@ -1726,6 +1737,9 @@ det_infer_scope(Reason, Goal0, Goal, GoalInfo, InstMap0, SolnContext,
             MissingVarNames = list.map(
                 mercury_var_to_string(VarTable, print_name_only),
                 set_of_var.to_sorted_list(MissingVars)),
+            MissingVarDotPieces = list_to_colored_pieces(
+                yes(color_subject), "and",  [suffix(".")],
+                MissingVarNames),
             MissingKindStr = promise_solutions_kind_str(Kind),
             (
                 MissingVarNames = [],
@@ -1741,15 +1755,16 @@ det_infer_scope(Reason, Goal0, Goal, GoalInfo, InstMap0, SolnContext,
                 set_of_var.member(MissingVars, MissingVar),
                 set_of_var.member(AnyBoundVars, MissingVar)
             then
-                BindsWords = "goal may constrain"
+                Binds = "may constrain"
             else
-                BindsWords = "goal binds"
+                Binds = "binds"
             ),
             MissingPieces = [words("Error: the"), quote(MissingKindStr),
-                words(BindsWords), words(MissingListStr)]
-                ++ list_to_pieces(MissingVarNames) ++ [suffix("."), nl],
-            MissingSpec = spec($pred, severity_error,
-                phase_detism_check, Context, MissingPieces),
+                words("goal")] ++
+                color_as_incorrect([words(Binds), words(MissingListStr)]) ++
+                MissingVarDotPieces ++ [nl],
+            MissingSpec = spec($pred, severity_error, phase_detism_check,
+                Context, MissingPieces),
             det_info_add_error_spec(MissingSpec, !DetInfo)
         ),
         % Which vars were listed in the promise_equivalent_solutions
@@ -1767,6 +1782,9 @@ det_infer_scope(Reason, Goal0, Goal, GoalInfo, InstMap0, SolnContext,
             ExtraVarNames = list.map(
                 mercury_var_to_string(VarTable, print_name_only),
                 set_of_var.to_sorted_list(ExtraVars)),
+            ExtraVarDotPieces = list_to_colored_pieces(
+                yes(color_subject), "and",  [suffix(".")],
+                ExtraVarNames),
             ExtraKindStr = promise_solutions_kind_str(Kind),
             (
                 ExtraVarNames = [],
@@ -1779,8 +1797,9 @@ det_infer_scope(Reason, Goal0, Goal, GoalInfo, InstMap0, SolnContext,
                 ExtraListStr = "some extra variables:"
             ),
             ExtraPieces = [words("Error: the"), quote(ExtraKindStr),
-                words("goal lists"), words(ExtraListStr)] ++
-                list_to_pieces(ExtraVarNames) ++ [suffix("."), nl],
+                words("goal")] ++
+                color_as_incorrect([words("lists"), words(ExtraListStr)]) ++
+                ExtraVarDotPieces ++ [nl],
             ExtraSpec = spec($pred, severity_error,
                 phase_detism_check, Context, ExtraPieces),
             det_info_add_error_spec(ExtraSpec, !DetInfo)

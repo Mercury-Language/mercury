@@ -5,8 +5,8 @@ try_detism.m:016:   The reason for the difference is the following.
 try_detism.m:023:   In argument 1 of call to predicate `try_detism.q'/3:
 try_detism.m:023:   [38;5;226munification with `X' can fail.[39;49m
 try_detism.m:022: Error: call to predicate `exception.magic_exception_result'/1
-try_detism.m:022:   with determinism `cc_multi' occurs in a context which
-try_detism.m:022:   requires all solutions.
+try_detism.m:022:   with determinism `cc_multi' [38;5;203moccurs in a context which[39;49m
+try_detism.m:022:   [38;5;203mrequires all solutions.[39;49m
 try_detism.m:023:   Unification of X and V_17 can fail.
 try_detism.m:022: In clause for `p(out, di, uo)':
 try_detism.m:022:   in call to predicate `exception.try_io'/4:

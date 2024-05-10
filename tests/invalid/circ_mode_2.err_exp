@@ -1,11 +1,11 @@
-circ_mode_2.m:015: Error: mode name `circ1'/1 expands to a mode containing
-circ_mode_2.m:015:   itself, which means that processing any reference to it
+circ_mode_2.m:015: Error: [38;5;87mmode name `circ1'/1[39;49m [38;5;203mexpands to a mode containing[39;49m
+circ_mode_2.m:015:   [38;5;203mitself,[39;49m which means that processing any reference to it
 circ_mode_2.m:015:   would require an infinite sequence of expansions.
-circ_mode_2.m:016: Error: mode name `circ2'/1 expands to a mode containing
-circ_mode_2.m:016:   itself, which means that processing any reference to it
+circ_mode_2.m:016: Error: [38;5;87mmode name `circ2'/1[39;49m [38;5;203mexpands to a mode containing[39;49m
+circ_mode_2.m:016:   [38;5;203mitself,[39;49m which means that processing any reference to it
 circ_mode_2.m:016:   would require an infinite sequence of expansions.
-circ_mode_2.m:018: Error: mode name `left'/1 expands to a mode containing
-circ_mode_2.m:018:   itself through `right'/1, which means that processing any
+circ_mode_2.m:018: Error: [38;5;87mmode name `left'/1[39;49m [38;5;203mexpands to a mode containing[39;49m
+circ_mode_2.m:018:   [38;5;203mitself[39;49m through `right'/1, which means that processing any
 circ_mode_2.m:018:   reference to it would require an infinite sequence of
 circ_mode_2.m:018:   expansions.
 circ_mode_2.m:019:   The definition of `right'/1 is here.

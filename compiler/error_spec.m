@@ -546,7 +546,7 @@
     %
 :- func list_to_pieces(list(string)) = list(format_piece).
 
-    % list_to_colored_pieces(MaybeColor, LastSepWord, LastColorSuffix, String)
+    % list_to_colored_pieces(MaybeColor, LastSepWord, LastColorSuffix, Strings)
     %   = Pieces:
     %
     % A version of list_to_pieces that
@@ -744,14 +744,14 @@ list_to_pieces([Elem1, Elem2]) = [fixed(Elem1), words("and"), fixed(Elem2)].
 list_to_pieces([Elem1, Elem2, Elem3 | Elems]) =
     [fixed(Elem1 ++ ",") | list_to_pieces([Elem2, Elem3 | Elems])].
 
-list_to_colored_pieces(MaybeColor, LastSepWord, LastColorSuffix, Items)
+list_to_colored_pieces(MaybeColor, LastSepWord, LastColorSuffix, Strings)
         = Pieces :-
     ItemToPieces =
         (pred(Str::in, ItemPieces::out) is det :- ItemPieces = [fixed(Str)]),
     NonLastSep = [suffix(",")],
     LastSep = [words(LastSepWord)],
     general_list_to_pieces(ItemToPieces, MaybeColor, NonLastSep, LastSep,
-        LastColorSuffix, Items, Pieces).
+        LastColorSuffix, Strings, Pieces).
 
 strict_list_to_pieces([]) = [].
 strict_list_to_pieces([Elem]) = [fixed(Elem)].

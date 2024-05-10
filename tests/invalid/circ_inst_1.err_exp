@@ -1,8 +1,8 @@
-circ_inst_1.m:012: Error: inst name `circ'/0 expands to an inst containing
-circ_inst_1.m:012:   itself, which means that processing any reference to it
+circ_inst_1.m:012: Error: [38;5;87minst name `circ'/0[39;49m [38;5;203mexpands to an inst containing[39;49m
+circ_inst_1.m:012:   [38;5;203mitself,[39;49m which means that processing any reference to it
 circ_inst_1.m:012:   would require an infinite sequence of expansions.
-circ_inst_1.m:014: Error: inst name `circ1'/0 expands to an inst containing
-circ_inst_1.m:014:   itself through `circ2'/0, which means that processing any
+circ_inst_1.m:014: Error: [38;5;87minst name `circ1'/0[39;49m [38;5;203mexpands to an inst containing[39;49m
+circ_inst_1.m:014:   [38;5;203mitself[39;49m through `circ2'/0, which means that processing any
 circ_inst_1.m:014:   reference to it would require an infinite sequence of
 circ_inst_1.m:014:   expansions.
 circ_inst_1.m:016:   The definition of `circ2'/0 is here.
