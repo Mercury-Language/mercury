@@ -1,2 +1,2 @@
 typeclass_mode.m:009: Error: mode declaration for type class method predicate
-typeclass_mode.m:009:   `p'/1 without corresponding predicate declaration.
+typeclass_mode.m:009:   [38;5;87m`p'/1[39;49m [38;5;203mwithout corresponding predicate declaration.[39;49m

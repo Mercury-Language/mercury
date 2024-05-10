@@ -1,4 +1,4 @@
 typeclass_mode_3.m:008: Error: no mode declaration for exported predicate
 typeclass_mode_3.m:008:   `typeclass_mode_3.p'/1.
 typeclass_mode_3.m:011: Error: mode declaration for type class method predicate
-typeclass_mode_3.m:011:   `p'/1 without corresponding predicate declaration.
+typeclass_mode_3.m:011:   [38;5;87m`p'/1[39;49m [38;5;203mwithout corresponding predicate declaration.[39;49m

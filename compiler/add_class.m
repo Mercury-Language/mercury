@@ -547,10 +547,15 @@ add_instance_defn(InstanceStatus0, ItemInstanceInfo, !ModuleInfo, !Specs) :-
     list(error_spec)::in, list(error_spec)::out) is det.
 
 pred_method_with_no_modes_error(PredInfo, !Specs) :-
-    pred_info_get_pf_sym_name_arity(PredInfo, PFSNA),
+    PorF = pred_info_is_pred_or_func(PredInfo),
+    Name = pred_info_name(PredInfo),
+    user_arity(UserArityInt) = pred_info_user_arity(PredInfo),
+    NameArity = name_arity(Name, UserArityInt),
     pred_info_get_context(PredInfo, Context),
-    Pieces = [words("Error: no mode declaration for method"),
-        unqual_pf_sym_name_pred_form_arity(PFSNA), suffix("."), nl],
+    Pieces = [words("Error:")] ++
+        color_as_incorrect([words("no mode declaration")]) ++
+        [words("for method"), p_or_f(PorF)] ++
+        color_as_subject([name_arity(NameArity), suffix(".")]) ++ [nl],
     Spec = spec($pred, severity_error, phase_pt2h, Context, Pieces),
     !:Specs = [Spec | !.Specs].
 
@@ -558,9 +563,11 @@ pred_method_with_no_modes_error(PredInfo, !Specs) :-
     list(error_spec)::in, list(error_spec)::out) is det.
 
 report_instance_for_undefined_typeclass(ClassId, Context, !Specs) :-
-    Pieces = [words("Error:"), decl("instance"), words("declaration"),
-        words("for"), qual_class_id(ClassId), words("without corresponding"),
-        decl("typeclass"), words("declaration."), nl],
+    Pieces = [words("Error:"),
+        decl("instance"), words("declaration"), words("for")] ++
+        color_as_subject([qual_class_id(ClassId)]) ++
+        color_as_incorrect([words("without"), words("corresponding"),
+        decl("typeclass"), words("declaration.")]) ++ [nl],
     Spec = spec($pred, severity_error, phase_pt2h, Context, Pieces),
     !:Specs = [Spec | !.Specs].
 
@@ -579,12 +586,14 @@ report_mode_decls_for_undeclared_method(MethodPredName, ModeInfosCord,
     list(error_spec)::in, list(error_spec)::out) is det.
 
 report_mode_decl_for_undeclared_method(MethodPredName, ModeInfo, !Specs) :-
-    MethodPredName = pred_pf_name_arity(PredOrFunc, _, _),
+    MethodPredName = pred_pf_name_arity(PorF, SymName, UserArity),
+    UserArity = user_arity(UserArityInt),
+    NameArity = name_arity(unqualify_name(SymName), UserArityInt),
     ModeInfo = class_mode_info(_, _, _, _, _, _, Context),
     Pieces = [words("Error: mode declaration for type class method"),
-        unqual_pf_sym_name_user_arity(MethodPredName),
-        words("without corresponding"), p_or_f(PredOrFunc),
-        words("declaration."), nl],
+        p_or_f(PorF)] ++ color_as_subject([name_arity(NameArity)]) ++
+        color_as_incorrect([words("without"), words("corresponding"),
+        p_or_f(PorF), words("declaration.")]) ++ [nl],
     Spec = spec($pred, severity_error, phase_pt2h, Context, Pieces),
     !:Specs = [Spec | !.Specs].
 
