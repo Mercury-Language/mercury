@@ -1,10 +1,10 @@
-subtype_exist_constraints.m:020: Error: the first argument of `lemon' has a
-subtype_exist_constraints.m:020:   type, `L', which is not a subtype of the
-subtype_exist_constraints.m:020:   corresponding argument type `L' in the
+subtype_exist_constraints.m:020: Error: [38;5;87mthe first argument of `lemon'[39;49m has a
+subtype_exist_constraints.m:020:   type, [38;5;203m`L', which is not a subtype[39;49m of the
+subtype_exist_constraints.m:020:   corresponding argument type [38;5;40m`L'[39;49m in the
 subtype_exist_constraints.m:020:   supertype.
 subtype_exist_constraints.m:023: Error: existential class constraints for
-subtype_exist_constraints.m:023:   `lemon'/1 differ in the subtype and
+subtype_exist_constraints.m:023:   [38;5;87m`lemon'/1[39;49m [38;5;203mdiffer[39;49m in the subtype and
 subtype_exist_constraints.m:023:   supertype.
 subtype_exist_constraints.m:026: Error: existential class constraints for
-subtype_exist_constraints.m:026:   `lemon'/1 differ in the subtype and
+subtype_exist_constraints.m:026:   [38;5;87m`lemon'/1[39;49m [38;5;203mdiffer[39;49m in the subtype and
 subtype_exist_constraints.m:026:   supertype.

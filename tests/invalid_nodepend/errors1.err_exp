@@ -13,10 +13,12 @@ errors1.m:034:   without corresponding `:- pred' declaration.
 errors1.m:040: Error: clause for predicate
 errors1.m:040:   `clause_without_pred_or_mode_declaration'/0
 errors1.m:040:   without corresponding `:- pred' declaration.
-errors1.m:053: Error: constructor `errors1.a/0' for type
-errors1.m:053:   `errors1.type_with_multiply_defined_ctors/0' multiply defined.
-errors1.m:055: Error: constructor `errors1.f/1' for type
-errors1.m:055:   `errors1.type_with_multiply_defined_ctors/0' multiply defined.
+errors1.m:053: Error: the [38;5;87mconstructor `a'/0[39;49m [38;5;203moccurs more than once[39;49m in the
+errors1.m:053:   definition of type constructor
+errors1.m:053:   [38;5;87m`type_with_multiply_defined_ctors'/0.[39;49m
+errors1.m:055: Error: the [38;5;87mconstructor `f'/1[39;49m [38;5;203moccurs more than once[39;49m in the
+errors1.m:055:   definition of type constructor
+errors1.m:055:   [38;5;87m`type_with_multiply_defined_ctors'/0.[39;49m
 errors1.m:058: In the first argument of function symbol `f' of the type
 errors1.m:058:   `du_type_which_references_undefined_type'/0:
 errors1.m:058:   error: undefined type `undefined_type'/0.

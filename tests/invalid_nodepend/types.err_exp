@@ -2,10 +2,10 @@ types.m:007: Error: module `types' should start with either an `:- interface'
 types.m:007:   or an `:- implementation' declaration.
 types.m:007:   The following assumes that the missing declaration is an
 types.m:007:   `:- implementation' declaration.
-types.m:009: Error: constructor `types.a/0' for type `types.t/0' multiply
-types.m:009:   defined.
-types.m:011: Error: constructor `types.f/1' for type `types.t/0' multiply
-types.m:011:   defined.
+types.m:009: Error: the [38;5;87mconstructor `a'/0[39;49m [38;5;203moccurs more than once[39;49m in the
+types.m:009:   definition of type constructor [38;5;87m`t'/0.[39;49m
+types.m:011: Error: the [38;5;87mconstructor `f'/1[39;49m [38;5;203moccurs more than once[39;49m in the
+types.m:011:   definition of type constructor [38;5;87m`t'/0.[39;49m
 types.m:023: Error: clause for predicate `r'/0
 types.m:023:   without corresponding `:- pred' declaration.
 types.m:026: Error: clause for predicate `a'/1

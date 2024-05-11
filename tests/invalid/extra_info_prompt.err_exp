@@ -1,4 +1,4 @@
-extra_info_prompt.m:010: Error: the type `foo'/0 contains no information, and
-extra_info_prompt.m:010:   as such it is not allowed to have user-defined
-extra_info_prompt.m:010:   equality or comparison.
+extra_info_prompt.m:010: Error: the type [38;5;87m`foo'/0[39;49m contains no information, and
+extra_info_prompt.m:010:   as such it is [38;5;203mnot allowed to have user-defined[39;49m
+extra_info_prompt.m:010:   [38;5;203mequality or comparison.[39;49m
 For more information, recompile with `-E'.

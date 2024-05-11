@@ -3,7 +3,7 @@ foreign_type_visibility.m:022:   `foreign'/0 is in the implementation section,
 foreign_type_visibility.m:022:   any foreign type definition for it must be in
 foreign_type_visibility.m:022:   the implementation section as well.
 foreign_type_visibility.m:018:   That Mercury declaration is here.
-foreign_type_visibility.m:026: Error: the type `foreign2'/0 has no definition
+foreign_type_visibility.m:026: Error: the type [38;5;87m`foreign2'/0[39;49m [38;5;203mhas no definition[39;49m
 foreign_type_visibility.m:026:   that is valid when targeting C; neither a
 foreign_type_visibility.m:026:   Mercury definition, nor a
 foreign_type_visibility.m:026:   `:- pragma foreign_type' declaration for C.

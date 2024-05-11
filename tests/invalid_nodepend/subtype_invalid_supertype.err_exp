@@ -1,169 +1,169 @@
-subtype_invalid_supertype.m:008: Error: `int'/0,
+subtype_invalid_supertype.m:008: Error: [38;5;87m`int'/0,[39;49m
 subtype_invalid_supertype.m:008:   the declared super type of `s1_1'/0,
-subtype_invalid_supertype.m:008:   is not a discriminated union type.
-subtype_invalid_supertype.m:009: Error: `uint'/0,
+subtype_invalid_supertype.m:008:   [38;5;203mis not a discriminated union type.[39;49m
+subtype_invalid_supertype.m:009: Error: [38;5;87m`uint'/0,[39;49m
 subtype_invalid_supertype.m:009:   the declared super type of `s1_2'/0,
-subtype_invalid_supertype.m:009:   is not a discriminated union type.
-subtype_invalid_supertype.m:010: Error: `int8'/0,
+subtype_invalid_supertype.m:009:   [38;5;203mis not a discriminated union type.[39;49m
+subtype_invalid_supertype.m:010: Error: [38;5;87m`int8'/0,[39;49m
 subtype_invalid_supertype.m:010:   the declared super type of `s1_3'/0,
-subtype_invalid_supertype.m:010:   is not a discriminated union type.
-subtype_invalid_supertype.m:011: Error: `uint8'/0,
+subtype_invalid_supertype.m:010:   [38;5;203mis not a discriminated union type.[39;49m
+subtype_invalid_supertype.m:011: Error: [38;5;87m`uint8'/0,[39;49m
 subtype_invalid_supertype.m:011:   the declared super type of `s1_4'/0,
-subtype_invalid_supertype.m:011:   is not a discriminated union type.
-subtype_invalid_supertype.m:012: Error: `int16'/0,
+subtype_invalid_supertype.m:011:   [38;5;203mis not a discriminated union type.[39;49m
+subtype_invalid_supertype.m:012: Error: [38;5;87m`int16'/0,[39;49m
 subtype_invalid_supertype.m:012:   the declared super type of `s1_5'/0,
-subtype_invalid_supertype.m:012:   is not a discriminated union type.
-subtype_invalid_supertype.m:013: Error: `uint16'/0,
+subtype_invalid_supertype.m:012:   [38;5;203mis not a discriminated union type.[39;49m
+subtype_invalid_supertype.m:013: Error: [38;5;87m`uint16'/0,[39;49m
 subtype_invalid_supertype.m:013:   the declared super type of `s1_6'/0,
-subtype_invalid_supertype.m:013:   is not a discriminated union type.
-subtype_invalid_supertype.m:014: Error: `int32'/0,
+subtype_invalid_supertype.m:013:   [38;5;203mis not a discriminated union type.[39;49m
+subtype_invalid_supertype.m:014: Error: [38;5;87m`int32'/0,[39;49m
 subtype_invalid_supertype.m:014:   the declared super type of `s1_7'/0,
-subtype_invalid_supertype.m:014:   is not a discriminated union type.
-subtype_invalid_supertype.m:015: Error: `uint32'/0,
+subtype_invalid_supertype.m:014:   [38;5;203mis not a discriminated union type.[39;49m
+subtype_invalid_supertype.m:015: Error: [38;5;87m`uint32'/0,[39;49m
 subtype_invalid_supertype.m:015:   the declared super type of `s1_8'/0,
-subtype_invalid_supertype.m:015:   is not a discriminated union type.
-subtype_invalid_supertype.m:016: Error: `int64'/0,
+subtype_invalid_supertype.m:015:   [38;5;203mis not a discriminated union type.[39;49m
+subtype_invalid_supertype.m:016: Error: [38;5;87m`int64'/0,[39;49m
 subtype_invalid_supertype.m:016:   the declared super type of `s1_9'/0,
-subtype_invalid_supertype.m:016:   is not a discriminated union type.
-subtype_invalid_supertype.m:017: Error: `uint64'/0,
+subtype_invalid_supertype.m:016:   [38;5;203mis not a discriminated union type.[39;49m
+subtype_invalid_supertype.m:017: Error: [38;5;87m`uint64'/0,[39;49m
 subtype_invalid_supertype.m:017:   the declared super type of `s1_10'/0,
-subtype_invalid_supertype.m:017:   is not a discriminated union type.
-subtype_invalid_supertype.m:018: Error: `float'/0,
+subtype_invalid_supertype.m:017:   [38;5;203mis not a discriminated union type.[39;49m
+subtype_invalid_supertype.m:018: Error: [38;5;87m`float'/0,[39;49m
 subtype_invalid_supertype.m:018:   the declared super type of `s1_11'/0,
-subtype_invalid_supertype.m:018:   is not a discriminated union type.
-subtype_invalid_supertype.m:019: Error: `string'/0,
+subtype_invalid_supertype.m:018:   [38;5;203mis not a discriminated union type.[39;49m
+subtype_invalid_supertype.m:019: Error: [38;5;87m`string'/0,[39;49m
 subtype_invalid_supertype.m:019:   the declared super type of `s1_12'/0,
-subtype_invalid_supertype.m:019:   is not a discriminated union type.
-subtype_invalid_supertype.m:020: Error: `character'/0,
+subtype_invalid_supertype.m:019:   [38;5;203mis not a discriminated union type.[39;49m
+subtype_invalid_supertype.m:020: Error: [38;5;87m`character'/0,[39;49m
 subtype_invalid_supertype.m:020:   the declared super type of `s1_13'/0,
-subtype_invalid_supertype.m:020:   is not a discriminated union type.
-subtype_invalid_supertype.m:022: Error: `{}'/0,
+subtype_invalid_supertype.m:020:   [38;5;203mis not a discriminated union type.[39;49m
+subtype_invalid_supertype.m:022: Error: [38;5;87m`{}'/0,[39;49m
 subtype_invalid_supertype.m:022:   the declared super type of `s2'/0,
-subtype_invalid_supertype.m:022:   is not a discriminated union type.
-subtype_invalid_supertype.m:025: Error: `func'/1,
+subtype_invalid_supertype.m:022:   [38;5;203mis not a discriminated union type.[39;49m
+subtype_invalid_supertype.m:025: Error: [38;5;87m`func'/1,[39;49m
 subtype_invalid_supertype.m:025:   the declared super type of `s3'/0,
-subtype_invalid_supertype.m:025:   is not a discriminated union type.
-subtype_invalid_supertype.m:028: Error: `pred'/0,
+subtype_invalid_supertype.m:025:   [38;5;203mis not a discriminated union type.[39;49m
+subtype_invalid_supertype.m:028: Error: [38;5;87m`pred'/0,[39;49m
 subtype_invalid_supertype.m:028:   the declared super type of `s4'/0,
-subtype_invalid_supertype.m:028:   is not a discriminated union type.
-subtype_invalid_supertype.m:031: Error: the type `undefined'/0,
+subtype_invalid_supertype.m:028:   [38;5;203mis not a discriminated union type.[39;49m
+subtype_invalid_supertype.m:031: Error: the type [38;5;87m`undefined'/0,[39;49m
 subtype_invalid_supertype.m:031:   the declared super type of `s5'/0,
-subtype_invalid_supertype.m:031:   is not defined.
+subtype_invalid_supertype.m:031:   [38;5;203mis not defined.[39;49m
 subtype_invalid_supertype.m:031: In definition of type `s5'/0:
 subtype_invalid_supertype.m:031:   error: undefined type `undefined'/0.
 subtype_invalid_supertype.m:034: In the supertype part of a subtype definition:
 subtype_invalid_supertype.m:034:   error: `1' is not a type.
 subtype_invalid_supertype.m:034: In the supertype part of a subtype definition:
 subtype_invalid_supertype.m:034:   error: `2' is not a type.
-subtype_invalid_supertype.m:037: Error: circularity in subtype definition
-subtype_invalid_supertype.m:037:   chain.
+subtype_invalid_supertype.m:037: Error: [38;5;203mcircularity in subtype definition[39;49m
+subtype_invalid_supertype.m:037:   [38;5;203mchain.[39;49m
 subtype_invalid_supertype.m:037:   The chain is:
-subtype_invalid_supertype.m:037:   `s7_b'/0,
-subtype_invalid_supertype.m:037:   the declared super type of `s7_f'/0,
-subtype_invalid_supertype.m:037:   which is the declared super type of
-subtype_invalid_supertype.m:037:   `s7_e'/0,
-subtype_invalid_supertype.m:037:   which is the declared super type of
-subtype_invalid_supertype.m:037:   `s7_d'/0,
-subtype_invalid_supertype.m:037:   which is the declared super type of
-subtype_invalid_supertype.m:037:   `s7_c'/0,
-subtype_invalid_supertype.m:037:   which is the declared super type of
-subtype_invalid_supertype.m:037:   `s7_b'/0,
-subtype_invalid_supertype.m:037:   which is the declared super type of
-subtype_invalid_supertype.m:037:   `s7_a'/0.
-subtype_invalid_supertype.m:038: Error: circularity in subtype definition
-subtype_invalid_supertype.m:038:   chain.
+subtype_invalid_supertype.m:037:   [38;5;203m`s7_b'/0,[39;49m
+subtype_invalid_supertype.m:037:   [38;5;203mthe declared super type of `s7_f'/0,[39;49m
+subtype_invalid_supertype.m:037:   [38;5;203mwhich is the declared super type of[39;49m
+subtype_invalid_supertype.m:037:   [38;5;203m`s7_e'/0,[39;49m
+subtype_invalid_supertype.m:037:   [38;5;203mwhich is the declared super type of[39;49m
+subtype_invalid_supertype.m:037:   [38;5;203m`s7_d'/0,[39;49m
+subtype_invalid_supertype.m:037:   [38;5;203mwhich is the declared super type of[39;49m
+subtype_invalid_supertype.m:037:   [38;5;203m`s7_c'/0,[39;49m
+subtype_invalid_supertype.m:037:   [38;5;203mwhich is the declared super type of[39;49m
+subtype_invalid_supertype.m:037:   [38;5;203m`s7_b'/0,[39;49m
+subtype_invalid_supertype.m:037:   [38;5;203mwhich is the declared super type of[39;49m
+subtype_invalid_supertype.m:037:   [38;5;203m`s7_a'/0.[39;49m
+subtype_invalid_supertype.m:038: Error: [38;5;203mcircularity in subtype definition[39;49m
+subtype_invalid_supertype.m:038:   [38;5;203mchain.[39;49m
 subtype_invalid_supertype.m:038:   The chain is:
-subtype_invalid_supertype.m:038:   `s7_b'/0,
-subtype_invalid_supertype.m:038:   the declared super type of `s7_f'/0,
-subtype_invalid_supertype.m:038:   which is the declared super type of
-subtype_invalid_supertype.m:038:   `s7_e'/0,
-subtype_invalid_supertype.m:038:   which is the declared super type of
-subtype_invalid_supertype.m:038:   `s7_d'/0,
-subtype_invalid_supertype.m:038:   which is the declared super type of
-subtype_invalid_supertype.m:038:   `s7_c'/0,
-subtype_invalid_supertype.m:038:   which is the declared super type of
-subtype_invalid_supertype.m:038:   `s7_b'/0.
-subtype_invalid_supertype.m:039: Error: circularity in subtype definition
-subtype_invalid_supertype.m:039:   chain.
+subtype_invalid_supertype.m:038:   [38;5;203m`s7_b'/0,[39;49m
+subtype_invalid_supertype.m:038:   [38;5;203mthe declared super type of `s7_f'/0,[39;49m
+subtype_invalid_supertype.m:038:   [38;5;203mwhich is the declared super type of[39;49m
+subtype_invalid_supertype.m:038:   [38;5;203m`s7_e'/0,[39;49m
+subtype_invalid_supertype.m:038:   [38;5;203mwhich is the declared super type of[39;49m
+subtype_invalid_supertype.m:038:   [38;5;203m`s7_d'/0,[39;49m
+subtype_invalid_supertype.m:038:   [38;5;203mwhich is the declared super type of[39;49m
+subtype_invalid_supertype.m:038:   [38;5;203m`s7_c'/0,[39;49m
+subtype_invalid_supertype.m:038:   [38;5;203mwhich is the declared super type of[39;49m
+subtype_invalid_supertype.m:038:   [38;5;203m`s7_b'/0.[39;49m
+subtype_invalid_supertype.m:039: Error: [38;5;203mcircularity in subtype definition[39;49m
+subtype_invalid_supertype.m:039:   [38;5;203mchain.[39;49m
 subtype_invalid_supertype.m:039:   The chain is:
-subtype_invalid_supertype.m:039:   `s7_c'/0,
-subtype_invalid_supertype.m:039:   the declared super type of `s7_b'/0,
-subtype_invalid_supertype.m:039:   which is the declared super type of
-subtype_invalid_supertype.m:039:   `s7_f'/0,
-subtype_invalid_supertype.m:039:   which is the declared super type of
-subtype_invalid_supertype.m:039:   `s7_e'/0,
-subtype_invalid_supertype.m:039:   which is the declared super type of
-subtype_invalid_supertype.m:039:   `s7_d'/0,
-subtype_invalid_supertype.m:039:   which is the declared super type of
-subtype_invalid_supertype.m:039:   `s7_c'/0.
-subtype_invalid_supertype.m:040: Error: circularity in subtype definition
-subtype_invalid_supertype.m:040:   chain.
+subtype_invalid_supertype.m:039:   [38;5;203m`s7_c'/0,[39;49m
+subtype_invalid_supertype.m:039:   [38;5;203mthe declared super type of `s7_b'/0,[39;49m
+subtype_invalid_supertype.m:039:   [38;5;203mwhich is the declared super type of[39;49m
+subtype_invalid_supertype.m:039:   [38;5;203m`s7_f'/0,[39;49m
+subtype_invalid_supertype.m:039:   [38;5;203mwhich is the declared super type of[39;49m
+subtype_invalid_supertype.m:039:   [38;5;203m`s7_e'/0,[39;49m
+subtype_invalid_supertype.m:039:   [38;5;203mwhich is the declared super type of[39;49m
+subtype_invalid_supertype.m:039:   [38;5;203m`s7_d'/0,[39;49m
+subtype_invalid_supertype.m:039:   [38;5;203mwhich is the declared super type of[39;49m
+subtype_invalid_supertype.m:039:   [38;5;203m`s7_c'/0.[39;49m
+subtype_invalid_supertype.m:040: Error: [38;5;203mcircularity in subtype definition[39;49m
+subtype_invalid_supertype.m:040:   [38;5;203mchain.[39;49m
 subtype_invalid_supertype.m:040:   The chain is:
-subtype_invalid_supertype.m:040:   `s7_d'/0,
-subtype_invalid_supertype.m:040:   the declared super type of `s7_c'/0,
-subtype_invalid_supertype.m:040:   which is the declared super type of
-subtype_invalid_supertype.m:040:   `s7_b'/0,
-subtype_invalid_supertype.m:040:   which is the declared super type of
-subtype_invalid_supertype.m:040:   `s7_f'/0,
-subtype_invalid_supertype.m:040:   which is the declared super type of
-subtype_invalid_supertype.m:040:   `s7_e'/0,
-subtype_invalid_supertype.m:040:   which is the declared super type of
-subtype_invalid_supertype.m:040:   `s7_d'/0.
-subtype_invalid_supertype.m:041: Error: circularity in subtype definition
-subtype_invalid_supertype.m:041:   chain.
+subtype_invalid_supertype.m:040:   [38;5;203m`s7_d'/0,[39;49m
+subtype_invalid_supertype.m:040:   [38;5;203mthe declared super type of `s7_c'/0,[39;49m
+subtype_invalid_supertype.m:040:   [38;5;203mwhich is the declared super type of[39;49m
+subtype_invalid_supertype.m:040:   [38;5;203m`s7_b'/0,[39;49m
+subtype_invalid_supertype.m:040:   [38;5;203mwhich is the declared super type of[39;49m
+subtype_invalid_supertype.m:040:   [38;5;203m`s7_f'/0,[39;49m
+subtype_invalid_supertype.m:040:   [38;5;203mwhich is the declared super type of[39;49m
+subtype_invalid_supertype.m:040:   [38;5;203m`s7_e'/0,[39;49m
+subtype_invalid_supertype.m:040:   [38;5;203mwhich is the declared super type of[39;49m
+subtype_invalid_supertype.m:040:   [38;5;203m`s7_d'/0.[39;49m
+subtype_invalid_supertype.m:041: Error: [38;5;203mcircularity in subtype definition[39;49m
+subtype_invalid_supertype.m:041:   [38;5;203mchain.[39;49m
 subtype_invalid_supertype.m:041:   The chain is:
-subtype_invalid_supertype.m:041:   `s7_e'/0,
-subtype_invalid_supertype.m:041:   the declared super type of `s7_d'/0,
-subtype_invalid_supertype.m:041:   which is the declared super type of
-subtype_invalid_supertype.m:041:   `s7_c'/0,
-subtype_invalid_supertype.m:041:   which is the declared super type of
-subtype_invalid_supertype.m:041:   `s7_b'/0,
-subtype_invalid_supertype.m:041:   which is the declared super type of
-subtype_invalid_supertype.m:041:   `s7_f'/0,
-subtype_invalid_supertype.m:041:   which is the declared super type of
-subtype_invalid_supertype.m:041:   `s7_e'/0.
-subtype_invalid_supertype.m:042: Error: circularity in subtype definition
-subtype_invalid_supertype.m:042:   chain.
+subtype_invalid_supertype.m:041:   [38;5;203m`s7_e'/0,[39;49m
+subtype_invalid_supertype.m:041:   [38;5;203mthe declared super type of `s7_d'/0,[39;49m
+subtype_invalid_supertype.m:041:   [38;5;203mwhich is the declared super type of[39;49m
+subtype_invalid_supertype.m:041:   [38;5;203m`s7_c'/0,[39;49m
+subtype_invalid_supertype.m:041:   [38;5;203mwhich is the declared super type of[39;49m
+subtype_invalid_supertype.m:041:   [38;5;203m`s7_b'/0,[39;49m
+subtype_invalid_supertype.m:041:   [38;5;203mwhich is the declared super type of[39;49m
+subtype_invalid_supertype.m:041:   [38;5;203m`s7_f'/0,[39;49m
+subtype_invalid_supertype.m:041:   [38;5;203mwhich is the declared super type of[39;49m
+subtype_invalid_supertype.m:041:   [38;5;203m`s7_e'/0.[39;49m
+subtype_invalid_supertype.m:042: Error: [38;5;203mcircularity in subtype definition[39;49m
+subtype_invalid_supertype.m:042:   [38;5;203mchain.[39;49m
 subtype_invalid_supertype.m:042:   The chain is:
-subtype_invalid_supertype.m:042:   `s7_f'/0,
-subtype_invalid_supertype.m:042:   the declared super type of `s7_e'/0,
-subtype_invalid_supertype.m:042:   which is the declared super type of
-subtype_invalid_supertype.m:042:   `s7_d'/0,
-subtype_invalid_supertype.m:042:   which is the declared super type of
-subtype_invalid_supertype.m:042:   `s7_c'/0,
-subtype_invalid_supertype.m:042:   which is the declared super type of
-subtype_invalid_supertype.m:042:   `s7_b'/0,
-subtype_invalid_supertype.m:042:   which is the declared super type of
-subtype_invalid_supertype.m:042:   `s7_f'/0.
-subtype_invalid_supertype.m:044: Error: `int'/0,
+subtype_invalid_supertype.m:042:   [38;5;203m`s7_f'/0,[39;49m
+subtype_invalid_supertype.m:042:   [38;5;203mthe declared super type of `s7_e'/0,[39;49m
+subtype_invalid_supertype.m:042:   [38;5;203mwhich is the declared super type of[39;49m
+subtype_invalid_supertype.m:042:   [38;5;203m`s7_d'/0,[39;49m
+subtype_invalid_supertype.m:042:   [38;5;203mwhich is the declared super type of[39;49m
+subtype_invalid_supertype.m:042:   [38;5;203m`s7_c'/0,[39;49m
+subtype_invalid_supertype.m:042:   [38;5;203mwhich is the declared super type of[39;49m
+subtype_invalid_supertype.m:042:   [38;5;203m`s7_b'/0,[39;49m
+subtype_invalid_supertype.m:042:   [38;5;203mwhich is the declared super type of[39;49m
+subtype_invalid_supertype.m:042:   [38;5;203m`s7_f'/0.[39;49m
+subtype_invalid_supertype.m:044: Error: [38;5;87m`int'/0,[39;49m
 subtype_invalid_supertype.m:044:   the declared super type of `s8_c'/0,
 subtype_invalid_supertype.m:044:   which is the declared super type of
 subtype_invalid_supertype.m:044:   `s8_b'/0,
 subtype_invalid_supertype.m:044:   which is the declared super type of
 subtype_invalid_supertype.m:044:   `s8_a'/0,
-subtype_invalid_supertype.m:044:   is not a discriminated union type.
-subtype_invalid_supertype.m:045: Error: `int'/0,
+subtype_invalid_supertype.m:044:   [38;5;203mis not a discriminated union type.[39;49m
+subtype_invalid_supertype.m:045: Error: [38;5;87m`int'/0,[39;49m
 subtype_invalid_supertype.m:045:   the declared super type of `s8_c'/0,
 subtype_invalid_supertype.m:045:   which is the declared super type of
 subtype_invalid_supertype.m:045:   `s8_b'/0,
-subtype_invalid_supertype.m:045:   is not a discriminated union type.
-subtype_invalid_supertype.m:046: Error: `int'/0,
+subtype_invalid_supertype.m:045:   [38;5;203mis not a discriminated union type.[39;49m
+subtype_invalid_supertype.m:046: Error: [38;5;87m`int'/0,[39;49m
 subtype_invalid_supertype.m:046:   the declared super type of `s8_c'/0,
-subtype_invalid_supertype.m:046:   is not a discriminated union type.
-subtype_invalid_supertype.m:049: Error: the type `undef9'/0,
+subtype_invalid_supertype.m:046:   [38;5;203mis not a discriminated union type.[39;49m
+subtype_invalid_supertype.m:049: Error: the type [38;5;87m`undef9'/0,[39;49m
 subtype_invalid_supertype.m:049:   the declared super type of `s9_c'/0,
 subtype_invalid_supertype.m:049:   which is the declared super type of
 subtype_invalid_supertype.m:049:   `s9_b'/0,
 subtype_invalid_supertype.m:049:   which is the declared super type of
 subtype_invalid_supertype.m:049:   `s9_a'/0,
-subtype_invalid_supertype.m:049:   is not defined.
-subtype_invalid_supertype.m:050: Error: the type `undef9'/0,
+subtype_invalid_supertype.m:049:   [38;5;203mis not defined.[39;49m
+subtype_invalid_supertype.m:050: Error: the type [38;5;87m`undef9'/0,[39;49m
 subtype_invalid_supertype.m:050:   the declared super type of `s9_c'/0,
 subtype_invalid_supertype.m:050:   which is the declared super type of
 subtype_invalid_supertype.m:050:   `s9_b'/0,
-subtype_invalid_supertype.m:050:   is not defined.
-subtype_invalid_supertype.m:051: Error: the type `undef9'/0,
+subtype_invalid_supertype.m:050:   [38;5;203mis not defined.[39;49m
+subtype_invalid_supertype.m:051: Error: the type [38;5;87m`undef9'/0,[39;49m
 subtype_invalid_supertype.m:051:   the declared super type of `s9_c'/0,
-subtype_invalid_supertype.m:051:   is not defined.
+subtype_invalid_supertype.m:051:   [38;5;203mis not defined.[39;49m
 subtype_invalid_supertype.m:052: In definition of type `s9_d'/0:
 subtype_invalid_supertype.m:052:   error: undefined type `undef9'/0.

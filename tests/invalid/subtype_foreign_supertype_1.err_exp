@@ -1,2 +1,2 @@
-subtype_foreign_supertype_1.m:013: Error: `fruit'/0 cannot be a supertype
-subtype_foreign_supertype_1.m:013:   because it is a foreign type.
+subtype_foreign_supertype_1.m:013: Error: [38;5;87m`fruit'/0[39;49m [38;5;203mcannot be a supertype[39;49m
+subtype_foreign_supertype_1.m:013:   [38;5;203mbecause it is a foreign type.[39;49m

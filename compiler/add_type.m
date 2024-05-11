@@ -66,7 +66,6 @@
 :- import_module mdbcomp.sym_name.
 :- import_module parse_tree.maybe_error.
 :- import_module parse_tree.module_qual.
-:- import_module parse_tree.parse_tree_out_cons_id.
 :- import_module parse_tree.parse_tree_out_sym_name.
 :- import_module parse_tree.parse_tree_out_type.
 :- import_module parse_tree.prog_type.
@@ -158,9 +157,10 @@ module_add_type_defn(TypeStatus0, NeedQual, ItemTypeDefnInfo,
             type_status_defined_in_impl_section(TypeStatus) = no
         then
             SolverPieces = [words("Error: the definition"),
-                words("(as opposed to the name) of a solver type such as"),
-                unqual_type_ctor(TypeCtor),
-                words("must not be exported from its defining module."), nl],
+                words("(as opposed to the name) of a solver type such as")] ++
+                color_as_subject([unqual_type_ctor(TypeCtor)]) ++
+                color_as_incorrect([words("must not be exported")]) ++
+                [words("from its defining module."), nl],
             SolverSpec = spec($pred, severity_error, phase_pt2h,
                 Context, SolverPieces),
             Specs0 = [SolverSpec]
@@ -191,7 +191,6 @@ module_add_type_defn_abstract(TypeStatus1, TypeCtor, Body, TypeDefn0, Context,
     ( if search_type_ctor_defn(TypeTable0, TypeCtor, OldDefn) then
         % Since make_hlds_passes.m adds all abstract definitions first,
         % the previous definition can only be another abstract definition.
-
         check_for_duplicate_type_declaration(TypeCtor, OldDefn, TypeStatus1,
             Context, !FoundInvalidType, !Specs),
         combine_old_and_new_type_status(OldDefn, TypeStatus1, _TypeStatus,
@@ -249,8 +248,10 @@ check_for_duplicate_type_declaration(TypeCtor, OldDefn, NewStatus, NewContext,
         UTC = unqual_type_ctor(TypeCtor),
         ( if FirstIsExported = SecondIsExported then
             Severity = severity_warning,
-            DupPieces = [words("Warning: duplicate declaration for type"),
-                UTC, suffix("."), nl]
+            DupPieces = [words("Warning:")] ++
+                color_as_incorrect([words("duplicate declaration")]) ++
+                [words("for type")] ++ color_as_subject([UTC, suffix(".")]) ++
+                [nl]
         else
             Severity = severity_error,
             !:FoundInvalidType = found_invalid_type,
@@ -261,16 +262,22 @@ check_for_duplicate_type_declaration(TypeCtor, OldDefn, NewStatus, NewContext,
             % We can't avoid this possibility without keeping a *separate*
             % record of the context and type_status of every item_type_defn
             % for every type_ctor.
+            IsExported = words("it is exported"),
+            IsPrivate = words("it is private"),
+            DupPiecesStart = [words("Error: This declaration for type")] ++
+                color_as_subject([UTC]) ++ [words("says")],
             (
                 SecondIsExported = yes,
-                DupPieces = [words("Error: This declaration for type"),
-                    UTC, words("says it is exported, while"),
-                    words("the previous declaration says it is private."), nl]
+                DupPieces = DupPiecesStart ++
+                    color_as_possible_cause([IsExported, suffix(",")]) ++
+                    [words("while the previous declaration says")] ++
+                    color_as_possible_cause([IsPrivate, suffix(".")]) ++ [nl]
             ;
                 SecondIsExported = no,
-                DupPieces = [words("Error: This declaration for type"),
-                    UTC, words("says it is private, while"),
-                    words("the previous declaration says it is exported."), nl]
+                DupPieces = DupPiecesStart ++
+                    color_as_possible_cause([IsPrivate, suffix(",")]) ++
+                    [words("while the previous declaration says")] ++
+                    color_as_possible_cause([IsExported, suffix(".")]) ++ [nl]
             )
         ),
         DupMsg = msg(SecondContext, DupPieces),
@@ -657,10 +664,13 @@ check_for_invalid_user_defined_unify_compare(TypeStatus, TypeCtor, DetailsDu,
             Ctors = one_or_more(Ctor, []),
             Ctor ^ cons_args = []
         then
-            MainPieces = [words("Error: the type"),
-                unqual_type_ctor(TypeCtor), words("contains no information,"),
-                words("and as such it is not allowed to have"),
-                words("user-defined equality or comparison."), nl],
+            MainPieces = [words("Error: the type")] ++
+                color_as_subject([unqual_type_ctor(TypeCtor)]) ++
+                [words("contains no information,"),
+                words("and as such it is")] ++
+                color_as_incorrect([words("not allowed to have"),
+                    words("user-defined equality or comparison.")]) ++
+                [nl],
             VerbosePieces = [words("Discriminated union types"),
                 words("whose body consists of"),
                 words("a single zero-arity constructor"),
@@ -782,10 +792,12 @@ check_for_inconsistent_solver_nosolver_type(TypeCtor, OldDefn, NewBody,
             )
         ),
         MainPieces = [words("Error:"), words(ThisDeclOrDefn),
-            words("of type"), unqual_type_ctor(TypeCtor),
-            words(ThisIsOrIsnt), suffix(","),
-            words("but its"), words(OldDeclOrDefn),
-            words(OldIsOrIsnt), suffix("."), nl],
+            words("of type")] ++
+            color_as_subject([unqual_type_ctor(TypeCtor)]) ++
+            color_as_possible_cause([words(ThisIsOrIsnt), suffix(",")]) ++
+            [words("but its"), words(OldDeclOrDefn)] ++
+            color_as_possible_cause([words(OldIsOrIsnt), suffix(".")]) ++
+            [nl],
         OldPieces = [words("The"), words(OldDeclOrDefn), words("is here."),
             nl],
         MainMsg = msg(NewContext, MainPieces),
@@ -855,13 +867,16 @@ check_for_inconsistent_foreign_type_visibility(TypeCtor,
         UTC = unqual_type_ctor(TypeCtor),
         (
             OldIsAbstract = old_defn_is_abstract,
-            Pieces = [words("Error: the definition of the foreign type"),
-                UTC, words("must have the same visibility"),
-                words("as its declaration."), nl]
+            Pieces = [words("Error: the definition of")] ++
+                color_as_subject([words("the foreign type"), UTC]) ++
+                color_as_incorrect([words("must have the same visibility")]) ++
+                [words("as its declaration."), nl]
         ;
             OldIsAbstract = old_defn_is_not_abstract,
-            Pieces = [words("Error: all definitions of the foreign type"),
-                UTC, words("must have the same visibility."), nl]
+            Pieces = [words("Error: all definitions of")] ++
+                color_as_subject([words("the foreign type"), UTC]) ++
+                color_as_subject([words("must have the same visibility.")]) ++
+                [nl]
         ),
         % The flattening of source item blocks by modules.m puts
         % all items in a given section together. Since the original
@@ -1050,11 +1065,13 @@ add_type_defn_ctor(Ctor, TypeCtor, TypeCtorModuleName, TVarSet,
             OtherConsDefn ^ cons_type_ctor = TypeCtor
         )
     then
-        QualifiedConsIdStr = cons_id_and_arity_to_string(QualifiedConsIdA),
-        TypeCtorStr = type_ctor_to_string(TypeCtor),
-        Pieces = [words("Error: constructor"), quote(QualifiedConsIdStr),
-            words("for type"), quote(TypeCtorStr),
-            words("multiply defined."), nl],
+        Pieces = [words("Error: the")] ++
+            color_as_subject([words("constructor"),
+                unqual_cons_id_and_maybe_arity(QualifiedConsIdA)]) ++
+            color_as_incorrect([words("occurs more than once")]) ++
+            [words("in the definition of type constructor")] ++
+            color_as_subject([unqual_type_ctor(TypeCtor), suffix(".")]) ++
+            [nl],
         Spec = spec($pred, severity_error, phase_pt2h, Context, Pieces),
         !:Specs = [Spec | !.Specs]
     else
@@ -1214,8 +1231,10 @@ check_foreign_type_for_current_target(TypeCtor, ForeignTypeBody, PrevErrors,
         FoundInvalidType = found_invalid_type
     else
         LangStr = compilation_target_string(Target),
-        MainPieces = [words("Error: the type"), unqual_type_ctor(TypeCtor),
-            words("has no definition that is valid when targeting"),
+        MainPieces = [words("Error: the type")] ++
+            color_as_subject([unqual_type_ctor(TypeCtor)]) ++
+            color_as_incorrect([words("has no definition")]) ++
+            [words("that is valid when targeting"),
             fixed(LangStr), suffix(";"),
             words("neither a Mercury definition,"),
             words("nor a"), pragma_decl("foreign_type"), words("declaration"),
@@ -1279,9 +1298,10 @@ check_subtype_defn(TypeTable, TVarSet, TypeCtor, TypeDefn, TypeBodyDu,
     else
         SuperTypeStr = mercury_type_to_string(TVarSet, print_name_only,
             SuperType),
-        Pieces = [words("Error: expected type constructor in"),
-            words("supertype part of subtype definition, got"),
-            quote(SuperTypeStr), suffix("."), nl],
+        Pieces = [words("Error: expected")] ++
+            color_as_correct([words("type constructor")]) ++
+            [words("in supertype part of subtype definition, got")] ++
+            color_as_incorrect([quote(SuperTypeStr), suffix(".")]) ++ [nl],
         hlds_data.get_type_defn_context(TypeDefn, Context),
         Spec = spec($pred, severity_error, phase_pt2h, Context, Pieces),
         !:Specs = [Spec | !.Specs],
@@ -1322,11 +1342,9 @@ check_supertypes_up_to_base_type(TypeTable, OrigTypeCtor, OrigTypeDefn,
         else
             hlds_data.get_type_defn_tvarset(CurSuperTypeDefn, TVarSet),
             PrevSuperTypeCtors1 = [CurSuperTypeCtor | PrevSuperTypeCtors0],
-            Pieces = report_non_du_supertype(TVarSet, OrigTypeCtor,
-                PrevSuperTypeCtors1, NextSuperType),
             get_type_defn_context(OrigTypeDefn, OrigTypeContext),
-            Spec = spec($pred, severity_error, phase_pt2h,
-                OrigTypeContext, Pieces),
+            Spec = report_non_du_supertype(TVarSet, OrigTypeContext,
+                OrigTypeCtor, PrevSuperTypeCtors1, NextSuperType),
             MaybeBaseMaybeCanon = error1([Spec])
         )
     ).
@@ -1413,9 +1431,11 @@ check_supertype_is_du_not_foreign(TypeDefn, SuperTypeCtor, SuperTypeDefn,
             MaybeSuperTypeBodyDu = ok1(SuperTypeBodyDu)
         ;
             IsForeign = yes(_),
-            Pieces = [words("Error:"), unqual_type_ctor(SuperTypeCtor),
-                words("cannot be a supertype"),
-                words("because it has a foreign type definition."), nl],
+            Pieces = [words("Error:")] ++
+                color_as_subject([unqual_type_ctor(SuperTypeCtor)]) ++
+                color_as_incorrect([words("cannot be a supertype"),
+                    words("because it has a foreign type definition.")]) ++
+                [nl],
             hlds_data.get_type_defn_context(TypeDefn, Context),
             Spec = spec($pred, severity_error, phase_pt2h, Context, Pieces),
             MaybeSuperTypeBodyDu = error1([Spec])
@@ -1434,9 +1454,11 @@ check_supertype_is_du_not_foreign(TypeDefn, SuperTypeCtor, SuperTypeDefn,
             SuperTypeBody = hlds_abstract_type(_),
             SuperTypeDesc = "an abstract type"
         ),
-        Pieces = [words("Error:"), unqual_type_ctor(SuperTypeCtor),
-            words("cannot be a supertype because it is"),
-            words(SuperTypeDesc), suffix("."), nl],
+        Pieces = [words("Error:")] ++
+            color_as_subject([unqual_type_ctor(SuperTypeCtor)]) ++
+            color_as_incorrect([words("cannot be a supertype because it is"),
+                words(SuperTypeDesc), suffix(".")]) ++
+            [nl],
         hlds_data.get_type_defn_context(TypeDefn, Context),
         Spec = spec($pred, severity_error, phase_pt2h, Context, Pieces),
         MaybeSuperTypeBodyDu = error1([Spec])
@@ -1450,30 +1472,38 @@ supertype_ctor_defn_error_to_spec(OrigTypeCtor, OrigTypeDefn,
     (
         Error = supertype_is_abstract,
         Pieces = [words("Error: the type definition for")] ++
-            describe_supertype_chain(OrigTypeCtor, PrevSuperTypeCtors,
-                LastSuperTypeCtor) ++
-            [suffix(","), nl, words("is not visible here."), nl]
+            describe_supertype_chain(yes(color_subject),
+                OrigTypeCtor, PrevSuperTypeCtors, LastSuperTypeCtor) ++
+            [suffix(","), nl] ++
+            color_as_incorrect([words("is not visible here.")]) ++ [nl]
     ;
         Error = supertype_is_not_defined,
         ( if special_type_ctor_not_du(LastSuperTypeCtor) then
             Pieces = [words("Error:")] ++
-                describe_supertype_chain(OrigTypeCtor, PrevSuperTypeCtors,
-                    LastSuperTypeCtor) ++
-                [suffix(","), nl,
-                words("is not a discriminated union type."), nl]
+                describe_supertype_chain(yes(color_subject),
+                    OrigTypeCtor, PrevSuperTypeCtors, LastSuperTypeCtor) ++
+                [suffix(","), nl] ++
+                color_as_incorrect([words("is not a"),
+                    words("discriminated union type.")]) ++
+                [nl]
         else
             Pieces = [words("Error: the type")] ++
-                describe_supertype_chain(OrigTypeCtor, PrevSuperTypeCtors,
-                    LastSuperTypeCtor) ++
-                [suffix(","), nl, words("is not defined."), nl]
+                describe_supertype_chain(yes(color_subject),
+                    OrigTypeCtor, PrevSuperTypeCtors, LastSuperTypeCtor) ++
+                [suffix(","), nl] ++
+                color_as_incorrect([words("is not defined.")]) ++
+                [nl]
         )
     ;
         Error = circularity_detected,
-        Pieces = [words("Error: circularity in subtype definition chain."), nl,
+        Pieces = [words("Error:")] ++
+            color_as_incorrect([words("circularity in"),
+                words("subtype definition chain.")]) ++ [nl,
             words("The chain is:"), nl] ++
-            describe_supertype_chain(OrigTypeCtor, PrevSuperTypeCtors,
-                LastSuperTypeCtor) ++
-            [suffix("."), nl]
+            color_as_incorrect(describe_supertype_chain(no, OrigTypeCtor,
+                PrevSuperTypeCtors, LastSuperTypeCtor) ++
+                [suffix(".")]) ++
+            [nl]
     ),
     hlds_data.get_type_defn_context(OrigTypeDefn, OrigTypeContext),
     Spec = spec($pred, severity_error, phase_pt2h, OrigTypeContext, Pieces).
@@ -1500,26 +1530,33 @@ special_type_ctor_not_du(TypeCtor) :-
 
 %---------------------%
 
-:- func report_non_du_supertype(tvarset, type_ctor,
-    list(type_ctor), mer_type) = list(format_piece).
+:- func report_non_du_supertype(tvarset, prog_context, type_ctor,
+    list(type_ctor), mer_type) = error_spec.
 
-report_non_du_supertype(TVarSet, OrigTypeCtor, PrevSuperTypeCtors1,
-        NextSuperType) = Pieces :-
+report_non_du_supertype(TVarSet, OrigTypeContext, OrigTypeCtor,
+        PrevSuperTypeCtors1, NextSuperType) = Spec :-
     NextSuperTypeStr = mercury_type_to_string(TVarSet,
         print_name_only, NextSuperType),
-    Pieces = [words("Error:"), quote(NextSuperTypeStr)] ++
+    Pieces = [words("Error:")] ++
+        color_as_subject([quote(NextSuperTypeStr)]) ++
         describe_which_is_supertype_of_chain(is_first,
             OrigTypeCtor, PrevSuperTypeCtors1) ++
-        [suffix(","), nl, words("is not a discriminated union type."), nl].
+        [suffix(","), nl] ++
+        color_as_incorrect([words("is not a discriminated union type.")]) ++
+        [nl],
+    Spec = spec($pred, severity_error, phase_pt2h, OrigTypeContext, Pieces).
 
 %---------------------%
 
-:- func describe_supertype_chain(type_ctor, list(type_ctor), type_ctor)
-    = list(format_piece).
+:- func describe_supertype_chain(maybe(color_name), type_ctor,
+    list(type_ctor), type_ctor) = list(format_piece).
 
-describe_supertype_chain(OrigTypeCtor, PrevSuperTypeCtors, LastSuperTypeCtor)
-        = Pieces :-
-    Pieces = [unqual_type_ctor(LastSuperTypeCtor), suffix(","), nl] ++
+describe_supertype_chain(MaybeLastSuperColor, OrigTypeCtor,
+        PrevSuperTypeCtors, LastSuperTypeCtor) = Pieces :-
+    LastSuperPieces0 = [unqual_type_ctor(LastSuperTypeCtor), suffix(",")],
+    LastSuperPieces =
+        maybe_color_pieces(MaybeLastSuperColor, LastSuperPieces0),
+    Pieces = LastSuperPieces ++ [nl] ++
         describe_which_is_supertype_of_chain(is_first, OrigTypeCtor,
             PrevSuperTypeCtors).
 
@@ -1608,10 +1645,13 @@ look_up_and_check_subtype_ctor(TypeTable, TVarSet, TypeStatus,
         check_subtype_ctor(TypeTable, TVarSet, TypeStatus, Ctor, SuperCtor,
             !FoundInvalidType, !Specs)
     else
-        Pieces = [words("Error:"),
-            unqual_sym_name_arity(sym_name_arity(CtorName, Arity)),
-            words("is not a constructor of the supertype"),
-            unqual_type_ctor(SuperTypeCtor), suffix("."), nl],
+        CtorSNA = sym_name_arity(CtorName, Arity),
+        Pieces = [words("Error:")] ++
+            color_as_subject([unqual_sym_name_arity(CtorSNA)]) ++
+            color_as_incorrect([words("is not a constructor")]) ++
+            [words("of the supertype")] ++
+            color_as_subject([unqual_type_ctor(SuperTypeCtor), suffix(".")]) ++
+            [nl],
         Spec = spec($pred, severity_error, phase_pt2h, Context, Pieces),
         !:Specs = [Spec | !.Specs],
         !:FoundInvalidType = found_invalid_type
@@ -1707,11 +1747,16 @@ check_subtype_ctor_arg(TypeTable, TVarSet, OrigTypeStatus, CtorSymName,
             mercury_type_to_string(TVarSet, print_name_only, ArgType),
         SuperArgTypeStr =
             mercury_type_to_string(TVarSet, print_name_only, SuperArgType),
-        Pieces = [words("Error: the"), nth_fixed(ArgNum), words("argument"),
-            words("of"), quote(unqualify_name(CtorSymName)),
-            words("has a type,"), quote(ArgTypeStr), suffix(","),
-            words("which is not a subtype of the corresponding argument type"),
-            quote(SuperArgTypeStr), words("in the supertype."), nl],
+        CtorName = unqualify_name(CtorSymName),
+        Pieces = [words("Error:")] ++
+            color_as_subject([words("the"), nth_fixed(ArgNum),
+                words("argument of"), quote(CtorName)]) ++
+            [words("has a type,")] ++
+            color_as_incorrect([quote(ArgTypeStr), suffix(","),
+                words("which is not a subtype")]) ++
+            [words("of the corresponding argument type")] ++
+            color_as_correct([quote(SuperArgTypeStr)]) ++
+            [words("in the supertype."), nl],
         Spec = spec($pred, severity_error, phase_pt2h, Context, Pieces),
         !:Specs = [Spec | !.Specs],
         !:FoundInvalidType = found_invalid_type
@@ -1876,9 +1921,7 @@ check_corresponding_args_are_subtype(TypeTable, TVarSet, OrigTypeStatus,
     existq_tvar_mapping::in, existq_tvar_mapping::out) is semidet.
 
 check_is_subtype_higher_order(_TypeTable, _TVarSet, _OrigTypeStatus,
-        [], [], MaybeModesA, MaybeModesB,
-        _MaybeExistConstraintsA, _MaybeExistConstraintsB, !ExistQVarsMapping)
-        :-
+        [], [], MaybeModesA, MaybeModesB, _, _, !ExistQVarsMapping) :-
     (
         MaybeModesA = no,
         MaybeModesB = no
@@ -1935,9 +1978,10 @@ check_subtype_ctor_exist_constraints(CtorSymNameArity,
     ( if SortedConstraints = SortedSuperConstraints then
         true
     else
-        Pieces = [words("Error: existential class constraints for"),
-            unqual_sym_name_arity(CtorSymNameArity),
-            words("differ in the subtype and supertype."), nl],
+        Pieces = [words("Error: existential class constraints for")] ++
+            color_as_subject([unqual_sym_name_arity(CtorSymNameArity)]) ++
+            color_as_incorrect([words("differ")]) ++
+            [words("in the subtype and supertype."), nl],
         Spec = spec($pred, severity_error, phase_pt2h, Context, Pieces),
         !:Specs = [Spec | !.Specs],
         !:FoundInvalidType = found_invalid_type
@@ -1956,11 +2000,13 @@ check_subtype_ctors_order(TypeCtor, Ctors, SuperTypeCtor, SuperCtors, Context,
         ChangeHunkPieces = []
     ;
         ChangeHunkPieces = [_ | _],
-        Pieces = [words("Warning:"), unqual_type_ctor(TypeCtor),
-            words("declares some constructors"),
-            words("in a different order to its supertype"),
-            unqual_type_ctor(SuperTypeCtor), suffix(","),
-            words("as shown by this diff"),
+        Pieces = [words("Warning:")] ++
+            color_as_subject([unqual_type_ctor(TypeCtor)]) ++
+            color_as_incorrect([words("declares some constructors"),
+                words("in a different order")]) ++
+            [words("to its supertype")] ++
+            color_as_subject([unqual_type_ctor(SuperTypeCtor), suffix(",")]) ++
+            [words("as shown by this diff"),
             words("against those of the supertype's constructors"),
             words("which are present in the subtype:"), nl,
             blank_line] ++

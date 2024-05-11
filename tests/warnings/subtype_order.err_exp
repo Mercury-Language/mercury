@@ -1,5 +1,5 @@
-subtype_order.m:030: Warning: `citrus'/0 declares some constructors in a
-subtype_order.m:030:   different order to its supertype `fruit'/0, as shown by
+subtype_order.m:030: Warning: [38;5;87m`citrus'/0[39;49m [38;5;203mdeclares some constructors in a[39;49m
+subtype_order.m:030:   [38;5;203mdifferent order[39;49m to its supertype [38;5;87m`fruit'/0,[39;49m as shown by
 subtype_order.m:030:   this diff against those of the supertype's constructors
 subtype_order.m:030:   which are present in the subtype:
 subtype_order.m:030: 

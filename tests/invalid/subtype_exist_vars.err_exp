@@ -1,12 +1,12 @@
-subtype_exist_vars.m:019: Error: the first argument of `orange' has a type,
-subtype_exist_vars.m:019:   `T', which is not a subtype of the corresponding
-subtype_exist_vars.m:019:   argument type `O' in the supertype.
-subtype_exist_vars.m:022: Error: the first argument of `apple' has a type, `T',
-subtype_exist_vars.m:022:   which is not a subtype of the corresponding
-subtype_exist_vars.m:022:   argument type `int' in the supertype.
-subtype_exist_vars.m:028: Error: the second argument of `lemon' has a type,
-subtype_exist_vars.m:028:   `B', which is not a subtype of the corresponding
-subtype_exist_vars.m:028:   argument type `T' in the supertype.
-subtype_exist_vars.m:031: Error: the second argument of `lemon' has a type,
-subtype_exist_vars.m:031:   `A', which is not a subtype of the corresponding
-subtype_exist_vars.m:031:   argument type `T' in the supertype.
+subtype_exist_vars.m:019: Error: [38;5;87mthe first argument of `orange'[39;49m has a type,
+subtype_exist_vars.m:019:   [38;5;203m`T', which is not a subtype[39;49m of the corresponding
+subtype_exist_vars.m:019:   argument type [38;5;40m`O'[39;49m in the supertype.
+subtype_exist_vars.m:022: Error: [38;5;87mthe first argument of `apple'[39;49m has a type, [38;5;203m`T',[39;49m
+subtype_exist_vars.m:022:   [38;5;203mwhich is not a subtype[39;49m of the corresponding
+subtype_exist_vars.m:022:   argument type [38;5;40m`int'[39;49m in the supertype.
+subtype_exist_vars.m:028: Error: [38;5;87mthe second argument of `lemon'[39;49m has a type,
+subtype_exist_vars.m:028:   [38;5;203m`B', which is not a subtype[39;49m of the corresponding
+subtype_exist_vars.m:028:   argument type [38;5;40m`T'[39;49m in the supertype.
+subtype_exist_vars.m:031: Error: [38;5;87mthe second argument of `lemon'[39;49m has a type,
+subtype_exist_vars.m:031:   [38;5;203m`A', which is not a subtype[39;49m of the corresponding
+subtype_exist_vars.m:031:   argument type [38;5;40m`T'[39;49m in the supertype.

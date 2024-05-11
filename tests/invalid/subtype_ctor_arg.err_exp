@@ -1,12 +1,12 @@
-subtype_ctor_arg.m:021: Error: the first argument of `orange' has a type,
-subtype_ctor_arg.m:021:   `subtype_ctor_arg.nonempty_list(subtype_ctor_arg.foo)',
-subtype_ctor_arg.m:021:   which is not a subtype of the corresponding argument
-subtype_ctor_arg.m:021:   type `subtype_ctor_arg.list(O)' in the supertype.
-subtype_ctor_arg.m:037: Error: the first argument of `pair' has a type, `T',
-subtype_ctor_arg.m:037:   which is not a subtype of the corresponding argument
-subtype_ctor_arg.m:037:   type `U' in the supertype.
-subtype_ctor_arg.m:040: Error: the second argument of `pair' has a type,
-subtype_ctor_arg.m:040:   `subtype_ctor_arg.fruit(subtype_ctor_arg.foo)', which
-subtype_ctor_arg.m:040:   is not a subtype of the corresponding argument type
-subtype_ctor_arg.m:040:   `subtype_ctor_arg.citrus(subtype_ctor_arg.foo)' in
+subtype_ctor_arg.m:021: Error: [38;5;87mthe first argument of `orange'[39;49m has a type,
+subtype_ctor_arg.m:021:   [38;5;203m`subtype_ctor_arg.nonempty_list(subtype_ctor_arg.foo)',[39;49m
+subtype_ctor_arg.m:021:   [38;5;203mwhich is not a subtype[39;49m of the corresponding argument
+subtype_ctor_arg.m:021:   type [38;5;40m`subtype_ctor_arg.list(O)'[39;49m in the supertype.
+subtype_ctor_arg.m:037: Error: [38;5;87mthe first argument of `pair'[39;49m has a type, [38;5;203m`T',[39;49m
+subtype_ctor_arg.m:037:   [38;5;203mwhich is not a subtype[39;49m of the corresponding argument
+subtype_ctor_arg.m:037:   type [38;5;40m`U'[39;49m in the supertype.
+subtype_ctor_arg.m:040: Error: [38;5;87mthe second argument of `pair'[39;49m has a type,
+subtype_ctor_arg.m:040:   [38;5;203m`subtype_ctor_arg.fruit(subtype_ctor_arg.foo)', which[39;49m
+subtype_ctor_arg.m:040:   [38;5;203mis not a subtype[39;49m of the corresponding argument type
+subtype_ctor_arg.m:040:   [38;5;40m`subtype_ctor_arg.citrus(subtype_ctor_arg.foo)'[39;49m in
 subtype_ctor_arg.m:040:   the supertype.
