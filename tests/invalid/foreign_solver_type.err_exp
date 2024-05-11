@@ -1,11 +1,11 @@
-foreign_solver_type.m:009: Error: a solver type such as `foo'/0 may be defined
-foreign_solver_type.m:009:   (as opposed to declared) only in the
-foreign_solver_type.m:009:   implementation section.
-foreign_solver_type.m:015: Error: this solver type declaration of `bar'/0 is
-foreign_solver_type.m:015:   incompatible with the foreign type definition in
+foreign_solver_type.m:009: Error: a solver type such as [38;5;87m`foo'/0[39;49m may be defined
+foreign_solver_type.m:009:   (as opposed to declared) [38;5;203monly in the[39;49m
+foreign_solver_type.m:009:   [38;5;203mimplementation section.[39;49m
+foreign_solver_type.m:015: Error: this solver type declaration of [38;5;87m`bar'/0[39;49m is
+foreign_solver_type.m:015:   [38;5;203mincompatible[39;49m with the foreign type definition in
 foreign_solver_type.m:015:   the interface section.
 foreign_solver_type.m:018:   That definition is here.
-foreign_solver_type.m:017: Error: this definition of `foo'/0 is incompatible
+foreign_solver_type.m:017: Error: this definition of [38;5;87m`foo'/0[39;49m is [38;5;203mincompatible[39;49m
 foreign_solver_type.m:017:   with the solver type definition in the
 foreign_solver_type.m:017:   implementation section.
 foreign_solver_type.m:009:   That definition is here.

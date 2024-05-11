@@ -1,5 +1,5 @@
-uu_type.m:016: Error: the type `hiddenrenamedtype'/0 has this declaration, but
-uu_type.m:016:   it has no definition.
+uu_type.m:016: Error: the type [38;5;87m`hiddenrenamedtype'/0[39;49m has this declaration, but
+uu_type.m:016:   [38;5;203mit has no definition.[39;49m
 uu_type.m:018: In declaration of predicate `gen'/1:
 uu_type.m:018:   error: the type `hiddentype'/0 is not exported, and thus it
 uu_type.m:018:   may not be used in the interface.

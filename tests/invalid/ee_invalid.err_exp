@@ -1,20 +1,19 @@
-ee_invalid.m:039: In `:- pragma foreign_export_enum' declaration for type
-ee_invalid.m:039:   `int'/0:
-ee_invalid.m:039:   error: `int'/0 is a builtin type.
+ee_invalid.m:039: Error: `:- pragma foreign_export_enum' declarations [38;5;203mare not[39;49m
+ee_invalid.m:039:   [38;5;203mallowed[39;49m for builtin types such as [38;5;87m`int'/0.[39;49m
 ee_invalid.m:043: In `:- pragma foreign_export_enum' declaration:
 ee_invalid.m:043:   error: undefined type `undefined_type'/0.
 ee_invalid.m:047: In `:- pragma foreign_export_enum' declaration for type
 ee_invalid.m:047:   `ee_invalid.foo'/1:
-ee_invalid.m:047:   error: `ee_invalid.foo'/1 is not an enumeration type.
+ee_invalid.m:047:   error: [38;5;87m`ee_invalid.foo'/1[39;49m is [38;5;203mnot an enumeration type.[39;49m
 ee_invalid.m:047:   It has this non-zero arity constructor:
-ee_invalid.m:047:       `foo'/1.
+ee_invalid.m:047:       [38;5;203m`foo'/1.[39;49m
 ee_invalid.m:051: In `:- pragma foreign_export_enum' declaration for type
 ee_invalid.m:051:   `ee_invalid.bar'/0:
-ee_invalid.m:051:   error: `ee_invalid.bar'/0 is not an enumeration type; it is
+ee_invalid.m:051:   error: [38;5;87m`ee_invalid.bar'/0[39;49m is [38;5;203mnot an enumeration type;[39;49m it is
 ee_invalid.m:051:   an equivalence type.
 ee_invalid.m:058: In `:- pragma foreign_export_enum' declaration for type
 ee_invalid.m:058:   `ee_invalid.baz'/0:
-ee_invalid.m:058:   error: `ee_invalid.baz'/0 is not an enumeration type; it is
+ee_invalid.m:058:   error: [38;5;87m`ee_invalid.baz'/0[39;49m is [38;5;203mnot an enumeration type;[39;49m it is
 ee_invalid.m:058:   a foreign type.
 ee_invalid.m:063: In `:- pragma foreign_export_enum' declaration for type
 ee_invalid.m:063:   `ee_invalid.alphabet'/0:
@@ -47,9 +46,9 @@ ee_invalid.m:077:   The following Mercury constructor name is repeated:
 ee_invalid.m:077:       `abc'.
 ee_invalid.m:083: In `:- pragma foreign_export_enum' declaration for type
 ee_invalid.m:083:   `ee_invalid.strange_names'/0:
-ee_invalid.m:083:   error: some of the constructors of the type cannot be
-ee_invalid.m:083:   converted into valid identifiers for C.
+ee_invalid.m:083:   error: some of the constructors of the type [38;5;203mcannot be[39;49m
+ee_invalid.m:083:   [38;5;203mconverted[39;49m into valid identifiers for C.
 ee_invalid.m:083:   The problematic foreign names are:
-ee_invalid.m:083:       `!@THIS',
-ee_invalid.m:083:       `#$WON'T',
-ee_invalid.m:083:       `%^WORK'.
+ee_invalid.m:083:       [38;5;203m`!@THIS',[39;49m
+ee_invalid.m:083:       [38;5;203m`#$WON'T',[39;49m
+ee_invalid.m:083:       [38;5;203m`%^WORK'.[39;49m

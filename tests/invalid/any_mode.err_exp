@@ -1,5 +1,5 @@
-any_mode.m:009: Error: a solver type such as `foo'/0 may be defined (as opposed
-any_mode.m:009:   to declared) only in the implementation section.
+any_mode.m:009: Error: a solver type such as [38;5;87m`foo'/0[39;49m may be defined (as opposed
+any_mode.m:009:   to declared) [38;5;203monly in the implementation section.[39;49m
 any_mode.m:020: In clause for `p((any >> ground))':
 any_mode.m:020:   in argument 1 of call to predicate `any_mode.q'/1:
 any_mode.m:020:   mode error: [38;5;87mvariable `X'[39;49m has instantiatedness [38;5;203m`any',[39;49m

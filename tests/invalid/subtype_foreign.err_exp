@@ -1,12 +1,12 @@
-subtype_foreign.m:017: Error: `citrus'/0 is defined to be a subtype, so there
-subtype_foreign.m:017:   must not be any `:- pragma foreign_type' declarations
-subtype_foreign.m:017:   for it.
+subtype_foreign.m:017: Error: [38;5;87m`citrus'/0[39;49m is defined to be a subtype, so [38;5;203mthere[39;49m
+subtype_foreign.m:017:   [38;5;203mmust not be any `:- pragma foreign_type' declarations[39;49m
+subtype_foreign.m:017:   [38;5;203mfor it.[39;49m
 subtype_foreign.m:013:   That subtype definition is here.
-subtype_foreign.m:018: Error: `citrus'/0 is defined to be a subtype, so there
-subtype_foreign.m:018:   must not be any `:- pragma foreign_type' declarations
-subtype_foreign.m:018:   for it.
+subtype_foreign.m:018: Error: [38;5;87m`citrus'/0[39;49m is defined to be a subtype, so [38;5;203mthere[39;49m
+subtype_foreign.m:018:   [38;5;203mmust not be any `:- pragma foreign_type' declarations[39;49m
+subtype_foreign.m:018:   [38;5;203mfor it.[39;49m
 subtype_foreign.m:013:   That subtype definition is here.
-subtype_foreign.m:019: Error: `citrus'/0 is defined to be a subtype, so there
-subtype_foreign.m:019:   must not be any `:- pragma foreign_type' declarations
-subtype_foreign.m:019:   for it.
+subtype_foreign.m:019: Error: [38;5;87m`citrus'/0[39;49m is defined to be a subtype, so [38;5;203mthere[39;49m
+subtype_foreign.m:019:   [38;5;203mmust not be any `:- pragma foreign_type' declarations[39;49m
+subtype_foreign.m:019:   [38;5;203mfor it.[39;49m
 subtype_foreign.m:013:   That subtype definition is here.

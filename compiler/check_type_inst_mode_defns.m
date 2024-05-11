@@ -1029,18 +1029,21 @@ non_enum_du_report_any_foreign_enum(TypeCtor, DuDefn, NonEnumSNAs,
         CtorPieces = []
     ;
         NonEnumSNAs = [_ | _],
-        SNAPieces = component_list_to_pieces("and",
-            list.map(func(SNA) = unqual_sym_name_arity(SNA), NonEnumSNAs)),
+        NonEnumSNAPieces = list.map(func(SNA) = unqual_sym_name_arity(SNA),
+            NonEnumSNAs),
+        SNAPieces = component_list_to_color_pieces(yes(color_incorrect), "and",
+            [suffix(".")], NonEnumSNAPieces),
         ItHasThese = choose_number(NonEnumSNAs,
             words("It has this non-zero arity constructor:"),
             words("It has these non-zero arity constructors:")),
         CtorPieces = [ItHasThese, nl_indent_delta(2)] ++ SNAPieces ++
-            [suffix("."), nl_indent_delta(-2)]
+            [nl_indent_delta(-2)]
     ),
-    EnumPieces = [words("Error: the Mercury definition of"),
-        unqual_type_ctor(TypeCtor), words("is not an enumeration type,"),
-        words("so there must not be any"),
-        pragma_decl("foreign_enum"), words("declarations for it."), nl],
+    EnumPieces = [words("Error: the Mercury definition of")] ++
+        color_as_subject([unqual_type_ctor(TypeCtor)]) ++
+        [words("is not an enumeration type, so")] ++
+        color_as_incorrect([words("there must not be any"),
+        pragma_decl("foreign_enum"), words("declarations for it.")]) ++ [nl],
     DuPieces = [words("That Mercury definition is here."), nl | CtorPieces],
     Spec = error_spec($pred, severity_error, phase_tim_check,
         [msg(Enum ^ fe_context, EnumPieces),
@@ -1052,10 +1055,11 @@ non_enum_du_report_any_foreign_enum(TypeCtor, DuDefn, NonEnumSNAs,
     list(error_spec)::in, list(error_spec)::out) is det.
 
 subtype_report_any_foreign_type(TypeCtor, SubTypeDefn, Foreign, !Specs) :-
-    ForeignPieces = [words("Error:"),
-        unqual_type_ctor(TypeCtor), words("is defined to be a subtype,"),
-        words("so there must not be any"),
-        pragma_decl("foreign_type"), words("declarations for it."), nl],
+    ForeignPieces = [words("Error:")] ++
+        color_as_subject([unqual_type_ctor(TypeCtor)]) ++
+        [words("is defined to be a subtype, so")] ++
+        color_as_incorrect([words("there must not be any"),
+        pragma_decl("foreign_type"), words("declarations for it.")]) ++ [nl],
     SubTypePieces = [words("That subtype definition is here."), nl],
     Spec = error_spec($pred, severity_error, phase_tim_check,
         [msg(Foreign ^ td_context, ForeignPieces),
@@ -1067,10 +1071,11 @@ subtype_report_any_foreign_type(TypeCtor, SubTypeDefn, Foreign, !Specs) :-
     list(error_spec)::in, list(error_spec)::out) is det.
 
 subtype_report_any_foreign_enum(TypeCtor, SubTypeDefn, Enum, !Specs) :-
-    EnumPieces = [words("Error:"),
-        unqual_type_ctor(TypeCtor), words("is defined to be a subtype,"),
-        words("so there must not be any"),
-        pragma_decl("foreign_enum"), words("declarations for it."), nl],
+    EnumPieces = [words("Error:")] ++
+        color_as_subject([unqual_type_ctor(TypeCtor)]) ++
+        [words("is defined to be a subtype, so")] ++
+        color_as_incorrect([words("there must not be any"),
+        pragma_decl("foreign_enum"), words("declarations for it.")]) ++ [nl],
     SubTypePieces = [words("That subtype definition is here."), nl],
     Spec = error_spec($pred, severity_error, phase_tim_check,
         [msg(Enum ^ fe_context, EnumPieces),
@@ -1085,10 +1090,13 @@ subtype_report_any_foreign_enum(TypeCtor, SubTypeDefn, Enum, !Specs) :-
 report_mer_foreign_section_mismatch(TypeCtor, DeclOrDefn, MerSection, MerDefn,
         ForeignDefn, !Specs) :-
     ForeignPieces = [words("Error: since the Mercury"), words(DeclOrDefn),
-        words("of"), unqual_type_ctor(TypeCtor),
-        words("is in the"), words(MerSection), words("section,"),
-        words("any foreign type definition for it"), words("must be"),
-        words("in the"), words(MerSection), words("section as well."), nl],
+        words("of")] ++ color_as_subject([unqual_type_ctor(TypeCtor)]) ++
+        color_as_correct([words("is in the"), words(MerSection),
+            words("section,")]) ++
+        [words("any foreign type definition for it")] ++
+        color_as_incorrect([words("must be"), words("in the"),
+            words(MerSection), words("section as well.")]) ++
+        [nl],
     DuPieces = [words("That Mercury"), words(DeclOrDefn),
         words("is here."), nl],
     Spec = error_spec($pred, severity_error, phase_tim_check,
@@ -1102,10 +1110,11 @@ report_mer_foreign_section_mismatch(TypeCtor, DeclOrDefn, MerSection, MerDefn,
 
 report_any_foreign_type_without_declaration(TypeCtor, ForeignDefn, !Specs) :-
     Pieces = [words("Error: a"),
-        pragma_decl("foreign_type"), words("definition for"),
-        unqual_type_ctor(TypeCtor), words("without either"),
-        words("a Mercury definition or a Mercury declaration for"),
-        unqual_type_ctor(TypeCtor), suffix("."), nl],
+        pragma_decl("foreign_type"), words("definition for")] ++
+        color_as_subject([unqual_type_ctor(TypeCtor)]) ++
+        color_as_incorrect([words("without either"),
+            words("a Mercury definition or a Mercury declaration")]) ++
+        [words("for"), unqual_type_ctor(TypeCtor), suffix("."), nl],
     Spec = spec($pred, severity_error, phase_tim_check_invalid_type,
         ForeignDefn ^ td_context, Pieces),
     !:Specs = [Spec | !.Specs].
@@ -1117,10 +1126,11 @@ report_any_foreign_type_without_declaration(TypeCtor, ForeignDefn, !Specs) :-
 foreign_int_report_any_foreign_defn_in_imp(TypeCtor, IntForeignContext,
         ImpForeignDefn, !Specs) :-
     ImpPieces = [words("Error: since some foreign language definition"),
-        words("of"), unqual_type_ctor(TypeCtor),
-        words("is in the interface section,"),
-        words("all other foreign language definitions for it"),
-        words("must be in the interface section as well."), nl],
+        words("of")] ++ color_as_subject([unqual_type_ctor(TypeCtor)]) ++
+        [words("is in the interface section,")] ++
+        color_as_incorrect([words("all other foreign language definitions"),
+            words("for it must be in the interface section as well.")]) ++
+        [nl],
     IntPieces = [words("That foreign definition in the interface"),
         words("is here."), nl],
     Spec = error_spec($pred, severity_error, phase_tim_check,
@@ -1145,10 +1155,12 @@ report_any_nonabstract_solver_type_in_int(TypeCtor, IntMaybeDefn,
         ImpMaybeDefn = ImpMaybeDefn0
     ;
         IntMaybeDefn = yes(IntDefn),
-        Pieces = [words("Error: a solver type such as"),
-            unqual_type_ctor(TypeCtor), words("may be defined"),
-            words("(as opposed to declared)"),
-            words("only in the implementation section."), nl],
+        Pieces = [words("Error: a solver type such as")] ++
+            color_as_subject([unqual_type_ctor(TypeCtor)]) ++
+            [words("may be defined (as opposed to declared)")] ++
+            color_as_incorrect(
+                [words("only in the implementation section.")]) ++
+            [nl],
         Spec = spec($pred, severity_error, phase_tim_check,
             IntDefn ^ td_context, Pieces),
         !:Specs = [Spec | !.Specs],
@@ -1184,9 +1196,10 @@ report_any_redundant_abstract_type_in_imp(TypeCtor, Section,
         MaybeImpAbstractDefn = no
     ;
         MaybeImpAbstractDefn = yes(ImpAbstractDefn),
-        Pieces = [words("Warning: this declaration of"),
-            unqual_type_ctor(TypeCtor), words("is redundant,"),
-            words("since the type has a definition in the"),
+        Pieces = [words("Warning: this declaration of")] ++
+            color_as_subject([unqual_type_ctor(TypeCtor)]) ++
+            [words("is")] ++ color_as_incorrect([words("redundant,")]) ++
+            [words("since the type has a definition in the"),
             words(Section), words("section."), nl],
         Spec = spec($pred, severity_warning, phase_tim_check,
             ImpAbstractDefn ^ td_context, Pieces),
@@ -1204,9 +1217,10 @@ report_any_incompatible_type_decl_or_defn(TypeCtor, UsedContext, Kind, Section,
         MaybeDefnContext = no
     ;
         MaybeDefnContext = yes(DefnContext),
-        MainPieces = [words("Error: this"), words(DeclOrDefn), words("of"),
-            unqual_type_ctor(TypeCtor), words("is incompatible"),
-            words("with the"), words(Kind), words(SectionDeclOrDefn),
+        MainPieces = [words("Error: this"), words(DeclOrDefn), words("of")] ++
+            color_as_subject([unqual_type_ctor(TypeCtor)]) ++
+            [words("is")] ++ color_as_incorrect([words("incompatible")]) ++
+            [words("with the"), words(Kind), words(SectionDeclOrDefn),
             words("in the"), words(Section), words("section."), nl],
         UsedPieces = [words("That"), words(SectionDeclOrDefn),
             words("is here."), nl],
@@ -1223,9 +1237,11 @@ report_any_incompatible_type_decl_or_defn(TypeCtor, UsedContext, Kind, Section,
 report_incompatible_foreign_enum(TypeCtor, UsedContext, Kind, Section, Enum,
         !Specs) :-
     MainPieces = [words("Error: this"), pragma_decl("foreign_enum"),
-        words("declaration for"), unqual_type_ctor(TypeCtor),
-        words("is incompatible with the"), words(Kind),
-        words("definition in the"), words(Section), words("section."), nl],
+        words("declaration for")] ++
+        color_as_subject([unqual_type_ctor(TypeCtor)]) ++
+        [words("is")] ++ color_as_incorrect([words("incompatible")]) ++
+        [words("with the"), words(Kind), words("definition in the"),
+        words(Section), words("section."), nl],
     UsedPieces = [words("That definition is here."), nl],
     Spec = error_spec($pred, severity_error, phase_tim_check,
         [msg(Enum ^ fe_context, MainPieces),
@@ -1238,9 +1254,12 @@ report_incompatible_foreign_enum(TypeCtor, UsedContext, Kind, Section, Enum,
 
 report_foreign_enum_for_undefined_type(TypeCtor, UndefOrUndecl, Enum,
         !Specs) :-
-    Pieces = [words("Error:"), pragma_decl("foreign_enum"),
-        words("declaration for the"), words(UndefOrUndecl),
-        words("type"), unqual_type_ctor(TypeCtor), suffix("."), nl],
+    Pieces = [words("Error:")] ++
+        color_as_incorrect([pragma_decl("foreign_enum"),
+            words("declaration")]) ++
+        [words("for the")] ++
+        color_as_incorrect([words(UndefOrUndecl), words("type")]) ++
+        color_as_subject([unqual_type_ctor(TypeCtor), suffix(".")]) ++ [nl],
     Spec = spec($pred, severity_error, phase_tim_check,
         Enum ^ fe_context, Pieces),
     !:Specs = [Spec | !.Specs].
@@ -1264,8 +1283,10 @@ maybe_report_declared_but_undefined_type(InsistOnDefn, TypeCtor, AbsTypeDefn,
         not TypeCtorModuleName = unqualified("type_desc"),
         not list.member(TypeCtor, BuiltinTypeCtors)
     then
-        Pieces = [words("Error: the type"), unqual_type_ctor(TypeCtor),
-            words("has this declaration, but it has no definition."), nl],
+        Pieces = [words("Error: the type")] ++
+            color_as_subject([unqual_type_ctor(TypeCtor)]) ++
+            [words("has this declaration, but")] ++
+            color_as_incorrect([words("it has no definition.")]) ++ [nl],
         % XXX should be phase_tim_check_invalid_type
         Spec = spec($pred, severity_error, phase_tim_check,
             AbsTypeDefn ^ td_context, Pieces),
@@ -1411,9 +1432,11 @@ report_duplicate_type_decl_or_defn(DeclOrDefn, Kind, TypeCtor,
         SeverityWord = "Error",
         Severity = severity_error
     ),
-    MainPieces = [words(SeverityWord), suffix(":"),
-        words("duplicate"), words(Kind), words(DeclOrDefnWord),
-        words("for"), unqual_type_ctor(TypeCtor), suffix("."), nl],
+    MainPieces = [words(SeverityWord), suffix(":")] ++
+        color_as_incorrect([words("duplicate"), words(Kind),
+            words(DeclOrDefnWord)]) ++
+        [words("for")] ++
+        color_as_subject([unqual_type_ctor(TypeCtor), suffix(".")]) ++ [nl],
     LeastPieces = [words("The original"), words(DeclOrDefnWord),
         words("is here."), nl],
     Spec = error_spec($pred, Severity, phase_tim_check,
@@ -1510,9 +1533,11 @@ get_type_defn_info_context(TypeDefn) = TypeDefn ^ td_context.
 
 report_duplicate_foreign_defn(TypeOrEnum, TypeCtor, Lang,
         LeastContext, Context, !Specs) :-
-    MainPieces = [words("Error: duplicate foreign"), fixed(TypeOrEnum),
-        words("definition in"), fixed(foreign_language_string(Lang)),
-        words("for"), unqual_type_ctor(TypeCtor), suffix("."), nl],
+    MainPieces = [words("Error:")] ++
+        color_as_incorrect([words("duplicate foreign"), fixed(TypeOrEnum),
+            words("definition in"), fixed(foreign_language_string(Lang))]) ++
+        [words("for")] ++
+        color_as_subject([unqual_type_ctor(TypeCtor), suffix(".")]) ++ [nl],
     LeastPieces = [words("The original definition is here."), nl],
     Spec = error_spec($pred, severity_error, phase_tim_check,
         [msg(Context, MainPieces),
@@ -1671,12 +1696,16 @@ report_duplicate_field_name(FieldNameTypeCtor, FirstFNLocn, FNLocn, !Specs) :-
     FieldNameTypeCtor = field_name_of_type_ctor(FieldName, TypeCtor),
     FirstFNLocn = field_name_locn(FirstContext, FirstCtorName),
     FNLocn = field_name_locn(Context, CtorName),
-    InitPieces = [words("Error: duplicate occurrence of the field name"),
-        quote(FieldName)],
+    InitPieces = [words("Error:")] ++
+        color_as_incorrect([words("duplicate occurrence")]) ++
+        [words("of the field name")] ++
+        color_as_subject([quote(FieldName)]),
     ( if CtorName = FirstCtorName then
+        % The two occurrences of FieldName are in the same data constructor.
         MainPieces = InitPieces ++ [words("in the function symbol"),
             quote(CtorName), suffix("."), nl]
     else
+        % The two occurrences are in different data constructors.
         MainPieces = InitPieces ++ [words("in the definition of"),
             unqual_type_ctor(TypeCtor), suffix("."), nl]
     ),
@@ -1851,8 +1880,11 @@ at_most_one_inst_defn(Kind, InstCtor, InstDefns, MaybeInstDefn, !Specs) :-
     list(error_spec)::in, list(error_spec)::out) is det.
 
 report_duplicate_inst_defn(Kind, InstCtor, OrigInstDefn, InstDefn, !Specs) :-
-    MainPieces = [words("Error: duplicate"), words(Kind),
-        words("definition for"), unqual_inst_ctor(InstCtor), suffix("."), nl],
+    MainPieces = [words("Error")] ++
+        color_as_incorrect([words("duplicate"), words(Kind),
+            words("definition")]) ++
+        [words("for")] ++
+        color_as_subject([unqual_inst_ctor(InstCtor), suffix(".")]) ++ [nl],
     LeastPieces = [words("The original definition is here."), nl],
     Spec = error_spec($pred, severity_error, phase_tim_check,
         [msg(InstDefn ^ id_context, MainPieces),
@@ -1864,15 +1896,16 @@ report_duplicate_inst_defn(Kind, InstCtor, OrigInstDefn, InstDefn, !Specs) :-
     maybe(item_inst_defn_info_abstract)::in,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-report_any_redundant_abstract_inst_in_imp(TypeCtor, DeclOrDefn, Section,
+report_any_redundant_abstract_inst_in_imp(InstCtor, DeclOrDefn, Section,
         MaybeImpAbstractDefn, !Specs) :-
     (
         MaybeImpAbstractDefn = no
     ;
         MaybeImpAbstractDefn = yes(ImpAbstractDefn),
-        Pieces = [words("Warning: this declaration of"),
-            unqual_inst_ctor(TypeCtor), words("is redundant,"),
-            words("since the inst has a"), words(DeclOrDefn),
+        Pieces = [words("Warning: this declaration of")] ++
+            color_as_subject([unqual_inst_ctor(InstCtor)]) ++
+            [words("is")] ++ color_as_incorrect([words("redundant,")]) ++
+            [words("since the inst has a"), words(DeclOrDefn),
             words("in the"), words(Section), words("section."), nl],
         Spec = spec($pred, severity_warning, phase_tim_check,
             ImpAbstractDefn ^ id_context, Pieces),
@@ -1884,8 +1917,10 @@ report_any_redundant_abstract_inst_in_imp(TypeCtor, DeclOrDefn, Section,
     list(error_spec)::in, list(error_spec)::out) is det.
 
 report_declared_but_undefined_inst(InstCtor, AbsInstDefn, !Specs) :-
-    Pieces = [words("Error: the inst"), unqual_inst_ctor(InstCtor),
-        words("has this declaration, but it has no definition."), nl],
+    Pieces = [words("Error: the inst")] ++
+        color_as_subject([unqual_inst_ctor(InstCtor)]) ++
+        [words("has this declaration, but")] ++
+        color_as_incorrect([words("it has no definition.")]) ++ [nl],
     Spec = spec($pred, severity_error, phase_tim_check_invalid_inst_mode,
         AbsInstDefn ^ id_context, Pieces),
     !:Specs = [Spec | !.Specs].
@@ -2054,8 +2089,11 @@ at_most_one_mode_defn(Kind, ModeCtor, ModeDefns, MaybeModeDefn, !Specs) :-
     list(error_spec)::in, list(error_spec)::out) is det.
 
 report_duplicate_mode_defn(Kind, ModeCtor, OrigModeDefn, ModeDefn, !Specs) :-
-    MainPieces = [words("Error: duplicate"), words(Kind),
-        words("definition for"), unqual_mode_ctor(ModeCtor), suffix("."), nl],
+    MainPieces = [words("Error:")] ++
+        color_as_incorrect([words("duplicate"), words(Kind),
+            words("definition")]) ++
+        [words("for")] ++
+        color_as_subject([unqual_mode_ctor(ModeCtor), suffix(".")]) ++ [nl],
     LeastPieces = [words("The original definition is here."), nl],
     Spec = error_spec($pred, severity_error, phase_tim_check,
         [msg(ModeDefn ^ md_context, MainPieces),
@@ -2073,9 +2111,10 @@ report_any_redundant_abstract_mode_in_imp(TypeCtor, DeclOrDefn, Section,
         MaybeImpAbstractDefn = no
     ;
         MaybeImpAbstractDefn = yes(ImpAbstractDefn),
-        Pieces = [words("Warning: this declaration of"),
-            unqual_mode_ctor(TypeCtor), words("is redundant,"),
-            words("since the mode has a"), words(DeclOrDefn),
+        Pieces = [words("Warning: this declaration of")] ++
+            color_as_subject([unqual_mode_ctor(TypeCtor)]) ++
+            [words("is")] ++ color_as_incorrect([words("redundant,")]) ++
+            [words("since the mode has a"), words(DeclOrDefn),
             words("in the"), words(Section), words("section."), nl],
         Spec = spec($pred, severity_warning, phase_tim_check,
             ImpAbstractDefn ^ md_context, Pieces),
@@ -2087,8 +2126,10 @@ report_any_redundant_abstract_mode_in_imp(TypeCtor, DeclOrDefn, Section,
     list(error_spec)::in, list(error_spec)::out) is det.
 
 report_declared_but_undefined_mode(ModeCtor, AbsModeDefn, !Specs) :-
-    Pieces = [words("Error: the mode"), unqual_mode_ctor(ModeCtor),
-        words("has this declaration, but it has no definition."), nl],
+    Pieces = [words("Error: the mode")] ++
+        color_as_subject([unqual_mode_ctor(ModeCtor)]) ++
+        [words("has this declaration, but")] ++
+        color_as_incorrect([words("it has no definition.")]) ++ [nl],
     Spec = spec($pred, severity_error, phase_tim_check_invalid_inst_mode,
         AbsModeDefn ^ md_context, Pieces),
     !:Specs = [Spec | !.Specs].

@@ -1,11 +1,11 @@
 type_with_no_defn.m:009: Error: abstract declaration for type `alpha'/0 has no
 type_with_no_defn.m:009:   corresponding definition.
-type_with_no_defn.m:009: Error: the type `alpha'/0 has this declaration, but it
-type_with_no_defn.m:009:   has no definition.
+type_with_no_defn.m:009: Error: the type [38;5;87m`alpha'/0[39;49m has this declaration, but [38;5;203mit[39;49m
+type_with_no_defn.m:009:   [38;5;203mhas no definition.[39;49m
 type_with_no_defn.m:017: Error: abstract declaration for type `baz'/0 has no
 type_with_no_defn.m:017:   corresponding definition.
-type_with_no_defn.m:017: Error: the type `baz'/0 has this declaration, but it
-type_with_no_defn.m:017:   has no definition.
-type_with_no_defn.m:019: Warning: this declaration of `beta'/0 is redundant,
+type_with_no_defn.m:017: Error: the type [38;5;87m`baz'/0[39;49m has this declaration, but [38;5;203mit[39;49m
+type_with_no_defn.m:017:   [38;5;203mhas no definition.[39;49m
+type_with_no_defn.m:019: Warning: this declaration of [38;5;87m`beta'/0[39;49m is [38;5;203mredundant,[39;49m
 type_with_no_defn.m:019:   since the type has a definition in the interface
 type_with_no_defn.m:019:   section.

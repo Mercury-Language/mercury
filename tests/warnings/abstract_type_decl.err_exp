@@ -1,9 +1,9 @@
-abstract_type_decl.m:013: Warning: this declaration of `foo'/0 is redundant,
+abstract_type_decl.m:013: Warning: this declaration of [38;5;87m`foo'/0[39;49m is [38;5;203mredundant,[39;49m
 abstract_type_decl.m:013:   since the type has a definition in the
 abstract_type_decl.m:013:   implementation section.
-abstract_type_decl.m:014: Warning: this declaration of `bar'/0 is redundant,
+abstract_type_decl.m:014: Warning: this declaration of [38;5;87m`bar'/0[39;49m is [38;5;203mredundant,[39;49m
 abstract_type_decl.m:014:   since the type has a definition in the
 abstract_type_decl.m:014:   implementation section.
-abstract_type_decl.m:015: Warning: duplicate abstract type declaration for
-abstract_type_decl.m:015:   `bar'/0.
+abstract_type_decl.m:015: Warning: [38;5;203mduplicate abstract type declaration[39;49m for
+abstract_type_decl.m:015:   [38;5;87m`bar'/0.[39;49m
 abstract_type_decl.m:014:   The original declaration is here.

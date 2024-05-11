@@ -1,10 +1,10 @@
-bad_foreign_type.m:021: Error: the type `foo'/0 has this declaration, but it
-bad_foreign_type.m:021:   has no definition.
+bad_foreign_type.m:021: Error: the type [38;5;87m`foo'/0[39;49m has this declaration, but [38;5;203mit[39;49m
+bad_foreign_type.m:021:   [38;5;203mhas no definition.[39;49m
 bad_foreign_type.m:027: Error: a `:- pragma foreign_type' definition for
-bad_foreign_type.m:027:   `bar'/0 without either a Mercury definition or a
-bad_foreign_type.m:027:   Mercury declaration for `bar'/0.
-bad_foreign_type.m:030: Error: the type `quux'/0 has this declaration, but it
-bad_foreign_type.m:030:   has no definition.
-bad_foreign_type.m:032: Warning: duplicate abstract type declaration for
-bad_foreign_type.m:032:   `quux'/0.
+bad_foreign_type.m:027:   [38;5;87m`bar'/0[39;49m [38;5;203mwithout either a Mercury definition or a[39;49m
+bad_foreign_type.m:027:   [38;5;203mMercury declaration[39;49m for `bar'/0.
+bad_foreign_type.m:030: Error: the type [38;5;87m`quux'/0[39;49m has this declaration, but [38;5;203mit[39;49m
+bad_foreign_type.m:030:   [38;5;203mhas no definition.[39;49m
+bad_foreign_type.m:032: Warning: [38;5;203mduplicate abstract type declaration[39;49m for
+bad_foreign_type.m:032:   [38;5;87m`quux'/0.[39;49m
 bad_foreign_type.m:030:   The original declaration is here.

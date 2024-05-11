@@ -118,8 +118,7 @@ add_pragma_foreign_enum(ModuleInfo, ImsItem, !TypeCtorForeignEnumMap,
 
     some [!Specs] (
         !:Specs = [],
-        report_if_builtin_type(Context, ContextPieces, TypeSymName, TypeArity,
-            !Specs),
+        report_if_builtin_type(Context, "foreign_enum", TypeCtor, !Specs),
 
         module_info_get_type_table(ModuleInfo, TypeTable),
         ( if search_type_ctor_defn(TypeTable, TypeCtor, TypeDefn) then
@@ -160,9 +159,12 @@ add_pragma_foreign_enum(ModuleInfo, ImsItem, !TypeCtorForeignEnumMap,
                 % As of 2019 Sep 29, this should not happen anymore,
                 % since we now catch foreign_enum pragmas that refer
                 % to types in other modules when parsing them.
-                NotThisModulePieces = ContextPieces ++
-                    [words("error: "), qual_sym_name_arity(TypeSNA),
-                    words("is not defined in this module."), nl],
+                NotThisModulePieces = ContextPieces ++ [words("error:")] ++
+                    color_as_subject([qual_sym_name_arity(TypeSNA)]) ++
+                    [words("is")] ++
+                    color_as_incorrect(
+                        [words("not defined in this module.")]) ++
+                    [nl],
                 NotThisModuleSpec = spec($pred, severity_error, phase_pt2h,
                     Context, NotThisModulePieces),
                 !:Specs = [NotThisModuleSpec | !.Specs]
@@ -176,7 +178,7 @@ add_pragma_foreign_enum(ModuleInfo, ImsItem, !TypeCtorForeignEnumMap,
                 ; TypeBody = hlds_foreign_type(_)
                 ),
                 report_not_du_type(Context, ContextPieces,
-                    TypeSymName, TypeArity, TypeBody, !Specs)
+                    TypeCtor, TypeBody, !Specs)
             ;
                 TypeBody = hlds_du_type(TypeBodyDu),
                 TypeBodyDu = type_body_du(Ctors, MaybeSuperType, _MaybeUserEq,
@@ -188,8 +190,8 @@ add_pragma_foreign_enum(ModuleInfo, ImsItem, !TypeCtorForeignEnumMap,
 
                 MercuryForeignTagPairs =
                     one_or_more_to_list(OoMMercuryForeignTagPairs),
-                build_mercury_foreign_map(TypeModuleName, TypeSymName,
-                    TypeArity, for_foreign_enum, Context, ContextPieces,
+                build_mercury_foreign_map(TypeModuleName, TypeCtor,
+                    for_foreign_enum, Context, ContextPieces,
                     one_or_more_to_list(Ctors),
                     MercuryForeignTagPairs, MercuryForeignTagBimap, !Specs),
                 MercuryForeignTagNames =
@@ -223,9 +225,8 @@ add_pragma_foreign_enum(ModuleInfo, ImsItem, !TypeCtorForeignEnumMap,
                     TCFE0 = type_ctor_foreign_enums(LangContextMap0,
                         _OldMaybeTagValues),
                     ( if map.search(LangContextMap0, Lang, OldContext) then
-                        maybe_add_duplicate_foreign_enum_error(
-                            TypeSymName, TypeArity, Lang, PragmaStatus,
-                            OldContext, Context, !Specs),
+                        maybe_add_duplicate_foreign_enum_error(TypeCtor, Lang,
+                            PragmaStatus, OldContext, Context, !Specs),
                         TCFE1 = TCFE0
                     else
                         map.det_insert(Lang, Context,
@@ -286,13 +287,13 @@ add_pragma_foreign_export_enum(ItemForeignExportEnum, !ModuleInfo,
         Specs0, Specs) :-
     ItemForeignExportEnum = item_foreign_export_enum_info(Lang, TypeCtor,
         Attributes, Overrides, Context, _SeqNum),
-    TypeCtor = type_ctor(TypeSymName, TypeArity),
+    TypeCtor = type_ctor(TypeSymName, _TypeArity),
     ContextPieces = [words("In"), pragma_decl("foreign_export_enum"),
         words("declaration for type"), qual_type_ctor(TypeCtor),
         suffix(":"), nl],
     some [!Specs] (
         !:Specs = [],
-        report_if_builtin_type(Context, ContextPieces, TypeSymName, TypeArity,
+        report_if_builtin_type(Context, "foreign_export_enum", TypeCtor,
             !Specs),
 
         module_info_get_type_table(!.ModuleInfo, TypeTable),
@@ -315,7 +316,7 @@ add_pragma_foreign_export_enum(ItemForeignExportEnum, !ModuleInfo,
                 ; TypeBody = hlds_foreign_type(_)
                 ),
                 report_not_du_type(Context, ContextPieces,
-                    TypeSymName, TypeArity, TypeBody, !Specs)
+                    TypeCtor, TypeBody, !Specs)
             ;
                 TypeBody = hlds_du_type(TypeBodyDu),
                 TypeBodyDu = type_body_du(Ctors, MaybeSuperType, _MaybeUserEq,
@@ -330,8 +331,8 @@ add_pragma_foreign_export_enum(ItemForeignExportEnum, !ModuleInfo,
                     CtorRepns = Repn ^ dur_ctor_repns
                 ),
 
-                build_mercury_foreign_map(TypeModuleName, TypeSymName,
-                    TypeArity, for_foreign_export_enum, Context, ContextPieces,
+                build_mercury_foreign_map(TypeModuleName, TypeCtor,
+                    for_foreign_export_enum, Context, ContextPieces,
                     one_or_more_to_list(Ctors),
                     Overrides, OverrideBimap, !Specs),
                 OverrideMap = bimap.forward_map(OverrideBimap),
@@ -398,23 +399,22 @@ build_export_enum_name_map(ContextPieces, Context, Lang, Prefix, MakeUpperCase,
             % with Lang = lang_csharp.
             sorry($pred, "foreign_export_enum pragma for unsupported language")
         ),
-        AlwaysPieces = ContextPieces ++
-            [words("error: some of the constructors of the type"),
-            words("cannot be converted into valid identifiers for"),
-            words(LangName), suffix("."), nl],
         MakeBFNPieces = (func(BadForeignName) = [quote(BadForeignName)]),
         BadForeignPiecesList = list.map(MakeBFNPieces, BadForeignNames),
         BadForeignPieces =
-            component_list_to_line_pieces(BadForeignPiecesList,
-                [suffix("."), nl]),
-        VerbosePieces = [words("The problematic"),
+            component_list_to_color_line_pieces(yes(color_incorrect),
+                [suffix(".")], [], BadForeignPiecesList),
+        Pieces = ContextPieces ++
+            [words("error: some of the constructors of the type")] ++
+            color_as_incorrect([words("cannot be converted")]) ++
+            [words("into valid identifiers for"),
+                words(LangName), suffix("."), nl,
+            words("The problematic foreign"),
             words(choose_number(BadForeignNames,
-                "foreign name is:", "foreign names are:")),
-            nl_indent_delta(2)] ++ BadForeignPieces,
-        Msg = simple_msg(Context,
-            [always(AlwaysPieces),
-            verbose_only(verbose_always, VerbosePieces)]),
-        Spec = error_spec($pred, severity_error, phase_pt2h, [Msg]),
+                "name is:", "names are:")),
+            nl_indent_delta(2)] ++
+            BadForeignPieces ++ [nl_indent_delta(-2)],
+        Spec = spec($pred, severity_error, phase_pt2h, Context, Pieces),
         !:Specs = [Spec | !.Specs]
     ).
 
@@ -458,13 +458,13 @@ add_ctor_to_name_map(_Lang, Prefix, MakeUpperCase, OverrideMap, CtorRepn,
 % foreign_export_enums.
 %
 
-:- pred build_mercury_foreign_map(module_name::in, sym_name::in, arity::in,
+:- pred build_mercury_foreign_map(module_name::in, type_ctor::in,
     for_fe_or_fee::in, prog_context::in, list(format_piece)::in,
     list(constructor)::in,
     assoc_list(sym_name, string)::in, bimap(string, string)::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-build_mercury_foreign_map(TypeModuleName, TypeSymName, TypeArity, ForWhat,
+build_mercury_foreign_map(TypeModuleName, TypeCtor, ForWhat,
         Context, ContextPieces, Ctors, Overrides, OverrideMap, !Specs) :-
     find_nonenum_ctors_build_valid_ctor_names(Ctors,
         set_tree234.init, ValidCtorNames, cord.init, NonEnumSNAsCord),
@@ -472,7 +472,7 @@ build_mercury_foreign_map(TypeModuleName, TypeSymName, TypeArity, ForWhat,
         true
     else
         NotEnumInfo = not_enum_du(cord.to_list(NonEnumSNAsCord)),
-        report_not_enum_type(Context, ContextPieces, TypeSymName, TypeArity,
+        report_not_enum_type(Context, ContextPieces, TypeCtor,
             NotEnumInfo, !Specs)
     ),
     build_ctor_name_to_foreign_name_map(ForWhat, Context, ContextPieces,
@@ -501,24 +501,27 @@ find_nonenum_ctors_build_valid_ctor_names([Ctor | Ctors],
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
-:- pred maybe_add_duplicate_foreign_enum_error(sym_name::in, arity::in,
+:- pred maybe_add_duplicate_foreign_enum_error(type_ctor::in,
     foreign_language::in, type_status::in, prog_context::in, prog_context::in,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-maybe_add_duplicate_foreign_enum_error(TypeSymame, TypeArity, Lang,
-        PragmaStatus, OldContext, Context, !Specs) :-
+maybe_add_duplicate_foreign_enum_error(TypeCtor, Lang, PragmaStatus,
+        OldContext, Context, !Specs) :-
     ( if PragmaStatus = type_status(status_opt_imported) then
         true
     else
-        TypeSymNameArity = sym_name_arity(TypeSymame, TypeArity),
         LangStr = mercury_foreign_language_to_string(Lang),
-        CurPieces = [words("Error: duplicate foreign_enum pragma"),
-            words("for type constructor"),
-            qual_sym_name_arity(TypeSymNameArity),
-            words("and target language"), fixed(LangStr), suffix("."), nl],
-        OldPieces = [words("The first foreign_enum pragma"),
-            words("for"), qual_sym_name_arity(TypeSymNameArity),
-            words("and"), fixed(LangStr), words("was here."), nl],
+        CurPieces = [words("Error:")] ++
+            color_as_incorrect([words("duplicate"),
+                pragma_decl("foreign_enum"), words("declaration")]) ++
+            [words("for")] ++
+            color_as_subject([words("type constructor"),
+                unqual_type_ctor(TypeCtor), words("and"),
+                words("target language"), fixed(LangStr), suffix(".")]) ++
+            [nl],
+        OldPieces = [words("The first foreign_enum pragma"), words("for"),
+            unqual_type_ctor(TypeCtor), words("and"), fixed(LangStr),
+            words("was here."), nl],
         CurMsg = msg(Context, CurPieces),
         OldMsg = msg(OldContext, OldPieces),
         Spec = error_spec($pred, severity_error, phase_pt2h, [CurMsg, OldMsg]),
@@ -527,21 +530,24 @@ maybe_add_duplicate_foreign_enum_error(TypeSymame, TypeArity, Lang,
 
 %---------------------------------------------------------------------------%
 
-:- pred report_if_builtin_type(prog_context::in, list(format_piece)::in,
-    sym_name::in, arity::in,
+    % Emit an error message for foreign_enum and foreign_export_enum pragmas
+    % for the builtin atomic types.
+    %
+:- pred report_if_builtin_type(prog_context::in, string::in, type_ctor::in,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-report_if_builtin_type(Context, ContextPieces, TypeSymame, TypeArity,
-        !Specs) :-
+report_if_builtin_type(Context, DeclName, TypeCtor, !Specs) :-
+    TypeCtor = type_ctor(TypeSymName, TypeArity),
     ( if
-        % Emit an error message for foreign_enum and foreign_export_enum
-        % pragmas for the builtin atomic types.
-        TypeArity = 0,
-        is_builtin_type_sym_name(TypeSymame)
+        is_builtin_type_sym_name(TypeSymName),
+        TypeArity = 0
     then
-        Pieces = ContextPieces ++ [words("error: "),
-            unqual_sym_name_arity(sym_name_arity(TypeSymame, TypeArity)),
-            words("is a builtin type."), nl],
+        Pieces =
+            [words("Error:"), pragma_decl(DeclName), words("declarations")] ++
+            color_as_incorrect([words("are not allowed")]) ++
+            [words("for builtin types such as")] ++
+            color_as_subject([unqual_type_ctor(TypeCtor), suffix(".")]) ++
+            [nl],
         Spec = spec($pred, severity_error, phase_pt2h, Context, Pieces),
         !:Specs = [Spec | !.Specs]
     else
@@ -565,11 +571,10 @@ report_if_builtin_type(Context, ContextPieces, TypeSymame, TypeArity,
     ;       hlds_abstract_type(ground).
 
 :- pred report_not_du_type(prog_context::in, list(format_piece)::in,
-    sym_name::in, arity::in, hlds_type_body::in(non_du_type_body),
+    type_ctor::in, hlds_type_body::in(non_du_type_body),
     list(error_spec)::in, list(error_spec)::out) is det.
 
-report_not_du_type(Context, ContextPieces, TypeSymName, TypeArity, TypeBody,
-        !Specs) :-
+report_not_du_type(Context, ContextPieces, TypeCtor, TypeBody, !Specs) :-
     (
         TypeBody = hlds_eqv_type(_),
         TypeKindDesc = "an equivalence type"
@@ -583,22 +588,21 @@ report_not_du_type(Context, ContextPieces, TypeSymName, TypeArity, TypeBody,
         TypeBody = hlds_foreign_type(_),
         TypeKindDesc = "a foreign type"
     ),
-    report_not_enum_type(Context, ContextPieces, TypeSymName, TypeArity,
+    report_not_enum_type(Context, ContextPieces, TypeCtor,
         not_enum_non_du(TypeKindDesc), !Specs).
 
 :- pred report_not_enum_type(prog_context::in, list(format_piece)::in,
-    sym_name::in, arity::in, not_enum_info::in,
+    type_ctor::in, not_enum_info::in,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-report_not_enum_type(Context, ContextPieces, TypeSymName, TypeArity,
-        NotEnumInfo, !Specs) :-
-    TypeSNA = sym_name_arity(TypeSymName, TypeArity),
+report_not_enum_type(Context, ContextPieces, TypeCtor, NotEnumInfo, !Specs) :-
     (
         NotEnumInfo = not_enum_non_du(TypeKindDesc),
-        Pieces = ContextPieces ++ [words("error: "),
-            qual_sym_name_arity(TypeSNA),
-            words("is not an enumeration type;"),
-            words("it is"), words(TypeKindDesc), suffix("."), nl],
+        Pieces = ContextPieces ++ [words("error:")] ++
+            color_as_subject([qual_type_ctor(TypeCtor)]) ++
+            [words("is")] ++
+            color_as_incorrect([words("not an enumeration type;")]) ++
+            [words("it is"), words(TypeKindDesc), suffix("."), nl],
         Spec = spec($pred, severity_error, phase_pt2h, Context, Pieces),
         !:Specs = [Spec | !.Specs]
     ;
@@ -613,18 +617,21 @@ report_not_enum_type(Context, ContextPieces, TypeSymName, TypeArity,
             OrderedNonEnumSNAs = []
         ;
             OrderedNonEnumSNAs = [_ | _],
-            SNAPieces =
-                component_list_to_pieces("and",
-                    list.map(func(SNA) = unqual_sym_name_arity(SNA),
-                        OrderedNonEnumSNAs)),
+            SNAPieces = list.map(func(SNA) = unqual_sym_name_arity(SNA),
+                OrderedNonEnumSNAs),
+            SNAsPieces = 
+                component_list_to_color_pieces(yes(color_incorrect), "and",
+                    [suffix(".")], SNAPieces),
             ItHasThese = choose_number(OrderedNonEnumSNAs,
                 words("It has this non-zero arity constructor:"),
                 words("It has these non-zero arity constructors:")),
-            Pieces = ContextPieces ++ [words("error: "),
-                qual_sym_name_arity(TypeSNA),
-                words("is not an enumeration type."), nl,
-                ItHasThese, nl_indent_delta(2)] ++ SNAPieces ++
-                [suffix("."), nl_indent_delta(-2)],
+            Pieces = ContextPieces ++ [words("error:")] ++
+                color_as_subject([qual_type_ctor(TypeCtor)]) ++
+                [words("is")] ++
+                color_as_incorrect([words("not an enumeration type.")]) ++
+                [nl,
+                ItHasThese, nl_indent_delta(2)] ++ SNAsPieces ++
+                [nl_indent_delta(-2)],
             Spec = spec($pred, severity_error, phase_pt2h, Context, Pieces),
             !:Specs = [Spec | !.Specs]
         )

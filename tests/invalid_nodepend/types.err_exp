@@ -10,5 +10,5 @@ types.m:023: Error: clause for predicate `r'/0
 types.m:023:   without corresponding `:- pred' declaration.
 types.m:026: Error: clause for predicate `a'/1
 types.m:026:   without corresponding `:- pred' declaration.
-types.m:053: Error: the type `t'/2 has this declaration, but it has no
-types.m:053:   definition.
+types.m:053: Error: the type [38;5;87m`t'/2[39;49m has this declaration, but [38;5;203mit has no[39;49m
+types.m:053:   [38;5;203mdefinition.[39;49m
