@@ -1,49 +1,51 @@
-combined_ho_type_inst.m:015: Error: the type
-combined_ho_type_inst.m:015:   `(pred((int :: in), (int :: out)) is det)'
-combined_ho_type_inst.m:015:   contains higher order inst information, but this
-combined_ho_type_inst.m:015:   is not allowed in the definition of an
-combined_ho_type_inst.m:015:   equivalence type.
-combined_ho_type_inst.m:016: Error: the type
-combined_ho_type_inst.m:016:   `(((func (int :: in)) = (int :: out)) is semidet)'
-combined_ho_type_inst.m:016:   contains higher order inst information, but this
-combined_ho_type_inst.m:016:   is not allowed in the definition of an
-combined_ho_type_inst.m:016:   equivalence type.
-combined_ho_type_inst.m:019: In type definition: error: the type
-combined_ho_type_inst.m:019:   `(pred((int :: in), (int :: out)) is det)'
-combined_ho_type_inst.m:019:   contains higher order inst information, but this
-combined_ho_type_inst.m:019:   is not allowed in a type constructor's argument.
-combined_ho_type_inst.m:021: In type definition: error: the type
-combined_ho_type_inst.m:021:   `(((func (int :: in)) = (int :: out)) is semidet)'
-combined_ho_type_inst.m:021:   contains higher order inst information, but this
-combined_ho_type_inst.m:021:   is not allowed in a type constructor's argument.
-combined_ho_type_inst.m:024: In type definition: in the first argument of
-combined_ho_type_inst.m:024:   higher-order predicate type:
-combined_ho_type_inst.m:024:   error: the type
-combined_ho_type_inst.m:024:   `(pred((int :: in), (int :: out)) is det)'
-combined_ho_type_inst.m:024:   contains higher order inst information, but this
-combined_ho_type_inst.m:024:   is not allowed in a predicate's argument.
-combined_ho_type_inst.m:026: In type definition: in the first argument of
-combined_ho_type_inst.m:026:   higher-order predicate type:
-combined_ho_type_inst.m:026:   error: the type
-combined_ho_type_inst.m:026:   `(pred((int :: in), (int :: out)) is det)'
-combined_ho_type_inst.m:026:   contains higher order inst information, but this
-combined_ho_type_inst.m:026:   is not allowed in a predicate's argument.
-combined_ho_type_inst.m:028: In type definition: in the first argument of
-combined_ho_type_inst.m:028:   higher-order function type:
-combined_ho_type_inst.m:028:   error: the type
-combined_ho_type_inst.m:028:   `(((func (int :: in)) = (int :: out)) is semidet)'
-combined_ho_type_inst.m:028:   contains higher order inst information, but this
-combined_ho_type_inst.m:028:   is not allowed in a function's argument.
-combined_ho_type_inst.m:031: In type definition: in the first argument of
-combined_ho_type_inst.m:031:   higher-order function type:
-combined_ho_type_inst.m:031:   error: the type
-combined_ho_type_inst.m:031:   `(((func (int :: in)) = (int :: out)) is semidet)'
-combined_ho_type_inst.m:031:   contains higher order inst information, but this
-combined_ho_type_inst.m:031:   is not allowed in a function's argument.
-combined_ho_type_inst.m:035: Error: `semiet' is not a valid determinism.
-combined_ho_type_inst.m:036: In `:- func' declaration:
-combined_ho_type_inst.m:036:   in the first argument:
-combined_ho_type_inst.m:036:   error: the type
-combined_ho_type_inst.m:036:   `(((func (int :: in)) = (int :: out)) is semidet)'
-combined_ho_type_inst.m:036:   contains higher order inst information, but this
-combined_ho_type_inst.m:036:   is not allowed in a function's argument.
+combined_ho_type_inst_1.m:015: Error: the type
+combined_ho_type_inst_1.m:015:   `(pred((int :: in), (int :: out)) is det)'
+combined_ho_type_inst_1.m:015:   contains higher order inst information, but
+combined_ho_type_inst_1.m:015:   this is not allowed in the definition of an
+combined_ho_type_inst_1.m:015:   equivalence type.
+combined_ho_type_inst_1.m:016: Error: the type
+combined_ho_type_inst_1.m:016:   `(((func (int :: in)) = (int :: out)) is semidet)'
+combined_ho_type_inst_1.m:016:   contains higher order inst information, but
+combined_ho_type_inst_1.m:016:   this is not allowed in the definition of an
+combined_ho_type_inst_1.m:016:   equivalence type.
+combined_ho_type_inst_1.m:019: In type definition: error: the type
+combined_ho_type_inst_1.m:019:   `(pred((int :: in), (int :: out)) is det)'
+combined_ho_type_inst_1.m:019:   contains higher order inst information, but
+combined_ho_type_inst_1.m:019:   this is not allowed in a type constructor's
+combined_ho_type_inst_1.m:019:   argument.
+combined_ho_type_inst_1.m:021: In type definition: error: the type
+combined_ho_type_inst_1.m:021:   `(((func (int :: in)) = (int :: out)) is semidet)'
+combined_ho_type_inst_1.m:021:   contains higher order inst information, but
+combined_ho_type_inst_1.m:021:   this is not allowed in a type constructor's
+combined_ho_type_inst_1.m:021:   argument.
+combined_ho_type_inst_1.m:024: In type definition: in the first argument of
+combined_ho_type_inst_1.m:024:   higher-order predicate type:
+combined_ho_type_inst_1.m:024:   error: the type
+combined_ho_type_inst_1.m:024:   `(pred((int :: in), (int :: out)) is det)'
+combined_ho_type_inst_1.m:024:   contains higher order inst information, but
+combined_ho_type_inst_1.m:024:   this is not allowed in a predicate's argument.
+combined_ho_type_inst_1.m:026: In type definition: in the first argument of
+combined_ho_type_inst_1.m:026:   higher-order predicate type:
+combined_ho_type_inst_1.m:026:   error: the type
+combined_ho_type_inst_1.m:026:   `(pred((int :: in), (int :: out)) is det)'
+combined_ho_type_inst_1.m:026:   contains higher order inst information, but
+combined_ho_type_inst_1.m:026:   this is not allowed in a predicate's argument.
+combined_ho_type_inst_1.m:028: In type definition: in the first argument of
+combined_ho_type_inst_1.m:028:   higher-order function type:
+combined_ho_type_inst_1.m:028:   error: the type
+combined_ho_type_inst_1.m:028:   `(((func (int :: in)) = (int :: out)) is semidet)'
+combined_ho_type_inst_1.m:028:   contains higher order inst information, but
+combined_ho_type_inst_1.m:028:   this is not allowed in a function's argument.
+combined_ho_type_inst_1.m:031: In type definition: in the first argument of
+combined_ho_type_inst_1.m:031:   higher-order function type:
+combined_ho_type_inst_1.m:031:   error: the type
+combined_ho_type_inst_1.m:031:   `(((func (int :: in)) = (int :: out)) is semidet)'
+combined_ho_type_inst_1.m:031:   contains higher order inst information, but
+combined_ho_type_inst_1.m:031:   this is not allowed in a function's argument.
+combined_ho_type_inst_1.m:035: Error: `semiet' is not a valid determinism.
+combined_ho_type_inst_1.m:036: In `:- func' declaration:
+combined_ho_type_inst_1.m:036:   in the first argument:
+combined_ho_type_inst_1.m:036:   error: the type
+combined_ho_type_inst_1.m:036:   `(((func (int :: in)) = (int :: out)) is semidet)'
+combined_ho_type_inst_1.m:036:   contains higher order inst information, but
+combined_ho_type_inst_1.m:036:   this is not allowed in a function's argument.

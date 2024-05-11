@@ -1,51 +1,52 @@
-errors.m:012: Error: module must start with a `:- module' declaration.
-errors.m:012: Error: module `errors' should start with either an `:- interface'
-errors.m:012:   or an `:- implementation' declaration.
-errors.m:012:   The following assumes that the missing declaration is an
-errors.m:012:   `:- implementation' declaration.
-errors.m:012: Warning: the interface of module `errors' does not export
-errors.m:012:   anything.
-errors.m:030: Error: `:- mode' declaration for predicate
-errors.m:030:   `mode_declaration_without_pred_declaration'/0
-errors.m:030:   without corresponding `:- pred' declaration.
-errors.m:034: Error: `:- mode' declaration for predicate
-errors.m:034:   `missing_pred_declaration'/0
-errors.m:034:   without corresponding `:- pred' declaration.
-errors.m:040: Error: clause for predicate
-errors.m:040:   `clause_without_pred_or_mode_declaration'/0
-errors.m:040:   without corresponding `:- pred' declaration.
-errors.m:051: Error: the [38;5;87mconstructor `a'/0[39;49m [38;5;203moccurs more than once[39;49m in the
-errors.m:051:   definition of type constructor
-errors.m:051:   [38;5;87m`type_with_multiply_defined_ctors'/0.[39;49m
-errors.m:051: Error: the [38;5;87mconstructor `f'/1[39;49m [38;5;203moccurs more than once[39;49m in the
-errors.m:051:   definition of type constructor
-errors.m:051:   [38;5;87m`type_with_multiply_defined_ctors'/0.[39;49m
-errors.m:053: In the first argument of function symbol `f' of the type
-errors.m:053:   `du_type_which_references_undefined_type'/0:
-errors.m:053:   error: undefined type `undefined_type'/0.
-errors.m:055: In definition of type
-errors.m:055:   `eqv_type_which_references_undefined_type'/0:
-errors.m:055:   error: undefined type `undefined_type'/0.
-errors.m:057: Error: circular equivalence type `errors.circular_eqv_type'/0.
-errors.m:059: Error: circular equivalence type
-errors.m:059:   `errors.indirectly_circular_eqv_type_1'/0.
-errors.m:060: Error: circular equivalence type
-errors.m:060:   `errors.indirectly_circular_eqv_type_2'/0.
-errors.m:062: Error: free type parameter T in right hand side of type
-errors.m:062:   definition.
-errors.m:063: Error: the type variable T occurs only in the right hand side of
-errors.m:063:   this type definition.
-errors.m:077: In clause for predicate `pred_with_unresolved_polymorphism'/0:
-errors.m:077:   warning: [38;5;87mvariable `Arg'[39;49m [38;5;203moccurs only once[39;49m in this scope.
-errors.m:092: In clause for predicate `pred_with_singleton_vars'/1:
-errors.m:092:   warning: [38;5;87mvariable `X'[39;49m [38;5;203moccurs only once[39;49m in this scope.
-errors.m:098: Warning: this `:- use_module' declaration for module `int' in the
-errors.m:098:   implementation section is redundant, given the
-errors.m:098:   `:- import_module' declaration for the same module in the same
-errors.m:098:   section.
-errors.m:096:   The previous declaration is here.
-errors.m:101: In definition of type `needs_qualification'/0:
-errors.m:101:   error: undefined type `state'/0.
-errors.m:101:   (Only fully module qualified names may refer to the entities
-errors.m:101:   defined in module `io'.)
+errors_3.m:012: Error: module must start with a `:- module' declaration.
+errors_3.m:012: Error: module `errors_3' should start with either an
+errors_3.m:012:   `:- interface' or an `:- implementation' declaration.
+errors_3.m:012:   The following assumes that the missing declaration is an
+errors_3.m:012:   `:- implementation' declaration.
+errors_3.m:012: Warning: the interface of module `errors_3' does not export
+errors_3.m:012:   anything.
+errors_3.m:030: Error: `:- mode' declaration for predicate
+errors_3.m:030:   `mode_declaration_without_pred_declaration'/0
+errors_3.m:030:   without corresponding `:- pred' declaration.
+errors_3.m:034: Error: `:- mode' declaration for predicate
+errors_3.m:034:   `missing_pred_declaration'/0
+errors_3.m:034:   without corresponding `:- pred' declaration.
+errors_3.m:040: Error: clause for predicate
+errors_3.m:040:   `clause_without_pred_or_mode_declaration'/0
+errors_3.m:040:   without corresponding `:- pred' declaration.
+errors_3.m:053: Error: the [38;5;87mconstructor `a'/0[39;49m [38;5;203moccurs more than once[39;49m in the
+errors_3.m:053:   definition of type constructor
+errors_3.m:053:   [38;5;87m`type_with_multiply_defined_ctors'/0.[39;49m
+errors_3.m:055: Error: the [38;5;87mconstructor `f'/1[39;49m [38;5;203moccurs more than once[39;49m in the
+errors_3.m:055:   definition of type constructor
+errors_3.m:055:   [38;5;87m`type_with_multiply_defined_ctors'/0.[39;49m
+errors_3.m:058: In the first argument of function symbol `f' of the type
+errors_3.m:058:   `du_type_which_references_undefined_type'/0:
+errors_3.m:058:   error: undefined type `undefined_type'/0.
+errors_3.m:060: In definition of type
+errors_3.m:060:   `eqv_type_which_references_undefined_type'/0:
+errors_3.m:060:   error: undefined type `undefined_type'/0.
+errors_3.m:062: Error: circular equivalence type
+errors_3.m:062:   `errors_3.circular_eqv_type'/0.
+errors_3.m:064: Error: circular equivalence type
+errors_3.m:064:   `errors_3.indirectly_circular_eqv_type_1'/0.
+errors_3.m:065: Error: circular equivalence type
+errors_3.m:065:   `errors_3.indirectly_circular_eqv_type_2'/0.
+errors_3.m:068: Error: free type parameter T in right hand side of type
+errors_3.m:068:   definition.
+errors_3.m:070: Error: the type variable T occurs only in the right hand side
+errors_3.m:070:   of this type definition.
+errors_3.m:084: In clause for predicate `pred_with_unresolved_polymorphism'/0:
+errors_3.m:084:   warning: [38;5;87mvariable `Arg'[39;49m [38;5;203moccurs only once[39;49m in this scope.
+errors_3.m:100: In clause for predicate `pred_with_singleton_vars'/1:
+errors_3.m:100:   warning: [38;5;87mvariable `X'[39;49m [38;5;203moccurs only once[39;49m in this scope.
+errors_3.m:106: Warning: this `:- use_module' declaration for module `int' in
+errors_3.m:106:   the implementation section is redundant, given the
+errors_3.m:106:   `:- import_module' declaration for the same module in the
+errors_3.m:106:   same section.
+errors_3.m:104:   The previous declaration is here.
+errors_3.m:109: In definition of type `needs_qualification'/0:
+errors_3.m:109:   error: undefined type `state'/0.
+errors_3.m:109:   (Only fully module qualified names may refer to the entities
+errors_3.m:109:   defined in module `io'.)
 For more information, recompile with `-E'.

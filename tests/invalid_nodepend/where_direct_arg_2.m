@@ -2,7 +2,7 @@
 % vim: ts=4 sw=4 et ft=mercury
 %---------------------------------------------------------------------------%
 
-:- module where_direct_arg2.
+:- module where_direct_arg_2.
 :- interface.
 
 :- type bad_example

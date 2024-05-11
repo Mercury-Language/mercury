@@ -37,14 +37,14 @@ PROGS = \
 	bug115 \
 	bug363 \
 	bug410 \
-	combined_ho_type_inst \
+	combined_ho_type_inst_1 \
 	combined_ho_type_inst_2 \
 	conflicting_fs \
 	constrained_poly_insts \
 	duplicate_modes \
-	errors \
-	errors1 \
-	errors2 \
+	errors_1 \
+	errors_2 \
+	errors_3 \
 	external \
 	foreign_enum_import \
 	func_errors \
@@ -82,11 +82,11 @@ PROGS = \
 	typeclass_test_1 \
 	typeclass_test_2 \
 	typeclass_test_3 \
-	types	\
+	types \
 	unbound_type_vars \
 	undetermined_existential_data_type \
-	unicode1 \
-	unicode2 \
+	unicode_1 \
+	unicode_2 \
 	unrecognized_pragma \
 	unterminated_octal_escape \
 	uu_type \
@@ -94,7 +94,8 @@ PROGS = \
 	var_as_pred_name \
 	vars_in_wrong_places \
 	where_abstract_enum \
-	where_direct_arg \
+	where_direct_arg_1 \
+	where_direct_arg_2
 
 #-----------------------------------------------------------------------------#
 

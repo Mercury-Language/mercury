@@ -2,7 +2,7 @@
 % vim: ts=4 sw=4 et ft=mercury
 %---------------------------------------------------------------------------%
 
-:- module unicode2.
+:- module unicode_2.
 
 :- interface.
 

@@ -1,37 +1,38 @@
-errors1.m:008: Warning: the interface of module `errors1' does not export
-errors1.m:008:   anything.
-errors1.m:012: Error: module `errors1' should start with either an
-errors1.m:012:   `:- interface' or an `:- implementation' declaration.
-errors1.m:012:   The following assumes that the missing declaration is an
-errors1.m:012:   `:- implementation' declaration.
-errors1.m:030: Error: `:- mode' declaration for predicate
-errors1.m:030:   `mode_declaration_without_pred_declaration'/0
-errors1.m:030:   without corresponding `:- pred' declaration.
-errors1.m:034: Error: `:- mode' declaration for predicate
-errors1.m:034:   `missing_pred_declaration'/0
-errors1.m:034:   without corresponding `:- pred' declaration.
-errors1.m:040: Error: clause for predicate
-errors1.m:040:   `clause_without_pred_or_mode_declaration'/0
-errors1.m:040:   without corresponding `:- pred' declaration.
-errors1.m:053: Error: the [38;5;87mconstructor `a'/0[39;49m [38;5;203moccurs more than once[39;49m in the
-errors1.m:053:   definition of type constructor
-errors1.m:053:   [38;5;87m`type_with_multiply_defined_ctors'/0.[39;49m
-errors1.m:055: Error: the [38;5;87mconstructor `f'/1[39;49m [38;5;203moccurs more than once[39;49m in the
-errors1.m:055:   definition of type constructor
-errors1.m:055:   [38;5;87m`type_with_multiply_defined_ctors'/0.[39;49m
-errors1.m:058: In the first argument of function symbol `f' of the type
-errors1.m:058:   `du_type_which_references_undefined_type'/0:
-errors1.m:058:   error: undefined type `undefined_type'/0.
-errors1.m:060: In definition of type
-errors1.m:060:   `eqv_type_which_references_undefined_type'/0:
-errors1.m:060:   error: undefined type `undefined_type'/0.
-errors1.m:062: Error: circular equivalence type `errors1.circular_eqv_type'/0.
-errors1.m:064: Error: circular equivalence type
-errors1.m:064:   `errors1.indirectly_circular_eqv_type_1'/0.
-errors1.m:065: Error: circular equivalence type
-errors1.m:065:   `errors1.indirectly_circular_eqv_type_2'/0.
-errors1.m:079: In clause for predicate `pred_with_unresolved_polymorphism'/0:
-errors1.m:079:   warning: [38;5;87mvariable `Arg'[39;49m [38;5;203moccurs only once[39;49m in this scope.
-errors1.m:095: In clause for predicate `pred_with_singleton_vars'/1:
-errors1.m:095:   warning: [38;5;87mvariable `X'[39;49m [38;5;203moccurs only once[39;49m in this scope.
+errors_1.m:008: Warning: the interface of module `errors_1' does not export
+errors_1.m:008:   anything.
+errors_1.m:012: Error: module `errors_1' should start with either an
+errors_1.m:012:   `:- interface' or an `:- implementation' declaration.
+errors_1.m:012:   The following assumes that the missing declaration is an
+errors_1.m:012:   `:- implementation' declaration.
+errors_1.m:030: Error: `:- mode' declaration for predicate
+errors_1.m:030:   `mode_declaration_without_pred_declaration'/0
+errors_1.m:030:   without corresponding `:- pred' declaration.
+errors_1.m:034: Error: `:- mode' declaration for predicate
+errors_1.m:034:   `missing_pred_declaration'/0
+errors_1.m:034:   without corresponding `:- pred' declaration.
+errors_1.m:040: Error: clause for predicate
+errors_1.m:040:   `clause_without_pred_or_mode_declaration'/0
+errors_1.m:040:   without corresponding `:- pred' declaration.
+errors_1.m:053: Error: the [38;5;87mconstructor `a'/0[39;49m [38;5;203moccurs more than once[39;49m in the
+errors_1.m:053:   definition of type constructor
+errors_1.m:053:   [38;5;87m`type_with_multiply_defined_ctors'/0.[39;49m
+errors_1.m:055: Error: the [38;5;87mconstructor `f'/1[39;49m [38;5;203moccurs more than once[39;49m in the
+errors_1.m:055:   definition of type constructor
+errors_1.m:055:   [38;5;87m`type_with_multiply_defined_ctors'/0.[39;49m
+errors_1.m:058: In the first argument of function symbol `f' of the type
+errors_1.m:058:   `du_type_which_references_undefined_type'/0:
+errors_1.m:058:   error: undefined type `undefined_type'/0.
+errors_1.m:060: In definition of type
+errors_1.m:060:   `eqv_type_which_references_undefined_type'/0:
+errors_1.m:060:   error: undefined type `undefined_type'/0.
+errors_1.m:062: Error: circular equivalence type
+errors_1.m:062:   `errors_1.circular_eqv_type'/0.
+errors_1.m:064: Error: circular equivalence type
+errors_1.m:064:   `errors_1.indirectly_circular_eqv_type_1'/0.
+errors_1.m:065: Error: circular equivalence type
+errors_1.m:065:   `errors_1.indirectly_circular_eqv_type_2'/0.
+errors_1.m:079: In clause for predicate `pred_with_unresolved_polymorphism'/0:
+errors_1.m:079:   warning: [38;5;87mvariable `Arg'[39;49m [38;5;203moccurs only once[39;49m in this scope.
+errors_1.m:095: In clause for predicate `pred_with_singleton_vars'/1:
+errors_1.m:095:   warning: [38;5;87mvariable `X'[39;49m [38;5;203moccurs only once[39;49m in this scope.
 For more information, recompile with `-E'.

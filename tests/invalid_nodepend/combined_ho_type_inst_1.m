@@ -7,7 +7,7 @@
 %
 %---------------------------------------------------------------------------%
 
-:- module combined_ho_type_inst.
+:- module combined_ho_type_inst_1.
 :- interface.
 
 :- import_module list.
@@ -36,4 +36,3 @@
 :- func bad_sig_f(func(int::in) = (int::out) is semidet) = int.
 
 :- type avoid_spurious_warning == list(int).
-

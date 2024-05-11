@@ -5,7 +5,7 @@
 % This file contains a bunch of test cases, all of which should result
 % in errors of one kind or another.
 
-:- module errors1.
+:- module errors_1.
 
 %---------------------------------------------------------------------------%
 
