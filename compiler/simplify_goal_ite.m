@@ -288,9 +288,10 @@ simplify_goal_ordinary_ite(Vars, Cond0, Then0, Else0, GoalExpr,
             else
                 OnPieces = [words("on"), quote(SwitchVarName)]
             ),
-            Pieces0 = [words("Warning: this if-then-else"),
-                words("could be replaced by a switch")],
-            Pieces = Pieces0 ++ OnPieces ++ [suffix("."), nl],
+            Pieces = [words("Warning: this if-then-else")] ++
+                color_as_incorrect([words("could be replaced by a switch")] ++
+                    OnPieces ++ [suffix(".")]) ++
+                [nl],
             Spec = conditional_spec($pred, inform_ite_instead_of_switch, yes,
                 severity_informational, phase_simplify(report_in_any_mode),
                 [msg(Context, Pieces)]),
@@ -479,13 +480,17 @@ simplify_goal_neg(GoalExpr0, GoalExpr, GoalInfo0, GoalInfo,
         Detism = goal_info_get_determinism(SubGoalInfo1),
         determinism_components(Detism, CanFail, MaxSoln),
         ( if CanFail = cannot_fail then
-            Pieces = [words("Warning: the negated goal cannot fail.")],
+            Pieces = [words("Warning: the negated goal")] ++
+                color_as_incorrect([words("cannot fail.")]) ++
+                [nl],
             Spec = conditional_spec($pred, warn_simple_code, yes,
                 severity_warning, phase_simplify(report_only_if_in_all_modes),
                 [msg(Context, Pieces)]),
             simplify_info_add_message(Spec, !Info)
         else if MaxSoln = at_most_zero then
-            Pieces = [words("Warning: the negated goal cannot succeed.")],
+            Pieces = [words("Warning: the negated goal")] ++
+                color_as_incorrect([words("cannot succeed.")]) ++
+                [nl],
             Spec = conditional_spec($pred, warn_simple_code, yes,
                 severity_warning, phase_simplify(report_only_if_in_all_modes),
                 [msg(Context, Pieces)]),

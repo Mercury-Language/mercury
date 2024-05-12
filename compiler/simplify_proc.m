@@ -529,7 +529,9 @@ maybe_warn_about_may_duplicate_attributes(MayDuplicate, Markers, Context,
             PragmaPieces = [quote("no_inline"), words("pragma")],
             Pieces = [words("Error: the")] ++
                 color_as_possible_cause(AttrPieces) ++
-                [words("on the foreign_proc contradicts the")] ++
+                [words("on the foreign_proc")] ++
+                color_as_incorrect([words("contradicts")]) ++
+                [words("the")] ++
                 color_as_possible_cause(PragmaPieces) ++
                 [words("on the predicate."), nl],
             Spec = spec($pred, severity_error,
@@ -545,7 +547,9 @@ maybe_warn_about_may_duplicate_attributes(MayDuplicate, Markers, Context,
             PragmaPieces = [quote("inline"), words("pragma")],
             Pieces = [words("Error: the")] ++
                 color_as_possible_cause(AttrPieces) ++
-                [words("on the foreign_proc contradicts the")] ++
+                [words("on the foreign_proc")] ++
+                color_as_incorrect([words("contradicts")]) ++
+                [words("the")] ++
                 color_as_possible_cause(PragmaPieces) ++
                 [words("on the predicate."), nl],
             Spec = spec($pred, severity_error,
@@ -569,7 +573,9 @@ maybe_warn_about_may_export_body_attribute(MayExportBody, Markers, Context,
             PragmaPieces = [quote("no_inline"), words("pragma")],
             Pieces = [words("Error: the")] ++
                 color_as_possible_cause(AttrPieces) ++
-                [words("on the foreign_proc contradicts the")] ++
+                [words("on the foreign_proc")] ++
+                color_as_incorrect([words("contradicts")]) ++
+                [words("the")] ++
                 color_as_possible_cause(PragmaPieces) ++
                 [words("on the predicate."), nl],
             Spec = spec($pred, severity_error,

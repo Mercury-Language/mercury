@@ -5,18 +5,18 @@ simple_code.m:022:   warning: unification of [38;5;87m`X'[39;49m and [38;5;87
 simple_code.m:022:   [38;5;87m`X'[39;49m has instantiatedness [38;5;203m`unique(3)'.[39;49m
 simple_code.m:024: Warning: the condition of this if-then-else [38;5;203mcannot succeed.[39;49m
 simple_code.m:029: Warning: the condition of this if-then-else [38;5;203mcannot succeed.[39;49m
-simple_code.m:032: Warning: the negated goal cannot fail.
-simple_code.m:032: Warning: the negated goal cannot succeed.
+simple_code.m:032: Warning: the negated goal [38;5;203mcannot fail.[39;49m
+simple_code.m:032: Warning: the negated goal [38;5;203mcannot succeed.[39;49m
 simple_code.m:034: Warning: the condition of this if-then-else [38;5;203mcannot succeed.[39;49m
-simple_code.m:037: Warning: the negated goal cannot succeed.
+simple_code.m:037: Warning: the negated goal [38;5;203mcannot succeed.[39;49m
 simple_code.m:039: Warning: the condition of this if-then-else [38;5;203mcannot fail.[39;49m
-simple_code.m:043: Warning: call to obsolete [38;5;203mpredicate[39;49m
-simple_code.m:043:   [38;5;203m`simple_code.obsolete1'/0.[39;49m
-simple_code.m:044: Warning: call to obsolete [38;5;203mpredicate[39;49m
-simple_code.m:044:   [38;5;203m`simple_code.obsolete2'/0.[39;49m
+simple_code.m:043: Warning: call to [38;5;203mobsolete[39;49m [38;5;87mpredicate[39;49m
+simple_code.m:043:   [38;5;87m`simple_code.obsolete1'/0.[39;49m
+simple_code.m:044: Warning: call to [38;5;203mobsolete[39;49m [38;5;87mpredicate[39;49m
+simple_code.m:044:   [38;5;87m`simple_code.obsolete2'/0.[39;49m
 simple_code.m:044:   The suggested replacement is [38;5;40m`pred42'/0.[39;49m
-simple_code.m:045: Warning: call to obsolete [38;5;203mpredicate[39;49m
-simple_code.m:045:   [38;5;203m`simple_code.obsolete3'/0.[39;49m
+simple_code.m:045: Warning: call to [38;5;203mobsolete[39;49m [38;5;87mpredicate[39;49m
+simple_code.m:045:   [38;5;87m`simple_code.obsolete3'/0.[39;49m
 simple_code.m:045:   The possible suggested replacements are [38;5;40m`pred42'/0 and[39;49m
 simple_code.m:045:   [38;5;40m`wonderful.pred43'/0.[39;49m
 simple_code.m:048: Warning: the condition of this if-then-else [38;5;203mcannot fail.[39;49m
@@ -24,6 +24,6 @@ simple_code.m:080: In clause for `r(in(bound(1)), out(bound(42)))':
 simple_code.m:080:   in argument 1 of clause head:
 simple_code.m:080:   warning: unification of [38;5;87m`HeadVar__1'[39;49m and [38;5;87m2[39;49m cannot succeed.
 simple_code.m:080:   [38;5;87m`HeadVar__1'[39;49m has instantiatedness [38;5;203m`bound(1)'.[39;49m
-simple_code.m:114: Warning: recursive call to [38;5;203mpredicate `anc'/2[39;49m will lead to
-simple_code.m:114:   infinite recursion.
+simple_code.m:114: Warning: recursive call to [38;5;87mpredicate `anc'/2[39;49m [38;5;203mwill lead to[39;49m
+simple_code.m:114:   [38;5;203minfinite recursion.[39;49m
 For more information, recompile with `-E'.

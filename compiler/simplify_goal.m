@@ -156,10 +156,12 @@ simplify_goal(Goal0, Goal, NestedContext0, InstMap0, !Common, !Info) :-
                 )
             )
         then
-            MainPieces = [words("Warning: this goal cannot succeed.")],
+            MainPieces = [words("Warning:")] ++
+                color_as_incorrect([words("this goal cannot succeed.")]) ++
+                [nl],
             VerbosePieces =
                 [words("The compiler will optimize away this goal,"),
-                words("replacing it with"), quote("fail"), suffix(".")],
+                words("replacing it with"), quote("fail"), suffix("."), nl],
             Msg = simple_msg(Context,
                 [always(MainPieces),
                 verbose_only(verbose_always, VerbosePieces)]),

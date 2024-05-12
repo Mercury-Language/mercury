@@ -1,5 +1,5 @@
-suspicious_recursion.m:031: Warning: recursive call to [38;5;203mpredicate[39;49m
-suspicious_recursion.m:031:   [38;5;203m`funny_append'/3[39;49m is suspicious, because variables
+suspicious_recursion.m:031: Warning: recursive call to [38;5;87mpredicate[39;49m
+suspicious_recursion.m:031:   [38;5;87m`funny_append'/3[39;49m [38;5;203mis suspicious,[39;49m because variables
 suspicious_recursion.m:031:   whose names start with As and Bs occupy different
 suspicious_recursion.m:031:   argument positions in the call than in the clause
 suspicious_recursion.m:031:   head.
@@ -7,7 +7,7 @@ suspicious_recursion.m:031:   This warning can be disabled by wrapping the
 suspicious_recursion.m:031:   recursive call inside a
 suspicious_recursion.m:031:   `disable_warning [suspicious_recursion] (...)'
 suspicious_recursion.m:031:   scope.
-suspicious_recursion.m:042: Warning: recursive call to [38;5;203mpredicate `sum'/3[39;49m is
-suspicious_recursion.m:042:   suspicious, because all input argument positions
+suspicious_recursion.m:042: Warning: recursive call to [38;5;87mpredicate `sum'/3[39;49m [38;5;203mis[39;49m
+suspicious_recursion.m:042:   [38;5;203msuspicious,[39;49m because all input argument positions
 suspicious_recursion.m:042:   that differ between the clause head and the call
 suspicious_recursion.m:042:   use state variable notation.

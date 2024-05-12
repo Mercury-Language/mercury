@@ -380,9 +380,14 @@ maybe_generate_warning_for_implicit_stream_predicate(ModuleInfo,
         GoalContext = goal_info_get_context(GoalInfo),
         PredPieces = describe_one_pred_name(ModuleInfo,
             should_module_qualify, PredId),
-        Pieces = [words("The call to")] ++ PredPieces ++
-            [words("could have an additional argument"),
-            words("explicitly specifying a stream."), nl],
+        Pieces = [words("The call to")] ++
+            color_as_subject(PredPieces) ++
+            [words("could have an additional argument")] ++
+            % This is a suggested cause of action, which is in effect
+            % the converse of the possible cause of a problem.
+            color_as_possible_cause(
+                [words("explicitly specifying a stream.")]) ++
+            [nl],
         Spec = conditional_spec($pred, warn_implicit_stream_calls, yes,
             severity_warning, phase_simplify(report_in_any_mode),
             [msg(GoalContext, Pieces)]),
@@ -418,10 +423,12 @@ maybe_generate_warning_for_implicit_stream_predicate(ModuleInfo,
         GoalContext = goal_info_get_context(GoalInfo),
         PredPieces = describe_one_pred_name(ModuleInfo,
             should_module_qualify, PredId),
-        Pieces = [words("The call to")] ++ PredPieces ++
-            [words("could be made redundant by explicitly passing"),
-            words("the"), words(Dir), words("stream it specifies"),
-            words("to later I/O operations."), nl],
+        Pieces = [words("The call to")] ++ color_as_subject(PredPieces) ++
+            % This is a suggested cause of action, which is in effect
+            % the converse of the possible cause of a problem.
+            color_as_possible_cause([words("could be made redundant")]) ++
+            [words("by explicitly passing the"), words(Dir),
+            words("stream it specifies to later I/O operations."), nl],
         Spec = conditional_spec($pred, warn_implicit_stream_calls, yes,
             severity_warning, phase_simplify(report_in_any_mode),
             [msg(GoalContext, Pieces)]),
@@ -510,8 +517,9 @@ maybe_generate_warning_for_call_to_obsolete_predicate(PredId, ProcId,
         maybe_warn_obsolete_for_origin(ThisPredOrigin) = yes
     then
         GoalContext = goal_info_get_context(GoalInfo),
-        MainPieces = [words("Warning: call to obsolete")] ++
-            color_as_incorrect(PredOrProcPieces ++ [suffix(".")]) ++ [nl],
+        MainPieces = [words("Warning: call to")] ++
+            color_as_incorrect([words("obsolete")]) ++
+            color_as_subject(PredOrProcPieces ++ [suffix(".")]) ++ [nl],
         (
             InFavourOf = [],
             Pieces = MainPieces
@@ -617,14 +625,16 @@ maybe_generate_warning_for_infinite_loop_call(PredId, ProcId, ArgVars,
     then
         NamePieces0 = describe_one_pred_info_name(should_not_module_qualify,
             PredInfo),
-        NamePieces = color_as_incorrect(NamePieces0),
+        NamePieces = color_as_subject(NamePieces0),
         (
             AllInputsEqvOrSvar = all_inputs_eqv_or_svar,
             (
                 AllInputsEqv = all_inputs_eqv,
                 MainPieces =
                     [words("Warning: recursive call to") | NamePieces] ++
-                    [words("will lead to infinite recursion."), nl],
+                    color_as_incorrect(
+                        [words("will lead to infinite recursion.")]) ++
+                    [nl],
                 VerbosePieces =
                     [words("If this recursive call is executed,"),
                     words("the procedure will call itself"),
@@ -641,10 +651,10 @@ maybe_generate_warning_for_infinite_loop_call(PredId, ProcId, ArgVars,
                 ( if simplify_do_warn_suspicious_recursion(!.Info) then
                     Pieces =
                         [words("Warning: recursive call to") | NamePieces] ++
-                        [words("is suspicious, because"),
-                        words("all input argument positions that differ"),
-                        words("between the clause head and the call"),
-                        words("use state variable notation."), nl],
+                        color_as_incorrect([words("is suspicious,")]) ++
+                        [words("because all input argument positions"),
+                        words("that differ between the clause head and"),
+                        words("the call use state variable notation."), nl],
                     Msgs = [simple_msg(goal_info_get_context(GoalInfo),
                         [always(Pieces), shut_up_suspicious_recursion_msg])],
                     Spec = error_spec($pred, severity_warning,
@@ -662,10 +672,9 @@ maybe_generate_warning_for_infinite_loop_call(PredId, ProcId, ArgVars,
                 SuspiciousArgNames = [_, _ | _],
                 simplify_do_warn_suspicious_recursion(!.Info)
             then
-                Pieces =
-                    [words("Warning: recursive call to") | NamePieces] ++
-                    [words("is suspicious, because variables"),
-                    words("whose names start with")] ++
+                Pieces = [words("Warning: recursive call to") | NamePieces] ++
+                    color_as_incorrect([words("is suspicious,")]) ++
+                    [words("because variables whose names start with")] ++
                     list_to_pieces(SuspiciousArgNames) ++
                     [words("occupy different argument positions"),
                     words("in the call than in the clause head."), nl],
@@ -877,7 +886,8 @@ maybe_generate_warning_for_useless_comparison(PredInfo, InstMap, Args,
             GoalContext = goal_info_get_context(GoalInfo),
             PredPieces = describe_one_pred_info_name(should_module_qualify,
                 PredInfo),
-            Pieces = [words("Warning: call to")] ++ PredPieces ++ WarnPieces,
+            Pieces = [words("Warning: call to")] ++
+                color_as_subject(PredPieces) ++ WarnPieces,
             Spec = spec($pred, severity_warning,
                 phase_simplify(report_in_any_mode), GoalContext, Pieces),
             simplify_info_add_message(Spec, !Info)
@@ -895,26 +905,26 @@ is_useless_unsigned_comparison(ModuleName, PredName, InstA, InstB, Pieces) :-
     (
         PredName = ">=",
         arg_is_unsigned_zero(ModuleName, InstB, ZeroStr),
-        Pieces = [words("cannot fail."), nl,
-            words("All"), words(ModuleName), words("values are"),
+        Pieces = color_as_incorrect([words("cannot fail.")]) ++
+            [nl, words("All"), words(ModuleName), words("values are"),
             words(">="), words(ZeroStr), suffix("."), nl]
     ;
         PredName = "=<",
         arg_is_unsigned_zero(ModuleName, InstA, ZeroStr),
-        Pieces = [words("cannot fail."), nl,
-            words(ZeroStr), words("is"), words("=<"), words("all"),
+        Pieces = color_as_incorrect([words("cannot fail.")]) ++
+            [nl, words(ZeroStr), words("is"), words("=<"), words("all"),
             words(ModuleName), words("values."), nl]
     ;
         PredName = "<",
         arg_is_unsigned_zero(ModuleName, InstB, ZeroStr),
-        Pieces = [words("cannot succeed."), nl,
-            words("There are no"), words(ModuleName),
+        Pieces = color_as_incorrect([words("cannot succeed.")]) ++
+            [nl, words("There are no"), words(ModuleName),
             words("values <"), words(ZeroStr), suffix("."), nl]
     ;
         PredName = ">",
         arg_is_unsigned_zero(ModuleName, InstA, ZeroStr),
-        Pieces = [words("cannot succeed."), nl,
-            words(ZeroStr), words("is not"), words(">"), words("any"),
+        Pieces = color_as_incorrect([words("cannot succeed.")]) ++
+            [nl, words(ZeroStr), words("is not"), words(">"), words("any"),
             words(ModuleName), words("value."), nl]
     ).
 
@@ -1419,8 +1429,10 @@ simplify_improve_arith_shift_cmp_ops(IntType, InstMap0, ModuleName, PredName,
                 ImprovedGoalExpr = GoalExpr0,
                 Context = goal_info_get_context(!.GoalInfo),
                 SymName = qualified(unqualified(ModuleName), PredName),
-                Pieces = [words("Error: call to"), qual_sym_name(SymName),
-                    words("with a zero divisor."), nl],
+                Pieces = [words("Error: call to")] ++
+                    color_as_subject([qual_sym_name(SymName)]) ++
+                    color_as_incorrect([words("with a zero divisor.")]) ++
+                    [nl],
                 Spec = spec($pred, severity_error,
                     phase_simplify(report_in_any_mode), Context, Pieces),
                 simplify_info_add_message(Spec, !Info)
@@ -1456,21 +1468,8 @@ simplify_improve_arith_shift_cmp_ops(IntType, InstMap0, ModuleName, PredName,
                         inline_builtin, X, Y, Z, ImprovedGoalExpr)
                 else
                     ImprovedGoalExpr = GoalExpr0,
-                    Context = goal_info_get_context(!.GoalInfo),
-                    SymName = qualified(unqualified(ModuleName), PredName),
-                    string.format("%d (exclusive).", [i(NumTargetBits)],
-                        Exclusive),
-                    % Do not let a line break come between the lower
-                    % or upper bound number and the inclusive/exclusive
-                    % notation afterward.
-                    Pieces = [words("Error: call to"), qual_sym_name(SymName),
-                        words("with a shift amount that is"),
-                        words("outside of the range"),
-                        fixed("0 (inclusive)"), words("to"),
-                        fixed(Exclusive), nl],
-                    Spec = spec($pred, severity_error,
-                        phase_simplify(report_in_any_mode), Context, Pieces),
-                    simplify_info_add_message(Spec, !Info)
+                    report_bad_shift_amount(ModuleName, PredName, !.GoalInfo,
+                        NumTargetBits, !Info)
                 )
             ;
                 YConst = uint_const(YUintVal),
@@ -1479,15 +1478,8 @@ simplify_improve_arith_shift_cmp_ops(IntType, InstMap0, ModuleName, PredName,
                         inline_builtin, X, Y, Z, ImprovedGoalExpr)
                 else
                     ImprovedGoalExpr = GoalExpr0,
-                    Context = goal_info_get_context(!.GoalInfo),
-                    SymName = qualified(unqualified(ModuleName), PredName),
-                    Pieces = [words("Error: call to"), qual_sym_name(SymName),
-                        words("with a shift amount that is equal to"),
-                        words("or greater than"), int_fixed(NumTargetBits),
-                        suffix("."), nl],
-                    Spec = spec($pred, severity_error,
-                        phase_simplify(report_in_any_mode), Context, Pieces),
-                    simplify_info_add_message(Spec, !Info)
+                    report_bad_shift_amount(ModuleName, PredName, !.GoalInfo,
+                        NumTargetBits, !Info)
                 )
             )
         else
@@ -1607,6 +1599,26 @@ replace_tautological_comparisons(PredName, Args, ImprovedGoalExpr) :-
         Args = [X, X],
         ImprovedGoalExpr = true_goal_expr
     ).
+
+:- pred report_bad_shift_amount(string::in, string::in,
+    hlds_goal_info::in, int::in, simplify_info::in, simplify_info::out) is det.
+
+report_bad_shift_amount(ModuleName, PredName, GoalInfo, NumTargetBits,
+        !Info) :-
+    Context = goal_info_get_context(GoalInfo),
+    SymName = qualified(unqualified(ModuleName), PredName),
+    string.format("%d (exclusive).", [i(NumTargetBits)], ExclusiveDot),
+    % Do not let a line break come between the lower or upper bound number
+    % and the inclusive/exclusive notation afterward.
+    Pieces = [words("Error: call to")] ++
+        color_as_subject([qual_sym_name(SymName)]) ++
+        [words("with a shift amount that is")] ++
+        color_as_incorrect([words("outside of the range"),
+            fixed("0 (inclusive)"), words("to"), fixed(ExclusiveDot)]) ++
+        [nl],
+    Spec = spec($pred, severity_error, phase_simplify(report_in_any_mode),
+        Context, Pieces),
+    simplify_info_add_message(Spec, !Info).
 
 %---------------------------------------------------------------------------%
 %
