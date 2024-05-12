@@ -106,8 +106,11 @@ parse_solver_type_defn_item(ModuleName, VarSet, ArgTerms, Context, SeqNum,
         parse_type_defn_item(ModuleName, VarSet, SubArgTerms,
             SubContext, SeqNum, solver_type, MaybeIOM)
     else
-        Pieces = [words("Error: the"), decl("solver"), words("keyword"),
-            words("should be followed by a type definition."), nl],
+        Pieces = [words("Error: the")] ++
+            color_as_subject([decl("solver"), words("keyword")]) ++
+            color_as_incorrect(
+                [words("should be followed by a type definition.")]) ++
+            [nl],
         Spec = spec($pred, severity_error, phase_t2pt, Context, Pieces),
         MaybeIOM = error1([Spec])
     ).
@@ -142,9 +145,10 @@ parse_type_defn_item(ModuleName, VarSet, ArgTerms, Context, SeqNum,
                 Context, SeqNum, IsSolverType, MaybeIOM)
         )
     else
-        Pieces = [words("Error: a"), decl("type"), words("declaration"),
-            words("should have just one argument,"),
-            words("which should be the definition of a type."), nl],
+        Pieces = [words("Error: a")] ++
+            color_as_subject([decl("type"), words("declaration")]) ++
+            color_as_incorrect([words("should have just one argument,")]) ++
+            [words("which should be the definition of a type."), nl],
         Spec = spec($pred, severity_error, phase_t2pt, Context, Pieces),
         MaybeIOM = error1([Spec])
     ).
@@ -166,8 +170,10 @@ parse_du_type_defn(ModuleName, VarSet, HeadTerm, BodyTerm, Context, SeqNum,
     % a type definition item, and which should not.
     (
         IsSolverType = solver_type,
-        SolverPieces = [words("Error: a solver type"),
-            words("cannot have data constructors."), nl],
+        SolverPieces = [words("Error:")] ++
+            color_as_incorrect([words("a solver type"),
+                words("cannot have data constructors.")]) ++
+            [nl],
         SolverSpec = spec($pred, severity_error, phase_t2pt,
             get_term_context(HeadTerm), SolverPieces),
         SolverSpecs = [SolverSpec]
@@ -241,11 +247,13 @@ parse_du_type_defn(ModuleName, VarSet, HeadTerm, BodyTerm, Context, SeqNum,
             ;
                 MaybeCanonical = noncanon(_),
                 CanonTypeCtor = type_ctor(TypeSymName, list.length(Params)),
-                CanonPieces = [words("Error: the subtype"),
-                    unqual_type_ctor(CanonTypeCtor),
-                    words("is not allowed to have its own"),
-                    words("user-defined equality or comparison;"),
-                    words("it must inherit any user-defined"),
+                CanonPieces = [words("Error: the")] ++
+                    color_as_subject([words("subtype"),
+                        unqual_type_ctor(CanonTypeCtor)]) ++
+                    color_as_incorrect(
+                        [words("is not allowed to have its own"),
+                        words("user-defined equality or comparison;")]) ++
+                    [words("it must inherit any user-defined"),
                     words("equality and comparison predicates"),
                     words("from its supertype."), nl],
                 CanonSpec = spec($pred, severity_error, phase_pt2h,
@@ -259,11 +267,13 @@ parse_du_type_defn(ModuleName, VarSet, HeadTerm, BodyTerm, Context, SeqNum,
                 MaybeDirectArgIs = yes(_),
                 DirectArgTypeCtor =
                     type_ctor(TypeSymName, list.length(Params)),
-                DirectArgPieces = [words("Error: the subtype"),
-                    unqual_type_ctor(DirectArgTypeCtor),
-                    words("is not allowed to have its own"),
-                    quote("where direct_arg is"), words("annotation;"),
-                    words("it must inherit its representation"),
+                DirectArgPieces = [words("Error: the")] ++
+                    color_as_subject([words("subtype"),
+                        unqual_type_ctor(DirectArgTypeCtor)]) ++
+                    color_as_incorrect(
+                        [words("is not allowed to have its own"),
+                        quote("where direct_arg is"), words("annotation;")]) ++
+                    [words("it must inherit its representation"),
                     words("from its supertype."), nl],
                 DirectArgSpec = spec($pred, severity_error, phase_pt2h,
                     Context, DirectArgPieces),
@@ -421,8 +431,10 @@ parse_constructor(ModuleName, VarSet, Ordinal, ExistQVars, Term,
             ;
                 Constraints = [_ | _],
                 MCPieces = [words("Error: since there are no"),
-                    words("existentially quantified arguments,"),
-                    words("there should be no constraints on them."), nl],
+                    words("existentially quantified arguments,")] ++
+                    color_as_incorrect([words("there should be"),
+                        words("no constraints on them.")]) ++
+                    [nl],
                 MCSpec = spec($pred, severity_error, phase_t2pt,
                     get_term_context(Term), MCPieces),
                 MaybeMaybeExistConstraints = error1([MCSpec])
@@ -591,11 +603,15 @@ check_supertype_vars(Params, VarSet, SuperType, Context, !Specs) :-
     ;
         FreeVars = [_ | _],
         varset.coerce(VarSet, GenericVarSet),
-        FreeVarsStr = mercury_vars_to_name_only_vs(GenericVarSet, FreeVars),
-        Pieces = [words("Error: free type"),
-            words(choose_number(FreeVars, "parameter", "parameters")),
-            words(FreeVarsStr),
-            words("in supertype part of subtype definition."), nl],
+        FreeVarPieces = list.map(var_to_quote_piece(GenericVarSet), FreeVars),
+        Pieces = [words("Error:")] ++
+            color_as_subject([words("free type"),
+                words(choose_number(FreeVars, "parameter", "parameters")),
+                words("such as")] ++
+                component_list_to_color_pieces(yes(color_subject), "and", [],
+                    FreeVarPieces)) ++
+            color_as_incorrect([words("may not appear")]) ++
+            [words("in the supertype of a subtype definition."), nl],
         Spec = spec($pred, severity_error, phase_t2pt, Context, Pieces),
         !:Specs = [Spec | !.Specs]
     ).
@@ -630,13 +646,17 @@ process_du_ctors(Params, VarSet, BodyTerm, [Ctor | Ctors], !Specs) :-
     then
         % There should be no duplicate names to remove.
         varset.coerce(VarSet, GenericVarSet),
-        NotExistQOrParamVarsStr =
-            mercury_vars_to_name_only_vs(GenericVarSet, NotExistQOrParamVars),
-        Pieces = [words("Error: free type"),
-            words(choose_number(NotExistQOrParamVars,
-                "parameter", "parameters")),
-            words(NotExistQOrParamVarsStr),
-            words("in right hand side of type definition."), nl],
+        NotExistVarPieces =
+            list.map(var_to_quote_piece(GenericVarSet), NotExistQOrParamVars),
+        Pieces = [words("Error:")] ++
+            color_as_subject([
+                words(choose_number(NotExistQOrParamVars,
+                    "a free type parameter", "free type parameters")),
+                words("such as")] ++
+                component_list_to_color_pieces(yes(color_subject), "and", [],
+                    NotExistVarPieces)) ++
+            color_as_incorrect([words("may not appear")]) ++
+            [words("on the right hand side of a type definition."), nl],
         Spec = spec($pred, severity_error, phase_t2pt,
             get_term_context(BodyTerm), Pieces),
         !:Specs = [Spec | !.Specs]
@@ -653,15 +673,18 @@ process_du_ctors(Params, VarSet, BodyTerm, [Ctor | Ctors], !Specs) :-
         % There should be no duplicate names to remove.
         set.to_sorted_list(ExistQParamsSet, ExistQParams),
         varset.coerce(VarSet, GenericVarSet),
-        ExistQParamVarsStrs =
-            list.map(mercury_var_to_name_only_vs(GenericVarSet), ExistQParams),
-        Pieces = [words("Error:"),
-            words(choose_number(ExistQParams,
-                "type variable", "type variables"))] ++
-            list_to_quoted_pieces(ExistQParamVarsStrs) ++
-            [words(choose_number(ExistQParams, "has", "have")),
-            words("overlapping scopes"),
-            words("(the explicit existential type quantifier shadows"),
+        ExistQParamPieces =
+            list.map(var_to_quote_piece(GenericVarSet), ExistQParams),
+        Pieces = [words("Error: the")] ++
+            color_as_subject(
+                [words(choose_number(ExistQParams,
+                    "type variable", "type variables"))] ++
+                component_list_to_color_pieces(yes(color_subject), "and", [],
+                    ExistQParamPieces)) ++
+            color_as_incorrect(
+                [words(choose_number(ExistQParams, "has", "have")),
+                words("overlapping scopes")]) ++
+            [words("(the explicit existential type quantifier shadows"),
             words("the universal quantification implicit in"),
             words(choose_number(ExistQParams,
                 "it being a type parameter", "them being type parameters")),
@@ -689,16 +712,19 @@ process_du_ctors(Params, VarSet, BodyTerm, [Ctor | Ctors], !Specs) :-
     then
         % There should be no duplicate names to remove.
         varset.coerce(VarSet, GenericVarSet),
-        NotOccursExistQVarStrs =
-            list.map(mercury_var_to_name_only_vs(GenericVarSet),
-            NotOccursExistQVars),
-        Pieces = [words("Error: the existentially quantified"),
-            words(choose_number(NotOccursExistQVars,
-                "type variable", "type variables"))] ++
-            list_to_quoted_pieces(NotOccursExistQVarStrs) ++
-            [words(choose_number(NotOccursExistQVars,
-                "does not occur", "do not occur")),
-            words("either in the arguments or in the constraints"),
+        NotOccursVarPieces =
+            list.map(var_to_quote_piece(GenericVarSet), NotOccursExistQVars),
+        Pieces = [words("Error: the")] ++
+            color_as_subject(
+                [words("existentially quantified"),
+                words(choose_number(NotOccursExistQVars,
+                    "type variable", "type variables"))] ++
+                component_list_to_color_pieces(yes(color_subject), "and", [],
+                    NotOccursVarPieces)) ++
+            color_as_incorrect(
+                [words(choose_number(NotOccursExistQVars,
+                    "does not occur", "do not occur"))]) ++
+            [words("either in the arguments or in the constraints"),
             words("of the constructor."), nl],
         Spec = spec($pred, severity_error, phase_t2pt,
             get_term_context(BodyTerm), Pieces),
@@ -713,20 +739,24 @@ process_du_ctors(Params, VarSet, BodyTerm, [Ctor | Ctors], !Specs) :-
         type_vars_in_types(ConstraintArgTypes, VarsInCtorArgTypes0),
         list.sort_and_remove_dups(VarsInCtorArgTypes0, VarsInCtorArgTypes),
         list.filter(list.contains(ExistQVars), VarsInCtorArgTypes,
-            _ExistQArgTypes, NotExistQArgTypes),
-        NotExistQArgTypes = [_ | _]
+            _ExistQArgTypeVars, NotExistQArgTypeVars),
+        NotExistQArgTypeVars = [_ | _]
     then
         varset.coerce(VarSet, GenericVarSet),
-        NotExistQArgTypeStrs = list.map(
-            mercury_var_to_name_only_vs(GenericVarSet), NotExistQArgTypes),
-        Pieces = [words("Error: the"),
-            words(choose_number(NotExistQArgTypes,
-                "type variable", "type variables"))]
-            ++ list_to_quoted_pieces(NotExistQArgTypeStrs) ++
-            [words(choose_number(NotExistQArgTypeStrs, "occurs", "occur")),
-            words("in a class constraint"),
-            words("without being explicitly existentially quantified"),
-            words("using"), quote("some"), suffix("."), nl],
+        NotExistQVarPieces =
+            list.map(var_to_quote_piece(GenericVarSet), NotExistQArgTypeVars),
+        Pieces = [words("Error: the")] ++
+            color_as_subject(
+                [words(choose_number(NotExistQArgTypeVars,
+                    "type variable", "type variables"))] ++
+                component_list_to_color_pieces(yes(color_subject), "and", [],
+                    NotExistQVarPieces)) ++
+            [words(choose_number(NotExistQArgTypeVars, "occurs", "occur")),
+            words("in a class constraint")] ++
+            color_as_incorrect(
+                [words("without being explicitly existentially quantified"),
+                words("using"), quote("some"), suffix(".")]) ++
+            [nl],
         Spec = spec($pred, severity_error, phase_t2pt,
             get_term_context(BodyTerm), Pieces),
         !:Specs = [Spec | !.Specs]
@@ -747,9 +777,11 @@ check_direct_arg_ctors(Ctors, [DirectArgCtor | DirectArgCtors], ErrorTerm,
         Ctor = ctor(_Ordinal, MaybeExistConstraints, _SymName, _Args, _Arity,
             _Context),
         ( if Arity \= 1 then
-            Pieces = [words("Error: the"), quote("direct_arg"),
-                words("attribute contains a function symbol whose arity"),
-                words("is not 1."), nl],
+            Pieces = [words("Error: the")] ++
+                color_as_subject([quote("direct_arg"), words("attribute")]) ++
+                [words("contains a function symbol")] ++
+                color_as_incorrect([words("whose arity is not 1.")]) ++
+                [nl],
             Spec = spec($pred, severity_error, phase_t2pt,
                 get_term_context(ErrorTerm), Pieces),
             !:Specs = [Spec | !.Specs]
@@ -758,21 +790,30 @@ check_direct_arg_ctors(Ctors, [DirectArgCtor | DirectArgCtors], ErrorTerm,
                 MaybeExistConstraints = no_exist_constraints
             ;
                 MaybeExistConstraints = exist_constraints(_),
-                Pieces = [words("Error: the"), quote("direct_arg"),
-                    words("attribute contains a function symbol"),
-                    unqual_sym_name_arity(DirectArgCtor),
-                    words("with existentially quantified type variables."),
-                    nl],
+                Pieces = [words("Error: the")] ++
+                    color_as_subject([quote("direct_arg"),
+                        words("attribute")]) ++
+                    [words("contains a function symbol,")] ++
+                    color_as_subject([unqual_sym_name_arity(DirectArgCtor),
+                        suffix(",")]) ++
+                    color_as_incorrect(
+                        [words("with existentially quantified"),
+                        words("type variables.")]) ++
+                    [nl],
                 Spec = spec($pred, severity_error, phase_t2pt,
                     get_term_context(ErrorTerm), Pieces),
                 !:Specs = [Spec | !.Specs]
             )
         )
     else
-        Pieces = [words("Error: the"), quote("direct_arg"),
-            words("attribute lists the function symbol"),
-            unqual_sym_name_arity(DirectArgCtor),
-            words("which is not in the type definition."), nl],
+        Pieces = [words("Error: the")] ++
+            color_as_subject([quote("direct_arg"), words("attribute")]) ++
+            [words("lists the function symbol")] ++
+            color_as_subject([unqual_sym_name_arity(DirectArgCtor),
+                suffix(",")]) ++
+            color_as_incorrect(
+                [words("which is not in the type definition.")]) ++
+            [nl],
         Spec = spec($pred, severity_error, phase_t2pt,
             get_term_context(ErrorTerm), Pieces),
         !:Specs = [Spec | !.Specs]
@@ -804,8 +845,11 @@ parse_eqv_type_defn(ModuleName, VarSet, HeadTerm, BodyTerm, Context, SeqNum,
         SolverSpecs = []
     ;
         IsSolverType = solver_type,
-        SolverPieces = [words("Error: a solver type cannot be defined"),
-            words("to be equivalent to another type."), nl],
+        SolverPieces = [words("Error:")] ++
+            color_as_subject([words("a solver type")]) ++
+            color_as_incorrect([words("cannot be defined"),
+                words("to be equivalent to another type.")]) ++
+            [nl],
         SolverSpec = spec($pred, severity_error, phase_t2pt,
             get_term_context(HeadTerm), SolverPieces),
         SolverSpecs = [SolverSpec]
@@ -878,9 +922,11 @@ parse_where_block_type_defn(ModuleName, VarSet, HeadTerm, BodyTerm,
                 MaybeDirectArgCtors),
             (
                 MaybeDirectArgCtors = yes(_),
-                Pieces = [words("Error: solver type definitions"),
-                    words("cannot have a"), quote("direct_arg"),
-                    words("attribute."), nl],
+                Pieces = [words("Error:")] ++
+                    color_as_subject([words("a solver type definition")]) ++
+                    color_as_incorrect([words("cannot have a"),
+                        quote("direct_arg"), words("attribute.")]) ++
+                    [nl],
                 Spec = spec($pred, severity_error, phase_t2pt,
                     get_term_context(HeadTerm), Pieces),
                 MaybeIOM = error1([Spec])
@@ -916,15 +962,22 @@ parse_where_type_is_abstract(ModuleName, VarSet, HeadTerm, BodyTerm,
                     abstract_type_fits_in_n_bits(NumBits)),
                 MaybeTypeDefn = ok1(TypeDefn0)
             else
-                Pieces = [words("Error: the argument of"), quote(AttrName),
-                    words("is not a positive integer."), nl],
+                Pieces = [words("Error: the")] ++
+                    color_as_subject([words("argument of"),
+                        quote(AttrName)]) ++
+                    color_as_incorrect(
+                        [words("is not a positive integer.")]) ++
+                    [nl],
                 Spec = spec($pred, severity_error, phase_t2pt,
                     Context, Pieces),
                 MaybeTypeDefn = error1([Spec])
             )
         else
-            Pieces = [words("Error:"), quote(AttrName),
-                words("should have exactly one argument."), nl],
+            Pieces = [words("Error:")] ++
+                color_as_subject([quote(AttrName)]) ++
+                color_as_incorrect(
+                    [words("should have exactly one argument.")]) ++
+                [nl],
             Spec = spec($pred, severity_error, phase_t2pt, Context, Pieces),
             MaybeTypeDefn = error1([Spec])
         )
@@ -939,21 +992,30 @@ parse_where_type_is_abstract(ModuleName, VarSet, HeadTerm, BodyTerm,
                     abstract_subtype(TypeCtor)),
                 MaybeTypeDefn = ok1(TypeDefn0)
             else
-                Pieces = [words("Error: the argument of"), quote(AttrName),
-                    words("is not a symbol name and arity."), nl],
+                Pieces = [words("Error: the")] ++
+                    color_as_subject([words("argument of"),
+                        quote(AttrName)]) ++
+                    color_as_incorrect(
+                        [words("is not a symbol name and arity.")]) ++
+                    [nl],
                 Spec = spec($pred, severity_error, phase_t2pt,
                     Context, Pieces),
                 MaybeTypeDefn = error1([Spec])
             )
         else
-            Pieces = [words("Error:"), quote(AttrName),
-                words("should have exactly one argument."), nl],
+            Pieces = [words("Error:")] ++
+                color_as_subject([quote(AttrName)]) ++
+                color_as_incorrect(
+                    [words("should have exactly one argument.")]) ++
+                [nl],
             Spec = spec($pred, severity_error, phase_t2pt, Context, Pieces),
             MaybeTypeDefn = error1([Spec])
         )
     else
-        Pieces = [words("Error: invalid"), quote("where ..."),
-            words("attribute for abstract non-solver type."), nl],
+        Pieces = [words("Error:")] ++
+            color_as_incorrect([words("invalid"), quote("where ..."),
+                words("attribute")]) ++
+            [words("for abstract non-solver type."), nl],
         Spec = spec($pred, severity_error, phase_t2pt, Context, Pieces),
         MaybeTypeDefn = error1([Spec])
     ),
@@ -987,7 +1049,9 @@ parse_solver_type_base(ModuleName, VarSet, HeadTerm,
         SolverSpecs = []
     ;
         MaybeSolverTypeDetails = no,
-        Pieces = [words("Solver type with no solver_type_details."), nl],
+        Pieces = [words("Solver type with")] ++
+            color_as_incorrect([words("no solver_type_details.")]) ++
+            [nl],
         SolverSpec = spec($pred, severity_error, phase_t2pt,
             get_term_context(HeadTerm), Pieces),
         SolverSpecs = [SolverSpec]
@@ -1108,8 +1172,12 @@ parse_type_decl_where_term(IsSolverType, ModuleName, SeqNum, VarSet, Term0,
             MaybeEndSpec = ok1(unit)
         ;
             !.MaybeTerm = yes(EndTerm),
-            Pieces = [words("Error: attributes are either badly ordered"),
-                words("or contain an unrecognised attribute."), nl],
+            Pieces = [words("Error: attributes are either")] ++
+                color_as_possible_cause([words("badly ordered")]) ++
+                [words("or")] ++
+                color_as_possible_cause(
+                    [words("contain an unrecognised attribute.")]) ++
+                [nl],
             EndSpec = spec($pred, severity_error, phase_t2pt,
                 get_term_context(EndTerm), Pieces),
             MaybeEndSpec = error1([EndSpec])
@@ -1148,18 +1216,22 @@ parse_where_unify_compare(ModuleName, VarSet, Term0, MaybeMaybeCanonical) :-
         ;
             !.MaybeTerm = yes(EndTerm),
             EndTermStr = describe_error_term(VarSet, EndTerm),
-            Pieces = [
-                words("In"), pragma_decl("foreign_type"),
-                words("declaration: error: unrecognized"),
-                quote("where"), words("attribute"), quote(EndTermStr),
-                    suffix(".")
-            ],
-            VerbosePieces = [
-                words("Recognized"), quote("where"),
+            Pieces = [words("In"), pragma_decl("foreign_type"),
+                words("declaration: error:")] ++
+                color_as_incorrect([words("unrecognized"), quote("where"),
+                    words("attribute"), quote(EndTermStr), suffix(".")]) ++
+                [nl],
+            VerbosePieces =
+                [words("Recognized"), quote("where"),
                 words("attributes have the form"),
-                quote("equality is <<equality pred name>>"), words("and"),
-                quote("comparison is <<comparison pred name>>"), suffix(".")
-            ],
+                nl_indent_delta(1)] ++
+                color_as_correct(
+                    [quote("equality is <<equality pred name>>")]) ++
+                [nl_indent_delta(-1), words("and"), nl_indent_delta(1)] ++
+                color_as_correct(
+                    [quote("comparison is <<comparison pred name>>"),
+                    suffix(".")]) ++
+                [nl_indent_delta(-1)],
             EndSpec = error_spec($pred, severity_error, phase_t2pt,
                 [simple_msg(get_term_context(EndTerm),
                     [always(Pieces),
@@ -1295,8 +1367,11 @@ parse_where_inst_is(_ModuleName, VarSet, ContextPieces, Term) = MaybeInst :-
         ( if inst_contains_unconstrained_var(Inst) then
             TermStr = describe_error_term(VarSet, Term),
             Pieces = cord.list(ContextPieces) ++ [lower_case_next_if_not_first,
-                words("Error:"), quote(TermStr),
-                words("is not a ground, unconstrained inst."), nl],
+                words("Error:")] ++
+                color_as_subject([quote(TermStr)]) ++
+                color_as_incorrect(
+                    [words("is not a ground, unconstrained inst.")]) ++
+                [nl],
             Spec = spec($pred, severity_error, phase_t2pt,
                 get_term_context(Term), Pieces),
             MaybeInst = error1([Spec])
@@ -1331,9 +1406,13 @@ parse_where_mutable_is(ModuleName, SeqNum, VarSet, Term) = MaybeItems :-
             Terms, MaybeItems)
     else
         TermStr = describe_error_term(VarSet, Term),
-        Pieces = [words("Error: expected a mutable declaration"),
-            words("or a list of mutable declarations, got"),
-            quote(TermStr), suffix("."), nl],
+        Pieces = [words("Error: expected")] ++
+            color_as_correct([words("a mutable declaration")]) ++
+            [words("or")] ++
+            color_as_correct([words("a list of mutable declarations,")]) ++
+            [words("got")] ++
+            color_as_incorrect([quote(TermStr), suffix(".")]) ++
+            [nl],
         Spec = spec($pred, severity_error, phase_t2pt,
             get_term_context(Term), Pieces),
         MaybeItems = error1([Spec])
@@ -1344,15 +1423,16 @@ parse_where_mutable_is(ModuleName, SeqNum, VarSet, Term) = MaybeItems :-
 
 parse_mutable_decl_term(ModuleName, SeqNum, VarSet, Term,
         MaybeItemMutableInfo) :-
-    ( if
-        Term = term.functor(term.atom("mutable"), ArgTerms, Context)
-    then
+    ( if Term = term.functor(term.atom("mutable"), ArgTerms, Context) then
         parse_mutable_decl_info(ModuleName, VarSet, ArgTerms, Context, SeqNum,
             mutable_locn_in_solver_type, MaybeItemMutableInfo)
     else
         TermStr = describe_error_term(VarSet, Term),
-        Pieces = [words("Error: expected a mutable declaration, got"),
-            quote(TermStr), suffix("."), nl],
+        Pieces = [words("Error: expected a")] ++
+            color_as_correct([words("mutable declaration,")]) ++
+            [words("got")] ++
+            color_as_incorrect([quote(TermStr), suffix(".")]) ++
+            [nl],
         Spec = spec($pred, severity_error, phase_t2pt,
             get_term_context(Term), Pieces),
         MaybeItemMutableInfo = error1([Spec])
@@ -1366,8 +1446,9 @@ parse_where_direct_arg_is(ModuleName, VarSet, Term) = MaybeDirectArgCtors :-
         map_parser(parse_direct_arg_functor(ModuleName, VarSet),
             FunctorsTerms, MaybeDirectArgCtors)
     else
-        Pieces = [words("Error: malformed functors list in"),
-            quote("direct_arg"), words("attribute."), nl],
+        Pieces = [words("Error:")] ++
+            color_as_incorrect([words("malformed functors list")]) ++
+            [words("in"), quote("direct_arg"), words("attribute."), nl],
         Spec = spec($pred, severity_error, phase_t2pt,
             get_term_context(Term), Pieces),
         MaybeDirectArgCtors = error1([Spec])
@@ -1388,9 +1469,12 @@ parse_direct_arg_functor(ModuleName, VarSet, Term, MaybeFunctor) :-
         )
     else
         TermStr = describe_error_term(VarSet, Term),
-        Pieces = [words("Error: expected functor name/arity for"),
-            quote("direct_arg"), words("attribute, not"),
-            quote(TermStr), suffix("."), nl],
+        Pieces = [words("Error: expected")] ++
+            color_as_correct([words("functor name/arity for"),
+                quote("direct_arg"), words("attribute,")]) ++
+            [words("got")] ++
+            color_as_incorrect([quote(TermStr), suffix(".")]) ++
+            [nl],
         Spec = spec($pred, severity_error, phase_t2pt,
             get_term_context(Term), Pieces),
         MaybeFunctor = error1([Spec])
@@ -1476,8 +1560,11 @@ make_maybe_where_details_2(IsSolverType, TypeIsAbstractNoncanonical,
             ( if
                 DirectArgIs = yes(_)
             then
-                Pieces = [words("Error: solver type definitions cannot have"),
-                    quote("direct_arg"), words("attributes."), nl],
+                Pieces = [words("Error:")] ++
+                    color_as_subject([words("solver type definitions")]) ++
+                    color_as_incorrect([words("cannot have"),
+                        quote("direct_arg"), words("attributes.")]) ++
+                    [nl],
                 Spec = spec($pred, severity_error, phase_t2pt,
                     get_term_context(WhereTerm), Pieces),
                 MaybeWhereDetails = error3([Spec])
@@ -1517,8 +1604,11 @@ make_maybe_where_details_2(IsSolverType, TypeIsAbstractNoncanonical,
             else if
                 RepresentationIs = no
             then
-                Pieces = [words("Error: solver type definitions must have a"),
-                    quote("representation"), words("attribute."), nl],
+                Pieces = [words("Error:")] ++
+                    color_as_subject([words("solver type definitions")]) ++
+                    color_as_incorrect([words("must have a"),
+                        quote("representation"), words("attribute.")]) ++
+                    [nl],
                 Spec = spec($pred, severity_error, phase_t2pt,
                     get_term_context(WhereTerm), Pieces),
                 MaybeWhereDetails = error3([Spec])
@@ -1534,8 +1624,12 @@ make_maybe_where_details_2(IsSolverType, TypeIsAbstractNoncanonical,
                 ; CStoreIs         = yes(_)
                 )
             then
-                Pieces = [words("Error: solver type attribute given"),
-                    words("for non-solver type."), nl],
+                Pieces = [words("Error:")] ++
+                    color_as_incorrect(
+                        [words("solver type attribute given")]) ++
+                    [words("for a")] ++
+                    color_as_subject([words("non-solver type.")]) ++
+                    [nl],
                 Spec = spec($pred, severity_error, phase_t2pt,
                     get_term_context(WhereTerm), Pieces),
                 MaybeWhereDetails = error3([Spec])
@@ -1550,9 +1644,10 @@ make_maybe_where_details_2(IsSolverType, TypeIsAbstractNoncanonical,
 
 abstract_noncanonical_excludes_others(Term) = Spec :-
     Pieces = [words("Error:"),
-        quote("where type_is_abstract_noncanonical"),
-        words("excludes other"), quote("where ..."),
-        words("attributes."), nl],
+        quote("where type_is_abstract_noncanonical")] ++
+        color_as_incorrect([words("excludes other"), quote("where ..."),
+            words("attributes.")]) ++
+        [nl],
     Spec = spec($pred, severity_error, phase_t2pt,
         get_term_context(Term), Pieces).
 
@@ -1590,9 +1685,12 @@ parse_type_defn_head(ContextPieces, ModuleName, VarSet, Term,
         TermStr = describe_error_term(VarSet, Term),
         Pieces = cord.list(ContextPieces) ++
             [lower_case_next_if_not_first,
-            words("Error: expected a type constructor"),
-            words("and zero or more type variables as arguments,"),
-            words("got"), quote(TermStr), suffix("."), nl],
+            words("Error: expected a")] ++
+            color_as_correct([words("type constructor"),
+                words("and zero or more type variables as arguments,")]) ++
+            [words("got")] ++
+            color_as_incorrect([quote(TermStr), suffix(".")]) ++
+            [nl],
         Spec = spec($pred, severity_error, phase_t2pt, Context, Pieces),
         MaybeTypeCtorAndArgs = error2([Spec])
     ;
@@ -1636,9 +1734,11 @@ parse_type_defn_head(ContextPieces, ModuleName, VarSet, Term,
                         % is missing. Printing ContextPieces would therefore
                         % be at least somewhat misleading.
                         Pieces = [words("Error: in a type definition,"),
-                            words("the first constructor must be preceded"),
-                            words("by"), quote("--->"), suffix(","),
-                            words("not by a semicolon."), nl],
+                            words("the first constructor")] ++
+                            color_as_incorrect([words("must be preceded"),
+                                words("by"), quote("--->"), suffix(","),
+                                words("not by a semicolon.")]) ++
+                            [nl],
                         Spec = spec($pred, severity_error, phase_t2pt,
                             Context, Pieces),
                         % Most likely, the problems reported by ParamSpecs
@@ -1671,10 +1771,12 @@ check_user_type_name(SymName, Context, NameSpecs) :-
     % Check that the mode name is available to users.
     Name = unqualify_name(SymName),
     ( if Name = "=" then
-        NamePieces = [words("Error: in definitions of equivalence types,"),
-            words("the type name must be followed by"),
-            quote("=="), suffix(","),
-            words("not"), quote("="), suffix("."), nl],
+        NamePieces = [words("Error: in definitions of equivalence types,")] ++
+            color_as_correct([words("the type name must be followed by"),
+                quote("=="), suffix(",")]) ++
+            [words("not")] ++
+            color_as_incorrect([quote("="), suffix(".")]) ++
+            [nl],
         NameSpec = spec($pred, severity_error, phase_t2pt,
             Context, NamePieces),
         NameSpecs = [NameSpec]
@@ -1705,16 +1807,20 @@ check_no_free_body_vars(TVarSet, ParamTVars, BodyType, BodyContext, Specs) :-
         Specs = []
     ;
         OnlyBodyTVars = [_ | _],
-        OnlyBodyTVarNames = list.map(mercury_var_to_name_only_vs(TVarSet),
-            OnlyBodyTVars),
-        VarWord = choose_number(OnlyBodyTVars,
-            "the type variable", "the type variables"),
+        OnlyBodyTVarPieces =
+            list.map(var_to_quote_piece(TVarSet), OnlyBodyTVars),
+        VarWords = choose_number(OnlyBodyTVars,
+            "type variable", "type variables"),
         OccurWord = choose_number(OnlyBodyTVars,
             "occurs", "occur"),
-        Pieces = [words("Error:"), words(VarWord)] ++
-            list_to_pieces(OnlyBodyTVarNames) ++ [words(OccurWord),
-            words("only in the right hand side of this type definition."),
-            nl],
+        Pieces = [words("Error: the")] ++
+            color_as_subject([words(VarWords)]) ++
+            component_list_to_color_pieces(yes(color_subject), "and", [],
+                OnlyBodyTVarPieces) ++
+            [words(OccurWord)] ++
+            color_as_incorrect([words("only on the right hand side"),
+                words("of this type definition.")]) ++
+            [nl],
         Spec = spec($pred, severity_error, phase_t2pt, BodyContext, Pieces),
         Specs = [Spec]
     ).
@@ -1736,8 +1842,11 @@ parse_supertype(VarSet, ContextPieces, Term, Result) :-
             TermStr = describe_error_term(VarSet, Term),
             Pieces = cord.list(ContextPieces) ++
                 [lower_case_next_if_not_first,
-                words("Error: expected a type constructor,"),
-                words("got"), quote(TermStr), suffix("."), nl],
+                words("Error: expected a")] ++
+                color_as_correct([words("type constructor,")]) ++
+                [words("got")] ++
+                color_as_incorrect([quote(TermStr), suffix(".")]) ++
+                [nl],
             Spec = spec($pred, severity_error, phase_t2pt, Context, Pieces),
             Result = error1([Spec])
         )

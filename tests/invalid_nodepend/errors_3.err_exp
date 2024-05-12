@@ -14,12 +14,10 @@ errors_3.m:034:   without corresponding `:- pred' declaration.
 errors_3.m:040: Error: clause for predicate
 errors_3.m:040:   `clause_without_pred_or_mode_declaration'/0
 errors_3.m:040:   without corresponding `:- pred' declaration.
-errors_3.m:053: Error: the [38;5;87mconstructor `a'/0[39;49m [38;5;203moccurs more than once[39;49m in the
-errors_3.m:053:   definition of type constructor
-errors_3.m:053:   [38;5;87m`type_with_multiply_defined_ctors'/0.[39;49m
-errors_3.m:055: Error: the [38;5;87mconstructor `f'/1[39;49m [38;5;203moccurs more than once[39;49m in the
-errors_3.m:055:   definition of type constructor
-errors_3.m:055:   [38;5;87m`type_with_multiply_defined_ctors'/0.[39;49m
+errors_3.m:053: Error: [38;5;87m`a'/0[39;49m [38;5;203moccurs more than once[39;49m in the definition of type
+errors_3.m:053:   constructor [38;5;87m`type_with_multiply_defined_ctors'/0.[39;49m
+errors_3.m:055: Error: [38;5;87m`f'/1[39;49m [38;5;203moccurs more than once[39;49m in the definition of type
+errors_3.m:055:   constructor [38;5;87m`type_with_multiply_defined_ctors'/0.[39;49m
 errors_3.m:058: In the first argument of function symbol `f' of the type
 errors_3.m:058:   `du_type_which_references_undefined_type'/0:
 errors_3.m:058:   error: undefined type `undefined_type'/0.
@@ -32,10 +30,10 @@ errors_3.m:064: Error: circular equivalence type
 errors_3.m:064:   `errors_3.indirectly_circular_eqv_type_1'/0.
 errors_3.m:065: Error: circular equivalence type
 errors_3.m:065:   `errors_3.indirectly_circular_eqv_type_2'/0.
-errors_3.m:068: Error: free type parameter T in right hand side of type
-errors_3.m:068:   definition.
-errors_3.m:070: Error: the type variable T occurs only in the right hand side
-errors_3.m:070:   of this type definition.
+errors_3.m:068: Error: [38;5;87ma free type parameter such as [38;5;87m`T'[39;49m [38;5;203mmay not appear[39;49m on the
+errors_3.m:068:   right hand side of a type definition.
+errors_3.m:070: Error: the [38;5;87mtype variable[39;49m [38;5;87m`T'[39;49m occurs [38;5;203monly on the right hand side[39;49m
+errors_3.m:070:   [38;5;203mof this type definition.[39;49m
 errors_3.m:084: In clause for predicate `pred_with_unresolved_polymorphism'/0:
 errors_3.m:084:   warning: [38;5;87mvariable `Arg'[39;49m [38;5;203moccurs only once[39;49m in this scope.
 errors_3.m:100: In clause for predicate `pred_with_singleton_vars'/1:

@@ -20,5 +20,5 @@ bigtest.m:010: Syntax error at token ':-': operator precedence error.
 bigtest.m:013: Error: `incorrect_declaration' is not a valid declaration type.
 bigtest.m:015: Error: no mode declaration for predicate `p'/1.
 bigtest.m:015:   (Use `--infer-modes' to enable mode inference.)
-bigtest.m:030: Error: in definitions of equivalence types, the type name must
-bigtest.m:030:   be followed by `==', not `='.
+bigtest.m:030: Error: in definitions of equivalence types, [38;5;40mthe type name must[39;49m
+bigtest.m:030:   [38;5;40mbe followed by `==',[39;49m not [38;5;203m`='.[39;49m

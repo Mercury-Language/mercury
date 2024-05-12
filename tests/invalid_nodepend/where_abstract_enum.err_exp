@@ -1,6 +1,6 @@
-where_abstract_enum.m:013: Error: `type_is_abstract_enum' should have exactly
-where_abstract_enum.m:013:   one argument.
-where_abstract_enum.m:015: Error: invalid `where ...' attribute for abstract
+where_abstract_enum.m:013: Error: [38;5;87m`type_is_abstract_enum'[39;49m [38;5;203mshould have exactly[39;49m
+where_abstract_enum.m:013:   [38;5;203mone argument.[39;49m
+where_abstract_enum.m:015: Error: [38;5;203minvalid `where ...' attribute[39;49m for abstract
 where_abstract_enum.m:015:   non-solver type.
 where_abstract_enum.m:019: Warning: this declaration of [38;5;87m`abs1'/0[39;49m is [38;5;203mredundant,[39;49m
 where_abstract_enum.m:019:   since the type has a definition in the interface

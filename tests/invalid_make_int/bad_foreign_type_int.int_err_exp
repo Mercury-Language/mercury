@@ -33,10 +33,11 @@ bad_foreign_type_int.m:045:   error: expected a foreign type assertion, got
 bad_foreign_type_int.m:045:   `[3333, "I\'m a string"]'.
 bad_foreign_type_int.m:050: Error: expected `is'.
 bad_foreign_type_int.m:055: In `:- pragma foreign_type' declaration: error:
-bad_foreign_type_int.m:055:   unrecognized `where' attribute `(foo is bar)'.
+bad_foreign_type_int.m:055:   [38;5;203munrecognized `where' attribute `(foo is bar)'.[39;49m
 bad_foreign_type_int.m:055:   Recognized `where' attributes have the form
-bad_foreign_type_int.m:055:   `equality is <<equality pred name>>' and
-bad_foreign_type_int.m:055:   `comparison is <<comparison pred name>>'.
+bad_foreign_type_int.m:055:     [38;5;40m`equality is <<equality pred name>>'[39;49m
+bad_foreign_type_int.m:055:   and
+bad_foreign_type_int.m:055:     [38;5;40m`comparison is <<comparison pred name>>'.[39;49m
 bad_foreign_type_int.m:060: In the first argument of `:- pragma foreign_type'
 bad_foreign_type_int.m:060:   declaration:
 bad_foreign_type_int.m:060:   error: expected the name of a foreign language,
@@ -51,14 +52,15 @@ bad_foreign_type_int.m:062:   declaration:
 bad_foreign_type_int.m:062:   error: expected a string specifying the foreign
 bad_foreign_type_int.m:062:   type descriptor, got `[not_an_assertion]'.
 bad_foreign_type_int.m:066: In `:- pragma foreign_type' declaration: error:
-bad_foreign_type_int.m:066:   unrecognized `where' attribute `(bar is baaz)'.
+bad_foreign_type_int.m:066:   [38;5;203munrecognized `where' attribute `(bar is baaz)'.[39;49m
 bad_foreign_type_int.m:066:   Recognized `where' attributes have the form
-bad_foreign_type_int.m:066:   `equality is <<equality pred name>>' and
-bad_foreign_type_int.m:066:   `comparison is <<comparison pred name>>'.
+bad_foreign_type_int.m:066:     [38;5;40m`equality is <<equality pred name>>'[39;49m
+bad_foreign_type_int.m:066:   and
+bad_foreign_type_int.m:066:     [38;5;40m`comparison is <<comparison pred name>>'.[39;49m
 bad_foreign_type_int.m:076: In the second argument of `:- pragma foreign_type'
 bad_foreign_type_int.m:076:   declaration:
-bad_foreign_type_int.m:076:   error: expected a type constructor and zero or
-bad_foreign_type_int.m:076:   more type variables as arguments, got `T'.
+bad_foreign_type_int.m:076:   error: expected a [38;5;40mtype constructor and zero or[39;49m
+bad_foreign_type_int.m:076:   [38;5;40mmore type variables as arguments,[39;49m got [38;5;203m`T'.[39;49m
 bad_foreign_type_int.m:081: In the third argument of `:- pragma foreign_type'
 bad_foreign_type_int.m:081:   declaration:
 bad_foreign_type_int.m:081:   error: foreign type descriptor for language `C'

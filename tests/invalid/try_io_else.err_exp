@@ -1,2 +1,2 @@
-try_io_else.m:020: Error: a `try' goal with an `io' parameter cannot have an
-try_io_else.m:020:   `else' part.
+try_io_else.m:020: Error: a [38;5;87m`try' goal with an `io' parameter[39;49m [38;5;203mcannot have an[39;49m
+try_io_else.m:020:   [38;5;203m`else' part.[39;49m

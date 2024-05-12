@@ -1,29 +1,29 @@
 bad_existential_data_type.m:028: Error: since there are no arguments,
 bad_existential_data_type.m:028:   (existentially quantified or otherwise),
 bad_existential_data_type.m:028:   there should be no constraints on them.
-bad_existential_data_type.m:031: Error: the existentially quantified type
-bad_existential_data_type.m:031:   variable `V' does not occur either in the
+bad_existential_data_type.m:031: Error: the [38;5;87mexistentially quantified type[39;49m
+bad_existential_data_type.m:031:   [38;5;87mvariable [38;5;87m`V'[39;49m [38;5;203mdoes not occur[39;49m either in the
 bad_existential_data_type.m:031:   arguments or in the constraints of the
 bad_existential_data_type.m:031:   constructor.
-bad_existential_data_type.m:034: Error: the existentially quantified type
-bad_existential_data_type.m:034:   variables `U' and `V' do not occur either in
+bad_existential_data_type.m:034: Error: the [38;5;87mexistentially quantified type[39;49m
+bad_existential_data_type.m:034:   [38;5;87mvariables [38;5;87m`U'[38;5;87m and [38;5;87m`V'[39;49m [38;5;203mdo not occur[39;49m either in
 bad_existential_data_type.m:034:   the arguments or in the constraints of the
 bad_existential_data_type.m:034:   constructor.
-bad_existential_data_type.m:037: Error: type variable `T' has overlapping
-bad_existential_data_type.m:037:   scopes (the explicit existential type
+bad_existential_data_type.m:037: Error: the [38;5;87mtype variable [38;5;87m`T'[39;49m [38;5;203mhas overlapping[39;49m
+bad_existential_data_type.m:037:   [38;5;203mscopes[39;49m (the explicit existential type
 bad_existential_data_type.m:037:   quantifier shadows the universal
 bad_existential_data_type.m:037:   quantification implicit in it being a type
 bad_existential_data_type.m:037:   parameter).
-bad_existential_data_type.m:040: Error: type variables `T' and `U' have
-bad_existential_data_type.m:040:   overlapping scopes (the explicit existential
+bad_existential_data_type.m:040: Error: the [38;5;87mtype variables [38;5;87m`T'[38;5;87m and [38;5;87m`U'[39;49m [38;5;203mhave[39;49m
+bad_existential_data_type.m:040:   [38;5;203moverlapping scopes[39;49m (the explicit existential
 bad_existential_data_type.m:040:   type quantifier shadows the universal
 bad_existential_data_type.m:040:   quantification implicit in them being type
 bad_existential_data_type.m:040:   parameters).
-bad_existential_data_type.m:043: Error: the type variable `U' occurs in a class
-bad_existential_data_type.m:043:   constraint without being explicitly
-bad_existential_data_type.m:043:   existentially quantified using `some'.
-bad_existential_data_type.m:046: Error: the type variables `U' and `V' occur in
-bad_existential_data_type.m:046:   a class constraint without being explicitly
-bad_existential_data_type.m:046:   existentially quantified using `some'.
+bad_existential_data_type.m:043: Error: the [38;5;87mtype variable [38;5;87m`U'[39;49m occurs in a class
+bad_existential_data_type.m:043:   constraint [38;5;203mwithout being explicitly[39;49m
+bad_existential_data_type.m:043:   [38;5;203mexistentially quantified using `some'.[39;49m
+bad_existential_data_type.m:046: Error: the [38;5;87mtype variables [38;5;87m`U'[38;5;87m and [38;5;87m`V'[39;49m occur in
+bad_existential_data_type.m:046:   a class constraint [38;5;203mwithout being explicitly[39;49m
+bad_existential_data_type.m:046:   [38;5;203mexistentially quantified using `some'.[39;49m
 bad_existential_data_type.m:049: Sorry, not implemented: constraints may only
 bad_existential_data_type.m:049:   constrain type variables and ground types.

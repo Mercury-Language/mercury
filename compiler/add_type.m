@@ -1065,9 +1065,9 @@ add_type_defn_ctor(Ctor, TypeCtor, TypeCtorModuleName, TVarSet,
             OtherConsDefn ^ cons_type_ctor = TypeCtor
         )
     then
-        Pieces = [words("Error: the")] ++
-            color_as_subject([words("constructor"),
-                unqual_cons_id_and_maybe_arity(QualifiedConsIdA)]) ++
+        Pieces = [words("Error:")] ++
+            color_as_subject(
+                [unqual_cons_id_and_maybe_arity(QualifiedConsIdA)]) ++
             color_as_incorrect([words("occurs more than once")]) ++
             [words("in the definition of type constructor")] ++
             color_as_subject([unqual_type_ctor(TypeCtor), suffix(".")]) ++

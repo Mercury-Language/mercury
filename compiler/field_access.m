@@ -314,11 +314,12 @@ parse_field_list(Term, VarSet, ContextPieces, MaybeFieldNames) :-
 
 make_field_list_error(VarSet, Context, Term, ContextPieces) = Spec :-
     TermStr = mercury_term_to_string_vs(VarSet, print_name_only, Term),
-    Pieces = ContextPieces ++ [lower_case_next_if_not_first,
-        words("Error: expected field name, found"),
-        quote(TermStr), suffix("."), nl],
-    Spec = spec($pred, severity_error, phase_t2pt,
-        Context, Pieces).
+    Pieces = ContextPieces ++
+        [lower_case_next_if_not_first, words("Error: expected")] ++
+        color_as_correct([words("field name,")]) ++
+        [words("got")] ++
+        color_as_incorrect([quote(TermStr), suffix(".")]) ++ [nl],
+    Spec = spec($pred, severity_error, phase_t2pt, Context, Pieces).
 
 %-----------------------------------------------------------------------------%
 :- end_module hlds.make_hlds.field_access.

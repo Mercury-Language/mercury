@@ -1,4 +1,4 @@
-subtype_user_compare.m:015: Error: the subtype `citrus'/0 is not allowed to
-subtype_user_compare.m:015:   have its own user-defined equality or comparison;
+subtype_user_compare.m:015: Error: the [38;5;87msubtype `citrus'/0[39;49m [38;5;203mis not allowed to[39;49m
+subtype_user_compare.m:015:   [38;5;203mhave its own user-defined equality or comparison;[39;49m
 subtype_user_compare.m:015:   it must inherit any user-defined equality and
 subtype_user_compare.m:015:   comparison predicates from its supertype.

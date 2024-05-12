@@ -68,6 +68,7 @@
 :- import_module mdbcomp.sym_name.
 :- import_module parse_tree.maybe_error.
 :- import_module parse_tree.parse_tree_out_info.
+:- import_module parse_tree.parse_tree_out_term.
 :- import_module parse_tree.prog_mode.
 :- import_module parse_tree.prog_rename.
 :- import_module parse_tree.prog_util.
@@ -84,6 +85,7 @@
 :- import_module require.
 :- import_module string.
 :- import_module term.
+:- import_module term_context.
 :- import_module varset.
 
 %-----------------------------------------------------------------------------%
@@ -385,9 +387,8 @@ transform_parse_tree_goal_to_hlds_call(LocKind, Goal, Renaming, HLDSGoal,
     ),
     svar_finish_atomic_goal(LocKind, !SVarState).
 
-:- pred transform_dcg_record_syntax(loc_kind::in,
-    field_access_type::in, list(prog_term)::in, prog_context::in,
-    hlds_goal::out,
+:- pred transform_dcg_record_syntax(loc_kind::in, field_access_type::in,
+    list(prog_term)::in, prog_context::in, hlds_goal::out,
     svar_state::in, svar_state::out, svar_store::in, svar_store::out,
     prog_varset::in, prog_varset::out,
     module_info::in, module_info::out, qual_info::in, qual_info::out,
@@ -430,10 +431,42 @@ transform_dcg_record_syntax(LocKind, AccessType, ArgTerms0, Context, HLDSGoal,
         invalid_goal("^", ArgTerms0, GoalInfo, HLDSGoal, !VarSet, !SVarState,
             !Specs),
         qual_info_set_found_syntax_error(yes, !QualInfo),
-        Pieces = [words("Error: expected"),
-            words_quote("Field =^ field1 ^ ... ^ fieldN"),
-            words("or"), words_quote("^ field1 ^ ... ^ fieldN := Field"),
-            words("in DCG field access goal."), nl],
+        (
+            AccessType = get,
+            Pieces = [words("Error: expected DCG field selection goal"),
+                words("to have the form")] ++
+                color_as_correct(
+                    [words_quote("FieldValue =^ field1 ^ ... ^ fieldN"),
+                    suffix(".")]) ++
+                [nl]
+        ;
+            AccessType = set,
+            ( if
+                ArgTerms0 = [LHSTerm, _RHSTerm, _In, _Out],
+                not (
+                    LHSTerm = term.functor(term.atom("^"), [_], _)
+                )
+            then
+                % 70 means we print the stuff that fits on one line *if*
+                % the initial part of the line with the context is short.
+                LHSTermStr = mercury_limited_term_to_string_vs(!.VarSet,
+                    print_name_only, 70, LHSTerm),
+                Pieces = [words("Error: expected")] ++
+                    color_as_correct(
+                        [words_quote("^ field1 ^ ... ^ fieldN")]) ++
+                    [words("on the left hand side of"), quote(":="),
+                        words("in DCG field update goal, got")] ++
+                    color_as_incorrect([quote(LHSTermStr), suffix(".")]) ++
+                    [nl]
+            else
+                Pieces = [words("Error: expected DCG field update goal"),
+                    words("to have the form")] ++
+                    color_as_correct(
+                        [words_quote("^ field1 ^ ... ^ fieldN := FieldValue"),
+                        suffix(".")]) ++
+                    [nl]
+            )
+        ),
         Spec = spec($pred, severity_error, phase_pt2h, Context, Pieces),
         !:Specs = [Spec | !.Specs]
     ).
@@ -850,9 +883,12 @@ transform_parse_tree_goal_to_hlds_try(LocKind, Goal, Renaming, HLDSGoal,
                 !VarSet, !ModuleInfo, !QualInfo, !Specs)
         ;
             MaybeElse0 = yes(_),
-            Pieces = [words("Error: a"), quote("try"), words("goal"),
-                words("with an"), quote("io"), words("parameter"),
-                words("cannot have an"), quote("else"), words("part."), nl],
+            Pieces = [words("Error: a")] ++
+                color_as_subject([quote("try"), words("goal"),
+                    words("with an"), quote("io"), words("parameter")]) ++
+                color_as_incorrect([words("cannot have an"), quote("else"),
+                    words("part.")]) ++
+                [nl],
             Spec = spec($pred, severity_error, phase_pt2h, Context, Pieces),
             !:Specs = [Spec | !.Specs],
             HLDSGoal = true_goal_with_context(Context)

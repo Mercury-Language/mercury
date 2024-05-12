@@ -74,7 +74,7 @@ check_for_missing_type_defns_in_type(TypeCtor, TypeDefn, !Specs) :-
         % bother checking for corresponding definitions in any of the builtin
         % modules in the standard library.
 
-        TypeCtor = type_ctor(SymName, Arity),
+        TypeCtor = type_ctor(SymName, _Arity),
         BuiltinTypeCtors = builtin_type_ctors_with_no_hlds_type_defn,
         ( if
             sym_name_get_module_name(SymName, ModuleName),
@@ -90,9 +90,12 @@ check_for_missing_type_defns_in_type(TypeCtor, TypeDefn, !Specs) :-
             get_type_defn_prev_errors(TypeDefn, type_defn_no_prev_errors)
         then
             get_type_defn_context(TypeDefn, TypeContext),
-            Pieces = [words("Error: abstract declaration for type"),
-                unqual_sym_name_arity(sym_name_arity(SymName, Arity)),
-                words("has no corresponding definition."), nl],
+            Pieces = [words("Error:")] ++
+                color_as_subject([words("abstract declaration for type"),
+                    unqual_type_ctor(TypeCtor)]) ++
+                color_as_incorrect(
+                    [words("has no corresponding definition.")]) ++
+                [nl],
             Spec = spec($pred, severity_error, phase_type_check,
                 TypeContext, Pieces),
             !:Specs = [Spec | !.Specs]

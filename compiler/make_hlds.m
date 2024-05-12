@@ -24,9 +24,9 @@
 % and definitions into the HLDS after appropriate checks, e.g. for duplicates.
 % It also converts Mercury clauses from the sort of concrete syntax tree
 % constructed by the parser, to the abstract syntax tree used by every
-% other part of the compiler. (For example, the parser represents the
-% conjunction of three goals as `conj_expr(GoalA, conj_expr(GoalB, GoalC))',
-% while the HLDS represents it as conj([GoalA, GoalB, GoalC]).)
+% other part of the compiler. (For example, the parser originally represented
+% a three-goal conjunction as `conj_expr(GoalA, conj_expr(GoalB, GoalC))',
+% while the HLDS has always represented it as conj([GoalA, GoalB, GoalC]).)
 % This transformation also converts clauses into superhomogenous form,
 % and quantifies apart unrelated occurrences of the same variable name.
 %

@@ -33,6 +33,8 @@
 :- import_module list.
 :- import_module maybe.
 :- import_module set.
+:- import_module term.
+:- import_module varset.
 
 %---------------------------------------------------------------------------%
 
@@ -539,7 +541,7 @@
     %
 :- func string_to_words_piece(string) = format_piece.
 
-:- func var_to_quote_piece(prog_varset, prog_var) = format_piece.
+:- func var_to_quote_piece(varset(T), var(T)) = format_piece.
 
     % Convert a list of strings into a list of format_pieces
     % separated by commas, with the last two elements separated by `and'.
