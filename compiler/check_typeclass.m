@@ -599,8 +599,11 @@ generate_instance_method_procs_for_class(ClassTable, ClassId,
     then
         (
             MaybeBadDefn = has_no_bad_class_defn,
-            Pieces = [words("Error: no definition for typeclass"),
-                unqual_class_id(ClassId), suffix("."), nl],
+            Pieces = [words("Error:")] ++
+                color_as_incorrect([words("no definition")]) ++
+                [words("for typeclass")] ++
+                color_as_subject([unqual_class_id(ClassId), suffix(".")]) ++
+                [nl],
             Spec = spec($pred, severity_error, phase_type_check,
                 ClassContext, Pieces),
             !:Specs = [Spec | !.Specs]
@@ -644,9 +647,11 @@ generate_instance_method_procs_for_class_instance(ClassId, ClassTVarSet,
         InstanceBody = instance_body_concrete(InstanceMethods),
         (
             ClassInterface = class_interface_abstract,
-            Pieces =
-                [words("Error: instance declaration for abstract typeclass"),
-                unqual_class_id(ClassId), suffix("."), nl],
+            Pieces = [words("Error:")] ++
+                color_as_incorrect([words("instance declaration"),
+                    words("for abstract typeclass")]) ++
+                color_as_subject([unqual_class_id(ClassId), suffix(".")]) ++
+                [nl],
             Spec = spec($pred, severity_error, phase_type_check,
                 InstanceContext, Pieces),
             !:Specs = [Spec | !.Specs]
@@ -2051,12 +2056,14 @@ report_cyclic_classes(ClassTable, ClassPath, !Specs) :-
         ClassPathClassIds = [HeadClassId | TailClassIds],
         Context = map.lookup(ClassTable, HeadClassId) ^ classdefn_context,
         StartPieces =
-            [words("Error: cyclic superclass relation detected:"), nl,
-            qual_class_id(HeadClassId), nl],
+            [words("Error:")] ++
+            color_as_incorrect([words("cyclic superclass relation")]) ++
+            [words("detected:"), nl],
+        FirstLine = [qual_class_id(HeadClassId), nl],
         list.foldl(add_path_element, TailClassIds, cord.init, LaterLinesCord),
-        Pieces = StartPieces ++ cord.list(LaterLinesCord),
-        Spec = spec($pred, severity_error, phase_type_check,
-            Context, Pieces),
+        CycleLines = FirstLine ++ cord.list(LaterLinesCord),
+        Pieces = StartPieces ++ color_as_subject(CycleLines),
+        Spec = spec($pred, severity_error, phase_type_check, Context, Pieces),
         !:Specs = [Spec | !.Specs]
     ).
 
@@ -2182,8 +2189,10 @@ report_duplicate_method_defn(ClassId, InstanceDefn, MethodName,
     PrefixPieces = in_instance_decl_pieces(cur_types, ClassId, InstanceDefn),
     PFMethodNamePieces = pf_method_name_pieces(MethodName),
     HeaderPieces = PrefixPieces ++
-        [words("multiple implementations of") | PFMethodNamePieces] ++
-        [suffix("."), nl],
+        color_as_incorrect([words("multiple implementations")]) ++
+        [words("of")] ++
+        color_as_subject(PFMethodNamePieces ++ [suffix(".")]) ++
+        [nl],
     HeaderMsg = msg(InstanceDefn ^ instdefn_context, HeaderPieces),
     FirstPieces = [words("First definition appears here."), nl],
     FirstMsg = msg(FirstContext, FirstPieces),
@@ -2203,8 +2212,10 @@ report_undefined_method(ClassId, InstanceDefn, MethodName, !Specs) :-
     PrefixPieces = in_instance_decl_pieces(cur_types, ClassId, InstanceDefn),
     PFMethodNamePieces = pf_method_name_pieces(MethodName),
     Pieces = PrefixPieces ++
-        [words("no implementation for") | PFMethodNamePieces] ++
-        [suffix("."), nl],
+        color_as_incorrect([words("no implementation")]) ++
+        [words("for")] ++
+        color_as_subject(PFMethodNamePieces ++ [suffix(".")]) ++
+        [nl],
     Spec = spec($pred, severity_error, phase_type_check,
         InstanceDefn ^ instdefn_context, Pieces),
     !:Specs = [Spec | !.Specs].
@@ -2226,21 +2237,24 @@ report_unknown_instance_methods(ClassId, InstanceDefn,
         MethodName = pred_pf_name_arity(PredOrFunc, MethodSymName, UserArity),
         UserArity = user_arity(UserArityInt),
         SNA = sym_name_arity(MethodSymName, UserArityInt),
-        Pieces = PrefixPieces ++
-            [words("the type class has no"),
-            p_or_f(PredOrFunc), words("method named"),
-            unqual_sym_name_arity(SNA), suffix("."), nl]
+        Pieces = PrefixPieces ++ [words("the type class")] ++
+            color_as_incorrect([words("has no"), p_or_f(PredOrFunc),
+                words("method")]) ++
+            [words("named")] ++
+            color_as_subject([unqual_sym_name_arity(SNA), suffix(".")]) ++
+            [nl]
     ;
         TailMethods = [_ | _],
         SelectedContext = InstanceDefn ^ instdefn_context,
         MethodPieces =
             list.map(method_name_pieces, [HeadMethod | TailMethods]),
-        Pieces = PrefixPieces ++
-            [words("the type class has none of these methods:"),
-            nl_indent_delta(1)] ++
+        Pieces = PrefixPieces ++ [words("the type class")] ++
+            color_as_incorrect([words("has none of these methods:")]) ++
+            [nl_indent_delta(1)] ++
             % XXX ARITY We could separate last two MethodPieces with ", or".
-            component_list_to_line_pieces(MethodPieces,
-                [suffix("."), nl_indent_delta(-1)])
+            component_list_to_color_line_pieces(yes(color_subject),
+                [suffix(".")], [], MethodPieces) ++
+            [nl_indent_delta(-1)]
     ),
     Spec = spec($pred, severity_error, phase_type_check,
         SelectedContext, Pieces),
@@ -2255,39 +2269,29 @@ report_unknown_instance_methods(ClassId, InstanceDefn,
 report_unsatistfied_superclass_constraint(ClassId, InstanceDefn, ClassTVarSet,
         UnprovenConstraints, !Specs) :-
     PrefixPieces = in_instance_decl_pieces(cur_types, ClassId, InstanceDefn),
-    constraint_list_to_string(ClassTVarSet, UnprovenConstraints,
-        ConstraintsStr),
+    list.map(constraint_to_pieces(ClassTVarSet),
+        UnprovenConstraints, ConstraintPieceLists),
     Pieces = PrefixPieces ++
         [words("the following superclass"),
         words(choose_number(UnprovenConstraints,
-            "constraint is", "constraints are")),
-        words("not satisfied:"), nl,
-        words(ConstraintsStr), suffix("."), nl],
+            "constraint is", "constraints are"))] ++
+        color_as_incorrect([words("not satisfied:")]) ++
+        [nl_indent_delta(1)] ++
+        component_list_to_color_line_pieces(yes(color_subject),
+            [suffix(".")], [], ConstraintPieceLists) ++
+        [nl_indent_delta(-1)],
     Context = InstanceDefn ^ instdefn_context,
-    Spec = spec($pred, severity_error, phase_type_check,
-        Context, Pieces),
+    Spec = spec($pred, severity_error, phase_type_check, Context, Pieces),
     !:Specs = [Spec | !.Specs].
 
-:- pred constraint_list_to_string(tvarset::in, list(hlds_constraint)::in,
-    string::out) is det.
+:- pred constraint_to_pieces(tvarset::in, hlds_constraint::in,
+    list(format_piece)::out) is det.
 
-constraint_list_to_string(_, [], "").
-constraint_list_to_string(TVarSet, [C | Cs], String) :-
-    retrieve_prog_constraint(C, P),
-    PString = mercury_constraint_to_string(TVarSet, print_name_only, P),
-    constraint_list_to_comma_strings(TVarSet, Cs, TailStrings),
-    Strings = ["`", PString, "'" | TailStrings],
-    String = string.append_list(Strings).
-
-:- pred constraint_list_to_comma_strings(tvarset::in,
-    list(hlds_constraint)::in, list(string)::out) is det.
-
-constraint_list_to_comma_strings(_TVarSet, [], []).
-constraint_list_to_comma_strings(TVarSet, [C | Cs], Strings) :-
-    retrieve_prog_constraint(C, P),
-    PString = mercury_constraint_to_string(TVarSet, print_name_only, P),
-    constraint_list_to_comma_strings(TVarSet, Cs, TailStrings),
-    Strings = [", `", PString, "'" | TailStrings].
+constraint_to_pieces(TVarSet, Constraint, Pieces) :-
+    retrieve_prog_constraint(Constraint, ProgConstraint),
+    ConstraintStr = mercury_constraint_to_string(TVarSet, print_name_only,
+        ProgConstraint),
+    Pieces = [quote(ConstraintStr)].
 
 %---------------------------------------------------------------------------%
 %
@@ -2299,9 +2303,11 @@ constraint_list_to_comma_strings(TVarSet, [C | Cs], Strings) :-
     list(error_spec)::in, list(error_spec)::out) is det.
 
 report_overlapping_instances(ClassId, ContextA, ContextB, !Specs) :-
-    PiecesA = [words("Error: overlapping instance declarations"),
-        words("for class"), qual_class_id(ClassId), suffix("."), nl,
-        words("One instance declaration is here, ..."), nl],
+    PiecesA = [words("Error:")] ++
+        color_as_incorrect([words("overlapping instance declarations")]) ++
+        [words("for class")] ++
+        color_as_subject([qual_class_id(ClassId), suffix(".")]) ++
+        [nl, words("One instance declaration is here, ..."), nl],
     MsgA = msg(ContextA, PiecesA),
     PiecesB = [words("... and the other is here."), nl],
     MsgB = msg(ContextB, PiecesB),
@@ -2335,13 +2341,14 @@ report_any_duplicate_instance_defns_in_category(ClassId, Severity,
 report_duplicate_instance_defn(ClassId, Severity, SeverityWord, Category,
         FirstContext, LaterInstanceDefn, !Specs) :-
     LaterContext = LaterInstanceDefn ^ instdefn_context,
-    LaterPieces = [words(SeverityWord), suffix(":"),
-        words("duplicate"), words(Category), words("instance declaration"),
-        words("for class"), qual_class_id(ClassId), suffix("."), nl],
+    LaterPieces = [words(SeverityWord), suffix(":")] ++
+        color_as_incorrect([words("duplicate"), words(Category),
+            words("instance declaration")]) ++
+        [words("for class")] ++
+        color_as_subject([qual_class_id(ClassId), suffix(".")]) ++ [nl],
     LaterMsg = msg(LaterContext, LaterPieces),
     FirstPieces = [words("Previous instance declaration was here."), nl],
-    FirstMsg = error_msg(yes(FirstContext), always_treat_as_first, 0,
-        [always(FirstPieces)]),
+    FirstMsg = msg(FirstContext, FirstPieces),
     Spec = error_spec($pred, Severity, phase_type_check, [LaterMsg, FirstMsg]),
     !:Specs = [Spec | !.Specs].
 
@@ -2353,11 +2360,12 @@ report_abstract_concrete_constraints_mismatch(ClassId,
         AbstractInstanceDefn, ConcreteInstanceDefn, !Specs) :-
     ConcreteContext = ConcreteInstanceDefn ^ instdefn_context,
     AbstractContext = AbstractInstanceDefn ^ instdefn_context,
-    AbstractPieces = [words("Error: the instance constraints"),
-        words("on this abstract instance declaration"),
-        words("for class"), qual_class_id(ClassId),
-        words("do not match the instance constraints"),
-        words("on the corresponding concrete instance declaration."), nl],
+    AbstractPieces = [words("Error: the instance constraints on this")] ++
+        color_as_subject([words("abstract instance declaration"),
+            words("for class"), qual_class_id(ClassId)]) ++
+        color_as_incorrect([words("do not match")]) ++
+        [words("the instance constraints on the corresponding"),
+        words("concrete instance declaration."), nl],
     AbstractMsg = msg(AbstractContext, AbstractPieces),
     ConcretePieces = [words("The corresponding"),
         words("concrete instance declaration is here."), nl],
@@ -2377,10 +2385,12 @@ report_abstract_instance_without_concrete(ClassId, InstanceDefn, !Specs) :-
     TVarSet = InstanceDefn ^ instdefn_tvarset,
     TypesStr = mercury_types_to_string(TVarSet, print_name_only, Types),
     string.format("%s(%s)", [s(ClassNameString), s(TypesStr)], InstanceName),
-    Pieces = [words("Error: this abstract instance declaration"),
-        words("for"), quote(InstanceName),
-        words("has no corresponding concrete instance declaration"),
-        words("in the implementation section."), nl],
+    Pieces = [words("Error: this")] ++
+        color_as_subject([words("abstract instance declaration"),
+            words("for"), quote(InstanceName)]) ++
+        color_as_incorrect([words("has no corresponding"),
+            words("concrete instance declaration")]) ++
+        [words("in the implementation section."), nl],
     Context = InstanceDefn ^ instdefn_context,
     Spec = spec($pred, severity_error, phase_type_check,
         Context, Pieces),
@@ -2395,9 +2405,11 @@ report_local_vs_nonlocal_clash(ClassId, LocalInstance, NonLocalInstance,
     InstanceName = instance_name(orig_types, print_all_types, keep_all,
         set_default_func, ClassId, LocalInstance),
     % XXX Should we mention any constraints on the instance declaration?
-    LocalPieces = [words("Error: this instance declaration"),
-        words("for"), quote(InstanceName), words("clashes with"),
-        words("an instance declaration in another module."), nl],
+    LocalPieces = [words("Error: this")] ++
+        color_as_subject([words("instance declaration for"),
+            quote(InstanceName)]) ++
+        color_as_incorrect([words("clashes")]) ++
+        [words("with an instance declaration in another module."), nl],
     LocalContext = LocalInstance ^ instdefn_context,
     LocalMsg = msg(LocalContext, LocalPieces),
     NonLocalPieces = [words("The other instance declaration is here."), nl],
@@ -2460,8 +2472,12 @@ report_consistency_error(ClassId, ClassDefn, InstanceA, InstanceB, FunDep,
     Domains = mercury_vars_to_name_only_vs(TVarSet, DomainParams),
     Ranges = mercury_vars_to_name_only_vs(TVarSet, RangeParams),
 
-    PiecesA = [words("Inconsistent instance declaration for typeclass"),
-        qual_class_id(ClassId), words("with functional dependency"),
+    % XXX This should give the specific details of the inconsistency.
+    PiecesA =
+        color_as_incorrect([words("Inconsistent instance declaration")]) ++
+        [words("for typeclass")] ++
+        color_as_subject([qual_class_id(ClassId)]) ++
+        [words("with functional dependency"),
         quote("(" ++ Domains ++ " -> " ++ Ranges ++ ")"), suffix("."), nl],
     PiecesB = [words("Here is the conflicting instance."), nl],
 
@@ -2558,8 +2574,7 @@ report_bad_class_ids_in_pred_decl(ModuleInfo, PredInfo,
         unqual_pf_sym_name_pred_form_arity(PFSymNameArity), suffix(":"), nl],
     Pieces = StartPieces ++
         error_classes_do_not_exist_pieces(HeadBadClassId, TailBadClassIds),
-    Spec = spec($pred, severity_error, phase_type_check,
-        Context, Pieces),
+    Spec = spec($pred, severity_error, phase_type_check, Context, Pieces),
     !:Specs = [Spec | !.Specs].
 
 :- type quant_error_type
@@ -2685,15 +2700,17 @@ error_classes_do_not_exist_pieces(HeadClassId, TailClassIds) = Pieces :-
     QualHeadClassId = WrapQualClassId(HeadClassId),
     (
         TailClassIds = [],
-        Pieces = [words("error: the type class"), QualHeadClassId,
-            words("does not exist."), nl]
+        Pieces = [words("error: the type class")] ++
+            color_as_subject([QualHeadClassId]) ++
+            color_as_incorrect([words("does not exist.")]) ++ [nl]
     ;
         TailClassIds = [_ | _],
         QualTailClassIds = list.map(WrapQualClassId, TailClassIds),
         QualClassIds = [QualHeadClassId | QualTailClassIds],
         Pieces = [words("error: the type classes")] ++
-            component_list_to_pieces("and", QualClassIds) ++
-            [words("do not exist."), nl]
+            component_list_to_color_pieces(yes(color_subject), "and", [],
+                QualClassIds) ++
+            color_as_incorrect([words("do not exist.")]) ++ [nl]
     ).
 
 %---------------------%

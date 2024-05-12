@@ -1,8 +1,8 @@
-missing_concrete_instance.m:014: Error: this abstract instance declaration for
-missing_concrete_instance.m:014:   `missing_concrete_instance.foo(int)' has no
-missing_concrete_instance.m:014:   corresponding concrete instance declaration
+missing_concrete_instance.m:014: Error: this [38;5;87mabstract instance declaration for[39;49m
+missing_concrete_instance.m:014:   [38;5;87m`missing_concrete_instance.foo(int)'[39;49m [38;5;203mhas no[39;49m
+missing_concrete_instance.m:014:   [38;5;203mcorresponding concrete instance declaration[39;49m
 missing_concrete_instance.m:014:   in the implementation section.
-missing_concrete_instance.m:018: Error: this abstract instance declaration for
-missing_concrete_instance.m:018:   `missing_concrete_instance.foo(float)' has
-missing_concrete_instance.m:018:   no corresponding concrete instance
-missing_concrete_instance.m:018:   declaration in the implementation section.
+missing_concrete_instance.m:018: Error: this [38;5;87mabstract instance declaration for[39;49m
+missing_concrete_instance.m:018:   [38;5;87m`missing_concrete_instance.foo(float)'[39;49m [38;5;203mhas[39;49m
+missing_concrete_instance.m:018:   [38;5;203mno corresponding concrete instance[39;49m
+missing_concrete_instance.m:018:   [38;5;203mdeclaration[39;49m in the implementation section.

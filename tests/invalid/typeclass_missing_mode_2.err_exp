@@ -1,5 +1,5 @@
 typeclass_missing_mode_2.m:015: Error: [38;5;203mno mode declaration[39;49m for method predicate
 typeclass_missing_mode_2.m:015:   [38;5;87m`p'/1.[39;49m
 typeclass_missing_mode_2.m:023: In instance declaration for `c(int)':
-typeclass_missing_mode_2.m:023:   the type class has no predicate method named
-typeclass_missing_mode_2.m:023:   `p'/1.
+typeclass_missing_mode_2.m:023:   the type class [38;5;203mhas no predicate method[39;49m named
+typeclass_missing_mode_2.m:023:   [38;5;87m`p'/1.[39;49m

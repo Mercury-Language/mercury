@@ -3,7 +3,7 @@ tc_err1.m:026:   [38;5;203mwithout declaring the modes of its arguments.[39;49
 tc_err1.m:027: Error: [38;5;203mno determinism declaration[39;49m for type class method
 tc_err1.m:027:   predicate [38;5;87m`handle_typedefs'/3.[39;49m
 tc_err1.m:034: In instance declaration for `actions(pstate)':
-tc_err1.m:034:   no implementation for predicate method `handle_typedefs'/3.
+tc_err1.m:034:   [38;5;203mno implementation[39;49m for [38;5;87mpredicate method `handle_typedefs'/3.[39;49m
 tc_err1.m:035: In instance declaration for `actions(pstate)':
-tc_err1.m:035:   the type class has no predicate method named
-tc_err1.m:035:   `handle_typedefs'/2.
+tc_err1.m:035:   the type class [38;5;203mhas no predicate method[39;49m named
+tc_err1.m:035:   [38;5;87m`handle_typedefs'/2.[39;49m
