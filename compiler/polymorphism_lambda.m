@@ -200,10 +200,13 @@ lambda_modes_and_det(PredInfo, ProcInfo, Context, LambdaVars, MaybeResult) :-
         pred_info_get_module_name(PredInfo, PredModuleName),
         pred_info_get_name(PredInfo, PredName),
         PredSymName = qualified(PredModuleName, PredName),
-        Pieces = [words("Error: the"), words(PredOrFuncStr),
-            qual_sym_name(PredSymName), words("has no declared determinism,"),
-            words("so a curried call to it"),
-            words("may not be used as a lambda expression."), nl],
+        Pieces = [words("Error: the"), words(PredOrFuncStr)] ++
+            color_as_subject([qual_sym_name(PredSymName)]) ++
+            [words("has no declared determinism,"),
+            words("so a curried call to it")] ++
+            color_as_incorrect(
+                [words("may not be used as a lambda expression.")]) ++
+            [nl],
         Spec = spec($pred, severity_error, phase_polymorphism,
             Context, Pieces),
         MaybeResult = error2([Spec])

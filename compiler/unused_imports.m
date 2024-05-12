@@ -263,9 +263,12 @@ maybe_generate_redundant_avail_warnings(ModuleName, [Avail | Avails],
         PrevMsgs = [_ | _],
         Avail = avail_module(_Section, ImportOrUse, Context),
         DeclName = import_or_use_decl_name(ImportOrUse),
-        MainPieces = [words("This"), decl(DeclName), words("declaration"),
-            words("for"), qual_sym_name(ModuleName),
-            words("is redundant."), nl],
+        MainPieces = [words("This")] ++
+            color_as_subject([decl(DeclName), words("declaration"),
+                words("for"), qual_sym_name(ModuleName)]) ++
+            [words("is")] ++
+            color_as_incorrect([words("redundant.")]) ++
+            [nl],
         MainMsg = msg(Context, MainPieces),
         Spec = error_spec($pred, severity_informational, phase_code_gen,
             [MainMsg | PrevMsgs]),
@@ -331,12 +334,15 @@ generate_unused_import_warning(ModuleName, UnusedModuleName, ImportOrUse,
     ),
     ImportOrUseDeclName = import_or_use_decl_name(ImportOrUse),
     Pieces = [words("In module"), qual_sym_name(ModuleName), suffix(":"), nl,
-        words("warning: module"), qual_sym_name(UnusedModuleName),
-        words("has a"), decl(ImportOrUseDeclName),
+        words("warning:")] ++
+        color_as_subject([words("module"), qual_sym_name(UnusedModuleName)]) ++
+        [words("has a"), decl(ImportOrUseDeclName),
         words("declaration"), words(DeclInTheLocn), suffix(","),
-        words("but is not used"), words(NotUsedInTheLocn), suffix("."), nl],
-    Spec = spec($pred, severity_warning, phase_code_gen,
-        Context, Pieces).
+        words("but")] ++
+        color_as_incorrect([words("is not used"), words(NotUsedInTheLocn),
+            suffix(".")]) ++
+        [nl],
+    Spec = spec($pred, severity_warning, phase_code_gen, Context, Pieces).
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%

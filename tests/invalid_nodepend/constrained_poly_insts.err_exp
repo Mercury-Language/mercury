@@ -1,5 +1,5 @@
-constrained_poly_insts.m:010: Error: no mode declaration for exported predicate
-constrained_poly_insts.m:010:   `constrained_poly_insts.p'/2.
+constrained_poly_insts.m:010: Error: [38;5;203mno mode declaration[39;49m for exported [38;5;87mpredicate[39;49m
+constrained_poly_insts.m:010:   [38;5;87m`constrained_poly_insts.p'/2.[39;49m
 constrained_poly_insts.m:011: Error: inconsistent constraints on inst variable
 constrained_poly_insts.m:011:   I in predicate mode declaration.
 constrained_poly_insts.m:013: Error: inconsistent constraints on inst variable

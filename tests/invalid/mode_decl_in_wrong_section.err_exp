@@ -1,18 +1,18 @@
-mode_decl_in_wrong_section.m:013: Warning: the first mode declaration for
-mode_decl_in_wrong_section.m:013:   predicate `p'/2 is not followed immediately
-mode_decl_in_wrong_section.m:013:   by its second mode declaration.
+mode_decl_in_wrong_section.m:013: Warning: the [38;5;87mfirst mode declaration for[39;49m
+mode_decl_in_wrong_section.m:013:   [38;5;87mpredicate `p'/2[39;49m is [38;5;203mnot followed immediately[39;49m
+mode_decl_in_wrong_section.m:013:   [38;5;203mby its second mode declaration.[39;49m
 mode_decl_in_wrong_section.m:021:   The second mode declaration is here.
 mode_decl_in_wrong_section.m:015: Error: mode declaration in the [38;5;203minterface[39;49m
 mode_decl_in_wrong_section.m:015:   [38;5;203msection[39;49m for function [38;5;87m`f'/1,[39;49m whose function
 mode_decl_in_wrong_section.m:015:   declaration is in the [38;5;40mimplementation.[39;49m
-mode_decl_in_wrong_section.m:015: Warning: the first mode declaration for
-mode_decl_in_wrong_section.m:015:   function `f'/1 is not followed immediately
-mode_decl_in_wrong_section.m:015:   by its second mode declaration.
+mode_decl_in_wrong_section.m:015: Warning: the [38;5;87mfirst mode declaration for[39;49m
+mode_decl_in_wrong_section.m:015:   [38;5;87mfunction `f'/1[39;49m is [38;5;203mnot followed immediately[39;49m
+mode_decl_in_wrong_section.m:015:   [38;5;203mby its second mode declaration.[39;49m
 mode_decl_in_wrong_section.m:024:   The second mode declaration is here.
 mode_decl_in_wrong_section.m:021: Error: mode declaration in the [38;5;203mimplementation[39;49m
 mode_decl_in_wrong_section.m:021:   [38;5;203msection[39;49m for predicate [38;5;87m`p'/2,[39;49m whose
 mode_decl_in_wrong_section.m:021:   predicate declaration is in the [38;5;40minterface.[39;49m
-mode_decl_in_wrong_section.m:023: Warning: the function declaration for
-mode_decl_in_wrong_section.m:023:   function `f'/1 is not followed immediately
-mode_decl_in_wrong_section.m:023:   by its first mode declaration.
+mode_decl_in_wrong_section.m:023: Warning: the [38;5;87mfunction declaration for[39;49m
+mode_decl_in_wrong_section.m:023:   [38;5;87mfunction `f'/1[39;49m is [38;5;203mnot followed immediately[39;49m
+mode_decl_in_wrong_section.m:023:   [38;5;203mby its first mode declaration.[39;49m
 mode_decl_in_wrong_section.m:015:   The first mode declaration is here.

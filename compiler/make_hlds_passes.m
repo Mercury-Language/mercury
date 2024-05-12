@@ -1133,13 +1133,14 @@ implement_initialise_finalise(ModuleInfo, InitOrFinal, SymName, UserArity,
     ),
     (
         PredIds = [],
-        Pieces = [words("Error:"),
-            qual_sym_name_arity(sym_name_arity(SymName, UserArityInt)),
-            words("used in"), decl(DeclName), words("declaration"),
-            words("does not have a corresponding"),
-            decl("pred"), words("declaration."), nl],
-        Spec = spec($pred, severity_error, phase_pt2h,
-            Context, Pieces),
+        SNA = sym_name_arity(SymName, UserArityInt),
+        Pieces = [words("Error:")] ++
+            color_as_subject([qual_sym_name_arity(SNA)]) ++
+            [words("used in"), decl(DeclName), words("declaration")] ++
+            color_as_incorrect([words("does not have a corresponding"),
+                decl("pred"), words("declaration.")]) ++
+            [nl],
+        Spec = spec($pred, severity_error, phase_pt2h, Context, Pieces),
         !:Specs = [Spec | !.Specs]
     ;
         PredIds = [PredId],
@@ -1162,30 +1163,35 @@ implement_initialise_finalise(ModuleInfo, InitOrFinal, SymName, UserArity,
                 ExpectedHeadModes, TargetName, Origin, Context, PragmaFPEInfo),
             cord.snoc(PragmaFPEInfo, !PragmaFPEInfoCord)
         else
-            Pieces = [words("Error:"),
-                qual_sym_name_arity(sym_name_arity(SymName, UserArityInt)),
-                words("used in"), decl(DeclName), words("declaration"),
-                words("has an invalid signature."), nl,
+            SNA = sym_name_arity(SymName, UserArityInt),
+            Pieces = [words("Error:")] ++
+                color_as_subject([qual_sym_name_arity(SNA)]) ++
+                [words("used in"), decl(DeclName), words("declaration")] ++
+                color_as_incorrect([words("has an invalid signature.")]) ++
+                [nl,
                 words("A signature is valid only if it has"),
                 words("one of these two forms:"),
-                nl_indent_delta(1),
-                quote(":- pred <predname>(io::di, io::uo) is <detism>."), nl,
-                quote(":- impure pred <predname> is <detism>."),
-                nl_indent_delta(-1),
+                nl_indent_delta(1)] ++
+                color_as_correct(
+                    [quote(":- pred <predname>(io::di, io::uo) is <detism>."),
+                    nl,
+                    quote(":- impure pred <predname> is <detism>.")]) ++
+                [nl_indent_delta(-1),
                 words("where"), quote("<detism>"), words("is either"),
                 quote("det"), words("or"), quote("cc_multi"), suffix("."), nl],
-            Spec = spec($pred, severity_error,
-                phase_pt2h, Context, Pieces),
+            Spec = spec($pred, severity_error, phase_pt2h, Context, Pieces),
             !:Specs = [Spec | !.Specs]
         )
     ;
         PredIds = [_, _ | _],
-        Pieces = [words("Error:"),
-            qual_sym_name_arity(sym_name_arity(SymName, UserArityInt)),
-            words("used in"), decl(DeclName), words("declaration"),
-            words("has multiple"), decl("pred"), words("declarations."), nl],
-        Spec = spec($pred, severity_error, phase_pt2h,
-            Context, Pieces),
+        SNA = sym_name_arity(SymName, UserArityInt),
+        Pieces = [words("Error:")] ++
+            color_as_subject([qual_sym_name_arity(SNA)]) ++
+            [words("used in"), decl(DeclName), words("declaration")] ++
+            color_as_incorrect([words("has multiple"), decl("pred"),
+                words("declarations.")]) ++
+            [nl],
+        Spec = spec($pred, severity_error, phase_pt2h, Context, Pieces),
         !:Specs = [Spec | !.Specs]
     ).
 

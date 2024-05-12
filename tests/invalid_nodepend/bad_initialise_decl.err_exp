@@ -1,17 +1,17 @@
-bad_initialise_decl.m:019: Error: `i1'/2 used in `:- initialise' declaration
-bad_initialise_decl.m:019:   has an invalid signature.
+bad_initialise_decl.m:019: Error: [38;5;87m`i1'/2[39;49m used in `:- initialise' declaration
+bad_initialise_decl.m:019:   [38;5;203mhas an invalid signature.[39;49m
 bad_initialise_decl.m:019:   A signature is valid only if it has one of these
 bad_initialise_decl.m:019:   two forms:
-bad_initialise_decl.m:019:     `:- pred <predname>(io::di, io::uo) is <detism>.'
-bad_initialise_decl.m:019:     `:- impure pred <predname> is <detism>.'
+bad_initialise_decl.m:019:     [38;5;40m`:- pred <predname>(io::di, io::uo) is <detism>.'[39;49m
+bad_initialise_decl.m:019:     [38;5;40m`:- impure pred <predname> is <detism>.'[39;49m
 bad_initialise_decl.m:019:   where `<detism>' is either `det' or `cc_multi'.
-bad_initialise_decl.m:020: Error: `i2'/2 used in `:- initialise' declaration
-bad_initialise_decl.m:020:   has an invalid signature.
+bad_initialise_decl.m:020: Error: [38;5;87m`i2'/2[39;49m used in `:- initialise' declaration
+bad_initialise_decl.m:020:   [38;5;203mhas an invalid signature.[39;49m
 bad_initialise_decl.m:020:   A signature is valid only if it has one of these
 bad_initialise_decl.m:020:   two forms:
-bad_initialise_decl.m:020:     `:- pred <predname>(io::di, io::uo) is <detism>.'
-bad_initialise_decl.m:020:     `:- impure pred <predname> is <detism>.'
+bad_initialise_decl.m:020:     [38;5;40m`:- pred <predname>(io::di, io::uo) is <detism>.'[39;49m
+bad_initialise_decl.m:020:     [38;5;40m`:- impure pred <predname> is <detism>.'[39;49m
 bad_initialise_decl.m:020:   where `<detism>' is either `det' or `cc_multi'.
-bad_initialise_decl.m:021: Error: `i3'/2 used in `:- initialise' declaration
-bad_initialise_decl.m:021:   does not have a corresponding `:- pred'
-bad_initialise_decl.m:021:   declaration.
+bad_initialise_decl.m:021: Error: [38;5;87m`i3'/2[39;49m used in `:- initialise' declaration
+bad_initialise_decl.m:021:   [38;5;203mdoes not have a corresponding `:- pred'[39;49m
+bad_initialise_decl.m:021:   [38;5;203mdeclaration.[39;49m

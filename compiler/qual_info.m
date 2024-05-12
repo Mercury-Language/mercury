@@ -260,8 +260,10 @@ update_var_types(Var, Type, Context, !VarTypes, !Specs) :-
         ( if Type = Type0 then
             true
         else
-            Pieces = [words("Error: explicit type qualification"),
-                words("does not match prior qualification."), nl],
+            Pieces = [words("Error: explicit type qualification")] ++
+                color_as_incorrect(
+                    [words("does not match prior qualification.")]) ++
+                [nl],
             Spec = spec($pred, severity_error, phase_pt2h, Context, Pieces),
             !:Specs = [Spec | !.Specs]
         )

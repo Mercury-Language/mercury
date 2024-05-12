@@ -1,16 +1,16 @@
-bad_finalise_decl.m:019: Error: `i1'/2 used in `:- finalise' declaration has an
-bad_finalise_decl.m:019:   invalid signature.
+bad_finalise_decl.m:019: Error: [38;5;87m`i1'/2[39;49m used in `:- finalise' declaration [38;5;203mhas an[39;49m
+bad_finalise_decl.m:019:   [38;5;203minvalid signature.[39;49m
 bad_finalise_decl.m:019:   A signature is valid only if it has one of these two
 bad_finalise_decl.m:019:   forms:
-bad_finalise_decl.m:019:     `:- pred <predname>(io::di, io::uo) is <detism>.'
-bad_finalise_decl.m:019:     `:- impure pred <predname> is <detism>.'
+bad_finalise_decl.m:019:     [38;5;40m`:- pred <predname>(io::di, io::uo) is <detism>.'[39;49m
+bad_finalise_decl.m:019:     [38;5;40m`:- impure pred <predname> is <detism>.'[39;49m
 bad_finalise_decl.m:019:   where `<detism>' is either `det' or `cc_multi'.
-bad_finalise_decl.m:020: Error: `i2'/2 used in `:- finalise' declaration has an
-bad_finalise_decl.m:020:   invalid signature.
+bad_finalise_decl.m:020: Error: [38;5;87m`i2'/2[39;49m used in `:- finalise' declaration [38;5;203mhas an[39;49m
+bad_finalise_decl.m:020:   [38;5;203minvalid signature.[39;49m
 bad_finalise_decl.m:020:   A signature is valid only if it has one of these two
 bad_finalise_decl.m:020:   forms:
-bad_finalise_decl.m:020:     `:- pred <predname>(io::di, io::uo) is <detism>.'
-bad_finalise_decl.m:020:     `:- impure pred <predname> is <detism>.'
+bad_finalise_decl.m:020:     [38;5;40m`:- pred <predname>(io::di, io::uo) is <detism>.'[39;49m
+bad_finalise_decl.m:020:     [38;5;40m`:- impure pred <predname> is <detism>.'[39;49m
 bad_finalise_decl.m:020:   where `<detism>' is either `det' or `cc_multi'.
-bad_finalise_decl.m:021: Error: `i3'/2 used in `:- finalise' declaration does
-bad_finalise_decl.m:021:   not have a corresponding `:- pred' declaration.
+bad_finalise_decl.m:021: Error: [38;5;87m`i3'/2[39;49m used in `:- finalise' declaration [38;5;203mdoes[39;49m
+bad_finalise_decl.m:021:   [38;5;203mnot have a corresponding `:- pred' declaration.[39;49m

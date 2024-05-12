@@ -1022,7 +1022,8 @@ generate_stratify_error(ModuleInfo, PPId, Context, Message, ErrorOrWarning)
         ErrOrWarnMsg = words("error:"),
         Severity = severity_error
     ),
-    MainPieces = [ErrOrWarnMsg, words(Message), nl],
+    MainPieces =
+        [ErrOrWarnMsg] ++ color_as_incorrect([words(Message)]) ++ [nl],
     VerbosePieces =
         [words("A non-stratified loop is a loop in the call graph"),
         words("of the given predicate/function that allows it to call"),

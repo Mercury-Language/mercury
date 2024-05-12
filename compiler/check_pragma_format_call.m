@@ -275,10 +275,13 @@ format_call_error_too_large_arg_num(PredInfo, Context, NumFormatArgs,
     PredOrFunc = pred_info_is_pred_or_func(PredInfo),
     Pieces =
         format_call_error_prelude(PredInfo, NumFormatArgs, FormatArgNum) ++
-        [words("the"), words(FirstOrSecond), words("argument of"),
-        quote("format_string_values"), words("specifies argument number"),
-        int_fixed(ArgNum), suffix(","), words("but the"), p_or_f(PredOrFunc),
-        words("has only"), int_fixed(MaxArgNum), words("arguments."), nl],
+        color_as_subject([words("the"), words(FirstOrSecond),
+            words("argument of"), quote("format_string_values")]) ++
+        [words("specifies argument number"), int_fixed(ArgNum), suffix(","),
+        words("but")] ++
+        color_as_incorrect([words("the"), p_or_f(PredOrFunc),
+            words("has only"), int_fixed(MaxArgNum), words("arguments.")]) ++
+        [nl],
     Spec = spec($pred, severity_error, phase_pt2h, Context, Pieces).
 
 :- func format_call_error_too_small_arg_num(pred_info, prog_context,
@@ -288,38 +291,45 @@ format_call_error_too_small_arg_num(PredInfo, Context, NumFormatArgs,
         FormatArgNum, ArgNum, FirstOrSecond) = Spec :-
     Pieces =
         format_call_error_prelude(PredInfo, NumFormatArgs, FormatArgNum) ++
-        [words("the"), words(FirstOrSecond), words("argument of"),
-        quote("format_string_values"), words("specifies argument number"),
-        int_fixed(ArgNum), suffix(","),
-        words("but argument numbers start at 1."), nl],
+        color_as_subject([words("the"), words(FirstOrSecond),
+            words("argument of"), quote("format_string_values")]) ++
+        [words("specifies argument number"), int_fixed(ArgNum), suffix(","),
+        words("but")] ++
+        color_as_incorrect([words("argument numbers start at 1.")]) ++
+        [nl],
     Spec = spec($pred, severity_error, phase_pt2h, Context, Pieces).
 
 :- func format_call_error_wrong_type(pred_info, prog_context,
-        int, int, int, string, string, string) = error_spec.
+    int, int, int, string, string, string) = error_spec.
 
 format_call_error_wrong_type(PredInfo, Context, NumFormatArgs, FormatArgNum,
         ArgNum, FirstOrSecond, Role, ExpectedType) = Spec :-
     Pieces =
         format_call_error_prelude(PredInfo, NumFormatArgs, FormatArgNum) ++
-        [words("the"), words(FirstOrSecond), words("argument of"),
-        quote("format_string_values"), words("specifies argument number"),
-        int_fixed(ArgNum), words("as holding"), words(Role), suffix(","),
-        words("but the type of that argument is not"),
-        quote(ExpectedType), suffix("."), nl],
+        color_as_subject([words("the"), words(FirstOrSecond),
+            words("argument of"), quote("format_string_values")]) ++
+        [words("specifies argument number"), int_fixed(ArgNum),
+            words("as holding"), words(Role), suffix(","), words("but")] ++
+        color_as_incorrect([words("but the type of that argument is not"),
+            quote(ExpectedType), suffix(".")]) ++
+        [nl],
     Spec = spec($pred, severity_error, phase_pt2h, Context, Pieces).
 
 :- func format_call_error_wrong_mode(pred_info, prog_context,
-        int, int, int, string, string, int, list(int)) = error_spec.
+    int, int, int, string, string, int, list(int)) = error_spec.
 
 format_call_error_wrong_mode(PredInfo, Context, NumFormatArgs, FormatArgNum,
         ArgNum, FirstOrSecond, Role, NumProcs, BadModeNums) = Spec :-
     Pieces0 =
         format_call_error_prelude(PredInfo, NumFormatArgs, FormatArgNum) ++
-        [words("the"), words(FirstOrSecond), words("argument of"),
-        quote("format_string_values"), words("specifies argument number"),
-        int_fixed(ArgNum), words("as holding"), words(Role), suffix(",")],
+        color_as_subject([words("the"), words(FirstOrSecond),
+            words("argument"), words("of"), quote("format_string_values")]) ++
+        [words("specifies argument number"), int_fixed(ArgNum),
+        words("as holding"), words(Role), suffix(",")],
     ( if NumProcs = 1, BadModeNums = [_] then
-        Pieces = Pieces0 ++ [words("but that argument is not input."), nl]
+        Pieces = Pieces0 ++
+            color_as_incorrect([words("but that argument is not input.")]) ++
+            [nl]
     else
         PredOrFunc = pred_info_is_pred_or_func(PredInfo),
         list.sort(BadModeNums, SortedBadModeNums),
@@ -327,16 +337,16 @@ format_call_error_wrong_mode(PredInfo, Context, NumFormatArgs, FormatArgNum,
             list.map((func(N) = [nth_fixed(N)]), SortedBadModeNums),
         BadModeNumPieces =
             component_lists_to_pieces("and", BadModeNumPieceLists),
-        Pieces = Pieces0 ++ [words("but that argument is not input"),
-            words("in the")] ++ BadModeNumPieces ++
+        Pieces = Pieces0 ++
+            color_as_incorrect([words("but that argument is not input")]) ++
+            [words("in the")] ++ BadModeNumPieces ++
             [words("modes of the"), p_or_f(PredOrFunc), suffix("."), nl]
     ),
     Spec = spec($pred, severity_error, phase_pt2h, Context, Pieces).
 
 %---------------------%
 
-:- func format_call_error_prelude(pred_info, int, int)
-    = list(format_piece).
+:- func format_call_error_prelude(pred_info, int, int) = list(format_piece).
 
 format_call_error_prelude(PredInfo, NumFormatArgs, FormatArgNum) = Pieces :-
     Pieces0 = [words("Error: in the second argument of"),

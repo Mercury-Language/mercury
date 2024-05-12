@@ -771,8 +771,11 @@ maybe_report_error_no_modes(ModuleInfo, PredId, PredInfo) = Specs :-
             else
                 PredDesc = describe_one_pred_name(ModuleInfo,
                     should_not_module_qualify, PredId),
-                MainPieces = [words("Error: no mode declaration for")] ++
-                    PredDesc ++ [suffix("."), nl],
+                MainPieces = [words("Error:")] ++
+                    color_as_incorrect([words("no mode declaration")]) ++
+                    [words("for")] ++
+                    color_as_subject(PredDesc ++ [suffix(".")]) ++
+                    [nl],
                 VerbosePieces =
                     [words("(Use"), quote("--infer-modes"),
                     words("to enable mode inference.)"), nl],
@@ -787,10 +790,14 @@ maybe_report_error_no_modes(ModuleInfo, PredId, PredInfo) = Specs :-
             Specs = [Spec]
         )
     else
+        PredPieces =
+            describe_one_pred_name(ModuleInfo, should_module_qualify, PredId),
         pred_info_get_context(PredInfo, Context),
-        Pieces = [words("Error: no mode declaration for exported")] ++
-            describe_one_pred_name(ModuleInfo, should_module_qualify, PredId)
-            ++ [suffix("."), nl],
+        Pieces = [words("Error:")] ++
+            color_as_incorrect([words("no mode declaration")]) ++
+            [words("for exported")] ++
+            color_as_subject(PredPieces ++ [suffix(".")]) ++
+            [nl],
         Spec = spec($pred, severity_error,
             phase_mode_check(report_in_any_mode), Context, Pieces),
         Specs = [Spec]
@@ -1794,10 +1801,12 @@ modes_are_valid_for_main(ModuleInfo, [Di, Uo]) :-
 report_eval_method_requires_ground_args(ProcInfo, TabledMethod) = Spec :-
     proc_info_get_context(ProcInfo, Context),
     TabledMethodStr = tabled_eval_method_to_pragma_name(TabledMethod),
-    MainPieces = [words("Sorry, not implemented:"),
-        pragma_decl(TabledMethodStr),
-        words("declaration not allowed for procedure"),
-        words("with partially instantiated modes."), nl],
+    MainPieces = [words("Sorry, not implemented:")] ++
+        color_as_subject([pragma_decl(TabledMethodStr),
+            words("declarations")]) ++
+        color_as_incorrect([words("are not allowed for"),
+            words("procedures with partially instantiated modes.")]) ++
+        [nl],
     VerbosePieces = [words("Tabling of predicates/functions"),
         words("with partially instantiated modes"),
         words("is not currently implemented."), nl],
@@ -1812,9 +1821,12 @@ report_eval_method_requires_ground_args(ProcInfo, TabledMethod) = Spec :-
 report_eval_method_destroys_uniqueness(ProcInfo, TabledMethod) = Spec :-
     proc_info_get_context(ProcInfo, Context),
     TabledMethodStr = tabled_eval_method_to_pragma_name(TabledMethod),
-    MainPieces = [words("Error:"),
-        pragma_decl(TabledMethodStr), words("declaration"),
-        words("not allowed for procedure with unique modes."), nl],
+    MainPieces = [words("Error:")] ++
+        color_as_subject([pragma_decl(TabledMethodStr),
+            words("declarations")]) ++
+        color_as_incorrect([words("are not allowed for"),
+            words("procedure with unique modes.")]) ++
+        [nl],
     VerbosePieces =
         [words("Tabling of predicates/functions with unique modes"),
         words("is not allowed, as tabling requires copying arguments,"),
@@ -1827,10 +1839,13 @@ report_eval_method_destroys_uniqueness(ProcInfo, TabledMethod) = Spec :-
 :- func report_wrong_mode_for_main(proc_info) = error_spec.
 
 report_wrong_mode_for_main(ProcInfo) = Spec :-
+    SNA = sym_name_arity(unqualified("main"), 2),
     proc_info_get_context(ProcInfo, Context),
-    Pieces = [words("Error:"),
-        unqual_sym_name_arity(sym_name_arity(unqualified("main"), 2)),
-        words("must have mode"), quote("(di, uo)"), suffix("."), nl],
+    Pieces = [words("Error:")] ++
+        color_as_subject([unqual_sym_name_arity(SNA)]) ++
+        color_as_incorrect([words("must have mode"), quote("(di, uo)"),
+            suffix(".")]) ++
+        [nl],
     Spec = spec($pred, severity_error,
         phase_mode_check(report_in_any_mode), Context, Pieces).
 
