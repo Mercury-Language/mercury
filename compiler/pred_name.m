@@ -1198,7 +1198,7 @@ dump_origin(TVarSet, VarNamePrint, Prefix, Origin) = Str :-
             OriginUser = user_made_pred(PredOrFunc, SymName, UserArity),
             UserArity = user_arity(UserArityInt),
             string.format("%s user defined %s %s/%d\n",
-                [s(Prefix), s(pred_or_func_to_string(PredOrFunc)),
+                [s(Prefix), s(pred_or_func_to_full_str(PredOrFunc)),
                 s(sym_name_to_string(SymName)), i(UserArityInt)], Str)
         ;
             OriginUser = user_made_lambda(FileName, LineNumber, SeqNum),
@@ -1211,7 +1211,7 @@ dump_origin(TVarSet, VarNamePrint, Prefix, Origin) = Str :-
                 MethodSymName, MethodUserArity),
             MethodUserArity = user_arity(MethodUserArityInt),
             string.format("%s class method %s %s/%d for %s/%d\n",
-                [s(Prefix), s(pred_or_func_to_string(MethodPredOrFunc)),
+                [s(Prefix), s(pred_or_func_to_full_str(MethodPredOrFunc)),
                 s(sym_name_to_string(MethodSymName)), i(MethodUserArityInt),
                 s(sym_name_to_string(ClassSymName)), i(ClassArity)], Str)
         ;

@@ -271,7 +271,7 @@
 
 :- import_module hlds.
 :- import_module hlds.hlds_pred.
-:- import_module parse_tree.parse_tree_out_misc.
+:- import_module mdbcomp.prim_data.
 :- import_module parse_tree.prog_util.
 
 :- import_module char.

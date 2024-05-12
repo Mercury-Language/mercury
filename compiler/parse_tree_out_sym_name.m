@@ -374,7 +374,7 @@ pf_sym_name_pred_form_arity_to_string(PredOrFunc, SymName, PredFormArity)
         = Str :-
     user_arity_pred_form_arity(PredOrFunc,
         user_arity(UserArityInt), PredFormArity),
-    PredOrFuncStr = pred_or_func_to_string(PredOrFunc),
+    PredOrFuncStr = pred_or_func_to_full_str(PredOrFunc),
     SymNameStr = sym_name_to_string(SymName),
     string.format("%s `%s'/%d",
         [s(PredOrFuncStr), s(SymNameStr), i(UserArityInt)], Str).
@@ -391,7 +391,7 @@ pf_sym_name_user_arity_to_string(PredOrFunc, SNA) = Str :-
     Str = pf_sym_name_user_arity_to_string(PredOrFunc, SymName, Arity).
 
 pf_sym_name_user_arity_to_string(PredOrFunc, SymName, Arity) = Str :-
-    PredOrFuncStr = pred_or_func_to_string(PredOrFunc),
+    PredOrFuncStr = pred_or_func_to_full_str(PredOrFunc),
     SymNameStr = sym_name_to_string(SymName),
     string.format("%s `%s'/%d",
         [s(PredOrFuncStr), s(SymNameStr), i(Arity)], Str).
@@ -410,7 +410,7 @@ pf_sym_name_user_arity_to_unquoted_string(PredOrFunc, SNA) = Str :-
         pf_sym_name_user_arity_to_unquoted_string(PredOrFunc, SymName, Arity).
 
 pf_sym_name_user_arity_to_unquoted_string(PredOrFunc, SymName, Arity) = Str :-
-    PredOrFuncStr = pred_or_func_to_string(PredOrFunc),
+    PredOrFuncStr = pred_or_func_to_full_str(PredOrFunc),
     SymNameStr = sym_name_to_string(SymName),
     string.format("%s %s/%d",
         [s(PredOrFuncStr), s(SymNameStr), i(Arity)], Str).

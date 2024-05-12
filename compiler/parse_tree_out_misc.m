@@ -21,8 +21,6 @@
 :- import_module libs.
 :- import_module libs.globals.
 :- import_module libs.indent.
-:- import_module mdbcomp.
-:- import_module mdbcomp.prim_data.
 :- import_module parse_tree.parse_tree_output.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_data_pragma.
@@ -46,14 +44,6 @@
 :- mode promise_to_string(in) = out is det.
 :- mode promise_to_string(out) = in is semidet.
 :- mode promise_to_string(out) = out is multi.
-
-    % Return "predicate" or "function" depending on the given value.
-    %
-:- func pred_or_func_to_full_str(pred_or_func) = string.
-
-    % Return "pred" or "func" depending on the given value.
-    %
-:- func pred_or_func_to_str(pred_or_func) = string.
 
     % Get a purity name as a string.
     %
@@ -178,12 +168,6 @@ promise_to_string(promise_type_exclusive) = "promise_exclusive".
 promise_to_string(promise_type_exhaustive) = "promise_exhaustive".
 promise_to_string(promise_type_exclusive_exhaustive) =
     "promise_exclusive_exhaustive".
-
-pred_or_func_to_full_str(pf_predicate) = "predicate".
-pred_or_func_to_full_str(pf_function) = "function".
-
-pred_or_func_to_str(pf_predicate) = "pred".
-pred_or_func_to_str(pf_function) = "func".
 
 purity_name(purity_pure, "pure").
 purity_name(purity_semipure, "semipure").

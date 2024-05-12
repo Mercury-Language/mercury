@@ -506,7 +506,7 @@ call_id_to_string(generic_call_id(GenericCallId)) =
 
 generic_call_id_to_string(gcid_higher_order(Purity, PredOrFunc, _)) =
     purity_prefix_to_string(Purity) ++ "higher-order "
-    ++ parse_tree_out_misc.pred_or_func_to_full_str(PredOrFunc) ++ " call".
+    ++ pred_or_func_to_full_str(PredOrFunc) ++ " call".
 generic_call_id_to_string(gcid_class_method(_ClassId, MethodId)) =
     pf_sym_name_pred_form_arity_to_string(MethodId).
 generic_call_id_to_string(gcid_event_call(EventName)) =
@@ -587,8 +587,7 @@ arg_number_to_string(CallId, ArgNum) = Str :-
                 % Make error messages for higher-order calls
                 % such as `P(A, B)' clearer.
                 Main = "argument " ++ int_to_string(ArgNum),
-                PredOrFuncStr =
-                    parse_tree_out_misc.pred_or_func_to_full_str(PredOrFunc),
+                PredOrFuncStr = pred_or_func_to_full_str(PredOrFunc),
                 ( if ArgNum = 1 then
                     Expl = "the " ++ PredOrFuncStr ++ " term"
                 else

@@ -728,7 +728,7 @@ convert_pieces_to_words_acc(ColorDb, FirstInMsg, !.Lower, [Piece | Pieces],
             PlainWord = nth_fixed_str(Int)
         ;
             Piece = p_or_f(PredOrFunc),
-            PlainWord = pred_or_func_to_string(PredOrFunc)
+            PlainWord = pred_or_func_to_full_str(PredOrFunc)
         ;
             Piece = purity_desc(Purity),
             PlainWord = purity_to_string(Purity)

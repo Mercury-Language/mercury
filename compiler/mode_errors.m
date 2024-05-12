@@ -387,7 +387,6 @@
 :- import_module libs.options.
 :- import_module mdbcomp.sym_name.
 :- import_module parse_tree.parse_tree_out_cons_id.
-:- import_module parse_tree.parse_tree_out_misc.
 :- import_module parse_tree.parse_tree_out_pred_decl.
 :- import_module parse_tree.parse_tree_out_term.
 :- import_module parse_tree.parse_tree_out_sym_name.
@@ -785,10 +784,10 @@ mode_error_higher_order_unify_to_spec(ModeInfo, LHSVar, RHS, Type, PredOrFunc)
         quote(mercury_type_to_string(TypeVarSet, print_name_only, Type)),
         suffix("."), nl],
     VerbosePieces = [words("Your code is trying to test whether two "),
-        words(parse_tree_out_misc.pred_or_func_to_full_str(PredOrFunc) ++ "s"),
+        words(pred_or_func_to_full_str(PredOrFunc) ++ "s"),
         words("are equal, by unifying them."),
         words("In the general case, testing equivalence of"),
-        words(parse_tree_out_misc.pred_or_func_to_full_str(PredOrFunc) ++ "s"),
+        words(pred_or_func_to_full_str(PredOrFunc) ++ "s"),
         words("is an undecidable problem,"),
         words("and so this is not allowed by the Mercury mode system."),
         words("In some cases, you can achieve the same effect by"),
@@ -1670,7 +1669,7 @@ mode_error_bind_locked_var_to_spec(ModeInfo, Reason, Var, VarInst, Inst)
             " inside the condition of an if-then-else."
     ;
         Reason = var_lock_lambda(PredOrFunc),
-        PredOrFuncS = parse_tree_out_misc.pred_or_func_to_str(PredOrFunc),
+        PredOrFuncS = pred_or_func_to_str(PredOrFunc),
         ReasonStr = "attempt to bind a non-local variable inside" ++
             " a " ++ PredOrFuncS ++ " lambda goal."
     ;

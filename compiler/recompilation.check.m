@@ -81,7 +81,6 @@
 :- import_module parse_tree.module_baggage.
 :- import_module parse_tree.module_cmds.
 :- import_module parse_tree.parse_error.
-:- import_module parse_tree.parse_tree_out_misc.
 :- import_module parse_tree.parse_tree_out_sym_name.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_item.
