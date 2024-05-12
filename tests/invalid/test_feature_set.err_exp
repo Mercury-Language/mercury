@@ -1,10 +1,10 @@
-test_feature_set.m:013: Error: this module must be compiled in a grade that
-test_feature_set.m:013:   supports memoisation.
-test_feature_set.m:013: Error: this module must be compiled in a grade that
-test_feature_set.m:013:   supports trailing.
+test_feature_set.m:013: Error: this module must be compiled [38;5;203min a grade that[39;49m
+test_feature_set.m:013:   [38;5;203msupports memoisation.[39;49m
+test_feature_set.m:013: Error: this module must be compiled [38;5;203min a grade that[39;49m
+test_feature_set.m:013:   [38;5;203msupports trailing.[39;49m
 test_feature_set.m:013:   Grades that support trailing contain the grade
 test_feature_set.m:013:   modifier `tr'.
-test_feature_set.m:013: Error: this module must be compiled in a grade that
-test_feature_set.m:013:   uses single precision floats.
+test_feature_set.m:013: Error: this module must be compiled [38;5;203min a grade that[39;49m
+test_feature_set.m:013:   [38;5;203muses single precision floats.[39;49m
 test_feature_set.m:013:   Grades that use single precision floats contain the
 test_feature_set.m:013:   grade modifier `spf'.

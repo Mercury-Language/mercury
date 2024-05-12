@@ -216,8 +216,10 @@ check_mutable(ModuleInfo, ModuleParams, ItemMutable, !Specs) :-
         mutable_thread_local_trailed(Local) = mutable_trailed,
         UseTrail = no
     then
-        TrailPieces = [words("Error: trailed"), decl("mutable"),
-            words("declaration in non-trailing grade."), nl],
+        TrailPieces = [words("Error:")] ++
+            color_as_subject([words("trailed"), decl("mutable"),
+                words("declaration")]) ++
+            color_as_incorrect([words("in non-trailing grade.")]) ++ [nl],
         TrailSpec = spec($pred, severity_error, phase_pt2h,
             Context, TrailPieces),
         !:Specs = [TrailSpec | !.Specs]
@@ -304,8 +306,9 @@ check_mutable_inst(ModuleInfo, ModuleParams, Context, InstVarSet,
                 ; UserInstBaseName = "mostly_dead"
                 )
             then
-                FreePieces = [words("may not appear in"),
-                    decl("mutable"), words("declarations.")],
+                FreePieces =
+                    color_as_incorrect([words("may not appear in")]) ++
+                    [decl("mutable"), words("declarations.")],
                 UnqualInstName =
                     user_inst(unqualified(UserInstBaseName), UserInstArgs),
                 % There is special code in error_msg_inst.m to handle
@@ -339,7 +342,8 @@ check_mutable_inst(ModuleInfo, ModuleParams, Context, InstVarSet,
                         true
                     else
                         % This should not happen, but just in case it does ...
-                        UndefinedPieces = [words("is not defined.")],
+                        UndefinedPieces =
+                            color_as_incorrect([words("is not defined.")]),
                         invalid_inst_in_mutable(ModuleInfo, Context,
                             InstVarSet, ParentInsts, Inst, UndefinedPieces,
                             !Specs)
@@ -360,15 +364,15 @@ check_mutable_inst(ModuleInfo, ModuleParams, Context, InstVarSet,
         )
     ;
         Inst = free,
-        FreePieces = [words("may not appear in"),
-            decl("mutable"), words("declarations.")],
+        FreePieces = color_as_incorrect([words("may not appear in")]) ++
+            [decl("mutable"), words("declarations.")],
         invalid_inst_in_mutable(ModuleInfo, Context, InstVarSet, ParentInsts,
             Inst, FreePieces, !Specs)
     ;
         Inst = constrained_inst_vars(_, _),
-        ConstrainedPieces = [words("is constrained, and thus"),
-            words("may not appear in"), decl("mutable"),
-            words("declarations.")],
+        ConstrainedPieces = [words("is constrained, and thus")] ++
+            color_as_incorrect([words("may not appear")]) ++
+            [words("in"), decl("mutable"), words("declarations.")],
         invalid_inst_in_mutable(ModuleInfo, Context, InstVarSet, ParentInsts,
             Inst, ConstrainedPieces, !Specs)
     ;
@@ -435,20 +439,24 @@ check_mutable_inst_uniqueness(ModuleInfo, Context, InstVarSet, ParentInsts,
             UniqStr = "mostly_clobbered"
         ),
         ( if Inst = ground(Uniq, _) then
-            UniqPieces = [words("may not appear in"),
-                decl("mutable"), words("declarations.")]
+            UniqPieces = color_as_incorrect([words("may not appear")]) ++
+                [words("in"), decl("mutable"), words("declarations.")]
         else
-            UniqPieces = [words("has uniqueness"), quote(UniqStr), suffix(","),
-                words("which may not appear in"),
-                decl("mutable"), words("declarations.")]
+            UniqPieces =
+                [words("has uniqueness"), quote(UniqStr), suffix(","),
+                    words("which")] ++
+                color_as_incorrect([words("may not appear")]) ++
+                [words("in"), decl("mutable"), words("declarations.")]
         ),
         invalid_inst_in_mutable(ModuleInfo, Context, InstVarSet, ParentInsts,
             Inst, UniqPieces, !Specs)
     ).
 
+    % Note: the caller is responsible for coloring the relevant parts of
+    % ProblemPieces.
+    %
 :- pred invalid_inst_in_mutable(module_info::in, prog_context::in,
-    inst_varset::in, list(inst_ctor)::in, mer_inst::in,
-    list(format_piece)::in,
+    inst_varset::in, list(inst_ctor)::in, mer_inst::in, list(format_piece)::in,
     list(error_spec)::in, list(error_spec)::out) is det.
 
 invalid_inst_in_mutable(ModuleInfo, Context, InstVarSet, ParentInsts, Inst,
@@ -458,7 +466,8 @@ invalid_inst_in_mutable(ModuleInfo, Context, InstVarSet, ParentInsts, Inst,
         dont_expand_named_insts, uod_user, quote_short_inst, [], [],
         [nl_indent_delta(1)], [nl_indent_delta(-1)], Inst),
     Pieces = [words("Error:") | ParentPieces] ++
-        [words("the inst") | InstPieces] ++ ProblemPieces ++ [nl],
+        [words("the inst")] ++ color_as_subject(InstPieces) ++
+        ProblemPieces ++ [nl],
     Spec = spec($pred, severity_error, phase_pt2h, Context, Pieces),
     !:Specs = [Spec | !.Specs].
 

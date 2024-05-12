@@ -1,10 +1,10 @@
-uniq_mutable.m:021: Error: the inst `unique' may not appear in `:- mutable'
+uniq_mutable.m:021: Error: the inst [38;5;87m`unique'[39;49m [38;5;203mmay not appear[39;49m in `:- mutable'
 uniq_mutable.m:021:   declarations.
-uniq_mutable.m:022: Error: the inst `mostly_unique' may not appear in
+uniq_mutable.m:022: Error: the inst [38;5;87m`mostly_unique'[39;49m [38;5;203mmay not appear[39;49m in
 uniq_mutable.m:022:   `:- mutable' declarations.
-uniq_mutable.m:023: Error: the inst `free' may not appear in `:- mutable'
+uniq_mutable.m:023: Error: the inst [38;5;87m`free'[39;49m [38;5;203mmay not appear in[39;49m `:- mutable'
 uniq_mutable.m:023:   declarations.
-uniq_mutable.m:024: Error: the inst `dead' may not appear in `:- mutable'
+uniq_mutable.m:024: Error: the inst [38;5;87m`dead'[39;49m [38;5;203mmay not appear in[39;49m `:- mutable'
 uniq_mutable.m:024:   declarations.
-uniq_mutable.m:025: Error: the inst `mostly_dead' may not appear in
+uniq_mutable.m:025: Error: the inst [38;5;87m`mostly_dead'[39;49m [38;5;203mmay not appear in[39;49m
 uniq_mutable.m:025:   `:- mutable' declarations.

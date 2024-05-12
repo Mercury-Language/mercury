@@ -8,6 +8,6 @@ bad_fact_table.m:026:   can't open input file: No such file or directory
 bad_fact_table.m:027: mercury_compile: error opening file `nonexistent_bar' for
 bad_fact_table.m:027:   input:
 bad_fact_table.m:027:   can't open input file: No such file or directory
-bad_fact_table.m:028: In `:- pragma fact_table' declaration for `baz'/2:
-bad_fact_table.m:028:   error: ambiguous name could refer to either a predicate
-bad_fact_table.m:028:   or a function.
+bad_fact_table.m:028: In `:- pragma fact_table' declaration for [38;5;87m`baz'/2:[39;49m
+bad_fact_table.m:028:   error: [38;5;203mambiguous name could refer to either a predicate[39;49m
+bad_fact_table.m:028:   [38;5;203mor a function.[39;49m

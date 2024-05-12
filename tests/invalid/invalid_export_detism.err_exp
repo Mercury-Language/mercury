@@ -1,3 +1,3 @@
-invalid_export_detism.m:013: Error: `:- pragma foreign_export' declaration for
-invalid_export_detism.m:013:   a procedure that has a declared determinism of
-invalid_export_detism.m:013:   nondet.
+invalid_export_detism.m:013: Error: [38;5;87m`:- pragma foreign_export' declaration for[39;49m
+invalid_export_detism.m:013:   [38;5;87ma procedure[39;49m that has a declared determinism of
+invalid_export_detism.m:013:   [38;5;203mnondet.[39;49m

@@ -378,9 +378,13 @@ mark_pred_as_format_call(FormatCallInfo, PragmaStatus, !ModuleInfo, !Specs) :-
             module_info_set_format_call_pragma_preds(FCPreds, !ModuleInfo)
         ;
             MaybeFormatCall0 = yes(format_call(OldContext, _)),
-            FirstPieces = [words("Error: duplicate"),
-                pragma_decl("format_call"), words("declaration for"),
-                unqual_pf_sym_name_user_arity(PredSpec), suffix("."), nl],
+            FirstPieces = [words("Error:")] ++
+                color_as_incorrect([words("duplicate"),
+                    pragma_decl("format_call"), words("declaration")]) ++
+                [words("for")] ++
+                color_as_subject([unqual_pf_sym_name_user_arity(PredSpec),
+                    suffix(".")]) ++
+                [nl],
             FirstMsg = msg(Context, FirstPieces),
             SecondPieces = [words("The original"),
                 pragma_decl("format_call"), words("declaration"),
@@ -871,11 +875,13 @@ add_pragma_foreign_proc_export(FPEInfo, !ModuleInfo, !Specs) :-
                 ; Detism = detism_multi
                 )
             then
-                Pieces = [words("Error:"),
-                    pragma_decl("foreign_export"), words("declaration"),
-                    words("for a procedure that has"),
-                    words("a declared determinism of"),
-                    fixed(determinism_to_string(Detism)), suffix("."), nl],
+                DetismStr = determinism_to_string(Detism),
+                Pieces = [words("Error:")] ++
+                    color_as_subject([pragma_decl("foreign_export"),
+                        words("declaration"), words("for a procedure")]) ++
+                    [words("that has a declared determinism of")] ++
+                    color_as_incorrect([fixed(DetismStr), suffix(".")]) ++
+                    [nl],
                 Spec = spec($pred, severity_error, phase_pt2h,
                     Context, Pieces),
                 !:Specs = [Spec | !.Specs]
@@ -1007,12 +1013,13 @@ mark_pred_as_external(Context, PredId, !ModuleInfo, !Specs) :-
         IsEmpty = no,
         PredOrFunc = pred_info_is_pred_or_func(PredInfo0),
         pred_info_get_name(PredInfo0, PredName),
-        UserArity = pred_info_user_arity(PredInfo0),
-        PFSNA =
-            pred_pf_name_arity(PredOrFunc, unqualified(PredName), UserArity),
-        Pieces = [words("The"), unqual_pf_sym_name_user_arity(PFSNA),
-            words("has clauses,"),
-            words("so it cannot be marked as external."), nl],
+        user_arity(UserArityInt) = pred_info_user_arity(PredInfo0),
+        NameArity = name_arity(PredName, UserArityInt),
+        Pieces = [words("The"), p_or_f(PredOrFunc)] ++
+            color_as_subject([name_arity(NameArity)]) ++
+            [words("has clauses, so")] ++
+            color_as_incorrect([words("it cannot be marked as external.")]) ++
+            [nl],
         Spec = spec($pred, severity_error, phase_pt2h, Context, Pieces),
         !:Specs = [Spec | !.Specs]
     ).
@@ -1211,10 +1218,14 @@ add_pragma_require_tail_rec(Pragma, !ModuleInfo, !Specs) :-
                 PredOrFunc = pred_info_is_pred_or_func(PredInfo),
                 PFNameArity =
                     pred_pf_name_arity(PredOrFunc, PredSymName, UserArity),
-                Pieces = [words("Error:"),
-                    pragma_decl("require_tail_recursion"),
-                    words("declaration for undeclared mode of"),
-                    qual_pf_sym_name_user_arity(PFNameArity), suffix("."), nl],
+                Pieces = [words("Error:")] ++
+                    color_as_subject([pragma_decl("require_tail_recursion"),
+                        words("declaration")]) ++
+                    [words("for")] ++
+                    color_as_incorrect([words("undeclared mode of"),
+                        unqual_pf_sym_name_user_arity(PFNameArity),
+                        suffix(".")]) ++
+                    [nl],
                 Spec = spec($pred, severity_error, phase_pt2h,
                     Context, Pieces),
                 !:Specs = [Spec | !.Specs]
@@ -1248,13 +1259,15 @@ add_pragma_require_tail_rec_proc(RequireTailrec, Context, MaybePredOrFunc, SNA,
             PorFPieces = []
         ;
             MaybePredOrFunc = yes(PredOrFunc),
-            PorFPieces = [words(pred_or_func_to_full_str(PredOrFunc))]
+            PorFPieces = [p_or_f(PredOrFunc)]
         ),
-        MainPieces = [words("Error: conflicting"),
-            pragma_decl("require_tail_recursion"), words("pragmas for")] ++
-            PorFPieces ++ [qual_sym_name_arity(SNA),
-            words("or one of its modes."), nl],
-        OrigPieces = [words("Earlier pragma is here."), nl],
+        MainPieces = [words("Error:")] ++
+            color_as_incorrect([words("conflicting"),
+                pragma_decl("require_tail_recursion"), words("pragmas")]) ++
+            [words("for") | PorFPieces] ++
+            color_as_subject([qual_sym_name_arity(SNA)]) ++
+            [words("or one of its modes."), nl],
+        OrigPieces = [words("The earlier pragma is here."), nl],
         ( RequireTailrecOrig = suppress_tailrec_warnings(ContextOrig)
         ; RequireTailrecOrig = enable_tailrec_warnings(_, _, ContextOrig)
         ),
@@ -1299,8 +1312,10 @@ check_required_feature(Globals, Context, Feature, !Specs) :-
         current_grade_supports_concurrency(Globals, IsConcurrencySupported),
         (
             IsConcurrencySupported = no,
-            Pieces = [words("Error: this module must be compiled in a grade"),
-                words("that supports concurrent execution."), nl],
+            Pieces = [words("Error: this module must be compiled")] ++
+                color_as_incorrect([words("in a grade that"),
+                    words("supports concurrent execution.")]) ++
+                [nl],
             Spec = spec($pred, severity_error, phase_pt2h, Context, Pieces),
             !:Specs = [Spec | !.Specs]
         ;
@@ -1312,8 +1327,10 @@ check_required_feature(Globals, Context, Feature, !Specs) :-
             SinglePrecFloat),
         (
             SinglePrecFloat = no,
-            Pieces = [words("Error: this module must be compiled in a grade"),
-                words("that uses single precision floats."), nl],
+            Pieces = [words("Error: this module must be compiled")] ++
+                color_as_incorrect([words("in a grade that"),
+                    words("uses single precision floats.")]) ++
+                [nl],
             VerbosePieces = [words("Grades that use single precision floats"),
                 words("contain the grade modifier"),
                 quote("spf"), suffix("."), nl],
@@ -1330,8 +1347,10 @@ check_required_feature(Globals, Context, Feature, !Specs) :-
             SinglePrecFloat),
         (
             SinglePrecFloat = yes,
-            Pieces = [words("Error: this module must be compiled in a grade"),
-                words("that uses double precision floats."), nl],
+            Pieces = [words("Error: this module must be compiled")] ++
+                color_as_incorrect([words("in a grade that"),
+                    words("uses double precision floats.")]) ++
+                [nl],
             VerbosePieces = [words("Grades that use double precision floats"),
                 words("do not contain the grade modifier"),
                 quote("spf"), suffix("."), nl],
@@ -1348,8 +1367,10 @@ check_required_feature(Globals, Context, Feature, !Specs) :-
             tabled_memo(table_attr_ignore_with_warning), IsTablingSupported),
         (
             IsTablingSupported = no,
-            Pieces = [words("Error: this module must be compiled in a grade"),
-                words("that supports memoisation."), nl],
+            Pieces = [words("Error: this module must be compiled")] ++
+                color_as_incorrect([words("in a grade that"),
+                    words("supports memoisation.")]) ++
+                [nl],
             Spec = spec($pred, severity_error, phase_pt2h, Context, Pieces),
             !:Specs = [Spec | !.Specs]
         ;
@@ -1360,8 +1381,10 @@ check_required_feature(Globals, Context, Feature, !Specs) :-
         current_grade_supports_par_conj(Globals, IsParConjSupported),
         (
             IsParConjSupported = no,
-            Pieces = [words("Error: this module must be compiled in a grade"),
-                words("that supports executing conjuntions in parallel."), nl],
+            Pieces = [words("Error: this module must be compiled")] ++
+                color_as_incorrect([words("in a grade that"),
+                    words("supports executing conjuntions in parallel.")]) ++
+                [nl],
             Spec = spec($pred, severity_error, phase_pt2h, Context, Pieces),
             !:Specs = [Spec | !.Specs]
         ;
@@ -1372,8 +1395,10 @@ check_required_feature(Globals, Context, Feature, !Specs) :-
         globals.lookup_bool_option(Globals, use_trail, UseTrail),
         (
             UseTrail = no,
-            Pieces = [words("Error: this module must be compiled in a grade"),
-                words("that supports trailing.")],
+            Pieces = [words("Error: this module must be compiled")] ++
+                color_as_incorrect([words("in a grade that"),
+                    words("supports trailing.")]) ++
+                [nl],
             VerbosePieces = [words("Grades that support trailing contain"),
                 words("the grade modifier"), quote("tr"), suffix("."), nl],
             Msg = simple_msg(Context,
@@ -1395,8 +1420,10 @@ check_required_feature(Globals, Context, Feature, !Specs) :-
         then
             true
         else
-            Pieces = [words("Error: this module must be compiled using"),
-                words("the strict sequential semantics."), nl],
+            Pieces = [words("Error: this module must be compiled")] ++
+                color_as_incorrect([words("using the strict"),
+                    words("sequential semantics.")]) ++
+                [nl],
             Spec = spec($pred, severity_error, phase_pt2h, Context, Pieces),
             !:Specs = [Spec | !.Specs]
         )
@@ -1416,8 +1443,10 @@ check_required_feature(Globals, Context, Feature, !Specs) :-
             ( GC_Method = gc_accurate
             ; GC_Method = gc_none
             ),
-            Pieces = [words("Error: this module must be compiled in a grade"),
-                words("that uses conservative garbage collection."), nl],
+            Pieces = [words("Error: this module must be compiled")] ++
+                color_as_incorrect([words("in a grade that"),
+                    words("uses conservative garbage collection.")]) ++
+                [nl],
             Spec = spec($pred, severity_error, phase_pt2h, Context, Pieces),
             !:Specs = [Spec | !.Specs]
         )
@@ -1442,10 +1471,13 @@ add_impl_pragma_tabled(ProgressStream, ItemMercuryStatus, Tabled,
     ;
         TypeLayout = no,
         Tabled = impl_pragma_tabled_info(TabledMethod, _, _, Context, _),
-        Pieces = [words("Error:"),
-            pragma_decl(tabled_eval_method_to_pragma_name(TabledMethod)),
-            words("declaration requires type_ctor_layout structures."),
-            words("Don't use --no-type-layout to disable them."), nl],
+        PragmaName = tabled_eval_method_to_pragma_name(TabledMethod),
+        Pieces = [words("Error:")] ++
+            color_as_subject([pragma_decl(PragmaName),
+                words("declaration")]) ++
+            color_as_incorrect(
+                [words("requires type_ctor_layout structures.")]) ++
+            [words("Don't use --no-type-layout to disable them."), nl],
         Spec = spec($pred, severity_error, phase_pt2h, Context, Pieces),
         !:Specs = [Spec | !.Specs]
     ).
@@ -1731,11 +1763,15 @@ pragma_conflict_error(PredSpec, Context, PragmaName, ConflictMarkers,
         PorFPieces = [words("function")]
     ),
     list.map(marker_name, set.to_sorted_list(ConflictMarkers), ConflictNames),
-    Pieces = [words("Error:"), pragma_decl(PragmaName),
-        words("declaration conflicts with previous")] ++
-        list_to_pieces(ConflictNames) ++
-        [words(choose_number(ConflictNames, "pragma for", "pragmas for"))]
-        ++ PorFPieces ++ [unqual_sym_name_arity(SNA), suffix("."), nl],
+    Pieces = [words("Error:")] ++
+        color_as_subject([pragma_decl(PragmaName),
+            words("declaration")]) ++
+        color_as_incorrect([words("conflicts")]) ++
+        [words("with previous")] ++ list_to_pieces(ConflictNames) ++
+        [words(choose_number(ConflictNames, "pragma for", "pragmas for"))] ++
+        color_as_subject(PorFPieces ++
+            [unqual_sym_name_arity(SNA), suffix(".")]) ++
+        [nl],
     Spec = spec($pred, severity_error, phase_pt2h, Context, Pieces),
     !:Specs = [Spec | !.Specs].
 
@@ -1836,10 +1872,15 @@ get_matching_pred_ids(ModuleInfo, Pragma, RequireOneMatch, PragmaAllowsModes,
                     WarnActual = yes,
                     SNA = sym_name_arity(SymName, UserArityInt),
                     ActualPieces = [words("In"), pragma_decl(Pragma),
-                        words("declaration for"),
-                        unqual_sym_name_arity(SNA), suffix(":"), nl,
-                        words("warning: ambiguous name could refer to"),
-                        words("either a predicate or a function."), nl],
+                        words("declaration for")] ++
+                        color_as_subject([unqual_sym_name_arity(SNA),
+                            suffix(":")]) ++
+                        [nl,
+                        words("warning:")] ++
+                        color_as_incorrect([words("ambiguous name"),
+                            words("could refer to either"),
+                            words("a predicate or a function.")]) ++
+                        [nl],
                     ActualSpec = spec($pred, severity_warning, phase_pt2h,
                         Context, ActualPieces),
                     % There is no point in printing WarnSpecs warning about
@@ -1852,10 +1893,15 @@ get_matching_pred_ids(ModuleInfo, Pragma, RequireOneMatch, PragmaAllowsModes,
                 RequireOneMatch = require_one_match,
                 SNA = sym_name_arity(SymName, UserArityInt),
                 ErrorPieces = [words("In"), pragma_decl(Pragma),
-                    words("declaration for"),
-                    unqual_sym_name_arity(SNA), suffix(":"), nl,
-                    words("error: ambiguous name could refer to"),
-                    words("either a predicate or a function."), nl],
+                    words("declaration for")] ++
+                    color_as_subject([unqual_sym_name_arity(SNA),
+                        suffix(":")]) ++
+                    [nl,
+                    words("error:")] ++
+                    color_as_incorrect([words("ambiguous name"),
+                        words("could refer to either"),
+                        words("a predicate or a function.")]) ++
+                        [nl],
                 ErrorSpec = spec($pred, severity_error, phase_pt2h,
                     Context, ErrorPieces),
                 Result = mpids_error([ErrorSpec])
@@ -1886,8 +1932,10 @@ transform_selected_mode_of_pred(PredId, PFNameArity, Modes,
         module_info_set_pred_info(PredId, PredInfo, !ModuleInfo)
     else
         Pieces = [words("Error:"), pragma_decl(PragmaName),
-            words("declaration for undeclared mode of"),
-            qual_pf_sym_name_user_arity(PFNameArity), suffix("."), nl],
+            words("declaration for")] ++
+            color_as_incorrect([words("undeclared mode")]) ++
+            [words("of"), qual_pf_sym_name_user_arity(PFNameArity),
+            suffix("."), nl],
         Spec = spec($pred, severity_error, phase_pt2h, Context, Pieces),
         !:Specs = [Spec | !.Specs]
     ).
@@ -1954,16 +2002,18 @@ look_up_pragma_pf_sym_arity(ModuleInfo, IsFullyQualified, FailHandling,
             "two or more PredIds but is_fully_qualified"),
         (
             FailHandling = lfh_user_error,
-            StartPieces = [words("Error: ambiguous"), p_or_f(PredOrFunc),
-                words("name in"), pragma_decl(PragmaName),
-                words("declaration."), nl,
-                words("The possible matches are:"), nl_indent_delta(1)],
             PredIdPiecesList = list.map(
                 describe_one_pred_name(ModuleInfo, should_module_qualify),
                 PredIds),
-            PredIdPieces = component_list_to_line_pieces(PredIdPiecesList,
-                [suffix("."), nl_indent_delta(-1)]),
-            MainPieces = StartPieces ++ PredIdPieces,
+            PredIdPieces = component_list_to_color_line_pieces(
+                yes(color_cause), [suffix(".")], [], PredIdPiecesList),
+            MainPieces = [words("Error:")] ++
+                color_as_incorrect([words("ambiguous"), p_or_f(PredOrFunc),
+                    words("name")]) ++
+                [words("in"), pragma_decl(PragmaName), words("declaration."),
+                nl,
+                words("The possible matches are:"), nl_indent_delta(1)] ++
+                PredIdPieces ++ [nl_indent_delta(-1)],
             VerbosePieces = [words("An explicit module qualifier"),
                 words("may be necessary to select the right match."), nl],
             Msg = simple_msg(Context,
@@ -2001,10 +2051,10 @@ report_unknown_pred_or_func(Severity, PragmaName, Context,
         PredOrFunc, SymName, UserArity) = Spec :-
     UserArity = user_arity(UserArityInt),
     SNA = sym_name_arity(SymName, UserArityInt),
-    Pieces = [words("Internal compiler error:"),
-        words("unknown"), words(pred_or_func_to_full_str(PredOrFunc)),
-        qual_sym_name_arity(SNA), words("in"),
-        pragma_decl(PragmaName), words("declaration."), nl],
+    Pieces = [words("Internal compiler error:")] ++
+        color_as_incorrect([words("unknown"), p_or_f(PredOrFunc),
+            qual_sym_name_arity(SNA)]) ++
+        [words("in"), pragma_decl(PragmaName), words("declaration."), nl],
     Spec = spec($pred, Severity, phase_pt2h, Context, Pieces).
 
 :- func report_ambiguous_pred_or_func(error_severity, string, prog_context,
@@ -2014,10 +2064,10 @@ report_ambiguous_pred_or_func(Severity, PragmaName, Context,
         PredOrFunc, SymName, UserArity) = Spec :-
     UserArity = user_arity(UserArityInt),
     SNA = sym_name_arity(SymName, UserArityInt),
-    Pieces = [words("Internal compiler error:"),
-        words("ambiguous"), words(pred_or_func_to_full_str(PredOrFunc)),
-        words("name"), qual_sym_name_arity(SNA), words("in"),
-        pragma_decl(PragmaName), words("declaration."), nl],
+    Pieces = [words("Internal compiler error:")] ++
+        color_as_incorrect([words("ambiguous"), p_or_f(PredOrFunc),
+            words("name"), qual_sym_name_arity(SNA)]) ++
+        [words("in"), pragma_decl(PragmaName), words("declaration."), nl],
     Spec = spec($pred, Severity, phase_pt2h, Context, Pieces).
 
 :- pred look_up_pragma_pf_sym_arity_mode_num(module_info::in,
@@ -2038,9 +2088,17 @@ look_up_pragma_pf_sym_arity_mode_num(ModuleInfo, IsFullyQualified,
         ( if map.search(ProcTable, ProcId, ProcInfo) then
             MaybePredProcId = ok4(PredId, ProcId, PredInfo, ProcInfo)
         else
+            PorF = pred_info_is_pred_or_func(PredInfo),
+            PredName = pred_info_name(PredInfo),
+            user_arity(UserArityInt) = pred_info_user_arity(PredInfo),
+            NameArity = name_arity(PredName, UserArityInt),
             Pieces = [words("Internal compiler error:"),
-                words("ambiguous predicate name in"), pragma_decl(PragmaName),
-                words("declaration."), nl],
+                pragma_decl(PragmaName), words("declaration."),
+                words("for")] ++
+                color_as_incorrect([words("unknown mode number"),
+                    int_fixed(ModeNum), words("of"),
+                    p_or_f(PorF), name_arity(NameArity), suffix(".")]) ++
+                [nl],
             Spec = spec($pred, severity_error, phase_pt2h, Context, Pieces),
             MaybePredProcId = error4([Spec])
         )
@@ -2071,20 +2129,24 @@ warn_about_pfu_unknown(ModuleInfo, PragmaName, PragmaAllowsModes,
         SNA = sym_name_arity(SymName, UserArityInt),
         (
             PragmaAllowsModes = pragma_does_not_allow_modes,
-            Pieces = [words("Warning: the"), pragma_decl(PragmaName),
-                words("declaration for"), unqual_sym_name_arity(SNA),
-                words("does not say whether it refers"),
-                words("to a predicate or to a function."), nl,
+            Pieces = [words("Warning: the")] ++
+                color_as_subject([pragma_decl(PragmaName),
+                    words("declaration for"), unqual_sym_name_arity(SNA)]) ++
+                color_as_incorrect([words("does not say whether it refers"),
+                    words("to a predicate or to a function.")]) ++
+                [nl,
                 words("(You can specify this information"),
                 words("by wrapping up"), unqual_sym_name_arity(SNA),
                 words("inside"), quote("pred(...)"), words("or"),
                 quote("func(...)"), suffix(".)"), nl]
         ;
             PragmaAllowsModes = pragma_allows_modes,
-            Pieces = [words("Warning: the"), pragma_decl(PragmaName),
-                words("declaration for"), unqual_sym_name_arity(SNA),
-                words("does not say whether it refers"),
-                words("to a predicate or to a function."), nl,
+            Pieces = [words("Warning: the")] ++
+                color_as_subject([pragma_decl(PragmaName),
+                    words("declaration for"), unqual_sym_name_arity(SNA)]) ++
+                color_as_incorrect([words("does not say whether it refers"),
+                    words("to a predicate or to a function.")]) ++
+                [nl,
                 words("(You can specify this information"),
                 words("either by wrapping up"), unqual_sym_name_arity(SNA),
                 words("inside"), quote("pred(...)"), words("or"),
@@ -2133,7 +2195,7 @@ maybe_warn_about_pfumm_unknown(ModuleInfo, PragmaName, PFUMM, SymName, Context,
     % it would otherwise merit one. This is because the error is in the other
     % module, and should be reported when *that* module is compiled.
     %
-    % If the pragma and the predicate occur inside the current module,
+    % If the pragma and the predicate both occur inside the current module,
     % there are four possibilities:
     %
     % 1: pred is not exported, pragma is not exported
@@ -2191,9 +2253,12 @@ check_pragma_status(PragmaName, StatusClass, PragmaStatus, Context,
                 PredNamePieces = describe_one_pred_info_name(
                     should_not_module_qualify, PredInfo),
                 Pieces = [words("Error: since the")] ++
-                    PredNamePieces ++ [words("is not exported, the"),
-                    pragma_decl(PragmaName), words("declaration for it"),
-                    words("may not be exported either."), nl],
+                    color_as_subject(PredNamePieces) ++
+                    [words("is not exported, the"),
+                    pragma_decl(PragmaName), words("declaration for it")] ++
+                    color_as_incorrect(
+                        [words("may not be exported either.")]) ++
+                    [nl],
                 Spec = spec($pred, severity_error, phase_pt2h,
                     Context, Pieces),
                 !:Specs = [Spec | !.Specs]
@@ -2208,9 +2273,13 @@ check_pragma_status(PragmaName, StatusClass, PragmaStatus, Context,
                     PredNamePieces = describe_one_pred_info_name(
                         should_not_module_qualify, PredInfo),
                     Pieces = [words("Warning: since the")] ++
-                        PredNamePieces ++ [words("is exported, the"),
-                        pragma_decl(PragmaName), words("declaration for it"),
-                        words("should also be exported."), nl],
+                        color_as_subject(PredNamePieces) ++
+                        [words("is exported, the"),
+                        pragma_decl(PragmaName),
+                        words("declaration for it")] ++
+                        color_as_incorrect(
+                            [words("should also be exported.")]) ++
+                        [nl],
                     Spec = spec($pred, severity_warning, phase_pt2h,
                         Context, Pieces),
                     !:Specs = [Spec | !.Specs]
@@ -2231,8 +2300,9 @@ check_pragma_status(PragmaName, StatusClass, PragmaStatus, Context,
                     % type, which represents the parse trees of source modules,
                     % cannot represent impl pragmas in interface sections.
                     Pieces = [words("Error: a"),
-                        pragma_decl(PragmaName), words("declaration"),
-                        words("may not be exported, even if"),
+                        pragma_decl(PragmaName), words("declaration")] ++
+                        color_as_incorrect([words("may not be exported,")]) ++
+                        [words("even if"),
                         words("the predicate or function it refers to"),
                         words("is exported."), nl],
                     Spec = spec($pred, severity_error, phase_pt2h,

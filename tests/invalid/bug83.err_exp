@@ -1,7 +1,7 @@
-bug83.m:027: Error: ambiguous function name in `:- pragma foreign_export'
+bug83.m:027: Error: [38;5;203mambiguous function name[39;49m in `:- pragma foreign_export'
 bug83.m:027:   declaration.
 bug83.m:027:   The possible matches are:
-bug83.m:027:     function `io.make_io_error'/1,
-bug83.m:027:     function `bug83.make_io_error'/1.
+bug83.m:027:     [38;5;226mfunction `io.make_io_error'/1,[39;49m
+bug83.m:027:     [38;5;226mfunction `bug83.make_io_error'/1.[39;49m
 bug83.m:027:   An explicit module qualifier may be necessary to select the
 bug83.m:027:   right match.

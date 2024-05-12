@@ -2,6 +2,6 @@ pragma_term_conflict.m:014: Warning: predicate `pragma_term_conflict.a'/0 and
 pragma_term_conflict.m:014:   predicate `pragma_term_conflict.b'/0 are mutually
 pragma_term_conflict.m:014:   recursive but some of their termination pragmas
 pragma_term_conflict.m:014:   are inconsistent.
-pragma_term_conflict.m:021: Warning: since the predicate `a'/0 is exported, the
-pragma_term_conflict.m:021:   `:- pragma terminates' declaration for it should
-pragma_term_conflict.m:021:   also be exported.
+pragma_term_conflict.m:021: Warning: since the [38;5;87mpredicate `a'/0[39;49m is exported, the
+pragma_term_conflict.m:021:   `:- pragma terminates' declaration for it [38;5;203mshould[39;49m
+pragma_term_conflict.m:021:   [38;5;203malso be exported.[39;49m

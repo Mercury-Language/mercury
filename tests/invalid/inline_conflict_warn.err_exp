@@ -1,5 +1,5 @@
-inline_conflict_warn.m:021: Error: `:- pragma no_inline' declaration conflicts
-inline_conflict_warn.m:021:   with previous inline pragma for `bar'/2.
-inline_conflict_warn.m:028: In `:- pragma inline' declaration for `baz'/2:
-inline_conflict_warn.m:028:   warning: ambiguous name could refer to either a
-inline_conflict_warn.m:028:   predicate or a function.
+inline_conflict_warn.m:021: Error: [38;5;87m`:- pragma no_inline' declaration[39;49m [38;5;203mconflicts[39;49m
+inline_conflict_warn.m:021:   with previous inline pragma for [38;5;87m`bar'/2.[39;49m
+inline_conflict_warn.m:028: In `:- pragma inline' declaration for [38;5;87m`baz'/2:[39;49m
+inline_conflict_warn.m:028:   warning: [38;5;203mambiguous name could refer to either a[39;49m
+inline_conflict_warn.m:028:   [38;5;203mpredicate or a function.[39;49m
