@@ -83,9 +83,10 @@ parse_initialise_item(_ModuleName, VarSet, ArgTerms, Context, SeqNum,
                 SymNameSpecifier = sym_name_specifier_name(_),
                 TermStr = describe_error_term(VarSet, Term),
                 Pieces = [words("Error in"), decl("initialise"),
-                    words("declaration:"),
-                    words("expected"), quote("predname/arity"), suffix(","),
-                    words("got"), quote(TermStr), suffix("."), nl],
+                    words("declaration:"), words("expected")] ++
+                    color_as_correct([quote("predname/arity"), suffix(",")]) ++
+                    [words("got")] ++
+                    color_as_incorrect([quote(TermStr), suffix(".")]) ++ [nl],
                 Spec = spec($pred, severity_error, phase_t2pt,
                     get_term_context(Term), Pieces),
                 MaybeIOM = error1([Spec])
@@ -101,9 +102,11 @@ parse_initialise_item(_ModuleName, VarSet, ArgTerms, Context, SeqNum,
                 else
                     TermStr = describe_error_term(VarSet, Term),
                     Pieces = [words("Error:"), decl("initialise"),
-                        words("declaration specifies a predicate,"),
-                        quote(TermStr), suffix(","), words("whose arity"),
-                        words("is not zero or two."), nl],
+                        words("declaration specifies a predicate,")] ++
+                        color_as_subject([quote(TermStr), suffix(",")]) ++
+                        color_as_incorrect(
+                            [words("whose arity is not zero or two.")]) ++
+                        [nl],
                     Spec = spec($pred, severity_error, phase_t2pt,
                         get_term_context(Term), Pieces),
                     MaybeIOM = error1([Spec])
@@ -111,9 +114,11 @@ parse_initialise_item(_ModuleName, VarSet, ArgTerms, Context, SeqNum,
             )
         )
     else
-        Pieces = [words("Error: an"), decl("initialise"), words("declaration"),
-            words("should have the form"),
-            quote(":- initialise pred_name/pred_arity."), nl],
+        Pieces = [words("Error: an"), decl("initialise"),
+            words("declaration")] ++
+            color_as_incorrect([words("should have the form")]) ++
+            color_as_correct([quote(":- initialise pred_name/pred_arity.")]) ++
+            [nl],
         Spec = spec($pred, severity_error, phase_t2pt, Context, Pieces),
         MaybeIOM = error1([Spec])
     ).
@@ -133,9 +138,11 @@ parse_finalise_item(_ModuleName, VarSet, ArgTerms, Context, SeqNum,
                 SymNameSpecifier = sym_name_specifier_name(_),
                 TermStr = describe_error_term(VarSet, Term),
                 Pieces = [words("Error in"), decl("finalise"),
-                    words("declaration:"),
-                    words("expected"), quote("predname/arity"), suffix(","),
-                    words("got"), quote(TermStr), suffix("."), nl],
+                    words("declaration:"), words("expected")] ++
+                    color_as_correct([quote("predname/arity"), suffix(",")]) ++
+                    [words("got")] ++
+                    color_as_incorrect([quote(TermStr), suffix(".")]) ++
+                    [nl],
                 Spec = spec($pred, severity_error, phase_t2pt,
                     get_term_context(Term), Pieces),
                 MaybeIOM = error1([Spec])
@@ -151,9 +158,11 @@ parse_finalise_item(_ModuleName, VarSet, ArgTerms, Context, SeqNum,
                 else
                     TermStr = describe_error_term(VarSet, Term),
                     Pieces = [words("Error:"), decl("finalise"),
-                        words("declaration specifies a predicate"),
-                        words("whose arity is not zero or two:"),
-                        quote(TermStr), suffix("."), nl],
+                        words("declaration specifies a predicate,")] ++
+                        color_as_subject([quote(TermStr), suffix(",")]) ++
+                        color_as_incorrect(
+                            [words("whose arity is not zero or two.")]) ++
+                        [nl],
                     Spec = spec($pred, severity_error, phase_t2pt,
                         get_term_context(Term), Pieces),
                     MaybeIOM = error1([Spec])
@@ -161,9 +170,10 @@ parse_finalise_item(_ModuleName, VarSet, ArgTerms, Context, SeqNum,
             )
         )
     else
-        Pieces = [words("Error: a"), decl("finalise"), words("declaration"),
-            words("should have the form"),
-            quote(":- finalise pred_name/pred_arity."), nl],
+        Pieces = [words("Error: a"), decl("finalise"), words("declaration")] ++
+            color_as_incorrect([words("should have the form")]) ++
+            color_as_correct([quote(":- finalise pred_name/pred_arity.")]) ++
+            [nl],
         Spec = spec($pred, severity_error, phase_t2pt, Context, Pieces),
         MaybeIOM = error1([Spec])
     ).
@@ -196,7 +206,7 @@ parse_mutable_decl_info(_ModuleName, VarSet, ArgTerms, Context, SeqNum,
             MaybeAttrsTerm = yes(MutAttrsTerm0)
         )
     then
-        parse_mutable_name(NameTerm, MaybeName),
+        parse_mutable_name(VarSet, NameTerm, MaybeName),
         parse_mutable_type(VarSet, TypeTerm, MaybeType),
         term.coerce(ValueTerm, Value),
         varset.coerce(VarSet, ProgVarSet),
@@ -245,19 +255,30 @@ parse_mutable_decl_info(_ModuleName, VarSet, ArgTerms, Context, SeqNum,
             Suffix1 = ""
         ),
         Pieces = [words("Error:") | WhatPieces] ++
-            [words("should have the form"), quote(Prefix ++ Form1 ++ Suffix1),
-            words("or the form"), quote(Prefix ++ Form2 ++ "."), nl],
+            color_as_incorrect([words("should have the form")]) ++
+            [nl_indent_delta(1)] ++
+            color_as_correct([quote(Prefix ++ Form1 ++ Suffix1)]) ++
+            [nl_indent_delta(-11),
+            words("or the form"),
+            nl_indent_delta(1)] ++
+            color_as_correct([quote(Prefix ++ Form2 ++ ".")]) ++
+            [nl_indent_delta(-1)],
         Spec = spec($pred, severity_error, phase_t2pt, Context, Pieces),
         MaybeItemMutableInfo = error1([Spec])
     ).
 
-:- pred parse_mutable_name(term::in, maybe1(string)::out) is det.
+:- pred parse_mutable_name(varset::in, term::in, maybe1(string)::out) is det.
 
-parse_mutable_name(NameTerm, MaybeName) :-
+parse_mutable_name(VarSet, NameTerm, MaybeName) :-
     ( if NameTerm = term.functor(atom(Name), [], _) then
         MaybeName = ok1(Name)
     else
-        Pieces = [words("Error: invalid mutable name."), nl],
+        NameTermStr = describe_error_term(VarSet, NameTerm),
+        Pieces = [words("Error: expected a")] ++
+            color_as_correct([words("mutable name.")]) ++
+            [words("got")] ++
+            color_as_incorrect([quote(NameTermStr), suffix(".")]) ++
+            [nl],
         Spec = spec($pred, severity_error, phase_t2pt,
             get_term_context(NameTerm), Pieces),
         MaybeName = error1([Spec])
@@ -269,8 +290,10 @@ parse_mutable_type(VarSet, TypeTerm, MaybeType) :-
     ( if term_vars.term_contains_var(TypeTerm, _) then
         TypeTermStr = describe_error_term(VarSet, TypeTerm),
         Pieces = [words("Error: the type in a"), decl("mutable"),
-            words("declaration may not contain variables, but"),
-            quote(TypeTermStr), words("does."), nl],
+            words("declaration may not contain variables, but")] ++
+            color_as_subject([quote(TypeTermStr)]) ++
+            color_as_incorrect([words("does.")]) ++
+            [nl],
         Spec = spec($pred, severity_error, phase_t2pt,
             get_term_context(TypeTerm), Pieces),
         MaybeType = error1([Spec])
@@ -289,8 +312,10 @@ parse_mutable_inst(VarSet, InstTerm, MaybeInst) :-
     ( if term_vars.term_contains_var(InstTerm, _) then
         InstTermStr = describe_error_term(VarSet, InstTerm),
         Pieces = [words("Error: the inst in a"), decl("mutable"),
-            words("declaration cannot contain variables:"),
-            quote(InstTermStr), suffix("."), nl],
+            words("declaration cannot contain variables, but")] ++
+            color_as_subject([quote(InstTermStr)]) ++
+            color_as_incorrect([words("does.")]) ++
+            [nl],
         Spec = spec($pred, severity_error, phase_t2pt,
             get_term_context(InstTerm), Pieces),
         MaybeInst = error1([Spec])
@@ -349,8 +374,11 @@ parse_mutable_attrs(VarSet, MutAttrsTerm, MaybeMutAttrs) :-
             MutAttrsTerm),
         Pieces = [words("In fifth argument of"),
             decl("mutable"), words("declaration:"),
-            words("error: expected a list of attributes, got"),
-            quote(MutAttrsStr), suffix("."), nl],
+            words("error: expected a")] ++
+            color_as_correct([words("list of attributes,")]) ++
+            [words("got")] ++
+            color_as_incorrect([quote(MutAttrsStr), suffix(".")]) ++
+            [nl],
         Spec = spec($pred, severity_error, phase_t2pt,
             get_term_context(MutAttrsTerm), Pieces),
         MaybeMutAttrs = error1([Spec])
@@ -378,15 +406,7 @@ record_mutable_attributes(VarSet, [Term - Attr | TermAttrs], !LangMap,
         Attr = mutable_attr_foreign_name(ForeignName),
         ForeignName = foreign_name(Lang, Name),
         ( if map.search(!.LangMap, Lang, Term0 - _Name0) then
-            TermStr0 =
-                mercury_term_to_string_vs(VarSet, print_name_only, Term0),
-            TermStr =
-                mercury_term_to_string_vs(VarSet, print_name_only, Term),
-            Pieces = [words("Error: attributes"), quote(TermStr0),
-                words("and"), quote(TermStr), words("conflict."), nl],
-            Spec = spec($pred, severity_error, phase_t2pt,
-                get_term_context(Term), Pieces),
-            !:Specs = [Spec | !.Specs]
+            report_conflicting_attributes(VarSet, Term0, Term, !Specs)
         else
             map.det_insert(Lang, Term - Name, !LangMap)
         )
@@ -470,9 +490,11 @@ check_attribute_fit(VarSet, OnlyLangMap, MaybeTrailed, MaybeConst, MaybeIO,
                     % Local is wrong, but will not be used due to !:Specs.
                     LocalTermStr = mercury_term_to_string_vs(VarSet,
                         print_name_only, LocalTerm),
-                    Pieces = [words("Error: attribute"), quote(LocalTermStr),
-                        words("conflicts with the default,"),
-                        words("which is that updates are trailed."),
+                    Pieces = [words("Error: attribute")] ++
+                        color_as_subject([quote(LocalTermStr)]) ++
+                        color_as_incorrect(
+                            [words("conflicts with the default,")]) ++
+                        [words("which is that updates are trailed."),
                         words("You need to specify the"), quote("untrailed"),
                         words("attribute explicitly."), nl],
                     Spec = spec($pred, severity_error, phase_t2pt,
@@ -543,18 +565,19 @@ default_mutable_attributes =
 
 report_repeated_or_conflicting_attributes(VarSet, Term0, Attr0, Term, Attr,
         !Specs) :-
-    TermStr = mercury_term_to_string_vs(VarSet, print_name_only, Term),
     ( if Attr0 = Attr then
-        Pieces = [words("Error: attribute"), quote(TermStr),
-            words("is repeated."), nl]
+        TermStr = mercury_term_to_string_vs(VarSet, print_name_only, Term),
+        Pieces = [words("Error: attribute")] ++
+            color_as_subject([quote(TermStr)]) ++
+            [words("is")] ++
+            color_as_incorrect([words("repeated.")]) ++
+            [nl],
+        Spec = spec($pred, severity_error, phase_t2pt,
+            get_term_context(Term), Pieces),
+        !:Specs = [Spec | !.Specs]
     else
-        TermStr0 = mercury_term_to_string_vs(VarSet, print_name_only, Term0),
-        Pieces = [words("Error: attributes"), quote(TermStr0),
-            words("and"), quote(TermStr), words("conflict."), nl]
-    ),
-    Spec = spec($pred, severity_error, phase_t2pt,
-        get_term_context(Term), Pieces),
-    !:Specs = [Spec | !.Specs].
+        report_conflicting_attributes(VarSet, Term0, Term, !Specs)
+    ).
 
 :- pred report_conflicting_attributes(varset::in, term::in, term::in,
     list(error_spec)::in, list(error_spec)::out) is det.
@@ -562,8 +585,12 @@ report_repeated_or_conflicting_attributes(VarSet, Term0, Attr0, Term, Attr,
 report_conflicting_attributes(VarSet, Term0, Term, !Specs) :-
     TermStr0 = mercury_term_to_string_vs(VarSet, print_name_only, Term0),
     TermStr = mercury_term_to_string_vs(VarSet, print_name_only, Term),
-    Pieces = [words("Error: attributes"), quote(TermStr0),
-        words("and"), quote(TermStr), words("conflict."), nl],
+    Pieces = [words("Error: attributes")] ++
+        color_as_possible_cause([quote(TermStr0)]) ++
+        [words("and")] ++
+        color_as_possible_cause([quote(TermStr)]) ++
+        color_as_incorrect([words("conflict.")]) ++
+        [nl],
     Spec = spec($pred, severity_error, phase_t2pt,
         get_term_context(Term), Pieces),
     !:Specs = [Spec | !.Specs].
@@ -617,9 +644,10 @@ parse_mutable_attr(VarSet, MutAttrTerm, MutAttrResult) :-
         MutAttrResult = error1([Spec])
     else
         MutAttrStr = describe_error_term(VarSet, MutAttrTerm),
-        Pieces = [words("Error in"), decl("mutable"), words("declaration:"),
-            nl, words("unrecognised attribute"), quote(MutAttrStr),
-            suffix("."), nl],
+        Pieces =
+            [words("Error in"), decl("mutable"), words("declaration:"), nl] ++
+            color_as_incorrect([words("unrecognised attribute")]) ++
+            color_as_subject([quote(MutAttrStr), suffix(".")]) ++ [nl],
         Spec = spec($pred, severity_error, phase_t2pt,
             get_term_context(MutAttrTerm), Pieces),
         MutAttrResult = error1([Spec])
