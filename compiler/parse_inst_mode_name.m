@@ -80,8 +80,10 @@
 :- import_module parse_tree.parse_util.
 
 :- import_module bool.
+:- import_module maybe.
 :- import_module set.
 :- import_module string.
+:- import_module term_context.
 
 %---------------------------------------------------------------------------%
 
@@ -105,12 +107,14 @@ parse_modes(AllowConstrainedInstVar, VarSet, ContextPieces, [Term | Terms],
     ).
 
 parse_mode(AllowConstrainedInstVar, VarSet, ContextPieces, Term, MaybeMode) :-
+    % The code of parse_mode and parse_inst should be kept in sync.
     (
         Term = term.variable(_, Context),
         TermStr = describe_error_term(VarSet, Term),
         Pieces = cord.list(ContextPieces) ++ [lower_case_next_if_not_first,
-            words("Error: a variable such as"), quote(TermStr),
-            words("is not a valid mode."), nl],
+            words("Error: a variable such as")] ++
+            color_as_subject([quote(TermStr)]) ++
+            color_as_incorrect([words("is not a valid mode.")]) ++ [nl],
         Spec = spec($pred, severity_error, phase_t2pt, Context, Pieces),
         MaybeMode = error1([Spec])
     ;
@@ -131,8 +135,9 @@ parse_mode(AllowConstrainedInstVar, VarSet, ContextPieces, Term, MaybeMode) :-
             ),
             TermStr = describe_error_term(VarSet, Term),
             Pieces = cord.list(ContextPieces) ++ [lower_case_next_if_not_first,
-                words("Error:"), words(Name), words("such as"), quote(TermStr),
-                words("cannot be a valid mode."), nl],
+                words("Error:"), words(Name), words("such as")] ++
+                color_as_subject([quote(TermStr)]) ++
+                color_as_incorrect([words("is not a valid mode.")]) ++ [nl],
             Spec = spec($pred, severity_error, phase_t2pt, Context, Pieces),
             MaybeMode = error1([Spec])
         ;
@@ -192,151 +197,39 @@ is_known_mode_name(">>").
 is_known_mode_name("is").
 
 :- pred parse_higher_order_mode(allow_constrained_inst_var::in, varset::in,
-    cord(format_piece)::in, term::in, term::in, maybe1(mer_mode)::out)
-    is det.
+    cord(format_piece)::in, term::in, term::in, maybe1(mer_mode)::out) is det.
 
 parse_higher_order_mode(AllowConstrainedInstVar, VarSet, ContextPieces,
         BeforeIsTerm, DetTerm, MaybeMode) :-
-    ( if
-        BeforeIsTerm =
-            term.functor(term.atom(BeforeIsFunctor), BeforeIsArgTerms, _),
-        (
-            BeforeIsFunctor = "pred",
-            % Handle higher-order predicate modes:
-            % a mode of the form
-            %   pred(<Mode1>, <Mode2>, ...) is <Det>
-            % is an abbreviation for the inst mapping
-            %   (  pred(<Mode1>, <Mode2>, ...) is <Det>
-            %   -> pred(<Mode1>, <Mode2>, ...) is <Det>
-            %   )
-            IsAny = no
-        ;
-            BeforeIsFunctor = "any_pred",
-            % Handle higher-order predicate modes:
-            % a mode of the form
-            %   any_pred(<Mode1>, <Mode2>, ...) is <Det>
-            % is an abbreviation for the inst mapping
-            %   (  any_pred(<Mode1>, <Mode2>, ...) is <Det>
-            %   -> any_pred(<Mode1>, <Mode2>, ...) is <Det>
-            %   )
-            IsAny = yes
-        )
-    then
+    parse_higher_order_inst(AllowConstrainedInstVar, VarSet, ContextPieces,
+        BeforeIsTerm, DetTerm, MaybeInst),
+    (
+        MaybeInst = ok1(Inst),
         AllowInstsAsModes = globals.get_allow_ho_insts_as_modes,
         (
+            AllowInstsAsModes = yes,
+            Mode = from_to_mode(Inst, Inst),
+            MaybeMode = ok1(Mode)
+        ;
             AllowInstsAsModes = no,
-            Pieces = cord.list(ContextPieces) ++ [lower_case_next_if_not_first,
-                words("Error: higher order inst is used as a mode."), nl],
+            ErrorTerm = term.functor(atom("is"), [BeforeIsTerm, DetTerm],
+                dummy_context),
+            ErrorTermStr = describe_error_term(VarSet, ErrorTerm),
+            Pieces = cord.list(ContextPieces) ++
+                [lower_case_next_if_not_first, words("Error:"),
+                words("the"), quote("--no-llow-ho-insts-as-modes"),
+                words("option")] ++
+                color_as_incorrect([words("prohibits")]) ++
+                [words("higher order insts such as")] ++
+                color_as_subject([quote(ErrorTermStr)]) ++
+                [words("being used as modes."), nl],
             Spec = spec($pred, severity_error, phase_t2pt,
                 get_term_context(BeforeIsTerm), Pieces),
             MaybeMode = error1([Spec])
-        ;
-            AllowInstsAsModes = yes,
-            % XXX Should update ContextPieces.
-            parse_modes(AllowConstrainedInstVar, VarSet, ContextPieces,
-                BeforeIsArgTerms, MaybeArgModes),
-            parse_determinism(VarSet, DetTerm, MaybeDetism),
-            ( if
-                MaybeArgModes = ok1(ArgModes),
-                MaybeDetism = ok1(Detism)
-            then
-                PredInstInfo = pred_inst_info(pf_predicate, ArgModes,
-                    arg_reg_types_unset, Detism),
-                (
-                    IsAny = no,
-                    Inst = ground(shared, higher_order(PredInstInfo))
-                ;
-                    IsAny = yes,
-                    Inst = any(shared, higher_order(PredInstInfo))
-                ),
-                Mode = from_to_mode(Inst, Inst),
-                MaybeMode = ok1(Mode)
-            else
-                Specs = get_any_errors1(MaybeArgModes)
-                    ++ get_any_errors1(MaybeDetism),
-                MaybeMode = error1(Specs)
-            )
         )
-    else if
-        BeforeIsTerm =
-            term.functor(term.atom(BeforeIsFunctor), BeforeIsArgTerms, _),
-        BeforeIsFunctor = "=",
-        BeforeIsArgTerms = [FuncTerm, RetModeTerm],
-        FuncTerm = term.functor(term.atom(FuncTermFunctor), ArgModesTerms, _),
-        (
-            FuncTermFunctor = "func",
-            % Handle higher-order function modes:
-            % a mode of the form
-            %   func(<Mode1>, <Mode2>, ...) = <RetMode> is <Det>
-            % is an abbreviation for the inst mapping
-            %   (  func(<Mode1>, <Mode2>, ...) = <RetMode> is <Det>
-            %   -> func(<Mode1>, <Mode2>, ...) = <RetMode> is <Det>
-            %   )
-            IsAny = no
-        ;
-            FuncTermFunctor = "any_func",
-            % Handle higher-order function modes:
-            % a mode of the form
-            %   any_func(<Mode1>, <Mode2>, ...) = <RetMode> is <Det>
-            % is an abbreviation for the inst mapping
-            %   (  any_func(<Mode1>, <Mode2>, ...) = <RetMode> is <Det>
-            %   -> any_func(<Mode1>, <Mode2>, ...) = <RetMode> is <Det>
-            %   )
-            IsAny = yes
-        )
-    then
-        AllowInstsAsModes = globals.get_allow_ho_insts_as_modes,
-        (
-            AllowInstsAsModes = no,
-            Pieces = cord.list(ContextPieces) ++ [lower_case_next_if_not_first,
-                words("Error: higher order inst is used as a mode."), nl],
-            Spec = spec($pred, severity_error, phase_t2pt,
-                get_term_context(BeforeIsTerm), Pieces),
-            MaybeMode = error1([Spec])
-        ;
-            AllowInstsAsModes = yes,
-            % XXX Should update ContextPieces.
-            parse_modes(AllowConstrainedInstVar, VarSet, ContextPieces,
-                ArgModesTerms, MaybeArgModes0),
-            parse_mode(AllowConstrainedInstVar, VarSet, ContextPieces,
-                RetModeTerm, MaybeRetMode),
-            parse_determinism(VarSet, DetTerm, MaybeDetism),
-            ( if
-                MaybeArgModes0 = ok1(ArgModes0),
-                MaybeRetMode = ok1(RetMode),
-                MaybeDetism = ok1(Detism)
-            then
-                ArgModes = ArgModes0 ++ [RetMode],
-                FuncInstInfo = pred_inst_info(pf_function, ArgModes,
-                    arg_reg_types_unset, Detism),
-                (
-                    IsAny = no,
-                    Inst = ground(shared, higher_order(FuncInstInfo))
-                ;
-                    IsAny = yes,
-                    Inst = any(shared, higher_order(FuncInstInfo))
-                ),
-                Mode = from_to_mode(Inst, Inst),
-                MaybeMode = ok1(Mode)
-            else
-                Specs = get_any_errors1(MaybeArgModes0)
-                    ++ get_any_errors1(MaybeRetMode)
-                    ++ get_any_errors1(MaybeDetism),
-                MaybeMode = error1(Specs)
-            )
-        )
-    else
-        Pieces = cord.list(ContextPieces) ++ [lower_case_next_if_not_first,
-            words("Error: a higher-order mode should have"),
-            words("one of the following forms:"), nl,
-            quote("pred(<mode1>, ...) is <detism>"), nl,
-            quote("any_pred(<mode1>, ...) is <detism>"), nl,
-            quote("func(<mode1>, ...) = <return_mode> is <detism>"), nl,
-            quote("any_func(<mode1>, ...) = <return_mode> is <detism>"), nl,
-            suffix("."), nl],
-        Spec = spec($pred, severity_error, phase_t2pt,
-            get_term_context(BeforeIsTerm), Pieces),
-        MaybeMode = error1([Spec])
+    ;
+        MaybeInst = error1(Specs),
+        MaybeMode = error1(Specs)
     ).
 
 %---------------------------------------------------------------------------%
@@ -361,26 +254,36 @@ parse_insts(AllowConstrainedInstVar, VarSet, ContextPieces, [Term | Terms],
     ).
 
 parse_inst(AllowConstrainedInstVar, VarSet, ContextPieces, Term, MaybeInst) :-
+    % The code of parse_mode and parse_inst should be kept in sync.
     (
         Term = term.variable(Var, _),
         term.coerce_var(Var, InstVar),
         MaybeInst = ok1(inst_var(InstVar))
     ;
-        Term = term.functor(Functor, ArgTerms, Context),
+        Term = term.functor(TermFunctor, ArgTerms, Context),
         (
-            ( Functor = term.integer(_, _, _, _)
-            ; Functor = term.string(_)
-            ; Functor = term.float(_)
-            ; Functor = term.implementation_defined(_)
+            (
+                TermFunctor = term.integer(_, _, _, _),
+                Name = "an integer"
+            ;
+                TermFunctor = term.float(_),
+                Name = "a floating point number"
+            ;
+                TermFunctor = term.string(_),
+                Name = "a string"
+            ;
+                TermFunctor = term.implementation_defined(_),
+                Name = "an implementation defined literal"
             ),
             TermStr = describe_error_term(VarSet, Term),
             Pieces = cord.list(ContextPieces) ++ [lower_case_next_if_not_first,
-                words("Error:"), quote(TermStr),
-                words("is not a valid inst."), nl],
+                words("Error:"), words(Name), words("such as")] ++
+                color_as_subject([quote(TermStr)]) ++
+                color_as_incorrect([words("is not a valid inst.")]) ++ [nl],
             Spec = spec($pred, severity_error, phase_t2pt, Context, Pieces),
             MaybeInst = error1([Spec])
         ;
-            Functor = term.atom(Name),
+            TermFunctor = term.atom(Name),
             parse_inst_atom_functor(AllowConstrainedInstVar, VarSet,
                 ContextPieces, Name, ArgTerms, Context, MaybeInst)
         )
@@ -397,11 +300,15 @@ parse_inst_atom_functor(AllowConstrainedInstVar, VarSet, ContextPieces,
     % duplicating the code of is_simple_builtin_inst.
     ( if is_known_inst_name_args(Name, ArgTerms0, KnownInstKind) then
         (
-            KnownInstKind = known_inst_bad_arity(ExpectedArityStr),
+            KnownInstKind = known_inst_bad_arity(ExpectedArities),
             Pieces = cord.list(ContextPieces) ++ [lower_case_next_if_not_first,
-                words("Error: the builtin inst"), quote(Name),
-                words("should only be used with arity"),
-                words(ExpectedArityStr), suffix("."), nl],
+                words("Error:")] ++
+                color_as_subject([words("the builtin inst"), quote(Name)]) ++
+                color_as_incorrect([words("should only be used")]) ++
+                [words("with arity")] ++
+                list_to_color_pieces(yes(color_correct), "or",
+                    [suffix(".")], ExpectedArities) ++
+                [nl],
             Spec = spec($pred, severity_error, phase_t2pt, Context, Pieces),
             MaybeInst = error1([Spec])
         ;
@@ -464,10 +371,12 @@ parse_inst_atom_functor(AllowConstrainedInstVar, VarSet, ContextPieces,
                     VarTermStr = describe_error_term(VarSet, VarTerm),
                     Pieces = cord.list(ContextPieces) ++
                         [lower_case_next_if_not_first,
-                        words("Error: inst constraints can be applied"),
-                        words("only to inst variables,"),
-                        words("not to terms such as"), quote(VarTermStr),
-                        suffix("."), nl],
+                        words("Error: inst constraints can be applied")] ++
+                        color_as_incorrect(
+                            [words("only to inst variables,")]) ++
+                        [words("not to terms such as")] ++
+                        color_as_subject([quote(VarTermStr), suffix(".")]) ++
+                        [nl],
                     Spec = spec($pred, severity_error, phase_t2pt,
                         get_term_context(VarTerm), Pieces),
                     MaybeInst = error1([Spec])
@@ -549,9 +458,11 @@ no_allow_constrained_inst_var_result(ContextPieces, Why, VarSet, Term)
         Place = "as the inst of a mutable"
     ),
     Pieces = cord.list(ContextPieces) ++ [lower_case_next_if_not_first,
-        words("Error: a constrained inst variable"),
-        words("such as"), quote(TermStr),
-        words("may not appear"), words(Place), suffix("."), nl],
+        words("Error: a constrained inst variable"), words("such as")] ++
+        color_as_subject([quote(TermStr)]) ++
+        color_as_incorrect([words("may not appear"), words(Place),
+            suffix(".")]) ++
+        [nl],
     Spec = spec($pred, severity_error, phase_t2pt,
         get_term_context(Term), Pieces),
     MaybeInst = error1([Spec]).
@@ -566,7 +477,8 @@ no_allow_constrained_inst_var_result(ContextPieces, Why, VarSet, Term)
 :- type known_inst_kind(T)
     --->    known_inst_simple(mer_inst)
     ;       known_inst_compound(known_compound_inst_kind(T))
-    ;       known_inst_bad_arity(string).  % The expected arity or arities.
+    ;       known_inst_bad_arity(list(string)).
+            % The expected arity or arities as strings.
 
 is_known_inst_name(Name) :-
     is_known_inst_name_args(Name, [] : list(mer_inst), _).
@@ -623,7 +535,7 @@ is_known_inst_name_args(Name, Args, KnownInst) :-
             KnownInst = known_inst_simple(SimpleInst)
         ;
             Args = [_ | _],
-            KnownInst = known_inst_bad_arity("zero")
+            KnownInst = known_inst_bad_arity(["zero"])
         )
     ;
         Name = "unique",
@@ -635,7 +547,7 @@ is_known_inst_name_args(Name, Args, KnownInst) :-
             KnownInst = known_inst_compound(kcik_unique(Arg1))
         ;
             Args = [_, _ | _],
-            KnownInst = known_inst_bad_arity("zero or one")
+            KnownInst = known_inst_bad_arity(["zero", "one"])
         )
     ;
         Name = "mostly_unique",
@@ -648,7 +560,7 @@ is_known_inst_name_args(Name, Args, KnownInst) :-
             KnownInst = known_inst_compound(kcik_mostly_unique(Arg1))
         ;
             Args = [_, _ | _],
-            KnownInst = known_inst_bad_arity("zero or one")
+            KnownInst = known_inst_bad_arity(["zero", "one"])
         )
     ;
         Name = "is",
@@ -657,7 +569,7 @@ is_known_inst_name_args(Name, Args, KnownInst) :-
             ; Args = [_]
             ; Args = [_, _, _ | _]
             ),
-            KnownInst = known_inst_bad_arity("two")
+            KnownInst = known_inst_bad_arity(["two"])
         ;
             Args = [Arg1, Arg2],
             KnownInst = known_inst_compound(kcik_is(Arg1, Arg2))
@@ -669,7 +581,7 @@ is_known_inst_name_args(Name, Args, KnownInst) :-
             ; Args = [_]
             ; Args = [_, _, _ | _]
             ),
-            KnownInst = known_inst_bad_arity("two")
+            KnownInst = known_inst_bad_arity(["two"])
         ;
             Args = [Arg1, Arg2],
             KnownInst = known_inst_compound(kcik_constrained(Arg1, Arg2))
@@ -680,7 +592,7 @@ is_known_inst_name_args(Name, Args, KnownInst) :-
             ( Args = []
             ; Args = [_, _ | _]
             ),
-            KnownInst = known_inst_bad_arity("one")
+            KnownInst = known_inst_bad_arity(["one"])
         ;
             Args = [Arg1],
             KnownInst = known_inst_compound(kcik_bound(Arg1))
@@ -693,16 +605,15 @@ is_known_inst_name_args(Name, Args, KnownInst) :-
             ( Args = []
             ; Args = [_, _ | _]
             ),
-            KnownInst = known_inst_bad_arity("one")
+            KnownInst = known_inst_bad_arity(["one"])
         ;
             Args = [Arg1],
             KnownInst = known_inst_compound(kcik_unique(Arg1))
         )
     ).
 
-:- pred parse_higher_order_inst(allow_constrained_inst_var::in,
-    varset::in, cord(format_piece)::in, term::in, term::in,
-    maybe1(mer_inst)::out) is det.
+:- pred parse_higher_order_inst(allow_constrained_inst_var::in, varset::in,
+    cord(format_piece)::in, term::in, term::in, maybe1(mer_inst)::out) is det.
 
 parse_higher_order_inst(AllowConstrainedInstVar, VarSet, ContextPieces,
         BeforeIsTerm, DetTerm, MaybeInst) :-
@@ -737,14 +648,14 @@ parse_higher_order_inst(AllowConstrainedInstVar, VarSet, ContextPieces,
             MaybeArgModes = ok1(ArgModes),
             MaybeDetism = ok1(Detism)
         then
-            PredInst = pred_inst_info(pf_predicate, ArgModes,
+            PredInstInfo = pred_inst_info(pf_predicate, ArgModes,
                 arg_reg_types_unset, Detism),
             (
                 IsAny = no,
-                Inst = ground(shared, higher_order(PredInst))
+                Inst = ground(shared, higher_order(PredInstInfo))
             ;
                 IsAny = yes,
-                Inst = any(shared, higher_order(PredInst))
+                Inst = any(shared, higher_order(PredInstInfo))
             ),
             MaybeInst = ok1(Inst)
         else
@@ -790,14 +701,14 @@ parse_higher_order_inst(AllowConstrainedInstVar, VarSet, ContextPieces,
             MaybeDetism = ok1(Detism)
         then
             ArgModes = ArgModes0 ++ [RetMode],
-            FuncInst = pred_inst_info(pf_function, ArgModes,
+            FuncInstInfo = pred_inst_info(pf_function, ArgModes,
                 arg_reg_types_unset, Detism),
             (
                 IsAny = no,
-                Inst = ground(shared, higher_order(FuncInst))
+                Inst = ground(shared, higher_order(FuncInstInfo))
             ;
                 IsAny = yes,
-                Inst = any(shared, higher_order(FuncInst))
+                Inst = any(shared, higher_order(FuncInstInfo))
             ),
             MaybeInst = ok1(Inst)
         else
@@ -807,14 +718,20 @@ parse_higher_order_inst(AllowConstrainedInstVar, VarSet, ContextPieces,
             MaybeInst = error1(Specs)
         )
     else
+        Form1 = "pred(<mode1>, ...) is <detism>",
+        Form2 = "any_pred(<mode1>, ...) is <detism>",
+        Form3 = "func(<mode1>, ...) = <return_mode> is <detism>",
+        Form4 = "any_func(<mode1>, ...) = <return_mode> is <detism>",
         Pieces = cord.list(ContextPieces) ++ [lower_case_next_if_not_first,
-            words("Error: a higher-order insts should have"),
-            words("one of the following forms:"), nl,
-            quote("pred(<inst1>, ...) is <detism>"), nl,
-            quote("any_pred(<inst1>, ...) is <detism>"), nl,
-            quote("func(<inst1>, ...) = <return_inst> is <detism>"), nl,
-            quote("any_func(<inst1>, ...) = <return_inst> is <detism>"), nl,
-            suffix("."), nl],
+            words("Error: a higher-order inst")] ++
+            color_as_incorrect([words("should have"),
+                words("one of the following forms:")]) ++
+            [nl_indent_delta(1)] ++
+            color_as_correct([quote(Form1)]) ++ [nl] ++
+            color_as_correct([quote(Form2)]) ++ [nl] ++
+            color_as_correct([quote(Form3)]) ++ [nl] ++
+            color_as_correct([quote(Form4), suffix(".")]) ++
+            [nl_indent_delta(-1)],
         Spec = spec($pred, severity_error, phase_t2pt,
             get_term_context(BeforeIsTerm), Pieces),
         MaybeInst = error1([Spec])
@@ -844,9 +761,11 @@ parse_bound_inst_list(AllowConstrainedInstVar, VarSet, ContextPieces,
             Duplicates = [_ | _]
         then
             Pieces = cord.list(ContextPieces) ++ [lower_case_next_if_not_first,
-                words("Error: this bound inst lists") |
-                component_list_to_pieces("and", Duplicates)]
-                ++ [words("more than once."), nl],
+                words("Error: this bound inst lists")] ++
+                component_list_to_color_pieces(yes(color_subject), "and", [],
+                    Duplicates) ++
+                color_as_incorrect([words("more than once.")]) ++
+                [nl],
             Spec = spec($pred, severity_error, phase_t2pt,
                 get_term_context(DisjunctionTerm), Pieces),
             MaybeInst = error1([Spec])
@@ -903,8 +822,10 @@ parse_bound_inst(AllowConstrainedInstVar, VarSet, ContextPieces, Term,
         Term = term.variable(_, Context),
         TermStr = describe_error_term(VarSet, Term),
         Pieces = cord.list(ContextPieces) ++ [lower_case_next_if_not_first,
-            words("Error:"), quote(TermStr),
-            words("is not a bound inst."), nl],
+            words("Error:")] ++
+            color_as_subject([quote(TermStr)]) ++
+            color_as_incorrect([words("is not a bound inst.")]) ++
+            [nl],
         Spec = spec($pred, severity_error, phase_t2pt, Context, Pieces),
         MaybeBoundInst = error1([Spec])
     ;
@@ -941,8 +862,11 @@ parse_bound_inst(AllowConstrainedInstVar, VarSet, ContextPieces, Term,
             TermStr = describe_error_term(VarSet, Term),
             Pieces = cord.list(ContextPieces) ++ [lower_case_next_if_not_first,
                 words("Error: an implementation defined literal"),
-                words("such as"), quote(TermStr),
-                words("may not be a used as a bound inst."), nl],
+                words("such as")] ++
+                color_as_subject([quote(TermStr)]) ++
+                color_as_incorrect(
+                    [words("may not be a used as a bound inst.")]) ++
+                [nl],
             Spec = spec($pred, severity_error, phase_t2pt, Context, Pieces),
             MaybeBoundInst = error1([Spec])
         ;
@@ -986,8 +910,10 @@ parse_determinism(VarSet, Term, MaybeDetism) :-
         MaybeDetism = ok1(Detism)
     else
         TermStr = describe_error_term(VarSet, Term),
-        DetismPieces = [words("Error:"), quote(TermStr),
-            words("is not a valid determinism."), nl],
+        DetismPieces = [words("Error:")] ++
+            color_as_subject([quote(TermStr)]) ++
+            color_as_incorrect([words("is not a valid determinism.")]) ++
+            [nl],
         DetismSpec = spec($pred, severity_error, phase_t2pt,
             get_term_context(Term), DetismPieces),
         MaybeDetism = error1([DetismSpec])
