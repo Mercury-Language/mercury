@@ -90,18 +90,17 @@
 
 :- type error_spec
     --->    spec(
-                % ZZZ field name prefixes
-                simp_id                 :: string,
-                simp_spec_severity      :: error_severity,
-                simp_spec_phase         :: error_phase,
-                simp_spec_context       :: prog_context,
-                simp_spec_pieces        :: list(format_piece)
+                s_id                    :: string,
+                s_spec_severity         :: error_severity,
+                s_spec_phase            :: error_phase,
+                s_spec_context          :: prog_context,
+                s_spec_pieces           :: list(format_piece)
             )
     ;       no_ctxt_spec(
-                simpnc_id               :: string,
-                simpnc_spec_severity    :: error_severity,
-                simpnc_spec_phase       :: error_phase,
-                simpnc_spec_pieces      :: list(format_piece)
+                ncs_id                  :: string,
+                ncs_spec_severity       :: error_severity,
+                ncs_spec_phase          :: error_phase,
+                ncs_spec_pieces         :: list(format_piece)
             )
     ;       error_spec(
                 error_id                :: string,
