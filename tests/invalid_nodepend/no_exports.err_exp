@@ -1,5 +1,5 @@
-no_exports.m:008: Warning: the interface of module `no_exports' does not export
-no_exports.m:008:   anything.
+no_exports.m:008: Warning: the interface of module [38;5;87m`no_exports'[39;49m [38;5;203mdoes not export[39;49m
+no_exports.m:008:   [38;5;203manything.[39;49m
 no_exports.m:008:   To be useful, a module should export something. A file
 no_exports.m:008:   should contain at least one declaration other than
 no_exports.m:008:   `:- import_module' in its interface section(s). This would

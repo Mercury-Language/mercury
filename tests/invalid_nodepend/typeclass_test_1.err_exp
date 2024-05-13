@@ -4,7 +4,9 @@ typeclass_test_1.m:012: In clause for predicate `main'/2:
 typeclass_test_1.m:012:   unsatisfiable typeclass constraint:
 typeclass_test_1.m:012:   `typeclass_test_1.numbered_type(int)'.
 typeclass_test_1.m:019: Error: expected
-typeclass_test_1.m:019:   `pred(<Name> / <Arity>) is <InstanceName>' or
-typeclass_test_1.m:019:   `func(<Name> / <Arity>) is <InstanceName>', not
-typeclass_test_1.m:019:   (type_num is foo_type_num).
+typeclass_test_1.m:019:     [38;5;40m`pred(<Name> / <Arity>) is <InstanceName>'[39;49m
+typeclass_test_1.m:019:   or
+typeclass_test_1.m:019:     [38;5;40m`func(<Name> / <Arity>) is <InstanceName>',[39;49m
+typeclass_test_1.m:019:   got
+typeclass_test_1.m:019:     [38;5;203m(type_num is foo_type_num).[39;49m
 typeclass_test_1.m:022: Syntax error at variable `_': operator or `.' expected.

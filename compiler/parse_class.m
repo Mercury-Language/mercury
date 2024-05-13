@@ -107,12 +107,17 @@ parse_typeclass_item(ModuleName, VarSet, ArgTerms, Context, SeqNum,
             MaybeIOM = error1(Specs)
         )
     else
-        Pieces = [words("Error: a"), decl("typeclass"), words("declaration"),
-            words("should have the form"),
-            quote(":- typeclass tcname(T1, ... Tn)"),
-            words("optionally followed by"),
-            quote("where [method_signature_1, ... method_signature_m]"),
-            suffix("."), nl],
+        Pieces =
+            [words("Error: a"), decl("typeclass"), words("declaration")] ++
+            color_as_incorrect([words("should have the form")]) ++
+            [nl_indent_delta(1)] ++
+            color_as_correct([quote(":- typeclass tcname(T1, ... Tn)")]) ++
+            [nl_indent_delta(-1),
+            words("optionally followed by"), nl_indent_delta(1)] ++
+            color_as_correct(
+                [quote("where [method_signature_1, ... method_signature_m]"),
+                suffix(".")]) ++
+            [nl],
         Spec = spec($pred, severity_error, phase_t2pt, Context, Pieces),
         MaybeIOM = error1([Spec])
     ).
@@ -225,22 +230,28 @@ parse_constrained_class(ModuleName, VarSet, NameTerm, ConstraintsTerm,
             ;
                 NotInParams = [_ | _],
                 ClassTVarSet = ItemTypeClass0 ^ tc_varset,
-                ConstraintNotInParamsStrs = list.map(
-                    mercury_var_to_name_only_vs(ClassTVarSet),
-                    ConstraintNotInParams),
-                FunDepNotInParamsStrs = list.map(
-                    mercury_var_to_name_only_vs(ClassTVarSet),
-                    FunDepNotInParams),
                 ConstraintNotInParamsPieces =
-                    list_to_pieces(ConstraintNotInParamsStrs),
+                    list.map(var_to_quote_piece(ClassTVarSet),
+                        ConstraintNotInParams),
                 FunDepNotInParamsPieces =
-                    list_to_pieces(FunDepNotInParamsStrs),
+                    list.map(var_to_quote_piece(ClassTVarSet),
+                        FunDepNotInParams),
+                ConstraintPieces =
+                    component_list_to_color_pieces(yes(color_subject), "and",
+                        [], ConstraintNotInParamsPieces),
+                FunDepPieces =
+                    component_list_to_color_pieces(yes(color_subject), "and",
+                        [], FunDepNotInParamsPieces),
                 ( if list.length(NotInParams) = 1 then
                     Prefix = [words("Error: type variable")],
-                    Suffix = [words("is not a parameter of this type class.")]
+                    Suffix = [words("is")] ++
+                        color_as_incorrect([words("not a parameter")]) ++
+                        [words("of this type class.")]
                 else
                     Prefix = [words("Error: type variables")],
-                    Suffix = [words("are not parameters of this type class.")]
+                    Suffix = [words("are")] ++
+                        color_as_incorrect([words("not parameters")]) ++
+                        [words("of this type class.")]
                 ),
                 (
                     ConstraintNotInParams = [],
@@ -249,20 +260,18 @@ parse_constrained_class(ModuleName, VarSet, NameTerm, ConstraintsTerm,
                 ;
                     ConstraintNotInParams = [],
                     FunDepNotInParams = [_ | _],
-                    Middle =
-                        FunDepNotInParamsPieces ++ FunDepErrorContext
+                    Middle = FunDepPieces ++ FunDepErrorContext
                 ;
                     ConstraintNotInParams = [_ | _],
                     FunDepNotInParams = [],
-                    Middle =
-                        ConstraintNotInParamsPieces ++ ConstraintErrorContext
+                    Middle = ConstraintPieces ++ ConstraintErrorContext
                 ;
                     ConstraintNotInParams = [_ | _],
                     FunDepNotInParams = [_ | _],
                     Middle =
-                        ConstraintNotInParamsPieces ++ ConstraintErrorContext
+                        ConstraintPieces ++ ConstraintErrorContext
                         ++ [words("and")] ++
-                        FunDepNotInParamsPieces ++ FunDepErrorContext
+                        FunDepPieces ++ FunDepErrorContext
                 ),
                 Pieces = Prefix ++ Middle ++ Suffix ++ [nl],
                 Spec = spec($pred, severity_error, phase_t2pt,
@@ -328,22 +337,25 @@ collect_superclass_constraints(VarSet, [Constraint | Constraints],
             BadTypeStrs = list.map(
                 mercury_type_to_string(TVarSet, print_name_only),
                 NonVarNonGroundTypes),
-            BadTypesStr = list_to_quoted_pieces(BadTypeStrs),
+            BadTypePieces = list.map((func(S) = quote(S)), BadTypeStrs),
+            BadTypesPieces = component_list_to_color_pieces(yes(color_subject),
+                "and", [], BadTypePieces),
             (
                 NonVarNonGroundTypes = [_],
-                BadTypePieces = [words("The type")] ++ BadTypesStr ++
-                    [words("is neither."), nl]
+                BadTypeMsgPieces = [words("The type")] ++ BadTypesPieces ++
+                    color_as_incorrect([words("is neither.")])
             ;
                 NonVarNonGroundTypes = [_, _ | _],
-                BadTypePieces = [words("The types")] ++ BadTypesStr ++
-                    [words("are neither."), nl]
+                BadTypeMsgPieces = [words("The types")] ++ BadTypesPieces ++
+                    color_as_incorrect([words("are neither.")])
             ),
             Pieces = [words("Error: in a superclass constraint,"),
                 words("all the argument types of the superclass,"),
-                words("which in this case is"),
-                unqual_sym_name(SuperClassName), suffix(","),
-                words("must be either type variables or ground types.")] ++
-                BadTypePieces,
+                words("which in this case is")] ++
+                color_as_subject([unqual_sym_name(SuperClassName),
+                    suffix(",")]) ++
+                [words("must be either type variables or ground types.")] ++
+                BadTypeMsgPieces,
             Spec = spec($pred, severity_error, phase_t2pt, Context, Pieces),
             !:Specs = [Spec | !.Specs]
         )
@@ -352,9 +364,10 @@ collect_superclass_constraints(VarSet, [Constraint | Constraints],
         varset.coerce(VarSet, InstVarSet),
         InstConstraintStr = mercury_constrained_inst_vars_to_string(
             output_mercury, InstVarSet, set.make_singleton_set(InstVar), Inst),
-        Pieces = [words("Error: a class declaration"),
-            words("may not contain an inst constraint such as"),
-            quote(InstConstraintStr), suffix("."), nl],
+        Pieces = [words("Error: a class declaration")] ++
+            color_as_incorrect([words("may not contain")]) ++
+            [words("an inst constraint such as")] ++
+            color_as_subject([quote(InstConstraintStr), suffix(".")]) ++ [nl],
         Spec = spec($pred, severity_error, phase_t2pt, Context, Pieces),
         !:Specs = [Spec | !.Specs]
     ;
@@ -380,8 +393,11 @@ parse_unconstrained_class(ModuleName, TVarSet, NameTerm, Context, SeqNum,
             list.map(term.coerce, ArgTerms0, ArgTerms),
             (
                 ArgTerms = [],
-                Pieces = [words("Error: typeclass declarations require"),
-                    words("at least one class parameter."), nl],
+                Pieces =
+                    [words("Error: typeclass declarations")] ++
+                    color_as_incorrect([words("require at least one"),
+                        words("class parameter.")]) ++
+                    [nl],
                 Spec = spec($pred, severity_error, phase_t2pt,
                     get_term_context(NameTerm), Pieces),
                 MaybeTypeClassInfo = error1([Spec])
@@ -416,7 +432,12 @@ parse_class_decls(ModuleName, VarSet, DeclsTerm, MaybeClassDecls) :-
         list.map(parse_class_decl(ModuleName, VarSet), DeclTerms, MaybeDecls),
         find_errors(MaybeDecls, MaybeClassDecls)
     else
-        Pieces = [words("Error: expected a list of class methods."), nl],
+        DeclsTermStr = describe_error_term(VarSet, DeclsTerm),
+        Pieces = [words("Error: expected a")] ++
+            color_as_correct([words("list of class methods,")]) ++
+            [words("got")] ++
+            color_as_incorrect([quote(DeclsTermStr), suffix(".")]) ++
+            [nl],
         Spec = spec($pred, severity_error, phase_t2pt,
             get_term_context(DeclsTerm), Pieces),
         MaybeClassDecls = error1([Spec])
@@ -476,12 +497,19 @@ parse_instance_item(ModuleName, VarSet, ArgTerms, Context, SeqNum,
             MaybeIOM = error1(Specs)
         )
     else
-        Pieces = [words("Error: an"), decl("instance"), words("declaration"),
-            words("should have the form"),
-            quote(":- instance tcname(type1, ... typen)"),
+        Pieces =
+            [words("Error: an"), decl("instance"), words("declaration")] ++
+            color_as_incorrect([words("should have the form")]) ++
+            [nl_indent_delta(1)] ++
+            color_as_correct(
+                [quote(":- instance tcname(type1, ... typen)")]) ++
+            [nl_indent_delta(-1),
             words("optionally followed by"),
-            quote("where [method_spec_1, ... method_spec_m]"),
-            suffix("."), nl],
+            nl_indent_delta(1)] ++
+            color_as_correct(
+                [quote("where [method_spec_1, ... method_spec_m]"),
+                suffix(".")]) ++
+            [nl_indent_delta(-1)],
         Spec = spec($pred, severity_error, phase_t2pt, Context, Pieces),
         MaybeIOM = error1([Spec])
     ).
@@ -530,8 +558,7 @@ parse_derived_instance(ModuleName, TVarSet, NameTerm, ConstraintsTerm,
     maybe1(list(prog_constraint))::out) is det.
 
 parse_instance_constraints(ModuleName, VarSet, ConstraintsTerm, Result) :-
-    NonSimplePieces = [words("Error: constraints on instance declarations"),
-        words("may only constrain type variables and ground types."), nl],
+    NonSimplePieces = [words("Error: constraints on instance declarations")],
     parse_simple_class_constraints(ModuleName, VarSet, ConstraintsTerm,
         NonSimplePieces, Result).
 
@@ -607,7 +634,6 @@ parse_non_empty_instance(ModuleName, VarSet, TVarSet, NameTerm, MethodsTerm,
     term::in, maybe(error_spec)::out) is det.
 
 check_tvars_in_instance_constraint(ItemInstanceInfo, NameTerm, MaybeSpec) :-
-    % XXX
     ItemInstanceInfo = item_instance_info(_Name, Types, _OriginalTypes,
         Constraints, _Methods, TVarSet, _ModName, _Context, _SeqNum),
     % Check that all of the type variables in the constraints on the instance
@@ -619,15 +645,17 @@ check_tvars_in_instance_constraint(ItemInstanceInfo, NameTerm, MaybeSpec) :-
         list.filter(set.contains(TypesVars), TVars, _BoundTVars, UnboundTVars),
         UnboundTVars = [_ | _]
     then
-        UnboundTVarStrs = list.map(mercury_var_to_name_only_vs(TVarSet),
-            UnboundTVars),
-        UnboundTVarPieces = list_to_pieces(UnboundTVarStrs),
+        UnboundTVarPieces =
+            list.map(var_to_quote_piece(TVarSet), UnboundTVars),
+        UnboundTVarsPieces = component_list_to_color_pieces(yes(color_subject),
+            "and", [], UnboundTVarPieces),
         ( if list.length(UnboundTVars) = 1 then
-            Prefix = [words("Error: unbound type variable")]
+            UnboundPieces = [words("unbound type variable")]
         else
-            Prefix = [words("Error: unbound type variables")]
+            UnboundPieces = [words("unbound type variables")]
         ),
-        Pieces = Prefix ++ UnboundTVarPieces ++
+        Pieces = [words("Error:")] ++ color_as_incorrect(UnboundPieces) ++
+            UnboundTVarsPieces ++
             [words("in constraints on instance declaration."), nl],
         % XXX Would _Context be better than get_term_context(NameTerm)?
         Spec = spec($pred, severity_error, phase_t2pt,
@@ -646,7 +674,12 @@ parse_instance_methods(ModuleName, VarSet, MethodsTerm, Result) :-
             MethodList, Interface),
         find_errors(Interface, Result)
     else
-        Pieces = [words("Error: expected list of instance methods."), nl],
+        MethodsTermStr = describe_error_term(VarSet, MethodsTerm),
+        Pieces = [words("Error: expected a")] ++
+            color_as_correct([words("list of instance methods.")]) ++
+            [words("got")] ++
+            color_as_incorrect([quote(MethodsTermStr), suffix(".")]) ++
+            [nl],
         Spec = spec($pred, severity_error, phase_t2pt,
             get_term_context(MethodsTerm), Pieces),
         Result = error1([Spec])
@@ -686,9 +719,15 @@ term_to_instance_method(_ModuleName, VarSet, MethodTerm,
             else
                 MethodTermStr = describe_error_term(VarSet, MethodTerm),
                 Pieces = [words("Error: expected"),
-                    quote("pred(<Name> / <Arity>) is <InstanceMethod>"),
-                    suffix(","),
-                    words("not"), words(MethodTermStr), suffix("."), nl],
+                    nl_indent_delta(1)] ++
+                    color_as_correct(
+                        [quote("pred(<Name> / <Arity>) is <InstanceMethod>"),
+                        suffix(",")]) ++
+                    [nl_indent_delta(-1),
+                    words("got"),
+                    nl_indent_delta(1)] ++
+                    color_as_incorrect([words(MethodTermStr), suffix(".")]) ++
+                    [nl_indent_delta(-1)],
                 Spec = spec($pred, severity_error, phase_t2pt,
                     get_term_context(MethodTerm), Pieces),
                 MaybeInstanceMethod = error1([Spec])
@@ -713,9 +752,15 @@ term_to_instance_method(_ModuleName, VarSet, MethodTerm,
             else
                 MethodTermStr = describe_error_term(VarSet, MethodTerm),
                 Pieces = [words("Error: expected"),
-                    quote("func(<Name> / <Arity>) is <InstanceMethod>"),
-                    suffix(","),
-                    words("not"), words(MethodTermStr), suffix("."), nl],
+                    nl_indent_delta(1)] ++
+                    color_as_correct(
+                        [quote("func(<Name> / <Arity>) is <InstanceMethod>"),
+                        suffix(",")]) ++
+                    [nl_indent_delta(-1),
+                    words("got"),
+                    nl_indent_delta(1)] ++
+                    color_as_incorrect([words(MethodTermStr), suffix(".")]) ++
+                    [nl_indent_delta(-1)],
                 Spec = spec($pred, severity_error, phase_t2pt,
                     get_term_context(MethodTerm), Pieces),
                 MaybeInstanceMethod = error1([Spec])
@@ -723,11 +768,20 @@ term_to_instance_method(_ModuleName, VarSet, MethodTerm,
         else
             MethodTermStr = describe_error_term(VarSet, MethodTerm),
             Pieces = [words("Error: expected"),
-                quote("pred(<Name> / <Arity>) is <InstanceName>"),
+                nl_indent_delta(1)] ++
+                color_as_correct(
+                    [quote("pred(<Name> / <Arity>) is <InstanceName>")]) ++
+                [nl_indent_delta(-1),
                 words("or"),
-                quote("func(<Name> / <Arity>) is <InstanceName>"),
-                suffix(","),
-                words("not"), words(MethodTermStr), suffix("."), nl],
+                nl_indent_delta(1)] ++
+                color_as_correct(
+                    [quote("func(<Name> / <Arity>) is <InstanceName>"),
+                    suffix(",")]) ++
+                [nl_indent_delta(-1),
+                words("got"),
+                nl_indent_delta(1)] ++
+                color_as_incorrect([words(MethodTermStr), suffix(".")]) ++
+                [nl_indent_delta(-1)],
             Spec = spec($pred, severity_error, phase_t2pt,
                 get_term_context(MethodTerm), Pieces),
             MaybeInstanceMethod = error1([Spec])
@@ -773,11 +827,18 @@ term_to_instance_method(_ModuleName, VarSet, MethodTerm,
 
 report_unexpected_method_term(VarSet, MethodTerm) = Spec :-
     MethodTermStr = describe_error_term(VarSet, MethodTerm),
-    Pieces = [words("Error: expected clause or"),
-        quote("pred(<Name> / <Arity>) is <InstanceName>"),
+    Pieces = [words("Error: expected clause or"), nl_indent_delta(1)] ++
+        color_as_correct(
+            [quote("pred(<Name> / <Arity>) is <InstanceName>")]) ++
+        [nl_indent_delta(-1),
         words("or"),
-        quote("func(<Name> / <Arity>) is <InstanceName>"), suffix(","),
-        words("not"), words(MethodTermStr), suffix("."), nl],
+        nl_indent_delta(1)] ++
+        color_as_correct(
+            [quote("func(<Name> / <Arity>) is <InstanceName>"),
+            suffix(",")]) ++
+        [words("got")] ++
+        color_as_incorrect([words(MethodTermStr), suffix(".")]) ++
+        [nl],
     Spec = spec($pred, severity_error, phase_t2pt,
         get_term_context(MethodTerm), Pieces).
 
@@ -787,9 +848,7 @@ report_unexpected_method_term(VarSet, MethodTerm) = Spec :-
 %
 
 parse_class_constraints(ModuleName, VarSet, ConstraintsTerm, Result) :-
-    NonSimplePieces = [words("Sorry, not implemented:"),
-        words("constraints may only constrain type variables"),
-        words("and ground types."), nl],
+    NonSimplePieces = [words("Sorry, not implemented: constraints")],
     parse_simple_class_constraints(ModuleName, VarSet, ConstraintsTerm,
         NonSimplePieces, Result).
 
@@ -812,8 +871,11 @@ parse_simple_class_constraints(_ModuleName, VarSet, ConstraintsTerm,
             Result = ok1([HeadConstraint | TailConstraints])
         else
             Context = get_term_context(ConstraintsTerm),
-            Spec = spec($pred, severity_error, phase_t2pt, Context,
-                NonSimplePieces),
+            Pieces = NonSimplePieces ++
+                color_as_incorrect([words("may only constrain"),
+                    words("type variables and ground types.")]) ++
+                [nl],
+            Spec = spec($pred, severity_error, phase_t2pt, Context, Pieces),
             Result = error1([Spec])
         )
     ;
@@ -839,8 +901,11 @@ parse_class_and_inst_constraints(_ModuleName, VarSet, ConstraintsTerm,
             Result = ok2(ProgConstraints, InstVarSub)
         ;
             FunDeps = [_ | _],
-            Pieces = [words("Error: functional dependencies are only allowed"),
-                words("in typeclass declarations."), nl],
+            Pieces = [words("Error:")] ++
+                color_as_subject([words("functional dependencies")]) ++
+                [words("are only allowed")] ++
+                color_as_incorrect([words("in typeclass declarations.")]) ++
+                [nl],
             Spec = spec($pred, severity_error, phase_t2pt,
                 get_term_context(ConstraintsTerm), Pieces),
             Result = error2([Spec])
@@ -944,9 +1009,11 @@ parse_arbitrary_constraint(VarSet, ConstraintTerm, Result) :-
         ;
             LHSTerm = term.functor(_, _, LHSContext),
             LHSTermStr = describe_error_term(VarSet, LHSTerm),
-            LHSPieces = [words("Error: a non-variable inst such as"),
-                quote(LHSTermStr), words("may not be the subject"),
-                words("of an inst constraint."), nl],
+            LHSPieces = [words("Error: a non-variable inst such as")] ++
+                color_as_subject([quote(LHSTermStr)]) ++
+                color_as_incorrect([words("may not be the subject"),
+                    words("of an inst constraint.")]) ++
+                [nl],
             LHSSpec = spec($pred, severity_error, phase_t2pt,
                 LHSContext, LHSPieces),
             MaybeInstVar = error1([LHSSpec])
@@ -990,8 +1057,11 @@ parse_arbitrary_constraint(VarSet, ConstraintTerm, Result) :-
             Result = error1(Specs)
         )
     else
-        Pieces = [words("Error: expected atom"),
-            words("as class name or inst constraint."), nl],
+        ConstraintTermStr = describe_error_term(VarSet, ConstraintTerm),
+        Pieces = [words("Error: expected a")] ++
+            color_as_correct([words("typeclass or inst constraint,")]) ++
+            [words("got")] ++
+            color_as_incorrect([quote(ConstraintTermStr)]) ++ [nl],
         Spec = spec($pred, severity_error, phase_t2pt,
             get_term_context(ConstraintTerm), Pieces),
         Result = error1([Spec])

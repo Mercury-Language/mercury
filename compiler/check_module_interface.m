@@ -166,42 +166,41 @@ check_module_interface_for_no_exports(Globals, ParseTreeModuleSrc, !Specs) :-
     list(error_spec)::in, list(error_spec)::out) is det.
 
 generate_no_exports_warning(ModuleName, Context, NumIntIncls, !Specs) :-
-    MainMsg = simple_msg(Context,
-        [always([invis_order_default_start(2, ""),
-            words("Warning: the interface of module"),
-            qual_sym_name(ModuleName),
-            words("does not export anything."), nl]),
-        % We don't list mode declarations because they don't make sense
-        % without a corresponding pred or func declaration.
-        % We don't list decl pragmas for the same reason.
-        % We don't list promises because although they don't *have to be*
-        % about predicates and functions defined in the same module,
-        % they *should be*.
-        verbose_only(verbose_always,
-            [words("To be useful, a module should export something."),
-            words("A file should contain at least one declaration"),
-            words("other than"), decl("import_module"),
-            words("in its interface section(s)."),
-            words("This would normally be a"), decl("pred"), words("or"),
-            decl("func"), words("declaration, or a"),
-            decl("type"), suffix(","), decl("inst"), suffix(","),
-            decl("mode"), suffix(","), decl("typeclass"), words("or"),
-            decl("instance"), words("definition."), nl]
-        )]),
+    AlwaysPieces =
+        [invis_order_default_start(2, ""),
+        words("Warning: the interface of module")] ++
+        color_as_subject([qual_sym_name(ModuleName)]) ++
+        color_as_incorrect([words("does not export anything.")]) ++ [nl],
+    % We don't list mode declarations because they don't make sense
+    % without a corresponding pred or func declaration.
+    % We don't list decl pragmas for the same reason.
+    % We don't list promises because although they don't *have to be*
+    % about predicates and functions defined in the same module,
+    % they *should be*.
+    StdVerbosePieces =
+        [words("To be useful, a module should export something."),
+        words("A file should contain at least one declaration"),
+        words("other than"), decl("import_module"),
+        words("in its interface section(s)."),
+        words("This would normally be a"), decl("pred"), words("or"),
+        decl("func"), words("declaration, or a"),
+        decl("type"), suffix(","), decl("inst"), suffix(","),
+        decl("mode"), suffix(","), decl("typeclass"), words("or"),
+        decl("instance"), words("definition."), nl],
     (
         NumIntIncls = 0,
-        Msgs = [MainMsg]
+        VerbosePieces = StdVerbosePieces
     ;
         NumIntIncls = 1,
-        InclMsg = simple_msg(Context,
-            [verbose_only(verbose_always,
-                [words("A module that includes a single submodule"),
-                words("is not useful, because it can be replaced"),
-                words("by that submodule."), nl])
-            ]),
-        Msgs = [MainMsg, InclMsg]
+        VerbosePieces = StdVerbosePieces ++
+            [words("A module that includes a single submodule"),
+            words("is not useful, because it can be replaced"),
+            words("by that submodule."), nl]
     ),
-    Spec = error_spec($pred, severity_warning, phase_t2pt, Msgs),
+    Msg = simple_msg(Context,
+        [always(AlwaysPieces),
+        verbose_only(verbose_always, VerbosePieces)]),
+    Spec = error_spec($pred, severity_warning, phase_t2pt, [Msg]),
     !:Specs = [Spec | !.Specs].
 
 %---------------------------------------------------------------------------%

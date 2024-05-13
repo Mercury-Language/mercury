@@ -3,8 +3,8 @@ errors_3.m:012: Error: module `errors_3' should start with either an
 errors_3.m:012:   `:- interface' or an `:- implementation' declaration.
 errors_3.m:012:   The following assumes that the missing declaration is an
 errors_3.m:012:   `:- implementation' declaration.
-errors_3.m:012: Warning: the interface of module `errors_3' does not export
-errors_3.m:012:   anything.
+errors_3.m:012: Warning: the interface of module [38;5;87m`errors_3'[39;49m [38;5;203mdoes not export[39;49m
+errors_3.m:012:   [38;5;203manything.[39;49m
 errors_3.m:030: Error: `:- mode' declaration for predicate
 errors_3.m:030:   `mode_declaration_without_pred_declaration'/0
 errors_3.m:030:   without corresponding `:- pred' declaration.

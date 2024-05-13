@@ -1,5 +1,5 @@
-var_as_pred_name.m:010: Warning: the interface of module `var_as_pred_name'
-var_as_pred_name.m:010:   does not export anything.
+var_as_pred_name.m:010: Warning: the interface of module [38;5;87m`var_as_pred_name'[39;49m
+var_as_pred_name.m:010:   [38;5;203mdoes not export anything.[39;49m
 var_as_pred_name.m:013: Error: you cannot declare a function whose name is a
 var_as_pred_name.m:013:   variable such as `A'.
 var_as_pred_name.m:014: Error: you cannot declare a mode for a function whose

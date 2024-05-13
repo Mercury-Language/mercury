@@ -25,5 +25,5 @@ bad_existential_data_type.m:043:   [38;5;203mexistentially quantified using `so
 bad_existential_data_type.m:046: Error: the [38;5;87mtype variables [38;5;87m`U'[38;5;87m and [38;5;87m`V'[39;49m occur in
 bad_existential_data_type.m:046:   a class constraint [38;5;203mwithout being explicitly[39;49m
 bad_existential_data_type.m:046:   [38;5;203mexistentially quantified using `some'.[39;49m
-bad_existential_data_type.m:049: Sorry, not implemented: constraints may only
-bad_existential_data_type.m:049:   constrain type variables and ground types.
+bad_existential_data_type.m:049: Sorry, not implemented: constraints [38;5;203mmay only[39;49m
+bad_existential_data_type.m:049:   [38;5;203mconstrain type variables and ground types.[39;49m

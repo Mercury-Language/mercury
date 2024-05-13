@@ -2,9 +2,11 @@ typeclass_test_2.m:015: In clause for predicate `main'/2:
 typeclass_test_2.m:015:   unsatisfiable typeclass constraint:
 typeclass_test_2.m:015:   `typeclass_test_2.numbered_type(int)'.
 typeclass_test_2.m:023: Error: expected
-typeclass_test_2.m:023:   `pred(<Name> / <Arity>) is <InstanceName>' or
-typeclass_test_2.m:023:   `func(<Name> / <Arity>) is <InstanceName>', not
-typeclass_test_2.m:023:   ((type_num / 0) is foo_type_num).
+typeclass_test_2.m:023:     [38;5;40m`pred(<Name> / <Arity>) is <InstanceName>'[39;49m
+typeclass_test_2.m:023:   or
+typeclass_test_2.m:023:     [38;5;40m`func(<Name> / <Arity>) is <InstanceName>',[39;49m
+typeclass_test_2.m:023:   got
+typeclass_test_2.m:023:     [38;5;203m((type_num / 0) is foo_type_num).[39;49m
 typeclass_test_2.m:026: Error: clause for function `foo_type_num'/1
 typeclass_test_2.m:026:   without corresponding `:- func' declaration.
 typeclass_test_2.m:026: Inferred :- func foo_type_num(T1) = int.

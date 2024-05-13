@@ -1,6 +1,6 @@
 typeclass_missing_det_3.m:008: Warning: the interface of module
-typeclass_missing_det_3.m:008:   `typeclass_missing_det_3' does not export
-typeclass_missing_det_3.m:008:   anything.
+typeclass_missing_det_3.m:008:   [38;5;87m`typeclass_missing_det_3'[39;49m [38;5;203mdoes not export[39;49m
+typeclass_missing_det_3.m:008:   [38;5;203manything.[39;49m
 typeclass_missing_det_3.m:008:   To be useful, a module should export
 typeclass_missing_det_3.m:008:   something. A file should contain at least one
 typeclass_missing_det_3.m:008:   declaration other than `:- import_module' in

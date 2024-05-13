@@ -1,5 +1,5 @@
-funcs_as_preds.m:012: Warning: the interface of module `funcs_as_preds' does
-funcs_as_preds.m:012:   not export anything.
+funcs_as_preds.m:012: Warning: the interface of module [38;5;87m`funcs_as_preds'[39;49m [38;5;203mdoes[39;49m
+funcs_as_preds.m:012:   [38;5;203mnot export anything.[39;49m
 funcs_as_preds.m:014: Error: module `funcs_as_preds' should start with either
 funcs_as_preds.m:014:   an `:- interface' or an `:- implementation'
 funcs_as_preds.m:014:   declaration.
