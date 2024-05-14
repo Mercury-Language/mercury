@@ -62,7 +62,7 @@
     %   MaybeGoal0, MaybeGoal):
     %
     % Given a GoalTerm which has a purity annotation for Purity in front of it,
-    % which has been parsed as MaybeGoal0, marking the Goal0 in MaybeGoal0
+    % which has been parsed as MaybeGoal0, mark the Goal0 in MaybeGoal0
     % as having the given purity, if it is a goal to which purity annotations
     % are applicable.
     %
@@ -770,7 +770,7 @@ parse_goal_some_all(GoalKind, ArgTerms, Context, ContextPieces,
     % Although we do almost exactly the same thing for "&" as for ",",
     % we handle them in separate modes, because "," is FAR more common
     % than "&", and keeping its processing efficient is important enough
-    % to warrant a small amount of code target language code duplication.
+    % to warrant a small amount of target language code duplication.
     %
 :- pred parse_goal_conj(goal_kind, list(term),
     term.context, cord(format_piece),
@@ -1904,7 +1904,7 @@ parse_warnings(VarSet, Term, ScopeFunctor, ContextPieces, WarningNum,
             Specs = HeadWarningSpecs ++ TailSpecs,
             MaybeWarnings = error2(Specs)
         )
-        else
+    else
         TermStr = describe_error_term(VarSet, Term),
         Pieces = cord.list(ContextPieces) ++
             [lower_case_next_if_not_first, words("Error:"),
@@ -2860,34 +2860,6 @@ parse_atomic_params(Context, Term, VarSet, MaybeComponentsContexts) :-
         MaybeComponentsContexts = error1([Spec])
     ).
 
-:- pred parse_atomic_subterm(string::in, term::in, term::in,
-    maybe1(atomic_component_state)::out) is det.
-
-parse_atomic_subterm(Name, ErrorTerm, Term, MaybeComponentState) :-
-    (
-        Term = term.functor(_, SubTerms, TermContext),
-        ( if
-            parse_atomic_component_state_or_pair(SubTerms, ComponentState)
-        then
-            MaybeComponentState = ok1(ComponentState)
-        else
-            Pieces = [words("Error:"), words(Name),
-                words("takes exactly one argument,"),
-                words("which should be a state variable"),
-                words("or a pair of variables."), nl],
-            Spec = spec($pred, severity_error, phase_t2pt,
-                TermContext, Pieces),
-            MaybeComponentState = error1([Spec])
-        )
-    ;
-        Term = term.variable(_, _TermContext),
-        Pieces = [words("Error: expected atomic goal parameter,"),
-            words("found variable."), nl],
-        Spec = spec($pred, severity_error, phase_t2pt,
-            get_term_context(ErrorTerm), Pieces),
-        MaybeComponentState = error1([Spec])
-    ).
-
 :- pred parse_atomic_component(term::in, term::in, varset::in,
     maybe1(pair(atomic_component, term.context))::out) is det.
 
@@ -2961,6 +2933,34 @@ parse_atomic_component(ErrorTerm, Term, VarSet, MaybeComponentContext) :-
         MaybeComponentContext = error1([Spec])
     ).
 
+:- pred parse_atomic_subterm(string::in, term::in, term::in,
+    maybe1(atomic_component_state)::out) is det.
+
+parse_atomic_subterm(Name, ErrorTerm, Term, MaybeComponentState) :-
+    (
+        Term = term.functor(_, SubTerms, TermContext),
+        ( if
+            parse_atomic_component_state_or_pair(SubTerms, ComponentState)
+        then
+            MaybeComponentState = ok1(ComponentState)
+        else
+            Pieces = [words("Error:"), words(Name),
+                words("takes exactly one argument,"),
+                words("which should be a state variable"),
+                words("or a pair of variables."), nl],
+            Spec = spec($pred, severity_error, phase_t2pt,
+                TermContext, Pieces),
+            MaybeComponentState = error1([Spec])
+        )
+    ;
+        Term = term.variable(_, _TermContext),
+        Pieces = [words("Error: expected atomic goal parameter,"),
+            words("found variable."), nl],
+        Spec = spec($pred, severity_error, phase_t2pt,
+            get_term_context(ErrorTerm), Pieces),
+        MaybeComponentState = error1([Spec])
+    ).
+
 :- pred parse_atomic_component_state_or_pair(list(term)::in,
     atomic_component_state::out) is semidet.
 
@@ -2983,7 +2983,67 @@ parse_atomic_component_state_or_pair(SubTerms, State) :-
         fail
     ).
 
-% XXX reorder the predicates above
+%---------------------%
+
+:- pred parse_atomic_subexpr(term::in,
+    maybe3(goal, list(goal), list(warning_spec))::out,
+    prog_varset::in, prog_varset::out) is det.
+
+parse_atomic_subexpr(Term, MaybeOoMSubGoals, !VarSet) :-
+    parse_atomic_subgoals_as_list(Term, MaybeSubGoals, !VarSet),
+    (
+        MaybeSubGoals = ok2(Goals, WarningSpecs),
+        (
+            Goals = [],
+            Pieces = [words("Error: atomic scope must have a goal."), nl],
+            Context = get_term_context(Term),
+            Spec = spec($pred, severity_error, phase_t2pt, Context, Pieces),
+            MaybeOoMSubGoals = error3([Spec | WarningSpecs])
+        ;
+            Goals = [MainSubGoal | OrElseSubGoals],
+            MaybeOoMSubGoals = ok3(MainSubGoal, OrElseSubGoals, WarningSpecs)
+        )
+    ;
+        MaybeSubGoals = error2(Specs),
+        MaybeOoMSubGoals = error3(Specs)
+    ).
+
+:- pred parse_atomic_subgoals_as_list(term::in,
+    maybe2(list(goal), list(warning_spec))::out,
+    prog_varset::in, prog_varset::out) is det.
+
+parse_atomic_subgoals_as_list(Term, MaybeGoals, !VarSet) :-
+    ( if
+        Term = term.functor(term.atom("or_else"), [LeftGoal, RightGoal], _)
+    then
+        parse_atomic_subgoals_as_list(LeftGoal, MaybeLeftGoalList, !VarSet),
+        parse_atomic_subgoals_as_list(RightGoal, MaybeRightGoalList, !VarSet),
+        ( if
+            MaybeLeftGoalList = ok2(LeftGoalList, LeftWarningSpecs),
+            MaybeRightGoalList = ok2(RightGoalList, RightWarningSpecs)
+        then
+            Goals = LeftGoalList ++ RightGoalList,
+            WarningSpecs = LeftWarningSpecs ++ RightWarningSpecs,
+            MaybeGoals = ok2(Goals, WarningSpecs)
+        else
+            Specs = get_any_errors_warnings2(MaybeLeftGoalList) ++
+                get_any_errors_warnings2(MaybeRightGoalList),
+            MaybeGoals = error2(Specs)
+        )
+    else
+        % XXX Provide better ContextPieces.
+        ContextPieces = cord.init,
+        parse_goal(Term, ContextPieces, MaybeSubGoal, !VarSet),
+        (
+            MaybeSubGoal = ok2(SubGoal, WarningSpecs),
+            MaybeGoals = ok2([SubGoal], WarningSpecs)
+        ;
+            MaybeSubGoal = error2(Specs),
+            MaybeGoals = error2(Specs)
+        )
+    ).
+
+%---------------------%
 
 :- pred convert_atomic_params(term::in,
     assoc_list(atomic_component, term.context)::in,
@@ -3082,64 +3142,6 @@ convert_atomic_params_2(Context,
     ),
     convert_atomic_params_2(Context, ComponentsContexts,
         !.MaybeOuter, !.MaybeInner, !.MaybeVars, !.Specs, MaybeParams).
-
-:- pred parse_atomic_subexpr(term::in,
-    maybe3(goal, list(goal), list(warning_spec))::out,
-    prog_varset::in, prog_varset::out) is det.
-
-parse_atomic_subexpr(Term, MaybeOoMSubGoals, !VarSet) :-
-    parse_atomic_subgoals_as_list(Term, MaybeSubGoals, !VarSet),
-    (
-        MaybeSubGoals = ok2(Goals, WarningSpecs),
-        (
-            Goals = [],
-            Pieces = [words("Error: atomic scope must have a goal."), nl],
-            Context = get_term_context(Term),
-            Spec = spec($pred, severity_error, phase_t2pt, Context, Pieces),
-            MaybeOoMSubGoals = error3([Spec | WarningSpecs])
-        ;
-            Goals = [MainSubGoal | OrElseSubGoals],
-            MaybeOoMSubGoals = ok3(MainSubGoal, OrElseSubGoals, WarningSpecs)
-        )
-    ;
-        MaybeSubGoals = error2(Specs),
-        MaybeOoMSubGoals = error3(Specs)
-    ).
-
-:- pred parse_atomic_subgoals_as_list(term::in,
-    maybe2(list(goal), list(warning_spec))::out,
-    prog_varset::in, prog_varset::out) is det.
-
-parse_atomic_subgoals_as_list(Term, MaybeGoals, !VarSet) :-
-    ( if
-        Term = term.functor(term.atom("or_else"), [LeftGoal, RightGoal], _)
-    then
-        parse_atomic_subgoals_as_list(LeftGoal, MaybeLeftGoalList, !VarSet),
-        parse_atomic_subgoals_as_list(RightGoal, MaybeRightGoalList, !VarSet),
-        ( if
-            MaybeLeftGoalList = ok2(LeftGoalList, LeftWarningSpecs),
-            MaybeRightGoalList = ok2(RightGoalList, RightWarningSpecs)
-        then
-            Goals = LeftGoalList ++ RightGoalList,
-            WarningSpecs = LeftWarningSpecs ++ RightWarningSpecs,
-            MaybeGoals = ok2(Goals, WarningSpecs)
-        else
-            Specs = get_any_errors_warnings2(MaybeLeftGoalList) ++
-                get_any_errors_warnings2(MaybeRightGoalList),
-            MaybeGoals = error2(Specs)
-        )
-    else
-        % XXX Provide better ContextPieces.
-        ContextPieces = cord.init,
-        parse_goal(Term, ContextPieces, MaybeSubGoal, !VarSet),
-        (
-            MaybeSubGoal = ok2(SubGoal, WarningSpecs),
-            MaybeGoals = ok2([SubGoal], WarningSpecs)
-        ;
-            MaybeSubGoal = error2(Specs),
-            MaybeGoals = error2(Specs)
-        )
-    ).
 
 %---------------------------------------------------------------------------%
 :- end_module parse_tree.parse_goal.
