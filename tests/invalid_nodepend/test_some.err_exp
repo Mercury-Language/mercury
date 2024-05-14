@@ -1,7 +1,7 @@
 test_some.m:010: In `:- pred' declaration:
 test_some.m:010:   in first argument of `some':
-test_some.m:010:   expected a list of variables, got `junk'.
-test_some.m:017: In first argument of `some': expected a list of variables
-test_some.m:017:   and/or state variables, got `junk'.
-test_some.m:019: In first argument of `some': expected a list of variables
-test_some.m:019:   and/or state variables, got `junk'.
+test_some.m:010:   expected a [38;5;40mlist of variables,[39;49m got [38;5;203m`junk'.[39;49m
+test_some.m:017: In first argument of `some': expected a [38;5;40mlist of variables[39;49m
+test_some.m:017:   [38;5;40mand/or state variables,[39;49m got [38;5;203m`junk'.[39;49m
+test_some.m:019: In first argument of `some': expected a [38;5;40mlist of variables[39;49m
+test_some.m:019:   [38;5;40mand/or state variables,[39;49m got [38;5;203m`junk'.[39;49m

@@ -91,7 +91,7 @@ parse_possibly_repeated_vars(Term, VarSet, ContextPieces, MaybeVars) :-
         ;
             HeadTerm = term.functor(_, _, _),
             generate_unexpected_term_message(ContextPieces, VarSet,
-                "a variable", HeadTerm, Spec),
+                "variable", HeadTerm, Spec),
             MaybeHeadVar = error1([Spec])
         ),
         parse_possibly_repeated_vars(TailTerm, VarSet, ContextPieces,
@@ -108,7 +108,7 @@ parse_possibly_repeated_vars(Term, VarSet, ContextPieces, MaybeVars) :-
         )
     else
         generate_unexpected_term_message(ContextPieces, VarSet,
-            "a list of variables", Term, Spec),
+            "list of variables", Term, Spec),
         MaybeVars = error1([Spec])
     ).
 
@@ -122,7 +122,7 @@ parse_vars(Term, VarSet, ContextPieces, MaybeVars) :-
         ;
             HeadTerm = functor(_, _, _),
             generate_unexpected_term_message(ContextPieces, VarSet,
-                "a variable", HeadTerm, HeadSpec),
+                "variable", HeadTerm, HeadSpec),
             MaybeHeadVar = error1([HeadSpec])
         ),
         parse_vars(TailTerm, VarSet, ContextPieces, MaybeTailVars),
@@ -145,7 +145,7 @@ parse_vars(Term, VarSet, ContextPieces, MaybeVars) :-
         )
     else
         generate_unexpected_term_message(ContextPieces, VarSet,
-            "a list of variables", Term, Spec),
+            "list of variables", Term, Spec),
         MaybeVars = error1([Spec])
     ).
 
@@ -171,7 +171,7 @@ parse_vars_state_vars(Term, VarSet, ContextPieces, MaybeVars) :-
             MaybeHeadVar = ok1(VarKind0)
         else
             generate_unexpected_term_message(ContextPieces, VarSet,
-                "a variable or state variable", HeadTerm, HeadSpec),
+                "variable or state variable", HeadTerm, HeadSpec),
             MaybeHeadVar = error1([HeadSpec])
         ),
         parse_vars_state_vars(TailTerm, VarSet, ContextPieces, MaybeTailVars),
@@ -207,7 +207,7 @@ parse_vars_state_vars(Term, VarSet, ContextPieces, MaybeVars) :-
         )
     else
         generate_unexpected_term_message(ContextPieces, VarSet,
-            "a list of variables and/or state variables", Term, Spec),
+            "list of variables and/or state variables", Term, Spec),
         MaybeVars = error1([Spec])
     ).
 
@@ -241,7 +241,7 @@ parse_vars_state_dot_colon_vars(Term, VarSet, ContextPieces, MaybeVars) :-
             MaybeHeadVar = ok1(VarKind0)
         else
             generate_unexpected_term_message(ContextPieces, VarSet,
-                "a variable or state variable", HeadTerm, HeadSpec),
+                "variable or state variable", HeadTerm, HeadSpec),
             MaybeHeadVar = error1([HeadSpec])
         ),
         parse_vars_state_dot_colon_vars(Tail, VarSet, ContextPieces,
@@ -318,7 +318,7 @@ parse_vars_state_dot_colon_vars(Term, VarSet, ContextPieces, MaybeVars) :-
         )
     else
         generate_unexpected_term_message(ContextPieces, VarSet,
-            "a list of variables and/or state variables", Term, Spec),
+            "list of variables and/or state variables", Term, Spec),
         MaybeVars = error1([Spec])
     ).
 
@@ -329,8 +329,10 @@ parse_vars_state_dot_colon_vars(Term, VarSet, ContextPieces, MaybeVars) :-
 
 generate_repeated_var_msg(ContextPieces, VarSet, Term, Spec) :-
     TermStr = describe_error_term(VarSet, Term),
-    Pieces = cord.list(ContextPieces) ++ [lower_case_next_if_not_first,
-        words("Repeated variable"), words(TermStr), suffix("."), nl],
+    Pieces = cord.list(ContextPieces) ++ [lower_case_next_if_not_first] ++
+        color_as_incorrect([words("Repeated variable")]) ++
+        color_as_subject([words(TermStr), suffix(".")]) ++
+        [nl],
     Spec = spec($pred, severity_error, phase_t2pt,
         get_term_context(Term), Pieces).
 
@@ -339,8 +341,10 @@ generate_repeated_var_msg(ContextPieces, VarSet, Term, Spec) :-
 
 generate_repeated_state_var_msg(ContextPieces, VarSet, Term, Spec) :-
     TermStr = describe_error_term(VarSet, Term),
-    Pieces = cord.list(ContextPieces) ++ [lower_case_next_if_not_first,
-        words("Repeated state variable"), words(TermStr), suffix("."), nl],
+    Pieces = cord.list(ContextPieces) ++ [lower_case_next_if_not_first] ++
+        color_as_incorrect([words("Repeated state variable")]) ++
+        color_as_subject([words(TermStr), suffix(".")]) ++
+        [nl],
     Spec = spec($pred, severity_error, phase_t2pt,
         get_term_context(Term), Pieces).
 
@@ -351,8 +355,11 @@ generate_unexpected_term_message(ContextPieces, VarSet, Expected, Term,
         Spec) :-
     TermStr = describe_error_term(VarSet, Term),
     Pieces = cord.list(ContextPieces) ++ [lower_case_next_if_not_first,
-        words("Expected"), words(Expected), suffix(","),
-        words("got"), quote(TermStr), suffix("."), nl],
+        words("Expected a")] ++
+        color_as_correct([words(Expected), suffix(",")]) ++
+        [words("got")] ++
+        color_as_incorrect([quote(TermStr), suffix(".")]) ++
+        [nl],
     Spec = spec($pred, severity_error, phase_t2pt,
         get_term_context(Term), Pieces).
 
