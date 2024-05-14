@@ -56,6 +56,7 @@
 :- import_module mdbcomp.prim_data.
 :- import_module parse_tree.parse_goal.
 :- import_module parse_tree.parse_sym_name.
+:- import_module parse_tree.parse_tree_out_term.
 :- import_module parse_tree.parse_util.
 :- import_module parse_tree.parse_vars.
 :- import_module parse_tree.prog_util.
@@ -66,6 +67,7 @@
 :- import_module pair.
 :- import_module require.
 :- import_module string.
+:- import_module term_context.
 
 %---------------------------------------------------------------------------%
 
@@ -801,9 +803,17 @@ parse_dcg_goal_else(ArgTerms, Context, ContextPieces,
             CondContext, ContextPieces, MaybeGoal,
             !VarSet, !Counter, !DCGVar)
     else
-        Pieces = [words("Error: the "), quote("else"), words("operator"),
-            words("should occur in expressions of the form"),
-            quote("( if goal then goal else goal )"), suffix("."), nl],
+        varset.coerce(!.VarSet, ErrorVarSet),
+        ErrorTerm = term.functor(atom("else"), ArgTerms, dummy_context),
+        ErrorTermStr = describe_error_term(ErrorVarSet, ErrorTerm),
+        Pieces = [words("Error: expected the")] ++
+            color_as_subject([quote("else"), words("operator")]) ++
+            [words("to occur in a goal of the form")] ++
+            color_as_correct([quote("( if <goal> then <goal> else <goal> )"),
+                suffix(",")]) ++
+            [words("but the term it occurs in,")] ++
+            color_as_incorrect([quote(ErrorTermStr), suffix(",")]) ++
+            [words("does not match that pattern."), nl],
         Spec = spec($pred, severity_error, phase_t2pt, Context, Pieces),
         MaybeGoal = error2([Spec])
     ).
@@ -876,9 +886,23 @@ parse_dcg_goal_if(ArgTerms, Context, ContextPieces,
             MaybeGoal = error2(Specs)
         )
     else
-        Pieces = [words("Error: the "), quote("else"), words("operator"),
-            words("should occur in expressions of the form"),
-            quote("( if goal then goal else goal )"), suffix("."), nl],
+        varset.coerce(!.VarSet, ErrorVarSet),
+        ErrorTerm = term.functor(atom("if"), ArgTerms, dummy_context),
+        ErrorTermStr = describe_error_term(ErrorVarSet, ErrorTerm),
+        % We are looking only for Form1 in this predicate, Form2 being
+        % handled by parse_dcg_goal_else, but the error message must list
+        % both forms anyway.
+        Form1 = "( if <goal> then <goal> else <goal> )",
+        Form2 = "( if <goal> then <goal> )",
+        Pieces = [words("Error: expected the")] ++
+            color_as_subject([quote("if"), words("operator")]) ++
+            [words("to occur in a goal of the form")] ++
+            color_as_correct([quote(Form1)]) ++
+            [words("or in a goal of the form")] ++
+            color_as_correct([quote(Form2), suffix(",")]) ++
+            [words("but the term it occurs in,")] ++
+            color_as_incorrect([quote(ErrorTermStr), suffix(",")]) ++
+            [words("does not match either pattern."), nl],
         Spec = spec($pred, severity_error, phase_t2pt, Context, Pieces),
         MaybeGoal = error2([Spec])
     ).
@@ -896,8 +920,11 @@ parse_dcg_goal_braces(ArgTerms, Context, ContextPieces,
         MaybeGoal, !VarSet, !Counter, !DCGVar) :-
     (
         ArgTerms = [],
-        Pieces = [words("Error: there should be at least one goal"),
-            words("between the curly braces."), nl],
+        Pieces = [words("Error: expected")] ++
+            color_as_correct([words("one or more goals")]) ++
+            [words("between the pair of curly braces, got")] ++
+            color_as_incorrect([words("none"), suffix(".")]) ++
+            [nl],
         Spec = spec($pred, severity_error, phase_t2pt, Context, Pieces),
         MaybeGoal = error2([Spec])
     ;
@@ -933,11 +960,13 @@ parse_dcg_goal_nil(ArgTerms, Context, _ContextPieces,
         MaybeGoal = ok2(Goal, [])
     ;
         ArgTerms = [_ | _],
-        Pieces = [words("Error: in DCG clauses,"),
-            words("the"), quote("[]"), words("operator"),
-            words("may only be used to match the input"),
-            words("against a list of zero items,"),
-            words("and must therefore be used with arity 0."), nl],
+        Pieces = [words("Error: in DCG clauses, the")] ++
+            color_as_subject([quote("[]"), words("operator")]) ++
+            [words("may only be used to match the input"),
+            words("against a list of zero items, and")] ++
+            color_as_incorrect([words("must therefore be used"),
+                words("with arity 0.")]) ++
+            [nl],
         Spec = spec($pred, severity_error, phase_t2pt, Context, Pieces),
         MaybeGoal = error2([Spec])
     ).
@@ -975,11 +1004,13 @@ parse_dcg_goal_cons(ArgTerms, Context, _ContextPieces,
             MaybeGoal = error2([Spec])
         )
     else
-        Pieces = [words("Error: in DCG clauses,"),
-            words("the"), quote("[|]"), words("operator"),
-            words("may only be used to match the input"),
-            words("against a list of one or more items,"),
-            words("and must therefore be used with arity 2."), nl],
+        Pieces = [words("Error: in DCG clauses, the")] ++
+            color_as_subject([quote("[|]"), words("operator")]) ++
+            [words("may only be used to match the input"),
+            words("against a list of one or more items, and")] ++
+            color_as_incorrect([words("must therefore be used"),
+                words("with arity 2.")]) ++
+            [nl],
         Spec = spec($pred, severity_error, phase_t2pt, Context, Pieces),
         MaybeGoal = error2([Spec])
     ).
