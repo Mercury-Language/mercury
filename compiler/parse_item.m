@@ -188,15 +188,21 @@ parse_decl_term_item_or_marker(ModuleName, VarSet, DeclTerm,
 decl_is_not_an_atom(VarSet, Term) = Spec :-
     TermStr = mercury_term_to_string_vs(VarSet, print_name_only, Term),
     Context = get_term_context(Term),
-    Pieces = [words("Error:"), quote(TermStr),
-        words("is not a valid declaration."), nl],
+    Pieces = [words("Error:")] ++
+        color_as_subject([quote(TermStr)]) ++
+        [words("is")] ++
+        color_as_incorrect([words("not a valid declaration.")]) ++
+        [nl],
     Spec = spec($pred, severity_error, phase_t2pt, Context, Pieces).
 
 :- func decl_functor_is_not_valid(string, prog_context) = error_spec.
 
 decl_functor_is_not_valid(Functor, Context) = Spec :-
-    Pieces = [words("Error:"), quote(Functor),
-        words("is not a valid declaration type."), nl],
+    Pieces = [words("Error:")] ++
+        color_as_subject([quote(Functor)]) ++
+        [words("is")] ++
+        color_as_incorrect([words("not a valid declaration type.")]) ++
+        [nl],
     Spec = spec($pred, severity_error, phase_t2pt, Context, Pieces).
 
 %---------------------------------------------------------------------------%
@@ -357,8 +363,11 @@ parse_attr_decl_item_or_marker(ModuleName, VarSet, Functor, ArgTerms,
         ( if cord.is_empty(PurityAttrs0) then
             MaybeIOM = MaybeIOM0
         else
-            Pieces = [words("Error: purity annotations"),
-                words("are not allowed on mode declarations."), nl],
+            Pieces = [words("Error:")] ++
+                color_as_subject([words("purity annotations")]) ++
+                [words("are")] ++
+                color_as_incorrect([words("not allowed")]) ++
+                [words("on mode declarations."), nl],
             Spec = spec($pred, severity_error, phase_t2pt, Context, Pieces),
             (
                 MaybeIOM0 = ok1(_),
@@ -465,8 +474,12 @@ parse_class_decl(ModuleName, VarSet, Term, MaybeClassMethod) :-
             ClassDecl = class_decl_mode(ModeInfo),
             MaybeClassMethod = ok1(ClassDecl)
         else
-            Pieces = [words("Error: only pred, func and mode declarations"),
-                words("are allowed in class interfaces."), nl],
+            Pieces = [words("Error: only")] ++
+                color_as_correct(
+                    [words("pred, func and mode declarations")]) ++
+                [words("are")] ++
+                color_as_incorrect([words("allowed")]) ++
+                [words("in class interfaces."), nl],
             Spec = spec($pred, severity_error, phase_t2pt,
                 TermContext, Pieces),
             MaybeClassMethod = error1([Spec])
@@ -505,9 +518,11 @@ parse_quant_attr(ModuleName, VarSet, Functor, ArgTerms, IsInClass, Context,
         ; ArgTerms = [_]
         ; ArgTerms = [_, _, _ | _]
         ),
-        Pieces = [words("Error: the keyword"), quote(Functor),
-            words("may appear in declarations"),
-            words("only to denote the quantification"),
+        Pieces = [words("Error: the keyword")] ++
+            color_as_subject([quote(Functor)]) ++
+            [words("may appear in declarations")] ++
+            color_as_incorrect([words("only")]) ++
+            [words("to denote the quantification"),
             words("of a list of variables."), nl],
         Spec = spec($pred, severity_error, phase_t2pt, Context, Pieces),
         MaybeIOM = error1([Spec])
@@ -550,9 +565,12 @@ parse_constraint_attr(ModuleName, VarSet, Functor, ArgTerms, IsInClass,
         ; ArgTerms = [_]
         ; ArgTerms = [_, _, _ | _]
         ),
-        Pieces = [words("Error: the symbol"), quote(Functor),
-            words("may appear in declarations only to introduce"),
-            words("a constraint or a conjunction of constraints."), nl],
+        Pieces = [words("Error: the symbol")] ++
+            color_as_subject([quote(Functor)]) ++
+            [words("may appear in declarations")] ++
+            color_as_incorrect([words("only")]) ++
+            [words("to introduce a constraint or"),
+            words("a conjunction of constraints."), nl],
         Spec = spec($pred, severity_error, phase_t2pt, Context, Pieces),
         MaybeIOM = error1([Spec])
     ).
@@ -576,9 +594,12 @@ parse_purity_attr(ModuleName, VarSet, Functor, ArgTerms, IsInClass,
         ( ArgTerms = []
         ; ArgTerms = [_, _ | _]
         ),
-        Pieces = [words("Error: the symbol"), quote(Functor),
-            words("may appear only as an annotation"),
-            words("in front of a predicate or function declaration."), nl],
+        Pieces = [words("Error: the symbol")] ++
+            color_as_subject([quote(Functor)]) ++
+            [words("may appear")] ++
+            color_as_incorrect([words("only")]) ++
+            [words("as an annotation in front of"),
+            words("a predicate or function declaration."), nl],
         Spec = spec($pred, severity_error, phase_t2pt, Context, Pieces),
         MaybeIOM = error1([Spec])
     ).
@@ -619,9 +640,11 @@ parse_module_marker(ArgTerms, Context, SeqNum, MaybeIOM) :-
         Marker = iom_marker_module_start(ModuleName, Context, SeqNum),
         MaybeIOM = ok1(Marker)
     else
-        Pieces = [words("Error: a"), decl("module"), words("declaration"),
-            words("should have just one argument,"),
-            words("which should be a module name."), nl],
+        Pieces = [words("Error: a")] ++
+            color_as_subject([decl("module"), words("declaration")]) ++
+            color_as_incorrect([words("should have just one argument,"),
+                words("which should be a module name.")]) ++
+            [nl],
         Spec = spec($pred, severity_error, phase_t2pt, Context, Pieces),
         MaybeIOM = error1([Spec])
     ).
@@ -637,9 +660,11 @@ parse_end_module_marker(ArgTerms, Context, SeqNum, MaybeIOM) :-
         Marker = iom_marker_module_end(ModuleName, Context, SeqNum),
         MaybeIOM = ok1(Marker)
     else
-        Pieces = [words("Error: an"), decl("end_module"), words("declaration"),
-            words("should have just one argument,"),
-            words("which should be a module name."), nl],
+        Pieces = [words("Error: an")] ++
+            color_as_subject([decl("end_module"), words("declaration")]) ++
+            color_as_incorrect([words("should have just one argument,"),
+                words("which should be a module name.")]) ++
+            [nl],
         Spec = spec($pred, severity_error, phase_t2pt, Context, Pieces),
         MaybeIOM = error1([Spec])
     ).
@@ -657,8 +682,10 @@ parse_section_marker(Functor, ArgTerms, Context, SeqNum, Section, MaybeIOM) :-
         MaybeIOM = ok1(Marker)
     ;
         ArgTerms = [_ | _],
-        Pieces = [words("Error: an"), decl(Functor), words("declaration"),
-            words("should have no arguments."), nl],
+        Pieces = [words("Error: an")] ++
+            color_as_subject([decl(Functor), words("declaration")]) ++
+            color_as_incorrect([words("should have no arguments.")]) ++
+            [nl],
         Spec = spec($pred, severity_error, phase_t2pt, Context, Pieces),
         MaybeIOM = error1([Spec])
     ).
@@ -732,9 +759,12 @@ parse_incl_imp_use_items(ModuleName, VarSet, Functor, ArgTerms, Context,
             IIU = iiu_use_module,
             Article = "a"
         ),
-        Pieces = [words("Error:"), words(Article), decl(Functor),
-            words("declaration"), words("should have just one argument,"),
-            words("which should be a list of one or more module names."), nl],
+        Pieces = [words("Error:"), words(Article)] ++
+            color_as_subject([decl(Functor), words("declaration")]) ++
+            color_as_incorrect([words("should have just one argument,"),
+                words("which should be a list of"),
+                words("one or more module names.")]) ++
+            [nl],
         Spec = spec($pred, severity_error, phase_t2pt, Context, Pieces),
         MaybeIOM = error1([Spec])
     ).
@@ -793,9 +823,10 @@ parse_mode_defn_or_decl_item(ModuleName, VarSet, ArgTerms, IsInClass, Context,
         ( ArgTerms = []
         ; ArgTerms = [_, _ | _]
         ),
-        Pieces = [words("Error: a"), decl("mode"), words("declaration"),
-            words("should have just one argument,"),
-            words("which should be either the definition of a mode,"),
+        Pieces = [words("Error: a")] ++
+            color_as_subject([decl("mode"), words("declaration")]) ++
+            color_as_incorrect([words("should have just one argument,")]) ++
+            [words("which should be either the definition of a mode,"),
             words("or the declaration of one mode"),
             words("of a predicate or function."), nl],
         Spec = spec($pred, severity_error, phase_t2pt, Context, Pieces),
@@ -810,13 +841,13 @@ parse_mode_defn_or_decl_item(ModuleName, VarSet, ArgTerms, IsInClass, Context,
 
 parse_version_numbers_marker(ModuleName, Functor, ArgTerms,
         Context, _SeqNum, MaybeIOM) :-
+    % Currently we use color only in the diagnostics that users
+    % can be expected to see in the absence of compiler bugs.
     (
         ArgTerms = [VNTerm, ModuleNameTerm, VersionNumbersTerm],
         ( if term_int.decimal_term_to_int(VNTerm, VN) then
             ( if VN = module_item_version_numbers_version_number then
-                ( if
-                    try_parse_symbol_name(ModuleNameTerm, ModuleName)
-                then
+                ( if try_parse_symbol_name(ModuleNameTerm, ModuleName) then
                     recompilation.version.parse_module_item_version_numbers(
                         VersionNumbersTerm, MaybeVersionNumbers),
                     (
@@ -835,9 +866,10 @@ parse_version_numbers_marker(ModuleName, Functor, ArgTerms,
                     MaybeIOM = error1([Spec])
                 )
             else
-                Pieces = [words("Error: the interface file"),
-                    words("was created by an obsolete compiler,"),
-                    words("so it must be rebuilt."), nl],
+                Pieces = [words("Error: this interface file"),
+                    words("was created by an obsolete compiler,")] ++
+                    color_as_incorrect([words("so it must be rebuilt.")]) ++
+                    [nl],
                 Spec = conditional_spec($pred, warn_smart_recompilation, yes,
                     severity_error, phase_t2pt, [msg(Context, Pieces)]),
                 MaybeIOM = ok1(iom_handled_error([Spec]))
@@ -1024,20 +1056,14 @@ parse_pred_or_func_decl_item(ModuleName, VarSet, Functor, ArgTerms,
                 WithInst = yes(_),
                 MaybeDetism = yes(_)
             then
-                Pieces = [words("Error:"), quote("with_inst"),
-                    words("and determinism both specified."), nl],
-                Spec = spec($pred, severity_error, phase_t2pt,
-                    get_term_context(BaseTerm), Pieces),
+                Spec = report_with_inst_and_detism(p_or_f(PredOrFunc),
+                    BaseTerm),
                 MaybeIOM = error1([Spec])
             else if
                 WithInst = yes(_),
                 WithType = no
             then
-                Pieces = [words("Error:"), quote("with_inst"),
-                    words("specified"), words("without"),
-                    quote("with_type"), suffix("."), nl],
-                Spec = spec($pred, severity_error, phase_t2pt,
-                    get_term_context(BaseTerm), Pieces),
+                Spec = report_with_inst_no_with_type(PredOrFunc, BaseTerm),
                 MaybeIOM = error1([Spec])
             else
                 ( if
@@ -1070,9 +1096,10 @@ parse_pred_or_func_decl_item(ModuleName, VarSet, Functor, ArgTerms,
         % Should we mention the determinism? It is allowed only
         % in predicate declarations that specify the modes, so the
         % wording required would probably be more confusing than helpful.
-        Pieces = [words("Error: a"), decl(Functor), words("declaration"),
-            words("should have just one argument,"),
-            words("which should specify the types and maybe the modes"),
+        Pieces = [words("Error: a")] ++
+            color_as_subject([decl(Functor), words("declaration")]) ++
+            color_as_incorrect([words("should have just one argument,")]) ++
+            [words("which should specify the types and maybe the modes"),
             words("of the arguments of a"), words(Functor), suffix("."), nl],
         Spec = spec($pred, severity_error, phase_t2pt, Context, Pieces),
         MaybeIOM = error1([Spec])
@@ -1138,20 +1165,16 @@ parse_pred_decl_base(PredOrFunc, ModuleName, VarSet, PredTypeTerm,
                         WithInst = yes(_),
                         TypesAndMaybeModes = types_only([_ | _])
                     then
-                        Pieces = [words("Error:"), quote("with_inst"),
-                            words("specified without argument modes."), nl],
-                        Spec = spec($pred, severity_error, phase_t2pt,
-                            get_term_context(PredTypeTerm), Pieces),
+                        Spec = report_with_inst_no_arg_modes(PredOrFunc,
+                            PredTypeTerm),
                         MaybeIOM = error1([Spec])
                     else if
                         WithInst = no,
                         WithType = yes(_),
                         TypesAndMaybeModes = types_and_modes([_ | _])
                     then
-                        Pieces = [words("Error: arguments have modes but"),
-                            quote("with_inst"), words("not specified."), nl],
-                        Spec = spec($pred, severity_error, phase_t2pt,
-                            get_term_context(PredTypeTerm), Pieces),
+                        Spec = report_with_type_no_with_inst(PredOrFunc,
+                            PredTypeTerm),
                         MaybeIOM = error1([Spec])
                     else
                         varset.coerce(VarSet, TypeVarSet),
@@ -1275,8 +1298,13 @@ parse_func_decl_base(ModuleName, VarSet, Term, MaybeDetism, IsInClass, Context,
                 )
             )
         else
-            Pieces = [words("Error:"), quote("="), words("expected in"),
-                decl("func"), words("declaration."), nl],
+            Pieces = [words("Error: this"), decl("func"),
+                words("declaration"), words("is")] ++
+                color_as_incorrect([words("missing")]) ++
+                [words("the")] ++
+                color_as_subject([quote("="), words("sign")]) ++
+                [words("that should separate the argument types"),
+                words("from the return type."), nl],
             Spec = spec($pred, severity_error, phase_t2pt,
                 get_term_context(Term), Pieces),
             MaybeIOM = error1([Spec])
@@ -1388,23 +1416,36 @@ check_type_and_maybe_mode_list_is_consistent(TypesAndMaybeModes,
         % Some arguments have modes and some don't, which is inconsistent.
         (
             RestWithout = [],
-            IdPieces = [words("The argument without a mode is the"),
-                wrap_nth(dont_add_the_prefix, FirstWithout), suffix("."), nl]
+            IdPieces =
+                [words("The argument without a mode is the")] ++
+                nth_arg_only(FirstWithout) ++
+                [nl]
         ;
-            RestWithout = [_ | _],
-            % If the return value is one of the arguments without a mode,
-            % then the "the" prefix before "return value" will come *after*
-            % at least one argument number, to give a message such as
-            % "The arguments without modes are the second and the return
-            % value.".
-            WithoutArgNumPieces =
-                list.map(wrap_nth(add_the_prefix), WithoutModeArgs),
+        RestWithout = [_ | _],
+            ( if
+                list.last(WithoutModeArgs, LastWithoutModeArgNum - _),
+                LastWithoutModeArgNum < 0
+            then
+                % Separate the last non-return-value arg from the return value
+                % with "and the", yielding e.g. "second and the return value".
+                And = "and the"
+            else
+                % Separate the last two args with just "and",
+                % yielding e.g. "second and third".
+                And = "and"
+            ),
+            WithoutArgNumPieces = list.map(nth_arg, WithoutModeArgs),
             WithoutArgNumsPieces =
-                component_list_to_pieces("and", WithoutArgNumPieces),
-            IdPieces = [words("The arguments without modes are the") |
-                WithoutArgNumsPieces] ++ [suffix("."), nl]
+                component_list_to_color_pieces(yes(color_cause), And,
+                    [suffix(".")], WithoutArgNumPieces),
+            IdPieces =
+                [words("The arguments without modes are the")] ++
+                WithoutArgNumsPieces ++
+                [nl]
         ),
-        Pieces = [words("Error: some but not all arguments have modes."), nl
+        Pieces = [words("Error:")] ++
+            color_as_incorrect([words("some but not all")]) ++
+            [words("arguments have modes."), nl
             | IdPieces],
         Spec = spec($pred, severity_error, phase_t2pt, Context, Pieces),
         MaybeResult = error1([Spec])
@@ -1430,23 +1471,19 @@ classify_type_and_maybe_mode_list(ArgNum, [Head | Tail],
         WithoutModeArgs = WithoutModeArgs0
     ).
 
-:- type maybe_add_the_prefix
-    --->    dont_add_the_prefix
-    ;       add_the_prefix.
+:- func nth_arg_only(pair(int, _)) = list(format_piece).
 
-:- func wrap_nth(maybe_add_the_prefix, pair(int, _)) = format_piece.
+nth_arg_only(Arg) = Pieces :-
+    Piece0 = nth_arg(Arg),
+    Pieces = color_pieces(color_cause, [Piece0, suffix(".")]).
 
-wrap_nth(MaybeAddPredix, ArgNum - _) = Component :-
+:- func nth_arg(pair(int, _)) = format_piece.
+
+nth_arg(ArgNum - _) = Piece :-
     ( if ArgNum < 0 then
-        (
-            MaybeAddPredix = dont_add_the_prefix,
-            Component = words("return value")
-        ;
-            MaybeAddPredix = add_the_prefix,
-            Component = words("the return value")
-        )
+        Piece = words("return value")
     else
-        Component = nth_fixed(ArgNum)
+        Piece = nth_fixed(ArgNum)
     ).
 
 %---------------------------------------------------------------------------%
@@ -1467,9 +1504,8 @@ parse_mode_decl(ModuleName, VarSet, Term, IsInClass, Context, SeqNum,
         IsInClass = decl_is_not_in_class,
         DeclWords = words("mode")
     ),
-    DetismContextPieces = cord.from_list([
-        words("In"), DeclWords, words("declaration:")
-    ]),
+    DetismContextPieces =
+        cord.from_list([words("In"), DeclWords, words("declaration:")]),
     parse_determinism_suffix(VarSet, DetismContextPieces, Term,
         BeforeDetismTerm, MaybeMaybeDetism),
     WithInstContextPieces = cord.from_list([
@@ -1486,10 +1522,7 @@ parse_mode_decl(ModuleName, VarSet, Term, IsInClass, Context, SeqNum,
             MaybeDetism = yes(_),
             WithInst = yes(_)
         then
-            Pieces = [words("Error:"), quote("with_inst"),
-                words("and determinism both specified."), nl],
-            Spec = spec($pred, severity_error, phase_t2pt,
-                get_term_context(Term), Pieces),
+            Spec = report_with_inst_and_detism(words("mode"), Term),
             MaybeIOM = error1([Spec])
         else
             parse_mode_decl_base(ModuleName, VarSet, BaseTerm, IsInClass,
@@ -1682,8 +1715,10 @@ get_purity_from_attrs(Context, [PurityAttr | PurityAttrs], MaybePurity) :-
         MaybePurity = ok1(Purity)
     ;
         PurityAttrs = [_ | _],
-        Pieces = [words("Error: duplicate purity annotations"),
-            words("are not allowed."), nl],
+        Pieces = [words("Error:")] ++
+            color_as_subject([words("duplicate purity annotations")]) ++
+            color_as_incorrect([words("are not allowed.")]) ++
+            [nl],
         Spec = spec($pred, severity_error, phase_t2pt, Context, Pieces),
         MaybePurity = error1([Spec])
     ).
@@ -1878,9 +1913,11 @@ parse_promise_item(VarSet, ArgTerms, Context, SeqNum, MaybeIOM) :-
             MaybeIOM = error1(Specs)
         )
     else
-        Pieces = [words("Error: a"), decl("promise"), words("declaration"),
-            words("should have just one argument,"),
-            words("which should be a goal."), nl],
+        Pieces = [words("Error: a")] ++
+            color_as_subject([decl("promise"), words("declaration")]) ++
+            color_as_incorrect([words("should have just one argument,"),
+                words("which should be a goal.")]) ++
+            [nl],
         Spec = spec($pred, severity_error, phase_t2pt, Context, Pieces),
         MaybeIOM = error1([Spec])
     ).
@@ -1902,8 +1939,10 @@ parse_promise_ex_item(VarSet, Functor, ArgTerms, Context, SeqNum,
         ;
             PurityAttrs = [_ | _],
             PurityPieces =
-                [words("Error: a"), decl(Functor), words("declaration"),
-                words("may not have a purity attribute."), nl],
+                [words("Error: a")] ++
+                color_as_subject([decl(Functor), words("declaration")]) ++
+                color_as_incorrect([words("may not have")]) ++
+                [words("a purity attribute."), nl],
             PuritySpec = spec($pred, severity_error, phase_t2pt,
                 Context, PurityPieces),
             PuritySpecs = [PuritySpec]
@@ -1918,11 +1957,14 @@ parse_promise_ex_item(VarSet, Functor, ArgTerms, Context, SeqNum,
             check_quant_vars(ContextPieces, VarSet, quant_type_univ, VarsTerm,
                 MaybeUnivVars)
         else
+            Form = ":- all [<vars>] " ++ Functor ++ " ( <disjunction> )",
             UnivVarsPieces =
-                [words("Error: a"), decl(Functor), words("declaration"),
-                words("must have the form"),
-                quote(":- all [<vars>] " ++ Functor ++ " ( <disjunction> )"),
-                suffix("."), nl],
+                [words("Error: a")] ++
+                color_as_subject([decl(Functor), words("declaration")]) ++
+                color_as_incorrect([words("must have the form")]) ++
+                [nl_indent_delta(1)] ++
+                color_as_correct([quote(Form), suffix(".")]) ++
+                [nl_indent_delta(-1)],
             UnivVarsSpec = spec($pred, severity_error, phase_t2pt,
                 Context, UnivVarsPieces),
             MaybeUnivVars = error1([UnivVarsSpec])
@@ -1955,9 +1997,11 @@ parse_promise_ex_item(VarSet, Functor, ArgTerms, Context, SeqNum,
             MaybeIOM = error1(Specs)
         )
     else
-        Pieces = [words("Error: a"), decl(Functor), words("declaration"),
-            words("should have just one argument,"),
-            words("which should be a goal."), nl],
+        Pieces = [words("Error: a")] ++
+            color_as_subject([decl(Functor), words("declaration")]) ++
+            color_as_incorrect([words("should have just one argument,"),
+                words("which should be a goal.")]) ++
+            [nl],
         Spec = spec($pred, severity_error, phase_t2pt, Context, Pieces),
         MaybeIOM = error1([Spec])
     ).
@@ -1990,8 +2034,11 @@ parse_determinism_suffix(VarSet, ContextPieces, Term, BeforeDetismTerm,
         else
             DetismTermStr = describe_error_term(VarSet, DetismTerm),
             Pieces = cord.list(ContextPieces) ++ [lower_case_next_if_not_first,
-                words("Error: invalid determinism category"),
-                quote(DetismTermStr), suffix("."), nl],
+                words("Error: expected a")] ++
+                color_as_correct([words("determinism,")]) ++
+                [words("got")] ++
+                color_as_incorrect([quote(DetismTermStr), suffix(".")]) ++
+                [nl],
             Spec = spec($pred, severity_error, phase_t2pt,
                 get_term_context(DetismTerm), Pieces),
             MaybeMaybeDetism = error1([Spec])
@@ -2105,9 +2152,14 @@ parse_implicitly_qualified_module_name(DefaultModuleName, VarSet, Term,
         MaybeModule) :-
     (
         Term = term.variable(_, Context),
-        Pieces = [words("Error: module names starting with capital letters"),
-            words("must be quoted using single quotes"),
-            words("(e.g. "":- module 'Foo'."")."), nl],
+        % XXX Should we add a warning about such module names
+        % being a really bad idea?
+        Pieces = [words("Error:")] ++
+            color_as_subject([words("module names starting with"),
+                words("capital letters")]) ++
+            color_as_incorrect(
+                [words("must be quoted using single quotes")]) ++
+            [words("(e.g. "":- module 'Foo'."")."), nl],
         Spec = spec($pred, severity_error, phase_t2pt, Context, Pieces),
         MaybeModule = error1([Spec])
     ;
@@ -2187,6 +2239,60 @@ is_the_name_a_variable(VarSet, Kind, Term, Spec) :-
     else
         fail
     ).
+
+%---------------------------------------------------------------------------%
+
+:- func report_with_inst_and_detism(format_piece, term(T)) = error_spec.
+
+report_with_inst_and_detism(DeclKindPiece, Term) = Spec :-
+    Pieces = [words("Error: a"), DeclKindPiece, words("declaration"),
+        words("that specifies a determinism")] ++
+        color_as_incorrect([words("may not also specify")]) ++
+        [words("a")] ++
+        color_as_possible_cause([quote("with_inst"), words("annotation.")]) ++
+        [words("This is because the"), quote("with_inst"),
+        words("annotation itself also specifies a determinism."), nl],
+    Context = get_term_context(Term),
+    Spec = spec($pred, severity_error, phase_t2pt, Context, Pieces).
+
+:- func report_with_inst_no_arg_modes(pred_or_func, term(T)) = error_spec.
+
+report_with_inst_no_arg_modes(PredOrFunc, Term) = Spec :-
+    Pieces = [words("Error: a"), p_or_f(PredOrFunc), words("declaration"),
+        words("that does not specify argument modes")] ++
+        color_as_incorrect([words("may not specify")]) ++
+        [words("a")] ++
+        color_as_possible_cause([quote("with_inst"), words("annotation.")]),
+    Context = get_term_context(Term),
+    Spec = spec($pred, severity_error, phase_t2pt, Context, Pieces).
+
+:- func report_with_inst_no_with_type(pred_or_func, term(T)) = error_spec.
+
+report_with_inst_no_with_type(PredOrFunc, Term) = Spec :-
+    % Keep as similar to report_with_type_no_with_inst as possible.
+    Pieces = [words("Error: a"), p_or_f(PredOrFunc), words("declaration"),
+        words("that specifies a")] ++
+        color_as_possible_cause([quote("with_inst"), words("annotation")]) ++
+        color_as_incorrect([words("must also specify")]) ++
+        [words("a")] ++
+        color_as_possible_cause([quote("with_type"), words("annotation")]) ++
+        [words("to specify the types of the arguments it adds."), nl],
+    Context = get_term_context(Term),
+    Spec = spec($pred, severity_error, phase_t2pt, Context, Pieces).
+
+:- func report_with_type_no_with_inst(pred_or_func, term(T)) = error_spec.
+
+report_with_type_no_with_inst(PredOrFunc, Term) = Spec :-
+    % Keep as similar to report_with_inst_no_with_type as possible.
+    Pieces = [words("Error: a"), p_or_f(PredOrFunc), words("declaration"),
+        words("that specifies argument modes and also has a")] ++
+        color_as_possible_cause([quote("with_type"), words("annotation")]) ++
+        color_as_incorrect([words("must also include")]) ++
+        [words("a")] ++
+        color_as_possible_cause([quote("with_inst"), words("annotation")]) ++
+        [words("to specify the modes of the arguments it adds."), nl],
+    Context = get_term_context(Term),
+    Spec = spec($pred, severity_error, phase_t2pt, Context, Pieces).
 
 %---------------------------------------------------------------------------%
 

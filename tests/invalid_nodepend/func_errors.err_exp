@@ -1,11 +1,11 @@
-func_errors.m:011: Error: some but not all arguments have modes.
-func_errors.m:011:   The arguments without modes are the second and the return
-func_errors.m:011:   value.
-func_errors.m:012: Error: some but not all arguments have modes.
-func_errors.m:012:   The argument without a mode is the return value.
-func_errors.m:013: Error: some but not all arguments have modes.
-func_errors.m:013:   The arguments without modes are the first and second.
+func_errors.m:011: Error: [38;5;203msome but not all[39;49m arguments have modes.
+func_errors.m:011:   The arguments without modes are the [38;5;226msecond[39;49m and the [38;5;226mreturn[39;49m
+func_errors.m:011:   [38;5;226mvalue.[39;49m
+func_errors.m:012: Error: [38;5;203msome but not all[39;49m arguments have modes.
+func_errors.m:012:   The argument without a mode is the [38;5;226mreturn value.[39;49m
+func_errors.m:013: Error: [38;5;203msome but not all[39;49m arguments have modes.
+func_errors.m:013:   The arguments without modes are the [38;5;226mfirst[39;49m and [38;5;226msecond.[39;49m
 func_errors.m:017: Error: predicate [38;5;87m`p'/2[39;49m declares a determinism [38;5;203mwithout[39;49m
 func_errors.m:017:   [38;5;203mdeclaring the modes of its arguments.[39;49m
-func_errors.m:019: Error: some but not all arguments have modes.
-func_errors.m:019:   The arguments without modes are the second and third.
+func_errors.m:019: Error: [38;5;203msome but not all[39;49m arguments have modes.
+func_errors.m:019:   The arguments without modes are the [38;5;226msecond[39;49m and [38;5;226mthird.[39;49m

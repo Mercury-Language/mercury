@@ -1,5 +1,5 @@
-predmode.m:009: Error: some but not all arguments have modes.
-predmode.m:009:   The argument without a mode is the second.
+predmode.m:009: Error: [38;5;203msome but not all[39;49m arguments have modes.
+predmode.m:009:   The argument without a mode is the [38;5;226msecond.[39;49m
 predmode.m:017: In `:- pred' declaration:
 predmode.m:017:   in the first argument:
 predmode.m:017:   error: `1' is not a type.

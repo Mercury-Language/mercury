@@ -13,7 +13,15 @@ test_with_type.m:023:   without corresponding `:- func' declaration.
 test_with_type.m:025: In the declaration of predicate `with_type_3':
 test_with_type.m:025:   error: the `with_type` and `with_inst` annotations are
 test_with_type.m:025:   incompatible, because they specify 2 types but 3 modes.
-test_with_type.m:028: Error: `with_inst' and determinism both specified.
-test_with_type.m:031: Error: `with_inst' specified without `with_type'.
+test_with_type.m:028: Error: a predicate declaration that specifies a
+test_with_type.m:028:   determinism [38;5;203mmay not also specify[39;49m a [38;5;226m`with_inst'[39;49m
+test_with_type.m:028:   [38;5;226mannotation.[39;49m This is because the `with_inst' annotation
+test_with_type.m:028:   itself also specifies a determinism.
+test_with_type.m:031: Error: a predicate declaration that specifies a
+test_with_type.m:031:   [38;5;226m`with_inst' annotation[39;49m [38;5;203mmust also specify[39;49m a [38;5;226m`with_type'[39;49m
+test_with_type.m:031:   [38;5;226mannotation[39;49m to specify the types of the arguments it
+test_with_type.m:031:   adds.
 test_with_type.m:034: Error: [38;5;87m`foo'[39;49m [38;5;203mis not a valid determinism.[39;49m
-test_with_type.m:036: Error: `with_inst' specified without argument modes.
+test_with_type.m:036: Error: a predicate declaration that does not specify
+test_with_type.m:036:   argument modes [38;5;203mmay not specify[39;49m a [38;5;226m`with_inst'[39;49m
+test_with_type.m:036:   [38;5;226mannotation.[39;49m

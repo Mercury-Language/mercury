@@ -10,14 +10,14 @@ bigtest.m:005:   contain at least one declaration other than `:- import_module'
 bigtest.m:005:   in its interface section(s). This would normally be a
 bigtest.m:005:   `:- pred' or `:- func' declaration, or a `:- type', `:- inst',
 bigtest.m:005:   `:- mode', `:- typeclass' or `:- instance' definition.
-bigtest.m:005: Error: `export_sym' is not a valid declaration type.
-bigtest.m:006: Error: `export_pred' is not a valid declaration type.
-bigtest.m:007: Error: `export_type' is not a valid declaration type.
+bigtest.m:005: Error: [38;5;87m`export_sym'[39;49m is [38;5;203mnot a valid declaration type.[39;49m
+bigtest.m:006: Error: [38;5;87m`export_pred'[39;49m is [38;5;203mnot a valid declaration type.[39;49m
+bigtest.m:007: Error: [38;5;87m`export_type'[39;49m is [38;5;203mnot a valid declaration type.[39;49m
 bigtest.m:009: Error: clause for predicate `fact'/0
 bigtest.m:009:   without corresponding `:- pred' declaration.
 bigtest.m:009: Inferred :- pred fact.
 bigtest.m:010: Syntax error at token ':-': operator precedence error.
-bigtest.m:013: Error: `incorrect_declaration' is not a valid declaration type.
+bigtest.m:013: Error: [38;5;87m`incorrect_declaration'[39;49m is [38;5;203mnot a valid declaration type.[39;49m
 bigtest.m:015: Error: [38;5;203mno mode declaration[39;49m for [38;5;87mpredicate `p'/1.[39;49m
 bigtest.m:015:   (Use `--infer-modes' to enable mode inference.)
 bigtest.m:030: Error: in definitions of equivalence types, [38;5;40mthe type name must[39;49m

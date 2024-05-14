@@ -1,1 +1,1 @@
-x.m:012: Error: `an_error' is not a valid declaration type.
+x.m:012: Error: [38;5;87m`an_error'[39;49m is [38;5;203mnot a valid declaration type.[39;49m
