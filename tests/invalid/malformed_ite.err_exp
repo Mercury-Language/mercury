@@ -1,11 +1,11 @@
-malformed_ite.m:027: Error: malformed if-then-else; this `then' is missing its
-malformed_ite.m:027:   `if'.
-malformed_ite.m:035: Error: malformed if-then-else; replace the `->' with
-malformed_ite.m:035:   `then'.
-malformed_ite.m:045: Error: malformed if-then-else; replace the `;' with
-malformed_ite.m:045:   `else'.
-malformed_ite.m:051: Error: malformed if-then-else; replace the `->' with
-malformed_ite.m:051:   `then', and add an `if' before the condition.
-malformed_ite.m:061: Error: malformed if-then-else; replace the `;' with
-malformed_ite.m:061:   `else'.
-malformed_ite.m:067: Error: malformed if-then-else; this `if' has no `then'.
+malformed_ite.m:027: Error: malformed if-then-else; [38;5;203mthis `then' is missing its[39;49m
+malformed_ite.m:027:   [38;5;203m`if'.[39;49m
+malformed_ite.m:035: Error: malformed if-then-else; [38;5;203mreplace the `->' with[39;49m
+malformed_ite.m:035:   [38;5;203m`then'.[39;49m
+malformed_ite.m:045: Error: malformed if-then-else; [38;5;203mreplace the `;' with[39;49m
+malformed_ite.m:045:   [38;5;203m`else'.[39;49m
+malformed_ite.m:051: Error: malformed if-then-else; [38;5;203mreplace the `->' with[39;49m
+malformed_ite.m:051:   [38;5;203m`then', and add an `if' before the condition.[39;49m
+malformed_ite.m:061: Error: malformed if-then-else; [38;5;203mreplace the `;' with[39;49m
+malformed_ite.m:061:   [38;5;203m`else'.[39;49m
+malformed_ite.m:067: Error: malformed if-then-else; [38;5;203mthis `if' has no `then'.[39;49m

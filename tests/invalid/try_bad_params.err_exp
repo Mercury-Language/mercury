@@ -1,5 +1,6 @@
-try_bad_params.m:019: Error: duplicate io try parameter.
-try_bad_params.m:028: Error: invalid try goal parameter `bloop'.
+try_bad_params.m:019: Error: [38;5;203mduplicate io parameter[39;49m in try goal.
+try_bad_params.m:028: Error: expected a term of the form [38;5;40m`io(!IO)'[39;49m as try goal
+try_bad_params.m:028:   parameter, got [38;5;203m`bloop'.[39;49m
 try_bad_params.m:037: In clause for predicate `main_3'/2:
 try_bad_params.m:037:   in initial I/O state variable of try goal:
 try_bad_params.m:037:   type error: [38;5;87mvariable `STATE_VARIABLE_Int_0'[39;49m has type
@@ -12,7 +13,8 @@ try_bad_params.m:037:   type error: [38;5;87mvariable `STATE_VARIABLE_Int'[39;
 try_bad_params.m:037:     [38;5;203mint;[39;49m
 try_bad_params.m:037:   expected type was
 try_bad_params.m:037:     [38;5;40mio.state.[39;49m
-try_bad_params.m:046: Error: the argument of io should be a state variable.
-try_bad_params.m:055: Error: io takes exactly one argument, which should be a
+try_bad_params.m:046: Error: expected a [38;5;40mstate variable[39;49m as the argument of `io',
+try_bad_params.m:046:   got [38;5;203m`IO'.[39;49m
+try_bad_params.m:055: Error: [38;5;87mio[39;49m [38;5;203mshould have one argument,[39;49m which should be a
 try_bad_params.m:055:   state variable name.
 For more information, recompile with `-E'.

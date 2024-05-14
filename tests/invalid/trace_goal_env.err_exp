@@ -1,4 +1,4 @@
-trace_goal_env.m:027: Error: runtime takes exactly one argument, which should
-trace_goal_env.m:027:   be a boolean expression of run-time tests.
-trace_goal_env.m:034: Error: invalid trace goal parameter
-trace_goal_env.m:034:   `(not runtime(env("TRACE_ABC")))'.
+trace_goal_env.m:027: Error: [38;5;87mruntime[39;49m [38;5;203mshould have exactly one argument,[39;49m which
+trace_goal_env.m:027:   should be a boolean expression of run-time tests.
+trace_goal_env.m:034: Error: expected a [38;5;40mtrace goal parameter,[39;49m got
+trace_goal_env.m:034:   [38;5;203m`(not runtime(env("TRACE_ABC")))'.[39;49m
