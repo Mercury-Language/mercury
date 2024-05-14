@@ -111,7 +111,7 @@ parse_pragma_unused_args(ModuleName, VarSet, ErrorTerm, PragmaTerms,
         UnusedArgsContextPieces = cord.from_list(
             [words("In the fifth argument of"),
             pragma_decl("unused_args"), words("declaration:"), nl]),
-        parse_list_elements("a list of integers",
+        parse_list_elements("list of integers",
             parse_decimal_int(UnusedArgsContextPieces),
             VarSet, UnusedArgsTerm, MaybeUnusedArgs),
         ( if
@@ -212,7 +212,7 @@ parse_pragma_termination_info(ModuleName, VarSet, ErrorTerm, PragmaTerms,
                         MaybeInt),
                     BoolContextPieces = ArgSizeContextPieces ++
                         cord.from_list([words("in the second argument:"), nl]),
-                    parse_list_elements("a list of booleans",
+                    parse_list_elements("list of booleans",
                         parse_bool(BoolContextPieces),
                         VarSet, UsedArgsTerm, MaybeUsedArgs),
                     ( if
@@ -434,7 +434,7 @@ parse_arg_size_constraint(VarSet, Term, MaybeConstr) :-
         ; Functor = "eq"
         )
     then
-        parse_list_elements("a list of linear terms", parse_lp_term,
+        parse_list_elements("list of linear terms", parse_lp_term,
             VarSet, Terms, LPTermsResult),
         parse_rational(VarSet, ConstantTerm, ConstantResult),
         ( if

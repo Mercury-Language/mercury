@@ -1,4 +1,4 @@
 conflicting_fs.m:013: Error: conflicting features in feature set:
-conflicting_fs.m:013:   floats cannot be both single- and double-precision.
+conflicting_fs.m:013:   [38;5;87mfloats[39;49m [38;5;203mcannot be both[39;49m single- and double-precision.
 conflicting_fs.m:014: Error: conflicting features in feature set:
-conflicting_fs.m:014:   trailing works only with sequential conjunctions.
+conflicting_fs.m:014:   [38;5;87mtrailing[39;49m works only with [38;5;203msequential conjunctions.[39;49m

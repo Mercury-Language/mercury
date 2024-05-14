@@ -403,7 +403,7 @@ parse_unconstrained_class(ModuleName, TVarSet, NameTerm, Context, SeqNum,
                 MaybeTypeClassInfo = error1([Spec])
             ;
                 ArgTerms = [_ | _],
-                terms_to_distinct_vars(TVarSet, "typeclass declaration",
+                terms_to_distinct_vars(TVarSet, "a", "typeclass declaration",
                     ArgTerms, MaybeVars),
                 (
                     MaybeVars = ok1(Vars),
@@ -1072,9 +1072,9 @@ parse_arbitrary_constraint(VarSet, ConstraintTerm, Result) :-
 
 parse_fundep(VarSet, Term, Result) :-
     Term = term.functor(term.atom("->"), [DomainTerm, RangeTerm], Context),
-    parse_fundep_side(VarSet, "functional dependency domain",
+    parse_fundep_side(VarSet, "a", "functional dependency domain",
         DomainTerm, MaybeDomain),
-    parse_fundep_side(VarSet, "functional dependency range",
+    parse_fundep_side(VarSet, "a", "functional dependency range",
         RangeTerm, MaybeRange),
     ( if
         MaybeDomain = ok1(Domain),
@@ -1088,14 +1088,14 @@ parse_fundep(VarSet, Term, Result) :-
 
     % XXX ITEM_LIST Should return maybe1(one_or_more(tvar)).
     %
-:- pred parse_fundep_side(varset::in, string::in, term::in,
+:- pred parse_fundep_side(varset::in, string::in, string::in, term::in,
     maybe1(list(tvar))::out) is det.
 
-parse_fundep_side(VarSet0, Kind, TypesTerm0, MaybeTypeVars) :-
+parse_fundep_side(VarSet0, AAn, Kind, TypesTerm0, MaybeTypeVars) :-
     VarSet = varset.coerce(VarSet0),
     TypesTerm = term.coerce(TypesTerm0),
     conjunction_to_list(TypesTerm, TypeTerms),
-    terms_to_distinct_vars(VarSet, Kind, TypeTerms, MaybeTypeVars).
+    terms_to_distinct_vars(VarSet, AAn, Kind, TypeTerms, MaybeTypeVars).
 
 :- pred classify_types_as_var_ground_or_neither(tvarset::in,
     list(mer_type)::in,

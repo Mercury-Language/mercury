@@ -134,7 +134,7 @@
 
 %---------------------------------------------------------------------------%
 
-    % parse_list_elements(What, VarSet, Term, Pred, Result):
+    % parse_list_elements(What, Pred, VarSet, Term, Result):
     %
     % Convert Term into a list of elements, where Pred converts each element
     % of the list into the correct type. Result will hold the list if the
@@ -142,9 +142,9 @@
     % the errors resulting from the failed conversion attempts.
     %
     % This predicate generates error messages for malformed lists. To do that,
-    % it uses the What argument, which should have the form "a list of xyzs".
-    % The job of generating error messages for any malformed elements
-    % is up to Pred.
+    % it uses the What argument, which should have the form "list of xyzs"
+    % (this predicate will add an "a" in front of that). The job of
+    % generating error messages for any malformed elements is up to Pred.
     %
 :- pred parse_list_elements(string::in,
     pred(varset, term, maybe1(T))::in(pred(in, in, out) is det),
@@ -155,14 +155,17 @@
     % A value of this type such as
     %
     %   conflict(single_prec_float, double_prec_float,
-    %       "floats cannot be both single- and double-precision")
+    %       [color_as_subject([words("floats")]) ++
+    %       color_as_incorrect([words("cannot be both")]) ++
+    %       [words("single- and double-precision.")])
     %
     % gives two different options that may not be specified together
     % in a list of options, together with the error message to print
-    % if a user nevertheless does specify them together.
+    % if a user nevertheless does specify them together. The message
+    % should include the final period.
     %
 :- type conflict(T)
-    --->    conflict(T, T, string).
+    --->    conflict(T, T, list(format_piece)).
 
     % report_any_conflicts(Context, ConflictingWhatInWhat, Conflicts,
     %   Specified, Spec):
@@ -189,8 +192,19 @@
 
 %---------------------------------------------------------------------------%
 
-:- pred terms_to_distinct_vars(varset(T)::in, string::in, list(term(T))::in,
-    maybe1(list(var(T)))::out) is det.
+    % terms_to_distinct_vars(VarSet, AAn, ParamKind, Terms, MaybeVars):
+    %
+    % Check whether Terms contains a list of distinct variables. If it does,
+    % return those variables. If it does not, report an error message for
+    % each non-variable term and for each repeated variable.
+    %
+    % ParamKind should be a description of what kind of parameter
+    % those distinct variables are supposed to be; an example would be
+    % "inst parameter". AAn should be either "a" or "an", depending on
+    % which kind of indefinite article should precede ParamKind.
+    %
+:- pred terms_to_distinct_vars(varset(T)::in, string::in, string::in,
+    list(term(T))::in, maybe1(list(var(T)))::out) is det.
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -293,10 +307,14 @@ parse_pred_pf_name_arity(ModuleName, PragmaName, VarSet,
         TermStr = describe_error_term(VarSet, Term),
         Pieces = [words("Error in"),
             pragma_decl(PragmaName), words("declaration:"), nl,
-            words("expected one of"), nl,
-            quote("pred(name/arity)"), words("and"), nl,
-            quote("func(name/arity)"), suffix(","), nl,
-            words("got"), quote(TermStr), suffix("."), nl],
+            words("expected one of"), nl_indent_delta(1)] ++
+            color_as_correct([quote("pred(name/arity)")]) ++
+                [words("and"), nl] ++
+            color_as_correct([quote("func(name/arity)"), suffix(",")]) ++
+            [nl_indent_delta(-1),
+            words("got")] ++
+            color_as_incorrect([quote(TermStr), suffix(".")]) ++
+            [nl],
         Spec = spec($pred, severity_error, phase_t2pt,
             get_term_context(Term), Pieces),
         MaybePredSpec = error1([Spec])
@@ -319,11 +337,16 @@ parse_pred_pfu_name_arity(ModuleName, PragmaName, VarSet,
         TermStr = describe_error_term(VarSet, Term),
         Pieces = [words("Error in"),
             pragma_decl(PragmaName), words("declaration:"),
-            words("expected one of"),
-            quote("pred(name/arity)"), suffix(","), nl,
-            quote("func(name/arity)"), words("and"), nl,
-            quote("name/arity"), suffix(","), nl,
-            words("got"), quote(TermStr), suffix("."), nl],
+            words("expected one of"), nl_indent_delta(1)] ++
+            color_as_correct([quote("pred(name/arity)"), suffix(",")]) ++
+                [nl] ++
+            color_as_correct([quote("func(name/arity)")]) ++
+                [words("and"), nl] ++
+            color_as_correct([quote("name/arity"), suffix(",")]) ++
+            [nl_indent_delta(-1),
+            words("got")] ++
+            color_as_incorrect([quote(TermStr), suffix(".")]) ++
+            [nl],
         Spec = spec($pred, severity_error, phase_t2pt,
             get_term_context(Term), Pieces),
         MaybePredSpec = error1([Spec])
@@ -377,17 +400,24 @@ parse_pred_pfu_name_arity_maybe_modes(ModuleName, ContextPieces, VarSet,
             %
             % Our heuristic for trying to pick between the two is very crude.
             ( if Term = term.functor(term.atom("/"), _, _) then
+                Form1 = "name/arity",
+                Form2 = "pred(name/arity)",
+                Form3 = "func(name/arity)",
+                Form4 = "pred(mode1, mode2, ..., moden)",
+                Form5 = "func(mode1, mode2, ..., moden) = retmode",
                 TermStr = describe_error_term(VarSet, Term),
                 Pieces = cord.list(ContextPieces) ++
                     [lower_case_next_if_not_first,
-                    words("Error: expected one of"), nl_indent_delta(1),
-                    quote("name/arity"), suffix(","), nl,
-                    quote("pred(name/arity)"), suffix(","), nl,
-                    quote("func(name/arity)"), suffix(","), nl,
-                    quote("pred(mode1, mode2, ..., moden)"), words("or"), nl,
-                    quote("func(mode1, mode2, ..., moden) = retmode"),
-                        suffix(","), nl_indent_delta(-1),
-                    words("got"), quote(TermStr), suffix("."), nl],
+                    words("Error: expected one of"), nl_indent_delta(1)] ++
+                    color_as_correct([quote(Form1), suffix(",")]) ++ [nl] ++
+                    color_as_correct([quote(Form2), suffix(",")]) ++ [nl] ++
+                    color_as_correct([quote(Form3), suffix(",")]) ++ [nl] ++
+                    color_as_correct([quote(Form4)]) ++ [words("or"), nl] ++
+                    color_as_correct([quote(Form5), suffix(",")]) ++
+                    [nl_indent_delta(-1),
+                    words("got")] ++
+                    color_as_incorrect([quote(TermStr), suffix(".")]) ++
+                    [nl],
                 Spec = spec($pred, severity_error, phase_t2pt,
                     get_term_context(Term), Pieces),
                 MaybePredOrProcSpec = error1([Spec])
@@ -634,8 +664,11 @@ parse_list_elements(What, Pred, VarSet, Term, Result) :-
 
 make_expected_got_spec(VarSet, What, Term, Spec) :-
     TermStr = describe_error_term(VarSet, Term),
-    Pieces = [words("Error: expected"), words(What), suffix(","),
-        words("got"), quote(TermStr), suffix("."), nl],
+    Pieces = [words("Error: expected a")] ++
+        color_as_correct([words(What), suffix(",")]) ++
+        [words("got")] ++
+        color_as_incorrect([quote(TermStr), suffix(".")]) ++
+        [nl],
     Spec = spec($pred, severity_error, phase_t2pt,
         get_term_context(Term), Pieces).
 
@@ -659,7 +692,7 @@ accumulate_conflict_specs(Context, ConflictingWhatInWhat, Specified,
         list.member(B, Specified)
     then
         Pieces = [words("Error:"), words(ConflictingWhatInWhat),
-            suffix(":"), nl, words(Diagnosis), suffix("."), nl],
+            suffix(":"), nl] ++ Diagnosis ++ [nl],
         Spec = spec($pred, severity_error, phase_t2pt, Context, Pieces),
         !:Specs = [Spec | !.Specs]
     else
@@ -752,8 +785,11 @@ parse_integer_const(Context, Base, Integer, IntTypeDesc, IntSuffixStr,
         IntStr = integer.to_base_string(Integer, integer_base_int(Base)),
         LiteralStr = BasePrefix ++ IntStr ++ IntSuffixStr,
         Pieces = [words("Error: the"),
-            words(IntTypeDesc), words("integer literal"), quote(LiteralStr),
-            words("is outside the range of that type."), nl],
+            words(IntTypeDesc), words("integer literal")] ++
+            color_as_subject([quote(LiteralStr)]) ++
+            [words("is")] ++
+            color_as_incorrect([words("outside the range of that type.")]) ++
+            [nl],
         Spec = spec($pred, severity_error, phase_pt2h, Context, Pieces),
         MaybeConsId = error1([Spec])
     ).
@@ -766,8 +802,11 @@ parse_decimal_int(ContextPieces, VarSet, Term, MaybeInt) :-
     else
         TermStr = describe_error_term(VarSet, Term),
         Pieces = cord.list(ContextPieces) ++ [lower_case_next_if_not_first,
-            words("Error: expected a decimal integer,"),
-            words("got"), quote(TermStr), suffix("."), nl],
+            words("Error: expected a")] ++
+            color_as_correct([words("decimal integer,")]) ++
+            [words("got")] ++
+            color_as_incorrect([quote(TermStr), suffix(".")]) ++
+            [nl],
         Spec = spec($pred, severity_error, phase_t2pt,
             get_term_context(Term), Pieces),
         MaybeInt = error1([Spec])
@@ -775,8 +814,9 @@ parse_decimal_int(ContextPieces, VarSet, Term, MaybeInt) :-
 
 %---------------------------------------------------------------------------%
 
-terms_to_distinct_vars(VarSet, Kind, Terms, MaybeVars) :-
-    terms_to_distinct_vars_loop(VarSet, Kind, set.init, Terms, Vars, Specs),
+terms_to_distinct_vars(VarSet, AAn, Kind, Terms, MaybeVars) :-
+    terms_to_distinct_vars_loop(VarSet, AAn, Kind, set.init, Terms,
+        Vars, Specs),
     (
         Specs = [],
         MaybeVars = ok1(Vars)
@@ -785,38 +825,43 @@ terms_to_distinct_vars(VarSet, Kind, Terms, MaybeVars) :-
         MaybeVars = error1(Specs)
     ).
 
-:- pred terms_to_distinct_vars_loop(varset(T)::in, string::in, set(var(T))::in,
-    list(term(T))::in, list(var(T))::out, list(error_spec)::out) is det.
+:- pred terms_to_distinct_vars_loop(varset(T)::in, string::in, string::in,
+    set(var(T))::in, list(term(T))::in,
+    list(var(T))::out, list(error_spec)::out) is det.
 
-terms_to_distinct_vars_loop(_, _, _, [], [], []).
-terms_to_distinct_vars_loop(VarSet, Kind, !.SeenVars, [Term | Terms],
+terms_to_distinct_vars_loop(_, _, _, _, [], [], []).
+terms_to_distinct_vars_loop(VarSet, AAn, Kind, !.SeenVars, [Term | Terms],
         Vars, Specs) :-
     (
         Term = variable(Var, _),
         ( if set.insert_new(Var, !SeenVars) then
-            terms_to_distinct_vars_loop(VarSet, Kind, !.SeenVars, Terms,
+            terms_to_distinct_vars_loop(VarSet, AAn, Kind, !.SeenVars, Terms,
                 TailVars, Specs),
             Vars = [Var | TailVars]
         else
-            terms_to_distinct_vars_loop(VarSet, Kind, !.SeenVars, Terms,
+            terms_to_distinct_vars_loop(VarSet, AAn, Kind, !.SeenVars, Terms,
                 Vars, TailSpecs),
             Spec = report_repeated_parameter(VarSet, Kind, Term),
             Specs = [Spec | TailSpecs]
         )
     ;
         Term = functor(_, _, _),
-        terms_to_distinct_vars_loop(VarSet, Kind, !.SeenVars, Terms,
+        terms_to_distinct_vars_loop(VarSet, AAn, Kind, !.SeenVars, Terms,
             Vars, TailSpecs),
-        Spec = report_nonvar_parameter(VarSet, Kind, Term),
+        Spec = report_nonvar_parameter(VarSet, AAn, Kind, Term),
         Specs = [Spec | TailSpecs]
     ).
 
-:- func report_nonvar_parameter(varset(T), string, term(T)) = error_spec.
+:- func report_nonvar_parameter(varset(T), string, string, term(T))
+    = error_spec.
 
-report_nonvar_parameter(VarSet, Kind, Term) = Spec :-
+report_nonvar_parameter(VarSet, AAn, Kind, Term) = Spec :-
     TermStr = describe_error_term(VarSet, Term),
-    Pieces = [words("Error: expected a variable as"), words(Kind),
-        words("parameter, got"), quote(TermStr), suffix("."), nl],
+    Pieces = [words("Error: expected a")] ++
+        color_as_correct([words("variable")]) ++
+        [words("as"), words(AAn), words(Kind), words("parameter, got")] ++
+        color_as_incorrect([quote(TermStr), suffix(".")]) ++
+        [nl],
     TermContext = get_term_context(Term),
     Spec = spec($pred, severity_error, phase_t2pt, TermContext, Pieces).
 
@@ -824,9 +869,12 @@ report_nonvar_parameter(VarSet, Kind, Term) = Spec :-
 
 report_repeated_parameter(VarSet, Kind, Term) = Spec :-
     TermStr = describe_error_term(VarSet, Term),
-    Pieces = [words("Error: expected distinct variables as"), words(Kind),
-        words("parameters, but the variable"), quote(TermStr),
-        words("is repeated."), nl],
+    Pieces = [words("Error: expected distinct variables as")] ++
+        [words(Kind), words("parameters, but the variable")] ++
+        color_as_subject([quote(TermStr)]) ++
+        [words("is")] ++
+        color_as_incorrect([words("repeated.")]) ++
+        [nl],
     TermContext = get_term_context(Term),
     Spec = spec($pred, severity_error, phase_t2pt, TermContext, Pieces).
 

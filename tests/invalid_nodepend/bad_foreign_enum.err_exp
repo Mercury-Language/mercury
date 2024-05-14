@@ -30,7 +30,7 @@ bad_foreign_enum.m:061:   values must not be empty.
 bad_foreign_enum.m:067: Error: expected a mapping element of the form
 bad_foreign_enum.m:067:   `possibly_qualified_name - string', got `chicken'.
 bad_foreign_enum.m:074: In `:- pragma foreign_enum' mapping constructor name:
-bad_foreign_enum.m:074:   error: atom expected at "goose".
+bad_foreign_enum.m:074:   error: expected a [38;5;40msymbol name,[39;49m got [38;5;203m`"goose"'.[39;49m
 bad_foreign_enum.m:081: Error: expected a mapping element of the form
 bad_foreign_enum.m:081:   `possibly_qualified_name - string', got `"goose"'.
 bad_foreign_enum.m:082: Error: expected a mapping element of the form

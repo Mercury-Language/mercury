@@ -1,7 +1,7 @@
 invalid_typeclass.m:011: Error: [38;5;203mno definition[39;49m for typeclass [38;5;87m`class'/1.[39;49m
 invalid_typeclass.m:015: Error: expected distinct variables as typeclass
-invalid_typeclass.m:015:   declaration parameters, but the variable `T' is
-invalid_typeclass.m:015:   repeated.
+invalid_typeclass.m:015:   declaration parameters, but the variable [38;5;87m`T'[39;49m is
+invalid_typeclass.m:015:   [38;5;203mrepeated.[39;49m
 invalid_typeclass.m:021: Error: typeclass `invalid_typeclass.class2'/1 multiply
 invalid_typeclass.m:021:   defined.
 invalid_typeclass.m:013:   Here is the previous definition of typeclass

@@ -148,11 +148,19 @@
 :- import_module parse_tree.parse_tree_out_term.
 
 :- import_module int.
+:- import_module string.
 :- import_module term_int.
 
 parse_sym_name_and_args(VarSet, ContextPieces, Term, MaybeSymNameAndArgs) :-
+    % The implementations of
+    %
+    %   parse_sym_name_and_args
+    %   parse_sym_name_and_no_args
+    %   parse_symbol_name
+    %
+    % should be kept as close to each other as possible.
     ( if
-        Term = term.functor(Functor, FunctorArgs, TermContext),
+        Term = term.functor(Functor, FunctorArgs, _TermContext),
         Functor = term.atom("."),
         FunctorArgs = [ModuleTerm, NameArgsTerm]
     then
@@ -164,39 +172,21 @@ parse_sym_name_and_args(VarSet, ContextPieces, Term, MaybeSymNameAndArgs) :-
                 MaybeSymNameAndArgs = ok2(qualified(Module, Name), Args)
             ;
                 MaybeModule = error1(_),
-                ModuleTermStr = describe_error_term(GenericVarSet, ModuleTerm),
-                Pieces = cord.list(ContextPieces) ++
-                    [lower_case_next_if_not_first,
-                    words("Error: expected module name before '.'"),
-                    words("in qualified symbol name, got"),
-                    words(ModuleTermStr), suffix("."), nl],
-                Spec = spec($pred, severity_error, phase_t2pt,
-                    TermContext, Pieces),
+                Spec = report_no_module_name_before_dot(ContextPieces,
+                    VarSet, ModuleTerm),
                 MaybeSymNameAndArgs = error2([Spec])
             )
         else
-            varset.coerce(VarSet, GenericVarSet),
-            TermStr = describe_error_term(GenericVarSet, Term),
-            Pieces = cord.list(ContextPieces) ++ [lower_case_next_if_not_first,
-                words("Error: expected identifier after '.'"),
-                words("in qualified symbol name, got"),
-                words(TermStr), suffix("."), nl],
-            Spec = spec($pred, severity_error, phase_t2pt,
-                TermContext, Pieces),
+            Spec = report_bad_name_after_dot(ContextPieces,
+                VarSet, NameArgsTerm),
             MaybeSymNameAndArgs = error2([Spec])
         )
     else
-        varset.coerce(VarSet, GenericVarSet),
         ( if Term = term.functor(term.atom(Name), Args, _) then
             SymName = string_to_sym_name_sep(Name, "__"),
             MaybeSymNameAndArgs = ok2(SymName, Args)
         else
-            TermStr = describe_error_term(GenericVarSet, Term),
-            Pieces = cord.list(ContextPieces) ++ [lower_case_next_if_not_first,
-                words("Error: expected a symbol name, got"),
-                quote(TermStr), suffix("."), nl],
-            Spec = spec($pred, severity_error, phase_t2pt,
-                get_term_context(Term), Pieces),
+            Spec = report_no_sym_name(ContextPieces, VarSet, Term),
             MaybeSymNameAndArgs = error2([Spec])
         )
     ).
@@ -223,8 +213,15 @@ try_parse_sym_name_and_args_from_f_args(Functor, FunctorArgs, SymName, Args) :-
     ).
 
 parse_sym_name_and_no_args(VarSet, ContextPieces, Term, MaybeSymName) :-
+    % The implementations of
+    %
+    %   parse_sym_name_and_args
+    %   parse_sym_name_and_no_args
+    %   parse_symbol_name
+    %
+    % should be kept as close to each other as possible.
     ( if
-        Term = term.functor(Functor, FunctorArgs, TermContext),
+        Term = term.functor(Functor, FunctorArgs, _TermContext),
         Functor = term.atom("."),
         FunctorArgs = [ModuleTerm, NameArgsTerm]
     then
@@ -238,39 +235,21 @@ parse_sym_name_and_no_args(VarSet, ContextPieces, Term, MaybeSymName) :-
                     Args, MaybeSymName)
             ;
                 MaybeModule = error1(_),
-                ModuleTermStr = describe_error_term(GenericVarSet, ModuleTerm),
-                Pieces = cord.list(ContextPieces) ++
-                    [lower_case_next_if_not_first,
-                    words("Error: expected module name expected before '.'"),
-                    words("in qualified symbol name, got"),
-                    words(ModuleTermStr), suffix("."), nl],
-                Spec = spec($pred, severity_error, phase_t2pt,
-                    TermContext, Pieces),
+                Spec = report_no_module_name_before_dot(ContextPieces,
+                    VarSet, ModuleTerm),
                 MaybeSymName = error1([Spec])
             )
         else
-            varset.coerce(VarSet, GenericVarSet),
-            TermStr = describe_error_term(GenericVarSet, Term),
-            Pieces = cord.list(ContextPieces) ++ [lower_case_next_if_not_first,
-                words("Error: expected identifier after '.'"),
-                words("in qualified symbol name, got"),
-                words(TermStr), suffix("."), nl],
-            Spec = spec($pred, severity_error, phase_t2pt,
-                TermContext, Pieces),
+            Spec = report_bad_name_after_dot(ContextPieces,
+                VarSet, NameArgsTerm),
             MaybeSymName = error1([Spec])
         )
     else
-        varset.coerce(VarSet, GenericVarSet),
         ( if Term = term.functor(term.atom(Name), Args, _) then
             SymName = string_to_sym_name_sep(Name, "__"),
             insist_on_no_args(ContextPieces, Term, SymName, Args, MaybeSymName)
         else
-            TermStr = describe_error_term(GenericVarSet, Term),
-            Pieces = cord.list(ContextPieces) ++ [lower_case_next_if_not_first,
-                words("Error: atom expected at"),
-                words(TermStr), suffix("."), nl],
-            Spec = spec($pred, severity_error, phase_t2pt,
-                get_term_context(Term), Pieces),
+            Spec = report_no_sym_name(ContextPieces, VarSet, Term),
             MaybeSymName = error1([Spec])
         )
     ).
@@ -284,14 +263,8 @@ insist_on_no_args(ContextPieces, Term, SymName, Args, MaybeSymName) :-
         MaybeSymName = ok1(SymName)
     ;
         Args = [_ | _],
-        Name = sym_name_to_string(SymName),
-        Pieces = cord.list(ContextPieces) ++
-            [lower_case_next_if_not_first,
-            words("Error:"), quote(Name), words("has arguments,"),
-            words("expected none."), nl],
-        Spec = spec($pred, severity_error, phase_t2pt,
-            get_term_context(Term), Pieces),
-        MaybeSymName = error1([Spec])
+        ArgSpec = report_unexpected_args(ContextPieces, Term, SymName),
+        MaybeSymName = error1([ArgSpec])
     ).
 
 try_parse_sym_name_and_no_args(Term, SymName) :-
@@ -335,10 +308,7 @@ parse_implicitly_qualified_sym_name_and_no_args(DefaultModuleName, VarSet,
             ArgSpecs = []
         ;
             Args0 = [_ | _],
-            ArgPieces = [words("Error: did not expect"),
-                qual_sym_name(SymName0), words("to have any arguments."), nl],
-            ArgSpec = spec($pred, severity_error, phase_t2pt,
-                get_term_context(Term), ArgPieces),
+            ArgSpec = report_unexpected_args(ContextPieces, Term, SymName0),
             ArgSpecs = [ArgSpec]
         ),
         ( if
@@ -369,11 +339,7 @@ implicitly_qualify_sym_name_and_args(DefaultModuleName, Term, SymName0, Args,
     then
         MaybeSymNameAndArgs = ok2(SymName, Args)
     else
-        Pieces = [words("Error: the module qualifier in"),
-            qual_sym_name(SymName0), words("does not match"),
-            words("the preceding"), decl("module"), words("declaration."), nl],
-        Spec = spec($pred, severity_error, phase_t2pt,
-            get_term_context(Term), Pieces),
+        Spec = report_failed_implicit_qualification(Term, SymName0),
         MaybeSymNameAndArgs = error2([Spec])
     ).
 
@@ -384,11 +350,7 @@ implicitly_qualify_sym_name(DefaultModuleName, Term, SymName0, MaybeSymName) :-
     then
         MaybeSymName = ok1(SymName)
     else
-        Pieces = [words("Error: the module qualifier in"),
-            qual_sym_name(SymName0), words("does not match"),
-            words("the preceding"), decl("module"), words("declaration."), nl],
-        Spec = spec($pred, severity_error, phase_t2pt,
-            get_term_context(Term), Pieces),
+        Spec = report_failed_implicit_qualification(Term, SymName0),
         MaybeSymName = error1([Spec])
     ).
 
@@ -408,10 +370,17 @@ try_to_implicitly_qualify_sym_name(DefaultModuleName, SymName0, SymName) :-
 %-----------------------------------------------------------------------------e
 
 parse_symbol_name(VarSet, Term, MaybeSymName) :-
+    % The implementations of
+    %
+    %   parse_sym_name_and_args
+    %   parse_sym_name_and_no_args
+    %   parse_symbol_name
+    %
+    % should be kept as close to each other as possible.
     ( if
-        Term = term.functor(term.atom(FunctorName), [ModuleTerm, NameTerm],
-            TermContext),
-        FunctorName = "."
+        Term = term.functor(Functor, FunctorArgs, _TermContext),
+        Functor = term.atom("."),
+        FunctorArgs = [ModuleTerm, NameTerm]
     then
         ( if NameTerm = term.functor(term.atom(Name), [], _) then
             parse_symbol_name(VarSet, ModuleTerm, MaybeModule),
@@ -419,21 +388,15 @@ parse_symbol_name(VarSet, Term, MaybeSymName) :-
                 MaybeModule = ok1(Module),
                 MaybeSymName = ok1(qualified(Module, Name))
             ;
-                MaybeModule = error1(_ModuleResultSpecs),
-                % XXX We should say "module name" OR "identifier", not both.
-                Pieces = [words("Error: module name identifier"),
-                    words("expected before"), quote(FunctorName),
-                    words("in qualified symbol name."), nl],
-                Spec = spec($pred, severity_error, phase_t2pt,
-                    TermContext, Pieces),
-                % XXX Should we include _ModuleResultSpecs?
+                MaybeModule = error1(_),
+                ContextPieces = cord.init,
+                Spec = report_no_module_name_before_dot(ContextPieces,
+                    VarSet, ModuleTerm),
                 MaybeSymName = error1([Spec])
             )
         else
-            Pieces = [words("Error: identifier expected after"),
-                quote(FunctorName), words("in qualified symbol name."), nl],
-            Spec = spec($pred, severity_error, phase_t2pt,
-                TermContext, Pieces),
+            ContextPieces = cord.init,
+            Spec = report_bad_name_after_dot(ContextPieces, VarSet, NameTerm),
             MaybeSymName = error1([Spec])
         )
     else
@@ -441,11 +404,8 @@ parse_symbol_name(VarSet, Term, MaybeSymName) :-
             SymName = string_to_sym_name_sep(Name, "__"),
             MaybeSymName = ok1(SymName)
         else
-            TermStr = describe_error_term(VarSet, Term),
-            Pieces = [words("Error: symbol name expected at"),
-                words(TermStr), suffix("."), nl],
-            Spec = spec($pred, severity_error, phase_t2pt,
-                get_term_context(Term), Pieces),
+            ContextPieces = cord.init,
+            Spec = report_no_sym_name(ContextPieces, VarSet, Term),
             MaybeSymName = error1([Spec])
         )
     ).
@@ -500,44 +460,134 @@ parse_implicitly_qualified_symbol_name(DefaultModuleName, VarSet, Term,
 
 %-----------------------------------------------------------------------------e
 
-parse_symbol_name_specifier(VarSet, Term, MaybeSymNameSpecifier) :-
+parse_symbol_name_specifier(VarSet, Term, MaybeSymNameArity) :-
     ( if Term = term.functor(term.atom("/"), [NameTerm, ArityTerm], _) then
+        parse_symbol_name(VarSet, NameTerm, MaybeName),
         ( if term_int.decimal_term_to_int(ArityTerm, Arity) then
             ( if Arity >= 0 then
-                parse_symbol_name(VarSet, NameTerm, MaybeName),
                 (
-                    MaybeName = error1(Specs),
-                    MaybeSymNameSpecifier = error1(Specs)
+                    MaybeName = error1(NameSpecs),
+                    MaybeSymNameArity = error1(NameSpecs)
                 ;
                     MaybeName = ok1(Name),
                     UserArity = user_arity(Arity),
-                    MaybeSymNameSpecifier =
+                    MaybeSymNameArity =
                         ok1(sym_name_specifier_name_arity(Name, UserArity))
                 )
             else
-                Pieces = [words("Error: arity in symbol name specifier"),
-                    words("must be a non-negative integer."), nl],
-                Spec = spec($pred, severity_error, phase_t2pt,
-                    get_term_context(Term), Pieces),
-                MaybeSymNameSpecifier = error1([Spec])
+                AritySpec = report_negative_arity(ArityTerm, Arity),
+                Specs = [AritySpec | get_any_errors1(MaybeName)],
+                MaybeSymNameArity = error1(Specs)
             )
         else
-            Pieces = [words("Error: arity in symbol name specifier"),
-                words("must be an integer."), nl],
-            Spec = spec($pred, severity_error, phase_t2pt,
-                get_term_context(Term), Pieces),
-            MaybeSymNameSpecifier = error1([Spec])
+            AritySpec = report_noninteger_arity_term(VarSet, ArityTerm),
+            Specs = [AritySpec | get_any_errors1(MaybeName)],
+            MaybeSymNameArity = error1(Specs)
         )
     else
         parse_symbol_name(VarSet, Term, MaybeSymbolName),
         (
             MaybeSymbolName = error1(Specs),
-            MaybeSymNameSpecifier = error1(Specs)
+            MaybeSymNameArity = error1(Specs)
         ;
             MaybeSymbolName = ok1(SymbolName),
-            MaybeSymNameSpecifier = ok1(sym_name_specifier_name(SymbolName))
+            MaybeSymNameArity = ok1(sym_name_specifier_name(SymbolName))
         )
     ).
+
+%-----------------------------------------------------------------------------e
+
+:- func report_no_module_name_before_dot(cord(format_piece),
+    varset(T), term(U)) = error_spec.
+
+report_no_module_name_before_dot(ContextPieces, VarSet0, ModuleTerm) = Spec :-
+    varset.coerce(VarSet0, VarSet),
+    ModuleTermStr = describe_error_term(VarSet, ModuleTerm),
+    Pieces = cord.list(ContextPieces) ++ [lower_case_next_if_not_first,
+        words("Error: expected")] ++
+        color_as_correct([words("module name")]) ++
+        [words("before '.' in qualified symbol name, got")] ++
+        color_as_incorrect([words(ModuleTermStr), suffix(".")]) ++
+        [nl],
+    Context = get_term_context(ModuleTerm),
+    Spec = spec($pred, severity_error, phase_t2pt, Context, Pieces).
+
+:- func report_bad_name_after_dot(cord(format_piece), varset(T), term(U))
+    = error_spec.
+
+report_bad_name_after_dot(ContextPieces, VarSet0, NameArgsTerm) = Spec :-
+    varset.coerce(VarSet0, VarSet),
+    NameArgsTermStr = describe_error_term(VarSet, NameArgsTerm),
+    Pieces = cord.list(ContextPieces) ++ [lower_case_next_if_not_first,
+        words("Error: expected")] ++
+        color_as_correct([words("identifier")]) ++
+        [words("after '.' in qualified symbol name, got")] ++
+        color_as_incorrect([words(NameArgsTermStr), suffix(".")]) ++
+        [nl],
+    Context = get_term_context(NameArgsTerm),
+    Spec = spec($pred, severity_error, phase_t2pt, Context, Pieces).
+
+:- func report_no_sym_name(cord(format_piece), varset(T), term(U))
+    = error_spec.
+
+report_no_sym_name(ContextPieces, VarSet0, Term) = Spec :-
+    varset.coerce(VarSet0, VarSet),
+    TermStr = describe_error_term(VarSet, Term),
+    Pieces = cord.list(ContextPieces) ++ [lower_case_next_if_not_first,
+        words("Error: expected a")] ++
+        color_as_correct([words("symbol name,")]) ++
+        [words("got")] ++
+        color_as_incorrect([quote(TermStr), suffix(".")]) ++
+        [nl],
+    Context = get_term_context(Term),
+    Spec = spec($pred, severity_error, phase_t2pt, Context, Pieces).
+
+:- func report_unexpected_args(cord(format_piece), term(T), sym_name)
+    = error_spec.
+
+report_unexpected_args(ContextPieces, Term, SymName) = Spec :-
+    Pieces = cord.list(ContextPieces) ++
+        [lower_case_next_if_not_first, words("Error:")] ++
+        color_as_subject([qual_sym_name(SymName)]) ++
+        color_as_incorrect([words("should not have any arguments.")]) ++
+        [nl],
+    Context = get_term_context(Term),
+    Spec = spec($pred, severity_error, phase_t2pt, Context, Pieces).
+
+:- func report_negative_arity(term(T), int) = error_spec.
+
+report_negative_arity(Term, Arity) = Spec :-
+    ArityStr = string.int_to_string(Arity),
+    Pieces = [words("Error: expected a")] ++
+        color_as_correct([words("non-negative integer")]) ++
+        [words("as arity, got")] ++
+        color_as_incorrect([quote(ArityStr), suffix(".")]) ++
+        [nl],
+    Context = get_term_context(Term),
+    Spec = spec($pred, severity_error, phase_t2pt, Context, Pieces).
+
+:- func report_noninteger_arity_term(varset(T), term(U)) = error_spec.
+
+report_noninteger_arity_term(VarSet0, Term) = Spec :-
+    varset.coerce(VarSet0, VarSet),
+    TermStr = describe_error_term(VarSet, Term),
+    Pieces = [words("Error: expected an")] ++
+        color_as_correct([words("integer")]) ++
+        [words("as arity, got")] ++
+        color_as_incorrect([quote(TermStr), suffix(".")]) ++
+        [nl],
+    Context = get_term_context(Term),
+    Spec = spec($pred, severity_error, phase_t2pt, Context, Pieces).
+
+:- func report_failed_implicit_qualification(term(T), sym_name) = error_spec.
+
+report_failed_implicit_qualification(Term, SymName) = Spec :-
+    Pieces = [words("Error: the module qualifier in")] ++
+        color_as_subject([qual_sym_name(SymName)]) ++
+        color_as_incorrect([words("does not match")]) ++
+        [words("the preceding"), decl("module"), words("declaration."), nl],
+    Context = get_term_context(Term),
+    Spec = spec($pred, severity_error, phase_t2pt, Context, Pieces).
 
 %-----------------------------------------------------------------------------e
 :- end_module parse_tree.parse_sym_name.

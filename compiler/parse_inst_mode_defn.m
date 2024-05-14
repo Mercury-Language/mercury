@@ -93,9 +93,10 @@ parse_inst_defn_item(ModuleName, VarSet, ArgTerms, Context, SeqNum,
             MaybeIOM = error1([Spec])
         )
     else
-        Pieces = [words("Error: an"), decl("inst"), words("declaration"),
-            words("should have just one argument,"),
-            words("which should be the definition of an inst."), nl],
+        Pieces = [words("Error: an")] ++
+            color_as_subject([decl("inst"), words("declaration")]) ++
+            color_as_incorrect([words("should have just one argument,")]) ++
+            [words("which should be the definition of an inst."), nl],
         Spec = spec($pred, severity_error, phase_t2pt, Context, Pieces),
         MaybeIOM = error1([Spec])
     ).
@@ -120,9 +121,11 @@ parse_inst_defn_eqv(ModuleName, VarSet, HeadTerm, BodyTerm, Context, SeqNum,
         else
             MaybeForType = no,
             ForTypeTermStr = describe_error_term(VarSet, ForTypeTerm),
-            ForTypePieces = [words("Error: expected"),
-                words("type constructor name/arity, not"),
-                quote(ForTypeTermStr), suffix("."), nl],
+            ForTypePieces = [words("Error: expected")] ++
+                color_as_correct([words("type constructor name/arity,")]) ++
+                [words("got")] ++
+                color_as_incorrect([quote(ForTypeTermStr), suffix(".")]) ++
+                [nl],
             ForTypeSpec = spec($pred, severity_error, phase_t2pt,
                 get_term_context(ForTypeTerm), ForTypePieces),
             ForTypeSpecs = [ForTypeSpec]
@@ -143,7 +146,7 @@ parse_inst_defn_eqv(ModuleName, VarSet, HeadTerm, BodyTerm, Context, SeqNum,
 
         HeadTermContext = get_term_context(HeadTerm),
         check_user_inst_name(SymName, HeadTermContext, NameSpecs),
-        check_inst_mode_defn_args("inst definition", VarSet,
+        check_inst_mode_defn_args("an", "inst definition", VarSet,
             ArgTerms, yes(BodyTerm), MaybeInstArgVars),
         NamedContextPieces = cord.from_list(
             [words("In the definition of the inst"),
@@ -186,7 +189,7 @@ parse_abstract_inst_defn_item(ModuleName, VarSet, HeadTerms, Context, SeqNum,
             MaybeNameAndArgs = ok2(SymName, ArgTerms),
             HeadTermContext = get_term_context(HeadTerm),
             check_user_inst_name(SymName, HeadTermContext, NameSpecs),
-            check_inst_mode_defn_args("abstract_inst definition", VarSet,
+            check_inst_mode_defn_args("an", "abstract_inst definition", VarSet,
                 ArgTerms, no, MaybeInstArgVars),
             ( if
                 NameSpecs = [],
@@ -209,8 +212,10 @@ parse_abstract_inst_defn_item(ModuleName, VarSet, HeadTerms, Context, SeqNum,
         ( HeadTerms = []
         ; HeadTerms = [_, _ | _]
         ),
-        Pieces = [words("Error:"), decl("abstract_inst"),
-            words("should have exactly one argument."), nl],
+        Pieces = [words("Error:")] ++
+            color_as_subject([decl("abstract_inst")]) ++
+            color_as_incorrect([words("should have exactly one argument.")]) ++
+            [nl],
         Spec = spec($pred, severity_error, phase_t2pt, Context, Pieces),
         MaybeIOM = error1([Spec])
     ).
@@ -236,7 +241,7 @@ parse_mode_defn(ModuleName, VarSet, HeadTerm, BodyTerm, Context, SeqNum,
         MaybeSymNameAndArgs = ok2(SymName, ArgTerms),
         HeadTermContext = get_term_context(HeadTerm),
         check_user_mode_name(SymName, HeadTermContext, NameSpecs),
-        check_inst_mode_defn_args("mode definition", VarSet,
+        check_inst_mode_defn_args("a", "mode definition", VarSet,
             ArgTerms, yes(BodyTerm), MaybeInstArgVars),
         NamedContextPieces = cord.from_list(
             [words("In the definition of the mode"),
@@ -276,7 +281,7 @@ parse_abstract_mode_defn_item(ModuleName, VarSet, HeadTerms, Context, SeqNum,
             MaybeSymNameAndArgs = ok2(SymName, ArgTerms),
             HeadTermContext = get_term_context(HeadTerm),
             check_user_mode_name(SymName, HeadTermContext, NameSpecs),
-            check_inst_mode_defn_args("abstract_mode definition", VarSet,
+            check_inst_mode_defn_args("an", "abstract_mode definition", VarSet,
                 ArgTerms, no, MaybeInstArgVars),
             ( if
                 NameSpecs = [],
@@ -297,8 +302,10 @@ parse_abstract_mode_defn_item(ModuleName, VarSet, HeadTerms, Context, SeqNum,
         ( HeadTerms = []
         ; HeadTerms = [_, _ | _]
         ),
-        Pieces = [words("Error:"), decl("abstract_inst"),
-            words("should have exactly one argument."), nl],
+        Pieces = [words("Error:")] ++
+            color_as_subject([decl("abstract_mode")]) ++
+            color_as_incorrect([words("should have exactly one argument.")]) ++
+            [nl],
         Spec = spec($pred, severity_error, phase_t2pt, Context, Pieces),
         MaybeIOM = error1([Spec])
     ).
@@ -313,8 +320,11 @@ parse_abstract_mode_defn_item(ModuleName, VarSet, HeadTerms, Context, SeqNum,
 check_user_inst_name(SymName, Context, NameSpecs) :-
     Name = unqualify_name(SymName),
     ( if is_known_inst_name(Name) then
-        NamePieces = [words("Error: the inst name"), quote(Name),
-            words("is reserved for the Mercury implementation."), nl],
+        NamePieces = [words("Error: the inst name")] ++
+            color_as_subject([quote(Name)]) ++
+            [words("is")] ++
+            color_as_incorrect([words("reserved")]) ++
+            [words("for the Mercury implementation."), nl],
         NameSpec = spec($pred, severity_error, phase_t2pt,
             Context, NamePieces),
         NameSpecs = [NameSpec]
@@ -331,8 +341,11 @@ check_user_mode_name(SymName, Context, NameSpecs) :-
     % Check that the mode name is available to users.
     Name = unqualify_name(SymName),
     ( if is_known_mode_name(Name) then
-        NamePieces = [words("Error: the mode name"), quote(Name),
-            words("is reserved for the Mercury implementation."), nl],
+        NamePieces = [words("Error: the mode name")] ++
+            color_as_subject([quote(Name)]) ++
+            [words("is")] ++
+            color_as_incorrect([words("reserved")]) ++
+            [words("for the Mercury implementation."), nl],
         NameSpec = spec($pred, severity_error, phase_t2pt,
             Context, NamePieces),
         NameSpecs = [NameSpec]
@@ -340,13 +353,13 @@ check_user_mode_name(SymName, Context, NameSpecs) :-
         NameSpecs = []
     ).
 
-:- pred check_inst_mode_defn_args(string::in, varset::in,
+:- pred check_inst_mode_defn_args(string::in, string::in, varset::in,
     list(term)::in, maybe(term)::in, maybe1(list(inst_var))::out) is det.
 
-check_inst_mode_defn_args(DefnKind, VarSet,
-        ArgTerms, MaybeBodyTerm, MaybeArgVars) :-
+check_inst_mode_defn_args(AAn, DefnKind, VarSet, ArgTerms, MaybeBodyTerm,
+        MaybeArgVars) :-
     % Check that all the head arguments are variables.
-    terms_to_distinct_vars(VarSet, DefnKind, ArgTerms, MaybeArgVars0),
+    terms_to_distinct_vars(VarSet, AAn, DefnKind, ArgTerms, MaybeArgVars0),
     (
         MaybeArgVars0 = ok1(ArgVars),
         some [!Specs] (
@@ -363,13 +376,16 @@ check_inst_mode_defn_args(DefnKind, VarSet,
                 set.to_sorted_list(FreeVarsSet, FreeVars),
                 FreeVars = [_ | _]
             then
-                FreeVarNames =
-                    list.map(mercury_var_to_name_only_vs(VarSet), FreeVars),
-                FreePieces = [words("Error: free inst"),
+                FreeVarPieces =
+                    list.map(var_to_quote_piece(VarSet), FreeVars),
+                FreePieces = [words("Error:"),
                     words(choose_number(FreeVars,
-                        "parameter", "parameters"))] ++
-                    list_to_quoted_pieces(FreeVarNames) ++
-                    [words("on right hand side of"),
+                        "a free inst parameter", "free inst parameters")),
+                    words("such as")] ++
+                    component_list_to_color_pieces(yes(color_subject),
+                        "and", [], FreeVarPieces) ++
+                    color_as_incorrect([words("may not occur")]) ++
+                    [words("on the right hand side of"),
                     words(DefnKind), suffix("."), nl],
                 FreeSpec = spec($pred, severity_error, phase_t2pt,
                     get_term_context(BodyTerm), FreePieces),
@@ -377,7 +393,6 @@ check_inst_mode_defn_args(DefnKind, VarSet,
             else
                 true
             ),
-
             (
                 !.Specs = [],
                 list.map(term.coerce_var, ArgVars, InstArgVars),

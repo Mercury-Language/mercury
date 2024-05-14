@@ -10,7 +10,7 @@ bad_foreign_proc.m:030:   The valid languages are c, C, csharp, C#, java and
 bad_foreign_proc.m:030:   Java.
 bad_foreign_proc.m:039: In the second argument of `:- pragma foreign_proc'
 bad_foreign_proc.m:039:   declaration:
-bad_foreign_proc.m:039:   error: expected a symbol name, got `"foo"'.
+bad_foreign_proc.m:039:   error: expected a [38;5;40msymbol name,[39;49m got [38;5;203m`"foo"'.[39;49m
 bad_foreign_proc.m:043: In the third argument of `:- pragma foreign_proc'
 bad_foreign_proc.m:043:   declaration:
 bad_foreign_proc.m:043:   error: expected an attribute list, got
@@ -30,7 +30,7 @@ bad_foreign_proc.m:065:   The valid languages are c, C, csharp, C#, java and
 bad_foreign_proc.m:065:   Java.
 bad_foreign_proc.m:066: In the second argument of `:- pragma foreign_proc'
 bad_foreign_proc.m:066:   declaration:
-bad_foreign_proc.m:066:   error: expected a symbol name, got `"foo"'.
+bad_foreign_proc.m:066:   error: expected a [38;5;40msymbol name,[39;49m got [38;5;203m`"foo"'.[39;49m
 bad_foreign_proc.m:067: In the third argument of `:- pragma foreign_proc'
 bad_foreign_proc.m:067:   declaration:
 bad_foreign_proc.m:067:   error: expected an attribute list, got

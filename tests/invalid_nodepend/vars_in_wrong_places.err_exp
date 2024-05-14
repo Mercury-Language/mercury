@@ -14,16 +14,16 @@ vars_in_wrong_places.m:006:   The following assumes that the missing
 vars_in_wrong_places.m:006:   declaration is an `:- implementation'
 vars_in_wrong_places.m:006:   declaration.
 vars_in_wrong_places.m:006: In clause head:
-vars_in_wrong_places.m:006:   error: expected a symbol name, got `Oops1'.
+vars_in_wrong_places.m:006:   error: expected a [38;5;40msymbol name,[39;49m got [38;5;203m`Oops1'.[39;49m
 vars_in_wrong_places.m:007: In equation head:
-vars_in_wrong_places.m:007:   error: expected a symbol name, got `Oops2'.
+vars_in_wrong_places.m:007:   error: expected a [38;5;40msymbol name,[39;49m got [38;5;203m`Oops2'.[39;49m
 vars_in_wrong_places.m:008: In equation head:
-vars_in_wrong_places.m:008:   error: expected a symbol name, got `Oops3'.
+vars_in_wrong_places.m:008:   error: expected a [38;5;40msymbol name,[39;49m got [38;5;203m`Oops3'.[39;49m
 vars_in_wrong_places.m:009: In `:- pred' declaration:
-vars_in_wrong_places.m:009:   error: expected a symbol name, got `Oops4'.
+vars_in_wrong_places.m:009:   error: expected a [38;5;40msymbol name,[39;49m got [38;5;203m`Oops4'.[39;49m
 vars_in_wrong_places.m:010: In `:- func' declaration:
-vars_in_wrong_places.m:010:   error: expected a symbol name, got `Oops5'.
+vars_in_wrong_places.m:010:   error: expected a [38;5;40msymbol name,[39;49m got [38;5;203m`Oops5'.[39;49m
 vars_in_wrong_places.m:011: In `:- mode' declaration:
-vars_in_wrong_places.m:011:   error: expected a symbol name, got `Oops6'.
+vars_in_wrong_places.m:011:   error: expected a [38;5;40msymbol name,[39;49m got [38;5;203m`Oops6'.[39;49m
 vars_in_wrong_places.m:012: In function `:- mode' declaration:
-vars_in_wrong_places.m:012:   error: expected a symbol name, got `Oops7'.
+vars_in_wrong_places.m:012:   error: expected a [38;5;40msymbol name,[39;49m got [38;5;203m`Oops7'.[39;49m

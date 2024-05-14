@@ -1267,7 +1267,7 @@ parse_pragma_foreign_export_enum(VarSet, ErrorTerm, PragmaTerms,
 maybe_parse_export_enum_overrides(_, no, ok1([])).
 maybe_parse_export_enum_overrides(VarSet, yes(OverridesTerm),
         MaybeOverrides) :-
-    parse_list_elements("a list of mapping elements",
+    parse_list_elements("list of mapping elements",
         parse_sym_name_string_pair, VarSet, OverridesTerm, MaybeOverrides).
 
 :- pred parse_sym_name_string_pair(varset::in, term::in,

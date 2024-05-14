@@ -1221,7 +1221,7 @@ parse_oisu_preds_term(ModuleName, VarSet, ArgNum, ExpectedFunctor, Term,
         Functor = ExpectedFunctor,
         ArgTerms = [ArgTerm]
     then
-        parse_list_elements("a list of predicate or function names/arities",
+        parse_list_elements("list of predicate or function names/arities",
             parse_pred_pf_name_arity(ModuleName, "oisu"), VarSet,
             ArgTerm, MaybePredSpecs)
     else
@@ -2063,15 +2063,22 @@ parse_pragma_require_feature_set(VarSet, ErrorTerm, PragmaTerms,
         Context, SeqNum, MaybeIOM) :-
     (
         PragmaTerms = [FeatureListTerm],
-        parse_list_elements("a list of features", parse_required_feature,
+        parse_list_elements("list of features", parse_required_feature,
             VarSet, FeatureListTerm, MaybeFeatureList),
         (
             MaybeFeatureList = ok1(FeatureList),
+            FloatPieces =
+                color_as_subject([words("floats")]) ++
+                color_as_incorrect([words("cannot be both")]) ++
+                [words("single- and double-precision.")],
+            TrailPieces =
+                color_as_subject([words("trailing")]) ++
+                [words("works only with")] ++
+                color_as_incorrect([words("sequential conjunctions.")]),
             ConflictingFeatures = [
                 conflict(reqf_single_prec_float, reqf_double_prec_float,
-                    "floats cannot be both single- and double-precision"),
-                conflict(reqf_parallel_conj, reqf_trailing,
-                    "trailing works only with sequential conjunctions")
+                    FloatPieces),
+                conflict(reqf_parallel_conj, reqf_trailing, TrailPieces)
             ],
             FeatureListContext = get_term_context(FeatureListTerm),
             report_any_conflicts(FeatureListContext,

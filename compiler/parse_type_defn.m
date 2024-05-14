@@ -1712,8 +1712,8 @@ parse_type_defn_head(ContextPieces, ModuleName, VarSet, Term,
                 % suggest that the arguments must be variables.
                 MaybeTypeCtorAndArgs = error2(NameSpecs)
             else
-                terms_to_distinct_vars(VarSet, "type definition", ArgTerms,
-                    MaybeParamVars),
+                terms_to_distinct_vars(VarSet, "a", "type definition",
+                    ArgTerms, MaybeParamVars),
                 (
                     MaybeParamVars = ok1(ParamVars),
                     (

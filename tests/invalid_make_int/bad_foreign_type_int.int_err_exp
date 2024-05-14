@@ -10,7 +10,7 @@ bad_foreign_type_int.m:025:   The valid languages are c, C, csharp, C#, java
 bad_foreign_type_int.m:025:   and Java.
 bad_foreign_type_int.m:029: In the second argument of `:- pragma foreign_type'
 bad_foreign_type_int.m:029:   declaration:
-bad_foreign_type_int.m:029:   error: expected a symbol name, got `1111'.
+bad_foreign_type_int.m:029:   error: expected a [38;5;40msymbol name,[39;49m got [38;5;203m`1111'.[39;49m
 bad_foreign_type_int.m:033: In the third argument of `:- pragma foreign_type'
 bad_foreign_type_int.m:033:   declaration:
 bad_foreign_type_int.m:033:   error: expected a string specifying the foreign
@@ -46,7 +46,7 @@ bad_foreign_type_int.m:060:   The valid languages are c, C, csharp, C#, java
 bad_foreign_type_int.m:060:   and Java.
 bad_foreign_type_int.m:061: In the second argument of `:- pragma foreign_type'
 bad_foreign_type_int.m:061:   declaration:
-bad_foreign_type_int.m:061:   error: expected a symbol name, got `9999'.
+bad_foreign_type_int.m:061:   error: expected a [38;5;40msymbol name,[39;49m got [38;5;203m`9999'.[39;49m
 bad_foreign_type_int.m:062: In the third argument of `:- pragma foreign_type'
 bad_foreign_type_int.m:062:   declaration:
 bad_foreign_type_int.m:062:   error: expected a string specifying the foreign

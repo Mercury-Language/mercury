@@ -25,8 +25,8 @@ bad_foreign_export_enum.m:030: In the third argument of
 bad_foreign_export_enum.m:030:   `:- pragma foreign_export_enum' declaration:
 bad_foreign_export_enum.m:030:   error: expected a list of attributes, got
 bad_foreign_export_enum.m:030:   `1234'.
-bad_foreign_export_enum.m:031: Error: expected a list of mapping elements, got
-bad_foreign_export_enum.m:031:   `5678'.
+bad_foreign_export_enum.m:031: Error: expected a [38;5;40mlist of mapping elements,[39;49m got
+bad_foreign_export_enum.m:031:   [38;5;203m`5678'.[39;49m
 bad_foreign_export_enum.m:034: In the first argument of
 bad_foreign_export_enum.m:034:   `:- pragma foreign_export_enum' declaration:
 bad_foreign_export_enum.m:034:   error: expected the name of a foreign
