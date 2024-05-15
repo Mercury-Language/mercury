@@ -52,9 +52,9 @@ subtype_invalid_supertype.m:031:   [38;5;203mis not defined.[39;49m
 subtype_invalid_supertype.m:031: In definition of type `s5'/0:
 subtype_invalid_supertype.m:031:   error: undefined type `undefined'/0.
 subtype_invalid_supertype.m:034: In the supertype part of a subtype definition:
-subtype_invalid_supertype.m:034:   error: `1' is not a type.
+subtype_invalid_supertype.m:034:   error: [38;5;87m`1'[39;49m is [38;5;203mnot a type.[39;49m
 subtype_invalid_supertype.m:034: In the supertype part of a subtype definition:
-subtype_invalid_supertype.m:034:   error: `2' is not a type.
+subtype_invalid_supertype.m:034:   error: [38;5;87m`2'[39;49m is [38;5;203mnot a type.[39;49m
 subtype_invalid_supertype.m:037: Error: [38;5;203mcircularity in subtype definition[39;49m
 subtype_invalid_supertype.m:037:   [38;5;203mchain.[39;49m
 subtype_invalid_supertype.m:037:   The chain is:

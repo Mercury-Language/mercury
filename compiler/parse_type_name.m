@@ -150,9 +150,13 @@ parse_type(AllowHOInstInfo, VarSet, ContextPieces, Term, Result) :-
             ),
             TermStr = describe_error_term(VarSet, Term),
             Pieces = cord.list(ContextPieces) ++ [lower_case_next_if_not_first,
-                words("Error:"), quote(TermStr), words("is not a type."), nl],
-            Spec = spec($pred, severity_error,
-                phase_t2pt, FunctorContext, Pieces),
+                words("Error:")] ++
+                color_as_subject([quote(TermStr)]) ++
+                [words("is")] ++
+                color_as_incorrect([words("not a type.")]) ++
+                [nl],
+            Spec = spec($pred, severity_error, phase_t2pt,
+                FunctorContext, Pieces),
             Result = error1([Spec])
         ;
             Functor = term.atom(Name),
@@ -169,12 +173,14 @@ parse_type(AllowHOInstInfo, VarSet, ContextPieces, Term, Result) :-
                 ;
                     KnownTypeKind = known_type_bad_arity(ExpectedArity),
                     Pieces = cord.list(ContextPieces) ++
-                        [lower_case_next_if_not_first, words("Error:"),
-                        quote(Name), words("should not be used"),
-                        words("with any arity other than"),
-                        int_fixed(ExpectedArity), suffix("."), nl],
-                    Spec = spec($pred, severity_error,
-                        phase_t2pt, FunctorContext, Pieces),
+                        [lower_case_next_if_not_first, words("Error:")] ++
+                        color_as_subject([quote(Name)]) ++
+                        [words("should not be used")] ++
+                        color_as_incorrect([words("with any arity other than"),
+                            int_fixed(ExpectedArity), suffix(".")]) ++
+                        [nl],
+                    Spec = spec($pred, severity_error, phase_t2pt,
+                        FunctorContext, Pieces),
                     Result = error1([Spec])
                 )
             else
@@ -225,17 +231,21 @@ parse_compound_type(AllowHOInstInfo, Term, VarSet, ContextPieces,
         CompoundTypeKind = kctk_apply(_),
         % We don't support apply/N types yet, so we just detect them
         % and report an error message.
+        % XXX This message is not that informative.
         TermStr = describe_error_term(VarSet, Term),
         Pieces = cord.list(ContextPieces) ++ [lower_case_next_if_not_first,
-            words("Error: ill-formed type"), quote(TermStr), suffix("."), nl],
+            words("Error:")] ++
+            color_as_incorrect([words("ill-formed type")]) ++
+            color_as_subject([quote(TermStr), suffix(".")]) ++
+            [nl],
         Spec = spec($pred, severity_error, phase_t2pt,
             get_term_context(Term), Pieces),
         Result = error1([Spec])
     ;
         CompoundTypeKind = kctk_pure_pred(Args),
         ArgContextFunc = arg_context_pieces(ContextPieces, pf_predicate),
-        parse_types_no_modes(no_allow_ho_inst_info(wnhii_pred_arg),
-            VarSet, ArgContextFunc, Args, 1, ArgTypes, [], Specs),
+        parse_types_no_modes(wnhii_pred_arg, VarSet, ArgContextFunc,
+            Args, 1, ArgTypes, [], Specs),
         (
             Specs = [],
             construct_higher_order_pred_type(purity_pure, ArgTypes, PredType),
@@ -248,13 +258,13 @@ parse_compound_type(AllowHOInstInfo, Term, VarSet, ContextPieces,
         CompoundTypeKind = kctk_pure_func(BeforeEqTerm, AfterEqTerm),
         ( if BeforeEqTerm = term.functor(term.atom("func"), FuncArgs, _) then
             ArgContextFunc = arg_context_pieces(ContextPieces, pf_function),
-            parse_types_no_modes(no_allow_ho_inst_info(wnhii_func_arg),
-                VarSet, ArgContextFunc, FuncArgs, 1, ArgTypes, [], ArgSpecs),
+            parse_types_no_modes(wnhii_func_arg, VarSet, ArgContextFunc,
+                FuncArgs, 1, ArgTypes, [], ArgSpecs),
             RetContextPieces = ContextPieces ++ cord.from_list([
                 words("in the return value of higher-order function type:"),
                 nl]),
-            parse_type_no_mode(no_allow_ho_inst_info(wnhii_func_return_arg),
-                VarSet, RetContextPieces, AfterEqTerm, MaybeRetType),
+            parse_type_no_mode(wnhii_func_return_arg, VarSet,
+                RetContextPieces, AfterEqTerm, MaybeRetType),
             ( if
                 ArgSpecs = [],
                 MaybeRetType = ok1(RetType)
@@ -270,10 +280,13 @@ parse_compound_type(AllowHOInstInfo, Term, VarSet, ContextPieces,
             % XXX Should be more specific.
             Pieces = cord.list(ContextPieces) ++ [lower_case_next_if_not_first,
                 words("Error: in a function type declaration,"),
-                words("the operator"), quote("="), words("should be preceded"),
-                words("by"), quote("func(<arguments>)"), suffix("."), nl],
-            Spec = spec($pred, severity_error,
-                phase_t2pt,
+                words("the operator")] ++
+                color_as_subject([quote("=")]) ++
+                color_as_incorrect([words("should be preceded")]) ++
+                [words("by")] ++
+                color_as_subject([quote("func(<arguments>)"), suffix(".")]) ++
+                [nl],
+            Spec = spec($pred, severity_error, phase_t2pt,
                 get_term_context(BeforeEqTerm), Pieces),
             Result = error1([Spec])
         )
@@ -304,13 +317,13 @@ parse_compound_type(AllowHOInstInfo, Term, VarSet, ContextPieces,
             BeforeEqTerm = term.functor(term.atom("func"), FuncArgs, _)
         then
             ArgContextFunc = arg_context_pieces(ContextPieces, pf_function),
-            parse_types_no_modes(no_allow_ho_inst_info(wnhii_func_arg),
-                VarSet, ArgContextFunc, FuncArgs, 1, ArgTypes, [], ArgSpecs),
+            parse_types_no_modes(wnhii_func_arg, VarSet, ArgContextFunc,
+                FuncArgs, 1, ArgTypes, [], ArgSpecs),
             RetContextPieces = ContextPieces ++ cord.from_list([
                 words("in the return value of higher-order function type:"),
                 nl]),
-            parse_type_no_mode(no_allow_ho_inst_info(wnhii_func_return_arg),
-                VarSet, RetContextPieces, AfterEqTerm, MaybeRetType),
+            parse_type_no_mode(wnhii_func_return_arg, VarSet,
+                RetContextPieces, AfterEqTerm, MaybeRetType),
             ( if
                 ArgSpecs = [],
                 MaybeRetType = ok1(RetType)
@@ -327,8 +340,8 @@ parse_compound_type(AllowHOInstInfo, Term, VarSet, ContextPieces,
             Name = "pred"
         then
             ArgContextFunc = arg_context_pieces(ContextPieces, pf_predicate),
-            parse_types_no_modes(no_allow_ho_inst_info(wnhii_pred_arg),
-                VarSet, ArgContextFunc, Args, 1, ArgTypes, [], Specs),
+            parse_types_no_modes(wnhii_pred_arg, VarSet, ArgContextFunc,
+                Args, 1, ArgTypes, [], Specs),
             (
                 Specs = [],
                 construct_higher_order_pred_type(Purity, ArgTypes, Type),
@@ -374,13 +387,15 @@ parse_compound_type(AllowHOInstInfo, Term, VarSet, ContextPieces,
                 FormPieces = AlwaysPieces
             ),
             Pieces = cord.list(ContextPieces) ++ [lower_case_next_if_not_first,
-                words("Error: the purity marker"), quote(PurityName),
-                words("should be followed by a higher order type,"),
+                words("Error: the purity marker"), quote(PurityName)] ++
+                color_as_incorrect([words("should be followed")]) ++
+                [words("by a higher order type,"),
                 words("which should be of one of the following forms:"),
                 nl_indent_delta(1)] ++
-                FormPieces ++ [suffix("."), nl_indent_delta(-1)],
-            Spec = spec($pred, severity_error,
-                phase_t2pt, get_term_context(SubTerm), Pieces),
+                color_as_correct(FormPieces ++ [suffix(".")]) ++
+                [nl_indent_delta(-1)],
+            Spec = spec($pred, severity_error, phase_t2pt,
+                get_term_context(SubTerm), Pieces),
             Result = error1([Spec])
         )
     ).
@@ -395,6 +410,8 @@ parse_ho_type_and_inst(VarSet, ContextPieces, BeforeIsTerm, AfterIsTerm,
         BeforeIsTerm = term.functor(term.atom("="), [FuncTerm, RetTerm], _),
         FuncTerm = term.functor(term.atom("func"), ArgTerms, _)
     then
+        % XXX We pass require_tm_mode to the predicates that parse
+        % the arguments, but should we *require* this for functions?
         ArgContextFunc = arg_context_pieces(ContextPieces, pf_function),
         parse_types_and_maybe_modes(dont_constrain_inst_vars, require_tm_mode,
             wnhii_func_arg, VarSet, ArgContextFunc, ArgTerms, 1,
@@ -418,13 +435,17 @@ parse_ho_type_and_inst(VarSet, ContextPieces, BeforeIsTerm, AfterIsTerm,
         parse_ho_type_and_inst_2(VarSet, ContextPieces, Purity,
             ArgTypeAndMaybeModes, ArgTMSpecs, no, MaybeDetism, MaybeType)
     else
+        Form1 = "pred(<arguments>) is det",
+        Form2 = "func(<arguments>) = <return_argument> is det",
         BeforeIsTermStr = describe_error_term(VarSet, BeforeIsTerm),
-        HOPieces = [words("Error: a higher order type"),
-            words("must have one of the forms"), nl_indent_delta(1),
-            quote("pred(<arguments>) is det"), nl,
-            quote("func(<arguments>) = <return_argument> is det"),
-            suffix(","), nl_indent_delta(-1),
-            words("but"), quote(BeforeIsTermStr), words("is neither."), nl],
+        HOPieces = [words("Error: expected either"),
+            nl_indent_delta(1)] ++
+            color_as_correct([quote(Form1)]) ++ [words("or"), nl] ++
+            color_as_correct([quote(Form2)]) ++
+            [nl_indent_delta(-1),
+            words("as a higher order type, got")] ++
+            color_as_incorrect([quote(BeforeIsTermStr), suffix(".")]) ++
+            [nl],
         HOSpec = spec($pred, severity_error, phase_t2pt,
             get_term_context(AfterIsTerm), HOPieces),
         MaybeType = error1([HOSpec])
@@ -489,16 +510,16 @@ project_tm_type_and_mode(type_only(_), _, _) :-
 
 %---------------------------------------------------------------------------%
 
-:- pred parse_types_no_modes(allow_ho_inst_info::in, varset::in,
+:- pred parse_types_no_modes(why_no_ho_inst_info::in, varset::in,
     arg_context_func::in, list(term)::in, int::in, list(mer_type)::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
 parse_types_no_modes(_, _, _, [], _, [], !Specs).
-parse_types_no_modes(AllowHOInstInfo, Varset, ArgContextFunc, [Term | Terms],
+parse_types_no_modes(WhyNotHOInstInfo, VarSet, ArgContextFunc, [Term | Terms],
         ArgNum, Types, !Specs) :-
-    parse_types_no_modes(AllowHOInstInfo, Varset, ArgContextFunc, Terms,
+    parse_types_no_modes(WhyNotHOInstInfo, VarSet, ArgContextFunc, Terms,
         ArgNum + 1, TypesTail, !Specs),
-    parse_type_no_mode(AllowHOInstInfo, Varset, ArgContextFunc(ArgNum),
+    parse_type_no_mode(WhyNotHOInstInfo, VarSet, ArgContextFunc(ArgNum),
         Term, MaybeType),
     (
         MaybeType = ok1(Type),
@@ -509,20 +530,28 @@ parse_types_no_modes(AllowHOInstInfo, Varset, ArgContextFunc, [Term | Terms],
         !:Specs = TSpecs ++ !.Specs
     ).
 
-:- pred parse_type_no_mode(allow_ho_inst_info::in, varset::in,
+:- pred parse_type_no_mode(why_no_ho_inst_info::in, varset::in,
     cord(format_piece)::in, term::in, maybe1(mer_type)::out) is det.
 
-parse_type_no_mode(AllowHOInstInfo, Varset, ContextPieces, Term, MaybeType) :-
-    ( if Term = term.functor(term.atom("::"), [_, _], _) then
-        ErrorPieces = [lower_case_next_if_not_first,
-            words("Error: unexpected"), quote("::mode"),
-            words("suffix."), nl],
-        Pieces = cord.list(ContextPieces ++ cord.from_list(ErrorPieces)),
+parse_type_no_mode(WhyNotHOInstInfo, VarSet, ContextPieces, Term, MaybeType) :-
+    ( if Term = term.functor(term.atom("::"), [TypeTerm, _], _) then
+        TypeTermStr = describe_error_term(VarSet, TypeTerm),
+        no_ho_inst_allowed_desc(WhyNotHOInstInfo, Place, WhyNot),
+        ( WhyNot = wna_by_design, NotAllowed = "not allowed"
+        ; WhyNot = wna_nyi,       NotAllowed = "not (yet) allowed"
+        ),
+        Pieces = cord.list(ContextPieces) ++ [lower_case_next_if_not_first,
+            words("Error: the type")] ++
+            color_as_subject([quote(TypeTermStr)]) ++
+            [words("is followed by a mode, but this is")] ++
+            color_as_incorrect([words(NotAllowed)]) ++
+            [words("in"), words(Place), suffix("."), nl],
         Spec = spec($pred, severity_error, phase_t2pt,
             get_term_context(Term), Pieces),
         MaybeType = error1([Spec])
     else
-        parse_type(AllowHOInstInfo, Varset, ContextPieces, Term, MaybeType)
+        AllowHOInstInfo = no_allow_ho_inst_info(WhyNotHOInstInfo),
+        parse_type(AllowHOInstInfo, VarSet, ContextPieces, Term, MaybeType)
     ).
 
 %---------------------------------------------------------------------------%
@@ -619,8 +648,11 @@ parse_type_and_maybe_mode(MaybeInstConstraints, MaybeRequireMode, Why, VarSet,
             Colons = ":",
             ColonPieces = cord.list(ContextPieces) ++
                 [lower_case_next_if_not_first,
-                words("Error: the type and mode are separated by"),
-                words("one colon (\":\"), not two (\"::\")."), nl],
+                words("Error: the type and mode are separated by")] ++
+                color_as_incorrect([words("one colon (\":\"),")]) ++
+                [words("not")] ++
+                color_as_correct([words("two (\"::\").")]) ++
+                [nl],
             ColonSpecs = [spec($pred, severity_error, phase_t2pt,
                 get_term_context(Term), ColonPieces)]
         ),
@@ -638,10 +670,20 @@ parse_type_and_maybe_mode(MaybeInstConstraints, MaybeRequireMode, Why, VarSet,
     else
         (
             MaybeRequireMode = require_tm_mode,
+            % XXX In tests/invalid_nodepend/combined_ho_type_inst_2.err_exp,
+            % there are several examples of the diagnostics we generate here
+            % reporting that ::mode suffixes are *required* after types,
+            % being just next to other diagnostics that *forbid* ::mode
+            % suffixes after types.
+            TermStr = describe_error_term(VarSet, Term),
             MissingPieces = cord.list(ContextPieces) ++
                 [lower_case_next_if_not_first,
-                words("Error: missing"), quote("::mode"),
-                words("suffix."), nl],
+                words("Error:")] ++
+                color_as_incorrect([words("there should be a"),
+                    quote("::mode"), words("suffix")]) ++
+                [words("after")] ++
+                color_as_subject([quote(TermStr), suffix(".")]) ++
+                [nl],
             MissingSpec = spec($pred, severity_error, phase_t2pt,
                 get_term_context(Term), MissingPieces),
             MaybeTypeAndMode = error1([MissingSpec])
@@ -815,67 +857,89 @@ is_known_type_name_args(Name, Args, KnownType) :-
 :- func no_ho_inst_allowed_result(cord(format_piece), why_no_ho_inst_info,
     varset, term) = maybe1(mer_type).
 
-no_ho_inst_allowed_result(ContextPieces, Why, VarSet, Term) = Result :-
-    TermStr = describe_error_term(VarSet, Term),
-    (
-        Why = wnhii_type_ctor_arg,
-        Place = "a type constructor's argument"
-    ;
-        Why = wnhii_tuple_arg,
-        Place = "a tuple type constructor's argument"
-    ;
-        Why = wnhii_pred_arg,
-        Place = "a predicate's argument"
-    ;
-        Why = wnhii_func_arg,
-        Place = "a function's argument"
-    ;
-        Why = wnhii_func_return_arg,
-        Place = "a function's return value"
-    ;
-        Why = wnhii_type_qual,
-        Place = "a type used for type qualification"
-    ;
-        Why = wnhii_supertype,
-        Place = "a supertype of a subtype"
-    ;
-        Why = wnhii_eqv_type_defn_body,
-        Place = "the definition of an equivalence type"
-    ;
-        Why = wnhii_solver_type_defn,
-        Place = "the definition of a solver type"
-    ;
-        Why = wnhii_class_constraint,
-        Place = "a class constraint"
-    ;
-        Why = wnhii_mutable_decl,
-        Place = "a mutable declaration"
-    ;
-        Why = wnhii_ctgc_type_selector,
-        Place = "type selector" % Used only in error messages we won't print.
-    ;
-        Why = wnhii_user_struct_sharing,
-        Place = "structure sharing annotation"
-    ;
-        Why = wnhii_pragma_struct_sharing,
-        Place = "a structure_sharing pragma"
-    ;
-        Why = wnhii_pragma_struct_reuse,
-        Place = "a structure_reuse pragma"
-    ;
-        Why = wnhii_pragma_type_spec_constr,
-        Place = "a type_spec_constrained_preds pragma"
-    ;
-        Why = wnhii_pragma_type_spec,
-        Place = "a type_spec pragma"
+no_ho_inst_allowed_result(ContextPieces, WNHII, VarSet, Term) = Result :-
+    no_ho_inst_allowed_desc(WNHII, Place, WhyNot),
+    ( WhyNot = wna_by_design, NotAllowed = "not allowed"
+    ; WhyNot = wna_nyi,       NotAllowed = "not (yet) allowed"
     ),
+    TermStr = describe_error_term(VarSet, Term),
     Pieces = cord.list(ContextPieces) ++ [lower_case_next_if_not_first,
-        words("Error: the type"), quote(TermStr), words("contains"),
-        words("higher order inst information,"),
-        words("but this is not allowed in"), words(Place), suffix("."), nl],
+        words("Error: the type")] ++
+        color_as_subject([quote(TermStr)]) ++
+        [words("contains higher order inst information, but this is")] ++
+        color_as_incorrect([words(NotAllowed)]) ++
+        [words("in"), words(Place), suffix("."), nl],
     Spec = spec($pred, severity_error, phase_t2pt,
         get_term_context(Term), Pieces),
     Result = error1([Spec]).
+
+:- type why_not_allowed
+    --->    wna_by_design
+    ;       wna_nyi.
+
+:- pred no_ho_inst_allowed_desc(why_no_ho_inst_info::in,
+    string::out, why_not_allowed::out) is det.
+
+no_ho_inst_allowed_desc(WNHII, Place, WhyNot) :-
+    (
+        (
+            WNHII = wnhii_type_ctor_arg,
+            Place = "a type constructor's argument"
+        ;
+            WNHII = wnhii_type_qual,
+            Place = "a type used for type qualification"
+        ;
+            WNHII = wnhii_mutable_decl,
+            Place = "a mutable declaration"
+        ),
+        WhyNot = wna_nyi
+    ;
+        (
+            WNHII = wnhii_tuple_arg,
+            Place = "a tuple type constructor's argument"
+        ;
+            WNHII = wnhii_pred_arg,
+            Place = "a predicate's argument"
+        ;
+            WNHII = wnhii_func_arg,
+            Place = "a function's argument"
+        ;
+            WNHII = wnhii_func_return_arg,
+            Place = "a function's return value"
+        ;
+            WNHII = wnhii_supertype,
+            Place = "a supertype of a subtype"
+        ;
+            WNHII = wnhii_eqv_type_defn_body,
+            Place = "the definition of an equivalence type"
+        ;
+            WNHII = wnhii_solver_type_defn,
+            Place = "the definition of a solver type"
+        ;
+            WNHII = wnhii_class_constraint,
+            Place = "a class constraint"
+        ;
+            WNHII = wnhii_ctgc_type_selector,
+            % Used only in error messages we won't print.
+            Place = "type selector"
+        ;
+            WNHII = wnhii_user_struct_sharing,
+            Place = "structure sharing annotation"
+        ;
+            WNHII = wnhii_pragma_struct_sharing,
+            Place = "a structure_sharing pragma"
+        ;
+            WNHII = wnhii_pragma_struct_reuse,
+            Place = "a structure_reuse pragma"
+        ;
+            WNHII = wnhii_pragma_type_spec_constr,
+            Place = "a type_spec_constrained_preds pragma"
+        ;
+            WNHII = wnhii_pragma_type_spec,
+            Place = "a type_spec pragma"
+        ),
+        WhyNot = wna_by_design
+    ).
 
 %---------------------------------------------------------------------------%
 :- end_module parse_tree.parse_type_name.

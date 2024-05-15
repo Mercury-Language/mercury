@@ -114,7 +114,8 @@ parse_mode(AllowConstrainedInstVar, VarSet, ContextPieces, Term, MaybeMode) :-
         Pieces = cord.list(ContextPieces) ++ [lower_case_next_if_not_first,
             words("Error: a variable such as")] ++
             color_as_subject([quote(TermStr)]) ++
-            color_as_incorrect([words("is not a valid mode.")]) ++ [nl],
+            [words("is")] ++
+            color_as_incorrect([words("not a valid mode.")]) ++ [nl],
         Spec = spec($pred, severity_error, phase_t2pt, Context, Pieces),
         MaybeMode = error1([Spec])
     ;
@@ -137,7 +138,8 @@ parse_mode(AllowConstrainedInstVar, VarSet, ContextPieces, Term, MaybeMode) :-
             Pieces = cord.list(ContextPieces) ++ [lower_case_next_if_not_first,
                 words("Error:"), words(Name), words("such as")] ++
                 color_as_subject([quote(TermStr)]) ++
-                color_as_incorrect([words("is not a valid mode.")]) ++ [nl],
+                [words("is")] ++
+                color_as_incorrect([words("not a valid mode.")]) ++ [nl],
             Spec = spec($pred, severity_error, phase_t2pt, Context, Pieces),
             MaybeMode = error1([Spec])
         ;

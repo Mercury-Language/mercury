@@ -3,11 +3,11 @@ subtype_syntax.m:008:   implementation.
 subtype_syntax.m:009: Error: the type name `=<' is reserved for the Mercury
 subtype_syntax.m:009:   implementation.
 subtype_syntax.m:011: In the supertype part of a subtype definition: error:
-subtype_syntax.m:011:   `123' is not a type.
+subtype_syntax.m:011:   [38;5;87m`123'[39;49m is [38;5;203mnot a type.[39;49m
 subtype_syntax.m:014: In the supertype part of a subtype definition: error:
 subtype_syntax.m:014:   expected a [38;5;40mtype constructor,[39;49m got [38;5;203m`T'.[39;49m
 subtype_syntax.m:017: In the supertype part of a subtype definition: error:
-subtype_syntax.m:017:   `123' is not a type.
+subtype_syntax.m:017:   [38;5;87m`123'[39;49m is [38;5;203mnot a type.[39;49m
 subtype_syntax.m:020: On the left hand side of type definition: error: expected
 subtype_syntax.m:020:   a [38;5;40msymbol name,[39;49m got [38;5;203m`123'.[39;49m
 subtype_syntax.m:021: In constructor definition: error: expected a [38;5;40msymbol name,[39;49m

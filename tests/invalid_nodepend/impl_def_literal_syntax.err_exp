@@ -2,7 +2,7 @@ impl_def_literal_syntax.m:011: Error: no clauses for predicate `g'/2.
 impl_def_literal_syntax.m:012: Error: no clauses for predicate `h'/2.
 impl_def_literal_syntax.m:014: In `:- pred' declaration:
 impl_def_literal_syntax.m:014:   in the first argument:
-impl_def_literal_syntax.m:014:   error: `$file' is not a type.
+impl_def_literal_syntax.m:014:   error: [38;5;87m`$file'[39;49m is [38;5;203mnot a type.[39;49m
 impl_def_literal_syntax.m:015: In `:- pred' declaration:
 impl_def_literal_syntax.m:015:   error: expected a [38;5;40msymbol name,[39;49m got [38;5;203m`$pred'.[39;49m
 impl_def_literal_syntax.m:016: Syntax error at token 'u': operator or `.'

@@ -1,24 +1,35 @@
 combined_ho_type_inst_2.m:015: In type definition: in the first argument of
 combined_ho_type_inst_2.m:015:   higher-order predicate type:
-combined_ho_type_inst_2.m:015:   error: missing `::mode' suffix.
+combined_ho_type_inst_2.m:015:   error: [38;5;203mthere should be a `::mode' suffix[39;49m after
+combined_ho_type_inst_2.m:015:   [38;5;87m`int'.[39;49m
 combined_ho_type_inst_2.m:018: In type definition: in the second argument of
 combined_ho_type_inst_2.m:018:   higher-order predicate type:
-combined_ho_type_inst_2.m:018:   error: missing `::mode' suffix.
+combined_ho_type_inst_2.m:018:   error: [38;5;203mthere should be a `::mode' suffix[39;49m after
+combined_ho_type_inst_2.m:018:   [38;5;87m`int'.[39;49m
 combined_ho_type_inst_2.m:021: In type definition: in the first argument of
 combined_ho_type_inst_2.m:021:   higher-order function type:
-combined_ho_type_inst_2.m:021:   error: missing `::mode' suffix.
+combined_ho_type_inst_2.m:021:   error: [38;5;203mthere should be a `::mode' suffix[39;49m after
+combined_ho_type_inst_2.m:021:   [38;5;87m`int'.[39;49m
 combined_ho_type_inst_2.m:024: In type definition: in the first argument of
 combined_ho_type_inst_2.m:024:   higher-order function type:
-combined_ho_type_inst_2.m:024:   error: missing `::mode' suffix.
+combined_ho_type_inst_2.m:024:   error: [38;5;203mthere should be a `::mode' suffix[39;49m after
+combined_ho_type_inst_2.m:024:   [38;5;87m`int'.[39;49m
 combined_ho_type_inst_2.m:024: In type definition: in the return value of
 combined_ho_type_inst_2.m:024:   higher-order function type:
-combined_ho_type_inst_2.m:024:   error: missing `::mode' suffix.
+combined_ho_type_inst_2.m:024:   error: [38;5;203mthere should be a `::mode' suffix[39;49m after
+combined_ho_type_inst_2.m:024:   [38;5;87m`int'.[39;49m
 combined_ho_type_inst_2.m:027: In type definition: in the first argument of
 combined_ho_type_inst_2.m:027:   higher-order predicate type:
-combined_ho_type_inst_2.m:027:   error: unexpected `::mode' suffix.
+combined_ho_type_inst_2.m:027:   error: the type [38;5;87m`int'[39;49m is followed by a mode,
+combined_ho_type_inst_2.m:027:   but this is [38;5;203mnot allowed[39;49m in a predicate's
+combined_ho_type_inst_2.m:027:   argument.
 combined_ho_type_inst_2.m:030: In type definition: in the first argument of
 combined_ho_type_inst_2.m:030:   higher-order function type:
-combined_ho_type_inst_2.m:030:   error: unexpected `::mode' suffix.
+combined_ho_type_inst_2.m:030:   error: the type [38;5;87m`int'[39;49m is followed by a mode,
+combined_ho_type_inst_2.m:030:   but this is [38;5;203mnot allowed[39;49m in a function's
+combined_ho_type_inst_2.m:030:   argument.
 combined_ho_type_inst_2.m:030: In type definition: in the return value of
 combined_ho_type_inst_2.m:030:   higher-order function type:
-combined_ho_type_inst_2.m:030:   error: unexpected `::mode' suffix.
+combined_ho_type_inst_2.m:030:   error: the type [38;5;87m`int'[39;49m is followed by a mode,
+combined_ho_type_inst_2.m:030:   but this is [38;5;203mnot allowed[39;49m in a function's return
+combined_ho_type_inst_2.m:030:   value.

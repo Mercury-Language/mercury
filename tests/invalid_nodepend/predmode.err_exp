@@ -2,17 +2,17 @@ predmode.m:009: Error: [38;5;203msome but not all[39;49m arguments have modes.
 predmode.m:009:   The argument without a mode is the [38;5;226msecond.[39;49m
 predmode.m:017: In `:- pred' declaration:
 predmode.m:017:   in the first argument:
-predmode.m:017:   error: `1' is not a type.
+predmode.m:017:   error: an integer such as [38;5;87m`2'[39;49m is [38;5;203mnot a valid mode.[39;49m
 predmode.m:017: In `:- pred' declaration:
 predmode.m:017:   in the first argument:
-predmode.m:017:   error: an integer such as [38;5;87m`2'[39;49m [38;5;203mis not a valid mode.[39;49m
+predmode.m:017:   error: [38;5;87m`1'[39;49m is [38;5;203mnot a type.[39;49m
 predmode.m:017: In `:- pred' declaration:
 predmode.m:017:   in the second argument:
-predmode.m:017:   error: the type and mode are separated by one colon (":"),
-predmode.m:017:   not two ("::").
+predmode.m:017:   error: the type and mode are separated by [38;5;203mone colon (":"),[39;49m
+predmode.m:017:   not [38;5;40mtwo ("::").[39;49m
 predmode.m:017: In `:- pred' declaration:
 predmode.m:017:   in the third argument:
-predmode.m:017:   error: `"bad"' is not a type.
+predmode.m:017:   error: a string such as [38;5;87m`"worse"'[39;49m is [38;5;203mnot a valid mode.[39;49m
 predmode.m:017: In `:- pred' declaration:
 predmode.m:017:   in the third argument:
-predmode.m:017:   error: a string such as [38;5;87m`"worse"'[39;49m [38;5;203mis not a valid mode.[39;49m
+predmode.m:017:   error: [38;5;87m`"bad"'[39;49m is [38;5;203mnot a type.[39;49m
