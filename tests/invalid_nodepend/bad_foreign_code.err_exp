@@ -1,35 +1,35 @@
-bad_foreign_code.m:017: Error: a `:- pragma foreign_code' declaration must have
-bad_foreign_code.m:017:   exactly two arguments.
-bad_foreign_code.m:021: Error: a `:- pragma foreign_code' declaration must have
-bad_foreign_code.m:021:   exactly two arguments.
+bad_foreign_code.m:017: Error: a [38;5;87m`:- pragma foreign_code' declaration[39;49m must have
+bad_foreign_code.m:017:   [38;5;203mexactly two arguments.[39;49m
+bad_foreign_code.m:021: Error: a [38;5;87m`:- pragma foreign_code' declaration[39;49m must have
+bad_foreign_code.m:021:   [38;5;203mexactly two arguments.[39;49m
 bad_foreign_code.m:025: In the first argument of `:- pragma foreign_code'
 bad_foreign_code.m:025:   declaration:
-bad_foreign_code.m:025:   error: expected the name of a foreign language, got
-bad_foreign_code.m:025:   `"InvalidLanguage"'.
-bad_foreign_code.m:025:   The valid languages are c, C, csharp, C#, java and
-bad_foreign_code.m:025:   Java.
+bad_foreign_code.m:025:   error: expected the [38;5;40mname of a foreign language,[39;49m got
+bad_foreign_code.m:025:   [38;5;203m`"InvalidLanguage"'.[39;49m
+bad_foreign_code.m:025:   The valid languages are [38;5;40mc,[39;49m [38;5;40mC,[39;49m [38;5;40mcsharp,[39;49m [38;5;40mC#,[39;49m [38;5;40mjava[39;49m and
+bad_foreign_code.m:025:   [38;5;40mJava.[39;49m
 bad_foreign_code.m:029: In the second argument of `:- pragma foreign_code'
 bad_foreign_code.m:029:   declaration:
-bad_foreign_code.m:029:   error: expected a string containing foreign code, got
-bad_foreign_code.m:029:   `2222'.
+bad_foreign_code.m:029:   error: expected a [38;5;40mstring containing foreign code,[39;49m got
+bad_foreign_code.m:029:   [38;5;203m`2222'.[39;49m
 bad_foreign_code.m:033: In the second argument of `:- pragma foreign_code'
 bad_foreign_code.m:033:   declaration:
-bad_foreign_code.m:033:   error: expected a string containing foreign code, got
-bad_foreign_code.m:033:   `include_file(3333)'.
+bad_foreign_code.m:033:   error: expected a [38;5;40mstring containing foreign code,[39;49m got
+bad_foreign_code.m:033:   [38;5;203m`include_file(3333)'.[39;49m
 bad_foreign_code.m:043: In the first argument of `:- pragma foreign_code'
 bad_foreign_code.m:043:   declaration:
-bad_foreign_code.m:043:   error: expected the name of a foreign language, got
-bad_foreign_code.m:043:   `"InvalidLanguage"'.
-bad_foreign_code.m:043:   The valid languages are c, C, csharp, C#, java and
-bad_foreign_code.m:043:   Java.
+bad_foreign_code.m:043:   error: expected the [38;5;40mname of a foreign language,[39;49m got
+bad_foreign_code.m:043:   [38;5;203m`"InvalidLanguage"'.[39;49m
+bad_foreign_code.m:043:   The valid languages are [38;5;40mc,[39;49m [38;5;40mC,[39;49m [38;5;40mcsharp,[39;49m [38;5;40mC#,[39;49m [38;5;40mjava[39;49m and
+bad_foreign_code.m:043:   [38;5;40mJava.[39;49m
 bad_foreign_code.m:044: In the second argument of `:- pragma foreign_code'
 bad_foreign_code.m:044:   declaration:
-bad_foreign_code.m:044:   error: expected a string containing foreign code, got
-bad_foreign_code.m:044:   `6666'.
+bad_foreign_code.m:044:   error: expected a [38;5;40mstring containing foreign code,[39;49m got
+bad_foreign_code.m:044:   [38;5;203m`6666'.[39;49m
 bad_foreign_code.m:047: In the first argument of `:- pragma foreign_code'
 bad_foreign_code.m:047:   declaration:
-bad_foreign_code.m:047:   error: expected the name of a foreign language, got
-bad_foreign_code.m:047:   `"Erlang"'.
-bad_foreign_code.m:047:   The valid languages are c, C, csharp, C#, java and
-bad_foreign_code.m:047:   Java.
+bad_foreign_code.m:047:   error: expected the [38;5;40mname of a foreign language,[39;49m got
+bad_foreign_code.m:047:   [38;5;203m`"Erlang"'.[39;49m
+bad_foreign_code.m:047:   The valid languages are [38;5;40mc,[39;49m [38;5;40mC,[39;49m [38;5;40mcsharp,[39;49m [38;5;40mC#,[39;49m [38;5;40mjava[39;49m and
+bad_foreign_code.m:047:   [38;5;40mJava.[39;49m
 bad_foreign_code.m:047:   Support for Erlang has been discontinued.

@@ -1,7 +1,6 @@
 bug363.m:016: In the third argument of `:- pragma foreign_proc' declaration:
-bug363.m:016:   error: the second element of the attribute list,
-bug363.m:016:   `(promise_pure thread_safe)', is not a valid foreign_proc
-bug363.m:016:   attribute.
+bug363.m:016:   in the second element of the attribute list: error: expected a
+bug363.m:016:   [38;5;40mvalid foreign_proc attribute,[39;49m got [38;5;203m`(promise_pure thread_safe)'.[39;49m
 bug363.m:017: In the third argument of `:- pragma foreign_proc' declaration:
-bug363.m:017:   error: the fifth element of the attribute list, `bad_attr', is
-bug363.m:017:   not a valid foreign_proc attribute.
+bug363.m:017:   in the fifth element of the attribute list: error: expected a
+bug363.m:017:   [38;5;40mvalid foreign_proc attribute,[39;49m got [38;5;203m`bad_attr'.[39;49m

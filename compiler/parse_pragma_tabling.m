@@ -82,7 +82,7 @@ parse_tabling_pragma(ModuleName, VarSet, ErrorTerm, PragmaName, PragmaTerms,
                 AttrContextPieces = cord.from_list(
                     [words("In the second argument of"),
                     pragma_decl(PragmaName), words("declaration:"), nl]),
-                parse_list_elements("tabling attributes",
+                parse_list_elements(AttrContextPieces, "tabling attributes",
                     parse_tabling_attribute(AttrContextPieces, TabledMethod0),
                     VarSet, AttrsListTerm, MaybeAttributeList),
                 (
@@ -272,7 +272,7 @@ parse_tabling_attr_specified(ContextPieces, TabledMethod, VarSet,
         MethodsContextPieces = ContextPieces ++
             cord.from_list([lower_case_next_if_not_first,
             words("In the first argument of specified:"), nl]),
-        parse_list_elements("argument tabling methods",
+        parse_list_elements(MethodsContextPieces, "argument tabling methods",
             parse_arg_tabling_method(MethodsContextPieces),
             VarSet, MethodsTerm, MaybeMaybeArgMethods),
         require_tabling_fast_loose(ContextPieces, TabledMethod, Context,

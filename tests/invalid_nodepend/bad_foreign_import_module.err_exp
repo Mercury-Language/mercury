@@ -1,28 +1,29 @@
-bad_foreign_import_module.m:018: Error: a `:- pragma foreign_import_module'
-bad_foreign_import_module.m:018:   declaration must have two arguments.
+bad_foreign_import_module.m:018: Error: a [38;5;87m`:- pragma foreign_import_module'[39;49m
+bad_foreign_import_module.m:018:   [38;5;87mdeclaration[39;49m must have [38;5;203mexactly two arguments.[39;49m
 bad_foreign_import_module.m:022: In the first argument of
 bad_foreign_import_module.m:022:   `:- pragma foreign_import_module'
 bad_foreign_import_module.m:022:   declaration:
-bad_foreign_import_module.m:022:   error: expected the name of a foreign
-bad_foreign_import_module.m:022:   language, got `"InvalidForeignLang"'.
-bad_foreign_import_module.m:022:   The valid languages are c, C, csharp, C#,
-bad_foreign_import_module.m:022:   java and Java.
+bad_foreign_import_module.m:022:   error: expected the [38;5;40mname of a foreign[39;49m
+bad_foreign_import_module.m:022:   [38;5;40mlanguage,[39;49m got [38;5;203m`"InvalidForeignLang"'.[39;49m
+bad_foreign_import_module.m:022:   The valid languages are [38;5;40mc,[39;49m [38;5;40mC,[39;49m [38;5;40mcsharp,[39;49m [38;5;40mC#,[39;49m
+bad_foreign_import_module.m:022:   [38;5;40mjava[39;49m and [38;5;40mJava.[39;49m
 bad_foreign_import_module.m:027: In the first argument of
 bad_foreign_import_module.m:027:   `:- pragma foreign_import_module'
 bad_foreign_import_module.m:027:   declaration:
-bad_foreign_import_module.m:027:   error: expected the name of a foreign
-bad_foreign_import_module.m:027:   language, got `"InvalidForeignLang"'.
-bad_foreign_import_module.m:027:   The valid languages are c, C, csharp, C#,
-bad_foreign_import_module.m:027:   java and Java.
+bad_foreign_import_module.m:027:   error: expected the [38;5;40mname of a foreign[39;49m
+bad_foreign_import_module.m:027:   [38;5;40mlanguage,[39;49m got [38;5;203m`"InvalidForeignLang"'.[39;49m
+bad_foreign_import_module.m:027:   The valid languages are [38;5;40mc,[39;49m [38;5;40mC,[39;49m [38;5;40mcsharp,[39;49m [38;5;40mC#,[39;49m
+bad_foreign_import_module.m:027:   [38;5;40mjava[39;49m and [38;5;40mJava.[39;49m
 bad_foreign_import_module.m:028: In the second argument of
 bad_foreign_import_module.m:028:   `:- pragma foreign_import_module'
 bad_foreign_import_module.m:028:   declaration:
-bad_foreign_import_module.m:028:   error: expected module name, got `int(int)'.
+bad_foreign_import_module.m:028:   error: expected a [38;5;40mmodule name,[39;49m got
+bad_foreign_import_module.m:028:   [38;5;203m`int(int)'.[39;49m
 bad_foreign_import_module.m:031: In the first argument of
 bad_foreign_import_module.m:031:   `:- pragma foreign_import_module'
 bad_foreign_import_module.m:031:   declaration:
-bad_foreign_import_module.m:031:   error: expected the name of a foreign
-bad_foreign_import_module.m:031:   language, got `"Erlang"'.
-bad_foreign_import_module.m:031:   The valid languages are c, C, csharp, C#,
-bad_foreign_import_module.m:031:   java and Java.
+bad_foreign_import_module.m:031:   error: expected the [38;5;40mname of a foreign[39;49m
+bad_foreign_import_module.m:031:   [38;5;40mlanguage,[39;49m got [38;5;203m`"Erlang"'.[39;49m
+bad_foreign_import_module.m:031:   The valid languages are [38;5;40mc,[39;49m [38;5;40mC,[39;49m [38;5;40mcsharp,[39;49m [38;5;40mC#,[39;49m
+bad_foreign_import_module.m:031:   [38;5;40mjava[39;49m and [38;5;40mJava.[39;49m
 bad_foreign_import_module.m:031:   Support for Erlang has been discontinued.

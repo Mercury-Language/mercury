@@ -1221,7 +1221,9 @@ parse_oisu_preds_term(ModuleName, VarSet, ArgNum, ExpectedFunctor, Term,
         Functor = ExpectedFunctor,
         ArgTerms = [ArgTerm]
     then
-        parse_list_elements("list of predicate or function names/arities",
+        ContextPieces = cord.init,
+        parse_list_elements(ContextPieces,
+            "list of predicate or function names/arities",
             parse_pred_pf_name_arity(ModuleName, "oisu"), VarSet,
             ArgTerm, MaybePredSpecs)
     else
@@ -2063,8 +2065,9 @@ parse_pragma_require_feature_set(VarSet, ErrorTerm, PragmaTerms,
         Context, SeqNum, MaybeIOM) :-
     (
         PragmaTerms = [FeatureListTerm],
-        parse_list_elements("list of features", parse_required_feature,
-            VarSet, FeatureListTerm, MaybeFeatureList),
+        ContextPieces = cord.init,
+        parse_list_elements(ContextPieces, "list of features",
+            parse_required_feature, VarSet, FeatureListTerm, MaybeFeatureList),
         (
             MaybeFeatureList = ok1(FeatureList),
             FloatPieces =

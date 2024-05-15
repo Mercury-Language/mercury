@@ -169,7 +169,7 @@ parse_pragma_foreign_type(ModuleName, VarSet, ErrorTerm, PragmaTerms,
             cord.from_list([words("In the third argument of"),
             pragma_decl("foreign_type"), words("declaration:"), nl]),
         parse_foreign_language_type(ForeignTypeContextPieces, ForeignTypeTerm,
-            VarSet, MaybeForeignLang, MaybeForeignType),
+            VarSet, MaybeForeignTypeName),
         (
             MaybeAssertionTerm = no,
             AssertionsSet = set.init,
@@ -183,14 +183,25 @@ parse_pragma_foreign_type(ModuleName, VarSet, ErrorTerm, PragmaTerms,
                 AssertionTerm, set.init, AssertionsSet,
                 [], AssertionSpecs)
         ),
+
         Assertions = foreign_type_assertions(AssertionsSet),
         ( if
-            MaybeForeignLang = ok1(_),
+            MaybeForeignLang = ok1(ForeignLang),
             MaybeTypeDefnHead = ok2(MercuryTypeSymName, MercuryParams),
-            MaybeForeignType = ok1(ForeignType),
+            MaybeForeignTypeName = ok1(ForeignTypeName),
             AssertionSpecs = [],
             MaybeMaybeCanonical = ok1(MaybeCanonical)
         then
+            (
+                ForeignLang = lang_c,
+                ForeignType = c(c_type(ForeignTypeName))
+            ;
+                ForeignLang = lang_java,
+                ForeignType = java(java_type(ForeignTypeName))
+            ;
+                ForeignLang = lang_csharp,
+                ForeignType = csharp(csharp_type(ForeignTypeName))
+            ),
             varset.coerce(VarSet, TVarSet),
             TypeDetailsForeign =
                 type_details_foreign(ForeignType, MaybeCanonical, Assertions),
@@ -202,7 +213,7 @@ parse_pragma_foreign_type(ModuleName, VarSet, ErrorTerm, PragmaTerms,
         else
             Specs = get_any_errors1(MaybeForeignLang) ++
                 get_any_errors2(MaybeTypeDefnHead) ++
-                get_any_errors1(MaybeForeignType) ++
+                get_any_errors1(MaybeForeignTypeName) ++
                 AssertionSpecs ++
                 get_any_errors1(MaybeMaybeCanonical),
             MaybeIOM = error1(Specs)
@@ -213,59 +224,38 @@ parse_pragma_foreign_type(ModuleName, VarSet, ErrorTerm, PragmaTerms,
         ; PragmaTerms = [_, _]
         ; PragmaTerms = [_, _, _, _, _ | _]
         ),
-        Pieces = [words("Error: a"), pragma_decl("foreign_type"),
-            words("declaration must have three or four arguments."), nl],
+        Pieces = [words("Error: a")] ++
+            color_as_subject([pragma_decl("foreign_type"),
+                words("declaration")]) ++
+            [words("must have")] ++
+            color_as_incorrect([words("three or four arguments.")]) ++
+            [nl],
         Spec = spec($pred, severity_error, phase_t2pt,
             get_term_context(ErrorTerm), Pieces),
         MaybeIOM = error1([Spec])
     ).
 
 :- pred parse_foreign_language_type(cord(format_piece)::in, term::in,
-    varset::in, maybe1(foreign_language)::in,
-    maybe1(generic_language_foreign_type)::out) is det.
+    varset::in, maybe1(string)::out) is det.
 
-parse_foreign_language_type(ContextPieces, InputTerm, VarSet, MaybeLanguage,
-        MaybeForeignLangType) :-
-    ( if InputTerm = term.functor(term.string(ForeignTypeName), [], _) then
-        (
-            MaybeLanguage = ok1(Language),
-            (
-                Language = lang_c,
-                ForeignLangType = c(c_type(ForeignTypeName))
-            ;
-                Language = lang_java,
-                ForeignLangType = java(java_type(ForeignTypeName))
-            ;
-                Language = lang_csharp,
-                ForeignLangType = csharp(csharp_type(ForeignTypeName))
-            ),
-            ( if ForeignTypeName = "" then
-                Pieces = cord.list(ContextPieces) ++
-                    [lower_case_next_if_not_first,
-                    words("Error: foreign type descriptor for language"),
-                    quote(foreign_language_string(Language)),
-                    words("must be a non-empty string."), nl],
-                Spec = spec($pred, severity_error, phase_t2pt,
-                    get_term_context(InputTerm), Pieces),
-                MaybeForeignLangType = error1([Spec])
-            else
-                MaybeForeignLangType = ok1(ForeignLangType)
-            )
-        ;
-            % NOTE: if we get here then MaybeForeignLang will be an error and
-            % will give the user the required error message.
-            MaybeLanguage = error1(_),
-            MaybeForeignLangType = error1([])   % Dummy value.
-        )
+parse_foreign_language_type(ContextPieces, Term, VarSet,
+        MaybeForeignTypeName) :-
+    ( if
+        Term = term.functor(term.string(ForeignTypeName), [], _),
+        ForeignTypeName \= ""
+    then
+        MaybeForeignTypeName = ok1(ForeignTypeName)
     else
-        InputTermStr = describe_error_term(VarSet, InputTerm),
-        Pieces = cord.list(ContextPieces) ++
-            [lower_case_next_if_not_first, words("Error: expected a string"),
-            words("specifying the foreign type descriptor,"),
-            words("got"), quote(InputTermStr), suffix("."), nl],
+        TermStr = describe_error_term(VarSet, Term),
+        Pieces = cord.list(ContextPieces) ++ [lower_case_next_if_not_first,
+            words("Error: expected a")] ++
+            color_as_correct([words("foreign type descriptor,")]) ++
+            [words("got")] ++
+            color_as_incorrect([quote(TermStr), suffix(".")]) ++
+            [nl],
         Spec = spec($pred, severity_error, phase_t2pt,
-            get_term_context(InputTerm), Pieces),
-        MaybeForeignLangType = error1([Spec])
+            get_term_context(Term), Pieces),
+        MaybeForeignTypeName = error1([Spec])
     ).
 
 parse_foreign_type_assertions(ContextPieces, VarSet, Term,
@@ -277,22 +267,26 @@ parse_foreign_type_assertions(ContextPieces, VarSet, Term,
             ( if set.insert_new(HeadAssertion, !Assertions) then
                 true
             else
-                HeadTermStr = mercury_term_to_string_vs(VarSet,
-                    print_name_only, HeadTerm),
+                HeadTermStr = describe_error_term(VarSet, HeadTerm),
                 Pieces = cord.list(ContextPieces) ++
-                    [lower_case_next_if_not_first, words("Error:"),
-                    words("foreign type assertion"), quote(HeadTermStr),
-                    words("is repeated."), nl],
+                    [lower_case_next_if_not_first,
+                    words("Error: foreign type assertion")] ++
+                    color_as_subject([quote(HeadTermStr)]) ++
+                    [words("is")] ++
+                    color_as_incorrect([words("repeated.")]) ++
+                    [nl],
                 Spec = spec($pred, severity_error, phase_t2pt,
                     get_term_context(HeadTerm), Pieces),
                 !:Specs = [Spec | !.Specs]
             )
         else
-            TermStr = mercury_term_to_string_vs(VarSet, print_name_only, Term),
-            Pieces = cord.list(ContextPieces) ++
-                [lower_case_next_if_not_first,
-                words("Error: expected a foreign type assertion,"),
-                words("got"), quote(TermStr), suffix("."), nl],
+            TermStr = describe_error_term(VarSet, Term),
+            Pieces = cord.list(ContextPieces) ++ [lower_case_next_if_not_first,
+                words("Error: expected a")] ++
+                color_as_correct([words("foreign type assertion,")])++
+                [words("got")] ++
+                color_as_incorrect([quote(TermStr), suffix(".")]) ++
+                [nl],
             Spec = spec($pred, severity_error, phase_t2pt,
                 get_term_context(HeadTerm), Pieces),
             !:Specs = [Spec | !.Specs]
@@ -300,11 +294,13 @@ parse_foreign_type_assertions(ContextPieces, VarSet, Term,
         parse_foreign_type_assertions(ContextPieces, VarSet, TailTerm,
             !Assertions, !Specs)
     else
-        TermStr = mercury_term_to_string_vs(VarSet, print_name_only, Term),
-        Pieces = cord.list(ContextPieces) ++
-            [lower_case_next_if_not_first,
-            words("Error: expected a list of foreign type assertions,"),
-            words("got"), quote(TermStr), suffix("."), nl],
+        TermStr = describe_error_term(VarSet, Term),
+        Pieces = cord.list(ContextPieces) ++ [lower_case_next_if_not_first,
+            words("Error: expected a")] ++
+            color_as_correct([words("list of foreign type assertions,")]) ++
+            [words("got")] ++
+            color_as_incorrect([quote(TermStr), suffix(".")]) ++
+            [nl],
         Spec = spec($pred, severity_error, phase_t2pt,
             get_term_context(Term), Pieces),
         !:Specs = [Spec | !.Specs]
@@ -337,9 +333,11 @@ parse_pragma_foreign_decl(VarSet, ErrorTerm, PragmaTerms, Context, SeqNum,
         ( PragmaTerms = []
         ; PragmaTerms = [_]
         ),
-        Pieces = [words("Error: a"), pragma_decl("foreign_decl"),
-            words("declaration requires at least two arguments"),
-            words("(a language specification and"),
+        Pieces = [words("Error: a")] ++
+            color_as_subject([pragma_decl("foreign_decl"),
+                words("declaration")]) ++
+            color_as_incorrect([words("requires at least two arguments")]) ++
+            [words("(a language specification and"),
             words("the foreign language declaration itself)."), nl],
         Spec = spec($pred, severity_error, phase_t2pt,
             get_term_context(ErrorTerm), Pieces),
@@ -356,11 +354,15 @@ parse_pragma_foreign_decl(VarSet, ErrorTerm, PragmaTerms, Context, SeqNum,
                 MaybeIsLocal = ok1(IsLocal0)
             else
                 IsLocalStr = describe_error_term(VarSet, IsLocalTerm),
-                IsLocalPieces = [words("Error: the second argument"),
-                    words("of a"), pragma_decl("foreign_decl"),
-                    words("declaration must be either"), quote("local"),
-                    words("or"), quote("exported"), suffix(":"),
-                    words("got"), quote(IsLocalStr), suffix("."), nl],
+                IsLocalPieces = [words("In the second argument of a"),
+                    pragma_decl("foreign_decl"), words("declaration:"), nl,
+                    words("error: expected either")] ++
+                    color_as_correct([quote("local")]) ++
+                    [words("or")] ++
+                    color_as_correct([quote("exported"), suffix(",")]) ++
+                    [words("got")] ++
+                    color_as_incorrect([quote(IsLocalStr), suffix(".")]) ++
+                    [nl],
                 IsLocalSpec = spec($pred, severity_error, phase_t2pt,
                     get_term_context(IsLocalTerm), IsLocalPieces),
                 MaybeIsLocal = error1([IsLocalSpec])
@@ -376,10 +378,15 @@ parse_pragma_foreign_decl(VarSet, ErrorTerm, PragmaTerms, Context, SeqNum,
             LitOrInclPieces = [words("In the"), words(HeaderArgNum),
                 words("argument of"), pragma_decl("foreign_decl"),
                 words("declaration:"), nl,
-                words("error: expected either a string containing code,"),
-                words("or a term of the form"), quote("include_file(...)"),
-                words("naming a file to include,"),
-                words("got"), quote(LitOrInclStr), suffix("."), nl],
+                words("error: expected either a")] ++
+                color_as_correct([words("a string containing code,")]) ++
+                [words("or")] ++
+                color_as_correct([words("a term of the form"),
+                    quote("include_file(...)"),
+                    words("naming a file to include,")]) ++
+                [words("got")] ++
+                color_as_incorrect([quote(LitOrInclStr), suffix(".")]) ++
+                [nl],
             LitOrInclSpec = spec($pred, severity_error, phase_t2pt,
                 get_term_context(HeaderTerm), LitOrInclPieces),
             MaybeLitOrIncl = error1([LitOrInclSpec])
@@ -400,9 +407,11 @@ parse_pragma_foreign_decl(VarSet, ErrorTerm, PragmaTerms, Context, SeqNum,
         )
     ;
         PragmaTerms = [_, _, _, _ | _],
-        Pieces = [words("Error: a"), pragma_decl("foreign_decl"),
-            words("declaration may have at most three arguments"),
-            words("(a language specification,"),
+        Pieces = [words("Error: a")] ++
+            color_as_subject([pragma_decl("foreign_decl"),
+                words("declaration")]) ++
+            color_as_incorrect([words("may have at most three arguments")]) ++
+            [words("(a language specification,"),
             words("a local/exported indication, and"),
             words("the foreign language declaration itself)."), nl],
         Spec = spec($pred, severity_error, phase_t2pt,
@@ -446,8 +455,11 @@ parse_pragma_foreign_code(VarSet, ErrorTerm, PragmaTerms, Context, SeqNum,
             CodeTermStr = describe_error_term(VarSet, CodeTerm),
             CodePieces = [words("In the second argument of"),
                 pragma_decl("foreign_code"), words("declaration:"), nl,
-                words("error: expected a string containing foreign code,"),
-                words("got"), quote(CodeTermStr), suffix("."), nl],
+                words("error: expected a")] ++
+                color_as_correct([words("string containing foreign code,")]) ++
+                [words("got")] ++
+                color_as_incorrect([quote(CodeTermStr), suffix(".")]) ++
+                [nl],
             CodeSpec = spec($pred, severity_error, phase_t2pt,
                 get_term_context(CodeTerm), CodePieces),
             CodeSpecs = [CodeSpec]
@@ -469,8 +481,12 @@ parse_pragma_foreign_code(VarSet, ErrorTerm, PragmaTerms, Context, SeqNum,
         ; PragmaTerms = [_]
         ; PragmaTerms = [_, _, _ | _]
         ),
-        Pieces = [words("Error: a"), pragma_decl("foreign_code"),
-            words("declaration must have exactly two arguments."), nl],
+        Pieces = [words("Error: a")] ++
+            color_as_subject([pragma_decl("foreign_code"),
+                words("declaration")]) ++
+            [words("must have")] ++
+            color_as_incorrect([words("exactly two arguments.")]) ++
+            [nl],
         Spec = spec($pred, severity_error, phase_t2pt,
             get_term_context(ErrorTerm), Pieces),
         MaybeIOM = error1([Spec])
@@ -515,8 +531,12 @@ parse_pragma_foreign_proc(ModuleName, VarSet, ErrorTerm, PragmaTerms, Context,
         ; PragmaTerms = [_, _, _]
         ; PragmaTerms = [_, _, _, _, _ | _]
         ),
-        Pieces = [words("Error: a"), pragma_decl("foreign_proc"),
-            words("declaration must have four arguments."), nl],
+        Pieces = [words("Error: a")] ++
+            color_as_subject([pragma_decl("foreign_proc"),
+                words("declaration")]) ++
+            [words("must have")] ++
+            color_as_incorrect([words("exactly four arguments.")]) ++
+            [nl],
         Spec = spec($pred, severity_error, phase_t2pt,
             get_term_context(ErrorTerm), Pieces),
         MaybeIOM = error1([Spec])
@@ -571,8 +591,11 @@ parse_pragma_ordinary_foreign_proc(ModuleName, VarSet, ForeignLanguage,
         CodeTermStr = describe_error_term(VarSet, CodeTerm),
         ImplPieces = [words("In the fourth argument of"),
             pragma_decl("foreign_proc"), words("declaration:"), nl,
-            words("error: expected a string containing foreign code, got"),
-            quote(CodeTermStr), suffix("."), nl],
+            words("error: expected a")] ++
+            color_as_correct([words("string containing foreign code,")]) ++
+            [words("got")] ++
+            color_as_incorrect([quote(CodeTermStr), suffix(".")]) ++
+            [nl],
         ImplSpec = spec($pred, severity_error, phase_t2pt,
             CodeContext, ImplPieces),
         MaybeImpl = error1([ImplSpec])
@@ -646,8 +669,14 @@ parse_pragma_foreign_proc_varlist(VarSet, ContextPieces,
             MaybePragmaVars = error1(Specs)
         )
     else
-        Pieces = [words("Error: the"), nth_fixed(ArgNum), words("argument is"),
-            words("not in the form"), quote("Var :: mode"), suffix("."), nl],
+        HeadTermStr = describe_error_term(VarSet, HeadTerm),
+        Pieces = [words("In the"), nth_fixed(ArgNum), words("argument of"),
+            pragma_decl("foreign_proc"), words("declaration:"), nl,
+            words("error: expected")] ++
+            color_as_correct([quote("Var::mode"), suffix(".")]) ++
+            [words("got")] ++
+            color_as_incorrect([quote(HeadTermStr), suffix(".")]) ++
+            [nl],
         Spec = spec($pred, severity_error, phase_t2pt,
             get_term_context(HeadTerm), Pieces),
         MaybePragmaVars = error1([Spec | get_any_errors1(MaybeTailPragmaVars)])
@@ -749,7 +778,9 @@ parse_and_check_foreign_proc_attributes_term(ForeignLanguage, VarSet,
             % We could include Conflict1 and Conflict2 in the message,
             % but the conflict is usually very obvious even without this.
             Pieces = cord.list(ContextPieces) ++ [lower_case_next_if_not_first,
-                words("Error: conflicting attributes in attribute list."), nl],
+                words("Error:")] ++
+                color_as_incorrect([words("conflicting attributes")]) ++
+                [words("in attribute list."), nl],
             Spec = spec($pred, severity_error, phase_t2pt,
                 get_term_context(Term), Pieces),
             MaybeAttributes = error1([Spec])
@@ -784,13 +815,9 @@ parse_foreign_proc_attributes_term(ContextPieces, VarSet, Term,
 
 parse_foreign_proc_attributes_list(ContextPieces, VarSet,
         Term, HeadAttrNum, MaybeAttrs) :-
-    ( if
-        Term = term.functor(term.atom("[]"), [], _)
-    then
+    ( if Term = term.functor(term.atom("[]"), [], _) then
         MaybeAttrs = ok1([])
-    else if
-        Term = term.functor(term.atom("[|]"), [HeadTerm, TailTerm], _)
-    then
+    else if Term = term.functor(term.atom("[|]"), [HeadTerm, TailTerm], _) then
         parse_foreign_proc_attributes_list(ContextPieces, VarSet,
             TailTerm, HeadAttrNum + 1, MaybeTailAttrs),
         ( if
@@ -805,25 +832,28 @@ parse_foreign_proc_attributes_list(ContextPieces, VarSet,
                 MaybeAttrs = error1(TailSpecs)
             )
         else
-            HeadTermStr = mercury_limited_term_to_string_vs(VarSet,
-                print_name_only, 80, HeadTerm),
+            HeadTermStr = describe_error_term(VarSet, HeadTerm),
             HeadPieces = cord.list(ContextPieces) ++
                 [lower_case_next_if_not_first,
-                words("Error: the"), nth_fixed(HeadAttrNum),
-                words("element of the attribute list,"),
-                quote(HeadTermStr), suffix(","),
-                words("is not a valid foreign_proc attribute."), nl],
+                words("In the"), nth_fixed(HeadAttrNum),
+                words("element of the attribute list:"),
+                words("error: expected a")] ++
+                color_as_correct([words("valid foreign_proc attribute,")]) ++
+                [words("got")] ++
+                color_as_incorrect([quote(HeadTermStr), suffix(".")]) ++
+                [nl],
             HeadSpec = spec($pred, severity_error, phase_t2pt,
                 get_term_context(HeadTerm), HeadPieces),
             MaybeAttrs = error1([HeadSpec | get_any_errors1(MaybeTailAttrs)])
         )
     else
-        TermStr = mercury_limited_term_to_string_vs(VarSet, print_name_only,
-            80, Term),
-        TermPieces = cord.list(ContextPieces) ++
-            [lower_case_next_if_not_first,
-            words("Error: expected an attribute list, got"),
-            quote(TermStr), suffix("."), nl],
+        TermStr = describe_error_term(VarSet, Term),
+        TermPieces = cord.list(ContextPieces) ++ [lower_case_next_if_not_first,
+            words("Error: expected an")] ++
+            color_as_correct([words("attribute list,")]) ++
+            [words("got")] ++
+            color_as_incorrect([quote(TermStr), suffix(".")]) ++
+            [nl],
         TermSpec = spec($pred, severity_error, phase_t2pt,
             get_term_context(Term), TermPieces),
         MaybeAttrs = error1([TermSpec])
@@ -1161,8 +1191,12 @@ parse_pragma_foreign_export(VarSet, ErrorTerm, PragmaTerms, Context, SeqNum,
         ; PragmaTerms = [_, _]
         ; PragmaTerms = [_, _, _, _ | _]
         ),
-        Pieces = [words("Error: a"), pragma_decl("foreign_export"),
-            words("declaration must have exactly three arguments."), nl],
+        Pieces = [words("Error: a")] ++
+            color_as_subject([pragma_decl("foreign_export"),
+                words("declaration")]) ++
+            [words("must have")] ++
+            color_as_incorrect([words("exactly three arguments.")]) ++
+            [nl],
         Spec = spec($pred, severity_error, phase_t2pt,
             get_term_context(ErrorTerm), Pieces),
         MaybeIOM = error1([Spec])
@@ -1173,30 +1207,25 @@ parse_pragma_foreign_export(VarSet, ErrorTerm, PragmaTerms, Context, SeqNum,
 
 parse_foreign_function_name(VarSet, ContextPieces, FunctionTerm,
         MaybeFunction) :-
-    ( if FunctionTerm = term.functor(term.string(Function), [], _) then
-        ( if Function = "" then
-            EmptyNamePieces = cord.list(ContextPieces) ++
-                [lower_case_next_if_not_first,
-                words("Error: expected a non-empty string for the"),
-                words("foreign language name of the exported procedure,"),
-                words("got an empty string."), nl],
-            FunctionSpec = spec($pred, severity_error, phase_t2pt,
-                get_term_context(FunctionTerm), EmptyNamePieces),
-            MaybeFunction = error1([FunctionSpec])
-        else
-            % XXX TODO: if we have a valid foreign language, check that
-            % Function is a valid identifier in that language.
-            MaybeFunction = ok1(Function)
-        )
+    ( if
+        FunctionTerm = term.functor(term.string(Function), [], _),
+        Function \= ""
+    then
+        % XXX TODO: if we have a valid foreign language, check that Function
+        % is a valid identifier in that language.
+        MaybeFunction = ok1(Function)
     else
-        FunctionPieces = cord.list(ContextPieces) ++
-            [lower_case_next_if_not_first,
-            words("Error: expected a non-empty string for the foreign"),
-            words("language name of the exported procedure, got"),
-            quote(describe_error_term(VarSet, FunctionTerm)), suffix("."), nl],
-        FunctionSpec = spec($pred, severity_error, phase_t2pt,
-            get_term_context(FunctionTerm), FunctionPieces),
-        MaybeFunction = error1([FunctionSpec])
+        FunctionTermStr = describe_error_term(VarSet, FunctionTerm),
+        Pieces = cord.list(ContextPieces) ++ [lower_case_next_if_not_first,
+            words("Error: expected the")] ++
+            color_as_correct(
+                [words("foreign language name of the exported procedure,")]) ++
+            [words("got")] ++
+            color_as_incorrect([quote(FunctionTermStr), suffix(".")]) ++
+            [nl],
+        Spec = spec($pred, severity_error, phase_t2pt,
+            get_term_context(FunctionTerm), Pieces),
+        MaybeFunction = error1([Spec])
     ).
 
 %---------------------------------------------------------------------------%
@@ -1234,8 +1263,11 @@ parse_pragma_foreign_export_enum(VarSet, ErrorTerm, PragmaTerms,
             pragma_decl("foreign_export_enum"), words("declaration:"), nl],
         maybe_parse_export_enum_attributes(AttrContextPieces, VarSet,
             MaybeAttributesTerm, MaybeAttributes),
-        maybe_parse_export_enum_overrides(VarSet, MaybeOverridesTerm,
-            MaybeOverrides),
+        OverrideContextPieces = [words("In the fourth argument of"),
+            pragma_decl("foreign_export_enum"), words("declaration:"), nl],
+        OverrideContextPiecesCord = cord.from_list(OverrideContextPieces),
+        maybe_parse_export_enum_overrides(OverrideContextPiecesCord, VarSet,
+            MaybeOverridesTerm, MaybeOverrides),
         ( if
             MaybeForeignLang = ok1(ForeignLang),
             MaybeTypeCtor = ok1(TypeCtor),
@@ -1254,26 +1286,32 @@ parse_pragma_foreign_export_enum(VarSet, ErrorTerm, PragmaTerms,
             MaybeIOM = error1(Specs)
         )
     else
-        Pieces = [words("Error: a"), pragma_decl("foreign_export_enum"),
-            words("declaration must have two, three or four arguments."), nl],
+        Pieces = [words("Error: a")] ++
+            color_as_subject([pragma_decl("foreign_export_enum"),
+                words("declaration")]) ++
+            [words("must have")] ++
+            color_as_incorrect(
+                [words("two, three or four arguments.")]) ++
+            [nl],
         Spec = spec($pred, severity_error, phase_t2pt,
             get_term_context(ErrorTerm), Pieces),
         MaybeIOM = error1([Spec])
     ).
 
-:- pred maybe_parse_export_enum_overrides(varset::in, maybe(term)::in,
-    maybe1(assoc_list(sym_name, string))::out) is det.
+:- pred maybe_parse_export_enum_overrides(cord(format_piece)::in, varset::in,
+    maybe(term)::in, maybe1(assoc_list(sym_name, string))::out) is det.
 
-maybe_parse_export_enum_overrides(_, no, ok1([])).
-maybe_parse_export_enum_overrides(VarSet, yes(OverridesTerm),
+maybe_parse_export_enum_overrides(_, _, no, ok1([])).
+maybe_parse_export_enum_overrides(ContextPieces, VarSet, yes(OverridesTerm),
         MaybeOverrides) :-
-    parse_list_elements("list of mapping elements",
-        parse_sym_name_string_pair, VarSet, OverridesTerm, MaybeOverrides).
+    parse_list_elements(ContextPieces, "list of mapping elements",
+        parse_sym_name_string_pair(ContextPieces), VarSet, OverridesTerm,
+        MaybeOverrides).
 
-:- pred parse_sym_name_string_pair(varset::in, term::in,
-    maybe1(pair(sym_name, string))::out) is det.
+:- pred parse_sym_name_string_pair(cord(format_piece)::in, varset::in,
+    term::in, maybe1(pair(sym_name, string))::out) is det.
 
-parse_sym_name_string_pair(VarSet, PairTerm, MaybePair) :-
+parse_sym_name_string_pair(ContextPieces, VarSet, PairTerm, MaybePair) :-
     ( if
         PairTerm = term.functor(term.atom("-"), ArgTerms, _),
         ArgTerms = [SymNameTerm, StringTerm],
@@ -1283,17 +1321,25 @@ parse_sym_name_string_pair(VarSet, PairTerm, MaybePair) :-
             MaybePair = ok1(SymName - String)
         else
             SymNameTermStr = describe_error_term(VarSet, SymNameTerm),
-            Pieces = [words("Error: expected a possibly qualified name,"),
-                words("got"), quote(SymNameTermStr), suffix("."), nl],
+            Pieces = cord.list(ContextPieces) ++ [lower_case_next_if_not_first,
+                words("Error: expected a")] ++
+                color_as_correct([words("possibly qualified name,")]) ++
+                [words("got")] ++
+                color_as_incorrect([quote(SymNameTermStr), suffix(".")]) ++
+                [nl],
             Spec = spec($pred, severity_error, phase_t2pt,
                 get_term_context(SymNameTerm), Pieces),
             MaybePair = error1([Spec])
         )
     else
         PairTermStr = describe_error_term(VarSet, PairTerm),
-        Pieces = [words("Error: expected a mapping element"),
-            words("of the form"), quote("possibly_qualified_name - string"),
-            suffix(","), words("got"), quote(PairTermStr), suffix("."), nl],
+        Pieces = cord.list(ContextPieces) ++ [lower_case_next_if_not_first,
+            words("Error: expected a mapping element of the form")] ++
+            color_as_correct([quote("possibly_qualified_name - string"),
+                suffix(",")]) ++
+            [words("got")] ++
+            color_as_incorrect([quote(PairTermStr), suffix(".")]) ++
+            [nl],
         Spec = spec($pred, severity_error, phase_t2pt,
             get_term_context(PairTerm), Pieces),
         MaybePair = error1([Spec])
@@ -1339,10 +1385,12 @@ parse_export_enum_attributes(ContextPieces, VarSet, AttributesTerm,
                 AttributesResult = ok1(Attributes)
             ;
                 PrefixAttributes = [_, _ | _],
-                Pieces = ContextPieces ++
-                    [lower_case_next_if_not_first,
-                    words("Error: the prefix attribute"),
-                    words("may not occur more than once."), nl],
+                Pieces = ContextPieces ++ [lower_case_next_if_not_first,
+                    words("Error: the")] ++
+                    color_as_subject([quote("prefix"), words("attribute")]) ++
+                    color_as_incorrect(
+                        [words("may not occur more than once.")]) ++
+                    [nl],
                 Spec = spec($pred, severity_error, phase_t2pt,
                     get_term_context(AttributesTerm), Pieces),
                 AttributesResult = error1([Spec])
@@ -1353,27 +1401,16 @@ parse_export_enum_attributes(ContextPieces, VarSet, AttributesTerm,
         )
     else
         AttributesStr = describe_error_term(VarSet, AttributesTerm),
-        Pieces = ContextPieces ++
-            [lower_case_next_if_not_first,
-            words("Error: expected a list of attributes,"),
-            words("got"), quote(AttributesStr), suffix("."), nl],
+        Pieces = ContextPieces ++ [lower_case_next_if_not_first,
+            words("Error: expected a")] ++
+            color_as_correct([words("list of attributes,")]) ++
+            [words("got")] ++
+            color_as_incorrect([quote(AttributesStr), suffix(".")]) ++
+            [nl],
         Spec = spec($pred, severity_error, phase_t2pt,
             get_term_context(AttributesTerm), Pieces),
         AttributesResult = error1([Spec])
     ).
-
-:- pred process_export_enum_attribute(collected_export_enum_attribute::in,
-    export_enum_attributes::in, export_enum_attributes::out) is det.
-
-process_export_enum_attribute(ee_attr_prefix(MaybePrefix), !Attributes) :-
-    % We have already checked that the prefix attribute is not specified
-    % multiple times in parse_export_enum_attributes so it is safe to
-    % ignore it in the input here.
-    !.Attributes = export_enum_attributes(_, MakeUpperCase),
-    !:Attributes = export_enum_attributes(MaybePrefix, MakeUpperCase).
-process_export_enum_attribute(ee_attr_upper(MakeUpperCase), !Attributes) :-
-    !.Attributes = export_enum_attributes(MaybePrefix, _),
-    !:Attributes = export_enum_attributes(MaybePrefix, MakeUpperCase).
 
 :- pred parse_export_enum_attr(list(format_piece)::in,
     varset::in, term::in, maybe1(collected_export_enum_attribute)::out) is det.
@@ -1391,16 +1428,31 @@ parse_export_enum_attr(ContextPieces, VarSet, Term, MaybeAttribute) :-
         MaybeAttribute = ok1(ee_attr_upper(uppercase_export_enum))
     else
         TermStr = describe_error_term(VarSet, Term),
-        Pieces = ContextPieces ++
-            [lower_case_next_if_not_first,
-            words("Error: expected one of"),
-            quote("prefix(<foreign_name>)"), words("and"),
-            quote("uppercase"), suffix(","),
-            words("got"), quote(TermStr), suffix("."), nl],
+        Pieces = ContextPieces ++ [lower_case_next_if_not_first,
+            words("Error: expected one of")] ++
+            color_as_correct([quote("prefix(<foreign_name>)")]) ++
+            [words("and")] ++
+            color_as_correct([quote("uppercase"), suffix(",")]) ++
+            [words("got")] ++
+            color_as_incorrect([quote(TermStr), suffix(".")]) ++
+            [nl],
         Spec = spec($pred, severity_error, phase_t2pt,
             get_term_context(Term), Pieces),
         MaybeAttribute = error1([Spec])
     ).
+
+:- pred process_export_enum_attribute(collected_export_enum_attribute::in,
+    export_enum_attributes::in, export_enum_attributes::out) is det.
+
+process_export_enum_attribute(ee_attr_prefix(MaybePrefix), !Attributes) :-
+    % We have already checked that the prefix attribute is not specified
+    % multiple times in parse_export_enum_attributes so it is safe to
+    % ignore it in the input here.
+    !.Attributes = export_enum_attributes(_, MakeUpperCase),
+    !:Attributes = export_enum_attributes(MaybePrefix, MakeUpperCase).
+process_export_enum_attribute(ee_attr_upper(MakeUpperCase), !Attributes) :-
+    !.Attributes = export_enum_attributes(MaybePrefix, _),
+    !:Attributes = export_enum_attributes(MaybePrefix, MakeUpperCase).
 
 %---------------------------------------------------------------------------%
 %
@@ -1429,12 +1481,14 @@ parse_pragma_foreign_enum(ModuleName, VarSet, ErrorTerm, PragmaTerms,
                 TypeCtor1 = type_ctor(SymName, Arity),
                 MaybeTypeCtor = ok1(TypeCtor1)
             else
-                % Don't split "must be" across lines.
-                SymNamePieces =
-                    [words("Error: a"), pragma_decl("foreign_enum"),
-                    words("declaration"), fixed("must be"),
-                    words("for a type that is defined"),
-                    words("in the same module."), nl],
+                SymNamePieces = [words("Error: a")] ++
+                    color_as_subject([pragma_decl("foreign_enum"),
+                        words("declaration")]) ++
+                    % Don't split "must be" across lines.
+                    [fixed("must be"), words("for a type that is")] ++
+                    color_as_incorrect(
+                        [words("defined in the same module.")]) ++
+                    [nl],
                 SymNameSpec = spec($pred, severity_error, phase_t2pt,
                     get_term_context(ValuesTerm), SymNamePieces),
                 MaybeTypeCtor = error1([SymNameSpec])
@@ -1448,7 +1502,7 @@ parse_pragma_foreign_enum(ModuleName, VarSet, ErrorTerm, PragmaTerms,
             pragma_decl("foreign_enum"), words("mapping constructor name:")]),
         % XXX The following doesn't check that foreign values are sensible
         % (e.g. it should reject the empty string).
-        parse_list_elements("mapping elements",
+        parse_list_elements(PairContextPieces, "mapping elements",
             parse_cur_module_sym_name_string_pair(PairContextPieces,
                 ModuleName),
             VarSet, ValuesTerm, MaybeValues),
@@ -1456,11 +1510,13 @@ parse_pragma_foreign_enum(ModuleName, VarSet, ErrorTerm, PragmaTerms,
             MaybeValues = ok1(Values),
             (
                 Values = [],
-                NoValuesPieces =
-                    [words("In the third argument of"),
+                NoValuesPieces = [words("In the third argument of"),
                     pragma_decl("foreign_enum"), words("declaration:"), nl,
-                    words("error: the list mapping constructors"),
-                    words("to foreign values must not be empty."), nl],
+                    words("error: the")] ++
+                    color_as_subject([words("list mapping constructors"),
+                        words("to foreign values")]) ++
+                    color_as_incorrect([words("must not be empty.")]) ++
+                    [nl],
                 NoValuesSpec = spec($pred, severity_error, phase_t2pt,
                     get_term_context(ValuesTerm), NoValuesPieces),
                 MaybeOoMValues = error1([NoValuesSpec])
@@ -1494,8 +1550,12 @@ parse_pragma_foreign_enum(ModuleName, VarSet, ErrorTerm, PragmaTerms,
         ; PragmaTerms = [_, _]
         ; PragmaTerms = [_, _, _, _ | _]
         ),
-        Pieces = [words("Error: a"), pragma_decl("foreign_enum"),
-            words("declaration must have exactly three arguments."), nl],
+        Pieces = [words("Error: a")] ++
+            color_as_subject([pragma_decl("foreign_enum"),
+                words("declaration")]) ++
+            [words("must have")] ++
+            color_as_incorrect([words("exactly three arguments.")]) ++
+            [nl],
         Spec = spec($pred, severity_error, phase_t2pt,
             get_term_context(ErrorTerm), Pieces),
         MaybeIOM = error1([Spec])
@@ -1524,11 +1584,16 @@ parse_cur_module_sym_name_string_pair(ContextPieces, ModuleName, VarSet,
                 then
                     MaybePair = ok1(SymName - String)
                 else
-                    Pieces = [words("Error: a function symbol name in a"),
-                        pragma_decl("foreign_enum"), words("pragma"),
-                        words("cannot be qualified with any module name"),
-                        words("other than the name of the current module."),
-                        nl],
+                    SymNameTermStr = describe_error_term(VarSet, SymNameTerm),
+                    Pieces = cord.list(ContextPieces) ++
+                        [lower_case_next_if_not_first,
+                        words("Error: expected a")] ++
+                        color_as_correct([words("function symbol"),
+                            words("defined in the same module,")]) ++
+                        [words("got")] ++
+                        color_as_incorrect([quote(SymNameTermStr),
+                            suffix(".")]) ++
+                        [nl],
                     Spec = spec($pred, severity_error, phase_t2pt,
                         get_term_context(SymNameTerm), Pieces),
                     MaybePair = error1([Spec])
@@ -1543,9 +1608,13 @@ parse_cur_module_sym_name_string_pair(ContextPieces, ModuleName, VarSet,
         )
     else
         PairTermStr = describe_error_term(VarSet, PairTerm),
-        Pieces = [words("Error: expected a mapping element"),
-            words("of the form"), quote("possibly_qualified_name - string"),
-            suffix(","), words("got"), quote(PairTermStr), suffix("."), nl],
+        Pieces = cord.list(ContextPieces) ++ [lower_case_next_if_not_first,
+            words("Error: expected a mapping element of the form")] ++
+            color_as_correct([quote("possibly_qualified_name - string"),
+                suffix(",")]) ++
+            [words("got")] ++
+            color_as_incorrect([quote(PairTermStr), suffix(".")]) ++
+            [nl],
         Spec = spec($pred, severity_error, phase_t2pt,
             get_term_context(PairTerm), Pieces),
         MaybePair = error1([Spec])
@@ -1572,8 +1641,11 @@ parse_pragma_foreign_import_module(VarSet, ErrorTerm, PragmaTerms, Context,
             ModuleNamePieces = [words("In the second argument of"),
                 pragma_decl("foreign_import_module"),
                 words("declaration:"), nl,
-                words("error: expected module name, got"),
-                quote(ModuleNameTermStr), suffix("."), nl],
+                words("error: expected a")] ++
+                color_as_correct([words("module name,")]) ++
+                [words("got")] ++
+                color_as_incorrect([quote(ModuleNameTermStr), suffix(".")]) ++
+                [nl],
             ModuleNameSpec = spec($pred, severity_error, phase_t2pt,
                 get_term_context(ModuleNameTerm), ModuleNamePieces),
             MaybeModuleName = error1([ModuleNameSpec])
@@ -1594,8 +1666,12 @@ parse_pragma_foreign_import_module(VarSet, ErrorTerm, PragmaTerms, Context,
         ; PragmaTerms = [_]
         ; PragmaTerms = [_, _, _ | _]
         ),
-        Pieces = [words("Error: a"), pragma_decl("foreign_import_module"),
-            words("declaration must have two arguments."), nl],
+        Pieces = [words("Error: a")] ++
+            color_as_subject([pragma_decl("foreign_import_module"),
+                words("declaration")]) ++
+            [words("must have")] ++
+            color_as_incorrect([words("exactly two arguments.")]) ++
+            [nl],
         Spec = spec($pred, severity_error, phase_t2pt,
             get_term_context(ErrorTerm), Pieces),
         MaybeIOM = error1([Spec])
@@ -1614,11 +1690,17 @@ parse_foreign_language(ContextPieces, VarSet, LangTerm, MaybeForeignLang) :-
     ( if term_to_foreign_language(LangTerm, ForeignLang) then
         MaybeForeignLang = ok1(ForeignLang)
     else
+        LangTermStr = describe_error_term(VarSet, LangTerm),
         MainPieces = cord.list(ContextPieces) ++ [lower_case_next_if_not_first,
-            words("Error: expected the name of a foreign language, got"),
-            quote(describe_error_term(VarSet, LangTerm)), suffix("."), nl,
+            words("Error: expected the ")] ++
+            color_as_correct([words("name of a foreign language,")]) ++
+            [words("got")] ++
+            color_as_incorrect([quote(LangTermStr), suffix(".")]) ++
+            [nl,
             words("The valid languages are")] ++
-            list_to_pieces(all_foreign_language_strings) ++ [suffix("."), nl],
+            list_to_color_pieces(yes(color_correct), "and", [suffix(".")],
+                all_foreign_language_strings) ++
+            [nl],
         ( if term_to_foreign_language_erlang(LangTerm) then
             Pieces = MainPieces ++
                 [words("Support for Erlang has been discontinued."), nl]
@@ -1640,10 +1722,12 @@ parse_type_ctor_name_arity(ContextPieces, VarSet, TypeTerm, MaybeTypeCtor) :-
         MaybeTypeCtor = ok1(type_ctor(SymName, Arity))
     else
         TypeTermStr = describe_error_term(VarSet, TypeTerm),
-        Pieces = cord.list(ContextPieces) ++
-            [lower_case_next_if_not_first,
-            words("Error: expected"), quote("type_name/type_arity"),
-            suffix(","), words("got"), quote(TypeTermStr), suffix("."), nl],
+        Pieces = cord.list(ContextPieces) ++ [lower_case_next_if_not_first,
+            words("Error: expected")] ++
+            color_as_correct([quote("type_name/type_arity"), suffix(",")]) ++
+            [words("got")] ++
+            color_as_incorrect([quote(TypeTermStr), suffix(".")]) ++
+            [nl],
         Spec = spec($pred, severity_error, phase_t2pt,
             get_term_context(TypeTerm), Pieces),
         MaybeTypeCtor = error1([Spec])

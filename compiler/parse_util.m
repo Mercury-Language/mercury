@@ -134,7 +134,7 @@
 
 %---------------------------------------------------------------------------%
 
-    % parse_list_elements(What, Pred, VarSet, Term, Result):
+    % parse_list_elements(Where, What, Pred, VarSet, Term, Result):
     %
     % Convert Term into a list of elements, where Pred converts each element
     % of the list into the correct type. Result will hold the list if the
@@ -146,7 +146,7 @@
     % (this predicate will add an "a" in front of that). The job of
     % generating error messages for any malformed elements is up to Pred.
     %
-:- pred parse_list_elements(string::in,
+:- pred parse_list_elements(cord(format_piece)::in, string::in,
     pred(varset, term, maybe1(T))::in(pred(in, in, out) is det),
     varset::in, term::in, maybe1(list(T))::out) is det.
 
@@ -625,10 +625,10 @@ map_parser(Parser, [Head | Tail], Result) :-
 
 %---------------------------------------------------------------------------%
 
-parse_list_elements(What, Pred, VarSet, Term, Result) :-
+parse_list_elements(Where, What, Pred, VarSet, Term, Result) :-
     (
         Term = term.variable(_, _),
-        make_expected_got_spec(VarSet, What, Term, Spec),
+        make_expected_got_spec(Where, VarSet, What, Term, Spec),
         Result = error1([Spec])
     ;
         Term = term.functor(Functor, Args, _Context),
@@ -637,7 +637,8 @@ parse_list_elements(What, Pred, VarSet, Term, Result) :-
             Args = [HeadTerm, TailTerm]
         then
             Pred(VarSet, HeadTerm, HeadResult),
-            parse_list_elements(What, Pred, VarSet, TailTerm, TailResult),
+            parse_list_elements(Where, What, Pred, VarSet,
+                TailTerm, TailResult),
             ( if
                 HeadResult = ok1(HeadElement),
                 TailResult = ok1(TailElements)
@@ -654,17 +655,18 @@ parse_list_elements(What, Pred, VarSet, Term, Result) :-
         then
             Result = ok1([])
         else
-            make_expected_got_spec(VarSet, What, Term, Spec),
+            make_expected_got_spec(Where, VarSet, What, Term, Spec),
             Result = error1([Spec])
         )
     ).
 
-:- pred make_expected_got_spec(varset::in, string::in, term::in,
-    error_spec::out) is det.
+:- pred make_expected_got_spec(cord(format_piece)::in, varset::in, string::in,
+    term::in, error_spec::out) is det.
 
-make_expected_got_spec(VarSet, What, Term, Spec) :-
+make_expected_got_spec(Where, VarSet, What, Term, Spec) :-
     TermStr = describe_error_term(VarSet, Term),
-    Pieces = [words("Error: expected a")] ++
+    Pieces = cord.list(Where) ++ [lower_case_next_if_not_first,
+        words("Error: expected a")] ++
         color_as_correct([words(What), suffix(",")]) ++
         [words("got")] ++
         color_as_incorrect([quote(TermStr), suffix(".")]) ++

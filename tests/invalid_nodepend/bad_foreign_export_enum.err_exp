@@ -1,36 +1,38 @@
-bad_foreign_export_enum.m:017: Error: a `:- pragma foreign_export_enum'
-bad_foreign_export_enum.m:017:   declaration must have two, three or four
-bad_foreign_export_enum.m:017:   arguments.
+bad_foreign_export_enum.m:017: Error: a [38;5;87m`:- pragma foreign_export_enum'[39;49m
+bad_foreign_export_enum.m:017:   [38;5;87mdeclaration[39;49m must have [38;5;203mtwo, three or four[39;49m
+bad_foreign_export_enum.m:017:   [38;5;203marguments.[39;49m
 bad_foreign_export_enum.m:021: In the first argument of
 bad_foreign_export_enum.m:021:   `:- pragma foreign_export_enum' declaration:
-bad_foreign_export_enum.m:021:   error: expected the name of a foreign
-bad_foreign_export_enum.m:021:   language, got `"InvalidLanguage"'.
-bad_foreign_export_enum.m:021:   The valid languages are c, C, csharp, C#, java
-bad_foreign_export_enum.m:021:   and Java.
+bad_foreign_export_enum.m:021:   error: expected the [38;5;40mname of a foreign[39;49m
+bad_foreign_export_enum.m:021:   [38;5;40mlanguage,[39;49m got [38;5;203m`"InvalidLanguage"'.[39;49m
+bad_foreign_export_enum.m:021:   The valid languages are [38;5;40mc,[39;49m [38;5;40mC,[39;49m [38;5;40mcsharp,[39;49m [38;5;40mC#,[39;49m [38;5;40mjava[39;49m
+bad_foreign_export_enum.m:021:   and [38;5;40mJava.[39;49m
 bad_foreign_export_enum.m:025: In the second argument of
 bad_foreign_export_enum.m:025:   `:- pragma foreign_export_enum' declaration:
-bad_foreign_export_enum.m:025:   error: expected `type_name/type_arity', got
-bad_foreign_export_enum.m:025:   `fruit'.
+bad_foreign_export_enum.m:025:   error: expected [38;5;40m`type_name/type_arity',[39;49m got
+bad_foreign_export_enum.m:025:   [38;5;203m`fruit'.[39;49m
 bad_foreign_export_enum.m:028: In the first argument of
 bad_foreign_export_enum.m:028:   `:- pragma foreign_export_enum' declaration:
-bad_foreign_export_enum.m:028:   error: expected the name of a foreign
-bad_foreign_export_enum.m:028:   language, got `"InvalidLanguage"'.
-bad_foreign_export_enum.m:028:   The valid languages are c, C, csharp, C#, java
-bad_foreign_export_enum.m:028:   and Java.
+bad_foreign_export_enum.m:028:   error: expected the [38;5;40mname of a foreign[39;49m
+bad_foreign_export_enum.m:028:   [38;5;40mlanguage,[39;49m got [38;5;203m`"InvalidLanguage"'.[39;49m
+bad_foreign_export_enum.m:028:   The valid languages are [38;5;40mc,[39;49m [38;5;40mC,[39;49m [38;5;40mcsharp,[39;49m [38;5;40mC#,[39;49m [38;5;40mjava[39;49m
+bad_foreign_export_enum.m:028:   and [38;5;40mJava.[39;49m
 bad_foreign_export_enum.m:029: In the second argument of
 bad_foreign_export_enum.m:029:   `:- pragma foreign_export_enum' declaration:
-bad_foreign_export_enum.m:029:   error: expected `type_name/type_arity', got
-bad_foreign_export_enum.m:029:   `fruit'.
+bad_foreign_export_enum.m:029:   error: expected [38;5;40m`type_name/type_arity',[39;49m got
+bad_foreign_export_enum.m:029:   [38;5;203m`fruit'.[39;49m
 bad_foreign_export_enum.m:030: In the third argument of
 bad_foreign_export_enum.m:030:   `:- pragma foreign_export_enum' declaration:
-bad_foreign_export_enum.m:030:   error: expected a list of attributes, got
-bad_foreign_export_enum.m:030:   `1234'.
-bad_foreign_export_enum.m:031: Error: expected a [38;5;40mlist of mapping elements,[39;49m got
-bad_foreign_export_enum.m:031:   [38;5;203m`5678'.[39;49m
+bad_foreign_export_enum.m:030:   error: expected a [38;5;40mlist of attributes,[39;49m got
+bad_foreign_export_enum.m:030:   [38;5;203m`1234'.[39;49m
+bad_foreign_export_enum.m:031: In the fourth argument of
+bad_foreign_export_enum.m:031:   `:- pragma foreign_export_enum' declaration:
+bad_foreign_export_enum.m:031:   error: expected a [38;5;40mlist of mapping elements,[39;49m
+bad_foreign_export_enum.m:031:   got [38;5;203m`5678'.[39;49m
 bad_foreign_export_enum.m:034: In the first argument of
 bad_foreign_export_enum.m:034:   `:- pragma foreign_export_enum' declaration:
-bad_foreign_export_enum.m:034:   error: expected the name of a foreign
-bad_foreign_export_enum.m:034:   language, got `erlang'.
-bad_foreign_export_enum.m:034:   The valid languages are c, C, csharp, C#, java
-bad_foreign_export_enum.m:034:   and Java.
+bad_foreign_export_enum.m:034:   error: expected the [38;5;40mname of a foreign[39;49m
+bad_foreign_export_enum.m:034:   [38;5;40mlanguage,[39;49m got [38;5;203m`erlang'.[39;49m
+bad_foreign_export_enum.m:034:   The valid languages are [38;5;40mc,[39;49m [38;5;40mC,[39;49m [38;5;40mcsharp,[39;49m [38;5;40mC#,[39;49m [38;5;40mjava[39;49m
+bad_foreign_export_enum.m:034:   and [38;5;40mJava.[39;49m
 bad_foreign_export_enum.m:034:   Support for Erlang has been discontinued.

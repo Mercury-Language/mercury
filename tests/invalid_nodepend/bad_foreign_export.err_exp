@@ -1,42 +1,39 @@
-bad_foreign_export.m:020: Error: a `:- pragma foreign_export' declaration must
-bad_foreign_export.m:020:   have exactly three arguments.
+bad_foreign_export.m:020: Error: a [38;5;87m`:- pragma foreign_export' declaration[39;49m must
+bad_foreign_export.m:020:   have [38;5;203mexactly three arguments.[39;49m
 bad_foreign_export.m:024: In the second argument of `:- pragma foreign_export'
 bad_foreign_export.m:024:   declaration:
 bad_foreign_export.m:024:   error: expected a [38;5;40msymbol name,[39;49m got [38;5;203m`11111'.[39;49m
 bad_foreign_export.m:028: In the third argument of `:- pragma foreign_export'
 bad_foreign_export.m:028:   declaration:
-bad_foreign_export.m:028:   error: expected a non-empty string for the foreign
-bad_foreign_export.m:028:   language name of the exported procedure, got
-bad_foreign_export.m:028:   `22222'.
+bad_foreign_export.m:028:   error: expected the [38;5;40mforeign language name of the[39;49m
+bad_foreign_export.m:028:   [38;5;40mexported procedure,[39;49m got [38;5;203m`22222'.[39;49m
 bad_foreign_export.m:032: In the first argument of `:- pragma foreign_export'
 bad_foreign_export.m:032:   declaration:
-bad_foreign_export.m:032:   error: expected the name of a foreign language, got
-bad_foreign_export.m:032:   `"InvalidLanguage"'.
-bad_foreign_export.m:032:   The valid languages are c, C, csharp, C#, java and
-bad_foreign_export.m:032:   Java.
+bad_foreign_export.m:032:   error: expected the [38;5;40mname of a foreign language,[39;49m got
+bad_foreign_export.m:032:   [38;5;203m`"InvalidLanguage"'.[39;49m
+bad_foreign_export.m:032:   The valid languages are [38;5;40mc,[39;49m [38;5;40mC,[39;49m [38;5;40mcsharp,[39;49m [38;5;40mC#,[39;49m [38;5;40mjava[39;49m and
+bad_foreign_export.m:032:   [38;5;40mJava.[39;49m
 bad_foreign_export.m:037: In the first argument of `:- pragma foreign_export'
 bad_foreign_export.m:037:   declaration:
-bad_foreign_export.m:037:   error: expected the name of a foreign language, got
-bad_foreign_export.m:037:   `"InvalidLanguage"'.
-bad_foreign_export.m:037:   The valid languages are c, C, csharp, C#, java and
-bad_foreign_export.m:037:   Java.
+bad_foreign_export.m:037:   error: expected the [38;5;40mname of a foreign language,[39;49m got
+bad_foreign_export.m:037:   [38;5;203m`"InvalidLanguage"'.[39;49m
+bad_foreign_export.m:037:   The valid languages are [38;5;40mc,[39;49m [38;5;40mC,[39;49m [38;5;40mcsharp,[39;49m [38;5;40mC#,[39;49m [38;5;40mjava[39;49m and
+bad_foreign_export.m:037:   [38;5;40mJava.[39;49m
 bad_foreign_export.m:038: In the second argument of `:- pragma foreign_export'
 bad_foreign_export.m:038:   declaration:
 bad_foreign_export.m:038:   error: expected a [38;5;40msymbol name,[39;49m got [38;5;203m`3333'.[39;49m
 bad_foreign_export.m:039: In the third argument of `:- pragma foreign_export'
 bad_foreign_export.m:039:   declaration:
-bad_foreign_export.m:039:   error: expected a non-empty string for the foreign
-bad_foreign_export.m:039:   language name of the exported procedure, got
-bad_foreign_export.m:039:   `4444'.
+bad_foreign_export.m:039:   error: expected the [38;5;40mforeign language name of the[39;49m
+bad_foreign_export.m:039:   [38;5;40mexported procedure,[39;49m got [38;5;203m`4444'.[39;49m
 bad_foreign_export.m:044: In the third argument of `:- pragma foreign_export'
 bad_foreign_export.m:044:   declaration:
-bad_foreign_export.m:044:   error: expected a non-empty string for the foreign
-bad_foreign_export.m:044:   language name of the exported procedure, got an
-bad_foreign_export.m:044:   empty string.
+bad_foreign_export.m:044:   error: expected the [38;5;40mforeign language name of the[39;49m
+bad_foreign_export.m:044:   [38;5;40mexported procedure,[39;49m got [38;5;203m`""'.[39;49m
 bad_foreign_export.m:046: In the first argument of `:- pragma foreign_export'
 bad_foreign_export.m:046:   declaration:
-bad_foreign_export.m:046:   error: expected the name of a foreign language, got
-bad_foreign_export.m:046:   `"Erlang"'.
-bad_foreign_export.m:046:   The valid languages are c, C, csharp, C#, java and
-bad_foreign_export.m:046:   Java.
+bad_foreign_export.m:046:   error: expected the [38;5;40mname of a foreign language,[39;49m got
+bad_foreign_export.m:046:   [38;5;203m`"Erlang"'.[39;49m
+bad_foreign_export.m:046:   The valid languages are [38;5;40mc,[39;49m [38;5;40mC,[39;49m [38;5;40mcsharp,[39;49m [38;5;40mC#,[39;49m [38;5;40mjava[39;49m and
+bad_foreign_export.m:046:   [38;5;40mJava.[39;49m
 bad_foreign_export.m:046:   Support for Erlang has been discontinued.
