@@ -4,8 +4,8 @@ specified.m:141:   argument 3: argument tabling method `addr' is not compatible
 specified.m:141:   with output modes.
 specified.m:158: In the second argument of `:- pragma memo' declaration:
 specified.m:158:   in the first argument of specified:
-specified.m:158:   error: expected one of `value', `addr', `promise_implied',
-specified.m:158:   and `output', got `implied'.
+specified.m:158:   error: expected one of [38;5;40m`value',[39;49m [38;5;40m`addr',[39;49m [38;5;40m`promise_implied',[39;49m
+specified.m:158:   and [38;5;40m`output',[39;49m got [38;5;203m`implied'.[39;49m
 specified.m:173: Error in `:- pragma memo' declaration for predicate
 specified.m:173:   `specified.ap_li_fib'/3:
 specified.m:173:   not enough argument tabling methods specified.
@@ -17,8 +17,8 @@ specified.m:233: Error in `:- pragma memo' declaration for predicate
 specified.m:233:   `specified.vv_ll_fib'/3:
 specified.m:233:   too many argument tabling methods specified.
 specified.m:277: In the second argument of `:- pragma memo' declaration:
-specified.m:277:   error: specified must have one or two arguments.
+specified.m:277:   error: [38;5;87m`specified'[39;49m must have [38;5;203mone or two arguments.[39;49m
 specified.m:285: In the second argument of `:- pragma memo' declaration:
-specified.m:285:   in the second argument of specified:
-specified.m:285:   error: expected either `hidden_arg_value' or
-specified.m:285:   `hidden_arg_addr', got `voodoo'.
+specified.m:285:   in the second argument of `specified:'
+specified.m:285:   error: expected either [38;5;40m`hidden_arg_value'[39;49m or
+specified.m:285:   [38;5;40m`hidden_arg_addr',[39;49m got [38;5;203m`voodoo'.[39;49m

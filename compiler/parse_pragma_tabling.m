@@ -135,8 +135,12 @@ parse_tabling_pragma(ModuleName, VarSet, ErrorTerm, PragmaName, PragmaTerms,
         ( PragmaTerms = []
         ; PragmaTerms = [_, _, _ | _]
         ),
-        Pieces = [words("Error: a"), pragma_decl(PragmaName),
-            words("declaration must have one or two arguments."), nl],
+        Pieces = [words("Error: a")] ++
+            color_as_subject([pragma_decl(PragmaName),
+                words("declaration")]) ++
+            [words("must have")] ++
+            color_as_incorrect([words("one or two arguments.")]) ++
+            [nl],
         Spec = spec($pred, severity_error, phase_t2pt,
             get_term_context(ErrorTerm), Pieces),
         MaybeIOM = error1([Spec])
@@ -187,15 +191,25 @@ parse_tabling_attribute(ContextPieces, TabledMethod, VarSet, Term,
         )
     else
         TermStr = describe_error_term(VarSet, Term),
+        Form1 = "fast_loose",
+        Form2 = "specified(...)",
+        Form3 = "size_limit(...)",
+        Form4 = "statistics",
+        Form5 = "allow_reset",
+        Form6 = "disable_warning_if_ignored",
         Pieces = cord.list(ContextPieces) ++ [lower_case_next_if_not_first,
-            words("Error: expected one of"),
-            quote("fast_loose"), suffix(","),
-            quote("specified(...)"), suffix(","),
-            quote("size_limit(...)"), suffix(","),
-            quote("statistics"), suffix(","),
-            quote("allow_reset"), suffix(","), words("and"),
-            quote("disable_warning_if_ignored"), suffix(","),
-            words("got"), quote(TermStr), suffix("."), nl],
+            words("Error: expected one of"), nl_indent_delta(1)] ++
+            color_as_correct([quote(Form1), suffix(",")]) ++ [nl] ++
+            color_as_correct([quote(Form2), suffix(",")]) ++ [nl] ++
+            color_as_correct([quote(Form3), suffix(",")]) ++ [nl] ++
+            color_as_correct([quote(Form4), suffix(",")]) ++ [nl] ++
+            color_as_correct([quote(Form5), suffix(",")]) ++
+                [words("and"), nl] ++
+            color_as_correct([quote(Form6), suffix(",")]) ++
+            [nl_indent_delta(-1),
+            words("got")] ++
+            color_as_incorrect([quote(TermStr), suffix(".")]) ++
+            [nl],
         Spec = spec($pred, severity_error, phase_t2pt,
             get_term_context(Term), Pieces),
         MaybeContextAttribute = error1([Spec])
@@ -224,10 +238,12 @@ parse_tabling_attr_fast_loose(ContextPieces, TabledMethod, _VarSet,
     ;
         ArgTerms = [_ | _],
         Pieces = cord.list(ContextPieces) ++ [lower_case_next_if_not_first,
-            words("Error: fast_loose"),
-            words("must have no arguments."), nl],
-        Spec = spec($pred, severity_error, phase_t2pt,
-            Context, Pieces),
+            words("Error:")] ++
+            color_as_subject([quote("fast_loose")]) ++
+            [words("must have")] ++
+            color_as_incorrect([words("no arguments.")]) ++
+            [nl],
+        Spec = spec($pred, severity_error, phase_t2pt, Context, Pieces),
         MaybeContextAttribute = error1([Spec])
     ).
 
@@ -259,11 +275,17 @@ parse_tabling_attr_specified(ContextPieces, TabledMethod, VarSet,
                 HiddenArgTermStr = describe_error_term(VarSet, HiddenArgTerm),
                 HiddenArgPieces = cord.list(ContextPieces) ++
                     [lower_case_next_if_not_first,
-                    words("In the second argument of specified:"), nl,
-                    words("error: expected either"),
-                    quote("hidden_arg_value"), words("or"),
-                    quote("hidden_arg_addr"), suffix(","),
-                    words("got"), quote(HiddenArgTermStr), suffix("."), nl],
+                    words("In the second argument of"),
+                        quote("specified:"), nl,
+                    words("error: expected either")] ++
+                    color_as_correct([quote("hidden_arg_value")]) ++
+                    [words("or")] ++
+                    color_as_correct([quote("hidden_arg_addr"),
+                        suffix(",")]) ++
+                    [words("got")] ++
+                    color_as_incorrect([quote(HiddenArgTermStr),
+                        suffix(".")]) ++
+                    [nl],
                 HiddenArgSpec = spec($pred, severity_error, phase_t2pt,
                     get_term_context(HiddenArgTerm), HiddenArgPieces),
                 MaybeHiddenArg = error1([HiddenArgSpec])
@@ -296,9 +318,12 @@ parse_tabling_attr_specified(ContextPieces, TabledMethod, VarSet,
         ; ArgTerms = [_, _, _ | _]
         ),
         Pieces = cord.list(ContextPieces) ++ [lower_case_next_if_not_first,
-            words("Error: specified must have one or two arguments."), nl],
-        Spec = spec($pred, severity_error, phase_t2pt,
-            Context, Pieces),
+            words("Error:")] ++
+            color_as_subject([quote("specified")]) ++
+            [words("must have")] ++
+            color_as_incorrect([words("one or two arguments.")]) ++
+            [nl],
+        Spec = spec($pred, severity_error, phase_t2pt, Context, Pieces),
         MaybeContextAttribute = error1([Spec])
     ).
 
@@ -327,12 +352,15 @@ parse_arg_tabling_method(ContextPieces, VarSet, Term,
     else
         TermStr = describe_error_term(VarSet, Term),
         Pieces = cord.list(ContextPieces) ++ [lower_case_next_if_not_first,
-            words("Error: expected one of"),
-            quote("value"), suffix(","),
-            quote("addr"), suffix(","),
-            quote("promise_implied"), suffix(","), words("and"),
-            quote("output"), suffix(","),
-            words("got"), quote(TermStr), suffix("."), nl],
+            words("Error: expected one of")]  ++
+            color_as_correct([quote("value"), suffix(",")]) ++
+            color_as_correct([quote("addr"), suffix(",")]) ++
+            color_as_correct([quote("promise_implied"), suffix(",")]) ++
+            [words("and")] ++
+            color_as_correct([quote("output"), suffix(",")]) ++
+            [words("got")] ++
+            color_as_incorrect([quote(TermStr), suffix(".")]) ++
+            [nl],
         Spec = spec($pred, severity_error, phase_t2pt,
             get_term_context(Term), Pieces),
         MaybeMaybeArgTablingMethod = error1([Spec])
@@ -358,11 +386,13 @@ parse_tabling_attr_size_limit(ContextPieces, TabledMethod, VarSet,
             AllowSpecs = []
         ;
             AllowsSizeLimit = no,
+            TabledMethodStr = tabled_eval_method_to_string(TabledMethod),
             AllowPieces = cord.list(ContextPieces) ++
                 [lower_case_next_if_not_first,
-                words("Error: evaluation method"),
-                fixed(tabled_eval_method_to_string(TabledMethod)),
-                words("does not allow size limits."), nl],
+                words("Error: evaluation method")] ++
+                color_as_subject([quote(TabledMethodStr)]) ++
+                color_as_incorrect([words("does not allow size limits.")]) ++
+                [nl],
             AllowSpec = spec($pred, severity_error, phase_t2pt,
                 Context, AllowPieces),
             AllowSpecs = [AllowSpec]
@@ -382,9 +412,12 @@ parse_tabling_attr_size_limit(ContextPieces, TabledMethod, VarSet,
         ; ArgTerms = [_, _ | _]
         ),
         Pieces = cord.list(ContextPieces) ++ [lower_case_next_if_not_first,
-            words("Error: size_limit must have one argument."), nl],
-        Spec = spec($pred, severity_error, phase_t2pt,
-            Context, Pieces),
+            words("Error:")] ++
+            color_as_subject([quote("size_limit")]) ++
+            [words("must have")] ++
+            color_as_incorrect([words("one argument.")]) ++
+            [nl],
+        Spec = spec($pred, severity_error, phase_t2pt, Context, Pieces),
         MaybeContextAttribute = error1([Spec])
     ).
 
@@ -403,9 +436,12 @@ parse_tabling_attr_statistics(ContextPieces, _TabledMethod, _VarSet,
     ;
         ArgTerms = [_ | _],
         Pieces = cord.list(ContextPieces) ++ [lower_case_next_if_not_first,
-            words("Error: statistics must have no arguments."), nl],
-        Spec = spec($pred, severity_error, phase_t2pt,
-            Context, Pieces),
+            words("Error:")] ++
+            color_as_subject([quote("statistics")]) ++
+            [words("must have")] ++
+            color_as_incorrect([words("no arguments.")]) ++
+            [nl],
+        Spec = spec($pred, severity_error, phase_t2pt, Context, Pieces),
         MaybeContextAttribute = error1([Spec])
     ).
 
@@ -424,9 +460,12 @@ parse_tabling_attr_allow_reset(ContextPieces, _TabledMethod, _VarSet,
     ;
         ArgTerms = [_ | _],
         Pieces = cord.list(ContextPieces) ++ [lower_case_next_if_not_first,
-            words("Error: allow_reset must have no arguments."), nl],
-        Spec = spec($pred, severity_error, phase_t2pt,
-            Context, Pieces),
+            words("Error:")] ++
+            color_as_subject([quote("allow_reset")]) ++
+            [words("must have")] ++
+            color_as_incorrect([words("no arguments.")]) ++
+            [nl],
+        Spec = spec($pred, severity_error, phase_t2pt, Context, Pieces),
         MaybeContextAttribute = error1([Spec])
     ).
 
@@ -448,17 +487,24 @@ parse_tabling_attr_backend_warning(ContextPieces, TabledMethod, _VarSet,
             MaybeContextAttribute = ok1(Context - Attribute)
         ;
             AllowsDisableWarning = no,
+            TabledMethodStr = tabled_eval_method_to_string(TabledMethod),
             Pieces = cord.list(ContextPieces) ++ [lower_case_next_if_not_first,
-                words("Error: evaluation method"),
-                fixed(tabled_eval_method_to_string(TabledMethod)),
-                words("does not allow disable_warning_if_ignored."), nl],
+                words("Error: evaluation method")] ++
+                color_as_subject([quote(TabledMethodStr)]) ++
+                color_as_incorrect(
+                    [words("does not allow disable_warning_if_ignored.")]) ++
+                [nl],
             Spec = spec($pred, severity_error, phase_t2pt, Context, Pieces),
             MaybeContextAttribute = error1([Spec])
         )
     ;
         ArgTerms = [_ | _],
         Pieces = cord.list(ContextPieces) ++ [lower_case_next_if_not_first,
-            words("Error: allow_reset must have no arguments."), nl],
+            words("Error:")] ++
+            color_as_subject([quote("allow_reset")]) ++
+            [words("must have")] ++
+            color_as_incorrect([words("no arguments.")]) ++
+            [nl],
         Spec = spec($pred, severity_error, phase_t2pt, Context, Pieces),
         MaybeContextAttribute = error1([Spec])
     ).
@@ -475,10 +521,13 @@ require_tabling_fast_loose(ContextPieces, TabledMethod, Context, Specs) :-
         Specs = []
     ;
         AllowsFastLoose = no,
+        TabledMethodStr = tabled_eval_method_to_string(TabledMethod),
         Pieces = cord.list(ContextPieces) ++ [lower_case_next_if_not_first,
-            words("Error: evaluation method"),
-            fixed(tabled_eval_method_to_string(TabledMethod)),
-            words("does not allow fast_loose tabling."), nl],
+            words("Error: evaluation method")] ++
+            color_as_subject([quote(TabledMethodStr)]) ++
+            color_as_incorrect(
+                [words("does not allow fast_loose tabling.")]) ++
+            [nl],
         Spec = spec($pred, severity_error, phase_t2pt, Context, Pieces),
         Specs = [Spec]
     ).
@@ -529,21 +578,15 @@ update_tabling_attributes([Context - Attr | ContextAttrs],
         ( if !.Attributes ^ table_attr_strictness = cts_all_strict then
             !Attributes ^ table_attr_strictness := Strictness
         else
-            Pieces = [words("Error: duplicate argument tabling methods"),
-                words("attribute in"), pragma_decl("memo"),
-                words("declaration."), nl],
-            Spec = spec($pred, severity_error, phase_t2pt, Context, Pieces),
-            !:Specs = [Spec | !.Specs]
+            report_duplicate_memo_attribute(Context,
+                "argument tabling methods", !Specs)
         )
     ;
         Attr = attr_size_limit(Limit),
         ( if !.Attributes ^ table_attr_size_limit = no then
             !Attributes ^ table_attr_size_limit := yes(Limit)
         else
-            Pieces = [words("Error: duplicate size limits attribute in"),
-                pragma_decl("memo"), words("declaration."), nl],
-            Spec = spec($pred, severity_error, phase_t2pt, Context, Pieces),
-            !:Specs = [Spec | !.Specs]
+            report_duplicate_memo_attribute(Context, "size limits", !Specs)
         )
     ;
         Attr = attr_statistics,
@@ -552,10 +595,7 @@ update_tabling_attributes([Context - Attr | ContextAttrs],
         then
             !Attributes ^ table_attr_statistics := table_gather_statistics
         else
-            Pieces = [words("Error: duplicate statistics attribute in"),
-                pragma_decl("memo"), words("declaration."), nl],
-            Spec = spec($pred, severity_error, phase_t2pt, Context, Pieces),
-            !:Specs = [Spec | !.Specs]
+            report_duplicate_memo_attribute(Context, "statistics", !Specs)
         )
     ;
         Attr = attr_allow_reset,
@@ -564,10 +604,7 @@ update_tabling_attributes([Context - Attr | ContextAttrs],
         then
             !Attributes ^ table_attr_allow_reset := table_allow_reset
         else
-            Pieces = [words("Error: duplicate allow_reset attribute in"),
-                pragma_decl("memo"), words("declaration."), nl],
-            Spec = spec($pred, severity_error, phase_t2pt, Context, Pieces),
-            !:Specs = [Spec | !.Specs]
+            report_duplicate_memo_attribute(Context, "allow_reset", !Specs)
         )
     ;
         Attr = attr_ignore_without_warning,
@@ -578,14 +615,23 @@ update_tabling_attributes([Context - Attr | ContextAttrs],
             !Attributes ^ table_attr_backend_warning :=
                 table_attr_ignore_without_warning
         else
-            Pieces = [words("Error: duplicate disable_warning_if_ignored"),
-                words("attribute in"),
-                pragma_decl("memo"), words("declaration."), nl],
-            Spec = spec($pred, severity_error, phase_t2pt, Context, Pieces),
-            !:Specs = [Spec | !.Specs]
+            report_duplicate_memo_attribute(Context,
+                "disable_warning_if_ignored", !Specs)
         )
     ),
     update_tabling_attributes(ContextAttrs, !Attributes, !Specs).
+
+:- pred report_duplicate_memo_attribute(prog_context::in, string::in,
+    list(error_spec)::in, list(error_spec)::out) is det.
+
+report_duplicate_memo_attribute(Context, Attr, !Specs) :-
+    Pieces = [words("In"), pragma_decl("memo"), words("declaration:"), nl,
+        words("error:")] ++
+        color_as_incorrect([words("duplicate")]) ++
+        color_as_subject([words(Attr), words("attribute.")]) ++
+        [nl],
+    Spec = spec($pred, severity_error, phase_t2pt, Context, Pieces),
+    !:Specs = [Spec | !.Specs].
 
 %---------------------------------------------------------------------------%
 :- end_module parse_tree.parse_pragma_tabling.
