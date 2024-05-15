@@ -1,2 +1,2 @@
-invalid_pragma.m:013: Error: a `:- pragma' declaration should have the form
-invalid_pragma.m:013:   `:- pragma pragma_name(pragma_arguments).'
+invalid_pragma.m:013: Error: a `:- pragma' declaration [38;5;203mshould have the form[39;49m
+invalid_pragma.m:013:   [38;5;40m`:- pragma pragma_name(pragma_arguments).'[39;49m

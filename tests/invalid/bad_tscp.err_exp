@@ -1,30 +1,32 @@
-bad_tscp.m:054: Error: in the third argument of a
+bad_tscp.m:054: In the third argument of a
 bad_tscp.m:054:   `:- pragma type_spec_constrained_preds' declaration:
 bad_tscp.m:054:   in the second substitution:
-bad_tscp.m:054:   any type variables that occur on the right hand side of a
-bad_tscp.m:054:   substitution must be anonymous, but Y is not.
-bad_tscp.m:069: Error: in the third argument of a
+bad_tscp.m:054:   error: any type variables that occur on the right hand side
+bad_tscp.m:054:   of a substitution [38;5;40mmust be anonymous,[39;49m but [38;5;87m`Y'[39;49m [38;5;203mis not.[39;49m
+bad_tscp.m:069: In the third argument of a
 bad_tscp.m:069:   `:- pragma type_spec_constrained_preds' declaration:
 bad_tscp.m:069:   in the first substitution:
-bad_tscp.m:069:   the left-hand-side type variable Unit must occur in the
-bad_tscp.m:069:   constraints listed in the first argument, but it does not.
-bad_tscp.m:069: Error: in the third argument of a
+bad_tscp.m:069:   error: the left-hand-side type variable [38;5;87m`Unit'[39;49m [38;5;40mmust occur[39;49m in
+bad_tscp.m:069:   the constraints listed in the first argument, but [38;5;203mit does[39;49m
+bad_tscp.m:069:   [38;5;203mnot.[39;49m
+bad_tscp.m:069: In the third argument of a
 bad_tscp.m:069:   `:- pragma type_spec_constrained_preds' declaration:
 bad_tscp.m:069:   in the first substitution:
-bad_tscp.m:069:   any type variables that occur on the right hand side of a
-bad_tscp.m:069:   substitution must be anonymous, but T is not.
-bad_tscp.m:069: Error: in the third argument of a
+bad_tscp.m:069:   error: any type variables that occur on the right hand side
+bad_tscp.m:069:   of a substitution [38;5;40mmust be anonymous,[39;49m but [38;5;87m`T'[39;49m [38;5;203mis not.[39;49m
+bad_tscp.m:069: In the third argument of a
 bad_tscp.m:069:   `:- pragma type_spec_constrained_preds' declaration:
 bad_tscp.m:069:   in the second substitution:
-bad_tscp.m:069:   the left-hand-side type variables Unit and Xyzzy must occur
-bad_tscp.m:069:   in the constraints listed in the first argument, but they do
-bad_tscp.m:069:   not.
-bad_tscp.m:069: Error: in the third argument of a
+bad_tscp.m:069:   error: the left-hand-side type variables [38;5;87m`Unit'[39;49m and [38;5;87m`Xyzzy'[39;49m
+bad_tscp.m:069:   [38;5;40mmust occur[39;49m in the constraints listed in the first argument,
+bad_tscp.m:069:   but [38;5;203mthey do not.[39;49m
+bad_tscp.m:069: In the third argument of a
 bad_tscp.m:069:   `:- pragma type_spec_constrained_preds' declaration:
 bad_tscp.m:069:   in the second substitution:
-bad_tscp.m:069:   any type variables that occur on the right hand side of a
-bad_tscp.m:069:   substitution must be anonymous, but U, K and V are not.
+bad_tscp.m:069:   error: any type variables that occur on the right hand side
+bad_tscp.m:069:   of a substitution [38;5;40mmust be anonymous,[39;49m but [38;5;87m`U',[39;49m [38;5;87m`K'[39;49m and [38;5;87m`V'[39;49m [38;5;203mare[39;49m
+bad_tscp.m:069:   [38;5;203mnot.[39;49m
 bad_tscp.m:072: In the third argument of a
 bad_tscp.m:072:   `:- pragma type_spec_constrained_preds' declaration:
 bad_tscp.m:072:   on the left hand side of the arrow:
-bad_tscp.m:072:   error: expected a variable, got `set(U)'.
+bad_tscp.m:072:   error: expected a [38;5;40mvariable,[39;49m got [38;5;203m`set(U)'.[39;49m

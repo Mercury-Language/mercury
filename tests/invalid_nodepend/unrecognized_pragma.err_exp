@@ -1,2 +1,2 @@
-unrecognized_pragma.m:014: Error: `not_a_pragma' is not a recognized pragma
-unrecognized_pragma.m:014:   name.
+unrecognized_pragma.m:014: Error: [38;5;87m`not_a_pragma'[39;49m is [38;5;203mnot a recognized pragma[39;49m
+unrecognized_pragma.m:014:   [38;5;203mname.[39;49m
