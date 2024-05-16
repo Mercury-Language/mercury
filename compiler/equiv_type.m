@@ -1828,10 +1828,12 @@ replace_in_type_defn_eqv(MaybeRecord, TypeEqvMap, _InstEqvMap, TypeCtor,
 :- func report_circular_eqv_type(type_ctor, prog_context) = error_spec.
 
 report_circular_eqv_type(TypeCtor, Context) = Spec :-
-    Pieces = [words("Error: circular equivalence type"),
-        qual_type_ctor(TypeCtor), suffix("."), nl],
-    Spec = spec($pred, severity_error, phase_expand_types,
-        Context, Pieces).
+    Pieces = [words("Error: equivalence type")] ++
+        color_as_subject([qual_type_ctor(TypeCtor)]) ++
+        [words("is")] ++
+        color_as_incorrect([words("circular.")]) ++
+        [nl],
+    Spec = spec($pred, severity_error, phase_expand_types, Context, Pieces).
 
 :- func report_contains_circular_eqv_type(tvarset, mer_type, prog_context,
     type_ctor, list(type_ctor)) = error_spec.
@@ -1839,24 +1841,28 @@ report_circular_eqv_type(TypeCtor, Context) = Spec :-
 report_contains_circular_eqv_type(TVarSet, Type, Context,
         HeadTypeCtor, TailTypeCtors) = Spec :-
     TypeStr = mercury_type_to_string(TVarSet, print_name_only, Type),
-    MainPieces = [words("Error: the type"), quote(TypeStr),
-        words("cannot have its equivalences fully expanded,"),
-        words("because its expansion contains")],
+    MainPieces = [words("Error: the type")] ++
+        color_as_subject([quote(TypeStr)]) ++
+        [words("cannot have its equivalences fully expanded,"),
+        words("because its expansion contains the")],
     (
         TailTypeCtors = [],
-        CircSpecs = [words("the circular equivalence type"),
-            qual_type_ctor(HeadTypeCtor), suffix("."), nl]
+        CircSpecs =
+            color_as_incorrect([words("circular equivalence type")]) ++
+            color_as_subject([qual_type_ctor(HeadTypeCtor), suffix(".")]) ++
+            [nl]
     ;
         TailTypeCtors = [_ | _],
         TypeCtorPieces = list.map((func(TC) = qual_type_ctor(TC)),
             [HeadTypeCtor | TailTypeCtors]),
-        CircSpecs = [words("the circular equivalence types")] ++
-            component_list_to_pieces("and", TypeCtorPieces) ++
-            [suffix("."), nl]
+        CircSpecs =
+            color_as_incorrect([words("circular equivalence types")]) ++
+            component_list_to_color_pieces(yes(color_subject), "and",
+                [suffix(".")],  TypeCtorPieces) ++
+            [nl]
     ),
     Pieces = MainPieces ++ CircSpecs,
-    Spec = spec($pred, severity_error, phase_expand_types,
-        Context, Pieces).
+    Spec = spec($pred, severity_error, phase_expand_types, Context, Pieces).
 
 :- pred replace_in_type_defn_du(maybe_record_sym_name_use::in,
     type_eqv_map::in, inst_eqv_map::in, type_ctor::in, prog_context::in,
@@ -2536,13 +2542,18 @@ replace_in_pred_types_and_maybe_modes(MaybeRecord, PredName, PredOrFunc,
             !:Specs = []
         else
             ExtraTypes = [],
-            Pieces1 = [words("In type declaration for"),
+            ExtraTypePieces = [words("In type declaration for"),
                 p_or_f(PredOrFunc), qual_sym_name(PredName), suffix(":"), nl,
-                words("error: expected higher order"), p_or_f(PredOrFunc),
-                words("type after `with_type`."), nl],
-            Spec1 = spec($pred, severity_error, phase_expand_types,
-                Context, Pieces1),
-            !:Specs = [Spec1]
+                words("error: expected the type after"), quote("with_type"),
+                words("to be a")] ++
+                color_as_correct([words("higher order"), p_or_f(PredOrFunc),
+                    words("type,")]) ++
+                [words("but")] ++
+                color_as_incorrect([words("it is not.")]) ++
+                [nl],
+            ExtraTypeSpec = spec($pred, severity_error, phase_expand_types,
+                Context, ExtraTypePieces),
+            !:Specs = [ExtraTypeSpec]
         )
     ;
         MaybeWithType0 = no,
@@ -2605,10 +2616,11 @@ replace_in_pred_types_and_maybe_modes(MaybeRecord, PredName, PredOrFunc,
                     Pieces = pred_decl_error_prefix(PredOrFunc, PredName) ++
                         [words("error: the declaration"),
                         words("has a `with_inst` annotation,"),
-                        words("but the declaration does not specify"),
-                        words("the mode of any of the other arguments."), nl],
-                    Spec = spec($pred, severity_error,
-                        phase_expand_types, Context, Pieces),
+                        words("but the declaration")] ++
+                        color_as_incorrect([words("does not specify")]) ++
+                        [words("the mode of any of the other arguments."), nl],
+                    Spec = spec($pred, severity_error, phase_expand_types,
+                        Context, Pieces),
                     !:Specs = [Spec | !.Specs]
                 )
             ;
@@ -2670,28 +2682,36 @@ try_to_pair_extra_types_and_modes(PredOrFunc, PredName, Context,
             Pieces = PrefixPieces ++
                 [words("error: the `with_inst` annotation must be"),
                 words("accompanied by a `with_type` annotation."),
-                words("However, this `with_type` annotation"),
-                words("is missing."), nl]
+                words("However,")] ++
+                color_as_incorrect([words("this `with_type` annotation"),
+                    words("is missing.")]) ++
+                [nl]
         else if ExtraModes = [] then
             Pieces = PrefixPieces ++
                 [words("error: the declaration specifies"),
                 words("the mode of each argument, so"),
                 words("the `with_type` annotation must be"),
                 words("accompanied by a `with_inst` annotation."),
-                words("However, this `with_inst` annotation"),
-                words("is missing."), nl]
+                words("However,")] ++
+                color_as_incorrect([words("this `with_inst` annotation"),
+                    words("is missing.")]) ++
+                [nl]
         else
             Pieces = PrefixPieces ++
                 [words("error: the `with_type` and `with_inst`"),
-                words("annotations are incompatible,"),
-                words("because they specify"), int_fixed(NumExtraTypes),
-                words(choose_number(ExtraTypes, "type", "types")),
-                words("but"), int_fixed(NumExtraModes),
-                words(choose_number(ExtraModes, "mode", "modes")),
-                suffix("."), nl]
+                words("annotations are")] ++
+                color_as_incorrect([words("incompatible,")]) ++
+                [words("because they specify")] ++
+                color_as_possible_cause([int_name(NumExtraTypes),
+                    words(choose_number(ExtraTypes, "type", "types"))]) ++
+                [words("but")] ++
+                color_as_possible_cause([int_name(NumExtraModes),
+                    words(choose_number(ExtraModes, "mode", "modes")),
+                    suffix(".")]) ++
+                [nl]
         ),
-        Spec = spec($pred, severity_error,
-            phase_expand_types, Context, Pieces),
+        Spec = spec($pred, severity_error, phase_expand_types,
+            Context, Pieces),
         MaybeExtraTypesAndModes = error1([Spec])
     ).
 
@@ -2776,8 +2796,13 @@ replace_in_with_inst(MaybeRecord, InstEqvMap, PredName, PredFormArity, Context,
             ),
             Pieces = [words("In"), words(DeclStr), words("for")] ++
                 PredOrFuncPieces ++ [qual_sym_name(PredName), suffix(":"), nl,
-                words("error: expected higher order ")] ++ PredOrFuncPieces ++
-                [words("inst after `with_inst`."), nl],
+                words("error: expected the inst after"), quote("with_inst"),
+                words("to be a")] ++
+                color_as_correct([words("higher order")] ++ PredOrFuncPieces ++
+                    [words("inst,")]) ++
+                [words("but")] ++
+                color_as_incorrect([words("it is not.")]) ++
+                [nl],
             Spec = spec($pred, severity_error, phase_expand_types,
                 Context, Pieces),
             Specs = [Spec]

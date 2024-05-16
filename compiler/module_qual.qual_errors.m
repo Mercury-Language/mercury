@@ -206,10 +206,12 @@ report_undefined_mq_id(Info, ErrorContext, Id, IdType, ThisModuleName,
         ThisModulesSN = qualified(ThisModuleName, IdBaseName),
         ThisModuleSNA = sym_name_arity(ThisModulesSN, IdArity),
         UndefPieces = [],
-        ThisIntPieces = [words("the"), fixed(IdTypeStr),
-            unqual_sym_name_arity(ThisModuleSNA),
-            words("is not exported,"),
-            words("and thus it may not be used in the interface."), nl]
+        ThisIntPieces = [words("the"), fixed(IdTypeStr)] ++
+            color_as_subject([unqual_sym_name_arity(ThisModuleSNA)]) ++
+            [words("is not exported, and thus")] ++
+            color_as_incorrect(
+                [words("it may not be used in the interface.")]) ++
+            [nl]
     else
         OtherIntMismatches = IntMismatches,
         (
@@ -219,8 +221,10 @@ report_undefined_mq_id(Info, ErrorContext, Id, IdType, ThisModuleName,
             ShouldUnqualId = yes,
             SNA = sym_name_arity(unqualified(IdBaseName), IdArity)
         ),
-        UndefPieces = [words("undefined"), fixed(IdTypeStr),
-            qual_sym_name_arity(SNA), suffix("."), nl],
+        UndefPieces = [words("the"), fixed(IdTypeStr)] ++
+            color_as_subject([qual_sym_name_arity(SNA)]) ++
+            color_as_incorrect([words("is undefined.")]) ++
+            [nl],
         ThisIntPieces = []
     ),
     (
@@ -238,10 +242,13 @@ report_undefined_mq_id(Info, ErrorContext, Id, IdType, ThisModuleName,
             OtherIntHasWord = "have"
         ),
         OtherIntSymNames = list.map(wrap_module_name, OtherIntMismatches),
-        OtherIntPieces = [words("(The"), fixed(OtherIntModuleWord)] ++
-            component_list_to_pieces("and", OtherIntSymNames) ++
-            [fixed(OtherIntHasWord),
-                words("not been imported in the interface.)"), nl]
+        OtherIntPieces =
+            color_as_possible_cause([words("(The"),
+                fixed(OtherIntModuleWord)] ++
+                component_list_to_pieces("and", OtherIntSymNames) ++
+                [fixed(OtherIntHasWord),
+                    words("not been imported in the interface.)")]) ++
+            [nl]
     ),
     (
         QualMismatches = [],
@@ -256,16 +263,18 @@ report_undefined_mq_id(Info, ErrorContext, Id, IdType, ThisModuleName,
             QualModuleWord = "modules"
         ),
         QualSymNames = list.map(wrap_module_name, QualMismatches),
-        QualPieces = [words("(Only fully module qualified names"),
-            words("may refer to the entities defined in"),
-            fixed(QualModuleWord)] ++
-            component_list_to_pieces("and", QualSymNames) ++
-            [suffix(".)"), nl]
+        QualPieces =
+            color_as_possible_cause(
+                [words("(Only fully module qualified names"),
+                words("may refer to the entities defined in"),
+                fixed(QualModuleWord)] ++
+                component_list_to_pieces("and", QualSymNames) ++
+                [suffix(".)")]) ++
+            [nl]
     ),
     ( if
         % If IdSymName is a qualified symbol, then check whether the module
         % name it specifies has been imported.
-
         IdSymName = qualified(IdModuleName, _),
         mq_info_get_this_module(Info, ThisModuleName),
         mq_info_get_imported_modules(Info, ImportedModuleNames),
@@ -277,8 +286,10 @@ report_undefined_mq_id(Info, ErrorContext, Id, IdType, ThisModuleName,
         % However, a module with that name may not even exist, since it may be
         % that IdModuleName is only *partially* qualified. We now generate
         % wording that does not imply that IdModuleName must exist.
-        NonImportedPieces = [words("(No module named"),
-            qual_sym_name(IdModuleName), words("has been imported.)"), nl]
+        NonImportedPieces =
+            color_as_possible_cause([words("(No module named"),
+                qual_sym_name(IdModuleName), words("has been imported.)")]) ++
+            [nl]
     else
         NonImportedPieces = []
     ),
@@ -296,10 +307,13 @@ report_undefined_mq_id(Info, ErrorContext, Id, IdType, ThisModuleName,
         ArityArities = choose_number(PossibleArities, "arity", "arities"),
         list.map(string.int_to_string, PossibleArities, PossibleArityStrs),
         PossibleAritiesPieces = list_to_pieces(PossibleArityStrs),
-        OtherArityPieces = [words("(There"), words(IsAre), words(KindKinds),
-            words("named"), quote(unqualify_name(IdSymName)),
-            words("with"), words(ArityArities)] ++
-            PossibleAritiesPieces ++ [suffix(".)"), nl]
+        OtherArityPieces =
+            color_as_possible_cause([words("(There"), words(IsAre),
+                words(KindKinds),
+                words("named"), quote(unqualify_name(IdSymName)),
+                words("with"), words(ArityArities)] ++
+                PossibleAritiesPieces ++ [suffix(".)")]) ++
+            [nl]
     else
         OtherArityPieces = []
     ),
@@ -337,8 +351,7 @@ report_undefined_mq_id(Info, ErrorContext, Id, IdType, ThisModuleName,
     AllPieces = InPieces ++ UndefPieces ++ ThisIntPieces ++ OtherIntPieces ++
         QualPieces ++ NonImportedPieces ++ OtherArityPieces ++
         DidYouMeanPieces,
-    Spec = spec($pred, severity_error, phase_pt2h,
-        Context, AllPieces),
+    Spec = spec($pred, severity_error, phase_pt2h, Context, AllPieces),
     !:Specs = [Spec | !.Specs].
 
 :- func module_name_matches_some(module_name, list(module_name)) = bool.
@@ -359,11 +372,15 @@ report_ambiguous_match(ErrorContext, Id, IdType,
     qual_id_kind_to_string(IdType, IdTypeStr),
     UsableModuleSymNames = list.map(wrap_module_name, UsableModuleNames),
     MainPieces = [words("In")] ++ ErrorContextPieces ++ [suffix(":"), nl,
-        words("ambiguity error: multiple possible matches for"),
-        fixed(IdTypeStr), wrap_qual_id(Id), suffix("."), nl,
+        words("ambiguity error:")] ++
+        color_as_incorrect([words("there are several possible matches")]) ++
+        [words("for"), fixed(IdTypeStr)] ++
+        color_as_subject([wrap_qual_id(Id), suffix(".")]) ++
+        [nl,
         words("The possible matches are in modules")] ++
-        component_list_to_pieces("and", UsableModuleSymNames) ++
-        [suffix("."), nl],
+        component_list_to_color_pieces(yes(color_cause), "and",
+            [suffix(".")], UsableModuleSymNames) ++
+        [nl],
     (
         UnusableModuleNames = [],
         UnusablePieces = []
@@ -377,9 +394,11 @@ report_ambiguous_match(ErrorContext, Id, IdType,
         ),
         UnusableModuleSymNames =
             list.map(wrap_module_name, UnusableModuleNames),
-        UnusablePieces = [words("The"), words(MatchWord),
-            words("in modules")] ++ UnusableModuleSymNames ++
-            [words("may not be used in the interface."), nl]
+        UnusablePieces =
+            color_as_possible_cause([words("The"), words(MatchWord),
+                words("in modules")] ++ UnusableModuleSymNames ++
+                [words("may not be used in the interface.")]) ++
+            [nl]
     ),
     VerbosePieces = [words("An explicit module qualifier"),
         words("may be necessary."), nl],
@@ -394,10 +413,26 @@ report_ambiguous_match(ErrorContext, Id, IdType,
 report_invalid_user_inst(_SymName, _Insts, ErrorContext, !Specs) :-
     mq_error_context_to_pieces(ErrorContext, Context, _ShouldUnqualId,
         ErrorContextPieces),
+    % XXX It would be nice to print the name of the variable.
+    % However, that would require getting a varset to our caller.
+    % There are two ways this could be done.
+    %
+    % - One is to put the varset into the mq_info.
+    %   This would then make mq_info a clause-specific data structure,
+    %   which hasn' been so far.
+    %
+    % - The other is to pass around the varset alongside the mq_info
+    %   during the module qualification pass.
+    %
+    % Both options are too expensive compared to the minor improvement
+    % they make possible in this diagnostic for a very rare kind of bug.
     Pieces = [words("In")] ++ ErrorContextPieces ++ [suffix(":"), nl,
-        words("error: variable used as inst constructor."), nl],
-    Spec = spec($pred, severity_error, phase_pt2h,
-        Context, Pieces),
+        words("error: expected an")] ++
+        color_as_correct([words("inst constructor,")]) ++
+        [words("got a")] ++
+        color_as_incorrect([words("variable.")]) ++
+        [nl],
+    Spec = spec($pred, severity_error, phase_pt2h, Context, Pieces),
     !:Specs = [Spec | !.Specs].
 
 %---------------------------------------------------------------------------%
@@ -409,9 +444,12 @@ warn_unused_interface_import(ParentModuleName,
     ImportContexts = one_or_more(HeadContext, TailContexts),
     HeadPieces =
         [words("In module"), qual_sym_name(ParentModuleName), suffix(":"), nl,
-        words("warning: module"), qual_sym_name(ImportedModuleName),
-        words("is imported in the interface,"),
-        words("but it is not used in the interface."), nl],
+        words("warning: module")] ++
+        color_as_subject([qual_sym_name(ImportedModuleName)]) ++
+        [words("is imported in the interface,"),
+        words("but it is")] ++
+        color_as_incorrect([words("not used in the interface.")]) ++
+        [nl],
     HeadMsg = msg(HeadContext, HeadPieces),
     % TailContexts is almost always [], we add TailMsgs just in case it isn't.
     list.map(warn_redundant_import_context(ImportedModuleName),

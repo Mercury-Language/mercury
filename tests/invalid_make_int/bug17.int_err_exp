@@ -1,4 +1,4 @@
 bug17.m:008: In declaration of function `init_foo'/2:
-bug17.m:008:   error: the type `foo'/0 is not exported, and thus it may not be
-bug17.m:008:   used in the interface.
+bug17.m:008:   error: the type [38;5;87m`foo'/0[39;49m is not exported, and thus [38;5;203mit may not be[39;49m
+bug17.m:008:   [38;5;203mused in the interface.[39;49m
 `bug17.int' and `bug17.int2' not written.

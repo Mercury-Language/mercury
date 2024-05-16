@@ -907,11 +907,16 @@ report_missing_ancestor(ModuleName, MissingWhere,
         "declaration", "declarations"),
     MainPieces = [words("In module"), qual_sym_name(ModuleName),
         suffix(":"), words("error:"), nl,
-        words("the absence of an"), decl("import_module"), words("or"),
-        decl("use_module"), words("declaration for"),
-        qual_sym_name(MissingModuleName)] ++ InTheInterface ++
-        [words("prevents access to the")] ++
-        DeclPieces ++ [words(DeclarationS)] ++ InTheInterface ++
+        words("the absence of an")] ++
+        color_as_correct([decl("import_module")]) ++
+        [words("or")] ++
+        color_as_correct([decl("use_module"), words("declaration")]) ++
+        [words("for")] ++
+        color_as_subject([qual_sym_name(MissingModuleName)] ++
+            InTheInterface) ++
+        color_as_incorrect([words("prevents access")]) ++
+        [words("to the")] ++ DeclPieces ++ [words(DeclarationS)] ++
+        InTheInterface ++
         [words("for its"), words(ChildOrDescendant), words(ModuleS)] ++
         component_list_to_pieces("and", DescendantPieces) ++
         [suffix("."), nl],
@@ -1019,10 +1024,12 @@ report_any_missing_includes(ReadModules, SeenIncludes, InclMap,
 report_abstract_include(ParentModule, SubModule, Context, !Specs) :-
     Pieces = [words("Error:"),
         words("module"), qual_sym_name(ParentModule),
-        words("has a submodule named"), quote(SubModule), suffix(","),
-        words("but it is visible only to its other submodules."), nl],
-    Spec = spec($pred, severity_error, phase_pt2h,
-        Context, Pieces),
+        words("has a submodule named")] ++
+        color_as_subject([quote(SubModule), suffix(",")]) ++
+        [words("but it is")] ++
+        color_as_incorrect([words("visible only to its other submodules.")]) ++
+        [nl],
+    Spec = spec($pred, severity_error, phase_pt2h, Context, Pieces),
     !:Specs = [Spec | !.Specs].
 
 :- pred report_missing_include(seen_includes::in, module_name::in, string::in,
@@ -1037,11 +1044,13 @@ report_missing_include(SeenIncludes, ParentModule, SubModule, Context,
         SeenIncludes = seen_only_int_includes,
         SubmodulePieces = [words("a visible submodule")]
     ),
-    Pieces = [words("Error:"), words("module"),
-        qual_sym_name(ParentModule), words("does not have")] ++
-        SubmodulePieces ++ [words("named"), quote(SubModule), suffix("."), nl],
-    Spec = spec($pred, severity_error, phase_pt2h,
-        Context, Pieces),
+    Pieces = [words("Error:"), words("module")] ++
+        color_as_subject([qual_sym_name(ParentModule)]) ++
+        color_as_incorrect([words("does not have")]) ++
+        SubmodulePieces ++ [words("named")] ++
+        color_as_subject([quote(SubModule), suffix(".")]) ++
+        [nl],
+    Spec = spec($pred, severity_error, phase_pt2h, Context, Pieces),
     !:Specs = [Spec | !.Specs].
 
 %---------------------------------------------------------------------------%

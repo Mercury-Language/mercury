@@ -1,1 +1,1 @@
-type_loop.m:020: Error: circular equivalence type `type_loop.foo'/0.
+type_loop.m:020: Error: equivalence type [38;5;87m`type_loop.foo'/0[39;49m is [38;5;203mcircular.[39;49m

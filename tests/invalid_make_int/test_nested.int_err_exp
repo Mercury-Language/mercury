@@ -1,10 +1,10 @@
-test_nested.m:013: Error: module `test_nested_helper_1' does not have a visible
-test_nested.m:013:   submodule named `test_nested_helper_4'.
-test_nested.m:014: Error: module `test_nested_helper_1' does not have a visible
-test_nested.m:014:   submodule named `test_nested_helper_5'.
+test_nested.m:013: Error: module [38;5;87m`test_nested_helper_1'[39;49m [38;5;203mdoes not have[39;49m a visible
+test_nested.m:013:   submodule named [38;5;87m`test_nested_helper_4'.[39;49m
+test_nested.m:014: Error: module [38;5;87m`test_nested_helper_1'[39;49m [38;5;203mdoes not have[39;49m a visible
+test_nested.m:014:   submodule named [38;5;87m`test_nested_helper_5'.[39;49m
 test_nested.m:017: In module `test_nested': error:
-test_nested.m:017:   the absence of an `:- import_module' or `:- use_module'
-test_nested.m:017:   declaration for `test_nested_helper_2' prevents access to
+test_nested.m:017:   the absence of an [38;5;40m`:- import_module'[39;49m or [38;5;40m`:- use_module'[39;49m
+test_nested.m:017:   [38;5;40mdeclaration[39;49m for [38;5;87m`test_nested_helper_2'[39;49m [38;5;203mprevents access[39;49m to
 test_nested.m:017:   the `:- use_module' declaration for its child module
 test_nested.m:017:   `test_nested_helper_2.test_nested_helper_6'.
 Error reading .int3 and/or .int0 files.

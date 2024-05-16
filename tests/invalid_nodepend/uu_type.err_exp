@@ -1,7 +1,7 @@
 uu_type.m:016: Error: the type [38;5;87m`hiddenrenamedtype'/0[39;49m has this declaration, but
 uu_type.m:016:   [38;5;203mit has no definition.[39;49m
 uu_type.m:018: In declaration of predicate `gen'/1:
-uu_type.m:018:   error: the type `hiddentype'/0 is not exported, and thus it
-uu_type.m:018:   may not be used in the interface.
+uu_type.m:018:   error: the type [38;5;87m`hiddentype'/0[39;49m is not exported, and thus [38;5;203mit[39;49m
+uu_type.m:018:   [38;5;203mmay not be used in the interface.[39;49m
 uu_type.m:028: Error: in definitions of equivalence types, [38;5;40mthe type name must[39;49m
 uu_type.m:028:   [38;5;40mbe followed by `==',[39;49m not [38;5;203m`='.[39;49m

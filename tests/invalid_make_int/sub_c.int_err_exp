@@ -1,6 +1,6 @@
 sub_c.m:015: In module `sub_c': error:
-sub_c.m:015:   the absence of an `:- import_module' or `:- use_module'
-sub_c.m:015:   declaration for `sub_c_helper_1' prevents access to the
+sub_c.m:015:   the absence of an [38;5;40m`:- import_module'[39;49m or [38;5;40m`:- use_module'[39;49m
+sub_c.m:015:   [38;5;40mdeclaration[39;49m for [38;5;87m`sub_c_helper_1'[39;49m [38;5;203mprevents access[39;49m to the
 sub_c.m:015:   `:- import_module' declaration for its child module
 sub_c.m:015:   `sub_c_helper_1.sub1'.
 Error reading .int3 and/or .int0 files.

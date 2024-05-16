@@ -1,4 +1,4 @@
 undef_type_int.m:012: In the first argument of function symbol `d' of the type
 undef_type_int.m:012:   `t1'/0:
-undef_type_int.m:012:   error: undefined type `undef1'/0.
+undef_type_int.m:012:   error: the type [38;5;87m`undef1'/0[39;49m [38;5;203mis undefined.[39;49m
 `undef_type_int.int' and `undef_type_int.int2' not written.

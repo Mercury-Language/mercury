@@ -1,35 +1,35 @@
 fe_unmapped_nonverbose.m:073: In `:- pragma foreign_enum' declaration for type
 fe_unmapped_nonverbose.m:073:   `voice'/0:
-fe_unmapped_nonverbose.m:073:   error: the following constructor does not have
-fe_unmapped_nonverbose.m:073:   a foreign value:
-fe_unmapped_nonverbose.m:073:       `alto'.
+fe_unmapped_nonverbose.m:073:   error: the following constructor [38;5;203mdoes not have[39;49m
+fe_unmapped_nonverbose.m:073:   [38;5;203ma foreign value:[39;49m
+fe_unmapped_nonverbose.m:073:       [38;5;203m`alto'.[39;49m
 fe_unmapped_nonverbose.m:079: In `:- pragma foreign_enum' declaration for type
 fe_unmapped_nonverbose.m:079:   `chordophone'/0:
-fe_unmapped_nonverbose.m:079:   error: the following constructors do not have a
-fe_unmapped_nonverbose.m:079:   foreign value:
-fe_unmapped_nonverbose.m:079:       `banjo',
-fe_unmapped_nonverbose.m:079:       `cello',
-fe_unmapped_nonverbose.m:079:       `double_bass',
-fe_unmapped_nonverbose.m:079:       `dulcimer',
-fe_unmapped_nonverbose.m:079:       `harp',
-fe_unmapped_nonverbose.m:079:       `lute',
-fe_unmapped_nonverbose.m:079:       `piano',
-fe_unmapped_nonverbose.m:079:       `sitar',
-fe_unmapped_nonverbose.m:079:       `ukulele',
-fe_unmapped_nonverbose.m:079:       `viola'.
+fe_unmapped_nonverbose.m:079:   error: the following constructors [38;5;203mdo not have a[39;49m
+fe_unmapped_nonverbose.m:079:   [38;5;203mforeign value:[39;49m
+fe_unmapped_nonverbose.m:079:       [38;5;203m`banjo',[39;49m
+fe_unmapped_nonverbose.m:079:       [38;5;203m`cello',[39;49m
+fe_unmapped_nonverbose.m:079:       [38;5;203m`double_bass',[39;49m
+fe_unmapped_nonverbose.m:079:       [38;5;203m`dulcimer',[39;49m
+fe_unmapped_nonverbose.m:079:       [38;5;203m`harp',[39;49m
+fe_unmapped_nonverbose.m:079:       [38;5;203m`lute',[39;49m
+fe_unmapped_nonverbose.m:079:       [38;5;203m`piano',[39;49m
+fe_unmapped_nonverbose.m:079:       [38;5;203m`sitar',[39;49m
+fe_unmapped_nonverbose.m:079:       [38;5;203m`ukulele',[39;49m
+fe_unmapped_nonverbose.m:079:       [38;5;203m`viola'.[39;49m
 fe_unmapped_nonverbose.m:085: In `:- pragma foreign_enum' declaration for type
 fe_unmapped_nonverbose.m:085:   `shade_of_white'/0:
-fe_unmapped_nonverbose.m:085:   error: the following constructors do not have a
-fe_unmapped_nonverbose.m:085:   foreign value:
-fe_unmapped_nonverbose.m:085:       `blond',
-fe_unmapped_nonverbose.m:085:       `cornsilk',
-fe_unmapped_nonverbose.m:085:       `cosmic_latte',
-fe_unmapped_nonverbose.m:085:       `cream',
-fe_unmapped_nonverbose.m:085:       `eggshell',
-fe_unmapped_nonverbose.m:085:       `floral_white',
-fe_unmapped_nonverbose.m:085:       `ghost_white',
-fe_unmapped_nonverbose.m:085:       `honeydew',
-fe_unmapped_nonverbose.m:085:       `isabelline',
-fe_unmapped_nonverbose.m:085:       `ivory', ...
+fe_unmapped_nonverbose.m:085:   error: the following constructors [38;5;203mdo not have a[39;49m
+fe_unmapped_nonverbose.m:085:   [38;5;203mforeign value:[39;49m
+fe_unmapped_nonverbose.m:085:       [38;5;203m`blond',[39;49m
+fe_unmapped_nonverbose.m:085:       [38;5;203m`cornsilk',[39;49m
+fe_unmapped_nonverbose.m:085:       [38;5;203m`cosmic_latte',[39;49m
+fe_unmapped_nonverbose.m:085:       [38;5;203m`cream',[39;49m
+fe_unmapped_nonverbose.m:085:       [38;5;203m`eggshell',[39;49m
+fe_unmapped_nonverbose.m:085:       [38;5;203m`floral_white',[39;49m
+fe_unmapped_nonverbose.m:085:       [38;5;203m`ghost_white',[39;49m
+fe_unmapped_nonverbose.m:085:       [38;5;203m`honeydew',[39;49m
+fe_unmapped_nonverbose.m:085:       [38;5;203m`isabelline',[39;49m
+fe_unmapped_nonverbose.m:085:       [38;5;203m`ivory', ...[39;49m
 fe_unmapped_nonverbose.m:085:   and 16 more.
 For more information, recompile with `-E'.

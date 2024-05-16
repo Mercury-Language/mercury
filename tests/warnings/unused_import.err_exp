@@ -1,6 +1,6 @@
 unused_import.m:014: In module `unused_import':
-unused_import.m:014:   warning: module `float' is imported in the interface,
-unused_import.m:014:   but it is not used in the interface.
+unused_import.m:014:   warning: module [38;5;87m`float'[39;49m is imported in the interface,
+unused_import.m:014:   but it is [38;5;203mnot used in the interface.[39;49m
 unused_import.m:015: In module `unused_import':
-unused_import.m:015:   warning: module `list' is imported in the interface, but
-unused_import.m:015:   it is not used in the interface.
+unused_import.m:015:   warning: module [38;5;87m`list'[39;49m is imported in the interface, but
+unused_import.m:015:   it is [38;5;203mnot used in the interface.[39;49m

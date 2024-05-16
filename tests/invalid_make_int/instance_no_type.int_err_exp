@@ -1,10 +1,10 @@
 instance_no_type.m:025: In declaration of instance of typeclass `tc'/1:
-instance_no_type.m:025:   error: the type `no_such_type'/0 is not exported, and
-instance_no_type.m:025:   thus it may not be used in the interface.
+instance_no_type.m:025:   error: the type [38;5;87m`no_such_type'/0[39;49m is not exported, and
+instance_no_type.m:025:   thus [38;5;203mit may not be used in the interface.[39;49m
 instance_no_type.m:030: In declaration of instance of typeclass `tc2'/2:
-instance_no_type.m:030:   error: the type `no_such_type'/0 is not exported, and
-instance_no_type.m:030:   thus it may not be used in the interface.
+instance_no_type.m:030:   error: the type [38;5;87m`no_such_type'/0[39;49m is not exported, and
+instance_no_type.m:030:   thus [38;5;203mit may not be used in the interface.[39;49m
 instance_no_type.m:030: In declaration of instance of typeclass `tc2'/2:
-instance_no_type.m:030:   error: the type `no_such_type2'/0 is not exported,
-instance_no_type.m:030:   and thus it may not be used in the interface.
+instance_no_type.m:030:   error: the type [38;5;87m`no_such_type2'/0[39;49m is not exported,
+instance_no_type.m:030:   and thus [38;5;203mit may not be used in the interface.[39;49m
 `instance_no_type.int' and `instance_no_type.int2' not written.

@@ -1,18 +1,20 @@
 test_with_type.m:016: In type declaration for predicate
 test_with_type.m:016:   `test_with_type.with_type_1':
-test_with_type.m:016:   error: expected higher order predicate type after
-test_with_type.m:016:   `with_type`.
+test_with_type.m:016:   error: expected the type after `with_type' to be a
+test_with_type.m:016:   [38;5;40mhigher order predicate type,[39;49m but [38;5;203mit is not.[39;49m
 test_with_type.m:017: In mode declaration for `test_with_type.with_type_1':
-test_with_type.m:017:   error: expected higher order inst after `with_inst`.
+test_with_type.m:017:   error: expected the inst after `with_inst' to be a
+test_with_type.m:017:   [38;5;40mhigher order inst,[39;49m but [38;5;203mit is not.[39;49m
 test_with_type.m:022: In type declaration for function
 test_with_type.m:022:   `test_with_type.with_type_2':
-test_with_type.m:022:   error: expected higher order function type after
-test_with_type.m:022:   `with_type`.
+test_with_type.m:022:   error: expected the type after `with_type' to be a
+test_with_type.m:022:   [38;5;40mhigher order function type,[39;49m but [38;5;203mit is not.[39;49m
 test_with_type.m:023: Error: `:- mode' declaration for function `with_type_2'/3
 test_with_type.m:023:   without corresponding `:- func' declaration.
 test_with_type.m:025: In the declaration of predicate `with_type_3':
 test_with_type.m:025:   error: the `with_type` and `with_inst` annotations are
-test_with_type.m:025:   incompatible, because they specify 2 types but 3 modes.
+test_with_type.m:025:   [38;5;203mincompatible,[39;49m because they specify [38;5;226mtwo types[39;49m but [38;5;226mthree[39;49m
+test_with_type.m:025:   [38;5;226mmodes.[39;49m
 test_with_type.m:028: Error: a predicate declaration that specifies a
 test_with_type.m:028:   determinism [38;5;203mmay not also specify[39;49m a [38;5;226m`with_inst'[39;49m
 test_with_type.m:028:   [38;5;226mannotation.[39;49m This is because the `with_inst' annotation

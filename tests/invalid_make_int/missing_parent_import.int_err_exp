@@ -1,7 +1,7 @@
 missing_parent_import.m:028: In module `missing_parent_import': error:
-missing_parent_import.m:028:   the absence of an `:- import_module' or
-missing_parent_import.m:028:   `:- use_module' declaration for
-missing_parent_import.m:028:   `missing_parent_import_helper_1' prevents access
+missing_parent_import.m:028:   the absence of an [38;5;40m`:- import_module'[39;49m or
+missing_parent_import.m:028:   [38;5;40m`:- use_module' declaration[39;49m for
+missing_parent_import.m:028:   [38;5;87m`missing_parent_import_helper_1'[39;49m [38;5;203mprevents access[39;49m
 missing_parent_import.m:028:   to the `:- import_module' and `:- use_module'
 missing_parent_import.m:028:   declarations for its child modules
 missing_parent_import.m:028:   `missing_parent_import_helper_1.child' and

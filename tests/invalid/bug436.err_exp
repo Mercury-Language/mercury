@@ -1,7 +1,7 @@
 bug436.m:023: In `:- pragma foreign_enum' declaration for type `foo'/0:
-bug436.m:023:   error: the following symbol is not a constructor of the type:
-bug436.m:023:       `bar'.
+bug436.m:023:   error: the following symbol is [38;5;203mnot a constructor[39;49m of the type:
+bug436.m:023:       [38;5;203m`bar'.[39;49m
 bug436.m:029: In `:- pragma foreign_enum' declaration for type `bar'/0:
-bug436.m:029:   error: the following symbols are not constructors of the type:
-bug436.m:029:       `baaz1',
-bug436.m:029:       `baaz2'.
+bug436.m:029:   error: the following symbols are [38;5;203mnot constructors[39;49m of the type:
+bug436.m:029:       [38;5;203m`baaz1',[39;49m
+bug436.m:029:       [38;5;203m`baaz2'.[39;49m

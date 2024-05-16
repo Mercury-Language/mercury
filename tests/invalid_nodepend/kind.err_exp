@@ -3,9 +3,9 @@ kind.m:012: In `:- func' declaration:
 kind.m:012:   in the first argument:
 kind.m:012:   error: [38;5;203mill-formed type[39;49m [38;5;87m`K2(string)'.[39;49m
 kind.m:016: In definition of inst `i'/1:
-kind.m:016:   error: variable used as inst constructor.
+kind.m:016:   error: expected an [38;5;40minst constructor,[39;49m got a [38;5;203mvariable.[39;49m
 kind.m:018: In definition of mode `m'/1:
-kind.m:018:   error: variable used as inst constructor.
+kind.m:018:   error: expected an [38;5;40minst constructor,[39;49m got a [38;5;203mvariable.[39;49m
 kind.m:020: Error: free inst parameters such as [38;5;87m`K5'[39;49m and [38;5;87m`K6'[39;49m [38;5;203mmay not occur[39;49m on
 kind.m:020:   the right hand side of inst definition.
 kind.m:020: In the definition of the inst `t': error: a variable such as [38;5;87m`K5'[39;49m
@@ -15,11 +15,11 @@ kind.m:021:   right hand side of mode definition.
 kind.m:021: In the definition of the mode `u': error: a variable such as [38;5;87m`K7'[39;49m
 kind.m:021:   is [38;5;203mnot a valid mode.[39;49m
 kind.m:022: In definition of mode `v'/0:
-kind.m:022:   error: undefined inst `q'/0.
+kind.m:022:   error: the inst [38;5;87m`q'/0[39;49m [38;5;203mis undefined.[39;49m
 kind.m:022:   [38;5;226m(Did you mean `i'?)[39;49m
 kind.m:022: In definition of mode `v'/0:
-kind.m:022:   error: undefined mode `p'/0.
+kind.m:022:   error: the mode [38;5;87m`p'/0[39;49m [38;5;203mis undefined.[39;49m
 kind.m:022:   [38;5;226m(Did you mean `m' or `v'?)[39;49m
 kind.m:027: In definition of inst `fi'/0:
-kind.m:027:   error: undefined inst `f9'/0.
+kind.m:027:   error: the inst [38;5;87m`f9'/0[39;49m [38;5;203mis undefined.[39;49m
 kind.m:027:   [38;5;226m(Did you mean `fi'?)[39;49m

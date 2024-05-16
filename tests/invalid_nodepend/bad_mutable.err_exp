@@ -1,7 +1,7 @@
 bad_mutable.m:012: In declaration for mutable `not_a_type':
-bad_mutable.m:012:   error: undefined type `no_type'/0.
+bad_mutable.m:012:   error: the type [38;5;87m`no_type'/0[39;49m [38;5;203mis undefined.[39;49m
 bad_mutable.m:014: In declaration for mutable `not_an_inst':
-bad_mutable.m:014:   error: undefined inst `special_ground'/0.
+bad_mutable.m:014:   error: the inst [38;5;87m`special_ground'/0[39;49m [38;5;203mis undefined.[39;49m
 bad_mutable.m:021: Error: in the expansion of the named inst
 bad_mutable.m:021:   `bad_mutable.t1'/0:
 bad_mutable.m:021:   the inst [38;5;87m`unique'[39;49m [38;5;203mmay not appear[39;49m in `:- mutable'

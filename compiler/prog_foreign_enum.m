@@ -60,6 +60,7 @@
 
 :- import_module bool.
 :- import_module cord.
+:- import_module maybe.
 :- import_module pair.
 :- import_module string.
 
@@ -130,36 +131,47 @@ build_ctor_name_to_foreign_name_map(ForWhat, Context, ContextPieces,
             NamesOrValues = "values"
         ),
         MainPieces = ContextPieces ++
-            [invis_order_default_start(3, ""), words("error: "),
-            words("the specified mapping between"),
-            words("the names of Mercury constructors"),
-            words("and the corresponding foreign"), words(NamesOrValues),
-            words("is inconsistent."), nl],
+            [invis_order_default_start(3, ""),
+            words("error: the specified")] ++
+            color_as_subject([words("mapping between"),
+                words("the names of Mercury constructors and"),
+                words("the corresponding foreign"), words(NamesOrValues)]) ++
+            [words("is")] ++
+            color_as_incorrect([words("inconsistent.")]) ++
+            [nl],
         (
             RepeatedCtorNames = [],
             CtorNamePieces = []
         ;
             RepeatedCtorNames = [_ | _],
+            RepeatedCtorPieces =
+                list.map((func(N) = quote(N)), RepeatedCtorNames),
             CtorNamePieces =
                 [words("The following Mercury constructor"),
                 words(choose_number(RepeatedCtorNames,
-                    "name is", "names are")),
-                words("repeated:"), nl_indent_delta(2)] ++
-                list_to_quoted_pieces(RepeatedCtorNames) ++
-                [suffix("."), nl_indent_delta(-2)]
+                    "name is", "names are"))] ++
+                color_as_incorrect([words("repeated:")]) ++
+                [nl_indent_delta(2)] ++
+                component_list_to_color_pieces(yes(color_incorrect),
+                    "and", [suffix(".")], RepeatedCtorPieces) ++
+                [nl_indent_delta(-2)]
         ),
         (
             RepeatedForeignNames = [],
             ForeignNamePieces = []
         ;
             RepeatedForeignNames = [_ | _],
+            RepeatedForeignPieces =
+                list.map((func(N) = quote(N)), RepeatedForeignNames),
             ForeignNamePieces =
                 [words("The following foreign"),
                 words(choose_number(RepeatedForeignNames,
-                    NameOrValue ++ " is", NamesOrValues ++ " are")),
-                words("repeated:"), nl_indent_delta(2)] ++
-                list_to_quoted_pieces(RepeatedForeignNames) ++
-                [suffix("."), nl_indent_delta(-2)]
+                    NameOrValue ++ " is", NamesOrValues ++ " are"))] ++
+                color_as_incorrect([words("repeated:")]) ++
+                [nl_indent_delta(2)] ++
+                component_list_to_color_pieces(yes(color_incorrect),
+                    "and", [suffix(".")], RepeatedForeignPieces) ++
+                [nl_indent_delta(-2)]
         ),
         Pieces = MainPieces ++ CtorNamePieces ++ ForeignNamePieces,
         Spec = spec($pred, severity_error, phase_pt2h, Context, Pieces),
@@ -247,24 +259,21 @@ build_ctor_name_to_foreign_name_map_loop(TypeModuleName, ValidCtorNames,
 
 add_bad_qual_ctors_error(Context, ContextPieces, Ctors, !Specs) :-
     HasOrHave = choose_number(Ctors, "symbol has", "symbols have"),
+    QualCtors = list.map(qual_ctor_to_format_piece, Ctors),
     ErrorPieces = [invis_order_default_start(2, ""),
         words("error: the following"),
-        words(HasOrHave), words("a module qualification"),
-        words("that is not compatible with the type definition:"),
-        nl_indent_delta(2)] ++
-        qual_ctors_to_line_pieces(Ctors, [suffix("."), nl]),
+        words(HasOrHave), words("a module qualification that is")] ++
+        color_as_incorrect(
+            [words("not compatible with the type definition:")]) ++
+        [nl_indent_delta(2)] ++
+        component_list_to_color_line_pieces(yes(color_incorrect),
+            [suffix(".")], [], QualCtors) ++
+        [nl_indent_delta(-2)],
     Spec = spec($pred, severity_error, phase_pt2h, Context,
         ContextPieces ++ ErrorPieces),
     !:Specs = [Spec | !.Specs].
 
 %---------------------%
-
-:- func qual_ctors_to_line_pieces(list(sym_name), list(format_piece))
-    = list(format_piece).
-
-qual_ctors_to_line_pieces(Ctors, Final) = Pieces :-
-    Components = list.map(qual_ctor_to_format_piece, Ctors),
-    Pieces = component_list_to_line_pieces(Components, Final).
 
 :- func qual_ctor_to_format_piece(sym_name) = list(format_piece).
 
@@ -282,24 +291,22 @@ qual_ctor_to_format_piece(SymName) = [qual_sym_name(SymName)].
     list(sym_name)::in, list(error_spec)::in, list(error_spec)::out) is det.
 
 add_unknown_ctors_error(Context, ContextPieces, Ctors, !Specs) :-
-    IsOrAre = choose_number(Ctors, "symbol is not a constructor",
-        "symbols are not constructors"),
+    IsOrAre = choose_number(Ctors, "symbol is", "symbols are"),
+    NotConstructors = choose_number(Ctors,
+        "not a constructor", "not constructors"),
+    UnqualCtors = list.map(unqual_ctor_to_format_piece, Ctors),
     ErrorPieces = [invis_order_default_start(1, ""),
-        words("error: the following"), words(IsOrAre),
-        words("of the type:"), nl_indent_delta(2)] ++
-        unqual_ctors_to_line_pieces(Ctors, [suffix("."), nl]),
+        words("error: the following"), words(IsOrAre)] ++
+        color_as_incorrect([words(NotConstructors)]) ++
+        [words("of the type:"), nl_indent_delta(2)] ++
+        component_list_to_color_line_pieces(yes(color_incorrect),
+            [suffix(".")], [], UnqualCtors) ++
+        [nl_indent_delta(-2)],
     Spec = spec($pred, severity_error, phase_pt2h, Context,
         ContextPieces ++ ErrorPieces),
     !:Specs = [Spec | !.Specs].
 
 %---------------------%
-
-:- func unqual_ctors_to_line_pieces(list(sym_name), list(format_piece))
-    = list(format_piece).
-
-unqual_ctors_to_line_pieces(Ctors, Final) = Pieces :-
-    Components = list.map(unqual_ctor_to_format_piece, Ctors),
-    Pieces = component_list_to_line_pieces(Components, Final).
 
 :- func unqual_ctor_to_format_piece(sym_name) = list(format_piece).
 
@@ -323,11 +330,12 @@ add_foreign_enum_unmapped_ctors_error(Context, ContextPieces, CtorNames0,
         !Specs) :-
     list.sort(CtorNames0, CtorNames),
     list.split_upto(10, CtorNames, CtorsStart, CtorsEnd),
-    DoOrDoes = choose_number(CtorNames, "constructor does", "constructors do"),
-    PrefixPieces = ContextPieces ++ [
-        words("error: the following"), words(DoOrDoes),
-        words("not have a foreign value:")
-    ],
+    CtorOrCtors = choose_number(CtorNames, "constructor", "constructors"),
+    DoOrDoes = choose_number(CtorNames, "does", "do"),
+    PrefixPieces = ContextPieces ++
+        [words("error: the following"), words(CtorOrCtors)] ++
+        color_as_incorrect([words(DoOrDoes),
+            words("not have a foreign value:")]),
     (
         CtorsEnd = [],
         CtorsPieces =
@@ -362,7 +370,8 @@ add_foreign_enum_unmapped_ctors_error(Context, ContextPieces, CtorNames0,
 
 ctor_names_to_line_pieces(CtorNames, Final) = Pieces :-
     Components = list.map(ctor_name_to_format_piece, CtorNames),
-    Pieces = component_list_to_line_pieces(Components, Final).
+    Pieces = component_list_to_color_line_pieces(yes(color_incorrect),
+        Final, [], Components).
 
 :- func ctor_name_to_format_piece(string) = list(format_piece).
 

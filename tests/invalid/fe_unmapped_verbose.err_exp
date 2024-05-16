@@ -1,30 +1,30 @@
 fe_unmapped_verbose.m:050: In `:- pragma foreign_enum' declaration for type
 fe_unmapped_verbose.m:050:   `shade_of_white'/0:
-fe_unmapped_verbose.m:050:   error: the following constructors do not have a
-fe_unmapped_verbose.m:050:   foreign value:
-fe_unmapped_verbose.m:050:       `blond',
-fe_unmapped_verbose.m:050:       `cornsilk',
-fe_unmapped_verbose.m:050:       `cosmic_latte',
-fe_unmapped_verbose.m:050:       `cream',
-fe_unmapped_verbose.m:050:       `eggshell',
-fe_unmapped_verbose.m:050:       `floral_white',
-fe_unmapped_verbose.m:050:       `ghost_white',
-fe_unmapped_verbose.m:050:       `honeydew',
-fe_unmapped_verbose.m:050:       `isabelline',
-fe_unmapped_verbose.m:050:       `ivory',
-fe_unmapped_verbose.m:050:       `lavender_blush',
-fe_unmapped_verbose.m:050:       `lemon_chiffon',
-fe_unmapped_verbose.m:050:       `linen',
-fe_unmapped_verbose.m:050:       `magnolia',
-fe_unmapped_verbose.m:050:       `mint_cream',
-fe_unmapped_verbose.m:050:       `navajo_white',
-fe_unmapped_verbose.m:050:       `old_lace',
-fe_unmapped_verbose.m:050:       `papaya_whip',
-fe_unmapped_verbose.m:050:       `peach',
-fe_unmapped_verbose.m:050:       `pearl',
-fe_unmapped_verbose.m:050:       `seashell',
-fe_unmapped_verbose.m:050:       `snow',
-fe_unmapped_verbose.m:050:       `splashed_white',
-fe_unmapped_verbose.m:050:       `vanilla',
-fe_unmapped_verbose.m:050:       `white',
-fe_unmapped_verbose.m:050:       `white_smoke'.
+fe_unmapped_verbose.m:050:   error: the following constructors [38;5;203mdo not have a[39;49m
+fe_unmapped_verbose.m:050:   [38;5;203mforeign value:[39;49m
+fe_unmapped_verbose.m:050:       [38;5;203m`blond',[39;49m
+fe_unmapped_verbose.m:050:       [38;5;203m`cornsilk',[39;49m
+fe_unmapped_verbose.m:050:       [38;5;203m`cosmic_latte',[39;49m
+fe_unmapped_verbose.m:050:       [38;5;203m`cream',[39;49m
+fe_unmapped_verbose.m:050:       [38;5;203m`eggshell',[39;49m
+fe_unmapped_verbose.m:050:       [38;5;203m`floral_white',[39;49m
+fe_unmapped_verbose.m:050:       [38;5;203m`ghost_white',[39;49m
+fe_unmapped_verbose.m:050:       [38;5;203m`honeydew',[39;49m
+fe_unmapped_verbose.m:050:       [38;5;203m`isabelline',[39;49m
+fe_unmapped_verbose.m:050:       [38;5;203m`ivory',[39;49m
+fe_unmapped_verbose.m:050:       [38;5;203m`lavender_blush',[39;49m
+fe_unmapped_verbose.m:050:       [38;5;203m`lemon_chiffon',[39;49m
+fe_unmapped_verbose.m:050:       [38;5;203m`linen',[39;49m
+fe_unmapped_verbose.m:050:       [38;5;203m`magnolia',[39;49m
+fe_unmapped_verbose.m:050:       [38;5;203m`mint_cream',[39;49m
+fe_unmapped_verbose.m:050:       [38;5;203m`navajo_white',[39;49m
+fe_unmapped_verbose.m:050:       [38;5;203m`old_lace',[39;49m
+fe_unmapped_verbose.m:050:       [38;5;203m`papaya_whip',[39;49m
+fe_unmapped_verbose.m:050:       [38;5;203m`peach',[39;49m
+fe_unmapped_verbose.m:050:       [38;5;203m`pearl',[39;49m
+fe_unmapped_verbose.m:050:       [38;5;203m`seashell',[39;49m
+fe_unmapped_verbose.m:050:       [38;5;203m`snow',[39;49m
+fe_unmapped_verbose.m:050:       [38;5;203m`splashed_white',[39;49m
+fe_unmapped_verbose.m:050:       [38;5;203m`vanilla',[39;49m
+fe_unmapped_verbose.m:050:       [38;5;203m`white',[39;49m
+fe_unmapped_verbose.m:050:       [38;5;203m`white_smoke'.[39;49m

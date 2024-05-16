@@ -1,3 +1,3 @@
-circ_type_1.m:012: Error: circular equivalence type `circ_type_1.circ'/0.
-circ_type_1.m:014: Error: circular equivalence type `circ_type_1.circ1'/0.
-circ_type_1.m:016: Error: circular equivalence type `circ_type_1.circ2'/0.
+circ_type_1.m:012: Error: equivalence type [38;5;87m`circ_type_1.circ'/0[39;49m is [38;5;203mcircular.[39;49m
+circ_type_1.m:014: Error: equivalence type [38;5;87m`circ_type_1.circ1'/0[39;49m is [38;5;203mcircular.[39;49m
+circ_type_1.m:016: Error: equivalence type [38;5;87m`circ_type_1.circ2'/0[39;49m is [38;5;203mcircular.[39;49m

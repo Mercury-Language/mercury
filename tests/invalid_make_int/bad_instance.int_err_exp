@@ -1,4 +1,4 @@
 bad_instance.m:009: In declaration of instance of typeclass `foo'/2:
-bad_instance.m:009:   error: the type `bar'/1 is not exported, and thus it may
-bad_instance.m:009:   not be used in the interface.
+bad_instance.m:009:   error: the type [38;5;87m`bar'/1[39;49m is not exported, and thus [38;5;203mit may[39;49m
+bad_instance.m:009:   [38;5;203mnot be used in the interface.[39;49m
 `bad_instance.int' and `bad_instance.int2' not written.

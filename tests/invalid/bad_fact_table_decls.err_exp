@@ -12,4 +12,4 @@ bad_fact_table_decls.m:057:   requires all the arguments of predicate
 bad_fact_table_decls.m:057:   `table_3'/3 mode 0 to be either fully input or
 bad_fact_table_decls.m:057:   fully output, but the second argument is neither.
 bad_fact_table_decls.m:058: In mode declaration for predicate `table_3'/3:
-bad_fact_table_decls.m:058:   error: undefined mode `any'/0.
+bad_fact_table_decls.m:058:   error: the mode [38;5;87m`any'/0[39;49m [38;5;203mis undefined.[39;49m
