@@ -1,45 +1,45 @@
 duplicate_module_test_helper_1.m:020: In module
 duplicate_module_test_helper_1.m:020:   `duplicate_module_test_helper_1':
-duplicate_module_test_helper_1.m:020:   error: submodule
-duplicate_module_test_helper_1.m:020:   `duplicate_module_test_helper_1.child',
+duplicate_module_test_helper_1.m:020:   error: [38;5;87msubmodule[39;49m
+duplicate_module_test_helper_1.m:020:   [38;5;87m`duplicate_module_test_helper_1.child',[39;49m
 duplicate_module_test_helper_1.m:020:   declared here as a nested submodule,
-duplicate_module_test_helper_1.m:020:   was previously declared to be a
-duplicate_module_test_helper_1.m:020:   separate submodule.
+duplicate_module_test_helper_1.m:020:   [38;5;203mwas previously declared to be a[39;49m
+duplicate_module_test_helper_1.m:020:   [38;5;203mseparate submodule.[39;49m
 duplicate_module_test_helper_1.m:018:   This is the location of that previous
 duplicate_module_test_helper_1.m:018:   declaration.
 duplicate_module_test_helper_1.m:041: In module
 duplicate_module_test_helper_1.m:041:   `duplicate_module_test_helper_1':
-duplicate_module_test_helper_1.m:041:   error: submodule
-duplicate_module_test_helper_1.m:041:   `duplicate_module_test_helper_1.child2',
+duplicate_module_test_helper_1.m:041:   error: [38;5;87msubmodule[39;49m
+duplicate_module_test_helper_1.m:041:   [38;5;87m`duplicate_module_test_helper_1.child2',[39;49m
 duplicate_module_test_helper_1.m:041:   declared here as a nested submodule,
-duplicate_module_test_helper_1.m:041:   was previously declared to be a
-duplicate_module_test_helper_1.m:041:   separate submodule.
+duplicate_module_test_helper_1.m:041:   [38;5;203mwas previously declared to be a[39;49m
+duplicate_module_test_helper_1.m:041:   [38;5;203mseparate submodule.[39;49m
 duplicate_module_test_helper_1.m:039:   This is the location of that previous
 duplicate_module_test_helper_1.m:039:   declaration.
 duplicate_module_test_helper_1.m:062: In module
 duplicate_module_test_helper_1.m:062:   `duplicate_module_test_helper_1':
-duplicate_module_test_helper_1.m:062:   error: submodule
-duplicate_module_test_helper_1.m:062:   `duplicate_module_test_helper_1.child3',
+duplicate_module_test_helper_1.m:062:   error: [38;5;87msubmodule[39;49m
+duplicate_module_test_helper_1.m:062:   [38;5;87m`duplicate_module_test_helper_1.child3',[39;49m
 duplicate_module_test_helper_1.m:062:   declared here as a nested submodule,
-duplicate_module_test_helper_1.m:062:   was previously declared to be a
-duplicate_module_test_helper_1.m:062:   separate submodule.
+duplicate_module_test_helper_1.m:062:   [38;5;203mwas previously declared to be a[39;49m
+duplicate_module_test_helper_1.m:062:   [38;5;203mseparate submodule.[39;49m
 duplicate_module_test_helper_1.m:060:   This is the location of that previous
 duplicate_module_test_helper_1.m:060:   declaration.
 duplicate_module_test_helper_1.m:094: In module
 duplicate_module_test_helper_1.m:094:   `duplicate_module_test_helper_1':
-duplicate_module_test_helper_1.m:094:   error: submodule
-duplicate_module_test_helper_1.m:094:   `duplicate_module_test_helper_1.child4',
+duplicate_module_test_helper_1.m:094:   error: [38;5;87msubmodule[39;49m
+duplicate_module_test_helper_1.m:094:   [38;5;87m`duplicate_module_test_helper_1.child4',[39;49m
 duplicate_module_test_helper_1.m:094:   included here as separate submodule,
-duplicate_module_test_helper_1.m:094:   was previously declared to be a nested
-duplicate_module_test_helper_1.m:094:   submodule.
+duplicate_module_test_helper_1.m:094:   [38;5;203mwas previously declared to be a nested[39;49m
+duplicate_module_test_helper_1.m:094:   [38;5;203msubmodule.[39;49m
 duplicate_module_test_helper_1.m:081:   This is the location of that previous
 duplicate_module_test_helper_1.m:081:   declaration.
 duplicate_module_test_helper_1.m:099: In module
 duplicate_module_test_helper_1.m:099:   `duplicate_module_test_helper_1':
-duplicate_module_test_helper_1.m:099:   error: submodule
-duplicate_module_test_helper_1.m:099:   `duplicate_module_test_helper_1.child5',
+duplicate_module_test_helper_1.m:099:   error: [38;5;87msubmodule[39;49m
+duplicate_module_test_helper_1.m:099:   [38;5;87m`duplicate_module_test_helper_1.child5',[39;49m
 duplicate_module_test_helper_1.m:099:   included here as separate submodule,
-duplicate_module_test_helper_1.m:099:   has already been declared to be a
-duplicate_module_test_helper_1.m:099:   separate submodule.
+duplicate_module_test_helper_1.m:099:   [38;5;203mhas already been declared to be a[39;49m
+duplicate_module_test_helper_1.m:099:   [38;5;203mseparate submodule.[39;49m
 duplicate_module_test_helper_1.m:098:   This is the location of that previous
 duplicate_module_test_helper_1.m:098:   declaration.

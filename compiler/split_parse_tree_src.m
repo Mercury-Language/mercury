@@ -250,18 +250,22 @@ split_parse_tree_discover_submodules(ParseTree, ModuleAncestors,
         ( if map.search(!.SplitModuleMap, ModuleName, OldEntry) then
             (
                 OldEntry = split_included(OldContext),
-                Pieces = [words("The top level module"),
-                    qual_sym_name(ModuleName),
-                    words("should not have an"), decl("include_module"),
-                    words("declaration for itself."), nl],
+                Pieces = [words("Error: the top level module")] ++
+                    color_as_subject([qual_sym_name(ModuleName)]) ++
+                    color_as_incorrect([words("should not have an"),
+                        decl("include_module"),
+                        words("declaration for itself.")]) ++
+                    [nl],
                 OldPieces = [words("This is the location of the"),
                     decl("include_module"), words("declaration."), nl]
             ;
                 OldEntry = split_nested(SplitNested, _, _),
                 OldContext = split_nested_info_get_context(SplitNested),
-                Pieces = [words("The top level module"),
-                    qual_sym_name(ModuleName),
-                    words("should not have its name reused."), nl],
+                Pieces = [words("Error: the top level module")] ++
+                    color_as_subject([qual_sym_name(ModuleName)]) ++
+                    color_as_incorrect(
+                        [words("should not have its name reused.")]) ++
+                    [nl],
                 OldPieces = [words("This is the location of the reuse."), nl]
             ),
             Msg = msg(Context, Pieces),
@@ -528,11 +532,14 @@ split_component_discover_submodules(ModuleName, Component, SectionAncestors,
                         PorA = "ancestor"
                     )
                 ),
-                Pieces = [words("This implementation section for module"),
-                    qual_sym_name(CurModuleName), words("occurs in"),
-                    words("the interface section of"), words(PorA),
-                    words("module"), qual_sym_name(InterfaceAncestor),
-                    suffix("."), nl],
+                Pieces = [words("Error: this")] ++
+                    color_as_subject([words("implementation section")]) ++
+                    [words("for module"), qual_sym_name(CurModuleName)] ++
+                    [words("occurs in the")] ++
+                    color_as_incorrect([words("interface section")]) ++
+                    [words("of"), words(PorA), words("module"),
+                    qual_sym_name(InterfaceAncestor), suffix(".")] ++
+                    [nl],
                 Spec = spec($pred, severity_error, phase_pt2h,
                     SectionContext, Pieces),
                 !:Specs = [Spec | !.Specs]
@@ -581,19 +588,19 @@ discover_included_submodules([Include | Includes], SectionAncestors,
     ( if map.search(!.SplitModuleMap, InclModuleName, OldEntry) then
         SectionAncestors = sa_parent(ParentModuleName, _),
         Pieces1 = [words("In module"), qual_sym_name(ParentModuleName),
-            suffix(":"), nl,
-            words("error: submodule"), qual_sym_name(InclModuleName),
-            suffix(","),
-            words("included here as separate submodule,")],
+            suffix(":"), nl, words("error:")] ++
+            color_as_subject([words("submodule"),
+                qual_sym_name(InclModuleName), suffix(",")]) ++
+            [words("included here as separate submodule,")],
         (
             OldEntry = split_nested(OldSplitNested, _, _),
             OldContext = split_nested_info_get_context(OldSplitNested),
-            Pieces2 = [words("was previously declared to be"),
-                words("a nested submodule."), nl]
+            Pieces2 = color_as_incorrect([words("was previously declared"),
+                words("to be a nested submodule.")]) ++ [nl]
         ;
             OldEntry = split_included(OldContext),
-            Pieces2 = [words("has already been declared"),
-                words("to be a separate submodule."), nl]
+            Pieces2 = color_as_incorrect([words("has already been declared"),
+                words("to be a separate submodule.")]) ++ [nl]
         ),
         OldPieces = [words("This is the location"),
             words("of that previous declaration."), nl],
@@ -755,8 +762,12 @@ create_component_modules_depth_first(Globals, ModuleName,
             )
         ;
             NestedInfo = split_nested_only_imp(Context),
-            Pieces = [words("Submodule"), qual_sym_name(ModuleName),
-                words("is missing its interface section."), nl],
+            Pieces = [words("Error: submodule")] ++
+                color_as_subject([qual_sym_name(ModuleName)]) ++
+                [words("is")] ++
+                color_as_incorrect(
+                    [words("missing its interface section.")]) ++
+                [nl],
             Spec = spec($pred, severity_error, phase_pt2h, Context, Pieces),
             !:Specs = [Spec | !.Specs]
         ),
@@ -876,9 +887,12 @@ submodule_include_info_map_to_item_includes_acc(IntMods, ImpMods,
     module_name::in, list(error_spec)::in, list(error_spec)::out) is det.
 
 warn_empty_submodule(ModuleName, Context, ParentModuleName, !Specs) :-
-    Pieces = [words("Warning: submodule"), qual_sym_name(ModuleName),
-        words("of"), words("module"), qual_sym_name(ParentModuleName),
-        words("is empty."), nl],
+    Pieces = [words("Warning:")] ++
+        color_as_subject([words("submodule"), qual_sym_name(ModuleName)]) ++
+        [words("of"), words("module"), qual_sym_name(ParentModuleName),
+        words("is")] ++
+        color_as_incorrect([words("empty.")]) ++
+        [nl],
     Spec = spec($pred, severity_warning, phase_pt2h, Context, Pieces),
     !:Specs = [Spec | !.Specs].
 
@@ -890,9 +904,11 @@ warn_empty_submodule(ModuleName, Context, ParentModuleName, !Specs) :-
 
 warn_duplicate_of_empty_submodule(ModuleName, ParentModuleName,
         Context, EmptyContext, !Specs) :-
-    Pieces1 = [words("Warning: submodule"), qual_sym_name(ModuleName),
-        words("of"), words("module"), qual_sym_name(ParentModuleName),
-        words("duplicates an empty submodule."), nl],
+    Pieces1 = [words("Warning:")] ++
+        color_as_subject([words("submodule"), qual_sym_name(ModuleName)]) ++
+        [words("of"), words("module"), qual_sym_name(ParentModuleName)] ++
+        color_as_incorrect([words("duplicates")]) ++
+        [words("an empty submodule."), nl],
     Msg1 = msg(Context, Pieces1),
     Pieces2 = [words("This is the location of the empty submodule,"), nl],
     Msg2 = msg(EmptyContext, Pieces2),
@@ -916,10 +932,13 @@ report_duplicate_submodule(ModuleName, Context, DupSection,
     (
         OldEntry = split_included(OldContext),
         Pieces = [words("In module"), qual_sym_name(ParentModuleName),
-            suffix(":"), nl,
-            words("error: submodule"), qual_sym_name(ModuleName), suffix(","),
-            words("declared here as a nested submodule,"),
-            words("was previously declared to be a separate submodule."), nl],
+            suffix(":"), nl, words("error:")] ++
+            color_as_subject([words("submodule"), qual_sym_name(ModuleName),
+                suffix(",")]) ++
+            [words("declared here as a nested submodule,")] ++
+            color_as_incorrect([words("was previously declared to be"),
+                words("a separate submodule.")]) ++
+            [nl],
         OldPieces = [words("This is the location"),
             words("of that previous declaration."), nl],
         Msg = msg(Context, Pieces),
@@ -931,10 +950,12 @@ report_duplicate_submodule(ModuleName, Context, DupSection,
             DupSection = dup_empty,
             OldContext = split_nested_info_get_context(SplitNested),
             Pieces = [words("In module"), qual_sym_name(ParentModuleName),
-                suffix(":"), nl,
-                words("error: the empty nested submodule"),
-                qual_sym_name(ModuleName), words("is a duplicate"),
-                words("of a previous declaration of that module."), nl],
+                suffix(":"), nl, words("error:"), words("the empty nested")] ++
+                color_as_subject([words("submodule"),
+                    qual_sym_name(ModuleName)]) ++
+                [words("is a")] ++
+                color_as_incorrect([words("duplicate")]) ++
+                [words("of a previous declaration of that module."), nl],
             OldPieces = [words("That previous declaration was here."), nl],
             Msg = msg(Context, Pieces),
             OldMsg = msg(OldContext, OldPieces),
@@ -1038,11 +1059,15 @@ report_duplicate_submodule_one_section(ModuleName, Context, Section,
 report_duplicate_submodule_one_section_2(ModuleName, Context,
         SectionWord, ParentModuleName, OldContext, Spec) :-
     Pieces = [words("In module"), qual_sym_name(ParentModuleName),
-        suffix(":"), nl,
-        words("error: nested submodule"), qual_sym_name(ModuleName),
-        words("has its"), fixed(SectionWord), words("declared here.")],
-    OldPieces = [words("However, its"), fixed(SectionWord),
-        words("was also declarated here."), nl],
+        suffix(":"), nl, words("error: nested submodule")] ++
+        color_as_subject([qual_sym_name(ModuleName)]) ++
+        [words("has its"), fixed(SectionWord), words("declared")] ++
+        color_as_possible_cause([words("here.")]) ++
+        [nl],
+    OldPieces = [words("However, its"), fixed(SectionWord), words("was"),
+        words("also declared")] ++
+        color_as_incorrect([words("here.")]) ++
+        [nl],
     Msg = msg(Context, Pieces),
     OldMsg = msg(OldContext, OldPieces),
     Spec = error_spec($pred, severity_error, phase_pt2h, [Msg, OldMsg]).
@@ -1054,21 +1079,30 @@ report_duplicate_submodule_one_section_2(ModuleName, Context,
 report_duplicate_submodule_both_sections(ModuleName, Context,
         ParentModuleName, OldIntContext, OldImpContext, Spec) :-
     Pieces = [words("In module"), qual_sym_name(ParentModuleName),
-        suffix(":"), nl,
-        words("error: nested submodule"), qual_sym_name(ModuleName),
-        words("has its both its interface and its implementation"),
-        words("declared here."), nl],
+        suffix(":"), nl, words("error: nested submodule")] ++
+        color_as_subject([qual_sym_name(ModuleName)]) ++
+        [words("has both its interface and its implementation"),
+        words("declared")] ++
+        color_as_possible_cause([words("here.")]) ++
+        [nl],
+
     ( if OldIntContext = OldImpContext then
         OldPieces = [words("However, its interface and implementation"),
-            words("were also declarated here."), nl],
+            words("were also declared")] ++
+            color_as_incorrect([words("here.")]) ++
+            [nl],
         Msg = msg(Context, Pieces),
         OldMsg = msg(OldIntContext, OldPieces),
         Spec = error_spec($pred, severity_error, phase_pt2h, [Msg, OldMsg])
     else
         OldIntPieces = [words("However, its interface"),
-            words("was also declarated here,"), nl],
+            words("was also declared")] ++
+            color_as_incorrect([words("here,")]) ++
+            [nl],
         OldImpPieces = [words("and its implementation"),
-            words("was also declarated here."), nl],
+            words("was also declared")] ++
+            color_as_incorrect([words("here.")]) ++
+            [nl],
         Msg = msg(Context, Pieces),
         OldIntMsg = msg(OldIntContext, OldIntPieces),
         OldImpMsg = msg(OldImpContext, OldImpPieces),
@@ -1082,9 +1116,10 @@ report_duplicate_submodule_both_sections(ModuleName, Context,
 report_duplicate_submodule_vs_top(ModuleName, Context, ParentModuleName,
         Spec) :-
     Pieces = [words("In module"), qual_sym_name(ParentModuleName),
-        suffix(":"), nl,
-        words("error: nested submodule"), qual_sym_name(ModuleName),
-        words("has the same name as its ancestor module."), nl],
+        suffix(":"), nl, words("error: nested submodule")] ++
+        color_as_subject([qual_sym_name(ModuleName)]) ++
+        color_as_incorrect([words("has the same name")]) ++
+        [words("as its ancestor module."), nl],
     Spec = spec($pred, severity_error, phase_pt2h, Context, Pieces).
 
 %---------------------------------------------------------------------------%

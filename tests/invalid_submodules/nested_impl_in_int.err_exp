@@ -1,6 +1,6 @@
-nested_impl_in_int.m:026: This implementation section for module
-nested_impl_in_int.m:026:   `nested_impl_in_int.child' occurs in the interface
-nested_impl_in_int.m:026:   section of parent module `nested_impl_in_int'.
-nested_impl_in_int.m:045: This implementation section for module
-nested_impl_in_int.m:045:   `nested_impl_in_int.child2' occurs in the interface
-nested_impl_in_int.m:045:   section of parent module `nested_impl_in_int'.
+nested_impl_in_int.m:026: Error: this [38;5;87mimplementation section[39;49m for module
+nested_impl_in_int.m:026:   `nested_impl_in_int.child' occurs in the [38;5;203minterface[39;49m
+nested_impl_in_int.m:026:   [38;5;203msection[39;49m of parent module `nested_impl_in_int'.
+nested_impl_in_int.m:045: Error: this [38;5;87mimplementation section[39;49m for module
+nested_impl_in_int.m:045:   `nested_impl_in_int.child2' occurs in the [38;5;203minterface[39;49m
+nested_impl_in_int.m:045:   [38;5;203msection[39;49m of parent module `nested_impl_in_int'.
