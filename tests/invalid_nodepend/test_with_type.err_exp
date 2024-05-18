@@ -9,8 +9,8 @@ test_with_type.m:022: In type declaration for function
 test_with_type.m:022:   `test_with_type.with_type_2':
 test_with_type.m:022:   error: expected the type after `with_type' to be a
 test_with_type.m:022:   [38;5;40mhigher order function type,[39;49m but [38;5;203mit is not.[39;49m
-test_with_type.m:023: Error: `:- mode' declaration for function `with_type_2'/3
-test_with_type.m:023:   without corresponding `:- func' declaration.
+test_with_type.m:023: Error: `:- mode' declaration for [38;5;87mfunction `with_type_2'/3[39;49m
+test_with_type.m:023:   [38;5;203mwithout[39;49m a corresponding `:- func' declaration.
 test_with_type.m:025: In the declaration of predicate `with_type_3':
 test_with_type.m:025:   error: the `with_type` and `with_inst` annotations are
 test_with_type.m:025:   [38;5;203mincompatible,[39;49m because they specify [38;5;226mtwo types[39;49m but [38;5;226mthree[39;49m

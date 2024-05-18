@@ -1,4 +1,4 @@
 typeclass_mode_4.m:008: Error: [38;5;203mno mode declaration[39;49m for exported [38;5;87mpredicate[39;49m
 typeclass_mode_4.m:008:   [38;5;87m`typeclass_mode_4.p'/1.[39;49m
 typeclass_mode_4.m:011: Error: mode declaration for type class method predicate
-typeclass_mode_4.m:011:   [38;5;87m`p'/1[39;49m [38;5;203mwithout corresponding predicate declaration.[39;49m
+typeclass_mode_4.m:011:   [38;5;87m`p'/1[39;49m [38;5;203mwithout[39;49m a corresponding predicate declaration.

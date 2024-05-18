@@ -47,6 +47,16 @@
     prog_context::in, prog_context::in, list(format_piece)::in,
     list(error_spec)::in, list(error_spec)::out) is det.
 
+    % report_undefined_pred_or_func_error(MaybePorF, SymName,
+    %    UserArity, OtherUserArities, Context, DeclPieces, !Specs):
+    %
+    % Report a reference to SymName, which may be a predicate or function
+    % (though it may not be known which), in a declaration described by
+    % DeclPieces (which will usually have the form "some kind of pragma
+    % declaration") with arity UserArity, when that sym_name is not defined
+    % with that arity. OtherUserArities will list the arities, if any,
+    % for which SymName *is* defined.
+    %
 :- pred report_undefined_pred_or_func_error(maybe(pred_or_func)::in,
     sym_name::in, user_arity::in, list(user_arity)::in, prog_context::in,
     list(format_piece)::in,
@@ -108,8 +118,11 @@ report_multiply_defined(EntityKind, SymName, UserArity, Context, OrigContext,
 
     UserArity = user_arity(UserArityInt),
     SNA = sym_name_arity(SymName, UserArityInt),
-    SecondDeclPieces = [words("Error:"), fixed(EntityKind),
-        qual_sym_name_arity(SNA), words("multiply defined."), nl],
+    SecondDeclPieces = [words("Error: the"), fixed(EntityKind)] ++
+        color_as_subject([qual_sym_name_arity(SNA)]) ++
+        [words("is")] ++
+        color_as_incorrect([words("multiply defined.")]) ++
+        [nl],
     FirstDeclPieces = [words("Here is the previous definition of"),
         fixed(EntityKind), qual_sym_name_arity(SNA), suffix("."), nl],
     SecondDeclMsg = msg(SecondContext, SecondDeclPieces),
@@ -126,7 +139,7 @@ report_multiply_defined(EntityKind, SymName, UserArity, Context, OrigContext,
     !:Specs = [Spec | !.Specs].
 
 report_undefined_pred_or_func_error(MaybePorF, SymName,
-        UserArity, OtherUserArities, Context, DescPieces, !Specs) :-
+        UserArity, OtherUserArities, Context, DeclPieces, !Specs) :-
     (
         MaybePorF = no,
         SNAPrefixPieces = [],
@@ -142,9 +155,10 @@ report_undefined_pred_or_func_error(MaybePorF, SymName,
     ),
     UserArity = user_arity(UserArityInt),
     SNA = sym_name_arity(SymName, UserArityInt),
-    MainPieces = [words("Error:") | DescPieces] ++
-        [words("for")] ++ SNAPrefixPieces ++ [unqual_sym_name_arity(SNA),
-        words("without corresponding")] ++ PredOrFuncPieces ++
+    MainPieces = [words("Error:") | DeclPieces] ++ [words("for")] ++
+        color_as_subject(SNAPrefixPieces ++ [unqual_sym_name_arity(SNA)]) ++
+        color_as_incorrect([words("without")]) ++
+        [words("a corresponding")] ++ PredOrFuncPieces ++
         [words("declaration."), nl],
     (
         OtherUserArities = [],
@@ -154,13 +168,15 @@ report_undefined_pred_or_func_error(MaybePorF, SymName,
         OtherUserArityInts =
             list.map(project_user_arity_int, OtherUserArities),
         list.map(string.int_to_string, OtherUserArityInts, OtherArityStrs),
-        OtherArityPieces = [unqual_sym_name(SymName), words("does exist with"),
-            words(choose_number(OtherArityStrs, "arity", "arities"))] ++
-            list_to_pieces(OtherArityStrs) ++
-            [suffix("."), nl]
+        OtherArityPieces =
+            color_as_possible_cause([unqual_sym_name(SymName),
+                words("does exist with"),
+                words(choose_number(OtherArityStrs, "arity", "arities"))] ++
+                list_to_pieces(OtherArityStrs) ++ [suffix(".")]) ++
+            [nl]
     ),
-    Spec = spec($pred, severity_error, phase_pt2h, Context,
-        MainPieces ++ OtherArityPieces),
+    Pieces = MainPieces ++ OtherArityPieces,
+    Spec = spec($pred, severity_error, phase_pt2h, Context, Pieces),
     !:Specs = [Spec | !.Specs].
 
 %---------------------------------------------------------------------------%
@@ -179,8 +195,10 @@ report_undeclared_mode_error(ModuleInfo, PredId, PredInfo, VarSet, ArgModes,
 
     MainPieces = [words("In") | DescPieces] ++ [words("for")] ++
         PredIdPieces ++ [suffix(":"), nl,
-        words("error: mode annotation specifies undeclared mode"),
-        quote(SubDeclStr), suffix("."), nl],
+        words("error: mode annotation specifies")] ++
+        color_as_incorrect([words("undeclared mode"), quote(SubDeclStr),
+            suffix(".")]) ++
+        [nl],
     ProcIds = pred_info_all_procids(PredInfo),
     (
         ProcIds = [],
@@ -256,10 +274,12 @@ maybe_report_undefined_pred_error(ModuleInfo, PredOrFunc, SymName,
         PFSymNameArity = pf_sym_name_arity(PredOrFunc, SymName, PredFormArity),
         PredOrFuncStr = pred_or_func_to_str(PredOrFunc),
         MainPieces = [invis_order_default_start(1, ""),
-            words("Error:") | DescPieces] ++ [words("for"),
-            unqual_pf_sym_name_pred_form_arity(PFSymNameArity), nl,
-            words("without corresponding"),
-            decl(PredOrFuncStr), words("declaration."), nl],
+            words("Error:") | DescPieces] ++ [words("for")] ++
+            color_as_subject(
+                [unqual_pf_sym_name_pred_form_arity(PFSymNameArity)]) ++
+            color_as_incorrect([words("without")]) ++
+            [words("a corresponding"), decl(PredOrFuncStr),
+            words("declaration."), nl],
         MainMsg = msg(Context, MainPieces),
 
         module_info_get_predicate_table(ModuleInfo, PredicateTable),
@@ -295,7 +315,8 @@ maybe_report_undefined_pred_error(ModuleInfo, PredOrFunc, SymName,
                             OtherPredFormAritiesList))] ++
                     [suffix("."), nl]
             ),
-            OtherAritiesMsg = msg(Context, OtherAritiesPieces),
+            OtherAritiesMsg = msg(Context,
+                color_as_possible_cause(OtherAritiesPieces)),
             Spec = error_spec($pred, severity_error, phase_pt2h,
                 [MainMsg, OtherAritiesMsg])
         ),

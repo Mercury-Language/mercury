@@ -1,5 +1,5 @@
-null_char.m:017: Error: clause for predicate `int'/0
-null_char.m:017:   without corresponding `:- pred' declaration.
+null_char.m:017: Error: clause for [38;5;87mpredicate `int'/0[39;49m [38;5;203mwithout[39;49m a corresponding
+null_char.m:017:   `:- pred' declaration.
 null_char.m:017: Inferred :- pred int.
 null_char.m:017: Syntax error: null character is illegal in strings and names.
 null_char.m:019: In clause head:

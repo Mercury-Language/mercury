@@ -592,8 +592,8 @@ report_mode_decl_for_undeclared_method(MethodPredName, ModeInfo, !Specs) :-
     ModeInfo = class_mode_info(_, _, _, _, _, _, Context),
     Pieces = [words("Error: mode declaration for type class method"),
         p_or_f(PorF)] ++ color_as_subject([name_arity(NameArity)]) ++
-        color_as_incorrect([words("without"), words("corresponding"),
-        p_or_f(PorF), words("declaration.")]) ++ [nl],
+        color_as_incorrect([words("without")]) ++
+        [words("a corresponding"), p_or_f(PorF), words("declaration."), nl],
     Spec = spec($pred, severity_error, phase_pt2h, Context, Pieces),
     !:Specs = [Spec | !.Specs].
 

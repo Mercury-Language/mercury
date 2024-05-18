@@ -13,8 +13,8 @@ bigtest.m:005:   `:- mode', `:- typeclass' or `:- instance' definition.
 bigtest.m:005: Error: [38;5;87m`export_sym'[39;49m is [38;5;203mnot a valid declaration type.[39;49m
 bigtest.m:006: Error: [38;5;87m`export_pred'[39;49m is [38;5;203mnot a valid declaration type.[39;49m
 bigtest.m:007: Error: [38;5;87m`export_type'[39;49m is [38;5;203mnot a valid declaration type.[39;49m
-bigtest.m:009: Error: clause for predicate `fact'/0
-bigtest.m:009:   without corresponding `:- pred' declaration.
+bigtest.m:009: Error: clause for [38;5;87mpredicate `fact'/0[39;49m [38;5;203mwithout[39;49m a corresponding
+bigtest.m:009:   `:- pred' declaration.
 bigtest.m:009: Inferred :- pred fact.
 bigtest.m:010: Syntax error at token ':-': operator precedence error.
 bigtest.m:013: Error: [38;5;87m`incorrect_declaration'[39;49m is [38;5;203mnot a valid declaration type.[39;49m

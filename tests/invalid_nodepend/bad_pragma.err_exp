@@ -35,7 +35,7 @@ bad_pragma.m:031:   error: [38;5;203mduplicate[39;49m [38;5;87mallow_reset at
 bad_pragma.m:036: In the second argument of `:- pragma memo' declaration:
 bad_pragma.m:036:   in the first argument of size_limit:
 bad_pragma.m:036:   error: expected a [38;5;40mdecimal integer,[39;49m got [38;5;203m`12.3'.[39;49m
-bad_pragma.m:040: Error: `:- pragma no_inline' declaration for function
-bad_pragma.m:040:   `foo1'/2 without corresponding `:- func' declaration.
-bad_pragma.m:041: Error: `:- pragma consider_used' declaration for function
-bad_pragma.m:041:   `foo2'/2 without corresponding `:- func' declaration.
+bad_pragma.m:040: Error: `:- pragma no_inline' declaration for [38;5;87mfunction[39;49m
+bad_pragma.m:040:   [38;5;87m`foo1'/2[39;49m [38;5;203mwithout[39;49m a corresponding `:- func' declaration.
+bad_pragma.m:041: Error: `:- pragma consider_used' declaration for [38;5;87mfunction[39;49m
+bad_pragma.m:041:   [38;5;87m`foo2'/2[39;49m [38;5;203mwithout[39;49m a corresponding `:- func' declaration.

@@ -454,7 +454,7 @@ add_new_pred(PredOrigin, Context, SeqNum, PredStatus0, NeedQual, PredOrFunc,
         ( if PredStatus0 = pred_status(status_opt_imported) then
             true
         else
-            PredOrFuncStr = pred_or_func_to_str(PredOrFunc),
+            PredOrFuncStr = pred_or_func_to_full_str(PredOrFunc),
             user_arity_pred_form_arity(PredOrFunc, UserArity, PredFormArity),
             report_multiply_defined(PredOrFuncStr, PredSymName, UserArity,
                 Context, OrigContext, [], !Specs)

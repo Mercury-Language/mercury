@@ -1,11 +1,11 @@
 bug113.m:019: In module `bug113':
 bug113.m:019:   warning: module [38;5;87m`list'[39;49m is imported in the interface, but it is
 bug113.m:019:   [38;5;203mnot used in the interface.[39;49m
-bug113.m:032: Error: clause for function `new'/1
-bug113.m:032:   without corresponding `:- func' declaration.
+bug113.m:032: Error: clause for [38;5;87mfunction `new'/1[39;49m [38;5;203mwithout[39;49m a corresponding
+bug113.m:032:   `:- func' declaration.
 bug113.m:032: Inferred :- func new(T1) = T2.
-bug113.m:034: Error: clause for function `new'/2
-bug113.m:034:   without corresponding `:- func' declaration.
+bug113.m:034: Error: clause for [38;5;87mfunction `new'/2[39;49m [38;5;203mwithout[39;49m a corresponding
+bug113.m:034:   `:- func' declaration.
 bug113.m:036: In clause for function `new'/2:
 bug113.m:036:   error: undefined symbol `throw_bitmap_error'/1.
 bug113.m:036:   [38;5;226m(Did you mean `bitmap_error'?)[39;49m

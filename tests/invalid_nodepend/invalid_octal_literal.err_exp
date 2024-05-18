@@ -26,8 +26,8 @@ invalid_octal_literal.m:033: Syntax error at token `. ': unexpected token at
 invalid_octal_literal.m:033:   start of (sub)term.
 invalid_octal_literal.m:033: Syntax error: an octal literal cannot end with an
 invalid_octal_literal.m:033:   underscore.
-invalid_octal_literal.m:035: Error: clause for predicate `o77'/0
-invalid_octal_literal.m:035:   without corresponding `:- pred' declaration.
+invalid_octal_literal.m:035: Error: clause for [38;5;87mpredicate `o77'/0[39;49m [38;5;203mwithout[39;49m a
+invalid_octal_literal.m:035:   corresponding `:- pred' declaration.
 invalid_octal_literal.m:035: Inferred :- pred o77.
 invalid_octal_literal.m:035: Syntax error: a decimal literal cannot end with an
 invalid_octal_literal.m:035:   underscore.

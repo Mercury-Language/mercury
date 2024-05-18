@@ -970,14 +970,14 @@ add_pragma_external_proc(ExternalInfo, !ModuleInfo, !Specs) :-
                 is_fully_qualified, SymName, UserArity, PredIds),
             predicate_table_lookup_pred_sym(PredicateTable0,
                 is_fully_qualified, SymName, AllArityPredIds),
-            MissingPieces = [decl("external_pred"), words("pragma")]
+            DeclPieces = [decl("external_pred"), words("pragma")]
         ;
             PredOrFunc = pf_function,
             predicate_table_lookup_func_sym_arity(PredicateTable0,
                 is_fully_qualified, SymName, UserArity, PredIds),
             predicate_table_lookup_func_sym(PredicateTable0,
                 is_fully_qualified, SymName, AllArityPredIds),
-            MissingPieces = [decl("external_func"), words("pragma")]
+            DeclPieces = [decl("external_func"), words("pragma")]
         ),
         (
             PredIds = [_ | _],
@@ -990,7 +990,7 @@ add_pragma_external_proc(ExternalInfo, !ModuleInfo, !Specs) :-
                 UserArity, OtherUserArities),
             report_undefined_pred_or_func_error(yes(PredOrFunc),
                 SymName, UserArity, OtherUserArities, Context,
-                MissingPieces, !Specs)
+                DeclPieces, !Specs)
         )
     else
         true
@@ -1848,9 +1848,9 @@ get_matching_pred_ids(ModuleInfo, Pragma, RequireOneMatch, PragmaAllowsModes,
             module_info_get_pred_id_table(ModuleInfo, PredIdTable0),
             find_user_arities_other_than(PredIdTable0, SymOnlyPredIds,
                 UserArity, OtherUserArities),
-            Pieces = [pragma_decl(Pragma), words("declaration")],
+            DescPieces = [pragma_decl(Pragma), words("declaration")],
             report_undefined_pred_or_func_error(pfu_to_maybe_pred_or_func(PFU),
-                SymName, UserArity, OtherUserArities, Context, Pieces,
+                SymName, UserArity, OtherUserArities, Context, DescPieces,
                 [], NoMatchSpecs),
             Result = mpids_error(NoMatchSpecs ++ WarnSpecs)
         ;
@@ -1968,9 +1968,9 @@ look_up_pragma_pf_sym_arity(ModuleInfo, IsFullyQualified, FailHandling,
             module_info_get_pred_id_table(ModuleInfo, PredIdTable),
             find_user_arities_other_than(PredIdTable, AllArityPredIds,
                 UserArity, OtherUserArities),
-            DescPieces = [pragma_decl(PragmaName), words("declaration")],
+            DeclPieces = [pragma_decl(PragmaName), words("declaration")],
             report_undefined_pred_or_func_error(yes(PredOrFunc), SymName,
-                UserArity, OtherUserArities, Context, DescPieces, [], Specs)
+                UserArity, OtherUserArities, Context, DeclPieces, [], Specs)
         ;
             FailHandling = lfh_internal_error,
             Spec = report_unknown_pred_or_func(severity_error,
