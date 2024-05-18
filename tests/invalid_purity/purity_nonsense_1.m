@@ -2,7 +2,7 @@
 % vim: ts=4 sw=4 et ft=mercury
 %---------------------------------------------------------------------------%
 
-:- module purity_nonsense.
+:- module purity_nonsense_1.
 :- interface.
 :- type foo == int.
 :- implementation.

@@ -2,11 +2,17 @@
 % vim: ts=4 sw=4 et ft=mercury
 %---------------------------------------------------------------------------%
 
-:- module purity_nonsense2.
+:- module purity_nonsense_2.
+
 :- interface.
+
 :- type foo == int.
+
 :- implementation.
-:- impure type badtype ---> oops.
+
+:- impure type badtype
+    --->    oops.
+
 :- impure mode badmode :: free -> free.
 
 :- impure pred undefined.
@@ -15,6 +21,7 @@
 
 e12 :-
     impure (\+ impure imp).
+
 e13 :-
     semipure (\+ semipure semi).
 

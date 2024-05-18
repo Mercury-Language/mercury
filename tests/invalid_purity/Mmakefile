@@ -19,11 +19,11 @@ STD_PROGS = \
 	impure_pred_t2 \
 	pragma_c_and_mercury \
 	purity \
-	purity_nonsense \
+	purity_nonsense_1 \
 	purity_type_error
 
 NODEPEND_PROGS = \
-	purity_nonsense2
+	purity_nonsense_2
 
 PROGS = $(STD_PROGS) $(NODEPEND_PROGS)
 TESTS = $(STD_PROGS) $(NODEPEND_PROGS:%=%-nodepend)
