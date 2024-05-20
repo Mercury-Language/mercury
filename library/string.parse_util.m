@@ -89,6 +89,48 @@
     ;       poly_kind_uint64
     ;       poly_kind_float.
 
+:- type gather_ended_by
+    --->    found_end_of_string
+    ;       found_percent(list(char)).  % The list of chars after the percent.
+
+    % gather_non_percent_chars(Chars, ManifestChars, EndedBy):
+    %
+    % Parse the part of a format string which doesn't contain any conversion
+    % specifications. The manifest characters in the format string up to
+    % the next percent sign (if any) are returned in ManifestChars.
+    % If these were ended by a percent sign, then the characters after the
+    % percent sign are returning as the argument of found_percent in EndedBy.
+    %
+:- pred gather_non_percent_chars(list(char)::in, list(char)::out,
+    gather_ended_by::out) is det.
+
+    % Record and skip past any flag characters at the start of the char list.
+    %
+:- pred gather_flag_chars(list(char)::in, list(char)::out,
+    string_format_flags::in, string_format_flags::out) is det.
+
+    % get_number_prefix(!Chars, N):
+    %
+    % Consume any decimal digits at the start of !.Chars. Return the value
+    % of the digits found in N, and the left over characters in !:Chars.
+    % If there are no decimal digits at the start !.Chars, return 0 for N,
+    % and leave !Chars unchanged.
+    %
+:- pred get_number_prefix(list(char)::in, list(char)::out,
+    int::out) is det.
+
+    % get_nonzero_number_prefix(!Chars, N):
+    %
+    % Consume any decimal digits at the start of !.Chars. Return the value
+    % of the digits found in N, and the left over characters in !:Chars.
+    % If there are no decimal digits at the start !.Chars, or if the first
+    % such digit is a zero, fail.
+    %
+:- pred get_nonzero_number_prefix(list(char)::in, list(char)::out,
+    int::out) is semidet.
+
+%---------------------------------------------------------------------------%
+
 :- type string_format_error
     --->    error_no_specifier(
                 int,        % Which specifier were we expecting?
@@ -131,46 +173,6 @@
     %
 :- func string_format_error_to_msg(string_format_error) = string.
 
-:- type gather_ended_by
-    --->    found_end_of_string
-    ;       found_percent(list(char)).  % The list of chars after the percent.
-
-    % gather_non_percent_chars(Chars, ManifestChars, EndedBy):
-    %
-    % Parse the part of a format string which doesn't contain any conversion
-    % specifications. The manifest characters in the format string up to
-    % the next percent sign (if any) are returned in ManifestChars.
-    % If these were ended by a percent sign, then the characters after the
-    % percent sign are returning as the argument of found_percent in EndedBy.
-    %
-:- pred gather_non_percent_chars(list(char)::in, list(char)::out,
-    gather_ended_by::out) is det.
-
-    % Record and skip past any flag characters at the start of the char list.
-    %
-:- pred gather_flag_chars(list(char)::in, list(char)::out,
-    string_format_flags::in, string_format_flags::out) is det.
-
-    % get_number_prefix(!Chars, N):
-    %
-    % Consume any decimal digits at the start of !.Chars. Return the value
-    % of the digits found in N, and the left over characters in !:Chars.
-    % If there are no decimal digits at the start !.Chars, return 0 for N,
-    % and leave !Chars unchanged.
-    %
-:- pred get_number_prefix(list(char)::in, list(char)::out,
-    int::out) is det.
-
-    % get_nonzero_number_prefix(!Chars, N):
-    %
-    % Consume any decimal digits at the start of !.Chars. Return the value
-    % of the digits found in N, and the left over characters in !:Chars.
-    % If there are no decimal digits at the start !.Chars, or if the first
-    % such digit is a zero, fail.
-    %
-:- pred get_nonzero_number_prefix(list(char)::in, list(char)::out,
-    int::out) is semidet.
-
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
@@ -180,16 +182,85 @@
 
 %---------------------------------------------------------------------------%
 
+gather_non_percent_chars(Chars, NonConversionSpecChars, GatherEndedBy) :-
+    (
+        Chars = [HeadChar | TailChars],
+        ( if HeadChar = '%' then
+            NonConversionSpecChars = [],
+            % We eat the percent sign.
+            GatherEndedBy = found_percent(TailChars)
+        else
+            gather_non_percent_chars(TailChars, TailNonConversionSpecChars,
+                GatherEndedBy),
+            NonConversionSpecChars = [HeadChar | TailNonConversionSpecChars]
+        )
+    ;
+        Chars = [],
+        NonConversionSpecChars = [],
+        GatherEndedBy = found_end_of_string
+    ).
+
+gather_flag_chars(!Chars, !Flags) :-
+    % XXX Should we return an error if we find that the format string
+    % sets the same flag twice?
+    ( if
+        !.Chars = [Char | !:Chars],
+        ( Char = '#',   !Flags ^ flag_hash  := flag_hash_set
+        ; Char = ' ',   !Flags ^ flag_space := flag_space_set
+        ; Char = '0',   !Flags ^ flag_zero  := flag_zero_set
+        ; Char = ('-'), !Flags ^ flag_minus := flag_minus_set
+        ; Char = ('+'), !Flags ^ flag_plus  := flag_plus_set
+        )
+    then
+        disable_warning [suspicious_recursion] (
+            gather_flag_chars(!Chars, !Flags)
+        )
+    else
+        true
+    ).
+
+get_number_prefix(!Chars, N) :-
+    get_number_prefix_loop(!Chars, 0, N).
+
+get_nonzero_number_prefix(!Chars, N) :-
+    !.Chars = [Char | !:Chars],
+    char.decimal_digit_to_int(Char, CharValue),
+    Char \= '0',
+    get_number_prefix_loop(!Chars, CharValue, N).
+
+:- pred get_number_prefix_loop(list(char)::in, list(char)::out,
+    int::in, int::out) is det.
+
+get_number_prefix_loop(!Chars, N0, N) :-
+    ( if
+        !.Chars = [Char | !:Chars],
+        char.decimal_digit_to_int(Char, CharValue)
+    then
+        N1 = N0 * 10 + CharValue,
+        get_number_prefix_loop(!Chars, N1, N)
+    else
+        N = N0
+    ).
+
+%---------------------------------------------------------------------------%
+%
+% The rest of this module turns string_format_errors into a string
+% for presentation to users. It shares its logic with the code in the tail
+% section of compiler/format_call_errors.m, which does the same job,
+% but returns a list of format_pieces.
+%
+
 string_format_error_to_msg(Error) = Msg :-
+    % NOTE Please keep this in sync with string_format_error_to_pieces.
     (
         Error = error_no_specifier(SpecNum, NumExtraPolyTypes),
-        Msg0 = nth_specifier(SpecNum) ++ " is missing",
         ( if NumExtraPolyTypes = 0 then
-            Msg = Msg0 ++ ", along with its input."
+            Msg = nth_specifier(SpecNum) ++
+                " is missing, along with its input."
         else if NumExtraPolyTypes = 1 then
-            Msg = Msg0 ++ "."
+            Msg = nth_specifier(SpecNum) ++ " is missing."
         else
-            Msg = Msg0 ++ ", and there are "
+            Msg = nth_specifier(SpecNum) ++ " is missing, and there are "
                 ++ string.int_to_string(NumExtraPolyTypes - 1)
                 ++ " extra inputs."
         )
@@ -216,16 +287,16 @@ string_format_error_to_msg(Error) = Msg :-
             ++ " but the next input is " ++ poly_kind_desc(PolyKind)
             ++ ", not an integer."
     ;
-        Error = error_missing_star_width(SpecNum),
-        Msg = nth_specifier(SpecNum)
-            ++ " says the width is a runtime input,"
-            ++ " but there is no next input."
-    ;
         Error = error_nonint_star_prec(SpecNum, PolyKind),
         Msg = nth_specifier(SpecNum)
             ++ " says the precision is a runtime input,"
             ++ " but the next input is " ++ poly_kind_desc(PolyKind)
             ++ ", not an integer."
+    ;
+        Error = error_missing_star_width(SpecNum),
+        Msg = nth_specifier(SpecNum)
+            ++ " says the width is a runtime input,"
+            ++ " but there is no next input."
     ;
         Error = error_missing_star_prec(SpecNum),
         Msg = nth_specifier(SpecNum)
@@ -234,7 +305,8 @@ string_format_error_to_msg(Error) = Msg :-
     ;
         Error = error_extra_polytypes(SpecNum, NumExtraPolyTypes),
         ( if SpecNum = 1 then
-            % They aren't extra, since there is no other inputs before them.
+            % Any inputs aren't "extra", since there is no other inputs
+            % before them.
             Extra = ""
         else
             Extra = "extra "
@@ -354,68 +426,6 @@ acceptable_specifier_chars_for_poly_kind_msg(Kind) = Msg :-
     ;
         Kind = poly_kind_float,
         Msg = "The specifiers applicable to floats are %f, %e, %E, %g and %G."
-    ).
-
-%---------------------------------------------------------------------------%
-
-gather_non_percent_chars(Chars, NonConversionSpecChars, GatherEndedBy) :-
-    (
-        Chars = [HeadChar | TailChars],
-        ( if HeadChar = '%' then
-            NonConversionSpecChars = [],
-            % We eat the percent sign.
-            GatherEndedBy = found_percent(TailChars)
-        else
-            gather_non_percent_chars(TailChars, TailNonConversionSpecChars,
-                GatherEndedBy),
-            NonConversionSpecChars = [HeadChar | TailNonConversionSpecChars]
-        )
-    ;
-        Chars = [],
-        NonConversionSpecChars = [],
-        GatherEndedBy = found_end_of_string
-    ).
-
-gather_flag_chars(!Chars, !Flags) :-
-    % XXX Should we return an error if we find that the format string
-    % sets the same flag twice?
-    ( if
-        !.Chars = [Char | !:Chars],
-        ( Char = '#',   !Flags ^ flag_hash  := flag_hash_set
-        ; Char = ' ',   !Flags ^ flag_space := flag_space_set
-        ; Char = '0',   !Flags ^ flag_zero  := flag_zero_set
-        ; Char = ('-'), !Flags ^ flag_minus := flag_minus_set
-        ; Char = ('+'), !Flags ^ flag_plus  := flag_plus_set
-        )
-    then
-        disable_warning [suspicious_recursion] (
-            gather_flag_chars(!Chars, !Flags)
-        )
-    else
-        true
-    ).
-
-get_number_prefix(!Chars, N) :-
-    get_number_prefix_loop(!Chars, 0, N).
-
-get_nonzero_number_prefix(!Chars, N) :-
-    !.Chars = [Char | !:Chars],
-    char.decimal_digit_to_int(Char, CharValue),
-    Char \= '0',
-    get_number_prefix_loop(!Chars, CharValue, N).
-
-:- pred get_number_prefix_loop(list(char)::in, list(char)::out,
-    int::in, int::out) is det.
-
-get_number_prefix_loop(!Chars, N0, N) :-
-    ( if
-        !.Chars = [Char | !:Chars],
-        char.decimal_digit_to_int(Char, CharValue)
-    then
-        N1 = N0 * 10 + CharValue,
-        get_number_prefix_loop(!Chars, N1, N)
-    else
-        N = N0
     ).
 
 %---------------------------------------------------------------------------%
