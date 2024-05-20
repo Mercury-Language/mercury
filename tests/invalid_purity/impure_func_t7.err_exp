@@ -1,15 +1,15 @@
-impure_func_t7.m:032: Purity error: the unification of [38;5;87mZ[39;49m with [38;5;87m4[39;49m was declared
+impure_func_t7.m:032: Purity error: the unification of [38;5;87m`Z'[39;49m with [38;5;87m4[39;49m was declared
 impure_func_t7.m:032:   [38;5;203mimpure,[39;49m but the term Z is unified with is not a
 impure_func_t7.m:032:   function call.
-impure_func_t7.m:032: Purity error: the unification of [38;5;87mZ[39;49m with [38;5;87m5[39;49m was declared
+impure_func_t7.m:032: Purity error: the unification of [38;5;87m`Z'[39;49m with [38;5;87m5[39;49m was declared
 impure_func_t7.m:032:   [38;5;203mimpure,[39;49m but the term Z is unified with is not a
 impure_func_t7.m:032:   function call.
-impure_func_t7.m:040: Purity error: the unification of [38;5;87mL[39;49m with [38;5;87mlambda expression[39;49m
-impure_func_t7.m:040:   was declared [38;5;203mimpure,[39;49m but the term L is unified with is
-impure_func_t7.m:040:   not a function call.
-impure_func_t7.m:049: Purity error: the unification of [38;5;87mM[39;49m with [38;5;87m`foo'/1[39;49m was
+impure_func_t7.m:040: Purity error: the unification of [38;5;87m`L'[39;49m with [38;5;87mlambda[39;49m
+impure_func_t7.m:040:   [38;5;87mexpression[39;49m was declared [38;5;203mimpure,[39;49m but the term L is
+impure_func_t7.m:040:   unified with is not a function call.
+impure_func_t7.m:049: Purity error: the unification of [38;5;87m`M'[39;49m with [38;5;87m`foo'/1[39;49m was
 impure_func_t7.m:049:   declared [38;5;203mimpure,[39;49m but the term M is unified with is not
 impure_func_t7.m:049:   a function call.
-impure_func_t7.m:057: Purity error: the unification of [38;5;87mB[39;49m with [38;5;87m4[39;49m was declared
+impure_func_t7.m:057: Purity error: the unification of [38;5;87m`B'[39;49m with [38;5;87m4[39;49m was declared
 impure_func_t7.m:057:   [38;5;203mimpure,[39;49m but the term B is unified with is not a
 impure_func_t7.m:057:   function call.

@@ -1,16 +1,19 @@
-format_call_multi.m:030: Mismatched format and values in call to predicate
+format_call_multi.m:030: Error: the format string does not match the list of
+format_call_multi.m:030:   values to be formatted in call to predicate
 format_call_multi.m:030:   [38;5;87m`format_call_multi_helper_1.log_msg'/5:[39;49m
 format_call_multi.m:030:   The first conversion specifier uses the specifier
 format_call_multi.m:030:   character `d', but the corresponding input is a
 format_call_multi.m:030:   string. The only specifier applicable to strings is
 format_call_multi.m:030:   %s.
-format_call_multi.m:039: Mismatched format and values in call to predicate
+format_call_multi.m:039: Error: the format string does not match the list of
+format_call_multi.m:039:   values to be formatted in call to predicate
 format_call_multi.m:039:   [38;5;87m`format_call_multi_helper_1.log_msg'/5:[39;49m
 format_call_multi.m:039:   The first conversion specifier uses the specifier
 format_call_multi.m:039:   character `d', but the corresponding input is a
 format_call_multi.m:039:   string. The only specifier applicable to strings is
 format_call_multi.m:039:   %s.
-format_call_multi.m:052: Mismatched format and values in call to predicate
+format_call_multi.m:052: Error: the format string does not match the list of
+format_call_multi.m:052:   values to be formatted in call to predicate
 format_call_multi.m:052:   [38;5;87m`format_call_multi_helper_1.log_msg'/5:[39;49m
 format_call_multi.m:052:   The first conversion specifier uses the specifier
 format_call_multi.m:052:   character `d', but the corresponding input is a

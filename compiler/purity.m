@@ -1505,8 +1505,8 @@ warn_pred_body_too_pure(ModuleInfo, PredInfo, PredId,
 warn_unnecessary_purity_promise(ModuleInfo, PredInfo, PredId, PromisedPurity)
         = Spec :-
     pred_info_get_context(PredInfo, Context),
-    PredPieces = describe_one_pred_name(ModuleInfo, no,
-        should_not_module_qualify, [], PredId),
+    PredDotPieces = describe_one_pred_name(ModuleInfo, yes(color_subject),
+        should_not_module_qualify, [suffix(".")], PredId),
     (
         PromisedPurity = purity_pure,
         Pragma = "promise_pure",
@@ -1523,7 +1523,7 @@ warn_unnecessary_purity_promise(ModuleInfo, PredInfo, PredId, PromisedPurity)
     MainPieces = [words("Warning:")] ++
         color_as_incorrect([words("unnecessary"), quote(Pragma),
             words("pragma")]) ++
-        [words("for")] ++ PredPieces ++ [suffix("."), nl],
+        [words("for")] ++ PredDotPieces ++ [nl],
     VerbosePieces = [words("This"), p_or_f(PredOrFunc),
         words("does not invoke any"), fixed(CodeStr), words("code,"),
         words("so there is no need for a"), quote(Pragma), words("pragma."),
@@ -1641,8 +1641,8 @@ report_error_higher_order_var_purity(VarTable, Var,
     purity_name(CalleePurity, CalleePurityName),
     VarName = mercury_var_to_string(VarTable, print_name_only, Var),
     Pieces =
-        [words("Purity error: the")] ++
-        color_as_subject([words("variable"), fixed(VarName)]) ++
+        [words("Purity error: the variable")] ++
+        color_as_subject([quote(VarName)]) ++
         [words("is")] ++
         color_as_correct([fixed(TypePurityName), suffix(",")]) ++
         [words("but the higher order value it is unified with is")] ++
@@ -1672,7 +1672,7 @@ impure_unification_expr_error(VarTable, Var, BadRHS, Purity, Context) = Spec :-
     % XXX The wording of the second half of this sentence seems uninformative,
     % but I (zs) have nothing better to propose.
     Pieces = [words("Purity error: the unification of")] ++
-        color_as_subject([fixed(VarName)]) ++ [words("with")] ++
+        color_as_subject([quote(VarName)]) ++ [words("with")] ++
         color_as_subject([RHSDescPiece]) ++ [words("was declared")] ++
         color_as_incorrect([fixed(PurityName), suffix(",")]) ++
         [words("but the term"), fixed(VarName), words("is unified with"),

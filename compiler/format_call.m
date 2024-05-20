@@ -760,13 +760,13 @@ check_fmt_str_val_vars(ModuleInfo, PredInfo, ProcInfo, ConjMaps, PredMap,
                 WarnKnownBadFormatCalls = yes,
                 (
                     MaybePos = no,
-                    PredNameDotPieces = describe_one_pred_name(ModuleInfo,
+                    PredNameColonPieces = describe_one_pred_name(ModuleInfo,
                         yes(color_subject), should_module_qualify,
                         [suffix(":")], PredId)
                 ;
                     MaybePos = yes({Pos, ArgNumFS, ArgNumVL}),
                     % XXX Any ideas for better wording?
-                    PredNameDotPieces =
+                    PredNameColonPieces =
                         describe_one_pred_name(ModuleInfo, yes(color_subject),
                             should_module_qualify, [], PredId) ++
                         [words("when considering the"),
@@ -777,8 +777,9 @@ check_fmt_str_val_vars(ModuleInfo, PredInfo, ProcInfo, ConjMaps, PredMap,
                         words("the values list as the"),
                         nth_fixed(ArgNumVL), words("argument"), suffix(":")]
                 ),
-                PrefixPieces = [words("Mismatched format and values"),
-                    words("in call to")] ++ PredNameDotPieces ++ [nl],
+                PrefixPieces = [words("Error: the format string"),
+                    words("does not match the list of values to be formatted"),
+                    words("in call to")] ++ PredNameColonPieces ++ [nl],
                 globals.lookup_bool_option(Globals,
                     warn_only_one_format_string_error,
                     WarnOnlyOneFormatStringError),
@@ -987,7 +988,8 @@ follow_values_handle_unknown(ModuleInfo, ConjMaps, PredMap, FormatCallSite,
                 yes(color_subject), should_module_qualify, [suffix(".")],
                 PredId),
             Pieces = [words("Error:")] ++
-                color_as_incorrect([words("unknown format values")]) ++
+                color_as_incorrect([words("unknown list of values"),
+                    words("to be formatted")]) ++
                 [words("in call to")] ++ PredNameDotPieces ++ [nl],
             Spec = spec($pred, severity_warning,
                 phase_simplify(report_in_any_mode), Context, Pieces),

@@ -1,32 +1,38 @@
 string_format_unknown.m:023: Error: [38;5;203munknown format string[39;49m in call to function
 string_format_unknown.m:023:   [38;5;87m`string.format'/2.[39;49m
-string_format_unknown.m:025: Mismatched format and values in call to function
+string_format_unknown.m:025: Error: the format string does not match the list
+string_format_unknown.m:025:   of values to be formatted in call to function
 string_format_unknown.m:025:   [38;5;87m`string.format'/2:[39;49m
 string_format_unknown.m:025:   The first conversion specifier uses the
 string_format_unknown.m:025:   specifier character `d', but the corresponding
 string_format_unknown.m:025:   input is a string. The only specifier applicable
 string_format_unknown.m:025:   to strings is %s.
-string_format_unknown.m:028: Mismatched format and values in call to predicate
+string_format_unknown.m:028: Error: the format string does not match the list
+string_format_unknown.m:028:   of values to be formatted in call to predicate
 string_format_unknown.m:028:   [38;5;87m`io.format'/4:[39;49m
 string_format_unknown.m:028:   The first conversion specifier uses the
 string_format_unknown.m:028:   specifier character `d', but the corresponding
 string_format_unknown.m:028:   input is a string. The only specifier applicable
 string_format_unknown.m:028:   to strings is %s.
-string_format_unknown.m:029: Mismatched format and values in call to predicate
+string_format_unknown.m:029: Error: the format string does not match the list
+string_format_unknown.m:029:   of values to be formatted in call to predicate
 string_format_unknown.m:029:   [38;5;87m`io.format'/5:[39;49m
 string_format_unknown.m:029:   The first conversion specifier uses the
 string_format_unknown.m:029:   specifier character `d', but the corresponding
 string_format_unknown.m:029:   input is a string. The only specifier applicable
 string_format_unknown.m:029:   to strings is %s.
-string_format_unknown.m:030: Mismatched format and values in call to predicate
+string_format_unknown.m:030: Error: the format string does not match the list
+string_format_unknown.m:030:   of values to be formatted in call to predicate
 string_format_unknown.m:030:   [38;5;87m`io.format'/4:[39;49m
 string_format_unknown.m:030:   The first conversion specifier uses the unknown
 string_format_unknown.m:030:   specifier character `w'.
-string_format_unknown.m:040: Error: [38;5;203munknown format values[39;49m in call to predicate
-string_format_unknown.m:040:   [38;5;87m`io.format'/5.[39;49m
-string_format_unknown.m:041: Error: [38;5;203munknown format values[39;49m in call to predicate
+string_format_unknown.m:040: Error: [38;5;203munknown list of values to be formatted[39;49m in
+string_format_unknown.m:040:   call to predicate [38;5;87m`io.format'/5.[39;49m
+string_format_unknown.m:041: Error: [38;5;203munknown list of values to be formatted[39;49m in
+string_format_unknown.m:041:   call to predicate
 string_format_unknown.m:041:   [38;5;87m`stream.string_writer.format'/5.[39;49m
-string_format_unknown.m:046: Mismatched format and values in call to predicate
+string_format_unknown.m:046: Error: the format string does not match the list
+string_format_unknown.m:046:   of values to be formatted in call to predicate
 string_format_unknown.m:046:   [38;5;87m`io.format'/5:[39;49m
 string_format_unknown.m:046:   The first conversion specifier uses the
 string_format_unknown.m:046:   specifier character `d', but the corresponding

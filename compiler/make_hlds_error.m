@@ -155,8 +155,9 @@ report_undefined_pred_or_func_error(MaybePorF, SymName,
     ),
     UserArity = user_arity(UserArityInt),
     SNA = sym_name_arity(SymName, UserArityInt),
-    MainPieces = [words("Error:") | DeclPieces] ++ [words("for")] ++
-        color_as_subject(SNAPrefixPieces ++ [unqual_sym_name_arity(SNA)]) ++
+    MainPieces = [words("Error:") | DeclPieces] ++
+        [words("for") | SNAPrefixPieces] ++
+        color_as_subject([unqual_sym_name_arity(SNA)]) ++
         color_as_incorrect([words("without")]) ++
         [words("a corresponding")] ++ PredOrFuncPieces ++
         [words("declaration."), nl],
@@ -301,24 +302,26 @@ maybe_report_undefined_pred_error(ModuleInfo, PredOrFunc, SymName,
         ;
             (
                 OtherPredFormAritiesList = [OtherPredFormArity],
+                ArityPiece = pred_form_arity_to_int_fixed(PredOrFunc,
+                    OtherPredFormArity),
                 OtherAritiesPieces = [words("However, a"),
                     words(FullPredOrFuncStr), words("of that name"),
-                    words("does exist with arity"),
-                        pred_form_arity_to_int_fixed(PredOrFunc,
-                            OtherPredFormArity),
-                    suffix("."), nl]
+                    words("does exist with arity")] ++
+                    color_as_correct([ArityPiece, suffix(".")]) ++
+                    [nl]
             ;
                 OtherPredFormAritiesList = [_, _ | _],
+                ArityPieces =
+                    list.map(pred_form_arity_to_int_fixed(PredOrFunc),
+                        OtherPredFormAritiesList),
                 OtherAritiesPieces = [words("However,"),
                     words(FullPredOrFuncStr), suffix("s"),
-                    words("of that name do exist with arities") |
-                    component_list_to_pieces("and",
-                        list.map(pred_form_arity_to_int_fixed(PredOrFunc),
-                            OtherPredFormAritiesList))] ++
-                    [suffix("."), nl]
+                    words("of that name do exist with arities")] ++
+                    component_list_to_color_pieces(yes(color_correct), "and",
+                        [suffix(".")], ArityPieces) ++
+                    [nl]
             ),
-            OtherAritiesMsg = msg(Context,
-                color_as_possible_cause(OtherAritiesPieces)),
+            OtherAritiesMsg = msg(Context, OtherAritiesPieces),
             Spec = error_spec($pred, severity_error, phase_pt2h,
                 [MainMsg, OtherAritiesMsg])
         ),

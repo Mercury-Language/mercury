@@ -9,8 +9,8 @@ bad_pred_arity.m:028: Error: function [38;5;87m`f2'/2[39;49m [38;5;203mhas no
 bad_pred_arity.m:029: Error: function [38;5;87m`f2'/4[39;49m [38;5;203mhas no clauses.[39;49m
 bad_pred_arity.m:039: Error: clause for predicate [38;5;87m`p1'/4[39;49m [38;5;203mwithout[39;49m a
 bad_pred_arity.m:039:   corresponding `:- pred' declaration.
-bad_pred_arity.m:039:   [38;5;226mHowever, predicates of that name do exist with arities[39;49m
-bad_pred_arity.m:039:   [38;5;226m3 and 5.[39;49m
+bad_pred_arity.m:039:   However, predicates of that name do exist with arities
+bad_pred_arity.m:039:   [38;5;40m3[39;49m and [38;5;40m5.[39;49m
 bad_pred_arity.m:039: Inferred :- pred p1(int, string, int, string).
 bad_pred_arity.m:039:   The argument list difference from the arity 3 version
 bad_pred_arity.m:039:   is
@@ -31,8 +31,8 @@ bad_pred_arity.m:039:         string
 bad_pred_arity.m:039:     )
 bad_pred_arity.m:041: Error: clause for predicate [38;5;87m`p1'/0[39;49m [38;5;203mwithout[39;49m a
 bad_pred_arity.m:041:   corresponding `:- pred' declaration.
-bad_pred_arity.m:041:   [38;5;226mHowever, predicates of that name do exist with arities[39;49m
-bad_pred_arity.m:041:   [38;5;226m3 and 5.[39;49m
+bad_pred_arity.m:041:   However, predicates of that name do exist with arities
+bad_pred_arity.m:041:   [38;5;40m3[39;49m and [38;5;40m5.[39;49m
 bad_pred_arity.m:041: Inferred :- pred p1.
 bad_pred_arity.m:041:   The argument list difference from the arity 3 version
 bad_pred_arity.m:041:   is
@@ -54,8 +54,8 @@ bad_pred_arity.m:041:   [38;5;40m- )[39;49m
 bad_pred_arity.m:041:   [38;5;203m+ pred[39;49m
 bad_pred_arity.m:043: Error: clause for predicate [38;5;87m`p2'/4[39;49m [38;5;203mwithout[39;49m a
 bad_pred_arity.m:043:   corresponding `:- pred' declaration.
-bad_pred_arity.m:043:   [38;5;226mHowever, a predicate of that name does exist with arity[39;49m
-bad_pred_arity.m:043:   [38;5;226m0.[39;49m
+bad_pred_arity.m:043:   However, a predicate of that name does exist with arity
+bad_pred_arity.m:043:   [38;5;40m0.[39;49m
 bad_pred_arity.m:043: Inferred :- pred p2(int, int, string, string).
 bad_pred_arity.m:043:   The argument list difference from the arity 0 version
 bad_pred_arity.m:043:   is
@@ -68,8 +68,8 @@ bad_pred_arity.m:043:   [38;5;203m+     string[39;49m
 bad_pred_arity.m:043:   [38;5;203m+ )[39;49m
 bad_pred_arity.m:046: Error: clause for predicate [38;5;87m`p3'/4[39;49m [38;5;203mwithout[39;49m a
 bad_pred_arity.m:046:   corresponding `:- pred' declaration.
-bad_pred_arity.m:046:   [38;5;226mHowever, a predicate of that name does exist with arity[39;49m
-bad_pred_arity.m:046:   [38;5;226m8.[39;49m
+bad_pred_arity.m:046:   However, a predicate of that name does exist with arity
+bad_pred_arity.m:046:   [38;5;40m8.[39;49m
 bad_pred_arity.m:046: Inferred :- pred p3(int, int, string, string).
 bad_pred_arity.m:046:   The argument list difference from the arity 8 version
 bad_pred_arity.m:046:   is
@@ -85,8 +85,8 @@ bad_pred_arity.m:046:         string
 bad_pred_arity.m:046:     )
 bad_pred_arity.m:049: Error: clause for predicate [38;5;87m`p3'/5[39;49m [38;5;203mwithout[39;49m a
 bad_pred_arity.m:049:   corresponding `:- pred' declaration.
-bad_pred_arity.m:049:   [38;5;226mHowever, a predicate of that name does exist with arity[39;49m
-bad_pred_arity.m:049:   [38;5;226m8.[39;49m
+bad_pred_arity.m:049:   However, a predicate of that name does exist with arity
+bad_pred_arity.m:049:   [38;5;40m8.[39;49m
 bad_pred_arity.m:049: Inferred :- pred p3(int, int, string, bool.bool, string).
 bad_pred_arity.m:049:   The argument list difference from the arity 8 version
 bad_pred_arity.m:049:   is
@@ -103,8 +103,8 @@ bad_pred_arity.m:049:         string
 bad_pred_arity.m:049:     )
 bad_pred_arity.m:052: Error: clause for function [38;5;87m`f1'/3[39;49m [38;5;203mwithout[39;49m a corresponding
 bad_pred_arity.m:052:   `:- func' declaration.
-bad_pred_arity.m:052:   [38;5;226mHowever, functions of that name do exist with arities 2[39;49m
-bad_pred_arity.m:052:   [38;5;226mand 4.[39;49m
+bad_pred_arity.m:052:   However, functions of that name do exist with arities [38;5;40m2[39;49m
+bad_pred_arity.m:052:   and [38;5;40m4.[39;49m
 bad_pred_arity.m:052: Inferred :- func f1(int, string, int) = string.
 bad_pred_arity.m:052:   The argument list difference from the arity 2 version
 bad_pred_arity.m:052:   is
@@ -123,8 +123,8 @@ bad_pred_arity.m:052:         int
 bad_pred_arity.m:052:     ) = string
 bad_pred_arity.m:054: Error: clause for function [38;5;87m`f1'/0[39;49m [38;5;203mwithout[39;49m a corresponding
 bad_pred_arity.m:054:   `:- func' declaration.
-bad_pred_arity.m:054:   [38;5;226mHowever, functions of that name do exist with arities 2[39;49m
-bad_pred_arity.m:054:   [38;5;226mand 4.[39;49m
+bad_pred_arity.m:054:   However, functions of that name do exist with arities [38;5;40m2[39;49m
+bad_pred_arity.m:054:   and [38;5;40m4.[39;49m
 bad_pred_arity.m:054: Inferred :- func f1 = string.
 bad_pred_arity.m:054:   The argument list difference from the arity 2 version
 bad_pred_arity.m:054:   is
@@ -144,8 +144,8 @@ bad_pred_arity.m:054:   [38;5;40m- ) = string[39;49m
 bad_pred_arity.m:054:   [38;5;203m+ func = string[39;49m
 bad_pred_arity.m:056: Error: clause for function [38;5;87m`f2'/3[39;49m [38;5;203mwithout[39;49m a corresponding
 bad_pred_arity.m:056:   `:- func' declaration.
-bad_pred_arity.m:056:   [38;5;226mHowever, functions of that name do exist with arities[39;49m
-bad_pred_arity.m:056:   [38;5;226m0, 2 and 4.[39;49m
+bad_pred_arity.m:056:   However, functions of that name do exist with arities
+bad_pred_arity.m:056:   [38;5;40m0,[39;49m [38;5;40m2[39;49m and [38;5;40m4.[39;49m
 bad_pred_arity.m:056: Inferred :- func f2(int, T2, int) = int.
 bad_pred_arity.m:056:   The argument list difference from the arity 0 version
 bad_pred_arity.m:056:   is

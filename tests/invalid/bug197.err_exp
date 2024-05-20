@@ -1,7 +1,7 @@
 bug197.m:023: Error: predicate [38;5;87m`foo'/4[39;49m [38;5;203mhas no clauses.[39;49m
 bug197.m:025: Error: clause for predicate [38;5;87m`foo'/3[39;49m [38;5;203mwithout[39;49m a corresponding
 bug197.m:025:   `:- pred' declaration.
-bug197.m:025:   [38;5;226mHowever, a predicate of that name does exist with arity 4.[39;49m
+bug197.m:025:   However, a predicate of that name does exist with arity [38;5;40m4.[39;49m
 bug197.m:026: In clause for predicate `foo'/3:
 bug197.m:026:   in argument 1 of call to predicate `list.foldl'/4:
 bug197.m:026:   type error: [38;5;87margument[39;49m has type

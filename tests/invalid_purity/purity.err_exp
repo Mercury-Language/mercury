@@ -4,7 +4,7 @@ purity.m:119: Warning: predicate [38;5;87m`w2'/0[39;49m is declared [38;5;40m
 purity.m:119:   [38;5;203mpure.[39;49m
 purity.m:123: Warning: predicate [38;5;87m`w3'/0[39;49m is declared [38;5;40mimpure,[39;49m but is actually
 purity.m:123:   [38;5;203msemipure.[39;49m
-purity.m:128: Warning: [38;5;203munnecessary `promise_pure' pragma[39;49m for predicate `w4'/0.
+purity.m:128: Warning: [38;5;203munnecessary `promise_pure' pragma[39;49m for predicate [38;5;87m`w4'/0.[39;49m
 purity.m:133: Error: predicate [38;5;87m`w5'/0[39;49m is declared [38;5;40mimpure[39;49m but promised [38;5;203mpure.[39;49m
 purity.m:139: Error: predicate [38;5;87m`w6'/0[39;49m is declared [38;5;40msemipure[39;49m but promised [38;5;203mpure.[39;49m
 purity.m:148: Error: predicate [38;5;87m`e1'/0[39;49m is [38;5;203mimpure.[39;49m It must either be [38;5;40mdeclared[39;49m
