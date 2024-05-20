@@ -802,8 +802,7 @@ format_dependency_scc(ModuleInfo, SCC, !State) :-
 
 format_dependency_proc(Prefix, ModuleInfo, PredProcId, !State) :-
     PredProcId = proc(PredId, ProcId),
-    Pieces = describe_one_proc_name(ModuleInfo,
-        should_not_module_qualify, PredProcId),
+    Pieces = describe_unqual_proc_name(ModuleInfo, PredProcId),
     Desc = error_pieces_to_one_line_string(Pieces),
 
     string.builder.format("%% %spred %d proc %d, %s\n",

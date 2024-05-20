@@ -1,4 +1,4 @@
-bug257.m:017: In predicate `oops'/2:
+bug257.m:017: In predicate [38;5;87m`oops'/2:[39;49m
 bug257.m:017:   warning: unresolved polymorphism.
 bug257.m:017:   The variable with an unbound type was:
 bug257.m:017:     [38;5;203mGee[39;49m

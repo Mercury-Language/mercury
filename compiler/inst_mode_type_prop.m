@@ -1511,8 +1511,8 @@ tprop_context_to_pieces(TPropContext, Context, Pieces) :-
                 pred_info_get_is_pred_or_func(PredInfo, PredOrFunc),
                 pred_info_get_orig_arity(PredInfo, PredFormArity),
                 pred_info_get_context(PredInfo, Context),
-                PredPieces = describe_one_pred_info_name(
-                    should_not_module_qualify, PredInfo)
+                PredPieces = describe_one_pred_info_name(no,
+                    should_not_module_qualify, [], PredInfo)
             ;
                 Args = ta_lambda(PredOrFunc, PredFormArity, Context),
                 PredPieces = [words("the lambda expression")]

@@ -1,4 +1,4 @@
-bad_sv_unify_msg.m:015: In predicate `x'/2:
+bad_sv_unify_msg.m:015: In predicate [38;5;87m`x'/2:[39;49m
 bad_sv_unify_msg.m:015:   warning: unresolved polymorphism.
 bad_sv_unify_msg.m:015:   The variable with an unbound type was:
 bad_sv_unify_msg.m:015:     [38;5;203mSTATE_VARIABLE_D_0[39;49m

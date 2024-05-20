@@ -1,5 +1,5 @@
 impure_func_t4.m:019: In call to semipure function
-impure_func_t4.m:019:   `impure_func_t4.get_counter'/0:
+impure_func_t4.m:019:   [38;5;87m`impure_func_t4.get_counter'/0:[39;49m
 impure_func_t4.m:019:   purity error: call must be in an explicit unification,
 impure_func_t4.m:019:   which in turn [38;5;203mmust be preceded by a `semipure'[39;49m
 impure_func_t4.m:019:   [38;5;203mindicator.[39;49m

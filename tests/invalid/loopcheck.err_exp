@@ -1,12 +1,11 @@
-loopcheck.m:011: In `main'(di, uo):
+loopcheck.m:011: In [38;5;87m`main'(di, uo):[39;49m
 loopcheck.m:011:   warning: determinism declaration could be tighter.
 loopcheck.m:011:   Declared [38;5;40m`det',[39;49m inferred [38;5;203m`erroneous'.[39;49m
-loopcheck.m:020: Error: `:- pragma loop_check' declaration not allowed for
-loopcheck.m:020:   procedure with determinism `erroneous'.
-loopcheck.m:020:   The pragma requested is only valid for the following
-loopcheck.m:020:   determinisms: cc_multi, cc_nondet, det, multi, nondet and
-loopcheck.m:020:   semidet.
-loopcheck.m:023: Warning: recursive call to [38;5;87mpredicate `loop'/1[39;49m [38;5;203mwill lead to[39;49m
+loopcheck.m:020: Error: [38;5;87m`:- pragma loop_check' declarations[39;49m are [38;5;203mnot allowed for[39;49m
+loopcheck.m:020:   [38;5;203mprocedures with determinism `erroneous'.[39;49m
+loopcheck.m:020:   This pragma is valid only for the following determinisms:
+loopcheck.m:020:   [38;5;40mcc_multi,[39;49m [38;5;40mcc_nondet,[39;49m [38;5;40mdet,[39;49m [38;5;40mmulti,[39;49m [38;5;40mnondet[39;49m and [38;5;40msemidet.[39;49m
+loopcheck.m:023: Warning: recursive call to predicate [38;5;87m`loop'/1[39;49m [38;5;203mwill lead to[39;49m
 loopcheck.m:023:   [38;5;203minfinite recursion.[39;49m
 loopcheck.m:023:   If this recursive call is executed, the procedure will call
 loopcheck.m:023:   itself with exactly the same input arguments, leading to

@@ -211,8 +211,7 @@ report_unbound_inst_vars(ModuleInfo, PredId, ErrorProcs, !PredInfo,
 
 report_unbound_inst_var_error(ModuleInfo, PredId, ProcId - UnboundInstVars,
         Procs0, Procs, !Specs) :-
-    PredPieces =
-        describe_one_pred_name(ModuleInfo, should_not_module_qualify, PredId),
+    PredPieces = describe_unqual_pred_name(ModuleInfo, PredId),
     map.lookup(Procs0, ProcId, ProcInfo),
     proc_info_get_inst_varset(ProcInfo, InstVarSet),
     InstVarToPiece =
@@ -276,12 +275,12 @@ report_unsatisfied_constraints(ModuleInfo, PredId, PredInfo, Constraints,
     pred_info_get_typevarset(PredInfo, TVarSet),
     pred_info_get_context(PredInfo, Context),
 
-    PredIdPieces = describe_one_pred_name(ModuleInfo,
-        should_not_module_qualify, PredId),
+    PredDescColonPieces = describe_one_pred_name(ModuleInfo,
+        yes(color_subject), should_not_module_qualify, [suffix(":")], PredId),
 
-    MainPieces = [words("In")] ++ PredIdPieces ++ [suffix(":"), nl,
-        fixed("type error: unsatisfied typeclass " ++
-        choose_number(Constraints, "constraint:", "constraints:")),
+    MainPieces = [words("In")] ++ PredDescColonPieces ++ [nl,
+        words("type error: unsatisfied typeclass"),
+        words(choose_number(Constraints, "constraint:", "constraints:")),
         nl_indent_delta(1)] ++
         component_list_to_color_line_pieces(yes(color_incorrect),
             [], [nl_indent_delta(-1)],
@@ -403,16 +402,14 @@ describe_constrained_goal(ModuleInfo, Goal) = Pieces :-
     (
         (
             GoalExpr = plain_call(PredId, _, _, _, _, _),
-            CallPieces = describe_one_pred_name(ModuleInfo,
-                should_module_qualify, PredId)
+            CallPieces = describe_qual_pred_name(ModuleInfo, PredId)
+        ;
+            GoalExpr = call_foreign_proc(_, PredId, _, _, _, _, _),
+            CallPieces = describe_qual_pred_name(ModuleInfo, PredId)
         ;
             GoalExpr = generic_call(GenericCall, _, _, _, _),
             GenericCall = class_method(_, _, _, PFSymNameArity),
             CallPieces = [qual_pf_sym_name_pred_form_arity(PFSymNameArity)]
-        ;
-            GoalExpr = call_foreign_proc(_, PredId, _, _, _, _, _),
-            CallPieces = describe_one_pred_name(ModuleInfo,
-                should_module_qualify, PredId)
         ),
         Pieces = [words("the call to") | CallPieces]
     ;
@@ -604,8 +601,8 @@ report_unresolved_type_warning(ModuleInfo, PredId, PredInfo, VarsEntries,
     pred_info_get_typevarset(PredInfo, TVarSet),
     pred_info_get_context(PredInfo, Context),
 
-    PredIdPieces =
-        describe_one_pred_name(ModuleInfo, should_not_module_qualify, PredId),
+    PredDescColonPieces = describe_one_pred_name(ModuleInfo,
+        yes(color_subject), should_not_module_qualify, [suffix(":")], PredId),
     list.map_foldl3(var_vte_to_name_and_type_strs(TVarSet),
         VarsEntries, VarTypeStrs0,
         0, MaxVarNameLen0, all_tvars, MaybeAllTVars, set.init, TVars),
@@ -660,7 +657,7 @@ report_unresolved_type_warning(ModuleInfo, PredId, PredInfo, VarsEntries,
         Known = "fully known"
     ),
     list.condense(VarTypePieceLists, VarTypePieces),
-    MainPieces = [words("In")] ++ PredIdPieces ++ [suffix(":"), nl,
+    MainPieces = [words("In")] ++ PredDescColonPieces ++ [nl,
         words("warning: unresolved polymorphism."), nl,
         words(choose_number(VarsEntries,
             "The variable with an unbound type was:",
@@ -908,9 +905,10 @@ report_indistinguishable_modes_error(ModuleInfo, OldProcId, NewProcId,
     proc_info_get_context(OldProcInfo, OldContext),
     proc_info_get_context(NewProcInfo, NewContext),
 
-    MainPieces = [words("In mode declarations for ")] ++
-        describe_one_pred_name(ModuleInfo, should_module_qualify, PredId)
-        ++ [suffix(":"), nl, words("error: duplicate mode declaration."), nl],
+    PredDescColonPieces = describe_one_pred_name(ModuleInfo,
+        yes(color_subject), should_module_qualify, [suffix(":")], PredId),
+    MainPieces = [words("In mode declarations for ")] ++ PredDescColonPieces ++
+        [nl, words("error: duplicate mode declaration."), nl],
     OldDecl = mode_decl_to_string(output_mercury, OldProcId, PredInfo),
     NewDecl = mode_decl_to_string(output_mercury, NewProcId, PredInfo),
     % XXX Should we print OldDecl and NewDecl each on their own line?

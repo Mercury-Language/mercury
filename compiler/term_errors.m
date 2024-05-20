@@ -179,12 +179,12 @@ report_term_errors(ModuleInfo, SCC, Errors, !Specs) :-
     get_context_from_scc(ModuleInfo, SCC, Context),
     ( if set.is_singleton(SCC, PPId) then
         Pieces1 = [words("Termination of")] ++
-            describe_one_proc_name(ModuleInfo, should_module_qualify, PPId),
+            describe_qual_proc_name(ModuleInfo, PPId),
         Single = yes(PPId)
     else
         Pieces1 = [words("Termination of the "),
             words("mutually recursive procedures")] ++
-            describe_several_proc_names(ModuleInfo,
+            describe_several_proc_names(ModuleInfo, no,
                 should_module_qualify, set.to_sorted_list(SCC)),
         Single = no
     ),
@@ -221,12 +221,12 @@ report_arg_size_errors(ModuleInfo, SCC, Errors, !Specs) :-
     get_context_from_scc(ModuleInfo, SCC, Context),
     ( if set.is_singleton(SCC, PPId) then
         Pieces1 = [words("Termination constant of")] ++
-            describe_one_proc_name(ModuleInfo, should_module_qualify, PPId),
+            describe_qual_proc_name(ModuleInfo, PPId),
         Single = yes(PPId)
     else
         Pieces1 = [words("Termination constants"),
             words("of the mutually recursive procedures")] ++
-            describe_several_proc_names(ModuleInfo,
+            describe_several_proc_names(ModuleInfo, no,
                 should_module_qualify, set.to_sorted_list(SCC)),
         Single = no
     ),
@@ -332,12 +332,10 @@ term_error_kind_description(ModuleInfo, Single, ErrorKind, Pieces, Reason) :-
             Pieces1 = [words("It")]
         ;
             Single = no,
-            Pieces1 = describe_one_proc_name(ModuleInfo,
-                should_module_qualify, CallerPPId)
+            Pieces1 = describe_qual_proc_name(ModuleInfo, CallerPPId)
         ),
         Piece2 = words("calls"),
-        CalleePieces = describe_one_proc_name(ModuleInfo,
-            should_module_qualify, CalleePPId),
+        CalleePieces = describe_qual_proc_name(ModuleInfo, CalleePPId),
         Pieces3 = [words("with an unbounded increase"),
             words("in the size of the input arguments."), nl],
         Pieces = Pieces1 ++ [Piece2] ++ CalleePieces ++ Pieces3,
@@ -351,12 +349,10 @@ term_error_kind_description(ModuleInfo, Single, ErrorKind, Pieces, Reason) :-
             Pieces1 = [words("It")]
         ;
             Single = no,
-            Pieces1 = describe_one_proc_name(ModuleInfo,
-                should_module_qualify, CallerPPId)
+            Pieces1 = describe_qual_proc_name(ModuleInfo, CallerPPId)
         ),
         Piece2 = words("calls"),
-        CalleePieces = describe_one_proc_name(ModuleInfo,
-            should_module_qualify, CalleePPId),
+        CalleePieces = describe_qual_proc_name(ModuleInfo, CalleePPId),
         Piece3 = words("which could not be proven to terminate."),
         Pieces = Pieces1 ++ [Piece2] ++ CalleePieces ++ [Piece3, nl],
         Reason = no
@@ -375,12 +371,10 @@ term_error_kind_description(ModuleInfo, Single, ErrorKind, Pieces, Reason) :-
             Pieces1 = [words("It")]
         ;
             Single = no,
-            Pieces1 = describe_one_proc_name(ModuleInfo,
-                should_module_qualify, CallerPPId)
+            Pieces1 = describe_qual_proc_name(ModuleInfo, CallerPPId)
         ),
         Piece2 = words("calls"),
-        CalleePieces = describe_one_proc_name(ModuleInfo,
-            should_module_qualify, CalleePPId),
+        CalleePieces = describe_qual_proc_name(ModuleInfo, CalleePPId),
         Piece3 = words("with one or more higher order arguments."),
         Pieces = Pieces1 ++ [Piece2] ++ CalleePieces ++ [Piece3, nl],
         Reason = no
@@ -393,12 +387,10 @@ term_error_kind_description(ModuleInfo, Single, ErrorKind, Pieces, Reason) :-
             Pieces1 = [words("It")]
         ;
             Single = no,
-            Pieces1 = describe_one_proc_name(ModuleInfo,
-                should_module_qualify, CallerPPId)
+            Pieces1 = describe_qual_proc_name(ModuleInfo, CallerPPId)
         ),
         Piece2 = words("calls"),
-        CalleePieces = describe_one_proc_name(ModuleInfo,
-            should_module_qualify, CalleePPId),
+        CalleePieces = describe_qual_proc_name(ModuleInfo, CalleePPId),
         Piece3 = words("which has a termination constant of infinity."),
         Pieces = Pieces1 ++ [Piece2] ++ CalleePieces ++ [Piece3, nl],
         Reason = yes(CalleePPId)
@@ -412,8 +404,7 @@ term_error_kind_description(ModuleInfo, Single, ErrorKind, Pieces, Reason) :-
             Pieces1 = [words("It")]
         ;
             Single = no,
-            Pieces1 = describe_one_proc_name(ModuleInfo,
-                should_module_qualify, CallerPPId)
+            Pieces1 = describe_qual_proc_name(ModuleInfo, CallerPPId)
         ),
         Pieces2 = [words("makes one or more higher-order calls."),
             words("Each of these higher-order calls has a"),
@@ -429,15 +420,13 @@ term_error_kind_description(ModuleInfo, Single, ErrorKind, Pieces, Reason) :-
             else
                 % XXX this should never happen (but it does)
                 % error("not_subset outside this SCC"),
-                PPIdPieces = describe_one_proc_name(ModuleInfo,
-                    should_module_qualify, ProcPPId),
+                PPIdPieces = describe_qual_proc_name(ModuleInfo, ProcPPId),
                 Pieces1 = [words("The set of output supplier variables of")
                     | PPIdPieces]
             )
         ;
             Single = no,
-            PPIdPieces = describe_one_proc_name(ModuleInfo,
-                should_module_qualify, ProcPPId),
+            PPIdPieces = describe_qual_proc_name(ModuleInfo, ProcPPId),
             Pieces1 = [words("The set of output supplier variables of") |
                 PPIdPieces]
         ),
@@ -458,14 +447,14 @@ term_error_kind_description(ModuleInfo, Single, ErrorKind, Pieces, Reason) :-
     ;
         ErrorKind = cycle(_StartPPId, CallSites),
         ( if CallSites = [DirectCall] then
-            SitePieces = describe_one_call_site(ModuleInfo,
+            SitePieces = describe_one_call_site(ModuleInfo, no,
                 should_module_qualify, DirectCall),
             Pieces = [words("At the recursive call to") | SitePieces] ++
                 [words("the arguments are not guaranteed"),
                 words("to decrease in size."), nl]
         else
             Pieces = [words("In the recursive cycle through the calls to")] ++
-                describe_several_call_sites(ModuleInfo,
+                describe_several_call_sites(ModuleInfo, no,
                     should_module_qualify, CallSites) ++
                 [words("the arguments are"),
                     words("not guaranteed to decrease in size."), nl]
@@ -504,8 +493,8 @@ term_error_kind_description(ModuleInfo, Single, ErrorKind, Pieces, Reason) :-
             Pieces2 = [words("it."), nl]
         ;
             Single = no,
-            Pieces2 = describe_one_pred_name(ModuleInfo,
-                should_module_qualify, PredId) ++ [suffix("."), nl]
+            Pieces2 = describe_qual_pred_name(ModuleInfo, PredId) ++
+                [suffix("."), nl]
         ),
         Pieces = Pieces1 ++ Pieces2,
         Reason = no

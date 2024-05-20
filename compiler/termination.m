@@ -205,11 +205,15 @@ check_foreign_code_attributes_of_proc(ModuleInfo, PPId, Attributes,
             % XXX intermod
             proc_info_set_maybe_termination_info(TermStatus, !ProcInfo),
             ProcNamePieces = describe_one_proc_name(ModuleInfo,
-                should_module_qualify, PPId),
-            Pieces = [words("Warning:") | ProcNamePieces] ++ [words("has a"),
-                pragma_decl("terminates"), words("declaration"),
-                words("but also has the"), quote("does_not_terminate"),
-                words("foreign code attribute set.")],
+                yes(color_subject), should_module_qualify, PPId),
+            Pieces = [words("Warning:") | ProcNamePieces] ++
+                [words("has a")] ++
+                color_as_possible_cause([pragma_decl("terminates"),
+                    words("declaration,")]) ++
+                [words("but also has the")] ++
+                color_as_possible_cause([quote("does_not_terminate"),
+                    words("foreign code attribute")]) ++
+                [words("set."), nl],
             Spec = spec($pred, severity_warning, phase_read_files,
                 Context, Pieces),
             !:Specs = [Spec | !.Specs]
@@ -232,11 +236,15 @@ check_foreign_code_attributes_of_proc(ModuleInfo, PPId, Attributes,
             % XXX intermod
             proc_info_set_maybe_termination_info(TermStatus, !ProcInfo),
             ProcNamePieces = describe_one_proc_name(ModuleInfo,
-                should_module_qualify, PPId),
-            Pieces = [words("Warning:") | ProcNamePieces] ++ [words("has a"),
-                pragma_decl("does_not_terminate"), words("declaration"),
-                words("but also has the"), quote("terminates"),
-                words("foreign code attribute set.")],
+                yes(color_subject), should_module_qualify, PPId),
+            Pieces = [words("Warning:") | ProcNamePieces] ++
+                [words("has a")] ++
+                color_as_possible_cause([pragma_decl("does_not_terminate"),
+                    words("declaration,")]) ++
+                [words("but also has the")] ++
+                color_as_possible_cause([quote("terminates"),
+                    words("foreign code attribute")]) ++
+                [words("set."), nl],
             Spec = spec($pred, severity_warning, phase_read_files,
                 Context, Pieces),
             !:Specs = [Spec | !.Specs]
@@ -308,11 +316,13 @@ check_scc_pragmas_are_consistent(SCC, !ModuleInfo, !Specs) :-
 
         PredNamesIds = set.to_sorted_list(KnownPredNamesIdsSet),
         PredNamePieces = describe_several_pred_names(!.ModuleInfo,
-            should_module_qualify, list.map(pair.snd, PredNamesIds)),
-        Pieces =
-            [words("Warning:") | PredNamePieces ] ++
-            [words("are mutually recursive but some of their"),
-            words( "termination pragmas are inconsistent.")],
+            yes(color_subject), should_module_qualify,
+            list.map(pair.snd, PredNamesIds)),
+        Pieces = [words("Warning:")] ++ PredNamePieces ++
+            [words("are mutually recursive,"),
+            words("but some of their termination pragmas are")] ++
+            color_as_incorrect([words("inconsistent.")]) ++
+            [nl],
         Spec = spec($pred, severity_warning, phase_read_files,
             LeastContext, Pieces),
         !:Specs = [Spec | !.Specs]

@@ -215,8 +215,11 @@ peek_at_file(FileStream, SourceFileName0, DefaultModuleName,
         (
             ModuleDeclPresent = no_module_decl_present(_MaybeLookAhead,
                 _Context, _NoModuleSpec),
-            Pieces = [words("Error:"), quote(SourceFileName0),
-                words("does not start with a module declaration."), nl],
+            Pieces = [words("Error:")] ++
+                color_as_subject([quote(SourceFileName0)]) ++
+                color_as_incorrect([words("does not start with a"),
+                    decl("module"), words("declaration.")]) ++
+                [nl],
             Spec = no_ctxt_spec($pred, severity_error, phase_read_files,
                 Pieces),
             MaybeModuleName = error1([Spec])
@@ -396,8 +399,11 @@ report_module_has_unexpected_name(FileName, ExpectedName, ExpectationContexts,
     ),
     MainPieces = [words("Error: file"), quote(FileName),
         words("contains the wrong module."),
-        words("Expected module"), qual_sym_name(ExpectedName), suffix(","),
-        words("found module"), qual_sym_name(ActualName), suffix("."), nl],
+        words("Expected module")] ++
+        color_as_correct([qual_sym_name(ExpectedName), suffix(",")]) ++
+        [words("found module")] ++
+        color_as_incorrect([qual_sym_name(ActualName), suffix(".")]) ++
+        [nl],
     MainMsg = error_msg(MaybeContext, always_treat_as_first, 0,
         [always(MainPieces)]),
     list.sort_and_remove_dups(ExpectationContexts, SortedExpectationContexts0),
@@ -761,9 +767,12 @@ parse_int_file_section(FileString, FileStringLen,
             ),
             Context = get_term_context(IOMTerm),
             IOMPieces = iom_desc_pieces(IOM),
-            Pieces = [words("Error: expected the start of an"),
-                words(ExpectedSectionKindStr), words("section, got")] ++
-                IOMPieces ++ [suffix("."), nl],
+            Pieces = [words("Error: expected the start of an")] ++
+                color_as_correct([words(ExpectedSectionKindStr),
+                    words("section,")]) ++
+                [words("got")] ++
+                color_as_incorrect(IOMPieces ++ [suffix(".")]) ++
+                [nl],
             Spec = spec($pred, severity_error, phase_t2pt, Context, Pieces),
             add_nonfatal_error(rme_nec, [Spec], !Errors),
             FinalLookAhead = lookahead(ReadIOMResult),
@@ -928,8 +937,10 @@ parse_src_file_components(FileString, FileStringLen,
                 !Errors, !LineContext, !LinePosn)
         ;
             IOM = iom_marker_version_numbers(_),
-            Pieces = [words("Error: unexpected version_numbers record"),
-                words("in source file."), nl],
+            Pieces = [words("Error:")] ++
+                color_as_incorrect([words("unexpected version_numbers record"),
+                    words("in source file.")]) ++
+                [nl],
             Spec = spec($pred, severity_error, phase_read_files,
                 get_term_context(IOMTerm), Pieces),
             add_nonfatal_error(rme_nec, [Spec], !Errors),
@@ -952,10 +963,13 @@ parse_src_file_components(FileString, FileStringLen,
                     StartModuleName = qualified(CurModuleName, RawBaseName)
                 else
                     Pieces = [words("Error: module qualification of"),
-                        words("nested submodule"),
-                        qual_sym_name(RawStartModuleName),
-                        words("does not match the then-current module,"),
-                        qual_sym_name(CurModuleName), suffix("."), nl],
+                        words("nested submodule")] ++
+                        color_as_incorrect(
+                            [qual_sym_name(RawStartModuleName)]) ++
+                        [words("does not match the then-current module,")] ++
+                        color_as_correct([qual_sym_name(CurModuleName),
+                            suffix(".")]) ++
+                        [nl],
                     Spec = spec($pred, severity_error, phase_t2pt,
                         StartContext, Pieces),
                     add_nonfatal_error(rme_nec, [Spec], !Errors),
@@ -1088,10 +1102,14 @@ generate_missing_start_section_warning_src(CurModuleName,
         !:MissingStartSectionWarning =
             have_given_missing_section_start_warning,
         Pieces = [invis_order_default_start(1, ""),
-            words("Error: module"),
-            qual_sym_name(CurModuleName), words("should start with"),
-            words("either an"), decl("interface"), words("or an"),
-            decl("implementation"), words("declaration."), nl,
+            words("Error: module"), qual_sym_name(CurModuleName)] ++
+            color_as_incorrect([words("should start with")]) ++
+            [words("either an")] ++
+            color_as_correct([decl("interface"), words("declaration")]) ++
+            [words("or an")] ++
+            color_as_correct([decl("implementation"),
+                words("declaration.")]) ++
+            [nl,
             words("The following assumes that"),
             words("the missing declaration is an"),
             decl("implementation"), words("declaration."), nl],
@@ -1121,9 +1139,14 @@ parse_src_file_submodule(FileString, FileStringLen, ContainingModules,
     ;
         MaybePrevSection = no,
         NoSectionPieces = [words("Error: nested submodule"),
-            qual_sym_name(StartModuleName), words("should be preceded by"),
-            words("either an"), decl("interface"), words("or an"),
-            decl("implementation"), words("declaration."), nl,
+            qual_sym_name(StartModuleName)] ++
+            color_as_incorrect([words("should be preceded")]) ++
+            [words("by either an")] ++
+            color_as_correct([decl("interface"), words("declaration")]) ++
+            [words("or an")] ++
+            color_as_correct([decl("implementation"),
+                words("declaration.")]) ++
+            [nl,
             words("The following assumes that"),
             words("the missing declaration is an"),
             decl("interface"), words("declaration."), nl],
@@ -1161,17 +1184,23 @@ handle_module_end_marker(CurModuleName, ContainingModules, ReadIOMResult,
         % XXX ITEM_LIST Should this be an error? Warning?
         FinalLookAhead = no_lookahead
     else if is_for_containing_module(EndedModuleName, ContainingModules) then
-        Pieces = [words("Error: missing"), decl("end_module"),
-            words("declaration for"), qual_sym_name(CurModuleName),
-            suffix("."), nl],
+        Pieces = [words("Error:")] ++
+            color_as_incorrect([words("missing"), decl("end_module"),
+                words("declaration")]) ++
+            [words("for")] ++
+            color_as_subject([qual_sym_name(CurModuleName), suffix(".")]) ++
+            [nl],
         Spec = spec($pred, severity_error, phase_t2pt, EndContext, Pieces),
         add_fatal_error(frme_bad_module_end, [Spec], !Errors),
         FinalLookAhead = lookahead(ReadIOMResult)
     else
-        Pieces = [words("Error: this"), decl("end_module"),
-            words("declaration for"), qual_sym_name(EndedModuleName),
-            words("is not for the module at whose end it appears,"),
-            words("which is"), qual_sym_name(CurModuleName), suffix("."), nl],
+        Pieces = [words("Error: this")] ++
+            color_as_subject([decl("end_module"), words("declaration for"),
+                qual_sym_name(EndedModuleName)]) ++
+            color_as_incorrect([words("is not for the module"),
+                words("at whose end it appears,")]) ++
+            [words("which is"),
+            qual_sym_name(CurModuleName), suffix("."), nl],
         Spec = spec($pred, severity_error, phase_t2pt, EndContext, Pieces),
         add_fatal_error(frme_bad_module_end, [Spec], !Errors),
         % Eat the bad end_module declaration.
@@ -1471,9 +1500,12 @@ parse_item_sequence_inner(FileString, FileStringLen, ModuleName,
                     IOM = iom_marker_src_file(!:SourceFileName)
                 ;
                     IOM = iom_marker_version_numbers(_),
-                    Pieces = [words("Error: version number records"),
-                        words("should not appear anywhere except in"),
-                        words("automatically generated interface files."), nl],
+                    Pieces = [words("Error:")] ++
+                        color_as_subject([words("version number records")]) ++
+                        color_as_incorrect([words("should not appear"),
+                            words("anywhere except in automaticly"),
+                            words("generated interface files.")]) ++
+                        [nl],
                     Spec = spec($pred, severity_error, phase_read_files,
                         get_term_context(IOMTerm), Pieces),
                     add_nonfatal_error(rme_nec, [Spec], !Errors)
@@ -1579,6 +1611,14 @@ read_term_to_iom_result(ModuleName, FileName, ReadTermResult, ReadIOMResult,
         ReadTermResult = error(ErrorMsg, LineNumber),
         Context = term_context.context_init(FileName, LineNumber),
         % XXX Do we need to add an "Error:" prefix?
+        % Answer: only if we update all the values of ErrorMsg
+        % that the lexer and the parser can generate to avoid text
+        % that would clash with that. For example, we do not want to stick
+        % "Error:" in front of messages of the form "Syntax error: ...".
+        %
+        % XXX It would be nice to add color to ErrorMsg, but that would
+        % require making the representation of lexer and parser errors
+        % more complex than a simple string.
         Pieces = [words(ErrorMsg), suffix("."), nl],
         Spec = spec($pred, severity_error, phase_t2pt, Context, Pieces),
         ReadIOMResult = read_iom_parse_term_error(Spec)
@@ -1602,18 +1642,23 @@ read_term_to_iom_result(ModuleName, FileName, ReadTermResult, ReadIOMResult,
 
 report_missing_module_start(FirstContext) = Spec :-
     Pieces = [invis_order_default_start(0, ""),
-        words("Error: module must start with a"),
-        decl("module"), words("declaration."), nl],
+        words("Error:")] ++
+        color_as_incorrect([words("module must start with a"),
+            decl("module"), words("declaration.")]) ++
+        [nl],
     Spec = spec($pred, severity_error, phase_t2pt, FirstContext, Pieces).
 
 :- func report_wrong_module_start(prog_context, module_name, module_name)
     = error_spec.
 
 report_wrong_module_start(FirstContext, Expected, Actual) = Spec :-
-    Pieces = [words("Error: module starts with the wrong"),
-        decl("module"), words("declaration."), nl,
-        words("Expected module"), qual_sym_name(Expected), suffix(","),
-        words("found module"), qual_sym_name(Actual), suffix("."), nl],
+    Pieces = [words("Error: module starts with a"), decl("module"),
+        words("declaration for the wrong module"), nl,
+        words("Expected module")] ++
+        color_as_correct([qual_sym_name(Expected), suffix(",")]) ++
+        [words("got moduile")] ++
+        color_as_incorrect([qual_sym_name(Actual), suffix(".")]) ++
+        [nl],
     Spec = spec($pred, severity_error, phase_t2pt, FirstContext, Pieces).
 
     % The predicate that reads in source file handles all items and markers
@@ -1662,8 +1707,10 @@ report_unexpected_term_at_end(FileKind, Term, !Errors) :-
     (
         FileKind = fk_src,
         Error = rme_end_module_not_at_end_of_src,
-        Pieces = [words("Error: item(s) after the"),
-            decl("end_module"), words("declaration."), nl]
+        Pieces = [words("Error: there should be no code")] ++
+            color_as_incorrect([words("after the"),
+                decl("end_module"), words("declaration.")]) ++
+            [nl]
     ;
         FileKind = fk_int(_IntFileKind),
         Error = rme_unexpected_term_in_int_or_opt,

@@ -1,4 +1,4 @@
-not_a_switch.m:014: In `not_a_switch'(in, out):
+not_a_switch.m:014: In [38;5;87m`not_a_switch'(in, out):[39;49m
 not_a_switch.m:014:   error: determinism declaration not satisfied.
 not_a_switch.m:014:   Declared [38;5;40m`det',[39;49m inferred [38;5;203m`nondet'.[39;49m
 not_a_switch.m:014:   The reasons for the difference are the following.

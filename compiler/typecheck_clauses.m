@@ -699,7 +699,7 @@ typecheck_call_pred_name(SymName, Context, GoalId, ArgVars, PredId,
         PredIds = [],
         PredId = invalid_pred_id,
         typecheck_info_get_error_clause_context(!.Info, ClauseContext),
-        Spec = report_error_undef_pred(ClauseContext, Context,
+        Spec = report_error_call_to_undef_pred(ClauseContext, Context,
             SymNamePredFormArity),
         typecheck_info_add_error(Spec, !Info)
     ;
@@ -2129,7 +2129,8 @@ convert_cons_defn(Info, GoalId, Action, ConsId, ConsDefn, ConsTypeInfo) :-
         not is_unify_index_or_compare_pred(PredInfo),
         PredStatus \= pred_status(status_opt_imported)
     then
-        ConsTypeInfo = error(foreign_type_constructor(TypeCtor, TypeDefn))
+        ConsTypeInfo =
+            error(other_lang_foreign_type_constructor(TypeCtor, TypeDefn))
     else if
         % Do not allow constructors for abstract_imported types unless
         % the current predicate is opt_imported.

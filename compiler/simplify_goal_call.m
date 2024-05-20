@@ -378,10 +378,9 @@ maybe_generate_warning_for_implicit_stream_predicate(ModuleInfo,
         OneExtraStreamArgPredIds = [_ | _]
     then
         GoalContext = goal_info_get_context(GoalInfo),
-        PredPieces = describe_one_pred_name(ModuleInfo,
-            should_module_qualify, PredId),
-        Pieces = [words("The call to")] ++
-            color_as_subject(PredPieces) ++
+        PredPieces = describe_one_pred_name(ModuleInfo, yes(color_subject),
+            should_module_qualify, [], PredId),
+        Pieces = [words("The call to")] ++ PredPieces ++
             [words("could have an additional argument")] ++
             % This is a suggested cause of action, which is in effect
             % the converse of the possible cause of a problem.
@@ -421,9 +420,9 @@ maybe_generate_warning_for_implicit_stream_predicate(ModuleInfo,
         )
     then
         GoalContext = goal_info_get_context(GoalInfo),
-        PredPieces = describe_one_pred_name(ModuleInfo,
-            should_module_qualify, PredId),
-        Pieces = [words("The call to")] ++ color_as_subject(PredPieces) ++
+        PredPieces = describe_one_pred_name(ModuleInfo, yes(color_subject),
+            should_module_qualify, [], PredId),
+        Pieces = [words("The call to")] ++ PredPieces ++
             % This is a suggested cause of action, which is in effect
             % the converse of the possible cause of a problem.
             color_as_possible_cause([words("could be made redundant")]) ++
@@ -485,16 +484,18 @@ maybe_generate_warning_for_call_to_obsolete_predicate(PredId, ProcId,
             MaybeObsolete = yes(InFavourOfPrime)
         then
             InFavourOf = InFavourOfPrime,
-            PredOrProcPieces = describe_one_pred_name(ModuleInfo,
-                should_module_qualify, PredId)
+            PredOrProcDotPieces = describe_one_pred_name(ModuleInfo,
+                yes(color_subject), should_module_qualify, [suffix(".")],
+                PredId)
         else if
             proc_info_get_obsolete_in_favour_of(ProcInfo, MaybeObsolete),
             MaybeObsolete = yes(InFavourOfPrime)
         then
             InFavourOf = InFavourOfPrime,
-            PredOrProcPieces = [words("procedure")] ++
+            PredOrProcDotPieces = [words("procedure")] ++
                 describe_one_proc_name_mode(ModuleInfo, output_mercury,
-                    should_module_qualify, proc(PredId, ProcId))
+                    yes(color_subject), should_module_qualify,
+                    [suffix(".")], proc(PredId, ProcId))
         else
             fail
         ),
@@ -519,7 +520,7 @@ maybe_generate_warning_for_call_to_obsolete_predicate(PredId, ProcId,
         GoalContext = goal_info_get_context(GoalInfo),
         MainPieces = [words("Warning: call to")] ++
             color_as_incorrect([words("obsolete")]) ++
-            color_as_subject(PredOrProcPieces ++ [suffix(".")]) ++ [nl],
+            PredOrProcDotPieces ++ [nl],
         (
             InFavourOf = [],
             Pieces = MainPieces
@@ -623,9 +624,8 @@ maybe_generate_warning_for_infinite_loop_call(PredId, ProcId, ArgVars,
         pred_info_get_purity(PredInfo, Purity),
         Purity \= purity_impure
     then
-        NamePieces0 = describe_one_pred_info_name(should_not_module_qualify,
-            PredInfo),
-        NamePieces = color_as_subject(NamePieces0),
+        NamePieces = describe_one_pred_info_name(yes(color_subject),
+            should_not_module_qualify, [], PredInfo),
         (
             AllInputsEqvOrSvar = all_inputs_eqv_or_svar,
             (
@@ -884,10 +884,9 @@ maybe_generate_warning_for_useless_comparison(PredInfo, InstMap, Args,
                 InstA, InstB, WarnPieces)
         then
             GoalContext = goal_info_get_context(GoalInfo),
-            PredPieces = describe_one_pred_info_name(should_module_qualify,
-                PredInfo),
-            Pieces = [words("Warning: call to")] ++
-                color_as_subject(PredPieces) ++ WarnPieces,
+            PredPieces = describe_one_pred_info_name(yes(color_subject),
+                should_module_qualify, [], PredInfo),
+            Pieces = [words("Warning: call to")] ++ PredPieces ++ WarnPieces,
             Spec = spec($pred, severity_warning,
                 phase_simplify(report_in_any_mode), GoalContext, Pieces),
             simplify_info_add_message(Spec, !Info)

@@ -1,4 +1,4 @@
-bug496.m:022: In `options_to_action'(in, in, out):
+bug496.m:022: In [38;5;87m`options_to_action'(in, in, out):[39;49m
 bug496.m:022:   error: determinism declaration not satisfied.
 bug496.m:022:   Declared [38;5;40m`det',[39;49m inferred [38;5;203m`nondet'.[39;49m
 bug496.m:022:   The reasons for the difference are the following.

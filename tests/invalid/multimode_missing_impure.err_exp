@@ -1,4 +1,4 @@
-multimode_missing_impure.m:029: Error: [38;5;87mpredicate `test1'/1[39;49m is [38;5;203mimpure.[39;49m It must
+multimode_missing_impure.m:029: Error: predicate [38;5;87m`test1'/1[39;49m is [38;5;203mimpure.[39;49m It must
 multimode_missing_impure.m:029:   either be [38;5;40mdeclared impure,[39;49m or [38;5;40mpromised pure.[39;49m
-multimode_missing_impure.m:038: Error: [38;5;87mpredicate `test2'/2[39;49m is [38;5;203mimpure.[39;49m It must
+multimode_missing_impure.m:038: Error: predicate [38;5;87m`test2'/2[39;49m is [38;5;203mimpure.[39;49m It must
 multimode_missing_impure.m:038:   either be [38;5;40mdeclared impure,[39;49m or [38;5;40mpromised pure.[39;49m

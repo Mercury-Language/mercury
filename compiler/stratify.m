@@ -71,10 +71,13 @@
 :- import_module bool.
 :- import_module digraph.
 :- import_module map.
+:- import_module maybe.
 :- import_module pair.
 :- import_module require.
 :- import_module set.
 :- import_module string.
+
+%-----------------------------------------------------------------------------%
 
 check_module_for_stratification(!ModuleInfo, Specs) :-
     module_info_ensure_dependency_info(!ModuleInfo, DepInfo),
@@ -1010,9 +1013,9 @@ stratify_get_called_procs_cases([Case | Cases], !Calls) :-
 
 generate_stratify_error(ModuleInfo, PPId, Context, Message, ErrorOrWarning)
         = Spec :-
-    PPIdDescription = describe_one_proc_name_mode(ModuleInfo, output_mercury,
-        should_not_module_qualify, PPId),
-    Preamble = [words("In")] ++ PPIdDescription ++ [suffix(":"), nl],
+    ProcColonPieces = describe_one_proc_name_mode(ModuleInfo, output_mercury,
+        yes(color_subject), should_not_module_qualify, [suffix(":")], PPId),
+    Preamble = [words("In")] ++ ProcColonPieces ++ [nl],
     (
         ErrorOrWarning = is_warning,
         ErrOrWarnMsg = words("warning:"),

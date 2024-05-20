@@ -2090,7 +2090,8 @@ ambig_pred_error_message(PredEnv, (_ - PredId), Component) :-
     % XXX Should use describe_one_pred_name.
     predicate_table_get_pred_id_table(PredEnv, PredTable),
     map.lookup(PredTable, PredId, PredInfo),
-    PredPieces = describe_one_pred_info_name(should_module_qualify, PredInfo),
+    PredPieces = describe_one_pred_info_name(no, should_module_qualify, [],
+        PredInfo),
     pred_info_get_context(PredInfo, Context),
     LineNumber = term_context.context_line(Context),
     FileName = term_context.context_file(Context),

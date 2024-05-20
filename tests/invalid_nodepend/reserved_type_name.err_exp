@@ -23,45 +23,45 @@ reserved_type_name.m:054:   Mercury implementation.
 reserved_type_name.m:059: In clause for predicate `main'/2:
 reserved_type_name.m:059:   in argument 1 of call to predicate
 reserved_type_name.m:059:   `io.write_line'/3:
-reserved_type_name.m:059:   error: undefined symbol `int_a'/0.
+reserved_type_name.m:059:   error: [38;5;203mundefined[39;49m symbol [38;5;87m`int_a'/0.[39;49m
 reserved_type_name.m:060: In clause for predicate `main'/2:
 reserved_type_name.m:060:   in argument 1 of call to predicate
 reserved_type_name.m:060:   `io.write_line'/3:
-reserved_type_name.m:060:   error: undefined symbol `uint_a'/0.
+reserved_type_name.m:060:   error: [38;5;203mundefined[39;49m symbol [38;5;87m`uint_a'/0.[39;49m
 reserved_type_name.m:061: In clause for predicate `main'/2:
 reserved_type_name.m:061:   in argument 1 of call to predicate
 reserved_type_name.m:061:   `io.write_line'/3:
-reserved_type_name.m:061:   error: undefined symbol `int8_a'/0.
+reserved_type_name.m:061:   error: [38;5;203mundefined[39;49m symbol [38;5;87m`int8_a'/0.[39;49m
 reserved_type_name.m:062: In clause for predicate `main'/2:
 reserved_type_name.m:062:   in argument 1 of call to predicate
 reserved_type_name.m:062:   `io.write_line'/3:
-reserved_type_name.m:062:   error: undefined symbol `uint8_a'/0.
+reserved_type_name.m:062:   error: [38;5;203mundefined[39;49m symbol [38;5;87m`uint8_a'/0.[39;49m
 reserved_type_name.m:063: In clause for predicate `main'/2:
 reserved_type_name.m:063:   in argument 1 of call to predicate
 reserved_type_name.m:063:   `io.write_line'/3:
-reserved_type_name.m:063:   error: undefined symbol `int16_a'/0.
+reserved_type_name.m:063:   error: [38;5;203mundefined[39;49m symbol [38;5;87m`int16_a'/0.[39;49m
 reserved_type_name.m:064: In clause for predicate `main'/2:
 reserved_type_name.m:064:   in argument 1 of call to predicate
 reserved_type_name.m:064:   `io.write_line'/3:
-reserved_type_name.m:064:   error: undefined symbol `uint16_a'/0.
+reserved_type_name.m:064:   error: [38;5;203mundefined[39;49m symbol [38;5;87m`uint16_a'/0.[39;49m
 reserved_type_name.m:065: In clause for predicate `main'/2:
 reserved_type_name.m:065:   in argument 1 of call to predicate
 reserved_type_name.m:065:   `io.write_line'/3:
-reserved_type_name.m:065:   error: undefined symbol `int32_a'/0.
+reserved_type_name.m:065:   error: [38;5;203mundefined[39;49m symbol [38;5;87m`int32_a'/0.[39;49m
 reserved_type_name.m:066: In clause for predicate `main'/2:
 reserved_type_name.m:066:   in argument 1 of call to predicate
 reserved_type_name.m:066:   `io.write_line'/3:
-reserved_type_name.m:066:   error: undefined symbol `uint32_a'/0.
+reserved_type_name.m:066:   error: [38;5;203mundefined[39;49m symbol [38;5;87m`uint32_a'/0.[39;49m
 reserved_type_name.m:067: In clause for predicate `main'/2:
 reserved_type_name.m:067:   in argument 1 of call to predicate
 reserved_type_name.m:067:   `io.write_line'/3:
-reserved_type_name.m:067:   error: undefined symbol `int64_a'/0.
+reserved_type_name.m:067:   error: [38;5;203mundefined[39;49m symbol [38;5;87m`int64_a'/0.[39;49m
 reserved_type_name.m:068: In clause for predicate `main'/2:
 reserved_type_name.m:068:   in argument 1 of call to predicate
 reserved_type_name.m:068:   `io.write_line'/3:
-reserved_type_name.m:068:   error: undefined symbol `uint64_a'/0.
+reserved_type_name.m:068:   error: [38;5;203mundefined[39;49m symbol [38;5;87m`uint64_a'/0.[39;49m
 reserved_type_name.m:069: In clause for predicate `main'/2:
 reserved_type_name.m:069:   in argument 1 of call to predicate
 reserved_type_name.m:069:   `io.write_line'/3:
-reserved_type_name.m:069:   error: undefined symbol `float_a'/0.
+reserved_type_name.m:069:   error: [38;5;203mundefined[39;49m symbol [38;5;87m`float_a'/0.[39;49m
 reserved_type_name.m:069:   [38;5;226m(Did you mean `float'?)[39;49m

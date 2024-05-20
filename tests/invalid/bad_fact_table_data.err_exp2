@@ -1,12 +1,13 @@
-bad_fact_table_data.m:036: Error: no clauses for predicate `table_x'/3.
+bad_fact_table_data.m:036: Error: [38;5;203mno clauses[39;49m for predicate [38;5;87m`table_x'/3.[39;49m
 fact_table_data_file_x:002: Error: fact has wrong number of arguments. Expected
-fact_table_data_file_x:002:   3 arguments, got 4.
-fact_table_data_file_x:003: Error: clause is not for predicate `table_x'/3.
-fact_table_data_file_x:004: Type error in argument 2: expected a float, got
-fact_table_data_file_x:004:   `"a"'.
-fact_table_data_file_x:004: Type error in argument 3: expected a string, got
-fact_table_data_file_x:004:   `1.0'.
-fact_table_data_file_x:005: Type error in argument 2: expected a float, got
-fact_table_data_file_x:005:   `a'.
-fact_table_data_file_x:005: Type error in argument 3: expected a string, got
-fact_table_data_file_x:005:   `1.0'.
+fact_table_data_file_x:002:   [38;5;40mthree[39;49m arguments, got [38;5;203mfour.[39;49m
+fact_table_data_file_x:003: Error: this clause is [38;5;203mnot[39;49m for predicate
+fact_table_data_file_x:003:   [38;5;87m`table_x'/3.[39;49m
+fact_table_data_file_x:004: Type error in argument 2: expected a [38;5;40mfloat,[39;49m got
+fact_table_data_file_x:004:   [38;5;203m`"a"'.[39;49m
+fact_table_data_file_x:004: Type error in argument 3: expected a [38;5;40mstring,[39;49m got
+fact_table_data_file_x:004:   [38;5;203m`1.0'.[39;49m
+fact_table_data_file_x:005: Type error in argument 2: expected a [38;5;40mfloat,[39;49m got
+fact_table_data_file_x:005:   [38;5;203m`a'.[39;49m
+fact_table_data_file_x:005: Type error in argument 3: expected a [38;5;40mstring,[39;49m got
+fact_table_data_file_x:005:   [38;5;203m`1.0'.[39;49m

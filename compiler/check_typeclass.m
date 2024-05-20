@@ -2588,12 +2588,13 @@ report_badly_quantified_vars(PredInfo, QuantErrorType, TVars, !Specs) :-
     pred_info_get_typevarset(PredInfo, TVarSet),
     pred_info_get_context(PredInfo, Context),
     InDeclaration = [words("In declaration of")] ++
-        describe_one_pred_info_name(should_module_qualify, PredInfo) ++
+        describe_one_pred_info_name(no, should_module_qualify, [], PredInfo) ++
         [suffix(":"), nl],
     TypeVariables =
         [words(choose_number(TVars, "type variable", "type variables"))],
-    TVarsStrs = list.map(mercury_var_to_name_only_vs(TVarSet), TVars),
-    TVarsPieces = list_to_quoted_pieces(TVarsStrs),
+    TVarPieces = list.map(var_to_quote_piece(TVarSet), TVars),
+    TVarsPieces = component_list_to_color_pieces(yes(color_subject), "and",
+        [], TVarPieces),
     Are = words(choose_number(TVars, "is", "are")),
     (
         QuantErrorType = universal_constraint,
@@ -2604,8 +2605,7 @@ report_badly_quantified_vars(PredInfo, QuantErrorType, TVars, !Specs) :-
         BlahConstrained = words("existentially constrained"),
         BlahQuantified = words("universally quantified")
     ),
-    Pieces = InDeclaration ++
-        color_as_subject(TypeVariables ++ TVarsPieces) ++ [Are] ++
+    Pieces = InDeclaration ++ TypeVariables ++ TVarsPieces ++ [Are] ++
         color_as_possible_cause([BlahConstrained, suffix(",")]) ++
         [words("but"), Are] ++
         color_as_possible_cause([BlahQuantified, suffix(".")]) ++ [nl],

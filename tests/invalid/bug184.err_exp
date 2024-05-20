@@ -1,7 +1,7 @@
-bug184.m:019: In function `test'/0:
+bug184.m:019: In function [38;5;87m`test'/0:[39;49m
 bug184.m:019:   type error: unsatisfied typeclass constraint:
 bug184.m:019:     [38;5;203m`bug184.myclass(T)'[39;49m
-bug184.m:019: In function `test'/0:
+bug184.m:019: In function [38;5;87m`test'/0:[39;49m
 bug184.m:019:   warning: unresolved polymorphism.
 bug184.m:019:   The variable with an unbound type was:
 bug184.m:019:     [38;5;87mV_2:[39;49m [38;5;203mlist.list(T)[39;49m

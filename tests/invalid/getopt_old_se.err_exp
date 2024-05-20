@@ -1,5 +1,6 @@
 getopt_old_se.m:022: In clause for predicate `main'/2:
-getopt_old_se.m:022:   error: undefined predicate `process_options_se'/4.
-getopt_old_se.m:022:   One possible reason for the error is that the predicate
-getopt_old_se.m:022:   `process_options_se' in the Mercury standard library has
-getopt_old_se.m:022:   been renamed to `process_options'.
+getopt_old_se.m:022:   error: call to [38;5;203mundefined[39;49m predicate
+getopt_old_se.m:022:   [38;5;87m`process_options_se'/4.[39;49m
+getopt_old_se.m:022:   [38;5;226mOne possible reason for the error is that the predicate[39;49m
+getopt_old_se.m:022:   [38;5;226m`process_options_se' in the Mercury standard library has[39;49m
+getopt_old_se.m:022:   [38;5;226mbeen renamed to `process_options'.[39;49m

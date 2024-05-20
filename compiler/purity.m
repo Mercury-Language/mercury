@@ -1466,10 +1466,10 @@ error_inconsistent_purity_promise(ModuleInfo, PredInfo, PredId, Purity)
     PredOrFunc = pred_info_is_pred_or_func(PredInfo),
     PredOrFuncStr = pred_or_func_to_full_str(PredOrFunc),
     purity_name(Purity, PurityName),
-    PredPieces = describe_one_pred_name(ModuleInfo, should_not_module_qualify,
-        PredId),
+    PredPieces = describe_one_pred_name(ModuleInfo, yes(color_subject),
+        should_not_module_qualify, [], PredId),
     MainPieces =
-        [words("Error:")] ++ color_as_subject(PredPieces) ++
+        [words("Error:")] ++ PredPieces ++
         [words("is declared")] ++ color_as_correct([fixed(PurityName)]) ++
         [words("but promised")] ++ color_as_incorrect([words("pure.")]) ++
         [nl],
@@ -1487,11 +1487,11 @@ error_inconsistent_purity_promise(ModuleInfo, PredInfo, PredId, Purity)
 warn_pred_body_too_pure(ModuleInfo, PredInfo, PredId,
         ActualPurity, DeclaredPurity) = Spec :-
     pred_info_get_context(PredInfo, Context),
-    PredPieces = describe_one_pred_name(ModuleInfo, should_not_module_qualify,
-        PredId),
+    PredPieces = describe_one_pred_name(ModuleInfo, yes(color_subject),
+        should_not_module_qualify, [], PredId),
     purity_name(DeclaredPurity, DeclaredPurityName),
     purity_name(ActualPurity, ActualPurityName),
-    Pieces = [words("Warning:")] ++ color_as_subject(PredPieces) ++
+    Pieces = [words("Warning:")] ++ PredPieces ++
         [words("is declared")] ++
             color_as_correct([fixed(DeclaredPurityName), suffix(",")]) ++
         [words("but is actually")] ++
@@ -1505,8 +1505,8 @@ warn_pred_body_too_pure(ModuleInfo, PredInfo, PredId,
 warn_unnecessary_purity_promise(ModuleInfo, PredInfo, PredId, PromisedPurity)
         = Spec :-
     pred_info_get_context(PredInfo, Context),
-    PredPieces = describe_one_pred_name(ModuleInfo, should_not_module_qualify,
-        PredId),
+    PredPieces = describe_one_pred_name(ModuleInfo, no,
+        should_not_module_qualify, [], PredId),
     (
         PromisedPurity = purity_pure,
         Pragma = "promise_pure",
@@ -1537,20 +1537,20 @@ warn_unnecessary_purity_promise(ModuleInfo, PredInfo, PredId, PromisedPurity)
 
 error_not_pure_enough(ModuleInfo, PredInfo, PredId, ActualPurity) = Spec :-
     pred_info_get_context(PredInfo, Context),
-    PredPieces = describe_one_pred_name(ModuleInfo, should_not_module_qualify,
-        PredId),
+    PredPieces = describe_one_pred_name(ModuleInfo, yes(color_subject),
+        should_not_module_qualify, [], PredId),
     pred_info_get_purity(PredInfo, DeclaredPurity),
     purity_name(ActualPurity, ActualPurityName),
     purity_name(DeclaredPurity, DeclaredPurityName),
 
     ( if is_unify_index_or_compare_pred(PredInfo) then
-        Pieces = [words("Error:")] ++ color_as_subject(PredPieces) ++
+        Pieces = [words("Error:")] ++ PredPieces ++
             [words("is")] ++
                 color_as_incorrect([fixed(ActualPurityName), suffix(",")]) ++
             [words("but it must be")] ++
                 color_as_correct([words("pure.")]) ++ [nl]
     else
-        Pieces = [words("Error:")] ++ color_as_subject(PredPieces) ++
+        Pieces = [words("Error:")] ++ PredPieces ++
             [words("is")] ++
                 color_as_incorrect([fixed(ActualPurityName), suffix(".")]) ++
             [words("It must either be")] ++
@@ -1569,14 +1569,14 @@ error_not_pure_enough(ModuleInfo, PredInfo, PredId, ActualPurity) = Spec :-
 error_missing_body_impurity_decl(ModuleInfo, PredId, Context) = Spec :-
     module_info_pred_info(ModuleInfo, PredId, PredInfo),
     PredOrFunc = pred_info_is_pred_or_func(PredInfo),
-    PredPieces = describe_one_pred_name(ModuleInfo, should_module_qualify,
-        PredId),
+    PredColonPieces = describe_one_pred_name(ModuleInfo, yes(color_subject),
+        should_module_qualify, [suffix(":")], PredId),
     pred_info_get_purity(PredInfo, Purity),
     purity_article_name(Purity, Article, PurityName),
     MustBePrecededByIndicator = [words("must be preceded by"),
         words(Article), quote(PurityName), words("indicator.")],
     Pieces1 = [words("In call to"), fixed(PurityName)] ++
-        PredPieces ++ [suffix(":"), nl],
+        PredColonPieces ++ [nl],
     (
         PredOrFunc = pf_predicate,
         Pieces2 = [words("purity error: call")] ++
@@ -1599,9 +1599,9 @@ warn_unnecessary_body_impurity_decl(ModuleInfo, PredId, Context,
     pred_info_get_purity(PredInfo, ActualPurity),
     purity_name(DeclaredPurity, DeclaredPurityName),
     purity_name(ActualPurity, ActualPurityName),
-    PredPieces = describe_one_pred_name(ModuleInfo, should_module_qualify,
-        PredId),
-    Pieces1 = [words("In call to")] ++ PredPieces ++ [suffix(":"), nl,
+    PredColonPieces = describe_one_pred_name(ModuleInfo, yes(color_subject),
+        should_module_qualify, [suffix(":")], PredId),
+    Pieces1 = [words("In call to")] ++ PredColonPieces ++ [nl,
         words("warning:")] ++
         color_as_incorrect([words("unnecessary"), quote(DeclaredPurityName),
             words("indicator.")]) ++

@@ -1,2 +1,2 @@
 spurious_mode_error.m:087: In clause for predicate `foldit'/4:
-spurious_mode_error.m:087:   error: undefined predicate `foobie'/3.
+spurious_mode_error.m:087:   error: call to [38;5;203mundefined[39;49m predicate [38;5;87m`foobie'/3.[39;49m

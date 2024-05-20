@@ -1,16 +1,16 @@
-multimode_syntax.m:015: Error: no clauses for function `func0'/0.
-multimode_syntax.m:017: Error: clause for [38;5;87mpredicate `::'/2[39;49m [38;5;203mwithout[39;49m a
+multimode_syntax.m:015: Error: function [38;5;87m`func0'/0[39;49m [38;5;203mhas no clauses.[39;49m
+multimode_syntax.m:017: Error: clause for predicate [38;5;87m`::'/2[39;49m [38;5;203mwithout[39;49m a
 multimode_syntax.m:017:   corresponding `:- pred' declaration.
 multimode_syntax.m:017: In clause for predicate `::'/2:
 multimode_syntax.m:017:   in argument 1 of clause head:
-multimode_syntax.m:017:   error: the language construct `='/2 should be used as
-multimode_syntax.m:017:   a goal, not as an expression.
+multimode_syntax.m:017:   error: the language construct [38;5;87m`='/2[39;49m [38;5;203mshould be used as[39;49m
+multimode_syntax.m:017:   [38;5;203ma goal, not as an expression.[39;49m
 multimode_syntax.m:017:   [38;5;226mIf you are trying to use a goal as a boolean[39;49m
 multimode_syntax.m:017:   [38;5;226mfunction, you should write `if <goal> then yes else[39;49m
 multimode_syntax.m:017:   [38;5;226mno' instead.[39;49m
 multimode_syntax.m:017: In clause for predicate `::'/2:
 multimode_syntax.m:017:   in argument 2 of clause head:
-multimode_syntax.m:017:   error: undefined symbol `out'/0.
+multimode_syntax.m:017:   error: [38;5;203mundefined[39;49m symbol [38;5;87m`out'/0.[39;49m
 multimode_syntax.m:022: In the head of a clause for
 multimode_syntax.m:022:   function `multimode_syntax.func1'/1:
 multimode_syntax.m:022:   syntax error: [38;5;203msome but not all arguments have mode[39;49m
@@ -19,30 +19,30 @@ multimode_syntax.m:023: In the head of a clause for
 multimode_syntax.m:023:   function `multimode_syntax.func1'/1:
 multimode_syntax.m:023:   syntax error: [38;5;203msome but not all arguments have mode[39;49m
 multimode_syntax.m:023:   [38;5;203mannotations.[39;49m
-multimode_syntax.m:027: Warning: the [38;5;87mfunction `func2'/2[39;49m has only one mode, so
+multimode_syntax.m:027: Warning: the function [38;5;87m`func2'/2[39;49m has only one mode, so
 multimode_syntax.m:027:   there is [38;5;203mno need to restrict a clause for it to that[39;49m
 multimode_syntax.m:027:   [38;5;203mmode.[39;49m
-multimode_syntax.m:029: In clause for function `func2'/2:
+multimode_syntax.m:029: In clause for function [38;5;87m`func2'/2:[39;49m
 multimode_syntax.m:029:   error: mode annotation specifies [38;5;203mundeclared mode[39;49m
 multimode_syntax.m:029:   [38;5;203m`func2(in, out) = out'.[39;49m
 multimode_syntax.m:029:   The declared mode for this function is:
 multimode_syntax.m:029:     :- mode func2(in, in) = out is det.
-multimode_syntax.m:031: In clause for function `func2'/2:
+multimode_syntax.m:031: In clause for function [38;5;87m`func2'/2:[39;49m
 multimode_syntax.m:031:   error: mode annotation specifies [38;5;203mundeclared mode[39;49m
 multimode_syntax.m:031:   [38;5;203m`func2(out, in) = out'.[39;49m
 multimode_syntax.m:031:   The declared mode for this function is:
 multimode_syntax.m:031:     :- mode func2(in, in) = out is det.
-multimode_syntax.m:033: In clause for function `func2'/2:
+multimode_syntax.m:033: In clause for function [38;5;87m`func2'/2:[39;49m
 multimode_syntax.m:033:   error: mode annotation specifies [38;5;203mundeclared mode[39;49m
 multimode_syntax.m:033:   [38;5;203m`func2(out, out) = out'.[39;49m
 multimode_syntax.m:033:   The declared mode for this function is:
 multimode_syntax.m:033:     :- mode func2(in, in) = out is det.
-multimode_syntax.m:037: In clause for function `func2b'/2:
+multimode_syntax.m:037: In clause for function [38;5;87m`func2b'/2:[39;49m
 multimode_syntax.m:037:   error: mode annotation specifies [38;5;203mundeclared mode[39;49m
 multimode_syntax.m:037:   [38;5;203m`func2b(in, out) = out'.[39;49m
 multimode_syntax.m:037:   The declared mode for this function is:
 multimode_syntax.m:037:     :- mode func2b(in, in) = out is det.
-multimode_syntax.m:041: In clause for predicate `pred2b'/2:
+multimode_syntax.m:041: In clause for predicate [38;5;87m`pred2b'/2:[39;49m
 multimode_syntax.m:041:   error: mode annotation specifies [38;5;203mundeclared mode[39;49m
 multimode_syntax.m:041:   [38;5;203m`pred2b(in, out)'.[39;49m
 multimode_syntax.m:041:   (There are no declared modes for this predicate.)

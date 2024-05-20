@@ -8,4 +8,4 @@ method_impl.m:026:   The partial type assignment was:
 method_impl.m:026:     HeadVar__1_1: method_impl.foo
 method_impl.m:026:     HeadVar__2_2: int
 method_impl.m:029: In clause for instance method predicate `m1'/2:
-method_impl.m:029:   error: undefined predicate `bar_m1'/2.
+method_impl.m:029:   error: call to [38;5;203mundefined[39;49m predicate [38;5;87m`bar_m1'/2.[39;49m

@@ -2,46 +2,48 @@ purity_nonsense_2.m:013: Syntax error at token 'type': unexpected token at
 purity_nonsense_2.m:013:   start of (sub)term.
 purity_nonsense_2.m:016: Syntax error at token 'mode': unexpected token at
 purity_nonsense_2.m:016:   start of (sub)term.
-purity_nonsense_2.m:018: Error: no clauses for predicate `undefined'/0.
+purity_nonsense_2.m:018: Error: predicate [38;5;87m`undefined'/0[39;49m [38;5;203mhas no clauses.[39;49m
 purity_nonsense_2.m:020: Error: `:- pragma promise_pure' declaration for
 purity_nonsense_2.m:020:   [38;5;87m`undefined2'/0[39;49m [38;5;203mwithout[39;49m a corresponding `:- pred' or
 purity_nonsense_2.m:020:   `:- func' declaration.
-purity_nonsense_2.m:022: Error: clause for [38;5;87mpredicate `e12'/0[39;49m [38;5;203mwithout[39;49m a
+purity_nonsense_2.m:022: Error: clause for predicate [38;5;87m`e12'/0[39;49m [38;5;203mwithout[39;49m a
 purity_nonsense_2.m:022:   corresponding `:- pred' declaration.
 purity_nonsense_2.m:023: In clause for predicate `e12'/0:
-purity_nonsense_2.m:023:   error: `impure' marker in an inappropriate place.
+purity_nonsense_2.m:023:   error: this [38;5;87m`impure' marker[39;49m is [38;5;203mnot before a[39;49m
+purity_nonsense_2.m:023:   [38;5;203mpredicate call.[39;49m
 purity_nonsense_2.m:023: In clause for predicate `e12'/0:
 purity_nonsense_2.m:023:   in argument 1 of call to predicate `impure'/1:
-purity_nonsense_2.m:023:   error: the language construct `\+'/1 should be used
-purity_nonsense_2.m:023:   as a goal, not as an expression.
+purity_nonsense_2.m:023:   error: the language construct [38;5;87m`\+'/1[39;49m [38;5;203mshould be used[39;49m
+purity_nonsense_2.m:023:   [38;5;203mas a goal, not as an expression.[39;49m
 purity_nonsense_2.m:023: In clause for predicate `e12'/0:
 purity_nonsense_2.m:023:   in argument 1 of call to predicate `impure'/1:
 purity_nonsense_2.m:023:   in argument 1 of functor `\\+/1':
-purity_nonsense_2.m:023:   error: the language construct `impure'/1 should be
-purity_nonsense_2.m:023:   used as a goal, not as an expression.
+purity_nonsense_2.m:023:   error: the language construct [38;5;87m`impure'/1[39;49m [38;5;203mshould be[39;49m
+purity_nonsense_2.m:023:   [38;5;203mused as a goal, not as an expression.[39;49m
 purity_nonsense_2.m:023: In clause for predicate `e12'/0:
 purity_nonsense_2.m:023:   in argument 1 of call to predicate `impure'/1:
 purity_nonsense_2.m:023:   in argument 1 of functor `\\+/1':
 purity_nonsense_2.m:023:   in argument 1 of functor `impure/1':
-purity_nonsense_2.m:023:   error: undefined symbol `imp'/0.
-purity_nonsense_2.m:025: Error: clause for [38;5;87mpredicate `e13'/0[39;49m [38;5;203mwithout[39;49m a
+purity_nonsense_2.m:023:   error: [38;5;203mundefined[39;49m symbol [38;5;87m`imp'/0.[39;49m
+purity_nonsense_2.m:025: Error: clause for predicate [38;5;87m`e13'/0[39;49m [38;5;203mwithout[39;49m a
 purity_nonsense_2.m:025:   corresponding `:- pred' declaration.
 purity_nonsense_2.m:026: In clause for predicate `e13'/0:
-purity_nonsense_2.m:026:   error: `semipure' marker in an inappropriate place.
+purity_nonsense_2.m:026:   error: this [38;5;87m`semipure' marker[39;49m is [38;5;203mnot before a[39;49m
+purity_nonsense_2.m:026:   [38;5;203mpredicate call.[39;49m
 purity_nonsense_2.m:026: In clause for predicate `e13'/0:
 purity_nonsense_2.m:026:   in argument 1 of call to predicate `semipure'/1:
-purity_nonsense_2.m:026:   error: the language construct `\+'/1 should be used
-purity_nonsense_2.m:026:   as a goal, not as an expression.
+purity_nonsense_2.m:026:   error: the language construct [38;5;87m`\+'/1[39;49m [38;5;203mshould be used[39;49m
+purity_nonsense_2.m:026:   [38;5;203mas a goal, not as an expression.[39;49m
 purity_nonsense_2.m:026: In clause for predicate `e13'/0:
 purity_nonsense_2.m:026:   in argument 1 of call to predicate `semipure'/1:
 purity_nonsense_2.m:026:   in argument 1 of functor `\\+/1':
-purity_nonsense_2.m:026:   error: the language construct `semipure'/1 should be
-purity_nonsense_2.m:026:   used as a goal, not as an expression.
+purity_nonsense_2.m:026:   error: the language construct [38;5;87m`semipure'/1[39;49m [38;5;203mshould be[39;49m
+purity_nonsense_2.m:026:   [38;5;203mused as a goal, not as an expression.[39;49m
 purity_nonsense_2.m:026: In clause for predicate `e13'/0:
 purity_nonsense_2.m:026:   in argument 1 of call to predicate `semipure'/1:
 purity_nonsense_2.m:026:   in argument 1 of functor `\\+/1':
 purity_nonsense_2.m:026:   in argument 1 of functor `semipure/1':
-purity_nonsense_2.m:026:   error: undefined symbol `semi'/0.
+purity_nonsense_2.m:026:   error: [38;5;203mundefined[39;49m symbol [38;5;87m`semi'/0.[39;49m
 purity_nonsense_2.m:032: In clause for predicate `e14'/1:
 purity_nonsense_2.m:032:   in argument 1 (i.e. the predicate term) of impure
 purity_nonsense_2.m:032:   higher-order predicate call:

@@ -1,16 +1,17 @@
 errors_1.m:008: Warning: the interface of module [38;5;87m`errors_1'[39;49m [38;5;203mdoes not export[39;49m
 errors_1.m:008:   [38;5;203manything.[39;49m
-errors_1.m:012: Error: module `errors_1' should start with either an
-errors_1.m:012:   `:- interface' or an `:- implementation' declaration.
+errors_1.m:012: Error: module `errors_1' [38;5;203mshould start with[39;49m either an
+errors_1.m:012:   [38;5;40m`:- interface' declaration[39;49m or an [38;5;40m`:- implementation'[39;49m
+errors_1.m:012:   [38;5;40mdeclaration.[39;49m
 errors_1.m:012:   The following assumes that the missing declaration is an
 errors_1.m:012:   `:- implementation' declaration.
-errors_1.m:030: Error: `:- mode' declaration for [38;5;87mpredicate[39;49m
+errors_1.m:030: Error: `:- mode' declaration for predicate
 errors_1.m:030:   [38;5;87m`mode_declaration_without_pred_declaration'/0[39;49m [38;5;203mwithout[39;49m a
 errors_1.m:030:   corresponding `:- pred' declaration.
-errors_1.m:034: Error: `:- mode' declaration for [38;5;87mpredicate[39;49m
+errors_1.m:034: Error: `:- mode' declaration for predicate
 errors_1.m:034:   [38;5;87m`missing_pred_declaration'/0[39;49m [38;5;203mwithout[39;49m a corresponding
 errors_1.m:034:   `:- pred' declaration.
-errors_1.m:040: Error: clause for [38;5;87mpredicate[39;49m
+errors_1.m:040: Error: clause for predicate
 errors_1.m:040:   [38;5;87m`clause_without_pred_or_mode_declaration'/0[39;49m [38;5;203mwithout[39;49m a
 errors_1.m:040:   corresponding `:- pred' declaration.
 errors_1.m:053: Error: [38;5;87m`a'/0[39;49m [38;5;203moccurs more than once[39;49m in the definition of type

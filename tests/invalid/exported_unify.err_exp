@@ -1,4 +1,4 @@
 exported_unify_helper_1.int:003: In clause for unification predicate for type
 exported_unify_helper_1.int:003:   `foo':
-exported_unify_helper_1.int:003:   error: undefined predicate
-exported_unify_helper_1.int:003:   `exported_unify_helper_1.unify_foo'/2.
+exported_unify_helper_1.int:003:   error: call to [38;5;203mundefined[39;49m predicate
+exported_unify_helper_1.int:003:   [38;5;87m`exported_unify_helper_1.unify_foo'/2.[39;49m

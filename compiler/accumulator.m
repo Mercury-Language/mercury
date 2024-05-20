@@ -274,8 +274,7 @@ accu_transform_proc(ProgressStream, proc(PredId, ProcId), PredInfo,
         ;
             Warnings = [_ | _],
             pred_info_get_context(PredInfo, Context),
-            PredPieces = describe_one_pred_name(!.ModuleInfo,
-                should_module_qualify, PredId),
+            PredPieces = describe_qual_pred_name(!.ModuleInfo, PredId),
             InPieces = [words("In") | PredPieces] ++ [suffix(":"), nl],
             InMsg = simple_msg(Context,
                 [option_is_set(warn_accumulator_swaps, yes,
@@ -344,14 +343,16 @@ generate_warnings(ModuleInfo, VarTable, [Warning | Warnings], [Msg | Msgs]) :-
 
 generate_warning(ModuleInfo, VarTable, Warning, Msg) :-
     Warning = accu_warn(Context, PredId, VarA, VarB),
-    PredPieces = describe_one_pred_name(ModuleInfo, should_module_qualify,
-        PredId),
+    PredPieces = describe_one_pred_name(ModuleInfo, yes(color_subject),
+        should_module_qualify, [], PredId),
     VarAName = var_table_entry_name(VarTable, VarA),
     VarBName = var_table_entry_name(VarTable, VarB),
     Pieces = [words("warning: the call to")] ++ PredPieces ++
-        [words("has had the location of the variables"),
-        quote(VarAName), words("and"), quote(VarBName),
-        words("swapped to allow accumulator introduction."), nl],
+        [words("has had the locations of the variables")] ++
+        color_as_subject([quote(VarAName)]) ++ [words("and")] ++
+        color_as_subject([quote(VarBName)]) ++
+        color_as_possible_cause([words("swapped")]) ++
+        [words("to allow accumulator introduction."), nl],
     Msg = msg(Context, Pieces).
 
 %---------------------------------------------------------------------------%

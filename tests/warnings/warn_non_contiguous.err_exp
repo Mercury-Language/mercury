@@ -1,9 +1,9 @@
-warn_non_contiguous.m:044: Warning: non-contiguous clauses for predicate `p'/2.
+warn_non_contiguous.m:044: Warning: non-contiguous clauses for predicate [38;5;87m`p'/2.[39;49m
 warn_non_contiguous.m:049:   Gap in clauses of predicate `p'/2 starts after
 warn_non_contiguous.m:049:   this clause.
 warn_non_contiguous.m:054:   Gap in clauses of predicate `p'/2 ends with this
 warn_non_contiguous.m:054:   clause.
-warn_non_contiguous.m:052: Warning: non-contiguous clauses for predicate `q'/2.
+warn_non_contiguous.m:052: Warning: non-contiguous clauses for predicate [38;5;87m`q'/2.[39;49m
 warn_non_contiguous.m:046:   Gap 1 in clauses of predicate `q'/2 starts after
 warn_non_contiguous.m:046:   this clause.
 warn_non_contiguous.m:050:   Gap 1 in clauses of predicate `q'/2 ends with this

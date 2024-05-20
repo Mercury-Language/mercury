@@ -762,13 +762,13 @@ map_foldl_over_type_ctor_defns_2(Pred, _Name, !TypeCtorTable, !Acc) :-
                 % Are there `:- pragma foreign' type declarations for
                 % this type? We need to know when we are generating e.g.
                 % optimization interface files, because we want to make
-                % such files valid in all grades, not just the grade that is
-                % currently selected grade. In this case, it is possible
-                % for this field to be a yes(...) wrapped around a foreign
-                % type body that applies to the current grade, which means
-                % that if we were generating code for this module,
+                % such files valid in all grades, not just in the currently
+                % selected grade. In this case, it is possible for this field
+                % to be a yes(...) wrapped around a foreign type body
+                % that applies to the current grade, which means that
+                % when the time comes to *generate code* for this module,
                 % the representation we would use for this type would be
-                % the *foreign* type, not the Mercury type.
+                % the *foreign* type, not the Mercury du type.
                 %
                 % If we are generating code, this field will be yes(...)
                 % *only* if the foreign type definitions do not apply

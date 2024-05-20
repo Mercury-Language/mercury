@@ -1,8 +1,8 @@
 constructor_warning.m:020: In clause for predicate `bar'/1:
 constructor_warning.m:020:   in argument 1 of clause head:
-constructor_warning.m:020:   error: wrong number of arguments ([38;5;203m0[39;49m; should be [38;5;40m1[39;49m
-constructor_warning.m:020:   or [38;5;40m2[39;49m) in use of constructor `foo_baz'.
+constructor_warning.m:020:   error: [38;5;203mwrong number of arguments[39;49m ([38;5;203m0[39;49m; should be [38;5;40m1[39;49m
+constructor_warning.m:020:   or [38;5;40m2[39;49m) in use of constructor [38;5;87m`foo_baz'.[39;49m
 constructor_warning.m:021: In clause for predicate `bar'/1:
 constructor_warning.m:021:   in argument 1 of clause head:
-constructor_warning.m:021:   error: wrong number of arguments ([38;5;203m1[39;49m; should be [38;5;40m0[39;49m)
-constructor_warning.m:021:   in use of constructor `fanta_fanta_fanta'.
+constructor_warning.m:021:   error: [38;5;203mwrong number of arguments[39;49m ([38;5;203m1[39;49m; should be [38;5;40m0[39;49m)
+constructor_warning.m:021:   in use of constructor [38;5;87m`fanta_fanta_fanta'.[39;49m

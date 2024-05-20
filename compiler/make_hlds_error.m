@@ -183,8 +183,8 @@ report_undefined_pred_or_func_error(MaybePorF, SymName,
 
 report_undeclared_mode_error(ModuleInfo, PredId, PredInfo, VarSet, ArgModes,
         DescPieces, Context, !Specs) :-
-    PredIdPieces = describe_one_pred_name(ModuleInfo,
-        should_not_module_qualify, PredId),
+    PredColonPieces = describe_one_pred_name(ModuleInfo, yes(color_subject),
+        should_not_module_qualify, [suffix(":")], PredId),
     strip_module_names_from_mode_list(strip_builtin_module_name,
         set_default_func, ArgModes, StrippedArgModes),
     PredOrFunc = pred_info_is_pred_or_func(PredInfo),
@@ -194,7 +194,7 @@ report_undeclared_mode_error(ModuleInfo, PredId, PredInfo, VarSet, ArgModes,
         varset.coerce(VarSet), unqualified(Name), StrippedArgModes, MaybeDet),
 
     MainPieces = [words("In") | DescPieces] ++ [words("for")] ++
-        PredIdPieces ++ [suffix(":"), nl,
+        PredColonPieces ++ [nl,
         words("error: mode annotation specifies")] ++
         color_as_incorrect([words("undeclared mode"), quote(SubDeclStr),
             suffix(".")]) ++
@@ -271,12 +271,14 @@ maybe_report_undefined_pred_error(ModuleInfo, PredOrFunc, SymName,
     then
         true
     else
-        PFSymNameArity = pf_sym_name_arity(PredOrFunc, SymName, PredFormArity),
+        user_arity_pred_form_arity(PredOrFunc, UserArity, PredFormArity),
+        UserArity = user_arity(UserArityInt),
+        SNA = sym_name_arity(SymName, UserArityInt),
         PredOrFuncStr = pred_or_func_to_str(PredOrFunc),
         MainPieces = [invis_order_default_start(1, ""),
-            words("Error:") | DescPieces] ++ [words("for")] ++
-            color_as_subject(
-                [unqual_pf_sym_name_pred_form_arity(PFSymNameArity)]) ++
+            words("Error:") | DescPieces] ++
+            [words("for"), p_or_f(PredOrFunc)] ++
+            color_as_subject([unqual_sym_name_arity(SNA)]) ++
             color_as_incorrect([words("without")]) ++
             [words("a corresponding"), decl(PredOrFuncStr),
             words("declaration."), nl],

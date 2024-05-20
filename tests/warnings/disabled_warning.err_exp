@@ -1,2 +1,2 @@
-disabled_warning.m:026: Unknown format string in call to predicate
-disabled_warning.m:026:   `string.format'/3.
+disabled_warning.m:026: Error: [38;5;203munknown format string[39;49m in call to predicate
+disabled_warning.m:026:   [38;5;87m`string.format'/3.[39;49m

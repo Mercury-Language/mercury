@@ -1459,16 +1459,19 @@ maybe_report_missing_pred_inst(PredInfo, VarTable, Var, Context,
     prog_context) = error_spec.
 
 report_missing_higher_order_inst(PredInfo, VarTable, Var, Context) = Spec :-
-    PredPieces = describe_one_pred_info_name(should_module_qualify, PredInfo),
+    PredPieces = describe_one_pred_info_name(no, should_module_qualify, [],
+        PredInfo),
     lookup_var_entry(VarTable, Var, Entry),
     VarName = var_entry_name(Var, Entry),
     InPieces = [words("In") | PredPieces] ++ [suffix(":"), nl],
-    ErrorPieces = [words("error: missing higher-order inst for variable"),
-        quote(VarName), suffix("."), nl],
-    VerbosePieces = [
-        words("Please provide the higher-order inst to ensure correctness"),
-        words("of the generated code in this grade.")
-    ],
+    ErrorPieces = [words("error:")] ++
+        color_as_incorrect([words("missing higher-order inst")]) ++
+        [words("for variable")] ++
+        color_as_subject([quote(VarName), suffix(".")]) ++
+        [nl],
+    VerbosePieces =
+        [words("Please provide the higher-order inst to ensure correctness"),
+        words("of the generated code in this grade.")],
     Msg = simple_msg(Context, [always(InPieces), always(ErrorPieces),
         verbose_only(verbose_always, VerbosePieces)]),
     Spec = error_spec($pred, severity_error, phase_code_gen, [Msg]).

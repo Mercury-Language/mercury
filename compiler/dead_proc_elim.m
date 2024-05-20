@@ -1397,10 +1397,11 @@ suppress_unused_mutable_access_pred(Unused, Suppress) :-
     = error_spec.
 
 warn_dead_proc(ModuleInfo, PredId, ProcId, Context) = Spec :-
-    ProcPieces = describe_one_proc_name(ModuleInfo,
+    ProcPieces = describe_one_proc_name(ModuleInfo, yes(color_subject),
         should_not_module_qualify, proc(PredId, ProcId)),
     Pieces = [words("Warning:")] ++ ProcPieces ++
-        [words("is never called."), nl],
+        color_as_incorrect([words("is never called.")]) ++
+        [nl],
     Spec = spec($pred, severity_warning, phase_dead_code, Context, Pieces).
 
 %-----------------------------------------------------------------------------%

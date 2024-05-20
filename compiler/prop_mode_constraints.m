@@ -97,6 +97,7 @@
 :- import_module parse_tree.write_error_spec.
 
 :- import_module bool.
+:- import_module maybe.
 :- import_module require.
 :- import_module string.
 :- import_module term.
@@ -536,7 +537,7 @@ pretty_print_pred_constraints(OutputStream, ModuleInfo, ConstraintVarSet,
     module_info_pred_info(ModuleInfo, PredId, PredInfo),
     write_error_pieces_plain(OutputStream, Globals,
         [words("Constraints for")] ++
-        describe_one_pred_info_name(should_module_qualify, PredInfo) ++
+        describe_one_pred_info_name(no, should_module_qualify, [], PredInfo) ++
         [suffix(":")], !IO),
 
     map.lookup(PredConstraintsMap, PredId, {_, PredConstraints}),
@@ -564,8 +565,8 @@ pretty_print_proc_constraints(OutputStream, ModuleInfo, ConstraintVarSet,
     write_error_pieces_plain(OutputStream, Globals, [fixed("")], !IO),
 
     PredProcId = proc(PredId, ProcId),
-    ProcNamePieces =
-        describe_one_proc_name(ModuleInfo, should_module_qualify, PredProcId),
+    ProcNamePieces = describe_one_proc_name(ModuleInfo, no,
+        should_module_qualify, PredProcId),
     write_error_pieces_plain(OutputStream, Globals,
         ProcNamePieces ++ [suffix(":")], !IO),
     ProcSpecAnnConstraints =

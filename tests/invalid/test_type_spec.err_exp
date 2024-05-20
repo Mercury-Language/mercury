@@ -1,10 +1,10 @@
-test_type_spec.m:011: Error: no clauses for predicate `type_spec1'/1.
+test_type_spec.m:011: Error: predicate [38;5;87m`type_spec1'/1[39;49m [38;5;203mhas no clauses.[39;49m
 test_type_spec.m:013: In `:- pragma type_spec' declaration for predicate
 test_type_spec.m:013:   `test_type_spec.type_spec1'/1:
 test_type_spec.m:013:   error: variable `U' does not occur in the `:- pred'
 test_type_spec.m:013:   declaration.
 test_type_spec.m:014: In `:- pragma type_spec' declaration for predicate
-test_type_spec.m:014:   `type_spec1'/1:
+test_type_spec.m:014:   [38;5;87m`type_spec1'/1:[39;49m
 test_type_spec.m:014:   error: mode annotation specifies [38;5;203mundeclared mode[39;49m
 test_type_spec.m:014:   [38;5;203m`type_spec1(out)'.[39;49m
 test_type_spec.m:014:   The declared mode for this predicate is:
@@ -13,7 +13,7 @@ test_type_spec.m:016: Error: `:- pragma type_spec' declaration for
 test_type_spec.m:016:   [38;5;87m`type_spec1'/2[39;49m [38;5;203mwithout[39;49m a corresponding `:- pred' or
 test_type_spec.m:016:   `:- func' declaration.
 test_type_spec.m:016:   [38;5;226m`type_spec1' does exist with arity 1.[39;49m
-test_type_spec.m:024: Error: no clauses for predicate `type_spec2'/1.
+test_type_spec.m:024: Error: predicate [38;5;87m`type_spec2'/1[39;49m [38;5;203mhas no clauses.[39;49m
 test_type_spec.m:026: In `:- pragma type_spec' declaration for predicate
 test_type_spec.m:026:   `test_type_spec.type_spec2'/1:
 test_type_spec.m:026:   error: the substitution includes the existentially

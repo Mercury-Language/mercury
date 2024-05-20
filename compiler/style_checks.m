@@ -264,14 +264,13 @@ report_any_inc_gaps(PredInfo, FirstINC, SecondINC, LaterINCs,
     then
         true
     else
-        PredPieces = describe_one_pred_info_name(should_not_module_qualify,
-            PredInfo),
+        PredPieces = describe_one_pred_info_name(yes(color_subject),
+            should_not_module_qualify, [], PredInfo),
         PredOrFunc = pred_info_is_pred_or_func(PredInfo),
         PredOrFuncStr = pred_or_func_to_full_str(PredOrFunc),
         ( if FirstProcNum = 0 then
-            FirstPieces = [words("Warning: the")] ++
-                color_as_subject([words(PredOrFuncStr),
-                    words("declaration for") | PredPieces]) ++
+            FirstPieces = [words("Warning: the"), words(PredOrFuncStr),
+                words("declaration for")] ++ PredPieces ++
                 [words("is")] ++
                 color_as_incorrect([words("not followed immediately by"),
                     words("its first mode declaration.")]) ++
@@ -279,9 +278,8 @@ report_any_inc_gaps(PredInfo, FirstINC, SecondINC, LaterINCs,
             SecondPieces = [words("The first mode declaration"),
                 words("is here.")]
         else
-            FirstPieces = [words("Warning: the")] ++
-                color_as_subject([nth_fixed(FirstProcNum),
-                    words("mode declaration for") | PredPieces]) ++
+            FirstPieces = [words("Warning: the"), nth_fixed(FirstProcNum),
+                words("mode declaration for")] ++ PredPieces ++
                 [words("is")] ++
                 color_as_incorrect([words("not followed immediately by its"),
                     nth_fixed(FirstProcNum + 1),
@@ -356,8 +354,8 @@ compare_defn_item_number(A, B, R) :-
 
 desc_pred_item_numbers(PredItemNumbers, PredDescStr) :-
     PredItemNumbers = pred_item_numbers(_, PredInfo, _, _),
-    PredPieces =
-        describe_one_pred_info_name(should_not_module_qualify, PredInfo),
+    PredPieces = describe_one_pred_info_name(no, should_not_module_qualify,
+        [], PredInfo),
     PredDescStr = error_pieces_to_one_line_string(PredPieces).
 
 %---------------------------------------------------------------------------%

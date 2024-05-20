@@ -758,25 +758,27 @@ check_fmt_str_val_vars(ModuleInfo, PredInfo, ProcInfo, ConjMaps, PredMap,
                 Result = error3([])
             ;
                 WarnKnownBadFormatCalls = yes,
-                PredNamePieces = describe_one_pred_name(ModuleInfo,
-                    should_module_qualify, PredId),
                 (
                     MaybePos = no,
-                    PragmaPieces = []
+                    PredNameDotPieces = describe_one_pred_name(ModuleInfo,
+                        yes(color_subject), should_module_qualify,
+                        [suffix(":")], PredId)
                 ;
                     MaybePos = yes({Pos, ArgNumFS, ArgNumVL}),
                     % XXX Any ideas for better wording?
-                    PragmaPieces = [words("when considering the"),
+                    PredNameDotPieces =
+                        describe_one_pred_name(ModuleInfo, yes(color_subject),
+                            should_module_qualify, [], PredId) ++
+                        [words("when considering the"),
                         nth_fixed(Pos), words("entry in its"),
                         pragma_decl("format_call"), words("declaration,"),
                         words("which places the format string as the"),
                         nth_fixed(ArgNumFS), words("argument, and"),
                         words("the values list as the"),
-                        nth_fixed(ArgNumVL), words("argument")]
+                        nth_fixed(ArgNumVL), words("argument"), suffix(":")]
                 ),
                 PrefixPieces = [words("Mismatched format and values"),
-                    words("in call to")] ++ PredNamePieces ++ PragmaPieces ++
-                    [suffix(":"), nl],
+                    words("in call to")] ++ PredNameDotPieces ++ [nl],
                 globals.lookup_bool_option(Globals,
                     warn_only_one_format_string_error,
                     WarnOnlyOneFormatStringError),
@@ -850,10 +852,12 @@ follow_format_string_handle_unknown(ModuleInfo, ConjMaps, PredMap,
             Specs = []
         ;
             WarnUnknownFormat = warn_unknown_format,
-            PredNamePieces = describe_one_pred_name(ModuleInfo,
-                should_module_qualify, PredId),
-            Pieces = [words("Unknown format string in call to")] ++
-                PredNamePieces ++ [suffix("."), nl],
+            PredNameDotPieces = describe_one_pred_name(ModuleInfo,
+                yes(color_subject), should_module_qualify, [suffix(".")],
+                PredId),
+            Pieces = [words("Error:")] ++
+                color_as_incorrect([words("unknown format string")]) ++
+                [words("in call to")] ++ PredNameDotPieces ++ [nl],
             Spec = spec($pred, severity_warning,
                 phase_simplify(report_in_any_mode), Context, Pieces),
             Specs = [Spec]
@@ -979,10 +983,12 @@ follow_values_handle_unknown(ModuleInfo, ConjMaps, PredMap, FormatCallSite,
             Specs = []
         ;
             WarnUnknownFormat = warn_unknown_format,
-            PredNamePieces = describe_one_pred_name(ModuleInfo,
-                should_module_qualify, PredId),
-            Pieces = [words("Unknown format values in call to")] ++
-                PredNamePieces ++ [suffix("."), nl],
+            PredNameDotPieces = describe_one_pred_name(ModuleInfo,
+                yes(color_subject), should_module_qualify, [suffix(".")],
+                PredId),
+            Pieces = [words("Error:")] ++
+                color_as_incorrect([words("unknown format values")]) ++
+                [words("in call to")] ++ PredNameDotPieces ++ [nl],
             Spec = spec($pred, severity_warning,
                 phase_simplify(report_in_any_mode), Context, Pieces),
             Specs = [Spec]

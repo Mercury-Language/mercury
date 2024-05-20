@@ -1,5 +1,5 @@
-typeclass_test_1.m:005: Error: module must start with a `:- module'
-typeclass_test_1.m:005:   declaration.
+typeclass_test_1.m:005: Error: [38;5;203mmodule must start with a `:- module'[39;49m
+typeclass_test_1.m:005:   [38;5;203mdeclaration.[39;49m
 typeclass_test_1.m:012: In clause for predicate `main'/2:
 typeclass_test_1.m:012:   unsatisfiable typeclass constraint:
 typeclass_test_1.m:012:   `typeclass_test_1.numbered_type(int)'.

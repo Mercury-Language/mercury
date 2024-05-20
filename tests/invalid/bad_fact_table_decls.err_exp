@@ -1,15 +1,16 @@
-bad_fact_table_decls.m:045: Error: type `bool.bool' is not allowed in fact
+bad_fact_table_decls.m:045: Error: type [38;5;87m`bool.bool'[39;49m is [38;5;203mnot allowed[39;49m in fact
 bad_fact_table_decls.m:045:   tables. The only types allowed in fact tables are
-bad_fact_table_decls.m:045:   `int', `float', and `string'.
-bad_fact_table_decls.m:045: Error: type `int16' is not allowed in fact tables.
-bad_fact_table_decls.m:045:   The only types allowed in fact tables are `int',
-bad_fact_table_decls.m:045:   `float', and `string'.
+bad_fact_table_decls.m:045:   [38;5;40m`int', `float',[39;49m and [38;5;40m`string'.[39;49m
+bad_fact_table_decls.m:045: Error: type [38;5;87m`int16'[39;49m is [38;5;203mnot allowed[39;49m in fact tables.
+bad_fact_table_decls.m:045:   The only types allowed in fact tables are [38;5;40m`int',[39;49m
+bad_fact_table_decls.m:045:   [38;5;40m`float',[39;49m and [38;5;40m`string'.[39;49m
 bad_fact_table_decls.m:054: Error: `:- pragma fact_table' declaration for a
-bad_fact_table_decls.m:054:   predicate with more than one mode in which all
-bad_fact_table_decls.m:054:   arguments are input.
+bad_fact_table_decls.m:054:   predicate with [38;5;203mmore than one mode in which all[39;49m
+bad_fact_table_decls.m:054:   [38;5;203marguments are input.[39;49m
 bad_fact_table_decls.m:057: Error: the `:- pragma fact_table' declaration
 bad_fact_table_decls.m:057:   requires all the arguments of predicate
-bad_fact_table_decls.m:057:   `table_3'/3 mode 0 to be either fully input or
-bad_fact_table_decls.m:057:   fully output, but the second argument is neither.
+bad_fact_table_decls.m:057:   [38;5;87m`table_3'/3[39;49m mode 0 to be either fully input or
+bad_fact_table_decls.m:057:   fully output, but the second argument is [38;5;203mis[39;49m
+bad_fact_table_decls.m:057:   [38;5;203mneither.[39;49m
 bad_fact_table_decls.m:058: In mode declaration for predicate `table_3'/3:
 bad_fact_table_decls.m:058:   error: the mode [38;5;87m`any'/0[39;49m [38;5;203mis undefined.[39;49m

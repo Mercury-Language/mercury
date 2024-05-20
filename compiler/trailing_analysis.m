@@ -1221,7 +1221,7 @@ output_proc_names(Stream, ModuleInfo, SCC, !IO) :-
     pred_proc_id::in, io::di, io::uo) is det.
 
 output_proc_name(Stream, Moduleinfo, PPId, !IO) :-
-   Pieces = describe_one_proc_name(Moduleinfo, should_module_qualify, PPId),
+   Pieces = describe_qual_proc_name(Moduleinfo, PPId),
    Str = error_pieces_to_one_line_string(Pieces),
    io.format(Stream, "\t%s\n", [s(Str)], !IO).
 

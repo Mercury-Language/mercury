@@ -47,6 +47,7 @@
 :- import_module bool.
 :- import_module int.
 :- import_module map.
+:- import_module maybe.
 :- import_module pair.
 :- import_module require.
 :- import_module set.
@@ -153,8 +154,8 @@ check_local_oisu_pred(ModuleInfo, KindMap, OISUTypeCtors, Pair0, Pair,
                 set.insert(proc(PredId, ProcId), !OISUProcs)
             ;
                 Procs0 = [_, _ | _],
-                PredDesc = describe_one_pred_info_name(
-                    should_not_module_qualify, PredInfo0),
+                PredDesc = describe_one_pred_info_name(no,
+                    should_not_module_qualify, [], PredInfo0),
                 ProcsPieces = PredDesc ++ [words("is mentioned"),
                     words("in a"), pragma_decl("oisu"), words("declaration,"),
                     words("so it should have exactly one procedure."), nl],
@@ -199,8 +200,8 @@ check_arg_oisu_types(ModuleInfo, PredInfo, KindFors, OISUTypeCtors, ArgNum,
         ),
         ( if find_kind_for_oisu_type(KindFors, TypeCtor, ThisKind) then
             ( if list.member(TypeCtor, !.HandledOISUTypeCtors) then
-                DupPredDesc = describe_one_pred_info_name(
-                    should_not_module_qualify, PredInfo),
+                DupPredDesc = describe_one_pred_info_name(no,
+                    should_not_module_qualify, [], PredInfo),
                 DupPieces = [words("The"), nth_fixed(ArgNum),
                     words("argument of")] ++ DupPredDesc ++
                     [words("handles a previous handled OISU type."), nl],
@@ -217,8 +218,8 @@ check_arg_oisu_types(ModuleInfo, PredInfo, KindFors, OISUTypeCtors, ArgNum,
                     ( if mode_is_output(ModuleInfo, Mode) then
                         true
                     else
-                        PredDesc = describe_one_pred_info_name(
-                            should_not_module_qualify, PredInfo),
+                        PredDesc = describe_one_pred_info_name(no,
+                            should_not_module_qualify, [], PredInfo),
                         Pieces = [words("The"), nth_fixed(ArgNum),
                             words("argument of")] ++ PredDesc ++
                             [words("should be a creator of its OISU type,"),
@@ -240,8 +241,8 @@ check_arg_oisu_types(ModuleInfo, PredInfo, KindFors, OISUTypeCtors, ArgNum,
                         ( if mode_is_input(ModuleInfo, Mode) then
                             true
                         else
-                            InPredDesc = describe_one_pred_info_name(
-                                should_not_module_qualify, PredInfo),
+                            InPredDesc = describe_one_pred_info_name(no,
+                                should_not_module_qualify, [], PredInfo),
                             InPieces = [words("The"), nth_fixed(ArgNum),
                                 words("argument of")] ++ InPredDesc ++
                                 [words("should be the input of the mutator"),
@@ -255,8 +256,8 @@ check_arg_oisu_types(ModuleInfo, PredInfo, KindFors, OISUTypeCtors, ArgNum,
                         ( if mode_is_output(ModuleInfo, NextMode) then
                             true
                         else
-                            OutPredDesc = describe_one_pred_info_name(
-                                should_not_module_qualify, PredInfo),
+                            OutPredDesc = describe_one_pred_info_name(no,
+                                should_not_module_qualify, [], PredInfo),
                             OutPieces = [words("The"), nth_fixed(ArgNum + 1),
                                 words("argument of")] ++ OutPredDesc ++
                                 [words("should be the output of the mutator"),
@@ -270,8 +271,8 @@ check_arg_oisu_types(ModuleInfo, PredInfo, KindFors, OISUTypeCtors, ArgNum,
                         RestArgNum = ArgNum + 2,
                         RestTypesModes = TailTypesModes
                     else
-                        PredDesc = describe_one_pred_info_name(
-                            should_not_module_qualify, PredInfo),
+                        PredDesc = describe_one_pred_info_name(no,
+                            should_not_module_qualify, [], PredInfo),
                         Pieces = [words("Since the"), nth_fixed(ArgNum),
                             words("argument of")] ++ PredDesc ++
                             [words("is a mutator of its OISU type,"),
@@ -289,8 +290,8 @@ check_arg_oisu_types(ModuleInfo, PredInfo, KindFors, OISUTypeCtors, ArgNum,
                     ( if mode_is_input(ModuleInfo, Mode) then
                         true
                     else
-                        PredDesc = describe_one_pred_info_name(
-                            should_not_module_qualify, PredInfo),
+                        PredDesc = describe_one_pred_info_name(no,
+                            should_not_module_qualify, [], PredInfo),
                         Pieces = [words("The"), nth_fixed(ArgNum),
                             words("argument of")] ++ PredDesc ++
                             [words("should be a destructor of its OISU type,"),
@@ -307,8 +308,8 @@ check_arg_oisu_types(ModuleInfo, PredInfo, KindFors, OISUTypeCtors, ArgNum,
             check_arg_oisu_types(ModuleInfo, PredInfo, KindFors, OISUTypeCtors,
                 RestArgNum, !.HandledOISUTypeCtors, RestTypesModes, !Specs)
         else
-            PredDesc = describe_one_pred_info_name(should_not_module_qualify,
-                PredInfo),
+            PredDesc = describe_one_pred_info_name(no,
+                should_not_module_qualify, [], PredInfo),
             Pieces = [words("The"), nth_fixed(ArgNum), words("argument of")] ++
                 PredDesc ++ [words("is an OISU type"),
                 words("but it is not listed in that type's OISU pragma."), nl],
@@ -333,8 +334,8 @@ check_arg_oisu_types(_ModuleInfo, PredInfo, KindFors, _OISUTypeCtors,
         UnhandledKindFors = [HeadUnhandledKindFor | TailUnhandledKindFors],
         describe_unhandled_kind_fors(HeadUnhandledKindFor,
             TailUnhandledKindFors, UnhandledPieces),
-        PredDesc = describe_one_pred_info_name(should_not_module_qualify,
-            PredInfo),
+        PredDesc = describe_one_pred_info_name(no, should_not_module_qualify,
+            [], PredInfo),
         Pieces = PredDesc ++ [words("is declared to handle"),
             words("the following OISU types, but it does not:"),
             nl_indent_delta(1)] ++ UnhandledPieces,
@@ -422,8 +423,8 @@ check_args_have_no_oisu_types(PredInfo, OISUTypeCtors, [Type | Types],
         ArgTypes = [],
         list.member(TypeCtor, OISUTypeCtors)
     then
-        PredDesc = describe_one_pred_info_name(should_not_module_qualify,
-            PredInfo),
+        PredDesc = describe_one_pred_info_name(no, should_not_module_qualify,
+            [], PredInfo),
         TypeCtor = type_ctor(TypeName, TypeArity),
         ProcsPieces = PredDesc ++ [words("is not mentioned"),
             words("in the"), pragma_decl("oisu"), words("declaration"),

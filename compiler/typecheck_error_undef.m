@@ -33,13 +33,13 @@
 
 %---------------------------------------------------------------------------%
 
-:- func report_error_undef_pred(type_error_clause_context,
+:- func report_error_call_to_undef_pred(type_error_clause_context,
     prog_context, sym_name_pred_form_arity) = error_spec.
 
 %---------------------------------------------------------------------------%
 
 :- type cons_error
-    --->    foreign_type_constructor(type_ctor, hlds_type_defn)
+    --->    other_lang_foreign_type_constructor(type_ctor, hlds_type_defn)
     ;       abstract_imported_type
     ;       invalid_field_update(sym_name, hlds_ctor_field_defn,
                 tvarset, list(tvar))
@@ -81,7 +81,6 @@
 :- import_module libs.options.
 :- import_module mdbcomp.builtin_modules.
 :- import_module mdbcomp.prim_data.
-:- import_module parse_tree.parse_tree_out_term.
 :- import_module parse_tree.prog_util.
 
 :- import_module bool.
@@ -100,24 +99,23 @@
 % The implementation of report_error_undef_pred.
 %
 
-report_error_undef_pred(ClauseContext, Context, SymNameArity) = Spec :-
-    SymNameArity = sym_name_pred_form_arity(SymName, PredFormArity),
+report_error_call_to_undef_pred(ClauseContext, Context, SymNameArity) = Spec :-
+    SymNameArity = sym_name_pred_form_arity(SymName, _PredFormArity),
     ModuleInfo = ClauseContext ^ tecc_module_info,
     module_info_get_predicate_table(ModuleInfo, PredicateTable),
     PredMarkers = ClauseContext ^ tecc_pred_markers,
     IsFullyQualified = calls_are_fully_qualified(PredMarkers),
     predicate_table_lookup_pf_sym(PredicateTable, IsFullyQualified,
         pf_predicate, SymName, OtherIds),
-    PFSymNameArity = pf_sym_name_arity(pf_predicate, SymName, PredFormArity),
     (
         OtherIds = [_ | _],
         predicate_table_get_pred_id_table(PredicateTable, PredIdTable),
         find_pred_arities(PredIdTable, OtherIds, PredFormArities),
         Spec = report_error_pred_wrong_arity(ClauseContext, Context,
-            PFSymNameArity, PredFormArities)
+            SymNameArity, PredFormArities)
     ;
         OtherIds = [],
-        is_undef_pred_reference_special(ClauseContext, PFSymNameArity,
+        is_undef_pred_reference_special(ClauseContext, SymNameArity,
             UndefClass),
         (
             UndefClass = undef_special(SpecialComponents),
@@ -129,7 +127,7 @@ report_error_undef_pred(ClauseContext, Context, SymNameArity) = Spec :-
         ;
             UndefClass = undef_ordinary(MissingImportModules, AddeddumPieces),
             Spec = report_error_pred_wrong_full_name(ClauseContext, Context,
-                PredicateTable, PFSymNameArity, MissingImportModules,
+                PredicateTable, SymNameArity, MissingImportModules,
                 AddeddumPieces)
         )
     ).
@@ -137,20 +135,21 @@ report_error_undef_pred(ClauseContext, Context, SymNameArity) = Spec :-
 %---------------------%
 
 :- func report_error_pred_wrong_arity(type_error_clause_context, prog_context,
-    pf_sym_name_arity, list(pred_form_arity)) = error_spec.
+    sym_name_pred_form_arity, list(pred_form_arity)) = error_spec.
 
-report_error_pred_wrong_arity(ClauseContext, Context, PFSymNameArity,
+report_error_pred_wrong_arity(ClauseContext, Context, SymNameArity,
         AllPredFormArities) = Spec :-
-    PFSymNameArity = pf_sym_name_arity(PredOrFunc, SymName, PredFormArity),
+    SymNameArity = sym_name_pred_form_arity(SymName, PredFormArity),
     PredFormArity = pred_form_arity(PredFormArityInt),
     AllPredFormArityInts =
         list.map(project_pred_form_arity_int, AllPredFormArities),
     MainPieces = in_clause_for_pieces(ClauseContext) ++
         [words("error:")] ++
-        arity_error_to_pieces(PredOrFunc, PredFormArityInt,
+        arity_error_to_pieces(pf_predicate, PredFormArityInt,
             AllPredFormArityInts) ++ [nl] ++
-        [words("in call to"), p_or_f(PredOrFunc), qual_sym_name(SymName),
-        suffix("."), nl],
+        [words("in call to"), p_or_f(pf_predicate)] ++
+        color_as_subject([qual_sym_name(SymName), suffix(".")]) ++
+        [nl],
     ( if
         % A call to process_options or to process_options_track in getopt_io
         % may appear in the source code either explicitly qualified,
@@ -201,11 +200,10 @@ report_error_pred_wrong_arity(ClauseContext, Context, PFSymNameArity,
             % to be printed after the usual diagnostic messages.
 
 :- pred is_undef_pred_reference_special(type_error_clause_context::in,
-    pf_sym_name_arity::in, undef_class::out) is det.
+    sym_name_pred_form_arity::in, undef_class::out) is det.
 
-is_undef_pred_reference_special(ClauseContext, PFSymNameArity, UndefClass) :-
-    PFSymNameArity =
-        pf_sym_name_arity(_PredOrFunc, PredSymName, PredFormArity),
+is_undef_pred_reference_special(ClauseContext, SymNameArity, UndefClass) :-
+    SymNameArity = sym_name_pred_form_arity(PredSymName, PredFormArity),
     PredFormArity = pred_form_arity(PredFormArityInt),
     ( if
         PredSymName = unqualified(PredName),
@@ -237,30 +235,50 @@ is_undef_pred_a_syntax_error(PredName, PredFormArityInt, Components) :-
     (
         PredName = "->",
         ( PredFormArityInt = 2 ; PredFormArityInt = 4 ),
-        MainPieces = [words("error:"), quote("->"), words("without"),
-            quote(";"), suffix("."), nl],
+        MainPieces = [words("error: this")] ++
+            color_as_subject([quote("->")]) ++
+            [words("has no matching")] ++
+            color_as_incorrect([quote(";"), suffix(".")]) ++
+            [nl],
         MainComponent = always(MainPieces),
         VerbosePieces =
-            [words("Note: the else part is not optional."), nl,
-            words("Every if-then must have an else."), nl],
+            [words("Note: the"), quote("else"), words("part is not optional."),
+            nl, words("Every if-then must have an"),
+            quote("else"), suffix("."), nl],
         VerboseComponent = verbose_only(verbose_once, VerbosePieces),
         Components = [MainComponent, VerboseComponent]
     ;
         PredName = "else",
         ( PredFormArityInt = 2 ; PredFormArityInt = 4 ),
-        Components = [always([words("error: unmatched"), quote("else"),
-            suffix("."), nl])]
+        Pieces = [words("error: this")] ++
+            color_as_subject([quote("else")]) ++
+            color_as_incorrect([words("has no matching")]) ++
+            color_as_possible_cause([quote("if")]) ++
+            [words("or")] ++
+            color_as_possible_cause([quote("then"), suffix(".")]) ++
+            [nl],
+        Components = [always(Pieces)]
     ;
         PredName = "if",
         ( PredFormArityInt = 2 ; PredFormArityInt = 4 ),
-        Pieces = [words("error:"), quote("if"), words("without"),
-            quote("then"), words("or"), quote("else"), suffix("."), nl],
+        Pieces = [words("error: this")] ++
+            color_as_subject([quote("if")]) ++
+            [words("has no matching")] ++
+            color_as_possible_cause([quote("then")]) ++
+            [words("or")] ++
+            color_as_possible_cause([quote("else"), suffix(".")]) ++
+            [nl],
         Components = [always(Pieces)]
     ;
         PredName = "then",
         ( PredFormArityInt = 2 ; PredFormArityInt = 4 ),
-        MainPieces = [words("error:"), quote("then"), words("without"),
-            quote("if"), words("or"), quote("else"), suffix("."), nl],
+        MainPieces = [words("error: this")] ++
+            color_as_subject([quote("then")]) ++
+            [words("has no matching")] ++
+            color_as_possible_cause([quote("if")]) ++
+            [words("or")] ++
+            color_as_possible_cause([quote("else"), suffix(".")]) ++
+            [nl],
         MainComponent = always(MainPieces),
         VerbosePieces =
             [words("Note: the"), quote("else"), words("part is not optional."),
@@ -277,27 +295,31 @@ is_undef_pred_a_syntax_error(PredName, PredFormArityInt, Components) :-
         ; PredName = "impure"
         ),
         PredFormArityInt = 1,
-        MainPieces = [words("error:"), quote(PredName),
-            words("marker in an inappropriate place."), nl],
-        MainComponent = always(MainPieces),
-        VerbosePieces =
-            [words("Such markers only belong before predicate calls."), nl],
-        VerboseComponent = verbose_only(verbose_once, VerbosePieces),
-        Components = [MainComponent, VerboseComponent]
+        Pieces = [words("error: this")] ++
+            color_as_subject([quote(PredName), words("marker")]) ++
+            [words("is")] ++
+            color_as_incorrect([words("not before a predicate call.")]) ++
+            [nl],
+        Components = [always(Pieces)]
     ;
         PredName = "some",
         PredFormArityInt = 2,
-        Pieces = [words("syntax error in existential quantification:"),
-            words("first argument of"), quote("some"),
-            words("should be a list of variables."), nl],
+        Pieces = [words("syntax error in existential quantification:")] ++
+            [words("the")] ++
+            color_as_subject([words("first argument of"), quote("some")]) ++
+            color_as_incorrect([words("should be a list of variables.")]) ++
+            [nl],
         Components = [always(Pieces)]
     ).
 
 :- func report_apply_instead_of_pred = list(error_msg_component).
 
 report_apply_instead_of_pred = Components :-
-    MainPieces = [words("error: the language construct"), quote("apply"),
-        words("should be used as an expression, not as a goal."), nl],
+    MainPieces = [words("error: the language construct")] ++
+        color_as_subject([quote("apply")]) ++
+        color_as_incorrect([words("should be used as an expression,"),
+            words("not as a goal.")]) ++
+        [nl],
     MainComponent = always(MainPieces),
     VerbosePieces =
         [words("Perhaps you forgot to add"), quote(" = ..."), suffix("?)"), nl,
@@ -355,11 +377,12 @@ maybe_warn_about_getopt_changes(PredSymName, PredFormArityInt, GetoptPieces) :-
             NewPredName = "process_options_track"
         )
     then
-        GetoptPieces =
+        GetoptPieces0 =
             [words("One possible reason for the error is that"),
             words("the predicate"), quote(PredName),
             words("in the Mercury standard library has been renamed to"),
-            quote(NewPredName), suffix("."), nl]
+            quote(NewPredName), suffix(".")],
+        GetoptPieces = color_as_possible_cause(GetoptPieces0) ++ [nl]
     else
         GetoptPieces = []
     ).
@@ -367,20 +390,24 @@ maybe_warn_about_getopt_changes(PredSymName, PredFormArityInt, GetoptPieces) :-
 %---------------------%
 
 :- func report_error_pred_wrong_full_name(type_error_clause_context,
-    prog_context, predicate_table, pf_sym_name_arity, list(module_name),
+    prog_context, predicate_table, sym_name_pred_form_arity, list(module_name),
     list(format_piece)) = error_spec.
 
 report_error_pred_wrong_full_name(ClauseContext, Context, PredicateTable,
-        PFSymNameArity, MissingImportModules, AddeddumPieces) = Spec :-
+        SymNamePredFormArity, MissingImportModules, AddeddumPieces) = Spec :-
     InClauseForPieces = in_clause_for_pieces(ClauseContext),
     InClauseForComponent = always(InClauseForPieces),
-    MainPieces = [words("error: undefined"),
-        qual_pf_sym_name_pred_form_arity(PFSymNameArity),
-        suffix("."), nl],
+    SymNamePredFormArity = sym_name_pred_form_arity(SymName, PredFormArity),
+    PredFormArity = pred_form_arity(Arity),
+    SNA = sym_name_arity(SymName, Arity),
+    MainPieces = [words("error: call to")] ++
+        color_as_incorrect([words("undefined")]) ++
+        [words("predicate")] ++
+        color_as_subject([qual_sym_name_arity(SNA), suffix(".")]) ++
+        [nl],
     UndefMsg = simple_msg(Context,
         [InClauseForComponent, always(MainPieces ++ AddeddumPieces)]),
 
-    PFSymNameArity = pf_sym_name_arity(_, SymName, _PredFormArity),
     predicate_table_lookup_pf_sym(PredicateTable, may_be_partially_qualified,
         pf_function, SymName, FuncOtherIds),
     (
@@ -500,9 +527,20 @@ language_builtin_functor("some", 2).
     list(error_msg_component)::out) is det.
 
 language_builtin_functor_components(Name, Arity, Components) :-
-    MainPieces = [words("error: the language construct"),
-        unqual_sym_name_arity(sym_name_arity(unqualified(Name), Arity)),
-        words("should be used as a goal, not as an expression."), nl],
+    NameArity = name_arity(Name, Arity),
+    % XXX For many of the strings that we can get as Name, such as ";" and
+    % "impure", the phrase "should be used as a goal" is somewhat misleading.
+    % This is because neither is a goal; a semicolon is a connective
+    % *between* two goals, while "impure" is a prefix *before* a goal.
+    %
+    % is_undef_pred_a_syntax_error has some wording we may want to use here
+    % for such cases. It would be nice if we could do that without any
+    % code duplication.
+    MainPieces = [words("error: the language construct")] ++
+        color_as_subject([name_arity(NameArity)]) ++
+        color_as_incorrect([words("should be used as a goal,"),
+            words("not as an expression.")]) ++
+        [nl],
     VerbosePieces0 = [words("If you are trying to use a goal"),
         words("as a boolean function, you should write"),
         words_quote("if <goal> then yes else no"), words("instead."), nl],
@@ -536,58 +574,114 @@ language_builtin_functor_components(Name, Arity, Components) :-
 :- pred syntax_functor_components(string::in, arity::in,
     list(error_msg_component)::out) is semidet.
 
-syntax_functor_components("else", 2, Components) :-
-    Pieces = [words("error: unmatched"), quote("else"), suffix("."), nl],
-    Components = [always(Pieces)].
-syntax_functor_components("if", 2, Components) :-
-    Pieces = [words("error:"), quote("if"), words("without"), quote("then"),
-         words("or"), quote("else"), suffix("."), nl],
-    Components = [always(Pieces)].
-syntax_functor_components("then", 2, Components) :-
-    Pieces1 = [words("error:"), quote("then"), words("without"),
-        quote("if"), words("or"), quote("else"), suffix("."), nl],
-    Pieces2 = [words("Note: the"), quote("else"),
-        words("part is not optional."),
-        words("Every if-then must have an"), quote("else"), suffix("."), nl],
-    Components = [always(Pieces1), verbose_only(verbose_once, Pieces2)].
-syntax_functor_components("->", 2, Components) :-
-    Pieces1 = [words("error:"), quote("->"), words("without"),
-        quote(";"), suffix("."), nl],
-    Pieces2 = [words("Note: the else part is not optional."),
-        words("Every if-then must have an else."), nl],
-    Components = [always(Pieces1), verbose_only(verbose_once, Pieces2)].
-syntax_functor_components("^", 2, Components) :-
-    Pieces1 = [words("error: invalid use of field selection operator"),
-        prefix("("), quote("^"), suffix(")."), nl],
-    Pieces2 = [words("This is probably some kind of syntax error."),
-        words("The field name must be an atom,"),
-        words("not a variable or other term."), nl],
-    Components = [always(Pieces1), verbose_only(verbose_always, Pieces2)].
-syntax_functor_components(":=", 2, Components) :-
-    Pieces1 = [words("error: invalid use of field update operator"),
-        prefix("("), quote(":="), suffix(")."), nl],
-    Pieces2 = [words("This is probably some kind of syntax error."), nl],
-    Components = [always(Pieces1), verbose_only(verbose_always, Pieces2)].
-syntax_functor_components(":-", 2, Components) :-
-    Pieces = [words("syntax error in lambda expression"),
-         prefix("("), quote(":-"), suffix(")."), nl],
-    Components = [always(Pieces)].
-syntax_functor_components("-->", 2, Components) :-
-    Pieces = [words("syntax error in DCG lambda expression"),
-        prefix("("), quote("-->"), suffix(")."), nl],
-    Components = [always(Pieces)].
-syntax_functor_components(".", 2, Components) :-
-    Pieces = [words("error: the list constructor is now"),
-        unqual_sym_name_arity(sym_name_arity(unqualified("[|]"), 2)),
-        suffix(","), words("not"), quote("./2"),
-        suffix("."), nl],
-    Components = [always(Pieces)].
-syntax_functor_components("!", 1, Components) :-
-    Pieces1 = [words("error: invalid use of"), quote("!"),
-        words("state variable operator."), nl],
-    Pieces2 = [words("You probably meant to use"), quote("!."),
-        words("or"), quote("!:"), suffix("."), nl],
-    Components = [always(Pieces1), verbose_only(verbose_always, Pieces2)].
+syntax_functor_components(FunctorName, Arity, Components) :-
+    (
+        Arity = 1,
+        FunctorName = "!",
+        Pieces1 = [words("error:")] ++
+            color_as_incorrect([words("invalid use of the"), quote("!"),
+                words("state variable operator.")]) ++
+            [nl],
+        Pieces2 = color_as_possible_cause([words("You probably meant to use"),
+            quote("!."), words("or"), quote("!:"), suffix(".")]) ++
+            [nl],
+        Components = [always(Pieces1), verbose_only(verbose_always, Pieces2)]
+    ;
+        Arity = 2,
+        (
+            (
+                FunctorName = "if",
+                Pieces = [words("error: this")] ++
+                    color_as_subject([quote("if")]) ++
+                    [words("has no matching")] ++
+                    color_as_possible_cause([quote("then")]) ++
+                    [words("or")] ++
+                    color_as_possible_cause([quote("else"), suffix(".")]) ++
+                    [nl]
+            ;
+                FunctorName = "else",
+                Pieces = [words("error: this")] ++
+                    color_as_subject([quote("else")]) ++
+                    color_as_incorrect([words("has no matching")]) ++
+                    color_as_possible_cause([quote("if")]) ++
+                    [words("or")] ++
+                    color_as_possible_cause([quote("then"), suffix(".")]) ++
+                    [nl]
+            ;
+                FunctorName = ":-",
+                Pieces = [words("syntax error in lambda expression"),
+                     prefix("("), quote(":-"), suffix(")."), nl]
+            ;
+                FunctorName = "-->",
+                Pieces = [words("syntax error in DCG lambda expression"),
+                    prefix("("), quote("-->"), suffix(")."), nl]
+            ;
+                FunctorName = ".",
+                NameArity = name_arity("[|]", 2),
+                Pieces = [words("error: the list constructor is")] ++
+                    color_as_correct([name_arity(NameArity), suffix(",")]) ++
+                    [words("not")] ++
+                    color_as_incorrect([quote("./2"), suffix(".")]) ++
+                    [nl]
+            ),
+            Components = [always(Pieces)]
+        ;
+            (
+                FunctorName = "then",
+                MainPieces = [words("error: this")] ++
+                    color_as_subject([quote("then")]) ++
+                    [words("has no matching")] ++
+                    color_as_possible_cause([quote("if")]) ++
+                    [words("or")] ++
+                    color_as_possible_cause([quote("else"), suffix(".")]) ++
+                    [nl],
+                VerbosePieces =
+                    [words("Note: the"), quote("else"),
+                    words("part is not optional."),
+                    nl, words("Every if-then must have an"),
+                    quote("else"), suffix("."), nl]
+            ;
+                FunctorName = "->",
+                MainPieces = [words("error: this")] ++
+                    color_as_subject([quote("->")]) ++
+                    [words("has no matching")] ++
+                    color_as_incorrect([quote(";"), suffix(".")]) ++
+                    [nl],
+                VerbosePieces =
+                    [words("Note: the"), quote("else"),
+                    words("part is not optional."), nl,
+                    words("Every if-then must have an"),
+                    quote("else"), suffix("."), nl]
+            ;
+                FunctorName = "^",
+                MainPieces = [words("error:")] ++
+                    color_as_incorrect([words("invalid use of the"),
+                        words("field selection operator"),
+                        prefix("("), quote("^"), suffix(").")]) ++
+                    [nl],
+                VerbosePieces =
+                    color_as_possible_cause([words("This is probably"),
+                        words("some kind of syntax error."),
+                        words("The field name must be an atom,"),
+                        words("not a variable or other term.")]) ++
+                    [nl]
+            ;
+                FunctorName = ":=",
+                MainPieces = [words("error:")] ++
+                    color_as_incorrect([words("invalid use of the"),
+                        words("field update operator"),
+                        prefix("("), quote(":="), suffix(").")]) ++
+                    [nl],
+                VerbosePieces =
+                    color_as_possible_cause([words("This is probably"),
+                        words("some kind of syntax error.")]) ++
+                    [nl]
+            ),
+            Components =
+                [always(MainPieces),
+                verbose_only(verbose_always, VerbosePieces)]
+        )
+    ).
 
 %---------------------%
 
@@ -629,8 +723,12 @@ report_error_undef_cons_std(ClauseContext, Context, InitComp, ConsErrors,
         % can be misleading in the presence of arity mismatches.
         QualSuggestionMsgs = []
     else
-        UndefSymbolPieces = [words("error: undefined symbol"),
-            qual_cons_id_and_maybe_arity(Functor), suffix("."), nl],
+        UndefSymbolPieces = [words("error:")] ++
+            color_as_incorrect([words("undefined")]) ++
+            [words("symbol")] ++
+            color_as_subject([qual_cons_id_and_maybe_arity(Functor),
+                suffix(".")]) ++
+            [nl],
         ( if
             Functor = cons(Constructor, _, _),
             Constructor = qualified(ModQual, _)
@@ -727,7 +825,9 @@ wrong_arity_constructor_to_pieces(Name, Arity, ActualArities) = Pieces :-
     % argument.
     NumArgsPieces = arity_error_to_pieces(pf_predicate, Arity, ActualArities),
     Pieces = [words("error: ")] ++ NumArgsPieces ++
-        [words("in use of constructor"), qual_sym_name(Name), suffix(".")].
+        [words("in use of constructor")] ++
+        color_as_subject([qual_sym_name(Name), suffix(".")]) ++
+        [nl].
 
 :- pred accumulate_matching_cons_module_names(sym_name::in, hlds_cons_defn::in,
     list(module_name)::in, list(module_name)::out) is det.
@@ -754,14 +854,45 @@ accumulate_matching_cons_module_names(FunctorSymName, ConsDefn,
 
 report_cons_error(Context, ConsError) = Msgs :-
     (
-        ConsError = foreign_type_constructor(TypeCtor, _),
+        ConsError = other_lang_foreign_type_constructor(TypeCtor, _),
+        %   Pieces = [words("There are"),
+        %       pragma_decl("foreign_type"), words("declarations"),
+        %       words("for type"), qual_type_ctor(TypeCtor), suffix(","),
+        %       words("so it is treated as an abstract type"),
+        %       words("in all predicates and functions"),
+        %       words("which are not implemented"),
+        %       words("for those foreign types."), nl],
+        %
+        % XXX Until 2024 may 20, we used the above wording for this message,
+        % even though it was quite confused, and also quite confusing.
+        % I (zs) *think* that this replacement text is a faithful description
+        % of the problem it attempted to describe, but I don't know for sure.
+        %
+        % I also don't like the fact that
+        %
+        % - starting with a Mercury type t being used in predicate p
+        %   written in Mercury,
+        %
+        % - adding e.g. a Java definition for type t and a Java foreign_proc
+        %   for predicate p
+        %
+        % - would make references to the function symbols of the Mercury
+        %   definition of type t suddently invalid in the Mercury code of p.
+        %
+        % The presence of a definition of a type in foreign language L
+        % should affect the validity of a piece of Mercury code using that
+        % type *only* when the current grade targets L.
         Pieces = [words("There are"),
             pragma_decl("foreign_type"), words("declarations"),
-            words("for type"), qual_type_ctor(TypeCtor), suffix(","),
-            words("so it is treated as an abstract type"),
-            words("in all predicates and functions"),
-            words("which are not implemented"),
-            words("for those foreign types."), nl],
+            words("for type"), qual_type_ctor(TypeCtor),
+            words("for at least one target language other than the one"),
+            words("targeted by the current grade."),
+            words("Due to a limitation of the Mercury implementation,"),
+            words("this fact requires the compiler to treat this type"),
+            words("as an abstract type in all Mercury code, which")] ++
+            color_as_incorrect([words("disallows references to the"),
+                words("function symbols of the type.")]) ++
+            [nl],
         Msgs = [msg(Context, Pieces)]
     ;
         ConsError = abstract_imported_type,
@@ -772,32 +903,42 @@ report_cons_error(Context, ConsError) = Msgs :-
     ;
         ConsError = invalid_field_update(FieldName, FieldDefn, TVarSet, TVars),
         FieldDefn = hlds_ctor_field_defn(DefnContext, _, _, ConsId, _),
-        Pieces1 = [words("Field"), unqual_sym_name(FieldName),
-            words("cannot be updated because"),
-            words("the existentially quantified type")],
         (
             TVars = [],
             unexpected($pred, "no type variables")
         ;
             TVars = [TVar],
-            TVarsStr = mercury_var_to_name_only_vs(TVarSet, TVar),
-            Pieces2 = [words("variable"), quote(TVarsStr), words("occurs")]
+            VarVars  = "variable",
+            TVarPiece = var_to_quote_piece(TVarSet, TVar),
+            TVarsPieces = color_as_subject([TVarPiece]),
+            OccurOccurs = "occurs"
         ;
             TVars = [_, _ | _],
-            TVarsStr = mercury_vars_to_name_only_vs(TVarSet, TVars),
-            Pieces2 = [words("variables"), quote(TVarsStr), words("occur")]
+            VarVars  = "variables",
+            TVarPieces = list.map(var_to_quote_piece(TVarSet), TVars),
+            TVarsPieces = component_list_to_color_pieces(yes(color_subject),
+                "and", [], TVarPieces),
+            OccurOccurs = "occur"
         ),
-        Pieces3 = [words("in the types of field"), unqual_sym_name(FieldName),
-            words("and some other field"),
-            words("in definition of constructor"),
+        Pieces = [words("Field")] ++
+            color_as_subject([unqual_sym_name(FieldName)]) ++
+            color_as_incorrect([words("cannot be updated")]) ++
+            [words("because the existentially quantified type"),
+            words(VarVars)] ++
+            TVarsPieces ++
+            [words(OccurOccurs), words("not just in the type of this field,"),
+            words("but also in the types of some of the other fields of"),
             qual_cons_id_and_maybe_arity(ConsId), suffix("."), nl],
-        Pieces = Pieces1 ++ Pieces2 ++ Pieces3,
         Msgs = [msg(DefnContext, Pieces)]
     ;
         ConsError = new_on_non_existential_type(TypeCtor),
-        Pieces = [words("Invalid use of"), quote("new"),
-            words("on a constructor of type"), qual_type_ctor(TypeCtor),
-            words("which is not existentially typed."), nl],
+        Pieces = [words("Invalid use of the")] ++
+            % The space after "new" is deliberate.
+            color_as_subject([quote("new "), words("prefix")]) ++
+            [words("on a constructor of type"), qual_type_ctor(TypeCtor),
+            suffix(","), words("which is")] ++
+            color_as_incorrect([words("not existentially typed.")]) ++
+            [nl],
         Msgs = [msg(Context, Pieces)]
     ).
 
@@ -808,10 +949,11 @@ report_cons_error(Context, ConsError) = Msgs :-
 %
 
 report_error_undef_event(Context, EventName) = Spec :-
-    Pieces = [words("Error: there is no event named"),
-        quote(EventName), suffix("."), nl],
-    Spec = spec($pred, severity_error, phase_type_check,
-        Context, Pieces).
+    Pieces = [words("Error: there is")] ++
+        color_as_incorrect([words("no event named"),
+            quote(EventName), suffix(".")]) ++
+        [nl],
+    Spec = spec($pred, severity_error, phase_type_check, Context, Pieces).
 
 report_error_undef_event_arity(Context, EventName, EventArgTypes, Args)
         = Spec :-
@@ -819,9 +961,10 @@ report_error_undef_event_arity(Context, EventName, EventArgTypes, Args)
     pred_form_arity(ExpectedArity) = arg_list_arity(EventArgTypes),
     Pieces = [words("Error:")] ++
         arity_error_to_pieces(pf_predicate, ActualArity, [ExpectedArity]) ++
-        [words("in event"), quote(EventName), suffix("."), nl],
-    Spec = spec($pred, severity_error, phase_type_check,
-        Context, Pieces).
+        [words("in")] ++
+        color_as_subject([words("event"), quote(EventName), suffix(".")]) ++
+        [nl],
+    Spec = spec($pred, severity_error, phase_type_check, Context, Pieces).
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -833,14 +976,13 @@ maybe_report_no_clauses(ModuleInfo, PredId, PredInfo) = Specs :-
     ShouldReport = should_report_no_clauses(ModuleInfo, PredInfo),
     (
         ShouldReport = yes,
-        PredPieces = describe_one_pred_name(ModuleInfo,
-            should_not_module_qualify, PredId),
-        Pieces = [words("Error: no clauses for") | PredPieces] ++
-            [suffix("."), nl],
+        PredPieces = describe_one_pred_name(ModuleInfo, yes(color_subject),
+            should_not_module_qualify, [], PredId),
+        Pieces = [words("Error:")] ++ PredPieces ++
+            color_as_incorrect([words("has no clauses.")]) ++
+            [nl],
         pred_info_get_context(PredInfo, Context),
-
-        Spec = spec($pred, severity_error, phase_type_check,
-            Context, Pieces),
+        Spec = spec($pred, severity_error, phase_type_check, Context, Pieces),
         Specs = [Spec]
     ;
         ShouldReport = no,
@@ -855,13 +997,15 @@ maybe_report_no_clauses_stub(ModuleInfo, PredId, PredInfo) = Specs :-
         globals.lookup_bool_option(Globals, warn_stubs, WarnStubs),
         (
             WarnStubs = yes,
-            PredPieces = describe_one_pred_name(ModuleInfo,
-                should_not_module_qualify, PredId),
-            Pieces = [words("Warning: no clauses for ") | PredPieces] ++
-                [suffix("."), nl],
+            PredDotPieces = describe_one_pred_name(ModuleInfo,
+                yes(color_subject), should_not_module_qualify,
+                [suffix(".")], PredId),
+            Pieces = [words("Warning:")] ++
+                color_as_incorrect([words("no clauses")]) ++
+                [words("for")] ++ PredDotPieces ++ [nl],
             pred_info_get_context(PredInfo, Context),
-            Spec = spec($pred, severity_warning,
-                phase_type_check, Context, Pieces),
+            Spec = spec($pred, severity_warning, phase_type_check,
+                Context, Pieces),
             Specs = [Spec]
         ;
             WarnStubs = no,
@@ -1105,36 +1249,13 @@ arity_error_to_pieces(PredOrFunc, Arity0, Arities0) = Pieces :-
             ),
         list.map(ReverseAdjust, Arities0, Arities)
     ),
-    ActualArityPieces0 = [suffix(int_to_string(Arity))],
-    ExpectedAritiesPieces = arities_to_pieces(yes(color_correct), Arities),
-    % ZZZ XXX TYPECHECK_ERRORS
-    % Coloring here results in prefixes and suffixes next to color changes
-    % not being respected by write_error_spec.m.
-    ActualArityPieces = color_as_incorrect(ActualArityPieces0),
-    Pieces = [words("wrong number of arguments"),
-        prefix("(") | ActualArityPieces] ++ [suffix(";"),
+    ActualArityPieces = color_as_incorrect([suffix(int_to_string(Arity))]),
+    ExpectedArityPieces = list.map((func(N) = int_fixed(N)), Arities),
+    ExpectedAritiesPieces = component_list_to_color_pieces(yes(color_correct),
+        "or", [], ExpectedArityPieces),
+    Pieces = color_as_incorrect([words("wrong number of arguments")]) ++
+        [prefix("(") | ActualArityPieces] ++ [suffix(";"),
         words("should be") | ExpectedAritiesPieces] ++ [suffix(")")].
-
-:- func arities_to_pieces(maybe(color_name), list(int)) = list(format_piece).
-
-arities_to_pieces(_, []) = [].
-arities_to_pieces(MaybeColor, [Arity | Arities]) = Pieces :-
-    TailPieces = arities_to_pieces(MaybeColor, Arities),
-    ArityPiece = fixed(int_to_string(Arity)),
-    (
-        Arities = [],
-        ArityPieces = maybe_color_pieces(MaybeColor, [ArityPiece]),
-        Pieces = ArityPieces ++ TailPieces
-    ;
-        Arities = [_],
-        ArityPieces = maybe_color_pieces(MaybeColor, [ArityPiece]),
-        Pieces = ArityPieces ++ [words("or") | TailPieces]
-    ;
-        Arities = [_, _ | _],
-        ArityCommaPieces = maybe_color_pieces(MaybeColor,
-            [ArityPiece, suffix(",")]),
-        Pieces = ArityCommaPieces ++ TailPieces
-    ).
 
 %---------------------------------------------------------------------------%
 

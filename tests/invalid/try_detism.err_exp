@@ -1,10 +1,10 @@
-try_detism.m:016: In `p'(out, di, uo):
+try_detism.m:016: In [38;5;87m`p'(out, di, uo):[39;49m
 try_detism.m:016:   error: determinism declaration not satisfied.
 try_detism.m:016:   Declared [38;5;40m`cc_multi',[39;49m inferred [38;5;203m`cc_nondet'.[39;49m
 try_detism.m:016:   The reason for the difference is the following.
 try_detism.m:023:   In argument 1 of call to predicate `try_detism.q'/3:
 try_detism.m:023:   [38;5;226munification with `X' can fail.[39;49m
-try_detism.m:022: Error: call to predicate `exception.magic_exception_result'/1
+try_detism.m:022: Error: call to predicate [38;5;87m`exception.magic_exception_result'/1[39;49m
 try_detism.m:022:   with determinism `cc_multi' [38;5;203moccurs in a context which[39;49m
 try_detism.m:022:   [38;5;203mrequires all solutions.[39;49m
 try_detism.m:023:   Unification of X and V_17 can fail.

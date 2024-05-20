@@ -1,5 +1,5 @@
-invalid_decimal_literal.m:012: Error: no clauses for function `foo1'/0.
-invalid_decimal_literal.m:013: Error: no clauses for function `foo2'/0.
+invalid_decimal_literal.m:012: Error: function [38;5;87m`foo1'/0[39;49m [38;5;203mhas no clauses.[39;49m
+invalid_decimal_literal.m:013: Error: function [38;5;87m`foo2'/0[39;49m [38;5;203mhas no clauses.[39;49m
 invalid_decimal_literal.m:017: Syntax error: an underscore should separate two
 invalid_decimal_literal.m:017:   digits; it should not appear just before a
 invalid_decimal_literal.m:017:   decimal point.

@@ -7,6 +7,6 @@ typeclass_test_2.m:023:   or
 typeclass_test_2.m:023:     [38;5;40m`func(<Name> / <Arity>) is <InstanceName>',[39;49m
 typeclass_test_2.m:023:   got
 typeclass_test_2.m:023:     [38;5;203m((type_num / 0) is foo_type_num).[39;49m
-typeclass_test_2.m:026: Error: clause for [38;5;87mfunction `foo_type_num'/1[39;49m [38;5;203mwithout[39;49m a
+typeclass_test_2.m:026: Error: clause for function [38;5;87m`foo_type_num'/1[39;49m [38;5;203mwithout[39;49m a
 typeclass_test_2.m:026:   corresponding `:- func' declaration.
 typeclass_test_2.m:026: Inferred :- func foo_type_num(T1) = int.

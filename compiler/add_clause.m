@@ -136,9 +136,11 @@ module_add_clause(ProgressStream, PredStatus, ClauseType, ClauseInfo,
                 IllegalSVarResult, !ModuleInfo, !QualInfo, !Specs)
         else if PredName = ",", Arity = 2 then
             SNA = sym_name_arity(unqualified(","), 2),
-            Pieces = color_as_incorrect(
-                [words("Attempt to define a clause for"),
-                    unqual_sym_name_arity(SNA), suffix(".")]) ++
+            Pieces =
+                [words("Error: attempt to define a clause for")] ++
+                color_as_incorrect([unqual_sym_name_arity(SNA),
+                    suffix(".")]) ++
+                [nl] ++
                 color_as_possible_cause([words("This is usually caused by"),
                     words("inadvertently writing a period instead of a comma"),
                     words("at the end of the preceding line.")]) ++
@@ -328,8 +330,8 @@ maybe_add_error_for_field_access_function(ModuleInfo, PredStatus,
     then
         SNA = sym_name_arity(PredSymName, UserArityInt),
         FieldAccessMainPieces = [words("Error:")] ++
-            color_as_incorrect([words("clause for automatic generated"),
-                words("field access"), p_or_f(PredOrFunc)]) ++
+            color_as_incorrect([words("clause for automatically generated"),
+                words("field access function")]) ++
             color_as_subject([unqual_sym_name_arity(SNA), suffix(".")]) ++
             [nl],
         FieldAccessVerbosePieces =
@@ -451,9 +453,9 @@ select_applicable_modes(MaybeAnnotatedArgTerms, VarSet, PredStatus, Context,
                     (
                         Warn = yes,
                         PredDescPieces = describe_one_pred_info_name(
-                            should_not_module_qualify, PredInfo),
-                        Pieces = [words("Warning: the")] ++
-                            color_as_subject(PredDescPieces) ++
+                            yes(color_subject), should_not_module_qualify,
+                            [], PredInfo),
+                        Pieces = [words("Warning: the")] ++ PredDescPieces ++
                             [words("has only one mode,"),
                             words("so there is")] ++
                             color_as_incorrect([words("no need to restrict"),

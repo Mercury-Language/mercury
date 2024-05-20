@@ -2002,9 +2002,8 @@ look_up_pragma_pf_sym_arity(ModuleInfo, IsFullyQualified, FailHandling,
             "two or more PredIds but is_fully_qualified"),
         (
             FailHandling = lfh_user_error,
-            PredIdPiecesList = list.map(
-                describe_one_pred_name(ModuleInfo, should_module_qualify),
-                PredIds),
+            PredIdPiecesList =
+                list.map(describe_qual_pred_name(ModuleInfo), PredIds),
             PredIdPieces = component_list_to_color_line_pieces(
                 yes(color_cause), [suffix(".")], [], PredIdPiecesList),
             MainPieces = [words("Error:")] ++
@@ -2251,9 +2250,9 @@ check_pragma_status(PragmaName, StatusClass, PragmaStatus, Context,
                 PragmaExported = yes,
                 % Case 2: error regardless of pragma status class.
                 PredNamePieces = describe_one_pred_info_name(
-                    should_not_module_qualify, PredInfo),
-                Pieces = [words("Error: since the")] ++
-                    color_as_subject(PredNamePieces) ++
+                    yes(color_subject), should_not_module_qualify, [],
+                    PredInfo),
+                Pieces = [words("Error: since the")] ++ PredNamePieces ++
                     [words("is not exported, the"),
                     pragma_decl(PragmaName), words("declaration for it")] ++
                     color_as_incorrect(
@@ -2271,9 +2270,9 @@ check_pragma_status(PragmaName, StatusClass, PragmaStatus, Context,
                 (
                     StatusClass = psc_decl,
                     PredNamePieces = describe_one_pred_info_name(
-                        should_not_module_qualify, PredInfo),
-                    Pieces = [words("Warning: since the")] ++
-                        color_as_subject(PredNamePieces) ++
+                        yes(color_subject), should_not_module_qualify, [],
+                        PredInfo),
+                    Pieces = [words("Warning: since the")] ++ PredNamePieces ++
                         [words("is exported, the"),
                         pragma_decl(PragmaName),
                         words("declaration for it")] ++

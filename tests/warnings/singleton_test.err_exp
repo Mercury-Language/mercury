@@ -1,4 +1,4 @@
-singleton_test.m:013: In function `my_append_func'/2:
+singleton_test.m:013: In function [38;5;87m`my_append_func'/2:[39;49m
 singleton_test.m:013:   warning: unresolved polymorphism.
 singleton_test.m:013:   The variables with unbound types were:
 singleton_test.m:013:     [38;5;203mL1[39;49m

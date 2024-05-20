@@ -1,26 +1,26 @@
-det_errors.m:009: In `p1'(in):
+det_errors.m:009: In [38;5;87m`p1'(in):[39;49m
 det_errors.m:009:   error: determinism declaration not satisfied.
 det_errors.m:009:   Declared [38;5;40m`det',[39;49m inferred [38;5;203m`semidet'.[39;49m
 det_errors.m:009:   The reason for the difference is the following.
 det_errors.m:042:   In argument 1 of clause head:
 det_errors.m:042:   [38;5;226munification of `HeadVar__1' and `42' can fail.[39;49m
-det_errors.m:010: In `p2'(in):
+det_errors.m:010: In [38;5;87m`p2'(in):[39;49m
 det_errors.m:010:   error: determinism declaration not satisfied.
 det_errors.m:010:   Declared [38;5;40m`det',[39;49m inferred [38;5;203m`semidet'.[39;49m
 det_errors.m:010:   The reason for the difference is the following.
 det_errors.m:043:   [38;5;226mUnification of `X' and `42' can fail.[39;49m
-det_errors.m:011: In `p3'(in):
+det_errors.m:011: In [38;5;87m`p3'(in):[39;49m
 det_errors.m:011:   error: determinism declaration not satisfied.
 det_errors.m:011:   Declared [38;5;40m`det',[39;49m inferred [38;5;203m`semidet'.[39;49m
 det_errors.m:011:   The reason for the difference is the following.
 det_errors.m:044:   [38;5;226mUnification of `X' and `42' can fail.[39;49m
-det_errors.m:012: In `p4'(in):
+det_errors.m:012: In [38;5;87m`p4'(in):[39;49m
 det_errors.m:012:   error: determinism declaration not satisfied.
 det_errors.m:012:   Declared [38;5;40m`det',[39;49m inferred [38;5;203m`semidet'.[39;49m
 det_errors.m:012:   The reason for the difference is the following.
 det_errors.m:045:   In argument 2 of functor `+/2':
 det_errors.m:045:   [38;5;226munification with `21' can fail.[39;49m
-det_errors.m:026: In `q'(in, out):
+det_errors.m:026: In [38;5;87m`q'(in, out):[39;49m
 det_errors.m:026:   error: determinism declaration not satisfied.
 det_errors.m:026:   Declared [38;5;40m`det',[39;49m inferred [38;5;203m`semidet'.[39;49m
 det_errors.m:026:   The reason for the difference is the following.
@@ -31,7 +31,7 @@ det_errors.m:048:     [38;5;226m`f'/0,[39;49m
 det_errors.m:048:     [38;5;226m`g'/0,[39;49m
 det_errors.m:048:     [38;5;226m`h'/1[39;49m or
 det_errors.m:048:     [38;5;226m`i'/1.[39;49m
-det_errors.m:034: In `r'(in, out):
+det_errors.m:034: In [38;5;87m`r'(in, out):[39;49m
 det_errors.m:034:   error: determinism declaration not satisfied.
 det_errors.m:034:   Declared [38;5;40m`det',[39;49m inferred [38;5;203m`nondet'.[39;49m
 det_errors.m:034:   The reasons for the difference are the following.
@@ -53,7 +53,7 @@ det_errors.m:075:   Inside the case u4(V_17) of the switch on U:
 det_errors.m:075:   inside the case d/0 of the switch on V_17:
 det_errors.m:075:   disjunction has more than one disjunct with solutions.
 det_errors.m:078:   [38;5;226mThis later disjunct may have a solution.[39;49m
-det_errors.m:035: In `s'(in, out):
+det_errors.m:035: In [38;5;87m`s'(in, out):[39;49m
 det_errors.m:035:   error: determinism declaration not satisfied.
 det_errors.m:035:   Declared [38;5;40m`det',[39;49m inferred [38;5;203m`nondet'.[39;49m
 det_errors.m:035:   The reasons for the difference are the following.

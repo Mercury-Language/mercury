@@ -1,4 +1,4 @@
-magicbox.m:038: In `arguments_handler'(di, uo, out):
+magicbox.m:038: In [38;5;87m`arguments_handler'(di, uo, out):[39;49m
 magicbox.m:038:   error: determinism declaration not satisfied.
 magicbox.m:038:   Declared [38;5;40m`cc_multi',[39;49m inferred [38;5;203m`cc_nondet'.[39;49m
 magicbox.m:038:   The reasons for the difference are the following.

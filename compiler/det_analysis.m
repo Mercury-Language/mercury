@@ -1114,8 +1114,8 @@ det_infer_call(PredId, ProcId0, ProcId, ArgVars, GoalInfo, SolnContext,
         else
             GoalContext = goal_info_get_context(GoalInfo),
             det_info_get_var_table(!.DetInfo, VarTable),
-            PredPieces = describe_one_pred_name(ModuleInfo,
-                should_module_qualify, PredId),
+            PredPieces = describe_one_pred_name(ModuleInfo, yes(color_subject),
+                should_module_qualify, [], PredId),
             FirstPieces = [words("Error: call to")] ++ PredPieces ++
                 [words("with determinism"),
                 quote(mercury_det_to_string(Detism0))] ++
@@ -1217,16 +1217,17 @@ det_infer_foreign_proc(Attributes, PredId, ProcId, _PragmaCode,
         then
             proc_info_get_context(ProcInfo, ProcContext),
             WillNotThrowProcPieces = describe_one_proc_name_mode(ModuleInfo,
-                output_mercury, should_not_module_qualify,
-                proc(PredId, ProcId)),
-            WillNotThrowPieces = WillNotThrowProcPieces ++
+                output_mercury, yes(color_subject), should_not_module_qualify,
+                [], proc(PredId, ProcId)),
+            WillNotThrowPieces = [words("Error:")] ++ WillNotThrowProcPieces ++
                 [words("has determinism erroneous but also has"),
                 words("foreign clauses that have a"),
-                quote("will_not_throw_exception"), words("attribute."),
-                words("This attribute cannot be applied"),
-                words("to erroneous procedures."), nl],
-            WillNotThrowSpec = spec($pred, severity_error,
-                phase_detism_check, ProcContext, WillNotThrowPieces),
+                quote("will_not_throw_exception"), words("attribute.")] ++
+                color_as_incorrect([words("This attribute cannot be applied"),
+                    words("to erroneous procedures.")]) ++
+                [nl],
+            WillNotThrowSpec = spec($pred, severity_error, phase_detism_check,
+                ProcContext, WillNotThrowPieces),
             det_info_add_error_spec(WillNotThrowSpec, !DetInfo)
         else
             true
@@ -1238,7 +1239,7 @@ det_infer_foreign_proc(Attributes, PredId, ProcId, _PragmaCode,
             GoalContext = goal_info_get_context(GoalInfo),
             det_info_get_var_table(!.DetInfo, VarTable),
             WrongContextPredPieces = describe_one_pred_name(ModuleInfo,
-                should_module_qualify, PredId),
+                yes(color_subject), should_module_qualify, [], PredId),
             WrongContextFirstPieces = [words("Error: call to")] ++
                 WrongContextPredPieces ++
                 [words("with determinism"),
@@ -1249,8 +1250,7 @@ det_infer_foreign_proc(Attributes, PredId, ProcId, _PragmaCode,
             ContextMsgs = failing_contexts_description(ModuleInfo, VarTable,
                 RightFailingContexts),
             Spec = error_spec($pred, severity_error, phase_detism_check,
-                [msg(GoalContext, WrongContextFirstPieces) |
-                    ContextMsgs]),
+                [msg(GoalContext, WrongContextFirstPieces) | ContextMsgs]),
             det_info_add_error_spec(Spec, !DetInfo),
             NumSolns = at_most_many
         else
@@ -1273,13 +1273,14 @@ det_infer_foreign_proc(Attributes, PredId, ProcId, _PragmaCode,
         % the context in the goal gives the location of the foreign_proc
         % pragma.
         Context = goal_info_get_context(GoalInfo),
-        ProcPieces = describe_one_proc_name_mode(ModuleInfo,
-            output_mercury, should_not_module_qualify, proc(PredId, ProcId)),
+        ProcPieces = describe_one_proc_name_mode(ModuleInfo, output_mercury,
+            no, should_not_module_qualify, [], proc(PredId, ProcId)),
         Pieces = [words("In")] ++ ProcPieces ++ [suffix(":"), nl,
             words("error: the procedure specification in this"),
-            pragma_decl("foreign_proc"), words("declaration"),
-            words("is missing the final"),
-            quote("is <determinism>"), words("part."), nl],
+            pragma_decl("foreign_proc"), words("declaration is")] ++
+            color_as_incorrect([words("missing")]) ++
+            [words("the final"), quote("is <determinism>"),
+            words("part."), nl],
         Spec = spec($pred, severity_error, phase_detism_check,
             Context, Pieces),
         det_info_add_error_spec(Spec, !DetInfo),

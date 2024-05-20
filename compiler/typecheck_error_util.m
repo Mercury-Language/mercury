@@ -140,8 +140,7 @@ describe_cons_type_info_source(ModuleInfo, Source) = Pieces :-
             words("for the type constructor"), qual_type_ctor(TypeCtor)]
     ;
         Source = source_pred(PredId),
-        Pieces = describe_one_pred_name(ModuleInfo, should_module_qualify,
-            PredId)
+        Pieces = describe_qual_pred_name(ModuleInfo, PredId)
     ;
         Source = source_apply(ApplyOp),
         Pieces = [words("the builtin operator constructor"), quote(ApplyOp)]
@@ -150,8 +149,7 @@ describe_cons_type_info_source(ModuleInfo, Source) = Pieces :-
 describe_args_type_assign_source(ModuleInfo, Source) = Pieces :-
     (
         Source = atas_pred(PredId),
-        Pieces = describe_one_pred_name(ModuleInfo, should_module_qualify,
-            PredId)
+        Pieces = describe_qual_pred_name(ModuleInfo, PredId)
     ;
         Source = atas_cons(ConsSource),
         (
@@ -176,8 +174,7 @@ describe_args_type_assign_source(ModuleInfo, Source) = Pieces :-
                 qual_type_ctor(TypeCtor)]
         ;
             ConsSource = source_pred(PredId),
-            Pieces = describe_one_pred_name(ModuleInfo, should_module_qualify,
-                PredId)
+            Pieces = describe_qual_pred_name(ModuleInfo, PredId)
         ;
             ConsSource = source_apply(ApplyOp),
             Pieces = [words("the builtin operator constructor"),
@@ -352,8 +349,7 @@ arg_vector_kind_to_pieces(ClauseContext, ArgVectorKind) = Pieces :-
 in_clause_for_pieces(ClauseContext) = Pieces :-
     ModuleInfo = ClauseContext ^ tecc_module_info,
     PredId = ClauseContext ^ tecc_pred_id,
-    PredIdPieces = describe_one_pred_name(ModuleInfo,
-        should_not_module_qualify, PredId),
+    PredIdPieces = describe_unqual_pred_name(ModuleInfo, PredId),
     Pieces = [words("In clause for") | PredIdPieces] ++ [suffix(":"), nl].
 
 %---------------------------------------------------------------------------%

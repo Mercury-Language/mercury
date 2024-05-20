@@ -1,5 +1,5 @@
-bug197.m:023: Error: no clauses for predicate `foo'/4.
-bug197.m:025: Error: clause for [38;5;87mpredicate `foo'/3[39;49m [38;5;203mwithout[39;49m a corresponding
+bug197.m:023: Error: predicate [38;5;87m`foo'/4[39;49m [38;5;203mhas no clauses.[39;49m
+bug197.m:025: Error: clause for predicate [38;5;87m`foo'/3[39;49m [38;5;203mwithout[39;49m a corresponding
 bug197.m:025:   `:- pred' declaration.
 bug197.m:025:   [38;5;226mHowever, a predicate of that name does exist with arity 4.[39;49m
 bug197.m:026: In clause for predicate `foo'/3:

@@ -6,9 +6,9 @@ prog_io_erroneous.m:005:   than `:- import_module' in its interface section(s).
 prog_io_erroneous.m:005:   This would normally be a `:- pred' or `:- func'
 prog_io_erroneous.m:005:   declaration, or a `:- type', `:- inst', `:- mode',
 prog_io_erroneous.m:005:   `:- typeclass' or `:- instance' definition.
-prog_io_erroneous.m:007: Error: module `prog_io_erroneous' should start with
-prog_io_erroneous.m:007:   either an `:- interface' or an `:- implementation'
-prog_io_erroneous.m:007:   declaration.
+prog_io_erroneous.m:007: Error: module `prog_io_erroneous' [38;5;203mshould start with[39;49m
+prog_io_erroneous.m:007:   either an [38;5;40m`:- interface' declaration[39;49m or an
+prog_io_erroneous.m:007:   [38;5;40m`:- implementation' declaration.[39;49m
 prog_io_erroneous.m:007:   The following assumes that the missing declaration
 prog_io_erroneous.m:007:   is an `:- implementation' declaration.
-prog_io_erroneous.m:016: Error: no clauses for predicate `q'/2.
+prog_io_erroneous.m:016: Error: predicate [38;5;87m`q'/2[39;49m [38;5;203mhas no clauses.[39;49m

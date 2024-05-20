@@ -1,1 +1,2 @@
-after_end_module.m:013: Error: item(s) after the `:- end_module' declaration.
+after_end_module.m:013: Error: there should be no code [38;5;203mafter the[39;49m
+after_end_module.m:013:   [38;5;203m`:- end_module' declaration.[39;49m

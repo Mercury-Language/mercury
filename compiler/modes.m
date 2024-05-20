@@ -769,13 +769,12 @@ maybe_report_error_no_modes(ModuleInfo, PredId, PredInfo) = Specs :-
                 % when we added the marker.
                 Msgs = []
             else
-                PredDesc = describe_one_pred_name(ModuleInfo,
-                    should_not_module_qualify, PredId),
+                PredDescDotPieces = describe_one_pred_name(ModuleInfo,
+                    yes(color_subject), should_not_module_qualify,
+                    [suffix(".")], PredId),
                 MainPieces = [words("Error:")] ++
                     color_as_incorrect([words("no mode declaration")]) ++
-                    [words("for")] ++
-                    color_as_subject(PredDesc ++ [suffix(".")]) ++
-                    [nl],
+                    [words("for")] ++ PredDescDotPieces ++ [nl],
                 VerbosePieces =
                     [words("(Use"), quote("--infer-modes"),
                     words("to enable mode inference.)"), nl],
@@ -790,14 +789,13 @@ maybe_report_error_no_modes(ModuleInfo, PredId, PredInfo) = Specs :-
             Specs = [Spec]
         )
     else
-        PredPieces =
-            describe_one_pred_name(ModuleInfo, should_module_qualify, PredId),
+        PredDescDotPieces =
+            describe_one_pred_name(ModuleInfo, yes(color_subject),
+                should_module_qualify, [suffix(".")], PredId),
         pred_info_get_context(PredInfo, Context),
         Pieces = [words("Error:")] ++
             color_as_incorrect([words("no mode declaration")]) ++
-            [words("for exported")] ++
-            color_as_subject(PredPieces ++ [suffix(".")]) ++
-            [nl],
+            [words("for exported")] ++ PredDescDotPieces ++ [nl],
         Spec = spec($pred, severity_error,
             phase_mode_check(report_in_any_mode), Context, Pieces),
         Specs = [Spec]

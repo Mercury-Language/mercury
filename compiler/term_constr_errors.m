@@ -176,14 +176,13 @@ report_term2_errors(ModuleInfo, SCC, Errors, !Specs) :-
     get_context_from_scc(ModuleInfo, SCC, Context),
     ( if set.is_singleton(SCC, PPId) then
         Pieces0 = [words("Termination of")],
-        ProcName = describe_one_proc_name(ModuleInfo,
-            should_module_qualify, PPId),
+        ProcName = describe_qual_proc_name(ModuleInfo, PPId),
         Pieces1 = Pieces0 ++ ProcName,
         Single = yes(PPId)
     else
         Pieces0 = [words("Termination of the"),
             words("mutually recursive procedures")],
-        ProcNames = describe_several_proc_names(ModuleInfo,
+        ProcNames = describe_several_proc_names(ModuleInfo, no,
             should_module_qualify, set.to_sorted_list(SCC)),
         Pieces1 = Pieces0 ++ ProcNames,
         Single = no
@@ -263,13 +262,11 @@ term2_error_kind_description(ModuleInfo, Single, Error, Pieces) :-
             Piece1 = [words("It")]
         ;
             Single = no,
-            ProcName = describe_one_proc_name(ModuleInfo,
-                should_module_qualify, CallerPPId),
+            ProcName = describe_qual_proc_name(ModuleInfo, CallerPPId),
             Piece1 = ProcName
         ),
         Piece2 = words("calls"),
-        CalleePiece = describe_one_proc_name(ModuleInfo,
-            should_module_qualify, CalleePPId),
+        CalleePiece = describe_qual_proc_name(ModuleInfo, CalleePPId),
         Pieces3 = [words("which could not be proven to terminate."), nl],
         Pieces  = Piece1 ++ [Piece2] ++ CalleePiece ++ Pieces3
     ;
@@ -287,14 +284,13 @@ term2_error_kind_description(ModuleInfo, Single, Error, Pieces) :-
             Pieces2 = [words("it."), nl]
         ;
             Single = no,
-            PredDesc = describe_one_pred_name(ModuleInfo,
-                should_module_qualify, PredId),
+            PredDesc = describe_qual_pred_name(ModuleInfo, PredId),
             Pieces2 = PredDesc ++ [suffix("."), nl]
         ),
         Pieces = Pieces1 ++ Pieces2
     ;
         Error = foreign_proc_called(PPId),
-        Name = describe_one_proc_name(ModuleInfo, should_module_qualify, PPId),
+        Name = describe_qual_proc_name(ModuleInfo, PPId),
         Pieces = [words("There is a call the foreign procedure")] ++
             Name ++ [words("which is not known to terminate."), nl]
     ).

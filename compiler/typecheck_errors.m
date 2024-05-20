@@ -212,8 +212,9 @@ wrap_quote(Str) = quote(Str).
 report_missing_tvar_in_foreign_code(ClauseContext, Context, VarName) = Spec :-
     ModuleInfo = ClauseContext ^ tecc_module_info,
     PredId = ClauseContext ^ tecc_pred_id,
-    Pieces = [words("The foreign language code for")] ++
-        describe_one_pred_name(ModuleInfo, should_module_qualify, PredId) ++
+    Pieces = [words("Error: the foreign language code for")] ++
+        describe_one_pred_name(ModuleInfo, yes(color_subject),
+            should_module_qualify, [], PredId) ++
         [words("should define the variable")] ++
         color_as_incorrect([quote(VarName), suffix(".")]) ++ [nl],
     Spec = spec($pred, severity_error, phase_type_check, Context, Pieces).

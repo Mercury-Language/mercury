@@ -1957,7 +1957,7 @@ maybe_add_headvar_clone_suffix(OldVarName) = CloneVarName :-
 
 generate_problem_proc_error(ModuleInfo, PredProcId, OoMProblemArgs, Spec) :-
     OoMProblemArgs = one_or_more(HeadProblemArg, TailProblemArgs),
-    ProcDescPieces = describe_one_proc_name(ModuleInfo,
+    ProcDescPieces = describe_one_proc_name(ModuleInfo, yes(color_subject),
         should_not_module_qualify, PredProcId),
     (
         TailProblemArgs = [],
@@ -2076,7 +2076,7 @@ generate_call_foreign_proc_error(ModuleInfo, PredProcId, DirectArgProc,
         words("data representations optimization,"),
         words("and whose modes indicate that they fill in"),
         words("partially instantiated terms.")],
-    ProcDescPieces = describe_one_proc_name(ModuleInfo,
+    ProcDescPieces = describe_one_proc_name(ModuleInfo, yes(color_subject),
         should_not_module_qualify, PredProcId),
     OfProcDescPieces = [words("of")] ++ ProcDescPieces,
     (

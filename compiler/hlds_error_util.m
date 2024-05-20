@@ -34,6 +34,7 @@
 :- import_module bool.
 :- import_module io.
 :- import_module list.
+:- import_module maybe.
 :- import_module pair.
 
 %-----------------------------------------------------------------------------%
@@ -45,33 +46,70 @@
     --->    should_module_qualify
     ;       should_not_module_qualify.
 
-:- func describe_one_pred_name(module_info, should_module_qualify, pred_id)
-    = list(format_piece).
+    % describe_one_pred_name(ModuleInfo, MaybeColor, Qual, SuffixPieces,
+    %   PredId) = Spec:
+    %
+    % Return a description of the given predicate or function. This
+    % description will have one of the forms
+    %
+    %   predicate `symname'/arity
+    %   function `symname'/arity
+    %
+    % in both cases followed by SuffixPieces.
+    %
+    % The Qual parameter governs whether the sym_name will contain
+    % its full module qualification, or none.
+    %
+    % If MaybeColor is yes(Color), then the initial "predicate" or "function"
+    % will not be in that color, but the`symname'/arity part, *and*
+    % the SuffixPieces, will be. (The reason for taking SuffixPieces
+    % as an argument is specifically intended to make this possible
+    % without redundant switches between colors.)
+    %
+:- func describe_one_pred_name(module_info, maybe(color_name),
+    should_module_qualify, list(format_piece), pred_id) = list(format_piece).
 
-:- func describe_one_pred_info_name(should_module_qualify, pred_info)
-    = list(format_piece).
+    % describe_one_pred_info_name(MaybeColor, Qual, SuffixPieces, PredInfo)
+    %   = Spec:
+    %
+    % Does the same job as describe_one_pred_name, except for letting the
+    % caller do the lookup of the pred_info.
+    %
+:- func describe_one_pred_info_name(maybe(color_name), should_module_qualify,
+    list(format_piece), pred_info) = list(format_piece).
 
-:- func describe_one_pred_name_mode(module_info, output_lang,
-    should_module_qualify, pred_id, inst_varset, list(mer_mode))
-    = list(format_piece).
+:- func describe_qual_pred_name(module_info, pred_id) = list(format_piece).
+:- func describe_unqual_pred_name(module_info, pred_id) = list(format_piece).
 
-:- func describe_several_pred_names(module_info, should_module_qualify,
-    list(pred_id)) = list(format_piece).
+:- func describe_one_pred_name_mode(module_info, output_lang, inst_varset,
+    maybe(color_name), should_module_qualify, list(format_piece),
+    pred_id, list(mer_mode)) = list(format_piece).
 
-:- func describe_one_proc_name(module_info, should_module_qualify,
-    pred_proc_id) = list(format_piece).
+:- func describe_several_pred_names(module_info, maybe(color_name),
+    should_module_qualify, list(pred_id)) = list(format_piece).
 
-:- func describe_one_proc_name_mode(module_info, output_lang,
+:- func describe_one_proc_name(module_info, maybe(color_name),
     should_module_qualify, pred_proc_id) = list(format_piece).
 
-:- func describe_several_proc_names(module_info, should_module_qualify,
-    list(pred_proc_id)) = list(format_piece).
+:- func describe_qual_proc_name(module_info, pred_proc_id)
+    = list(format_piece).
+:- func describe_unqual_proc_name(module_info, pred_proc_id)
+    = list(format_piece).
 
-:- func describe_one_call_site(module_info, should_module_qualify,
-    pair(pred_proc_id, prog_context)) = list(format_piece).
+:- func describe_one_proc_name_mode(module_info, output_lang,
+    maybe(color_name), should_module_qualify, list(format_piece), pred_proc_id)
+    = list(format_piece).
 
-:- func describe_several_call_sites(module_info, should_module_qualify,
-    assoc_list(pred_proc_id, prog_context)) = list(format_piece).
+:- func describe_several_proc_names(module_info, maybe(color_name),
+    should_module_qualify, list(pred_proc_id)) = list(format_piece).
+
+:- func describe_one_call_site(module_info, maybe(color_name),
+    should_module_qualify, pair(pred_proc_id, prog_context))
+    = list(format_piece).
+
+:- func describe_several_call_sites(module_info, maybe(color_name),
+    should_module_qualify, assoc_list(pred_proc_id, prog_context))
+    = list(format_piece).
 
 %-----------------------------------------------------------------------------%
 
@@ -158,11 +196,14 @@
 
 %-----------------------------------------------------------------------------%
 
-describe_one_pred_name(ModuleInfo, ShouldModuleQualify, PredId) = Pieces :-
+describe_one_pred_name(ModuleInfo, MaybeColor, ShouldModuleQualify,
+        SuffixPieces, PredId) = Pieces :-
     module_info_pred_info(ModuleInfo, PredId, PredInfo),
-    Pieces = describe_one_pred_info_name(ShouldModuleQualify, PredInfo).
+    Pieces = describe_one_pred_info_name(MaybeColor, ShouldModuleQualify,
+        SuffixPieces, PredInfo).
 
-describe_one_pred_info_name(ShouldModuleQualify, PredInfo) = Pieces :-
+describe_one_pred_info_name(MaybeColor, ShouldModuleQualify, SuffixPieces,
+        PredInfo) = Pieces :-
     % NOTE The code of this predicate duplicates the functionality of
     % hlds_out.write_pred_id. Changes here should be made there as well.
     %
@@ -170,7 +211,6 @@ describe_one_pred_info_name(ShouldModuleQualify, PredInfo) = Pieces :-
     PredName = pred_info_name(PredInfo),
     ModuleName = pred_info_module(PredInfo),
     pred_info_get_orig_arity(PredInfo, PredFormArity),
-    PredOrFunc = pred_info_is_pred_or_func(PredInfo),
     pred_info_get_markers(PredInfo, Markers),
     pred_info_get_origin(PredInfo, Origin),
     ( if Origin = origin_compiler(made_for_uci(SpecialId, TypeCtor)) then
@@ -184,61 +224,78 @@ describe_one_pred_info_name(ShouldModuleQualify, PredInfo) = Pieces :-
             TypeSymName = unqualified(unqualify_name(TypeSymName0))
         ),
         ( if TypeArity = 0 then
-            Pieces = [words(Descr), words("for type"),
+            Pieces0 = [words(Descr), words("for type"),
                 qual_sym_name(TypeSymName)]
         else
-            Pieces = [words(Descr), words("for type constructor"),
+            Pieces0 = [words(Descr), words("for type constructor"),
                 qual_sym_name(TypeSymName)]
-        )
-    else if Origin = origin_user(user_made_class_method(_, PFNA0)) then
+        ),
+        Pieces = maybe_color_pieces(MaybeColor, Pieces0 ++ SuffixPieces)
+    else if Origin = origin_user(user_made_class_method(_, PFNA)) then
+        PFNA = pred_pf_name_arity(PredOrFunc, SymName, UserArity),
+        UserArity = user_arity(UserArityInt),
+        SNA = sym_name_arity(SymName, UserArityInt),
         (
             ShouldModuleQualify = should_module_qualify,
-            PFNA = PFNA0
+            SNAPiece = qual_sym_name_arity(SNA)
         ;
             ShouldModuleQualify = should_not_module_qualify,
-            PFNA0 = pred_pf_name_arity(PorF, SymName0, UserArity),
-            SymName = unqualified(unqualify_name(SymName0)),
-            PFNA = pred_pf_name_arity(PorF, SymName, UserArity)
+            SNAPiece = unqual_sym_name_arity(SNA)
         ),
-        Pieces = [words("typeclass method"), qual_pf_sym_name_user_arity(PFNA)]
-    else if Origin = origin_user(user_made_instance_method(PFNA0, _)) then
+        Pieces = [words("typeclass method"), p_or_f(PredOrFunc)] ++
+            maybe_color_pieces(MaybeColor, [SNAPiece] ++ SuffixPieces)
+    else if Origin = origin_user(user_made_instance_method(PFNA, _)) then
+        PFNA = pred_pf_name_arity(PredOrFunc, SymName, UserArity),
+        UserArity = user_arity(UserArityInt),
+        SNA = sym_name_arity(SymName, UserArityInt),
         (
             ShouldModuleQualify = should_module_qualify,
-            PFNA = PFNA0
+            SNAPiece = qual_sym_name_arity(SNA)
         ;
             ShouldModuleQualify = should_not_module_qualify,
-            PFNA0 = pred_pf_name_arity(PorF, SymName0, UserArity),
-            SymName = unqualified(unqualify_name(SymName0)),
-            PFNA = pred_pf_name_arity(PorF, SymName, UserArity)
+            SNAPiece = unqual_sym_name_arity(SNA)
         ),
-        Pieces = [words("instance method"), qual_pf_sym_name_user_arity(PFNA)]
+        Pieces = [words("instance method"), p_or_f(PredOrFunc)] ++
+            maybe_color_pieces(MaybeColor, [SNAPiece] ++ SuffixPieces)
     else if check_marker(Markers, marker_class_instance_method) then
-        Pieces = [words("type class method implementation")]
+        Pieces0 = [words("type class method implementation")] ++ SuffixPieces,
+        Pieces = maybe_color_pieces(MaybeColor, Pieces0)
     else if pred_info_is_promise(PredInfo, PromiseType) then
-        Pieces = [quote(promise_to_string(PromiseType)),
-            words("declaration")]
+        Pieces0 = [quote(promise_to_string(PromiseType)),
+            words("declaration")] ++ SuffixPieces,
+        Pieces = maybe_color_pieces(MaybeColor, Pieces0)
     else
+        PredOrFunc = pred_info_is_pred_or_func(PredInfo),
         ( if check_marker(Markers, marker_class_method) then
             Prefix = [words("type class"), p_or_f(PredOrFunc), words("method")]
         else
             Prefix = [p_or_f(PredOrFunc)]
         ),
-        PredSymName = qualified(ModuleName, PredName),
+        SymName = qualified(ModuleName, PredName),
         user_arity_pred_form_arity(PredOrFunc,
             user_arity(UserArityInt), PredFormArity),
-        PredSymNameAndArity = sym_name_arity(PredSymName, UserArityInt),
+        SNA = sym_name_arity(SymName, UserArityInt),
         (
             ShouldModuleQualify = should_module_qualify,
-            PredSymNamePiece = qual_sym_name_arity(PredSymNameAndArity)
+            SNAPiece = qual_sym_name_arity(SNA)
         ;
             ShouldModuleQualify = should_not_module_qualify,
-            PredSymNamePiece = unqual_sym_name_arity(PredSymNameAndArity)
+            SNAPiece = unqual_sym_name_arity(SNA)
         ),
-        Pieces = Prefix ++ [PredSymNamePiece]
+        Pieces = Prefix ++
+            maybe_color_pieces(MaybeColor, [SNAPiece] ++ SuffixPieces)
     ).
 
-describe_one_pred_name_mode(ModuleInfo, Lang, ShouldModuleQualify, PredId,
-        InstVarSet, ArgModes0) = Pieces :-
+describe_qual_pred_name(ModuleInfo, PredId) =
+    describe_one_pred_name(ModuleInfo, no, should_module_qualify,
+        [], PredId).
+
+describe_unqual_pred_name(ModuleInfo, PredId) =
+    describe_one_pred_name(ModuleInfo, no, should_not_module_qualify,
+        [], PredId).
+
+describe_one_pred_name_mode(ModuleInfo, Lang, InstVarSet, MaybeColor,
+        ShouldModuleQualify, SuffixPieces, PredId, ArgModes0) = Pieces :-
     module_info_pred_info(ModuleInfo, PredId, PredInfo),
     ModuleName = pred_info_module(PredInfo),
     PredName = pred_info_name(PredInfo),
@@ -266,51 +323,68 @@ describe_one_pred_name_mode(ModuleInfo, Lang, ShouldModuleQualify, PredId,
         PredName,
         "'",
         ArgModesPart], Descr),
-    Pieces = [words(Descr)].
+    Pieces = maybe_color_pieces(MaybeColor, [words(Descr)] ++ SuffixPieces).
 
-describe_several_pred_names(ModuleInfo, ShouldModuleQualify, PredIds)
-        = Pieces :-
+describe_several_pred_names(ModuleInfo, MaybeColor, ShouldModuleQualify,
+        PredIds) = Pieces :-
+    % It does not make sense to add the same suffix to the description
+    % of every pred. It may make sense to add it to the last one.
+    SuffixPieces = [],
     PiecesList = list.map(
-        describe_one_pred_name(ModuleInfo, ShouldModuleQualify),
+        describe_one_pred_name(ModuleInfo, MaybeColor, ShouldModuleQualify,
+            SuffixPieces),
         PredIds),
     Pieces = component_lists_to_pieces("and", PiecesList).
 
-describe_one_proc_name(ModuleInfo, ShouldModuleQualify, PredProcId) = Pieces :-
+describe_one_proc_name(ModuleInfo, MaybeColor, ShouldModuleQualify,
+        PredProcId) = Pieces :-
+    % ZZZ
+    SuffixPieces = [],
     PredProcId = proc(PredId, ProcId),
-    PredPieces = describe_one_pred_name(ModuleInfo, ShouldModuleQualify,
-        PredId),
+    PredPieces = describe_one_pred_name(ModuleInfo, MaybeColor,
+        ShouldModuleQualify, SuffixPieces, PredId),
     proc_id_to_int(ProcId, ProcIdInt),
     string.int_to_string(ProcIdInt, ProcIdStr),
     Pieces = PredPieces ++ [words("mode"), words(ProcIdStr)].
 
-describe_one_proc_name_mode(ModuleInfo, Lang, ShouldModuleQualify, PredProcId)
-        = Pieces :-
+describe_qual_proc_name(ModuleInfo, PredProcId) =
+    describe_one_proc_name(ModuleInfo, no, should_module_qualify,
+        PredProcId).
+
+describe_unqual_proc_name(ModuleInfo, PredProcId) =
+    describe_one_proc_name(ModuleInfo, no, should_not_module_qualify,
+        PredProcId).
+
+describe_one_proc_name_mode(ModuleInfo, Lang, MaybeColor, ShouldModuleQualify,
+        SuffixPieces, PredProcId) = Pieces :-
     module_info_pred_proc_info(ModuleInfo, PredProcId, _, ProcInfo),
     proc_info_get_argmodes(ProcInfo, ArgModes),
     proc_info_get_inst_varset(ProcInfo, InstVarSet),
     PredProcId = proc(PredId, _),
-    Pieces = describe_one_pred_name_mode(ModuleInfo, Lang, ShouldModuleQualify,
-        PredId, InstVarSet, ArgModes).
+    Pieces = describe_one_pred_name_mode(ModuleInfo, Lang, InstVarSet,
+        MaybeColor, ShouldModuleQualify, SuffixPieces, PredId, ArgModes).
 
-describe_several_proc_names(ModuleInfo, ShouldModuleQualify, PPIds) = Pieces :-
+describe_several_proc_names(ModuleInfo, MaybeColor, ShouldModuleQualify,
+        PPIds) = Pieces :-
     PiecesList = list.map(
-        describe_one_proc_name(ModuleInfo, ShouldModuleQualify),
+        describe_one_proc_name(ModuleInfo, MaybeColor, ShouldModuleQualify),
         PPIds),
     Pieces = component_lists_to_pieces("and", PiecesList).
 
-describe_one_call_site(ModuleInfo, ShouldModuleQualify, PPId - Context)
-        = Pieces :-
-    ProcNamePieces = describe_one_proc_name(ModuleInfo, ShouldModuleQualify,
-        PPId),
+describe_one_call_site(ModuleInfo, MaybeColor, ShouldModuleQualify,
+        PPId - Context) = Pieces :-
+    ProcNamePieces = describe_one_proc_name(ModuleInfo, MaybeColor,
+        ShouldModuleQualify, PPId),
     FileName = term_context.context_file(Context),
     LineNumber = term_context.context_line(Context),
     string.int_to_string(LineNumber, LineNumberStr),
     Pieces = ProcNamePieces ++
         [words("at"), fixed(FileName ++ ":" ++ LineNumberStr)].
 
-describe_several_call_sites(ModuleInfo, ShouldModuleQualify, Sites) = Pieces :-
+describe_several_call_sites(ModuleInfo, MaybeColor, ShouldModuleQualify,
+        Sites) = Pieces :-
     PiecesList = list.map(
-        describe_one_call_site(ModuleInfo, ShouldModuleQualify),
+        describe_one_call_site(ModuleInfo, MaybeColor, ShouldModuleQualify),
         Sites),
     Pieces = component_lists_to_pieces("and", PiecesList).
 

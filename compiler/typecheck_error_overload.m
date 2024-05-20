@@ -162,9 +162,8 @@ describe_overloaded_symbol(ModuleInfo, Symbol - SortedContexts) = Msgs :-
             StartPieces = [words("The predicate symbol"),
                 qual_sym_name_arity(SNA), suffix("."), nl,
                 words("The possible matches are:"), nl_indent_delta(1)],
-            PredIdPiecesList = list.map(
-                describe_one_pred_name(ModuleInfo, should_module_qualify),
-                PredIds),
+            PredIdPiecesList =
+                list.map(describe_qual_pred_name(ModuleInfo), PredIds),
             list.sort(PredIdPiecesList, SortedPredIdPiecesList),
             PredIdPieces =
                 component_list_to_line_pieces(SortedPredIdPiecesList,

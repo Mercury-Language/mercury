@@ -1,6 +1,6 @@
 type_inf_loop.m:005: Warning: the interface of module [38;5;87m`type_inf_loop'[39;49m [38;5;203mdoes not[39;49m
 type_inf_loop.m:005:   [38;5;203mexport anything.[39;49m
-type_inf_loop.m:009: Error: clause for [38;5;87mpredicate `loop'/1[39;49m [38;5;203mwithout[39;49m a
+type_inf_loop.m:009: Error: clause for predicate [38;5;87m`loop'/1[39;49m [38;5;203mwithout[39;49m a
 type_inf_loop.m:009:   corresponding `:- pred' declaration.
 type_inf_loop.m:009: Inferred :- pred loop((pred (pred (pred (pred (pred (pred
 type_inf_loop.m:009:   (pred (pred (pred (pred (pred (pred (pred (pred (pred

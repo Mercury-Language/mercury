@@ -351,8 +351,9 @@ format_call_error_wrong_mode(PredInfo, Context, NumFormatArgs, FormatArgNum,
 format_call_error_prelude(PredInfo, NumFormatArgs, FormatArgNum) = Pieces :-
     Pieces0 = [words("Error: in the second argument of"),
         pragma_decl("format_call"), words("declaration for")] ++
-        describe_one_pred_info_name(should_not_module_qualify, PredInfo) ++
-        [suffix(":"), nl],
+        describe_one_pred_info_name(yes(color_subject),
+            should_not_module_qualify, [suffix(":")], PredInfo) ++
+        [nl],
     ( if FormatArgNum = 1, NumFormatArgs = 1 then
         Pieces = Pieces0
     else

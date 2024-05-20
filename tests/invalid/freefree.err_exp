@@ -1,4 +1,4 @@
-freefree.m:020: In predicate `p'/0:
+freefree.m:020: In predicate [38;5;87m`p'/0:[39;49m
 freefree.m:020:   warning: unresolved polymorphism.
 freefree.m:020:   The variables with unbound types were:
 freefree.m:020:     [38;5;203mX[39;49m

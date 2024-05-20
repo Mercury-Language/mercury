@@ -1,4 +1,4 @@
-coerce_void.m:010: In predicate `main'/2:
+coerce_void.m:010: In predicate [38;5;87m`main'/2:[39;49m
 coerce_void.m:010:   warning: unresolved polymorphism.
 coerce_void.m:010:   The variables with unbound types were:
 coerce_void.m:010:     [38;5;87mList:[39;49m [38;5;203mlist.list(T)[39;49m

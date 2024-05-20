@@ -1,4 +1,4 @@
-bug238.m:022: Error: call to predicate `solutions.unsorted_solutions'/2 with
+bug238.m:022: Error: call to predicate [38;5;87m`solutions.unsorted_solutions'/2[39;49m with
 bug238.m:022:   determinism `cc_multi' [38;5;203moccurs in a context which requires all[39;49m
 bug238.m:022:   [38;5;203msolutions.[39;49m
 bug238.m:022:   Unification of V_2 and V_5 can fail.

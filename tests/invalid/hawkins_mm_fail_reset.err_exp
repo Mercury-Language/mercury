@@ -1,15 +1,15 @@
-hawkins_mm_fail_reset.m:024: In `entry'(out):
+hawkins_mm_fail_reset.m:024: In [38;5;87m`entry'(out):[39;49m
 hawkins_mm_fail_reset.m:024:   warning: determinism declaration could be
 hawkins_mm_fail_reset.m:024:   tighter.
 hawkins_mm_fail_reset.m:024:   Declared [38;5;40m`nondet',[39;49m inferred [38;5;203m`failure'.[39;49m
-hawkins_mm_fail_reset.m:031: Error: `:- pragma minimal_model' declaration not
-hawkins_mm_fail_reset.m:031:   allowed for procedure with determinism
-hawkins_mm_fail_reset.m:031:   `failure'.
+hawkins_mm_fail_reset.m:031: Error: [38;5;87m`:- pragma minimal_model' declarations[39;49m are
+hawkins_mm_fail_reset.m:031:   [38;5;203mnot allowed for procedures with determinism[39;49m
+hawkins_mm_fail_reset.m:031:   [38;5;203m`failure'.[39;49m
 hawkins_mm_fail_reset.m:034: Warning: this disjunct [38;5;203mwill never have any[39;49m
 hawkins_mm_fail_reset.m:034:   [38;5;203msolutions.[39;49m
 hawkins_mm_fail_reset.m:037: Warning: this disjunct [38;5;203mwill never have any[39;49m
 hawkins_mm_fail_reset.m:037:   [38;5;203msolutions.[39;49m
-hawkins_mm_fail_reset.m:040: Error: `:- pragma minimal_model' declaration not
-hawkins_mm_fail_reset.m:040:   allowed for procedure with determinism
-hawkins_mm_fail_reset.m:040:   `failure'.
+hawkins_mm_fail_reset.m:040: Error: [38;5;87m`:- pragma minimal_model' declarations[39;49m are
+hawkins_mm_fail_reset.m:040:   [38;5;203mnot allowed for procedures with determinism[39;49m
+hawkins_mm_fail_reset.m:040:   [38;5;203m`failure'.[39;49m
 For more information, recompile with `-E'.

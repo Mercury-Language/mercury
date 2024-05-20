@@ -13,7 +13,7 @@ qualified_cons_id2.m:019:   incompatible with the type of the value whose
 qualified_cons_id2.m:019:   instantiation state it is supposed to represent,
 qualified_cons_id2.m:019:   that type being [38;5;40m`maybe.maybe'/1.[39;49m
 qualified_cons_id2.m:020: In mode declarations for predicate
-qualified_cons_id2.m:020:   `qualified_cons_id2.test'/2:
+qualified_cons_id2.m:020:   [38;5;87m`qualified_cons_id2.test'/2:[39;49m
 qualified_cons_id2.m:020:   error: duplicate mode declaration.
 qualified_cons_id2.m:021:   Here is the conflicting mode declaration.
 For more information, recompile with `-E'.

@@ -1,1 +1,1 @@
-warn_dead_procs_trace.m:040: Warning: predicate `t'/2 mode 0 is never called.
+warn_dead_procs_trace.m:040: Warning: predicate [38;5;87m`t'/2[39;49m mode 0 [38;5;203mis never called.[39;49m

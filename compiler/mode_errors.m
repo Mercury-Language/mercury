@@ -1823,8 +1823,7 @@ mode_error_in_callee_to_spec(!.ModeInfo, Vars, Insts,
     NoMatchPieces = inst_list_to_sep_lines(!.ModeInfo, Insts) ++
         [words("which does not match any of the valid modes for")],
 
-    CalleePredIdPieces = describe_one_pred_name(ModuleInfo,
-        should_module_qualify, CalleePredId),
+    CalleePredIdPieces = describe_qual_pred_name(ModuleInfo, CalleePredId),
     VerboseCalleePieces = [words("the callee"),
         prefix("(")] ++ CalleePredIdPieces ++ [suffix(")"), nl,
         words("because of the following error."), nl],

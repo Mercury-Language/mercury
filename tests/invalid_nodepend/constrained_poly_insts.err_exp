@@ -1,4 +1,4 @@
-constrained_poly_insts.m:010: Error: [38;5;203mno mode declaration[39;49m for exported [38;5;87mpredicate[39;49m
+constrained_poly_insts.m:010: Error: [38;5;203mno mode declaration[39;49m for exported predicate
 constrained_poly_insts.m:010:   [38;5;87m`constrained_poly_insts.p'/2.[39;49m
 constrained_poly_insts.m:011: Error: inconsistent constraints on inst variable
 constrained_poly_insts.m:011:   I in predicate mode declaration.
@@ -10,13 +10,13 @@ constrained_poly_insts.m:018: Error: inconsistent constraints on inst variable
 constrained_poly_insts.m:018:   I in function declaration.
 constrained_poly_insts.m:020: Error: inconsistent constraints on inst variables
 constrained_poly_insts.m:020:   I and J in predicate declaration.
-constrained_poly_insts.m:029: Error: clause for [38;5;87mpredicate `q'/2[39;49m [38;5;203mwithout[39;49m a
+constrained_poly_insts.m:029: Error: clause for predicate [38;5;87m`q'/2[39;49m [38;5;203mwithout[39;49m a
 constrained_poly_insts.m:029:   corresponding `:- pred' declaration.
 constrained_poly_insts.m:029: Inferred :- pred q(T1, T1).
-constrained_poly_insts.m:031: Error: clause for [38;5;87mfunction `s'/1[39;49m [38;5;203mwithout[39;49m a
+constrained_poly_insts.m:031: Error: clause for function [38;5;87m`s'/1[39;49m [38;5;203mwithout[39;49m a
 constrained_poly_insts.m:031:   corresponding `:- func' declaration.
 constrained_poly_insts.m:031: Inferred :- func s(T1) = T1.
-constrained_poly_insts.m:032: Error: clause for [38;5;87mpredicate `t'/4[39;49m [38;5;203mwithout[39;49m a
+constrained_poly_insts.m:032: Error: clause for predicate [38;5;87m`t'/4[39;49m [38;5;203mwithout[39;49m a
 constrained_poly_insts.m:032:   corresponding `:- pred' declaration.
 constrained_poly_insts.m:032: Inferred :- pred t(T1, T1, T3, T3).
 constrained_poly_insts.m:033: In clause for `u(in((I =< ground)), out((I =<

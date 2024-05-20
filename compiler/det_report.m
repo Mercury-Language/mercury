@@ -217,8 +217,8 @@ check_determinism_of_proc(ProgressStream, PredProcId, !ModuleInfo, !Specs) :-
         proc_info_get_inst_varset(ProcInfo, InstVarSet),
         PredProcId = proc(PredId, _ProcId),
         PredModePieces = describe_one_pred_name_mode(!.ModuleInfo,
-            output_mercury, should_not_module_qualify, PredId,
-            InstVarSet, PredArgModes),
+            output_mercury, InstVarSet, no, should_not_module_qualify, [],
+            PredId, PredArgModes),
         PredStr = error_pieces_to_one_line_string(PredModePieces),
         io.format(ProgressStream, "check_determinism_of_proc %s\n",
             [s(PredStr)], !IO)
@@ -264,8 +264,8 @@ check_determinism_of_imported_proc(ProgressStream, ModuleInfo, PredProcId,
         proc_info_get_inst_varset(ProcInfo, InstVarSet),
         PredProcId = proc(PredId, _ProcId),
         PredModePieces = describe_one_pred_name_mode(ModuleInfo,
-            output_mercury, should_not_module_qualify, PredId,
-            InstVarSet, PredArgModes),
+            output_mercury, InstVarSet, no, should_not_module_qualify, [],
+            PredId, PredArgModes),
         PredStr = error_pieces_to_one_line_string(PredModePieces),
         io.format(ProgressStream, "check_determinism_of_imported_proc %s\n",
             [s(PredStr)], !IO)
@@ -523,22 +523,26 @@ check_determinism_for_eval_method(ProcInfo, !Specs) :-
         valid_determinism_for_tabled_eval_method(TabledMethod, InferredDetism)
             = no
     then
+        PragmaName = tabled_eval_method_to_pragma_name(TabledMethod),
         proc_info_get_context(ProcInfo, Context),
-        MainPieces = [words("Error:"),
-            pragma_decl(tabled_eval_method_to_pragma_name(TabledMethod)),
-            words("declaration not allowed for procedure"),
-            words("with determinism"),
-            quote(determinism_to_string(InferredDetism)), suffix("."), nl],
+        MainPieces = [words("Error:")] ++
+            color_as_subject([pragma_decl(PragmaName),
+                words("declarations")]) ++
+            [words("are")] ++
+            color_as_incorrect([words("not allowed for procedures"),
+                words("with determinism"),
+                quote(determinism_to_string(InferredDetism)), suffix(".")]) ++
+            [nl],
 
         solutions.solutions(get_valid_determinisms(TabledMethod), Detisms),
         DetismStrs = list.map(determinism_to_string, Detisms),
         list.sort(DetismStrs, SortedDetismStrs),
-        DetismPieces = list_to_pieces(SortedDetismStrs),
+        DetismPieces = list_to_color_pieces(yes(color_correct), "and",
+            [suffix(".")], SortedDetismStrs),
         VerbosePieces =
-            [words("The pragma requested is only valid"),
-            words("for the following"),
+            [words("This pragma is valid only for the following"),
             words(choose_number(Detisms, "determinism", "determinisms")),
-            suffix(":") | DetismPieces] ++ [suffix("."), nl],
+            suffix(":") | DetismPieces] ++ [nl],
         ValidSpec = error_spec($pred, severity_error, phase_detism_check,
             [simple_msg(Context,
                 [always(MainPieces),
@@ -733,8 +737,8 @@ check_for_multisoln_func(ModuleInfo, PredProcId, PredInfo, ProcInfo, !Specs) :-
         proc_info_get_inst_varset(ProcInfo, InstVarSet),
         PredProcId = proc(PredId, _ProcId),
         PredModePieces = describe_one_pred_name_mode(ModuleInfo,
-            output_mercury, should_not_module_qualify, PredId,
-            InstVarSet, PredArgModes),
+            output_mercury, InstVarSet, no, should_not_module_qualify, [],
+            PredId, PredArgModes),
         InferredDetismStr = mercury_det_to_string(InferredDetism),
         MainPieces = [words("Error: invalid determinism for")] ++
             color_as_subject(PredModePieces ++ [suffix(":")]) ++ [nl,
@@ -814,8 +818,9 @@ check_io_state_proc_detism(ModuleInfo, PredProcId, PredInfo, ProcInfo,
         else
             ShouldModuleQual = should_module_qualify
         ),
-        ProcPieces = describe_one_proc_name_mode(ModuleInfo, output_mercury,
-            ShouldModuleQual, PredProcId),
+        ProcColonPieces = describe_one_proc_name_mode(ModuleInfo,
+            output_mercury, yes(color_subject), ShouldModuleQual,
+            [suffix(":")], PredProcId),
         % We used to print the second sentence (actually, only its first half)
         % if verbose error messages were enabled, but anyone who makes this
         % error will probably need that extra help, so don't make them
@@ -825,7 +830,7 @@ check_io_state_proc_detism(ModuleInfo, PredProcId, PredInfo, ProcInfo,
         GoodDetismPieces = color_as_correct([quote("det"), suffix(",")]) ++
             color_as_correct([quote("cc_multi")]) ++ [words("and")] ++
             color_as_correct([quote("erroneous"), suffix(",")]),
-        Pieces = [words("In")] ++ ProcPieces ++ [suffix(":"), nl,
+        Pieces = [words("In")] ++ ProcColonPieces ++ [nl,
             words("error:")] ++ BadDetismPieces ++
             [words("is not a valid determinism"),
             words("for a predicate that has I/O state arguments."),
@@ -922,13 +927,14 @@ det_check_lambda(DeclaredDetism, InferredDetism, Goal, GoalInfo, InstMap0,
         det_info_get_pred_proc_id(!.DetInfo, PredProcId),
         Context = goal_info_get_context(GoalInfo),
         det_info_get_module_info(!.DetInfo, ModuleInfo),
-        PredPieces = describe_one_proc_name_mode(ModuleInfo, output_mercury,
-            should_not_module_qualify, PredProcId),
+        ProcColonPieces = describe_one_proc_name_mode(ModuleInfo,
+            output_mercury, yes(color_subject), should_not_module_qualify,
+            [suffix(":")], PredProcId),
         DeclaredStr = determinism_to_string(DeclaredDetism),
         InferredStr = determinism_to_string(InferredDetism),
         DeclaredPieces = color_as_correct([quote(DeclaredStr), suffix(",")]),
         InferredPieces = color_as_incorrect([quote(InferredStr), suffix(".")]),
-        Pieces = [words("In")] ++ PredPieces ++ [suffix(":"), nl,
+        Pieces = [words("In")] ++ ProcColonPieces ++ [nl,
             words("determinism error in lambda expression."), nl] ++
             [words("Declared")] ++ DeclaredPieces ++
             [words("inferred")] ++ InferredPieces ++ [nl],
@@ -954,13 +960,14 @@ report_determinism_problem(ModuleInfo, PredProcId, MessagePieces, ReasonPieces,
         DeclaredDetism, InferredDetism, Msg) :-
     module_info_proc_info(ModuleInfo, PredProcId, ProcInfo),
     proc_info_get_context(ProcInfo, Context),
-    ProcPieces = describe_one_proc_name_mode(ModuleInfo, output_mercury,
-        should_not_module_qualify, PredProcId),
+    ProcColonPieces = describe_one_proc_name_mode(ModuleInfo,
+        output_mercury, yes(color_subject), should_not_module_qualify,
+        [suffix(":")], PredProcId),
     DeclaredStr = determinism_to_string(DeclaredDetism),
     InferredStr = determinism_to_string(InferredDetism),
     DeclaredPieces = color_as_correct([quote(DeclaredStr), suffix(",")]),
     InferredPieces = color_as_incorrect([quote(InferredStr), suffix(".")]),
-    Pieces = [words("In")] ++ ProcPieces ++ [suffix(":"), nl] ++
+    Pieces = [words("In")] ++ ProcColonPieces ++ [nl] ++
         MessagePieces ++ [nl] ++
         [words("Declared")] ++ DeclaredPieces ++
         [words("inferred")] ++ InferredPieces ++ [nl] ++
@@ -2378,7 +2385,7 @@ det_report_call_context(Context, CallUnifyContext, DetInfo, PredId, ProcId,
         proc_info_declared_argmodes(ProcInfo, ArgModes),
         proc_info_get_inst_varset(ProcInfo, InstVarSet),
         PredPieces = describe_one_pred_name_mode(ModuleInfo, output_mercury,
-            should_module_qualify, PredId, InstVarSet, ArgModes),
+            InstVarSet, no, should_module_qualify, [], PredId, ArgModes),
         SurroundingUnifyContextPieces = [],
         GoalPieces = [words("Call to") | PredPieces]
     ).
@@ -2514,8 +2521,8 @@ failing_context_description(ModuleInfo, VarTable, FailingContext) = Msg :-
 det_report_seen_call_id(ModuleInfo, SeenCall) = Pieces :-
     (
         SeenCall = seen_call(PredId, _),
-        PredPieces = describe_one_pred_name(ModuleInfo, should_module_qualify,
-            PredId),
+        PredPieces = describe_one_pred_name(ModuleInfo, no,
+            should_module_qualify, [], PredId),
         Pieces = [words("call to") | PredPieces]
     ;
         SeenCall = higher_order_call,

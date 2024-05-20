@@ -330,7 +330,9 @@ fact_table_check_args(ModuleInfo, PragmaContext, PredId, PredInfo, Result) :-
         % We can say "predicate" because a function has at least one argument,
         % the result.
         Pieces = [words("Error:"), pragma_decl("fact_table"),
-            words("declaration for a predicate without arguments."), nl],
+            words("declaration for a")] ++
+            color_as_incorrect([words("predicate without arguments.")]) ++
+            [nl],
         Spec = spec($pred, severity_error, phase_fact_table_check,
             PragmaContext, Pieces),
         % Since there are no arguments, they cannot have an unsupported
@@ -343,10 +345,11 @@ fact_table_check_args(ModuleInfo, PragmaContext, PredId, PredInfo, Result) :-
         (
             ProcIds = [],
             ModePieces = [words("Error:"), pragma_decl("fact_table"),
-                words("declaration for a predicate with no declared modes."),
-                nl],
-            ModeSpec = spec($pred, severity_error,
-                phase_fact_table_check, PragmaContext, ModePieces),
+                words("declaration for a predicate with")] ++
+                color_as_incorrect([words("no declared modes.")]) ++
+                [nl],
+            ModeSpec = spec($pred, severity_error, phase_fact_table_check,
+                PragmaContext, ModePieces),
             ModeSpecs = [ModeSpec],
             FactArgInfos = FactArgInfos0,       % dummy; won't be used
             map.init(FactTableProcMap),         % dummy; won't be used
@@ -371,9 +374,10 @@ fact_table_check_args(ModuleInfo, PragmaContext, PredId, PredInfo, Result) :-
             ;
                 AllInProcIds = [_, _ | _],
                 AllInPieces = [words("Error:"), pragma_decl("fact_table"),
-                    words("declaration for a predicate"),
-                    words("with more than one mode"),
-                    words("in which all arguments are input."), nl],
+                    words("declaration for a predicate with")] ++
+                    color_as_incorrect([words("more than one mode"),
+                        words("in which all arguments are input.")]) ++
+                    [nl],
                 AllInSpec = spec($pred, severity_error,
                     phase_fact_table_check, PragmaContext, AllInPieces),
                 ModeSpecs = [AllInSpec | ModeSpecs0],
@@ -471,11 +475,17 @@ init_fact_arg_infos(PredInfo, [Type | Types], [Info | Infos], !Specs) :-
         pred_info_get_typevarset(PredInfo, TVarSet),
         TypeStr = mercury_type_to_string(TVarSet, print_name_only, Type),
         pred_info_get_context(PredInfo, Context),
-        Pieces = [words("Error: type"), quote(TypeStr),
-            words("is not allowed in fact tables."),
-            words("The only types allowed in fact tables are"),
-            quote("int"), suffix(","), quote("float"), suffix(","),
-            words("and"), quote("string"), suffix("."), nl],
+        Pieces = [words("Error: type")] ++
+            color_as_subject([quote(TypeStr)]) ++
+            [words("is")] ++
+            color_as_incorrect([words("not allowed")]) ++
+            [words("in fact tables."),
+            words("The only types allowed in fact tables are")] ++
+            color_as_correct([quote("int"), suffix(","),
+                quote("float"), suffix(",")]) ++
+            [words("and")] ++
+            color_as_correct([quote("string"), suffix(".")]) ++
+            [nl],
         add_error_context_and_pieces(Context, Pieces, !Specs),
         FactArgType = fact_arg_type_int % Dummy; won't be used.
     ),
@@ -497,15 +507,16 @@ check_proc_arg_modes(ModuleInfo, PredProcId, ProcInfo, [Mode | Modes], ArgNum,
         else if mode_is_fully_output(ModuleInfo, Mode) then
             FactTableMode = fully_out
         else
-            ProcPieces = describe_one_proc_name(ModuleInfo,
+            ProcPieces = describe_one_proc_name(ModuleInfo, yes(color_subject),
                 should_not_module_qualify, PredProcId),
             proc_info_get_context(ProcInfo, Context),
             Pieces = [words("Error: the"), pragma_decl("fact_table"),
-                words("declaration requires all the arguments of") |
-                ProcPieces] ++
+                words("declaration requires all the arguments of")] ++
+                ProcPieces ++
                 [words("to be either fully input or fully output,"),
-                words("but the"), nth_fixed(ArgNum), words("argument"),
-                words("is neither."), nl],
+                words("but the"), nth_fixed(ArgNum), words("argument is")] ++
+                color_as_incorrect([words("is neither.")]) ++
+                [nl],
             Spec = spec($pred, severity_error, phase_fact_table_check,
                 Context, Pieces),
             !:Specs = [Spec | !.Specs],
@@ -902,7 +913,9 @@ check_fact_term(FileStream, FileName, MaybeProgressStream, FactTableSize,
         Term = term.variable(_, _),
         io.get_line_number(FileStream, LineNum, !IO),
         Context = context(FileName, LineNum),
-        Pieces = [words("Error: term is not a fact."), nl],
+        Pieces = [words("Error: this term is")] ++
+            color_as_incorrect([words("not a fact.")]) ++
+            [nl],
         add_error_context_and_pieces(Context, Pieces, [], Specs)
     ;
         Term = term.functor(Functor, ArgTerms0, Context),
@@ -928,14 +941,17 @@ check_fact_term(FileStream, FileName, MaybeProgressStream, FactTableSize,
                     FactNum, VarSet, ArgTerms, Context,
                     ProcStreams, MaybeOutput, Specs, !IO)
             else
-                PredPieces = describe_one_pred_info_name(
-                    should_not_module_qualify, PredInfo),
-                Pieces = [words("Error: clause is not for") | PredPieces]
-                    ++ [suffix("."), nl],
+                PredDotPieces = describe_one_pred_info_name(yes(color_subject),
+                    should_not_module_qualify, [suffix(".")], PredInfo),
+                Pieces = [words("Error: this clause is")] ++
+                    color_as_incorrect([words("not")]) ++
+                    [words("for")] ++ PredDotPieces ++ [nl],
                 add_error_context_and_pieces(Context, Pieces, [], Specs)
             )
         else
-            Pieces = [words("Error: term is not a fact."), nl],
+            Pieces = [words("Error: this term is")] ++
+                color_as_incorrect([words("not a fact.")]) ++
+                [nl],
             add_error_context_and_pieces(Context, Pieces, [], Specs)
         )
     ).
@@ -976,8 +992,11 @@ check_fact_term_args(MaybeProgressStream, FactTableSize, PredInfo,
         )
     else
         Pieces = [words("Error: fact has wrong number of arguments."),
-            words("Expected"), int_fixed(NumFactArgInfos), words("arguments,"),
-            words("got"), int_fixed(NumArgTerms), suffix("."), nl],
+            words("Expected")] ++
+            color_as_correct([int_name(NumFactArgInfos)]) ++
+            [words("arguments,"), words("got")] ++
+            color_as_incorrect([int_name(NumArgTerms), suffix(".")]) ++
+            [nl],
         add_error_context_and_pieces(Context, Pieces, [], Specs)
     ).
 
@@ -999,7 +1018,7 @@ check_fact_type_and_mode(PredOrFunc, VarSet,
     (
         ArgTerm = term.variable(_, _),
         report_arg_error(PredOrFunc, VarSet, ArgNum, ArgTerm, ArgTerms,
-            "Mode", "a ground term", FactArg, !Specs)
+            "Mode", "a", "ground term", FactArg, !Specs)
     ;
         ArgTerm = term.functor(Functor, _SubTerms, _Context),
         % The term parser should never generate an int, a float or a string
@@ -1013,11 +1032,12 @@ check_fact_type_and_mode(PredOrFunc, VarSet,
                 else
                     report_arg_error(PredOrFunc, VarSet, ArgNum,
                         ArgTerm, ArgTerms,
-                        "Type", "an int that fits in a word", FactArg, !Specs)
+                        "Type", "an", "int that fits in a word",
+                        FactArg, !Specs)
                 )
             else
                 report_arg_error(PredOrFunc, VarSet, ArgNum, ArgTerm, ArgTerms,
-                    "Type", "an int", FactArg, !Specs)
+                    "Type", "an", "int", FactArg, !Specs)
             )
         ;
             ArgType = fact_arg_type_float,
@@ -1025,7 +1045,7 @@ check_fact_type_and_mode(PredOrFunc, VarSet,
                 FactArg = fact_arg_float(Float)
             else
                 report_arg_error(PredOrFunc, VarSet, ArgNum, ArgTerm, ArgTerms,
-                    "Type", "a float", FactArg, !Specs)
+                    "Type", "a", "float", FactArg, !Specs)
             )
         ;
             ArgType = fact_arg_type_string,
@@ -1033,7 +1053,7 @@ check_fact_type_and_mode(PredOrFunc, VarSet,
                 FactArg = fact_arg_string(Str)
             else
                 report_arg_error(PredOrFunc, VarSet, ArgNum, ArgTerm, ArgTerms,
-                    "Type", "a string", FactArg, !Specs)
+                    "Type", "a", "string", FactArg, !Specs)
             )
         )
     ),
@@ -1041,14 +1061,17 @@ check_fact_type_and_mode(PredOrFunc, VarSet,
         ArgInfos, ArgTerms, ArgNum + 1, FactArgs, !Specs).
 
 :- pred report_arg_error(pred_or_func::in, prog_varset::in, int::in,
-    prog_term::in, list(prog_term)::in, string::in, string::in,
+    prog_term::in, list(prog_term)::in, string::in, string::in, string::in,
     fact_arg::out, list(error_spec)::in, list(error_spec)::out) is det.
 
 report_arg_error(PredOrFunc, VarSet, ArgNum, ArgTerm, RemainingArgTerms,
-        TypeOrMode, Expected, DummyFactArg, !Specs) :-
+        TypeOrMode, AAn, Expected, DummyFactArg, !Specs) :-
     ArgStr = describe_error_term(VarSet, ArgTerm),
-    ExpectedGotPieces = [words("expected"), words(Expected), suffix(","),
-        words("got"), quote(ArgStr), suffix("."), nl],
+    ExpectedGotPieces = [words("expected"), words(AAn)] ++
+        color_as_correct([words(Expected), suffix(",")]) ++
+        [words("got")] ++
+        color_as_incorrect([quote(ArgStr), suffix(".")]) ++
+        [nl],
     ( if
         PredOrFunc = pf_function,
         RemainingArgTerms = []
@@ -1468,8 +1491,8 @@ infer_determinism_pass_2(MaybeProgressStream, GenInfo,
                 words("in ether the"), quote("sort"),
                 words("or the"), quote("cut"), words("program"),
                 words("during fact table determinism inference."), nl],
-            Spec = no_ctxt_spec($pred, severity_error,
-                phase_fact_table_check, Pieces),
+            Spec = no_ctxt_spec($pred, severity_error, phase_fact_table_check,
+                Pieces),
             !:Specs = [Spec | !.Specs],
             Determinism = detism_erroneous
         )
@@ -1652,8 +1675,8 @@ append_data_table(MaybeProgressStream, OutputFileName, DataFileName,
         else
             Pieces = [words("An error occurred while concatenating"),
                 words("fact table output files."), nl],
-            Spec = no_ctxt_spec($pred, severity_error,
-                phase_fact_table_check, Pieces),
+            Spec = no_ctxt_spec($pred, severity_error, phase_fact_table_check,
+                Pieces),
             !:Specs = [Spec | !.Specs]
         )
     ;
@@ -1830,8 +1853,8 @@ read_sort_file_line(InputStream, InputFileName,
             [words("Error reading file"), quote(InputFileName),
             suffix(":"), nl,
             words(ErrorMessage), nl],
-        Spec = no_ctxt_spec($pred, severity_error,
-            phase_fact_table_check, Pieces),
+        Spec = no_ctxt_spec($pred, severity_error, phase_fact_table_check,
+            Pieces),
         !:Specs = [Spec | !.Specs],
         MaybeSortFileLine = no
     ).

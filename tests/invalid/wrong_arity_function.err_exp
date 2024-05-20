@@ -1,3 +1,3 @@
 wrong_arity_function.m:029: In clause for predicate `main'/2:
-wrong_arity_function.m:029:   error: wrong number of arguments ([38;5;203m3[39;49m; should be [38;5;40m1[39;49m
-wrong_arity_function.m:029:   or [38;5;40m2[39;49m) in use of constructor `f'.
+wrong_arity_function.m:029:   error: [38;5;203mwrong number of arguments[39;49m ([38;5;203m3[39;49m; should be [38;5;40m1[39;49m
+wrong_arity_function.m:029:   or [38;5;40m2[39;49m) in use of constructor [38;5;87m`f'.[39;49m

@@ -1,10 +1,10 @@
 exported_unify3.int0:004: In clause for unification predicate for type `foo':
-exported_unify3.int0:004:   error: undefined predicate
-exported_unify3.int0:004:   `exported_unify3.defined_in_wrong_module'/2.
+exported_unify3.int0:004:   error: call to [38;5;203mundefined[39;49m predicate
+exported_unify3.int0:004:   [38;5;87m`exported_unify3.defined_in_wrong_module'/2.[39;49m
 exported_unify3.m:009: In clause for unification predicate for type `foo':
-exported_unify3.m:009:   error: undefined predicate
-exported_unify3.m:009:   `exported_unify3.defined_in_wrong_module'/2.
+exported_unify3.m:009:   error: call to [38;5;203mundefined[39;49m predicate
+exported_unify3.m:009:   [38;5;87m`exported_unify3.defined_in_wrong_module'/2.[39;49m
 exported_unify3.sub.int:003: In clause for unification predicate for type
 exported_unify3.sub.int:003:   `bar':
-exported_unify3.sub.int:003:   error: undefined predicate
-exported_unify3.sub.int:003:   `exported_unify3.sub.not_exported'/2.
+exported_unify3.sub.int:003:   error: call to [38;5;203mundefined[39;49m predicate
+exported_unify3.sub.int:003:   [38;5;87m`exported_unify3.sub.not_exported'/2.[39;49m

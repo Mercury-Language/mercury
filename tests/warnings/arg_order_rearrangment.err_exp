@@ -1,8 +1,8 @@
 arg_order_rearrangment.m:014: In predicate `arg_order_rearrangment.r'/2:
 arg_order_rearrangment.m:020:   warning: the call to predicate
-arg_order_rearrangment.m:020:   `arg_order_rearrangment.app'/3 has had the
-arg_order_rearrangment.m:020:   location of the variables `V_7' and `R0'
-arg_order_rearrangment.m:020:   swapped to allow accumulator introduction.
+arg_order_rearrangment.m:020:   [38;5;87m`arg_order_rearrangment.app'/3[39;49m has had the
+arg_order_rearrangment.m:020:   locations of the variables [38;5;87m`V_7'[39;49m and [38;5;87m`R0'[39;49m
+arg_order_rearrangment.m:020:   [38;5;226mswapped[39;49m to allow accumulator introduction.
 arg_order_rearrangment.m:014:   Please ensure that this argument rearrangement
 arg_order_rearrangment.m:014:   does not introduce performance problems.
 arg_order_rearrangment.m:014:   These warnings can be suppressed by

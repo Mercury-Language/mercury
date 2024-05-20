@@ -1,30 +1,30 @@
 funcs_as_preds.m:012: Warning: the interface of module [38;5;87m`funcs_as_preds'[39;49m [38;5;203mdoes[39;49m
 funcs_as_preds.m:012:   [38;5;203mnot export anything.[39;49m
-funcs_as_preds.m:014: Error: module `funcs_as_preds' should start with either
-funcs_as_preds.m:014:   an `:- interface' or an `:- implementation'
-funcs_as_preds.m:014:   declaration.
+funcs_as_preds.m:014: Error: module `funcs_as_preds' [38;5;203mshould start with[39;49m either
+funcs_as_preds.m:014:   an [38;5;40m`:- interface' declaration[39;49m or an [38;5;40m`:- implementation'[39;49m
+funcs_as_preds.m:014:   [38;5;40mdeclaration.[39;49m
 funcs_as_preds.m:014:   The following assumes that the missing declaration is
 funcs_as_preds.m:014:   an `:- implementation' declaration.
-funcs_as_preds.m:018: Error: clause for [38;5;87mfunction `null'/1[39;49m [38;5;203mwithout[39;49m a
+funcs_as_preds.m:018: Error: clause for function [38;5;87m`null'/1[39;49m [38;5;203mwithout[39;49m a
 funcs_as_preds.m:018:   corresponding `:- func' declaration.
 funcs_as_preds.m:018: In clause for function `null'/1:
 funcs_as_preds.m:018:   in function result term of clause head:
-funcs_as_preds.m:018:   error: the language construct `='/2 should be used as a
-funcs_as_preds.m:018:   goal, not as an expression.
-funcs_as_preds.m:022: Error: clause for [38;5;87mfunction `car'/1[39;49m [38;5;203mwithout[39;49m a
+funcs_as_preds.m:018:   error: the language construct [38;5;87m`='/2[39;49m [38;5;203mshould be used as a[39;49m
+funcs_as_preds.m:018:   [38;5;203mgoal, not as an expression.[39;49m
+funcs_as_preds.m:022: Error: clause for function [38;5;87m`car'/1[39;49m [38;5;203mwithout[39;49m a
 funcs_as_preds.m:022:   corresponding `:- func' declaration.
 funcs_as_preds.m:022: Inferred :- func car(list.list(list.list(T))) =
 funcs_as_preds.m:022:   list.list(T).
-funcs_as_preds.m:025: Error: clause for [38;5;87mfunction `cdr'/1[39;49m [38;5;203mwithout[39;49m a
+funcs_as_preds.m:025: Error: clause for function [38;5;87m`cdr'/1[39;49m [38;5;203mwithout[39;49m a
 funcs_as_preds.m:025:   corresponding `:- func' declaration.
 funcs_as_preds.m:025: Inferred :- func cdr(list.list(T)) = list.list(T).
-funcs_as_preds.m:028: Error: clause for [38;5;87mfunction `cons'/2[39;49m [38;5;203mwithout[39;49m a
+funcs_as_preds.m:028: Error: clause for function [38;5;87m`cons'/2[39;49m [38;5;203mwithout[39;49m a
 funcs_as_preds.m:028:   corresponding `:- func' declaration.
 funcs_as_preds.m:028: Inferred :- func cons(T, list.list(T)) = list.list(T).
-funcs_as_preds.m:031: Error: clause for [38;5;87mfunction `ap'/2[39;49m [38;5;203mwithout[39;49m a corresponding
+funcs_as_preds.m:031: Error: clause for function [38;5;87m`ap'/2[39;49m [38;5;203mwithout[39;49m a corresponding
 funcs_as_preds.m:031:   `:- func' declaration.
 funcs_as_preds.m:031: In clause for function `ap'/2:
-funcs_as_preds.m:031:   error: undefined predicate `null'/1.
+funcs_as_preds.m:031:   error: call to [38;5;203mundefined[39;49m predicate [38;5;87m`null'/1.[39;49m
 funcs_as_preds.m:031:   [38;5;226m(There is a *function* with that name, however.[39;49m
 funcs_as_preds.m:031:   [38;5;226mPerhaps you forgot to add ` = ...'?)[39;49m
 For more information, recompile with `-E'.

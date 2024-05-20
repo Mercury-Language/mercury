@@ -1,23 +1,23 @@
-save.m:026: The call to [38;5;87mpredicate `io.write_string'/3[39;49m could have an additional
+save.m:026: The call to predicate [38;5;87m`io.write_string'/3[39;49m could have an additional
 save.m:026:   argument [38;5;226mexplicitly specifying a stream.[39;49m
-save.m:028: The call to [38;5;87mpredicate `prolog.see'/4[39;49m [38;5;226mcould be made redundant[39;49m by
+save.m:028: The call to predicate [38;5;87m`prolog.see'/4[39;49m [38;5;226mcould be made redundant[39;49m by
 save.m:028:   explicitly passing the input stream it specifies to later I/O
 save.m:028:   operations.
-save.m:031: The call to [38;5;87mpredicate `io.read_file_as_string'/3[39;49m could have an
+save.m:031: The call to predicate [38;5;87m`io.read_file_as_string'/3[39;49m could have an
 save.m:031:   additional argument [38;5;226mexplicitly specifying a stream.[39;49m
-save.m:034: The call to [38;5;87mpredicate `io.write_string'/3[39;49m could have an additional
+save.m:034: The call to predicate [38;5;87m`io.write_string'/3[39;49m could have an additional
 save.m:034:   argument [38;5;226mexplicitly specifying a stream.[39;49m
-save.m:038: The call to [38;5;87mpredicate `io.format'/4[39;49m could have an additional
+save.m:038: The call to predicate [38;5;87m`io.format'/4[39;49m could have an additional
 save.m:038:   argument [38;5;226mexplicitly specifying a stream.[39;49m
-save.m:043: The call to [38;5;87mpredicate `io.write_string'/3[39;49m could have an additional
+save.m:043: The call to predicate [38;5;87m`io.write_string'/3[39;49m could have an additional
 save.m:043:   argument [38;5;226mexplicitly specifying a stream.[39;49m
-save.m:106: The call to [38;5;87mpredicate `io.write_string'/3[39;49m could have an additional
+save.m:106: The call to predicate [38;5;87m`io.write_string'/3[39;49m could have an additional
 save.m:106:   argument [38;5;226mexplicitly specifying a stream.[39;49m
-save.m:109: The call to [38;5;87mpredicate `io.write_string'/3[39;49m could have an additional
+save.m:109: The call to predicate [38;5;87m`io.write_string'/3[39;49m could have an additional
 save.m:109:   argument [38;5;226mexplicitly specifying a stream.[39;49m
-save.m:111: The call to [38;5;87mpredicate `io.write_string'/3[39;49m could have an additional
+save.m:111: The call to predicate [38;5;87m`io.write_string'/3[39;49m could have an additional
 save.m:111:   argument [38;5;226mexplicitly specifying a stream.[39;49m
-save.m:118: The call to [38;5;87mpredicate `io.write_int'/3[39;49m could have an additional
+save.m:118: The call to predicate [38;5;87m`io.write_int'/3[39;49m could have an additional
 save.m:118:   argument [38;5;226mexplicitly specifying a stream.[39;49m
-save.m:123: The call to [38;5;87mpredicate `io.write_string'/3[39;49m could have an additional
+save.m:123: The call to predicate [38;5;87m`io.write_string'/3[39;49m could have an additional
 save.m:123:   argument [38;5;226mexplicitly specifying a stream.[39;49m

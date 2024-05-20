@@ -366,9 +366,11 @@ subgoal_tabled_for_io_attribute(Goal, TabledForIoAttr) :-
 
 report_missing_tabled_for_io(ModuleInfo, PredInfo, PredId, ProcId) = Spec :-
     pred_info_get_context(PredInfo, Context),
-    ProcPieces = describe_one_proc_name(ModuleInfo,
+    ProcPieces = describe_one_proc_name(ModuleInfo, yes(color_subject),
         should_not_module_qualify, proc(PredId, ProcId)),
-    Pieces = ProcPieces ++ [words("contains untabled I/O primitive."), nl],
+    Pieces = [words("Error:")] ++ ProcPieces ++ [words("contains")] ++
+        color_as_incorrect([words("untabled I/O primitive.")]) ++
+        [nl],
     Spec = spec($pred, severity_error, phase_code_gen, Context, Pieces).
 
 %---------------------------------------------------------------------------%
@@ -500,18 +502,18 @@ find_grade_problems_for_tabling(ModuleInfo, PredId, ProcId, TabledMethod,
 
 general_cannot_table_reason_spec(ModuleInfo, PredId, ProcId, TabledMethod,
         Reason, Spec) :-
+    ReasonDesc = color_as_incorrect(gen_cannot_table_reason_desc(Reason)),
     (
         ( TabledMethod = tabled_loop_check
         ; TabledMethod = tabled_memo(_)
         ),
         TabledMethodStr = tabled_eval_method_to_string(TabledMethod),
         module_info_pred_info(ModuleInfo, PredId, PredInfo),
-        ProcPieces = describe_one_proc_name(ModuleInfo, should_module_qualify,
-            proc(PredId, ProcId)),
+        ProcPieces = describe_qual_proc_name(ModuleInfo, proc(PredId, ProcId)),
         pred_info_get_context(PredInfo, Context),
         Pieces = [words("Ignoring the"), pragma_decl(TabledMethodStr),
             words("declaration for")] ++ ProcPieces ++ [suffix(","),
-            words("because tabling")] ++ gen_cannot_table_reason_desc(Reason),
+            words("because tabling is")] ++ ReasonDesc ++ [nl],
         Spec = spec($pred, severity_informational, phase_code_gen,
             Context, Pieces)
     ;
@@ -521,13 +523,13 @@ general_cannot_table_reason_spec(ModuleInfo, PredId, ProcId, TabledMethod,
         Pieces = [words("Warning: debugging implicitly tables"),
             words("all predicates that perform I/O"),
             words("(to make the mdb command `retry' safe across I/O),"),
-            words("but tabling")] ++ gen_cannot_table_reason_desc(Reason),
+            words("but tabling is")] ++ ReasonDesc ++ [nl],
         Spec = spec($pred, severity_informational, phase_code_gen,
             Context, Pieces)
     ;
         TabledMethod = tabled_minimal(_),
-        Pieces = [words("Error: minimal model tabling")] ++
-            gen_cannot_table_reason_desc(Reason),
+        Pieces = [words("Error: minimal model tabling is")] ++
+            ReasonDesc ++ [nl],
         % We generate one no-context error_spec for each affected predicate,
         % but we print only one copy of each duplicated error_spec.
         Spec = no_ctxt_spec($pred, severity_error, phase_code_gen, Pieces)
@@ -580,13 +582,13 @@ mm_cannot_table_reason_spec(Reason, Spec) :-
 mm_cannot_table_reason_desc(Reason) = Desc :-
     (
         Reason = mm_reason_hlc,
-        Desc = [words("generating high level code."), nl]
+        Desc = [words("generating high level code.")]
     ;
         Reason = mm_reason_trailing,
-        Desc = [words("trailing."), nl]
+        Desc = [words("trailing.")]
     ;
         Reason = mm_reason_profiling,
-        Desc = [words("profiling."), nl]
+        Desc = [words("profiling.")]
     ).
 
 %---------------------------------------------------------------------------%

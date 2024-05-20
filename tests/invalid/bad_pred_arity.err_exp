@@ -1,13 +1,13 @@
-bad_pred_arity.m:014: Error: no clauses for predicate `p1'/3.
-bad_pred_arity.m:016: Error: no clauses for predicate `p1'/5.
-bad_pred_arity.m:019: Error: no clauses for predicate `p2'/0.
-bad_pred_arity.m:021: Error: no clauses for predicate `p3'/8.
-bad_pred_arity.m:024: Error: no clauses for function `f1'/2.
-bad_pred_arity.m:025: Error: no clauses for function `f1'/4.
-bad_pred_arity.m:027: Error: no clauses for function `f2'/0.
-bad_pred_arity.m:028: Error: no clauses for function `f2'/2.
-bad_pred_arity.m:029: Error: no clauses for function `f2'/4.
-bad_pred_arity.m:039: Error: clause for [38;5;87mpredicate `p1'/4[39;49m [38;5;203mwithout[39;49m a
+bad_pred_arity.m:014: Error: predicate [38;5;87m`p1'/3[39;49m [38;5;203mhas no clauses.[39;49m
+bad_pred_arity.m:016: Error: predicate [38;5;87m`p1'/5[39;49m [38;5;203mhas no clauses.[39;49m
+bad_pred_arity.m:019: Error: predicate [38;5;87m`p2'/0[39;49m [38;5;203mhas no clauses.[39;49m
+bad_pred_arity.m:021: Error: predicate [38;5;87m`p3'/8[39;49m [38;5;203mhas no clauses.[39;49m
+bad_pred_arity.m:024: Error: function [38;5;87m`f1'/2[39;49m [38;5;203mhas no clauses.[39;49m
+bad_pred_arity.m:025: Error: function [38;5;87m`f1'/4[39;49m [38;5;203mhas no clauses.[39;49m
+bad_pred_arity.m:027: Error: function [38;5;87m`f2'/0[39;49m [38;5;203mhas no clauses.[39;49m
+bad_pred_arity.m:028: Error: function [38;5;87m`f2'/2[39;49m [38;5;203mhas no clauses.[39;49m
+bad_pred_arity.m:029: Error: function [38;5;87m`f2'/4[39;49m [38;5;203mhas no clauses.[39;49m
+bad_pred_arity.m:039: Error: clause for predicate [38;5;87m`p1'/4[39;49m [38;5;203mwithout[39;49m a
 bad_pred_arity.m:039:   corresponding `:- pred' declaration.
 bad_pred_arity.m:039:   [38;5;226mHowever, predicates of that name do exist with arities[39;49m
 bad_pred_arity.m:039:   [38;5;226m3 and 5.[39;49m
@@ -29,7 +29,7 @@ bad_pred_arity.m:039:         string,
 bad_pred_arity.m:039:         int,
 bad_pred_arity.m:039:         string
 bad_pred_arity.m:039:     )
-bad_pred_arity.m:041: Error: clause for [38;5;87mpredicate `p1'/0[39;49m [38;5;203mwithout[39;49m a
+bad_pred_arity.m:041: Error: clause for predicate [38;5;87m`p1'/0[39;49m [38;5;203mwithout[39;49m a
 bad_pred_arity.m:041:   corresponding `:- pred' declaration.
 bad_pred_arity.m:041:   [38;5;226mHowever, predicates of that name do exist with arities[39;49m
 bad_pred_arity.m:041:   [38;5;226m3 and 5.[39;49m
@@ -52,7 +52,7 @@ bad_pred_arity.m:041:   [38;5;40m-     int,[39;49m
 bad_pred_arity.m:041:   [38;5;40m-     string[39;49m
 bad_pred_arity.m:041:   [38;5;40m- )[39;49m
 bad_pred_arity.m:041:   [38;5;203m+ pred[39;49m
-bad_pred_arity.m:043: Error: clause for [38;5;87mpredicate `p2'/4[39;49m [38;5;203mwithout[39;49m a
+bad_pred_arity.m:043: Error: clause for predicate [38;5;87m`p2'/4[39;49m [38;5;203mwithout[39;49m a
 bad_pred_arity.m:043:   corresponding `:- pred' declaration.
 bad_pred_arity.m:043:   [38;5;226mHowever, a predicate of that name does exist with arity[39;49m
 bad_pred_arity.m:043:   [38;5;226m0.[39;49m
@@ -66,7 +66,7 @@ bad_pred_arity.m:043:   [38;5;203m+     int,[39;49m
 bad_pred_arity.m:043:   [38;5;203m+     string,[39;49m
 bad_pred_arity.m:043:   [38;5;203m+     string[39;49m
 bad_pred_arity.m:043:   [38;5;203m+ )[39;49m
-bad_pred_arity.m:046: Error: clause for [38;5;87mpredicate `p3'/4[39;49m [38;5;203mwithout[39;49m a
+bad_pred_arity.m:046: Error: clause for predicate [38;5;87m`p3'/4[39;49m [38;5;203mwithout[39;49m a
 bad_pred_arity.m:046:   corresponding `:- pred' declaration.
 bad_pred_arity.m:046:   [38;5;226mHowever, a predicate of that name does exist with arity[39;49m
 bad_pred_arity.m:046:   [38;5;226m8.[39;49m
@@ -83,7 +83,7 @@ bad_pred_arity.m:046:         string,
 bad_pred_arity.m:046:   [38;5;40m-     int,[39;49m
 bad_pred_arity.m:046:         string
 bad_pred_arity.m:046:     )
-bad_pred_arity.m:049: Error: clause for [38;5;87mpredicate `p3'/5[39;49m [38;5;203mwithout[39;49m a
+bad_pred_arity.m:049: Error: clause for predicate [38;5;87m`p3'/5[39;49m [38;5;203mwithout[39;49m a
 bad_pred_arity.m:049:   corresponding `:- pred' declaration.
 bad_pred_arity.m:049:   [38;5;226mHowever, a predicate of that name does exist with arity[39;49m
 bad_pred_arity.m:049:   [38;5;226m8.[39;49m
@@ -101,7 +101,7 @@ bad_pred_arity.m:049:   [38;5;40m-     int,[39;49m
 bad_pred_arity.m:049:   [38;5;203m+     bool.bool,[39;49m
 bad_pred_arity.m:049:         string
 bad_pred_arity.m:049:     )
-bad_pred_arity.m:052: Error: clause for [38;5;87mfunction `f1'/3[39;49m [38;5;203mwithout[39;49m a corresponding
+bad_pred_arity.m:052: Error: clause for function [38;5;87m`f1'/3[39;49m [38;5;203mwithout[39;49m a corresponding
 bad_pred_arity.m:052:   `:- func' declaration.
 bad_pred_arity.m:052:   [38;5;226mHowever, functions of that name do exist with arities 2[39;49m
 bad_pred_arity.m:052:   [38;5;226mand 4.[39;49m
@@ -121,7 +121,7 @@ bad_pred_arity.m:052:   [38;5;40m-     float,[39;49m
 bad_pred_arity.m:052:         string,
 bad_pred_arity.m:052:         int
 bad_pred_arity.m:052:     ) = string
-bad_pred_arity.m:054: Error: clause for [38;5;87mfunction `f1'/0[39;49m [38;5;203mwithout[39;49m a corresponding
+bad_pred_arity.m:054: Error: clause for function [38;5;87m`f1'/0[39;49m [38;5;203mwithout[39;49m a corresponding
 bad_pred_arity.m:054:   `:- func' declaration.
 bad_pred_arity.m:054:   [38;5;226mHowever, functions of that name do exist with arities 2[39;49m
 bad_pred_arity.m:054:   [38;5;226mand 4.[39;49m
@@ -142,7 +142,7 @@ bad_pred_arity.m:054:   [38;5;40m-     string,[39;49m
 bad_pred_arity.m:054:   [38;5;40m-     int[39;49m
 bad_pred_arity.m:054:   [38;5;40m- ) = string[39;49m
 bad_pred_arity.m:054:   [38;5;203m+ func = string[39;49m
-bad_pred_arity.m:056: Error: clause for [38;5;87mfunction `f2'/3[39;49m [38;5;203mwithout[39;49m a corresponding
+bad_pred_arity.m:056: Error: clause for function [38;5;87m`f2'/3[39;49m [38;5;203mwithout[39;49m a corresponding
 bad_pred_arity.m:056:   `:- func' declaration.
 bad_pred_arity.m:056:   [38;5;226mHowever, functions of that name do exist with arities[39;49m
 bad_pred_arity.m:056:   [38;5;226m0, 2 and 4.[39;49m

@@ -1,39 +1,41 @@
-purity_nonsense_1.m:010: Error: clause for [38;5;87mpredicate `e12'/0[39;49m [38;5;203mwithout[39;49m a
+purity_nonsense_1.m:010: Error: clause for predicate [38;5;87m`e12'/0[39;49m [38;5;203mwithout[39;49m a
 purity_nonsense_1.m:010:   corresponding `:- pred' declaration.
 purity_nonsense_1.m:011: In clause for predicate `e12'/0:
-purity_nonsense_1.m:011:   error: `impure' marker in an inappropriate place.
+purity_nonsense_1.m:011:   error: this [38;5;87m`impure' marker[39;49m is [38;5;203mnot before a[39;49m
+purity_nonsense_1.m:011:   [38;5;203mpredicate call.[39;49m
 purity_nonsense_1.m:011: In clause for predicate `e12'/0:
 purity_nonsense_1.m:011:   in argument 1 of call to predicate `impure'/1:
-purity_nonsense_1.m:011:   error: the language construct `\+'/1 should be used
-purity_nonsense_1.m:011:   as a goal, not as an expression.
+purity_nonsense_1.m:011:   error: the language construct [38;5;87m`\+'/1[39;49m [38;5;203mshould be used[39;49m
+purity_nonsense_1.m:011:   [38;5;203mas a goal, not as an expression.[39;49m
 purity_nonsense_1.m:011: In clause for predicate `e12'/0:
 purity_nonsense_1.m:011:   in argument 1 of call to predicate `impure'/1:
 purity_nonsense_1.m:011:   in argument 1 of functor `\\+/1':
-purity_nonsense_1.m:011:   error: the language construct `impure'/1 should be
-purity_nonsense_1.m:011:   used as a goal, not as an expression.
+purity_nonsense_1.m:011:   error: the language construct [38;5;87m`impure'/1[39;49m [38;5;203mshould be[39;49m
+purity_nonsense_1.m:011:   [38;5;203mused as a goal, not as an expression.[39;49m
 purity_nonsense_1.m:011: In clause for predicate `e12'/0:
 purity_nonsense_1.m:011:   in argument 1 of call to predicate `impure'/1:
 purity_nonsense_1.m:011:   in argument 1 of functor `\\+/1':
 purity_nonsense_1.m:011:   in argument 1 of functor `impure/1':
-purity_nonsense_1.m:011:   error: undefined symbol `imp'/0.
-purity_nonsense_1.m:012: Error: clause for [38;5;87mpredicate `e13'/0[39;49m [38;5;203mwithout[39;49m a
+purity_nonsense_1.m:011:   error: [38;5;203mundefined[39;49m symbol [38;5;87m`imp'/0.[39;49m
+purity_nonsense_1.m:012: Error: clause for predicate [38;5;87m`e13'/0[39;49m [38;5;203mwithout[39;49m a
 purity_nonsense_1.m:012:   corresponding `:- pred' declaration.
 purity_nonsense_1.m:013: In clause for predicate `e13'/0:
-purity_nonsense_1.m:013:   error: `semipure' marker in an inappropriate place.
+purity_nonsense_1.m:013:   error: this [38;5;87m`semipure' marker[39;49m is [38;5;203mnot before a[39;49m
+purity_nonsense_1.m:013:   [38;5;203mpredicate call.[39;49m
 purity_nonsense_1.m:013: In clause for predicate `e13'/0:
 purity_nonsense_1.m:013:   in argument 1 of call to predicate `semipure'/1:
-purity_nonsense_1.m:013:   error: the language construct `\+'/1 should be used
-purity_nonsense_1.m:013:   as a goal, not as an expression.
+purity_nonsense_1.m:013:   error: the language construct [38;5;87m`\+'/1[39;49m [38;5;203mshould be used[39;49m
+purity_nonsense_1.m:013:   [38;5;203mas a goal, not as an expression.[39;49m
 purity_nonsense_1.m:013: In clause for predicate `e13'/0:
 purity_nonsense_1.m:013:   in argument 1 of call to predicate `semipure'/1:
 purity_nonsense_1.m:013:   in argument 1 of functor `\\+/1':
-purity_nonsense_1.m:013:   error: the language construct `semipure'/1 should be
-purity_nonsense_1.m:013:   used as a goal, not as an expression.
+purity_nonsense_1.m:013:   error: the language construct [38;5;87m`semipure'/1[39;49m [38;5;203mshould be[39;49m
+purity_nonsense_1.m:013:   [38;5;203mused as a goal, not as an expression.[39;49m
 purity_nonsense_1.m:013: In clause for predicate `e13'/0:
 purity_nonsense_1.m:013:   in argument 1 of call to predicate `semipure'/1:
 purity_nonsense_1.m:013:   in argument 1 of functor `\\+/1':
 purity_nonsense_1.m:013:   in argument 1 of functor `semipure/1':
-purity_nonsense_1.m:013:   error: undefined symbol `semi'/0.
+purity_nonsense_1.m:013:   error: [38;5;203mundefined[39;49m symbol [38;5;87m`semi'/0.[39;49m
 purity_nonsense_1.m:019: In clause for predicate `e14'/1:
 purity_nonsense_1.m:019:   in argument 1 (i.e. the predicate term) of impure
 purity_nonsense_1.m:019:   higher-order predicate call:

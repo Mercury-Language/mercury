@@ -719,7 +719,7 @@ dump_pred_goal_paths(OutputStream, ModuleInfo, PredId, !IO) :-
     write_error_pieces_plain(OutputStream, Globals, [fixed("")], !IO),
 
     PredHeaderFormat = [words("Goal paths for")] ++
-        describe_one_pred_info_name(should_module_qualify, PredInfo) ++
+        describe_one_pred_info_name(no, should_module_qualify, [], PredInfo) ++
         [suffix("."), nl],
 
     write_error_pieces_plain(OutputStream, Globals, PredHeaderFormat, !IO),

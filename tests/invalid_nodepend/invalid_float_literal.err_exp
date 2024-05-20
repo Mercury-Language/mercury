@@ -1,13 +1,13 @@
-invalid_float_literal.m:012: Error: no clauses for function `foo1'/0.
-invalid_float_literal.m:013: Error: no clauses for function `foo2'/0.
-invalid_float_literal.m:015: Error: no clauses for function `foo4'/0.
-invalid_float_literal.m:016: Error: no clauses for function `foo5'/0.
-invalid_float_literal.m:017: Error: no clauses for function `foo6'/0.
-invalid_float_literal.m:018: Error: no clauses for function `foo7'/0.
-invalid_float_literal.m:019: Error: no clauses for function `foo8'/0.
-invalid_float_literal.m:020: Error: no clauses for function `foo9'/0.
-invalid_float_literal.m:022: Error: no clauses for function `foo11'/0.
-invalid_float_literal.m:023: Error: no clauses for function `foo12'/0.
+invalid_float_literal.m:012: Error: function [38;5;87m`foo1'/0[39;49m [38;5;203mhas no clauses.[39;49m
+invalid_float_literal.m:013: Error: function [38;5;87m`foo2'/0[39;49m [38;5;203mhas no clauses.[39;49m
+invalid_float_literal.m:015: Error: function [38;5;87m`foo4'/0[39;49m [38;5;203mhas no clauses.[39;49m
+invalid_float_literal.m:016: Error: function [38;5;87m`foo5'/0[39;49m [38;5;203mhas no clauses.[39;49m
+invalid_float_literal.m:017: Error: function [38;5;87m`foo6'/0[39;49m [38;5;203mhas no clauses.[39;49m
+invalid_float_literal.m:018: Error: function [38;5;87m`foo7'/0[39;49m [38;5;203mhas no clauses.[39;49m
+invalid_float_literal.m:019: Error: function [38;5;87m`foo8'/0[39;49m [38;5;203mhas no clauses.[39;49m
+invalid_float_literal.m:020: Error: function [38;5;87m`foo9'/0[39;49m [38;5;203mhas no clauses.[39;49m
+invalid_float_literal.m:022: Error: function [38;5;87m`foo11'/0[39;49m [38;5;203mhas no clauses.[39;49m
+invalid_float_literal.m:023: Error: function [38;5;87m`foo12'/0[39;49m [38;5;203mhas no clauses.[39;49m
 invalid_float_literal.m:027: Syntax error at token `. ': unexpected token at
 invalid_float_literal.m:027:   start of (sub)term.
 invalid_float_literal.m:027: Syntax error: fractional part of float terminated
@@ -33,12 +33,12 @@ invalid_float_literal.m:039:   error: expected a [38;5;40msymbol name,[39;49m 
 invalid_float_literal.m:039: Syntax error: an underscore should separate two
 invalid_float_literal.m:039:   digits; it should not appear just before a
 invalid_float_literal.m:039:   decimal point.
-invalid_float_literal.m:041: Error: clause for [38;5;87mpredicate `-'/2[39;49m [38;5;203mwithout[39;49m a
+invalid_float_literal.m:041: Error: clause for predicate [38;5;87m`-'/2[39;49m [38;5;203mwithout[39;49m a
 invalid_float_literal.m:041:   corresponding `:- pred' declaration.
 invalid_float_literal.m:041: Inferred :- pred '-'(T1, int).
 invalid_float_literal.m:041: Syntax error: unterminated exponent in float
 invalid_float_literal.m:041:   literal.
-invalid_float_literal.m:043: Error: clause for [38;5;87mpredicate `+'/2[39;49m [38;5;203mwithout[39;49m a
+invalid_float_literal.m:043: Error: clause for predicate [38;5;87m`+'/2[39;49m [38;5;203mwithout[39;49m a
 invalid_float_literal.m:043:   corresponding `:- pred' declaration.
 invalid_float_literal.m:043: Inferred :- pred '+'(T1, int).
 invalid_float_literal.m:043: Syntax error: unterminated exponent in float

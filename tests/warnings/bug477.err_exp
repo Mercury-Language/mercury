@@ -1,3 +1,3 @@
-bug477.m:036: Warning: recursive call to [38;5;87mpredicate `reconstruct_route'/3[39;49m [38;5;203mwill[39;49m
+bug477.m:036: Warning: recursive call to predicate [38;5;87m`reconstruct_route'/3[39;49m [38;5;203mwill[39;49m
 bug477.m:036:   [38;5;203mlead to infinite recursion.[39;49m
 For more information, recompile with `-E'.

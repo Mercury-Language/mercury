@@ -1,3 +1,3 @@
-test_promise_equivalent_clauses.m:036: Error: [38;5;87mpredicate `rsort'/2[39;49m is [38;5;203mimpure.[39;49m It
+test_promise_equivalent_clauses.m:036: Error: predicate [38;5;87m`rsort'/2[39;49m is [38;5;203mimpure.[39;49m It
 test_promise_equivalent_clauses.m:036:   must either be [38;5;40mdeclared impure,[39;49m or
 test_promise_equivalent_clauses.m:036:   [38;5;40mpromised pure.[39;49m
