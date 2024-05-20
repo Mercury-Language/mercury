@@ -52,6 +52,7 @@
 :- include_module check_hlds.simplify.simplify_goal_unify.
 :- include_module check_hlds.simplify.simplify_info.
 :- include_module check_hlds.simplify.split_switch_arms.
+:- include_module check_hlds.simplify.format_call_errors.
 
 %-----------------------------------------------------------------------------%
 :- end_module check_hlds.simplify.

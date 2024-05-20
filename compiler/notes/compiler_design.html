@@ -1415,7 +1415,8 @@ simplify.m is a package of submodules.
     <li>
     format_call.m looks for calls to predicates
     such as string.format and io.format.
-    It reports calls in which the types of the values to be printed
+    It uses the facilities of format_call_errors.m to report calls
+    in which the types of the values to be printed
     disagree with the format string,
     and/or calls in which the agreement cannot be established.
     It also attempts to partially evaluate the correct calls,

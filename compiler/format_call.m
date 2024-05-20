@@ -163,10 +163,10 @@
 :- include_module parse_string_format.
 
 :- import_module check_hlds.simplify.format_call.parse_string_format.
+:- import_module check_hlds.simplify.format_call_errors.
 :- import_module check_hlds.simplify.simplify_goal_call.
 :- import_module hlds.goal_path.
 :- import_module hlds.goal_util.
-:- import_module hlds.hlds_error_util.
 :- import_module hlds.hlds_out.
 :- import_module hlds.hlds_out.hlds_out_goal.
 :- import_module hlds.hlds_out.hlds_out_util.
@@ -216,10 +216,6 @@
                 fcs_containing_conj         :: conj_id,
                 fcs_warn_unknown_format     :: maybe_warn_unknown_format
             ).
-
-:- type maybe_warn_unknown_format
-    --->    do_not_warn_unknown_format
-    ;       warn_unknown_format.
 
 %---------------------------------------------------------------------------%
 
@@ -750,53 +746,9 @@ check_fmt_str_val_vars(ModuleInfo, PredInfo, ProcInfo, ConjMaps, PredMap,
             Context, MaybeFormatSpecs),
         (
             MaybeFormatSpecs = error(HeadError, TailErrors),
-            module_info_get_globals(ModuleInfo, Globals),
-            globals.lookup_bool_option(Globals, warn_known_bad_format_calls,
-                WarnKnownBadFormatCalls),
-            (
-                WarnKnownBadFormatCalls = no,
-                Result = error3([])
-            ;
-                WarnKnownBadFormatCalls = yes,
-                (
-                    MaybePos = no,
-                    PredNameColonPieces = describe_one_pred_name(ModuleInfo,
-                        yes(color_subject), should_module_qualify,
-                        [suffix(":")], PredId)
-                ;
-                    MaybePos = yes({Pos, ArgNumFS, ArgNumVL}),
-                    % XXX Any ideas for better wording?
-                    PredNameColonPieces =
-                        describe_one_pred_name(ModuleInfo, yes(color_subject),
-                            should_module_qualify, [], PredId) ++
-                        [words("when considering the"),
-                        nth_fixed(Pos), words("entry in its"),
-                        pragma_decl("format_call"), words("declaration,"),
-                        words("which places the format string as the"),
-                        nth_fixed(ArgNumFS), words("argument, and"),
-                        words("the values list as the"),
-                        nth_fixed(ArgNumVL), words("argument"), suffix(":")]
-                ),
-                PrefixPieces = [words("Error: the format string"),
-                    words("does not match the list of values to be formatted"),
-                    words("in call to")] ++ PredNameColonPieces ++ [nl],
-                globals.lookup_bool_option(Globals,
-                    warn_only_one_format_string_error,
-                    WarnOnlyOneFormatStringError),
-                (
-                    WarnOnlyOneFormatStringError = yes,
-                    ErrorPieces = [string_format_error_to_words(HeadError)]
-                ;
-                    WarnOnlyOneFormatStringError = no,
-                    ErrorPieces = [string_format_error_to_words(HeadError) |
-                        list.map(string_format_error_to_words, TailErrors)]
-                ),
-
-                MismatchSpec = spec($pred, severity_warning,
-                    phase_simplify(report_in_any_mode),
-                    Context, PrefixPieces ++ ErrorPieces),
-                Result = error3([MismatchSpec])
-            )
+            Specs = report_format_mismatch(ModuleInfo, PredId, MaybePos,
+                HeadError, TailErrors, Context),
+            Result = error3(Specs)
         ;
             MaybeFormatSpecs = ok(FormatSpecs),
             ToDeleteVars = ToDeleteVarsFS ++ ToDeleteVarsVL,
@@ -824,11 +776,6 @@ project_all_yes([], []).
 project_all_yes([yes(Value) | TailMaybes], [Value | Tail]) :-
     project_all_yes(TailMaybes, Tail).
 
-:- func string_format_error_to_words(string_format_error) = format_piece.
-
-string_format_error_to_words(Error) =
-    words(string_format_error_to_msg(Error)).
-
 %---------------------------------------------------------------------------%
 
 :- pred follow_format_string_handle_unknown(module_info::in,
@@ -848,21 +795,8 @@ follow_format_string_handle_unknown(ModuleInfo, ConjMaps, PredMap,
         Result = ok3(FormatString, ToDeleteVars, ToDeleteGoals)
     ;
         FormatStringResult = no_follow_string_result,
-        (
-            WarnUnknownFormat = do_not_warn_unknown_format,
-            Specs = []
-        ;
-            WarnUnknownFormat = warn_unknown_format,
-            PredNameDotPieces = describe_one_pred_name(ModuleInfo,
-                yes(color_subject), should_module_qualify, [suffix(".")],
-                PredId),
-            Pieces = [words("Error:")] ++
-                color_as_incorrect([words("unknown format string")]) ++
-                [words("in call to")] ++ PredNameDotPieces ++ [nl],
-            Spec = spec($pred, severity_warning,
-                phase_simplify(report_in_any_mode), Context, Pieces),
-            Specs = [Spec]
-        ),
+        Specs = report_unknown_format_string(ModuleInfo, PredId,
+            WarnUnknownFormat, Context),
         Result = error3(Specs)
     ).
 
@@ -979,22 +913,8 @@ follow_values_handle_unknown(ModuleInfo, ConjMaps, PredMap, FormatCallSite,
         PolyTypesToDeleteVars = [ValuesVar | SkeletonVars] ++ PolyTypeVars,
         Result = ok2(AbstractPolyTypes, PolyTypesToDeleteVars)
     else
-        (
-            WarnUnknownFormat = do_not_warn_unknown_format,
-            Specs = []
-        ;
-            WarnUnknownFormat = warn_unknown_format,
-            PredNameDotPieces = describe_one_pred_name(ModuleInfo,
-                yes(color_subject), should_module_qualify, [suffix(".")],
-                PredId),
-            Pieces = [words("Error:")] ++
-                color_as_incorrect([words("unknown list of values"),
-                    words("to be formatted")]) ++
-                [words("in call to")] ++ PredNameDotPieces ++ [nl],
-            Spec = spec($pred, severity_warning,
-                phase_simplify(report_in_any_mode), Context, Pieces),
-            Specs = [Spec]
-        ),
+        Specs = report_unknown_format_values(ModuleInfo, PredId,
+            WarnUnknownFormat, Context),
         Result = error2(Specs)
     ).
 
