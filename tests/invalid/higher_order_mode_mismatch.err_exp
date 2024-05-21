@@ -18,8 +18,8 @@ higher_order_mode_mismatch.m:031:   type error: [38;5;87mvariable `F'[39;49m h
 higher_order_mode_mismatch.m:031:     [38;5;203mfunc(int, int) = int;[39;49m
 higher_order_mode_mismatch.m:031:   expected type was
 higher_order_mode_mismatch.m:031:     [38;5;40mpred(V_1, V_2, V_3).[39;49m
-higher_order_mode_mismatch.m:031:   [38;5;226mPredicate vs function mismatch: expected a[39;49m
-higher_order_mode_mismatch.m:031:   [38;5;226mpredicate, got a function.[39;49m
+higher_order_mode_mismatch.m:031:   [38;5;203mPredicate vs function mismatch:[39;49m expected a
+higher_order_mode_mismatch.m:031:   [38;5;226mpredicate,[39;49m got a [38;5;226mfunction.[39;49m
 higher_order_mode_mismatch.m:034: In clause for predicate `test_3'/3:
 higher_order_mode_mismatch.m:034:   in argument 1 (i.e. the predicate term) of
 higher_order_mode_mismatch.m:034:   higher-order predicate call:
@@ -27,8 +27,8 @@ higher_order_mode_mismatch.m:034:   type error: [38;5;87mvariable `F'[39;49m h
 higher_order_mode_mismatch.m:034:     [38;5;203mfunc(int, int) = int;[39;49m
 higher_order_mode_mismatch.m:034:   expected type was
 higher_order_mode_mismatch.m:034:     [38;5;40mpred(V_1, V_2, V_3).[39;49m
-higher_order_mode_mismatch.m:034:   [38;5;226mPredicate vs function mismatch: expected a[39;49m
-higher_order_mode_mismatch.m:034:   [38;5;226mpredicate, got a function.[39;49m
+higher_order_mode_mismatch.m:034:   [38;5;203mPredicate vs function mismatch:[39;49m expected a
+higher_order_mode_mismatch.m:034:   [38;5;226mpredicate,[39;49m got a [38;5;226mfunction.[39;49m
 higher_order_mode_mismatch.m:037: In clause for predicate `test_4'/3:
 higher_order_mode_mismatch.m:037:   in unification of [38;5;87mvariable `Out'[39;49m
 higher_order_mode_mismatch.m:037:   and term [38;5;87m`In1(In2)':[39;49m

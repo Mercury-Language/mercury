@@ -8,7 +8,7 @@ bug197.m:026:   type error: [38;5;87margument[39;49m has type
 bug197.m:026:     [38;5;203mpred(string, T, V_6, V_6);[39;49m
 bug197.m:026:   expected type was
 bug197.m:026:     [38;5;40mpred(L, A, A).[39;49m
-bug197.m:026:   [38;5;226mArity mismatch for the predicate: expected three arguments, got[39;49m
+bug197.m:026:   [38;5;203mArity mismatch[39;49m for the predicate: expected [38;5;226mthree arguments,[39;49m got
 bug197.m:026:   [38;5;226mfour.[39;49m
 bug197.m:032: Error: cannot use [38;5;203m!:SS[39;49m here due to the surrounding lambda
 bug197.m:032:   expression; you may only refer to [38;5;40m!.SS.[39;49m

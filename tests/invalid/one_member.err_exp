@@ -21,6 +21,6 @@ one_member.m:054:   possible representations, but I am not going to do that
 one_member.m:054:   implicitly. (If that is really what you want, you must do
 one_member.m:054:   it explicitly.)
 one_member.m:055:   Call to do_one_member can fail.
-one_member.m:063: Error: `promise_equivalent_solution_sets' scope is [38;5;203mnested[39;49m
-one_member.m:063:   inside another.
+one_member.m:063: Error: this `promise_equivalent_solution_sets' scope is
+one_member.m:063:   [38;5;203mnested[39;49m inside another.
 one_member.m:062:   This is the outer `promise_equivalent_solution_sets' scope.

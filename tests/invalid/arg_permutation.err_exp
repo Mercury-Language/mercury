@@ -5,27 +5,27 @@ arg_permutation.m:020:     [38;5;87mvariable `A'[39;49m has type
 arg_permutation.m:020:       [38;5;203mfloat,[39;49m
 arg_permutation.m:020:     expected type was
 arg_permutation.m:020:       [38;5;40mint[39;49m
-arg_permutation.m:020:     [38;5;226m(the actual type is the same as the expected type of[39;49m
-arg_permutation.m:020:     [38;5;226margument 2, which is variable `B', and argument 5)[39;49m;
+arg_permutation.m:020:     (the actual type is [38;5;226mthe same as[39;49m the expected type of
+arg_permutation.m:020:     argument 2, which is variable `B', and argument 5);
 arg_permutation.m:020:   in argument 2:
 arg_permutation.m:020:     [38;5;87mvariable `B'[39;49m has type
 arg_permutation.m:020:       [38;5;203mint,[39;49m
 arg_permutation.m:020:     expected type was
 arg_permutation.m:020:       [38;5;40mfloat[39;49m
-arg_permutation.m:020:     [38;5;226m(the actual type is the same as the expected type of[39;49m
-arg_permutation.m:020:     [38;5;226margument 1, which is variable `A')[39;49m;
+arg_permutation.m:020:     (the actual type is [38;5;226mthe same as[39;49m the expected type of
+arg_permutation.m:020:     argument 1, which is variable `A');
 arg_permutation.m:020:   in argument 4:
 arg_permutation.m:020:     [38;5;87margument[39;49m has type
 arg_permutation.m:020:       [38;5;203mfloat,[39;49m
 arg_permutation.m:020:     expected type was
 arg_permutation.m:020:       [38;5;40mstring[39;49m
-arg_permutation.m:020:     [38;5;226m(the actual type is the same as the expected type of[39;49m
-arg_permutation.m:020:     [38;5;226margument 2, which is variable `B', and argument 5)[39;49m;
+arg_permutation.m:020:     (the actual type is [38;5;226mthe same as[39;49m the expected type of
+arg_permutation.m:020:     argument 2, which is variable `B', and argument 5);
 arg_permutation.m:020:   in argument 5:
 arg_permutation.m:020:     [38;5;87margument[39;49m has type
 arg_permutation.m:020:       [38;5;203mstring,[39;49m
 arg_permutation.m:020:     expected type was
 arg_permutation.m:020:       [38;5;40mfloat[39;49m
-arg_permutation.m:020:     [38;5;226m(the actual type is the same as the expected type of[39;49m
-arg_permutation.m:020:     [38;5;226margument 4)[39;49m.
+arg_permutation.m:020:     (the actual type is [38;5;226mthe same as[39;49m the expected type of
+arg_permutation.m:020:     argument 4).
 For more information, recompile with `-E'.

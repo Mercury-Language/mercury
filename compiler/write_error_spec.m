@@ -736,6 +736,9 @@ convert_pieces_to_words_acc(ColorDb, FirstInMsg, !.Lower, [Piece | Pieces],
             Piece = a_purity_desc(Purity),
             PlainWord = a_purity_to_string(Purity)
         ;
+            Piece = purity_desc_article(Purity),
+            PlainWord = purity_article_to_string(Purity)
+        ;
             Piece = decl(DeclName),
             PlainWord = add_quotes(":- " ++ DeclName)
         ;
@@ -2274,6 +2277,7 @@ update_first_in_msg_after_piece(Piece, FirstInMsg, TailFirstInMsg) :-
         ; Piece = p_or_f(_)
         ; Piece = purity_desc(_)
         ; Piece = a_purity_desc(_)
+        ; Piece = purity_desc_article(_)
         ; Piece = decl(_)
         ; Piece = pragma_decl(_)
         ; Piece = left_paren_maybe_nl_inc(_, _)
@@ -2308,6 +2312,12 @@ purity_to_string(purity_impure) = "impure".
 a_purity_to_string(purity_pure) = "a pure".
 a_purity_to_string(purity_semipure) = "a semipure".
 a_purity_to_string(purity_impure) = "an impure".
+
+:- func purity_article_to_string(purity) = string.
+
+purity_article_to_string(purity_pure) = "a".        % pure".
+purity_article_to_string(purity_semipure) = "a".    % semipure".
+purity_article_to_string(purity_impure) = "an".     % impure".
 
 :- pred pop_stack_ignore_empty(stack(T)::in, stack(T)::out) is det.
 

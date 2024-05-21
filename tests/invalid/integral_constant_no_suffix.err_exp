@@ -5,14 +5,14 @@ integral_constant_no_suffix.m:016:   type error: [38;5;87mvariable `N'[39;49m 
 integral_constant_no_suffix.m:016:     [38;5;203mint;[39;49m
 integral_constant_no_suffix.m:016:   expected type was
 integral_constant_no_suffix.m:016:     [38;5;40muint8.[39;49m
-integral_constant_no_suffix.m:016:   [38;5;226mA integer constant that consists only of[39;49m
-integral_constant_no_suffix.m:016:   [38;5;226mdigits is always of type `int'. Unsigned[39;49m
-integral_constant_no_suffix.m:016:   [38;5;226minteger constants of the default size[39;49m
-integral_constant_no_suffix.m:016:   [38;5;226mshould have the suffix `u'; constants of[39;49m
-integral_constant_no_suffix.m:016:   [38;5;226msized integer types should have an `i8',[39;49m
-integral_constant_no_suffix.m:016:   [38;5;226m`i16', `i32' or `i64' suffix if they are[39;49m
-integral_constant_no_suffix.m:016:   [38;5;226msigned, and an `u8', `u16', `u32' or `u64'[39;49m
-integral_constant_no_suffix.m:016:   [38;5;226msuffix if they are unsigned.[39;49m
+integral_constant_no_suffix.m:016:   A integer constant that consists only of
+integral_constant_no_suffix.m:016:   digits is [38;5;226malways of type `int'.[39;49m Unsigned
+integral_constant_no_suffix.m:016:   integer constants of the default size
+integral_constant_no_suffix.m:016:   should have the suffix `u'; constants of
+integral_constant_no_suffix.m:016:   sized integer types should have an `i8',
+integral_constant_no_suffix.m:016:   `i16', `i32' or `i64' suffix if they are
+integral_constant_no_suffix.m:016:   signed, and an `u8', `u16', `u32' or `u64'
+integral_constant_no_suffix.m:016:   suffix if they are unsigned.
 integral_constant_no_suffix.m:024: In clause for predicate
 integral_constant_no_suffix.m:024:   `life_universe_everything'/1:
 integral_constant_no_suffix.m:024:   in argument 1 of clause head:
@@ -23,12 +23,12 @@ integral_constant_no_suffix.m:024:   [38;5;87mvariable `HeadVar__1'[39;49m has
 integral_constant_no_suffix.m:024:     [38;5;203muint8,[39;49m
 integral_constant_no_suffix.m:024:   [38;5;87mconstant `42'[39;49m has type
 integral_constant_no_suffix.m:024:     [38;5;40mint.[39;49m
-integral_constant_no_suffix.m:024:   [38;5;226mA integer constant that consists only of[39;49m
-integral_constant_no_suffix.m:024:   [38;5;226mdigits is always of type `int'. Unsigned[39;49m
-integral_constant_no_suffix.m:024:   [38;5;226minteger constants of the default size[39;49m
-integral_constant_no_suffix.m:024:   [38;5;226mshould have the suffix `u'; constants of[39;49m
-integral_constant_no_suffix.m:024:   [38;5;226msized integer types should have an `i8',[39;49m
-integral_constant_no_suffix.m:024:   [38;5;226m`i16', `i32' or `i64' suffix if they are[39;49m
-integral_constant_no_suffix.m:024:   [38;5;226msigned, and an `u8', `u16', `u32' or `u64'[39;49m
-integral_constant_no_suffix.m:024:   [38;5;226msuffix if they are unsigned.[39;49m
+integral_constant_no_suffix.m:024:   A integer constant that consists only of
+integral_constant_no_suffix.m:024:   digits is [38;5;226malways of type `int'.[39;49m Unsigned
+integral_constant_no_suffix.m:024:   integer constants of the default size
+integral_constant_no_suffix.m:024:   should have the suffix `u'; constants of
+integral_constant_no_suffix.m:024:   sized integer types should have an `i8',
+integral_constant_no_suffix.m:024:   `i16', `i32' or `i64' suffix if they are
+integral_constant_no_suffix.m:024:   signed, and an `u8', `u16', `u32' or `u64'
+integral_constant_no_suffix.m:024:   suffix if they are unsigned.
 For more information, recompile with `-E'.

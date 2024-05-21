@@ -275,16 +275,19 @@ report_unsatisfied_constraints(ModuleInfo, PredId, PredInfo, Constraints,
     pred_info_get_typevarset(PredInfo, TVarSet),
     pred_info_get_context(PredInfo, Context),
 
-    PredDescColonPieces = describe_one_pred_name(ModuleInfo,
-        yes(color_subject), should_not_module_qualify, [suffix(":")], PredId),
+    PredDescPieces = describe_one_pred_name(ModuleInfo,
+        yes(color_subject), should_not_module_qualify, [], PredId),
 
-    MainPieces = [words("In")] ++ PredDescColonPieces ++ [nl,
-        words("type error: unsatisfied typeclass"),
-        words(choose_number(Constraints, "constraint:", "constraints:")),
-        nl_indent_delta(1)] ++
+    MainPieces = [words("Error:")] ++ PredDescPieces ++
+        [words("contains"),
+        words(choose_number(Constraints,
+            "an unsatisified typeclass constraint:",
+            "some unsatisified typeclass constraints:")),
+            nl_indent_delta(1)] ++
         component_list_to_color_line_pieces(yes(color_incorrect),
-            [], [nl_indent_delta(-1)],
-            list.map(constraint_to_error_pieces(TVarSet), Constraints)),
+            [suffix(".")], [],
+            list.map(constraint_to_error_pieces(TVarSet), Constraints)) ++
+        [nl_indent_delta(-1)],
     MainMsg = msg(Context, MainPieces),
 
     ConstrainedGoals = find_constrained_goals(PredInfo, Constraints),
@@ -601,15 +604,17 @@ report_unresolved_type_warning(ModuleInfo, PredId, PredInfo, VarsEntries,
     pred_info_get_typevarset(PredInfo, TVarSet),
     pred_info_get_context(PredInfo, Context),
 
-    PredDescColonPieces = describe_one_pred_name(ModuleInfo,
-        yes(color_subject), should_not_module_qualify, [suffix(":")], PredId),
+    PredDescDotPieces = describe_one_pred_name(ModuleInfo,
+        yes(color_subject), should_not_module_qualify, [suffix(".")], PredId),
     list.map_foldl3(var_vte_to_name_and_type_strs(TVarSet),
         VarsEntries, VarTypeStrs0,
         0, MaxVarNameLen0, all_tvars, MaybeAllTVars, set.init, TVars),
     list.sort(VarTypeStrs0, VarTypeStrs),
     (
         MaybeAllTVars = all_tvars,
-        VarTypePieceLists = list.map(var_only_to_pieces, VarTypeStrs),
+        assoc_list.keys(VarTypeStrs, VarStrs),
+        VarTypePieces = list_to_color_line_pieces(yes(color_incorrect),
+            [suffix(".")], VarStrs),
         SetPieces = [
             words(choose_number(VarsEntries, "Its type", "Their types")),
             words("will be implicitly set to the builtin type"),
@@ -640,8 +645,11 @@ report_unresolved_type_warning(ModuleInfo, PredId, PredInfo, VarsEntries,
         else
             MaxVarNameLen = MaxVarNameLen0
         ),
-        VarTypePieceLists =
-            list.map(var_and_type_to_pieces(MaxVarNameLen), VarTypeStrs),
+        VarTypePiecesPairs =
+            list.map(var_and_type_to_pieces_pairs(MaxVarNameLen), VarTypeStrs),
+        VarTypePieces = component_list_to_color_split_line_pieces(
+            yes(color_subject), yes(color_incorrect), [suffix(".")],
+            VarTypePiecesPairs),
         TVarToStr =
             ( func(TV) = quote(Name) :-
                 Name = mercury_var_to_string_vs(TVarSet, print_name_only, TV)
@@ -656,9 +664,8 @@ report_unresolved_type_warning(ModuleInfo, PredId, PredInfo, VarsEntries,
             quote("void"), suffix("."), nl],
         Known = "fully known"
     ),
-    list.condense(VarTypePieceLists, VarTypePieces),
-    MainPieces = [words("In")] ++ PredDescColonPieces ++ [nl,
-        words("warning: unresolved polymorphism."), nl,
+    MainPieces = [words("Warning: unresolved polymorphism in")] ++
+        PredDescDotPieces ++ [nl,
         words(choose_number(VarsEntries,
             "The variable with an unbound type was:",
             "The variables with unbound types were:")), nl_indent_delta(1)] ++
@@ -712,21 +719,18 @@ var_vte_to_name_and_type_strs(TVarSet, Var - Entry, VarStr - TypeStr,
         set.union(TVarsInType, !TVars)
     ).
 
-:- func var_only_to_pieces(pair(string, string)) = list(format_piece).
+:- func var_and_type_to_pieces_pairs(int, pair(string, string)) =
+    {list(format_piece), list(format_piece)}.
 
-var_only_to_pieces(VarStr - _TypeStr) = Pieces :-
-    Pieces = color_as_incorrect([fixed(VarStr)]) ++ [nl].
-
-:- func var_and_type_to_pieces(int, pair(string, string)) = list(format_piece).
-
-var_and_type_to_pieces(MaxVarNameLen, VarStr - TypeStr) = Pieces :-
+var_and_type_to_pieces_pairs(MaxVarNameLen, VarStr - TypeStr)
+        = {VarPieces, TypePieces} :-
     % The +1 is to account for the colon. Without it, the VarColonStr
     % we construct for the longest variable name would have MaxVarNameLen + 1
     % code points, while the VarColonStrs we construct for all shorter
     % variable names would have only MaxVarNameLen code points.
     string.pad_right(VarStr ++ ":", ' ', MaxVarNameLen + 1, VarColonStr),
-    Pieces = color_as_subject([fixed(VarColonStr)]) ++
-        color_as_incorrect([words(TypeStr)]) ++[nl].
+    VarPieces = [fixed(VarColonStr)],
+    TypePieces = [words(TypeStr)].
 
 %---------------------------------------------------------------------------%
 

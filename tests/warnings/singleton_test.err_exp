@@ -1,8 +1,8 @@
-singleton_test.m:013: In function [38;5;87m`my_append_func'/2:[39;49m
-singleton_test.m:013:   warning: unresolved polymorphism.
+singleton_test.m:013: Warning: unresolved polymorphism in function
+singleton_test.m:013:   [38;5;87m`my_append_func'/2.[39;49m
 singleton_test.m:013:   The variables with unbound types were:
-singleton_test.m:013:     [38;5;203mL1[39;49m
-singleton_test.m:013:     [38;5;203mL2[39;49m
+singleton_test.m:013:     [38;5;203mL1,[39;49m
+singleton_test.m:013:     [38;5;203mL2.[39;49m
 singleton_test.m:013:   Their types will be implicitly set to the builtin type
 singleton_test.m:013:   `void'.
 singleton_test.m:031: In clause for predicate `my_append'/3:

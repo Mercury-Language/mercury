@@ -1275,10 +1275,10 @@ det_infer_foreign_proc(Attributes, PredId, ProcId, _PragmaCode,
         Context = goal_info_get_context(GoalInfo),
         ProcPieces = describe_one_proc_name_mode(ModuleInfo, output_mercury,
             no, should_not_module_qualify, [], proc(PredId, ProcId)),
-        Pieces = [words("In")] ++ ProcPieces ++ [suffix(":"), nl,
-            words("error: the procedure specification in this"),
-            pragma_decl("foreign_proc"), words("declaration is")] ++
-            color_as_incorrect([words("missing")]) ++
+        Pieces = [words("Error: the procedure specification in this"),
+            pragma_decl("foreign_proc"), words("declaration for")] ++
+            ProcPieces ++
+            [words("is")] ++ color_as_incorrect([words("missing")]) ++
             [words("the final"), quote("is <determinism>"),
             words("part."), nl],
         Spec = spec($pred, severity_error, phase_detism_check,
@@ -1636,7 +1636,7 @@ det_infer_scope(Reason, Goal0, Goal, GoalInfo, InstMap0, SolnContext,
             ;
                 MaybePromiseEqvSolutionSets0 = yes(PESSInfo),
                 PESSInfo = pess_info(OuterVars, OuterContext),
-                NestedPieces = [words("Error: "),
+                NestedPieces = [words("Error: this"),
                     quote("promise_equivalent_solution_sets"),
                     words("scope is")] ++
                     color_as_incorrect([words("nested")]) ++
@@ -1660,7 +1660,7 @@ det_infer_scope(Reason, Goal0, Goal, GoalInfo, InstMap0, SolnContext,
             Kind = equivalent_solution_sets_arbitrary,
             (
                 MaybePromiseEqvSolutionSets0 = no,
-                ArbitraryPieces = [words("Error: "), words("this"),
+                ArbitraryPieces = [words("Error: this"),
                     quote("arbitrary"), words("scope is")] ++
                     color_as_incorrect([words("not nested")]) ++
                     [words("inside a"),
@@ -1832,9 +1832,11 @@ det_infer_scope(Reason, Goal0, Goal, GoalInfo, InstMap0, SolnContext,
             Detism = Detism0,
             Context = goal_info_get_context(GoalInfo),
             DetismStr = determinism_to_string(Detism),
-            Pieces = [words("Error: trace goal has determinism"),
-                quote(DetismStr), suffix(","),
-                words("should be det or cc_multi."), nl],
+            Pieces = [words("Error: trace goal has determinism")] ++
+                color_as_incorrect([quote(DetismStr), suffix(",")]) ++
+                [words("it should be either")] ++
+                color_as_correct([words("det")]) ++ [words("or")] ++
+                color_as_correct([words("cc_multi.")]) ++ [nl],
             Spec = spec($pred, severity_error, phase_detism_check,
                 Context, Pieces),
             det_info_add_error_spec(Spec, !DetInfo)

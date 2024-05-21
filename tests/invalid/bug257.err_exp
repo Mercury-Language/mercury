@@ -1,7 +1,6 @@
-bug257.m:017: In predicate [38;5;87m`oops'/2:[39;49m
-bug257.m:017:   warning: unresolved polymorphism.
+bug257.m:017: Warning: unresolved polymorphism in predicate [38;5;87m`oops'/2.[39;49m
 bug257.m:017:   The variable with an unbound type was:
-bug257.m:017:     [38;5;203mGee[39;49m
+bug257.m:017:     [38;5;203mGee.[39;49m
 bug257.m:017:   Its type will be implicitly set to the builtin type `void'.
 bug257.m:022: Error: the goal inside the [38;5;87mrequire_complete_switch [Gee] scope[39;49m is
 bug257.m:022:   [38;5;203mnot a switch on `Gee'.[39;49m

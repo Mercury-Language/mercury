@@ -887,14 +887,13 @@ report_special_type_mismatch(IsFirst, MismatchSpecial) = Pieces :-
     ),
     (
         MismatchSpecial = type_mismatch_special_getopt_error(GetoptModule),
-        Pieces0 = ReasonIsPieces ++
+        Pieces = ReasonIsPieces ++
             [words("the signatures of the option processing predicates"),
-            words("in the"), quote(GetoptModule), words("module"),
-            words("have changed recently."),
-            words("Errors are now returned in a structured form,"),
+            words("in the"), quote(GetoptModule), words("module")] ++
+            color_as_possible_cause([words("have changed recently.")]) ++
+            [words("Errors are now returned in a structured form,"),
             words("which can be converted to a string by calling the"),
-            quote("option_error_to_string"), words("function."), nl],
-        Pieces = color_as_possible_cause(Pieces0)
+            quote("option_error_to_string"), words("function."), nl]
     ).
 
 %---------------------------------------------------------------------------%
@@ -1064,9 +1063,10 @@ find_possible_switched_positions(VarSet, SearchActualPieces, AllErrors,
         Pieces = []
     ;
         SwitchedPosPieces = [_ | _],
-        Pieces = color_as_possible_cause(
-            [words("(the actual type is the same as the expected type of")] ++
-            SwitchedPosPieces ++ [suffix(")")])
+        Pieces = [words("(the actual type is")] ++
+            color_as_possible_cause([words("the same as")]) ++
+            [words("the expected type of")] ++
+            SwitchedPosPieces ++ [suffix(")")]
     ).
 
 :- pred find_expecteds_matching_actual(prog_varset::in,
@@ -1119,9 +1119,10 @@ expected_type_needs_int_constant_suffix(Type) :-
 :- func nosuffix_integer_pieces = list(format_piece).
 
 nosuffix_integer_pieces = Pieces :-
-    Pieces0 = [words("A integer constant that consists only of digits"),
-        words("is always of type"), quote("int"), suffix("."),
-        words("Unsigned integer constants of the default size"),
+    Pieces = [words("A integer constant that consists only of digits is")] ++
+        color_as_possible_cause([words("always of type"),
+            quote("int"), suffix(".")]) ++
+        [words("Unsigned integer constants of the default size"),
         words("should have the suffix"), quote("u"), suffix(";"),
         words("constants of sized integer types should have"),
         words("an"), quote("i8"), suffix(","), quote("i16"), suffix(","),
@@ -1129,8 +1130,7 @@ nosuffix_integer_pieces = Pieces :-
         words("if they are signed, and"),
         words("an"), quote("u8"), suffix(","), quote("u16"), suffix(","),
         quote("u32"), words("or"), quote("u64"), words("suffix"),
-        words("if they are unsigned."), nl],
-    Pieces = color_as_possible_cause(Pieces0).
+        words("if they are unsigned."), nl].
 
 %---------------------------------------------------------------------------%
 
@@ -1269,26 +1269,38 @@ report_any_invisible_int_types(ClauseContext, BuiltinTypes) = Pieces :-
         % Is there at least one integer type whose module we did not import?
         InvisIntTypesList = [HeadInvisIntType | TailInvisIntTypes]
     then
-        int_type_module_name(HeadInvisIntType, HeadInvisIntTypeStr),
-        list.map(
-            (pred(IT::in, Str::out) is det :- int_type_module_name(IT, Str)),
-            TailInvisIntTypes, TailInvisIntTypeStrs),
+        % XXX The pieces we return denote the names of both types and modules.
+        % Should we quote the type names? The module names? Currently,
+        % we quote both, which is consistent, but that very consistency
+        % makes it harder for readers to differentiate the two roles
+        % of each name.
+        IntTypeToModulePiece =
+            ( func(IT) = quote(Str) :- int_type_module_name(IT, Str) ),
+        HeadInvisIntTypePiece = IntTypeToModulePiece(HeadInvisIntType),
+        TailInvisIntTypePieces =
+            list.map(IntTypeToModulePiece, TailInvisIntTypes),
         (
-            TailInvisIntTypeStrs = [],
-            Pieces0 = [words("Note that operations on values of type"),
-                quote(HeadInvisIntTypeStr), words("are available"),
-                words("only if the"), quote(HeadInvisIntTypeStr),
-                words("module is imported."), nl]
+            TailInvisIntTypePieces = [],
+            Pieces = [words("Note that operations on values of type"),
+                HeadInvisIntTypePiece, words("are available"),
+                words("only if module")] ++
+                color_as_possible_cause([HeadInvisIntTypePiece,
+                    words("is imported.")]) ++
+                [nl]
         ;
-            TailInvisIntTypeStrs = [_ | _],
-            InvisIntTypeStrs = [HeadInvisIntTypeStr | TailInvisIntTypeStrs],
-            InvisIntTypePieces = list_to_quoted_pieces(InvisIntTypeStrs),
-            Pieces0 = [words("Note that operations on values of types") |
+            TailInvisIntTypePieces = [_ | _],
+            InvisIntTypePieces =
+                [HeadInvisIntTypePiece | TailInvisIntTypePieces],
+            InvisIntTypeListPieces =
+                component_list_to_color_pieces(yes(color_cause), "and", [],
+                    InvisIntTypePieces),
+            Pieces = [words("Note that operations on values of types") |
                 InvisIntTypePieces] ++ [words("are available"),
-                words("only if the") | InvisIntTypePieces] ++
-                [words("modules respectively are imported."), nl]
-        ),
-        Pieces = color_as_possible_cause(Pieces0)
+                words("only if modules")] ++
+                InvisIntTypeListPieces ++
+                color_as_possible_cause([words("are imported.")]) ++
+                [nl]
+        )
     else
         Pieces = []
     ).
@@ -1767,11 +1779,14 @@ arg_type_list_diff_pieces(ContextPieces, TypeCtorPieces, ExistQTVars,
             TypeCtorPieces, ExistQTVars, 1, ActualArgTypes, ExpectedArgTypes)
     else
         CausePieces =
-            [words("Arity mismatch for")] ++ TypeCtorPieces ++ [suffix(":"),
-            words("expected"), int_name(ExpectedNumArgs), words("arguments,"),
-            words("got"), int_name(ActualNumArgs), suffix(".")],
-        DiffPieces = wrap_diff_pieces(ContextPieces,
-            color_as_possible_cause(CausePieces))
+            color_as_incorrect([words("Arity mismatch")]) ++
+            [words("for")] ++ TypeCtorPieces ++ [suffix(":"),
+            words("expected")] ++
+            color_as_possible_cause([int_name(ExpectedNumArgs),
+                words("arguments,")]) ++
+            [words("got")] ++
+            color_as_possible_cause([int_name(ActualNumArgs), suffix(".")]),
+        DiffPieces = wrap_diff_pieces(ContextPieces, CausePieces)
     ).
 
 :- func higher_order_diff_pieces(list(format_piece), list(tvar),
@@ -1786,31 +1801,35 @@ higher_order_diff_pieces(ContextPieces, ExistQTVars, ActualPorF, ExpectedPorF,
         true
     else
         ExpActPredFuncCausePieces =
-            [words("Predicate vs function mismatch:"),
-            words("expected a"), p_or_f(ExpectedPorF), suffix(","),
-            words("got a"), p_or_f(ActualPorF), suffix(".")],
-        !:DiffPieces = !.DiffPieces ++ wrap_diff_pieces(ContextPieces,
-            color_as_possible_cause(ExpActPredFuncCausePieces))
+            color_as_incorrect([words("Predicate vs function mismatch:")]) ++
+            [words("expected a")] ++
+            color_as_possible_cause([p_or_f(ExpectedPorF), suffix(",")]) ++
+            [words("got a")] ++
+            color_as_possible_cause([p_or_f(ActualPorF), suffix(".")]),
+        add_to_diff_pieces(ContextPieces, ExpActPredFuncCausePieces,
+            !DiffPieces)
     ),
     ( if ActualPurity = ExpectedPurity then
         true
     else
         ExpActPurityCausePieces =
-            [words("Purity mismatch:"),
-            words("expected"), a_purity_desc(ExpectedPurity),
-            p_or_f(ExpectedPorF), suffix(","), words("got"),
-            a_purity_desc(ActualPurity), p_or_f(ActualPorF), suffix(".")],
-        !:DiffPieces = !.DiffPieces ++ wrap_diff_pieces(ContextPieces,
-            color_as_possible_cause(ExpActPurityCausePieces))
+            color_as_incorrect([words("Purity mismatch:")]) ++
+            [words("expected"), purity_desc_article(ExpectedPurity)] ++
+            color_as_possible_cause([purity_desc(ExpectedPurity),
+                p_or_f(ExpectedPorF), suffix(",")]) ++
+            [words("got"), purity_desc_article(ActualPurity)] ++
+            color_as_possible_cause([purity_desc(ActualPurity),
+                p_or_f(ActualPorF), suffix(".")]),
+        add_to_diff_pieces(ContextPieces, ExpActPurityCausePieces, !DiffPieces)
     ),
     ( if ActualArgTypes = ExpectedArgTypes then
         true
     else
         TypeCtorPieces = [lower_case_next_if_not_first,
             words("The"), p_or_f(ActualPorF)],
-        !:DiffPieces = !.DiffPieces ++
-            arg_type_list_diff_pieces(ContextPieces, TypeCtorPieces,
-                ExistQTVars, ActualArgTypes, ExpectedArgTypes)
+        ArgTypeCausePieces = arg_type_list_diff_pieces(ContextPieces,
+            TypeCtorPieces, ExistQTVars, ActualArgTypes, ExpectedArgTypes),
+        add_to_diff_pieces(ContextPieces, ArgTypeCausePieces, !DiffPieces)
     ),
     ( if ActualInstInfo = ExpectedInstInfo then
         true
@@ -1835,25 +1854,31 @@ higher_order_diff_pieces(ContextPieces, ExistQTVars, ActualPorF, ExpectedPorF,
                 true
             else
                 ActPredFuncTypeModeCausePieces =
-                    [words("Predicate vs function mismatch:"),
-                    words("the actual type"),
-                    words("is a"), p_or_f(ActualPorF), suffix(","),
-                    words("but its mode says"),
-                    words("it is a"), p_or_f(ActualHOPorF), suffix(".")],
-                !:DiffPieces = !.DiffPieces ++ wrap_diff_pieces(ContextPieces,
-                    color_as_possible_cause(ActPredFuncTypeModeCausePieces))
+                    color_as_incorrect(
+                        [words("Predicate vs function mismatch:")]) ++
+                    [words("the actual type is a")] ++
+                    color_as_possible_cause([p_or_f(ActualPorF),
+                        suffix(",")]) ++
+                    [words("but its mode says it is a")] ++
+                    color_as_possible_cause([p_or_f(ActualHOPorF),
+                        suffix(".")]),
+                add_to_diff_pieces(ContextPieces,
+                    ActPredFuncTypeModeCausePieces, !DiffPieces)
             ),
             ( if ExpectedHOPorF = ExpectedPorF then
                 true
             else
                 ExpPredFuncTypeModeCausePieces =
-                    [words("Predicate vs function mismatch:"),
-                    words("the expected type"),
-                    words("is a"), p_or_f(ActualPorF), suffix(","),
-                    words("but its mode says"),
-                    words("it is a"), p_or_f(ActualHOPorF), suffix(".")],
-                !:DiffPieces = !.DiffPieces ++ wrap_diff_pieces(ContextPieces,
-                    color_as_possible_cause(ExpPredFuncTypeModeCausePieces))
+                    color_as_incorrect(
+                        [words("Predicate vs function mismatch:")]) ++
+                    [words("the expected type is a")] ++
+                    color_as_possible_cause([p_or_f(ActualPorF),
+                        suffix(",")]) ++
+                    [words("but its mode says it is a")] ++
+                    color_as_possible_cause([p_or_f(ActualHOPorF),
+                        suffix(".")]),
+                add_to_diff_pieces(ContextPieces,
+                    ExpPredFuncTypeModeCausePieces, !DiffPieces)
             ),
             ( if ActualNumArgTypes = ActualNumArgModes then
                 true
@@ -1863,14 +1888,16 @@ higher_order_diff_pieces(ContextPieces, ExistQTVars, ActualPorF, ExpectedPorF,
                 adjust_func_arity(ActualPorF,
                     ActualModeArity, ActualNumArgModes),
                 ActArityCausePieces =
-                    [words("Arity mismatch:"),
-                    words("the actual"), p_or_f(ActualPorF),
-                    words("type has"), int_name(ActualTypeArity),
-                    words("arguments"), suffix(","),
-                    words("but its mode information says it has"),
-                    int_name(ActualModeArity), words("arguments.")],
-                !:DiffPieces = !.DiffPieces ++ wrap_diff_pieces(ContextPieces,
-                    color_as_possible_cause(ActArityCausePieces))
+                    color_as_incorrect([words("Arity mismatch:")]) ++
+                    [words("the actual"), p_or_f(ActualPorF),
+                    words("type has")] ++
+                    color_as_possible_cause([int_name(ActualTypeArity),
+                        words("arguments"), suffix(",")]) ++
+                    [words("but its mode information says it has")] ++
+                    color_as_possible_cause([int_name(ActualModeArity),
+                        words("arguments.")]),
+                add_to_diff_pieces(ContextPieces, ActArityCausePieces,
+                    !DiffPieces)
             ),
             ( if ExpectedNumArgTypes = ExpectedNumArgModes then
                 true
@@ -1880,14 +1907,16 @@ higher_order_diff_pieces(ContextPieces, ExistQTVars, ActualPorF, ExpectedPorF,
                 adjust_func_arity(ExpectedPorF,
                     ExpectedModeArity, ExpectedNumArgModes),
                 ExpArityCausePieces =
-                    [words("Arity mismatch:"),
-                    words("the actual"), p_or_f(ExpectedPorF),
-                    words("type has"), int_name(ExpectedTypeArity),
-                    words("arguments"), suffix(","),
-                    words("but its mode information says it has"),
-                    int_name(ExpectedModeArity), words("arguments.")],
-                !:DiffPieces = !.DiffPieces ++ wrap_diff_pieces(ContextPieces,
-                    color_as_possible_cause(ExpArityCausePieces))
+                    color_as_incorrect([words("Arity mismatch:")]) ++
+                    [words("the actual"), p_or_f(ExpectedPorF),
+                    words("type has")] ++
+                    color_as_possible_cause([int_name(ExpectedTypeArity),
+                        words("arguments"), suffix(",")]) ++
+                    [words("but its mode information says it has")] ++
+                    color_as_possible_cause([int_name(ExpectedModeArity),
+                        words("arguments.")]),
+                add_to_diff_pieces(ContextPieces, ExpArityCausePieces,
+                    !DiffPieces)
             ),
             ( if ActualArgModes = ExpectedArgModes then
                 true
@@ -1895,11 +1924,11 @@ higher_order_diff_pieces(ContextPieces, ExistQTVars, ActualPorF, ExpectedPorF,
                 % We could try to report which argument(s), or even which
                 % piece(s) of which argument(s), contain the difference ...
                 ModeCausePieces =
-                    [words("Mode mismatch:"),
-                    words("the actual and expected modes of the"),
+                    color_as_incorrect([words("Mode mismatch:")]) ++
+                    [words("the actual and expected modes of the"),
                     p_or_f(ActualPorF), words("differ.")],
-                !:DiffPieces = !.DiffPieces ++ wrap_diff_pieces(ContextPieces,
-                    color_as_possible_cause(ModeCausePieces))
+                add_to_diff_pieces(ContextPieces, ModeCausePieces,
+                    !DiffPieces)
             ),
             ( if ActualDetism = ExpectedDetism then
                 true
@@ -1907,13 +1936,16 @@ higher_order_diff_pieces(ContextPieces, ExistQTVars, ActualPorF, ExpectedPorF,
                 ActualDetismStr = determinism_to_string(ActualDetism),
                 ExpectedDetismStr = determinism_to_string(ExpectedDetism),
                 DetismCausePieces =
-                    [words("Determinism mismatch:"),
-                    words("the actual"), p_or_f(ActualPorF), words("has"),
-                    words("determinism"), words(ActualDetismStr), suffix(","),
-                    words("but the expected determinism is"),
-                    words(ExpectedDetismStr), suffix(".")],
-                !:DiffPieces = !.DiffPieces ++ wrap_diff_pieces(ContextPieces,
-                    color_as_possible_cause(DetismCausePieces))
+                    color_as_incorrect([words("Determinism mismatch:")]) ++
+                    [words("the actual"), p_or_f(ActualPorF), words("has"),
+                    words("determinism")] ++
+                    color_as_possible_cause([words(ActualDetismStr),
+                        suffix(",")]) ++
+                    [words("but the expected determinism is")] ++
+                    color_as_possible_cause([words(ExpectedDetismStr),
+                        suffix(".")]),
+                add_to_diff_pieces(ContextPieces, DetismCausePieces,
+                    !DiffPieces)
             )
         else
             % XXX We could do better here, but as long as the compiler
@@ -1964,6 +1996,13 @@ arg_type_list_diff_pieces_loop(ContextPieces, TypeCtorPieces,
             ActualArgType, ExpectedArgType),
         DiffPieces = HeadDiffPieces ++ TailDiffPieces
     ).
+
+:- pred add_to_diff_pieces(list(format_piece)::in, list(format_piece)::in,
+    list(format_piece)::in, list(format_piece)::out) is det.
+
+add_to_diff_pieces(ContextPieces, MismatchPieces, !DiffPieces) :-
+    NewDiffPieces = wrap_diff_pieces(ContextPieces, MismatchPieces),
+    !:DiffPieces = !.DiffPieces ++ NewDiffPieces.
 
 :- func wrap_diff_pieces(list(format_piece), list(format_piece))
     = list(format_piece).

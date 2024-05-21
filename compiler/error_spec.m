@@ -436,6 +436,10 @@
             % Output the string "a pure", "a semipure" or "an impure"
             % as appropriate.
 
+    ;       purity_desc_article(purity)
+            % Output the article that forms the difference between
+            % the output of a_purity_desc(Purity) and purity_desc(Purity).
+
     ;       decl(string)
             % Prefix the string with ":- ", surround it with single quotes,
             % and then treat as fixed.
@@ -631,6 +635,19 @@
 :- func strict_component_list_to_color_pieces(maybe(color_name),
     list(format_piece), list(format_piece)) = list(format_piece).
 
+    % list_to_color_line_pieces(MaybeColor, LastColorSuffix, Strs) = Pieces:
+    %
+    % XXX document once we have fit all the related functions
+    % into a matrix along the dimensions:
+    %
+    % - what are the items being converted to pieces?
+    % - should the items be colored?
+    % - are the lists strict or not?
+    % - should the output have one item per line?
+    %
+:- func list_to_color_line_pieces(maybe(color_name), list(format_piece),
+    list(string)) = list(format_piece).
+
     % component_list_to_line_pieces(Lines, Final):
     %
     % Convert Lines, a list of lines (each given by a list of format_pieces
@@ -654,6 +671,12 @@
 :- func component_list_to_color_line_pieces(maybe(color_name),
     list(format_piece), list(format_piece), list(list(format_piece)))
     = list(format_piece).
+
+:- func component_list_to_color_split_line_pieces(
+    maybe(color_name), maybe(color_name), list(format_piece),
+    list({list(format_piece), list(format_piece)})) = list(format_piece).
+
+%---------------------------------------------------------------------------%
 
     % indented_list(Lines):
     %
@@ -913,6 +936,11 @@ strict_general_list_to_pieces(ItemToPieces, MaybeColor, Sep, LastColorSuffix,
 
 %---------------------------------------------------------------------------%
 
+list_to_color_line_pieces(MaybeColor, LastColorSuffix, Strs) = Pieces :-
+    ItemToPieces = ( func(Str) = [words(Str)] ),
+    strict_general_list_to_line_pieces(ItemToPieces, MaybeColor,
+        LastColorSuffix, Strs, Pieces).
+
 component_list_to_line_pieces([], _) = [].
 component_list_to_line_pieces([Comps], Final) = Comps ++ Final.
 component_list_to_line_pieces([Comps1, Comps2 | Comp3plus], Final) =
@@ -927,6 +955,77 @@ component_list_to_color_line_pieces(MaybeColor, CFinal, UCFinal,
     maybe_color_pieces(MaybeColor, Comps1 ++ [suffix(",")]) ++ [nl] ++
     component_list_to_color_line_pieces(MaybeColor, CFinal, UCFinal,
         [Comps2 | Comps]).
+
+component_list_to_color_split_line_pieces(MaybeColorA, MaybeColorB,
+        LastColorSuffixB, Pairs) = Pieces :-
+    ItemToPieces = ( func({A, B}) = {A, B} ),
+    strict_general_list_to_split_line_pieces(ItemToPieces,
+        MaybeColorA, MaybeColorB, LastColorSuffixB, Pairs, Pieces).
+
+%---------------------------------------------------------------------------%
+
+    % A general predicate for converting any list of items to the specification
+    % of a nicely formatted and possibly colored output.
+    %
+    % The functions above should probably be reimplemented using this.
+    %
+:- pred strict_general_list_to_line_pieces((func(T) = list(format_piece))::in,
+    maybe(color_name)::in, list(format_piece)::in,
+    list(T)::in, list(format_piece)::out) is det.
+
+strict_general_list_to_line_pieces(ItemToPieces, MaybeColor, LastColorSuffix,
+        Items, Pieces) :-
+    (
+        Items = [],
+        Pieces = []
+    ;
+        Items = [Item1],
+        Pieces1 = ItemToPieces(Item1),
+        Pieces = maybe_color_pieces(MaybeColor, Pieces1 ++ LastColorSuffix)
+    ;
+        Items = [Item1, Item2 | Items3plus],
+        Pieces1 = ItemToPieces(Item1),
+        HeadPieces = maybe_color_pieces(MaybeColor, Pieces1 ++ [suffix(",")]),
+        strict_general_list_to_line_pieces(ItemToPieces, MaybeColor,
+            LastColorSuffix, [Item2 | Items3plus], TailPieces),
+        Pieces = HeadPieces ++ [nl] ++ TailPieces
+    ).
+
+    % A general predicate for converting any list of items to the specification
+    % of a nicely formatted and possibly colored output.
+    %
+    % The functions above should probably be reimplemented using this.
+    %
+:- pred strict_general_list_to_split_line_pieces(
+    (func(T) = {list(format_piece), list(format_piece)})::in,
+    maybe(color_name)::in, maybe(color_name)::in, list(format_piece)::in,
+    list(T)::in, list(format_piece)::out) is det.
+
+strict_general_list_to_split_line_pieces(ItemToPieces,
+        MaybeColorA, MaybeColorB, LastColorSuffixB, Items, Pieces) :-
+    (
+        Items = [],
+        Pieces = []
+    ;
+        Items = [Item1],
+        {Pieces1A, Pieces1B} = ItemToPieces(Item1),
+        HeadPiecesA = maybe_color_pieces(MaybeColorA, Pieces1A),
+        HeadPiecesB = maybe_color_pieces(MaybeColorB, Pieces1B ++
+            LastColorSuffixB),
+        Pieces = HeadPiecesA ++ HeadPiecesB
+    ;
+        Items = [Item1, Item2 | Items3plus],
+        {Pieces1A, Pieces1B} = ItemToPieces(Item1),
+        CommaB = [suffix(",")],
+        HeadPiecesA = maybe_color_pieces(MaybeColorA, Pieces1A),
+        HeadPiecesB = maybe_color_pieces(MaybeColorB, Pieces1B ++ CommaB),
+        strict_general_list_to_split_line_pieces(ItemToPieces,
+            MaybeColorA, MaybeColorB, LastColorSuffixB, [Item2 | Items3plus],
+            TailPieces),
+        Pieces = HeadPiecesA ++ HeadPiecesB ++ [nl] ++ TailPieces
+    ).
+
+%---------------------------------------------------------------------------%
 
 indented_list(Comps) =
     [nl_indent_delta(1)] ++ indented_list_loop(Comps) ++ [nl_indent_delta(-1)].

@@ -51,6 +51,6 @@ purity_nonsense_2.m:032:   type error: [38;5;87mvariable `P'[39;49m has type
 purity_nonsense_2.m:032:     [38;5;203mpred;[39;49m
 purity_nonsense_2.m:032:   expected type was
 purity_nonsense_2.m:032:     [38;5;40mimpure pred.[39;49m
-purity_nonsense_2.m:032:   [38;5;226mPurity mismatch: expected an impure predicate, got[39;49m
-purity_nonsense_2.m:032:   [38;5;226ma pure predicate.[39;49m
+purity_nonsense_2.m:032:   [38;5;203mPurity mismatch:[39;49m expected an [38;5;226mimpure predicate,[39;49m got a
+purity_nonsense_2.m:032:   [38;5;226mpure predicate.[39;49m
 For more information, recompile with `-E'.
