@@ -2,7 +2,7 @@
 % vim: ts=4 sw=4 et ft=mercury
 %---------------------------------------------------------------------------%
 
-:- module constrained_poly_insts2.
+:- module constrained_poly_insts_2.
 :- interface.
 
 :- pred test1 is det.

@@ -134,7 +134,7 @@ BORING_SINGLEMODULE_PROGS = \
 	comparison \
 	complex_constraint_err \
 	conflicting_tabling_pragmas \
-	constrained_poly_insts2 \
+	constrained_poly_insts_2 \
 	constraint_proof_bug_lib \
 	constructor_warning \
 	currying_multimode_func \

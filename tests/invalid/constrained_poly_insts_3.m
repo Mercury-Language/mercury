@@ -2,7 +2,7 @@
 % vim: ts=4 sw=4 et ft=mercury
 %---------------------------------------------------------------------------%
 
-:- module constrained_poly_insts3.
+:- module constrained_poly_insts_3.
 :- interface.
 
 :- import_module list.
