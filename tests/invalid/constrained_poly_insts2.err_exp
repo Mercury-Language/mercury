@@ -1,13 +1,13 @@
 constrained_poly_insts2.m:042: In clause for `test6':
 constrained_poly_insts2.m:042:   in argument 2 of call to predicate
 constrained_poly_insts2.m:042:   `constrained_poly_insts2.q'/2:
-constrained_poly_insts2.m:042:   mode error: [38;5;87mvariable `V_2'[39;49m has
+constrained_poly_insts2.m:042:   mode error: variable [38;5;87m`V_2'[39;49m has
 constrained_poly_insts2.m:042:   instantiatedness [38;5;203m`unique(orange)',[39;49m
 constrained_poly_insts2.m:042:   expected instantiatedness was [38;5;40m`bound(apple)'.[39;49m
 constrained_poly_insts2.m:044: In clause for `test8':
 constrained_poly_insts2.m:044:   in argument 2 of call to predicate
 constrained_poly_insts2.m:044:   `constrained_poly_insts2.q'/2:
-constrained_poly_insts2.m:044:   mode error: [38;5;87mvariable `V_2'[39;49m has
+constrained_poly_insts2.m:044:   mode error: variable [38;5;87m`V_2'[39;49m has
 constrained_poly_insts2.m:044:   instantiatedness [38;5;203m`unique(orange)',[39;49m
 constrained_poly_insts2.m:044:   expected instantiatedness was
 constrained_poly_insts2.m:044:   [38;5;40m`( I =< bound(apple) )'.[39;49m
@@ -50,7 +50,7 @@ constrained_poly_insts2.m:059:   constrained_poly_insts2.apple))) is det),
 constrained_poly_insts2.m:059:   in(constrained_poly_insts2.orange))':
 constrained_poly_insts2.m:059:   in argument 2 (i.e. argument 1 of the called
 constrained_poly_insts2.m:059:   predicate) of higher-order predicate call:
-constrained_poly_insts2.m:059:   mode error: [38;5;87mvariable `X'[39;49m has instantiatedness
+constrained_poly_insts2.m:059:   mode error: variable [38;5;87m`X'[39;49m has instantiatedness
 constrained_poly_insts2.m:059:     [38;5;203mnamed inst orange[39;49m
 constrained_poly_insts2.m:059:     [38;5;203mwhich expands to[39;49m
 constrained_poly_insts2.m:059:       [38;5;203mbound([39;49m

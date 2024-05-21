@@ -114,7 +114,7 @@
     ;       mode_error_clobbered_var_is_live(prog_var)
             % A call will clobber this variable, but it is still live.
 
-    ;       mode_error_callee_pred_has_no_mode_decl
+    ;       mode_error_callee_pred_has_no_mode_decl(pred_id)
             % A call to a predicate for which there are no mode declarations
             % (and mode inference is not enabled). Note that there are no
             % *functions* without mode declarations: if the user does not
@@ -487,8 +487,9 @@ mode_error_to_spec(ModeInfo, ModeError) = Spec :-
         ModeError = mode_error_clobbered_var_is_live(Var),
         Spec = mode_error_clobbered_var_is_live_to_spec(ModeInfo, Var)
     ;
-        ModeError = mode_error_callee_pred_has_no_mode_decl,
-        Spec = mode_error_callee_pred_has_no_mode_decl_to_spec(ModeInfo)
+        ModeError = mode_error_callee_pred_has_no_mode_decl(PredId),
+        Spec = mode_error_callee_pred_has_no_mode_decl_to_spec(ModeInfo,
+            PredId)
     ;
         ModeError = mode_error_no_matching_mode(MatchWhat, InstMap, ArgVars,
             ProcInitialInsts),
@@ -553,12 +554,12 @@ mode_error_unify_var_var_to_spec(ModeInfo, X, Y, InstX, InstY) = Spec :-
     mode_info_get_var_table(ModeInfo, VarTable),
     Pieces = [words("mode error in unification of"),
         quote(mercury_var_to_name_only(VarTable, X)), words("and"),
-        quote(mercury_var_to_name_only(VarTable, Y)), suffix("."), nl] ++
-        color_as_subject([words("Variable"),
-        quote(mercury_var_to_name_only(VarTable, X))]) ++
+        quote(mercury_var_to_name_only(VarTable, Y)), suffix("."), nl,
+        words("Variable")] ++
+        color_as_subject([quote(mercury_var_to_name_only(VarTable, X))]) ++
         has_instantiatedness(ModeInfo, yes(color_cause), InstX, ",") ++
-        color_as_subject([words("variable"),
-        quote(mercury_var_to_name_only(VarTable, Y))]) ++
+        [words("variable")] ++
+        color_as_subject([quote(mercury_var_to_name_only(VarTable, Y))]) ++
         has_instantiatedness(ModeInfo, yes(color_cause), InstY, "."),
     Spec = spec($pred, severity_error,
         phase_mode_check(report_in_any_mode), Context, Preamble ++ Pieces).
@@ -575,9 +576,9 @@ mode_error_unify_var_poly_to_spec(ModeInfo, Var, VarInst) = Spec :-
     ExpectedInstPieces =
         color_as_correct([quote("ground")]) ++ [words("or")] ++
         color_as_correct([quote("any"), suffix(".")]),
-    MainPieces = [words("in polymorphically-typed unification:"), nl] ++
-        color_as_subject([words("mode error: variable"),
-        quote(mercury_var_to_name_only(VarTable, Var))]) ++
+    MainPieces = [words("in polymorphically-typed unification:"), nl,
+        words("mode error: variable")] ++
+        color_as_subject([quote(mercury_var_to_name_only(VarTable, Var))]) ++
         has_instantiatedness(ModeInfo, yes(color_incorrect), VarInst, ",") ++
         [words("expected instantiatedness was")] ++
         ExpectedInstPieces ++ [nl],
@@ -617,11 +618,12 @@ mode_error_unify_var_functor_to_spec(ModeInfo, X, ConsId, ArgVars,
     CauseColor = yes(color_cause),
     Pieces = [words("mode error in unification of"),
         quote(mercury_var_to_name_only(VarTable, X)),
-        words("and"), words_quote(FunctorConsIdStr), suffix("."), nl] ++
-        color_as_subject([words("Variable"),
-            quote(mercury_var_to_name_only(VarTable, X))]) ++
+        words("and"), words_quote(FunctorConsIdStr), suffix("."), nl,
+        words("Variable")] ++
+        color_as_subject([quote(mercury_var_to_name_only(VarTable, X))]) ++
         has_instantiatedness(ModeInfo, CauseColor, InstX, ",") ++
-        color_as_subject([words("term"), words_quote(FunctorConsIdStr)]) ++
+        [words("term")] ++
+        color_as_subject([words_quote(FunctorConsIdStr)]) ++
         has_instantiatedness(ModeInfo, CauseColor, FakeTermInst, "."),
     Spec = spec($pred, severity_error,
         phase_mode_check(report_in_any_mode), Context, Preamble ++ Pieces).
@@ -639,10 +641,11 @@ mode_error_unify_var_lambda_to_spec(ModeInfo, X, InstX, InstY) = Spec :-
     Pieces = [words("mode error in unification of"),
         quote(mercury_var_to_name_only(VarTable, X)),
         words("and lambda expression."), nl,
-        words("Variable"), quote(mercury_var_to_name_only(VarTable, X)) |
-        has_instantiatedness(ModeInfo, MaybeColor, InstX, ",")] ++
-        [words("lambda expression") |
-        has_instantiatedness(ModeInfo, MaybeColor, InstY, ".")],
+        words("Variable")] ++
+        color_as_subject([quote(mercury_var_to_name_only(VarTable, X))]) ++
+        has_instantiatedness(ModeInfo, MaybeColor, InstX, ",") ++
+        color_as_subject([words("lambda expression")]) ++
+        has_instantiatedness(ModeInfo, MaybeColor, InstY, "."),
     Spec = spec($pred, severity_error,
         phase_mode_check(report_in_any_mode), Context, Preamble ++ Pieces).
 
@@ -675,11 +678,14 @@ mode_error_unify_var_multimode_pf_to_spec(ModeInfo, X, PredMultiModeError)
     (
         MultiModeError = some_ho_args_non_ground(NonGroundArgVars),
         VarOrVars = choose_number(NonGroundArgVars, "variable", "variables"),
-        NonGroundArgVarPieces =
-            named_and_unnamed_vars_to_pieces(VarTable, NonGroundArgVars),
+        NonGroundArgVarPieces = named_and_unnamed_vars_to_pieces(VarTable,
+            yes(color_subject), NonGroundArgVars),
         DetailPieces = [words("The higher order argument"),
             words(VarOrVars)] ++ NonGroundArgVarPieces ++
-            [words("should be ground, but are not."), nl]
+            color_as_correct([words("should be ground,")]) ++
+            [words("but")] ++
+            color_as_incorrect([words("are not.")]) ++
+            [nl]
     ;
         (
             MultiModeError = no_matching_mode(ArgVars),
@@ -692,19 +698,20 @@ mode_error_unify_var_multimode_pf_to_spec(ModeInfo, X, PredMultiModeError)
         ),
         ModeOrModes = choose_number(ArgVars, "mode", "modes"),
         VarOrVars = choose_number(ArgVars, "variable", "variables"),
-        ArgVarPieces = named_and_unnamed_vars_to_pieces(VarTable, ArgVars),
+        ArgVarPieces = named_and_unnamed_vars_to_pieces(VarTable,
+            yes(color_subject), ArgVars),
         DetailPieces = [words("The"), words(ModeOrModes),
             words("of the argument"), words(VarOrVars)] ++ ArgVarPieces ++
-            MatchPieces ++ [words("of the called"),
+            color_as_incorrect(MatchPieces) ++ [words("of the called"),
             p_or_f(PredOrFunc), suffix("'s"), words("modes."), nl]
     ),
     Spec = spec($pred, severity_error, phase_mode_check(report_in_any_mode),
         Context, Preamble ++ StartPieces ++ DetailPieces).
 
-:- func named_and_unnamed_vars_to_pieces(var_table, list(prog_var)) =
-    list(format_piece).
+:- func named_and_unnamed_vars_to_pieces(var_table, maybe(color_name),
+    list(prog_var)) = list(format_piece).
 
-named_and_unnamed_vars_to_pieces(VarTable, Vars) = Pieces :-
+named_and_unnamed_vars_to_pieces(VarTable, MaybeColor, Vars) = Pieces :-
     list.filter_map(
         ( pred(V::in, N::out) is semidet :-
             lookup_var_entry(VarTable, V, E),
@@ -716,7 +723,9 @@ named_and_unnamed_vars_to_pieces(VarTable, Vars) = Pieces :-
         Pieces = []
     ;
         NamedVarNames = [_ | _],
-        NamedVarPieces = list_to_pieces(NamedVarNames),
+        NamedVarNamePieces = list.map((func(N) = quote(N)), NamedVarNames),
+        NamedVarPieces = component_list_to_color_pieces(MaybeColor, "and", [],
+            NamedVarNamePieces),
         (
             UnnamedVars = [],
             Pieces = NamedVarPieces
@@ -736,13 +745,13 @@ mode_error_non_ground_non_local_lambda_var_to_spec(ModeInfo, Var, VarInst)
     Preamble = mode_info_context_preamble(ModeInfo),
     mode_info_get_context(ModeInfo, Context),
     mode_info_get_var_table(ModeInfo, VarTable),
-    Ground = color_as_correct([quote("ground"), suffix(".")]),
-    Pieces = [words("mode error:")] ++
-        color_as_subject([words("variable"),
-            quote(mercury_var_to_name_only(VarTable, Var))]) ++
+    Pieces = [words("mode error: variable")] ++
+        color_as_subject([quote(mercury_var_to_name_only(VarTable, Var))]) ++
         has_instantiatedness(ModeInfo, yes(color_incorrect), VarInst, ",") ++
         [words("expected instantiatedness for non-local variables"),
-        words("of lambda goals is")] ++ Ground ++ [nl],
+        words("of lambda goals is")] ++
+        color_as_correct([quote("ground"), suffix(".")]) ++
+        [nl],
     Spec = spec($pred, severity_error,
         phase_mode_check(report_in_any_mode), Context, Preamble ++ Pieces).
 
@@ -779,11 +788,11 @@ mode_error_higher_order_unify_to_spec(ModeInfo, LHSVar, RHS, Type, PredOrFunc)
     MainPieces = [words("In unification of")] ++
         color_as_subject([quote(LHSVarName)]) ++ [words("with")] ++
         color_as_subject([quote(RHSStr), suffix(":")]) ++ [nl,
-        words("mode error: attempt at higher-order unification."), nl,
-        words("Cannot unify two terms of type"),
+        words("mode error: you cannot unify two higher-order values."), nl,
+        words("These two terms have type"),
         quote(mercury_type_to_string(TypeVarSet, print_name_only, Type)),
         suffix("."), nl],
-    VerbosePieces = [words("Your code is trying to test whether two "),
+    VerbosePieces = [words("Your code is trying to test whether two"),
         words(pred_or_func_to_full_str(PredOrFunc) ++ "s"),
         words("are equal, by unifying them."),
         words("In the general case, testing equivalence of"),
@@ -811,9 +820,8 @@ mode_error_var_is_not_sufficiently_instantiated_to_spec(ModeInfo, Var,
     Preamble = mode_info_context_preamble(ModeInfo),
     mode_info_get_context(ModeInfo, Context),
     mode_info_get_var_table(ModeInfo, VarTable),
-    MainPieces = [words("mode error:")] ++
-        color_as_subject([words("variable"),
-        quote(mercury_var_to_name_only(VarTable, Var))]) ++
+    MainPieces = [words("mode error: variable")] ++
+        color_as_subject([quote(mercury_var_to_name_only(VarTable, Var))]) ++
         has_inst_expected_inst_was(ModeInfo, VarInst, ExpectedInst),
     MainMsgs = [msg(Context, Preamble ++ MainPieces)],
     Phase = phase_mode_check(report_in_any_mode),
@@ -821,12 +829,15 @@ mode_error_var_is_not_sufficiently_instantiated_to_spec(ModeInfo, Var,
         inst_has_uniqueness(VarInst, mostly_unique),
         inst_has_uniqueness(ExpectedInst, unique)
     then
-        UniqPieces0 = [words("This kind of uniqueness mismatch"),
-            words("is usually caused by doing input/output"),
-            words("or some other kind of destructive update"),
-            words("in a context where it can be backtracked over,"),
-            words("such as the condition of an if-then-else."), nl],
-        UniqPieces = color_as_possible_cause(UniqPieces0),
+        UniqPieces = [words("This kind of uniqueness mismatch"),
+            words("is usually caused by doing")] ++
+            color_as_possible_cause([words("input/output")]) ++
+            [words("or")] ++
+            color_as_possible_cause([words("some other kind of"),
+                words("destructive update")]) ++
+            color_as_incorrect([words("in a context where"),
+                words("it can be backtracked over,")]) ++
+            [words("such as the condition of an if-then-else."), nl],
         UniqMsgs = [msg(Context, UniqPieces)]
     else
         UniqMsgs = []
@@ -888,22 +899,29 @@ mode_error_clobbered_var_is_live_to_spec(ModeInfo, Var) = Spec :-
     mode_info_get_var_table(ModeInfo, VarTable),
     VarName = mercury_var_to_name_only(VarTable, Var),
     Pieces = [words("unique-mode error: the called procedure"),
-        words("would clobber its argument, but")] ++
-        color_as_subject([words("variable"), quote(VarName)]) ++
-        [words("is still live."), nl],
+        words("would clobber its argument, but variable")] ++
+        color_as_subject([quote(VarName)]) ++
+        [words("is")] ++
+        color_as_incorrect([words("still live.")]) ++
+        [nl],
     Spec = spec($pred, severity_error,
         phase_mode_check(report_in_any_mode), Context, Preamble ++ Pieces).
 
 %---------------------------------------------------------------------------%
 
-:- func mode_error_callee_pred_has_no_mode_decl_to_spec(mode_info)
+:- func mode_error_callee_pred_has_no_mode_decl_to_spec(mode_info, pred_id)
     = error_spec.
 
-mode_error_callee_pred_has_no_mode_decl_to_spec(ModeInfo) = Spec :-
+mode_error_callee_pred_has_no_mode_decl_to_spec(ModeInfo, PredId) = Spec :-
     Preamble = mode_info_context_preamble(ModeInfo),
+    mode_info_get_module_info(ModeInfo, ModuleInfo),
+    PredDotPieces = describe_one_pred_name(ModuleInfo, yes(color_subject),
+        should_module_qualify, [suffix(".")], PredId),
     mode_info_get_context(ModeInfo, Context),
     % Functions have a default mode, so they do not need a mode declaration,
-    Pieces = [words("no mode declaration for called predicate."), nl],
+    Pieces = [words("error: there is")] ++
+        color_as_incorrect([words("no mode declaration")]) ++
+        [words("for")] ++ PredDotPieces ++ [nl],
     Spec = spec($pred, severity_error,
         phase_mode_check(report_in_any_mode), Context, Preamble ++ Pieces).
 
@@ -1067,23 +1085,25 @@ arg_inst_mismatch_pieces(ModeInfo, ArgPieces, PredOrFunc, InstMap, Vars)
         Pieces = []
     ;
         Vars = [HeadVar | TailVars],
-        instmap_lookup_vars(InstMap, Vars, Insts),
         mode_info_get_var_table(ModeInfo, VarTable),
+        instmap_lookup_vars(InstMap, Vars, Insts),
         (
             PredOrFunc = pf_predicate,
+            HeadVarPiece = var_in_table_to_quote_piece(VarTable, HeadVar),
+            TailVarPieces = list.map(var_in_table_to_quote_piece(VarTable),
+                TailVars),
             (
                 TailVars = [],
-                HeadVarName = mercury_var_to_name_only(VarTable, HeadVar),
                 Pieces = ArgPieces ++
-                    color_as_subject([quote(HeadVarName)]) ++
+                    color_as_subject([HeadVarPiece]) ++
                     [words("has the following inst:"), nl_indent_delta(1)] ++
                     inst_list_to_sep_lines(ModeInfo, Insts)
                 % inst_list_to_sep_lines does nl_indent_delta(-1).
             ;
                 TailVars = [_ | _],
-                VarsNames = mercury_vars_to_name_only(VarTable, Vars),
                 Pieces = ArgPieces ++ [suffix("s")] ++
-                    color_as_subject([quote(VarsNames)]) ++
+                    component_list_to_color_pieces(yes(color_subject),
+                        "and", [], [HeadVarPiece | TailVarPieces]) ++
                     [words("have the following insts:"), nl_indent_delta(1)] ++
                     inst_list_to_sep_lines(ModeInfo, Insts)
                 % inst_list_to_sep_lines does nl_indent_delta(-1).
@@ -1101,16 +1121,12 @@ arg_inst_mismatch_pieces(ModeInfo, ArgPieces, PredOrFunc, InstMap, Vars)
                     inst_list_to_sep_lines(ModeInfo, Insts)
                 % inst_list_to_sep_lines does nl_indent_delta(-1).
             ;
-                (
-                    ArgVars = [_],
-                    SuffixPieces = []
-                ;
-                    ArgVars = [_, _ | _],
-                    SuffixPieces = [suffix("s")]
-                ),
-                ArgVarsNames = mercury_vars_to_name_only(VarTable, ArgVars),
-                Pieces = ArgPieces ++ SuffixPieces ++
-                    color_as_subject([quote(ArgVarsNames)]) ++
+                ArgVars = [_ | _],
+                ArgVarPieces = list.map(var_in_table_to_quote_piece(VarTable),
+                    ArgVars),
+                Pieces = ArgPieces ++
+                    strict_component_list_to_color_pieces(yes(color_subject),
+                        [], ArgVarPieces) ++
                     [words("and the")] ++ color_as_subject(ReturnVarPieces) ++
                     [words("have the following insts:"), nl_indent_delta(1)] ++
                     inst_list_to_sep_lines(ModeInfo, Insts)
@@ -1528,9 +1544,11 @@ mode_error_merge_par_conj_to_spec(ModeInfo, MergeErrors) = Spec :-
 
 mode_error_merge_disj_to_spec(ModeInfo, MergeContext, MergeErrors) = Spec :-
     Preamble = mode_info_context_preamble(ModeInfo),
+    MergeContextStr = merge_context_to_string(MergeContext),
     mode_info_get_context(ModeInfo, Context),
-    MainPieces = [words("mode mismatch in "),
-        words(merge_context_to_string(MergeContext)), suffix("."), nl],
+    MainPieces = [words("error:")] ++
+        color_as_incorrect([words("mode mismatch")]) ++
+        [words("in"), words(MergeContextStr), suffix("."), nl],
     MergeMsgLists = list.map(
         merge_error_to_msgs(ModeInfo, Context, is_disjunctive),
         one_or_more_to_list(MergeErrors)),
@@ -1557,15 +1575,15 @@ mode_error_coerce_error_to_spec(ModeInfo, Error) = Spec :-
     (
         TermPath = [],
         TermPathPieces = [],
-        TheTerm = words("the coerced term")
+        CoercedTermOrTerms = words("coerced term")
     ;
         TermPath = [_ | _],
         TermPathPieces =
             [words("in the coerced term:"), nl] ++
             list.condense(list.map(make_term_path_piece, TermPath)),
-        TheTerm = words("the coerced subterm")
+        CoercedTermOrTerms = words("coerced subterm")
     ),
-    TheTermPieces = color_as_subject([TheTerm]),
+    TheTermPieces = [words("the")] ++ color_as_subject([CoercedTermOrTerms]),
     FromTypeStr =
         mercury_type_to_string(TypeVarSet, print_name_only, FromType),
     ToTypeStr =
@@ -1582,15 +1600,16 @@ mode_error_coerce_error_to_spec(ModeInfo, Error) = Spec :-
             color_as_correct([words("ground")]) ++ [words("inst."), nl]
     ;
         Reason = invalid_inst_for_input_type(Inst),
-        TheTermCommaPieces = color_as_subject([TheTerm, suffix(",")]),
+        TheTermCommaPieces = TheTermPieces ++ [suffix(",")],
+        % ZZZ coerce_int
         ReasonPieces =
             [words("the instantiatedness of")] ++ TheTermCommaPieces ++
             color_as_incorrect(
                 report_inst(ModeInfo, quote_short_inst, [suffix(",")],
                     [nl_indent_delta(1)], [suffix(","), nl_indent_delta(-1)],
                     Inst)) ++
-            [words("is invalid for the type of"), TheTerm,
-            quote(FromTypeStr), suffix("."), nl]
+            [words("is invalid for the type of the"), CoercedTermOrTerms,
+            suffix(","), quote(FromTypeStr), suffix("."), nl]
     ;
         Reason = invalid_cons_ids_for_result_type(ConsIds),
         ConsIdsStrs = list.map(unqualify_cons_id_to_string, ConsIds),
@@ -1686,45 +1705,56 @@ mode_error_bind_locked_var_to_spec(ModeInfo, Reason, Var, VarInst, Inst)
     ),
     VarName = mercury_var_to_name_only(VarTable, Var),
     MainPieces = [words("scope error:"), words(ReasonStr), nl] ++
-        color_as_subject([words("Variable"), quote(VarName)]) ++
+        [words("Variable")] ++ color_as_subject([quote(VarName)]) ++
         has_inst_expected_inst_was(ModeInfo, VarInst, Inst),
     (
         Reason = var_lock_negation,
-        VerbosePieces0 =
-            [words("A negation is only allowed to bind variables"),
-            words("which are local to the negation, i.e. those which are"),
+        VerbosePieces =
+            [words("A negation is allowed to bind only variables"),
+            words("which are")] ++
+            color_as_possible_cause([words("local to the negation,")]) ++
+            [words("i.e. those which are"),
             words("implicitly existentially quantified"),
             words("inside the scope of the negation."), nl]
     ;
         Reason = var_lock_if_then_else,
-        VerbosePieces0 =
-            [words("The condition of an if-then-else is only"),
-            words("allowed to bind variables which are local to the"),
-            words("condition, or which occur only in the condition"),
-            words("and the"), quote("then"), words("part."), nl]
+        VerbosePieces =
+            [words("The condition of an if-then-else is"),
+            words("allowed to bind only variables which are")] ++
+            color_as_possible_cause([words("local to the condition,")]) ++
+            [words("or which occur")] ++
+            color_as_possible_cause([words("only in the condition"),
+                words("and the"), quote("then"), words("part.")]) ++
+            [nl]
     ;
         Reason = var_lock_lambda(_),
-        VerbosePieces0 =
-            [words("A lambda goal is only allowed to bind"),
-            words("its arguments and variables local to the "),
-            words("lambda expression."), nl]
+        VerbosePieces =
+            [words("A lambda goal is allowed to bind only")] ++
+            color_as_possible_cause([words("its arguments")]) ++
+            [words("and")] ++
+            color_as_possible_cause([words("variables local to the"),
+                words("lambda expression.")]) ++
+            [nl]
     ;
         Reason = var_lock_trace_goal,
-        VerbosePieces0 =
-            [words("A trace goal is only allowed to bind variables"),
-            words("which are local to the trace goal."), nl]
+        VerbosePieces =
+            [words("A trace goal is allowed to bind only")] ++
+            color_as_possible_cause([words("variables which are"),
+                words("local to the trace goal.")]) ++
+            [nl]
     ;
         Reason = var_lock_atomic_goal,
-        VerbosePieces0 =
+        VerbosePieces =
             [words("An atomic goal may not use the state variables"),
             words("belonging to the outer scope."), nl]
     ;
         Reason = var_lock_par_conj,
-        VerbosePieces0 =
+        VerbosePieces =
             [words("A nonlocal variable of a parallel conjunction"),
-            words("may be bound in at most one conjunct."), nl]
+            words("may not be bound in")] ++
+            color_as_possible_cause([words("two or more conjuncts.")]) ++
+            [nl]
     ),
-    VerbosePieces = color_as_possible_cause(VerbosePieces0),
     Spec = error_spec($pred, severity_error,
         phase_mode_check(report_in_any_mode),
         [simple_msg(Context,
@@ -1809,15 +1839,16 @@ mode_error_in_callee_to_spec(!.ModeInfo, Vars, Insts,
         unexpected($pred, "Vars = []")
     ;
         Vars = [Var],
-        VarName = mercury_var_to_name_only(VarTable, Var),
+        VarPiece = var_in_table_to_quote_piece(VarTable, Var),
         MainPieces = [words("mode error: argument")] ++
-            color_as_subject([quote(VarName)]) ++
+            color_as_subject([VarPiece]) ++
             [words("has the following inst:"), nl_indent_delta(1)]
     ;
         Vars = [_, _ | _],
-        VarsNames = mercury_vars_to_name_only(VarTable, Vars),
+        VarPieces = list.map(var_in_table_to_quote_piece(VarTable), Vars),
         MainPieces = [words("mode error: arguments")] ++
-            color_as_subject([quote(VarsNames)]) ++
+            component_list_to_color_pieces(yes(color_subject), "and", [],
+                VarPieces) ++
             [words("have the following insts:"), nl_indent_delta(1)]
     ),
     NoMatchPieces = inst_list_to_sep_lines(!.ModeInfo, Insts) ++
@@ -1912,8 +1943,9 @@ mode_error_cannot_create_implied_mode_to_spec(ModeInfo, Reason, Var, VarInst,
         VarName = mercury_var_to_name_only(VarTable, Var),
         Pieces = [words("sorry, the compiler currently"),
             words("cannot implement implied modes that require")] ++
-            ReasonPieces ++ [suffix("."), nl] ++
-            color_as_subject([words("Variable"), quote(VarName)]) ++
+            ReasonPieces ++ [suffix("."), nl,
+            words("Variable")] ++
+            color_as_subject([quote(VarName)]) ++
             has_inst_expected_inst_was(ModeInfo, VarInst,
                 NonImpliedInitialInst),
         Spec = spec($pred, severity_error, Phase, Context, Preamble ++ Pieces)
@@ -1960,12 +1992,26 @@ purity_error_lambda_should_be_any_to_spec(ModeInfo, OoMVars) = Spec :-
     Preamble = mode_info_context_preamble(ModeInfo),
     mode_info_get_context(ModeInfo, Context),
     mode_info_get_var_table(ModeInfo, VarTable),
-    Vars = one_or_more_to_list(OoMVars),
-    VarsNames = mercury_vars_to_name_only(VarTable, Vars),
+    OoMVars = one_or_more(HeadVar, TailVars),
+    (
+        TailVars = [],
+        VarsWhoseInstsContain = [words("variable"),
+            words("whose inst contains")],
+        HeadVarPiece = var_in_table_to_quote_piece(VarTable, HeadVar),
+        VarsDotPieces = color_as_incorrect([HeadVarPiece, suffix(".")])
+    ;
+        TailVars = [_ | _],
+        VarsWhoseInstsContain = [words("variables"),
+            words("whose insts contain")],
+        Vars = [HeadVar | TailVars],
+        VarPieces = list.map(var_in_table_to_quote_piece(VarTable), Vars),
+        VarsDotPieces = component_list_to_color_pieces(yes(color_incorrect),
+            "and", [suffix(".")], VarPieces)
+    ),
     Pieces = [words("purity error: lambda is"), quote("ground"),
-        words("but contains the following non-local variables"),
-        words("whose insts contain"), quote("any"), suffix(":")] ++
-        color_as_incorrect([words(VarsNames), suffix(".")]) ++ [nl],
+        words("but contains the following non-local")] ++
+        VarsWhoseInstsContain ++ [quote("any"), suffix(":")] ++
+        VarsDotPieces ++ [nl],
     Always = always(Preamble ++ Pieces),
     VerboseOnly = verbose_only(verbose_once, [words("Predicate expressions"),
         words("with inst"), quote("any"), words("can be written"),
@@ -1994,9 +2040,7 @@ merge_error_to_msgs(ModeInfo, MainContext, IsDisjunctive, MergeError) = Msgs :-
     MergeError = merge_error(Var, ContextsInsts0),
     mode_info_get_module_info(ModeInfo, ModuleInfo),
     mode_info_get_var_table(ModeInfo, VarTable),
-    VarName = mercury_var_to_name_only(VarTable, Var),
-    VarNamePiece = quote(VarName),
-    VarNamePieces = color_as_subject([words("variable"), VarNamePiece]),
+    VarNamePiece = var_in_table_to_quote_piece(VarTable, Var),
     list.sort(ContextsInsts0, ContextsInsts),
     count_ground_insts(ModuleInfo, ContextsInsts,
         0, NumGroundInsts, 0, NumAllInsts),
@@ -2008,7 +2052,8 @@ merge_error_to_msgs(ModeInfo, MainContext, IsDisjunctive, MergeError) = Msgs :-
         % More than half the insts are ground, so it is likely that they
         % were *all* intended to be ground, but not all actually *are* ground,
         % which is likely to be the bug.
-        CommonPieces = [words("The")] ++ VarNamePieces ++
+        CommonPieces = [words("The variable")] ++
+            color_as_subject([VarNamePiece]) ++
             [words("is")] ++ color_as_possible_cause([words("ground")]) ++
             [words("in"), int_fixed(NumGroundInsts), words("out of"),
             int_fixed(NumAllInsts), words("branches."), nl],
@@ -2036,7 +2081,8 @@ merge_error_to_msgs(ModeInfo, MainContext, IsDisjunctive, MergeError) = Msgs :-
         0 < NumGroundInsts,
         NumGroundInsts < NumAllInsts
     then
-        VarPieces = [words("The")] ++ VarNamePieces ++
+        VarPieces = [words("The variable")] ++
+            color_as_subject([VarNamePiece]) ++
             [words("is ground in some branches but not others."), nl],
         VarMsg = msg(MainContext, VarPieces),
         InstMsgs = list.map(
@@ -2045,7 +2091,8 @@ merge_error_to_msgs(ModeInfo, MainContext, IsDisjunctive, MergeError) = Msgs :-
             ContextsInsts),
         Msgs = [VarMsg | InstMsgs]
     else
-        VarPieces = [words("The")] ++ VarNamePieces ++
+        VarPieces = [words("The variable")] ++
+            color_as_subject([VarNamePiece]) ++
             [words("has the following instantiation states."), nl],
         VarMsg = msg(MainContext, VarPieces),
         InstMsgs = list.map(
@@ -2304,7 +2351,18 @@ mode_warning_cannot_succeed_var_functor(ModeInfo, X, InstX, ConsId) = Spec :-
     NameX = mercury_var_to_name_only(VarTable, X),
     ConsIdStr = mercury_cons_id_to_string(output_mercury,
         does_not_need_brackets, ConsId),
-    % XXX See the XXX in mode_warning_cannot_succeed_var_var.
+    % XXX The term that X is being unified is ConsId *only* if ConsId
+    % has arity zero; otherwise, it is a term in which ConsId is only
+    % the principal functor. Can we find a wording here that
+    %
+    % - is not misleading on this issue, and
+    % - is reasonably short and easily understandable?
+    %
+    % I (zs) feel that "unification of X and the term whose principal functor
+    % is ConsId" would fail on that last point, even if we used that wording
+    % only ConsId is not a constant.
+    %
+    % XXX See also the XXX in mode_warning_cannot_succeed_var_var.
     Pieces = [words("warning: unification of")] ++
         color_as_subject([quote(NameX)]) ++ [words("and")] ++
         color_as_subject([words(ConsIdStr)]) ++

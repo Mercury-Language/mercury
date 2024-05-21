@@ -1,12 +1,12 @@
 foreign_singleton.m:027: In the C code for predicate `f'/3:
-foreign_singleton.m:027:   warning: [38;5;87mvariable `IO0'[39;49m [38;5;203mdoes not occur[39;49m in the C
+foreign_singleton.m:027:   warning: variable [38;5;87m`IO0'[39;49m [38;5;203mdoes not occur[39;49m in the C
 foreign_singleton.m:027:   code.
 foreign_singleton.m:046: In clause for predicate `f'/3:
-foreign_singleton.m:046:   warning: [38;5;87mvariable `X'[39;49m [38;5;203moccurs only once[39;49m in this
+foreign_singleton.m:046:   warning: variable [38;5;87m`X'[39;49m [38;5;203moccurs only once[39;49m in this
 foreign_singleton.m:046:   scope.
 foreign_singleton.m:050: In clause for predicate `g'/3:
-foreign_singleton.m:050:   warning: [38;5;87mvariable `X'[39;49m [38;5;203moccurs only once[39;49m in this
+foreign_singleton.m:050:   warning: variable [38;5;87m`X'[39;49m [38;5;203moccurs only once[39;49m in this
 foreign_singleton.m:050:   scope.
 foreign_singleton.m:052: In the C code for predicate `g'/3:
-foreign_singleton.m:052:   warning: [38;5;87mvariable `IO0'[39;49m [38;5;203mdoes not occur[39;49m in the C
+foreign_singleton.m:052:   warning: variable [38;5;87m`IO0'[39;49m [38;5;203mdoes not occur[39;49m in the C
 foreign_singleton.m:052:   code.

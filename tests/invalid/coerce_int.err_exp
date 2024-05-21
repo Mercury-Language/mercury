@@ -27,6 +27,6 @@ coerce_int.m:032:   2)))) = out(coerce_int.wrap(bound(1 ; 2)))':
 coerce_int.m:032:   in coerce expression:
 coerce_int.m:032:   mode error: in the coerced term:
 coerce_int.m:032:   in the argument of function symbol `wrap':
-coerce_int.m:032:   the instantiatedness of [38;5;87mthe coerced subterm,[39;49m
+coerce_int.m:032:   the instantiatedness of the [38;5;87mcoerced subterm[39;49m,
 coerce_int.m:032:   [38;5;203m`bound(1 ; 2)',[39;49m is invalid for the type of the coerced
-coerce_int.m:032:   subterm `uint'.
+coerce_int.m:032:   subterm, `uint'.

@@ -561,10 +561,10 @@ generate_variable_warning(SingleMulti, Context, PfSymNameArity, VarSet,
         Var, Vars, Spec) :-
     (
         SingleMulti = sm_single,
-        Count = "only once"
+        OnlyMoreThanOnce = "only once"
     ;
         SingleMulti = sm_multi,
-        Count = "more than once"
+        OnlyMoreThanOnce = "more than once"
     ),
     PreamblePieces = [words("In clause for"),
         unqual_pf_sym_name_pred_form_arity(PfSymNameArity), suffix(":"), nl],
@@ -576,17 +576,16 @@ generate_variable_warning(SingleMulti, Context, PfSymNameArity, VarSet,
         unexpected($pred, "VarPieces = []")
     ;
         VarPieces = [VarPiece],
-        WarnPieces = [words("warning:")] ++
-            color_as_subject([words("variable"), VarPiece]) ++
-            color_as_incorrect([words("occurs"), words(Count)]) ++
+        WarnPieces = [words("warning: variable")] ++
+            color_as_subject([VarPiece]) ++
+            color_as_incorrect([words("occurs"), words(OnlyMoreThanOnce)]) ++
             [words("in this scope."), nl]
     ;
         VarPieces = [_, _ | _],
         VarsPieces = component_list_to_color_pieces(yes(color_subject), "and",
             [], VarPieces),
-        WarnPieces = [words("warning:")] ++
-            color_as_subject([words("variables")]) ++ VarsPieces ++
-            color_as_incorrect([words("occur"), words(Count)]) ++
+        WarnPieces = [words("warning: variables")] ++ VarsPieces ++
+            color_as_incorrect([words("occur"), words(OnlyMoreThanOnce)]) ++
             [words("in this scope."), nl]
     ),
     Spec = conditional_spec($pred, warn_singleton_vars, yes,
@@ -639,11 +638,11 @@ var_is_unmentioned(NameList1, MaybeArg, Name) :-
 
 variable_warning_start(UnmentionedVars, Pieces, DoDoes) :-
     ( if UnmentionedVars = [Var] then
-        Pieces = color_as_subject([words("variable"), quote(Var)]),
+        Pieces = [words("variable")] ++ color_as_subject([quote(Var)]),
         DoDoes = "does"
     else
         QuotedVars = list.map(func(VN) = quote(VN), UnmentionedVars),
-        Pieces = color_as_subject([words("variables")]) ++
+        Pieces = [words("variables")] ++
             component_list_to_color_pieces(yes(color_subject), "and", [],
                 QuotedVars),
         DoDoes = "do"

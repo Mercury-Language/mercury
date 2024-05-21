@@ -7,10 +7,10 @@ io_in_ite_cond.m:013:   duplicated nor destroyed.
 io_in_ite_cond.m:020: In clause for `main(di, uo)':
 io_in_ite_cond.m:020:   in argument 1 of call to predicate
 io_in_ite_cond.m:020:   `io_in_ite_cond.foo'/2:
-io_in_ite_cond.m:020:   mode error: [38;5;87mvariable `STATE_VARIABLE_IO_0'[39;49m has
+io_in_ite_cond.m:020:   mode error: variable [38;5;87m`STATE_VARIABLE_IO_0'[39;49m has
 io_in_ite_cond.m:020:   instantiatedness [38;5;203m`mostly_unique',[39;49m
 io_in_ite_cond.m:020:   expected instantiatedness was [38;5;40m`unique'.[39;49m
-io_in_ite_cond.m:020:   [38;5;226mThis kind of uniqueness mismatch is usually caused by[39;49m
-io_in_ite_cond.m:020:   [38;5;226mdoing input/output or some other kind of destructive[39;49m
-io_in_ite_cond.m:020:   [38;5;226mupdate in a context where it can be backtracked over,[39;49m
-io_in_ite_cond.m:020:   [38;5;226msuch as the condition of an if-then-else.[39;49m
+io_in_ite_cond.m:020:   This kind of uniqueness mismatch is usually caused by
+io_in_ite_cond.m:020:   doing [38;5;226minput/output[39;49m or [38;5;226msome other kind of destructive[39;49m
+io_in_ite_cond.m:020:   [38;5;226mupdate[39;49m [38;5;203min a context where it can be backtracked over,[39;49m
+io_in_ite_cond.m:020:   such as the condition of an if-then-else.

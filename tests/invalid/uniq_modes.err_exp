@@ -1,9 +1,9 @@
 uniq_modes.m:015: In clause for `main(di, uo)':
 uniq_modes.m:015:   in argument 2 of call to predicate `io.write'/3:
-uniq_modes.m:015:   mode error: [38;5;87mvariable `In'[39;49m has instantiatedness
+uniq_modes.m:015:   mode error: variable [38;5;87m`In'[39;49m has instantiatedness
 uniq_modes.m:015:   [38;5;203m`mostly_unique',[39;49m
 uniq_modes.m:015:   expected instantiatedness was [38;5;40m`unique'.[39;49m
-uniq_modes.m:015:   [38;5;226mThis kind of uniqueness mismatch is usually caused by doing[39;49m
-uniq_modes.m:015:   [38;5;226minput/output or some other kind of destructive update in a[39;49m
-uniq_modes.m:015:   [38;5;226mcontext where it can be backtracked over, such as the[39;49m
-uniq_modes.m:015:   [38;5;226mcondition of an if-then-else.[39;49m
+uniq_modes.m:015:   This kind of uniqueness mismatch is usually caused by doing
+uniq_modes.m:015:   [38;5;226minput/output[39;49m or [38;5;226msome other kind of destructive update[39;49m [38;5;203min a[39;49m
+uniq_modes.m:015:   [38;5;203mcontext where it can be backtracked over,[39;49m such as the
+uniq_modes.m:015:   condition of an if-then-else.

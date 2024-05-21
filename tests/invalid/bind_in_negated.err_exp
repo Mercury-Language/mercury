@@ -2,10 +2,10 @@ bind_in_negated.m:019: In clause for `p((bound(f(free, ground)) >> ground),
 bind_in_negated.m:019:   (bound(f(ground, free)) >> ground), out)':
 bind_in_negated.m:019:   scope error: attempt to bind a non-local variable
 bind_in_negated.m:019:   inside the condition of an if-then-else.
-bind_in_negated.m:019:   [38;5;87mVariable `A'[39;49m has instantiatedness
+bind_in_negated.m:019:   Variable [38;5;87m`A'[39;49m has instantiatedness
 bind_in_negated.m:019:   [38;5;203m`bound(f(free, ground))',[39;49m
 bind_in_negated.m:019:   expected instantiatedness was
 bind_in_negated.m:019:   [38;5;40m`bound(f(ground, ground))'.[39;49m
-bind_in_negated.m:019:   [38;5;226mThe condition of an if-then-else is only allowed to[39;49m
-bind_in_negated.m:019:   [38;5;226mbind variables which are local to the condition, or[39;49m
-bind_in_negated.m:019:   [38;5;226mwhich occur only in the condition and the `then' part.[39;49m
+bind_in_negated.m:019:   The condition of an if-then-else is allowed to bind
+bind_in_negated.m:019:   only variables which are [38;5;226mlocal to the condition,[39;49m or
+bind_in_negated.m:019:   which occur [38;5;226monly in the condition and the `then' part.[39;49m

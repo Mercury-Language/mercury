@@ -1,6 +1,6 @@
 any_passed_as_ground.m:029: In clause for `main(di, uo)':
 any_passed_as_ground.m:029:   in call to predicate `list.member'/2:
-any_passed_as_ground.m:029:   mode error: arguments [38;5;87m`V_10, Xs'[39;49m have the
+any_passed_as_ground.m:029:   mode error: arguments [38;5;87m`V_10'[39;49m and [38;5;87m`Xs'[39;49m have the
 any_passed_as_ground.m:029:   following insts:
 any_passed_as_ground.m:029:     free,
 any_passed_as_ground.m:029:     any

@@ -52,7 +52,7 @@ errors_2.m:047:   The partial type assignment was:
 errors_2.m:047:     X_1: string
 errors_2.m:047:     Y_2: string
 errors_2.m:062: In clause for predicate `type_error_4'/0:
-errors_2.m:062:   warning: [38;5;87mvariable `X'[39;49m [38;5;203moccurs only once[39;49m in this scope.
+errors_2.m:062:   warning: variable [38;5;87m`X'[39;49m [38;5;203moccurs only once[39;49m in this scope.
 errors_2.m:062: In clause for predicate `type_error_4'/0:
 errors_2.m:062:   in argument 3 of functor `foo_functor/3':
 errors_2.m:062:   type error in unification of argument
@@ -67,7 +67,7 @@ errors_2.m:062:     X_2: errors_2.foo_type
 errors_2.m:062:     V_3: character
 errors_2.m:062:     V_4: string
 errors_2.m:072: In clause for predicate `type_error_5'/0:
-errors_2.m:072:   warning: [38;5;87mvariable `X'[39;49m [38;5;203moccurs only once[39;49m in this scope.
+errors_2.m:072:   warning: variable [38;5;87m`X'[39;49m [38;5;203moccurs only once[39;49m in this scope.
 errors_2.m:072: In clause for predicate `type_error_5'/0:
 errors_2.m:072:   in argument 3 of functor `foo_functor/3':
 errors_2.m:072:   type error in unification of argument
@@ -82,7 +82,7 @@ errors_2.m:072:     X_2: errors_2.foo_type
 errors_2.m:072:     V_3: int
 errors_2.m:072:     V_4: string
 errors_2.m:078: In clause for predicate `type_error_6'/0:
-errors_2.m:078:   warning: [38;5;87mvariable `X'[39;49m [38;5;203moccurs only once[39;49m in this scope.
+errors_2.m:078:   warning: variable [38;5;87m`X'[39;49m [38;5;203moccurs only once[39;49m in this scope.
 errors_2.m:078: In clause for predicate `type_error_6'/0:
 errors_2.m:078:   in argument 3 of functor `bar_functor/3':
 errors_2.m:078:   type error in unification of argument
@@ -97,9 +97,9 @@ errors_2.m:078:     X_2: errors_2.bar_1_type
 errors_2.m:078:     V_3: int
 errors_2.m:078:     V_4: string
 errors_2.m:083: In clause for predicate `type_error_7'/0:
-errors_2.m:083:   warning: [38;5;87mvariable `Y'[39;49m [38;5;203moccurs only once[39;49m in this scope.
+errors_2.m:083:   warning: variable [38;5;87m`Y'[39;49m [38;5;203moccurs only once[39;49m in this scope.
 errors_2.m:084: In clause for predicate `type_error_7'/0:
-errors_2.m:084:   warning: [38;5;87mvariables[39;49m [38;5;87m`A',[39;49m [38;5;87m`B'[39;49m and [38;5;87m`Z'[39;49m [38;5;203moccur only once[39;49m in this
+errors_2.m:084:   warning: variables [38;5;87m`A',[39;49m [38;5;87m`B'[39;49m and [38;5;87m`Z'[39;49m [38;5;203moccur only once[39;49m in this
 errors_2.m:084:   scope.
 errors_2.m:085: In clause for predicate `type_error_7'/0:
 errors_2.m:085:   in argument 1 of call to predicate `errors_2.expect_int'/1:

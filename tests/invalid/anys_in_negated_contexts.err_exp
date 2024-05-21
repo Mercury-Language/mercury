@@ -15,8 +15,8 @@ anys_in_negated_contexts.m:083:   error.
 anys_in_negated_contexts.m:083: 
 anys_in_negated_contexts.m:082:   In clause for `bad_lambda(in)':
 anys_in_negated_contexts.m:082:   purity error: lambda is `ground' but contains
-anys_in_negated_contexts.m:082:   the following non-local variables whose insts
-anys_in_negated_contexts.m:082:   contain `any': [38;5;203mY.[39;49m
+anys_in_negated_contexts.m:082:   the following non-local variable whose inst
+anys_in_negated_contexts.m:082:   contains `any': [38;5;203m`Y'.[39;49m
 anys_in_negated_contexts.m:082:   Predicate expressions with inst `any' can be
 anys_in_negated_contexts.m:082:   written `any_pred(Args) is det :- ...'.
 anys_in_negated_contexts.m:082:   Function expressions with inst `any' can be

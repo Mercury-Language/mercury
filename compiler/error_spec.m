@@ -26,6 +26,7 @@
 :- import_module mdbcomp.prim_data.
 :- import_module mdbcomp.sym_name.
 :- import_module parse_tree.prog_data.
+:- import_module parse_tree.var_table.
 
 :- import_module bool.
 :- import_module edit_seq.
@@ -541,6 +542,7 @@
 :- func string_to_words_piece(string) = format_piece.
 
 :- func var_to_quote_piece(varset(T), var(T)) = format_piece.
+:- func var_in_table_to_quote_piece(var_table, prog_var) = format_piece.
 
     % Convert a list of strings into a list of format_pieces
     % separated by commas, with the last two elements separated by `and'.
@@ -618,6 +620,16 @@
     %
 :- func strict_component_list_to_pieces(list(format_piece)) =
     list(format_piece).
+
+    % component_list_to_color_pieces(MaybeColor, LastColorSuffix,
+    %   ComponentPieces) = Pieces:
+    %
+    % A version of component_list_to_pieces that does not treat the gap
+    % between the last two pieces any differently than the gap between
+    % any other pair of adjacent pieces.
+    %
+:- func strict_component_list_to_color_pieces(maybe(color_name),
+    list(format_piece), list(format_piece)) = list(format_piece).
 
     % component_list_to_line_pieces(Lines, Final):
     %
@@ -748,6 +760,9 @@ string_to_words_piece(Str) = words(Str).
 var_to_quote_piece(VarSet, Var) =
     quote(mercury_var_to_name_only_vs(VarSet, Var)).
 
+var_in_table_to_quote_piece(VarTable, Var) =
+    quote(var_table_entry_name(VarTable, Var)).
+
 list_to_pieces([]) = [].
 list_to_pieces([Elem]) = [fixed(Elem)].
 list_to_pieces([Elem1, Elem2]) = [fixed(Elem1), words("and"), fixed(Elem2)].
@@ -817,6 +832,22 @@ component_list_to_color_pieces(MaybeColor, LastSepWord, LastColorSuffix,
     general_list_to_pieces(ItemToPieces, MaybeColor, NonLastSep, LastSep,
         LastColorSuffix, ComponentPieces, Pieces).
 
+strict_component_list_to_pieces([]) = [].
+strict_component_list_to_pieces([Comp]) = [Comp].
+strict_component_list_to_pieces([Comp1, Comp2 | Comps]) =
+    [Comp1, suffix(",")]
+    ++ strict_component_list_to_pieces([Comp2 | Comps]).
+
+strict_component_list_to_color_pieces(MaybeColor, LastColorSuffix,
+        ComponentPieces) = Pieces :-
+    ItemToPieces =
+        ( pred(ItemPiece::in, ItemPieces::out) is det :-
+            ItemPieces = [ItemPiece]
+        ),
+    Sep = [suffix(",")],
+    strict_general_list_to_pieces(ItemToPieces, MaybeColor, Sep,
+        LastColorSuffix, ComponentPieces, Pieces).
+
 %---------------------------------------------------------------------------%
 
     % A general predicate for converting any list of items to the specification
@@ -853,13 +884,34 @@ general_list_to_pieces(ItemToPieces, MaybeColor, NonLastSep, LastSep,
             TailPieces
     ).
 
-%---------------------------------------------------------------------------%
+    % A general predicate for converting any list of items to the specification
+    % of a nicely formatted and possibly colored output.
+    %
+    % The functions above should probably be reimplemented using this.
+    %
+:- pred strict_general_list_to_pieces(
+    pred(T, list(format_piece))::in(pred(in, out) is det),
+    maybe(color_name)::in, list(format_piece)::in,
+    list(format_piece)::in, list(T)::in, list(format_piece)::out) is det.
 
-strict_component_list_to_pieces([]) = [].
-strict_component_list_to_pieces([Comp]) = [Comp].
-strict_component_list_to_pieces([Comp1, Comp2 | Comps]) =
-    [Comp1, suffix(",")]
-    ++ strict_component_list_to_pieces([Comp2 | Comps]).
+strict_general_list_to_pieces(ItemToPieces, MaybeColor, Sep, LastColorSuffix,
+        Items, Pieces) :-
+    (
+        Items = [],
+        Pieces = []
+    ;
+        Items = [Item1],
+        ItemToPieces(Item1, Pieces1),
+        Pieces = maybe_color_pieces(MaybeColor, Pieces1 ++ LastColorSuffix)
+    ;
+        Items = [Item1, Item2 | Items3plus],
+        ItemToPieces(Item1, Pieces1),
+        strict_general_list_to_pieces(ItemToPieces, MaybeColor, Sep,
+            LastColorSuffix, [Item2 | Items3plus], TailPieces),
+        Pieces = maybe_color_pieces(MaybeColor, Pieces1 ++ Sep) ++ TailPieces
+    ).
+
+%---------------------------------------------------------------------------%
 
 component_list_to_line_pieces([], _) = [].
 component_list_to_line_pieces([Comps], Final) = Comps ++ Final.

@@ -3,10 +3,10 @@ bug487.m:033:   when the condition fails, [38;5;226mit does not.[39;49m
 bug487.m:034: In clause for `do_reconstruct_route(in, out)':
 bug487.m:034:   in argument 3 of call to predicate
 bug487.m:034:   `bug487.construct_solution'/4:
-bug487.m:034:   mode error: [38;5;87mvariable `STATE_VARIABLE_SS_8'[39;49m has instantiatedness
+bug487.m:034:   mode error: variable [38;5;87m`STATE_VARIABLE_SS_8'[39;49m has instantiatedness
 bug487.m:034:   [38;5;203m`free',[39;49m
 bug487.m:034:   expected instantiatedness was [38;5;40m`mostly_unique'.[39;49m
 bug487.m:034: In clause for predicate `do_reconstruct_route'/2:
-bug487.m:034:   warning: [38;5;87mvariable `STATE_VARIABLE_SS_8'[39;49m [38;5;203moccurs only once[39;49m in
+bug487.m:034:   warning: variable [38;5;87m`STATE_VARIABLE_SS_8'[39;49m [38;5;203moccurs only once[39;49m in
 bug487.m:034:   this scope.
 bug487.m:034: Warning: reference to uninitialized state variable [38;5;203m!.SS.[39;49m

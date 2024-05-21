@@ -1,6 +1,6 @@
 coerce_recursive_type.m:045: In clause for `bad(in) = out':
 coerce_recursive_type.m:045:   in coerce expression:
-coerce_recursive_type.m:045:   mode error: cannot convert [38;5;87mthe coerced term[39;49m from
+coerce_recursive_type.m:045:   mode error: cannot convert the [38;5;87mcoerced term[39;49m from
 coerce_recursive_type.m:045:   type
 coerce_recursive_type.m:045:   `coerce_recursive_type.rec(coerce_recursive_type.fruit)'
 coerce_recursive_type.m:045:   to
@@ -15,7 +15,7 @@ coerce_recursive_type.m:051:   out':
 coerce_recursive_type.m:051:   in coerce expression:
 coerce_recursive_type.m:051:   mode error: in the coerced term:
 coerce_recursive_type.m:051:   in the first argument of function symbol `cons':
-coerce_recursive_type.m:051:   cannot convert [38;5;87mthe coerced subterm[39;49m from type
+coerce_recursive_type.m:051:   cannot convert the [38;5;87mcoerced subterm[39;49m from type
 coerce_recursive_type.m:051:   `coerce_recursive_type.fruit' to
 coerce_recursive_type.m:051:   `coerce_recursive_type.citrus' because it has
 coerce_recursive_type.m:051:   instantiatedness [38;5;203m`ground',[39;49m and
@@ -48,6 +48,6 @@ coerce_recursive_type.m:058:   `cons':
 coerce_recursive_type.m:058:   in the second argument of function symbol
 coerce_recursive_type.m:058:   `cons':
 coerce_recursive_type.m:058:   in the first argument of function symbol `cons':
-coerce_recursive_type.m:058:   the instantiatedness of [38;5;87mthe coerced subterm,[39;49m
+coerce_recursive_type.m:058:   the instantiatedness of the [38;5;87mcoerced subterm[39;49m,
 coerce_recursive_type.m:058:   [38;5;203m`bound(apple)',[39;49m is invalid for the type of the
-coerce_recursive_type.m:058:   coerced subterm `coerce_recursive_type.citrus'.
+coerce_recursive_type.m:058:   coerced subterm, `coerce_recursive_type.citrus'.

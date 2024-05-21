@@ -6,10 +6,10 @@ mostly_uniq1.m:009:   since the I/O state can be neither duplicated nor
 mostly_uniq1.m:009:   destroyed.
 mostly_uniq1.m:023: In clause for `my_main(di, uo)':
 mostly_uniq1.m:023:   in argument 2 of call to predicate `io.write_int'/3:
-mostly_uniq1.m:023:   mode error: [38;5;87mvariable `STATE_VARIABLE_IO_0'[39;49m has
+mostly_uniq1.m:023:   mode error: variable [38;5;87m`STATE_VARIABLE_IO_0'[39;49m has
 mostly_uniq1.m:023:   instantiatedness [38;5;203m`mostly_unique',[39;49m
 mostly_uniq1.m:023:   expected instantiatedness was [38;5;40m`unique'.[39;49m
-mostly_uniq1.m:023:   [38;5;226mThis kind of uniqueness mismatch is usually caused by[39;49m
-mostly_uniq1.m:023:   [38;5;226mdoing input/output or some other kind of destructive[39;49m
-mostly_uniq1.m:023:   [38;5;226mupdate in a context where it can be backtracked over,[39;49m
-mostly_uniq1.m:023:   [38;5;226msuch as the condition of an if-then-else.[39;49m
+mostly_uniq1.m:023:   This kind of uniqueness mismatch is usually caused by
+mostly_uniq1.m:023:   doing [38;5;226minput/output[39;49m or [38;5;226msome other kind of destructive[39;49m
+mostly_uniq1.m:023:   [38;5;226mupdate[39;49m [38;5;203min a context where it can be backtracked over,[39;49m
+mostly_uniq1.m:023:   such as the condition of an if-then-else.

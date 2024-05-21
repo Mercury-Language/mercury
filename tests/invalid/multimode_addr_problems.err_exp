@@ -3,14 +3,14 @@ multimode_addr_problems.m:027:   mode error in unification of `Abs' and
 multimode_addr_problems.m:027:   higher-order term based on multi-moded
 multimode_addr_problems.m:027:   predicate
 multimode_addr_problems.m:027:   `multimode_addr_problems.absolute'/2.
-multimode_addr_problems.m:027:   The modes of the argument variables match more
-multimode_addr_problems.m:027:   than one of the called predicate's modes.
+multimode_addr_problems.m:027:   The modes of the argument variables [38;5;203mmatch more[39;49m
+multimode_addr_problems.m:027:   [38;5;203mthan one[39;49m of the called predicate's modes.
 multimode_addr_problems.m:052: In clause for `my_foldl(in((func(in, in) = out
 multimode_addr_problems.m:052:   is det)), in, in) = out':
 multimode_addr_problems.m:052:   mode error in unification of `P' and
 multimode_addr_problems.m:052:   higher-order term based on multi-moded
 multimode_addr_problems.m:052:   predicate `multimode_addr_problems.f2p'/4.
 multimode_addr_problems.m:052:   The modes of the argument variables including
-multimode_addr_problems.m:052:   TypeInfo_for_L, TypeInfo_for_A and F do not
-multimode_addr_problems.m:052:   match any of the called predicate's modes.
+multimode_addr_problems.m:052:   [38;5;87m`TypeInfo_for_L',[39;49m [38;5;87m`TypeInfo_for_A'[39;49m and [38;5;87m`F'[39;49m [38;5;203mdo[39;49m
+multimode_addr_problems.m:052:   [38;5;203mnot match any[39;49m of the called predicate's modes.
 For more information, recompile with `-E'.

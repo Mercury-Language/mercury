@@ -19,14 +19,14 @@ purity.m:171: In call to semipure predicate [38;5;87m`purity.semi'/0:[39;49m
 purity.m:171:   purity error: call [38;5;203mmust be preceded by a `semipure' indicator.[39;49m
 purity.m:176: In clause for `e6':
 purity.m:176:   in argument 1 of call to predicate `purity.in'/1:
-purity.m:176:   mode error: [38;5;87mvariable `X'[39;49m has instantiatedness [38;5;203m`free',[39;49m
+purity.m:176:   mode error: variable [38;5;87m`X'[39;49m has instantiatedness [38;5;203m`free',[39;49m
 purity.m:176:   expected instantiatedness was [38;5;40m`ground'.[39;49m
 purity.m:176:   The goal could not be reordered, because it was followed by an
 purity.m:176:   impure goal.
 purity.m:177:   This is the location of the impure goal.
 purity.m:183: In clause for `e7':
 purity.m:183:   in argument 1 of call to predicate `purity.imp1'/1:
-purity.m:183:   mode error: [38;5;87mvariable `X'[39;49m has instantiatedness [38;5;203m`free',[39;49m
+purity.m:183:   mode error: variable [38;5;87m`X'[39;49m has instantiatedness [38;5;203m`free',[39;49m
 purity.m:183:   expected instantiatedness was [38;5;40m`ground'.[39;49m
 purity.m:183:   The goal could not be reordered, because it was impure.
 purity.m:186: Error: [38;5;87munification predicate for type `e8'[39;49m is [38;5;203mimpure,[39;49m but it must

@@ -1,4 +1,4 @@
 unify_mode_error.m:020: In clause for `foo(in, out)':
 unify_mode_error.m:020:   in argument 2 of call to predicate `builtin.unify'/2:
-unify_mode_error.m:020:   mode error: [38;5;87mvariable `Y'[39;49m has instantiatedness [38;5;203m`free',[39;49m
+unify_mode_error.m:020:   mode error: variable [38;5;87m`Y'[39;49m has instantiatedness [38;5;203m`free',[39;49m
 unify_mode_error.m:020:   expected instantiatedness was [38;5;40m`ground'.[39;49m

@@ -36,9 +36,9 @@ errors_3.m:068:   right hand side of a type definition.
 errors_3.m:070: Error: the [38;5;87mtype variable[39;49m [38;5;87m`T'[39;49m occurs [38;5;203monly on the right hand side[39;49m
 errors_3.m:070:   [38;5;203mof this type definition.[39;49m
 errors_3.m:084: In clause for predicate `pred_with_unresolved_polymorphism'/0:
-errors_3.m:084:   warning: [38;5;87mvariable `Arg'[39;49m [38;5;203moccurs only once[39;49m in this scope.
+errors_3.m:084:   warning: variable [38;5;87m`Arg'[39;49m [38;5;203moccurs only once[39;49m in this scope.
 errors_3.m:100: In clause for predicate `pred_with_singleton_vars'/1:
-errors_3.m:100:   warning: [38;5;87mvariable `X'[39;49m [38;5;203moccurs only once[39;49m in this scope.
+errors_3.m:100:   warning: variable [38;5;87m`X'[39;49m [38;5;203moccurs only once[39;49m in this scope.
 errors_3.m:106: Warning: this `:- use_module' declaration for module `int' in
 errors_3.m:106:   the implementation section is redundant, given the
 errors_3.m:106:   `:- import_module' declaration for the same module in the

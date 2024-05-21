@@ -2,4 +2,4 @@ unknown_warning.m:017: Warning: in the first element of the list following the
 unknown_warning.m:017:   `disable_warning' keyword: expected the [38;5;40mthe name of a[39;49m
 unknown_warning.m:017:   [38;5;40mwarning,[39;49m got [38;5;203m`singleton_varx',[39;49m
 unknown_warning.m:020: In clause for predicate `unknown_warning'/3:
-unknown_warning.m:020:   warning: [38;5;87mvariable `D'[39;49m [38;5;203moccurs only once[39;49m in this scope.
+unknown_warning.m:020:   warning: variable [38;5;87m`D'[39;49m [38;5;203moccurs only once[39;49m in this scope.

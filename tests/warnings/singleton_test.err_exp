@@ -6,22 +6,22 @@ singleton_test.m:013:     [38;5;203mL2[39;49m
 singleton_test.m:013:   Their types will be implicitly set to the builtin type
 singleton_test.m:013:   `void'.
 singleton_test.m:031: In clause for predicate `my_append'/3:
-singleton_test.m:031:   warning: [38;5;87mvariable `L2'[39;49m [38;5;203moccurs only once[39;49m in this scope.
+singleton_test.m:031:   warning: variable [38;5;87m`L2'[39;49m [38;5;203moccurs only once[39;49m in this scope.
 singleton_test.m:035: In clause for function `my_append_func'/2:
-singleton_test.m:035:   warning: [38;5;87mvariables[39;49m [38;5;87m`L1'[39;49m and [38;5;87m`L2'[39;49m [38;5;203moccur only once[39;49m in
+singleton_test.m:035:   warning: variables [38;5;87m`L1'[39;49m and [38;5;87m`L2'[39;49m [38;5;203moccur only once[39;49m in
 singleton_test.m:035:   this scope.
 singleton_test.m:036: In clause for function `my_append_func'/2:
-singleton_test.m:036:   warning: [38;5;87mvariable `T'[39;49m [38;5;203moccurs only once[39;49m in this scope.
+singleton_test.m:036:   warning: variable [38;5;87m`T'[39;49m [38;5;203moccurs only once[39;49m in this scope.
 singleton_test.m:038: In the C code for predicate `my_c_pred'/3:
-singleton_test.m:038:   warning: [38;5;87mvariable `Y'[39;49m [38;5;203mdoes not occur[39;49m in the C code.
+singleton_test.m:038:   warning: variable [38;5;87m`Y'[39;49m [38;5;203mdoes not occur[39;49m in the C code.
 singleton_test.m:051: In the C code for function `my_c_func'/2:
-singleton_test.m:051:   warning: [38;5;87mvariable `X'[39;49m [38;5;203mdoes not occur[39;49m in the C code.
+singleton_test.m:051:   warning: variable [38;5;87m`X'[39;49m [38;5;203mdoes not occur[39;49m in the C code.
 singleton_test.m:066: In the C code for predicate `c_hello_world'/3:
-singleton_test.m:066:   warning: [38;5;87mvariable `Msg'[39;49m [38;5;203mdoes not occur[39;49m in the C code.
+singleton_test.m:066:   warning: variable [38;5;87m`Msg'[39;49m [38;5;203mdoes not occur[39;49m in the C code.
 singleton_test.m:082: In clause for predicate `test_head'/6:
-singleton_test.m:082:   warning: [38;5;87mvariable `_D'[39;49m [38;5;203moccurs more than once[39;49m in this
+singleton_test.m:082:   warning: variable [38;5;87m`_D'[39;49m [38;5;203moccurs more than once[39;49m in this
 singleton_test.m:082:   scope.
 singleton_test.m:082: In clause for predicate `test_head'/6:
-singleton_test.m:082:   warning: [38;5;87mvariables[39;49m [38;5;87m`A'[39;49m and [38;5;87m`B'[39;49m [38;5;203moccur only once[39;49m in this
+singleton_test.m:082:   warning: variables [38;5;87m`A'[39;49m and [38;5;87m`B'[39;49m [38;5;203moccur only once[39;49m in this
 singleton_test.m:082:   scope.
 For more information, recompile with `-E'.

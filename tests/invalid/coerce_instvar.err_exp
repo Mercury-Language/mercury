@@ -1,7 +1,7 @@
 coerce_instvar.m:041: In clause for `bad(in((I =< ground)), out((I =<
 coerce_instvar.m:041:   ground)))':
 coerce_instvar.m:041:   in coerce expression:
-coerce_instvar.m:041:   mode error: cannot convert [38;5;87mthe coerced term[39;49m from type
+coerce_instvar.m:041:   mode error: cannot convert the [38;5;87mcoerced term[39;49m from type
 coerce_instvar.m:041:   `coerce_instvar.fruit' to `coerce_instvar.citrus'
 coerce_instvar.m:041:   because it has instantiatedness [38;5;203m`ground',[39;49m and
 coerce_instvar.m:041:   [38;5;203m`coerce_instvar.fruit'[39;49m is not a subtype of
