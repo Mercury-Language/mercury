@@ -2,7 +2,7 @@ foreign_enum_invalid.m:027: In `:- pragma foreign_enum' declaration for type
 foreign_enum_invalid.m:027:   `incomplete'/0:
 foreign_enum_invalid.m:027:   error: the following constructor [38;5;203mdoes not have a[39;49m
 foreign_enum_invalid.m:027:   [38;5;203mforeign value:[39;49m
-foreign_enum_invalid.m:027:       [38;5;203m`baz'.[39;49m
+foreign_enum_invalid.m:027:     [38;5;203m`baz'.[39;49m
 foreign_enum_invalid.m:032: In `:- pragma foreign_enum' declaration for type
 foreign_enum_invalid.m:032:   `not_a_bijection'/0:
 foreign_enum_invalid.m:032:   error: the specified [38;5;87mmapping between the names of[39;49m
@@ -10,9 +10,9 @@ foreign_enum_invalid.m:032:   [38;5;87mMercury constructors and the correspondi
 foreign_enum_invalid.m:032:   [38;5;87mforeign values[39;49m is [38;5;203minconsistent.[39;49m
 foreign_enum_invalid.m:032:   The following Mercury constructor name is
 foreign_enum_invalid.m:032:   [38;5;203mrepeated:[39;49m
-foreign_enum_invalid.m:032:       [38;5;203m`a'.[39;49m
+foreign_enum_invalid.m:032:     [38;5;203m`a'.[39;49m
 foreign_enum_invalid.m:032:   The following foreign value is [38;5;203mrepeated:[39;49m
-foreign_enum_invalid.m:032:       [38;5;203m`60'.[39;49m
+foreign_enum_invalid.m:032:     [38;5;203m`60'.[39;49m
 foreign_enum_invalid.m:040: Error: [38;5;203mduplicate foreign enum definition in C[39;49m for
 foreign_enum_invalid.m:040:   [38;5;87m`dup_foreign_enum'/0.[39;49m
 foreign_enum_invalid.m:039:   The original definition is here.

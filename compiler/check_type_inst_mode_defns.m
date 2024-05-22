@@ -1036,8 +1036,8 @@ non_enum_du_report_any_foreign_enum(TypeCtor, DuDefn, NonEnumSNAs,
         ItHasThese = choose_number(NonEnumSNAs,
             words("It has this non-zero arity constructor:"),
             words("It has these non-zero arity constructors:")),
-        CtorPieces = [ItHasThese, nl_indent_delta(2)] ++ SNAPieces ++
-            [nl_indent_delta(-2)]
+        CtorPieces = [ItHasThese, nl_indent_delta(1)] ++ SNAPieces ++
+            [nl_indent_delta(-1)]
     ),
     EnumPieces = [words("Error: the Mercury definition of")] ++
         color_as_subject([unqual_type_ctor(TypeCtor)]) ++

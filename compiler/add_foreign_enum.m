@@ -381,23 +381,24 @@ build_export_enum_name_map(ContextPieces, Context, Lang, Prefix, MakeUpperCase,
     list.foldl2(
         add_ctor_to_name_map(Lang, Prefix, MakeUpperCase, OverrideMap),
         CtorRepns, map.init, NameMap, cord.init, BadForeignNamesCord),
-
     BadForeignNames = cord.to_list(BadForeignNamesCord),
     (
         BadForeignNames = []
     ;
         BadForeignNames = [_ | _],
+        % NOTE If you ever need to add a new Lang here, you many also need to
+        % - update the code of add_ctor_to_name_map, and
+        % - update the wording of the diagnostic below to include the name
+        %   of the language.
         (
             Lang = lang_c,
-            LangName = "C"
+            _LangName = "C"
         ;
             Lang = lang_java,
-            LangName = "Java"
+            _LangName = "Java"
         ;
             Lang = lang_csharp,
-            % XXX The code of add_ctor_to_name_map is OK
-            % with Lang = lang_csharp.
-            sorry($pred, "foreign_export_enum pragma for unsupported language")
+            _LangName = "C#"
         ),
         MakeBFNPieces = (func(BadForeignName) = [quote(BadForeignName)]),
         BadForeignPiecesList = list.map(MakeBFNPieces, BadForeignNames),
@@ -407,13 +408,18 @@ build_export_enum_name_map(ContextPieces, Context, Lang, Prefix, MakeUpperCase,
         Pieces = ContextPieces ++
             [words("error: some of the constructors of the type")] ++
             color_as_incorrect([words("cannot be converted")]) ++
-            [words("into valid identifiers for"),
-                words(LangName), suffix("."), nl,
+            [words("into valid identifiers")] ++
+            % Omitting the identity of the target language eliminates
+            % the need for separate .err_exp files for each language
+            % for test cases that test this diagnostic. But please also
+            % see the comment above.
+            % [words("for"), words(_LangName)] ++
+            [suffix("."), nl,
             words("The problematic foreign"),
-            words(choose_number(BadForeignNames,
-                "name is:", "names are:")),
-            nl_indent_delta(2)] ++
-            BadForeignPieces ++ [nl_indent_delta(-2)],
+            words(choose_number(BadForeignNames, "name is:", "names are:")),
+            nl_indent_delta(1)] ++
+            BadForeignPieces ++
+            [nl_indent_delta(-1)],
         Spec = spec($pred, severity_error, phase_pt2h, Context, Pieces),
         !:Specs = [Spec | !.Specs]
     ).
@@ -425,6 +431,9 @@ build_export_enum_name_map(ContextPieces, Context, Lang, Prefix, MakeUpperCase,
 
 add_ctor_to_name_map(_Lang, Prefix, MakeUpperCase, OverrideMap, CtorRepn,
         !NameMap, !BadForeignNames) :-
+    % NOTE We ignore the language parameter because all three of the
+    % currently available target languages, C, Java and C#, use the
+    % same rules for what is a valid identifier.
     CtorSymName = CtorRepn ^ cr_name,
     CtorName = unqualify_name(CtorSymName),
 
@@ -630,8 +639,8 @@ report_not_enum_type(Context, ContextPieces, TypeCtor, NotEnumInfo, !Specs) :-
                 [words("is")] ++
                 color_as_incorrect([words("not an enumeration type.")]) ++
                 [nl,
-                ItHasThese, nl_indent_delta(2)] ++ SNAsPieces ++
-                [nl_indent_delta(-2)],
+                ItHasThese, nl_indent_delta(1)] ++ SNAsPieces ++
+                [nl_indent_delta(-1)],
             Spec = spec($pred, severity_error, phase_pt2h, Context, Pieces),
             !:Specs = [Spec | !.Specs]
         )

@@ -151,10 +151,10 @@ build_ctor_name_to_foreign_name_map(ForWhat, Context, ContextPieces,
                 words(choose_number(RepeatedCtorNames,
                     "name is", "names are"))] ++
                 color_as_incorrect([words("repeated:")]) ++
-                [nl_indent_delta(2)] ++
+                [nl_indent_delta(1)] ++
                 component_list_to_color_pieces(yes(color_incorrect),
                     "and", [suffix(".")], RepeatedCtorPieces) ++
-                [nl_indent_delta(-2)]
+                [nl_indent_delta(-1)]
         ),
         (
             RepeatedForeignNames = [],
@@ -168,10 +168,10 @@ build_ctor_name_to_foreign_name_map(ForWhat, Context, ContextPieces,
                 words(choose_number(RepeatedForeignNames,
                     NameOrValue ++ " is", NamesOrValues ++ " are"))] ++
                 color_as_incorrect([words("repeated:")]) ++
-                [nl_indent_delta(2)] ++
+                [nl_indent_delta(1)] ++
                 component_list_to_color_pieces(yes(color_incorrect),
                     "and", [suffix(".")], RepeatedForeignPieces) ++
-                [nl_indent_delta(-2)]
+                [nl_indent_delta(-1)]
         ),
         Pieces = MainPieces ++ CtorNamePieces ++ ForeignNamePieces,
         Spec = spec($pred, severity_error, phase_pt2h, Context, Pieces),
@@ -265,10 +265,10 @@ add_bad_qual_ctors_error(Context, ContextPieces, Ctors, !Specs) :-
         words(HasOrHave), words("a module qualification that is")] ++
         color_as_incorrect(
             [words("not compatible with the type definition:")]) ++
-        [nl_indent_delta(2)] ++
+        [nl_indent_delta(1)] ++
         component_list_to_color_line_pieces(yes(color_incorrect),
             [suffix(".")], QualCtors) ++
-        [nl_indent_delta(-2)],
+        [nl_indent_delta(-1)],
     Spec = spec($pred, severity_error, phase_pt2h, Context,
         ContextPieces ++ ErrorPieces),
     !:Specs = [Spec | !.Specs].
@@ -298,10 +298,10 @@ add_unknown_ctors_error(Context, ContextPieces, Ctors, !Specs) :-
     ErrorPieces = [invis_order_default_start(1, ""),
         words("error: the following"), words(IsOrAre)] ++
         color_as_incorrect([words(NotConstructors)]) ++
-        [words("of the type:"), nl_indent_delta(2)] ++
+        [words("of the type:"), nl_indent_delta(1)] ++
         component_list_to_color_line_pieces(yes(color_incorrect),
             [suffix(".")], UnqualCtors) ++
-        [nl_indent_delta(-2)],
+        [nl_indent_delta(-1)],
     Spec = spec($pred, severity_error, phase_pt2h, Context,
         ContextPieces ++ ErrorPieces),
     !:Specs = [Spec | !.Specs].
@@ -339,23 +339,23 @@ add_foreign_enum_unmapped_ctors_error(Context, ContextPieces, CtorNames0,
     (
         CtorsEnd = [],
         CtorsPieces =
-            [nl_indent_delta(2)] ++
+            [nl_indent_delta(1)] ++
             ctor_names_to_line_pieces(CtorNames, [suffix(".")]) ++
-            [nl_indent_delta(-2)],
+            [nl_indent_delta(-1)],
         CtorsComponent = always(CtorsPieces)
     ;
         CtorsEnd = [_ | _],
         list.length(CtorsEnd, NumEndCtors),
         NonVerboseCtorsPieces =
-            [nl_indent_delta(2)] ++
+            [nl_indent_delta(1)] ++
             ctor_names_to_line_pieces(CtorsStart,
                 [suffix(","), fixed("...")]) ++
-            [nl_indent_delta(-2), words("and"),
+            [nl_indent_delta(-1), words("and"),
             int_fixed(NumEndCtors), words("more."), nl],
         VerboseCtorsPieces =
-            [nl_indent_delta(2)] ++
+            [nl_indent_delta(1)] ++
             ctor_names_to_line_pieces(CtorNames, [suffix(".")]) ++
-            [nl_indent_delta(-2)],
+            [nl_indent_delta(-1)],
         CtorsComponent =
             verbose_and_nonverbose(VerboseCtorsPieces, NonVerboseCtorsPieces)
     ),

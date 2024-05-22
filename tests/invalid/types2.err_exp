@@ -15,7 +15,7 @@ types2.m:021:   error: [38;5;203mwrong number of arguments[39;49m ([38;5;203m
 types2.m:021:   in call to predicate [38;5;87m`p'.[39;49m
 types2.m:023: Error: clause for predicate [38;5;87m`r'/0[39;49m [38;5;203mwithout[39;49m a corresponding
 types2.m:023:   `:- pred' declaration.
-types2.m:023: Warning: non-contiguous clauses for predicate [38;5;87m`r'/0.[39;49m
+types2.m:023: Warning: [38;5;203mnon-contiguous clauses[39;49m for predicate [38;5;87m`r'/0.[39;49m
 types2.m:023:   Gap in clauses of predicate `r'/0 starts after this clause.
 types2.m:029:   Gap in clauses of predicate `r'/0 ends with this clause.
 types2.m:024: In clause for predicate `r'/0:

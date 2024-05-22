@@ -6,7 +6,7 @@ ee_invalid.m:047: In `:- pragma foreign_export_enum' declaration for type
 ee_invalid.m:047:   `ee_invalid.foo'/1:
 ee_invalid.m:047:   error: [38;5;87m`ee_invalid.foo'/1[39;49m is [38;5;203mnot an enumeration type.[39;49m
 ee_invalid.m:047:   It has this non-zero arity constructor:
-ee_invalid.m:047:       [38;5;203m`foo'/1.[39;49m
+ee_invalid.m:047:     [38;5;203m`foo'/1.[39;49m
 ee_invalid.m:051: In `:- pragma foreign_export_enum' declaration for type
 ee_invalid.m:051:   `ee_invalid.bar'/0:
 ee_invalid.m:051:   error: [38;5;87m`ee_invalid.bar'/0[39;49m is [38;5;203mnot an enumeration type;[39;49m it is
@@ -19,36 +19,36 @@ ee_invalid.m:063: In `:- pragma foreign_export_enum' declaration for type
 ee_invalid.m:063:   `ee_invalid.alphabet'/0:
 ee_invalid.m:063:   error: the following symbol is [38;5;203mnot a constructor[39;49m of the
 ee_invalid.m:063:   type:
-ee_invalid.m:063:       [38;5;203m`deg'.[39;49m
+ee_invalid.m:063:     [38;5;203m`deg'.[39;49m
 ee_invalid.m:068: In `:- pragma foreign_export_enum' declaration for type
 ee_invalid.m:068:   `ee_invalid.alphabet'/0:
 ee_invalid.m:068:   error: the following symbol has a module qualification that
 ee_invalid.m:068:   is [38;5;203mnot compatible with the type definition:[39;49m
-ee_invalid.m:068:       [38;5;203m`foo.def'.[39;49m
+ee_invalid.m:068:     [38;5;203m`foo.def'.[39;49m
 ee_invalid.m:073: In `:- pragma foreign_export_enum' declaration for type
 ee_invalid.m:073:   `ee_invalid.alphabet'/0:
 ee_invalid.m:073:   error: the following symbol is [38;5;203mnot a constructor[39;49m of the
 ee_invalid.m:073:   type:
-ee_invalid.m:073:       [38;5;203m`deg'.[39;49m
+ee_invalid.m:073:     [38;5;203m`deg'.[39;49m
 ee_invalid.m:073: In `:- pragma foreign_export_enum' declaration for type
 ee_invalid.m:073:   `ee_invalid.alphabet'/0:
 ee_invalid.m:073:   error: the specified [38;5;87mmapping between the names of Mercury[39;49m
 ee_invalid.m:073:   [38;5;87mconstructors and the corresponding foreign names[39;49m is
 ee_invalid.m:073:   [38;5;203minconsistent.[39;49m
 ee_invalid.m:073:   The following foreign name is [38;5;203mrepeated:[39;49m
-ee_invalid.m:073:       [38;5;203m`ABC'.[39;49m
+ee_invalid.m:073:     [38;5;203m`ABC'.[39;49m
 ee_invalid.m:077: In `:- pragma foreign_export_enum' declaration for type
 ee_invalid.m:077:   `ee_invalid.alphabet'/0:
 ee_invalid.m:077:   error: the specified [38;5;87mmapping between the names of Mercury[39;49m
 ee_invalid.m:077:   [38;5;87mconstructors and the corresponding foreign names[39;49m is
 ee_invalid.m:077:   [38;5;203minconsistent.[39;49m
 ee_invalid.m:077:   The following Mercury constructor name is [38;5;203mrepeated:[39;49m
-ee_invalid.m:077:       [38;5;203m`abc'.[39;49m
+ee_invalid.m:077:     [38;5;203m`abc'.[39;49m
 ee_invalid.m:083: In `:- pragma foreign_export_enum' declaration for type
 ee_invalid.m:083:   `ee_invalid.strange_names'/0:
 ee_invalid.m:083:   error: some of the constructors of the type [38;5;203mcannot be[39;49m
-ee_invalid.m:083:   [38;5;203mconverted[39;49m into valid identifiers for C.
+ee_invalid.m:083:   [38;5;203mconverted[39;49m into valid identifiers.
 ee_invalid.m:083:   The problematic foreign names are:
-ee_invalid.m:083:       [38;5;203m`!@THIS',[39;49m
-ee_invalid.m:083:       [38;5;203m`#$WON'T',[39;49m
-ee_invalid.m:083:       [38;5;203m`%^WORK'.[39;49m
+ee_invalid.m:083:     [38;5;203m`!@THIS',[39;49m
+ee_invalid.m:083:     [38;5;203m`#$WON'T',[39;49m
+ee_invalid.m:083:     [38;5;203m`%^WORK'.[39;49m

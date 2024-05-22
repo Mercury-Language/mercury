@@ -306,8 +306,9 @@ report_non_contiguous_clauses(ModuleInfo, PredId, PredInfo,
         FirstRegion, SecondRegion, LaterRegions) = Spec :-
     PredDotPieces = describe_one_pred_name(ModuleInfo, yes(color_subject),
         should_not_module_qualify, [suffix(".")], PredId),
-    FrontPieces = [words("Warning: non-contiguous clauses for")] ++
-        PredDotPieces ++ [nl],
+    FrontPieces = [words("Warning:")] ++
+        color_as_incorrect([words("non-contiguous clauses")]) ++
+        [words("for")] ++ PredDotPieces ++ [nl],
     pred_info_get_context(PredInfo, Context),
     FrontMsg = msg(Context, FrontPieces),
     PredPieces = describe_unqual_pred_name(ModuleInfo, PredId),

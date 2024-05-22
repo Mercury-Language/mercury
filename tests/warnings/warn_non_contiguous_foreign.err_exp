@@ -1,10 +1,10 @@
-warn_non_contiguous_foreign.m:055: Warning: non-contiguous clauses for
+warn_non_contiguous_foreign.m:055: Warning: [38;5;203mnon-contiguous clauses[39;49m for
 warn_non_contiguous_foreign.m:055:   predicate [38;5;87m`p'/2.[39;49m
 warn_non_contiguous_foreign.m:059:   Gap in clauses of predicate `p'/2 starts
 warn_non_contiguous_foreign.m:059:   after this clause.
 warn_non_contiguous_foreign.m:075:   Gap in clauses of predicate `p'/2 ends
 warn_non_contiguous_foreign.m:075:   with this clause.
-warn_non_contiguous_foreign.m:073: Warning: non-contiguous clauses for
+warn_non_contiguous_foreign.m:073: Warning: [38;5;203mnon-contiguous clauses[39;49m for
 warn_non_contiguous_foreign.m:073:   predicate [38;5;87m`q'/2.[39;49m
 warn_non_contiguous_foreign.m:057:   Gap 1 in clauses of predicate `q'/2 starts
 warn_non_contiguous_foreign.m:057:   after this clause.

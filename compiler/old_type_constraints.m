@@ -2079,7 +2079,7 @@ diagnose_ambig_pred_error(PredEnv, Conjunctions, Msg) :-
     not list.all_same(assoc_list.values(AmbigPredData)),
     list.map(ambig_pred_error_message(PredEnv), AmbigPredData, Components),
     Pieces = [always([words("Ambiguous predicate call."),
-        words("Possible predicates include:"), nl_indent_delta(2)])
+        words("Possible predicates include:"), nl_indent_delta(1)])
         | Components],
     Msg = simple_msg(Context, Pieces).
 
@@ -2096,7 +2096,7 @@ ambig_pred_error_message(PredEnv, (_ - PredId), Component) :-
     LineNumber = term_context.context_line(Context),
     FileName = term_context.context_file(Context),
     Pieces = PredPieces ++
-        [prefix("("), words(FileName), suffix(": "), int_fixed(LineNumber),
+        [prefix("("), words(FileName), suffix(":"), int_fixed(LineNumber),
         suffix(")"), nl],
     Component = always(Pieces).
 

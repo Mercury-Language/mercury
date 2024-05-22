@@ -140,11 +140,11 @@ module_add_clause(ProgressStream, PredStatus, ClauseType, ClauseInfo,
                 [words("Error: attempt to define a clause for")] ++
                 color_as_incorrect([unqual_sym_name_arity(SNA),
                     suffix(".")]) ++
-                [nl] ++
-                color_as_possible_cause([words("This is usually caused by"),
-                    words("inadvertently writing a period instead of a comma"),
-                    words("at the end of the preceding line.")]) ++
-                [nl],
+                [nl,
+                words("This is usually caused by")] ++
+                color_as_incorrect([words("inadvertently writing"),
+                    words("a period instead of a comma")]) ++
+                [words("at the end of the preceding line."), nl],
             Spec = spec($pred, severity_error, phase_pt2h, Context, Pieces),
             !:Specs = [Spec | !.Specs]
         else
@@ -366,8 +366,9 @@ maybe_add_error_for_builtin(ModuleInfo, PredInfo, Context, !Specs) :-
         ),
         (
             AllowDefnOfBuiltin = no,
-            Pieces = [words("Error:")] ++
-                color_as_incorrect([words("clause for builtin.")]) ++
+            pred_info_get_is_pred_or_func(PredInfo, PredOrFunc),
+            Pieces = [words("Error: clause for a builtin")] ++
+                color_as_incorrect([p_or_f(PredOrFunc), suffix(".")]) ++
                 [nl],
             Spec = spec($pred, severity_error, phase_pt2h, Context, Pieces),
             !:Specs = [Spec | !.Specs]
