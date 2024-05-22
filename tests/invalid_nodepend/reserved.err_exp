@@ -1,4 +1,4 @@
-reserved.m:009: Error: the type name `int' is reserved for the Mercury
+reserved.m:009: Error: the type name [38;5;87m`int'[39;49m is [38;5;203mreserved[39;49m for the Mercury
 reserved.m:009:   implementation.
 reserved.m:019: Error: the inst name [38;5;87m`unique'[39;49m is [38;5;203mreserved[39;49m for the Mercury
 reserved.m:019:   implementation.

@@ -1781,8 +1781,12 @@ check_user_type_name(SymName, Context, NameSpecs) :-
             Context, NamePieces),
         NameSpecs = [NameSpec]
     else if is_known_type_name(Name) then
-        NamePieces = [words("Error: the type name"), quote(Name),
-            words("is reserved for the Mercury implementation."), nl],
+        % Please keep check_user_{inst,mode,type}_name in sync.
+        NamePieces = [words("Error: the type name")] ++
+            color_as_subject([quote(Name)]) ++
+            [words("is")] ++
+            color_as_incorrect([words("reserved")]) ++
+            [words("for the Mercury implementation."), nl],
         NameSpec = spec($pred, severity_error, phase_t2pt,
             Context, NamePieces),
         NameSpecs = [NameSpec]

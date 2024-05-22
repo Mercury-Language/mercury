@@ -320,6 +320,7 @@ parse_abstract_mode_defn_item(ModuleName, VarSet, HeadTerms, Context, SeqNum,
 check_user_inst_name(SymName, Context, NameSpecs) :-
     Name = unqualify_name(SymName),
     ( if is_known_inst_name(Name) then
+        % Please keep check_user_{inst,mode,type}_name in sync.
         NamePieces = [words("Error: the inst name")] ++
             color_as_subject([quote(Name)]) ++
             [words("is")] ++
@@ -341,6 +342,7 @@ check_user_mode_name(SymName, Context, NameSpecs) :-
     % Check that the mode name is available to users.
     Name = unqualify_name(SymName),
     ( if is_known_mode_name(Name) then
+        % Please keep check_user_{inst,mode,type}_name in sync.
         NamePieces = [words("Error: the mode name")] ++
             color_as_subject([quote(Name)]) ++
             [words("is")] ++

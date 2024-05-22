@@ -12,8 +12,7 @@ occurs.m:014: In clause for predicate `p'/0:
 occurs.m:014:   warning: variable [38;5;87m`X'[39;49m [38;5;203moccurs only once[39;49m in this scope.
 occurs.m:014: Warning: the [38;5;87mvariable `X'[39;49m is [38;5;203munified with a term containing[39;49m
 occurs.m:014:   [38;5;203mitself.[39;49m
-occurs.m:016: In [38;5;87m`p2':[39;49m
-occurs.m:016:   warning: determinism declaration could be tighter.
+occurs.m:016: Warning: the determinism declaration for [38;5;87m`p2'[39;49m [38;5;203mcould be tighter.[39;49m
 occurs.m:016:   Declared [38;5;40m`semidet',[39;49m inferred [38;5;203m`failure'.[39;49m
 occurs.m:019: Warning: the [38;5;87mvariable `X'[39;49m is [38;5;203munified with a term containing[39;49m
 occurs.m:019:   [38;5;203mitself.[39;49m

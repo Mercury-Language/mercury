@@ -1,14 +1,14 @@
-switch_arm_multi_not_det.m:034: Error: the arms of the [38;5;87mswitch on Name[39;49m are
+switch_arm_multi_not_det.m:034: Error: the arms of the [38;5;87mswitch on `Name'[39;49m are
 switch_arm_multi_not_det.m:034:   required have a determinism that is
 switch_arm_multi_not_det.m:034:   acceptable in a [38;5;40m`det'[39;49m context, but the actual
 switch_arm_multi_not_det.m:034:   determinism of the arm for "c" is [38;5;203m`cc_multi'.[39;49m
 switch_arm_multi_not_det.m:034:   Disjunction has more than one disjunct with
 switch_arm_multi_not_det.m:034:   solutions.
-switch_arm_multi_not_det.m:035:   [38;5;226mThis later disjunct may have a solution.[39;49m
-switch_arm_multi_not_det.m:036: Error: the arms of the [38;5;87mswitch on Name[39;49m are
+switch_arm_multi_not_det.m:035:   This later disjunct [38;5;203mmay have a solution.[39;49m
+switch_arm_multi_not_det.m:036: Error: the arms of the [38;5;87mswitch on `Name'[39;49m are
 switch_arm_multi_not_det.m:036:   required have a determinism that is
 switch_arm_multi_not_det.m:036:   acceptable in a [38;5;40m`det'[39;49m context, but the actual
 switch_arm_multi_not_det.m:036:   determinism of the arm for "d" is [38;5;203m`cc_multi'.[39;49m
 switch_arm_multi_not_det.m:036:   Disjunction has more than one disjunct with
 switch_arm_multi_not_det.m:036:   solutions.
-switch_arm_multi_not_det.m:037:   [38;5;226mThis later disjunct may have a solution.[39;49m
+switch_arm_multi_not_det.m:037:   This later disjunct [38;5;203mmay have a solution.[39;49m

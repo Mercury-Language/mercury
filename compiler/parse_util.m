@@ -871,8 +871,9 @@ report_nonvar_parameter(VarSet, AAn, Kind, Term) = Spec :-
 
 report_repeated_parameter(VarSet, Kind, Term) = Spec :-
     TermStr = describe_error_term(VarSet, Term),
-    Pieces = [words("Error: expected distinct variables as")] ++
-        [words(Kind), words("parameters, but the variable")] ++
+    Pieces = [words("Error: expected")] ++
+        color_as_correct([words("distinct variables")]) ++
+        [words("as"), words(Kind), words("parameters, but the variable")] ++
         color_as_subject([quote(TermStr)]) ++
         [words("is")] ++
         color_as_incorrect([words("repeated.")]) ++

@@ -1,5 +1,5 @@
-ref_to_implicit_comma.m:008: In [38;5;87m`test':[39;49m
-ref_to_implicit_comma.m:008:   error: determinism declaration not satisfied.
+ref_to_implicit_comma.m:008: Error: the determinism declaration for [38;5;87m`test'[39;49m [38;5;203mis[39;49m
+ref_to_implicit_comma.m:008:   [38;5;203mnot satisfied.[39;49m
 ref_to_implicit_comma.m:008:   Declared [38;5;40m`det',[39;49m inferred [38;5;203m`failure'.[39;49m
 ref_to_implicit_comma.m:013: Error: attempt to define a clause for [38;5;203m`,'/2.[39;49m
 ref_to_implicit_comma.m:013:   [38;5;226mThis is usually caused by inadvertently writing[39;49m

@@ -341,15 +341,11 @@ check_for_too_tight_or_loose_declared_determinism(PredProcId,
                 pred_info_get_status(PredInfo, Status),
                 pred_status_defined_in_this_module(Status) = yes
             then
-                proc_info_get_detism_decl(ProcInfo, DetismDecl),
-                MessagePieces = [words("warning:"),
-                    words(detism_decl_name(DetismDecl)),
-                    words("could be tighter."), nl],
                 % The returned ReportMsg will contain the actual determinism
                 % colored as incorrect. XXX Is this ok for a warning?
                 report_determinism_problem(!.ModuleInfo, PredProcId,
-                    MessagePieces, [], DeclaredDetism, InferredDetism,
-                    ReportMsg),
+                    "Warning", "could be tighter", [],
+                    DeclaredDetism, InferredDetism, ReportMsg),
                 ReportSpec = error_spec($pred, severity_warning,
                     phase_detism_check, [ReportMsg]),
                 !:Specs = [ReportSpec | !.Specs]
@@ -371,10 +367,6 @@ check_for_too_tight_or_loose_declared_determinism(PredProcId,
             sort_error_msgs(GoalMsgs, SortedGoalMsgs),
             cse_nopull_msgs(ProcInfo, CseMsgs),
             DetailMsgs = SortedGoalMsgs ++ CseMsgs,
-            proc_info_get_detism_decl(ProcInfo, DetismDecl),
-            MessagePieces = [words("error:"),
-                words(detism_decl_name(DetismDecl)),
-                words("not satisfied."), nl],
             (
                 DetailMsgs = [],
                 ReasonPieces = []
@@ -388,8 +380,8 @@ check_for_too_tight_or_loose_declared_determinism(PredProcId,
                     words("are the following."), nl]
             ),
             report_determinism_problem(!.ModuleInfo, PredProcId,
-                MessagePieces, ReasonPieces, DeclaredDetism, InferredDetism,
-                ReportMsg),
+                "Error", "is not satisfied", ReasonPieces,
+                DeclaredDetism, InferredDetism, ReportMsg),
             ReportSpec = error_spec($pred, severity_error, phase_detism_check,
                 [ReportMsg | DetailMsgs]),
             !:Specs = [ReportSpec | !.Specs]
@@ -524,14 +516,15 @@ check_determinism_for_eval_method(ProcInfo, !Specs) :-
             = no
     then
         PragmaName = tabled_eval_method_to_pragma_name(TabledMethod),
+        InferredDetismStr = determinism_to_string(InferredDetism),
         proc_info_get_context(ProcInfo, Context),
         MainPieces = [words("Error:")] ++
             color_as_subject([pragma_decl(PragmaName),
                 words("declarations")]) ++
             [words("are")] ++
-            color_as_incorrect([words("not allowed for procedures"),
-                words("with determinism"),
-                quote(determinism_to_string(InferredDetism)), suffix(".")]) ++
+            color_as_incorrect([words("not allowed")]) ++
+            [words("for procedures with determinism")] ++
+            color_as_incorrect([quote(InferredDetismStr), suffix(".")]) ++
             [nl],
 
         solutions.solutions(get_valid_determinisms(TabledMethod), Detisms),
@@ -953,22 +946,23 @@ det_check_lambda(DeclaredDetism, InferredDetism, Goal, GoalInfo, InstMap0,
     ).
 
 :- pred report_determinism_problem(module_info::in, pred_proc_id::in,
-    list(format_piece)::in, list(format_piece)::in,
+    string::in, string::in, list(format_piece)::in,
     determinism::in, determinism::in, error_msg::out) is det.
 
-report_determinism_problem(ModuleInfo, PredProcId, MessagePieces, ReasonPieces,
-        DeclaredDetism, InferredDetism, Msg) :-
+report_determinism_problem(ModuleInfo, PredProcId, ErrorOrWarn, ProblemStr,
+        ReasonPieces, DeclaredDetism, InferredDetism, Msg) :-
     module_info_proc_info(ModuleInfo, PredProcId, ProcInfo),
+    proc_info_get_detism_decl(ProcInfo, DetismDecl),
     proc_info_get_context(ProcInfo, Context),
-    ProcColonPieces = describe_one_proc_name_mode(ModuleInfo,
-        output_mercury, yes(color_subject), should_not_module_qualify,
-        [suffix(":")], PredProcId),
+    ProcPieces = describe_one_proc_name_mode(ModuleInfo, output_mercury,
+        yes(color_subject), should_not_module_qualify, [], PredProcId),
     DeclaredStr = determinism_to_string(DeclaredDetism),
     InferredStr = determinism_to_string(InferredDetism),
     DeclaredPieces = color_as_correct([quote(DeclaredStr), suffix(",")]),
     InferredPieces = color_as_incorrect([quote(InferredStr), suffix(".")]),
-    Pieces = [words("In")] ++ ProcColonPieces ++ [nl] ++
-        MessagePieces ++ [nl] ++
+    Pieces = [words(ErrorOrWarn), suffix(":"), words("the"),
+        words(detism_decl_name(DetismDecl)), words("for")] ++ ProcPieces ++
+        color_as_incorrect([words(ProblemStr), suffix(".")]) ++ [nl] ++
         [words("Declared")] ++ DeclaredPieces ++
         [words("inferred")] ++ InferredPieces ++ [nl] ++
         ReasonPieces,
@@ -1012,25 +1006,29 @@ det_diagnose_goal_expr(GoalExpr, GoalInfo, InstMap0, Desired, Actual,
         GoalExpr = unify(LHS, RHS, _, _, UnifyContext),
         Context = goal_info_get_context(GoalInfo),
         det_report_unify_context(is_first, is_last, UnifyContext, !.DetInfo,
-            LHS, RHS, SurroundingContextPieces, MainUnifyPieces),
-        det_diagnose_primitive_goal(Desired, Actual, Context,
-            SurroundingContextPieces, MainUnifyPieces, Msgs)
+            LHS, RHS, SurroundingContextPieces, GoalPieces),
+        det_diagnose_primitive_goal(Desired, Actual, ProblemPieces),
+        Pieces = SurroundingContextPieces ++
+            [lower_case_next_if_not_first] ++ GoalPieces ++ ProblemPieces,
+        Msgs = [msg(Context, Pieces)]
     ;
         GoalExpr = plain_call(PredId, ProcId, _, _, CallContext, _),
         Context = goal_info_get_context(GoalInfo),
-        det_report_call_context(Context, CallContext, !.DetInfo,
-            PredId, ProcId, InitMsgs,
-            SurroundingUnifyContextPieces, GoalPieces),
-        det_diagnose_primitive_goal(Desired, Actual, Context,
-            SurroundingUnifyContextPieces, GoalPieces, AtomicMsgs),
-        Msgs = InitMsgs ++ AtomicMsgs
+        det_report_call_context(CallContext, !.DetInfo, PredId, ProcId,
+            AnyUnifyPieces, SurroundingContextPieces, GoalPieces),
+        det_diagnose_primitive_goal(Desired, Actual, ProblemPieces),
+        Pieces = AnyUnifyPieces ++ SurroundingContextPieces ++
+            [lower_case_next_if_not_first] ++ GoalPieces ++ ProblemPieces,
+        Msgs = [msg(Context, Pieces)]
     ;
         GoalExpr = generic_call(GenericCall, _, _, _, _),
         Context = goal_info_get_context(GoalInfo),
         hlds_goal.generic_call_to_id(GenericCall, GenericCallId),
-        StartingPieces = [words(generic_call_id_to_string(GenericCallId))],
-        det_diagnose_primitive_goal(Desired, Actual, Context,
-            [], StartingPieces, Msgs)
+        GenericCallIdStr = generic_call_id_to_string(GenericCallId),
+        GoalPieces = color_as_subject([words((GenericCallIdStr))]),
+        det_diagnose_primitive_goal(Desired, Actual, ProblemPieces),
+        Pieces = GoalPieces ++ ProblemPieces,
+        Msgs = [msg(Context, GoalPieces ++ Pieces)]
     ;
         GoalExpr = call_foreign_proc(_, _, _, _, _, _, _),
         Context = goal_info_get_context(GoalInfo),
@@ -1067,9 +1065,9 @@ det_diagnose_goal_expr(GoalExpr, GoalInfo, InstMap0, Desired, Actual,
                 words("with solutions."), nl],
             FirstMsg =
                 msg(FirstContext, NestingPieces ++ FirstDisjPieces),
-            LaterDisjPieces =
-                color_as_possible_cause([words("This later disjunct"),
-                    words("may have a solution.")]) ++ [nl],
+            LaterDisjPieces = [words("This later disjunct")] ++
+                color_as_incorrect([words("may have a solution.")]) ++
+                [nl],
             MakeLaterMsgs =
                 ( func(LaterContext) = LaterMsg :-
                     LaterMsg = msg(LaterContext, LaterDisjPieces)
@@ -1096,18 +1094,18 @@ det_diagnose_goal_expr(GoalExpr, GoalInfo, InstMap0, Desired, Actual,
                 MaybeMissingInfo = yes(MissingInfo),
                 MissingInfo = missing_cons_id_info(_, _,
                     MainPieces, VerbosePieces),
-                NoCoverPieces = [lower_case_next_if_not_first,
-                    words("The switch on"), fixed(VarStr),
-                    words("does not cover")],
-                append_prefix_and_maybe_verbose(yes(color_cause),
-                    NestingPieces, NoCoverPieces, MainPieces, VerbosePieces,
-                    Component)
+                SwitchOnPieces = [lower_case_next_if_not_first,
+                    words("The switch on")] ++
+                    color_as_subject([quote(VarStr)]),
+                NoCoverPieces = [words("does not cover")],
+                append_prefix_and_maybe_verbose(yes(color_incorrect),
+                    NestingPieces ++ SwitchOnPieces, NoCoverPieces,
+                    MainPieces, VerbosePieces, Component)
             ;
                 MaybeMissingInfo = no,
-                NoCoverPieces0 = [lower_case_next_if_not_first,
-                    words("The switch on"), fixed(VarStr),
-                    words("can fail."), nl],
-                NoCoverPieces = color_as_possible_cause(NoCoverPieces0),
+                NoCoverPieces = [lower_case_next_if_not_first,
+                    words("The switch on"), fixed(VarStr)] ++
+                    color_as_incorrect([words("can fail.")]) ++ [nl],
                 Component = always(NestingPieces ++ NoCoverPieces)
             ),
             Msgs1 = [simple_msg(Context, [Component])]
@@ -1197,11 +1195,10 @@ det_diagnose_goal_expr(GoalExpr, GoalInfo, InstMap0, Desired, Actual,
 %---------------------------------------------------------------------------%
 
 :- pred det_diagnose_primitive_goal(determinism::in, determinism::in,
-    prog_context::in, list(format_piece)::in, list(format_piece)::in,
-    list(error_msg)::out) is det.
+    list(format_piece)::out) is det.
 
-det_diagnose_primitive_goal(Desired, Actual, Context, SurroundContextPieces,
-        GoalPieces, Msgs) :-
+det_diagnose_primitive_goal(Desired, Actual,
+        Pieces) :-
     determinism_components(Desired, DesiredCanFail, DesiredSolns),
     determinism_components(Actual, ActualCanFail, ActualSolns),
     compare_canfails(DesiredCanFail, ActualCanFail, CmpCanFail),
@@ -1218,13 +1215,6 @@ det_diagnose_primitive_goal(Desired, Actual, Context, SurroundContextPieces,
     (
         CmpSolns = first_tighter_than,
         (
-            CanFailPieces = [_ | _],
-            ConnectPieces = [words("and")]
-        ;
-            CanFailPieces = [],
-            ConnectPieces = []
-        ),
-        (
             DesiredSolns = at_most_one,
             SolnsPieces = [words("can succeed more than once")]
         ;
@@ -1238,27 +1228,41 @@ det_diagnose_primitive_goal(Desired, Actual, Context, SurroundContextPieces,
         ( CmpSolns = first_same_as
         ; CmpSolns = first_looser_than
         ),
-        ConnectPieces = [],
         SolnsPieces = []
     ),
-    RawPieces = CanFailPieces ++ ConnectPieces ++ SolnsPieces,
     (
-        RawPieces = [_ | _],
-        MainRawPieces0 = GoalPieces ++ RawPieces ++ [suffix(".")],
-        Pieces = SurroundContextPieces ++
-            color_as_possible_cause(MainRawPieces0) ++ [nl]
+        CanFailPieces = [],
+        SolnsPieces = [],
+        ProblemPieces = []
     ;
-        RawPieces = [],
+        CanFailPieces = [],
+        SolnsPieces = [_ | _],
+        ProblemPieces = color_as_incorrect(SolnsPieces ++ [suffix(".")])
+    ;
+        CanFailPieces = [_ | _],
+        SolnsPieces = [],
+        ProblemPieces = color_as_incorrect(CanFailPieces ++ [suffix(".")])
+    ;
+        CanFailPieces = [_ | _],
+        SolnsPieces = [_ | _],
+        ProblemPieces = color_as_incorrect(CanFailPieces) ++
+            [words("and")] ++
+            color_as_incorrect(SolnsPieces ++ [suffix(".")])
+    ),
+    (
+        ProblemPieces = [_ | _],
+        Pieces = ProblemPieces
+    ;
+        ProblemPieces = [],
         DesiredPieces0 = [fixed(determinism_to_string(Desired)), suffix(",")],
         ActualPieces0 = [fixed(determinism_to_string(Actual)), suffix(".")],
         DesiredPieces = color_as_correct(DesiredPieces0),
         ActualPieces = color_as_incorrect(ActualPieces0),
-        Pieces = SurroundContextPieces ++ GoalPieces ++
+        Pieces =
             [words("has unknown determinism problem;"), nl,
             words("desired determinism is")] ++ DesiredPieces ++ [nl] ++
             [words("while actual determinism is")] ++ ActualPieces ++ [nl]
-    ),
-    Msgs = [msg(Context, Pieces)].
+    ).
 
 det_diagnose_conj([], _InstMap0, _Desired, _SwitchContexts, !DetInfo, []).
 det_diagnose_conj([Goal | Goals], InstMap0, Desired, SwitchContexts, !DetInfo,
@@ -1812,10 +1816,10 @@ generate_incomplete_switch_spec(Why, MaybeLimit, InstMap0, SwitchContexts,
             ErrorPieces = [lower_case_next_if_not_first,
                 words("Error: the")] ++
                 color_as_subject([words("switch on"), quote(SwitchVarStr)]) ++
-                [words("is required to be complete, but")],
-            NoCoverPieces = [words("it does not cover")],
-            append_prefix_and_maybe_verbose(yes(color_cause),
-                NestingPieces ++ ErrorPieces, NoCoverPieces,
+                [words("is required to be complete,"),
+                words("but it does not cover")],
+            append_prefix_and_maybe_verbose(yes(color_incorrect),
+                NestingPieces ++ ErrorPieces, [],
                 MainPieces, VerbosePieces, Component),
             MaybeSeverityComponents = yes({severity_error, [Component]})
         ;
@@ -1946,8 +1950,7 @@ reqscope_check_goal_detism(RequiredDetism, Goal, CheckKind, InstMap0,
                 list.map(cons_id_and_arity_to_string, OtherConsIds),
             ConsIdsPieces = list_to_pieces([MainConsIdStr | OtherConsIdStrs]),
             Pieces = [words("Error: the arms of the")] ++
-                color_as_subject([words("switch on"),
-                    words(SwitchVarName)]) ++
+                color_as_subject([words("switch on"), quote(SwitchVarName)]) ++
                 [words("are required have a determinism that is"),
                 words("acceptable in a")] ++
                 color_as_correct([quote(ReqDetismStr)]) ++ [words("context,"),
@@ -2197,7 +2200,7 @@ find_missing_cons_ids(DetInfo, MaybeLimit, InstMap0, SwitchContexts,
             MaybeMissingInfo = no
         ;
             PrintedConsIds = [HeadPrintedConsId | TailPrintedConsIds],
-            MaybeCause = yes(color_cause),
+            MaybeCause = yes(color_incorrect),
             (
                 NonPrintedConsIds = [],
                 MainPieces =
@@ -2214,7 +2217,7 @@ find_missing_cons_ids(DetInfo, MaybeLimit, InstMap0, SwitchContexts,
                     cons_id_list_to_pieces(MaybeCause, HeadPrintedConsId,
                         TailPrintedConsIds, [suffix(","), fixed("...")]) ++
                     [nl_indent_delta(-1)] ++
-                    color_as_possible_cause([words("and"),
+                    color_as_incorrect([words("and"),
                         int_fixed(NumNonPrintedConsIds), words("more.")]) ++
                     [nl],
                 VerbosePieces =
@@ -2335,13 +2338,12 @@ switch_match_to_string(VarTable, switch_match(ConsId, MaybeArgVars)) =
 
 %---------------------------------------------------------------------------%
 
-:- pred det_report_call_context(prog_context::in,
-    maybe(call_unify_context)::in, det_info::in, pred_id::in, proc_id::in,
-    list(error_msg)::out, list(format_piece)::out, list(format_piece)::out)
-    is det.
+:- pred det_report_call_context(maybe(call_unify_context)::in, det_info::in,
+    pred_id::in, proc_id::in, list(format_piece)::out,
+    list(format_piece)::out, list(format_piece)::out) is det.
 
-det_report_call_context(Context, CallUnifyContext, DetInfo, PredId, ProcId,
-        InitMsgs, SurroundingUnifyContextPieces, GoalPieces) :-
+det_report_call_context(CallUnifyContext, DetInfo, PredId, ProcId,
+        UnifyPieces, SurroundingUnifyContextPieces, GoalPieces) :-
     det_info_get_module_info(DetInfo, ModuleInfo),
     module_info_pred_info(ModuleInfo, PredId, PredInfo),
     pred_info_get_origin(PredInfo, Origin),
@@ -2353,7 +2355,7 @@ det_report_call_context(Context, CallUnifyContext, DetInfo, PredId, ProcId,
     % in a function call inside some unification.)
 
     ( if Origin = origin_compiler(made_for_uci(spec_pred_unify, _)) then
-        InitMsgs = [],
+        UnifyPieces = [],
         (
             CallUnifyContext = yes(call_unify_context(LHS, RHS, UC)),
             det_report_unify_context(is_first, is_last, UC, DetInfo,
@@ -2371,14 +2373,12 @@ det_report_call_context(Context, CallUnifyContext, DetInfo, PredId, ProcId,
         (
             CallUnifyContext = yes(call_unify_context(LHS, RHS, UC)),
             det_report_unify_context(is_first, is_not_last, UC,
-                DetInfo, LHS, RHS, SurroundingContextPieces, MainUnifyPieces),
-            UnifyPieces =
-                SurroundingContextPieces ++ MainUnifyPieces ++ [suffix(":")],
-            UnifyMsg = msg(Context, UnifyPieces),
-            InitMsgs = [UnifyMsg]
+                DetInfo, LHS, RHS, CallContextPieces, MainUnifyPieces),
+            UnifyPieces = CallContextPieces ++
+                MainUnifyPieces ++ [suffix(":"), nl]
         ;
             CallUnifyContext = no,
-            InitMsgs = []
+            UnifyPieces = []
         ),
         pred_info_get_proc_table(PredInfo, ProcTable),
         map.lookup(ProcTable, ProcId, ProcInfo),
@@ -2387,7 +2387,7 @@ det_report_call_context(Context, CallUnifyContext, DetInfo, PredId, ProcId,
         PredPieces = describe_one_pred_name_mode(ModuleInfo, output_mercury,
             InstVarSet, no, should_module_qualify, [], PredId, ArgModes),
         SurroundingUnifyContextPieces = [],
-        GoalPieces = [words("Call to") | PredPieces]
+        GoalPieces = [words("This call to")] ++ color_as_subject(PredPieces)
     ).
 
 %---------------------------------------------------------------------------%
@@ -2440,8 +2440,8 @@ det_report_unify_context(!.First, Last, UnifyContext, DetInfo,
     ( if LHSVarRawName = "" then
         RHSStr = unify_rhs_to_string(ModuleInfo, VarTable,
             print_name_only, RHS),
-        MainPieces =
-            [words(StartWords), words("with"), words(add_quotes(RHSStr))]
+        MainPieces = [words(StartWords), words("with")] ++
+            color_as_subject([words(add_quotes(RHSStr))])
     else
         % LHSVarName may differ from LHSVarRawName; see
         % mercury_convert_var_name for details.
@@ -2451,14 +2451,15 @@ det_report_unify_context(!.First, Last, UnifyContext, DetInfo,
             lookup_var_entry(VarTable, RHSVar, RHSVarEntry),
             RHSVarEntry ^ vte_name = ""
         then
-            MainPieces = [words(StartWords), words("with"),
-                words(add_quotes(LHSVarName))]
+            MainPieces = [words(StartWords), words("with")] ++
+                color_as_subject([words(add_quotes(LHSVarName))])
         else
             RHSStr = unify_rhs_to_string(ModuleInfo, VarTable,
                 print_name_only, RHS),
-            MainPieces = [words(StartWords), words("of"),
-                words(add_quotes(LHSVarName)), words("and"),
-                words(add_quotes(RHSStr))]
+            MainPieces = [words(StartWords), words("of")] ++
+                color_as_subject([words(add_quotes(LHSVarName))]) ++
+                [words("and")] ++
+                color_as_subject([words(add_quotes(RHSStr))])
         )
     ).
 

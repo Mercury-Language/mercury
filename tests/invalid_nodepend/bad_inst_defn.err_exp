@@ -2,11 +2,11 @@ bad_inst_defn.m:015: Error: a free inst parameter such as [38;5;87m`B'[39;49m 
 bad_inst_defn.m:015:   the right hand side of inst definition.
 bad_inst_defn.m:019: Error: free inst parameters such as [38;5;87m`B'[39;49m and [38;5;87m`C'[39;49m [38;5;203mmay not[39;49m
 bad_inst_defn.m:019:   [38;5;203moccur[39;49m on the right hand side of inst definition.
-bad_inst_defn.m:023: Error: expected distinct variables as inst definition
+bad_inst_defn.m:023: Error: expected [38;5;40mdistinct variables[39;49m as inst definition
 bad_inst_defn.m:023:   parameters, but the variable [38;5;87m`A'[39;49m is [38;5;203mrepeated.[39;49m
-bad_inst_defn.m:027: Error: expected distinct variables as inst definition
+bad_inst_defn.m:027: Error: expected [38;5;40mdistinct variables[39;49m as inst definition
 bad_inst_defn.m:027:   parameters, but the variable [38;5;87m`A'[39;49m is [38;5;203mrepeated.[39;49m
-bad_inst_defn.m:027: Error: expected distinct variables as inst definition
+bad_inst_defn.m:027: Error: expected [38;5;40mdistinct variables[39;49m as inst definition
 bad_inst_defn.m:027:   parameters, but the variable [38;5;87m`B'[39;49m is [38;5;203mrepeated.[39;49m
 bad_inst_defn.m:037: Error: expected either `==' or `--->' at start of
 bad_inst_defn.m:037:   `:- inst' definition.

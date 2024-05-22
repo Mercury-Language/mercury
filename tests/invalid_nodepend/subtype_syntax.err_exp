@@ -1,6 +1,6 @@
-subtype_syntax.m:008: Error: the type name `=<' is reserved for the Mercury
+subtype_syntax.m:008: Error: the type name [38;5;87m`=<'[39;49m is [38;5;203mreserved[39;49m for the Mercury
 subtype_syntax.m:008:   implementation.
-subtype_syntax.m:009: Error: the type name `=<' is reserved for the Mercury
+subtype_syntax.m:009: Error: the type name [38;5;87m`=<'[39;49m is [38;5;203mreserved[39;49m for the Mercury
 subtype_syntax.m:009:   implementation.
 subtype_syntax.m:011: In the supertype part of a subtype definition: error:
 subtype_syntax.m:011:   [38;5;87m`123'[39;49m is [38;5;203mnot a type.[39;49m
@@ -19,7 +19,7 @@ subtype_syntax.m:024:   a [38;5;40mtype constructor and zero or more type varia
 subtype_syntax.m:024:   [38;5;40marguments,[39;49m got [38;5;203m`T'.[39;49m
 subtype_syntax.m:027: Error: expected a [38;5;40mvariable[39;49m as a type definition
 subtype_syntax.m:027:   parameter, got [38;5;203m`int'.[39;49m
-subtype_syntax.m:030: Error: expected distinct variables as type definition
+subtype_syntax.m:030: Error: expected [38;5;40mdistinct variables[39;49m as type definition
 subtype_syntax.m:030:   parameters, but the variable [38;5;87m`T'[39;49m is [38;5;203mrepeated.[39;49m
 subtype_syntax.m:033: Error: [38;5;87mfree type parameters such as [38;5;87m`U'[38;5;87m and [38;5;87m`_V'[39;49m [38;5;203mmay not[39;49m
 subtype_syntax.m:033:   [38;5;203mappear[39;49m in the supertype of a subtype definition.

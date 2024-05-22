@@ -1,39 +1,39 @@
-require_switch_arms_detism.m:042: Error: the arms of the [38;5;87mswitch on Functor[39;49m are
-require_switch_arms_detism.m:042:   required have a determinism that is
+require_switch_arms_detism.m:042: Error: the arms of the [38;5;87mswitch on `Functor'[39;49m
+require_switch_arms_detism.m:042:   are required have a determinism that is
 require_switch_arms_detism.m:042:   acceptable in a [38;5;40m`det'[39;49m context, but the
 require_switch_arms_detism.m:042:   actual determinism of the arm for ":-" is
 require_switch_arms_detism.m:042:   [38;5;203m`semidet'.[39;49m
-require_switch_arms_detism.m:043:   [38;5;226mUnification of `Args' and `list.[Arg1 |[39;49m
-require_switch_arms_detism.m:043:   [38;5;226mV_9]' can fail.[39;49m
+require_switch_arms_detism.m:043:   Unification of [38;5;87m`Args'[39;49m and [38;5;87m`list.[Arg1 |[39;49m
+require_switch_arms_detism.m:043:   [38;5;87mV_9]'[39;49m [38;5;203mcan fail.[39;49m
 require_switch_arms_detism.m:043:   In argument 2 of functor `[|]/2':
-require_switch_arms_detism.m:043:   [38;5;226munification with `list.[Arg2 | V_10]' can[39;49m
-require_switch_arms_detism.m:043:   [38;5;226mfail.[39;49m
+require_switch_arms_detism.m:043:   unification with [38;5;87m`list.[Arg2 | V_10]'[39;49m [38;5;203mcan[39;49m
+require_switch_arms_detism.m:043:   [38;5;203mfail.[39;49m
 require_switch_arms_detism.m:043:   In argument 2 of functor `[|]/2':
 require_switch_arms_detism.m:043:   in argument 2 of functor `[|]/2':
-require_switch_arms_detism.m:043:   [38;5;226munification with `list.[]' can fail.[39;49m
-require_switch_arms_detism.m:046: Error: the arms of the [38;5;87mswitch on Functor[39;49m are
-require_switch_arms_detism.m:046:   required have a determinism that is
+require_switch_arms_detism.m:043:   unification with [38;5;87m`list.[]'[39;49m [38;5;203mcan fail.[39;49m
+require_switch_arms_detism.m:046: Error: the arms of the [38;5;87mswitch on `Functor'[39;49m
+require_switch_arms_detism.m:046:   are required have a determinism that is
 require_switch_arms_detism.m:046:   acceptable in a [38;5;40m`det'[39;49m context, but the
 require_switch_arms_detism.m:046:   actual determinism of the arm for "--->" is
 require_switch_arms_detism.m:046:   [38;5;203m`semidet'.[39;49m
-require_switch_arms_detism.m:047:   [38;5;226mUnification of `Args' and `list.[Arg1 |[39;49m
-require_switch_arms_detism.m:047:   [38;5;226mV_13]' can fail.[39;49m
+require_switch_arms_detism.m:047:   Unification of [38;5;87m`Args'[39;49m and [38;5;87m`list.[Arg1 |[39;49m
+require_switch_arms_detism.m:047:   [38;5;87mV_13]'[39;49m [38;5;203mcan fail.[39;49m
 require_switch_arms_detism.m:047:   In argument 2 of functor `[|]/2':
-require_switch_arms_detism.m:047:   [38;5;226munification with `list.[Arg2 | V_14]' can[39;49m
-require_switch_arms_detism.m:047:   [38;5;226mfail.[39;49m
+require_switch_arms_detism.m:047:   unification with [38;5;87m`list.[Arg2 | V_14]'[39;49m [38;5;203mcan[39;49m
+require_switch_arms_detism.m:047:   [38;5;203mfail.[39;49m
 require_switch_arms_detism.m:047:   In argument 2 of functor `[|]/2':
 require_switch_arms_detism.m:047:   in argument 2 of functor `[|]/2':
-require_switch_arms_detism.m:047:   [38;5;226munification with `list.[]' can fail.[39;49m
-require_switch_arms_detism.m:050: Error: the arms of the [38;5;87mswitch on Functor[39;49m are
-require_switch_arms_detism.m:050:   required have a determinism that is
+require_switch_arms_detism.m:047:   unification with [38;5;87m`list.[]'[39;49m [38;5;203mcan fail.[39;49m
+require_switch_arms_detism.m:050: Error: the arms of the [38;5;87mswitch on `Functor'[39;49m
+require_switch_arms_detism.m:050:   are required have a determinism that is
 require_switch_arms_detism.m:050:   acceptable in a [38;5;40m`det'[39;49m context, but the
 require_switch_arms_detism.m:050:   actual determinism of the arm for "=" is
 require_switch_arms_detism.m:050:   [38;5;203m`semidet'.[39;49m
-require_switch_arms_detism.m:051:   [38;5;226mUnification of `Args' and `list.[Arg1 |[39;49m
-require_switch_arms_detism.m:051:   [38;5;226mV_17]' can fail.[39;49m
+require_switch_arms_detism.m:051:   Unification of [38;5;87m`Args'[39;49m and [38;5;87m`list.[Arg1 |[39;49m
+require_switch_arms_detism.m:051:   [38;5;87mV_17]'[39;49m [38;5;203mcan fail.[39;49m
 require_switch_arms_detism.m:051:   In argument 2 of functor `[|]/2':
-require_switch_arms_detism.m:051:   [38;5;226munification with `list.[Arg2 | V_18]' can[39;49m
-require_switch_arms_detism.m:051:   [38;5;226mfail.[39;49m
+require_switch_arms_detism.m:051:   unification with [38;5;87m`list.[Arg2 | V_18]'[39;49m [38;5;203mcan[39;49m
+require_switch_arms_detism.m:051:   [38;5;203mfail.[39;49m
 require_switch_arms_detism.m:051:   In argument 2 of functor `[|]/2':
 require_switch_arms_detism.m:051:   in argument 2 of functor `[|]/2':
-require_switch_arms_detism.m:051:   [38;5;226munification with `list.[]' can fail.[39;49m
+require_switch_arms_detism.m:051:   unification with [38;5;87m`list.[]'[39;49m [38;5;203mcan fail.[39;49m

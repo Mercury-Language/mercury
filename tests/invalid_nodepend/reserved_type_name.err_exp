@@ -1,24 +1,24 @@
-reserved_type_name.m:014: Error: the type name `int' is reserved for the
+reserved_type_name.m:014: Error: the type name [38;5;87m`int'[39;49m is [38;5;203mreserved[39;49m for the
 reserved_type_name.m:014:   Mercury implementation.
-reserved_type_name.m:018: Error: the type name `uint' is reserved for the
+reserved_type_name.m:018: Error: the type name [38;5;87m`uint'[39;49m is [38;5;203mreserved[39;49m for the
 reserved_type_name.m:018:   Mercury implementation.
-reserved_type_name.m:022: Error: the type name `int8' is reserved for the
+reserved_type_name.m:022: Error: the type name [38;5;87m`int8'[39;49m is [38;5;203mreserved[39;49m for the
 reserved_type_name.m:022:   Mercury implementation.
-reserved_type_name.m:026: Error: the type name `uint8' is reserved for the
+reserved_type_name.m:026: Error: the type name [38;5;87m`uint8'[39;49m is [38;5;203mreserved[39;49m for the
 reserved_type_name.m:026:   Mercury implementation.
-reserved_type_name.m:030: Error: the type name `int16' is reserved for the
+reserved_type_name.m:030: Error: the type name [38;5;87m`int16'[39;49m is [38;5;203mreserved[39;49m for the
 reserved_type_name.m:030:   Mercury implementation.
-reserved_type_name.m:034: Error: the type name `uint16' is reserved for the
+reserved_type_name.m:034: Error: the type name [38;5;87m`uint16'[39;49m is [38;5;203mreserved[39;49m for the
 reserved_type_name.m:034:   Mercury implementation.
-reserved_type_name.m:038: Error: the type name `int32' is reserved for the
+reserved_type_name.m:038: Error: the type name [38;5;87m`int32'[39;49m is [38;5;203mreserved[39;49m for the
 reserved_type_name.m:038:   Mercury implementation.
-reserved_type_name.m:042: Error: the type name `uint32' is reserved for the
+reserved_type_name.m:042: Error: the type name [38;5;87m`uint32'[39;49m is [38;5;203mreserved[39;49m for the
 reserved_type_name.m:042:   Mercury implementation.
-reserved_type_name.m:046: Error: the type name `int64' is reserved for the
+reserved_type_name.m:046: Error: the type name [38;5;87m`int64'[39;49m is [38;5;203mreserved[39;49m for the
 reserved_type_name.m:046:   Mercury implementation.
-reserved_type_name.m:050: Error: the type name `uint64' is reserved for the
+reserved_type_name.m:050: Error: the type name [38;5;87m`uint64'[39;49m is [38;5;203mreserved[39;49m for the
 reserved_type_name.m:050:   Mercury implementation.
-reserved_type_name.m:054: Error: the type name `float' is reserved for the
+reserved_type_name.m:054: Error: the type name [38;5;87m`float'[39;49m is [38;5;203mreserved[39;49m for the
 reserved_type_name.m:054:   Mercury implementation.
 reserved_type_name.m:059: In clause for predicate `main'/2:
 reserved_type_name.m:059:   in argument 1 of call to predicate
