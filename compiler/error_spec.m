@@ -548,6 +548,91 @@
 :- func var_to_quote_piece(varset(T), var(T)) = format_piece.
 :- func var_in_table_to_quote_piece(var_table, prog_var) = format_piece.
 
+%---------------------------------------------------------------------------%
+
+    % indented_list(Lines):
+    %
+    % Format Lines, a list of lines each given by a single format_piece,
+    % by putting newlines between them, and by adding nl_indent_deltas
+    % before and after the list to first increase and then decrease
+    % the indent level.
+    %
+:- func indented_list(list(format_piece)) = list(format_piece).
+
+    % choose_number(List, Singular, Plural) = Form
+    %
+    % Choose between a singular version and a plural version of something,
+    % based on the length of a list. Chooses the plural if the list is empty.
+    %
+:- func choose_number(list(T), U, U) = U.
+
+    % is_or_are(List) throws an exception if the list is empty, returns "is"
+    % if the list is a singleton, and otherwise returns "are".
+    %
+:- func is_or_are(list(T)) = string.
+
+    % Return the name of the given integer as zero, one, two, three etc,
+    % up to ten. For integers other than 0..10, return the value as digits.
+    %
+:- func int_name_str(int) = string.
+
+    % The ordinal version of int_name_str, returning first, second etc
+    % for 1..10.
+    %
+:- func nth_fixed_str(int) = string.
+
+%---------------------------------------------------------------------------%
+
+:- func describe_sym_name(sym_name) = string.
+
+:- func describe_sym_name_arity(sym_name_arity) = string.
+
+    % Put `' quotes around the given string.
+    %
+:- func add_quotes(string) = string.
+
+%---------------------------------------------------------------------------%
+
+:- pred extract_spec_phase(error_spec::in, error_phase::out) is det.
+
+:- pred extract_spec_msgs(globals::in, error_spec::in,
+    list(error_msg)::out) is det.
+:- pred extract_spec_msgs_opt_table(option_table::in, error_spec::in,
+    list(error_msg)::out) is det.
+
+:- pred accumulate_contexts(error_spec::in,
+    set(prog_context)::in, set(prog_context)::out) is det.
+
+%---------------------------------------------------------------------------%
+
+    % Convert the output of find_change_hunks from library/edit_seq.m
+    % to a diff we can include in error messages.
+    %
+:- pred change_hunk_to_pieces(change_hunk(string)::in,
+    list(format_piece)::out) is det.
+
+%---------------------------------------------------------------------------%
+
+:- pred maybe_construct_did_you_mean_pieces(string::in, list(string)::in,
+    list(format_piece)::out) is det.
+
+:- pred maybe_construct_prefixed_did_you_mean_pieces(string::in, string::in,
+    list(string)::in, list(format_piece)::out) is det.
+
+%---------------------------------------------------------------------------%
+
+:- func color_as_subject(list(format_piece)) = list(format_piece).
+:- func color_as_correct(list(format_piece)) = list(format_piece).
+:- func color_as_incorrect(list(format_piece)) = list(format_piece).
+:- func color_as_possible_cause(list(format_piece)) =
+    list(format_piece).
+
+:- func color_pieces(color_name, list(format_piece)) = list(format_piece).
+:- func maybe_color_pieces(maybe(color_name), list(format_piece))
+    = list(format_piece).
+
+%---------------------------------------------------------------------------%
+
     % Convert a list of strings into a list of format_pieces
     % separated by commas, with the last two elements separated by `and'.
     %
@@ -675,89 +760,6 @@
     list({list(format_piece), list(format_piece)})) = list(format_piece).
 
 %---------------------------------------------------------------------------%
-
-    % indented_list(Lines):
-    %
-    % Format Lines, a list of lines each given by a single format_piece,
-    % by putting newlines between them, and by adding nl_indent_deltas
-    % before and after the list to first increase and then decrease
-    % the indent level.
-    %
-:- func indented_list(list(format_piece)) = list(format_piece).
-
-    % choose_number(List, Singular, Plural) = Form
-    %
-    % Choose between a singular version and a plural version of something,
-    % based on the length of a list. Chooses the plural if the list is empty.
-    %
-:- func choose_number(list(T), U, U) = U.
-
-    % is_or_are(List) throws an exception if the list is empty, returns "is"
-    % if the list is a singleton, and otherwise returns "are".
-    %
-:- func is_or_are(list(T)) = string.
-
-    % Return the name of the given integer as zero, one, two, three etc,
-    % up to ten. For integers other than 0..10, return the value as digits.
-    %
-:- func int_name_str(int) = string.
-
-    % The ordinal version of int_name_str, returning first, second etc
-    % for 1..10.
-    %
-:- func nth_fixed_str(int) = string.
-
-%---------------------------------------------------------------------------%
-
-:- func color_as_subject(list(format_piece)) = list(format_piece).
-:- func color_as_correct(list(format_piece)) = list(format_piece).
-:- func color_as_incorrect(list(format_piece)) = list(format_piece).
-:- func color_as_possible_cause(list(format_piece)) =
-    list(format_piece).
-
-:- func color_pieces(color_name, list(format_piece)) = list(format_piece).
-:- func maybe_color_pieces(maybe(color_name), list(format_piece))
-    = list(format_piece).
-
-%---------------------------------------------------------------------------%
-
-    % Convert the output of find_change_hunks from library/edit_seq.m
-    % to a diff we can include in error messages.
-    %
-:- pred change_hunk_to_pieces(change_hunk(string)::in,
-    list(format_piece)::out) is det.
-
-%---------------------------------------------------------------------------%
-
-:- func describe_sym_name(sym_name) = string.
-
-:- func describe_sym_name_arity(sym_name_arity) = string.
-
-    % Put `' quotes around the given string.
-    %
-:- func add_quotes(string) = string.
-
-%---------------------------------------------------------------------------%
-
-:- pred maybe_construct_did_you_mean_pieces(string::in, list(string)::in,
-    list(format_piece)::out) is det.
-
-:- pred maybe_construct_prefixed_did_you_mean_pieces(string::in, string::in,
-    list(string)::in, list(format_piece)::out) is det.
-
-%---------------------------------------------------------------------------%
-
-:- pred extract_spec_phase(error_spec::in, error_phase::out) is det.
-
-:- pred extract_spec_msgs(globals::in, error_spec::in,
-    list(error_msg)::out) is det.
-:- pred extract_spec_msgs_opt_table(option_table::in, error_spec::in,
-    list(error_msg)::out) is det.
-
-:- pred accumulate_contexts(error_spec::in,
-    set(prog_context)::in, set(prog_context)::out) is det.
-
-%---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
 :- implementation.
@@ -783,245 +785,6 @@ var_to_quote_piece(VarSet, Var) =
 
 var_in_table_to_quote_piece(VarTable, Var) =
     quote(var_table_entry_name(VarTable, Var)).
-
-list_to_pieces([]) = [].
-list_to_pieces([Elem]) = [fixed(Elem)].
-list_to_pieces([Elem1, Elem2]) = [fixed(Elem1), words("and"), fixed(Elem2)].
-list_to_pieces([Elem1, Elem2, Elem3 | Elems]) =
-    [fixed(Elem1 ++ ",") | list_to_pieces([Elem2, Elem3 | Elems])].
-
-list_to_color_pieces(MaybeColor, LastSepWord, LastColorSuffix, Strings)
-        = Pieces :-
-    ItemToPieces =
-        (pred(Str::in, ItemPieces::out) is det :- ItemPieces = [fixed(Str)]),
-    NonLastSep = [suffix(",")],
-    LastSep = [words(LastSepWord)],
-    general_list_to_pieces(ItemToPieces, MaybeColor, NonLastSep, LastSep,
-        LastColorSuffix, Strings, Pieces).
-
-strict_list_to_pieces([]) = [].
-strict_list_to_pieces([Elem]) = [fixed(Elem)].
-strict_list_to_pieces([Elem1, Elem2 | Elems]) =
-    [fixed(Elem1 ++ ",") | strict_list_to_pieces([Elem2 | Elems])].
-
-list_to_quoted_pieces([]) = [].
-list_to_quoted_pieces([Elem]) = [quote(Elem)].
-list_to_quoted_pieces([Elem1, Elem2]) =
-    [quote(Elem1), words("and"), quote(Elem2)].
-list_to_quoted_pieces([Elem1, Elem2, Elem3 | Elems]) =
-    [quote(Elem1), suffix(",") |
-        list_to_quoted_pieces([Elem2, Elem3 | Elems])].
-
-list_to_quoted_pieces_or([]) = [].
-list_to_quoted_pieces_or([Elem]) = [quote(Elem)].
-list_to_quoted_pieces_or([Elem1, Elem2]) =
-    [quote(Elem1), words("or"), quote(Elem2)].
-list_to_quoted_pieces_or([Elem1, Elem2, Elem3 | Elems]) =
-    [quote(Elem1), suffix(",") |
-        list_to_quoted_pieces_or([Elem2, Elem3 | Elems])].
-
-component_lists_to_pieces(_, []) = [].
-component_lists_to_pieces(_, [Comps]) = Comps.
-component_lists_to_pieces(LastSep, [Comps1, Comps2]) =
-    Comps1 ++ [words(LastSep)] ++ Comps2.
-component_lists_to_pieces(LastSep, [Comps1, Comps2, Comps3 | Comps]) =
-    Comps1 ++ [suffix(",")]
-    ++ component_lists_to_pieces(LastSep, [Comps2, Comps3 | Comps]).
-
-strict_component_lists_to_pieces([]) = [].
-strict_component_lists_to_pieces([Comps]) = Comps.
-strict_component_lists_to_pieces([Comps1, Comps2 | Comps]) =
-    Comps1 ++ [suffix(",")]
-    ++ strict_component_lists_to_pieces([Comps2 | Comps]).
-
-component_list_to_pieces(_, []) = [].
-component_list_to_pieces(_, [Comp]) = [Comp].
-component_list_to_pieces(LastSep, [Comp1, Comp2]) =
-    [Comp1, words(LastSep), Comp2].
-component_list_to_pieces(LastSep, [Comp1, Comp2, Comp3 | Comps]) =
-    [Comp1, suffix(",")]
-    ++ component_list_to_pieces(LastSep, [Comp2, Comp3 | Comps]).
-
-component_list_to_color_pieces(MaybeColor, LastSepWord, LastColorSuffix,
-        ComponentPieces) = Pieces :-
-    ItemToPieces =
-        ( pred(ItemPiece::in, ItemPieces::out) is det :-
-            ItemPieces = [ItemPiece]
-        ),
-    NonLastSep = [suffix(",")],
-    LastSep = [words(LastSepWord)],
-    general_list_to_pieces(ItemToPieces, MaybeColor, NonLastSep, LastSep,
-        LastColorSuffix, ComponentPieces, Pieces).
-
-strict_component_list_to_pieces([]) = [].
-strict_component_list_to_pieces([Comp]) = [Comp].
-strict_component_list_to_pieces([Comp1, Comp2 | Comps]) =
-    [Comp1, suffix(",")]
-    ++ strict_component_list_to_pieces([Comp2 | Comps]).
-
-strict_component_list_to_color_pieces(MaybeColor, LastColorSuffix,
-        ComponentPieces) = Pieces :-
-    ItemToPieces =
-        ( pred(ItemPiece::in, ItemPieces::out) is det :-
-            ItemPieces = [ItemPiece]
-        ),
-    Sep = [suffix(",")],
-    strict_general_list_to_pieces(ItemToPieces, MaybeColor, Sep,
-        LastColorSuffix, ComponentPieces, Pieces).
-
-%---------------------------------------------------------------------------%
-
-    % A general predicate for converting any list of items to the specification
-    % of a nicely formatted and possibly colored output.
-    %
-    % The functions above should probably be reimplemented using this.
-    %
-:- pred general_list_to_pieces(
-    pred(T, list(format_piece))::in(pred(in, out) is det),
-    maybe(color_name)::in, list(format_piece)::in, list(format_piece)::in,
-    list(format_piece)::in, list(T)::in, list(format_piece)::out) is det.
-
-general_list_to_pieces(ItemToPieces, MaybeColor, NonLastSep, LastSep,
-        LastColorSuffix, Items, Pieces) :-
-    (
-        Items = [],
-        Pieces = []
-    ;
-        Items = [Item1],
-        ItemToPieces(Item1, Pieces1),
-        Pieces = maybe_color_pieces(MaybeColor, Pieces1 ++ LastColorSuffix)
-    ;
-        Items = [Item1, Item2],
-        ItemToPieces(Item1, Pieces1),
-        ItemToPieces(Item2, Pieces2),
-        Pieces = maybe_color_pieces(MaybeColor, Pieces1) ++ LastSep ++
-            maybe_color_pieces(MaybeColor, Pieces2 ++ LastColorSuffix)
-    ;
-        Items = [Item1, Item2, Item3 | Items4plus],
-        ItemToPieces(Item1, Pieces1),
-        general_list_to_pieces(ItemToPieces, MaybeColor, NonLastSep, LastSep,
-            LastColorSuffix, [Item2, Item3 | Items4plus], TailPieces),
-        Pieces = maybe_color_pieces(MaybeColor, Pieces1 ++ NonLastSep) ++
-            TailPieces
-    ).
-
-    % A general predicate for converting any list of items to the specification
-    % of a nicely formatted and possibly colored output.
-    %
-    % The functions above should probably be reimplemented using this.
-    %
-:- pred strict_general_list_to_pieces(
-    pred(T, list(format_piece))::in(pred(in, out) is det),
-    maybe(color_name)::in, list(format_piece)::in,
-    list(format_piece)::in, list(T)::in, list(format_piece)::out) is det.
-
-strict_general_list_to_pieces(ItemToPieces, MaybeColor, Sep, LastColorSuffix,
-        Items, Pieces) :-
-    (
-        Items = [],
-        Pieces = []
-    ;
-        Items = [Item1],
-        ItemToPieces(Item1, Pieces1),
-        Pieces = maybe_color_pieces(MaybeColor, Pieces1 ++ LastColorSuffix)
-    ;
-        Items = [Item1, Item2 | Items3plus],
-        ItemToPieces(Item1, Pieces1),
-        strict_general_list_to_pieces(ItemToPieces, MaybeColor, Sep,
-            LastColorSuffix, [Item2 | Items3plus], TailPieces),
-        Pieces = maybe_color_pieces(MaybeColor, Pieces1 ++ Sep) ++ TailPieces
-    ).
-
-%---------------------------------------------------------------------------%
-
-list_to_color_line_pieces(MaybeColor, LastColorSuffix, Strs) = Pieces :-
-    ItemToPieces = ( func(Str) = [words(Str)] ),
-    strict_general_list_to_line_pieces(ItemToPieces, MaybeColor,
-        LastColorSuffix, Strs, Pieces).
-
-component_list_to_line_pieces([], _) = [].
-component_list_to_line_pieces([Comps], Final) = Comps ++ Final.
-component_list_to_line_pieces([Comps1, Comps2 | Comp3plus], Final) =
-    Comps1 ++ [suffix(","), nl]
-    ++ component_list_to_line_pieces([Comps2 | Comp3plus], Final).
-
-component_list_to_color_line_pieces(_, _, []) = [].
-component_list_to_color_line_pieces(MaybeColor, CFinal, [Comps]) =
-    maybe_color_pieces(MaybeColor, Comps ++ CFinal).
-component_list_to_color_line_pieces(MaybeColor, CFinal,
-        [Comps1, Comps2 | Comps]) =
-    maybe_color_pieces(MaybeColor, Comps1 ++ [suffix(",")]) ++ [nl] ++
-    component_list_to_color_line_pieces(MaybeColor, CFinal,
-        [Comps2 | Comps]).
-
-component_list_to_color_split_line_pieces(MaybeColorA, MaybeColorB,
-        LastColorSuffixB, Pairs) = Pieces :-
-    ItemToPieces = ( func({A, B}) = {A, B} ),
-    strict_general_list_to_split_line_pieces(ItemToPieces,
-        MaybeColorA, MaybeColorB, LastColorSuffixB, Pairs, Pieces).
-
-%---------------------------------------------------------------------------%
-
-    % A general predicate for converting any list of items to the specification
-    % of a nicely formatted and possibly colored output.
-    %
-    % The functions above should probably be reimplemented using this.
-    %
-:- pred strict_general_list_to_line_pieces((func(T) = list(format_piece))::in,
-    maybe(color_name)::in, list(format_piece)::in,
-    list(T)::in, list(format_piece)::out) is det.
-
-strict_general_list_to_line_pieces(ItemToPieces, MaybeColor, LastColorSuffix,
-        Items, Pieces) :-
-    (
-        Items = [],
-        Pieces = []
-    ;
-        Items = [Item1],
-        Pieces1 = ItemToPieces(Item1),
-        Pieces = maybe_color_pieces(MaybeColor, Pieces1 ++ LastColorSuffix)
-    ;
-        Items = [Item1, Item2 | Items3plus],
-        Pieces1 = ItemToPieces(Item1),
-        HeadPieces = maybe_color_pieces(MaybeColor, Pieces1 ++ [suffix(",")]),
-        strict_general_list_to_line_pieces(ItemToPieces, MaybeColor,
-            LastColorSuffix, [Item2 | Items3plus], TailPieces),
-        Pieces = HeadPieces ++ [nl] ++ TailPieces
-    ).
-
-    % A general predicate for converting any list of items to the specification
-    % of a nicely formatted and possibly colored output.
-    %
-    % The functions above should probably be reimplemented using this.
-    %
-:- pred strict_general_list_to_split_line_pieces(
-    (func(T) = {list(format_piece), list(format_piece)})::in,
-    maybe(color_name)::in, maybe(color_name)::in, list(format_piece)::in,
-    list(T)::in, list(format_piece)::out) is det.
-
-strict_general_list_to_split_line_pieces(ItemToPieces,
-        MaybeColorA, MaybeColorB, LastColorSuffixB, Items, Pieces) :-
-    (
-        Items = [],
-        Pieces = []
-    ;
-        Items = [Item1],
-        {Pieces1A, Pieces1B} = ItemToPieces(Item1),
-        HeadPiecesA = maybe_color_pieces(MaybeColorA, Pieces1A),
-        HeadPiecesB = maybe_color_pieces(MaybeColorB, Pieces1B ++
-            LastColorSuffixB),
-        Pieces = HeadPiecesA ++ HeadPiecesB
-    ;
-        Items = [Item1, Item2 | Items3plus],
-        {Pieces1A, Pieces1B} = ItemToPieces(Item1),
-        CommaB = [suffix(",")],
-        HeadPiecesA = maybe_color_pieces(MaybeColorA, Pieces1A),
-        HeadPiecesB = maybe_color_pieces(MaybeColorB, Pieces1B ++ CommaB),
-        strict_general_list_to_split_line_pieces(ItemToPieces,
-            MaybeColorA, MaybeColorB, LastColorSuffixB, [Item2 | Items3plus],
-            TailPieces),
-        Pieces = HeadPiecesA ++ HeadPiecesB ++ [nl] ++ TailPieces
-    ).
 
 %---------------------------------------------------------------------------%
 
@@ -1095,52 +858,99 @@ nth_fixed_str(N) = Str :-
 
 %---------------------------------------------------------------------------%
 
-color_as_subject(Pieces) =
-    color_pieces(color_subject, Pieces).
+describe_sym_name(SymName) =
+    string.format("`%s'", [s(sym_name_to_string(SymName))]).
 
-color_as_correct(Pieces) =
-    color_pieces(color_correct, Pieces).
+describe_sym_name_arity(sym_name_arity(SymName, Arity)) =
+    string.format("`%s'/%d", [s(sym_name_to_string(SymName)), i(Arity)]).
 
-color_as_incorrect(Pieces) =
-    color_pieces(color_incorrect, Pieces).
+add_quotes(Str) = "`" ++ Str ++ "'".
 
-color_as_possible_cause(Pieces) =
-    color_pieces(color_cause, Pieces).
+%---------------------------------------------------------------------------%
 
-color_pieces(Color, Pieces0) = Pieces :-
-    list.take_while(is_nl_piece, Pieces0, HeadNlPieces, Pieces1),
-    list.reverse(Pieces1, RevPieces1),
-    list.take_while(is_nl_piece, RevPieces1, RevTailNlPieces1, RevMainPieces1),
-    list.reverse(RevTailNlPieces1, TailNlPieces),
-    list.reverse(RevMainPieces1, MainPieces),
+extract_spec_phase(Spec, Phase) :-
     (
-        MainPieces = [_ | _],
-        Pieces =
-            HeadNlPieces ++
-            [not_for_general_use_start_color(Color)] ++
-            MainPieces ++
-            [not_for_general_use_end_color] ++
-            TailNlPieces
+        Spec = error_spec(_, _, Phase, _)
     ;
-        MainPieces = [],
-        % There are no pieces to apply color to.
-        Pieces = HeadNlPieces ++ TailNlPieces
+        Spec = spec(_, _, Phase, _, _)
+    ;
+        Spec = no_ctxt_spec(_, _, Phase, _)
+    ;
+        Spec = conditional_spec(_, _, _, _, Phase, _)
     ).
 
-:- pred is_nl_piece(format_piece::in) is semidet.
-
-is_nl_piece(Piece) :-
-    ( Piece = nl
-    ; Piece = nl_indent_delta(_)
+extract_spec_msgs(Globals, Spec, Msgs) :-
+    (
+        Spec = error_spec(_Id, _Severity, _Phase, Msgs)
+    ;
+        Spec = spec(_Id, _Severity, _Phase, Context, Pieces),
+        Msgs = [msg(Context, Pieces)]
+    ;
+        Spec = no_ctxt_spec(_Id, _Severity, _Phase, Pieces),
+        Msgs = [no_ctxt_msg(Pieces)]
+    ;
+        Spec = conditional_spec(_Id, Option, MatchValue, _Severity, _Phase,
+            Msgs0),
+        globals.lookup_bool_option(Globals, Option, Value),
+        ( if Value = MatchValue then
+            Msgs = Msgs0
+        else
+            Msgs = []
+        )
     ).
 
-maybe_color_pieces(MaybeColor, Pieces) = MaybeColorPieces :-
+extract_spec_msgs_opt_table(OptionTable, Spec, Msgs) :-
     (
-        MaybeColor = no,
-        MaybeColorPieces = Pieces
+        Spec = error_spec(_Id, _Severity, _Phase, Msgs)
     ;
-        MaybeColor = yes(Color),
-        MaybeColorPieces = color_pieces(Color, Pieces)
+        Spec = spec(_Id, _Severity, _Phase, Context, Pieces),
+        Msgs = [msg(Context, Pieces)]
+    ;
+        Spec = no_ctxt_spec(_Id, _Severity, _Phase, Pieces),
+        Msgs = [no_ctxt_msg(Pieces)]
+    ;
+        Spec = conditional_spec(_Id, Option, MatchValue, _Severity, _Phase,
+            Msgs0),
+        getopt.lookup_bool_option(OptionTable, Option, Value),
+        ( if Value = MatchValue then
+            Msgs = Msgs0
+        else
+            Msgs = []
+        )
+    ).
+
+accumulate_contexts(Spec, !Contexts) :-
+    (
+        ( Spec = error_spec(_, _, _, Msgs)
+        ; Spec = conditional_spec(_, _, _, _, _, Msgs)
+        ),
+        list.foldl(accumulate_contexts_in_msg, Msgs, !Contexts)
+    ;
+        Spec = spec(_, _, _, Context, _),
+        set.insert(Context, !Contexts)
+    ;
+        Spec = no_ctxt_spec(_, _, _, _)
+    ).
+
+:- pred accumulate_contexts_in_msg(error_msg::in,
+    set(prog_context)::in, set(prog_context)::out) is det.
+
+accumulate_contexts_in_msg(Msg, !Contexts) :-
+    (
+        Msg = no_ctxt_msg(_)
+    ;
+        ( Msg = msg(Context, _)
+        ; Msg = simple_msg(Context, _)
+        ),
+        set.insert(Context, !Contexts)
+    ;
+        Msg = error_msg(MaybeContext, _, _, _),
+        (
+            MaybeContext = no
+        ;
+            MaybeContext = yes(Context),
+            set.insert(Context, !Contexts)
+        )
     ).
 
 %---------------------------------------------------------------------------%
@@ -1168,16 +978,6 @@ diff_seq_line_to_pieces(Diff, Pieces) :-
         LinePieces = color_as_incorrect([fixed("+" ++ Str)])
     ),
     Pieces = LinePieces ++ [nl].
-
-%---------------------------------------------------------------------------%
-
-describe_sym_name(SymName) =
-    string.format("`%s'", [s(sym_name_to_string(SymName))]).
-
-describe_sym_name_arity(sym_name_arity(SymName, Arity)) =
-    string.format("`%s'/%d", [s(sym_name_to_string(SymName)), i(Arity)]).
-
-add_quotes(Str) = "`" ++ Str ++ "'".
 
 %---------------------------------------------------------------------------%
 
@@ -1317,89 +1117,277 @@ case_sensitive_replacement_cost(CharA, CharB) = ReplacementCost :-
 
 %---------------------------------------------------------------------------%
 
-extract_spec_phase(Spec, Phase) :-
+color_as_subject(Pieces) =
+    color_pieces(color_subject, Pieces).
+
+color_as_correct(Pieces) =
+    color_pieces(color_correct, Pieces).
+
+color_as_incorrect(Pieces) =
+    color_pieces(color_incorrect, Pieces).
+
+color_as_possible_cause(Pieces) =
+    color_pieces(color_cause, Pieces).
+
+color_pieces(Color, Pieces0) = Pieces :-
+    list.take_while(is_nl_piece, Pieces0, HeadNlPieces, Pieces1),
+    list.reverse(Pieces1, RevPieces1),
+    list.take_while(is_nl_piece, RevPieces1, RevTailNlPieces1, RevMainPieces1),
+    list.reverse(RevTailNlPieces1, TailNlPieces),
+    list.reverse(RevMainPieces1, MainPieces),
     (
-        Spec = error_spec(_, _, Phase, _)
+        MainPieces = [_ | _],
+        Pieces =
+            HeadNlPieces ++
+            [not_for_general_use_start_color(Color)] ++
+            MainPieces ++
+            [not_for_general_use_end_color] ++
+            TailNlPieces
     ;
-        Spec = spec(_, _, Phase, _, _)
-    ;
-        Spec = no_ctxt_spec(_, _, Phase, _)
-    ;
-        Spec = conditional_spec(_, _, _, _, Phase, _)
+        MainPieces = [],
+        % There are no pieces to apply color to.
+        Pieces = HeadNlPieces ++ TailNlPieces
     ).
 
-extract_spec_msgs(Globals, Spec, Msgs) :-
-    (
-        Spec = error_spec(_Id, _Severity, _Phase, Msgs)
-    ;
-        Spec = spec(_Id, _Severity, _Phase, Context, Pieces),
-        Msgs = [msg(Context, Pieces)]
-    ;
-        Spec = no_ctxt_spec(_Id, _Severity, _Phase, Pieces),
-        Msgs = [no_ctxt_msg(Pieces)]
-    ;
-        Spec = conditional_spec(_Id, Option, MatchValue, _Severity, _Phase,
-            Msgs0),
-        globals.lookup_bool_option(Globals, Option, Value),
-        ( if Value = MatchValue then
-            Msgs = Msgs0
-        else
-            Msgs = []
-        )
+:- pred is_nl_piece(format_piece::in) is semidet.
+
+is_nl_piece(Piece) :-
+    ( Piece = nl
+    ; Piece = nl_indent_delta(_)
     ).
 
-extract_spec_msgs_opt_table(OptionTable, Spec, Msgs) :-
+maybe_color_pieces(MaybeColor, Pieces) = MaybeColorPieces :-
     (
-        Spec = error_spec(_Id, _Severity, _Phase, Msgs)
+        MaybeColor = no,
+        MaybeColorPieces = Pieces
     ;
-        Spec = spec(_Id, _Severity, _Phase, Context, Pieces),
-        Msgs = [msg(Context, Pieces)]
-    ;
-        Spec = no_ctxt_spec(_Id, _Severity, _Phase, Pieces),
-        Msgs = [no_ctxt_msg(Pieces)]
-    ;
-        Spec = conditional_spec(_Id, Option, MatchValue, _Severity, _Phase,
-            Msgs0),
-        getopt.lookup_bool_option(OptionTable, Option, Value),
-        ( if Value = MatchValue then
-            Msgs = Msgs0
-        else
-            Msgs = []
-        )
+        MaybeColor = yes(Color),
+        MaybeColorPieces = color_pieces(Color, Pieces)
     ).
 
-accumulate_contexts(Spec, !Contexts) :-
-    (
-        ( Spec = error_spec(_, _, _, Msgs)
-        ; Spec = conditional_spec(_, _, _, _, _, Msgs)
+%---------------------------------------------------------------------------%
+
+list_to_pieces([]) = [].
+list_to_pieces([Elem]) = [fixed(Elem)].
+list_to_pieces([Elem1, Elem2]) = [fixed(Elem1), words("and"), fixed(Elem2)].
+list_to_pieces([Elem1, Elem2, Elem3 | Elems]) =
+    [fixed(Elem1 ++ ",") | list_to_pieces([Elem2, Elem3 | Elems])].
+
+list_to_color_pieces(MaybeColor, LastSepWord, LastColorSuffix, Strings)
+        = Pieces :-
+    ItemToPieces =
+        (pred(Str::in, ItemPieces::out) is det :- ItemPieces = [fixed(Str)]),
+    NonLastSep = [suffix(",")],
+    LastSep = [words(LastSepWord)],
+    general_list_to_pieces(ItemToPieces, MaybeColor, NonLastSep, LastSep,
+        LastColorSuffix, Strings, Pieces).
+
+strict_list_to_pieces([]) = [].
+strict_list_to_pieces([Elem]) = [fixed(Elem)].
+strict_list_to_pieces([Elem1, Elem2 | Elems]) =
+    [fixed(Elem1 ++ ",") | strict_list_to_pieces([Elem2 | Elems])].
+
+list_to_quoted_pieces([]) = [].
+list_to_quoted_pieces([Elem]) = [quote(Elem)].
+list_to_quoted_pieces([Elem1, Elem2]) =
+    [quote(Elem1), words("and"), quote(Elem2)].
+list_to_quoted_pieces([Elem1, Elem2, Elem3 | Elems]) =
+    [quote(Elem1), suffix(",") |
+        list_to_quoted_pieces([Elem2, Elem3 | Elems])].
+
+list_to_quoted_pieces_or([]) = [].
+list_to_quoted_pieces_or([Elem]) = [quote(Elem)].
+list_to_quoted_pieces_or([Elem1, Elem2]) =
+    [quote(Elem1), words("or"), quote(Elem2)].
+list_to_quoted_pieces_or([Elem1, Elem2, Elem3 | Elems]) =
+    [quote(Elem1), suffix(",") |
+        list_to_quoted_pieces_or([Elem2, Elem3 | Elems])].
+
+component_lists_to_pieces(_, []) = [].
+component_lists_to_pieces(_, [Comps]) = Comps.
+component_lists_to_pieces(LastSep, [Comps1, Comps2]) =
+    Comps1 ++ [words(LastSep)] ++ Comps2.
+component_lists_to_pieces(LastSep, [Comps1, Comps2, Comps3 | Comps]) =
+    Comps1 ++ [suffix(",")]
+    ++ component_lists_to_pieces(LastSep, [Comps2, Comps3 | Comps]).
+
+strict_component_lists_to_pieces([]) = [].
+strict_component_lists_to_pieces([Comps]) = Comps.
+strict_component_lists_to_pieces([Comps1, Comps2 | Comps]) =
+    Comps1 ++ [suffix(",")]
+    ++ strict_component_lists_to_pieces([Comps2 | Comps]).
+
+component_list_to_pieces(_, []) = [].
+component_list_to_pieces(_, [Comp]) = [Comp].
+component_list_to_pieces(LastSep, [Comp1, Comp2]) =
+    [Comp1, words(LastSep), Comp2].
+component_list_to_pieces(LastSep, [Comp1, Comp2, Comp3 | Comps]) =
+    [Comp1, suffix(",")]
+    ++ component_list_to_pieces(LastSep, [Comp2, Comp3 | Comps]).
+
+component_list_to_color_pieces(MaybeColor, LastSepWord, LastColorSuffix,
+        ComponentPieces) = Pieces :-
+    ItemToPieces =
+        ( pred(ItemPiece::in, ItemPieces::out) is det :-
+            ItemPieces = [ItemPiece]
         ),
-        list.foldl(accumulate_contexts_in_msg, Msgs, !Contexts)
+    NonLastSep = [suffix(",")],
+    LastSep = [words(LastSepWord)],
+    general_list_to_pieces(ItemToPieces, MaybeColor, NonLastSep, LastSep,
+        LastColorSuffix, ComponentPieces, Pieces).
+
+strict_component_list_to_pieces([]) = [].
+strict_component_list_to_pieces([Comp]) = [Comp].
+strict_component_list_to_pieces([Comp1, Comp2 | Comps]) =
+    [Comp1, suffix(",")]
+    ++ strict_component_list_to_pieces([Comp2 | Comps]).
+
+strict_component_list_to_color_pieces(MaybeColor, LastColorSuffix,
+        ComponentPieces) = Pieces :-
+    ItemToPieces =
+        ( pred(ItemPiece::in, ItemPieces::out) is det :-
+            ItemPieces = [ItemPiece]
+        ),
+    Sep = [suffix(",")],
+    strict_general_list_to_pieces(ItemToPieces, MaybeColor, Sep,
+        LastColorSuffix, ComponentPieces, Pieces).
+
+%---------------------------------------------------------------------------%
+
+list_to_color_line_pieces(MaybeColor, LastColorSuffix, Strs) = Pieces :-
+    ItemToPieces = ( func(Str) = [words(Str)] ),
+    strict_general_list_to_line_pieces(ItemToPieces, MaybeColor,
+        LastColorSuffix, Strs, Pieces).
+
+component_list_to_line_pieces([], _) = [].
+component_list_to_line_pieces([Comps], Final) = Comps ++ Final.
+component_list_to_line_pieces([Comps1, Comps2 | Comp3plus], Final) =
+    Comps1 ++ [suffix(","), nl]
+    ++ component_list_to_line_pieces([Comps2 | Comp3plus], Final).
+
+component_list_to_color_line_pieces(_, _, []) = [].
+component_list_to_color_line_pieces(MaybeColor, CFinal, [Comps]) =
+    maybe_color_pieces(MaybeColor, Comps ++ CFinal).
+component_list_to_color_line_pieces(MaybeColor, CFinal,
+        [Comps1, Comps2 | Comps]) =
+    maybe_color_pieces(MaybeColor, Comps1 ++ [suffix(",")]) ++ [nl] ++
+    component_list_to_color_line_pieces(MaybeColor, CFinal,
+        [Comps2 | Comps]).
+
+component_list_to_color_split_line_pieces(MaybeColorA, MaybeColorB,
+        LastColorSuffixB, Pairs) = Pieces :-
+    ItemToPieces = ( func({A, B}) = {A, B} ),
+    strict_general_list_to_split_line_pieces(ItemToPieces,
+        MaybeColorA, MaybeColorB, LastColorSuffixB, Pairs, Pieces).
+
+%---------------------------------------------------------------------------%
+%
+% General predicates for converting any list of items to the specification
+% of a nicely formatted and possibly colored output.
+%
+% The functions above should probably be reimplemented using this.
+%
+
+:- pred general_list_to_pieces(
+    pred(T, list(format_piece))::in(pred(in, out) is det),
+    maybe(color_name)::in, list(format_piece)::in, list(format_piece)::in,
+    list(format_piece)::in, list(T)::in, list(format_piece)::out) is det.
+
+general_list_to_pieces(ItemToPieces, MaybeColor, NonLastSep, LastSep,
+        LastColorSuffix, Items, Pieces) :-
+    (
+        Items = [],
+        Pieces = []
     ;
-        Spec = spec(_, _, _, Context, _),
-        set.insert(Context, !Contexts)
+        Items = [Item1],
+        ItemToPieces(Item1, Pieces1),
+        Pieces = maybe_color_pieces(MaybeColor, Pieces1 ++ LastColorSuffix)
     ;
-        Spec = no_ctxt_spec(_, _, _, _)
+        Items = [Item1, Item2],
+        ItemToPieces(Item1, Pieces1),
+        ItemToPieces(Item2, Pieces2),
+        Pieces = maybe_color_pieces(MaybeColor, Pieces1) ++ LastSep ++
+            maybe_color_pieces(MaybeColor, Pieces2 ++ LastColorSuffix)
+    ;
+        Items = [Item1, Item2, Item3 | Items4plus],
+        ItemToPieces(Item1, Pieces1),
+        general_list_to_pieces(ItemToPieces, MaybeColor, NonLastSep, LastSep,
+            LastColorSuffix, [Item2, Item3 | Items4plus], TailPieces),
+        Pieces = maybe_color_pieces(MaybeColor, Pieces1 ++ NonLastSep) ++
+            TailPieces
     ).
 
-:- pred accumulate_contexts_in_msg(error_msg::in,
-    set(prog_context)::in, set(prog_context)::out) is det.
+:- pred strict_general_list_to_pieces(
+    pred(T, list(format_piece))::in(pred(in, out) is det),
+    maybe(color_name)::in, list(format_piece)::in,
+    list(format_piece)::in, list(T)::in, list(format_piece)::out) is det.
 
-accumulate_contexts_in_msg(Msg, !Contexts) :-
+strict_general_list_to_pieces(ItemToPieces, MaybeColor, Sep, LastColorSuffix,
+        Items, Pieces) :-
     (
-        Msg = no_ctxt_msg(_)
+        Items = [],
+        Pieces = []
     ;
-        ( Msg = msg(Context, _)
-        ; Msg = simple_msg(Context, _)
-        ),
-        set.insert(Context, !Contexts)
+        Items = [Item1],
+        ItemToPieces(Item1, Pieces1),
+        Pieces = maybe_color_pieces(MaybeColor, Pieces1 ++ LastColorSuffix)
     ;
-        Msg = error_msg(MaybeContext, _, _, _),
-        (
-            MaybeContext = no
-        ;
-            MaybeContext = yes(Context),
-            set.insert(Context, !Contexts)
-        )
+        Items = [Item1, Item2 | Items3plus],
+        ItemToPieces(Item1, Pieces1),
+        strict_general_list_to_pieces(ItemToPieces, MaybeColor, Sep,
+            LastColorSuffix, [Item2 | Items3plus], TailPieces),
+        Pieces = maybe_color_pieces(MaybeColor, Pieces1 ++ Sep) ++ TailPieces
+    ).
+
+:- pred strict_general_list_to_line_pieces((func(T) = list(format_piece))::in,
+    maybe(color_name)::in, list(format_piece)::in,
+    list(T)::in, list(format_piece)::out) is det.
+
+strict_general_list_to_line_pieces(ItemToPieces, MaybeColor, LastColorSuffix,
+        Items, Pieces) :-
+    (
+        Items = [],
+        Pieces = []
+    ;
+        Items = [Item1],
+        Pieces1 = ItemToPieces(Item1),
+        Pieces = maybe_color_pieces(MaybeColor, Pieces1 ++ LastColorSuffix)
+    ;
+        Items = [Item1, Item2 | Items3plus],
+        Pieces1 = ItemToPieces(Item1),
+        HeadPieces = maybe_color_pieces(MaybeColor, Pieces1 ++ [suffix(",")]),
+        strict_general_list_to_line_pieces(ItemToPieces, MaybeColor,
+            LastColorSuffix, [Item2 | Items3plus], TailPieces),
+        Pieces = HeadPieces ++ [nl] ++ TailPieces
+    ).
+
+:- pred strict_general_list_to_split_line_pieces(
+    (func(T) = {list(format_piece), list(format_piece)})::in,
+    maybe(color_name)::in, maybe(color_name)::in, list(format_piece)::in,
+    list(T)::in, list(format_piece)::out) is det.
+
+strict_general_list_to_split_line_pieces(ItemToPieces,
+        MaybeColorA, MaybeColorB, LastColorSuffixB, Items, Pieces) :-
+    (
+        Items = [],
+        Pieces = []
+    ;
+        Items = [Item1],
+        {Pieces1A, Pieces1B} = ItemToPieces(Item1),
+        HeadPiecesA = maybe_color_pieces(MaybeColorA, Pieces1A),
+        HeadPiecesB = maybe_color_pieces(MaybeColorB, Pieces1B ++
+            LastColorSuffixB),
+        Pieces = HeadPiecesA ++ HeadPiecesB
+    ;
+        Items = [Item1, Item2 | Items3plus],
+        {Pieces1A, Pieces1B} = ItemToPieces(Item1),
+        CommaB = [suffix(",")],
+        HeadPiecesA = maybe_color_pieces(MaybeColorA, Pieces1A),
+        HeadPiecesB = maybe_color_pieces(MaybeColorB, Pieces1B ++ CommaB),
+        strict_general_list_to_split_line_pieces(ItemToPieces,
+            MaybeColorA, MaybeColorB, LastColorSuffixB, [Item2 | Items3plus],
+            TailPieces),
+        Pieces = HeadPiecesA ++ HeadPiecesB ++ [nl] ++ TailPieces
     ).
 
 %---------------------------------------------------------------------------%
