@@ -18,7 +18,10 @@ MCFLAGS-actual_expected         = --no-intermodule-optimization
 MCFLAGS-actual_more_expected    = -E
 MCFLAGS-any_to_ground_in_ite_cond_nomax = --no-max-error-line-width
 MCFLAGS-bad_exported_mode       = --infer-all --no-intermodule-optimization
-MCFLAGS-bug214                  = --allow-stubs --no-warn-stubs
+# Intermodule optimization changes the number of an unnamed variable
+# whose automatically-constructed "name" shows up in the .err file.
+MCFLAGS-bug214                  = --allow-stubs --no-warn-stubs \
+                                    --no-intermodule-optimization
 # Mantis bug 238 shows up in bug238.m only with --constraint-propagation.
 MCFLAGS-bug238                  = --constraint-propagation
 MCFLAGS-children                = --no-intermodule-optimization
