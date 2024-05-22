@@ -285,7 +285,7 @@ report_unsatisfied_constraints(ModuleInfo, PredId, PredInfo, Constraints,
             "some unsatisified typeclass constraints:")),
             nl_indent_delta(1)] ++
         component_list_to_color_line_pieces(yes(color_incorrect),
-            [suffix(".")], [],
+            [suffix(".")],
             list.map(constraint_to_error_pieces(TVarSet), Constraints)) ++
         [nl_indent_delta(-1)],
     MainMsg = msg(Context, MainPieces),

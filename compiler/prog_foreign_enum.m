@@ -267,7 +267,7 @@ add_bad_qual_ctors_error(Context, ContextPieces, Ctors, !Specs) :-
             [words("not compatible with the type definition:")]) ++
         [nl_indent_delta(2)] ++
         component_list_to_color_line_pieces(yes(color_incorrect),
-            [suffix(".")], [], QualCtors) ++
+            [suffix(".")], QualCtors) ++
         [nl_indent_delta(-2)],
     Spec = spec($pred, severity_error, phase_pt2h, Context,
         ContextPieces ++ ErrorPieces),
@@ -300,7 +300,7 @@ add_unknown_ctors_error(Context, ContextPieces, Ctors, !Specs) :-
         color_as_incorrect([words(NotConstructors)]) ++
         [words("of the type:"), nl_indent_delta(2)] ++
         component_list_to_color_line_pieces(yes(color_incorrect),
-            [suffix(".")], [], UnqualCtors) ++
+            [suffix(".")], UnqualCtors) ++
         [nl_indent_delta(-2)],
     Spec = spec($pred, severity_error, phase_pt2h, Context,
         ContextPieces ++ ErrorPieces),
@@ -371,7 +371,7 @@ add_foreign_enum_unmapped_ctors_error(Context, ContextPieces, CtorNames0,
 ctor_names_to_line_pieces(CtorNames, Final) = Pieces :-
     Components = list.map(ctor_name_to_format_piece, CtorNames),
     Pieces = component_list_to_color_line_pieces(yes(color_incorrect),
-        Final, [], Components).
+        Final, Components).
 
 :- func ctor_name_to_format_piece(string) = list(format_piece).
 

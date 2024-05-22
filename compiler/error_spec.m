@@ -660,17 +660,15 @@
     list(format_piece)) = list(format_piece).
 
     % component_list_to_color_line_pieces(MaybeColor,
-    %   ColoredFinal, UncoloredFinal, Comps):
+    %   ColoredFinal, Comps):
     %
     % This is a version of component_list_to_pieces that applies
     % the supplied color, if any, to each component list. It splits the Final
     % argument into two, ColoredFinal and UncoloredFinal, with ColoredFinal
-    % being colored together with the last element, followed by UncoloredFinal
-    % which is not colored.
+    % being colored together with the last element.
     %
 :- func component_list_to_color_line_pieces(maybe(color_name),
-    list(format_piece), list(format_piece), list(list(format_piece)))
-    = list(format_piece).
+    list(format_piece), list(list(format_piece))) = list(format_piece).
 
 :- func component_list_to_color_split_line_pieces(
     maybe(color_name), maybe(color_name), list(format_piece),
@@ -947,13 +945,13 @@ component_list_to_line_pieces([Comps1, Comps2 | Comp3plus], Final) =
     Comps1 ++ [suffix(","), nl]
     ++ component_list_to_line_pieces([Comps2 | Comp3plus], Final).
 
-component_list_to_color_line_pieces(_, _, _, []) = [].
-component_list_to_color_line_pieces(MaybeColor, CFinal, UCFinal, [Comps]) =
-    maybe_color_pieces(MaybeColor, Comps ++ CFinal) ++ UCFinal.
-component_list_to_color_line_pieces(MaybeColor, CFinal, UCFinal,
+component_list_to_color_line_pieces(_, _, []) = [].
+component_list_to_color_line_pieces(MaybeColor, CFinal, [Comps]) =
+    maybe_color_pieces(MaybeColor, Comps ++ CFinal).
+component_list_to_color_line_pieces(MaybeColor, CFinal,
         [Comps1, Comps2 | Comps]) =
     maybe_color_pieces(MaybeColor, Comps1 ++ [suffix(",")]) ++ [nl] ++
-    component_list_to_color_line_pieces(MaybeColor, CFinal, UCFinal,
+    component_list_to_color_line_pieces(MaybeColor, CFinal,
         [Comps2 | Comps]).
 
 component_list_to_color_split_line_pieces(MaybeColorA, MaybeColorB,

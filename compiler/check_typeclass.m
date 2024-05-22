@@ -2253,7 +2253,7 @@ report_unknown_instance_methods(ClassId, InstanceDefn,
             [nl_indent_delta(1)] ++
             % XXX ARITY We could separate last two MethodPieces with ", or".
             component_list_to_color_line_pieces(yes(color_subject),
-                [suffix(".")], [], MethodPieces) ++
+                [suffix(".")], MethodPieces) ++
             [nl_indent_delta(-1)]
     ),
     Spec = spec($pred, severity_error, phase_type_check,
@@ -2278,7 +2278,7 @@ report_unsatistfied_superclass_constraint(ClassId, InstanceDefn, ClassTVarSet,
         color_as_incorrect([words("not satisfied:")]) ++
         [nl_indent_delta(1)] ++
         component_list_to_color_line_pieces(yes(color_subject),
-            [suffix(".")], [], ConstraintPieceLists) ++
+            [suffix(".")], ConstraintPieceLists) ++
         [nl_indent_delta(-1)],
     Context = InstanceDefn ^ instdefn_context,
     Spec = spec($pred, severity_error, phase_type_check, Context, Pieces),

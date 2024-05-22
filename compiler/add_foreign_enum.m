@@ -403,7 +403,7 @@ build_export_enum_name_map(ContextPieces, Context, Lang, Prefix, MakeUpperCase,
         BadForeignPiecesList = list.map(MakeBFNPieces, BadForeignNames),
         BadForeignPieces =
             component_list_to_color_line_pieces(yes(color_incorrect),
-                [suffix(".")], [], BadForeignPiecesList),
+                [suffix(".")], BadForeignPiecesList),
         Pieces = ContextPieces ++
             [words("error: some of the constructors of the type")] ++
             color_as_incorrect([words("cannot be converted")]) ++
