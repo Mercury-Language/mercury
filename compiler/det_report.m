@@ -2199,32 +2199,43 @@ find_missing_cons_ids(DetInfo, MaybeLimit, InstMap0, SwitchContexts,
             PrintedConsIds = [],
             MaybeMissingInfo = no
         ;
-            PrintedConsIds = [HeadPrintedConsId | TailPrintedConsIds],
+            PrintedConsIds = [_ | _],
+            % If we invoked determinism analysis on this procedure, then
+            % it must be type correct. Since users will know the type of the
+            % switched-on variable, they will know which module defined it,
+            % and hence which modules defined its function symbols.
+            % Repeating the name of that module for each cons_id is
+            % much more likely to be distracting clutter than helpful
+            % information.
+            WrapConsIdFunc = ( func(C) = [unqual_cons_id_and_maybe_arity(C)] ),
+            PrintedConsIdPieces = list.map(WrapConsIdFunc, PrintedConsIds),
             MaybeCause = yes(color_incorrect),
             (
                 NonPrintedConsIds = [],
                 MainPieces =
                     [nl_indent_delta(1)] ++
-                    cons_id_list_to_pieces(MaybeCause, HeadPrintedConsId,
-                        TailPrintedConsIds, [suffix(".")]) ++
+                    component_list_to_color_line_pieces(MaybeCause,
+                        [suffix(".")], PrintedConsIdPieces) ++
                     [nl_indent_delta(-1)],
                 VerbosePieces = []
             ;
                 NonPrintedConsIds = [_ | _],
+                NonPrintedConsIdPieces =
+                    list.map(WrapConsIdFunc, NonPrintedConsIds),
                 list.length(NonPrintedConsIds, NumNonPrintedConsIds),
                 MainPieces =
                     [nl_indent_delta(1)] ++
-                    cons_id_list_to_pieces(MaybeCause, HeadPrintedConsId,
-                        TailPrintedConsIds, [suffix(","), fixed("...")]) ++
+                    component_list_to_color_line_pieces(MaybeCause,
+                        [suffix(","), fixed("...")], PrintedConsIdPieces) ++
                     [nl_indent_delta(-1)] ++
                     color_as_incorrect([words("and"),
                         int_fixed(NumNonPrintedConsIds), words("more.")]) ++
                     [nl],
+                ConsIdPieces = PrintedConsIdPieces ++ NonPrintedConsIdPieces,
                 VerbosePieces =
                     [nl_indent_delta(1)] ++
-                    cons_id_list_to_pieces(MaybeCause, HeadPrintedConsId,
-                        TailPrintedConsIds ++ NonPrintedConsIds,
-                        [suffix(".")]) ++
+                    component_list_to_color_line_pieces(MaybeCause,
+                        [suffix(".")], ConsIdPieces) ++
                     [nl_indent_delta(-1)]
             ),
             MissingInfo = missing_cons_id_info(NumPossibleConsIds,
@@ -2244,39 +2255,6 @@ compute_covered_cons_ids([Case | Cases], !CoveredConsIds) :-
     set_tree234.insert(MainConsId, !CoveredConsIds),
     set_tree234.insert_list(OtherConsIds, !CoveredConsIds),
     compute_covered_cons_ids(Cases, !CoveredConsIds).
-
-:- func cons_id_list_to_pieces(maybe(color_name), cons_id, list(cons_id),
-    list(format_piece)) = list(format_piece).
-
-cons_id_list_to_pieces(MaybeColor, ConsId1, ConsIds2Plus, EndCommaPieces)
-        = Pieces :-
-    % If we invoked determinism analysis on this procedure, then it must be
-    % type correct. Since users will know the type of the switched-on variable,
-    % they will know which module defined it, and hence which modules defined
-    % its function symbols. Repeating the name of that module for each cons_id
-    % is much more likely to be distracting clutter than helpful information.
-    ConsIdPiece1 = unqual_cons_id_and_maybe_arity(ConsId1),
-    (
-        ConsIds2Plus = [ConsId2 | ConsIds3Plus],
-        (
-            ConsIds3Plus = [_ | _],
-            Pieces1 = maybe_color_pieces(MaybeColor,
-                [ConsIdPiece1, suffix(",")]) ++ [nl]
-        ;
-            ConsIds3Plus = [],
-            Pieces1 = maybe_color_pieces(MaybeColor, [ConsIdPiece1]) ++
-                [words("or"), nl]
-        ),
-        Pieces2Plus = cons_id_list_to_pieces(MaybeColor, ConsId2, ConsIds3Plus,
-            EndCommaPieces),
-        Pieces = Pieces1 ++ Pieces2Plus
-    ;
-        ConsIds2Plus = [],
-        % Our caller will append the newline, with a negative indent
-        % to undo the positive indent before the start of the list of cons_ids.
-        Pieces = maybe_color_pieces(MaybeColor,
-            [ConsIdPiece1 | EndCommaPieces])
-    ).
 
 %---------------------------------------------------------------------------%
 
