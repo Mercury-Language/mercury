@@ -174,13 +174,13 @@ report_error_pred_wrong_arity(ClauseContext, Context, SymNameArity,
             PredFormArityInt = 9
         )
     then
-        SpecialPieces0 =
+        SpecialPieces =
             [words("One possible reason for the error is that"),
             words("the predicate in the"), quote(StdLibModuleName),
-            words("module that used to be named"), quote(PredName),
-            words("has been renamed to"), quote(PredName ++ "_io"),
-            suffix("."), nl],
-        SpecialPieces = color_as_possible_cause(SpecialPieces0)
+            words("module that used to be named"), quote(PredName)] ++
+            color_as_possible_cause([words("has been renamed to"),
+                quote(PredName ++ "_io"), suffix(".")]) ++
+            [nl]
     else
         SpecialPieces = []
     ),
@@ -377,12 +377,13 @@ maybe_warn_about_getopt_changes(PredSymName, PredFormArityInt, GetoptPieces) :-
             NewPredName = "process_options_track"
         )
     then
-        GetoptPieces0 =
+        GetoptPieces =
             [words("One possible reason for the error is that"),
             words("the predicate"), quote(PredName),
-            words("in the Mercury standard library has been renamed to"),
-            quote(NewPredName), suffix(".")],
-        GetoptPieces = color_as_possible_cause(GetoptPieces0) ++ [nl]
+            words("in the Mercury standard library has been")] ++
+            color_as_possible_cause([words("renamed to"),
+                quote(NewPredName), suffix(".")]) ++
+            [nl]
     else
         GetoptPieces = []
     ).
@@ -462,9 +463,10 @@ report_error_pred_wrong_full_name(ClauseContext, Context, PredicateTable,
 :- func report_error_func_instead_of_pred(prog_context) = error_msg.
 
 report_error_func_instead_of_pred(Context) = Msg :-
-    Pieces0 = [words("(There is a *function* with that name, however."), nl,
-        words("Perhaps you forgot to add"), quote(" = ..."), suffix("?)"), nl],
-    Pieces = color_as_possible_cause(Pieces0),
+    Pieces = [words("(There is a *function* with that name, however."), nl] ++
+        color_as_possible_cause([words("Perhaps you forgot to add"),
+            quote(" = ..."), suffix("?)")]) ++
+        [nl],
     Msg = msg(Context, Pieces).
 
 %---------------------------------------------------------------------------%
@@ -541,15 +543,19 @@ language_builtin_functor_components(Name, Arity, Components) :-
         color_as_incorrect([words("should be used as a goal,"),
             words("not as an expression.")]) ++
         [nl],
-    VerbosePieces0 = [words("If you are trying to use a goal"),
-        words("as a boolean function, you should write"),
-        words_quote("if <goal> then yes else no"), words("instead."), nl],
-    VerbosePieces = color_as_possible_cause(VerbosePieces0),
+    VerbosePieces = [words("If you are trying to use a goal"),
+        words("as a boolean function, you should write")] ++
+        color_as_possible_cause([words_quote("if <goal> then yes else no"),
+            words("instead.")]) ++
+        [nl],
     ( if Name = "call" then
-        VerboseCallPieces0 =
+        VerboseCallPieces =
             [words("If you are trying to invoke a higher-order function,"),
-            words("you should use"), quote("apply"), suffix(","),
-            words("not"), quote("call"), suffix("."), nl,
+            words("you should use")] ++
+            color_as_correct([quote("apply"), suffix(",")]) ++
+            [words("not")] ++
+            color_as_incorrect([quote("call"), suffix(".")]) ++
+            [nl,
             words("If you are trying to curry a higher-order function,"),
             words("see the ""Creating higher-order terms"" section"),
             words("of the Mercury Language Reference Manual."), nl,
@@ -560,8 +566,7 @@ language_builtin_functor_components(Name, Arity, Components) :-
             words("and that the functor"), quote("call"),
             words("is actually defined."),
             words("(If it is defined in a separate module,"),
-            words("check that the module is correctly imported.)"), nl],
-        VerboseCallPieces = color_as_possible_cause(VerboseCallPieces0)
+            words("check that the module is correctly imported.)"), nl]
     else
         VerboseCallPieces = []
     ),
@@ -1108,33 +1113,34 @@ report_any_missing_module_qualifiers(ClauseContext, Context,
             [words("That"), words(ItemName), words("is defined in")],
         (
             TailModuleNames = [],
-            ModulesPieces =
-                [words("module"), qual_sym_name(HeadModuleName), suffix(","),
-                words("which does not have an"),
-                decl("import_module"), words("declaration."), nl]
+            ModuleNamesPieces =
+                color_as_subject([qual_sym_name(HeadModuleName), suffix(",")]),
+            ModulesPieces = [words("module")] ++ ModuleNamesPieces,
+            NoImportsPieces =
+                [words("which does not have an"),
+                decl("import_module"), words("declaration.")]
         ;
             TailModuleNames = [_ | TailTailModuleNames],
             ModuleNamePieces =
                 list.map(func(MN) = qual_sym_name(MN), ModuleNames),
             ModuleNamesPieces =
-                component_list_to_pieces("and", ModuleNamePieces),
+                component_list_to_color_pieces(yes(color_subject), "and",
+                    [suffix(",")], ModuleNamePieces),
+            ModulesPieces = [words("modules")] ++ ModuleNamesPieces,
             (
                 TailTailModuleNames = [],
                 NoImportsPieces =
                     [words("neither of which has an"),
-                    decl("import_module"), words("declaration."), nl]
+                    decl("import_module"), words("declaration.")]
             ;
                 TailTailModuleNames = [_ | _],
                 NoImportsPieces =
                     [words("none of which have"),
                     decl("import_module"), words("declarations."), nl]
-            ),
-            ModulesPieces =
-                [words("modules")] ++ ModuleNamesPieces ++ [suffix(",")] ++
-                NoImportsPieces
+            )
         ),
-        MainPieces0 = IsDefinedInPieces ++ ModulesPieces,
-        MainPieces = color_as_possible_cause(MainPieces0),
+        MainPieces = IsDefinedInPieces ++ ModulesPieces ++
+            color_as_possible_cause(NoImportsPieces) ++ [nl],
         MainMsg = msg(Context, MainPieces),
         VerbosePieces = [words("Note that symbols defined in modules"),
             words("accessed via"), decl("use_module"), words("declarations"),
@@ -1161,9 +1167,11 @@ maybe_report_missing_import_addendum(ClauseContext, ModuleQualifier,
     ( if set.is_empty(MatchingVisibleModules) then
         % The module qualifier does not match any of the visible modules,
         % so we report that the module has not been imported.
-        Pieces0 = [words("(The module"), qual_sym_name(ModuleQualifier),
-            words("has not been imported.)")],
-        Pieces = [nl | color_as_possible_cause(Pieces0)] ++ [nl],
+        Pieces = [nl,
+            words("(The module")] ++
+            color_as_subject([qual_sym_name(ModuleQualifier)]) ++
+            color_as_possible_cause([words("has not been imported.)")]) ++
+            [nl],
         MissingImportModules = [ModuleQualifier]
     else
         % The module qualifier matches one or more of the visible modules.
@@ -1212,14 +1220,21 @@ find_unimported_ancestors(VisibleModules, MatchingModuleNames,
     = list(format_piece).
 
 report_unimported_ancestors(UnimportedAncestors) = Pieces :-
-    UnimportedAncestorDescs = list.map(describe_sym_name, UnimportedAncestors),
-    AllUnimportedAncestors = list_to_pieces(UnimportedAncestorDescs),
-    ( if AllUnimportedAncestors = [_] then
+    UnimportedAncestorPieces =
+        list.map((func(M) = qual_sym_name(M)), UnimportedAncestors),
+    UnimportedAncestorListPieces =
+        component_list_to_color_pieces(yes(color_subject), "and", [],
+            UnimportedAncestorPieces),
+    ( if UnimportedAncestors = [_] then
         Pieces = [words("(The possible parent module")] ++
-            AllUnimportedAncestors ++ [words("has not been imported.)"), nl]
+            UnimportedAncestorListPieces ++
+            color_as_incorrect([words("has not been imported.)")]) ++
+            [nl]
     else
         Pieces = [words("(The possible parent modules")] ++
-            AllUnimportedAncestors ++ [words("have not been imported.)"), nl]
+            UnimportedAncestorListPieces ++
+            color_as_incorrect([words("have not been imported.)")]) ++
+            [nl]
     ).
 
 %---------------------------------------------------------------------------%
