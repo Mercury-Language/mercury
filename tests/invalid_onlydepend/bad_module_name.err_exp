@@ -1,5 +1,5 @@
 bad_module_name.sub.m:008: Error: file `bad_module_name.sub.m' contains the
 bad_module_name.sub.m:008:   wrong module. Expected module
-bad_module_name.sub.m:008:   `bad_module_name.sub', found module
-bad_module_name.sub.m:008:   `wrong_module_name'.
+bad_module_name.sub.m:008:   [38;5;40m`bad_module_name.sub',[39;49m found module
+bad_module_name.sub.m:008:   [38;5;203m`wrong_module_name'.[39;49m
 bad_module_name.m:010:   The expected name is specified here.
