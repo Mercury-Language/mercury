@@ -4,7 +4,8 @@ multimode_addr_problems.m:027:   higher-order term based on multi-moded
 multimode_addr_problems.m:027:   predicate
 multimode_addr_problems.m:027:   `multimode_addr_problems.absolute'/2.
 multimode_addr_problems.m:027:   The modes of the argument variables [38;5;203mmatch more[39;49m
-multimode_addr_problems.m:027:   [38;5;203mthan one[39;49m of the called predicate's modes.
+multimode_addr_problems.m:027:   [38;5;203mthan one[39;49m of the called predicate's modes,
+multimode_addr_problems.m:027:   specifically the first and second.
 multimode_addr_problems.m:052: In clause for `my_foldl(in((func(in, in) = out
 multimode_addr_problems.m:052:   is det)), in, in) = out':
 multimode_addr_problems.m:052:   mode error in unification of `P' and

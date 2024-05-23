@@ -14,5 +14,6 @@ currying_multimode_func.m:022:   mode error in unification of `V_6' and
 currying_multimode_func.m:022:   higher-order term based on multi-moded
 currying_multimode_func.m:022:   function `uint.xor'/2.
 currying_multimode_func.m:022:   The modes of the argument variables [38;5;203mmatch more[39;49m
-currying_multimode_func.m:022:   [38;5;203mthan one[39;49m of the called function's modes.
+currying_multimode_func.m:022:   [38;5;203mthan one[39;49m of the called function's modes,
+currying_multimode_func.m:022:   specifically the first, second and third.
 For more information, recompile with `-E'.

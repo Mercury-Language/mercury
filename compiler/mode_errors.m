@@ -245,9 +245,21 @@
     --->    pred_id_var_multimode_error(pred_id, var_multimode_error).
 
 :- type var_multimode_error
-    --->    no_matching_mode(list(prog_var))
-    ;       more_than_one_matching_mode(list(prog_var))
-    ;       some_ho_args_non_ground(list(prog_var)).
+    --->    no_matching_mode(
+                % The modes of these arguments match no mode of the callee.
+                list(prog_var)
+            )
+    ;       more_than_one_matching_mode(
+                % The modes of these arguments match more than one mode
+                % of the callee ...
+                list(prog_var),
+                % ... specifically, these modes.
+                proc_id, proc_id, list(proc_id)
+            )
+    ;       some_ho_args_non_ground(
+                % These higher order arguments of the call are not ground.
+                list(prog_var)
+            ).
 
 %---------------------%
 
@@ -690,11 +702,23 @@ mode_error_unify_var_multimode_pf_to_spec(ModeInfo, X, PredMultiModeError)
         (
             MultiModeError = no_matching_mode(ArgVars),
             MatchPieces = [words(choose_number(ArgVars, "does", "do")),
-                words("not match any")]
+                words("not match any")],
+            EndPieces = [suffix(".")]
         ;
-            MultiModeError = more_than_one_matching_mode(ArgVars),
+            MultiModeError = more_than_one_matching_mode(ArgVars,
+                ProcA, ProcB, ProcCs),
             MatchPieces = [words(choose_number(ArgVars, "matches", "match")),
-                words("more than one")]
+                words("more than one")],
+            ProcIdToPiece =
+                ( func(ProcId) = nth_fixed(ModeNum) :-
+                    % ProcIds start at zero, mode numbers start at 1.
+                    ModeNum = proc_id_to_int(ProcId) + 1
+                ),
+            ModeNumberPieces =
+                list.map(ProcIdToPiece, [ProcA, ProcB | ProcCs]),
+            EndPieces = [suffix(","), words("specifically the")] ++
+                component_list_to_pieces("and", ModeNumberPieces) ++
+                [suffix(".")]
         ),
         ModeOrModes = choose_number(ArgVars, "mode", "modes"),
         VarOrVars = choose_number(ArgVars, "variable", "variables"),
@@ -703,7 +727,8 @@ mode_error_unify_var_multimode_pf_to_spec(ModeInfo, X, PredMultiModeError)
         DetailPieces = [words("The"), words(ModeOrModes),
             words("of the argument"), words(VarOrVars)] ++ ArgVarPieces ++
             color_as_incorrect(MatchPieces) ++ [words("of the called"),
-            p_or_f(PredOrFunc), suffix("'s"), words("modes."), nl]
+            p_or_f(PredOrFunc), suffix("'s"), words("modes")] ++
+            EndPieces ++ [nl]
     ),
     Spec = spec($pred, severity_error, phase_mode_check(report_in_any_mode),
         Context, Preamble ++ StartPieces ++ DetailPieces).

@@ -172,7 +172,6 @@
 :- import_module parse_tree.error_sort.
 :- import_module parse_tree.parse_tree_out_info.
 :- import_module parse_tree.parse_tree_out_misc.
-:- import_module parse_tree.parse_tree_out_term.
 :- import_module parse_tree.prog_data_foreign.
 :- import_module parse_tree.prog_data_pragma.
 :- import_module parse_tree.prog_detism.
@@ -1675,23 +1674,21 @@ det_infer_scope(Reason, Goal0, Goal, GoalInfo, InstMap0, SolnContext,
                 OverlapVars = set_of_var.intersect(
                     set_of_var.list_to_set(OldVars),
                     set_of_var.list_to_set(Vars)),
-                ( if set_of_var.is_empty(OverlapVars) then
-                    true
-                else
-                    OverlapVarNames = list.map(
-                        mercury_var_to_string(VarTable, print_name_only),
-                        set_of_var.to_sorted_list(OverlapVars)),
-                    OverlapVarDotPieces = list_to_color_pieces(
+                OverlapVarList = set_of_var.to_sorted_list(OverlapVars),
+                (
+                    OverlapVarList = []
+                ;
+                    OverlapVarList = [_HeadOverlapVar | TailOverlapVars],
+                    OverlapVarPieces = list.map(
+                        var_in_table_to_quote_piece(VarTable), OverlapVarList),
+                    OverlapVarDotPieces = component_list_to_color_pieces(
                         yes(color_subject), "and", [suffix(".")],
-                        OverlapVarNames),
+                        OverlapVarPieces),
                     (
-                        OverlapVarNames = [],
-                        unexpected($pred, "arbitrary_promise_overlap empty")
-                    ;
-                        OverlapVarNames = [_],
+                        TailOverlapVars = [],
                         OverlapVarStr = "the variable"
                     ;
-                        OverlapVarNames = [_, _ | _],
+                        TailOverlapVars = [_ | _],
                         OverlapVarStr = "the following variables:"
                     ),
                     OverlapPieces = [words("Error: this"), quote("arbitrary"),
@@ -1732,23 +1729,21 @@ det_infer_scope(Reason, Goal0, Goal, GoalInfo, InstMap0, SolnContext,
         % in the promise_equivalent_solution{s,_sets} or arbitrary scope?
         set_of_var.difference(BoundVars, set_of_var.list_to_set(Vars),
             MissingVars),
-        ( if set_of_var.is_empty(MissingVars) then
-            true
-        else
-            MissingVarNames = list.map(
-                mercury_var_to_string(VarTable, print_name_only),
-                set_of_var.to_sorted_list(MissingVars)),
-            MissingVarDotPieces = list_to_color_pieces(yes(color_subject),
-                "and", [suffix(".")], MissingVarNames),
+        MissingVarList = set_of_var.to_sorted_list(MissingVars),
+        (
+            MissingVarList = []
+        ;
+            MissingVarList = [_HeadMissingVar | TailMissingVars],
+            MissingVarPieces = list.map(var_in_table_to_quote_piece(VarTable),
+                MissingVarList),
+            MissingVarDotPieces = component_list_to_color_pieces(
+                yes(color_subject), "and", [suffix(".")], MissingVarPieces),
             MissingKindStr = promise_solutions_kind_str(Kind),
             (
-                MissingVarNames = [],
-                unexpected($pred, "promise_solutions_missing_vars empty")
-            ;
-                MissingVarNames = [_],
+                TailMissingVars = [],
                 MissingListStr = "a variable that is not listed:"
             ;
-                MissingVarNames = [_, _ | _],
+                TailMissingVars = [_ | _],
                 MissingListStr = "some variables that are not listed:"
             ),
             ( if
@@ -1772,36 +1767,36 @@ det_infer_scope(Reason, Goal0, Goal, GoalInfo, InstMap0, SolnContext,
         set_of_var.difference(set_of_var.list_to_set(Vars),
             BoundVars, ExtraVars),
         det_info_get_pess_extra_vars(!.DetInfo, IgnoreExtraVars),
-        ( if
-            ( set_of_var.is_empty(ExtraVars)
-            ; IgnoreExtraVars = pess_extra_vars_ignore
-            )
-        then
-            true
-        else
-            ExtraVarNames = list.map(
-                mercury_var_to_string(VarTable, print_name_only),
-                set_of_var.to_sorted_list(ExtraVars)),
-            ExtraVarDotPieces = list_to_color_pieces(yes(color_subject),
-                "and",  [suffix(".")], ExtraVarNames),
-            ExtraKindStr = promise_solutions_kind_str(Kind),
+        ExtraVarList = set_of_var.to_sorted_list(ExtraVars),
+        (
+            ExtraVarList = []
+        ;
+            ExtraVarList = [_HeadExtraVar | TailExtraVars],
+            ExtraVarPieces =
+                list.map(var_in_table_to_quote_piece(VarTable), ExtraVarList),
             (
-                ExtraVarNames = [],
-                unexpected($pred, "promise_solutions_extra_vars empty")
+                IgnoreExtraVars = pess_extra_vars_ignore
             ;
-                ExtraVarNames = [_],
-                ExtraListStr = "an extra variable:"
-            ;
-                ExtraVarNames = [_, _ | _],
-                ExtraListStr = "some extra variables:"
-            ),
-            ExtraPieces = [words("Error: the"), quote(ExtraKindStr),
-                words("goal")] ++
-                color_as_incorrect([words("lists"), words(ExtraListStr)]) ++
-                ExtraVarDotPieces ++ [nl],
-            ExtraSpec = spec($pred, severity_error,
-                phase_detism_check, Context, ExtraPieces),
-            det_info_add_error_spec(ExtraSpec, !DetInfo)
+                IgnoreExtraVars = pess_extra_vars_report,
+                ExtraVarDotPieces = component_list_to_color_pieces(
+                    yes(color_subject), "and",  [suffix(".")], ExtraVarPieces),
+                ExtraKindStr = promise_solutions_kind_str(Kind),
+                (
+                    TailExtraVars = [],
+                    ExtraListStr = "an extra variable:"
+                ;
+                    TailExtraVars = [_ | _],
+                    ExtraListStr = "some extra variables:"
+                ),
+                ExtraPieces = [words("Error: the"), quote(ExtraKindStr),
+                    words("goal")] ++
+                    color_as_incorrect([words("lists"),
+                        words(ExtraListStr)]) ++
+                    ExtraVarDotPieces ++ [nl],
+                ExtraSpec = spec($pred, severity_error, phase_detism_check,
+                    Context, ExtraPieces),
+                det_info_add_error_spec(ExtraSpec, !DetInfo)
+            )
         ),
         det_infer_goal(Goal0, Goal, InstMap0, SolnContextToUse,
             RightFailingContexts, MaybePromiseEqvSolutionSets, Detism,
@@ -1964,8 +1959,8 @@ det_check_for_noncanonical_type(Var, ExaminesRepresentation, CanFail,
             Context = goal_info_get_context(GoalInfo),
             (
                 GoalContext = ccuc_switch,
-                VarStr = mercury_var_to_string(VarTable, print_name_only, Var),
-                Pieces0 = [words("In switch on variable"), quote(VarStr),
+                VarPiece = var_in_table_to_quote_piece(VarTable, Var),
+                Pieces0 = [words("In switch on variable"), VarPiece,
                     suffix(":"), nl]
             ;
                 GoalContext = ccuc_unify(UnifyContext),
@@ -2000,9 +1995,8 @@ det_check_for_noncanonical_type(Var, ExaminesRepresentation, CanFail,
                 Context = goal_info_get_context(GoalInfo),
                 (
                     GoalContext = ccuc_switch,
-                    VarStr = mercury_var_to_string(VarTable,
-                        print_name_only, Var),
-                    Pieces0 = [words("In switch on variable"), quote(VarStr),
+                    VarPiece = var_in_table_to_quote_piece(VarTable, Var),
+                    Pieces0 = [words("In switch on variable"), VarPiece,
                         suffix(":"), nl]
                 ;
                     GoalContext = ccuc_unify(UnifyContext),

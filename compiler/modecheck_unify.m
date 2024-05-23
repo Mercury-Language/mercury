@@ -554,8 +554,9 @@ modecheck_unification_rhs_undetermined_mode_lambda(X, RHS0, Unification,
                 MatchResult = possible_modes([]),
                 MultiModeError = no_matching_mode(ArgVars)
             ;
-                MatchResult = possible_modes([_, _ | _]),
-                MultiModeError = more_than_one_matching_mode(ArgVars)
+                MatchResult = possible_modes([ProcA, ProcB | ProcCs]),
+                MultiModeError = more_than_one_matching_mode(ArgVars,
+                    ProcA, ProcB, ProcCs)
             ),
             PredMultiModeError =
                 pred_id_var_multimode_error(PredId, MultiModeError),
