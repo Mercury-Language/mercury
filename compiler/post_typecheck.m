@@ -612,9 +612,9 @@ report_unresolved_type_warning(ModuleInfo, PredId, PredInfo, VarsEntries,
     list.sort(VarTypeStrs0, VarTypeStrs),
     (
         MaybeAllTVars = all_tvars,
-        assoc_list.keys(VarTypeStrs, VarStrs),
-        VarTypePieces = list_to_color_line_pieces(yes(color_incorrect),
-            [suffix(".")], VarStrs),
+        VarPieces = list.map((func(VN - _) = [quote(VN)]), VarTypeStrs),
+        VarTypePieces = component_list_to_color_line_pieces(
+            yes(color_incorrect), [suffix(".")], VarPieces),
         SetPieces = [
             words(choose_number(VarsEntries, "Its type", "Their types")),
             words("will be implicitly set to the builtin type"),
@@ -722,14 +722,16 @@ var_vte_to_name_and_type_strs(TVarSet, Var - Entry, VarStr - TypeStr,
 :- func var_and_type_to_pieces_pairs(int, pair(string, string)) =
     {list(format_piece), list(format_piece)}.
 
-var_and_type_to_pieces_pairs(MaxVarNameLen, VarStr - TypeStr)
+var_and_type_to_pieces_pairs(MaxVarNameLen, VarName - TypeStr)
         = {VarPieces, TypePieces} :-
-    % The +1 is to account for the colon. Without it, the VarColonStr
-    % we construct for the longest variable name would have MaxVarNameLen + 1
-    % code points, while the VarColonStrs we construct for all shorter
-    % variable names would have only MaxVarNameLen code points.
-    string.pad_right(VarStr ++ ":", ' ', MaxVarNameLen + 1, VarColonStr),
-    VarPieces = [fixed(VarColonStr)],
+    VarNameLen = string.count_code_points(VarName),
+    ( if VarNameLen < MaxVarNameLen then
+        PadLen = MaxVarNameLen - VarNameLen,
+        ColonPadding = ":" ++ string.duplicate_char(' ', PadLen)
+    else
+        ColonPadding = ":"
+    ),
+    VarPieces = [quote(VarName), suffix(ColonPadding)],
     TypePieces = [words(TypeStr)].
 
 %---------------------------------------------------------------------------%

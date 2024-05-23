@@ -10,8 +10,8 @@ unsatisfiable_constraint.m:045:     a goal here.
 unsatisfiable_constraint.m:039: Warning: unresolved polymorphism in predicate
 unsatisfiable_constraint.m:039:   [38;5;87m`test'/1.[39;49m
 unsatisfiable_constraint.m:039:   The variables with unbound types were:
-unsatisfiable_constraint.m:039:     [38;5;203mB,[39;49m
-unsatisfiable_constraint.m:039:     [38;5;203mC.[39;49m
+unsatisfiable_constraint.m:039:     [38;5;203m`B',[39;49m
+unsatisfiable_constraint.m:039:     [38;5;203m`C'.[39;49m
 unsatisfiable_constraint.m:039:   Their types will be implicitly set to the
 unsatisfiable_constraint.m:039:   builtin type `void'.
 unsatisfiable_constraint.m:039:   The body of the clause contains a call to a
