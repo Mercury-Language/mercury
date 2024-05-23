@@ -4,7 +4,7 @@ nullary_ho_func_error.m:026:   `io.print_line'/3:
 nullary_ho_func_error.m:026:   in argument 1 of functor `apply_nullary_func/1':
 nullary_ho_func_error.m:026:   type error in unification of argument
 nullary_ho_func_error.m:026:   and constant `pi'.
-nullary_ho_func_error.m:026:   [38;5;87margument[39;49m has type
+nullary_ho_func_error.m:026:   [38;5;87mArgument[39;49m has type
 nullary_ho_func_error.m:026:     [38;5;203m(func) = T,[39;49m
 nullary_ho_func_error.m:026:   [38;5;87mconstant `pi'[39;49m has type
 nullary_ho_func_error.m:026:     [38;5;40mfloat.[39;49m

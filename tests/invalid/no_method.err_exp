@@ -4,7 +4,7 @@ no_method.m:035:   constructor [38;5;87m`one_str'.[39;49m
 no_method.m:043: In clause for instance method function `func_c'/3:
 no_method.m:043:   type error in unification of variable `HeadVar__4'
 no_method.m:043:   and functor `three_str'/3.
-no_method.m:043:   [38;5;87mvariable `HeadVar__4'[39;49m has type
+no_method.m:043:   [38;5;87mVariable `HeadVar__4'[39;49m has type
 no_method.m:043:     [38;5;203mstring,[39;49m
 no_method.m:043:   [38;5;87mfunctor `three_str'/3[39;49m has type
 no_method.m:043:     [38;5;40mthree_str(string, string, string): func(int) = string.[39;49m

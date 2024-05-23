@@ -19,7 +19,7 @@ integral_constant_no_suffix.m:024:   in argument 1 of clause head:
 integral_constant_no_suffix.m:024:   type error in unification of variable
 integral_constant_no_suffix.m:024:   `HeadVar__1'
 integral_constant_no_suffix.m:024:   and constant `42'.
-integral_constant_no_suffix.m:024:   [38;5;87mvariable `HeadVar__1'[39;49m has type
+integral_constant_no_suffix.m:024:   [38;5;87mVariable `HeadVar__1'[39;49m has type
 integral_constant_no_suffix.m:024:     [38;5;203muint8,[39;49m
 integral_constant_no_suffix.m:024:   [38;5;87mconstant `42'[39;49m has type
 integral_constant_no_suffix.m:024:     [38;5;40mint.[39;49m

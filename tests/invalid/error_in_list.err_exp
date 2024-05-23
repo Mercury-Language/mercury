@@ -3,7 +3,7 @@ error_in_list.m:015:   in function result term of clause head:
 error_in_list.m:015:   in list element #5:
 error_in_list.m:015:   type error in unification of argument
 error_in_list.m:015:   and constant `"five"'.
-error_in_list.m:015:   [38;5;87margument[39;49m has type
+error_in_list.m:015:   [38;5;87mArgument[39;49m has type
 error_in_list.m:015:     [38;5;203mint,[39;49m
 error_in_list.m:015:   [38;5;87mconstant `"five"'[39;49m has type
 error_in_list.m:015:     [38;5;40mstring.[39;49m
@@ -12,7 +12,7 @@ error_in_list.m:015:   in function result term of clause head:
 error_in_list.m:015:   in list element #7:
 error_in_list.m:015:   type error in unification of argument
 error_in_list.m:015:   and constant `7.0'.
-error_in_list.m:015:   [38;5;87margument[39;49m has type
+error_in_list.m:015:   [38;5;87mArgument[39;49m has type
 error_in_list.m:015:     [38;5;203mint,[39;49m
 error_in_list.m:015:   [38;5;87mconstant `7.0'[39;49m has type
 error_in_list.m:015:     [38;5;40mfloat.[39;49m

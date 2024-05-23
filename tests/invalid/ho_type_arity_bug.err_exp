@@ -2,7 +2,7 @@ ho_type_arity_bug.m:036: In clause for predicate `p'/1:
 ho_type_arity_bug.m:036:   in argument 3 of functor `option_ops_userdata/3':
 ho_type_arity_bug.m:036:   type error in unification of argument
 ho_type_arity_bug.m:036:   and constant `p_special'.
-ho_type_arity_bug.m:036:   [38;5;87margument[39;49m has type
+ho_type_arity_bug.m:036:   [38;5;87mArgument[39;49m has type
 ho_type_arity_bug.m:036:     [38;5;203mpred([39;49m
 ho_type_arity_bug.m:036:       [38;5;203mho_type_arity_bug.option,[39;49m
 ho_type_arity_bug.m:036:       [38;5;203munit.unit,[39;49m

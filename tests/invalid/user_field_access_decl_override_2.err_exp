@@ -18,7 +18,7 @@ user_field_access_decl_override_2.m:037:   `set_foo_f1'/3:
 user_field_access_decl_override_2.m:037:   type error in unification of
 user_field_access_decl_override_2.m:037:   variable `STATE_VARIABLE_Foo'
 user_field_access_decl_override_2.m:037:   and functor `f1 :='/2.
-user_field_access_decl_override_2.m:037:   [38;5;87mvariable `STATE_VARIABLE_Foo'[39;49m has
+user_field_access_decl_override_2.m:037:   [38;5;87mVariable `STATE_VARIABLE_Foo'[39;49m has
 user_field_access_decl_override_2.m:037:   type
 user_field_access_decl_override_2.m:037:     [38;5;203msome [T] ([39;49m
 user_field_access_decl_override_2.m:037:       [38;5;203muser_field_access_decl_override_2.foo([39;49m

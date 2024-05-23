@@ -1,7 +1,7 @@
 ext_type.m:020: In clause for predicate `p'/2:
 ext_type.m:020:   type error in unification of variable `Z'
 ext_type.m:020:   and functor `q'/1.
-ext_type.m:020:   [38;5;87mvariable `Z'[39;49m has type
+ext_type.m:020:   [38;5;87mVariable `Z'[39;49m has type
 ext_type.m:020:     [38;5;203msome [QT] (QT),[39;49m
 ext_type.m:020:   [38;5;87mfunctor `q'/1[39;49m has type
 ext_type.m:020:     [38;5;40mq(int): some [QT] (QT).[39;49m
@@ -15,7 +15,7 @@ ext_type.m:020:     Z_5: QT
 ext_type.m:023: In clause for predicate `r'/0:
 ext_type.m:023:   type error in unification of argument
 ext_type.m:023:   and functor `q'/1.
-ext_type.m:023:   [38;5;87margument[39;49m has type
+ext_type.m:023:   [38;5;87mArgument[39;49m has type
 ext_type.m:023:     [38;5;203msome [QT] (QT),[39;49m
 ext_type.m:023:   [38;5;87mfunctor `q'/1[39;49m has type
 ext_type.m:023:     [38;5;40mq(int): some [QT] (QT).[39;49m

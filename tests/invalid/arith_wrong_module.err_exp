@@ -1,7 +1,7 @@
 arith_wrong_module.m:022: In clause for predicate `test_func'/3:
 arith_wrong_module.m:022:   type error in unification of variable `C'
 arith_wrong_module.m:022:   and functor `+'/2.
-arith_wrong_module.m:022:   [38;5;87mvariable `C'[39;49m has type
+arith_wrong_module.m:022:   [38;5;87mVariable `C'[39;49m has type
 arith_wrong_module.m:022:     [38;5;203muint32,[39;49m
 arith_wrong_module.m:022:   [38;5;87mfunctor `+'/2[39;49m has type
 arith_wrong_module.m:022:     [38;5;40m`+'(int, int): int.[39;49m
