@@ -310,7 +310,7 @@ format_call_error_wrong_type(PredInfo, Context, NumFormatArgs, FormatArgNum,
             words("argument of"), quote("format_string_values")]) ++
         [words("specifies argument number"), int_fixed(ArgNum),
             words("as holding"), words(Role), suffix(","), words("but")] ++
-        color_as_incorrect([words("but the type of that argument is not"),
+        color_as_incorrect([words("the type of that argument is not"),
             quote(ExpectedType), suffix(".")]) ++
         [nl],
     Spec = spec($pred, severity_error, phase_pt2h, Context, Pieces).

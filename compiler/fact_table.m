@@ -515,7 +515,7 @@ check_proc_arg_modes(ModuleInfo, PredProcId, ProcInfo, [Mode | Modes], ArgNum,
                 ProcPieces ++
                 [words("to be either fully input or fully output,"),
                 words("but the"), nth_fixed(ArgNum), words("argument is")] ++
-                color_as_incorrect([words("is neither.")]) ++
+                color_as_incorrect([words("neither.")]) ++
                 [nl],
             Spec = spec($pred, severity_error, phase_fact_table_check,
                 Context, Pieces),

@@ -10,7 +10,6 @@ bad_fact_table_decls.m:054:   [38;5;203marguments are input.[39;49m
 bad_fact_table_decls.m:057: Error: the `:- pragma fact_table' declaration
 bad_fact_table_decls.m:057:   requires all the arguments of predicate
 bad_fact_table_decls.m:057:   [38;5;87m`table_3'/3[39;49m mode 0 to be either fully input or
-bad_fact_table_decls.m:057:   fully output, but the second argument is [38;5;203mis[39;49m
-bad_fact_table_decls.m:057:   [38;5;203mneither.[39;49m
+bad_fact_table_decls.m:057:   fully output, but the second argument is [38;5;203mneither.[39;49m
 bad_fact_table_decls.m:058: In mode declaration for predicate `table_3'/3:
 bad_fact_table_decls.m:058:   error: the mode [38;5;87m`any'/0[39;49m [38;5;203mis undefined.[39;49m
