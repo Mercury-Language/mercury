@@ -1,9 +1,9 @@
 typeclass_test_9.m:007: In declaration for predicate `p'/0:
-typeclass_test_9.m:007:   error in type class constraints: [38;5;87mtype variable `T'[39;49m
+typeclass_test_9.m:007:   error in type class constraints: type variable [38;5;87m`T'[39;49m
 typeclass_test_9.m:007:   occurs in the constraints, but [38;5;203mis not determined[39;49m by
 typeclass_test_9.m:007:   the predicate's argument types.
 typeclass_test_9.m:009: In declaration for predicate `q'/0:
-typeclass_test_9.m:009:   error in type class constraints: [38;5;87mtype variable `T'[39;49m
+typeclass_test_9.m:009:   error in type class constraints: type variable [38;5;87m`T'[39;49m
 typeclass_test_9.m:009:   occurs in the constraints, but [38;5;203mis not determined[39;49m by
 typeclass_test_9.m:009:   the predicate's argument types.
 typeclass_test_9.m:012: Warning: [38;5;203mduplicate abstract instance declaration[39;49m for
@@ -13,7 +13,9 @@ typeclass_test_9.m:022: Error: [38;5;203mduplicate concrete instance declaratio
 typeclass_test_9.m:022:   class [38;5;87m`typeclass_test_9.foo'/1.[39;49m
 typeclass_test_9.m:019:   Previous instance declaration was here.
 typeclass_test_9.m:026: In instance declaration for `bar(int)':
-typeclass_test_9.m:026:   the type class [38;5;203mhas no predicate method[39;49m named [38;5;87m`p'/0.[39;49m
+typeclass_test_9.m:026:   error: the type class [38;5;203mhas no predicate method[39;49m named
+typeclass_test_9.m:026:   [38;5;87m`p'/0.[39;49m
 typeclass_test_9.m:029: In instance declaration for `baz(int)':
-typeclass_test_9.m:029:   the type class [38;5;203mhas no predicate method[39;49m named [38;5;87m`r'/0.[39;49m
+typeclass_test_9.m:029:   error: the type class [38;5;203mhas no predicate method[39;49m named
+typeclass_test_9.m:029:   [38;5;87m`r'/0.[39;49m
 For more information, recompile with `-E'.

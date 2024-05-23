@@ -1,5 +1,5 @@
 type_vars.m:010: In declaration for type `t1'/0:
-type_vars.m:010:   error in type class constraints: [38;5;87mtype variable `T2'[39;49m occurs
+type_vars.m:010:   error in type class constraints: type variable [38;5;87m`T2'[39;49m occurs
 type_vars.m:010:   in the constraints, but [38;5;203mis not determined[39;49m by the
 type_vars.m:010:   constructor's argument types.
 type_vars.m:010:   All types occurring in typeclass constraints must be fully

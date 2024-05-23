@@ -1,5 +1,5 @@
 unbound_type_vars.m:025: In declaration for predicate `p1'/1:
-unbound_type_vars.m:025:   error in type class constraints: [38;5;87mtype variable `T2'[39;49m
+unbound_type_vars.m:025:   error in type class constraints: type variable [38;5;87m`T2'[39;49m
 unbound_type_vars.m:025:   occurs in the constraints, but [38;5;203mis not determined[39;49m by
 unbound_type_vars.m:025:   the predicate's argument types.
 unbound_type_vars.m:025:   All types occurring in typeclass constraints must be
@@ -22,21 +22,21 @@ unbound_type_vars.m:025:   determined.
 unbound_type_vars.m:025:   See the "Functional dependencies" section of the
 unbound_type_vars.m:025:   reference manual for details.
 unbound_type_vars.m:028: In declaration for predicate `p2'/2:
-unbound_type_vars.m:028:   error in type class constraints: [38;5;87mtype variable `T3'[39;49m
+unbound_type_vars.m:028:   error in type class constraints: type variable [38;5;87m`T3'[39;49m
 unbound_type_vars.m:028:   occurs in the constraints, but [38;5;203mis not determined[39;49m by
 unbound_type_vars.m:028:   the predicate's argument types.
 unbound_type_vars.m:032: In declaration for predicate `p3'/1:
-unbound_type_vars.m:032:   error in type class constraints: [38;5;87mtype variable `T2'[39;49m
+unbound_type_vars.m:032:   error in type class constraints: type variable [38;5;87m`T2'[39;49m
 unbound_type_vars.m:032:   occurs in the constraints, but [38;5;203mis not determined[39;49m by
 unbound_type_vars.m:032:   the predicate's argument types.
 unbound_type_vars.m:035: In declaration for predicate `p4'/1:
-unbound_type_vars.m:035:   error in type class constraints: [38;5;87mtype variable `T2'[39;49m
+unbound_type_vars.m:035:   error in type class constraints: type variable [38;5;87m`T2'[39;49m
 unbound_type_vars.m:035:   occurs in the constraints, but [38;5;203mis not determined[39;49m by
 unbound_type_vars.m:035:   the predicate's argument types.
 unbound_type_vars.m:038: In declaration for predicate `p5'/1:
-unbound_type_vars.m:038:   error in type class constraints: [38;5;87mtype variable `T2'[39;49m
+unbound_type_vars.m:038:   error in type class constraints: type variable [38;5;87m`T2'[39;49m
 unbound_type_vars.m:038:   occurs in the constraints, but [38;5;203mis not determined[39;49m by
 unbound_type_vars.m:038:   the predicate's argument types.
 unbound_type_vars.m:038: In declaration of predicate `unbound_type_vars.p5'/1:
-unbound_type_vars.m:038:   type variable [38;5;87m`T2'[39;49m is [38;5;226muniversally constrained,[39;49m but
-unbound_type_vars.m:038:   is [38;5;226mexistentially quantified.[39;49m
+unbound_type_vars.m:038:   error: type variable [38;5;87m`T2'[39;49m is [38;5;226muniversally[39;49m
+unbound_type_vars.m:038:   [38;5;226mconstrained,[39;49m but is [38;5;226mexistentially quantified.[39;49m

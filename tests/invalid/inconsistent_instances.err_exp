@@ -1,4 +1,4 @@
-inconsistent_instances.m:016: [38;5;203mInconsistent instance declaration[39;49m for typeclass
-inconsistent_instances.m:016:   [38;5;87m`inconsistent_instances.foo'/2[39;49m with functional
-inconsistent_instances.m:016:   dependency `(A -> B)'.
+inconsistent_instances.m:016: Error: [38;5;203minconsistent instance declaration[39;49m for
+inconsistent_instances.m:016:   typeclass [38;5;87m`inconsistent_instances.foo'/2[39;49m with
+inconsistent_instances.m:016:   functional dependency `(A -> B)'.
 inconsistent_instances.m:015: Here is the conflicting instance.

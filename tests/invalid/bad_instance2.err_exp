@@ -1,8 +1,8 @@
 bad_instance2.m:012: In instance declaration for `foo(bar(T), U)':
-bad_instance2.m:012:   [38;5;87mthe second instance type `U'[39;49m [38;5;203mis a type variable;[39;49m it
-bad_instance2.m:012:   should be [38;5;40ma type constructor applied to zero or more[39;49m
+bad_instance2.m:012:   error: the second instance type [38;5;87m`U'[39;49m is a [38;5;203mtype variable;[39;49m
+bad_instance2.m:012:   it should be a [38;5;40mtype constructor applied to zero or more[39;49m
 bad_instance2.m:012:   [38;5;40mtype variables.[39;49m
 bad_instance2.m:016: In instance declaration for `foo(bar(T), T)':
-bad_instance2.m:016:   [38;5;87mthe second instance type `T'[39;49m [38;5;203mis a type variable;[39;49m it
-bad_instance2.m:016:   should be [38;5;40ma type constructor applied to zero or more[39;49m
+bad_instance2.m:016:   error: the second instance type [38;5;87m`T'[39;49m is a [38;5;203mtype variable;[39;49m
+bad_instance2.m:016:   it should be a [38;5;40mtype constructor applied to zero or more[39;49m
 bad_instance2.m:016:   [38;5;40mtype variables.[39;49m

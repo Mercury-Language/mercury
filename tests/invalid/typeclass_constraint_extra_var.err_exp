@@ -1,6 +1,6 @@
 typeclass_constraint_extra_var.m:017: In declaration for predicate `mg'/2:
-typeclass_constraint_extra_var.m:017:   error in type class constraints: [38;5;87mtype[39;49m
-typeclass_constraint_extra_var.m:017:   [38;5;87mvariable `U'[39;49m occurs in the constraints,
+typeclass_constraint_extra_var.m:017:   error in type class constraints: type
+typeclass_constraint_extra_var.m:017:   variable [38;5;87m`U'[39;49m occurs in the constraints,
 typeclass_constraint_extra_var.m:017:   but [38;5;203mis not determined[39;49m by the
 typeclass_constraint_extra_var.m:017:   predicate's argument types.
 typeclass_constraint_extra_var.m:017:   All types occurring in typeclass

@@ -1,4 +1,4 @@
 fundeps_coverage.m:016: In instance for typeclass `bar'/3:
-fundeps_coverage.m:016:   functional dependency not satisfied: [38;5;87mtype variable[39;49m
-fundeps_coverage.m:016:   [38;5;87m`C'[39;49m occurs in the range of the functional dependency,
-fundeps_coverage.m:016:   but [38;5;203mis not determined by the domain.[39;49m
+fundeps_coverage.m:016:   error: functional dependency not satisfied: type
+fundeps_coverage.m:016:   variable [38;5;87m`C'[39;49m occurs in the range of the functional
+fundeps_coverage.m:016:   dependency, but [38;5;203mis not determined by the domain.[39;49m

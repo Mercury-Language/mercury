@@ -490,22 +490,25 @@ is_valid_instance_type(ModuleInfo, ClassId, InstanceDefn, Type,
     ;
         (
             Type = higher_order_type(_, _, _, _),
-            KindPiece = words("is a higher order type;")
+            KindPieces = [words("is a")] ++
+                color_as_incorrect([words("higher order type;")])
         ;
             Type = apply_n_type(_, _, _),
-            KindPiece = words("is an apply/N type;")
+            KindPieces = [words("is an")] ++
+                color_as_incorrect([words("apply/N type;")])
         ;
             Type = type_variable(_, _),
-            KindPiece = words("is a type variable;")
+            KindPieces = [words("is a")] ++
+                color_as_incorrect([words("type variable;")])
         ),
         TVarSet = InstanceDefn ^ instdefn_tvarset,
         TypeStr = mercury_type_to_string(TVarSet, print_name_only, Type),
         EndPieces =
-            color_as_subject([words("the"), nth_fixed(ArgNum),
-                words("instance type"), quote(TypeStr)]) ++
-            color_as_incorrect([KindPiece]) ++
-            [words("it should be")] ++
-            color_as_correct([words("a type constructor"),
+            [words("the"), nth_fixed(ArgNum), words("instance type")] ++
+            color_as_subject([quote(TypeStr)]) ++
+            KindPieces ++
+            [words("it should be a")] ++
+            color_as_correct([words("type constructor"),
                 words("applied to zero or more type variables.")]) ++
             [nl],
         report_bad_type_in_instance(ClassId, InstanceDefn, EndPieces,
@@ -2109,11 +2112,12 @@ report_badly_formed_type_in_instance(ClassId, InstanceDefn, TypeCtor, ArgNum,
 non_tvar_args_to_pieces(TVarSet, HeadArgNumType, TailArgNumTypes) = Pieces :-
     HeadArgNumType = ArgNum - ArgType,
     TypeStr = mercury_type_to_string(TVarSet, print_name_only, ArgType),
-    HeadTypePieces0 = [nth_fixed(ArgNum), words("argument,"), quote(TypeStr)],
+    TheNthArgPieces = [words("the"), nth_fixed(ArgNum), words("argument,")],
+    TypePieces = [quote(TypeStr)],
     (
         TailArgNumTypes = [],
-        HeadTypePieces = color_as_subject(HeadTypePieces0 ++ [suffix(".")]),
-        Pieces = [words("the")] ++ HeadTypePieces
+        Pieces = TheNthArgPieces ++
+            color_as_subject(TypePieces ++ [suffix(".")])
     ;
         TailArgNumTypes = [HeadTailArgNumType | TailTailArgNumTypes],
         (
@@ -2125,10 +2129,11 @@ non_tvar_args_to_pieces(TVarSet, HeadArgNumType, TailArgNumTypes) = Pieces :-
             MaybeComma = [suffix(",")],
             MaybeAnd = []
         ),
-        HeadTypePieces = color_as_subject(HeadTypePieces0 ++ MaybeComma),
-        Pieces = [words("the")] ++ HeadTypePieces ++ MaybeAnd ++
-            non_tvar_args_to_pieces(TVarSet,
-                HeadTailArgNumType, TailTailArgNumTypes)
+        HeadTypePieces = TheNthArgPieces ++
+            color_as_subject(TypePieces ++ MaybeComma),
+        TailTypePieces = non_tvar_args_to_pieces(TVarSet,
+            HeadTailArgNumType, TailTailArgNumTypes),
+        Pieces = HeadTypePieces ++ MaybeAnd ++ TailTypePieces
     ).
 
 :- pred report_eqv_type_in_abstract_exported_instance(class_id::in,
@@ -2168,9 +2173,9 @@ report_bad_type_in_instance(ClassId, InstanceDefn, EndPieces, Kind, !Specs) :-
         WhichTypes = orig_types
     ),
     PrefixPieces = in_instance_decl_pieces(WhichTypes, ClassId, InstanceDefn),
-    InstanceContext = InstanceDefn ^ instdefn_context,
-    Spec = spec($pred, severity_error, phase_type_check,
-        InstanceContext, PrefixPieces ++ EndPieces),
+    Pieces = PrefixPieces ++ [words("error:")] ++ EndPieces,
+    Context = InstanceDefn ^ instdefn_context,
+    Spec = spec($pred, severity_error, phase_type_check, Context, Pieces),
     !:Specs = [Spec | !.Specs].
 
 %---------------------------------------------------------------------------%
@@ -2188,7 +2193,7 @@ report_duplicate_method_defn(ClassId, InstanceDefn, MethodName,
         FirstContext, LaterContext, !Specs) :-
     PrefixPieces = in_instance_decl_pieces(cur_types, ClassId, InstanceDefn),
     PFMethodNamePieces = pf_method_name_pieces(MethodName),
-    HeaderPieces = PrefixPieces ++
+    HeaderPieces = PrefixPieces ++ [words("error: this instance has")] ++
         color_as_incorrect([words("multiple implementations")]) ++
         [words("of")] ++
         color_as_subject(PFMethodNamePieces ++ [suffix(".")]) ++
@@ -2211,13 +2216,13 @@ report_duplicate_method_defn(ClassId, InstanceDefn, MethodName,
 report_undefined_method(ClassId, InstanceDefn, MethodName, !Specs) :-
     PrefixPieces = in_instance_decl_pieces(cur_types, ClassId, InstanceDefn),
     PFMethodNamePieces = pf_method_name_pieces(MethodName),
-    Pieces = PrefixPieces ++
+    Pieces = PrefixPieces ++ [words("error: this instance has")] ++
         color_as_incorrect([words("no implementation")]) ++
         [words("for")] ++
         color_as_subject(PFMethodNamePieces ++ [suffix(".")]) ++
         [nl],
-    Spec = spec($pred, severity_error, phase_type_check,
-        InstanceDefn ^ instdefn_context, Pieces),
+    Context = InstanceDefn ^ instdefn_context,
+    Spec = spec($pred, severity_error, phase_type_check, Context, Pieces),
     !:Specs = [Spec | !.Specs].
 
 %---------------------------------------------------------------------------%
@@ -2237,7 +2242,7 @@ report_unknown_instance_methods(ClassId, InstanceDefn,
         MethodName = pred_pf_name_arity(PredOrFunc, MethodSymName, UserArity),
         UserArity = user_arity(UserArityInt),
         SNA = sym_name_arity(MethodSymName, UserArityInt),
-        Pieces = PrefixPieces ++ [words("the type class")] ++
+        Pieces = PrefixPieces ++ [words("error: the type class")] ++
             color_as_incorrect([words("has no"), p_or_f(PredOrFunc),
                 words("method")]) ++
             [words("named")] ++
@@ -2248,7 +2253,7 @@ report_unknown_instance_methods(ClassId, InstanceDefn,
         SelectedContext = InstanceDefn ^ instdefn_context,
         MethodPieces =
             list.map(method_name_pieces, [HeadMethod | TailMethods]),
-        Pieces = PrefixPieces ++ [words("the type class")] ++
+        Pieces = PrefixPieces ++ [words("error: the type class")] ++
             color_as_incorrect([words("has none of these methods:")]) ++
             [nl_indent_delta(1)] ++
             % XXX ARITY We could separate last two MethodPieces with ", or".
@@ -2272,7 +2277,7 @@ report_unsatistfied_superclass_constraint(ClassId, InstanceDefn, ClassTVarSet,
     list.map(constraint_to_pieces(ClassTVarSet),
         UnprovenConstraints, ConstraintPieceLists),
     Pieces = PrefixPieces ++
-        [words("the following superclass"),
+        [words("error: the following superclass"),
         words(choose_number(UnprovenConstraints,
             "constraint is", "constraints are"))] ++
         color_as_incorrect([words("not satisfied:")]) ++
@@ -2438,15 +2443,14 @@ report_local_vs_nonlocal_clash(ClassId, LocalInstance, NonLocalInstance,
 report_coverage_error(ClassId, InstanceDefn, Vars, !Specs) :-
     TVarSet = InstanceDefn ^ instdefn_tvarset,
     TypeVars = choose_number(Vars, "type variable", "type variables"),
-    VarToPiece =
-        (func(V) = quote(mercury_var_to_name_only_vs(TVarSet, V))),
-    VarPieces = list.map(VarToPiece, Vars),
-    VarsPieces = component_list_to_color_pieces(yes(color_subject),
-        "and", [], VarPieces),
+    VarPieces = list.map(var_to_quote_piece(TVarSet), Vars),
+    VarsPieces = component_list_to_color_pieces(yes(color_subject), "and", [],
+        VarPieces),
     Pieces = [words("In instance for typeclass"),
         unqual_class_id(ClassId), suffix(":"), nl,
-        words("functional dependency not satisfied:")] ++
-        color_as_subject([words(TypeVars)]) ++ VarsPieces ++
+        words("error: functional dependency not satisfied:"),
+        words(TypeVars)] ++
+        VarsPieces ++
         [words(choose_number(Vars, "occurs", "occur")),
         words("in the range of the functional dependency, but")] ++
         color_as_incorrect([words(choose_number(Vars, "is", "are")),
@@ -2473,8 +2477,8 @@ report_consistency_error(ClassId, ClassDefn, InstanceA, InstanceB, FunDep,
     Ranges = mercury_vars_to_name_only_vs(TVarSet, RangeParams),
 
     % XXX This should give the specific details of the inconsistency.
-    PiecesA =
-        color_as_incorrect([words("Inconsistent instance declaration")]) ++
+    PiecesA = [words("Error:")] ++
+        color_as_incorrect([words("inconsistent instance declaration")]) ++
         [words("for typeclass")] ++
         color_as_subject([qual_class_id(ClassId)]) ++
         [words("with functional dependency"),
@@ -2522,15 +2526,16 @@ report_unbound_tvars_in_pred_context(PredInfo, Vars, !Specs) :-
     PredFormArity = arg_list_arity(ArgTypes),
     PredOrFunc = pred_info_is_pred_or_func(PredInfo),
 
-    VarsStrs = list.map(mercury_var_to_name_only_vs(TVarSet), Vars),
 
     PFSymNameArity = pf_sym_name_arity(PredOrFunc, SymName, PredFormArity),
     TypeVars = choose_number(Vars, "type variable", "type variables"),
-    VarsPieces = list_to_quoted_pieces(VarsStrs),
+    VarPieces = list.map(var_to_quote_piece(TVarSet), Vars),
+    VarsPieces = component_list_to_color_pieces(yes(color_subject), "and", [],
+        VarPieces),
     Pieces0 = [words("In declaration for"),
         unqual_pf_sym_name_pred_form_arity(PFSymNameArity), suffix(":"), nl,
-        words("error in type class constraints:")] ++
-        color_as_subject([words(TypeVars) | VarsPieces]) ++
+        words("error in type class constraints:"), words(TypeVars)] ++
+        VarsPieces ++
         [words(choose_number(Vars, "occurs", "occur")),
         words("in the constraints, but")] ++
         color_as_incorrect([words(choose_number(Vars, "is", "are")),
@@ -2605,12 +2610,12 @@ report_badly_quantified_vars(PredInfo, QuantErrorType, TVars, !Specs) :-
         BlahConstrained = words("existentially constrained"),
         BlahQuantified = words("universally quantified")
     ),
-    Pieces = InDeclaration ++ TypeVariables ++ TVarsPieces ++ [Are] ++
+    Pieces = InDeclaration ++ [words("error:")] ++
+        TypeVariables ++ TVarsPieces ++ [Are] ++
         color_as_possible_cause([BlahConstrained, suffix(",")]) ++
         [words("but"), Are] ++
         color_as_possible_cause([BlahQuantified, suffix(".")]) ++ [nl],
-    Spec = spec($pred, severity_error, phase_type_check,
-        Context, Pieces),
+    Spec = spec($pred, severity_error, phase_type_check, Context, Pieces),
     !:Specs = [Spec | !.Specs].
 
 %---------------------------------------------------------------------------%
@@ -2625,12 +2630,13 @@ report_unbound_tvars_in_ctor_context(Vars, TypeCtor, TypeDefn, !Specs) :-
     get_type_defn_context(TypeDefn, Context),
     get_type_defn_tvarset(TypeDefn, TVarSet),
     TypeVars = choose_number(Vars, "type variable", "type variables"),
-    VarsStrs = list.map(mercury_var_to_name_only_vs(TVarSet), Vars),
-    VarsPieces = list_to_quoted_pieces(VarsStrs),
+    VarPieces = list.map(var_to_quote_piece(TVarSet), Vars),
+    VarsPieces = component_list_to_color_pieces(yes(color_subject), "and", [],
+        VarPieces),
     Pieces = [words("In declaration for type"),
         unqual_type_ctor(TypeCtor), suffix(":"), nl,
-        words("error in type class constraints:")] ++
-        color_as_subject([words(TypeVars) | VarsPieces]) ++
+        words("error in type class constraints:"), words(TypeVars)] ++
+        VarsPieces ++
         [words(choose_number(Vars, "occurs", "occur")),
         words("in the constraints, but")] ++
         color_as_incorrect([words(choose_number(Vars, "is", "are")),

@@ -1,5 +1,5 @@
 bug476.m:059: In instance declaration for `input_stream(jinput_stream)':
-bug476.m:059:   the type class [38;5;203mhas no predicate method[39;49m named [38;5;87m`mark'/4.[39;49m
+bug476.m:059:   error: the type class [38;5;203mhas no predicate method[39;49m named [38;5;87m`mark'/4.[39;49m
 bug476.m:068: Error: the predicate [38;5;87m`bug476.mark'/4[39;49m is [38;5;203mmultiply defined.[39;49m
 bug476.m:034:   Here is the previous definition of predicate `bug476.mark'/4.
 bug476.m:070: Error: clause for predicate [38;5;87m`input_stream_mark'/3[39;49m [38;5;203mwithout[39;49m a

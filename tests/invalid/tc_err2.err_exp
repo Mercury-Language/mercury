@@ -1,5 +1,6 @@
 tc_err2.m:047: In instance declaration for `actions(pstate)':
-tc_err2.m:047:   [38;5;203mno implementation[39;49m for [38;5;87mpredicate method `handle_typedefs'/3.[39;49m
+tc_err2.m:047:   error: this instance has [38;5;203mno implementation[39;49m for [38;5;87mpredicate[39;49m
+tc_err2.m:047:   [38;5;87mmethod `handle_typedefs'/3.[39;49m
 tc_err2.m:048: In instance declaration for `actions(pstate)':
-tc_err2.m:048:   the type class [38;5;203mhas no predicate method[39;49m named
+tc_err2.m:048:   error: the type class [38;5;203mhas no predicate method[39;49m named
 tc_err2.m:048:   [38;5;87m`handle_typedefs'/2.[39;49m

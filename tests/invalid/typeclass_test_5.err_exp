@@ -1,7 +1,9 @@
 typeclass_test_5.m:023: In instance declaration for `c2(int)':
-typeclass_test_5.m:023:   the following superclass constraint is [38;5;203mnot satisfied:[39;49m
+typeclass_test_5.m:023:   error: the following superclass constraint is [38;5;203mnot[39;49m
+typeclass_test_5.m:023:   [38;5;203msatisfied:[39;49m
 typeclass_test_5.m:023:     [38;5;87m`typeclass_test_5.c1(int)'.[39;49m
 typeclass_test_5.m:023: In instance declaration for `c2(int)':
-typeclass_test_5.m:023:   [38;5;203mmultiple implementations[39;49m of [38;5;87mpredicate method `p'/1.[39;49m
+typeclass_test_5.m:023:   error: this instance has [38;5;203mmultiple implementations[39;49m of
+typeclass_test_5.m:023:   [38;5;87mpredicate method `p'/1.[39;49m
 typeclass_test_5.m:024:   First definition appears here.
 typeclass_test_5.m:025:   Later definition appears here.

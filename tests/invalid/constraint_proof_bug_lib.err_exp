@@ -1,5 +1,5 @@
 constraint_proof_bug_lib.m:050: In instance declaration for
 constraint_proof_bug_lib.m:050:   `constrainable(code)':
-constraint_proof_bug_lib.m:050:   the first instance type,
+constraint_proof_bug_lib.m:050:   error: the first instance type,
 constraint_proof_bug_lib.m:050:   [38;5;87m`constraint_proof_bug_lib.code',[39;49m is an
 constraint_proof_bug_lib.m:050:   [38;5;203mabstract exported equivalence type.[39;49m

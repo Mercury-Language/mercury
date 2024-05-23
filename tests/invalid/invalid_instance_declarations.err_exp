@@ -1,25 +1,25 @@
 invalid_instance_declarations.m:017: In instance declaration for `tc(((func) =
 invalid_instance_declarations.m:017:   T), int)':
-invalid_instance_declarations.m:017:   [38;5;87mthe first instance type `((func) = T)'[39;49m
-invalid_instance_declarations.m:017:   [38;5;203mis a higher order type;[39;49m it should be [38;5;40ma[39;49m
-invalid_instance_declarations.m:017:   [38;5;40mtype constructor applied to zero or more[39;49m
-invalid_instance_declarations.m:017:   [38;5;40mtype variables.[39;49m
+invalid_instance_declarations.m:017:   error: the first instance type
+invalid_instance_declarations.m:017:   [38;5;87m`((func) = T)'[39;49m is a [38;5;203mhigher order type;[39;49m
+invalid_instance_declarations.m:017:   it should be a [38;5;40mtype constructor applied[39;49m
+invalid_instance_declarations.m:017:   [38;5;40mto zero or more type variables.[39;49m
 invalid_instance_declarations.m:018: In instance declaration for `tc(t(int),
 invalid_instance_declarations.m:018:   int)':
-invalid_instance_declarations.m:018:   in the first instance type, one of the
-invalid_instance_declarations.m:018:   arguments of the type constructor `t'/1
-invalid_instance_declarations.m:018:   [38;5;203mis not a type variable,[39;49m [38;5;40mbut should be.[39;49m
-invalid_instance_declarations.m:018:   This is the [38;5;87mfirst argument, `int'.[39;49m
+invalid_instance_declarations.m:018:   error: in the first instance type, one
+invalid_instance_declarations.m:018:   of the arguments of the type constructor
+invalid_instance_declarations.m:018:   `t'/1 [38;5;203mis not a type variable,[39;49m [38;5;40mbut should[39;49m
+invalid_instance_declarations.m:018:   [38;5;40mbe.[39;49m This is the first argument, [38;5;87m`int'.[39;49m
 invalid_instance_declarations.m:019: In instance declaration for `tc(t(int),
 invalid_instance_declarations.m:019:   t(int, string))':
-invalid_instance_declarations.m:019:   in the first instance type, one of the
-invalid_instance_declarations.m:019:   arguments of the type constructor `t'/1
-invalid_instance_declarations.m:019:   [38;5;203mis not a type variable,[39;49m [38;5;40mbut should be.[39;49m
-invalid_instance_declarations.m:019:   This is the [38;5;87mfirst argument, `int'.[39;49m
+invalid_instance_declarations.m:019:   error: in the first instance type, one
+invalid_instance_declarations.m:019:   of the arguments of the type constructor
+invalid_instance_declarations.m:019:   `t'/1 [38;5;203mis not a type variable,[39;49m [38;5;40mbut should[39;49m
+invalid_instance_declarations.m:019:   [38;5;40mbe.[39;49m This is the first argument, [38;5;87m`int'.[39;49m
 invalid_instance_declarations.m:019: In instance declaration for `tc(t(int),
 invalid_instance_declarations.m:019:   t(int, string))':
-invalid_instance_declarations.m:019:   in the second instance type, some of the
-invalid_instance_declarations.m:019:   arguments of the type constructor `t'/2
-invalid_instance_declarations.m:019:   [38;5;203mare not type variables[39;49m [38;5;40mbut should be.[39;49m
-invalid_instance_declarations.m:019:   These are the [38;5;87mfirst argument, `int'[39;49m and
-invalid_instance_declarations.m:019:   the [38;5;87msecond argument, `string'.[39;49m
+invalid_instance_declarations.m:019:   error: in the second instance type, some
+invalid_instance_declarations.m:019:   of the arguments of the type constructor
+invalid_instance_declarations.m:019:   `t'/2 [38;5;203mare not type variables[39;49m [38;5;40mbut should[39;49m
+invalid_instance_declarations.m:019:   [38;5;40mbe.[39;49m These are the first argument, [38;5;87m`int'[39;49m
+invalid_instance_declarations.m:019:   and the second argument, [38;5;87m`string'.[39;49m

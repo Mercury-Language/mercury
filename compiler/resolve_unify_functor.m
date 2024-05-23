@@ -220,9 +220,10 @@ resolve_unify_functor(ModuleInfo, X0, ConsId0, ArgVars0, Mode0,
             MaybeProcId = no,
             Goal = true_goal,
             SNA = sym_name_arity(Name, Arity),
-            Pieces = [words("Error: reference to"),
-                words("undeclared function or predicate"),
-                qual_sym_name_arity(SNA), suffix("."), nl],
+            Pieces = [words("Error: the predicate or function")] ++
+                color_as_subject([qual_sym_name_arity(SNA)]) ++
+                color_as_incorrect([words("is undefined.")]) ++
+                [nl],
             Spec = spec($pred, severity_error, phase_type_check,
                 Context, Pieces),
             IsPlainUnify = is_unknown_ref(Spec)
