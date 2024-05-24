@@ -1,7 +1,7 @@
 bad_consider_used.m:032: Error: `:- pragma consider_used' declaration for [38;5;87m`q'/3[39;49m
 bad_consider_used.m:032:   [38;5;203mwithout[39;49m a corresponding `:- pred' or `:- func'
 bad_consider_used.m:032:   declaration.
-bad_consider_used.m:032:   [38;5;226m`q' does exist with arity 2.[39;49m
+bad_consider_used.m:032:   `q' [38;5;226mdoes exist[39;49m with arity [38;5;40m2.[39;49m
 bad_consider_used.m:033: Error: `:- pragma consider_used' declaration for [38;5;87m`g'/2[39;49m
 bad_consider_used.m:033:   [38;5;203mwithout[39;49m a corresponding `:- pred' or `:- func'
 bad_consider_used.m:033:   declaration.

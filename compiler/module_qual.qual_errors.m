@@ -243,11 +243,11 @@ report_undefined_mq_id(Info, ErrorContext, Id, IdType, ThisModuleName,
         ),
         OtherIntSymNames = list.map(wrap_module_name, OtherIntMismatches),
         OtherIntPieces =
-            color_as_possible_cause([words("(The"),
-                fixed(OtherIntModuleWord)] ++
-                component_list_to_pieces("and", OtherIntSymNames) ++
-                [fixed(OtherIntHasWord),
-                    words("not been imported in the interface.)")]) ++
+            [words("(The"), words(OtherIntModuleWord)] ++
+            component_list_to_color_pieces(yes(color_subject), "and", [],
+                OtherIntSymNames) ++
+            color_as_incorrect([fixed(OtherIntHasWord),
+                words("not been imported in the interface.)")]) ++
             [nl]
     ),
     (
@@ -264,13 +264,13 @@ report_undefined_mq_id(Info, ErrorContext, Id, IdType, ThisModuleName,
         ),
         QualSymNames = list.map(wrap_module_name, QualMismatches),
         QualPieces =
-            color_as_possible_cause(
-                [words("(Only fully module qualified names"),
-                words("may refer to the entities defined in"),
-                fixed(QualModuleWord)] ++
-                component_list_to_pieces("and", QualSymNames) ++
-                [suffix(".)")]) ++
-            [nl]
+            [words("(Only")] ++
+            color_as_possible_cause([words("fully module qualified names")]) ++
+            [words("may refer to the entities defined in"),
+            fixed(QualModuleWord)] ++
+            component_list_to_color_pieces(yes(color_subject), "and",
+                [suffix(".")], QualSymNames) ++
+            [suffix(")"), nl]
     ),
     ( if
         % If IdSymName is a qualified symbol, then check whether the module
@@ -287,8 +287,9 @@ report_undefined_mq_id(Info, ErrorContext, Id, IdType, ThisModuleName,
         % that IdModuleName is only *partially* qualified. We now generate
         % wording that does not imply that IdModuleName must exist.
         NonImportedPieces =
-            color_as_possible_cause([words("(No module named"),
-                qual_sym_name(IdModuleName), words("has been imported.)")]) ++
+            [words("(No module named")] ++
+            color_as_subject([qual_sym_name(IdModuleName)]) ++
+            color_as_incorrect([words("has been imported.)")]) ++
             [nl]
     else
         NonImportedPieces = []
@@ -306,13 +307,14 @@ report_undefined_mq_id(Info, ErrorContext, Id, IdType, ThisModuleName,
         KindKinds = choose_number(PossibleArities, IdTypeStr, IdTypesStr),
         ArityArities = choose_number(PossibleArities, "arity", "arities"),
         list.map(string.int_to_string, PossibleArities, PossibleArityStrs),
-        PossibleAritiesPieces = list_to_pieces(PossibleArityStrs),
+        PossibleAritiesDotRpPieces = list_to_color_pieces(yes(color_cause),
+            "and", [suffix(".)")], PossibleArityStrs),
         OtherArityPieces =
-            color_as_possible_cause([words("(There"), words(IsAre),
-                words(KindKinds),
-                words("named"), quote(unqualify_name(IdSymName)),
-                words("with"), words(ArityArities)] ++
-                PossibleAritiesPieces ++ [suffix(".)")]) ++
+            [words("(There"), words(IsAre),
+            words(KindKinds),
+            words("named"), quote(unqualify_name(IdSymName)),
+            words("with"), words(ArityArities)] ++
+            PossibleAritiesDotRpPieces ++
             [nl]
     else
         OtherArityPieces = []
@@ -395,9 +397,9 @@ report_ambiguous_match(ErrorContext, Id, IdType,
         UnusableModuleSymNames =
             list.map(wrap_module_name, UnusableModuleNames),
         UnusablePieces =
-            color_as_possible_cause([words("The"), words(MatchWord),
-                words("in modules")] ++ UnusableModuleSymNames ++
-                [words("may not be used in the interface.")]) ++
+            [words("The"), words(MatchWord),
+            words("in modules")] ++ UnusableModuleSymNames ++
+            color_as_incorrect([words("may not be used in the interface.")]) ++
             [nl]
     ),
     VerbosePieces = [words("An explicit module qualifier"),

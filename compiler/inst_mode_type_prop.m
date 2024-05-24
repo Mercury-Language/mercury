@@ -1379,17 +1379,17 @@ do_record_bad_use_of_user_inst(TPropContext, InstCtor, ForTypeCtor, TypeCtor,
     tprop_context_to_pieces(TPropContext, Context, LocnPieces),
     Pieces = LocnPieces ++
         [words("error: the user defined inst"),
-        nl_indent_delta(1),
-        qual_inst_ctor(InstCtor),
-        nl_indent_delta(-1),
+        nl_indent_delta(1)] ++
+        color_as_subject([qual_inst_ctor(InstCtor)]) ++
+        [nl_indent_delta(-1),
         words("is declared to be applicable only to values of type"),
-        nl_indent_delta(1),
-        qual_type_ctor(ForTypeCtor), suffix(","),
-        nl_indent_delta(-1),
+        nl_indent_delta(1)] ++
+        color_as_correct([qual_type_ctor(ForTypeCtor), suffix(",")]) ++
+        [nl_indent_delta(-1),
         words("but here it is applied to values of type"),
-        nl_indent_delta(1),
-        qual_type_ctor(TypeCtor), suffix("."),
-        nl_indent_delta(-1)],
+        nl_indent_delta(1)] ++
+        color_as_incorrect([qual_type_ctor(TypeCtor), suffix(".")]) ++
+        [nl_indent_delta(-1)],
     Spec = spec($pred, severity_error, phase_inst_check, Context, Pieces),
     !.Errors = tprop_errors(Specs0),
     Specs = [Spec | Specs0],

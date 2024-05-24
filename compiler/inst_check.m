@@ -856,8 +856,8 @@ maybe_issue_type_match_error(WarnInstsWithoutMatchingType, InstCtor, InstDefn,
         WarnInstsWithoutMatchingType = yes,
         Mismatches = [_ | MismatchesTail]
     then
-        cons_id_strs_and_near_misses(Mismatches, MismatchConsIdComponents,
-            NearMisses),
+        cons_id_strs_and_near_misses(color_cause, Mismatches,
+            MismatchConsIdComponents, NearMisses),
         FuncSymbolPhrase = choose_number(Mismatches,
             "function symbol", "function symbols"),
         IsAreNotPhrase = choose_number(Mismatches,
@@ -889,7 +889,7 @@ maybe_issue_type_match_error(WarnInstsWithoutMatchingType, InstCtor, InstDefn,
             )
         ),
         MismatchSpec = spec($pred, severity_error, phase_inst_check, Context,
-            MismatchPieces ++ color_as_possible_cause(NearMissPieces)),
+            MismatchPieces ++ NearMissPieces),
         MismatchSpecs = [MismatchSpec]
     else
         MismatchSpecs = []
@@ -927,13 +927,13 @@ maybe_issue_type_match_error(WarnInstsWithoutMatchingType, InstCtor, InstDefn,
                 if_several_mismatches   :: list(format_piece)
             ).
 
-:- pred cons_id_strs_and_near_misses(list(cons_mismatch)::in,
+:- pred cons_id_strs_and_near_misses(color_name::in, list(cons_mismatch)::in,
     list(format_piece)::out, list(near_miss_cons_mismatch)::out) is det.
 
-cons_id_strs_and_near_misses([], [], []).
-cons_id_strs_and_near_misses([Mismatch | Mismatches],
+cons_id_strs_and_near_misses(_, [], [], []).
+cons_id_strs_and_near_misses(Color, [Mismatch | Mismatches],
         [ConsIdComponent | ConsIdComponents], NearMissMismatches) :-
-    cons_id_strs_and_near_misses(Mismatches, ConsIdComponents,
+    cons_id_strs_and_near_misses(Color, Mismatches, ConsIdComponents,
         NearMissMismatchesTail),
     Mismatch = cons_mismatch(ConsIdComponent, MaybeNearMisses),
     (
@@ -941,9 +941,10 @@ cons_id_strs_and_near_misses([Mismatch | Mismatches],
         NearMissMismatches = NearMissMismatchesTail
     ;
         MaybeNearMisses = [_FirstNearMiss | _LaterNearMisses],
-        IfAlone = [words("Maybe you meant") |
-            component_list_to_pieces("or", MaybeNearMisses)] ++
-            [suffix("."), nl],
+        IfAlone = [words("Maybe you meant")] ++
+            component_list_to_color_pieces(yes(Color), "or", [suffix(".")],
+                MaybeNearMisses) ++
+            [nl],
         IfSeveral = [words("For"), ConsIdComponent, suffix(","),
             lower_case_next_if_not_first | IfAlone],
         NearMissMismatch = near_miss_cons_mismatch(IfAlone, IfSeveral),

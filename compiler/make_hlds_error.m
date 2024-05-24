@@ -170,10 +170,12 @@ report_undefined_pred_or_func_error(MaybePorF, SymName,
             list.map(project_user_arity_int, OtherUserArities),
         list.map(string.int_to_string, OtherUserArityInts, OtherArityStrs),
         OtherArityPieces =
-            color_as_possible_cause([unqual_sym_name(SymName),
-                words("does exist with"),
-                words(choose_number(OtherArityStrs, "arity", "arities"))] ++
-                list_to_pieces(OtherArityStrs) ++ [suffix(".")]) ++
+            [unqual_sym_name(SymName)] ++
+            color_as_possible_cause([words("does exist")]) ++
+            [words("with"),
+            words(choose_number(OtherArityStrs, "arity", "arities"))] ++
+            list_to_color_pieces(yes(color_correct), "and", [suffix(".")],
+                OtherArityStrs) ++
             [nl]
     ),
     Pieces = MainPieces ++ OtherArityPieces,

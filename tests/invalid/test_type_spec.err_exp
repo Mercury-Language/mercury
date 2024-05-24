@@ -12,7 +12,7 @@ test_type_spec.m:014:     :- mode type_spec1(in) is semidet.
 test_type_spec.m:016: Error: `:- pragma type_spec' declaration for
 test_type_spec.m:016:   [38;5;87m`type_spec1'/2[39;49m [38;5;203mwithout[39;49m a corresponding `:- pred' or
 test_type_spec.m:016:   `:- func' declaration.
-test_type_spec.m:016:   [38;5;226m`type_spec1' does exist with arity 1.[39;49m
+test_type_spec.m:016:   `type_spec1' [38;5;226mdoes exist[39;49m with arity [38;5;40m1.[39;49m
 test_type_spec.m:024: Error: predicate [38;5;87m`type_spec2'/1[39;49m [38;5;203mhas no clauses.[39;49m
 test_type_spec.m:026: In `:- pragma type_spec' declaration for predicate
 test_type_spec.m:026:   `test_type_spec.type_spec2'/1:

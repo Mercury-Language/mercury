@@ -247,12 +247,12 @@ check_in_interface_promise_call(ModuleInfo, PredId, GoalInfo, !Specs) :-
             Context = goal_info_get_context(GoalInfo),
             PredOrFunc = pred_info_is_pred_or_func(PredInfo),
             PredSymName = qualified(PredModuleName, PredName),
-            Arity = pred_info_pred_form_arity(PredInfo),
-            PFSymNameArity = pf_sym_name_arity(PredOrFunc, PredSymName, Arity),
-            PredNamePieces =
-                [qual_pf_sym_name_pred_form_arity(PFSymNameArity)],
+            user_arity(UserArityInt) = pred_info_user_arity(PredInfo),
+            SymNameArity = sym_name_arity(PredSymName, UserArityInt),
+            InitIdPieces = [p_or_f(PredOrFunc)],
+            SubjectIdPieces = [qual_sym_name_arity(SymNameArity)],
             report_assertion_interface_error(ModuleName, Context,
-                PredNamePieces, !Specs)
+                InitIdPieces, SubjectIdPieces, !Specs)
         ;
             DefnInImplSection = no
         )
@@ -260,11 +260,12 @@ check_in_interface_promise_call(ModuleInfo, PredId, GoalInfo, !Specs) :-
         Context = goal_info_get_context(GoalInfo),
         PredOrFunc = pred_info_is_pred_or_func(PredInfo),
         PredSymName = qualified(PredModuleName, PredName),
-        Arity = pred_info_pred_form_arity(PredInfo),
-        PFSymNameArity = pf_sym_name_arity(PredOrFunc, PredSymName, Arity),
-        PredNamePieces = [qual_pf_sym_name_pred_form_arity(PFSymNameArity)],
+        user_arity(UserArityInt) = pred_info_user_arity(PredInfo),
+        SymNameArity = sym_name_arity(PredSymName, UserArityInt),
+        InitIdPieces = [p_or_f(PredOrFunc)],
+        SubjectIdPieces = [qual_sym_name_arity(SymNameArity)],
         report_assertion_module_error(ModuleName, Context, PredModuleName,
-            PredNamePieces, !Specs)
+            InitIdPieces, SubjectIdPieces, !Specs)
     ).
 
 :- pred check_in_interface_promise_unify_rhs(module_info::in, pred_info::in,
@@ -292,18 +293,18 @@ check_in_interface_promise_unify_rhs(ModuleInfo, PredInfo, Var, RHS, Context,
                     type_status_defined_in_impl_section(TypeStatus),
                 (
                     DefinedInImpl = yes,
-                    IdPieces = [words("constructor"),
-                        qual_cons_id_and_maybe_arity(ConsId)],
+                    InitIdPieces = [words("constructor")],
+                    SubjectIdPieces = [qual_cons_id_and_maybe_arity(ConsId)],
                     report_assertion_interface_error(ModuleName, Context,
-                        IdPieces, !Specs)
+                        InitIdPieces, SubjectIdPieces, !Specs)
                 ;
                     DefinedInImpl = no
                 )
             else
-                IdPieces = [words("constructor"),
-                    qual_cons_id_and_maybe_arity(ConsId)],
+                InitIdPieces = [words("constructor")],
+                SubjectIdPieces = [qual_cons_id_and_maybe_arity(ConsId)],
                 report_assertion_module_error(ModuleName, Context,
-                    TypeCtorModuleName, IdPieces, !Specs)
+                    TypeCtorModuleName, InitIdPieces, SubjectIdPieces, !Specs)
             )
         else
             % TypeCtorSymName has no module name component, so it must be
@@ -330,17 +331,19 @@ check_in_interface_promise_goals(ModuleInfo, PredInfo, [Goal0 | Goal0s],
 %---------------------%
 
 :- pred report_assertion_interface_error(module_name::in, prog_context::in,
-    list(format_piece)::in, list(error_spec)::in, list(error_spec)::out)
-    is det.
+    list(format_piece)::in, list(format_piece)::in,
+    list(error_spec)::in, list(error_spec)::out) is det.
 
-report_assertion_interface_error(ModuleName, Context, IdPieces, !Specs) :-
+report_assertion_interface_error(ModuleName, Context,
+        InitIdPieces, SubjectIdPieces, !Specs) :-
     MainPieces =
         [words("In interface for module"), qual_sym_name(ModuleName),
         suffix(":"), nl,
-        words("error: exported promise refers to")] ++
-        IdPieces ++ [suffix(","),
-        words("which is defined in the implementation section of module"),
-        qual_sym_name(ModuleName), suffix("."), nl],
+        words("error: this exported promise refers to")] ++
+        InitIdPieces ++ color_as_subject(SubjectIdPieces) ++ [suffix(","),
+        words("which is")] ++
+        color_as_incorrect([words("not exported")]) ++
+        [words("from module"), qual_sym_name(ModuleName), suffix("."), nl],
     VerbosePieces =
         [words("Either move the promise into the implementation section,"),
         words("or move the definition into the interface."), nl],
@@ -350,18 +353,20 @@ report_assertion_interface_error(ModuleName, Context, IdPieces, !Specs) :-
     !:Specs = [Spec | !.Specs].
 
 :- pred report_assertion_module_error(module_name::in, prog_context::in,
-    module_name::in, list(format_piece)::in,
+    module_name::in, list(format_piece)::in, list(format_piece)::in,
     list(error_spec)::in, list(error_spec)::out) is det.
 
 report_assertion_module_error(ModuleName, Context, PredModuleName,
-        IdPieces, !Specs) :-
+        InitIdPieces, SubjectIdPieces, !Specs) :-
     MainPieces =
         [words("In interface for module"), qual_sym_name(ModuleName),
         suffix(":"), nl,
         words("error: exported promise refers to")] ++
-        IdPieces ++ [suffix(","),
-        words("which is defined in another module,"),
-        qual_sym_name(PredModuleName), suffix("."), nl],
+        InitIdPieces ++ color_as_subject(SubjectIdPieces) ++ [suffix(","),
+        words("which is")] ++
+        color_as_incorrect([words("defined in another module,"),
+            qual_sym_name(PredModuleName), suffix(".")]) ++
+        [nl],
     VerbosePieces =
         [words("Either move the promise into the implementation section,"),
         words("or move it to the"),

@@ -1,13 +1,13 @@
 missing_interface_import.m:011: In definition of type `bar'/0:
 missing_interface_import.m:011:   error: the type [38;5;87m`map'/2[39;49m [38;5;203mis undefined.[39;49m
-missing_interface_import.m:011:   [38;5;226m(The module `map' has not been imported in[39;49m
-missing_interface_import.m:011:   [38;5;226mthe interface.)[39;49m
+missing_interface_import.m:011:   (The module [38;5;87m`map'[39;49m [38;5;203mhas not been imported in[39;49m
+missing_interface_import.m:011:   [38;5;203mthe interface.)[39;49m
 missing_interface_import.m:013: In declaration of predicate `p'/1:
 missing_interface_import.m:013:   error: the type [38;5;87m`univ.univ'/0[39;49m [38;5;203mis undefined.[39;49m
-missing_interface_import.m:013:   [38;5;226m(The module `univ' has not been imported in[39;49m
-missing_interface_import.m:013:   [38;5;226mthe interface.)[39;49m
+missing_interface_import.m:013:   (The module [38;5;87m`univ'[39;49m [38;5;203mhas not been imported in[39;49m
+missing_interface_import.m:013:   [38;5;203mthe interface.)[39;49m
 missing_interface_import.m:014: In declaration of predicate `q'/1:
 missing_interface_import.m:014:   error: the type [38;5;87m`list'/1[39;49m [38;5;203mis undefined.[39;49m
-missing_interface_import.m:014:   [38;5;226m(The module `list' has not been imported in[39;49m
-missing_interface_import.m:014:   [38;5;226mthe interface.)[39;49m
+missing_interface_import.m:014:   (The module [38;5;87m`list'[39;49m [38;5;203mhas not been imported in[39;49m
+missing_interface_import.m:014:   [38;5;203mthe interface.)[39;49m
 `missing_interface_import.int' and `missing_interface_import.int2' not written.
