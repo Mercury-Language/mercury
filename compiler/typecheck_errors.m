@@ -1352,7 +1352,7 @@ argument_name_to_pieces_lc(VarSet, LastContextWord, Var) = Pieces :-
     else
         (
             ( LastContextWord = lcw_none
-            ; LastContextWord = lcw_call,
+            ; LastContextWord = lcw_call
             ; LastContextWord = lcw_argument
             ),
             Pieces = [words("argument")]
@@ -1375,7 +1375,7 @@ argument_name_to_pieces_uc(VarSet, LastContextWord, Var) = Pieces :-
     else
         (
             ( LastContextWord = lcw_none
-            ; LastContextWord = lcw_call,
+            ; LastContextWord = lcw_call
             ; LastContextWord = lcw_argument
             ),
             Pieces = [words("Argument")]
