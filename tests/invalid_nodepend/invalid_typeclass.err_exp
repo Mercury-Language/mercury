@@ -1,4 +1,5 @@
-invalid_typeclass.m:011: Error: [38;5;203mno definition[39;49m for typeclass [38;5;87m`class'/1.[39;49m
+invalid_typeclass.m:011: Error: typeclass [38;5;87m`class'/1[39;49m has a declaration, but it
+invalid_typeclass.m:011:   [38;5;203mhas no definition.[39;49m
 invalid_typeclass.m:015: Error: expected [38;5;40mdistinct variables[39;49m as typeclass
 invalid_typeclass.m:015:   declaration parameters, but the variable [38;5;87m`T'[39;49m is
 invalid_typeclass.m:015:   [38;5;203mrepeated.[39;49m

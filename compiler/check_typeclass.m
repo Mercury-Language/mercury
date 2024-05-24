@@ -602,10 +602,10 @@ generate_instance_method_procs_for_class(ClassTable, ClassId,
     then
         (
             MaybeBadDefn = has_no_bad_class_defn,
-            Pieces = [words("Error:")] ++
-                color_as_incorrect([words("no definition")]) ++
-                [words("for typeclass")] ++
-                color_as_subject([unqual_class_id(ClassId), suffix(".")]) ++
+            Pieces = [words("Error: typeclass")] ++
+                color_as_subject([unqual_class_id(ClassId)]) ++
+                [words("has a declaration, but it")] ++
+                color_as_incorrect([words("has no definition.")]) ++
                 [nl],
             Spec = spec($pred, severity_error, phase_type_check,
                 ClassContext, Pieces),
