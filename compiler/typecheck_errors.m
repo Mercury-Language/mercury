@@ -137,6 +137,8 @@
 
 :- import_module assoc_list.
 :- import_module int.
+:- import_module map.
+:- import_module one_or_more.
 :- import_module pair.
 :- import_module require.
 :- import_module set.
@@ -449,17 +451,19 @@ report_error_unify_var_functor_args(Info, UnifyContext, Context,
         % one that subsumes the expected type.
         (
             RevNoSubsumeMismatches = [_ | _],
-            list.reverse(RevNoSubsumeMismatches, NoSubsumeMismatches),
-            MaybeNumMismatches = yes(list.length(NoSubsumeMismatches)),
-            ErrorPieces = mismatched_args_to_pieces(VarSet, Functor, is_first,
-                NoSubsumeMismatches)
+            list.reverse(RevNoSubsumeMismatches, Mismatches)
         ;
             RevNoSubsumeMismatches = [],
-            list.reverse(RevSubsumesMismatches, SubsumesMismatches),
-            MaybeNumMismatches = yes(list.length(SubsumesMismatches)),
-            ErrorPieces = mismatched_args_to_pieces(VarSet, Functor, is_first,
-                SubsumesMismatches)
+            list.reverse(RevSubsumesMismatches, Mismatches)
         ),
+        categorize_mismatch_infos(Mismatches, CatMismatches0,
+            map.init, ExpTVarCounts),
+        list.negated_filter(hide_categorized_mismatch_info(ExpTVarCounts),
+            CatMismatches0, CatMismatches),
+        list.length(CatMismatches, NumCatMismatches),
+        MaybeNumMismatches = yes(NumCatMismatches),
+        ArgErrorPieces = mismatched_args_to_pieces(VarSet, Functor, is_first,
+            CatMismatches),
         VerboseComponents = []
     else
         % XXX It should be possible to compute which arguments are
@@ -504,7 +508,7 @@ report_error_unify_var_functor_args(Info, UnifyContext, Context,
                 types_of_vars_to_pieces(VarSet, InstVarSet, VarColor,
                     TypeAssignSet, [suffix("."), nl], HeadArgVar, TailArgVars)
         ),
-        ErrorPieces = ResultTypePieces ++ AllTypesPieces,
+        ArgErrorPieces = ResultTypePieces ++ AllTypesPieces,
         type_assign_set_msg_to_verbose_component(Info, VarSet,
             TypeAssignSet, VerboseComponent),
         VerboseComponents = [VerboseComponent]
@@ -535,16 +539,15 @@ report_error_unify_var_functor_args(Info, UnifyContext, Context,
             set.init, BuiltinTypes0),
         acc_builtin_types_in_cons_type_infos(ConsDefnList,
             BuiltinTypes0, BuiltinTypes),
-        InvisIntPieces =
+        InvisIntTypePieces =
             report_any_invisible_int_types(ClauseContext, BuiltinTypes)
     else
-        InvisIntPieces = []
+        InvisIntTypePieces = []
     ),
 
-    ErrorInvisIntPieces = ErrorPieces ++ InvisIntPieces,
-    Msg = simple_msg(Context,
-        [always(ContextPieces), always(VarAndTermPieces),
-        always(ErrorInvisIntPieces) | VerboseComponents]),
+    AlwaysPieces = ContextPieces ++ VarAndTermPieces ++ ArgErrorPieces ++
+        InvisIntTypePieces,
+    Msg = simple_msg(Context, [always(AlwaysPieces) | VerboseComponents]),
     Spec = error_spec($pred, severity_error, phase_type_check, [Msg]).
 
 :- type mismatch_info
@@ -558,6 +561,31 @@ report_error_unify_var_functor_args(Info, UnifyContext, Context,
                 list(type_mismatch) % Later type mismatches for this arg.
             ).
 
+:- type categorized_mismatch_info
+    --->    categorized_mismatch_info(
+                int,                % Argument number, starting from 1.
+                prog_var,           % Variable in that position
+                mismatch_category,
+                set(type_mismatch_special)
+            ).
+
+:- type mismatch_category
+    --->    one_expected(
+                one_expected_tvar   :: maybe(tvar),
+                one_expected_pieces :: list(format_piece),
+                one_actual_pieces   :: one_or_more(list(format_piece))
+            )
+    ;       several_expected(
+                several_head        :: type_mismatch,
+                several_tail        :: list(type_mismatch)
+            ).
+
+:- type actual_and_maybe_special
+    --->    actual_and_maybe_special(
+                list(format_piece),
+                maybe(type_mismatch_special)
+            ).
+
 :- type does_actual_subsume_expected
     --->    actual_does_not_subsume_expected
     ;       actual_subsumes_expected.
@@ -567,6 +595,7 @@ report_error_unify_var_functor_args(Info, UnifyContext, Context,
 
 :- type type_mismatch
     --->    type_mismatch_exp_act(
+                expected_is_tvar    :: maybe(tvar),
                 expected_type_desc  :: list(format_piece),
                 actual_type_desc    :: list(format_piece),
                 mismatch_subsumes   :: does_actual_subsume_expected,
@@ -689,8 +718,16 @@ substitute_types_check_match(AddQuotes, InstVarSet, StrippedExpType, TypeStuff,
         else
             MaybeSpecial = no
         ),
-        TypeMismatch = type_mismatch_exp_act(ExpectedPieces, ActualPieces,
-            ActualSubsumesExpected, MaybeSpecial),
+        ( if
+            FullExpType = type_variable(ExpTVar, kind_star),
+            not list.member(ExpTVar, ExistQTVars)
+        then
+            MaybeExpTVar = yes(ExpTVar)
+        else
+            MaybeExpTVar = no
+        ),
+        TypeMismatch = type_mismatch_exp_act(MaybeExpTVar, ExpectedPieces,
+            ActualPieces, ActualSubsumesExpected, MaybeSpecial),
         !:TypeMismatches = [TypeMismatch | !.TypeMismatches]
     ).
 
@@ -701,14 +738,80 @@ all_no_subsume_mismatches([Mismatch | Mismatches]) :-
     Mismatch ^ mismatch_subsumes = actual_does_not_subsume_expected,
     all_no_subsume_mismatches(Mismatches).
 
+:- pred categorize_mismatch_infos(list(mismatch_info)::in,
+    list(categorized_mismatch_info)::out,
+    map(tvar, int)::in, map(tvar, int)::out) is det.
+
+categorize_mismatch_infos([], [], !ExpTVarCounts).
+categorize_mismatch_infos([Mismatch | Mismatches], [CatMI | CatMIs],
+        !ExpTVarCounts) :-
+    Mismatch = mismatch_info(ArgNum, Var,
+        HeadTypeMismatch, TailTypeMismatches),
+    HeadTypeMismatch =
+        type_mismatch_exp_act(MaybeExpTVar,
+            HeadExpectedPieces, HeadActualPieces,
+            _ActualSubsumesExpected, _MaybeSpecial),
+    ( if
+        expected_types_all_same_return_actuals(HeadExpectedPieces,
+            TailTypeMismatches, TailActualPieces)
+    then
+        MismatchCategory = one_expected(MaybeExpTVar, HeadExpectedPieces,
+            one_or_more(HeadActualPieces, TailActualPieces)),
+        (
+            MaybeExpTVar = yes(ExpTVar),
+            ( if map.search(!.ExpTVarCounts, ExpTVar, Count0) then
+                map.det_update(ExpTVar, Count0 + 1, !ExpTVarCounts)
+            else
+                map.det_insert(ExpTVar, 1, !ExpTVarCounts)
+            )
+        ;
+            MaybeExpTVar = no
+        )
+    else
+        % NOTE Instead of returning all the mismatches unchanged,
+        % we could group them by expected pieces. For example, if
+        % [HeadTypeMismatch | TailTypeMismatches] had five elements, and
+        % two had one value for the expected pieces and three another value,
+        % then we could return a list containing two one_expected structures
+        % (which should then be renamed).
+        %
+        % This would probably generate more useful output. However,
+        % we almost never get errors for which this change would make
+        % any difference, so it is not a priority, and we would need
+        % a motivating example where it *would* make a difference to
+        % help us decide on what the right formatting would be for such cases.
+        MismatchCategory =
+            several_expected(HeadTypeMismatch, TailTypeMismatches)
+    ),
+    gather_special_type_mismatches([HeadTypeMismatch | TailTypeMismatches],
+        SpecialMismatches),
+    CatMI = categorized_mismatch_info(ArgNum, Var, MismatchCategory,
+        SpecialMismatches),
+    categorize_mismatch_infos(Mismatches, CatMIs, !ExpTVarCounts).
+
+    % Do not display for the user any message that says
+    % "Argument has type <actual type>, expected type was <distinct typevar>",
+    % since such mismatches are NOT type errors.
+    %
+:- pred hide_categorized_mismatch_info(map(tvar, int)::in,
+    categorized_mismatch_info::in) is semidet.
+
+hide_categorized_mismatch_info(ExpTVarCounts, CatMI) :-
+    CatMI = categorized_mismatch_info(_ArgNum, _Var, MismatchCategory,
+        _SpecialMismatches),
+    MismatchCategory = one_expected(MaybeExpTVar, _ExpPieces, _ActPieces),
+    MaybeExpTVar = yes(ExpTVar),
+    map.lookup(ExpTVarCounts, ExpTVar, Count),
+    Count < 2.
+
 :- func mismatched_args_to_pieces(prog_varset, cons_id, is_first,
-    list(mismatch_info)) = list(format_piece).
+    list(categorized_mismatch_info)) = list(format_piece).
 
 mismatched_args_to_pieces(_, _, _, []) = [].
 mismatched_args_to_pieces(VarSet, Functor, First, [Mismatch | Mismatches])
         = Pieces :-
-    Mismatch = mismatch_info(ArgNum, Var,
-        HeadTypeMismatch, TailTypeMismatches),
+    Mismatch = categorized_mismatch_info(ArgNum, Var,
+        MismatchCategory, SpecialMismatches),
     ( if
         % Handle higher-order syntax such as ''(F, A) specially:
         % output
@@ -736,20 +839,14 @@ mismatched_args_to_pieces(VarSet, Functor, First, [Mismatch | Mismatches])
     else
         VarNamePieces = []
     ),
-    HeadTypeMismatch =
-        type_mismatch_exp_act(HeadExpectedTypePieces, HeadActualTypePieces,
-            _ActualSubsumesExpected, _MaybeSpecial),
-    ( if
-        expected_types_all_same_return_actuals(HeadExpectedTypePieces,
-            TailTypeMismatches, TailActualTypePieces)
-    then
-        % XXX TYPECHECK_ERRORS We should look into whether it is a good idea
-        % to delete all mismatches where the expected type is just a type
-        % variable, since those cannot be the root causes of a type error.
-        ExpectedDotPieces = HeadExpectedTypePieces ++ [suffix(".")],
+    (
+        MismatchCategory =
+            one_expected(_ExpType, ExpectedPieces, OoMActualPieces),
+        OoMActualPieces = one_or_more(HeadActualPieces, TailActualPieces),
+        ExpectedDotPieces = ExpectedPieces ++ [suffix(".")],
         (
-            TailActualTypePieces = [],
-            ActualCommaPieces = HeadActualTypePieces ++ [suffix(",")],
+            TailActualPieces = [],
+            ActualCommaPieces = HeadActualPieces ++ [suffix(",")],
             ErrorDescPieces = [words("has type"), nl_indent_delta(1)] ++
                 color_as_incorrect(ActualCommaPieces) ++
                     [nl_indent_delta(-1)] ++
@@ -757,11 +854,11 @@ mismatched_args_to_pieces(VarSet, Functor, First, [Mismatch | Mismatches])
                 color_as_correct(ExpectedDotPieces) ++
                     [nl_indent_delta(-1)]
         ;
-            TailActualTypePieces =
-                [SecondActualTypePieces | ThirdPlusActualTypePieces],
+            TailActualPieces =
+                [SecondActualPieces | ThirdPlusActualPieces],
             ActualCommaPieces =
-                report_actual_types(HeadActualTypePieces,
-                    SecondActualTypePieces, ThirdPlusActualTypePieces) ++
+                report_actual_types(HeadActualPieces,
+                    SecondActualPieces, ThirdPlusActualPieces) ++
                 [suffix(",")],
             ErrorDescPieces = [words("has type"), nl_indent_delta(1)] ++
                 color_as_incorrect(ActualCommaPieces) ++
@@ -770,15 +867,15 @@ mismatched_args_to_pieces(VarSet, Functor, First, [Mismatch | Mismatches])
                 color_as_correct(ExpectedDotPieces) ++
                     [nl_indent_delta(-1)]
         )
-    else
+    ;
+        MismatchCategory =
+            several_expected(HeadTypeMismatch, TailTypeMismatches),
         AllMismatches = [HeadTypeMismatch | TailTypeMismatches],
         ErrorDescPieces =
             [words("has one of the following type mismatches."), nl] ++
             report_possible_expected_actual_types(1, AllMismatches) ++
         [suffix("."), nl]
     ),
-    gather_special_type_mismatches([HeadTypeMismatch | TailTypeMismatches],
-        SpecialMismatches),
     SpecialReasonPieces = report_special_type_mismatches(SpecialMismatches),
 
     ThisMismatchPieces = color_as_subject(ArgNumPieces ++ VarNamePieces) ++
@@ -801,9 +898,9 @@ expected_types_all_same_return_actuals(_ExpTypePieces, [], []).
 expected_types_all_same_return_actuals(ExpTypePieces,
         [HeadMismatch | TailMismatches],
         [HeadActualTypePieces | TailActualTypePieces]) :-
-    HeadMismatch =
-        type_mismatch_exp_act(HeadExpTypePieces, HeadActualTypePieces,
-            _ActualSubsumesExpected, _MaybeSpecial),
+    HeadMismatch = type_mismatch_exp_act(_ExpType,
+        HeadExpTypePieces, HeadActualTypePieces,
+        _ActualSubsumesExpected, _MaybeSpecial),
     ExpTypePieces = HeadExpTypePieces,
     expected_types_all_same_return_actuals(ExpTypePieces,
         TailMismatches, TailActualTypePieces).
@@ -833,7 +930,8 @@ report_actual_types(FirstActualTypePieces, SecondActualTypePieces,
 report_possible_expected_actual_types(_CurPossNum, []) = [].
 report_possible_expected_actual_types(CurPossNum, [Mismatch | Mismatches])
         = Pieces :-
-    Mismatch = type_mismatch_exp_act(ExpectedTypePieces, ActualTypePieces,
+    Mismatch = type_mismatch_exp_act(_ExpType,
+        ExpectedTypePieces, ActualTypePieces,
         _ActualSubsumesExpected, _MaybeSpecial),
     HeadPieces =
         [words("Possibility"), int_fixed(CurPossNum), suffix(":")] ++
@@ -853,8 +951,7 @@ report_possible_expected_actual_types(CurPossNum, [Mismatch | Mismatches])
 gather_special_type_mismatches([], set.init).
 gather_special_type_mismatches([Mismatch | Mismatches], !:Specials) :-
     gather_special_type_mismatches(Mismatches, !:Specials),
-    Mismatch = type_mismatch_exp_act(_ExpectedTypePieces, _ActualTypePieces,
-        _ActualSubsumesExpected, MaybeSpecial),
+    Mismatch = type_mismatch_exp_act(_, _, _, _, MaybeSpecial),
     (
         MaybeSpecial = no
     ;

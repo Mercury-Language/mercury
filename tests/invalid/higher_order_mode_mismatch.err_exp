@@ -1,16 +1,12 @@
 higher_order_mode_mismatch.m:028: In clause for predicate `test_1'/3:
 higher_order_mode_mismatch.m:028:   in unification of [38;5;87mvariable `Out'[39;49m
 higher_order_mode_mismatch.m:028:   and term [38;5;87m`P(In1, V_7)':[39;49m
-higher_order_mode_mismatch.m:028:   type error in arguments of higher-order
-higher_order_mode_mismatch.m:028:   term (with arity 2).
+higher_order_mode_mismatch.m:028:   type error in argument of higher-order term
+higher_order_mode_mismatch.m:028:   (with arity 2).
 higher_order_mode_mismatch.m:028:   [38;5;87mFunctor (P)[39;49m has type
 higher_order_mode_mismatch.m:028:     [38;5;203mpred(int, int, int),[39;49m
 higher_order_mode_mismatch.m:028:   expected type was
 higher_order_mode_mismatch.m:028:     [38;5;40mfunc(V_1, V_2) = int.[39;49m
-higher_order_mode_mismatch.m:028:   [38;5;87mArgument 1 (In1)[39;49m has type
-higher_order_mode_mismatch.m:028:     [38;5;203mint,[39;49m
-higher_order_mode_mismatch.m:028:   expected type was
-higher_order_mode_mismatch.m:028:     [38;5;40mV_1.[39;49m
 higher_order_mode_mismatch.m:031: In clause for predicate `test_2'/3:
 higher_order_mode_mismatch.m:031:   in argument 1 (i.e. the predicate term) of
 higher_order_mode_mismatch.m:031:   higher-order predicate call:
@@ -32,16 +28,12 @@ higher_order_mode_mismatch.m:034:   [38;5;226mpredicate,[39;49m got a [38;5;2
 higher_order_mode_mismatch.m:037: In clause for predicate `test_4'/3:
 higher_order_mode_mismatch.m:037:   in unification of [38;5;87mvariable `Out'[39;49m
 higher_order_mode_mismatch.m:037:   and term [38;5;87m`In1(In2)':[39;49m
-higher_order_mode_mismatch.m:037:   type error in arguments of higher-order
-higher_order_mode_mismatch.m:037:   term (with arity 1).
+higher_order_mode_mismatch.m:037:   type error in argument of higher-order term
+higher_order_mode_mismatch.m:037:   (with arity 1).
 higher_order_mode_mismatch.m:037:   [38;5;87mFunctor (In1)[39;49m has type
 higher_order_mode_mismatch.m:037:     [38;5;203mint,[39;49m
 higher_order_mode_mismatch.m:037:   expected type was
 higher_order_mode_mismatch.m:037:     [38;5;40mfunc(V_1) = int.[39;49m
-higher_order_mode_mismatch.m:037:   [38;5;87mArgument 1 (In2)[39;49m has type
-higher_order_mode_mismatch.m:037:     [38;5;203mint,[39;49m
-higher_order_mode_mismatch.m:037:   expected type was
-higher_order_mode_mismatch.m:037:     [38;5;40mV_1.[39;49m
 higher_order_mode_mismatch.m:040: In clause for predicate `test_5'/3:
 higher_order_mode_mismatch.m:040:   in argument 1 (i.e. the predicate term) of
 higher_order_mode_mismatch.m:040:   higher-order predicate call:

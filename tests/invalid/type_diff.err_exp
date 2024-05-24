@@ -108,35 +108,19 @@ type_diff.m:080:   got [38;5;226mthree.[39;49m
 type_diff.m:086: In clause for predicate `p2'/4:
 type_diff.m:086:   in unification of [38;5;87mvariable `B'[39;49m
 type_diff.m:086:   and term [38;5;87m`Func(A)':[39;49m
-type_diff.m:086:   type error in arguments of higher-order term (with arity 1).
+type_diff.m:086:   type error in argument of higher-order term (with arity 1).
 type_diff.m:086:   [38;5;87mFunctor (Func)[39;49m has type
 type_diff.m:086:     [38;5;203mfunc(int, int) = int,[39;49m
 type_diff.m:086:   expected type was
 type_diff.m:086:     [38;5;40mfunc(V_13) = int.[39;49m
-type_diff.m:086:   [38;5;87mArgument 1 (A)[39;49m has type
-type_diff.m:086:     [38;5;203mint,[39;49m
-type_diff.m:086:   expected type was
-type_diff.m:086:     [38;5;40mV_13.[39;49m
 type_diff.m:087: In clause for predicate `p2'/4:
 type_diff.m:087:   in unification of [38;5;87mvariable `D'[39;49m
 type_diff.m:087:   and term [38;5;87m`Func(A, B, C)':[39;49m
-type_diff.m:087:   type error in arguments of higher-order term (with arity 3).
+type_diff.m:087:   type error in argument of higher-order term (with arity 3).
 type_diff.m:087:   [38;5;87mFunctor (Func)[39;49m has type
 type_diff.m:087:     [38;5;203mfunc(int, int) = int,[39;49m
 type_diff.m:087:   expected type was
 type_diff.m:087:     [38;5;40mfunc(V_13, V_14, V_15) = V_16.[39;49m
-type_diff.m:087:   [38;5;87mArgument 1 (A)[39;49m has type
-type_diff.m:087:     [38;5;203mint,[39;49m
-type_diff.m:087:   expected type was
-type_diff.m:087:     [38;5;40mV_13.[39;49m
-type_diff.m:087:   [38;5;87mArgument 2 (B)[39;49m has type
-type_diff.m:087:     [38;5;203mint,[39;49m
-type_diff.m:087:   expected type was
-type_diff.m:087:     [38;5;40mV_14.[39;49m
-type_diff.m:087:   [38;5;87mArgument 3 (C)[39;49m has type
-type_diff.m:087:     [38;5;203mint,[39;49m
-type_diff.m:087:   expected type was
-type_diff.m:087:     [38;5;40mV_15.[39;49m
 type_diff.m:088: In clause for predicate `p2'/4:
 type_diff.m:088:   in argument 1 (i.e. the predicate term) of impure
 type_diff.m:088:   higher-order predicate call:
