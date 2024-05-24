@@ -1,57 +1,57 @@
 det_errors_cc.m:021: Error: call to predicate [38;5;87m`det_errors_cc.p1'/2[39;49m with
 det_errors_cc.m:021:   determinism `cc_nondet' [38;5;203moccurs in a context which[39;49m
 det_errors_cc.m:021:   [38;5;203mrequires all solutions.[39;49m
-det_errors_cc.m:022:   Call to p2 can fail.
-det_errors_cc.m:023:   Call to p3 can fail.
-det_errors_cc.m:024:   Call to p4 can fail.
-det_errors_cc.m:025:   Call to p5 can fail.
-det_errors_cc.m:026:   Call to p6 can fail.
+det_errors_cc.m:022:   Call to [38;5;87mp2[39;49m [38;5;203mcan fail.[39;49m
+det_errors_cc.m:023:   Call to [38;5;87mp3[39;49m [38;5;203mcan fail.[39;49m
+det_errors_cc.m:024:   Call to [38;5;87mp4[39;49m [38;5;203mcan fail.[39;49m
+det_errors_cc.m:025:   Call to [38;5;87mp5[39;49m [38;5;203mcan fail.[39;49m
+det_errors_cc.m:026:   Call to [38;5;87mp6[39;49m [38;5;203mcan fail.[39;49m
 det_errors_cc.m:022: Error: call to predicate [38;5;87m`det_errors_cc.p2'/2[39;49m with
 det_errors_cc.m:022:   determinism `cc_nondet' [38;5;203moccurs in a context which[39;49m
 det_errors_cc.m:022:   [38;5;203mrequires all solutions.[39;49m
-det_errors_cc.m:023:   Call to p3 can fail.
-det_errors_cc.m:024:   Call to p4 can fail.
-det_errors_cc.m:025:   Call to p5 can fail.
-det_errors_cc.m:026:   Call to p6 can fail.
+det_errors_cc.m:023:   Call to [38;5;87mp3[39;49m [38;5;203mcan fail.[39;49m
+det_errors_cc.m:024:   Call to [38;5;87mp4[39;49m [38;5;203mcan fail.[39;49m
+det_errors_cc.m:025:   Call to [38;5;87mp5[39;49m [38;5;203mcan fail.[39;49m
+det_errors_cc.m:026:   Call to [38;5;87mp6[39;49m [38;5;203mcan fail.[39;49m
 det_errors_cc.m:023: Error: call to predicate [38;5;87m`det_errors_cc.p3'/2[39;49m with
 det_errors_cc.m:023:   determinism `cc_nondet' [38;5;203moccurs in a context which[39;49m
 det_errors_cc.m:023:   [38;5;203mrequires all solutions.[39;49m
-det_errors_cc.m:024:   Call to p4 can fail.
-det_errors_cc.m:025:   Call to p5 can fail.
-det_errors_cc.m:026:   Call to p6 can fail.
+det_errors_cc.m:024:   Call to [38;5;87mp4[39;49m [38;5;203mcan fail.[39;49m
+det_errors_cc.m:025:   Call to [38;5;87mp5[39;49m [38;5;203mcan fail.[39;49m
+det_errors_cc.m:026:   Call to [38;5;87mp6[39;49m [38;5;203mcan fail.[39;49m
 det_errors_cc.m:024: Error: call to predicate [38;5;87m`det_errors_cc.p4'/2[39;49m with
 det_errors_cc.m:024:   determinism `cc_nondet' [38;5;203moccurs in a context which[39;49m
 det_errors_cc.m:024:   [38;5;203mrequires all solutions.[39;49m
-det_errors_cc.m:025:   Call to p5 can fail.
-det_errors_cc.m:026:   Call to p6 can fail.
+det_errors_cc.m:025:   Call to [38;5;87mp5[39;49m [38;5;203mcan fail.[39;49m
+det_errors_cc.m:026:   Call to [38;5;87mp6[39;49m [38;5;203mcan fail.[39;49m
 det_errors_cc.m:025: Error: call to predicate [38;5;87m`det_errors_cc.p5'/2[39;49m with
 det_errors_cc.m:025:   determinism `cc_nondet' [38;5;203moccurs in a context which[39;49m
 det_errors_cc.m:025:   [38;5;203mrequires all solutions.[39;49m
-det_errors_cc.m:026:   Call to p6 can fail.
+det_errors_cc.m:026:   Call to [38;5;87mp6[39;49m [38;5;203mcan fail.[39;49m
 det_errors_cc.m:031: Error: call to predicate [38;5;87m`det_errors_cc.p3'/2[39;49m with
 det_errors_cc.m:031:   determinism `cc_nondet' [38;5;203moccurs in a context which[39;49m
 det_errors_cc.m:031:   [38;5;203mrequires all solutions.[39;49m
-det_errors_cc.m:032:   Call to p4 can fail.
-det_errors_cc.m:033:   Unification of C with 10 can fail.
-det_errors_cc.m:034:   Unification of B and C can fail.
+det_errors_cc.m:032:   Call to [38;5;87mp4[39;49m [38;5;203mcan fail.[39;49m
+det_errors_cc.m:033:   Unification of [38;5;87m`C'[39;49m with [38;5;87m10[39;49m [38;5;203mcan fail.[39;49m
+det_errors_cc.m:034:   Unification of [38;5;87m`B'[39;49m and [38;5;87m`C'[39;49m [38;5;203mcan fail.[39;49m
 det_errors_cc.m:032: Error: call to predicate [38;5;87m`det_errors_cc.p4'/2[39;49m with
 det_errors_cc.m:032:   determinism `cc_nondet' [38;5;203moccurs in a context which[39;49m
 det_errors_cc.m:032:   [38;5;203mrequires all solutions.[39;49m
-det_errors_cc.m:033:   Unification of C with 10 can fail.
-det_errors_cc.m:034:   Unification of B and C can fail.
+det_errors_cc.m:033:   Unification of [38;5;87m`C'[39;49m with [38;5;87m10[39;49m [38;5;203mcan fail.[39;49m
+det_errors_cc.m:034:   Unification of [38;5;87m`B'[39;49m and [38;5;87m`C'[39;49m [38;5;203mcan fail.[39;49m
 det_errors_cc.m:040: Error: call to predicate [38;5;87m`det_errors_cc.p3'/2[39;49m with
 det_errors_cc.m:040:   determinism `cc_nondet' [38;5;203moccurs in a context which[39;49m
 det_errors_cc.m:040:   [38;5;203mrequires all solutions.[39;49m
-det_errors_cc.m:042:   Fail goal can fail.
+det_errors_cc.m:042:   [38;5;87mFail goal[39;49m [38;5;203mcan fail.[39;49m
 det_errors_cc.m:050: Error: call to predicate [38;5;87m`det_errors_cc.p2'/2[39;49m with
 det_errors_cc.m:050:   determinism `cc_nondet' [38;5;203moccurs in a context which[39;49m
 det_errors_cc.m:050:   [38;5;203mrequires all solutions.[39;49m
-det_errors_cc.m:051:   Negated goal can fail.
+det_errors_cc.m:051:   [38;5;87mNegated goal[39;49m [38;5;203mcan fail.[39;49m
 det_errors_cc.m:056: Error: call to predicate [38;5;87m`det_errors_cc.p3'/2[39;49m with
 det_errors_cc.m:056:   determinism `cc_nondet' [38;5;203moccurs in a context which[39;49m
 det_errors_cc.m:056:   [38;5;203mrequires all solutions.[39;49m
-det_errors_cc.m:058:   Higher-order predicate call can fail.
+det_errors_cc.m:058:   [38;5;87mHigher-order predicate call[39;49m [38;5;203mcan fail.[39;49m
 det_errors_cc.m:063: Error: call to predicate [38;5;87m`det_errors_cc.p1'/2[39;49m with
 det_errors_cc.m:063:   determinism `cc_nondet' [38;5;203moccurs in a context which[39;49m
 det_errors_cc.m:063:   [38;5;203mrequires all solutions.[39;49m
-det_errors_cc.m:074:   The switch on C is incomplete.
+det_errors_cc.m:074:   The [38;5;87mswitch on `C'[39;49m is [38;5;203mincomplete.[39;49m

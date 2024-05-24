@@ -2461,37 +2461,46 @@ failing_context_description(ModuleInfo, VarTable, FailingContext) = Msg :-
     FailingContext = failing_context(Context, FailingGoal),
     (
         FailingGoal = incomplete_switch(Var),
-        VarStr = mercury_var_to_string(VarTable, print_name_only, Var),
-        Pieces = [words("The switch on"), fixed(VarStr),
-            words("is incomplete."), nl]
+        VarPiece = var_in_table_to_quote_piece(VarTable, Var),
+        Pieces = [words("The")] ++
+            color_as_subject([words("switch on"), VarPiece]) ++
+            [words("is")] ++
+            color_as_incorrect([words("incomplete.")]) ++ [nl]
     ;
         FailingGoal = fail_goal,
-        Pieces = [words("Fail goal can fail."), nl]
+        Pieces = color_as_subject([words("Fail goal")]) ++
+            color_as_incorrect([words("can fail.")]) ++ [nl]
     ;
-        FailingGoal = test_goal(Var1, Var2),
-        Var1Str = mercury_var_to_string(VarTable, print_name_only, Var1),
-        Var2Str = mercury_var_to_string(VarTable, print_name_only, Var2),
-        Pieces = [words("Unification of"), fixed(Var1Str),
-            words("and"), fixed(Var2Str), words("can fail."), nl]
+        FailingGoal = test_goal(VarA, VarB),
+        VarPieceA = var_in_table_to_quote_piece(VarTable, VarA),
+        VarPieceB = var_in_table_to_quote_piece(VarTable, VarB),
+        Pieces = [words("Unification of")] ++ color_as_subject([VarPieceA]) ++
+            [words("and")] ++ color_as_subject([VarPieceB]) ++
+            color_as_incorrect([words("can fail.")]) ++ [nl]
     ;
         FailingGoal = deconstruct_goal(Var, ConsId),
-        VarStr = mercury_var_to_string(VarTable, print_name_only, Var),
-        Pieces = [words("Unification of"), fixed(VarStr), words("with"),
-            qual_cons_id_and_maybe_arity(ConsId), words("can fail."), nl]
+        VarPiece = var_in_table_to_quote_piece(VarTable, Var),
+        Pieces = [words("Unification of")] ++ color_as_subject([VarPiece]) ++
+            [words("with")] ++
+            color_as_subject([qual_cons_id_and_maybe_arity(ConsId)]) ++
+            color_as_incorrect([words("can fail.")]) ++ [nl]
     ;
         FailingGoal = call_goal(PredId, _ProcId),
         module_info_pred_info(ModuleInfo, PredId, PredInfo),
         Name = pred_info_name(PredInfo),
-        Pieces = [words("Call to"), fixed(Name), words("can fail."), nl]
+        Pieces = [words("Call to")] ++ color_as_subject([fixed(Name)]) ++
+            color_as_incorrect([words("can fail.")]) ++ [nl]
     ;
         FailingGoal = generic_call_goal(GenericCall),
         hlds_goal.generic_call_to_id(GenericCall, GenericCallId),
-        GenericCallIdString = generic_call_id_to_string(GenericCallId),
-        Pieces = [words(capitalize_first(GenericCallIdString)),
-            words("can fail."), nl]
+        GenericCallIdStr0 = generic_call_id_to_string(GenericCallId),
+        GenericCallIdStr = capitalize_first(GenericCallIdStr0),
+        Pieces = color_as_subject([words(GenericCallIdStr)]) ++
+            color_as_incorrect([words("can fail.")]) ++ [nl]
     ;
         FailingGoal = negated_goal,
-        Pieces = [words("Negated goal can fail."), nl]
+        Pieces = color_as_subject([words("Negated goal")]) ++
+            color_as_incorrect([words("can fail.")]) ++ [nl]
     ),
     Msg = msg(Context, Pieces).
 
