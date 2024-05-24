@@ -128,12 +128,19 @@
 
 %---------------------------------------------------------------------------%
 
+:- type last_context_word
+    --->    lcw_none
+    ;       lcw_call
+    ;       lcw_result
+    ;       lcw_argument
+    ;       lcw_element.
+
     % unify_context_to_pieces generates a message such as
     %   foo.m:123:   in argument 3 of functor `foo/5':
     %   foo.m:123:   in unification of `X' and `blah':
     % based on the unify_context and prog_context.
     %
-:- pred unify_context_to_pieces(unify_context::in,
+:- pred unify_context_to_pieces(unify_context::in, last_context_word::out,
     list(format_piece)::in, list(format_piece)::out) is det.
 
     % unify_context_first_to_pieces is the same as above, except that
@@ -148,7 +155,7 @@
     % as the first argument.
     %
 :- pred unify_context_first_to_pieces(is_first::in, is_first::out,
-    unify_context::in,
+    unify_context::in, last_context_word::out,
     list(format_piece)::in, list(format_piece)::out) is det.
 
 %---------------------------------------------------------------------------%
@@ -330,26 +337,32 @@ pred_proc_id_pair_to_dev_string(ModuleInfo, PredId, ProcId) = Str :-
 % Write out the contexts of unifications.
 %
 
-unify_context_to_pieces(UnifyContext, !Pieces) :-
-    unify_context_first_to_pieces(is_not_first, _, UnifyContext, !Pieces).
+unify_context_to_pieces(UnifyContext, LastContextWord, !Pieces) :-
+    unify_context_first_to_pieces(is_not_first, _, UnifyContext,
+        LastContextWord, !Pieces).
 
-unify_context_first_to_pieces(!First, UnifyContext, !Pieces) :-
+unify_context_first_to_pieces(!First, UnifyContext, LastContextWord,
+        !Pieces) :-
     UnifyContext = unify_context(MainContext, RevSubContexts),
     list.reverse(RevSubContexts, SubContexts),
-    unify_main_context_to_pieces(!First, MainContext, !Pieces),
-    unify_sub_contexts_to_pieces(!First, SubContexts, !Pieces).
+    unify_main_context_to_pieces(!First, MainContext,
+        LastContextWord0, !Pieces),
+    unify_sub_contexts_to_pieces(!First, SubContexts,
+        LastContextWord0, LastContextWord, !Pieces).
 
 :- pred unify_main_context_to_pieces(is_first::in, is_first::out,
-    unify_main_context::in,
+    unify_main_context::in, last_context_word::out,
     list(format_piece)::in, list(format_piece)::out) is det.
 
-unify_main_context_to_pieces(!First, MainContext, !Pieces) :-
+unify_main_context_to_pieces(!First, MainContext, LastContextWord, !Pieces) :-
     (
-        MainContext = umc_explicit
+        MainContext = umc_explicit,
+        LastContextWord = lcw_none
     ;
         MainContext = umc_head(ArgNum),
         start_in_message_to_pieces(!.First, !Pieces),
         !:First = is_not_first,
+        LastContextWord = lcw_argument,
         ArgNumStr = int_to_string(ArgNum),
         !:Pieces = !.Pieces ++
             [words("argument"), fixed(ArgNumStr), words("of clause head:"), nl]
@@ -357,12 +370,14 @@ unify_main_context_to_pieces(!First, MainContext, !Pieces) :-
         MainContext = umc_head_result,
         start_in_message_to_pieces(!.First, !Pieces),
         !:First = is_not_first,
+        LastContextWord = lcw_result,
         !:Pieces = !.Pieces ++
             [words("function result term of clause head:"), nl]
     ;
         MainContext = umc_call(CallId, ArgNum),
         start_in_message_to_pieces(!.First, !Pieces),
         !:First = is_not_first,
+        LastContextWord = lcw_call,
         % The markers argument below is used only for type class method
         % implementations defined using the named syntax rather than
         % the clause syntax, and the bodies of such procedures should
@@ -375,28 +390,34 @@ unify_main_context_to_pieces(!First, MainContext, !Pieces) :-
         !:Pieces = !.Pieces ++ [words(ArgIdStr), suffix(":"), nl]
     ;
         MainContext = umc_implicit(Source),
+        LastContextWord = lcw_none,
         start_in_message_to_pieces(!.First, !Pieces),
         string.format("implicit %s unification:\n", [s(Source)], Msg),
         !:Pieces = !.Pieces ++ [words(Msg), nl]
     ).
 
 :- pred unify_sub_contexts_to_pieces(is_first::in, is_first::out,
-    unify_sub_contexts::in,
+    unify_sub_contexts::in, last_context_word::in, last_context_word::out,
     list(format_piece)::in, list(format_piece)::out) is det.
 
-unify_sub_contexts_to_pieces(!First, [], !Pieces).
-unify_sub_contexts_to_pieces(!First, [SubContext | SubContexts], !Pieces) :-
+unify_sub_contexts_to_pieces(!First, [], !LastContextWord, !Pieces).
+unify_sub_contexts_to_pieces(!First, [SubContext | SubContexts],
+        _, !:LastContextWord, !Pieces) :-
     ( if
         contexts_describe_list_element([SubContext | SubContexts],
             0, ElementNum, AfterContexts)
     then
         in_element_to_pieces(!.First, ElementNum, !Pieces),
         !:First = is_not_first,
-        unify_sub_contexts_to_pieces(!First, AfterContexts, !Pieces)
+        !:LastContextWord = lcw_element,
+        unify_sub_contexts_to_pieces(!First, AfterContexts,
+            !LastContextWord, !Pieces)
     else
         in_argument_to_pieces(!.First, SubContext, !Pieces),
         !:First = is_not_first,
-        unify_sub_contexts_to_pieces(!First, SubContexts, !Pieces)
+        !:LastContextWord = lcw_argument,
+        unify_sub_contexts_to_pieces(!First, SubContexts,
+            !LastContextWord, !Pieces)
     ).
 
 :- pred contexts_describe_list_element(unify_sub_contexts::in,

@@ -252,7 +252,8 @@ report_error_unify_var_var(Info, UnifyContext, Context, X, Y, TypeAssignSet)
         = Spec :-
     typecheck_info_get_error_clause_context(Info, ClauseContext),
     InClauseForPieces = in_clause_for_pieces(ClauseContext),
-    unify_context_to_pieces(UnifyContext, InClauseForPieces, ContextPieces),
+    unify_context_to_pieces(UnifyContext, _LastContextWord,
+        InClauseForPieces, ContextPieces),
 
     VarSet = ClauseContext ^ tecc_varset,
     get_inst_varset(ClauseContext, InstVarSet),
@@ -278,10 +279,11 @@ report_error_unify_var_lambda(Info, UnifyContext, Context, PredOrFunc,
         Var, ArgVars, TypeAssignSet) = Spec :-
     typecheck_info_get_error_clause_context(Info, ClauseContext),
     InClauseForPieces = in_clause_for_pieces(ClauseContext),
-    unify_context_to_pieces(UnifyContext, InClauseForPieces, ContextPieces),
+    unify_context_to_pieces(UnifyContext, LastContextWord,
+        InClauseForPieces, ContextPieces),
 
     VarSet = ClauseContext ^ tecc_varset,
-    VarNamePieces = argument_name_to_pieces_uc(VarSet, Var),
+    VarNamePieces = argument_name_to_pieces_uc(VarSet, LastContextWord, Var),
     get_inst_varset(ClauseContext, InstVarSet),
     Pieces1 = [words("type error in unification of")] ++ VarNamePieces ++ [nl],
     (
@@ -349,7 +351,8 @@ report_error_unify_var_functor_result(Info, UnifyContext, Context,
         Var, ConsDefnList, Functor, Arity, TypeAssignSet) = Spec :-
     typecheck_info_get_error_clause_context(Info, ClauseContext),
     InClauseForPieces = in_clause_for_pieces(ClauseContext),
-    unify_context_to_pieces(UnifyContext, InClauseForPieces, ContextPieces),
+    unify_context_to_pieces(UnifyContext, LastContextWord,
+        InClauseForPieces, ContextPieces),
 
     VarSet = ClauseContext ^ tecc_varset,
     get_inst_varset(ClauseContext, InstVarSet),
@@ -364,10 +367,12 @@ report_error_unify_var_functor_result(Info, UnifyContext, Context,
     % including pointers such as the arity we expected vs what we got.
 
     MainPieces = [words("type error in unification of")] ++
-        argument_name_to_pieces_lc(VarSet, Var) ++ [nl, words("and")] ++
+        argument_name_to_pieces_lc(VarSet, LastContextWord, Var) ++
+        [nl, words("and")] ++
         functor_name_to_pieces(Functor, Arity) ++ [suffix("."), nl] ++
 
-        color_as_subject(argument_name_to_pieces_uc(VarSet, Var)) ++
+        color_as_subject(
+            argument_name_to_pieces_uc(VarSet, LastContextWord, Var)) ++
         VarTypePieces ++ [nl] ++
 
         color_as_subject(functor_name_to_pieces(Functor, Arity)) ++
@@ -407,7 +412,8 @@ report_error_unify_var_functor_args(Info, UnifyContext, Context,
         Var, ConsDefnList, Functor, ArgVars, ArgsTypeAssignSet) = Spec :-
     typecheck_info_get_error_clause_context(Info, ClauseContext),
     InClauseForPieces = in_clause_for_pieces(ClauseContext),
-    unify_context_to_pieces(UnifyContext, InClauseForPieces, ContextPieces),
+    unify_context_to_pieces(UnifyContext, LastContextWord,
+        InClauseForPieces, ContextPieces),
 
     ModuleInfo = ClauseContext ^ tecc_module_info,
     VarSet = ClauseContext ^ tecc_varset,
@@ -472,7 +478,8 @@ report_error_unify_var_functor_args(Info, UnifyContext, Context,
             % If so, print out the type of `Var'.
             % XXX Should this be in color, and if so, *which* color?
             ResultColor = maybe.no,
-            ResultTypePieces = argument_name_to_pieces_uc(VarSet, Var) ++
+            ResultTypePieces =
+                argument_name_to_pieces_uc(VarSet, LastContextWord, Var) ++
                 type_of_var_to_pieces(InstVarSet, ResultColor, TypeAssignSet,
                     [suffix(",")], Var) ++
                 [nl]
@@ -514,7 +521,9 @@ report_error_unify_var_functor_args(Info, UnifyContext, Context,
         )
     ),
     VarAndTermPieces = [words("in unification of")] ++
-        color_as_subject(argument_name_to_pieces_lc(VarSet, Var)) ++ [nl,
+        color_as_subject(
+            argument_name_to_pieces_lc(VarSet, LastContextWord, Var)) ++
+        [nl,
         words("and term")] ++
         color_as_subject([words_quote(StrippedFunctorStr), suffix(":")]) ++
             [nl,
@@ -977,8 +986,7 @@ report_error_wrong_types_in_arg_vector(Info, Context,
         unexpected($pred, "ArgVectorTypeErrors = []")
     ),
     arg_vector_type_errors_to_pieces(VarSet, ArgVectorTypeErrors,
-        HeadArgVectorTypeErrors, TailArgVectorTypeErrors,
-        ArgErrorPieces),
+        HeadArgVectorTypeErrors, TailArgVectorTypeErrors, ArgErrorPieces),
     ( if
         (
             ArgVectorKind = arg_vector_plain_pred_call(SymNamePredFormArity),
@@ -1041,7 +1049,7 @@ arg_vector_type_errors_to_pieces(VarSet, AllErrors, HeadError, TailErrors,
     ),
     Pieces = [words("in argument"), int_fixed(ArgNum), suffix(":"),
         nl_indent_delta(1) |
-        color_as_subject(argument_name_to_pieces_lc(VarSet, Var))] ++
+        color_as_subject(argument_name_to_pieces_lc(VarSet, lcw_none, Var))] ++
         [words("has type"), nl_indent_delta(1)] ++
         color_as_incorrect(ActualPieces ++ [suffix(",")]) ++
             [nl_indent_delta(-1),
@@ -1321,39 +1329,63 @@ types_of_vars_to_pieces(VarSet, InstVarSet, MaybeColor, TypeAssignSet,
     (
         TailVars = [],
         Pieces =
-            argument_name_to_pieces_lc(VarSet, HeadVar) ++
+            argument_name_to_pieces_lc(VarSet, lcw_none, HeadVar) ++
             type_of_var_to_pieces(InstVarSet, MaybeColor, TypeAssignSet,
                 FinalPieces, HeadVar)
     ;
         TailVars = [HeadTailVar | TailTailVars],
         Pieces =
-            argument_name_to_pieces_lc(VarSet, HeadVar) ++
+            argument_name_to_pieces_lc(VarSet, lcw_none, HeadVar) ++
             type_of_var_to_pieces(InstVarSet, MaybeColor, TypeAssignSet,
                 [suffix(","), nl], HeadVar) ++
             types_of_vars_to_pieces(VarSet, InstVarSet, MaybeColor,
                 TypeAssignSet, FinalPieces, HeadTailVar, TailTailVars)
     ).
 
-:- func argument_name_to_pieces_lc(prog_varset, prog_var)
+:- func argument_name_to_pieces_lc(prog_varset, last_context_word, prog_var)
     = list(format_piece).
 
-argument_name_to_pieces_lc(VarSet, Var) = Pieces :-
+argument_name_to_pieces_lc(VarSet, LastContextWord, Var) = Pieces :-
     ( if varset.search_name(VarSet, Var, _) then
         Pieces = [words("variable"),
             quote(mercury_var_to_name_only_vs(VarSet, Var))]
     else
-        Pieces = [words("argument")]
+        (
+            ( LastContextWord = lcw_none
+            ; LastContextWord = lcw_call,
+            ; LastContextWord = lcw_argument
+            ),
+            Pieces = [words("argument")]
+        ;
+            LastContextWord = lcw_result,
+            Pieces = [words("result")]
+        ;
+            LastContextWord = lcw_element,
+            Pieces = [words("element")]
+        )
     ).
 
-:- func argument_name_to_pieces_uc(prog_varset, prog_var)
+:- func argument_name_to_pieces_uc(prog_varset, last_context_word, prog_var)
     = list(format_piece).
 
-argument_name_to_pieces_uc(VarSet, Var) = Pieces :-
+argument_name_to_pieces_uc(VarSet, LastContextWord, Var) = Pieces :-
     ( if varset.search_name(VarSet, Var, _) then
         Pieces = [words("Variable"),
             quote(mercury_var_to_name_only_vs(VarSet, Var))]
     else
-        Pieces = [words("Argument")]
+        (
+            ( LastContextWord = lcw_none
+            ; LastContextWord = lcw_call,
+            ; LastContextWord = lcw_argument
+            ),
+            Pieces = [words("Argument")]
+        ;
+            LastContextWord = lcw_result,
+            Pieces = [words("Result")]
+        ;
+            LastContextWord = lcw_element,
+            Pieces = [words("Element")]
+        )
     ).
 
 :- func functor_name_to_pieces(cons_id, arity) = list(format_piece).
@@ -1493,7 +1525,7 @@ report_actual_expected_types(ClauseContext, Var, ActualExpectedList,
         MaybeActualExpected, ActualExpectedPieces, DiffPieces) :-
     VarSet = ClauseContext ^ tecc_varset,
     TypeErrorPieces = [words("type error:")] ++
-        color_as_subject(argument_name_to_pieces_lc(VarSet, Var)),
+        color_as_subject(argument_name_to_pieces_lc(VarSet, lcw_none, Var)),
     is_actual_or_expected_single_type(ActualExpectedList,
         MaybeSingleActual, MaybeSingleExpected),
     % XXX TYPECHECK_ERRORS If both MaybeSingles are yes(), then

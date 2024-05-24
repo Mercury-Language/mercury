@@ -1964,7 +1964,8 @@ det_check_for_noncanonical_type(Var, ExaminesRepresentation, CanFail,
                     suffix(":"), nl]
             ;
                 GoalContext = ccuc_unify(UnifyContext),
-                unify_context_to_pieces(UnifyContext, [], Pieces0)
+                unify_context_to_pieces(UnifyContext, _LastContextWord,
+                    [], Pieces0)
             ),
             (
                 Pieces0 = [],
@@ -2001,7 +2002,7 @@ det_check_for_noncanonical_type(Var, ExaminesRepresentation, CanFail,
                 ;
                     GoalContext = ccuc_unify(UnifyContext),
                     unify_context_first_to_pieces(is_first, _,
-                        UnifyContext, [], Pieces0)
+                        UnifyContext, _LastContextWord, [], Pieces0)
                 ),
                 (
                     Pieces0 = [],

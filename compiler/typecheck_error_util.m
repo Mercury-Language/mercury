@@ -305,7 +305,7 @@ goal_context_to_pieces(ClauseContext, GoalContext) = Pieces :-
         )
     ;
         GoalContext = type_error_in_unify(UnifyContext),
-        unify_context_to_pieces(UnifyContext, [], Pieces)
+        unify_context_to_pieces(UnifyContext, _LastContextWord, [], Pieces)
     ;
         GoalContext = type_error_in_atomic_inner,
         Pieces = [words("in inner variable of atomic goal:"), nl]

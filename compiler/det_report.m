@@ -2390,7 +2390,7 @@ det_report_call_context(CallUnifyContext, DetInfo, PredId, ProcId,
 
 det_report_unify_context(!.First, Last, UnifyContext, DetInfo,
         LHSVar, RHS, SurroundingContextPieces, MainPieces) :-
-    unify_context_first_to_pieces(!First, UnifyContext,
+    unify_context_first_to_pieces(!First, UnifyContext, _LastContextWord,
         [], SurroundingContextPieces),
     det_info_get_module_info(DetInfo, ModuleInfo),
     det_info_get_var_table(DetInfo, VarTable),

@@ -2488,7 +2488,7 @@ mode_context_to_pieces(ModeInfo, ModeContext, Markers) = Pieces :-
     ;
         ModeContext = mode_context_unify(UnifyContext, _Side),
         unify_context_first_to_pieces(is_not_first, _, UnifyContext,
-            [], Pieces)
+            _LastContextWord, [], Pieces)
     ).
 
 %---------------------------------------------------------------------------%
