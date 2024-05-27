@@ -1,4 +1,4 @@
-bug487.m:033: When the condition succeeds, the if-then-else [38;5;226mdefines[39;49m [38;5;87m!:SS,[39;49m but
+bug487.m:033: When the condition succeeds, the if-then-else [38;5;226mdefines[39;49m [38;5;87m`!:SS',[39;49m but
 bug487.m:033:   when the condition fails, [38;5;226mit does not.[39;49m
 bug487.m:034: In clause for `do_reconstruct_route(in, out)':
 bug487.m:034:   in argument 3 of call to predicate
@@ -9,4 +9,5 @@ bug487.m:034:   expected instantiatedness was [38;5;40m`mostly_unique'.[39;49m
 bug487.m:034: In clause for predicate `do_reconstruct_route'/2:
 bug487.m:034:   warning: variable [38;5;87m`STATE_VARIABLE_SS_8'[39;49m [38;5;203moccurs only once[39;49m in
 bug487.m:034:   this scope.
-bug487.m:034: Warning: reference to uninitialized state variable [38;5;203m!.SS.[39;49m
+bug487.m:034: Warning: you cannot refer to [38;5;87m`!.SS'[39;49m here, because that state
+bug487.m:034:   variable has [38;5;203mnot been initialized[39;49m yet.

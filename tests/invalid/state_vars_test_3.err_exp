@@ -3,5 +3,6 @@ state_vars_test_3.m:017: Error: clause for function [38;5;87m`f'/2[39;49m [38
 state_vars_test_3.m:017:   corresponding `:- func' declaration.
 state_vars_test_3.m:017:   However, a function of that name does exist with
 state_vars_test_3.m:017:   arity [38;5;40m1.[39;49m
-state_vars_test_3.m:017: Error: [38;5;203m!Y[39;49m cannot be a function result.
-state_vars_test_3.m:017:   You probably meant [38;5;40m!:Y.[39;49m
+state_vars_test_3.m:017: Error: since it represents two arguments, not one,
+state_vars_test_3.m:017:   [38;5;203m`!Y'[39;49m cannot be a function result. You probably meant
+state_vars_test_3.m:017:   [38;5;40m!:Y.[39;49m

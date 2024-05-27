@@ -1,4 +1,4 @@
-bad_statevar_bad_context.m:031: Error: state variable [38;5;203m!.A[39;49m is not visible in
+bad_statevar_bad_context.m:031: Error: state variable [38;5;203m`!.A'[39;49m is not visible in
 bad_statevar_bad_context.m:031:   this context.
 bad_statevar_bad_context.m:031: In clause for predicate `test_pred'/4:
 bad_statevar_bad_context.m:031:   in argument 3 of functor `f/3':

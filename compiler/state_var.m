@@ -2199,15 +2199,15 @@ is_term_a_bang_state_pair(ArgTerm, StateVar, Context) :-
 report_illegal_state_var_update(Context, RO_Construct, RO_Context, VarSet,
         StateVar, !Specs) :-
     Name = varset.lookup_name(VarSet, StateVar),
-    Pieces1 = [words("Error: cannot use")] ++
-        color_as_incorrect([fixed("!:" ++ Name)]) ++
+    Pieces1 = [words("Error: you cannot use")] ++
+        color_as_incorrect([quote("!:" ++ Name)]) ++
         [words("here due to the surrounding"), words(RO_Construct),
             suffix(";"),
         words("you may only refer to")] ++
-        color_as_correct([fixed("!." ++ Name), suffix(".")]) ++ [nl],
+        color_as_correct([quote("!." ++ Name), suffix(".")]) ++ [nl],
     Msg1 = msg(Context, Pieces1),
     Pieces2 = [words("Here is the surrounding context that makes"),
-        words("state variable"), fixed(Name), words("readonly."), nl],
+        words("state variable"), quote(Name), words("readonly."), nl],
     Msg2 = msg(RO_Context, Pieces2),
     Spec = error_spec($pred, severity_error, phase_pt2h, [Msg1, Msg2]),
     !:Specs = [Spec | !.Specs].
@@ -2223,10 +2223,9 @@ report_illegal_func_svar_result(Context, VarSet, StateVar, !Specs) :-
     % While having !.Var appear as a function argument is quite ordinary,
     % having it appear as a function *result* is not. We therefore do not
     % suggest it as a likely correction.
-    Pieces = [words("Error:")] ++
-        color_as_incorrect([fixed("!" ++ Name)]) ++
-        [words("cannot be a function result."), nl,
-        words("You probably meant")] ++
+    Pieces = [words("Error: since it represents two arguments, not one,")] ++
+        color_as_incorrect([quote("!" ++ Name)]) ++
+        [words("cannot be a function result. You probably meant")] ++
         color_as_correct([fixed("!:" ++ Name), suffix(".")]) ++ [nl],
     Spec = spec($pred, severity_error, phase_pt2h, Context, Pieces),
     !:Specs = [Spec | !.Specs].
@@ -2236,12 +2235,12 @@ report_illegal_func_svar_result(Context, VarSet, StateVar, !Specs) :-
 report_illegal_bang_svar_lambda_arg(Context, VarSet, StateVar, !Specs) :-
     Name = varset.lookup_name(VarSet, StateVar),
     Pieces = [words("Error:")] ++
-        color_as_incorrect([fixed("!" ++ Name)]) ++
+        color_as_incorrect([quote("!" ++ Name)]) ++
         [words("cannot be a lambda argument."), nl,
         words("Perhaps you meant")] ++
-        color_as_correct([fixed("!." ++ Name)]) ++
+        color_as_correct([quote("!." ++ Name)]) ++
         [words("or")] ++
-        color_as_correct([fixed("!:" ++ Name), suffix(".")]) ++ [nl],
+        color_as_correct([quote("!:" ++ Name), suffix(".")]) ++ [nl],
     Spec = spec($pred, severity_error, phase_pt2h, Context, Pieces),
     !:Specs = [Spec | !.Specs].
 
@@ -2254,7 +2253,7 @@ report_illegal_bang_svar_lambda_arg(Context, VarSet, StateVar, !Specs) :-
 report_non_visible_state_var(DorC, Context, VarSet, StateVar, !Specs) :-
     Name = varset.lookup_name(VarSet, StateVar),
     Pieces = [words("Error: state variable")] ++
-        color_as_incorrect([fixed("!" ++ DorC ++ Name)]) ++
+        color_as_incorrect([quote("!" ++ DorC ++ Name)]) ++
         [words("is not visible in this context."), nl],
     Spec = spec($pred, severity_error, phase_pt2h, Context, Pieces),
     !:Specs = [Spec | !.Specs].
@@ -2266,8 +2265,11 @@ report_non_visible_state_var(DorC, Context, VarSet, StateVar, !Specs) :-
 
 report_uninitialized_state_var(Context, VarSet, StateVar, !Specs) :-
     Name = varset.lookup_name(VarSet, StateVar),
-    Pieces = [words("Warning: reference to uninitialized state variable")] ++
-        color_as_incorrect([fixed("!." ++ Name), suffix(".")]) ++ [nl],
+    Pieces = [words("Warning: you cannot refer to")] ++
+        color_as_subject([quote("!." ++ Name)]) ++
+        [words("here, because that state variable has")] ++
+        color_as_incorrect([words("not been initialized")]) ++
+        [words("yet."), nl],
     Spec = spec($pred, severity_warning, phase_pt2h, Context, Pieces),
     !:Specs = [Spec | !.Specs].
 
@@ -2279,7 +2281,7 @@ report_uninitialized_state_var(Context, VarSet, StateVar, !Specs) :-
 report_repeated_head_state_var(Context, VarSet, StateVar, !Specs) :-
     Name = varset.lookup_name(VarSet, StateVar),
     Pieces = [words("Warning: clause head introduces")] ++
-        color_as_incorrect([words("state variable"), fixed(Name)]) ++
+        color_as_incorrect([words("state variable"), quote(Name)]) ++
         [words("more than once."), nl],
     Spec = spec($pred, severity_error, phase_pt2h, Context, Pieces),
     !:Specs = [Spec | !.Specs].
@@ -2292,7 +2294,7 @@ report_repeated_head_state_var(Context, VarSet, StateVar, !Specs) :-
 report_state_var_shadow(Context, VarSet, StateVar, !Specs) :-
     Name = varset.lookup_name(VarSet, StateVar),
     Pieces = [words("Warning: new state variable")] ++
-        color_as_subject([fixed(Name)]) ++
+        color_as_subject([quote(Name)]) ++
         color_as_incorrect([words("shadows old one.")]) ++ [nl],
     Spec = conditional_spec($pred, warn_state_var_shadowing, yes,
         severity_warning, phase_pt2h, [msg(Context, Pieces)]),
@@ -2306,8 +2308,9 @@ report_state_var_shadow(Context, VarSet, StateVar, !Specs) :-
 
 report_missing_inits_in_ite(Context, NextStateVars,
         WhenMissing, WhenNotMissing, !Specs) :-
-    NextStateVarsPieces = list_to_color_pieces(yes(color_subject),
-        "and", [suffix(",")], NextStateVars),
+    NextStateVarPieces = list.map((func(S) = quote(S)), NextStateVars),
+    NextStateVarsPieces = component_list_to_color_pieces(yes(color_subject),
+        "and", [suffix(",")], NextStateVarPieces),
     Pieces = [words("When the condition"), words(WhenNotMissing), suffix(","),
         words("the if-then-else")] ++
         color_as_possible_cause([words("defines")]) ++
@@ -2321,9 +2324,11 @@ report_missing_inits_in_ite(Context, NextStateVars,
     list(error_spec)::in, list(error_spec)::out) is det.
 
 report_missing_inits_in_disjunct(Context, NextStateVars, !Specs) :-
+    NextStateVarPieces = list.map((func(S) = quote(S)), NextStateVars),
     Pieces = [words("Other disjuncts define")] ++
-        list_to_pieces(NextStateVars) ++ [suffix(","),
-        words("but not this one."), nl],
+        component_list_to_color_pieces(yes(color_subject), "and",
+            [suffix(",")], NextStateVarPieces) ++
+        color_as_incorrect([words("but not this one.")]) ++ [nl],
     Spec = spec($pred, severity_informational, phase_pt2h, Context, Pieces),
     !:Specs = [Spec | !.Specs].
 
