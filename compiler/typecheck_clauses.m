@@ -3057,16 +3057,13 @@ typecheck_check_for_ambiguity(Context, StuffToCheck, HeadVars,
     ;
         TypeAssignSet = [_SingleTypeAssign]
     ;
-        TypeAssignSet = [TypeAssign1, TypeAssign2 | _],
-        % XXX Why do we check only the first two type assigns?
-
+        TypeAssignSet = [TypeAssign1, TypeAssign2 | TypeAssigns3plus],
         % We only report an ambiguity error if
         % (a) we haven't encountered any other errors and if
         %     StuffToCheck = clause_only(_), and also
         % (b) the ambiguity occurs only in the body, rather than in the
         %     head variables (and hence can't be resolved by looking at
         %     later clauses).
-
         typecheck_info_get_all_errors(!.Info, ErrorsSoFar),
         ( if
             ErrorsSoFar = [],
@@ -3074,33 +3071,48 @@ typecheck_check_for_ambiguity(Context, StuffToCheck, HeadVars,
                 StuffToCheck = whole_pred
             ;
                 StuffToCheck = clause_only,
+                compute_headvar_types_in_type_assign(HeadVars,
+                    TypeAssign1, HeadTypesInAssign1),
+                compute_headvar_types_in_type_assign(HeadVars,
+                    TypeAssign2, HeadTypesInAssign2),
+                list.map(compute_headvar_types_in_type_assign(HeadVars),
+                    TypeAssigns3plus, HeadTypesInAssigns3plus),
 
                 % Only report an error if the headvar types are identical
                 % (which means that the ambiguity must have occurred
                 % in the body).
-                type_assign_get_var_types(TypeAssign1, VarTypes1),
-                type_assign_get_var_types(TypeAssign2, VarTypes2),
-                type_assign_get_type_bindings(TypeAssign1, TypeBindings1),
-                type_assign_get_type_bindings(TypeAssign2, TypeBindings2),
-                lookup_var_types(VarTypes1, HeadVars, HeadTypes1),
-                lookup_var_types(VarTypes2, HeadVars, HeadTypes2),
-                apply_rec_subst_to_type_list(TypeBindings1, HeadTypes1,
-                    FinalHeadTypes1),
-                apply_rec_subst_to_type_list(TypeBindings2, HeadTypes2,
-                    FinalHeadTypes2),
-                identical_up_to_renaming(FinalHeadTypes1, FinalHeadTypes2)
+                all_identical_up_to_renaming(HeadTypesInAssign1,
+                    [HeadTypesInAssign2 | HeadTypesInAssigns3plus])
             )
         then
             typecheck_info_get_error_clause_context(!.Info, ClauseContext),
             typecheck_info_get_overloaded_symbol_map(!.Info,
                 OverloadedSymbolMap),
             Spec = report_ambiguity_error(ClauseContext, Context,
-                OverloadedSymbolMap, TypeAssign1, TypeAssign2),
+                OverloadedSymbolMap, TypeAssign1, TypeAssign2,
+                TypeAssigns3plus),
             typecheck_info_add_error(Spec, !Info)
         else
             true
         )
     ).
+
+:- pred compute_headvar_types_in_type_assign(list(prog_var)::in,
+    type_assign::in, list(mer_type)::out) is det.
+
+compute_headvar_types_in_type_assign(HeadVars, TypeAssign, HeadTypes) :-
+    type_assign_get_var_types(TypeAssign, VarTypes),
+    type_assign_get_type_bindings(TypeAssign, TypeBindings),
+    lookup_var_types(VarTypes, HeadVars, HeadTypes0),
+    apply_rec_subst_to_type_list(TypeBindings, HeadTypes0, HeadTypes).
+
+:- pred all_identical_up_to_renaming(list(mer_type)::in,
+    list(list(mer_type))::in) is semidet.
+
+all_identical_up_to_renaming(_, []).
+all_identical_up_to_renaming(HeadTypes1, [HeadTypes2 | HeadTypes3plus]) :-
+    identical_up_to_renaming(HeadTypes1, HeadTypes2),
+    all_identical_up_to_renaming(HeadTypes1, HeadTypes3plus).
 
 %---------------------------------------------------------------------------%
 :- end_module check_hlds.typecheck_clauses.

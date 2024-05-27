@@ -22,6 +22,8 @@
 :- import_module parse_tree.error_spec.
 :- import_module parse_tree.prog_data.
 
+:- import_module list.
+
 %---------------------------------------------------------------------------%
 
 :- func report_warning_too_much_overloading(type_error_clause_context,
@@ -33,7 +35,8 @@
 %---------------------------------------------------------------------------%
 
 :- func report_ambiguity_error(type_error_clause_context, prog_context,
-    overloaded_symbol_map, type_assign, type_assign) = error_spec.
+    overloaded_symbol_map, type_assign, type_assign, list(type_assign))
+    = error_spec.
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -48,16 +51,16 @@
 :- import_module mdbcomp.
 :- import_module mdbcomp.sym_name.
 :- import_module parse_tree.error_type_util.
-:- import_module parse_tree.parse_tree_out_term.
 :- import_module parse_tree.prog_type_subst.
 :- import_module parse_tree.vartypes.
 
 :- import_module assoc_list.
 :- import_module bool.
-:- import_module list.
 :- import_module map.
+:- import_module maybe.
 :- import_module pair.
 :- import_module require.
+:- import_module set.
 :- import_module term.
 :- import_module varset.
 
@@ -201,33 +204,41 @@ context_to_error_msg(Pieces, Context) = msg(Context, Pieces).
 %---------------------------------------------------------------------------%
 
 report_ambiguity_error(ClauseContext, Context, OverloadedSymbolMap,
-        TypeAssign1, TypeAssign2) = Spec :-
+        TypeAssign1, TypeAssign2, TypeAssigns3plus) = Spec :-
     InClauseForPieces = in_clause_for_pieces(ClauseContext),
-    Pieces1 =
+    ErrorPieces =
         [words("error: ambiguous overloading causes type ambiguity."), nl],
     VarSet = ClauseContext ^ tecc_varset,
     get_inst_varset(ClauseContext, InstVarSet),
     type_assign_get_var_types(TypeAssign1, VarTypes1),
     vartypes_vars(VarTypes1, Vars1),
-    AmbiguityPieces = ambiguity_error_possibilities_to_pieces(add_quotes,
-        VarSet, InstVarSet, Vars1, TypeAssign1, TypeAssign2),
+    AllTypeAssigns = [TypeAssign1, TypeAssign2 | TypeAssigns3plus],
+    VarAssignPiecesList = list.map(
+        var_ambiguity_to_pieces(VarSet, InstVarSet, AllTypeAssigns), Vars1),
     (
-        AmbiguityPieces = [],
-        Pieces2 = [],
+        VarAssignPiecesList = [],
+        VarAmbiguityPieces = [],
         VerboseComponents = [],
         WarningMsgs = too_much_overloading_to_msgs(ClauseContext, Context,
             OverloadedSymbolMap, no)
     ;
-        AmbiguityPieces = [_ | _],
-        Pieces2 = [words("Possible type assignments include:"), nl
-            | AmbiguityPieces],
+        VarAssignPiecesList = [_ | TailVarAssignPiecesList],
+        list.condense(VarAssignPiecesList, VarAssignPieces),
+        (
+            TailVarAssignPiecesList = [],
+            AmguityIntro = "The following variable has an ambiguous type:"
+        ;
+            TailVarAssignPiecesList = [_ | _],
+            AmguityIntro = "The following variables have ambiguous types:"
+        ),
+        VarAmbiguityPieces = [words(AmguityIntro), nl | VarAssignPieces],
         VerboseComponents =
             [verbose_only(verbose_once, add_qualifiers_reminder)],
         WarningMsgs = []
     ),
 
-    MainMsg = simple_msg(Context,
-        [always(InClauseForPieces ++ Pieces1 ++ Pieces2) | VerboseComponents]),
+    AlwaysPieces = InClauseForPieces ++ ErrorPieces ++ VarAmbiguityPieces,
+    MainMsg = simple_msg(Context, [always(AlwaysPieces) | VerboseComponents]),
     Spec = error_spec($pred, severity_error, phase_type_check,
         [MainMsg | WarningMsgs]).
 
@@ -243,53 +254,78 @@ add_qualifiers_reminder = [
     words("\"Syntax\" chapter of the Mercury language reference manual.")
 ].
 
-:- func ambiguity_error_possibilities_to_pieces(maybe_add_quotes,
-    prog_varset, inst_varset, list(prog_var), type_assign, type_assign)
-    = list(format_piece).
+:- func var_ambiguity_to_pieces(prog_varset, inst_varset, list(type_assign),
+    prog_var) = list(format_piece).
 
-ambiguity_error_possibilities_to_pieces(_AddQuotes, _VarSet, _InstVarSet,
-        [], _TypeAssign1, _TypeAssign2) = [].
-ambiguity_error_possibilities_to_pieces(AddQuotes, VarSet, InstVarSet,
-        [Var | Vars], TypeAssign1, TypeAssign2) = Pieces :-
-    type_assign_get_var_types(TypeAssign1, VarTypes1),
-    type_assign_get_var_types(TypeAssign2, VarTypes2),
-    type_assign_get_type_bindings(TypeAssign1, TypeBindings1),
-    type_assign_get_type_bindings(TypeAssign2, TypeBindings2),
-    type_assign_get_existq_tvars(TypeAssign1, ExistQTVars1),
-    type_assign_get_existq_tvars(TypeAssign2, ExistQTVars2),
-    ( if
-        search_var_type(VarTypes1, Var, Type1),
-        search_var_type(VarTypes2, Var, Type2),
-        apply_rec_subst_to_type(TypeBindings1, Type1, T1),
-        apply_rec_subst_to_type(TypeBindings2, Type2, T2),
-        not identical_types(T1, T2)
-    then
-        type_assign_get_typevarset(TypeAssign1, TVarSet1),
-        type_assign_get_typevarset(TypeAssign2, TVarSet2),
-        UnnamedPiecesT1 = type_to_pieces(TVarSet1, InstVarSet,
-            print_name_only, AddQuotes, ExistQTVars1, T1),
-        UnnamedPiecesT2 = type_to_pieces(TVarSet2, InstVarSet,
-            print_name_only, AddQuotes, ExistQTVars2, T2),
-        ( if UnnamedPiecesT1 = UnnamedPiecesT2 then
-            PiecesT1 = type_to_pieces(TVarSet1, InstVarSet,
-                print_name_and_num, AddQuotes, ExistQTVars1, T1),
-            PiecesT2 = type_to_pieces(TVarSet2, InstVarSet,
-                print_name_and_num, AddQuotes, ExistQTVars2, T2)
-        else
-            PiecesT1 = UnnamedPiecesT1,
-            PiecesT2 = UnnamedPiecesT2
+var_ambiguity_to_pieces(VarSet, InstVarSet, TypeAssigns, Var) = Pieces :-
+    list.foldl2(gather_type_pieces_for_var_in_type_assign(InstVarSet, Var),
+        TypeAssigns, set.init, NameOnlyPiecesSet, set.init, NameNumPiecesSet),
+    NameNumPiecesList = set.to_sorted_list(NameNumPiecesSet),
+    (
+        ( NameNumPiecesList = []
+        ; NameNumPiecesList = [_]
         ),
-        HeadPieces =
-            [words(mercury_var_to_name_only_vs(VarSet, Var)), suffix(":")] ++
-            [nl_indent_delta(1)] ++ PiecesT1 ++ [nl_indent_delta(-1)] ++
-            [words("or")] ++
-            [nl_indent_delta(1)] ++ PiecesT2 ++ [nl_indent_delta(-1)]
+        % Either we have no info about Var (which I, zs, think should not
+        % happen), or Var has an unambiguous type.
+        Pieces = []
+    ;
+        NameNumPiecesList = [_, _ | _],
+        % Var has an ambiguous type.
+        NameOnlyPiecesList = set.to_sorted_list(NameOnlyPiecesSet),
+        (
+            NameOnlyPiecesList = [],
+            % NameOnlyPiecesSet can be empty if and *only if*
+            % NameNumPiecesSet is also empty.
+            unexpected($pred, "NameOnlyPiecesList = []")
+        ;
+            NameOnlyPiecesList = [_],
+            % Var has an ambiguous type, but this is apparent *only*
+            % from NameNumPiecesList.
+            PossibleTypePiecesList = NameNumPiecesList
+        ;
+            NameOnlyPiecesList = [_, _ | _],
+            % Var has an ambiguous type, and this is apparent even from
+            % from NameOnlyPiecesList.
+            PossibleTypePiecesList = NameOnlyPiecesList
+        ),
+        VarPiece = var_to_quote_piece(VarSet, Var),
+        ( if list.length(PossibleTypePiecesList) = 2 then
+            EitherAny = "either"
+        else
+            EitherAny = "any"
+        ),
+        Pieces =
+            [words("The variable")] ++ color_as_subject([VarPiece]) ++
+            [words("can have"), words(EitherAny),
+            words("of the following types:"),
+            nl_indent_delta(1)] ++
+            component_list_to_color_line_pieces(yes(color_cause),
+                [suffix(".")], PossibleTypePiecesList) ++
+            [nl_indent_delta(-1)]
+    ).
+
+:- pred gather_type_pieces_for_var_in_type_assign(inst_varset::in,
+    prog_var::in, type_assign::in,
+    set(list(format_piece))::in, set(list(format_piece))::out,
+    set(list(format_piece))::in, set(list(format_piece))::out) is det.
+
+gather_type_pieces_for_var_in_type_assign(InstVarSet, Var, TypeAssign,
+        !NameOnlyPiecesSet, !NameNumPiecesSet) :-
+    type_assign_get_var_types(TypeAssign, VarTypes),
+    ( if search_var_type(VarTypes, Var, Type0) then
+        type_assign_get_type_bindings(TypeAssign, TypeBindings),
+        type_assign_get_existq_tvars(TypeAssign, ExistQTVars),
+        type_assign_get_typevarset(TypeAssign, TVarSet),
+        apply_rec_subst_to_type(TypeBindings, Type0, Type),
+        NameOnlyPieces = type_to_pieces(TVarSet, InstVarSet,
+            print_name_only, do_not_add_quotes, ExistQTVars, Type),
+        NameNumPieces = type_to_pieces(TVarSet, InstVarSet,
+            print_name_and_num, do_not_add_quotes, ExistQTVars, Type),
+        set.insert(NameOnlyPieces, !NameOnlyPiecesSet),
+        set.insert(NameNumPieces, !NameNumPiecesSet)
     else
-        HeadPieces = []
-    ),
-    TailPieces = ambiguity_error_possibilities_to_pieces(AddQuotes,
-        VarSet, InstVarSet, Vars, TypeAssign1, TypeAssign2),
-    Pieces = HeadPieces ++ TailPieces.
+        true
+    ).
 
 %---------------------------------------------------------------------------%
 :- end_module check_hlds.typecheck_error_overload.

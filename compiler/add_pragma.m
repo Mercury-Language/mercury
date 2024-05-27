@@ -2002,6 +2002,8 @@ look_up_pragma_pf_sym_arity(ModuleInfo, IsFullyQualified, FailHandling,
             "two or more PredIds but is_fully_qualified"),
         (
             FailHandling = lfh_user_error,
+            UserArity = user_arity(UserArityInt),
+            SNA = sym_name_arity(SymName, UserArityInt),
             PredIdPiecesList =
                 list.map(describe_qual_pred_name(ModuleInfo), PredIds),
             PredIdPieces = component_list_to_color_line_pieces(
@@ -2009,6 +2011,7 @@ look_up_pragma_pf_sym_arity(ModuleInfo, IsFullyQualified, FailHandling,
             MainPieces = [words("Error:")] ++
                 color_as_incorrect([words("ambiguous"), p_or_f(PredOrFunc),
                     words("name")]) ++
+                color_as_subject([qual_sym_name_arity(SNA)]) ++
                 [words("in"), pragma_decl(PragmaName), words("declaration."),
                 nl,
                 words("The possible matches are:"), nl_indent_delta(1)] ++

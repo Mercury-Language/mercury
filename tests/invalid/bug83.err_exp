@@ -1,5 +1,5 @@
-bug83.m:027: Error: [38;5;203mambiguous function name[39;49m in `:- pragma foreign_export'
-bug83.m:027:   declaration.
+bug83.m:027: Error: [38;5;203mambiguous function name[39;49m [38;5;87m`make_io_error'/1[39;49m in
+bug83.m:027:   `:- pragma foreign_export' declaration.
 bug83.m:027:   The possible matches are:
 bug83.m:027:     [38;5;226mfunction `io.make_io_error'/1,[39;49m
 bug83.m:027:     [38;5;226mfunction `bug83.make_io_error'/1.[39;49m

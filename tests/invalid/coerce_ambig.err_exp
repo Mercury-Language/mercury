@@ -1,15 +1,13 @@
 coerce_ambig.m:030: In clause for predicate `ambig1'/0:
 coerce_ambig.m:030:   error: ambiguous overloading causes type ambiguity.
-coerce_ambig.m:030:   Possible type assignments include:
-coerce_ambig.m:030:   X:
-coerce_ambig.m:030:     `coerce_ambig.fruit'
-coerce_ambig.m:030:   or
-coerce_ambig.m:030:     `coerce_ambig.citrus'
+coerce_ambig.m:030:   The following variables have ambiguous types:
+coerce_ambig.m:030:   The variable [38;5;87m`X'[39;49m can have either of the following types:
+coerce_ambig.m:030:     [38;5;226mcoerce_ambig.citrus,[39;49m
+coerce_ambig.m:030:     [38;5;226mcoerce_ambig.fruit.[39;49m
 coerce_ambig.m:036: In clause for predicate `ambig2'/0:
 coerce_ambig.m:036:   error: ambiguous overloading causes type ambiguity.
-coerce_ambig.m:036:   Possible type assignments include:
-coerce_ambig.m:036:   X:
-coerce_ambig.m:036:     `coerce_ambig.fruit'
-coerce_ambig.m:036:   or
-coerce_ambig.m:036:     `coerce_ambig.another_fruit'
+coerce_ambig.m:036:   The following variables have ambiguous types:
+coerce_ambig.m:036:   The variable [38;5;87m`X'[39;49m can have either of the following types:
+coerce_ambig.m:036:     [38;5;226mcoerce_ambig.another_fruit,[39;49m
+coerce_ambig.m:036:     [38;5;226mcoerce_ambig.fruit.[39;49m
 For more information, recompile with `-E'.
