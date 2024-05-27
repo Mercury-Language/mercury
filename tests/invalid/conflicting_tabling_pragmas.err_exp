@@ -1,5 +1,4 @@
 conflicting_tabling_pragmas.m:016: Error: function
 conflicting_tabling_pragmas.m:016:   `conflicting_tabling_pragmas.fac'/1 has
-conflicting_tabling_pragmas.m:016:   both memo and loop_check pragmas
-conflicting_tabling_pragmas.m:016:   specified. Only one kind of tabling pragma
-conflicting_tabling_pragmas.m:016:   may be applied to it.
+conflicting_tabling_pragmas.m:016:   [38;5;203mtwo conflicting tabling pragmas specified,[39;49m
+conflicting_tabling_pragmas.m:016:   [38;5;226mmemo[39;49m and [38;5;226mloop_check.[39;49m

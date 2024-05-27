@@ -150,14 +150,16 @@ module_add_pragma_tabled(ProgressStream, TabledInfo,
             PredIds = [_]
         ;
             PredIds = [_, _ | _],
+            SNA = sym_name_arity(PredSymName, UserArityInt),
             (
                 Statistics = table_gather_statistics,
-                StatsPieces = [words("Error: cannot request statistics"),
-                    words("for the ambiguous name"),
-                    qual_sym_name_arity(
-                        sym_name_arity(PredSymName, UserArityInt)),
-                    suffix(","),
-                    words("since the compiler-generated statistics predicate"),
+                StatsPieces = [words("Error:")] ++
+                    color_as_incorrect([words("cannot request statistics")]) ++
+                    [words("for the ambiguous name")] ++
+                    color_as_subject([qual_sym_name_arity(SNA),
+                        suffix(",")]) ++
+                    [words("since the compiler-generated"),
+                    words("statistics predicate"),
                     words("would have an ambiguous name too."), nl],
                 StatsSpec = spec($pred, severity_error, phase_pt2h,
                     Context, StatsPieces),
@@ -167,12 +169,13 @@ module_add_pragma_tabled(ProgressStream, TabledInfo,
             ),
             (
                 AllowReset = table_allow_reset,
-                ResetPieces = [words("Error: cannot request allow_reset"),
-                    words("for the ambiguous name"),
-                    qual_sym_name_arity(
-                        sym_name_arity(PredSymName, UserArityInt)),
-                    suffix(","),
-                    words("since the compiler-generated reset predicate"),
+                ResetPieces = [words("Error:")] ++
+                    color_as_incorrect(
+                        [words("cannot request allow_reset")]) ++
+                    [words("for the ambiguous name")] ++
+                    color_as_subject([qual_sym_name_arity(SNA),
+                        suffix(",")]) ++
+                    [words("since the compiler-generated reset predicate"),
                     words("would have an ambiguous name too."), nl],
                 ResetSpec = spec($pred, severity_error, phase_pt2h,
                     Context, ResetPieces),
@@ -255,12 +258,18 @@ module_add_pragma_tabled_for_pred(ProgressStream, TabledMethod0, PFUMM,
             WarnTableWithInline),
         WarnTableWithInline = yes
     then
-        InlineWarningPieces = [words("Warning: "),
-            qual_pf_sym_name_user_arity(PFSymNameArity), words("has a"),
-            pragma_decl(TabledMethodStr), words("declaration but also has a"),
-            pragma_decl("inline"), words("declaration."), nl,
-            words("This inline pragma will be ignored"),
-            words("since tabled predicates cannot be inlined."), nl,
+        InlineWarningPieces = [words("Warning:")] ++
+            color_as_subject([qual_pf_sym_name_user_arity(PFSymNameArity)]) ++
+            [words("has both a")] ++
+            color_as_possible_cause([pragma_decl(TabledMethodStr),
+                words("declaration")]) ++
+            [words("and a")] ++
+            color_as_possible_cause([pragma_decl("inline"),
+                words("declaration.")]) ++
+            [nl,
+            words("The inline pragma")] ++
+            color_as_incorrect([words("will be ignored,")]) ++
+            [words("because tabled predicates cannot be inlined."), nl,
             words("You can use the"), quote("--no-warn-table-with-inline"),
             words("option to suppress this warning."), nl],
         InlineWarningSpec = spec($pred, severity_warning, phase_pt2h,
@@ -270,9 +279,15 @@ module_add_pragma_tabled_for_pred(ProgressStream, TabledMethod0, PFUMM,
         true
     ),
     ( if pred_info_is_imported(PredInfo0) then
-        Pieces = [words("Error: "), pragma_decl(TabledMethodStr),
-            words("declaration for imported"),
-            qual_pf_sym_name_user_arity(PFSymNameArity), suffix("."), nl],
+        UserArity = user_arity(UserArityInt),
+        SNA = sym_name_arity(PredSymName, UserArityInt),
+        Pieces = [words("Error: a"), pragma_decl(TabledMethodStr),
+            words("declaration")] ++
+            color_as_incorrect([words("may not specify")]) ++
+            [words("that it is for an imported"), p_or_f(PredOrFunc),
+            words("such as")] ++
+            color_as_subject([qual_sym_name_arity(SNA), suffix(".")]) ++
+            [nl],
         Spec = spec($pred, severity_error, phase_pt2h, Context, Pieces),
         !:Specs = [Spec | !.Specs]
     else
@@ -304,11 +319,15 @@ module_add_pragma_tabled_for_pred(ProgressStream, TabledMethod0, PFUMM,
                 pred_info_set_proc_table(ProcTable, PredInfo0, PredInfo),
                 module_info_set_pred_info(PredId, PredInfo, !ModuleInfo)
             else
+                UserArity = user_arity(UserArityInt),
+                SNA = sym_name_arity(PredSymName, UserArityInt),
                 Pieces = [words("Error:"),
-                    pragma_decl(TabledMethodStr),
-                    words("declaration for undeclared mode of"),
-                    qual_pf_sym_name_user_arity(PFSymNameArity),
-                    suffix("."), nl],
+                    pragma_decl(TabledMethodStr), words("declaration for")] ++
+                    color_as_incorrect([words("undeclared mode")]) ++
+                    [words("of"), p_or_f(PredOrFunc)] ++
+                    color_as_subject([qual_sym_name_arity(SNA),
+                        suffix(".")]) ++
+                    [nl],
                 Spec = spec($pred, severity_error, phase_pt2h,
                     Context, Pieces),
                 !:Specs = [Spec | !.Specs]
@@ -318,10 +337,16 @@ module_add_pragma_tabled_for_pred(ProgressStream, TabledMethod0, PFUMM,
             map.to_assoc_list(ProcTable0, ExistingProcs),
             (
                 ExistingProcs = [],
-                Pieces = [words("Error: "),
-                    pragma_decl(TabledMethodStr), words("declaration for"),
-                    qual_pf_sym_name_user_arity(PFSymNameArity),
-                    words("with no declared modes."), nl],
+                UserArity = user_arity(UserArityInt),
+                SNA = sym_name_arity(PredSymName, UserArityInt),
+                Pieces = [words("Error:"),
+                    pragma_decl(TabledMethodStr), words("declaration"),
+                    words("for the"), p_or_f(PredOrFunc)] ++
+                    color_as_subject([qual_sym_name_arity(SNA),
+                        suffix(",")]) ++
+                    [words("which has")] ++
+                    color_as_incorrect([words("no declared modes.")]) ++
+                    [nl],
                 Spec = spec($pred, severity_error, phase_pt2h,
                     Context, Pieces),
                 !:Specs = [Spec | !.Specs]
@@ -412,10 +437,15 @@ set_eval_method_create_aux_preds(ProgressStream, PredOrFunc,
         (
             MaybeDeclaredArgModes = no,
             TabledMethodStr = tabled_eval_method_to_pragma_name(TabledMethod),
+            UserArity = user_arity(UserArityInt),
+            SNA = sym_name_arity(PredSymName, UserArityInt),
             Pieces = [words("Error:"),
                 pragma_decl(TabledMethodStr), words("declaration for"),
-                qual_pf_sym_name_user_arity(PFSymNameArity), suffix(","),
-                words("which has no declared modes."), nl],
+                p_or_f(PredOrFunc)] ++
+                color_as_subject([qual_sym_name_arity(SNA), suffix(",")]) ++
+                [words("which has")] ++
+                color_as_incorrect([words("no declared modes.")]) ++
+                [nl],
             Spec = spec($pred, severity_error, phase_pt2h, Context, Pieces),
             !:Specs = [Spec | !.Specs]
         ;
@@ -495,21 +525,26 @@ set_eval_method_create_aux_preds(ProgressStream, PredOrFunc,
         % We get here only if we have already processed a tabling pragma for
         % this procedure.
         TabledMethodStr = tabled_eval_method_to_pragma_name(TabledMethod),
+        UserArity = user_arity(UserArityInt),
+        SNA = sym_name_arity(PredSymName, UserArityInt),
         ( if OldTabledMethod = TabledMethod then
-            Pieces = [words("Error:"),
-                qual_pf_sym_name_user_arity(PFSymNameArity),
-                words("has duplicate"), fixed(TabledMethodStr),
-                words("pragmas specified."), nl]
+            Pieces = [words("Error:"), p_or_f(PredOrFunc),
+                qual_sym_name_arity(SNA), words("has")] ++
+                color_as_incorrect([words("duplicate"),
+                    fixed(TabledMethodStr), words("pragmas")]) ++
+                [words("specified."), nl]
         else
             OldTabledMethodStr =
                 tabled_eval_method_to_pragma_name(OldTabledMethod),
-            Pieces = [words("Error:"),
-                qual_pf_sym_name_user_arity(PFSymNameArity),
-                words("has both"), fixed(OldTabledMethodStr),
-                words("and"), fixed(TabledMethodStr),
-                words("pragmas specified."),
-                words("Only one kind of tabling pragma may be applied to it."),
-                nl]
+            Pieces = [words("Error:"), p_or_f(PredOrFunc),
+                qual_sym_name_arity(SNA), words("has")] ++
+                color_as_incorrect([words("two conflicting"),
+                    words("tabling pragmas specified,")]) ++
+                color_as_possible_cause([fixed(OldTabledMethodStr)]) ++
+                [words("and")] ++
+                color_as_possible_cause([fixed(TabledMethodStr),
+                    suffix(".")])
+                ++ [nl]
         ),
         Spec = spec($pred, severity_error, phase_pt2h, Context, Pieces),
         !:Specs = [Spec | !.Specs]
@@ -755,18 +790,28 @@ check_pred_args_against_tabling_methods(ModuleInfo, ArgNum,
                 Modes, MaybeArgMethods, Pieces)
         ;
             MaybeArgMethod = no,
+            MethodStr = maybe_arg_tabling_method_to_string(MaybeArgMethod),
+            % Don't allow a line break just before the argument number.
             Pieces = [fixed("argument " ++ int_to_string(ArgNum)), suffix(":"),
-                words("argument tabling method"),
-                quote(maybe_arg_tabling_method_to_string(MaybeArgMethod)),
-                words("is not compatible with input modes."), nl]
+                words("argument tabling method")] ++
+                color_as_subject([quote(MethodStr)]) ++
+                [words("is")] ++
+                color_as_incorrect([words("not compatible with"),
+                    words("input modes.")]) ++
+                [nl]
         )
     else if mode_is_fully_output(ModuleInfo, Mode) then
         (
             MaybeArgMethod = yes(_),
+            MethodStr = maybe_arg_tabling_method_to_string(MaybeArgMethod),
+            % Don't allow a line break just before the argument number.
             Pieces = [fixed("argument " ++ int_to_string(ArgNum)), suffix(":"),
-                words("argument tabling method"),
-                quote(maybe_arg_tabling_method_to_string(MaybeArgMethod)),
-                words("is not compatible with output modes."), nl]
+                words("argument tabling method")] ++
+                color_as_subject([quote(MethodStr)]) ++
+                [words("is")] ++
+                color_as_incorrect([words("not compatible with"),
+                    words("output modes.")]) ++
+                [nl]
         ;
             MaybeArgMethod = no,
             check_pred_args_against_tabling_methods(ModuleInfo, ArgNum + 1,
@@ -788,6 +833,7 @@ check_pred_args_against_tabling(ModuleInfo, ArgNum, [Mode | Modes],
     else if mode_is_fully_output(ModuleInfo, Mode) then
         check_pred_args_against_tabling(ModuleInfo, ArgNum + 1, Modes, Pieces)
     else
+        % Don't allow a line break just before the argument number.
         Pieces = [fixed("argument " ++ int_to_string(ArgNum)),
             words("is neither input or output."), nl]
     ).

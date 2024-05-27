@@ -706,9 +706,37 @@ convert_pieces_to_words_acc(ColorDb, FirstInMsg, !.Lower, [Piece | Pieces],
         )
     ;
         Piece = words(WordsStr),
+        trace [compile_time(flag("check_words_pieces"))] (
+            string.to_char_list(WordsStr, WordsChars),
+            ( if
+                ( WordsChars = [' ' | _]
+                ; list.last(WordsChars, ' ')
+                )
+            then
+                string.format("words with end space <%s>",
+                    [s(WordsStr)], Msg),
+                unexpected($pred, Msg)
+            else
+                true
+            )
+        ),
         break_into_words(WordsStr, !Lower, !WordsCord)
     ;
         Piece = words_quote(WordsStr),
+        trace [compile_time(flag("check_words_pieces"))] (
+            string.to_char_list(WordsStr, WordsChars),
+            ( if
+                ( WordsChars = [' ' | _]
+                ; list.last(WordsChars, ' ')
+                )
+            then
+                string.format("words_quote with end space <%s>",
+                    [s(WordsStr)], Msg),
+                unexpected($pred, Msg)
+            else
+                true
+            )
+        ),
         break_into_words(add_quotes(WordsStr), !Lower, !WordsCord)
     ;
         (

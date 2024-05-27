@@ -1,7 +1,7 @@
 specified.m:141: Error in `:- pragma memo' declaration for predicate
 specified.m:141:   `specified.ap_lp_fib'/3:
-specified.m:141:   argument 3: argument tabling method `addr' is not compatible
-specified.m:141:   with output modes.
+specified.m:141:   argument 3: argument tabling method [38;5;87m`addr'[39;49m is [38;5;203mnot compatible[39;49m
+specified.m:141:   [38;5;203mwith output modes.[39;49m
 specified.m:158: In the second argument of `:- pragma memo' declaration:
 specified.m:158:   in the first argument of specified:
 specified.m:158:   error: expected one of [38;5;40m`value',[39;49m [38;5;40m`addr',[39;49m [38;5;40m`promise_implied',[39;49m
@@ -11,8 +11,8 @@ specified.m:173:   `specified.ap_li_fib'/3:
 specified.m:173:   not enough argument tabling methods specified.
 specified.m:213: Error in `:- pragma memo' declaration for predicate
 specified.m:213:   `specified.vp_ll_fib'/3:
-specified.m:213:   argument 1: argument tabling method `output' is not
-specified.m:213:   compatible with input modes.
+specified.m:213:   argument 1: argument tabling method [38;5;87m`output'[39;49m is [38;5;203mnot[39;49m
+specified.m:213:   [38;5;203mcompatible with input modes.[39;49m
 specified.m:233: Error in `:- pragma memo' declaration for predicate
 specified.m:233:   `specified.vv_ll_fib'/3:
 specified.m:233:   too many argument tabling methods specified.

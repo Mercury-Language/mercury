@@ -913,7 +913,7 @@ report_indistinguishable_modes_error(ModuleInfo, OldProcId, NewProcId,
 
     PredDescColonPieces = describe_one_pred_name(ModuleInfo,
         yes(color_subject), should_module_qualify, [suffix(":")], PredId),
-    MainPieces = [words("In mode declarations for ")] ++ PredDescColonPieces ++
+    MainPieces = [words("In mode declarations for")] ++ PredDescColonPieces ++
         [nl, words("error: duplicate mode declaration."), nl],
     OldDecl = mode_decl_to_string(output_mercury, OldProcId, PredInfo),
     NewDecl = mode_decl_to_string(output_mercury, NewProcId, PredInfo),

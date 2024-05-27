@@ -1692,7 +1692,7 @@ parse_foreign_language(ContextPieces, VarSet, LangTerm, MaybeForeignLang) :-
     else
         LangTermStr = describe_error_term(VarSet, LangTerm),
         MainPieces = cord.list(ContextPieces) ++ [lower_case_next_if_not_first,
-            words("Error: expected the ")] ++
+            words("Error: expected the")] ++
             color_as_correct([words("name of a foreign language,")]) ++
             [words("got")] ++
             color_as_incorrect([quote(LangTermStr), suffix(".")]) ++
