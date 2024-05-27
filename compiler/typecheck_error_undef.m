@@ -708,24 +708,36 @@ report_error_undef_cons_std(ClauseContext, Context, InitComp, ConsErrors,
     module_info_get_cons_table(ModuleInfo, ConsTable),
     module_info_get_predicate_table(ModuleInfo, PredicateTable),
     ( if
-        Functor = cons(Constructor, FunctorArity, _),
+        Functor = cons(FunctorSymName, FunctorArity, _),
         expect(unify(Arity, FunctorArity), $pred, "arity mismatch"),
 
-        return_cons_arities(ConsTable, Constructor, ConsArities),
+        return_cons_arities(ConsTable, FunctorSymName, ConsArities),
 
         predicate_table_lookup_sym(PredicateTable, may_be_partially_qualified,
-            Constructor, PredIds),
+            FunctorSymName, PredIds),
         return_function_arities(ModuleInfo, PredIds, [], FuncArities),
 
         list.sort_and_remove_dups(ConsArities ++ FuncArities, AllArities),
         list.delete_all(AllArities, Arity, OtherArities),
         OtherArities = [_ | _]
     then
-        FunctorPieces = wrong_arity_constructor_to_pieces(Constructor,
+        FunctorPieces = wrong_arity_constructor_to_pieces(FunctorSymName,
             Arity, OtherArities),
         FunctorComps = [always(FunctorPieces)],
         % The code that constructs QualMsgs below uses wording that
         % can be misleading in the presence of arity mismatches.
+        QualSuggestionMsgs = []
+    else if
+        Functor = cons(FunctorSymName, FunctorArity, _),
+        FunctorSymName = unqualified("coerce")
+    then
+        FunctorPieces = [words("error: the")] ++
+            color_as_subject([words("coerce")]) ++
+            [words("operator expects")] ++
+            color_as_correct([words("one")]) ++
+            [words("argument, got")] ++
+            color_as_incorrect([int_name(FunctorArity), suffix(".")]),
+        FunctorComps = [always(FunctorPieces)],
         QualSuggestionMsgs = []
     else
         UndefSymbolPieces = [words("error:")] ++
@@ -735,8 +747,8 @@ report_error_undef_cons_std(ClauseContext, Context, InitComp, ConsErrors,
                 suffix(".")]) ++
             [nl],
         ( if
-            Functor = cons(Constructor, _, _),
-            Constructor = qualified(ModQual, _)
+            Functor = cons(FunctorSymName, _, _),
+            FunctorSymName = qualified(ModQual, _)
         then
             maybe_report_missing_import_addendum(ClauseContext, ModQual,
                 MissingImportPieces, MissingImportModules)
@@ -829,7 +841,7 @@ wrong_arity_constructor_to_pieces(Name, Arity, ActualArities) = Pieces :-
     % predicates' arities, in that neither has a distinguished "return value"
     % argument.
     NumArgsPieces = arity_error_to_pieces(pf_predicate, Arity, ActualArities),
-    Pieces = [words("error: ")] ++ NumArgsPieces ++
+    Pieces = [words("error:")] ++ NumArgsPieces ++
         [words("in use of constructor")] ++
         color_as_subject([qual_sym_name(Name), suffix(".")]) ++
         [nl].
