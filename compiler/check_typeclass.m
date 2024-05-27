@@ -2149,6 +2149,14 @@ report_eqv_type_in_abstract_exported_instance(ClassId, InstanceDefn, ArgNum,
         [words("is an")] ++
         color_as_incorrect([words("abstract exported equivalence type.")]) ++
         [nl],
+        % XXX Should we add this explanatory text? If so, should it be
+        % in a verbose-only component? Should we add it to reference manual?
+        % [words("Mercury does not allow this, because allowing it"),
+        % words("would mean that the code inside the module"),
+        % words("(which can see the equivalence)"),
+        % words("and the code outside the module"),
+        % words("(which cannot)"),
+        % words("would disagree about the identity of the type.")]
     report_bad_type_in_instance(ClassId, InstanceDefn, EndPieces,
         abstract_exported_eqv, !Specs).
 
