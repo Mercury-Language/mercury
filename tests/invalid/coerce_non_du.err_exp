@@ -1,11 +1,26 @@
 coerce_non_du.m:015: In clause for function `f1'/1:
 coerce_non_du.m:015:   cannot coerce from [38;5;226m`int'[39;49m to [38;5;226m`int'.[39;49m
+coerce_non_du.m:015:   You can only coerce from one discriminated union type to
+coerce_non_du.m:015:   another, and `int' is a [38;5;203mbuiltin type.[39;49m
+coerce_non_du.m:015:   Also, you cannot coerce [38;5;203mfrom a type to the same type.[39;49m
 coerce_non_du.m:019: In clause for function `f2'/1:
 coerce_non_du.m:019:   cannot coerce from [38;5;226m`float'[39;49m to [38;5;226m`float'.[39;49m
+coerce_non_du.m:019:   You can only coerce from one discriminated union type to
+coerce_non_du.m:019:   another, and `float' is a [38;5;203mbuiltin type.[39;49m
+coerce_non_du.m:019:   Also, you cannot coerce [38;5;203mfrom a type to the same type.[39;49m
 coerce_non_du.m:023: In clause for function `f3'/1:
 coerce_non_du.m:023:   cannot coerce from [38;5;226m`{}'[39;49m to [38;5;226m`{}'.[39;49m
+coerce_non_du.m:023:   You can only coerce from one discriminated union type to
+coerce_non_du.m:023:   another, and `{}' is a [38;5;203mtuple type.[39;49m
+coerce_non_du.m:023:   Also, you cannot coerce [38;5;203mfrom a type to the same type.[39;49m
 coerce_non_du.m:027: In clause for function `f4'/1:
 coerce_non_du.m:027:   cannot coerce from [38;5;226m`((func int) = int)'[39;49m to
 coerce_non_du.m:027:   [38;5;226m`((func int) = int)'.[39;49m
+coerce_non_du.m:027:   You can only coerce from one discriminated union type to
+coerce_non_du.m:027:   another, and `((func int) = int)' is a [38;5;203mfunction type.[39;49m
+coerce_non_du.m:027:   Also, you cannot coerce [38;5;203mfrom a type to the same type.[39;49m
 coerce_non_du.m:031: In clause for function `f5'/1:
 coerce_non_du.m:031:   cannot coerce from [38;5;226m`pred(int, int)'[39;49m to [38;5;226m`pred(int, int)'.[39;49m
+coerce_non_du.m:031:   You can only coerce from one discriminated union type to
+coerce_non_du.m:031:   another, and `pred(int, int)' is a [38;5;203mpredicate type.[39;49m
+coerce_non_du.m:031:   Also, you cannot coerce [38;5;203mfrom a type to the same type.[39;49m

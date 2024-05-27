@@ -241,11 +241,109 @@ report_invalid_coerce_from_to(ClauseContext, Context, TVarSet,
     InClauseForPieces = in_clause_for_pieces(ClauseContext),
     FromTypeStr = mercury_type_to_string(TVarSet, print_num_only, FromType),
     ToTypeStr = mercury_type_to_string(TVarSet, print_num_only, ToType),
+    OnlyDuPieces = [words("You can only coerce"),
+        words("from one discriminated union type to another, and")],
+    ( if FromTypeStr = ToTypeStr then
+        describe_if_non_du_type(FromType, FromTypeNonDuPieces),
+        (
+            FromTypeNonDuPieces = [],
+            CausePieces = [words("You cannot coerce")] ++
+                color_as_incorrect([words("from a type to the same type.")])
+        ;
+            FromTypeNonDuPieces = [_ | _],
+            CausePieces = OnlyDuPieces ++
+                [quote(FromTypeStr), words("is a")] ++
+                color_as_incorrect(FromTypeNonDuPieces ++ [suffix(".")]) ++
+                [nl] ++
+                [words("Also, you cannot coerce")] ++
+                color_as_incorrect([words("from a type to the same type.")])
+        )
+    else
+        describe_if_non_du_type(FromType, FromTypeNonDuPieces),
+        describe_if_non_du_type(ToType, ToTypeNonDuPieces),
+        (
+            FromTypeNonDuPieces = [],
+            (
+                ToTypeNonDuPieces = [],
+                % Either FromTypeNonDuPieces or ToTypeNonDuPieces should be
+                % nonempty, so we shouldn't get here. However, throwing
+                % an exception would only punish an innocent user.
+                CausePieces = []
+            ;
+                ToTypeNonDuPieces = [_ | _],
+                CausePieces = OnlyDuPieces ++
+                    [quote(ToTypeStr), words("is a")] ++
+                    color_as_incorrect(ToTypeNonDuPieces ++ [suffix(".")])
+            )
+        ;
+            FromTypeNonDuPieces = [_ | _],
+            (
+                ToTypeNonDuPieces = [],
+                CausePieces = OnlyDuPieces ++
+                    [quote(FromTypeStr), words("is a")] ++
+                    color_as_incorrect(FromTypeNonDuPieces ++ [suffix(".")])
+            ;
+                ToTypeNonDuPieces = [_ | _],
+                ( if FromTypeNonDuPieces = ToTypeNonDuPieces then
+                    CausePieces = OnlyDuPieces ++
+                        [quote(FromTypeStr), words("and"), quote(ToTypeStr),
+                        words("are")] ++
+                        color_as_incorrect(FromTypeNonDuPieces ++
+                            [suffix("s.")])
+                else
+                    CausePieces = OnlyDuPieces ++
+                        [quote(FromTypeStr), words("is a")] ++
+                        color_as_incorrect(FromTypeNonDuPieces ++
+                            [suffix(",")]) ++
+                        [words("while"), quote(ToTypeStr), words("is a")] ++
+                        color_as_incorrect(ToTypeNonDuPieces ++ [suffix(".")])
+                )
+            )
+        )
+    ),
     ErrorPieces = [words("cannot coerce from")] ++
         color_as_possible_cause([quote(FromTypeStr)]) ++ [words("to")] ++
-        color_as_possible_cause([quote(ToTypeStr), suffix(".")]) ++ [nl],
+        color_as_possible_cause([quote(ToTypeStr), suffix(".")]) ++ [nl] ++
+        CausePieces ++ [nl],
     Spec = spec($pred, severity_error, phase_type_check, Context,
         InClauseForPieces ++ ErrorPieces).
+
+    % If the given type is du type, return the empty list. Otherwise,
+    % return a description of what kind of non-du type it is.
+    %
+:- pred describe_if_non_du_type(mer_type::in, list(format_piece)::out) is det.
+
+describe_if_non_du_type(Type, DescPieces) :-
+    % Our caller can the article "a" in front of the text we return,
+    % and the plural suffix "s" after the text.
+    (
+        Type = type_variable(_, _),
+        DescPieces = [words("type variable")]
+    ;
+        Type = defined_type(_, _, _),
+        DescPieces = []
+    ;
+        Type = builtin_type(_),
+        DescPieces = [words("builtin type")]
+    ;
+        Type = tuple_type(_, _),
+        DescPieces = [words("tuple type")]
+    ;
+        Type = higher_order_type(PorF, _, _, _),
+        (
+            PorF = pf_function,
+            DescPieces = [words("function type")]
+        ;
+            PorF = pf_predicate,
+            DescPieces = [words("predicate type")]
+        )
+    ;
+        Type = apply_n_type(_, _, _),
+        DescPieces = [words("function type")]
+    ;
+        Type = kinded_type(SubType, _),
+        describe_if_non_du_type(SubType, DescPieces)
+    ).
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
