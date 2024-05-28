@@ -148,6 +148,7 @@ BORING_SINGLEMODULE_PROGS = \
 	det_errors \
 	det_errors_and_io \
 	det_errors_cc \
+	det_errors_deep \
 	ee_invalid \
 	erroneous_throw_promise \
 	error_in_list \

@@ -664,8 +664,9 @@ report_unresolved_type_warning(ModuleInfo, PredId, PredInfo, VarsEntries,
             quote("void"), suffix("."), nl],
         Known = "fully known"
     ),
-    MainPieces = [words("Warning: unresolved polymorphism in")] ++
-        PredDescDotPieces ++ [nl,
+    MainPieces = [words("Warning:")] ++
+        color_as_incorrect([words("unresolved polymorphism")]) ++
+        [words("in")] ++ PredDescDotPieces ++ [nl,
         words(choose_number(VarsEntries,
             "The variable with an unbound type was:",
             "The variables with unbound types were:")), nl_indent_delta(1)] ++

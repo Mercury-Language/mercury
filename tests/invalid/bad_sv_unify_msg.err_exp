@@ -1,4 +1,4 @@
-bad_sv_unify_msg.m:015: Warning: unresolved polymorphism in predicate [38;5;87m`x'/2.[39;49m
+bad_sv_unify_msg.m:015: Warning: [38;5;203munresolved polymorphism[39;49m in predicate [38;5;87m`x'/2.[39;49m
 bad_sv_unify_msg.m:015:   The variable with an unbound type was:
 bad_sv_unify_msg.m:015:     [38;5;203m`STATE_VARIABLE_D_0'.[39;49m
 bad_sv_unify_msg.m:015:   Its type will be implicitly set to the builtin type

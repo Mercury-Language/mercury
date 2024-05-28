@@ -7,7 +7,7 @@ unsatisfiable_constraint.m:039:   The constraints are due to:
 unsatisfiable_constraint.m:043:     a goal here,
 unsatisfiable_constraint.m:044:     a goal here, and
 unsatisfiable_constraint.m:045:     a goal here.
-unsatisfiable_constraint.m:039: Warning: unresolved polymorphism in predicate
+unsatisfiable_constraint.m:039: Warning: [38;5;203munresolved polymorphism[39;49m in predicate
 unsatisfiable_constraint.m:039:   [38;5;87m`test'/1.[39;49m
 unsatisfiable_constraint.m:039:   The variables with unbound types were:
 unsatisfiable_constraint.m:039:     [38;5;203m`B',[39;49m

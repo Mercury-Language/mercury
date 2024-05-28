@@ -6,13 +6,14 @@
 
 :- interface.
 
-:- import_module std_util.
+:- import_module pair.
 
 :- type t
     --->    a
     ;       b
     ;       c
     ;       d.
+
 :- type tree
     --->    leaf
     ;       node(tree, pair(t, int), tree).

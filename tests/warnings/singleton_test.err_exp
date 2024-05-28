@@ -1,4 +1,4 @@
-singleton_test.m:013: Warning: unresolved polymorphism in function
+singleton_test.m:013: Warning: [38;5;203munresolved polymorphism[39;49m in function
 singleton_test.m:013:   [38;5;87m`my_append_func'/2.[39;49m
 singleton_test.m:013:   The variables with unbound types were:
 singleton_test.m:013:     [38;5;203m`L1',[39;49m

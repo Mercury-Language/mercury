@@ -6,7 +6,7 @@ typeclass_test_8.m:019:     the call to typeclass method predicate
 typeclass_test_8.m:019:     `typeclass_test_8.foo'/1, and
 typeclass_test_8.m:020:     the call to typeclass method predicate
 typeclass_test_8.m:020:     `typeclass_test_8.bar'/1.
-typeclass_test_8.m:009: Warning: unresolved polymorphism in predicate [38;5;87m`main'/2.[39;49m
+typeclass_test_8.m:009: Warning: [38;5;203munresolved polymorphism[39;49m in predicate [38;5;87m`main'/2.[39;49m
 typeclass_test_8.m:009:   The variable with an unbound type was:
 typeclass_test_8.m:009:     [38;5;203m`X'.[39;49m
 typeclass_test_8.m:009:   Its type will be implicitly set to the builtin type
