@@ -727,18 +727,6 @@ report_error_undef_cons_std(ClauseContext, Context, InitComp, ConsErrors,
         % The code that constructs QualMsgs below uses wording that
         % can be misleading in the presence of arity mismatches.
         QualSuggestionMsgs = []
-    else if
-        Functor = cons(FunctorSymName, FunctorArity, _),
-        FunctorSymName = unqualified("coerce")
-    then
-        FunctorPieces = [words("error: the")] ++
-            color_as_subject([words("coerce")]) ++
-            [words("operator expects")] ++
-            color_as_correct([words("one")]) ++
-            [words("argument, got")] ++
-            color_as_incorrect([int_name(FunctorArity), suffix(".")]),
-        FunctorComps = [always(FunctorPieces)],
-        QualSuggestionMsgs = []
     else
         UndefSymbolPieces = [words("error:")] ++
             color_as_incorrect([words("undefined")]) ++
@@ -751,17 +739,29 @@ report_error_undef_cons_std(ClauseContext, Context, InitComp, ConsErrors,
             FunctorSymName = qualified(ModQual, _)
         then
             maybe_report_missing_import_addendum(ClauseContext, ModQual,
-                MissingImportPieces, MissingImportModules)
+                AddeddumPieces, MissingImportModules)
         else if
             Functor = cons(unqualified("[|]"), 2, _)
         then
             maybe_report_missing_import_addendum(ClauseContext,
-                unqualified("list"), MissingImportPieces, MissingImportModules)
+                unqualified("list"), AddeddumPieces, MissingImportModules)
+        else if
+            Functor = cons(FunctorSymName, FunctorArity, _),
+            FunctorSymName = unqualified("coerce")
+        then
+            AddeddumPieces = [words("(The builtin")] ++
+                color_as_subject([words("coerce")]) ++
+                [words("operator expects")] ++
+                color_as_correct([words("one")]) ++
+                [words("argument, not")] ++
+                color_as_incorrect([int_name(FunctorArity), suffix(".)")]) ++
+                [nl],
+            MissingImportModules = []
         else
-            MissingImportPieces = [],
+            AddeddumPieces = [],
             MissingImportModules = []
         ),
-        FunctorComps = [always(UndefSymbolPieces ++ MissingImportPieces)],
+        FunctorComps = [always(UndefSymbolPieces ++ AddeddumPieces)],
         ( if Functor = cons(FunctorName, _, _) then
             BaseName = unqualify_name(FunctorName),
             return_cons_defns_with_given_name(ConsTable, BaseName, ConsDefns),
