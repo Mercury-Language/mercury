@@ -14,11 +14,13 @@ multimode_syntax.m:017:   error: [38;5;203mundefined[39;49m symbol [38;5;87m`
 multimode_syntax.m:022: In the head of a clause for
 multimode_syntax.m:022:   function `multimode_syntax.func1'/1:
 multimode_syntax.m:022:   syntax error: [38;5;203msome but not all arguments have mode[39;49m
-multimode_syntax.m:022:   [38;5;203mannotations.[39;49m
+multimode_syntax.m:022:   [38;5;203mannotations.[39;49m The argument without a mode is the
+multimode_syntax.m:022:   [38;5;203msecond.[39;49m
 multimode_syntax.m:023: In the head of a clause for
 multimode_syntax.m:023:   function `multimode_syntax.func1'/1:
 multimode_syntax.m:023:   syntax error: [38;5;203msome but not all arguments have mode[39;49m
-multimode_syntax.m:023:   [38;5;203mannotations.[39;49m
+multimode_syntax.m:023:   [38;5;203mannotations.[39;49m The argument without a mode is the
+multimode_syntax.m:023:   [38;5;203mfirst.[39;49m
 multimode_syntax.m:027: Warning: the function [38;5;87m`func2'/2[39;49m has only one mode, so
 multimode_syntax.m:027:   there is [38;5;203mno need to restrict a clause for it to that[39;49m
 multimode_syntax.m:027:   [38;5;203mmode.[39;49m
@@ -49,8 +51,10 @@ multimode_syntax.m:041:   (There are no declared modes for this predicate.)
 multimode_syntax.m:049: In the head of a clause for
 multimode_syntax.m:049:   predicate `multimode_syntax.test2'/2:
 multimode_syntax.m:049:   syntax error: [38;5;203msome but not all arguments have mode[39;49m
-multimode_syntax.m:049:   [38;5;203mannotations.[39;49m
+multimode_syntax.m:049:   [38;5;203mannotations.[39;49m The argument without a mode is the
+multimode_syntax.m:049:   [38;5;203msecond.[39;49m
 multimode_syntax.m:051: In the head of a clause for
 multimode_syntax.m:051:   predicate `multimode_syntax.test2'/2:
 multimode_syntax.m:051:   syntax error: [38;5;203msome but not all arguments have mode[39;49m
-multimode_syntax.m:051:   [38;5;203mannotations.[39;49m
+multimode_syntax.m:051:   [38;5;203mannotations.[39;49m The argument without a mode is the
+multimode_syntax.m:051:   [38;5;203mfirst.[39;49m

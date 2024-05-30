@@ -873,15 +873,17 @@ module_do_add_mode(ModuleInfo, PartOfPredmode, IsClassMethod,
                 user_arity_pred_form_arity(PredOrFunc,
                     user_arity(UserArityInt), PredFormArity),
                 NA = name_arity(PredName, UserArityInt),
+                PredOrFuncDecl = pred_or_func_to_str(PredOrFunc),
                 SectionPieces = [words("Error: mode declaration in the")] ++
                     color_as_incorrect([fixed(ModeSectionStr),
                         words("section")]) ++
                     [words("for"), p_or_f(PredOrFunc)] ++
-                    color_as_subject([name_arity(NA), suffix(",")]) ++
-                    [words("whose"), p_or_f(PredOrFunc), words("declaration"),
-                    words("is in the")] ++
-                    color_as_correct([fixed(PredSectionStr), suffix(".")]) ++
-                    [nl],
+                    color_as_subject([name_arity(NA), suffix(".")]) ++
+                    [words("It should be in the")] ++
+                    color_as_correct([fixed(PredSectionStr),
+                        words("section,")]) ++
+                    [words("because the corresponding"),
+                    decl(PredOrFuncDecl), words("declaration is there."), nl],
                 SectionSpec = spec($pred, severity_error, phase_pt2h,
                     Context, SectionPieces),
                 !:Specs = [SectionSpec | !.Specs]

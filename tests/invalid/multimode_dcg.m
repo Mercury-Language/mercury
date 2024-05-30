@@ -30,8 +30,8 @@ test0 -->
 :- mode test1(out, di, uo) is det.
 test1(_::in) -->
     puts("test1(in)").
-test1(0::out) -->
-    puts("test1(out)").
+test1(0::out, In::in, Out) :-
+    puts("test1(out)", In, Out).
 
 :- pred test2(int, int, io, io).
 :- mode test2(in, in, di, uo) is det.

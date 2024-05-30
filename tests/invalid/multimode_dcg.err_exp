@@ -1,7 +1,8 @@
 multimode_dcg.m:031: In the head of a clause for
 multimode_dcg.m:031:   predicate `multimode_dcg.test1'/3:
 multimode_dcg.m:031:   syntax error: [38;5;203msome but not all arguments have mode[39;49m
-multimode_dcg.m:031:   [38;5;203mannotations.[39;49m
+multimode_dcg.m:031:   [38;5;203mannotations.[39;49m The arguments without modes are the [38;5;203msecond[39;49m
+multimode_dcg.m:031:   and [38;5;203mthird.[39;49m
 multimode_dcg.m:033: In clause for `test1(out, di, uo)':
 multimode_dcg.m:033:   error: [38;5;203mmode mismatch[39;49m in disjunction.
 multimode_dcg.m:033:   The variable [38;5;87m`HeadVar__1'[39;49m is ground in some branches but
@@ -11,19 +12,22 @@ multimode_dcg.m:033:     In this branch, `HeadVar__1' is [38;5;226mground.[39;
 multimode_dcg.m:033: In the head of a clause for
 multimode_dcg.m:033:   predicate `multimode_dcg.test1'/3:
 multimode_dcg.m:033:   syntax error: [38;5;203msome but not all arguments have mode[39;49m
-multimode_dcg.m:033:   [38;5;203mannotations.[39;49m
+multimode_dcg.m:033:   [38;5;203mannotations.[39;49m The argument without a mode is the [38;5;203mthird.[39;49m
 multimode_dcg.m:041: In the head of a clause for
 multimode_dcg.m:041:   predicate `multimode_dcg.test2'/4:
 multimode_dcg.m:041:   syntax error: [38;5;203msome but not all arguments have mode[39;49m
-multimode_dcg.m:041:   [38;5;203mannotations.[39;49m
+multimode_dcg.m:041:   [38;5;203mannotations.[39;49m The arguments without modes are the [38;5;203mthird[39;49m
+multimode_dcg.m:041:   and [38;5;203mfourth.[39;49m
 multimode_dcg.m:043: In the head of a clause for
 multimode_dcg.m:043:   predicate `multimode_dcg.test2'/4:
 multimode_dcg.m:043:   syntax error: [38;5;203msome but not all arguments have mode[39;49m
-multimode_dcg.m:043:   [38;5;203mannotations.[39;49m
+multimode_dcg.m:043:   [38;5;203mannotations.[39;49m The arguments without modes are the [38;5;203mthird[39;49m
+multimode_dcg.m:043:   and [38;5;203mfourth.[39;49m
 multimode_dcg.m:045: In the head of a clause for
 multimode_dcg.m:045:   predicate `multimode_dcg.test2'/4:
 multimode_dcg.m:045:   syntax error: [38;5;203msome but not all arguments have mode[39;49m
-multimode_dcg.m:045:   [38;5;203mannotations.[39;49m
+multimode_dcg.m:045:   [38;5;203mannotations.[39;49m The arguments without modes are the [38;5;203mthird[39;49m
+multimode_dcg.m:045:   and [38;5;203mfourth.[39;49m
 multimode_dcg.m:047: In clause for `test2(in, out, di, uo)':
 multimode_dcg.m:047:   error: [38;5;203mmode mismatch[39;49m in disjunction.
 multimode_dcg.m:047:   The variable [38;5;87m`HeadVar__2'[39;49m is ground in some branches but
@@ -57,4 +61,5 @@ multimode_dcg.m:047:     In this branch, `HeadVar__2' is [38;5;226mground.[39;
 multimode_dcg.m:047: In the head of a clause for
 multimode_dcg.m:047:   predicate `multimode_dcg.test2'/4:
 multimode_dcg.m:047:   syntax error: [38;5;203msome but not all arguments have mode[39;49m
-multimode_dcg.m:047:   [38;5;203mannotations.[39;49m
+multimode_dcg.m:047:   [38;5;203mannotations.[39;49m The arguments without modes are the [38;5;203mthird[39;49m
+multimode_dcg.m:047:   and [38;5;203mfourth.[39;49m

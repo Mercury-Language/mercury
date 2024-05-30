@@ -398,7 +398,7 @@ select_applicable_modes(MaybeAnnotatedArgTerms, VarSet, PredStatus, Context,
     ContextPieces = cord.from_list([words("In the head of a clause for"),
         fixed(PredIdStr), suffix(":"), nl]),
     get_mode_annotations(VarSet, ContextPieces, 1, MaybeAnnotatedArgTerms,
-        ArgTerms, ma_empty, ModeAnnotations, [], ModeAnnotationSpecs),
+        ArgTerms, ArgModes0, ArgsWithoutModes, ModeAnnotationSpecs),
     (
         ModeAnnotationSpecs = [_ | _],
         !:Specs = ModeAnnotationSpecs ++ !.Specs,
@@ -408,7 +408,18 @@ select_applicable_modes(MaybeAnnotatedArgTerms, VarSet, PredStatus, Context,
     ;
         ModeAnnotationSpecs = [],
         (
-            ModeAnnotations = ma_modes(ArgModes0),
+            ArgModes0 = [],
+            ( if pred_info_defn_has_foreign_proc(PredInfo) then
+                % We are only allowed to mix foreign procs and
+                % mode specific clauses, so make this clause
+                % mode specific but apply to all modes.
+                ApplProcIds = selected_modes(AllProcIds)
+            else
+                ApplProcIds = all_modes
+            )
+        ;
+            ArgModes0 = [_ | _],
+            ArgsWithoutModes = [],
 
             % The user specified some mode annotations on this clause.
             % First module-qualify the mode annotations. The annotations on
@@ -479,24 +490,20 @@ select_applicable_modes(MaybeAnnotatedArgTerms, VarSet, PredStatus, Context,
                 ApplProcIds = selected_modes(AllProcIds)
             )
         ;
-            ( ModeAnnotations = ma_empty
-            ; ModeAnnotations = ma_none
-            ),
-            ( if pred_info_defn_has_foreign_proc(PredInfo) then
-                % We are only allowed to mix foreign procs and
-                % mode specific clauses, so make this clause
-                % mode specific but apply to all modes.
-                ApplProcIds = selected_modes(AllProcIds)
-            else
-                ApplProcIds = all_modes
-            )
-        ;
-            ModeAnnotations = ma_mixed,
+            ArgModes0 = [_ | _],
+            ArgsWithoutModes = [_ | _],
+            ArgsWithoutModePieces =
+                list.map((func(N) = nth_fixed(N)), ArgsWithoutModes),
             Pieces = [words("In the head of a clause for"),
                 fixed(PredIdStr), suffix(":"), nl,
                 words("syntax error:")] ++
                 color_as_incorrect([words("some but not all arguments"),
                     words("have mode annotations.")]) ++
+                [words(choose_number(ArgsWithoutModes,
+                    "The argument without a mode is the",
+                    "The arguments without modes are the"))] ++
+                component_list_to_color_pieces(yes(color_incorrect), "and",
+                    [suffix(".")], ArgsWithoutModePieces) ++
                 [nl],
             Spec = spec($pred, severity_error, phase_pt2h, Context, Pieces),
             !:Specs = [Spec | !.Specs],
@@ -509,44 +516,38 @@ select_applicable_modes(MaybeAnnotatedArgTerms, VarSet, PredStatus, Context,
 
 %-----------------%
 
-    % Clauses can have mode annotations on them, to indicate that the
-    % clause should only be used for particular modes of a predicate.
-    % This type specifies the mode annotations on a clause.
-:- type mode_annotations
-    --->    ma_empty
-            % No arguments.
-
-    ;       ma_none
-            % One or more arguments, each without any mode annotations.
-
-    ;       ma_modes(list(mer_mode))
-            % One or more arguments, each with a mode annotation.
-
-    ;       ma_mixed.
-            % Two or more arguments, including some with mode annotations
-            % and some without. (This is not allowed.)
-
     % Extract the mode annotations (if any) from a list of arguments.
     %
 :- pred get_mode_annotations(prog_varset::in, cord(format_piece)::in,
     int::in, list(prog_term)::in, list(prog_term)::out,
-    mode_annotations::in, mode_annotations::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
+    list(mer_mode)::out, list(int)::out, list(error_spec)::out) is det.
 
-get_mode_annotations(_, _, _, [], [], !Annotations, !Specs).
+get_mode_annotations(_, _, _, [], [], [], [], []).
 get_mode_annotations(VarSet, ContextPieces, ArgNum, [MAArgTerm | MAArgTerms],
-        [ArgTerm | ArgTerms], !Annotations, !Specs) :-
+        [ArgTerm | ArgTerms], ArgModes, ArgsWithoutModes, Specs) :-
+    get_mode_annotations(VarSet, ContextPieces, ArgNum + 1, MAArgTerms,
+        ArgTerms, TailArgModes, TailArgsWithoutModes, TailSpecs),
     get_mode_annotation(VarSet, ContextPieces, ArgNum, MAArgTerm, ArgTerm,
         MaybeMaybeMode),
     (
         MaybeMaybeMode = ok1(MaybeMode),
-        add_annotation(MaybeMode, !Annotations)
+        (
+            MaybeMode = no,
+            ArgModes = TailArgModes,
+            ArgsWithoutModes = [ArgNum | TailArgsWithoutModes],
+            Specs = TailSpecs
+        ;
+            MaybeMode = yes(ArgMode),
+            ArgModes = [ArgMode | TailArgModes],
+            ArgsWithoutModes = TailArgsWithoutModes,
+            Specs = TailSpecs
+        )
     ;
         MaybeMaybeMode = error1(MaybeModeSpecs),
-        !:Specs = !.Specs ++ MaybeModeSpecs
-    ),
-    get_mode_annotations(VarSet, ContextPieces, ArgNum + 1, MAArgTerms,
-        ArgTerms, !Annotations, !Specs).
+        ArgModes = TailArgModes,
+        ArgsWithoutModes = TailArgsWithoutModes,
+        Specs = MaybeModeSpecs ++ TailSpecs
+    ).
 
     % Extract the mode annotations (if any) from a single argument.
     %
@@ -580,17 +581,6 @@ get_mode_annotation(VarSet, ContextPieces, ArgNum, MaybeAnnotatedArgTerm,
         ArgTerm = MaybeAnnotatedArgTerm,
         MaybeMaybeAnnotation = ok1(no)
     ).
-
-:- pred add_annotation(maybe(mer_mode)::in,
-    mode_annotations::in, mode_annotations::out) is det.
-
-add_annotation(no,        ma_empty, ma_none).
-add_annotation(yes(Mode), ma_empty, ma_modes([Mode])).
-add_annotation(no,        ma_modes(_), ma_mixed).
-add_annotation(yes(Mode), ma_modes(Modes), ma_modes(Modes ++ [Mode])).
-add_annotation(no,        ma_none, ma_none).
-add_annotation(yes(_),    ma_none, ma_mixed).
-add_annotation(_,         ma_mixed, ma_mixed).
 
 %-----------------------------------------------------------------------------%
 
