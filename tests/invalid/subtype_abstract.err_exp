@@ -1,6 +1,6 @@
 subtype_abstract.m:012: Error: the type definition for [38;5;87m`citrus'/0,[39;49m
 subtype_abstract.m:012:   the declared super type of `lemon'/0,
-subtype_abstract.m:012:   [38;5;203mis not visible here.[39;49m
+subtype_abstract.m:012:   is [38;5;203mnot visible here.[39;49m
 subtype_abstract.m:019: Error: [38;5;87mthe first argument of `basket'[39;49m has a type,
 subtype_abstract.m:019:   [38;5;203m`subtype_abstract.lemon', which is not a subtype[39;49m of
 subtype_abstract.m:019:   the corresponding argument type

@@ -93,6 +93,9 @@ add_foreign_proc(ProgressStream, ItemMercurystatus, PredStatus, FPInfo,
     ),
     PredFormArity = arg_list_arity(PragmaVars),
     PFSymNameArity = pf_sym_name_arity(PredOrFunc, PredSymName, PredFormArity),
+    user_arity_pred_form_arity(PredOrFunc, UserArity, PredFormArity),
+    UserArity = user_arity(UserArityInt),
+    SNA = sym_name_arity(PredSymName, UserArityInt),
 
     module_info_get_globals(!.ModuleInfo, Globals),
     globals.lookup_bool_option(Globals, very_verbose, VeryVerbose),
@@ -116,7 +119,6 @@ add_foreign_proc(ProgressStream, ItemMercurystatus, PredStatus, FPInfo,
         PredOrFunc, PredModuleName, PredName, PredFormArity, PredIds),
     (
         PredIds = [],
-        user_arity_pred_form_arity(PredOrFunc, UserArity, PredFormArity),
         Origin = origin_user(user_made_pred(PredOrFunc,
             PredSymName, UserArity)),
         add_implicit_pred_decl_report_error(PredOrFunc, PredModuleName,
@@ -132,9 +134,13 @@ add_foreign_proc(ProgressStream, ItemMercurystatus, PredStatus, FPInfo,
         % PredSymName and Arity should have been caught earlier, and an error
         % message generated. We continue so that we can try to find more
         % errors.
-        AmbiPieces = [words("Error: ambiguous predicate name"),
-            qual_pf_sym_name_pred_form_arity(PFSymNameArity), words("in"),
-            quote("pragma foreign_proc"), suffix("."), nl],
+        AmbiPieces =
+            [words("Error: the"), p_or_f(PredOrFunc), words("name")] ++
+            color_as_subject([qual_sym_name_arity(SNA)]) ++
+            [words("in"), pragma_decl("foreign_proc"),
+            words("declaration is")] ++
+            color_as_incorrect([words("ambiguous.")]) ++
+            [nl],
         AmbiSpec = spec($pred, severity_error, phase_pt2h,
             Context, AmbiPieces),
         !:Specs = [AmbiSpec | !.Specs]
@@ -191,14 +197,18 @@ add_foreign_proc(ProgressStream, ItemMercurystatus, PredStatus, FPInfo,
         ( if
             % Don't allow definitions, whether clauses or foreign_procs,
             % for imported predicates/functions. Nota that this applies to
-            % *plain imported( predicates/function, not the *opt-imported*
+            % *plain imported predicates/functions, not the *opt-imported*
             % ones.
             pred_info_is_imported(!.PredInfo)
         then
             Pieces = [words("Error:"), pragma_decl("foreign_proc"),
-                words("declaration for imported"),
-                qual_pf_sym_name_pred_form_arity(PFSymNameArity),
-                suffix("."), nl],
+                words("declarations are allowed only for predicates and"),
+                words("functions defined in the current module, but"),
+                p_or_f(PredOrFunc)] ++
+                color_as_incorrect([qual_sym_name_arity(SNA)]) ++
+                [words("is")] ++
+                color_as_incorrect([words("imported.")]) ++
+                [nl],
             Spec = spec($pred, severity_error, phase_pt2h, Context, Pieces),
             !:Specs = [Spec | !.Specs]
         else if
@@ -295,10 +305,12 @@ add_foreign_proc(ProgressStream, ItemMercurystatus, PredStatus, FPInfo,
                     PFSymNameArity, PredId, ProcId, !Specs)
             else
                 Pieces = [words("Error:"),
-                    pragma_decl("foreign_proc"), words("declaration"),
-                    words("for undeclared mode of"),
-                    qual_pf_sym_name_pred_form_arity(PFSymNameArity),
-                    suffix("."), nl],
+                    pragma_decl("foreign_proc"), words("declaration for")] ++
+                    color_as_incorrect([words("undeclared mode")]) ++
+                    [words("of"), p_or_f(PredOrFunc)] ++
+                    color_as_subject([qual_sym_name_arity(SNA),
+                        suffix(".")]) ++
+                    [nl],
                 Spec = spec($pred, severity_error, phase_pt2h,
                     Context, Pieces),
                 !:Specs = [Spec | !.Specs]
@@ -379,7 +391,14 @@ clauses_info_add_foreign_proc(PredOrFunc, PredModuleName, PredName,
             AllowDefnOfBuiltin),
         (
             AllowDefnOfBuiltin = no,
-            Pieces = [words("Error: foreign_proc for builtin."), nl],
+            pred_info_get_sym_name(PredInfo, SymName),
+            user_arity(UserArityInt) = pred_info_user_arity(PredInfo),
+            SNA = sym_name_arity(SymName, UserArityInt),
+            Pieces = [words("Error:")] ++
+                color_as_incorrect([words("you cannot redefine")]) ++
+                [words("a builtin"), p_or_f(PredOrFunc), words("such as")] ++
+                color_as_subject([qual_sym_name_arity(SNA), suffix(".")]) ++
+                [nl],
             Spec = spec($pred, severity_error, phase_pt2h, Context, Pieces),
             !:Specs = [Spec | !.Specs]
         ;
@@ -459,8 +478,8 @@ clauses_info_do_add_foreign_proc(PredOrFunc, PredModuleName, PredName,
         (
             MultiplyOccurringArgVars = [MultiplyOccurringArgVar],
             BadVarPiece = var_to_quote_piece(PVarSet, MultiplyOccurringArgVar),
-            Pieces2 =
-                color_as_subject([words("variable"), BadVarPiece]) ++
+            Pieces2 = [words("variable")] ++
+                color_as_subject([BadVarPiece]) ++
                 color_as_incorrect([words("occurs more than once")])
         ;
             MultiplyOccurringArgVars = [_, _ | _],
@@ -468,8 +487,7 @@ clauses_info_do_add_foreign_proc(PredOrFunc, PredModuleName, PredName,
                 MultiplyOccurringArgVars),
             BadVarsPieces = component_list_to_color_pieces(yes(color_subject),
                 "and", [], BadVarPieces),
-            Pieces2 =
-                color_as_subject([words("variables")]) ++ BadVarsPieces ++
+            Pieces2 = [words("variables")] ++ BadVarsPieces ++
                 color_as_incorrect([words("each occur more than once")])
         ),
         Pieces3 = [words("in the argument list."), nl],

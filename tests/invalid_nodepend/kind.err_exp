@@ -15,11 +15,11 @@ kind.m:021:   right hand side of mode definition.
 kind.m:021: In the definition of the mode `u': error: a variable such as [38;5;87m`K7'[39;49m
 kind.m:021:   is [38;5;203mnot a valid mode.[39;49m
 kind.m:022: In definition of mode `v'/0:
-kind.m:022:   error: the inst [38;5;87m`q'/0[39;49m [38;5;203mis undefined.[39;49m
+kind.m:022:   error: the inst [38;5;87m`q'/0[39;49m is [38;5;203mundefined.[39;49m
 kind.m:022:   [38;5;226m(Did you mean `i'?)[39;49m
 kind.m:022: In definition of mode `v'/0:
-kind.m:022:   error: the mode [38;5;87m`p'/0[39;49m [38;5;203mis undefined.[39;49m
+kind.m:022:   error: the mode [38;5;87m`p'/0[39;49m is [38;5;203mundefined.[39;49m
 kind.m:022:   [38;5;226m(Did you mean `m' or `v'?)[39;49m
 kind.m:027: In definition of inst `fi'/0:
-kind.m:027:   error: the inst [38;5;87m`f9'/0[39;49m [38;5;203mis undefined.[39;49m
+kind.m:027:   error: the inst [38;5;87m`f9'/0[39;49m is [38;5;203mundefined.[39;49m
 kind.m:027:   [38;5;226m(Did you mean `fi'?)[39;49m

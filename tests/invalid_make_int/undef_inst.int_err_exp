@@ -1,5 +1,5 @@
 undef_inst.m:009: In mode declaration for predicate `x'/1:
-undef_inst.m:009:   error: the inst [38;5;87m`bar'/0[39;49m [38;5;203mis undefined.[39;49m
+undef_inst.m:009:   error: the inst [38;5;87m`bar'/0[39;49m is [38;5;203mundefined.[39;49m
 undef_inst.m:009: In mode declaration for predicate `x'/1:
-undef_inst.m:009:   error: the inst [38;5;87m`foo'/0[39;49m [38;5;203mis undefined.[39;49m
+undef_inst.m:009:   error: the inst [38;5;87m`foo'/0[39;49m is [38;5;203mundefined.[39;49m
 `undef_inst.int' and `undef_inst.int2' not written.

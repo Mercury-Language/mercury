@@ -1,5 +1,5 @@
 undef_type_mod_qual.m:009: In declaration of predicate `blah'/1:
 undef_type_mod_qual.m:009:   error: the type
-undef_type_mod_qual.m:009:   [38;5;87m`undef_type_mod_qual.undefined_type'/0[39;49m [38;5;203mis[39;49m
+undef_type_mod_qual.m:009:   [38;5;87m`undef_type_mod_qual.undefined_type'/0[39;49m is
 undef_type_mod_qual.m:009:   [38;5;203mundefined.[39;49m
 `undef_type_mod_qual.int' and `undef_type_mod_qual.int2' not written.

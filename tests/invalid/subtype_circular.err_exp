@@ -1,14 +1,14 @@
 subtype_circular.m:008: Error: [38;5;203mcircularity in subtype definition chain.[39;49m
 subtype_circular.m:008:   The chain is:
-subtype_circular.m:008:   [38;5;203m`loop'/0,[39;49m
-subtype_circular.m:008:   [38;5;203mthe declared super type of `loop'/0.[39;49m
+subtype_circular.m:008:   [38;5;87m`loop'/0,[39;49m
+subtype_circular.m:008:   [38;5;87mthe declared super type of `loop'/0.[39;49m
 subtype_circular.m:011: Error: [38;5;203mcircularity in subtype definition chain.[39;49m
 subtype_circular.m:011:   The chain is:
-subtype_circular.m:011:   [38;5;203m`loop1'/0,[39;49m
-subtype_circular.m:011:   [38;5;203mthe declared super type of `loop2'/0,[39;49m
-subtype_circular.m:011:   [38;5;203mwhich is the declared super type of `loop1'/0.[39;49m
+subtype_circular.m:011:   [38;5;87m`loop1'/0,[39;49m
+subtype_circular.m:011:   [38;5;87mthe declared super type of `loop2'/0,[39;49m
+subtype_circular.m:011:   [38;5;87mwhich is the declared super type of `loop1'/0.[39;49m
 subtype_circular.m:014: Error: [38;5;203mcircularity in subtype definition chain.[39;49m
 subtype_circular.m:014:   The chain is:
-subtype_circular.m:014:   [38;5;203m`loop2'/0,[39;49m
-subtype_circular.m:014:   [38;5;203mthe declared super type of `loop1'/0,[39;49m
-subtype_circular.m:014:   [38;5;203mwhich is the declared super type of `loop2'/0.[39;49m
+subtype_circular.m:014:   [38;5;87m`loop2'/0,[39;49m
+subtype_circular.m:014:   [38;5;87mthe declared super type of `loop1'/0,[39;49m
+subtype_circular.m:014:   [38;5;87mwhich is the declared super type of `loop2'/0.[39;49m

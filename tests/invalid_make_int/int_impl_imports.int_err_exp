@@ -1,5 +1,5 @@
 int_impl_imports.m:014: In definition of type `foo'/0:
-int_impl_imports.m:014:   error: the type [38;5;87m`bar'/0[39;49m [38;5;203mis undefined.[39;49m
+int_impl_imports.m:014:   error: the type [38;5;87m`bar'/0[39;49m is [38;5;203mundefined.[39;49m
 int_impl_imports.m:014:   (Only [38;5;226mfully module qualified names[39;49m may refer to the
 int_impl_imports.m:014:   entities defined in module
 int_impl_imports.m:014:   [38;5;87m`int_impl_imports_helper_1'.[39;49m)

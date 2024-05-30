@@ -21,10 +21,10 @@ errors_3.m:055: Error: [38;5;87m`f'/1[39;49m [38;5;203moccurs more than once
 errors_3.m:055:   constructor [38;5;87m`type_with_multiply_defined_ctors'/0.[39;49m
 errors_3.m:058: In the first argument of function symbol `f' of the type
 errors_3.m:058:   `du_type_which_references_undefined_type'/0:
-errors_3.m:058:   error: the type [38;5;87m`undefined_type'/0[39;49m [38;5;203mis undefined.[39;49m
+errors_3.m:058:   error: the type [38;5;87m`undefined_type'/0[39;49m is [38;5;203mundefined.[39;49m
 errors_3.m:060: In definition of type
 errors_3.m:060:   `eqv_type_which_references_undefined_type'/0:
-errors_3.m:060:   error: the type [38;5;87m`undefined_type'/0[39;49m [38;5;203mis undefined.[39;49m
+errors_3.m:060:   error: the type [38;5;87m`undefined_type'/0[39;49m is [38;5;203mundefined.[39;49m
 errors_3.m:062: Error: equivalence type [38;5;87m`errors_3.circular_eqv_type'/0[39;49m is
 errors_3.m:062:   [38;5;203mcircular.[39;49m
 errors_3.m:064: Error: equivalence type
@@ -45,7 +45,7 @@ errors_3.m:106:   `:- import_module' declaration for the same module in the
 errors_3.m:106:   same section.
 errors_3.m:104:   The previous declaration is here.
 errors_3.m:109: In definition of type `needs_qualification'/0:
-errors_3.m:109:   error: the type [38;5;87m`state'/0[39;49m [38;5;203mis undefined.[39;49m
+errors_3.m:109:   error: the type [38;5;87m`state'/0[39;49m is [38;5;203mundefined.[39;49m
 errors_3.m:109:   (Only [38;5;226mfully module qualified names[39;49m may refer to the entities
 errors_3.m:109:   defined in module [38;5;87m`io'.[39;49m)
 For more information, recompile with `-E'.

@@ -1,7 +1,7 @@
 ee_invalid.m:039: Error: `:- pragma foreign_export_enum' declarations [38;5;203mare not[39;49m
 ee_invalid.m:039:   [38;5;203mallowed[39;49m for builtin types such as [38;5;87m`int'/0.[39;49m
 ee_invalid.m:043: In `:- pragma foreign_export_enum' declaration:
-ee_invalid.m:043:   error: the type [38;5;87m`undefined_type'/0[39;49m [38;5;203mis undefined.[39;49m
+ee_invalid.m:043:   error: the type [38;5;87m`undefined_type'/0[39;49m is [38;5;203mundefined.[39;49m
 ee_invalid.m:047: In `:- pragma foreign_export_enum' declaration for type
 ee_invalid.m:047:   `ee_invalid.foo'/1:
 ee_invalid.m:047:   error: [38;5;87m`ee_invalid.foo'/1[39;49m is [38;5;203mnot an enumeration type.[39;49m

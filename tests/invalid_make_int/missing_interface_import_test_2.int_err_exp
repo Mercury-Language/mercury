@@ -1,6 +1,6 @@
 missing_interface_import_test_2.m:009: In declaration of predicate
 missing_interface_import_test_2.m:009:   `write_key'/3:
-missing_interface_import_test_2.m:009:   error: the type [38;5;87m`partition_id'/0[39;49m [38;5;203mis[39;49m
+missing_interface_import_test_2.m:009:   error: the type [38;5;87m`partition_id'/0[39;49m is
 missing_interface_import_test_2.m:009:   [38;5;203mundefined.[39;49m
 missing_interface_import_test_2.m:009:   (The modules [38;5;87m`eqvclass'[39;49m and
 missing_interface_import_test_2.m:009:   [38;5;87m`missing_interface_import_test_2_helper_1'[39;49m
@@ -8,7 +8,7 @@ missing_interface_import_test_2.m:009:   [38;5;203mhave not been imported in th
 missing_interface_import_test_2.m:009:   [38;5;203minterface.)[39;49m
 missing_interface_import_test_2.m:009: In declaration of predicate
 missing_interface_import_test_2.m:009:   `write_key'/3:
-missing_interface_import_test_2.m:009:   error: the type [38;5;87m`io.state'/0[39;49m [38;5;203mis[39;49m
+missing_interface_import_test_2.m:009:   error: the type [38;5;87m`io.state'/0[39;49m is
 missing_interface_import_test_2.m:009:   [38;5;203mundefined.[39;49m
 missing_interface_import_test_2.m:009:   (The module [38;5;87m`io'[39;49m [38;5;203mhas not been imported[39;49m
 missing_interface_import_test_2.m:009:   [38;5;203min the interface.)[39;49m

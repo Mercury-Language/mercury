@@ -1254,10 +1254,8 @@ report_incompatible_foreign_enum(TypeCtor, UsedContext, Kind, Section, Enum,
 
 report_foreign_enum_for_undefined_type(TypeCtor, UndefOrUndecl, Enum,
         !Specs) :-
-    Pieces = [words("Error:")] ++
-        color_as_incorrect([pragma_decl("foreign_enum"),
-            words("declaration")]) ++
-        [words("for the")] ++
+    Pieces = [words("Error:"), pragma_decl("foreign_enum"),
+        words("declaration for the")] ++
         color_as_incorrect([words(UndefOrUndecl), words("type")]) ++
         color_as_subject([unqual_type_ctor(TypeCtor), suffix(".")]) ++ [nl],
     Spec = spec($pred, severity_error, phase_tim_check,

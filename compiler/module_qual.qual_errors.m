@@ -223,7 +223,8 @@ report_undefined_mq_id(Info, ErrorContext, Id, IdType, ThisModuleName,
         ),
         UndefPieces = [words("the"), fixed(IdTypeStr)] ++
             color_as_subject([qual_sym_name_arity(SNA)]) ++
-            color_as_incorrect([words("is undefined.")]) ++
+            [words("is")] ++
+            color_as_incorrect([words("undefined.")]) ++
             [nl],
         ThisIntPieces = []
     ),
@@ -307,7 +308,7 @@ report_undefined_mq_id(Info, ErrorContext, Id, IdType, ThisModuleName,
         KindKinds = choose_number(PossibleArities, IdTypeStr, IdTypesStr),
         ArityArities = choose_number(PossibleArities, "arity", "arities"),
         list.map(string.int_to_string, PossibleArities, PossibleArityStrs),
-        PossibleAritiesDotRpPieces = list_to_color_pieces(yes(color_cause),
+        PossibleAritiesDotRpPieces = list_to_color_pieces(yes(color_correct),
             "and", [suffix(".)")], PossibleArityStrs),
         OtherArityPieces =
             [words("(There"), words(IsAre),

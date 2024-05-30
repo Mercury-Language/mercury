@@ -8,9 +8,9 @@ one_member.m:053: Error: this `arbitrary' scope and the
 one_member.m:053:   `promise_equivalent_solution_sets' scope it is nested
 one_member.m:053:   inside [38;5;203moverlap[39;49m on the variable [38;5;87m`Item'.[39;49m
 one_member.m:052:   This is the outer `promise_equivalent_solution_sets' scope.
-one_member.m:054: Error: unification for non-canonical type
-one_member.m:054:   `one_member.set_ctree234'/1 occurs in a context which
-one_member.m:054:   requires all solutions.
+one_member.m:054: Error: [38;5;87munification for non-canonical type[39;49m
+one_member.m:054:   [38;5;87m`one_member.set_ctree234'/1[39;49m occurs in a context that
+one_member.m:054:   [38;5;203mrequires all solutions.[39;49m
 one_member.m:054:   Since the type has a user-defined equality predicate, I
 one_member.m:054:   must presume that there is more than one possible concrete
 one_member.m:054:   representation for each abstract value of this type. The

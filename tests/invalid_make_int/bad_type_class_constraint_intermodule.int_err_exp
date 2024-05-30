@@ -1,14 +1,14 @@
 bad_type_class_constraint_intermodule.m:016: In declaration of predicate
 bad_type_class_constraint_intermodule.m:016:   `bad_pred'/4:
 bad_type_class_constraint_intermodule.m:016:   error: the typeclass [38;5;87m`output'/1[39;49m
-bad_type_class_constraint_intermodule.m:016:   [38;5;203mis undefined.[39;49m
+bad_type_class_constraint_intermodule.m:016:   is [38;5;203mundefined.[39;49m
 bad_type_class_constraint_intermodule.m:016:   (There is a typeclass named
-bad_type_class_constraint_intermodule.m:016:   `output' with arity [38;5;226m2.)[39;49m
+bad_type_class_constraint_intermodule.m:016:   `output' with arity [38;5;40m2.)[39;49m
 bad_type_class_constraint_intermodule.m:019: In function symbol `f' for type
 bad_type_class_constraint_intermodule.m:019:   constructor `bad_type_ctor'/0:
 bad_type_class_constraint_intermodule.m:019:   error: the typeclass [38;5;87m`output'/1[39;49m
-bad_type_class_constraint_intermodule.m:019:   [38;5;203mis undefined.[39;49m
+bad_type_class_constraint_intermodule.m:019:   is [38;5;203mundefined.[39;49m
 bad_type_class_constraint_intermodule.m:019:   (There is a typeclass named
-bad_type_class_constraint_intermodule.m:019:   `output' with arity [38;5;226m2.)[39;49m
+bad_type_class_constraint_intermodule.m:019:   `output' with arity [38;5;40m2.)[39;49m
 `bad_type_class_constraint_intermodule.int' and
   `bad_type_class_constraint_intermodule.int2' not written.

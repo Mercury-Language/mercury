@@ -1,5 +1,5 @@
-instance_bug.m:013: Error: non-abstract instance declaration in module
-instance_bug.m:013:   interface.
+instance_bug.m:013: Error: non-abstract instance declaration [38;5;203min module[39;49m
+instance_bug.m:013:   [38;5;203minterface.[39;49m
 instance_bug.m:013:   If you intend to export this instance, move this
 instance_bug.m:013:   declaration to the implementation section, replacing it
 instance_bug.m:013:   in the interface section with its abstract version, which

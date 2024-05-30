@@ -1,30 +1,30 @@
 pragma_qual_error.m:025: In `:- pragma foreign_export_enum' declaration:
-pragma_qual_error.m:025:   error: the type [38;5;87m`bar'/0[39;49m [38;5;203mis undefined.[39;49m
-pragma_qual_error.m:032: Error: [38;5;203m`:- pragma foreign_enum' declaration[39;49m for the
+pragma_qual_error.m:025:   error: the type [38;5;87m`bar'/0[39;49m is [38;5;203mundefined.[39;49m
+pragma_qual_error.m:032: Error: `:- pragma foreign_enum' declaration for the
 pragma_qual_error.m:032:   [38;5;203mundeclared type[39;49m [38;5;87m`bar'/0.[39;49m
 pragma_qual_error.m:046: Error: `:- pragma foreign_proc' declaration for
-pragma_qual_error.m:046:   undeclared mode of predicate
-pragma_qual_error.m:046:   `pragma_qual_error.foo'/2.
+pragma_qual_error.m:046:   [38;5;203mundeclared mode[39;49m of predicate
+pragma_qual_error.m:046:   [38;5;87m`pragma_qual_error.foo'/2.[39;49m
 pragma_qual_error.m:046: In `:- pragma foreign_proc' declaration:
-pragma_qual_error.m:046:   error: the mode [38;5;87m`not_a_mode'/0[39;49m [38;5;203mis undefined.[39;49m
+pragma_qual_error.m:046:   error: the mode [38;5;87m`not_a_mode'/0[39;49m is [38;5;203mundefined.[39;49m
 pragma_qual_error.m:060: Error: `:- pragma memo' declaration for [38;5;203mundeclared[39;49m
 pragma_qual_error.m:060:   [38;5;203mmode[39;49m of predicate [38;5;87m`pragma_qual_error.memoproc'/3.[39;49m
 pragma_qual_error.m:060: In `:- pragma memo' declaration:
-pragma_qual_error.m:060:   error: the mode [38;5;87m`not_a_mode'/0[39;49m [38;5;203mis undefined.[39;49m
+pragma_qual_error.m:060:   error: the mode [38;5;87m`not_a_mode'/0[39;49m is [38;5;203mundefined.[39;49m
 pragma_qual_error.m:071: Error: `:- pragma loop_check' declaration for
 pragma_qual_error.m:071:   [38;5;203mundeclared mode[39;49m of predicate
 pragma_qual_error.m:071:   [38;5;87m`pragma_qual_error.loop_check_proc'/2.[39;49m
 pragma_qual_error.m:071: In `:- pragma loop_check' declaration:
-pragma_qual_error.m:071:   error: the mode [38;5;87m`not_a_mode'/0[39;49m [38;5;203mis undefined.[39;49m
+pragma_qual_error.m:071:   error: the mode [38;5;87m`not_a_mode'/0[39;49m is [38;5;203mundefined.[39;49m
 pragma_qual_error.m:088: Error: `:- pragma minimal_model_stack_copy'
 pragma_qual_error.m:088:   declaration for [38;5;203mundeclared mode[39;49m of predicate
 pragma_qual_error.m:088:   [38;5;87m`pragma_qual_error.tc'/2.[39;49m
 pragma_qual_error.m:088: In `:- pragma minimal_model' declaration:
-pragma_qual_error.m:088:   error: the mode [38;5;87m`not_a_mode'/0[39;49m [38;5;203mis undefined.[39;49m
+pragma_qual_error.m:088:   error: the mode [38;5;87m`not_a_mode'/0[39;49m is [38;5;203mundefined.[39;49m
 pragma_qual_error.m:112: In `:- pragma type_spec' declaration:
-pragma_qual_error.m:112:   error: the mode [38;5;87m`not_a_mode'/0[39;49m [38;5;203mis undefined.[39;49m
+pragma_qual_error.m:112:   error: the mode [38;5;87m`not_a_mode'/0[39;49m is [38;5;203mundefined.[39;49m
 pragma_qual_error.m:112: In `:- pragma type_spec' declaration:
-pragma_qual_error.m:112:   error: the type [38;5;87m`not_a_type'/0[39;49m [38;5;203mis undefined.[39;49m
+pragma_qual_error.m:112:   error: the type [38;5;87m`not_a_type'/0[39;49m is [38;5;203mundefined.[39;49m
 pragma_qual_error.m:112: In `:- pragma type_spec' declaration for predicate
 pragma_qual_error.m:112:   [38;5;87m`type_spec_pred'/2:[39;49m
 pragma_qual_error.m:112:   error: mode annotation specifies [38;5;203mundeclared mode[39;49m

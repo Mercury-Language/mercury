@@ -1969,17 +1969,12 @@ det_check_for_noncanonical_type(Var, ExaminesRepresentation, CanFail,
                 unify_context_to_pieces(UnifyContext, _LastContextWord,
                     [], Pieces0)
             ),
-            (
-                Pieces0 = [],
-                ErrorMsg = "Error:"
-            ;
-                Pieces0 = [_ | _],
-                ErrorMsg = "error:"
-            ),
-            Pieces1 = [words(ErrorMsg),
-                words("unification for non-canonical type"),
-                qual_top_ctor_of_type(Type),
-                words("is not guaranteed to succeed."), nl],
+            Pieces1 = [lower_case_next_if_not_first, words("Error:")] ++
+                color_as_subject([words("unification for non-canonical type"),
+                    qual_top_ctor_of_type(Type)]) ++
+                [words("is")] ++
+                color_as_incorrect([words("not guaranteed to succeed.")]) ++
+                [nl],
             VerbosePieces = noncanon_unify_verbose_preamble ++
                 [words("The success of this unification might depend on"),
                 words("the choice of concrete representation."),
@@ -2006,17 +2001,14 @@ det_check_for_noncanonical_type(Var, ExaminesRepresentation, CanFail,
                     unify_context_first_to_pieces(is_first, _,
                         UnifyContext, _LastContextWord, [], Pieces0)
                 ),
-                (
-                    Pieces0 = [],
-                    ErrorMsg = "Error:"
-                ;
-                    Pieces0 = [_ | _],
-                    ErrorMsg = "error:"
-                ),
-                Pieces1 = [words(ErrorMsg),
-                    words("unification for non-canonical type"),
-                    qual_top_ctor_of_type(Type), words("occurs in a context"),
-                    words("which requires all solutions."), nl],
+                Pieces1 = [lower_case_next_if_not_first, words("Error:")] ++
+                    color_as_subject(
+                        [words("unification for non-canonical type"),
+                        qual_top_ctor_of_type(Type)]) ++
+                    [words("occurs in a context that")] ++
+                    color_as_incorrect(
+                        [words("requires all solutions.")]) ++
+                    [nl],
                 VerbosePieces = noncanon_unify_verbose_preamble ++
                     [words("The results of this unification might depend on"),
                     words("the choice of concrete representation."),

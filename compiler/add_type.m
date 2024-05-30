@@ -408,8 +408,11 @@ module_add_type_defn_foreign(TypeStatus0, TypeStatus1, TypeCtor,
             )
         )
     else
-        ForeignDeclPieces = [words("Error: type"), unqual_type_ctor(TypeCtor),
-            words("defined as foreign_type without being declared."), nl],
+        ForeignDeclPieces = [words("Error:"), pragma_decl("foreign_type"),
+            words("declaration for the")] ++
+            color_as_incorrect([words("undeclared type")]) ++
+            color_as_subject([unqual_type_ctor(TypeCtor), suffix(".")]) ++
+            [nl],
         ForeignDeclSpec = spec($pred, severity_error, phase_pt2h,
             Context, ForeignDeclPieces),
         !:Specs = [ForeignDeclSpec | !.Specs],
@@ -675,7 +678,8 @@ check_for_invalid_user_defined_unify_compare(TypeStatus, TypeCtor, DetailsDu,
                 words("whose body consists of"),
                 words("a single zero-arity constructor"),
                 words("cannot have user-defined equality or comparison."), nl],
-            DummyMsg = simple_msg(Context, [always(MainPieces),
+            DummyMsg = simple_msg(Context,
+                [always(MainPieces),
                 verbose_only(verbose_once, VerbosePieces)]),
             DummySpec = error_spec($pred, severity_error, phase_pt2h,
                 [DummyMsg]),
@@ -1474,24 +1478,24 @@ supertype_ctor_defn_error_to_spec(OrigTypeCtor, OrigTypeDefn,
         Pieces = [words("Error: the type definition for")] ++
             describe_supertype_chain(yes(color_subject),
                 OrigTypeCtor, PrevSuperTypeCtors, LastSuperTypeCtor) ++
-            [suffix(","), nl] ++
-            color_as_incorrect([words("is not visible here.")]) ++ [nl]
+            [suffix(","), nl, words("is")] ++
+            color_as_incorrect([words("not visible here.")]) ++ [nl]
     ;
         Error = supertype_is_not_defined,
         ( if special_type_ctor_not_du(LastSuperTypeCtor) then
             Pieces = [words("Error:")] ++
                 describe_supertype_chain(yes(color_subject),
                     OrigTypeCtor, PrevSuperTypeCtors, LastSuperTypeCtor) ++
-                [suffix(","), nl] ++
-                color_as_incorrect([words("is not a"),
+                [suffix(","), nl, words("is")] ++
+                color_as_incorrect([words("not a"),
                     words("discriminated union type.")]) ++
                 [nl]
         else
             Pieces = [words("Error: the type")] ++
                 describe_supertype_chain(yes(color_subject),
                     OrigTypeCtor, PrevSuperTypeCtors, LastSuperTypeCtor) ++
-                [suffix(","), nl] ++
-                color_as_incorrect([words("is not defined.")]) ++
+                [suffix(","), nl, words("is")] ++
+                color_as_incorrect([words("not defined.")]) ++
                 [nl]
         )
     ;
@@ -1500,7 +1504,7 @@ supertype_ctor_defn_error_to_spec(OrigTypeCtor, OrigTypeDefn,
             color_as_incorrect([words("circularity in"),
                 words("subtype definition chain.")]) ++ [nl,
             words("The chain is:"), nl] ++
-            color_as_incorrect(describe_supertype_chain(no, OrigTypeCtor,
+            color_as_subject(describe_supertype_chain(no, OrigTypeCtor,
                 PrevSuperTypeCtors, LastSuperTypeCtor) ++
                 [suffix(".")]) ++
             [nl]
