@@ -32,6 +32,17 @@
 
 %---------------------------------------------------------------------------%
 
+:- type error_msg_group
+    --->    error_msg_group(error_msg, list(error_msg)).
+
+:- pred sort_error_msg_groups(list(error_msg_group)::in,
+    list(error_msg_group)::out) is det.
+
+:- func flatten_error_msg_groups(list(error_msg_group)) = list(error_msg).
+:- func flatten_error_msg_group(error_msg_group) = list(error_msg).
+
+%---------------------------------------------------------------------------%
+
 :- pred sort_error_msgs(list(error_msg)::in, list(error_msg)::out) is det.
 
 %---------------------------------------------------------------------------%
@@ -260,6 +271,54 @@ compare_error_msg_lists(ReverseErrorOrder, MsgsA, MsgsB, Result) :-
             Result = HeadResult
         )
     ).
+
+%---------------------------------------------------------------------------%
+
+sort_error_msg_groups(MsgGroups0, MsgGroups) :-
+    list.sort_and_remove_dups(compare_error_msg_groups, MsgGroups0, MsgGroups).
+
+:- pred compare_error_msg_groups(error_msg_group::in, error_msg_group::in,
+    comparison_result::out) is det.
+
+compare_error_msg_groups(GroupA, GroupB, Result) :-
+    GroupA = error_msg_group(HeadMsgA, TailMsgsA),
+    GroupB = error_msg_group(HeadMsgB, TailMsgsB),
+    compare_error_msgs(no, HeadMsgA, HeadMsgB, Result0),
+    (
+        Result0 = (=),
+        (
+            TailMsgsA = [],
+            TailMsgsB = [],
+            Result = (=)
+        ;
+            TailMsgsA = [],
+            TailMsgsB = [_HeadTailMsgB | _TailTailMsgsB],
+            Result = (<)
+        ;
+            TailMsgsA = [_HeadTailMsgA | _TailTailMsgsA],
+            TailMsgsB = [],
+            Result = (>)
+        ;
+            TailMsgsA = [HeadTailMsgA | TailTailMsgsA],
+            TailMsgsB = [HeadTailMsgB | TailTailMsgsB],
+            TailGroupA = error_msg_group(HeadTailMsgA, TailTailMsgsA),
+            TailGroupB = error_msg_group(HeadTailMsgB, TailTailMsgsB),
+            compare_error_msg_groups(TailGroupA, TailGroupB, Result)
+        )
+    ;
+        ( Result0 = (<)
+        ; Result0 = (>)
+        ),
+        Result = Result0
+    ).
+
+flatten_error_msg_groups(Groups) = Msgs :-
+    MsgLists = list.map(flatten_error_msg_group, Groups),
+    list.condense(MsgLists, Msgs).
+
+flatten_error_msg_group(Group) = Msgs :-
+    Group= error_msg_group(HeadMsg, TailMsgs),
+    Msgs = [HeadMsg | TailMsgs].
 
 %---------------------------------------------------------------------------%
 

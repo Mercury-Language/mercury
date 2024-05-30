@@ -866,8 +866,10 @@ det_infer_par_conj(Goals0, Goals, GoalInfo, InstMap0, SolnContext,
         Rest = "The current implementation supports only "
             ++ "single-solution non-failing parallel conjunctions.",
         Pieces = [words(First), words(Rest), nl],
-        det_diagnose_conj(Goals, InstMap0, detism_det, [], !DetInfo, GoalMsgs),
-        sort_error_msgs(GoalMsgs, SortedGoalMsgs),
+        det_diagnose_conj(Goals, InstMap0, detism_det, [], !DetInfo,
+            GoalMsgGroups),
+        sort_error_msg_groups(GoalMsgGroups, SortedGoalMsgGroups),
+        SortedGoalMsgs = flatten_error_msg_groups(SortedGoalMsgGroups),
         Spec = error_spec($pred, severity_error, phase_detism_check,
             [msg(Context, Pieces)] ++ SortedGoalMsgs),
         det_info_add_error_spec(Spec, !DetInfo)
