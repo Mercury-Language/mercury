@@ -129,7 +129,9 @@
 :- import_module mdbcomp.prim_data.
 :- import_module mdbcomp.sym_name.
 :- import_module parse_tree.maybe_error.
+:- import_module parse_tree.parse_tree_out_info.
 :- import_module parse_tree.parse_tree_out_misc.
+:- import_module parse_tree.parse_tree_out_pred_decl.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_data_foreign.
 :- import_module parse_tree.prog_data_pragma.
@@ -875,12 +877,18 @@ add_pragma_foreign_proc_export(FPEInfo, !ModuleInfo, !Specs) :-
                 ; Detism = detism_multi
                 )
             then
-                DetismStr = determinism_to_string(Detism),
+                varset.coerce(VarSet, InstVarSet),
+                ModeSubDeclStr = mercury_mode_subdecl_to_string(output_debug,
+                    PredOrFunc, InstVarSet, SymName, ArgModes, MaybeDetism),
                 Pieces = [words("Error:")] ++
                     color_as_subject([pragma_decl("foreign_export"),
-                        words("declaration"), words("for a procedure")]) ++
-                    [words("that has a declared determinism of")] ++
-                    color_as_incorrect([fixed(DetismStr), suffix(".")]) ++
+                        words("declarations")]) ++
+                    [words("are")] ++
+                    color_as_incorrect([words("not allowed")]) ++
+                    [words("for procedures that can succeed"),
+                    words("more than once, such as")] ++
+                    color_as_subject([words_quote(ModeSubDeclStr),
+                        suffix(".")])  ++
                     [nl],
                 Spec = spec($pred, severity_error, phase_pt2h,
                     Context, Pieces),

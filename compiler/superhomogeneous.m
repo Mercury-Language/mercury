@@ -1333,9 +1333,12 @@ maybe_unravel_special_var_functor_unification(XVar, YAtom, YArgTerms,
             HeadForm = "<lambda expression head> ",
             BodyForm = " <lambda expression body>",
             Form = HeadForm ++ YAtom ++ BodyForm,
-            Pieces = [words("Error: the clause neck operator"), quote(YAtom),
-                words("can be used only in expressions of the form"),
-                quote(Form), suffix("."), nl],
+            Pieces =
+                [words("Error: the clause neck operator"), quote(YAtom)] ++
+                color_as_incorrect([words("can be used only"),
+                    words("in expressions of the form")]) ++
+                color_as_correct([quote(Form), suffix(".")]) ++
+                [nl],
             Spec = spec($pred, severity_error, phase_pt2h,
                 YFunctorContext, Pieces),
             !:Specs = [Spec | !.Specs],
@@ -1534,9 +1537,13 @@ parse_lambda_purity_pf_args_det_term(PurityPFArgsDetTerm, MaybeDCGVars,
                     ( ArgModeTerms0 = []
                     ; ArgModeTerms0 = [_]
                     ),
-                    Pieces = [words("Error: the head of a lambda expression"),
-                        words("that is defined by a DCG clause"),
-                        words("must have at least two arguments."), nl],
+                    Pieces = [words("Error:")] ++
+                        color_as_subject([words("the head of a"),
+                            words("lambda expression that is defined"),
+                            words("by a DCG clause")]) ++
+                        color_as_incorrect([words("must have"),
+                            words("at least two arguments.")]) ++
+                        [nl],
                     Spec = spec($pred, severity_error, phase_pt2h,
                         Context, Pieces),
                     MaybeLambdaHead =
@@ -1580,8 +1587,11 @@ parse_lambda_purity_pf_args_det_term(PurityPFArgsDetTerm, MaybeDCGVars,
                 MaybeLambdaHead = ok1(LambdaHead)
             ;
                 MaybeDCGVars = dcg_vars(_, _),
-                Pieces = [words("Error: DCG notation is not allowed"),
-                    words("in clauses for functions."), nl],
+                Pieces = [words("Error: DCG notation is")] ++
+                    color_as_incorrect([words("not allowed")]) ++
+                    [words("in")] ++
+                    color_as_subject([words("clauses for functions.")]) ++
+                    [nl],
                 Spec = spec($pred, severity_error, phase_pt2h,
                     Context, Pieces),
                 MaybeLambdaHead = error1([Spec | get_any_errors1(MaybeDetism)])
@@ -1620,24 +1630,35 @@ parse_lambda_purity_pf_args_det_term(PurityPFArgsDetTerm, MaybeDCGVars,
             MaybeLambdaHead = ok1(LambdaHead)
         ;
             MaybeDCGVars = dcg_vars(_, _),
-            Pieces = [words("Error: DCG notation is not allowed"),
-                words("in clauses for functions."), nl],
+            Pieces = [words("Error: DCG notation is")] ++
+                color_as_incorrect([words("not allowed")]) ++
+                [words("in")] ++
+                color_as_subject([words("clauses for functions.")]) ++
+                [nl],
             Spec = spec($pred, severity_error, phase_pt2h, Context, Pieces),
             MaybeLambdaHead = error1([Spec])
         )
     else
-        Pieces = [words("Error: the clause head part of a lambda expression"),
-            words("should have one of the following forms:"),
-            quote("pred(<args>) is <determinism>"), nl,
-            quote("any_pred(<args>) is <determinism>"), nl,
-            quote("func(<args>) = <retarg> is <determinism>"), nl,
-            quote("any_func(<args>) = <retarg> is <determinism>"), nl,
-            quote("func(<args>) = <retarg>"), nl,
-            quote("any_func(<args>) = <retarg>"), suffix(","), nl,
+        Form1 = "pred(<args>) is <determinism>",
+        Form2 = "any_pred(<args>) is <determinism>",
+        Form3 = "func(<args>) = <retarg> is <determinism>",
+        Form4 = "any_func(<args>) = <retarg> is <determinism>",
+        Form5 = "func(<args>) = <retarg>",
+        Form6 = "any_func(<args>) = <retarg>",
+        Pieces =
+            [words("Error: the clause head part of a lambda expression")] ++
+            color_as_incorrect(
+                [words("must have one of the following forms:")]) ++
+            color_as_correct([quote(Form1)]) ++ [nl] ++
+            color_as_correct([quote(Form2)]) ++ [nl] ++
+            color_as_correct([quote(Form3)]) ++ [nl] ++
+            color_as_correct([quote(Form4)]) ++ [nl] ++
+            color_as_correct([quote(Form5)]) ++ [nl] ++
+            color_as_correct([quote(Form6)]) ++ [suffix(","), nl,
             words("or one of those forms preceded by either"),
             quote("semipure"), words("or"), quote("impure"), suffix("."), nl],
-        Spec = spec($pred, severity_error, phase_pt2h,
-            get_term_context(PFArgsDetTerm), Pieces),
+        Context = get_term_context(PFArgsDetTerm),
+        Spec = spec($pred, severity_error, phase_pt2h, Context, Pieces),
         qual_info_set_found_syntax_error(yes, !QualInfo),
         MaybeLambdaHead = error1([Spec])
     ).
@@ -1747,11 +1768,14 @@ classify_lambda_arg_modes_present_absent([LambdaArg | LambdaArgs],
 add_some_not_all_args_have_modes_error(Context, AbsentArgs, !Specs) :-
     AbsentArgPieces =
         list.map(func(Arg) = nth_fixed(Arg ^ la_arg_num), AbsentArgs),
-    AbsentArgsPieces = component_list_to_pieces("and", AbsentArgPieces),
-    Pieces = [words("Error: in head of lambda expression:"),
-        words("some but not all arguments have modes."), nl,
+    AbsentArgsDotPieces = component_list_to_color_pieces(yes(color_incorrect),
+        "and", [suffix(".")], AbsentArgPieces),
+    Pieces = [words("Error: in head of lambda expression:")] ++
+        color_as_incorrect(
+            [words("some but not all arguments have modes.")]) ++
+        [nl,
         words("The arguments without modes are the")] ++
-        AbsentArgsPieces ++ [suffix("."), nl],
+        AbsentArgsDotPieces ++ [nl],
     Spec = spec($pred, severity_error, phase_pt2h, Context, Pieces),
     !:Specs = [Spec | !.Specs].
 
@@ -1760,8 +1784,9 @@ add_some_not_all_args_have_modes_error(Context, AbsentArgs, !Specs) :-
 
 add_pred_no_args_have_modes_error(Context, !Specs) :-
     % We could use _AbsentArgs to make the error message more detailed.
-    Pieces = [words("Error: in head of predicate lambda expression:"),
-        words("none of the arguments have modes."), nl],
+    Pieces = [words("Error: in head of predicate lambda expression:")] ++
+        color_as_incorrect([words("none of the arguments have modes.")]) ++
+        [nl],
     Spec = spec($pred, severity_error, phase_pt2h, Context, Pieces),
     !:Specs = [Spec | !.Specs].
 
@@ -1989,16 +2014,18 @@ build_lambda_expression(LHSVar, UnificationPurity,
     %
     % For example, we convert from:
     %
-    %       X = (func(f(A, B), c) = D :- Body )
+    %   X = (func(f(A, B), c) = D :- Body )
     %
     % to:
     %
-    %       X = (func(H1, H2) = H3 :-
+    %   X =
+    %       ( func(H1, H2) = H3 :-
     %           some [A, B] (
     %               H1 = f(A, B),
     %               H2 = c,
     %               Body,
     %               H3 = D
+    %           )
     %       )
     %
     % Note that the quantification is important here. That is why we need
@@ -2033,17 +2060,18 @@ build_lambda_expression(LHSVar, UnificationPurity,
         InconsistentVars = []
     ;
         InconsistentVars = [_ | _],
-        InconsistentVarStrs = list.map(
-            mercury_var_to_string_vs(InstVarSet, print_name_only),
-            InconsistentVars),
         InconsistentVarPieces =
+            list.map(var_to_quote_piece(InstVarSet), InconsistentVars),
+        InconsistentVarsPieces =
             [words("Error: the constraints on the inst"),
-            words(choose_number(InconsistentVars, "variable", "variables")) |
-            list_to_quoted_pieces(InconsistentVarStrs)] ++
-            [words("are inconsistent."), nl],
-        InconsistentVarSpec = spec($pred, severity_error, phase_t2pt,
-            Context, InconsistentVarPieces),
-        !:Specs = [InconsistentVarSpec | !.Specs]
+            words(choose_number(InconsistentVars, "variable", "variables"))] ++
+            component_list_to_color_pieces(yes(color_subject), "and", [],
+                InconsistentVarPieces) ++
+            color_as_incorrect([words("are inconsistent.")]) ++
+            [nl],
+        InconsistentVarsSpec = spec($pred, severity_error, phase_t2pt,
+            Context, InconsistentVarsPieces),
+        !:Specs = [InconsistentVarsSpec | !.Specs]
     ),
     (
         MaybeDetism = ok1(Detism)

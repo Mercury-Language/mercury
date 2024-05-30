@@ -1,32 +1,32 @@
 lambda_syntax_error.m:016: Error: the clause head part of a lambda expression
-lambda_syntax_error.m:016:   should have one of the following forms:
-lambda_syntax_error.m:016:   `pred(<args>) is <determinism>'
-lambda_syntax_error.m:016:   `any_pred(<args>) is <determinism>'
-lambda_syntax_error.m:016:   `func(<args>) = <retarg> is <determinism>'
-lambda_syntax_error.m:016:   `any_func(<args>) = <retarg> is <determinism>'
-lambda_syntax_error.m:016:   `func(<args>) = <retarg>'
-lambda_syntax_error.m:016:   `any_func(<args>) = <retarg>',
+lambda_syntax_error.m:016:   [38;5;203mmust have one of the following forms:[39;49m
+lambda_syntax_error.m:016:   [38;5;40m`pred(<args>) is <determinism>'[39;49m
+lambda_syntax_error.m:016:   [38;5;40m`any_pred(<args>) is <determinism>'[39;49m
+lambda_syntax_error.m:016:   [38;5;40m`func(<args>) = <retarg> is <determinism>'[39;49m
+lambda_syntax_error.m:016:   [38;5;40m`any_func(<args>) = <retarg> is <determinism>'[39;49m
+lambda_syntax_error.m:016:   [38;5;40m`func(<args>) = <retarg>'[39;49m
+lambda_syntax_error.m:016:   [38;5;40m`any_func(<args>) = <retarg>'[39;49m,
 lambda_syntax_error.m:016:   or one of those forms preceded by either
 lambda_syntax_error.m:016:   `semipure' or `impure'.
 lambda_syntax_error.m:017: Error: the clause head part of a lambda expression
-lambda_syntax_error.m:017:   should have one of the following forms:
-lambda_syntax_error.m:017:   `pred(<args>) is <determinism>'
-lambda_syntax_error.m:017:   `any_pred(<args>) is <determinism>'
-lambda_syntax_error.m:017:   `func(<args>) = <retarg> is <determinism>'
-lambda_syntax_error.m:017:   `any_func(<args>) = <retarg> is <determinism>'
-lambda_syntax_error.m:017:   `func(<args>) = <retarg>'
-lambda_syntax_error.m:017:   `any_func(<args>) = <retarg>',
+lambda_syntax_error.m:017:   [38;5;203mmust have one of the following forms:[39;49m
+lambda_syntax_error.m:017:   [38;5;40m`pred(<args>) is <determinism>'[39;49m
+lambda_syntax_error.m:017:   [38;5;40m`any_pred(<args>) is <determinism>'[39;49m
+lambda_syntax_error.m:017:   [38;5;40m`func(<args>) = <retarg> is <determinism>'[39;49m
+lambda_syntax_error.m:017:   [38;5;40m`any_func(<args>) = <retarg> is <determinism>'[39;49m
+lambda_syntax_error.m:017:   [38;5;40m`func(<args>) = <retarg>'[39;49m
+lambda_syntax_error.m:017:   [38;5;40m`any_func(<args>) = <retarg>'[39;49m,
 lambda_syntax_error.m:017:   or one of those forms preceded by either
 lambda_syntax_error.m:017:   `semipure' or `impure'.
-lambda_syntax_error.m:018: Error: in head of predicate lambda expression: none
-lambda_syntax_error.m:018:   of the arguments have modes.
+lambda_syntax_error.m:018: Error: in head of predicate lambda expression: [38;5;203mnone[39;49m
+lambda_syntax_error.m:018:   [38;5;203mof the arguments have modes.[39;49m
 lambda_syntax_error.m:019: Error: the clause head part of a lambda expression
-lambda_syntax_error.m:019:   should have one of the following forms:
-lambda_syntax_error.m:019:   `pred(<args>) is <determinism>'
-lambda_syntax_error.m:019:   `any_pred(<args>) is <determinism>'
-lambda_syntax_error.m:019:   `func(<args>) = <retarg> is <determinism>'
-lambda_syntax_error.m:019:   `any_func(<args>) = <retarg> is <determinism>'
-lambda_syntax_error.m:019:   `func(<args>) = <retarg>'
-lambda_syntax_error.m:019:   `any_func(<args>) = <retarg>',
+lambda_syntax_error.m:019:   [38;5;203mmust have one of the following forms:[39;49m
+lambda_syntax_error.m:019:   [38;5;40m`pred(<args>) is <determinism>'[39;49m
+lambda_syntax_error.m:019:   [38;5;40m`any_pred(<args>) is <determinism>'[39;49m
+lambda_syntax_error.m:019:   [38;5;40m`func(<args>) = <retarg> is <determinism>'[39;49m
+lambda_syntax_error.m:019:   [38;5;40m`any_func(<args>) = <retarg> is <determinism>'[39;49m
+lambda_syntax_error.m:019:   [38;5;40m`func(<args>) = <retarg>'[39;49m
+lambda_syntax_error.m:019:   [38;5;40m`any_func(<args>) = <retarg>'[39;49m,
 lambda_syntax_error.m:019:   or one of those forms preceded by either
 lambda_syntax_error.m:019:   `semipure' or `impure'.
