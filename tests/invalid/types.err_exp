@@ -1,46 +1,46 @@
-types2.m:013: Error: predicate [38;5;87m`p'/1[39;49m [38;5;203mhas no clauses.[39;49m
-types2.m:019: In clause for predicate `q'/0:
-types2.m:019:   error: call to [38;5;203mundefined[39;49m predicate [38;5;87m`zzzzzzzz'/0.[39;49m
-types2.m:020: In clause for predicate `q'/0:
-types2.m:020:   in argument 1 of call to predicate `types2.p'/1:
-types2.m:020:   type error: [38;5;87margument[39;49m has type
-types2.m:020:     [38;5;203mint;[39;49m
-types2.m:020:   expected type was
-types2.m:020:     [38;5;40mpred.[39;49m
-types2.m:020:   The partial type assignment was:
-types2.m:020:     V_1: (pred)
-types2.m:020:     V_2: int
-types2.m:021: In clause for predicate `q'/0:
-types2.m:021:   error: [38;5;203mwrong number of arguments[39;49m ([38;5;203m0[39;49m; should be [38;5;40m1[39;49m)
-types2.m:021:   in call to predicate [38;5;87m`p'.[39;49m
-types2.m:023: Error: clause for predicate [38;5;87m`r'/0[39;49m [38;5;203mwithout[39;49m a corresponding
-types2.m:023:   `:- pred' declaration.
-types2.m:023: Warning: [38;5;203mnon-contiguous clauses[39;49m for predicate [38;5;87m`r'/0.[39;49m
-types2.m:023:   Gap in clauses of predicate `r'/0 starts after this clause.
-types2.m:029:   Gap in clauses of predicate `r'/0 ends with this clause.
-types2.m:024: In clause for predicate `r'/0:
-types2.m:024:   error: call to [38;5;203mundefined[39;49m predicate [38;5;87m`s'/0.[39;49m
-types2.m:024:   [38;5;226m(Did you mean `<', `>', `a', `p', `q', `r' or `z'?)[39;49m
-types2.m:026: Error: clause for predicate [38;5;87m`a'/1[39;49m [38;5;203mwithout[39;49m a corresponding
-types2.m:026:   `:- pred' declaration.
-types2.m:027: In clause for predicate `a'/1:
-types2.m:027:   error: call to [38;5;203mundefined[39;49m predicate [38;5;87m`b'/1.[39;49m
-types2.m:027:   [38;5;226m(Did you mean `<', `>', `a', `p', `q', `r' or `z'?)[39;49m
-types2.m:046: In clause for predicate `bar'/1:
-types2.m:046:   type error in unification of variable `X'
-types2.m:046:   and constant `0'.
-types2.m:046:   [38;5;87mVariable `X'[39;49m has type
-types2.m:046:     [38;5;203msome [BarTypeParam] (BarTypeParam),[39;49m
-types2.m:046:   [38;5;87mconstant `0'[39;49m has type
-types2.m:046:     [38;5;40mint.[39;49m
-types2.m:046:   The partial type assignment was:
-types2.m:046:     some [BarTypeParam_1]
-types2.m:046:     X_2: BarTypeParam
-types2.m:053: Error: [38;5;87mabstract declaration for type `t'/2[39;49m [38;5;203mhas no corresponding[39;49m
-types2.m:053:   [38;5;203mdefinition.[39;49m
-types2.m:053: Error: the type [38;5;87m`t'/2[39;49m has this declaration, but [38;5;203mit has no[39;49m
-types2.m:053:   [38;5;203mdefinition.[39;49m
-types2.m:055: Error: predicate [38;5;87m`bar2'/1[39;49m [38;5;203mhas no clauses.[39;49m
-types2.m:072: In clause for predicate `repeated_arity'/3:
-types2.m:072:   error: [38;5;203mwrong number of arguments[39;49m ([38;5;203m2[39;49m; should be [38;5;40m3[39;49m)
-types2.m:072:   in call to predicate [38;5;87m`append'.[39;49m
+types.m:013: Error: predicate [38;5;87m`p'/1[39;49m [38;5;203mhas no clauses.[39;49m
+types.m:019: In clause for predicate `q'/0:
+types.m:019:   error: call to [38;5;203mundefined[39;49m predicate [38;5;87m`zzzzzzzz'/0.[39;49m
+types.m:020: In clause for predicate `q'/0:
+types.m:020:   in argument 1 of call to predicate `types.p'/1:
+types.m:020:   type error: [38;5;87margument[39;49m has type
+types.m:020:     [38;5;203mint;[39;49m
+types.m:020:   expected type was
+types.m:020:     [38;5;40mpred.[39;49m
+types.m:020:   The partial type assignment was:
+types.m:020:     V_1: (pred)
+types.m:020:     V_2: int
+types.m:021: In clause for predicate `q'/0:
+types.m:021:   error: [38;5;203mwrong number of arguments[39;49m ([38;5;203m0[39;49m; should be [38;5;40m1[39;49m)
+types.m:021:   in call to predicate [38;5;87m`p'.[39;49m
+types.m:023: Error: clause for predicate [38;5;87m`r'/0[39;49m [38;5;203mwithout[39;49m a corresponding
+types.m:023:   `:- pred' declaration.
+types.m:023: Warning: [38;5;203mnon-contiguous clauses[39;49m for predicate [38;5;87m`r'/0.[39;49m
+types.m:023:   Gap in clauses of predicate `r'/0 starts after this clause.
+types.m:029:   Gap in clauses of predicate `r'/0 ends with this clause.
+types.m:024: In clause for predicate `r'/0:
+types.m:024:   error: call to [38;5;203mundefined[39;49m predicate [38;5;87m`s'/0.[39;49m
+types.m:024:   [38;5;226m(Did you mean `<', `>', `a', `p', `q', `r' or `z'?)[39;49m
+types.m:026: Error: clause for predicate [38;5;87m`a'/1[39;49m [38;5;203mwithout[39;49m a corresponding
+types.m:026:   `:- pred' declaration.
+types.m:027: In clause for predicate `a'/1:
+types.m:027:   error: call to [38;5;203mundefined[39;49m predicate [38;5;87m`b'/1.[39;49m
+types.m:027:   [38;5;226m(Did you mean `<', `>', `a', `p', `q', `r' or `z'?)[39;49m
+types.m:046: In clause for predicate `bar'/1:
+types.m:046:   type error in unification of variable `X'
+types.m:046:   and constant `0'.
+types.m:046:   [38;5;87mVariable `X'[39;49m has type
+types.m:046:     [38;5;203msome [BarTypeParam] (BarTypeParam),[39;49m
+types.m:046:   [38;5;87mconstant `0'[39;49m has type
+types.m:046:     [38;5;40mint.[39;49m
+types.m:046:   The partial type assignment was:
+types.m:046:     some [BarTypeParam_1]
+types.m:046:     X_2: BarTypeParam
+types.m:053: Error: [38;5;87mabstract declaration for type `t'/2[39;49m [38;5;203mhas no corresponding[39;49m
+types.m:053:   [38;5;203mdefinition.[39;49m
+types.m:053: Error: the type [38;5;87m`t'/2[39;49m has this declaration, but [38;5;203mit has no[39;49m
+types.m:053:   [38;5;203mdefinition.[39;49m
+types.m:055: Error: predicate [38;5;87m`bar2'/1[39;49m [38;5;203mhas no clauses.[39;49m
+types.m:072: In clause for predicate `repeated_arity'/3:
+types.m:072:   error: [38;5;203mwrong number of arguments[39;49m ([38;5;203m2[39;49m; should be [38;5;40m3[39;49m)
+types.m:072:   in call to predicate [38;5;87m`append'.[39;49m

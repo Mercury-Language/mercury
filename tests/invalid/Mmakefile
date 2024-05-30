@@ -74,7 +74,7 @@ BORING_SINGLEMODULE_PROGS = \
 	bad_fact_table_decls \
 	bad_format_call \
 	bad_inst_for_type \
-	bad_instance2 \
+	bad_instance \
 	bad_item_in_interface \
 	bad_pred_arity \
 	bad_statevar_bad_context \
@@ -157,7 +157,7 @@ BORING_SINGLEMODULE_PROGS = \
 	exported_mode \
 	ext_type \
 	ext_type_bug \
-	external2 \
+	external \
 	extra_info_prompt \
 	fbnf \
 	field_syntax_error \
@@ -219,11 +219,11 @@ BORING_SINGLEMODULE_PROGS = \
 	mode_error_arg_number \
 	mode_inf \
 	modes_erroneous \
-	mostly_uniq1 \
-	mostly_uniq2 \
-	mpj1 \
-	mpj3 \
-	mpj4 \
+	mostly_uniq_1 \
+	mostly_uniq_2 \
+	mpj_1 \
+	mpj_3 \
+	mpj_4 \
 	multimode_addr_problems \
 	multimode_dcg \
 	multimode_missing_impure \
@@ -244,8 +244,8 @@ BORING_SINGLEMODULE_PROGS = \
 	pragma_c_code_no_det \
 	promise_equivalent_solutions_test_1 \
 	promise_equivalent_solutions_test_2 \
-	qual_basic_test2 \
-	qualified_cons_id2 \
+	qual_basic_test \
+	qualified_cons_id \
 	quant_constraint_1 \
 	quant_constraint_2 \
 	range_restrict \
@@ -279,12 +279,12 @@ BORING_SINGLEMODULE_PROGS = \
 	subtype_not_subset \
 	subtype_user_compare \
 	switch_arm_multi_not_det \
-	tc_err1 \
-	tc_err2 \
+	tc_err_1 \
+	tc_err_2 \
 	test_may_duplicate \
 	test_may_export_body \
 	test_promise_equivalent_clauses \
-	tricky_assert1 \
+	tricky_assert \
 	try_bad_params \
 	try_detism \
 	try_io_else \
@@ -319,7 +319,7 @@ BORING_SINGLEMODULE_PROGS = \
 	typeclass_test_7 \
 	typeclass_test_8 \
 	typeclass_test_9 \
-	types2 \
+	types \
 	undeclared_mode \
 	undef_impl_def_literal \
 	undef_lambda_mode \

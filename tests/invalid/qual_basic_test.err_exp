@@ -1,4 +1,4 @@
-qual_basic_test2.m:019: In clause for predicate `main'/2:
-qual_basic_test2.m:019:   error: call to [38;5;203mundefined[39;49m predicate
-qual_basic_test2.m:019:   [38;5;87m`io.io.write_string'/3.[39;49m
-qual_basic_test2.m:019:   (The module [38;5;87m`io.io'[39;49m [38;5;226mhas not been imported.)[39;49m
+qual_basic_test.m:019: In clause for predicate `main'/2:
+qual_basic_test.m:019:   error: call to [38;5;203mundefined[39;49m predicate
+qual_basic_test.m:019:   [38;5;87m`io.io.write_string'/3.[39;49m
+qual_basic_test.m:019:   (The module [38;5;87m`io.io'[39;49m [38;5;226mhas not been imported.)[39;49m

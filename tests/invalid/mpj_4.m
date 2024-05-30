@@ -2,7 +2,7 @@
 % vim: ts=4 sw=4 et ft=mercury
 %---------------------------------------------------------------------------%
 
-:- module mpj4.
+:- module mpj_4.
 :- interface.
 
 :- typeclass coll(E, C) <= (C -> E) where [

@@ -2,9 +2,10 @@
 % vim: ts=4 sw=4 et ft=mercury
 %---------------------------------------------------------------------------%
 %
-% Compile with '--infer-all'
+% Compile with '--infer-all'.
+%
 
-:- module mpj1.
+:- module mpj_1.
 :- interface.
 
 :- typeclass coll(E, C) <= (C -> E) where [

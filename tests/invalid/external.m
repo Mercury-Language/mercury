@@ -6,7 +6,7 @@
 % clauses despite being marked as external.
 %
 
-:- module external2.
+:- module external.
 
 :- interface.
 

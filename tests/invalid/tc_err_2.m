@@ -15,8 +15,9 @@
 %   Key Functor: constraint/2
 %   Value Type: hlds_data:constraint_proof
 % Stack dump not available in this grade.
+%
 
-:- module tc_err2.
+:- module tc_err_2.
 
 :- interface.
 

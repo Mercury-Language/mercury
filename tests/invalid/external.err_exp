@@ -1,4 +1,4 @@
-external2.m:019: The predicate [38;5;87m`p'/2[39;49m has clauses, so [38;5;203mit cannot be marked as[39;49m
-external2.m:019:   [38;5;203mexternal.[39;49m
-external2.m:020: The function [38;5;87m`f'/1[39;49m has clauses, so [38;5;203mit cannot be marked as[39;49m
-external2.m:020:   [38;5;203mexternal.[39;49m
+external.m:019: The predicate [38;5;87m`p'/2[39;49m has clauses, so [38;5;203mit cannot be marked as[39;49m
+external.m:019:   [38;5;203mexternal.[39;49m
+external.m:020: The function [38;5;87m`f'/1[39;49m has clauses, so [38;5;203mit cannot be marked as[39;49m
+external.m:020:   [38;5;203mexternal.[39;49m

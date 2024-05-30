@@ -38,8 +38,6 @@ MCFLAGS-foreign_decl_line_number = --no-errorcheck-only --line-numbers \
 MCFLAGS-foreign_enum_invalid    = --verbose-error-messages
 MCFLAGS-foreign_type_line_number = --no-errorcheck-only --line-numbers \
                                     --compile-only
-# XXX There is no foreign_type.m.
-MCFLAGS-foreign_type            = --compile-only
 MCFLAGS-foreign_type_2          = --no-intermodule-optimization
 MCFLAGS-foreign_type_visibility = --no-intermodule-optimization
 MCFLAGS-gh72_errors             = --no-errorcheck-only
@@ -64,7 +62,7 @@ MCFLAGS-method_impl             = --no-intermodule-optimization \
 MCFLAGS-missing_det_decls       = --no-infer-det --verbose-error-messages
 MCFLAGS-missing_interface_import2 = --no-intermodule-optimization
 MCFLAGS-mode_inf                = --infer-all --verbose-error-messages
-MCFLAGS-mpj1                    = --infer-all --verbose-error-messages
+MCFLAGS-mpj_1                   = --infer-all --verbose-error-messages
 MCFLAGS-multiply_star           = --verbose-error-messages
 MCFLAGS-multisoln_func          = --infer-types --verbose-error-messages
 MCFLAGS-nonexistent_import      = --no-verbose-make --make nonexistent_import
@@ -88,8 +86,8 @@ MCFLAGS-test_nested             = --no-intermodule-optimization \
 MCFLAGS-transitive_import       = --no-intermodule-optimization
 MCFLAGS-transitive_import2      = --no-intermodule-optimization
 MCFLAGS-transitive_import_class = --no-intermodule-optimization
-MCFLAGS-transitive_import_class2 = --no-intermodule-optimization
-MCFLAGS-transitive_import_class3 = --no-intermodule-optimization
+MCFLAGS-transitive_import_class_helper_1 = --no-intermodule-optimization
+MCFLAGS-transitive_import_class_helper_2 = --no-intermodule-optimization
 MCFLAGS-typeclass_mode          = --infer-all
 MCFLAGS-undef_symbol            = --no-intermodule-optimization
 
@@ -107,7 +105,7 @@ MCFLAGS-ho_default_func_3       = --verbose-error-messages
 MCFLAGS-ho_type_mode_bug        = --verbose-error-messages
 MCFLAGS-make_opt_error          = --verbose-error-messages
 MCFLAGS-modes_erroneous         = --verbose-error-messages
-MCFLAGS-mpj4                    = --verbose-error-messages
+MCFLAGS-mpj_4                   = --verbose-error-messages
 MCFLAGS-multimode_syntax        = --verbose-error-messages
 MCFLAGS-nullary_ho_func_error   = --verbose-error-messages
 MCFLAGS-one_member              = --verbose-error-messages
@@ -126,7 +124,7 @@ MCFLAGS-require_tailrec_3       = -O0 --optimise-tailcalls \
 # with the features in the test require_feature_set pragma.
 MCFLAGS-test_feature_set        = --grade java --verbose-error-messages \
                                     --no-intermod-opt
-MCFLAGS-tricky_assert1          = --verbose-error-messages
+MCFLAGS-tricky_assert           = --verbose-error-messages
 MCFLAGS-type_error_use_module   = --verbose-error-messages \
                                     --no-intermodule-optimization
 MCFLAGS-typeclass_dup_method_mode = --verbose-error-messages
@@ -134,7 +132,7 @@ MCFLAGS-typeclass_constraint_extra_var = --verbose-error-messages
 MCFLAGS-typeclass_missing_det_3 = --verbose-error-messages
 MCFLAGS-typeclass_test_12       = --verbose-error-messages
 MCFLAGS-typeclass_test_8        = --verbose-error-messages
-MCFLAGS-types2                  = --verbose-error-messages \
+MCFLAGS-types                  = --verbose-error-messages \
                                     --warn-non-contiguous-clauses
 MCFLAGS-type_vars               = --verbose-error-messages
 MCFLAGS-undef_type              = --verbose-error-messages

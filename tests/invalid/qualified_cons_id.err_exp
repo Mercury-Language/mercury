@@ -1,19 +1,19 @@
-qualified_cons_id2.m:019: In the first argument of predicate `test'/2:
-qualified_cons_id2.m:019:   error in bound inst: the constructor `yes'/1 has a
-qualified_cons_id2.m:019:   module qualifier, [38;5;203m`qualified_cons_id2',[39;49m that is
-qualified_cons_id2.m:019:   incompatible with the type of the value whose
-qualified_cons_id2.m:019:   instantiation state it is supposed to represent,
-qualified_cons_id2.m:019:   that type being [38;5;40m`maybe.maybe'/1.[39;49m
-qualified_cons_id2.m:019: In the first argument of predicate `test'/2:
-qualified_cons_id2.m:019:   in the expansion of the user-defined inst
-qualified_cons_id2.m:019:   `qualified_cons_id2.yes'/0:
-qualified_cons_id2.m:019:   error in bound inst: the constructor `yes'/1 has a
-qualified_cons_id2.m:019:   module qualifier, [38;5;203m`qualified_cons_id2',[39;49m that is
-qualified_cons_id2.m:019:   incompatible with the type of the value whose
-qualified_cons_id2.m:019:   instantiation state it is supposed to represent,
-qualified_cons_id2.m:019:   that type being [38;5;40m`maybe.maybe'/1.[39;49m
-qualified_cons_id2.m:020: In mode declarations for predicate
-qualified_cons_id2.m:020:   [38;5;87m`qualified_cons_id2.test'/2:[39;49m
-qualified_cons_id2.m:020:   error: duplicate mode declaration.
-qualified_cons_id2.m:021:   Here is the conflicting mode declaration.
+qualified_cons_id.m:020: In the first argument of predicate `test'/2:
+qualified_cons_id.m:020:   error in bound inst: the constructor `yes'/1 has a
+qualified_cons_id.m:020:   module qualifier, [38;5;203m`qualified_cons_id',[39;49m that is
+qualified_cons_id.m:020:   incompatible with the type of the value whose
+qualified_cons_id.m:020:   instantiation state it is supposed to represent,
+qualified_cons_id.m:020:   that type being [38;5;40m`maybe.maybe'/1.[39;49m
+qualified_cons_id.m:020: In the first argument of predicate `test'/2:
+qualified_cons_id.m:020:   in the expansion of the user-defined inst
+qualified_cons_id.m:020:   `qualified_cons_id.yes'/0:
+qualified_cons_id.m:020:   error in bound inst: the constructor `yes'/1 has a
+qualified_cons_id.m:020:   module qualifier, [38;5;203m`qualified_cons_id',[39;49m that is
+qualified_cons_id.m:020:   incompatible with the type of the value whose
+qualified_cons_id.m:020:   instantiation state it is supposed to represent,
+qualified_cons_id.m:020:   that type being [38;5;40m`maybe.maybe'/1.[39;49m
+qualified_cons_id.m:021: In mode declarations for predicate
+qualified_cons_id.m:021:   [38;5;87m`qualified_cons_id.test'/2:[39;49m
+qualified_cons_id.m:021:   error: duplicate mode declaration.
+qualified_cons_id.m:022:   Here is the conflicting mode declaration.
 For more information, recompile with `-E'.

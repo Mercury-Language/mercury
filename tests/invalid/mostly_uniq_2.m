@@ -2,7 +2,7 @@
 % vim: ts=4 sw=4 et ft=mercury
 %---------------------------------------------------------------------------%
 
-:- module mostly_uniq2.
+:- module mostly_uniq_2.
 :- interface.
 :- import_module io.
 

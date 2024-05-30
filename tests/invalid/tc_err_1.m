@@ -14,8 +14,9 @@
 % Uncaught exception:
 % Software Error: missing determinism decl. How did we get this far?
 % Stack dump not available in this grade.
+%
 
-:- module tc_err1.
+:- module tc_err_1.
 
 :- interface.
 

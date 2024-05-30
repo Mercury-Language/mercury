@@ -2,7 +2,7 @@
 % vim: ts=4 sw=4 et ft=mercury
 %---------------------------------------------------------------------------%
 
-:- module types2.
+:- module types.
 :- interface.
 
 :- type t
@@ -68,7 +68,7 @@ repeated_arity(A, B, C) :-
     % Should report "wrong number of arguments (2; should be 3)",
     % not "wrong number of arguments (2; should be 3 or 3)"
     % as it used to (since there are two matches on the predicate name
-    % "append" in scope, string.append and types2.append, both of arity 3).
+    % "append" in scope, string.append and types.append, both of arity 3).
     append(A, B),
     C = 42.
 

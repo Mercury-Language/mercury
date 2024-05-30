@@ -2,7 +2,7 @@
 % vim: ts=4 sw=4 et ft=mercury
 %---------------------------------------------------------------------------%
 
-:- module bad_instance2.
+:- module bad_instance.
 :- interface.
 
 :- type bar(T)

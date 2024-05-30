@@ -5,10 +5,10 @@
 % This is invalid because the interface refers to stuff defined
 % only in the implementation.
 
-:- module tricky_assert1.
+:- module tricky_assert.
 :- interface.
-:- promise tricky_assert1.local.
+:- promise tricky_assert.local.
 
 :- implementation.
-:- pred tricky_assert1.local is semidet.
-:- pragma external_pred(tricky_assert1.local/0).
+:- pred tricky_assert.local is semidet.
+:- pragma external_pred(tricky_assert.local/0).
