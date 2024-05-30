@@ -26,7 +26,7 @@ ok(X) = coerce(X).
 bad(X) = coerce(X).
 
 :- func bad_wrong_type(wrap(uint)) = wrap(uint).
-:- mode bad_wrong_type(in(wrap(bound(1 ; 2)))) = out(wrap(bound(1 ; 2)))
+:- mode bad_wrong_type(in(wrap(bound(1 ; 2 ; 42u)))) = out(wrap(bound(1 ; 2)))
     is det.
 
 bad_wrong_type(X) = coerce(X).

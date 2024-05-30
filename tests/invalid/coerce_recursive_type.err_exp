@@ -48,6 +48,9 @@ coerce_recursive_type.m:058:   `cons':
 coerce_recursive_type.m:058:   in the second argument of function symbol
 coerce_recursive_type.m:058:   `cons':
 coerce_recursive_type.m:058:   in the first argument of function symbol `cons':
-coerce_recursive_type.m:058:   the instantiatedness of the [38;5;87mcoerced subterm[39;49m,
-coerce_recursive_type.m:058:   [38;5;203m`bound(apple)',[39;49m is invalid for the type of the
-coerce_recursive_type.m:058:   coerced subterm, `coerce_recursive_type.citrus'.
+coerce_recursive_type.m:058:   cannot convert the [38;5;87mcoerced subterm[39;49m from type
+coerce_recursive_type.m:058:   `coerce_recursive_type.citrus' to
+coerce_recursive_type.m:058:   `coerce_recursive_type.fruit' because the
+coerce_recursive_type.m:058:   following function symbol in the input term's
+coerce_recursive_type.m:058:   instantiatedness is [38;5;203mnot part of the input type:[39;49m
+coerce_recursive_type.m:058:     [38;5;203m`coerce_recursive_type.apple'.[39;49m

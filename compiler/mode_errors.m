@@ -166,7 +166,7 @@
 
     % Mode errors in coerce expressions.
 
-    ;       mode_error_coerce_error(coerce_error)
+    ;       mode_error_coerce_error(list(coerce_error))
             % Mode error in coerce expression.
 
     % Mode errors that can happen in more than one kind of goal.
@@ -314,17 +314,32 @@
 
 :- type coerce_error_reason
     --->    input_inst_not_ground(mer_inst)
-    ;       invalid_inst_for_input_type(mer_inst)
-    ;       invalid_cons_ids_for_result_type(list(cons_id))
+    ;       cons_id_errors(mer_inst,
+                bound_inst_cons_id_error, list(bound_inst_cons_id_error))
     ;       has_inst_expect_upcast(mer_inst).
+
+:- type bound_inst_cons_id_error
+    --->    bad_cons_id_input(cons_id)
+            % The cons_id does not exist in the input type.
+    ;       bad_cons_id_input_inst_arity(cons_id, arity, arity)
+            % The cons_id exists in the input type, but the inst specifies
+            % the wrong arity for it.
+            % XXX This should not happen, since such errors *should* be
+            % detected when pushing types into insts, but we prepare for it
+            % happening anyway, just in case that process lets through
+            % something it shouldn't have let through.
+            % The cons_id, its arity in the inst of X, and the expected arity.
+    ;       bad_cons_id_result(cons_id).
+            % The cons_id does not exist in the result type.
 
 %---------------------%
 
 :- type final_inst_error
     --->    too_instantiated
     ;       not_instantiated_enough
-    ;       wrongly_instantiated.   % A catchall for anything that does not
-                                    % fit into the above two categories.
+    ;       wrongly_instantiated.
+            % A catchall for anything that does not fit into
+            % the above two categories.
 
 %---------------------%
 
@@ -414,6 +429,7 @@
 :- import_module multi_map.
 :- import_module pair.
 :- import_module require.
+:- import_module set.
 :- import_module string.
 :- import_module term.
 :- import_module varset.
@@ -524,8 +540,8 @@ mode_error_to_spec(ModeInfo, ModeError) = Spec :-
         Spec = mode_error_merge_disj_to_spec(ModeInfo, MergeContext,
             MergeErrors)
     ;
-        ModeError = mode_error_coerce_error(CoerceError),
-        Spec = mode_error_coerce_error_to_spec(ModeInfo, CoerceError)
+        ModeError = mode_error_coerce_error(CoerceErrors),
+        Spec = mode_error_coerce_error_to_spec(ModeInfo, CoerceErrors)
     ;
         ModeError = mode_error_bind_locked_var(Reason, Var, InstA, InstB),
         Spec = mode_error_bind_locked_var_to_spec(ModeInfo, Reason, Var,
@@ -1590,9 +1606,11 @@ merge_context_to_string(merge_stm_atomic) = "atomic".
 
 %---------------------------------------------------------------------------%
 
-:- func mode_error_coerce_error_to_spec(mode_info, coerce_error) = error_spec.
+:- func mode_error_coerce_error_to_spec(mode_info, list(coerce_error))
+    = error_spec.
 
-mode_error_coerce_error_to_spec(ModeInfo, Error) = Spec :-
+mode_error_coerce_error_to_spec(ModeInfo, Errors) = Spec :-
+    Error = list.det_head(Errors),
     Error = coerce_error(TermPath, FromType, ToType, Reason),
     Preamble = mode_info_context_preamble(ModeInfo),
     mode_info_get_context(ModeInfo, Context),
@@ -1624,28 +1642,98 @@ mode_error_coerce_error_to_spec(ModeInfo, Error) = Spec :-
             [words("but it must have a")] ++
             color_as_correct([words("ground")]) ++ [words("inst."), nl]
     ;
-        Reason = invalid_inst_for_input_type(Inst),
-        TheTermCommaPieces = TheTermPieces ++ [suffix(",")],
-        % ZZZ coerce_int
-        ReasonPieces =
-            [words("the instantiatedness of")] ++ TheTermCommaPieces ++
-            color_as_incorrect(
-                report_inst(ModeInfo, quote_short_inst, [suffix(",")],
-                    [nl_indent_delta(1)], [suffix(","), nl_indent_delta(-1)],
-                    Inst)) ++
-            [words("is invalid for the type of the"), CoercedTermOrTerms,
-            suffix(","), quote(FromTypeStr), suffix("."), nl]
-    ;
-        Reason = invalid_cons_ids_for_result_type(ConsIds),
-        ConsIdsStrs = list.map(unqualify_cons_id_to_string, ConsIds),
-        ConsIdsStrsDot = list_to_quoted_pieces(ConsIdsStrs) ++ [suffix(".")],
+        Reason = cons_id_errors(_Inst, HeadConsError, TailConsErrors),
+        classify_bound_inst_cons_id_errors([HeadConsError | TailConsErrors],
+            set.init, InputBadConsIdSet,
+            set.init, InputBadInstArityConsIdSet,
+            set.init, ResultBadConsIdSet),
+        InputBadConsIds = set.to_sorted_list(InputBadConsIdSet),
+        InputBadInstArityConsIds =
+            set.to_sorted_list(InputBadInstArityConsIdSet),
+        ResultBadConsIds = set.to_sorted_list(ResultBadConsIdSet),
+        % We print one to three blocks of text, with one block for each
+        % kind of error that is present, in this order:
+        %
+        % - cons_ids that do not occur in the input type;
+        % - cons_ids that do occur in the input type but have the wrong
+        %   arity in the input inst; and
+        % - cons_ids that do not occur in the result type.
+        %
+        % Because of the mode error, we cannot construct a final inst
+        % for the coerce goal, which means that there is no analogue
+        % of the second category for the result type. (Our test cases often
+        % contain an inst on an output argument that *should* describe
+        % the term that result of the coerce operation, but that is not
+        % the same thing as an inst that *does* describe that result.)
+        %
+        % We construct these blocks in reverse order, so that we can put
+        % the right suffix (a period or a semicolon) at the end of the
+        % previous block (if any).
+        (
+            ResultBadConsIds = [],
+            ResultBadConsIdMsgPieces = [],
+            BadAritySuffix = "."
+        ;
+            ResultBadConsIds = [_ | _],
+            ResultBadConsIdPieces =
+                list.map(unqualified_cons_id_to_pieces, ResultBadConsIds),
+            ResultBadConsIdMsgPieces =
+                [words("the following function"),
+                words(choose_number(ResultBadConsIds,
+                    "symbol in the input term's instantiatedness is",
+                    "symbols in the input term's instantiatedness are"))] ++
+                color_as_incorrect([words("not part of the result type:")]) ++
+                [nl_indent_delta(1)] ++
+                component_list_to_color_line_pieces(yes(color_incorrect),
+                    [suffix(".")], ResultBadConsIdPieces) ++
+                [nl_indent_delta(-1)],
+            BadAritySuffix = ";"
+        ),
+        (
+            InputBadInstArityConsIds = [],
+            InputBadInstArityConsIdMsgPieces = [],
+            BadInputSuffix = "."
+        ;
+            InputBadInstArityConsIds = [_ | _],
+            InputBadInstArityConsIdPieces =
+                list.map(report_bad_arity_pieces, InputBadInstArityConsIds),
+            InputBadInstArityConsIdMsgPieces =
+                [words("the following function"),
+                words(choose_number(InputBadInstArityConsIds,
+                    "symbol is used with an incorrect arity",
+                    "symbols are used with incorrect arities")),
+                words("in the input term's instantiatedness:"),
+                nl_indent_delta(1)] ++
+                component_list_to_color_line_pieces(yes(color_incorrect),
+                    [suffix(BadAritySuffix)], InputBadInstArityConsIdPieces) ++
+                [nl_indent_delta(-1)],
+            BadInputSuffix = ";"
+        ),
+        (
+            InputBadConsIds = [],
+            InputBadConsIdMsgPieces = []
+        ;
+            InputBadConsIds = [_ | _],
+            InputBadConsIdPieces =
+                list.map(cons_id_to_pieces, InputBadConsIds),
+            InputBadConsIdMsgPieces =
+                [words("the following function"),
+                words(choose_number(InputBadConsIds,
+                    "symbol in the input term's instantiatedness is",
+                    "symbols in the input term's instantiatedness are"))] ++
+                color_as_incorrect([words("not part of the input type:")]) ++
+                [nl_indent_delta(1)] ++
+                component_list_to_color_line_pieces(yes(color_incorrect),
+                    [suffix(BadInputSuffix)], InputBadConsIdPieces) ++
+                [nl_indent_delta(-1)]
+        ),
         ReasonPieces =
             [words("cannot convert")] ++ TheTermPieces ++
             [words("from type"), quote(FromTypeStr),
-            words("to"), quote(ToTypeStr),
-            words("because its instantiatedness includes the function"),
-            words(choose_number(ConsIds, "symbol", "symbols"))] ++
-            color_as_incorrect(ConsIdsStrsDot) ++ [nl]
+            words("to"), quote(ToTypeStr), words("because")] ++
+            InputBadConsIdMsgPieces ++
+            InputBadInstArityConsIdMsgPieces ++
+            ResultBadConsIdMsgPieces
     ;
         Reason = has_inst_expect_upcast(Inst),
         ReasonPieces =
@@ -1677,13 +1765,45 @@ make_term_path_piece(Step) = Pieces :-
     else
         ArgPieces = [words("in the"), nth_fixed(ArgNum), words("argument")]
     ),
-    ConsIdStr = unqualify_cons_id_to_string(ConsId),
+    ConsIdPieces = unqualified_cons_id_to_pieces(ConsId),
     Pieces = ArgPieces ++
-        [words("of function symbol"), quote(ConsIdStr), suffix(":"), nl].
+        [words("of function symbol")] ++ ConsIdPieces ++ [suffix(":"), nl].
 
-:- func unqualify_cons_id_to_string(cons_id) = string.
+:- pred classify_bound_inst_cons_id_errors(list(bound_inst_cons_id_error)::in,
+    set(cons_id)::in, set(cons_id)::out,
+    set({cons_id, arity, arity})::in, set({cons_id, arity, arity})::out,
+    set(cons_id)::in, set(cons_id)::out) is det.
 
-unqualify_cons_id_to_string(ConsId0) = Str :-
+classify_bound_inst_cons_id_errors([],
+        !InputBadConsIds, !InputBadInstArityConsIds, !ResultBadConsIds).
+classify_bound_inst_cons_id_errors([Error | Errors],
+        !InputBadConsIds, !InputBadInstArityConsIds, !ResultBadConsIds) :-
+    (
+        Error = bad_cons_id_input(ConsId),
+        set.insert(ConsId, !InputBadConsIds)
+    ;
+        Error = bad_cons_id_input_inst_arity(ConsId, InstArity, ExpectedArity),
+        set.insert({ConsId, InstArity, ExpectedArity},
+            !InputBadInstArityConsIds)
+    ;
+        Error = bad_cons_id_result(ConsId),
+        set.insert(ConsId, !ResultBadConsIds)
+    ),
+    classify_bound_inst_cons_id_errors(Errors,
+        !InputBadConsIds, !InputBadInstArityConsIds, !ResultBadConsIds).
+
+:- func report_bad_arity_pieces({cons_id, arity, arity}) = list(format_piece).
+
+report_bad_arity_pieces({ConsId, InstArity, ExpectedArity}) = Pieces :-
+    ConsIdPieces = cons_id_to_pieces(ConsId),
+    InstArityStr = int_to_string(InstArity),
+    ExpectedArityStr = int_to_string(ExpectedArity),
+    Pieces = ConsIdPieces ++ [fixed("(" ++ InstArityStr ++ ";"),
+        words("should be"), fixed(ExpectedArityStr ++ ")")].
+
+:- func unqualified_cons_id_to_pieces(cons_id) = list(format_piece).
+
+unqualified_cons_id_to_pieces(ConsId0) = Pieces :-
     ( if ConsId0 = cons(Name0, Arity, TypeCtor) then
         UnqualName = unqualify_name(Name0),
         Name = unqualified(UnqualName),
@@ -1691,8 +1811,14 @@ unqualify_cons_id_to_string(ConsId0) = Str :-
     else
         ConsId = ConsId0
     ),
+    Pieces = cons_id_to_pieces(ConsId).
+
+:- func cons_id_to_pieces(cons_id) = list(format_piece).
+
+cons_id_to_pieces(ConsId) = Pieces :-
     Str = mercury_cons_id_to_string(output_mercury, does_not_need_brackets,
-        ConsId).
+        ConsId),
+    Pieces = [quote(Str)].
 
 %---------------------------------------------------------------------------%
 
