@@ -229,7 +229,13 @@
 % Describing items for error messages.
 %
 
+    % Return a description of one item, ...
+    %
 :- func item_desc_pieces(item) = list(format_piece).
+
+    % ... and its plural version.
+    %
+:- func items_desc_pieces(item) = list(format_piece).
 
 :- func decl_pragma_desc_pieces(item_decl_pragma_info) = list(format_piece).
 :- func decl_marker_desc_pieces(item_decl_marker_info) = list(format_piece).
@@ -1499,6 +1505,8 @@ impl_pragma_needs_foreign_imports(ImplPragma) = Langs :-
 %---------------------------------------------------------------------------%
 
 item_desc_pieces(Item) = Pieces :-
+    % If you change this code, see whether items_desc_to_pieces needs
+    % updating as well.
     (
         Item = item_clause(_),
         Pieces = [words("clause")]
@@ -1583,6 +1591,12 @@ item_desc_pieces(Item) = Pieces :-
         Item = item_type_repn(_),
         Pieces = [decl("type_repn"), words("declaration")]
     ).
+
+items_desc_pieces(Item) = Pieces :-
+    % At the moment, all the Pieces0 that item_desc_pieces can generate
+    % can be made plural by adding a single final "s".
+    Pieces0 = item_desc_pieces(Item),
+    Pieces = Pieces0 ++ [suffix("s")].
 
 decl_pragma_desc_pieces(Pragma) = Pieces :-
     (

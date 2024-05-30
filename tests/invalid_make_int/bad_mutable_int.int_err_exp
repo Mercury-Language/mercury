@@ -1,4 +1,5 @@
-bad_mutable_int.m:009: Error: `:- mutable' declaration in module interface.
+bad_mutable_int.m:009: Error: [38;5;87m`:- mutable' declarations[39;49m are [38;5;203mnot allowed in[39;49m
+bad_mutable_int.m:009:   [38;5;203mmodule interfaces.[39;49m
 bad_mutable_int.m:017: Error in `:- mutable' declaration:
 bad_mutable_int.m:017:   [38;5;203munrecognised attribute[39;49m [38;5;87m`bad_attrib'.[39;49m
 bad_mutable_int.m:019: Error: the type in a `:- mutable' declaration may not

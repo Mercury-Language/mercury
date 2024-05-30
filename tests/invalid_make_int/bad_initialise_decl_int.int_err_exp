@@ -1,5 +1,5 @@
-bad_initialise_decl_int.m:015: Error: `:- initialise' declaration in module
-bad_initialise_decl_int.m:015:   interface.
+bad_initialise_decl_int.m:015: Error: [38;5;87m`:- initialise' declarations[39;49m are [38;5;203mnot[39;49m
+bad_initialise_decl_int.m:015:   [38;5;203mallowed in module interfaces.[39;49m
 bad_initialise_decl_int.m:021: Error in `:- initialise' declaration: expected
 bad_initialise_decl_int.m:021:   [38;5;40m`predname/arity',[39;49m got [38;5;203m`i4'.[39;49m
 bad_initialise_decl_int.m:022: Error: `:- initialise' declaration specifies a

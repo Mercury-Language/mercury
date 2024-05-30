@@ -1,4 +1,4 @@
-pragma_export_int.m:013: Error: `:- pragma memo' declaration in module
-pragma_export_int.m:013:   interface.
-pragma_export_int.m:014: Error: `:- pragma consider_used' declaration in module
-pragma_export_int.m:014:   interface.
+pragma_export_int.m:013: Error: [38;5;87m`:- pragma memo' declarations[39;49m are [38;5;203mnot allowed[39;49m
+pragma_export_int.m:013:   [38;5;203min module interfaces.[39;49m
+pragma_export_int.m:014: Error: [38;5;87m`:- pragma consider_used' declarations[39;49m are [38;5;203mnot[39;49m
+pragma_export_int.m:014:   [38;5;203mallowed in module interfaces.[39;49m

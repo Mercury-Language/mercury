@@ -1,5 +1,5 @@
-bad_finalise_decl_int.m:015: Error: `:- finalise' declaration in module
-bad_finalise_decl_int.m:015:   interface.
+bad_finalise_decl_int.m:015: Error: [38;5;87m`:- finalise' declarations[39;49m are [38;5;203mnot allowed[39;49m
+bad_finalise_decl_int.m:015:   [38;5;203min module interfaces.[39;49m
 bad_finalise_decl_int.m:023: Error in `:- finalise' declaration: expected
 bad_finalise_decl_int.m:023:   [38;5;40m`predname/arity',[39;49m got [38;5;203m`i4'.[39;49m
 bad_finalise_decl_int.m:024: Error: `:- finalise' declaration specifies a

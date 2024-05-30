@@ -1,7 +1,10 @@
-not_in_interface.m:014: Error: `:- initialise' declaration in module interface.
-not_in_interface.m:016: Error: `:- mutable' declaration in module interface.
-not_in_interface.m:018: Error: `:- initialise' declaration in module interface.
-not_in_interface.m:022: Error: `:- pragma inline' declaration in module
-not_in_interface.m:022:   interface.
-not_in_interface.m:025: Error: clause for predicate `foo'/2 in module
-not_in_interface.m:025:   interface.
+not_in_interface.m:014: Error: [38;5;87m`:- initialise' declarations[39;49m are [38;5;203mnot allowed in[39;49m
+not_in_interface.m:014:   [38;5;203mmodule interfaces.[39;49m
+not_in_interface.m:016: Error: [38;5;87m`:- mutable' declarations[39;49m are [38;5;203mnot allowed in[39;49m
+not_in_interface.m:016:   [38;5;203mmodule interfaces.[39;49m
+not_in_interface.m:018: Error: [38;5;87m`:- initialise' declarations[39;49m are [38;5;203mnot allowed in[39;49m
+not_in_interface.m:018:   [38;5;203mmodule interfaces.[39;49m
+not_in_interface.m:022: Error: [38;5;87m`:- pragma inline' declarations[39;49m are [38;5;203mnot allowed[39;49m
+not_in_interface.m:022:   [38;5;203min module interfaces.[39;49m
+not_in_interface.m:025: Error: [38;5;87mclauses,[39;49m such as this one for predicate `foo'/2,
+not_in_interface.m:025:   are [38;5;203mnot allowed in module interfaces.[39;49m

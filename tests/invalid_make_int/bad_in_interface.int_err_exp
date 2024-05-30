@@ -1,20 +1,20 @@
-bad_in_interface.m:030: Error: `:- pragma external_pred' declaration in module
-bad_in_interface.m:030:   interface.
-bad_in_interface.m:031: Error: `:- pragma external_func' declaration in module
-bad_in_interface.m:031:   interface.
-bad_in_interface.m:033: Error: `:- pragma fact_table' declaration in module
-bad_in_interface.m:033:   interface.
-bad_in_interface.m:034: Error: `:- pragma fact_table' declaration in module
-bad_in_interface.m:034:   interface.
-bad_in_interface.m:035: Error: `:- pragma fact_table' declaration in module
-bad_in_interface.m:035:   interface.
-bad_in_interface.m:037: Error: `:- pragma foreign_proc' declaration in module
-bad_in_interface.m:037:   interface.
-bad_in_interface.m:044: Error: `:- pragma foreign_proc' declaration in module
-bad_in_interface.m:044:   interface.
-bad_in_interface.m:051: Error: `:- pragma foreign_enum' declaration in module
-bad_in_interface.m:051:   interface.
-bad_in_interface.m:052: Error: `:- pragma foreign_enum' declaration in module
-bad_in_interface.m:052:   interface.
-bad_in_interface.m:053: Error: `:- pragma foreign_enum' declaration in module
-bad_in_interface.m:053:   interface.
+bad_in_interface.m:030: Error: [38;5;87m`:- pragma external_pred' declarations[39;49m are [38;5;203mnot[39;49m
+bad_in_interface.m:030:   [38;5;203mallowed in module interfaces.[39;49m
+bad_in_interface.m:031: Error: [38;5;87m`:- pragma external_func' declarations[39;49m are [38;5;203mnot[39;49m
+bad_in_interface.m:031:   [38;5;203mallowed in module interfaces.[39;49m
+bad_in_interface.m:033: Error: [38;5;87m`:- pragma fact_table' declarations[39;49m are [38;5;203mnot[39;49m
+bad_in_interface.m:033:   [38;5;203mallowed in module interfaces.[39;49m
+bad_in_interface.m:034: Error: [38;5;87m`:- pragma fact_table' declarations[39;49m are [38;5;203mnot[39;49m
+bad_in_interface.m:034:   [38;5;203mallowed in module interfaces.[39;49m
+bad_in_interface.m:035: Error: [38;5;87m`:- pragma fact_table' declarations[39;49m are [38;5;203mnot[39;49m
+bad_in_interface.m:035:   [38;5;203mallowed in module interfaces.[39;49m
+bad_in_interface.m:037: Error: [38;5;87m`:- pragma foreign_proc' declarations[39;49m are [38;5;203mnot[39;49m
+bad_in_interface.m:037:   [38;5;203mallowed in module interfaces.[39;49m
+bad_in_interface.m:044: Error: [38;5;87m`:- pragma foreign_proc' declarations[39;49m are [38;5;203mnot[39;49m
+bad_in_interface.m:044:   [38;5;203mallowed in module interfaces.[39;49m
+bad_in_interface.m:051: Error: [38;5;87m`:- pragma foreign_enum' declarations[39;49m are [38;5;203mnot[39;49m
+bad_in_interface.m:051:   [38;5;203mallowed in module interfaces.[39;49m
+bad_in_interface.m:052: Error: [38;5;87m`:- pragma foreign_enum' declarations[39;49m are [38;5;203mnot[39;49m
+bad_in_interface.m:052:   [38;5;203mallowed in module interfaces.[39;49m
+bad_in_interface.m:053: Error: [38;5;87m`:- pragma foreign_enum' declarations[39;49m are [38;5;203mnot[39;49m
+bad_in_interface.m:053:   [38;5;203mallowed in module interfaces.[39;49m

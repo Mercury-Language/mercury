@@ -324,7 +324,7 @@ classify_int0_items_int_or_imp([Item | Items], !TypeDefns,
         ;
             Body = instance_body_concrete(_),
             Pieces = [words("A .int0 file may not contain"),
-                words("a concrete instance declaration."), nl],
+                words("concrete instance declarations."), nl],
             Spec = spec($pred, severity_error, phase_t2pt, Context, Pieces),
             !:Specs = [Spec | !.Specs]
         )
@@ -359,7 +359,7 @@ classify_int0_items_int_or_imp([Item | Items], !TypeDefns,
         ; Item = item_type_repn(_)
         ),
         Pieces = [words("A .int0 file may not contain")] ++
-            item_desc_pieces(Item) ++ [suffix("."), nl],
+            items_desc_pieces(Item) ++ [suffix("."), nl],
         Spec = spec($pred, severity_error, phase_t2pt,
             get_item_context(Item), Pieces),
         !:Specs = [Spec | !.Specs]
@@ -478,7 +478,7 @@ classify_int1_items_int([Item | Items], !TypeDefns, !InstDefns, !ModeDefns,
         ;
             Body = instance_body_concrete(_),
             Pieces = [words("A .int file may not contain"),
-                words("a concrete instance declaration"),
+                words("concrete instance declarations"),
                 words("in its interface section."), nl],
             Spec = spec($pred, severity_error, phase_t2pt, Context, Pieces),
             !:Specs = [Spec | !.Specs]
@@ -513,7 +513,7 @@ classify_int1_items_int([Item | Items], !TypeDefns, !InstDefns, !ModeDefns,
         ;
             PromiseType = promise_type_true,
             Pieces = [words("A .int file may not contain")] ++
-                item_desc_pieces(Item) ++
+                items_desc_pieces(Item) ++
                 [words("in its interface section."), nl],
             Spec = spec($pred, severity_error, phase_t2pt, Context, Pieces),
             !:Specs = [Spec | !.Specs]
@@ -530,7 +530,7 @@ classify_int1_items_int([Item | Items], !TypeDefns, !InstDefns, !ModeDefns,
         ; Item = item_mutable(_)
         ),
         Pieces = [words("A .int file may not contain")] ++
-            item_desc_pieces(Item) ++
+            items_desc_pieces(Item) ++
             [words("in its interface section."), nl],
         Spec = spec($pred, severity_error, phase_t2pt,
             get_item_context(Item), Pieces),
@@ -567,7 +567,7 @@ classify_int1_items_imp([Item | Items], !TypeDefns, !ForeignEnums,
         ;
             Interface = class_interface_concrete(_),
             Pieces = [words("A .int file may not contain"),
-                words("a concrete typeclass declaration."), nl],
+                words("concrete typeclass declarations."), nl],
             Spec = spec($pred, severity_error, phase_t2pt, Context, Pieces),
             !:Specs = [Spec | !.Specs]
         )
@@ -595,7 +595,7 @@ classify_int1_items_imp([Item | Items], !TypeDefns, !ForeignEnums,
         ; Item = item_type_repn(_)
         ),
         Pieces = [words("A .int file may not contain")] ++
-            item_desc_pieces(Item) ++
+            items_desc_pieces(Item) ++
             [words("in its implementation section."), nl],
         Spec = spec($pred, severity_error, phase_t2pt,
             get_item_context(Item), Pieces),
@@ -618,7 +618,7 @@ check_convert_parse_tree_int_to_int2(ParseTreeInt, ParseTreeInt2, !Specs) :-
         ImpIncls = []
     ;
         ImpIncls = [FirstImpIncl | _],
-        ImpInclPieces = [words("A .int2 file may not contain any"),
+        ImpInclPieces = [words("A .int2 file may not contain"),
             decl("include_module"), words("declarations"),
             words("in its implementation section."), nl],
         ImpInclSpec = spec($pred, severity_error, phase_t2pt,
@@ -705,7 +705,7 @@ classify_int2_items_int([Item | Items], !TypeDefns, !InstDefns, !ModeDefns,
         ;
             Body = instance_body_concrete(_),
             Pieces = [words("A .int2 file may not contain"),
-                words("a concrete instance declaration"),
+                words("concrete instance declarations"),
                 words("in its interface section."), nl],
             Spec = spec($pred, severity_error, phase_t2pt, Context, Pieces),
             !:Specs = [Spec | !.Specs]
@@ -731,7 +731,7 @@ classify_int2_items_int([Item | Items], !TypeDefns, !InstDefns, !ModeDefns,
         ; Item = item_mutable(_)
         ),
         Pieces = [words("A .int2 file may not contain")] ++
-            item_desc_pieces(Item) ++
+            items_desc_pieces(Item) ++
             [words("in its interface section."), nl],
         Spec = spec($pred, severity_error, phase_t2pt,
             get_item_context(Item), Pieces),
@@ -772,7 +772,7 @@ classify_int2_items_imp([Item | Items], !TypeDefns, !Specs) :-
         ; Item = item_type_repn(_)
         ),
         Pieces = [words("A .int2 file may not contain")] ++
-            item_desc_pieces(Item) ++
+            items_desc_pieces(Item) ++
             [words("in its implementation section."), nl],
         Spec = spec($pred, severity_error, phase_t2pt,
             get_item_context(Item), Pieces),
@@ -814,7 +814,7 @@ check_convert_parse_tree_int_to_int3(ParseTreeInt, ParseTreeInt3, !Specs) :-
         IntFIMs = []
     ;
         IntFIMs = [FirstIntFIM | _],
-        IntFIMPieces = [words("A .int3 file may not contain any"),
+        IntFIMPieces = [words("A .int3 file may not contain"),
             pragma_decl("foreign_import_module"), words("declarations."), nl],
         IntFIMSpec = spec($pred, severity_error, phase_t2pt,
             FirstIntFIM ^ fim_context, IntFIMPieces),
@@ -953,7 +953,7 @@ classify_int3_items_int([Item | Items], !TypeDefns, !InstDefns, !ModeDefns,
         ;
             Interface = class_interface_concrete(_),
             Pieces = [words("A .int3 file may not contain"),
-                words("a concrete typeclass declaration."), nl],
+                words("concrete typeclass declarations."), nl],
             Spec = spec($pred, severity_error, phase_t2pt, Context, Pieces),
             !:Specs = [Spec | !.Specs]
         )
@@ -970,7 +970,7 @@ classify_int3_items_int([Item | Items], !TypeDefns, !InstDefns, !ModeDefns,
         ;
             Body = instance_body_concrete(_),
             Pieces = [words("A .int3 file may not contain"),
-                words("a concrete instance declaration."), nl],
+                words("concrete instance declarations."), nl],
             Spec = spec($pred, severity_error, phase_t2pt, Context, Pieces),
             !:Specs = [Spec | !.Specs]
         )
@@ -995,7 +995,7 @@ classify_int3_items_int([Item | Items], !TypeDefns, !InstDefns, !ModeDefns,
         ; Item = item_mutable(_)
         ),
         Pieces = [words("A .int3 file may not contain")] ++
-            item_desc_pieces(Item) ++
+            items_desc_pieces(Item) ++
             [words("in its interface section."), nl],
         Spec = spec($pred, severity_error, phase_t2pt,
             get_item_context(Item), Pieces),
@@ -1157,7 +1157,7 @@ classify_plain_opt_items([Item | Items], !TypeDefns, !ForeignEnums,
             ; DeclPragma = decl_pragma_oisu(_)
             ),
             Pieces = [words("A .opt file may not contain")] ++
-                item_desc_pieces(Item) ++ [suffix("."), nl],
+                items_desc_pieces(Item) ++ [suffix("."), nl],
             Spec = spec($pred, severity_error, phase_t2pt,
                 get_item_context(Item), Pieces),
             !:Specs = [Spec | !.Specs]
@@ -1188,7 +1188,7 @@ classify_plain_opt_items([Item | Items], !TypeDefns, !ForeignEnums,
         ;
             Marker = dpmk_check_termination,
             Pieces = [words("A .opt file may not contain")] ++
-                item_desc_pieces(Item) ++ [suffix("."), nl],
+                items_desc_pieces(Item) ++ [suffix("."), nl],
             Spec = spec($pred, severity_error, phase_t2pt,
                 get_item_context(Item), Pieces),
             !:Specs = [Spec | !.Specs]
@@ -1196,7 +1196,7 @@ classify_plain_opt_items([Item | Items], !TypeDefns, !ForeignEnums,
     ;
         Item = item_impl_pragma(_),
         Pieces = [words("A .opt file may not contain")] ++
-            item_desc_pieces(Item) ++ [suffix("."), nl],
+            items_desc_pieces(Item) ++ [suffix("."), nl],
         Spec = spec($pred, severity_error, phase_t2pt,
             get_item_context(Item), Pieces),
         !:Specs = [Spec | !.Specs]
@@ -1231,7 +1231,7 @@ classify_plain_opt_items([Item | Items], !TypeDefns, !ForeignEnums,
             ; Marker = ipmk_no_detism_warning
             ),
             Pieces = [words("A .opt file may not contain")] ++
-                item_desc_pieces(Item) ++ [suffix("."), nl],
+                items_desc_pieces(Item) ++ [suffix("."), nl],
             Spec = spec($pred, severity_error, phase_t2pt,
                 get_item_context(Item), Pieces),
             !:Specs = [Spec | !.Specs]
@@ -1259,7 +1259,7 @@ classify_plain_opt_items([Item | Items], !TypeDefns, !ForeignEnums,
         ; Item = item_type_repn(_)
         ),
         Pieces = [words("A .opt file may not contain")] ++
-            item_desc_pieces(Item) ++ [suffix("."), nl],
+            items_desc_pieces(Item) ++ [suffix("."), nl],
         Spec = spec($pred, severity_error, phase_t2pt,
             get_item_context(Item), Pieces),
         !:Specs = [Spec | !.Specs]
@@ -1322,7 +1322,7 @@ check_convert_parse_tree_opt_to_trans_opt(ParseTreeOpt, ParseTreeTransOpt,
         Uses = []
     ;
         Uses = [FirstUse | _],
-        UsePieces = [words("A .trans_opt file may not contain any"),
+        UsePieces = [words("A .trans_opt file may not contain"),
             decl("use_module"), words("declarations."), nl],
         UseSpec = spec($pred, severity_error, phase_t2pt,
             FirstUse ^ aui_context, UsePieces),
@@ -1332,7 +1332,7 @@ check_convert_parse_tree_opt_to_trans_opt(ParseTreeOpt, ParseTreeTransOpt,
         FIMs = []
     ;
         FIMs = [FirstFIM | _],
-        FIMPieces = [words("A .trans_opt file may not contain any"),
+        FIMPieces = [words("A .trans_opt file may not contain"),
             pragma_decl("foreign_import_module"), words("declarations."), nl],
         FIMSpec = spec($pred, severity_error, phase_t2pt,
             FirstFIM ^ fim_context, FIMPieces),
@@ -1397,7 +1397,7 @@ classify_trans_opt_items([Item | Items], !TermInfos, !Term2Infos,
             ; DeclPragma = decl_pragma_oisu(_)
             ),
             Pieces = [words("A .trans_opt file may not contain")] ++
-                item_desc_pieces(Item) ++ [suffix("."), nl],
+                items_desc_pieces(Item) ++ [suffix("."), nl],
             Spec = spec($pred, severity_error, phase_t2pt,
                 get_item_context(Item), Pieces),
             !:Specs = [Spec | !.Specs]
@@ -1416,7 +1416,7 @@ classify_trans_opt_items([Item | Items], !TermInfos, !Term2Infos,
         ;
             GenPragma = gen_pragma_unused_args(_),
             Pieces = [words("A .trans_opt file may not contain")] ++
-                item_desc_pieces(Item) ++ [suffix("."), nl],
+                items_desc_pieces(Item) ++ [suffix("."), nl],
             Spec = spec($pred, severity_error, phase_t2pt,
                 get_item_context(Item), Pieces),
             !:Specs = [Spec | !.Specs]
@@ -1443,7 +1443,7 @@ classify_trans_opt_items([Item | Items], !TermInfos, !Term2Infos,
         ; Item = item_type_repn(_)
         ),
         Pieces = [words("A .trans_opt file may not contain")] ++
-            item_desc_pieces(Item) ++ [suffix("."), nl],
+            items_desc_pieces(Item) ++ [suffix("."), nl],
         Spec = spec($pred, severity_error, phase_t2pt,
             get_item_context(Item), Pieces),
         !:Specs = [Spec | !.Specs]
@@ -1960,8 +1960,9 @@ report_int_imp_fim(IntFIMSpecMap, FIMSpec, !ImpFIMSpecMap, !Specs) :-
     ImpPieces = [words("Warning: this"), pragma_decl("foreign_import_module"),
         words("pragma for"), qual_sym_name(ModuleName),
         words("and"), words(foreign_language_string(Lang)),
-        words("in the implementation section is redundant,"),
-        words("because there is a"), pragma_decl("foreign_import_module"),
+        words("in the implementation section is")] ++
+        color_as_incorrect([words("redundant,")]) ++
+        [words("because there is a"), pragma_decl("foreign_import_module"),
         words("pragma for the same module/language combination"),
         words("in the interface section."), nl],
     IntPieces = [words("The"), pragma_decl("foreign_import_module"),
@@ -2122,16 +2123,20 @@ classify_foreign_import_module(ItemFIM, !FIMSpecMap, !Specs) :-
     ItemFIM = item_fim(Lang, ModuleName, Context, _SeqNum),
     FIMSpec = fim_spec(Lang, ModuleName),
     ( if map.search(!.FIMSpecMap, FIMSpec, PrevContext) then
-        MainPieces = [words("Warning: duplicate"),
-            pragma_decl("foreign_import_module"),
-            words("pragma for"), qual_sym_name(ModuleName),
-            words("and"), words(foreign_language_string(Lang)),
-            suffix("."), nl],
+        MainPieces = [words("Warning:")] ++
+            color_as_incorrect([words("duplicate")]) ++
+            [pragma_decl("foreign_import_module"),
+            words("pragma for")] ++
+            color_as_subject([qual_sym_name(ModuleName)]) ++
+            [words("and")] ++
+            color_as_subject([words(foreign_language_string(Lang)),
+                suffix(".")]) ++
+            [nl],
         MainMsg = msg(Context, MainPieces),
         PrevPieces = [words("The previous"),
             pragma_decl("foreign_import_module"),
             words("pragma for the same module/language combination"),
-            words("was here."), nl],
+            words("is here."), nl],
         PrevMsg = msg(PrevContext, PrevPieces),
         Spec = conditional_spec($pred, warn_simple_code, yes,
             severity_warning, phase_pt2h, [MainMsg, PrevMsg]),
@@ -2217,8 +2222,10 @@ classify_src_items_int([Item | Items],
             list.foldl(acc_implicit_avail_needs_in_instance_method,
                 InstanceMethods, !ImplicitAvailNeeds),
 
-            AlwaysPieces = [words("Error: non-abstract instance declaration"),
-                words("in module interface."), nl],
+            AlwaysPieces =
+                [words("Error: non-abstract instance declaration")] ++
+                color_as_incorrect([words("in module interface.")]) ++
+                [nl],
             VerbosePieces = [words("If you intend to export this instance,"),
                 words("move this declaration to the implementation section,"),
                 words("replacing it in the interface section"),
@@ -2245,10 +2252,17 @@ classify_src_items_int([Item | Items],
         user_arity_pred_form_arity(PredOrFunc, UserArity, PredFormArity),
         PredPfNameArity =
             pred_pf_name_arity(PredOrFunc, PredSymName, UserArity),
-        % There is no point printing out the qualified name,
-        % since the module name is implicit in the context.
-        error_is_exported(Context, [words("clause for"),
-            unqual_pf_sym_name_user_arity(PredPfNameArity)], !Specs),
+        Pieces = [words("Error:")] ++
+            color_as_subject([words("clauses,")]) ++
+            [words("such as this one for"),
+            % There is no point printing out the qualified name,
+            % since the module name is implicit in the context.
+            unqual_pf_sym_name_user_arity(PredPfNameArity), suffix(","),
+            words("are")] ++
+            color_as_incorrect([words("not allowed in module interfaces.")]) ++
+            [nl],
+        Spec = spec($pred, severity_error, phase_pt2h, Context, Pieces),
+        !:Specs = [Spec | !.Specs],
         set.insert(PredPfNameArity, !BadClausePreds)
     ;
         Item = item_foreign_proc(ItemForeignProcInfo),
@@ -2324,11 +2338,7 @@ classify_src_items_int([Item | Items],
         !:RevImplMarkers = [ItemImplMarker | !.RevImplMarkers]
     ;
         Item = item_generated_pragma(_),
-        Pieces = [words("A Mercury source file may not contain")] ++
-            item_desc_pieces(Item) ++ [suffix("."), nl],
-        Spec = spec($pred, severity_error, phase_t2pt,
-            get_item_context(Item), Pieces),
-        !:Specs = [Spec | !.Specs]
+        report_forbidden_item_in_src(Item, !Specs)
     ;
         Item = item_promise(ItemPromiseInfo),
         % XXX IMPLICIT None of the implicit avail needs this call looks for
@@ -2354,12 +2364,8 @@ classify_src_items_int([Item | Items],
         error_item_is_exported(Item, !Specs),
         !:RevMutables = [ItemMutableInfo | !.RevMutables]
     ;
-        Item = item_type_repn(ItemTypeRepnInfo),
-        Pieces = [words("A Mercury source file may not contain")] ++
-            item_desc_pieces(Item) ++ [suffix("."), nl],
-        Spec = spec($pred, severity_error, phase_t2pt,
-            ItemTypeRepnInfo ^ tr_context, Pieces),
-        !:Specs = [Spec | !.Specs]
+        Item = item_type_repn(_),
+        report_forbidden_item_in_src(Item, !Specs)
     ),
     classify_src_items_int(Items,
         !RevTypeDefns, !RevInstDefns, !RevModeDefns,
@@ -2524,11 +2530,7 @@ classify_src_items_imp([Item | Items],
         !:RevImplMarkers = [ItemImplMarker | !.RevImplMarkers]
     ;
         Item = item_generated_pragma(_),
-        Pieces = [words("A Mercury source file may not contain")] ++
-            item_desc_pieces(Item) ++ [suffix("."), nl],
-        Spec = spec($pred, severity_error, phase_t2pt,
-            get_item_context(Item), Pieces),
-        !:Specs = [Spec | !.Specs]
+        report_forbidden_item_in_src(Item, !Specs)
     ;
         Item = item_promise(ItemPromiseInfo),
         % XXX IMPLICIT None of the implicit avail needs this call looks for
@@ -2549,12 +2551,8 @@ classify_src_items_imp([Item | Items],
             !ImplicitAvailNeeds),
         !:RevMutables = [ItemMutableInfo | !.RevMutables]
     ;
-        Item = item_type_repn(ItemTypeRepnInfo),
-        Pieces = [words("A Mercury source file may not contain")] ++
-            item_desc_pieces(Item) ++ [suffix("."), nl],
-        Spec = spec($pred, severity_error, phase_t2pt,
-            ItemTypeRepnInfo ^ tr_context, Pieces),
-        !:Specs = [Spec | !.Specs]
+        Item = item_type_repn(_),
+        report_forbidden_item_in_src(Item, !Specs)
     ),
     classify_src_items_imp(Items,
         !RevTypeDefns, !RevInstDefns, !RevModeDefns,
@@ -2591,7 +2589,7 @@ acc_implicit_avail_needs_in_promise(ItemPromiseInfo, !ImplicitAvailNeeds) :-
     list(error_spec)::in, list(error_spec)::out) is det.
 
 error_item_is_exported(Item, !Specs) :-
-    error_is_exported(get_item_context(Item), item_desc_pieces(Item), !Specs).
+    error_is_exported(get_item_context(Item), items_desc_pieces(Item), !Specs).
 
     % Emit an error reporting that something should not have occurred in
     % a module interface.
@@ -2600,8 +2598,11 @@ error_item_is_exported(Item, !Specs) :-
     list(error_spec)::in, list(error_spec)::out) is det.
 
 error_is_exported(Context, DescPieces, !Specs) :-
-    Pieces = [words("Error:")] ++ DescPieces ++
-        [words("in module interface."), nl],
+    Pieces = [words("Error:")] ++
+        color_as_subject(DescPieces) ++
+        [words("are")] ++
+        color_as_incorrect([words("not allowed in module interfaces.")]) ++
+        [nl],
     Spec = spec($pred, severity_error, phase_pt2h, Context, Pieces),
     !:Specs = [Spec | !.Specs].
 
@@ -2686,6 +2687,18 @@ report_forbidden_avail(Extension, Decl, MaybeSection, Context, !Specs) :-
             words("any"), decl(Decl), words("declarations"),
             words("in its"), words(Section), words("section."), nl]
     ),
+    Spec = spec($pred, severity_error, phase_t2pt, Context, Pieces),
+    !:Specs = [Spec | !.Specs].
+
+:- pred report_forbidden_item_in_src(item::in,
+    list(error_spec)::in, list(error_spec)::out) is det.
+
+report_forbidden_item_in_src(Item, !Specs) :-
+    Pieces = [words("A Mercury source file")] ++
+        color_as_incorrect([words("may not contain")] ++
+            items_desc_pieces(Item) ++ [suffix(".")]) ++
+        [nl],
+    Context = get_item_context(Item),
     Spec = spec($pred, severity_error, phase_t2pt, Context, Pieces),
     !:Specs = [Spec | !.Specs].
 
