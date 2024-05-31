@@ -1169,13 +1169,16 @@ nontail_rec_call_reason_to_pieces(Reason, Context,
         ReasonPieces, VerboseMsgs) :-
     (
         Reason = ntrcr_program,
-        ReasonPieces = [words("is not tail recursive."), nl],
+        ReasonPieces = [words("is")] ++
+            color_as_incorrect([words("not tail recursive.")]) ++
+            [nl],
         VerboseMsgs = []
     ;
         Reason = ntrcr_mlds_in_scc_not_in_tscc,
-        ReasonPieces = [words("is tail recursive,"),
-            words("but tail recursion optimization cannot be applied to it,"),
-            words("because the *callee* cannot reach the caller"),
+        ReasonPieces = [words("is tail recursive, but")] ++
+            color_as_incorrect([words("tail recursion optimization"),
+                words("cannot be applied to it,")]) ++
+            [words("because the callee cannot reach the caller"),
             words("via tail calls only."), nl],
         VerbosePieces = [words("The MLDS backend"),
             words("can optimize only *mutual* tail recursion;"),
@@ -1185,16 +1188,18 @@ nontail_rec_call_reason_to_pieces(Reason, Context,
             [verbose_only(verbose_once, VerbosePieces)])]
     ;
         Reason = ntrcr_mlds_in_tscc_stack_ref,
-        ReasonPieces = [words("is tail recursive,"),
-            words("but tail recursion optimization cannot be applied to it,"),
-            words("because that would leave dangling stack references"),
+        ReasonPieces = [words("is tail recursive, but")] ++
+            color_as_incorrect([words("tail recursion optimization"),
+                words("cannot be applied to it,")]) ++
+            [words("because that would leave dangling stack references"),
             words("in the generated target language code."), nl],
         VerboseMsgs = []
     ;
         Reason = ntrcr_mlds_model_non_in_cont_func,
-        ReasonPieces = [words("is tail recursive,"),
-            words("but tail recursion optimization cannot be applied to it,"),
-            words("because it occurs after a choice point."), nl],
+        ReasonPieces = [words("is tail recursive, but")] ++
+            color_as_incorrect([words("tail recursion optimization"),
+                words("cannot be applied to it,")]) ++
+            [words("because it occurs after a choice point."), nl],
         VerboseMsgs = []
     ).
 
@@ -1233,8 +1238,9 @@ report_no_tail_or_nontail_recursive_calls(PFSymNameArity, Context, !Specs) :-
     Pieces = [words("In"), pragma_decl("require_tail_recursion"), words("for"),
         unqual_pf_sym_name_pred_form_arity(PFSymNameArity), suffix(":"), nl,
         words("warning: the code defining this"), p_or_f(PredOrFunc),
-        words("contains no recursive calls at all,"),
-        words("tail-recursive or otherwise."), nl],
+        words("contains")] ++
+        color_as_incorrect([words("no recursive calls at all,")]) ++
+        [words("tail-recursive or otherwise."), nl],
     Spec = spec($pred, severity_warning, phase_code_gen,
         Context, Pieces),
     !:Specs = [Spec | !.Specs].

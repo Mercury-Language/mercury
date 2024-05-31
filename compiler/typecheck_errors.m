@@ -153,61 +153,107 @@
 report_unsatisfiable_constraints(ClauseContext, Context, TypeAssignSet)
         = Spec :-
     InClauseForPieces = in_clause_for_pieces(ClauseContext),
-    list.filter_map(unproven_constraints_to_pieces, TypeAssignSet,
-        UnprovenNumConstraintPieceLists0),
-    % It is possible for the same unproven constraint, or the same set
-    % of unproven constraints, to occur in more than one type_assign.
-    list.sort_and_remove_dups(UnprovenNumConstraintPieceLists0,
-        UnprovenNumConstraintPieceLists),
-    ( if UnprovenNumConstraintPieceLists = [1 - UnprovenConstraintPieces] then
-        ErrorPieces = [words("unsatisfiable typeclass constraint:"), nl |
-            UnprovenConstraintPieces] ++ [suffix("."), nl]
-    else
-        assoc_list.values(UnprovenNumConstraintPieceLists,
-            UnprovenConstraintPieceLists),
-        % XXX This won't be very pretty when there are multiple type_assigns.
-        ErrorPieces = [words("unsatisfiable typeclass constraints:"), nl |
-            component_list_to_line_pieces(UnprovenConstraintPieceLists,
-                [suffix("."), nl])]
+    list.map(unproven_constraints_to_string_set, TypeAssignSet,
+        UnprovenStrSets),
+    % AlwaysUnprovenStrSet contains all the constraints
+    % that are unproven in *all* type assigns.
+    AlwaysUnprovenStrSet = set.intersect_list(UnprovenStrSets),
+    SometimesUnprovenStrSet0 = set.union_list(UnprovenStrSets),
+    % SometimesUnprovenStrSet contains all the constraints
+    % that are unproven in *some but not all* type assigns.
+    set.difference(SometimesUnprovenStrSet0,
+        AlwaysUnprovenStrSet, SometimesUnprovenStrSet),
+    set.to_sorted_list(AlwaysUnprovenStrSet, AlwaysUnprovenStrs),
+    set.to_sorted_list(SometimesUnprovenStrSet, SometimesUnprovenStrs),
+    AlwaysUnprovenPieceLists = list.map(wrap_quote, AlwaysUnprovenStrs),
+    SometimesUnprovenPieceLists = list.map(wrap_quote, SometimesUnprovenStrs),
+    ACS = choose_number(AlwaysUnprovenStrs, "constraint", "constraints"),
+    SCS = choose_number(SometimesUnprovenStrs, "constraint", "constraints"),
+    AIsAre = choose_number(AlwaysUnprovenStrs, "is", "are"),
+    (
+        AlwaysUnprovenPieceLists = [_ | _],
+        SometimesUnprovenPieceLists = [_ | _],
+        ErrorPieces =
+            [words("error: the typeclass"), words(ACS),
+            nl_indent_delta(1)] ++
+            component_list_to_color_line_pieces(yes(color_subject), [],
+                AlwaysUnprovenPieceLists) ++
+            [nl_indent_delta(-1),
+            words(AIsAre)] ++
+            color_as_incorrect([words("unsatisfiable,")]) ++
+            [words("and depending on the chosen resolution"),
+            words("of some type ambiguities,"),
+            choose_number(SometimesUnprovenStrs,
+                words("the constraint"), words("some of the constraints")),
+            nl_indent_delta(1)] ++
+            component_list_to_color_line_pieces(yes(color_subject), [],
+                SometimesUnprovenPieceLists) ++
+            [nl_indent_delta(-1),
+            words("may be")] ++
+            color_as_incorrect([words("unsatisfiable")]) ++
+            [words("as well."), nl]
+    ;
+        AlwaysUnprovenPieceLists = [_ | _],
+        SometimesUnprovenPieceLists = [],
+        ErrorPieces =
+            [words("error: the typeclass"), words(ACS),
+            nl_indent_delta(1)] ++
+            component_list_to_color_line_pieces(yes(color_subject), [],
+                AlwaysUnprovenPieceLists) ++
+            [nl_indent_delta(-1),
+            words(AIsAre)] ++
+            color_as_incorrect([words("unsatisfiable.")]) ++
+            [nl]
+    ;
+        AlwaysUnprovenPieceLists = [],
+        SometimesUnprovenPieceLists = [_ | _],
+        ErrorPieces =
+            [words("error: at least one the typeclass"), words(SCS),
+            nl_indent_delta(1)] ++
+            component_list_to_color_line_pieces(yes(color_subject), [],
+                SometimesUnprovenPieceLists) ++
+            [nl_indent_delta(-1),
+            words("is")] ++
+            color_as_incorrect([words("unsatisfiable,")]) ++
+            [words("but which one this is depends on the chosen resolution"),
+            words("of some type ambiguities."), nl]
+    ;
+        AlwaysUnprovenPieceLists = [],
+        SometimesUnprovenPieceLists = [],
+        unexpected($pred, "no constraints seem to be unproven")
     ),
     Spec = spec($pred, severity_error, phase_type_check, Context,
         InClauseForPieces ++ ErrorPieces).
 
-:- pred unproven_constraints_to_pieces(type_assign::in,
-    pair(int, list(format_piece))::out) is semidet.
+:- pred unproven_constraints_to_string_set(type_assign::in,
+    set(string)::out) is det.
 
-unproven_constraints_to_pieces(TypeAssign, NumUnproven - Pieces) :-
+unproven_constraints_to_string_set(TypeAssign, UnprovenConstraintStrSet) :-
     type_assign_get_typeclass_constraints(TypeAssign, Constraints),
-    UnprovenConstraints = Constraints ^ hcs_unproven,
+    UnprovenHldsConstraints = Constraints ^ hcs_unproven,
     (
-        UnprovenConstraints = [],
-        fail
+        UnprovenHldsConstraints = [],
+        set.init(UnprovenConstraintStrSet)
     ;
-        UnprovenConstraints = [_ | _],
-        require_det (
-            retrieve_prog_constraint_list(UnprovenConstraints,
-                UnprovenProgConstraints0),
+        UnprovenHldsConstraints = [_ | _],
+        retrieve_prog_constraint_list(UnprovenHldsConstraints,
+            UnprovenConstraints0),
 
-            type_assign_get_typevarset(TypeAssign, TVarSet),
-            type_assign_get_type_bindings(TypeAssign, Bindings),
-            apply_rec_subst_to_prog_constraint_list(Bindings,
-                UnprovenProgConstraints0, UnprovenProgConstraints1),
-            list.sort_and_remove_dups(UnprovenProgConstraints1,
-                UnprovenProgConstraints),
-            list.length(UnprovenProgConstraints, NumUnproven),
-            UnprovenProgConstraintStrings = list.map(
-                mercury_constraint_to_string(TVarSet, print_name_only),
-                UnprovenProgConstraints),
-            UnprovenProgConstraintsPieces =
-                list.map(wrap_quote, UnprovenProgConstraintStrings),
-            Pieces = component_list_to_pieces("and",
-                UnprovenProgConstraintsPieces)
-        )
+        type_assign_get_typevarset(TypeAssign, TVarSet),
+        type_assign_get_type_bindings(TypeAssign, Bindings),
+        apply_rec_subst_to_prog_constraint_list(Bindings,
+            UnprovenConstraints0, UnprovenConstraints1),
+        list.sort_and_remove_dups(UnprovenConstraints1,
+            UnprovenConstraints),
+        UnprovenConstraintStrs = list.map(
+            mercury_constraint_to_string(TVarSet, print_name_only),
+            UnprovenConstraints),
+        set.list_to_set(UnprovenConstraintStrs, UnprovenConstraintStrSet)
     ).
 
-:- func wrap_quote(string) = format_piece.
+:- func wrap_quote(string) = list(format_piece).
 
-wrap_quote(Str) = quote(Str).
+wrap_quote(Str) = [quote(Str)].
 
 %---------------------------------------------------------------------------%
 

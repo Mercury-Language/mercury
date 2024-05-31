@@ -1,9 +1,12 @@
 unsatisfiable_constraint_bug.m:027: In clause for predicate `test_stream'/5:
-unsatisfiable_constraint_bug.m:027:   unsatisfiable typeclass constraint:
-unsatisfiable_constraint_bug.m:027:   `stream.writer(S, float, B)'.
+unsatisfiable_constraint_bug.m:027:   error: the typeclass constraint
+unsatisfiable_constraint_bug.m:027:     [38;5;87m`stream.writer(S, float, B)'[39;49m
+unsatisfiable_constraint_bug.m:027:   is [38;5;203munsatisfiable.[39;49m
 unsatisfiable_constraint_bug.m:029: In clause for predicate `test_stream'/5:
-unsatisfiable_constraint_bug.m:029:   unsatisfiable typeclass constraint:
-unsatisfiable_constraint_bug.m:029:   `stream.reader(S, float, B, E)'.
+unsatisfiable_constraint_bug.m:029:   error: the typeclass constraint
+unsatisfiable_constraint_bug.m:029:     [38;5;87m`stream.reader(S, float, B, E)'[39;49m
+unsatisfiable_constraint_bug.m:029:   is [38;5;203munsatisfiable.[39;49m
 unsatisfiable_constraint_bug.m:030: In clause for predicate `test_stream'/5:
-unsatisfiable_constraint_bug.m:030:   unsatisfiable typeclass constraint:
-unsatisfiable_constraint_bug.m:030:   `stream.reader(S, float, B, E)'.
+unsatisfiable_constraint_bug.m:030:   error: the typeclass constraint
+unsatisfiable_constraint_bug.m:030:     [38;5;87m`stream.reader(S, float, B, E)'[39;49m
+unsatisfiable_constraint_bug.m:030:   is [38;5;203munsatisfiable.[39;49m

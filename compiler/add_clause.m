@@ -138,8 +138,7 @@ module_add_clause(ProgressStream, PredStatus, ClauseType, ClauseInfo,
             SNA = sym_name_arity(unqualified(","), 2),
             Pieces =
                 [words("Error: attempt to define a clause for")] ++
-                color_as_incorrect([unqual_sym_name_arity(SNA),
-                    suffix(".")]) ++
+                color_as_subject([unqual_sym_name_arity(SNA), suffix(".")]) ++
                 [nl,
                 words("This is usually caused by")] ++
                 color_as_incorrect([words("inadvertently writing"),

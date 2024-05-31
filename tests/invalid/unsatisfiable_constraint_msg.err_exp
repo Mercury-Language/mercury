@@ -1,5 +1,5 @@
 unsatisfiable_constraint_msg.m:020: In clause for predicate `main'/2:
-unsatisfiable_constraint_msg.m:020:   unsatisfiable typeclass constraints:
-unsatisfiable_constraint_msg.m:020:   `unsatisfiable_constraint_msg.tcb(unsatisfiable_constraint_msg.tb(string))'
-unsatisfiable_constraint_msg.m:020:   and
-unsatisfiable_constraint_msg.m:020:   `unsatisfiable_constraint_msg.tcc(string)'.
+unsatisfiable_constraint_msg.m:020:   error: the typeclass constraints
+unsatisfiable_constraint_msg.m:020:     [38;5;87m`unsatisfiable_constraint_msg.tcb(unsatisfiable_constraint_msg.tb(string))',[39;49m
+unsatisfiable_constraint_msg.m:020:     [38;5;87m`unsatisfiable_constraint_msg.tcc(string)'[39;49m
+unsatisfiable_constraint_msg.m:020:   are [38;5;203munsatisfiable.[39;49m

@@ -1,6 +1,7 @@
 typeclass_test_2.m:015: In clause for predicate `main'/2:
-typeclass_test_2.m:015:   unsatisfiable typeclass constraint:
-typeclass_test_2.m:015:   `typeclass_test_2.numbered_type(int)'.
+typeclass_test_2.m:015:   error: the typeclass constraint
+typeclass_test_2.m:015:     [38;5;87m`typeclass_test_2.numbered_type(int)'[39;49m
+typeclass_test_2.m:015:   is [38;5;203munsatisfiable.[39;49m
 typeclass_test_2.m:023: Error: expected
 typeclass_test_2.m:023:     [38;5;40m`pred(<Name> / <Arity>) is <InstanceName>'[39;49m
 typeclass_test_2.m:023:   or

@@ -1,3 +1,4 @@
 unsatisfiable_super.m:019: In clause for predicate `test'/3:
-unsatisfiable_super.m:019:   unsatisfiable typeclass constraint:
-unsatisfiable_super.m:019:   `unsatisfiable_super.foo(B, int)'.
+unsatisfiable_super.m:019:   error: the typeclass constraint
+unsatisfiable_super.m:019:     [38;5;87m`unsatisfiable_super.foo(B, int)'[39;49m
+unsatisfiable_super.m:019:   is [38;5;203munsatisfiable.[39;49m

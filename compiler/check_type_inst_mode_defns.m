@@ -1700,18 +1700,19 @@ report_duplicate_field_name(FieldNameTypeCtor, FirstFNLocn, FNLocn, !Specs) :-
         color_as_subject([quote(FieldName)]),
     ( if CtorName = FirstCtorName then
         % The two occurrences of FieldName are in the same data constructor.
-        MainPieces = InitPieces ++ [words("in the function symbol"),
-            quote(CtorName), suffix("."), nl]
+        CtorPieces = [words("in the function symbol"), quote(CtorName)]
     else
         % The two occurrences are in different data constructors.
-        MainPieces = InitPieces ++ [words("in the definition of"),
-            unqual_type_ctor(TypeCtor), suffix("."), nl]
+        CtorPieces = []
     ),
-    FirstPieces = [words("The first occurrence of this field name"),
+    MainPieces = InitPieces ++ CtorPieces ++
+        [words("in the definition of the type constructor"),
+        unqual_type_ctor(TypeCtor), suffix("."), nl],
+    FirstOccurrencePieces = [words("The first occurrence of this field name"),
         words("is here."), nl],
     Spec = error_spec($pred, severity_error, phase_tim_check,
         [msg(Context, MainPieces),
-        msg(FirstContext, FirstPieces)]),
+        msg(FirstContext, FirstOccurrencePieces)]),
     !:Specs = [Spec | !.Specs].
 
 %---------------------------------------------------------------------------%

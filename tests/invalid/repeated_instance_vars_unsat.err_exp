@@ -1,3 +1,4 @@
 repeated_instance_vars_unsat.m:028: In clause for predicate `test'/2:
-repeated_instance_vars_unsat.m:028:   unsatisfiable typeclass constraint:
-repeated_instance_vars_unsat.m:028:   `repeated_instance_vars_unsat.foo(list.list(int), list.list(float))'.
+repeated_instance_vars_unsat.m:028:   error: the typeclass constraint
+repeated_instance_vars_unsat.m:028:     [38;5;87m`repeated_instance_vars_unsat.foo(list.list(int), list.list(float))'[39;49m
+repeated_instance_vars_unsat.m:028:   is [38;5;203munsatisfiable.[39;49m

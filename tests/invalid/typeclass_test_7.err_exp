@@ -1,3 +1,4 @@
 typeclass_test_7.m:014: In clause for predicate `p'/2:
-typeclass_test_7.m:014:   unsatisfiable typeclass constraint:
-typeclass_test_7.m:014:   `typeclass_test_7.numbered_type(T)'.
+typeclass_test_7.m:014:   error: the typeclass constraint
+typeclass_test_7.m:014:     [38;5;87m`typeclass_test_7.numbered_type(T)'[39;49m
+typeclass_test_7.m:014:   is [38;5;203munsatisfiable.[39;49m

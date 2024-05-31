@@ -1,12 +1,15 @@
 repeated_field_name.m:013: Error: [38;5;203mduplicate occurrence[39;49m of the field name [38;5;87m`f2'[39;49m
-repeated_field_name.m:013:   in the function symbol `t1'.
+repeated_field_name.m:013:   in the function symbol `t1' in the definition of
+repeated_field_name.m:013:   the type constructor `t'/0.
 repeated_field_name.m:012:   The first occurrence of this field name is here.
 repeated_field_name.m:014: Error: [38;5;203mduplicate occurrence[39;49m of the field name [38;5;87m`f2'[39;49m
-repeated_field_name.m:014:   in the function symbol `t1'.
+repeated_field_name.m:014:   in the function symbol `t1' in the definition of
+repeated_field_name.m:014:   the type constructor `t'/0.
 repeated_field_name.m:012:   The first occurrence of this field name is here.
 repeated_field_name.m:017: Error: [38;5;203mduplicate occurrence[39;49m of the field name [38;5;87m`f1'[39;49m
-repeated_field_name.m:017:   in the definition of `t'/0.
+repeated_field_name.m:017:   in the definition of the type constructor `t'/0.
 repeated_field_name.m:011:   The first occurrence of this field name is here.
 repeated_field_name.m:023: Error: [38;5;203mduplicate occurrence[39;49m of the field name [38;5;87m`f1'[39;49m
-repeated_field_name.m:023:   in the function symbol `u1'.
+repeated_field_name.m:023:   in the function symbol `u1' in the definition of
+repeated_field_name.m:023:   the type constructor `u'/0.
 repeated_field_name.m:022:   The first occurrence of this field name is here.
