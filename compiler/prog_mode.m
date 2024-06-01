@@ -1342,7 +1342,7 @@ report_inconsistent_constrained_inst_vars(WhereDesc, Context, InstVarSet,
         list.map(varset.lookup_name(InstVarSet), [HeadInstVar | TailInstVars],
             InstVarNames),
         VarsPieces = [words("inst variables") |
-            list_to_pieces(InstVarNames)]
+            fixed_list_to_pieces("and", InstVarNames)]
     ),
     Pieces = [words("Error: inconsistent constraints on") | VarsPieces]
         ++ [words(WhereDesc), suffix("."), nl],

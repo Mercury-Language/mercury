@@ -1435,9 +1435,8 @@ check_type_and_maybe_mode_list_is_consistent(TypesAndMaybeModes,
                 And = "and"
             ),
             WithoutArgNumPieces = list.map(nth_arg, WithoutModeArgs),
-            WithoutArgNumsPieces =
-                component_list_to_color_pieces(yes(color_cause), And,
-                    [suffix(".")], WithoutArgNumPieces),
+            WithoutArgNumsPieces = piece_list_to_color_pieces(color_cause,
+                And, [suffix(".")], WithoutArgNumPieces),
             IdPieces =
                 [words("The arguments without modes are the")] ++
                 WithoutArgNumsPieces ++

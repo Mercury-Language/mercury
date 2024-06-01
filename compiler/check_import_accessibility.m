@@ -918,7 +918,7 @@ report_missing_ancestor(ModuleName, MissingWhere,
         [words("to the")] ++ DeclPieces ++ [words(DeclarationS)] ++
         InTheInterface ++
         [words("for its"), words(ChildOrDescendant), words(ModuleS)] ++
-        component_list_to_pieces("and", DescendantPieces) ++
+        piece_list_to_pieces("and", DescendantPieces) ++
         [suffix("."), nl],
     MainMsg = msg(LeastContext, MainPieces),
     ( if

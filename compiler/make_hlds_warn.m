@@ -140,7 +140,7 @@ quant_warning_to_spec(PfSymNameArity, VarSet, Warning) = Spec :-
             TailVars = [_ | _],
             VarsPieces = list.map(var_to_quote_piece(VarSet), Vars),
             Pieces2 = [words("warning: variables")] ++
-                component_list_to_color_pieces(yes(color_subject), "and", [],
+                piece_list_to_color_pieces(color_subject, "and", [],
                     VarsPieces) ++
                 [words("each have overlapping scopes."), nl]
         )
@@ -582,8 +582,8 @@ generate_variable_warning(SingleMulti, Context, PfSymNameArity, VarSet,
             [words("in this scope."), nl]
     ;
         VarPieces = [_, _ | _],
-        VarsPieces = component_list_to_color_pieces(yes(color_subject), "and",
-            [], VarPieces),
+        VarsPieces = piece_list_to_color_pieces(color_subject, "and", [],
+            VarPieces),
         WarnPieces = [words("warning: variables")] ++ VarsPieces ++
             color_as_incorrect([words("occur"), words(OnlyMoreThanOnce)]) ++
             [words("in this scope."), nl]
@@ -641,10 +641,9 @@ variable_warning_start(UnmentionedVars, Pieces, DoDoes) :-
         Pieces = [words("variable")] ++ color_as_subject([quote(Var)]),
         DoDoes = "does"
     else
-        QuotedVars = list.map(func(VN) = quote(VN), UnmentionedVars),
         Pieces = [words("variables")] ++
-            component_list_to_color_pieces(yes(color_subject), "and", [],
-                QuotedVars),
+            quote_list_to_color_pieces(color_subject, "and", [],
+                UnmentionedVars),
         DoDoes = "do"
     ).
 

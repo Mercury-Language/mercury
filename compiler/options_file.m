@@ -1227,7 +1227,7 @@ report_any_undefined_variables(FileName, LineNumber, UndefVarNamesSet,
         ( UndefVarNames = [_],        VarVars = "variable",  IsAre = "is"
         ; UndefVarNames = [_, _ | _], VarVars = "variables", IsAre = "are"
         ),
-        UndefVarNamesPieces = list_to_quoted_pieces(UndefVarNames),
+        UndefVarNamesPieces = quote_list_to_pieces("and", UndefVarNames),
         Context = term_context.context_init(FileName, LineNumber),
         Pieces = [words("Warning:"), words(VarVars) | UndefVarNamesPieces] ++
             [words(IsAre), words("undefined."), nl],
@@ -1528,10 +1528,8 @@ lookup_options_variable(Variables, OptionsVariableClass, FlagsVar,
                 BadLibs = [_ | _],
                 MaybeValues = no,
                 Pieces = [words("Error: MLLIBS must contain only"),
-                    quote("-l"), words("options, found") |
-                    list_to_pieces(
-                        list.map(func(Lib) = add_quotes(Lib), BadLibs))]
-                    ++ [suffix(".")],
+                    quote("-l"), words("options, found")] ++
+                    quote_list_to_pieces("and", BadLibs) ++ [suffix(".")],
                 Spec = no_ctxt_spec($pred, severity_error,
                     phase_read_files, Pieces),
                 !:Specs = [Spec | !.Specs]

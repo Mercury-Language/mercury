@@ -219,8 +219,8 @@ report_unbound_inst_var_error(ModuleInfo, PredId, ProcId - UnboundInstVars,
             VN = mercury_var_to_string_vs(InstVarSet, print_name_only, V)
         ),
     UnboundInstVarPieces = list.map(InstVarToPiece, UnboundInstVars),
-    UnboundInstVarsPieces = component_list_to_color_pieces(yes(color_subject),
-        "and", [], UnboundInstVarPieces),
+    UnboundInstVarsPieces = piece_list_to_color_pieces(color_subject, "and",
+        [], UnboundInstVarPieces),
     InstVarVars = choose_number(UnboundInstVars,
         "inst variable", "inst variables"),
     IsAreUnbound = choose_number(UnboundInstVars,
@@ -284,8 +284,7 @@ report_unsatisfied_constraints(ModuleInfo, PredId, PredInfo, Constraints,
             "an unsatisified typeclass constraint:",
             "some unsatisified typeclass constraints:")),
             nl_indent_delta(1)] ++
-        component_list_to_color_line_pieces(yes(color_incorrect),
-            [suffix(".")],
+        pieces_list_to_color_line_pieces(color_incorrect, [suffix(".")],
             list.map(constraint_to_error_pieces(TVarSet), Constraints)) ++
         [nl_indent_delta(-1)],
     MainMsg = msg(Context, MainPieces),
@@ -613,8 +612,8 @@ report_unresolved_type_warning(ModuleInfo, PredId, PredInfo, VarsEntries,
     (
         MaybeAllTVars = all_tvars,
         VarPieces = list.map((func(VN - _) = [quote(VN)]), VarTypeStrs),
-        VarTypePieces = component_list_to_color_line_pieces(
-            yes(color_incorrect), [suffix(".")], VarPieces),
+        VarTypePieces = pieces_list_to_color_line_pieces(color_incorrect,
+            [suffix(".")], VarPieces),
         SetPieces = [
             words(choose_number(VarsEntries, "Its type", "Their types")),
             words("will be implicitly set to the builtin type"),
@@ -647,7 +646,7 @@ report_unresolved_type_warning(ModuleInfo, PredId, PredInfo, VarsEntries,
         ),
         VarTypePiecesPairs =
             list.map(var_and_type_to_pieces_pairs(MaxVarNameLen), VarTypeStrs),
-        VarTypePieces = component_list_to_color_split_line_pieces(
+        VarTypePieces = pieces_list_to_split_color_line_pieces(
             yes(color_subject), yes(color_incorrect), [suffix(".")],
             VarTypePiecesPairs),
         TVarToStr =
@@ -658,7 +657,7 @@ report_unresolved_type_warning(ModuleInfo, PredId, PredInfo, VarsEntries,
         set.to_sorted_list(TVarStrs, TVarStrList),
         SetPieces = [words("The unbound type"),
             words(choose_number(TVarStrList, "variable", "variables"))] ++
-            component_list_to_color_pieces(yes(color_incorrect), "and", [],
+            piece_list_to_color_pieces(color_incorrect, "and", [],
                 TVarStrList) ++
             [words("will be implicitly bound to the builtin type"),
             quote("void"), suffix("."), nl],

@@ -384,8 +384,8 @@ check_inst_mode_defn_args(AAn, DefnKind, VarSet, ArgTerms, MaybeBodyTerm,
                     words(choose_number(FreeVars,
                         "a free inst parameter", "free inst parameters")),
                     words("such as")] ++
-                    component_list_to_color_pieces(yes(color_subject),
-                        "and", [], FreeVarPieces) ++
+                    piece_list_to_color_pieces(color_subject, "and", [],
+                        FreeVarPieces) ++
                     color_as_incorrect([words("may not occur")]) ++
                     [words("on the right hand side of"),
                     words(DefnKind), suffix("."), nl],

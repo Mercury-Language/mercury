@@ -40,5 +40,5 @@ string_format_unknown.m:046:   [38;5;87m`io.format'/5.[39;49m
 string_format_unknown.m:046:   The [38;5;87mfirst conversion specifier[39;49m uses the
 string_format_unknown.m:046:   specifier character [38;5;226m`d',[39;49m but the corresponding
 string_format_unknown.m:046:   input is a [38;5;226mfloat.[39;49m
-string_format_unknown.m:046:   The specifiers applicable to floats are [38;5;40m`%e',[39;49m
-string_format_unknown.m:046:   [38;5;40m`%E',[39;49m [38;5;40m`%g'[39;49m and [38;5;40m`%G'.[39;49m
+string_format_unknown.m:046:   The specifiers applicable to floats are [38;5;40m`%f',[39;49m
+string_format_unknown.m:046:   [38;5;40m`%e',[39;49m [38;5;40m`%E',[39;49m [38;5;40m`%g'[39;49m and [38;5;40m`%G'.[39;49m

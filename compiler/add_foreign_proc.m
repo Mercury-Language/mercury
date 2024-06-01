@@ -345,7 +345,7 @@ report_bad_foreign_proc_in_dot_opt_file(RejectCause, Context, !Specs) :-
             BackendForeignLangs = [_, _ | _],
             BackendLangStrs =
                 list.map(foreign_language_string, BackendForeignLangs),
-            BackendLangsStr = list_to_pieces(BackendLangStrs),
+            BackendLangsStr = fixed_list_to_pieces("and", BackendLangStrs),
             MainPieces = FrontPieces ++ [words("which is not one of the"),
                 words("languages supported by the current backend,"),
                 words("which are")] ++ BackendLangsStr ++ [suffix("."), nl]
@@ -485,8 +485,8 @@ clauses_info_do_add_foreign_proc(PredOrFunc, PredModuleName, PredName,
             MultiplyOccurringArgVars = [_, _ | _],
             BadVarPieces = list.map(var_to_quote_piece(PVarSet),
                 MultiplyOccurringArgVars),
-            BadVarsPieces = component_list_to_color_pieces(yes(color_subject),
-                "and", [], BadVarPieces),
+            BadVarsPieces = piece_list_to_color_pieces(color_subject, "and",
+                [], BadVarPieces),
             Pieces2 = [words("variables")] ++ BadVarsPieces ++
                 color_as_incorrect([words("each occur more than once")])
         ),

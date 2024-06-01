@@ -207,7 +207,7 @@ convert_option_table_result_to_globals(ProgressStream, DefaultOptionTable,
                 [OpMode | OtherOpModes]),
             OpModePieces = [words("Error: only one of the following options"),
                 words("may be given:")] ++
-                list_to_quoted_pieces(OpModeStrs) ++ [suffix("."), nl],
+                quote_list_to_pieces("and", OpModeStrs) ++ [suffix("."), nl],
             add_error(phase_options, OpModePieces, !Specs)
         ),
         (
@@ -252,7 +252,7 @@ check_option_values(!OptionTable, Target, WordSize, GC_Method,
         TargetSpec =
             [words("Invalid argument"), quote(TargetStr), words("to the"),
             quote("--target"), words("option; must be")] ++
-            list_to_quoted_pieces_or(["c", "java", "csharp"]) ++
+            quote_list_to_pieces("or", ["c", "java", "csharp"]) ++
             [suffix("."), nl],
         add_error(phase_options, TargetSpec, !Specs)
     ),
@@ -281,7 +281,7 @@ check_option_values(!OptionTable, Target, WordSize, GC_Method,
         GCMethodSpec =
             [words("Invalid argument"), quote(GC_MethodStr),
             words("to the"), quote("--gc"), words("option; must be")] ++
-            list_to_quoted_pieces_or(["none", "conservative", "boehm", "hgc",
+            quote_list_to_pieces("or", ["none", "conservative", "boehm", "hgc",
                 "accurate", "automatic"]) ++ [suffix("."), nl],
         add_error(phase_options, GCMethodSpec, !Specs)
     ),
@@ -324,7 +324,8 @@ check_option_values(!OptionTable, Target, WordSize, GC_Method,
         TermNormSpec =
             [words("Invalid argument"), quote(TermNormStr), words("to the"),
             quote("--termination-norm"), words("option; must be")] ++
-            list_to_quoted_pieces_or(["simple", "total", "num-data-elems"]) ++
+            quote_list_to_pieces("or",
+                ["simple", "total", "num-data-elems"]) ++
             [suffix("."), nl],
         add_error(phase_options, TermNormSpec, !Specs)
     ),
@@ -337,7 +338,8 @@ check_option_values(!OptionTable, Target, WordSize, GC_Method,
         Term2NormSpec =
             [words("Invalid argument"), quote(TermNormStr), words("to the"),
             quote("--termination2-norm"), words("option; must be")] ++
-            list_to_quoted_pieces_or(["simple", "total", "num-data-elems"]) ++
+            quote_list_to_pieces("or",
+                ["simple", "total", "num-data-elems"]) ++
             [suffix("."), nl],
         add_error(phase_options, Term2NormSpec, !Specs)
     ),
@@ -371,7 +373,7 @@ check_option_values(!OptionTable, Target, WordSize, GC_Method,
             BadTraceLevelSpec =
                 [words("Invalid argument"), quote(Trace), words("to the"),
                 quote("--trace"), words("option; must be")] ++
-                list_to_quoted_pieces_or(["minimum", "shallow", "deep",
+                quote_list_to_pieces("or", ["minimum", "shallow", "deep",
                     "decl", "rep", "default"]) ++ [suffix("."), nl],
             add_error(phase_options, BadTraceLevelSpec, !Specs)
         )
@@ -406,7 +408,7 @@ check_option_values(!OptionTable, Target, WordSize, GC_Method,
             SSDBSpec =
                 [words("Invalid argument"), quote(SSTrace), words("to the"),
                 quote("--ssdb-trace"), words("option; must be")] ++
-                list_to_quoted_pieces_or(["default", "none",
+                quote_list_to_pieces("or", ["default", "none",
                     "shallow", "deep"]) ++ [suffix("."), nl],
             add_error(phase_options, SSDBSpec, !Specs)
         )
@@ -427,7 +429,7 @@ check_option_values(!OptionTable, Target, WordSize, GC_Method,
             [words("Invalid argument"), quote(MaybeThreadSafeStr),
             words("to the"), quote("--maybe-thread-safe"), words("option;"),
             words("must be")] ++
-            list_to_quoted_pieces_or(["no", "yes"]) ++ [suffix("."), nl],
+            quote_list_to_pieces("or", ["no", "yes"]) ++ [suffix("."), nl],
         add_error(phase_options, MTSSpec, !Specs)
     ),
 
@@ -524,7 +526,7 @@ check_option_values(!OptionTable, Target, WordSize, GC_Method,
             [words("Invalid argument"), quote(C_CompilerTypeStr),
             words("to the"), quote("--c-compiler-type"), words("option;"),
             words("must be")] ++
-            list_to_quoted_pieces_or(ValidC_CompilerTypes) ++
+            quote_list_to_pieces("or", ValidC_CompilerTypes) ++
             [suffix("."), nl],
         add_error(phase_options, CCTpec, !Specs)
     ),
@@ -542,7 +544,7 @@ check_option_values(!OptionTable, Target, WordSize, GC_Method,
             [words("Invalid argument"), quote(CSharp_CompilerTypeStr),
             words("to the"), quote("--csharp-compiler-type"), words("option;"),
             words("must be")] ++
-            list_to_quoted_pieces_or(["microsoft", "mono", "unknown"]) ++
+            quote_list_to_pieces("or", ["microsoft", "mono", "unknown"]) ++
             [suffix("."), nl],
         add_error(phase_options, CSCSpec, !Specs)
     ),
@@ -562,7 +564,7 @@ check_option_values(!OptionTable, Target, WordSize, GC_Method,
             [words("Invalid argument"), quote(ReuseConstraintStr),
             words("to the"), quote("--structure-reuse-constraint"),
             words("option; must be")] ++
-            list_to_quoted_pieces_or(["same_cons_id",
+            quote_list_to_pieces("or", ["same_cons_id",
                 "within_n_cells_difference"]) ++
             [suffix("."), nl],
         add_error(phase_options, ReuseConstrSpec, !Specs)
@@ -601,7 +603,8 @@ check_option_values(!OptionTable, Target, WordSize, GC_Method,
         HostEnvSpec =
             [words("Invalid argument"), quote(HostEnvTypeStr), words("to the"),
             quote("--host-env-type"), words("option; must be")] ++
-            list_to_quoted_pieces_or(["posix", "cygwin", "msys", "windows"]) ++
+            quote_list_to_pieces("or",
+                ["posix", "cygwin", "msys", "windows"]) ++
             [suffix("."), nl],
         add_error(phase_options, HostEnvSpec, !Specs)
     ),
@@ -620,7 +623,8 @@ check_option_values(!OptionTable, Target, WordSize, GC_Method,
             [words("Invalid argument"), quote(SystemEnvTypeStr),
             words("to the"), quote("--system-env-type"), words("option;"),
             words("must be")] ++
-            list_to_quoted_pieces_or(["posix", "cygwin", "msys", "windows"]) ++
+            quote_list_to_pieces("or",
+                ["posix", "cygwin", "msys", "windows"]) ++
             [suffix("."), nl],
         add_error(phase_options, SystemEnvSpec, !Specs)
     ),
@@ -633,7 +637,8 @@ check_option_values(!OptionTable, Target, WordSize, GC_Method,
             [words("Invalid argument"), quote(TargetEnvTypeStr),
             words("to the"), quote("--target-env-type"), words("option;"),
             words("must be")] ++
-            list_to_quoted_pieces_or(["posix", "cygwin", "msys", "windows"]) ++
+            quote_list_to_pieces("or",
+                ["posix", "cygwin", "msys", "windows"]) ++
             [suffix("."), nl],
         add_error(phase_options, TargetEnvTypeSpec, !Specs)
     ),
@@ -653,7 +658,7 @@ check_option_values(!OptionTable, Target, WordSize, GC_Method,
         add_error(phase_options, LECSpec, !Specs)
     ;
         BadLimitErrorContextsOptions = [_, _ | _],
-        BadPieces = list_to_quoted_pieces(BadLimitErrorContextsOptions),
+        BadPieces = quote_list_to_pieces("or", BadLimitErrorContextsOptions),
         LECSpec =
             [words("Invalid arguments")] ++ BadPieces ++
             [words("to the"), quote("--limit-error-contexts"),

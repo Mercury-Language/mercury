@@ -608,7 +608,7 @@ check_supertype_vars(Params, VarSet, SuperType, Context, !Specs) :-
             color_as_subject([words("free type"),
                 words(choose_number(FreeVars, "parameter", "parameters")),
                 words("such as")] ++
-                component_list_to_color_pieces(yes(color_subject), "and", [],
+                piece_list_to_color_pieces(color_subject, "and", [],
                     FreeVarPieces)) ++
             color_as_incorrect([words("may not appear")]) ++
             [words("in the supertype of a subtype definition."), nl],
@@ -653,7 +653,7 @@ process_du_ctors(Params, VarSet, BodyTerm, [Ctor | Ctors], !Specs) :-
                 words(choose_number(NotExistQOrParamVars,
                     "a free type parameter", "free type parameters")),
                 words("such as")] ++
-                component_list_to_color_pieces(yes(color_subject), "and", [],
+                piece_list_to_color_pieces(color_subject, "and", [],
                     NotExistVarPieces)) ++
             color_as_incorrect([words("may not appear")]) ++
             [words("on the right hand side of a type definition."), nl],
@@ -679,7 +679,7 @@ process_du_ctors(Params, VarSet, BodyTerm, [Ctor | Ctors], !Specs) :-
             color_as_subject(
                 [words(choose_number(ExistQParams,
                     "type variable", "type variables"))] ++
-                component_list_to_color_pieces(yes(color_subject), "and", [],
+                piece_list_to_color_pieces(color_subject, "and", [],
                     ExistQParamPieces)) ++
             color_as_incorrect(
                 [words(choose_number(ExistQParams, "has", "have")),
@@ -719,7 +719,7 @@ process_du_ctors(Params, VarSet, BodyTerm, [Ctor | Ctors], !Specs) :-
                 [words("existentially quantified"),
                 words(choose_number(NotOccursExistQVars,
                     "type variable", "type variables"))] ++
-                component_list_to_color_pieces(yes(color_subject), "and", [],
+                piece_list_to_color_pieces(color_subject, "and", [],
                     NotOccursVarPieces)) ++
             color_as_incorrect(
                 [words(choose_number(NotOccursExistQVars,
@@ -749,7 +749,7 @@ process_du_ctors(Params, VarSet, BodyTerm, [Ctor | Ctors], !Specs) :-
             color_as_subject(
                 [words(choose_number(NotExistQArgTypeVars,
                     "type variable", "type variables"))] ++
-                component_list_to_color_pieces(yes(color_subject), "and", [],
+                piece_list_to_color_pieces(color_subject, "and", [],
                     NotExistQVarPieces)) ++
             [words(choose_number(NotExistQArgTypeVars, "occurs", "occur")),
             words("in a class constraint")] ++
@@ -1819,7 +1819,7 @@ check_no_free_body_vars(TVarSet, ParamTVars, BodyType, BodyContext, Specs) :-
             "occurs", "occur"),
         Pieces = [words("Error: the")] ++
             color_as_subject([words(VarWords)]) ++
-            component_list_to_color_pieces(yes(color_subject), "and", [],
+            piece_list_to_color_pieces(color_subject, "and", [],
                 OnlyBodyTVarPieces) ++
             [words(OccurWord)] ++
             color_as_incorrect([words("only on the right hand side"),

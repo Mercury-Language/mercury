@@ -482,7 +482,7 @@ acc_circular_synth_attr_error(Context, EventName, Scc, !ErrorSpecs) :-
         Attrs = [_, _ | _],
         Pieces =
             [words("Synthesized attributes")] ++
-            list_to_quoted_pieces(set.to_sorted_list(Scc)) ++
+            quote_list_to_pieces("and", set.to_sorted_list(Scc)) ++
             [words("of event"), quote(EventName),
             words("depend on each other."), nl]
     ;

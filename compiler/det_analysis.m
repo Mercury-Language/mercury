@@ -1683,9 +1683,8 @@ det_infer_scope(Reason, Goal0, Goal, GoalInfo, InstMap0, SolnContext,
                     OverlapVarList = [_HeadOverlapVar | TailOverlapVars],
                     OverlapVarPieces = list.map(
                         var_in_table_to_quote_piece(VarTable), OverlapVarList),
-                    OverlapVarDotPieces = component_list_to_color_pieces(
-                        yes(color_subject), "and", [suffix(".")],
-                        OverlapVarPieces),
+                    OverlapVarDotPieces = piece_list_to_color_pieces(
+                        color_subject, "and", [suffix(".")], OverlapVarPieces),
                     (
                         TailOverlapVars = [],
                         OverlapVarStr = "the variable"
@@ -1738,8 +1737,8 @@ det_infer_scope(Reason, Goal0, Goal, GoalInfo, InstMap0, SolnContext,
             MissingVarList = [_HeadMissingVar | TailMissingVars],
             MissingVarPieces = list.map(var_in_table_to_quote_piece(VarTable),
                 MissingVarList),
-            MissingVarDotPieces = component_list_to_color_pieces(
-                yes(color_subject), "and", [suffix(".")], MissingVarPieces),
+            MissingVarDotPieces = piece_list_to_color_pieces(color_subject,
+                "and", [suffix(".")], MissingVarPieces),
             MissingKindStr = promise_solutions_kind_str(Kind),
             (
                 TailMissingVars = [],
@@ -1780,8 +1779,8 @@ det_infer_scope(Reason, Goal0, Goal, GoalInfo, InstMap0, SolnContext,
                 IgnoreExtraVars = pess_extra_vars_ignore
             ;
                 IgnoreExtraVars = pess_extra_vars_report,
-                ExtraVarDotPieces = component_list_to_color_pieces(
-                    yes(color_subject), "and",  [suffix(".")], ExtraVarPieces),
+                ExtraVarDotPieces = piece_list_to_color_pieces(color_subject,
+                    "and",  [suffix(".")], ExtraVarPieces),
                 ExtraKindStr = promise_solutions_kind_str(Kind),
                 (
                     TailExtraVars = [],

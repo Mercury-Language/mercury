@@ -529,7 +529,7 @@ check_determinism_for_eval_method(ProcInfo, !Specs) :-
         solutions.solutions(get_valid_determinisms(TabledMethod), Detisms),
         DetismStrs = list.map(determinism_to_string, Detisms),
         list.sort(DetismStrs, SortedDetismStrs),
-        DetismPieces = list_to_color_pieces(yes(color_correct), "and",
+        DetismPieces = fixed_list_to_color_pieces(color_correct, "and",
             [suffix(".")], SortedDetismStrs),
         VerbosePieces =
             [words("This pragma is valid only for the following"),
@@ -1963,7 +1963,8 @@ reqscope_check_goal_detism(RequiredDetism, Goal, CheckKind, InstMap0,
             MainConsIdStr = cons_id_and_arity_to_string(MainConsId),
             OtherConsIdStrs =
                 list.map(cons_id_and_arity_to_string, OtherConsIds),
-            ConsIdsPieces = list_to_pieces([MainConsIdStr | OtherConsIdStrs]),
+            ConsIdsPieces =
+                fixed_list_to_pieces("and", [MainConsIdStr | OtherConsIdStrs]),
             Pieces = [words("Error: the arms of the")] ++
                 color_as_subject([words("switch on"), quote(SwitchVarName)]) ++
                 [words("are required have a determinism that is"),
@@ -2224,12 +2225,11 @@ find_missing_cons_ids(DetInfo, MaybeLimit, InstMap0, SwitchContexts,
             % information.
             WrapConsIdFunc = ( func(C) = [unqual_cons_id_and_maybe_arity(C)] ),
             PrintedConsIdPieces = list.map(WrapConsIdFunc, PrintedConsIds),
-            MaybeCause = yes(color_incorrect),
             (
                 NonPrintedConsIds = [],
                 MainPieces =
                     [nl_indent_delta(1)] ++
-                    component_list_to_color_line_pieces(MaybeCause,
+                    pieces_list_to_color_line_pieces(color_incorrect,
                         [suffix(".")], PrintedConsIdPieces) ++
                     [nl_indent_delta(-1)],
                 VerbosePieces = []
@@ -2240,7 +2240,7 @@ find_missing_cons_ids(DetInfo, MaybeLimit, InstMap0, SwitchContexts,
                 list.length(NonPrintedConsIds, NumNonPrintedConsIds),
                 MainPieces =
                     [nl_indent_delta(1)] ++
-                    component_list_to_color_line_pieces(MaybeCause,
+                    pieces_list_to_color_line_pieces(color_incorrect,
                         [suffix(","), fixed("...")], PrintedConsIdPieces) ++
                     [nl_indent_delta(-1)] ++
                     color_as_incorrect([words("and"),
@@ -2249,7 +2249,7 @@ find_missing_cons_ids(DetInfo, MaybeLimit, InstMap0, SwitchContexts,
                 ConsIdPieces = PrintedConsIdPieces ++ NonPrintedConsIdPieces,
                 VerbosePieces =
                     [nl_indent_delta(1)] ++
-                    component_list_to_color_line_pieces(MaybeCause,
+                    pieces_list_to_color_line_pieces(color_incorrect,
                         [suffix(".")], ConsIdPieces) ++
                     [nl_indent_delta(-1)]
             ),

@@ -245,7 +245,7 @@ report_undefined_mq_id(Info, ErrorContext, Id, IdType, ThisModuleName,
         OtherIntSymNames = list.map(wrap_module_name, OtherIntMismatches),
         OtherIntPieces =
             [words("(The"), words(OtherIntModuleWord)] ++
-            component_list_to_color_pieces(yes(color_subject), "and", [],
+            piece_list_to_color_pieces(color_subject, "and", [],
                 OtherIntSymNames) ++
             color_as_incorrect([fixed(OtherIntHasWord),
                 words("not been imported in the interface.)")]) ++
@@ -269,8 +269,8 @@ report_undefined_mq_id(Info, ErrorContext, Id, IdType, ThisModuleName,
             color_as_possible_cause([words("fully module qualified names")]) ++
             [words("may refer to the entities defined in"),
             fixed(QualModuleWord)] ++
-            component_list_to_color_pieces(yes(color_subject), "and",
-                [suffix(".")], QualSymNames) ++
+            piece_list_to_color_pieces(color_subject, "and", [suffix(".")],
+                QualSymNames) ++
             [suffix(")"), nl]
     ),
     ( if
@@ -308,7 +308,7 @@ report_undefined_mq_id(Info, ErrorContext, Id, IdType, ThisModuleName,
         KindKinds = choose_number(PossibleArities, IdTypeStr, IdTypesStr),
         ArityArities = choose_number(PossibleArities, "arity", "arities"),
         list.map(string.int_to_string, PossibleArities, PossibleArityStrs),
-        PossibleAritiesDotRpPieces = list_to_color_pieces(yes(color_correct),
+        PossibleAritiesDotRpPieces = fixed_list_to_color_pieces(color_correct,
             "and", [suffix(".)")], PossibleArityStrs),
         OtherArityPieces =
             [words("(There"), words(IsAre),
@@ -381,8 +381,8 @@ report_ambiguous_match(ErrorContext, Id, IdType,
         color_as_subject([wrap_qual_id(Id), suffix(".")]) ++
         [nl,
         words("The possible matches are in modules")] ++
-        component_list_to_color_pieces(yes(color_cause), "and",
-            [suffix(".")], UsableModuleSymNames) ++
+        piece_list_to_color_pieces(color_cause, "and", [suffix(".")],
+            UsableModuleSymNames) ++
         [nl],
     (
         UnusableModuleNames = [],

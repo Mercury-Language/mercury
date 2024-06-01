@@ -92,7 +92,7 @@ type_to_pieces(TVarSet, InstVarSet, VarNamePrint, MaybeAddQuotes,
         ExistQVarStrs = list.map(
             mercury_var_to_string_vs(TVarSet, VarNamePrint),
             ExistQVars),
-        ExistPieces = strict_list_to_pieces(ExistQVarStrs),
+        ExistPieces = fixed_strict_list_to_pieces(ExistQVarStrs),
         ExistListPieces = [prefix("[")] ++ ExistPieces ++ [suffix("]")],
         % We wrap the parentheses around the quantified type
         % in prefix() and suffix() respectively because
@@ -160,8 +160,10 @@ type_pieces(TVarSet, InstVarSet, VarNamePrint, SuffixPieces, Type) = Pieces :-
             ArgTypePiecesList = list.map(
                 type_pieces(TVarSet, InstVarSet, VarNamePrint, []),
                 ArgTypes),
-            Pieces = NonConstL ++
-                component_list_to_line_pieces(ArgTypePiecesList, NonConstR) ++
+            Pieces =
+                NonConstL ++
+                pieces_list_to_line_pieces(ArgTypePiecesList) ++
+                NonConstR ++
                 SuffixPieces
         )
     ;
@@ -269,8 +271,8 @@ higher_order_type_pieces(TVarSet, InstVarSet, VarNamePrint, SuffixPieces,
             ArgPiecesList = [_ | _],
             PorFArgBlockPieces =
                 [fixed("pred"), left_paren_maybe_nl_inc("(", lp_suffix)] ++
-                component_list_to_line_pieces(ArgPiecesList,
-                    [maybe_nl_dec_right_paren(")", rp_plain)])
+                pieces_list_to_line_pieces(ArgPiecesList) ++
+                [maybe_nl_dec_right_paren(")", rp_plain)]
         )
     ;
         PorF = pf_function,
@@ -288,9 +290,9 @@ higher_order_type_pieces(TVarSet, InstVarSet, VarNamePrint, SuffixPieces,
                 FuncArgPiecesList, ReturnValuePieces),
             PorFArgBlockPieces =
                 [fixed("func"), left_paren_maybe_nl_inc("(", lp_suffix)] ++
-                component_list_to_line_pieces(FuncArgPiecesList,
-                    [maybe_nl_dec_right_paren(")", rp_plain)]) ++
-                [fixed("=")] ++ FuncResultPrefixPieces ++
+                pieces_list_to_line_pieces(FuncArgPiecesList) ++
+                [maybe_nl_dec_right_paren(")", rp_plain),
+                fixed("=")] ++ FuncResultPrefixPieces ++
                 ReturnValuePieces ++ FuncResultSuffixPieces
         )
     ),

@@ -12,4 +12,5 @@ mpj_1.m:019:   The partial type assignment was:
 mpj_1.m:019:     HeadVar__2_2: T2
 mpj_1.m:019:     L_3: T2
 mpj_1.m:019:     V_4: string
-mpj_1.m:019:     V_5: string <= mpj_1.coll(string, T2)
+mpj_1.m:019:     V_5: string
+mpj_1.m:019:     <= mpj_1.coll(string, T2)

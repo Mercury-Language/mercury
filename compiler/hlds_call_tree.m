@@ -952,7 +952,7 @@ generate_movability_report(ModuleInfo, CallTreeInfo, WantToMovePredNames,
         UnknownPieces = [words("Error in the arguments"),
             words("of the --show-movability option: the"),
             words(choose_number(UnknownNames, "name", "names"))] ++
-            list_to_pieces(UnknownNames) ++
+            fixed_list_to_pieces("and", UnknownNames) ++
             [words(choose_number(UnknownNames, "does not", "do not")),
             words("name any predicate or function in this module."), nl],
         UnknownSpec = no_ctxt_spec($pred, severity_error, phase_style,
@@ -968,7 +968,7 @@ generate_movability_report(ModuleInfo, CallTreeInfo, WantToMovePredNames,
             words("of the --show-movability option: the"),
             words(choose_number(AmbigNames,
                 "name", "names"))] ++
-            list_to_pieces(AmbigNames) ++
+            fixed_list_to_pieces("and", AmbigNames) ++
             [words(choose_number(AmbigNames,
                 "is ambiguous.", "are ambiguous.")), nl],
         AmbigSpec = no_ctxt_spec($pred, severity_error, phase_style,

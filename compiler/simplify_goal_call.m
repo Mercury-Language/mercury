@@ -533,7 +533,7 @@ maybe_generate_warning_for_call_to_obsolete_predicate(PredId, ProcId,
                 color_as_correct(InFavourOfPieces) ++ [nl]
         ;
             InFavourOf = [_, _ | _],
-            InFavourOfPieces = component_list_to_pieces("and",
+            InFavourOfPieces = piece_list_to_pieces("and",
                 list.map(wrap_sym_name_arity, InFavourOf)) ++ [suffix(".")],
             Pieces = MainPieces ++
                 [words("The possible suggested replacements are")] ++
@@ -675,7 +675,7 @@ maybe_generate_warning_for_infinite_loop_call(PredId, ProcId, ArgVars,
                 Pieces = [words("Warning: recursive call to") | NamePieces] ++
                     color_as_incorrect([words("is suspicious,")]) ++
                     [words("because variables whose names start with")] ++
-                    list_to_pieces(SuspiciousArgNames) ++
+                    fixed_list_to_pieces("and", SuspiciousArgNames) ++
                     [words("occupy different argument positions"),
                     words("in the call than in the clause head."), nl],
                 Msg = simple_msg(goal_info_get_context(GoalInfo),

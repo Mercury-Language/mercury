@@ -1698,7 +1698,7 @@ parse_foreign_language(ContextPieces, VarSet, LangTerm, MaybeForeignLang) :-
             color_as_incorrect([quote(LangTermStr), suffix(".")]) ++
             [nl,
             words("The valid languages are")] ++
-            list_to_color_pieces(yes(color_correct), "and", [suffix(".")],
+            fixed_list_to_color_pieces(color_correct, "and", [suffix(".")],
                 all_foreign_language_strings) ++
             [nl],
         ( if term_to_foreign_language_erlang(LangTerm) then

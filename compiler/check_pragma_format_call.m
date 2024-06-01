@@ -335,8 +335,7 @@ format_call_error_wrong_mode(PredInfo, Context, NumFormatArgs, FormatArgNum,
         list.sort(BadModeNums, SortedBadModeNums),
         BadModeNumPieceLists =
             list.map((func(N) = [nth_fixed(N)]), SortedBadModeNums),
-        BadModeNumPieces =
-            component_lists_to_pieces("and", BadModeNumPieceLists),
+        BadModeNumPieces = pieces_list_to_pieces("and", BadModeNumPieceLists),
         Pieces = Pieces0 ++
             color_as_incorrect([words("but that argument is not input")]) ++
             [words("in the")] ++ BadModeNumPieces ++

@@ -862,8 +862,8 @@ maybe_issue_type_match_error(WarnInstsWithoutMatchingType, InstCtor, InstDefn,
             "function symbol", "function symbols"),
         IsAreNotPhrase = choose_number(Mismatches,
             "is not a function symbol", "are not function symbols"),
-        MismatchConsIdPieces = component_list_to_color_pieces(
-            yes(color_subject), "and", [], MismatchConsIdComponents),
+        MismatchConsIdPieces = piece_list_to_color_pieces(color_subject,
+            "and", [], MismatchConsIdComponents),
         MismatchPieces = [words("Error: inst")] ++
             color_as_subject([unqual_inst_ctor(InstCtor)]) ++
             [words("is declared to be for type")] ++
@@ -942,7 +942,7 @@ cons_id_strs_and_near_misses(Color, [Mismatch | Mismatches],
     ;
         MaybeNearMisses = [_FirstNearMiss | _LaterNearMisses],
         IfAlone = [words("Maybe you meant")] ++
-            component_list_to_color_pieces(yes(Color), "or", [suffix(".")],
+            piece_list_to_color_pieces(Color, "or", [suffix(".")],
                 MaybeNearMisses) ++
             [nl],
         IfSeveral = [words("For"), ConsIdComponent, suffix(","),
@@ -1259,8 +1259,8 @@ record_arity_mismatch(CurNum, FunctorName, ActualArity, ExpectedAritiesSet,
     !:NumMismatches = !.NumMismatches + 1,
     string.format("In bound functor #%d:", [i(CurNum)], InFunctorStr),
     ExpectedArityPieces = list.map((func(N) = int_fixed(N)), ExpectedArities),
-    ExpectedAritiesPieces = component_list_to_color_pieces(yes(color_correct),
-        "or", [suffix(".")], ExpectedArityPieces),
+    ExpectedAritiesPieces = piece_list_to_color_pieces(color_correct, "or",
+        [suffix(".")], ExpectedArityPieces),
     set.to_sorted_list(ExpectedAritiesSet, ExpectedArities),
     Pieces = [words(InFunctorStr), nl,
         words("function symbol")] ++

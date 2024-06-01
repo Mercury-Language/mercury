@@ -2148,7 +2148,7 @@ error_from_one_min_set(ConstraintMap, MinUnsatSet, Components) :-
     list.filter_map(get_first_disjunct, Constraints, ConjConstraints),
     list.map(conj_constraint_get_context, ConjConstraints, Contexts),
     list.map(bracket_context_to_string, Contexts, ContextStrings),
-    Components = list_to_pieces(ContextStrings).
+    Components = fixed_list_to_pieces("and", ContextStrings).
 
     % Uses the min_unsat1 algorithm
     % (www.cs.mu.oz.au/~pjs/papers/ppdp2003b.ps.gz)

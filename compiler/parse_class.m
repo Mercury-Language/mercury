@@ -237,11 +237,11 @@ parse_constrained_class(ModuleName, VarSet, NameTerm, ConstraintsTerm,
                     list.map(var_to_quote_piece(ClassTVarSet),
                         FunDepNotInParams),
                 ConstraintPieces =
-                    component_list_to_color_pieces(yes(color_subject), "and",
-                        [], ConstraintNotInParamsPieces),
+                    piece_list_to_color_pieces(color_subject, "and", [],
+                        ConstraintNotInParamsPieces),
                 FunDepPieces =
-                    component_list_to_color_pieces(yes(color_subject), "and",
-                        [], FunDepNotInParamsPieces),
+                    piece_list_to_color_pieces(color_subject, "and", [],
+                        FunDepNotInParamsPieces),
                 ( if list.length(NotInParams) = 1 then
                     Prefix = [words("Error: type variable")],
                     Suffix = [words("is")] ++
@@ -337,9 +337,8 @@ collect_superclass_constraints(VarSet, [Constraint | Constraints],
             BadTypeStrs = list.map(
                 mercury_type_to_string(TVarSet, print_name_only),
                 NonVarNonGroundTypes),
-            BadTypePieces = list.map((func(S) = quote(S)), BadTypeStrs),
-            BadTypesPieces = component_list_to_color_pieces(yes(color_subject),
-                "and", [], BadTypePieces),
+            BadTypesPieces = quote_list_to_color_pieces(color_subject, "and",
+                [], BadTypeStrs),
             (
                 NonVarNonGroundTypes = [_],
                 BadTypeMsgPieces = [words("The type")] ++ BadTypesPieces ++
@@ -647,8 +646,8 @@ check_tvars_in_instance_constraint(ItemInstanceInfo, NameTerm, MaybeSpec) :-
     then
         UnboundTVarPieces =
             list.map(var_to_quote_piece(TVarSet), UnboundTVars),
-        UnboundTVarsPieces = component_list_to_color_pieces(yes(color_subject),
-            "and", [], UnboundTVarPieces),
+        UnboundTVarsPieces = piece_list_to_color_pieces(color_subject, "and",
+            [], UnboundTVarPieces),
         ( if list.length(UnboundTVars) = 1 then
             UnboundPieces = [words("unbound type variable")]
         else

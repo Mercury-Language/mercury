@@ -57,7 +57,6 @@
 :- import_module assoc_list.
 :- import_module bool.
 :- import_module map.
-:- import_module maybe.
 :- import_module pair.
 :- import_module require.
 :- import_module set.
@@ -169,8 +168,8 @@ describe_overloaded_symbol(ModuleInfo, Symbol - SortedContexts) = Msgs :-
                 list.map(describe_qual_pred_name(ModuleInfo), PredIds),
             list.sort(PredIdPiecesList, SortedPredIdPiecesList),
             PredIdPieces =
-                component_list_to_line_pieces(SortedPredIdPiecesList,
-                    [suffix("."), nl]),
+                pieces_list_to_line_pieces(SortedPredIdPiecesList) ++
+                [suffix("."), nl],
             FirstPieces = StartPieces ++ PredIdPieces,
             LaterPieces = [words("The predicate symbol"),
                 qual_sym_name_arity(SNA), words("is also overloaded here."),
@@ -185,8 +184,8 @@ describe_overloaded_symbol(ModuleInfo, Symbol - SortedContexts) = Msgs :-
                 describe_cons_type_info_source(ModuleInfo), Sources),
             list.sort(SourcePiecesList, SortedSourcePiecesList),
             SourcePieces =
-                component_list_to_line_pieces(SortedSourcePiecesList,
-                    [suffix("."), nl]),
+                pieces_list_to_line_pieces(SortedSourcePiecesList) ++
+                [suffix("."), nl],
             FirstPieces = StartPieces ++ SourcePieces,
             LaterPieces = [words("The function symbol"),
                 qual_cons_id_and_maybe_arity(ConsId),
@@ -299,8 +298,8 @@ var_ambiguity_to_pieces(VarSet, InstVarSet, TypeAssigns, Var) = Pieces :-
             [words("can have"), words(EitherAny),
             words("of the following types:"),
             nl_indent_delta(1)] ++
-            component_list_to_color_line_pieces(yes(color_cause),
-                [suffix(".")], PossibleTypePiecesList) ++
+            pieces_list_to_color_line_pieces(color_cause, [suffix(".")],
+                PossibleTypePiecesList) ++
             [nl_indent_delta(-1)]
     ).
 

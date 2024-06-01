@@ -2377,7 +2377,7 @@ parse_trace_compiletime(VarSet, Term, MaybeCompiletime) :-
                         color_as_incorrect(
                             [words("is not a valid grade test.")]) ++
                         [words("The valid grade tests are")] ++
-                        list_to_color_pieces(yes(color_correct), "and",
+                        fixed_list_to_color_pieces(color_correct, "and",
                             [suffix(".")], ValidGradeNames) ++
                         [nl],
                     Spec = spec($pred, severity_error, phase_t2pt,

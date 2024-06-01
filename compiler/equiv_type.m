@@ -1857,8 +1857,8 @@ report_contains_circular_eqv_type(TVarSet, Type, Context,
             [HeadTypeCtor | TailTypeCtors]),
         CircSpecs =
             color_as_incorrect([words("circular equivalence types")]) ++
-            component_list_to_color_pieces(yes(color_subject), "and",
-                [suffix(".")],  TypeCtorPieces) ++
+            piece_list_to_color_pieces(color_subject, "and", [suffix(".")],
+                TypeCtorPieces) ++
             [nl]
     ),
     Pieces = MainPieces ++ CircSpecs,

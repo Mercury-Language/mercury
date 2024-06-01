@@ -80,7 +80,6 @@
 :- import_module parse_tree.parse_util.
 
 :- import_module bool.
-:- import_module maybe.
 :- import_module set.
 :- import_module string.
 :- import_module term_context.
@@ -308,8 +307,8 @@ parse_inst_atom_functor(AllowConstrainedInstVar, VarSet, ContextPieces,
                 color_as_subject([words("the builtin inst"), quote(Name)]) ++
                 color_as_incorrect([words("should only be used")]) ++
                 [words("with arity")] ++
-                list_to_color_pieces(yes(color_correct), "or",
-                    [suffix(".")], ExpectedArities) ++
+                fixed_list_to_color_pieces(color_correct, "or", [suffix(".")],
+                    ExpectedArities) ++
                 [nl],
             Spec = spec($pred, severity_error, phase_t2pt, Context, Pieces),
             MaybeInst = error1([Spec])
@@ -764,7 +763,7 @@ parse_bound_inst_list(AllowConstrainedInstVar, VarSet, ContextPieces,
         then
             Pieces = cord.list(ContextPieces) ++ [lower_case_next_if_not_first,
                 words("Error: this bound inst lists")] ++
-                component_list_to_color_pieces(yes(color_subject), "and", [],
+                piece_list_to_color_pieces(color_subject, "and", [],
                     Duplicates) ++
                 color_as_incorrect([words("more than once.")]) ++
                 [nl],

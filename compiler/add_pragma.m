@@ -525,7 +525,7 @@ find_unique_pred_for_oisu(ModuleInfo, Context, TypeCtor, Kind,
             ;
                 SortedArityPieces = [_, _ | _],
                 ExpArities = [words("one of") |
-                    component_list_to_pieces("and", SortedArityPieces)]
+                    piece_list_to_pieces("and", SortedArityPieces)]
             ),
             Pieces = [words("In the"), nth_fixed(!.SeqNum),
                 fixed(Kind), words("predicate specification"),
@@ -1775,7 +1775,8 @@ pragma_conflict_error(PredSpec, Context, PragmaName, ConflictMarkers,
         color_as_subject([pragma_decl(PragmaName),
             words("declaration")]) ++
         color_as_incorrect([words("conflicts")]) ++
-        [words("with previous")] ++ list_to_pieces(ConflictNames) ++
+        [words("with previous")] ++
+        fixed_list_to_pieces("and", ConflictNames) ++
         [words(choose_number(ConflictNames, "pragma for", "pragmas for"))] ++
         color_as_subject(PorFPieces ++
             [unqual_sym_name_arity(SNA), suffix(".")]) ++
@@ -2014,8 +2015,8 @@ look_up_pragma_pf_sym_arity(ModuleInfo, IsFullyQualified, FailHandling,
             SNA = sym_name_arity(SymName, UserArityInt),
             PredIdPiecesList =
                 list.map(describe_qual_pred_name(ModuleInfo), PredIds),
-            PredIdPieces = component_list_to_color_line_pieces(
-                yes(color_cause), [suffix(".")], PredIdPiecesList),
+            PredIdPieces = pieces_list_to_color_line_pieces(color_cause,
+                [suffix(".")], PredIdPiecesList),
             MainPieces = [words("Error:")] ++
                 color_as_incorrect([words("ambiguous"), p_or_f(PredOrFunc),
                     words("name")]) ++

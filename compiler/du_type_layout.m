@@ -652,7 +652,7 @@ check_and_record_non_sub_du_enum(TypeCtor, Context, Ctors, EnumRepn,
         Pieces = [words("Error: the type representation item for"),
             qual_type_ctor(TypeCtor), words("is incorrect: it says that"),
             words("the type is an enum, with function symbols named")] ++
-            list_to_pieces(RepnCtorNames) ++ [suffix("."), nl],
+            fixed_list_to_pieces("and", RepnCtorNames) ++ [suffix("."), nl],
         Spec = spec($pred, severity_error, phase_type_repn,
             Context, Pieces),
         MaybeDuRepn = have_errors([Spec])
@@ -897,7 +897,7 @@ check_and_record_non_sub_du_more_functors(RepnTarget, TypeCtor, Context,
             qual_type_ctor(TypeCtor), words("is incorrect: it says that"),
             words("the type is a non-enum du type,"),
             words("with function symbols named")] ++
-            list_to_pieces(RepnCtorNames) ++ [suffix("."), nl],
+            fixed_list_to_pieces("and", RepnCtorNames) ++ [suffix("."), nl],
         Spec = spec($pred, severity_error, phase_type_repn,
             Context, Pieces),
         MaybeDuRepn = have_errors([Spec])

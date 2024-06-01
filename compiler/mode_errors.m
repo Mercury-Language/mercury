@@ -707,7 +707,7 @@ mode_error_unify_var_multimode_pf_to_spec(ModeInfo, X, PredMultiModeError)
         MultiModeError = some_ho_args_non_ground(NonGroundArgVars),
         VarOrVars = choose_number(NonGroundArgVars, "variable", "variables"),
         NonGroundArgVarPieces = named_and_unnamed_vars_to_pieces(VarTable,
-            yes(color_subject), NonGroundArgVars),
+            color_subject, NonGroundArgVars),
         DetailPieces = [words("The higher order argument"),
             words(VarOrVars)] ++ NonGroundArgVarPieces ++
             color_as_correct([words("should be ground,")]) ++
@@ -733,13 +733,12 @@ mode_error_unify_var_multimode_pf_to_spec(ModeInfo, X, PredMultiModeError)
             ModeNumberPieces =
                 list.map(ProcIdToPiece, [ProcA, ProcB | ProcCs]),
             EndPieces = [suffix(","), words("specifically the")] ++
-                component_list_to_pieces("and", ModeNumberPieces) ++
-                [suffix(".")]
+                piece_list_to_pieces("and", ModeNumberPieces) ++ [suffix(".")]
         ),
         ModeOrModes = choose_number(ArgVars, "mode", "modes"),
         VarOrVars = choose_number(ArgVars, "variable", "variables"),
         ArgVarPieces = named_and_unnamed_vars_to_pieces(VarTable,
-            yes(color_subject), ArgVars),
+            color_subject, ArgVars),
         DetailPieces = [words("The"), words(ModeOrModes),
             words("of the argument"), words(VarOrVars)] ++ ArgVarPieces ++
             color_as_incorrect(MatchPieces) ++ [words("of the called"),
@@ -749,10 +748,10 @@ mode_error_unify_var_multimode_pf_to_spec(ModeInfo, X, PredMultiModeError)
     Spec = spec($pred, severity_error, phase_mode_check(report_in_any_mode),
         Context, Preamble ++ StartPieces ++ DetailPieces).
 
-:- func named_and_unnamed_vars_to_pieces(var_table, maybe(color_name),
+:- func named_and_unnamed_vars_to_pieces(var_table, color_name,
     list(prog_var)) = list(format_piece).
 
-named_and_unnamed_vars_to_pieces(VarTable, MaybeColor, Vars) = Pieces :-
+named_and_unnamed_vars_to_pieces(VarTable, Color, Vars) = Pieces :-
     list.filter_map(
         ( pred(V::in, N::out) is semidet :-
             lookup_var_entry(VarTable, V, E),
@@ -765,7 +764,7 @@ named_and_unnamed_vars_to_pieces(VarTable, MaybeColor, Vars) = Pieces :-
     ;
         NamedVarNames = [_ | _],
         NamedVarNamePieces = list.map((func(N) = quote(N)), NamedVarNames),
-        NamedVarPieces = component_list_to_color_pieces(MaybeColor, "and", [],
+        NamedVarPieces = piece_list_to_color_pieces(Color, "and", [],
             NamedVarNamePieces),
         (
             UnnamedVars = [],
@@ -1143,8 +1142,8 @@ arg_inst_mismatch_pieces(ModeInfo, ArgPieces, PredOrFunc, InstMap, Vars)
             ;
                 TailVars = [_ | _],
                 Pieces = ArgPieces ++ [suffix("s")] ++
-                    component_list_to_color_pieces(yes(color_subject),
-                        "and", [], [HeadVarPiece | TailVarPieces]) ++
+                    piece_list_to_color_pieces(color_subject, "and", [],
+                        [HeadVarPiece | TailVarPieces]) ++
                     [words("have the following insts:"), nl_indent_delta(1)] ++
                     inst_list_to_sep_lines(ModeInfo, Insts)
                 % inst_list_to_sep_lines does nl_indent_delta(-1).
@@ -1166,8 +1165,8 @@ arg_inst_mismatch_pieces(ModeInfo, ArgPieces, PredOrFunc, InstMap, Vars)
                 ArgVarPieces = list.map(var_in_table_to_quote_piece(VarTable),
                     ArgVars),
                 Pieces = ArgPieces ++
-                    strict_component_list_to_color_pieces(yes(color_subject),
-                        [], ArgVarPieces) ++
+                    piece_strict_list_to_color_pieces(color_subject, [],
+                        ArgVarPieces) ++
                     [words("and the")] ++ color_as_subject(ReturnVarPieces) ++
                     [words("have the following insts:"), nl_indent_delta(1)] ++
                     inst_list_to_sep_lines(ModeInfo, Insts)
@@ -1684,7 +1683,7 @@ mode_error_coerce_error_to_spec(ModeInfo, Errors) = Spec :-
                     "symbols in the input term's instantiatedness are"))] ++
                 color_as_incorrect([words("not part of the result type:")]) ++
                 [nl_indent_delta(1)] ++
-                component_list_to_color_line_pieces(yes(color_incorrect),
+                pieces_list_to_color_line_pieces(color_incorrect,
                     [suffix(".")], ResultBadConsIdPieces) ++
                 [nl_indent_delta(-1)],
             BadAritySuffix = ";"
@@ -1704,7 +1703,7 @@ mode_error_coerce_error_to_spec(ModeInfo, Errors) = Spec :-
                     "symbols are used with incorrect arities")),
                 words("in the input term's instantiatedness:"),
                 nl_indent_delta(1)] ++
-                component_list_to_color_line_pieces(yes(color_incorrect),
+                pieces_list_to_color_line_pieces(color_incorrect,
                     [suffix(BadAritySuffix)], InputBadInstArityConsIdPieces) ++
                 [nl_indent_delta(-1)],
             BadInputSuffix = ";"
@@ -1723,7 +1722,7 @@ mode_error_coerce_error_to_spec(ModeInfo, Errors) = Spec :-
                     "symbols in the input term's instantiatedness are"))] ++
                 color_as_incorrect([words("not part of the input type:")]) ++
                 [nl_indent_delta(1)] ++
-                component_list_to_color_line_pieces(yes(color_incorrect),
+                pieces_list_to_color_line_pieces(color_incorrect,
                     [suffix(BadInputSuffix)], InputBadConsIdPieces) ++
                 [nl_indent_delta(-1)]
         ),
@@ -1998,8 +1997,7 @@ mode_error_in_callee_to_spec(!.ModeInfo, Vars, Insts,
         Vars = [_, _ | _],
         VarPieces = list.map(var_in_table_to_quote_piece(VarTable), Vars),
         MainPieces = [words("mode error: arguments")] ++
-            component_list_to_color_pieces(yes(color_subject), "and", [],
-                VarPieces) ++
+            piece_list_to_color_pieces(color_subject, "and", [], VarPieces) ++
             [words("have the following insts:"), nl_indent_delta(1)]
     ),
     NoMatchPieces = inst_list_to_sep_lines(!.ModeInfo, Insts) ++
@@ -2156,8 +2154,8 @@ purity_error_lambda_should_be_any_to_spec(ModeInfo, OoMVars) = Spec :-
             words("whose insts contain")],
         Vars = [HeadVar | TailVars],
         VarPieces = list.map(var_in_table_to_quote_piece(VarTable), Vars),
-        VarsDotPieces = component_list_to_color_pieces(yes(color_incorrect),
-            "and", [suffix(".")], VarPieces)
+        VarsDotPieces = piece_list_to_color_pieces(color_incorrect, "and",
+            [suffix(".")], VarPieces)
     ),
     Pieces = [words("purity error: lambda is"), quote("ground"),
         words("but contains the following non-local")] ++

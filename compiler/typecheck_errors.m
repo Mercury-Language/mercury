@@ -176,7 +176,7 @@ report_unsatisfiable_constraints(ClauseContext, Context, TypeAssignSet)
         ErrorPieces =
             [words("error: the typeclass"), words(ACS),
             nl_indent_delta(1)] ++
-            component_list_to_color_line_pieces(yes(color_subject), [],
+            pieces_list_to_color_line_pieces(color_subject, [],
                 AlwaysUnprovenPieceLists) ++
             [nl_indent_delta(-1),
             words(AIsAre)] ++
@@ -186,7 +186,7 @@ report_unsatisfiable_constraints(ClauseContext, Context, TypeAssignSet)
             choose_number(SometimesUnprovenStrs,
                 words("the constraint"), words("some of the constraints")),
             nl_indent_delta(1)] ++
-            component_list_to_color_line_pieces(yes(color_subject), [],
+            pieces_list_to_color_line_pieces(color_subject, [],
                 SometimesUnprovenPieceLists) ++
             [nl_indent_delta(-1),
             words("may be")] ++
@@ -198,7 +198,7 @@ report_unsatisfiable_constraints(ClauseContext, Context, TypeAssignSet)
         ErrorPieces =
             [words("error: the typeclass"), words(ACS),
             nl_indent_delta(1)] ++
-            component_list_to_color_line_pieces(yes(color_subject), [],
+            pieces_list_to_color_line_pieces(color_subject, [],
                 AlwaysUnprovenPieceLists) ++
             [nl_indent_delta(-1),
             words(AIsAre)] ++
@@ -210,7 +210,7 @@ report_unsatisfiable_constraints(ClauseContext, Context, TypeAssignSet)
         ErrorPieces =
             [words("error: at least one the typeclass"), words(SCS),
             nl_indent_delta(1)] ++
-            component_list_to_color_line_pieces(yes(color_subject), [],
+            pieces_list_to_color_line_pieces(color_subject, [],
                 SometimesUnprovenPieceLists) ++
             [nl_indent_delta(-1),
             words("is")] ++
@@ -1540,7 +1540,7 @@ report_any_invisible_int_types(ClauseContext, BuiltinTypes) = Pieces :-
             InvisIntTypePieces =
                 [HeadInvisIntTypePiece | TailInvisIntTypePieces],
             InvisIntTypeListPieces =
-                component_list_to_color_pieces(yes(color_cause), "and", [],
+                piece_list_to_color_pieces(color_cause, "and", [],
                     InvisIntTypePieces),
             Pieces = [words("Note that operations on values of types") |
                 InvisIntTypePieces] ++ [words("are available"),
@@ -1657,16 +1657,17 @@ type_of_var_to_pieces(InstVarSet, MaybeColor, TypeAssignSet, SuffixPieces, Var)
         typestuff_to_pieces(do_not_add_quotes, InstVarSet),
         TypeAssignSet, Var, TypePiecesLists0),
     list.sort_and_remove_dups(TypePiecesLists0, TypePiecesLists),
-    ( if TypePiecesLists = [TypePieces] then
+    ( if TypePiecesLists = [_TypePieces] then
         Pieces = [words("has type"), nl_indent_delta(1)] ++
             maybe_color_pieces(MaybeColor,
-                component_list_to_line_pieces([TypePieces],
-                    SuffixPieces ++ [nl_indent_delta(-1)]))
+                pieces_list_to_line_pieces(TypePiecesLists) ++
+                SuffixPieces) ++
+            [nl_indent_delta(-1)]
     else
         Pieces = [words("has overloaded type {"), nl_indent_delta(1)] ++
             maybe_color_pieces(MaybeColor,
-                component_list_to_line_pieces(TypePiecesLists,
-                    [nl_indent_delta(-1)])) ++
+                pieces_list_to_line_pieces(TypePiecesLists)) ++
+                [nl_indent_delta(-1)] ++
             [words("}")] ++ SuffixPieces
     ).
 
@@ -1784,8 +1785,8 @@ report_actual_expected_types(ClauseContext, Var, ActualExpectedList,
         MaybeSingleActual = no,
         ActualPieceLists = list.map((func(AE) = AE ^ actual_type_pieces),
             ActualExpectedList),
-        ActualColonPieces0 = component_list_to_line_pieces(ActualPieceLists,
-            [suffix(";")]),
+        ActualColonPieces0 = pieces_list_to_line_pieces(ActualPieceLists) ++
+            [suffix(";")],
         ActualColonPieces = color_as_incorrect(ActualColonPieces0),
         ActualPartPieces =
             [words("has one of the following inferred types:"),
@@ -1810,8 +1811,8 @@ report_actual_expected_types(ClauseContext, Var, ActualExpectedList,
                 (func(AE) = AE ^ expected_type_pieces),
                 ActualExpectedList),
             ExpectedDotPieces0 =
-                component_list_to_line_pieces(ExpectedPieceLists,
-                    [suffix(".")]),
+                pieces_list_to_line_pieces(ExpectedPieceLists) ++
+                [suffix(".")],
             ExpectedDotPieces = color_as_correct(ExpectedDotPieces0),
             ExpectedPartPieces =
                 [words("expected type was one of"), nl_indent_delta(1)] ++

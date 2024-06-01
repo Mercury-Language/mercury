@@ -875,8 +875,7 @@ pred_inst_info_to_pieces(Info, MaybeInline, AnyPrefix, Uniq, PredInstInfo,
                 fixed(IsDetStr), suffix(")")]
         ;
             ArgModes = [_ | _],
-            JoinedArgModePieces =
-                strict_component_lists_to_pieces(ArgModesPieces),
+            JoinedArgModePieces = pieces_strict_list_to_pieces(ArgModesPieces),
             ModesDetPieces = [prefix("(" ++ AnyPrefix ++ "pred(") |
                 JoinedArgModePieces] ++
                 [suffix(")"), fixed(IsDetStr), suffix(")")]
@@ -897,7 +896,7 @@ pred_inst_info_to_pieces(Info, MaybeInline, AnyPrefix, Uniq, PredInstInfo,
         ;
             RealArgModePieces = [_ | _],
             JoinedRealArgModePieces =
-                strict_component_lists_to_pieces(RealArgModePieces),
+                pieces_strict_list_to_pieces(RealArgModePieces),
             (
                 MaybeInline = multi_line_pieces,
                 ModesDetPieces =
@@ -985,7 +984,7 @@ user_defined_mode_to_pieces(Info, MaybeInline, ModeName, ArgInsts, Pieces,
             !Expansions),
         Pieces =
             [prefix(BaseModeName ++ "(") |
-                strict_component_lists_to_pieces(ArgInstPieces)] ++
+                pieces_strict_list_to_pieces(ArgInstPieces)] ++
                 [suffix(")")]
     ).
 

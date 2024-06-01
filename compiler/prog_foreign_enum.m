@@ -60,7 +60,6 @@
 
 :- import_module bool.
 :- import_module cord.
-:- import_module maybe.
 :- import_module pair.
 :- import_module string.
 
@@ -152,8 +151,8 @@ build_ctor_name_to_foreign_name_map(ForWhat, Context, ContextPieces,
                     "name is", "names are"))] ++
                 color_as_incorrect([words("repeated:")]) ++
                 [nl_indent_delta(1)] ++
-                component_list_to_color_pieces(yes(color_incorrect),
-                    "and", [suffix(".")], RepeatedCtorPieces) ++
+                piece_list_to_color_pieces(color_incorrect, "and",
+                    [suffix(".")], RepeatedCtorPieces) ++
                 [nl_indent_delta(-1)]
         ),
         (
@@ -169,8 +168,8 @@ build_ctor_name_to_foreign_name_map(ForWhat, Context, ContextPieces,
                     NameOrValue ++ " is", NamesOrValues ++ " are"))] ++
                 color_as_incorrect([words("repeated:")]) ++
                 [nl_indent_delta(1)] ++
-                component_list_to_color_pieces(yes(color_incorrect),
-                    "and", [suffix(".")], RepeatedForeignPieces) ++
+                piece_list_to_color_pieces(color_incorrect, "and",
+                    [suffix(".")], RepeatedForeignPieces) ++
                 [nl_indent_delta(-1)]
         ),
         Pieces = MainPieces ++ CtorNamePieces ++ ForeignNamePieces,
@@ -266,8 +265,8 @@ add_bad_qual_ctors_error(Context, ContextPieces, Ctors, !Specs) :-
         color_as_incorrect(
             [words("not compatible with the type definition:")]) ++
         [nl_indent_delta(1)] ++
-        component_list_to_color_line_pieces(yes(color_incorrect),
-            [suffix(".")], QualCtors) ++
+        pieces_list_to_color_line_pieces(color_incorrect, [suffix(".")],
+            QualCtors) ++
         [nl_indent_delta(-1)],
     Spec = spec($pred, severity_error, phase_pt2h, Context,
         ContextPieces ++ ErrorPieces),
@@ -299,8 +298,8 @@ add_unknown_ctors_error(Context, ContextPieces, Ctors, !Specs) :-
         words("error: the following"), words(IsOrAre)] ++
         color_as_incorrect([words(NotConstructors)]) ++
         [words("of the type:"), nl_indent_delta(1)] ++
-        component_list_to_color_line_pieces(yes(color_incorrect),
-            [suffix(".")], UnqualCtors) ++
+        pieces_list_to_color_line_pieces(color_incorrect, [suffix(".")],
+            UnqualCtors) ++
         [nl_indent_delta(-1)],
     Spec = spec($pred, severity_error, phase_pt2h, Context,
         ContextPieces ++ ErrorPieces),
@@ -340,7 +339,8 @@ add_foreign_enum_unmapped_ctors_error(Context, ContextPieces, CtorNames0,
         CtorsEnd = [],
         CtorsPieces =
             [nl_indent_delta(1)] ++
-            ctor_names_to_line_pieces(CtorNames, [suffix(".")]) ++
+            quote_list_to_color_line_pieces(color_incorrect, [suffix(".")],
+                CtorNames) ++
             [nl_indent_delta(-1)],
         CtorsComponent = always(CtorsPieces)
     ;
@@ -348,13 +348,14 @@ add_foreign_enum_unmapped_ctors_error(Context, ContextPieces, CtorNames0,
         list.length(CtorsEnd, NumEndCtors),
         NonVerboseCtorsPieces =
             [nl_indent_delta(1)] ++
-            ctor_names_to_line_pieces(CtorsStart,
-                [suffix(","), fixed("...")]) ++
+            quote_list_to_color_line_pieces(color_incorrect,
+                [suffix(","), fixed("...")], CtorsStart) ++
             [nl_indent_delta(-1), words("and"),
             int_fixed(NumEndCtors), words("more."), nl],
         VerboseCtorsPieces =
             [nl_indent_delta(1)] ++
-            ctor_names_to_line_pieces(CtorNames, [suffix(".")]) ++
+            quote_list_to_color_line_pieces(color_incorrect, [suffix(".")],
+                CtorNames) ++
             [nl_indent_delta(-1)],
         CtorsComponent =
             verbose_and_nonverbose(VerboseCtorsPieces, NonVerboseCtorsPieces)
@@ -362,20 +363,6 @@ add_foreign_enum_unmapped_ctors_error(Context, ContextPieces, CtorNames0,
     Msg = simple_msg(Context, [always(PrefixPieces), CtorsComponent]),
     Spec = error_spec($pred, severity_error, phase_pt2h, [Msg]),
     !:Specs = [Spec | !.Specs].
-
-%---------------------%
-
-:- func ctor_names_to_line_pieces(list(string), list(format_piece))
-    = list(format_piece).
-
-ctor_names_to_line_pieces(CtorNames, Final) = Pieces :-
-    Components = list.map(ctor_name_to_format_piece, CtorNames),
-    Pieces = component_list_to_color_line_pieces(yes(color_incorrect),
-        Final, Components).
-
-:- func ctor_name_to_format_piece(string) = list(format_piece).
-
-ctor_name_to_format_piece(CtorName) = [quote(CtorName)].
 
 %---------------------------------------------------------------------------%
 :- end_module parse_tree.prog_foreign_enum.

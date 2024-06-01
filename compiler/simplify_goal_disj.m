@@ -185,7 +185,8 @@ warn_about_any_problem_partial_vars(Innermost, GoalInfo, InstMap0,
         simplify_info_get_var_table(!.Info, VarTable),
         ProblemPartialVarNames =
             list.map(var_table_entry_name(VarTable), ProblemPartialVars),
-        ProblemPartialVarPieces = list_to_pieces(ProblemPartialVarNames),
+        ProblemPartialVarPieces =
+            fixed_list_to_pieces("and", ProblemPartialVarNames),
         Context = goal_info_get_context(GoalInfo),
         Pieces = [words("Warning: this disjunction further instantiates"),
             words("the already partially instantiated"),

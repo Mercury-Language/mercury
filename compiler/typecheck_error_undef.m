@@ -933,8 +933,8 @@ report_cons_error(Context, ConsError) = Msgs :-
             TVars = [_, _ | _],
             VarVars  = "variables",
             TVarPieces = list.map(var_to_quote_piece(TVarSet), TVars),
-            TVarsPieces = component_list_to_color_pieces(yes(color_subject),
-                "and", [], TVarPieces),
+            TVarsPieces = piece_list_to_color_pieces(color_subject, "and", [],
+                TVarPieces),
             OccurOccurs = "occur"
         ),
         Pieces = [words("Field")] ++
@@ -1136,7 +1136,7 @@ report_any_missing_module_qualifiers(ClauseContext, Context,
             ModuleNamePieces =
                 list.map(func(MN) = qual_sym_name(MN), ModuleNames),
             ModuleNamesPieces =
-                component_list_to_color_pieces(yes(color_subject), "and",
+                piece_list_to_color_pieces(color_subject, "and",
                     [suffix(",")], ModuleNamePieces),
             ModulesPieces = [words("modules")] ++ ModuleNamesPieces,
             (
@@ -1235,7 +1235,7 @@ report_unimported_ancestors(UnimportedAncestors) = Pieces :-
     UnimportedAncestorPieces =
         list.map((func(M) = qual_sym_name(M)), UnimportedAncestors),
     UnimportedAncestorListPieces =
-        component_list_to_color_pieces(yes(color_subject), "and", [],
+        piece_list_to_color_pieces(color_subject, "and", [],
             UnimportedAncestorPieces),
     ( if UnimportedAncestors = [_] then
         Pieces = [words("(The possible parent module")] ++
@@ -1278,8 +1278,8 @@ arity_error_to_pieces(PredOrFunc, Arity0, Arities0) = Pieces :-
     ),
     ActualArityPieces = color_as_incorrect([suffix(int_to_string(Arity))]),
     ExpectedArityPieces = list.map((func(N) = int_fixed(N)), Arities),
-    ExpectedAritiesPieces = component_list_to_color_pieces(yes(color_correct),
-        "or", [], ExpectedArityPieces),
+    ExpectedAritiesPieces = piece_list_to_color_pieces(color_correct, "or",
+        [], ExpectedArityPieces),
     Pieces = color_as_incorrect([words("wrong number of arguments")]) ++
         [prefix("(") | ActualArityPieces] ++ [suffix(";"),
         words("should be") | ExpectedAritiesPieces] ++ [suffix(")")].

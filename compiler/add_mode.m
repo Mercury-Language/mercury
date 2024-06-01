@@ -475,9 +475,8 @@ cycle_to_error_spec(ModuleInfo, InstOrMode, Cycle, Spec) :-
             ++ ConsequencePieces
     ;
         LaterSNAPieces = [_, _ | _],
-        LaterSNAPieceLists = list.map(make_singleton_list, LaterSNAPieces),
-        CyclePieces = component_list_to_line_pieces(LaterSNAPieceLists,
-            [suffix(","), nl]),
+        CyclePieces = piece_list_to_line_pieces(LaterSNAPieces) ++
+            [suffix(","), nl],
         HeadPieces = PreludePieces ++ [words("through"), nl]
             ++ CyclePieces ++ ConsequencePieces
     ),
@@ -535,10 +534,6 @@ local_sna_and_context_to_piece_and_msg(ModuleInfo, InstOrMode, SNA - Context,
 
 sna_and_context_to_piece(SNA - _Context) = Piece :-
     Piece = qual_sym_name_arity(SNA).
-
-:- func make_singleton_list(T) = list(T).
-
-make_singleton_list(X) = [X].
 
 %---------------------------------------------------------------------------%
 :- end_module hlds.make_hlds.add_mode.

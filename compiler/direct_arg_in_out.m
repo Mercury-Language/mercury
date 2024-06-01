@@ -1977,8 +1977,7 @@ generate_problem_proc_error(ModuleInfo, PredProcId, OoMProblemArgs, Spec) :-
         TailProblemArgs = [_ | _],
         ProblemArgPieces = list.map((func(N) = nth_fixed(N)),
             [HeadProblemArg | TailProblemArgs]),
-        ProblemArgListPieces =
-            component_list_to_pieces("and", ProblemArgPieces),
+        ProblemArgListPieces = piece_list_to_pieces("and", ProblemArgPieces),
         Pieces = [words("Error: the compiler cannot implement"),
             words("argument passing for the")] ++ ProblemArgListPieces ++
             [words("arguments of")] ++ ProcDescPieces ++ [suffix(","),
@@ -2124,7 +2123,7 @@ args_violate_prohibition_pieces(OfProcDescPieces, HeadArg, TailArgs)
     ;
         TailArgs = [_ | _],
         ArgPieces = list.map((func(N) = int_fixed(N)), [HeadArg | TailArgs]),
-        ArgsPieces = component_list_to_pieces("and", ArgPieces),
+        ArgsPieces = piece_list_to_pieces("and", ArgPieces),
         Pieces =
             [words("Arguments")] ++ ArgsPieces ++ OfProcDescPieces ++
             [words("violate this prohibition")]
@@ -2143,7 +2142,7 @@ args_may_violate_prohibition_pieces(OfProcDescPieces, HeadArg, TailArgs)
     ;
         TailArgs = [_ | _],
         ArgPieces = list.map((func(N) = int_fixed(N)), [HeadArg | TailArgs]),
-        ArgsPieces = component_list_to_pieces("and", ArgPieces),
+        ArgsPieces = piece_list_to_pieces("and", ArgPieces),
         Pieces =
             [words("Arguments")] ++ ArgsPieces ++ OfProcDescPieces ++
             [words("may violate this prohibition")]

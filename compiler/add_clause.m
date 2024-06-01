@@ -501,7 +501,7 @@ select_applicable_modes(MaybeAnnotatedArgTerms, VarSet, PredStatus, Context,
                 [words(choose_number(ArgsWithoutModes,
                     "The argument without a mode is the",
                     "The arguments without modes are the"))] ++
-                component_list_to_color_pieces(yes(color_incorrect), "and",
+                piece_list_to_color_pieces(color_incorrect, "and",
                     [suffix(".")], ArgsWithoutModePieces) ++
                 [nl],
             Spec = spec($pred, severity_error, phase_pt2h, Context, Pieces),

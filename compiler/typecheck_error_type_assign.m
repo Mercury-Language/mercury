@@ -311,10 +311,10 @@ type_assign_to_pieces(ModuleInfo, VarSet, TypeAssign, MaybeSource, MaybeSeq)
         HeadPieces = [words("some [" ++ VarsStr ++ "]"), nl]
     ),
     TypePieces = type_assign_types_to_pieces(VarSet, VarTypes, TypeVarSet,
-        TypeBindings, no, Vars),
+        TypeBindings, no, Vars) ++ [nl],
     ConstraintPieces = type_assign_hlds_constraints_to_pieces(Constraints,
         TypeBindings, TypeVarSet),
-    Pieces = SeqPieces ++ HeadPieces ++ TypePieces ++ ConstraintPieces ++ [nl].
+    Pieces = SeqPieces ++ HeadPieces ++ TypePieces ++ ConstraintPieces.
 
 :- func type_assign_types_to_pieces(prog_varset, vartypes, tvarset,
     tsubst, bool, list(prog_var)) = list(format_piece).
@@ -367,8 +367,10 @@ type_assign_hlds_constraints_to_pieces(Constraints, TypeBindings, TypeVarSet)
         AssumedConstraints, TypeBindings, TypeVarSet, no),
     PiecesList2 = type_assign_constraints_to_pieces_list("<=",
         ConstraintsToProve, TypeBindings, TypeVarSet, no),
-    Pieces1 = component_list_to_line_pieces(PiecesList1, [nl]),
-    Pieces2 = component_list_to_line_pieces(PiecesList2, [nl]).
+    LinePieces1 = pieces_list_to_line_pieces(PiecesList1),
+    LinePieces2 = pieces_list_to_line_pieces(PiecesList2),
+    Pieces1 = add_suffix_if_nonempty(LinePieces1, [nl]),
+    Pieces2 = add_suffix_if_nonempty(LinePieces2, [nl]).
 
 :- func type_assign_constraints_to_pieces_list(string, list(hlds_constraint),
     tsubst, tvarset, bool) = list(list(format_piece)).

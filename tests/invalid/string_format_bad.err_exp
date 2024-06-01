@@ -42,13 +42,13 @@ string_format_bad.m:039:   [38;5;87m`io.format'/5.[39;49m
 string_format_bad.m:039:   The [38;5;87msecond conversion specifier[39;49m uses the specifier
 string_format_bad.m:039:   character [38;5;226m`f',[39;49m but the corresponding input is an
 string_format_bad.m:039:   [38;5;226minteger.[39;49m
-string_format_bad.m:039:   The specifiers applicable to ints are [38;5;40m`%i',[39;49m [38;5;40m`%o',[39;49m
-string_format_bad.m:039:   [38;5;40m`%x',[39;49m [38;5;40m`%X',[39;49m [38;5;40m`%u'[39;49m and [38;5;40m`%p'.[39;49m
+string_format_bad.m:039:   The specifiers applicable to ints are [38;5;40m`%d',[39;49m [38;5;40m`%i',[39;49m
+string_format_bad.m:039:   [38;5;40m`%o',[39;49m [38;5;40m`%x',[39;49m [38;5;40m`%X',[39;49m [38;5;40m`%u'[39;49m and [38;5;40m`%p'.[39;49m
 string_format_bad.m:044: Error: the format string does not match the list of
 string_format_bad.m:044:   values to be formatted in call to predicate
 string_format_bad.m:044:   [38;5;87m`io.format'/5.[39;49m
 string_format_bad.m:044:   The [38;5;87mfirst conversion specifier[39;49m uses the specifier
 string_format_bad.m:044:   character [38;5;226m`d',[39;49m but the corresponding input is a
 string_format_bad.m:044:   [38;5;226mfloat.[39;49m
-string_format_bad.m:044:   The specifiers applicable to floats are [38;5;40m`%e',[39;49m [38;5;40m`%E',[39;49m
-string_format_bad.m:044:   [38;5;40m`%g'[39;49m and [38;5;40m`%G'.[39;49m
+string_format_bad.m:044:   The specifiers applicable to floats are [38;5;40m`%f',[39;49m [38;5;40m`%e',[39;49m
+string_format_bad.m:044:   [38;5;40m`%E',[39;49m [38;5;40m`%g'[39;49m and [38;5;40m`%G'.[39;49m

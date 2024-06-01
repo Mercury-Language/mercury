@@ -223,29 +223,24 @@ string_format_error_to_pieces(Error) = Pieces :-
             color_as_possible_cause([words(PolyKindDesc), suffix("."), nl]),
         acceptable_specifier_chars_for_poly_kind_msg(PolyKind, ValDesc,
             HeadSpec, TailSpecs),
-        WrapQuote = (func(S) = quote(S)),
-        HeadSpecPiece = WrapQuote(HeadSpec),
-        TailSpecPieces = list.map(WrapQuote, TailSpecs),
-        % Msg = "The only specifier applicable to characters is %c."
-        % Msg = "The specifiers applicable to int64s are "
         (
-            TailSpecPieces = [],
+            TailSpecs = [],
             Pieces = Pieces0 ++
                 [words("The only specifier applicable to"), words(ValDesc),
                 words("is")] ++
-                color_as_correct([HeadSpecPiece, suffix(".")]) ++
+                color_as_correct([quote(HeadSpec), suffix(".")]) ++
                 [nl]
         ;
-            TailSpecPieces = [_ | _],
+            TailSpecs = [_ | _],
             % The call to component_list_to_color_pieces does not add
             % a comma after the second-last item, the one before the "and".
             % This is a difference from string_format_error_to_msg,
             % but it is one we can live with.
-            TailSpecsPieces = component_list_to_color_pieces(
-                yes(color_correct), "and", [suffix(".")], TailSpecPieces),
             Pieces = Pieces0 ++
                 [words("The specifiers applicable to"), words(ValDesc),
-                words("are")] ++ TailSpecsPieces ++
+                words("are")] ++
+                quote_list_to_color_pieces(color_correct, "and",
+                    [suffix(".")], [HeadSpec | TailSpecs]) ++
                 [nl]
         )
     ;

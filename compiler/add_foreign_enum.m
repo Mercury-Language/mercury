@@ -402,9 +402,8 @@ build_export_enum_name_map(ContextPieces, Context, Lang, Prefix, MakeUpperCase,
         ),
         MakeBFNPieces = (func(BadForeignName) = [quote(BadForeignName)]),
         BadForeignPiecesList = list.map(MakeBFNPieces, BadForeignNames),
-        BadForeignPieces =
-            component_list_to_color_line_pieces(yes(color_incorrect),
-                [suffix(".")], BadForeignPiecesList),
+        BadForeignPieces = pieces_list_to_color_line_pieces(color_incorrect,
+            [suffix(".")], BadForeignPiecesList),
         Pieces = ContextPieces ++
             [words("error: some of the constructors of the type")] ++
             color_as_incorrect([words("cannot be converted")]) ++
@@ -629,7 +628,7 @@ report_not_enum_type(Context, ContextPieces, TypeCtor, NotEnumInfo, !Specs) :-
             SNAPieces = list.map(func(SNA) = unqual_sym_name_arity(SNA),
                 OrderedNonEnumSNAs),
             SNAsPieces = 
-                component_list_to_color_pieces(yes(color_incorrect), "and",
+                piece_list_to_color_pieces(color_incorrect, "and",
                     [suffix(".")], SNAPieces),
             ItHasThese = choose_number(OrderedNonEnumSNAs,
                 words("It has this non-zero arity constructor:"),

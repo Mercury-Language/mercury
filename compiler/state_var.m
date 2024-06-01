@@ -2308,9 +2308,8 @@ report_state_var_shadow(Context, VarSet, StateVar, !Specs) :-
 
 report_missing_inits_in_ite(Context, NextStateVars,
         WhenMissing, WhenNotMissing, !Specs) :-
-    NextStateVarPieces = list.map((func(S) = quote(S)), NextStateVars),
-    NextStateVarsPieces = component_list_to_color_pieces(yes(color_subject),
-        "and", [suffix(",")], NextStateVarPieces),
+    NextStateVarsPieces = quote_list_to_color_pieces(color_subject, "and",
+        [suffix(",")], NextStateVars),
     Pieces = [words("When the condition"), words(WhenNotMissing), suffix(","),
         words("the if-then-else")] ++
         color_as_possible_cause([words("defines")]) ++
@@ -2324,10 +2323,9 @@ report_missing_inits_in_ite(Context, NextStateVars,
     list(error_spec)::in, list(error_spec)::out) is det.
 
 report_missing_inits_in_disjunct(Context, NextStateVars, !Specs) :-
-    NextStateVarPieces = list.map((func(S) = quote(S)), NextStateVars),
     Pieces = [words("Other disjuncts define")] ++
-        component_list_to_color_pieces(yes(color_subject), "and",
-            [suffix(",")], NextStateVarPieces) ++
+        quote_list_to_color_pieces(color_subject, "and", [suffix(",")],
+            NextStateVars) ++
         color_as_incorrect([words("but not this one.")]) ++ [nl],
     Spec = spec($pred, severity_informational, phase_pt2h, Context, Pieces),
     !:Specs = [Spec | !.Specs].

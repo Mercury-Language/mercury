@@ -1768,8 +1768,8 @@ classify_lambda_arg_modes_present_absent([LambdaArg | LambdaArgs],
 add_some_not_all_args_have_modes_error(Context, AbsentArgs, !Specs) :-
     AbsentArgPieces =
         list.map(func(Arg) = nth_fixed(Arg ^ la_arg_num), AbsentArgs),
-    AbsentArgsDotPieces = component_list_to_color_pieces(yes(color_incorrect),
-        "and", [suffix(".")], AbsentArgPieces),
+    AbsentArgsDotPieces = piece_list_to_color_pieces(color_incorrect, "and",
+        [suffix(".")], AbsentArgPieces),
     Pieces = [words("Error: in head of lambda expression:")] ++
         color_as_incorrect(
             [words("some but not all arguments have modes.")]) ++
@@ -2065,7 +2065,7 @@ build_lambda_expression(LHSVar, UnificationPurity,
         InconsistentVarsPieces =
             [words("Error: the constraints on the inst"),
             words(choose_number(InconsistentVars, "variable", "variables"))] ++
-            component_list_to_color_pieces(yes(color_subject), "and", [],
+            piece_list_to_color_pieces(color_subject, "and", [],
                 InconsistentVarPieces) ++
             color_as_incorrect([words("are inconsistent.")]) ++
             [nl],

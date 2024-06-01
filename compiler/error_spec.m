@@ -591,6 +591,9 @@
     %
 :- func add_quotes(string) = string.
 
+:- func add_suffix_if_nonempty(list(format_piece), list(format_piece)) =
+    list(format_piece).
+
 %---------------------------------------------------------------------------%
 
 :- pred extract_spec_phase(error_spec::in, error_phase::out) is det.
@@ -632,130 +635,143 @@
     = list(format_piece).
 
 %---------------------------------------------------------------------------%
+%
+% The functions in this section have the task of formatting lists of
+% various kinds of items for use in diagnostic messages.
+% These functions form an (incomplete) 4 by 2 by 2 by 2 matrix.
+%
+% The first dimension specifies what the individual items are, and how
+% they should be treated
+%
+% - If the function name starts with "fixed", this means that each item
+%   is a string, and it should be formatted as a fixed string.
+% - If the function name starts with "quote", this means that each item
+%   is a string, and it should be formatted as a quoted string.
+% - If the function name starts with "piece", this means that each item
+%   is a piece, and it should be used as is.
+% - If the function name starts with "pieces", this means that each item
+%   is a list of pieces, which should be used as is.
+%
+% This dimension controls the type of the last argument of the function.
+%
+% The second dimension is whether the items should be formatted in color.
+%
+% - If the function name includes "color", then the answer is yes.
+% - Otherwise, the answer is no.
+%
+% This dimension controls the presence of two arguments. Functions that
+% return colored pieces takes as one argument the name of that color,
+% and they also take a LastSuffix parameter, which is a list of pieces
+% that the function adds to the last item. The caller can use this argument
+% to put a period as a suffix at the end of a sentence, if the given list
+% is at the end of that sentence; or to put a comma or semicolon at the
+% end of clause within a sentence, if the list is at the end of that clause.
+% Of course, LastSuffix may also be the empty list of pieces. In any case,
+% LastSuffix will be colored the same as the items. The functions that
+% do not do coloring do not take a LastSuffix argument, because their caller
+% can add any suffixes they like to the return value of the function.
+%
+% The third dimension controls whether the last gap between two items
+% should be treated any differently than all the previous gaps between items.
+%
+% - If the function name includes either "strict" or "to_line_pieces", then
+%   we treat all gaps between items the same, by adding a comma as a suffix
+%   to the item before the gap.
+% - Otherwise, we treat the last gap differently, by putting a separator word,
+%   usually either "and" or "or", in that gap.
+%
+% This dimension controls whether the function has a string argument
+% specifying the separator to put into the last gap.
+%
+% The fourth dimension controls whether each item in the list should be
+% printed separately on its own line.
+%
+% - If the function name ends with "to_line_pieces", then the answer is yes.
+% - If the function name ends with just "to_pieces", then the answer is no.
+%
+% This dimension has no effect on the argument list, except through its
+% coupling to the third dimension. The 4 by 2 by 2 by 2 matrix is incomplete
+% because we do not support non-strict list format when putting each item
+% on its own line. (It would not be hard to offer such support; there is
+% just no particular need for that capability.)
+%
 
-    % Convert a list of strings into a list of format_pieces
-    % separated by commas, with the last two elements separated by `and'.
+    % x_list_to_pieces(LastSepWord, Items) = Pieces.
     %
-:- func list_to_pieces(list(string)) = list(format_piece).
-
-    % list_to_color_pieces(MaybeColor, LastSepWord, LastColorSuffix, Strings)
-    %   = Pieces:
-    %
-    % A version of list_to_pieces that
-    %
-    % - uses the user-specified LastSepWord as the separator between
-    %   the last two strings, and
-    %
-    % - allows the specification of a color to be applied to each string,
-    %   including the comma following it, if it has one, and the specified
-    %   LastColorSuffix for the last string.
-    %
-:- func list_to_color_pieces(maybe(color_name), string,
-    list(format_piece), list(string)) = list(format_piece).
-
-    % Convert a list of strings into a list of format_pieces
-    % separated by commas. Even the last pair of strings will be
-    % separated by commas.
-    %
-:- func strict_list_to_pieces(list(string)) = list(format_piece).
-
-    % As list_to_pieces, but surround each string by `' quotes.
-    %
-:- func list_to_quoted_pieces(list(string)) = list(format_piece).
-
-    % As above, but with the last two elements separated by `or'.
-    %
-:- func list_to_quoted_pieces_or(list(string)) = list(format_piece).
-
-    % Convert a list of lists of format_pieces into a list of
-    % format_pieces separated by commas, with the last two elements
-    % separated by the first argument as a word.
-    %
-:- func component_lists_to_pieces(string, list(list(format_piece))) =
-    list(format_piece).
-
-    % Convert a list of lists of format_pieces into a list of
-    % format_pieces separated by commas. Even the last pair of lists
-    % will be separated by commas.
-    %
-:- func strict_component_lists_to_pieces(list(list(format_piece))) =
-    list(format_piece).
-
-    % Convert a list of format_pieces into a list of format_pieces
-    % separated by commas, with the last two elements separated
-    % by the first argument as a word.
-    %
-:- func component_list_to_pieces(string, list(format_piece)) =
-    list(format_piece).
-
-    % component_list_to_color_pieces(MaybeColor, LastSepWord,
-    %   LastColorSuffix, ComponentPieces) = Pieces:
-    %
-    % A version of component_list_to_pieces that
-    %
-    % - uses the user-specified LastSepWord as the separator between
-    %   the last two component pieces, and
-    %
-    % - allows the specification of a color to be applied to each component
-    %   piece, including the comma following it, if it has one, and the
-    %   specified LastColorSuffix for the last string.
-    %
-:- func component_list_to_color_pieces(maybe(color_name), string,
-    list(format_piece), list(format_piece)) = list(format_piece).
-
-    % Convert a list of format_pieces into a list of format_pieces
-    % separated by commas. Even the last pair of list elements will be
-    % separated by commas.
-    %
-:- func strict_component_list_to_pieces(list(format_piece)) =
-    list(format_piece).
-
-    % component_list_to_color_pieces(MaybeColor, LastColorSuffix,
-    %   ComponentPieces) = Pieces:
-    %
-    % A version of component_list_to_pieces that does not treat the gap
-    % between the last two pieces any differently than the gap between
-    % any other pair of adjacent pieces.
-    %
-:- func strict_component_list_to_color_pieces(maybe(color_name),
-    list(format_piece), list(format_piece)) = list(format_piece).
-
-    % list_to_color_line_pieces(MaybeColor, LastColorSuffix, Strs) = Pieces:
-    %
-    % XXX document once we have fit all the related functions
-    % into a matrix along the dimensions:
-    %
-    % - what are the items being converted to pieces?
-    % - should the items be colored?
-    % - are the lists strict or not?
-    % - should the output have one item per line?
-    %
-:- func list_to_color_line_pieces(maybe(color_name), list(format_piece),
+:- func fixed_list_to_pieces(string,
     list(string)) = list(format_piece).
-
-    % component_list_to_line_pieces(Lines, Final):
-    %
-    % Convert Lines, a list of lines (each given by a list of format_pieces
-    % *without* a final nl) into a condensed list of format_pieces
-    % in which adjacent lines are separated by commas and newlines.
-    % What goes after the end of the last line is not a comma, but
-    % the value of Final.
-    %
-:- func component_list_to_line_pieces(list(list(format_piece)),
+:- func quote_list_to_pieces(string,
+    list(string)) = list(format_piece).
+:- func piece_list_to_pieces(string,
     list(format_piece)) = list(format_piece).
+:- func pieces_list_to_pieces(string,
+    list(list(format_piece))) = list(format_piece).
 
-    % component_list_to_color_line_pieces(MaybeColor,
-    %   ColoredFinal, Comps):
+    % x_list_to_color_pieces(Color, LastSepWord, LastSuffix, Items) = Pieces.
     %
-    % This is a version of component_list_to_pieces that applies
-    % the supplied color, if any, to each component list. It splits the Final
-    % argument into two, ColoredFinal and UncoloredFinal, with ColoredFinal
-    % being colored together with the last element.
-    %
-:- func component_list_to_color_line_pieces(maybe(color_name),
+:- func fixed_list_to_color_pieces(color_name, string,
+    list(format_piece), list(string)) = list(format_piece).
+:- func quote_list_to_color_pieces(color_name, string,
+    list(format_piece), list(string)) = list(format_piece).
+:- func piece_list_to_color_pieces(color_name, string,
+    list(format_piece), list(format_piece)) = list(format_piece).
+:- func pieces_list_to_color_pieces(color_name, string,
     list(format_piece), list(list(format_piece))) = list(format_piece).
 
-:- func component_list_to_color_split_line_pieces(
+    % x_strict_list_to_pieces(LastSepWord, Items) = Pieces.
+    %
+:- func fixed_strict_list_to_pieces(
+    list(string)) = list(format_piece).
+:- func quote_strict_list_to_pieces(
+    list(string)) = list(format_piece).
+:- func piece_strict_list_to_pieces(
+    list(format_piece)) = list(format_piece).
+:- func pieces_strict_list_to_pieces(
+    list(list(format_piece))) = list(format_piece).
+
+    % x_strict_list_to_color_pieces(Color, LastSepWord, LastSuffix, Items)
+    %   = Pieces.
+    %
+:- func fixed_strict_list_to_color_pieces(color_name,
+    list(format_piece), list(string)) = list(format_piece).
+:- func quote_strict_list_to_color_pieces(color_name,
+    list(format_piece), list(string)) = list(format_piece).
+:- func piece_strict_list_to_color_pieces(color_name,
+    list(format_piece), list(format_piece)) = list(format_piece).
+:- func pieces_strict_list_to_color_pieces(color_name,
+    list(format_piece), list(list(format_piece))) = list(format_piece).
+
+    % x_list_to_line_pieces(Items) = Pieces.
+    %
+:- func fixed_list_to_line_pieces(
+    list(string)) = list(format_piece).
+:- func quote_list_to_line_pieces(
+    list(string)) = list(format_piece).
+:- func piece_list_to_line_pieces(
+    list(format_piece)) = list(format_piece).
+:- func pieces_list_to_line_pieces(
+    list(list(format_piece))) = list(format_piece).
+
+    % x_list_to_color_line_pieces(Color, LastSuffix, Items) = Pieces.
+    %
+:- func fixed_list_to_color_line_pieces(color_name,
+    list(format_piece), list(string)) = list(format_piece).
+:- func quote_list_to_color_line_pieces(color_name,
+    list(format_piece), list(string)) = list(format_piece).
+:- func piece_list_to_color_line_pieces(color_name,
+    list(format_piece), list(format_piece)) = list(format_piece).
+:- func pieces_list_to_color_line_pieces(color_name,
+    list(format_piece), list(list(format_piece))) = list(format_piece).
+
+%---------------------------------------------------------------------------%
+
+    % This is a specialized version of pieces_list_to_color_line_pieces
+    % that allows the caller to specify
+    %
+    % - two lists of pieces to put on each line,
+    % - a color for each of those two lists of pieces.
+    %
+:- func pieces_list_to_split_color_line_pieces(
     maybe(color_name), maybe(color_name), list(format_piece),
     list({list(format_piece), list(format_piece)})) = list(format_piece).
 
@@ -865,6 +881,15 @@ describe_sym_name_arity(sym_name_arity(SymName, Arity)) =
     string.format("`%s'/%d", [s(sym_name_to_string(SymName)), i(Arity)]).
 
 add_quotes(Str) = "`" ++ Str ++ "'".
+
+add_suffix_if_nonempty(BasePieces, SuffixPieces) = Pieces :-
+    (
+        BasePieces = [],
+        Pieces = []
+    ;
+        BasePieces = [_ | _],
+        Pieces = BasePieces ++ SuffixPieces
+    ).
 
 %---------------------------------------------------------------------------%
 
@@ -1053,7 +1078,7 @@ do_maybe_construct_did_you_mean_pieces(BaseName, CandidateNames,
             SuggestedNames =
                 list.map(TransformFunc, SuggestedNames0) ++ ["..."]
         ),
-        SuggestionPieces = list_to_quoted_pieces_or(SuggestedNames),
+        SuggestionPieces = quote_list_to_pieces("or", SuggestedNames),
         DidYouMeanPieces0 =
             [words("(Did you mean")] ++ SuggestionPieces ++
             [suffix("?)"), nl],
@@ -1166,176 +1191,260 @@ maybe_color_pieces(MaybeColor, Pieces) = MaybeColorPieces :-
     ).
 
 %---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
-list_to_pieces([]) = [].
-list_to_pieces([Elem]) = [fixed(Elem)].
-list_to_pieces([Elem1, Elem2]) = [fixed(Elem1), words("and"), fixed(Elem2)].
-list_to_pieces([Elem1, Elem2, Elem3 | Elems]) =
-    [fixed(Elem1 ++ ",") | list_to_pieces([Elem2, Elem3 | Elems])].
+fixed_list_to_pieces(LastSep, Strings) = Pieces :-
+    ItemToPieces = (func(S) = [fixed(S)]),
+    transform_list_to_pieces(ItemToPieces, LastSep, Strings, Pieces).
 
-list_to_color_pieces(MaybeColor, LastSepWord, LastColorSuffix, Strings)
-        = Pieces :-
-    ItemToPieces =
-        (pred(Str::in, ItemPieces::out) is det :- ItemPieces = [fixed(Str)]),
-    NonLastSep = [suffix(",")],
-    LastSep = [words(LastSepWord)],
-    general_list_to_pieces(ItemToPieces, MaybeColor, NonLastSep, LastSep,
-        LastColorSuffix, Strings, Pieces).
+quote_list_to_pieces(LastSep, Strings) = Pieces :-
+    ItemToPieces = (func(S) = [quote(S)]),
+    transform_list_to_pieces(ItemToPieces, LastSep, Strings, Pieces).
 
-strict_list_to_pieces([]) = [].
-strict_list_to_pieces([Elem]) = [fixed(Elem)].
-strict_list_to_pieces([Elem1, Elem2 | Elems]) =
-    [fixed(Elem1 ++ ",") | strict_list_to_pieces([Elem2 | Elems])].
+piece_list_to_pieces(LastSep, PieceList) = Pieces :-
+    ItemToPieces = (func(P) = [P]),
+    transform_list_to_pieces(ItemToPieces, LastSep, PieceList, Pieces).
 
-list_to_quoted_pieces([]) = [].
-list_to_quoted_pieces([Elem]) = [quote(Elem)].
-list_to_quoted_pieces([Elem1, Elem2]) =
-    [quote(Elem1), words("and"), quote(Elem2)].
-list_to_quoted_pieces([Elem1, Elem2, Elem3 | Elems]) =
-    [quote(Elem1), suffix(",") |
-        list_to_quoted_pieces([Elem2, Elem3 | Elems])].
+pieces_list_to_pieces(LastSep, PiecesList) = Pieces :-
+    ItemToPieces = (func(Ps) = Ps),
+    transform_list_to_pieces(ItemToPieces, LastSep, PiecesList, Pieces).
 
-list_to_quoted_pieces_or([]) = [].
-list_to_quoted_pieces_or([Elem]) = [quote(Elem)].
-list_to_quoted_pieces_or([Elem1, Elem2]) =
-    [quote(Elem1), words("or"), quote(Elem2)].
-list_to_quoted_pieces_or([Elem1, Elem2, Elem3 | Elems]) =
-    [quote(Elem1), suffix(",") |
-        list_to_quoted_pieces_or([Elem2, Elem3 | Elems])].
+%---------------------%
 
-component_lists_to_pieces(_, []) = [].
-component_lists_to_pieces(_, [Comps]) = Comps.
-component_lists_to_pieces(LastSep, [Comps1, Comps2]) =
-    Comps1 ++ [words(LastSep)] ++ Comps2.
-component_lists_to_pieces(LastSep, [Comps1, Comps2, Comps3 | Comps]) =
-    Comps1 ++ [suffix(",")]
-    ++ component_lists_to_pieces(LastSep, [Comps2, Comps3 | Comps]).
+:- pred transform_list_to_pieces((func(T) = list(format_piece))::in,
+    string::in, list(T)::in, list(format_piece)::out) is det.
 
-strict_component_lists_to_pieces([]) = [].
-strict_component_lists_to_pieces([Comps]) = Comps.
-strict_component_lists_to_pieces([Comps1, Comps2 | Comps]) =
-    Comps1 ++ [suffix(",")]
-    ++ strict_component_lists_to_pieces([Comps2 | Comps]).
-
-component_list_to_pieces(_, []) = [].
-component_list_to_pieces(_, [Comp]) = [Comp].
-component_list_to_pieces(LastSep, [Comp1, Comp2]) =
-    [Comp1, words(LastSep), Comp2].
-component_list_to_pieces(LastSep, [Comp1, Comp2, Comp3 | Comps]) =
-    [Comp1, suffix(",")]
-    ++ component_list_to_pieces(LastSep, [Comp2, Comp3 | Comps]).
-
-component_list_to_color_pieces(MaybeColor, LastSepWord, LastColorSuffix,
-        ComponentPieces) = Pieces :-
-    ItemToPieces =
-        ( pred(ItemPiece::in, ItemPieces::out) is det :-
-            ItemPieces = [ItemPiece]
-        ),
-    NonLastSep = [suffix(",")],
-    LastSep = [words(LastSepWord)],
-    general_list_to_pieces(ItemToPieces, MaybeColor, NonLastSep, LastSep,
-        LastColorSuffix, ComponentPieces, Pieces).
-
-strict_component_list_to_pieces([]) = [].
-strict_component_list_to_pieces([Comp]) = [Comp].
-strict_component_list_to_pieces([Comp1, Comp2 | Comps]) =
-    [Comp1, suffix(",")]
-    ++ strict_component_list_to_pieces([Comp2 | Comps]).
-
-strict_component_list_to_color_pieces(MaybeColor, LastColorSuffix,
-        ComponentPieces) = Pieces :-
-    ItemToPieces =
-        ( pred(ItemPiece::in, ItemPieces::out) is det :-
-            ItemPieces = [ItemPiece]
-        ),
-    Sep = [suffix(",")],
-    strict_general_list_to_pieces(ItemToPieces, MaybeColor, Sep,
-        LastColorSuffix, ComponentPieces, Pieces).
+transform_list_to_pieces(ItemToPieces, LastSep, Items, Pieces) :-
+    MaybeColor = no,
+    NonLastSepPieces = [suffix(",")],
+    LastSepPieces = [words(LastSep)],
+    LastSuffix = [],
+    general_list_to_pieces(ItemToPieces, MaybeColor,
+        NonLastSepPieces, LastSepPieces, LastSuffix, Items, Pieces).
 
 %---------------------------------------------------------------------------%
 
-list_to_color_line_pieces(MaybeColor, LastColorSuffix, Strs) = Pieces :-
-    ItemToPieces = ( func(Str) = [words(Str)] ),
-    strict_general_list_to_line_pieces(ItemToPieces, MaybeColor,
-        LastColorSuffix, Strs, Pieces).
+fixed_list_to_color_pieces(Color, LastSep, LastSuffix, Strings) = Pieces :-
+    ItemToPieces = (func(S) = [fixed(S)]),
+    transform_list_to_color_pieces(ItemToPieces, Color, LastSep, LastSuffix,
+        Strings, Pieces).
 
-component_list_to_line_pieces([], _) = [].
-component_list_to_line_pieces([Comps], Final) = Comps ++ Final.
-component_list_to_line_pieces([Comps1, Comps2 | Comp3plus], Final) =
-    Comps1 ++ [suffix(","), nl]
-    ++ component_list_to_line_pieces([Comps2 | Comp3plus], Final).
+quote_list_to_color_pieces(Color, LastSep, LastSuffix, Strings) = Pieces :-
+    ItemToPieces = (func(S) = [quote(S)]),
+    transform_list_to_color_pieces(ItemToPieces, Color, LastSep, LastSuffix,
+        Strings, Pieces).
 
-component_list_to_color_line_pieces(_, _, []) = [].
-component_list_to_color_line_pieces(MaybeColor, CFinal, [Comps]) =
-    maybe_color_pieces(MaybeColor, Comps ++ CFinal).
-component_list_to_color_line_pieces(MaybeColor, CFinal,
-        [Comps1, Comps2 | Comps]) =
-    maybe_color_pieces(MaybeColor, Comps1 ++ [suffix(",")]) ++ [nl] ++
-    component_list_to_color_line_pieces(MaybeColor, CFinal,
-        [Comps2 | Comps]).
+piece_list_to_color_pieces(Color, LastSep, LastSuffix, PieceList) = Pieces :-
+    ItemToPieces = (func(P) = [P]),
+    transform_list_to_color_pieces(ItemToPieces, Color, LastSep, LastSuffix,
+        PieceList, Pieces).
 
-component_list_to_color_split_line_pieces(MaybeColorA, MaybeColorB,
-        LastColorSuffixB, Pairs) = Pieces :-
-    ItemToPieces = ( func({A, B}) = {A, B} ),
+pieces_list_to_color_pieces(Color, LastSep, LastSuffix, PiecesList) = Pieces :-
+    ItemToPieces = (func(Ps) = Ps),
+    transform_list_to_color_pieces(ItemToPieces, Color, LastSep, LastSuffix,
+        PiecesList, Pieces).
+
+%---------------------%
+
+:- pred transform_list_to_color_pieces((func(T) = list(format_piece))::in,
+    color_name::in, string::in, list(format_piece)::in, list(T)::in,
+    list(format_piece)::out) is det.
+
+transform_list_to_color_pieces(ItemToPieces, Color, LastSep, LastSuffix,
+        Items, Pieces) :-
+    NonLastSepPieces = [suffix(",")],
+    LastSepPieces = [words(LastSep)],
+    general_list_to_pieces(ItemToPieces, yes(Color),
+        NonLastSepPieces, LastSepPieces, LastSuffix, Items, Pieces).
+
+%---------------------------------------------------------------------------%
+
+fixed_strict_list_to_pieces(Strings) = Pieces :-
+    ItemToPieces = (func(S) = [fixed(S)]),
+    transform_strict_list_to_pieces(ItemToPieces, Strings, Pieces).
+
+quote_strict_list_to_pieces(Strings) = Pieces :-
+    ItemToPieces = (func(S) = [quote(S)]),
+    transform_strict_list_to_pieces(ItemToPieces, Strings, Pieces).
+
+piece_strict_list_to_pieces(PieceList) = Pieces :-
+    ItemToPieces = (func(P) = [P]),
+    transform_strict_list_to_pieces(ItemToPieces, PieceList, Pieces).
+
+pieces_strict_list_to_pieces(PiecesList) = Pieces :-
+    ItemToPieces = (func(Ps) = Ps),
+    transform_strict_list_to_pieces(ItemToPieces, PiecesList, Pieces).
+
+%---------------------%
+
+:- pred transform_strict_list_to_pieces((func(T) = list(format_piece))::in,
+    list(T)::in, list(format_piece)::out) is det.
+
+transform_strict_list_to_pieces(ItemToPieces, Items, Pieces) :-
+    MaybeColor = no,
+    SepPieces = [suffix(",")],
+    LastSuffix = [],
+    strict_general_list_to_pieces(ItemToPieces, MaybeColor,
+        SepPieces, LastSuffix, Items, Pieces).
+
+%---------------------------------------------------------------------------%
+
+fixed_strict_list_to_color_pieces(Color, LastSuffix, Strings) = Pieces :-
+    ItemToPieces = (func(S) = [fixed(S)]),
+    transform_strict_list_to_color_pieces(ItemToPieces, Color, LastSuffix,
+        Strings, Pieces).
+
+quote_strict_list_to_color_pieces(Color, LastSuffix, Strings) = Pieces :-
+    ItemToPieces = (func(S) = [quote(S)]),
+    transform_strict_list_to_color_pieces(ItemToPieces, Color, LastSuffix,
+        Strings, Pieces).
+
+piece_strict_list_to_color_pieces(Color, LastSuffix, PieceList) = Pieces :-
+    ItemToPieces = (func(P) = [P]),
+    transform_strict_list_to_color_pieces(ItemToPieces, Color, LastSuffix,
+        PieceList, Pieces).
+
+pieces_strict_list_to_color_pieces(Color, LastSuffix, PiecesList) = Pieces :-
+    ItemToPieces = (func(Ps) = Ps),
+    transform_strict_list_to_color_pieces(ItemToPieces, Color, LastSuffix,
+        PiecesList, Pieces).
+
+%---------------------%
+
+:- pred transform_strict_list_to_color_pieces(
+    (func(T) = list(format_piece))::in,
+    color_name::in, list(format_piece)::in, list(T)::in,
+    list(format_piece)::out) is det.
+
+transform_strict_list_to_color_pieces(ItemToPieces, Color, LastSuffix,
+        Items, Pieces) :-
+    SepPieces = [suffix(",")],
+    strict_general_list_to_pieces(ItemToPieces, yes(Color),
+        SepPieces, LastSuffix, Items, Pieces).
+
+%---------------------------------------------------------------------------%
+
+fixed_list_to_line_pieces(Strings) = Pieces :-
+    ItemToPieces = (func(S) = [fixed(S)]),
+    transform_list_to_line_pieces(ItemToPieces, Strings, Pieces).
+
+quote_list_to_line_pieces(Strings) = Pieces :-
+    ItemToPieces = (func(S) = [quote(S)]),
+    transform_list_to_line_pieces(ItemToPieces, Strings, Pieces).
+
+piece_list_to_line_pieces(PieceList) = Pieces :-
+    ItemToPieces = (func(P) = [P]),
+    transform_list_to_line_pieces(ItemToPieces, PieceList, Pieces).
+
+pieces_list_to_line_pieces(PiecesList) = Pieces :-
+    ItemToPieces = (func(Ps) = Ps),
+    transform_list_to_line_pieces(ItemToPieces, PiecesList, Pieces).
+
+%---------------------%
+
+:- pred transform_list_to_line_pieces((func(T) = list(format_piece))::in,
+    list(T)::in, list(format_piece)::out) is det.
+
+transform_list_to_line_pieces(ItemToPieces, Items, Pieces) :-
+    MaybeColor = no,
+    LastSuffix = [],
+    strict_general_list_to_line_pieces(ItemToPieces, MaybeColor, LastSuffix,
+        Items, Pieces).
+
+%---------------------------------------------------------------------------%
+
+fixed_list_to_color_line_pieces(Color, LastSuffix, Strings) = Pieces :-
+    ItemToPieces = (func(S) = [fixed(S)]),
+    transform_list_to_color_line_pieces(ItemToPieces, Color, LastSuffix,
+        Strings, Pieces).
+
+quote_list_to_color_line_pieces(Color, LastSuffix, Strings) = Pieces :-
+    ItemToPieces = (func(S) = [quote(S)]),
+    transform_list_to_color_line_pieces(ItemToPieces, Color, LastSuffix,
+        Strings, Pieces).
+
+piece_list_to_color_line_pieces(Color, LastSuffix, PieceList) = Pieces :-
+    ItemToPieces = (func(P) = [P]),
+    transform_list_to_color_line_pieces(ItemToPieces, Color, LastSuffix,
+        PieceList, Pieces).
+
+pieces_list_to_color_line_pieces(Color, LastSuffix, PiecesList) = Pieces :-
+    ItemToPieces = (func(Ps) = Ps),
+    transform_list_to_color_line_pieces(ItemToPieces, Color, LastSuffix,
+        PiecesList, Pieces).
+
+%---------------------%
+
+:- pred transform_list_to_color_line_pieces((func(T) = list(format_piece))::in,
+    color_name::in, list(format_piece)::in, list(T)::in,
+    list(format_piece)::out) is det.
+
+transform_list_to_color_line_pieces(ItemToPieces, Color, LastSuffix,
+        Items, Pieces) :-
+    strict_general_list_to_line_pieces(ItemToPieces, yes(Color),
+        LastSuffix, Items, Pieces).
+
+%---------------------------------------------------------------------------%
+
+pieces_list_to_split_color_line_pieces(MaybeColorA, MaybeColorB,
+        LastSuffixB, Pairs) = Pieces :-
+    ItemToPieces = (func({A, B}) = {A, B}),
     strict_general_list_to_split_line_pieces(ItemToPieces,
-        MaybeColorA, MaybeColorB, LastColorSuffixB, Pairs, Pieces).
+        MaybeColorA, MaybeColorB, LastSuffixB, Pairs, Pieces).
 
 %---------------------------------------------------------------------------%
 %
 % General predicates for converting any list of items to the specification
-% of a nicely formatted and possibly colored output.
-%
-% The functions above should probably be reimplemented using this.
+% of a nicely formatted and possibly colored output. Used to implement
+% the functions above.
 %
 
-:- pred general_list_to_pieces(
-    pred(T, list(format_piece))::in(pred(in, out) is det),
+:- pred general_list_to_pieces((func(T) = list(format_piece))::in,
     maybe(color_name)::in, list(format_piece)::in, list(format_piece)::in,
     list(format_piece)::in, list(T)::in, list(format_piece)::out) is det.
 
 general_list_to_pieces(ItemToPieces, MaybeColor, NonLastSep, LastSep,
-        LastColorSuffix, Items, Pieces) :-
+        LastSuffix, Items, Pieces) :-
     (
         Items = [],
         Pieces = []
     ;
         Items = [Item1],
-        ItemToPieces(Item1, Pieces1),
-        Pieces = maybe_color_pieces(MaybeColor, Pieces1 ++ LastColorSuffix)
+        Pieces1 = ItemToPieces(Item1),
+        Pieces = maybe_color_pieces(MaybeColor, Pieces1 ++ LastSuffix)
     ;
         Items = [Item1, Item2],
-        ItemToPieces(Item1, Pieces1),
-        ItemToPieces(Item2, Pieces2),
+        Pieces1 = ItemToPieces(Item1),
+        Pieces2 = ItemToPieces(Item2),
         Pieces = maybe_color_pieces(MaybeColor, Pieces1) ++ LastSep ++
-            maybe_color_pieces(MaybeColor, Pieces2 ++ LastColorSuffix)
+            maybe_color_pieces(MaybeColor, Pieces2 ++ LastSuffix)
     ;
         Items = [Item1, Item2, Item3 | Items4plus],
-        ItemToPieces(Item1, Pieces1),
+        Pieces1 = ItemToPieces(Item1),
         general_list_to_pieces(ItemToPieces, MaybeColor, NonLastSep, LastSep,
-            LastColorSuffix, [Item2, Item3 | Items4plus], TailPieces),
+            LastSuffix, [Item2, Item3 | Items4plus], TailPieces),
         Pieces = maybe_color_pieces(MaybeColor, Pieces1 ++ NonLastSep) ++
             TailPieces
     ).
 
-:- pred strict_general_list_to_pieces(
-    pred(T, list(format_piece))::in(pred(in, out) is det),
+:- pred strict_general_list_to_pieces((func(T) = list(format_piece))::in,
     maybe(color_name)::in, list(format_piece)::in,
     list(format_piece)::in, list(T)::in, list(format_piece)::out) is det.
 
-strict_general_list_to_pieces(ItemToPieces, MaybeColor, Sep, LastColorSuffix,
+strict_general_list_to_pieces(ItemToPieces, MaybeColor, Sep, LastSuffix,
         Items, Pieces) :-
     (
         Items = [],
         Pieces = []
     ;
         Items = [Item1],
-        ItemToPieces(Item1, Pieces1),
-        Pieces = maybe_color_pieces(MaybeColor, Pieces1 ++ LastColorSuffix)
+        Pieces1 = ItemToPieces(Item1),
+        Pieces = maybe_color_pieces(MaybeColor, Pieces1 ++ LastSuffix)
     ;
         Items = [Item1, Item2 | Items3plus],
-        ItemToPieces(Item1, Pieces1),
+        Pieces1 = ItemToPieces(Item1),
         strict_general_list_to_pieces(ItemToPieces, MaybeColor, Sep,
-            LastColorSuffix, [Item2 | Items3plus], TailPieces),
+            LastSuffix, [Item2 | Items3plus], TailPieces),
         Pieces = maybe_color_pieces(MaybeColor, Pieces1 ++ Sep) ++ TailPieces
     ).
 
@@ -1343,7 +1452,7 @@ strict_general_list_to_pieces(ItemToPieces, MaybeColor, Sep, LastColorSuffix,
     maybe(color_name)::in, list(format_piece)::in,
     list(T)::in, list(format_piece)::out) is det.
 
-strict_general_list_to_line_pieces(ItemToPieces, MaybeColor, LastColorSuffix,
+strict_general_list_to_line_pieces(ItemToPieces, MaybeColor, LastSuffix,
         Items, Pieces) :-
     (
         Items = [],
@@ -1351,13 +1460,13 @@ strict_general_list_to_line_pieces(ItemToPieces, MaybeColor, LastColorSuffix,
     ;
         Items = [Item1],
         Pieces1 = ItemToPieces(Item1),
-        Pieces = maybe_color_pieces(MaybeColor, Pieces1 ++ LastColorSuffix)
+        Pieces = maybe_color_pieces(MaybeColor, Pieces1 ++ LastSuffix)
     ;
         Items = [Item1, Item2 | Items3plus],
         Pieces1 = ItemToPieces(Item1),
         HeadPieces = maybe_color_pieces(MaybeColor, Pieces1 ++ [suffix(",")]),
         strict_general_list_to_line_pieces(ItemToPieces, MaybeColor,
-            LastColorSuffix, [Item2 | Items3plus], TailPieces),
+            LastSuffix, [Item2 | Items3plus], TailPieces),
         Pieces = HeadPieces ++ [nl] ++ TailPieces
     ).
 
@@ -1367,7 +1476,7 @@ strict_general_list_to_line_pieces(ItemToPieces, MaybeColor, LastColorSuffix,
     list(T)::in, list(format_piece)::out) is det.
 
 strict_general_list_to_split_line_pieces(ItemToPieces,
-        MaybeColorA, MaybeColorB, LastColorSuffixB, Items, Pieces) :-
+        MaybeColorA, MaybeColorB, LastSuffixB, Items, Pieces) :-
     (
         Items = [],
         Pieces = []
@@ -1376,7 +1485,7 @@ strict_general_list_to_split_line_pieces(ItemToPieces,
         {Pieces1A, Pieces1B} = ItemToPieces(Item1),
         HeadPiecesA = maybe_color_pieces(MaybeColorA, Pieces1A),
         HeadPiecesB = maybe_color_pieces(MaybeColorB, Pieces1B ++
-            LastColorSuffixB),
+            LastSuffixB),
         Pieces = HeadPiecesA ++ HeadPiecesB
     ;
         Items = [Item1, Item2 | Items3plus],
@@ -1385,7 +1494,7 @@ strict_general_list_to_split_line_pieces(ItemToPieces,
         HeadPiecesA = maybe_color_pieces(MaybeColorA, Pieces1A),
         HeadPiecesB = maybe_color_pieces(MaybeColorB, Pieces1B ++ CommaB),
         strict_general_list_to_split_line_pieces(ItemToPieces,
-            MaybeColorA, MaybeColorB, LastColorSuffixB, [Item2 | Items3plus],
+            MaybeColorA, MaybeColorB, LastSuffixB, [Item2 | Items3plus],
             TailPieces),
         Pieces = HeadPiecesA ++ HeadPiecesB ++ [nl] ++ TailPieces
     ).

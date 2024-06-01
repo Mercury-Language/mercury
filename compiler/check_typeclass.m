@@ -2264,9 +2264,8 @@ report_unknown_instance_methods(ClassId, InstanceDefn,
         Pieces = PrefixPieces ++ [words("error: the type class")] ++
             color_as_incorrect([words("has none of these methods:")]) ++
             [nl_indent_delta(1)] ++
-            % XXX ARITY We could separate last two MethodPieces with ", or".
-            component_list_to_color_line_pieces(yes(color_subject),
-                [suffix(".")], MethodPieces) ++
+            pieces_list_to_color_line_pieces(color_subject, [suffix(".")],
+                MethodPieces) ++
             [nl_indent_delta(-1)]
     ),
     Spec = spec($pred, severity_error, phase_type_check,
@@ -2290,8 +2289,8 @@ report_unsatistfied_superclass_constraint(ClassId, InstanceDefn, ClassTVarSet,
             "constraint is", "constraints are"))] ++
         color_as_incorrect([words("not satisfied:")]) ++
         [nl_indent_delta(1)] ++
-        component_list_to_color_line_pieces(yes(color_subject),
-            [suffix(".")], ConstraintPieceLists) ++
+        pieces_list_to_color_line_pieces(color_subject, [suffix(".")],
+            ConstraintPieceLists) ++
         [nl_indent_delta(-1)],
     Context = InstanceDefn ^ instdefn_context,
     Spec = spec($pred, severity_error, phase_type_check, Context, Pieces),
@@ -2452,7 +2451,7 @@ report_coverage_error(ClassId, InstanceDefn, Vars, !Specs) :-
     TVarSet = InstanceDefn ^ instdefn_tvarset,
     TypeVars = choose_number(Vars, "type variable", "type variables"),
     VarPieces = list.map(var_to_quote_piece(TVarSet), Vars),
-    VarsPieces = component_list_to_color_pieces(yes(color_subject), "and", [],
+    VarsPieces = piece_list_to_color_pieces(color_subject, "and", [],
         VarPieces),
     Pieces = [words("In instance for typeclass"),
         unqual_class_id(ClassId), suffix(":"), nl,
@@ -2538,7 +2537,7 @@ report_unbound_tvars_in_pred_context(PredInfo, Vars, !Specs) :-
     PFSymNameArity = pf_sym_name_arity(PredOrFunc, SymName, PredFormArity),
     TypeVars = choose_number(Vars, "type variable", "type variables"),
     VarPieces = list.map(var_to_quote_piece(TVarSet), Vars),
-    VarsPieces = component_list_to_color_pieces(yes(color_subject), "and", [],
+    VarsPieces = piece_list_to_color_pieces(color_subject, "and", [],
         VarPieces),
     Pieces0 = [words("In declaration for"),
         unqual_pf_sym_name_pred_form_arity(PFSymNameArity), suffix(":"), nl,
@@ -2606,8 +2605,8 @@ report_badly_quantified_vars(PredInfo, QuantErrorType, TVars, !Specs) :-
     TypeVariables =
         [words(choose_number(TVars, "type variable", "type variables"))],
     TVarPieces = list.map(var_to_quote_piece(TVarSet), TVars),
-    TVarsPieces = component_list_to_color_pieces(yes(color_subject), "and",
-        [], TVarPieces),
+    TVarsPieces = piece_list_to_color_pieces(color_subject, "and", [],
+        TVarPieces),
     Are = words(choose_number(TVars, "is", "are")),
     (
         QuantErrorType = universal_constraint,
@@ -2639,7 +2638,7 @@ report_unbound_tvars_in_ctor_context(Vars, TypeCtor, TypeDefn, !Specs) :-
     get_type_defn_tvarset(TypeDefn, TVarSet),
     TypeVars = choose_number(Vars, "type variable", "type variables"),
     VarPieces = list.map(var_to_quote_piece(TVarSet), Vars),
-    VarsPieces = component_list_to_color_pieces(yes(color_subject), "and", [],
+    VarsPieces = piece_list_to_color_pieces(color_subject, "and", [],
         VarPieces),
     Pieces = [words("In declaration for type"),
         unqual_type_ctor(TypeCtor), suffix(":"), nl,
@@ -2722,7 +2721,7 @@ error_classes_do_not_exist_pieces(HeadClassId, TailClassIds) = Pieces :-
         QualTailClassIds = list.map(WrapQualClassId, TailClassIds),
         QualClassIds = [QualHeadClassId | QualTailClassIds],
         Pieces = [words("error: the type classes")] ++
-            component_list_to_color_pieces(yes(color_subject), "and", [],
+            piece_list_to_color_pieces(color_subject, "and", [],
                 QualClassIds) ++
             color_as_incorrect([words("do not exist.")]) ++ [nl]
     ).

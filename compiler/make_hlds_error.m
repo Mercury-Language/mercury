@@ -174,7 +174,7 @@ report_undefined_pred_or_func_error(MaybePorF, SymName,
             color_as_possible_cause([words("does exist")]) ++
             [words("with"),
             words(choose_number(OtherArityStrs, "arity", "arities"))] ++
-            list_to_color_pieces(yes(color_correct), "and", [suffix(".")],
+            fixed_list_to_color_pieces(color_correct, "and", [suffix(".")],
                 OtherArityStrs) ++
             [nl]
     ),
@@ -221,10 +221,10 @@ report_undeclared_mode_error(ModuleInfo, PredId, PredInfo, VarSet, ArgModes,
             VerbosePieces = [words("The declared modes for this"),
                 p_or_f(PredOrFunc), words("are the following:"),
                 nl_indent_delta(1)] ++
-                component_list_to_line_pieces(
+                pieces_list_to_line_pieces(
                     list.map(mode_decl_for_pred_info_to_pieces(PredInfo),
-                        ProcIds),
-                    [nl_indent_delta(-1)])
+                        ProcIds)) ++
+                [nl_indent_delta(-1)]
         )
     ),
     Msg = simple_msg(Context,
@@ -319,7 +319,7 @@ maybe_report_undefined_pred_error(ModuleInfo, PredOrFunc, SymName,
                 OtherAritiesPieces = [words("However,"),
                     words(FullPredOrFuncStr), suffix("s"),
                     words("of that name do exist with arities")] ++
-                    component_list_to_color_pieces(yes(color_correct), "and",
+                    piece_list_to_color_pieces(color_correct, "and",
                         [suffix(".")], ArityPieces) ++
                     [nl]
             ),
