@@ -245,9 +245,12 @@ build_class_constraint_map(ClassTable, ApplyToSupers, PragmaTVarSet,
             pragma_decl("type_spec_constrained_preds"),
             words("declaration:"), nl,
             words("error: the constraint list references"),
-            words("a type class named"), qual_class_id(ClassId), suffix(","),
-            words("but there is no visible type class"),
-            words("with this name and arity."), nl],
+            words("a type class named")] ++
+            color_as_subject([qual_class_id(ClassId), suffix(",")]) ++
+            [words("but")] ++
+            color_as_incorrect([words("there is no visible type class"),
+                words("with this name and arity.")]) ++
+            [nl],
         % XXX TSCP Warn about other arities, and "did you mean" close enough
         % class names
         % XXX Make any code for doing that general enough to handle
@@ -1713,30 +1716,41 @@ maybe_record_type_spec_in_qual_info(PredOrFunc, SymName, UserArity, PredStatus,
 
 report_subst_existq_tvars(PredInfo, Context, SubExistQVars, Spec) :-
     pred_info_get_typevarset(PredInfo, TVarSet),
+    TypeOrTypes = choose_number(SubExistQVars, "type", "types"),
     Pieces = pragma_type_spec_to_pieces(PredInfo) ++
-        [words("error: the substitution includes"),
-        words("the existentially quantified type")] ++
-        report_variables(SubExistQVars, TVarSet) ++ [suffix(".")],
+        [words("error: the substitution includes the")] ++
+        color_as_incorrect([words("existentially quantified"),
+            words(TypeOrTypes)]) ++
+        report_variables(TVarSet, color_subject, [suffix(".")],
+            SubExistQVars) ++
+        [nl],
     Spec = spec($pred, severity_error, phase_pt2h, Context, Pieces).
 
 :- pred report_recursive_subst(pred_info::in, prog_context::in, tvarset::in,
     list(tvar)::in, error_spec::out) is det.
 
 report_recursive_subst(PredInfo, Context, TVarSet, RecursiveVars, Spec) :-
+    OccurOrOccurs =
+        choose_number(RecursiveVars, "does not occur", "do not occur"),
     Pieces = pragma_type_spec_to_pieces(PredInfo) ++
-        [words("error:")] ++ report_variables(RecursiveVars, TVarSet) ++
-        [words(choose_number(RecursiveVars, "occurs", "occur")),
-        words("on both sides of the substitution.")],
+        [words("error:")] ++
+        report_variables(TVarSet, color_subject, [], RecursiveVars) ++
+        [words(OccurOrOccurs)] ++
+        color_as_incorrect([words("on both sides of the substitution.")]) ++
+        [nl],
     Spec = spec($pred, severity_error, phase_pt2h, Context, Pieces).
 
 :- pred report_multiple_subst_vars(pred_info::in, prog_context::in,
     tvarset::in, list(tvar)::in, error_spec::out) is det.
 
 report_multiple_subst_vars(PredInfo, Context, TVarSet, MultiSubstVars, Spec) :-
+    HasOrHave = choose_number(MultiSubstVars, "has", "have"),
     Pieces = pragma_type_spec_to_pieces(PredInfo) ++
-        [words("error:")] ++ report_variables(MultiSubstVars, TVarSet) ++
-        [words(choose_number(MultiSubstVars, "has", "have")),
-        words("multiple replacement types.")],
+        [words("error:")] ++
+        report_variables(TVarSet, color_subject, [], MultiSubstVars) ++
+        color_as_incorrect([words(HasOrHave),
+            words("multiple replacement types.")]) ++
+        [nl],
     Spec = spec($pred, severity_error, phase_pt2h, Context, Pieces).
 
 :- pred report_unknown_vars_to_subst(pred_info::in, prog_context::in,
@@ -1751,10 +1765,13 @@ report_unknown_vars_to_subst(PredInfo, Context, TVarSet, UnknownVars, Spec) :-
         PredOrFunc = pf_function,
         Decl = "func"
     ),
+    DoOrDoesNotOccur =
+        choose_number(UnknownVars, "does not occur", "do not occur"),
     Pieces = pragma_type_spec_to_pieces(PredInfo) ++
-        [words("error:")] ++ report_variables(UnknownVars, TVarSet) ++
-        [words(choose_number(UnknownVars, "does not", "do not")),
-        words("occur in the"), decl(Decl), words("declaration.")],
+        [words("error:")] ++
+        report_variables(TVarSet, color_subject, [], UnknownVars) ++
+        color_as_incorrect([words(DoOrDoesNotOccur)]) ++
+        [words("in the"), decl(Decl), words("declaration."), nl],
     Spec = spec($pred, severity_error, phase_pt2h, Context, Pieces).
 
 :- func pragma_type_spec_to_pieces(pred_info) = list(format_piece).
@@ -1770,11 +1787,13 @@ pragma_type_spec_to_pieces(PredInfo) = Pieces :-
         words("declaration for"),
         qual_pf_sym_name_pred_form_arity(PFSymNameArity), suffix(":"), nl].
 
-:- func report_variables(list(tvar), tvarset) = list(format_piece).
+:- func report_variables(tvarset, color_name, list(format_piece), list(tvar))
+    = list(format_piece).
 
-report_variables(SubExistQVars, VarSet) =
-    [words(choose_number(SubExistQVars, "variable", "variables")),
-    quote(mercury_vars_to_name_only_vs(VarSet, SubExistQVars))].
+report_variables(VarSet, Color, Suffix, SubExistQVars) = Pieces :-
+    VarPieces = list.map(var_to_quote_piece(VarSet), SubExistQVars),
+    Pieces = [words(choose_number(SubExistQVars, "variable", "variables"))] ++
+        piece_list_to_color_pieces(Color, "and", Suffix, VarPieces).
 
 %---------------------------------------------------------------------------%
 :- end_module hlds.make_hlds.add_pragma.add_pragma_type_spec.

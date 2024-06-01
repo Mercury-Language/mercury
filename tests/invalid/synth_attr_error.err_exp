@@ -1,6 +1,6 @@
 synth_attr_error_spec:003: Error: synthesized attribute [38;5;87m`sorted_list'[39;49m of event
 synth_attr_error_spec:003:   `nodiag_fail' [38;5;203mdepends on itself.[39;49m
-synth_attr_error_spec:007: Error: attribute [38;5;203m`arg_list_len'[39;49m of event
+synth_attr_error_spec:007: Error: attribute [38;5;87m`arg_list_len'[39;49m of event
 synth_attr_error_spec:007:   `nodiag_fail' uses [38;5;203mnonexistent attribute[39;49m
 synth_attr_error_spec:007:   [38;5;203m`xsorted_list'[39;49m in its synthesis.
 synth_attr_error_spec:009: Error: attribute [38;5;87m`arg_list_lenb'[39;49m [38;5;203mcannot be[39;49m

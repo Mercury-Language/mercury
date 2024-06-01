@@ -1,7 +1,7 @@
 test_type_spec.m:011: Error: predicate [38;5;87m`type_spec1'/1[39;49m [38;5;203mhas no clauses.[39;49m
 test_type_spec.m:013: In `:- pragma type_spec' declaration for predicate
 test_type_spec.m:013:   `test_type_spec.type_spec1'/1:
-test_type_spec.m:013:   error: variable `U' does not occur in the `:- pred'
+test_type_spec.m:013:   error: variable [38;5;87m`U'[39;49m [38;5;203mdoes not occur[39;49m in the `:- pred'
 test_type_spec.m:013:   declaration.
 test_type_spec.m:014: In `:- pragma type_spec' declaration for predicate
 test_type_spec.m:014:   [38;5;87m`type_spec1'/1:[39;49m
@@ -16,12 +16,12 @@ test_type_spec.m:016:   `type_spec1' [38;5;226mdoes exist[39;49m with arity [
 test_type_spec.m:024: Error: predicate [38;5;87m`type_spec2'/1[39;49m [38;5;203mhas no clauses.[39;49m
 test_type_spec.m:026: In `:- pragma type_spec' declaration for predicate
 test_type_spec.m:026:   `test_type_spec.type_spec2'/1:
-test_type_spec.m:026:   error: the substitution includes the existentially
-test_type_spec.m:026:   quantified type variable `U'.
+test_type_spec.m:026:   error: the substitution includes the [38;5;203mexistentially[39;49m
+test_type_spec.m:026:   [38;5;203mquantified type[39;49m variable [38;5;87m`U'.[39;49m
 test_type_spec.m:028: In `:- pragma type_spec' declaration for predicate
 test_type_spec.m:028:   `test_type_spec.type_spec2'/1:
-test_type_spec.m:028:   error: variable `U' occurs on both sides of the
-test_type_spec.m:028:   substitution.
+test_type_spec.m:028:   error: variable [38;5;87m`U'[39;49m does not occur [38;5;203mon both sides of the[39;49m
+test_type_spec.m:028:   [38;5;203msubstitution.[39;49m
 test_type_spec.m:030: In `:- pragma type_spec' declaration for predicate
 test_type_spec.m:030:   `test_type_spec.type_spec2'/1:
-test_type_spec.m:030:   error: variable `U' has multiple replacement types.
+test_type_spec.m:030:   error: variable [38;5;87m`U'[39;49m [38;5;203mhas multiple replacement types.[39;49m

@@ -1735,9 +1735,10 @@ parse_type_defn_head(ContextPieces, ModuleName, VarSet, Term,
                         % be at least somewhat misleading.
                         Pieces = [words("Error: in a type definition,"),
                             words("the first constructor")] ++
-                            color_as_incorrect([words("must be preceded"),
-                                words("by"), quote("--->"), suffix(","),
-                                words("not by a semicolon.")]) ++
+                            color_as_correct([words("must be preceded"),
+                                words("by"), quote("--->"), suffix(",")]) ++
+                            color_as_incorrect(
+                                [words("not by a semicolon.")]) ++
                             [nl],
                         Spec = spec($pred, severity_error, phase_t2pt,
                             Context, Pieces),

@@ -1,2 +1,2 @@
-type_no_arrow.m:009: Error: in a type definition, the first constructor [38;5;203mmust be[39;49m
-type_no_arrow.m:009:   [38;5;203mpreceded by `--->', not by a semicolon.[39;49m
+type_no_arrow.m:009: Error: in a type definition, the first constructor [38;5;40mmust be[39;49m
+type_no_arrow.m:009:   [38;5;40mpreceded by `--->',[39;49m [38;5;203mnot by a semicolon.[39;49m
