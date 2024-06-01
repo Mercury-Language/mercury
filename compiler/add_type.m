@@ -1437,8 +1437,9 @@ check_supertype_is_du_not_foreign(TypeDefn, SuperTypeCtor, SuperTypeDefn,
             IsForeign = yes(_),
             Pieces = [words("Error:")] ++
                 color_as_subject([unqual_type_ctor(SuperTypeCtor)]) ++
-                color_as_incorrect([words("cannot be a supertype"),
-                    words("because it has a foreign type definition.")]) ++
+                color_as_incorrect([words("cannot be a supertype")]) ++
+                [words("because it has a")] ++
+                color_as_incorrect([words("foreign type definition.")]) ++
                 [nl],
             hlds_data.get_type_defn_context(TypeDefn, Context),
             Spec = spec($pred, severity_error, phase_pt2h, Context, Pieces),
@@ -1447,21 +1448,26 @@ check_supertype_is_du_not_foreign(TypeDefn, SuperTypeCtor, SuperTypeDefn,
     ;
         (
             SuperTypeBody = hlds_eqv_type(_),
-            SuperTypeDesc = "an equivalence type"
+            AAn = "an",
+            SuperTypeDesc = "equivalence type"
         ;
             SuperTypeBody = hlds_foreign_type(_),
-            SuperTypeDesc = "a foreign type"
+            AAn = "a",
+            SuperTypeDesc = "foreign type"
         ;
             SuperTypeBody = hlds_solver_type(_),
-            SuperTypeDesc = "a solver type"
+            AAn = "a",
+            SuperTypeDesc = "solver type"
         ;
             SuperTypeBody = hlds_abstract_type(_),
-            SuperTypeDesc = "an abstract type"
+            AAn = "an",
+            SuperTypeDesc = "abstract type"
         ),
         Pieces = [words("Error:")] ++
             color_as_subject([unqual_type_ctor(SuperTypeCtor)]) ++
-            color_as_incorrect([words("cannot be a supertype because it is"),
-                words(SuperTypeDesc), suffix(".")]) ++
+            color_as_incorrect([words("cannot be a supertype")]) ++
+            [words("because it is"), words(AAn)] ++
+            color_as_incorrect([words(SuperTypeDesc), suffix(".")]) ++
             [nl],
         hlds_data.get_type_defn_context(TypeDefn, Context),
         Spec = spec($pred, severity_error, phase_pt2h, Context, Pieces),

@@ -108,7 +108,8 @@ read_event_set(SpecsFileName, EventSetName, EventSpecMap, ErrorSpecs, !IO) :-
             TermReadRes = eof,
             EventSetName = "",
             EventSpecMap = map.init,
-            Pieces = [words("eof in term specification file."), nl],
+            Pieces = [words("Error: unexpected end-of-file"),
+                words("in term specification file."), nl],
             ErrorSpec = no_ctxt_spec($pred, severity_error, phase_t2pt,
                 Pieces),
             ErrorSpecs = [ErrorSpec]
@@ -127,7 +128,8 @@ read_event_set(SpecsFileName, EventSetName, EventSpecMap, ErrorSpecs, !IO) :-
         TermFileResult = error(ErrorMessage),
         EventSetName = "",
         EventSpecMap = map.init,
-        Pieces = [words(ErrorMessage), nl],
+        Pieces = [words("Error:"), lower_case_next_if_not_first,
+            words(ErrorMessage), nl],
         ErrorSpec = no_ctxt_spec($pred, severity_error, phase_t2pt, Pieces),
         ErrorSpecs = [ErrorSpec]
     ).
@@ -156,8 +158,9 @@ make_temp_file_and_open_it(WritePred, Result, !IO) :-
                 Result = ok({TempFileName, Stream})
             ;
                 OpenResult = error(Error),
-                Result = error(format("could not open `%s': %s",
-                    [s(TempFileName), s(error_message(Error))])),
+                ErrorMessage = string.format("could not open `%s': %s",
+                    [s(TempFileName), s(error_message(Error))]),
+                Result = error(ErrorMessage),
                 io.file.remove_file(TempFileName, _, !IO)
             )
         ;
@@ -167,8 +170,9 @@ make_temp_file_and_open_it(WritePred, Result, !IO) :-
         )
     ;
         TempFileResult = error(Error),
-        Result = error(format("could not create temporary file: %s",
-            [s(error_message(Error))]))
+        ErrorMessage = string.format("could not create temporary file: %s",
+            [s(error_message(Error))]),
+        Result = error(ErrorMessage)
     ).
 
 :- pred read_specs_file(string::in, string::in, maybe_error::out,
@@ -445,9 +449,11 @@ convert_term_to_spec_map(FileName, SpecTerm, !EventSpecMap, !ErrorSpecs) :-
         Attrs, SynthAttrNumOrder),
     ( if map.search(!.EventSpecMap, EventName, OldEventSpec) then
         OldLineNumber = OldEventSpec ^ event_spec_linenum,
-        Pieces1 = [words("Duplicate event specification for event"),
-            quote(EventName), suffix("."), nl],
-        Pieces2 = [words("The previous event specification is here."), nl],
+        Pieces1 = [words("Error: this specification for event")] ++
+            color_as_subject([quote(EventName)]) ++
+            color_as_incorrect([words("is a duplicate.")]),
+        Pieces2 = [words("The previous specification of event"),
+            quote(EventName), words("is here."), nl],
         EventContext = term_context.context(FileName, EventLineNumber),
         OldContext = term_context.context(FileName, OldLineNumber),
         DuplErrorSpec = error_spec($pred, severity_error, phase_t2pt,
@@ -481,24 +487,31 @@ acc_circular_synth_attr_error(Context, EventName, Scc, !ErrorSpecs) :-
     (
         Attrs = [_, _ | _],
         Pieces =
-            [words("Synthesized attributes")] ++
-            quote_list_to_pieces("and", set.to_sorted_list(Scc)) ++
-            [words("of event"), quote(EventName),
-            words("depend on each other."), nl]
+            [words("Error: synthesized attributes")] ++
+            quote_list_to_color_pieces(color_subject, "and", [], Attrs) ++
+            [words("of event"), quote(EventName)] ++
+            color_as_incorrect([words("depend on each other.")]) ++
+            [nl]
     ;
         Attrs = [Attr],
         Pieces =
-            [words("Synthesized attribute"), quote(Attr),
-            words("of event"), quote(EventName),
-            words("depends on itself."), nl]
+            [words("Error: synthesized attribute")] ++
+            color_as_subject([quote(Attr)]) ++
+            [words("of event"), quote(EventName)] ++
+            color_as_incorrect([words("depends on itself.")]) ++
+            [nl]
     ;
         Attrs = [],
         % This should never happen, as all circular dependencies
         % should be classifiable as due to either mutual or self recursion,
         % but just in case ...
         Pieces =
-            [words("Circular dependency among the synthesized attributes"),
-            words("of event"), quote(EventName), suffix("."), nl]
+            [words("Error:")] ++
+            color_as_incorrect([words("circular dependency")]) ++
+            [words("among the synthesized attributes of")] ++
+            color_as_subject([words("event"), quote(EventName),
+                suffix(".")]) ++
+            [nl]
     ),
     CircErrorSpec = spec($pred, severity_error, phase_t2pt, Context, Pieces),
     !:ErrorSpecs = [CircErrorSpec | !.ErrorSpecs].
@@ -570,9 +583,11 @@ build_plain_type_map(EventName, FileName, EventLineNumber,
     ( if bimap.insert(AttrName, AttrKey, !KeyMap) then
         map.det_insert(AttrName, AttrInfo, !AttrNameMap)
     else
-        Pieces = [words("Event"), quote(EventName),
-            words("has more than one attribute named"),
-            quote(AttrName), suffix("."), nl],
+        Pieces = [words("Error: event"), quote(EventName)] ++
+            color_as_incorrect([words("has more than one")]) ++
+            [words("attribute named")] ++
+            color_as_subject([quote(AttrName), suffix(".")]) ++
+            [nl],
         ErrorSpec = spec($pred, severity_error, phase_t2pt,
             term_context.context(FileName, EventLineNumber), Pieces),
         !:ErrorSpecs = [ErrorSpec | !.ErrorSpecs]
@@ -648,12 +663,15 @@ build_dep_map(EventName, FileName, AttrNameMap, KeyMap, [AttrTerm | AttrTerms],
                             FuncAttrLine =
                                 FuncAttrInfo ^ attr_info_linenumber,
                             % XXX Maybe we should give the types themselves.
-                            Pieces = [words("Attribute"), quote(FuncAttrName),
-                                words("is assigned inconsistent types"),
-                                words("by synthesized attributes."), nl],
+                            Pieces = [words("Error: attribute")] ++
+                                color_as_subject([quote(FuncAttrName)]) ++
+                                [words("is assigned")] ++
+                                color_as_incorrect(
+                                    [words("inconsistent types")]) ++
+                                [words("by synthesized attributes."), nl],
+                            Context = context(FileName, FuncAttrLine),
                             ErrorSpec = spec($pred, severity_error, phase_t2pt,
-                                term_context.context(FileName, FuncAttrLine),
-                                Pieces),
+                                Context, Pieces),
                             !:ErrorSpecs = [ErrorSpec | !.ErrorSpecs]
                         )
                     else
@@ -661,13 +679,14 @@ build_dep_map(EventName, FileName, AttrNameMap, KeyMap, [AttrTerm | AttrTerms],
                             !AttrTypeMap)
                     )
                 else
-                    Pieces = [words("Attribute"), quote(AttrName),
-                        words("cannot be synthesized"),
-                        words("by non-function attribute"),
+                    Pieces = [words("Error: attribute")] ++
+                        color_as_subject([quote(AttrName)]) ++
+                        color_as_incorrect([words("cannot be synthesized")]) ++
+                        [words("by non-function attribute"),
                         quote(FuncAttrName), suffix("."), nl],
+                    Context = context(FileName, AttrLineNumber),
                     ErrorSpec = spec($pred, severity_error, phase_t2pt,
-                        term_context.context(FileName, AttrLineNumber),
-                        Pieces),
+                        Context, Pieces),
                     !:ErrorSpecs = [ErrorSpec | !.ErrorSpecs]
                 )
             else
@@ -695,10 +714,12 @@ record_arg_dependencies(EventName, FileName, AttrLineNumber, KeyMap,
     ( if bimap.search(KeyMap, AttrName, AttrKey) then
         digraph.add_edge(AttrKey, SynthAttrKey, !DepRel)
     else
-        Pieces = [words("Attribute"), quote(SynthAttrName),
-            words("of event"), quote(EventName),
-            words("uses nonexistent attribute"), quote(AttrName),
-            words("in its synthesis."), nl],
+        Pieces = [words("Error: attribute")] ++
+            color_as_subject([quote(SynthAttrName)]) ++
+            [words("of event"), quote(EventName), words("uses")] ++
+            color_as_incorrect([words("nonexistent attribute"),
+                quote(AttrName)]) ++
+            [words("in its synthesis."), nl],
         ErrorSpec = spec($pred, severity_error, phase_t2pt,
             term_context.context(FileName, AttrLineNumber), Pieces),
         !:ErrorSpecs = [ErrorSpec | !.ErrorSpecs]
@@ -755,9 +776,11 @@ convert_terms_to_attrs(EventName, FileName, AttrNameMap,
                 no),
             !:RevAttrs = [EventAttr | !.RevAttrs]
         else
-            Pieces = [words("Event"), quote(EventName),
-                words("does not use the function attribute"),
-                quote(AttrName), suffix("."), nl],
+            Pieces = [words("Error: event"), quote(EventName)] ++
+                color_as_incorrect([words("does not use")]) ++
+                [words("the function attribute")] ++
+                color_as_subject([quote(AttrName), suffix(".")]) ++
+                [nl],
             ErrorSpec = spec($pred, severity_error, phase_t2pt,
                 term_context.context(FileName, AttrLineNumber), Pieces),
             !:ErrorSpecs = [ErrorSpec | !.ErrorSpecs]

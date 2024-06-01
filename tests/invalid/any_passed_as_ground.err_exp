@@ -4,7 +4,7 @@ any_passed_as_ground.m:029:   mode error: arguments [38;5;87m`V_10'[39;49m and
 any_passed_as_ground.m:029:   following insts:
 any_passed_as_ground.m:029:     free,
 any_passed_as_ground.m:029:     any
-any_passed_as_ground.m:029:   which does not match any of the modes for
+any_passed_as_ground.m:029:   which [38;5;203mdoes not match[39;49m any of the modes for
 any_passed_as_ground.m:029:   predicate `list.member'/2.
 any_passed_as_ground.m:029:   The [38;5;87msecond argument `Xs'[39;49m has inst [38;5;203m`any',[39;49m which
 any_passed_as_ground.m:029:   does not match any of those modes.

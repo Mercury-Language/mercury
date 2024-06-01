@@ -998,7 +998,6 @@ mode_error_no_matching_mode_to_spec(ModeInfo, MatchWhat, InstMap, Vars,
             NumExtra = 0
         ;
             ModeCallId = mode_call_plain(PredId0),
-
             some [PredInfo, PFSymNameArity] (
                 module_info_pred_info(ModuleInfo, PredId0, PredInfo),
                 pred_info_get_pf_sym_name_arity(PredInfo, PFSymNameArity),
@@ -1028,20 +1027,18 @@ mode_error_no_matching_mode_to_spec(ModeInfo, MatchWhat, InstMap, Vars,
         % their instantiation states, but we do so separately, in an effort
         % to avoid confusing users.
         list.det_split_list(NumExtra, Vars, ExtraVars, UserVars),
-        UserArgPieces = [words("argument")],
-        UserVarInstPieces = arg_inst_mismatch_pieces(ModeInfo, UserArgPieces,
+        UserVarInstPieces = arg_inst_mismatch_pieces(ModeInfo, [],
             PredOrFunc, InstMap, UserVars),
         ( if var_insts_are_all_ground(ModuleInfo, InstMap, ExtraVars) then
             VarListInstPieces = UserVarInstPieces
         else
-            ExtraArgPieces = [words("the compiler-generated argument")],
+            ExtraArgPieces = [words("the compiler-generated")],
             ExtraVarInstPieces = arg_inst_mismatch_pieces(ModeInfo,
                 ExtraArgPieces, pf_predicate, InstMap, ExtraVars),
             VarListInstPieces =  ExtraVarInstPieces ++ UserVarInstPieces
         )
     else
-        UserArgPieces = [words("argument")],
-        VarListInstPieces = arg_inst_mismatch_pieces(ModeInfo, UserArgPieces,
+        VarListInstPieces = arg_inst_mismatch_pieces(ModeInfo, [],
             PredOrFunc, InstMap, Vars)
     ),
     % Note that MatchWhat *almost* duplicates the information contained in
@@ -1050,6 +1047,8 @@ mode_error_no_matching_mode_to_spec(ModeInfo, MatchWhat, InstMap, Vars,
     % for errors discovered during unifications (whose processing presumably
     % did not set the mode context), and we want to generate an error message
     % that does not generate confusing wording in this eventuality.
+    NoMatchPieces = [words("which")] ++
+        color_as_incorrect([words("does not match")]),
     (
         MatchWhat = match_plain_call(PredId),
         some [PredInfo, PFSymNameArity] (
@@ -1059,32 +1058,32 @@ mode_error_no_matching_mode_to_spec(ModeInfo, MatchWhat, InstMap, Vars,
             pred_info_get_proc_table(PredInfo, ProcTable)
         ),
         ( if map.count(ProcTable) > 1 then
-            NoMatchPieces =
-                [words("which does not match any of the modes for"),
+            MatchWhatPieces =
+                [words("any of the modes for"),
                 words(CallIdStr), suffix("."), nl]
         else
-            NoMatchPieces =
-                [words("which does not match the only mode of"),
+            MatchWhatPieces =
+                [words("the only mode of"),
                 words(CallIdStr), suffix("."), nl]
         )
     ;
         MatchWhat = match_higher_order_call(GenericCallId),
         WhatStr = generic_call_id_to_string(GenericCallId),
-        NoMatchPieces =
-            [words("which does not match the mode of this"),
+        MatchWhatPieces =
+            [words("the mode of this"),
             words(WhatStr), suffix("."), nl]
     ;
         MatchWhat = match_event,
-        NoMatchPieces = [words("which does not match"),
-            words("the input mode required for event arguments."), nl]
+        MatchWhatPieces =
+            [words("the input mode required for event arguments."), nl]
     ;
         MatchWhat = match_cast,
-        NoMatchPieces = [words("which does not match"),
-            words("the input mode required for event values being cast."), nl]
+        MatchWhatPieces =
+            [words("the input mode required for event values being cast."), nl]
     ;
         MatchWhat = match_unify,
-        NoMatchPieces = [words("which does not match"),
-            words("the input mode required for unifications."), nl]
+        MatchWhatPieces =
+            [words("the input mode required for unifications."), nl]
     ),
     mode_info_get_var_table(ModeInfo, VarTable),
     construct_argnum_var_type_inst_tuples(VarTable, InstMap, 1,
@@ -1100,11 +1099,11 @@ mode_error_no_matching_mode_to_spec(ModeInfo, MatchWhat, InstMap, Vars,
     % the arguments.
     report_any_never_matching_args(ModeInfo, ArgNumMatchedProcs, NumExtra,
         ArgTuples, BadArgPieces),
-    Pieces = PrefixPieces ++ VarListInstPieces ++ NoMatchPieces ++
-        BadArgPieces,
+    Pieces = PrefixPieces ++ VarListInstPieces ++
+        NoMatchPieces ++ MatchWhatPieces ++ BadArgPieces,
+    Phase = phase_mode_check(report_in_any_mode),
     mode_info_get_context(ModeInfo, Context),
-    Spec = spec($pred, severity_error,
-        phase_mode_check(report_in_any_mode), Context, Pieces).
+    Spec = spec($pred, severity_error, Phase, Context, Pieces).
 
 :- pred var_insts_are_all_ground(module_info::in, instmap::in,
     list(prog_var)::in) is semidet.
@@ -1118,7 +1117,7 @@ var_insts_are_all_ground(ModuleInfo, InstMap, [Var | Vars]) :-
 :- func arg_inst_mismatch_pieces(mode_info, list(format_piece),
     pred_or_func, instmap, list(prog_var)) = list(format_piece).
 
-arg_inst_mismatch_pieces(ModeInfo, ArgPieces, PredOrFunc, InstMap, Vars)
+arg_inst_mismatch_pieces(ModeInfo, CompGenPieces, PredOrFunc, InstMap, Vars)
         = Pieces :-
     (
         Vars = [],
@@ -1134,14 +1133,14 @@ arg_inst_mismatch_pieces(ModeInfo, ArgPieces, PredOrFunc, InstMap, Vars)
                 TailVars),
             (
                 TailVars = [],
-                Pieces = ArgPieces ++
+                Pieces = CompGenPieces ++ [words("argument")] ++
                     color_as_subject([HeadVarPiece]) ++
                     [words("has the following inst:"), nl_indent_delta(1)] ++
                     inst_list_to_sep_lines(ModeInfo, Insts)
                 % inst_list_to_sep_lines does nl_indent_delta(-1).
             ;
                 TailVars = [_ | _],
-                Pieces = ArgPieces ++ [suffix("s")] ++
+                Pieces = CompGenPieces ++ [words("arguments")] ++
                     piece_list_to_color_pieces(color_subject, "and", [],
                         [HeadVarPiece | TailVarPieces]) ++
                     [words("have the following insts:"), nl_indent_delta(1)] ++
@@ -1155,6 +1154,8 @@ arg_inst_mismatch_pieces(ModeInfo, ArgPieces, PredOrFunc, InstMap, Vars)
             ReturnVarPieces = [words("return value"), quote(ReturnVarName)],
             (
                 ArgVars = [],
+                % Ignore CompGenPieces, since the result arg of a function
+                % will never be compiler generated.
                 Pieces = [words("the")] ++
                     color_as_subject(ReturnVarPieces) ++
                     [words("has the following inst:"), nl_indent_delta(1)] ++
@@ -1164,7 +1165,8 @@ arg_inst_mismatch_pieces(ModeInfo, ArgPieces, PredOrFunc, InstMap, Vars)
                 ArgVars = [_ | _],
                 ArgVarPieces = list.map(var_in_table_to_quote_piece(VarTable),
                     ArgVars),
-                Pieces = ArgPieces ++
+                Pieces = CompGenPieces ++
+                    [words(choose_number(ArgVars, "argument", "arguments"))] ++
                     piece_strict_list_to_color_pieces(color_subject, [],
                         ArgVarPieces) ++
                     [words("and the")] ++ color_as_subject(ReturnVarPieces) ++

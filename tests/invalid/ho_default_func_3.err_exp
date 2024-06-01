@@ -8,7 +8,7 @@ ho_default_func_3.m:037:   mode error: argument [38;5;87m`V_7'[39;49m and the 
 ho_default_func_3.m:037:   [38;5;87m`V_6'[39;49m have the following insts:
 ho_default_func_3.m:037:     /* unique */ (func(di) = uo is det),
 ho_default_func_3.m:037:     free
-ho_default_func_3.m:037:   which does not match any of the modes for function
+ho_default_func_3.m:037:   which [38;5;203mdoes not match[39;49m any of the modes for function
 ho_default_func_3.m:037:   `univ.univ'/1.
 ho_default_func_3.m:037: 
 ho_default_func_3.m:037:   In clause for `baz(in, out)':
@@ -17,5 +17,5 @@ ho_default_func_3.m:037:   mode error: arguments [38;5;87m`V_6'[39;49m and [3
 ho_default_func_3.m:037:   following insts:
 ho_default_func_3.m:037:     free,
 ho_default_func_3.m:037:     free
-ho_default_func_3.m:037:   which does not match any of the modes for predicate
+ho_default_func_3.m:037:   which [38;5;203mdoes not match[39;49m any of the modes for predicate
 ho_default_func_3.m:037:   `univ.univ_to_type'/2.

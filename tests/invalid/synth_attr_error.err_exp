@@ -1,18 +1,21 @@
-synth_attr_error_spec:003: Synthesized attribute `sorted_list' of event
-synth_attr_error_spec:003:   `nodiag_fail' depends on itself.
-synth_attr_error_spec:007: Attribute `arg_list_len' of event `nodiag_fail' uses
-synth_attr_error_spec:007:   nonexistent attribute `xsorted_list' in its
-synth_attr_error_spec:007:   synthesis.
-synth_attr_error_spec:009: Attribute `arg_list_lenb' cannot be synthesized by
-synth_attr_error_spec:009:   non-function attribute `arg_list'.
-synth_attr_error_spec:015: Synthesized attributes `excp' and `excp2' of event
-synth_attr_error_spec:015:   `safe_test' depend on each other.
-synth_attr_error_spec:017: Attribute `f' is assigned inconsistent types by
-synth_attr_error_spec:017:   synthesized attributes.
-synth_attr_error_spec:026: Duplicate event specification for event `safe_test'.
-synth_attr_error_spec:015:   The previous event specification is here.
-synth_attr_error_spec:030: Event `e' has more than one attribute named `dupx'.
-synth_attr_error_spec:033: Attribute `f' is assigned inconsistent types by
-synth_attr_error_spec:033:   synthesized attributes.
-synth_attr_error_spec:040: Attribute `f' is assigned inconsistent types by
-synth_attr_error_spec:040:   synthesized attributes.
+synth_attr_error_spec:003: Error: synthesized attribute [38;5;87m`sorted_list'[39;49m of event
+synth_attr_error_spec:003:   `nodiag_fail' [38;5;203mdepends on itself.[39;49m
+synth_attr_error_spec:007: Error: attribute [38;5;203m`arg_list_len'[39;49m of event
+synth_attr_error_spec:007:   `nodiag_fail' uses [38;5;203mnonexistent attribute[39;49m
+synth_attr_error_spec:007:   [38;5;203m`xsorted_list'[39;49m in its synthesis.
+synth_attr_error_spec:009: Error: attribute [38;5;87m`arg_list_lenb'[39;49m [38;5;203mcannot be[39;49m
+synth_attr_error_spec:009:   [38;5;203msynthesized[39;49m by non-function attribute `arg_list'.
+synth_attr_error_spec:015: Error: synthesized attributes [38;5;87m`excp'[39;49m and [38;5;87m`excp2'[39;49m of
+synth_attr_error_spec:015:   event `safe_test' [38;5;203mdepend on each other.[39;49m
+synth_attr_error_spec:017: Error: attribute [38;5;87m`f'[39;49m is assigned [38;5;203minconsistent types[39;49m
+synth_attr_error_spec:017:   by synthesized attributes.
+synth_attr_error_spec:026: Error: this specification for event [38;5;87m`safe_test'[39;49m [38;5;203mis a[39;49m
+synth_attr_error_spec:026:   [38;5;203mduplicate.[39;49m
+synth_attr_error_spec:015:   The previous specification of event `safe_test' is
+synth_attr_error_spec:015:   here.
+synth_attr_error_spec:030: Error: event `e' [38;5;203mhas more than one[39;49m attribute named
+synth_attr_error_spec:030:   [38;5;87m`dupx'.[39;49m
+synth_attr_error_spec:033: Error: attribute [38;5;87m`f'[39;49m is assigned [38;5;203minconsistent types[39;49m
+synth_attr_error_spec:033:   by synthesized attributes.
+synth_attr_error_spec:040: Error: attribute [38;5;87m`f'[39;49m is assigned [38;5;203minconsistent types[39;49m
+synth_attr_error_spec:040:   by synthesized attributes.

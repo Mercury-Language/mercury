@@ -11,6 +11,6 @@ ho_default_func_4.m:039:         )
 ho_default_func_4.m:039:       )
 ho_default_func_4.m:039:     ) = out is det),
 ho_default_func_4.m:039:     free
-ho_default_func_4.m:039:   which does not match any of the modes for function
+ho_default_func_4.m:039:   which [38;5;203mdoes not match[39;49m any of the modes for function
 ho_default_func_4.m:039:   `univ.univ'/1.
 For more information, recompile with `-E'.

@@ -140,8 +140,9 @@ report_format_mismatch(ModuleInfo, PredId, MaybePos, HeadError, TailErrors,
                 [HeadError | TailErrors]),
             list.condense(ErrorPiecesLists, ErrorPieces)
         ),
-        Pieces = [words("Error: the format string"),
-            words("does not match the list of values to be formatted"),
+        Pieces = [words("Error: the format string")] ++
+            color_as_incorrect([words("does not match")]) ++
+            [words("the list of values to be formatted"),
             words("in call to")] ++ PredNameDotPieces ++ [nl] ++
             ErrorPieces,
         Phase = phase_simplify(report_in_any_mode),

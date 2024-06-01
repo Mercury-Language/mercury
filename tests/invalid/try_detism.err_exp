@@ -17,7 +17,7 @@ try_detism.m:022:     /* unique */ (pred(out, di, uo) is semidet),
 try_detism.m:022:     free,
 try_detism.m:022:     unique,
 try_detism.m:022:     free
-try_detism.m:022:   which does not match any of the modes for predicate
+try_detism.m:022:   which [38;5;203mdoes not match[39;49m any of the modes for predicate
 try_detism.m:022:   `exception.try_io'/4.
 try_detism.m:022:   The [38;5;87mfirst argument `TryLambda'[39;49m has inst
 try_detism.m:022:     [38;5;203m/* unique */ (pred(out, di, uo) is semidet),[39;49m

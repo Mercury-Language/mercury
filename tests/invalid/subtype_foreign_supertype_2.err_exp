@@ -1,2 +1,2 @@
 subtype_foreign_supertype_2.m:017: Error: [38;5;87m`fruit'/0[39;49m [38;5;203mcannot be a supertype[39;49m
-subtype_foreign_supertype_2.m:017:   [38;5;203mbecause it has a foreign type definition.[39;49m
+subtype_foreign_supertype_2.m:017:   because it has a [38;5;203mforeign type definition.[39;49m
