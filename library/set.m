@@ -92,8 +92,8 @@
 :- func insert(set(T), T) = set(T).
 :- pred insert(T::in, set(T)::in, set(T)::out) is det.
 
-    % insert_new(X, Set0, Set) is true iff Set0 does not contain
-    % X, and Set is the union of Set0 and the set containing only X.
+    % insert_new(X, Set0, Set) is true iff Set0 does not contain X,
+    % and Set is the union of Set0 and the set containing only X.
     %
 :- pred insert_new(T::in, set(T)::in, set(T)::out) is semidet.
 
