@@ -1,5 +1,5 @@
 undef_type.m:021: In declaration of predicate `q'/1:
-undef_type.m:021:   error: undefined type `undef2'/0.
+undef_type.m:021:   error: the type [38;5;87m`undef2'/0[39;49m is [38;5;203mundefined.[39;49m
 undef_type.m:024: In declaration of predicate `r'/1:
-undef_type.m:024:   error: undefined type `io.state'/0.
-undef_type.m:024:   (No module named `io' has been imported.)
+undef_type.m:024:   error: the type [38;5;87m`io.state'/0[39;49m is [38;5;203mundefined.[39;49m
+undef_type.m:024:   (No module named [38;5;87m`io'[39;49m [38;5;203mhas been imported.)[39;49m

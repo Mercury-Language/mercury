@@ -1,5 +1,3 @@
-trailed_mutable.m:018: Error: [38;5;87mtrailed `:- mutable' declaration[39;49m [38;5;203min non-trailing[39;49m
-trailed_mutable.m:018:   [38;5;203mgrade.[39;49m
 trailed_mutable.m:019: In clause for predicate `initialise_mutable_global2'/0:
 trailed_mutable.m:019:   in argument 1 of call to predicate
 trailed_mutable.m:019:   `trailed_mutable.set_global2'/1:
