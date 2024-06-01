@@ -76,7 +76,8 @@
 implement_mutables_if_local(ModuleInfo, UndefInstCtors, SecList, PredDecls,
         ClauseInfos, ForeignProcs, ForeignDeclCodes, ForeignBodyCodes,
         FPEInfoCord, !PredTargetNames, !Specs) :-
-    implement_mutables_sec_loop(ModuleInfo, UndefInstCtors, SecList,
+    implement_mutables_sec_loop(ModuleInfo, UndefInstCtors,
+        SecList, map.init,
         cord.init, PredDeclCord,
         cord.init, ClauseInfoCord, cord.init, ForeignProcCord,
         cord.init, ForeignDeclCodeCord, cord.init, ForeignBodyCodeCord,
@@ -89,6 +90,7 @@ implement_mutables_if_local(ModuleInfo, UndefInstCtors, SecList, PredDecls,
 
 :- pred implement_mutables_sec_loop(module_info::in,
     set_tree234(inst_ctor)::in, sec_list(item_mutable_info)::in,
+    map(string, prog_context)::in,
     sec_cord(item_pred_decl_info)::in, sec_cord(item_pred_decl_info)::out,
     ims_cord(item_clause_info)::in, ims_cord(item_clause_info)::out,
     ims_cord(item_foreign_proc_info)::in,
@@ -100,12 +102,12 @@ implement_mutables_if_local(ModuleInfo, UndefInstCtors, SecList, PredDecls,
     pred_target_names::in, pred_target_names::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-implement_mutables_sec_loop(_ModuleInfo, _UndefInstCtors, [],
+implement_mutables_sec_loop(_ModuleInfo, _UndefInstCtors, [], _DefinedMutables,
         !PredDeclCord, !ClauseInfoCord, !ForeignProcCord,
         !ForeignDeclCodeCord, !ForeignBodyCodeCord,
         !FPEInfoCord, !PredTargetNames, !Specs).
 implement_mutables_sec_loop(ModuleInfo, UndefInstCtors,
-        [SecSubList | SecSubLists],
+        [SecSubList | SecSubLists], !.DefinedMutables,
         !PredDeclCord, !ClauseInfoCord, !ForeignProcCord,
         !ForeignDeclCodeCord, !ForeignBodyCodeCord,
         !FPEInfoCord, !PredTargetNames, !Specs) :-
@@ -119,8 +121,7 @@ implement_mutables_sec_loop(ModuleInfo, UndefInstCtors,
         ModuleParams = module_params(Globals, ModuleName, UndefInstCtors,
             TypeNameFunc),
         implement_mutables_loop(ModuleInfo, SectionInfo, ModuleParams,
-            ItemMutables,
-            cord.init, PredDeclSubCord,
+            ItemMutables, !DefinedMutables, cord.init, PredDeclSubCord,
             cord.init, ClauseInfoSubCord, cord.init, ForeignProcSubCord,
             !ForeignDeclCodeCord, !ForeignBodyCodeCord,
             !FPEInfoCord, !PredTargetNames, !Specs),
@@ -148,13 +149,15 @@ implement_mutables_sec_loop(ModuleInfo, UndefInstCtors,
         % the definition of the global variable storing the mutable
         % in any submodules of the module that actually defined the mutable.
     ),
-    implement_mutables_sec_loop(ModuleInfo, UndefInstCtors, SecSubLists,
+    implement_mutables_sec_loop(ModuleInfo, UndefInstCtors,
+        SecSubLists, !.DefinedMutables,
         !PredDeclCord, !ClauseInfoCord, !ForeignProcCord,
         !ForeignDeclCodeCord, !ForeignBodyCodeCord,
         !FPEInfoCord, !PredTargetNames, !Specs).
 
 :- pred implement_mutables_loop(module_info::in, sec_info::in,
     module_params::in, list(item_mutable_info)::in,
+    map(string, prog_context)::in, map(string, prog_context)::out,
     cord(item_pred_decl_info)::in, cord(item_pred_decl_info)::out,
     cord(item_clause_info)::in, cord(item_clause_info)::out,
     cord(item_foreign_proc_info)::in, cord(item_foreign_proc_info)::out,
@@ -166,24 +169,41 @@ implement_mutables_sec_loop(ModuleInfo, UndefInstCtors,
     list(error_spec)::in, list(error_spec)::out) is det.
 
 implement_mutables_loop(_ModuleInfo, _SectionInfo, _ModuleParams,
-        [], !PredDeclCord, !ClauseInfoCord, !ForeignProcCord,
+        [], !DefinedMutables, !PredDeclCord, !ClauseInfoCord, !ForeignProcCord,
         !ForeignDeclCodeCord, !ForeignBodyCodeCord,
         !FPEInfoCord, !PredTargetNames, !Specs).
 implement_mutables_loop(ModuleInfo, SectionInfo, ModuleParams,
-        [ItemMutable | ItemMutables], !PredDeclCord,
+        [ItemMutable | ItemMutables], !DefinedMutables, !PredDeclCord,
         !ClauseInfoCord, !ForeignProcCord,
         !ForeignDeclCodeCord, !ForeignBodyCodeCord,
         !FPEInfoCord, !PredTargetNames, !Specs) :-
-    check_mutable(ModuleInfo, ModuleParams, ItemMutable, !Specs),
-    implement_mutable(ModuleParams, ItemMutable,
-        PredDecls, ClauseInfos, ForeignProcs, FPEInfo,
-        !ForeignDeclCodeCord, !ForeignBodyCodeCord, !PredTargetNames),
-    !:PredDeclCord = !.PredDeclCord ++ cord.from_list(PredDecls),
-    !:ClauseInfoCord = !.ClauseInfoCord ++ cord.from_list(ClauseInfos),
-    !:ForeignProcCord = !.ForeignProcCord ++ cord.from_list(ForeignProcs),
-    cord.snoc(FPEInfo, !FPEInfoCord),
+    MutableName = ItemMutable ^ mut_name,
+    Context = ItemMutable ^ mut_context,
+    ( if map.search(!.DefinedMutables, MutableName, OldContext) then
+        Pieces = [words("Error: this definition of the mutable")] ++
+            color_as_subject([fixed(MutableName)]) ++
+            [words("is a")] ++
+            color_as_incorrect([words("duplicate.")]) ++
+            [nl],
+        OldPieces = [words("The first definition is here."), nl],
+        Spec = error_spec($pred, severity_error, phase_pt2h,
+            [msg(Context, Pieces),
+            msg(OldContext, OldPieces)]),
+        !:Specs = [Spec | !.Specs]
+    else
+        map.det_insert(MutableName, Context, !DefinedMutables),
+        check_mutable(ModuleInfo, ModuleParams, ItemMutable, !Specs),
+        implement_mutable(ModuleParams, ItemMutable,
+            PredDecls, ClauseInfos, ForeignProcs, FPEInfo,
+            !ForeignDeclCodeCord, !ForeignBodyCodeCord, !PredTargetNames),
+        !:PredDeclCord = !.PredDeclCord ++ cord.from_list(PredDecls),
+        !:ClauseInfoCord = !.ClauseInfoCord ++ cord.from_list(ClauseInfos),
+        !:ForeignProcCord = !.ForeignProcCord ++ cord.from_list(ForeignProcs),
+        cord.snoc(FPEInfo, !FPEInfoCord)
+    ),
     implement_mutables_loop(ModuleInfo, SectionInfo, ModuleParams,
-        ItemMutables, !PredDeclCord, !ClauseInfoCord, !ForeignProcCord,
+        ItemMutables, !DefinedMutables, !PredDeclCord,
+        !ClauseInfoCord, !ForeignProcCord,
         !ForeignDeclCodeCord, !ForeignBodyCodeCord,
         !FPEInfoCord, !PredTargetNames, !Specs).
 

@@ -1,0 +1,3 @@
+duplicate_mutable.m:017: Error: this definition of the mutable [38;5;87mglobal[39;49m is a
+duplicate_mutable.m:017:   [38;5;203mduplicate.[39;49m
+duplicate_mutable.m:015:   The first definition is here.
