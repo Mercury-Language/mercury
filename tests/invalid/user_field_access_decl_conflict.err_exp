@@ -1,12 +1,8 @@
 user_field_access_decl_conflict.m:023: Error: the function
 user_field_access_decl_conflict.m:023:   [38;5;87m`user_field_access_decl_conflict.f1'/1[39;49m
 user_field_access_decl_conflict.m:023:   is [38;5;203mmultiply defined.[39;49m
-user_field_access_decl_conflict.m:022:   Here is the previous definition of
-user_field_access_decl_conflict.m:022:   function
-user_field_access_decl_conflict.m:022:   `user_field_access_decl_conflict.f1'/1.
+user_field_access_decl_conflict.m:022:   Here is its previous definition.
 user_field_access_decl_conflict.m:026: Error: the function
 user_field_access_decl_conflict.m:026:   [38;5;87m`user_field_access_decl_conflict.f1 :='/2[39;49m
 user_field_access_decl_conflict.m:026:   is [38;5;203mmultiply defined.[39;49m
-user_field_access_decl_conflict.m:025:   Here is the previous definition of
-user_field_access_decl_conflict.m:025:   function
-user_field_access_decl_conflict.m:025:   `user_field_access_decl_conflict.f1 :='/2.
+user_field_access_decl_conflict.m:025:   Here is its previous definition.

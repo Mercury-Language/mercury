@@ -123,8 +123,7 @@ report_multiply_defined(EntityKind, SymName, UserArity, Context, OrigContext,
         [words("is")] ++
         color_as_incorrect([words("multiply defined.")]) ++
         [nl],
-    FirstDeclPieces = [words("Here is the previous definition of"),
-        fixed(EntityKind), qual_sym_name_arity(SNA), suffix("."), nl],
+    FirstDeclPieces = [words("Here is its previous definition."), nl],
     SecondDeclMsg = msg(SecondContext, SecondDeclPieces),
     FirstDeclMsg = msg(FirstContext, FirstDeclPieces),
     (

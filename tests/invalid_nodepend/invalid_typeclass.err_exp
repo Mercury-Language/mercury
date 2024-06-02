@@ -5,6 +5,5 @@ invalid_typeclass.m:015:   declaration parameters, but the variable [38;5;87m`T
 invalid_typeclass.m:015:   [38;5;203mrepeated.[39;49m
 invalid_typeclass.m:021: Error: the typeclass [38;5;87m`invalid_typeclass.class2'/1[39;49m is
 invalid_typeclass.m:021:   [38;5;203mmultiply defined.[39;49m
-invalid_typeclass.m:013:   Here is the previous definition of typeclass
-invalid_typeclass.m:013:   `invalid_typeclass.class2'/1.
+invalid_typeclass.m:013:   Here is its previous definition.
 invalid_typeclass.m:021:   The superclass constraints do not match.
