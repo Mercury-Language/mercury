@@ -228,16 +228,33 @@ parse_compound_type(AllowHOInstInfo, Term, VarSet, ContextPieces,
             Result = error1(Specs)
         )
     ;
-        CompoundTypeKind = kctk_apply(_),
-        % We don't support apply/N types yet, so we just detect them
-        % and report an error message.
-        % XXX This message is not that informative.
-        TermStr = describe_error_term(VarSet, Term),
-        Pieces = cord.list(ContextPieces) ++ [lower_case_next_if_not_first,
-            words("Error:")] ++
-            color_as_incorrect([words("ill-formed type")]) ++
-            color_as_subject([quote(TermStr), suffix(".")]) ++
-            [nl],
+        CompoundTypeKind = kctk_empty_name(ArgTypes),
+        % The are types whose top level function symbol is a variable,
+        % which the parser records as a term whose function symbol
+        % is the empty string, with the formerly-top-level variable
+        % put in front of the actual argument list (if any).
+        ( if ArgTypes = [term.variable(FunctorVarName, _) | _] then
+            FunctorPiece = var_to_quote_piece(VarSet, FunctorVarName),
+            Pieces = cord.list(ContextPieces) ++ [lower_case_next_if_not_first,
+                words("Error: expected a")] ++
+                color_as_correct([words("symbol name")]) ++
+                [words("as type constructor, got")] ++
+                color_as_incorrect([FunctorPiece, suffix(".")]) ++
+                [nl]
+        else
+            % The original comment here is:
+            %   We don't support apply/N types yet, so we just detect them
+            %   and report an error message.
+            % I (zs) don't know exactly what syntax Fergus intended for
+            % apply/N types, but the test above should catch most of them,
+            % and explain the error in a more understandable way.
+            TermStr = describe_error_term(VarSet, Term),
+            Pieces = cord.list(ContextPieces) ++ [lower_case_next_if_not_first,
+                words("Error:")] ++
+                color_as_incorrect([words("ill-formed type")]) ++
+                color_as_subject([quote(TermStr), suffix(".")]) ++
+                [nl]
+        ),
         Spec = spec($pred, severity_error, phase_t2pt,
             get_term_context(Term), Pieces),
         Result = error1([Spec])
@@ -721,7 +738,7 @@ is_known_type_name(Name) :-
     ;       kctk_pure_pred(list(T))
     ;       kctk_is(T, T)
     ;       kctk_purity(string, purity, T)
-    ;       kctk_apply(list(T)).
+    ;       kctk_empty_name(list(T)).
 
 :- type known_type_kind(T)
     --->    known_type_simple(mer_type)
@@ -851,7 +868,7 @@ is_known_type_name_args(Name, Args, KnownType) :-
         )
     ;
         Name = "",
-        KnownType = known_type_compound(kctk_apply(Args))
+        KnownType = known_type_compound(kctk_empty_name(Args))
     ).
 
 :- func no_ho_inst_allowed_result(cord(format_piece), why_no_ho_inst_info,

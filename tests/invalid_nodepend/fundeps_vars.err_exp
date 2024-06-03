@@ -1,10 +1,12 @@
-fundeps_vars.m:022: Error: the domain and range of a functional dependency must
-fundeps_vars.m:022:   be comma-separated lists of variables.
-fundeps_vars.m:029: Error: type variable F in the functional dependency is not
-fundeps_vars.m:029:   a parameter of this type class.
-fundeps_vars.m:037: Error: instance declaration for `coll'/2 without
-fundeps_vars.m:037:   corresponding `:- typeclass' declaration.
+fundeps_vars.m:022: Error: expected a [38;5;40mvariable[39;49m as a functional dependency
+fundeps_vars.m:022:   domain parameter, got [38;5;203m`c'.[39;49m
+fundeps_vars.m:022: Error: expected a [38;5;40mvariable[39;49m as a functional dependency range
+fundeps_vars.m:022:   parameter, got [38;5;203m`e'.[39;49m
+fundeps_vars.m:029: Error: type variable [38;5;87m`F'[39;49m in the functional dependency is
+fundeps_vars.m:029:   [38;5;203mnot a parameter[39;49m of this type class.
+fundeps_vars.m:037: Error: `:- instance' declaration for [38;5;87m`coll'/2[39;49m [38;5;203mwithout[39;49m
+fundeps_vars.m:037:   [38;5;203mcorresponding `:- typeclass' declaration.[39;49m
 fundeps_vars.m:037: In declaration of instance of typeclass `coll'/2:
-fundeps_vars.m:037:   error: undefined typeclass `coll'/2.
+fundeps_vars.m:037:   error: the typeclass [38;5;87m`coll'/2[39;49m is [38;5;203mundefined.[39;49m
 fundeps_vars.m:044: In declaration of predicate `test'/2:
-fundeps_vars.m:044:   error: undefined typeclass `coll'/2.
+fundeps_vars.m:044:   error: the typeclass [38;5;87m`coll'/2[39;49m is [38;5;203mundefined.[39;49m

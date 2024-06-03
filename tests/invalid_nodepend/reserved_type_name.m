@@ -67,3 +67,18 @@ main(!IO) :-
     io.write_line(int64_a, !IO),
     io.write_line(uint64_a, !IO),
     io.write_line(float_a, !IO).
+    % We get a "did you mean" suggestion about "float_a -> float"
+    % that we do not get about e.g, "uint64_a" -> uint64" that seems jarring.
+    % The reason for that is that
+    %
+    % - this module import module io,
+    % - the io module import module term, and
+    % - the term module has a function symbol named float, but does not have
+    %   function symbols named e.g. uint64.
+    %
+    % We could restrict "did you mean" suggestions to only symbols that
+    % are defined either in the current module or the modules it imports
+    % directly (i.e. whose .int files it reads), leaving out the ones it
+    % imports indirectly (i.e. whose .int2 files it reads). This would be
+    % more consistent, but also less helpful. We choose helpfulness over
+    % consistency.

@@ -1219,7 +1219,7 @@ add_pragma_require_tail_rec(Pragma, !ModuleInfo, !Specs) :-
             then
                 map.lookup(Procs0, ProcId, Proc),
                 add_pragma_require_tail_rec_proc(RequireTailrec, Context,
-                    MaybePredOrFunc, SNA, ProcId - Proc,
+                    MaybePredOrFunc, MaybeModes, SNA, ProcId - Proc,
                     PredInfo0, PredInfo, !Specs)
             else
                 PredInfo = PredInfo0,
@@ -1242,7 +1242,7 @@ add_pragma_require_tail_rec(Pragma, !ModuleInfo, !Specs) :-
             MaybeModes = no,
             list.foldl2(
                 add_pragma_require_tail_rec_proc(RequireTailrec, Context,
-                    MaybePredOrFunc, SNA),
+                    MaybePredOrFunc, MaybeModes, SNA),
                 Procs, PredInfo0, PredInfo, !Specs)
         ),
         module_info_set_pred_info(PredId, PredInfo, !ModuleInfo)
@@ -1252,12 +1252,13 @@ add_pragma_require_tail_rec(Pragma, !ModuleInfo, !Specs) :-
     ).
 
 :- pred add_pragma_require_tail_rec_proc(require_tail_recursion::in,
-    prog_context::in, maybe(pred_or_func)::in, sym_name_arity::in,
-    pair(proc_id, proc_info)::in, pred_info::in, pred_info::out,
+    prog_context::in, maybe(pred_or_func)::in, maybe(list(mer_mode))::in,
+    sym_name_arity::in, pair(proc_id, proc_info)::in,
+    pred_info::in, pred_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-add_pragma_require_tail_rec_proc(RequireTailrec, Context, MaybePredOrFunc, SNA,
-        ProcId - ProcInfo0, !PredInfo, !Specs) :-
+add_pragma_require_tail_rec_proc(RequireTailrec, Context, MaybePredOrFunc,
+        MaybeModes, SNA, ProcId - ProcInfo0, !PredInfo, !Specs) :-
     proc_info_get_maybe_require_tailrec_info(ProcInfo0,
         MaybeRequireTailrecOrig),
     (
@@ -1269,12 +1270,19 @@ add_pragma_require_tail_rec_proc(RequireTailrec, Context, MaybePredOrFunc, SNA,
             MaybePredOrFunc = yes(PredOrFunc),
             PorFPieces = [p_or_f(PredOrFunc)]
         ),
+        (
+            MaybeModes = no,
+            OneModeOfPieces = []
+        ;
+            MaybeModes = yes(_),
+            OneModeOfPieces = [words("one of mode of")]
+        ),
         MainPieces = [words("Error:")] ++
             color_as_incorrect([words("conflicting"),
                 pragma_decl("require_tail_recursion"), words("pragmas")]) ++
-            [words("for") | PorFPieces] ++
-            color_as_subject([qual_sym_name_arity(SNA)]) ++
-            [words("or one of its modes."), nl],
+            [words("for")] ++ OneModeOfPieces ++ PorFPieces ++
+            color_as_subject([qual_sym_name_arity(SNA), suffix(".")]) ++
+            [nl],
         OrigPieces = [words("The earlier pragma is here."), nl],
         ( RequireTailrecOrig = suppress_tailrec_warnings(ContextOrig)
         ; RequireTailrecOrig = enable_tailrec_warnings(_, _, ContextOrig)

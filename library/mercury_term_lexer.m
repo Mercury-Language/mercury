@@ -5101,7 +5101,7 @@ rev_char_list_to_string(RevChars, String) :-
 :- func null_character_error = token.
 
 null_character_error =
-    error("null character is illegal in strings and names").
+    error("the null character is illegal in strings and names").
 
 :- func report_zero_base_no_digits(integer_base) = token.
 

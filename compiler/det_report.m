@@ -686,8 +686,8 @@ check_determinism_if_pred_is_main(PredInfo, ProcInfo, !Specs) :-
                     [words("Error:")] ++ color_as_subject([MainSNAPiece]) ++
                     [words("must be either")] ++
                     color_as_correct([quote("det")]) ++ [words("or")] ++
-                    color_as_correct([quote("cc_multi"), suffix(",")]) ++
-                    [words("not")] ++
+                    color_as_correct([quote("cc_multi"), suffix(";")]) ++
+                    [words("it may not be")] ++
                     color_as_incorrect([quote(DetismStr), suffix(".")]) ++
                     [nl],
                 DetismSpec = spec($pred, severity_error, phase_detism_check,

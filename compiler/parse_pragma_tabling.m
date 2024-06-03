@@ -276,7 +276,7 @@ parse_tabling_attr_specified(ContextPieces, TabledMethod, VarSet,
                 HiddenArgPieces = cord.list(ContextPieces) ++
                     [lower_case_next_if_not_first,
                     words("In the second argument of"),
-                        quote("specified:"), nl,
+                        quote("specified"), suffix(":"), nl,
                     words("error: expected either")] ++
                     color_as_correct([quote("hidden_arg_value")]) ++
                     [words("or")] ++
@@ -293,7 +293,8 @@ parse_tabling_attr_specified(ContextPieces, TabledMethod, VarSet,
         ),
         MethodsContextPieces = ContextPieces ++
             cord.from_list([lower_case_next_if_not_first,
-            words("In the first argument of specified:"), nl]),
+            words("In the first argument of"), quote("specified"),
+            suffix(":"), nl]),
         parse_list_elements(MethodsContextPieces, "argument tabling methods",
             parse_arg_tabling_method(MethodsContextPieces),
             VarSet, MethodsTerm, MaybeMaybeArgMethods),

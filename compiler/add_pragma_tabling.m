@@ -792,7 +792,8 @@ check_pred_args_against_tabling_methods(ModuleInfo, ArgNum,
             MaybeArgMethod = no,
             MethodStr = maybe_arg_tabling_method_to_string(MaybeArgMethod),
             % Don't allow a line break just before the argument number.
-            Pieces = [fixed("argument " ++ int_to_string(ArgNum)), suffix(":"),
+            Pieces = [words("in"),
+                fixed("argument " ++ int_to_string(ArgNum)), suffix(":"),
                 words("argument tabling method")] ++
                 color_as_subject([quote(MethodStr)]) ++
                 [words("is")] ++
@@ -805,7 +806,8 @@ check_pred_args_against_tabling_methods(ModuleInfo, ArgNum,
             MaybeArgMethod = yes(_),
             MethodStr = maybe_arg_tabling_method_to_string(MaybeArgMethod),
             % Don't allow a line break just before the argument number.
-            Pieces = [fixed("argument " ++ int_to_string(ArgNum)), suffix(":"),
+            Pieces = [words("in"),
+                fixed("argument " ++ int_to_string(ArgNum)), suffix(":"),
                 words("argument tabling method")] ++
                 color_as_subject([quote(MethodStr)]) ++
                 [words("is")] ++

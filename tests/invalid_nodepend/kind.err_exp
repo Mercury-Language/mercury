@@ -1,7 +1,8 @@
-kind.m:009: In type definition: error: [38;5;203mill-formed type[39;49m [38;5;87m`K1(int)'.[39;49m
+kind.m:009: In type definition: error: expected a [38;5;40msymbol name[39;49m as type
+kind.m:009:   constructor, got [38;5;203m`K1'.[39;49m
 kind.m:012: In `:- func' declaration:
 kind.m:012:   in the first argument:
-kind.m:012:   error: [38;5;203mill-formed type[39;49m [38;5;87m`K2(string)'.[39;49m
+kind.m:012:   error: expected a [38;5;40msymbol name[39;49m as type constructor, got [38;5;203m`K2'.[39;49m
 kind.m:016: In definition of inst `i'/1:
 kind.m:016:   error: expected an [38;5;40minst constructor,[39;49m got a [38;5;203mvariable.[39;49m
 kind.m:018: In definition of mode `m'/1:

@@ -1,84 +1,84 @@
-require_tailrec_invalid.m:019: Error: `:- pragma require_tail_recursion'
-require_tailrec_invalid.m:019:   declaration in module interface.
-require_tailrec_invalid.m:026: Error: `:- pragma require_tail_recursion' pragma
-require_tailrec_invalid.m:026:   for `non_existent_pred'/3 without
-require_tailrec_invalid.m:026:   corresponding `:- pred' or `:- func'
+require_tailrec_invalid.m:019: Error: [38;5;87m`:- pragma require_tail_recursion'[39;49m
+require_tailrec_invalid.m:019:   [38;5;87mdeclarations[39;49m are [38;5;203mnot allowed in module[39;49m
+require_tailrec_invalid.m:019:   [38;5;203minterfaces.[39;49m
+require_tailrec_invalid.m:026: Error: `:- pragma require_tail_recursion'
+require_tailrec_invalid.m:026:   declaration for [38;5;87m`non_existent_pred'/3[39;49m [38;5;203mwithout[39;49m
+require_tailrec_invalid.m:026:   a corresponding `:- pred' or `:- func'
 require_tailrec_invalid.m:026:   declaration.
-require_tailrec_invalid.m:027: Error: `:- pragma require_tail_recursion' pragma
-require_tailrec_invalid.m:027:   for predicate `non_existent_proc'/2 without
-require_tailrec_invalid.m:027:   corresponding `:- pred' declaration.
-require_tailrec_invalid.m:028: Error: `:- pragma require_tail_recursion' pragma
-require_tailrec_invalid.m:028:   for function `non_existent_func_proc'/1
-require_tailrec_invalid.m:028:   without corresponding `:- func' declaration.
-require_tailrec_invalid.m:031: Error: `:- pragma require_tail_recursion'
-require_tailrec_invalid.m:031:   declaration for undeclared mode of predicate
-require_tailrec_invalid.m:031:   `require_tailrec_invalid.length'/2.
-require_tailrec_invalid.m:034: Error: conflicting
-require_tailrec_invalid.m:034:   `:- pragma require_tail_recursion' attributes:
-require_tailrec_invalid.m:034:   `error' conflicts with earlier attribute
-require_tailrec_invalid.m:034:   `warn'.
-require_tailrec_invalid.m:037: Error: conflicting
-require_tailrec_invalid.m:037:   `:- pragma require_tail_recursion' attributes:
-require_tailrec_invalid.m:037:   `none' conflicts with earlier attribute
-require_tailrec_invalid.m:037:   `warn'.
-require_tailrec_invalid.m:040: Error: conflicting
-require_tailrec_invalid.m:040:   `:- pragma require_tail_recursion' attributes:
-require_tailrec_invalid.m:040:   `none' conflicts with earlier attribute
-require_tailrec_invalid.m:040:   `error'.
-require_tailrec_invalid.m:044: Error: conflicting
-require_tailrec_invalid.m:044:   `:- pragma require_tail_recursion' attributes:
-require_tailrec_invalid.m:044:   `self_recursion_only' conflicts with earlier
-require_tailrec_invalid.m:044:   attribute `self_or_mutual_recursion'.
-require_tailrec_invalid.m:047: Error: conflicting
-require_tailrec_invalid.m:047:   `:- pragma require_tail_recursion' attributes:
-require_tailrec_invalid.m:047:   `none' conflicts with earlier attribute
-require_tailrec_invalid.m:047:   `self_or_mutual_recursion'.
-require_tailrec_invalid.m:051: Error: conflicting
-require_tailrec_invalid.m:051:   `:- pragma require_tail_recursion' attributes:
-require_tailrec_invalid.m:051:   `none' conflicts with earlier attribute
-require_tailrec_invalid.m:051:   `self_recursion_only'.
-require_tailrec_invalid.m:055: Error: unrecognised
-require_tailrec_invalid.m:055:   `:- pragma require_tail_recursion' attribute:
-require_tailrec_invalid.m:055:   `blahblahblah'.
-require_tailrec_invalid.m:059: Error: `:- pragma require_tail_recursion' pragma
-require_tailrec_invalid.m:059:   for predicate `blahblahblah'/0 without
-require_tailrec_invalid.m:059:   corresponding `:- pred' declaration.
+require_tailrec_invalid.m:027: Error: `:- pragma require_tail_recursion'
+require_tailrec_invalid.m:027:   declaration for predicate
+require_tailrec_invalid.m:027:   [38;5;87m`non_existent_proc'/2[39;49m [38;5;203mwithout[39;49m a corresponding
+require_tailrec_invalid.m:027:   `:- pred' declaration.
+require_tailrec_invalid.m:028: Error: `:- pragma require_tail_recursion'
+require_tailrec_invalid.m:028:   declaration for function
+require_tailrec_invalid.m:028:   [38;5;87m`non_existent_func_proc'/1[39;49m [38;5;203mwithout[39;49m a
+require_tailrec_invalid.m:028:   corresponding `:- func' declaration.
+require_tailrec_invalid.m:031: Error: [38;5;87m`:- pragma require_tail_recursion'[39;49m
+require_tailrec_invalid.m:031:   [38;5;87mdeclaration[39;49m for [38;5;203mundeclared mode of predicate[39;49m
+require_tailrec_invalid.m:031:   [38;5;203m`length'/2.[39;49m
+require_tailrec_invalid.m:034: Error: [38;5;203mconflicting[39;49m
+require_tailrec_invalid.m:034:   [38;5;203m`:- pragma require_tail_recursion' attributes:[39;49m
+require_tailrec_invalid.m:034:   [38;5;226m`error'[39;49m conflicts with earlier attribute
+require_tailrec_invalid.m:034:   [38;5;226m`warn'.[39;49m
+require_tailrec_invalid.m:037: Error: [38;5;203mconflicting[39;49m
+require_tailrec_invalid.m:037:   [38;5;203m`:- pragma require_tail_recursion' attributes:[39;49m
+require_tailrec_invalid.m:037:   [38;5;226m`none'[39;49m conflicts with earlier attribute
+require_tailrec_invalid.m:037:   [38;5;226m`warn'.[39;49m
+require_tailrec_invalid.m:040: Error: [38;5;203mconflicting[39;49m
+require_tailrec_invalid.m:040:   [38;5;203m`:- pragma require_tail_recursion' attributes:[39;49m
+require_tailrec_invalid.m:040:   [38;5;226m`none'[39;49m conflicts with earlier attribute
+require_tailrec_invalid.m:040:   [38;5;226m`error'.[39;49m
+require_tailrec_invalid.m:044: Error: [38;5;203mconflicting[39;49m
+require_tailrec_invalid.m:044:   [38;5;203m`:- pragma require_tail_recursion' attributes:[39;49m
+require_tailrec_invalid.m:044:   [38;5;226m`self_recursion_only'[39;49m conflicts with earlier
+require_tailrec_invalid.m:044:   attribute [38;5;226m`self_or_mutual_recursion'.[39;49m
+require_tailrec_invalid.m:047: Error: [38;5;203mconflicting[39;49m
+require_tailrec_invalid.m:047:   [38;5;203m`:- pragma require_tail_recursion' attributes:[39;49m
+require_tailrec_invalid.m:047:   [38;5;226m`none'[39;49m conflicts with earlier attribute
+require_tailrec_invalid.m:047:   [38;5;226m`self_or_mutual_recursion'.[39;49m
+require_tailrec_invalid.m:051: Error: [38;5;203mconflicting[39;49m
+require_tailrec_invalid.m:051:   [38;5;203m`:- pragma require_tail_recursion' attributes:[39;49m
+require_tailrec_invalid.m:051:   [38;5;226m`none'[39;49m conflicts with earlier attribute
+require_tailrec_invalid.m:051:   [38;5;226m`self_recursion_only'.[39;49m
+require_tailrec_invalid.m:055: Error: expected a
+require_tailrec_invalid.m:055:   [38;5;40m`:- pragma require_tail_recursion' attribute,[39;49m
+require_tailrec_invalid.m:055:   got [38;5;203m`blahblahblah'.[39;49m
+require_tailrec_invalid.m:059: Error: `:- pragma require_tail_recursion'
+require_tailrec_invalid.m:059:   declaration for predicate [38;5;87m`blahblahblah'/0[39;49m
+require_tailrec_invalid.m:059:   [38;5;203mwithout[39;49m a corresponding `:- pred' declaration.
 require_tailrec_invalid.m:061: In the second argument of
 require_tailrec_invalid.m:061:   `:- pragma require_tail_recursion'
 require_tailrec_invalid.m:061:   declaration:
-require_tailrec_invalid.m:061:   error: expected attribute list, got `Woop'.
+require_tailrec_invalid.m:061:   error: expected [38;5;40mlist of attributes,[39;49m got
+require_tailrec_invalid.m:061:   [38;5;203m`Woop'.[39;49m
 require_tailrec_invalid.m:064: In the second argument of
 require_tailrec_invalid.m:064:   `:- pragma require_tail_recursion'
 require_tailrec_invalid.m:064:   declaration:
-require_tailrec_invalid.m:064:   error: expected attribute list, got `23'.
-require_tailrec_invalid.m:071: Error: conflicting
-require_tailrec_invalid.m:071:   `:- pragma require_tail_recursion' attributes:
-require_tailrec_invalid.m:071:   `none' conflicts with earlier attribute
-require_tailrec_invalid.m:071:   `self_recursion_only'.
-require_tailrec_invalid.m:071: Error: conflicting
-require_tailrec_invalid.m:071:   `:- pragma require_tail_recursion' attributes:
-require_tailrec_invalid.m:071:   `none' conflicts with earlier attribute
-require_tailrec_invalid.m:071:   `warn'.
-require_tailrec_invalid.m:072: Error: unrecognised
-require_tailrec_invalid.m:072:   `:- pragma require_tail_recursion' attribute:
-require_tailrec_invalid.m:072:   `grasshopper'.
-require_tailrec_invalid.m:077: Error: conflicting
-require_tailrec_invalid.m:077:   `:- pragma require_tail_recursion' pragmas for
-require_tailrec_invalid.m:077:   `require_tailrec_invalid.length10'/2 or one of
-require_tailrec_invalid.m:077:   its modes.
-require_tailrec_invalid.m:075:   Earlier pragma is here.
-require_tailrec_invalid.m:080: Error: conflicting
-require_tailrec_invalid.m:080:   `:- pragma require_tail_recursion' pragmas for
-require_tailrec_invalid.m:080:   `require_tailrec_invalid.length10'/2 or one of
-require_tailrec_invalid.m:080:   its modes.
-require_tailrec_invalid.m:075:   Earlier pragma is here.
-require_tailrec_invalid.m:094: Error: conflicting
-require_tailrec_invalid.m:094:   `:- pragma require_tail_recursion' pragmas for
-require_tailrec_invalid.m:094:   `require_tailrec_invalid.append'/3 or one of
-require_tailrec_invalid.m:094:   its modes.
-require_tailrec_invalid.m:092:   Earlier pragma is here.
-require_tailrec_invalid.m:094: Error: conflicting
-require_tailrec_invalid.m:094:   `:- pragma require_tail_recursion' pragmas for
-require_tailrec_invalid.m:094:   `require_tailrec_invalid.append'/3 or one of
-require_tailrec_invalid.m:094:   its modes.
-require_tailrec_invalid.m:093:   Earlier pragma is here.
+require_tailrec_invalid.m:064:   error: expected [38;5;40mlist of attributes,[39;49m got [38;5;203m`23'.[39;49m
+require_tailrec_invalid.m:071: Error: [38;5;203mconflicting[39;49m
+require_tailrec_invalid.m:071:   [38;5;203m`:- pragma require_tail_recursion' attributes:[39;49m
+require_tailrec_invalid.m:071:   [38;5;226m`none'[39;49m conflicts with earlier attribute
+require_tailrec_invalid.m:071:   [38;5;226m`self_recursion_only'.[39;49m
+require_tailrec_invalid.m:071: Error: [38;5;203mconflicting[39;49m
+require_tailrec_invalid.m:071:   [38;5;203m`:- pragma require_tail_recursion' attributes:[39;49m
+require_tailrec_invalid.m:071:   [38;5;226m`none'[39;49m conflicts with earlier attribute
+require_tailrec_invalid.m:071:   [38;5;226m`warn'.[39;49m
+require_tailrec_invalid.m:072: Error: expected a
+require_tailrec_invalid.m:072:   [38;5;40m`:- pragma require_tail_recursion' attribute,[39;49m
+require_tailrec_invalid.m:072:   got [38;5;203m`grasshopper'.[39;49m
+require_tailrec_invalid.m:077: Error: [38;5;203mconflicting[39;49m
+require_tailrec_invalid.m:077:   [38;5;203m`:- pragma require_tail_recursion' pragmas[39;49m for
+require_tailrec_invalid.m:077:   [38;5;87m`require_tailrec_invalid.length10'/2.[39;49m
+require_tailrec_invalid.m:075:   The earlier pragma is here.
+require_tailrec_invalid.m:080: Error: [38;5;203mconflicting[39;49m
+require_tailrec_invalid.m:080:   [38;5;203m`:- pragma require_tail_recursion' pragmas[39;49m for
+require_tailrec_invalid.m:080:   [38;5;87m`require_tailrec_invalid.length10'/2.[39;49m
+require_tailrec_invalid.m:075:   The earlier pragma is here.
+require_tailrec_invalid.m:094: Error: [38;5;203mconflicting[39;49m
+require_tailrec_invalid.m:094:   [38;5;203m`:- pragma require_tail_recursion' pragmas[39;49m for
+require_tailrec_invalid.m:094:   [38;5;87m`require_tailrec_invalid.append'/3.[39;49m
+require_tailrec_invalid.m:092:   The earlier pragma is here.
+require_tailrec_invalid.m:094: Error: [38;5;203mconflicting[39;49m
+require_tailrec_invalid.m:094:   [38;5;203m`:- pragma require_tail_recursion' pragmas[39;49m for
+require_tailrec_invalid.m:094:   [38;5;87m`require_tailrec_invalid.append'/3.[39;49m
+require_tailrec_invalid.m:093:   The earlier pragma is here.

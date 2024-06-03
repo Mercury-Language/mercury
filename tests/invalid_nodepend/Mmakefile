@@ -50,6 +50,7 @@ PROGS = \
 	func_errors \
 	funcs_as_preds \
 	fundeps_unbound_in_ctor \
+	fundeps_vars \
 	impl_def_literal_syntax \
 	inst_list_dup \
 	instance_bug \
@@ -69,6 +70,7 @@ PROGS = \
 	pragma_source_file \
 	predmode \
 	prog_io_erroneous \
+	require_tailrec_invalid \
 	reserved \
 	reserved_type_name \
 	specified \

@@ -3,8 +3,8 @@ invalid_main.m:006:   [38;5;40m`:- interface' declaration[39;49m or an [38;5;
 invalid_main.m:006:   [38;5;40mdeclaration.[39;49m
 invalid_main.m:006:   The following assumes that the missing declaration is an
 invalid_main.m:006:   `:- implementation' declaration.
-invalid_main.m:009: Error: [38;5;87m`main'/2[39;49m must be either [38;5;40m`det'[39;49m or [38;5;40m`cc_multi',[39;49m not
-invalid_main.m:009:   [38;5;203m`multi'.[39;49m
+invalid_main.m:009: Error: [38;5;87m`main'/2[39;49m must be either [38;5;40m`det'[39;49m or [38;5;40m`cc_multi';[39;49m it may
+invalid_main.m:009:   not be [38;5;203m`multi'.[39;49m
 invalid_main.m:009: Error: [38;5;87m`main'/2[39;49m [38;5;203mmust have mode `(di, uo)'.[39;49m
 invalid_main.m:009: Error: both arguments of [38;5;87m`main/2'[39;49m must have type
 invalid_main.m:009:   [38;5;40m`io.state'.[39;49m
