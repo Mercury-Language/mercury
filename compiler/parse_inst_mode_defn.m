@@ -85,9 +85,17 @@ parse_inst_defn_item(ModuleName, VarSet, ArgTerms, Context, SeqNum,
             parse_inst_defn_eqv(ModuleName, VarSet, HeadTerm, BoundBodyTerm,
                 Context, SeqNum, MaybeIOM)
         else
+            InstDefnTermStr = describe_error_term(VarSet, InstDefnTerm),
             Pieces = [words("Error: expected either"),
-                quote("=="), words("or"), quote("--->"),
-                words("at start of"), decl("inst"), words("definition."), nl],
+                nl_indent_delta(1)] ++
+                color_as_correct([quote("inst_ctor(...) == inst")]) ++
+                [words("or"), nl] ++
+                color_as_correct(
+                    [quote("inst_ctor(...) ---> f(...) ; g(...) ..." )]) ++
+                [nl_indent_delta(-1),
+                words("as inst definition, got")] ++
+                color_as_incorrect([quote(InstDefnTermStr), suffix(".")]) ++
+                [nl],
             Spec = spec($pred, severity_error, phase_t2pt,
                 get_term_context(InstDefnTerm), Pieces),
             MaybeIOM = error1([Spec])
@@ -387,7 +395,7 @@ check_inst_mode_defn_args(AAn, DefnKind, VarSet, ArgTerms, MaybeBodyTerm,
                     piece_list_to_color_pieces(color_subject, "and", [],
                         FreeVarPieces) ++
                     color_as_incorrect([words("may not occur")]) ++
-                    [words("on the right hand side of"),
+                    [words("on the right hand side of"), words(AAn),
                     words(DefnKind), suffix("."), nl],
                 FreeSpec = spec($pred, severity_error, phase_t2pt,
                     get_term_context(BodyTerm), FreePieces),

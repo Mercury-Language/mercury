@@ -1134,11 +1134,11 @@ implement_initialise_finalise(ModuleInfo, InitOrFinal, SymName, UserArity,
     (
         PredIds = [],
         SNA = sym_name_arity(SymName, UserArityInt),
-        Pieces = [words("Error:")] ++
-            color_as_subject([qual_sym_name_arity(SNA)]) ++
-            [words("used in"), decl(DeclName), words("declaration")] ++
-            color_as_incorrect([words("does not have a corresponding"),
-                decl("pred"), words("declaration.")]) ++
+        Pieces = [words("Error: the name/arity pair in this"),
+            decl(DeclName), words("declaration,")] ++
+            color_as_subject([qual_sym_name_arity(SNA), suffix(",")]) ++
+            color_as_incorrect([words("does not match")]) ++
+            [words("any visible"), decl("pred"), words("declaration.")] ++
             [nl],
         Spec = spec($pred, severity_error, phase_pt2h, Context, Pieces),
         !:Specs = [Spec | !.Specs]
@@ -1163,14 +1163,22 @@ implement_initialise_finalise(ModuleInfo, InitOrFinal, SymName, UserArity,
                 ExpectedHeadModes, TargetName, Origin, Context, PragmaFPEInfo),
             cord.snoc(PragmaFPEInfo, !PragmaFPEInfoCord)
         else
-            SNA = sym_name_arity(SymName, UserArityInt),
-            Pieces = [words("Error:")] ++
-                color_as_subject([qual_sym_name_arity(SNA)]) ++
-                [words("used in"), decl(DeclName), words("declaration")] ++
+            % We used PredDescPiece instead of SNA, as above, because
+            % the bug may lie in the fact that SNA matches more than one
+            % actual predicate, but the one that the programmer intends
+            % is not visible, possibly due to a missing import. In that case,
+            % printing the *fully qualified* name of the one matching
+            % predicate, which is *not* the one intended by the user,
+            % should alert the user to this fact.
+            PredDescPiece = get_qual_pred_desc_piece(ModuleInfo, PredId),
+            Pieces = [words("Error: the predicate named by this"),
+                decl(DeclName), words("declaration,")] ++
+                color_as_subject([PredDescPiece, suffix(",")]) ++
                 color_as_incorrect([words("has an invalid signature.")]) ++
                 [nl,
-                words("A signature is valid only if it has"),
-                words("one of these two forms:"),
+                words("A predicate may be used in a"),
+                decl(DeclName), words("declaration"),
+                words("only if its signature has one of these two forms:"),
                 nl_indent_delta(1)] ++
                 color_as_correct(
                     [quote(":- pred <predname>(io::di, io::uo) is <detism>."),
@@ -1184,16 +1192,31 @@ implement_initialise_finalise(ModuleInfo, InitOrFinal, SymName, UserArity,
         )
     ;
         PredIds = [_, _ | _],
+        % NOTE This is possible *only* because we allow SymName to be
+        % only partially qualified.
         SNA = sym_name_arity(SymName, UserArityInt),
-        Pieces = [words("Error:")] ++
-            color_as_subject([qual_sym_name_arity(SNA)]) ++
-            [words("used in"), decl(DeclName), words("declaration")] ++
-            color_as_incorrect([words("has multiple"), decl("pred"),
-                words("declarations.")]) ++
-            [nl],
+        PredDescPieces =
+            list.map(get_qual_pred_desc_piece(ModuleInfo), PredIds),
+        Pieces = [words("Error: the name/arity pair in this"),
+            decl(DeclName), words("declaration,")] ++
+            color_as_subject([qual_sym_name_arity(SNA), suffix(",")]) ++
+            [words("matches")] ++
+            color_as_incorrect([words("more than one visible")]) ++
+            [decl("pred"), words("declaration."),
+            words("These are:"), nl_indent_delta(1)] ++
+            piece_list_to_color_line_pieces(color_cause, [suffix(".")],
+                PredDescPieces) ++
+            [nl_indent_delta(-1)],
         Spec = spec($pred, severity_error, phase_pt2h, Context, Pieces),
         !:Specs = [Spec | !.Specs]
     ).
+
+:- func get_qual_pred_desc_piece(module_info, pred_id) = format_piece.
+
+get_qual_pred_desc_piece(ModuleInfo, PredId) = Piece :-
+    module_info_pred_info(ModuleInfo, PredId, PredInfo),
+    pred_info_get_pf_sym_name_arity(PredInfo, PFSNA),
+    Piece = qual_pf_sym_name_pred_form_arity(PFSNA).
 
 %---------------------%
 
