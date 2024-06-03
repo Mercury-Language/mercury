@@ -39,11 +39,11 @@ errors_3.m:084: In clause for predicate `pred_with_unresolved_polymorphism'/0:
 errors_3.m:084:   warning: variable [38;5;87m`Arg'[39;49m [38;5;203moccurs only once[39;49m in this scope.
 errors_3.m:100: In clause for predicate `pred_with_singleton_vars'/1:
 errors_3.m:100:   warning: variable [38;5;87m`X'[39;49m [38;5;203moccurs only once[39;49m in this scope.
-errors_3.m:106: Warning: this `:- use_module' declaration for module `int' in
-errors_3.m:106:   the implementation section is redundant, given the
+errors_3.m:106: Warning: this `:- use_module' declaration for module [38;5;87m`int'[39;49m in
+errors_3.m:106:   the implementation section is [38;5;203mredundant,[39;49m given the
 errors_3.m:106:   `:- import_module' declaration for the same module in the
 errors_3.m:106:   same section.
-errors_3.m:104:   The previous declaration is here.
+errors_3.m:104:   The previous `:- import_module' declaration was here.
 errors_3.m:109: In definition of type `needs_qualification'/0:
 errors_3.m:109:   error: the type [38;5;87m`state'/0[39;49m is [38;5;203mundefined.[39;49m
 errors_3.m:109:   (Only [38;5;226mfully module qualified names[39;49m may refer to the entities

@@ -1,1 +1,2 @@
-warn_self_import.m:017: Warning: module `warn_self_import' imports itself!
+warn_self_import.m:017: Warning: module [38;5;87m`warn_self_import'[39;49m has a
+warn_self_import.m:017:   [38;5;203m`:- import_module' declaration for itself![39;49m

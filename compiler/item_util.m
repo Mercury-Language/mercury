@@ -390,10 +390,15 @@ classify_include_module(Section, ItemInclude, !InclMap, !Specs) :-
     list(error_spec)::in, list(error_spec)::out) is det.
 
 report_duplicate_include(ModuleName, PrevContext, Context, !Specs) :-
-    MainPieces = [words("Error: duplicate inclusion of submodule"),
-        qual_sym_name(ModuleName), suffix("."), nl],
+    MainPieces = [words("Error:")] ++
+        color_as_incorrect([words("duplicate"),
+            decl("include"), words("declaration")]) ++
+        [words("for submodule")] ++
+        color_as_subject([qual_sym_name(ModuleName), suffix(".")]) ++
+        [nl],
     MainMsg = msg(Context, MainPieces),
-    PrevPieces = [words("The previous inclusion was here."), nl],
+    PrevPieces = [words("The previous"),
+        decl("include"), words("declaration was here."), nl],
     PrevMsg = msg(PrevContext, PrevPieces),
     Spec = error_spec($pred, severity_error, phase_pt2h, [MainMsg, PrevMsg]),
     !:Specs = [Spec | !.Specs].
@@ -514,8 +519,8 @@ classify_int_imp_import_use_modules(ModuleName, IntAvails, ImpAvails,
     map.foldl2(record_imp_import, ImpImportMap, !ImportUseMap, !Specs),
     map.foldl2(record_imp_use,    ImpUseMap,    !ImportUseMap, !Specs),
 
-    warn_if_import_for_self(ModuleName, !ImportUseMap, !Specs),
-    list.foldl2(warn_if_import_for_ancestor(ModuleName),
+    warn_if_avail_for_self(ModuleName, !ImportUseMap, !Specs),
+    list.foldl2(warn_if_avail_for_ancestor(ModuleName),
         get_ancestors(ModuleName), !ImportUseMap, !Specs).
 
 classify_int_imp_use_modules(ModuleName, IntUseContextsMap, ImpUseContextsMap,
@@ -568,10 +573,14 @@ report_any_duplicate_avail_contexts(Section, DeclName,
 
 report_duplicate_avail_context(Section, DeclName, ModuleName, PrevContext,
         DuplicateContext, !Specs) :-
-    DupPieces = [words("Warning: duplicate"), decl(DeclName),
-        words("declaration for module"), qual_sym_name(ModuleName),
-        words("in the"), words(Section), words("section."), nl],
-    PrevPieces = [words("The previous declaration is here."), nl],
+    DupPieces = [words("Warning:")] ++
+        color_as_incorrect([words("duplicate"), decl(DeclName),
+            words("declaration")]) ++
+        [words("for module")] ++
+        color_as_subject([qual_sym_name(ModuleName)]) ++
+        [words("in the"), words(Section), words("section."), nl],
+    PrevPieces = [words("The previous"),
+        decl(DeclName), words("declaration was here."), nl],
     DupMsg = msg(DuplicateContext, DupPieces),
     PrevMsg = msg(PrevContext, PrevPieces),
     Spec = error_spec($pred, severity_warning, phase_pt2h, [DupMsg, PrevMsg]),
@@ -593,11 +602,15 @@ record_int_use(ModuleName, Context, !ImportUseMap, !Specs) :-
         (
             OldEntry = int_import(PrevContext),
             DupPieces = [words("Warning: this"), decl("use_module"),
-                words("declaration for module"), qual_sym_name(ModuleName),
-                words("in the interface section is redundant, given the"),
-                decl("import_module"), words("declaration"),
-                words("for the same module in the same section."), nl],
-            PrevPieces = [words("The previous declaration is here."), nl],
+                words("declaration for module")] ++
+                color_as_subject([qual_sym_name(ModuleName)]) ++
+                [words("in the interface section is")] ++
+                color_as_incorrect([words("redundant,")]) ++
+                [words("given the"), decl("import_module"),
+                    words("declaration for the same module"),
+                words("in the same section."), nl],
+            PrevPieces = [words("The previous"),
+                decl("use_module"), words("declaration was here."), nl],
             DupMsg = msg(Context, DupPieces),
             PrevMsg = msg(PrevContext, PrevPieces),
             Spec = error_spec($pred, severity_warning, phase_pt2h,
@@ -627,11 +640,15 @@ record_imp_import(ModuleName, Context, !ImportUseMap, !Specs) :-
         (
             OldEntry = int_import(PrevContext),
             DupPieces = [words("Warning: this"), decl("import_module"),
-                words("declaration for module"), qual_sym_name(ModuleName),
-                words("in the implementation section is redundant, given the"),
-                decl("import_module"), words("declaration"),
-                words("for the same module in the interface section."), nl],
-            PrevPieces = [words("The previous declaration is here."), nl],
+                words("declaration for module")] ++
+                color_as_subject([qual_sym_name(ModuleName)]) ++
+                [words("in the implementation section is")] ++
+                color_as_subject([words("redundant,")]) ++
+                [words("given the"), decl("import_module"),
+                    words("declaration for the same module"),
+                words("in the interface section."), nl],
+            PrevPieces = [words("The previous"),
+                decl("import_module"), words("declaration was here."), nl],
             DupMsg = msg(Context, DupPieces),
             PrevMsg = msg(PrevContext, PrevPieces),
             Spec = error_spec($pred, severity_warning, phase_pt2h,
@@ -673,27 +690,33 @@ record_imp_use(ModuleName, Context, !ImportUseMap, !Specs) :-
             % the former.
             (
                 OldEntry = int_import(PrevContext),
+                PrevDeclName = "import_module",
                 OldPieces =
-                    [decl("import_module"), words("declaration"),
-                    words("for the same module in the interface section."), nl]
+                    [decl(PrevDeclName), words("declaration"),
+                    words("for the same module in the interface section.")]
             ;
                 OldEntry = imp_import(PrevContext),
+                PrevDeclName = "import_module",
                 OldPieces =
-                    [decl("import_module"), words("declaration"),
-                    words("for the same module in the same section."), nl]
+                    [decl(PrevDeclName), words("declaration"),
+                    words("for the same module in the same section.")]
             ;
                 ( OldEntry = int_use(PrevContext)
                 ; OldEntry = int_use_imp_import(PrevContext, _)
                 ),
+                PrevDeclName = "use_module",
                 OldPieces =
-                    [decl("use_module"), words("declaration"),
-                    words("for the same module in the interface section."), nl]
+                    [decl(PrevDeclName), words("declaration"),
+                    words("for the same module in the interface section.")]
             ),
             DupPieces = [words("Warning: this"), decl("use_module"),
-                words("declaration for module"), qual_sym_name(ModuleName),
-                words("in the implementation section is redundant, given the")]
-                ++ OldPieces,
-            PrevPieces = [words("The previous declaration is here."), nl],
+                words("declaration for module")] ++
+                color_as_subject([qual_sym_name(ModuleName)]) ++
+                [words("in the implementation section is")] ++
+                color_as_incorrect([words("redundant,")]) ++
+                [words("given the")] ++ OldPieces ++ [nl],
+            PrevPieces = [words("The previous"),
+                decl(PrevDeclName), words("declaration was here."), nl],
             DupMsg = msg(Context, DupPieces),
             PrevMsg = msg(PrevContext, PrevPieces),
             Spec = error_spec($pred, severity_warning, phase_pt2h,
@@ -738,11 +761,14 @@ record_imp_use_only(ModuleName, Context, !UseMap, !Specs) :-
         (
             OldEntry = int_use(PrevContext),
             DupPieces = [words("Warning: this"), decl("use_module"),
-                words("declaration for module"), qual_sym_name(ModuleName),
-                words("in the implementation section is redundant, given the"),
-                decl("use_module"), words("declaration"),
+                words("declaration for module")] ++
+                color_as_subject([qual_sym_name(ModuleName)]) ++
+                [words("in the implementation section is")] ++
+                color_as_incorrect([words("redundant,")]) ++
+                [words("given the"), decl("use_module"), words("declaration"),
                 words("for the same module in the interface section."), nl],
-            PrevPieces = [words("The previous declaration is here."), nl],
+            PrevPieces = [words("The previous"), decl("use_module"),
+                words("declaration is here."), nl],
             DupMsg = msg(Context, DupPieces),
             PrevMsg = msg(PrevContext, PrevPieces),
             Spec = error_spec($pred, severity_warning, phase_pt2h,
@@ -761,74 +787,99 @@ record_imp_use_only(ModuleName, Context, !UseMap, !Specs) :-
 
 %---------------------%
 
-    % Generate a warning if a module imports itself.
+    % Generate a report if a module imports itself.
+    % NOTE: The main difference between this predicate and
+    % error_if_use_for_self lies NOT in the severity or in
+    % import vs use, but in the *type* of the map they look things up in.
+    % However, the messages they generate should be kept in sync.
     %
-:- pred warn_if_import_for_self(module_name::in,
+:- pred warn_if_avail_for_self(module_name::in,
     section_import_and_or_use_map::in, section_import_and_or_use_map::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-warn_if_import_for_self(ModuleName, !SectionImportOrUseMap, !Specs) :-
+warn_if_avail_for_self(ModuleName, !SectionImportOrUseMap, !Specs) :-
     ( if map.remove(ModuleName, ImportOrUse, !SectionImportOrUseMap) then
-        Context = section_import_or_use_first_context(ImportOrUse),
-        Pieces = [words("Warning: module"), qual_sym_name(ModuleName),
-            words("imports itself!"), nl],
+        section_import_or_use_first_context(ImportOrUse, DeclName, Context),
+        Pieces = [words("Warning: module")] ++
+            color_as_subject([qual_sym_name(ModuleName)]) ++
+            [words("has a")] ++
+            color_as_incorrect([decl(DeclName),
+                words("declaration for itself!")]) ++
+            [nl],
         Msg = msg(Context, Pieces),
-        Spec = conditional_spec($pred, warn_simple_code, yes, severity_warning,
-            phase_pt2h, [Msg]),
+        Spec = conditional_spec($pred, warn_simple_code, yes,
+            severity_warning, phase_pt2h, [Msg]),
         !:Specs = [Spec | !.Specs]
     else
         true
     ).
 
-    % Generate a warning if a module imports an ancestor.
+    % Generate a report if a module imports an ancestor.
+    % NOTE: The main difference between this predicate and
+    % error_if_use_for_ancestor lies NOT in the severity or in
+    % import vs use, but in the *type* of the map they look things up in.
+    % However, the messages they generate should be kept in sync.
     %
-:- pred warn_if_import_for_ancestor(module_name::in, module_name::in,
+:- pred warn_if_avail_for_ancestor(module_name::in, module_name::in,
     section_import_and_or_use_map::in, section_import_and_or_use_map::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-warn_if_import_for_ancestor(ModuleName, AncestorName,
+warn_if_avail_for_ancestor(ModuleName, AncestorName,
         !SectionImportOrUseMap, !Specs) :-
-    ( if map.remove(ModuleName, ImportOrUse, !SectionImportOrUseMap) then
-        Context = section_import_or_use_first_context(ImportOrUse),
-        MainPieces = [words("Warning: module"), qual_sym_name(ModuleName),
-            words("imports its own ancestor, module"),
-            qual_sym_name(AncestorName), suffix("."), nl],
+    ( if map.remove(AncestorName, ImportOrUse, !SectionImportOrUseMap) then
+        section_import_or_use_first_context(ImportOrUse, DeclName, Context),
+        MainPieces = [words("Warning: module")] ++
+            color_as_subject([qual_sym_name(ModuleName)]) ++
+            [words("has a")] ++
+            color_as_incorrect([decl(DeclName),
+                words("declaration for its own ancestor module,")]) ++
+            [qual_sym_name(AncestorName), suffix("."), nl],
         VerbosePieces = [words("Every submodule"),
             words("implicitly imports its ancestors."),
             words("There is no need to explicitly import them."), nl],
         Msg = simple_msg(Context,
             [always(MainPieces), verbose_only(verbose_once, VerbosePieces)]),
-        Spec = conditional_spec($pred, warn_simple_code, yes, severity_warning,
-            phase_pt2h, [Msg]),
+        Spec = conditional_spec($pred, warn_simple_code, yes,
+            severity_warning, phase_pt2h, [Msg]),
         !:Specs = [Spec | !.Specs]
     else
         true
     ).
 
-:- func section_import_or_use_first_context(section_import_and_or_use)
-    = prog_context.
+:- pred section_import_or_use_first_context(section_import_and_or_use::in,
+    string::out, prog_context::out) is det.
 
-section_import_or_use_first_context(ImportOrUse) = Context :-
+section_import_or_use_first_context(ImportOrUse, DeclName, Context) :-
     (
-        ImportOrUse = int_import(Context)
+        ImportOrUse = int_import(Context),
+        DeclName = "import_module"
     ;
-        ImportOrUse = int_use(Context)
+        ImportOrUse = int_use(Context),
+        DeclName = "use_module"
     ;
-        ImportOrUse = imp_import(Context)
+        ImportOrUse = imp_import(Context),
+        DeclName = "import_module"
     ;
-        ImportOrUse = imp_use(Context)
+        ImportOrUse = imp_use(Context),
+        DeclName = "use_module"
     ;
         ImportOrUse = int_use_imp_import(ContextA, ContextB),
         ( if compare((<), ContextB, ContextA) then
-            Context = ContextB
+            Context = ContextB,
+            DeclName = "import_module"
         else
-            Context = ContextA
+            Context = ContextA,
+            DeclName = "use_module"
         )
     ).
 
 %---------------------%
 
     % Generate an error if a module imports itself.
+    % NOTE: The main difference between this predicate and
+    % warn_if_avail_for_ancestor lies NOT in the severity or in
+    % import vs use, but in the *type* of the map they look things up in.
+    % However, the messages they generate should be kept in sync.
     %
 :- pred error_if_use_for_self(module_name::in,
     section_use_map::in, section_use_map::out,
@@ -836,8 +887,12 @@ section_import_or_use_first_context(ImportOrUse) = Context :-
 
 error_if_use_for_self(ModuleName, !UseMap, !Specs) :-
     ( if map.remove(ModuleName, Use, !UseMap) then
-        Pieces = [words("Error: module"), qual_sym_name(ModuleName),
-            words("imports itself."), nl],
+        Pieces = [words("Error: module")] ++
+            color_as_subject([qual_sym_name(ModuleName)]) ++
+            [words("has a")] ++
+            color_as_incorrect([decl("use_module"),
+                words("declaration for itself!")]) ++
+            [nl],
         Spec = spec($pred, severity_error, phase_pt2h,
             section_use_first_context(Use), Pieces),
         !:Specs = [Spec | !.Specs]
@@ -846,6 +901,10 @@ error_if_use_for_self(ModuleName, !UseMap, !Specs) :-
     ).
 
     % Generate an error if a module imports an ancestor.
+    % NOTE: The main difference between this predicate and
+    % warn_if_avail_for_ancestor lies NOT in the severity or in
+    % import vs use, but in the *type* of the map they look things up in.
+    % However, the messages they generate should be kept in sync.
     %
 :- pred error_if_use_for_ancestor(module_name::in, module_name::in,
     section_use_map::in, section_use_map::out,
@@ -853,9 +912,12 @@ error_if_use_for_self(ModuleName, !UseMap, !Specs) :-
 
 error_if_use_for_ancestor(ModuleName, AncestorName, !UseMap, !Specs) :-
     ( if map.remove(ModuleName, Use, !UseMap) then
-        Pieces = [words("Error: module"), qual_sym_name(ModuleName),
-            words("imports its own ancestor, module"),
-            qual_sym_name(AncestorName), suffix("."), nl],
+        Pieces = [words("Error: module")] ++
+            color_as_subject([qual_sym_name(ModuleName)]) ++
+            [words("has a")] ++
+            color_as_incorrect([decl("use_module"),
+                words("declaration for its own ancestor module,")]) ++
+            [qual_sym_name(AncestorName), suffix("."), nl],
         Spec = spec($pred, severity_error, phase_pt2h,
             section_use_first_context(Use), Pieces),
         !:Specs = [Spec | !.Specs]

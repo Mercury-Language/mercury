@@ -1,4 +1,4 @@
-undeclared_mode.m:034: Error: [38;5;203mno mode declaration[39;49m for predicate
-undeclared_mode.m:034:   [38;5;87m`sort_of_factorial'/2.[39;49m
+undeclared_mode.m:034: Error: predicate [38;5;87m`sort_of_factorial'/2[39;49m [38;5;203mhas no mode[39;49m
+undeclared_mode.m:034:   [38;5;203mdeclaration.[39;49m
 undeclared_mode.m:034: Inferred :- mode sort_of_factorial(di, uo).
 For more information, recompile with `-E'.

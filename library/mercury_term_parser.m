@@ -267,12 +267,15 @@ parse_tokens_with_op_table(Ops, FileName, Tokens, Result) :-
 check_for_errors(Parse, VarSet, Tokens, LeftOverTokens, Result) :-
     (
         Parse = pr_error(ErrorMessage, ErrorTokens),
-        % Check if the error was caused by a bad token.
-        ( if check_for_bad_token(Tokens, BadTokenMessage, BadTokenLineNum) then
-            Message = BadTokenMessage,
-            LineNum = BadTokenLineNum
-        else
-            % Find the token that caused the error.
+        % Check whether the error was caused by a bad token
+        % somewhere down the list.
+        check_for_bad_token(Tokens, MaybeBadTokenMsg),
+        (
+            MaybeBadTokenMsg = yes({Message, LineNum})
+        ;
+            MaybeBadTokenMsg = no,
+            % Report that the first token in ErrorTokens, or in Tokens,
+            % caused the error.
             (
                 ErrorTokens = token_cons(ErrorTok, ErrorTokLineNum, _),
                 token_to_string(ErrorTok, TokString),
@@ -293,9 +296,12 @@ check_for_errors(Parse, VarSet, Tokens, LeftOverTokens, Result) :-
         Result = error(Message, LineNum)
     ;
         Parse = pr_ok(Term),
-        ( if check_for_bad_token(Tokens, Message, LineNum) then
+        check_for_bad_token(Tokens, MaybeBadTokenMsg),
+        (
+            MaybeBadTokenMsg = yes({Message, LineNum}),
             Result = error(Message, LineNum)
-        else
+        ;
+            MaybeBadTokenMsg = no,
             (
                 LeftOverTokens = token_cons(Token, LineNum, _),
                 token_to_string(Token, TokString),
@@ -309,27 +315,26 @@ check_for_errors(Parse, VarSet, Tokens, LeftOverTokens, Result) :-
         )
     ).
 
-:- pred check_for_bad_token(token_list::in, string::out, int::out) is semidet.
+:- pred check_for_bad_token(token_list::in, maybe({string, int})::out) is det.
 
-check_for_bad_token(token_cons(Token, LineNum0, Tokens), Message, LineNum) :-
-    require_complete_switch [Token]
+check_for_bad_token(token_cons(Token, LineNum0, Tokens), MaybeBadTokenMsg) :-
     (
         Token = io_error(IO_Error),
         io.error_message(IO_Error, IO_ErrorMessage),
         string.format("I/O error: %s", [s(IO_ErrorMessage)], Message),
-        LineNum = LineNum0
+        MaybeBadTokenMsg = yes({Message, LineNum0})
     ;
         Token = junk(Char),
         char.to_int(Char, Code),
         string.int_to_base_string(Code, 10, Decimal),
         string.int_to_base_string(Code, 16, Hex),
-        string.format("Syntax error: Illegal character 0x%s (%s) in input",
+        string.format("Syntax error: illegal character 0x%s (%s) in input",
             [s(Hex), s(Decimal)], Message),
-        LineNum = LineNum0
+        MaybeBadTokenMsg = yes({Message, LineNum0})
     ;
         Token = error(ErrorMessage),
         string.format("Syntax error: %s", [s(ErrorMessage)], Message),
-        LineNum = LineNum0
+        MaybeBadTokenMsg = yes({Message, LineNum0})
     ;
         ( Token = name(_)
         ; Token = variable(_)
@@ -350,10 +355,9 @@ check_for_bad_token(token_cons(Token, LineNum0, Tokens), Message, LineNum) :-
         ; Token = eof
         ; Token = integer_dot(_)
         ),
-        check_for_bad_token(Tokens, Message, LineNum)
+        check_for_bad_token(Tokens, MaybeBadTokenMsg)
     ).
-check_for_bad_token(token_nil, _, _) :-
-    fail.
+check_for_bad_token(token_nil, no).
 
 :- pred parse_whole_term(parse_result(term(T))::out,
     token_list::in, token_list::out,

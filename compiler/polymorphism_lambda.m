@@ -54,7 +54,6 @@
 
 :- implementation.
 
-:- import_module check_hlds.
 :- import_module check_hlds.type_util.
 :- import_module hlds.instmap.
 :- import_module mdbcomp.

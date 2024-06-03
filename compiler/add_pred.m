@@ -20,7 +20,6 @@
 :- import_module hlds.hlds_clauses.
 :- import_module hlds.hlds_module.
 :- import_module hlds.hlds_pred.
-:- import_module hlds.make_hlds.
 :- import_module hlds.make_hlds.make_hlds_types.
 :- import_module hlds.pred_name.
 :- import_module hlds.status.

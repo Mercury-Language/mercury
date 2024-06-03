@@ -1,2 +1,2 @@
-bug115.m:012: Syntax error: Illegal character 0xE8 (232) in input.
-bug115.m:020: Syntax error: Illegal character 0xE8 (232) in input.
+bug115.m:012: Syntax error: illegal character 0xE8 (232) in input.
+bug115.m:020: Syntax error: illegal character 0xE8 (232) in input.

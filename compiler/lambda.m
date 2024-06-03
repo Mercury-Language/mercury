@@ -151,7 +151,6 @@
 :- import_module parse_tree.prog_mode.
 :- import_module parse_tree.prog_type_scan.
 :- import_module parse_tree.prog_type_test.
-:- import_module transform_hlds.
 :- import_module transform_hlds.direct_arg_in_out.
 
 :- import_module array.

@@ -769,12 +769,11 @@ maybe_report_error_no_modes(ModuleInfo, PredId, PredInfo) = Specs :-
                 % when we added the marker.
                 Msgs = []
             else
-                PredDescDotPieces = describe_one_pred_name(ModuleInfo,
-                    yes(color_subject), should_not_module_qualify,
-                    [suffix(".")], PredId),
-                MainPieces = [words("Error:")] ++
-                    color_as_incorrect([words("no mode declaration")]) ++
-                    [words("for")] ++ PredDescDotPieces ++ [nl],
+                PredDescPieces = describe_one_pred_name(ModuleInfo,
+                    yes(color_subject), should_not_module_qualify, [], PredId),
+                MainPieces = [words("Error:")] ++ PredDescPieces ++
+                    color_as_incorrect([words("has no mode declaration.")]) ++
+                    [nl],
                 VerbosePieces =
                     [words("(Use"), quote("--infer-modes"),
                     words("to enable mode inference.)"), nl],
@@ -784,20 +783,19 @@ maybe_report_error_no_modes(ModuleInfo, PredId, PredInfo) = Specs :-
                         verbose_only(verbose_once, VerbosePieces)])]
             ),
             pred_info_get_context(PredInfo, Context),
-            Spec = error_spec($pred, severity_error,
-                phase_mode_check(report_in_any_mode), Msgs),
+            Phase = phase_mode_check(report_in_any_mode),
+            Spec = error_spec($pred, severity_error, Phase, Msgs),
             Specs = [Spec]
         )
     else
-        PredDescDotPieces =
-            describe_one_pred_name(ModuleInfo, yes(color_subject),
-                should_module_qualify, [suffix(".")], PredId),
+        PredDescPieces = describe_one_pred_name(ModuleInfo, yes(color_subject),
+            should_not_module_qualify, [], PredId),
         pred_info_get_context(PredInfo, Context),
-        Pieces = [words("Error:")] ++
-            color_as_incorrect([words("no mode declaration")]) ++
-            [words("for exported")] ++ PredDescDotPieces ++ [nl],
-        Spec = spec($pred, severity_error,
-            phase_mode_check(report_in_any_mode), Context, Pieces),
+        Pieces = [words("Error: the exported")] ++ PredDescPieces ++
+            color_as_incorrect([words("has no mode declaration.")]) ++
+            [nl],
+        Phase = phase_mode_check(report_in_any_mode),
+        Spec = spec($pred, severity_error, Phase, Context, Pieces),
         Specs = [Spec]
     ).
 
