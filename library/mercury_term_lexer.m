@@ -1921,12 +1921,15 @@ get_quoted_name_escape(Stream, QuoteChar, !.RevChars, Token, !IO) :-
             get_quoted_name(Stream, QuoteChar, !.RevChars, Token, !IO)
         else if Char = 'x' then
             get_hex_escape(Stream, QuoteChar, !.RevChars, [], Token, !IO)
-        else if Char = 'u' then
-            get_unicode_escape(Stream, 4, QuoteChar, !.RevChars, [],
-                Token, !IO)
-        else if Char = 'U' then
-            get_unicode_escape(Stream, 8, QuoteChar, !.RevChars, [],
-                Token, !IO)
+        else if (Char = 'u', Exp = 4 ; Char = 'U', Exp = 8)then
+            get_unicode_escape(Stream, Exp, 0, 0, UnicodeResult, !IO),
+            (
+                UnicodeResult = unicode_char(UnicodeChar),
+                !:RevChars = [UnicodeChar | !.RevChars],
+                get_quoted_name(Stream, QuoteChar, !.RevChars, Token, !IO)
+            ;
+                UnicodeResult = unicode_nonchar(Token)
+            )
         else if char.is_octal_digit(Char) then
             get_octal_escape(Stream, QuoteChar, !.RevChars, [Char], Token, !IO)
         else
@@ -1945,6 +1948,7 @@ string_get_quoted_name_escape(String, Len, QuoteChar, !.RevChars, Posn0,
             % Note that get_quoted_name, the !IO variant of the predicate,
             % cannot use this switch, because it is incomplete,
             % and we cannot update !IO in the arms of such switches.
+            require_switch_arms_det [Char]
             (
                 Char = '\n',
                 string_get_quoted_name(String, Len, QuoteChar,
@@ -1964,15 +1968,20 @@ string_get_quoted_name_escape(String, Len, QuoteChar, !.RevChars, Posn0,
                     !.RevChars, [], Posn0,
                     TokenPrime, ContextPrime, !Posn)
             ;
-                Char = 'u',
-                string_get_unicode_escape(4, String, Len, QuoteChar,
-                    !.RevChars, [], Posn0,
-                    TokenPrime, ContextPrime, !Posn)
-            ;
-                Char = 'U',
-                string_get_unicode_escape(8, String, Len, QuoteChar,
-                    !.RevChars, [], Posn0,
-                    TokenPrime, ContextPrime, !Posn)
+                ( Char = 'u', Exp = 4
+                ; Char = 'U', Exp = 8
+                ),
+                string_get_unicode_escape(String, Len, Exp, 0, 0,
+                    UnicodeResult, !Posn),
+                (
+                    UnicodeResult = unicode_char(UnicodeChar),
+                    !:RevChars = [UnicodeChar | !.RevChars],
+                    string_get_quoted_name(String, Len, QuoteChar, !.RevChars,
+                        Posn0, TokenPrime, ContextPrime, !Posn)
+                ;
+                    UnicodeResult = unicode_nonchar(TokenPrime),
+                    string_get_context(Posn0, ContextPrime)
+                )
             )
         then
             Token = TokenPrime,
@@ -2028,15 +2037,21 @@ linestr_get_quoted_name_escape(String, Len, QuoteChar, !.RevChars,
                     !.RevChars, [], LineContext0, LinePosn0,
                     TokenPrime, ContextPrime, !LineContext, !LinePosn)
             ;
-                Char = 'u',
-                linestr_get_unicode_escape(4, String, Len, QuoteChar,
-                    !.RevChars, [], LineContext0, LinePosn0,
-                    TokenPrime, ContextPrime, !LineContext, !LinePosn)
-            ;
-                Char = 'U',
-                linestr_get_unicode_escape(8, String, Len, QuoteChar,
-                    !.RevChars, [], LineContext0, LinePosn0,
-                    TokenPrime, ContextPrime, !LineContext, !LinePosn)
+                ( Char = 'u', Exp = 4
+                ; Char = 'U', Exp = 8
+                ),
+                linestr_get_unicode_escape(String, Len, Exp, 0, 0,
+                    UnicodeResult, !LineContext, !LinePosn),
+                (
+                    UnicodeResult = unicode_char(UnicodeChar),
+                    !:RevChars = [UnicodeChar | !.RevChars],
+                    linestr_get_quoted_name(String, Len, QuoteChar, !.RevChars,
+                        LineContext0, LinePosn0,
+                        TokenPrime, ContextPrime, !LineContext, !LinePosn)
+                ;
+                    UnicodeResult = unicode_nonchar(TokenPrime),
+                    linestr_get_context(LineContext0, ContextPrime)
+                )
             )
         then
             Token = TokenPrime,
@@ -2095,151 +2110,151 @@ escape_char('''', '''').
 escape_char('"', '"').
 escape_char('`', '`').
 
-:- pred get_unicode_escape(io.text_input_stream::in, int::in, char::in,
-    list(char)::in, list(char)::in, token::out, io::di, io::uo) is det.
+:- type unicode_char_result
+    --->    unicode_char(char)
+    ;       unicode_nonchar(token).
 
-get_unicode_escape(Stream, NumHexChars, QuoteChar, !.RevChars, !.RevHexChars,
-        Token, !IO) :-
-    ( if NumHexChars = list.length(!.RevHexChars) then
-        ( if
-            rev_char_list_to_string(!.RevHexChars, HexString),
-            string.base_string_to_int(16, HexString, UnicodeCharCode),
-            allowed_unicode_char_code(UnicodeCharCode),
-            char.from_int(UnicodeCharCode, UnicodeChar)
-        then
-            ( if UnicodeCharCode = 0 then
-                Token = null_character_error
-            else
-                !:RevChars = [UnicodeChar | !.RevChars],
-                get_quoted_name(Stream, QuoteChar, !.RevChars, Token, !IO)
-            )
-        else
-            Token = error("invalid Unicode character code")
-        )
+:- type unicode_decode_error
+    --->    unicode_non_hex_digit(char)
+            % The char sequence contained char that is not a hex digit.
+    ;       unicode_hex_seq_incomplete(int, int)
+            % The number of characters we expected, and how many we got.
+    ;       unicode_char_null
+    ;       unicode_char_not_in_range(int)
+            % The int outside the range.
+    ;       unicode_char_is_surrogate(int).
+            % The int that is a surrogate.
+
+:- pred get_unicode_escape(io.text_input_stream::in, int::in, int::in, int::in,
+    unicode_char_result::out, io::di, io::uo) is det.
+
+get_unicode_escape(Stream, NumExpHexChars, NumGotHexChars0, Value0,
+        Result, !IO) :-
+    ( if NumExpHexChars = NumGotHexChars0 then
+        construct_unicode_char_if_valid(Value0, Result)
     else
-        io.read_char_unboxed(Stream, Result, Char, !IO),
+        io.read_char_unboxed(Stream, ReadResult, Char, !IO),
         (
-            Result = error(Error),
-            Token = io_error(Error)
+            ReadResult = error(Error),
+            Result = unicode_nonchar(io_error(Error))
         ;
-            Result = eof,
-            Token = eof
+            ReadResult = eof,
+            DecodeError =
+                unicode_hex_seq_incomplete(NumExpHexChars, NumGotHexChars0),
+            Result = unicode_decode_error_to_result(DecodeError)
         ;
-            Result = ok,
-            ( if char.is_hex_digit(Char) then
-                !:RevHexChars = [Char | !.RevHexChars],
-                get_unicode_escape(Stream, NumHexChars, QuoteChar,
-                    !.RevChars, !.RevHexChars, Token, !IO)
+            ReadResult = ok,
+            ( if char.hex_digit_to_int(Char, HexDigit) then
+                Value1 = Value0 * 16 + HexDigit,
+                NumGotHexChars1 = NumGotHexChars0 + 1,
+                get_unicode_escape(Stream, NumExpHexChars, NumGotHexChars1,
+                    Value1, Result, !IO)
             else
-                Token = error("invalid hex character in Unicode escape")
+                DecodeError = unicode_non_hex_digit(Char),
+                Result = unicode_decode_error_to_result(DecodeError)
             )
         )
     ).
 
-:- pred string_get_unicode_escape(int::in, string::in, int::in, char::in,
-    list(char)::in, list(char)::in, posn::in, token::out,
-    string_token_context::out, posn::in, posn::out) is det.
+:- pred string_get_unicode_escape(string::in, int::in, int::in, int::in,
+    int::in, unicode_char_result::out, posn::in, posn::out) is det.
 
-string_get_unicode_escape(NumHexChars, String, Len, QuoteChar,
-        !.RevChars, !.RevHexChars, Posn0, Token, Context, !Posn) :-
-    ( if NumHexChars = list.length(!.RevHexChars) then
-        ( if
-            rev_char_list_to_string(!.RevHexChars, HexString),
-            string.base_string_to_int(16, HexString, UnicodeCharCode),
-            allowed_unicode_char_code(UnicodeCharCode),
-            char.from_int(UnicodeCharCode, UnicodeChar)
-        then
-            ( if UnicodeCharCode = 0 then
-                Token = null_character_error,
-                string_get_context(Posn0, Context)
-            else
-                !:RevChars = [UnicodeChar | !.RevChars],
-                string_get_quoted_name(String, Len, QuoteChar, !.RevChars,
-                    Posn0, Token, Context, !Posn)
-            )
-        else
-            Token = error("invalid Unicode character code"),
-            string_get_context(Posn0, Context)
-        )
+string_get_unicode_escape(String, Len, NumExpHexChars,
+        NumGotHexChars0, Value0, Result, !Posn) :-
+    ( if NumExpHexChars = NumGotHexChars0 then
+        construct_unicode_char_if_valid(Value0, Result)
     else
         ( if string_read_char(String, Len, Char, !Posn) then
-            ( if char.is_hex_digit(Char) then
-                !:RevHexChars = [Char | !.RevHexChars],
-                disable_warning [suspicious_recursion] (
-                    string_get_unicode_escape(NumHexChars, String, Len,
-                        QuoteChar, !.RevChars, !.RevHexChars, Posn0,
-                        Token, Context, !Posn)
-                )
+            ( if char.hex_digit_to_int(Char, HexDigit) then
+                Value1 = Value0 * 16 + HexDigit,
+                NumGotHexChars1 = NumGotHexChars0 + 1,
+                string_get_unicode_escape(String, Len, NumExpHexChars,
+                    NumGotHexChars1, Value1, Result, !Posn)
             else
-                Token = error("invalid hex character in Unicode escape"),
-                string_get_context(Posn0, Context)
+                DecodeError = unicode_non_hex_digit(Char),
+                Result = unicode_decode_error_to_result(DecodeError)
             )
         else
-            Token = eof,
-            string_get_context(Posn0, Context)
+            DecodeError =
+                unicode_hex_seq_incomplete(NumExpHexChars, NumGotHexChars0),
+            Result = unicode_decode_error_to_result(DecodeError)
         )
     ).
 
-:- pred linestr_get_unicode_escape(int::in, string::in, int::in, char::in,
-    list(char)::in, list(char)::in,
-    line_context::in, line_posn::in, token::out, string_token_context::out,
+:- pred linestr_get_unicode_escape(string::in, int::in, int::in, int::in,
+    int::in, unicode_char_result::out,
     line_context::in, line_context::out, line_posn::in, line_posn::out) is det.
 
-linestr_get_unicode_escape(NumHexChars, String, Len, QuoteChar,
-        !.RevChars, !.RevHexChars, LineContext0, LinePosn0,
-        Token, Context, !LineContext, !LinePosn) :-
-    ( if NumHexChars = list.length(!.RevHexChars) then
-        ( if
-            rev_char_list_to_string(!.RevHexChars, HexString),
-            string.base_string_to_int(16, HexString, UnicodeCharCode),
-            allowed_unicode_char_code(UnicodeCharCode),
-            char.from_int(UnicodeCharCode, UnicodeChar)
-        then
-            ( if UnicodeCharCode = 0 then
-                linestr_get_context(LineContext0, Context),
-                Token = null_character_error
-            else
-                !:RevChars = [UnicodeChar | !.RevChars],
-                linestr_get_quoted_name(String, Len, QuoteChar, !.RevChars,
-                    LineContext0, LinePosn0,
-                    Token, Context, !LineContext, !LinePosn)
-            )
-        else
-            Token = error("invalid Unicode character code"),
-            linestr_get_context(LineContext0, Context)
-        )
+linestr_get_unicode_escape(String, Len, NumExpHexChars, NumGotHexChars0,
+        Value0, Result, !LineContext, !LinePosn) :-
+    ( if NumExpHexChars = NumGotHexChars0 then
+        construct_unicode_char_if_valid(Value0, Result)
     else
         ( if linestr_read_char(String, Len, Char, !LineContext, !LinePosn) then
-            ( if char.is_hex_digit(Char) then
-                !:RevHexChars = [Char | !.RevHexChars],
-                disable_warning [suspicious_recursion] (
-                    linestr_get_unicode_escape(NumHexChars, String, Len,
-                        QuoteChar, !.RevChars, !.RevHexChars,
-                        LineContext0, LinePosn0,
-                        Token, Context, !LineContext, !LinePosn)
-                )
+            ( if char.hex_digit_to_int(Char, HexDigit) then
+                Value1 = Value0 * 16 + HexDigit,
+                NumGotHexChars1 = NumGotHexChars0 + 1,
+                linestr_get_unicode_escape(String, Len, NumExpHexChars,
+                    NumGotHexChars1, Value1, Result, !LineContext, !LinePosn)
             else
-                Token = error("invalid hex character in Unicode escape"),
-                linestr_get_context(LineContext0, Context)
+                DecodeError = unicode_non_hex_digit(Char),
+                Result = unicode_decode_error_to_result(DecodeError)
             )
         else
-            Token = eof,
-            linestr_get_context(LineContext0, Context)
+            DecodeError =
+                unicode_hex_seq_incomplete(NumExpHexChars, NumGotHexChars0),
+            Result = unicode_decode_error_to_result(DecodeError)
         )
     ).
 
-    % Succeeds if the give code point is a legal Unicode code point
-    % (regardless of whether it is reserved for private use or not).
-    %
-:- pred allowed_unicode_char_code(int::in) is semidet.
+:- pred construct_unicode_char_if_valid(int::in,
+    unicode_char_result::out) is det.
 
-allowed_unicode_char_code(Code) :-
-    Code >= 0,
-    Code =< 0x10FFFF,
-    % The following range is reserved for surrogates.
-    not (
-        Code >= 0xD800, Code =< 0xDFFF
+construct_unicode_char_if_valid(Value, Result) :-
+    ( if Value = 0 then
+        DecodeError = unicode_char_null,
+        Result = unicode_decode_error_to_result(DecodeError)
+    else if char.from_int(Value, UnicodeChar) then
+        ( if char.is_surrogate(UnicodeChar) then
+            DecodeError = unicode_char_is_surrogate(Value),
+            Result = unicode_decode_error_to_result(DecodeError)
+        else
+            Result = unicode_char(UnicodeChar)
+        )
+    else
+        DecodeError = unicode_char_not_in_range(Value),
+        Result = unicode_decode_error_to_result(DecodeError)
     ).
+
+:- func unicode_decode_error_to_result(unicode_decode_error)
+    = unicode_char_result.
+
+unicode_decode_error_to_result(DecodeError) = Result :-
+    (
+        DecodeError = unicode_non_hex_digit(Char),
+        string.format(
+            "expected only hexidecimal digits in %s, got `%c'",
+            [s("Unicode escape sequence"), c(Char)], Msg),
+        Token = error(Msg)
+    ;
+        DecodeError = unicode_hex_seq_incomplete(Expected, Got),
+        string.format(
+            "expected %d hexadecimal digits in %s, got only %d",
+            [i(Expected), s("Unicode escape sequence"), i(Got)], Msg),
+        Token = error(Msg)
+    ;
+        DecodeError = unicode_char_null,
+        Token = null_character_error
+    ;
+        DecodeError = unicode_char_not_in_range(N),
+        string.format("U+%X is not a valid Unicode code point", [i(N)], Msg),
+        Token = error(Msg)
+    ;
+        DecodeError = unicode_char_is_surrogate(N),
+        string.format("U+%X is a Unicode surrogate code point", [i(N)], Msg),
+        Token = error(Msg)
+    ),
+    Result = unicode_nonchar(Token).
 
 :- pred get_hex_escape(io.text_input_stream::in, char::in, list(char)::in,
     list(char)::in, token::out, io::di, io::uo) is det.
