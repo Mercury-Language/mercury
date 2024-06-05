@@ -14,9 +14,9 @@
 % character sequences, and return the token sequences they contain, up to
 % and including the token that ens a term, the period character.
 % (If the input does not conform to Mercury's rules, then some of the
-% returned tokens may be errror indications.)
+% returned tokens may be error indications.)
 %
-% This module exports predicates that do this lexical analysis bothe
+% This module exports predicates that do this lexical analysis both
 % on characters read in from a stream, and on characters in a string
 % (which may or may not represent the contents of a file).
 %
@@ -2067,7 +2067,7 @@ unicode_decode_error_to_result(DecodeError) = Result :-
     (
         DecodeError = unicode_non_hex_digit(Char),
         string.format(
-            "expected only hexidecimal digits in %s, got `%c'",
+            "expected only hexadecimal digits in %s, got `%c'",
             [s("Unicode escape sequence"), c(Char)], Msg),
         Token = error(Msg)
     ;
