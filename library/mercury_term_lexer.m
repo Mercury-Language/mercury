@@ -10,10 +10,15 @@
 % Main author: fjh.
 % Stability: high.
 %
-% Lexical analysis. This module defines the representation of tokens
-% and exports predicates for reading in tokens from an input stream.
+% This module does lexical analysis of Mercury code. Its predicates analyze
+% character sequences, and return the token sequences they contain, up to
+% and including the token that ens a term, the period character.
+% (If the input does not conform to Mercury's rules, then some of the
+% returned tokens may be errror indications.)
 %
-% See ISO Prolog 6.4. Also see the comments at the top of parser.m.
+% This module exports predicates that do this lexical analysis bothe
+% on characters read in from a stream, and on characters in a string
+% (which may or may not represent the contents of a file).
 %
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -73,8 +78,8 @@
     ;       size_32_bit
     ;       size_64_bit.
 
-    % For every token, we record the line number of the line on
-    % which the token occurred.
+    % For every token, we record the line number of the line
+    % on which the token occurred.
     %
 :- type token_context == int.   % line number
 
@@ -85,9 +90,9 @@
     ;       token_nil.
 
     % A line_context and a line_posn together contain exactly the same
-    % fields as a posn, with the same semantics. The difference is that
-    % stepping past a single character requires no memory allocation
-    % whatsoever *unless* that character is a newline.
+    % fields as a posn (which is defined in io.m), with the same semantics.
+    % The difference is that stepping past a single character requires
+    % no memory allocation whatsoever *unless* that character is a newline.
     %
     % XXX We should consider making both fields of line_context into uint32s,
     % to allow them to fit into a single 64 bit word. Simplicity would then
@@ -342,193 +347,6 @@ linestr_get_token_list_max(String, Len, Tokens, !LineContext, !LinePosn) :-
 string_get_token_list(String, Tokens, !Posn) :-
     string.length(String, Len),
     string_get_token_list_max(String, Len, Tokens, !Posn).
-
-%---------------------------------------------------------------------------%
-%
-% Some low-level routines.
-%
-
-:- pred get_context(io.text_input_stream::in, token_context::out,
-    io::di, io::uo) is det.
-
-get_context(Stream, Context, !IO) :-
-    io.get_line_number(Stream, Context, !IO).
-
-:- type string_token_context == token_context.
-
-:- pred string_get_context(posn::in, string_token_context::out) is det.
-
-string_get_context(StartPosn, Context) :-
-    StartPosn = posn(StartLineNum, _, _),
-    Context = StartLineNum.
-    % In future, we might want to modify this code to read something like this:
-    %
-    % posn_to_line_and_column(StartPosn, StartLineNum, StartColumn),
-    % posn_to_line_and_column(!.Posn, EndLineNum, EndColumn),
-    % Context = detailed(StartLine, StartColumn, EndLine, EndColumn).
-
-:- pred linestr_get_context(line_context::in, string_token_context::out)
-    is det.
-
-linestr_get_context(StartLineContext, Context) :-
-    StartLineContext = line_context(StartLineNum, _),
-    Context = StartLineNum.
-
-:- pred string_read_char(string::in, int::in, char::out,
-    posn::in, posn::out) is semidet.
-:- pragma inline(pred(string_read_char/5)).
-
-string_read_char(String, Len, Char, Posn0, Posn) :-
-    Posn0 = posn(LineNum0, LineStartOffset0, Offset0),
-    Offset0 < Len,
-    string.unsafe_index_next(String, Offset0, Offset, Char),
-    ( if Char = '\n' then
-        Posn = posn(LineNum0 + 1, Offset, Offset)
-    else
-        Posn = posn(LineNum0, LineStartOffset0, Offset)
-    ).
-
-:- pred linestr_read_char(string::in, int::in, char::out,
-    line_context::in, line_context::out, line_posn::in, line_posn::out)
-    is semidet.
-:- pragma inline(pred(linestr_read_char/7)).
-
-linestr_read_char(String, Len, Char,
-        LineContext0, LineContext, LinePosn0, LinePosn) :-
-    LinePosn0 = line_posn(Offset0),
-    Offset0 < Len,
-    string.unsafe_index_next(String, Offset0, Offset, Char),
-    LinePosn = line_posn(Offset),
-    ( if Char = '\n' then
-        LineContext0 = line_context(LineNum0, _LineStartOffset),
-        LineContext = line_context(LineNum0 + 1, Offset)
-    else
-        LineContext = LineContext0
-    ).
-
-    % We used to use this predicate as the equivalent in !Posn variants
-    % of io.putback_char in the !IO variants. However, it is simpler to
-    % simply remember the position *before* we stepped over the character
-    % we want to put back. The obsolete pragma is so that people get
-    % a warning if they use it without knowing this, while the consider_used
-    % allows us to keep it around anyway, at least for now.
-    %
-:- pred string_ungetchar(string::in, posn::in, posn::out) is det.
-:- pragma obsolete(pred(string_ungetchar/3)).
-:- pragma consider_used(pred(string_ungetchar/3)).
-
-string_ungetchar(String, Posn0, Posn) :-
-    Posn0 = posn(LineNum0, LineOffset0, Offset0),
-    ( if string.unsafe_prev_index(String, Offset0, Offset, Char) then
-        ( if Char = '\n' then
-            Posn = posn(LineNum0 - 1, Offset, Offset)
-        else
-            Posn = posn(LineNum0, LineOffset0, Offset)
-        )
-    else
-        Posn = Posn0
-    ).
-
-:- pred grab_string(string::in, posn::in, posn::in, string::out) is det.
-
-grab_string(String, Posn0, Posn, SubString) :-
-    Posn0 = posn(_, _, Offset0),
-    Posn = posn(_, _, Offset),
-    string.unsafe_between(String, Offset0, Offset, SubString).
-
-:- pred linestr_grab_string(string::in, line_posn::in, line_posn::in,
-    string::out) is det.
-
-linestr_grab_string(String, LinePosn0, LinePosn, SubString) :-
-    LinePosn0 = line_posn(Offset0),
-    LinePosn = line_posn(Offset),
-    string.unsafe_between(String, Offset0, Offset, SubString).
-
-    % As above, but the string is known to represent a float literal.
-    % Filter out any underscore characters from the returned string.
-    % We have to do this since the underlying mechanisms we currently use for
-    % converting strings into floats (sscanf in C, parseDouble in Java etc)
-    % cannot handle underscores in their input.
-    %
-:- pred grab_float_string(string::in, posn::in, posn::in, string::out) is det.
-
-grab_float_string(String, Posn0, Posn, FloatString) :-
-    Posn0 = posn(_, _, Offset0),
-    Posn = posn(_, _, Offset),
-    unsafe_get_float_between(String, Offset0, Offset, FloatString).
-
-:- pred linestr_grab_float_string(string::in, line_posn::in, line_posn::in,
-    string::out) is det.
-
-linestr_grab_float_string(String, LinePosn0, LinePosn, FloatString) :-
-    LinePosn0 = line_posn(Offset0),
-    LinePosn = line_posn(Offset),
-    unsafe_get_float_between(String, Offset0, Offset, FloatString).
-
-:- pred unsafe_get_float_between(string::in, int::in, int::in,
-    string::uo) is det.
-
-:- pragma foreign_proc("C",
-    unsafe_get_float_between(Str::in, Start::in, End::in, FloatStr::uo),
-    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
-        does_not_affect_liveness, no_sharing],
-"
-    int src;
-    int dst = 0;
-
-    MR_allocate_aligned_string_msg(FloatStr, End - Start, MR_ALLOC_ID);
-    for (src = Start; src < End; src++) {
-        if (Str[src] != '_') {
-            FloatStr[dst] = Str[src];
-            dst++;
-        }
-    }
-    FloatStr[dst] = '\\0';
-").
-
-:- pragma foreign_proc("C#",
-    unsafe_get_float_between(Str::in, Start::in, End::in, SubString::uo),
-    [will_not_call_mercury, promise_pure, thread_safe],
-"
-    SubString = Str.Substring(Start, End - Start).Replace(\"_\", \"\");
-").
-
-:- pragma foreign_proc("Java",
-    unsafe_get_float_between(Str::in, Start::in, End::in, FloatStr::uo),
-    [will_not_call_mercury, promise_pure, thread_safe],
-"
-    FloatStr = Str.substring(Start, End).replace(\"_\", \"\");
-").
-
-    % Default implementation.
-    %
-unsafe_get_float_between(Str, Start, End, FloatStr) :-
-    string.unsafe_between(Str, Start, End, FloatStr0),
-    ( if string.contains_char(FloatStr0, '_') then
-        string.to_char_list(FloatStr0, Digits0),
-        list.negated_filter(is_underscore, Digits0, Digits),
-        string.from_char_list(Digits, FloatStr)
-    else
-        FloatStr = FloatStr0
-    ).
-
-:- pred is_underscore(char::in) is semidet.
-:- pragma consider_used(pred(is_underscore/1)).
-
-is_underscore('_').
-
-:- pred string_set_line_number(int::in, posn::in, posn::out) is det.
-
-string_set_line_number(LineNumber, Posn0, Posn) :-
-    Posn0 = posn(_, _, Offset),
-    Posn = posn(LineNumber, Offset, Offset).
-
-:- pred linestr_set_line_number(int::in, line_context::out, line_posn::in)
-    is det.
-
-linestr_set_line_number(LineNumber, LineContext, LinePosn0) :-
-    LinePosn0 = line_posn(Offset),
-    LineContext = line_context(LineNumber, Offset).
 
 %---------------------------------------------------------------------------%
 
@@ -1010,6 +828,8 @@ linestr_get_token_2(String, Len, ScannedPastWhiteSpace,
         Token = eof
     ).
 
+%---------------------%
+
     % Decide on how the given character should be treated. Note that
     % performance suffers significantly if this predicate is not inlined.
     %
@@ -1469,6 +1289,8 @@ linestr_skip_to_eol(String, Len, Token, HaveToken, !LineContext, !LinePosn) :-
         linestr_have_token(!.LineContext, HaveToken)
     ).
 
+%---------------------%
+
 :- pred get_slash(io.text_input_stream::in, token::out,
     maybe_have_valid_token::out, io::di, io::uo) is det.
 
@@ -1544,6 +1366,8 @@ linestr_get_slash(String, Len, LineContext0, LinePosn0, Token, HaveToken,
         linestr_have_token(LineContext0, HaveToken)
     ).
 
+%---------------------%
+
 :- pred get_comment(io.text_input_stream::in, token::out,
     maybe_have_valid_token::out, io::di, io::uo) is det.
 
@@ -1603,6 +1427,8 @@ linestr_get_comment(String, Len, LineContext0, LinePosn0, Token, HaveToken,
         Token = error("unterminated '/*' comment"),
         linestr_have_token(LineContext0, HaveToken)
     ).
+
+%---------------------%
 
 :- pred get_comment_2(io.text_input_stream::in, token::out,
     maybe_have_valid_token::out, io::di, io::uo) is det.
@@ -1737,6 +1563,8 @@ linestr_start_quoted_name(String, Len, QuoteChar, !.RevChars,
         Token = Token0
     ).
 
+%---------------------%
+
 :- pred get_quoted_name(io.text_input_stream::in, char::in, list(char)::in,
     token::out, io::di, io::uo) is det.
 
@@ -1812,6 +1640,8 @@ linestr_get_quoted_name(String, Len, QuoteChar, !.RevChars,
         Token = eof,
         linestr_get_context(LineContext0, Context)
     ).
+
+%---------------------%
 
 :- pred get_quoted_name_quote(io.text_input_stream::in, char::in,
     list(char)::in, token::out, io::di, io::uo) is det.
@@ -1897,6 +1727,8 @@ finish_quoted_name(QuoteChar, RevChars, Token) :-
     else
         Token = error("invalid character in quoted name")
     ).
+
+%---------------------%
 
 :- pred get_quoted_name_escape(io.text_input_stream::in, char::in,
     list(char)::in, token::out, io::di, io::uo) is det.
@@ -2110,6 +1942,8 @@ escape_char('''', '''').
 escape_char('"', '"').
 escape_char('`', '`').
 
+%---------------------%
+
 :- type unicode_char_result
     --->    unicode_char(char)
     ;       unicode_nonchar(token).
@@ -2256,6 +2090,8 @@ unicode_decode_error_to_result(DecodeError) = Result :-
     ),
     Result = unicode_nonchar(Token).
 
+%---------------------%
+
 :- pred get_hex_escape(io.text_input_stream::in, char::in, list(char)::in,
     list(char)::in, token::out, io::di, io::uo) is det.
 
@@ -2336,6 +2172,8 @@ linestr_get_hex_escape(String, Len, QuoteChar, !.RevChars, !.RevHexChars,
 
 :- pred finish_hex_escape(io.text_input_stream::in, char::in, list(char)::in,
     list(char)::in, token::out, io::di, io::uo) is det.
+
+%---------------------%
 
 finish_hex_escape(Stream, QuoteChar, !.RevChars, !.RevHexChars, Token, !IO) :-
     (
@@ -2423,6 +2261,8 @@ linestr_finish_hex_escape(String, Len, QuoteChar, !.RevChars, !.RevHexChars,
         )
     ).
 
+%---------------------%
+
 :- pred get_octal_escape(io.text_input_stream::in, char::in, list(char)::in,
     list(char)::in, token::out, io::di, io::uo) is det.
 
@@ -2500,6 +2340,8 @@ linestr_get_octal_escape(String, Len, QuoteChar, !.RevChars, !.RevOctalChars,
         Token = eof,
         linestr_get_context(LineContext0, Context)
     ).
+
+%---------------------%
 
 :- pred finish_octal_escape(io.text_input_stream::in, char::in, list(char)::in,
     list(char)::in, token::out, io::di, io::uo) is det.
@@ -2676,6 +2518,8 @@ linestr_get_name(String, Len, LineContext0, LinePosn0, Token, Context,
         linestr_get_context(LineContext0, Context)
     ).
 
+%---------------------%
+
 :- pred get_implementation_defined_literal_rest(io.text_input_stream::in,
     token::out, io::di, io::uo) is det.
 
@@ -2761,6 +2605,8 @@ linestr_get_implementation_defined_literal_rest(String, Len,
         Token = name("$"),
         linestr_get_context(LineContext0, Context)
     ).
+
+%---------------------%
 
     % A line number directive token is `#' followed by an integer
     % (specifying the line number) followed by a newline.
@@ -2907,6 +2753,8 @@ linestr_get_source_line_number(String, Len, LineContext1, LinePosn1,
         Token = error("unexpected end-of-file in `#' line number directive")
     ).
 
+%---------------------%
+
 :- pred get_graphic(io.text_input_stream::in, list(char)::in, token::out,
     io::di, io::uo) is det.
 
@@ -3013,6 +2861,8 @@ linestr_get_graphic(String, Len, LineContext0, LinePosn0, Token, Context,
         Token = name(Name),
         linestr_get_context(LineContext0, Context)
     ).
+
+%---------------------%
 
 :- pred get_variable(io.text_input_stream::in, list(char)::in, token::out,
     io::di, io::uo) is det.
@@ -3309,6 +3159,8 @@ linestr_get_zero(String, Len, LineContext0, LinePosn0, Token, Context,
         linestr_get_context(LineContext0, Context)
     ).
 
+%---------------------%
+
 :- pred get_char_code(io.text_input_stream::in, token::out,
     io::di, io::uo) is det.
 
@@ -3351,6 +3203,8 @@ linestr_get_char_code(String, Len, LineContext0, Token, Context,
         Token = error("unterminated char code literal")
     ),
     linestr_get_context(LineContext0, Context).
+
+%---------------------%
 
 :- pred get_binary(io.text_input_stream::in, token::out,
     io::di, io::uo) is det.
@@ -3425,6 +3279,8 @@ linestr_get_binary(String, Len, LineContext0, Token, Context,
         Token = report_zero_base_no_digits(base_2),
         linestr_get_context(LineContext0, Context)
     ).
+
+%---------------------%
 
 :- pred get_binary_2(io.text_input_stream::in, last_digit_is_underscore::in,
     list(char)::in, token::out, io::di, io::uo) is det.
@@ -3599,6 +3455,8 @@ linestr_get_binary_2(String, Len, !.LastDigit, LineContext1, LinePosn1,
         linestr_get_context(LineContext1, Context)
     ).
 
+%---------------------%
+
 :- pred get_octal(io.text_input_stream::in, token::out, io::di, io::uo) is det.
 
 get_octal(Stream, Token, !IO) :-
@@ -3675,6 +3533,8 @@ linestr_get_octal(String, Len, LineContext0, LinePosn0, Token, Context,
         Token = report_zero_base_no_digits(base_8),
         linestr_get_context(LineContext0, Context)
     ).
+
+%---------------------%
 
 :- pred get_octal_2(io.text_input_stream::in, last_digit_is_underscore::in,
     list(char)::in, token::out, io::di, io::uo) is det.
@@ -3835,6 +3695,8 @@ linestr_get_octal_2(String, Len, !.LastDigit, LineContext1, LinePosn1,
         linestr_get_context(LineContext1, Context)
     ).
 
+%---------------------%
+
 :- pred get_hex(io.text_input_stream::in, token::out, io::di, io::uo) is det.
 
 get_hex(Stream, Token, !IO) :-
@@ -3915,6 +3777,8 @@ linestr_get_hex(String, Len, LineContext0, LinePosn0, Token, Context,
         Token = report_zero_base_no_digits(base_16),
         linestr_get_context(LineContext0, Context)
     ).
+
+%---------------------%
 
 :- pred get_hex_2(io.text_input_stream::in, last_digit_is_underscore::in,
     list(char)::in, token::out, io::di, io::uo) is det.
@@ -4076,6 +3940,8 @@ linestr_get_hex_2(String, Len, !.LastDigit, LineContext1, LinePosn1,
         ),
         linestr_get_context(LineContext1, Context)
     ).
+
+%---------------------%
 
 :- pred get_number(io.text_input_stream::in, last_digit_is_underscore::in,
     list(char)::in, token::out, io::di, io::uo) is det.
@@ -4307,6 +4173,8 @@ linestr_get_number(String, Len, !.LastDigit, LineContext0, LinePosn0,
         linestr_get_context(LineContext0, Context)
     ).
 
+%---------------------%
+
 :- pred get_integer_size_suffix(io.text_input_stream::in, list(char)::in,
     integer_base::in, signedness::in, token::out, io::di, io::uo) is det.
 
@@ -4419,6 +4287,8 @@ linestr_get_integer_size_suffix(String, Len, LinePosn1, LastDigitLinePosn,
             Token)
     ).
 
+%---------------------%
+
 :- pred get_integer_size_suffix_2(io.text_input_stream::in, list(char)::in,
     integer_base::in, signedness::in, char::in, integer_size::in,
     token::out, io::di, io::uo) is det.
@@ -4479,6 +4349,8 @@ linestr_get_integer_size_suffix_2(String, Len, LinePosn1, LastDigitLinePosn,
     else
         Token = error("invalid integer size suffix")
     ).
+
+%---------------------%
 
 :- pred get_int_dot(io.text_input_stream::in, last_digit_is_underscore::in,
     list(char)::in, token::out, io::di, io::uo) is det.
@@ -4618,6 +4490,8 @@ linestr_get_int_dot(String, Len, !.LastDigit,
         ),
         linestr_get_context(LineContext0, Context)
     ).
+
+%---------------------%
 
     % We have read past the decimal point, so now get the decimals.
     %
@@ -4767,6 +4641,8 @@ linestr_get_float_decimals(String, Len, !.LastDigit, LineContext0, LinePosn0,
         linestr_get_context(LineContext0, Context)
     ).
 
+%---------------------%
+
 :- pred get_float_exponent(io.text_input_stream::in, list(char)::in,
     token::out, io::di, io::uo) is det.
 
@@ -4847,6 +4723,8 @@ linestr_get_float_exponent(String, Len, LineContext0, LinePosn0,
         linestr_get_context(LineContext0, Context)
     ).
 
+%---------------------%
+
     % We have read past the E signalling the start of the exponent -
     % make sure that there's at least one digit following,
     % and then get the remaining digits.
@@ -4919,6 +4797,8 @@ linestr_get_float_exponent_2(String, Len, LineContext0, LinePosn0,
         Token = error("unterminated exponent in float literal"),
         linestr_get_context(LineContext0, Context)
     ).
+
+%---------------------%
 
     % We have read past the first digit of the exponent -
     % now get the remaining digits.
@@ -5058,8 +4938,207 @@ linestr_get_float_exponent_3(String, Len, !.LastDigit, LineContext0, LinePosn0,
 
 %---------------------------------------------------------------------------%
 %
-% Utility routines.
+% Some triplicated low-level routines.
 %
+
+:- pred get_context(io.text_input_stream::in, token_context::out,
+    io::di, io::uo) is det.
+
+get_context(Stream, Context, !IO) :-
+    io.get_line_number(Stream, Context, !IO).
+
+:- type string_token_context == token_context.
+
+:- pred string_get_context(posn::in, string_token_context::out) is det.
+
+string_get_context(StartPosn, Context) :-
+    StartPosn = posn(StartLineNum, _, _),
+    Context = StartLineNum.
+    % In future, we might want to modify this code to read something like this:
+    %
+    % posn_to_line_and_column(StartPosn, StartLineNum, StartColumn),
+    % posn_to_line_and_column(!.Posn, EndLineNum, EndColumn),
+    % Context = detailed(StartLine, StartColumn, EndLine, EndColumn).
+
+:- pred linestr_get_context(line_context::in, string_token_context::out)
+    is det.
+
+linestr_get_context(StartLineContext, Context) :-
+    StartLineContext = line_context(StartLineNum, _),
+    Context = StartLineNum.
+
+%---------------------%
+
+:- pred string_read_char(string::in, int::in, char::out,
+    posn::in, posn::out) is semidet.
+:- pragma inline(pred(string_read_char/5)).
+
+string_read_char(String, Len, Char, Posn0, Posn) :-
+    Posn0 = posn(LineNum0, LineStartOffset0, Offset0),
+    Offset0 < Len,
+    string.unsafe_index_next(String, Offset0, Offset, Char),
+    ( if Char = '\n' then
+        Posn = posn(LineNum0 + 1, Offset, Offset)
+    else
+        Posn = posn(LineNum0, LineStartOffset0, Offset)
+    ).
+
+:- pred linestr_read_char(string::in, int::in, char::out,
+    line_context::in, line_context::out, line_posn::in, line_posn::out)
+    is semidet.
+:- pragma inline(pred(linestr_read_char/7)).
+
+linestr_read_char(String, Len, Char,
+        LineContext0, LineContext, LinePosn0, LinePosn) :-
+    LinePosn0 = line_posn(Offset0),
+    Offset0 < Len,
+    string.unsafe_index_next(String, Offset0, Offset, Char),
+    LinePosn = line_posn(Offset),
+    ( if Char = '\n' then
+        LineContext0 = line_context(LineNum0, _LineStartOffset),
+        LineContext = line_context(LineNum0 + 1, Offset)
+    else
+        LineContext = LineContext0
+    ).
+
+%---------------------%
+
+    % We used to use this predicate as the equivalent in !Posn variants
+    % of io.putback_char in the !IO variants. However, it is simpler to
+    % simply remember the position *before* we stepped over the character
+    % we want to put back. The obsolete pragma is so that people get
+    % a warning if they use it without knowing this, while the consider_used
+    % allows us to keep it around anyway, at least for now.
+    %
+:- pred string_ungetchar(string::in, posn::in, posn::out) is det.
+:- pragma obsolete(pred(string_ungetchar/3)).
+:- pragma consider_used(pred(string_ungetchar/3)).
+
+string_ungetchar(String, Posn0, Posn) :-
+    Posn0 = posn(LineNum0, LineOffset0, Offset0),
+    ( if string.unsafe_prev_index(String, Offset0, Offset, Char) then
+        ( if Char = '\n' then
+            Posn = posn(LineNum0 - 1, Offset, Offset)
+        else
+            Posn = posn(LineNum0, LineOffset0, Offset)
+        )
+    else
+        Posn = Posn0
+    ).
+
+%---------------------%
+
+:- pred grab_string(string::in, posn::in, posn::in, string::out) is det.
+
+grab_string(String, Posn0, Posn, SubString) :-
+    Posn0 = posn(_, _, Offset0),
+    Posn = posn(_, _, Offset),
+    string.unsafe_between(String, Offset0, Offset, SubString).
+
+:- pred linestr_grab_string(string::in, line_posn::in, line_posn::in,
+    string::out) is det.
+
+linestr_grab_string(String, LinePosn0, LinePosn, SubString) :-
+    LinePosn0 = line_posn(Offset0),
+    LinePosn = line_posn(Offset),
+    string.unsafe_between(String, Offset0, Offset, SubString).
+
+%---------------------%
+
+    % As above, but the string is known to represent a float literal.
+    % Filter out any underscore characters from the returned string.
+    % We have to do this since the underlying mechanisms we currently use for
+    % converting strings into floats (sscanf in C, parseDouble in Java etc)
+    % cannot handle underscores in their input.
+    %
+:- pred grab_float_string(string::in, posn::in, posn::in, string::out) is det.
+
+grab_float_string(String, Posn0, Posn, FloatString) :-
+    Posn0 = posn(_, _, Offset0),
+    Posn = posn(_, _, Offset),
+    unsafe_get_float_between(String, Offset0, Offset, FloatString).
+
+:- pred linestr_grab_float_string(string::in, line_posn::in, line_posn::in,
+    string::out) is det.
+
+linestr_grab_float_string(String, LinePosn0, LinePosn, FloatString) :-
+    LinePosn0 = line_posn(Offset0),
+    LinePosn = line_posn(Offset),
+    unsafe_get_float_between(String, Offset0, Offset, FloatString).
+
+%---------------------%
+
+:- pred unsafe_get_float_between(string::in, int::in, int::in,
+    string::uo) is det.
+
+:- pragma foreign_proc("C",
+    unsafe_get_float_between(Str::in, Start::in, End::in, FloatStr::uo),
+    [will_not_call_mercury, promise_pure, thread_safe, will_not_modify_trail,
+        does_not_affect_liveness, no_sharing],
+"
+    int src;
+    int dst = 0;
+
+    MR_allocate_aligned_string_msg(FloatStr, End - Start, MR_ALLOC_ID);
+    for (src = Start; src < End; src++) {
+        if (Str[src] != '_') {
+            FloatStr[dst] = Str[src];
+            dst++;
+        }
+    }
+    FloatStr[dst] = '\\0';
+").
+
+:- pragma foreign_proc("C#",
+    unsafe_get_float_between(Str::in, Start::in, End::in, SubString::uo),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    SubString = Str.Substring(Start, End - Start).Replace(\"_\", \"\");
+").
+
+:- pragma foreign_proc("Java",
+    unsafe_get_float_between(Str::in, Start::in, End::in, FloatStr::uo),
+    [will_not_call_mercury, promise_pure, thread_safe],
+"
+    FloatStr = Str.substring(Start, End).replace(\"_\", \"\");
+").
+
+    % Default implementation.
+    %
+unsafe_get_float_between(Str, Start, End, FloatStr) :-
+    string.unsafe_between(Str, Start, End, FloatStr0),
+    ( if string.contains_char(FloatStr0, '_') then
+        string.to_char_list(FloatStr0, Digits0),
+        list.negated_filter(is_underscore, Digits0, Digits),
+        string.from_char_list(Digits, FloatStr)
+    else
+        FloatStr = FloatStr0
+    ).
+
+%---------------------%
+
+:- pred string_set_line_number(int::in, posn::in, posn::out) is det.
+
+string_set_line_number(LineNumber, Posn0, Posn) :-
+    Posn0 = posn(_, _, Offset),
+    Posn = posn(LineNumber, Offset, Offset).
+
+:- pred linestr_set_line_number(int::in, line_context::out, line_posn::in)
+    is det.
+
+linestr_set_line_number(LineNumber, LineContext, LinePosn0) :-
+    LinePosn0 = line_posn(Offset),
+    LineContext = line_context(LineNumber, Offset).
+
+%---------------------------------------------------------------------------%
+%
+% Some non-triplicated utility routines.
+%
+
+:- pred is_underscore(char::in) is semidet.
+:- pragma consider_used(pred(is_underscore/1)).
+
+is_underscore('_').
 
 :- pred rev_char_list_to_int(list(char)::in, integer_base::in,
     signedness::in, integer_size::in, token::out)
