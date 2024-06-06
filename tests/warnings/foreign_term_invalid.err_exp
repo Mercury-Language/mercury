@@ -1,8 +1,8 @@
 foreign_term_invalid.m:013: Warning: predicate [38;5;87m`foreign_term_invalid.test1'/1[39;49m
-foreign_term_invalid.m:013:   mode 0 has a [38;5;226m`:- pragma does_not_terminate'[39;49m
-foreign_term_invalid.m:013:   [38;5;226mdeclaration,[39;49m but also has the [38;5;226m`terminates'[39;49m
-foreign_term_invalid.m:013:   [38;5;226mforeign code attribute[39;49m set.
+foreign_term_invalid.m:013:   mode 0 has a [38;5;171m`:- pragma does_not_terminate'[39;49m
+foreign_term_invalid.m:013:   [38;5;171mdeclaration,[39;49m but also has the [38;5;171m`terminates'[39;49m
+foreign_term_invalid.m:013:   [38;5;171mforeign code attribute[39;49m set.
 foreign_term_invalid.m:014: Warning: predicate [38;5;87m`foreign_term_invalid.test2'/1[39;49m
-foreign_term_invalid.m:014:   mode 0 has a [38;5;226m`:- pragma terminates' declaration,[39;49m
-foreign_term_invalid.m:014:   but also has the [38;5;226m`does_not_terminate' foreign[39;49m
-foreign_term_invalid.m:014:   [38;5;226mcode attribute[39;49m set.
+foreign_term_invalid.m:014:   mode 0 has a [38;5;171m`:- pragma terminates' declaration,[39;49m
+foreign_term_invalid.m:014:   but also has the [38;5;171m`does_not_terminate' foreign[39;49m
+foreign_term_invalid.m:014:   [38;5;171mcode attribute[39;49m set.

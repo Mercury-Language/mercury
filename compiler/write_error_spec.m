@@ -942,8 +942,11 @@ lookup_color_in_db(ColorDb, ColorName, MaybeColorSpec) :-
             ColorName = color_incorrect,
             MaybeColorSpec = ColorSpecs ^ color_spec_incorrect
         ;
-            ColorName = color_cause,
-            MaybeColorSpec = ColorSpecs ^ color_spec_possible_cause
+            ColorName = color_inconsistent,
+            MaybeColorSpec = ColorSpecs ^ color_spec_inconsistent
+        ;
+            ColorName = color_hint,
+            MaybeColorSpec = ColorSpecs ^ color_spec_hint
         )
     ).
 

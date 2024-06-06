@@ -2619,9 +2619,9 @@ report_badly_quantified_vars(PredInfo, QuantErrorType, TVars, !Specs) :-
     ),
     Pieces = InDeclaration ++ [words("error:")] ++
         TypeVariables ++ TVarsPieces ++ [Are] ++
-        color_as_possible_cause([BlahConstrained, suffix(",")]) ++
+        color_as_inconsistent([BlahConstrained, suffix(",")]) ++
         [words("but"), Are] ++
-        color_as_possible_cause([BlahQuantified, suffix(".")]) ++ [nl],
+        color_as_inconsistent([BlahQuantified, suffix(".")]) ++ [nl],
     Spec = spec($pred, severity_error, phase_type_check, Context, Pieces),
     !:Specs = [Spec | !.Specs].
 

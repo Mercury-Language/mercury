@@ -298,7 +298,7 @@ var_ambiguity_to_pieces(VarSet, InstVarSet, TypeAssigns, Var) = Pieces :-
             [words("can have"), words(EitherAny),
             words("of the following types:"),
             nl_indent_delta(1)] ++
-            pieces_list_to_color_line_pieces(color_cause, [suffix(".")],
+            pieces_list_to_color_line_pieces(color_hint, [suffix(".")],
                 PossibleTypePiecesList) ++
             [nl_indent_delta(-1)]
     ).

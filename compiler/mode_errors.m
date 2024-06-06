@@ -585,10 +585,10 @@ mode_error_unify_var_var_to_spec(ModeInfo, X, Y, InstX, InstY) = Spec :-
         quote(mercury_var_to_name_only(VarTable, Y)), suffix("."), nl,
         words("Variable")] ++
         color_as_subject([quote(mercury_var_to_name_only(VarTable, X))]) ++
-        has_instantiatedness(ModeInfo, yes(color_cause), InstX, ",") ++
+        has_instantiatedness(ModeInfo, yes(color_inconsistent), InstX, ",") ++
         [words("variable")] ++
         color_as_subject([quote(mercury_var_to_name_only(VarTable, Y))]) ++
-        has_instantiatedness(ModeInfo, yes(color_cause), InstY, "."),
+        has_instantiatedness(ModeInfo, yes(color_inconsistent), InstY, "."),
     Spec = spec($pred, severity_error,
         phase_mode_check(report_in_any_mode), Context, Preamble ++ Pieces).
 
@@ -643,16 +643,16 @@ mode_error_unify_var_functor_to_spec(ModeInfo, X, ConsId, ArgVars,
     FakeTermInstModuleName = unqualified("FAKE_CONS_ID"),
     FakeTermInstSymName = qualified(FakeTermInstModuleName, ConsIdStr),
     FakeTermInst = defined_inst(user_inst(FakeTermInstSymName, ArgInsts)),
-    CauseColor = yes(color_cause),
+    InstColor = yes(color_inconsistent),
     Pieces = [words("mode error in unification of"),
         quote(mercury_var_to_name_only(VarTable, X)),
         words("and"), words_quote(FunctorConsIdStr), suffix("."), nl,
         words("Variable")] ++
         color_as_subject([quote(mercury_var_to_name_only(VarTable, X))]) ++
-        has_instantiatedness(ModeInfo, CauseColor, InstX, ",") ++
+        has_instantiatedness(ModeInfo, InstColor, InstX, ",") ++
         [words("term")] ++
         color_as_subject([words_quote(FunctorConsIdStr)]) ++
-        has_instantiatedness(ModeInfo, CauseColor, FakeTermInst, "."),
+        has_instantiatedness(ModeInfo, InstColor, FakeTermInst, "."),
     Spec = spec($pred, severity_error,
         phase_mode_check(report_in_any_mode), Context, Preamble ++ Pieces).
 
@@ -665,15 +665,15 @@ mode_error_unify_var_lambda_to_spec(ModeInfo, X, InstX, InstY) = Spec :-
     Preamble = mode_info_context_preamble(ModeInfo),
     mode_info_get_context(ModeInfo, Context),
     mode_info_get_var_table(ModeInfo, VarTable),
-    MaybeColor = yes(color_cause),
+    InstColor = yes(color_inconsistent),
     Pieces = [words("mode error in unification of"),
         quote(mercury_var_to_name_only(VarTable, X)),
         words("and lambda expression."), nl,
         words("Variable")] ++
         color_as_subject([quote(mercury_var_to_name_only(VarTable, X))]) ++
-        has_instantiatedness(ModeInfo, MaybeColor, InstX, ",") ++
+        has_instantiatedness(ModeInfo, InstColor, InstX, ",") ++
         color_as_subject([words("lambda expression")]) ++
-        has_instantiatedness(ModeInfo, MaybeColor, InstY, "."),
+        has_instantiatedness(ModeInfo, InstColor, InstY, "."),
     Spec = spec($pred, severity_error,
         phase_mode_check(report_in_any_mode), Context, Preamble ++ Pieces).
 
@@ -871,9 +871,9 @@ mode_error_var_is_not_sufficiently_instantiated_to_spec(ModeInfo, Var,
     then
         UniqPieces = [words("This kind of uniqueness mismatch"),
             words("is usually caused by doing")] ++
-            color_as_possible_cause([words("input/output")]) ++
+            color_as_hint([words("input/output")]) ++
             [words("or")] ++
-            color_as_possible_cause([words("some other kind of"),
+            color_as_hint([words("some other kind of"),
                 words("destructive update")]) ++
             color_as_incorrect([words("in a context where"),
                 words("it can be backtracked over,")]) ++
@@ -1864,7 +1864,7 @@ mode_error_bind_locked_var_to_spec(ModeInfo, Reason, Var, VarInst, Inst)
         VerbosePieces =
             [words("A negation is allowed to bind only variables"),
             words("which are")] ++
-            color_as_possible_cause([words("local to the negation,")]) ++
+            color_as_correct([words("local to the negation,")]) ++
             [words("i.e. those which are"),
             words("implicitly existentially quantified"),
             words("inside the scope of the negation."), nl]
@@ -1873,38 +1873,41 @@ mode_error_bind_locked_var_to_spec(ModeInfo, Reason, Var, VarInst, Inst)
         VerbosePieces =
             [words("The condition of an if-then-else is"),
             words("allowed to bind only variables which are")] ++
-            color_as_possible_cause([words("local to the condition,")]) ++
+            color_as_correct([words("local to the condition,")]) ++
             [words("or which occur")] ++
-            color_as_possible_cause([words("only in the condition"),
+            color_as_correct([words("only in the condition"),
                 words("and the"), quote("then"), words("part.")]) ++
             [nl]
     ;
         Reason = var_lock_lambda(_),
         VerbosePieces =
             [words("A lambda goal is allowed to bind only")] ++
-            color_as_possible_cause([words("its arguments")]) ++
+            color_as_correct([words("its arguments")]) ++
             [words("and")] ++
-            color_as_possible_cause([words("variables local to the"),
+            color_as_correct([words("variables local to the"),
                 words("lambda expression.")]) ++
             [nl]
     ;
         Reason = var_lock_trace_goal,
         VerbosePieces =
             [words("A trace goal is allowed to bind only")] ++
-            color_as_possible_cause([words("variables which are"),
+            color_as_correct([words("variables which are"),
                 words("local to the trace goal.")]) ++
             [nl]
     ;
         Reason = var_lock_atomic_goal,
         VerbosePieces =
-            [words("An atomic goal may not use the state variables"),
-            words("belonging to the outer scope."), nl]
+            [words("An atomic goal")] ++
+            color_as_incorrect([words("may not use")]) ++
+            [words("the state variables")] ++
+            color_as_subject([words("belonging to the outer scope.")]) ++
+            [nl]
     ;
         Reason = var_lock_par_conj,
         VerbosePieces =
             [words("A nonlocal variable of a parallel conjunction"),
             words("may not be bound in")] ++
-            color_as_possible_cause([words("two or more conjuncts.")]) ++
+            color_as_incorrect([words("two or more conjuncts.")]) ++
             [nl]
     ),
     Spec = error_spec($pred, severity_error,
@@ -2205,7 +2208,7 @@ merge_error_to_msgs(ModeInfo, MainContext, IsDisjunctive, MergeError) = Msgs :-
         % which is likely to be the bug.
         CommonPieces = [words("The variable")] ++
             color_as_subject([VarNamePiece]) ++
-            [words("is")] ++ color_as_possible_cause([words("ground")]) ++
+            [words("is")] ++ color_as_incorrect([words("ground")]) ++
             [words("in"), int_fixed(NumGroundInsts), words("out of"),
             int_fixed(NumAllInsts), words("branches."), nl],
         VerbosePieces =
@@ -2224,7 +2227,7 @@ merge_error_to_msgs(ModeInfo, MainContext, IsDisjunctive, MergeError) = Msgs :-
             verbose_and_nonverbose(VerbosePieces, NonVerbosePieces)]),
         InstMsgs = list.map(
             report_inst_in_context(ModeInfo, report_inst_and_groundness,
-                yes(color_cause), VarNamePiece),
+                yes(color_inconsistent), VarNamePiece),
             ContextsInsts),
         Msgs = [VarMsg | InstMsgs]
     else if
@@ -2238,7 +2241,7 @@ merge_error_to_msgs(ModeInfo, MainContext, IsDisjunctive, MergeError) = Msgs :-
         VarMsg = msg(MainContext, VarPieces),
         InstMsgs = list.map(
             report_inst_in_context(ModeInfo, report_groundness_only,
-                yes(color_cause), VarNamePiece),
+                yes(color_inconsistent), VarNamePiece),
             ContextsInsts),
         Msgs = [VarMsg | InstMsgs]
     else
@@ -2248,7 +2251,7 @@ merge_error_to_msgs(ModeInfo, MainContext, IsDisjunctive, MergeError) = Msgs :-
         VarMsg = msg(MainContext, VarPieces),
         InstMsgs = list.map(
             report_inst_in_context(ModeInfo, report_inst_only,
-                yes(color_cause), VarNamePiece),
+                yes(color_inconsistent), VarNamePiece),
             ContextsInsts),
         Msgs = [VarMsg | InstMsgs]
     ).
@@ -2474,7 +2477,7 @@ mode_warning_cannot_succeed_var_var(ModeInfo, X, Y, InstX, InstY) = Spec :-
     mode_info_get_var_table(ModeInfo, VarTable),
     NameX = mercury_var_to_name_only(VarTable, X),
     NameY = mercury_var_to_name_only(VarTable, Y),
-    MaybeColor = yes(color_cause),
+    MaybeColor = yes(color_inconsistent),
     % XXX It would make sense to color as subject only the last reference
     % to each of NameX and NameY, but this would introduce an asymmetry
     % with respect to mode_warning_cannot_succeed_var_functor, which has

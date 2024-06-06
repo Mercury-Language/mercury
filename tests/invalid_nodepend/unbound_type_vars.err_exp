@@ -38,5 +38,5 @@ unbound_type_vars.m:038:   error in type class constraints: type variable [38;5
 unbound_type_vars.m:038:   occurs in the constraints, but [38;5;203mis not determined[39;49m by
 unbound_type_vars.m:038:   the predicate's argument types.
 unbound_type_vars.m:038: In declaration of predicate `unbound_type_vars.p5'/1:
-unbound_type_vars.m:038:   error: type variable [38;5;87m`T2'[39;49m is [38;5;226muniversally[39;49m
-unbound_type_vars.m:038:   [38;5;226mconstrained,[39;49m but is [38;5;226mexistentially quantified.[39;49m
+unbound_type_vars.m:038:   error: type variable [38;5;87m`T2'[39;49m is [38;5;171muniversally[39;49m
+unbound_type_vars.m:038:   [38;5;171mconstrained,[39;49m but is [38;5;171mexistentially quantified.[39;49m

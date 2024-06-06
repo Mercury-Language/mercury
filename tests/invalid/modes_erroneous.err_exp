@@ -12,5 +12,5 @@ modes_erroneous.m:020:
 modes_erroneous.m:019:   In clause for `p(in, out)':
 modes_erroneous.m:019:   in argument 2 of clause head:
 modes_erroneous.m:019:   mode error in unification of `HeadVar__2' and `X'.
-modes_erroneous.m:019:   Variable [38;5;87m`HeadVar__2'[39;49m has instantiatedness [38;5;226m`free',[39;49m
-modes_erroneous.m:019:   variable [38;5;87m`X'[39;49m has instantiatedness [38;5;226m`free'.[39;49m
+modes_erroneous.m:019:   Variable [38;5;87m`HeadVar__2'[39;49m has instantiatedness [38;5;171m`free',[39;49m
+modes_erroneous.m:019:   variable [38;5;87m`X'[39;49m has instantiatedness [38;5;171m`free'.[39;49m

@@ -368,18 +368,19 @@
                 color_spec_subject          ::  maybe(color_spec),
                 color_spec_correct          ::  maybe(color_spec),
                 color_spec_incorrect        ::  maybe(color_spec),
-                color_spec_possible_cause   ::  maybe(color_spec)
+                color_spec_inconsistent     ::  maybe(color_spec),
+                color_spec_hint             ::  maybe(color_spec)
             ).
 
     % This function is intended to be used by write_error_spec.m
     % to find out the colors it should use in the diagnostics it writes out.
     % Its jobs is to convert the values of the options which record
     % the color shades write_error_spec.m should use for each color name
-    % (color_subject, color_correct, color_incorrect, and color_cause).
-    % These colors could have been chosen by the user, in which case
-    % record_color_scheme_in_options will have checked their well-formedness,
-    % or they could be the defaults, which we use in the absence of a choice
-    % by the user.
+    % (color_subject, color_correct, color_incorrect, color_inconsistent, and
+    % color_hint). These colors could have been chosen by the user, in which
+    % case record_color_scheme_in_options will have checked their
+    % well-formedness, or they could be the defaults, which we use in the
+    % absence of a choice by the user.
     %
     % This function takes as input an option_table, because it cannot take
     % a full globals structure. The reason for that is that the process
@@ -878,65 +879,74 @@ record_color_scheme_in_options(Source, SchemeName, ErrorSpecs, InformSpecs,
         InformSpecs = []
     else if
         % XXX COLOR While we have agreed on the names of the standard schemes,
-        % the colors in those schemes are just placeholders for now.
+        % and on the colors to be used in the *16 schemes for the subject,
+        % correct and incorrect roles, the other colors below are just
+        % placeholders for now.
         (
             ( SchemeName = "dark16"
             ; SchemeName = "darkmode16"
             ),
-            Subject =   "14",   % bright cyan
-            Correct =   "10",   % bright green
-            Incorrect = "9",    % bright red
-            Cause =     "11"    % bright yellow
+            Subject =       "14",   % bright cyan
+            Correct =       "10",   % bright green
+            Incorrect =     "9",    % bright red
+            Inconsistent =  "13",   % bright magenta
+            Hint =          "11"    % bright yellow
         ;
             ( SchemeName = "dark256"
             ; SchemeName = "darkmode256"
             ),
-            Subject =   "14",   % bright cyan
-            Correct =   "10",   % bright green
-            Incorrect = "9",    % bright red
-            Cause =     "11"    % bright yellow
+            Subject =       "14",   % bright cyan
+            Correct =       "10",   % bright green
+            Incorrect =     "9",    % bright red
+            Inconsistent =  "13",   % bright magenta
+            Hint =          "11"    % bright yellow
         ;
             ( SchemeName = "light16"
             ; SchemeName = "lightmode16"
             ),
-            Subject =   "6",    % normal cyan
-            Correct =   "2",    % normal green
-            Incorrect = "9",    % bright red
-            Cause =     "8"     % normal yellow
+            Subject =       "6",    % normal cyan
+            Correct =       "2",    % normal green
+            Incorrect =     "9",    % bright red
+            Inconsistent =  "5",    % normal magenta
+            Hint =          "8"     % normal yellow
         ;
             ( SchemeName = "light256"
             ; SchemeName = "lightmode256"
             ),
-            Subject =   "6",    % normal cyan
-            Correct =   "2",    % normal green
-            Incorrect = "9",    % bright red
-            Cause =     "8"     % normal yellow
+            Subject =       "6",    % normal cyan
+            Correct =       "2",    % normal green
+            Incorrect =     "9",    % bright red
+            Inconsistent =  "5",    % normal magenta
+            Hint =          "8"     % normal yellow
         )
     then
         map.set(set_color_subject, string(Subject), !OptionTable),
         map.set(set_color_correct, string(Correct), !OptionTable),
         map.set(set_color_incorrect, string(Incorrect), !OptionTable),
-        map.set(set_color_possible_cause, string(Cause), !OptionTable),
+        map.set(set_color_inconsistent, string(Inconsistent), !OptionTable),
+        map.set(set_color_hint, string(Hint), !OptionTable),
         ErrorSpecs = [],
         InformSpecs = []
     else if
         string.remove_prefix("specified@", SchemeName, SettingsStr)
     then
         Settings = string.split_at_char(':', SettingsStr),
-        MaybeColorStrs0 = maybe_color_strings(no, no, no, no),
+        MaybeColorStrs0 = maybe_color_strings(no, no, no, no, no),
         parse_color_specifications(Source, Settings,
             MaybeColorStrs0, MaybeColorStrs, [], SettingSpecs),
         (
             SettingSpecs = [],
             MaybeColorStrs = maybe_color_strings(MaybeSubject, MaybeCorrect,
-                MaybeIncorrect, MaybeCause),
+                MaybeIncorrect, MaybeInconsistent, MaybeHint),
             record_maybe_color(set_color_subject, MaybeSubject,
                 !OptionTable),
             record_maybe_color(set_color_correct, MaybeCorrect,
                 !OptionTable),
             record_maybe_color(set_color_incorrect, MaybeIncorrect,
                 !OptionTable),
-            record_maybe_color(set_color_possible_cause, MaybeCause,
+            record_maybe_color(set_color_inconsistent, MaybeInconsistent,
+                !OptionTable),
+            record_maybe_color(set_color_hint, MaybeHint,
                 !OptionTable),
             (
                 MaybeSubject = no,
@@ -960,11 +970,18 @@ record_color_scheme_in_options(Source, SchemeName, ErrorSpecs, InformSpecs,
                 MissingRoles3 = MissingRoles2
             ),
             (
-                MaybeIncorrect = no,
-                MissingRoles = MissingRoles3 ++ [words("possible cause")]
+                MaybeInconsistent = no,
+                MissingRoles4 = MissingRoles3 ++ [words("inconsistent")]
             ;
-                MaybeIncorrect = yes(_),
-                MissingRoles = MissingRoles3
+                MaybeInconsistent = yes(_),
+                MissingRoles4 = MissingRoles3
+            ),
+            (
+                MaybeHint = no,
+                MissingRoles = MissingRoles4 ++ [words("hint")]
+            ;
+                MaybeHint = yes(_),
+                MissingRoles = MissingRoles4
             ),
             (
                 MissingRoles = [],
@@ -1004,7 +1021,8 @@ record_color_scheme_in_options(Source, SchemeName, ErrorSpecs, InformSpecs,
                 mcs_subject             ::  maybe(string),
                 mcs_correct             ::  maybe(string),
                 mcs_incorrect           ::  maybe(string),
-                mcs_possible_cause      ::  maybe(string)
+                mcs_inconsistent        ::  maybe(string),
+                mcs_hint                ::  maybe(string)
             ).
 
 :- pred parse_color_specifications(list(format_piece)::in, list(string)::in,
@@ -1019,7 +1037,8 @@ parse_color_specifications(Source, [Setting | Settings],
         ( Name = "subject"
         ; Name = "correct"
         ; Name = "incorrect"
-        ; Name = "possible_cause"
+        ; Name = "inconsistent"
+        ; Name = "hint"
         )
     then
         Result = is_string_a_color_spec(Value),
@@ -1035,8 +1054,11 @@ parse_color_specifications(Source, [Setting | Settings],
                 Name = "incorrect",
                 !MaybeColorStrs ^ mcs_incorrect := yes(Value)
             ;
-                Name = "possible_cause",
-                !MaybeColorStrs ^ mcs_possible_cause := yes(Value)
+                Name = "inconsistent",
+                !MaybeColorStrs ^ mcs_inconsistent := yes(Value)
+            ;
+                Name = "hint",
+                !MaybeColorStrs ^ mcs_hint := yes(Value)
             )
         ;
             Result = not_color_int_outside_range(Min, Max),
@@ -1060,8 +1082,9 @@ parse_color_specifications(Source, [Setting | Settings],
             quote("role"), words("is one of"),
             quote("subject"), suffix(","),
             quote("correct"), suffix(","),
-            quote("incorrect"), words("and"),
-            quote("possible_cause"), suffix(","),
+            quote("incorrect"), suffix(","),
+            quote("inconsistent"), words("and"),
+            quote("hint"), suffix(","),
             words("got"), quote(Setting), suffix("."), nl],
         Spec = no_ctxt_spec($pred, severity_error, phase_options, Pieces),
         !:Specs = [Spec | !.Specs]
@@ -1091,7 +1114,9 @@ convert_color_spec_options(OptionTable) = MaybeColorSpecs :-
     getopt.lookup_string_option(OptionTable,
         set_color_incorrect, OptIncorrect),
     getopt.lookup_string_option(OptionTable,
-        set_color_possible_cause, OptCause),
+        set_color_inconsistent, OptInconsistent),
+    getopt.lookup_string_option(OptionTable,
+        set_color_hint, OptHint),
     % There is no simple way to convert each option to its name.
     MaybeMaybeSubject =
         convert_color_spec_option("--set-color-subject", OptSubject),
@@ -1099,23 +1124,27 @@ convert_color_spec_options(OptionTable) = MaybeColorSpecs :-
         convert_color_spec_option("--set-color-correct", OptCorrect),
     MaybeMaybeIncorrect =
         convert_color_spec_option("--set-color-incorrect", OptIncorrect),
-    MaybeMaybeCause =
-        convert_color_spec_option("--set-color-possible-cause", OptCause),
+    MaybeMaybeInconsistent =
+        convert_color_spec_option("--set-color-inconsistent", OptInconsistent),
+    MaybeMaybeHint =
+        convert_color_spec_option("--set-color-hint", OptHint),
     ( if
         MaybeMaybeSubject = ok1(MaybeSubject),
         MaybeMaybeCorrect = ok1(MaybeCorrect),
         MaybeMaybeIncorrect = ok1(MaybeIncorrect),
-        MaybeMaybeCause = ok1(MaybeCause)
+        MaybeMaybeInconsistent = ok1(MaybeInconsistent),
+        MaybeMaybeHint = ok1(MaybeHint)
     then
         ColorSpecs = color_specs(MaybeSubject, MaybeCorrect, MaybeIncorrect,
-            MaybeCause),
+            MaybeInconsistent, MaybeHint),
         MaybeColorSpecs = ok1(ColorSpecs)
     else
         Specs =
             get_any_errors1(MaybeMaybeSubject) ++
             get_any_errors1(MaybeMaybeCorrect) ++
             get_any_errors1(MaybeMaybeIncorrect) ++
-            get_any_errors1(MaybeMaybeCause),
+            get_any_errors1(MaybeMaybeInconsistent) ++
+            get_any_errors1(MaybeMaybeHint),
         MaybeColorSpecs = error1(Specs)
     ).
 

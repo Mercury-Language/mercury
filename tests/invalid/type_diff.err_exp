@@ -4,8 +4,8 @@ type_diff.m:037:   type error: [38;5;87mvariable `A'[39;49m has type
 type_diff.m:037:     [38;5;203mtype_diff.tx(string);[39;49m
 type_diff.m:037:   expected type was
 type_diff.m:037:     [38;5;40mtype_diff.tx(T, U).[39;49m
-type_diff.m:037:   [38;5;203mArity mismatch[39;49m for type constructor `tx': expected [38;5;226mtwo[39;49m
-type_diff.m:037:   [38;5;226marguments,[39;49m got [38;5;226mone.[39;49m
+type_diff.m:037:   [38;5;203mArity mismatch[39;49m for type constructor `tx': expected [38;5;171mtwo[39;49m
+type_diff.m:037:   [38;5;171marguments,[39;49m got [38;5;171mone.[39;49m
 type_diff.m:038: In clause for predicate `p1'/1:
 type_diff.m:038:   in argument 1 of call to predicate `type_diff.q1_list'/1:
 type_diff.m:038:   type error: [38;5;87margument[39;49m has type
@@ -13,8 +13,8 @@ type_diff.m:038:     [38;5;203mlist.list(type_diff.tx(string));[39;49m
 type_diff.m:038:   expected type was
 type_diff.m:038:     [38;5;40mlist.list(type_diff.tx(T, U)).[39;49m
 type_diff.m:038:   In the first argument of type constructor `list':
-type_diff.m:038:     [38;5;203marity mismatch[39;49m for type constructor `tx': expected [38;5;226mtwo[39;49m
-type_diff.m:038:     [38;5;226marguments,[39;49m got [38;5;226mone.[39;49m
+type_diff.m:038:     [38;5;203marity mismatch[39;49m for type constructor `tx': expected [38;5;171mtwo[39;49m
+type_diff.m:038:     [38;5;171marguments,[39;49m got [38;5;171mone.[39;49m
 type_diff.m:039: In clause for predicate `p1'/1:
 type_diff.m:039:   in argument 1 of call to predicate
 type_diff.m:039:   `type_diff.q1_list_list'/1:
@@ -24,8 +24,8 @@ type_diff.m:039:   expected type was
 type_diff.m:039:     [38;5;40mlist.list(list.list(type_diff.tx(T, U))).[39;49m
 type_diff.m:039:   In the first argument of type constructor `list':
 type_diff.m:039:   in the first argument of type constructor `list':
-type_diff.m:039:     [38;5;203marity mismatch[39;49m for type constructor `tx': expected [38;5;226mtwo[39;49m
-type_diff.m:039:     [38;5;226marguments,[39;49m got [38;5;226mone.[39;49m
+type_diff.m:039:     [38;5;203marity mismatch[39;49m for type constructor `tx': expected [38;5;171mtwo[39;49m
+type_diff.m:039:     [38;5;171marguments,[39;49m got [38;5;171mone.[39;49m
 type_diff.m:071: In clause for predicate `p2'/4:
 type_diff.m:071:   in argument 1 (i.e. the predicate term) of higher-order
 type_diff.m:071:   predicate call:
@@ -33,8 +33,8 @@ type_diff.m:071:   type error: [38;5;87mvariable `Pred'[39;49m has type
 type_diff.m:071:     [38;5;203mimpure pred(int :: in, int :: in, int :: out) is det;[39;49m
 type_diff.m:071:   expected type was
 type_diff.m:071:     [38;5;40mpred(V_1, V_2, V_3).[39;49m
-type_diff.m:071:   [38;5;203mPurity mismatch:[39;49m expected a [38;5;226mpure predicate,[39;49m got an [38;5;226mimpure[39;49m
-type_diff.m:071:   [38;5;226mpredicate.[39;49m
+type_diff.m:071:   [38;5;203mPurity mismatch:[39;49m expected a [38;5;171mpure predicate,[39;49m got an [38;5;171mimpure[39;49m
+type_diff.m:071:   [38;5;171mpredicate.[39;49m
 type_diff.m:073: In clause for predicate `p2'/4:
 type_diff.m:073:   in argument 1 (i.e. the predicate term) of impure
 type_diff.m:073:   higher-order predicate call:
@@ -42,8 +42,8 @@ type_diff.m:073:   type error: [38;5;87mvariable `Pred'[39;49m has type
 type_diff.m:073:     [38;5;203mimpure pred(int :: in, int :: in, int :: out) is det;[39;49m
 type_diff.m:073:   expected type was
 type_diff.m:073:     [38;5;40mimpure pred(V_4, V_5).[39;49m
-type_diff.m:073:   [38;5;203mArity mismatch[39;49m for the predicate: expected [38;5;226mtwo arguments,[39;49m
-type_diff.m:073:   got [38;5;226mthree.[39;49m
+type_diff.m:073:   [38;5;203mArity mismatch[39;49m for the predicate: expected [38;5;171mtwo arguments,[39;49m
+type_diff.m:073:   got [38;5;171mthree.[39;49m
 type_diff.m:074: In clause for predicate `p2'/4:
 type_diff.m:074:   in argument 1 (i.e. the predicate term) of impure
 type_diff.m:074:   higher-order predicate call:
@@ -51,8 +51,8 @@ type_diff.m:074:   type error: [38;5;87mvariable `Pred'[39;49m has type
 type_diff.m:074:     [38;5;203mimpure pred(int :: in, int :: in, int :: out) is det;[39;49m
 type_diff.m:074:   expected type was
 type_diff.m:074:     [38;5;40mimpure pred(V_6, V_7, V_8, V_9).[39;49m
-type_diff.m:074:   [38;5;203mArity mismatch[39;49m for the predicate: expected [38;5;226mfour arguments,[39;49m
-type_diff.m:074:   got [38;5;226mthree.[39;49m
+type_diff.m:074:   [38;5;203mArity mismatch[39;49m for the predicate: expected [38;5;171mfour arguments,[39;49m
+type_diff.m:074:   got [38;5;171mthree.[39;49m
 type_diff.m:075: In clause for predicate `p2'/4:
 type_diff.m:075:   in unification of [38;5;87margument[39;49m
 type_diff.m:075:   and term [38;5;87m`Pred(C, D)':[39;49m
@@ -68,10 +68,10 @@ type_diff.m:077:   type error: [38;5;87mvariable `Pred'[39;49m has type
 type_diff.m:077:     [38;5;203mimpure pred(int :: in, int :: in, int :: out) is det;[39;49m
 type_diff.m:077:   expected type was
 type_diff.m:077:     [38;5;40mpred(int, int).[39;49m
-type_diff.m:077:   [38;5;203mPurity mismatch:[39;49m expected a [38;5;226mpure predicate,[39;49m got an [38;5;226mimpure[39;49m
-type_diff.m:077:   [38;5;226mpredicate.[39;49m
-type_diff.m:077:   [38;5;203mArity mismatch[39;49m for the predicate: expected [38;5;226mtwo arguments,[39;49m
-type_diff.m:077:   got [38;5;226mthree.[39;49m
+type_diff.m:077:   [38;5;203mPurity mismatch:[39;49m expected a [38;5;171mpure predicate,[39;49m got an [38;5;171mimpure[39;49m
+type_diff.m:077:   [38;5;171mpredicate.[39;49m
+type_diff.m:077:   [38;5;203mArity mismatch[39;49m for the predicate: expected [38;5;171mtwo arguments,[39;49m
+type_diff.m:077:   got [38;5;171mthree.[39;49m
 type_diff.m:078: In clause for predicate `p2'/4:
 type_diff.m:078:   in argument 1 of call to predicate
 type_diff.m:078:   `type_diff.expect_pred_3_semidet'/3:
@@ -79,8 +79,8 @@ type_diff.m:078:   type error: [38;5;87mvariable `Pred'[39;49m has type
 type_diff.m:078:     [38;5;203mimpure pred(int :: in, int :: in, int :: out) is det;[39;49m
 type_diff.m:078:   expected type was
 type_diff.m:078:     [38;5;40mpred(int, int, int).[39;49m
-type_diff.m:078:   [38;5;203mPurity mismatch:[39;49m expected a [38;5;226mpure predicate,[39;49m got an [38;5;226mimpure[39;49m
-type_diff.m:078:   [38;5;226mpredicate.[39;49m
+type_diff.m:078:   [38;5;203mPurity mismatch:[39;49m expected a [38;5;171mpure predicate,[39;49m got an [38;5;171mimpure[39;49m
+type_diff.m:078:   [38;5;171mpredicate.[39;49m
 type_diff.m:079: In clause for predicate `p2'/4:
 type_diff.m:079:   in argument 1 of call to predicate
 type_diff.m:079:   `type_diff.expect_func_2'/3:
@@ -88,10 +88,10 @@ type_diff.m:079:   type error: [38;5;87mvariable `Pred'[39;49m has type
 type_diff.m:079:     [38;5;203mimpure pred(int :: in, int :: in, int :: out) is det;[39;49m
 type_diff.m:079:   expected type was
 type_diff.m:079:     [38;5;40mfunc(int, int) = int.[39;49m
-type_diff.m:079:   [38;5;203mPredicate vs function mismatch:[39;49m expected a [38;5;226mfunction,[39;49m got a
-type_diff.m:079:   [38;5;226mpredicate.[39;49m
-type_diff.m:079:   [38;5;203mPurity mismatch:[39;49m expected a [38;5;226mpure function,[39;49m got an [38;5;226mimpure[39;49m
-type_diff.m:079:   [38;5;226mpredicate.[39;49m
+type_diff.m:079:   [38;5;203mPredicate vs function mismatch:[39;49m expected a [38;5;171mfunction,[39;49m got a
+type_diff.m:079:   [38;5;171mpredicate.[39;49m
+type_diff.m:079:   [38;5;203mPurity mismatch:[39;49m expected a [38;5;171mpure function,[39;49m got an [38;5;171mimpure[39;49m
+type_diff.m:079:   [38;5;171mpredicate.[39;49m
 type_diff.m:080: In clause for predicate `p2'/4:
 type_diff.m:080:   in argument 1 of call to predicate
 type_diff.m:080:   `type_diff.expect_func_3'/3:
@@ -99,12 +99,12 @@ type_diff.m:080:   type error: [38;5;87mvariable `Pred'[39;49m has type
 type_diff.m:080:     [38;5;203mimpure pred(int :: in, int :: in, int :: out) is det;[39;49m
 type_diff.m:080:   expected type was
 type_diff.m:080:     [38;5;40mfunc(int, int, int) = int.[39;49m
-type_diff.m:080:   [38;5;203mPredicate vs function mismatch:[39;49m expected a [38;5;226mfunction,[39;49m got a
-type_diff.m:080:   [38;5;226mpredicate.[39;49m
-type_diff.m:080:   [38;5;203mPurity mismatch:[39;49m expected a [38;5;226mpure function,[39;49m got an [38;5;226mimpure[39;49m
-type_diff.m:080:   [38;5;226mpredicate.[39;49m
-type_diff.m:080:   [38;5;203mArity mismatch[39;49m for the predicate: expected [38;5;226mfour arguments,[39;49m
-type_diff.m:080:   got [38;5;226mthree.[39;49m
+type_diff.m:080:   [38;5;203mPredicate vs function mismatch:[39;49m expected a [38;5;171mfunction,[39;49m got a
+type_diff.m:080:   [38;5;171mpredicate.[39;49m
+type_diff.m:080:   [38;5;203mPurity mismatch:[39;49m expected a [38;5;171mpure function,[39;49m got an [38;5;171mimpure[39;49m
+type_diff.m:080:   [38;5;171mpredicate.[39;49m
+type_diff.m:080:   [38;5;203mArity mismatch[39;49m for the predicate: expected [38;5;171mfour arguments,[39;49m
+type_diff.m:080:   got [38;5;171mthree.[39;49m
 type_diff.m:086: In clause for predicate `p2'/4:
 type_diff.m:086:   in unification of [38;5;87mvariable `B'[39;49m
 type_diff.m:086:   and term [38;5;87m`Func(A)':[39;49m
@@ -128,10 +128,10 @@ type_diff.m:088:   type error: [38;5;87mvariable `Func'[39;49m has type
 type_diff.m:088:     [38;5;203mfunc(int, int) = int;[39;49m
 type_diff.m:088:   expected type was
 type_diff.m:088:     [38;5;40mimpure pred(V_13, V_14, V_15).[39;49m
-type_diff.m:088:   [38;5;203mPredicate vs function mismatch:[39;49m expected a [38;5;226mpredicate,[39;49m got a
-type_diff.m:088:   [38;5;226mfunction.[39;49m
-type_diff.m:088:   [38;5;203mPurity mismatch:[39;49m expected an [38;5;226mimpure predicate,[39;49m got a [38;5;226mpure[39;49m
-type_diff.m:088:   [38;5;226mfunction.[39;49m
+type_diff.m:088:   [38;5;203mPredicate vs function mismatch:[39;49m expected a [38;5;171mpredicate,[39;49m got a
+type_diff.m:088:   [38;5;171mfunction.[39;49m
+type_diff.m:088:   [38;5;203mPurity mismatch:[39;49m expected an [38;5;171mimpure predicate,[39;49m got a [38;5;171mpure[39;49m
+type_diff.m:088:   [38;5;171mfunction.[39;49m
 type_diff.m:090: In clause for predicate `p2'/4:
 type_diff.m:090:   in argument 1 of call to predicate
 type_diff.m:090:   `type_diff.expect_pred_2_det'/3:
@@ -139,10 +139,10 @@ type_diff.m:090:   type error: [38;5;87mvariable `Func'[39;49m has type
 type_diff.m:090:     [38;5;203mfunc(int, int) = int;[39;49m
 type_diff.m:090:   expected type was
 type_diff.m:090:     [38;5;40mpred(int, int).[39;49m
-type_diff.m:090:   [38;5;203mPredicate vs function mismatch:[39;49m expected a [38;5;226mpredicate,[39;49m got a
-type_diff.m:090:   [38;5;226mfunction.[39;49m
-type_diff.m:090:   [38;5;203mArity mismatch[39;49m for the function: expected [38;5;226mtwo arguments,[39;49m got
-type_diff.m:090:   [38;5;226mthree.[39;49m
+type_diff.m:090:   [38;5;203mPredicate vs function mismatch:[39;49m expected a [38;5;171mpredicate,[39;49m got a
+type_diff.m:090:   [38;5;171mfunction.[39;49m
+type_diff.m:090:   [38;5;203mArity mismatch[39;49m for the function: expected [38;5;171mtwo arguments,[39;49m got
+type_diff.m:090:   [38;5;171mthree.[39;49m
 type_diff.m:091: In clause for predicate `p2'/4:
 type_diff.m:091:   in argument 1 of call to predicate
 type_diff.m:091:   `type_diff.expect_pred_3_semidet'/3:
@@ -150,8 +150,8 @@ type_diff.m:091:   type error: [38;5;87mvariable `Func'[39;49m has type
 type_diff.m:091:     [38;5;203mfunc(int, int) = int;[39;49m
 type_diff.m:091:   expected type was
 type_diff.m:091:     [38;5;40mpred(int, int, int).[39;49m
-type_diff.m:091:   [38;5;203mPredicate vs function mismatch:[39;49m expected a [38;5;226mpredicate,[39;49m got a
-type_diff.m:091:   [38;5;226mfunction.[39;49m
+type_diff.m:091:   [38;5;203mPredicate vs function mismatch:[39;49m expected a [38;5;171mpredicate,[39;49m got a
+type_diff.m:091:   [38;5;171mfunction.[39;49m
 type_diff.m:093: In clause for predicate `p2'/4:
 type_diff.m:093:   in argument 1 of call to predicate
 type_diff.m:093:   `type_diff.expect_func_3'/3:
@@ -159,6 +159,6 @@ type_diff.m:093:   type error: [38;5;87mvariable `Func'[39;49m has type
 type_diff.m:093:     [38;5;203mfunc(int, int) = int;[39;49m
 type_diff.m:093:   expected type was
 type_diff.m:093:     [38;5;40mfunc(int, int, int) = int.[39;49m
-type_diff.m:093:   [38;5;203mArity mismatch[39;49m for the function: expected [38;5;226mfour arguments,[39;49m
-type_diff.m:093:   got [38;5;226mthree.[39;49m
+type_diff.m:093:   [38;5;203mArity mismatch[39;49m for the function: expected [38;5;171mfour arguments,[39;49m
+type_diff.m:093:   got [38;5;171mthree.[39;49m
 For more information, recompile with `-E'.

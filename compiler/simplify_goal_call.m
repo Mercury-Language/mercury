@@ -384,8 +384,7 @@ maybe_generate_warning_for_implicit_stream_predicate(ModuleInfo,
             [words("could have an additional argument")] ++
             % This is a suggested cause of action, which is in effect
             % the converse of the possible cause of a problem.
-            color_as_possible_cause(
-                [words("explicitly specifying a stream.")]) ++
+            color_as_hint([words("explicitly specifying a stream.")]) ++
             [nl],
         Spec = conditional_spec($pred, warn_implicit_stream_calls, yes,
             severity_warning, phase_simplify(report_in_any_mode),
@@ -425,7 +424,7 @@ maybe_generate_warning_for_implicit_stream_predicate(ModuleInfo,
         Pieces = [words("The call to")] ++ PredPieces ++
             % This is a suggested cause of action, which is in effect
             % the converse of the possible cause of a problem.
-            color_as_possible_cause([words("could be made redundant")]) ++
+            color_as_hint([words("could be made redundant")]) ++
             [words("by explicitly passing the"), words(Dir),
             words("stream it specifies to later I/O operations."), nl],
         Spec = conditional_spec($pred, warn_implicit_stream_calls, yes,

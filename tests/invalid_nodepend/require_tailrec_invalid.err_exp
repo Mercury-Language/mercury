@@ -18,28 +18,28 @@ require_tailrec_invalid.m:031:   [38;5;87mdeclaration[39;49m for [38;5;203mun
 require_tailrec_invalid.m:031:   [38;5;203m`length'/2.[39;49m
 require_tailrec_invalid.m:034: Error: [38;5;203mconflicting[39;49m
 require_tailrec_invalid.m:034:   [38;5;203m`:- pragma require_tail_recursion' attributes:[39;49m
-require_tailrec_invalid.m:034:   [38;5;226m`error'[39;49m conflicts with earlier attribute
-require_tailrec_invalid.m:034:   [38;5;226m`warn'.[39;49m
+require_tailrec_invalid.m:034:   [38;5;171m`error'[39;49m conflicts with earlier attribute
+require_tailrec_invalid.m:034:   [38;5;171m`warn'.[39;49m
 require_tailrec_invalid.m:037: Error: [38;5;203mconflicting[39;49m
 require_tailrec_invalid.m:037:   [38;5;203m`:- pragma require_tail_recursion' attributes:[39;49m
-require_tailrec_invalid.m:037:   [38;5;226m`none'[39;49m conflicts with earlier attribute
-require_tailrec_invalid.m:037:   [38;5;226m`warn'.[39;49m
+require_tailrec_invalid.m:037:   [38;5;171m`none'[39;49m conflicts with earlier attribute
+require_tailrec_invalid.m:037:   [38;5;171m`warn'.[39;49m
 require_tailrec_invalid.m:040: Error: [38;5;203mconflicting[39;49m
 require_tailrec_invalid.m:040:   [38;5;203m`:- pragma require_tail_recursion' attributes:[39;49m
-require_tailrec_invalid.m:040:   [38;5;226m`none'[39;49m conflicts with earlier attribute
-require_tailrec_invalid.m:040:   [38;5;226m`error'.[39;49m
+require_tailrec_invalid.m:040:   [38;5;171m`none'[39;49m conflicts with earlier attribute
+require_tailrec_invalid.m:040:   [38;5;171m`error'.[39;49m
 require_tailrec_invalid.m:044: Error: [38;5;203mconflicting[39;49m
 require_tailrec_invalid.m:044:   [38;5;203m`:- pragma require_tail_recursion' attributes:[39;49m
-require_tailrec_invalid.m:044:   [38;5;226m`self_recursion_only'[39;49m conflicts with earlier
-require_tailrec_invalid.m:044:   attribute [38;5;226m`self_or_mutual_recursion'.[39;49m
+require_tailrec_invalid.m:044:   [38;5;171m`self_recursion_only'[39;49m conflicts with earlier
+require_tailrec_invalid.m:044:   attribute [38;5;171m`self_or_mutual_recursion'.[39;49m
 require_tailrec_invalid.m:047: Error: [38;5;203mconflicting[39;49m
 require_tailrec_invalid.m:047:   [38;5;203m`:- pragma require_tail_recursion' attributes:[39;49m
-require_tailrec_invalid.m:047:   [38;5;226m`none'[39;49m conflicts with earlier attribute
-require_tailrec_invalid.m:047:   [38;5;226m`self_or_mutual_recursion'.[39;49m
+require_tailrec_invalid.m:047:   [38;5;171m`none'[39;49m conflicts with earlier attribute
+require_tailrec_invalid.m:047:   [38;5;171m`self_or_mutual_recursion'.[39;49m
 require_tailrec_invalid.m:051: Error: [38;5;203mconflicting[39;49m
 require_tailrec_invalid.m:051:   [38;5;203m`:- pragma require_tail_recursion' attributes:[39;49m
-require_tailrec_invalid.m:051:   [38;5;226m`none'[39;49m conflicts with earlier attribute
-require_tailrec_invalid.m:051:   [38;5;226m`self_recursion_only'.[39;49m
+require_tailrec_invalid.m:051:   [38;5;171m`none'[39;49m conflicts with earlier attribute
+require_tailrec_invalid.m:051:   [38;5;171m`self_recursion_only'.[39;49m
 require_tailrec_invalid.m:055: Error: expected a
 require_tailrec_invalid.m:055:   [38;5;40m`:- pragma require_tail_recursion' attribute,[39;49m
 require_tailrec_invalid.m:055:   got [38;5;203m`blahblahblah'.[39;49m
@@ -57,12 +57,12 @@ require_tailrec_invalid.m:064:   declaration:
 require_tailrec_invalid.m:064:   error: expected [38;5;40mlist of attributes,[39;49m got [38;5;203m`23'.[39;49m
 require_tailrec_invalid.m:071: Error: [38;5;203mconflicting[39;49m
 require_tailrec_invalid.m:071:   [38;5;203m`:- pragma require_tail_recursion' attributes:[39;49m
-require_tailrec_invalid.m:071:   [38;5;226m`none'[39;49m conflicts with earlier attribute
-require_tailrec_invalid.m:071:   [38;5;226m`self_recursion_only'.[39;49m
+require_tailrec_invalid.m:071:   [38;5;171m`none'[39;49m conflicts with earlier attribute
+require_tailrec_invalid.m:071:   [38;5;171m`self_recursion_only'.[39;49m
 require_tailrec_invalid.m:071: Error: [38;5;203mconflicting[39;49m
 require_tailrec_invalid.m:071:   [38;5;203m`:- pragma require_tail_recursion' attributes:[39;49m
-require_tailrec_invalid.m:071:   [38;5;226m`none'[39;49m conflicts with earlier attribute
-require_tailrec_invalid.m:071:   [38;5;226m`warn'.[39;49m
+require_tailrec_invalid.m:071:   [38;5;171m`none'[39;49m conflicts with earlier attribute
+require_tailrec_invalid.m:071:   [38;5;171m`warn'.[39;49m
 require_tailrec_invalid.m:072: Error: expected a
 require_tailrec_invalid.m:072:   [38;5;40m`:- pragma require_tail_recursion' attribute,[39;49m
 require_tailrec_invalid.m:072:   got [38;5;203m`grasshopper'.[39;49m

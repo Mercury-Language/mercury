@@ -12,6 +12,6 @@ fbnf.m:214:       [38;5;203mlist.list(string) :: out[39;49m
 fbnf.m:214:     [38;5;203m) is det;[39;49m
 fbnf.m:214:   expected type was
 fbnf.m:214:     [38;5;40mpred(V_7, V_8, V_9, V_10).[39;49m
-fbnf.m:214:   [38;5;203mArity mismatch[39;49m for the predicate: expected [38;5;226mfour arguments,[39;49m got
-fbnf.m:214:   [38;5;226msix.[39;49m
+fbnf.m:214:   [38;5;203mArity mismatch[39;49m for the predicate: expected [38;5;171mfour arguments,[39;49m got
+fbnf.m:214:   [38;5;171msix.[39;49m
 For more information, recompile with `-E'.

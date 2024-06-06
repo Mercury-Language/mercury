@@ -208,10 +208,10 @@ check_foreign_code_attributes_of_proc(ModuleInfo, PPId, Attributes,
                 yes(color_subject), should_module_qualify, PPId),
             Pieces = [words("Warning:") | ProcNamePieces] ++
                 [words("has a")] ++
-                color_as_possible_cause([pragma_decl("terminates"),
+                color_as_inconsistent([pragma_decl("terminates"),
                     words("declaration,")]) ++
                 [words("but also has the")] ++
-                color_as_possible_cause([quote("does_not_terminate"),
+                color_as_inconsistent([quote("does_not_terminate"),
                     words("foreign code attribute")]) ++
                 [words("set."), nl],
             Spec = spec($pred, severity_warning, phase_read_files,
@@ -239,10 +239,10 @@ check_foreign_code_attributes_of_proc(ModuleInfo, PPId, Attributes,
                 yes(color_subject), should_module_qualify, PPId),
             Pieces = [words("Warning:") | ProcNamePieces] ++
                 [words("has a")] ++
-                color_as_possible_cause([pragma_decl("does_not_terminate"),
+                color_as_inconsistent([pragma_decl("does_not_terminate"),
                     words("declaration,")]) ++
                 [words("but also has the")] ++
-                color_as_possible_cause([quote("terminates"),
+                color_as_inconsistent([quote("terminates"),
                     words("foreign code attribute")]) ++
                 [words("set."), nl],
             Spec = spec($pred, severity_warning, phase_read_files,

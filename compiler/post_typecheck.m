@@ -919,10 +919,12 @@ report_indistinguishable_modes_error(ModuleInfo, OldProcId, NewProcId,
     NewDecl = mode_decl_to_string(output_mercury, NewProcId, PredInfo),
     % XXX Should we print OldDecl and NewDecl each on their own line?
     VerbosePieces = [words("Modes")] ++
-        color_as_possible_cause([words_quote(OldDecl)]) ++
+        color_as_inconsistent([words_quote(OldDecl)]) ++
         [words("and")] ++
-        color_as_possible_cause([words_quote(NewDecl)]) ++
-        [words("are indistinguishable."), nl],
+        color_as_inconsistent([words_quote(NewDecl)]) ++
+        [words("are")] ++
+        color_as_incorrect([words("indistinguishable.")]) ++
+        [nl],
     OldPieces = [words("Here is the conflicting mode declaration."), nl],
     Spec = error_spec($pred, severity_error,
         phase_mode_check(report_in_any_mode),

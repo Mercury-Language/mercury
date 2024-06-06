@@ -35,9 +35,9 @@ errors_2.m:033:     X_1: string
 errors_2.m:040: In clause for predicate `type_error_2'/0:
 errors_2.m:040:   type error in unification of variable `X' and variable `Y'.
 errors_2.m:040:   [38;5;87m`X'[39;49m has type
-errors_2.m:040:     [38;5;226mstring,[39;49m
+errors_2.m:040:     [38;5;171mstring,[39;49m
 errors_2.m:040:   [38;5;87m`Y'[39;49m has type
-errors_2.m:040:     [38;5;226mint.[39;49m
+errors_2.m:040:     [38;5;171mint.[39;49m
 errors_2.m:040:   The partial type assignment was:
 errors_2.m:040:     X_1: string
 errors_2.m:040:     Y_2: int
@@ -149,9 +149,9 @@ errors_2.m:092:   [38;5;226man `:- import_module' declaration.[39;49m
 errors_2.m:100: In clause for predicate `type_error_9'/0:
 errors_2.m:100:   type error in unification of variable `X' and variable `Y'.
 errors_2.m:100:   [38;5;87m`X'[39;49m has type
-errors_2.m:100:     [38;5;226m{int, string, character},[39;49m
+errors_2.m:100:     [38;5;171m{int, string, character},[39;49m
 errors_2.m:100:   [38;5;87m`Y'[39;49m has type
-errors_2.m:100:     [38;5;226m{string, character, int}.[39;49m
+errors_2.m:100:     [38;5;171m{string, character, int}.[39;49m
 errors_2.m:100:   The partial type assignment was:
 errors_2.m:100:     X_1: {int, string, character}
 errors_2.m:100:     Y_2: {string, character, int}

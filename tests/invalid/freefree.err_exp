@@ -12,5 +12,5 @@ freefree.m:020:   problem, but I am afraid you will have to work it out
 freefree.m:020:   yourself. My apologies.)
 freefree.m:023: In clause for `p':
 freefree.m:023:   mode error in unification of `X' and `Y'.
-freefree.m:023:   Variable [38;5;87m`X'[39;49m has instantiatedness [38;5;226m`free',[39;49m
-freefree.m:023:   variable [38;5;87m`Y'[39;49m has instantiatedness [38;5;226m`free'.[39;49m
+freefree.m:023:   Variable [38;5;87m`X'[39;49m has instantiatedness [38;5;171m`free',[39;49m
+freefree.m:023:   variable [38;5;87m`Y'[39;49m has instantiatedness [38;5;171m`free'.[39;49m

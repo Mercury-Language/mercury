@@ -1,6 +1,6 @@
 quant_constraint_1.m:019: In declaration of predicate `quant_constraint_1.p'/2:
-quant_constraint_1.m:019:   error: type variable [38;5;87m`T1'[39;49m is [38;5;226mexistentially[39;49m
-quant_constraint_1.m:019:   [38;5;226mconstrained,[39;49m but is [38;5;226muniversally quantified.[39;49m
+quant_constraint_1.m:019:   error: type variable [38;5;87m`T1'[39;49m is [38;5;171mexistentially[39;49m
+quant_constraint_1.m:019:   [38;5;171mconstrained,[39;49m but is [38;5;171muniversally quantified.[39;49m
 quant_constraint_1.m:019: In declaration of predicate `quant_constraint_1.p'/2:
-quant_constraint_1.m:019:   error: type variable [38;5;87m`T2'[39;49m is [38;5;226muniversally[39;49m
-quant_constraint_1.m:019:   [38;5;226mconstrained,[39;49m but is [38;5;226mexistentially quantified.[39;49m
+quant_constraint_1.m:019:   error: type variable [38;5;87m`T2'[39;49m is [38;5;171muniversally[39;49m
+quant_constraint_1.m:019:   [38;5;171mconstrained,[39;49m but is [38;5;171mexistentially quantified.[39;49m

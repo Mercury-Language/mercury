@@ -586,9 +586,9 @@ report_conflicting_attributes(VarSet, Term0, Term, !Specs) :-
     TermStr0 = mercury_term_to_string_vs(VarSet, print_name_only, Term0),
     TermStr = mercury_term_to_string_vs(VarSet, print_name_only, Term),
     Pieces = [words("Error: attributes")] ++
-        color_as_possible_cause([quote(TermStr0)]) ++
+        color_as_inconsistent([quote(TermStr0)]) ++
         [words("and")] ++
-        color_as_possible_cause([quote(TermStr)]) ++
+        color_as_inconsistent([quote(TermStr)]) ++
         color_as_incorrect([words("conflict.")]) ++
         [nl],
     Spec = spec($pred, severity_error, phase_t2pt,

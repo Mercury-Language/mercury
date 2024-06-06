@@ -1062,11 +1062,11 @@ report_duplicate_submodule_one_section_2(ModuleName, Context,
         suffix(":"), nl, words("error: nested submodule")] ++
         color_as_subject([qual_sym_name(ModuleName)]) ++
         [words("has its"), fixed(SectionWord), words("declared")] ++
-        color_as_possible_cause([words("here.")]) ++
+        color_as_inconsistent([words("here.")]) ++
         [nl],
     OldPieces = [words("However, its"), fixed(SectionWord), words("was"),
         words("also declared")] ++
-        color_as_incorrect([words("here.")]) ++
+        color_as_inconsistent([words("here.")]) ++
         [nl],
     Msg = msg(Context, Pieces),
     OldMsg = msg(OldContext, OldPieces),
@@ -1083,13 +1083,13 @@ report_duplicate_submodule_both_sections(ModuleName, Context,
         color_as_subject([qual_sym_name(ModuleName)]) ++
         [words("has both its interface and its implementation"),
         words("declared")] ++
-        color_as_possible_cause([words("here.")]) ++
+        color_as_inconsistent([words("here.")]) ++
         [nl],
 
     ( if OldIntContext = OldImpContext then
         OldPieces = [words("However, its interface and implementation"),
             words("were also declared")] ++
-            color_as_incorrect([words("here.")]) ++
+            color_as_inconsistent([words("here.")]) ++
             [nl],
         Msg = msg(Context, Pieces),
         OldMsg = msg(OldIntContext, OldPieces),
@@ -1097,11 +1097,11 @@ report_duplicate_submodule_both_sections(ModuleName, Context,
     else
         OldIntPieces = [words("However, its interface"),
             words("was also declared")] ++
-            color_as_incorrect([words("here,")]) ++
+            color_as_inconsistent([words("here,")]) ++
             [nl],
         OldImpPieces = [words("and its implementation"),
             words("was also declared")] ++
-            color_as_incorrect([words("here.")]) ++
+            color_as_inconsistent([words("here.")]) ++
             [nl],
         Msg = msg(Context, Pieces),
         OldIntMsg = msg(OldIntContext, OldIntPieces),

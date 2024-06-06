@@ -2702,10 +2702,10 @@ try_to_pair_extra_types_and_modes(PredOrFunc, PredName, Context,
                 words("annotations are")] ++
                 color_as_incorrect([words("incompatible,")]) ++
                 [words("because they specify")] ++
-                color_as_possible_cause([int_name(NumExtraTypes),
+                color_as_inconsistent([int_name(NumExtraTypes),
                     words(choose_number(ExtraTypes, "type", "types"))]) ++
                 [words("but")] ++
-                color_as_possible_cause([int_name(NumExtraModes),
+                color_as_inconsistent([int_name(NumExtraModes),
                     words(choose_number(ExtraModes, "mode", "modes")),
                     suffix(".")]) ++
                 [nl]

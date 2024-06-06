@@ -2133,8 +2133,11 @@ then
     SUBJECT="subject=87"
     CORRECT="correct=40"
     INCORRECT="incorrect=203"
-    CAUSE="possible_cause=226"
-    MERCURY_COLOR_SCHEME="specified@${SUBJECT}:${CORRECT}:${INCORRECT}:${CAUSE}"
+    INCONSISTENT="inconsistent=171"
+    HINT="hint=226"
+    COLORS123="${SUBJECT}:${CORRECT}:${INCORRECT}"
+    COLORS45="${INCONSISTENT}:${HINT}"
+    MERCURY_COLOR_SCHEME="specified@${COLORS123}:${COLORS45}"
     export MERCURY_COLOR_SCHEME
     echo "MERCURY_COLOR_SCHEME=${MERCURY_COLOR_SCHEME}"
     unset NO_COLOR

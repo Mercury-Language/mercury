@@ -279,7 +279,8 @@
     ;       set_color_subject
     ;       set_color_correct
     ;       set_color_incorrect
-    ;       set_color_possible_cause
+    ;       set_color_inconsistent
+    ;       set_color_hint
     ;       debug_types
     ;       debug_types_pred_name
     ;       debug_modes
@@ -1375,7 +1376,8 @@ optdef(oc_verbosity, color_scheme,                      maybe_string(no)).
 optdef(oc_verbosity, set_color_subject,                 string("")).
 optdef(oc_verbosity, set_color_correct,                 string("")).
 optdef(oc_verbosity, set_color_incorrect,               string("")).
-optdef(oc_verbosity, set_color_possible_cause,          string("")).
+optdef(oc_verbosity, set_color_inconsistent,            string("")).
+optdef(oc_verbosity, set_color_hint,                    string("")).
 optdef(oc_verbosity, debug_types,                       bool(no)).
 optdef(oc_verbosity, debug_types_pred_name,             accumulating([])).
 optdef(oc_verbosity, debug_modes,                       bool(no)).
@@ -2350,14 +2352,6 @@ long_table("enable-color-diagnostics", enable_color_diagnostics).
 long_table("enable-colour-diagnostics", enable_color_diagnostics).
 % use_color_diagnostics is an internal-use-only option.
 long_table("color-scheme",             color_scheme).
-% long_table("set-color-subject",        set_color_subject).
-% long_table("set-colour-subject",       set_color_subject).
-% long_table("set-color-correct",        set_color_correct).
-% long_table("set-colour-correct",       set_color_correct).
-% long_table("set-color-incorrect",      set_color_incorrect).
-% long_table("set-colour-incorrect",     set_color_incorrect).
-% long_table("set-color-possible-cause", set_color_possible_cause).
-% long_table("set-colour-possible-cause", set_color_possible_cause).
 long_table("debug-types",              debug_types).
 long_table("debug-types-pred-name",    debug_types_pred_name).
 long_table("debug-modes",              debug_modes).

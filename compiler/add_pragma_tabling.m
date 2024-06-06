@@ -261,10 +261,10 @@ module_add_pragma_tabled_for_pred(ProgressStream, TabledMethod0, PFUMM,
         InlineWarningPieces = [words("Warning:")] ++
             color_as_subject([qual_pf_sym_name_user_arity(PFSymNameArity)]) ++
             [words("has both a")] ++
-            color_as_possible_cause([pragma_decl(TabledMethodStr),
+            color_as_inconsistent([pragma_decl(TabledMethodStr),
                 words("declaration")]) ++
             [words("and a")] ++
-            color_as_possible_cause([pragma_decl("inline"),
+            color_as_inconsistent([pragma_decl("inline"),
                 words("declaration.")]) ++
             [nl,
             words("The inline pragma")] ++
@@ -540,10 +540,9 @@ set_eval_method_create_aux_preds(ProgressStream, PredOrFunc,
                 qual_sym_name_arity(SNA), words("has")] ++
                 color_as_incorrect([words("two conflicting"),
                     words("tabling pragmas specified,")]) ++
-                color_as_possible_cause([fixed(OldTabledMethodStr)]) ++
+                color_as_inconsistent([fixed(OldTabledMethodStr)]) ++
                 [words("and")] ++
-                color_as_possible_cause([fixed(TabledMethodStr),
-                    suffix(".")])
+                color_as_inconsistent([fixed(TabledMethodStr), suffix(".")])
                 ++ [nl]
         ),
         Spec = spec($pred, severity_error, phase_pt2h, Context, Pieces),

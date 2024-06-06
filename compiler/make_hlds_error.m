@@ -170,7 +170,7 @@ report_undefined_pred_or_func_error(MaybePorF, SymName,
         list.map(string.int_to_string, OtherUserArityInts, OtherArityStrs),
         OtherArityPieces =
             [unqual_sym_name(SymName)] ++
-            color_as_possible_cause([words("does exist")]) ++
+            color_as_hint([words("does exist")]) ++
             [words("with"),
             words(choose_number(OtherArityStrs, "arity", "arities"))] ++
             fixed_list_to_color_pieces(color_correct, "and", [suffix(".")],

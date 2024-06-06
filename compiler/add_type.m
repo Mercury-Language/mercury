@@ -269,15 +269,15 @@ check_for_duplicate_type_declaration(TypeCtor, OldDefn, NewStatus, NewContext,
             (
                 SecondIsExported = yes,
                 DupPieces = DupPiecesStart ++
-                    color_as_possible_cause([IsExported, suffix(",")]) ++
+                    color_as_inconsistent([IsExported, suffix(",")]) ++
                     [words("while the previous declaration says")] ++
-                    color_as_possible_cause([IsPrivate, suffix(".")]) ++ [nl]
+                    color_as_inconsistent([IsPrivate, suffix(".")]) ++ [nl]
             ;
                 SecondIsExported = no,
                 DupPieces = DupPiecesStart ++
-                    color_as_possible_cause([IsPrivate, suffix(",")]) ++
+                    color_as_inconsistent([IsPrivate, suffix(",")]) ++
                     [words("while the previous declaration says")] ++
-                    color_as_possible_cause([IsExported, suffix(".")]) ++ [nl]
+                    color_as_inconsistent([IsExported, suffix(".")]) ++ [nl]
             )
         ),
         DupMsg = msg(SecondContext, DupPieces),
@@ -798,9 +798,9 @@ check_for_inconsistent_solver_nosolver_type(TypeCtor, OldDefn, NewBody,
         MainPieces = [words("Error:"), words(ThisDeclOrDefn),
             words("of type")] ++
             color_as_subject([unqual_type_ctor(TypeCtor)]) ++
-            color_as_possible_cause([words(ThisIsOrIsnt), suffix(",")]) ++
+            color_as_inconsistent([words(ThisIsOrIsnt), suffix(",")]) ++
             [words("but its"), words(OldDeclOrDefn)] ++
-            color_as_possible_cause([words(OldIsOrIsnt), suffix(".")]) ++
+            color_as_inconsistent([words(OldIsOrIsnt), suffix(".")]) ++
             [nl],
         OldPieces = [words("The"), words(OldDeclOrDefn), words("is here."),
             nl],

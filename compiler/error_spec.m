@@ -530,14 +530,12 @@
             % The right parenthesis should be added to the following pieces
             % as if it were in a prefix(...) piece.
 
-    % Exported for use by write_error_spec.m. This definition should be
-    % ignored by every part of the compiler other than error_spec.m
-    % and write_error_spec.m.
 :- type color_name
     --->    color_subject
     ;       color_correct
     ;       color_incorrect
-    ;       color_cause.
+    ;       color_inconsistent
+    ;       color_hint.
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -628,8 +626,8 @@
 :- func color_as_subject(list(format_piece)) = list(format_piece).
 :- func color_as_correct(list(format_piece)) = list(format_piece).
 :- func color_as_incorrect(list(format_piece)) = list(format_piece).
-:- func color_as_possible_cause(list(format_piece)) =
-    list(format_piece).
+:- func color_as_inconsistent(list(format_piece)) = list(format_piece).
+:- func color_as_hint(list(format_piece)) = list(format_piece).
 
 :- func color_pieces(color_name, list(format_piece)) = list(format_piece).
 :- func maybe_color_pieces(maybe(color_name), list(format_piece))
@@ -1083,7 +1081,7 @@ do_maybe_construct_did_you_mean_pieces(BaseName, CandidateNames,
         DidYouMeanPieces0 =
             [words("(Did you mean")] ++ SuggestionPieces ++
             [suffix("?)"), nl],
-        DidYouMeanPieces = color_as_possible_cause(DidYouMeanPieces0)
+        DidYouMeanPieces = color_as_hint(DidYouMeanPieces0)
     else
         DidYouMeanPieces = []
     ).
@@ -1152,8 +1150,11 @@ color_as_correct(Pieces) =
 color_as_incorrect(Pieces) =
     color_pieces(color_incorrect, Pieces).
 
-color_as_possible_cause(Pieces) =
-    color_pieces(color_cause, Pieces).
+color_as_inconsistent(Pieces) =
+    color_pieces(color_inconsistent, Pieces).
+
+color_as_hint(Pieces) =
+    color_pieces(color_hint, Pieces).
 
 color_pieces(Color, Pieces0) = Pieces :-
     list.take_while(is_nl_piece, Pieces0, HeadNlPieces, Pieces1),

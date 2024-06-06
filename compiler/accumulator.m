@@ -351,7 +351,7 @@ generate_warning(ModuleInfo, VarTable, Warning, Msg) :-
         [words("has had the locations of the variables")] ++
         color_as_subject([quote(VarAName)]) ++ [words("and")] ++
         color_as_subject([quote(VarBName)]) ++
-        color_as_possible_cause([words("swapped")]) ++
+        color_as_hint([words("swapped")]) ++
         [words("to allow accumulator introduction."), nl],
     Msg = msg(Context, Pieces).
 

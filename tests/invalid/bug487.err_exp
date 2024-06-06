@@ -1,5 +1,5 @@
-bug487.m:033: When the condition succeeds, the if-then-else [38;5;226mdefines[39;49m [38;5;87m`!:SS',[39;49m but
-bug487.m:033:   when the condition fails, [38;5;226mit does not.[39;49m
+bug487.m:033: When the condition succeeds, the if-then-else [38;5;171mdefines[39;49m [38;5;87m`!:SS',[39;49m but
+bug487.m:033:   when the condition fails, [38;5;171mit does not.[39;49m
 bug487.m:034: In clause for `do_reconstruct_route(in, out)':
 bug487.m:034:   in argument 3 of call to predicate
 bug487.m:034:   `bug487.construct_solution'/4:

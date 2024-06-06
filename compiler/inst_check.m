@@ -856,7 +856,7 @@ maybe_issue_type_match_error(WarnInstsWithoutMatchingType, InstCtor, InstDefn,
         WarnInstsWithoutMatchingType = yes,
         Mismatches = [_ | MismatchesTail]
     then
-        cons_id_strs_and_near_misses(color_cause, Mismatches,
+        cons_id_strs_and_near_misses(color_hint, Mismatches,
             MismatchConsIdComponents, NearMisses),
         FuncSymbolPhrase = choose_number(Mismatches,
             "function symbol", "function symbols"),

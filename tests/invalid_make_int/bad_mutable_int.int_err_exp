@@ -4,15 +4,15 @@ bad_mutable_int.m:017: Error in `:- mutable' declaration:
 bad_mutable_int.m:017:   [38;5;203munrecognised attribute[39;49m [38;5;87m`bad_attrib'.[39;49m
 bad_mutable_int.m:019: Error: the type in a `:- mutable' declaration may not
 bad_mutable_int.m:019:   contain variables, but [38;5;87m`list(T)'[39;49m [38;5;203mdoes.[39;49m
-bad_mutable_int.m:021: Error: attributes [38;5;226m`untrailed'[39;49m and [38;5;226m`trailed'[39;49m [38;5;203mconflict.[39;49m
-bad_mutable_int.m:024: Error: attributes [38;5;226m`foreign_name("C", "one")'[39;49m and
-bad_mutable_int.m:024:   [38;5;226m`foreign_name("C", "two")'[39;49m [38;5;203mconflict.[39;49m
-bad_mutable_int.m:026: Error: attributes [38;5;226m`thread_local'[39;49m and [38;5;226m`trailed'[39;49m [38;5;203mconflict.[39;49m
-bad_mutable_int.m:028: Error: attributes [38;5;226m`constant'[39;49m and [38;5;226m`thread_local'[39;49m
+bad_mutable_int.m:021: Error: attributes [38;5;171m`untrailed'[39;49m and [38;5;171m`trailed'[39;49m [38;5;203mconflict.[39;49m
+bad_mutable_int.m:024: Error: attributes [38;5;171m`foreign_name("C", "one")'[39;49m and
+bad_mutable_int.m:024:   [38;5;171m`foreign_name("C", "two")'[39;49m [38;5;203mconflict.[39;49m
+bad_mutable_int.m:026: Error: attributes [38;5;171m`thread_local'[39;49m and [38;5;171m`trailed'[39;49m [38;5;203mconflict.[39;49m
+bad_mutable_int.m:028: Error: attributes [38;5;171m`constant'[39;49m and [38;5;171m`thread_local'[39;49m
 bad_mutable_int.m:028:   [38;5;203mconflict.[39;49m
 bad_mutable_int.m:030: In fifth argument of `:- mutable' declaration: error:
 bad_mutable_int.m:030:   expected a [38;5;40mlist of attributes,[39;49m got [38;5;203m`thread_local'.[39;49m
-bad_mutable_int.m:032: Error: attributes [38;5;226m`constant'[39;49m and [38;5;226m`trailed'[39;49m [38;5;203mconflict.[39;49m
+bad_mutable_int.m:032: Error: attributes [38;5;171m`constant'[39;49m and [38;5;171m`trailed'[39;49m [38;5;203mconflict.[39;49m
 bad_mutable_int.m:034: Error: attribute [38;5;87m`untrailed'[39;49m is [38;5;203mrepeated.[39;49m
 bad_mutable_int.m:038: Error: attribute [38;5;87m`constant'[39;49m is [38;5;203mrepeated.[39;49m
 bad_mutable_int.m:039: Error: attribute [38;5;87m`constant'[39;49m is [38;5;203mrepeated.[39;49m

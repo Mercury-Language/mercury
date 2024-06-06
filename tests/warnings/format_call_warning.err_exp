@@ -24,8 +24,8 @@ format_call_warning.m:030:   `:- pragma format_call' declaration, which places
 format_call_warning.m:030:   the format string as the sixth argument, and the
 format_call_warning.m:030:   values list as the seventh argument.
 format_call_warning.m:030:   The [38;5;87mfirst conversion specifier[39;49m uses the specifier
-format_call_warning.m:030:   character [38;5;226m`f',[39;49m but the corresponding input is a
-format_call_warning.m:030:   [38;5;226mstring.[39;49m
+format_call_warning.m:030:   character [38;5;171m`f',[39;49m but the corresponding input is a
+format_call_warning.m:030:   [38;5;171mstring.[39;49m
 format_call_warning.m:030:   The only specifier applicable to strings is [38;5;40m`%s'.[39;49m
 format_call_warning.m:030: Error: the format string [38;5;203mdoes not match[39;49m the list of
 format_call_warning.m:030:   values to be formatted in call to predicate
@@ -35,8 +35,8 @@ format_call_warning.m:030:   `:- pragma format_call' declaration, which places
 format_call_warning.m:030:   the format string as the sixth argument, and the
 format_call_warning.m:030:   values list as the eighth argument.
 format_call_warning.m:030:   The [38;5;87mfirst conversion specifier[39;49m uses the specifier
-format_call_warning.m:030:   character [38;5;226m`f',[39;49m but the corresponding input is a
-format_call_warning.m:030:   [38;5;226mstring.[39;49m
+format_call_warning.m:030:   character [38;5;171m`f',[39;49m but the corresponding input is a
+format_call_warning.m:030:   [38;5;171mstring.[39;49m
 format_call_warning.m:030:   The only specifier applicable to strings is [38;5;40m`%s'.[39;49m
 format_call_warning.m:035: Error: the format string [38;5;203mdoes not match[39;49m the list of
 format_call_warning.m:035:   values to be formatted in call to predicate
@@ -51,15 +51,15 @@ format_call_warning.m:045: Error: the format string [38;5;203mdoes not match[3
 format_call_warning.m:045:   values to be formatted in call to predicate
 format_call_warning.m:045:   [38;5;87m`format_call_warning.maybe_log_simple_msg'/6.[39;49m
 format_call_warning.m:045:   The [38;5;87msecond conversion specifier[39;49m uses the specifier
-format_call_warning.m:045:   character [38;5;226m`f',[39;49m but the corresponding input is a
-format_call_warning.m:045:   [38;5;226mstring.[39;49m
+format_call_warning.m:045:   character [38;5;171m`f',[39;49m but the corresponding input is a
+format_call_warning.m:045:   [38;5;171mstring.[39;49m
 format_call_warning.m:045:   The only specifier applicable to strings is [38;5;40m`%s'.[39;49m
 format_call_warning.m:048: Error: the format string [38;5;203mdoes not match[39;49m the list of
 format_call_warning.m:048:   values to be formatted in call to predicate
 format_call_warning.m:048:   [38;5;87m`format_call_warning_helper_1.maybe_log_imported_msg'/6.[39;49m
 format_call_warning.m:048:   The [38;5;87mfirst conversion specifier[39;49m uses the specifier
-format_call_warning.m:048:   character [38;5;226m`s',[39;49m but the corresponding input is a
-format_call_warning.m:048:   [38;5;226mfloat.[39;49m
+format_call_warning.m:048:   character [38;5;171m`s',[39;49m but the corresponding input is a
+format_call_warning.m:048:   [38;5;171mfloat.[39;49m
 format_call_warning.m:048:   The specifiers applicable to floats are [38;5;40m`%f',[39;49m
 format_call_warning.m:048:   [38;5;40m`%e',[39;49m [38;5;40m`%E',[39;49m [38;5;40m`%g'[39;49m and [38;5;40m`%G'.[39;49m
 format_call_warning.m:083: Error: [38;5;203munknown list of values to be formatted[39;49m in

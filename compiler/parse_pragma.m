@@ -1162,9 +1162,9 @@ conflicting_attributes_error(ThisName, EarlierName, Context) = Spec :-
     Pieces = [words("Error:")] ++
         color_as_incorrect([words("conflicting"),
             pragma_decl("require_tail_recursion"), words("attributes:")]) ++
-        color_as_possible_cause([quote(ThisName)]) ++
+        color_as_inconsistent([quote(ThisName)]) ++
         [words("conflicts with earlier attribute")] ++
-        color_as_possible_cause([quote(EarlierName), suffix(".")]) ++
+        color_as_inconsistent([quote(EarlierName), suffix(".")]) ++
         [nl],
     Spec = spec($pred, severity_error, phase_t2pt, Context, Pieces).
 

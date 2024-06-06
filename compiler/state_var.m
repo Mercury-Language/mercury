@@ -2312,10 +2312,10 @@ report_missing_inits_in_ite(Context, NextStateVars,
         [suffix(",")], NextStateVars),
     Pieces = [words("When the condition"), words(WhenNotMissing), suffix(","),
         words("the if-then-else")] ++
-        color_as_possible_cause([words("defines")]) ++
+        color_as_inconsistent([words("defines")]) ++
         NextStateVarsPieces ++
         [words("but when the condition"), words(WhenMissing), suffix(",")] ++
-        color_as_possible_cause([words("it does not.")]) ++ [nl],
+        color_as_inconsistent([words("it does not.")]) ++ [nl],
     Spec = spec($pred, severity_informational, phase_pt2h, Context, Pieces),
     !:Specs = [Spec | !.Specs].
 

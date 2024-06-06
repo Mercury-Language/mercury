@@ -1204,7 +1204,7 @@ implement_initialise_finalise(ModuleInfo, InitOrFinal, SymName, UserArity,
             color_as_incorrect([words("more than one visible")]) ++
             [decl("pred"), words("declaration."),
             words("These are:"), nl_indent_delta(1)] ++
-            piece_list_to_color_line_pieces(color_cause, [suffix(".")],
+            piece_list_to_color_line_pieces(color_hint, [suffix(".")],
                 PredDescPieces) ++
             [nl_indent_delta(-1)],
         Spec = spec($pred, severity_error, phase_pt2h, Context, Pieces),

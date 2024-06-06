@@ -4,24 +4,24 @@ string_format_unknown.m:025: Error: the format string [38;5;203mdoes not match
 string_format_unknown.m:025:   of values to be formatted in call to function
 string_format_unknown.m:025:   [38;5;87m`string.format'/2.[39;49m
 string_format_unknown.m:025:   The [38;5;87mfirst conversion specifier[39;49m uses the
-string_format_unknown.m:025:   specifier character [38;5;226m`d',[39;49m but the corresponding
-string_format_unknown.m:025:   input is a [38;5;226mstring.[39;49m
+string_format_unknown.m:025:   specifier character [38;5;171m`d',[39;49m but the corresponding
+string_format_unknown.m:025:   input is a [38;5;171mstring.[39;49m
 string_format_unknown.m:025:   The only specifier applicable to strings is
 string_format_unknown.m:025:   [38;5;40m`%s'.[39;49m
 string_format_unknown.m:028: Error: the format string [38;5;203mdoes not match[39;49m the list
 string_format_unknown.m:028:   of values to be formatted in call to predicate
 string_format_unknown.m:028:   [38;5;87m`io.format'/4.[39;49m
 string_format_unknown.m:028:   The [38;5;87mfirst conversion specifier[39;49m uses the
-string_format_unknown.m:028:   specifier character [38;5;226m`d',[39;49m but the corresponding
-string_format_unknown.m:028:   input is a [38;5;226mstring.[39;49m
+string_format_unknown.m:028:   specifier character [38;5;171m`d',[39;49m but the corresponding
+string_format_unknown.m:028:   input is a [38;5;171mstring.[39;49m
 string_format_unknown.m:028:   The only specifier applicable to strings is
 string_format_unknown.m:028:   [38;5;40m`%s'.[39;49m
 string_format_unknown.m:029: Error: the format string [38;5;203mdoes not match[39;49m the list
 string_format_unknown.m:029:   of values to be formatted in call to predicate
 string_format_unknown.m:029:   [38;5;87m`io.format'/5.[39;49m
 string_format_unknown.m:029:   The [38;5;87mfirst conversion specifier[39;49m uses the
-string_format_unknown.m:029:   specifier character [38;5;226m`d',[39;49m but the corresponding
-string_format_unknown.m:029:   input is a [38;5;226mstring.[39;49m
+string_format_unknown.m:029:   specifier character [38;5;171m`d',[39;49m but the corresponding
+string_format_unknown.m:029:   input is a [38;5;171mstring.[39;49m
 string_format_unknown.m:029:   The only specifier applicable to strings is
 string_format_unknown.m:029:   [38;5;40m`%s'.[39;49m
 string_format_unknown.m:030: Error: the format string [38;5;203mdoes not match[39;49m the list
@@ -38,7 +38,7 @@ string_format_unknown.m:046: Error: the format string [38;5;203mdoes not match
 string_format_unknown.m:046:   of values to be formatted in call to predicate
 string_format_unknown.m:046:   [38;5;87m`io.format'/5.[39;49m
 string_format_unknown.m:046:   The [38;5;87mfirst conversion specifier[39;49m uses the
-string_format_unknown.m:046:   specifier character [38;5;226m`d',[39;49m but the corresponding
-string_format_unknown.m:046:   input is a [38;5;226mfloat.[39;49m
+string_format_unknown.m:046:   specifier character [38;5;171m`d',[39;49m but the corresponding
+string_format_unknown.m:046:   input is a [38;5;171mfloat.[39;49m
 string_format_unknown.m:046:   The specifiers applicable to floats are [38;5;40m`%f',[39;49m
 string_format_unknown.m:046:   [38;5;40m`%e',[39;49m [38;5;40m`%E',[39;49m [38;5;40m`%g'[39;49m and [38;5;40m`%G'.[39;49m

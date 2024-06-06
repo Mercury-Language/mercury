@@ -178,7 +178,7 @@ report_error_pred_wrong_arity(ClauseContext, Context, SymNameArity,
             [words("One possible reason for the error is that"),
             words("the predicate in the"), quote(StdLibModuleName),
             words("module that used to be named"), quote(PredName)] ++
-            color_as_possible_cause([words("has been renamed to"),
+            color_as_hint([words("has been renamed to"),
                 quote(PredName ++ "_io"), suffix(".")]) ++
             [nl]
     else
@@ -253,9 +253,9 @@ is_undef_pred_a_syntax_error(PredName, PredFormArityInt, Components) :-
         Pieces = [words("error: this")] ++
             color_as_subject([quote("else")]) ++
             color_as_incorrect([words("has no matching")]) ++
-            color_as_possible_cause([quote("if")]) ++
+            color_as_hint([quote("if")]) ++
             [words("or")] ++
-            color_as_possible_cause([quote("then"), suffix(".")]) ++
+            color_as_hint([quote("then"), suffix(".")]) ++
             [nl],
         Components = [always(Pieces)]
     ;
@@ -264,9 +264,9 @@ is_undef_pred_a_syntax_error(PredName, PredFormArityInt, Components) :-
         Pieces = [words("error: this")] ++
             color_as_subject([quote("if")]) ++
             [words("has no matching")] ++
-            color_as_possible_cause([quote("then")]) ++
+            color_as_hint([quote("then")]) ++
             [words("or")] ++
-            color_as_possible_cause([quote("else"), suffix(".")]) ++
+            color_as_hint([quote("else"), suffix(".")]) ++
             [nl],
         Components = [always(Pieces)]
     ;
@@ -275,9 +275,9 @@ is_undef_pred_a_syntax_error(PredName, PredFormArityInt, Components) :-
         MainPieces = [words("error: this")] ++
             color_as_subject([quote("then")]) ++
             [words("has no matching")] ++
-            color_as_possible_cause([quote("if")]) ++
+            color_as_hint([quote("if")]) ++
             [words("or")] ++
-            color_as_possible_cause([quote("else"), suffix(".")]) ++
+            color_as_hint([quote("else"), suffix(".")]) ++
             [nl],
         MainComponent = always(MainPieces),
         VerbosePieces =
@@ -381,7 +381,7 @@ maybe_warn_about_getopt_changes(PredSymName, PredFormArityInt, GetoptPieces) :-
             [words("One possible reason for the error is that"),
             words("the predicate"), quote(PredName),
             words("in the Mercury standard library has been")] ++
-            color_as_possible_cause([words("renamed to"),
+            color_as_hint([words("renamed to"),
                 quote(NewPredName), suffix(".")]) ++
             [nl]
     else
@@ -464,7 +464,7 @@ report_error_pred_wrong_full_name(ClauseContext, Context, PredicateTable,
 
 report_error_func_instead_of_pred(Context) = Msg :-
     Pieces = [words("(There is a *function* with that name, however."), nl] ++
-        color_as_possible_cause([words("Perhaps you forgot to add"),
+        color_as_hint([words("Perhaps you forgot to add"),
             quote(" = ..."), suffix("?)")]) ++
         [nl],
     Msg = msg(Context, Pieces).
@@ -545,7 +545,7 @@ language_builtin_functor_components(Name, Arity, Components) :-
         [nl],
     VerbosePieces = [words("If you are trying to use a goal"),
         words("as a boolean function, you should write")] ++
-        color_as_possible_cause([words_quote("if <goal> then yes else no"),
+        color_as_hint([words_quote("if <goal> then yes else no"),
             words("instead.")]) ++
         [nl],
     ( if Name = "call" then
@@ -587,7 +587,7 @@ syntax_functor_components(FunctorName, Arity, Components) :-
             color_as_incorrect([words("invalid use of the"), quote("!"),
                 words("state variable operator.")]) ++
             [nl],
-        Pieces2 = color_as_possible_cause([words("You probably meant to use"),
+        Pieces2 = color_as_hint([words("You probably meant to use"),
             quote("!."), words("or"), quote("!:"), suffix(".")]) ++
             [nl],
         Components = [always(Pieces1), verbose_only(verbose_always, Pieces2)]
@@ -599,18 +599,18 @@ syntax_functor_components(FunctorName, Arity, Components) :-
                 Pieces = [words("error: this")] ++
                     color_as_subject([quote("if")]) ++
                     [words("has no matching")] ++
-                    color_as_possible_cause([quote("then")]) ++
+                    color_as_hint([quote("then")]) ++
                     [words("or")] ++
-                    color_as_possible_cause([quote("else"), suffix(".")]) ++
+                    color_as_hint([quote("else"), suffix(".")]) ++
                     [nl]
             ;
                 FunctorName = "else",
                 Pieces = [words("error: this")] ++
                     color_as_subject([quote("else")]) ++
                     color_as_incorrect([words("has no matching")]) ++
-                    color_as_possible_cause([quote("if")]) ++
+                    color_as_hint([quote("if")]) ++
                     [words("or")] ++
-                    color_as_possible_cause([quote("then"), suffix(".")]) ++
+                    color_as_hint([quote("then"), suffix(".")]) ++
                     [nl]
             ;
                 FunctorName = ":-",
@@ -636,9 +636,9 @@ syntax_functor_components(FunctorName, Arity, Components) :-
                 MainPieces = [words("error: this")] ++
                     color_as_subject([quote("then")]) ++
                     [words("has no matching")] ++
-                    color_as_possible_cause([quote("if")]) ++
+                    color_as_hint([quote("if")]) ++
                     [words("or")] ++
-                    color_as_possible_cause([quote("else"), suffix(".")]) ++
+                    color_as_hint([quote("else"), suffix(".")]) ++
                     [nl],
                 VerbosePieces =
                     [words("Note: the"), quote("else"),
@@ -665,7 +665,7 @@ syntax_functor_components(FunctorName, Arity, Components) :-
                         prefix("("), quote("^"), suffix(").")]) ++
                     [nl],
                 VerbosePieces =
-                    color_as_possible_cause([words("This is probably"),
+                    color_as_hint([words("This is probably"),
                         words("some kind of syntax error."),
                         words("The field name must be an atom,"),
                         words("not a variable or other term.")]) ++
@@ -678,7 +678,7 @@ syntax_functor_components(FunctorName, Arity, Components) :-
                         prefix("("), quote(":="), suffix(").")]) ++
                     [nl],
                 VerbosePieces =
-                    color_as_possible_cause([words("This is probably"),
+                    color_as_hint([words("This is probably"),
                         words("some kind of syntax error.")]) ++
                     [nl]
             ),
@@ -1152,7 +1152,7 @@ report_any_missing_module_qualifiers(ClauseContext, Context,
             )
         ),
         MainPieces = IsDefinedInPieces ++ ModulesPieces ++
-            color_as_possible_cause(NoImportsPieces) ++ [nl],
+            color_as_hint(NoImportsPieces) ++ [nl],
         MainMsg = msg(Context, MainPieces),
         VerbosePieces = [words("Note that symbols defined in modules"),
             words("accessed via"), decl("use_module"), words("declarations"),
@@ -1182,7 +1182,7 @@ maybe_report_missing_import_addendum(ClauseContext, ModuleQualifier,
         Pieces = [nl,
             words("(The module")] ++
             color_as_subject([qual_sym_name(ModuleQualifier)]) ++
-            color_as_possible_cause([words("has not been imported.)")]) ++
+            color_as_hint([words("has not been imported.)")]) ++
             [nl],
         MissingImportModules = [ModuleQualifier]
     else

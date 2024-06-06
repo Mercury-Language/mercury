@@ -1,4 +1,4 @@
 coerce_infer.m:026: In clause for function `f'/1:
-coerce_infer.m:026:   cannot coerce from [38;5;226m`V_1'[39;49m to [38;5;226m`V_2'.[39;49m
+coerce_infer.m:026:   cannot coerce from [38;5;171m`V_1'[39;49m to [38;5;171m`V_2'.[39;49m
 coerce_infer.m:026:   You can only coerce from one discriminated union type to
 coerce_infer.m:026:   another, and `V_1' and `V_2' are [38;5;203mtype variables.[39;49m

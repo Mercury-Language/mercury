@@ -219,9 +219,9 @@ string_format_error_to_pieces(Error) = Pieces :-
             color_as_subject([nth_fixed(SpecNum),
                 words("conversion specifier")]) ++
             [words("uses the specifier character")] ++
-            color_as_possible_cause([quote(SpecCharStr), suffix(",")]) ++
+            color_as_inconsistent([quote(SpecCharStr), suffix(",")]) ++
             [words("but the corresponding input is"), words(AAn)] ++
-            color_as_possible_cause([words(PolyKindDesc), suffix("."), nl]),
+            color_as_inconsistent([words(PolyKindDesc), suffix("."), nl]),
         acceptable_specifier_chars_for_poly_kind_msg(PolyKind, ValDesc,
             HeadSpec, TailSpecs),
         (

@@ -1435,7 +1435,7 @@ check_type_and_maybe_mode_list_is_consistent(TypesAndMaybeModes,
                 And = "and"
             ),
             WithoutArgNumPieces = list.map(nth_arg, WithoutModeArgs),
-            WithoutArgNumsPieces = piece_list_to_color_pieces(color_cause,
+            WithoutArgNumsPieces = piece_list_to_color_pieces(color_hint,
                 And, [suffix(".")], WithoutArgNumPieces),
             IdPieces =
                 [words("The arguments without modes are the")] ++
@@ -1474,7 +1474,7 @@ classify_type_and_maybe_mode_list(ArgNum, [Head | Tail],
 
 nth_arg_only(Arg) = Pieces :-
     Piece0 = nth_arg(Arg),
-    Pieces = color_pieces(color_cause, [Piece0, suffix(".")]).
+    Pieces = color_pieces(color_hint, [Piece0, suffix(".")]).
 
 :- func nth_arg(pair(int, _)) = format_piece.
 
@@ -2245,10 +2245,11 @@ is_the_name_a_variable(VarSet, Kind, Term, Spec) :-
 
 report_with_inst_and_detism(DeclKindPiece, Term) = Spec :-
     Pieces = [words("Error: a"), DeclKindPiece, words("declaration"),
-        words("that specifies a determinism")] ++
+        words("that specifies a")] ++
+        color_as_inconsistent([words("determinism")]) ++
         color_as_incorrect([words("may not also specify")]) ++
         [words("a")] ++
-        color_as_possible_cause([quote("with_inst"), words("annotation.")]) ++
+        color_as_inconsistent([quote("with_inst"), words("annotation.")]) ++
         [words("This is because the"), quote("with_inst"),
         words("annotation itself also specifies a determinism."), nl],
     Context = get_term_context(Term),
@@ -2258,10 +2259,11 @@ report_with_inst_and_detism(DeclKindPiece, Term) = Spec :-
 
 report_with_inst_no_arg_modes(PredOrFunc, Term) = Spec :-
     Pieces = [words("Error: a"), p_or_f(PredOrFunc), words("declaration"),
-        words("that does not specify argument modes")] ++
+        words("that does not specify")] ++
+        color_as_inconsistent([words("argument modes")]) ++
         color_as_incorrect([words("may not specify")]) ++
         [words("a")] ++
-        color_as_possible_cause([quote("with_inst"), words("annotation.")]),
+        color_as_inconsistent([quote("with_inst"), words("annotation.")]),
     Context = get_term_context(Term),
     Spec = spec($pred, severity_error, phase_t2pt, Context, Pieces).
 
@@ -2271,10 +2273,10 @@ report_with_inst_no_with_type(PredOrFunc, Term) = Spec :-
     % Keep as similar to report_with_type_no_with_inst as possible.
     Pieces = [words("Error: a"), p_or_f(PredOrFunc), words("declaration"),
         words("that specifies a")] ++
-        color_as_possible_cause([quote("with_inst"), words("annotation")]) ++
+        color_as_inconsistent([quote("with_inst"), words("annotation")]) ++
         color_as_incorrect([words("must also specify")]) ++
         [words("a")] ++
-        color_as_possible_cause([quote("with_type"), words("annotation")]) ++
+        color_as_inconsistent([quote("with_type"), words("annotation")]) ++
         [words("to specify the types of the arguments it adds."), nl],
     Context = get_term_context(Term),
     Spec = spec($pred, severity_error, phase_t2pt, Context, Pieces).
@@ -2285,10 +2287,10 @@ report_with_type_no_with_inst(PredOrFunc, Term) = Spec :-
     % Keep as similar to report_with_inst_no_with_type as possible.
     Pieces = [words("Error: a"), p_or_f(PredOrFunc), words("declaration"),
         words("that specifies argument modes and also has a")] ++
-        color_as_possible_cause([quote("with_type"), words("annotation")]) ++
+        color_as_inconsistent([quote("with_type"), words("annotation")]) ++
         color_as_incorrect([words("must also include")]) ++
         [words("a")] ++
-        color_as_possible_cause([quote("with_inst"), words("annotation")]) ++
+        color_as_inconsistent([quote("with_inst"), words("annotation")]) ++
         [words("to specify the modes of the arguments it adds."), nl],
     Context = get_term_context(Term),
     Spec = spec($pred, severity_error, phase_t2pt, Context, Pieces).

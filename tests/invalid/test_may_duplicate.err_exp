@@ -1,6 +1,6 @@
-test_may_duplicate.m:027: Error: the [38;5;226m`may_duplicate' attribute[39;49m on the
+test_may_duplicate.m:027: Error: the [38;5;171m`may_duplicate' attribute[39;49m on the
 test_may_duplicate.m:027:   foreign_proc is [38;5;203mnot compatible[39;49m with the
-test_may_duplicate.m:027:   [38;5;226m`:- pragma no_inline' declaration[39;49m on the predicate.
-test_may_duplicate.m:049: Error: the [38;5;226m`may_not_duplicate' attribute[39;49m on the
+test_may_duplicate.m:027:   [38;5;171m`:- pragma no_inline' declaration[39;49m on the predicate.
+test_may_duplicate.m:049: Error: the [38;5;171m`may_not_duplicate' attribute[39;49m on the
 test_may_duplicate.m:049:   foreign_proc is [38;5;203mnot compatible[39;49m with the
-test_may_duplicate.m:049:   [38;5;226m`:- pragma inline' declaration[39;49m on the predicate.
+test_may_duplicate.m:049:   [38;5;171m`:- pragma inline' declaration[39;49m on the predicate.

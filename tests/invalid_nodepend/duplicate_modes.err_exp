@@ -9,18 +9,18 @@ duplicate_modes.m:005:   `:- typeclass' or `:- instance' definition.
 duplicate_modes.m:012: In mode declarations for predicate
 duplicate_modes.m:012:   [38;5;87m`duplicate_modes.q'/2:[39;49m
 duplicate_modes.m:012:   error: duplicate mode declaration.
-duplicate_modes.m:012:   Modes [38;5;226m`q(in, out) is det'[39;49m and [38;5;226m`q((ground >> ground),[39;49m
-duplicate_modes.m:012:   [38;5;226m(free >> ground)) is det'[39;49m are indistinguishable.
+duplicate_modes.m:012:   Modes [38;5;171m`q(in, out) is det'[39;49m and [38;5;171m`q((ground >> ground),[39;49m
+duplicate_modes.m:012:   [38;5;171m(free >> ground)) is det'[39;49m are [38;5;203mindistinguishable.[39;49m
 duplicate_modes.m:013:   Here is the conflicting mode declaration.
 duplicate_modes.m:012: In mode declarations for predicate
 duplicate_modes.m:012:   [38;5;87m`duplicate_modes.q'/2:[39;49m
 duplicate_modes.m:012:   error: duplicate mode declaration.
-duplicate_modes.m:012:   Modes [38;5;226m`q(in, out) is det'[39;49m and [38;5;226m`q((ground >> ground),[39;49m
-duplicate_modes.m:012:   [38;5;226m(free >> ground)) is det'[39;49m are indistinguishable.
+duplicate_modes.m:012:   Modes [38;5;171m`q(in, out) is det'[39;49m and [38;5;171m`q((ground >> ground),[39;49m
+duplicate_modes.m:012:   [38;5;171m(free >> ground)) is det'[39;49m are [38;5;203mindistinguishable.[39;49m
 duplicate_modes.m:014:   Here is the conflicting mode declaration.
 duplicate_modes.m:018: In mode declarations for predicate
 duplicate_modes.m:018:   [38;5;87m`duplicate_modes.r'/2:[39;49m
 duplicate_modes.m:018:   error: duplicate mode declaration.
-duplicate_modes.m:018:   Modes [38;5;226m`r(in, in) is semidet'[39;49m and [38;5;226m`r(in, in) is det'[39;49m
-duplicate_modes.m:018:   are indistinguishable.
+duplicate_modes.m:018:   Modes [38;5;171m`r(in, in) is semidet'[39;49m and [38;5;171m`r(in, in) is det'[39;49m
+duplicate_modes.m:018:   are [38;5;203mindistinguishable.[39;49m
 duplicate_modes.m:019:   Here is the conflicting mode declaration.

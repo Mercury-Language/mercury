@@ -3,12 +3,12 @@ default_ho_inst_2.m:033:   error: [38;5;203mmode mismatch[39;49m in disjunctio
 default_ho_inst_2.m:033:   The variable [38;5;87m`F'[39;49m has the following instantiation
 default_ho_inst_2.m:033:   states.
 default_ho_inst_2.m:031:     In this branch, `F' has instantiatedness
-default_ho_inst_2.m:031:       [38;5;226munique([39;49m
-default_ho_inst_2.m:031:         [38;5;226mfoo([39;49m
-default_ho_inst_2.m:031:           [38;5;226m/* unique */ (func([39;49m
-default_ho_inst_2.m:031:             [38;5;226min[39;49m
-default_ho_inst_2.m:031:           [38;5;226m) = out is semidet)[39;49m
-default_ho_inst_2.m:031:         [38;5;226m)[39;49m
-default_ho_inst_2.m:031:       [38;5;226m).[39;49m
-default_ho_inst_2.m:033:     In this branch, `F' is [38;5;226mground.[39;49m
+default_ho_inst_2.m:031:       [38;5;171munique([39;49m
+default_ho_inst_2.m:031:         [38;5;171mfoo([39;49m
+default_ho_inst_2.m:031:           [38;5;171m/* unique */ (func([39;49m
+default_ho_inst_2.m:031:             [38;5;171min[39;49m
+default_ho_inst_2.m:031:           [38;5;171m) = out is semidet)[39;49m
+default_ho_inst_2.m:031:         [38;5;171m)[39;49m
+default_ho_inst_2.m:031:       [38;5;171m).[39;49m
+default_ho_inst_2.m:033:     In this branch, `F' is [38;5;171mground.[39;49m
 For more information, recompile with `-E'.

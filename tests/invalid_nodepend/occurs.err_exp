@@ -6,8 +6,8 @@ occurs.m:007:   The following assumes that the missing declaration is an
 occurs.m:007:   `:- implementation' declaration.
 occurs.m:014: In clause for `p':
 occurs.m:014:   mode error in unification of `X' and `occurs.f(X)'.
-occurs.m:014:   Variable [38;5;87m`X'[39;49m has instantiatedness [38;5;226m`free',[39;49m
-occurs.m:014:   term [38;5;87m`occurs.f(X)'[39;49m has instantiatedness [38;5;226m`occurs.f(free)'.[39;49m
+occurs.m:014:   Variable [38;5;87m`X'[39;49m has instantiatedness [38;5;171m`free',[39;49m
+occurs.m:014:   term [38;5;87m`occurs.f(X)'[39;49m has instantiatedness [38;5;171m`occurs.f(free)'.[39;49m
 occurs.m:014: In clause for predicate `p'/0:
 occurs.m:014:   warning: variable [38;5;87m`X'[39;49m [38;5;203moccurs only once[39;49m in this scope.
 occurs.m:014: Warning: the [38;5;87mvariable `X'[39;49m is [38;5;203munified with a term containing[39;49m
@@ -18,9 +18,9 @@ occurs.m:019: Warning: the [38;5;87mvariable `X'[39;49m is [38;5;203munified 
 occurs.m:019:   [38;5;203mitself.[39;49m
 occurs.m:024: In clause for `p3':
 occurs.m:024:   mode error in unification of `X' and `occurs.f(X)'.
-occurs.m:024:   Variable [38;5;87m`X'[39;49m has instantiatedness [38;5;226m`unique(f(free))',[39;49m
+occurs.m:024:   Variable [38;5;87m`X'[39;49m has instantiatedness [38;5;171m`unique(f(free))',[39;49m
 occurs.m:024:   term [38;5;87m`occurs.f(X)'[39;49m has instantiatedness
-occurs.m:024:   [38;5;226m`occurs.f(unique(f(free)))'.[39;49m
+occurs.m:024:   [38;5;171m`occurs.f(unique(f(free)))'.[39;49m
 occurs.m:024: Warning: the [38;5;87mvariable `X'[39;49m is [38;5;203munified with a term containing[39;49m
 occurs.m:024:   [38;5;203mitself.[39;49m
 For more information, recompile with `-E'.

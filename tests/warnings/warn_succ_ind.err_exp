@@ -1,8 +1,8 @@
-warn_succ_ind.m:030: Warning: the C code for predicate `foo'/2 [38;5;226mmay set[39;49m
-warn_succ_ind.m:030:   [38;5;226m`SUCCESS_INDICATOR',[39;49m but [38;5;203mit cannot fail.[39;49m
-warn_succ_ind.m:054: Warning: the C code for predicate `foo2'/2 [38;5;226mmay set[39;49m
-warn_succ_ind.m:054:   [38;5;226m`SUCCESS_INDICATOR',[39;49m but [38;5;203mit cannot fail.[39;49m
-warn_succ_ind.m:078: Warning: the C code for predicate `bar'/2 [38;5;226mdoes not appear[39;49m
-warn_succ_ind.m:078:   [38;5;226mto set `SUCCESS_INDICATOR',[39;49m but [38;5;203mit can fail.[39;49m
-warn_succ_ind.m:099: Warning: the C code for predicate `bar2'/2 [38;5;226mdoes not appear[39;49m
-warn_succ_ind.m:099:   [38;5;226mto set `SUCCESS_INDICATOR',[39;49m but [38;5;203mit can fail.[39;49m
+warn_succ_ind.m:030: Warning: the C code for predicate `foo'/2 [38;5;171mmay set[39;49m
+warn_succ_ind.m:030:   [38;5;171m`SUCCESS_INDICATOR',[39;49m but [38;5;171mit cannot fail.[39;49m
+warn_succ_ind.m:054: Warning: the C code for predicate `foo2'/2 [38;5;171mmay set[39;49m
+warn_succ_ind.m:054:   [38;5;171m`SUCCESS_INDICATOR',[39;49m but [38;5;171mit cannot fail.[39;49m
+warn_succ_ind.m:078: Warning: the C code for predicate `bar'/2 [38;5;171mdoes not appear[39;49m
+warn_succ_ind.m:078:   [38;5;171mto set `SUCCESS_INDICATOR',[39;49m but [38;5;171mit can fail.[39;49m
+warn_succ_ind.m:099: Warning: the C code for predicate `bar2'/2 [38;5;171mdoes not appear[39;49m
+warn_succ_ind.m:099:   [38;5;171mto set `SUCCESS_INDICATOR',[39;49m but [38;5;171mit can fail.[39;49m

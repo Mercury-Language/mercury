@@ -1173,10 +1173,9 @@ parse_type_decl_where_term(IsSolverType, ModuleName, SeqNum, VarSet, Term0,
         ;
             !.MaybeTerm = yes(EndTerm),
             Pieces = [words("Error: attributes are either")] ++
-                color_as_possible_cause([words("badly ordered")]) ++
+                color_as_hint([words("badly ordered")]) ++
                 [words("or")] ++
-                color_as_possible_cause(
-                    [words("contain an unrecognised attribute.")]) ++
+                color_as_hint([words("contain an unrecognised attribute.")]) ++
                 [nl],
             EndSpec = spec($pred, severity_error, phase_t2pt,
                 get_term_context(EndTerm), Pieces),

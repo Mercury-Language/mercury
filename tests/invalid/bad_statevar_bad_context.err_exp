@@ -5,7 +5,7 @@ bad_statevar_bad_context.m:031:   in argument 3 of functor `f/3':
 bad_statevar_bad_context.m:031:   type error in unification of variable `V_13'
 bad_statevar_bad_context.m:031:   and variable `A'.
 bad_statevar_bad_context.m:031:   [38;5;87m`V_13'[39;49m has type
-bad_statevar_bad_context.m:031:     [38;5;226mfloat,[39;49m
+bad_statevar_bad_context.m:031:     [38;5;171mfloat,[39;49m
 bad_statevar_bad_context.m:031:   [38;5;87m`A'[39;49m has type
-bad_statevar_bad_context.m:031:     [38;5;226mint.[39;49m
+bad_statevar_bad_context.m:031:     [38;5;171mint.[39;49m
 For more information, recompile with `-E'.

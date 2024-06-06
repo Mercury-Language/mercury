@@ -528,11 +528,11 @@ maybe_warn_about_may_duplicate_attributes(MayDuplicate, Markers, Context,
             AttrPieces = [quote("may_duplicate"), words("attribute")],
             PragmaPieces = [pragma_decl("no_inline"), words("declaration")],
             Pieces = [words("Error: the")] ++
-                color_as_possible_cause(AttrPieces) ++
+                color_as_inconsistent(AttrPieces) ++
                 [words("on the foreign_proc is")] ++
                 color_as_incorrect([words("not compatible")]) ++
                 [words("with the")] ++
-                color_as_possible_cause(PragmaPieces) ++
+                color_as_inconsistent(PragmaPieces) ++
                 [words("on the predicate."), nl],
             Spec = spec($pred, severity_error,
                 phase_simplify(report_in_any_mode), Context, Pieces),
@@ -546,11 +546,11 @@ maybe_warn_about_may_duplicate_attributes(MayDuplicate, Markers, Context,
             AttrPieces = [quote("may_not_duplicate"), words("attribute")],
             PragmaPieces = [pragma_decl("inline"), words("declaration")],
             Pieces = [words("Error: the")] ++
-                color_as_possible_cause(AttrPieces) ++
+                color_as_inconsistent(AttrPieces) ++
                 [words("on the foreign_proc is")] ++
                 color_as_incorrect([words("not compatible")]) ++
                 [words("with the")] ++
-                color_as_possible_cause(PragmaPieces) ++
+                color_as_inconsistent(PragmaPieces) ++
                 [words("on the predicate."), nl],
             Spec = spec($pred, severity_error,
                 phase_simplify(report_in_any_mode), Context, Pieces),
@@ -572,11 +572,11 @@ maybe_warn_about_may_export_body_attribute(MayExportBody, Markers, Context,
             AttrPieces = [quote("may_export_body"), words("attribute")],
             PragmaPieces = [pragma_decl("inline"), words("declaration")],
             Pieces = [words("Error: the")] ++
-                color_as_possible_cause(AttrPieces) ++
+                color_as_inconsistent(AttrPieces) ++
                 [words("on the foreign_proc is")] ++
                 color_as_incorrect([words("not compatible")]) ++
                 [words("with the")] ++
-                color_as_possible_cause(PragmaPieces) ++
+                color_as_inconsistent(PragmaPieces) ++
                 [words("on the predicate."), nl],
             Spec = spec($pred, severity_error,
                 phase_simplify(report_in_any_mode), Context, Pieces),

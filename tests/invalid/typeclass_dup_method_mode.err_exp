@@ -1,6 +1,6 @@
 typeclass_dup_method_mode.m:010: In mode declarations for typeclass method
 typeclass_dup_method_mode.m:010:   predicate [38;5;87m`typeclass_dup_method_mode.p'/1:[39;49m
 typeclass_dup_method_mode.m:010:   error: duplicate mode declaration.
-typeclass_dup_method_mode.m:010:   Modes [38;5;226m`p(in) is semidet'[39;49m and [38;5;226m`p(in) is det'[39;49m
-typeclass_dup_method_mode.m:010:   are indistinguishable.
+typeclass_dup_method_mode.m:010:   Modes [38;5;171m`p(in) is semidet'[39;49m and [38;5;171m`p(in) is det'[39;49m
+typeclass_dup_method_mode.m:010:   are [38;5;203mindistinguishable.[39;49m
 typeclass_dup_method_mode.m:011:   Here is the conflicting mode declaration.

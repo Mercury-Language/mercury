@@ -266,7 +266,7 @@ report_undefined_mq_id(Info, ErrorContext, Id, IdType, ThisModuleName,
         QualSymNames = list.map(wrap_module_name, QualMismatches),
         QualPieces =
             [words("(Only")] ++
-            color_as_possible_cause([words("fully module qualified names")]) ++
+            color_as_hint([words("fully module qualified names")]) ++
             [words("may refer to the entities defined in"),
             fixed(QualModuleWord)] ++
             piece_list_to_color_pieces(color_subject, "and", [suffix(".")],
@@ -381,7 +381,7 @@ report_ambiguous_match(ErrorContext, Id, IdType,
         color_as_subject([wrap_qual_id(Id), suffix(".")]) ++
         [nl,
         words("The possible matches are in modules")] ++
-        piece_list_to_color_pieces(color_cause, "and", [suffix(".")],
+        piece_list_to_color_pieces(color_hint, "and", [suffix(".")],
             UsableModuleSymNames) ++
         [nl],
     (

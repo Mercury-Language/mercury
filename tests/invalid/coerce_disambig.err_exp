@@ -2,5 +2,5 @@ coerce_disambig.m:037: In clause for `member(out, in)':
 coerce_disambig.m:037:   error: [38;5;203mmode mismatch[39;49m in disjunction.
 coerce_disambig.m:037:   The variable [38;5;87m`X'[39;49m is ground in some branches but not
 coerce_disambig.m:037:   others.
-coerce_disambig.m:028:     In this branch, `X' is [38;5;226mfree.[39;49m
-coerce_disambig.m:032:     In this branch, `X' is [38;5;226mground.[39;49m
+coerce_disambig.m:028:     In this branch, `X' is [38;5;171mfree.[39;49m
+coerce_disambig.m:032:     In this branch, `X' is [38;5;171mground.[39;49m

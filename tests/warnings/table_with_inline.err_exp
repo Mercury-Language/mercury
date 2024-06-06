@@ -1,6 +1,6 @@
 table_with_inline.m:015: Warning: [38;5;87mfunction `table_with_inline.foo'/1[39;49m has both a
-table_with_inline.m:015:   [38;5;226m`:- pragma memo' declaration[39;49m and a
-table_with_inline.m:015:   [38;5;226m`:- pragma inline' declaration.[39;49m
+table_with_inline.m:015:   [38;5;171m`:- pragma memo' declaration[39;49m and a
+table_with_inline.m:015:   [38;5;171m`:- pragma inline' declaration.[39;49m
 table_with_inline.m:015:   The inline pragma [38;5;203mwill be ignored,[39;49m because tabled
 table_with_inline.m:015:   predicates cannot be inlined.
 table_with_inline.m:015:   You can use the `--no-warn-table-with-inline' option

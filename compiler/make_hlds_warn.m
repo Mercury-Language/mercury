@@ -762,10 +762,10 @@ check_fp_body_for_success_indicator(ModuleInfo, Lang, Context, PFSymNameArity,
                 Pieces = [words("Warning: the"), fixed(LangStr),
                     words("code for"),
                     unqual_pf_sym_name_pred_form_arity(PFSymNameArity)] ++
-                    color_as_possible_cause([words("may set"),
+                    color_as_inconsistent([words("may set"),
                         quote(SuccIndStr), suffix(",")]) ++
                     [words("but")] ++
-                    color_as_incorrect([words("it cannot fail.")]) ++ [nl],
+                    color_as_inconsistent([words("it cannot fail.")]) ++ [nl],
                 Spec = conditional_spec($pred, warn_suspicious_foreign_procs,
                     yes, severity_warning, phase_pt2h, [msg(Context, Pieces)]),
                 !:Specs = [Spec | !.Specs]
@@ -783,10 +783,10 @@ check_fp_body_for_success_indicator(ModuleInfo, Lang, Context, PFSymNameArity,
                 Pieces = [words("Warning: the"), fixed(LangStr),
                     words("code for"),
                     unqual_pf_sym_name_pred_form_arity(PFSymNameArity)] ++
-                    color_as_possible_cause([words("does not appear to set"),
+                    color_as_inconsistent([words("does not appear to set"),
                         quote(SuccIndStr), suffix(",")]) ++
                     [words("but")] ++
-                    color_as_incorrect([words("it can fail.")]) ++ [nl],
+                    color_as_inconsistent([words("it can fail.")]) ++ [nl],
                 Spec = conditional_spec($pred, warn_suspicious_foreign_procs,
                     yes, severity_warning, phase_pt2h, [msg(Context, Pieces)]),
                 !:Specs = [Spec | !.Specs]

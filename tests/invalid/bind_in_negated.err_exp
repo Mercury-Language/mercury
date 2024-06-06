@@ -7,5 +7,5 @@ bind_in_negated.m:019:   [38;5;203m`bound(f(free, ground))',[39;49m
 bind_in_negated.m:019:   expected instantiatedness was
 bind_in_negated.m:019:   [38;5;40m`bound(f(ground, ground))'.[39;49m
 bind_in_negated.m:019:   The condition of an if-then-else is allowed to bind
-bind_in_negated.m:019:   only variables which are [38;5;226mlocal to the condition,[39;49m or
-bind_in_negated.m:019:   which occur [38;5;226monly in the condition and the `then' part.[39;49m
+bind_in_negated.m:019:   only variables which are [38;5;40mlocal to the condition,[39;49m or
+bind_in_negated.m:019:   which occur [38;5;40monly in the condition and the `then' part.[39;49m
