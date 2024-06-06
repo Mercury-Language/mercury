@@ -508,7 +508,8 @@
             % Create a blank line.
 
     ;       not_for_general_use_start_color(color_name)
-    ;       not_for_general_use_end_color
+    ;       not_for_general_use_end_color(color_name)
+            % Start or end the scope of a color.
 
     ;       invis_order_default_end(int, string).
             % See the documentation of invis_order_default_start above.
@@ -1166,7 +1167,7 @@ color_pieces(Color, Pieces0) = Pieces :-
             HeadNlPieces ++
             [not_for_general_use_start_color(Color)] ++
             MainPieces ++
-            [not_for_general_use_end_color] ++
+            [not_for_general_use_end_color(Color)] ++
             TailNlPieces
     ;
         MainPieces = [],

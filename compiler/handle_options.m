@@ -834,7 +834,11 @@ check_color_option_values(!OptionTable, !Specs, !IO) :-
         EnvVarSource = [words("the value of the"),
             quote("MERCURY_COLOR_SCHEME"), words("environment variable")],
         record_color_scheme_in_options(EnvVarSource, EnvVarColorScheme,
-            EnvVarColorSchemeSpecs, !OptionTable),
+            EnvVarColorSchemeSpecs, _EnvVarInformSpecs, !OptionTable),
+        % Some parts of the compiler interpret the very existence of
+        % _EnvVarInformSpecs in !:Specs as a indication of error. We therefore
+        % ignore these messages until that is fixed.
+        % !:Specs = EnvVarInformSpecs ++ !.Specs,
         (
             EnvVarColorSchemeSpecs = [],
             EnvVarColorDone = yes
@@ -869,8 +873,10 @@ check_color_option_values(!OptionTable, !Specs, !IO) :-
             OptionSource = [words("the value of the"),
                 quote("--color-scheme"), words("option")],
             record_color_scheme_in_options(OptionSource, OptionColorScheme,
-                ColorSchemeSpecs, !OptionTable),
+                ColorSchemeSpecs, _OptionInformSpecs, !OptionTable),
             !:Specs = ColorSchemeSpecs ++ !.Specs,
+            % See above.
+            % !:Specs = OptionInformSpecs ++ !.Specs,
             ColorSchemeDone = yes
         ;
             MaybeOptionColorScheme = no,

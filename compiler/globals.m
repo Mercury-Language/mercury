@@ -336,14 +336,18 @@
 
 %---------------------------------------------------------------------------%
 
-    % record_color_scheme_in_options(Source, SchemeName, Specs, !OptionTable):
+    % record_color_scheme_in_options(Source, SchemeName,
+    %   ErrorSpecs, InformSpecs, !OptionTable):
     %
     % Given a name we got from Source, if it is the name of a recognized
     % color scheme, then set update !OptionTable to record the colors
     % it selects in a way that allows convert_color_spec_options to retrieve
-    % those colors, and set Specs to the empty list. If it is not the name
-    % of a recognized color scheme, then return a diagnostic in Specs,
-    % and leave !OptionTable unchanged.
+    % those colors, and set ErrorSpecs to the empty list. If it is not the name
+    % of a recognized color scheme, then return a diagnostic in ErrorSpecs,
+    % and leave !OptionTable unchanged. If it contains a recognized color
+    % scheme but this leaves some color roles unassigned, then return a
+    % report about this in InformSpecs; otheriwse, set InformSpecs to the
+    % empty list.
     %
     % This predicate is intended to be used by handle_options.m during
     % the creation of the first globals structure. Its result has to be
@@ -351,7 +355,7 @@
     % explained by the comment below on convert_color_spec_options.
     %
 :- pred record_color_scheme_in_options(list(format_piece)::in,
-    string::in, list(error_spec)::out,
+    string::in, list(error_spec)::out, list(error_spec)::out,
     option_table::in, option_table::out) is det.
 
 %---------------------------------------------------------------------------%
@@ -361,10 +365,10 @@
 
 :- type color_specs
     --->    color_specs(
-                color_spec_subject          ::  color_spec,
-                color_spec_correct          ::  color_spec,
-                color_spec_incorrect        ::  color_spec,
-                color_spec_possible_cause   ::  color_spec
+                color_spec_subject          ::  maybe(color_spec),
+                color_spec_correct          ::  maybe(color_spec),
+                color_spec_incorrect        ::  maybe(color_spec),
+                color_spec_possible_cause   ::  maybe(color_spec)
             ).
 
     % This function is intended to be used by write_error_spec.m
@@ -859,7 +863,8 @@ convert_line_number_range(RangeStr, line_number_range(MaybeMin, MaybeMax)) :-
 
 %---------------------------------------------------------------------------%
 
-record_color_scheme_in_options(Source, SchemeName, Specs, !OptionTable) :-
+record_color_scheme_in_options(Source, SchemeName, ErrorSpecs, InformSpecs,
+        !OptionTable) :-
     % Any error message we generate cannot use color, because the existence
     % of such errors would mean that we cannot set up the colors we would
     % want to use for that. :-(
@@ -869,7 +874,8 @@ record_color_scheme_in_options(Source, SchemeName, Specs, !OptionTable) :-
         )
     then
         map.set(use_color_diagnostics, bool(no), !OptionTable),
-        Specs = []
+        ErrorSpecs = [],
+        InformSpecs = []
     else if
         % XXX COLOR While we have agreed on the names of the standard schemes,
         % the colors in those schemes are just placeholders for now.
@@ -911,7 +917,8 @@ record_color_scheme_in_options(Source, SchemeName, Specs, !OptionTable) :-
         map.set(set_color_correct, string(Correct), !OptionTable),
         map.set(set_color_incorrect, string(Incorrect), !OptionTable),
         map.set(set_color_possible_cause, string(Cause), !OptionTable),
-        Specs = []
+        ErrorSpecs = [],
+        InformSpecs = []
     else if
         string.remove_prefix("specified@", SchemeName, SettingsStr)
     then
@@ -923,65 +930,73 @@ record_color_scheme_in_options(Source, SchemeName, Specs, !OptionTable) :-
             SettingSpecs = [],
             MaybeColorStrs = maybe_color_strings(MaybeSubject, MaybeCorrect,
                 MaybeIncorrect, MaybeCause),
-            ( if
-                MaybeSubject = yes(Subject),
-                MaybeCorrect = yes(Correct),
-                MaybeIncorrect = yes(Incorrect),
-                MaybeCause = yes(Cause)
-            then
-                map.set(set_color_subject, string(Subject), !OptionTable),
-                map.set(set_color_correct, string(Correct), !OptionTable),
-                map.set(set_color_incorrect, string(Incorrect), !OptionTable),
-                map.set(set_color_possible_cause, string(Cause), !OptionTable),
-                Specs = []
-            else
-                (
-                    MaybeSubject = no,
-                    MissingRoles1 = [words("subject")]
-                ;
-                    MaybeSubject = yes(_),
-                    MissingRoles1 = []
-                ),
-                (
-                    MaybeCorrect = no,
-                    MissingRoles2 = MissingRoles1 ++ [words("correct")]
-                ;
-                    MaybeCorrect = yes(_),
-                    MissingRoles2 = MissingRoles1
-                ),
-                (
-                    MaybeIncorrect = no,
-                    MissingRoles3 = MissingRoles2 ++ [words("incorrect")]
-                ;
-                    MaybeIncorrect = yes(_),
-                    MissingRoles3 = MissingRoles2
-                ),
-                (
-                    MaybeIncorrect = no,
-                    MissingRoles = MissingRoles3 ++ [words("possible cause")]
-                ;
-                    MaybeIncorrect = yes(_),
-                    MissingRoles = MissingRoles3
-                ),
+            record_maybe_color(set_color_subject, MaybeSubject,
+                !OptionTable),
+            record_maybe_color(set_color_correct, MaybeCorrect,
+                !OptionTable),
+            record_maybe_color(set_color_incorrect, MaybeIncorrect,
+                !OptionTable),
+            record_maybe_color(set_color_possible_cause, MaybeCause,
+                !OptionTable),
+            (
+                MaybeSubject = no,
+                MissingRoles1 = [words("subject")]
+            ;
+                MaybeSubject = yes(_),
+                MissingRoles1 = []
+            ),
+            (
+                MaybeCorrect = no,
+                MissingRoles2 = MissingRoles1 ++ [words("correct")]
+            ;
+                MaybeCorrect = yes(_),
+                MissingRoles2 = MissingRoles1
+            ),
+            (
+                MaybeIncorrect = no,
+                MissingRoles3 = MissingRoles2 ++ [words("incorrect")]
+            ;
+                MaybeIncorrect = yes(_),
+                MissingRoles3 = MissingRoles2
+            ),
+            (
+                MaybeIncorrect = no,
+                MissingRoles = MissingRoles3 ++ [words("possible cause")]
+            ;
+                MaybeIncorrect = yes(_),
+                MissingRoles = MissingRoles3
+            ),
+            (
+                MissingRoles = [],
+                ErrorSpecs = [],
+                InformSpecs = []
+            ;
+                MissingRoles = [_ | _],
                 ColorColors = choose_number(MissingRoles, "color", "colors"),
                 RoleRoles = choose_number(MissingRoles, "role", "roles"),
-                Pieces = [words("Error: the value of")] ++ Source ++
+                Pieces = [words("The value of")] ++ Source ++
                     [words("does not specify the"), words(ColorColors),
                     words("to use for the"), words(RoleRoles), words("of")] ++
                     piece_list_to_pieces("and", MissingRoles) ++
                     [suffix("."), nl],
-                Specs = [no_ctxt_spec($pred, severity_error, phase_options,
-                    Pieces)]
+                Msg = no_ctxt_msg(Pieces),
+                InformSpecs = [conditional_spec($pred,
+                    inform_incomplete_color_scheme, yes,
+                    severity_informational, phase_options, [Msg])],
+                ErrorSpecs = []
             )
         ;
             SettingSpecs = [_ | _],
-            Specs = SettingSpecs
+            ErrorSpecs = SettingSpecs,
+            InformSpecs = []
         )
     else
         Pieces = [words("Error in the value of")] ++ Source ++
             [suffix(":"), quote(SchemeName), words("is not the name"),
             words("of a recognized color scheme."), nl],
-        Specs = [no_ctxt_spec($pred, severity_error, phase_options, Pieces)]
+        ErrorSpecs =
+            [no_ctxt_spec($pred, severity_error, phase_options, Pieces)],
+        InformSpecs = []
     ).
 
 :- type maybe_color_strings
@@ -1054,6 +1069,18 @@ parse_color_specifications(Source, [Setting | Settings],
     parse_color_specifications(Source, Settings,
         !MaybeColorStrs, !Specs).
 
+:- pred record_maybe_color(option::in, maybe(string)::in,
+    option_table::in, option_table::out) is det.
+
+record_maybe_color(Option, MaybeColorStr, !OptionTable) :-
+    (
+        MaybeColorStr = no,
+        ColorStr = ""
+    ;
+        MaybeColorStr = yes(ColorStr)
+    ),
+    map.set(Option, string(ColorStr), !OptionTable).
+
 %---------------------%
 
 convert_color_spec_options(OptionTable) = MaybeColorSpecs :-
@@ -1080,33 +1107,9 @@ convert_color_spec_options(OptionTable) = MaybeColorSpecs :-
         MaybeMaybeIncorrect = ok1(MaybeIncorrect),
         MaybeMaybeCause = ok1(MaybeCause)
     then
-        % XXX COLOR These defaults are placeholders; the real ones are TBD.
-        (
-            MaybeSubject = yes(Subject)
-        ;
-            MaybeSubject = no,
-            Subject = color_8bit(87u8)          % This is cyan (blue).
-        ),
-        (
-            MaybeCorrect = yes(Correct)
-        ;
-            MaybeCorrect = no,
-            Correct = color_8bit(40u8)          % This is green.
-        ),
-        (
-            MaybeIncorrect = yes(Incorrect)
-        ;
-            MaybeIncorrect = no,
-            Incorrect = color_8bit(203u8)       % This is red.
-        ),
-        (
-            MaybeCause = yes(Cause)
-        ;
-            MaybeCause = no,
-            Cause = color_8bit(226u8)           % This is yellow.
-        ),
-        Colors = color_specs(Subject, Correct, Incorrect, Cause),
-        MaybeColorSpecs = ok1(Colors)
+        ColorSpecs = color_specs(MaybeSubject, MaybeCorrect, MaybeIncorrect,
+            MaybeCause),
+        MaybeColorSpecs = ok1(ColorSpecs)
     else
         Specs =
             get_any_errors1(MaybeMaybeSubject) ++

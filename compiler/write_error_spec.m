@@ -901,38 +901,51 @@ convert_pieces_to_words_acc(ColorDb, FirstInMsg, !.Lower, [Piece | Pieces],
         add_word_to_cord(word_nl(Newline), !Lower, !WordsCord)
     ;
         Piece = not_for_general_use_start_color(ColorName),
+        lookup_color_in_db(ColorDb, ColorName, MaybeColorSpec),
         (
-            ColorDb = no_color_db
+            MaybeColorSpec = no
         ;
-            ColorDb = color_db(ColorSpecs),
-            (
-                ColorName = color_subject,
-                Color = ColorSpecs ^ color_spec_subject
-            ;
-                ColorName = color_correct,
-                Color = ColorSpecs ^ color_spec_correct
-            ;
-                ColorName = color_incorrect,
-                Color = ColorSpecs ^ color_spec_incorrect
-            ;
-                ColorName = color_cause,
-                Color = ColorSpecs ^ color_spec_possible_cause
-            ),
-            add_word_to_cord(word_color(color_start(Color)),
+            MaybeColorSpec = yes(ColorSpec),
+            add_word_to_cord(word_color(color_start(ColorSpec)),
                 !Lower, !WordsCord)
         )
     ;
-        Piece = not_for_general_use_end_color,
+        Piece = not_for_general_use_end_color(ColorName),
+        lookup_color_in_db(ColorDb, ColorName, MaybeColorSpec),
         (
-            ColorDb = no_color_db
+            MaybeColorSpec = no
         ;
-            ColorDb = color_db(_),
+            MaybeColorSpec = yes(_ColorSpec),
             add_word_to_cord(word_color(color_end), !Lower, !WordsCord)
         )
     ),
     update_first_in_msg_after_piece(Piece, FirstInMsg, TailFirstInMsg),
     convert_pieces_to_words_acc(ColorDb, TailFirstInMsg, !.Lower, Pieces,
         !WordsCord).
+
+:- pred lookup_color_in_db(color_db::in, color_name::in,
+    maybe(color_spec)::out) is det.
+
+lookup_color_in_db(ColorDb, ColorName, MaybeColorSpec) :-
+    (
+        ColorDb = no_color_db,
+        MaybeColorSpec = no
+    ;
+        ColorDb = color_db(ColorSpecs),
+        (
+            ColorName = color_subject,
+            MaybeColorSpec = ColorSpecs ^ color_spec_subject
+        ;
+            ColorName = color_correct,
+            MaybeColorSpec = ColorSpecs ^ color_spec_correct
+        ;
+            ColorName = color_incorrect,
+            MaybeColorSpec = ColorSpecs ^ color_spec_incorrect
+        ;
+            ColorName = color_cause,
+            MaybeColorSpec = ColorSpecs ^ color_spec_possible_cause
+        )
+    ).
 
 :- pred add_word_to_cord(word::in, maybe_lower_next::in, maybe_lower_next::out,
     cord(word)::in, cord(word)::out) is det.
@@ -2232,7 +2245,7 @@ update_first_in_msg_after_piece(Piece, FirstInMsg, TailFirstInMsg) :-
         ; Piece = nl
         ; Piece = nl_indent_delta(_)
         ; Piece = not_for_general_use_start_color(_)
-        ; Piece = not_for_general_use_end_color
+        ; Piece = not_for_general_use_end_color(_)
         ; Piece = invis_order_default_start(_, _)
         ; Piece = invis_order_default_end(_, _)
         ),

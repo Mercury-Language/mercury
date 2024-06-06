@@ -245,6 +245,7 @@
     ;       warn_potentially_ambiguous_pragma
     ;       warn_ambiguous_pragma
     ;       warn_stdlib_shadowing
+    ;       inform_incomplete_color_scheme
     ;       inform_inferred
     ;       inform_inferred_types
     ;       inform_inferred_modes
@@ -1339,6 +1340,7 @@ optdef(oc_warn, warn_suspected_occurs_check_failure,    bool(yes)).
 optdef(oc_warn, warn_potentially_ambiguous_pragma,      bool(no)).
 optdef(oc_warn, warn_ambiguous_pragma,                  bool(yes)).
 optdef(oc_warn, warn_stdlib_shadowing,                  bool(yes)).
+optdef(oc_warn, inform_incomplete_color_scheme,         bool(no)).
 optdef(oc_warn, inform_inferred,                        bool_special).
 optdef(oc_warn, inform_inferred_types,                  bool(yes)).
 optdef(oc_warn, inform_inferred_modes,                  bool(yes)).
@@ -2311,6 +2313,7 @@ long_table("warn-potentially-ambiguous-pragmas",
 long_table("warn-ambiguous-pragma",    warn_ambiguous_pragma).
 long_table("warn-ambiguous-pragmas",   warn_ambiguous_pragma).
 long_table("warn-stdlib-shadowing",    warn_stdlib_shadowing).
+long_table("inform-incomplete-color-scheme", inform_incomplete_color_scheme).
 long_table("inform-inferred",          inform_inferred).
 long_table("inform-inferred-types",    inform_inferred_types).
 long_table("inform-inferred-modes",    inform_inferred_modes).
@@ -4592,6 +4595,10 @@ options_help_warning(Stream, !IO) :-
         "\tDo not generate warnings for module names that either duplicate",
         "\tthe name of a module in the Mercury standard library, or contain",
         "\ta subsequence of name components that do so.",
+%       "--inform-incomplete-color-scheme",
+%       "\tReport if the argument if either the value of the",
+%       "\t--color-scheme option, or the value of MERCURY_COLOR_SCHEME",
+%       "\tenvironment variable, does not specify a color for some role.",
         "--no-inform-inferred",
         "\tDo not generate messages about inferred types or modes.",
         "--no-inform-inferred-types",
