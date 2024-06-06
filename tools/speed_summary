@@ -86,6 +86,10 @@ END {
         }
 
         for (ignore = 1; ignore < 3; ignore++) {
+            if (ignore > 1) {
+                printf "\n";
+            }
+
             for (ordinal = 0; ordinal < cur_variant; ordinal++) {
                 variant = variant_order[ordinal];
 
