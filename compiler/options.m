@@ -274,6 +274,7 @@
     ;       enable_color_diagnostics_is_set
     ;       enable_color_diagnostics_is_set_to
     ;       use_color_diagnostics
+    ;       color_scheme
     ;       set_color_subject
     ;       set_color_correct
     ;       set_color_incorrect
@@ -1139,6 +1140,10 @@
     ;       cross_compiling
     ;       local_module_id
     ;       analysis_file_cache_dir
+    ;       default_globals
+            % If set to "yes", default_globals tells the main body of
+            % handle_options.m that it is constructing the *default* globals,
+            % after the initial construction of the *intended* globals failed.
     ;       compiler_sufficiently_recent
             % This option is used to test that the compiler is sufficiently
             % recent when no other test can easily be constructed in
@@ -1364,6 +1369,7 @@ optdef(oc_verbosity, enable_color_diagnostics,          bool_special).
 optdef(oc_verbosity, enable_color_diagnostics_is_set,   bool(no)).
 optdef(oc_verbosity, enable_color_diagnostics_is_set_to, bool(no)).
 optdef(oc_verbosity, use_color_diagnostics,             bool(no)).
+optdef(oc_verbosity, color_scheme,                      maybe_string(no)).
 optdef(oc_verbosity, set_color_subject,                 string("")).
 optdef(oc_verbosity, set_color_correct,                 string("")).
 optdef(oc_verbosity, set_color_incorrect,               string("")).
@@ -2117,6 +2123,7 @@ optdef(oc_misc, target_arch,                            string("")).
 optdef(oc_misc, cross_compiling,                        bool(no)).
 optdef(oc_misc, local_module_id,                        accumulating([])).
 optdef(oc_misc, analysis_file_cache_dir,                string("")).
+optdef(oc_misc, default_globals,                        bool(no)).
 optdef(oc_misc, compiler_sufficiently_recent,           bool(no)).
 optdef(oc_misc, experiment,                             string("")).
 optdef(oc_misc, experiment1,                            bool(no)).
@@ -2339,14 +2346,15 @@ long_table("config-default-colour-diagnostics",
 long_table("enable-color-diagnostics", enable_color_diagnostics).
 long_table("enable-colour-diagnostics", enable_color_diagnostics).
 % use_color_diagnostics is an internal-use-only option.
-long_table("set-color-subject",        set_color_subject).
-long_table("set-colour-subject",       set_color_subject).
-long_table("set-color-correct",        set_color_correct).
-long_table("set-colour-correct",       set_color_correct).
-long_table("set-color-incorrect",      set_color_incorrect).
-long_table("set-colour-incorrect",     set_color_incorrect).
-long_table("set-color-possible-cause", set_color_possible_cause).
-long_table("set-colour-possible-cause", set_color_possible_cause).
+long_table("color-scheme",             color_scheme).
+% long_table("set-color-subject",        set_color_subject).
+% long_table("set-colour-subject",       set_color_subject).
+% long_table("set-color-correct",        set_color_correct).
+% long_table("set-colour-correct",       set_color_correct).
+% long_table("set-color-incorrect",      set_color_incorrect).
+% long_table("set-colour-incorrect",     set_color_incorrect).
+% long_table("set-color-possible-cause", set_color_possible_cause).
+% long_table("set-colour-possible-cause", set_color_possible_cause).
 long_table("debug-types",              debug_types).
 long_table("debug-types-pred-name",    debug_types_pred_name).
 long_table("debug-modes",              debug_modes).
@@ -4675,6 +4683,18 @@ options_help_verbosity(Stream, !IO) :-
 % useful.
 %       "--enable-color-diagnostics",
 %       "\tEnable the use of colors in diagnostic messages.",
+%       "--color-scheme <ColorScheme>",
+%       "\tUse the given color scheme. This may `none', disabling the",
+%       "\tuse of color, it may be one of `dark16', `dark256', `light16'",
+%       "\tor `light256', selecting the named builtin color scheme, or",
+%       "\ta string of the form `specified@subject=<Color>:correct=<Color>:",
+%       "\tincorrect=<Color>:possible_cause=<Color>', where each <Color>",
+%       "\tspecifies the color to use for the parts of diagnostics",
+%       "\tthat play the given role".
+%       XXX If we don't document the next four options, then the option above
+%       should get the paragraphs below defining the ways that a color
+%       can be specified.
+%
 %       "--set-color-correct <Color>",
 %       "--set-color-incorrect <Color>",
 %       "--set-color-subject <Color>",

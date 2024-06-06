@@ -92,8 +92,10 @@
 
 %---------------------------------------------------------------------------%
 
-generate_default_globals(ProgressStream, DefaultOptionTable,
+generate_default_globals(ProgressStream, DefaultOptionTable0,
         DefaultGlobals, !IO) :-
+    map.set(default_globals, bool(yes),
+        DefaultOptionTable0, DefaultOptionTable),
     handle_given_options(ProgressStream, DefaultOptionTable, [], _, _, _,
         DefaultGlobals, !IO).
 
@@ -210,8 +212,25 @@ convert_option_table_result_to_globals(ProgressStream, DefaultOptionTable,
                 quote_list_to_pieces("and", OpModeStrs) ++ [suffix("."), nl],
             add_error(phase_options, OpModePieces, !Specs)
         ),
-        (
-            !.Specs = [],
+        raw_lookup_bool_option(OptionTable, default_globals, DefaultGlobals),
+        % If we are generating the default globals, then executing
+        % the else-part would result in infinite recursion, which
+        % may or may not cause unbounded stack growth that can cause
+        % the machine to thrash itself to death. Ask me how I know :-(
+        %
+        % This problem will arise if even check_option_values returns
+        % errors *even for the default option table*. I (zs) cannot remember
+        % this happening with our usual everything-turned-off-by-default
+        % option table, but check_option_values now also checks the values
+        % of environment variables, and if they contain some errors, then
+        % retrying with the empty list of command-line arguments won't cure
+        % those errors. (We cannot unset the environment variable causing
+        % the problem, because that won't work on Java.)
+        ( if
+            ( !.Specs = []
+            ; DefaultGlobals = yes
+            )
+        then
             convert_options_to_globals(ProgressStream,
                 DefaultOptionTable, OptionTable, OptTuple, OpMode, Target,
                 WordSize, GC_Method, TermNorm, Term2Norm,
@@ -220,8 +239,7 @@ convert_option_table_result_to_globals(ProgressStream, DefaultOptionTable,
                 ReuseStrategy, MaybeFeedbackInfo,
                 HostEnvType, SystemEnvType, TargetEnvType,
                 LimitErrorContextsMap, LinkExtMap, !Specs, Globals, !IO)
-        ;
-            !.Specs = [_ | _],
+        else
             generate_default_globals(ProgressStream, DefaultOptionTable,
                 Globals, !IO)
         )
@@ -667,14 +685,7 @@ check_option_values(!OptionTable, Target, WordSize, GC_Method,
     ),
 
     check_linked_target_extensions(!.OptionTable, LinkExtMap, !Specs),
-
-    MaybeColorSpecs = convert_color_spec_options(!.OptionTable),
-    (
-        MaybeColorSpecs = ok1(_)
-    ;
-        MaybeColorSpecs = error1(ColorSpecs),
-        !:Specs = ColorSpecs ++ !.Specs
-    ).
+    check_color_option_values(!OptionTable, !Specs, !IO).
 
 :- pred check_linked_target_extensions(option_table::in,
     linked_target_ext_info_map::out,
@@ -803,6 +814,83 @@ get_all_obj_extensions(Ext, AllExtA, MaybeAllExtB) :-
     else
         MaybeAllExtB = no
     ).
+
+    % Check whether the color scheme chosen by the user contains
+    % any errors, and records the colors in the option table
+    % if there are none.
+    %
+    % Note that handle_colors, which is invoked only *after* our caller
+    % check_option_values has finished, will handle the separate question
+    % of whether the use of colors is *enabled*.
+    %
+:- pred check_color_option_values(option_table::in, option_table::out,
+    list(error_spec)::in, list(error_spec)::out, io::di, io::uo) is det.
+
+check_color_option_values(!OptionTable, !Specs, !IO) :-
+    io.environment.get_environment_var("MERCURY_COLOR_SCHEME",
+        MaybeColorEnvVar, !IO),
+    (
+        MaybeColorEnvVar = yes(EnvVarColorScheme),
+        EnvVarSource = [words("the value of the"),
+            quote("MERCURY_COLOR_SCHEME"), words("environment variable")],
+        record_color_scheme_in_options(EnvVarSource, EnvVarColorScheme,
+            EnvVarColorSchemeSpecs, !OptionTable),
+        (
+            EnvVarColorSchemeSpecs = [],
+            EnvVarColorDone = yes
+        ;
+            EnvVarColorSchemeSpecs = [_ | _],
+            raw_lookup_bool_option(!.OptionTable, default_globals,
+                DefaultGlobals),
+            (
+                DefaultGlobals = no,
+                !:Specs = EnvVarColorSchemeSpecs ++ !.Specs,
+                EnvVarColorDone = no
+            ;
+                DefaultGlobals = yes,
+                % Do NOT add EnvVarColorSchemeSpecs to !Specs,
+                % and do not try to set up colors any other way.
+                EnvVarColorDone = yes
+            )
+        )
+    ;
+        MaybeColorEnvVar = no,
+        EnvVarColorDone = no
+    ),
+    (
+        EnvVarColorDone = yes,
+        ColorSchemeDone = yes
+    ;
+        EnvVarColorDone = no,
+        raw_lookup_maybe_string_option(!.OptionTable, color_scheme,
+            MaybeOptionColorScheme),
+        (
+            MaybeOptionColorScheme = yes(OptionColorScheme),
+            OptionSource = [words("the value of the"),
+                quote("--color-scheme"), words("option")],
+            record_color_scheme_in_options(OptionSource, OptionColorScheme,
+                ColorSchemeSpecs, !OptionTable),
+            !:Specs = ColorSchemeSpecs ++ !.Specs,
+            ColorSchemeDone = yes
+        ;
+            MaybeOptionColorScheme = no,
+            ColorSchemeDone = no
+        )
+    ),
+    (
+        ColorSchemeDone = yes
+    ;
+        ColorSchemeDone = no,
+        MaybeColorSpecs = convert_color_spec_options(!.OptionTable),
+        (
+            MaybeColorSpecs = ok1(_)
+        ;
+            MaybeColorSpecs = error1(ColorSpecs),
+            !:Specs = ColorSpecs ++ !.Specs
+        )
+    ).
+
+%---------------------------------------------------------------------------%
 
     % NOTE: We take two termination_norm arguments because each
     % termination analyser (the old and the new) has its own norm setting.
@@ -3524,6 +3612,18 @@ raw_lookup_string_option(OptionTable, Option, StringValue) :-
     else
         OptionStr = string.string(Option),
         unexpected($pred, OptionStr ++ " is not a string")
+    ).
+
+:- pred raw_lookup_maybe_string_option(option_table::in, option::in,
+    maybe(string)::out) is det.
+
+raw_lookup_maybe_string_option(OptionTable, Option, MaybeStringValue) :-
+    map.lookup(OptionTable, Option, OptionValue),
+    ( if OptionValue = maybe_string(MaybeStringValuePrime) then
+        MaybeStringValue = MaybeStringValuePrime
+    else
+        OptionStr = string.string(Option),
+        unexpected($pred, OptionStr ++ " is not a maybe_string")
     ).
 
 :- pred raw_lookup_accumulating_option(option_table::in, option::in,

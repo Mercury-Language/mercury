@@ -2129,6 +2129,16 @@ then
         test_grade_opt=""
     fi
 
+    # If you try to set all these at once, you get a too-long line.
+    SUBJECT="subject=87"
+    CORRECT="correct=40"
+    INCORRECT="incorrect=203"
+    CAUSE="possible_cause=226"
+    MERCURY_COLOR_SCHEME="specified@${SUBJECT}:${CORRECT}:${INCORRECT}:${CAUSE}"
+    export MERCURY_COLOR_SCHEME
+    echo "MERCURY_COLOR_SCHEME=${MERCURY_COLOR_SCHEME}"
+    unset NO_COLOR
+
     test_status=0
 
     if test "${test_status}" = 0

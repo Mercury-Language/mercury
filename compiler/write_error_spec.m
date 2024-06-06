@@ -904,19 +904,19 @@ convert_pieces_to_words_acc(ColorDb, FirstInMsg, !.Lower, [Piece | Pieces],
         (
             ColorDb = no_color_db
         ;
-            ColorDb = color_db(ColorNameMap),
+            ColorDb = color_db(ColorSpecs),
             (
                 ColorName = color_subject,
-                Color = ColorNameMap ^ cnm_subject
+                Color = ColorSpecs ^ color_spec_subject
             ;
                 ColorName = color_correct,
-                Color = ColorNameMap ^ cnm_correct
+                Color = ColorSpecs ^ color_spec_correct
             ;
                 ColorName = color_incorrect,
-                Color = ColorNameMap ^ cnm_incorrect
+                Color = ColorSpecs ^ color_spec_incorrect
             ;
                 ColorName = color_cause,
-                Color = ColorNameMap ^ cnm_cause
+                Color = ColorSpecs ^ color_spec_possible_cause
             ),
             add_word_to_cord(word_color(color_start(Color)),
                 !Lower, !WordsCord)
@@ -926,7 +926,7 @@ convert_pieces_to_words_acc(ColorDb, FirstInMsg, !.Lower, [Piece | Pieces],
         (
             ColorDb = no_color_db
         ;
-            ColorDb = color_db(_ColorNameMap),
+            ColorDb = color_db(_),
             add_word_to_cord(word_color(color_end), !Lower, !WordsCord)
         )
     ),
@@ -2035,16 +2035,8 @@ find_matching_rp([HeadLine0 | TailLines0], !MidLinesCord, !MidLinesLen,
 :- type color_db
     --->    no_color_db
             % Never use any color, and ignore all color changes.
-    ;       color_db(color_name_map).
-            % Do use color.
-
-:- type color_name_map
-    --->    color_name_map(
-                cnm_subject     :: color_spec,
-                cnm_correct     :: color_spec,
-                cnm_incorrect   :: color_spec,
-                cnm_cause       :: color_spec
-            ).
+    ;       color_db(color_specs).
+            % Do use color, using the given color specifications.
 
 :- func init_color_db(option_table) = color_db.
 
@@ -2064,34 +2056,7 @@ init_color_db(OptionTable) = ColorDb :-
             ColorDb = no_color_db
         ;
             MaybeColorSpecs = ok1(ColorSpecs),
-            ColorSpecs = color_specs(MaybeSubject, MaybeCorrect,
-                MaybeIncorrect, MaybeCause),
-            (
-                MaybeSubject = yes(Subject)
-            ;
-                MaybeSubject = no,
-                Subject = color_8bit(87u8)          % This is cyan (blue).
-            ),
-            (
-                MaybeCorrect = yes(Correct)
-            ;
-                MaybeCorrect = no,
-                Correct = color_8bit(40u8)          % This is green.
-            ),
-            (
-                MaybeIncorrect = yes(Incorrect)
-            ;
-                MaybeIncorrect = no,
-                Incorrect = color_8bit(203u8)       % This is red.
-            ),
-            (
-                MaybeCause = yes(Cause)
-            ;
-                MaybeCause = no,
-                Cause = color_8bit(226u8)           % This is yellow.
-            ),
-            ColorNameMap = color_name_map(Subject, Correct, Incorrect, Cause),
-            ColorDb = color_db(ColorNameMap)
+            ColorDb = color_db(ColorSpecs)
         )
     ).
 

@@ -336,20 +336,54 @@
 
 %---------------------------------------------------------------------------%
 
+    % record_color_scheme_in_options(Source, SchemeName, Specs, !OptionTable):
+    %
+    % Given a name we got from Source, if it is the name of a recognized
+    % color scheme, then set update !OptionTable to record the colors
+    % it selects in a way that allows convert_color_spec_options to retrieve
+    % those colors, and set Specs to the empty list. If it is not the name
+    % of a recognized color scheme, then return a diagnostic in Specs,
+    % and leave !OptionTable unchanged.
+    %
+    % This predicate is intended to be used by handle_options.m during
+    % the creation of the first globals structure. Its result has to be
+    % recorded in an option_table, not a globals structure, for the reason
+    % explained by the comment below on convert_color_spec_options.
+    %
+:- pred record_color_scheme_in_options(list(format_piece)::in,
+    string::in, list(error_spec)::out,
+    option_table::in, option_table::out) is det.
+
+%---------------------------------------------------------------------------%
+
 :- type color_spec
     --->    color_8bit(uint8).
 
 :- type color_specs
     --->    color_specs(
-                % If any of these maybes is set to "no", that means that
-                % diagnostics should use the default color for that role.
-                % (Provided color is enabled for diagnostics at all.)
-                color_spec_subject          ::  maybe(color_spec),
-                color_spec_correct          ::  maybe(color_spec),
-                color_spec_incorrect        ::  maybe(color_spec),
-                color_spec_possible_cause   ::  maybe(color_spec)
+                color_spec_subject          ::  color_spec,
+                color_spec_correct          ::  color_spec,
+                color_spec_incorrect        ::  color_spec,
+                color_spec_possible_cause   ::  color_spec
             ).
 
+    % This function is intended to be used by write_error_spec.m
+    % to find out the colors it should use in the diagnostics it writes out.
+    % Its jobs is to convert the values of the options which record
+    % the color shades write_error_spec.m should use for each color name
+    % (color_subject, color_correct, color_incorrect, and color_cause).
+    % These colors could have been chosen by the user, in which case
+    % record_color_scheme_in_options will have checked their well-formedness,
+    % or they could be the defaults, which we use in the absence of a choice
+    % by the user.
+    %
+    % This function takes as input an option_table, because it cannot take
+    % a full globals structure. The reason for that is that the process
+    % of creating the very first globals structure itself may detect errors,
+    % and we want to use the facilities of write_error_spec.m to print
+    % the diagnostics we generate for those errors. We don't have a globals
+    % available then, but we do have an option_table.
+    %
 :- func convert_color_spec_options(option_table) = maybe1(color_specs).
 
 %---------------------------------------------------------------------------%
@@ -825,6 +859,203 @@ convert_line_number_range(RangeStr, line_number_range(MaybeMin, MaybeMax)) :-
 
 %---------------------------------------------------------------------------%
 
+record_color_scheme_in_options(Source, SchemeName, Specs, !OptionTable) :-
+    % Any error message we generate cannot use color, because the existence
+    % of such errors would mean that we cannot set up the colors we would
+    % want to use for that. :-(
+    ( if
+        ( SchemeName = "none"
+        ; SchemeName = ""
+        )
+    then
+        map.set(use_color_diagnostics, bool(no), !OptionTable),
+        Specs = []
+    else if
+        % XXX COLOR While we have agreed on the names of the standard schemes,
+        % the colors in those schemes are just placeholders for now.
+        (
+            ( SchemeName = "dark16"
+            ; SchemeName = "darkmode16"
+            ),
+            Subject =   "14",   % bright cyan
+            Correct =   "10",   % bright green
+            Incorrect = "9",    % bright red
+            Cause =     "11"    % bright yellow
+        ;
+            ( SchemeName = "dark256"
+            ; SchemeName = "darkmode256"
+            ),
+            Subject =   "14",   % bright cyan
+            Correct =   "10",   % bright green
+            Incorrect = "9",    % bright red
+            Cause =     "11"    % bright yellow
+        ;
+            ( SchemeName = "light16"
+            ; SchemeName = "lightmode16"
+            ),
+            Subject =   "6",    % normal cyan
+            Correct =   "2",    % normal green
+            Incorrect = "9",    % bright red
+            Cause =     "8"     % normal yellow
+        ;
+            ( SchemeName = "light256"
+            ; SchemeName = "lightmode256"
+            ),
+            Subject =   "6",    % normal cyan
+            Correct =   "2",    % normal green
+            Incorrect = "9",    % bright red
+            Cause =     "8"     % normal yellow
+        )
+    then
+        map.set(set_color_subject, string(Subject), !OptionTable),
+        map.set(set_color_correct, string(Correct), !OptionTable),
+        map.set(set_color_incorrect, string(Incorrect), !OptionTable),
+        map.set(set_color_possible_cause, string(Cause), !OptionTable),
+        Specs = []
+    else if
+        string.remove_prefix("specified@", SchemeName, SettingsStr)
+    then
+        Settings = string.split_at_char(':', SettingsStr),
+        MaybeColorStrs0 = maybe_color_strings(no, no, no, no),
+        parse_color_specifications(Source, Settings,
+            MaybeColorStrs0, MaybeColorStrs, [], SettingSpecs),
+        (
+            SettingSpecs = [],
+            MaybeColorStrs = maybe_color_strings(MaybeSubject, MaybeCorrect,
+                MaybeIncorrect, MaybeCause),
+            ( if
+                MaybeSubject = yes(Subject),
+                MaybeCorrect = yes(Correct),
+                MaybeIncorrect = yes(Incorrect),
+                MaybeCause = yes(Cause)
+            then
+                map.set(set_color_subject, string(Subject), !OptionTable),
+                map.set(set_color_correct, string(Correct), !OptionTable),
+                map.set(set_color_incorrect, string(Incorrect), !OptionTable),
+                map.set(set_color_possible_cause, string(Cause), !OptionTable),
+                Specs = []
+            else
+                (
+                    MaybeSubject = no,
+                    MissingRoles1 = [words("subject")]
+                ;
+                    MaybeSubject = yes(_),
+                    MissingRoles1 = []
+                ),
+                (
+                    MaybeCorrect = no,
+                    MissingRoles2 = MissingRoles1 ++ [words("correct")]
+                ;
+                    MaybeCorrect = yes(_),
+                    MissingRoles2 = MissingRoles1
+                ),
+                (
+                    MaybeIncorrect = no,
+                    MissingRoles3 = MissingRoles2 ++ [words("incorrect")]
+                ;
+                    MaybeIncorrect = yes(_),
+                    MissingRoles3 = MissingRoles2
+                ),
+                (
+                    MaybeIncorrect = no,
+                    MissingRoles = MissingRoles3 ++ [words("possible cause")]
+                ;
+                    MaybeIncorrect = yes(_),
+                    MissingRoles = MissingRoles3
+                ),
+                ColorColors = choose_number(MissingRoles, "color", "colors"),
+                RoleRoles = choose_number(MissingRoles, "role", "roles"),
+                Pieces = [words("Error: the value of")] ++ Source ++
+                    [words("does not specify the"), words(ColorColors),
+                    words("to use for the"), words(RoleRoles), words("of")] ++
+                    piece_list_to_pieces("and", MissingRoles) ++
+                    [suffix("."), nl],
+                Specs = [no_ctxt_spec($pred, severity_error, phase_options,
+                    Pieces)]
+            )
+        ;
+            SettingSpecs = [_ | _],
+            Specs = SettingSpecs
+        )
+    else
+        Pieces = [words("Error in the value of")] ++ Source ++
+            [suffix(":"), quote(SchemeName), words("is not the name"),
+            words("of a recognized color scheme."), nl],
+        Specs = [no_ctxt_spec($pred, severity_error, phase_options, Pieces)]
+    ).
+
+:- type maybe_color_strings
+    --->    maybe_color_strings(
+                mcs_subject             ::  maybe(string),
+                mcs_correct             ::  maybe(string),
+                mcs_incorrect           ::  maybe(string),
+                mcs_possible_cause      ::  maybe(string)
+            ).
+
+:- pred parse_color_specifications(list(format_piece)::in, list(string)::in,
+    maybe_color_strings::in, maybe_color_strings::out,
+    list(error_spec)::in, list(error_spec)::out) is det.
+
+parse_color_specifications(_, [], !MaybeColorStrs, !Specs).
+parse_color_specifications(Source, [Setting | Settings],
+        !MaybeColorStrs, !Specs) :-
+    ( if
+        [Name, Value] = string.split_at_char('=', Setting),
+        ( Name = "subject"
+        ; Name = "correct"
+        ; Name = "incorrect"
+        ; Name = "possible_cause"
+        )
+    then
+        Result = is_string_a_color_spec(Value),
+        (
+            Result = is_color(_Color),
+            (
+                Name = "subject",
+                !MaybeColorStrs ^ mcs_subject := yes(Value)
+            ;
+                Name = "correct",
+                !MaybeColorStrs ^ mcs_correct := yes(Value)
+            ;
+                Name = "incorrect",
+                !MaybeColorStrs ^ mcs_incorrect := yes(Value)
+            ;
+                Name = "possible_cause",
+                !MaybeColorStrs ^ mcs_possible_cause := yes(Value)
+            )
+        ;
+            Result = not_color_int_outside_range(Min, Max),
+            Pieces = [words("Error in")] ++ Source ++ [suffix(":"),
+                quote(Value), words("is outside the range"),
+                int_fixed(Min), words("to"), int_fixed(Max), suffix("."), nl],
+            Spec = no_ctxt_spec($pred, severity_error, phase_options, Pieces),
+            !:Specs = [Spec | !.Specs]
+        ;
+            Result = not_color_unknown_format,
+            Pieces = [words("Error in")] ++ Source ++
+                [suffix(":"), quote(Value),
+                words("is neither an integer nor the name of a color."), nl],
+            Spec = no_ctxt_spec($pred, severity_error, phase_options, Pieces),
+            !:Specs = [Spec | !.Specs]
+        )
+    else
+        Pieces = [words("Error in")] ++ Source ++
+            [suffix(":"), words("expected a string of the form"),
+            quote("role=color"), words("where"),
+            quote("role"), words("is one of"),
+            quote("subject"), suffix(","),
+            quote("correct"), suffix(","),
+            quote("incorrect"), words("and"),
+            quote("possible_cause"), suffix(","),
+            words("got"), quote(Setting), suffix("."), nl],
+        Spec = no_ctxt_spec($pred, severity_error, phase_options, Pieces),
+        !:Specs = [Spec | !.Specs]
+    ),
+    parse_color_specifications(Source, Settings,
+        !MaybeColorStrs, !Specs).
+
+%---------------------%
+
 convert_color_spec_options(OptionTable) = MaybeColorSpecs :-
     getopt.lookup_string_option(OptionTable,
         set_color_subject, OptSubject),
@@ -835,26 +1066,53 @@ convert_color_spec_options(OptionTable) = MaybeColorSpecs :-
     getopt.lookup_string_option(OptionTable,
         set_color_possible_cause, OptCause),
     % There is no simple way to convert each option to its name.
-    MaybeSubject =
+    MaybeMaybeSubject =
         convert_color_spec_option("--set-color-subject", OptSubject),
-    MaybeCorrect =
+    MaybeMaybeCorrect =
         convert_color_spec_option("--set-color-correct", OptCorrect),
-    MaybeIncorrect =
+    MaybeMaybeIncorrect =
         convert_color_spec_option("--set-color-incorrect", OptIncorrect),
-    MaybeCause =
+    MaybeMaybeCause =
         convert_color_spec_option("--set-color-possible-cause", OptCause),
     ( if
-        MaybeSubject = ok1(Subject),
-        MaybeCorrect = ok1(Correct),
-        MaybeIncorrect = ok1(Incorrect),
-        MaybeCause = ok1(Cause)
+        MaybeMaybeSubject = ok1(MaybeSubject),
+        MaybeMaybeCorrect = ok1(MaybeCorrect),
+        MaybeMaybeIncorrect = ok1(MaybeIncorrect),
+        MaybeMaybeCause = ok1(MaybeCause)
     then
+        % XXX COLOR These defaults are placeholders; the real ones are TBD.
+        (
+            MaybeSubject = yes(Subject)
+        ;
+            MaybeSubject = no,
+            Subject = color_8bit(87u8)          % This is cyan (blue).
+        ),
+        (
+            MaybeCorrect = yes(Correct)
+        ;
+            MaybeCorrect = no,
+            Correct = color_8bit(40u8)          % This is green.
+        ),
+        (
+            MaybeIncorrect = yes(Incorrect)
+        ;
+            MaybeIncorrect = no,
+            Incorrect = color_8bit(203u8)       % This is red.
+        ),
+        (
+            MaybeCause = yes(Cause)
+        ;
+            MaybeCause = no,
+            Cause = color_8bit(226u8)           % This is yellow.
+        ),
         Colors = color_specs(Subject, Correct, Incorrect, Cause),
         MaybeColorSpecs = ok1(Colors)
     else
-        Specs = get_any_errors1(MaybeSubject) ++
-            get_any_errors1(MaybeCorrect) ++ get_any_errors1(MaybeIncorrect)
-            ++ get_any_errors1(MaybeCause),
+        Specs =
+            get_any_errors1(MaybeMaybeSubject) ++
+            get_any_errors1(MaybeMaybeCorrect) ++
+            get_any_errors1(MaybeMaybeIncorrect) ++
+            get_any_errors1(MaybeMaybeCause),
         MaybeColorSpecs = error1(Specs)
     ).
 
@@ -869,24 +1127,52 @@ convert_color_spec_option(OptionName, OptionValue) = MaybeMaybeColorSpec :-
     ( if OptionValue = "" then
         MaybeColor = no,
         MaybeMaybeColorSpec = ok1(MaybeColor)
-    else if string.to_int(OptionValue, N) then
-        % The value range we want is exactly the range of uint8s.
-        ( if uint8.from_int(N, ColorNum) then
-            Color = color_8bit(ColorNum),
+    else
+        ColorResult = is_string_a_color_spec(OptionValue),
+        (
+            ColorResult = is_color(Color),
             MaybeMaybeColorSpec = ok1(yes(Color))
-        else
+        ;
+            ColorResult = not_color_int_outside_range(Min, Max),
             Pieces = [words("Error: the argument of"), fixed(OptionName),
-                words("is outside the range 0 to 255."), nl],
+                words("is outside the range"),
+                int_fixed(Min), words("to"), int_fixed(Max), suffix("."), nl],
+            Spec = no_ctxt_spec($pred, severity_error, phase_options, Pieces),
+            MaybeMaybeColorSpec = error1([Spec])
+        ;
+            ColorResult = not_color_unknown_format,
+            Pieces = [words("Error: the argument of"), fixed(OptionName),
+                words("is neither an integer nor the name of a color."), nl],
             Spec = no_ctxt_spec($pred, severity_error, phase_options, Pieces),
             MaybeMaybeColorSpec = error1([Spec])
         )
-    else if standard_color_name(OptionValue, Color) then
-        MaybeMaybeColorSpec = ok1(yes(Color))
+    ).
+
+:- type is_color_result
+    --->    is_color(color_spec)
+    ;       not_color_int_outside_range(int, int)
+            % The range the int is outside of, both inclusive.
+    ;       not_color_unknown_format.
+
+:- func is_string_a_color_spec(string) = is_color_result.
+
+is_string_a_color_spec(Str) = Result :-
+    % XXX COLOR
+    % After we test for 8-bit colors, we can test for 24-bit colors as well,
+    % looking for a format such as as "rgb-R-G-B", where each of R, G and B
+    % would be integers between 0 and 255.
+    ( if standard_color_name(Str, Color) then
+        Result = is_color(Color)
+    else if string.to_int(Str, N) then
+        % The value range we want is exactly the range of uint8s.
+        ( if uint8.from_int(N, ColorNum) then
+            Color = color_8bit(ColorNum),
+            Result = is_color(Color)
+        else
+            Result = not_color_int_outside_range(0, 255)
+        )
     else
-        Pieces = [words("Error: the argument of"), fixed(OptionName),
-            words("is neither an integer nor the name of a color."), nl],
-        Spec = no_ctxt_spec($pred, severity_error, phase_options, Pieces),
-        MaybeMaybeColorSpec = error1([Spec])
+        Result = not_color_unknown_format
     ).
 
 :- pred standard_color_name(string::in, color_spec::out) is semidet.
