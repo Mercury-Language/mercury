@@ -151,11 +151,10 @@ lookup_insert_const_struct(ConstStruct, ConstNum, !Db) :-
         unexpected($pred, "not enabled")
     ;
         Enabled = enable_const_struct_poly,
-        ConstStruct = const_struct(ConsId, Args, Type, Inst, DefinedWhere),
+        ConstStruct = const_struct(ConsId, Args, Type, _Inst, DefinedWhere),
         ( if ConsId = cons(SymName, _, _) then
             Name = unqualify_name(SymName),
-            ConsProxyStruct = cons_proxy_struct(Name, Args, ConsId,
-                Type, Inst),
+            ConsProxyStruct = cons_proxy_struct(Name, Args, ConsId, Type),
             const_struct_db_get_next_num(!.Db, NextConstNum),
             const_struct_db_get_cons_proxy_map(!.Db, ConsProxyMap0),
             map.search_insert(ConsProxyStruct, NextConstNum, MaybeOldConstNum,
@@ -175,8 +174,7 @@ lookup_insert_const_struct(ConstStruct, ConstNum, !Db) :-
                 const_struct_db_set_num_map(NumMap, !Db)
             )
         else
-            NonConsProxyStruct = noncons_proxy_struct(ConsId, Args,
-                Type, Inst),
+            NonConsProxyStruct = noncons_proxy_struct(ConsId, Args, Type),
             const_struct_db_get_next_num(!.Db, NextConstNum),
             const_struct_db_get_noncons_proxy_map(!.Db, NonConsProxyMap0),
             map.search_insert(NonConsProxyStruct, NextConstNum,
@@ -239,16 +237,16 @@ delete_const_struct(ConstNum, !Db) :-
     map.det_remove(ConstNum, ConstStruct, NumMap0, NumMap),
     const_struct_db_set_num_map(NumMap, !Db),
 
-    ConstStruct = const_struct(ConsId, Args, Type, Inst, _DefinedWhere),
+    ConstStruct = const_struct(ConsId, Args, Type, _Inst, _DefinedWhere),
     ( if ConsId = cons(SymName, _, _) then
         Name = unqualify_name(SymName),
-        ConsProxyStruct = cons_proxy_struct(Name, Args, ConsId, Type, Inst),
+        ConsProxyStruct = cons_proxy_struct(Name, Args, ConsId, Type),
         const_struct_db_get_cons_proxy_map(!.Db, ConsProxyMap0),
         map.det_remove(ConsProxyStruct, _ConstNum,
             ConsProxyMap0, ConsProxyMap),
         const_struct_db_set_cons_proxy_map(ConsProxyMap, !Db)
     else
-        NonConsProxyStruct = noncons_proxy_struct(ConsId, Args, Type, Inst),
+        NonConsProxyStruct = noncons_proxy_struct(ConsId, Args, Type),
         const_struct_db_get_noncons_proxy_map(!.Db, NonConsProxyMap0),
         map.det_remove(NonConsProxyStruct, _ConstNum,
             NonConsProxyMap0, NonConsProxyMap),
@@ -266,24 +264,21 @@ const_struct_db_get_structs(Db, Structs) :-
     % comparisons, because it copies to the front the data item most useful
     % for comparisons, the name of the function symbol. If two proxy structs
     % match on the first two fields, they are almost certain to match
-    % on the other three as well.
+    % on the other two as well.
     %
 :- type cons_proxy_struct
     --->    cons_proxy_struct(
                 cps_name        :: string,
                 cps_args        :: list(const_struct_arg),
                 cps_cons_id     :: cons_id,
-                cps_term_type   :: mer_type,
-                cps_term_inst   :: mer_inst
+                cps_term_type   :: mer_type
             ).
 
 :- type noncons_proxy_struct
     --->    noncons_proxy_struct(
-                % All the fields of a const_struct, except defined_where.
                 ncps_cons_id    :: cons_id,
                 ncps_args       :: list(const_struct_arg),
-                ncps_term_type  :: mer_type,
-                ncps_term_inst  :: mer_inst
+                ncps_term_type  :: mer_type
             ).
 
 :- type const_struct_db
