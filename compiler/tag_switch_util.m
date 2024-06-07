@@ -232,11 +232,11 @@
 :- import_module libs.globals.
 :- import_module parse_tree.prog_type.
 
-:- import_module uint.
 :- import_module cord.
 :- import_module int.
 :- import_module maybe.
 :- import_module require.
+:- import_module uint.
 :- import_module uint8.
 
 %---------------------------------------------------------------------------%

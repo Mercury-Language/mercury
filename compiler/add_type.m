@@ -66,6 +66,8 @@
 :- import_module mdbcomp.sym_name.
 :- import_module parse_tree.maybe_error.
 :- import_module parse_tree.module_qual.
+:- import_module parse_tree.module_qual.id_set.
+:- import_module parse_tree.module_qual.mq_info.
 :- import_module parse_tree.parse_tree_out_sym_name.
 :- import_module parse_tree.parse_tree_out_type.
 :- import_module parse_tree.prog_type.

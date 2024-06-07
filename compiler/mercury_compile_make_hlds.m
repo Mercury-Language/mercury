@@ -69,6 +69,8 @@
 :- import_module parse_tree.file_names.
 :- import_module parse_tree.grab_modules.
 :- import_module parse_tree.module_qual.
+:- import_module parse_tree.module_qual.mq_info.
+:- import_module parse_tree.module_qual.qualify_items.
 :- import_module parse_tree.parse_error.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_data_event.

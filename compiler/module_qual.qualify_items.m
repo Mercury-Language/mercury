@@ -17,56 +17,80 @@
 :- module parse_tree.module_qual.qualify_items.
 :- interface.
 
+:- import_module libs.
+:- import_module libs.globals.
+:- import_module parse_tree.error_spec.
+:- import_module parse_tree.module_qual.id_set.
+:- import_module parse_tree.module_qual.mq_info.
 :- import_module parse_tree.prog_data.
+:- import_module parse_tree.prog_data_event.
 :- import_module parse_tree.prog_item.
 
-:- import_module assoc_list.
 :- import_module list.
+:- import_module set_tree234.
 
-%---------------------%
+%---------------------------------------------------------------------------%
 
-    % Module qualify the given parse tree.
-
-:- pred module_qualify_parse_tree_module_src(
-    parse_tree_module_src::in, parse_tree_module_src::out,
-    mq_info::in, mq_info::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
-
-:- pred module_qualify_parse_tree_int3(
-    parse_tree_int3::in, parse_tree_int3::out,
-    mq_info::in, mq_info::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
-
-%---------------------%
-
-    % Qualify a type and its argument types.
+    % module_qualify_aug_comp_unit(Globals, AugCompUnit0, AugCompUnit,
+    %   EventSpecMap0, EventSpecMap, MaybeContext, EventSpecFileName, MQ_Info,
+    %   UndefTypes, UndefInsts, UndefModes, UndefTypeClasses, !Specs):
     %
-:- pred qualify_type(mq_in_interface::in, mq_error_context::in,
+    % AugCompUnit is AugCompUnit0 with all items module qualified
+    % as much as possible; likewise for EventSpecMap0 and EventSpecMap.
+    %
+    % Errors in EventSpecMap0 will be reported as being for EventSpecFileName.
+    %
+:- pred module_qualify_aug_comp_unit(globals::in,
+    aug_compilation_unit::in, aug_compilation_unit::out,
+    event_spec_map::in, event_spec_map::out, string::in, mq_info::out,
+    set_tree234(type_ctor)::out, set_tree234(inst_ctor)::out,
+    set_tree234(mode_ctor)::out, set_tree234(sym_name_arity)::out,
+    list(error_spec)::in, list(error_spec)::out) is det.
+
+:- pred module_qualify_aug_make_int_unit(globals::in,
+    aug_make_int_unit::in, aug_make_int_unit::out,
+    list(error_spec)::in, list(error_spec)::out) is det.
+
+    % module_qualify_parse_tree_int3(Globals, OrigParseTreeInt3, ParseTreeInt3,
+    %   !Specs):
+    %
+    % ParseTreeInt3 is OrigParseTreeInt3 with all items in the .int3 file
+    % module qualified as much as possible.
+    %
+:- pred module_qualify_parse_tree_int3(globals::in,
+    parse_tree_int3::in, parse_tree_int3::out,
+    list(error_spec)::in, list(error_spec)::out) is det.
+
+%---------------------------------------------------------------------------%
+
+    % This is called from qual_info.m to qualify explicit type qualifications.
+    %
+:- pred qualify_type_qualification(mq_in_interface::in, prog_context::in,
     mer_type::in, mer_type::out, mq_info::in, mq_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-:- pred qualify_mode_list(mq_in_interface::in, mq_error_context::in,
+    % This is called from add_clause.m to qualify the modes
+    % in mode-specific clauses.
+    %
+:- pred qualify_clause_mode_list(mq_in_interface::in, prog_context::in,
     list(mer_mode)::in, list(mer_mode)::out, mq_info::in, mq_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-:- pred qualify_mode(mq_in_interface::in, mq_error_context::in,
-    mer_mode::in, mer_mode::out, mq_info::in, mq_info::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
-
-%---------------------%
-
-    % Module qualify the event specifications of an augmented compilation unit.
+    % This is called from superhomogeneous.m to qualify the modes of arguments
+    % in lambda expressions.
     %
-:- pred qualify_event_specs(mq_in_interface::in, string::in,
-    assoc_list(string, event_spec)::in, assoc_list(string, event_spec)::out,
-    mq_info::in, mq_info::out,
+:- pred qualify_lambda_mode(mq_in_interface::in, prog_context::in,
+    mer_mode::in, mer_mode::out, mq_info::in, mq_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
 %---------------------------------------------------------------------------%
 
 :- implementation.
 
-:- import_module parse_tree.module_qual.id_set.
+:- import_module libs.options.
+:- import_module mdbcomp.
+:- import_module mdbcomp.sym_name.
+:- import_module parse_tree.module_qual.collect_mq_info.
 :- import_module parse_tree.module_qual.qual_errors.
 :- import_module parse_tree.prog_data_foreign.
 :- import_module parse_tree.prog_data_pragma.
@@ -75,7 +99,11 @@
 :- import_module recompilation.item_types.
 :- import_module recompilation.record_uses.
 
+:- import_module assoc_list.
+:- import_module bool.
 :- import_module int.
+:- import_module map.
+:- import_module maybe.
 :- import_module one_or_more.
 :- import_module pair.
 :- import_module require.
@@ -83,7 +111,136 @@
 
 %---------------------------------------------------------------------------%
 
-module_qualify_parse_tree_module_src(ParseTreeModuleSrc0, ParseTreeModuleSrc,
+module_qualify_aug_comp_unit(Globals, AugCompUnit0, AugCompUnit,
+        EventSpecMap0, EventSpecMap, EventSpecFileName, !:Info,
+        UndefTypes, UndefInsts, UndefModes, UndefTypeClasses, !Specs) :-
+    AugCompUnit0 = aug_compilation_unit(ParseTreeModuleSrc0,
+        AncestorIntSpecs, DirectInt1Specs, IndirectInt2Specs,
+        PlainOptSpecs, TransOptSpecs, IntForOptSpecs, TypeRepnSpecs,
+        ModuleVersionNumbers),
+
+    ModuleName = ParseTreeModuleSrc0 ^ ptms_module_name,
+    init_mq_info(Globals, ModuleName, should_report_errors, !:Info),
+    collect_mq_info_in_parse_tree_module_src(ParseTreeModuleSrc0, !Info),
+    list.foldl(collect_mq_info_in_ancestor_int_spec,
+        map.values(AncestorIntSpecs), !Info),
+    list.foldl(collect_mq_info_in_direct_int1_spec,
+        map.values(DirectInt1Specs), !Info),
+    qualify_parse_tree_module_src(ParseTreeModuleSrc0, ParseTreeModuleSrc,
+        !Info, !Specs),
+    AugCompUnit = aug_compilation_unit(ParseTreeModuleSrc,
+        AncestorIntSpecs, DirectInt1Specs, IndirectInt2Specs,
+        PlainOptSpecs, TransOptSpecs, IntForOptSpecs, TypeRepnSpecs,
+        ModuleVersionNumbers),
+
+    map.to_assoc_list(EventSpecMap0, EventSpecList0),
+    qualify_event_specs(mq_not_used_in_interface, EventSpecFileName,
+        EventSpecList0, EventSpecList, !Info, !Specs),
+    map.from_assoc_list(EventSpecList, EventSpecMap),
+    mq_info_get_undef_types(!.Info, UndefTypes),
+    mq_info_get_undef_insts(!.Info, UndefInsts),
+    mq_info_get_undef_modes(!.Info, UndefModes),
+    mq_info_get_undef_typeclasses(!.Info, UndefTypeClasses),
+    maybe_report_qual_errors(Globals, !.Info, ModuleName, !Specs).
+
+%---------------------%
+
+module_qualify_aug_make_int_unit(Globals, AugMakeIntUnit0, AugMakeIntUnit,
+        !Specs) :-
+    AugMakeIntUnit0 = aug_make_int_unit(ParseTreeModuleSrc0,
+        AncestorInt0s, DirectInt3Specs, IndirectInt3Specs,
+        ModuleVersionNumbers),
+
+    some [!Info] (
+        ModuleName = ParseTreeModuleSrc0 ^ ptms_module_name,
+        init_mq_info(Globals, ModuleName, should_report_errors, !:Info),
+        collect_mq_info_in_parse_tree_module_src(ParseTreeModuleSrc0, !Info),
+        list.foldl(collect_mq_info_in_parse_tree_int0(rwi0_section),
+            map.values(AncestorInt0s), !Info),
+        list.foldl(collect_mq_info_in_direct_int3_spec,
+            map.values(DirectInt3Specs), !Info),
+        qualify_parse_tree_module_src(ParseTreeModuleSrc0, ParseTreeModuleSrc,
+            !Info, !Specs),
+        AugMakeIntUnit = aug_make_int_unit(ParseTreeModuleSrc,
+            AncestorInt0s, DirectInt3Specs, IndirectInt3Specs,
+            ModuleVersionNumbers),
+        maybe_report_qual_errors(Globals, !.Info, ModuleName, !Specs)
+    ).
+
+%---------------------%
+
+    % Warn about any unused module imports in the interface.
+    % There is a special case involving type class instances that
+    % we need to handle here. Consider:
+    %
+    %   :- module foo.
+    %   :- interface.
+    %
+    %   :- import_module bar.
+    %   :- typeclass tc1(T) <= tc2(T).
+    %   :- instance tc1(unit).
+    %
+    % where module bar exports the instance tc2(unit). We must import
+    % the module bar in the interface of the module foo in order for
+    % the superclass constraint on the instance tc1(unit) to be satisfied.
+    % However, at this stage of compilation we do not know that the
+    % instance tc2(unit) needs to be visible. (Knowing this would require
+    % a more extensive analysis of type classes and instances to be done
+    % in this module.)
+    %
+    % In order to prevent the import of the module bar being erroneously
+    % reported as unused, we make the conservative assumption that any
+    % imported module that exports a type class instance is used in
+    % the interface of the importing module, except if the importing
+    % module itself exports _no_ type class instances.
+    %
+:- pred maybe_report_qual_errors(globals::in, mq_info::in, module_name::in,
+    list(error_spec)::in, list(error_spec)::out) is det.
+
+maybe_report_qual_errors(Globals, Info, ModuleName, !Specs) :-
+    mq_info_get_as_yet_unused_interface_modules(Info, UnusedImportsMap0),
+    mq_info_get_exported_instances_flag(Info, ModuleExportsInstances),
+    (
+        ModuleExportsInstances = yes,
+        mq_info_get_imported_instance_modules(Info, InstanceImports),
+        map.delete_list(set_tree234.to_sorted_list(InstanceImports),
+            UnusedImportsMap0, UnusedImportsMap)
+    ;
+        ModuleExportsInstances = no,
+        UnusedImportsMap = UnusedImportsMap0
+    ),
+    globals.lookup_bool_option(Globals, warn_interface_imports,
+        WarnInterfaceImports),
+    (
+        WarnInterfaceImports = no
+    ;
+        WarnInterfaceImports = yes,
+        map.to_assoc_list(UnusedImportsMap, UnusedImports),
+        list.foldl(warn_unused_interface_import(ModuleName), UnusedImports,
+            !Specs)
+    ).
+
+%---------------------%
+
+module_qualify_parse_tree_int3(Globals, OrigParseTreeInt3, ParseTreeInt3,
+        !Specs) :-
+    ModuleName = OrigParseTreeInt3 ^ pti3_module_name,
+    init_mq_info(Globals, ModuleName, should_not_report_errors, Info0),
+    collect_mq_info_in_parse_tree_int3(int3_as_src, OrigParseTreeInt3,
+        Info0, Info1),
+    qualify_parse_tree_int3(OrigParseTreeInt3, ParseTreeInt3,
+        Info1, _Info, !Specs).
+
+%---------------------------------------------------------------------------%
+
+    % Module qualify the given parse tree.
+    %
+:- pred qualify_parse_tree_module_src(
+    parse_tree_module_src::in, parse_tree_module_src::out,
+    mq_info::in, mq_info::out,
+    list(error_spec)::in, list(error_spec)::out) is det.
+
+qualify_parse_tree_module_src(ParseTreeModuleSrc0, ParseTreeModuleSrc,
         !Info, !Specs) :-
     ParseTreeModuleSrc0 = parse_tree_module_src(ModuleName, ModuleNameContext,
         InclMap, ImportUseMap,
@@ -164,8 +321,11 @@ module_qualify_parse_tree_module_src(ParseTreeModuleSrc0, ParseTreeModuleSrc,
 
 %---------------------------------------------------------------------------%
 
-module_qualify_parse_tree_int3(OrigParseTreeInt3, ParseTreeInt3,
-        !Info, !Specs) :-
+:- pred qualify_parse_tree_int3(parse_tree_int3::in, parse_tree_int3::out,
+    mq_info::in, mq_info::out,
+    list(error_spec)::in, list(error_spec)::out) is det.
+
+qualify_parse_tree_int3(OrigParseTreeInt3, ParseTreeInt3, !Info, !Specs) :-
     OrigParseTreeInt3 = parse_tree_int3(ModuleName, ModuleNameContext,
         InclMap, ImportUseMap,
         IntTypeDefnMap0, IntInstDefnMap0, IntModeDefnMap0,
@@ -992,6 +1152,16 @@ qualify_type_list(InInt, ErrorContext, [Type0 | Types0], [Type | Types],
     qualify_type(InInt, ErrorContext, Type0, Type, !Info, !Specs),
     qualify_type_list(InInt, ErrorContext, Types0, Types, !Info, !Specs).
 
+qualify_type_qualification(InInt, Context, Type0, Type, !Info, !Specs) :-
+    ErrorContext = mqec_type_qual(Context),
+    qualify_type(InInt, ErrorContext, Type0, Type, !Info, !Specs).
+
+    % Qualify a type and its argument types.
+    %
+:- pred qualify_type(mq_in_interface::in, mq_error_context::in,
+    mer_type::in, mer_type::out, mq_info::in, mq_info::out,
+    list(error_spec)::in, list(error_spec)::out) is det.
+
 qualify_type(InInt, ErrorContext, Type0, Type, !Info, !Specs) :-
     (
         Type0 = type_variable(_Var, _Kind),
@@ -1293,8 +1463,7 @@ qualify_bound_inst(InInt, ErrorContext, BoundInst0, BoundInst,
     list(error_spec)::in, list(error_spec)::out) is det.
 
 qualify_mode_defn(InInt, Context, ModeCtor,
-        MaybeAbstractModeDefn0, MaybeAbstractModeDefn,
-        !Info, !Specs) :-
+        MaybeAbstractModeDefn0, MaybeAbstractModeDefn, !Info, !Specs) :-
     (
         MaybeAbstractModeDefn0 = abstract_mode_defn,
         MaybeAbstractModeDefn = abstract_mode_defn
@@ -1307,11 +1476,27 @@ qualify_mode_defn(InInt, Context, ModeCtor,
         MaybeAbstractModeDefn = nonabstract_mode_defn(ModeDefn)
     ).
 
+qualify_clause_mode_list(InInt, Context, Modes0, Modes, !Info, !Specs) :-
+    ErrorContext = mqec_clause_mode_annotation(Context),
+    qualify_mode_list(InInt, ErrorContext, Modes0, Modes, !Info, !Specs).
+
+:- pred qualify_mode_list(mq_in_interface::in, mq_error_context::in,
+    list(mer_mode)::in, list(mer_mode)::out, mq_info::in, mq_info::out,
+    list(error_spec)::in, list(error_spec)::out) is det.
+
 qualify_mode_list(_InInt, _ErrorContext, [], [], !Info, !Specs).
 qualify_mode_list(InInt, ErrorContext, [Mode0 | Modes0], [Mode | Modes],
         !Info, !Specs) :-
     qualify_mode(InInt, ErrorContext, Mode0, Mode, !Info, !Specs),
     qualify_mode_list(InInt, ErrorContext, Modes0, Modes, !Info, !Specs).
+
+qualify_lambda_mode(InInt, Context, Mode0, Mode, !Info, !Specs) :-
+    ErrorContext = mqec_lambda_expr(Context),
+    qualify_mode(InInt, ErrorContext, Mode0, Mode, !Info, !Specs).
+
+:- pred qualify_mode(mq_in_interface::in, mq_error_context::in,
+    mer_mode::in, mer_mode::out, mq_info::in, mq_info::out,
+    list(error_spec)::in, list(error_spec)::out) is det.
 
 qualify_mode(InInt, ErrorContext, Mode0, Mode, !Info, !Specs) :-
     (
@@ -1981,6 +2166,13 @@ module_qualify_item_mutable(InInt, ItemMutable0, ItemMutable, !Info, !Specs) :-
 %
 % Module qualify event specifications.
 %
+
+    % Module qualify the event specifications of an augmented compilation unit.
+    %
+:- pred qualify_event_specs(mq_in_interface::in, string::in,
+    assoc_list(string, event_spec)::in, assoc_list(string, event_spec)::out,
+    mq_info::in, mq_info::out,
+    list(error_spec)::in, list(error_spec)::out) is det.
 
 qualify_event_specs(_InInt, _, [], [], !Info, !Specs).
 qualify_event_specs(InInt, FileName,

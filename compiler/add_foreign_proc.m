@@ -32,13 +32,13 @@
 
 :- implementation.
 
-:- import_module hlds.make_hlds.add_pred.
 :- import_module hlds.hlds_args.
 :- import_module hlds.hlds_clauses.
 :- import_module hlds.hlds_code_util.
 :- import_module hlds.hlds_goal.
 :- import_module hlds.hlds_pred.
 :- import_module hlds.hlds_rtti.
+:- import_module hlds.make_hlds.add_pred.
 :- import_module hlds.make_hlds.make_hlds_warn.
 :- import_module hlds.pred_name.
 :- import_module hlds.pred_table.

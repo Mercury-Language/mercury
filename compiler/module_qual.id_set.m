@@ -15,9 +15,13 @@
 
 :- import_module mdbcomp.
 :- import_module mdbcomp.sym_name.
+:- import_module parse_tree.error_spec.
+:- import_module parse_tree.module_qual.mq_info.
 :- import_module parse_tree.module_qual.qual_errors.
+:- import_module parse_tree.prog_data.
 
 :- import_module list.
+:- import_module map.
 
 %---------------------------------------------------------------------------%
 
@@ -70,6 +74,16 @@
 :- type perm_in_imp
     --->    may_use_in_imp(need_qualifier).
 
+    % When we process types, typeclasses, insts or modes, we need to know
+    % whether they occur in the interface of the current module. This is
+    % so that if we see e.g. m1.t1 in the interface, we can mark module m1
+    % as being used in the interface, so we can avoid generating a warning
+    % about m1 being unused in the interface.
+    %
+:- type mq_in_interface
+    --->    mq_not_used_in_interface
+    ;       mq_used_in_interface.
+
 %---------------------------------------------------------------------------%
 %
 % An id_set represents the set of entities of a particular kind
@@ -121,8 +135,8 @@
     % Check whether the parent module was imported, given the name of a
     % child (or grandchild, etc.) module occurring in that parent module.
     %
-:- pred parent_module_is_imported(mq_in_interface::in,
-    module_name::in, module_name::in, module_id_set::in) is semidet.
+:- pred parent_module_is_imported(mq_in_interface::in, module_id_set::in,
+    module_name::in, module_name::in) is semidet.
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
@@ -134,12 +148,19 @@
 :- import_module recompilation.record_uses.
 
 :- import_module assoc_list.
+:- import_module bool.
+:- import_module maybe.
+:- import_module pair.
 :- import_module require.
 :- import_module set.
+:- import_module set_tree234.
+
+%---------------------------------------------------------------------------%
 
 % We want efficient retrieval of all the modules which define an id
-% with a certain name and arity. We therefore implement an id_set
-% as a three stage map from
+% with a certain name and arity, and we want support for the generation
+% of useful diagnostics for slighly-wrong references. We therefore implement
+% each id_set as a three stage map from
 %
 % - first the base name of an entity,
 % - and then its arity,
@@ -147,14 +168,28 @@
 %
 % to the permissions for the sym_name_arity we can construct for these.
 %
+% Having these three stages is good for performance. The first stage
+% does simple, fast comparisons but nevertheless drastically reduces
+% the size of the remaining search space. The second and third stages are
+% usually done in very small trees, which means that having to do comparisons
+% on the relatively complex structure of module names (when compared to
+% strings and ints) does not slow us down.
+%
+% The three stages also help with the construction of the useful diagnostics.
+%
 % Going through just the first two stages allows us to see which modules
-% define an entity with the given base name and arity.
+% define an entity with the given base name and arity. This allows us
+% diagnostics to point out e.g. matches for a name/arity pair that this
+% module knows about (usually due to reading them in from .int2 files)
+% that are not visible to the module being compiled due to missing imports.
 %
 % Going through just the first stage allows us to see which arities
-% have definitions for the given base name.
+% have definitions for the given base name. This allows diagnostics to
+% point out e.g. how many arguments too few or too many a call has.
 %
 % Going through none of the stages allow us to see which names exist
-% for this kind of entity.
+% for this kind of entity. This allows us to print "did you mean" messages
+% that list similar names that the programmer may have meant to use.
 
 :- type id_set == map(string, map(arity, permissions_map)).
 :- type permissions_map == map(module_name, module_permissions).
@@ -322,6 +357,43 @@ find_unique_match(InInt, ErrorContext, IdSet, IdType, Id0, SymName,
             record_used_item(UsedItemType, ItemName0, ItemName), !Info)
     ).
 
+:- pred mq_info_record_undef_mq_id(qual_id_kind::in, mq_id::in,
+    mq_info::in, mq_info::out) is det.
+
+mq_info_record_undef_mq_id(IdType, Id, !Info) :-
+    mq_info_get_suppress_found_undef(!.Info, SuppressFoundUndef),
+    (
+        SuppressFoundUndef = suppress_found_undef
+    ;
+        SuppressFoundUndef = do_not_suppress_found_undef,
+        Id = mq_id(SymName, Arity),
+        (
+            IdType = qual_id_type,
+            TypeCtor = type_ctor(SymName, Arity),
+            mq_info_get_undef_types(!.Info, UndefTypes0),
+            set_tree234.insert(TypeCtor, UndefTypes0, UndefTypes),
+            mq_info_set_undef_types(UndefTypes, !Info)
+        ;
+            IdType = qual_id_inst,
+            InstCtor = inst_ctor(SymName, Arity),
+            mq_info_get_undef_insts(!.Info, UndefInsts0),
+            set_tree234.insert(InstCtor, UndefInsts0, UndefInsts),
+            mq_info_set_undef_insts(UndefInsts, !Info)
+        ;
+            IdType = qual_id_mode,
+            ModeCtor = mode_ctor(SymName, Arity),
+            mq_info_get_undef_modes(!.Info, UndefModes0),
+            set_tree234.insert(ModeCtor, UndefModes0, UndefModes),
+            mq_info_set_undef_modes(UndefModes, !Info)
+        ;
+            IdType = qual_id_class,
+            SNA = sym_name_arity(SymName, Arity),
+            mq_info_get_undef_typeclasses(!.Info, UndefTypeclasses0),
+            set_tree234.insert(SNA, UndefTypeclasses0, UndefTypeclasses),
+            mq_info_set_undef_typeclasses(UndefTypeclasses, !Info)
+        )
+    ).
+
 :- func convert_used_item_type(qual_id_kind) = used_item_type.
 
 convert_used_item_type(qual_id_type) = used_type_name.
@@ -479,7 +551,7 @@ find_matching_arities(SymName, [Pair | Pairs], !PossibleArities) :-
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
-parent_module_is_imported(InInt, ParentModule, ChildModule, ModuleIdSet) :-
+parent_module_is_imported(InInt, ModuleIdSet, ParentModule, ChildModule) :-
     % Find the module name at the start of the ChildModule;
     % this submodule will be a direct sub-module of ParentModule.
     DirectSubModuleName = get_first_module_name(ChildModule),

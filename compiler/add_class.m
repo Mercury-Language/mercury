@@ -34,10 +34,10 @@
 
 :- import_module check_hlds.                    % XXX Temporary import.
 :- import_module check_hlds.check_typeclass.    % XXX Temporary import.
-:- import_module hlds.make_hlds.add_pred.
 :- import_module hlds.default_func_mode.
 :- import_module hlds.hlds_class.
 :- import_module hlds.hlds_pred.
+:- import_module hlds.make_hlds.add_pred.
 :- import_module hlds.make_hlds.state_var.
 :- import_module hlds.make_hlds_error.
 :- import_module hlds.status.

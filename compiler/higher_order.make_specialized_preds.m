@@ -12,8 +12,8 @@
 
 :- import_module transform_hlds.higher_order.higher_order_global_info.
 
-:- import_module maybe.
 :- import_module io.
+:- import_module maybe.
 :- import_module set.
 
     % Process requests until there are no new requests to process.

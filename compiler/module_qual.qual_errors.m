@@ -15,8 +15,17 @@
 
 :- import_module mdbcomp.
 :- import_module mdbcomp.prim_data.
+:- import_module mdbcomp.sym_name.
+:- import_module parse_tree.error_spec.
+:- import_module parse_tree.module_qual.id_set.
+:- import_module parse_tree.module_qual.mq_info.
 :- import_module parse_tree.prog_data.
+:- import_module parse_tree.prog_item.
 
+:- import_module list.
+:- import_module maybe.
+:- import_module one_or_more.
+:- import_module pair.
 :- import_module set.
 
 %---------------------------------------------------------------------------%
@@ -177,15 +186,16 @@
 
 :- implementation.
 
+:- import_module libs.
+:- import_module libs.options.
 :- import_module parse_tree.item_util.
 :- import_module parse_tree.prog_util.
 
+:- import_module bool.
+:- import_module set_tree234.
 :- import_module string.
 
 %---------------------------------------------------------------------------%
-%
-% Error reporting predicates.
-%
 
 report_undefined_mq_id(Info, ErrorContext, Id, IdType, ThisModuleName,
         IntMismatches0, QualMismatches0, PossibleAritiesSet, !Specs) :-

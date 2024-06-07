@@ -13,6 +13,7 @@
 :- module parse_tree.module_qual.collect_mq_info.
 :- interface.
 
+:- import_module parse_tree.module_qual.mq_info.
 :- import_module parse_tree.prog_item.
 
 %---------------------------------------------------------------------------%
@@ -42,16 +43,21 @@
 
 :- implementation.
 
+:- import_module mdbcomp.
+:- import_module mdbcomp.sym_name.
 :- import_module parse_tree.item_util.
 :- import_module parse_tree.module_qual.id_set.
 :- import_module parse_tree.parse_sym_name.
+:- import_module parse_tree.prog_data.
 
+:- import_module bool.
 :- import_module list.
+:- import_module map.
+:- import_module maybe.
 :- import_module one_or_more.
 :- import_module one_or_more_map.
 :- import_module require.
 :- import_module set_tree234.
-:- import_module string.
 :- import_module term.
 
 %---------------------------------------------------------------------------%
@@ -203,13 +209,6 @@ collect_mq_info_in_direct_int3_spec(DirectInt3Spec, !Info) :-
 %---------------------------------------------------------------------------%
 
 collect_mq_info_in_parse_tree_int0(ReadWhy0, ParseTreeInt0, !Info) :-
-    trace [compile_time(flag("debug_collect_mq_info")), io(!IO)] (
-        get_mq_debug_output_stream(!.Info, DebugStream, !IO),
-        io.format(DebugStream, "collect_mq_info_in_parse_tree_int0: %s ",
-            [s(sym_name_to_string(ParseTreeInt0 ^ pti0_module_name))], !IO),
-        io.write_line(DebugStream, ReadWhy0, !IO)
-    ),
-
     (
         ReadWhy0 = rwi0_section,
         % XXX Whether this module's interface can use an mq_id
@@ -285,13 +284,6 @@ collect_mq_info_in_parse_tree_int0(ReadWhy0, ParseTreeInt0, !Info) :-
     parse_tree_int1::in, mq_info::in, mq_info::out) is det.
 
 collect_mq_info_in_parse_tree_int1(ReadWhy1, ParseTreeInt1, !Info) :-
-    trace [compile_time(flag("debug_collect_mq_info")), io(!IO)] (
-        get_mq_debug_output_stream(!.Info, DebugStream, !IO),
-        io.format(DebugStream, "collect_mq_info_in_parse_tree_int1: %s ",
-            [s(sym_name_to_string(ParseTreeInt1 ^ pti1_module_name))], !IO),
-        io.write_line(DebugStream, ReadWhy1, !IO)
-    ),
-
     (
         ReadWhy1 = rwi1_int_import,
         IntPermInInt = may_use_in_int(may_be_unqualified),
@@ -602,13 +594,6 @@ collect_mq_info_in_int_mode_defn(IntPermissions, ModeCtor, CheckedDefn,
 %---------------------------------------------------------------------------%
 
 collect_mq_info_in_parse_tree_int3(Role, ParseTreeInt3, !Info) :-
-    trace [compile_time(flag("debug_collect_mq_info")), io(!IO)] (
-        get_mq_debug_output_stream(!.Info, DebugStream, !IO),
-        io.format(DebugStream, "collect_mq_info_in_parse_tree_int3: %s ",
-            [s(sym_name_to_string(ParseTreeInt3 ^ pti3_module_name))], !IO),
-        io.write_line(DebugStream, Role, !IO)
-    ),
-
     (
         Role = int3_as_src,
         PermInInt = may_use_in_int(may_be_unqualified),

@@ -415,8 +415,8 @@
 :- import_module mdbcomp.sym_name.
 :- import_module parse_tree.parse_tree_out_cons_id.
 :- import_module parse_tree.parse_tree_out_pred_decl.
-:- import_module parse_tree.parse_tree_out_term.
 :- import_module parse_tree.parse_tree_out_sym_name.
+:- import_module parse_tree.parse_tree_out_term.
 :- import_module parse_tree.parse_tree_out_type.
 :- import_module parse_tree.prog_mode.
 :- import_module parse_tree.prog_util.

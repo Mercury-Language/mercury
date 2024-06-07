@@ -607,7 +607,7 @@ module_qual.collect_mq_info.m collects information
 about what types, insts etc are defined in which modules.
 <li>
 module_qual.qualify_items.m uses the collected information
-to module qualify items and their components.
+to module qualify parse trees, items and their components.
 <li>
 module_qual.id_set.m defines the data structure
 used by collect_mq_info and qualify_items
@@ -618,6 +618,9 @@ when an item refers to an entity (type, or inst, or ...)
 that is either not defined anywhere,
 or is defined in more than one module,
 and the reference does not indicate which one is intended.
+<li>
+module_qual.mq_info.m defines the main data structure
+used by all the modules in the module_qual package.
 </ul>
 
 <p>

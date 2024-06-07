@@ -26,6 +26,7 @@
 :- import_module parse_tree.equiv_type.
 :- import_module parse_tree.error_spec.
 :- import_module parse_tree.module_qual.
+:- import_module parse_tree.module_qual.mq_info.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.vartypes.
 :- import_module recompilation.
@@ -106,6 +107,8 @@
 :- implementation.
 
 :- import_module hlds.make_goal.
+:- import_module parse_tree.module_qual.id_set.
+:- import_module parse_tree.module_qual.qualify_items.
 :- import_module parse_tree.prog_type_scan.
 :- import_module parse_tree.prog_type_subst.
 :- import_module parse_tree.prog_util.

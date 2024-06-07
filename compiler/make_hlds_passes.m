@@ -24,6 +24,7 @@
 :- import_module parse_tree.equiv_type.
 :- import_module parse_tree.error_spec.
 :- import_module parse_tree.module_qual.
+:- import_module parse_tree.module_qual.mq_info.
 :- import_module parse_tree.prog_data_used_modules.
 :- import_module parse_tree.prog_item.
 
@@ -54,7 +55,6 @@
 
 :- implementation.
 
-:- import_module hlds.make_hlds.add_pred.
 :- import_module hlds.add_special_pred.
 :- import_module hlds.default_func_mode.
 :- import_module hlds.hlds_clauses.
@@ -66,6 +66,7 @@
 :- import_module hlds.make_hlds.add_mode.
 :- import_module hlds.make_hlds.add_mutable_aux_preds.
 :- import_module hlds.make_hlds.add_pragma.
+:- import_module hlds.make_hlds.add_pred.
 :- import_module hlds.make_hlds.add_solver.
 :- import_module hlds.make_hlds.add_type.
 :- import_module hlds.make_hlds.make_hlds_separate_items.

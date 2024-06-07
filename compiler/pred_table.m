@@ -26,6 +26,7 @@
 :- import_module parse_tree.
 :- import_module parse_tree.error_spec.
 :- import_module parse_tree.module_qual.
+:- import_module parse_tree.module_qual.mq_info.
 :- import_module parse_tree.prog_data.
 
 :- import_module list.
@@ -375,6 +376,7 @@
 
 :- implementation.
 
+:- import_module parse_tree.module_qual.id_set.
 :- import_module parse_tree.prog_type_unify.
 :- import_module parse_tree.prog_util.
 

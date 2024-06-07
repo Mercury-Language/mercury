@@ -122,8 +122,8 @@
 
 :- implementation.
 
-:- import_module backend_libs.switch_util.
 :- import_module backend_libs.builtin_ops.
+:- import_module backend_libs.switch_util.
 :- import_module hlds.goal_form.
 :- import_module hlds.hlds_module.
 :- import_module libs.

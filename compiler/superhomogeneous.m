@@ -153,6 +153,9 @@
 :- import_module mdbcomp.sym_name.
 :- import_module parse_tree.maybe_error.
 :- import_module parse_tree.module_qual.
+:- import_module parse_tree.module_qual.id_set.
+:- import_module parse_tree.module_qual.mq_info.
+:- import_module parse_tree.module_qual.qualify_items.
 :- import_module parse_tree.parse_dcg_goal.
 :- import_module parse_tree.parse_goal.
 :- import_module parse_tree.parse_inst_mode_name.
