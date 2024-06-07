@@ -6,14 +6,16 @@
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
 
-:- module hlds.make_hlds.add_pragma.add_pragma_type_spec.
+:- module hlds.make_hlds.add_pragma_type_spec.
 :- interface.
 
 :- import_module hlds.hlds_module.
+:- import_module hlds.make_hlds.qual_info.
 :- import_module parse_tree.
 :- import_module parse_tree.error_spec.
 :- import_module parse_tree.prog_item.
 
+:- import_module io.
 :- import_module list.
 
 :- pred add_pragma_type_spec_constr(io.text_output_stream::in,
@@ -31,22 +33,31 @@
 
 :- import_module hlds.hlds_args.
 :- import_module hlds.hlds_class.
+:- import_module hlds.hlds_clauses.
 :- import_module hlds.hlds_code_util.
+:- import_module hlds.hlds_error_util.
 :- import_module hlds.hlds_goal.
+:- import_module hlds.hlds_pred.
 :- import_module hlds.hlds_rtti.
 :- import_module hlds.make_hlds_error.
 :- import_module hlds.pred_name.
 :- import_module hlds.pred_table.
+:- import_module hlds.status.
 :- import_module libs.
+:- import_module libs.globals.
 :- import_module libs.optimization_options.
 :- import_module libs.options.
 :- import_module mdbcomp.
+:- import_module mdbcomp.prim_data.
 :- import_module mdbcomp.sym_name.
+:- import_module parse_tree.maybe_error.
 :- import_module parse_tree.parse_tree_out_info.
 :- import_module parse_tree.parse_tree_out_pragma.
 :- import_module parse_tree.parse_tree_out_sym_name.
 :- import_module parse_tree.parse_tree_out_term.
 :- import_module parse_tree.parse_tree_out_type.
+:- import_module parse_tree.prog_data.
+:- import_module parse_tree.prog_data_pragma.
 :- import_module parse_tree.prog_type_scan.
 :- import_module parse_tree.prog_type_subst.
 :- import_module parse_tree.prog_type_test.
@@ -59,12 +70,15 @@
 :- import_module recompilation.record_uses.
 
 :- import_module assoc_list.
+:- import_module bool.
+:- import_module int.
 :- import_module map.
 :- import_module maybe.
 :- import_module multi_map.
 :- import_module one_or_more.
 :- import_module one_or_more_map.
 :- import_module pair.
+:- import_module require.
 :- import_module set.
 :- import_module string.
 :- import_module term.
@@ -1796,5 +1810,5 @@ report_variables(VarSet, Color, Suffix, SubExistQVars) = Pieces :-
         piece_list_to_color_pieces(Color, "and", Suffix, VarPieces).
 
 %---------------------------------------------------------------------------%
-:- end_module hlds.make_hlds.add_pragma.add_pragma_type_spec.
+:- end_module hlds.make_hlds.add_pragma_type_spec.
 %---------------------------------------------------------------------------%

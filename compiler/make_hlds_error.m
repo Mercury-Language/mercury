@@ -29,6 +29,7 @@
 :- import_module parse_tree.
 :- import_module parse_tree.error_spec.
 :- import_module parse_tree.prog_data.
+:- import_module parse_tree.prog_item.
 
 :- import_module list.
 :- import_module maybe.
@@ -73,6 +74,20 @@
     list(error_spec)::in, list(error_spec)::out) is det.
 
 %---------------------------------------------------------------------------%
+
+:- pred maybe_warn_about_pfumm_unknown(module_info::in, string::in,
+    pred_func_or_unknown_maybe_modes::in, sym_name::in, prog_context::in,
+    list(error_spec)::in, list(error_spec)::out) is det.
+
+:- type does_pragma_allow_modes
+    --->    pragma_does_not_allow_modes
+    ;       pragma_allows_modes.
+
+:- pred warn_about_pfu_unknown(module_info::in, string::in,
+    does_pragma_allow_modes::in, sym_name::in, user_arity::in,
+    prog_context::in, list(error_spec)::out) is det.
+
+%---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
 :- implementation.
@@ -83,6 +98,7 @@
 :- import_module hlds.pred_table.
 :- import_module libs.
 :- import_module libs.globals.
+:- import_module libs.op_mode.
 :- import_module libs.options.
 :- import_module parse_tree.parse_tree_out_info.
 :- import_module parse_tree.parse_tree_out_pred_decl.
@@ -363,6 +379,67 @@ pred_form_arity_to_int_fixed(PredOrFunc, PredFormArity) = Component :-
     user_arity_pred_form_arity(PredOrFunc, UserArity, PredFormArity),
     UserArity = user_arity(UserArityInt),
     Component = int_fixed(UserArityInt).
+
+%---------------------------------------------------------------------------%
+
+maybe_warn_about_pfumm_unknown(ModuleInfo, PragmaName, PFUMM, SymName, Context,
+        !Specs) :-
+    (
+        ( PFUMM = pfumm_predicate(_)
+        ; PFUMM = pfumm_function(_)
+        )
+    ;
+        PFUMM = pfumm_unknown(UserArity),
+        warn_about_pfu_unknown(ModuleInfo, PragmaName, pragma_allows_modes,
+            SymName, UserArity, Context, WarnSpecs),
+        !:Specs = WarnSpecs ++ !.Specs
+    ).
+
+warn_about_pfu_unknown(ModuleInfo, PragmaName, PragmaAllowsModes,
+        SymName, UserArity, Context, Specs) :-
+    module_info_get_globals(ModuleInfo, Globals),
+    module_info_get_name(ModuleInfo, ModuleName),
+    globals.lookup_bool_option(Globals,
+        warn_potentially_ambiguous_pragma, Warn),
+    globals.get_op_mode(Globals, OpMode),
+    ( if
+        Warn = yes,
+        OpMode = opm_top_args(opma_augment(opmau_generate_code(_)), _),
+        SymName = qualified(ModuleName, _)
+    then
+        UserArity = user_arity(UserArityInt),
+        SNA = sym_name_arity(SymName, UserArityInt),
+        (
+            PragmaAllowsModes = pragma_does_not_allow_modes,
+            Pieces = [words("Warning: the")] ++
+                color_as_subject([pragma_decl(PragmaName),
+                    words("declaration for"), unqual_sym_name_arity(SNA)]) ++
+                color_as_incorrect([words("does not say whether it refers"),
+                    words("to a predicate or to a function.")]) ++
+                [nl,
+                words("(You can specify this information"),
+                words("by wrapping up"), unqual_sym_name_arity(SNA),
+                words("inside"), quote("pred(...)"), words("or"),
+                quote("func(...)"), suffix(".)"), nl]
+        ;
+            PragmaAllowsModes = pragma_allows_modes,
+            Pieces = [words("Warning: the")] ++
+                color_as_subject([pragma_decl(PragmaName),
+                    words("declaration for"), unqual_sym_name_arity(SNA)]) ++
+                color_as_incorrect([words("does not say whether it refers"),
+                    words("to a predicate or to a function.")]) ++
+                [nl,
+                words("(You can specify this information"),
+                words("either by wrapping up"), unqual_sym_name_arity(SNA),
+                words("inside"), quote("pred(...)"), words("or"),
+                quote("func(...)"), suffix(","),
+                words("or by specifying its argument modes.)"), nl]
+        ),
+        Spec = spec($pred, severity_warning, phase_pt2h, Context, Pieces),
+        Specs = [Spec]
+    else
+        Specs = []
+    ).
 
 %---------------------------------------------------------------------------%
 :- end_module hlds.make_hlds_error.

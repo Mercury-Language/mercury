@@ -6,10 +6,12 @@
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
 
-:- module hlds.make_hlds.add_pragma.add_pragma_tabling.
+:- module hlds.make_hlds.add_pragma_tabling.
 :- interface.
 
 :- import_module hlds.hlds_module.
+:- import_module hlds.make_hlds.qual_info.
+:- import_module hlds.status.
 :- import_module parse_tree.
 :- import_module parse_tree.error_spec.
 :- import_module parse_tree.prog_item.
@@ -30,18 +32,22 @@
 :- import_module backend_libs.rtti.
 :- import_module check_hlds.
 :- import_module check_hlds.mode_test.
-:- import_module hlds.make_hlds.add_pred.
 :- import_module hlds.hlds_code_util.
+:- import_module hlds.hlds_pred.
 :- import_module hlds.make_hlds.add_clause.
 :- import_module hlds.make_hlds.add_foreign_proc.
+:- import_module hlds.make_hlds.add_pred.
+:- import_module hlds.make_hlds_error.
 :- import_module hlds.pred_name.
 :- import_module hlds.pred_table.
 :- import_module libs.
+:- import_module libs.globals.
 :- import_module libs.options.
 :- import_module ll_backend.
 :- import_module ll_backend.rtti_out.           % XXX undesirable dependency
 :- import_module mdbcomp.
 :- import_module mdbcomp.builtin_modules.
+:- import_module mdbcomp.prim_data.
 :- import_module mdbcomp.sym_name.
 :- import_module ml_backend.
 :- import_module ml_backend.mlds.               % XXX undesirable dependency
@@ -50,10 +56,14 @@
 :- import_module parse_tree.maybe_error.
 :- import_module parse_tree.parse_tree_out_misc.
 :- import_module parse_tree.parse_tree_out_sym_name.
+:- import_module parse_tree.prog_data.
+:- import_module parse_tree.prog_data_foreign.
+:- import_module parse_tree.prog_data_pragma.
 :- import_module parse_tree.prog_mode.
 :- import_module parse_tree.prog_util.
 
 :- import_module assoc_list.
+:- import_module bool.
 :- import_module int.
 :- import_module map.
 :- import_module maybe.
@@ -840,5 +850,5 @@ check_pred_args_against_tabling(ModuleInfo, ArgNum, [Mode | Modes],
     ).
 
 %----------------------------------------------------------------------------%
-:- end_module hlds.make_hlds.add_pragma.add_pragma_tabling.
+:- end_module hlds.make_hlds.add_pragma_tabling.
 %----------------------------------------------------------------------------%

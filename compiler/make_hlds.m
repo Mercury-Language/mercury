@@ -48,11 +48,14 @@
 :- include_module add_mode.
 :- include_module add_mutable_aux_preds.
 :- include_module add_pragma.
+:- include_module add_pragma_tabling.
+:- include_module add_pragma_type_spec.
 :- include_module add_pred.
 :- include_module add_solver.
 :- include_module add_type.
 :- include_module field_access.
 :- include_module goal_expr_to_goal.
+:- include_module make_hlds_separate_items.
 :- include_module make_hlds_warn.
 :- include_module state_var.
 :- include_module superhomogeneous.

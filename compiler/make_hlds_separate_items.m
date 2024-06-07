@@ -11,9 +11,13 @@
 %
 %---------------------------------------------------------------------------%
 
-:- module hlds.make_hlds.make_hlds_passes.make_hlds_separate_items.
+:- module hlds.make_hlds.make_hlds_separate_items.
 :- interface.
 
+:- import_module hlds.make_hlds.make_hlds_types.
+:- import_module hlds.status.
+:- import_module mdbcomp.
+:- import_module mdbcomp.sym_name.
 :- import_module parse_tree.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_item.
@@ -107,7 +111,9 @@
 :- import_module assoc_list.
 :- import_module cord.
 :- import_module int.
+:- import_module map.
 :- import_module pair.
+:- import_module require.
 
 %---------------------------------------------------------------------------%
 
@@ -1142,5 +1148,5 @@ acc_ims_tuple_list(ItemMercuryStatus, [Item | Items], !ImsItems) :-
     acc_ims_tuple_list(ItemMercuryStatus, Items, !ImsItems).
 
 %---------------------------------------------------------------------------%
-:- end_module hlds.make_hlds.make_hlds_passes.make_hlds_separate_items.
+:- end_module hlds.make_hlds.make_hlds_separate_items.
 %---------------------------------------------------------------------------%

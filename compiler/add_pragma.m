@@ -104,24 +104,20 @@
 
 :- implementation.
 
-:- include_module hlds.make_hlds.add_pragma.add_pragma_tabling.
-:- include_module hlds.make_hlds.add_pragma.add_pragma_type_spec.
-
 :- import_module hlds.hlds_clauses.
 :- import_module hlds.hlds_code_util.
 :- import_module hlds.hlds_data.
 :- import_module hlds.hlds_error_util.
 :- import_module hlds.hlds_pred.
 :- import_module hlds.make_hlds.add_foreign_proc.
-:- import_module hlds.make_hlds.add_pragma.add_pragma_tabling.
-:- import_module hlds.make_hlds.add_pragma.add_pragma_type_spec.
+:- import_module hlds.make_hlds.add_pragma_tabling.
+:- import_module hlds.make_hlds.add_pragma_type_spec.
 :- import_module hlds.make_hlds.make_hlds_warn.
 :- import_module hlds.make_hlds_error.
 :- import_module hlds.pred_table.
 :- import_module hlds.status.
 :- import_module libs.
 :- import_module libs.globals.
-:- import_module libs.op_mode.
 :- import_module libs.options.
 :- import_module ll_backend.
 :- import_module ll_backend.fact_table.
@@ -1798,10 +1794,6 @@ pragma_conflict_error(PredSpec, Context, PragmaName, ConflictMarkers,
     --->    do_not_require_one_match
     ;       require_one_match.
 
-:- type does_pragma_allow_modes
-    --->    pragma_does_not_allow_modes
-    ;       pragma_allows_modes.
-
 :- type matching_pred_ids_result
     --->    mpids_ok(pred_id, list(pred_id), list(error_spec))
     ;       mpids_error(list(error_spec)).
@@ -2124,78 +2116,6 @@ look_up_pragma_pf_sym_arity_mode_num(ModuleInfo, IsFullyQualified,
     ;
         MaybePredId = error1(Specs),
         MaybePredProcId = error4(Specs)
-    ).
-
-%---------------------%
-
-:- pred warn_about_pfu_unknown(module_info::in, string::in,
-    does_pragma_allow_modes::in, sym_name::in, user_arity::in,
-    prog_context::in, list(error_spec)::out) is det.
-
-warn_about_pfu_unknown(ModuleInfo, PragmaName, PragmaAllowsModes,
-        SymName, UserArity, Context, Specs) :-
-    module_info_get_globals(ModuleInfo, Globals),
-    module_info_get_name(ModuleInfo, ModuleName),
-    globals.lookup_bool_option(Globals,
-        warn_potentially_ambiguous_pragma, Warn),
-    globals.get_op_mode(Globals, OpMode),
-    ( if
-        Warn = yes,
-        OpMode = opm_top_args(opma_augment(opmau_generate_code(_)), _),
-        SymName = qualified(ModuleName, _)
-    then
-        UserArity = user_arity(UserArityInt),
-        SNA = sym_name_arity(SymName, UserArityInt),
-        (
-            PragmaAllowsModes = pragma_does_not_allow_modes,
-            Pieces = [words("Warning: the")] ++
-                color_as_subject([pragma_decl(PragmaName),
-                    words("declaration for"), unqual_sym_name_arity(SNA)]) ++
-                color_as_incorrect([words("does not say whether it refers"),
-                    words("to a predicate or to a function.")]) ++
-                [nl,
-                words("(You can specify this information"),
-                words("by wrapping up"), unqual_sym_name_arity(SNA),
-                words("inside"), quote("pred(...)"), words("or"),
-                quote("func(...)"), suffix(".)"), nl]
-        ;
-            PragmaAllowsModes = pragma_allows_modes,
-            Pieces = [words("Warning: the")] ++
-                color_as_subject([pragma_decl(PragmaName),
-                    words("declaration for"), unqual_sym_name_arity(SNA)]) ++
-                color_as_incorrect([words("does not say whether it refers"),
-                    words("to a predicate or to a function.")]) ++
-                [nl,
-                words("(You can specify this information"),
-                words("either by wrapping up"), unqual_sym_name_arity(SNA),
-                words("inside"), quote("pred(...)"), words("or"),
-                quote("func(...)"), suffix(","),
-                words("or by specifying its argument modes.)"), nl]
-        ),
-        Spec = spec($pred, severity_warning, phase_pt2h, Context, Pieces),
-        Specs = [Spec]
-    else
-        Specs = []
-    ).
-
-    % This predicate is not used in add_pragma.m, but it is used by
-    % its submodules add_pragma_tabling.m and add_pragma_type_spec.m.
-    %
-:- pred maybe_warn_about_pfumm_unknown(module_info::in, string::in,
-    pred_func_or_unknown_maybe_modes::in, sym_name::in, prog_context::in,
-    list(error_spec)::in, list(error_spec)::out) is det.
-
-maybe_warn_about_pfumm_unknown(ModuleInfo, PragmaName, PFUMM, SymName, Context,
-        !Specs) :-
-    (
-        ( PFUMM = pfumm_predicate(_)
-        ; PFUMM = pfumm_function(_)
-        )
-    ;
-        PFUMM = pfumm_unknown(UserArity),
-        warn_about_pfu_unknown(ModuleInfo, PragmaName, pragma_allows_modes,
-            SymName, UserArity, Context, WarnSpecs),
-        !:Specs = WarnSpecs ++ !.Specs
     ).
 
 %---------------------%
