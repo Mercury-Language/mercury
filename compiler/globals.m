@@ -336,18 +336,17 @@
 
 %---------------------------------------------------------------------------%
 
-    % record_color_scheme_in_options(Source, SchemeName,
-    %   ErrorSpecs, InformSpecs, !OptionTable):
+    % record_color_scheme_in_options(Source, SchemeName, Specs,
+    %   !OptionTable, !IO):
     %
     % Given a name we got from Source, if it is the name of a recognized
     % color scheme, then set update !OptionTable to record the colors
     % it selects in a way that allows convert_color_spec_options to retrieve
     % those colors, and set ErrorSpecs to the empty list. If it is not the name
-    % of a recognized color scheme, then return a diagnostic in ErrorSpecs,
+    % of a recognized color scheme, then return a diagnostic in Specs,
     % and leave !OptionTable unchanged. If it contains a recognized color
-    % scheme but this leaves some color roles unassigned, then return a
-    % report about this in InformSpecs; otheriwse, set InformSpecs to the
-    % empty list.
+    % scheme but this leaves some color roles unassigned, then record a
+    % report about this in a mutable in write_error_specs.m.
     %
     % This predicate is intended to be used by handle_options.m during
     % the creation of the first globals structure. Its result has to be
@@ -355,8 +354,8 @@
     % explained by the comment below on convert_color_spec_options.
     %
 :- pred record_color_scheme_in_options(list(format_piece)::in,
-    string::in, list(error_spec)::out, list(error_spec)::out,
-    option_table::in, option_table::out) is det.
+    string::in, list(error_spec)::out, option_table::in, option_table::out,
+    io::di, io::uo) is det.
 
 %---------------------------------------------------------------------------%
 
@@ -553,6 +552,8 @@
 %---------------------------------------------------------------------------%
 
 :- implementation.
+
+:- import_module parse_tree.write_error_spec.
 
 :- import_module char.
 :- import_module int.
@@ -864,8 +865,7 @@ convert_line_number_range(RangeStr, line_number_range(MaybeMin, MaybeMax)) :-
 
 %---------------------------------------------------------------------------%
 
-record_color_scheme_in_options(Source, SchemeName, ErrorSpecs, InformSpecs,
-        !OptionTable) :-
+record_color_scheme_in_options(Source, SchemeName, Specs, !OptionTable, !IO) :-
     % Any error message we generate cannot use color, because the existence
     % of such errors would mean that we cannot set up the colors we would
     % want to use for that. :-(
@@ -875,8 +875,7 @@ record_color_scheme_in_options(Source, SchemeName, ErrorSpecs, InformSpecs,
         )
     then
         map.set(use_color_diagnostics, bool(no), !OptionTable),
-        ErrorSpecs = [],
-        InformSpecs = []
+        Specs = []
     else if
         % XXX COLOR While we have agreed on the names of the standard schemes,
         % and on the colors to be used in the *16 schemes for the subject,
@@ -889,8 +888,8 @@ record_color_scheme_in_options(Source, SchemeName, ErrorSpecs, InformSpecs,
             Subject =       "14",   % bright cyan
             Correct =       "10",   % bright green
             Incorrect =     "9",    % bright red
-            Inconsistent =  "13",   % bright magenta
-            Hint =          "11"    % bright yellow
+            Inconsistent =  "11",   % bright yellow
+            Hint =          "13"    % bright magenta
         ;
             ( SchemeName = "dark256"
             ; SchemeName = "darkmode256"
@@ -898,8 +897,8 @@ record_color_scheme_in_options(Source, SchemeName, ErrorSpecs, InformSpecs,
             Subject =       "14",   % bright cyan
             Correct =       "10",   % bright green
             Incorrect =     "9",    % bright red
-            Inconsistent =  "13",   % bright magenta
-            Hint =          "11"    % bright yellow
+            Inconsistent =  "11",   % bright yellow
+            Hint =          "13"    % bright magenta
         ;
             ( SchemeName = "light16"
             ; SchemeName = "lightmode16"
@@ -907,8 +906,8 @@ record_color_scheme_in_options(Source, SchemeName, ErrorSpecs, InformSpecs,
             Subject =       "6",    % normal cyan
             Correct =       "2",    % normal green
             Incorrect =     "9",    % bright red
-            Inconsistent =  "5",    % normal magenta
-            Hint =          "8"     % normal yellow
+            Inconsistent =  "3",    % normal yellow
+            Hint =          "5"     % normal magenta
         ;
             ( SchemeName = "light256"
             ; SchemeName = "lightmode256"
@@ -916,8 +915,8 @@ record_color_scheme_in_options(Source, SchemeName, ErrorSpecs, InformSpecs,
             Subject =       "6",    % normal cyan
             Correct =       "2",    % normal green
             Incorrect =     "9",    % bright red
-            Inconsistent =  "5",    % normal magenta
-            Hint =          "8"     % normal yellow
+            Inconsistent =  "3",    % normal yellow
+            Hint =          "5"     % normal magenta
         )
     then
         map.set(set_color_subject, string(Subject), !OptionTable),
@@ -925,8 +924,7 @@ record_color_scheme_in_options(Source, SchemeName, ErrorSpecs, InformSpecs,
         map.set(set_color_incorrect, string(Incorrect), !OptionTable),
         map.set(set_color_inconsistent, string(Inconsistent), !OptionTable),
         map.set(set_color_hint, string(Hint), !OptionTable),
-        ErrorSpecs = [],
-        InformSpecs = []
+        Specs = []
     else if
         string.remove_prefix("specified@", SchemeName, SettingsStr)
     then
@@ -985,8 +983,7 @@ record_color_scheme_in_options(Source, SchemeName, ErrorSpecs, InformSpecs,
             ),
             (
                 MissingRoles = [],
-                ErrorSpecs = [],
-                InformSpecs = []
+                Specs = []
             ;
                 MissingRoles = [_ | _],
                 ColorColors = choose_number(MissingRoles, "color", "colors"),
@@ -997,23 +994,22 @@ record_color_scheme_in_options(Source, SchemeName, ErrorSpecs, InformSpecs,
                     piece_list_to_pieces("and", MissingRoles) ++
                     [suffix("."), nl],
                 Msg = no_ctxt_msg(Pieces),
-                InformSpecs = [conditional_spec($pred,
+                InformSpec = conditional_spec($pred,
                     inform_incomplete_color_scheme, yes,
-                    severity_informational, phase_options, [Msg])],
-                ErrorSpecs = []
+                    severity_informational, phase_options, [Msg]),
+                record_bad_color_scheme(InformSpec, !IO),
+                Specs = []
             )
         ;
             SettingSpecs = [_ | _],
-            ErrorSpecs = SettingSpecs,
-            InformSpecs = []
+            Specs = SettingSpecs
         )
     else
         Pieces = [words("Error in the value of")] ++ Source ++
             [suffix(":"), quote(SchemeName), words("is not the name"),
             words("of a recognized color scheme."), nl],
-        ErrorSpecs =
-            [no_ctxt_spec($pred, severity_error, phase_options, Pieces)],
-        InformSpecs = []
+        Specs =
+            [no_ctxt_spec($pred, severity_error, phase_options, Pieces)]
     ).
 
 :- type maybe_color_strings
