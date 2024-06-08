@@ -12,8 +12,6 @@
 
 :- import_module hlds.
 :- import_module hlds.hlds_pred.
-:- import_module parse_tree.
-:- import_module parse_tree.prog_data.
 :- import_module transform_hlds.higher_order.higher_order_global_info.
 
 :- import_module set.
@@ -63,6 +61,8 @@
 :- implementation.
 
 :- import_module hlds.hlds_module.
+:- import_module parse_tree.
+:- import_module parse_tree.prog_data.
 
 :- import_module map.
 

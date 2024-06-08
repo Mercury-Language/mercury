@@ -16,8 +16,6 @@
 
 :- import_module hlds.make_hlds.make_hlds_types.
 :- import_module hlds.status.
-:- import_module mdbcomp.
-:- import_module mdbcomp.sym_name.
 :- import_module parse_tree.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_item.
@@ -105,6 +103,8 @@
 
 :- implementation.
 
+:- import_module mdbcomp.
+:- import_module mdbcomp.sym_name.
 :- import_module parse_tree.file_kind.          % XXX Undesirable dependency.
 :- import_module parse_tree.item_util.
 

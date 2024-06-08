@@ -86,7 +86,6 @@
 :- import_module libs.globals.
 :- import_module mdbcomp.
 :- import_module mdbcomp.sym_name.
-:- import_module parse_tree.error_spec.
 :- import_module parse_tree.maybe_error.
 :- import_module parse_tree.parse_error.
 :- import_module parse_tree.prog_data.
@@ -167,6 +166,7 @@
 
 :- import_module libs.options.
 :- import_module parse_tree.convert_parse_tree.
+:- import_module parse_tree.error_spec.
 :- import_module parse_tree.file_kind.
 :- import_module parse_tree.item_util.
 :- import_module parse_tree.parse_item.

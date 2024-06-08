@@ -23,13 +23,9 @@
 :- import_module parse_tree.prog_data.
 
 :- import_module assoc_list.
-:- import_module counter.
 :- import_module list.
 :- import_module map.
-:- import_module pair.
 :- import_module set.
-:- import_module term_context.
-:- import_module varset.
 
 %---------------------------------------------------------------------------%
 
@@ -326,8 +322,12 @@
 :- import_module parse_tree.prog_type_subst.
 :- import_module parse_tree.prog_type_unify.
 
+:- import_module counter.
 :- import_module int.
+:- import_module pair.
 :- import_module require.
+:- import_module term_context.
+:- import_module varset.
 
 %---------------------------------------------------------------------------%
 

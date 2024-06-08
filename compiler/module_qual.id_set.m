@@ -21,7 +21,6 @@
 :- import_module parse_tree.prog_data.
 
 :- import_module list.
-:- import_module map.
 
 %---------------------------------------------------------------------------%
 
@@ -149,6 +148,7 @@
 
 :- import_module assoc_list.
 :- import_module bool.
+:- import_module map.
 :- import_module maybe.
 :- import_module pair.
 :- import_module require.
