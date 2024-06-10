@@ -20,16 +20,7 @@
 
 :- import_module list.
 
-:- implementation.
-
-:- import_module counter.
-:- import_module map.
-:- import_module multi_map.
-
 %---------------------------------------------------------------------------%
-%---------------------------------------------------------------------------%
-
-:- interface.
 
     % A table that records all the assertions in the system.
     % An assertion is a goal that will always evaluate to true,
@@ -57,7 +48,69 @@
 
 %---------------------------------------------------------------------------%
 
+    % A table recording exclusivity declarations (i.e. promise_exclusive
+    % and promise_exclusive_exhaustive).
+    %
+    % e.g. :- all [X]
+    %       promise_exclusive
+    %       some [Y]
+    %       (
+    %           p(X, Y)
+    %       ;
+    %           q(X)
+    %       ).
+    %
+    % promises that only one of p(X, Y) and q(X) can succeed at a time,
+    % although whichever one succeeds may have multiple solutions.
+    % See notes/promise_ex.html for details of the declarations.
+    %
+    % Note: the exclusive_table is not yet used.
+
+    % An exclusive_id is the pred_id of an exclusivity declaration,
+    % and is useful in distinguishing between the arguments of the
+    % operations below on the exclusive_table.
+    %
+:- type exclusive_id.
+:- type exclusive_table.
+
+    % Initialise the exclusive_table.
+    %
+:- pred exclusive_table_init(exclusive_table::out) is det.
+
+    % exclusive_table_add_exclusive(PromisePredId, ExclusivePredIds, !Table):
+    %
+    % The promise whose pred_id is PromisePredId lists ExclusivePredIds
+    % as being exclusive. Add this fact to the table.
+    %
+:- pred exclusive_table_add_exclusive(pred_id::in, list(pred_id)::in,
+    exclusive_table::in, exclusive_table::out) is det.
+
+    % Search the exclusive table and return the list of exclusivity
+    % declarations that use the predicate given by pred_id.
+    %
+:- pred exclusive_table_search(exclusive_table::in, pred_id::in,
+    list(exclusive_id)::out) is semidet.
+
+    % As for search, but aborts if no exclusivity declarations are found.
+    %
+:- pred exclusive_table_lookup(exclusive_table::in, pred_id::in,
+    list(exclusive_id)::out) is det.
+
+    % Optimises the exclusive_table.
+    %
+:- pred exclusive_table_optimize(exclusive_table::in, exclusive_table::out)
+    is det.
+
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+
 :- implementation.
+
+:- import_module counter.
+:- import_module map.
+:- import_module multi_map.
+
+%---------------------------------------------------------------------------%
 
 :- type assert_id
     --->    assert_id(int).
@@ -92,81 +145,50 @@ assertion_table_pred_ids(assertion_table(_, AssertionMap), PredIds) :-
     map.values(AssertionMap, PredIds).
 
 %---------------------------------------------------------------------------%
-%---------------------------------------------------------------------------%
 
-:- interface.
+:- type exclusive_id
+    --->    exclusive_id(int).
 
-    % A table recording exclusivity declarations (i.e. promise_exclusive
-    % and promise_exclusive_exhaustive).
-    %
-    % e.g. :- all [X]
-    %       promise_exclusive
-    %       some [Y]
-    %       (
-    %           p(X, Y)
-    %       ;
-    %           q(X)
-    %       ).
-    %
-    % promises that only one of p(X, Y) and q(X) can succeed at a time,
-    % although whichever one succeeds may have multiple solutions.
-    % See notes/promise_ex.html for details of the declarations.
+:- type exclusive_table
+    --->    exclusive_table(
+                % A counter to be used in allocating the next exclusive_id.
+                counter,
 
-    % An exclusive_id is the pred_id of an exclusivity declaration,
-    % and is useful in distinguishing between the arguments of the
-    % operations below on the exclusive_table.
-    %
-:- type exclusive_id  == pred_id.
-:- type exclusive_ids == list(pred_id).
-
-:- type exclusive_table.
-
-    % Initialise the exclusive_table.
-    %
-:- pred exclusive_table_init(exclusive_table::out) is det.
-
-    % Search the exclusive table and return the list of exclusivity
-    % declarations that use the predicate given by pred_id.
-    %
-:- pred exclusive_table_search(exclusive_table::in, pred_id::in,
-    exclusive_ids::out) is semidet.
-
-    % As for search, but aborts if no exclusivity declarations are found.
-    %
-:- pred exclusive_table_lookup(exclusive_table::in, pred_id::in,
-    exclusive_ids::out) is det.
-
-    % Optimises the exclusive_table.
-    %
-:- pred exclusive_table_optimize(exclusive_table::in, exclusive_table::out)
-    is det.
-
-    % Add to the exclusive table that pred_id is used in the exclusivity
-    % declaration exclusive_id.
-    %
-:- pred exclusive_table_add(pred_id::in, exclusive_id::in,
-    exclusive_table::in, exclusive_table::out) is det.
-
-%---------------------------------------------------------------------------%
-
-:- implementation.
-
-:- type exclusive_table == multi_map(pred_id, exclusive_id).
+                % Maps the id of an assertion to the pred_id of the predicate
+                % that represents the assertion.
+                multi_map(pred_id, exclusive_id)
+            ).
 
 exclusive_table_init(ExclusiveTable) :-
-    multi_map.init(ExclusiveTable).
+    counter.init(0, Counter),
+    multi_map.init(ExclusiveMap),
+    ExclusiveTable = exclusive_table(Counter, ExclusiveMap).
 
-exclusive_table_search(ExclusiveTable, Id, ExclusiveIds) :-
-    multi_map.search(ExclusiveTable, Id, ExclusiveIds).
+exclusive_table_add_exclusive(_PromisePredId, ExclusivePredIds,
+        !ExclusiveTable) :-
+    !.ExclusiveTable = exclusive_table(Counter0, ExclusiveMap0),
+    counter.allocate(ExclusiveIdInt, Counter0, Counter),
+    ExclusiveId = exclusive_id(ExclusiveIdInt),
+    RecordExclusiveId =
+        ( pred(PId::in, Map0::in, Map::out) is det :-
+            multi_map.add(PId, ExclusiveId, Map0, Map)
+        ),
+    list.foldl(RecordExclusiveId, ExclusivePredIds,
+        ExclusiveMap0, ExclusiveMap),
+    !:ExclusiveTable = exclusive_table(Counter, ExclusiveMap).
+
+exclusive_table_search(ExclusiveTable, PredId, ExclusiveIds) :-
+    ExclusiveTable = exclusive_table(_Counter, ExclusiveMap),
+    multi_map.search(ExclusiveMap, PredId, ExclusiveIds).
 
 exclusive_table_lookup(ExclusiveTable, PredId, ExclusiveIds) :-
-    multi_map.lookup(ExclusiveTable, PredId, ExclusiveIds).
+    ExclusiveTable = exclusive_table(_Counter, ExclusiveMap),
+    multi_map.lookup(ExclusiveMap, PredId, ExclusiveIds).
 
 exclusive_table_optimize(!ExclusiveTable) :-
-    multi_map.optimize(!ExclusiveTable).
-
-exclusive_table_add(ExclusiveId, PredId, !ExclusiveTable) :-
-    multi_map.set(PredId, ExclusiveId, !ExclusiveTable).
+    !.ExclusiveTable = exclusive_table(Counter, ExclusiveMap0),
+    multi_map.optimize(ExclusiveMap0, ExclusiveMap),
+    !:ExclusiveTable = exclusive_table(Counter, ExclusiveMap).
 
 %---------------------------------------------------------------------------%
 :- end_module hlds.hlds_promise.

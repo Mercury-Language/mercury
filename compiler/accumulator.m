@@ -1,8 +1,8 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
-% Copyright (C) 1999-2000, 2002-2007, 2009-2012, 2014-2023 The University of Melbourne.
-% Copyright (C) 2015 The Mercury team.
+% Copyright (C) 1999-2000, 2002-2007, 2009-2012 The University of Melbourne.
+% Copyright (C) 2014-2024 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -992,10 +992,10 @@ accu_is_associative(ModuleInfo, PredId, Args, Result) :-
     module_info_pred_info(ModuleInfo, PredId, PredInfo),
     pred_info_get_assertions(PredInfo, Assertions),
     AssertionsList = set.to_sorted_list(Assertions),
-    associativity_assertion(ModuleInfo, AssertionsList, Args,
+    find_associativity_assertion(ModuleInfo, AssertionsList, Args,
         AssociativeVarsOutputVar),
     ( if
-        commutativity_assertion(ModuleInfo, AssertionsList, Args,
+        find_commutativity_assertion(ModuleInfo, AssertionsList, Args,
             _CommutativeVars)
     then
         IsCommutative = yes
@@ -1013,19 +1013,19 @@ accu_is_associative(ModuleInfo, PredId, Args, Result) :-
     % which are associative, because then we do not know which variable
     % is descended from which.
     %
-:- pred associativity_assertion(module_info::in, list(assert_id)::in,
+:- pred find_associativity_assertion(module_info::in, list(assert_id)::in,
     list(prog_var)::in, associative_vars_output_var::out) is semidet.
 
-associativity_assertion(ModuleInfo, [AssertId | AssertIds], Args0,
+find_associativity_assertion(ModuleInfo, [AssertId | AssertIds], Args0,
         AssociativeVarsOutputVar) :-
     ( if
         assertion.is_associativity_assertion(ModuleInfo, AssertId,
             Args0, AssociativeVarsOutputVarPrime)
     then
         AssociativeVarsOutputVar = AssociativeVarsOutputVarPrime,
-        not associativity_assertion(ModuleInfo, AssertIds, Args0, _)
+        not find_associativity_assertion(ModuleInfo, AssertIds, Args0, _)
     else
-        associativity_assertion(ModuleInfo, AssertIds, Args0,
+        find_associativity_assertion(ModuleInfo, AssertIds, Args0,
             AssociativeVarsOutputVar)
     ).
 
@@ -1036,19 +1036,19 @@ associativity_assertion(ModuleInfo, [AssertId | AssertIds], Args0,
     % parts which are commutative, because then we do not know which variable
     % is descended from which.
     %
-:- pred commutativity_assertion(module_info::in,list(assert_id)::in,
+:- pred find_commutativity_assertion(module_info::in,list(assert_id)::in,
     list(prog_var)::in, set_of_progvar::out) is semidet.
 
-commutativity_assertion(ModuleInfo, [AssertId | AssertIds], Args0,
+find_commutativity_assertion(ModuleInfo, [AssertId | AssertIds], Args0,
         CommutativeVars) :-
     ( if
         assertion.is_commutativity_assertion(ModuleInfo, AssertId,
             Args0, CommutativeVarsPrime)
     then
         CommutativeVars = CommutativeVarsPrime,
-        not commutativity_assertion(ModuleInfo, AssertIds, Args0, _)
+        not find_commutativity_assertion(ModuleInfo, AssertIds, Args0, _)
     else
-        commutativity_assertion(ModuleInfo, AssertIds, Args0,
+        find_commutativity_assertion(ModuleInfo, AssertIds, Args0,
             CommutativeVars)
     ).
 

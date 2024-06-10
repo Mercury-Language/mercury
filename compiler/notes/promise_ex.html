@@ -21,7 +21,7 @@ in the reference manual.
 There are currently three promise ex declarations:
 promise_exclusive, promise_exhaustive, and promise_exclusive_exhaustive.
 They are used to denote determinism properties of a disjunction,
-and denote either exclusivity exhaustiveness or both.
+and denote either exclusivity, exhaustiveness, or both.
 The examples of each, given below,
 also show the different ways that existential quantification can be handled.
 
@@ -75,6 +75,7 @@ This tracks the use of promise ex declarations through the compiler,
 and may be useful as a quick summary of the current state of development.
 Items marked with an asterisk (*) are not yet implemented.
 Places where data structures etc. have been defined are in italics.
+(The module names listed have suffered bit rot.)
 
 <ol>
 <li>
@@ -91,7 +92,7 @@ The declarations enter the parse tree.
 <li>
 They may be pretty printed (mercury_to_mercury.m, parse_tree_out.m).
 <li>
-They are error checked, and entered in to the HLDS as dummy predicates.
+They are error checked, and entered into the HLDS as dummy predicates.
 	<ul>
 	<li>
     Error checking (make_hlds.m).
@@ -100,8 +101,9 @@ They are error checked, and entered in to the HLDS as dummy predicates.
 	</ul>
 <li>
 They go through typechecking as predicates.
-After typechecking they are removed from processing as predicates
-and entered into the appropriate table in the HLDS.
+After the typecheck, post-typecheck and purity passes of the front-end,
+they are removed from processing as predicates
+and entered into the appropriate table in the HLDS (by check_promises.m).
 	<ul>
 	<li>
     Post typechecking processing initiated for promise ex declarations

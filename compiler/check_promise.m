@@ -128,6 +128,9 @@ check_promises_in_pred(ProgressStream, PredId, !ToInvalidatePredIds,
 store_promise(PredId, PredInfo, PromiseType, !ModuleInfo, Goal) :-
     (
         % Assertions.
+        % XXX PROMISE Before we add the assertion to the assertion table,
+        % we should check that Goal has one of the forms that we recognize.
+        % If it does not, we should generate an error message.
         PromiseType = promise_type_true,
         module_info_get_assertion_table(!.ModuleInfo, AssertTable0),
         assertion_table_add_assertion(PredId, AssertionId,
@@ -137,13 +140,23 @@ store_promise(PredId, PredInfo, PromiseType, !ModuleInfo, Goal) :-
         assertion.record_preds_used_in(Goal, AssertionId, !ModuleInfo)
     ;
         % Exclusivity promises.
+        % XXX PROMISE Here we record the fact that CalleePredIds are in
+        % an exclusivity promise, but
+        % - we do not record which arguments of each predicate have to match
+        %   for the promise to apply, or
+        % - we do not record whether the promise is for exhaustiveness as well.
+        % If we *did* record a flag to  distinguish between the two, it could
+        % handle promise_type_exclusive as well.
+        %
+        % However, the above would matter only if we started to 't *use*
+        % the exclusive table.
         ( PromiseType = promise_type_exclusive
         ; PromiseType = promise_type_exclusive_exhaustive
         ),
         get_promise_ex_goal(PredInfo, Goal),
         pred_ids_called_from_goal(Goal, CalleePredIds),
         module_info_get_exclusive_table(!.ModuleInfo, Table0),
-        list.foldl(exclusive_table_add(PredId), CalleePredIds, Table0, Table),
+        exclusive_table_add_exclusive(PredId, CalleePredIds, Table0, Table),
         module_info_set_exclusive_table(Table, !ModuleInfo)
     ;
         % Exhaustiveness promises -- XXX not yet implemented.
@@ -152,6 +165,9 @@ store_promise(PredId, PredInfo, PromiseType, !ModuleInfo, Goal) :-
     ).
 
     % Get the goal from a promise_ex declaration.
+    %
+    % XXX PROMISE: duplicate code: assert_id_goal in assertion.m
+    % does the same thing.
     %
 :- pred get_promise_ex_goal(pred_info::in, hlds_goal::out) is det.
 
