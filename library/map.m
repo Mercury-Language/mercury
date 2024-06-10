@@ -1150,14 +1150,14 @@ semidet),
 :- mode map_foldl4(in(pred(in, in, out, in, out, in, out, in, out, mdi, muo)
     is det),
     in, out, in, out, in, out, in, out, mdi, muo) is det.
-:- mode map_foldl4(in(pred(in, in, out, in, out, di, uo, di, uo, di, uo) is
-det),
+:- mode map_foldl4(in(pred(in, in, out, in, out, di, uo, di, uo, di, uo)
+    is det),
     in, out, in, out, di, uo, di, uo, di, uo) is det.
-:- mode map_foldl4(in(pred(in, in, out, in, out, in, out, in, out, di, uo) is
-det),
+:- mode map_foldl4(in(pred(in, in, out, in, out, in, out, in, out, di, uo)
+    is det),
     in, out, in, out, in, out, in, out, di, uo) is det.
-:- mode map_foldl4(in(pred(in, in, out, in, out, in, out, di, uo, di, uo) is
-det),
+:- mode map_foldl4(in(pred(in, in, out, in, out, in, out, di, uo, di, uo)
+    is det),
     in, out, in, out, in, out, di, uo, di, uo) is det.
 :- mode map_foldl4(in(pred(in, in, out, in, out, in, out, in, out, in, out)
     is semidet),
