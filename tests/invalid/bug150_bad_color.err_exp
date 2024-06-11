@@ -1,6 +1,7 @@
 mercury_compile:
-Error in the value of the `--color-scheme' option: `cow' is neither an integer
-  nor the name of a color.
+Error in the value of the `--color-scheme' option: `cow' is not the name of a
+  known color, the #RRGGBB specification of a 24 bit color, or a decimal
+  integer between 0 and 255 specifying an 8 bit color.
 Error in the value of the `--color-scheme' option: expected a string of the
   form `role=color' where `role' is one of `subject', `correct', `incorrect',
   `inconsistent' and `hint', got `holy=8'.

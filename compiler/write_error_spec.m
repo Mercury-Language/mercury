@@ -204,7 +204,6 @@
 :- import_module string.
 :- import_module term_context.
 :- import_module uint.
-:- import_module uint8.
 
 %---------------------------------------------------------------------------%
 %
@@ -2087,11 +2086,16 @@ init_color_db(OptionTable) = ColorDb :-
 color_to_string(SetOrReset) = Str :-
     (
         SetOrReset = color_set(Color),
-        Color = color_8bit(ColorNum),
-        string.format("\033\[38;5;%dm", [i(uint8.cast_to_int(ColorNum))], Str)
+        (
+            Color = color_8bit(ColorNum),
+            string.format("\e[38;5;%um", [u8(ColorNum)], Str)
+        ;
+            Color = color_24bit(R, G, B),
+            string.format("\e[38;2;%u;%u;%um", [u8(R), u8(G), u8(B)], Str)
+        )
     ;
         SetOrReset = color_reset,
-        Str =  "\033\[39;49m"
+        Str = "\e[39;49m"
     ).
 
 %---------------------------------------------------------------------------%

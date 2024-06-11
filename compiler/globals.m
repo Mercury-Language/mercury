@@ -360,7 +360,9 @@
 %---------------------------------------------------------------------------%
 
 :- type color_spec
-    --->    color_8bit(uint8).
+    --->    color_8bit(uint8)
+    ;       color_24bit(uint8, uint8, uint8).
+            % Red, Green, Blue.
 
 :- type color_specs
     --->    color_specs(
@@ -1057,18 +1059,8 @@ parse_color_specifications(Source, [Setting | Settings],
                 !MaybeColorStrs ^ mcs_hint := yes(Value)
             )
         ;
-            Result = not_color_int_outside_range(Min, Max),
-            Pieces = [words("Error in")] ++ Source ++ [suffix(":"),
-                quote(Value), words("is outside the range"),
-                int_fixed(Min), words("to"), int_fixed(Max), suffix("."), nl],
-            Spec = no_ctxt_spec($pred, severity_error, phase_options, Pieces),
-            !:Specs = [Spec | !.Specs]
-        ;
-            Result = not_color_unknown_format,
-            Pieces = [words("Error in")] ++ Source ++
-                [suffix(":"), quote(Value),
-                words("is neither an integer nor the name of a color."), nl],
-            Spec = no_ctxt_spec($pred, severity_error, phase_options, Pieces),
+            Result = is_not_color(WhyNot),
+            Spec = report_why_not_color(Source, Value, WhyNot),
             !:Specs = [Spec | !.Specs]
         )
     else
@@ -1161,26 +1153,23 @@ convert_color_spec_option(OptionName, OptionValue) = MaybeMaybeColorSpec :-
             ColorResult = is_color(Color),
             MaybeMaybeColorSpec = ok1(yes(Color))
         ;
-            ColorResult = not_color_int_outside_range(Min, Max),
-            Pieces = [words("Error: the argument of"), fixed(OptionName),
-                words("is outside the range"),
-                int_fixed(Min), words("to"), int_fixed(Max), suffix("."), nl],
-            Spec = no_ctxt_spec($pred, severity_error, phase_options, Pieces),
-            MaybeMaybeColorSpec = error1([Spec])
-        ;
-            ColorResult = not_color_unknown_format,
-            Pieces = [words("Error: the argument of"), fixed(OptionName),
-                words("is neither an integer nor the name of a color."), nl],
-            Spec = no_ctxt_spec($pred, severity_error, phase_options, Pieces),
+            ColorResult = is_not_color(WhyNot),
+            Source = [words("the argument of"), fixed(OptionName)],
+            Spec = report_why_not_color(Source, OptionValue, WhyNot),
             MaybeMaybeColorSpec = error1([Spec])
         )
     ).
 
 :- type is_color_result
     --->    is_color(color_spec)
-    ;       not_color_int_outside_range(int, int)
+    ;       is_not_color(why_not_color).
+
+:- type why_not_color
+    --->    wnc_int_outside_range(int, int)
             % The range the int is outside of, both inclusive.
-    ;       not_color_unknown_format.
+    ;       wnc_afterhash_length(int)
+    ;       wnc_afterhash_nondigits
+    ;       wnc_unknown_format.
 
 :- func is_string_a_color_spec(string) = is_color_result.
 
@@ -1191,16 +1180,40 @@ is_string_a_color_spec(Str) = Result :-
     % would be integers between 0 and 255.
     ( if standard_color_name(Str, Color) then
         Result = is_color(Color)
+    else if string.remove_prefix("#", Str, StrAfterHash) then
+        string.to_char_list(StrAfterHash, CharsAfterHash),
+        ( if CharsAfterHash = [RH, RL, GH, GL, BH, BL] then
+            ( if
+                char.hex_digit_to_int(RH, ValRH),
+                char.hex_digit_to_int(RL, ValRL),
+                char.hex_digit_to_int(GH, ValGH),
+                char.hex_digit_to_int(GL, ValGL),
+                char.hex_digit_to_int(BH, ValBH),
+                char.hex_digit_to_int(BL, ValBL)
+            then
+                ValR = uint8.det_from_int(ValRH * 16 + ValRL),
+                ValG = uint8.det_from_int(ValGH * 16 + ValGL),
+                ValB = uint8.det_from_int(ValBH * 16 + ValBL),
+                Color = color_24bit(ValR, ValG, ValB),
+                Result = is_color(Color)
+            else
+                Result = is_not_color(wnc_afterhash_nondigits)
+            )
+        else
+            list.length(CharsAfterHash, NumCharsAfterHash),
+            WhyNot = wnc_afterhash_length(NumCharsAfterHash),
+            Result = is_not_color(WhyNot)
+        )
     else if string.to_int(Str, N) then
         % The value range we want is exactly the range of uint8s.
         ( if uint8.from_int(N, ColorNum) then
             Color = color_8bit(ColorNum),
             Result = is_color(Color)
         else
-            Result = not_color_int_outside_range(0, 255)
+            Result = is_not_color(wnc_int_outside_range(0, 255))
         )
     else
-        Result = not_color_unknown_format
+        Result = is_not_color(wnc_unknown_format)
     ).
 
 :- pred standard_color_name(string::in, color_spec::out) is semidet.
@@ -1232,6 +1245,38 @@ standard_color_name("bright-cyan",      color_8bit(14u8)).
 standard_color_name("bright cyan",      color_8bit(14u8)).
 standard_color_name("bright-white",     color_8bit(15u8)).
 standard_color_name("bright white",     color_8bit(15u8)).
+
+:- func report_why_not_color(list(format_piece), string, why_not_color)
+    = error_spec.
+
+report_why_not_color(Source, Value, WhyNot) = Spec :-
+    (
+        WhyNot = wnc_int_outside_range(Min, Max),
+        Pieces = [words("Error in")] ++ Source ++ [suffix(":"),
+            quote(Value), words("is outside the range"),
+            int_fixed(Min), words("to"), int_fixed(Max), suffix("."), nl],
+        Spec = no_ctxt_spec($pred, severity_error, phase_options, Pieces)
+    ;
+        WhyNot = wnc_afterhash_length(Len),
+        Pieces = [words("Error in")] ++ Source ++ [suffix(":"),
+            words("expected six hexadecimal digits after the # sign, got"),
+            int_name(Len), words("characters."), nl],
+        Spec = no_ctxt_spec($pred, severity_error, phase_options, Pieces)
+    ;
+        WhyNot = wnc_afterhash_nondigits,
+        Pieces = [words("Error in")] ++ Source ++ [suffix(":"),
+            words("expected all six characters after the # sign"),
+            words("to be hexadecimal digits, but some are not."), nl],
+        Spec = no_ctxt_spec($pred, severity_error, phase_options, Pieces)
+    ;
+        WhyNot = wnc_unknown_format,
+        Pieces = [words("Error in")] ++ Source ++ [suffix(":"), quote(Value),
+            words("is not the name of a known color,"),
+            words("the #RRGGBB specification of a 24 bit color, or"),
+            words("a decimal integer between 0 and 255"),
+            words("specifying an 8 bit color."), nl],
+        Spec = no_ctxt_spec($pred, severity_error, phase_options, Pieces)
+    ).
 
 %---------------------------------------------------------------------------%
 
