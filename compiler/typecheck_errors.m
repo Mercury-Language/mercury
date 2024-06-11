@@ -1017,8 +1017,7 @@ mismatched_args_to_pieces(VarSet, Functor, First, [Mismatch | Mismatches])
         AllMismatches = [HeadTypeMismatch | TailTypeMismatches],
         ErrorDescPieces =
             [words("has one of the following type mismatches."), nl] ++
-            report_possible_expected_actual_types(1, AllMismatches) ++
-        [suffix("."), nl]
+            report_possible_expected_actual_types(1, AllMismatches)
     ),
     SpecialReasonPieces = report_special_type_mismatches(SpecialMismatches),
 
