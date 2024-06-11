@@ -1,0 +1,6 @@
+mercury_compile:
+Error in the value of the `--color-scheme' option: `cow' is neither an integer
+  nor the name of a color.
+Error in the value of the `--color-scheme' option: expected a string of the
+  form `role=color' where `role' is one of `subject', `correct', `incorrect',
+  `inconsistent' and `hint', got `holy=8'.

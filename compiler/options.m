@@ -275,7 +275,31 @@
     ;       enable_color_diagnostics_is_set
     ;       enable_color_diagnostics_is_set_to
     ;       use_color_diagnostics
+            % The color_scheme used by the compiler is specified by
+            % the color_scheme_set_to option. The color_scheme_set_by
+            % option specifies what agent set the value of color_scheme_set_to
+            % with the valid values being "default", "option" and "envvar".
+            % Both color_scheme_set_by and color_scheme_set_to are for
+            % internal use only.
+            %
+            % The color_scheme option is visible to users.
+            % It is a special option whose action sets color_scheme_set_to
+            % to its own argument, and sets color_scheme_set_by to "option".
+            %
+            % The color_scheme_envvar option is not visible to users.
+            % It is a special option whose action sets color_scheme_set_to
+            % to its own argument, and sets color_scheme_set_by to "envvar".
     ;       color_scheme
+    ;       color_scheme_envvar
+    ;       color_scheme_set_by
+    ;       color_scheme_set_to
+            % The ignore_color_scheme_envvar option is intended for
+            % only one purpose: enable the testing of color options
+            % in tests/invalid *despite* the setting of MERCURY_COLOR_SCHEME
+            % by tools/bootcheck.
+    ;       ignore_color_scheme_envvar
+            % The set_color_X options are for internal use only.
+            % They record the results of the color scheme selection.
     ;       set_color_subject
     ;       set_color_correct
     ;       set_color_incorrect
@@ -1372,7 +1396,11 @@ optdef(oc_verbosity, enable_color_diagnostics,          bool_special).
 optdef(oc_verbosity, enable_color_diagnostics_is_set,   bool(no)).
 optdef(oc_verbosity, enable_color_diagnostics_is_set_to, bool(no)).
 optdef(oc_verbosity, use_color_diagnostics,             bool(no)).
-optdef(oc_verbosity, color_scheme,                      maybe_string(no)).
+optdef(oc_verbosity, color_scheme,                      string_special).
+optdef(oc_verbosity, color_scheme_envvar,               string_special).
+optdef(oc_verbosity, color_scheme_set_by,               string("default")).
+optdef(oc_verbosity, color_scheme_set_to,               string("light16")).
+optdef(oc_verbosity, ignore_color_scheme_envvar,        bool(no)).
 optdef(oc_verbosity, set_color_subject,                 string("")).
 optdef(oc_verbosity, set_color_correct,                 string("")).
 optdef(oc_verbosity, set_color_incorrect,               string("")).
@@ -2352,6 +2380,8 @@ long_table("enable-color-diagnostics", enable_color_diagnostics).
 long_table("enable-colour-diagnostics", enable_color_diagnostics).
 % use_color_diagnostics is an internal-use-only option.
 long_table("color-scheme",             color_scheme).
+long_table("color-scheme-envvar",      color_scheme_envvar).
+long_table("ignore-color-scheme-envvar", ignore_color_scheme_envvar).
 long_table("debug-types",              debug_types).
 long_table("debug-types-pred-name",    debug_types_pred_name).
 long_table("debug-modes",              debug_modes).
@@ -3456,6 +3486,21 @@ special_handler(Option, SpecialData, !.OptionTable, Result, !OptOptions) :-
             map.set(enable_color_diagnostics_is_set, bool(yes), !OptionTable),
             map.set(enable_color_diagnostics_is_set_to, bool(Enable),
                 !OptionTable)
+        ;
+            Option = color_scheme,
+            SpecialData = string(ColorScheme),
+            map.set(color_scheme_set_by, string("option"), !OptionTable),
+            map.set(color_scheme_set_to, string(ColorScheme), !OptionTable)
+        ;
+            Option = color_scheme_envvar,
+            SpecialData = string(ColorScheme),
+            map.lookup(!.OptionTable, ignore_color_scheme_envvar, IgnoreValue),
+            ( if IgnoreValue = bool(yes) then
+                true
+            else
+                map.set(color_scheme_set_by, string("envvar"), !OptionTable),
+                map.set(color_scheme_set_to, string(ColorScheme), !OptionTable)
+            )
         ;
             Option = compile_to_c,
             SpecialData = none,
@@ -4684,6 +4729,8 @@ options_help_verbosity(Stream, !IO) :-
 % useful.
 %       "--enable-color-diagnostics",
 %       "\tEnable the use of colors in diagnostic messages.",
+% XXX This option should be used only by our test suite.
+%       "--ignore-color-envvars"
 %       "--color-scheme <ColorScheme>",
 %       "\tUse the given color scheme. This may `none', disabling the",
 %       "\tuse of color, it may be one of `dark16', `dark256', `light16'",

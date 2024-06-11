@@ -33,8 +33,9 @@
 %---------------------------------------------------------------------------%
 
 :- pred make_process_compiler_args(io.text_output_stream::in, globals::in,
-    list(string)::in, options_variables::in, list(string)::in,
-    list(file_name)::in, io::di, io::uo) is det.
+    list(string)::in, options_variables::in,
+    list(string)::in, list(string)::in, list(file_name)::in,
+    io::di, io::uo) is det.
 
 :- pred make_top_target(io.text_output_stream::in, globals::in,
     top_target_file::in, maybe_succeeded::out,
@@ -77,7 +78,7 @@
 %---------------------------------------------------------------------------%
 
 make_process_compiler_args(ProgressStream, Globals, DetectedGradeFlags,
-        OptionsVariables, OptionArgs, Targets0, !IO) :-
+        OptionsVariables, EnvVarArgs, OptionArgs, Targets0, !IO) :-
     io.progname_base("mercury_compile", ProgName, !IO),
     get_main_target_if_needed(ProgName, OptionsVariables,
         Targets0, MaybeTargets0),
@@ -120,8 +121,8 @@ make_process_compiler_args(ProgressStream, Globals, DetectedGradeFlags,
         ClassifiedTargetSet = set.list_to_set(ClassifiedTargets),
 
         MakeInfo0 = init_make_info(OptionsVariables, DetectedGradeFlags,
-            KeepGoing, OptionArgs, ClassifiedTargetSet, AnalysisRepeat,
-            init_target_file_timestamps, ModuleIndexMap,
+            KeepGoing, EnvVarArgs, OptionArgs, ClassifiedTargetSet,
+            AnalysisRepeat, init_target_file_timestamps, ModuleIndexMap,
             DepIndexMap, DepStatusMap),
 
         % Build the targets, stopping on any errors if `--keep-going'

@@ -47,7 +47,8 @@
 
     % setup_for_build_with_module_options(ProgressStream, DefaultOptionTable,
     %   InvokedByMmcMake, ModuleName, DetectedGradeFlags,
-    %   OptionVariables, OptionArgs, ExtraOptions, MayBuild, !Info, !IO):
+    %   OptionVariables, EnvVarArgs, OptionArgs, ExtraOptions, MayBuild,
+    %   !Info, !IO):
     %
     % Set up for building some compiler-generated file for ModuleName,
     % Return, in MayBuild, the full argument list for that compiler invocation,
@@ -67,8 +68,8 @@
     %
 :- pred setup_for_build_with_module_options(io.text_output_stream::in,
     option_table(option)::in, maybe_invoked_by_mmc_make::in,
-    module_name::in, list(string)::in,
-    options_variables::in, list(string)::in, list(string)::in,
+    module_name::in, list(string)::in, options_variables::in,
+    list(string)::in, list(string)::in, list(string)::in,
     may_build::out, io::di, io::uo) is det.
 
 %---------------------%
@@ -227,7 +228,7 @@
 
 setup_for_build_with_module_options(ProgressStream, DefaultOptionTable,
         InvokedByMmcMake, ModuleName, DetectedGradeFlags, OptionVariables,
-        OptionArgs, ExtraOptions, MayBuild, !IO) :-
+        EnvVarArgs, OptionArgs, ExtraOptions, MayBuild, !IO) :-
     lookup_mmc_module_options(OptionVariables, ModuleName,
         MaybeModuleOptionArgs),
     (
@@ -250,7 +251,8 @@ setup_for_build_with_module_options(ProgressStream, DefaultOptionTable,
             InvokedByMake = []
         ),
         AllOptionArgs = InvokedByMake ++ DetectedGradeFlags ++
-            ModuleOptionArgs ++ OptionArgs ++ ExtraOptions ++ UseSubdirs,
+            ModuleOptionArgs ++ EnvVarArgs ++ OptionArgs ++
+            ExtraOptions ++ UseSubdirs,
         handle_given_options(ProgressStream, DefaultOptionTable, AllOptionArgs,
             _, _, OptionSpecs, BuildGlobals, !IO),
         (

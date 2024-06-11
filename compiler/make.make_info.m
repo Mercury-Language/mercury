@@ -215,13 +215,14 @@
 :- type make_info.
 
 :- func init_make_info(options_variables, list(string), maybe_keep_going,
-    list(string), set(top_target_file), int, target_file_timestamps,
-    module_index_map, dependency_file_index_map, dep_file_status_map)
-    = make_info.
+    list(string), list(string), set(top_target_file), int,
+    target_file_timestamps, module_index_map, dependency_file_index_map,
+    dep_file_status_map) = make_info.
 
 :- func make_info_get_options_variables(make_info) = options_variables.
 :- func make_info_get_detected_grade_flags(make_info) = list(string).
 :- func make_info_get_keep_going(make_info) = maybe_keep_going.
+:- func make_info_get_env_var_args(make_info) = list(string).
 :- func make_info_get_option_args(make_info) = list(string).
 :- func make_info_get_command_line_targets(make_info) = set(top_target_file).
 :- func make_info_get_rebuild_module_deps(make_info) =
@@ -323,6 +324,11 @@
 
                 % The value of the --keep-going option.
                 mki_keep_going          :: maybe_keep_going,
+
+                % A sequence of option values that express the values
+                % of environment variables such as MERCURY_COLOR_SCHEME
+                % and NO_COLOR.
+                mki_env_var_args        :: list(string),
 
                 % The remaining fields are read-write.
 
@@ -444,9 +450,10 @@
                 mki_trans_deps_cache    :: trans_deps_cache
             ).
 
-init_make_info(OptionsVariables, DetectedGradeFlags, KeepGoing, OptionArgs,
-        CmdLineTargets, AnalysisRepeat, TargetTimestamps, ModuleIndexMap,
-        DepIndexMap, DepStatusMap) = MakeInfo :-
+init_make_info(OptionsVariables, DetectedGradeFlags, KeepGoing,
+        EnvVarArgs, OptionArgs, CmdLineTargets, AnalysisRepeat,
+        TargetTimestamps, ModuleIndexMap, DepIndexMap, DepStatusMap)
+        = MakeInfo :-
     map.init(ModuleDependencies),
     map.init(FileTimestamps),
     ShouldRebuildModuleDeps = do_rebuild_module_deps,
@@ -457,6 +464,7 @@ init_make_info(OptionsVariables, DetectedGradeFlags, KeepGoing, OptionArgs,
         OptionsVariables,
         DetectedGradeFlags,
         KeepGoing,
+        EnvVarArgs,
         OptionArgs,
         CmdLineTargets,
         ShouldRebuildModuleDeps,
@@ -487,6 +495,8 @@ make_info_get_detected_grade_flags(Info) = X :-
     X = Info ^ mki_detected_grade_flags.
 make_info_get_keep_going(Info) = X :-
     X = Info ^ mki_keep_going.
+make_info_get_env_var_args(Info) = X :-
+    X = Info ^ mki_env_var_args.
 make_info_get_option_args(Info) = X :-
     X = Info ^ mki_option_args.
 make_info_get_command_line_targets(Info) = X :-

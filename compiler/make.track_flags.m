@@ -123,8 +123,10 @@ make_track_flags_files_for_module(ErrorStream, ProgressStream, Globals,
     (
         MaybeModuleOptionArgs = ok1(ModuleOptionArgs),
         DetectedGradeFlags = make_info_get_detected_grade_flags(!.Info),
+        EnvVarArgs = make_info_get_env_var_args(!.Info),
         OptionArgs = make_info_get_option_args(!.Info),
-        AllOptionArgs = DetectedGradeFlags ++ ModuleOptionArgs ++ OptionArgs,
+        AllOptionArgs = DetectedGradeFlags ++ ModuleOptionArgs ++
+            EnvVarArgs ++ OptionArgs,
 
         % The set of options from one module to the next is usually identical,
         % so we can easily avoid running handle_options and stringifying and

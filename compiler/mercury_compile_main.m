@@ -277,11 +277,13 @@ real_main_after_expansion(ProgressStream, ErrorStream, CmdLineArgs, !IO) :-
         Result = opr_success(DetectedGradeFlags, OptionsVariables, MCFlags,
             OptionArgs, NonOptionArgs, OptionSpecs),
 
+        get_args_representing_env_vars(EnvVarArgs, !IO),
         % NOTE: The order of the flags here must be:
         %
         %   (1) flags for detected library grades
         %   (2) flags from Mercury.config and any Mercury.options files
-        %   (3) flags from any command line options
+        %   (3) flags from environment variables
+        %   (4) flags from any command line options
         %
         % The order is important, because flags given later in this list
         % can override those given earlier.
@@ -290,7 +292,7 @@ real_main_after_expansion(ProgressStream, ErrorStream, CmdLineArgs, !IO) :-
         % via the DEFAULT_MCFLAGS variable and detected library grades is
         % currently not defined. It does not matter at the moment, since
         % Mercury.config does not contain either of those two flags.
-        AllFlags = DetectedGradeFlags ++ MCFlags ++ OptionArgs,
+        AllFlags = DetectedGradeFlags ++ MCFlags ++ EnvVarArgs ++ OptionArgs,
         trace [
             compile_time(flag("cmd_line_args")),
             run_time(env("MMC_CMD_LINE_ARGS")),
@@ -314,7 +316,7 @@ real_main_after_expansion(ProgressStream, ErrorStream, CmdLineArgs, !IO) :-
             Specs = [],
             main_after_setup(ProgressStream, ErrorStream, ActualGlobals,
                 DetectedGradeFlags, OptionsVariables,
-                OptionArgs, NonOptionArgs, !IO),
+                EnvVarArgs, OptionArgs, NonOptionArgs, !IO),
             trace [compile_time(flag("file_name_translations")), io(!TIO)] (
                 write_translations_record_if_any(ActualGlobals, !TIO)
             )
@@ -327,6 +329,35 @@ real_main_after_expansion(ProgressStream, ErrorStream, CmdLineArgs, !IO) :-
             OptionSpecs, !IO),
         io.set_exit_status(1, !IO)
     ).
+
+:- pred get_args_representing_env_vars(list(string)::out,
+    io::di, io::uo) is det.
+
+get_args_representing_env_vars(EnvVarArgs, !IO) :-
+    io.environment.get_environment_var("MERCURY_COLOR_SCHEME",
+        MaybeColorScheme, !IO),
+    ( if
+        MaybeColorScheme = yes(ColorScheme),
+        % XXX Should we let MERCURY_COLOR_SCHEME being set to ""
+        % override the default color scheme? Having this test here
+        % assumes that our preferred answer is "no".
+        ColorScheme \= ""
+    then
+        EnvVarColorSchemeArgs = ["--color-scheme-envvar", ColorScheme]
+    else
+        EnvVarColorSchemeArgs = []
+    ),
+    io.environment.get_environment_var("NO_COLOR", MaybeNoColor, !IO),
+    ( if
+        MaybeNoColor = yes(NoColorValue),
+        NoColorValue \= ""
+    then
+        % The environment variable NO_COLOR is present and nonempty.
+        EnvVarNoColorArgs = ["--no-enable-color-diagnostics"]
+    else
+        EnvVarNoColorArgs = []
+    ),
+    EnvVarArgs = EnvVarColorSchemeArgs ++ EnvVarNoColorArgs.
 
 %---------------------------------------------------------------------------%
 
@@ -620,18 +651,20 @@ main_for_make(ProgressStream, ErrorStream, Globals, Args, !IO) :-
     DetectedGradeFlags = [],
     io.environment.get_environment_var_map(EnvVarMap, !IO),
     OptionsVariables = options_variables_init(EnvVarMap),
+    get_args_representing_env_vars(EnvVarArgs, !IO),
     OptionArgs = [],
     main_after_setup(ProgressStream, ErrorStream, Globals, DetectedGradeFlags,
-        OptionsVariables, OptionArgs, Args, !IO).
+        OptionsVariables, EnvVarArgs, OptionArgs, Args, !IO).
 
 %---------------------------------------------------------------------------%
 
 :- pred main_after_setup(io.text_output_stream::in, io.text_output_stream::in,
     globals::in, list(string)::in, options_variables::in,
-    list(string)::in, list(string)::in, io::di, io::uo) is det.
+    list(string)::in, list(string)::in, list(string)::in,
+    io::di, io::uo) is det.
 
 main_after_setup(ProgressStream, ErrorStream, Globals, DetectedGradeFlags,
-        OptionVariables, OptionArgs, Args, !IO) :-
+        OptionVariables, EnvVarArgs, OptionArgs, Args, !IO) :-
     globals.lookup_bool_option(Globals, version, Version),
     globals.lookup_bool_option(Globals, help, Help),
 
@@ -652,7 +685,7 @@ main_after_setup(ProgressStream, ErrorStream, Globals, DetectedGradeFlags,
         HaveParseTreeMaps0 = init_have_parse_tree_maps,
         Specs0 = [],
         do_op_mode(ProgressStream, ErrorStream, Globals, OpMode,
-            DetectedGradeFlags, OptionVariables, OptionArgs, Args,
+            DetectedGradeFlags, OptionVariables, EnvVarArgs, OptionArgs, Args,
             HaveParseTreeMaps0, _HaveParseTreeMaps, Specs0, Specs, !IO),
         write_error_specs(ErrorStream, Globals, Specs, !IO)
     ).
@@ -661,12 +694,13 @@ main_after_setup(ProgressStream, ErrorStream, Globals, DetectedGradeFlags,
 
 :- pred do_op_mode(io.text_output_stream::in, io.text_output_stream::in,
     globals::in, op_mode::in, list(string)::in, options_variables::in,
-    list(string)::in, list(string)::in,
+    list(string)::in, list(string)::in, list(string)::in,
     have_parse_tree_maps::in, have_parse_tree_maps::out,
     list(error_spec)::in, list(error_spec)::out, io::di, io::uo) is det.
 
 do_op_mode(ProgressStream, ErrorStream, Globals, OpMode, DetectedGradeFlags,
-        OptionVariables, OptionArgs, Args, !HaveParseTreeMaps, !Specs, !IO) :-
+        OptionVariables, EnvVarArgs, OptionArgs, Args, !HaveParseTreeMaps,
+        !Specs, !IO) :-
     (
         OpMode = opm_top_make,
         % make_process_compiler_args itself does not pay attention to the
@@ -675,7 +709,8 @@ do_op_mode(ProgressStream, ErrorStream, Globals, OpMode, DetectedGradeFlags,
         globals.set_option(filenames_from_stdin, bool(no),
             Globals, MakeGlobals),
         make_process_compiler_args(ProgressStream, MakeGlobals,
-            DetectedGradeFlags, OptionVariables, OptionArgs, Args, !IO)
+            DetectedGradeFlags, OptionVariables, EnvVarArgs, OptionArgs,
+            Args, !IO)
     ;
         OpMode = opm_top_generate_source_file_mapping,
         source_file_map.write_source_file_map(ProgressStream, Globals,
@@ -701,8 +736,8 @@ do_op_mode(ProgressStream, ErrorStream, Globals, OpMode, DetectedGradeFlags,
         else
             do_op_mode_args(ProgressStream, ErrorStream, Globals,
                 OpModeArgs, InvokedByMmcMake, FileNamesFromStdin,
-                DetectedGradeFlags, OptionVariables, OptionArgs, Args,
-                !HaveParseTreeMaps, !Specs, !IO)
+                DetectedGradeFlags, OptionVariables, EnvVarArgs, OptionArgs,
+                Args, !HaveParseTreeMaps, !Specs, !IO)
         )
     ).
 
@@ -836,13 +871,14 @@ do_op_mode_query(ErrorStream, Globals, OpModeQuery, OptionVariables, !IO) :-
 :- pred do_op_mode_args(io.text_output_stream::in, io.text_output_stream::in,
     globals::in, op_mode_args::in, op_mode_invoked_by_mmc_make::in,
     bool::in, list(string)::in, options_variables::in,
-    list(string)::in, list(string)::in,
+    list(string)::in, list(string)::in, list(string)::in,
     have_parse_tree_maps::in, have_parse_tree_maps::out,
     list(error_spec)::in, list(error_spec)::out, io::di, io::uo) is det.
 
 do_op_mode_args(ProgressStream, ErrorStream, Globals,
         OpModeArgs, InvokedByMmcMake, FileNamesFromStdin, DetectedGradeFlags,
-        OptionVariables, OptionArgs, Args, !HaveParseTreeMaps, !Specs, !IO) :-
+        OptionVariables, EnvVarArgs, OptionArgs, Args,
+        !HaveParseTreeMaps, !Specs, !IO) :-
     maybe_check_libraries_are_installed(Globals, LibgradeCheckSpecs, !IO),
     io.stderr_stream(StdErr, !IO),
     (
@@ -855,7 +891,7 @@ do_op_mode_args(ProgressStream, ErrorStream, Globals,
             io.stdin_stream(StdIn, !IO),
             setup_and_process_compiler_stdin_args(ProgressStream, ErrorStream,
                 StdIn, Globals, OpModeArgs, InvokedByMmcMake,
-                DetectedGradeFlags, OptionVariables, OptionArgs,
+                DetectedGradeFlags, OptionVariables, EnvVarArgs, OptionArgs,
                 cord.empty, ModulesToLinkCord, cord.empty, ExtraObjFilesCord,
                 !HaveParseTreeMaps, !Specs, !IO)
         ;
@@ -864,7 +900,8 @@ do_op_mode_args(ProgressStream, ErrorStream, Globals,
                 InvokedByMmcMake = op_mode_not_invoked_by_mmc_make,
                 setup_and_process_compiler_cmd_line_args(ProgressStream,
                     ErrorStream, Globals, OpModeArgs, InvokedByMmcMake,
-                    DetectedGradeFlags, OptionVariables, OptionArgs, Args,
+                    DetectedGradeFlags, OptionVariables,
+                    EnvVarArgs, OptionArgs, Args,
                     cord.empty, ModulesToLinkCord,
                     cord.empty, ExtraObjFilesCord,
                     !HaveParseTreeMaps, !Specs, !IO)
@@ -894,7 +931,8 @@ do_op_mode_args(ProgressStream, ErrorStream, Globals,
             then
                 generate_executable(ProgressStream, ErrorStream, Globals,
                     InvokedByMmcMake, DetectedGradeFlags, OptionVariables,
-                    OptionArgs, ModulesToLink, ExtraObjFiles, FirstModule, !IO)
+                    EnvVarArgs, OptionArgs, ModulesToLink, ExtraObjFiles,
+                    FirstModule, !IO)
             else
                 true
             )
@@ -926,11 +964,12 @@ do_op_mode_args(ProgressStream, ErrorStream, Globals,
 
 :- pred generate_executable(io.text_output_stream::in,
     io.text_output_stream::in, globals::in, op_mode_invoked_by_mmc_make::in,
-    list(string)::in, options_variables::in, list(string)::in,
-    list(string)::in, list(string)::in, string::in, io::di, io::uo) is det.
+    list(string)::in, options_variables::in,
+    list(string)::in, list(string)::in, list(string)::in, list(string)::in,
+    string::in, io::di, io::uo) is det.
 
 generate_executable(ProgressStream, ErrorStream, Globals, InvokedByMmcMake,
-        DetectedGradeFlags, OptionVariables, OptionArgs,
+        DetectedGradeFlags, OptionVariables, EnvVarArgs, OptionArgs,
         ModulesToLink, ExtraObjFiles, FirstModule, !IO) :-
     file_name_to_module_name(FirstModule, MainModuleName),
     globals.get_target(Globals, Target),
@@ -957,7 +996,7 @@ generate_executable(ProgressStream, ErrorStream, Globals, InvokedByMmcMake,
             get_default_options(Globals, DefaultOptionTable),
             setup_for_build_with_module_options(ProgressStream,
                 DefaultOptionTable, not_invoked_by_mmc_make, MainModuleName,
-                DetectedGradeFlags, OptionVariables, OptionArgs,
+                DetectedGradeFlags, OptionVariables, EnvVarArgs, OptionArgs,
                 [], MayBuild, !IO),
             (
                 MayBuild = may_not_build(Specs),
@@ -977,7 +1016,7 @@ generate_executable(ProgressStream, ErrorStream, Globals, InvokedByMmcMake,
 :- pred setup_and_process_compiler_stdin_args(io.text_output_stream::in,
     io.text_output_stream::in, io.text_input_stream::in, globals::in,
     op_mode_args::in, op_mode_invoked_by_mmc_make::in, list(string)::in,
-    options_variables::in, list(string)::in,
+    options_variables::in, list(string)::in, list(string)::in,
     cord(string)::in, cord(string)::out,
     cord(string)::in, cord(string)::out,
     have_parse_tree_maps::in, have_parse_tree_maps::out,
@@ -985,7 +1024,7 @@ generate_executable(ProgressStream, ErrorStream, Globals, InvokedByMmcMake,
 
 setup_and_process_compiler_stdin_args(ProgressStream, ErrorStream, StdIn,
         Globals, OpModeArgs, InvokedByMmcMake, DetectedGradeFlags,
-        OptionVariables, OptionArgs, !Modules, !ExtraObjFiles,
+        OptionVariables, EnvVarArgs, OptionArgs, !Modules, !ExtraObjFiles,
         !HaveParseTreeMaps, !Specs, !IO) :-
     ( if cord.is_empty(!.Modules) then
         true
@@ -998,13 +1037,13 @@ setup_and_process_compiler_stdin_args(ProgressStream, ErrorStream, StdIn,
         Arg = string.rstrip(Line),
         setup_and_process_compiler_arg(ProgressStream, ErrorStream, Globals,
             OpModeArgs, InvokedByMmcMake, DetectedGradeFlags, OptionVariables,
-            OptionArgs, Arg, ArgModules, ArgExtraObjFiles,
+            EnvVarArgs, OptionArgs, Arg, ArgModules, ArgExtraObjFiles,
             !HaveParseTreeMaps, !Specs, !IO),
         !:Modules = !.Modules ++ cord.from_list(ArgModules),
         !:ExtraObjFiles = !.ExtraObjFiles ++ cord.from_list(ArgExtraObjFiles),
         setup_and_process_compiler_stdin_args(ProgressStream, ErrorStream,
             StdIn, Globals, OpModeArgs, InvokedByMmcMake, DetectedGradeFlags,
-            OptionVariables, OptionArgs, !Modules, !ExtraObjFiles,
+            OptionVariables, EnvVarArgs, OptionArgs, !Modules, !ExtraObjFiles,
             !HaveParseTreeMaps, !Specs, !IO)
     ;
         LineResult = eof
@@ -1013,8 +1052,7 @@ setup_and_process_compiler_stdin_args(ProgressStream, ErrorStream, StdIn,
         io.error_message(Error, Msg),
         Pieces = [words("Error reading module name from standard input:"),
             words(Msg), suffix("."), nl],
-        Spec = no_ctxt_spec($pred, severity_error,
-            phase_read_files, Pieces),
+        Spec = no_ctxt_spec($pred, severity_error, phase_read_files, Pieces),
         !:Specs = [Spec | !.Specs]
     ).
 
@@ -1024,21 +1062,21 @@ setup_and_process_compiler_stdin_args(ProgressStream, ErrorStream, StdIn,
     io.text_output_stream::in, globals::in,
     op_mode_args::in, op_mode_invoked_by_mmc_make::in,
     list(string)::in, options_variables::in,
-    list(string)::in, list(string)::in,
+    list(string)::in, list(string)::in, list(string)::in,
     cord(string)::in, cord(string)::out, cord(string)::in, cord(string)::out,
     have_parse_tree_maps::in, have_parse_tree_maps::out,
     list(error_spec)::in, list(error_spec)::out, io::di, io::uo) is det.
 
-setup_and_process_compiler_cmd_line_args(_, _, _, _, _, _, _, _, [],
+setup_and_process_compiler_cmd_line_args(_, _, _, _, _, _, _, _, _, [],
         !Modules, !ExtraObjFiles, !HaveParseTreeMaps, !Specs, !IO).
 setup_and_process_compiler_cmd_line_args(ProgressStream, ErrorStream, Globals,
         OpModeArgs, InvokedByMmcMake, DetectedGradeFlags,
-        OptionVariables, OptionArgs, [Arg | Args], !Modules, !ExtraObjFiles,
-        !HaveParseTreeMaps, !Specs, !IO) :-
+        OptionVariables, EnvVarArgs, OptionArgs, [Arg | Args],
+        !Modules, !ExtraObjFiles, !HaveParseTreeMaps, !Specs, !IO) :-
     setup_and_process_compiler_arg(ProgressStream, ErrorStream, Globals,
         OpModeArgs, InvokedByMmcMake, DetectedGradeFlags,
-        OptionVariables, OptionArgs, Arg, ArgModules, ArgExtraObjFiles,
-        !HaveParseTreeMaps, !Specs, !IO),
+        OptionVariables, EnvVarArgs, OptionArgs, Arg, ArgModules,
+        ArgExtraObjFiles, !HaveParseTreeMaps, !Specs, !IO),
     (
         Args = []
     ;
@@ -1049,13 +1087,12 @@ setup_and_process_compiler_cmd_line_args(ProgressStream, ErrorStream, Globals,
     !:ExtraObjFiles = !.ExtraObjFiles ++ cord.from_list(ArgExtraObjFiles),
     setup_and_process_compiler_cmd_line_args(ProgressStream, ErrorStream,
         Globals, OpModeArgs, InvokedByMmcMake, DetectedGradeFlags,
-        OptionVariables, OptionArgs, Args, !Modules, !ExtraObjFiles,
-        !HaveParseTreeMaps, !Specs, !IO).
+        OptionVariables, EnvVarArgs, OptionArgs, Args,
+        !Modules, !ExtraObjFiles, !HaveParseTreeMaps, !Specs, !IO).
 
 :- pred do_process_compiler_cmd_line_args(io.text_output_stream::in,
-    io.text_output_stream::in, globals::in,
-    op_mode_args::in, op_mode_invoked_by_mmc_make::in,
-    list(string)::in, list(string)::in,
+    io.text_output_stream::in, globals::in, op_mode_args::in,
+    op_mode_invoked_by_mmc_make::in, list(string)::in, list(string)::in,
     cord(string)::in, cord(string)::out, cord(string)::in, cord(string)::out,
     have_parse_tree_maps::in, have_parse_tree_maps::out,
     io::di, io::uo) is det.
@@ -1098,23 +1135,23 @@ do_process_compiler_cmd_line_args(ProgressStream, ErrorStream, Globals,
     %
 :- pred setup_and_process_compiler_arg(io.text_output_stream::in,
     io.text_output_stream::in, globals::in,
-    op_mode_args::in, op_mode_invoked_by_mmc_make::in,
-    list(string)::in, options_variables::in, list(string)::in, string::in,
+    op_mode_args::in, op_mode_invoked_by_mmc_make::in, list(string)::in,
+    options_variables::in, list(string)::in, list(string)::in, string::in,
     list(string)::out, list(string)::out,
     have_parse_tree_maps::in, have_parse_tree_maps::out,
     list(error_spec)::in, list(error_spec)::out, io::di, io::uo) is det.
 
 setup_and_process_compiler_arg(ProgressStream, ErrorStream, Globals,
         OpModeArgs, InvokedByMmcMake, DetectedGradeFlags,
-        OptionVariables, OptionArgs, Arg, ModulesToLink, ExtraObjFiles,
-        !HaveParseTreeMaps, !Specs, !IO) :-
+        OptionVariables, EnvVarArgs, OptionArgs, Arg,
+        ModulesToLink, ExtraObjFiles, !HaveParseTreeMaps, !Specs, !IO) :-
     get_default_options(Globals, DefaultOptionTable),
     FileOrModule = string_to_file_or_module(Arg),
     ModuleName = file_or_module_to_module_name(FileOrModule),
     ExtraOptions = [],
     setup_for_build_with_module_options(ProgressStream, DefaultOptionTable,
         not_invoked_by_mmc_make, ModuleName, DetectedGradeFlags,
-        OptionVariables, OptionArgs, ExtraOptions, MayBuild, !IO),
+        OptionVariables, EnvVarArgs, OptionArgs, ExtraOptions, MayBuild, !IO),
     (
         MayBuild = may_not_build(SetupSpecs),
         % XXX STREAM
@@ -1133,8 +1170,8 @@ setup_and_process_compiler_arg(ProgressStream, ErrorStream, Globals,
 
 :- pred do_process_compiler_arg(io.text_output_stream::in,
     io.text_output_stream::in, globals::in,
-    op_mode_args::in, op_mode_invoked_by_mmc_make::in,
-    list(string)::in, file_or_module::in, list(string)::out, list(string)::out,
+    op_mode_args::in, op_mode_invoked_by_mmc_make::in, list(string)::in,
+    file_or_module::in, list(string)::out, list(string)::out,
     have_parse_tree_maps::in, have_parse_tree_maps::out,
     io::di, io::uo) is det.
 
@@ -1648,9 +1685,9 @@ find_timestamp_files_2(Globals, TimestampExt,
 
 :- pred read_augment_and_process_module(io.text_output_stream::in,
     io.text_output_stream::in, globals::in, op_mode_augment::in,
-    op_mode_invoked_by_mmc_make::in, list(string)::in, file_or_module::in,
-    modules_to_recompile::in, list(string)::out, list(string)::out,
-    list(error_spec)::out,
+    op_mode_invoked_by_mmc_make::in, list(string)::in,
+    file_or_module::in, modules_to_recompile::in,
+    list(string)::out, list(string)::out, list(error_spec)::out,
     have_parse_tree_maps::in, have_parse_tree_maps::out,
     io::di, io::uo) is det.
 

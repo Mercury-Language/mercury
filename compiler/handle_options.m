@@ -827,67 +827,35 @@ get_all_obj_extensions(Ext, AllExtA, MaybeAllExtB) :-
     list(error_spec)::in, list(error_spec)::out, io::di, io::uo) is det.
 
 check_color_option_values(!OptionTable, !Specs, !IO) :-
-    io.environment.get_environment_var("MERCURY_COLOR_SCHEME",
-        MaybeColorEnvVar, !IO),
-    (
-        MaybeColorEnvVar = yes(EnvVarColorScheme),
-        EnvVarSource = [words("the value of the"),
-            quote("MERCURY_COLOR_SCHEME"), words("environment variable")],
-        record_color_scheme_in_options(EnvVarSource, EnvVarColorScheme,
-            EnvVarColorSchemeSpecs, !OptionTable, !IO),
+    raw_lookup_string_option(!.OptionTable, color_scheme_set_to, ColorScheme),
+    raw_lookup_string_option(!.OptionTable, color_scheme_set_by, SetBy),
+    ( if
         (
-            EnvVarColorSchemeSpecs = [],
-            EnvVarColorDone = yes
+            SetBy = "default",
+            Source = [words("the default value of the"),
+                quote("--color-scheme"), words("option")]
         ;
-            EnvVarColorSchemeSpecs = [_ | _],
-            raw_lookup_bool_option(!.OptionTable, default_globals,
-                DefaultGlobals),
-            (
-                DefaultGlobals = no,
-                !:Specs = EnvVarColorSchemeSpecs ++ !.Specs,
-                EnvVarColorDone = no
-            ;
-                DefaultGlobals = yes,
-                % Do NOT add EnvVarColorSchemeSpecs to !Specs,
-                % and do not try to set up colors any other way.
-                EnvVarColorDone = yes
-            )
+            SetBy = "envvar",
+            Source = [words("the value of the"),
+                quote("MERCURY_COLOR_SCHEME"), words("environment variable")]
+        ;
+            SetBy = "option",
+            Source = [words("the value of the"),
+                quote("--color-scheme"), words("option")]
         )
-    ;
-        MaybeColorEnvVar = no,
-        EnvVarColorDone = no
+    then
+        record_color_scheme_in_options(Source, ColorScheme, ColorSchemeSpecs,
+            !OptionTable, !IO),
+        !:Specs = ColorSchemeSpecs ++ !.Specs
+    else
+        unexpected($pred, "unexpected value in color_scheme_set_by option")
     ),
+    MaybeConvertColorSpecs = convert_color_spec_options(!.OptionTable),
     (
-        EnvVarColorDone = yes,
-        ColorSchemeDone = yes
+        MaybeConvertColorSpecs = ok1(_)
     ;
-        EnvVarColorDone = no,
-        raw_lookup_maybe_string_option(!.OptionTable, color_scheme,
-            MaybeOptionColorScheme),
-        (
-            MaybeOptionColorScheme = yes(OptionColorScheme),
-            OptionSource = [words("the value of the"),
-                quote("--color-scheme"), words("option")],
-            record_color_scheme_in_options(OptionSource, OptionColorScheme,
-                ColorSchemeSpecs, !OptionTable, !IO),
-            !:Specs = ColorSchemeSpecs ++ !.Specs,
-            ColorSchemeDone = yes
-        ;
-            MaybeOptionColorScheme = no,
-            ColorSchemeDone = no
-        )
-    ),
-    (
-        ColorSchemeDone = yes
-    ;
-        ColorSchemeDone = no,
-        MaybeColorSpecs = convert_color_spec_options(!.OptionTable),
-        (
-            MaybeColorSpecs = ok1(_)
-        ;
-            MaybeColorSpecs = error1(ColorSpecs),
-            !:Specs = ColorSpecs ++ !.Specs
-        )
+        MaybeConvertColorSpecs = error1(ConvertColorSpecs),
+        !:Specs = ConvertColorSpecs ++ !.Specs
     ).
 
 %---------------------------------------------------------------------------%
@@ -3216,28 +3184,20 @@ handle_colors(!Globals, !IO) :-
     % - copies the first N lines of those diagnostics to stderr,
     %
     % do we want to enable colors only in the first N lines of diagnostics?
-    io.environment.get_environment_var("NO_COLOR", NoColor, !IO),
+    globals.lookup_bool_option(!.Globals,
+        enable_color_diagnostics_is_set, EnableIsSet),
+    globals.lookup_bool_option(!.Globals,
+        enable_color_diagnostics_is_set_to, EnableValue),
+    globals.lookup_bool_option(!.Globals,
+        config_default_color_diagnostics, ConfigDefault),
     (
-        NoColor = yes(_),
-        % The value that the environment variable is set to does not matter.
-        UseColor = no
+        EnableIsSet = yes,
+        % If the user set the enable option, obey its value.
+        UseColor = EnableValue
     ;
-        NoColor = no,
-        globals.lookup_bool_option(!.Globals,
-            enable_color_diagnostics_is_set, EnableIsSet),
-        globals.lookup_bool_option(!.Globals,
-            enable_color_diagnostics_is_set_to, EnableValue),
-        globals.lookup_bool_option(!.Globals,
-            config_default_color_diagnostics, ConfigDefault),
-        (
-            EnableIsSet = yes,
-            % If the user set the enable option, obey its value.
-            UseColor = EnableValue
-        ;
-            EnableIsSet = no,
-            % If the user dod not set the enable option, use the default.
-            UseColor = ConfigDefault
-        )
+        EnableIsSet = no,
+        % If the user dod not set the enable option, use the default.
+        UseColor = ConfigDefault
     ),
     globals.set_option(use_color_diagnostics, bool(UseColor), !Globals).
 
@@ -3612,18 +3572,6 @@ raw_lookup_string_option(OptionTable, Option, StringValue) :-
     else
         OptionStr = string.string(Option),
         unexpected($pred, OptionStr ++ " is not a string")
-    ).
-
-:- pred raw_lookup_maybe_string_option(option_table::in, option::in,
-    maybe(string)::out) is det.
-
-raw_lookup_maybe_string_option(OptionTable, Option, MaybeStringValue) :-
-    map.lookup(OptionTable, Option, OptionValue),
-    ( if OptionValue = maybe_string(MaybeStringValuePrime) then
-        MaybeStringValue = MaybeStringValuePrime
-    else
-        OptionStr = string.string(Option),
-        unexpected($pred, OptionStr ++ " is not a maybe_string")
     ).
 
 :- pred raw_lookup_accumulating_option(option_table::in, option::in,
