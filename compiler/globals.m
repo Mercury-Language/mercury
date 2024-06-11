@@ -896,11 +896,20 @@ record_color_scheme_in_options(Source, SchemeName, Specs, !OptionTable, !IO) :-
             ( SchemeName = "dark256"
             ; SchemeName = "darkmode256"
             ),
-            Subject =       "14",   % bright cyan
-            Correct =       "10",   % bright green
-            Incorrect =     "9",    % bright red
-            Inconsistent =  "11",   % bright yellow
-            Hint =          "13"    % bright magenta
+            Subject =       "111",  % #87afff
+            Correct =       "107",  % #87af5f
+            Incorrect =     "174",  % #d78787
+            Inconsistent =  "179",  % #d7af5f
+            Hint =          "140"   % #af87df
+        ;
+            ( SchemeName = "dark"
+            ; SchemeName = "darkmode"
+            ),
+            Subject =       "#87afff",
+            Correct =       "#87af5f",
+            Incorrect =     "#d78787",
+            Inconsistent =  "#d7af5f",
+            Hint =          "#af87df"
         ;
             ( SchemeName = "light16"
             ; SchemeName = "lightmode16"
@@ -914,11 +923,20 @@ record_color_scheme_in_options(Source, SchemeName, Specs, !OptionTable, !IO) :-
             ( SchemeName = "light256"
             ; SchemeName = "lightmode256"
             ),
-            Subject =       "6",    % normal cyan
-            Correct =       "2",    % normal green
-            Incorrect =     "9",    % bright red
-            Inconsistent =  "3",    % normal yellow
-            Hint =          "5"     % normal magenta
+            Subject =       "27",   % #005fff
+            Correct =       "28",   % #008700
+            Incorrect =     "160",  % #d70000
+            Inconsistent =  "166",  % #d75f00
+            Hint =          "92"    % #8700d7
+        ;
+            ( SchemeName = "light"
+            ; SchemeName = "lightmode"
+            ),
+            Subject =       "#005fff",
+            Correct =       "#008700",
+            Incorrect =     "#d70000",
+            Inconsistent =  "#d75f00",
+            Hint =          "#8700d7"
         )
     then
         map.set(set_color_subject, string(Subject), !OptionTable),
