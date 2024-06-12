@@ -9,6 +9,6 @@ mpj_4.m:028:   [38;5;87mconstant `"foo"'[39;49m has type
 mpj_4.m:028:     [38;5;40mstring.[39;49m
 mpj_4.m:028:   The partial type assignment was:
 mpj_4.m:028:     HeadVar__2_2: mpj_4.intlist
-mpj_4.m:028:     L_3: mpj_4.intlist
-mpj_4.m:028:     V_4: int
-mpj_4.m:028:     V_5: int
+mpj_4.m:028:     L_3:          mpj_4.intlist
+mpj_4.m:028:     V_4:          int
+mpj_4.m:028:     V_5:          int

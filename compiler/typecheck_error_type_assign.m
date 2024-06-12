@@ -311,42 +311,66 @@ type_assign_to_pieces(ModuleInfo, VarSet, TypeAssign, MaybeSource, MaybeSeq)
         HeadPieces = [words("some [" ++ VarsStr ++ "]"), nl]
     ),
     TypePieces = type_assign_types_to_pieces(VarSet, VarTypes, TypeVarSet,
-        TypeBindings, no, Vars) ++ [nl],
+        TypeBindings, Vars),
     ConstraintPieces = type_assign_hlds_constraints_to_pieces(Constraints,
         TypeBindings, TypeVarSet),
     Pieces = SeqPieces ++ HeadPieces ++ TypePieces ++ ConstraintPieces.
 
-:- func type_assign_types_to_pieces(prog_varset, vartypes, tvarset,
-    tsubst, bool, list(prog_var)) = list(format_piece).
+:- func type_assign_types_to_pieces(prog_varset, vartypes, tvarset, tsubst,
+    list(prog_var)) = list(format_piece).
 
-type_assign_types_to_pieces(_, _, _, _, FoundOne, []) = Pieces :-
+type_assign_types_to_pieces(VarSet, VarTypes, TypeVarSet, TypeBindings, Vars)
+        = Pieces :-
+    acc_type_assign_type_pieces(VarSet, VarTypes, TypeVarSet, TypeBindings,
+        Vars, -1, MaxVarNameLen0, [], RevNameTypePairs),
     (
-        FoundOne = no,
+        RevNameTypePairs = [],
         Pieces = [words("(No variables were assigned a type)")]
     ;
-        FoundOne = yes,
-        Pieces = []
+        RevNameTypePairs = [_ | _],
+        int.min(15, MaxVarNameLen0, MaxVarNameLen),
+        LeftLen = MaxVarNameLen + 1,   % The +1 accounts for the colon.
+        align_and_unreverse_type_assign_pieces(LeftLen, RevNameTypePairs,
+            [], Pieces)
     ).
-type_assign_types_to_pieces(VarSet, VarTypes, TypeVarSet, TypeBindings,
-        FoundOne, [Var | Vars]) = Pieces :-
+
+:- pred align_and_unreverse_type_assign_pieces(int::in,
+    list({string, format_piece})::in,
+    list(format_piece)::in, list(format_piece)::out) is det.
+
+align_and_unreverse_type_assign_pieces(_, [], !Pieces).
+align_and_unreverse_type_assign_pieces(LeftLen, [Pair | Pairs], !Pieces) :-
+    Pair = {VarName, TypePiece},
+    string.pad_right(VarName ++ ":", ' ', LeftLen, LeftStr),
+    PairPieces = [fixed(LeftStr), TypePiece, nl],
+    !:Pieces = PairPieces ++ !.Pieces,
+    align_and_unreverse_type_assign_pieces(LeftLen, Pairs, !Pieces).
+
+:- pred acc_type_assign_type_pieces(prog_varset::in, vartypes::in, tvarset::in,
+    tsubst::in, list(prog_var)::in, int::in, int::out,
+    list({string, format_piece})::in,
+    list({string, format_piece})::out) is det.
+
+acc_type_assign_type_pieces(_, _, _, _,
+        [], !MaxVarNameLen, !RevNameTypePairsCord).
+acc_type_assign_type_pieces(VarSet, VarTypes, TypeVarSet, TypeBindings,
+        [Var | Vars], !MaxVarNameLen, !RevNameTypePairs) :-
     ( if search_var_type(VarTypes, Var, Type) then
-        (
-            FoundOne = yes,
-            PrefixPieces = [nl]
-        ;
-            FoundOne = no,
-            PrefixPieces = []
+        VarNameStr = mercury_var_to_string_vs(VarSet, varnums, Var),
+        string.count_code_points(VarNameStr, VarNameLen),
+        ( if VarNameLen > !.MaxVarNameLen then
+            !:MaxVarNameLen = VarNameLen
+        else
+            true
         ),
-        VarStr = mercury_var_to_string_vs(VarSet, varnums, Var),
         TypeStr = type_with_bindings_to_string(Type, TypeVarSet, TypeBindings),
-        AssignPieces = [fixed(VarStr), suffix(":"), words(TypeStr)],
-        TailPieces = type_assign_types_to_pieces(VarSet, VarTypes,
-            TypeVarSet, TypeBindings, yes, Vars),
-        Pieces = PrefixPieces ++ AssignPieces ++ TailPieces
+        NameTypePair = {VarNameStr, words(TypeStr)},
+        !:RevNameTypePairs = [NameTypePair | !.RevNameTypePairs]
     else
-        Pieces = type_assign_types_to_pieces(VarSet, VarTypes,
-            TypeVarSet, TypeBindings, FoundOne, Vars)
-    ).
+        true
+    ),
+    acc_type_assign_type_pieces(VarSet, VarTypes, TypeVarSet, TypeBindings,
+        Vars, !MaxVarNameLen, !RevNameTypePairs).
 
 :- func type_with_bindings_to_string(mer_type, tvarset, tsubst) = string.
 

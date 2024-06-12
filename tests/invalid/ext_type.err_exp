@@ -9,9 +9,9 @@ ext_type.m:020:   The partial type assignment was:
 ext_type.m:020:     some [QT_2]
 ext_type.m:020:     HeadVar__1_1: bool.bool
 ext_type.m:020:     HeadVar__2_2: QT
-ext_type.m:020:     Y_3: QT
-ext_type.m:020:     V_4: int
-ext_type.m:020:     Z_5: QT
+ext_type.m:020:     Y_3:          QT
+ext_type.m:020:     V_4:          int
+ext_type.m:020:     Z_5:          QT
 ext_type.m:023: In clause for predicate `r'/0:
 ext_type.m:023:   type error in unification of argument
 ext_type.m:023:   and functor `q'/1.

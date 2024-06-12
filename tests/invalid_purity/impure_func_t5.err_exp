@@ -7,7 +7,7 @@ impure_func_t5.m:025:     [38;5;203mfunc(int) = int,[39;49m
 impure_func_t5.m:025:   [38;5;87mconstant `get_counter'[39;49m has type
 impure_func_t5.m:025:     [38;5;40mimpure func(int) = int.[39;49m
 impure_func_t5.m:025:   The partial type assignment was:
-impure_func_t5.m:025:     Y_3: impure_func_t5.foo
+impure_func_t5.m:025:     Y_3:     impure_func_t5.foo
 impure_func_t5.m:025:     DCG_0_5: io.state
 impure_func_t5.m:025:     DCG_3_8: io.state
-impure_func_t5.m:025:     V_9: ((func int) = int)
+impure_func_t5.m:025:     V_9:     ((func int) = int)
