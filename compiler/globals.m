@@ -905,11 +905,11 @@ record_color_scheme_in_options(Source, SchemeName, Specs, !OptionTable, !IO) :-
             ( SchemeName = "dark"
             ; SchemeName = "darkmode"
             ),
-            Subject =       "#87afff",
-            Correct =       "#87af5f",
-            Incorrect =     "#d78787",
-            Inconsistent =  "#d7af5f",
-            Hint =          "#af87df"
+            Subject =       "#7ca2ee",
+            Correct =       "#89b260",
+            Incorrect =     "#e48384",
+            Inconsistent =  "#d2a74c",
+            Hint =          "#b68fde"
         ;
             ( SchemeName = "light16"
             ; SchemeName = "lightmode16"
@@ -932,11 +932,11 @@ record_color_scheme_in_options(Source, SchemeName, Specs, !OptionTable, !IO) :-
             ( SchemeName = "light"
             ; SchemeName = "lightmode"
             ),
-            Subject =       "#005fff",
-            Correct =       "#008700",
-            Incorrect =     "#d70000",
-            Inconsistent =  "#d75f00",
-            Hint =          "#8700d7"
+            Subject =       "#1b65ef",
+            Correct =       "#008e00",
+            Incorrect =     "#d41009",
+            Inconsistent =  "#cf5600",
+            Hint =          "#903fd6"
         )
     then
         map.set(set_color_subject, string(Subject), !OptionTable),
