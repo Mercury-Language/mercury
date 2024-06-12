@@ -1071,7 +1071,7 @@ add_type_defn_ctor(Ctor, TypeCtor, TypeCtorModuleName, TVarSet,
             OtherConsDefn ^ cons_type_ctor = TypeCtor
         )
     then
-        Pieces = [words("Error:")] ++
+        Pieces = [words("Error: the function symbol")] ++
             color_as_subject(
                 [unqual_cons_id_and_maybe_arity(QualifiedConsIdA)]) ++
             color_as_incorrect([words("occurs more than once")]) ++

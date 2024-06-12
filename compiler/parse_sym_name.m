@@ -339,7 +339,8 @@ implicitly_qualify_sym_name_and_args(DefaultModuleName, Term, SymName0, Args,
     then
         MaybeSymNameAndArgs = ok2(SymName, Args)
     else
-        Spec = report_failed_implicit_qualification(Term, SymName0),
+        Spec = report_failed_implicit_qualification(DefaultModuleName,
+            Term, SymName0),
         MaybeSymNameAndArgs = error2([Spec])
     ).
 
@@ -350,7 +351,8 @@ implicitly_qualify_sym_name(DefaultModuleName, Term, SymName0, MaybeSymName) :-
     then
         MaybeSymName = ok1(SymName)
     else
-        Spec = report_failed_implicit_qualification(Term, SymName0),
+        Spec = report_failed_implicit_qualification(DefaultModuleName,
+            Term, SymName0),
         MaybeSymName = error1([Spec])
     ).
 
@@ -579,13 +581,17 @@ report_noninteger_arity_term(VarSet0, Term) = Spec :-
     Context = get_term_context(Term),
     Spec = spec($pred, severity_error, phase_t2pt, Context, Pieces).
 
-:- func report_failed_implicit_qualification(term(T), sym_name) = error_spec.
+:- func report_failed_implicit_qualification(module_name, term(T), sym_name)
+    = error_spec.
 
-report_failed_implicit_qualification(Term, SymName) = Spec :-
+report_failed_implicit_qualification(ExpectedSymName, Term, SymName) = Spec :-
     Pieces = [words("Error: the module qualifier in")] ++
         color_as_subject([qual_sym_name(SymName)]) ++
         color_as_incorrect([words("does not match")]) ++
-        [words("the preceding"), decl("module"), words("declaration."), nl],
+        [words("the preceding"), decl("module"), words("declaration,"),
+        words("which is for")] ++
+        color_as_correct([qual_sym_name(ExpectedSymName), suffix(".")]) ++
+        [nl],
     Context = get_term_context(Term),
     Spec = spec($pred, severity_error, phase_t2pt, Context, Pieces).
 

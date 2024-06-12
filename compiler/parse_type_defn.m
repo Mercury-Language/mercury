@@ -606,10 +606,10 @@ check_supertype_vars(Params, VarSet, SuperType, Context, !Specs) :-
         FreeVarPieces = list.map(var_to_quote_piece(GenericVarSet), FreeVars),
         Pieces = [words("Error:")] ++
             color_as_subject([words("free type"),
-                words(choose_number(FreeVars, "parameter", "parameters")),
-                words("such as")] ++
-                piece_list_to_color_pieces(color_subject, "and", [],
-                    FreeVarPieces)) ++
+                words(choose_number(FreeVars, "parameter", "parameters"))]) ++
+            [words("such as")] ++
+            color_as_subject(piece_list_to_color_pieces(color_subject,
+                "and", [], FreeVarPieces)) ++
             color_as_incorrect([words("may not appear")]) ++
             [words("in the supertype of a subtype definition."), nl],
         Spec = spec($pred, severity_error, phase_t2pt, Context, Pieces),

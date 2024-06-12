@@ -1,41 +1,41 @@
 var_as_pred_name.m:010: Warning: the interface of module [38;5;87m`var_as_pred_name'[39;49m
 var_as_pred_name.m:010:   [38;5;203mdoes not export anything.[39;49m
 var_as_pred_name.m:013: Error: you cannot declare a function whose name is a
-var_as_pred_name.m:013:   variable such as `A'.
+var_as_pred_name.m:013:   [38;5;203mvariable[39;49m such as [38;5;87m`A'.[39;49m
 var_as_pred_name.m:014: Error: you cannot declare a mode for a function whose
-var_as_pred_name.m:014:   name is a variable such as `B'.
+var_as_pred_name.m:014:   name is a [38;5;203mvariable[39;49m such as [38;5;87m`B'.[39;49m
 var_as_pred_name.m:015: Error: you cannot declare a mode for a function whose
-var_as_pred_name.m:015:   name is a variable such as `C'.
+var_as_pred_name.m:015:   name is a [38;5;203mvariable[39;49m such as [38;5;87m`C'.[39;49m
 var_as_pred_name.m:016: Error: you cannot declare a function whose name is a
-var_as_pred_name.m:016:   variable such as `D'.
+var_as_pred_name.m:016:   [38;5;203mvariable[39;49m such as [38;5;87m`D'.[39;49m
 var_as_pred_name.m:017: Error: you cannot declare a function whose name is a
-var_as_pred_name.m:017:   variable such as `E'.
+var_as_pred_name.m:017:   [38;5;203mvariable[39;49m such as [38;5;87m`E'.[39;49m
 var_as_pred_name.m:019: Error: you cannot declare a predicate whose name is a
-var_as_pred_name.m:019:   variable such as `R'.
+var_as_pred_name.m:019:   [38;5;203mvariable[39;49m such as [38;5;87m`R'.[39;49m
 var_as_pred_name.m:020: Error: you cannot declare a mode for a predicate whose
-var_as_pred_name.m:020:   name is a variable such as `S'.
+var_as_pred_name.m:020:   name is a [38;5;203mvariable[39;49m such as [38;5;87m`S'.[39;49m
 var_as_pred_name.m:021: Error: you cannot declare a mode for a predicate whose
-var_as_pred_name.m:021:   name is a variable such as `T'.
+var_as_pred_name.m:021:   name is a [38;5;203mvariable[39;49m such as [38;5;87m`T'.[39;49m
 var_as_pred_name.m:022: Error: you cannot declare a predicate whose name is a
-var_as_pred_name.m:022:   variable such as `U'.
+var_as_pred_name.m:022:   [38;5;203mvariable[39;49m such as [38;5;87m`U'.[39;49m
 var_as_pred_name.m:023: Error: you cannot declare a predicate whose name is a
-var_as_pred_name.m:023:   variable such as `V'.
+var_as_pred_name.m:023:   [38;5;203mvariable[39;49m such as [38;5;87m`V'.[39;49m
 var_as_pred_name.m:026: Error: you cannot declare a type class predicate method
-var_as_pred_name.m:026:   whose name is a variable such as `MA'.
+var_as_pred_name.m:026:   whose name is a [38;5;203mvariable[39;49m such as [38;5;87m`MA'.[39;49m
 var_as_pred_name.m:027: Error: you cannot declare a mode for a type class
-var_as_pred_name.m:027:   predicate method whose name is a variable such as
-var_as_pred_name.m:027:   `MA'.
+var_as_pred_name.m:027:   predicate method whose name is a [38;5;203mvariable[39;49m such as
+var_as_pred_name.m:027:   [38;5;87m`MA'.[39;49m
 var_as_pred_name.m:028: Error: you cannot declare a type class predicate method
-var_as_pred_name.m:028:   whose name is a variable such as `MB'.
+var_as_pred_name.m:028:   whose name is a [38;5;203mvariable[39;49m such as [38;5;87m`MB'.[39;49m
 var_as_pred_name.m:029: Error: you cannot declare a type class function method
-var_as_pred_name.m:029:   whose name is a variable such as `MC'.
+var_as_pred_name.m:029:   whose name is a [38;5;203mvariable[39;49m such as [38;5;87m`MC'.[39;49m
 var_as_pred_name.m:030: Error: you cannot declare a mode for a type class
-var_as_pred_name.m:030:   function method whose name is a variable such as
-var_as_pred_name.m:030:   `MC'.
+var_as_pred_name.m:030:   function method whose name is a [38;5;203mvariable[39;49m such as
+var_as_pred_name.m:030:   [38;5;87m`MC'.[39;49m
 var_as_pred_name.m:031: Error: you cannot declare a type class function method
-var_as_pred_name.m:031:   whose name is a variable such as `MD'.
+var_as_pred_name.m:031:   whose name is a [38;5;203mvariable[39;49m such as [38;5;87m`MD'.[39;49m
 var_as_pred_name.m:038: Error: you cannot declare a clause for a function whose
-var_as_pred_name.m:038:   name is a variable such as `X'.
+var_as_pred_name.m:038:   name is a [38;5;203mvariable[39;49m such as [38;5;87m`X'.[39;49m
 var_as_pred_name.m:041: Error: you cannot declare a clause for a predicate
-var_as_pred_name.m:041:   whose name is a variable such as `Y'.
+var_as_pred_name.m:041:   whose name is a [38;5;203mvariable[39;49m such as [38;5;87m`Y'.[39;49m
 For more information, recompile with `-E'.

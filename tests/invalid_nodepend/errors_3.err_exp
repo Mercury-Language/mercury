@@ -15,10 +15,12 @@ errors_3.m:034:   `:- pred' declaration.
 errors_3.m:040: Error: clause for predicate
 errors_3.m:040:   [38;5;87m`clause_without_pred_or_mode_declaration'/0[39;49m [38;5;203mwithout[39;49m a
 errors_3.m:040:   corresponding `:- pred' declaration.
-errors_3.m:053: Error: [38;5;87m`a'/0[39;49m [38;5;203moccurs more than once[39;49m in the definition of type
-errors_3.m:053:   constructor [38;5;87m`type_with_multiply_defined_ctors'/0.[39;49m
-errors_3.m:055: Error: [38;5;87m`f'/1[39;49m [38;5;203moccurs more than once[39;49m in the definition of type
-errors_3.m:055:   constructor [38;5;87m`type_with_multiply_defined_ctors'/0.[39;49m
+errors_3.m:053: Error: the function symbol [38;5;87m`a'/0[39;49m [38;5;203moccurs more than once[39;49m in the
+errors_3.m:053:   definition of type constructor
+errors_3.m:053:   [38;5;87m`type_with_multiply_defined_ctors'/0.[39;49m
+errors_3.m:055: Error: the function symbol [38;5;87m`f'/1[39;49m [38;5;203moccurs more than once[39;49m in the
+errors_3.m:055:   definition of type constructor
+errors_3.m:055:   [38;5;87m`type_with_multiply_defined_ctors'/0.[39;49m
 errors_3.m:058: In the first argument of function symbol `f' of the type
 errors_3.m:058:   `du_type_which_references_undefined_type'/0:
 errors_3.m:058:   error: the type [38;5;87m`undefined_type'/0[39;49m is [38;5;203mundefined.[39;49m

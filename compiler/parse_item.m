@@ -2176,9 +2176,10 @@ is_the_name_a_variable(VarSet, Kind, Term, Spec) :-
             ArgTerm1 = term.variable(_, _)
         then
             VarStr = describe_error_term(VarSet, ArgTerm1),
-            VarPieces = [words("such as"), quote(VarStr)]
+            VarDotPieces = [words("such as")] ++
+                color_as_subject([quote(VarStr), suffix(".")])
         else
-            VarPieces = []
+            VarDotPieces = [suffix(".")]
         ),
         require_complete_switch [Kind]
         (
@@ -2232,8 +2233,9 @@ is_the_name_a_variable(VarSet, Kind, Term, Spec) :-
             WhatPieces = [words("a clause for a function")]
         ),
         Pieces = [words("Error: you cannot declare")] ++ WhatPieces ++
-            [words("whose name is a variable")] ++ VarPieces ++
-            [suffix("."), nl],
+            [words("whose name is a")] ++
+            color_as_incorrect([words("variable")]) ++
+            VarDotPieces ++ [nl],
         Spec = spec($pred, severity_error, phase_t2pt, TermContext, Pieces)
     else
         fail
