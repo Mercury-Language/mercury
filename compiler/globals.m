@@ -887,11 +887,11 @@ record_color_scheme_in_options(Source, SchemeName, Specs, !OptionTable, !IO) :-
             ( SchemeName = "dark16"
             ; SchemeName = "darkmode16"
             ),
-            Subject =       "14",   % bright cyan
-            Correct =       "10",   % bright green
-            Incorrect =     "9",    % bright red
-            Inconsistent =  "11",   % bright yellow
-            Hint =          "13"    % bright magenta
+            Subject =       "14",   % bright cyan       (by default)
+            Correct =       "10",   % bright green      (by default)
+            Incorrect =     "9",    % bright red        (by default)
+            Inconsistent =  "11",   % bright yellow     (by default)
+            Hint =          "13"    % bright magenta    (by default)
         ;
             ( SchemeName = "dark256"
             ; SchemeName = "darkmode256"
@@ -914,11 +914,11 @@ record_color_scheme_in_options(Source, SchemeName, Specs, !OptionTable, !IO) :-
             ( SchemeName = "light16"
             ; SchemeName = "lightmode16"
             ),
-            Subject =       "6",    % normal cyan
-            Correct =       "2",    % normal green
-            Incorrect =     "9",    % bright red
-            Inconsistent =  "3",    % normal yellow
-            Hint =          "5"     % normal magenta
+            Subject =       "6",    % normal cyan       (by default)
+            Correct =       "2",    % normal green      (by default)
+            Incorrect =     "9",    % bright red        (by default)
+            Inconsistent =  "3",    % normal yellow     (by default)
+            Hint =          "5"     % normal magenta    (by default)
         ;
             ( SchemeName = "light256"
             ; SchemeName = "lightmode256"
