@@ -19,6 +19,19 @@ PROGS = \
 TESTS = $(patsubst %,%-nodepend,$(sort $(PROGS)))
 include ../Mmake.common
 
+# Note: in this test directory, there is no point in enabling color
+# diagnostics. The errors we report here are detected *while we are
+# trying to figure out which options are specified for the module
+# we are compiling*. Such errors are output using the default option table.
+# Even if this table has "yes" as the value of enable_color_diagnostics
+# and a valid color scheme as the value of color_scheme_set_to, that is
+# *not* what write_error_spec.m looks at. write_error_spec.m looks at the
+# values of the set_color_<role> options, which won't be set up, since the
+# code that is intended to set them up in handle_options.m has no effect
+# on the contents of the *default* option table.
+#
+# We could possibly change this, but there is little point in doing so.
+
 #-----------------------------------------------------------------------------#
 
 %.runtest: %.err_res ;

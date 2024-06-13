@@ -457,7 +457,7 @@ read_options_file_params(SearchInfo, PreStack0, IsOptionsFileOptional,
                     PreStack0 = pre_stack_nested(Context, _),
                     MaybeContext = yes(Context)
                 ),
-                Pieces = [words("Cannot open options file"),
+                Pieces = [words("Error: cannot open options file"),
                     quote(ErrorFile), suffix(":"),
                     words(Error), suffix("."), nl],
                 Spec = error_spec($pred, severity_error,
@@ -846,7 +846,7 @@ parse_options_line(FileName, LineNumber, Line0, MaybeOptionsFileLine) :-
             else
                 Line2Str = string.from_char_list(Line2),
                 Context = term_context.context(FileName, LineNumber),
-                Pieces = [words("Expected"), quote("="), suffix(","),
+                Pieces = [words("Error: expected"), quote("="), suffix(","),
                     quote(":="), words("or"), quote("+="),
                     words("after"), quote(VarName), suffix(","),
                     words("got"), quote(Line2Str), suffix("."), nl],
