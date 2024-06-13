@@ -229,6 +229,9 @@ parse_constrained_class(ModuleName, VarSet, NameTerm, ConstraintsTerm,
                 MaybeItemTypeClass = ok1(ItemTypeClass)
             ;
                 NotInParams = [_ | _],
+                ClassName = ItemTypeClass0 ^ tc_class_name,
+                pred_form_arity(ClassArity) = arg_list_arity(Params),
+                ClassId = class_id(ClassName, ClassArity),
                 ClassTVarSet = ItemTypeClass0 ^ tc_varset,
                 ConstraintNotInParamsPieces =
                     list.map(var_to_quote_piece(ClassTVarSet),
@@ -243,15 +246,13 @@ parse_constrained_class(ModuleName, VarSet, NameTerm, ConstraintsTerm,
                     piece_list_to_color_pieces(color_subject, "and", [],
                         FunDepNotInParamsPieces),
                 ( if list.length(NotInParams) = 1 then
-                    Prefix = [words("Error: type variable")],
-                    Suffix = [words("is")] ++
-                        color_as_incorrect([words("not a parameter")]) ++
-                        [words("of this type class.")]
+                    ErrorTypeVarsPieces = [words("Error: type variable")],
+                    NotParameterPieces = [words("is")] ++
+                        color_as_incorrect([words("not a parameter")])
                 else
-                    Prefix = [words("Error: type variables")],
-                    Suffix = [words("are")] ++
-                        color_as_incorrect([words("not parameters")]) ++
-                        [words("of this type class.")]
+                    ErrorTypeVarsPieces = [words("Error: type variables")],
+                    NotParameterPieces = [words("are")] ++
+                        color_as_incorrect([words("not parameters")])
                 ),
                 (
                     ConstraintNotInParams = [],
@@ -260,20 +261,26 @@ parse_constrained_class(ModuleName, VarSet, NameTerm, ConstraintsTerm,
                 ;
                     ConstraintNotInParams = [],
                     FunDepNotInParams = [_ | _],
-                    Middle = FunDepPieces ++ FunDepErrorContext
+                    ConstrFunDepPieces = FunDepPieces ++ FunDepErrorContext
                 ;
                     ConstraintNotInParams = [_ | _],
                     FunDepNotInParams = [],
-                    Middle = ConstraintPieces ++ ConstraintErrorContext
+                    ConstrFunDepPieces =
+                        ConstraintPieces ++ ConstraintErrorContext
                 ;
                     ConstraintNotInParams = [_ | _],
                     FunDepNotInParams = [_ | _],
-                    Middle =
+                    ConstrFunDepPieces =
                         ConstraintPieces ++ ConstraintErrorContext
                         ++ [words("and")] ++
                         FunDepPieces ++ FunDepErrorContext
                 ),
-                Pieces = Prefix ++ Middle ++ Suffix ++ [nl],
+                Pieces = ErrorTypeVarsPieces ++ ConstrFunDepPieces ++
+                    NotParameterPieces ++
+                    [words("of type class")] ++
+                    color_as_subject([unqual_class_id(ClassId),
+                        suffix(".")]) ++
+                    [nl],
                 Spec = spec($pred, severity_error, phase_t2pt,
                     Context, Pieces),
                 MaybeItemTypeClass = error1([Spec])

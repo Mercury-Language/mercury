@@ -1199,8 +1199,9 @@ handle_module_end_marker(CurModuleName, ContainingModules, ReadIOMResult,
                 qual_sym_name(EndedModuleName)]) ++
             color_as_incorrect([words("is not for the module"),
                 words("at whose end it appears,")]) ++
-            [words("which is"),
-            qual_sym_name(CurModuleName), suffix("."), nl],
+            [words("which is")] ++
+            color_as_correct([qual_sym_name(CurModuleName), suffix(".")]) ++
+            [nl],
         Spec = spec($pred, severity_error, phase_t2pt, EndContext, Pieces),
         add_fatal_error(frme_bad_module_end, [Spec], !Errors),
         % Eat the bad end_module declaration.

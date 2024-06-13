@@ -1,5 +1,5 @@
 unbound_type_vars_int.m:022: Error: type variable [38;5;87m`T2'[39;49m in the superclass
-unbound_type_vars_int.m:022:   constraint is [38;5;203mnot a parameter[39;49m of this type
-unbound_type_vars_int.m:022:   class.
+unbound_type_vars_int.m:022:   constraint is [38;5;203mnot a parameter[39;49m of type class
+unbound_type_vars_int.m:022:   [38;5;87m`c2'/1.[39;49m
 unbound_type_vars_int.m:025: Error: [38;5;203munbound type variable[39;49m [38;5;87m`T1'[39;49m in constraints
 unbound_type_vars_int.m:025:   on instance declaration.

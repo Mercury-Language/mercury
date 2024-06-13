@@ -495,8 +495,9 @@ check_attribute_fit(VarSet, OnlyLangMap, MaybeTrailed, MaybeConst, MaybeIO,
                         color_as_incorrect(
                             [words("conflicts with the default,")]) ++
                         [words("which is that updates are trailed."),
-                        words("You need to specify the"), quote("untrailed"),
-                        words("attribute explicitly."), nl],
+                        words("You need to specify the")] ++
+                        color_as_hint([quote("untrailed")]) ++
+                        [words("attribute explicitly."), nl],
                     Spec = spec($pred, severity_error, phase_t2pt,
                         get_term_context(LocalTerm), Pieces),
                     !:Specs = [Spec | !.Specs]
