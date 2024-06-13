@@ -118,7 +118,7 @@ resolve_unify_functor(ModuleInfo, X0, ConsId0, ArgVars0, Mode0,
 
         % Find the set of candidate predicates which have the
         % specified name and arity (and module, if module-qualified)
-        ConsId0 = cons(PredName, _, _),
+        ConsId0 = cons(PredSymName, _, _),
 
         pred_info_get_markers(!.PredInfo, Markers),
         IsFullyQualified = calls_are_fully_qualified(Markers),
@@ -126,7 +126,7 @@ resolve_unify_functor(ModuleInfo, X0, ConsId0, ArgVars0, Mode0,
         UserArity = user_arity(Arity),
         % This search will usually fail, so do it first.
         predicate_table_lookup_func_sym_arity(PredTable, IsFullyQualified,
-            PredName, UserArity, PredIds),
+            PredSymName, UserArity, PredIds),
         PredIds = [_ | _],
 
         % We don't do this for compiler-generated predicates; they are assumed
@@ -156,9 +156,10 @@ resolve_unify_functor(ModuleInfo, X0, ConsId0, ArgVars0, Mode0,
         ConstraintSearch =
             search_hlds_constraint_list(ConstraintMap, unproven, GoalId),
         Context = goal_info_get_context(GoalInfo0),
-        find_matching_pred_id(ModuleInfo, PredIds, TVarSet, ExistQTVars,
-            ArgTypes, ExternalTypeParams, yes(ConstraintSearch), Context,
-            PredId, QualifiedFuncName, SpecsPrime)
+        find_matching_pred_id(ModuleInfo, pf_function, PredSymName, PredIds,
+            TVarSet, ExistQTVars, ArgTypes, ExternalTypeParams,
+            yes(ConstraintSearch), Context, PredId, QualifiedFuncName,
+            SpecsPrime)
     then
         % Convert function calls in unifications into plain calls:
         % replace `X = f(A, B, C)' with `f(A, B, C, X)'.

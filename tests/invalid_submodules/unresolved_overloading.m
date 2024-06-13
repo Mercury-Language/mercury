@@ -23,7 +23,7 @@
 %---------------------------------------------------------------------------%
 
 main(!IO) :-
-    loud_and_annoying(gibbon, !IO).
+    annoying(gibbon, !IO).
 
 %---------------------------------------------------------------------------%
 
@@ -33,9 +33,9 @@ main(!IO) :-
     --->    gibbon.
 :- instance gibbon(gibbon) where [].
 
-:- pred loud_and_annoying(T::in, io::di, io::uo) is det <= gibbon(T).
+:- pred annoying(T::in, io::di, io::uo) is det <= gibbon(T).
 
-loud_and_annoying(_, !IO).
+annoying(_, !IO).
 
 %---------------------------------------------------------------------------%
 
@@ -46,11 +46,10 @@ loud_and_annoying(_, !IO).
 
     :- typeclass howler_monkey(T) where [].
 
-    :- pred loud_and_annoying(T::in, io::di, io::uo) is det
-        <= howler_monkey(T).
+    :- pred annoying(T::in, io::di, io::uo) is det <= howler_monkey(T).
 
     :- implementation.
 
-    loud_and_annoying(_, !IO).
+    annoying(_, !IO).
 
     :- end_module unresolved_overloading.sub.

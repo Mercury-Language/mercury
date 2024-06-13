@@ -326,8 +326,8 @@
     % is expected. Fail if there is no matching pred. Abort if there are
     % multiple matching preds.
     %
-:- pred find_matching_pred_id(module_info::in, list(pred_id)::in,
-    tvarset::in, existq_tvars::in, list(mer_type)::in,
+:- pred find_matching_pred_id(module_info::in, pred_or_func::in, sym_name::in,
+    list(pred_id)::in, tvarset::in, existq_tvars::in, list(mer_type)::in,
     external_type_params::in,
     maybe(constraint_search)::in(maybe(constraint_search)), prog_context::in,
     pred_id::out, sym_name::out, list(error_spec)::out) is semidet.
@@ -1163,9 +1163,9 @@ resolve_pred_overloading(ModuleInfo, CallerMarkers, TVarSet, ExistQTVars,
     % Check if there any of the candidate pred_ids have argument/return types
     % which subsume the actual argument/return types of this function call.
     ( if
-        find_matching_pred_id(ModuleInfo, PredIds, TVarSet, ExistQTVars,
-            ArgTypes, ExternalTypeParams, no, Context, PredIdPrime,
-            PredSymNamePrime, SpecsPrime)
+        find_matching_pred_id(ModuleInfo, pf_predicate, PredSymName0,
+            PredIds, TVarSet, ExistQTVars, ArgTypes, ExternalTypeParams,
+            no, Context, PredIdPrime, PredSymNamePrime, SpecsPrime)
     then
         PredId = PredIdPrime,
         PredSymName = PredSymNamePrime,
@@ -1178,9 +1178,9 @@ resolve_pred_overloading(ModuleInfo, CallerMarkers, TVarSet, ExistQTVars,
 
 %---------------------------------------------------------------------------%
 
-find_matching_pred_id(ModuleInfo, PredIds, TVarSet, ExistQTVars,
-        ArgTypes, ExternalTypeParams, MaybeConstraintSearch, Context,
-        ThePredId, ThePredSymName, Specs) :-
+find_matching_pred_id(ModuleInfo, PredOrFunc, SymName, PredIds,
+        TVarSet, ExistQTVars, ArgTypes, ExternalTypeParams,
+        MaybeConstraintSearch, Context, ThePredId, ThePredSymName, Specs) :-
     find_matching_pred_ids(ModuleInfo, TVarSet, ExistQTVars,
         ArgTypes, ExternalTypeParams, MaybeConstraintSearch, Context,
         PredIds, MatchingPredIdsInfos),
@@ -1190,7 +1190,7 @@ find_matching_pred_id(ModuleInfo, PredIds, TVarSet, ExistQTVars,
     ;
         MatchingPredIdsInfos =
             [ThePredId - ThePredInfo | TailMatchingPredIdsInfos],
-        % We have found a matching predicate.
+        % We have found a matching predicate or function.
         pred_info_get_sym_name(ThePredInfo, ThePredSymName),
         % Was there was more than one matching predicate/function?
         (
@@ -1200,16 +1200,23 @@ find_matching_pred_id(ModuleInfo, PredIds, TVarSet, ExistQTVars,
             TailMatchingPredIdsInfos = [_ | _],
             GetPredDesc =
                 ( func(_ - PI) = Piece :-
-                    pred_info_get_pf_sym_name_arity(PI, PFSNA),
-                    Piece = qual_pf_sym_name_pred_form_arity(PFSNA)
+                    pred_info_get_sym_name(PI, SN),
+                    user_arity(UserArityInt) = pred_info_user_arity(PI),
+                    SNA = sym_name_arity(SN, UserArityInt),
+                    Piece = qual_sym_name_arity(SNA)
                 ),
             PredDescPieces = list.map(GetPredDesc, MatchingPredIdsInfos),
-            intersperse_list_last([suffix(","), nl],
-                [suffix(","), words("and"), nl], PredDescPieces,
-                PredDescSepPieces),
-            Pieces = [words("Error: unresolved predicate overloading."), nl,
-                words("The matches are"), nl_indent_delta(1)] ++
-                PredDescSepPieces ++ [suffix("."), nl_indent_delta(-1),
+            % XXX None of color_hint, color_inconsistent or color_correct
+            % fit the predicate descriptions we list here, but color_hint
+            % is probably the least misleading.
+            PredDescsPieces = piece_list_to_color_line_pieces(color_hint,
+                [suffix(".")], PredDescPieces),
+            Pieces = [words("Error:")] ++
+                color_as_incorrect([words("unresolved overloading")]) ++
+                [words("for"), p_or_f(PredOrFunc)] ++
+                color_as_subject([qual_sym_name(SymName), suffix(".")]) ++
+                [words("The matches are"), nl_indent_delta(1)] ++
+                PredDescsPieces ++ [nl_indent_delta(-1),
                 words("You need to use an explicit module qualifier"),
                 words("to select the one you intend to refer to."), nl,
                 words("Proceeding on the assumption that"),
@@ -1302,9 +1309,9 @@ get_pred_id_by_types(IsFullyQualified, SymName, PredOrFunc, TVarSet,
         PredOrFunc, SymName, PredFormArity, PredIds),
     ( if
         % Resolve overloading using the argument types.
-        find_matching_pred_id(ModuleInfo, PredIds, TVarSet, ExistQTVars,
-            ArgTypes, ExternalTypeParams, no, Context, PredIdPrime,
-            _PredSymName, SpecsPrime)
+        find_matching_pred_id(ModuleInfo, PredOrFunc, SymName, PredIds,
+            TVarSet, ExistQTVars, ArgTypes, ExternalTypeParams, no, Context,
+            PredIdPrime, _PredSymName, SpecsPrime)
     then
         PredId = PredIdPrime,
         Specs = SpecsPrime

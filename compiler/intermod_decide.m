@@ -951,16 +951,16 @@ intermod_qualify_instance_method(ModuleInfo, MethodNameToPredIdMap,
     external_type_params::in, prog_context::in, maybe(pred_id)::out,
     sym_name::out) is semidet.
 
-find_func_matching_instance_method(ModuleInfo, InstanceMethodName0,
+find_func_matching_instance_method(ModuleInfo, InstanceMethodSymName0,
         MethodUserArity, MethodCallTVarSet, MethodCallExistQTVars,
         MethodCallArgTypes, MethodCallExternalTypeParams, MethodContext,
-        MaybePredId, InstanceMethodName) :-
+        MaybePredId, InstanceMethodSymName) :-
     module_info_get_ctor_field_table(ModuleInfo, CtorFieldTable),
     MethodUserArity = user_arity(MethodUserArityInt),
     ( if
         % XXX ARITY is_field_access_function_name can take user_arity
         % XXX ARITY is_field_access_function_name can return FieldDefns
-        is_field_access_function_name(ModuleInfo, InstanceMethodName0,
+        is_field_access_function_name(ModuleInfo, InstanceMethodSymName0,
             MethodUserArityInt, _, FieldName),
         map.search(CtorFieldTable, FieldName, FieldDefns)
     then
@@ -973,7 +973,7 @@ find_func_matching_instance_method(ModuleInfo, InstanceMethodName0,
     ),
     module_info_get_cons_table(ModuleInfo, Ctors),
     ( if
-        ConsId = cons(InstanceMethodName0, MethodUserArityInt,
+        ConsId = cons(InstanceMethodSymName0, MethodUserArityInt,
             cons_id_dummy_type_ctor),
         search_cons_table(Ctors, ConsId, MatchingConstructors)
     then
@@ -988,28 +988,28 @@ find_func_matching_instance_method(ModuleInfo, InstanceMethodName0,
 
     module_info_get_predicate_table(ModuleInfo, PredicateTable),
     predicate_table_lookup_func_sym_arity(PredicateTable,
-        may_be_partially_qualified, InstanceMethodName0, MethodUserArity,
+        may_be_partially_qualified, InstanceMethodSymName0, MethodUserArity,
         PredIds),
     ( if
         PredIds = [_ | _],
-        find_matching_pred_id(ModuleInfo, PredIds, MethodCallTVarSet,
-            MethodCallExistQTVars, MethodCallArgTypes,
-            MethodCallExternalTypeParams, no, MethodContext,
-            PredId, InstanceMethodFuncName, _ResolveSpecs)
+        find_matching_pred_id(ModuleInfo, pf_function, InstanceMethodSymName0,
+            PredIds, MethodCallTVarSet, MethodCallExistQTVars,
+            MethodCallArgTypes, MethodCallExternalTypeParams, no,
+            MethodContext, PredId, InstanceMethodFuncSymName, _ResolveSpecs)
         % Any errors in _ResolveSpecs will be reported when a later compiler
         % invocation attempts to generate target language code for this module.
     then
         TypeCtors = [],
         MaybePredId = yes(PredId),
-        InstanceMethodName = InstanceMethodFuncName
+        InstanceMethodSymName = InstanceMethodFuncSymName
     else
         TypeCtors = [TheTypeCtor],
         MaybePredId = no,
         TheTypeCtor = type_ctor(TypeCtorSymName, _),
         (
             TypeCtorSymName = qualified(TypeModule, _),
-            UnqualMethodName = unqualify_name(InstanceMethodName0),
-            InstanceMethodName = qualified(TypeModule, UnqualMethodName)
+            MethodName = unqualify_name(InstanceMethodSymName0),
+            InstanceMethodSymName = qualified(TypeModule, MethodName)
         ;
             TypeCtorSymName = unqualified(_),
             unexpected($pred, "unqualified type_ctor in " ++

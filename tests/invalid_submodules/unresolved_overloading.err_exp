@@ -1,10 +1,7 @@
-unresolved_overloading.m:026: Error: unresolved predicate overloading.
-unresolved_overloading.m:026:   The matches are
-unresolved_overloading.m:026:     predicate
-unresolved_overloading.m:026:     `unresolved_overloading.sub.loud_and_annoying'/3,
-unresolved_overloading.m:026:     and
-unresolved_overloading.m:026:     predicate
-unresolved_overloading.m:026:     `unresolved_overloading.loud_and_annoying'/3.
+unresolved_overloading.m:026: Error: [38;5;203munresolved overloading[39;49m for predicate
+unresolved_overloading.m:026:   [38;5;87m`annoying'.[39;49m The matches are
+unresolved_overloading.m:026:     [38;5;226m`unresolved_overloading.sub.annoying'/3,[39;49m
+unresolved_overloading.m:026:     [38;5;226m`unresolved_overloading.annoying'/3.[39;49m
 unresolved_overloading.m:026:   You need to use an explicit module qualifier to
 unresolved_overloading.m:026:   select the one you intend to refer to.
 unresolved_overloading.m:026:   Proceeding on the assumption that the intended
