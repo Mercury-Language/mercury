@@ -293,8 +293,7 @@ real_main_after_expansion(ProgressStream, ErrorStream, CmdLineArgs, !IO) :-
         % currently not defined. It does not matter at the moment, since
         % Mercury.config does not contain either of those two flags.
         AllFlags = DetectedGradeFlags ++ MCFlags ++ EnvVarArgs ++ OptionArgs,
-        trace [
-            compile_time(flag("cmd_line_args")),
+        trace [compile_time(flag("cmd_line_args")),
             run_time(env("MMC_CMD_LINE_ARGS")),
             io(!TIO)]
         (
