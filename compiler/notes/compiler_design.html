@@ -1425,6 +1425,11 @@ simplify.m is a package of submodules.
     It also attempts to partially evaluate the correct calls,
     essentially interpreting the format string at compile time, not runtime.
     <li>
+    parse_string_format.m does the same job for format_call.m at compile time
+    as library/string.parse_runtime.m does at runtime,
+    i.e. it parses the format strings in calls to predicates such as io.format,
+    and checks whether they match the values passed with them.
+    <li>
     split_switch_arms.m optimizes code in which one or more switches
     on a variable are nested inside one arm of a larger switch on the same
     variable. It does so by making all the distinctions between the cons_id
@@ -1516,7 +1521,7 @@ The next pass also simplifies the HLDS by expanding out
 the atomic goals that implement Software Transactional Memory (stm_expand.m).
 <li>
 equiv_type_hlds.m expands type equivalences
-which are not meant to be visible to the user of imported modules.
+which are not meant to be visible to the users of imported modules.
 This is necessary for the Java and C# back-ends
 and in some cases for `:- pragma foreign_export'
 involving foreign types on the C back-end.
@@ -1814,6 +1819,13 @@ The RBMM system in the Mercury compiler is experimental,
 and not ready for general use.
 The detailed documentation of its component modules
 awaits the next person to work on it.
+<li>
+The ctgc.m subpackage implements compile-time garbage collection.
+It is also experimental, not ready for general use,
+and very sparsely documented.
+<li>
+smm_common.m contains facilities
+that are useful to both the rbmm and ctgc subpackages.
 </ul>
 
 <p>

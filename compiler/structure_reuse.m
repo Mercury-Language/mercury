@@ -22,6 +22,9 @@
     :- include_module lfu.
     :- include_module lbu.
     :- include_module direct.
+        :- include_module dead_cell_table.
+        :- include_module direct_choose_reuse.
+        :- include_module direct_detect_garbage.
     :- include_module indirect.
     :- include_module versions.
 

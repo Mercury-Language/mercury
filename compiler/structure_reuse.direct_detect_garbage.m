@@ -6,7 +6,7 @@
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
 %
-% File: structure_reuse.direct.detect_garbage.m.
+% File: structure_reuse.direct_detect_garbage.m.
 % Main authors: nancy.
 %
 % Detect where datastructures become garbage in a given procedure: construct
@@ -14,11 +14,16 @@
 %
 %---------------------------------------------------------------------------%
 
-:- module transform_hlds.ctgc.structure_reuse.direct.detect_garbage.
+:- module transform_hlds.ctgc.structure_reuse.direct_detect_garbage.
 :- interface.
 
 :- import_module hlds.
 :- import_module hlds.hlds_goal.
+:- import_module hlds.hlds_module.
+:- import_module hlds.hlds_pred.
+:- import_module transform_hlds.ctgc.structure_reuse.dead_cell_table.
+:- import_module transform_hlds.ctgc.structure_sharing.
+:- import_module transform_hlds.ctgc.structure_sharing.domain.
 
 %---------------------------------------------------------------------------%
 
@@ -39,6 +44,9 @@
 
 :- import_module check_hlds.
 :- import_module check_hlds.type_util.
+:- import_module libs.
+:- import_module libs.globals.
+:- import_module libs.options.
 :- import_module parse_tree.
 :- import_module parse_tree.parse_tree_out_misc.
 :- import_module parse_tree.prog_data.
@@ -46,9 +54,13 @@
 :- import_module parse_tree.var_table.
 :- import_module transform_hlds.ctgc.datastruct.
 :- import_module transform_hlds.ctgc.livedata.
+:- import_module transform_hlds.ctgc.structure_reuse.domain.
+:- import_module transform_hlds.ctgc.util.
+:- import_module transform_hlds.smm_common.
 
 :- import_module bool.
 :- import_module io.
+:- import_module list.
 :- import_module require.
 :- import_module string.
 
@@ -323,5 +335,5 @@ var_not_live(ModuleInfo, VarTable, GoalInfo, Sharing, Var) :-
     ).
 
 %---------------------------------------------------------------------------%
-:- end_module transform_hlds.ctgc.structure_reuse.direct.detect_garbage.
+:- end_module transform_hlds.ctgc.structure_reuse.direct_detect_garbage.
 %---------------------------------------------------------------------------%

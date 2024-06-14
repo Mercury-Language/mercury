@@ -17,7 +17,7 @@
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
-:- module check_hlds.simplify.format_call.parse_string_format.
+:- module check_hlds.simplify.parse_string_format.
 :- interface.
 
 :- import_module parse_tree.
@@ -25,6 +25,7 @@
 
 :- import_module char.
 :- import_module list.
+:- import_module maybe.
 :- import_module string.
 :- import_module string.parse_util.
 
@@ -149,7 +150,6 @@
 :- implementation.
 
 :- import_module int.
-:- import_module maybe.
 
 %---------------------------------------------------------------------------%
 
@@ -161,33 +161,6 @@ parse_format_string_abstract(Chars, PolyTypes, Context, MaybeSpecs) :-
     ;
         Errors = [],
         MaybeSpecs = ok(Specs)
-    ).
-
-merge_adjacent_const_strs([], []).
-merge_adjacent_const_strs([HeadSpec | TailSpecs], MergedSpecs) :-
-    merge_adjacent_const_strs(TailSpecs, TailMergedSpecs),
-    (
-        HeadSpec = compiler_const_string(HeadContext, HeadConstString),
-        ( if
-            TailMergedSpecs = [FirstTailMergedSpec | LaterTailMergedSpecs],
-            FirstTailMergedSpec =
-                compiler_const_string(_TailContext, TailConstString)
-        then
-            HeadMergedSpec = compiler_const_string(HeadContext,
-                HeadConstString ++ TailConstString),
-            MergedSpecs = [HeadMergedSpec | LaterTailMergedSpecs]
-        else
-            MergedSpecs = [HeadSpec | TailMergedSpecs]
-        )
-    ;
-        ( HeadSpec = compiler_spec_char(_, _, _, _)
-        ; HeadSpec = compiler_spec_string(_, _, _, _, _)
-        ; HeadSpec = compiler_spec_signed_int(_, _, _, _, _, _)
-        ; HeadSpec = compiler_spec_unsigned_int(_, _, _, _, _, _, _)
-        ; HeadSpec = compiler_spec_uint(_, _, _, _, _, _, _)
-        ; HeadSpec = compiler_spec_float(_, _, _, _, _, _)
-        ),
-        MergedSpecs = [HeadSpec | TailMergedSpecs]
     ).
 
     % This predicate parses the entire format string. When it encounters
@@ -615,4 +588,35 @@ abstract_poly_type_to_kind(apt_u32(_, _)) = poly_kind_uint32.
 abstract_poly_type_to_kind(apt_u64(_, _)) = poly_kind_uint64.
 abstract_poly_type_to_kind(apt_f(_, _)) =   poly_kind_float.
 
+%---------------------------------------------------------------------------%
+
+merge_adjacent_const_strs([], []).
+merge_adjacent_const_strs([HeadSpec | TailSpecs], MergedSpecs) :-
+    merge_adjacent_const_strs(TailSpecs, TailMergedSpecs),
+    (
+        HeadSpec = compiler_const_string(HeadContext, HeadConstString),
+        ( if
+            TailMergedSpecs = [FirstTailMergedSpec | LaterTailMergedSpecs],
+            FirstTailMergedSpec =
+                compiler_const_string(_TailContext, TailConstString)
+        then
+            HeadMergedSpec = compiler_const_string(HeadContext,
+                HeadConstString ++ TailConstString),
+            MergedSpecs = [HeadMergedSpec | LaterTailMergedSpecs]
+        else
+            MergedSpecs = [HeadSpec | TailMergedSpecs]
+        )
+    ;
+        ( HeadSpec = compiler_spec_char(_, _, _, _)
+        ; HeadSpec = compiler_spec_string(_, _, _, _, _)
+        ; HeadSpec = compiler_spec_signed_int(_, _, _, _, _, _)
+        ; HeadSpec = compiler_spec_unsigned_int(_, _, _, _, _, _, _)
+        ; HeadSpec = compiler_spec_uint(_, _, _, _, _, _, _)
+        ; HeadSpec = compiler_spec_float(_, _, _, _, _, _)
+        ),
+        MergedSpecs = [HeadSpec | TailMergedSpecs]
+    ).
+
+%---------------------------------------------------------------------------%
+:- end_module check_hlds.simplify.parse_string_format.
 %---------------------------------------------------------------------------%

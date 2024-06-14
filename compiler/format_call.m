@@ -160,9 +160,7 @@
 
 :- implementation.
 
-:- include_module parse_string_format.
-
-:- import_module check_hlds.simplify.format_call.parse_string_format.
+:- import_module check_hlds.simplify.parse_string_format.
 :- import_module check_hlds.simplify.format_call_errors.
 :- import_module check_hlds.simplify.simplify_goal_call.
 :- import_module hlds.goal_path.

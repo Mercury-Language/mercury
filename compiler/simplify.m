@@ -42,6 +42,7 @@
 :- implementation.
 
 :- include_module check_hlds.simplify.common.
+:- include_module check_hlds.simplify.parse_string_format.
 :- include_module check_hlds.simplify.simplify_goal.
 :- include_module check_hlds.simplify.simplify_goal_call.
 :- include_module check_hlds.simplify.simplify_goal_conj.

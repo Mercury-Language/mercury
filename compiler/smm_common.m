@@ -62,6 +62,20 @@
 
     % Compute the program point from the given goal_info.
     %
+    % Note: for a meaningful use of this predicate, the goal's goal_id slot
+    % needs to be filled in (e.g. by a call to fill_goal_id_slots_in_proc).
+    %
+    % XXX This comment, this function, and the program point type have
+    % all suffered bit rot. They were written when fill_goal_id_slots_in_proc
+    % recorded a reverse_goal_path in each goal_info. However, it now records
+    % just a goal_id, which *can* be turned into a reverse_goal_path, but
+    % *only* with the help of a containing_goal_map, which this function
+    % has no access to. And the right solution to this problem would NOT be
+    % to add a containing_goal_map argument to this function, but to
+    % change the program_point type to use goal_ids instead. I (zs) have no
+    % idea how much modification this would require to the code operating on
+    % values of that type.
+    %
 :- func program_point_init(hlds_goal_info) = program_point.
 
     % Dump the information contained in a program point.
@@ -113,6 +127,8 @@ select_subtype(ModuleInfo, Type, ConsId, Choice, SubType) :-
     get_cons_id_non_existential_arg_types(ModuleInfo, Type, ConsId, ArgTypes),
     list.index1(ArgTypes, Choice, SubType).
 
+%---------------------------------------------------------------------------%
+
 some_are_special_preds(PPIds, ModuleInfo) :-
     (
         module_info_get_special_pred_maps(ModuleInfo, SpecialPredMaps),
@@ -148,9 +164,8 @@ proc_not_defined_in_module(ModuleInfo, proc(PredId, _)):-
     pred_info_get_status(PredInfo, PredStatus),
     pred_status_defined_in_this_module(PredStatus) = no.
 
-    % Note: for a meaningful use of this predicate the goal needs to be
-    % filled with goal id information, i.e. call to fill_goal_id_slots(...).
-    %
+%---------------------------------------------------------------------------%
+
 program_point_init(GoalInfo) = ProgPoint :-
     Context = goal_info_get_context(GoalInfo),
     RevGoalPath = goal_info_get_reverse_goal_path(GoalInfo),

@@ -6,7 +6,7 @@
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
 %
-% File: structure_reuse.direct.choose_reuse.m.
+% File: structure_reuse.direct_choose_reuse.m.
 % Main authors: nancy.
 %
 % Given a dead cell table listing the deconstructions that may leave garbage
@@ -95,13 +95,14 @@
 %
 %---------------------------------------------------------------------------%
 
-:- module transform_hlds.ctgc.structure_reuse.direct.choose_reuse.
+:- module transform_hlds.ctgc.structure_reuse.direct_choose_reuse.
 :- interface.
 
 :- import_module hlds.
 :- import_module hlds.hlds_goal.
 :- import_module hlds.hlds_module.
 :- import_module hlds.hlds_pred.
+:- import_module transform_hlds.ctgc.structure_reuse.dead_cell_table.
 :- import_module transform_hlds.ctgc.structure_reuse.domain.
 
 %---------------------------------------------------------------------------%
@@ -117,13 +118,23 @@
 :- import_module check_hlds.
 :- import_module check_hlds.type_util.
 :- import_module hlds.hlds_data.
+:- import_module libs.
+:- import_module libs.file_util.
+:- import_module libs.globals.
+:- import_module libs.options.
 :- import_module parse_tree.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.prog_data_pragma.
 :- import_module parse_tree.var_table.
+:- import_module transform_hlds.ctgc.util.
+:- import_module transform_hlds.smm_common.
 
+:- import_module bool.
 :- import_module float.
 :- import_module int.
+:- import_module io.
+:- import_module list.
+:- import_module map.
 :- import_module maybe.
 :- import_module multi_map.
 :- import_module require.
@@ -1526,5 +1537,5 @@ check_for_cell_caching_in_unification(DeadCellTable, !Unification,
     ).
 
 %---------------------------------------------------------------------------%
-:- end_module transform_hlds.ctgc.structure_reuse.direct.choose_reuse.
+:- end_module transform_hlds.ctgc.structure_reuse.direct_choose_reuse.
 %---------------------------------------------------------------------------%
