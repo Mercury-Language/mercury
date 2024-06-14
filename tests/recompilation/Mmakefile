@@ -58,7 +58,7 @@ include ../Mmake.common
 # can be found by `mmc --make'.
 include Mercury.options
 
-MCFLAGS += --enable-color-diagnostics
+MCFLAGS += --color-diagnostics
 
 $(TESTS_SHOULD_SUCCEED:%=%.runtest): %.runtest:
 	+@if ./two_module_test should_succeed $* $*_2; then \

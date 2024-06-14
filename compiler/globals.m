@@ -872,17 +872,6 @@ record_color_scheme_in_options(Source, SchemeName, Specs, !OptionTable, !IO) :-
     % of such errors would mean that we cannot set up the colors we would
     % want to use for that. :-(
     ( if
-        ( SchemeName = "none"
-        ; SchemeName = ""
-        )
-    then
-        map.set(use_color_diagnostics, bool(no), !OptionTable),
-        Specs = []
-    else if
-        % XXX COLOR While we have agreed on the names of the standard schemes,
-        % and on the colors to be used in the *16 schemes for the subject,
-        % correct and incorrect roles, the other colors below are just
-        % placeholders for now.
         (
             ( SchemeName = "dark16"
             ; SchemeName = "darkmode16"
@@ -1028,8 +1017,7 @@ record_color_scheme_in_options(Source, SchemeName, Specs, !OptionTable, !IO) :-
         Pieces = [words("Error in the value of")] ++ Source ++
             [suffix(":"), quote(SchemeName), words("is not the name"),
             words("of a recognized color scheme."), nl],
-        Specs =
-            [no_ctxt_spec($pred, severity_error, phase_options, Pieces)]
+        Specs = [no_ctxt_spec($pred, severity_error, phase_options, Pieces)]
     ).
 
 :- type maybe_color_strings

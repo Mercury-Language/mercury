@@ -108,7 +108,7 @@ include ../Mmake.common
 # by `mmc --make'.
 include Mercury.options
 
-MCFLAGS += --enable-color-diagnostics
+MCFLAGS += --color-diagnostics
 
 %.runtest: %.err_res ;
 

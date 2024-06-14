@@ -338,26 +338,44 @@ get_args_representing_env_vars(EnvVarArgs, !IO) :-
         MaybeColorScheme, !IO),
     ( if
         MaybeColorScheme = yes(ColorScheme),
-        % XXX Should we let MERCURY_COLOR_SCHEME being set to ""
-        % override the default color scheme? Having this test here
-        % assumes that our preferred answer is "no".
         ColorScheme \= ""
     then
         EnvVarColorSchemeArgs = ["--color-scheme-envvar", ColorScheme]
     else
         EnvVarColorSchemeArgs = []
     ),
-    io.environment.get_environment_var("NO_COLOR", MaybeNoColor, !IO),
+    io.environment.get_environment_var("MERCURY_ENABLE_COLOR",
+        MaybeEnableColor, !IO),
     ( if
-        MaybeNoColor = yes(NoColorValue),
-        NoColorValue \= ""
+        MaybeEnableColor = yes(EnableColor),
+        % We ignore the value of EnableColor if it has a value *other than*
+        % the ones recognized in this switch.
+        (
+            ( EnableColor = "never"
+            ; EnableColor = "0"
+            ),
+            EnableArg = "--no-color-diagnostics"
+        ;
+            ( EnableColor = "always"
+            ; EnableColor = "1"
+            ),
+            EnableArg = "--color-diagnostics"
+        )
     then
-        % The environment variable NO_COLOR is present and nonempty.
-        EnvVarNoColorArgs = ["--no-enable-color-diagnostics"]
+        EnvVarEnableColorArgs = [EnableArg]
     else
-        EnvVarNoColorArgs = []
+        io.environment.get_environment_var("NO_COLOR", MaybeNoColor, !IO),
+        ( if
+            MaybeNoColor = yes(NoColorValue),
+            NoColorValue \= ""
+        then
+            % The environment variable NO_COLOR is present and nonempty.
+            EnvVarEnableColorArgs = ["--no-color-diagnostics"]
+        else
+            EnvVarEnableColorArgs = []
+        )
     ),
-    EnvVarArgs = EnvVarColorSchemeArgs ++ EnvVarNoColorArgs.
+    EnvVarArgs = EnvVarColorSchemeArgs ++ EnvVarEnableColorArgs.
 
 %---------------------------------------------------------------------------%
 

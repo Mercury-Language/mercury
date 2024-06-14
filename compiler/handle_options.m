@@ -3186,9 +3186,9 @@ handle_colors(!Globals, !IO) :-
     %
     % do we want to enable colors only in the first N lines of diagnostics?
     globals.lookup_bool_option(!.Globals,
-        enable_color_diagnostics_is_set, EnableIsSet),
+        color_diagnostics_is_set, EnableIsSet),
     globals.lookup_bool_option(!.Globals,
-        enable_color_diagnostics_is_set_to, EnableValue),
+        color_diagnostics_is_set_to, EnableValue),
     globals.lookup_bool_option(!.Globals,
         config_default_color_diagnostics, ConfigDefault),
     (

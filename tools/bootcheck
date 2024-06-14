@@ -2140,7 +2140,8 @@ then
     MERCURY_COLOR_SCHEME="specified@${COLORS123}:${COLORS45}"
     export MERCURY_COLOR_SCHEME
     echo "MERCURY_COLOR_SCHEME=${MERCURY_COLOR_SCHEME}"
-    unset NO_COLOR
+    MERCURY_ENABLE_COLOR=always
+    export MERCURY_ENABLE_COLOR
 
     test_status=0
 

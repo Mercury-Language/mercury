@@ -271,9 +271,9 @@
     ;       inst_statistics
     ;       limit_error_contexts
     ;       config_default_color_diagnostics
-    ;       enable_color_diagnostics
-    ;       enable_color_diagnostics_is_set
-    ;       enable_color_diagnostics_is_set_to
+    ;       color_diagnostics
+    ;       color_diagnostics_is_set
+    ;       color_diagnostics_is_set_to
     ;       use_color_diagnostics
             % The color_scheme used by the compiler is specified by
             % the color_scheme_set_to option. The color_scheme_set_by
@@ -1392,9 +1392,9 @@ optdef(oc_verbosity, proc_size_statistics,              string("")).
 optdef(oc_verbosity, inst_statistics,                   string("")).
 optdef(oc_verbosity, limit_error_contexts,              accumulating([])).
 optdef(oc_verbosity, config_default_color_diagnostics,  bool(no)).
-optdef(oc_verbosity, enable_color_diagnostics,          bool_special).
-optdef(oc_verbosity, enable_color_diagnostics_is_set,   bool(no)).
-optdef(oc_verbosity, enable_color_diagnostics_is_set_to, bool(no)).
+optdef(oc_verbosity, color_diagnostics,                 bool_special).
+optdef(oc_verbosity, color_diagnostics_is_set,          bool(no)).
+optdef(oc_verbosity, color_diagnostics_is_set_to,       bool(no)).
 optdef(oc_verbosity, use_color_diagnostics,             bool(no)).
 optdef(oc_verbosity, color_scheme,                      string_special).
 optdef(oc_verbosity, color_scheme_envvar,               string_special).
@@ -2376,8 +2376,8 @@ long_table("config-default-color-diagnostics",
                                        config_default_color_diagnostics).
 long_table("config-default-colour-diagnostics",
                                        config_default_color_diagnostics).
-long_table("enable-color-diagnostics", enable_color_diagnostics).
-long_table("enable-colour-diagnostics", enable_color_diagnostics).
+long_table("color-diagnostics",         color_diagnostics).
+long_table("colour-diagnostics",        color_diagnostics).
 % use_color_diagnostics is an internal-use-only option.
 long_table("color-scheme",             color_scheme).
 long_table("color-scheme-envvar",      color_scheme_envvar).
@@ -3481,11 +3481,10 @@ special_handler(Option, SpecialData, !.OptionTable, Result, !OptOptions) :-
         )
     ;
         (
-            Option = enable_color_diagnostics,
+            Option = color_diagnostics,
             SpecialData = bool(Enable),
-            map.set(enable_color_diagnostics_is_set, bool(yes), !OptionTable),
-            map.set(enable_color_diagnostics_is_set_to, bool(Enable),
-                !OptionTable)
+            map.set(color_diagnostics_is_set, bool(yes), !OptionTable),
+            map.set(color_diagnostics_is_set_to, bool(Enable), !OptionTable)
         ;
             Option = color_scheme,
             SpecialData = string(ColorScheme),

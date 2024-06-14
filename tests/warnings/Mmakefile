@@ -101,7 +101,7 @@ include Mercury.options
 # With `mmc --make', the errors should only go to the
 # `.err' files, not stderr.
 MCFLAGS += --output-compile-error-lines 0
-MCFLAGS += --enable-color-diagnostics
+MCFLAGS += --color-diagnostics
 MCFLAGS += --infer-all
 
 $(COMPILE_PROGS:%=%.runtest): %.runtest: %.res_compile ;
