@@ -26,10 +26,7 @@
 %   that contain it.
 %
 % A goal_path_step type says which branch to take at an interior node;
-% the integer counts inside steps start at one. For switches, the second int,
-% if present, gives the total number of function symbols in the type of the
-% switched-on var. For builtin types such as integer and string, for which
-% this number is effectively infinite, the second number won't be present.
+% such as which conjunct of a conjunction we want to select.
 %
 % A forward goal path lists the steps from the root of the tree to the goal
 % being identified.
@@ -39,10 +36,11 @@
 %
 % The code in the compiler that allocates goal ids also returns a containing
 % goal map, which maps each goal id to the id of its innermost containing goal
-% (if there is one). When possible, new code should use this data structure,
-% though code that needs to identify goals in files outside the compiler
-% will probably continue to need to use goal paths. The string representations
-% of goal paths always list the steps in the forward order. In contrast,
+% (if there is one), and the step from that containing goal to this one.
+% When possible, new code should use this data structure, though code
+% that needs to identify goals in files outside the compiler will probably
+% continue to need to use goal paths. The string representations of
+% goal paths always list the steps in the forward order. In contrast,
 % most operations inside the compiler use reverse goal paths, because most
 % operations on goal paths focus on the last element, not the first.
 %
@@ -69,9 +67,10 @@
 
 :- type goal_path_string == string.
 
+    % The integers in these steps start counting at one.
 :- type goal_path_step
-    --->    step_conj(int)
-    ;       step_disj(int)
+    --->    step_conj(int)  % which conjunct of a conjunction
+    ;       step_disj(int)  % which disjunct of a disjunction
     ;       step_switch(int, maybe_switch_num_functors)
     ;       step_ite_cond
     ;       step_ite_then
@@ -83,7 +82,13 @@
     ;       step_atomic_main
     ;       step_atomic_orelse(int).
 
-    % The number of functors in the type of the switched-on variable, if known.
+    % For switches on values of discriminated union types, this will be
+    % known_num_functors_in_type(N), where N is the number of function symbols
+    % in the type of the variable being switched.
+    %
+    % For switches on builtin types such as integer and string, for which
+    % the number of function symbols in the type is effectively infinite,
+    % this will be unknown_num_functors_in_type.
     %
 :- type maybe_switch_num_functors
     --->    unknown_num_functors_in_type
