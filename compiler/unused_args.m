@@ -48,6 +48,7 @@
 :- interface.
 
 :- import_module analysis.
+:- import_module analysis.framework.
 :- import_module hlds.
 :- import_module hlds.hlds_module.
 :- import_module parse_tree.
@@ -87,6 +88,7 @@
 
 :- implementation.
 
+:- import_module analysis.operations.
 :- import_module check_hlds.
 :- import_module check_hlds.inst_match.
 :- import_module check_hlds.mode_test.
@@ -1096,7 +1098,7 @@ unused_args_create_new_pred(UnusedArgInfo, OrigPredProcId,
 
         module_name_func_id_from_pred_info(OrigPredInfo, ProcId, ModuleId,
             FuncId),
-        analysis.lookup_results(AnalysisInfo0, ModuleId, FuncId,
+        analysis.operations.lookup_results(AnalysisInfo0, ModuleId, FuncId,
             IntermodResultsTriples : list(analysis_result(unused_args_call,
                 unused_args_answer))),
         IntermodOldAnswers = list.map((func(R) = R ^ ar_answer),

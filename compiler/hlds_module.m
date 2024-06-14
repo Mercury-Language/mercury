@@ -20,6 +20,7 @@
 :- interface.
 
 :- import_module analysis.
+:- import_module analysis.operations.
 :- import_module check_hlds.
 :- import_module check_hlds.proc_requests.
 :- import_module hlds.const_struct.

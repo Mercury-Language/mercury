@@ -82,6 +82,8 @@
 :- interface.
 
 :- import_module analysis.
+:- import_module analysis.framework.
+:- import_module analysis.operations.
 :- import_module hlds.
 :- import_module hlds.hlds_module.
 :- import_module hlds.hlds_pred.
@@ -704,7 +706,7 @@ combine_maybe_analysis_status(MaybeStatusA, MaybeStatusB, MaybeStatus) :-
         MaybeStatusA = yes(StatusA),
         MaybeStatusB = yes(StatusB)
     then
-        MaybeStatus = yes(analysis.lub(StatusA, StatusB))
+        MaybeStatus = yes(analysis.framework.lub(StatusA, StatusB))
     else
         MaybeStatus = no
     ).

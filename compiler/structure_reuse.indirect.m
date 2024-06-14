@@ -73,6 +73,7 @@
 :- implementation.
 
 :- import_module analysis.
+:- import_module analysis.framework.
 :- import_module check_hlds.
 :- import_module check_hlds.type_util.
 :- import_module hlds.hlds_dependency_graph.

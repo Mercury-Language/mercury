@@ -19,6 +19,7 @@
 :- interface.
 
 :- import_module analysis.
+:- import_module analysis.framework.
 :- import_module hlds.
 :- import_module hlds.hlds_module.
 
@@ -60,6 +61,7 @@
 
 :- implementation.
 
+:- import_module analysis.operations.
 :- import_module check_hlds.
 :- import_module check_hlds.simplify.
 :- import_module check_hlds.simplify.simplify_proc.

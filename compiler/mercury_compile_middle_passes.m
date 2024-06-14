@@ -54,6 +54,7 @@
 :- implementation.
 
 :- import_module analysis.
+:- import_module analysis.operations.
 :- import_module backend_libs.
 :- import_module backend_libs.type_ctor_info.
 :- import_module hlds.hlds_error_util.
@@ -602,8 +603,8 @@ output_analysis_file(ProgressStream, !.HLDS, !Specs, !DumpInfo, !IO) :-
 
     module_info_get_analysis_info(!.HLDS, AnalysisInfo),
     module_info_get_all_deps(!.HLDS, ImportedModules),
-    analysis.write_analysis_files(ProgressStream, mmc, !.HLDS, ImportedModules,
-        AnalysisInfo, AnalysisSpecs, !IO),
+    analysis.operations.write_analysis_files(ProgressStream, mmc, !.HLDS,
+        ImportedModules, AnalysisInfo, AnalysisSpecs, !IO),
     !:Specs = AnalysisSpecs ++ !.Specs.
 
 %---------------------------------------------------------------------------%

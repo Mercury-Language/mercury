@@ -18,6 +18,7 @@
 :- interface.
 
 :- import_module analysis.
+:- import_module analysis.framework.
 :- import_module check_hlds.
 :- import_module check_hlds.mode_constraint_robdd.
 :- import_module hlds.hlds_class.

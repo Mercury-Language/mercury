@@ -12,11 +12,17 @@
 % This module deals with the on-disk representations of the analysis registry
 % and associated files.
 %
+% NOTE: I (zs) find the criteria used for the division of tasks between
+% this module and analysis.operations.m (which used to be just analysis.m
+% when it was this module's parent) to be unclear.
+%
 %---------------------------------------------------------------------------%
 
 :- module analysis.file.
 :- interface.
 
+:- import_module analysis.framework.
+:- import_module analysis.operations.
 :- import_module libs.
 :- import_module libs.globals.
 :- import_module mdbcomp.
@@ -124,26 +130,34 @@
 
 :- implementation.
 
+:- import_module hlds.
+:- import_module hlds.hlds_pred.
 :- import_module libs.options.
 :- import_module libs.pickle.
+:- import_module mdbcomp.prim_data.
 :- import_module parse_tree.file_names.
 :- import_module parse_tree.module_cmds.
 :- import_module parse_tree.parse_sym_name.
 :- import_module parse_tree.parse_tree_out_sym_name.
 :- import_module parse_tree.parse_tree_out_term.
+:- import_module parse_tree.prog_data.
 
 :- import_module bool.
 :- import_module char.
 :- import_module dir.
 :- import_module io.file.
+:- import_module map.
+:- import_module maybe.
 :- import_module mercury_term_lexer.
 :- import_module mercury_term_parser.
 :- import_module require.
 :- import_module string.
+:- import_module term.
 :- import_module term_context.
 :- import_module term_int.
 :- import_module term_io.
 :- import_module type_desc.
+:- import_module unit.
 :- import_module univ.
 :- import_module varset.
 
@@ -273,7 +287,7 @@ read_module_overall_status_2(FileName, ModuleStatus, !IO) :-
     (pred(in, in, in, in, di, uo) is det).
 
 write_module_overall_status(Info, Globals, ModuleName, Status, !IO) :-
-    module_name_to_write_file_name(Info ^ compiler, Globals,
+    module_name_to_write_file_name(analysis_info_get_compiler(Info), Globals,
         ext_cur_ngs_gs(ext_cur_ngs_gs_an_ds_status),
         ModuleName, FileName, !IO),
     io.open_output(FileName, OpenResult, !IO),
@@ -305,7 +319,7 @@ read_module_analysis_results(ProgressStream, Info, Globals,
     % If the module's overall status is `invalid', then at least one of its
     % results is invalid. However, we can't just discard the results,
     % as we want to know which results change after we reanalyse the module.
-    Compiler = Info ^ compiler,
+    Compiler = analysis_info_get_compiler(Info),
     module_name_to_read_file_name(Compiler, Globals,
         ext_cur_ngs_gs_max_ngs(ext_cur_ngs_gs_max_ngs_an_analysis),
         ModuleName, MaybeAnalysisFileName, !IO),
@@ -372,7 +386,7 @@ do_read_module_analysis_results(Compiler, AnalysisFileName, !:ModuleResults,
     io.read_named_file_as_string(AnalysisFileName, FileResult, !IO),
     (
         FileResult = ok(FileStr),
-        get_debug_analysis_stream(MaybeDebugStream, !IO),
+        get_analysis_debug_stream(MaybeDebugStream, !IO),
         (
             MaybeDebugStream = no
         ;
@@ -392,7 +406,7 @@ do_read_module_analysis_results(Compiler, AnalysisFileName, !:ModuleResults,
             !ModuleResults, !Specs)
     ;
         FileResult = error(_),
-        get_debug_analysis_stream(MaybeDebugStream, !IO),
+        get_analysis_debug_stream(MaybeDebugStream, !IO),
         (
             MaybeDebugStream = no
         ;
@@ -459,7 +473,7 @@ parse_result_entry(Compiler, VarSet, Term, !Results, !Specs) :-
 
 write_module_analysis_results(ProgressStream, Info, Globals,
         ModuleName, ModuleResults, !IO) :-
-    get_debug_analysis_stream(MaybeDebugStream, !IO),
+    get_analysis_debug_stream(MaybeDebugStream, !IO),
     (
         MaybeDebugStream = no
     ;
@@ -467,7 +481,7 @@ write_module_analysis_results(ProgressStream, Info, Globals,
         io.format(DebugStream, "%%s Writing module analysis results for %s\n",
             [s(sym_name_to_string(ModuleName))], !IO)
     ),
-    find_and_write_analysis_file(Info ^ compiler, Globals,
+    find_and_write_analysis_file(analysis_info_get_compiler(Info), Globals,
         add_dot_temp, write_result_entry,
         ext_cur_ngs_gs_max_ngs(ext_cur_ngs_gs_max_ngs_an_analysis),
         ModuleName, ModuleResults, FileName, !IO),
@@ -512,8 +526,9 @@ write_result_entry(OutStream, AnalysisName, FuncId, Result, !IO) :-
 
 read_module_analysis_requests(Info, Globals, ModuleName, ModuleRequests,
         !Specs, !IO) :-
-    find_and_read_analysis_file(Info ^ compiler, Globals,
-        parse_request_entry(Info ^ compiler),
+    Compiler = analysis_info_get_compiler(Info),
+    find_and_read_analysis_file(Compiler, Globals,
+        parse_request_entry(Compiler),
         ext_cur_ngs_gs_max_ngs(ext_cur_ngs_gs_max_ngs_an_request), ModuleName,
         map.init, ModuleRequests, !Specs, !IO).
 
@@ -568,11 +583,11 @@ parse_request_entry(Compiler, VarSet, Term, !Requests, !Specs) :-
 
 write_module_analysis_requests(Info, Globals, ModuleName, ModuleRequests,
         !IO) :-
-    Compiler = Info ^ compiler,
+    Compiler = analysis_info_get_compiler(Info),
     module_name_to_write_file_name(Compiler, Globals,
         ext_cur_ngs_gs_max_ngs(ext_cur_ngs_gs_max_ngs_an_request),
         ModuleName, AnalysisFileName, !IO),
-    get_debug_analysis_stream(MaybeDebugStream, !IO),
+    get_analysis_debug_stream(MaybeDebugStream, !IO),
     (
         MaybeDebugStream = no
     ;
@@ -651,8 +666,8 @@ write_request_entry(Compiler, OutStream, AnalysisName, FuncId, Request, !IO) :-
 %
 
 read_module_imdg(Info, Globals, ModuleName, ModuleEntries, Specs, !IO) :-
-    find_and_read_analysis_file(Info ^ compiler, Globals,
-        parse_imdg_arc(Info ^ compiler),
+    Compiler = analysis_info_get_compiler(Info),
+    find_and_read_analysis_file(Compiler, Globals, parse_imdg_arc(Compiler),
         ext_cur_ngs_gs_max_ngs(ext_cur_ngs_gs_max_ngs_an_imdg),
         ModuleName, map.init, ModuleEntries, [], Specs, !IO).
 
@@ -707,8 +722,9 @@ parse_imdg_arc(Compiler, VarSet, Term, !Arcs, !Specs) :-
 %---------------------%
 
 write_module_imdg(Info, Globals, ModuleName, ModuleEntries, !IO) :-
-    find_and_write_analysis_file(Info ^ compiler, Globals,
-        do_not_add_dot_temp, write_imdg_arc(Info ^ compiler),
+    Compiler = analysis_info_get_compiler(Info),
+    find_and_write_analysis_file(Compiler, Globals,
+        do_not_add_dot_temp, write_imdg_arc(Compiler),
         ext_cur_ngs_gs_max_ngs(ext_cur_ngs_gs_max_ngs_an_imdg), ModuleName,
         ModuleEntries, _FileName, !IO).
 
@@ -780,7 +796,7 @@ find_and_read_analysis_file(Compiler, Globals, ParseEntry,
             !ModuleResults, !Specs, !IO)
     ;
         MaybeAnalysisFileName = error(Message),
-        get_debug_analysis_stream(MaybeDebugStream, !IO),
+        get_analysis_debug_stream(MaybeDebugStream, !IO),
         (
             MaybeDebugStream = no
         ;
@@ -804,7 +820,7 @@ read_analysis_file(AnalysisFileName, ParseEntry,
     io.read_named_file_as_string(AnalysisFileName, FileResult, !IO),
     (
         FileResult = ok(FileStr),
-        get_debug_analysis_stream(MaybeDebugStream, !IO),
+        get_analysis_debug_stream(MaybeDebugStream, !IO),
         (
             MaybeDebugStream = no
         ;
@@ -823,7 +839,7 @@ read_analysis_file(AnalysisFileName, ParseEntry,
             ParseEntry, LineContext1, LinePosn1, !ModuleResults, !Specs)
     ;
         FileResult = error(_),
-        get_debug_analysis_stream(MaybeDebugStream, !IO),
+        get_analysis_debug_stream(MaybeDebugStream, !IO),
         (
             MaybeDebugStream = no
         ;
@@ -995,10 +1011,10 @@ write_module_analysis_func(OutStream, WriteEntry, AnalysisName, FuncId,
 %---------------------------------------------------------------------------%
 
 empty_request_file(Info, Globals, ModuleName, !IO) :-
-    module_name_to_write_file_name(Info ^ compiler, Globals,
+    module_name_to_write_file_name(analysis_info_get_compiler(Info), Globals,
         ext_cur_ngs_gs_max_ngs(ext_cur_ngs_gs_max_ngs_an_request),
         ModuleName, RequestFileName, !IO),
-    get_debug_analysis_stream(MaybeDebugStream, !IO),
+    get_analysis_debug_stream(MaybeDebugStream, !IO),
     (
         MaybeDebugStream = no
     ;

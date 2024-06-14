@@ -67,6 +67,7 @@
 :- implementation.
 
 :- import_module analysis.
+:- import_module analysis.operations.
 :- import_module libs.compiler_util.
 :- import_module libs.compute_grade.
 :- import_module libs.op_mode.
@@ -3075,7 +3076,7 @@ handle_compiler_developer_options(!Globals, !IO) :-
         DebugIntermoduleAnalysis),
     (
         DebugIntermoduleAnalysis = no,
-        analysis.set_analysis_debug(maybe.no, !IO)
+        set_analysis_debug_stream(maybe.no, !IO)
     ;
         DebugIntermoduleAnalysis = yes,
         % The next person to work actively on the analysis framework
@@ -3083,7 +3084,7 @@ handle_compiler_developer_options(!Globals, !IO) :-
         % to stderr is the right call, and if not, where those messages
         % should go.
         io.stderr_stream(AnalysisDebugStream, !IO),
-        analysis.set_analysis_debug(yes(AnalysisDebugStream), !IO)
+        set_analysis_debug_stream(yes(AnalysisDebugStream), !IO)
     ),
 
     globals.lookup_accumulating_option(!.Globals, dump_hlds_pred_id,

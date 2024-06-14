@@ -56,6 +56,7 @@
 :- implementation.
 
 :- import_module analysis.
+:- import_module analysis.framework.
 :- import_module hlds.passes_aux.
 :- import_module hlds.pred_name.
 :- import_module hlds.status.

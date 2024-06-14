@@ -55,6 +55,8 @@
 :- interface.
 
 :- import_module analysis.
+:- import_module analysis.framework.
+:- import_module analysis.operations.
 :- import_module hlds.
 :- import_module hlds.hlds_module.
 
@@ -661,7 +663,7 @@ combine_maybe_trail_analysis_status(MaybeStatusA, MaybeStatusB, MaybeStatus) :-
         MaybeStatusA = yes(StatusA),
         MaybeStatusB = yes(StatusB)
     then
-        MaybeStatus = yes(analysis.lub(StatusA, StatusB))
+        MaybeStatus = yes(analysis.framework.lub(StatusA, StatusB))
     else
         MaybeStatus = no
     ).
@@ -1129,8 +1131,8 @@ search_trail_analysis_status_2(ModuleInfo, PPId, Result, AnalysisStatus,
         !AnalysisInfo) :-
     mmc_analysis.module_name_func_id(ModuleInfo, PPId, ModuleName, FuncId),
     Call = any_call,
-    analysis.lookup_best_result(!.AnalysisInfo, ModuleName, FuncId,
-        no_func_info, Call, MaybeBestStatus),
+    analysis.operations.lookup_best_result(!.AnalysisInfo, ModuleName,
+        FuncId, no_func_info, Call, MaybeBestStatus),
     (
         MaybeBestStatus = yes(analysis_result(BestCall,
             trailing_analysis_answer(Result), AnalysisStatus)),

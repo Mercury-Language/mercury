@@ -54,6 +54,7 @@
 :- interface.
 
 :- import_module analysis.
+:- import_module analysis.framework.
 :- import_module hlds.
 :- import_module hlds.hlds_goal.
 :- import_module hlds.hlds_module.

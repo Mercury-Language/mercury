@@ -180,6 +180,8 @@
 :- implementation.
 
 :- import_module analysis.
+:- import_module analysis.framework.
+:- import_module analysis.operations.
 :- import_module libs.options.
 :- import_module make.file_names.
 :- import_module make.get_module_dep_info.

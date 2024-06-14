@@ -51,6 +51,7 @@
 :- interface.
 
 :- import_module analysis.
+:- import_module analysis.framework.
 :- import_module hlds.
 :- import_module hlds.hlds_module.
 :- import_module hlds.hlds_pred.
@@ -93,6 +94,7 @@
 
 :- implementation.
 
+:- import_module analysis.operations.
 :- import_module hlds.goal_path.
 :- import_module hlds.hlds_out.
 :- import_module hlds.hlds_out.hlds_out_util.
@@ -1042,8 +1044,8 @@ structure_reuse_answer_harsher_than_in_analysis_registry(ProgressStream,
     module_info_proc_info(ModuleInfo, OrigPPId, ProcInfo),
     FuncInfo = structure_reuse_func_info(ModuleInfo, ProcInfo),
     Call = structure_reuse_call(NoClobbers),
-    analysis.lookup_best_result(AnalysisInfo, ModuleName, FuncId, FuncInfo,
-        Call, MaybeOldResult),
+    analysis.operations.lookup_best_result(AnalysisInfo, ModuleName,
+        FuncId, FuncInfo, Call, MaybeOldResult),
     ( if
         MaybeOldResult = yes(analysis_result(OldCall, OldAnswer, _)),
         equivalent(FuncInfo, Call, OldCall)

@@ -44,6 +44,7 @@
 :- implementation.
 
 :- import_module analysis.
+:- import_module analysis.operations.
 :- import_module backend_libs.
 :- import_module backend_libs.compile_target_code.
 :- import_module backend_libs.export.
