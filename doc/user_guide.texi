@@ -118,6 +118,7 @@ how to build and debug Mercury programs.
 * Profiling::       Analyzing the performance of Mercury programs.
 * Invocation::      List of options for the Mercury compiler.
 * Environment::     Environment variables used by the compiler and utilities.
+* Diagnostic output:: Controlling some aspects of compiler diagnostics.
 * C compilers::     How to use a C compiler other than GNU C.
 * Foreign language interface:: Interfacing to other programming
 		    languages from Mercury.
@@ -511,9 +512,9 @@ When targeting low level C (@samp{mmc} without --high-level code),
 stack management is the responsibility of @samp{mmc}
 and of the C runtime system.
 This backend uses two stacks, the det stack and the nondet stack.
-With @samp{mmc --stack-segments}, 
+With @samp{mmc --stack-segments},
 both of these stacks will grow and shrink automatically as needed.
-Without @samp{--stack-segments}, 
+Without @samp{--stack-segments},
 their size is fixed at program start-up.
 @c Note: The definitions for these defaults are in runtime/mercury_wrapper.c.
 The default size is 4096k times the word size (in bytes) for the det stack
@@ -7158,60 +7159,36 @@ the same file, only the last one will have an effect.
 If the file name and colon are missing, the limit will apply
 to all files.
 
-
 @c This option should be used only by the configure script.
 @c @item --config-enable-color-diagnostics
 @c @itemx --config-enable-colour-diagnostics
 
-@c XXX The documentation of the options controlling color should be made public
-@c only when we have modified "enough" diagnostics for it to be generally
+@item --color-scheme @var{ColorScheme}
+@itemx --colour-scheme @var{ColorScheme}
+@findex --color-scheme
+@findex --colour-scheme
+Specify the color scheme to use for diagnostics,
+if the use of color in diagnostics is enabled.
+For information about how the compiler uses colors in diagnostic messages,
+and about the syntax of color scheme specifications,
+please see the @ref{Color schemes} section for the details.
 
-@c useful.
-@c @item --enable-color-diagnostics
-@c @itemx --enable-colour-diagnostics
-@c @findex --enable-color-diagnostics
-@c @findex --enable-colour-diagnostics
-@c Enable the use of colors in diagnostic messages.
+@item --color-scheme @var{ColorScheme}
+@itemx --colour-scheme @var{ColorScheme}
+@findex --color-scheme
+@findex --colour-scheme
+Tell the compiler to use the colors specified by @var{ColorScheme}
+when printing diagnostics.
+Please see @ref{Enabling the use of color} for the details.
 
-@c @item --set-color-correct @var{Color}
-@c @itemx --set-color-incorrect @var{Color}
-@c @itemx --set-color-subject @var{Color}
-@c @itemx --set-color-possible-cause @var{Color}
-@c @itemx --set-colour-correct @var{Color}
-@c @itemx --set-colour-incorrect @var{Color}
-@c @itemx --set-colour-subject @var{Color}
-@c @itemx --set-colour-possible-cause @var{Color}
-@c @findex --set-color-correct
-@c @findex --set-color-incorrect
-@c @findex --set-color-subject
-@c @findex --set-color-possible-cause
-@c @findex --set-colour-correct
-@c @findex --set-colour-incorrect
-@c @findex --set-colour-subject
-@c @findex --set-colour-possible-cause
-@c Set the color that diagnostics use for correct code, incorrect code,
-@c the subject of an error, or the possible cause of an error,
-@c to the given color number.
-@c The color numbers available are listed in the 8-bit color section
-@c of the wikipedia page on ANSI escape codes.
-@c
-@c The color can be specified either by name or by number.
-@c The name can be one of the first sixteen colors in that table, which are
-@c @samp{black}, @samp{red}, @samp{green}, @samp{yellow},
-@c @samp{blue}, @samp{magenta}, @samp{cyan}, @samp{white},
-@c @samp{bright-black}, @samp{bright-red},
-@c @samp{bright-green}, @samp{bright-yellow},
-@c @samp{bright-blue}, @samp{bright-magenta},
-@c @samp{bright-cyan}, and @samp{bright-white}.
-@c The hyphens in names can be replaced with spaces, but the
-@c resulting names will need to be quoted on the command line.
-@c
-@c Note that color names will select the intended color only if
-@c the terminal is set up to use the standard color scheme.
-@c
-@c The color can also be specified as a number between 0 and 255.
-@c The table in which this integer will select a color
-@c is the 256-color mode table in the wikipedia page mentioned above.
+@item --no-color-diagnostics
+@itemx --no-colour-diagnostics
+@findex --color-diagnostics
+@findex --colour-diagnostics
+@findex --no-color-diagnostics
+@findex --no-colour-diagnostics
+Disable the use of colors in diagnostic messages.
+Please see @ref{Enabling the use of color} for the details.
 
 @c @sp 1
 @c @item -T
@@ -7599,14 +7576,14 @@ in the Mercury standard library.
 
 @c These are commented out until the compiler consistently does
 @c what these options say it should do when specified.
-@c 
+@c
 @c @item --error-output-suffix xyz
 @c @findex --error-output-suffix
 @c When compiling module @var{M},
 @c output any error, warning and/or informational messages about the module
 @c to a file named @samp{@var{M}.xyz}.
 @c The default is for such output to go to standard error.
-@c 
+@c
 @c @item --progress-output-suffix xyz
 @c @findex --progress-output-suffix
 @c When compiling module @var{M},
@@ -7615,7 +7592,7 @@ in the Mercury standard library.
 @c This includes any statistics about the performance of compiler passes,
 @c if enabled.
 @c The default is for such output to go to standard error.
-@c 
+@c
 @c @item --inference-output-suffix xyz
 @c @findex --inference-output-suffix
 @c When compiling module @var{M},
@@ -8309,7 +8286,7 @@ The available base grades are the following.
 @c What target language to use (C, C# or Java),
 @c for C, whether to generate idiomatic C or assembly-like code,
 @c and if the latter, what combination of GNU C extensions to use.
-@c The options are 
+@c The options are
 @c which each specify the named language as the target,
 @c and @samp{none}, @samp{reg}, and @samp{asm_fast},
 @c which call for assembly-like C code,
@@ -10836,12 +10813,33 @@ which may currently only be processed for automatic parallelism.
 @cindex Directories
 @cindex Search path
 
-The shell scripts in the Mercury compilation environment
+The various components of the Mercury compilation environment
 will use the following environment variables if they are set.
-There should be little need to use these, because the default
-values will generally work fine.
+There should be little need to use most of these,
+because the default values will generally work fine.
+
+@menu
+* Environment variables affecting the Mercury compiler::
+* Environment variables affecting the Mercury debugger::
+* Environment variables affecting the Mercury runtime system::
+@end menu
+
+@node Environment variables affecting the Mercury compiler
+@section Environment variables affecting the Mercury compiler
+@cindex Environment variables affecting the Mercury compiler
 
 @table @code
+
+@item MERCURY_COMPILER
+@vindex MERCURY_COMPILER
+Filename of the Mercury compiler.
+
+@sp 1
+@item MERCURY_MKINIT
+@vindex MERCURY_MKINIT
+Filename of the program to create the @file{*_init.c} file.
+
+@sp 1
 @item MERCURY_DEFAULT_GRADE
 @vindex MERCURY_DEFAULT_GRADE
 The default grade to use if no @samp{--grade} option is specified.
@@ -10855,6 +10853,55 @@ The directory containing the installed Mercury standard library.
 the @env{MERCURY_STDLIB_DIR} environment variable.
 
 @sp 1
+@item MERCURY_COLOR_SCHEME
+@vindex MERCURY_COLOR_SCHEME
+The specification of the map from color roles to color shades
+that the Mercury compiler should use in diagnostics.
+For the details of the syntax, semantics, and effects of such specifications,
+please see @ref{Color schemes}.
+
+@sp 1
+@item MERCURY_ENABLE_COLOR
+@vindex MERCURY_ENABLE_COLOR
+This environment variable should contain either
+@samp{always} or @samp{1}
+to enable the use of color in diagnostics by the Mercury compiler,
+or either @samp{never} or @samp{0}
+to disable it.
+Note however that this effect can be overruled by command line options;
+for the details, please see @ref{Enabling the use of color}.
+
+@sp 1
+@item NO_COLOR
+@vindex NO_COLOR
+This environment variable being set to any nonempty string
+will disable the use of color in diagnostics by the Mercury compiler.
+Note however that this effect can be overruled by command line options
+and by the @samp{MERCURY_ENABLE_COLOR} environment variable;
+for the details, please see @ref{Enabling the use of color}.
+
+@end table
+
+@node Environment variables affecting the Mercury debugger
+@section Environment variables affecting the Mercury debugger
+@cindex Environment variables affecting the Mercury debugger
+
+@table @code
+
+@item MERCURY_DEBUGGER_INIT
+@vindex MERCURY_DEBUGGER_INIT
+Name of a file that contains startup commands for the Mercury debugger.
+This file should contain documentation for the debugger command set,
+and possibly a set of default aliases.
+
+@end table
+
+@node Environment variables affecting the Mercury runtime system
+@section Environment variables affecting the Mercury runtime system
+@cindex Environment variables affecting the Mercury runtime system
+
+@table @code
+
 @item MERCURY_OPTIONS
 @vindex MERCURY_OPTIONS
 A list of options for the Mercury runtime system,
@@ -11419,24 +11466,432 @@ if it is possible to set the rounding mode is system dependent.
 
 @end table
 
-@sp 1
-@item MERCURY_COMPILER
-@vindex MERCURY_COMPILER
-Filename of the Mercury Compiler.
-
-@sp 1
-@item MERCURY_MKINIT
-@vindex MERCURY_MKINIT
-Filename of the program to create the @file{*_init.c} file.
-
-@sp 1
-@item MERCURY_DEBUGGER_INIT
-@vindex MERCURY_DEBUGGER_INIT
-Name of a file that contains startup commands for the Mercury debugger.
-This file should contain documentation for the debugger command set,
-and possibly a set of default aliases.
-
 @end table
+
+@c ----------------------------------------------------------------------------
+
+@node Diagnostic output
+@chapter Diagnostic output
+@cindex Diagnostic output
+
+Mercury's strong type-, mode-, and determinism systems
+impose strict requirements on Mercury programs.
+These systems allow the compiler to guarantee
+that it will catch many of the most frequent kinds of errors
+that programmers tend to make.
+This improves not just program reliability,
+but also programmer productivity,
+since finding and fixing a bug is much easier
+if the compiler hands you the location
+of at least one part of the program involved in the error
+on a silver platter.
+However, it also means that a Mercury programmer
+will typically have to see and act upon
+more error and warning messages (diagnostics)
+than programmers who write code in less strict languages.
+This is why the compiler tries hard
+to make each diagnostic as usable, informative and clear as it can.
+
+@menu
+* Verbose vs nonverbose messages::  Controlling whether explanations
+                                    are printed.
+* Ordering diagnostics::            Focusing on errors in one part of a module.
+* Color schemes::                   Specifying what colors to use
+                                    in diagnostics.
+* Enabling the use of color::       Specifying whether to use colors
+                                    in diagnostics.
+@end menu
+
+@node Verbose vs nonverbose messages
+@section Verbose vs nonverbose messages
+@cindex Verbosity
+@cindex Verbose diagnostics
+
+Making a diagnostic sufficiently informative for programmers new to Mercury
+does in some cases require including a significant amount of explanation.
+On the other hand, such explanations are not needed by programmers
+who are already familiar with the issues involved,
+and indeed for them, such explanations are usually nothing more than clutter.
+This is why the Mercury compiler splits such error messages into two parts.
+The first part just reports the facts specific to the error being reported.
+The second part,
+which is intended specifically to help programmers new to Mercury,
+is a generic explanation of the background needed to understand the first part.
+The first part is always printed,
+while the second part is printed
+only if the programmer asks for verbose error messages.
+This can be done using the @samp{--verbose-error-messages} compiler option.
+which can be abbreviated to just @samp{-E}.
+If a compiler invocation prints any diagnostics that have a verbose component
+that is not printed because the user has not asked for it,
+the compiler will print the reminder about this fact:
+@samp{For more information, recompile with `-E'.}
+
+@node Ordering diagnostics
+@section Ordering diagnostics
+@cindex Ordering diagnostics
+
+Normally, the compiler prints all the diagnostics for a module together,
+in ascending order of context.
+(With the exception of Mercury modules whose source files
+use the @samp{source_file} pragma and/or the @samp{#@var{line}} directive,
+this means that messages for lower numbered lines are printed
+before messages for higher numbered lines.)
+
+Sometimes, the output will @emph{look} unsorted
+without actually @emph{being} unsorted.
+This can happen because some diagnostics
+report an inconsistency between two or more parts of the program.
+Such diagnostics will contain one component for each such part,
+and each component's text about that part
+will have before it the context (filename and line number) of that part.
+The sorting of diagnostics operates on
+just the first context in each diagnostic;
+any later contexts are ignored.
+
+However, there are some situations in which
+the compiler does indeed intentionally deviate from the above default.
+
+One such situation occurs when
+the programmer specifies the @samp{-v} option,
+which asks for verbose compiler output.
+In such cases, the compiler will print progress messages that specify
+which phase of compilation the compiler is about to start,
+and if that phase can find errors in the program,
+it will print the diagnostics for the errors it finds
+@emph{before} it goes on to the next phase.
+
+The programmer can ask for the usual ordering of diagnostics
+to be reversed by giving the @samp{--reverse-error-order} option.
+This options makes things easier for programmers
+when they want to work on the last errors in a file first.
+This can be a good idea for example
+if the module you are working on (e.g. by rearranging a data structure)
+has its primitive operations towards the end of the module,
+and you think the fixes needed to these primitives
+will require changes to their signatures.
+In such cases, fixing the lowest level primitives first
+allows you to fix the originally reported errors for higher level operations
+at the same time as you update their calls to the lower level primitives,
+and reversing the order of the diagnostics
+allows you to get to those errors for the tail end of the file
+without having to wade through the errors for the code above.
+
+The compiler also supports a more general mechanism
+for allowing programmers to focus on fixing errors
+in a particular part of the program first.
+This mechanism is the @samp{--limit-error-contexts} compiler option.
+This option has as its argument a comma-separated list of line number ranges.
+It tells the compiler to print only diagnostics
+that that contain one or more contexts that fall into one of these ranges.
+(A printed diagnostic
+may contain some contexts that fall outside all these ranges,
+as long as it has at least one context that falls inside.)
+@c Actually it may have all its contexts fall outside these ranges,
+@c as long as one either has a context that falls inside,
+@c OR has no context at all.
+@c However, I (zs) think that all the error_specs we generate
+@c that contain more one component
+@c *do* specify a context for every component,
+@c so this distinction should not matter for users.
+If a compiler invocation has this option specified
+but all the diagnostics it would print in its absence
+are held back by this option,
+it will print a reminder about this fact.
+
+@node Color schemes
+@section Color schemes
+@cindex Color schemes
+
+The compiler tries to make diagnostics usable more quickly
+by using color to direct people's attention
+to the most relevant parts of diagnostics.
+
+The compiler uses colors for the following five purposes.
+We must explain these first,
+before we can explain @emph{color schemes},
+which are simple mappings from purposes (which we also call color @emph{roles})
+to actual shades of color.
+@table @asis
+@item @samp{subject}
+The compiler uses the @samp{subject} color
+for the entity that the diagnostic is about.
+(This may be something like a specific variable, type or predicate.
+@item @samp{incorrect}
+The compiler uses the @samp{incorrect} color
+to emphasize either
+@emph{the description} of what is wrong with the subject entity,
+or @emph{the property} of the subject entity that is wrong.
+@item @samp{correct}
+The compiler uses the @samp{correct} color
+to emphasize the expected property of the subject entity,
+where that differs from its actual property.
+For example, when a call passes an argument of the wrong type,
+it will show the argument's actual type using the @samp{incorrect} color,
+and the expected type using the @samp{correct} color.
+It does this because the type is far more likely to be wrong in the call
+than in the declaration of the called predicate or function.
+@item @samp{inconsistent}
+The compiler uses the @samp{inconsistent} color
+when it knows that two parts of the code are inconsistent with each other,
+but neither part is a priori more likely to be wrong than the other.
+For example, when unifying two values of different types,
+the compiler uses this color when printing the type of both values;
+the compiler knows that in all likelyhood,
+one type is correct and one is incorrect,
+but it does not know which is which.
+@item @samp{hint}
+The compiler uses the @samp{hint} color when it reports observations
+that may or may not explain the root of the problem it reports,
+but which are worth looking into.
+For example, when it reports that two actual arguments of a call
+have types that do not match the types of the corresponding arguments
+in the declaration of the callee,
+it may give a hint that each of those actual arguments
+do in fact each match the type of an argument in the callee,
+just not the ones in the right positions,
+implying that the actual problem may be
+passing the right arguments in the wrong order.
+@end table
+
+Programmers can specify the colors
+they want the compiler to use for each purpose
+either by setting the environment variable @samp{MERCURY_COLOR_SCHEME}
+to a string (let's call it @var{ColorScheme}),
+or by specifying the compiler option @samp{--color-scheme @var{ColorScheme}}.
+In both cases, @var{ColorScheme} can be either
+
+@itemize
+@item
+the name of a color scheme built into the Mercury compiler, or
+@item
+the assignment of specific colors
+for the roles that colors can play in its diagnostics.
+@end itemize
+
+The compiler currently has the following six builtin color schemes:
+@itemize
+@item @samp{darkmode}
+@item @samp{darkmode256}
+@item @samp{darkmode16}
+@item @samp{lightmode}
+@item @samp{lightmode256}
+@item @samp{lightmode16}
+@end itemize
+The ``mode'' in each name is optional,
+meaning that e.g. @samp{dark} names the same color scheme as @samp{darkmode}.
+
+The schemes whose names contain ``dark''
+are intended to be used on terminal screens with dark backgrounds
+(including black backgrounds).
+The schemes whose names contain ``light''
+are intended to be used on terminal screens with light backgrounds
+(including white backgrounds).
+
+@itemize
+@item
+The schemes ending without numbers use 24-bit RGB colors,
+which your terminal or terminal emulator @emph{probably} supports.
+@item
+The schemes ending in ``256'' use
+the colors listed in the 8-bit color section under
+@samp{https://en.wikipedia.org/wiki/ANSI_escape_code#Colors},
+which your terminal or terminal emulator
+is @emph{virtually certain} to support.
+@item
+The schemes ending in ``16'' use
+the first 16 color slots listed of that 8-bit color table.
+These 16 color slots differ from the other 240 colors in that table
+in that most terminal emulators allow users
+to select the actual colors that go into those slots.
+This means that output that uses color schemes ending in ``16''
+may look different on terminals with different color palette settings,
+and will match the intended look only with the default color palette.
+(The builtin color schemes ending in ``256''
+avoid using these reassignable color slots.)
+@end itemize
+
+The other way to specify a color scheme
+is to directly specify the colors you want the compiler to use
+using a string such as
+@samp{specified@@subject=87:correct=40:incorrect=203:inconsistent=171:hint=226}.
+The rules for this form of color scheme specification are as follows.
+
+@itemize
+@item
+The string must start with the string @samp{specified@@}.
+@item
+The rest of the string must not contain any white space,
+but must consist of a colon-separated list
+of one or more color assignments.
+@item
+Each color assignment must have the form @samp{@var{Role}=@var{Color}},
+which assigns the given color to the given role.
+@item
+Each @var{Role} must be one of the five strings
+@samp{subject},
+@samp{correct},
+@samp{incorrect},
+@samp{inconsistent}, and
+@samp{hint}.
+@item
+Each @var{Color} must have of the following two forms.
+    @itemize
+    @item
+    The first form is a decimal integer in the range 0 to 255 (both inclusive).
+    This selects a slot in the table in the 8-bit color section of
+    @samp{https://en.wikipedia.org/wiki/ANSI_escape_code#Colors}.
+    The caveat mentioned above about colors 0 to 15 apply here as well:
+    in most terminal emulators, these slots are reassignable,
+    so specifying one of these slots may @emph{or may not}
+    get you to the color in that slot in that table.
+    The other 240 slots are not usually reassignable.
+    @item
+    The second form is a seven-character string
+    where the first character is @samp{#},
+    and each of the following six characters is a hexadecimal digit.
+    Each string @samp{#RRGGBB} specifies a 24-bit RGB color,
+    with @samp{RR} specifying its red component,
+    @samp{GG} specifying its green component, and
+    @samp{BB} specifying its blue component.
+
+    @c XXX We also support a third alternative, named colors,
+    @c but these actually name color SLOTS only:
+    @c The color can be specified either by name or by number.
+    @c The name can be one of the first sixteen colors in that table, which are
+    @c @samp{black}, @samp{red}, @samp{green}, @samp{yellow},
+    @c @samp{blue}, @samp{magenta}, @samp{cyan}, @samp{white},
+    @c @samp{bright-black}, @samp{bright-red},
+    @c @samp{bright-green}, @samp{bright-yellow},
+    @c @samp{bright-blue}, @samp{bright-magenta},
+    @c @samp{bright-cyan}, and @samp{bright-white}.
+    @c The hyphens in names can be replaced with spaces, but the
+    @c resulting names will need to be quoted on the command line.
+
+    @end itemize
+@item
+If the color scheme has no color assignment for a given role,
+then the compiler will not use color for that role.
+@item
+If the color scheme has two or more color assignments for the same role,
+only the last one counts; the others are ignored.
+@end itemize
+
+As mentioned above,
+programmers can specify color schemes
+using the environment variable @samp{MERCURY_COLOR_SCHEME}
+and by using the @samp{--color-scheme} compiler option.
+These can specify different schemes.
+The rules the compiler uses to choose the color scheme that it will use
+are as follows.
+
+@enumerate
+@item
+If the command line contains a @samp{--color-scheme} option,
+the compiler will use its color scheme.
+(If the command line contains more than one @samp{--color-scheme} option,
+the compiler will use the last one.)
+@item
+If the command line contains no @samp{--color-scheme} option,
+but the environment variable @samp{MERCURY_COLOR_SCHEME} exists
+and contains a nonempty string,
+then the compiler will use its color scheme.
+@item
+If the command line contains no @samp{--color-scheme} option,
+and the environment variable @samp{MERCURY_COLOR_SCHEME} does not exist
+or contains an empty string,
+but the files named in any @samp{--options-file} compiler options
+(or, in the absence of such options, the @samp{Mercury.options} file),
+include a @samp{--color-scheme} option
+among the module-specific @samp{MCFLAGS} for the current module,
+then the compiler will use its color scheme.
+(If the options file(s) contain more than one @samp{--color-scheme} option,
+the compiler will use the last one.)
+@item
+In the absence of a @samp{--color-scheme} option
+on the command line, in the @samp{MERCURY_COLOR_SCHEME} environment variable
+@emph{and} in the options files,
+the compiler will use its default color scheme, which is @samp{light16}.
+This scheme works reasonably well even on dark backgrounds,
+even though (as its name indicates) it was designed for light backgrounds.
+(This assumes that the color slots it uses hold
+either their standard colors, or something reasonably close to them.)
+@end enumerate
+
+@node Enabling the use of color
+@section Enabling the use of color
+@cindex Enabling the use of color
+
+The Mercury compiler uses two separate mechanisms
+@itemize
+@item
+to specify what colors to use for each role,
+@emph{if} the use of color in diagnostics is enabled, and
+@item
+to decide whether the use of color in diagnostics is enabled.
+@end itemize
+
+This arrangement allow programmers to turn off the use of color temporarily
+without having to specify the color scheme again in full
+when they want to turn it back on again.
+
+As with color schemes,
+programmers can control whether color is enabled in diagnostics
+using either a compiler option, or by using environment variables.
+
+The compiler option is a boolean option,
+which, like other boolean options, has two forms:
+a positive form @samp{--color-diagnostics}, which enabled the use of color,
+and a negative form @samp{--no-color-diagnostics}, which disables its use.
+
+There are two environment variables
+that the Mercury compiler consults in its decision:
+@samp{MERCURY_ENABLE_COLOR}, and @samp{NO_COLOR}.
+As their names show, the first is specific to Mercury,
+while the second is not;
+it is in fact a defacto standard for disabling color.
+@samp{https://no-color.org}.
+
+The rules the compiler uses to decide
+whether the use of color in diagnostics is enabled
+are as follows.
+
+@enumerate
+@item
+If the command line contains a @samp{--color-diagnostics} option,
+in either its positive or negative forn,
+then the compiler will obey it.
+@item
+If the command line contains no @samp{--color-diagnostics} option,
+but the environment variable @samp{MERCURY_ENABLE_COLOR} exists
+and contains either @samp{never} or @samp{always},
+then the compiler will obey it.
+The compiler also allows @samp{0} as a synonym for @samp{never},
+and @samp{1} as a synonym for @samp{always}.
+@item
+If the command line contains no @samp{--color-diagnostics} option,
+and the environment variable @samp{MERCURY_ENABLE_COLOR}
+either does not exist, or contains a string other than the four listed above,
+but the environment variable @samp{NO_COLOR} exists
+and contains a nonempty string,
+then the compiler will obey it by disabling the use of color.
+@item
+If the command line contains no @samp{--color-diagnostics} option
+and neither environment variable has a value
+that directs the compiler to obey it,
+but the files named in any @samp{--options-file} compiler options,
+(or, in the absence of such options, the @samp{Mercury.options} file),
+include a @samp{--color-diagnostics} option,
+in either its positive or negative form,
+among the module-specific @samp{MCFLAGS} for the current module,
+then the compiler will obey it.
+@item
+If the preconditions of all four of the above rules are false,
+i.e. none of them decide the outcome,
+then the compiler will fall back to its default.
+The usual default decision is to enable the use of color,
+though this can be overridden for a given installation of Mercury.
+@end enumerate
 
 @c ----------------------------------------------------------------------------
 

@@ -180,7 +180,6 @@ does_msg_component_print_anything(Globals, MsgComponent) = Prints :-
         ( MsgComponent = always(_)
         ; MsgComponent = verbose_only(_, _)
         ; MsgComponent = verbose_and_nonverbose(_, _)
-        ; MsgComponent = print_anything(_)
         ),
         Prints = yes
     ;

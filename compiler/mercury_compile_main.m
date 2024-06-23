@@ -655,7 +655,7 @@ report_option_error(OptionError) = Specs :-
         ),
         maybe_construct_prefixed_did_you_mean_pieces(Prefix, BaseOptionStr,
             OptionStrs, DidYouMeanPieces),
-        DidYouMeanMsg = error_msg(no, always_treat_as_first, 0,
+        DidYouMeanMsg = error_msg(no, always_treat_as_first, 0u,
             [always(DidYouMeanPieces)]),
         Msgs = [MainMsg, DidYouMeanMsg]
     else

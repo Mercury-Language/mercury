@@ -392,7 +392,7 @@ constrained_goals_to_error_msgs(ModuleInfo, [Goal | Goals]) = [Msg | Msgs] :-
     ),
     Goal = hlds_goal(_, GoalInfo),
     Context = goal_info_get_context(GoalInfo),
-    Msg = error_msg(yes(Context), treat_based_on_posn, 1,
+    Msg = error_msg(yes(Context), treat_based_on_posn, 1u,
         [always(Words ++ [Suffix | And])]),
     Msgs = constrained_goals_to_error_msgs(ModuleInfo, Goals).
 

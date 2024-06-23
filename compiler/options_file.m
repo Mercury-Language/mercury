@@ -462,7 +462,7 @@ read_options_file_params(SearchInfo, PreStack0, IsOptionsFileOptional,
                     words(Error), suffix("."), nl],
                 Spec = error_spec($pred, severity_error,
                     phase_find_files(ErrorFile),
-                    [error_msg(MaybeContext, always_treat_as_first, 0,
+                    [error_msg(MaybeContext, always_treat_as_first, 0u,
                         [always(Pieces)])]),
                 !:IOSpecs = [Spec | !.IOSpecs]
             ;

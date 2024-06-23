@@ -283,7 +283,7 @@ describe_term_error(ModuleInfo, Single, TermErrorContext, ErrorNum,
         ErrorNum = no,
         Pieces = Pieces0
     ),
-    ReasonMsg = error_msg(yes(Context), always_treat_as_first, 0,
+    ReasonMsg = error_msg(yes(Context), always_treat_as_first, 0u,
         [always(Pieces)]),
     !:ReasonMsgs = cord.snoc(!.ReasonMsgs, ReasonMsg),
     (

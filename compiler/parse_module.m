@@ -404,7 +404,7 @@ report_module_has_unexpected_name(FileName, ExpectedName, ExpectationContexts,
         [words("found module")] ++
         color_as_incorrect([qual_sym_name(ActualName), suffix(".")]) ++
         [nl],
-    MainMsg = error_msg(MaybeContext, always_treat_as_first, 0,
+    MainMsg = error_msg(MaybeContext, always_treat_as_first, 0u,
         [always(MainPieces)]),
     list.sort_and_remove_dups(ExpectationContexts, SortedExpectationContexts0),
     list.delete_all(SortedExpectationContexts0, dummy_context,

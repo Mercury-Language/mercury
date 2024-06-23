@@ -3852,7 +3852,7 @@ delete_temporary_file(FileName, !Specs, !IO) :-
             quote(FileName), suffix(":"), nl,
             words(ErrorMsg), suffix("."), nl],
         Spec = error_spec($pred, severity_error, phase_fact_table_check,
-            [error_msg(no, treat_based_on_posn, 0, [always(Pieces)])]),
+            [error_msg(no, treat_based_on_posn, 0u, [always(Pieces)])]),
         !:Specs = [Spec | !.Specs]
     ).
 
@@ -3868,7 +3868,7 @@ add_call_system_error(Cmd, ErrorCode, !Specs, !IO) :-
         words("error executing system command"), quote(Cmd), suffix(":"), nl,
         words(ErrorMsg), suffix("."), nl],
     Spec = error_spec($pred, severity_error, phase_fact_table_check,
-        [error_msg(no, treat_based_on_posn, 0, [always(Pieces)])]),
+        [error_msg(no, treat_based_on_posn, 0u, [always(Pieces)])]),
     !:Specs = [Spec | !.Specs].
 
 %---------------------------------------------------------------------------%
@@ -3885,7 +3885,7 @@ add_file_open_error(MaybeContext, FileName, InOrOut, Error, !Specs, !IO) :-
         words("for"), words(InOrOut), suffix(":"), nl,
         words(ErrorMsg), nl],
     Spec = error_spec($pred, severity_error, phase_fact_table_check,
-        [error_msg(MaybeContext, treat_based_on_posn, 0, [always(Pieces)])]),
+        [error_msg(MaybeContext, treat_based_on_posn, 0u, [always(Pieces)])]),
     !:Specs = [Spec | !.Specs].
 
 %---------------------------------------------------------------------------%

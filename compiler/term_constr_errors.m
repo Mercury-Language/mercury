@@ -237,7 +237,7 @@ describe_term2_error(ModuleInfo, Single, MaybeErrorNum, Error,
         MaybeErrorNum = no,
         Pieces = Pieces0
     ),
-    ReasonMsg = error_msg(yes(Context), always_treat_as_first, 0,
+    ReasonMsg = error_msg(yes(Context), always_treat_as_first, 0u,
         [always(Pieces)]),
     !:ReasonMsgsCord = cord.snoc(!.ReasonMsgsCord, ReasonMsg).
 

@@ -30,7 +30,6 @@
 
 :- import_module bool.
 :- import_module edit_seq.
-:- import_module io.
 :- import_module list.
 :- import_module maybe.
 :- import_module set.
@@ -218,8 +217,7 @@
 % printed only if specific options have specific values. When an error
 % specification is printed, we concatenate the list of all the
 % format_pieces that should be printed. If this yields the empty list,
-% we print nothing. Otherwise, we give them all to write_error_pieces to print
-% out.
+% we print nothing. Otherwise, we print them all out.
 %
 % When we print an error message in a list of error messages, we normally
 % treat the first line of the first message differently than the rest:
@@ -256,7 +254,7 @@
     ;       error_msg(
                 error_context           :: maybe(prog_context),
                 error_treat_as_first    :: maybe_always_treat_as_first,
-                error_extra_indent      :: int,
+                error_extra_indent      :: uint,
                 error_components        :: list(error_msg_component)
             ).
 
@@ -282,24 +280,12 @@
             % all but the first printing of the message even if
             % --verbose-errors is specified.
 
-    ;       verbose_and_nonverbose(list(format_piece), list(format_piece))
+    ;       verbose_and_nonverbose(list(format_piece), list(format_piece)).
             % If --verbose-errors is specified, print the first set of
             % components. If it is not specified, print the second set,
             % and set the flag that triggers the printing of the message
             % reminding the user about --verbose-errors. The verbose part
             % is implicitly verbose_always.
-
-    ;       some [T] ( print_anything(T) => print_anything(T) ).
-            % This alternative allows the caller to specify an arbitrary thing
-            % to be printed at any point in the sequence. Since things printed
-            % this way aren't formatted as error messages should be (context
-            % at start etc), this capability is intended only for messages
-            % that help debug the compiler itself.
-
-:- typeclass print_anything(T) where [
-    pred print_anything(io.text_output_stream::in, T::in,
-        io::di, io::uo) is det
-].
 
 %---------------------------------------------------------------------------%
 

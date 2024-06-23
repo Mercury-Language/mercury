@@ -269,33 +269,31 @@ accu_transform_proc(ProgressStream, proc(PredId, ProcId), PredInfo,
             VeryVerbose = no
         ),
 
-        (
-            Warnings = []
-        ;
+        ( if
             Warnings = [_ | _],
+            globals.lookup_bool_option(Globals, warn_accumulator_swaps, yes)
+        then
             pred_info_get_context(PredInfo, Context),
             PredPieces = describe_qual_pred_name(!.ModuleInfo, PredId),
             InPieces = [words("In") | PredPieces] ++ [suffix(":"), nl],
-            InMsg = simple_msg(Context,
-                [option_is_set(warn_accumulator_swaps, yes,
-                    [always(InPieces)])]),
+            InMsg = msg(Context, InPieces),
 
             proc_info_get_var_table(!.ProcInfo, VarTable),
-            generate_warnings(!.ModuleInfo, VarTable, Warnings, WarnMsgs),
+            generate_accu_warnings(!.ModuleInfo, VarTable, Warnings, WarnMsgs),
             (
                 Warnings = [_],
                 EnsurePieces = [words("Please ensure that this"),
                     words("argument rearrangement does not introduce"),
-                    words("performance problems.")]
+                    words("performance problems."), nl]
             ;
                 Warnings = [_, _ | _],
                 EnsurePieces = [words("Please ensure that these"),
                     words("argument rearrangements do not introduce"),
-                    words("performance problems.")]
+                    words("performance problems."), nl]
             ),
             SuppressPieces =
                 [words("These warnings can be suppressed by"),
-                quote("--no-warn-accumulator-swaps"), suffix(".")],
+                quote("--no-warn-accumulator-swaps"), suffix("."), nl],
             VerbosePieces = [words("If a predicate has been declared"),
                 words("associative"),
                 words("via a"), quote("promise"), words("declaration,"),
@@ -309,19 +307,19 @@ accu_transform_proc(ProgressStream, proc(PredId, ProcId), PredInfo,
                 quote("--no-accumulator-introduction"),
                 words("to turn the optimization off, or "),
                 quote("--no-warn-accumulator-swaps"),
-                words("to turn off the warnings.")],
+                words("to turn off the warnings."), nl],
             EnsureSuppressMsg = simple_msg(Context,
-                [option_is_set(warn_accumulator_swaps, yes,
-                    [always(EnsurePieces), always(SuppressPieces)]),
+                [always(EnsurePieces), always(SuppressPieces),
                 verbose_only(verbose_once, VerbosePieces)]),
-            Severity = severity_conditional(warn_accumulator_swaps, yes,
-                severity_warning, no),
             Msgs = [InMsg | WarnMsgs] ++ [EnsureSuppressMsg],
-            Spec = error_spec($pred, Severity, phase_accumulator_intro, Msgs),
+            Spec = error_spec($pred, severity_warning,
+                phase_accumulator_intro, Msgs),
 
             det_univ_to_type(!.Cookie, Specs0),
             Specs = [Spec | Specs0] : list(error_spec),
             type_to_univ(Specs, !:Cookie)
+        else
+            true
         )
     else
         true
@@ -330,18 +328,19 @@ accu_transform_proc(ProgressStream, proc(PredId, ProcId), PredInfo,
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
-:- pred generate_warnings(module_info::in, var_table::in,
+:- pred generate_accu_warnings(module_info::in, var_table::in,
     list(accu_warning)::in, list(error_msg)::out) is det.
 
-generate_warnings(_, _, [], []).
-generate_warnings(ModuleInfo, VarTable, [Warning | Warnings], [Msg | Msgs]) :-
-    generate_warning(ModuleInfo, VarTable, Warning, Msg),
-    generate_warnings(ModuleInfo, VarTable, Warnings, Msgs).
+generate_accu_warnings(_, _, [], []).
+generate_accu_warnings(ModuleInfo, VarTable,
+        [Warning | Warnings], [Msg | Msgs]) :-
+    generate_accu_warning(ModuleInfo, VarTable, Warning, Msg),
+    generate_accu_warnings(ModuleInfo, VarTable, Warnings, Msgs).
 
-:- pred generate_warning(module_info::in, var_table::in, accu_warning::in,
+:- pred generate_accu_warning(module_info::in, var_table::in, accu_warning::in,
     error_msg::out) is det.
 
-generate_warning(ModuleInfo, VarTable, Warning, Msg) :-
+generate_accu_warning(ModuleInfo, VarTable, Warning, Msg) :-
     Warning = accu_warn(Context, PredId, VarA, VarB),
     PredPieces = describe_one_pred_name(ModuleInfo, yes(color_subject),
         should_module_qualify, [], PredId),

@@ -2493,7 +2493,7 @@ report_consistency_error(ClassId, ClassDefn, InstanceA, InstanceB, FunDep,
     PiecesB = [words("Here is the conflicting instance."), nl],
 
     MsgA = msg(ContextA, PiecesA),
-    MsgB = error_msg(yes(ContextB), always_treat_as_first, 0,
+    MsgB = error_msg(yes(ContextB), always_treat_as_first, 0u,
         [always(PiecesB)]),
     Spec = error_spec($pred, severity_error, phase_type_check, [MsgA, MsgB]),
     !:Specs = [Spec | !.Specs].

@@ -160,19 +160,19 @@ remove_conditionals_in_msg(OptionTable, Msg0, Msg) :-
             Msg0 = msg(Context, Pieces0),
             MaybeContext = yes(Context),
             TreatAsFirst = treat_based_on_posn,
-            ExtraIndent = 0,
+            ExtraIndent = 0u,
             Components0 = [always(Pieces0)]
         ;
             Msg0 = no_ctxt_msg(Pieces0),
             MaybeContext = no,
             TreatAsFirst = treat_based_on_posn,
-            ExtraIndent = 0,
+            ExtraIndent = 0u,
             Components0 = [always(Pieces0)]
         ;
             Msg0 = simple_msg(Context, Components0),
             MaybeContext = yes(Context),
             TreatAsFirst = treat_based_on_posn,
-            ExtraIndent = 0
+            ExtraIndent = 0u
         ;
             Msg0 = error_msg(MaybeContext, TreatAsFirst, ExtraIndent,
                 Components0)
@@ -215,7 +215,6 @@ remove_conditionals_in_msg_component(OptionTable, Component, !ComponentCord) :-
         ( Component = always(_)
         ; Component = verbose_only(_, _)
         ; Component = verbose_and_nonverbose(_, _)
-        ; Component = print_anything(_)
         ),
         !:ComponentCord = cord.snoc(!.ComponentCord, Component)
     ).

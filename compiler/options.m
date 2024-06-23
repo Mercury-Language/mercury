@@ -1391,7 +1391,7 @@ optdef(oc_verbosity, detailed_statistics,               bool(no)).
 optdef(oc_verbosity, proc_size_statistics,              string("")).
 optdef(oc_verbosity, inst_statistics,                   string("")).
 optdef(oc_verbosity, limit_error_contexts,              accumulating([])).
-optdef(oc_verbosity, config_default_color_diagnostics,  bool(no)).
+optdef(oc_verbosity, config_default_color_diagnostics,  bool(yes)).
 optdef(oc_verbosity, color_diagnostics,                 bool_special).
 optdef(oc_verbosity, color_diagnostics_is_set,          bool(no)).
 optdef(oc_verbosity, color_diagnostics_is_set_to,       bool(no)).
@@ -2380,6 +2380,7 @@ long_table("color-diagnostics",         color_diagnostics).
 long_table("colour-diagnostics",        color_diagnostics).
 % use_color_diagnostics is an internal-use-only option.
 long_table("color-scheme",             color_scheme).
+long_table("colour-scheme",            color_scheme).
 long_table("color-scheme-envvar",      color_scheme_envvar).
 long_table("ignore-color-scheme-envvar", ignore_color_scheme_envvar).
 long_table("debug-types",              debug_types).
@@ -4723,50 +4724,21 @@ options_help_verbosity(Stream, !IO) :-
         "\tto all files.",
 % XXX This option should be used only by the configure script.
 %       "--config-enable-color-diagnostics",
-% XXX The documentation of the options controlling color should be made public
-% only when we have modified "enough" diagnostics for it to be generally
-% useful.
-%       "--enable-color-diagnostics",
-%       "\tEnable the use of colors in diagnostic messages.",
 % XXX This option should be used only by our test suite.
 %       "--ignore-color-envvars"
-%       "--color-scheme <ColorScheme>",
-%       "\tUse the given color scheme. This may `none', disabling the",
-%       "\tuse of color, it may be one of `dark16', `dark256', `light16'",
-%       "\tor `light256', selecting the named builtin color scheme, or",
-%       "\ta string of the form `specified@subject=<Color>:correct=<Color>:",
-%       "\tincorrect=<Color>:possible_cause=<Color>', where each <Color>",
-%       "\tspecifies the color to use for the parts of diagnostics",
-%       "\tthat play the given role".
-%       XXX If we don't document the next four options, then the option above
-%       should get the paragraphs below defining the ways that a color
-%       can be specified.
 %
-%       "--set-color-correct <Color>",
-%       "--set-color-incorrect <Color>",
-%       "--set-color-subject <Color>",
-%       "--set-color-possible-cause <Color>",
-%       "\tSet the color that diagnostics use for correct code, incorrect",
-%       "\tcode, the subject of an error, or the possible cause of an error,",
-%       "\tto the given color number.",
-%       "\tThe color numbers available are listed in the 8-bit color section",
-%       "\tof the wikipedia page on ANSI escape codes.",
-%
-%       "\tThe color can be specified either by name or by number.",
-%       "\tThe name can be one of the first sixteen colors in that table,",
-%       "\twhich are `black', `red', `green', `yellow', `blue', `magenta',",
-%       "\t`cyan', `white',, `bright-black', `bright-red', `bright-green',",
-%       "\t`bright-yellow',, `bright-blue', `bright-magenta',",
-%       "\t`bright-cyan', and `bright-white'. The hyphens in names",
-%       "\tcan be replaced with spaces, but the resulting names will need",
-%       "\tto be quoted on the command line.",
-%
-%       "\tNote that color names will select the intended color only if",
-%       "\tthe terminal is set up to use the standard color scheme.",
-%
-%       "\tThe color can also be specified as a number between 0 and 255.",
-%       "\tThe table in which this integer will select a color",
-%       "\tis the 256-color mode table in the wikipedia page mentioned above.",
+        "--color-scheme <ColorScheme>",
+        "\tSpecify the color scheme to use for diagnostics, if the use of",
+        "\tcolor in diagnostics is enabled. For information about how the",
+        "\tcompiler uses colors in diagnostic messages, and about the",
+        "\tsyntax of color scheme specifications, please see the",
+        "\tsection named \"Color schemes\" in the Mercury user's Guide",
+        "\tfor the details.",
+
+        "--no-color-diagnostics",
+        "\tDisable the use of colors in diagnostic messages. Please see",
+        "\tthe section named \"Enabling the use of color\" section in the",
+        "\tMercury Users's Guide for details.",
 
 % These work only if the compiler was compiled with
 % "--trace-flag type_checkpoint".

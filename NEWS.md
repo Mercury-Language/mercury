@@ -1236,6 +1236,14 @@ Changes to the Mercury compiler
 * We have fixed a bug where `--warn-unused-imports` did not warn about
   unused modules that are also imported by an ancestor of the current module.
 
+* The compiler now uses colors in error messages to draw programmers' attention
+  to the most relevant parts of diagnostics. Users can change the color scheme
+  using the new option `--color-scheme` or using the new environment variable
+  `MERCURY_COLOR_SCHEME`. They can also disable the use of color entirely
+  using the new option `--no-color-diagnostics` or by setting the `NO_COLOR`
+  environment variable. For the details, please see the new `Diagnostic output`
+  chapter of the Mercury Users' guide.
+
 * We have added a new option `--warn-ambiguous-pragmas`
   that tells the compiler to generate warnings for pragmas that specify
   a name/arity pair, when there is both a predicate and a function
