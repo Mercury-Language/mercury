@@ -11583,7 +11583,7 @@ in a particular part of the program first.
 This mechanism is the @samp{--limit-error-contexts} compiler option.
 This option has as its argument a comma-separated list of line number ranges.
 It tells the compiler to print only diagnostics
-that that contain one or more contexts that fall into one of these ranges.
+that contain one or more contexts that fall into one of these ranges.
 (A printed diagnostic
 may contain some contexts that fall outside all these ranges,
 as long as it has at least one context that falls inside.)
@@ -11859,7 +11859,7 @@ are as follows.
 @enumerate
 @item
 If the command line contains a @samp{--color-diagnostics} option,
-in either its positive or negative forn,
+in either its positive or negative form,
 then the compiler will obey it.
 @item
 If the command line contains no @samp{--color-diagnostics} option,
