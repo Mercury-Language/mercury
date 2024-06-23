@@ -11616,7 +11616,7 @@ to actual shades of color.
 @item @samp{subject}
 The compiler uses the @samp{subject} color
 for the entity that the diagnostic is about.
-(This may be something like a specific variable, type or predicate.
+(This may be something like a specific variable, type or predicate.)
 @item @samp{incorrect}
 The compiler uses the @samp{incorrect} color
 to emphasize either
