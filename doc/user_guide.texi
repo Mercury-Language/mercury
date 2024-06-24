@@ -4453,7 +4453,7 @@ and one failing execution summary need to be generated.
 This can be done by compiling the program with deep tracing enabled
 (either by compiling in a .debug or .decldebug grade
 or with the @samp{--trace deep} or @samp{--trace rep} compiler options)
-and then running the program under mtc.
+and then running the program under @samp{mtc}.
 This will generate a file with the prefix
 @samp{.mercury_trace_counts} and a unique suffix,
 that contains a summary of the program's execution
