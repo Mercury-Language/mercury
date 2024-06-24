@@ -35,16 +35,18 @@
 
 :- type mq_constraint_error_context
     --->    mqcec_class_defn(prog_context,
-                % The name of the type class beging defined, and its arity.
+                % The name of the type class being defined, and its arity.
                 class_id
             )
     ;       mqcec_class_method(prog_context,
                 % The identity of the class method the constraint is on:
-                % whether it is predicate or function, and its name.
-                % Its arity would be nice, but it is tricky to calculate
-                % in the presence of with_type.
+                % whether it is predicate or function, its name, and its
+                % arity, if the presence of `with_type` does not prevent it
+                % from being known.
+                class_id,
                 pred_or_func,
-                string
+                string,
+                user_arity_if_known
             )
     ;       mqcec_instance_defn(prog_context,
                 % The name of the class the instance is for, and the
@@ -57,7 +59,8 @@
                 type_ctor,
 
                 % The function symbol the constraint is on.
-                string
+                string,
+                arity
             )
     ;       mqcec_pred_decl(prog_context,
                 % The identity of the entity the constraint is on:
@@ -105,7 +108,7 @@
     ;       mqec_typeclass_constraint(
                 % The name and arity of the typeclass the constraint is for.
                 sym_name,
-                int,
+                arity,
 
                 % The context the constraint is in.
                 mq_constraint_error_context
@@ -136,6 +139,18 @@
     ;       mqec_class(prog_context,
                 class_id
             )
+    ;       mqec_class_method(prog_context,
+                class_id,
+                pred_or_func,
+                string,
+                user_arity_if_known
+            )
+    ;       mqec_class_method_mode(prog_context,
+                class_id,
+                maybe(pred_or_func),    % may not be known with `with_inst`.
+                string,
+                user_arity_if_known
+            )
     ;       mqec_instance(prog_context,
                 class_id
             )
@@ -152,6 +167,12 @@
                 % The attribute name.
                 string
             ).
+
+    % The arity of predicates and functions in type declarations
+    % may not be initially known if the declaration uses `with_type`.
+:- type user_arity_if_known
+    --->    user_arity_unknown
+    ;       user_arity_known(user_arity).
 
 %---------------------------------------------------------------------------%
 
@@ -318,15 +339,15 @@ report_undefined_mq_id(Info, ErrorContext, Id, IdType, ThisModuleName,
         KindKinds = choose_number(PossibleArities, IdTypeStr, IdTypesStr),
         ArityArities = choose_number(PossibleArities, "arity", "arities"),
         list.map(string.int_to_string, PossibleArities, PossibleArityStrs),
-        PossibleAritiesDotRpPieces = fixed_list_to_color_pieces(color_correct,
-            "and", [suffix(".)")], PossibleArityStrs),
+        PossibleAritiesDotPieces = fixed_list_to_color_pieces(color_correct,
+            "and", [suffix(".")], PossibleArityStrs),
         OtherArityPieces =
             [words("(There"), words(IsAre),
             words(KindKinds),
             words("named"), quote(unqualify_name(IdSymName)),
             words("with"), words(ArityArities)] ++
-            PossibleAritiesDotRpPieces ++
-            [nl]
+            PossibleAritiesDotPieces ++
+            [suffix(")"), nl]
     else
         OtherArityPieces = []
     ),
@@ -496,10 +517,13 @@ mq_constraint_error_context_to_pieces(ConstraintErrorContext,
         Start = "in",
         Pieces = [words("definition of type class"), qual_class_id(ClassId)]
     ;
-        ConstraintErrorContext = mqcec_class_method(Context,
-            PredOrFunc, MethodName),
+        ConstraintErrorContext = mqcec_class_method(Context, ClassId,
+            PredOrFunc, MethodName, UserArityIfKnown),
         Start = "on",
-        Pieces = [words("class method"), p_or_f(PredOrFunc), quote(MethodName)]
+        MethodIdPiece =
+            get_class_method_id_piece(MethodName, UserArityIfKnown),
+        Pieces = [p_or_f(PredOrFunc), words("method"), MethodIdPiece,
+            words("for"), unqual_class_id(ClassId)]
     ;
         ConstraintErrorContext = mqcec_instance_defn(Context,
             ClassName, ArgTypes),
@@ -509,9 +533,10 @@ mq_constraint_error_context_to_pieces(ConstraintErrorContext,
             qual_class_id(class_id(ClassName, NumArgTypes))]
     ;
         ConstraintErrorContext = mqcec_type_defn_constructor(Context,
-            TypeCtor, FunctionSymbol),
+            TypeCtor, FunctionSymbol, Arity),
         Start = "on",
-        Pieces = [words("function symbol"), quote(FunctionSymbol),
+        NameArity = name_arity(FunctionSymbol, Arity),
+        Pieces = [words("function symbol"), name_arity(NameArity),
             words("for type constructor"), unqual_type_ctor(TypeCtor)]
     ;
         ConstraintErrorContext = mqcec_pred_decl(Context, PFSymNameArity),
@@ -631,6 +656,31 @@ mq_error_context_to_pieces(ErrorContext, Context, ShouldUnqualId, Pieces) :-
         ShouldUnqualId = no,
         Pieces = [words("declaration of typeclass"), unqual_class_id(ClassId)]
     ;
+        ErrorContext = mqec_class_method(Context, ClassId, PredOrFunc,
+            MethodName, UserArityIfKnown),
+        ShouldUnqualId = no,
+        MethodIdPiece =
+            get_class_method_id_piece(MethodName, UserArityIfKnown),
+        Pieces = [words("declaration of the"),
+            p_or_f(PredOrFunc), words("method"), MethodIdPiece,
+            words("for"), unqual_class_id(ClassId)]
+    ;
+        ErrorContext = mqec_class_method_mode(Context, ClassId,
+            MaybePredOrFunc, MethodName, UserArityIfKnown),
+        ShouldUnqualId = no,
+        (
+            MaybePredOrFunc = no,
+            PredOrFuncPieces = []
+        ;
+            MaybePredOrFunc = yes(PredOrFunc),
+            PredOrFuncPieces = [p_or_f(PredOrFunc)]
+        ),
+        MethodIdPiece =
+            get_class_method_id_piece(MethodName, UserArityIfKnown),
+        Pieces = [words("declaration of the mode of")] ++
+            PredOrFuncPieces ++ [words("method"), MethodIdPiece,
+            words("for"), unqual_class_id(ClassId)]
+    ;
         ErrorContext = mqec_instance(Context, ClassId),
         ShouldUnqualId = no,
         Pieces = [words("declaration of instance of typeclass"),
@@ -649,6 +699,18 @@ mq_error_context_to_pieces(ErrorContext, Context, ShouldUnqualId, Pieces) :-
         ShouldUnqualId = no,
         Pieces = [words("attribute"), quote(AttrName),
             words("for"), quote(EventName)]
+    ).
+
+:- func get_class_method_id_piece(string, user_arity_if_known) = format_piece.
+
+get_class_method_id_piece(MethodName, UserArityIfKnown) = MethodIdPiece :-
+    (
+        UserArityIfKnown = user_arity_unknown,
+        MethodIdPiece = quote(MethodName)
+    ;
+        UserArityIfKnown = user_arity_known(user_arity(Arity)),
+        NameArity = name_arity(MethodName, Arity),
+        MethodIdPiece = name_arity(NameArity)
     ).
 
 :- pred qual_id_kind_to_string(qual_id_kind::in, string::out) is det.

@@ -1,5 +1,5 @@
 type_arity.m:013: In the first argument of function symbol `t1_3f' of the type
 type_arity.m:013:   `t1'/0:
 type_arity.m:013:   error: the type [38;5;87m`t2'/1[39;49m is [38;5;203mundefined.[39;49m
-type_arity.m:013:   (There is a type named `t2' with arity [38;5;40m2.)[39;49m
+type_arity.m:013:   (There is a type named `t2' with arity [38;5;40m2.[39;49m)
 `type_arity.int' and `type_arity.int2' not written.

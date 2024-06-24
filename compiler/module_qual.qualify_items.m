@@ -95,6 +95,7 @@
 :- import_module parse_tree.prog_data_foreign.
 :- import_module parse_tree.prog_data_pragma.
 :- import_module parse_tree.prog_type_test.
+:- import_module parse_tree.prog_util.
 :- import_module recompilation.
 :- import_module recompilation.item_types.
 :- import_module recompilation.record_uses.
@@ -670,8 +671,7 @@ module_qualify_item_typeclass(InInt, ItemTypeClass0, ItemTypeClass,
         Interface = class_interface_abstract
     ;
         Interface0 = class_interface_concrete(Methods0),
-        ErrorContext = mqec_class(Context, ClassId),
-        qualify_class_decls(InInt, ErrorContext, Methods0, Methods,
+        qualify_class_decls(InInt, ClassId, Methods0, Methods,
             !Info, !Specs),
         Interface = class_interface_concrete(Methods)
     ),
@@ -1102,7 +1102,7 @@ qualify_constructor(InInt, ContainingTypeCtor, Ctor0, Ctor, !Info, !Specs) :-
         ExistConstraints0 = cons_exist_constraints(ExistQVars, Constraints0,
             UnconstrainedExistQVars, ConstrainedExistQVars),
         ConstraintErrorContext = mqcec_type_defn_constructor(Context,
-            ContainingTypeCtor, FunctionSymbolName),
+            ContainingTypeCtor, FunctionSymbolName, Arity),
         qualify_prog_constraint_list(InInt, ConstraintErrorContext,
             Constraints0, Constraints, !Info, !Specs),
         ExistConstraints = cons_exist_constraints(ExistQVars, Constraints,
@@ -1713,38 +1713,56 @@ qualify_class_name(InInt, ErrorContext, Class0, Name, !Info, !Specs) :-
 
 %---------------------%
 
-:- pred qualify_class_decls(mq_in_interface::in, mq_error_context::in,
+:- pred qualify_class_decls(mq_in_interface::in, class_id::in,
     list(class_decl)::in, list(class_decl)::out,
     mq_info::in, mq_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-qualify_class_decls(_InInt, _ErrorContext, [], [], !Info, !Specs).
-qualify_class_decls(InInt, ErrorContext,
+qualify_class_decls(_InInt, _ClassId, [], [], !Info, !Specs).
+qualify_class_decls(InInt, ClassId,
         [Decl0 | Decls0], [Decl | Decls], !Info, !Specs) :-
-    % XXX We could pass a more specific error context.
-    qualify_class_decl(InInt, ErrorContext, Decl0, Decl,
+    qualify_class_decl(InInt, ClassId, Decl0, Decl,
         !Info, !Specs),
-    qualify_class_decls(InInt, ErrorContext, Decls0, Decls,
+    qualify_class_decls(InInt, ClassId, Decls0, Decls,
         !Info, !Specs).
 
-:- pred qualify_class_decl(mq_in_interface::in, mq_error_context::in,
+:- pred qualify_class_decl(mq_in_interface::in, class_id::in,
     class_decl::in, class_decl::out, mq_info::in, mq_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-qualify_class_decl(InInt, ErrorContext, Decl0, Decl, !Info, !Specs) :-
+qualify_class_decl(InInt, ClassId, Decl0, Decl, !Info, !Specs) :-
     % There is no need to qualify the method name, since that is done
     % when the item is parsed.
     (
         Decl0 = class_decl_pred_or_func(PredOrFuncInfo0),
-        PredOrFuncInfo0 = class_pred_or_func_info(Name, PredOrFunc,
+        PredOrFuncInfo0 = class_pred_or_func_info(SymName, PredOrFunc,
             TypesAndMaybeModes0, MaybeWithType0, MaybeWithInst0, MaybeDetism,
-            TypeVarset, InstVarset, ExistQVars,
-            Purity, Constraints0, Context),
-        % XXX We could pass a more specific error context.
+            TypeVarset, InstVarset, ExistQVars, Purity, Constraints0, Context),
+        Name = unqualify_name(SymName),
+        (
+            MaybeWithType0 = yes(_),
+            UserArityIfKnown = user_arity_unknown
+        ;
+            MaybeWithType0 = no,
+            (
+                TypesAndMaybeModes0 = no_types_arity_zero,
+                PredFormArity = pred_form_arity(0)
+            ;
+                TypesAndMaybeModes0 = types_only(Types),
+                PredFormArity = arg_list_arity(Types)
+            ;
+                TypesAndMaybeModes0 = types_and_modes(TypesAndModes),
+                PredFormArity = arg_list_arity(TypesAndModes)
+            ),
+            user_arity_pred_form_arity(PredOrFunc, UserArity, PredFormArity),
+            UserArityIfKnown = user_arity_known(UserArity)
+        ),
+        ErrorContext = mqec_class_method(Context, ClassId,
+            PredOrFunc, Name, UserArityIfKnown),
         qualify_types_and_maybe_modes(InInt, ErrorContext,
             TypesAndMaybeModes0, TypesAndMaybeModes, !Info, !Specs),
-        ConstraintErrorContext = mqcec_class_method(Context, PredOrFunc,
-            unqualify_name(Name)),
+        ConstraintErrorContext = mqcec_class_method(Context, ClassId,
+            PredOrFunc, Name, UserArityIfKnown),
         qualify_prog_constraints(InInt, ConstraintErrorContext,
             Constraints0, Constraints, !Info, !Specs),
         (
@@ -1767,15 +1785,33 @@ qualify_class_decl(InInt, ErrorContext, Decl0, Decl, !Info, !Specs) :-
             MaybeWithInst0 = no,
             MaybeWithInst = no
         ),
-        PredOrFuncInfo = class_pred_or_func_info(Name, PredOrFunc,
+        PredOrFuncInfo = class_pred_or_func_info(SymName, PredOrFunc,
             TypesAndMaybeModes, MaybeWithType, MaybeWithInst, MaybeDetism,
-            TypeVarset, InstVarset, ExistQVars,
-            Purity, Constraints, Context),
+            TypeVarset, InstVarset, ExistQVars, Purity, Constraints, Context),
         Decl = class_decl_pred_or_func(PredOrFuncInfo)
     ;
         Decl0 = class_decl_mode(ModeInfo0),
-        ModeInfo0 = class_mode_info(PredOrFunc, Name, Modes0,
+        ModeInfo0 = class_mode_info(SymName, MaybePredOrFunc, Modes0,
             MaybeWithInst0, MaybeDetism, Varset, Context),
+        Name = unqualify_name(SymName),
+        (
+            MaybePredOrFunc = no,
+            UserArityIfKnown = user_arity_unknown
+        ;
+            MaybePredOrFunc = yes(PredOrFunc),
+            (
+                MaybeWithInst0 = yes(_),
+                UserArityIfKnown = user_arity_unknown
+            ;
+                MaybeWithInst0 = no,
+                PredFormArity = arg_list_arity(Modes0),
+                user_arity_pred_form_arity(PredOrFunc,
+                    UserArity, PredFormArity),
+                UserArityIfKnown = user_arity_known(UserArity)
+            )
+        ),
+        ErrorContext = mqec_class_method_mode(Context, ClassId,
+            MaybePredOrFunc, Name, UserArityIfKnown),
         qualify_mode_list(InInt, ErrorContext, Modes0, Modes, !Info, !Specs),
         (
             MaybeWithInst0 = yes(WithInst0),
@@ -1787,7 +1823,7 @@ qualify_class_decl(InInt, ErrorContext, Decl0, Decl, !Info, !Specs) :-
             MaybeWithInst0 = no,
             MaybeWithInst = no
         ),
-        ModeInfo = class_mode_info(PredOrFunc, Name, Modes,
+        ModeInfo = class_mode_info(SymName, MaybePredOrFunc, Modes,
             MaybeWithInst, MaybeDetism, Varset, Context),
         Decl = class_decl_mode(ModeInfo)
     ).

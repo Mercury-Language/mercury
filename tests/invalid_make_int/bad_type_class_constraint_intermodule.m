@@ -8,7 +8,7 @@
 :- import_module io.
 
 :- typeclass output(S, U) <= (U -> S) where [
-    pred output_int(S::in, int::in, U::di, U::uo) is det
+    pred output_int(S::in, intx::in, U::di, U::uo) is det
 ].
 
 :- instance output(io.text_output_stream, io.state).
