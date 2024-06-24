@@ -11841,7 +11841,7 @@ using either a compiler option, or by using environment variables.
 
 The compiler option is a boolean option,
 which, like other boolean options, has two forms:
-a positive form @samp{--color-diagnostics}, which enabled the use of color,
+a positive form @samp{--color-diagnostics}, which enables the use of color,
 and a negative form @samp{--no-color-diagnostics}, which disables its use.
 
 There are two environment variables
