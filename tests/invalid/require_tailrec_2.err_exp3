@@ -1,30 +1,30 @@
 require_tailrec_2.m:049: In mode number 1 of predicate `map1'/3:
-require_tailrec_2.m:049:   warning: self-recursive call is not tail recursive.
+require_tailrec_2.m:049:   warning: self-recursive call is [38;5;203mnot tail recursive.[39;49m
 require_tailrec_2.m:056: In mode number 1 of predicate `map2'/3:
-require_tailrec_2.m:056:   warning: self-recursive call is not tail recursive.
+require_tailrec_2.m:056:   warning: self-recursive call is [38;5;203mnot tail recursive.[39;49m
 require_tailrec_2.m:064: In mode number 1 of function `even1'/1:
 require_tailrec_2.m:064:   warning: mutually recursive call to function
-require_tailrec_2.m:064:   `odd1'/1 is not tail recursive.
+require_tailrec_2.m:064:   `odd1'/1 is [38;5;203mnot tail recursive.[39;49m
 require_tailrec_2.m:073: In mode number 1 of function `odd1'/1:
 require_tailrec_2.m:073:   warning: mutually recursive call to function
-require_tailrec_2.m:073:   `even1'/1 is not tail recursive.
+require_tailrec_2.m:073:   `even1'/1 is [38;5;203mnot tail recursive.[39;49m
 require_tailrec_2.m:089: In mode number 1 of predicate `qsortapp_1'/2:
-require_tailrec_2.m:089:   warning: self-recursive call is not tail recursive.
+require_tailrec_2.m:089:   warning: self-recursive call is [38;5;203mnot tail recursive.[39;49m
 require_tailrec_2.m:098: In mode number 1 of predicate `qsortapp_2'/2:
-require_tailrec_2.m:098:   warning: self-recursive call is not tail recursive.
+require_tailrec_2.m:098:   warning: self-recursive call is [38;5;203mnot tail recursive.[39;49m
 require_tailrec_2.m:107: In mode number 1 of predicate `qsortapp_3'/2:
-require_tailrec_2.m:107:   warning: self-recursive call is not tail recursive.
+require_tailrec_2.m:107:   warning: self-recursive call is [38;5;203mnot tail recursive.[39;49m
 require_tailrec_2.m:116: In mode number 1 of predicate `qsortapp_4'/2:
-require_tailrec_2.m:116:   error: self-recursive call is not tail recursive.
+require_tailrec_2.m:116:   error: self-recursive call is [38;5;203mnot tail recursive.[39;49m
 require_tailrec_2.m:125: In mode number 1 of predicate `qsortapp_5'/2:
-require_tailrec_2.m:125:   warning: self-recursive call is not tail recursive.
+require_tailrec_2.m:125:   warning: self-recursive call is [38;5;203mnot tail recursive.[39;49m
 require_tailrec_2.m:134: In mode number 1 of predicate `qsortapp_6'/2:
-require_tailrec_2.m:134:   warning: self-recursive call is not tail recursive.
+require_tailrec_2.m:134:   warning: self-recursive call is [38;5;203mnot tail recursive.[39;49m
 require_tailrec_2.m:141: In `:- pragma require_tail_recursion' for function
 require_tailrec_2.m:141:   `cons'/2:
-require_tailrec_2.m:141:   warning: the code defining this function contains no
-require_tailrec_2.m:141:   recursive calls at all, tail-recursive or otherwise.
+require_tailrec_2.m:141:   warning: the code defining this function contains [38;5;203mno[39;49m
+require_tailrec_2.m:141:   [38;5;203mrecursive calls at all,[39;49m tail-recursive or otherwise.
 require_tailrec_2.m:152: In mode number 1 of predicate `partition'/6:
-require_tailrec_2.m:152:   warning: self-recursive call is not tail recursive.
+require_tailrec_2.m:152:   warning: self-recursive call is [38;5;203mnot tail recursive.[39;49m
 require_tailrec_2.m:154: In mode number 1 of predicate `partition'/6:
-require_tailrec_2.m:154:   warning: self-recursive call is not tail recursive.
+require_tailrec_2.m:154:   warning: self-recursive call is [38;5;203mnot tail recursive.[39;49m

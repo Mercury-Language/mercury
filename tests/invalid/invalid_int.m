@@ -1,10 +1,10 @@
 %---------------------------------------------------------------------------%
 % vim: ts=4 sw=4 et ft=mercury
 %---------------------------------------------------------------------------%
+% The .err_exp file is for 32-bit systems, .err_exp2 is for 64-bit systems.
 
 :- module invalid_int.
 :- interface.
-
 :- import_module io.
 
 :- pred main(io::di, io::uo) is det.

@@ -1,49 +1,49 @@
 invalid_int.m:017: Error: the integer literal
-invalid_int.m:017:   `0b100000000000000000000000000000000' is outside the range
-invalid_int.m:017:   of that type.
+invalid_int.m:017:   [38;5;87m`0b100000000000000000000000000000000'[39;49m is [38;5;203moutside the range[39;49m
+invalid_int.m:017:   [38;5;203mof that type.[39;49m
 invalid_int.m:018: Error: the integer literal
-invalid_int.m:018:   `0b1111111111111111111111111111111111111111111111111111111111111111'
-invalid_int.m:018:   is outside the range of that type.
+invalid_int.m:018:   [38;5;87m`0b1111111111111111111111111111111111111111111111111111111111111111'[39;49m
+invalid_int.m:018:   is [38;5;203moutside the range of that type.[39;49m
 invalid_int.m:019: Error: the integer literal
-invalid_int.m:019:   `0b10000000000000000000000000000000000000000000000000000000000000000'
-invalid_int.m:019:   is outside the range of that type.
-invalid_int.m:022: Error: the integer literal `0o40000000000' is outside the
-invalid_int.m:022:   range of that type.
-invalid_int.m:023: Error: the integer literal `0o1777777777777777777777' is
-invalid_int.m:023:   outside the range of that type.
-invalid_int.m:024: Error: the integer literal `0o2000000000000000000000' is
-invalid_int.m:024:   outside the range of that type.
-invalid_int.m:027: Error: the integer literal `0x100000000' is outside the
-invalid_int.m:027:   range of that type.
-invalid_int.m:028: Error: the integer literal `0x110000000' is outside the
-invalid_int.m:028:   range of that type.
-invalid_int.m:029: Error: the integer literal `0xFFFFFFFFFFFFFFFF' is outside
-invalid_int.m:029:   the range of that type.
-invalid_int.m:030: Error: the integer literal `0x10000000000000000' is outside
-invalid_int.m:030:   the range of that type.
-invalid_int.m:033: Error: the integer literal `2147483648' is outside the range
-invalid_int.m:033:   of that type.
-invalid_int.m:034: Error: the integer literal `9223372036854775807' is outside
-invalid_int.m:034:   the range of that type.
-invalid_int.m:035: Error: the integer literal `9223372036854775808' is outside
-invalid_int.m:035:   the range of that type.
-invalid_int.m:040: Error: the 8-bit integer literal `-129i8' is outside the
-invalid_int.m:040:   range of that type.
-invalid_int.m:043: Error: the 8-bit integer literal `128i8' is outside the
-invalid_int.m:043:   range of that type.
-invalid_int.m:048: Error: the unsigned 8-bit integer literal `256u8' is outside
-invalid_int.m:048:   the range of that type.
-invalid_int.m:049: Error: the unsigned 8-bit integer literal `257u8' is outside
-invalid_int.m:049:   the range of that type.
-invalid_int.m:054: Error: the 16-bit integer literal `-32769i16' is outside the
-invalid_int.m:054:   range of that type.
-invalid_int.m:057: Error: the 16-bit integer literal `32768i16' is outside the
-invalid_int.m:057:   range of that type.
-invalid_int.m:063: Error: the unsigned 16-bit integer literal `65536u16' is
-invalid_int.m:063:   outside the range of that type.
-invalid_int.m:068: Error: the 32-bit integer literal `-2147483649i32' is
-invalid_int.m:068:   outside the range of that type.
-invalid_int.m:071: Error: the 32-bit integer literal `2147483648i32' is outside
-invalid_int.m:071:   the range of that type.
-invalid_int.m:077: Error: the unsigned 32-bit integer literal `4294967296u32'
-invalid_int.m:077:   is outside the range of that type.
+invalid_int.m:019:   [38;5;87m`0b10000000000000000000000000000000000000000000000000000000000000000'[39;49m
+invalid_int.m:019:   is [38;5;203moutside the range of that type.[39;49m
+invalid_int.m:022: Error: the integer literal [38;5;87m`0o40000000000'[39;49m is [38;5;203moutside the[39;49m
+invalid_int.m:022:   [38;5;203mrange of that type.[39;49m
+invalid_int.m:023: Error: the integer literal [38;5;87m`0o1777777777777777777777'[39;49m is
+invalid_int.m:023:   [38;5;203moutside the range of that type.[39;49m
+invalid_int.m:024: Error: the integer literal [38;5;87m`0o2000000000000000000000'[39;49m is
+invalid_int.m:024:   [38;5;203moutside the range of that type.[39;49m
+invalid_int.m:027: Error: the integer literal [38;5;87m`0x100000000'[39;49m is [38;5;203moutside the[39;49m
+invalid_int.m:027:   [38;5;203mrange of that type.[39;49m
+invalid_int.m:028: Error: the integer literal [38;5;87m`0x110000000'[39;49m is [38;5;203moutside the[39;49m
+invalid_int.m:028:   [38;5;203mrange of that type.[39;49m
+invalid_int.m:029: Error: the integer literal [38;5;87m`0xFFFFFFFFFFFFFFFF'[39;49m is [38;5;203moutside[39;49m
+invalid_int.m:029:   [38;5;203mthe range of that type.[39;49m
+invalid_int.m:030: Error: the integer literal [38;5;87m`0x10000000000000000'[39;49m is [38;5;203moutside[39;49m
+invalid_int.m:030:   [38;5;203mthe range of that type.[39;49m
+invalid_int.m:033: Error: the integer literal [38;5;87m`2147483648'[39;49m is [38;5;203moutside the range[39;49m
+invalid_int.m:033:   [38;5;203mof that type.[39;49m
+invalid_int.m:034: Error: the integer literal [38;5;87m`9223372036854775807'[39;49m is [38;5;203moutside[39;49m
+invalid_int.m:034:   [38;5;203mthe range of that type.[39;49m
+invalid_int.m:035: Error: the integer literal [38;5;87m`9223372036854775808'[39;49m is [38;5;203moutside[39;49m
+invalid_int.m:035:   [38;5;203mthe range of that type.[39;49m
+invalid_int.m:040: Error: the 8-bit integer literal [38;5;87m`-129i8'[39;49m is [38;5;203moutside the[39;49m
+invalid_int.m:040:   [38;5;203mrange of that type.[39;49m
+invalid_int.m:043: Error: the 8-bit integer literal [38;5;87m`128i8'[39;49m is [38;5;203moutside the[39;49m
+invalid_int.m:043:   [38;5;203mrange of that type.[39;49m
+invalid_int.m:048: Error: the unsigned 8-bit integer literal [38;5;87m`256u8'[39;49m is [38;5;203moutside[39;49m
+invalid_int.m:048:   [38;5;203mthe range of that type.[39;49m
+invalid_int.m:049: Error: the unsigned 8-bit integer literal [38;5;87m`257u8'[39;49m is [38;5;203moutside[39;49m
+invalid_int.m:049:   [38;5;203mthe range of that type.[39;49m
+invalid_int.m:054: Error: the 16-bit integer literal [38;5;87m`-32769i16'[39;49m is [38;5;203moutside the[39;49m
+invalid_int.m:054:   [38;5;203mrange of that type.[39;49m
+invalid_int.m:057: Error: the 16-bit integer literal [38;5;87m`32768i16'[39;49m is [38;5;203moutside the[39;49m
+invalid_int.m:057:   [38;5;203mrange of that type.[39;49m
+invalid_int.m:063: Error: the unsigned 16-bit integer literal [38;5;87m`65536u16'[39;49m is
+invalid_int.m:063:   [38;5;203moutside the range of that type.[39;49m
+invalid_int.m:068: Error: the 32-bit integer literal [38;5;87m`-2147483649i32'[39;49m is
+invalid_int.m:068:   [38;5;203moutside the range of that type.[39;49m
+invalid_int.m:071: Error: the 32-bit integer literal [38;5;87m`2147483648i32'[39;49m is [38;5;203moutside[39;49m
+invalid_int.m:071:   [38;5;203mthe range of that type.[39;49m
+invalid_int.m:077: Error: the unsigned 32-bit integer literal [38;5;87m`4294967296u32'[39;49m
+invalid_int.m:077:   is [38;5;203moutside the range of that type.[39;49m
