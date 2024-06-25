@@ -7173,14 +7173,6 @@ For information about how the compiler uses colors in diagnostic messages,
 and about the syntax of color scheme specifications,
 please see the @ref{Color schemes} section for the details.
 
-@item --color-scheme @var{ColorScheme}
-@itemx --colour-scheme @var{ColorScheme}
-@findex --color-scheme
-@findex --colour-scheme
-Tell the compiler to use the colors specified by @var{ColorScheme}
-when printing diagnostics.
-Please see @ref{Enabling the use of color} for the details.
-
 @item --no-color-diagnostics
 @itemx --no-colour-diagnostics
 @findex --color-diagnostics
