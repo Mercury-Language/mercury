@@ -1,9 +1,9 @@
 coerce_unreachable.m:027: In clause for `p1(in, out)':
 coerce_unreachable.m:027:   in coerce expression:
-coerce_unreachable.m:027:   mode error: cannot convert the argument term from
+coerce_unreachable.m:027:   mode error: cannot convert the [38;5;87mcoerced term[39;49m from
 coerce_unreachable.m:027:   type `coerce_unreachable.fruit' to
 coerce_unreachable.m:027:   `coerce_unreachable.citrus' because it has
-coerce_unreachable.m:027:   instantiatedness `ground', and
-coerce_unreachable.m:027:   `coerce_unreachable.fruit' is not a subtype of
+coerce_unreachable.m:027:   instantiatedness [38;5;203m`ground',[39;49m and
+coerce_unreachable.m:027:   [38;5;203m`coerce_unreachable.fruit'[39;49m is not a subtype of
 coerce_unreachable.m:027:   `coerce_unreachable.citrus'.
 For more information, recompile with `-E'.

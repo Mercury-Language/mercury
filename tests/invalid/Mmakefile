@@ -132,6 +132,7 @@ BORING_SINGLEMODULE_PROGS = \
 	coerce_type_error \
 	coerce_unify_tvars \
 	coerce_uniq \
+	coerce_unreachable \
 	coerce_void \
 	comparison \
 	complex_constraint_err \
