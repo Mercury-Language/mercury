@@ -2,6 +2,10 @@ coerce_mode_error.m:035: In clause for `bad_coerce_free_input(in(free), out)':
 coerce_mode_error.m:035:   in coerce expression:
 coerce_mode_error.m:035:   mode error: the [38;5;87mcoerced term[39;49m has instantiatedness
 coerce_mode_error.m:035:   [38;5;203m`free',[39;49m but it must have a [38;5;40mground[39;49m inst.
+coerce_mode_error.m:035: In clause for predicate `bad_coerce_free_input'/2:
+coerce_mode_error.m:035:   warning: type conversion from
+coerce_mode_error.m:035:   `coerce_mode_error.fruit' to the same type is
+coerce_mode_error.m:035:   [38;5;203mredundant.[39;49m
 coerce_mode_error.m:045: In clause for `bad_fruit_to_citrus(in, out)':
 coerce_mode_error.m:045:   in coerce expression:
 coerce_mode_error.m:045:   mode error: cannot convert the [38;5;87mcoerced term[39;49m from

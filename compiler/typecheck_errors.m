@@ -44,6 +44,9 @@
 :- func report_invalid_coerce_from_to(type_error_clause_context, prog_context,
     tvarset, mer_type, mer_type) = error_spec.
 
+:- func report_redundant_coerce(type_error_clause_context, prog_context,
+    tvarset, mer_type) = error_spec.
+
 %---------------------------------------------------------------------------%
 
 :- func report_error_unify_var_var(typecheck_info, unify_context, prog_context,
@@ -121,6 +124,8 @@
 :- import_module hlds.hlds_out.
 :- import_module hlds.hlds_out.hlds_out_util.
 :- import_module hlds.hlds_pred.
+:- import_module libs.
+:- import_module libs.options.
 :- import_module mdbcomp.builtin_modules.
 :- import_module mdbcomp.sym_name.
 :- import_module parse_tree.error_type_util.
@@ -136,6 +141,7 @@
 :- import_module parse_tree.var_db.
 
 :- import_module assoc_list.
+:- import_module bool.
 :- import_module int.
 :- import_module map.
 :- import_module one_or_more.
@@ -277,13 +283,7 @@ report_invalid_coerce_from_to(ClauseContext, Context, TVarSet,
     % - For tests/invalid/coerce_infer.m and some others, it says that
     %   you cannot coerce from one anonymous type variable to another.
     %
-    % - For tests/invalid/coerce_non_du.m, it says that you cannot coerce
-    %   from a given type to itself.
-    %
-    % For the first kind of error, is there something we can report
-    % that would be more helpful?
-    %
-    % For the second kind, should it even be an error, or just a warning?
+    % Is there something we can report that would be more helpful?
     InClauseForPieces = in_clause_for_pieces(ClauseContext),
     FromTypeStr = mercury_type_to_string(TVarSet, print_num_only, FromType),
     ToTypeStr = mercury_type_to_string(TVarSet, print_num_only, ToType),
@@ -293,16 +293,16 @@ report_invalid_coerce_from_to(ClauseContext, Context, TVarSet,
         describe_if_non_du_type(FromType, FromTypeNonDuPieces),
         (
             FromTypeNonDuPieces = [],
-            CausePieces = [words("You cannot coerce")] ++
-                color_as_incorrect([words("from a type to the same type.")])
+            % We shouldn't get here. FromType and ToType must be the same du
+            % type, but a coercion from one du type to the same du type must be
+            % type-correct. However, throwing an exception would only punish an
+            % innocent user.
+            CausePieces = []
         ;
             FromTypeNonDuPieces = [_ | _],
             CausePieces = OnlyDuPieces ++
                 [quote(FromTypeStr), words("is a")] ++
-                color_as_incorrect(FromTypeNonDuPieces ++ [suffix(".")]) ++
-                [nl] ++
-                [words("Also, you cannot coerce")] ++
-                color_as_incorrect([words("from a type to the same type.")])
+                color_as_incorrect(FromTypeNonDuPieces ++ [suffix(".")])
         )
     else
         describe_if_non_du_type(FromType, FromTypeNonDuPieces),
@@ -352,6 +352,17 @@ report_invalid_coerce_from_to(ClauseContext, Context, TVarSet,
         color_as_inconsistent([quote(ToTypeStr), suffix(".")]) ++ [nl] ++
         CausePieces ++ [nl],
     Spec = spec($pred, severity_error, phase_type_check, Context,
+        InClauseForPieces ++ ErrorPieces).
+
+report_redundant_coerce(ClauseContext, Context, TVarSet, FromType) = Spec :-
+    InClauseForPieces = in_clause_for_pieces(ClauseContext),
+    FromTypeStr = mercury_type_to_string(TVarSet, print_num_only, FromType),
+    ErrorPieces = [words("warning: type conversion from")] ++
+        [quote(FromTypeStr), words("to the same type is")] ++
+        color_as_incorrect([words("redundant.")]) ++ [nl],
+    Severity = severity_conditional(warn_redundant_coerce, yes,
+        severity_warning, no),
+    Spec = spec($pred, Severity, phase_type_check, Context,
         InClauseForPieces ++ ErrorPieces).
 
     % If the given type is du type, return the empty list. Otherwise,

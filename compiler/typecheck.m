@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1993-2012 The University of Melbourne.
-% Copyright (C) 2014-2021 The Mercury team.
+% Copyright (C) 2014-2024 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -591,7 +591,7 @@ do_typecheck_pred(ProgressStream, ModuleInfo, PredId, !PredInfo,
         perform_context_reduction(Context, !TypeAssignSet, !Info),
         typecheck_check_for_ambiguity(Context, whole_pred, HeadVars,
             !.TypeAssignSet, !Info),
-        typecheck_check_for_unsatisfied_coercions(!.TypeAssignSet, !Info),
+        typecheck_check_remaining_coercion_constraints(!.TypeAssignSet, !Info),
         type_assign_set_get_final_info(!.TypeAssignSet,
             !.ExternalTypeParams, ExistQVars0, ExplicitVarTypes0, TypeVarSet,
             !:ExternalTypeParams, InferredVarTypes, InferredTypeConstraints0,
@@ -1030,24 +1030,17 @@ special_pred_needs_typecheck(ModuleInfo, PredInfo) :-
 
 %---------------------------------------------------------------------------%
 
-:- pred typecheck_check_for_unsatisfied_coercions(type_assign_set::in,
+:- pred typecheck_check_remaining_coercion_constraints(type_assign_set::in,
     typecheck_info::in, typecheck_info::out) is det.
 
-typecheck_check_for_unsatisfied_coercions(TypeAssignSet, !Info) :-
+typecheck_check_remaining_coercion_constraints(TypeAssignSet, !Info) :-
     (
         TypeAssignSet = [],
         unexpected($pred, "no type-assignment")
     ;
         TypeAssignSet = [TypeAssign],
         type_assign_get_coerce_constraints(TypeAssign, Coercions),
-        (
-            Coercions = []
-        ;
-            Coercions = [_ | _],
-            % All valid coercion constraints have been removed from the
-            % type assignment already.
-            list.foldl(report_invalid_coercion(TypeAssign), Coercions, !Info)
-        )
+        list.foldl(report_coercion(TypeAssign), Coercions, !Info)
     ;
         TypeAssignSet = [_, _ | _]
         % If there are multiple type assignments then there is a type ambiguity
@@ -1055,21 +1048,31 @@ typecheck_check_for_unsatisfied_coercions(TypeAssignSet, !Info) :-
         % assignments would be confusing.
     ).
 
-:- pred report_invalid_coercion(type_assign::in, coerce_constraint::in,
+:- pred report_coercion(type_assign::in, coerce_constraint::in,
     typecheck_info::in, typecheck_info::out) is det.
 
-report_invalid_coercion(TypeAssign, Coercion, !Info) :-
+report_coercion(TypeAssign, Coercion, !Info) :-
     % XXX When inferring types for a predicate/function with no declared type,
     % we should not report coercions as invalid until the argument types have
     % been inferred.
-    Coercion = coerce_constraint(FromType0, ToType0, Context, _Status),
+    Coercion = coerce_constraint(FromType0, ToType0, Context, Status),
     type_assign_get_typevarset(TypeAssign, TVarSet),
     type_assign_get_type_bindings(TypeAssign, TypeBindings),
     apply_rec_subst_to_type(TypeBindings, FromType0, FromType),
     apply_rec_subst_to_type(TypeBindings, ToType0, ToType),
     typecheck_info_get_error_clause_context(!.Info, ClauseContext),
-    Spec = report_invalid_coerce_from_to(ClauseContext, Context, TVarSet,
-        FromType, ToType),
+    (
+        Status = need_to_check,
+        unexpected($pred, "need to check")
+    ;
+        Status = unsatisfiable,
+        Spec = report_invalid_coerce_from_to(ClauseContext, Context, TVarSet,
+            FromType, ToType)
+    ;
+        Status = satisfied_but_redundant,
+        Spec = report_redundant_coerce(ClauseContext, Context, TVarSet,
+            FromType)
+    ),
     typecheck_info_add_error(Spec, !Info).
 
 %---------------------------------------------------------------------------%

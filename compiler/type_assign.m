@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
-% Copyright (C) 2014-2015, 2018, 2020-2021 The Mercury team.
+% Copyright (C) 2014-2015, 2018, 2020-2021, 2024 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -67,7 +67,8 @@
 
 :- type coerce_constraint_status
     --->    need_to_check
-    ;       unsatisfiable.
+    ;       unsatisfiable
+    ;       satisfied_but_redundant.
 
 :- pred type_assign_get_var_types(type_assign::in,
     vartypes::out) is det.

@@ -3,3 +3,12 @@ coerce_uniq.m:024:   mode error: argument 1 did not get sufficiently
 coerce_uniq.m:024:   instantiated.
 coerce_uniq.m:024:   Final instantiatedness of [38;5;87m`X'[39;49m was [38;5;203m`ground',[39;49m
 coerce_uniq.m:024:   expected final instantiatedness was [38;5;40m`unique'.[39;49m
+coerce_uniq.m:024: In clause for predicate `coerce_ui'/2:
+coerce_uniq.m:024:   warning: type conversion from `coerce_uniq.fruit' to the
+coerce_uniq.m:024:   same type is [38;5;203mredundant.[39;49m
+coerce_uniq.m:029: In clause for predicate `coerce_di'/2:
+coerce_uniq.m:029:   warning: type conversion from `coerce_uniq.fruit' to the
+coerce_uniq.m:029:   same type is [38;5;203mredundant.[39;49m
+coerce_uniq.m:034: In clause for predicate `coerce_become_shared'/2:
+coerce_uniq.m:034:   warning: type conversion from `coerce_uniq.fruit' to the
+coerce_uniq.m:034:   same type is [38;5;203mredundant.[39;49m

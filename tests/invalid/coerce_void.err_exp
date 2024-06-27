@@ -4,4 +4,7 @@ coerce_void.m:010:     [38;5;87m`List':[39;49m [38;5;203mlist.list(T),[39;49
 coerce_void.m:010:     [38;5;87m`V_8': [39;49m [38;5;203mlist.list(T).[39;49m
 coerce_void.m:010:   The unbound type variable [38;5;203m`T'[39;49m will be implicitly bound to
 coerce_void.m:010:   the builtin type `void'.
+coerce_void.m:019: In clause for predicate `main'/2:
+coerce_void.m:019:   warning: type conversion from `list.list(V_1)' to the same
+coerce_void.m:019:   type is [38;5;203mredundant.[39;49m
 For more information, recompile with `-E'.

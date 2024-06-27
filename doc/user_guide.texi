@@ -7056,6 +7056,13 @@ could be packed more tightly if they were reordered.
 @c the compiler generates to implement
 @c a @code{type_spec_constrained_pred} pragma.
 
+@sp 1
+@item --no-warn-redundant-coerce
+@findex --no-warn-redundant-coerce
+Do not warn about redundant type conversions,
+i.e.@: when the type of a @samp{coerce} expression
+is the same as the argument type.
+
 @end table
 
 @node Verbosity options

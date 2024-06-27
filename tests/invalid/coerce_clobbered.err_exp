@@ -2,3 +2,7 @@ coerce_clobbered.m:021: In clause for `bad(in(clobbered), out)':
 coerce_clobbered.m:021:   in coerce expression:
 coerce_clobbered.m:021:   mode error: the [38;5;87mcoerced term[39;49m has instantiatedness
 coerce_clobbered.m:021:   [38;5;203m`clobbered',[39;49m but it must have a [38;5;40mground[39;49m inst.
+coerce_clobbered.m:021: In clause for predicate `bad'/2:
+coerce_clobbered.m:021:   warning: type conversion from
+coerce_clobbered.m:021:   `coerce_clobbered.fruit' to the same type is
+coerce_clobbered.m:021:   [38;5;203mredundant.[39;49m

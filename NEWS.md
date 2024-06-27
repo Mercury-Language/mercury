@@ -1250,6 +1250,10 @@ Changes to the Mercury compiler
   with that name and arity, and the pragma does not specify which one
   it is for.
 
+* We have added a new option `--warn-redundant-coerce`,
+  that tells the compiler to generate warnings for type conversions
+  from one type to the same type. This option is enabled by default.
+
 * We have added a new option `--reverse-error-order` that tells the compiler
   to output error messages for higher line numbers before error messages
   for lower line numbers.

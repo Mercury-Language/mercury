@@ -1,0 +1,11 @@
+redundant_coerce.m:035: In clause for predicate `test1'/0:
+redundant_coerce.m:035:   warning: type conversion from `maybe.maybe(int)' to
+redundant_coerce.m:035:   the same type is [38;5;203mredundant.[39;49m
+redundant_coerce.m:039: In clause for predicate `test2'/0:
+redundant_coerce.m:039:   warning: type conversion from
+redundant_coerce.m:039:   `redundant_coerce.box(redundant_coerce.fruit)' to the
+redundant_coerce.m:039:   same type is [38;5;203mredundant.[39;49m
+redundant_coerce.m:049: In clause for predicate `test3'/0:
+redundant_coerce.m:049:   warning: type conversion from
+redundant_coerce.m:049:   `redundant_coerce.maybe_box(redundant_coerce.citrus)'
+redundant_coerce.m:049:   to the same type is [38;5;203mredundant.[39;49m

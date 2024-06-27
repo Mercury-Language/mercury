@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 2010-2012 The University of Melbourne.
-% Copyright (C) 2013-2018 The Mercury team.
+% Copyright (C) 2013-2018, 2020, 2022-2024 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -476,7 +476,7 @@ mercury_user_type_to_string_and_dims_for_csharp(Info, Type,
 
 mercury_user_enum_type_to_string_and_dims_for_csharp(Info, Type,
         TypeNameWithGenerics) :-
-    type_to_ctor_and_args_det(coerce(Type), TypeCtor, ArgsTypes),
+    type_to_ctor_and_args_det(Type, TypeCtor, ArgsTypes),
     ml_gen_type_name(TypeCtor, EnumModule, EnumName, EnumArity),
     EnumId = mlds_enum_class_id(EnumModule, EnumName, EnumArity),
     MLDS_Type = mlds_enum_class_type(EnumId),

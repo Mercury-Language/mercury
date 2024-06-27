@@ -253,6 +253,7 @@
     ;       print_error_spec_id
     ;       inform_ignored_pragma_errors
     ;       inform_generated_type_spec_pragmas
+    ;       warn_redundant_coerce
 
     % Verbosity options
     ;       verbose
@@ -1373,6 +1374,7 @@ optdef(oc_warn, inform_suboptimal_packing,              bool(no)).
 optdef(oc_warn, print_error_spec_id,                    bool(no)).
 optdef(oc_warn, inform_ignored_pragma_errors,           bool(no)).
 optdef(oc_warn, inform_generated_type_spec_pragmas,     bool(no)).
+optdef(oc_warn, warn_redundant_coerce,                  bool(yes)).
 
     % Verbosity options.
 
@@ -2353,6 +2355,7 @@ long_table("inform-ignored-pragma-errors",
                                         inform_ignored_pragma_errors).
 long_table("inform-generated-type-spec-pragmas",
                                         inform_generated_type_spec_pragmas).
+long_table("warn-redundant-coerce",     warn_redundant_coerce).
 
 % verbosity options
 long_table("verbose",                  verbose).
@@ -4269,7 +4272,8 @@ style_warning_options = [
     warn_suspicious_foreign_procs,
     warn_state_var_shadowing,
     warn_unneeded_mode_specific_clause,
-    inform_suboptimal_packing
+    inform_suboptimal_packing,
+    warn_redundant_coerce
 ].
 
 non_style_warning_options = [
@@ -4646,7 +4650,7 @@ options_help_warning(Stream, !IO) :-
         "\tDo not generate messages about inferred modes.",
         "--inform-suboptimal-packing",
         "\tGenerate messages if the arguments of a data constructor",
-        "\tcould be packed more tightly if they were reordered."
+        "\tcould be packed more tightly if they were reordered.",
 %       "--print-error-spec-id",
 %       "\tAfter each error message is printed, print its id, which",
 %       "\tby convention is the $pred of the code that constructs it."
@@ -4658,6 +4662,8 @@ options_help_warning(Stream, !IO) :-
 %       "\tPrint an informational message for each type_spec pragma that"
 %       "\tthe compiler generates to implement a type_spec_constrained_pred"
 %       "\tpragma.",
+        "--no-warn-redundant-coerce",
+        "\tDo not warn about redundant type conversions."
     ], !IO).
 
 :- pred options_help_verbosity(io.text_output_stream::in,

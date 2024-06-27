@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 2000-2012 The University of Melbourne.
-% Copyright (C) 2013-2018 The Mercury team.
+% Copyright (C) 2013-2020, 2022-2024 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -140,7 +140,7 @@ type_to_string_and_dims_for_java(Info, MLDS_Type, String, ArrayDims) :-
             % We need to handle type_info (etc.) types specially --
             % they get mapped to types in the runtime rather than
             % in private_builtin.
-            hand_defined_type_for_java(Type, coerce(CtorCat),
+            hand_defined_type_for_java(Type, CtorCat,
                 StringPrime, ArrayDimsPrime)
         then
             String = StringPrime,

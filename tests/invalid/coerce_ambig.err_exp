@@ -10,4 +10,12 @@ coerce_ambig.m:036:   The following variables have ambiguous types:
 coerce_ambig.m:036:   The variable [38;5;87m`X'[39;49m can have either of the following types:
 coerce_ambig.m:036:     [38;5;226mcoerce_ambig.another_fruit,[39;49m
 coerce_ambig.m:036:     [38;5;226mcoerce_ambig.fruit.[39;49m
+coerce_ambig.m:044: In clause for predicate `ambig3'/1:
+coerce_ambig.m:044:   warning: type conversion from
+coerce_ambig.m:044:   `coerce_ambig.list(coerce_ambig.fruit)' to the same type
+coerce_ambig.m:044:   is [38;5;203mredundant.[39;49m
+coerce_ambig.m:053: In clause for predicate `ambig4'/0:
+coerce_ambig.m:053:   warning: type conversion from
+coerce_ambig.m:053:   `coerce_ambig.list(coerce_ambig.fruit)' to the same type
+coerce_ambig.m:053:   is [38;5;203mredundant.[39;49m
 For more information, recompile with `-E'.
