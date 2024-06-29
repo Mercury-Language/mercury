@@ -72,7 +72,7 @@ report_unknown_format_string(ModuleInfo, PredId, WarnUnknownFormat, Context)
         WarnUnknownFormat = warn_unknown_format,
         PredNameDotPieces = describe_one_pred_name(ModuleInfo,
             yes(color_subject), should_module_qualify, [suffix(".")], PredId),
-        Pieces = [words("Error:")] ++
+        Pieces = [words("Warning:")] ++
             color_as_incorrect([words("unknown format string")]) ++
             [words("in call to")] ++ PredNameDotPieces ++ [nl],
         Phase = phase_simplify(report_in_any_mode),
@@ -89,7 +89,7 @@ report_unknown_format_values(ModuleInfo, PredId, WarnUnknownFormat, Context)
         WarnUnknownFormat = warn_unknown_format,
         PredNameDotPieces = describe_one_pred_name(ModuleInfo,
             yes(color_subject), should_module_qualify, [suffix(".")], PredId),
-        Pieces = [words("Error:")] ++
+        Pieces = [words("Warning:")] ++
             color_as_incorrect([words("unknown list of values"),
                 words("to be formatted")]) ++
             [words("in call to")] ++ PredNameDotPieces ++ [nl],

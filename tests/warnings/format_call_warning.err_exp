@@ -62,5 +62,5 @@ format_call_warning.m:048:   character [38;5;171m`s',[39;49m but the correspon
 format_call_warning.m:048:   [38;5;171mfloat.[39;49m
 format_call_warning.m:048:   The specifiers applicable to floats are [38;5;40m`%f',[39;49m
 format_call_warning.m:048:   [38;5;40m`%e',[39;49m [38;5;40m`%E',[39;49m [38;5;40m`%g'[39;49m and [38;5;40m`%G'.[39;49m
-format_call_warning.m:083: Error: [38;5;203munknown list of values to be formatted[39;49m in
+format_call_warning.m:083: Warning: [38;5;203munknown list of values to be formatted[39;49m in
 format_call_warning.m:083:   call to predicate [38;5;87m`io.format'/4.[39;49m

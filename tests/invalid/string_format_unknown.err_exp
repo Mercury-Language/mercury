@@ -1,4 +1,4 @@
-string_format_unknown.m:023: Error: [38;5;203munknown format string[39;49m in call to function
+string_format_unknown.m:023: Warning: [38;5;203munknown format string[39;49m in call to function
 string_format_unknown.m:023:   [38;5;87m`string.format'/2.[39;49m
 string_format_unknown.m:025: Error: the format string [38;5;203mdoes not match[39;49m the list
 string_format_unknown.m:025:   of values to be formatted in call to function
@@ -29,9 +29,9 @@ string_format_unknown.m:030:   of values to be formatted in call to predicate
 string_format_unknown.m:030:   [38;5;87m`io.format'/4.[39;49m
 string_format_unknown.m:030:   The [38;5;87mfirst conversion specifier[39;49m uses the [38;5;203munknown[39;49m
 string_format_unknown.m:030:   [38;5;203mspecifier character `w'.[39;49m
-string_format_unknown.m:040: Error: [38;5;203munknown list of values to be formatted[39;49m in
+string_format_unknown.m:040: Warning: [38;5;203munknown list of values to be formatted[39;49m in
 string_format_unknown.m:040:   call to predicate [38;5;87m`io.format'/5.[39;49m
-string_format_unknown.m:041: Error: [38;5;203munknown list of values to be formatted[39;49m in
+string_format_unknown.m:041: Warning: [38;5;203munknown list of values to be formatted[39;49m in
 string_format_unknown.m:041:   call to predicate
 string_format_unknown.m:041:   [38;5;87m`stream.string_writer.format'/5.[39;49m
 string_format_unknown.m:046: Error: the format string [38;5;203mdoes not match[39;49m the list

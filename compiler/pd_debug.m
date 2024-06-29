@@ -103,10 +103,8 @@ pd_debug_message_context(PDInfo, IdStr, Context, Fmt, Args, !IO) :-
     ;
         MaybeDebugStream = yes(DebugStream),
         parse_tree_out_misc.write_context(DebugStream, Context, !IO),
-        disable_warning [unknown_format_calls] (
-            io.format(DebugStream, "%s: ", [s(IdStr)], !IO),
-            io.format(DebugStream, Fmt, Args, !IO)
-        ),
+        io.format(DebugStream, "%s: ", [s(IdStr)], !IO),
+        io.format(DebugStream, Fmt, Args, !IO),
         io.flush_output(DebugStream, !IO)
     ).
 
