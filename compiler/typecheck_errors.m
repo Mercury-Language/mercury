@@ -2072,12 +2072,17 @@ arg_type_list_diff_pieces(ContextPieces, TypeCtorPieces, ExistQTVars,
         DiffPieces = arg_type_list_diff_pieces_loop(ContextPieces,
             TypeCtorPieces, ExistQTVars, 1, ActualArgTypes, ExpectedArgTypes)
     else
+        ( if ExpectedNumArgs = 1 then
+            ArgumentS = "argument"
+        else
+            ArgumentS = "arguments"
+        ),
         CausePieces =
             color_as_incorrect([words("Arity mismatch")]) ++
             [words("for")] ++ TypeCtorPieces ++ [suffix(":"),
             words("expected")] ++
             color_as_inconsistent([int_name(ExpectedNumArgs),
-                words("arguments,")]) ++
+                words(ArgumentS), suffix(",")]) ++
             [words("got")] ++
             color_as_inconsistent([int_name(ActualNumArgs), suffix(".")]),
         DiffPieces = wrap_diff_pieces(ContextPieces, CausePieces)
