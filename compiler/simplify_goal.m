@@ -108,26 +108,97 @@
 :- import_module list.
 :- import_module maybe.
 :- import_module require.
+:- import_module set.
+
+%----------------------------------------------------------------------------%
 
 simplify_goal(Goal0, Goal, NestedContext0, InstMap0, !Common, !Info) :-
     Goal0 = hlds_goal(_, GoalInfo0),
-    ( if goal_info_has_feature(GoalInfo0, feature_duplicated_for_switch) then
+    FeaturesSet0 = goal_info_get_features(GoalInfo0),
+    ( if set.contains(FeaturesSet0, feature_duplicated_for_switch) then
         NestedContext = NestedContext0 ^ snc_inside_dupl_for_switch := yes
     else
         NestedContext = NestedContext0
     ),
-    ( if goal_info_has_feature(GoalInfo0, feature_contains_trace) then
+    ( if set.contains(FeaturesSet0, feature_contains_trace) then
         simplify_info_set_found_contains_trace(yes, !Info),
         Goal0ContainsTrace = contains_trace_goal
     else
         Goal0ContainsTrace = contains_no_trace_goal
     ),
-    Detism = goal_info_get_determinism(GoalInfo0),
+
+    maybe_simplify_goal_to_true_or_fail(InstMap0, Goal0ContainsTrace,
+        Goal0, Goal1, !Info),
+
+    % Remove unnecessary explicit quantifications before working out
+    % whether the goal can cause a stack flush.
+    Goal1 = hlds_goal(GoalExpr1, GoalInfo1),
+    ( if GoalExpr1 = scope(Reason1, SomeGoal1) then
+        try_to_merge_nested_scopes(Reason1, SomeGoal1, GoalInfo1, Goal2)
+    else
+        Goal2 = Goal1
+    ),
+    ( if
+        simplify_do_elim_removable_scopes(!.Info),
+        Goal2 = hlds_goal(scope(Reason2, SomeGoal2), _GoalInfo2),
+        (
+            Reason2 = barrier(removable)
+        ;
+            Reason2 = from_ground_term(_, Kind),
+            Kind = from_ground_term_other
+        )
+    then
+        Goal3 = SomeGoal2
+    else
+        Goal3 = Goal2
+    ),
+    Goal3 = hlds_goal(GoalExpr3, GoalInfo3),
+
+    maybe_handle_stack_flush(before, GoalExpr3, !Common),
+    simplify_goal_expr(GoalExpr3, GoalExpr4, GoalInfo3, GoalInfo4,
+        NestedContext, InstMap0, !Common, !Info),
+    maybe_handle_stack_flush(after, GoalExpr4, !Common),
+
+    enforce_unreachability_invariant(GoalInfo4, GoalInfo, !Info),
+    trace [compile_time(flag("simplify_merge_switch")), io(!IO)] (
+        % If you want to debug one specific goal's transformation, then
+        % - add a goal feature to the goal at the point at which you decide
+        %   you want to debug it, and then
+        % - replace the semidet_fail here with a test for that feature.
+        ( if semidet_fail then
+            io.stderr_stream(StdErr, !IO),
+            simplify_info_get_module_info(!.Info, TraceModuleInfo),
+            simplify_info_get_var_table(!.Info, TraceVarTable),
+            simplify_info_get_tvarset(!.Info, TVarSet),
+            simplify_info_get_inst_varset(!.Info, InstVarSet),
+            TraceVarNameSrc = vns_var_table(TraceVarTable),
+
+            Goal5 = hlds_goal(GoalExpr4, GoalInfo),
+            io.write_string(StdErr, "\nMerge goal before\n\n", !IO),
+            dump_goal_nl(StdErr, TraceModuleInfo, TraceVarNameSrc,
+                TVarSet, InstVarSet, Goal0, !IO),
+            io.write_string(StdErr, "\nMerge goal after\n\n", !IO),
+            dump_goal_nl(StdErr, TraceModuleInfo, TraceVarNameSrc,
+                TVarSet, InstVarSet, Goal5, !IO)
+        else
+            true
+        )
+    ),
+    Goal = hlds_goal(GoalExpr4, GoalInfo).
+
+:- pred maybe_simplify_goal_to_true_or_fail(instmap::in,
+    contains_trace_goal::in, hlds_goal::in, hlds_goal::out,
+    simplify_info::in, simplify_info::out) is det.
+
+maybe_simplify_goal_to_true_or_fail(InstMap0, Goal0ContainsTrace,
+        Goal0, Goal, !Info) :-
+    Goal0 = hlds_goal(_, GoalInfo0),
     some [!ModuleInfo] (
         simplify_info_get_module_info(!.Info, !:ModuleInfo),
         goal_can_loop_or_throw_imaf(Goal0, Goal0CanLoopOrThrow, !ModuleInfo),
         simplify_info_set_module_info(!.ModuleInfo, !Info)
     ),
+    Detism = goal_info_get_determinism(GoalInfo0),
     Purity = goal_info_get_purity(GoalInfo0),
     ( if
         % If --no-fully-strict, replace goals with determinism failure
@@ -142,17 +213,18 @@ simplify_goal(Goal0, Goal, NestedContext0, InstMap0, !Common, !Info) :-
         ; Goal0CanLoopOrThrow = cannot_loop_or_throw
         )
     then
-        % Warn about this, unless the goal was an explicit `fail', call to
-        % `builtin.false/0' or  some goal containing `fail' or a call to
-        % `builtin.false/0'.
-
+        % Warn about this replacement, unless the goal either is, or contains,
+        % - an explicit `fail', or
+        % - a call to `builtin.false/0'.
         Context = goal_info_get_context(GoalInfo0),
         ( if
             simplify_do_warn_simple_code(!.Info),
             not (
-                goal_contains_goal(Goal0, SubGoal),
-                ( SubGoal = hlds_goal(disj([]), _)
-                ; goal_is_call_to_builtin_false(SubGoal)
+                some [SubGoal] (
+                    goal_contains_goal(Goal0, SubGoal),
+                    ( SubGoal = hlds_goal(disj([]), _)
+                    ; goal_is_call_to_builtin_false(SubGoal)
+                    )
                 )
             )
         then
@@ -182,7 +254,7 @@ simplify_goal(Goal0, Goal, NestedContext0, InstMap0, !Common, !Info) :-
         ),
         goal_cost(Goal0, CostDelta),
         simplify_info_incr_cost_delta(CostDelta, !Info),
-        Goal1 = fail_goal_with_context(Context)
+        Goal = fail_goal_with_context(Context)
     else if
         % If --no-fully-strict, replace goals which cannot fail and have
         % no output variables with `true'. However, we don't do this for
@@ -212,7 +284,7 @@ simplify_goal(Goal0, Goal, NestedContext0, InstMap0, !Common, !Info) :-
 % warnings. Sometimes predicate calls are used just to constrain the types,
 % to avoid type ambiguities or unbound type variables, and in such cases,
 % it is perfectly legitimate for a call to be det and to have no outputs.
-% There's no simple way of telling those cases from cases for which we
+% There is no simple way of telling those cases from cases for which we
 % really ought to warn.
 % XXX This hasn't really been true since we added `with_type`.
 %
@@ -254,65 +326,10 @@ simplify_goal(Goal0, Goal, NestedContext0, InstMap0, !Common, !Info) :-
         goal_cost(Goal0, CostDelta),
         simplify_info_incr_cost_delta(CostDelta, !Info),
         Context = goal_info_get_context(GoalInfo0),
-        Goal1 = true_goal_with_context(Context)
+        Goal = true_goal_with_context(Context)
     else
-        Goal1 = Goal0
-    ),
-
-    % Remove unnecessary explicit quantifications before working out
-    % whether the goal can cause a stack flush.
-
-    Goal1 = hlds_goal(GoalExpr1, GoalInfo1),
-    ( if GoalExpr1 = scope(Reason1, SomeGoal1) then
-        try_to_merge_nested_scopes(Reason1, SomeGoal1, GoalInfo1, Goal2)
-    else
-        Goal2 = Goal1
-    ),
-    ( if
-        simplify_do_elim_removable_scopes(!.Info),
-        Goal2 = hlds_goal(scope(Reason2, SomeGoal2), _GoalInfo2),
-        (
-            Reason2 = barrier(removable)
-        ;
-            Reason2 = from_ground_term(_, Kind),
-            Kind = from_ground_term_other
-        )
-    then
-        Goal3 = SomeGoal2
-    else
-        Goal3 = Goal2
-    ),
-    Goal3 = hlds_goal(GoalExpr3, GoalInfo3),
-    maybe_handle_stack_flush(before, GoalExpr3, !Common),
-    simplify_goal_expr(GoalExpr3, GoalExpr4, GoalInfo3, GoalInfo4,
-        NestedContext, InstMap0, !Common, !Info),
-    maybe_handle_stack_flush(after, GoalExpr4, !Common),
-    enforce_unreachability_invariant(GoalInfo4, GoalInfo, !Info),
-    trace [compile_time(flag("simplify_merge_switch")), io(!IO)] (
-        % If you want to debug one specific goal's transformation, then
-        % - add a goal feature to the goal at the point at which you decide
-        %   you want to debug it, and then
-        % - replace the semidet_fail here with a test for that feature.
-        ( if semidet_fail then
-            io.stderr_stream(StdErr, !IO),
-            simplify_info_get_module_info(!.Info, TraceModuleInfo),
-            simplify_info_get_var_table(!.Info, TraceVarTable),
-            simplify_info_get_tvarset(!.Info, TVarSet),
-            simplify_info_get_inst_varset(!.Info, InstVarSet),
-            TraceVarNameSrc = vns_var_table(TraceVarTable),
-
-            Goal5 = hlds_goal(GoalExpr4, GoalInfo),
-            io.write_string(StdErr, "\nMerge goal before\n\n", !IO),
-            dump_goal_nl(StdErr, TraceModuleInfo, TraceVarNameSrc,
-                TVarSet, InstVarSet, Goal0, !IO),
-            io.write_string(StdErr, "\nMerge goal after\n\n", !IO),
-            dump_goal_nl(StdErr, TraceModuleInfo, TraceVarNameSrc,
-                TVarSet, InstVarSet, Goal5, !IO)
-        else
-            true
-        )
-    ),
-    Goal = hlds_goal(GoalExpr4, GoalInfo).
+        Goal = Goal0
+    ).
 
 %----------------------------------------------------------------------------%
 
