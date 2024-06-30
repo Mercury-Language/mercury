@@ -153,7 +153,8 @@ describe_args_type_assign_source(ModuleInfo, Source) = Pieces :-
     ;
         Source = atas_cons(ConsSource),
         (
-            ConsSource = source_type(TypeCtor, ConsId),
+            ConsSource = source_type(TypeCtor, DuCtor),
+            ConsId = du_data_ctor(DuCtor),
             Pieces = [words("the functor"),
                 unqual_cons_id_and_maybe_arity(ConsId),
                 words("of the type constructor"), qual_type_ctor(TypeCtor)]
@@ -162,11 +163,12 @@ describe_args_type_assign_source(ModuleInfo, Source) = Pieces :-
             Pieces = [words("the builtin type constructor"),
                 quote(TypeCtorName)]
         ;
-            ConsSource = source_field_access(GetOrSet, TypeCtor, ConsId,
+            ConsSource = source_field_access(GetOrSet, TypeCtor, DuCtor,
                 FieldName),
             ( GetOrSet = get, GetOrSetStr = "get"
             ; GetOrSet = set, GetOrSetStr = "set"
             ),
+            ConsId = du_data_ctor(DuCtor),
             Pieces = [words("the"), quote(GetOrSetStr),
                 words("access function for the"), fixed(FieldName),
                 words("field of the"), unqual_cons_id_and_maybe_arity(ConsId),

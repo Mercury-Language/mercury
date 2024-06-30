@@ -450,25 +450,29 @@ add_arg_regs_in_pred_inst_info(ModuleInfo, Seen, ArgTypes, PredInstInfo0,
 
 add_arg_regs_in_bound_inst(ModuleInfo, Seen, Type, BoundInst0, BoundInst) :-
     BoundInst0 = bound_functor(ConsId, ArgInsts0),
-    ( if
-        get_cons_id_non_existential_arg_types(ModuleInfo, Type, ConsId,
-            ArgTypes)
-    then
-        (
-            ArgTypes = [],
-            % When a foreign type overrides a d.u. type, the inst may have
-            % arguments but the foreign type does not.
+    ( if ConsId = du_data_ctor(DuCtor) then
+        ( if
+            get_du_ctor_non_existential_arg_types(ModuleInfo, Type,
+                DuCtor, ArgTypes)
+        then
+            (
+                ArgTypes = [],
+                % When a foreign type overrides a d.u. type, the inst may have
+                % arguments but the foreign type does not.
+                ArgInsts = ArgInsts0
+            ;
+                ArgTypes = [_ | _],
+                list.map_corresponding(add_arg_regs_in_inst(ModuleInfo, Seen),
+                    ArgTypes, ArgInsts0, ArgInsts)
+            )
+        else
+            % XXX handle existentially typed cons_ids
+            trace [compile_time(flag("debug_float_regs"))] (
+                sorry($pred, "existentially typed cons_id")
+            ),
             ArgInsts = ArgInsts0
-        ;
-            ArgTypes = [_ | _],
-            list.map_corresponding(add_arg_regs_in_inst(ModuleInfo, Seen),
-                ArgTypes, ArgInsts0, ArgInsts)
         )
     else
-        % XXX handle existentially typed cons_ids
-        trace [compile_time(flag("debug_float_regs"))] (
-            sorry($pred, "existentially typed cons_id")
-        ),
         ArgInsts = ArgInsts0
     ),
     BoundInst = bound_functor(ConsId, ArgInsts).

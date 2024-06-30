@@ -219,7 +219,7 @@ execution_paths_covered_cases(ProcInfo, Switch, [Case | Cases], !ExecPaths) :-
     % Handle the unification on the switch var if it has been removed.
     % We add a dummy program point for this unification.
     (
-        MainConsId = cons(_SymName, Arity, _),
+        MainConsId = du_data_ctor(du_ctor(_SymName, Arity, _)),
         ( if Arity = 0 then
             append_to_each_execution_path(!.ExecPaths,
                 [[pair(ProgPoint, Switch)]], ExecPathsBeforeCase)

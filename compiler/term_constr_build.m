@@ -1190,7 +1190,8 @@ find_failure_constraint_for_goal_2(Info, Goal, AbstractGoal) :-
         type_to_ctor_det(Type, TypeCtor),
         ModuleInfo = Info ^ tti_module_info,
         type_util.type_constructors(ModuleInfo, Type, Constructors0),
-        ( if ConsId = cons(ConsName, ConsArity, ConsTypeCtor) then
+        ( if ConsId = du_data_ctor(DuCtor) then
+            DuCtor = du_ctor(ConsName, ConsArity, ConsTypeCtor),
             expect(unify(TypeCtor, ConsTypeCtor), $pred,
                 "mismatched type_ctors"),
             FindComplement =
@@ -1259,7 +1260,7 @@ bounds_on_var(Norm, ModuleInfo, TypeCtor, Var, Constructors, Polyhedron) :-
 
 lower_bound(Norm, ModuleInfo, TypeCtor, Constructor) = LowerBound :-
     Constructor = ctor(_, _, SymName, _Args, Arity, _),
-    ConsId = cons(SymName, Arity, TypeCtor),
+    ConsId = du_data_ctor(du_ctor(SymName, Arity, TypeCtor)),
     LowerBound = functor_lower_bound(ModuleInfo, Norm, TypeCtor, ConsId).
 
     % Given a variable, its type and a set of constructors to which it
@@ -1286,7 +1287,7 @@ upper_bound_constraints(Norm, ModuleInfo, Var, TypeCtor, Ctors, Constraints) :-
         =>
             zero_size_type(ModuleInfo, Arg ^ arg_type)
         ),
-        ConsId = cons(SymName, Arity, TypeCtor),
+        ConsId = du_data_ctor(du_ctor(SymName, Arity, TypeCtor)),
         Bound = functor_lower_bound(ModuleInfo, Norm, TypeCtor, ConsId),
         ( if Bound > !.B then !:B = Bound else true )
     ),

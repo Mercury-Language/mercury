@@ -451,7 +451,7 @@ bound_insts_to_pieces(Info, MaybeInline, HeadBoundInst, TailBoundInsts,
     ),
     HeadBoundInst = bound_functor(ConsId0, ArgInsts),
     ( if
-        ConsId0 = cons(SymName, Arity, TypeCtor),
+        ConsId0 = du_data_ctor(du_ctor(SymName, Arity, TypeCtor)),
         % The module names of the cons_ids are uniquely specified
         % by the types of the variables whose we are printing. Printing them
         % would therefore generate more clutter than enlightenment.
@@ -460,7 +460,7 @@ bound_insts_to_pieces(Info, MaybeInline, HeadBoundInst, TailBoundInsts,
         % a confusing error message, at least as of 2024 apr 30.
         SymName = qualified(_ModuleName, BaseName)
     then
-        ConsId = cons(unqualified(BaseName), Arity, TypeCtor)
+        ConsId = du_data_ctor(du_ctor(unqualified(BaseName), Arity, TypeCtor))
     else
         ConsId = ConsId0
     ),

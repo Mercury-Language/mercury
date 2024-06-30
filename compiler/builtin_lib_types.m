@@ -357,32 +357,32 @@ stm_dummy_output_type_ctor = type_ctor(Name, 0) :-
 
 %---------------------------------------------------------------------------%
 
-exception_succeeded_functor = cons(Name, 1, TypeCtor) :-
+exception_succeeded_functor = du_data_ctor(du_ctor(Name, 1, TypeCtor)) :-
     Name = qualified(mercury_exception_module, "succeeded"),
     TypeCtor = exception_result_type_ctor.
-exception_failed_functor = cons(Name, 0, TypeCtor) :-
+exception_failed_functor = du_data_ctor(du_ctor(Name, 0, TypeCtor)) :-
     Name = qualified(mercury_exception_module, "failed"),
     TypeCtor = exception_result_type_ctor.
-exception_exception_functor = cons(Name, 1, TypeCtor) :-
+exception_exception_functor = du_data_ctor(du_ctor(Name, 1, TypeCtor)) :-
     Name = qualified(mercury_exception_module, "exception"),
     TypeCtor = exception_result_type_ctor.
 
-stm_validres_valid_functor = cons(Name, 0, TypeCtor) :-
+stm_validres_valid_functor = du_data_ctor(du_ctor(Name, 0, TypeCtor)) :-
     Name = qualified(mercury_stm_builtin_module, "stm_transaction_valid"),
     TypeCtor = stm_valid_result_type_ctor.
-stm_validres_invalid_functor =  cons(Name, 0, TypeCtor) :-
+stm_validres_invalid_functor =  du_data_ctor(du_ctor(Name, 0, TypeCtor)) :-
     Name = qualified(mercury_stm_builtin_module, "stm_transaction_invalid"),
     TypeCtor = stm_valid_result_type_ctor.
 
-stm_rollback_exception_functor = cons(Name, 0, TypeCtor) :-
+stm_rollback_exception_functor = du_data_ctor(du_ctor(Name, 0, TypeCtor)) :-
     Name = qualified(mercury_stm_builtin_module,
         "rollback_invalid_transaction"),
     TypeCtor = stm_rollback_exception_type_ctor.
-stm_rollback_retry_functor = cons(Name, 0, TypeCtor) :-
+stm_rollback_retry_functor = du_data_ctor(du_ctor(Name, 0, TypeCtor)) :-
     Name = qualified(mercury_stm_builtin_module, "rollback_retry"),
     TypeCtor = stm_rollback_exception_type_ctor.
 
-stm_dummy_output_functor = cons(Name, 0, TypeCtor) :-
+stm_dummy_output_functor = du_data_ctor(du_ctor(Name, 0, TypeCtor)) :-
     Name = qualified(mercury_stm_builtin_module, "stm_dummy_output"),
     TypeCtor = stm_dummy_output_type_ctor.
 

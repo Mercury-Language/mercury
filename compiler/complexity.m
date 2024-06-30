@@ -372,9 +372,11 @@ complexity_process_proc(NumProcs, ProcNum, FullName, PredId,
 
     TSPB = mercury_term_size_prof_builtin_module,
     TypeCtor = type_ctor(qualified(TSPB, "complexity_is_active"), 0),
+    Inactive = du_ctor(qualified(TSPB, "is_inactive"), 0, TypeCtor),
+    Active = du_ctor(qualified(TSPB, "is_active"), 0, TypeCtor),
     SwitchArms = [
-        case(cons(qualified(TSPB, "is_inactive"), 0, TypeCtor), [], TransGoal),
-        case(cons(qualified(TSPB, "is_active"), 0, TypeCtor), [], OrigGoal)
+        case(du_data_ctor(Inactive), [], TransGoal),
+        case(du_data_ctor(Active), [], OrigGoal)
     ],
 
     SwitchExpr = switch(IsActiveVar, cannot_fail, SwitchArms),

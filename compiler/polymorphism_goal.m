@@ -524,18 +524,22 @@ polymorphism_process_unify_functor(X0, ConsId0, ArgVars0, Mode0, Unification0,
         % Check whether the functor had a "new " prefix.
         % If so, assume it is a construction, and strip off the prefix.
         % Otherwise, assume it is a deconstruction.
-        ConsId0 = cons(Functor0, Arity, ConsTypeCtor),
+        ConsId0 = du_data_ctor(DuCtor0),
+        DuCtor0 = du_ctor(Functor0, Arity, ConsTypeCtor),
         ( if remove_new_prefix(Functor0, OrigFunctor) then
-            ConsId = cons(OrigFunctor, Arity, ConsTypeCtor),
+            DuCtor = du_ctor(OrigFunctor, Arity, ConsTypeCtor),
+            ConsId = du_data_ctor(DuCtor),
             IsExistConstr = is_exist_constr
         else
             ConsId = ConsId0,
+            DuCtor = DuCtor0,
             IsExistConstr = is_not_exist_constr
         ),
 
         % Check whether the functor (with the "new " prefix removed)
         % is an existentially typed functor.
-        type_util.get_existq_cons_defn(ModuleInfo0, TypeOfX, ConsId, ConsDefn)
+        type_util.get_existq_cons_defn(ModuleInfo0, TypeOfX,
+            DuCtor, ConsDefn)
     then
         % Add extra arguments to the unification for the
         % type_info and/or type_class_info variables.

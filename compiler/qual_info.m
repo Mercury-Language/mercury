@@ -306,7 +306,8 @@ record_called_pred_or_func(PredOrFunc, SymName, UserArity, !QualInfo) :-
 :- pred record_used_functor(cons_id::in, qual_info::in, qual_info::out) is det.
 
 record_used_functor(ConsId, !QualInfo) :-
-    ( if ConsId = cons(SymName, Arity, _) then
+    ( if ConsId = du_data_ctor(DuCtor) then
+        DuCtor = du_ctor(SymName, Arity, _),
         Id = recomp_item_name(SymName, Arity),
         apply_to_recompilation_info(record_used_item(used_functor, Id, Id),
             !QualInfo)
@@ -336,7 +337,7 @@ construct_pred_or_func_call(PredId, PredOrFunc, SymName, ArgVars,
         pred_args_to_func_args(ArgVars, FuncArgVars, RetArgVar),
         list.length(FuncArgVars, Arity),
         TypeCtor = cons_id_dummy_type_ctor,
-        ConsId = cons(SymName, Arity, TypeCtor),
+        ConsId = du_data_ctor(du_ctor(SymName, Arity, TypeCtor)),
         Context = goal_info_get_context(GoalInfo),
         RHS = rhs_functor(ConsId, is_not_exist_constr, FuncArgVars),
         create_pure_atomic_complicated_unification(RetArgVar, RHS,

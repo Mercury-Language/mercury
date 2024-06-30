@@ -152,7 +152,7 @@ lookup_insert_const_struct(ConstStruct, ConstNum, !Db) :-
     ;
         Enabled = enable_const_struct_poly,
         ConstStruct = const_struct(ConsId, Args, Type, _Inst, DefinedWhere),
-        ( if ConsId = cons(SymName, _, _) then
+        ( if ConsId = du_data_ctor(du_ctor(SymName, _, _)) then
             Name = unqualify_name(SymName),
             ConsProxyStruct = cons_proxy_struct(Name, Args, ConsId, Type),
             const_struct_db_get_next_num(!.Db, NextConstNum),
@@ -238,7 +238,7 @@ delete_const_struct(ConstNum, !Db) :-
     const_struct_db_set_num_map(NumMap, !Db),
 
     ConstStruct = const_struct(ConsId, Args, Type, _Inst, _DefinedWhere),
-    ( if ConsId = cons(SymName, _, _) then
+    ( if ConsId = du_data_ctor(du_ctor(SymName, _, _)) then
         Name = unqualify_name(SymName),
         ConsProxyStruct = cons_proxy_struct(Name, Args, ConsId, Type),
         const_struct_db_get_cons_proxy_map(!.Db, ConsProxyMap0),

@@ -1116,10 +1116,12 @@ make_switch_goal(SwitchVar, DoRetryGoal, DoNotRetryGoal, SwitchGoal) :-
     SSDBModule = mercury_ssdb_builtin_module,
     RetryTypeSymName = qualified(SSDBModule, "ssdb_retry"),
     RetryTypeCtor = type_ctor(RetryTypeSymName, 0),
-    ConsIdDoRetry = cons(qualified(SSDBModule, "do_retry"), 0,
-        RetryTypeCtor),
-    ConsIdDoNotRetry = cons(qualified(SSDBModule, "do_not_retry"), 0,
-        RetryTypeCtor),
+    ConsIdDoRetry =
+        du_data_ctor(du_ctor(qualified(SSDBModule, "do_retry"),
+            0, RetryTypeCtor)),
+    ConsIdDoNotRetry =
+        du_data_ctor(du_ctor(qualified(SSDBModule, "do_not_retry"),
+            0, RetryTypeCtor)),
     CaseDoRetry = case(ConsIdDoRetry, [], DoRetryGoal),
     CaseDoNotRetry = case(ConsIdDoNotRetry, [], DoNotRetryGoal),
     SwitchGoalExpr = switch(SwitchVar, cannot_fail,
@@ -1231,7 +1233,8 @@ make_proc_id_construction(ModuleInfo, PredInfo, Goals, ProcIdVar, !VarTable) :-
     SSDBModule = mercury_ssdb_builtin_module,
     TypeCtor = type_ctor(qualified(SSDBModule, "ssdb_proc_id"), 0),
 
-    ConsId = cons(qualified(SSDBModule, "ssdb_proc_id"), 2, TypeCtor),
+    ConsId = du_data_ctor(du_ctor(qualified(SSDBModule, "ssdb_proc_id"),
+        2, TypeCtor)),
     construct_type(TypeCtor, [], ProcIdType),
     ProcIdVarEntry = vte("ProcId", ProcIdType, is_not_dummy_type),
     add_var_entry(ProcIdVarEntry, ProcIdVar, !VarTable),
@@ -1308,7 +1311,8 @@ make_arg_list(_Pos, _InstMap, [], _Renaming, OutVar, [Goal], !ModuleInfo,
     add_var_entry(OutVarEntry, OutVar, !VarTable),
     ListTypeSymName = qualified(mercury_list_module, "list"),
     ListTypeCtor = type_ctor(ListTypeSymName, 1),
-    ConsId = cons(qualified(mercury_list_module, "[]" ), 0, ListTypeCtor),
+    ConsId = du_data_ctor(du_ctor(qualified(mercury_list_module, "[]" ),
+        0, ListTypeCtor)),
     construct_functor(OutVar, ConsId, [], Goal).
 make_arg_list(Pos0, InstMap, [ProgVar | ProgVars], Renaming, OutVar, Goals,
         !ModuleInfo, !ProcInfo, !PredInfo, !VarTable, !BoundVarDescs) :-
@@ -1344,7 +1348,8 @@ make_arg_list(Pos0, InstMap, [ProgVar | ProgVars], Renaming, OutVar, Goals,
         add_var_entry(OutVarEntry, OutVar, !VarTable),
         ListTypeSymName = qualified(mercury_list_module, "list"),
         ListTypeCtor = type_ctor(ListTypeSymName, 1),
-        ConsId = cons(qualified(unqualified("list"), "[|]" ), 2, ListTypeCtor),
+        ConsId = du_data_ctor(du_ctor(qualified(unqualified("list"), "[|]" ),
+            2, ListTypeCtor)),
         construct_functor(OutVar, ConsId, [VarDesc, OutVar0], Goal),
 
         %XXX Optimize me: repeated appends are slow.
@@ -1408,8 +1413,9 @@ make_var_value(InstMap, VarToInspect, Renaming, VarDesc, VarPos, Goals,
 
         proc_info_get_var_table(!.ProcInfo, !:VarTable),
         % Constructor of the variable's description.
-        ConsId = cons(qualified(SSDBModule, "bound_head_var"), 3,
-            VarValueTypeCtor),
+        ConsId = du_data_ctor(du_ctor(
+            qualified(SSDBModule, "bound_head_var"), 3,
+            VarValueTypeCtor)),
 
         % Renaming contains the names of all instantiated arguments
         % during the execution of the procedure's body.
@@ -1435,8 +1441,9 @@ make_var_value(InstMap, VarToInspect, Renaming, VarDesc, VarPos, Goals,
             [ConstructVarGoal],
         map.det_insert(VarToInspect, VarDesc, !BoundVarDescs)
     else
-        ConsId = cons(qualified(SSDBModule, "unbound_head_var"), 2,
-            VarValueTypeCtor),
+        ConsId = du_data_ctor(du_ctor(
+            qualified(SSDBModule, "unbound_head_var"), 2,
+            VarValueTypeCtor)),
         construct_functor(VarDesc, ConsId, [VarNameVar, VarPosVar],
             ConstructVarGoal),
 
@@ -1457,7 +1464,7 @@ deep_cons_id = ssdb_tracing_level_cons_id("deep").
 
 ssdb_tracing_level_cons_id(Level) = Cons :-
     DataCtor = qualified(mercury_ssdb_builtin_module, Level),
-    Cons = cons(DataCtor, 0, ssdb_tracing_level_type_ctor).
+    Cons = du_data_ctor(du_ctor(DataCtor, 0, ssdb_tracing_level_type_ctor)).
 
 :- func ssdb_tracing_level_type_ctor = type_ctor.
 

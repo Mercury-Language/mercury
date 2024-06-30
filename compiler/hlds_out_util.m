@@ -426,7 +426,7 @@ unify_sub_contexts_to_pieces(!First, [SubContext | SubContexts],
 contexts_describe_list_element([SubContext | SubContexts],
         NumElementsBefore, ElementNum, AfterContexts) :-
     SubContext = unify_sub_context(ConsId, ArgNum),
-    ConsId = cons(Functor, 2, _TypeCtor),
+    ConsId = du_data_ctor(du_ctor(Functor, 2, _TypeCtor)),
     % We ignore _TypeCtor since it may not have been set yet.
     (
         Functor = unqualified("[|]")
@@ -670,7 +670,7 @@ qualified_functor_with_term_args_to_string(VarNameSrc, VarNamePrint,
 functor_cons_id_to_string(ModuleInfo, VarNameSrc, VarNamePrint,
         ConsId, ArgVars) = Str :-
     (
-        ConsId = cons(SymName, _, _),
+        ConsId = du_data_ctor(du_ctor(SymName, _, _)),
         (
             SymName = qualified(Module, Name),
             Str = qualified_functor_to_string(VarNameSrc, VarNamePrint,
@@ -714,8 +714,8 @@ functor_cons_id_to_string(ModuleInfo, VarNameSrc, VarNamePrint,
         PredModule = pred_info_module(PredInfo),
         PredName = pred_info_name(PredInfo),
         PredSymName = qualified(PredModule, PredName),
-        PredConsId = cons(PredSymName, list.length(ArgVars),
-            cons_id_dummy_type_ctor),
+        PredConsId = du_data_ctor(du_ctor(PredSymName, list.length(ArgVars),
+            cons_id_dummy_type_ctor)),
         Str = functor_cons_id_to_string(ModuleInfo, VarNameSrc, VarNamePrint,
             PredConsId, ArgVars)
     ;
@@ -775,7 +775,7 @@ functor_cons_id_to_string(ModuleInfo, VarNameSrc, VarNamePrint,
 cons_id_and_vars_or_arity_to_string(VarTable, Qual, ConsId, MaybeArgVars)
         = String :-
     (
-        ConsId = cons(SymName0, Arity, _TypeCtor),
+        ConsId = du_data_ctor(du_ctor(SymName0, Arity, _TypeCtor)),
         (
             Qual = qualify_cons_id,
             SymName = SymName0

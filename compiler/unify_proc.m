@@ -695,7 +695,8 @@ generate_du_unify_case(SpecDefnInfo, UCOptions, X, Y, CtorRepn, Goal, !Info) :-
     ( if TypeCtor = type_ctor(unqualified("{}"), _) then
         FunctorConsId = tuple_cons(FunctorArity)
     else
-        FunctorConsId = cons(FunctorName, FunctorArity, TypeCtor)
+        FunctorConsId =
+            du_data_ctor(du_ctor(FunctorName, FunctorArity, TypeCtor))
     ),
     Context = SpecDefnInfo ^ spdi_context,
     compute_exist_constraint_implications(MaybeExistConstraints, ExistQTVars,
@@ -1653,7 +1654,7 @@ generate_compare_du_quad_outer_switch_arms(SpecDefnInfo, UCOptions,
 ctor_repn_to_cons_id(TypeCtor, CtorRepn) = ConsId :-
     CtorRepn = ctor_repn(_Ordinal, _MaybeExistConstraints, FunctorName,
         _ConsTag, _ArgRepns, FunctorArity, _Ctxt),
-    ConsId = cons(FunctorName, FunctorArity, TypeCtor).
+    ConsId = du_data_ctor(du_ctor(FunctorName, FunctorArity, TypeCtor)).
 
 %---------------------%
 
@@ -1827,7 +1828,7 @@ generate_compare_case(SpecDefnInfo, UCOptions, ConsIdsMatch, CtorRepn,
     CtorRepn = ctor_repn(_Ordinal, MaybeExistConstraints, FunctorName,
         ConsTag, ArgRepns, FunctorArity, _Ctxt),
     TypeCtor = SpecDefnInfo ^ spdi_type_ctor,
-    FunctorConsId = cons(FunctorName, FunctorArity, TypeCtor),
+    FunctorConsId = du_data_ctor(du_ctor(FunctorName, FunctorArity, TypeCtor)),
     Context = SpecDefnInfo ^ spdi_context,
     (
         ArgRepns = [],
@@ -2682,7 +2683,7 @@ generate_index_du_case(SpecDefnInfo, X, Index, CtorRepn, Goal, !N, !Info) :-
     CtorRepn = ctor_repn(_Ordinal, MaybeExistConstraints, FunctorName,
         _ConsTag, ArgRepns, FunctorArity, _Ctxt),
     TypeCtor = SpecDefnInfo ^ spdi_type_ctor,
-    FunctorConsId = cons(FunctorName, FunctorArity, TypeCtor),
+    FunctorConsId = du_data_ctor(du_ctor(FunctorName, FunctorArity, TypeCtor)),
     make_fresh_vars_for_cons_args(ArgRepns, MaybeExistConstraints, ArgVars,
         !Info),
     Context = SpecDefnInfo ^ spdi_context,
@@ -2876,8 +2877,10 @@ compare_type_ctor = TypeCtor :-
 
 :- func compare_cons_id(string) = cons_id.
 
-compare_cons_id(Name) = cons(SymName, 0, compare_type_ctor) :-
-    SymName = qualified(mercury_public_builtin_module, Name).
+compare_cons_id(Name) = ConsId :-
+    SymName = qualified(mercury_public_builtin_module, Name),
+    DuCtor = du_ctor(SymName, 0, compare_type_ctor),
+    ConsId = du_data_ctor(DuCtor).
 
 :- func compare_functor(string) = unify_rhs.
 

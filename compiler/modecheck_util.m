@@ -213,6 +213,7 @@
 :- import_module check_hlds.type_util.
 :- import_module parse_tree.prog_mode.
 :- import_module parse_tree.prog_type.
+:- import_module parse_tree.prog_util.
 :- import_module parse_tree.set_of_var.
 :- import_module parse_tree.var_table.
 
@@ -898,8 +899,12 @@ modecheck_functors_test(Var, MainConsId, OtherConsIds, !ModeInfo) :-
 :- func cons_id_to_bound_inst(module_info, mer_type, cons_id) = bound_inst.
 
 cons_id_to_bound_inst(ModuleInfo, Type, ConsId) = BoundInst :-
-    ConsIdAdjustedArity = cons_id_adjusted_arity(ModuleInfo, Type, ConsId),
-    list.duplicate(ConsIdAdjustedArity, free, ArgInsts),
+    ( if ConsId = du_data_ctor(DuCtor) then
+        ConsIdArity = du_ctor_adjusted_arity(ModuleInfo, Type, DuCtor)
+    else
+        ConsIdArity = cons_id_arity(ConsId)
+    ),
+    list.duplicate(ConsIdArity, free, ArgInsts),
     BoundInst = bound_functor(ConsId, ArgInsts).
 
 %-----------------------------------------------------------------------------%

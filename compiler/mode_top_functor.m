@@ -101,7 +101,7 @@ find_top_functor_mode_loop_over_notags(ModuleInfo, Type, ContainingTypes,
         % functor's argument, so we figure out the mode and type of the
         % argument, and then recurse.
 
-        ConsId = cons(FunctorName, 1, TypeCtor),
+        ConsId = du_data_ctor(du_ctor(FunctorName, 1, TypeCtor)),
         get_single_arg_inst(ModuleInfo, InitialInst, ConsId, InitialArgInst),
         get_single_arg_inst(ModuleInfo, FinalInst, ConsId, FinalArgInst),
         find_top_functor_mode_loop_over_notags(ModuleInfo,

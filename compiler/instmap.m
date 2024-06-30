@@ -410,6 +410,7 @@
 :- import_module check_hlds.inst_test.
 :- import_module check_hlds.mode_util.
 :- import_module check_hlds.type_util.
+:- import_module parse_tree.prog_util.
 
 :- import_module int.
 :- import_module maybe.
@@ -892,7 +893,11 @@ bind_var_to_functors(Var, Type, MainConsId, OtherConsIds,
     mer_inst::in, mer_inst::out, module_info::in, module_info::out) is det.
 
 bind_inst_to_functor(Type, ConsId, !Inst, !ModuleInfo) :-
-    Arity = cons_id_adjusted_arity(!.ModuleInfo, Type, ConsId),
+    ( if ConsId = du_data_ctor(DuCtor) then
+        Arity = du_ctor_adjusted_arity(!.ModuleInfo, Type, DuCtor)
+    else
+        Arity = cons_id_arity(ConsId)
+    ),
     list.duplicate(Arity, is_dead, ArgLives),
     list.duplicate(Arity, free, ArgInsts),
     ( if

@@ -14,7 +14,8 @@ coerce_recursive_type.m:051:   `bad2(in(coerce_recursive_type.cons_apple3)) =
 coerce_recursive_type.m:051:   out':
 coerce_recursive_type.m:051:   in coerce expression:
 coerce_recursive_type.m:051:   mode error: in the coerced term:
-coerce_recursive_type.m:051:   in the first argument of function symbol `cons':
+coerce_recursive_type.m:051:   in the first argument of function symbol
+coerce_recursive_type.m:051:   `cons'/2:
 coerce_recursive_type.m:051:   cannot convert the [38;5;87mcoerced subterm[39;49m from type
 coerce_recursive_type.m:051:   `coerce_recursive_type.fruit' to
 coerce_recursive_type.m:051:   `coerce_recursive_type.citrus' because it has
@@ -44,13 +45,14 @@ coerce_recursive_type.m:058:   out':
 coerce_recursive_type.m:058:   in coerce expression:
 coerce_recursive_type.m:058:   mode error: in the coerced term:
 coerce_recursive_type.m:058:   in the second argument of function symbol
-coerce_recursive_type.m:058:   `cons':
+coerce_recursive_type.m:058:   `cons'/2:
 coerce_recursive_type.m:058:   in the second argument of function symbol
-coerce_recursive_type.m:058:   `cons':
-coerce_recursive_type.m:058:   in the first argument of function symbol `cons':
+coerce_recursive_type.m:058:   `cons'/2:
+coerce_recursive_type.m:058:   in the first argument of function symbol
+coerce_recursive_type.m:058:   `cons'/2:
 coerce_recursive_type.m:058:   cannot convert the [38;5;87mcoerced subterm[39;49m from type
 coerce_recursive_type.m:058:   `coerce_recursive_type.citrus' to
 coerce_recursive_type.m:058:   `coerce_recursive_type.fruit' because the
 coerce_recursive_type.m:058:   following function symbol in the input term's
 coerce_recursive_type.m:058:   instantiatedness is [38;5;203mnot part of the input type:[39;49m
-coerce_recursive_type.m:058:     [38;5;203m`coerce_recursive_type.apple'.[39;49m
+coerce_recursive_type.m:058:     [38;5;203m`coerce_recursive_type.apple'/0.[39;49m

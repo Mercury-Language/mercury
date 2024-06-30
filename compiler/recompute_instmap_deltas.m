@@ -639,7 +639,7 @@ pair_arg_vars_with_rhs_insts([RHSVar | RHSVars], [UnifyMode | UnifyModes],
 
 cons_id_to_shared_inst(ModuleInfo, ConsId, NumArgs) = MaybeInst :-
     (
-        ( ConsId = cons(_, _, _)
+        ( ConsId = du_data_ctor(_)
         ; ConsId = tuple_cons(_)
         ),
         MaybeInst = no

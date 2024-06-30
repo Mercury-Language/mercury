@@ -1093,10 +1093,10 @@ format_unify_rhs_2(InfoGoal, Indent, MaybeType, RHS, !State) :-
         RHS = rhs_functor(ConsId0, IsExistConstruct, ArgVars),
         ( if
             IsExistConstruct = is_exist_constr,
-            ConsId0 = cons(SymName0, Arity, TypeCtor)
+            ConsId0 = du_data_ctor(du_ctor(SymName0, Arity, TypeCtor))
         then
             add_new_prefix(SymName0, SymName),
-            ConsId = cons(SymName, Arity, TypeCtor)
+            ConsId = du_data_ctor(du_ctor(SymName, Arity, TypeCtor))
         else
             ConsId = ConsId0
         ),
@@ -1211,10 +1211,10 @@ unify_rhs_to_string(ModuleInfo, VarTable, VarNamePrint, RHS) = Str :-
         RHS = rhs_functor(ConsId0, IsExistConstruct, ArgVars),
         ( if
             IsExistConstruct = is_exist_constr,
-            ConsId0 = cons(SymName0, Arity, TypeCtor)
+            ConsId0 = du_data_ctor(du_ctor(SymName0, Arity, TypeCtor))
         then
             add_new_prefix(SymName0, SymName),
-            ConsId = cons(SymName, Arity, TypeCtor)
+            ConsId = du_data_ctor(du_ctor(SymName, Arity, TypeCtor))
         else
             ConsId = ConsId0
         ),
@@ -1256,7 +1256,7 @@ write_unification(InfoGoal, Indent, Unification, !State) :-
         Info = InfoGoal ^ hoig_out_info,
         DumpOptions = Info ^ hoi_dump_hlds_options,
         ( if string.contains_char(DumpOptions, 'u') then
-            ( if ConsId = cons(_, _, TypeCtor) then
+            ( if ConsId = du_data_ctor(du_ctor(_, _, TypeCtor)) then
                 TypeCtor = type_ctor(TypeCtorSymName, TypeCtorArity),
                 TypeCtorSymNameStr = sym_name_to_string(TypeCtorSymName),
                 string.builder.format("%s%% cons_id type_ctor: %s/%d\n",

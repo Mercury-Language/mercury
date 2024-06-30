@@ -236,10 +236,11 @@
             ).
 
 :- type cons_type_info_source
-    --->    source_type(type_ctor, cons_id)
+    --->    source_type(type_ctor, du_ctor)
     ;       source_builtin_type(string)
-    ;       source_field_access(field_access_type, type_ctor, cons_id, string)
-            % get or set, type, cons_id, field name
+    ;       source_field_access(field_access_type, type_ctor, du_ctor,
+                string)
+            % get or set, type, user cons_id, field name
     ;       source_apply(string)
     ;       source_pred(pred_id).
 

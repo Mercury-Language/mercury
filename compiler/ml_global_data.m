@@ -748,7 +748,7 @@ ml_gen_alloc_site(ProcLabel, MaybeConsId, Size, Context, AllocId,
 
 cons_id_to_alloc_site_string(ConsId) = TypeStr :-
     (
-        ConsId = cons(_, _, TypeCtor),
+        ConsId = du_data_ctor(du_ctor(_, _, TypeCtor)),
         TypeStr = type_ctor_to_string(TypeCtor)
     ;
         ConsId = tuple_cons(Arity),

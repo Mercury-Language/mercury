@@ -76,6 +76,11 @@
 
 %---------------------%
 
+    % This type's definition has the same shape as du_ctor,
+    % but it may need to be updated in the future.
+:- type cons_ctor
+    --->    cons_ctor(sym_name, arity, type_ctor).
+
     % A resolved_functor_set records all possible matches
     % for each functor application.
 :- type resolved_functor_set == resolved_item_set(set(resolved_functor)).

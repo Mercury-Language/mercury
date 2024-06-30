@@ -1052,10 +1052,11 @@ add_type_defn_ctor(Ctor, TypeCtor, TypeCtorModuleName, TVarSet,
     BaseName = unqualify_name(Name),
     QualifiedName = qualified(TypeCtorModuleName, BaseName),
     UnqualifiedName = unqualified(BaseName),
-    QualifiedConsIdA = cons(QualifiedName, Arity, TypeCtor),
-    QualifiedConsIdB = cons(QualifiedName, Arity, cons_id_dummy_type_ctor),
-    UnqualifiedConsIdA = cons(UnqualifiedName, Arity, TypeCtor),
-    UnqualifiedConsIdB = cons(UnqualifiedName, Arity, cons_id_dummy_type_ctor),
+    DummyTypeCtor = cons_id_dummy_type_ctor,
+    QualifiedDuA =   du_ctor(QualifiedName,   Arity, TypeCtor),
+    QualifiedDuB =   du_ctor(QualifiedName,   Arity, DummyTypeCtor),
+    UnqualifiedDuA = du_ctor(UnqualifiedName, Arity, TypeCtor),
+    UnqualifiedDuB = du_ctor(UnqualifiedName, Arity, DummyTypeCtor),
 
     ConsDefn = hlds_cons_defn(TypeCtor, TVarSet, TypeParams, KindMap,
         MaybeExistConstraints, Args, Context),
@@ -1065,12 +1066,13 @@ add_type_defn_ctor(Ctor, TypeCtor, TypeCtorModuleName, TVarSet,
     % Check that there is at most one definition of a given cons_id
     % in each type.
     ( if
-        search_cons_table(!.ConsTable, QualifiedConsIdA, QualifiedConsDefnsA),
+        search_cons_table(!.ConsTable, QualifiedDuA, QualifiedConsDefnsA),
         some [OtherConsDefn] (
             list.member(OtherConsDefn, QualifiedConsDefnsA),
             OtherConsDefn ^ cons_type_ctor = TypeCtor
         )
     then
+        QualifiedConsIdA = du_data_ctor(QualifiedDuA),
         Pieces = [words("Error: the function symbol")] ++
             color_as_subject(
                 [unqual_cons_id_and_maybe_arity(QualifiedConsIdA)]) ++
@@ -1081,67 +1083,66 @@ add_type_defn_ctor(Ctor, TypeCtor, TypeCtorModuleName, TVarSet,
         Spec = spec($pred, severity_error, phase_pt2h, Context, Pieces),
         !:Specs = [Spec | !.Specs]
     else
-        some [!OtherConsIds] (
+        some [!OtherDus] (
             % Schedule the addition of the fully qualified cons_id
             % into the cons_table.
-            MainConsId = QualifiedConsIdA,
-            !:OtherConsIds = [QualifiedConsIdB],
+            MainDu = QualifiedDuA,
+            !:OtherDus = [QualifiedDuB],
 
             % Schedule the addition of the unqualified version of the cons_id
             % to the cons_table, if appropriate.
             (
                 NeedQual = may_be_unqualified,
-                !:OtherConsIds =
-                    [UnqualifiedConsIdA, UnqualifiedConsIdB | !.OtherConsIds]
+                !:OtherDus =
+                    [UnqualifiedDuA, UnqualifiedDuB | !.OtherDus]
             ;
                 NeedQual = must_be_qualified
             ),
 
             % Schedule the partially qualified versions of the cons_id.
             list.foldl(add_ctor_to_list(TypeCtor, BaseName, Arity),
-                PartialQuals, !OtherConsIds),
+                PartialQuals, !OtherDus),
 
             % Do the scheduled additions.
-            insert_into_cons_table(MainConsId, !.OtherConsIds, ConsDefn,
-                !ConsTable)
+            insert_into_cons_table(MainDu, !.OtherDus, ConsDefn, !ConsTable)
         )
     ),
 
     FieldNames = list.map(func(C) = C ^ arg_field_name, Args),
     FirstField = 1,
     add_ctor_field_names(FieldNames, NeedQual, PartialQuals, TypeCtor,
-        QualifiedConsIdA, TypeStatus, FirstField, !FieldNameTable, !Specs).
+        QualifiedDuA, TypeStatus, FirstField, !FieldNameTable, !Specs).
 
 :- pred add_ctor_to_list(type_ctor::in, string::in, int::in, module_name::in,
-    list(cons_id)::in, list(cons_id)::out) is det.
+    list(du_ctor)::in, list(du_ctor)::out) is det.
 
-add_ctor_to_list(TypeCtor, ConsName, Arity, ModuleQual, !ConsIds) :-
-    ConsIdA = cons(qualified(ModuleQual, ConsName), Arity, TypeCtor),
-    ConsIdB = cons(qualified(ModuleQual, ConsName), Arity,
+add_ctor_to_list(TypeCtor, ConsName, Arity, ModuleQual, !DuCtors) :-
+    DuA = du_ctor(qualified(ModuleQual, ConsName), Arity, TypeCtor),
+    DuB = du_ctor(qualified(ModuleQual, ConsName), Arity,
         cons_id_dummy_type_ctor),
-    !:ConsIds = [ConsIdA, ConsIdB | !.ConsIds].
+    !:DuCtors = [DuA, DuB | !.DuCtors].
 
 :- pred add_ctor_field_names(list(maybe(ctor_field_name))::in,
-    need_qualifier::in, list(module_name)::in, type_ctor::in, cons_id::in,
-    type_status::in, int::in,
+    need_qualifier::in, list(module_name)::in, type_ctor::in,
+    du_ctor::in, type_status::in, int::in,
     ctor_field_table::in, ctor_field_table::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
 add_ctor_field_names([], _, _, _, _, _, _, !FieldNameTable, !Specs).
 add_ctor_field_names([MaybeCtorFieldName | MaybeCtorFieldNames], NeedQual,
-        PartialQuals, TypeCtor, ConsId, TypeStatus,
+        PartialQuals, TypeCtor, DuCtor, TypeStatus,
         FieldNumber, !FieldNameTable, !Specs) :-
     (
         MaybeCtorFieldName = yes(ctor_field_name(FieldName, FieldNameContext)),
         FieldDefn = hlds_ctor_field_defn(FieldNameContext, TypeStatus,
-            TypeCtor, ConsId, FieldNumber),
+            TypeCtor, DuCtor, FieldNumber),
         add_ctor_field_name(FieldName, FieldDefn, NeedQual, PartialQuals,
             !FieldNameTable, !Specs)
     ;
         MaybeCtorFieldName = no
     ),
     add_ctor_field_names(MaybeCtorFieldNames, NeedQual, PartialQuals, TypeCtor,
-        ConsId, TypeStatus, FieldNumber + 1, !FieldNameTable, !Specs).
+        DuCtor, TypeStatus, FieldNumber + 1, !FieldNameTable, !Specs).
 
 :- pred add_ctor_field_name(sym_name::in, hlds_ctor_field_defn::in,
     need_qualifier::in, list(module_name)::in,

@@ -995,7 +995,7 @@ check_var_functor_unify_purity(Info, GoalInfo, Var, ConsId, ArgVars, Specs) :-
     pred_info_get_markers(PredInfo, CallerMarkers),
     Context = goal_info_get_context(GoalInfo),
     ( if
-        ConsId = cons(PName, _, _),
+        ConsId = du_data_ctor(du_ctor(PName, _, _)),
         type_is_higher_order_details(TypeOfVar, TypePurity, PredOrFunc,
             VarArgTypes)
     then

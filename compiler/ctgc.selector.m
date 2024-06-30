@@ -103,7 +103,6 @@
 :- import_module queue.
 :- import_module require.
 :- import_module set.
-:- import_module solutions.
 
 %---------------------------------------------------------------------------%
 
@@ -111,7 +110,7 @@ top_selector = [].
 
 selector_init(ConsId, Index) = [TermSel] :-
     (
-        ( ConsId = cons(_, _, _)
+        ( ConsId = du_data_ctor(_)
         ; ConsId = tuple_cons(_)
         ),
         TermSel = termsel(ConsId, Index)
@@ -345,10 +344,9 @@ type_contains_subtype_2(ModuleInfo, ToType, !Queue, !SeenTypes, Contains) :-
     specified([promise_implied, value, output])]).
 
 type_arg_types(ModuleInfo, Type, ArgTypes) :-
-    solutions(
-        ( pred(ConsIdArgTypes::out) is nondet :-
-            cons_id_arg_types(ModuleInfo, Type, _ConsId, ConsIdArgTypes)
-        ), ArgTypesLists),
+    all_du_ctor_arg_types(ModuleInfo, Type, NameArityArgTypesLists),
+    ArgTypesLists =
+        list.map((func({_N, _A, ATL}) = ATL), NameArityArgTypesLists),
     list.condense(ArgTypesLists, ArgTypes).
 
 type_of_node(ModuleInfo, StartType, Selector, SubType) :-
@@ -366,15 +364,15 @@ type_of_node(ModuleInfo, StartType, Selector, SubType) :-
         SubType = StartType
     ).
 
-    % select_subtype(ModuleInfo, Type, ConsID, Position) = SubType.
+    % select_subtype(ModuleInfo, Type, ConsId, Position) = SubType.
     % Determine the type of the type node selected from the type tree Type,
     % selecting the specific constructor (ConsId), at position Position.
     % Position counts starting from 1.
     %
 :- func det_select_subtype(module_info, mer_type, cons_id, int) = mer_type.
 
-det_select_subtype(ModuleInfo, Type, ConsID, Position) = SubType :-
-    ( if select_subtype(ModuleInfo, Type, ConsID, Position, SubType0) then
+det_select_subtype(ModuleInfo, Type, ConsId, Position) = SubType :-
+    ( if select_subtype(ModuleInfo, Type, ConsId, Position, SubType0) then
         SubType = SubType0
     else
         throw(encounter_existential_subtype)
@@ -383,14 +381,15 @@ det_select_subtype(ModuleInfo, Type, ConsID, Position) = SubType :-
 :- pred select_subtype(module_info::in, mer_type::in, cons_id::in, int::in,
     mer_type::out) is semidet.
 
-select_subtype(ModuleInfo, Type, ConsID, Position, SubType) :-
+select_subtype(ModuleInfo, Type, ConsId, Position, SubType) :-
     ( if
-        get_cons_id_non_existential_arg_types(ModuleInfo, Type, ConsID,
+        get_cons_id_non_existential_arg_types(ModuleInfo, Type, ConsId,
             ArgTypes)
     then
         SubType = list.det_index1(ArgTypes, Position)
     else if
-        get_existq_cons_defn(ModuleInfo, Type, ConsID, CtorDefn)
+        ConsId = du_data_ctor(DuCtor),
+        get_existq_cons_defn(ModuleInfo, Type, DuCtor, CtorDefn)
     then
         CtorDefn = ctor_defn(_TVarSet, _KindMap, MaybeExistConstraints,
             ArgTypes, _RetType),

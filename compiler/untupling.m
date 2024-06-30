@@ -772,7 +772,7 @@ expand_type(Type, ContainerTypes, TypeTable, Expansion) :-
         not list.member(Type, ContainerTypes)
     then
         Arity = list.length(SingleCtorArgs),
-        ConsId = cons(SingleCtorName, Arity, TypeCtor),
+        ConsId = du_data_ctor(du_ctor(SingleCtorName, Arity, TypeCtor)),
         ExpandedTypes = list.map(func(C) = C ^ arg_type, SingleCtorArgs),
         Expansion = expansion(ConsId, ExpandedTypes)
     else

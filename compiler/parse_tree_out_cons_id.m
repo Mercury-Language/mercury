@@ -73,6 +73,11 @@
 :- func cons_id_and_arity_to_string(cons_id) = string.
 :- func unqual_cons_id_and_arity_to_string(cons_id) = string.
 
+:- func maybe_quoted_du_ctor_and_arity_to_string(du_ctor)
+    = string.
+:- func du_ctor_and_arity_to_string(du_ctor) = string.
+:- func unqual_du_ctor_and_arity_to_string(du_ctor) = string.
+
 :- pred int_const_to_string_and_suffix(some_int_const::in,
     string::out, string::out) is det.
 
@@ -108,7 +113,7 @@ mercury_output_cons_id(Lang, NeedsBrackets, ConsId, Stream, !IO) :-
 
 mercury_format_cons_id(Lang, NeedsBrackets, ConsId, S, !U) :-
     (
-        ConsId = cons(Name, _, _),
+        ConsId = du_data_ctor(du_ctor(Name, _, _)),
         (
             NeedsBrackets = needs_brackets,
             mercury_format_bracketed_sym_name(Name, S, !U)
@@ -235,16 +240,32 @@ mercury_format_cons_id(Lang, NeedsBrackets, ConsId, S, !U) :-
 %---------------------------------------------------------------------------%
 
 maybe_quoted_cons_id_and_arity_to_string(ConsId) =
-    cons_id_and_arity_to_string_maybe_quoted(dont_mangle_cons, quote_cons,
-        dont_strip_qual, ConsId).
+    cons_id_and_arity_to_string_maybe_quoted(dont_mangle_cons,
+        quote_cons, dont_strip_qual, ConsId).
 
 cons_id_and_arity_to_string(ConsId) =
-    cons_id_and_arity_to_string_maybe_quoted(mangle_cons, dont_quote_cons,
-        dont_strip_qual, ConsId).
+    cons_id_and_arity_to_string_maybe_quoted(mangle_cons,
+        dont_quote_cons, dont_strip_qual, ConsId).
 
 unqual_cons_id_and_arity_to_string(ConsId) =
-    cons_id_and_arity_to_string_maybe_quoted(mangle_cons, dont_quote_cons,
-        strip_qual, ConsId).
+    cons_id_and_arity_to_string_maybe_quoted(mangle_cons,
+        dont_quote_cons, strip_qual, ConsId).
+
+%---------------------%
+
+maybe_quoted_du_ctor_and_arity_to_string(DuCtor) =
+    du_ctor_and_arity_to_string_maybe_quoted(dont_mangle_cons,
+        quote_cons, dont_strip_qual, DuCtor).
+
+du_ctor_and_arity_to_string(DuCtor) =
+    du_ctor_and_arity_to_string_maybe_quoted(mangle_cons,
+        dont_quote_cons, dont_strip_qual, DuCtor).
+
+unqual_du_ctor_and_arity_to_string(DuCtor) =
+    du_ctor_and_arity_to_string_maybe_quoted(mangle_cons,
+        dont_quote_cons, strip_qual, DuCtor).
+
+%---------------------%
 
 :- type maybe_quote_cons
     --->    dont_quote_cons
@@ -264,44 +285,9 @@ unqual_cons_id_and_arity_to_string(ConsId) =
 cons_id_and_arity_to_string_maybe_quoted(MangleCons, QuoteCons, StripQual,
         ConsId) = String :-
     (
-        ConsId = cons(SymName, Arity, _TypeCtor),
-        (
-            StripQual = dont_strip_qual,
-            SymNameString0 = sym_name_to_string(SymName)
-        ;
-            StripQual = strip_qual,
-            SymNameString0 = unqualify_name(SymName)
-        ),
-        (
-            MangleCons = dont_mangle_cons,
-            SymNameString = SymNameString0
-        ;
-            MangleCons = mangle_cons,
-            ( if string.contains_char(SymNameString0, '*') then
-                % We need to protect against the * appearing next to a /.
-                Stuff =
-                    ( pred(Char::in, Str0::in, Str::out) is det :-
-                        ( if Char = ('*') then
-                            string.append(Str0, "star", Str)
-                        else
-                            string.char_to_string(Char, CharStr),
-                            string.append(Str0, CharStr, Str)
-                        )
-                    ),
-                string.foldl(Stuff, SymNameString0, "", SymNameString1)
-            else
-                SymNameString1 = SymNameString0
-            ),
-            SymNameString = term_io.escaped_string(SymNameString1)
-        ),
-        string.int_to_string(Arity, ArityString),
-        (
-            QuoteCons = dont_quote_cons,
-            String = SymNameString ++ "/" ++ ArityString
-        ;
-            QuoteCons = quote_cons,
-            String = "`" ++ SymNameString ++ "'/" ++ ArityString
-        )
+        ConsId = du_data_ctor(DuCtor),
+        String = du_ctor_and_arity_to_string_maybe_quoted(MangleCons,
+            QuoteCons, StripQual, DuCtor)
     ;
         ConsId = tuple_cons(Arity),
         String = "{}/" ++ string.int_to_string(Arity)
@@ -373,6 +359,50 @@ cons_id_and_arity_to_string_maybe_quoted(MangleCons, QuoteCons, StripQual,
         String =
             "<deep_profiling_proc_layout " ++ int_to_string(PredId) ++ ", " ++
             int_to_string(ProcId) ++ ">"
+    ).
+
+:- func du_ctor_and_arity_to_string_maybe_quoted(maybe_mangle_cons,
+    maybe_quote_cons, maybe_strip_qual, du_ctor) = string.
+
+du_ctor_and_arity_to_string_maybe_quoted(MangleCons, QuoteCons,
+        StripQual, DuCtor) = String :-
+    DuCtor = du_ctor(SymName, Arity, _TypeCtor),
+    (
+        StripQual = dont_strip_qual,
+        SymNameString0 = sym_name_to_string(SymName)
+    ;
+        StripQual = strip_qual,
+        SymNameString0 = unqualify_name(SymName)
+    ),
+    (
+        MangleCons = dont_mangle_cons,
+        SymNameString = SymNameString0
+    ;
+        MangleCons = mangle_cons,
+        ( if string.contains_char(SymNameString0, '*') then
+            % We need to protect against the * appearing next to a /.
+            Stuff =
+                ( pred(Char::in, Str0::in, Str::out) is det :-
+                    ( if Char = ('*') then
+                        string.append(Str0, "star", Str)
+                    else
+                        string.char_to_string(Char, CharStr),
+                        string.append(Str0, CharStr, Str)
+                    )
+                ),
+            string.foldl(Stuff, SymNameString0, "", SymNameString1)
+        else
+            SymNameString1 = SymNameString0
+        ),
+        SymNameString = term_io.escaped_string(SymNameString1)
+    ),
+    string.int_to_string(Arity, ArityString),
+    (
+        QuoteCons = dont_quote_cons,
+        String = SymNameString ++ "/" ++ ArityString
+    ;
+        QuoteCons = quote_cons,
+        String = "`" ++ SymNameString ++ "'/" ++ ArityString
     ).
 
 int_const_to_string_and_suffix(IntConst, Str, Suffix) :-

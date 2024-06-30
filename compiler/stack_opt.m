@@ -427,7 +427,7 @@ use_cell(CellVar, FieldVarList, ConsId, Goal, !IntervalInfo, !StackOptInfo) :-
     then
         true
     else if
-        ConsId = cons(_Name, _Arity, _TypeCtor),
+        ConsId = du_data_ctor(DuCtor),
         IntParams = !.IntervalInfo ^ ii_interval_params,
         VarTable = IntParams ^ ip_var_table,
         lookup_var_type(VarTable, CellVar, Type),
@@ -437,7 +437,7 @@ use_cell(CellVar, FieldVarList, ConsId, Goal, !IntervalInfo, !StackOptInfo) :-
             FreeOfCost = no
         else if
             ModuleInfo = IntParams ^ ip_module_info,
-            get_cons_repn_defn(ModuleInfo, ConsId, ConsRepn)
+            get_cons_repn_defn(ModuleInfo, DuCtor, ConsRepn)
         then
             ConsTag = ConsRepn ^ cr_tag,
             ( if ConsTag = no_tag then

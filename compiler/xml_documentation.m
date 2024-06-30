@@ -719,7 +719,7 @@ bound_inst_to_xml(InstVarSet, bound_functor(ConsId, Insts)) = Xml :-
 
 :- func cons_id_to_xml(cons_id) = xml.
 
-cons_id_to_xml(cons(Name, Arity, _)) =
+cons_id_to_xml(du_data_ctor(du_ctor(Name, Arity, _))) =
     elem("cons", [], [name_to_xml(Name), arity_to_xml(Arity)]).
 % XXX We could do better for tuple_cons and closure_cons.
 % The return values here are just a continuation of what we used to do.

@@ -1094,10 +1094,11 @@ maybe_update_existential_data_structures(UnifyGoal, FirstOldNew, LaterOldNew,
     ( if
         UnifyGoal = hlds_goal(unify(_, _, _, UnifyInfo, _), _),
         UnifyInfo = deconstruct(Var, ConsId, _, _, _, _),
+        ConsId = du_data_ctor(DuCtor),
         ModuleInfo = !.CseInfo ^ csei_module_info,
         VarTable = !.CseInfo ^ csei_var_table,
         lookup_var_type(VarTable, Var, Type),
-        cons_id_is_existq_cons(ModuleInfo, Type, ConsId)
+        cons_id_is_existq_cons(ModuleInfo, Type, DuCtor)
     then
         update_existential_data_structures(FirstOldNew, LaterOldNew, !CseInfo)
     else
@@ -1225,8 +1226,8 @@ compute_may_pull_cons_id(ModuleInfo, [BoundInst | BoundInsts],
             % checker, the type constructor in InstConsId need not be.
             % This code tests whether the two cons_ids are the same
             % modulo this irrelevant possible difference.
-            ConsId = cons(SymName, Arity, _),
-            InstConsId = cons(InstSymName, InstArity, _),
+            ConsId = du_data_ctor(du_ctor(SymName, Arity, _)),
+            InstConsId = du_data_ctor(du_ctor(InstSymName, InstArity, _)),
             SymName = InstSymName,
             Arity = InstArity
         )

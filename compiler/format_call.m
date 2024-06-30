@@ -1252,7 +1252,7 @@ format_call_traverse_unify(Unification, GoalInfo, CurId, !ConjMaps, !PredMap,
                 add_to_string_map(CurId, CellVar, string_const(StringConst),
                     !ConjMaps)
             else if
-                ConsId = cons(SymName, Arity, TypeCtor),
+                ConsId = du_data_ctor(du_ctor(SymName, Arity, TypeCtor)),
                 TypeCtor = list_type_ctor
             then
                 Functor = unqualify_name(SymName),
@@ -1277,7 +1277,7 @@ format_call_traverse_unify(Unification, GoalInfo, CurId, !ConjMaps, !PredMap,
                 set_of_var.insert_list(ArgVars, !RelevantVars),
                 add_to_list_map(CurId, CellVar, List, !ConjMaps)
             else if
-                ConsId = cons(SymName, Arity, TypeCtor),
+                ConsId = du_data_ctor(du_ctor(SymName, Arity, TypeCtor)),
                 TypeCtor = poly_type_type_ctor
             then
                 ( if
@@ -2410,11 +2410,21 @@ build_flags_arg(Context, Flags, Var, Goals, !VarTable) :-
         FlagPlus = flag_plus_set,
         ConsNamePlus = "flag_plus_set"
     ),
-    ConsIdHash  = cons(qualified(ParseUtil, ConsNameHash),  0, TypeCtorHash),
-    ConsIdSpace = cons(qualified(ParseUtil, ConsNameSpace), 0, TypeCtorSpace),
-    ConsIdZero  = cons(qualified(ParseUtil, ConsNameZero),  0, TypeCtorZero),
-    ConsIdMinus = cons(qualified(ParseUtil, ConsNameMinus), 0, TypeCtorMinus),
-    ConsIdPlus  = cons(qualified(ParseUtil, ConsNamePlus),  0, TypeCtorPlus),
+    SymNameHash  = qualified(ParseUtil, ConsNameHash),
+    SymNameSpace = qualified(ParseUtil, ConsNameSpace),
+    SymNameZero  = qualified(ParseUtil, ConsNameZero),
+    SymNameMinus = qualified(ParseUtil, ConsNameMinus),
+    SymNamePlus  = qualified(ParseUtil, ConsNamePlus),
+    DuCtorHash  = du_ctor(SymNameHash,  0, TypeCtorHash),
+    DuCtorSpace = du_ctor(SymNameSpace, 0, TypeCtorSpace),
+    DuCtorZero  = du_ctor(SymNameZero,  0, TypeCtorZero),
+    DuCtorMinus = du_ctor(SymNameMinus, 0, TypeCtorMinus),
+    DuCtorPlus  = du_ctor(SymNamePlus,  0, TypeCtorPlus),
+    ConsIdHash  = du_data_ctor(DuCtorHash),
+    ConsIdSpace = du_data_ctor(DuCtorSpace),
+    ConsIdZero  = du_data_ctor(DuCtorZero),
+    ConsIdMinus = du_data_ctor(DuCtorMinus),
+    ConsIdPlus  = du_data_ctor(DuCtorPlus),
     make_const_construction(Context, VarHash,  ConsIdHash,  GoalHash),
     make_const_construction(Context, VarSpace, ConsIdSpace, GoalSpace),
     make_const_construction(Context, VarZero,  ConsIdZero,  GoalZero),
@@ -2428,7 +2438,9 @@ build_flags_arg(Context, Flags, Var, Goals, !VarTable) :-
 
     TypeCtorCombine = type_ctor(TypeNameCombine, 0),
     ConsSymNameCombine = qualified(ParseUtil, "string_format_flags"),
-    ConsIdCombine = cons(ConsSymNameCombine, 5, TypeCtorCombine),
+    DuCtorCombine =
+        du_ctor(ConsSymNameCombine, 5, TypeCtorCombine),
+    ConsIdCombine = du_data_ctor(DuCtorCombine),
     SpecVars = [VarHash, VarSpace, VarZero, VarMinus, VarPlus],
     construct_functor(Var, ConsIdCombine, SpecVars, GoalCombine),
 
@@ -2519,7 +2531,8 @@ build_int_base_arg(Base, [Var], [Goal], !VarTable) :-
         Base = base_hex_p,
         ConsName = "base_hex_p"
     ),
-    ConsId = cons(qualified(ParseUtil, ConsName), 0, TypeCtor),
+    ConsId = du_data_ctor(du_ctor(qualified(ParseUtil, ConsName),
+        0, TypeCtor)),
     make_const_construction_alloc(ConsId, Type, is_not_dummy_type, "",
         Goal, Var, !VarTable).
 
@@ -2550,7 +2563,8 @@ build_float_kind_arg(Kind, Var, Goal, !VarTable) :-
         Kind = kind_g_flexible_uc,
         ConsName = "kind_g_flexible_uc"
     ),
-    ConsId = cons(qualified(ParseUtil, ConsName), 0, TypeCtor),
+    ConsId = du_data_ctor(du_ctor(qualified(ParseUtil, ConsName),
+        0, TypeCtor)),
     make_const_construction_alloc(ConsId, Type, is_not_dummy_type, "",
         Goal, Var, !VarTable).
 

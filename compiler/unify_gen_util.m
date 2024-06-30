@@ -150,7 +150,10 @@ int_tag_to_const_and_int_type(IntTag, Const, Type) :-
 
 associate_cons_id_args_with_widths(ModuleInfo, ConsId, AllArgs,
         AllArgsPosWidths) :-
-    ( if get_cons_repn_defn(ModuleInfo, ConsId, ConsRepnDefn) then
+    ( if
+        ConsId = du_data_ctor(DuCtor),
+        get_cons_repn_defn(ModuleInfo, DuCtor, ConsRepnDefn)
+    then
         ConsArgRepns = ConsRepnDefn ^ cr_args,
         ConsTag = ConsRepnDefn ^ cr_tag,
         list.length(AllArgs, NumAllArgs),

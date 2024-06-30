@@ -1254,7 +1254,7 @@ typecheck_unify_var_functor(UnifyContext, Context, Var, ConsId, ArgVars,
             TypeAssignSet = TypeAssignSet0,
             GoalContext = type_error_in_unify(UnifyContext),
             Spec = report_error_undef_cons(ClauseContext, GoalContext,
-                Context, ConsErrors, ConsId, Arity),
+                Context, ConsErrors, ConsId),
             typecheck_info_add_error(Spec, !Info)
         ;
             (
@@ -1923,7 +1923,7 @@ typecheck_info_get_ctor_list_2(Info, ConsId, Arity, GoalId,
 
     % Check if ConsId is a tuple constructor.
     ( if
-        ( ConsId = cons(unqualified("{}"), TupleArity, _)
+        ( ConsId = du_data_ctor(du_ctor(unqualified("{}"), TupleArity, _))
         ; ConsId = tuple_cons(TupleArity)
         )
     then
@@ -1977,14 +1977,15 @@ typecheck_info_get_ctor_list_2(Info, ConsId, Arity, GoalId,
 
 typecheck_info_get_du_cons_ctor_list(Info, ConsId, GoalId,
         ConsInfos, ConsErrors) :-
-    ( if ConsId = cons(Name, Arity, ConsIdTypeCtor) then
+    ( if ConsId = du_data_ctor(DuCtor) then
+        DuCtor = du_ctor(Name, Arity, ConsIdTypeCtor),
         typecheck_info_get_cons_table(Info, ConsTable),
 
         % Check if ConsId has been defined as a constructor in some
         % discriminated union type or types.
-        ( if search_cons_table(ConsTable, ConsId, ConsDefns) then
+        ( if search_cons_table(ConsTable, DuCtor, ConsDefns) then
             convert_cons_defn_list(Info, GoalId, do_not_flip_constraints,
-                ConsId, ConsDefns, PlainConsInfos, PlainConsErrors)
+                DuCtor, ConsDefns, PlainConsInfos, PlainConsErrors)
         else
             PlainConsInfos = [],
             PlainConsErrors = []
@@ -2010,11 +2011,11 @@ typecheck_info_get_du_cons_ctor_list(Info, ConsId, GoalId,
 
         ( if
             remove_new_prefix(Name, OrigName),
-            OrigConsId = cons(OrigName, Arity, ConsIdTypeCtor),
-            search_cons_table(ConsTable, OrigConsId, ExistQConsDefns)
+            OrigDuCtor = du_ctor(OrigName, Arity, ConsIdTypeCtor),
+            search_cons_table(ConsTable, OrigDuCtor, ExistQConsDefns)
         then
             convert_cons_defn_list(Info, GoalId, flip_constraints_for_new,
-                OrigConsId, ExistQConsDefns,
+                OrigDuCtor, ExistQConsDefns,
                 UnivQuantConsInfos, UnivQuantConsErrors),
             ConsInfos = PlainConsInfos ++ UnivQuantConsInfos,
             ConsErrors = PlainConsErrors ++ UnivQuantConsErrors
@@ -2054,19 +2055,19 @@ split_cons_errors([MaybeConsInfo | MaybeConsInfos], Infos, Errors) :-
     ;       flip_constraints_for_field_set.
 
 :- pred convert_cons_defn_list(typecheck_info, goal_id,
-    cons_constraints_action, cons_id, list(hlds_cons_defn),
+    cons_constraints_action, du_ctor, list(hlds_cons_defn),
     list(cons_type_info), list(cons_error)).
 :- mode convert_cons_defn_list(in, in, in(bound(do_not_flip_constraints)),
     in, in, out, out) is det.
 :- mode convert_cons_defn_list(in, in, in(bound(flip_constraints_for_new)),
     in, in, out, out) is det.
 
-convert_cons_defn_list(_Info, _GoalId, _Action, _ConsId, [], [], []).
-convert_cons_defn_list(Info, GoalId, Action, ConsId, [ConsDefn | ConsDefns],
-        ConsTypeInfos, ConsErrors) :-
-    convert_cons_defn(Info, GoalId, Action, ConsId, ConsDefn,
+convert_cons_defn_list(_Info, _GoalId, _Action, _DuCtor, [], [], []).
+convert_cons_defn_list(Info, GoalId, Action, DuCtor,
+        [ConsDefn | ConsDefns], ConsTypeInfos, ConsErrors) :-
+    convert_cons_defn(Info, GoalId, Action, DuCtor, ConsDefn,
         HeadMaybeConsTypeInfo),
-    convert_cons_defn_list(Info, GoalId, Action, ConsId, ConsDefns,
+    convert_cons_defn_list(Info, GoalId, Action, DuCtor, ConsDefns,
         TailConsTypeInfos, TailConsErrors),
     (
         HeadMaybeConsTypeInfo = ok(HeadConsTypeInfo),
@@ -2079,7 +2080,8 @@ convert_cons_defn_list(Info, GoalId, Action, ConsId, [ConsDefn | ConsDefns],
     ).
 
 :- pred convert_cons_defn(typecheck_info, goal_id,
-    cons_constraints_action, cons_id, hlds_cons_defn, maybe_cons_type_info).
+    cons_constraints_action, du_ctor, hlds_cons_defn,
+    maybe_cons_type_info).
 :- mode convert_cons_defn(in, in, in(bound(do_not_flip_constraints)),
     in, in, out) is det.
 :- mode convert_cons_defn(in, in, in(bound(flip_constraints_for_field_set)),
@@ -2101,7 +2103,8 @@ convert_cons_defn_list(Info, GoalId, Action, ConsId, [ConsDefn | ConsDefns],
 %        In this branch, `ExistQVars0' is free.
 %        In this branch, `ExistQVars0' is ground.
 
-convert_cons_defn(Info, GoalId, Action, ConsId, ConsDefn, ConsTypeInfo) :-
+convert_cons_defn(Info, GoalId, Action, DuCtor, ConsDefn,
+        ConsTypeInfo) :-
     % XXX We should investigate whether the job done by this predicate
     % on demand and therefore possibly lots of times for the same type,
     % would be better done just once, either by invoking it (at least with
@@ -2206,8 +2209,8 @@ convert_cons_defn(Info, GoalId, Action, ConsId, ConsDefn, ConsTypeInfo) :-
         module_info_get_class_table(ModuleInfo, ClassTable),
         make_body_hlds_constraints(ClassTable, ConsTypeVarSet,
             GoalId, ProgConstraints, Constraints),
-        ConsTypeInfo = ok(cons_type_info(ConsTypeVarSet, ExistQVars,
-            ConsType, ArgTypes, Constraints, source_type(TypeCtor, ConsId)))
+        ConsTypeInfo = ok(cons_type_info(ConsTypeVarSet, ExistQVars, ConsType,
+            ArgTypes, Constraints, source_type(TypeCtor, DuCtor)))
     ).
 
 %---------------------------------------------------------------------------%
@@ -2625,7 +2628,8 @@ builtin_atomic_type(some_int_const(IntConst), TypeName) :-
 builtin_atomic_type(float_const(_), "float").
 builtin_atomic_type(char_const(_), "character").
 builtin_atomic_type(string_const(_), "string").
-builtin_atomic_type(cons(unqualified(String), 0, _), "character") :-
+builtin_atomic_type(du_data_ctor(du_ctor(unqualified(String), 0, _)),
+        "character") :-
     % We are before post-typecheck, so character constants have not yet been
     % converted to char_consts.
     %
@@ -2662,7 +2666,7 @@ builtin_atomic_type(impl_defined_const(IDCKind), Type) :-
     goal_id::in, list(cons_type_info)::out) is semidet.
 
 builtin_pred_type(Info, ConsId, Arity, GoalId, ConsTypeInfos) :-
-    ConsId = cons(SymName, _, _),
+    ConsId = du_data_ctor(du_ctor(SymName, _, _)),
     typecheck_info_get_predicate_table(Info, PredicateTable),
     typecheck_info_get_calls_are_fully_qualified(Info, IsFullyQualified),
     predicate_table_lookup_sym(PredicateTable, IsFullyQualified, SymName,
@@ -2763,7 +2767,7 @@ accumulate_cons_type_infos_for_pred_id(Info, PredTable, GoalId,
     list(cons_type_info)::out) is semidet.
 
 builtin_apply_type(_Info, ConsId, Arity, ConsTypeInfos) :-
-    ConsId = cons(unqualified(ApplyName), _, _),
+    ConsId = du_data_ctor(du_ctor(unqualified(ApplyName), _, _)),
     % XXX FIXME handle impure apply/N more elegantly (e.g. nicer syntax)
     (
         ApplyName = "apply",
@@ -2804,7 +2808,7 @@ builtin_field_access_function_type(Info, GoalId, ConsId, Arity,
         MaybeConsTypeInfos) :-
     % Taking the address of automatically generated field access functions
     % is not allowed, so currying does have to be considered here.
-    ConsId = cons(Name, Arity, _),
+    ConsId = du_data_ctor(du_ctor(Name, Arity, _)),
     typecheck_info_get_module_info(Info, ModuleInfo),
     is_field_access_function_name(ModuleInfo, Name, Arity, AccessType,
         FieldName),
@@ -2846,7 +2850,7 @@ make_field_access_function_cons_type_info(Info, GoalId, FuncName, UserArity,
 
 get_field_access_constructor(Info, GoalId, FuncName, UserArity, AccessType,
         FieldDefn, OrigExistTVars, FunctorConsTypeInfo) :-
-    FieldDefn = hlds_ctor_field_defn(_, _, TypeCtor, ConsId, _),
+    FieldDefn = hlds_ctor_field_defn(_, _, TypeCtor, DuCtor, _),
     TypeCtor = type_ctor(qualified(TypeModule, _), _),
 
     % If the user has supplied a declaration for a field access function
@@ -2871,7 +2875,8 @@ get_field_access_constructor(Info, GoalId, FuncName, UserArity, AccessType,
         IsFieldAccessFunc = yes(_)
     ),
     module_info_get_cons_table(ModuleInfo, ConsTable),
-    lookup_cons_table_of_type_ctor(ConsTable, TypeCtor, ConsId, ConsDefn),
+    lookup_cons_table_of_type_ctor(ConsTable, TypeCtor, DuCtor,
+        ConsDefn),
     MaybeExistConstraints = ConsDefn ^ cons_maybe_exist,
     (
         MaybeExistConstraints = no_exist_constraints,
@@ -2883,12 +2888,12 @@ get_field_access_constructor(Info, GoalId, FuncName, UserArity, AccessType,
     (
         AccessType = get,
         ConsAction = do_not_flip_constraints,
-        convert_cons_defn(Info, GoalId, ConsAction, ConsId, ConsDefn,
+        convert_cons_defn(Info, GoalId, ConsAction, DuCtor, ConsDefn,
             FunctorConsTypeInfo)
     ;
         AccessType = set,
         ConsAction = flip_constraints_for_field_set,
-        convert_cons_defn(Info, GoalId, ConsAction, ConsId, ConsDefn,
+        convert_cons_defn(Info, GoalId, ConsAction, DuCtor, ConsDefn,
             FunctorConsTypeInfo)
     ).
 

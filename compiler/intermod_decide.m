@@ -972,11 +972,9 @@ find_func_matching_instance_method(ModuleInfo, InstanceMethodSymName0,
         TypeCtors0 = []
     ),
     module_info_get_cons_table(ModuleInfo, Ctors),
-    ( if
-        ConsId = cons(InstanceMethodSymName0, MethodUserArityInt,
-            cons_id_dummy_type_ctor),
-        search_cons_table(Ctors, ConsId, MatchingConstructors)
-    then
+    DuCtor = du_ctor(InstanceMethodSymName0, MethodUserArityInt,
+        cons_id_dummy_type_ctor),
+    ( if search_cons_table(Ctors, DuCtor, MatchingConstructors) then
         TypeCtors1 = list.map(
             ( func(ConsDefn) = TypeCtor :-
                 ConsDefn ^ cons_type_ctor = TypeCtor

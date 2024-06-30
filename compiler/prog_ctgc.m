@@ -167,7 +167,8 @@ parse_unit_selector(Term) = UnitSelector :-
                 term_int.decimal_term_to_int(ArityTerm, Arity),
                 term_int.decimal_term_to_int(PosTerm, Pos)
             then
-                ConsId = cons(ConsIdName, Arity, cons_id_dummy_type_ctor),
+                ConsId = du_data_ctor(du_ctor(ConsIdName, Arity,
+                    cons_id_dummy_type_ctor)),
                 UnitSelector = termsel(ConsId, Pos)
             else if
                 % XXX UINT, presuambly we need to handle uints here too.

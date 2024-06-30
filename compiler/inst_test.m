@@ -921,9 +921,10 @@ inst_results_bound_inst_list_is_ground_or_any_2(ModuleInfo, InstResults,
 bound_inst_list_is_ground_mt(_, _, []).
 bound_inst_list_is_ground_mt(ModuleInfo, Type,
         [BoundInst | BoundInsts]) :-
-    BoundInst = bound_functor(Name, Args),
-    get_cons_id_arg_types(ModuleInfo, Type, Name, list.length(Args), Types),
-    inst_list_is_ground_mt(ModuleInfo, Types, Args),
+    BoundInst = bound_functor(ConsId, ArgInsts),
+    get_cons_id_arg_types_for_inst(ModuleInfo, Type, ConsId,
+        list.length(ArgInsts), ArgTypes),
+    inst_list_is_ground_mt(ModuleInfo, ArgTypes, ArgInsts),
     bound_inst_list_is_ground_mt(ModuleInfo, Type, BoundInsts).
 
 :- pred bound_inst_list_is_ground_mt_2(module_info::in, mer_type::in,
@@ -933,9 +934,10 @@ bound_inst_list_is_ground_mt(ModuleInfo, Type,
 bound_inst_list_is_ground_mt_2(_, _, [], !Expansions).
 bound_inst_list_is_ground_mt_2(ModuleInfo, Type, [BoundInst | BoundInsts],
         !Expansions) :-
-    BoundInst = bound_functor(Name, Args),
-    get_cons_id_arg_types(ModuleInfo, Type, Name, list.length(Args), Types),
-    inst_list_is_ground_mt_2(ModuleInfo, Types, Args, !Expansions),
+    BoundInst = bound_functor(ConsId, ArgInsts),
+    get_cons_id_arg_types_for_inst(ModuleInfo, Type, ConsId,
+        list.length(ArgInsts), ArgTypes),
+    inst_list_is_ground_mt_2(ModuleInfo, ArgTypes, ArgInsts, !Expansions),
     bound_inst_list_is_ground_mt_2(ModuleInfo, Type, BoundInsts, !Expansions).
 
 :- pred bound_inst_list_is_ground_or_any(module_info::in,
@@ -943,8 +945,8 @@ bound_inst_list_is_ground_mt_2(ModuleInfo, Type, [BoundInst | BoundInsts],
 
 bound_inst_list_is_ground_or_any(_, []).
 bound_inst_list_is_ground_or_any(ModuleInfo, [BoundInst | BoundInsts]) :-
-    BoundInst = bound_functor(_Name, Args),
-    inst_list_is_ground_or_any(ModuleInfo, Args),
+    BoundInst = bound_functor(_ConsId, ArgInsts),
+    inst_list_is_ground_or_any(ModuleInfo, ArgInsts),
     bound_inst_list_is_ground_or_any(ModuleInfo, BoundInsts).
 
 :- pred bound_inst_list_is_ground_or_any_2(module_info::in,
@@ -954,14 +956,14 @@ bound_inst_list_is_ground_or_any(ModuleInfo, [BoundInst | BoundInsts]) :-
 bound_inst_list_is_ground_or_any_2(_, [], !Expansions).
 bound_inst_list_is_ground_or_any_2(ModuleInfo, [BoundInst | BoundInsts],
         !Expansions) :-
-    BoundInst = bound_functor(_Name, Args),
-    inst_list_is_ground_or_any_2(ModuleInfo, Args, !Expansions),
+    BoundInst = bound_functor(_ConsId, ArgInsts),
+    inst_list_is_ground_or_any_2(ModuleInfo, ArgInsts, !Expansions),
     bound_inst_list_is_ground_or_any_2(ModuleInfo, BoundInsts, !Expansions).
 
 bound_inst_list_is_unique(_, []).
 bound_inst_list_is_unique(ModuleInfo, [BoundInst | BoundInsts]) :-
-    BoundInst = bound_functor(_Name, Args),
-    inst_list_is_unique(ModuleInfo, Args),
+    BoundInst = bound_functor(_ConsId, ArgInsts),
+    inst_list_is_unique(ModuleInfo, ArgInsts),
     bound_inst_list_is_unique(ModuleInfo, BoundInsts).
 
 :- pred bound_inst_list_is_unique_2(module_info::in, list(bound_inst)::in,
@@ -970,14 +972,14 @@ bound_inst_list_is_unique(ModuleInfo, [BoundInst | BoundInsts]) :-
 bound_inst_list_is_unique_2(_, [], !Expansions).
 bound_inst_list_is_unique_2(ModuleInfo, [BoundInst | BoundInsts],
         !Expansions) :-
-    BoundInst = bound_functor(_Name, Args),
-    inst_list_is_unique_2(ModuleInfo, Args, !Expansions),
+    BoundInst = bound_functor(_ConsId, ArgInsts),
+    inst_list_is_unique_2(ModuleInfo, ArgInsts, !Expansions),
     bound_inst_list_is_unique_2(ModuleInfo, BoundInsts, !Expansions).
 
 bound_inst_list_is_mostly_unique(_, []).
 bound_inst_list_is_mostly_unique(ModuleInfo, [BoundInst | BoundInsts]) :-
-    BoundInst = bound_functor(_Name, Args),
-    inst_list_is_mostly_unique(ModuleInfo, Args),
+    BoundInst = bound_functor(_ConsId, ArgInsts),
+    inst_list_is_mostly_unique(ModuleInfo, ArgInsts),
     bound_inst_list_is_mostly_unique(ModuleInfo, BoundInsts).
 
 :- pred bound_inst_list_is_mostly_unique_2(module_info::in,
@@ -987,14 +989,14 @@ bound_inst_list_is_mostly_unique(ModuleInfo, [BoundInst | BoundInsts]) :-
 bound_inst_list_is_mostly_unique_2(_, [], !Expansions).
 bound_inst_list_is_mostly_unique_2(ModuleInfo, [BoundInst | BoundInsts],
         !Expansions) :-
-    BoundInst = bound_functor(_Name, Args),
-    inst_list_is_mostly_unique_2(ModuleInfo, Args, !Expansions),
+    BoundInst = bound_functor(_ConsId, ArgInsts),
+    inst_list_is_mostly_unique_2(ModuleInfo, ArgInsts, !Expansions),
     bound_inst_list_is_mostly_unique_2(ModuleInfo, BoundInsts, !Expansions).
 
 bound_inst_list_is_not_partly_unique(_, []).
 bound_inst_list_is_not_partly_unique(ModuleInfo, [BoundInst | BoundInsts]) :-
-    BoundInst = bound_functor(_Name, Args),
-    inst_list_is_not_partly_unique(ModuleInfo, Args),
+    BoundInst = bound_functor(_ConsId, ArgInsts),
+    inst_list_is_not_partly_unique(ModuleInfo, ArgInsts),
     bound_inst_list_is_not_partly_unique(ModuleInfo, BoundInsts).
 
 :- pred bound_inst_list_is_not_partly_unique_2(module_info::in,
@@ -1004,15 +1006,15 @@ bound_inst_list_is_not_partly_unique(ModuleInfo, [BoundInst | BoundInsts]) :-
 bound_inst_list_is_not_partly_unique_2(_, [], !Expansions).
 bound_inst_list_is_not_partly_unique_2(ModuleInfo, [BoundInst | BoundInsts],
         !Expansions) :-
-    BoundInst = bound_functor(_Name, Args),
-    inst_list_is_not_partly_unique_2(ModuleInfo, Args, !Expansions),
+    BoundInst = bound_functor(_ConsId, ArgInsts),
+    inst_list_is_not_partly_unique_2(ModuleInfo, ArgInsts, !Expansions),
     bound_inst_list_is_not_partly_unique_2(ModuleInfo, BoundInsts,
         !Expansions).
 
 bound_inst_list_is_not_fully_unique(_, []).
 bound_inst_list_is_not_fully_unique(ModuleInfo, [BoundInst | BoundInsts]) :-
-    BoundInst = bound_functor(_Name, Args),
-    inst_list_is_not_fully_unique(ModuleInfo, Args),
+    BoundInst = bound_functor(_ConsId, ArgInsts),
+    inst_list_is_not_fully_unique(ModuleInfo, ArgInsts),
     bound_inst_list_is_not_fully_unique(ModuleInfo, BoundInsts).
 
 :- pred bound_inst_list_is_not_fully_unique_2(module_info::in,
@@ -1022,15 +1024,15 @@ bound_inst_list_is_not_fully_unique(ModuleInfo, [BoundInst | BoundInsts]) :-
 bound_inst_list_is_not_fully_unique_2(_, [], !Expansions).
 bound_inst_list_is_not_fully_unique_2(ModuleInfo, [BoundInst | BoundInsts],
         !Expansions) :-
-    BoundInst = bound_functor(_Name, Args),
-    inst_list_is_not_fully_unique_2(ModuleInfo, Args, !Expansions),
+    BoundInst = bound_functor(_ConsId, ArgInsts),
+    inst_list_is_not_fully_unique_2(ModuleInfo, ArgInsts, !Expansions),
     bound_inst_list_is_not_fully_unique_2(ModuleInfo, BoundInsts,
         !Expansions).
 
 bound_inst_list_is_free(_, []).
 bound_inst_list_is_free(ModuleInfo, [BoundInst | BoundInsts]) :-
-    BoundInst = bound_functor(_Name, Args),
-    inst_list_is_free(ModuleInfo, Args),
+    BoundInst = bound_functor(_ConsId, ArgInsts),
+    inst_list_is_free(ModuleInfo, ArgInsts),
     bound_inst_list_is_free(ModuleInfo, BoundInsts).
 
 %-----------------------------------------------------------------------------%

@@ -111,7 +111,10 @@ simplify_goal_switch(GoalExpr0, GoalExpr, GoalInfo0, GoalInfo,
 
                 lookup_var_type(VarTable, Var, Type),
                 simplify_info_get_module_info(!.Info, ModuleInfo1),
-                ( if cons_id_is_existq_cons(ModuleInfo1, Type, MainConsId) then
+                ( if
+                    MainConsId = du_data_ctor(MainDuCtor),
+                    cons_id_is_existq_cons(ModuleInfo1, Type, MainDuCtor)
+                then
                     GoalExpr = switch(Var, SwitchCanFail, Cases),
                     NonLocals = goal_info_get_nonlocals(GoalInfo0),
                     merge_instmap_deltas(VarTable, NonLocals, InstMap0,

@@ -843,7 +843,8 @@ parse_bound_inst(AllowConstrainedInstVar, VarSet, ContextPieces, Term,
                 (
                     MaybeArgInsts = ok1(ArgInsts),
                     list.length(ArgTerms1, Arity),
-                    ConsId = cons(SymName, Arity, cons_id_dummy_type_ctor),
+                    ConsId = du_data_ctor(du_ctor(SymName, Arity,
+                        cons_id_dummy_type_ctor)),
                     MaybeBoundInst = ok1(bound_functor(ConsId, ArgInsts))
                 ;
                     MaybeArgInsts = error1(Specs),

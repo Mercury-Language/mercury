@@ -941,7 +941,7 @@ unify_rhs_used_modules(RHS, !UsedModules) :-
 
 cons_id_used_modules(Visibility, ConsId, !UsedModules) :-
     (
-        ( ConsId = cons(SymName, _, _)
+        ( ConsId = du_data_ctor(du_ctor(SymName, _, _))
         ; ConsId = type_info_cell_constructor(type_ctor(SymName, _))
         ),
         record_sym_name_module_as_used(Visibility, SymName, !UsedModules)

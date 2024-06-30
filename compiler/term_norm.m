@@ -136,6 +136,8 @@
 % arguments, except that we assign a weight of at least 1 to all functors
 % which are not constants.
 
+% XXX Next time we have a reason to update this module, we should replace
+% the cons_id type here with du_ctor.
 :- type weight_table == map(pair(type_ctor, cons_id), weight_info).
 
 :- type weight_info
@@ -198,7 +200,7 @@ find_weights_for_cons(TypeCtor, Params, Ctor, !Weights) :-
     else
         WeightInfo = weight(0, [])
     ),
-    ConsId = cons(SymName, Arity, TypeCtor),
+    ConsId = du_data_ctor(du_ctor(SymName, Arity, TypeCtor)),
     map.det_insert(TypeCtor - ConsId, WeightInfo, !Weights).
 
 :- pred find_weights_for_tuple(arity::in, weight_info::out) is det.
@@ -264,7 +266,7 @@ functor_norm(ModuleInfo, FunctorInfo, TypeCtor, ConsId, Gamma,
     (
         FunctorInfo = simple,
         ( if
-            ConsId = cons(_, Arity, _),
+            ConsId = du_data_ctor(du_ctor(_, Arity, _)),
             Arity \= 0
         then
             Gamma = 1
@@ -274,16 +276,18 @@ functor_norm(ModuleInfo, FunctorInfo, TypeCtor, ConsId, Gamma,
             module_info_get_const_struct_db(ModuleInfo, ConstStructDb),
             const_struct_count_cells(ConstStructDb, ConstNum, 0, Gamma)
         else
+            % XXX This does the wrong thing for tuples.
             Gamma = 0
         )
     ;
         FunctorInfo = total,
-        ( if ConsId = cons(_, Arity, _) then
+        ( if ConsId = du_data_ctor(du_ctor(_, Arity, _)) then
             Gamma = Arity
         else if ConsId = ground_term_const(ConstNum, _) then
             module_info_get_const_struct_db(ModuleInfo, ConstStructDb),
             const_struct_count_cell_arities(ConstStructDb, ConstNum, 0, Gamma)
         else
+            % XXX This does the wrong thing for tuples.
             Gamma = 0
         )
     ;
@@ -479,10 +483,20 @@ const_struct_count_cell_filtered_weights_args(ConstStructDb, WeightMap,
 functor_lower_bound(_ModuleInfo, FunctorInfo, TypeCtor, ConsId) = Weight :-
     (
         FunctorInfo = simple,
-        Weight = ( if ConsId = cons(_, Arity, _), Arity \= 0 then 1 else 0 )
+        ( if ConsId = du_data_ctor(du_ctor(_, Arity, _)), Arity \= 0 then
+            Weight = 1
+        else
+            % XXX This does the wrong thing for tuples.
+            Weight = 0
+        )
     ;
         FunctorInfo = total,
-        Weight = ( if ConsId = cons(_, Arity, _) then Arity else 0 )
+        ( if ConsId = du_data_ctor(du_ctor(_, Arity, _)) then
+            Weight = Arity
+        else
+            % XXX This does the wrong thing for tuples.
+            Weight = 0
+        )
     ;
         FunctorInfo = use_map(WeightMap),
         ( if search_weight_table(WeightMap, TypeCtor, ConsId, WeightInfo) then

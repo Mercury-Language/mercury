@@ -1172,7 +1172,7 @@ strip_headvar_unifications_from_goal_list([Goal | Goals0], HeadVars,
                 ConsId = string_const(String),
                 RHSTerm = term.functor(term.string(String), [], Context)
             ;
-                ConsId = cons(SymName, _, _),
+                ConsId = du_data_ctor(du_ctor(SymName, _, _)),
                 term_subst.var_list_to_term_list(Args, ArgTerms),
                 construct_qualified_term(SymName, ArgTerms, RHSTerm)
             ;

@@ -329,7 +329,8 @@ constructors_to_bound_insts_loop_over_ctors(ModuleInfo, Uniq, TypeCtor,
     Ctor = ctor(_Ordinal, _MaybeExistConstraints, Name, Args, _Arity, _Ctxt),
     ctor_arg_list_to_inst_list(Args, ArgInst, Insts),
     list.length(Insts, Arity),
-    BoundInst = bound_functor(cons(Name, Arity, TypeCtor), Insts),
+    DuCtor = du_ctor(Name, Arity, TypeCtor),
+    BoundInst = bound_functor(du_data_ctor(DuCtor), Insts),
     constructors_to_bound_insts_loop_over_ctors(ModuleInfo, Uniq, TypeCtor,
         Ctors, ArgInst, BoundInsts).
 

@@ -1325,7 +1325,8 @@ categorize_unify_var_lambda(InitInstX, FinalInstX, ArgInsts, X, ArgVars,
         % The real cons_id will be computed by lambda.m;
         % we just put in a dummy one for now.
         TypeCtor = type_ctor(unqualified("int"), 0),
-        ConsId = cons(unqualified("__LambdaGoal__"), Arity, TypeCtor)
+        DuCtor = du_ctor(unqualified("__LambdaGoal__"), Arity, TypeCtor),
+        ConsId = du_data_ctor(DuCtor)
     ),
     ArgFromToInsts = list.map(func(I) = from_to_insts(I, I), ArgInsts),
     from_to_insts_to_unify_modes(ArgFromToInsts, ArgFromToInsts, ArgModes),

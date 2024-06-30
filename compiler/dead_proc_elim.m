@@ -916,7 +916,7 @@ dead_proc_examine_goal(ModuleInfo, CurPredProcId, Goal, !Queue, !Needed) :-
                 CurProcEntity = entity_proc(CurPredProcId),
                 record_entity_is_used(Entity, CurProcEntity, !Needed)
             ;
-                ( ConsId = cons(_, _, _)
+                ( ConsId = du_data_ctor(_)
                 ; ConsId = tuple_cons(_)
                 ; ConsId = some_int_const(_)
                 ; ConsId = float_const(_)
@@ -1778,8 +1778,8 @@ pre_modecheck_examine_unify_rhs(RHS, !DeadInfo) :-
         RHS = rhs_var(_)
     ;
         RHS = rhs_functor(Functor, _, _),
-        ( if Functor = cons(Name, _, _) then
-            dead_pred_info_add_pred_name(Name, !DeadInfo)
+        ( if Functor = du_data_ctor(du_ctor(SymName, _, _)) then
+            dead_pred_info_add_pred_name(SymName, !DeadInfo)
         else
             true
         )

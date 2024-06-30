@@ -125,9 +125,10 @@ generate_test_var_has_cons_id_tag(VarRval, VarName, ConsId, ConsTag,
     % constant (negating the result of the test, if needed),
     % since a test against a constant is cheaper than a tag test.
     ( if
-        CheaperTagTest = cheaper_tag_test(ExpensiveConsId, _ExpensiveConsTag,
-            _CheapConsId, CheapConsTag),
-        ConsId = ExpensiveConsId
+        CheaperTagTest = cheaper_tag_test(
+            ExpensiveDuCtor, _ExpensiveConsTag,
+            _CheapDuCtor, CheapConsTag),
+        ConsId = du_data_ctor(ExpensiveDuCtor)
     then
         Comment = branch_sense_comment(Sense) ++ VarName ++
             " has functor " ++ ConsIdName ++ " (inverted test)",

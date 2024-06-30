@@ -100,7 +100,7 @@ subst_literals_in_goal(Info, Goal0, Goal) :-
                 Goal1 = hlds_goal(GoalExpr, _),
                 Goal = hlds_goal(GoalExpr, GoalInfo0)
             ;
-                ( ConsId = cons(_, _, _)
+                ( ConsId = du_data_ctor(_)
                 ; ConsId = tuple_cons(_)
                 ; ConsId = closure_cons(_)
                 ; ConsId = some_int_const(_)

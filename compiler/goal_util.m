@@ -1250,7 +1250,7 @@ case_proc_refs_acc(Case, !ReferredToProcs) :-
 
 cons_id_proc_refs_acc(ConsId, !ReferredToProcs) :-
     (
-        ( ConsId = cons(_, _, _)
+        ( ConsId = du_data_ctor(_)
         ; ConsId = tuple_cons(_)
         ; ConsId = some_int_const(_)
         ; ConsId = float_const(_)

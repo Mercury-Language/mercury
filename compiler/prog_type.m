@@ -475,17 +475,21 @@ cell_inst_cons_id(Which, Arity) = InstConsId :-
     ),
     PrivateBuiltin = mercury_private_builtin_module,
     TypeCtor = cons_id_dummy_type_ctor,
-    InstConsId = cons(qualified(PrivateBuiltin, Symbol), Arity, TypeCtor).
+    SymbolSymName = qualified(PrivateBuiltin, Symbol),
+    InstDuCtor = du_ctor(SymbolSymName, Arity, TypeCtor),
+    InstConsId = du_data_ctor(InstDuCtor).
 
 %---------------------------------------------------------------------------%
 
 qualify_cons_id(Args, ConsId0, ConsId, InstConsId) :-
     (
-        ConsId0 = cons(Name0, OrigArity, TypeCtor),
+        ConsId0 = du_data_ctor(DuCtor0),
+        DuCtor0 = du_ctor(Name0, OrigArity, TypeCtor),
         ( if TypeCtor = type_ctor(qualified(TypeModule, _), _) then
             UnqualName = unqualify_name(Name0),
             Name = qualified(TypeModule, UnqualName),
-            ConsId = cons(Name, OrigArity, TypeCtor)
+            DuCtor = du_ctor(Name, OrigArity, TypeCtor),
+            ConsId = du_data_ctor(DuCtor)
         else
             ConsId = ConsId0
         ),

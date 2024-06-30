@@ -651,7 +651,7 @@ maybe_add_alias(LVar, RVar, !Info) :-
 
 is_interesting_cons_id(Params, ConsId) = IsInteresting :-
     (
-        ( ConsId = cons(_, _, _)
+        ( ConsId = du_data_ctor(_)
         ; ConsId = tuple_cons(_)
         ; ConsId = float_const(_)
         ; ConsId = char_const(_)

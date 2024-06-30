@@ -355,7 +355,8 @@ modecheck_goal_generic_call(GoalExpr0, GoalInfo0, GoalExpr, !ModeInfo) :-
             instmap_lookup_var(InstMap, Arg1, Inst1),
             Inst1 = bound(Unique, _, [bound_functor(ConsId, [])]),
             mode_info_get_module_info(!.ModeInfo, ModuleInfo),
-            get_cons_repn_defn(ModuleInfo, ConsId, ConsRepn),
+            ConsId = du_data_ctor(DuCtor),
+            get_cons_repn_defn(ModuleInfo, DuCtor, ConsRepn),
             ConsRepn ^ cr_tag = shared_local_tag_no_args(_, LocalSectag, _)
         then
             LocalSectag = local_sectag(_, PrimSec, _),

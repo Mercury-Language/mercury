@@ -839,9 +839,14 @@ abstractly_unify_constrained_inst_vars(Live, InstVarsA, SubInstA, InstB,
     cons_id::in, list(mer_inst)::in) is semidet.
 
 arg_insts_match_ctor_subtypes(ModuleInfo, Type, ConsId, ArgInsts) :-
+    % XXX DU_CTOR
+    % We should insist that our ancestors pass us a du_ctor,
+    % not a cons_id, since for all cons_ids *other* than cons, this predicate
+    % has nothing to do.
     ( if
+        ConsId = du_data_ctor(DuCtor),
         type_to_ctor(Type, TypeCtor),
-        get_cons_defn(ModuleInfo, TypeCtor, ConsId, ConsDefn),
+        get_cons_defn(ModuleInfo, TypeCtor, DuCtor, ConsDefn),
         ConsDefn = hlds_cons_defn(_, _, _, _,
             MaybeExistConstraints, ConsArgs, _),
         % Some builtin types have constructors with arguments that are not
@@ -886,9 +891,14 @@ arg_insts_match_ctor_subtypes_2(ModuleInfo,
     cons_id::in, list(mer_inst)::in, list(mer_inst)::out) is det.
 
 propagate_ctor_subtypes_into_arg_insts(ModuleInfo, Type, ConsId, !ArgInsts) :-
+    % XXX DU_CTOR
+    % We should insist that our ancestors pass us a du_ctor,
+    % not a cons_id, since for all cons_ids *other* than cons, this predicate
+    % has nothing to do.
     ( if
+        ConsId = du_data_ctor(DuCtor),
         type_to_ctor(Type, TypeCtor),
-        get_cons_defn(ModuleInfo, TypeCtor, ConsId, ConsDefn),
+        get_cons_defn(ModuleInfo, TypeCtor, DuCtor, ConsDefn),
         ConsDefn = hlds_cons_defn(_, _, _, _,
             MaybeExistConstraints, ConsArgs, _),
         % Some builtin types have constructors with arguments that are not

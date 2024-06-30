@@ -628,7 +628,7 @@ unify_goal_to_constraint(Environment, GoalExpr, GoalInfo, !TCInfo) :-
                 Context, no, no)],
             RelevantTVars = [LTVar]
         else if
-            ConsId = cons(Name, Arity, _TypeCtor),
+            ConsId = du_data_ctor(du_ctor(Name, Arity, _TypeCtor)),
             % The _TypeCtor field is not meaningful yet.
             Arity = list.length(Args)
         then
@@ -636,7 +636,10 @@ unify_goal_to_constraint(Environment, GoalExpr, GoalInfo, !TCInfo) :-
             % If it is a data constructor, create a disjunction constraint
             % with each possible type of the constructor.
             Environment = tconstr_environment(_, _, FuncEnv, PredEnv),
-            ( if search_cons_table(FuncEnv, ConsId, ConsDefns) then
+            ( if
+                ConsId = du_data_ctor(DuCtor),
+                search_cons_table(FuncEnv, DuCtor, ConsDefns)
+            then
                 list.map_foldl(
                     functor_unif_constraint(LTVar, ArgTypeVars, GoalInfo),
                     ConsDefns, TypeConstraints, !TCInfo)
@@ -1057,7 +1060,8 @@ builtin_atomic_type(some_int_const(IntConst), Type) :-
     Type = builtin_type_int(type_of_int_const(IntConst)).
 builtin_atomic_type(float_const(_), builtin_type_float).
 builtin_atomic_type(string_const(_), builtin_type_string).
-builtin_atomic_type(cons(unqualified(String), 0, _), builtin_type_char) :-
+builtin_atomic_type(du_data_ctor(du_ctor(unqualified(String), 0, _)),
+        builtin_type_char) :-
     string.char_to_string(_, String).
 builtin_atomic_type(impl_defined_const(IDCKind), Type) :-
     (

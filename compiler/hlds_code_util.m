@@ -189,8 +189,8 @@ cons_id_to_tag(ModuleInfo, ConsId) = ConsTag:-
             ConsTag = remote_args_tag(remote_args_only_functor)
         )
     ;
-        ConsId = cons(_Name, _Arity, _TypeCtor),
-        get_cons_repn_defn_det(ModuleInfo, ConsId, ConsRepn),
+        ConsId = du_data_ctor(DuCtor),
+        get_cons_repn_defn_det(ModuleInfo, DuCtor, ConsRepn),
         ConsTag = ConsRepn ^ cr_tag
     ).
 

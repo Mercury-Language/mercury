@@ -3594,7 +3594,7 @@ accumulate_modules_in_bound_insts([BoundInst | BoundInsts],
 
 accumulate_modules_in_bound_inst(BoundInst, !MaybeUnqual, !ModuleNames) :-
     BoundInst = bound_functor(ConsId, ArgInsts),
-    ( if ConsId = cons(SymName, _ConsArity, TypeCtor) then
+    ( if ConsId = du_data_ctor(du_ctor(SymName, _ConsArity, TypeCtor)) then
         accumulate_module(SymName, !MaybeUnqual, !ModuleNames),
         TypeCtor = type_ctor(TypeCtorSymName, _Arity),
         accumulate_module(TypeCtorSymName, !MaybeUnqual, !ModuleNames)

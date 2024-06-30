@@ -86,8 +86,9 @@ convert_pred_to_lambda_goal(ModuleInfo0, Purity, X0, PredId, ProcId,
     QualifiedPName = qualified(PredModule, PredName),
 
     % The ConsId's type_ctor shouldn't matter in a call_unify_context.
-    ConsId = cons(QualifiedPName, list.length(ArgVars0),
+    DuCtor = du_ctor(QualifiedPName, list.length(ArgVars0),
         cons_id_dummy_type_ctor),
+    ConsId = du_data_ctor(DuCtor),
     RHS0 = rhs_functor(ConsId, is_not_exist_constr, ArgVars0),
     CallUnifyContext = call_unify_context(X0, RHS0, UnifyContext),
     LambdaGoalExpr = plain_call(PredId, ProcId, Args, not_builtin,

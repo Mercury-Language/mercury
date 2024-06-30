@@ -274,7 +274,7 @@ construct_field_access_function_call(AccessType, Context,
         Goal, !QualInfo) :-
     field_access_function_name(AccessType, FieldName, FuncName),
     list.length(Args, Arity),
-    Functor = cons(FuncName, Arity, cons_id_dummy_type_ctor),
+    Functor = du_data_ctor(du_ctor(FuncName, Arity, cons_id_dummy_type_ctor)),
     make_atomic_unification(RetArg,
         rhs_functor(Functor, is_not_exist_constr, Args),
         Context, MainContext, SubContext, Purity, Goal, !QualInfo).

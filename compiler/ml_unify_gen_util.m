@@ -285,7 +285,7 @@ ml_field_names_and_types(Info, Type, ConsId, InitOffset, ArgVars,
             ArgVars, ArgVarRepns)
     else
         ml_gen_info_get_module_info(Info, ModuleInfo),
-        get_cons_repn_defn_det(ModuleInfo, ConsId, ConsRepnDefn),
+        get_cons_id_repn_defn_det(ModuleInfo, ConsId, ConsRepnDefn),
         CtorArgRepns = ConsRepnDefn ^ cr_args,
 
         % Add the fields for any type_infos and/or typeclass_infos inserted
@@ -345,10 +345,10 @@ allocate_consecutive_ctor_arg_repns_for_extra_args(Info, CurOffset,
 associate_cons_id_args_with_types_widths(ModuleInfo, ArgToType,
         MayHaveExtraArgs, VarType, ConsId, Args, ArgsTypesWidths) :-
     ( if
-        ConsId = cons(_, _, _),
+        ConsId = du_data_ctor(DuCtor),
         not is_introduced_type_info_type(VarType)
     then
-        ( if get_cons_repn_defn(ModuleInfo, ConsId, ConsRepnDefn) then
+        ( if get_cons_repn_defn(ModuleInfo, DuCtor, ConsRepnDefn) then
             ConsArgRepns = ConsRepnDefn ^ cr_args,
             NumExtraArgs = list.length(Args) - list.length(ConsArgRepns),
             ( if NumExtraArgs = 0 then
@@ -513,7 +513,8 @@ decide_field_gen(Info, VarLval, VarType, ConsId, ConsTag, Ptag, FieldGen) :-
         % except for tuple types.
         ( if type_is_tuple(VarType, _) then
             FieldVia = field_via_offset
-        else if ConsId = cons(ConsSymName, ConsArity, ConsTypeCtor) then
+        else if ConsId = du_data_ctor(DuCtor) then
+            DuCtor = du_ctor(ConsSymName, ConsArity, ConsTypeCtor),
             ml_gen_info_get_module_info(Info, ModuleInfo),
             ml_gen_info_get_target(Info, Target),
             % XXX ARG_PACK Delete this sanity test after it has been tested

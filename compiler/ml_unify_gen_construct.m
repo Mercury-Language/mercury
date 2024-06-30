@@ -2026,7 +2026,8 @@ get_const_type_for_cons_id(Target, HighLevelData, MLDS_Type, UsesBaseClass,
             % union type.
             UsesBaseClass = tag_does_not_use_base_class,
             MaybeConsId = yes(ConsId),
-            ConsId = cons(CtorSymName, CtorArity, _TypeCtor),
+            ConsId = du_data_ctor(DuCtor),
+            DuCtor = du_ctor(CtorSymName, CtorArity, _TypeCtor),
             (
                 MLDS_Type =
                     mlds_class_type(mlds_class_id(QualTypeName, TypeArity))
@@ -2247,7 +2248,7 @@ ml_maybe_shift_and_accumulate_or_rval(Rval, Shift, Fill, !RevOrRvals) :-
 
 ml_cons_name(Target, HLDS_ConsId, QualifiedConsId) :-
     ( if
-        HLDS_ConsId = cons(ConsSymName, ConsArity, TypeCtor),
+        HLDS_ConsId = du_data_ctor(du_ctor(ConsSymName, ConsArity, TypeCtor)),
         ConsSymName = qualified(SymModuleName, _)
     then
         ConsName = ml_gen_du_ctor_name(Target, TypeCtor,

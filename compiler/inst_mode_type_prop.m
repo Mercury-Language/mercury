@@ -832,7 +832,7 @@ propagate_types_into_tuple(ModuleInfo, Context, TupleArgTypes,
     BoundInst0 = bound_functor(Functor, ArgInsts0),
     ( if
         ( Functor = tuple_cons(_)
-        ; Functor = cons(unqualified("{}"), _, _)
+        ; Functor = du_data_ctor(du_ctor(unqualified("{}"), _, _))
         ),
         list.length(ArgInsts0, ArgInstsLen),
         list.length(TupleArgTypes, TupleArgTypesLen),
@@ -857,7 +857,7 @@ propagate_types_into_tuple(ModuleInfo, Context, TupleArgTypes,
 propagate_char_type(Context, BoundInst0, BoundInst, !Errors) :-
     BoundInst0 = bound_functor(ConsId0, ArgInsts0),
     ( if
-        ConsId0 = cons(unqualified(Name), 0, _),
+        ConsId0 = du_data_ctor(du_ctor(unqualified(Name), 0, _)),
         string.to_char_list(Name, NameChars),
         NameChars = [NameChar],
         ArgInsts0 = []
@@ -891,7 +891,7 @@ propagate_subst_type_ctor_into_bound_insts(Info, Context, Subst,
         [BoundInst0 | BoundInsts0], [BoundInst | BoundInsts],
         !Cache, !Errors) :-
     BoundInst0 = bound_functor(ConsId0, ArgInsts0),
-    ( if ConsId0 = cons(ConsSymName0, ConsArity, _ConsTypeCtor) then
+    ( if ConsId0 = du_data_ctor(du_ctor(ConsSymName0, ConsArity, _)) then
         (
             ConsSymName0 = unqualified(ConsName),
             ConsSymName = qualified(TypeModule, ConsName)
@@ -901,7 +901,7 @@ propagate_subst_type_ctor_into_bound_insts(Info, Context, Subst,
                 ConsModule0, ConsName, ConsArity, !Errors),
             ConsSymName = qualified(TypeModule, ConsName)
         ),
-        ConsId = cons(ConsSymName, ConsArity, TypeCtor),
+        ConsId = du_data_ctor(du_ctor(ConsSymName, ConsArity, TypeCtor)),
         ( if
             find_first_matching_constructor(ConsSymName, ConsArity,
                 Constructors, MatchingConstructor)

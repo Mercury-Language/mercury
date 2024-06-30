@@ -82,220 +82,244 @@
 resolve_unify_functor(ModuleInfo, X0, ConsId0, ArgVars0, Mode0,
         Unification0, UnifyContext, GoalInfo0, Goal, IsPlainUnify, Specs,
         !VarTable, !PredInfo) :-
-    lookup_var_type(!.VarTable, X0, TypeOfX),
-    list.length(ArgVars0, Arity),
-    ( if
-        % Is the function symbol apply/N or ''/N, representing a higher-order
-        % function call? Or the impure/semipure equivalents impure_apply/N
-        % and semipure_apply/N?
-        % (XXX FIXME We should use nicer syntax for impure apply/N.)
-        ConsId0 = cons(unqualified(ApplyName), _, _),
-        ( ApplyName = "apply", Purity = purity_pure
-        ; ApplyName = "", Purity = purity_pure
-        ; ApplyName = "impure_apply", Purity = purity_impure
-        ; ApplyName = "semipure_apply", Purity = purity_semipure
-        ),
-        Arity >= 1,
-        ArgVars0 = [FuncVar | FuncArgVars]
-    then
-        % Convert the higher-order function call (apply/N) into a higher-order
-        % predicate call (i.e., replace `X = apply(F, A, B, C)'
-        % with `call(F, A, B, C, X)')
-        ArgVars = FuncArgVars ++ [X0],
-        Modes = [],
-        Det = detism_erroneous,
-        user_arity_pred_form_arity(pf_function,
-            user_arity(Arity), PredFormArity),
-        Generic = higher_order(FuncVar, Purity, pf_function, PredFormArity),
-        HOCall = generic_call(Generic, ArgVars, Modes,
-            arg_reg_types_unset, Det),
-        Goal = hlds_goal(HOCall, GoalInfo0),
-        IsPlainUnify = is_not_plain_unify,
-        Specs = []
-    else if
-        % Is the function symbol a user-defined function, rather than
-        % a functor which represents a data constructor?
+    ( if ConsId0 = du_data_ctor(DuCtor0) then
+        lookup_var_type(!.VarTable, X0, TypeOfX),
+        list.length(ArgVars0, Arity),
+        DuCtor0 = du_ctor(SymName0, Arity0, _TypeCtor),
+        ( if
+            % Is the function symbol apply/N or ''/N, representing
+            % a higher-order function call? Or the impure/semipure equivalents
+            % impure_apply/N and semipure_apply/N?
+            % (XXX FIXME We should use nicer syntax for impure apply/N.)
+            SymName0 = unqualified(ApplyName),
+            ( ApplyName = "apply", Purity = purity_pure
+            ; ApplyName = "", Purity = purity_pure
+            ; ApplyName = "impure_apply", Purity = purity_impure
+            ; ApplyName = "semipure_apply", Purity = purity_semipure
+            ),
+            Arity >= 1,
+            ArgVars0 = [FuncVar | FuncArgVars]
+        then
+            % Convert the higher-order function call (apply/N) into
+            % a higher-order predicate call.
+            % This means replacing e.g. `X = apply(F, A, B, C)'
+            % with `call(F, A, B, C, X)'.
+            ArgVars = FuncArgVars ++ [X0],
+            Modes = [],
+            Det = detism_erroneous,
+            user_arity_pred_form_arity(pf_function,
+                user_arity(Arity), PredFormArity),
+            Generic = higher_order(FuncVar, Purity, pf_function, PredFormArity),
+            HOCall = generic_call(Generic, ArgVars, Modes,
+                arg_reg_types_unset, Det),
+            Goal = hlds_goal(HOCall, GoalInfo0),
+            IsPlainUnify = is_not_plain_unify,
+            Specs = []
+        else if
+            % Is the function symbol a user-defined function, rather than
+            % a functor which represents a data constructor?
 
-        % Find the set of candidate predicates which have the
-        % specified name and arity (and module, if module-qualified)
-        ConsId0 = cons(PredSymName, _, _),
+            % Find the set of candidate predicates which have the
+            % specified name and arity (and module, if module-qualified)
+            pred_info_get_markers(!.PredInfo, Markers),
+            IsFullyQualified = calls_are_fully_qualified(Markers),
+            module_info_get_predicate_table(ModuleInfo, PredTable),
+            UserArity = user_arity(Arity),
+            % This search will usually fail, so do it first.
+            predicate_table_lookup_func_sym_arity(PredTable, IsFullyQualified,
+                SymName0, UserArity, PredIds),
+            PredIds = [_ | _],
 
-        pred_info_get_markers(!.PredInfo, Markers),
-        IsFullyQualified = calls_are_fully_qualified(Markers),
-        module_info_get_predicate_table(ModuleInfo, PredTable),
-        UserArity = user_arity(Arity),
-        % This search will usually fail, so do it first.
-        predicate_table_lookup_func_sym_arity(PredTable, IsFullyQualified,
-            PredSymName, UserArity, PredIds),
-        PredIds = [_ | _],
+            % We don't do this for compiler-generated predicates;
+            % they are assumed to have been generated with all functions
+            % already expanded. If we did this check for compiler-generated
+            % predicates, it would cause the wrong behaviour in the case
+            % where there is a user-defined function whose type is
+            % exactly the same as the type of a constructor.
+            % (Normally that would cause a type ambiguity error, but
+            % compiler-generated predicates are not type-checked.)
+            not is_unify_index_or_compare_pred(!.PredInfo),
 
-        % We don't do this for compiler-generated predicates; they are assumed
-        % to have been generated with all functions already expanded. If we did
-        % this check for compiler-generated predicates, it would cause the
-        % wrong behaviour in the case where there is a user-defined function
-        % whose type is exactly the same as the type of a constructor.
-        % (Normally that would cause a type ambiguity error, but
-        % compiler-generated predicates are not type-checked.)
-        not is_unify_index_or_compare_pred(!.PredInfo),
+            % We don't do this for the clause introduced by the compiler for
+            % a field access function -- that needs to be expanded into
+            % unifications below.
+            not pred_info_is_field_access_function(ModuleInfo, !.PredInfo),
 
-        % We don't do this for the clause introduced by the compiler for a
-        % field access function -- that needs to be expanded into
-        % unifications below.
-        not pred_info_is_field_access_function(ModuleInfo, !.PredInfo),
+            % Check if any of the candidate functions have argument/return
+            % types which subsume the actual argument/return types of this
+            % function call, and which have universal constraints
+            % consistent with what we expect.
+            pred_info_get_typevarset(!.PredInfo, TVarSet),
+            pred_info_get_exist_quant_tvars(!.PredInfo, ExistQTVars),
+            pred_info_get_external_type_params(!.PredInfo, ExternalTypeParams),
+            lookup_var_types(!.VarTable, ArgVars0, ArgTypes0),
+            ArgTypes = ArgTypes0 ++ [TypeOfX],
+            pred_info_get_constraint_map(!.PredInfo, ConstraintMap),
+            GoalId = goal_info_get_goal_id(GoalInfo0),
+            ConstraintSearch =
+                search_hlds_constraint_list(ConstraintMap, unproven, GoalId),
+            Context = goal_info_get_context(GoalInfo0),
+            find_matching_pred_id(ModuleInfo, pf_function, SymName0, PredIds,
+                TVarSet, ExistQTVars, ArgTypes, ExternalTypeParams,
+                yes(ConstraintSearch), Context, PredId, QualifiedFuncName,
+                SpecsPrime)
+        then
+            % Convert function calls in unifications into plain calls:
+            % replace `X = f(A, B, C)' with `f(A, B, C, X)'.
 
-        % Check if any of the candidate functions have argument/return types
-        % which subsume the actual argument/return types of this function call,
-        % and which have universal constraints consistent with what we expect.
-        pred_info_get_typevarset(!.PredInfo, TVarSet),
-        pred_info_get_exist_quant_tvars(!.PredInfo, ExistQTVars),
-        pred_info_get_external_type_params(!.PredInfo, ExternalTypeParams),
-        lookup_var_types(!.VarTable, ArgVars0, ArgTypes0),
-        ArgTypes = ArgTypes0 ++ [TypeOfX],
-        pred_info_get_constraint_map(!.PredInfo, ConstraintMap),
-        GoalId = goal_info_get_goal_id(GoalInfo0),
-        ConstraintSearch =
-            search_hlds_constraint_list(ConstraintMap, unproven, GoalId),
-        Context = goal_info_get_context(GoalInfo0),
-        find_matching_pred_id(ModuleInfo, pf_function, PredSymName, PredIds,
-            TVarSet, ExistQTVars, ArgTypes, ExternalTypeParams,
-            yes(ConstraintSearch), Context, PredId, QualifiedFuncName,
-            SpecsPrime)
-    then
-        % Convert function calls in unifications into plain calls:
-        % replace `X = f(A, B, C)' with `f(A, B, C, X)'.
+            ProcId = invalid_proc_id,
+            ArgVars = ArgVars0 ++ [X0],
+            FuncCallUnifyContext = call_unify_context(X0,
+                rhs_functor(ConsId0, is_not_exist_constr, ArgVars0),
+                UnifyContext),
+            FuncCall = plain_call(PredId, ProcId, ArgVars, not_builtin,
+                yes(FuncCallUnifyContext), QualifiedFuncName),
+            Goal = hlds_goal(FuncCall, GoalInfo0),
+            IsPlainUnify = is_not_plain_unify,
+            Specs = SpecsPrime
+        else if
+            % Is the function symbol a higher-order predicate or function
+            % constant?
+            type_is_higher_order_details(TypeOfX, _Purity, PredOrFunc,
+                HOArgTypes),
 
-        ProcId = invalid_proc_id,
-        ArgVars = ArgVars0 ++ [X0],
-        FuncCallUnifyContext = call_unify_context(X0,
-            rhs_functor(ConsId0, is_not_exist_constr, ArgVars0), UnifyContext),
-        FuncCall = plain_call(PredId, ProcId, ArgVars, not_builtin,
-            yes(FuncCallUnifyContext), QualifiedFuncName),
-        Goal = hlds_goal(FuncCall, GoalInfo0),
-        IsPlainUnify = is_not_plain_unify,
-        Specs = SpecsPrime
-    else if
-        % Is the function symbol a higher-order predicate or function constant?
-        ConsId0 = cons(Name, _, _),
-        type_is_higher_order_details(TypeOfX, _Purity, PredOrFunc, HOArgTypes),
+            % We don't do this for the clause introduced by the compiler
+            % for a field access function -- that needs to be expanded
+            % into unifications below.
+            not pred_info_is_field_access_function(ModuleInfo, !.PredInfo),
 
-        % We don't do this for the clause introduced by the compiler
-        % for a field access function -- that needs to be expanded
-        % into unifications below.
-        not pred_info_is_field_access_function(ModuleInfo, !.PredInfo),
+            % Find the pred_id of the constant.
+            lookup_var_types(!.VarTable, ArgVars0, ArgTypes0),
+            AllArgTypes = ArgTypes0 ++ HOArgTypes,
+            pred_info_get_typevarset(!.PredInfo, TVarSet),
+            pred_info_get_exist_quant_tvars(!.PredInfo, ExistQVars),
+            pred_info_get_external_type_params(!.PredInfo, ExternalTypeParams),
+            pred_info_get_markers(!.PredInfo, Markers),
+            Context = goal_info_get_context(GoalInfo0),
+            get_pred_id_by_types(calls_are_fully_qualified(Markers), SymName0,
+                PredOrFunc, TVarSet, ExistQVars, AllArgTypes,
+                ExternalTypeParams, ModuleInfo, Context, PredId, SpecsPrime)
+        then
+            module_info_pred_info(ModuleInfo, PredId, PredInfo),
+            ProcIds = pred_info_all_procids(PredInfo),
+            (
+                ProcIds = [ProcId0],
+                MaybeProcId = yes(ProcId0)
+            ;
+                ProcIds = [_, _ | _],
+                % We don't know which mode to pick. Defer it
+                % until mode checking.
+                MaybeProcId = yes(invalid_proc_id)
+            ;
+                ProcIds = [],
+                MaybeProcId = no
+            ),
+            (
+                MaybeProcId = yes(ProcId),
+                ShroudedPredProcId = shroud_pred_proc_id(proc(PredId, ProcId)),
+                ConsId = closure_cons(ShroudedPredProcId),
+                GoalExpr = unify(X0,
+                    rhs_functor(ConsId, is_not_exist_constr, ArgVars0),
+                    Mode0, Unification0, UnifyContext),
+                Goal = hlds_goal(GoalExpr, GoalInfo0),
+                IsPlainUnify = is_not_plain_unify
+            ;
+                MaybeProcId = no,
+                Goal = true_goal,
+                SNA = sym_name_arity(SymName0, Arity),
+                Pieces = [words("Error: the predicate or function")] ++
+                    color_as_subject([qual_sym_name_arity(SNA)]) ++
+                    color_as_incorrect([words("is undefined.")]) ++
+                    [nl],
+                Spec = spec($pred, severity_error, phase_type_check,
+                    Context, Pieces),
+                IsPlainUnify = is_unknown_ref(Spec)
+            ),
+            Specs = SpecsPrime
+        else if
+            % Is it a call to an automatically generated field access function.
+            % This test must come after the tests for function calls and
+            % higher-order terms above. We do it that way because it is easier
+            % to check that the types match for functions calls and
+            % higher-order terms.
+            is_field_access_function_name(ModuleInfo, SymName0, Arity,
+                AccessType, FieldName),
+            Arity = Arity0,
 
-        % Find the pred_id of the constant.
-        lookup_var_types(!.VarTable, ArgVars0, ArgTypes0),
-        AllArgTypes = ArgTypes0 ++ HOArgTypes,
-        pred_info_get_typevarset(!.PredInfo, TVarSet),
-        pred_info_get_exist_quant_tvars(!.PredInfo, ExistQVars),
-        pred_info_get_external_type_params(!.PredInfo, ExternalTypeParams),
-        pred_info_get_markers(!.PredInfo, Markers),
-        Context = goal_info_get_context(GoalInfo0),
-        get_pred_id_by_types(calls_are_fully_qualified(Markers), Name,
-            PredOrFunc, TVarSet, ExistQVars, AllArgTypes, ExternalTypeParams,
-            ModuleInfo, Context, PredId, SpecsPrime)
-    then
-        module_info_pred_info(ModuleInfo, PredId, PredInfo),
-        ProcIds = pred_info_all_procids(PredInfo),
-        (
-            ProcIds = [ProcId0],
-            MaybeProcId = yes(ProcId0)
-        ;
-            ProcIds = [_, _ | _],
-            % We don't know which mode to pick. Defer it until mode checking.
-            MaybeProcId = yes(invalid_proc_id)
-        ;
-            ProcIds = [],
-            MaybeProcId = no
-        ),
-        (
-            MaybeProcId = yes(ProcId),
-            ShroudedPredProcId = shroud_pred_proc_id(proc(PredId, ProcId)),
-            ConsId = closure_cons(ShroudedPredProcId),
-            GoalExpr = unify(X0,
-                rhs_functor(ConsId, is_not_exist_constr, ArgVars0),
-                Mode0, Unification0, UnifyContext),
-            Goal = hlds_goal(GoalExpr, GoalInfo0),
-            IsPlainUnify = is_not_plain_unify
-        ;
-            MaybeProcId = no,
-            Goal = true_goal,
-            SNA = sym_name_arity(Name, Arity),
-            Pieces = [words("Error: the predicate or function")] ++
-                color_as_subject([qual_sym_name_arity(SNA)]) ++
-                color_as_incorrect([words("is undefined.")]) ++
-                [nl],
-            Spec = spec($pred, severity_error, phase_type_check,
-                Context, Pieces),
-            IsPlainUnify = is_unknown_ref(Spec)
-        ),
-        Specs = SpecsPrime
-    else if
-        % Is it a call to an automatically generated field access function.
-        % This test must come after the tests for function calls and
-        % higher-order terms above. We do it that way because it is easier
-        % to check that the types match for functions calls and higher-order
-        % terms.
-        ConsId0 = cons(Name, Arity, _),
-        is_field_access_function_name(ModuleInfo, Name, Arity,
-            AccessType, FieldName),
+            % We don't do this for compiler-generated predicates --
+            % they will never contain calls to field access functions.
+            not is_unify_index_or_compare_pred(!.PredInfo),
 
-        % We don't do this for compiler-generated predicates --
-        % they will never contain calls to field access functions.
-        not is_unify_index_or_compare_pred(!.PredInfo),
-
-        % If there is a constructor for which the argument types match,
-        % this unification couldn't be a call to a field access function,
-        % otherwise there would have been an error reported for unresolved
-        % overloading.
-        pred_info_get_typevarset(!.PredInfo, TVarSet),
-        lookup_var_types(!.VarTable, ArgVars0, ArgTypes0),
-        not find_matching_constructor(ModuleInfo, TVarSet, ConsId0,
-            TypeOfX, ArgTypes0)
-    then
-        finish_field_access_function(ModuleInfo, AccessType, FieldName,
-            UnifyContext, X0, ArgVars0, GoalInfo0, Goal, !VarTable, !PredInfo),
-        IsPlainUnify = is_not_plain_unify,
-        Specs = []
-    else
-        % Module qualify ordinary construction/deconstruction unifications.
-        type_to_ctor_det(TypeOfX, TypeCtorOfX),
-        ( if ConsId0 = cons(SymName0, Arity, _OldTypeCtor) then
-            ( if TypeOfX = tuple_type(_, _) then
-                ConsId = tuple_cons(Arity)
-            else if TypeOfX = builtin_type(builtin_type_char) then
-                (
-                    SymName0 = unqualified(Name0),
-                    ( if encode_escaped_char(Char, Name0) then
-                        ConsId = char_const(Char)
-                    else
-                        unexpected($pred, "encode_escaped_char")
+            % If there is a constructor for which the argument types match,
+            % this unification couldn't be a call to a field access function,
+            % otherwise there would have been an error reported for unresolved
+            % overloading.
+            pred_info_get_typevarset(!.PredInfo, TVarSet),
+            lookup_var_types(!.VarTable, ArgVars0, ArgTypes0),
+            not find_matching_constructor(ModuleInfo, TVarSet, DuCtor0,
+                TypeOfX, ArgTypes0)
+        then
+            finish_field_access_function(ModuleInfo, AccessType, FieldName,
+                UnifyContext, X0, ArgVars0, GoalInfo0, Goal,
+                !VarTable, !PredInfo),
+            IsPlainUnify = is_not_plain_unify,
+            Specs = []
+        else
+            % Module qualify ordinary construction/deconstruction unifications.
+            ( if Arity = Arity0 then
+                ( if TypeOfX = tuple_type(_, _) then
+                    ConsId = tuple_cons(Arity)
+                else if TypeOfX = builtin_type(builtin_type_char) then
+                    (
+                        SymName0 = unqualified(Name0),
+                        ( if encode_escaped_char(Char, Name0) then
+                            ConsId = char_const(Char)
+                        else
+                            unexpected($pred, "encode_escaped_char")
+                        )
+                    ;
+                        SymName0 = qualified(_, _),
+                        unexpected($pred, "qualified char const")
                     )
-                ;
-                    SymName0 = qualified(_, _),
-                    unexpected($pred, "qualified char const")
+                else
+                    Name = unqualify_name(SymName0),
+                    type_to_ctor_det(TypeOfX, TypeCtorOfX),
+                    TypeCtorOfX = type_ctor(TypeCtorSymName, _),
+                    (
+                        TypeCtorSymName = qualified(TypeCtorModule, _),
+                        SymName = qualified(TypeCtorModule, Name),
+                        DuCtor =
+                            du_ctor(SymName, Arity, TypeCtorOfX),
+                        ConsId = du_data_ctor(DuCtor)
+                    ;
+                        TypeCtorSymName = unqualified(_),
+                        unexpected($pred, "unqualified type_ctor")
+                    )
                 )
             else
-                Name = unqualify_name(SymName0),
-                TypeCtorOfX = type_ctor(TypeCtorSymName, _),
-                (
-                    TypeCtorSymName = qualified(TypeCtorModule, _),
-                    SymName = qualified(TypeCtorModule, Name),
-                    ConsId = cons(SymName, Arity, TypeCtorOfX)
-                ;
-                    TypeCtorSymName = unqualified(_),
-                    unexpected($pred, "unqualified type_ctor")
-                )
-            )
-        else
-            ConsId = ConsId0
-        ),
-        RHS = rhs_functor(ConsId, is_not_exist_constr, ArgVars0),
-        GoalExpr = unify(X0, RHS, Mode0, Unification0, UnifyContext),
-        Goal = hlds_goal(GoalExpr, GoalInfo0),
-        IsPlainUnify = is_plain_unify,
-        Specs = []
+                ConsId = ConsId0
+            ),
+            resolve_unify_functor_std(X0, ConsId, ArgVars0, Mode0,
+                Unification0, UnifyContext, GoalInfo0, Goal, IsPlainUnify,
+                Specs)
+        )
+    else
+        resolve_unify_functor_std(X0, ConsId0, ArgVars0, Mode0,
+            Unification0, UnifyContext, GoalInfo0, Goal, IsPlainUnify, Specs)
     ).
+
+:- pred resolve_unify_functor_std(prog_var::in, cons_id::in,
+    list(prog_var)::in, unify_mode::in, unification::in, unify_context::in,
+    hlds_goal_info::in, hlds_goal::out, is_plain_unify::out,
+    list(error_spec)::out) is det.
+
+resolve_unify_functor_std(X0, ConsId, ArgVars0, Mode0,
+        Unification0, UnifyContext, GoalInfo0, Goal, IsPlainUnify, Specs) :-
+    RHS = rhs_functor(ConsId, is_not_exist_constr, ArgVars0),
+    GoalExpr = unify(X0, RHS, Mode0, Unification0, UnifyContext),
+    Goal = hlds_goal(GoalExpr, GoalInfo0),
+    IsPlainUnify = is_plain_unify,
+    Specs = [].
 
 %---------------------------------------------------------------------------%
 
@@ -303,12 +327,12 @@ resolve_unify_functor(ModuleInfo, X0, ConsId0, ArgVars0, Mode0,
     % type and argument types.
     %
 :- pred find_matching_constructor(module_info::in, tvarset::in,
-    cons_id::in, mer_type::in, list(mer_type)::in) is semidet.
+    du_ctor::in, mer_type::in, list(mer_type)::in) is semidet.
 
-find_matching_constructor(ModuleInfo, TVarSet, ConsId, Type, ArgTypes) :-
+find_matching_constructor(ModuleInfo, TVarSet, DuCtor, Type, ArgTypes) :-
     type_to_ctor(Type, TypeCtor),
     module_info_get_cons_table(ModuleInfo, ConsTable),
-    search_cons_table_of_type_ctor(ConsTable, TypeCtor, ConsId, ConsDefn),
+    search_cons_table_of_type_ctor(ConsTable, TypeCtor, DuCtor, ConsDefn),
 
     % Overloading resolution ignores the class constraints.
     ConsDefn = hlds_cons_defn(_, _, _, _, MaybeExistConstraints, ConsArgs, _),
@@ -369,10 +393,10 @@ translate_get_function(ModuleInfo, FieldName, UnifyContext,
         FieldVar, TermInputVar, OldGoalInfo, GoalExpr, !VarTable, !PredInfo) :-
     lookup_var_type(!.VarTable, TermInputVar, TermType),
     get_constructor_containing_field(ModuleInfo, TermType, FieldName,
-        ConsId, FieldNumber),
+        DuCtor, FieldNumber),
 
     GoalId = goal_info_get_goal_id(OldGoalInfo),
-    get_cons_id_arg_types_adding_existq_tvars(ModuleInfo, GoalId, ConsId,
+    get_cons_id_arg_types_adding_existq_tvars(ModuleInfo, GoalId, DuCtor,
         TermType, ArgTypes0, ExistQVars, !PredInfo),
 
     % If the type of the field we are extracting contains existentially
@@ -403,6 +427,7 @@ translate_get_function(ModuleInfo, FieldName, UnifyContext,
     ArgVars = VarsBeforeField ++ [FieldVar | VarsAfterField],
 
     RestrictNonLocals = goal_info_get_nonlocals(OldGoalInfo),
+    ConsId = du_data_ctor(DuCtor),
     create_pure_atomic_unification_with_nonlocals(TermInputVar,
         rhs_functor(ConsId, is_not_exist_constr, ArgVars),
         OldGoalInfo, RestrictNonLocals, [FieldVar, TermInputVar],
@@ -419,11 +444,11 @@ translate_set_function(ModuleInfo, FieldName, UnifyContext,
         !VarTable, !PredInfo) :-
     lookup_var_type(!.VarTable, TermInputVar, TermType),
     get_constructor_containing_field(ModuleInfo, TermType, FieldName,
-        ConsId0, FieldNumber),
+        DuCtor0, FieldNumber),
 
     GoalId = goal_info_get_goal_id(OldGoalInfo),
-    get_cons_id_arg_types_adding_existq_tvars(ModuleInfo, GoalId, ConsId0,
-        TermType, ArgTypes, ExistQVars, !PredInfo),
+    get_cons_id_arg_types_adding_existq_tvars(ModuleInfo, GoalId,
+        DuCtor0, TermType, ArgTypes, ExistQVars, !PredInfo),
 
     split_list_at_index(FieldNumber, ArgTypes,
         TypesBeforeField, TermFieldType, TypesAfterField),
@@ -439,6 +464,7 @@ translate_set_function(ModuleInfo, FieldName, UnifyContext,
     set_of_var.insert_list(NonLocalArgs, OldNonLocals,
         DeconstructRestrictNonLocals),
 
+    ConsId0 = du_data_ctor(DuCtor0),
     create_pure_atomic_unification_with_nonlocals(TermInputVar,
         rhs_functor(ConsId0, is_not_exist_constr, DeconstructArgs),
         OldGoalInfo, DeconstructRestrictNonLocals,
@@ -456,12 +482,10 @@ translate_set_function(ModuleInfo, FieldName, UnifyContext,
         ConsId = ConsId0
     ;
         ExistQVars = [_ | _],
-        ( if ConsId0 = cons(ConsName0, ConsArity, TypeCtor) then
-            add_new_prefix(ConsName0, ConsName),
-            ConsId = cons(ConsName, ConsArity, TypeCtor)
-        else
-            unexpected($pred, "invalid cons_id")
-        )
+        DuCtor0 = du_ctor(ConsSymName0, ConsArity, TypeCtor),
+        add_new_prefix(ConsSymName0, ConsSymName),
+        DuCtor = du_ctor(ConsSymName, ConsArity, TypeCtor),
+        ConsId = du_data_ctor(DuCtor)
     ),
 
     create_pure_atomic_unification_with_nonlocals(TermOutputVar,
@@ -477,14 +501,14 @@ translate_set_function(ModuleInfo, FieldName, UnifyContext,
     Goal = scope(barrier(removable), Conj).
 
 :- pred get_cons_id_arg_types_adding_existq_tvars(module_info::in,
-    goal_id::in, cons_id::in, mer_type::in, list(mer_type)::out,
+    goal_id::in, du_ctor::in, mer_type::in, list(mer_type)::out,
     list(tvar)::out, pred_info::in, pred_info::out) is det.
 
-get_cons_id_arg_types_adding_existq_tvars(ModuleInfo, GoalId, ConsId,
+get_cons_id_arg_types_adding_existq_tvars(ModuleInfo, GoalId, DuCtor,
         TermType, ActualArgTypes, ActualExistQVars, !PredInfo) :-
     % Split the list of argument types at the named field.
     type_to_ctor_det(TermType, TypeCtor),
-    get_cons_defn_det(ModuleInfo, TypeCtor, ConsId, ConsDefn),
+    get_cons_defn_det(ModuleInfo, TypeCtor, DuCtor, ConsDefn),
     ConsDefn = hlds_cons_defn(_, _, TypeParams, _, MaybeExistConstraints,
         ConsArgs, _),
     ConsArgTypes = list.map(func(C) = C ^ arg_type, ConsArgs),
@@ -586,10 +610,10 @@ split_list_at_index(Index, List, Before, At, After) :-
     % given field name.
     %
 :- pred get_constructor_containing_field(module_info::in, mer_type::in,
-    sym_name::in, cons_id::out, int::out) is det.
+    sym_name::in, du_ctor::out, int::out) is det.
 
 get_constructor_containing_field(ModuleInfo, TermType, FieldSymName,
-        ConsId, FieldNumber) :-
+        DuCtor, FieldNumber) :-
     type_to_ctor_det(TermType, TermTypeCtor),
     module_info_get_type_table(ModuleInfo, TypeTable),
     lookup_type_ctor_defn(TypeTable, TermTypeCtor, TermTypeDefn),
@@ -598,7 +622,7 @@ get_constructor_containing_field(ModuleInfo, TermType, FieldSymName,
         TermTypeBody = hlds_du_type(type_body_du(Ctors, _, _, _, _)),
         FieldName = unqualify_name(FieldSymName),
         get_constructor_containing_field_loop(TermTypeCtor,
-            one_or_more_to_list(Ctors), FieldName, ConsId, FieldNumber)
+            one_or_more_to_list(Ctors), FieldName, DuCtor, FieldNumber)
     ;
         ( TermTypeBody = hlds_eqv_type(_)
         ; TermTypeBody = hlds_foreign_type(_)
@@ -609,21 +633,21 @@ get_constructor_containing_field(ModuleInfo, TermType, FieldSymName,
     ).
 
 :- pred get_constructor_containing_field_loop(type_ctor::in,
-    list(constructor)::in, string::in, cons_id::out, int::out) is det.
+    list(constructor)::in, string::in, du_ctor::out, int::out) is det.
 
 get_constructor_containing_field_loop(_, [], _, _, _) :-
     unexpected($pred, "can't find field").
 get_constructor_containing_field_loop(TypeCtor, [Ctor | Ctors],
-        UnqualFieldName, ConsId, FieldNumber) :-
+        UnqualFieldName, DuCtor, FieldNumber) :-
     Ctor = ctor(_, _, SymName, CtorArgs, Arity, _Ctxt),
     ( if
         search_for_named_field(CtorArgs, UnqualFieldName, 1, FieldNumberPrime)
     then
-        ConsId = cons(SymName, Arity, TypeCtor),
+        DuCtor = du_ctor(SymName, Arity, TypeCtor),
         FieldNumber = FieldNumberPrime
     else
         get_constructor_containing_field_loop(TypeCtor, Ctors,
-            UnqualFieldName, ConsId, FieldNumber)
+            UnqualFieldName, DuCtor, FieldNumber)
     ).
 
 :- pred search_for_named_field(list(constructor_arg)::in,

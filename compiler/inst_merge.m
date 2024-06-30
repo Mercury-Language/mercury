@@ -746,7 +746,7 @@ bound_inst_list_merge(Type, BoundInstsA, BoundInstsB, BoundInstsAB,
         BoundInstA = bound_functor(ConsIdA, ArgsA),
         BoundInstB = bound_functor(ConsIdB, ArgsB),
         ( if equivalent_cons_ids(ConsIdA, ConsIdB) then
-            get_cons_id_arg_types(!.ModuleInfo, Type,
+            get_cons_id_arg_types_for_inst(!.ModuleInfo, Type,
                 ConsIdA, list.length(ArgsA), Types),
             inst_list_merge(Types, ArgsA, ArgsB, ArgsAB, !ModuleInfo),
             BoundInst = bound_functor(ConsIdA, ArgsAB),

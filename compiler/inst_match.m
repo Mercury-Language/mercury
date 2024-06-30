@@ -484,6 +484,7 @@ inst_matches_initial_4(Type, InstA, InstB, !Info) :-
     %
     % XXX Maybe we could use the inst result field of bound/3 insts
     % in some places.
+    require_complete_switch [InstA]
     (
         InstA = any(UniqA, HOInstInfoA),
         (
@@ -509,7 +510,7 @@ inst_matches_initial_4(Type, InstA, InstB, !Info) :-
         InstA = free,
         InstB = free
     ;
-        InstA = bound(UniqA, _InstResultsA, BoundInstsA),
+        InstA = bound(UniqA, InstResultsA, BoundInstsA),
         (
             InstB = any(UniqB, none_or_default_func),
             compare_uniqueness(!.Info ^ imi_uniqueness_comparison,
@@ -519,10 +520,7 @@ inst_matches_initial_4(Type, InstA, InstB, !Info) :-
             inst_contains_nondefault_func_mode_1(InstA, no, !Info)
         ;
             InstB = free
-        )
-    ;
-        InstA = bound(UniqA, InstResultsA, BoundInstsA),
-        (
+        ;
             InstB = bound(UniqB, _InstResultsB, BoundInstsB),
             ( if
                 same_addr_insts(InstA, InstB),
@@ -574,6 +572,14 @@ inst_matches_initial_4(Type, InstA, InstB, !Info) :-
         )
     ;
         InstA = not_reached
+    ;
+        ( InstA = constrained_inst_vars(_, _)
+        ; InstA = defined_inst(_)
+        ; InstA = inst_var(_)
+        ),
+        % Our callers should have expanded out these insts.
+        % XXX Update the expected inst of InstA/InstB to reflect this.
+        unexpected($pred, "unexpected InstA")
     ).
 
 %-----------------------------------------------------------------------------%
@@ -589,7 +595,7 @@ ground_matches_initial_bound_inst_list(_, _, [], !Info).
 ground_matches_initial_bound_inst_list(Uniq, Type,
         [BoundInst | BoundInsts], !Info) :-
     BoundInst = bound_functor(ConsId, ArgInsts),
-    get_cons_id_arg_types(!.Info ^ imi_module_info, Type, ConsId,
+    get_cons_id_arg_types_for_inst(!.Info ^ imi_module_info, Type, ConsId,
         list.length(ArgInsts), Types),
     ground_matches_initial_inst_list(Uniq, Types, ArgInsts, !Info),
     ground_matches_initial_bound_inst_list(Uniq, Type, BoundInsts, !Info).
@@ -607,9 +613,10 @@ ground_matches_initial_inst_list(Uniq,
 
 %-----------------------------------------------------------------------------%
 
-    % A list(bound_inst) is ``complete'' for a given type iff it includes
-    % each functor of the type and each argument of each functor is also
-    % ``complete'' for its type.
+    % A list(bound_inst) is ``complete'' for a given type iff
+    %
+    % - it includes each functor of that type, and
+    % - each argument of each functor is also ``complete'' for its type.
     %
 :- pred bound_inst_list_is_complete_for_type(module_info::in,
     set(inst_name)::in, mer_type::in, list(bound_inst)::in) is semidet.
@@ -619,24 +626,37 @@ bound_inst_list_is_complete_for_type(ModuleInfo, Expansions, Type,
     % Is this a type for which cons_ids are recorded in the type_table?
     type_is_du_type(ModuleInfo, Type),
 
-    % Is there a bound_inst for each cons_id in the type_table?
-    % XXX This code has a potential performance problem. If the type has
-    % N cons_ids, then this code can do N invocations of list.member,
-    % each of which has O(N) complexity, for an overall complexity of O(N^2).
-    % We should fix this by taking advantage of the fact that BoundInsts
-    % should be sorted.
-    all [ConsId, ArgTypes] (
-        type_util.cons_id_arg_types(ModuleInfo, Type, ConsId, ArgTypes)
-    =>
-        (
-            list.member(bound_functor(ConsId0, ArgInsts), BoundInsts),
-            % Cons_ids returned from type_util.cons_id_arg_types
-            % are not module-qualified, so we need to call
-            % equivalent_cons_ids instead of just using `=/2'.
-            equivalent_cons_ids(ConsId0, ConsId),
-            list.map(inst_is_complete_for_type(ModuleInfo, Expansions),
-                ArgTypes, ArgInsts)
-        )
+    all_du_ctor_arg_types(ModuleInfo, Type, NamesAritiesArgTypes0),
+    list.sort(NamesAritiesArgTypes0, NamesAritiesArgTypes1),
+    bound_inst_list_is_complete_for_type_loop(ModuleInfo, Expansions,
+        BoundInsts, NamesAritiesArgTypes1, NamesAritiesArgTypes),
+    % Each and every NamesAritiesArgTypes left over specifies
+    % a data in Type that BoundInsts did not cover.
+    NamesAritiesArgTypes = [].
+
+:- pred bound_inst_list_is_complete_for_type_loop(module_info::in,
+    set(inst_name)::in, list(bound_inst)::in,
+    list({string, arity, list(mer_type)})::in,
+    list({string, arity, list(mer_type)})::out) is semidet.
+
+bound_inst_list_is_complete_for_type_loop(_ModuleInfo, _Expansions,
+        [], !NamesAritiesArgTypes).
+bound_inst_list_is_complete_for_type_loop(ModuleInfo, Expansions,
+        [BoundInst | BoundInsts], !NamesAritiesArgTypes) :-
+    BoundInst = bound_functor(InstConsId, ArgInsts),
+    InstConsId = du_data_ctor(InstDuCtor),
+    InstDuCtor = du_ctor(InstSymName, InstArity, _InstTypeCtor),
+    % We are assuming here that BoundInst is sorted on cons_ids.
+    ( if
+        !.NamesAritiesArgTypes = [NameArityArgTypes | !:NamesAritiesArgTypes],
+        NameArityArgTypes = {unqualify_name(InstSymName), InstArity, ArgTypes},
+        list.map(inst_is_complete_for_type(ModuleInfo, Expansions),
+            ArgTypes, ArgInsts)
+    then
+        bound_inst_list_is_complete_for_type_loop(ModuleInfo, Expansions,
+            BoundInsts, !NamesAritiesArgTypes)
+    else
+        fail
     ).
 
 :- pred inst_is_complete_for_type(module_info::in, set(inst_name)::in,
@@ -686,8 +706,8 @@ inst_is_complete_for_type(ModuleInfo, Expansions, Type, Inst) :-
 
 first_unqual_cons_id_is_greater(ConsIdA, ConsIdB) :-
     ( if
-        ConsIdA = cons(QNameA, ArityA, _),
-        ConsIdB = cons(QNameB, ArityB, _)
+        ConsIdA = du_data_ctor(du_ctor(QNameA, ArityA, _)),
+        ConsIdB = du_data_ctor(du_ctor(QNameB, ArityB, _))
     then
         ( QNameA = unqualified(NameA)
         ; QNameA = qualified(_, NameA)
@@ -786,7 +806,7 @@ bound_inst_list_matches_initial_mt(Type,
     BoundX = bound_functor(ConsIdX, ArgInstsX),
     BoundY = bound_functor(ConsIdY, ArgInstsY),
     ( if equivalent_cons_ids(ConsIdX, ConsIdY) then
-        get_cons_id_arg_types(!.Info ^ imi_module_info, Type,
+        get_cons_id_arg_types_for_inst(!.Info ^ imi_module_info, Type,
             ConsIdX, list.length(ArgInstsX), Types),
         inst_list_matches_initial_mt(Types, ArgInstsX, ArgInstsY, !Info),
         bound_inst_list_matches_initial_mt(Type, BoundXs, BoundYs, !Info)
@@ -1001,7 +1021,7 @@ bound_inst_list_matches_final(Type, [BoundX | BoundXs], [BoundY | BoundYs],
     BoundX = bound_functor(ConsIdX, ArgInstsX),
     BoundY = bound_functor(ConsIdY, ArgInstsY),
     ( if equivalent_cons_ids(ConsIdX, ConsIdY) then
-        get_cons_id_arg_types(!.Info ^ imi_module_info, Type,
+        get_cons_id_arg_types_for_inst(!.Info ^ imi_module_info, Type,
             ConsIdX, list.length(ArgInstsX), Types),
         inst_list_matches_final(Types, ArgInstsX, ArgInstsY, !Info),
         bound_inst_list_matches_final(Type, BoundXs, BoundYs, !Info)
@@ -1178,7 +1198,7 @@ bound_inst_list_matches_binding(Type, [BoundX | BoundXs], [BoundY | BoundYs],
     BoundX = bound_functor(ConsIdX, ArgInstsX),
     BoundY = bound_functor(ConsIdY, ArgInstsY),
     ( if equivalent_cons_ids(ConsIdX, ConsIdY) then
-        get_cons_id_arg_types(!.Info ^ imi_module_info, Type,
+        get_cons_id_arg_types_for_inst(!.Info ^ imi_module_info, Type,
             ConsIdX, list.length(ArgInstsX), Types),
         inst_list_matches_binding(Types, ArgInstsX, ArgInstsY, !Info),
         bound_inst_list_matches_binding(Type, BoundXs, BoundYs, !Info)

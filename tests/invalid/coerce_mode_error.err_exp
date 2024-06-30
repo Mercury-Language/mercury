@@ -28,7 +28,7 @@ coerce_mode_error.m:051:   `coerce_mode_error.list(coerce_mode_error.citrus)'.
 coerce_mode_error.m:063: In clause for `bad_from_list_to_least2(in, out)':
 coerce_mode_error.m:063:   in coerce expression:
 coerce_mode_error.m:063:   mode error: in the coerced term:
-coerce_mode_error.m:063:   in the second argument of function symbol `'[|]'':
+coerce_mode_error.m:063:   in the second argument of function symbol `[|]'/2:
 coerce_mode_error.m:063:   cannot convert the [38;5;87mcoerced subterm[39;49m from type
 coerce_mode_error.m:063:   `coerce_mode_error.list(V_1)' to
 coerce_mode_error.m:063:   `coerce_mode_error.non_empty_list(V_1)' because it
@@ -38,7 +38,7 @@ coerce_mode_error.m:063:   `coerce_mode_error.non_empty_list(V_1)'.
 coerce_mode_error.m:072: In clause for `from_list_to_least2(in, out)':
 coerce_mode_error.m:072:   in coerce expression:
 coerce_mode_error.m:072:   mode error: in the coerced term:
-coerce_mode_error.m:072:   in the second argument of function symbol `'[|]'':
+coerce_mode_error.m:072:   in the second argument of function symbol `[|]'/2:
 coerce_mode_error.m:072:   cannot convert the [38;5;87mcoerced subterm[39;49m from type
 coerce_mode_error.m:072:   `coerce_mode_error.list(V_1)' to
 coerce_mode_error.m:072:   `coerce_mode_error.non_empty_list(V_1)' because it

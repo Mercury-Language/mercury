@@ -829,7 +829,7 @@ bound_inst_cons_ids_are_all_simple([], []).
 bound_inst_cons_ids_are_all_simple([HeadBI | TailBIs],
         [HeadSimpleBI | TailSimpleBIs])  :-
     HeadBI = bound_functor(ConsId, ArgInsts),
-    ConsId = cons(SymName, _, _),
+    ConsId = du_data_ctor(du_ctor(SymName, _, _)),
     sym_name_is_simple(SymName),
     SimpleName = sym_name_to_string(SymName),
     HeadSimpleBI = simple_bound_functor(SimpleName, ArgInsts),

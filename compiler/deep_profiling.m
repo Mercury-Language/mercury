@@ -1774,8 +1774,9 @@ generate_csn_vector_cell(Length, CSNVars, CellVar, CellGoal, !DeepInfo) :-
     VarTable0 = !.DeepInfo ^ deep_var_table,
     add_var_entry(CellVarEntry, CellVar, VarTable0, VarTable),
     !DeepInfo ^ deep_var_table := VarTable,
-    ConsId = cons(qualified(ProfilingBuiltin, CellTypeName), Length,
-        CellTypeCtor),
+    DuCtor = du_ctor(qualified(ProfilingBuiltin, CellTypeName),
+        Length, CellTypeCtor),
+    ConsId = du_data_ctor(DuCtor),
     generate_deep_cell_unify(Length, ConsId, CSNVars, CellVar, CellGoal).
 
 :- pred generate_single_csn_unify(int::in,

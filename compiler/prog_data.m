@@ -99,18 +99,17 @@
 :- type shrouded_pred_proc_id
     --->    shrouded_pred_proc_id(int, int).
 
-:- type cons_ctor
-    --->    cons_ctor(sym_name, arity, type_ctor).
+:- type du_ctor
+    --->    du_ctor(sym_name, arity, type_ctor).
+            % Before post-typecheck, the type_ctor field is not meaningful.
 
 :- type cons_id
-    --->    cons(sym_name, arity, type_ctor)
-            % Before post-typecheck, the type_ctor field is not meaningful.
-            %
-            % Before post-typecheck, tuples and characters have this cons_id.
-            % For tuples, this will be of the form
-            % `cons(unqualified("{}"), Arity, _)',
-            % while for characters, this will be of the form
-            % `cons(unqualified(Str), 0, _)'
+    --->    du_data_ctor(du_ctor)
+            % A data constructor for a discriminated union type. However,
+            % note that before post-typecheck, tuples and characters
+            % will ALSO have this cons_id. For tuples, they will have the form
+            % `cons(du_ctor(unqualified("{}"), Arity, _))', while for
+            % characters, this will be `cons(du_ctor(unqualified(Str), 0, _))'
             % where Str = term_io.quoted_char(Char).
 
     ;       tuple_cons(arity)
@@ -262,8 +261,8 @@ cons_id_dummy_type_ctor = type_ctor(unqualified(""), -1).
 
 equivalent_cons_ids(ConsIdA, ConsIdB) :-
     ( if
-        ConsIdA = cons(SymNameA, ArityA, _),
-        ConsIdB = cons(SymNameB, ArityB, _)
+        ConsIdA = du_data_ctor(du_ctor(SymNameA, ArityA, _)),
+        ConsIdB = du_data_ctor(du_ctor(SymNameB, ArityB, _))
     then
         ArityA = ArityB,
         (
@@ -276,18 +275,18 @@ equivalent_cons_ids(ConsIdA, ConsIdB) :-
             SymNameA = qualified(_, Name),
             SymNameB = unqualified(Name)
         ;
-            SymNameA = qualified(Qualifier, Name),
-            SymNameB = qualified(Qualifier, Name)
+            SymNameA = qualified(ModuleName, Name),
+            SymNameB = qualified(ModuleName, Name)
         )
     else if
-        ConsIdA = cons(SymNameA, ArityA, _),
+        ConsIdA = du_data_ctor(du_ctor(SymNameA, ArityA, _)),
         ConsIdB = tuple_cons(ArityB)
     then
         ArityA = ArityB,
         SymNameA = unqualified("{}")
     else if
         ConsIdA = tuple_cons(ArityA),
-        ConsIdB = cons(SymNameB, ArityB, _)
+        ConsIdB = du_data_ctor(du_ctor(SymNameB, ArityB, _))
     then
         ArityA = ArityB,
         SymNameB = unqualified("{}")
@@ -304,7 +303,7 @@ cons_id_is_const_struct(ConsId, ConstNum) :-
     ;
         ConsId = ground_term_const(ConstNum, _)
     ;
-        ( ConsId = cons(_, _, _)
+        ( ConsId = du_data_ctor(_)
         ; ConsId = tuple_cons(_)
         ; ConsId = closure_cons(_)
         ; ConsId = some_int_const(_)

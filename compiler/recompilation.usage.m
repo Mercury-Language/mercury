@@ -292,18 +292,19 @@ do_record_used_functor(ModuleQualifier, SymName, Arity, Recorded,
     sym_name::in, arity::in, set(resolved_functor)::out) is det.
 
 find_matching_functors(ModuleInfo, SymName, Arity, ResolvedConstructors) :-
-    % Is it a constructor.
+    % Is it a data constructor?
     module_info_get_cons_table(ModuleInfo, Ctors),
-    ConsId = cons(SymName, Arity, cons_id_dummy_type_ctor),
-    ( if search_cons_table(Ctors, ConsId, ConsDefns0) then
+    DuCtor = du_ctor(SymName, Arity, cons_id_dummy_type_ctor),
+    ( if search_cons_table(Ctors, DuCtor, ConsDefns0) then
         ConsDefns1 = ConsDefns0
     else
         ConsDefns1 = []
     ),
     ( if
         remove_new_prefix(SymName, SymNameMinusNew),
-        ConsIdMinusNew = cons(SymNameMinusNew, Arity, cons_id_dummy_type_ctor),
-        search_cons_table(Ctors, ConsIdMinusNew, ConsDefns2)
+        DuCtorMinusNew = du_ctor(SymNameMinusNew, Arity,
+            cons_id_dummy_type_ctor),
+        search_cons_table(Ctors, DuCtorMinusNew, ConsDefns2)
     then
         ConsDefns = ConsDefns1 ++ ConsDefns2
     else
@@ -317,7 +318,7 @@ find_matching_functors(ModuleInfo, SymName, Arity, ResolvedConstructors) :-
             ),
             ConsDefns),
 
-    % Is it a higher-order term or function call.
+    % Is it a higher-order term or function call?
     module_info_get_predicate_table(ModuleInfo, PredicateTable),
     predicate_table_lookup_sym(PredicateTable,
         may_be_partially_qualified, SymName, PredIds),
@@ -325,7 +326,7 @@ find_matching_functors(ModuleInfo, SymName, Arity, ResolvedConstructors) :-
         can_resolve_pred_or_func(ModuleInfo, SymName, Arity),
         PredIds, MatchingPredRFs),
 
-    % Is it a field access function.
+    % Is it a field access function?
     ( if
         is_field_access_function_name(ModuleInfo, SymName, Arity,
             _, FieldName),
@@ -335,14 +336,10 @@ find_matching_functors(ModuleInfo, SymName, Arity, ResolvedConstructors) :-
         MatchingFieldAccessRFs = list.map(
             ( func(FieldDefn) = FieldAccessRF :-
                 FieldDefn =
-                    hlds_ctor_field_defn(_, _, TypeCtor, FieldConsId, _),
-                ( if FieldConsId = cons(ConsName, ConsArity, _) then
-                    ConsCtor = cons_ctor(ConsName, ConsArity, TypeCtor),
-                    FieldAccessRF =
-                        resolved_functor_field_access_func(ConsCtor)
-                else
-                    unexpected($pred, "weird cons_id in hlds_field_defn")
-                )
+                    hlds_ctor_field_defn(_, _, TypeCtor, FieldDuCtor, _),
+                FieldDuCtor = du_ctor(ConsName, ConsArity, _),
+                ConsCtor = cons_ctor(ConsName, ConsArity, TypeCtor),
+                FieldAccessRF = resolved_functor_field_access_func(ConsCtor)
             ), FieldDefns)
     else
         MatchingFieldAccessRFs = []
@@ -999,7 +996,7 @@ find_items_used_by_inst(Inst, !Info) :-
 
 find_items_used_by_bound_inst(BoundInst, !Info) :-
     BoundInst = bound_functor(ConsId, ArgInsts),
-    ( if ConsId = cons(Name, Arity, _) then
+    ( if ConsId = du_data_ctor(du_ctor(Name, Arity, _)) then
         record_used_functor(Name - Arity, !Info)
     else
         true

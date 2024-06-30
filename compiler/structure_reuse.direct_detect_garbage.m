@@ -282,7 +282,7 @@ unification_verify_reuse(ModuleInfo, ProcInfo, GoalInfo, Unification,
         ( if
             % Reuse is only relevant for real constructors, with nonzero
             % arities.
-            ConsId = cons(_, Arity, _),
+            ConsId = du_data_ctor(du_ctor(_, Arity, _)),
             Arity \= 0,
 
             % No-tag values don't have a cell to reuse.

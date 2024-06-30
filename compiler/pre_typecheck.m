@@ -140,7 +140,9 @@ maybe_add_field_access_function_clause(ModuleInfo, !PredInfo) :-
         user_arity_pred_form_arity(pf_function, UserArity, PredFormArity),
         UserArity = user_arity(UserArityInt),
         FuncSymName = qualified(FuncModule, FuncName),
-        FuncConsId = cons(FuncSymName, UserArityInt, cons_id_dummy_type_ctor),
+        FuncDuCtor =
+            du_ctor(FuncSymName, UserArityInt, cons_id_dummy_type_ctor),
+        FuncConsId = du_data_ctor(FuncDuCtor),
         FuncRHS = rhs_functor(FuncConsId, is_not_exist_constr, FuncArgs),
         create_pure_atomic_complicated_unification(FuncRetVal,
             FuncRHS, Context, umc_explicit, [], Goal0),

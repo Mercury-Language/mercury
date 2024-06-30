@@ -1423,7 +1423,7 @@ qualify_bound_inst(InInt, ErrorContext, BoundInst0, BoundInst,
         !Info, !Specs) :-
     BoundInst0 = bound_functor(ConsId, Insts0),
     (
-        ConsId = cons(Name, Arity, _),
+        ConsId = du_data_ctor(du_ctor(Name, Arity, _)),
         Id = recomp_item_name(Name, Arity),
         update_recompilation_info(record_used_item(used_functor, Id, Id),
             !Info)

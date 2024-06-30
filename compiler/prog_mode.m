@@ -880,7 +880,8 @@ get_arg_insts_2([BoundInst | BoundInsts], ConsId, ArgInsts) :-
 
 bound_inst_to_cons_id(TypeCtor, BoundInst, ConsId) :-
     BoundInst = bound_functor(ConsId0, _ArgInsts),
-    ( if ConsId0 = cons(ConsIdSymName0, ConsIdArity, _ConsIdTypeCtor) then
+    ( if ConsId0 = du_data_ctor(DuCtor0) then
+        DuCtor0 = du_ctor(ConsIdSymName0, ConsIdArity, _ConsIdTypeCtor),
         % Insts don't (yet) have to say what type they are for,
         % so we cannot rely on the bound_functors inside them
         % being correctly module qualified, and in fact it may be that
@@ -897,7 +898,8 @@ bound_inst_to_cons_id(TypeCtor, BoundInst, ConsId) :-
             ConsIdName = unqualify_name(ConsIdSymName0),
             ConsIdSymName = qualified(TypeCtorModuleName, ConsIdName)
         ),
-        ConsId = cons(ConsIdSymName, ConsIdArity, TypeCtor)
+        DuCtor = du_ctor(ConsIdSymName, ConsIdArity, TypeCtor),
+        ConsId = du_data_ctor(DuCtor)
     else
         ConsId = ConsId0
     ).

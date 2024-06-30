@@ -975,7 +975,7 @@ mismatched_args_to_pieces(VarSet, Functor, First, [Mismatch | Mismatches])
         % instead of
         %   Argument 1 (F) has type ...;
         %   argument 2 (A) has type ...
-        Functor = cons(unqualified(""), Arity, _),
+        Functor = du_data_ctor(du_ctor(unqualified(""), Arity, _)),
         Arity > 0
     then
         (
@@ -1398,7 +1398,8 @@ nosuffix_integer_pieces = Pieces :-
 :- pred is_int_func_op(cons_id::in) is semidet.
 
 is_int_func_op(ConsId) :-
-    ConsId = cons(SymName, Arity, _TypeCtor),
+    ConsId = du_data_ctor(DuCtor),
+    DuCtor = du_ctor(SymName, Arity, _TypeCtor),
     % We ignore the module name part of SymName, since it is very likely
     % that the error is precisely the fact that the module name is wrong.
     Name = unqualify_name(SymName),
@@ -1644,13 +1645,13 @@ functor_name_to_pieces(ConsId, Arity) = Pieces :-
     strip_builtin_qualifier_from_cons_id(ConsId, StrippedConsId),
     ( if Arity = 0 then
         Piece1 = words("constant"),
-        ( if ConsId = cons(Name, _, _) then
-            Piece2 = qual_sym_name(Name)
+        ( if ConsId = du_data_ctor(du_ctor(SymName, _, _)) then
+            Piece2 = qual_sym_name(SymName)
         else
             Piece2 = quote(cons_id_and_arity_to_string(StrippedConsId))
         ),
         Pieces = [Piece1, Piece2]
-    else if ConsId = cons(unqualified(""), _, _) then
+    else if ConsId = du_data_ctor(du_ctor(unqualified(""), _, _)) then
         Pieces = [words("higher-order term (with arity"),
             int_fixed(Arity - 1), suffix(")")]
     else
@@ -1716,7 +1717,7 @@ cons_type_to_pieces(InstVarSet, ConsInfo, Functor) = Pieces :-
     ConsInfo = cons_type_info(TVarSet, ExistQVars, ConsType, ArgTypes, _, _),
     (
         ArgTypes = [_ | _],
-        ( if Functor = cons(SymName, _Arity, _) then
+        ( if Functor = du_data_ctor(du_ctor(SymName, _Arity, _)) then
             % What we construct in Type is not really a type: it is a
             % function symbol applied to a list of argument types. However
             % *syntactically*, it looks like a type, and we already have

@@ -31,12 +31,15 @@
 % The source of the graph is the deconstruction, the leaves are
 % either constructions, or empty. The branches are either conjunctions
 % or disjunctions.
+%
 % The value of the dead cell is then computed as follows:
+%
 %   - value of a conjunction = maximum of the values of each of the
 %       conjunct branches.
 %       Intuitively: if a dead deconstruction is followed by
 %       two constructions which might reuse the dead cell: pick
 %       the one which allows the most potential gain.
+%
 %   - value of a disjunction = average of the value of each of the
 %       disjunct branches.
 %       Intuitively: if a dead deconstruction is followed by
@@ -47,6 +50,7 @@
 %       Without precise notion of which branches are executed
 %       more often, taking the simple average of the values is
 %       a good approximation.
+%
 %   - value of a construction = a value that takes into account
 %       the cost of constructing a new cell and compares it
 %       to the cost of updating a dead cell. If the arities
@@ -1039,8 +1043,8 @@ compute_reuse_type(Background, _NewVar, NewCons, NewCellArgs, DeconSpec,
 cons_has_normal_fields(ModuleInfo, ConsId) :-
     require_complete_switch [ConsId]
     (
-        ConsId = cons(_, _, _),
-        get_cons_repn_defn_det(ModuleInfo, ConsId, ConsRepnDefn),
+        ConsId = du_data_ctor(DuCtor),
+        get_cons_repn_defn_det(ModuleInfo, DuCtor, ConsRepnDefn),
         ConsArgRepns = ConsRepnDefn ^ cr_args,
         all [ArgRepn] (
             list.member(ArgRepn, ConsArgRepns)
@@ -1124,7 +1128,8 @@ needs_update_and(does_not_need_update, does_not_need_update) =
 
 has_secondary_tag(ModuleInfo, ConsId, SecondaryTag) :-
     ( if
-        get_cons_repn_defn(ModuleInfo, ConsId, ConsRepn),
+        ConsId = du_data_ctor(DuCtor),
+        get_cons_repn_defn(ModuleInfo, DuCtor, ConsRepn),
         ConsTag = ConsRepn ^ cr_tag,
         get_maybe_secondary_tag(ConsTag) = yes(_)
     then

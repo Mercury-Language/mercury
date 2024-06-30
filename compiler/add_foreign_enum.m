@@ -41,12 +41,12 @@
 
 %---------------------------------------------------------------------------%
 
-:- type cons_id_to_tag_map == map(cons_id, cons_tag).
+:- type du_ctor_to_tag_map == map(du_ctor, cons_tag).
 
 :- type type_ctor_foreign_enums
     --->    type_ctor_foreign_enums(
                 tcfe_lang_contexts      :: map(foreign_language, prog_context),
-                tcfe_tag_values         :: maybe({cons_id_to_tag_map,
+                tcfe_tag_values         :: maybe({du_ctor_to_tag_map,
                                                 foreign_language})
             ).
 
@@ -197,13 +197,13 @@ add_pragma_foreign_enum(ModuleInfo, ImsItem, !TypeCtorForeignEnumMap,
                 MercuryForeignTagNames =
                     bimap.to_assoc_list(MercuryForeignTagBimap),
                 list.map(
-                    map_cons_id_to_foreign_tag(TypeCtor, TypeModuleName,
+                    map_du_ctor_to_foreign_tag(TypeCtor, TypeModuleName,
                         Lang),
-                    MercuryForeignTagNames, ConsIdForeignTags),
-                % Converting each name to a cons_id would preserve the order,
+                    MercuryForeignTagNames, DuCtorForeignTags),
+                % Converting each name to a du_ctor would preserve the order,
                 % but bimap.to_assoc_list does not guarantee an order,
                 % and unlike map.m, bimap.m does not have to_sorted_assoc_list.
-                map.from_assoc_list(ConsIdForeignTags, ConsIdToTagMap),
+                map.from_assoc_list(DuCtorForeignTags, DuCtorToTagMap),
 
                 % Work out what language's foreign_enum pragma we should be
                 % looking at for the current compilation target language.
@@ -216,7 +216,7 @@ add_pragma_foreign_enum(ModuleInfo, ImsItem, !TypeCtorForeignEnumMap,
                     Lang = LangForForeignEnums,
                     !.Specs = []
                 then
-                    MaybeTagValuesToSet = yes({ConsIdToTagMap, Lang})
+                    MaybeTagValuesToSet = yes({DuCtorToTagMap, Lang})
                 else
                     MaybeTagValuesToSet = no
                 ),
@@ -267,14 +267,14 @@ target_lang_to_foreign_enum_lang(target_c) = lang_c.
 target_lang_to_foreign_enum_lang(target_csharp) = lang_csharp.
 target_lang_to_foreign_enum_lang(target_java) = lang_java.
 
-:- pred map_cons_id_to_foreign_tag(type_ctor::in, module_name::in,
+:- pred map_du_ctor_to_foreign_tag(type_ctor::in, module_name::in,
     foreign_language::in,
-    pair(string, string)::in, pair(cons_id, cons_tag)::out) is det.
+    pair(string, string)::in, pair(du_ctor, cons_tag)::out) is det.
 
-map_cons_id_to_foreign_tag(TypeCtor, TypeModuleName, ForeignLanguage,
-        CtorName - ForeignTagName, ConsId - ForeignTag) :-
+map_du_ctor_to_foreign_tag(TypeCtor, TypeModuleName, ForeignLanguage,
+        CtorName - ForeignTagName, DuCtor - ForeignTag) :-
     CtorSymName = qualified(TypeModuleName, CtorName),
-    ConsId = cons(CtorSymName, 0, TypeCtor),
+    DuCtor = du_ctor(CtorSymName, 0, TypeCtor),
     ForeignTag = foreign_tag(ForeignLanguage, ForeignTagName).
 
 %---------------------------------------------------------------------------%

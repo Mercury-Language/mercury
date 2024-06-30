@@ -1675,8 +1675,9 @@ mode_error_coerce_error_to_spec(ModeInfo, Errors) = Spec :-
             BadAritySuffix = "."
         ;
             ResultBadConsIds = [_ | _],
+            ResultWrapUnqual = (func(C) = qual_cons_id_and_maybe_arity(C)),
             ResultBadConsIdPieces =
-                list.map(unqualified_cons_id_to_pieces, ResultBadConsIds),
+                list.map(ResultWrapUnqual, ResultBadConsIds),
             ResultBadConsIdMsgPieces =
                 [words("the following function"),
                 words(choose_number(ResultBadConsIds,
@@ -1684,7 +1685,7 @@ mode_error_coerce_error_to_spec(ModeInfo, Errors) = Spec :-
                     "symbols in the input term's instantiatedness are"))] ++
                 color_as_incorrect([words("not part of the result type:")]) ++
                 [nl_indent_delta(1)] ++
-                pieces_list_to_color_line_pieces(color_incorrect,
+                piece_list_to_color_line_pieces(color_incorrect,
                     [suffix(".")], ResultBadConsIdPieces) ++
                 [nl_indent_delta(-1)],
             BadAritySuffix = ";"
@@ -1714,8 +1715,8 @@ mode_error_coerce_error_to_spec(ModeInfo, Errors) = Spec :-
             InputBadConsIdMsgPieces = []
         ;
             InputBadConsIds = [_ | _],
-            InputBadConsIdPieces =
-                list.map(cons_id_to_pieces, InputBadConsIds),
+            InputWrapUnqual = (func(C) = qual_cons_id_and_maybe_arity(C)),
+            InputBadConsIdPieces = list.map(InputWrapUnqual, InputBadConsIds),
             InputBadConsIdMsgPieces =
                 [words("the following function"),
                 words(choose_number(InputBadConsIds,
@@ -1723,7 +1724,7 @@ mode_error_coerce_error_to_spec(ModeInfo, Errors) = Spec :-
                     "symbols in the input term's instantiatedness are"))] ++
                 color_as_incorrect([words("not part of the input type:")]) ++
                 [nl_indent_delta(1)] ++
-                pieces_list_to_color_line_pieces(color_incorrect,
+                piece_list_to_color_line_pieces(color_incorrect,
                     [suffix(BadInputSuffix)], InputBadConsIdPieces) ++
                 [nl_indent_delta(-1)]
         ),
@@ -1758,16 +1759,15 @@ mode_error_coerce_error_to_spec(ModeInfo, Errors) = Spec :-
 make_term_path_piece(Step) = Pieces :-
     Step = coerce_error_term_path_step(ConsId, ArgNum),
     ( if
-        ConsId = cons(_SymName, 1, _),
+        ConsId = du_data_ctor(du_ctor(_SymName, 1, _)),
         ArgNum = 1
     then
         ArgPieces = [words("in the argument")]
     else
         ArgPieces = [words("in the"), nth_fixed(ArgNum), words("argument")]
     ),
-    ConsIdPieces = unqualified_cons_id_to_pieces(ConsId),
-    Pieces = ArgPieces ++
-        [words("of function symbol")] ++ ConsIdPieces ++ [suffix(":"), nl].
+    Pieces = ArgPieces ++ [words("of function symbol"),
+        unqual_cons_id_and_maybe_arity(ConsId), suffix(":"), nl].
 
 :- pred classify_bound_inst_cons_id_errors(list(bound_inst_cons_id_error)::in,
     set(cons_id)::in, set(cons_id)::out,
@@ -1795,30 +1795,11 @@ classify_bound_inst_cons_id_errors([Error | Errors],
 :- func report_bad_arity_pieces({cons_id, arity, arity}) = list(format_piece).
 
 report_bad_arity_pieces({ConsId, InstArity, ExpectedArity}) = Pieces :-
-    ConsIdPieces = cons_id_to_pieces(ConsId),
-    InstArityStr = int_to_string(InstArity),
-    ExpectedArityStr = int_to_string(ExpectedArity),
-    Pieces = ConsIdPieces ++ [fixed("(" ++ InstArityStr ++ ";"),
-        words("should be"), fixed(ExpectedArityStr ++ ")")].
-
-:- func unqualified_cons_id_to_pieces(cons_id) = list(format_piece).
-
-unqualified_cons_id_to_pieces(ConsId0) = Pieces :-
-    ( if ConsId0 = cons(Name0, Arity, TypeCtor) then
-        UnqualName = unqualify_name(Name0),
-        Name = unqualified(UnqualName),
-        ConsId = cons(Name, Arity, TypeCtor)
-    else
-        ConsId = ConsId0
-    ),
-    Pieces = cons_id_to_pieces(ConsId).
-
-:- func cons_id_to_pieces(cons_id) = list(format_piece).
-
-cons_id_to_pieces(ConsId) = Pieces :-
-    Str = mercury_cons_id_to_string(output_mercury, does_not_need_brackets,
-        ConsId),
-    Pieces = [quote(Str)].
+    Pieces = [unqual_cons_id_and_maybe_arity(ConsId), prefix("(")] ++
+        color_as_incorrect([int_fixed(InstArity)]) ++
+        [suffix(";"), words("should be")] ++
+        color_as_correct([int_fixed(ExpectedArity)]) ++
+        [suffix(")")].
 
 %---------------------------------------------------------------------------%
 

@@ -198,7 +198,7 @@ specialize_unify_or_compare_pred_for_dummy(MaybeResult, GoalExpr, !Info) :-
         MaybeResult = yes(ComparisonResult),
         Builtin = mercury_public_builtin_module,
         TypeCtor = type_ctor(qualified(Builtin, "comparison_result"), 0),
-        Eq = cons(qualified(mercury_public_builtin_module, "="), 0, TypeCtor),
+        Eq = du_data_ctor(du_ctor(qualified(Builtin, "="), 0, TypeCtor)),
         make_const_construction(dummy_context, ComparisonResult, Eq, Goal),
         Goal = hlds_goal(GoalExpr, _)
     ).
@@ -419,7 +419,7 @@ create_goal_to_unwrap_no_tag_arg(OuterType, WrappedType, IsDummy, Context,
     proc_info_create_var_from_type("", WrappedType, IsDummy,
         UnwrappedArg, !ProcInfo),
     type_to_ctor_det(OuterType, OuterTypeCtor),
-    ConsId = cons(Constructor, 1, OuterTypeCtor),
+    ConsId = du_data_ctor(du_ctor(Constructor, 1, OuterTypeCtor)),
     Ground = ground(shared, none_or_default_func),
     UnifyModeInOut = unify_modes_li_lf_ri_rf(Ground, Ground, free, Ground),
     ArgModes = [UnifyModeInOut],

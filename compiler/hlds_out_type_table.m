@@ -194,21 +194,21 @@ format_type_body(Info, _TypeCtor, TypeBody, TVarSet, !State) :-
             (
                 CheaperTagTest = no_cheaper_tag_test
             ;
-                CheaperTagTest = cheaper_tag_test(ExpConsId, ExpConsTag,
-                    CheapConsId, CheapConsTag),
-                ExpConsIdStr = cons_id_and_arity_to_string(
-                    unqual_cons_id(ExpConsId)),
-                CheapConsIdStr = cons_id_and_arity_to_string(
-                    unqual_cons_id(CheapConsId)),
+                CheaperTagTest = cheaper_tag_test(ExpDuCtor, ExpConsTag,
+                    CheapDuCtor, CheapConsTag),
+                ExpDuCtorStr = du_ctor_and_arity_to_string(
+                    unqual_du_ctor(ExpDuCtor)),
+                CheapDuCtorStr = du_ctor_and_arity_to_string(
+                    unqual_du_ctor(CheapDuCtor)),
                 string.builder.format("%s%% cheaper tag test:\n",
                     [s(IndentStr)], !State),
                 string.builder.format("%s%%   from %s\n",
-                    [s(IndentStr), s(ExpConsIdStr)], !State),
+                    [s(IndentStr), s(ExpDuCtorStr)], !State),
                 string.builder.format("%s%%      %s\n",
                     [s(IndentStr), s(du_cons_tag_to_string(ExpConsTag))],
                     !State),
                 string.builder.format("%s%%   to %s\n",
-                    [s(IndentStr), s(CheapConsIdStr)], !State),
+                    [s(IndentStr), s(CheapDuCtorStr)], !State),
                 string.builder.format("%s%%      %s\n",
                     [s(IndentStr), s(du_cons_tag_to_string(CheapConsTag))],
                     !State)
@@ -336,15 +336,12 @@ format_type_body(Info, _TypeCtor, TypeBody, TVarSet, !State) :-
         string.builder.append_string(".\n", !State)
     ).
 
-:- func unqual_cons_id(cons_id) = cons_id.
+:- func unqual_du_ctor(du_ctor) = du_ctor.
 
-unqual_cons_id(ConsId) = UnQualConsId :-
-    ( if ConsId = cons(SymName, Arity, TypeCtor) then
-        UnQualConsId =
-            cons(unqualified(unqualify_name(SymName)), Arity, TypeCtor)
-    else
-        UnQualConsId = ConsId
-    ).
+unqual_du_ctor(DuCtor) = UnQualDuCtor :-
+    DuCtor = du_ctor(SymName, Arity, TypeCtor),
+    UnqualSymName = unqualified(unqualify_name(SymName)),
+    UnQualDuCtor = du_ctor(UnqualSymName, Arity, TypeCtor).
 
 :- func maybe_canonical_to_simple_string(maybe_canonical) = string.
 

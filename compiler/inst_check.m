@@ -454,7 +454,8 @@ check_for_type_bound_insts(ForTypeKind, [BoundInst | BoundInsts],
         !Mismatches) :-
     BoundInst = bound_functor(ConsId, _),
     (
-        ConsId = cons(ConsSymName, ConsArity, ConsIdTypeCtor),
+        ConsId = du_data_ctor(DuCtor),
+        DuCtor = du_ctor(ConsSymName, ConsArity, ConsIdTypeCtor),
         (
             ForTypeKind = ftk_user(TypeCtor, TypeDefn),
             get_type_defn_body(TypeDefn, TypeDefnBody),
@@ -614,7 +615,8 @@ report_near_misses(TypeCtor, ConsId, SymName, CtorArities, !Mismatches) :-
 :- func make_cons_id_component(type_ctor, sym_name, arity) = format_piece.
 
 make_cons_id_component(TypeCtor, SymName, Arity) =
-    qual_cons_id_and_maybe_arity(cons(SymName, Arity, TypeCtor)).
+    qual_cons_id_and_maybe_arity(
+        du_data_ctor(du_ctor(SymName, Arity, TypeCtor))).
 
 %---------------------------------------------------------------------------%
 
@@ -659,7 +661,7 @@ get_possible_types_for_bound_insts(FunctorsToTypesMap,
 get_possible_types_for_bound_inst(FunctorsToTypesMap, BoundInst, MaybeTypes) :-
     BoundInst = bound_functor(ConsId, _),
     (
-        ConsId = cons(SymName, Arity, _),
+        ConsId = du_data_ctor(du_ctor(SymName, Arity, _)),
         Name = unqualify_name(SymName),
         FunctorNameAndArity = functor_name_and_arity(Name, Arity),
         ( if
@@ -1116,7 +1118,7 @@ find_mismatches_from_user(_Ctors, _CurNum,
 find_mismatches_from_user(Ctors, CurNum,
         [BoundInst | BoundInsts], !NumMismatches, !PiecesCord) :-
     BoundInst = bound_functor(ConsId, _SubInsts),
-    ( if ConsId = cons(SymName, Arity, _) then
+    ( if ConsId = du_data_ctor(du_ctor(SymName, Arity, _)) then
         FunctorName = unqualify_name(SymName),
         ( if some_ctor_matches_exactly(Ctors, FunctorName, Arity) then
             true
@@ -1206,7 +1208,7 @@ find_mismatches_from_builtin(ExpectedBuiltinType, CurNum,
         ( if ConsId = char_const(_) then
             true
         else if
-            ConsId = cons(SymName, ConsArity, _),
+            ConsId = du_data_ctor(du_ctor(SymName, ConsArity, _)),
             string.count_code_points(unqualify_name(SymName)) = 1,
             ConsArity = 0
         then

@@ -665,11 +665,11 @@ size_prof_process_construct(LHS, RHS, UniMode, UnifyContext, Var, ConsId,
             no_construct_sub_info),
         GoalExpr = unify(LHS, RHS, UniMode, Unification, UnifyContext)
     else if
-        ConsId = cons(_Name, _Arity, _TypeCtor),
+        ConsId = du_data_ctor(DuCtor),
         Args = [_ | _]
     then
         size_prof_process_cons_construct(LHS, RHS, UniMode, UnifyContext,
-            Var, VarType, ConsId, Args, ArgModes, How, Unique,
+            Var, VarType, DuCtor, Args, ArgModes, How, Unique,
             GoalInfo, GoalExpr, !Info)
     else
         % All ConsIds other than cons/2 with at least one argument
@@ -697,7 +697,7 @@ size_prof_process_deconstruct(Var, ConsId, Args, ArgModes, Goal0, GoalExpr,
     then
         Goal0 = hlds_goal(GoalExpr, _)
     else if
-        ( ConsId = cons(_Name, _Arity, _TypeCtor)
+        ( ConsId = du_data_ctor(_)
         ; ConsId = tuple_cons(_Arity)
         ),
         Args = [_ | _]
@@ -715,17 +715,18 @@ size_prof_process_deconstruct(Var, ConsId, Args, ArgModes, Goal0, GoalExpr,
 
 :- pred size_prof_process_cons_construct(prog_var::in, unify_rhs::in,
     unify_mode::in, unify_context::in, prog_var::in, mer_type::in,
-    cons_id::in, list(prog_var)::in, list(unify_mode)::in,
+    du_ctor::in, list(prog_var)::in, list(unify_mode)::in,
     how_to_construct::in, cell_is_unique::in, hlds_goal_info::in,
     hlds_goal_expr::out, size_prof_info::in, size_prof_info::out) is det.
 
 size_prof_process_cons_construct(LHS, RHS, UniMode, UnifyContext, Var, _Type,
-        ConsId, Args, ArgModes, How, Unique, GoalInfo0, GoalExpr, !Info) :-
+        DuCtor, Args, ArgModes, How, Unique, GoalInfo0, GoalExpr, !Info) :-
     FunctorSize = compute_functor_size(Args, !.Info),
     find_defined_args(Args, ArgModes, DefinedArgs, NonDefinedArgs, !.Info),
     Context = goal_info_get_context(GoalInfo0),
     size_prof_process_args(DefinedArgs, FunctorSize, KnownSize,
         no, MaybeDynamicSizeVar, Context, ArgGoals, !Info),
+    ConsId = du_data_ctor(DuCtor),
     (
         MaybeDynamicSizeVar = no,
         expect(unify(ArgGoals, []), $pred, "nonempty ArgGoals"),

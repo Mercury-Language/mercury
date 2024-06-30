@@ -263,18 +263,23 @@
     %
 :- pred get_cons_id_arg_types(module_info::in, mer_type::in,
     cons_id::in, list(mer_type)::out) is det.
+:- pred get_du_ctor_arg_types(module_info::in, mer_type::in,
+    du_ctor::in, list(mer_type)::out) is det.
 
-    % The same as get_cons_id_arg_types except that it fails rather than
+    % The same as get_user_data_arg_types except that it fails rather than
     % aborting if the functor is existentially typed.
     %
 :- pred get_cons_id_non_existential_arg_types(module_info::in,
     mer_type::in, cons_id::in, list(mer_type)::out) is semidet.
+:- pred get_du_ctor_non_existential_arg_types(module_info::in,
+    mer_type::in, du_ctor::in, list(mer_type)::out) is semidet.
 
-    % The same as get_cons_id_arg_types except that the cons_id is output
-    % non-deterministically. The cons_id is not module-qualified.
+    % The same as get_cons_id_arg_types except that it returns
+    % the argument not just for a single data constructor in the type,
+    % but all of them.
     %
-:- pred cons_id_arg_types(module_info::in, mer_type::in,
-    cons_id::out, list(mer_type)::out) is nondet.
+:- pred all_du_ctor_arg_types(module_info::in, mer_type::in,
+    list({string, arity, list(mer_type)})::out) is det.
 
     % Is this type a du type?
     %
@@ -293,13 +298,16 @@
     % These versions may be called only after the pass in which
     % type representations are decided.
     %
-:- pred get_cons_defn(module_info::in, type_ctor::in, cons_id::in,
+:- pred get_cons_defn(module_info::in, type_ctor::in, du_ctor::in,
     hlds_cons_defn::out) is semidet.
-:- pred get_cons_defn_det(module_info::in, type_ctor::in, cons_id::in,
+:- pred get_cons_defn_det(module_info::in, type_ctor::in, du_ctor::in,
     hlds_cons_defn::out) is det.
-:- pred get_cons_repn_defn(module_info::in, cons_id::in,
+:- pred get_cons_repn_defn(module_info::in, du_ctor::in,
     constructor_repn::out) is semidet.
-:- pred get_cons_repn_defn_det(module_info::in, cons_id::in,
+:- pred get_cons_repn_defn_det(module_info::in, du_ctor::in,
+    constructor_repn::out) is det.
+
+:- pred get_cons_id_repn_defn_det(module_info::in, cons_id::in,
     constructor_repn::out) is det.
 
     % This type is used to return information about a constructor definition,
@@ -329,11 +337,11 @@
     % original types from the constructor definition. The caller must do
     % that substitution itself if required.
     %
-:- pred get_existq_cons_defn(module_info::in, mer_type::in, cons_id::in,
+:- pred get_existq_cons_defn(module_info::in, mer_type::in, du_ctor::in,
     ctor_defn::out) is semidet.
 
-:- pred cons_id_is_existq_cons(module_info::in, mer_type::in, cons_id::in)
-    is semidet.
+:- pred cons_id_is_existq_cons(module_info::in, mer_type::in,
+    du_ctor::in) is semidet.
 
     % Check whether a type is a no_tag type (i.e. one with only one
     % constructor, and whose one constructor has only one argument).
@@ -346,13 +354,13 @@
 :- pred type_is_no_tag_type(module_info::in, mer_type::in, sym_name::out,
     mer_type::out) is semidet.
 
-    % cons_id_adjusted_arity(ModuleInfo, Type, ConsId):
+    % du_ctor_adjusted_arity(ModuleInfo, Type, DuCtor):
     %
     % Returns the number of arguments of specified constructor id, adjusted
     % to include the extra typeclassinfo and typeinfo arguments inserted
     % by polymorphism.m for existentially typed constructors.
     %
-:- func cons_id_adjusted_arity(module_info, mer_type, cons_id) = int.
+:- func du_ctor_adjusted_arity(module_info, mer_type, du_ctor) = int.
 
     % Check if (values/program terms of) the type is NOT allocated in a
     % region in region-based memory management.
@@ -457,7 +465,6 @@
 :- import_module parse_tree.prog_type_scan.
 :- import_module parse_tree.prog_type_subst.
 :- import_module parse_tree.prog_type_test.
-:- import_module parse_tree.prog_util.
 
 :- import_module bool.
 :- import_module int.
@@ -674,9 +681,9 @@ ctor_definitely_has_no_user_defined_eq_pred(ModuleInfo, Ctor, !SeenTypes) :-
     list.foldl(type_definitely_has_no_user_defined_eq_pred_2(ModuleInfo),
         ArgTypes, !SeenTypes).
 
-var_is_or_may_contain_solver_type(ModuleInfo, VarTabke, Var) :-
-    lookup_var_type(VarTabke, Var, VarType),
-    type_is_or_may_contain_solver_type(ModuleInfo, VarType).
+var_is_or_may_contain_solver_type(ModuleInfo, VarTable, Var) :-
+    lookup_var_type(VarTable, Var, Type),
+    type_is_or_may_contain_solver_type(ModuleInfo, Type).
 
 type_is_or_may_contain_solver_type(ModuleInfo, Type) :-
     (
@@ -1073,8 +1080,8 @@ get_supertype(TypeTable, TVarSet, TypeCtor, Args, SuperType) :-
 
 %-----------------------------------------------------------------------------%
 
-classify_type(ModuleInfo, VarType) = TypeCategory :-
-    ( if type_to_ctor(VarType, TypeCtor) then
+classify_type(ModuleInfo, Type) = TypeCategory :-
+    ( if type_to_ctor(Type, TypeCtor) then
         TypeCategory = classify_type_ctor(ModuleInfo, TypeCtor)
     else
         TypeCategory = ctor_cat_variable
@@ -1472,34 +1479,65 @@ switch_type_num_functors(ModuleInfo, Type, NumFunctors) :-
 %-----------------------------------------------------------------------------%
 
 get_cons_id_arg_types(ModuleInfo, Type, ConsId, ArgTypes) :-
-    get_cons_id_arg_types_2(abort_on_exist_qvar, ModuleInfo, Type, ConsId,
-        ArgTypes).
+    ( if ConsId = du_data_ctor(DuCtor) then
+        get_du_ctor_arg_types(ModuleInfo, Type, DuCtor, ArgTypes)
+    else
+        ( if
+            type_to_ctor_and_args(Type, TypeCtor, TypeArgs),
+            type_ctor_is_tuple(TypeCtor)
+        then
+            % The argument types of a tuple cons_id are the arguments
+            % of the tuple type constructor.
+            ArgTypes = TypeArgs
+        else
+            ArgTypes = []
+        )
+    ).
 
-get_cons_id_non_existential_arg_types(ModuleInfo, Type, ConsId, ArgTypes) :-
-    get_cons_id_arg_types_2(fail_on_exist_qvar, ModuleInfo, Type, ConsId,
-        ArgTypes).
+get_du_ctor_arg_types(ModuleInfo, Type, DuCtor, ArgTypes) :-
+    get_user_data_arg_types_2(abort_on_exist_qvar, ModuleInfo, Type,
+        DuCtor, ArgTypes).
+
+get_cons_id_non_existential_arg_types(ModuleInfo, Type, ConsId,
+        ArgTypes) :-
+    ( if ConsId = du_data_ctor(DuCtor) then
+        get_du_ctor_non_existential_arg_types(ModuleInfo, Type,
+            DuCtor, ArgTypes)
+    else
+        ( if
+            type_to_ctor_and_args(Type, TypeCtor, TypeArgs),
+            type_ctor_is_tuple(TypeCtor)
+        then
+            % The argument types of a tuple cons_id are the arguments
+            % of the tuple type constructor. None of them can be
+            % existentially quantified.
+            ArgTypes = TypeArgs
+        else
+            ArgTypes = []
+        )
+    ).
+
+get_du_ctor_non_existential_arg_types(ModuleInfo, Type, DuCtor,
+        ArgTypes) :-
+    get_user_data_arg_types_2(fail_on_exist_qvar, ModuleInfo, Type,
+        DuCtor, ArgTypes).
 
 :- type exist_qvar_action
     --->    fail_on_exist_qvar
     ;       abort_on_exist_qvar.
 
-:- pred get_cons_id_arg_types_2(exist_qvar_action, module_info, mer_type,
-    cons_id, list(mer_type)).
-:- mode get_cons_id_arg_types_2(in(bound(fail_on_exist_qvar)), in, in,
+:- pred get_user_data_arg_types_2(exist_qvar_action, module_info, mer_type,
+    du_ctor, list(mer_type)).
+:- mode get_user_data_arg_types_2(in(bound(fail_on_exist_qvar)), in, in,
     in, out) is semidet.
-:- mode get_cons_id_arg_types_2(in(bound(abort_on_exist_qvar)), in, in,
+:- mode get_user_data_arg_types_2(in(bound(abort_on_exist_qvar)), in, in,
     in, out) is det.
 
-get_cons_id_arg_types_2(EQVarAction, ModuleInfo, VarType, ConsId, ArgTypes) :-
-    ( if type_to_ctor_and_args(VarType, TypeCtor, TypeArgs) then
+get_user_data_arg_types_2(EQVarAction, ModuleInfo, Type, DuCtor,
+        ArgTypes) :-
+    ( if type_to_ctor_and_args(Type, TypeCtor, TypeArgs) then
         ( if
-            % The argument types of a tuple cons_id are the arguments
-            % of the tuple type constructor.
-            type_ctor_is_tuple(TypeCtor)
-        then
-            ArgTypes = TypeArgs
-        else if
-            get_cons_defn(ModuleInfo, TypeCtor, ConsId, ConsDefn),
+            get_cons_defn(ModuleInfo, TypeCtor, DuCtor, ConsDefn),
             ConsDefn = hlds_cons_defn(_, _, TypeParams, _,
                 MaybeExistConstraints0, Args, _),
             Args = [_ | _]
@@ -1528,22 +1566,39 @@ get_cons_id_arg_types_2(EQVarAction, ModuleInfo, VarType, ConsId, ArgTypes) :-
         ArgTypes = []
     ).
 
-cons_id_arg_types(ModuleInfo, VarType, ConsId, ArgTypes) :-
-    type_to_ctor_and_args(VarType, TypeCtor, TypeArgs),
-    module_info_get_type_table(ModuleInfo, TypeTable),
-    search_type_ctor_defn(TypeTable, TypeCtor, TypeDefn),
-    hlds_data.get_type_defn_body(TypeDefn, TypeDefnBody),
-    TypeDefnBody = hlds_du_type(type_body_du(OoMCtors, _, _, _, _)),
-    OoMCtors = one_or_more(HeadCtor, TailCtors),
-    ( Ctor = HeadCtor
-    ; list.member(Ctor, TailCtors)
-    ),
-    Ctor = ctor(_Ordinal, _MaybeExistConstraints, Name, _Args, Arity, _Ctxt),
-    ConsId = cons(Name, Arity, TypeCtor),
+all_du_ctor_arg_types(ModuleInfo, Type, NamesAritiesArgTypes) :-
+    ( if
+        type_to_ctor_and_args(Type, TypeCtor, TypeArgs),
+        module_info_get_type_table(ModuleInfo, TypeTable),
+        search_type_ctor_defn(TypeTable, TypeCtor, TypeDefn),
+        hlds_data.get_type_defn_body(TypeDefn, TypeDefnBody),
+        TypeDefnBody = hlds_du_type(type_body_du(OoMCtors, _, _, _, _))
+    then
+        module_info_get_cons_table(ModuleInfo, ConsTable),
+        Ctors = one_or_more_to_list(OoMCtors),
+        list.filter_map(get_user_ctor_arg_types(ConsTable, TypeCtor, TypeArgs),
+            Ctors, NamesAritiesArgTypes)
+    else
+        NamesAritiesArgTypes = []
+    ).
 
-    % We should look it up in a type_ctor-specific table, not a global one.
-    module_info_get_cons_table(ModuleInfo, CtorTable),
-    search_cons_table_of_type_ctor(CtorTable, TypeCtor, ConsId, ConsDefn),
+:- pred get_user_ctor_arg_types(cons_table::in, type_ctor::in,
+    list(mer_type)::in, constructor::in,
+    {string, arity, list(mer_type)}::out) is semidet.
+
+get_user_ctor_arg_types(ConsTable, TypeCtor, TypeArgs, Ctor,
+        {Name, Arity, ArgTypes}) :-
+    Ctor =
+        ctor(_Ordinal, _MaybeExistConstraints, SymName, _Args, Arity, _Ctxt),
+    % The module qualifier in SymName should be the module name in TypeCtor,
+    % and thus should be the same for all the data constructors in TypeCtor.
+    DuCtor = du_ctor(SymName, Arity, TypeCtor),
+    % XXX Why this lookup? What is the difference between the info in ConsDefn
+    % and the info in Ctor? TypeParams should be available in TypeCtor's entry
+    % in the type table; it should not need to be looked up separately
+    % for every one of its data constructors.
+    search_cons_table_of_type_ctor(ConsTable, TypeCtor, DuCtor,
+        ConsDefn),
     ConsDefn =
         hlds_cons_defn(_, _, TypeParams, _, MaybeExistConstraints, Args, _),
 
@@ -1552,7 +1607,8 @@ cons_id_arg_types(ModuleInfo, VarType, ConsId, ArgTypes) :-
 
     map.from_corresponding_lists(TypeParams, TypeArgs, TSubst),
     ArgTypes0 = list.map(func(C) = C ^ arg_type, Args),
-    apply_subst_to_type_list(TSubst, ArgTypes0, ArgTypes).
+    apply_subst_to_type_list(TSubst, ArgTypes0, ArgTypes),
+    Name = unqualify_name(SymName).
 
 type_is_du_type(ModuleInfo, Type) :-
     module_info_get_type_table(ModuleInfo, TypeTable),
@@ -1561,20 +1617,20 @@ type_is_du_type(ModuleInfo, Type) :-
     hlds_data.get_type_defn_body(TypeDefn, TypeDefnBody),
     TypeDefnBody = hlds_du_type(_).
 
-get_cons_defn(ModuleInfo, TypeCtor, ConsId, ConsDefn) :-
+get_cons_defn(ModuleInfo, TypeCtor, DuCtor, ConsDefn) :-
     module_info_get_cons_table(ModuleInfo, Ctors),
     % This search will fail for builtin cons_ids.
-    search_cons_table_of_type_ctor(Ctors, TypeCtor, ConsId, ConsDefn).
+    search_cons_table_of_type_ctor(Ctors, TypeCtor, DuCtor, ConsDefn).
 
-get_cons_defn_det(ModuleInfo, TypeCtor, ConsId, ConsDefn) :-
-    ( if get_cons_defn(ModuleInfo, TypeCtor, ConsId, ConsDefnPrime) then
+get_cons_defn_det(ModuleInfo, TypeCtor, DuCtor, ConsDefn) :-
+    ( if get_cons_defn(ModuleInfo, TypeCtor, DuCtor, ConsDefnPrime) then
         ConsDefn = ConsDefnPrime
     else
         unexpected($pred, "get_cons_defn failed")
     ).
 
-get_cons_repn_defn(ModuleInfo, ConsId, ConsIdConsRepn) :-
-    ConsId = cons(ConsSymName, ConsArity, TypeCtor),
+get_cons_repn_defn(ModuleInfo, DuCtor, UserDataCTorConsRepn) :-
+    DuCtor = du_ctor(ConsSymName, ConsArity, TypeCtor),
     module_info_get_type_table(ModuleInfo, TypeTable),
     search_type_ctor_defn(TypeTable, TypeCtor, TypeDefn),
     get_type_defn_body(TypeDefn, TypeBody),
@@ -1584,49 +1640,59 @@ get_cons_repn_defn(ModuleInfo, ConsId, ConsIdConsRepn) :-
     ConsName = unqualify_name(ConsSymName),
     map.search(ConsRepnMap, ConsName, MatchingConsRepns),
     MatchingConsRepns = one_or_more(HeadConsRepn, TailConsRepns),
-    find_cons_repn_with_given_arity(ConsArity,
-        HeadConsRepn, TailConsRepns, ConsIdConsRepn).
+    find_cons_repn_with_given_arity(ConsArity, HeadConsRepn, TailConsRepns,
+        UserDataCTorConsRepn).
 
 :- pred find_cons_repn_with_given_arity(arity::in,
     constructor_repn::in, list(constructor_repn)::in,
     constructor_repn::out) is semidet.
 
 find_cons_repn_with_given_arity(ConsArity,
-        HeadConsRepn, TailConsRepns, ConsIdConsRepn) :-
+        HeadConsRepn, TailConsRepns, DuCtorConsRepn) :-
     ( if ConsArity = HeadConsRepn ^ cr_num_args then
-        ConsIdConsRepn = HeadConsRepn
+        DuCtorConsRepn = HeadConsRepn
     else
         TailConsRepns = [HeadTailConsRepn | TailTailConsRepns],
         find_cons_repn_with_given_arity(ConsArity,
-            HeadTailConsRepn, TailTailConsRepns, ConsIdConsRepn)
+            HeadTailConsRepn, TailTailConsRepns, DuCtorConsRepn)
     ).
 
-get_cons_repn_defn_det(ModuleInfo, ConsId, ConsRepnDefn) :-
-    ( if get_cons_repn_defn(ModuleInfo, ConsId, ConsRepnDefnPrime) then
+get_cons_repn_defn_det(ModuleInfo, DuCtor, ConsRepnDefn) :-
+    ( if get_cons_repn_defn(ModuleInfo, DuCtor, ConsRepnDefnPrime) then
         ConsRepnDefn = ConsRepnDefnPrime
     else
         unexpected($pred, "get_cons_repn_defn failed")
     ).
 
-get_existq_cons_defn(ModuleInfo, VarType, ConsId, CtorDefn) :-
-    cons_id_is_existq_cons_return_defn(ModuleInfo, VarType, ConsId, ConsDefn),
+get_cons_id_repn_defn_det(ModuleInfo, ConsId, ConsRepnDefn) :-
+    ( if
+        ConsId = du_data_ctor(DuCtor),
+        get_cons_repn_defn(ModuleInfo, DuCtor, ConsRepnDefnPrime)
+    then
+        ConsRepnDefn = ConsRepnDefnPrime
+    else
+        unexpected($pred, "get_cons_repn_defn failed")
+    ).
+
+get_existq_cons_defn(ModuleInfo, Type, ConsId, CtorDefn) :-
+    cons_id_is_existq_cons_return_defn(ModuleInfo, Type, ConsId, ConsDefn),
     ConsDefn = hlds_cons_defn(_TypeCtor, TypeVarSet, TypeParams, KindMap,
         MaybeExistConstraints, Args, _Context),
     ArgTypes = list.map(func(C) = C ^ arg_type, Args),
     prog_type.var_list_to_type_list(KindMap, TypeParams, TypeCtorArgs),
-    type_to_ctor(VarType, TypeCtor),
+    type_to_ctor(Type, TypeCtor),
     construct_type(TypeCtor, TypeCtorArgs, RetType),
     CtorDefn = ctor_defn(TypeVarSet, KindMap, MaybeExistConstraints,
         ArgTypes, RetType).
 
-cons_id_is_existq_cons(ModuleInfo, VarType, ConsId) :-
-    cons_id_is_existq_cons_return_defn(ModuleInfo, VarType, ConsId, _).
+cons_id_is_existq_cons(ModuleInfo, Type, ConsId) :-
+    cons_id_is_existq_cons_return_defn(ModuleInfo, Type, ConsId, _).
 
 :- pred cons_id_is_existq_cons_return_defn(module_info::in, mer_type::in,
-    cons_id::in, hlds_cons_defn::out) is semidet.
+    du_ctor::in, hlds_cons_defn::out) is semidet.
 
-cons_id_is_existq_cons_return_defn(ModuleInfo, VarType, ConsId, ConsDefn) :-
-    type_to_ctor(VarType, TypeCtor),
+cons_id_is_existq_cons_return_defn(ModuleInfo, Type, ConsId, ConsDefn) :-
+    type_to_ctor(Type, TypeCtor),
     get_cons_defn(ModuleInfo, TypeCtor, ConsId, ConsDefn),
     ConsDefn ^ cons_maybe_exist = exist_constraints(_).
 
@@ -1651,11 +1717,11 @@ type_is_no_tag_type(ModuleInfo, Type, Ctor, ArgType) :-
 
 %-----------------------------------------------------------------------------%
 
-cons_id_adjusted_arity(ModuleInfo, Type, ConsId) = AdjustedArity :-
+du_ctor_adjusted_arity(ModuleInfo, Type, DuCtor) = AdjustedArity :-
     % Figure out the arity of this constructor, _including_ any type-infos
     % or typeclass-infos inserted for existential data types.
-    ConsArity = cons_id_arity(ConsId),
-    ( if get_existq_cons_defn(ModuleInfo, Type, ConsId, ConsDefn) then
+    DuCtor = du_ctor(_, ConsArity, _),
+    ( if get_existq_cons_defn(ModuleInfo, Type, DuCtor, ConsDefn) then
         ConsDefn = ctor_defn(_TVarSet, _KindMap, MaybeExistConstraints,
             _ArgTypes, _ResultType),
         (

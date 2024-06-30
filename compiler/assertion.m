@@ -609,8 +609,11 @@ is_construction_equivalence_assertion_goal(Goal, ConsId, PredId) :-
 single_construction(Goal, ConsId) :-
     Goal = hlds_goal(GoalExpr, _),
     GoalExpr = unify(_, UnifyRHS, _, _, _),
-    UnifyRHS = rhs_functor(cons(UnqualifiedSymName, Arity, _TypeCtorA), _, _),
-    ConsId = cons(QualifiedSymName, Arity, _TypeCtorB),
+    UnifyRHS = rhs_functor(UnifyConsId, _, _),
+    UnifyConsId = du_data_ctor(UnifyDuCtor),
+    ConsId = du_data_ctor(DuCtor),
+    UnifyDuCtor = du_ctor(UnqualifiedSymName, Arity, _TypeCtorA),
+    DuCtor = du_ctor(QualifiedSymName, Arity, _TypeCtorB),
     % Before post-typecheck, TypeCtorA and TypeCtorB would be dummies,
     % and would thus match even if the two functors are NOT of the same type.
     % Note that by insisting on cons, we effectively disallow assertions

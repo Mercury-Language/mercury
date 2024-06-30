@@ -777,7 +777,8 @@ acceptable_construct_unification(ConstInfo, DelayForVars, Goal,
     ),
     ModuleInfo = !.Info ^ lco_module_info,
     all_true(acceptable_construct_mode(ModuleInfo), ArgModes),
-    get_cons_repn_defn(ModuleInfo, ConsId, CtorRepn),
+    ConsId = du_data_ctor(DuCtor),
+    get_cons_repn_defn(ModuleInfo, DuCtor, CtorRepn),
     ConsTag = CtorRepn ^ cr_tag,
     % Our optimization is inapplicable to constants, and its implementation
     % in the code generator can handle only some kinds of functors with args.

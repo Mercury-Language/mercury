@@ -479,7 +479,7 @@ some_bound_inst_has_direct_arg_free(ModuleInfo, DirectArgFunctors,
         FromBoundInsts, !:FreeArgDirectArgFunctors),
     FromBoundInst = bound_functor(ConsId, ArgInsts0),
     ( if
-        ConsId = cons(SymName, Arity, _TypeCtor),
+        ConsId = du_data_ctor(du_ctor(SymName, Arity, _TypeCtor)),
         Arity = 1,
         list.member(SymName, DirectArgFunctors),
         ArgInsts0 = [ArgInst0],
@@ -513,7 +513,7 @@ some_bound_inst_has_direct_arg_out(ModuleInfo, FreeArgDirectArgFunctors,
         ToBoundInsts, TailSomeDirectArgIsBound, TailCanSeeAllArgModes),
     ToBoundInst = bound_functor(ConsId, ArgInsts0),
     ( if
-        ConsId = cons(SymName, Arity, _TypeCtor),
+        ConsId = du_data_ctor(du_ctor(SymName, Arity, _TypeCtor)),
         Arity = 1,
         list.member(SymName, FreeArgDirectArgFunctors)
     then
@@ -1426,7 +1426,9 @@ expand_daio_in_unify(GoalInfo0, GoalExpr0, GoalExpr, InstMap0,
             UnifyMode = unify_modes_li_lf_ri_rf(LI, LF, _RI, _RF),
             LI = free,
             not ( LF = free ),
-            ConsId = cons(ConsIdSymName, ConsIdArity, ConsIdTypeCtor),
+            ConsId = du_data_ctor(DuCtor),
+            DuCtor =
+                du_ctor(ConsIdSymName, ConsIdArity, ConsIdTypeCtor),
             module_info_get_type_table(ModuleInfo, TypeTable),
             search_type_ctor_defn(TypeTable, ConsIdTypeCtor, TypeDefn),
             get_type_defn_body(TypeDefn, TypeBody),

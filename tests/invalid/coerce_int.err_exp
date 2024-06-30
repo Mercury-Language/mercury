@@ -32,12 +32,12 @@ coerce_int.m:032: In clause for `bad_wrong_type(in(coerce_int.wrap(bound(1 ; 2
 coerce_int.m:032:   ; 42u)))) = out(coerce_int.wrap(bound(1 ; 2)))':
 coerce_int.m:032:   in coerce expression:
 coerce_int.m:032:   mode error: in the coerced term:
-coerce_int.m:032:   in the argument of function symbol `wrap':
+coerce_int.m:032:   in the argument of function symbol `wrap'/1:
 coerce_int.m:032:   cannot convert the [38;5;87mcoerced subterm[39;49m from type `uint' to
 coerce_int.m:032:   `uint' because the following function symbols in the input
 coerce_int.m:032:   term's instantiatedness are [38;5;203mnot part of the input type:[39;49m
-coerce_int.m:032:     [38;5;203m`1',[39;49m
-coerce_int.m:032:     [38;5;203m`2'.[39;49m
+coerce_int.m:032:     [38;5;203m1,[39;49m
+coerce_int.m:032:     [38;5;203m2.[39;49m
 coerce_int.m:032: In clause for function `bad_wrong_type'/1:
 coerce_int.m:032:   warning: type conversion from `coerce_int.wrap(uint)' to
 coerce_int.m:032:   the same type is [38;5;203mredundant.[39;49m

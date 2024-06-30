@@ -1913,7 +1913,7 @@ decide_if_simple_du_type(ModuleInfo, Params, TypeCtorToForeignEnumMap,
 
 :- pred decide_simple_type_foreign_enum(module_info::in, decide_du_params::in,
     type_ctor::in, hlds_type_defn::in, type_body_du::in,
-    one_or_more(constructor)::in, {cons_id_to_tag_map, foreign_language}::in,
+    one_or_more(constructor)::in, {du_ctor_to_tag_map, foreign_language}::in,
     pair(type_ctor, hlds_type_defn)::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
@@ -1957,7 +1957,7 @@ decide_simple_type_foreign_enum(_ModuleInfo, Params, TypeCtor, TypeDefn0,
     set_type_defn_body(Body, TypeDefn0, TypeDefn),
     TypeCtorTypeDefn = TypeCtor - TypeDefn.
 
-:- pred add_repn_to_foreign_enum_ctor(type_ctor::in, cons_id_to_tag_map::in,
+:- pred add_repn_to_foreign_enum_ctor(type_ctor::in, du_ctor_to_tag_map::in,
     constructor::in, constructor_repn::out,
     ctor_name_to_repn_map::in, ctor_name_to_repn_map::out) is det.
 
@@ -1965,8 +1965,8 @@ add_repn_to_foreign_enum_ctor(TypeCtor, ConsTagMap, Ctor, CtorRepn,
         !CtorRepnMap) :-
     Ctor = ctor(Ordinal, MaybeExistConstraints, SymName, Args, Arity,
         Context),
-    ConsId = cons(SymName, Arity, TypeCtor),
-    map.lookup(ConsTagMap, ConsId, ConsTag),
+    DuCtor = du_ctor(SymName, Arity, TypeCtor),
+    map.lookup(ConsTagMap, DuCtor, ConsTag),
     % All function symbols of a foreign enum type should have arity zero.
     % If any have a nonzero arity, our caller will generate an error message,
     % and won't proceed to code generation.
@@ -2668,7 +2668,7 @@ set_remote_args_sectag_size(SectagSize,
 
 :- pred decide_complex_non_sub_du_type_ctor(module_info::in,
     decide_du_params::in, component_type_map::in, type_ctor::in,
-    type_status::in, cons_id_to_tag_map::in, int::in, constructor::in,
+    type_status::in, du_ctor_to_tag_map::in, int::in, constructor::in,
     constructor_repn::out, maybe_tagword_args::in, maybe_tagword_args::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
@@ -2677,8 +2677,8 @@ decide_complex_non_sub_du_type_ctor(ModuleInfo, Params, ComponentTypeMap,
         Ctor, CtorRepn, !MaybeTagwordArgs, !Specs) :-
     Ctor = ctor(Ordinal, MaybeExistConstraints, CtorSymName,
         CtorArgs, CtorArity, CtorContext),
-    ConsId = cons(CtorSymName, CtorArity, TypeCtor),
-    map.lookup(CtorTagMap, ConsId, CtorTag),
+    DuCtor = du_ctor(CtorSymName, CtorArity, TypeCtor),
+    map.lookup(CtorTagMap, DuCtor, CtorTag),
     (
         (
             CtorTag = remote_args_tag(_)
@@ -3233,45 +3233,45 @@ may_pack_arg_type(Params, ComponentTypeMap, ArgType, PackableKind) :-
 :- pred assign_tags_to_constants(type_ctor::in, ptag::in, int::in,
     sectag_bits::in, lsectag_mask::in, uint::in, uint::out,
     list(constructor)::in,
-    cons_id_to_tag_map::in, cons_id_to_tag_map::out) is det.
+    du_ctor_to_tag_map::in, du_ctor_to_tag_map::out) is det.
 
 assign_tags_to_constants(_, _, _, _, _, !CurSectag, [], !CtorTagMap).
 assign_tags_to_constants(TypeCtor, Ptag, NumPtagBits, SectagBits, MustMask,
         !CurSectag, [Ctor | Ctors], !CtorTagMap) :-
     Ctor = ctor(_Ordinal, _MaybeExistConstraints, SymName, _Args, Arity,
         _Context),
-    ConsId = cons(SymName, Arity, TypeCtor),
+    DuCtor = du_ctor(SymName, Arity, TypeCtor),
     Ptag = ptag(PtagUint8),
     PrimSec = (!.CurSectag << NumPtagBits) \/ uint8.cast_to_uint(PtagUint8),
     LocalSectag = local_sectag(!.CurSectag, PrimSec, SectagBits),
     ConsTag = shared_local_tag_no_args(Ptag, LocalSectag, MustMask),
-    map.det_insert(ConsId, ConsTag, !CtorTagMap),
+    map.det_insert(DuCtor, ConsTag, !CtorTagMap),
     !:CurSectag = !.CurSectag + 1u,
     assign_tags_to_constants(TypeCtor, Ptag, NumPtagBits,
         SectagBits, MustMask, !CurSectag, Ctors, !CtorTagMap).
 
 :- pred assign_tags_to_local_packed_functors(type_ctor::in, ptag::in, int::in,
     sectag_bits::in, uint::in, list(constructor)::in,
-    cons_id_to_tag_map::in, cons_id_to_tag_map::out) is det.
+    du_ctor_to_tag_map::in, du_ctor_to_tag_map::out) is det.
 
 assign_tags_to_local_packed_functors(_, _, _, _, _, [], !CtorTagMap).
 assign_tags_to_local_packed_functors(TypeCtor, Ptag, NumPtagBits, SectagBits,
         CurSectag, [Ctor | Ctors], !CtorTagMap) :-
     Ctor = ctor(_Ordinal, _MaybeExistConstraints, SymName, _Args, Arity,
         _Context),
-    ConsId = cons(SymName, Arity, TypeCtor),
+    DuCtor = du_ctor(SymName, Arity, TypeCtor),
     Ptag = ptag(PtagUint8),
     PrimSec = (CurSectag << NumPtagBits) \/ uint8.cast_to_uint(PtagUint8),
     LocalSectag = local_sectag(CurSectag, PrimSec, SectagBits),
     ConsTag = local_args_tag(local_args_not_only_functor(Ptag, LocalSectag)),
-    map.det_insert(ConsId, ConsTag, !CtorTagMap),
+    map.det_insert(DuCtor, ConsTag, !CtorTagMap),
     assign_tags_to_local_packed_functors(TypeCtor, Ptag, NumPtagBits,
         SectagBits, CurSectag + 1u, Ctors, !CtorTagMap).
 
 :- pred assign_tags_to_direct_arg_functors(type_ctor::in,
     uint8::in, uint8::in, uint8::out,
     list(constructor)::in, list(constructor)::in, list(constructor)::out,
-    cons_id_to_tag_map::in, cons_id_to_tag_map::out) is det.
+    du_ctor_to_tag_map::in, du_ctor_to_tag_map::out) is det.
 
 assign_tags_to_direct_arg_functors(_, _, !CurPtag, [], _, [], !CtorTagMap).
 assign_tags_to_direct_arg_functors(TypeCtor, MaxPtagUint8, !CurPtagUint8,
@@ -3279,7 +3279,7 @@ assign_tags_to_direct_arg_functors(TypeCtor, MaxPtagUint8, !CurPtagUint8,
         !CtorTagMap) :-
     DirectArgCtor = ctor(_Ordinal, _MaybeExistConstraints, Name, _Args, Arity,
         _Context),
-    ConsId = cons(Name, Arity, TypeCtor),
+    DuCtor = du_ctor(Name, Arity, TypeCtor),
     ( if
         % If we are about to run out of unshared tags, stop, and return
         % the leftovers.
@@ -3291,7 +3291,7 @@ assign_tags_to_direct_arg_functors(TypeCtor, MaxPtagUint8, !CurPtagUint8,
         LeftOverCtors = [DirectArgCtor | DirectArgCtors]
     else
         ConsTag = direct_arg_tag(ptag(!.CurPtagUint8)),
-        map.det_insert(ConsId, ConsTag, !CtorTagMap),
+        map.det_insert(DuCtor, ConsTag, !CtorTagMap),
         !:CurPtagUint8 = !.CurPtagUint8 + 1u8,
         assign_tags_to_direct_arg_functors(TypeCtor, MaxPtagUint8,
             !CurPtagUint8, DirectArgCtors, NonDirectArgCtors, LeftOverCtors,
@@ -3300,14 +3300,14 @@ assign_tags_to_direct_arg_functors(TypeCtor, MaxPtagUint8, !CurPtagUint8,
 
 :- pred assign_unshared_then_shared_remote_args_tags(type_ctor::in,
     uint8::in, uint8::in, list(constructor)::in,
-    uint::out, cons_id_to_tag_map::in, cons_id_to_tag_map::out) is det.
+    uint::out, du_ctor_to_tag_map::in, du_ctor_to_tag_map::out) is det.
 
 assign_unshared_then_shared_remote_args_tags(_, _, _, [], 0u, !CtorTagMap).
 assign_unshared_then_shared_remote_args_tags(TypeCtor, MaxPtagUint8,
         !.CurPtagUint8, [Ctor | Ctors], NumRemoteSectags, !CtorTagMap) :-
     Ctor = ctor(_Ordinal, _MaybeExistConstraints, Name, _Args, Arity,
         _Context),
-    ConsId = cons(Name, Arity, TypeCtor),
+    DuCtor = du_ctor(Name, Arity, TypeCtor),
     ( if
         % If we are about to run out of unshared tags, start assigning
         % shared remote tags instead.
@@ -3323,7 +3323,7 @@ assign_unshared_then_shared_remote_args_tags(TypeCtor, MaxPtagUint8,
         NumRemoteSectags = CurRemoteSectag
     else
         ConsTag = remote_args_tag(remote_args_unshared(ptag(!.CurPtagUint8))),
-        map.det_insert(ConsId, ConsTag, !CtorTagMap),
+        map.det_insert(DuCtor, ConsTag, !CtorTagMap),
         !:CurPtagUint8 = !.CurPtagUint8 + 1u8,
         assign_unshared_then_shared_remote_args_tags(TypeCtor, MaxPtagUint8,
             !.CurPtagUint8, Ctors, NumRemoteSectags, !CtorTagMap)
@@ -3331,34 +3331,34 @@ assign_unshared_then_shared_remote_args_tags(TypeCtor, MaxPtagUint8,
 
 :- pred assign_shared_remote_args_tags(type_ctor::in, ptag::in,
     list(constructor)::in, uint::in, uint::out,
-    cons_id_to_tag_map::in, cons_id_to_tag_map::out) is det.
+    du_ctor_to_tag_map::in, du_ctor_to_tag_map::out) is det.
 
 assign_shared_remote_args_tags(_, _, [], !CurRemoteSectag, !CtorTagMap).
 assign_shared_remote_args_tags(TypeCtor, Ptag, [Ctor | Ctors],
         !CurRemoteSectag, !CtorTagMap) :-
     Ctor = ctor(_Ordinal, _MaybeExistConstraints, SymName, _Args, Arity,
         _Context),
-    ConsId = cons(SymName, Arity, TypeCtor),
+    DuCtor = du_ctor(SymName, Arity, TypeCtor),
     % The rsectag_word part of the tag can be overridden later.
     RemoteSectag = remote_sectag(!.CurRemoteSectag, rsectag_word),
     ConsTag = remote_args_tag(remote_args_shared(Ptag, RemoteSectag)),
-    map.det_insert(ConsId, ConsTag, !CtorTagMap),
+    map.det_insert(DuCtor, ConsTag, !CtorTagMap),
     !:CurRemoteSectag = !.CurRemoteSectag + 1u,
     assign_shared_remote_args_tags(TypeCtor, Ptag, Ctors,
         !CurRemoteSectag, !CtorTagMap).
 
 :- pred assign_ctor_remote_args_tags(type_ctor::in,
     list(constructor)::in, uint::in, uint::out,
-    cons_id_to_tag_map::in, cons_id_to_tag_map::out) is det.
+    du_ctor_to_tag_map::in, du_ctor_to_tag_map::out) is det.
 
 assign_ctor_remote_args_tags(_, [], !CurData, !CtorTagMap).
 assign_ctor_remote_args_tags(TypeCtor, [Ctor | Ctors],
         !CurData, !CtorTagMap) :-
     Ctor = ctor(_Ordinal, _MaybeExistConstraints, SymName, _Args, Arity,
         _Context),
-    ConsId = cons(SymName, Arity, TypeCtor),
+    DuCtor = du_ctor(SymName, Arity, TypeCtor),
     ConsTag = remote_args_tag(remote_args_ctor(!.CurData)),
-    map.det_insert(ConsId, ConsTag, !CtorTagMap),
+    map.det_insert(DuCtor, ConsTag, !CtorTagMap),
     !:CurData = !.CurData + 1u,
     assign_ctor_remote_args_tags(TypeCtor, Ctors, !CurData, !CtorTagMap).
 
@@ -4150,18 +4150,18 @@ compute_cheaper_tag_test(TypeCtor, CtorRepns, CheaperTagTest) :-
             CtorArityB = 0,
             CtorArityA > 0
         then
-            ConsIdA = cons(CtorSymNameA, CtorArityA, TypeCtor),
-            ConsIdB = cons(CtorSymNameB, CtorArityB, TypeCtor),
-            CheaperTagTest = cheaper_tag_test(ConsIdA, CtorTagA,
-                ConsIdB, CtorTagB)
+            DuCtorA = du_ctor(CtorSymNameA, CtorArityA, TypeCtor),
+            DuCtorB = du_ctor(CtorSymNameB, CtorArityB, TypeCtor),
+            CheaperTagTest = cheaper_tag_test(DuCtorA, CtorTagA,
+                DuCtorB, CtorTagB)
         else if
             CtorArityA = 0,
             CtorArityB > 0
         then
-            ConsIdA = cons(CtorSymNameA, CtorArityA, TypeCtor),
-            ConsIdB = cons(CtorSymNameB, CtorArityB, TypeCtor),
-            CheaperTagTest = cheaper_tag_test(ConsIdB, CtorTagB,
-                ConsIdA, CtorTagA)
+            DuCtorA = du_ctor(CtorSymNameA, CtorArityA, TypeCtor),
+            DuCtorB = du_ctor(CtorSymNameB, CtorArityB, TypeCtor),
+            CheaperTagTest = cheaper_tag_test(DuCtorB, CtorTagB,
+                DuCtorA, CtorTagA)
         else
             CheaperTagTest = no_cheaper_tag_test
         )

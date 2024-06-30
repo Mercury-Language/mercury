@@ -63,9 +63,6 @@
 :- import_module term.
 :- import_module varset.
 
-:- inst cons for cons_id/0
-    --->    cons(ground, ground, ground).
-
 :- type modecheck_coerce_result
     --->    coerce_mode_ok(
                 list(prog_var),
@@ -449,9 +446,10 @@ modecheck_coerce_from_bound_make_bound_functor(ModuleInfo, TVarSet, LiveX,
     % all such errors (mostly because it may not be *invoked* on every inst
     % that should be checked).
     (
-        ConsIdX = cons(_, _, _),
+        ConsIdX = du_data_ctor(DuCtorX),
         get_bound_functor_cons_and_arg_types(ModuleInfo, TypeX, TypeY,
-            ConsIdX, ConsIdY, GetArgTypesRes),
+            DuCtorX, DuCtorY, GetArgTypesRes),
+        ConsIdY = du_data_ctor(DuCtorY),
         (
             GetArgTypesRes = arg_types(ArgTypesX, ArgTypesY, Arity),
             list.length(ArgInstsX, NumArgInstsX),
@@ -525,26 +523,26 @@ modecheck_coerce_from_bound_make_bound_functor(ModuleInfo, TVarSet, LiveX,
     ;       bad_cons_id_for_result_type.
 
 :- pred get_bound_functor_cons_and_arg_types(module_info::in,
-    mer_type::in, mer_type::in, cons_id::in(cons), cons_id::out(cons),
+    mer_type::in, mer_type::in, du_ctor::in, du_ctor::out,
     get_arg_types_result::out) is det.
 
 get_bound_functor_cons_and_arg_types(ModuleInfo, TypeX, TypeY,
-        ConsIdX, ConsIdY, Result) :-
+        DuCtorX, DuCtorY, Result) :-
     type_to_ctor_det(TypeY, TypeCtorY),
-    make_cons_id_for_type_ctor(TypeCtorY, ConsIdX, ConsIdY),
+    make_du_ctor_for_type_ctor(TypeCtorY, DuCtorX, DuCtorY),
     (
         TypeX = defined_type(_, _, _),
         ( if
             % This fails if the input type does not actually have the
             % functor given in a `bound' inst.
-            get_ctor_arg_types_do_subst(ModuleInfo, TypeX, ConsIdX,
+            get_ctor_arg_types_do_subst(ModuleInfo, TypeX, DuCtorX,
                 ArgTypesX)
         then
             ( if
                 TypeY = defined_type(_, _, _),
                 % This fails if the result type does not have a constructor
                 % matching that of the input type.
-                get_ctor_arg_types_do_subst(ModuleInfo, TypeY, ConsIdY,
+                get_ctor_arg_types_do_subst(ModuleInfo, TypeY, DuCtorY,
                     ArgTypesY)
             then
                 ( if
@@ -564,7 +562,7 @@ get_bound_functor_cons_and_arg_types(ModuleInfo, TypeX, TypeY,
     ;
         TypeX = tuple_type(ArgTypesX, _),
         ( if
-            ConsIdX = cons(unqualified("{}"), Arity, _),
+            DuCtorX = du_ctor(unqualified("{}"), Arity, _),
             list.length(ArgTypesX, Arity)
         then
             ( if
@@ -584,7 +582,7 @@ get_bound_functor_cons_and_arg_types(ModuleInfo, TypeX, TypeY,
             "coercion between different builtin types"),
         (
             BuiltinType = builtin_type_char,
-            ConsIdX = cons(_SymName, Arity, _),
+            DuCtorX = du_ctor(_SymName, Arity, _),
             ( if Arity = 0 then
                 ArgTypesX = [],
                 ArgTypesY = [],
@@ -603,7 +601,7 @@ get_bound_functor_cons_and_arg_types(ModuleInfo, TypeX, TypeY,
         TypeX = kinded_type(TypeX1, Kind),
         ( if TypeY = kinded_type(TypeY1, Kind) then
             get_bound_functor_cons_and_arg_types(ModuleInfo, TypeX1, TypeY1,
-                ConsIdX, _ConsIdY, Result)
+                DuCtorX, _DuCtorY, Result)
         else
             sorry($pred, "kinded type mismatch")
         )
@@ -765,14 +763,15 @@ modecheck_coerce_from_ground_make_bound_functor(ModuleInfo, TVarSet,
     type_to_ctor_det(TypeY, TypeCtorY),
     ModuleNameY = type_ctor_module(TypeCtorY),
     maybe_change_module_qualifier(ModuleNameY, CtorNameX, CtorNameY),
-    ConsIdY = cons(CtorNameY, CtorArity, TypeCtorY),
+    DuCtorY = du_ctor(CtorNameY, CtorArity, TypeCtorY),
 
     % Get the argument types for the constructors of both types,
     % with type arguments substituted in.
     % type_constructors already substituted type args into CtorArgsX.
     get_ctor_arg_types(CtorArgsX, ArgTypesX),
     ( if
-        get_ctor_arg_types_do_subst(ModuleInfo, TypeY, ConsIdY, ArgTypesY0)
+        get_ctor_arg_types_do_subst(ModuleInfo, TypeY, DuCtorY,
+            ArgTypesY0)
     then
         ArgTypesY = ArgTypesY0
     else
@@ -788,19 +787,20 @@ modecheck_coerce_from_ground_make_bound_functor(ModuleInfo, TVarSet,
             LiveX, UniqX, SeenTypes),
         ArgTypesX, ArgTypesY, ArgInstsY),
 
+    ConsIdY = du_data_ctor(DuCtorY),
     BoundInstY = bound_functor(ConsIdY, ArgInstsY).
 
 %---------------------------------------------------------------------------%
 
-:- pred make_cons_id_for_type_ctor(type_ctor::in, cons_id::in(cons),
-    cons_id::out(cons)) is det.
+:- pred make_du_ctor_for_type_ctor(type_ctor::in,
+    du_ctor::in, du_ctor::out) is det.
 
-make_cons_id_for_type_ctor(TypeCtor, ConsId0, ConsId) :-
+make_du_ctor_for_type_ctor(TypeCtor, DuCtor0, DuCtor) :-
     % TypeCtor0 should not be cons_id_dummy_type_ctor after post-typecheck.
-    ConsId0 = cons(SymName0, Arity, _TypeCtor0),
+    DuCtor0 = du_ctor(SymName0, Arity, _TypeCtor0),
     ModuleName = type_ctor_module(TypeCtor),
     maybe_change_module_qualifier(ModuleName, SymName0, SymName),
-    ConsId = cons(SymName, Arity, TypeCtor).
+    DuCtor = du_ctor(SymName, Arity, TypeCtor).
 
 :- pred maybe_change_module_qualifier(sym_name::in, sym_name::in,
     sym_name::out) is det.
@@ -816,13 +816,14 @@ maybe_change_module_qualifier(ModuleName, SymName0, SymName) :-
 
 %---------------------------------------------------------------------------%
 
-:- pred get_ctor_arg_types_do_subst(module_info::in, mer_type::in, cons_id::in,
-    list(mer_type)::out) is semidet.
+:- pred get_ctor_arg_types_do_subst(module_info::in, mer_type::in,
+    du_ctor::in, list(mer_type)::out) is semidet.
 
-get_ctor_arg_types_do_subst(ModuleInfo, Type, ConsId, CtorArgTypes) :-
+get_ctor_arg_types_do_subst(ModuleInfo, Type, DuCtor, CtorArgTypes) :-
     type_to_ctor_and_args(Type, TypeCtor, TypeArgs),
     module_info_get_cons_table(ModuleInfo, ConsTable),
-    search_cons_table_of_type_ctor(ConsTable, TypeCtor, ConsId, ConsDefn),
+    search_cons_table_of_type_ctor(ConsTable, TypeCtor, DuCtor,
+        ConsDefn),
     ConsDefn = hlds_cons_defn(_TypeCtor, _TVarSet, TypeParams, _KindMap,
         _MaybeExistConstraints, CtorArgs, _Context),
     get_ctor_arg_types(CtorArgs, CtorArgTypes0),

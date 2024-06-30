@@ -507,10 +507,11 @@ transform_dcg_record_syntax_2(AccessType, FieldNames, ArgTerms, Context,
         FieldArgNumber = 2,
         FieldArgContext = ac_functor(InnermostFunctor, umc_explicit,
             InnermostSubContext),
-        ( if Functor = cons(ConsNamePrime, ConsArityPrime, _TypeCtor) then
-            ConsName = ConsNamePrime,
-            ConsArity = ConsArityPrime
+        ( if Functor = du_data_ctor(DuCtor) then
+            DuCtor = du_ctor(ConsName, ConsArity, _TypeCtor)
         else
+            % XXX This can actually happen if Functor is tuple_cons,
+            % *if* we use them this early in the compilation process.
             unexpected($pred, "not cons")
         ),
         PFSymNameArity = pf_sym_name_arity(pf_function, ConsName,
@@ -525,10 +526,11 @@ transform_dcg_record_syntax_2(AccessType, FieldNames, ArgTerms, Context,
             FieldNames, FieldValueVar, TermInputVar, TermOutputVar,
             Functor, InnermostFunctor - _InnermostSubContext, HLDSGoal0,
             !SVarState, !SVarStore, !VarSet, !ModuleInfo, !QualInfo, !Specs),
-        ( if InnermostFunctor = cons(ConsNamePrime, ConsArityPrime, _TC) then
-            ConsName = ConsNamePrime,
-            ConsArity = ConsArityPrime
+        ( if InnermostFunctor = du_data_ctor(DuCtor) then
+            DuCtor = du_ctor(ConsName, ConsArity, _TypeCtor)
         else
+            % XXX This can actually happen if Functor is tuple_cons,
+            % *if* we use them this early in the compilation process.
             unexpected($pred, "not cons")
         ),
         PFSymNameArity = pf_sym_name_arity(pf_function, ConsName,

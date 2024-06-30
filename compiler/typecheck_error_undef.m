@@ -46,7 +46,7 @@
     ;       new_on_non_existential_type(type_ctor).
 
 :- func report_error_undef_cons(type_error_clause_context,
-    type_error_goal_context, prog_context, list(cons_error), cons_id, arity)
+    type_error_goal_context, prog_context, list(cons_error), cons_id)
     = error_spec.
 
 %---------------------------------------------------------------------------%
@@ -475,31 +475,28 @@ report_error_func_instead_of_pred(Context) = Msg :-
 % The implementation of report_error_undef_cons.
 %
 
-report_error_undef_cons(ClauseContext, GoalContext, Context,
-        ConsErrors, Functor, Arity) = Spec :-
+report_error_undef_cons(ClauseContext, GoalContext, Context, ConsErrors,
+        ConsId) = Spec :-
     InClauseForPieces = in_clause_for_pieces(ClauseContext),
     GoalContextPieces = goal_context_to_pieces(ClauseContext, GoalContext),
     InitComp = always(InClauseForPieces ++ GoalContextPieces),
     % Check for some special cases, so that we can give clearer error messages.
     ( if
-        Functor = cons(unqualified(FunctorName), FunctorArity, _),
-        expect(unify(Arity, FunctorArity), $pred, "arity mismatch"),
-        language_builtin_functor(FunctorName, FunctorArity)
-    then
-        language_builtin_functor_components(FunctorName, FunctorArity,
-            FunctorComps),
-        Spec = error_spec($pred, severity_error, phase_type_check,
-            [simple_msg(Context, [InitComp | FunctorComps])])
-    else if
-        Functor = cons(unqualified(FunctorName), FunctorArity, _),
-        expect(unify(Arity, FunctorArity), $pred, "arity mismatch"),
-        syntax_functor_components(FunctorName, FunctorArity, FunctorComps)
+        ConsId = du_data_ctor(DuCtor),
+        DuCtor = du_ctor(unqualified(Name), Arity, _),
+        ( if language_builtin_functor(Name, Arity) then
+            language_builtin_functor_components(Name, Arity, FunctorComps)
+        else if syntax_functor_components(Name, Arity, SyntaxComps) then
+            FunctorComps = SyntaxComps
+        else
+            fail
+        )
     then
         Spec = error_spec($pred, severity_error, phase_type_check,
             [simple_msg(Context, [InitComp | FunctorComps])])
     else
         report_error_undef_cons_std(ClauseContext, Context, InitComp,
-            ConsErrors, Functor, Arity, Spec)
+            ConsErrors, ConsId, Spec)
     ).
 
 %---------------------%
@@ -692,10 +689,10 @@ syntax_functor_components(FunctorName, Arity, Components) :-
 
 :- pred report_error_undef_cons_std(type_error_clause_context::in,
     prog_context::in, error_msg_component::in, list(cons_error)::in,
-    cons_id::in, arity::in, error_spec::out) is det.
+    cons_id::in, error_spec::out) is det.
 
 report_error_undef_cons_std(ClauseContext, Context, InitComp, ConsErrors,
-        Functor, Arity, Spec) :-
+        ConsId, Spec) :-
     (
         ConsErrors = [],
         ConsMsgs = []
@@ -707,72 +704,70 @@ report_error_undef_cons_std(ClauseContext, Context, InitComp, ConsErrors,
     ModuleInfo = ClauseContext ^ tecc_module_info,
     module_info_get_cons_table(ModuleInfo, ConsTable),
     module_info_get_predicate_table(ModuleInfo, PredicateTable),
-    ( if
-        Functor = cons(FunctorSymName, FunctorArity, _),
-        expect(unify(Arity, FunctorArity), $pred, "arity mismatch"),
 
-        return_cons_arities(ConsTable, FunctorSymName, ConsArities),
-
-        predicate_table_lookup_sym(PredicateTable, may_be_partially_qualified,
-            FunctorSymName, PredIds),
-        return_function_arities(ModuleInfo, PredIds, [], FuncArities),
-
-        list.sort_and_remove_dups(ConsArities ++ FuncArities, AllArities),
-        list.delete_all(AllArities, Arity, OtherArities),
-        OtherArities = [_ | _]
-    then
-        FunctorPieces = wrong_arity_constructor_to_pieces(FunctorSymName,
-            Arity, OtherArities),
-        FunctorComps = [always(FunctorPieces)],
-        % The code that constructs QualMsgs below uses wording that
-        % can be misleading in the presence of arity mismatches.
-        QualSuggestionMsgs = []
-    else
-        UndefSymbolPieces = [words("error:")] ++
-            color_as_incorrect([words("undefined")]) ++
-            [words("symbol")] ++
-            color_as_subject([qual_cons_id_and_maybe_arity(Functor),
-                suffix(".")]) ++
-            [nl],
+    ( if ConsId = du_data_ctor(DuCtor) then
+        DuCtor = du_ctor(SymName, Arity, _),
         ( if
-            Functor = cons(FunctorSymName, _, _),
-            FunctorSymName = qualified(ModQual, _)
+            return_cons_arities(ConsTable, SymName, ConsArities),
+
+            predicate_table_lookup_sym(PredicateTable,
+                may_be_partially_qualified, SymName, PredIds),
+            return_function_arities(ModuleInfo, PredIds, [], FuncArities),
+
+            list.sort_and_remove_dups(ConsArities ++ FuncArities, AllArities),
+            list.delete_all(AllArities, Arity, OtherArities),
+            OtherArities = [_ | _]
         then
-            maybe_report_missing_import_addendum(ClauseContext, ModQual,
-                AddeddumPieces, MissingImportModules)
-        else if
-            Functor = cons(unqualified("[|]"), 2, _)
-        then
-            maybe_report_missing_import_addendum(ClauseContext,
-                unqualified("list"), AddeddumPieces, MissingImportModules)
-        else if
-            Functor = cons(FunctorSymName, FunctorArity, _),
-            FunctorSymName = unqualified("coerce")
-        then
-            AddeddumPieces = [words("(The builtin")] ++
-                color_as_subject([words("coerce")]) ++
-                [words("operator expects")] ++
-                color_as_correct([words("one")]) ++
-                [words("argument, not")] ++
-                color_as_incorrect([int_name(FunctorArity), suffix(".)")]) ++
-                [nl],
-            MissingImportModules = []
+            FunctorPieces = wrong_arity_constructor_to_pieces(SymName,
+                Arity, OtherArities),
+            FunctorComps = [always(FunctorPieces)],
+            % The code that constructs QualMsgs below uses wording that
+            % can be misleading in the presence of arity mismatches.
+            QualSuggestionMsgs = []
         else
-            AddeddumPieces = [],
-            MissingImportModules = []
-        ),
-        FunctorComps = [always(UndefSymbolPieces ++ AddeddumPieces)],
-        ( if Functor = cons(FunctorName, _, _) then
-            BaseName = unqualify_name(FunctorName),
+            UndefSymbolPieces = [words("error:")] ++
+                color_as_incorrect([words("undefined")]) ++
+                [words("symbol")] ++
+                color_as_subject([qual_cons_id_and_maybe_arity(ConsId),
+                    suffix(".")]) ++
+                [nl],
+            ( if
+                SymName = qualified(ModQual, _)
+            then
+                maybe_report_missing_import_addendum(ClauseContext, ModQual,
+                    AddeddumPieces, MissingImportModules)
+            else if
+                SymName = unqualified("[|]"),
+                Arity = 2
+            then
+                maybe_report_missing_import_addendum(ClauseContext,
+                    unqualified("list"), AddeddumPieces, MissingImportModules)
+            else if
+                SymName = unqualified("coerce")
+            then
+                AddeddumPieces = [words("(The builtin")] ++
+                    color_as_subject([words("coerce")]) ++
+                    [words("operator expects")] ++
+                    color_as_correct([words("one")]) ++
+                    [words("argument, not")] ++
+                    color_as_incorrect([int_name(Arity), suffix(".)")]) ++
+                    [nl],
+                MissingImportModules = []
+            else
+                AddeddumPieces = [],
+                MissingImportModules = []
+            ),
+            FunctorComps = [always(UndefSymbolPieces ++ AddeddumPieces)],
+            BaseName = unqualify_name(SymName),
             return_cons_defns_with_given_name(ConsTable, BaseName, ConsDefns),
-            list.foldl(accumulate_matching_cons_module_names(FunctorName),
+            list.foldl(accumulate_matching_cons_module_names(SymName),
                 ConsDefns, [], ConsModuleNames),
             PredModuleNames =
                 find_possible_pf_missing_module_qualifiers(PredicateTable,
-                    pf_predicate, FunctorName),
+                    pf_predicate, SymName),
             FuncModuleNames =
                 find_possible_pf_missing_module_qualifiers(PredicateTable,
-                    pf_function, FunctorName),
+                    pf_function, SymName),
             ModuleNames =
                 ConsModuleNames ++ PredModuleNames ++ FuncModuleNames,
             set.list_to_set(ModuleNames, ModuleNamesSet0),
@@ -807,13 +802,19 @@ report_error_undef_cons_std(ClauseContext, Context, InitComp, ConsErrors,
             else
                 QualSuggestionMsgs = QualMsgs
             )
-        else
-            QualSuggestionMsgs = []
-        )
-    ),
-    FirstMsg = simple_msg(Context, [InitComp | FunctorComps]),
-    Spec = error_spec($pred, severity_error, phase_type_check,
-        [FirstMsg | ConsMsgs] ++ QualSuggestionMsgs).
+        ),
+        FirstMsg = simple_msg(Context, [InitComp | FunctorComps]),
+        Spec = error_spec($pred, severity_error, phase_type_check,
+            [FirstMsg | ConsMsgs] ++ QualSuggestionMsgs)
+    else
+        Pieces = [words("error:")] ++
+            color_as_incorrect([words("undefined")]) ++
+            [words("symbol")] ++
+            color_as_subject([qual_cons_id_and_maybe_arity(ConsId),
+                suffix(".")]) ++
+            [nl],
+        Spec = spec($pred, severity_error, phase_type_check, Context, Pieces)
+    ).
 
 :- pred return_function_arities(module_info::in, list(pred_id)::in,
     list(int)::in, list(int)::out) is det.
@@ -919,7 +920,7 @@ report_cons_error(Context, ConsError) = Msgs :-
         Msgs = []
     ;
         ConsError = invalid_field_update(FieldName, FieldDefn, TVarSet, TVars),
-        FieldDefn = hlds_ctor_field_defn(DefnContext, _, _, ConsId, _),
+        FieldDefn = hlds_ctor_field_defn(DefnContext, _, _, DuCtor, _),
         (
             TVars = [],
             unexpected($pred, "no type variables")
@@ -937,6 +938,7 @@ report_cons_error(Context, ConsError) = Msgs :-
                 TVarPieces),
             OccurOccurs = "occur"
         ),
+        ConsId = du_data_ctor(DuCtor),
         Pieces = [words("Field")] ++
             color_as_subject([unqual_sym_name(FieldName)]) ++
             color_as_incorrect([words("cannot be updated")]) ++

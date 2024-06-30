@@ -978,7 +978,7 @@ ellipsis_term(Context) = term.functor(term.atom("..."), [], Context).
 cons_id_and_args_to_term_full(ConsId, ArgTerms, Term) :-
     Context = dummy_context,
     (
-        ConsId = cons(SymName, _Arity, _TypeCtor),
+        ConsId = du_data_ctor(du_ctor(SymName, _Arity, _TypeCtor)),
         construct_qualified_term(SymName, ArgTerms, Term)
     ;
         ConsId = tuple_cons(_Arity),

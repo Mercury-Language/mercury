@@ -458,7 +458,7 @@ add_dependency_arcs_in_cons(DepGraph, WhatEdges, Caller, ConsId, !DepArcs) :-
         maybe_add_dependency_arc(DepGraph, WhatEdges, edge_unify,
             Caller, PredProcId, !DepArcs)
     ;
-        ( ConsId = cons(_, _, _)
+        ( ConsId = du_data_ctor(_)
         ; ConsId = tuple_cons(_)
         ; ConsId = some_int_const(_)
         ; ConsId = float_const(_)

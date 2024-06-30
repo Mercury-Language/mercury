@@ -874,7 +874,7 @@ encode_cons_id_and_arity_rep(ConsIdArity, ConsIdBytes, !StringTable) :-
 
 :- func cons_id_rep(cons_id) = string.
 
-cons_id_rep(cons(SymName, _, _)) =
+cons_id_rep(du_data_ctor(du_ctor(SymName, _, _))) =
     prog_rep.sym_base_name_to_string(SymName).
 cons_id_rep(tuple_cons(_)) = "{}".
 cons_id_rep(some_int_const(IntConst)) = Str :-

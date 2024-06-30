@@ -72,7 +72,7 @@
     % XXX This predicate returns the types of the arguments, but
     % loses any ho_inst_info for the arguments.
     %
-:- pred get_cons_id_arg_types(module_info::in, mer_type::in,
+:- pred get_cons_id_arg_types_for_inst(module_info::in, mer_type::in,
     cons_id::in, arity::in, list(mer_type)::out) is det.
 
     % XXX This predicate returns the types of the arguments, but
@@ -110,6 +110,7 @@
 :- import_module mdbcomp.
 :- import_module mdbcomp.prim_data.
 :- import_module parse_tree.prog_mode.
+:- import_module parse_tree.prog_type.
 :- import_module parse_tree.prog_type_test.
 
 :- import_module int.
@@ -365,20 +366,29 @@ pred_inst_info_default_func_mode(Arity) = PredInstInfo :-
 
 %---------------------------------------------------------------------------%
 
-get_cons_id_arg_types(ModuleInfo, Type, ConsId, Arity, Types) :-
-    ( if
-        ( ConsId = cons(_SymName, _, _)
-        ; ConsId = tuple_cons(_)
-        )
-    then
+get_cons_id_arg_types_for_inst(ModuleInfo, Type, ConsId, Arity, Types) :-
+    ( if ConsId = du_data_ctor(DuCtor) then
         ( if
             % XXX get_cons_id_non_existential_arg_types will fail
             % for ConsIds with existentially typed arguments.
-            get_cons_id_non_existential_arg_types(ModuleInfo, Type,
-                ConsId, ArgTypes),
+            get_du_ctor_non_existential_arg_types(ModuleInfo, Type,
+                DuCtor, ArgTypes),
             list.length(ArgTypes, Arity)
         then
             Types = ArgTypes
+        else if
+            % For tuple types, the cons_id is sometimes not tuple_cons/1,
+            % but cons/1, with unqualified("{}")/2 as the data constructor.
+            type_to_ctor_and_args(Type, TypeCtor, TypeArgs),
+            type_ctor_is_tuple(TypeCtor)
+        then
+            Types = TypeArgs
+        else
+            list.duplicate(Arity, no_type_available, Types)
+        )
+    else if ConsId = tuple_cons(_) then
+        ( if type_to_ctor_and_args(Type, _TypeCtor, TypeArgs) then
+            Types = TypeArgs
         else
             list.duplicate(Arity, no_type_available, Types)
         )

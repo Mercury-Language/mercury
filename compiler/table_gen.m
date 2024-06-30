@@ -4069,10 +4069,10 @@ dummy_type_var = Type :-
 :- func loop_inactive_cons_id = cons_id.
 :- func loop_active_cons_id = cons_id.
 
-loop_inactive_cons_id = cons(SymName, 0, TypeCtor) :-
+loop_inactive_cons_id = du_data_ctor(du_ctor(SymName, 0, TypeCtor)) :-
     SymName = qualified(mercury_table_builtin_module, "loop_inactive"),
     TypeCtor = loop_status_type_ctor.
-loop_active_cons_id = cons(SymName, 0, TypeCtor) :-
+loop_active_cons_id = du_data_ctor(du_ctor(SymName, 0, TypeCtor)) :-
     SymName = qualified(mercury_table_builtin_module, "loop_active"),
     TypeCtor = loop_status_type_ctor.
 
@@ -4080,13 +4080,13 @@ loop_active_cons_id = cons(SymName, 0, TypeCtor) :-
 :- func memo_det_active_cons_id = cons_id.
 :- func memo_det_succeeded_cons_id = cons_id.
 
-memo_det_inactive_cons_id = cons(SymName, 0, TypeCtor) :-
+memo_det_inactive_cons_id = du_data_ctor(du_ctor(SymName, 0, TypeCtor)) :-
     SymName = qualified(mercury_table_builtin_module, "memo_det_inactive"),
     TypeCtor = memo_det_status_type_ctor.
-memo_det_active_cons_id = cons(SymName, 0, TypeCtor) :-
+memo_det_active_cons_id = du_data_ctor(du_ctor(SymName, 0, TypeCtor)) :-
     SymName = qualified(mercury_table_builtin_module, "memo_det_active"),
     TypeCtor = memo_det_status_type_ctor.
-memo_det_succeeded_cons_id = cons(SymName, 0, TypeCtor) :-
+memo_det_succeeded_cons_id = du_data_ctor(du_ctor(SymName, 0, TypeCtor)) :-
     SymName = qualified(mercury_table_builtin_module, "memo_det_succeeded"),
     TypeCtor = memo_det_status_type_ctor.
 
@@ -4095,16 +4095,16 @@ memo_det_succeeded_cons_id = cons(SymName, 0, TypeCtor) :-
 :- func memo_semi_succeeded_cons_id = cons_id.
 :- func memo_semi_failed_cons_id = cons_id.
 
-memo_semi_inactive_cons_id = cons(SymName, 0, TypeCtor) :-
+memo_semi_inactive_cons_id = du_data_ctor(du_ctor(SymName, 0, TypeCtor)) :-
     SymName = qualified(mercury_table_builtin_module, "memo_semi_inactive"),
     TypeCtor = memo_semi_status_type_ctor.
-memo_semi_active_cons_id = cons(SymName, 0, TypeCtor) :-
+memo_semi_active_cons_id = du_data_ctor(du_ctor(SymName, 0, TypeCtor)) :-
     SymName = qualified(mercury_table_builtin_module, "memo_semi_active"),
     TypeCtor = memo_semi_status_type_ctor.
-memo_semi_succeeded_cons_id = cons(SymName, 0, TypeCtor) :-
+memo_semi_succeeded_cons_id = du_data_ctor(du_ctor(SymName, 0, TypeCtor)) :-
     SymName = qualified(mercury_table_builtin_module, "memo_semi_succeeded"),
     TypeCtor = memo_semi_status_type_ctor.
-memo_semi_failed_cons_id = cons(SymName, 0, TypeCtor) :-
+memo_semi_failed_cons_id = du_data_ctor(du_ctor(SymName, 0, TypeCtor)) :-
     SymName = qualified(mercury_table_builtin_module, "memo_semi_failed"),
     TypeCtor = memo_semi_status_type_ctor.
 
@@ -4113,16 +4113,16 @@ memo_semi_failed_cons_id = cons(SymName, 0, TypeCtor) :-
 :- func memo_non_incomplete_cons_id = cons_id.
 :- func memo_non_complete_cons_id = cons_id.
 
-memo_non_inactive_cons_id = cons(SymName, 0, TypeCtor) :-
+memo_non_inactive_cons_id = du_data_ctor(du_ctor(SymName, 0, TypeCtor)) :-
     SymName = qualified(mercury_table_builtin_module, "memo_non_inactive"),
     TypeCtor = memo_non_status_type_ctor.
-memo_non_active_cons_id = cons(SymName, 0, TypeCtor) :-
+memo_non_active_cons_id = du_data_ctor(du_ctor(SymName, 0, TypeCtor)) :-
     SymName = qualified(mercury_table_builtin_module, "memo_non_active"),
     TypeCtor = memo_non_status_type_ctor.
-memo_non_incomplete_cons_id = cons(SymName, 0, TypeCtor) :-
+memo_non_incomplete_cons_id = du_data_ctor(du_ctor(SymName, 0, TypeCtor)) :-
     SymName = qualified(mercury_table_builtin_module, "memo_non_incomplete"),
     TypeCtor = memo_non_status_type_ctor.
-memo_non_complete_cons_id = cons(SymName, 0, TypeCtor) :-
+memo_non_complete_cons_id = du_data_ctor(du_ctor(SymName, 0, TypeCtor)) :-
     SymName = qualified(mercury_table_builtin_module, "memo_non_complete"),
     TypeCtor = memo_non_status_type_ctor.
 
@@ -4130,13 +4130,13 @@ memo_non_complete_cons_id = cons(SymName, 0, TypeCtor) :-
 :- func mm_active_cons_id = cons_id.
 :- func mm_complete_cons_id = cons_id.
 
-mm_inactive_cons_id = cons(SymName, 0, TypeCtor) :-
+mm_inactive_cons_id = du_data_ctor(du_ctor(SymName, 0, TypeCtor)) :-
     SymName = qualified(mercury_table_builtin_module, "mm_inactive"),
     TypeCtor = mm_status_type_ctor.
-mm_active_cons_id = cons(SymName, 0, TypeCtor) :-
+mm_active_cons_id = du_data_ctor(du_ctor(SymName, 0, TypeCtor)) :-
     SymName = qualified(mercury_table_builtin_module, "mm_active"),
     TypeCtor = mm_status_type_ctor.
-mm_complete_cons_id = cons(SymName, 0, TypeCtor) :-
+mm_complete_cons_id = du_data_ctor(du_ctor(SymName, 0, TypeCtor)) :-
     SymName = qualified(mercury_table_builtin_module, "mm_complete"),
     TypeCtor = mm_status_type_ctor.
 

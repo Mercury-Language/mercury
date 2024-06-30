@@ -738,7 +738,8 @@ unravel_var_functor_unification(XVar, YFunctor, YArgTerms0, YFunctorContext,
         then
             MaybeQualifiedYArgTerms = MaybeQualifiedYArgTermsPrime,
             list.length(MaybeQualifiedYArgTerms, Arity),
-            ConsId = cons(FunctorName, Arity, cons_id_dummy_type_ctor)
+            ConsId = du_data_ctor(du_ctor(FunctorName, Arity,
+                cons_id_dummy_type_ctor))
         else
             % If YFunctor is a numeric or string constant, it *should*
             % have no arguments. If it nevertheless does, we still record
@@ -869,11 +870,12 @@ maybe_add_to_ancestor_var_map(ModuleInfo, XVar, ConsId, Context,
         % only *after* resolve_unify_functor.m has been run as part of
         % the post_typecheck pass. Until then, they have the form
         % recognized by the second disjunct.
-        ConsId = cons(SymName, Arity, _TypeCtor),
+        ConsId = du_data_ctor(DuCtor),
+        DuCtor = du_ctor(SymName, Arity, _TypeCtor),
         Arity > 0,
         (
             module_info_get_cons_table(ModuleInfo, ConsTable),
-            is_known_data_cons(ConsTable, ConsId)
+            is_known_data_cons(ConsTable, DuCtor)
         ;
             SymName = unqualified("{}")
         )
@@ -891,7 +893,8 @@ parse_ordinary_cons_id(VarSet, Functor, ArgTerms, Context, ConsId, !Specs) :-
     (
         Functor = term.atom(Name),
         list.length(ArgTerms, Arity),
-        ConsId = cons(unqualified(Name), Arity, cons_id_dummy_type_ctor)
+        DuCtor = du_ctor(unqualified(Name), Arity, cons_id_dummy_type_ctor),
+        ConsId = du_data_ctor(DuCtor)
     ;
         Functor = term.integer(Base, Integer, Signedness, Size),
 %       expect(unify(ArgTerms, []), $pred,

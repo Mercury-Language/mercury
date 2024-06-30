@@ -1018,9 +1018,9 @@ set_type_defn_prev_errors(X, !Defn) :-
 :- type maybe_cheaper_tag_test
     --->    no_cheaper_tag_test
     ;       cheaper_tag_test(
-                more_expensive_cons_id  :: cons_id,
+                more_expensive_cons_id  :: du_ctor,
                 more_expensive_cons_tag :: cons_tag,
-                less_expensive_cons_id  :: cons_id,
+                less_expensive_cons_id  :: du_ctor,
                 less_expensive_cons_tag :: cons_tag
             ).
 
@@ -1045,7 +1045,10 @@ set_type_defn_prev_errors(X, !Defn) :-
     % Return the cons_ids for the given data constructors of the give type
     % constructor, in a sorted order.
     %
-:- func constructor_cons_ids(type_ctor, list(constructor)) = list(cons_id).
+:- func constructor_data_ctors(type_ctor, list(constructor)) =
+    list(du_ctor).
+:- func constructor_cons_ids(type_ctor, list(constructor)) =
+    list(cons_id).
 
 %---------------------------------------------------------------------------%
 
@@ -1086,20 +1089,24 @@ insert_ctor_repn_into_map(CtorRepn, !CtorRepnMap) :-
 
 %---------------------%
 
-constructor_cons_ids(TypeCtor, Ctors) = SortedConsIds :-
-    gather_constructor_cons_ids(TypeCtor, Ctors, [], ConsIds),
-    list.sort(ConsIds, SortedConsIds).
+constructor_data_ctors(TypeCtor, Ctors) = SortedDuCtors :-
+    gather_constructor_data_ctors(TypeCtor, Ctors, [], DuCtors),
+    list.sort(DuCtors, SortedDuCtors).
 
-:- pred gather_constructor_cons_ids(type_ctor::in, list(constructor)::in,
-    list(cons_id)::in, list(cons_id)::out) is det.
+:- pred gather_constructor_data_ctors(type_ctor::in, list(constructor)::in,
+    list(du_ctor)::in, list(du_ctor)::out) is det.
 
-gather_constructor_cons_ids(_TypeCtor, [], !ConsIds).
-gather_constructor_cons_ids(TypeCtor, [Ctor | Ctors], !ConsIds) :-
+gather_constructor_data_ctors(_TypeCtor, [], !DuCtors).
+gather_constructor_data_ctors(TypeCtor, [Ctor | Ctors], !DuCtors) :-
     Ctor = ctor(_Ordinal, _MaybeExistConstraints, SymName,
         _Args, Arity, _Ctxt),
-    ConsId = cons(SymName, Arity, TypeCtor),
-    !:ConsIds = [ConsId | !.ConsIds],
-    gather_constructor_cons_ids(TypeCtor, Ctors, !ConsIds).
+    DuCtor = du_ctor(SymName, Arity, TypeCtor),
+    !:DuCtors = [DuCtor | !.DuCtors],
+    gather_constructor_data_ctors(TypeCtor, Ctors, !DuCtors).
+
+constructor_cons_ids(TypeCtor, Ctors) = SortedConsIds :-
+    SortedDuCtors = constructor_data_ctors(TypeCtor, Ctors),
+    SortedConsIds = list.map((func(UDC) = du_data_ctor(UDC)), SortedDuCtors).
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%

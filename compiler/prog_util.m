@@ -541,12 +541,13 @@ cons_id_and_args_to_term(string_const(String), [], Term) :-
 cons_id_and_args_to_term(tuple_cons(_Arity), Args, Term) :-
     SymName = unqualified("{}"),
     construct_qualified_term(SymName, Args, Term).
-cons_id_and_args_to_term(cons(SymName, _Arity, _TypeCtor), Args, Term) :-
+cons_id_and_args_to_term(du_data_ctor(du_ctor(SymName, _A, _TC)),
+        Args, Term) :-
     construct_qualified_term(SymName, Args, Term).
 
 cons_id_arity(ConsId) = Arity :-
     (
-        ConsId = cons(_, Arity, _)
+        ConsId = du_data_ctor(du_ctor(_, Arity, _))
     ;
         ConsId = tuple_cons(Arity)
     ;
@@ -575,7 +576,7 @@ cons_id_arity(ConsId) = Arity :-
         unexpected($pred, "unexpected cons_id")
     ).
 
-cons_id_maybe_arity(cons(_, Arity, _)) = yes(Arity).
+cons_id_maybe_arity(du_data_ctor(du_ctor(_, Arity, _))) = yes(Arity).
 cons_id_maybe_arity(tuple_cons(Arity)) = yes(Arity).
 cons_id_maybe_arity(some_int_const(_)) = yes(0).
 cons_id_maybe_arity(float_const(_)) = yes(0).
@@ -617,9 +618,9 @@ source_integer_to_int(Base, Integer, Int) :-
 %---------------------------------------------------------------------------%
 
 strip_module_qualifier_from_cons_id(ConsId0, ConsId) :-
-    ( if ConsId0 = cons(Name0, Arity, TypeCtor) then
+    ( if ConsId0 = du_data_ctor(du_ctor(Name0, Arity, TypeCtor)) then
         strip_module_qualifier_from_sym_name(Name0, Name),
-        ConsId = cons(Name, Arity, TypeCtor)
+        ConsId = du_data_ctor(du_ctor(Name, Arity, TypeCtor))
     else
         ConsId = ConsId0
     ).
@@ -634,9 +635,11 @@ strip_module_qualifier_from_sym_name(SymName0, SymName) :-
     ).
 
 strip_builtin_qualifier_from_cons_id(ConsId0, ConsId) :-
-    ( if ConsId0 = cons(Name0, Arity, TypeCtor) then
-        strip_builtin_qualifier_from_sym_name(Name0, Name),
-        ConsId = cons(Name, Arity, TypeCtor)
+    ( if ConsId0 = du_data_ctor(DuCtor0) then
+        DuCtor0 = du_ctor(SymName0, Arity, TypeCtor),
+        strip_builtin_qualifier_from_sym_name(SymName0, SymName),
+        DuCtor = du_ctor(SymName, Arity, TypeCtor),
+        ConsId = du_data_ctor(DuCtor)
     else
         ConsId = ConsId0
     ).

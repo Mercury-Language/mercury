@@ -3,7 +3,8 @@ coerce_recursive_inst.m:042:   `bad1(in(coerce_recursive_inst.cons)) =
 coerce_recursive_inst.m:042:   out(coerce_recursive_inst.cons)':
 coerce_recursive_inst.m:042:   in coerce expression:
 coerce_recursive_inst.m:042:   mode error: in the coerced term:
-coerce_recursive_inst.m:042:   in the first argument of function symbol `cons':
+coerce_recursive_inst.m:042:   in the first argument of function symbol
+coerce_recursive_inst.m:042:   `cons'/2:
 coerce_recursive_inst.m:042:   cannot convert the [38;5;87mcoerced subterm[39;49m from type
 coerce_recursive_inst.m:042:   `coerce_recursive_inst.fruit' to
 coerce_recursive_inst.m:042:   `coerce_recursive_inst.citrus' because it has
@@ -14,7 +15,8 @@ coerce_recursive_inst.m:048: In clause for
 coerce_recursive_inst.m:048:   `bad2(in(coerce_recursive_inst.cons)) = out':
 coerce_recursive_inst.m:048:   in coerce expression:
 coerce_recursive_inst.m:048:   mode error: in the coerced term:
-coerce_recursive_inst.m:048:   in the first argument of function symbol `cons':
+coerce_recursive_inst.m:048:   in the first argument of function symbol
+coerce_recursive_inst.m:048:   `cons'/2:
 coerce_recursive_inst.m:048:   cannot convert the [38;5;87mcoerced subterm[39;49m from type
 coerce_recursive_inst.m:048:   `coerce_recursive_inst.fruit' to
 coerce_recursive_inst.m:048:   `coerce_recursive_inst.citrus' because it has
