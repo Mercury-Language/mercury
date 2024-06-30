@@ -110,42 +110,39 @@ simplify_goal_unify(GoalExpr0, GoalExpr, GoalInfo0, GoalInfo,
         GoalExpr = unify(LHSVar0, RHS, UnifyMode, Unification0, UnifyContext),
         GoalInfo = GoalInfo0
     ;
-        ( RHS0 = rhs_functor(_, _, _)
-        ; RHS0 = rhs_var(_)
-        ),
+        RHS0 = rhs_var(RHSVar0),
         ( if
             % A unification of the form X = X can be safely optimised away.
-            RHS0 = rhs_var(LHSVar0)
+            RHSVar0 = LHSVar0
         then
             Context = goal_info_get_context(GoalInfo0),
             hlds_goal(GoalExpr, GoalInfo) = true_goal_with_context(Context)
         else if
             Unification0 = complicated_unify(ComplMode, CanFail, TypeInfoVars)
         then
-            (
-                RHS0 = rhs_var(V),
-                process_compl_unify(LHSVar0, V, ComplMode, CanFail,
-                    TypeInfoVars, UnifyContext, GoalInfo0, GoalExpr1,
-                    NestedContext0, InstMap0, !Common, !Info),
-                GoalExpr1 = hlds_goal(GoalExpr, GoalInfo)
-            ;
-                RHS0 = rhs_functor(_, _, _),
-                unexpected($pred, "invalid RHS for complicated unify")
-            )
+            process_complicated_unify(LHSVar0, RHSVar0, ComplMode, CanFail,
+                TypeInfoVars, UnifyContext, GoalInfo0, GoalExpr1,
+                NestedContext0, InstMap0, !Common, !Info),
+            GoalExpr1 = hlds_goal(GoalExpr, GoalInfo)
         else
             common_optimise_unification(RHS0, UnifyMode, Unification0,
                 UnifyContext, GoalExpr0, GoalExpr, GoalInfo0, GoalInfo,
                 !Common, !Info)
         )
+    ;
+        RHS0 = rhs_functor(_, _, _),
+        common_optimise_unification(RHS0, UnifyMode, Unification0,
+            UnifyContext, GoalExpr0, GoalExpr, GoalInfo0, GoalInfo,
+            !Common, !Info)
     ).
 
-:- pred process_compl_unify(prog_var::in, prog_var::in, unify_mode::in,
+:- pred process_complicated_unify(prog_var::in, prog_var::in, unify_mode::in,
     can_fail::in, list(prog_var)::in, unify_context::in, hlds_goal_info::in,
     hlds_goal::out, simplify_nested_context::in, instmap::in,
     common_info::in, common_info::out,
     simplify_info::in, simplify_info::out) is det.
 
-process_compl_unify(XVar, YVar, UnifyMode, CanFail, _OldTypeInfoVars,
+process_complicated_unify(XVar, YVar, UnifyMode, CanFail, _OldTypeInfoVars,
         UnifyContext, GoalInfo0, Goal, NestedContext0, InstMap0,
         !Common, !Info) :-
     simplify_info_get_module_info(!.Info, ModuleInfo),
