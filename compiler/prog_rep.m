@@ -525,33 +525,36 @@ goal_to_goal_rep(Info, Instmap0, hlds_goal(GoalExpr, GoalInfo), GoalRep) :-
                     var_to_var_rep(Info, Target),
                     var_to_var_rep(Info, Source))
             ;
-                ( Unification = construct(Var, ConsId, Args, ArgModes, _, _, _)
-                ; Unification = deconstruct(Var, ConsId, Args, ArgModes, _, _)
+                (
+                    Unification = construct(Var, ConsId, ArgVars, ArgModes,
+                        _, _, _)
+                ;
+                    Unification = deconstruct(Var, ConsId, ArgVars, ArgModes,
+                        _, _)
                 ),
                 VarRep = var_to_var_rep(Info, Var),
                 ConsIdRep = cons_id_rep(ConsId),
-                ArgsRep = map(var_to_var_rep(Info), Args),
-                filter_input_args(Info, ArgModes, Args, MaybeArgs),
-                MaybeArgsRep = map(map_maybe(var_to_var_rep(Info)), MaybeArgs),
+                ArgVarsRep = list.map(var_to_var_rep(Info), ArgVars),
+                filter_input_args(Info, ArgModes, ArgVars, MaybeArgVars),
+                MaybeArgVarsRep = list.map(map_maybe(var_to_var_rep(Info)),
+                    MaybeArgVars),
                 (
                     Unification = construct(_, _, _, _, _, _, _),
-                    ( if
-                        list.all_true(lhs_final_is_ground(Info, Var), ArgModes)
-                    then
+                    ( if lhs_finals_are_ground(Info, ArgVars, ArgModes) then
                         AtomicGoalRep = unify_construct_rep(VarRep, ConsIdRep,
-                            ArgsRep)
+                            ArgVarsRep)
                     else
                         AtomicGoalRep = partial_construct_rep(VarRep,
-                            ConsIdRep, MaybeArgsRep)
+                            ConsIdRep, MaybeArgVarsRep)
                     )
                 ;
                     Unification = deconstruct(_, _, _, _, _, _),
                     ( if list.member(Var, BoundVars) then
                         AtomicGoalRep = partial_deconstruct_rep(VarRep,
-                            ConsIdRep, MaybeArgsRep)
+                            ConsIdRep, MaybeArgVarsRep)
                     else
                         AtomicGoalRep = unify_deconstruct_rep(VarRep,
-                            ConsIdRep, ArgsRep)
+                            ConsIdRep, ArgVarsRep)
                     )
                 )
             ;
@@ -812,15 +815,21 @@ encode_case_rep(Info, Case, Bytes, !StringTable) :-
     Bytes = MainConsIdBytes ++ encode_length_func(OtherConsIds) ++
         list.condense(OtherConsIdsByteLists) ++ GoalBytes.
 
-:- pred lhs_final_is_ground(prog_rep_info::in, prog_var::in, unify_mode::in)
-    is semidet.
+:- pred lhs_finals_are_ground(prog_rep_info::in,
+    list(prog_var)::in, list(unify_mode)::in) is semidet.
 
-lhs_final_is_ground(Info, Var, UnifyMode) :-
-    ModuleInfo = Info ^ pri_module_info,
+lhs_finals_are_ground(_, [], []).
+lhs_finals_are_ground(_, [], [_ | _]) :-
+    unexpected($pred, "list length mismatch").
+lhs_finals_are_ground(_, [_ | _], []) :-
+    unexpected($pred, "list length mismatch").
+lhs_finals_are_ground(Info, [Var | Vars], [UnifyMode | UnifyModes]) :-
     VarTable = Info ^ pri_var_table,
     lookup_var_type(VarTable, Var, Type),
     UnifyMode = unify_modes_li_lf_ri_rf(_, LHSFinalInst, _, _),
-    inst_is_ground(ModuleInfo, Type, LHSFinalInst).
+    ModuleInfo = Info ^ pri_module_info,
+    inst_is_ground(ModuleInfo, Type, LHSFinalInst),
+    lhs_finals_are_ground(Info, Vars, UnifyModes).
 
 :- pred rhs_is_input(prog_rep_info::in, unify_mode::in) is semidet.
 
