@@ -467,7 +467,7 @@ common_info_stack_flush(!Info) :-
 common_optimise_unification(RHS0, UnifyMode, Unification0, UnifyContext,
         !GoalExpr, !GoalInfo, !Common, !Info) :-
     (
-        Unification0 = construct(_, _, _, _, _, _, SubInfo),
+        Unification0 = construct(LHSVar, _, _, _, _, _, SubInfo),
         ( if
             % The call to common_optimise_construct below will try to perform
             % one of two optimizations on this construction unification.
@@ -509,8 +509,10 @@ common_optimise_unification(RHS0, UnifyMode, Unification0, UnifyContext,
             % unifications. In the vast majority of cases, the variable
             % is ground.
             simplify_info_get_module_info(!.Info, ModuleInfo),
+            simplify_info_get_var_table(!.Info, VarTable),
+            lookup_var_type(VarTable, LHSVar, LHSVarType),
             UnifyMode = unify_modes_li_lf_ri_rf(_, LVarFinalInst, _, _),
-            inst_is_ground(ModuleInfo, LVarFinalInst)
+            inst_is_ground(ModuleInfo, LHSVarType, LVarFinalInst)
         then
             common_optimise_construct(RHS0, UnifyMode, Unification0,
                 UnifyContext, !GoalExpr, !GoalInfo, !Common, !Info)
@@ -518,7 +520,8 @@ common_optimise_unification(RHS0, UnifyMode, Unification0, UnifyContext,
             true
         )
     ;
-        Unification0 = deconstruct(Var, ConsId, ArgVars, ArgModes, CanFail, _),
+        Unification0 =
+            deconstruct(LHSVar, ConsId, ArgVars, ArgModes, CanFail, _),
         !.Common = common_info(MaybeCommonStruct0, MaybeConstStruct0),
         some [!CommonStruct]
         (
@@ -529,15 +532,17 @@ common_optimise_unification(RHS0, UnifyMode, Unification0, UnifyContext,
             GoalInfo0 = !.GoalInfo,
             UnifyMode = unify_modes_li_lf_ri_rf(LVarInitInst, _, _, _),
             simplify_info_get_module_info(!.Info, ModuleInfo),
+            simplify_info_get_var_table(!.Info, VarTable),
+            lookup_var_type(VarTable, LHSVar, LHSVarType),
             ( if
                 % Don't optimise partially instantiated deconstruction
                 % unifications, because it would be tricky to work out
                 % how to mode the replacement assignment unifications.
                 % In the vast majority of cases, the variable is ground.
-                inst_is_ground(ModuleInfo, LVarInitInst)
+                inst_is_ground(ModuleInfo, LHSVarType, LVarInitInst)
                 % XXX See the comment on how_to_construct_is_acceptable.
             then
-                common_optimise_deconstruct(Var, ConsId, ArgVars, ArgModes,
+                common_optimise_deconstruct(LHSVar, ConsId, ArgVars, ArgModes,
                     CanFail, !GoalExpr, !GoalInfo, !CommonStruct, !Info),
                 maybe_restore_original_goal(!.CommonStruct,
                     no_override_by_const_struct, GoalExpr0, GoalInfo0,

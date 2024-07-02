@@ -1695,12 +1695,13 @@ proc_check_eval_methods_and_main(ModuleInfo, ProcModeErrorMap,
         pred_info_get_proc_table(PredInfo, ProcTable),
         map.lookup(ProcTable, ProcId, ProcInfo),
         proc_info_get_eval_method(ProcInfo, EvalMethod),
+        pred_info_get_arg_types(PredInfo, Types),
         proc_info_get_argmodes(ProcInfo, Modes),
         (
             EvalMethod = eval_normal
         ;
             EvalMethod = eval_tabled(TabledMethod),
-            ( if only_fully_in_out_modes(ModuleInfo, Modes) then
+            ( if only_fully_in_out_modes(ModuleInfo, Types, Modes) then
                 true
             else
                 % All tabled methods require ground arguments.
@@ -1736,23 +1737,27 @@ proc_check_eval_methods_and_main(ModuleInfo, ProcModeErrorMap,
     proc_check_eval_methods_and_main(ModuleInfo, ProcModeErrorMap,
         PredId, PredInfo, ProcIds, !Specs).
 
-:- pred only_fully_in_out_modes(module_info::in, list(mer_mode)::in)
-    is semidet.
+:- pred only_fully_in_out_modes(module_info::in,
+    list(mer_type)::in, list(mer_mode)::in) is semidet.
 
-only_fully_in_out_modes(_, []).
-only_fully_in_out_modes(ModuleInfo, [Mode | Modes]) :-
+only_fully_in_out_modes(_, [], []).
+only_fully_in_out_modes(_, [], [_ | _]) :-
+    unexpected($pred, "list lengtg mismatch").
+only_fully_in_out_modes(_, [_ | _], []) :-
+    unexpected($pred, "list lengtg mismatch").
+only_fully_in_out_modes(ModuleInfo, [Type | Types], [Mode | Modes]) :-
     mode_get_insts(ModuleInfo, Mode, InitialInst, FinalInst),
     (
-        inst_is_ground(ModuleInfo, InitialInst)
+        inst_is_ground(ModuleInfo, Type, InitialInst)
     ;
         inst_is_free(ModuleInfo, InitialInst),
         (
             inst_is_free(ModuleInfo, FinalInst)
         ;
-            inst_is_ground(ModuleInfo, FinalInst)
+            inst_is_ground(ModuleInfo, Type, FinalInst)
         )
     ),
-    only_fully_in_out_modes(ModuleInfo, Modes).
+    only_fully_in_out_modes(ModuleInfo, Types, Modes).
 
     % Return true if the given evaluation method requires the arguments
     % of the procedure using it to be non-unique.

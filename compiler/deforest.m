@@ -1528,10 +1528,13 @@ do_generalisation(VersionArgVars, Renaming, VersionInstMap, EarlierGoal,
     instmap_lookup_vars(VersionInstMap, VersionArgVars, VersionInsts),
     pd_util.inst_list_size(ModuleInfo, VersionInsts, VersionInstSizes),
     set_of_var.to_sorted_list(ConjNonLocals, ConjNonLocalsList),
+
+    pd_info_get_proc_info(!.PDInfo, ProcInfo),
+    proc_info_get_var_table(ProcInfo, VarTable),
     ( if
         % Check whether we can do a most specific generalisation of insts
         % of the non-locals.
-        try_MSG(ModuleInfo, VersionInstMap, Renaming, VersionArgVars,
+        try_MSG(ModuleInfo, VarTable, VersionInstMap, Renaming, VersionArgVars,
             InstMap0, InstMap),
         instmap_lookup_vars(InstMap, ConjNonLocalsList, ArgInsts),
         pd_util.inst_list_size(ModuleInfo, ArgInsts, NewInstSizes),
@@ -1554,23 +1557,26 @@ do_generalisation(VersionArgVars, Renaming, VersionInstMap, EarlierGoal,
     ),
     pd_info_set_instmap(InstMap0, !PDInfo).
 
-:- pred try_MSG(module_info::in, instmap::in, map(prog_var, prog_var)::in,
-    list(prog_var)::in, instmap::in, instmap::out) is semidet.
+:- pred try_MSG(module_info::in, var_table::in, instmap::in,
+    map(prog_var, prog_var)::in, list(prog_var)::in,
+    instmap::in, instmap::out) is semidet.
 
-try_MSG(_, _, _, [], !InstMap).
-try_MSG(ModuleInfo, VersionInstMap, Renaming, [VersionArgVar | VersionArgVars],
-        !InstMap) :-
+try_MSG(_, _, _, _, [], !InstMap).
+try_MSG(ModuleInfo, VarTable, VersionInstMap, Renaming,
+        [VersionArgVar | VersionArgVars], !InstMap) :-
+    lookup_var_type(VarTable, VersionArgVar, VersionType),
     instmap_lookup_var(VersionInstMap, VersionArgVar, VersionInst),
     ( if
         map.search(Renaming, VersionArgVar, ArgVar),
         instmap_lookup_var(!.InstMap, ArgVar, VarInst),
-        inst_MSG(ModuleInfo, VersionInst, VarInst, Inst)
+        inst_MSG(ModuleInfo, VersionType, VersionInst, VarInst, Inst)
     then
         instmap_set_var(ArgVar, Inst, !InstMap)
     else
         true
     ),
-    try_MSG(ModuleInfo, VersionInstMap, Renaming, VersionArgVars, !InstMap).
+    try_MSG(ModuleInfo, VarTable, VersionInstMap, Renaming,
+        VersionArgVars, !InstMap).
 
 %-----------------------------------------------------------------------------%
 

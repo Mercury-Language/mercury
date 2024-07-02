@@ -364,16 +364,16 @@ modecheck_unification_rhs_lambda(X, LambdaRHS, Unification0, UnifyContext, _,
     Goal0 = hlds_goal(_, GoalInfo0),
     NonLocals0 = goal_info_get_nonlocals(GoalInfo0),
     set_of_var.delete_list(Vars, NonLocals0, NonLocals1),
+    mode_info_get_var_table(!.ModeInfo, VarTable),
     (
         Groundness = ho_ground,
         NonLocals = NonLocals1
     ;
         Groundness = ho_any,
-        mode_info_get_var_table(!.ModeInfo, NonLocalTypes),
         % XXX Give FilterPred a more descriptive name.
         FilterPred =
             ( pred(NonLocal::in) is semidet :-
-                lookup_var_type(NonLocalTypes, NonLocal, NonLocalType),
+                lookup_var_type(VarTable, NonLocal, NonLocalType),
                 instmap_lookup_var(InstMap1, NonLocal, NonLocalInst),
                 % XXX should filter other higher-order any vars, not just
                 % functions with the default mode.
@@ -383,6 +383,7 @@ modecheck_unification_rhs_lambda(X, LambdaRHS, Unification0, UnifyContext, _,
         set_of_var.filter(FilterPred, NonLocals1, NonLocals)
     ),
     set_of_var.to_sorted_list(NonLocals, NonLocalsList),
+    lookup_var_types(VarTable, NonLocalsList, NonLocalTypes),
     instmap_lookup_vars(InstMap1, NonLocalsList, NonLocalInsts),
     mode_info_get_module_info(!.ModeInfo, ModuleInfo2),
     ( if
@@ -403,7 +404,7 @@ modecheck_unification_rhs_lambda(X, LambdaRHS, Unification0, UnifyContext, _,
             Groundness = ho_ground,
             Purity \= purity_impure
         then
-            inst_list_is_ground(ModuleInfo2, NonLocalInsts)
+            inst_list_is_ground(ModuleInfo2, NonLocalTypes, NonLocalInsts)
         else
             inst_list_is_ground_or_any(ModuleInfo2, NonLocalInsts)
         )
@@ -446,7 +447,7 @@ modecheck_unification_rhs_lambda(X, LambdaRHS, Unification0, UnifyContext, _,
         modecheck_unify_lambda(X, PredOrFunc, LambdaNonLocals, Modes, Det,
             RHS0, RHS, Unification0, Unification, UnifyMode, !ModeInfo)
     else
-        acc_non_ground_vars(ModuleInfo2, InstMap1, NonLocalsList,
+        acc_non_ground_vars(ModuleInfo2, VarTable, InstMap1, NonLocalsList,
             [], RevNonGroundVarsInsts),
         list.reverse(RevNonGroundVarsInsts, NonGroundVarsInsts),
         (
@@ -468,20 +469,23 @@ modecheck_unification_rhs_lambda(X, LambdaRHS, Unification0, UnifyContext, _,
     ),
     UnifyGoalExpr = unify(X, RHS, UnifyMode, Unification, UnifyContext).
 
-:- pred acc_non_ground_vars(module_info::in, instmap::in, list(prog_var)::in,
+:- pred acc_non_ground_vars(module_info::in, var_table::in, instmap::in,
+    list(prog_var)::in,
     assoc_list(prog_var, mer_inst)::in,
     assoc_list(prog_var, mer_inst)::out) is det.
 
-acc_non_ground_vars(_, _, [], !RevNonGroundVarsInsts).
-acc_non_ground_vars(ModuleInfo, InstMap, [Var | Vars],
+acc_non_ground_vars(_, _, _, [], !RevNonGroundVarsInsts).
+acc_non_ground_vars(ModuleInfo, VarTable, InstMap, [Var | Vars],
         !RevNonGroundVarsInsts) :-
+    lookup_var_type(VarTable, Var, Type),
     instmap_lookup_var(InstMap, Var, Inst),
-    ( if inst_is_ground(ModuleInfo, Inst) then
+    ( if inst_is_ground(ModuleInfo, Type, Inst) then
         true
     else
         !:RevNonGroundVarsInsts = [Var - Inst | !.RevNonGroundVarsInsts]
     ),
-    acc_non_ground_vars(ModuleInfo, InstMap, Vars, !RevNonGroundVarsInsts).
+    acc_non_ground_vars(ModuleInfo, VarTable, InstMap, Vars,
+        !RevNonGroundVarsInsts).
 
 :- pred modecheck_unify_lambda(prog_var::in, pred_or_func::in,
     list(prog_var)::in, list(mer_mode)::in, determinism::in,
@@ -685,7 +689,7 @@ modecheck_unify_functor(X0, TypeOfX, ConsId0, IsExistConstruction, ArgVars0,
         % The occur check: is the unification of the form X = f(..., X, ...)?
         list.member(X, ArgVars0)
     then
-        ( if inst_is_ground(ModuleInfo0, InitInstOfX) then
+        ( if inst_is_ground(ModuleInfo0, TypeOfX, InitInstOfX) then
             % If X is ground, then we don't consider X = f(..., X, ...)
             % to be a mode error, but it is a unification that can never
             % succeed, and thus it is very unlikely to be what the programmer
@@ -1597,7 +1601,7 @@ match_mode_by_higher_order_insts(ModuleInfo, VarTable, InstMap,
             NonGroundArgVars = TailNonGroundArgVars,
             Result = TailResult
         else
-            ( if inst_is_ground(ModuleInfo, ArgInst) then
+            ( if inst_is_ground(ModuleInfo, ArgType, ArgInst) then
                 NonGroundArgVars = TailNonGroundArgVars
             else
                 NonGroundArgVars = [ArgVar | TailNonGroundArgVars]

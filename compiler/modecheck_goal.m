@@ -984,9 +984,13 @@ modecheck_goal_scope(Reason, SubGoal0, GoalInfo0, GoalExpr, !ModeInfo) :-
             % We check that the variables for the loop control are ground.
             mode_info_get_instmap(!.ModeInfo, InstMap),
             mode_info_get_module_info(!.ModeInfo, ModuleInfo),
-            expect(var_is_ground_in_instmap(ModuleInfo, InstMap, LCVar),
+            mode_info_get_var_table(!.ModeInfo, VarTable),
+            expect(
+                var_is_ground_in_instmap(ModuleInfo, VarTable, InstMap, LCVar),
                 $pred, "Loop control variable is not ground"),
-            expect(var_is_ground_in_instmap(ModuleInfo, InstMap, LCSVar),
+            expect(
+                var_is_ground_in_instmap(ModuleInfo, VarTable, InstMap,
+                    LCSVar),
                 $pred, "Loop control slot variable is not ground")
         ),
         mode_checkpoint(enter, "scope", !ModeInfo),

@@ -322,7 +322,7 @@ module_add_pragma_tabled_for_pred(ProgressStream, TabledMethod0, PFUMM,
                     Modes, ProcId, ProcInfo0)
             then
                 set_eval_method_create_aux_preds(ProgressStream,
-                    PredOrFunc, PredModuleName, PredName, UserArity,
+                    PredInfo0, PredOrFunc, PredModuleName, PredName, UserArity,
                     ProcId, ProcInfo0, is_single_proc, Context, TabledMethod,
                     MaybeAttributes, ItemMercuryStatus, PredStatus,
                     ProcTable0, ProcTable, !ModuleInfo, !QualInfo, !Specs),
@@ -370,7 +370,7 @@ module_add_pragma_tabled_for_pred(ProgressStream, TabledMethod0, PFUMM,
                     SingleProc = is_not_single_proc
                 ),
                 set_eval_method_create_aux_preds_list(ProgressStream,
-                    PredOrFunc, PredModuleName, PredName, UserArity,
+                    PredInfo0, PredOrFunc, PredModuleName, PredName, UserArity,
                     ExistingProcs, SingleProc, Context,
                     TabledMethod, MaybeAttributes,
                     ItemMercuryStatus, PredStatus, ProcTable0, ProcTable,
@@ -399,6 +399,7 @@ tabled_eval_method_needs_stratification(TabledMethod) = NeedsStratification :-
     ).
 
 :- pred set_eval_method_create_aux_preds_list(io.text_output_stream::in,
+    pred_info::in,
     pred_or_func::in, module_name::in, string::in, user_arity::in,
     assoc_list(proc_id, proc_info)::in, aux_tabling_maybe_single_proc::in,
     prog_context::in, tabled_eval_method::in, maybe(table_attributes)::in,
@@ -407,25 +408,25 @@ tabled_eval_method_needs_stratification(TabledMethod) = NeedsStratification :-
     qual_info::in, qual_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-set_eval_method_create_aux_preds_list(_, _, _, _, _, [], _, _, _, _, _, _,
+set_eval_method_create_aux_preds_list(_, _, _, _, _, _, [], _, _, _, _, _, _,
         !ProcTable, !ModuleInfo, !QualInfo, !Specs).
-set_eval_method_create_aux_preds_list(ProgressStream, PredOrFunc,
+set_eval_method_create_aux_preds_list(ProgressStream, PredInfo, PredOrFunc,
         PredModuleName, PredName, UserArity,
         [ProcId - ProcInfo0 | ProcIdsInfos], SingleProc, Context,
         TabledMethod, MaybeAttributes, ItemMercuryStatus, PredStatus,
         !ProcTable, !ModuleInfo, !QualInfo, !Specs) :-
-    set_eval_method_create_aux_preds(ProgressStream, PredOrFunc,
+    set_eval_method_create_aux_preds(ProgressStream, PredInfo, PredOrFunc,
         PredModuleName, PredName, UserArity, ProcId, ProcInfo0, SingleProc,
         Context, TabledMethod, MaybeAttributes, ItemMercuryStatus, PredStatus,
         !ProcTable, !ModuleInfo, !QualInfo, !Specs),
-    set_eval_method_create_aux_preds_list(ProgressStream, PredOrFunc,
+    set_eval_method_create_aux_preds_list(ProgressStream, PredInfo, PredOrFunc,
         PredModuleName, PredName, UserArity, ProcIdsInfos, SingleProc,
         Context, TabledMethod, MaybeAttributes, ItemMercuryStatus, PredStatus,
         !ProcTable, !ModuleInfo, !QualInfo, !Specs).
 
 :- pred set_eval_method_create_aux_preds(io.text_output_stream::in,
-    pred_or_func::in, module_name::in, string::in, user_arity::in,
-    proc_id::in, proc_info::in,
+    pred_info::in, pred_or_func::in, module_name::in, string::in,
+    user_arity::in, proc_id::in, proc_info::in,
     aux_tabling_maybe_single_proc::in, prog_context::in,
     tabled_eval_method::in, maybe(table_attributes)::in,
     item_mercury_status::in, pred_status::in,
@@ -433,7 +434,7 @@ set_eval_method_create_aux_preds_list(ProgressStream, PredOrFunc,
     qual_info::in, qual_info::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-set_eval_method_create_aux_preds(ProgressStream, PredOrFunc,
+set_eval_method_create_aux_preds(ProgressStream, PredInfo, PredOrFunc,
         PredModuleName, PredName, UserArity, ProcId, ProcInfo0, SingleProc,
         Context, TabledMethod, MaybeAttributes, ItemMercuryStatus, PredStatus,
         !ProcTable, !ModuleInfo, !QualInfo, !Specs) :-
@@ -460,6 +461,9 @@ set_eval_method_create_aux_preds(ProgressStream, PredOrFunc,
             !:Specs = [Spec | !.Specs]
         ;
             MaybeDeclaredArgModes = yes(DeclaredArgModes),
+            pred_info_get_arg_types(PredInfo, ArgTypes),
+            assoc_list.from_corresponding_lists(ArgTypes, DeclaredArgModes,
+                DeclaredArgTypesModes),
             (
                 MaybeAttributes = yes(Attributes),
                 Strictness = Attributes ^ table_attr_strictness,
@@ -474,13 +478,13 @@ set_eval_method_create_aux_preds(ProgressStream, PredOrFunc,
             (
                 Strictness = cts_specified(MaybeArgMethods, _HiddenArgMethod),
                 check_pred_args_against_tabling_methods(!.ModuleInfo, 1,
-                    DeclaredArgModes, MaybeArgMethods, ArgErrorPieces)
+                    DeclaredArgTypesModes, MaybeArgMethods, ArgErrorPieces)
             ;
                 ( Strictness = cts_all_strict
                 ; Strictness = cts_all_fast_loose
                 ),
                 check_pred_args_against_tabling(!.ModuleInfo, 1,
-                    DeclaredArgModes, ArgErrorPieces)
+                    DeclaredArgTypesModes, ArgErrorPieces)
             ),
             (
                 ArgErrorPieces = []
@@ -780,7 +784,7 @@ proc_tabling_info_var_name(ProcLabel) =
     tabling_struct_data_addr_string(ProcLabel, tabling_info).
 
 :- pred check_pred_args_against_tabling_methods(module_info::in, int::in,
-    list(mer_mode)::in, list(maybe(arg_tabling_method))::in,
+    assoc_list(mer_type, mer_mode)::in, list(maybe(arg_tabling_method))::in,
     list(format_piece)::out) is det.
 
 check_pred_args_against_tabling_methods(_, _, [], [], []).
@@ -789,14 +793,15 @@ check_pred_args_against_tabling_methods(_, _, [], [_ | _], Pieces) :-
 check_pred_args_against_tabling_methods(_, _, [_ | _], [], Pieces) :-
     Pieces = [words("not enough argument tabling methods specified."), nl].
 check_pred_args_against_tabling_methods(ModuleInfo, ArgNum,
-        [Mode | Modes], [MaybeArgMethod | MaybeArgMethods], Pieces) :-
+        [Type - Mode | TypesModes], [MaybeArgMethod | MaybeArgMethods],
+        Pieces) :-
     % XXX We should check not just the boundedness of the argument, but also
     % whether it has any uniqueness annotation: tabling destroys uniqueness.
-    ( if mode_is_fully_input(ModuleInfo, Mode) then
+    ( if mode_is_fully_input(ModuleInfo, Type, Mode) then
         (
             MaybeArgMethod = yes(_),
             check_pred_args_against_tabling_methods(ModuleInfo, ArgNum + 1,
-                Modes, MaybeArgMethods, Pieces)
+                TypesModes, MaybeArgMethods, Pieces)
         ;
             MaybeArgMethod = no,
             MethodStr = maybe_arg_tabling_method_to_string(MaybeArgMethod),
@@ -810,7 +815,7 @@ check_pred_args_against_tabling_methods(ModuleInfo, ArgNum,
                     words("input modes.")]) ++
                 [nl]
         )
-    else if mode_is_fully_output(ModuleInfo, Mode) then
+    else if mode_is_fully_output(ModuleInfo, Type, Mode) then
         (
             MaybeArgMethod = yes(_),
             MethodStr = maybe_arg_tabling_method_to_string(MaybeArgMethod),
@@ -826,7 +831,7 @@ check_pred_args_against_tabling_methods(ModuleInfo, ArgNum,
         ;
             MaybeArgMethod = no,
             check_pred_args_against_tabling_methods(ModuleInfo, ArgNum + 1,
-                Modes, MaybeArgMethods, Pieces)
+                TypesModes, MaybeArgMethods, Pieces)
         )
     else
         Pieces = [fixed("argument " ++ int_to_string(ArgNum)),
@@ -834,15 +839,17 @@ check_pred_args_against_tabling_methods(ModuleInfo, ArgNum,
     ).
 
 :- pred check_pred_args_against_tabling(module_info::in, int::in,
-    list(mer_mode)::in, list(format_piece)::out) is det.
+    assoc_list(mer_type, mer_mode)::in, list(format_piece)::out) is det.
 
 check_pred_args_against_tabling(_, _, [], []).
-check_pred_args_against_tabling(ModuleInfo, ArgNum, [Mode | Modes],
+check_pred_args_against_tabling(ModuleInfo, ArgNum, [Type - Mode | TypesModes],
         Pieces) :-
-    ( if mode_is_fully_input(ModuleInfo, Mode) then
-        check_pred_args_against_tabling(ModuleInfo, ArgNum + 1, Modes, Pieces)
-    else if mode_is_fully_output(ModuleInfo, Mode) then
-        check_pred_args_against_tabling(ModuleInfo, ArgNum + 1, Modes, Pieces)
+    ( if mode_is_fully_input(ModuleInfo, Type, Mode) then
+        check_pred_args_against_tabling(ModuleInfo, ArgNum + 1,
+            TypesModes, Pieces)
+    else if mode_is_fully_output(ModuleInfo, Type, Mode) then
+        check_pred_args_against_tabling(ModuleInfo, ArgNum + 1,
+            TypesModes, Pieces)
     else
         % Don't allow a line break just before the argument number.
         Pieces = [fixed("argument " ++ int_to_string(ArgNum)),

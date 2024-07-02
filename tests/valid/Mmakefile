@@ -112,7 +112,6 @@ TYPECLASS_PROGS = \
 
 OTHER_PROGS = \
 	any_inst_merge \
-	any_matches_bound \
 	big_foreign_type \
 	bug128 \
 	bug134 \
@@ -346,5 +345,10 @@ OTHER_PROGS = \
 # it cannot currently be compiled.
 #
 #       solver_type_mutable_bug
+#
+# The following test case tests behavior that was needed only to support HAL.
+# It was disabled on 2024 July 2, since it caused problems for other code.
+#
+#	any_matches_bound
 
 include ../valid/Mmake.valid.common

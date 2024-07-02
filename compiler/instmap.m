@@ -200,8 +200,8 @@
 
 %---------------------------------------------------------------------------%
 
-:- pred var_is_ground_in_instmap(module_info::in, instmap::in, prog_var::in)
-    is semidet.
+:- pred var_is_ground_in_instmap(module_info::in, var_table::in, instmap::in,
+    prog_var::in) is semidet.
 
 :- pred var_is_any_in_instmap(module_info::in, instmap::in, prog_var::in)
     is semidet.
@@ -742,9 +742,10 @@ instmap_delta_delete_vars(Vars, InstMapDelta0, InstMapDelta) :-
 
 %---------------------------------------------------------------------------%
 
-var_is_ground_in_instmap(ModuleInfo, InstMap, Var) :-
+var_is_ground_in_instmap(ModuleInfo, VarTable, InstMap, Var) :-
+    lookup_var_type(VarTable, Var, Type),
     instmap_lookup_var(InstMap, Var, Inst),
-    inst_is_ground(ModuleInfo, Inst).
+    inst_is_ground(ModuleInfo, Type, Inst).
 
 var_is_any_in_instmap(ModuleInfo, InstMap, Var) :-
     instmap_lookup_var(InstMap, Var, Inst),

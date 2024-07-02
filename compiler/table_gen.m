@@ -655,8 +655,8 @@ table_gen_transform_proc(TabledMethod, PredId, ProcId, !ProcInfo, !PredInfo,
                 "tabled_minimal without all_strict")
         )
     ),
-    get_input_output_vars(HeadVars, ArgModes, !.ModuleInfo, MaybeSpecMethod, _,
-        InputVarModeMethods, OutputVarModeMethods),
+    get_input_output_vars(!.ModuleInfo, VarTable0, HeadVars, ArgModes,
+        MaybeSpecMethod, _, InputVarModeMethods, OutputVarModeMethods),
     allocate_slot_numbers(InputVarModeMethods, 0, NumberedInputVars),
     allocate_slot_numbers(OutputVarModeMethods, 0, NumberedOutputVars),
     (
@@ -3507,20 +3507,22 @@ generator_type = Type :-
                 hidden_arg_tabling_method
             ).
 
-:- pred get_input_output_vars(list(prog_var)::in, list(mer_mode)::in,
-    module_info::in, maybe_specified_method::in, maybe_specified_method::out,
+:- pred get_input_output_vars(module_info::in, var_table::in,
+    list(prog_var)::in, list(mer_mode)::in,
+    maybe_specified_method::in, maybe_specified_method::out,
     list(var_mode_method)::out, list(var_mode_method)::out) is det.
 
-get_input_output_vars([], [], _, !MaybeSpecMethod, [], []).
-get_input_output_vars([_ | _], [], _, !MaybeSpecMethod, _, _) :-
+get_input_output_vars(_, _, [], [], !MaybeSpecMethod, [], []).
+get_input_output_vars(_, _, [_ | _], [], !MaybeSpecMethod, _, _) :-
     unexpected($pred, "lists not same length").
-get_input_output_vars([], [_ | _], _, !MaybeSpecMethod, _, _) :-
+get_input_output_vars(_, _, [], [_ | _], !MaybeSpecMethod, _, _) :-
     unexpected($pred, "lists not same length").
-get_input_output_vars([Var | Vars], [Mode | Modes], ModuleInfo,
+get_input_output_vars(ModuleInfo, VarTable, [Var | Vars], [Mode | Modes],
         !MaybeSpecMethod, InVarModes, OutVarModes) :-
-    ( if mode_is_fully_input(ModuleInfo, Mode) then
-        get_input_output_vars(Vars, Modes, ModuleInfo, !MaybeSpecMethod,
-            InVarModes0, OutVarModes),
+    lookup_var_type(VarTable, Var, Type),
+    ( if mode_is_fully_input(ModuleInfo, Type, Mode) then
+        get_input_output_vars(ModuleInfo, VarTable, Vars, Modes,
+            !MaybeSpecMethod, InVarModes0, OutVarModes),
         (
             !.MaybeSpecMethod = msm_all_same(ArgMethod)
         ;
@@ -3553,9 +3555,9 @@ get_input_output_vars([Var | Vars], [Mode | Modes], ModuleInfo,
             )
         ),
         InVarModes = [var_mode_method(Var, Mode, ArgMethod) | InVarModes0]
-    else if mode_is_fully_output(ModuleInfo, Mode) then
-        get_input_output_vars(Vars, Modes, ModuleInfo, !MaybeSpecMethod,
-            InVarModes, OutVarModes0),
+    else if mode_is_fully_output(ModuleInfo, Type, Mode) then
+        get_input_output_vars(ModuleInfo, VarTable, Vars, Modes,
+            !MaybeSpecMethod, InVarModes, OutVarModes0),
         (
             !.MaybeSpecMethod = msm_all_same(_ArgMethod)
             % The tabling methods that use answer tables always use arg_value

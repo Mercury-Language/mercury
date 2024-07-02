@@ -1029,7 +1029,9 @@ mode_error_no_matching_mode_to_spec(ModeInfo, MatchWhat, InstMap, Vars,
         list.det_split_list(NumExtra, Vars, ExtraVars, UserVars),
         UserVarInstPieces = arg_inst_mismatch_pieces(ModeInfo, [],
             PredOrFunc, InstMap, UserVars),
-        ( if var_insts_are_all_ground(ModuleInfo, InstMap, ExtraVars) then
+        ( if
+            var_insts_are_all_ground(ModuleInfo, VarTable, InstMap, ExtraVars)
+        then
             VarListInstPieces = UserVarInstPieces
         else
             ExtraArgPieces = [words("the compiler-generated")],
@@ -1105,14 +1107,15 @@ mode_error_no_matching_mode_to_spec(ModeInfo, MatchWhat, InstMap, Vars,
     mode_info_get_context(ModeInfo, Context),
     Spec = spec($pred, severity_error, Phase, Context, Pieces).
 
-:- pred var_insts_are_all_ground(module_info::in, instmap::in,
+:- pred var_insts_are_all_ground(module_info::in, var_table::in, instmap::in,
     list(prog_var)::in) is semidet.
 
-var_insts_are_all_ground(_, _, []).
-var_insts_are_all_ground(ModuleInfo, InstMap, [Var | Vars]) :-
+var_insts_are_all_ground(_, _, _, []).
+var_insts_are_all_ground(ModuleInfo, VarTable, InstMap, [Var | Vars]) :-
+    lookup_var_type(VarTable, Var, VarType),
     instmap_lookup_var(InstMap, Var, VarInst),
-    inst_is_ground(ModuleInfo, VarInst),
-    var_insts_are_all_ground(ModuleInfo, InstMap, Vars).
+    inst_is_ground(ModuleInfo, VarType, VarInst),
+    var_insts_are_all_ground(ModuleInfo, VarTable, InstMap, Vars).
 
 :- func arg_inst_mismatch_pieces(mode_info, list(format_piece),
     pred_or_func, instmap, list(prog_var)) = list(format_piece).
@@ -2176,7 +2179,8 @@ merge_error_to_msgs(ModeInfo, MainContext, IsDisjunctive, MergeError) = Msgs :-
     mode_info_get_var_table(ModeInfo, VarTable),
     VarNamePiece = var_in_table_to_quote_piece(VarTable, Var),
     list.sort(ContextsInsts0, ContextsInsts),
-    count_ground_insts(ModuleInfo, ContextsInsts,
+    lookup_var_type(VarTable, Var, VarType),
+    count_ground_insts(ModuleInfo, VarType, ContextsInsts,
         0, NumGroundInsts, 0, NumAllInsts),
     ( if
         IsDisjunctive = is_disjunctive,
@@ -2207,7 +2211,7 @@ merge_error_to_msgs(ModeInfo, MainContext, IsDisjunctive, MergeError) = Msgs :-
             verbose_and_nonverbose(VerbosePieces, NonVerbosePieces)]),
         InstMsgs = list.map(
             report_inst_in_context(ModeInfo, report_inst_and_groundness,
-                yes(color_inconsistent), VarNamePiece),
+                yes(color_inconsistent), VarNamePiece, VarType),
             ContextsInsts),
         Msgs = [VarMsg | InstMsgs]
     else if
@@ -2221,7 +2225,7 @@ merge_error_to_msgs(ModeInfo, MainContext, IsDisjunctive, MergeError) = Msgs :-
         VarMsg = msg(MainContext, VarPieces),
         InstMsgs = list.map(
             report_inst_in_context(ModeInfo, report_groundness_only,
-                yes(color_inconsistent), VarNamePiece),
+                yes(color_inconsistent), VarNamePiece, VarType),
             ContextsInsts),
         Msgs = [VarMsg | InstMsgs]
     else
@@ -2231,28 +2235,28 @@ merge_error_to_msgs(ModeInfo, MainContext, IsDisjunctive, MergeError) = Msgs :-
         VarMsg = msg(MainContext, VarPieces),
         InstMsgs = list.map(
             report_inst_in_context(ModeInfo, report_inst_only,
-                yes(color_inconsistent), VarNamePiece),
+                yes(color_inconsistent), VarNamePiece, VarType),
             ContextsInsts),
         Msgs = [VarMsg | InstMsgs]
     ).
 
 %---------------------%
 
-:- pred count_ground_insts(module_info::in,
+:- pred count_ground_insts(module_info::in, mer_type::in,
     assoc_list(prog_context, mer_inst)::in,
     int::in, int::out, int::in, int::out) is det.
 
-count_ground_insts(_ModuleInfo, [], !NumGroundInsts, !NumAllInsts).
-count_ground_insts(ModuleInfo, [ContextInst | ContextsInsts],
+count_ground_insts(_ModuleInfo, _Type, [], !NumGroundInsts, !NumAllInsts).
+count_ground_insts(ModuleInfo, Type, [ContextInst | ContextsInsts],
         !NumGroundInsts, !NumAllInsts) :-
     ContextInst = _Context - Inst,
-    ( if inst_is_ground(ModuleInfo, Inst) then
+    ( if inst_is_ground(ModuleInfo, Type, Inst) then
         !:NumGroundInsts = !.NumGroundInsts + 1
     else
         true
     ),
     !:NumAllInsts = !.NumAllInsts + 1,
-    count_ground_insts(ModuleInfo, ContextsInsts,
+    count_ground_insts(ModuleInfo, Type, ContextsInsts,
         !NumGroundInsts, !NumAllInsts).
 
 %---------------------%
@@ -2263,10 +2267,10 @@ count_ground_insts(ModuleInfo, [ContextInst | ContextsInsts],
     ;       report_inst_and_groundness.
 
 :- func report_inst_in_context(mode_info, report_inst_how, maybe(color_name),
-    format_piece, pair(prog_context, mer_inst)) = error_msg.
+    format_piece, mer_type, pair(prog_context, mer_inst)) = error_msg.
 
 report_inst_in_context(ModeInfo, ReportIsGround, MaybeColor, VarNamePiece,
-        Context - Inst) = Msg :-
+        Type, Context - Inst) = Msg :-
     (
         ReportIsGround = report_inst_only,
         Pieces = report_inst_in_branch(ModeInfo, MaybeColor, VarNamePiece,
@@ -2275,7 +2279,7 @@ report_inst_in_context(ModeInfo, ReportIsGround, MaybeColor, VarNamePiece,
     ;
         ReportIsGround = report_groundness_only,
         mode_info_get_module_info(ModeInfo, ModuleInfo),
-        ( if inst_is_ground(ModuleInfo, Inst) then
+        ( if inst_is_ground(ModuleInfo, Type, Inst) then
             Pieces = report_inst_in_branch_simple(MaybeColor, VarNamePiece,
                 "ground")
         else if Inst = free then
@@ -2289,7 +2293,7 @@ report_inst_in_context(ModeInfo, ReportIsGround, MaybeColor, VarNamePiece,
     ;
         ReportIsGround = report_inst_and_groundness,
         mode_info_get_module_info(ModeInfo, ModuleInfo),
-        ( if inst_is_ground(ModuleInfo, Inst) then
+        ( if inst_is_ground(ModuleInfo, Type, Inst) then
             Pieces = report_inst_in_branch(ModeInfo, MaybeColor, VarNamePiece,
                 yes(ground), Inst),
             Msg = simple_msg(Context, [verbose_and_nonverbose(Pieces, [])])

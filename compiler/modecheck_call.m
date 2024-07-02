@@ -364,8 +364,10 @@ get_var_insts_and_lives(ModeInfo, [Var | Vars],
         % requires its argument to be dead, so that it can do destructive
         % update) if there really is a good chance of being able to do
         % destructive update.
+        mode_info_get_var_table(ModeInfo, VarTable),
+        lookup_var_type(VarTable, Var, Type),
         ( if
-            inst_is_ground(ModuleInfo, Inst),
+            inst_is_ground(ModuleInfo, Type, Inst),
             inst_is_mostly_unique(ModuleInfo, Inst)
         then
             IsLive = is_dead

@@ -526,13 +526,13 @@ ssdebug_process_proc_if_needed(SSTraceLevel, PredProcId,
         SSTraceLevel = ssdb_none
     ;
         SSTraceLevel = ssdb_shallow,
-        PredProcId = proc(PredId, _ProcId),
         % Only transform the procedures in the interface.
         % XXX We still need to fix the ssdb so that events generated
         % below the shallow call event aren't seen.
+        PredProcId = proc(PredId, _ProcId),
         module_info_pred_info(!.ModuleInfo, PredId, PredInfo),
         ( if pred_info_is_exported(PredInfo) then
-            ssdebug_process_proc(SSTraceLevel, PredProcId,
+            ssdebug_process_proc(SSTraceLevel, PredProcId, PredInfo,
                 !ProcInfo, !ModuleInfo)
         else
             true
@@ -540,17 +540,21 @@ ssdebug_process_proc_if_needed(SSTraceLevel, PredProcId,
     ;
         SSTraceLevel = ssdb_deep,
         % Transfrom all procedures.
-        ssdebug_process_proc(SSTraceLevel, PredProcId, !ProcInfo, !ModuleInfo)
+        PredProcId = proc(PredId, _ProcId),
+        module_info_pred_info(!.ModuleInfo, PredId, PredInfo),
+        ssdebug_process_proc(SSTraceLevel, PredProcId, PredInfo,
+            !ProcInfo, !ModuleInfo)
     ).
 
 :- pred ssdebug_process_proc(ssdb_trace_level::in(shallow_or_deep),
-    pred_proc_id::in, proc_info::in, proc_info::out,
+    pred_proc_id::in, pred_info::in, proc_info::in, proc_info::out,
     module_info::in, module_info::out) is det.
 
-ssdebug_process_proc(SSTraceLevel, PredProcId, !ProcInfo, !ModuleInfo) :-
-    PredProcId = proc(PredId, ProcId),
+ssdebug_process_proc(SSTraceLevel, PredProcId, PredInfo,
+        !ProcInfo, !ModuleInfo) :-
+    pred_info_get_arg_types(PredInfo, ArgTypes),
     proc_info_get_argmodes(!.ProcInfo, ArgModes),
-    ( if all_args_fully_input_or_output(!.ModuleInfo, ArgModes) then
+    ( if all_args_fully_input_or_output(!.ModuleInfo, ArgTypes, ArgModes) then
         % We have different transformations for procedures of different
         % determinisms.
 
@@ -558,6 +562,7 @@ ssdebug_process_proc(SSTraceLevel, PredProcId, !ProcInfo, !ModuleInfo) :-
         % ssdebug_process_proc_* predicates.
 
         proc_info_get_inferred_determinism(!.ProcInfo, Determinism),
+        PredProcId = proc(PredId, ProcId),
         (
             ( Determinism = detism_det
             ; Determinism = detism_cc_multi
@@ -1265,17 +1270,19 @@ make_level_construction(SSTraceLevel, Goal, LevelVar, !VarTable) :-
     % fully input or fully output, so if a procedure has such modes,
     % we won't generate code for it.
     %
-:- pred all_args_fully_input_or_output(module_info::in, list(mer_mode)::in)
-    is semidet.
+:- pred all_args_fully_input_or_output(module_info::in,
+    list(mer_type)::in, list(mer_mode)::in) is semidet.
 
-all_args_fully_input_or_output(ModuleInfo, HeadModes) :-
-    all [Mode] (
-        list.member(Mode, HeadModes)
-    =>
-        ( mode_is_fully_input(ModuleInfo, Mode)
-        ; mode_is_fully_output(ModuleInfo, Mode)
-        )
-    ).
+all_args_fully_input_or_output(_, [], []).
+all_args_fully_input_or_output(_, [], [_ | _]) :-
+    unexpected($pred, "list length mismatch").
+all_args_fully_input_or_output(_, [_ | _], []) :-
+    unexpected($pred, "list length mismatch").
+all_args_fully_input_or_output(ModuleInfo, [Type | Types], [Mode | Modes]) :-
+    ( mode_is_fully_input(ModuleInfo, Type, Mode)
+    ; mode_is_fully_output(ModuleInfo, Type, Mode)
+    ),
+    all_args_fully_input_or_output(ModuleInfo, Types, Modes).
 
 %-----------------------------------------------------------------------------%
 %
@@ -1391,7 +1398,10 @@ make_var_value(InstMap, VarToInspect, Renaming, VarDesc, VarPos, Goals,
     VarValueTypeIsDummy = is_type_a_dummy(!.ModuleInfo, VarValueType),
     VarDescEntry = vte("VarDesc", VarValueType, VarValueTypeIsDummy),
     add_var_entry(VarDescEntry, VarDesc, !VarTable),
-    ( if var_is_ground_in_instmap(!.ModuleInfo, InstMap, VarToInspect) then
+    ( if
+        var_is_ground_in_instmap(!.ModuleInfo, !.VarTable, InstMap,
+            VarToInspect)
+    then
         % Update proc_varset and proc_vartypes; without this,
         % polymorphism_make_type_info_var uses a prog_var which is
         % already bound.

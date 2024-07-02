@@ -1717,7 +1717,8 @@ det_infer_scope(Reason, Goal0, Goal, GoalInfo, InstMap0, SolnContext,
         det_info_get_module_info(!.DetInfo, ModuleInfo),
         % BoundVars must include both vars whose inst has changed and vars
         % with inst any which may have been further constrained by the goal.
-        set_of_var.divide(var_is_ground_in_instmap(ModuleInfo, InstMap0),
+        set_of_var.divide(
+            var_is_ground_in_instmap(ModuleInfo, VarTable, InstMap0),
             ChangedVars, _GroundAtStartVars, GroundBoundVars),
         NonLocalVars = goal_info_get_nonlocals(GoalInfo),
         AnyBoundVars = set_of_var.filter(

@@ -512,10 +512,11 @@ delay_partial_inst_in_partial_construct(GoalInfo0, Unify, Goal,
     % Unify the canonical variables and corresponding ground
     % arguments (if any).
     ModuleInfo = !.DelayInfo ^ dpi_module_info,
+    VarTable = !.DelayInfo ^ dpi_var_table,
     ProgContext = goal_info_get_context(GoalInfo0),
-    SubUnifyGoals = list.filter_map_corresponding3(
-        maybe_unify_var_with_ground_var(ModuleInfo, ProgContext),
-        CanonVars, Args, ArgModes),
+    list.filter_map_corresponding3(
+        maybe_unify_var_with_ground_var(ModuleInfo, VarTable, ProgContext),
+        CanonVars, Args, ArgModes, SubUnifyGoals),
     conj_list_to_goal(SubUnifyGoals, GoalInfo0, Goal),
 
     % Mark the procedure as changed.
@@ -566,14 +567,16 @@ delay_partial_inst_in_deconstruct(Goal0, UnifyMode, Unify, Goal,
         % Unify each ground argument with the corresponding canonical
         % variable.
         ModuleInfo = !.DelayInfo ^ dpi_module_info,
+        VarTable = !.DelayInfo ^ dpi_var_table,
         ProgContext = goal_info_get_context(GoalInfo0),
-        SubUnifyGoals = list.filter_map_corresponding3(
-            maybe_unify_var_with_ground_var(ModuleInfo, ProgContext),
-            CanonArgs, Args, ArgModes),
+        list.filter_map_corresponding3(
+            maybe_unify_var_with_ground_var(ModuleInfo, VarTable, ProgContext),
+            CanonArgs, Args, ArgModes, SubUnifyGoals),
 
         % Construct Var if it should be ground now.
+        lookup_var_type(VarTable, Var, Type),
         UnifyMode = unify_modes_li_lf_ri_rf(_, LHSFinalInst, _, _),
-        ( if inst_is_ground(ModuleInfo, LHSFinalInst) then
+        ( if inst_is_ground(ModuleInfo, Type, LHSFinalInst) then
             construct_functor(Var, ConsId, CanonArgs, ConstructGoal),
 
             % Delete the variable on the LHS from the construct map
@@ -597,13 +600,15 @@ delay_partial_inst_in_deconstruct(Goal0, UnifyMode, Unify, Goal,
 % deconstructions.
 %
 
-:- func maybe_unify_var_with_ground_var(module_info::in, prog_context::in,
-    prog_var::in, prog_var::in, unify_mode::in) = (hlds_goal::out) is semidet.
+:- pred maybe_unify_var_with_ground_var(module_info::in, var_table::in,
+    prog_context::in, prog_var::in, prog_var::in, unify_mode::in,
+    hlds_goal::out) is semidet.
 
-maybe_unify_var_with_ground_var(ModuleInfo, Context, LHSVar, RHSVar, UnifyMode)
-        = Goal :-
+maybe_unify_var_with_ground_var(ModuleInfo, VarTable, Context, LHSVar, RHSVar,
+        UnifyMode, Goal) :-
     UnifyMode = unify_modes_li_lf_ri_rf(_, _, RHSInitInst, _),
-    inst_is_ground(ModuleInfo, RHSInitInst),
+    lookup_var_type(VarTable, LHSVar, Type),
+    inst_is_ground(ModuleInfo, Type, RHSInitInst),
     create_pure_atomic_complicated_unification(LHSVar, rhs_var(RHSVar),
         Context, umc_implicit("delay_partial_inst"), [], Goal).
 

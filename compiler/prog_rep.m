@@ -536,7 +536,7 @@ goal_to_goal_rep(Info, Instmap0, hlds_goal(GoalExpr, GoalInfo), GoalRep) :-
                 (
                     Unification = construct(_, _, _, _, _, _, _),
                     ( if
-                        list.all_true(lhs_final_is_ground(Info), ArgModes)
+                        list.all_true(lhs_final_is_ground(Info, Var), ArgModes)
                     then
                         AtomicGoalRep = unify_construct_rep(VarRep, ConsIdRep,
                             ArgsRep)
@@ -812,11 +812,15 @@ encode_case_rep(Info, Case, Bytes, !StringTable) :-
     Bytes = MainConsIdBytes ++ encode_length_func(OtherConsIds) ++
         list.condense(OtherConsIdsByteLists) ++ GoalBytes.
 
-:- pred lhs_final_is_ground(prog_rep_info::in, unify_mode::in) is semidet.
+:- pred lhs_final_is_ground(prog_rep_info::in, prog_var::in, unify_mode::in)
+    is semidet.
 
-lhs_final_is_ground(Info, UnifyMode) :-
+lhs_final_is_ground(Info, Var, UnifyMode) :-
+    ModuleInfo = Info ^ pri_module_info,
+    VarTable = Info ^ pri_var_table,
+    lookup_var_type(VarTable, Var, Type),
     UnifyMode = unify_modes_li_lf_ri_rf(_, LHSFinalInst, _, _),
-    inst_is_ground(Info ^ pri_module_info, LHSFinalInst).
+    inst_is_ground(ModuleInfo, Type, LHSFinalInst).
 
 :- pred rhs_is_input(prog_rep_info::in, unify_mode::in) is semidet.
 
@@ -860,7 +864,9 @@ goal_info_to_atomic_goal_rep_fields(GoalInfo, Instmap0, Info, FileName, LineNo,
     instmap_delta_changed_vars(InstmapDelta, ChangedVarsSet),
     set_of_var.to_sorted_list(ChangedVarsSet, ChangedVars),
     ModuleInfo = Info ^ pri_module_info,
-    list.negated_filter(var_is_ground_in_instmap(ModuleInfo, Instmap0),
+    VarTable = Info ^ pri_var_table,
+    list.negated_filter(
+        var_is_ground_in_instmap(ModuleInfo, VarTable, Instmap0),
         ChangedVars, BoundVars).
 
 :- pred encode_cons_id_and_arity_rep(cons_id_arity_rep::in, list(int)::out,
@@ -999,15 +1005,18 @@ encode_head_var_func(Info, InitialInstmap, InstmapDelta, Var) = Bytes :-
         % cannot possibly change.
         FinalInst = InitialInst
     ),
-    Bytes = VarBytes ++ [inst_to_byte(ModuleInfo, InitialInst),
-        inst_to_byte(ModuleInfo, FinalInst)].
+    VarTable = Info ^ pri_var_table,
+    lookup_var_type(VarTable, Var, Type),
+    Bytes = VarBytes ++
+        [inst_to_byte(ModuleInfo, Type, InitialInst),
+        inst_to_byte(ModuleInfo, Type, FinalInst)].
 
-:- func inst_to_byte(module_info, mer_inst) = int.
+:- func inst_to_byte(module_info, mer_type, mer_inst) = int.
 
-inst_to_byte(ModuleInfo, MerInst) = Byte :-
+inst_to_byte(ModuleInfo, Type, MerInst) = Byte :-
     ( if MerInst = free then
         InstRep = ir_free_rep
-    else if inst_is_ground(ModuleInfo, MerInst) then
+    else if inst_is_ground(ModuleInfo, Type, MerInst) then
         InstRep = ir_ground_rep
     else
         InstRep = ir_other_rep

@@ -221,9 +221,12 @@ delay_construct_in_conj([Goal0 | Goals0], InstMap0, DelayInfo,
         Unif = construct(Var, _, Args, _, _, _, _),
         Args = [_ | _], % We are constructing a cell, not a constant
         instmap_lookup_var(InstMap0, Var, Inst0),
-        inst_is_free(DelayInfo ^ dci_module_info, Inst0),
         instmap_lookup_var(InstMap1, Var, Inst1),
-        inst_is_ground(DelayInfo ^ dci_module_info, Inst1)
+        ModuleInfo = DelayInfo ^ dci_module_info,
+        inst_is_free(ModuleInfo, Inst0),
+        VarTable = DelayInfo ^ dci_var_table,
+        lookup_var_type(VarTable, Var, Type),
+        inst_is_ground(ModuleInfo, Type, Inst1)
     then
         set.insert(Var, ConstructedVars0, ConstructedVars1),
         RevDelayedGoals1 = [Goal0 | RevDelayedGoals0],

@@ -542,7 +542,7 @@ classify_complexity_args(ModuleInfo, VarTable, [Var | Vars], [Mode | Modes],
     else
         MaybeName = yes(Name)
     ),
-    ( if mode_is_fully_input(ModuleInfo, Mode) then
+    ( if mode_is_fully_input(ModuleInfo, VarType, Mode) then
         ( if
             ( IsDummy = is_dummy_type
             ; zero_size_type(ModuleInfo, VarType)

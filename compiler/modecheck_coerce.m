@@ -88,7 +88,7 @@ modecheck_coerce(Args0, Args, Modes0, Modes, Det, ExtraGoals, !ModeInfo) :-
             instmap_lookup_var(InstMap, X, InstX),
             instmap_lookup_var(InstMap, Y, InstY),
             ( if
-                inst_is_ground(ModuleInfo0, InstX),
+                inst_is_ground(ModuleInfo0, TypeX, InstX),
                 not inst_is_clobbered(ModuleInfo0, InstX)
             then
                 modecheck_coerce_vars(ModuleInfo0, X, Y, TypeX, TypeY,

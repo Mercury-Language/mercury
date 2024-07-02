@@ -1,6 +1,11 @@
 %---------------------------------------------------------------------------%
 % vim: ts=4 sw=4 et ft=mercury
 %---------------------------------------------------------------------------%
+%
+% This test case was disabled on 2024 July 2, because the behavior that
+% it tests for, the "any" inst matching a "bound" inst for non-solver types,
+% is deliberately disabled.
+%
 
 :- module any_matches_bound.
 

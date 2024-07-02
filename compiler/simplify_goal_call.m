@@ -761,7 +761,9 @@ input_args_are_suspicious(ModuleInfo, CommonInfo, VarTable, VarNameRemap,
         % insts such as list_skel(free). Still, it is better to miss warnings
         % in that rare and unsupported case rather than to issue spurious
         % warnings in cases involving `any' insts.
-        inst_is_ground(ModuleInfo, InitialInst),
+        lookup_var_entry(VarTable, ArgVar, ArgVarEntry),
+        ArgVarType = ArgVarEntry ^ vte_type,
+        inst_is_ground(ModuleInfo, ArgVarType, InitialInst),
 
         % XXX This can detect that ArgVar and HeadVar are distinct variables
         % that are nevertheless guaranteed to be equal *only* if common.m
@@ -783,7 +785,6 @@ input_args_are_suspicious(ModuleInfo, CommonInfo, VarTable, VarNameRemap,
             % we have no reason to believe the recursive call is suspicious,
             % so we fail.
             head_var_name(VarTable, VarNameRemap, HeadVar, HeadName),
-            lookup_var_entry(VarTable, ArgVar, ArgVarEntry),
             ArgName = ArgVarEntry ^ vte_name,
             ArgName \= "",
             delete_any_numeric_suffix(HeadName, HeadBaseName),

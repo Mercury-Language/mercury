@@ -357,8 +357,7 @@ fact_table_check_args(ModuleInfo, PragmaContext, PredId, PredInfo, Result) :-
             InOutProcIds = []                   % dummy; won't be used
         ;
             ProcIds = [_ | _],
-            pred_info_get_proc_table(PredInfo, ProcTable),
-            fact_table_check_proc_modes(ModuleInfo, PredId, ProcTable, ProcIds,
+            fact_table_check_proc_modes(ModuleInfo, PredId, PredInfo, ProcIds,
                 FactArgInfos0, FactArgInfos, map.init, FactTableProcMap,
                 [], RevAllInProcIds, [], RevInOutProcIds, [], ModeSpecs0),
             list.reverse(RevAllInProcIds, AllInProcIds),
@@ -397,7 +396,7 @@ fact_table_check_args(ModuleInfo, PragmaContext, PredId, PredInfo, Result) :-
     ).
 
 :- pred fact_table_check_proc_modes(module_info::in, pred_id::in,
-    proc_table::in, list(proc_id)::in,
+    pred_info::in, list(proc_id)::in,
     list(fact_arg_info)::in, list(fact_arg_info)::out,
     fact_table_proc_map::in, fact_table_proc_map::out,
     list(proc_id)::in, list(proc_id)::out,
@@ -407,15 +406,18 @@ fact_table_check_args(ModuleInfo, PragmaContext, PredId, PredInfo, Result) :-
 fact_table_check_proc_modes(_, _, _, [],
         !FactArgInfos, !FactTableProcMap,
         !RevAllInProcIds, !RevInOutProcIds, !Specs).
-fact_table_check_proc_modes(ModuleInfo, PredId, ProcTable, [ProcId | ProcIds],
+fact_table_check_proc_modes(ModuleInfo, PredId, PredInfo, [ProcId | ProcIds],
         !FactArgInfos, !FactTableProcMap,
         !RevAllInProcIds, !RevInOutProcIds, !Specs) :-
+    pred_info_get_arg_types(PredInfo, ArgTypes),
+    pred_info_get_proc_table(PredInfo, ProcTable),
     map.lookup(ProcTable, ProcId, ProcInfo),
     proc_info_get_argmodes(ProcInfo, ArgModes),
     PredProcId = proc(PredId, ProcId),
     varset.init(VarSet0),
-    check_proc_arg_modes(ModuleInfo, PredProcId, ProcInfo, ArgModes, 1,
-        FactTableVars, VarSet0, VarSet, [], ArgModeSpecs),
+    check_proc_arg_modes(ModuleInfo, PredProcId, ProcInfo,
+        1, ArgTypes, ArgModes, FactTableVars, VarSet0, VarSet,
+        [], ArgModeSpecs),
     (
         ArgModeSpecs = [_ | _],
         !:Specs = ArgModeSpecs ++ !.Specs
@@ -441,7 +443,7 @@ fact_table_check_proc_modes(ModuleInfo, PredId, ProcTable, [ProcId | ProcIds],
             fact_table_proc_info(FactTableVars, ModeClass, VarSet),
         map.det_insert(ProcId, FactTableProcInfo, !FactTableProcMap)
     ),
-    fact_table_check_proc_modes(ModuleInfo, PredId, ProcTable, ProcIds,
+    fact_table_check_proc_modes(ModuleInfo, PredId, PredInfo, ProcIds,
         !FactArgInfos, !FactTableProcMap,
         !RevAllInProcIds, !RevInOutProcIds, !Specs).
 
@@ -494,17 +496,22 @@ init_fact_arg_infos(PredInfo, [Type | Types], [Info | Infos], !Specs) :-
     init_fact_arg_infos(PredInfo, Types, Infos, !Specs).
 
 :- pred check_proc_arg_modes(module_info::in, pred_proc_id::in, proc_info::in,
-    list(mer_mode)::in, int::in, list(fact_table_var)::out,
+    int::in, list(mer_type)::in, list(mer_mode)::in, list(fact_table_var)::out,
     prog_varset::in, prog_varset::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
-check_proc_arg_modes(_, _, _, [], _, [], !VarSet, !Specs).
-check_proc_arg_modes(ModuleInfo, PredProcId, ProcInfo, [Mode | Modes], ArgNum,
+check_proc_arg_modes(_, _, _, _, [], [], [], !VarSet, !Specs).
+check_proc_arg_modes(_, _, _, _, [], [_ | _], _, !VarSet, !Specs) :-
+    unexpected($pred, "list length mismatch").
+check_proc_arg_modes(_, _, _, _, [_ | _], [], _, !VarSet, !Specs) :-
+    unexpected($pred, "list length mismatch").
+check_proc_arg_modes(ModuleInfo, PredProcId, ProcInfo,
+        ArgNum, [Type | Types], [Mode | Modes],
         [FactTableVar | FactTableVars], !VarSet, !Specs) :-
     ( if mode_get_insts_semidet(ModuleInfo, Mode, _, FinalInst) then
-        ( if mode_is_fully_input(ModuleInfo, Mode) then
+        ( if mode_is_fully_input(ModuleInfo, Type, Mode) then
             FactTableMode = fully_in
-        else if mode_is_fully_output(ModuleInfo, Mode) then
+        else if mode_is_fully_output(ModuleInfo, Type, Mode) then
             FactTableMode = fully_out
         else
             ProcPieces = describe_one_proc_name(ModuleInfo, yes(color_subject),
@@ -550,8 +557,8 @@ check_proc_arg_modes(ModuleInfo, PredProcId, ProcInfo, [Mode | Modes], ArgNum,
     PragmaVar = pragma_var(Var, VarName, Mode, bp_native_if_possible),
     FactTableVar =
         fact_table_var(VarName, FactTableMode, MakeUnique, PragmaVar),
-    check_proc_arg_modes(ModuleInfo, PredProcId, ProcInfo, Modes, ArgNum + 1,
-        FactTableVars, !VarSet, !Specs).
+    check_proc_arg_modes(ModuleInfo, PredProcId, ProcInfo,
+        ArgNum + 1, Types, Modes, FactTableVars, !VarSet, !Specs).
 
 :- pred fill_in_fact_arg_infos(list(fact_table_mode)::in,
     list(fact_arg_info)::in, list(fact_arg_info)::out) is det.

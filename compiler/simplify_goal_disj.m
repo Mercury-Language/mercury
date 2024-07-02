@@ -154,7 +154,9 @@ warn_about_any_problem_partial_vars(Innermost, GoalInfo, InstMap0,
         InstMapDelta, !Info) :-
     instmap_delta_to_assoc_list(InstMapDelta, InstMapDeltaChanges),
     simplify_info_get_module_info(!.Info, ModuleInfo),
-    list.filter_map(is_var_a_problem_partial_var(ModuleInfo, InstMap0),
+    simplify_info_get_var_table(!.Info, VarTable),
+    list.filter_map(
+        is_var_a_problem_partial_var(ModuleInfo, VarTable, InstMap0),
         InstMapDeltaChanges, ProblemPartialVars),
     (
         ProblemPartialVars = []
@@ -182,7 +184,6 @@ warn_about_any_problem_partial_vars(Innermost, GoalInfo, InstMap0,
                     [s(LambdaFileName), i(LambdaLineNum)], ProcStr)
             )
         ),
-        simplify_info_get_var_table(!.Info, VarTable),
         ProblemPartialVarNames =
             list.map(var_table_entry_name(VarTable), ProblemPartialVars),
         ProblemPartialVarPieces =
@@ -214,17 +215,19 @@ warn_about_any_problem_partial_vars(Innermost, GoalInfo, InstMap0,
 
     % Check whether a variable suffers from the problem of bug 311.
     %
-:- pred is_var_a_problem_partial_var(module_info::in, instmap::in,
-    pair(prog_var, mer_inst)::in, prog_var::out) is semidet.
+:- pred is_var_a_problem_partial_var(module_info::in, var_table::in,
+    instmap::in, pair(prog_var, mer_inst)::in, prog_var::out) is semidet.
 
-is_var_a_problem_partial_var(ModuleInfo, InstMap0, Var - FinalInst, Var) :-
+is_var_a_problem_partial_var(ModuleInfo, VarTable, InstMap0,
+        Var - FinalInst, Var) :-
+    lookup_var_type(VarTable, Var, Type),
     instmap_lookup_var(InstMap0, Var, InitInst),
     ( if inst_is_free(ModuleInfo, InitInst) then
         % No problem: the cell containing the variable is NOT allocated
         % before the disjunction, so its address won't be the same in
         % different arms.
         fail
-    else if inst_is_ground(ModuleInfo, InitInst) then
+    else if inst_is_ground(ModuleInfo, Type, InitInst) then
         % No problem: the variable's initial value cannot be changed
         % by the disjunction.
         fail

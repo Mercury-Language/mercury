@@ -776,7 +776,9 @@ acceptable_construct_unification(ConstInfo, DelayForVars, Goal,
         MaybeTakeAddrs = no
     ),
     ModuleInfo = !.Info ^ lco_module_info,
-    all_true(acceptable_construct_mode(ModuleInfo), ArgModes),
+    VarTable = !.Info ^ lco_var_table,
+    acceptable_construct_modes(ModuleInfo, VarTable,
+        ConstructArgVars, ArgModes),
     ConsId = du_data_ctor(DuCtor),
     get_cons_repn_defn(ModuleInfo, DuCtor, CtorRepn),
     ConsTag = CtorRepn ^ cr_tag,
@@ -803,13 +805,13 @@ acceptable_construct_unification(ConstInfo, DelayForVars, Goal,
         bag.insert_list(ConstructArgVars, !UnifyInputVars),
         trace [compiletime(flag("lco")), io(!IO)] (
             ProcInfo = ConstInfo ^ lci_cur_proc_proc,
-            proc_info_get_var_table(ProcInfo, VarTable),
-            ConstructedVarStr = mercury_var_to_string(VarTable,
+            proc_info_get_var_table(ProcInfo, ProcVarTable),
+            ConstructedVarStr = mercury_var_to_string(ProcVarTable,
                 print_name_and_num, ConstructedVar),
             ConsIdStr = mercury_cons_id_to_string(output_debug,
                 does_not_need_brackets, ConsId),
             ConstructArgVarStrs = list.map(
-                mercury_var_to_string(VarTable, print_name_and_num),
+                mercury_var_to_string(ProcVarTable, print_name_and_num),
                 ConstructArgVars),
             ConstructArgVarsStr = string.join_list(", ", ConstructArgVarStrs),
             get_debug_output_stream(ModuleInfo, DebugStream, !IO),
@@ -1374,15 +1376,24 @@ bound_inst_with_free_arg(ConsId, FreeArg) = Inst :-
 
 %---------------------------------------------------------------------------%
 
-:- pred acceptable_construct_mode(module_info::in, unify_mode::in) is semidet.
+:- pred acceptable_construct_modes(module_info::in, var_table::in,
+    list(prog_var)::in, list(unify_mode)::in) is semidet.
 
-acceptable_construct_mode(ModuleInfo, UnifyMode) :-
+acceptable_construct_modes(_, _, [], []).
+acceptable_construct_modes(_, _, [], [_ | _]) :-
+    unexpected($pred, "list length mismatch").
+acceptable_construct_modes(_, _, [_ | _], []) :-
+    unexpected($pred, "list length mismatch").
+acceptable_construct_modes(ModuleInfo, VarTable,
+        [Var | Vars], [UnifyMode | UnifyModes]) :-
+    lookup_var_type(VarTable, Var, Type),
     UnifyMode = unify_modes_li_lf_ri_rf(InitInstX, FinalInstX,
         InitInstY, FinalInstY),
     inst_is_free(ModuleInfo, InitInstX),
-    inst_is_ground(ModuleInfo, InitInstY),
-    inst_is_ground(ModuleInfo, FinalInstX),
-    inst_is_ground(ModuleInfo, FinalInstY).
+    inst_is_ground(ModuleInfo, Type, InitInstY),
+    inst_is_ground(ModuleInfo, Type, FinalInstX),
+    inst_is_ground(ModuleInfo, Type, FinalInstY),
+    acceptable_construct_modes(ModuleInfo, VarTable, Vars, UnifyModes).
 
 %---------------------------------------------------------------------------%
 
@@ -1827,7 +1838,8 @@ lco_transform_variant_plain_call(ModuleInfo, Transforms, VariantMap, VarToAddr,
         InstMap0, GoalExpr0, GoalExpr, GoalInfo0, GoalInfo, Changed,
         !ProcInfo) :-
     update_instmap_goal_info(GoalInfo0, InstMap0, InstMap1),
-    list.filter(is_grounding(ModuleInfo, InstMap0, InstMap1),
+    proc_info_get_var_table(!.ProcInfo, VarTable),
+    list.filter(is_grounding(ModuleInfo, VarTable, InstMap0, InstMap1),
         VarToAddr, GroundingVarToAddr),
     (
         GroundingVarToAddr = [],
@@ -1844,7 +1856,6 @@ lco_transform_variant_plain_call(ModuleInfo, Transforms, VariantMap, VarToAddr,
         CallPredProcId = proc(CallPredId, CallProcId),
         module_info_proc_info(ModuleInfo, CallPredId, CallProcId,
             CalleeProcInfo),
-        proc_info_get_var_table(!.ProcInfo, VarTable),
         proc_info_get_argmodes(CalleeProcInfo, CalleeArgModes),
         ( if
             multi_map.search(VariantMap, CallPredProcId, ExistingVariantIds),
@@ -1904,7 +1915,8 @@ lco_transform_variant_plain_call(ModuleInfo, Transforms, VariantMap, VarToAddr,
 lco_transform_variant_atomic_goal(ModuleInfo, VarToAddr, InstMap0,
         GoalInfo, GoalExpr0, GoalExpr, Changed, !ProcInfo) :-
     update_instmap_goal_info(GoalInfo, InstMap0, InstMap1),
-    list.filter(is_grounding(ModuleInfo, InstMap0, InstMap1),
+    proc_info_get_var_table(!.ProcInfo, VarTable),
+    list.filter(is_grounding(ModuleInfo, VarTable, InstMap0, InstMap1),
         VarToAddr, GroundingVarToAddr),
     (
         GroundingVarToAddr = [],
@@ -2030,15 +2042,16 @@ make_unification_arg(ModuleInfo, GroundVar, TargetArgNum, CurArgNum,
 
 %---------------------------------------------------------------------------%
 
-:- pred is_grounding(module_info::in, instmap::in, instmap::in,
+:- pred is_grounding(module_info::in, var_table::in, instmap::in, instmap::in,
     pair(prog_var, store_target)::in) is semidet.
 
-is_grounding(ModuleInfo, InstMap0, InstMap, Var - _StoreTarget) :-
+is_grounding(ModuleInfo, VarTable, InstMap0, InstMap, Var - _StoreTarget) :-
+    lookup_var_type(VarTable, Var, Type),
     instmap_lookup_var(InstMap0, Var, Inst0),
-    not inst_is_ground(ModuleInfo, Inst0),
+    not inst_is_ground(ModuleInfo, Type, Inst0),
     instmap_is_reachable(InstMap),
     instmap_lookup_var(InstMap, Var, Inst),
-    inst_is_ground(ModuleInfo, Inst).
+    inst_is_ground(ModuleInfo, Type, Inst).
 
 %---------------------------------------------------------------------------%
 

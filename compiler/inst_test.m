@@ -37,7 +37,7 @@
     % needs to be taken since these insts may not be replaced by a less
     % precise inst that uses the higher-order mode information.
     %
-:- pred inst_is_ground(module_info::in, mer_inst::in) is semidet.
+:- pred inst_is_ground(module_info::in, mer_type::in, mer_inst::in) is semidet.
 
     % Succeed if the inst is not partly free (i.e. contains only `any',
     % `ground', `bound', and `not_reached' insts, with no `free' insts).
@@ -125,7 +125,8 @@
 
 %-----------------------------------------------------------------------------%
 
-:- pred inst_list_is_ground(module_info::in, list(mer_inst)::in) is semidet.
+:- pred inst_list_is_ground(module_info::in,
+    list(mer_type)::in, list(mer_inst)::in) is semidet.
 
 :- pred inst_list_is_ground_or_any(module_info::in, list(mer_inst)::in)
     is semidet.
@@ -143,16 +144,16 @@
 
 :- pred inst_list_is_free(module_info::in, list(mer_inst)::in) is semidet.
 
-    % Given a list of insts, and a corresponding list of livenesses, return
-    % true iff for every element in the list of insts, either the element is
-    % ground or the corresponding element in the liveness list is dead.
+    % Given a list of insts, and a corresponding list of types and livenesses,
+    % succeed iff for every element in the list of insts, either the element
+    % is ground or the corresponding element in the liveness list is dead.
     %
 :- pred inst_list_is_ground_or_dead(module_info::in,
-    list(is_live)::in, list(mer_inst)::in) is semidet.
+    list(is_live)::in, list(mer_type)::in, list(mer_inst)::in) is semidet.
 
-    % Given a list of insts, and a corresponding list of livenesses, return
-    % true iff for every element in the list of insts, either the element is
-    % ground or any, or the corresponding element in the liveness list is
+    % Given a list of insts, and a corresponding list of livenesses, succeed
+    % iff for every element in the list of insts, either the element
+    % is ground or any, or the corresponding element in the liveness list is
     % dead.
     %
 :- pred inst_list_is_ground_or_any_or_dead(module_info::in,
@@ -220,13 +221,13 @@
 
 %-----------------------------------------------------------------------------%
 
-inst_is_ground(ModuleInfo, Inst) :-
+inst_is_ground(ModuleInfo, Type, Inst) :-
     % XXX TYPE_FOR_INST Our caller should pass us the type.
     %
     % inst_is_ground succeeds iff the inst passed is `ground' or the
-    % equivalent. Abstract insts are not considered ground.
+    % equivalent.
     promise_pure (
-        semipure lookup_inst_is_ground(Inst, Found, OldIsGround),
+        semipure lookup_inst_is_ground(Type, Inst, Found, OldIsGround),
         (
             Found = yes,
             trace [compiletime(flag("inst-is-ground-perf")), io(!IO)] (
@@ -241,11 +242,11 @@ inst_is_ground(ModuleInfo, Inst) :-
                 get_debug_output_stream(ModuleInfo, DebugStream, !IO),
                 io.write_string(DebugStream, "inst_is_ground miss\n", !IO)
             ),
-            ( if inst_is_ground_mt(ModuleInfo, no_type_available, Inst) then
-                impure record_inst_is_ground(Inst, yes)
+            ( if inst_is_ground_mt(ModuleInfo, Type, Inst) then
+                impure record_inst_is_ground(Type, Inst, yes)
                 % Succeed.
             else
-                impure record_inst_is_ground(Inst, no),
+                impure record_inst_is_ground(Type, Inst, no),
                 fail
             )
         )
@@ -290,6 +291,7 @@ inst_is_ground(ModuleInfo, Inst) :-
 :- pragma foreign_decl("C",
 "
 typedef struct {
+    MR_Word     iig_type_addr;
     MR_Word     iig_inst_addr;
     MR_Word     iig_is_ground;
 } InstIsGroundCacheEntry;
@@ -306,20 +308,23 @@ static  InstIsGroundCacheEntry inst_is_ground_cache[INST_IS_GROUND_CACHE_SIZE];
     % Look up Inst in the cache. If it is there, return Found = yes
     % and set MayOccur. Otherwise, return Found = no.
     %
-:- semipure pred lookup_inst_is_ground(mer_inst::in,
+:- semipure pred lookup_inst_is_ground(mer_type::in, mer_inst::in,
     bool::out, bool::out) is det.
 
 :- pragma foreign_proc("C",
-    lookup_inst_is_ground(Inst::in, Found::out, IsGround::out),
+    lookup_inst_is_ground(Type::in, Inst::in, Found::out, IsGround::out),
     [will_not_call_mercury, promise_semipure],
 "
     MR_Unsigned hash;
 
-    hash = (MR_Unsigned) Inst;
+    hash = (MR_Unsigned) Type << 5u | (MR_Unsigned) Inst;
     hash = hash >> MR_LOW_TAG_BITS;
     hash = hash % INST_IS_GROUND_CACHE_SIZE;
 
-    if (inst_is_ground_cache[hash].iig_inst_addr == Inst) {
+    if (
+        inst_is_ground_cache[hash].iig_type_addr == Type &&
+        inst_is_ground_cache[hash].iig_inst_addr == Inst)
+    {
         Found = MR_BOOL_YES;
         IsGround = inst_is_ground_cache[hash].iig_is_ground;
     } else {
@@ -328,28 +333,30 @@ static  InstIsGroundCacheEntry inst_is_ground_cache[INST_IS_GROUND_CACHE_SIZE];
     }
 ").
 
-lookup_inst_is_ground(_, no, no) :-
+lookup_inst_is_ground(_, _, no, no) :-
     semipure semipure_true.
 
     % Record the result for Inst in the cache.
     %
-:- impure pred record_inst_is_ground(mer_inst::in, bool::in) is det.
+:- impure pred record_inst_is_ground(mer_type::in, mer_inst::in, bool::in)
+    is det.
 
 :- pragma foreign_proc("C",
-    record_inst_is_ground(Inst::in, IsGround::in),
+    record_inst_is_ground(Type::in, Inst::in, IsGround::in),
     [will_not_call_mercury],
 "
     MR_Unsigned hash;
 
-    hash = (MR_Unsigned) Inst;
+    hash = (MR_Unsigned) Type << 5u | (MR_Unsigned) Inst;
     hash = hash >> MR_LOW_TAG_BITS;
     hash = hash % INST_IS_GROUND_CACHE_SIZE;
     // We overwrite any existing entry in the slot.
+    inst_is_ground_cache[hash].iig_type_addr = Type;
     inst_is_ground_cache[hash].iig_inst_addr = Inst;
     inst_is_ground_cache[hash].iig_is_ground = IsGround;
 ").
 
-record_inst_is_ground(_, _) :-
+record_inst_is_ground(_, _, _) :-
     impure impure_true.
 
 %-----------------------------------------------------------------------------%
@@ -361,7 +368,7 @@ inst_is_ground_mt(ModuleInfo, Type, Inst) :-
     Expansions0 = set_tree234.init,
     inst_is_ground_mt_1(ModuleInfo, Type, Inst, Expansions0, _Expansions).
 
-    % The third arg is the set of insts which have already been expanded;
+    % The fourth arg is the set of insts which have already been expanded;
     % we use this to avoid going into an infinite loop.
     %
 :- pred inst_is_ground_mt_1(module_info::in, mer_type::in, mer_inst::in,
@@ -395,7 +402,9 @@ inst_is_ground_mt_1(ModuleInfo, Type, Inst, !Expansions) :-
 inst_is_ground_mt_2(ModuleInfo, Type, Inst, !Expansions) :-
     require_complete_switch [Inst]
     (
-        Inst = free,
+        ( Inst = free
+        ; Inst = any(_, _)
+        ),
         fail
     ;
         ( Inst = not_reached
@@ -411,10 +420,6 @@ inst_is_ground_mt_2(ModuleInfo, Type, Inst, !Expansions) :-
     ;
         Inst = defined_inst(InstName),
         inst_lookup(ModuleInfo, InstName, NextInst),
-        inst_is_ground_mt_1(ModuleInfo, Type, NextInst, !Expansions)
-    ;
-        Inst = any(Uniq, HOInstInfo),
-        maybe_any_to_bound(ModuleInfo, Type, Uniq, HOInstInfo, NextInst),
         inst_is_ground_mt_1(ModuleInfo, Type, NextInst, !Expansions)
     ;
         Inst = inst_var(_),
@@ -1037,10 +1042,11 @@ bound_inst_list_is_free(ModuleInfo, [BoundInst | BoundInsts]) :-
 
 %-----------------------------------------------------------------------------%
 
-inst_list_is_ground(_, []).
-inst_list_is_ground(ModuleInfo, [Inst | Insts]) :-
-    inst_is_ground(ModuleInfo, Inst),
-    inst_list_is_ground(ModuleInfo, Insts).
+inst_list_is_ground(_, [], []).
+% ZZZ length mismatch
+inst_list_is_ground(ModuleInfo, [Type | Types], [Inst | Insts]) :-
+    inst_is_ground(ModuleInfo, Type, Inst),
+    inst_list_is_ground(ModuleInfo, Types, Insts).
 
 :- pred inst_list_is_ground_mt(module_info::in, list(mer_type)::in,
     list(mer_inst)::in) is semidet.
@@ -1134,15 +1140,16 @@ inst_list_is_free(ModuleInfo, [Inst | Insts]) :-
     inst_is_free(ModuleInfo, Inst),
     inst_list_is_free(ModuleInfo, Insts).
 
-inst_list_is_ground_or_dead(_, [], []).
-inst_list_is_ground_or_dead(ModuleInfo, [Live | Lives], [Inst | Insts]) :-
+inst_list_is_ground_or_dead(_, [], [], []).
+inst_list_is_ground_or_dead(ModuleInfo,
+        [Live | Lives], [Type | Types], [Inst | Insts]) :-
     (
         Live = is_live,
-        inst_is_ground(ModuleInfo, Inst)
+        inst_is_ground(ModuleInfo, Type, Inst)
     ;
         Live = is_dead
     ),
-    inst_list_is_ground_or_dead(ModuleInfo, Lives, Insts).
+    inst_list_is_ground_or_dead(ModuleInfo, Lives, Types, Insts).
 
 inst_list_is_ground_or_any_or_dead(_, [], []).
 inst_list_is_ground_or_any_or_dead(ModuleInfo,

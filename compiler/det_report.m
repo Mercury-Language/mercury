@@ -721,8 +721,10 @@ check_for_multisoln_func(ModuleInfo, PredProcId, PredInfo, ProcInfo, !Specs) :-
         NumSolns \= at_most_one,
         % ... but for which all the arguments are input ...
         proc_info_get_argmodes(ProcInfo, PredArgModes),
+        pred_info_get_arg_types(PredInfo, PredArgTypes),
+        pred_args_to_func_args(PredArgTypes, FuncArgTypes, _FuncResultType),
         pred_args_to_func_args(PredArgModes, FuncArgModes, _FuncResultMode),
-        list.all_true(mode_is_fully_input(ModuleInfo), FuncArgModes)
+        all_modes_are_fully_input(ModuleInfo, FuncArgTypes, FuncArgModes)
     then
         % ... then it is an error.
         proc_info_get_context(ProcInfo, FuncContext),

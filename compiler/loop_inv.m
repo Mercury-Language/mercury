@@ -135,6 +135,7 @@
 :- import_module parse_tree.
 :- import_module parse_tree.prog_data.
 :- import_module parse_tree.set_of_var.
+:- import_module parse_tree.var_table.
 
 :- import_module assoc_list.
 :- import_module cord.
@@ -158,6 +159,7 @@ hoist_loop_invariants(PredProcId, PredInfo, !ProcInfo, !ModuleInfo) :-
         proc_info_get_goal(!.ProcInfo, Body),
         proc_info_get_headvars(!.ProcInfo, HeadVars),
         proc_info_get_argmodes(!.ProcInfo, HeadVarModes),
+        proc_info_get_var_table(!.ProcInfo, VarTable),
 
         % Find the set of variables that are used as (partly) unique inputs
         % to calls. These variables are not safe candidates for hoisting.
@@ -172,8 +174,8 @@ hoist_loop_invariants(PredProcId, PredInfo, !ProcInfo, !ModuleInfo) :-
         %
         % The recursive calls are the set of calls at the end of each
         % recursive path.
-        invariant_goal_candidates_in_proc(!.ModuleInfo, PredProcId, Body,
-            InvGoals0, RecCalls),
+        invariant_goal_candidates_in_proc(!.ModuleInfo, VarTable, PredProcId,
+            Body, InvGoals0, RecCalls),
 
         % We can calculate the set of invariant args from the set of
         % recursive calls.
@@ -182,7 +184,7 @@ hoist_loop_invariants(PredProcId, PredInfo, !ProcInfo, !ModuleInfo) :-
 
         % Given the invariant args, we can calculate the set of
         % invariant goals and vars.
-        inv_goals_vars(!.ModuleInfo, UniquelyUsedVars,
+        inv_goals_vars(!.ModuleInfo, VarTable, UniquelyUsedVars,
             InvGoals0, InvGoals1, InvArgs, InvVars1),
 
         % We don't want to hoist out unifications with constants (i.e.
@@ -201,7 +203,8 @@ hoist_loop_invariants(PredProcId, PredInfo, !ProcInfo, !ModuleInfo) :-
         %
         % So here we compute the subset of InvGoals (and the corresponding
         % InvVars) that should not be hoisted.
-        do_not_hoist(!.ModuleInfo, InvGoals1, DontHoistGoals, DontHoistVars),
+        do_not_hoist(!.ModuleInfo, VarTable, InvGoals1,
+            DontHoistGoals, DontHoistVars),
 
         list.delete_elems(InvGoals1, DontHoistGoals, InvGoals),
         list.delete_elems(InvVars1, DontHoistVars, InvVars),
@@ -267,6 +270,7 @@ hoist_loop_invariants(PredProcId, PredInfo, !ProcInfo, !ModuleInfo) :-
 :- type igc_info
     --->    igc_info(
                 igc_module_info             :: module_info,
+                igc_var_table               :: var_table,
 
                 % path_candidates is the list of accumulated invariant
                 % goal candidates.
@@ -285,15 +289,16 @@ hoist_loop_invariants(PredProcId, PredInfo, !ProcInfo, !ModuleInfo) :-
     % invariant atomic goals in Body and the set of recursive calls
     % in Body identified via PredProcId.
     %
-:- pred invariant_goal_candidates_in_proc(module_info::in, pred_proc_id::in,
-    hlds_goal::in, list(hlds_goal)::out, list(hlds_goal)::out) is det.
+:- pred invariant_goal_candidates_in_proc(module_info::in, var_table::in,
+    pred_proc_id::in, hlds_goal::in,
+    list(hlds_goal)::out, list(hlds_goal)::out) is det.
 
-invariant_goal_candidates_in_proc(ModuleInfo, PredProcId, Body,
+invariant_goal_candidates_in_proc(ModuleInfo, VarTable, PredProcId, Body,
         CandidateInvGoals, RecCallGoals) :-
-    GoalCandidates0 = igc_info(ModuleInfo, cord.empty, []),
+    GoalCandidates0 = igc_info(ModuleInfo, VarTable, cord.empty, []),
     invariant_goal_candidates_in_goal(PredProcId, Body,
         GoalCandidates0, GoalCandidates),
-    GoalCandidates = igc_info(_, _, RecCalls),
+    GoalCandidates = igc_info(_, _, _, RecCalls),
     assoc_list.keys_and_values(RecCalls, RecCallGoals, CandidateInvGoalsList),
     CandidateInvGoals = intersect_candidate_inv_goals(CandidateInvGoalsList).
 
@@ -430,7 +435,8 @@ invariant_goal_candidates_handle_primitive_goal(Goal, !IGCs) :-
         InstMapDelta = goal_info_get_instmap_delta(GoalInfo),
         instmap_delta_to_assoc_list(InstMapDelta, InstMapDeltaPairs),
         ModuleInfo = !.IGCs ^ igc_module_info,
-        all_instmap_deltas_are_ground(ModuleInfo, InstMapDeltaPairs)
+        VarTable = !.IGCs ^ igc_var_table,
+        all_instmap_deltas_are_ground(ModuleInfo, VarTable, InstMapDeltaPairs)
     then
         !IGCs ^ igc_path_candidates :=
             cord.snoc(!.IGCs ^ igc_path_candidates, Goal)
@@ -440,13 +446,15 @@ invariant_goal_candidates_handle_primitive_goal(Goal, !IGCs) :-
 
 %-----------------------------------------------------------------------------%
 
-:- pred all_instmap_deltas_are_ground(module_info::in,
+:- pred all_instmap_deltas_are_ground(module_info::in, var_table::in,
     assoc_list(prog_var, mer_inst)::in) is semidet.
 
-all_instmap_deltas_are_ground(_, []).
-all_instmap_deltas_are_ground(ModuleInfo, [_Var - Inst | VarInsts]) :-
-    inst_is_ground(ModuleInfo, Inst),
-    all_instmap_deltas_are_ground(ModuleInfo, VarInsts).
+all_instmap_deltas_are_ground(_, _, []).
+all_instmap_deltas_are_ground(ModuleInfo, VarTable,
+        [Var - Inst | VarInsts]) :-
+    lookup_var_type(VarTable, Var, Type),
+    inst_is_ground(ModuleInfo, Type, Inst),
+    all_instmap_deltas_are_ground(ModuleInfo, VarTable, VarInsts).
 
 %-----------------------------------------------------------------------------%
 
@@ -548,27 +556,28 @@ refine_candidate_inv_args_2(yes(X), Y) = ( if X = Y then yes(X) else no ).
     % used as unique inputs since the user may clobber the variable
     % in question.
     %
-:- pred inv_goals_vars(module_info::in, list(prog_var)::in,
+:- pred inv_goals_vars(module_info::in, var_table::in, list(prog_var)::in,
     list(hlds_goal)::in, list(hlds_goal)::out,
     list(prog_var)::in, list(prog_var)::out) is det.
 
-inv_goals_vars(ModuleInfo, UniquelyUsedVars,
+inv_goals_vars(ModuleInfo, VarTable, UniquelyUsedVars,
         InvGoals0, InvGoals, InvVars0, InvVars) :-
-    list.foldl2(inv_goals_vars_2(ModuleInfo, UniquelyUsedVars),
+    list.foldl2(inv_goals_vars_2(ModuleInfo, VarTable, UniquelyUsedVars),
         InvGoals0, [], InvGoals, InvVars0,InvVars).
 
-:- pred inv_goals_vars_2(module_info::in, list(prog_var)::in, hlds_goal::in,
+:- pred inv_goals_vars_2(module_info::in, var_table::in,
+    list(prog_var)::in, hlds_goal::in,
     list(hlds_goal)::in, list(hlds_goal)::out,
     list(prog_var)::in, list(prog_var)::out) is det.
 
-inv_goals_vars_2(ModuleInfo, UUVs, Goal, IGs0, IGs, IVs0, IVs) :-
+inv_goals_vars_2(ModuleInfo, VarTable, UUVs, Goal, IGs0, IGs, IVs0, IVs) :-
     ( if
         not invariant_goal(IGs0, Goal),
         not has_uniquely_used_arg(UUVs, Goal),
         input_args_are_invariant(ModuleInfo, Goal, IVs0)
     then
         IGs = [Goal | IGs0],
-        add_outputs(ModuleInfo, UUVs, Goal, IVs0, IVs)
+        add_outputs(ModuleInfo, VarTable, UUVs, Goal, IVs0, IVs)
     else
         IGs = IGs0,
         IVs = IVs0
@@ -612,18 +621,18 @@ input_args_are_invariant(ModuleInfo, Goal, InvVars) :-
 
 %-----------------------------------------------------------------------------%
 
-:- pred do_not_hoist(module_info::in,
+:- pred do_not_hoist(module_info::in, var_table::in,
     list(hlds_goal)::in, list(hlds_goal)::out, list(prog_var)::out) is det.
 
-do_not_hoist(ModuleInfo, InvGoals, DontHoistGoals, DontHoistVars) :-
-    list.foldl2(do_not_hoist_2(ModuleInfo), InvGoals,
+do_not_hoist(ModuleInfo, VarTable, InvGoals, DontHoistGoals, DontHoistVars) :-
+    list.foldl2(do_not_hoist_2(ModuleInfo, VarTable), InvGoals,
         [], DontHoistGoals, [], DontHoistVars).
 
-:- pred do_not_hoist_2(module_info::in, hlds_goal::in,
+:- pred do_not_hoist_2(module_info::in, var_table::in, hlds_goal::in,
     list(hlds_goal)::in, list(hlds_goal)::out,
     list(prog_var)::in, list(prog_var)::out) is det.
 
-do_not_hoist_2(ModuleInfo, Goal, !DHGs, !DHVs) :-
+do_not_hoist_2(ModuleInfo, VarTable, Goal, !DHGs, !DHVs) :-
     ( if
         ( is_const_construction(Goal)
         ; is_deconstruction(Goal)
@@ -633,7 +642,7 @@ do_not_hoist_2(ModuleInfo, Goal, !DHGs, !DHVs) :-
         )
     then
         list.cons(Goal, !DHGs),
-        add_outputs(ModuleInfo, [], Goal, !DHVs)
+        add_outputs(ModuleInfo, VarTable, [], Goal, !DHVs)
     else
         true
     ).
@@ -701,11 +710,13 @@ call_has_inst_any(ModuleInfo, Goal) :-
 
 %-----------------------------------------------------------------------------%
 
-:- pred add_outputs(module_info::in, list(prog_var)::in, hlds_goal::in,
+:- pred add_outputs(module_info::in, var_table::in, list(prog_var)::in,
+    hlds_goal::in,
     list(prog_var)::in, list(prog_var)::out) is det.
 
-add_outputs(ModuleInfo, UUVs, Goal, !InvVars) :-
-    list.foldl(add_output(UUVs), goal_outputs(ModuleInfo, Goal), !InvVars).
+add_outputs(ModuleInfo, VarTable, UUVs, Goal, !InvVars) :-
+    list.foldl(add_output(UUVs), goal_outputs(ModuleInfo, VarTable, Goal),
+        !InvVars).
 
 :- pred add_output(list(prog_var)::in, prog_var::in,
     list(prog_var)::in, list(prog_var)::out) is det.
@@ -1224,21 +1235,21 @@ goal_inputs(ModuleInfo, Goal) = Inputs :-
     % Find the list of vars for a goal that are free before the call and bound
     % afterwards. This only applies to calls and unifications.
     %
-:- func goal_outputs(module_info, hlds_goal) = list(prog_var).
+:- func goal_outputs(module_info, var_table, hlds_goal) = list(prog_var).
 
-goal_outputs(ModuleInfo, Goal) = Outputs :-
+goal_outputs(ModuleInfo, VarTable, Goal) = Outputs :-
     Goal = hlds_goal(GoalExpr, _GoalInfo),
     (
         GoalExpr = plain_call(PredId, ProcId, Args, _, _, _),
-        list.filter_map_corresponding(is_output_arg(ModuleInfo),
+        list.filter_map_corresponding(is_output_arg(ModuleInfo, VarTable),
             Args, argmodes(ModuleInfo, PredId, ProcId), Outputs)
     ;
         GoalExpr = generic_call(_, Args, ArgModes, _, _),
-        list.filter_map_corresponding(is_output_arg(ModuleInfo),
+        list.filter_map_corresponding(is_output_arg(ModuleInfo, VarTable),
             Args, ArgModes, Outputs)
     ;
         GoalExpr = call_foreign_proc(_, PredId, ProcId, ForeignArgs, _, _, _),
-        list.filter_map_corresponding(is_output_arg(ModuleInfo),
+        list.filter_map_corresponding(is_output_arg(ModuleInfo, VarTable),
             list.map(foreign_arg_var, ForeignArgs),
             argmodes(ModuleInfo, PredId, ProcId), Outputs)
     ;
@@ -1250,7 +1261,7 @@ goal_outputs(ModuleInfo, Goal) = Outputs :-
         ;
             % The LHS is always in input in deconstructions.
             Kind = deconstruct(_, _, RHSArgs, ArgModes, _, _),
-            list.filter_map_corresponding(is_output_arg(ModuleInfo),
+            list.filter_map_corresponding(is_output_arg(ModuleInfo, VarTable),
                 RHSArgs, list.map(unify_mode_to_rhs_mode, ArgModes),
                 Outputs)
         ;
@@ -1290,11 +1301,12 @@ is_input_arg(ModuleInfo, Var, Mode, Var) :-
     % An output arg is one whose initial inst is free and whose final inst
     % is ground.
     %
-:- pred is_output_arg(module_info::in, prog_var::in, mer_mode::in,
-    prog_var::out) is semidet.
+:- pred is_output_arg(module_info::in, var_table::in,
+    prog_var::in, mer_mode::in, prog_var::out) is semidet.
 
-is_output_arg(ModuleInfo, Var, Mode, Var) :-
-    mode_is_fully_output(ModuleInfo, Mode).
+is_output_arg(ModuleInfo, VarTable, Var, Mode, Var) :-
+    lookup_var_type(VarTable, Var, Type),
+    mode_is_fully_output(ModuleInfo, Type, Mode).
 
 %-----------------------------------------------------------------------------%
 :- end_module transform_hlds.loop_inv.

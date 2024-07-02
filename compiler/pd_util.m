@@ -94,7 +94,7 @@
 :- pred convert_branch_info(pd_branch_info(int)::in,
     list(prog_var)::in, pd_branch_info(prog_var)::out) is det.
 
-    % inst_MSG(ModuleInfo, InstA, InstB, InstC):
+    % inst_MSG(ModuleInfo, Type, InstA, InstB, InstC):
     %
     % Take the Most Specific Generalisation of two insts. The information
     % in InstC is the minimum of the information in InstA and InstB.
@@ -116,8 +116,8 @@
     % that this doesn't introduce mode errors, since the information that was
     % removed may actually have been necessary for mode correctness.
     %
-:- pred inst_MSG(module_info::in, mer_inst::in, mer_inst::in, mer_inst::out)
-    is semidet.
+:- pred inst_MSG(module_info::in, mer_type::in, mer_inst::in, mer_inst::in,
+    mer_inst::out) is semidet.
 
     % Produce an estimate of the size of an inst, based on the number of nodes
     % in the inst. The inst is expanded down to the first repeat of an already
@@ -165,6 +165,7 @@
 :- import_module check_hlds.inst_lookup.
 :- import_module check_hlds.inst_match.
 :- import_module check_hlds.inst_test.
+:- import_module check_hlds.inst_util.
 :- import_module check_hlds.mode_info.
 :- import_module check_hlds.mode_test.
 :- import_module check_hlds.recompute_instmap_deltas.
@@ -827,16 +828,16 @@ convert_branch_info_2([ArgNo - Branches | ArgInfos], ArgVars, !VarInfo) :-
 
 %---------------------------------------------------------------------------%
 
-inst_MSG(ModuleInfo, InstA, InstB, Inst) :-
+inst_MSG(ModuleInfo, Type, InstA, InstB, Inst) :-
     set.init(Expansions),
-    inst_MSG_1(ModuleInfo, Expansions, InstA, InstB, Inst).
+    inst_MSG_1(ModuleInfo, Expansions, Type, InstA, InstB, Inst).
 
 :- type expansions == set(pair(mer_inst)).
 
-:- pred inst_MSG_1(module_info::in, expansions::in, mer_inst::in, mer_inst::in,
-    mer_inst::out) is semidet.
+:- pred inst_MSG_1(module_info::in, expansions::in,
+    mer_type::in, mer_inst::in, mer_inst::in, mer_inst::out) is semidet.
 
-inst_MSG_1(ModuleInfo, !.Expansions, InstA, InstB, Inst) :-
+inst_MSG_1(ModuleInfo, !.Expansions, Type, InstA, InstB, Inst) :-
     ( if InstA = InstB then
         Inst = InstA
     else
@@ -849,14 +850,14 @@ inst_MSG_1(ModuleInfo, !.Expansions, InstA, InstB, Inst) :-
         ( if InstB2 = not_reached then
             Inst = InstA2
         else
-            inst_MSG_2(ModuleInfo, !.Expansions, InstA2, InstB2, Inst)
+            inst_MSG_2(ModuleInfo, !.Expansions, Type, InstA2, InstB2, Inst)
         )
     ).
 
-:- pred inst_MSG_2(module_info::in, expansions::in, mer_inst::in, mer_inst::in,
-    mer_inst::out) is semidet.
+:- pred inst_MSG_2(module_info::in, expansions::in, mer_type::in,
+    mer_inst::in, mer_inst::in, mer_inst::out) is semidet.
 
-inst_MSG_2(ModuleInfo, Expansions, InstA, InstB, Inst) :-
+inst_MSG_2(ModuleInfo, Expansions, Type, InstA, InstB, Inst) :-
     (
         InstA = not_reached,
         Inst = InstB
@@ -885,7 +886,7 @@ inst_MSG_2(ModuleInfo, Expansions, InstA, InstB, Inst) :-
         InstA = bound(_, _, BoundInstsA),
         InstB = bound(UniqB, _, BoundInstsB),
         % XXX Ignoring UniqA seems wrong.
-        bound_inst_list_MSG(ModuleInfo, Expansions, UniqB,
+        bound_inst_list_MSG(ModuleInfo, Expansions, UniqB, Type,
             BoundInstsA, BoundInstsB, BoundInstsB, Inst)
     ;
         InstA = any(_, _),
@@ -893,16 +894,17 @@ inst_MSG_2(ModuleInfo, Expansions, InstA, InstB, Inst) :-
         Inst = InstB
     ).
 
-:- pred inst_list_MSG(module_info::in, expansions::in,
+:- pred inst_list_MSG(module_info::in, expansions::in, list(mer_type)::in,
     list(mer_inst)::in, list(mer_inst)::in, list(mer_inst)::out) is semidet.
 
-inst_list_MSG(_, _, [], [], []).
-inst_list_MSG(ModuleInfo, Expansions, [ArgA | ArgsA], [ArgB | ArgsB],
-        [Arg | Args]) :-
-    inst_MSG_1(ModuleInfo, Expansions, ArgA, ArgB, Arg),
-    inst_list_MSG(ModuleInfo, Expansions, ArgsA, ArgsB, Args).
+inst_list_MSG(_, _, [], [], [], []).
+inst_list_MSG(ModuleInfo, Expansions, [Type | Types],
+        [ArgA | ArgsA], [ArgB | ArgsB], [Arg | Args]) :-
+    inst_MSG_1(ModuleInfo, Expansions, Type, ArgA, ArgB, Arg),
+    inst_list_MSG(ModuleInfo, Expansions, Types, ArgsA, ArgsB, Args).
 
     % bound_inst_list_MSG(Xs, Ys, ModuleInfo, Zs):
+    % XXX That argument is quite out-of-date.
     %
     % The two input lists Xs and Ys must already be sorted.
     % If any of the functors in Xs are not in Ys or vice
@@ -913,10 +915,11 @@ inst_list_MSG(ModuleInfo, Expansions, [ArgA | ArgsA], [ArgB | ArgsB],
     % Otherwise, the take the msg of the argument insts.
     %
 :- pred bound_inst_list_MSG(module_info::in, expansions::in, uniqueness::in,
-    list(bound_inst)::in, list(bound_inst)::in, list(bound_inst)::in,
-    mer_inst::out) is semidet.
+    mer_type::in, list(bound_inst)::in, list(bound_inst)::in,
+    list(bound_inst)::in, mer_inst::out) is semidet.
 
-bound_inst_list_MSG(ModuleInfo, Expansions, Uniq, Xs, Ys, BoundInsts, Inst) :-
+bound_inst_list_MSG(ModuleInfo, Expansions, Uniq, Type, Xs, Ys,
+        BoundInsts, Inst) :-
     ( if
         Xs = [],
         Ys = []
@@ -928,9 +931,11 @@ bound_inst_list_MSG(ModuleInfo, Expansions, Uniq, Xs, Ys, BoundInsts, Inst) :-
         X = bound_functor(ConsId, ArgsX),
         Y = bound_functor(ConsId, ArgsY)
     then
-        inst_list_MSG(ModuleInfo, Expansions, ArgsX, ArgsY, Args),
+        get_cons_id_arg_types_for_inst(ModuleInfo, Type, ConsId,
+            list.length(ArgsX), ArgTypes),
+        inst_list_MSG(ModuleInfo, Expansions, ArgTypes, ArgsX, ArgsY, Args),
         Z = bound_functor(ConsId, Args),
-        bound_inst_list_MSG(ModuleInfo, Expansions, Uniq, Xs1, Ys1,
+        bound_inst_list_MSG(ModuleInfo, Expansions, Uniq, Type, Xs1, Ys1,
             BoundInsts, Inst1),
         ( if Inst1 = bound(Uniq, _, Zs) then
             Inst = bound(Uniq, inst_test_no_results, [Z | Zs])
@@ -938,11 +943,11 @@ bound_inst_list_MSG(ModuleInfo, Expansions, Uniq, Xs, Ys, BoundInsts, Inst) :-
             Inst = Inst1
         )
     else
-        % Check that it's OK to round off the uniqueness information.
+        % Check that it is OK to round off the uniqueness information.
         (
             Uniq = shared,
             NewInst = bound(shared, inst_test_no_results, BoundInsts),
-            inst_is_ground(ModuleInfo, NewInst),
+            inst_is_ground(ModuleInfo, Type, NewInst),
             inst_is_not_partly_unique(ModuleInfo, NewInst)
         ;
             Uniq = unique,

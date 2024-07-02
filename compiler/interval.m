@@ -395,7 +395,11 @@ build_interval_info_in_goal(hlds_goal(GoalExpr, GoalInfo), !IntervalInfo,
                 _, _),
             IntParams = !.IntervalInfo ^ ii_interval_params,
             ModuleInfo = IntParams ^ ip_module_info,
-            ( if shared_left_to_right_deconstruct(ModuleInfo, ArgModes) then
+            VarTable = IntParams ^ ip_var_table,
+            ( if
+                shared_left_to_right_deconstruct(ModuleInfo, VarTable,
+                    ArgVars, ArgModes)
+            then
                 Goal = hlds_goal(GoalExpr, GoalInfo),
                 use_cell(CellVar, ArgVars, ConsId, Goal, !IntervalInfo, !Acc)
             else
@@ -421,18 +425,24 @@ build_interval_info_in_goal(hlds_goal(GoalExpr, GoalInfo), !IntervalInfo,
         unexpected($pred, "shorthand")
     ).
 
-:- pred shared_left_to_right_deconstruct(module_info::in,
-    list(unify_mode)::in) is semidet.
+:- pred shared_left_to_right_deconstruct(module_info::in, var_table::in,
+    list(prog_var)::in, list(unify_mode)::in) is semidet.
 
-shared_left_to_right_deconstruct(_, []).
-shared_left_to_right_deconstruct(ModuleInfo, [ArgMode | ArgsModes]) :-
+shared_left_to_right_deconstruct(_, _, [], []).
+shared_left_to_right_deconstruct(_, _, [], [_ | _]) :-
+    unexpected($pred, "list length mismatch").
+shared_left_to_right_deconstruct(_, _, [_ | _], []) :-
+    unexpected($pred, "list length mismatch").
+shared_left_to_right_deconstruct(ModuleInfo, VarTable,
+        [ArgVar | ArgVars], [ArgMode | ArgsModes]) :-
+    lookup_var_type(VarTable, ArgVar, ArgType),
     ArgMode = unify_modes_li_lf_ri_rf(CellInitInst, CellFinalInst,
         ArgInitInst, ArgFinalInst),
-    init_inst_is_fully_input(ModuleInfo, CellInitInst),
+    init_inst_is_fully_input(ModuleInfo, ArgType, CellInitInst),
     init_final_insts_is_output(ModuleInfo, ArgInitInst, ArgFinalInst),
     inst_is_not_partly_unique(ModuleInfo, CellFinalInst),
     inst_is_not_partly_unique(ModuleInfo, ArgFinalInst),
-    shared_left_to_right_deconstruct(ModuleInfo, ArgsModes).
+    shared_left_to_right_deconstruct(ModuleInfo, VarTable, ArgVars, ArgsModes).
 
 %-----------------------------------------------------------------------------%
 

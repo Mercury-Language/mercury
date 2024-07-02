@@ -271,13 +271,10 @@ request_proc(PredId, ArgModes, InstVarSet, ArgLives, MaybeDet, Context, ProcId,
         % casts in the pretest would prevent mode analysis from discovering
         % this fact.
         pred_info_get_origin(!.PredInfo, Origin),
+        pred_info_get_arg_types(!.PredInfo, ArgTypes),
         ( if
             Origin = origin_compiler(made_for_uci(spec_pred_unify, _TypeCtor)),
-            all [ArgMode] (
-                list.member(ArgMode, ArgModes)
-            =>
-                mode_is_fully_input(!.ModuleInfo, ArgMode)
-            ),
+            all_modes_are_fully_input(!.ModuleInfo, ArgTypes, ArgModes),
             not MaybeDet = yes(detism_failure)
         then
             true

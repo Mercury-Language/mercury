@@ -332,7 +332,7 @@ proc_info_has_io_state_pair_2(ModuleInfo, VarTable, ArgNum,
         lookup_var_type(VarTable, Var, VarType),
         type_is_io_state(VarType)
     then
-        ( if mode_is_fully_input(ModuleInfo, Mode) then
+        ( if mode_is_fully_input(ModuleInfo, VarType, Mode) then
             (
                 !.MaybeIn = no,
                 !:MaybeIn = yes(ArgNum)
@@ -344,7 +344,7 @@ proc_info_has_io_state_pair_2(ModuleInfo, VarTable, ArgNum,
                 % one input/one output pattern we are looking for.
                 fail
             )
-        else if mode_is_fully_output(ModuleInfo, Mode) then
+        else if mode_is_fully_output(ModuleInfo, VarType, Mode) then
             (
                 !.MaybeOut = no,
                 !:MaybeOut = yes(ArgNum)

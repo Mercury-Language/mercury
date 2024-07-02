@@ -372,7 +372,7 @@ record_var_if_bound(ModuleInfo, VarTable, InstMap0, InstMap, Var,
         true
     else
         set_of_var.insert(Var, !BoundVars),
-        ( if inst_is_ground(ModuleInfo, Inst) then
+        ( if inst_is_ground(ModuleInfo, Type, Inst) then
             set_of_var.insert(Var, !BoundGroundedVars)
         else
             set_of_var.insert(Var, !BoundNonGroundedVars)

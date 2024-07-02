@@ -1105,7 +1105,7 @@ normalise_inst(ModuleInfo, Type, Inst0, NormalisedInst) :-
             % without any benefit.
             not is_introduced_type_info_type(Type),
 
-            inst_is_ground(ModuleInfo, Inst),
+            inst_is_ground(ModuleInfo, Type, Inst),
             ( if inst_is_unique(ModuleInfo, Inst) then
                 Uniq = unique
             else if inst_is_mostly_unique(ModuleInfo, Inst) then
@@ -1117,7 +1117,7 @@ normalise_inst(ModuleInfo, Type, Inst0, NormalisedInst) :-
         then
             NormalisedInst = ground(Uniq, none_or_default_func)
         else if
-            inst_is_ground(ModuleInfo, Inst),
+            inst_is_ground(ModuleInfo, Type, Inst),
             not inst_is_clobbered(ModuleInfo, Inst),
             not inst_contains_nondefault_func_mode(ModuleInfo, Inst)
         then

@@ -21,6 +21,8 @@
 :- import_module parse_tree.
 :- import_module parse_tree.prog_data.
 
+:- import_module list.
+
 %---------------------------------------------------------------------------%
 %
 % Tests on modes.
@@ -39,8 +41,19 @@
     %
     % A mode is considered fully input if the initial inst is ground.
     %
-:- pred mode_is_fully_input(module_info::in, mer_mode::in) is semidet.
-:- pred init_inst_is_fully_input(module_info::in, mer_inst::in) is semidet.
+:- pred mode_is_fully_input(module_info::in, mer_type::in, mer_mode::in)
+    is semidet.
+:- pred init_inst_is_fully_input(module_info::in, mer_type::in, mer_inst::in)
+    is semidet.
+
+    % Succeed iff each mode is fully input, when paired with
+    % the corresponding type. Throw an exception if a mode is undefined,
+    % or if the two lists have different lengths.
+    %
+:- pred all_modes_are_fully_input(module_info::in,
+    list(mer_type)::in, list(mer_mode)::in) is semidet.
+
+%---------------------%
 
     % Succeed iff the mode is output.
     % Throw an exception if the mode is undefined.
@@ -58,9 +71,19 @@
     % A mode is considered fully output if the initial inst is free
     % and the final inst is ground.
     %
-:- pred mode_is_fully_output(module_info::in, mer_mode::in) is semidet.
-:- pred init_final_insts_is_fully_output(module_info::in,
+:- pred mode_is_fully_output(module_info::in, mer_type::in,
+    mer_mode::in) is semidet.
+:- pred init_final_insts_is_fully_output(module_info::in, mer_type::in,
     mer_inst::in, mer_inst::in) is semidet.
+
+    % Succeed iff each mode is fully output, when paired with
+    % the corresponding type. Throw an exception if a mode is undefined,
+    % or if the two lists have different lengths.
+    %
+:- pred all_modes_are_fully_output(module_info::in,
+    list(mer_type)::in, list(mer_mode)::in) is semidet.
+
+%---------------------%
 
     % Succeed iff the mode is unused.
     % Throws an exception if the mode is undefined.
@@ -79,6 +102,8 @@
 :- import_module check_hlds.inst_test.
 :- import_module check_hlds.mode_util.
 
+:- import_module require.
+
 %---------------------------------------------------------------------------%
 
 mode_is_input(ModuleInfo, Mode) :-
@@ -90,12 +115,21 @@ init_inst_is_input(ModuleInfo, InitialInst) :-
 
 %---------------------%
 
-mode_is_fully_input(ModuleInfo, Mode) :-
+mode_is_fully_input(ModuleInfo, Type, Mode) :-
     mode_get_insts(ModuleInfo, Mode, InitialInst, _FinalInst),
-    inst_is_ground(ModuleInfo, InitialInst).
+    inst_is_ground(ModuleInfo, Type, InitialInst).
 
-init_inst_is_fully_input(ModuleInfo, InitialInst) :-
-    inst_is_ground(ModuleInfo, InitialInst).
+init_inst_is_fully_input(ModuleInfo, Type, InitialInst) :-
+    inst_is_ground(ModuleInfo, Type, InitialInst).
+
+all_modes_are_fully_input(_, [], []).
+all_modes_are_fully_input(_, [], [_ | _]) :-
+    unexpected($pred, "list length mismatch").
+all_modes_are_fully_input(_, [_ | _], []) :-
+    unexpected($pred, "list length mismatch").
+all_modes_are_fully_input(ModuleInfo, [Type | Types], [Mode | Modes]) :-
+    mode_is_fully_input(ModuleInfo, Type, Mode),
+    all_modes_are_fully_input(ModuleInfo, Types, Modes).
 
 %---------------------%
 
@@ -110,14 +144,23 @@ init_final_insts_is_output(ModuleInfo, InitialInst, FinalInst) :-
 
 %---------------------%
 
-mode_is_fully_output(ModuleInfo, Mode) :-
+mode_is_fully_output(ModuleInfo, Type, Mode) :-
     mode_get_insts(ModuleInfo, Mode, InitialInst, FinalInst),
     inst_is_free(ModuleInfo, InitialInst),
-    inst_is_ground(ModuleInfo, FinalInst).
+    inst_is_ground(ModuleInfo, Type, FinalInst).
 
-init_final_insts_is_fully_output(ModuleInfo, InitialInst, FinalInst) :-
+init_final_insts_is_fully_output(ModuleInfo, Type, InitialInst, FinalInst) :-
     inst_is_free(ModuleInfo, InitialInst),
-    inst_is_ground(ModuleInfo, FinalInst).
+    inst_is_ground(ModuleInfo, Type, FinalInst).
+
+all_modes_are_fully_output(_, [], []).
+all_modes_are_fully_output(_, [], [_ | _]) :-
+    unexpected($pred, "list length mismatch").
+all_modes_are_fully_output(_, [_ | _], []) :-
+    unexpected($pred, "list length mismatch").
+all_modes_are_fully_output(ModuleInfo, [Type | Types], [Mode | Modes]) :-
+    mode_is_fully_output(ModuleInfo, Type, Mode),
+    all_modes_are_fully_output(ModuleInfo, Types, Modes).
 
 %---------------------%
 
