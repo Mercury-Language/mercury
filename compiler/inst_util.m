@@ -81,22 +81,6 @@
 :- pred get_higher_order_arg_types(mer_type::in, arity::in,
     list(mer_type)::out) is det.
 
-    % Return a type that represents the *absence* of type information.
-    % This type is a type variable. Since the predicates and functions
-    % working on insts and modes use type information *only* to look up
-    % the constructors of a type, this conveys exactly the right info.
-    %
-    % Note that we always return the *same* type variable. Besides matching
-    % the semantics expected of functions, it also means our callers will not
-    % construct non-canonical inst_match_inputs structures. The fact that
-    % we return the same type variable as the "types" of e.g. different
-    % existentially typed arguments of a data constructor is not a problem,
-    % even though those arguments may contain values of different types at
-    % runtime, because the predicates working insts and modes never compare
-    % the types associated with those insts and modes for equality.
-    %
-:- func no_type_available = mer_type.
-
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
 
@@ -390,6 +374,22 @@ get_cons_id_arg_types_for_inst(ModuleInfo, Type, ConsId, Arity, Types) :-
         ( if
             % XXX get_cons_id_non_existential_arg_types will fail
             % for ConsIds with existentially typed arguments.
+            %
+            % XXX It will also fail if Type is a builtin type for which
+            % the compiler creates what are effectively builtin data
+            % constructors, such as "type_info" and "typeclass_info"
+            % (to which cell_inst_cons_id constructs references).
+            % In that case, Type won't be in the type table at all.
+            % (XXX Question: why does cell_inst_cons_id have to return
+            % a du_data_ctor cons_id?)
+            %
+            % Type also won't be in the type table if it is a type variable.
+            % Usually, we don't allow insts to apply to a type var, but this
+            % can nevertheless happen for e.g. inst_preserving_append.
+            % Exactly how, I (zs) don't yet know, but almost certainly
+            % it has something to do with the compiler handling constrained
+            % insts incorrectly (since such insts are the one difference
+            % between inst preserving and regular append).
             get_du_ctor_non_existential_arg_types(ModuleInfo, Type,
                 DuCtor, ArgTypes),
             list.length(ArgTypes, Arity)
@@ -419,10 +419,32 @@ get_higher_order_arg_types(Type, Arity, Types) :-
     ( if type_is_higher_order_details(Type, _, _, ArgTypes) then
         Types = ArgTypes
     else
+        % NOTE Replacing the else case code with an abort does not prevent
+        % a standard bootcheck in the hlc.gc grade, and leads to the failure
+        % of only three test cases: hard_coded/exist_cons_ho_arg,
+        % hard_coded/hash_table_delete, and invalid/type_prop_into_inst.
+        % Eliminating this call to no_type_available should start by
+        % looking at those failures.
         list.duplicate(Arity, no_type_available, Types)
     ).
 
 %---------------------------------------------------------------------------%
+
+    % Return a type that represents the *absence* of type information.
+    % This type is a type variable. Since the predicates and functions
+    % working on insts and modes use type information *only* to look up
+    % the constructors of a type, this conveys exactly the right info.
+    %
+    % Note that we always return the *same* type variable. Besides matching
+    % the semantics expected of functions, it also means our callers will not
+    % construct non-canonical inst_match_inputs structures. The fact that
+    % we return the same type variable as the "types" of e.g. different
+    % existentially typed arguments of a data constructor is not a problem,
+    % even though those arguments may contain values of different types at
+    % runtime, because the predicates working insts and modes never compare
+    % the types associated with those insts and modes for equality.
+    %
+:- func no_type_available = mer_type.
 
 no_type_available = Type :-
     varset.init(VarSet0),

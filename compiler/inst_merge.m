@@ -468,13 +468,13 @@ inst_merge_4(Type, InstA, InstB, InstAB, !ModuleInfo) :-
             fail
         ;
             InstB = ground(UniqB, HOInstInfoB),
-            merge_ho_inst_info(HOInstInfoA, HOInstInfoB, HOInstInfo,
+            merge_ho_inst_info(Type, HOInstInfoA, HOInstInfoB, HOInstInfo,
                 !ModuleInfo),
             merge_uniq(UniqA, UniqB, Uniq),
             InstAB = ground(Uniq, HOInstInfo)
         ;
             InstB = any(UniqB, HOInstInfoB),
-            merge_ho_inst_info(HOInstInfoA, HOInstInfoB, HOInstInfo,
+            merge_ho_inst_info(Type, HOInstInfoA, HOInstInfoB, HOInstInfo,
                 !ModuleInfo),
             merge_uniq(UniqA, UniqB, Uniq),
             InstAB = any(Uniq, HOInstInfo)
@@ -482,7 +482,7 @@ inst_merge_4(Type, InstA, InstB, InstAB, !ModuleInfo) :-
             InstB = bound(UniqB, InstResultsB, BoundInstsB),
             inst_merge_bound_ground(Type, UniqB, InstResultsB, BoundInstsB,
                 UniqA, InstAB, !ModuleInfo),
-            not inst_contains_nondefault_func_mode(!.ModuleInfo, InstB)
+            not inst_contains_nondefault_func_mode(!.ModuleInfo, Type, InstB)
         )
     ;
         InstA = any(UniqA, HOInstInfoA),
@@ -495,13 +495,13 @@ inst_merge_4(Type, InstA, InstB, InstAB, !ModuleInfo) :-
             InstAB = any(UniqA, HOInstInfoA)
         ;
             InstB = ground(UniqB, HOInstInfoB),
-            merge_ho_inst_info(HOInstInfoA, HOInstInfoB, HOInstInfo,
+            merge_ho_inst_info(Type, HOInstInfoA, HOInstInfoB, HOInstInfo,
                 !ModuleInfo),
             merge_uniq(UniqA, UniqB, Uniq),
             InstAB = any(Uniq, HOInstInfo)
         ;
             InstB = any(UniqB, HOInstInfoB),
-            merge_ho_inst_info(HOInstInfoA, HOInstInfoB, HOInstInfo,
+            merge_ho_inst_info(Type, HOInstInfoA, HOInstInfoB, HOInstInfo,
                 !ModuleInfo),
             merge_uniq(UniqA, UniqB, Uniq),
             InstAB = any(Uniq, HOInstInfo)
@@ -531,7 +531,7 @@ inst_merge_4(Type, InstA, InstB, InstAB, !ModuleInfo) :-
             InstB = ground(UniqB, _),
             inst_merge_bound_ground(Type, UniqA, InstResultsA, BoundInstsA,
                 UniqB, InstAB, !ModuleInfo),
-            not inst_contains_nondefault_func_mode(!.ModuleInfo, InstA)
+            not inst_contains_nondefault_func_mode(!.ModuleInfo, Type, InstA)
         ;
             InstB = any(UniqB, _),
             merge_uniq_bound(!.ModuleInfo, UniqB, UniqA, BoundInstsA, Uniq),
@@ -569,10 +569,10 @@ merge_uniq(UniqA, UniqB, Merged) :-
         Merged = UniqA
     ).
 
-:- pred merge_ho_inst_info(ho_inst_info::in, ho_inst_info::in,
+:- pred merge_ho_inst_info(mer_type::in, ho_inst_info::in, ho_inst_info::in,
     ho_inst_info::out, module_info::in, module_info::out) is semidet.
 
-merge_ho_inst_info(HOInstInfoA, HOInstInfoB, HOInstInfo, !ModuleInfo) :-
+merge_ho_inst_info(Type, HOInstInfoA, HOInstInfoB, HOInstInfo, !ModuleInfo) :-
     ( if
         HOInstInfoA = higher_order(PredA),
         HOInstInfoB = higher_order(PredB)
@@ -580,20 +580,20 @@ merge_ho_inst_info(HOInstInfoA, HOInstInfoB, HOInstInfo, !ModuleInfo) :-
         % If they specify matching pred insts, but one is more precise
         % (specifies more info) than the other, then we want to choose
         % the least precise one.
-        ( if pred_inst_matches(!.ModuleInfo, PredA, PredB) then
+        ( if pred_inst_matches(!.ModuleInfo, Type, PredA, PredB) then
             HOInstInfo = higher_order(PredB)
-        else if pred_inst_matches(!.ModuleInfo, PredB, PredA) then
+        else if pred_inst_matches(!.ModuleInfo, Type, PredB, PredA) then
             HOInstInfo = higher_order(PredA)
         else
             % If either is a function inst with non-default modes,
             % don't allow the higher-order information to be lost.
-            pred_inst_matches_ground(!.ModuleInfo, PredA),
-            pred_inst_matches_ground(!.ModuleInfo, PredB),
+            pred_inst_matches_ground(!.ModuleInfo, Type, PredA),
+            pred_inst_matches_ground(!.ModuleInfo, Type, PredB),
             HOInstInfo = none_or_default_func
         )
     else
-        ho_inst_info_matches_ground(!.ModuleInfo, HOInstInfoA),
-        ho_inst_info_matches_ground(!.ModuleInfo, HOInstInfoB),
+        ho_inst_info_matches_ground(!.ModuleInfo, Type, HOInstInfoA),
+        ho_inst_info_matches_ground(!.ModuleInfo, Type, HOInstInfoB),
         HOInstInfo = none_or_default_func
     ).
 

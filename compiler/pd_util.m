@@ -955,7 +955,7 @@ bound_inst_list_MSG(ModuleInfo, Expansions, Uniq, Type, Xs, Ys,
             inst_is_unique(ModuleInfo, NewInst)
         ),
         not (
-            inst_contains_nondefault_func_mode(ModuleInfo,
+            inst_contains_nondefault_func_mode(ModuleInfo, Type,
                 bound(shared, inst_test_no_results, BoundInsts))
         ),
         Inst = ground(Uniq, none_or_default_func)

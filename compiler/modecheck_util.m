@@ -1113,13 +1113,13 @@ normalise_inst(ModuleInfo, Type, Inst0, NormalisedInst) :-
             else
                 fail
             ),
-            not inst_contains_nondefault_func_mode(ModuleInfo, Inst)
+            not inst_contains_nondefault_func_mode(ModuleInfo, Type, Inst)
         then
             NormalisedInst = ground(Uniq, none_or_default_func)
         else if
             inst_is_ground(ModuleInfo, Type, Inst),
             not inst_is_clobbered(ModuleInfo, Inst),
-            not inst_contains_nondefault_func_mode(ModuleInfo, Inst)
+            not inst_contains_nondefault_func_mode(ModuleInfo, Type, Inst)
         then
             NormalisedInst = ground(shared, none_or_default_func)
         else

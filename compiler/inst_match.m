@@ -151,27 +151,27 @@
 
 %-----------------------------------------------------------------------------%
 
-    % inst_contains_nondefault_func_mode(Inst, ModuleInfo) succeeds iff the
-    % inst contains a higher-order function inst that does not match the
-    % default function mode `(in, ..., in) = out is det'.
+    % inst_contains_nondefault_func_mode(ModuleInfo, Type, Inst) succeeds
+    % iff the inst contains a higher-order function inst that does not match
+    % the default function mode `(in, ..., in) = out is det'.
     % E.g. this predicate fails for "func(in) = uo" because that matches the
     % default func mode "func(in) = out", even though it isn't the same as
     % the default func mode.
     %
-:- pred inst_contains_nondefault_func_mode(module_info::in, mer_inst::in)
-    is semidet.
+:- pred inst_contains_nondefault_func_mode(module_info::in, mer_type::in,
+    mer_inst::in) is semidet.
 
     % Succeed iff the second argument is not a function ho_inst_info
     % whose mode does not match the default func mode.
     %
-:- pred ho_inst_info_matches_ground(module_info::in, ho_inst_info::in)
-    is semidet.
+:- pred ho_inst_info_matches_ground(module_info::in, mer_type::in,
+    ho_inst_info::in) is semidet.
 
     % Succeed iff the second argument is not a function pred_inst_info
     % whose mode does not match the default func mode.
     %
-:- pred pred_inst_matches_ground(module_info::in, pred_inst_info::in)
-    is semidet.
+:- pred pred_inst_matches_ground(module_info::in, mer_type::in,
+    pred_inst_info::in) is semidet.
 
     % pred_inst_matches(ModuleInfo, PredInstA, PredInstB)
     %
@@ -180,7 +180,7 @@
     % same PredOrFunc indicator and the same determinism, and if the arguments
     % match using pred_inst_argmodes_match.
     %
-:- pred pred_inst_matches(module_info::in,
+:- pred pred_inst_matches(module_info::in, mer_type::in,
     pred_inst_info::in, pred_inst_info::in) is semidet.
 
 %-----------------------------------------------------------------------------%
@@ -516,7 +516,7 @@ inst_matches_initial_4(Type, InstA, InstB, !Info) :-
                 UniqA, UniqB),
             compare_bound_inst_list_uniq(!.Info ^ imi_module_info,
                 !.Info ^ imi_uniqueness_comparison, BoundInstsA, UniqB),
-            inst_contains_nondefault_func_mode_1(InstA, no, !Info)
+            inst_contains_nondefault_func_mode_1(Type, InstA, no, !Info)
         ;
             InstB = free
         ;
@@ -540,7 +540,7 @@ inst_matches_initial_4(Type, InstA, InstB, !Info) :-
                 Type, InstResultsA, BoundInstsA),
             compare_bound_inst_list_uniq(!.Info ^ imi_module_info,
                 !.Info ^ imi_uniqueness_comparison, BoundInstsA, UniqB),
-            inst_contains_nondefault_func_mode_1(InstA, no, !Info)
+            inst_contains_nondefault_func_mode_1(Type, InstA, no, !Info)
         )
     ;
         InstA = ground(UniqA, HOInstInfoA),
@@ -910,7 +910,7 @@ inst_matches_final_3(Type, InstA, InstB, !Info) :-
             % in modecheck_call.m.
             inst_results_bound_inst_list_is_ground_or_any(
                 !.Info ^ imi_module_info, InstResultsA, BoundInstsA),
-            inst_contains_nondefault_func_mode_1(InstA, no, !Info)
+            inst_contains_nondefault_func_mode_1(Type, InstA, no, !Info)
         ;
             InstB = bound(UniqB, _InstResultsB, BoundInstsB),
             unique_matches_final(UniqA, UniqB),
@@ -923,7 +923,7 @@ inst_matches_final_3(Type, InstA, InstB, !Info) :-
                 Type, InstResultsA, BoundInstsA),
             bound_inst_list_matches_uniq(!.Info ^ imi_module_info, UniqB,
                 BoundInstsA),
-            inst_contains_nondefault_func_mode_1(InstA, no, !Info)
+            inst_contains_nondefault_func_mode_1(Type, InstA, no, !Info)
         )
     ;
         InstA = ground(UniqA, HOInstInfoA),
@@ -939,7 +939,7 @@ inst_matches_final_3(Type, InstA, InstB, !Info) :-
             inst_results_bound_inst_list_is_ground_mt(ModuleInfo, Type,
                 InstResultsB, BoundInstsB),
             uniq_matches_bound_inst_list(ModuleInfo, UniqA, BoundInstsB),
-            inst_contains_nondefault_func_mode_1(InstB, no, !Info),
+            inst_contains_nondefault_func_mode_1(Type, InstB, no, !Info),
             (
                 % This check can succeed only if the type is known.
                 bound_inst_list_is_complete_for_type(ModuleInfo, set.init,
@@ -1127,7 +1127,7 @@ inst_matches_binding_3(Type, InstA, InstB, !Info) :-
             InstB = ground(_UniqB, none_or_default_func),
             inst_results_bound_inst_list_is_ground_mt(!.Info ^ imi_module_info,
                 Type, InstResultsA, BoundInstsA),
-            inst_contains_nondefault_func_mode_1(InstA, no, !Info)
+            inst_contains_nondefault_func_mode_1(Type, InstA, no, !Info)
         )
     ;
         InstA = ground(_UniqA, HOInstInfoA),
@@ -1135,7 +1135,7 @@ inst_matches_binding_3(Type, InstA, InstB, !Info) :-
             InstB = bound(_UniqB, InstResultsB, BoundInstsB),
             inst_results_bound_inst_list_is_ground_mt(!.Info ^ imi_module_info,
                 Type, InstResultsB, BoundInstsB),
-            inst_contains_nondefault_func_mode_1(InstB, no, !Info),
+            inst_contains_nondefault_func_mode_1(Type, InstB, no, !Info),
             % We can only do this check if the type is known.
             bound_inst_list_is_complete_for_type(!.Info ^ imi_module_info,
                 set.init, Type, BoundInstsB)
@@ -1154,7 +1154,7 @@ inst_matches_binding_3(Type, InstA, InstB, !Info) :-
 ho_inst_info_matches_binding(ModuleInfo, Type, HOInstInfoA, HOInstInfoB) :-
     (
         HOInstInfoB = none_or_default_func,
-        ho_inst_info_matches_ground_mt(ModuleInfo, HOInstInfoA, Type)
+        ho_inst_info_matches_ground_mt(ModuleInfo, Type, HOInstInfoA)
     ;
         HOInstInfoB = higher_order(PredInstB),
         (
@@ -1243,28 +1243,29 @@ unique_matches_final(A, B) :-
 
 %-----------------------------------------------------------------------------%
 
-inst_contains_nondefault_func_mode(ModuleInfo, Inst) :-
+inst_contains_nondefault_func_mode(ModuleInfo, Type, Inst) :-
     Info = init_inst_match_info(ModuleInfo, no_inst_var_sub, cs_none, uc_match,
         any_does_match_any, ground_matches_bound_if_complete),
-    inst_contains_nondefault_func_mode_1(Inst, yes, Info, _).
+    inst_contains_nondefault_func_mode_1(Type, Inst, yes, Info, _).
 
-:- pred inst_contains_nondefault_func_mode_1(mer_inst::in, bool::out,
-    inst_match_info::in, inst_match_info::out) is det.
-
-inst_contains_nondefault_func_mode_1(Inst, ContainsNonstd, !Info) :-
-    inst_contains_nondefault_func_mode_2(Inst, set.init, ContainsNonstd,
-        !Info).
-
-:- pred inst_contains_nondefault_func_mode_2(mer_inst::in, set(inst_name)::in,
+:- pred inst_contains_nondefault_func_mode_1(mer_type::in, mer_inst::in,
     bool::out, inst_match_info::in, inst_match_info::out) is det.
 
-inst_contains_nondefault_func_mode_2(Inst, !.Expansions, ContainsNonstd,
+inst_contains_nondefault_func_mode_1(Type, Inst, ContainsNonstd, !Info) :-
+    inst_contains_nondefault_func_mode_2(Type, Inst, set.init, ContainsNonstd,
+        !Info).
+
+:- pred inst_contains_nondefault_func_mode_2(mer_type::in, mer_inst::in,
+    set(inst_name)::in, bool::out,
+    inst_match_info::in, inst_match_info::out) is det.
+
+inst_contains_nondefault_func_mode_2(Type, Inst, !.Expansions, ContainsNonstd,
         !Info) :-
     (
         Inst = ground(_, HOInstInfo),
         ( if
             % XXX TYPE_FOR_INST Get our ancestor to pass us the type.
-            ho_inst_info_matches_ground_2(no_type_available, HOInstInfo, !Info)
+            ho_inst_info_matches_ground_2(Type, HOInstInfo, !Info)
         then
             ContainsNonstd = no
         else
@@ -1279,7 +1280,7 @@ inst_contains_nondefault_func_mode_2(Inst, !.Expansions, ContainsNonstd,
             ( InstResults = inst_test_results(_, _, _, _, _, _)
             ; InstResults = inst_test_no_results
             ),
-            bound_inst_list_contains_nondefault_func_mode(BoundInsts,
+            bound_inst_list_contains_nondefault_func_mode(Type, BoundInsts,
                 !.Expansions, ContainsNonstd, !Info)
         )
     ;
@@ -1292,12 +1293,12 @@ inst_contains_nondefault_func_mode_2(Inst, !.Expansions, ContainsNonstd,
         else
             set.insert(InstName, !Expansions),
             inst_lookup(!.Info ^ imi_module_info, InstName, SubInst),
-            inst_contains_nondefault_func_mode_2(SubInst, !.Expansions,
+            inst_contains_nondefault_func_mode_2(Type, SubInst, !.Expansions,
                 ContainsNonstd, !Info)
         )
     ;
         Inst = constrained_inst_vars(_, SubInst),
-        inst_contains_nondefault_func_mode_2(SubInst, !.Expansions,
+        inst_contains_nondefault_func_mode_2(Type, SubInst, !.Expansions,
             ContainsNonstd, !Info)
     ;
         ( Inst = free
@@ -1312,52 +1313,59 @@ inst_contains_nondefault_func_mode_2(Inst, !.Expansions, ContainsNonstd,
         ContainsNonstd = no
     ).
 
-:- pred inst_list_contains_nondefault_func_mode(list(mer_inst)::in,
-    set(inst_name)::in, bool::out, inst_match_info::in, inst_match_info::out)
-    is det.
+:- pred inst_list_contains_nondefault_func_mode(
+    list(mer_type)::in, list(mer_inst)::in, set(inst_name)::in, bool::out,
+    inst_match_info::in, inst_match_info::out) is det.
 
-inst_list_contains_nondefault_func_mode([], _Expansions, no, !Info).
-inst_list_contains_nondefault_func_mode([Inst | Insts], Expansions,
-        ContainsNonstd, !Info) :-
-    inst_contains_nondefault_func_mode_2(Inst, Expansions, HeadContainsNonstd,
-        !Info),
+inst_list_contains_nondefault_func_mode([], [], _Expansions, no, !Info).
+inst_list_contains_nondefault_func_mode([], [_ | _], _, _, !Info) :-
+    unexpected($pred, "list length mismatch").
+inst_list_contains_nondefault_func_mode([_ | _], [], _, _, !Info) :-
+    unexpected($pred, "list length mismatch").
+inst_list_contains_nondefault_func_mode([Type | Types], [Inst | Insts],
+        Expansions, ContainsNonstd, !Info) :-
+    inst_contains_nondefault_func_mode_2(Type, Inst,
+        Expansions, HeadContainsNonstd, !Info),
     (
         HeadContainsNonstd = yes,
         ContainsNonstd = yes
     ;
         HeadContainsNonstd = no,
-        inst_list_contains_nondefault_func_mode(Insts, Expansions,
-            ContainsNonstd, !Info)
+        inst_list_contains_nondefault_func_mode(Types, Insts,
+            Expansions, ContainsNonstd, !Info)
     ).
 
-:- pred bound_inst_list_contains_nondefault_func_mode(list(bound_inst)::in,
-    set(inst_name)::in, bool::out, inst_match_info::in, inst_match_info::out)
-    is det.
+:- pred bound_inst_list_contains_nondefault_func_mode(mer_type::in,
+    list(bound_inst)::in, set(inst_name)::in, bool::out,
+    inst_match_info::in, inst_match_info::out) is det.
 
-bound_inst_list_contains_nondefault_func_mode([], _Expansions, no, !Info).
-bound_inst_list_contains_nondefault_func_mode([BoundInst | BoundInsts],
+bound_inst_list_contains_nondefault_func_mode(_, [], _Expansions, no, !Info).
+bound_inst_list_contains_nondefault_func_mode(Type, [BoundInst | BoundInsts],
         Expansions, ContainsNonstd, !Info) :-
-    BoundInst = bound_functor(_ConsId, ArgInsts),
-    inst_list_contains_nondefault_func_mode(ArgInsts, Expansions,
-        HeadContainsNonstd, !Info),
+    BoundInst = bound_functor(ConsId, ArgInsts),
+    get_cons_id_arg_types_for_inst(!.Info ^ imi_module_info, Type,
+        ConsId, list.length(ArgInsts), ArgTypes),
+    inst_list_contains_nondefault_func_mode(ArgTypes, ArgInsts,
+        Expansions, HeadContainsNonstd, !Info),
     (
         HeadContainsNonstd = yes,
         ContainsNonstd = yes
     ;
         HeadContainsNonstd = no,
-        bound_inst_list_contains_nondefault_func_mode(BoundInsts, Expansions,
-            ContainsNonstd, !Info)
+        bound_inst_list_contains_nondefault_func_mode(Type, BoundInsts,
+            Expansions, ContainsNonstd, !Info)
     ).
 
 %---------------------------------------------------------------------------%
 
-ho_inst_info_matches_ground(ModuleInfo, HOInstInfo) :-
-    ho_inst_info_matches_ground_mt(ModuleInfo, HOInstInfo, no_type_available).
+ho_inst_info_matches_ground(ModuleInfo, Type, HOInstInfo) :-
+    % ZZZ
+    ho_inst_info_matches_ground_mt(ModuleInfo, Type, HOInstInfo).
 
-:- pred ho_inst_info_matches_ground_mt(module_info::in, ho_inst_info::in,
-    mer_type::in) is semidet.
+:- pred ho_inst_info_matches_ground_mt(module_info::in, mer_type::in,
+    ho_inst_info::in) is semidet.
 
-ho_inst_info_matches_ground_mt(ModuleInfo, HOInstInfo, Type) :-
+ho_inst_info_matches_ground_mt(ModuleInfo, Type, HOInstInfo) :-
     Info = init_inst_match_info(ModuleInfo, no_inst_var_sub, cs_none, uc_match,
         any_does_match_any, ground_matches_bound_if_complete),
     ho_inst_info_matches_ground_2(Type, HOInstInfo, Info, _).
@@ -1373,8 +1381,9 @@ ho_inst_info_matches_ground_2(Type, HOInstInfo, !Info) :-
         HOInstInfo = none_or_default_func
     ).
 
-pred_inst_matches_ground(ModuleInfo, PredInst) :-
-    pred_inst_matches_ground_mt(ModuleInfo, no_type_available, PredInst).
+pred_inst_matches_ground(ModuleInfo, Type, PredInst) :-
+    % ZZZ
+    pred_inst_matches_ground_mt(ModuleInfo, Type, PredInst).
 
 :- pred pred_inst_matches_ground_mt(module_info::in, mer_type::in,
     pred_inst_info::in) is semidet.
@@ -1400,8 +1409,9 @@ pred_inst_matches_ground_2(Type, PredInst, !Info) :-
 
 %-----------------------------------------------------------------------------%
 
-pred_inst_matches(ModuleInfo, PredInstA, PredInstB) :-
-    pred_inst_matches_mt(ModuleInfo, no_type_available, PredInstA, PredInstB).
+pred_inst_matches(ModuleInfo, Type, PredInstA, PredInstB) :-
+    % ZZZ
+    pred_inst_matches_mt(ModuleInfo, Type, PredInstA, PredInstB).
 
 :- pred pred_inst_matches_mt(module_info::in, mer_type::in,
     pred_inst_info::in, pred_inst_info::in) is semidet.

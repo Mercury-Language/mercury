@@ -906,14 +906,15 @@ arg_insts_match_ctor_subtypes_2(_, [_ | _], []) :-
 arg_insts_match_ctor_subtypes_2(ModuleInfo,
         [ConsArg | ConsArgs], [Inst | Insts]) :-
     ( if
-        ( Inst = ground(_, HOInstInfo)
-        ; Inst = any(_, HOInstInfo)
+        ( Inst = ground(_, InstHOInstInfo)
+        ; Inst = any(_, InstHOInstInfo)
         ),
-        ConsArg ^ arg_type = higher_order_type(_, _, TypeHOInstInfo, _),
+        ArgType = ConsArg ^ arg_type,
+        ArgType = higher_order_type(_, _, TypeHOInstInfo, _),
         TypeHOInstInfo = higher_order(TypePredInst)
     then
-        HOInstInfo = higher_order(PredInst),
-        pred_inst_matches(ModuleInfo, PredInst, TypePredInst)
+        InstHOInstInfo = higher_order(InstPredInst),
+        pred_inst_matches(ModuleInfo, ArgType, InstPredInst, TypePredInst)
     else
         true
     ),
