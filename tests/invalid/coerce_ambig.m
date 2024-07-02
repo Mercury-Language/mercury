@@ -40,14 +40,11 @@ ambig2 :-
 :- pred ambig3(list(fruit)::out) is det.
 
 ambig3(Xs) :-
-    % Not ambiguous after we unify list(_T) with list(fruit).
     Xs = coerce([]).
 
 :- pred ambig4 is det.
 
 ambig4 :-
-    % XXX The compiler wrongly picks X : list(fruit) or X : list(citrus)
-    % when it has no reason to reject the other possibility.
     X = [],
     coerce(X) = _ : list(citrus),
     coerce(X) = _ : list(fruit).

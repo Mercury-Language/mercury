@@ -58,16 +58,18 @@
 
 :- type coerce_constraint
     --->    coerce_constraint(
-                % One or both sides should be a type_variable.
+                % One or both sides should contain a type variable.
                 coerce_from     :: mer_type,
                 coerce_to       :: mer_type,
                 coerce_context  :: prog_context,
+                coerce_var      :: prog_var,
                 coerce_status   :: coerce_constraint_status
             ).
 
 :- type coerce_constraint_status
     --->    need_to_check
     ;       unsatisfiable
+    ;       not_yet_resolved
     ;       satisfied_but_redundant.
 
 :- pred type_assign_get_var_types(type_assign::in,

@@ -44,6 +44,9 @@
 :- func report_invalid_coerce_from_to(type_error_clause_context, prog_context,
     tvarset, mer_type, mer_type) = error_spec.
 
+:- func report_unresolved_coerce_from_to(type_error_clause_context,
+    prog_context, prog_var, tvarset, mer_type, mer_type) = error_spec.
+
 :- func report_redundant_coerce(type_error_clause_context, prog_context,
     tvarset, mer_type) = error_spec.
 
@@ -280,10 +283,12 @@ report_invalid_coerce_from_to(ClauseContext, Context, TVarSet,
     % XXX TYPECHECK_ERRORS
     % This code can generate some less-than-helpful diagnostics.
     %
-    % - For tests/invalid/coerce_infer.m and some others, it says that
+    % - For tests/invalid/coerce_unify_tvars.m and some others, it says that
     %   you cannot coerce from one anonymous type variable to another.
     %
-    % Is there something we can report that would be more helpful?
+    % In most cases, we will report that the coerced argument type is
+    % unresolved. For the remaining cases, is there something we can report
+    % that would be more helpful?
     InClauseForPieces = in_clause_for_pieces(ClauseContext),
     FromTypeStr = mercury_type_to_string(TVarSet, print_num_only, FromType),
     ToTypeStr = mercury_type_to_string(TVarSet, print_num_only, ToType),
@@ -347,10 +352,25 @@ report_invalid_coerce_from_to(ClauseContext, Context, TVarSet,
             )
         )
     ),
-    ErrorPieces = [words("cannot coerce from")] ++
+    ErrorPieces = [words("error: cannot coerce from")] ++
         color_as_inconsistent([quote(FromTypeStr)]) ++ [words("to")] ++
         color_as_inconsistent([quote(ToTypeStr), suffix(".")]) ++ [nl] ++
         CausePieces ++ [nl],
+    Spec = spec($pred, severity_error, phase_type_check, Context,
+        InClauseForPieces ++ ErrorPieces).
+
+report_unresolved_coerce_from_to(ClauseContext, Context, FromVar, TVarSet,
+        FromType, ToType) = Spec :-
+    InClauseForPieces = in_clause_for_pieces(ClauseContext),
+    VarSet = ClauseContext ^ tecc_varset,
+    FromVarStr = mercury_var_to_name_only_vs(VarSet, FromVar),
+    FromTypeStr = mercury_type_to_string(TVarSet, print_num_only, FromType),
+    ToTypeStr = mercury_type_to_string(TVarSet, print_num_only, ToType),
+    ErrorPieces = [words("error: the type of")] ++
+        color_as_subject([quote(FromVarStr)]) ++
+        [words("is")] ++ color_as_incorrect([words("unresolved;")]) ++
+        [words("cannot coerce from"), quote(FromTypeStr), words("to"),
+        quote(ToTypeStr), suffix("."), nl],
     Spec = spec($pred, severity_error, phase_type_check, Context,
         InClauseForPieces ++ ErrorPieces).
 

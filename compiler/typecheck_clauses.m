@@ -1792,13 +1792,13 @@ typecheck_coerce_2(Context, FromVar, ToVar, TypeAssign0,
             type_assign_get_type_bindings(TypeAssign1, TypeBindings1),
             ( if is_same_type_after_subst(TypeBindings1, FromType, ToType) then
                 Coercion = coerce_constraint(FromType, ToType, Context,
-                    satisfied_but_redundant),
+                    FromVar, satisfied_but_redundant),
                 add_coerce_constraint(Coercion, TypeAssign1, TypeAssign)
             else
                 TypeAssign = TypeAssign1
             )
         else
-            Coercion = coerce_constraint(FromType, ToType, Context,
+            Coercion = coerce_constraint(FromType, ToType, Context, FromVar,
                 unsatisfiable),
             add_coerce_constraint(Coercion, TypeAssign0, TypeAssign)
         ),
@@ -1822,7 +1822,8 @@ typecheck_coerce_2(Context, FromVar, ToVar, TypeAssign0,
             type_assign_fresh_type_var(ToVar, ToType,
                 TypeAssign1, TypeAssign2)
         ),
-        Coercion = coerce_constraint(FromType, ToType, Context, need_to_check),
+        Coercion = coerce_constraint(FromType, ToType, Context, FromVar,
+            need_to_check),
         add_coerce_constraint(Coercion, TypeAssign2, TypeAssign),
         !:TypeAssignSet = [TypeAssign | !.TypeAssignSet]
     ).
@@ -2503,10 +2504,11 @@ compare_types_corresponding(TypeTable, TVarSet, Comparison,
 
 %---------------------------------------------------------------------------%
 
-    % Remove satisfied coerce constraints from each type assignment,
-    % then drop any type assignments with unsatisfied coerce constraints
-    % if there is at least one type assignment that does satisfy coerce
-    % constraints.
+    % Check coerce constraints in each type assignment to see if they can be
+    % satisfied. If there are one or more type assignments in which all
+    % coerce constraints are satisfied, then keep only those type assignments
+    % and discard the rest -- we don't need to consider the type assignments
+    % with unsatisfiable coerce constraints any more.
     %
 :- pred typecheck_prune_coerce_constraints(type_assign_set::in,
     type_assign_set::out, typecheck_info::in, typecheck_info::out) is det.
@@ -2534,64 +2536,115 @@ type_assign_prune_coerce_constraints(TypeTable, !TypeAssign) :-
         Coercions0 = []
     ;
         Coercions0 = [_ | _],
-        check_pending_coerce_constraints(TypeTable, Coercions0, Coercions,
-            !TypeAssign),
+        check_pending_coerce_constraints_to_fixpoint(TypeTable,
+            Coercions0, Coercions, !TypeAssign),
         type_assign_set_coerce_constraints(Coercions, !TypeAssign)
     ).
 
-:- pred check_pending_coerce_constraints(type_table::in,
+:- pred check_pending_coerce_constraints_to_fixpoint(type_table::in,
     list(coerce_constraint)::in, list(coerce_constraint)::out,
     type_assign::in, type_assign::out) is det.
 
-check_pending_coerce_constraints(_TypeTable, [], [], !TypeAssign).
-check_pending_coerce_constraints(TypeTable, [Coercion0 | Coercions0],
-        KeepCoercions, !TypeAssign) :-
-    Coercion0 = coerce_constraint(FromType0, ToType0, Context, Status0),
+check_pending_coerce_constraints_to_fixpoint(TypeTable, Coercions0, Coercions,
+        !TypeAssign) :-
+    check_pending_coerce_constraints_loop(TypeTable, Coercions0,
+        KeepCoercions, DelayedCoercions, !TypeAssign, no, MadeProgress),
+    (
+        MadeProgress = no,
+        % All coerce constraints were delayed; give up.
+        list.map(set_coerce_constraint_to_not_yet_resolved,
+            DelayedCoercions, Coercions)
+    ;
+        MadeProgress = yes,
+        check_pending_coerce_constraints_to_fixpoint(TypeTable,
+            DelayedCoercions, Coercions2, !TypeAssign),
+        Coercions = KeepCoercions ++ Coercions2
+    ).
+
+:- pred check_pending_coerce_constraints_loop(type_table::in,
+    list(coerce_constraint)::in, list(coerce_constraint)::out,
+    list(coerce_constraint)::out, type_assign::in, type_assign::out,
+    bool::in, bool::out) is det.
+
+check_pending_coerce_constraints_loop(_TypeTable, [], [], [],
+        !TypeAssign, !MadeProgress).
+check_pending_coerce_constraints_loop(TypeTable, [Coercion0 | Coercions0],
+        KeepCoercions, DelayedCoercions, !TypeAssign, !MadeProgress) :-
+    check_coerce_constraint_if_ready(TypeTable, Coercion0, CheckResult,
+        !TypeAssign),
+    (
+        CheckResult = prune,
+        !:MadeProgress = yes,
+        check_pending_coerce_constraints_loop(TypeTable, Coercions0,
+            KeepCoercions, DelayedCoercions, !TypeAssign, !MadeProgress)
+    ;
+        CheckResult = keep(Coercion),
+        !:MadeProgress = yes,
+        check_pending_coerce_constraints_loop(TypeTable, Coercions0,
+            TailKeepCoercions, DelayedCoercions, !TypeAssign, !MadeProgress),
+        KeepCoercions = [Coercion | TailKeepCoercions]
+    ;
+        CheckResult = delay,
+        check_pending_coerce_constraints_loop(TypeTable, Coercions0,
+            KeepCoercions, TailDelayedCoercions, !TypeAssign, !MadeProgress),
+        DelayedCoercions = [Coercion0 | TailDelayedCoercions]
+    ).
+
+:- type check_coerce_constraint_action
+    --->    prune
+    ;       keep(coerce_constraint)
+    ;       delay.
+
+:- pred check_coerce_constraint_if_ready(type_table::in, coerce_constraint::in,
+    check_coerce_constraint_action::out, type_assign::in, type_assign::out)
+    is det.
+
+check_coerce_constraint_if_ready(TypeTable, Coercion0, Action, !TypeAssign) :-
+    Coercion0 = coerce_constraint(FromType0, ToType0, Context, FromVar,
+        Status0),
     (
         Status0 = need_to_check,
         TypeAssign0 = !.TypeAssign,
-        type_assign_get_type_bindings(TypeAssign0, TypeBindings0),
         type_assign_get_typevarset(TypeAssign0, TVarSet),
+        type_assign_get_existq_tvars(TypeAssign0, ExistQTVars),
+        type_assign_get_type_bindings(TypeAssign0, TypeBindings0),
         apply_rec_subst_to_type(TypeBindings0, FromType0, FromType),
         apply_rec_subst_to_type(TypeBindings0, ToType0, ToType),
-        ( if
-            typecheck_coerce_between_types(TypeTable, TVarSet,
-                FromType, ToType, TypeAssign0, TypeAssign1)
-        then
-            type_assign_get_type_bindings(TypeAssign1, TypeBindings1),
-            ( if is_same_type_after_subst(TypeBindings1, FromType, ToType) then
-                Keep = yes,
-                Coercion = coerce_constraint(FromType, ToType, Context,
-                    satisfied_but_redundant)
+        ( if type_is_ground_except_vars(FromType, ExistQTVars) then
+            ( if
+                typecheck_coerce_between_types(TypeTable, TVarSet,
+                    FromType, ToType, TypeAssign0, TypeAssign1)
+            then
+                type_assign_get_type_bindings(TypeAssign1, TypeBindings1),
+                ( if is_same_type_after_subst(TypeBindings1, FromType, ToType) then
+                    Coercion = coerce_constraint(FromType, ToType,
+                        Context, FromVar, satisfied_but_redundant),
+                    Action = keep(Coercion)
+                else
+                    Action = prune
+                ),
+                !:TypeAssign = TypeAssign1
             else
-                Keep = no,
-                Coercion = Coercion0
-            ),
-            % XXX This biases the typechecker to type bindings made by coerce
-            % constraints that happen to be processed earlier.
-            !:TypeAssign = TypeAssign1
+                Coercion = coerce_constraint(FromType0, ToType0,
+                    Context, FromVar, unsatisfiable),
+                Action = keep(Coercion)
+            )
         else
-            Keep = yes,
-            Coercion = coerce_constraint(FromType0, ToType0, Context,
-                unsatisfiable)
+            Action = delay
         )
     ;
         ( Status0 = unsatisfiable
+        ; Status0 = not_yet_resolved
         ; Status0 = satisfied_but_redundant
         ),
-        Keep = yes,
-        Coercion = Coercion0
-    ),
-    (
-        Keep = yes,
-        check_pending_coerce_constraints(TypeTable, Coercions0,
-            TailKeepCoercions, !TypeAssign),
-        KeepCoercions = [Coercion | TailKeepCoercions]
-    ;
-        Keep = no,
-        check_pending_coerce_constraints(TypeTable, Coercions0,
-            KeepCoercions, !TypeAssign)
+        Action = keep(Coercion0)
     ).
+
+:- pred set_coerce_constraint_to_not_yet_resolved(
+    coerce_constraint::in, coerce_constraint::out) is det.
+
+set_coerce_constraint_to_not_yet_resolved(!Coercion) :-
+    !Coercion ^ coerce_status := not_yet_resolved.
 
 :- pred type_assign_has_only_satisfied_coerce_constraints(type_assign::in)
     is semidet.
@@ -2603,14 +2656,17 @@ type_assign_has_only_satisfied_coerce_constraints(TypeAssign) :-
 :- pred coerce_constraint_is_satisfied(coerce_constraint::in) is semidet.
 
 coerce_constraint_is_satisfied(Coercion) :-
-    Coercion = coerce_constraint(_FromType, _ToType, _Context, Status),
+    Coercion = coerce_constraint(_FromType, _ToType, _Context, _FromVar,
+        Status),
     require_complete_switch [Status]
     (
-        Status = need_to_check, fail
-    ;
-        Status = unsatisfiable, fail
-    ;
         Status = satisfied_but_redundant
+    ;
+        ( Status = need_to_check
+        ; Status = unsatisfiable
+        ; Status = not_yet_resolved
+        ),
+        fail
     ).
 
 %---------------------------------------------------------------------------%
