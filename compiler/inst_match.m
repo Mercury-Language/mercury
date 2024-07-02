@@ -61,11 +61,10 @@
     % A version of the above that also computes the inst_var_sub.
     %
 :- pred inst_matches_initial_no_implied_modes_sub(mer_type::in,
-    mer_inst::in, mer_inst::in,
-    module_info::in, module_info::out,
+    mer_inst::in, mer_inst::in, module_info::in, module_info::out,
     inst_var_sub::in, inst_var_sub::out) is semidet.
 
-    % inst_matches_final(ModuleInfo, InstA, InstB):
+    % inst_matches_final(ModuleInfo, Type, InstA, InstB):
     %
     % Succeed iff InstA is compatible with InstB, i.e. iff InstA will satisfy
     % the final inst requirement InstB. This is true if the information
@@ -73,8 +72,8 @@
     % and where the information is the same and both insts specify a binding,
     % the binding must be identical.
     %
-:- pred inst_matches_final(module_info::in, mer_inst::in, mer_inst::in)
-    is semidet.
+:- pred inst_matches_final(module_info::in, mer_type::in,
+    mer_inst::in, mer_inst::in) is semidet.
 
     % This version of inst_matches_final allows you to pass in the type of the
     % variables being compared. This allows it to be more precise (i.e. less
@@ -361,7 +360,7 @@ handle_inst_var_subs_2(Recurse, Continue, Type, InstA, InstB, !Info) :-
         % We pass `Live = is_dead' because we want
         % abstractly_unify(unique, unique) = unique, not shared.
         ModuleInfo0 = !.Info ^ imi_module_info,
-        abstractly_unify_inst(is_dead, InstA, SubInstB, fake_unify,
+        abstractly_unify_inst(Type, is_dead, InstA, SubInstB, fake_unify,
             UnifyInst, _Det, ModuleInfo0, ModuleInfo),
         !Info ^ imi_module_info := ModuleInfo,
         update_inst_var_sub(InstVarsB, UnifyInst, Type, !Info),
@@ -832,11 +831,10 @@ inst_list_matches_initial_mt([Type | Types],
 
 %-----------------------------------------------------------------------------%
 
-inst_matches_final(ModuleInfo, InstA, InstB) :-
+inst_matches_final(ModuleInfo, Type, InstA, InstB) :-
     Info0 = init_inst_match_info(ModuleInfo, no_inst_var_sub, cs_none,
         uc_match, any_does_match_any, ground_matches_bound_if_complete),
-    % XXX TYPE_FOR_INST Get our ancestor to pass us the type.
-    inst_matches_final_mt(no_type_available, InstA, InstB, Info0, _).
+    inst_matches_final_mt(Type, InstA, InstB, Info0, _).
 
 inst_matches_final_typed(ModuleInfo, Type, InstA, InstB) :-
     inst_matches_final_gmb(ModuleInfo, ground_matches_bound_if_complete,

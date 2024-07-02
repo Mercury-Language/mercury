@@ -177,8 +177,9 @@ modecheck_unification_var(X, Y, Unification0, UnifyContext,
     else
         BothLive = is_dead
     ),
+    lookup_var_type(VarTable, X, TypeOfX),
     ( if
-        abstractly_unify_inst(BothLive, InstOfX, InstOfY, real_unify,
+        abstractly_unify_inst(TypeOfX, BothLive, InstOfX, InstOfY, real_unify,
             UnifiedInst, Detism, ModuleInfo0, ModuleInfo1),
         % Do not allow free-free unifications if both variables are locked.
         % (Normally the checks for binding locked variables are done in
@@ -409,8 +410,8 @@ modecheck_unification_rhs_lambda(X, LambdaRHS, Unification0, UnifyContext, _,
             inst_list_is_ground_or_any(ModuleInfo2, NonLocalInsts)
         )
     then
-        make_shared_inst_list(NonLocalInsts, SharedNonLocalInsts,
-            ModuleInfo2, ModuleInfo3),
+        make_shared_inst_list(NonLocalTypes, NonLocalInsts,
+            SharedNonLocalInsts, ModuleInfo2, ModuleInfo3),
         instmap_set_vars_corresponding(NonLocalsList, SharedNonLocalInsts,
             InstMap1, InstMap2),
         mode_info_set_module_info(ModuleInfo3, !ModeInfo),
@@ -500,8 +501,10 @@ modecheck_unify_lambda(X, PredOrFunc, ArgVars, LambdaModes, LambdaDetism,
     InstOfY = ground(unique, higher_order(LambdaPredInfo)),
     LambdaPredInfo = pred_inst_info(PredOrFunc, LambdaModes,
         arg_reg_types_unset, LambdaDetism),
+    mode_info_get_var_table(!.ModeInfo, VarTable),
+    lookup_var_type(VarTable, X, TypeOfX),
     ( if
-        abstractly_unify_inst(is_dead, InstOfX, InstOfY, real_unify,
+        abstractly_unify_inst(TypeOfX, is_dead, InstOfX, InstOfY, real_unify,
             UnifyInst, _Detism, ModuleInfo0, ModuleInfo1)
     then
         Inst = UnifyInst,

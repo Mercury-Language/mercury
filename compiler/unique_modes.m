@@ -238,7 +238,9 @@ make_var_mostly_uniq(Var, !ModeInfo) :-
         ; Inst1 = any(unique, _)
         )
     then
-        make_mostly_uniq_inst(Inst0, Inst, ModuleInfo0, ModuleInfo),
+        mode_info_get_var_table(!.ModeInfo, VarTable),
+        lookup_var_type(VarTable, Var, Type),
+        make_mostly_uniq_inst(Type, Inst0, Inst, ModuleInfo0, ModuleInfo),
         mode_info_set_module_info(ModuleInfo, !ModeInfo),
         instmap_set_var(Var, Inst, InstMap0, InstMap),
         mode_info_set_instmap(InstMap, !ModeInfo)
@@ -635,14 +637,15 @@ unique_modes_check_par_conj_0(NonLocalVarsBag, !ModeInfo) :-
         ( pred(Pair::in, Var::out) is semidet :-
             Pair = Var - Multiplicity,
             Multiplicity > 1
-        ), NonLocalVarsList, SharedList),
+        ), NonLocalVarsList, SharedVars),
     mode_info_get_instmap(!.ModeInfo, InstMap0),
-    instmap_lookup_vars(InstMap0, SharedList, VarInsts),
+    instmap_lookup_vars(InstMap0, SharedVars, SharedVarOrigInsts),
     mode_info_get_module_info(!.ModeInfo, ModuleInfo0),
-    make_shared_inst_list(VarInsts, SharedVarInsts,
+    mode_info_get_types_of_vars(!.ModeInfo, SharedVars, SharedVarTypes),
+    make_shared_inst_list(SharedVarTypes, SharedVarOrigInsts, SharedVarInsts,
         ModuleInfo0, ModuleInfo1),
     mode_info_set_module_info(ModuleInfo1, !ModeInfo),
-    instmap_set_vars_corresponding(SharedList, SharedVarInsts,
+    instmap_set_vars_corresponding(SharedVars, SharedVarInsts,
         InstMap0, InstMap1),
     mode_info_set_instmap(InstMap1, !ModeInfo).
 

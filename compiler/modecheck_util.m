@@ -622,13 +622,15 @@ modecheck_set_var_inst(Var0, NewInst0, MaybeUInst, !ModeInfo) :-
         % than quadratic. The OldInst = NewInst test here may increase
         % execution time slightly in normal cases, but should reduce it
         % greatly in the worst cases.
+        mode_info_get_var_table(!.ModeInfo, VarTable),
+        lookup_var_type(VarTable, Var0, Type),
         ( if
             OldInst = NewInst0
         then
             ModuleInfo = ModuleInfo0,
             NewInst = NewInst0
         else if
-            abstractly_unify_inst(is_dead, OldInst, NewInst0,
+            abstractly_unify_inst(Type, is_dead, OldInst, NewInst0,
                 fake_unify, UnifyInst, _Det, ModuleInfo0, ModuleInfo1)
         then
             ModuleInfo = ModuleInfo1,
@@ -637,8 +639,6 @@ modecheck_set_var_inst(Var0, NewInst0, MaybeUInst, !ModeInfo) :-
             unexpected($pred, "unify_inst failed")
         ),
         mode_info_set_module_info(ModuleInfo, !ModeInfo),
-        mode_info_get_var_table(!.ModeInfo, VarTable),
-        lookup_var_type(VarTable, Var0, Type),
         ( if
             % If the top-level inst of the variable is not_reached,
             % then the instmap as a whole must be unreachable.
@@ -742,8 +742,8 @@ modecheck_set_var_inst_call(Var0, InitialInst, FinalInst, Var, !ExtraGoals,
     mode_info_get_instmap(!.ModeInfo, InstMap0),
     ( if instmap_is_reachable(InstMap0) then
         instmap_lookup_var(InstMap0, Var0, VarInst0),
-        handle_implied_mode(Var0, VarInst0, InitialInst, Var, !ExtraGoals,
-            !ModeInfo),
+        handle_implied_mode(Var0, VarInst0, InitialInst, Var,
+            !ExtraGoals, !ModeInfo),
         % The new inst must be computed by unifying the old inst
         % and the proc's final inst; modecheck_set_var_inst will do this.
         modecheck_set_var_inst(Var0, FinalInst, no, !ModeInfo),

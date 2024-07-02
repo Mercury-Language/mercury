@@ -100,7 +100,7 @@
 %-----------------------------------------------------------------------------%
 
 :- pred inst_results_bound_inst_list_is_ground(module_info::in,
-    inst_test_results::in, list(bound_inst)::in) is semidet.
+    mer_type::in, inst_test_results::in, list(bound_inst)::in) is semidet.
 
 :- pred inst_results_bound_inst_list_is_ground_mt(module_info::in,
     mer_type::in, inst_test_results::in, list(bound_inst)::in) is semidet.
@@ -796,7 +796,8 @@ inst_is_bound_to_functors(ModuleInfo, Inst, Functors) :-
 
 %-----------------------------------------------------------------------------%
 
-inst_results_bound_inst_list_is_ground(ModuleInfo, InstResults, BoundInsts) :-
+inst_results_bound_inst_list_is_ground(ModuleInfo, Type, InstResults,
+        BoundInsts) :-
     require_complete_switch [InstResults]
     (
         InstResults = inst_test_results_fgtc
@@ -810,12 +811,11 @@ inst_results_bound_inst_list_is_ground(ModuleInfo, InstResults, BoundInsts) :-
             fail
         ;
             GroundnessResult = inst_result_groundness_unknown,
-            bound_inst_list_is_ground_mt(ModuleInfo, no_type_available,
-                BoundInsts)
+            bound_inst_list_is_ground_mt(ModuleInfo, Type, BoundInsts)
         )
     ;
         InstResults = inst_test_no_results,
-        bound_inst_list_is_ground_mt(ModuleInfo, no_type_available, BoundInsts)
+        bound_inst_list_is_ground_mt(ModuleInfo, Type, BoundInsts)
     ).
 
 inst_results_bound_inst_list_is_ground_mt(ModuleInfo, Type, InstResults,

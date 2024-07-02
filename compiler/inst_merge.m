@@ -675,8 +675,8 @@ merge_inst_uniq(ModuleInfo, InstA, UniqB, !Expansions, Uniq) :-
 inst_merge_bound_ground(Type, UniqA, InstResultsA, BoundInstsA, UniqB,
         Result, !ModuleInfo) :-
     ( if
-        inst_results_bound_inst_list_is_ground(!.ModuleInfo, InstResultsA,
-            BoundInstsA)
+        inst_results_bound_inst_list_is_ground(!.ModuleInfo, Type,
+            InstResultsA, BoundInstsA)
     then
         merge_uniq_bound(!.ModuleInfo, UniqB, UniqA, BoundInstsA, Uniq),
         Result = ground(Uniq, none_or_default_func)

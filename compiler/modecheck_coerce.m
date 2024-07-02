@@ -149,8 +149,8 @@ modecheck_coerce_vars(ModuleInfo0, X, Y, TypeX, TypeY, InstX, InstY, Result,
     (
         MaybeFinalInstY = ok1(FinalInstY),
         ( if
-            abstractly_unify_inst(BothLive, InstX, ground_inst, real_unify,
-                UnifyInstX, _Det, ModuleInfo0, ModuleInfo1)
+            abstractly_unify_inst(TypeX, BothLive, InstX, ground_inst,
+                real_unify, UnifyInstX, _Det, ModuleInfo0, ModuleInfo1)
         then
             ModuleInfo = ModuleInfo1,
             FinalInstX = UnifyInstX

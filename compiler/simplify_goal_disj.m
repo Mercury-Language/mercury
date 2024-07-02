@@ -231,7 +231,7 @@ is_var_a_problem_partial_var(ModuleInfo, VarTable, InstMap0,
         % No problem: the variable's initial value cannot be changed
         % by the disjunction.
         fail
-    else if inst_matches_final(ModuleInfo, FinalInst, InitInst) then
+    else if inst_matches_final(ModuleInfo, Type, FinalInst, InitInst) then
         % No problem: the variable's value, even though it is not initially
         % ground, is not changed by the disjunction, though the disjunction
         % may discover e.g. that a particular part of Var is bound to a

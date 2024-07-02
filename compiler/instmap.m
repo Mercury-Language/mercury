@@ -361,18 +361,6 @@
 
 %---------------------------------------------------------------------------%
 
-    % unify_instmap_delta(InitialInstMap, NonLocals,
-    %   InstMapDeltaA, InstMapDeltaB, InstMapDelta, !ModuleInfo):
-    %
-    % Unify the instmap_deltas of two different branches of a parallel
-    % conjunction.
-    %
-:- pred unify_instmap_delta(instmap::in, set_of_progvar::in,
-    instmap_delta::in, instmap_delta::in, instmap_delta::out,
-    module_info::in, module_info::out) is det.
-
-%---------------------------------------------------------------------------%
-
 :- pred instmap_apply_sub(must_rename::in, map(prog_var, prog_var)::in,
     instmap::in, instmap::out) is det.
 
@@ -1509,8 +1497,19 @@ merge_instmapping_typed_vars([Var - Type | VarsTypes], InstMapping0,
 
 %---------------------------------------------------------------------------%
 
-unify_instmap_delta(_InstMap0, NonLocals, InstMapDeltaA, InstMapDeltaB,
-        InstMapDelta, !ModuleInfo) :-
+    % unify_instmap_delta(VarTable, InitialInstMap, NonLocals,
+    %   InstMapDeltaA, InstMapDeltaB, InstMapDelta, !ModuleInfo):
+    %
+    % Unify the instmap_deltas of two different branches of a parallel
+    % conjunction.
+    %
+:- pred unify_instmap_delta(var_table::in, instmap::in, set_of_progvar::in,
+    instmap_delta::in, instmap_delta::in, instmap_delta::out,
+    module_info::in, module_info::out) is det.
+:- pragma consider_used(pred(unify_instmap_delta/8)).
+
+unify_instmap_delta(VarTable, _InstMap0, NonLocals,
+        InstMapDeltaA, InstMapDeltaB, InstMapDelta, !ModuleInfo) :-
     % The InstMap0 argument is not needed.
     (
         InstMapDeltaA = unreachable,
@@ -1522,41 +1521,42 @@ unify_instmap_delta(_InstMap0, NonLocals, InstMapDeltaA, InstMapDeltaB,
             InstMapDelta = InstMapDeltaA
         ;
             InstMapDeltaB = reachable(InstMappingB),
-            unify_instmapping_delta(NonLocals, InstMappingA, InstMappingB,
-                InstMapping, !ModuleInfo),
+            unify_instmapping_delta(VarTable, NonLocals,
+                InstMappingA, InstMappingB, InstMapping, !ModuleInfo),
             InstMapDelta = reachable(InstMapping)
         )
     ).
 
-:- pred unify_instmapping_delta(set_of_progvar::in,
+:- pred unify_instmapping_delta(var_table::in, set_of_progvar::in,
     instmapping::in, instmapping::in, instmapping::out,
     module_info::in, module_info::out) is det.
 
-unify_instmapping_delta(NonLocals, InstMappingA, InstMappingB, InstMapping,
-        !ModuleInfo) :-
+unify_instmapping_delta(VarTable, NonLocals, InstMappingA, InstMappingB,
+        InstMapping, !ModuleInfo) :-
     map.keys(InstMappingA, VarsInA),
     map.keys(InstMappingB, VarsInB),
     set_of_var.sorted_list_to_set(VarsInA, SetOfVarsInA),
     set_of_var.insert_list(VarsInB, SetOfVarsInA, SetOfVars0),
     set_of_var.intersect(SetOfVars0, NonLocals, SetOfVars),
     set_of_var.to_sorted_list(SetOfVars, ListOfVars),
-    unify_instmapping_delta_loop(ListOfVars, InstMappingA, InstMappingB,
-        map.init, InstMapping, !ModuleInfo).
+    unify_instmapping_delta_loop(VarTable, ListOfVars,
+        InstMappingA, InstMappingB, map.init, InstMapping, !ModuleInfo).
 
-:- pred unify_instmapping_delta_loop(list(prog_var)::in,
+:- pred unify_instmapping_delta_loop(var_table::in, list(prog_var)::in,
     instmapping::in, instmapping::in, instmapping::in, instmapping::out,
     module_info::in, module_info::out) is det.
 
-unify_instmapping_delta_loop([], _, _, !InstMapping, !ModuleInfo).
-unify_instmapping_delta_loop([Var | Vars], InstMappingA,
+unify_instmapping_delta_loop(_, [], _, _, !InstMapping, !ModuleInfo).
+unify_instmapping_delta_loop(VarTable, [Var | Vars], InstMappingA,
         InstMappingB, !InstMapping, !ModuleInfo) :-
     ( if map.search(InstMappingA, Var, InstA) then
         ( if map.search(InstMappingB, Var, InstB) then
+            lookup_var_type(VarTable, Var, Type),
             ( if
                 % We can ignore the determinism of the unification: if it
                 % isn't det, then there will be a mode error or a determinism
                 % error in one of the parallel conjuncts.
-                abstractly_unify_inst(is_live, InstA, InstB,
+                abstractly_unify_inst(Type, is_live, InstA, InstB,
                     fake_unify, Inst, _Det, !ModuleInfo)
             then
                 map.det_insert(Var, Inst, !InstMapping)
@@ -1573,7 +1573,7 @@ unify_instmapping_delta_loop([Var | Vars], InstMappingA,
             true
         )
     ),
-    unify_instmapping_delta_loop(Vars, InstMappingA, InstMappingB,
+    unify_instmapping_delta_loop(VarTable, Vars, InstMappingA, InstMappingB,
         !InstMapping, !ModuleInfo).
 
 %---------------------------------------------------------------------------%

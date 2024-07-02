@@ -102,8 +102,8 @@ recompute_instmap_delta(RecomputeAtomic, VarTable, InstVarSet, InstMap0,
 
 :- type recompute_params
     --->    recompute_params(
-                recomp_atomics,
-                var_table
+                rp_recomp_atomics   :: recomp_atomics,
+                rp_var_table        :: var_table
             ).
 
 :- pred recompute_instmap_delta_1(recompute_params::in,
@@ -249,7 +249,7 @@ recompute_instmap_delta_1(Params, InstMap0, InstMapDelta, Goal0, Goal, !RI) :-
             InstMapDelta1 = goal_info_get_instmap_delta(GoalInfo0)
         ;
             RecomputeAtomic = recomp_atomics,
-            recompute_instmap_delta_unify(Uni, UniMode0, UniMode,
+            recompute_instmap_delta_unify(Params, Uni, UniMode0, UniMode,
                 GoalInfo0, InstMap0, InstMapDelta1, !RI)
         ),
         GoalExpr = unify(LHS, RHS, UniMode, Uni, Context)
@@ -462,7 +462,7 @@ recompute_instmap_delta_call(Params, PredId, ProcId, ArgVars, InstMap,
             % Calculate the final insts of the argument variables from their
             % initial insts and the final insts of the called procedure
             % (with inst_var substitutions applied).
-            recompute_instmap_delta_call_args(ArgVars, InstMap,
+            recompute_instmap_delta_call_args(VarTable, InstMap, ArgVars,
                 ArgModes2, ArgModes, ModuleInfo1, ModuleInfo),
             !RI ^ ri_module_info := ModuleInfo
         else
@@ -506,42 +506,44 @@ compute_inst_var_sub(VarTable, InstMap, [ArgVar | ArgVars], [Inst | Insts],
     ),
     compute_inst_var_sub(VarTable, InstMap, ArgVars, Insts, !Sub, !ModuleInfo).
 
-:- pred recompute_instmap_delta_call_args(list(prog_var)::in, instmap::in,
-    list(mer_mode)::in, list(mer_mode)::out, module_info::in, module_info::out)
-    is det.
+:- pred recompute_instmap_delta_call_args(var_table::in, instmap::in,
+    list(prog_var)::in, list(mer_mode)::in, list(mer_mode)::out,
+    module_info::in, module_info::out) is det.
 
-recompute_instmap_delta_call_args([], _, [], [], !ModuleInfo).
-recompute_instmap_delta_call_args([_ | _], _, [], _, !ModuleInfo) :-
+recompute_instmap_delta_call_args(_, _, [], [], [], !ModuleInfo).
+recompute_instmap_delta_call_args(_, _, [_ | _], [], _, !ModuleInfo) :-
     unexpected($pred, "length mismatch").
-recompute_instmap_delta_call_args([], _, [_ | _], _, !ModuleInfo) :-
+recompute_instmap_delta_call_args(_, _, [], [_ | _], _, !ModuleInfo) :-
     unexpected($pred, "length mismatch").
-recompute_instmap_delta_call_args([Arg | Args], InstMap, [Mode0 | Modes0],
-        [Mode | Modes], !ModuleInfo) :-
+recompute_instmap_delta_call_args(VarTable, InstMap,
+        [ArgVar | ArgVars], [Mode0 | Modes0], [Mode | Modes], !ModuleInfo) :-
+    lookup_var_type(VarTable, ArgVar, ArgType),
     % This is similar to modecheck_set_var_inst.
-    instmap_lookup_var(InstMap, Arg, ArgInst0),
+    instmap_lookup_var(InstMap, ArgVar, ArgInst0),
     mode_get_insts(!.ModuleInfo, Mode0, _, FinalInst),
     ( if
         % The is_dead allows abstractly_unify_inst to succeed when
         % some parts of ArgInst0 and the corresponding parts of FinalInst
         % are free.
         % XXX There should be a better way to communicate that information.
-        abstractly_unify_inst(is_dead, ArgInst0, FinalInst,
+        abstractly_unify_inst(ArgType, is_dead, ArgInst0, FinalInst,
             fake_unify, UnifyInst, _, !ModuleInfo)
     then
         Mode = from_to_mode(ArgInst0, UnifyInst)
     else
         unexpected($pred, "unify_inst failed")
     ),
-    recompute_instmap_delta_call_args(Args, InstMap, Modes0, Modes,
-        !ModuleInfo).
+    recompute_instmap_delta_call_args(VarTable, InstMap,
+        ArgVars, Modes0, Modes, !ModuleInfo).
 
 %---------------------%
 
-:- pred recompute_instmap_delta_unify(unification::in, unify_mode::in,
-    unify_mode::out, hlds_goal_info::in, instmap::in, instmap_delta::out,
+:- pred recompute_instmap_delta_unify(recompute_params::in,
+    unification::in, unify_mode::in, unify_mode::out, hlds_goal_info::in,
+    instmap::in, instmap_delta::out,
     recompute_info::in, recompute_info::out) is det.
 
-recompute_instmap_delta_unify(Unification, UniMode0, UniMode, GoalInfo,
+recompute_instmap_delta_unify(Params, Unification, UniMode0, UniMode, GoalInfo,
         InstMap, InstMapDelta, !RI) :-
     % Deconstructions are the only types of unifications that can require
     % updating of the instmap_delta after simplify.m has been run.
@@ -569,9 +571,11 @@ recompute_instmap_delta_unify(Unification, UniMode0, UniMode, GoalInfo,
             % parts of InitialInst and the corresponding parts of DeltaInst
             % are free.
             % XXX There should be a better way to communicate that information.
+            VarTable = Params ^ rp_var_table,
+            lookup_var_type(VarTable, LHSVar, LHSType),
             ( if
-                abstractly_unify_inst(is_dead, LHSInitialInst, DeltaInst,
-                    fake_unify, LHSFinalInstPrime, _Detism,
+                abstractly_unify_inst(LHSType, is_dead, LHSInitialInst,
+                    DeltaInst, fake_unify, LHSFinalInstPrime, _Detism,
                     ModuleInfo0, ModuleInfo1)
             then
                 LHSFinalInst = LHSFinalInstPrime,
