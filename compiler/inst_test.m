@@ -222,10 +222,6 @@
 %-----------------------------------------------------------------------------%
 
 inst_is_ground(ModuleInfo, Type, Inst) :-
-    % XXX TYPE_FOR_INST Our caller should pass us the type.
-    %
-    % inst_is_ground succeeds iff the inst passed is `ground' or the
-    % equivalent.
     promise_pure (
         semipure lookup_inst_is_ground(Type, Inst, Found, OldIsGround),
         (
@@ -926,9 +922,9 @@ inst_results_bound_inst_list_is_ground_or_any_2(ModuleInfo, InstResults,
 bound_inst_list_is_ground_mt(_, _, []).
 bound_inst_list_is_ground_mt(ModuleInfo, Type,
         [BoundInst | BoundInsts]) :-
-    BoundInst = bound_functor(ConsId, ArgInsts),
-    get_cons_id_arg_types_for_inst(ModuleInfo, Type, ConsId,
-        list.length(ArgInsts), ArgTypes),
+    get_cons_id_arg_types_for_bound_inst(ModuleInfo, Type, BoundInst,
+        ArgTypes),
+    BoundInst = bound_functor(_ConsId, ArgInsts),
     inst_list_is_ground_mt(ModuleInfo, ArgTypes, ArgInsts),
     bound_inst_list_is_ground_mt(ModuleInfo, Type, BoundInsts).
 
@@ -939,9 +935,9 @@ bound_inst_list_is_ground_mt(ModuleInfo, Type,
 bound_inst_list_is_ground_mt_2(_, _, [], !Expansions).
 bound_inst_list_is_ground_mt_2(ModuleInfo, Type, [BoundInst | BoundInsts],
         !Expansions) :-
-    BoundInst = bound_functor(ConsId, ArgInsts),
-    get_cons_id_arg_types_for_inst(ModuleInfo, Type, ConsId,
-        list.length(ArgInsts), ArgTypes),
+    get_cons_id_arg_types_for_bound_inst(ModuleInfo, Type, BoundInst,
+        ArgTypes),
+    BoundInst = bound_functor(_ConsId, ArgInsts),
     inst_list_is_ground_mt_2(ModuleInfo, ArgTypes, ArgInsts, !Expansions),
     bound_inst_list_is_ground_mt_2(ModuleInfo, Type, BoundInsts, !Expansions).
 

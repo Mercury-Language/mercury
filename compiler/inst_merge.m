@@ -714,10 +714,10 @@ inst_merge_bound_ground(Type, UniqA, InstResultsA, BoundInstsA, UniqB,
     module_info::in, module_info::out) is semidet.
 
 inst_list_merge(_, [], [], [], !ModuleInfo).
-inst_list_merge([Type | Types], [ArgA | ArgsA], [ArgB | ArgsB],
-        [ArgAB | ArgsAB], !ModuleInfo) :-
-    inst_merge(Type, ArgA, ArgB, ArgAB, !ModuleInfo),
-    inst_list_merge(Types, ArgsA, ArgsB, ArgsAB, !ModuleInfo).
+inst_list_merge([Type | Types], [ArgInstA | ArgInstsA], [ArgInstB | ArgInstsB],
+        [ArgInstAB | ArgInstsAB], !ModuleInfo) :-
+    inst_merge(Type, ArgInstA, ArgInstB, ArgInstAB, !ModuleInfo),
+    inst_list_merge(Types, ArgInstsA, ArgInstsB, ArgInstsAB, !ModuleInfo).
 
     % bound_inst_list_merge(Type, BoundInstsA, BoundInstsB, BoundInsts,
     %   !ModuleInfo):
@@ -743,13 +743,14 @@ bound_inst_list_merge(Type, BoundInstsA, BoundInstsB, BoundInstsAB,
     ;
         BoundInstsA = [BoundInstA | BoundInstsTailA],
         BoundInstsB = [BoundInstB | BoundInstsTailB],
-        BoundInstA = bound_functor(ConsIdA, ArgsA),
-        BoundInstB = bound_functor(ConsIdB, ArgsB),
+        BoundInstA = bound_functor(ConsIdA, ArgInstsA),
+        BoundInstB = bound_functor(ConsIdB, ArgInstsB),
         ( if equivalent_cons_ids(ConsIdA, ConsIdB) then
-            get_cons_id_arg_types_for_inst(!.ModuleInfo, Type,
-                ConsIdA, list.length(ArgsA), Types),
-            inst_list_merge(Types, ArgsA, ArgsB, ArgsAB, !ModuleInfo),
-            BoundInst = bound_functor(ConsIdA, ArgsAB),
+            get_cons_id_arg_types_for_bound_inst(!.ModuleInfo, Type,
+                BoundInstA, Types),
+            inst_list_merge(Types, ArgInstsA, ArgInstsB, ArgInstsAB,
+                !ModuleInfo),
+            BoundInst = bound_functor(ConsIdA, ArgInstsAB),
             bound_inst_list_merge(Type, BoundInstsTailA, BoundInstsTailB,
                 BoundInstsABTail, !ModuleInfo),
             BoundInstsAB = [BoundInst | BoundInstsABTail]

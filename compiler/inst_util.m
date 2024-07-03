@@ -72,8 +72,16 @@
     % XXX This predicate returns the types of the arguments, but
     % loses any ho_inst_info for the arguments.
     %
+    % XXX We should consider returning not a list of types, but a list of
+    % type/inst pairs. That would incur the cost of the construction of
+    % the pairs, but it would simplify (and thereby probably speed up)
+    % the code that would later traverse both those lists, and maybe some
+    % other list of insts as well.
+    %
+:- pred get_cons_id_arg_types_for_bound_inst(module_info::in, mer_type::in,
+    bound_inst::in, list(mer_type)::out) is det.
 :- pred get_cons_id_arg_types_for_inst(module_info::in, mer_type::in,
-    cons_id::in, arity::in, list(mer_type)::out) is det.
+    cons_id::in, list(mer_inst)::in, list(mer_type)::out) is det.
 
     % XXX This predicate returns the types of the arguments, but
     % loses any ho_inst_info for the arguments.
@@ -203,8 +211,8 @@ make_mostly_uniq_bound_inst_list(_, [], [], !ModuleInfo).
 make_mostly_uniq_bound_inst_list(Type,
         [BoundInst0 | BoundInsts0], [BoundInst | BoundInsts], !ModuleInfo) :-
     BoundInst0 = bound_functor(ConsId, ArgInsts0),
-    get_cons_id_arg_types_for_inst(!.ModuleInfo, Type, ConsId,
-        list.length(ArgInsts0), ArgTypes),
+    get_cons_id_arg_types_for_inst(!.ModuleInfo, Type, ConsId, ArgInsts0,
+        ArgTypes),
     make_mostly_uniq_inst_list(ArgTypes, ArgInsts0, ArgInsts, !ModuleInfo),
     BoundInst = bound_functor(ConsId, ArgInsts),
     make_mostly_uniq_bound_inst_list(Type,
@@ -352,8 +360,8 @@ make_shared_bound_inst_list(_, [], [], !ModuleInfo).
 make_shared_bound_inst_list(Type, [BoundInst0 | BoundInsts0],
         [BoundInst | BoundInsts], !ModuleInfo) :-
     BoundInst0 = bound_functor(ConsId, ArgInsts0),
-    get_cons_id_arg_types_for_inst(!.ModuleInfo, Type, ConsId,
-        list.length(ArgInsts0), ArgTypes),
+    get_cons_id_arg_types_for_inst(!.ModuleInfo, Type, ConsId, ArgInsts0,
+        ArgTypes),
     make_shared_inst_list(ArgTypes, ArgInsts0, ArgInsts, !ModuleInfo),
     BoundInst = bound_functor(ConsId, ArgInsts),
     make_shared_bound_inst_list(Type, BoundInsts0, BoundInsts, !ModuleInfo).
@@ -369,7 +377,12 @@ pred_inst_info_default_func_mode(Arity) = PredInstInfo :-
 
 %---------------------------------------------------------------------------%
 
-get_cons_id_arg_types_for_inst(ModuleInfo, Type, ConsId, Arity, Types) :-
+get_cons_id_arg_types_for_bound_inst(ModuleInfo, Type, BoundInst, Types) :-
+    BoundInst = bound_functor(ConsId, ArgInsts),
+    get_cons_id_arg_types_for_inst(ModuleInfo, Type, ConsId, ArgInsts, Types).
+
+get_cons_id_arg_types_for_inst(ModuleInfo, Type, ConsId, ArgInsts, Types) :-
+    list.length(ArgInsts, Arity),
     ( if ConsId = du_data_ctor(DuCtor) then
         ( if
             % XXX get_cons_id_non_existential_arg_types will fail

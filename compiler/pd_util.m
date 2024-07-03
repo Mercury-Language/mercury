@@ -928,13 +928,13 @@ bound_inst_list_MSG(ModuleInfo, Expansions, Uniq, Type, Xs, Ys,
     else if
         Xs = [X | Xs1],
         Ys = [Y | Ys1],
-        X = bound_functor(ConsId, ArgsX),
-        Y = bound_functor(ConsId, ArgsY)
+        X = bound_functor(ConsId, ArgInstsX),
+        Y = bound_functor(ConsId, ArgInstsY)
     then
-        get_cons_id_arg_types_for_inst(ModuleInfo, Type, ConsId,
-            list.length(ArgsX), ArgTypes),
-        inst_list_MSG(ModuleInfo, Expansions, ArgTypes, ArgsX, ArgsY, Args),
-        Z = bound_functor(ConsId, Args),
+        get_cons_id_arg_types_for_bound_inst(ModuleInfo, Type, X, ArgTypes),
+        inst_list_MSG(ModuleInfo, Expansions, ArgTypes, ArgInstsX, ArgInstsY,
+            ArgInsts),
+        Z = bound_functor(ConsId, ArgInsts),
         bound_inst_list_MSG(ModuleInfo, Expansions, Uniq, Type, Xs1, Ys1,
             BoundInsts, Inst1),
         ( if Inst1 = bound(Uniq, _, Zs) then

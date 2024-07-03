@@ -593,10 +593,10 @@ inst_matches_initial_4(Type, InstA, InstB, !Info) :-
 ground_matches_initial_bound_inst_list(_, _, [], !Info).
 ground_matches_initial_bound_inst_list(Uniq, Type,
         [BoundInst | BoundInsts], !Info) :-
-    BoundInst = bound_functor(ConsId, ArgInsts),
-    get_cons_id_arg_types_for_inst(!.Info ^ imi_module_info, Type, ConsId,
-        list.length(ArgInsts), Types),
-    ground_matches_initial_inst_list(Uniq, Types, ArgInsts, !Info),
+    get_cons_id_arg_types_for_bound_inst(!.Info ^ imi_module_info, Type,
+        BoundInst, ArgTypes),
+    BoundInst = bound_functor(_ConsId, ArgInsts),
+    ground_matches_initial_inst_list(Uniq, ArgTypes, ArgInsts, !Info),
     ground_matches_initial_bound_inst_list(Uniq, Type, BoundInsts, !Info).
 
 :- pred ground_matches_initial_inst_list(uniqueness::in,
@@ -801,22 +801,23 @@ uniq_matches_bound_inst_list(ModuleInfo, Uniq, BoundInsts) :-
 
 bound_inst_list_matches_initial_mt(_, [], _, !Info).
 bound_inst_list_matches_initial_mt(Type,
-        [BoundX | BoundXs], [BoundY | BoundYs], !Info) :-
-    BoundX = bound_functor(ConsIdX, ArgInstsX),
-    BoundY = bound_functor(ConsIdY, ArgInstsY),
+        [BoundInstX | BoundInstXs], [BoundInstY | BoundInstYs], !Info) :-
+    BoundInstX = bound_functor(ConsIdX, ArgInstsX),
+    BoundInstY = bound_functor(ConsIdY, ArgInstsY),
     ( if equivalent_cons_ids(ConsIdX, ConsIdY) then
-        get_cons_id_arg_types_for_inst(!.Info ^ imi_module_info, Type,
-            ConsIdX, list.length(ArgInstsX), Types),
+        get_cons_id_arg_types_for_bound_inst(!.Info ^ imi_module_info, Type,
+            BoundInstX, Types),
         inst_list_matches_initial_mt(Types, ArgInstsX, ArgInstsY, !Info),
-        bound_inst_list_matches_initial_mt(Type, BoundXs, BoundYs, !Info)
+        bound_inst_list_matches_initial_mt(Type,
+            BoundInstXs, BoundInstYs, !Info)
     else
         first_unqual_cons_id_is_greater(ConsIdX, ConsIdY),
         % ConsIdY does not occur in [X | Xs].
         % Hence [X | Xs] implicitly specifies `not_reached' for the args
         % of ConsIdY, and hence automatically matches_initial Y. We just
         % need to check that [X | Xs] matches_initial Ys.
-        bound_inst_list_matches_initial_mt(Type, [BoundX | BoundXs], BoundYs,
-            !Info)
+        bound_inst_list_matches_initial_mt(Type,
+            [BoundInstX | BoundInstXs], BoundInstYs, !Info)
     ).
 
 :- pred inst_list_matches_initial_mt(list(mer_type)::in,
@@ -1014,22 +1015,23 @@ inst_list_matches_final([Type | Types],
     inst_match_info::in, inst_match_info::out) is semidet.
 
 bound_inst_list_matches_final(_, [], _, !Info).
-bound_inst_list_matches_final(Type, [BoundX | BoundXs], [BoundY | BoundYs],
-        !Info) :-
-    BoundX = bound_functor(ConsIdX, ArgInstsX),
-    BoundY = bound_functor(ConsIdY, ArgInstsY),
+bound_inst_list_matches_final(Type,
+        [BoundInstX | BoundInstXs], [BoundInstY | BoundInstYs], !Info) :-
+    BoundInstX = bound_functor(ConsIdX, ArgInstsX),
+    BoundInstY = bound_functor(ConsIdY, ArgInstsY),
     ( if equivalent_cons_ids(ConsIdX, ConsIdY) then
-        get_cons_id_arg_types_for_inst(!.Info ^ imi_module_info, Type,
-            ConsIdX, list.length(ArgInstsX), Types),
+        get_cons_id_arg_types_for_bound_inst(!.Info ^ imi_module_info, Type,
+            BoundInstX, Types),
         inst_list_matches_final(Types, ArgInstsX, ArgInstsY, !Info),
-        bound_inst_list_matches_final(Type, BoundXs, BoundYs, !Info)
+        bound_inst_list_matches_final(Type, BoundInstXs, BoundInstYs, !Info)
     else
         first_unqual_cons_id_is_greater(ConsIdX, ConsIdY),
         % ConsIdY does not occur in [X | Xs].
         % Hence [X | Xs] implicitly specifies `not_reached' for the args
         % of ConsIdY, and hence automatically matches_final Y. We just
         % need to check that [X | Xs] matches_final Ys.
-        bound_inst_list_matches_final(Type, [BoundX | BoundXs], BoundYs, !Info)
+        bound_inst_list_matches_final(Type, [BoundInstX | BoundInstXs],
+            BoundInstYs, !Info)
     ).
 
 inst_is_at_least_as_instantiated(ModuleInfo, Type, InstA, InstB) :-
@@ -1191,23 +1193,23 @@ inst_list_matches_binding([Type | Types],
     inst_match_info::in, inst_match_info::out) is semidet.
 
 bound_inst_list_matches_binding(_, [], _, !Info).
-bound_inst_list_matches_binding(Type, [BoundX | BoundXs], [BoundY | BoundYs],
-        !Info) :-
-    BoundX = bound_functor(ConsIdX, ArgInstsX),
-    BoundY = bound_functor(ConsIdY, ArgInstsY),
+bound_inst_list_matches_binding(Type,
+        [BoundInstX | BoundInstXs], [BoundInstY | BoundInstYs], !Info) :-
+    BoundInstX = bound_functor(ConsIdX, ArgInstsX),
+    BoundInstY = bound_functor(ConsIdY, ArgInstsY),
     ( if equivalent_cons_ids(ConsIdX, ConsIdY) then
-        get_cons_id_arg_types_for_inst(!.Info ^ imi_module_info, Type,
-            ConsIdX, list.length(ArgInstsX), Types),
+        get_cons_id_arg_types_for_bound_inst(!.Info ^ imi_module_info, Type,
+            BoundInstX, Types),
         inst_list_matches_binding(Types, ArgInstsX, ArgInstsY, !Info),
-        bound_inst_list_matches_binding(Type, BoundXs, BoundYs, !Info)
+        bound_inst_list_matches_binding(Type, BoundInstXs, BoundInstYs, !Info)
     else
         first_unqual_cons_id_is_greater(ConsIdX, ConsIdY),
         % ConsIdX does not occur in [X | Xs].
         % Hence [X | Xs] implicitly specifies `not_reached' for the args
         % of ConsIdY, and hence automatically matches_binding Y. We just
         % need to check that [X | Xs] matches_binding Ys.
-        bound_inst_list_matches_binding(Type, [BoundX | BoundXs], BoundYs,
-            !Info)
+        bound_inst_list_matches_binding(Type,
+            [BoundInstX | BoundInstXs], BoundInstYs, !Info)
     ).
 
 %-----------------------------------------------------------------------------%
@@ -1339,9 +1341,9 @@ inst_list_contains_nondefault_func_mode([Type | Types], [Inst | Insts],
 bound_inst_list_contains_nondefault_func_mode(_, [], _Expansions, no, !Info).
 bound_inst_list_contains_nondefault_func_mode(Type, [BoundInst | BoundInsts],
         Expansions, ContainsNonstd, !Info) :-
-    BoundInst = bound_functor(ConsId, ArgInsts),
-    get_cons_id_arg_types_for_inst(!.Info ^ imi_module_info, Type,
-        ConsId, list.length(ArgInsts), ArgTypes),
+    BoundInst = bound_functor(_ConsId, ArgInsts),
+    get_cons_id_arg_types_for_bound_inst(!.Info ^ imi_module_info, Type,
+        BoundInst, ArgTypes),
     inst_list_contains_nondefault_func_mode(ArgTypes, ArgInsts,
         Expansions, HeadContainsNonstd, !Info),
     (
