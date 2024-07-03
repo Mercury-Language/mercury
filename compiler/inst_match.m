@@ -737,7 +737,7 @@ first_unqual_cons_id_is_greater(ConsIdA, ConsIdB) :-
 ho_inst_info_matches_initial(Type, HOInstInfoA, HOInstInfoB, !Info) :-
     (
         HOInstInfoB = none_or_default_func,
-        ho_inst_info_matches_ground_2(Type, HOInstInfoA, !Info)
+        ho_inst_info_matches_ground_1(Type, HOInstInfoA, !Info)
     ;
         HOInstInfoB = higher_order(PredInstB),
         (
@@ -745,10 +745,10 @@ ho_inst_info_matches_initial(Type, HOInstInfoA, HOInstInfoB, !Info) :-
             PredInstB = pred_inst_info(pf_function, ArgModes, _, _Det),
             Arity = list.length(ArgModes),
             PredInstA = pred_inst_info_default_func_mode(Arity),
-            pred_inst_matches_2(Type, PredInstA, PredInstB, !Info)
+            pred_inst_matches_1(Type, PredInstA, PredInstB, !Info)
         ;
             HOInstInfoA = higher_order(PredInstA),
-            pred_inst_matches_2(Type, PredInstA, PredInstB, !Info)
+            pred_inst_matches_1(Type, PredInstA, PredInstB, !Info)
         )
     ).
 
@@ -933,7 +933,7 @@ inst_matches_final_3(Type, InstA, InstB, !Info) :-
             unique_matches_final(UniqA, UniqB)
         ;
             InstB = bound(UniqB, InstResultsB, BoundInstsB),
-            ho_inst_info_matches_ground_2(Type, HOInstInfoA, !Info),
+            ho_inst_info_matches_ground_1(Type, HOInstInfoA, !Info),
             unique_matches_final(UniqA, UniqB),
             ModuleInfo = !.Info ^ imi_module_info,
             inst_results_bound_inst_list_is_ground_mt(ModuleInfo, Type,
@@ -977,7 +977,7 @@ inst_matches_final_3(Type, InstA, InstB, !Info) :-
 ho_inst_info_matches_final(Type, HOInstInfoA, HOInstInfoB, !Info) :-
     (
         HOInstInfoB = none_or_default_func,
-        ho_inst_info_matches_ground_2(Type, HOInstInfoA, !Info)
+        ho_inst_info_matches_ground_1(Type, HOInstInfoA, !Info)
     ;
         HOInstInfoB = higher_order(PredInstB),
         (
@@ -985,10 +985,10 @@ ho_inst_info_matches_final(Type, HOInstInfoA, HOInstInfoB, !Info) :-
             PredInstB = pred_inst_info(pf_function, ArgModes, _, _Det),
             list.length(ArgModes, Arity),
             PredInstA = pred_inst_info_default_func_mode(Arity),
-            pred_inst_matches_2(Type, PredInstA, PredInstB, !Info)
+            pred_inst_matches_1(Type, PredInstA, PredInstB, !Info)
         ;
             HOInstInfoA = higher_order(PredInstA),
-            pred_inst_matches_2(Type, PredInstA, PredInstB, !Info)
+            pred_inst_matches_1(Type, PredInstA, PredInstB, !Info)
         )
     ).
 
@@ -1154,7 +1154,7 @@ inst_matches_binding_3(Type, InstA, InstB, !Info) :-
 ho_inst_info_matches_binding(ModuleInfo, Type, HOInstInfoA, HOInstInfoB) :-
     (
         HOInstInfoB = none_or_default_func,
-        ho_inst_info_matches_ground_mt(ModuleInfo, Type, HOInstInfoA)
+        ho_inst_info_matches_ground(ModuleInfo, Type, HOInstInfoA)
     ;
         HOInstInfoB = higher_order(PredInstB),
         (
@@ -1162,10 +1162,10 @@ ho_inst_info_matches_binding(ModuleInfo, Type, HOInstInfoA, HOInstInfoB) :-
             PredInstB = pred_inst_info(pf_function, ArgModes, _, _Det),
             Arity = list.length(ArgModes),
             PredInstA = pred_inst_info_default_func_mode(Arity),
-            pred_inst_matches_mt(ModuleInfo, Type, PredInstA, PredInstB)
+            pred_inst_matches(ModuleInfo, Type, PredInstA, PredInstB)
         ;
             HOInstInfoA = higher_order(PredInstA),
-            pred_inst_matches_mt(ModuleInfo, Type, PredInstA, PredInstB)
+            pred_inst_matches(ModuleInfo, Type, PredInstA, PredInstB)
         )
     ).
 
@@ -1263,10 +1263,7 @@ inst_contains_nondefault_func_mode_2(Type, Inst, !.Expansions, ContainsNonstd,
         !Info) :-
     (
         Inst = ground(_, HOInstInfo),
-        ( if
-            % XXX TYPE_FOR_INST Get our ancestor to pass us the type.
-            ho_inst_info_matches_ground_2(Type, HOInstInfo, !Info)
-        then
+        ( if ho_inst_info_matches_ground_1(Type, HOInstInfo, !Info) then
             ContainsNonstd = no
         else
             ContainsNonstd = yes
@@ -1359,44 +1356,30 @@ bound_inst_list_contains_nondefault_func_mode(Type, [BoundInst | BoundInsts],
 %---------------------------------------------------------------------------%
 
 ho_inst_info_matches_ground(ModuleInfo, Type, HOInstInfo) :-
-    % ZZZ
-    ho_inst_info_matches_ground_mt(ModuleInfo, Type, HOInstInfo).
-
-:- pred ho_inst_info_matches_ground_mt(module_info::in, mer_type::in,
-    ho_inst_info::in) is semidet.
-
-ho_inst_info_matches_ground_mt(ModuleInfo, Type, HOInstInfo) :-
     Info = init_inst_match_info(ModuleInfo, no_inst_var_sub, cs_none, uc_match,
         any_does_match_any, ground_matches_bound_if_complete),
-    ho_inst_info_matches_ground_2(Type, HOInstInfo, Info, _).
+    ho_inst_info_matches_ground_1(Type, HOInstInfo, Info, _).
 
-:- pred ho_inst_info_matches_ground_2(mer_type::in, ho_inst_info::in,
+:- pred ho_inst_info_matches_ground_1(mer_type::in, ho_inst_info::in,
     inst_match_info::in, inst_match_info::out) is semidet.
 
-ho_inst_info_matches_ground_2(Type, HOInstInfo, !Info) :-
+ho_inst_info_matches_ground_1(Type, HOInstInfo, !Info) :-
     (
         HOInstInfo = higher_order(PredInst),
-        pred_inst_matches_ground_2(Type, PredInst, !Info)
+        pred_inst_matches_ground_1(Type, PredInst, !Info)
     ;
         HOInstInfo = none_or_default_func
     ).
 
 pred_inst_matches_ground(ModuleInfo, Type, PredInst) :-
-    % ZZZ
-    pred_inst_matches_ground_mt(ModuleInfo, Type, PredInst).
-
-:- pred pred_inst_matches_ground_mt(module_info::in, mer_type::in,
-    pred_inst_info::in) is semidet.
-
-pred_inst_matches_ground_mt(ModuleInfo, Type, PredInst) :-
     Info = init_inst_match_info(ModuleInfo, no_inst_var_sub, cs_none, uc_match,
         any_does_match_any, ground_matches_bound_if_complete),
-    pred_inst_matches_ground_2(Type, PredInst, Info, _).
+    pred_inst_matches_ground_1(Type, PredInst, Info, _).
 
-:- pred pred_inst_matches_ground_2(mer_type::in, pred_inst_info::in,
+:- pred pred_inst_matches_ground_1(mer_type::in, pred_inst_info::in,
     inst_match_info::in, inst_match_info::out) is semidet.
 
-pred_inst_matches_ground_2(Type, PredInst, !Info) :-
+pred_inst_matches_ground_1(Type, PredInst, !Info) :-
     PredInst = pred_inst_info(PredOrFunc, ArgModes, _, _),
     (
         PredOrFunc = pf_predicate
@@ -1404,35 +1387,28 @@ pred_inst_matches_ground_2(Type, PredInst, !Info) :-
         PredOrFunc = pf_function,
         Arity = list.length(ArgModes),
         DefaultFunc = pred_inst_info_default_func_mode(Arity),
-        pred_inst_matches_2(Type, PredInst, DefaultFunc, !Info)
+        pred_inst_matches_1(Type, PredInst, DefaultFunc, !Info)
     ).
 
 %-----------------------------------------------------------------------------%
 
 pred_inst_matches(ModuleInfo, Type, PredInstA, PredInstB) :-
-    % ZZZ
-    pred_inst_matches_mt(ModuleInfo, Type, PredInstA, PredInstB).
-
-:- pred pred_inst_matches_mt(module_info::in, mer_type::in,
-    pred_inst_info::in, pred_inst_info::in) is semidet.
-
-pred_inst_matches_mt(ModuleInfo, Type, PredInstA, PredInstB) :-
     Info0 = init_inst_match_info(ModuleInfo, no_inst_var_sub, cs_none,
         uc_match, any_does_match_any, ground_matches_bound_if_complete),
-    pred_inst_matches_2(Type, PredInstA, PredInstB, Info0, _).
+    pred_inst_matches_1(Type, PredInstA, PredInstB, Info0, _).
 
-    % pred_inst_matches_2(Type, PredInstA, PredInstB, !Info)
+    % pred_inst_matches_1(Type, PredInstA, PredInstB, !Info)
     %
-    % Same as pred_inst_matches/3, except that it updates the inst_var_sub
+    % Same as pred_inst_matches/4, except that it updates the inst_var_sub
     % in the inst_match_info, and that any inst pairs in !.Info ^ expansions
     % are assumed to match_final each other. (This avoids infinite loops
     % when calling inst_matches_final on higher-order recursive insts.)
     %
-:- pred pred_inst_matches_2(mer_type::in,
+:- pred pred_inst_matches_1(mer_type::in,
     pred_inst_info::in, pred_inst_info::in,
     inst_match_info::in, inst_match_info::out) is semidet.
 
-pred_inst_matches_2(Type, PredInstA, PredInstB, !Info) :-
+pred_inst_matches_1(Type, PredInstA, PredInstB, !Info) :-
     % In the float_regs.m pass a variable may take on pred insts which differ
     % only in the arg reg lists in different branches. They should be allowed
     % to match here.
