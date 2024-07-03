@@ -1,3 +1,3 @@
 coerce_unify_tvars.m:063: In clause for predicate `head_type_params'/2:
-coerce_unify_tvars.m:063:   error: cannot coerce from [38;5;171m`list.list(V_1)'[39;49m to
+coerce_unify_tvars.m:063:   error: cannot coerce [38;5;87m`X'[39;49m from [38;5;171m`list.list(V_1)'[39;49m to
 coerce_unify_tvars.m:063:   [38;5;171m`list.list(V_2)'.[39;49m

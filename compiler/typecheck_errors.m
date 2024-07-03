@@ -42,13 +42,13 @@
     prog_context, string) = error_spec.
 
 :- func report_invalid_coerce_from_to(type_error_clause_context, prog_context,
-    tvarset, mer_type, mer_type) = error_spec.
+    prog_var, tvarset, mer_type, mer_type) = error_spec.
 
 :- func report_unresolved_coerce_from_to(type_error_clause_context,
     prog_context, prog_var, tvarset, mer_type, mer_type) = error_spec.
 
 :- func report_redundant_coerce(type_error_clause_context, prog_context,
-    tvarset, mer_type) = error_spec.
+    prog_var, tvarset, mer_type) = error_spec.
 
 %---------------------------------------------------------------------------%
 
@@ -278,7 +278,7 @@ report_missing_tvar_in_foreign_code(ClauseContext, Context, VarName) = Spec :-
 
 %---------------------------------------------------------------------------%
 
-report_invalid_coerce_from_to(ClauseContext, Context, TVarSet,
+report_invalid_coerce_from_to(ClauseContext, Context, FromVar, TVarSet,
         FromType, ToType) = Spec :-
     % XXX TYPECHECK_ERRORS
     % This code can generate some less-than-helpful diagnostics.
@@ -290,6 +290,8 @@ report_invalid_coerce_from_to(ClauseContext, Context, TVarSet,
     % unresolved. For the remaining cases, is there something we can report
     % that would be more helpful?
     InClauseForPieces = in_clause_for_pieces(ClauseContext),
+    VarSet = ClauseContext ^ tecc_varset,
+    FromVarStr = mercury_var_to_name_only_vs(VarSet, FromVar),
     FromTypeStr = mercury_type_to_string(TVarSet, print_num_only, FromType),
     ToTypeStr = mercury_type_to_string(TVarSet, print_num_only, ToType),
     OnlyDuPieces = [words("You can only coerce"),
@@ -352,7 +354,8 @@ report_invalid_coerce_from_to(ClauseContext, Context, TVarSet,
             )
         )
     ),
-    ErrorPieces = [words("error: cannot coerce from")] ++
+    ErrorPieces = [words("error: cannot coerce")] ++
+        color_as_subject([quote(FromVarStr)]) ++ [words("from")] ++
         color_as_inconsistent([quote(FromTypeStr)]) ++ [words("to")] ++
         color_as_inconsistent([quote(ToTypeStr), suffix(".")]) ++ [nl] ++
         CausePieces ++ [nl],
@@ -374,11 +377,15 @@ report_unresolved_coerce_from_to(ClauseContext, Context, FromVar, TVarSet,
     Spec = spec($pred, severity_error, phase_type_check, Context,
         InClauseForPieces ++ ErrorPieces).
 
-report_redundant_coerce(ClauseContext, Context, TVarSet, FromType) = Spec :-
+report_redundant_coerce(ClauseContext, Context, FromVar, TVarSet, FromType) =
+        Spec :-
     InClauseForPieces = in_clause_for_pieces(ClauseContext),
+    VarSet = ClauseContext ^ tecc_varset,
+    FromVarStr = mercury_var_to_name_only_vs(VarSet, FromVar),
     FromTypeStr = mercury_type_to_string(TVarSet, print_num_only, FromType),
-    ErrorPieces = [words("warning: type conversion from")] ++
-        [quote(FromTypeStr), words("to the same type is")] ++
+    ErrorPieces = [words("warning: type conversion of")] ++
+        color_as_subject([quote(FromVarStr)]) ++
+        [words("from"), quote(FromTypeStr), words("to the same type is")] ++
         color_as_incorrect([words("redundant.")]) ++ [nl],
     Severity = severity_conditional(warn_redundant_coerce, yes,
         severity_warning, no),

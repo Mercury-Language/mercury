@@ -1066,18 +1066,16 @@ report_coercion(TypeAssign, Coercion, !Info) :-
         unexpected($pred, "need to check")
     ;
         Status = unsatisfiable,
-        % XXX could include FromVar name
-        Spec = report_invalid_coerce_from_to(ClauseContext, Context, TVarSet,
-            FromType, ToType)
+        Spec = report_invalid_coerce_from_to(ClauseContext, Context, FromVar,
+            TVarSet, FromType, ToType)
     ;
         Status = not_yet_resolved,
         Spec = report_unresolved_coerce_from_to(ClauseContext, Context,
             FromVar, TVarSet, FromType, ToType)
     ;
         Status = satisfied_but_redundant,
-        % XXX could include FromVar name
-        Spec = report_redundant_coerce(ClauseContext, Context, TVarSet,
-            FromType)
+        Spec = report_redundant_coerce(ClauseContext, Context, FromVar,
+            TVarSet, FromType)
     ),
     typecheck_info_add_error(Spec, !Info).
 
