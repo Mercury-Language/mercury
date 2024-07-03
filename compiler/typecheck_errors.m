@@ -354,11 +354,17 @@ report_invalid_coerce_from_to(ClauseContext, Context, FromVar, TVarSet,
             )
         )
     ),
+    ( if strip_kind_annotation(FromType) = strip_kind_annotation(ToType) then
+        RedundantPieces =
+            [words("Also, the type conversion would be redundant anyway.")]
+    else
+        RedundantPieces = []
+    ),
     ErrorPieces = [words("error: cannot coerce")] ++
         color_as_subject([quote(FromVarStr)]) ++ [words("from")] ++
         color_as_inconsistent([quote(FromTypeStr)]) ++ [words("to")] ++
         color_as_inconsistent([quote(ToTypeStr), suffix(".")]) ++ [nl] ++
-        CausePieces ++ [nl],
+        CausePieces ++ RedundantPieces ++ [nl],
     Spec = spec($pred, severity_error, phase_type_check, Context,
         InClauseForPieces ++ ErrorPieces).
 
