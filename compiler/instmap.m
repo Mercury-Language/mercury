@@ -890,8 +890,8 @@ bind_inst_to_functor(Type, ConsId, !Inst, !ModuleInfo) :-
     list.duplicate(Arity, is_dead, ArgLives),
     list.duplicate(Arity, free, ArgInsts),
     ( if
-        abstractly_unify_inst_functor(is_dead, !.Inst, ConsId, ArgInsts,
-            ArgLives, real_unify, Type, !:Inst, _Det, !ModuleInfo)
+        abstractly_unify_inst_functor(Type, is_dead, real_unify,
+            !.Inst, ConsId, ArgInsts, ArgLives, !:Inst, _Det, !ModuleInfo)
     then
         true
     else
@@ -1556,8 +1556,8 @@ unify_instmapping_delta_loop(VarTable, [Var | Vars], InstMappingA,
                 % We can ignore the determinism of the unification: if it
                 % isn't det, then there will be a mode error or a determinism
                 % error in one of the parallel conjuncts.
-                abstractly_unify_inst(Type, is_live, InstA, InstB,
-                    fake_unify, Inst, _Det, !ModuleInfo)
+                abstractly_unify_inst(Type, is_live, fake_unify, InstA, InstB,
+                    Inst, _Det, !ModuleInfo)
             then
                 map.det_insert(Var, Inst, !InstMapping)
             else

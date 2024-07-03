@@ -179,7 +179,7 @@ modecheck_unification_var(X, Y, Unification0, UnifyContext,
     ),
     lookup_var_type(VarTable, X, TypeOfX),
     ( if
-        abstractly_unify_inst(TypeOfX, BothLive, InstOfX, InstOfY, real_unify,
+        abstractly_unify_inst(TypeOfX, BothLive, real_unify, InstOfX, InstOfY,
             UnifiedInst, Detism, ModuleInfo0, ModuleInfo1),
         % Do not allow free-free unifications if both variables are locked.
         % (Normally the checks for binding locked variables are done in
@@ -504,7 +504,7 @@ modecheck_unify_lambda(X, PredOrFunc, ArgVars, LambdaModes, LambdaDetism,
     mode_info_get_var_table(!.ModeInfo, VarTable),
     lookup_var_type(VarTable, X, TypeOfX),
     ( if
-        abstractly_unify_inst(TypeOfX, is_dead, InstOfX, InstOfY, real_unify,
+        abstractly_unify_inst(TypeOfX, is_dead, real_unify, InstOfX, InstOfY,
             UnifyInst, _Detism, ModuleInfo0, ModuleInfo1)
     then
         Inst = UnifyInst,
@@ -732,8 +732,8 @@ modecheck_unify_functor(X0, TypeOfX, ConsId0, IsExistConstruction, ArgVars0,
         % with respect to solver types.
         not would_construct_partial_term_with_solver_type(ModuleInfo0,
             VarTable, ArgVars0, InitInstOfX, InitInstsOfArgVars),
-        abstractly_unify_inst_functor(LiveX, InitInstOfX, InstConsId,
-            InitInstsOfArgVars, LiveArgs, real_unify, TypeOfX,
+        abstractly_unify_inst_functor( TypeOfX, LiveX, real_unify, InitInstOfX,
+            InstConsId, InitInstsOfArgVars, LiveArgs,
             UnifiedInst, Detism, ModuleInfo0, ModuleInfo1)
     then
         mode_info_set_module_info(ModuleInfo1, !ModeInfo),

@@ -630,8 +630,8 @@ modecheck_set_var_inst(Var0, NewInst0, MaybeUInst, !ModeInfo) :-
             ModuleInfo = ModuleInfo0,
             NewInst = NewInst0
         else if
-            abstractly_unify_inst(Type, is_dead, OldInst, NewInst0,
-                fake_unify, UnifyInst, _Det, ModuleInfo0, ModuleInfo1)
+            abstractly_unify_inst(Type, is_dead, fake_unify, OldInst, NewInst0,
+                UnifyInst, _Det, ModuleInfo0, ModuleInfo1)
         then
             ModuleInfo = ModuleInfo1,
             NewInst = UnifyInst

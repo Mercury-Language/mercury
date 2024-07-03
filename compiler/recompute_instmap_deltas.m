@@ -526,8 +526,8 @@ recompute_instmap_delta_call_args(VarTable, InstMap,
         % some parts of ArgInst0 and the corresponding parts of FinalInst
         % are free.
         % XXX There should be a better way to communicate that information.
-        abstractly_unify_inst(ArgType, is_dead, ArgInst0, FinalInst,
-            fake_unify, UnifyInst, _, !ModuleInfo)
+        abstractly_unify_inst(ArgType, is_dead, fake_unify,
+            ArgInst0, FinalInst, UnifyInst, _, !ModuleInfo)
     then
         Mode = from_to_mode(ArgInst0, UnifyInst)
     else
@@ -574,8 +574,8 @@ recompute_instmap_delta_unify(Params, Unification, UniMode0, UniMode, GoalInfo,
             VarTable = Params ^ rp_var_table,
             lookup_var_type(VarTable, LHSVar, LHSType),
             ( if
-                abstractly_unify_inst(LHSType, is_dead, LHSInitialInst,
-                    DeltaInst, fake_unify, LHSFinalInstPrime, _Detism,
+                abstractly_unify_inst(LHSType, is_dead, fake_unify,
+                    LHSInitialInst, DeltaInst, LHSFinalInstPrime, _Detism,
                     ModuleInfo0, ModuleInfo1)
             then
                 LHSFinalInst = LHSFinalInstPrime,

@@ -360,7 +360,7 @@ handle_inst_var_subs_2(Recurse, Continue, Type, InstA, InstB, !Info) :-
         % We pass `Live = is_dead' because we want
         % abstractly_unify(unique, unique) = unique, not shared.
         ModuleInfo0 = !.Info ^ imi_module_info,
-        abstractly_unify_inst(Type, is_dead, InstA, SubInstB, fake_unify,
+        abstractly_unify_inst(Type, is_dead, fake_unify, InstA, SubInstB,
             UnifyInst, _Det, ModuleInfo0, ModuleInfo),
         !Info ^ imi_module_info := ModuleInfo,
         update_inst_var_sub(InstVarsB, UnifyInst, Type, !Info),
