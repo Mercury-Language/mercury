@@ -192,7 +192,8 @@ abstractly_unify_inst_2(Type, Live, Real, InstA, InstB, Inst, Detism,
     % XXX Could be extended to handle `any' insts better.
     %
 :- pred abstractly_unify_inst_3(mer_type::in, is_live::in, unify_is_real::in,
-    mer_inst::in, mer_inst::in, mer_inst::out, determinism::out,
+    mer_inst::in(mer_inst_expanded), mer_inst::in(mer_inst_expanded),
+    mer_inst::out, determinism::out,
     module_info::in, module_info::out) is semidet.
 
 abstractly_unify_inst_3(Type, Live, Real, InstA, InstB, Inst, Detism,
@@ -245,9 +246,7 @@ abstractly_unify_inst_3(Type, Live, Real, InstA, InstB, Inst, Detism,
                 abstractly_unify_constrained_inst_vars(Type, Live, Real,
                     InstVarsB, SubInstB, InstA, Inst, Detism, !ModuleInfo)
             ;
-                ( InstB = defined_inst(_)
-                ; InstB = inst_var(_)
-                ),
+                InstB = inst_var(_),
                 % XXX Failing here preserves the old behavior of this predicate
                 % for these cases, but I am not convinced it is the right thing
                 % to do.
@@ -349,9 +348,7 @@ abstractly_unify_inst_3(Type, Live, Real, InstA, InstB, Inst, Detism,
             abstractly_unify_constrained_inst_vars(Type, Live, Real,
                 InstVarsB, SubInstB, InstA, Inst, Detism, !ModuleInfo)
         ;
-            ( InstB = defined_inst(_)
-            ; InstB = inst_var(_)
-            ),
+            InstB = inst_var(_),
             % XXX Failing here preserves the old behavior of this predicate
             % for these cases, but I am not convinced it is the right thing
             % to do.
@@ -424,9 +421,7 @@ abstractly_unify_inst_3(Type, Live, Real, InstA, InstB, Inst, Detism,
                 abstractly_unify_constrained_inst_vars(Type, Live, Real,
                     InstVarsB, SubInstB, InstA, Inst, Detism, !ModuleInfo)
             ;
-                ( InstB = defined_inst(_)
-                ; InstB = inst_var(_)
-                ),
+                InstB = inst_var(_),
                 % XXX Failing here preserves the old behavior of this predicate
                 % for these cases, but I am not convinced it is the right thing
                 % to do.
@@ -495,9 +490,7 @@ abstractly_unify_inst_3(Type, Live, Real, InstA, InstB, Inst, Detism,
                 abstractly_unify_constrained_inst_vars(Type, Live, Real,
                     InstVarsB, SubInstB, InstA, Inst, Detism, !ModuleInfo)
             ;
-                ( InstB = defined_inst(_)
-                ; InstB = inst_var(_)
-                ),
+                InstB = inst_var(_),
                 % XXX Failing here preserves the old behavior of this predicate
                 % for these cases, but I am not convinced it is the right thing
                 % to do.
@@ -512,9 +505,7 @@ abstractly_unify_inst_3(Type, Live, Real, InstA, InstB, Inst, Detism,
         abstractly_unify_constrained_inst_vars(Type, Live, Real,
             InstVarsA, SubInstA, InstB, Inst, Detism, !ModuleInfo)
     ;
-        ( InstA = defined_inst(_)
-        ; InstA = inst_var(_)
-        ),
+        InstA = inst_var(_),
         % XXX Failing here preserves the old behavior of this predicate
         % for these cases, but I am not convinced it is the right thing to do.
         % Why are we not handling defined_inst by looking it up?
@@ -563,7 +554,7 @@ abstractly_unify_inst_functor(Type, Live, Real, InstA0,
         ConsIdB, ArgInstsB, ArgLives, Inst, Detism, !ModuleInfo).
 
 :- pred abstractly_unify_inst_functor_2(mer_type::in, is_live::in,
-    unify_is_real::in, mer_inst::in,
+    unify_is_real::in, mer_inst::in(mer_inst_expanded),
     cons_id::in, list(mer_inst)::in, list(is_live)::in,
     mer_inst::out, determinism::out,
     module_info::in, module_info::out) is semidet.
@@ -669,9 +660,7 @@ abstractly_unify_inst_functor_2(Type, Live, Real, InstA,
             Inst = Inst0
         )
     ;
-        ( InstA = defined_inst(_)
-        ; InstA = inst_var(_)
-        ),
+        InstA = inst_var(_),
         % XXX Failing here preserves the old behavior of this predicate
         % for these cases, but I am not convinced it is the right thing to do.
         % Why are we not handling defined_inst by looking it up?
@@ -815,6 +804,7 @@ abstractly_unify_bound_inst_list_lives(Type, Real, [BoundInstA | BoundInstsA],
         ConsIdB, ArgInstsB, LivesB, BoundInsts, Detism, !ModuleInfo) :-
     BoundInstA = bound_functor(ConsIdA, ArgInstsA),
     ( if equivalent_cons_ids(ConsIdA, ConsIdB) then
+        % XXX ArgTypes seems to be a invariant of this loop.
         get_cons_id_arg_types_for_inst(!.ModuleInfo, Type, ConsIdB, ArgInstsB,
             ArgTypes),
         abstractly_unify_inst_list_lives(ArgTypes, Real, ArgInstsA, ArgInstsB,
