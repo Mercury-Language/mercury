@@ -226,15 +226,15 @@ inst_matches_initial_sub(Type, InstA, InstB, !ModuleInfo, !Sub) :-
     ).
 
 inst_matches_initial_no_implied_modes(ModuleInfo, Type, InstA, InstB) :-
-    Info0 = init_inst_match_info(ModuleInfo, no_inst_var_sub, cs_forward,
+    Info0 = init_inst_match_info(ModuleInfo, no_inst_var_sub,
         uc_match, any_does_match_any, ground_matches_bound_if_complete),
-    inst_matches_final_mt(Type, InstA, InstB, Info0, _).
+    inst_matches_final_mt(cs_forward, Type, InstA, InstB, Info0, _).
 
 inst_matches_initial_no_implied_modes_sub(Type, InstA, InstB,
         !ModuleInfo, !Sub) :-
-    Info0 = init_inst_match_info(!.ModuleInfo, inst_var_sub(!.Sub), cs_forward,
+    Info0 = init_inst_match_info(!.ModuleInfo, inst_var_sub(!.Sub),
         uc_match, any_does_match_any, ground_matches_bound_if_complete),
-    inst_matches_final_mt(Type, InstA, InstB, Info0, Info),
+    inst_matches_final_mt(cs_forward, Type, InstA, InstB, Info0, Info),
     !:ModuleInfo = Info ^ imi_module_info,
     inst_var_sub(!:Sub) = Info ^ imi_maybe_sub.
 
@@ -243,32 +243,35 @@ inst_matches_initial_no_implied_modes_sub(Type, InstA, InstB,
     maybe_inst_var_sub::in, maybe_inst_var_sub::out) is semidet.
 
 inst_matches_initial_1(Type, InstA, InstB, !ModuleInfo, !MaybeSub) :-
-    Info0 = init_inst_match_info(!.ModuleInfo, !.MaybeSub, cs_forward,
+    Info0 = init_inst_match_info(!.ModuleInfo, !.MaybeSub,
         uc_match, any_does_match_any, ground_matches_bound_if_complete),
-    inst_matches_initial_mt(Type, InstA, InstB, Info0, Info),
+    inst_matches_initial_mt(cs_forward, Type, InstA, InstB, Info0, Info),
     !:ModuleInfo = Info ^ imi_module_info,
     !:MaybeSub = Info ^ imi_maybe_sub.
 
-:- pred inst_matches_initial_mt(mer_type::in, mer_inst::in, mer_inst::in,
+:- pred inst_matches_initial_mt(calculate_sub::in, mer_type::in,
+    mer_inst::in, mer_inst::in,
     inst_match_info::in, inst_match_info::out) is semidet.
 
-inst_matches_initial_mt(Type, InstA, InstB, !Info) :-
+inst_matches_initial_mt(CalcSub, Type, InstA, InstB, !Info) :-
     ThisExpansion = inst_match_inputs(InstA, InstB, Type),
     Expansions0 = !.Info ^ imi_expansions,
     ( if expansion_insert_new(ThisExpansion, Expansions0, Expansions) then
         !Info ^ imi_expansions := Expansions,
         inst_expand(!.Info ^ imi_module_info, InstA, ExpandedInstA),
         inst_expand(!.Info ^ imi_module_info, InstB, ExpandedInstB),
-        handle_inst_var_subs(inst_matches_initial_mt, inst_matches_initial_4,
+        handle_inst_var_subs(CalcSub,
+            inst_matches_initial_mt, inst_matches_initial_4,
             Type, ExpandedInstA, ExpandedInstB, !Info)
     else
         true
     ).
 
-:- pred inst_matches_initial_4(mer_type::in, mer_inst::in, mer_inst::in,
+:- pred inst_matches_initial_4(calculate_sub::in, mer_type::in,
+    mer_inst::in, mer_inst::in,
     inst_match_info::in, inst_match_info::out) is semidet.
 
-inst_matches_initial_4(Type, InstA, InstB, !Info) :-
+inst_matches_initial_4(CalcSub, Type, InstA, InstB, !Info) :-
     % To avoid infinite regress, we assume that inst_matches_initial is true
     % for any pairs of insts which occur in `Expansions'.
     %
@@ -282,19 +285,20 @@ inst_matches_initial_4(Type, InstA, InstB, !Info) :-
             !.Info ^ imi_any_matches_any = any_does_match_any,
             compare_uniqueness(!.Info ^ imi_uniqueness_comparison,
                 UniqA, UniqB),
-            ho_inst_info_matches_initial(Type, HOInstInfoA, HOInstInfoB, !Info)
+            ho_inst_info_matches_initial(CalcSub, Type,
+                HOInstInfoA, HOInstInfoB, !Info)
         ;
             InstB = free
         ;
             InstB = ground(_, _),
             maybe_any_to_bound(!.Info ^ imi_module_info, Type, UniqA,
                 HOInstInfoA, NextInstA),
-            inst_matches_initial_mt(Type, NextInstA, InstB, !Info)
+            inst_matches_initial_mt(CalcSub, Type, NextInstA, InstB, !Info)
         ;
             InstB = bound(_, _, _),
             maybe_any_to_bound(!.Info ^ imi_module_info, Type, UniqA,
                 HOInstInfoA, NextInstA),
-            inst_matches_initial_mt(Type, NextInstA, InstB, !Info)
+            inst_matches_initial_mt(CalcSub, Type, NextInstA, InstB, !Info)
         )
     ;
         InstA = free,
@@ -307,7 +311,8 @@ inst_matches_initial_4(Type, InstA, InstB, !Info) :-
                 UniqA, UniqB),
             compare_bound_inst_list_uniq(!.Info ^ imi_module_info,
                 !.Info ^ imi_uniqueness_comparison, BoundInstsA, UniqB),
-            inst_contains_nondefault_func_mode_1(Type, InstA, no, !Info)
+            inst_contains_nondefault_func_mode_1(CalcSub, Type, InstA, no,
+                !Info)
         ;
             InstB = free
         ;
@@ -320,7 +325,7 @@ inst_matches_initial_4(Type, InstA, InstB, !Info) :-
             else
                 compare_uniqueness(!.Info ^ imi_uniqueness_comparison,
                     UniqA, UniqB),
-                bound_inst_list_matches_initial_mt(Type,
+                bound_inst_list_matches_initial_mt(CalcSub, Type,
                     BoundInstsA, BoundInstsB, !Info)
             )
         ;
@@ -331,7 +336,8 @@ inst_matches_initial_4(Type, InstA, InstB, !Info) :-
                 Type, InstResultsA, BoundInstsA),
             compare_bound_inst_list_uniq(!.Info ^ imi_module_info,
                 !.Info ^ imi_uniqueness_comparison, BoundInstsA, UniqB),
-            inst_contains_nondefault_func_mode_1(Type, InstA, no, !Info)
+            inst_contains_nondefault_func_mode_1(CalcSub, Type, InstA, no,
+                !Info)
         )
     ;
         InstA = ground(UniqA, HOInstInfoA),
@@ -339,8 +345,8 @@ inst_matches_initial_4(Type, InstA, InstB, !Info) :-
             InstB = any(UniqB, HOInstInfoB),
             compare_uniqueness(!.Info ^ imi_uniqueness_comparison,
                 UniqA, UniqB),
-            ho_inst_info_matches_initial(Type, HOInstInfoA, HOInstInfoB,
-                !Info)
+            ho_inst_info_matches_initial(CalcSub, Type,
+                HOInstInfoA, HOInstInfoB, !Info)
         ;
             InstB = free
         ;
@@ -352,13 +358,14 @@ inst_matches_initial_4(Type, InstA, InstB, !Info) :-
                 UniqA, UniqB),
             bound_inst_list_is_complete_for_type(ModuleInfo, set.init, Type,
                 BoundInstsB),
-            ground_matches_initial_bound_inst_list(UniqA, Type,
+            ground_matches_initial_bound_inst_list(CalcSub, UniqA, Type,
                 BoundInstsB, !Info)
         ;
             InstB = ground(UniqB, HOInstInfoB),
             compare_uniqueness(!.Info ^ imi_uniqueness_comparison,
                 UniqA, UniqB),
-            ho_inst_info_matches_initial(Type, HOInstInfoA, HOInstInfoB, !Info)
+            ho_inst_info_matches_initial(CalcSub, Type,
+                HOInstInfoA, HOInstInfoB, !Info)
         )
     ;
         InstA = not_reached
@@ -377,29 +384,30 @@ inst_matches_initial_4(Type, InstA, InstB, !Info) :-
     % This predicate assumes that the check of
     % `bound_inst_list_is_complete_for_type' is done by the caller.
     %
-:- pred ground_matches_initial_bound_inst_list(uniqueness::in,
-    mer_type::in, list(bound_inst)::in,
+:- pred ground_matches_initial_bound_inst_list(calculate_sub::in,
+    uniqueness::in, mer_type::in, list(bound_inst)::in,
     inst_match_info::in, inst_match_info::out) is semidet.
 
-ground_matches_initial_bound_inst_list(_, _, [], !Info).
-ground_matches_initial_bound_inst_list(Uniq, Type,
+ground_matches_initial_bound_inst_list(_, _, _, [], !Info).
+ground_matches_initial_bound_inst_list(CalcSub, Uniq, Type,
         [BoundInst | BoundInsts], !Info) :-
     get_cons_id_arg_types_for_bound_inst(!.Info ^ imi_module_info, Type,
         BoundInst, ArgTypes),
     BoundInst = bound_functor(_ConsId, ArgInsts),
-    ground_matches_initial_inst_list(Uniq, ArgTypes, ArgInsts, !Info),
-    ground_matches_initial_bound_inst_list(Uniq, Type, BoundInsts, !Info).
+    ground_matches_initial_inst_list(CalcSub, Uniq, ArgTypes, ArgInsts, !Info),
+    ground_matches_initial_bound_inst_list(CalcSub, Uniq, Type, BoundInsts,
+        !Info).
 
-:- pred ground_matches_initial_inst_list(uniqueness::in,
+:- pred ground_matches_initial_inst_list(calculate_sub::in, uniqueness::in,
     list(mer_type)::in, list(mer_inst)::in,
     inst_match_info::in, inst_match_info::out) is semidet.
 
-ground_matches_initial_inst_list(_, [], [], !Info).
-ground_matches_initial_inst_list(Uniq,
+ground_matches_initial_inst_list(_, _, [], [], !Info).
+ground_matches_initial_inst_list(CalcSub, Uniq,
         [Type | Types], [Inst | Insts], !Info) :-
     Ground = ground(Uniq, none_or_default_func),
-    inst_matches_initial_mt(Type, Ground, Inst, !Info),
-    ground_matches_initial_inst_list(Uniq, Types, Insts, !Info).
+    inst_matches_initial_mt(CalcSub, Type, Ground, Inst, !Info),
+    ground_matches_initial_inst_list(CalcSub, Uniq, Types, Insts, !Info).
 
 %-----------------------------------------------------------------------------%
 
@@ -521,26 +529,25 @@ first_unqual_cons_id_is_greater(ConsIdA, ConsIdB) :-
     % This predicate checks if two ho_inst_infos match_initial.
     % It does not check uniqueness.
     %
-:- pred ho_inst_info_matches_initial(mer_type::in,
+:- pred ho_inst_info_matches_initial(calculate_sub::in, mer_type::in,
     ho_inst_info::in, ho_inst_info::in,
     inst_match_info::in, inst_match_info::out) is semidet.
 
-ho_inst_info_matches_initial(Type, HOInstInfoA, HOInstInfoB, !Info) :-
+ho_inst_info_matches_initial(CalcSub, Type, HOInstInfoA, HOInstInfoB, !Info) :-
     (
         HOInstInfoB = none_or_default_func,
-        ho_inst_info_matches_ground_1(Type, HOInstInfoA, !Info)
+        ho_inst_info_matches_ground_1(CalcSub, Type, HOInstInfoA, !Info)
     ;
         HOInstInfoB = higher_order(PredInstB),
         (
             HOInstInfoA = none_or_default_func,
             PredInstB = pred_inst_info(pf_function, ArgModes, _, _Det),
             Arity = list.length(ArgModes),
-            PredInstA = pred_inst_info_default_func_mode(Arity),
-            pred_inst_matches_1(Type, PredInstA, PredInstB, !Info)
+            PredInstA = pred_inst_info_default_func_mode(Arity)
         ;
-            HOInstInfoA = higher_order(PredInstA),
-            pred_inst_matches_1(Type, PredInstA, PredInstB, !Info)
-        )
+            HOInstInfoA = higher_order(PredInstA)
+        ),
+        pred_inst_matches_1(CalcSub, Type, PredInstA, PredInstB, !Info)
     ).
 
 %-----------------------------------------------------------------------------%
@@ -586,61 +593,64 @@ uniq_matches_bound_inst_list(ModuleInfo, Uniq, BoundInsts) :-
     % that all other constructors must have all their arguments `not_reached'.)
     % The code here makes use of the fact that the bound_inst lists are sorted.
     %
-:- pred bound_inst_list_matches_initial_mt(mer_type::in,
+:- pred bound_inst_list_matches_initial_mt(calculate_sub::in, mer_type::in,
     list(bound_inst)::in, list(bound_inst)::in,
     inst_match_info::in, inst_match_info::out) is semidet.
 
-bound_inst_list_matches_initial_mt(_, [], _, !Info).
-bound_inst_list_matches_initial_mt(Type,
+bound_inst_list_matches_initial_mt(_, _, [], _, !Info).
+bound_inst_list_matches_initial_mt(CalcSub, Type,
         [BoundInstX | BoundInstXs], [BoundInstY | BoundInstYs], !Info) :-
     BoundInstX = bound_functor(ConsIdX, ArgInstsX),
     BoundInstY = bound_functor(ConsIdY, ArgInstsY),
     ( if equivalent_cons_ids(ConsIdX, ConsIdY) then
         get_cons_id_arg_types_for_bound_inst(!.Info ^ imi_module_info, Type,
             BoundInstX, Types),
-        inst_list_matches_initial_mt(Types, ArgInstsX, ArgInstsY, !Info),
-        bound_inst_list_matches_initial_mt(Type,
+        inst_list_matches_initial_mt(CalcSub, Types, ArgInstsX, ArgInstsY,
+            !Info),
+        bound_inst_list_matches_initial_mt(CalcSub, Type,
             BoundInstXs, BoundInstYs, !Info)
     else
         first_unqual_cons_id_is_greater(ConsIdX, ConsIdY),
-        % ConsIdY does not occur in [X | Xs].
-        % Hence [X | Xs] implicitly specifies `not_reached' for the args
-        % of ConsIdY, and hence automatically matches_initial Y. We just
-        % need to check that [X | Xs] matches_initial Ys.
-        bound_inst_list_matches_initial_mt(Type,
+        % ConsIdY does not occur in [BoundInstX | BoundInstXs].
+        % Hence [BoundInstX | BoundInstXs] implicitly specifies `not_reached'
+        % for the args of ConsIdY, and hence automatically matches_initial Y.
+        % We just need to check that [BoundInstX | BoundInstXs]
+        % matches_initial BoundInstsYs.
+        bound_inst_list_matches_initial_mt(CalcSub, Type,
             [BoundInstX | BoundInstXs], BoundInstYs, !Info)
     ).
 
-:- pred inst_list_matches_initial_mt(list(mer_type)::in,
+:- pred inst_list_matches_initial_mt(calculate_sub::in, list(mer_type)::in,
     list(mer_inst)::in, list(mer_inst)::in,
     inst_match_info::in, inst_match_info::out) is semidet.
 
-inst_list_matches_initial_mt([], [], [], !Info).
-inst_list_matches_initial_mt([Type | Types],
+inst_list_matches_initial_mt(_, [], [], [], !Info).
+inst_list_matches_initial_mt(CalcSub, [Type | Types],
         [InstX | InstXs], [InstY | InstYs], !Info) :-
-    inst_matches_initial_mt(Type, InstX, InstY, !Info),
-    inst_list_matches_initial_mt(Types, InstXs, InstYs, !Info).
+    inst_matches_initial_mt(CalcSub, Type, InstX, InstY, !Info),
+    inst_list_matches_initial_mt(CalcSub, Types, InstXs, InstYs, !Info).
 
 %-----------------------------------------------------------------------------%
 
 inst_matches_final(ModuleInfo, Type, InstA, InstB) :-
-    Info0 = init_inst_match_info(ModuleInfo, no_inst_var_sub, cs_none,
+    Info0 = init_inst_match_info(ModuleInfo, no_inst_var_sub,
         uc_match, any_does_match_any, ground_matches_bound_if_complete),
-    inst_matches_final_mt(Type, InstA, InstB, Info0, _).
+    inst_matches_final_mt(cs_none, Type, InstA, InstB, Info0, _).
 
 inst_matches_final_typed(ModuleInfo, Type, InstA, InstB) :-
     inst_matches_final_gmb(ModuleInfo, ground_matches_bound_if_complete,
         Type, InstA, InstB).
 
 inst_matches_final_gmb(ModuleInfo, GroundMatchesBound, Type, InstA, InstB) :-
-    Info0 = init_inst_match_info(ModuleInfo, no_inst_var_sub, cs_none,
+    Info0 = init_inst_match_info(ModuleInfo, no_inst_var_sub,
         uc_match, any_does_match_any, GroundMatchesBound),
-    inst_matches_final_mt(Type, InstA, InstB, Info0, _).
+    inst_matches_final_mt(cs_none, Type, InstA, InstB, Info0, _).
 
-:- pred inst_matches_final_mt(mer_type::in, mer_inst::in, mer_inst::in,
+:- pred inst_matches_final_mt(calculate_sub::in, mer_type::in,
+    mer_inst::in, mer_inst::in,
     inst_match_info::in, inst_match_info::out) is semidet.
 
-inst_matches_final_mt(Type, InstA, InstB, !Info) :-
+inst_matches_final_mt(CalcSub, Type, InstA, InstB, !Info) :-
     ( if InstA = InstB then
         true
     else
@@ -650,33 +660,36 @@ inst_matches_final_mt(Type, InstA, InstB, !Info) :-
             !Info ^ imi_expansions := Expansions,
             inst_expand(!.Info ^ imi_module_info, InstA, ExpandedInstA),
             inst_expand(!.Info ^ imi_module_info, InstB, ExpandedInstB),
-            handle_inst_var_subs(inst_matches_final_mt, inst_matches_final_3,
+            handle_inst_var_subs(CalcSub,
+                inst_matches_final_mt, inst_matches_final_3,
                 Type, ExpandedInstA, ExpandedInstB, !Info)
         else
             true
         )
     ).
 
-:- pred inst_matches_final_3(mer_type::in, mer_inst::in, mer_inst::in,
+:- pred inst_matches_final_3(calculate_sub::in, mer_type::in,
+    mer_inst::in, mer_inst::in,
     inst_match_info::in, inst_match_info::out) is semidet.
 
-inst_matches_final_3(Type, InstA, InstB, !Info) :-
+inst_matches_final_3(CalcSub, Type, InstA, InstB, !Info) :-
     (
         InstA = any(UniqA, HOInstInfoA),
         (
             InstB = any(UniqB, HOInstInfoB),
-            ho_inst_info_matches_final(Type, HOInstInfoA, HOInstInfoB, !Info),
+            ho_inst_info_matches_final(CalcSub, Type,
+                HOInstInfoA, HOInstInfoB, !Info),
             unique_matches_final(UniqA, UniqB)
         ;
             InstB = ground(_, _),
             maybe_any_to_bound(!.Info ^ imi_module_info, Type, UniqA,
                 HOInstInfoA, NextInstA),
-            inst_matches_final_mt(Type, NextInstA, InstB, !Info)
+            inst_matches_final_mt(CalcSub, Type, NextInstA, InstB, !Info)
         ;
             InstB = bound(_, _, _),
             maybe_any_to_bound(!.Info ^ imi_module_info, Type, UniqA,
                 HOInstInfoA, NextInstA),
-            inst_matches_final_mt(Type, NextInstA, InstB, !Info)
+            inst_matches_final_mt(CalcSub, Type, NextInstA, InstB, !Info)
         )
     ;
         InstA = free,
@@ -702,12 +715,13 @@ inst_matches_final_3(Type, InstA, InstB, !Info) :-
             % in modecheck_call.m.
             inst_results_bound_inst_list_is_ground_or_any(
                 !.Info ^ imi_module_info, InstResultsA, BoundInstsA),
-            inst_contains_nondefault_func_mode_1(Type, InstA, no, !Info)
+            inst_contains_nondefault_func_mode_1(CalcSub, Type, InstA, no,
+                !Info)
         ;
             InstB = bound(UniqB, _InstResultsB, BoundInstsB),
             unique_matches_final(UniqA, UniqB),
-            bound_inst_list_matches_final(Type, BoundInstsA, BoundInstsB,
-                !Info)
+            bound_inst_list_matches_final(CalcSub, Type,
+                BoundInstsA, BoundInstsB, !Info)
         ;
             InstB = ground(UniqB, none_or_default_func),
             unique_matches_final(UniqA, UniqB),
@@ -715,23 +729,26 @@ inst_matches_final_3(Type, InstA, InstB, !Info) :-
                 Type, InstResultsA, BoundInstsA),
             bound_inst_list_matches_uniq(!.Info ^ imi_module_info, UniqB,
                 BoundInstsA),
-            inst_contains_nondefault_func_mode_1(Type, InstA, no, !Info)
+            inst_contains_nondefault_func_mode_1(CalcSub, Type, InstA, no,
+                !Info)
         )
     ;
         InstA = ground(UniqA, HOInstInfoA),
         (
             InstB = any(UniqB, HOInstInfoB),
-            ho_inst_info_matches_final(Type, HOInstInfoA, HOInstInfoB, !Info),
+            ho_inst_info_matches_final(CalcSub, Type,
+                HOInstInfoA, HOInstInfoB, !Info),
             unique_matches_final(UniqA, UniqB)
         ;
             InstB = bound(UniqB, InstResultsB, BoundInstsB),
-            ho_inst_info_matches_ground_1(Type, HOInstInfoA, !Info),
+            ho_inst_info_matches_ground_1(CalcSub, Type, HOInstInfoA, !Info),
             unique_matches_final(UniqA, UniqB),
             ModuleInfo = !.Info ^ imi_module_info,
             inst_results_bound_inst_list_is_ground_mt(ModuleInfo, Type,
                 InstResultsB, BoundInstsB),
             uniq_matches_bound_inst_list(ModuleInfo, UniqA, BoundInstsB),
-            inst_contains_nondefault_func_mode_1(Type, InstB, no, !Info),
+            inst_contains_nondefault_func_mode_1(CalcSub, Type, InstB, no,
+                !Info),
             (
                 % This check can succeed only if the type is known.
                 bound_inst_list_is_complete_for_type(ModuleInfo, set.init,
@@ -745,7 +762,8 @@ inst_matches_final_3(Type, InstA, InstB, !Info) :-
             )
         ;
             InstB = ground(UniqB, HOInstInfoB),
-            ho_inst_info_matches_final(Type, HOInstInfoA, HOInstInfoB, !Info),
+            ho_inst_info_matches_final(CalcSub, Type,
+                HOInstInfoA, HOInstInfoB, !Info),
             unique_matches_final(UniqA, UniqB)
         )
     ;
@@ -756,20 +774,20 @@ inst_matches_final_3(Type, InstA, InstB, !Info) :-
             % Constrained_inst_vars match_final only if InstVarsA contains
             % all the variables in InstVarsB.
             set.subset(InstVarsB, InstVarsA),
-            inst_matches_final_mt(Type, SubInstA, SubInstB, !Info)
+            inst_matches_final_mt(CalcSub, Type, SubInstA, SubInstB, !Info)
         else
-            inst_matches_final_mt(Type, SubInstA, InstB, !Info)
+            inst_matches_final_mt(CalcSub, Type, SubInstA, InstB, !Info)
         )
     ).
 
-:- pred ho_inst_info_matches_final(mer_type::in,
+:- pred ho_inst_info_matches_final(calculate_sub::in, mer_type::in,
     ho_inst_info::in, ho_inst_info::in,
     inst_match_info::in, inst_match_info::out) is semidet.
 
-ho_inst_info_matches_final(Type, HOInstInfoA, HOInstInfoB, !Info) :-
+ho_inst_info_matches_final(CalcSub, Type, HOInstInfoA, HOInstInfoB, !Info) :-
     (
         HOInstInfoB = none_or_default_func,
-        ho_inst_info_matches_ground_1(Type, HOInstInfoA, !Info)
+        ho_inst_info_matches_ground_1(CalcSub, Type, HOInstInfoA, !Info)
     ;
         HOInstInfoB = higher_order(PredInstB),
         (
@@ -777,22 +795,22 @@ ho_inst_info_matches_final(Type, HOInstInfoA, HOInstInfoB, !Info) :-
             PredInstB = pred_inst_info(pf_function, ArgModes, _, _Det),
             list.length(ArgModes, Arity),
             PredInstA = pred_inst_info_default_func_mode(Arity),
-            pred_inst_matches_1(Type, PredInstA, PredInstB, !Info)
+            pred_inst_matches_1(CalcSub, Type, PredInstA, PredInstB, !Info)
         ;
             HOInstInfoA = higher_order(PredInstA),
-            pred_inst_matches_1(Type, PredInstA, PredInstB, !Info)
+            pred_inst_matches_1(CalcSub, Type, PredInstA, PredInstB, !Info)
         )
     ).
 
-:- pred inst_list_matches_final(list(mer_type)::in,
+:- pred inst_list_matches_final(calculate_sub::in, list(mer_type)::in,
     list(mer_inst)::in, list(mer_inst)::in,
     inst_match_info::in, inst_match_info::out) is semidet.
 
-inst_list_matches_final([], [], [], !Info).
-inst_list_matches_final([Type | Types],
+inst_list_matches_final(_, [], [], [], !Info).
+inst_list_matches_final(CalcSub, [Type | Types],
         [ArgInstA | ArgInstsA], [ArgInstB | ArgInstsB], !Info) :-
-    inst_matches_final_mt(Type, ArgInstA, ArgInstB, !Info),
-    inst_list_matches_final(Types, ArgInstsA, ArgInstsB, !Info).
+    inst_matches_final_mt(CalcSub, Type, ArgInstA, ArgInstB, !Info),
+    inst_list_matches_final(CalcSub, Types, ArgInstsA, ArgInstsB, !Info).
 
     % Here we check that the functors in the first list are a subset of the
     % functors in the second list. (If a bound(...) inst only specifies
@@ -801,53 +819,54 @@ inst_list_matches_final([Type | Types],
     % `not_reached'.) The code here makes use of the fact that the bound_inst
     % lists are sorted.
     %
-:- pred bound_inst_list_matches_final(mer_type::in,
+:- pred bound_inst_list_matches_final(calculate_sub::in, mer_type::in,
     list(bound_inst)::in, list(bound_inst)::in,
     inst_match_info::in, inst_match_info::out) is semidet.
 
-bound_inst_list_matches_final(_, [], _, !Info).
-bound_inst_list_matches_final(Type,
+bound_inst_list_matches_final(_, _, [], _, !Info).
+bound_inst_list_matches_final(CalcSub, Type,
         [BoundInstX | BoundInstXs], [BoundInstY | BoundInstYs], !Info) :-
     BoundInstX = bound_functor(ConsIdX, ArgInstsX),
     BoundInstY = bound_functor(ConsIdY, ArgInstsY),
     ( if equivalent_cons_ids(ConsIdX, ConsIdY) then
         get_cons_id_arg_types_for_bound_inst(!.Info ^ imi_module_info, Type,
             BoundInstX, Types),
-        inst_list_matches_final(Types, ArgInstsX, ArgInstsY, !Info),
-        bound_inst_list_matches_final(Type, BoundInstXs, BoundInstYs, !Info)
+        inst_list_matches_final(CalcSub, Types, ArgInstsX, ArgInstsY, !Info),
+        bound_inst_list_matches_final(CalcSub, Type,
+            BoundInstXs, BoundInstYs, !Info)
     else
         first_unqual_cons_id_is_greater(ConsIdX, ConsIdY),
         % ConsIdY does not occur in [X | Xs].
         % Hence [X | Xs] implicitly specifies `not_reached' for the args
         % of ConsIdY, and hence automatically matches_final Y. We just
         % need to check that [X | Xs] matches_final Ys.
-        bound_inst_list_matches_final(Type, [BoundInstX | BoundInstXs],
-            BoundInstYs, !Info)
+        bound_inst_list_matches_final(CalcSub, Type,
+            [BoundInstX | BoundInstXs], BoundInstYs, !Info)
     ).
 
 inst_is_at_least_as_instantiated(ModuleInfo, Type, InstA, InstB) :-
-    Info0 = init_inst_match_info(ModuleInfo, no_inst_var_sub, cs_none,
+    Info0 = init_inst_match_info(ModuleInfo, no_inst_var_sub,
         uc_instantiated, any_does_not_match_any,
         ground_matches_bound_if_complete),
-    inst_matches_initial_mt(Type, InstA, InstB, Info0, _).
+    inst_matches_initial_mt(cs_none, Type, InstA, InstB, Info0, _).
 
 %-----------------------------------------------------------------------------%
 
 inst_matches_binding(ModuleInfo, Type, InstA, InstB) :-
-    Info0 = init_inst_match_info(ModuleInfo, no_inst_var_sub, cs_none,
+    Info0 = init_inst_match_info(ModuleInfo, no_inst_var_sub,
         uc_match, any_does_not_match_any, ground_matches_bound_if_complete),
-    inst_matches_binding_mt(Type, InstA, InstB, Info0, _).
+    inst_matches_binding_mt(cs_none, Type, InstA, InstB, Info0, _).
 
 inst_matches_binding_allow_any_any(ModuleInfo, Type, InstA, InstB) :-
-    Info0 = init_inst_match_info(ModuleInfo, no_inst_var_sub, cs_none,
+    Info0 = init_inst_match_info(ModuleInfo, no_inst_var_sub,
         uc_match, any_does_match_any, ground_matches_bound_if_complete),
-    inst_matches_binding_mt(Type, InstA, InstB, Info0, _).
+    inst_matches_binding_mt(cs_none, Type, InstA, InstB, Info0, _).
 
-:- pred inst_matches_binding_mt(mer_type::in,
+:- pred inst_matches_binding_mt(calculate_sub::in, mer_type::in,
     mer_inst::in, mer_inst::in,
     inst_match_info::in, inst_match_info::out) is semidet.
 
-inst_matches_binding_mt(Type, InstA, InstB, !Info) :-
+inst_matches_binding_mt(CalcSub, Type, InstA, InstB, !Info) :-
     ThisExpansion = inst_match_inputs(InstA, InstB, Type),
     Expansions0 = !.Info ^ imi_expansions,
     ( if expansion_insert_new(ThisExpansion, Expansions0, Expansions) then
@@ -856,15 +875,17 @@ inst_matches_binding_mt(Type, InstA, InstB, !Info) :-
             InstA, ExpandedInstA),
         inst_expand_and_remove_constrained_inst_vars(!.Info ^ imi_module_info,
             InstB, ExpandedInstB),
-        inst_matches_binding_3(Type, ExpandedInstA, ExpandedInstB, !Info)
+        inst_matches_binding_3(CalcSub, Type,
+            ExpandedInstA, ExpandedInstB, !Info)
     else
         true
     ).
 
-:- pred inst_matches_binding_3(mer_type::in, mer_inst::in, mer_inst::in,
+:- pred inst_matches_binding_3(calculate_sub::in, mer_type::in,
+    mer_inst::in, mer_inst::in,
     inst_match_info::in, inst_match_info::out) is semidet.
 
-inst_matches_binding_3(Type, InstA, InstB, !Info) :-
+inst_matches_binding_3(CalcSub, Type, InstA, InstB, !Info) :-
     (
         InstA = free,
         InstB = free
@@ -878,49 +899,51 @@ inst_matches_binding_3(Type, InstA, InstB, !Info) :-
             AnyMatchesAny = !.Info ^ imi_any_matches_any,
             (
                 AnyMatchesAny = any_does_match_any,
-                ho_inst_info_matches_final(Type, HOInstInfoA, HOInstInfoB,
-                    !Info)
+                ho_inst_info_matches_final(CalcSub, Type,
+                    HOInstInfoA, HOInstInfoB, !Info)
             ;
                 AnyMatchesAny = any_does_not_match_any,
                 maybe_any_to_bound(!.Info ^ imi_module_info, Type, UniqA,
                     HOInstInfoA, NextInstA),
                 maybe_any_to_bound(!.Info ^ imi_module_info, Type, UniqB,
                     HOInstInfoB, NextInstB),
-                inst_matches_binding_mt(Type, NextInstA, NextInstB, !Info)
+                inst_matches_binding_mt(CalcSub, Type,
+                    NextInstA, NextInstB, !Info)
             )
         ;
             InstB = ground(_, _),
             maybe_any_to_bound(!.Info ^ imi_module_info, Type, UniqA,
                 HOInstInfoA, NextInstA),
-            inst_matches_binding_mt(Type, NextInstA, InstB, !Info)
+            inst_matches_binding_mt(CalcSub, Type, NextInstA, InstB, !Info)
         ;
             InstB = bound(_, _, _),
             maybe_any_to_bound(!.Info ^ imi_module_info, Type, UniqA,
                 HOInstInfoA, NextInstA),
-            inst_matches_binding_mt(Type, NextInstA, InstB, !Info)
+            inst_matches_binding_mt(CalcSub, Type, NextInstA, InstB, !Info)
         )
     ;
         InstA = ground(_, _),
         InstB = any(UniqB, HOInstInfoB),
         maybe_any_to_bound(!.Info ^ imi_module_info, Type, UniqB,
             HOInstInfoB, NextInstB),
-        inst_matches_binding_mt(Type, InstA, NextInstB, !Info)
+        inst_matches_binding_mt(CalcSub, Type, InstA, NextInstB, !Info)
     ;
         InstA = bound(_UniqA, InstResultsA, BoundInstsA),
         (
             InstB = any(UniqB, HOInstInfoB),
             maybe_any_to_bound(!.Info ^ imi_module_info, Type, UniqB,
                 HOInstInfoB, NextInstB),
-            inst_matches_binding_mt(Type, InstA, NextInstB, !Info)
+            inst_matches_binding_mt(CalcSub, Type, InstA, NextInstB, !Info)
         ;
             InstB = bound(_UniqB, _InstResultB, BoundInstsB),
-            bound_inst_list_matches_binding(Type, BoundInstsA, BoundInstsB,
-                !Info)
+            bound_inst_list_matches_binding(CalcSub, Type,
+                BoundInstsA, BoundInstsB, !Info)
         ;
             InstB = ground(_UniqB, none_or_default_func),
             inst_results_bound_inst_list_is_ground_mt(!.Info ^ imi_module_info,
                 Type, InstResultsA, BoundInstsA),
-            inst_contains_nondefault_func_mode_1(Type, InstA, no, !Info)
+            inst_contains_nondefault_func_mode_1(CalcSub, Type, InstA, no,
+                !Info)
         )
     ;
         InstA = ground(_UniqA, HOInstInfoA),
@@ -928,7 +951,8 @@ inst_matches_binding_3(Type, InstA, InstB, !Info) :-
             InstB = bound(_UniqB, InstResultsB, BoundInstsB),
             inst_results_bound_inst_list_is_ground_mt(!.Info ^ imi_module_info,
                 Type, InstResultsB, BoundInstsB),
-            inst_contains_nondefault_func_mode_1(Type, InstB, no, !Info),
+            inst_contains_nondefault_func_mode_1(CalcSub, Type, InstB, no,
+                !Info),
             % We can only do this check if the type is known.
             bound_inst_list_is_complete_for_type(!.Info ^ imi_module_info,
                 set.init, Type, BoundInstsB)
@@ -954,23 +978,22 @@ ho_inst_info_matches_binding(ModuleInfo, Type, HOInstInfoA, HOInstInfoB) :-
             HOInstInfoA = none_or_default_func,
             PredInstB = pred_inst_info(pf_function, ArgModes, _, _Det),
             Arity = list.length(ArgModes),
-            PredInstA = pred_inst_info_default_func_mode(Arity),
-            pred_inst_matches(ModuleInfo, Type, PredInstA, PredInstB)
+            PredInstA = pred_inst_info_default_func_mode(Arity)
         ;
-            HOInstInfoA = higher_order(PredInstA),
-            pred_inst_matches(ModuleInfo, Type, PredInstA, PredInstB)
-        )
+            HOInstInfoA = higher_order(PredInstA)
+        ),
+        pred_inst_matches(ModuleInfo, Type, PredInstA, PredInstB)
     ).
 
-:- pred inst_list_matches_binding(list(mer_type)::in,
+:- pred inst_list_matches_binding(calculate_sub::in, list(mer_type)::in,
     list(mer_inst)::in, list(mer_inst)::in,
     inst_match_info::in, inst_match_info::out) is semidet.
 
-inst_list_matches_binding([], [], [], !Info).
-inst_list_matches_binding([Type | Types],
+inst_list_matches_binding(_, [], [], [], !Info).
+inst_list_matches_binding(CalcSub, [Type | Types],
         [ArgInstA | ArgInstsA], [ArgInstB | ArgInstsB], !Info) :-
-    inst_matches_binding_mt(Type, ArgInstA, ArgInstB, !Info),
-    inst_list_matches_binding(Types, ArgInstsA, ArgInstsB, !Info).
+    inst_matches_binding_mt(CalcSub, Type, ArgInstA, ArgInstB, !Info),
+    inst_list_matches_binding(CalcSub, Types, ArgInstsA, ArgInstsB, !Info).
 
     % Here we check that the functors in the first list are a subset of the
     % functors in the second list. (If a bound(...) inst only specifies
@@ -979,27 +1002,28 @@ inst_list_matches_binding([Type | Types],
     % `not_reached'.) The code here makes use of the fact that the bound_inst
     % lists are sorted.
     %
-:- pred bound_inst_list_matches_binding(mer_type::in,
+:- pred bound_inst_list_matches_binding(calculate_sub::in, mer_type::in,
     list(bound_inst)::in, list(bound_inst)::in,
     inst_match_info::in, inst_match_info::out) is semidet.
 
-bound_inst_list_matches_binding(_, [], _, !Info).
-bound_inst_list_matches_binding(Type,
+bound_inst_list_matches_binding(_, _, [], _, !Info).
+bound_inst_list_matches_binding(CalcSub, Type,
         [BoundInstX | BoundInstXs], [BoundInstY | BoundInstYs], !Info) :-
     BoundInstX = bound_functor(ConsIdX, ArgInstsX),
     BoundInstY = bound_functor(ConsIdY, ArgInstsY),
     ( if equivalent_cons_ids(ConsIdX, ConsIdY) then
         get_cons_id_arg_types_for_bound_inst(!.Info ^ imi_module_info, Type,
             BoundInstX, Types),
-        inst_list_matches_binding(Types, ArgInstsX, ArgInstsY, !Info),
-        bound_inst_list_matches_binding(Type, BoundInstXs, BoundInstYs, !Info)
+        inst_list_matches_binding(CalcSub, Types, ArgInstsX, ArgInstsY, !Info),
+        bound_inst_list_matches_binding(CalcSub, Type,
+            BoundInstXs, BoundInstYs, !Info)
     else
         first_unqual_cons_id_is_greater(ConsIdX, ConsIdY),
         % ConsIdX does not occur in [X | Xs].
         % Hence [X | Xs] implicitly specifies `not_reached' for the args
         % of ConsIdY, and hence automatically matches_binding Y. We just
         % need to check that [X | Xs] matches_binding Ys.
-        bound_inst_list_matches_binding(Type,
+        bound_inst_list_matches_binding(CalcSub, Type,
             [BoundInstX | BoundInstXs], BoundInstYs, !Info)
     ).
 
@@ -1037,26 +1061,30 @@ unique_matches_final(A, B) :-
 %-----------------------------------------------------------------------------%
 
 inst_contains_nondefault_func_mode(ModuleInfo, Type, Inst) :-
-    Info = init_inst_match_info(ModuleInfo, no_inst_var_sub, cs_none, uc_match,
+    Info = init_inst_match_info(ModuleInfo, no_inst_var_sub, uc_match,
         any_does_match_any, ground_matches_bound_if_complete),
-    inst_contains_nondefault_func_mode_1(Type, Inst, yes, Info, _).
+    inst_contains_nondefault_func_mode_1(cs_none, Type, Inst, yes, Info, _).
 
-:- pred inst_contains_nondefault_func_mode_1(mer_type::in, mer_inst::in,
-    bool::out, inst_match_info::in, inst_match_info::out) is det.
-
-inst_contains_nondefault_func_mode_1(Type, Inst, ContainsNonstd, !Info) :-
-    inst_contains_nondefault_func_mode_2(Type, Inst, set.init, ContainsNonstd,
-        !Info).
-
-:- pred inst_contains_nondefault_func_mode_2(mer_type::in, mer_inst::in,
-    set(inst_name)::in, bool::out,
+:- pred inst_contains_nondefault_func_mode_1(calculate_sub::in, mer_type::in,
+    mer_inst::in, bool::out,
     inst_match_info::in, inst_match_info::out) is det.
 
-inst_contains_nondefault_func_mode_2(Type, Inst, !.Expansions, ContainsNonstd,
-        !Info) :-
+inst_contains_nondefault_func_mode_1(CalcSub, Type, Inst,
+        ContainsNonstd, !Info) :-
+    inst_contains_nondefault_func_mode_2(CalcSub, Type, Inst, set.init,
+        ContainsNonstd, !Info).
+
+:- pred inst_contains_nondefault_func_mode_2(calculate_sub::in, mer_type::in,
+    mer_inst::in, set(inst_name)::in, bool::out,
+    inst_match_info::in, inst_match_info::out) is det.
+
+inst_contains_nondefault_func_mode_2(CalcSub, Type, Inst, !.Expansions,
+        ContainsNonstd, !Info) :-
     (
         Inst = ground(_, HOInstInfo),
-        ( if ho_inst_info_matches_ground_1(Type, HOInstInfo, !Info) then
+        ( if
+            ho_inst_info_matches_ground_1(CalcSub, Type, HOInstInfo, !Info)
+        then
             ContainsNonstd = no
         else
             ContainsNonstd = yes
@@ -1070,8 +1098,8 @@ inst_contains_nondefault_func_mode_2(Type, Inst, !.Expansions, ContainsNonstd,
             ( InstResults = inst_test_results(_, _, _, _, _, _)
             ; InstResults = inst_test_no_results
             ),
-            bound_inst_list_contains_nondefault_func_mode(Type, BoundInsts,
-                !.Expansions, ContainsNonstd, !Info)
+            bound_inst_list_contains_nondefault_func_mode(CalcSub, Type,
+                BoundInsts, !.Expansions, ContainsNonstd, !Info)
         )
     ;
         Inst = inst_var(_),
@@ -1083,13 +1111,13 @@ inst_contains_nondefault_func_mode_2(Type, Inst, !.Expansions, ContainsNonstd,
         else
             set.insert(InstName, !Expansions),
             inst_lookup(!.Info ^ imi_module_info, InstName, SubInst),
-            inst_contains_nondefault_func_mode_2(Type, SubInst, !.Expansions,
-                ContainsNonstd, !Info)
+            inst_contains_nondefault_func_mode_2(CalcSub, Type, SubInst,
+                !.Expansions, ContainsNonstd, !Info)
         )
     ;
         Inst = constrained_inst_vars(_, SubInst),
-        inst_contains_nondefault_func_mode_2(Type, SubInst, !.Expansions,
-            ContainsNonstd, !Info)
+        inst_contains_nondefault_func_mode_2(CalcSub, Type, SubInst,
+            !.Expansions, ContainsNonstd, !Info)
     ;
         ( Inst = free
         ; Inst = not_reached
@@ -1103,76 +1131,79 @@ inst_contains_nondefault_func_mode_2(Type, Inst, !.Expansions, ContainsNonstd,
         ContainsNonstd = no
     ).
 
-:- pred inst_list_contains_nondefault_func_mode(
+:- pred inst_list_contains_nondefault_func_mode(calculate_sub::in,
     list(mer_type)::in, list(mer_inst)::in, set(inst_name)::in, bool::out,
     inst_match_info::in, inst_match_info::out) is det.
 
-inst_list_contains_nondefault_func_mode([], [], _Expansions, no, !Info).
-inst_list_contains_nondefault_func_mode([], [_ | _], _, _, !Info) :-
+inst_list_contains_nondefault_func_mode(_, [], [], _Expansions, no, !Info).
+inst_list_contains_nondefault_func_mode(_, [], [_ | _], _, _, !Info) :-
     unexpected($pred, "list length mismatch").
-inst_list_contains_nondefault_func_mode([_ | _], [], _, _, !Info) :-
+inst_list_contains_nondefault_func_mode(_, [_ | _], [], _, _, !Info) :-
     unexpected($pred, "list length mismatch").
-inst_list_contains_nondefault_func_mode([Type | Types], [Inst | Insts],
+inst_list_contains_nondefault_func_mode(CalcSub, [Type | Types], [Inst | Insts],
         Expansions, ContainsNonstd, !Info) :-
-    inst_contains_nondefault_func_mode_2(Type, Inst,
+    inst_contains_nondefault_func_mode_2(CalcSub, Type, Inst,
         Expansions, HeadContainsNonstd, !Info),
     (
         HeadContainsNonstd = yes,
         ContainsNonstd = yes
     ;
         HeadContainsNonstd = no,
-        inst_list_contains_nondefault_func_mode(Types, Insts,
+        inst_list_contains_nondefault_func_mode(CalcSub, Types, Insts,
             Expansions, ContainsNonstd, !Info)
     ).
 
-:- pred bound_inst_list_contains_nondefault_func_mode(mer_type::in,
-    list(bound_inst)::in, set(inst_name)::in, bool::out,
+:- pred bound_inst_list_contains_nondefault_func_mode(calculate_sub::in,
+    mer_type::in, list(bound_inst)::in, set(inst_name)::in, bool::out,
     inst_match_info::in, inst_match_info::out) is det.
 
-bound_inst_list_contains_nondefault_func_mode(_, [], _Expansions, no, !Info).
-bound_inst_list_contains_nondefault_func_mode(Type, [BoundInst | BoundInsts],
-        Expansions, ContainsNonstd, !Info) :-
+bound_inst_list_contains_nondefault_func_mode(_, _, [], _Expansions,
+        no, !Info).
+bound_inst_list_contains_nondefault_func_mode(CalcSub, Type,
+        [BoundInst | BoundInsts], Expansions, ContainsNonstd, !Info) :-
     BoundInst = bound_functor(_ConsId, ArgInsts),
     get_cons_id_arg_types_for_bound_inst(!.Info ^ imi_module_info, Type,
         BoundInst, ArgTypes),
-    inst_list_contains_nondefault_func_mode(ArgTypes, ArgInsts,
+    inst_list_contains_nondefault_func_mode(CalcSub, ArgTypes, ArgInsts,
         Expansions, HeadContainsNonstd, !Info),
     (
         HeadContainsNonstd = yes,
         ContainsNonstd = yes
     ;
         HeadContainsNonstd = no,
-        bound_inst_list_contains_nondefault_func_mode(Type, BoundInsts,
-            Expansions, ContainsNonstd, !Info)
+        bound_inst_list_contains_nondefault_func_mode(CalcSub, Type,
+            BoundInsts, Expansions, ContainsNonstd, !Info)
     ).
 
 %---------------------------------------------------------------------------%
 
 ho_inst_info_matches_ground(ModuleInfo, Type, HOInstInfo) :-
-    Info = init_inst_match_info(ModuleInfo, no_inst_var_sub, cs_none, uc_match,
+    Info = init_inst_match_info(ModuleInfo, no_inst_var_sub, uc_match,
         any_does_match_any, ground_matches_bound_if_complete),
-    ho_inst_info_matches_ground_1(Type, HOInstInfo, Info, _).
+    ho_inst_info_matches_ground_1(cs_none, Type, HOInstInfo, Info, _).
 
-:- pred ho_inst_info_matches_ground_1(mer_type::in, ho_inst_info::in,
+:- pred ho_inst_info_matches_ground_1(calculate_sub::in, mer_type::in,
+    ho_inst_info::in,
     inst_match_info::in, inst_match_info::out) is semidet.
 
-ho_inst_info_matches_ground_1(Type, HOInstInfo, !Info) :-
+ho_inst_info_matches_ground_1(CalcSub, Type, HOInstInfo, !Info) :-
     (
         HOInstInfo = higher_order(PredInst),
-        pred_inst_matches_ground_1(Type, PredInst, !Info)
+        pred_inst_matches_ground_1(CalcSub, Type, PredInst, !Info)
     ;
         HOInstInfo = none_or_default_func
     ).
 
 pred_inst_matches_ground(ModuleInfo, Type, PredInst) :-
-    Info = init_inst_match_info(ModuleInfo, no_inst_var_sub, cs_none, uc_match,
+    Info = init_inst_match_info(ModuleInfo, no_inst_var_sub, uc_match,
         any_does_match_any, ground_matches_bound_if_complete),
-    pred_inst_matches_ground_1(Type, PredInst, Info, _).
+    pred_inst_matches_ground_1(cs_none, Type, PredInst, Info, _).
 
-:- pred pred_inst_matches_ground_1(mer_type::in, pred_inst_info::in,
-    inst_match_info::in, inst_match_info::out) is semidet.
+:- pred pred_inst_matches_ground_1(calculate_sub::in, mer_type::in,
+    pred_inst_info::in, inst_match_info::in, inst_match_info::out) is semidet.
 
-pred_inst_matches_ground_1(Type, PredInst, !Info) :-
+pred_inst_matches_ground_1(CalcSub, Type, PredInst, !Info) :-
+    % XXX CALC_SUB Is CalcSub always cs_none?
     PredInst = pred_inst_info(PredOrFunc, ArgModes, _, _),
     (
         PredOrFunc = pf_predicate
@@ -1180,15 +1211,15 @@ pred_inst_matches_ground_1(Type, PredInst, !Info) :-
         PredOrFunc = pf_function,
         Arity = list.length(ArgModes),
         DefaultFunc = pred_inst_info_default_func_mode(Arity),
-        pred_inst_matches_1(Type, PredInst, DefaultFunc, !Info)
+        pred_inst_matches_1(CalcSub, Type, PredInst, DefaultFunc, !Info)
     ).
 
 %-----------------------------------------------------------------------------%
 
 pred_inst_matches(ModuleInfo, Type, PredInstA, PredInstB) :-
-    Info0 = init_inst_match_info(ModuleInfo, no_inst_var_sub, cs_none,
+    Info0 = init_inst_match_info(ModuleInfo, no_inst_var_sub,
         uc_match, any_does_match_any, ground_matches_bound_if_complete),
-    pred_inst_matches_1(Type, PredInstA, PredInstB, Info0, _).
+    pred_inst_matches_1(cs_none, Type, PredInstA, PredInstB, Info0, _).
 
     % pred_inst_matches_1(Type, PredInstA, PredInstB, !Info)
     %
@@ -1197,18 +1228,18 @@ pred_inst_matches(ModuleInfo, Type, PredInstA, PredInstB) :-
     % are assumed to match_final each other. (This avoids infinite loops
     % when calling inst_matches_final on higher-order recursive insts.)
     %
-:- pred pred_inst_matches_1(mer_type::in,
+:- pred pred_inst_matches_1(calculate_sub::in, mer_type::in,
     pred_inst_info::in, pred_inst_info::in,
     inst_match_info::in, inst_match_info::out) is semidet.
 
-pred_inst_matches_1(Type, PredInstA, PredInstB, !Info) :-
+pred_inst_matches_1(CalcSub, Type, PredInstA, PredInstB, !Info) :-
     % In the float_regs.m pass a variable may take on pred insts which differ
     % only in the arg reg lists in different branches. They should be allowed
     % to match here.
     PredInstA = pred_inst_info(PredOrFunc, ModesA, _MaybeArgRegsA, Det),
     PredInstB = pred_inst_info(PredOrFunc, ModesB, _MaybeArgRegsB, Det),
     get_higher_order_arg_types(Type, list.length(ModesA), Types),
-    pred_inst_argmodes_matches(Types, ModesA, ModesB, !Info).
+    pred_inst_argmodes_matches(CalcSub, Types, ModesA, ModesB, !Info).
 
     % pred_inst_argmodes_matches(Types, ModesA, ModesB, !Info):
     %
@@ -1222,23 +1253,25 @@ pred_inst_matches_1(Type, PredInstA, PredInstB, !Info) :-
     % the initial insts, and covariant in the final insts;
     % as far as binding goes, it is invariant for both.)
     %
-:- pred pred_inst_argmodes_matches(list(mer_type)::in,
+:- pred pred_inst_argmodes_matches(calculate_sub::in, list(mer_type)::in,
     list(mer_mode)::in, list(mer_mode)::in,
     inst_match_info::in, inst_match_info::out) is semidet.
 
-pred_inst_argmodes_matches([], [], [], !Info).
-pred_inst_argmodes_matches([Type | Types], [ModeA | ModeAs], [ModeB | ModeBs],
-        !Info) :-
+pred_inst_argmodes_matches(_, [], [], [], !Info).
+pred_inst_argmodes_matches(CalcSub, [Type | Types],
+        [ModeA | ModeAs], [ModeB | ModeBs], !Info) :-
+    % XXX CALC_SUB Is CalcSub always cs_none?
     ModuleInfo = !.Info ^ imi_module_info,
     mode_get_insts(ModuleInfo, ModeA, InitialA, FinalA0),
     mode_get_insts(ModuleInfo, ModeB, InitialB, FinalB),
     % inst_matches_final_mt should probably just accept cs_reverse directly.
-    swap_sub(inst_matches_final_mt(Type, InitialB, InitialA), !Info),
+    InitialCalcSub = swap_calculate_sub(CalcSub),
+    inst_matches_final_mt(InitialCalcSub, Type, InitialB, InitialA, !Info),
     % Apply the substitution computed so far (it may be necessary for InitialA
     % as well).
     maybe_apply_substitution(!.Info, FinalA0, FinalA),
-    inst_matches_final_mt(Type, FinalA, FinalB, !Info),
-    pred_inst_argmodes_matches(Types, ModeAs, ModeBs, !Info).
+    inst_matches_final_mt(CalcSub, Type, FinalA, FinalB, !Info),
+    pred_inst_argmodes_matches(CalcSub, Types, ModeAs, ModeBs, !Info).
 
 :- pred maybe_apply_substitution(inst_match_info::in,
     mer_inst::in, mer_inst::out) is det.
@@ -1282,7 +1315,6 @@ expansion_insert_new(E, S0, S) :-
                 imi_module_info             :: module_info,
                 imi_expansions              :: expansions,
                 imi_maybe_sub               :: maybe_inst_var_sub,
-                imi_calculate_sub           :: calculate_sub,
                 imi_uniqueness_comparison   :: uniqueness_comparison,
                 imi_any_matches_any         :: any_matches_any,
                 imi_ground_matches_bound    :: ground_matches_bound
@@ -1291,7 +1323,6 @@ expansion_insert_new(E, S0, S) :-
     % The uniqueness_comparison type is used by the predicate
     % compare_uniqueness to determine what order should be used for
     % comparing two uniqueness annotations.
-
 :- type uniqueness_comparison
     --->    uc_match
             % We are doing a "matches" comparison, e.g. at a predicate call
@@ -1304,6 +1335,8 @@ expansion_insert_new(E, S0, S) :-
 :- type maybe_inst_var_sub
     --->    no_inst_var_sub
     ;       inst_var_sub(inst_var_sub).
+            % The inst_var_sub records what inst should be substituted for each
+            % inst_var that occurs in the called procedure's argument modes.
 
     % The calculate_sub type determines how the inst var substitution
     % should be calculated.
@@ -1325,41 +1358,23 @@ expansion_insert_new(E, S0, S) :-
     --->    any_does_not_match_any
     ;       any_does_match_any.
 
-:- func init_inst_match_info(module_info, maybe_inst_var_sub, calculate_sub,
+:- func init_inst_match_info(module_info, maybe_inst_var_sub,
     uniqueness_comparison, any_matches_any, ground_matches_bound) =
     inst_match_info.
 
-init_inst_match_info(ModuleInfo, MaybeSub, CalculateSub, Comparison,
+init_inst_match_info(ModuleInfo, MaybeSub, UniqCmp,
         AnyMatchesAny, GroundMatchesBound) =
-    inst_match_info(ModuleInfo, expansion_init, MaybeSub, CalculateSub,
-        Comparison, AnyMatchesAny, GroundMatchesBound).
+    inst_match_info(ModuleInfo, expansion_init, MaybeSub, UniqCmp,
+        AnyMatchesAny, GroundMatchesBound).
 
 %-----------------------------------------------------------------------------%
 
-:- type inst_matches_pred ==
-    pred(mer_type, mer_inst, mer_inst, inst_match_info, inst_match_info).
-:- inst inst_matches_pred == (pred(in, in, in, in, out) is semidet).
-
-:- pred swap_sub(
-    pred(inst_match_info, inst_match_info)::in(pred(in, out) is semidet),
+:- pred swap_insts(inst_matches_pred::in(inst_matches_pred),
+    calculate_sub::in, mer_type::in, mer_inst::in, mer_inst::in,
     inst_match_info::in, inst_match_info::out) is semidet.
 
-swap_sub(P, !Info) :-
-    CalculateSub = !.Info ^ imi_calculate_sub,
-    !Info ^ imi_calculate_sub := swap_calculate_sub(CalculateSub),
-    P(!Info),
-    !Info ^ imi_calculate_sub := CalculateSub.
-
-:- pred unswap(inst_matches_pred::in(inst_matches_pred),
-    mer_type::in, mer_inst::in, mer_inst::in,
-    inst_match_info::in, inst_match_info::out) is semidet.
-
-unswap(P, Type, InstA, InstB, !Info) :-
-    % Swap the arguments *and* undo swap_sub.
-    CalculateSub = !.Info ^ imi_calculate_sub,
-    !Info ^ imi_calculate_sub := swap_calculate_sub(CalculateSub),
-    P(Type, InstB, InstA, !Info),
-    !Info ^ imi_calculate_sub := CalculateSub.
+swap_insts(P, CalcSub, Type, InstA, InstB, !Info) :-
+    P(CalcSub, Type, InstB, InstA, !Info).
 
 :- func swap_calculate_sub(calculate_sub) = calculate_sub.
 
@@ -1369,35 +1384,42 @@ swap_calculate_sub(cs_none) = cs_none.
 
 %-----------------------------------------------------------------------------%
 
-:- pred handle_inst_var_subs(
+:- type inst_matches_pred ==
+    pred(calculate_sub, mer_type, mer_inst, mer_inst,
+        inst_match_info, inst_match_info).
+:- inst inst_matches_pred == (pred(in, in, in, in, in, out) is semidet).
+
+:- pred handle_inst_var_subs(calculate_sub::in,
     inst_matches_pred::in(inst_matches_pred),
     inst_matches_pred::in(inst_matches_pred),
     mer_type::in, mer_inst::in, mer_inst::in,
     inst_match_info::in, inst_match_info::out) is semidet.
 
-handle_inst_var_subs(Recurse, Continue, Type, InstA, InstB, !Info) :-
-    CalculateSub = !.Info ^ imi_calculate_sub,
+handle_inst_var_subs(CalcSub, Recurse, Continue, Type, InstA, InstB, !Info) :-
     (
-        CalculateSub = cs_forward,
-        handle_inst_var_subs_2(Recurse, Continue, Type, InstA, InstB, !Info)
+        CalcSub = cs_forward,
+        handle_inst_var_subs_2(CalcSub, Recurse, Continue,
+            Type, InstA, InstB, !Info)
     ;
-        CalculateSub = cs_reverse,
+        CalcSub = cs_reverse,
         % Calculate the inst var substitution with arguments swapped,
         % but swap back for inst matching.
-        handle_inst_var_subs_2(unswap(Recurse), unswap(Continue),
+        handle_inst_var_subs_2(cs_forward,
+            swap_insts(Recurse), swap_insts(Continue),
             Type, InstB, InstA, !Info)
     ;
-        CalculateSub = cs_none,
-        Continue(Type, InstA, InstB, !Info)
+        CalcSub = cs_none,
+        Continue(cs_none, Type, InstA, InstB, !Info)
     ).
 
-:- pred handle_inst_var_subs_2(
+:- pred handle_inst_var_subs_2(calculate_sub::in,
     inst_matches_pred::in(inst_matches_pred),
     inst_matches_pred::in(inst_matches_pred),
     mer_type::in, mer_inst::in, mer_inst::in,
     inst_match_info::in, inst_match_info::out) is semidet.
 
-handle_inst_var_subs_2(Recurse, Continue, Type, InstA, InstB, !Info) :-
+handle_inst_var_subs_2(CalcSub, Recurse, Continue, Type, InstA, InstB,
+        !Info) :-
     ( if InstB = constrained_inst_vars(InstVarsB, SubInstB) then
         % Add the substitution InstVarsB => InstA `glb` SubInstB
         % (see get_subst_inst in dmo's thesis, page 78).
@@ -1414,21 +1436,19 @@ handle_inst_var_subs_2(Recurse, Continue, Type, InstA, InstB, !Info) :-
         % to InstB.
         ( if UnifyInst = constrained_inst_vars(InstVarsB, UnifySubInst) then
             % Avoid infinite regress.
-            Recurse(Type, InstA, UnifySubInst, !Info)
+            Recurse(CalcSub, Type, InstA, UnifySubInst, !Info)
         else
-            Recurse(Type, InstA, UnifyInst, !Info)
+            Recurse(CalcSub, Type, InstA, UnifyInst, !Info)
         )
     else if InstA = constrained_inst_vars(_InstVarsA, SubInstA) then
-        Recurse(Type, SubInstA, InstB, !Info)
+        Recurse(CalcSub, Type, SubInstA, InstB, !Info)
     else
-        Continue(Type, InstA, InstB, !Info)
+        Continue(CalcSub, Type, InstA, InstB, !Info)
     ).
 
 %-----------------------------------------------------------------------------%
 
     % Update the inst_var_sub that is computed by inst_matches_initial.
-    % The inst_var_sub records what inst should be substituted for each
-    % inst_var that occurs in the called procedure's argument modes.
     %
 :- pred update_inst_var_sub(set(inst_var)::in, mer_inst::in, mer_type::in,
     inst_match_info::in, inst_match_info::out) is semidet.
