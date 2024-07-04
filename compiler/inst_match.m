@@ -211,215 +211,6 @@
 
 %-----------------------------------------------------------------------------%
 
-:- type inst_match_inputs
-    --->    inst_match_inputs(
-                mer_inst,
-                mer_inst,
-                mer_type
-            ).
-
-:- type expansions == set_tree234(inst_match_inputs).
-
-:- func expansion_init = expansions.
-:- pragma inline(func(expansion_init/0)).
-
-expansion_init = set_tree234.init.
-
-:- pred expansion_insert_new(inst_match_inputs::in,
-    expansions::in, expansions::out) is semidet.
-:- pragma inline(pred(expansion_insert_new/3)).
-
-expansion_insert_new(E, S0, S) :-
-    set_tree234.insert_new(E, S0, S).
-
-%-----------------------------------------------------------------------------%
-
-    % The uniqueness_comparison type is used by the predicate
-    % compare_uniqueness to determine what order should be used for
-    % comparing two uniqueness annotations.
-
-:- type uniqueness_comparison
-    --->    uc_match
-            % We are doing a "matches" comparison, e.g. at a predicate call
-            % or the end of a procedure body.
-    ;       uc_instantiated.
-            % We are comparing two insts for how "instantiated" they are.
-            % The uniqueness order here should be the reverse of the order
-            % used for matching.
-
-:- type inst_match_info
-    --->    inst_match_info(
-                imi_module_info             :: module_info,
-                imi_expansions              :: expansions,
-                imi_maybe_sub               :: maybe_inst_var_sub,
-                imi_calculate_sub           :: calculate_sub,
-                imi_uniqueness_comparison   :: uniqueness_comparison,
-                imi_any_matches_any         :: any_matches_any,
-                imi_ground_matches_bound    :: ground_matches_bound
-            ).
-
-:- type maybe_inst_var_sub
-    --->    no_inst_var_sub
-    ;       inst_var_sub(inst_var_sub).
-
-    % The calculate_sub type determines how the inst var substitution
-    % should be calculated.
-:- type calculate_sub
-    --->    cs_forward
-            % Calculate in the (normal) forward direction
-            % (used by inst_matches_initial).
-
-    ;       cs_reverse
-            % Calculate in the reverse direction. Used by the call
-            % to inst_matches_final from pred_inst_argmodes_match
-            % to ensure contravariance of the initial argument
-            % insts of higher order pred insts.
-
-    ;       cs_none.
-            % Do not calculate inst var substitution.
-
-:- type any_matches_any
-    --->    any_does_not_match_any
-    ;       any_does_match_any.
-
-:- func init_inst_match_info(module_info, maybe_inst_var_sub, calculate_sub,
-    uniqueness_comparison, any_matches_any, ground_matches_bound) =
-    inst_match_info.
-
-init_inst_match_info(ModuleInfo, MaybeSub, CalculateSub, Comparison,
-        AnyMatchesAny, GroundMatchesBound) =
-    inst_match_info(ModuleInfo, expansion_init, MaybeSub, CalculateSub,
-        Comparison, AnyMatchesAny, GroundMatchesBound).
-
-:- type inst_matches_pred ==
-    pred(mer_type, mer_inst, mer_inst, inst_match_info, inst_match_info).
-:- inst inst_matches_pred == (pred(in, in, in, in, out) is semidet).
-
-:- pred swap_sub(
-    pred(inst_match_info, inst_match_info)::in(pred(in, out) is semidet),
-    inst_match_info::in, inst_match_info::out) is semidet.
-
-swap_sub(P, !Info) :-
-    CalculateSub = !.Info ^ imi_calculate_sub,
-    !Info ^ imi_calculate_sub := swap_calculate_sub(CalculateSub),
-    P(!Info),
-    !Info ^ imi_calculate_sub := CalculateSub.
-
-:- pred unswap(inst_matches_pred::in(inst_matches_pred),
-    mer_type::in, mer_inst::in, mer_inst::in,
-    inst_match_info::in, inst_match_info::out) is semidet.
-
-unswap(P, Type, InstA, InstB, !Info) :-
-    % Swap the arguments *and* undo swap_sub.
-    CalculateSub = !.Info ^ imi_calculate_sub,
-    !Info ^ imi_calculate_sub := swap_calculate_sub(CalculateSub),
-    P(Type, InstB, InstA, !Info),
-    !Info ^ imi_calculate_sub := CalculateSub.
-
-:- func swap_calculate_sub(calculate_sub) = calculate_sub.
-
-swap_calculate_sub(cs_forward) = cs_reverse.
-swap_calculate_sub(cs_reverse) = cs_forward.
-swap_calculate_sub(cs_none) = cs_none.
-
-%-----------------------------------------------------------------------------%
-
-:- pred handle_inst_var_subs(
-    inst_matches_pred::in(inst_matches_pred),
-    inst_matches_pred::in(inst_matches_pred),
-    mer_type::in, mer_inst::in, mer_inst::in,
-    inst_match_info::in, inst_match_info::out) is semidet.
-
-handle_inst_var_subs(Recurse, Continue, Type, InstA, InstB, !Info) :-
-    CalculateSub = !.Info ^ imi_calculate_sub,
-    (
-        CalculateSub = cs_forward,
-        handle_inst_var_subs_2(Recurse, Continue, Type, InstA, InstB, !Info)
-    ;
-        CalculateSub = cs_reverse,
-        % Calculate the inst var substitution with arguments swapped,
-        % but swap back for inst matching.
-        handle_inst_var_subs_2(unswap(Recurse), unswap(Continue),
-            Type, InstB, InstA, !Info)
-    ;
-        CalculateSub = cs_none,
-        Continue(Type, InstA, InstB, !Info)
-    ).
-
-:- pred handle_inst_var_subs_2(
-    inst_matches_pred::in(inst_matches_pred),
-    inst_matches_pred::in(inst_matches_pred),
-    mer_type::in, mer_inst::in, mer_inst::in,
-    inst_match_info::in, inst_match_info::out) is semidet.
-
-handle_inst_var_subs_2(Recurse, Continue, Type, InstA, InstB, !Info) :-
-    ( if InstB = constrained_inst_vars(InstVarsB, SubInstB) then
-        % Add the substitution InstVarsB => InstA `glb` SubInstB
-        % (see get_subst_inst in dmo's thesis, page 78).
-        %
-        % We pass `Live = is_dead' because we want
-        % abstractly_unify(unique, unique) = unique, not shared.
-        ModuleInfo0 = !.Info ^ imi_module_info,
-        abstractly_unify_inst(Type, is_dead, fake_unify, InstA, SubInstB,
-            UnifyInst, _Det, ModuleInfo0, ModuleInfo),
-        !Info ^ imi_module_info := ModuleInfo,
-        update_inst_var_sub(InstVarsB, UnifyInst, Type, !Info),
-
-        % Check that InstA matches InstB after applying the substitution
-        % to InstB.
-        ( if UnifyInst = constrained_inst_vars(InstVarsB, UnifySubInst) then
-            % Avoid infinite regress.
-            Recurse(Type, InstA, UnifySubInst, !Info)
-        else
-            Recurse(Type, InstA, UnifyInst, !Info)
-        )
-    else if InstA = constrained_inst_vars(_InstVarsA, SubInstA) then
-        Recurse(Type, SubInstA, InstB, !Info)
-    else
-        Continue(Type, InstA, InstB, !Info)
-    ).
-
-    % Update the inst_var_sub that is computed by inst_matches_initial.
-    % The inst_var_sub records what inst should be substituted for each
-    % inst_var that occurs in the called procedure's argument modes.
-    %
-:- pred update_inst_var_sub(set(inst_var)::in, mer_inst::in, mer_type::in,
-    inst_match_info::in, inst_match_info::out) is semidet.
-
-update_inst_var_sub(InstVars, InstA, Type, !Info) :-
-    (
-        !.Info ^ imi_maybe_sub = inst_var_sub(_),
-        set.fold(update_inst_var_sub_2(InstA, Type), InstVars, !Info)
-    ;
-        !.Info ^ imi_maybe_sub = no_inst_var_sub
-    ).
-
-:- pred update_inst_var_sub_2(mer_inst::in, mer_type::in, inst_var::in,
-    inst_match_info::in, inst_match_info::out) is semidet.
-
-update_inst_var_sub_2(InstA, Type, InstVar, !Info) :-
-    (
-        !.Info ^ imi_maybe_sub = inst_var_sub(InstVarSub0),
-        ( if map.search(InstVarSub0, InstVar, InstB) then
-            % If InstVar already has an inst associated with it, merge
-            % the old and new insts. Fail if this merge is not possible.
-            ModuleInfo0 = !.Info ^ imi_module_info,
-            inst_merge(Type, InstA, InstB, InstAB, ModuleInfo0, ModuleInfo),
-            !Info ^ imi_module_info := ModuleInfo,
-            map.det_update(InstVar, InstAB, InstVarSub0, InstVarSub),
-            !Info ^ imi_maybe_sub := inst_var_sub(InstVarSub)
-        else
-            map.det_insert(InstVar, InstA, InstVarSub0, InstVarSub),
-            !Info ^ imi_maybe_sub := inst_var_sub(InstVarSub)
-        )
-    ;
-        !.Info ^ imi_maybe_sub = no_inst_var_sub,
-        InstVarSub = map.singleton(InstVar, InstA),
-        !Info ^ imi_maybe_sub := inst_var_sub(InstVarSub)
-    ).
-
-%-----------------------------------------------------------------------------%
-
 inst_matches_initial(ModuleInfo, Type, InstA, InstB) :-
     inst_matches_initial_1(Type, InstA, InstB,
         ModuleInfo, _, no_inst_var_sub, _).
@@ -1459,6 +1250,219 @@ maybe_apply_substitution(Info, Inst0, Inst) :-
     ;
         Info ^ imi_maybe_sub = no_inst_var_sub,
         Inst = Inst0
+    ).
+
+%-----------------------------------------------------------------------------%
+
+:- type inst_match_inputs
+    --->    inst_match_inputs(
+                mer_inst,
+                mer_inst,
+                mer_type
+            ).
+
+:- type expansions == set_tree234(inst_match_inputs).
+
+:- func expansion_init = expansions.
+:- pragma inline(func(expansion_init/0)).
+
+expansion_init = set_tree234.init.
+
+:- pred expansion_insert_new(inst_match_inputs::in,
+    expansions::in, expansions::out) is semidet.
+:- pragma inline(pred(expansion_insert_new/3)).
+
+expansion_insert_new(E, S0, S) :-
+    set_tree234.insert_new(E, S0, S).
+
+%-----------------------------------------------------------------------------%
+
+:- type inst_match_info
+    --->    inst_match_info(
+                imi_module_info             :: module_info,
+                imi_expansions              :: expansions,
+                imi_maybe_sub               :: maybe_inst_var_sub,
+                imi_calculate_sub           :: calculate_sub,
+                imi_uniqueness_comparison   :: uniqueness_comparison,
+                imi_any_matches_any         :: any_matches_any,
+                imi_ground_matches_bound    :: ground_matches_bound
+            ).
+
+    % The uniqueness_comparison type is used by the predicate
+    % compare_uniqueness to determine what order should be used for
+    % comparing two uniqueness annotations.
+
+:- type uniqueness_comparison
+    --->    uc_match
+            % We are doing a "matches" comparison, e.g. at a predicate call
+            % or the end of a procedure body.
+    ;       uc_instantiated.
+            % We are comparing two insts for how "instantiated" they are.
+            % The uniqueness order here should be the reverse of the order
+            % used for matching.
+
+:- type maybe_inst_var_sub
+    --->    no_inst_var_sub
+    ;       inst_var_sub(inst_var_sub).
+
+    % The calculate_sub type determines how the inst var substitution
+    % should be calculated.
+:- type calculate_sub
+    --->    cs_forward
+            % Calculate in the (normal) forward direction
+            % (used by inst_matches_initial).
+
+    ;       cs_reverse
+            % Calculate in the reverse direction. Used by the call
+            % to inst_matches_final from pred_inst_argmodes_match
+            % to ensure contravariance of the initial argument
+            % insts of higher order pred insts.
+
+    ;       cs_none.
+            % Do not calculate inst var substitution.
+
+:- type any_matches_any
+    --->    any_does_not_match_any
+    ;       any_does_match_any.
+
+:- func init_inst_match_info(module_info, maybe_inst_var_sub, calculate_sub,
+    uniqueness_comparison, any_matches_any, ground_matches_bound) =
+    inst_match_info.
+
+init_inst_match_info(ModuleInfo, MaybeSub, CalculateSub, Comparison,
+        AnyMatchesAny, GroundMatchesBound) =
+    inst_match_info(ModuleInfo, expansion_init, MaybeSub, CalculateSub,
+        Comparison, AnyMatchesAny, GroundMatchesBound).
+
+%-----------------------------------------------------------------------------%
+
+:- type inst_matches_pred ==
+    pred(mer_type, mer_inst, mer_inst, inst_match_info, inst_match_info).
+:- inst inst_matches_pred == (pred(in, in, in, in, out) is semidet).
+
+:- pred swap_sub(
+    pred(inst_match_info, inst_match_info)::in(pred(in, out) is semidet),
+    inst_match_info::in, inst_match_info::out) is semidet.
+
+swap_sub(P, !Info) :-
+    CalculateSub = !.Info ^ imi_calculate_sub,
+    !Info ^ imi_calculate_sub := swap_calculate_sub(CalculateSub),
+    P(!Info),
+    !Info ^ imi_calculate_sub := CalculateSub.
+
+:- pred unswap(inst_matches_pred::in(inst_matches_pred),
+    mer_type::in, mer_inst::in, mer_inst::in,
+    inst_match_info::in, inst_match_info::out) is semidet.
+
+unswap(P, Type, InstA, InstB, !Info) :-
+    % Swap the arguments *and* undo swap_sub.
+    CalculateSub = !.Info ^ imi_calculate_sub,
+    !Info ^ imi_calculate_sub := swap_calculate_sub(CalculateSub),
+    P(Type, InstB, InstA, !Info),
+    !Info ^ imi_calculate_sub := CalculateSub.
+
+:- func swap_calculate_sub(calculate_sub) = calculate_sub.
+
+swap_calculate_sub(cs_forward) = cs_reverse.
+swap_calculate_sub(cs_reverse) = cs_forward.
+swap_calculate_sub(cs_none) = cs_none.
+
+%-----------------------------------------------------------------------------%
+
+:- pred handle_inst_var_subs(
+    inst_matches_pred::in(inst_matches_pred),
+    inst_matches_pred::in(inst_matches_pred),
+    mer_type::in, mer_inst::in, mer_inst::in,
+    inst_match_info::in, inst_match_info::out) is semidet.
+
+handle_inst_var_subs(Recurse, Continue, Type, InstA, InstB, !Info) :-
+    CalculateSub = !.Info ^ imi_calculate_sub,
+    (
+        CalculateSub = cs_forward,
+        handle_inst_var_subs_2(Recurse, Continue, Type, InstA, InstB, !Info)
+    ;
+        CalculateSub = cs_reverse,
+        % Calculate the inst var substitution with arguments swapped,
+        % but swap back for inst matching.
+        handle_inst_var_subs_2(unswap(Recurse), unswap(Continue),
+            Type, InstB, InstA, !Info)
+    ;
+        CalculateSub = cs_none,
+        Continue(Type, InstA, InstB, !Info)
+    ).
+
+:- pred handle_inst_var_subs_2(
+    inst_matches_pred::in(inst_matches_pred),
+    inst_matches_pred::in(inst_matches_pred),
+    mer_type::in, mer_inst::in, mer_inst::in,
+    inst_match_info::in, inst_match_info::out) is semidet.
+
+handle_inst_var_subs_2(Recurse, Continue, Type, InstA, InstB, !Info) :-
+    ( if InstB = constrained_inst_vars(InstVarsB, SubInstB) then
+        % Add the substitution InstVarsB => InstA `glb` SubInstB
+        % (see get_subst_inst in dmo's thesis, page 78).
+        %
+        % We pass `Live = is_dead' because we want
+        % abstractly_unify(unique, unique) = unique, not shared.
+        ModuleInfo0 = !.Info ^ imi_module_info,
+        abstractly_unify_inst(Type, is_dead, fake_unify, InstA, SubInstB,
+            UnifyInst, _Det, ModuleInfo0, ModuleInfo),
+        !Info ^ imi_module_info := ModuleInfo,
+        update_inst_var_sub(InstVarsB, UnifyInst, Type, !Info),
+
+        % Check that InstA matches InstB after applying the substitution
+        % to InstB.
+        ( if UnifyInst = constrained_inst_vars(InstVarsB, UnifySubInst) then
+            % Avoid infinite regress.
+            Recurse(Type, InstA, UnifySubInst, !Info)
+        else
+            Recurse(Type, InstA, UnifyInst, !Info)
+        )
+    else if InstA = constrained_inst_vars(_InstVarsA, SubInstA) then
+        Recurse(Type, SubInstA, InstB, !Info)
+    else
+        Continue(Type, InstA, InstB, !Info)
+    ).
+
+%-----------------------------------------------------------------------------%
+
+    % Update the inst_var_sub that is computed by inst_matches_initial.
+    % The inst_var_sub records what inst should be substituted for each
+    % inst_var that occurs in the called procedure's argument modes.
+    %
+:- pred update_inst_var_sub(set(inst_var)::in, mer_inst::in, mer_type::in,
+    inst_match_info::in, inst_match_info::out) is semidet.
+
+update_inst_var_sub(InstVars, InstA, Type, !Info) :-
+    (
+        !.Info ^ imi_maybe_sub = inst_var_sub(_),
+        set.fold(update_inst_var_sub_2(InstA, Type), InstVars, !Info)
+    ;
+        !.Info ^ imi_maybe_sub = no_inst_var_sub
+    ).
+
+:- pred update_inst_var_sub_2(mer_inst::in, mer_type::in, inst_var::in,
+    inst_match_info::in, inst_match_info::out) is semidet.
+
+update_inst_var_sub_2(InstA, Type, InstVar, !Info) :-
+    (
+        !.Info ^ imi_maybe_sub = inst_var_sub(InstVarSub0),
+        ( if map.search(InstVarSub0, InstVar, InstB) then
+            % If InstVar already has an inst associated with it, merge
+            % the old and new insts. Fail if this merge is not possible.
+            ModuleInfo0 = !.Info ^ imi_module_info,
+            inst_merge(Type, InstA, InstB, InstAB, ModuleInfo0, ModuleInfo),
+            !Info ^ imi_module_info := ModuleInfo,
+            map.det_update(InstVar, InstAB, InstVarSub0, InstVarSub),
+            !Info ^ imi_maybe_sub := inst_var_sub(InstVarSub)
+        else
+            map.det_insert(InstVar, InstA, InstVarSub0, InstVarSub),
+            !Info ^ imi_maybe_sub := inst_var_sub(InstVarSub)
+        )
+    ;
+        !.Info ^ imi_maybe_sub = no_inst_var_sub,
+        InstVarSub = map.singleton(InstVar, InstA),
+        !Info ^ imi_maybe_sub := inst_var_sub(InstVarSub)
     ).
 
 %-----------------------------------------------------------------------------%
