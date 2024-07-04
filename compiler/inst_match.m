@@ -261,22 +261,29 @@ inst_matches_initial_mt(CalcSub, Type, InstA, InstB, !Info) :-
         inst_expand(!.Info ^ imi_module_info, InstA, ExpandedInstA),
         inst_expand(!.Info ^ imi_module_info, InstB, ExpandedInstB),
         handle_inst_var_subs(CalcSub,
-            inst_matches_initial_mt, inst_matches_initial_4,
+            inst_matches_initial_mt, inst_matches_initial_mt_2,
             Type, ExpandedInstA, ExpandedInstB, !Info)
     else
         true
     ).
 
-:- pred inst_matches_initial_4(calculate_sub::in, mer_type::in,
+:- pred inst_matches_initial_mt_2(calculate_sub::in, mer_type::in,
     mer_inst::in, mer_inst::in,
     inst_match_info::in, inst_match_info::out) is semidet.
 
-inst_matches_initial_4(CalcSub, Type, InstA, InstB, !Info) :-
+inst_matches_initial_mt_2(CalcSub, Type, InstA0, InstB, !Info) :-
     % To avoid infinite regress, we assume that inst_matches_initial is true
     % for any pairs of insts which occur in `Expansions'.
     %
     % XXX Maybe we could use the inst result field of bound/3 insts
     % in some places.
+    %
+    % Our caller should have expanded/ignored these already.
+    ( if InstB = constrained_inst_vars(_, _) then
+        unexpected($pred, "InstB = constrained_inst_vars/2")
+    else
+        InstA = InstA0
+    ),
     require_complete_switch [InstA]
     (
         InstA = any(UniqA, HOInstInfoA),
@@ -661,18 +668,20 @@ inst_matches_final_mt(CalcSub, Type, InstA, InstB, !Info) :-
             inst_expand(!.Info ^ imi_module_info, InstA, ExpandedInstA),
             inst_expand(!.Info ^ imi_module_info, InstB, ExpandedInstB),
             handle_inst_var_subs(CalcSub,
-                inst_matches_final_mt, inst_matches_final_3,
+                inst_matches_final_mt, inst_matches_final_mt_2,
                 Type, ExpandedInstA, ExpandedInstB, !Info)
         else
             true
         )
     ).
 
-:- pred inst_matches_final_3(calculate_sub::in, mer_type::in,
+:- pred inst_matches_final_mt_2(calculate_sub::in, mer_type::in,
     mer_inst::in, mer_inst::in,
     inst_match_info::in, inst_match_info::out) is semidet.
 
-inst_matches_final_3(CalcSub, Type, InstA, InstB, !Info) :-
+inst_matches_final_mt_2(CalcSub, Type, InstA, InstB, !Info) :-
+    % NOTE Both InstA and InstB may be constrained_inst_vars/2.
+    % ZZZ require_complete_switch [InstA] no inst_var, or defined_inst
     (
         InstA = any(UniqA, HOInstInfoA),
         (
@@ -1443,6 +1452,15 @@ handle_inst_var_subs_2(CalcSub, Recurse, Continue, Type, InstA, InstB,
             Recurse(CalcSub, Type, InstA, UnifyInst, !Info)
         )
     else if InstA = constrained_inst_vars(_InstVarsA, SubInstA) then
+        % XXX The code for InstB being constrained_inst_vars unifies
+        % SubInstB with InstA, and records the resulting UnifyInst against
+        % InstVarsB. However, if it is InstA that is constrained_inst_vars/2,
+        % then here we *throw away* this wrapper; we do not unify SubInstA
+        % with InstB, and therefore we cannot record its results against
+        % _InstVarsA. This strikes me (zs) as strange.
+        %
+        % NOTE: our *caller* *may* end up unifying SubInstA with InstB,
+        % but it has no access to _InstVarsA, since we throw it away here.
         Recurse(CalcSub, Type, SubInstA, InstB, !Info)
     else
         Continue(CalcSub, Type, InstA, InstB, !Info)
