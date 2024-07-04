@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1993-2011 The University of Melbourne.
-% Copyright (C) 2013-2021 The Mercury team.
+% Copyright (C) 2013-2024 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -75,6 +75,7 @@
 :- import_module parse_tree.prog_type_subst.
 :- import_module parse_tree.prog_type_test.
 
+:- import_module bimap.
 :- import_module bool.
 :- import_module edit_seq.
 :- import_module int.
@@ -1699,7 +1700,7 @@ check_subtype_ctor(TypeTable, TVarSet, TypeStatus, Ctor, SuperCtor,
         check_subtype_ctor_arg(TypeTable, TVarSet, TypeStatus,
             CtorSymName, MaybeExistConstraints, MaybeSuperExistConstraints),
         Args, SuperArgs,
-        1, _, map.init, ExistQVarsMapping,
+        1, _, bimap.init, ExistQVarsMapping,
         did_not_find_invalid_type, FoundInvalidType, !Specs),
     (
         FoundInvalidType = did_not_find_invalid_type,
@@ -1732,7 +1733,7 @@ check_subtype_ctor(TypeTable, TVarSet, TypeStatus, Ctor, SuperCtor,
     % A map from existential type variable in the supertype constructor
     % to an existential type variable in the subtype constructor.
     %
-:- type existq_tvar_mapping == map(tvar, tvar).
+:- type existq_tvar_mapping == bimap(tvar, tvar).
 
 :- pred check_subtype_ctor_arg(type_table::in, tvarset::in, type_status::in,
     sym_name::in,
@@ -1890,24 +1891,48 @@ check_is_subtype(TypeTable, TVarSet0, OrigTypeStatus, TypeA, TypeB,
 check_is_subtype_var_var(VarA, VarB,
         MaybeExistConstraintsA, MaybeExistConstraintsB, !ExistQVarsMapping) :-
     ( if VarA = VarB then
-        true
-    else if map.search(!.ExistQVarsMapping, VarB, VarB1) then
-        VarB1 = VarA
+        % Double check that VarA (and VarB) are universally quantified.
+        is_univ_quantified(MaybeExistConstraintsA, VarA)
     else
-        MaybeExistConstraintsA = exist_constraints(ExistConstraintsA),
-        MaybeExistConstraintsB = exist_constraints(ExistConstraintsB),
-        ExistConstraintsA = cons_exist_constraints(_ExistQVarsA,
-            _ConstraintsA, UnconstrainedExistQVarsA, ConstrainedExistQVarsA),
-        ExistConstraintsB = cons_exist_constraints(_ExistQVarsB,
-            _ConstraintsB, UnconstrainedExistQVarsB, ConstrainedExistQVarsB),
-        (
-            list.contains(UnconstrainedExistQVarsA, VarA),
-            list.contains(UnconstrainedExistQVarsB, VarB)
-        ;
-            list.contains(ConstrainedExistQVarsA, VarA),
-            list.contains(ConstrainedExistQVarsB, VarB)
-        ),
-        map.insert(VarB, VarA, !ExistQVarsMapping)
+        % VarA and VarB should both be existentially quantified.
+        % There must be a one-to-one correspondence between existentially
+        % quantified type variables in the subtype and the supertype.
+        ( if bimap.forward_search(!.ExistQVarsMapping, VarB, PrevVar) then
+            % VarB was seen already; it should be mapped to VarA.
+            PrevVar = VarA
+        else
+            % VarB was not seen yet.
+            MaybeExistConstraintsA = exist_constraints(ExistConstraintsA),
+            MaybeExistConstraintsB = exist_constraints(ExistConstraintsB),
+            ExistConstraintsA = cons_exist_constraints(_ExistQVarsA,
+                _ConstraintsA, UnconstrainedExistQVarsA, ConstrainedExistQVarsA),
+            ExistConstraintsB = cons_exist_constraints(_ExistQVarsB,
+                _ConstraintsB, UnconstrainedExistQVarsB, ConstrainedExistQVarsB),
+            % VarA and VarB should both be unconstrained, or both be
+            % constrained.
+            (
+                list.contains(UnconstrainedExistQVarsA, VarA),
+                list.contains(UnconstrainedExistQVarsB, VarB)
+            ;
+                list.contains(ConstrainedExistQVarsA, VarA),
+                list.contains(ConstrainedExistQVarsB, VarB)
+            ),
+            % Record the correspondence between VarB and VarA.
+            % This fails if another type variable was mapped to VarA already.
+            bimap.insert(VarB, VarA, !ExistQVarsMapping)
+        )
+    ).
+
+:- pred is_univ_quantified(maybe_cons_exist_constraints::in, tvar::in)
+    is semidet.
+
+is_univ_quantified(MaybeExistConstraints, TVar) :-
+    (
+        MaybeExistConstraints = no_exist_constraints
+    ;
+        MaybeExistConstraints = exist_constraints(ExistConstraints),
+        ExistQVars = ExistConstraints ^ cons_existq_tvars,
+        not list.contains(ExistQVars, TVar)
     ).
 
 :- pred check_corresponding_args_are_subtype(type_table::in, tvarset::in,
@@ -1984,7 +2009,8 @@ check_subtype_ctor_exist_constraints(CtorSymNameArity,
         !FoundInvalidType, !Specs) :-
     ExistConstraints = cons_exist_constraints(_, Constraints, _, _),
     SuperExistConstraints = cons_exist_constraints(_, SuperConstraints0, _, _),
-    apply_variable_renaming_to_prog_constraint_list(ExistQVarsMapping,
+    ExistQVarsRenaming = bimap.forward_map(ExistQVarsMapping),
+    apply_variable_renaming_to_prog_constraint_list(ExistQVarsRenaming,
         SuperConstraints0, SuperConstraints),
     list.sort(Constraints, SortedConstraints),
     list.sort(SuperConstraints, SortedSuperConstraints),

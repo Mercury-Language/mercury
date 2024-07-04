@@ -10,7 +10,8 @@
 :- type fruit(A)
     --->    apple(A)
     ;       some [O] orange(O)
-    ;       some [T, U] lemon(T, T, foo(U)).
+    ;       some [T, U] lemon(T, T, foo(U))
+    ;       some [T, U] pear(T, U).
 
 :- type foo(T)
     --->    foo(T).
@@ -29,3 +30,6 @@
 
 :- type exist_vars_mismatch2 =< fruit
     --->    some [A, B] lemon(B, A, foo(A)).
+
+:- type exist_vars_mismatch3 =< fruit
+    --->    some [A] pear(A, A).
