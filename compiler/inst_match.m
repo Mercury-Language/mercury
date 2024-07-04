@@ -1203,7 +1203,8 @@ pred_inst_matches_ground(ModuleInfo, Type, PredInst) :-
     pred_inst_info::in, inst_match_info::in, inst_match_info::out) is semidet.
 
 pred_inst_matches_ground_1(CalcSub, Type, PredInst, !Info) :-
-    % XXX CALC_SUB Is CalcSub always cs_none?
+    % NOTE CalcSub is set to cs_none by pred_inst_matches_ground above,
+    % but NOT by ho_inst_info_matches_ground_1.
     PredInst = pred_inst_info(PredOrFunc, ArgModes, _, _),
     (
         PredOrFunc = pf_predicate
@@ -1236,6 +1237,9 @@ pred_inst_matches_1(CalcSub, Type, PredInstA, PredInstB, !Info) :-
     % In the float_regs.m pass a variable may take on pred insts which differ
     % only in the arg reg lists in different branches. They should be allowed
     % to match here.
+    %
+    % NOTE CalcSub is set to cs_none by pred_inst_matches above,
+    % but NOT by ho_inst_info_matches_{initial,final}.
     PredInstA = pred_inst_info(PredOrFunc, ModesA, _MaybeArgRegsA, Det),
     PredInstB = pred_inst_info(PredOrFunc, ModesB, _MaybeArgRegsB, Det),
     get_higher_order_arg_types(Type, list.length(ModesA), Types),
@@ -1260,11 +1264,9 @@ pred_inst_matches_1(CalcSub, Type, PredInstA, PredInstB, !Info) :-
 pred_inst_argmodes_matches(_, [], [], [], !Info).
 pred_inst_argmodes_matches(CalcSub, [Type | Types],
         [ModeA | ModeAs], [ModeB | ModeBs], !Info) :-
-    % XXX CALC_SUB Is CalcSub always cs_none?
     ModuleInfo = !.Info ^ imi_module_info,
     mode_get_insts(ModuleInfo, ModeA, InitialA, FinalA0),
     mode_get_insts(ModuleInfo, ModeB, InitialB, FinalB),
-    % inst_matches_final_mt should probably just accept cs_reverse directly.
     InitialCalcSub = swap_calculate_sub(CalcSub),
     inst_matches_final_mt(InitialCalcSub, Type, InitialB, InitialA, !Info),
     % Apply the substitution computed so far (it may be necessary for InitialA
