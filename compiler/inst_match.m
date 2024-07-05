@@ -260,8 +260,9 @@ inst_matches_initial_mt(CalcSub, Type, InstA, InstB, !Info) :-
         !Info ^ imi_expansions := Expansions,
         inst_expand(!.Info ^ imi_module_info, InstA, ExpandedInstA),
         inst_expand(!.Info ^ imi_module_info, InstB, ExpandedInstB),
-        handle_inst_var_subs(CalcSub, Type, ExpandedInstA, ExpandedInstB,
+        maybe_handle_inst_var_subs(CalcSub, Type, ExpandedInstA, ExpandedInstB,
             InstVarSubResult, !Info),
+        require_complete_switch [InstVarSubResult]
         (
             InstVarSubResult = ivsr_recurse(RecurseInstA, RecurseInstB),
             inst_matches_initial_mt(cs_forward, Type,
@@ -277,25 +278,19 @@ inst_matches_initial_mt(CalcSub, Type, InstA, InstB, !Info) :-
     ).
 
 :- pred inst_matches_initial_mt_2(calculate_sub::in, mer_type::in,
-    mer_inst::in, mer_inst::in,
+    mer_inst::in(mer_inst_expanded), mer_inst::in(mer_inst_expanded),
     inst_match_info::in, inst_match_info::out) is semidet.
 
-inst_matches_initial_mt_2(CalcSub, Type, InstA0, InstB, !Info) :-
+inst_matches_initial_mt_2(CalcSub, Type, InstA, InstB, !Info) :-
     % To avoid infinite regress, we assume that inst_matches_initial is true
     % for any pairs of insts which occur in `Expansions'.
     %
     % XXX Maybe we could use the inst result field of bound/3 insts
     % in some places.
-    %
-    % Our caller should have expanded/ignored these already.
-    ( if InstB = constrained_inst_vars(_, _) then
-        unexpected($pred, "InstB = constrained_inst_vars/2")
-    else
-        InstA = InstA0
-    ),
     require_complete_switch [InstA]
     (
         InstA = any(UniqA, HOInstInfoA),
+        require_complete_switch [InstB]
         (
             InstB = any(UniqB, HOInstInfoB),
             !.Info ^ imi_any_matches_any = any_does_match_any,
@@ -315,12 +310,21 @@ inst_matches_initial_mt_2(CalcSub, Type, InstA0, InstB, !Info) :-
             maybe_any_to_bound(!.Info ^ imi_module_info, Type, UniqA,
                 HOInstInfoA, NextInstA),
             inst_matches_initial_mt(CalcSub, Type, NextInstA, InstB, !Info)
+        ;
+            ( InstB = not_reached
+            ; InstB = constrained_inst_vars(_, _)
+            ; InstB = inst_var(_)
+            ),
+            % XXX The failures in these cases used to be implicit.
+            % For some of these cases, failure may be the wrong thing to do.
+            fail
         )
     ;
         InstA = free,
         InstB = free
     ;
         InstA = bound(UniqA, InstResultsA, BoundInstsA),
+        require_complete_switch [InstB]
         (
             InstB = any(UniqB, none_or_default_func),
             compare_uniqueness(!.Info ^ imi_uniqueness_comparison,
@@ -354,9 +358,18 @@ inst_matches_initial_mt_2(CalcSub, Type, InstA0, InstB, !Info) :-
                 !.Info ^ imi_uniqueness_comparison, BoundInstsA, UniqB),
             inst_contains_nondefault_func_mode_1(CalcSub, Type, InstA, no,
                 !Info)
+        ;
+            ( InstB = not_reached
+            ; InstB = constrained_inst_vars(_, _)
+            ; InstB = inst_var(_)
+            ),
+            % XXX The failures in these cases used to be implicit.
+            % For some of these cases, failure may be the wrong thing to do.
+            fail
         )
     ;
         InstA = ground(UniqA, HOInstInfoA),
+        require_complete_switch [InstB]
         (
             InstB = any(UniqB, HOInstInfoB),
             compare_uniqueness(!.Info ^ imi_uniqueness_comparison,
@@ -382,16 +395,26 @@ inst_matches_initial_mt_2(CalcSub, Type, InstA0, InstB, !Info) :-
                 UniqA, UniqB),
             ho_inst_info_matches_initial(CalcSub, Type,
                 HOInstInfoA, HOInstInfoB, !Info)
+        ;
+            ( InstB = not_reached
+            ; InstB = constrained_inst_vars(_, _)
+            ; InstB = inst_var(_)
+            ),
+            % XXX The failures in these cases used to be implicit.
+            % For some of these cases, failure may be the wrong thing to do.
+            fail
         )
     ;
         InstA = not_reached
     ;
         ( InstA = constrained_inst_vars(_, _)
-        ; InstA = defined_inst(_)
         ; InstA = inst_var(_)
         ),
-        % Our callers should have expanded out these insts.
-        % XXX Update the expected inst of InstA/InstB to reflect this.
+        % Our callers should have expanded out these insts, but some of them
+        % do not do that. In particular, inst_is_at_least_as_instantiated
+        % calls inst_matches_initial_mt with cs_none.
+        % XXX If and when this is fixed, and all callers expand out these
+        % insts, update the expected insts of InstA/InstB to reflect this.
         unexpected($pred, "unexpected InstA")
     ).
 
@@ -676,8 +699,9 @@ inst_matches_final_mt(CalcSub, Type, InstA, InstB, !Info) :-
             !Info ^ imi_expansions := Expansions,
             inst_expand(!.Info ^ imi_module_info, InstA, ExpandedInstA),
             inst_expand(!.Info ^ imi_module_info, InstB, ExpandedInstB),
-            handle_inst_var_subs(CalcSub, Type, ExpandedInstA, ExpandedInstB,
-                InstVarSubResult, !Info),
+            maybe_handle_inst_var_subs(CalcSub, Type,
+                ExpandedInstA, ExpandedInstB, InstVarSubResult, !Info),
+            require_complete_switch [InstVarSubResult]
             (
                 InstVarSubResult = ivsr_recurse(RecurseInstA, RecurseInstB),
                 inst_matches_final_mt(cs_forward, Type,
@@ -694,14 +718,15 @@ inst_matches_final_mt(CalcSub, Type, InstA, InstB, !Info) :-
     ).
 
 :- pred inst_matches_final_mt_2(calculate_sub::in, mer_type::in,
-    mer_inst::in, mer_inst::in,
+    mer_inst::in(mer_inst_expanded), mer_inst::in(mer_inst_expanded),
     inst_match_info::in, inst_match_info::out) is semidet.
 
 inst_matches_final_mt_2(CalcSub, Type, InstA, InstB, !Info) :-
     % NOTE Both InstA and InstB may be constrained_inst_vars/2.
-    % ZZZ require_complete_switch [InstA] no inst_var, or defined_inst
+    require_complete_switch [InstA]
     (
         InstA = any(UniqA, HOInstInfoA),
+        require_complete_switch [InstB]
         (
             InstB = any(UniqB, HOInstInfoB),
             ho_inst_info_matches_final(CalcSub, Type,
@@ -717,9 +742,19 @@ inst_matches_final_mt_2(CalcSub, Type, InstA, InstB, !Info) :-
             maybe_any_to_bound(!.Info ^ imi_module_info, Type, UniqA,
                 HOInstInfoA, NextInstA),
             inst_matches_final_mt(CalcSub, Type, NextInstA, InstB, !Info)
+        ;
+            ( InstB = free
+            ; InstB = not_reached
+            ; InstB = constrained_inst_vars(_, _)
+            ; InstB = inst_var(_)
+            ),
+            % XXX The failures in these cases used to be implicit.
+            % For some of these cases, failure may be the wrong thing to do.
+            fail
         )
     ;
         InstA = free,
+        require_complete_switch [InstB]
         (
             InstB = any(Uniq, _),
             % We do not yet allow `free' to match `any',
@@ -729,9 +764,20 @@ inst_matches_final_mt_2(CalcSub, Type, InstA, InstB, !Info) :-
             ( Uniq = clobbered ; Uniq = mostly_clobbered )
         ;
             InstB = free
+        ;
+            ( InstB = ground(_, _)
+            ; InstB = bound(_, _, _)
+            ; InstB = not_reached
+            ; InstB = constrained_inst_vars(_, _)
+            ; InstB = inst_var(_)
+            ),
+            % XXX The failures in these cases used to be implicit.
+            % For some of these cases, failure may be the wrong thing to do.
+            fail
         )
     ;
         InstA = bound(UniqA, InstResultsA, BoundInstsA),
+        require_complete_switch [InstB]
         (
             InstB = any(UniqB, none_or_default_func),
             unique_matches_final(UniqA, UniqB),
@@ -758,9 +804,19 @@ inst_matches_final_mt_2(CalcSub, Type, InstA, InstB, !Info) :-
                 BoundInstsA),
             inst_contains_nondefault_func_mode_1(CalcSub, Type, InstA, no,
                 !Info)
+        ;
+            ( InstB = free
+            ; InstB = not_reached
+            ; InstB = constrained_inst_vars(_, _)
+            ; InstB = inst_var(_)
+            ),
+            % XXX The failures in these cases used to be implicit.
+            % For some of these cases, failure may be the wrong thing to do.
+            fail
         )
     ;
         InstA = ground(UniqA, HOInstInfoA),
+        require_complete_switch [InstB]
         (
             InstB = any(UniqB, HOInstInfoB),
             ho_inst_info_matches_final(CalcSub, Type,
@@ -792,9 +848,16 @@ inst_matches_final_mt_2(CalcSub, Type, InstA, InstB, !Info) :-
             ho_inst_info_matches_final(CalcSub, Type,
                 HOInstInfoA, HOInstInfoB, !Info),
             unique_matches_final(UniqA, UniqB)
+        ;
+            ( InstB = free
+            ; InstB = not_reached
+            ; InstB = constrained_inst_vars(_, _)
+            ; InstB = inst_var(_)
+            ),
+            % XXX The failures in these cases used to be implicit.
+            % For some of these cases, failure may be the wrong thing to do.
+            fail
         )
-    ;
-        InstA = not_reached
     ;
         InstA = constrained_inst_vars(InstVarsA, SubInstA),
         ( if InstB = constrained_inst_vars(InstVarsB, SubInstB) then
@@ -805,6 +868,15 @@ inst_matches_final_mt_2(CalcSub, Type, InstA, InstB, !Info) :-
         else
             inst_matches_final_mt(CalcSub, Type, SubInstA, InstB, !Info)
         )
+    ;
+        InstA = not_reached
+    ;
+        InstA = inst_var(_),
+        % XXX This case used to be simply missing, so I (zs) have no idea
+        % whether failing here is the right thing to do; I only know that
+        % that is what this code has always done implicitly. This code here
+        % only makes the failure explicit.
+        fail
     ).
 
 :- pred ho_inst_info_matches_final(calculate_sub::in, mer_type::in,
@@ -1411,33 +1483,51 @@ swap_calculate_sub(cs_none) = cs_none.
 %-----------------------------------------------------------------------------%
 
 :- type inst_var_subs_result
-    --->   ivsr_recurse(mer_inst, mer_inst) % CalcSub = cs_forward.
-    ;      ivsr_continue(calculate_sub, mer_inst, mer_inst).
+    --->    ivsr_recurse(mer_inst, mer_inst) % CalcSub = cs_forward.
+    ;       ivsr_continue(calculate_sub, mer_inst, mer_inst).
 
-:- pred handle_inst_var_subs(calculate_sub::in, mer_type::in,
-    mer_inst::in, mer_inst::in, inst_var_subs_result::out,
+:- inst inst_var_subs_result for inst_var_subs_result/0
+    --->    ivsr_recurse(ground, ground)
+    ;       ivsr_continue(ground, mer_inst_expanded, mer_inst_expanded).
+            % We construct ivsr_continue in two places: one place each in
+            % maybe_handle_inst_var_subs and do_handle_inst_var_subs.
+            % The latter guarantees that the two mer_insts will both be
+            % mer_inst_expanded_nc, but the former only guarantees
+            % mer_inst_expanded, and that only because that is the inst
+            % of its input.
+            %
+            % Since both callers of maybe_handle_inst_var_subs have to be
+            % prepared to handle constrained_inst_vars insts being returned
+            % in ivsr_continue, we can guarantee only the looser inst.
+
+:- pred maybe_handle_inst_var_subs(calculate_sub::in, mer_type::in,
+    mer_inst::in(mer_inst_expanded), mer_inst::in(mer_inst_expanded),
+    inst_var_subs_result::out(inst_var_subs_result),
     inst_match_info::in, inst_match_info::out) is semidet.
 
-handle_inst_var_subs(CalcSub, Type, InstA, InstB, Result, !Info) :-
+maybe_handle_inst_var_subs(CalcSub, Type, InstA, InstB, Result, !Info) :-
     (
         CalcSub = cs_forward,
         CalcSubDir = coerce(CalcSub),
-        handle_inst_var_subs_2(CalcSubDir, Type, InstA, InstB, Result, !Info)
+        do_handle_inst_var_subs(CalcSubDir, Type, InstA, InstB, Result, !Info)
     ;
         CalcSub = cs_reverse,
         CalcSubDir = coerce(CalcSub),
-        handle_inst_var_subs_2(CalcSubDir, Type, InstB, InstA, Result, !Info)
+        do_handle_inst_var_subs(CalcSubDir, Type, InstB, InstA, Result, !Info)
     ;
         CalcSub = cs_none,
         Result = ivsr_continue(cs_none, InstA, InstB)
     ).
 
-:- pred handle_inst_var_subs_2(calculate_sub_dir::in, mer_type::in,
-    mer_inst::in, mer_inst::in, inst_var_subs_result::out,
+:- pred do_handle_inst_var_subs(calculate_sub_dir::in, mer_type::in,
+    mer_inst::in(mer_inst_expanded), mer_inst::in(mer_inst_expanded),
+    inst_var_subs_result::out(inst_var_subs_result),
     inst_match_info::in, inst_match_info::out) is semidet.
 
-handle_inst_var_subs_2(CalcSubDir, Type, InstA, InstB, Result, !Info) :-
-    ( if InstB = constrained_inst_vars(InstVarsB, SubInstB) then
+do_handle_inst_var_subs(CalcSubDir, Type, InstA, InstB, Result, !Info) :-
+    require_complete_switch [InstB]
+    (
+        InstB = constrained_inst_vars(InstVarsB, SubInstB),
         % Add the substitution InstVarsB => InstA `glb` SubInstB
         % (see get_subst_inst in dmo's thesis, page 78).
         %
@@ -1458,25 +1548,55 @@ handle_inst_var_subs_2(CalcSubDir, Type, InstA, InstB, Result, !Info) :-
             swap_insts_back(CalcSubDir, InstA, UnifyInst, Inst1, Inst2)
         ),
         Result = ivsr_recurse(Inst1, Inst2)
-    else if InstA = constrained_inst_vars(_InstVarsA, SubInstA) then
-        % XXX The code for InstB being constrained_inst_vars unifies
-        % SubInstB with InstA, and records the resulting UnifyInst against
-        % InstVarsB. However, if it is InstA that is constrained_inst_vars/2,
-        % then here we *throw away* this wrapper; we do not unify SubInstA
-        % with InstB, and therefore we cannot record its results against
-        % _InstVarsA. This strikes me (zs) as strange.
-        %
-        % NOTE: our *caller* *may* end up unifying SubInstA with InstB,
-        % but it has no access to _InstVarsA, since we throw it away here.
-        swap_insts_back(CalcSubDir, SubInstA, InstB, Inst1, Inst2),
-        Result = ivsr_recurse(Inst1, Inst2)
-    else
-        swap_insts_back(CalcSubDir, InstA, InstB, Inst1, Inst2),
-        Result = ivsr_continue(cs_forward, Inst1, Inst2)
+    ;
+        ( InstB = free
+        ; InstB = ground(_, _)
+        ; InstB = any(_, _)
+        ; InstB = bound(_, _, _)
+        ; InstB = not_reached
+        ; InstB = inst_var(_)
+        ),
+        require_complete_switch [InstA]
+        (
+            InstA = constrained_inst_vars(_InstVarsA, SubInstA),
+            % XXX The code for InstB being constrained_inst_vars unifies
+            % SubInstB with InstA, and records the resulting UnifyInst against
+            % InstVarsB. However, if it is InstA that is bound to
+            % constrained_inst_vars/2, then here we *throw away* this wrapper;
+            % we do not unify SubInstA with InstB, and therefore we cannot
+            % record its results against _InstVarsA. This strikes me (zs)
+            % as strange.
+            %
+            % NOTE: our *caller* *may* end up unifying SubInstA with InstB,
+            % but it has no access to _InstVarsA, since we throw it away here.
+            swap_insts_back(CalcSubDir, SubInstA, InstB, Inst1, Inst2),
+            Result = ivsr_recurse(Inst1, Inst2)
+        ;
+            ( InstA = free
+            ; InstA = ground(_, _)
+            ; InstA = any(_, _)
+            ; InstA = bound(_, _, _)
+            ; InstA = not_reached
+            ; InstA = inst_var(_)
+            ),
+            swap_insts_back(CalcSubDir, InstA, InstB, Inst1, Inst2),
+            Result = ivsr_continue(cs_forward, Inst1, Inst2)
+        )
     ).
 
-:- pred swap_insts_back(calculate_sub_dir::in,
-    mer_inst::in, mer_inst::in, mer_inst::out, mer_inst::out) is det.
+:- pred swap_insts_back(calculate_sub_dir,
+    mer_inst, mer_inst, mer_inst, mer_inst).
+% This mode is not yet needed, but it should be needed later
+% to express the inst of the ivsr_continue term constructed above.
+% Note that this will kind of ivsr_continue will have to be separated
+% from the ivsr_continue constructed by maybe_handle_inst_var_subs.
+% :- mode swap_insts_back(in,
+%     in(mer_inst_expanded_nc), in(mer_inst_expanded_nc),
+%     out(mer_inst_expanded_nc), out(mer_inst_expanded_nc)) is det.
+:- mode swap_insts_back(in,
+    in(mer_inst_expanded), in(mer_inst_expanded),
+    out(mer_inst_expanded), out(mer_inst_expanded)) is det.
+:- mode swap_insts_back(in, in, in, out, out) is det.
 
 swap_insts_back(CalcSubDir, InstA, InstB, Inst1, Inst2) :-
     (

@@ -140,7 +140,7 @@
     ;           any(ground, ground)
     ;           inst_var(ground).
 
-:- inst mer_inst_expanded_no_constraints for mer_inst/0
+:- inst mer_inst_expanded_nc for mer_inst/0
     --->        ground(ground, ground)
     ;           free
     ;           bound(ground, ground, ground)
@@ -161,7 +161,7 @@
     % replacing them with the constraining inst.
     %
 :- pred inst_expand_and_remove_constrained_inst_vars(module_info::in,
-    mer_inst::in, mer_inst::out(mer_inst_expanded_no_constraints)) is det.
+    mer_inst::in, mer_inst::out(mer_inst_expanded_nc)) is det.
 
 %---------------------------------------------------------------------------%
 %---------------------------------------------------------------------------%
