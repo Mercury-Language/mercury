@@ -113,7 +113,7 @@
     %
     % Assign the given Inst to the given Var, after checking that it is
     % okay to do so. If the inst to be assigned is the result of an
-    % abstract unification then the MaybeUInst argument should be the
+    % abstract unification, then the MaybeUInst argument should be the
     % initial inst of the _other_ side of the unification. This allows
     % more precise (i.e. less conservative) checking in the case that
     % Inst contains `any' components and Var is locked (i.e. is a
