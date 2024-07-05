@@ -260,9 +260,18 @@ inst_matches_initial_mt(CalcSub, Type, InstA, InstB, !Info) :-
         !Info ^ imi_expansions := Expansions,
         inst_expand(!.Info ^ imi_module_info, InstA, ExpandedInstA),
         inst_expand(!.Info ^ imi_module_info, InstB, ExpandedInstB),
-        handle_inst_var_subs(CalcSub,
-            inst_matches_initial_mt, inst_matches_initial_mt_2,
-            Type, ExpandedInstA, ExpandedInstB, !Info)
+        handle_inst_var_subs(CalcSub, Type, ExpandedInstA, ExpandedInstB,
+            InstVarSubResult, !Info),
+        (
+            InstVarSubResult = ivsr_recurse(RecurseInstA, RecurseInstB),
+            inst_matches_initial_mt(cs_forward, Type,
+                RecurseInstA, RecurseInstB, !Info)
+        ;
+            InstVarSubResult = ivsr_continue(ContCalcSub,
+                ContinueInstA, ContinueInstB),
+            inst_matches_initial_mt_2(ContCalcSub, Type,
+                ContinueInstA, ContinueInstB, !Info)
+        )
     else
         true
     ).
@@ -667,9 +676,18 @@ inst_matches_final_mt(CalcSub, Type, InstA, InstB, !Info) :-
             !Info ^ imi_expansions := Expansions,
             inst_expand(!.Info ^ imi_module_info, InstA, ExpandedInstA),
             inst_expand(!.Info ^ imi_module_info, InstB, ExpandedInstB),
-            handle_inst_var_subs(CalcSub,
-                inst_matches_final_mt, inst_matches_final_mt_2,
-                Type, ExpandedInstA, ExpandedInstB, !Info)
+            handle_inst_var_subs(CalcSub, Type, ExpandedInstA, ExpandedInstB,
+                InstVarSubResult, !Info),
+            (
+                InstVarSubResult = ivsr_recurse(RecurseInstA, RecurseInstB),
+                inst_matches_final_mt(cs_forward, Type,
+                    RecurseInstA, RecurseInstB, !Info)
+            ;
+                InstVarSubResult = ivsr_continue(ContCalcSub,
+                    ContinueInstA, ContinueInstB),
+                inst_matches_final_mt_2(ContCalcSub, Type,
+                    ContinueInstA, ContinueInstB, !Info)
+            )
         else
             true
         )
@@ -1365,6 +1383,10 @@ expansion_insert_new(E, S0, S) :-
     ;       cs_none.
             % Do not calculate inst var substitution.
 
+:- type calculate_sub_dir =< calculate_sub
+    --->    cs_forward
+    ;       cs_reverse.
+
 :- type any_matches_any
     --->    any_does_not_match_any
     ;       any_does_match_any.
@@ -1380,13 +1402,6 @@ init_inst_match_info(ModuleInfo, MaybeSub, UniqCmp,
 
 %-----------------------------------------------------------------------------%
 
-:- pred swap_insts(inst_matches_pred::in(inst_matches_pred),
-    calculate_sub::in, mer_type::in, mer_inst::in, mer_inst::in,
-    inst_match_info::in, inst_match_info::out) is semidet.
-
-swap_insts(P, CalcSub, Type, InstA, InstB, !Info) :-
-    P(CalcSub, Type, InstB, InstA, !Info).
-
 :- func swap_calculate_sub(calculate_sub) = calculate_sub.
 
 swap_calculate_sub(cs_forward) = cs_reverse.
@@ -1395,42 +1410,33 @@ swap_calculate_sub(cs_none) = cs_none.
 
 %-----------------------------------------------------------------------------%
 
-:- type inst_matches_pred ==
-    pred(calculate_sub, mer_type, mer_inst, mer_inst,
-        inst_match_info, inst_match_info).
-:- inst inst_matches_pred == (pred(in, in, in, in, in, out) is semidet).
+:- type inst_var_subs_result
+    --->   ivsr_recurse(mer_inst, mer_inst) % CalcSub = cs_forward.
+    ;      ivsr_continue(calculate_sub, mer_inst, mer_inst).
 
-:- pred handle_inst_var_subs(calculate_sub::in,
-    inst_matches_pred::in(inst_matches_pred),
-    inst_matches_pred::in(inst_matches_pred),
-    mer_type::in, mer_inst::in, mer_inst::in,
+:- pred handle_inst_var_subs(calculate_sub::in, mer_type::in,
+    mer_inst::in, mer_inst::in, inst_var_subs_result::out,
     inst_match_info::in, inst_match_info::out) is semidet.
 
-handle_inst_var_subs(CalcSub, Recurse, Continue, Type, InstA, InstB, !Info) :-
+handle_inst_var_subs(CalcSub, Type, InstA, InstB, Result, !Info) :-
     (
         CalcSub = cs_forward,
-        handle_inst_var_subs_2(CalcSub, Recurse, Continue,
-            Type, InstA, InstB, !Info)
+        CalcSubDir = coerce(CalcSub),
+        handle_inst_var_subs_2(CalcSubDir, Type, InstA, InstB, Result, !Info)
     ;
         CalcSub = cs_reverse,
-        % Calculate the inst var substitution with arguments swapped,
-        % but swap back for inst matching.
-        handle_inst_var_subs_2(cs_forward,
-            swap_insts(Recurse), swap_insts(Continue),
-            Type, InstB, InstA, !Info)
+        CalcSubDir = coerce(CalcSub),
+        handle_inst_var_subs_2(CalcSubDir, Type, InstB, InstA, Result, !Info)
     ;
         CalcSub = cs_none,
-        Continue(cs_none, Type, InstA, InstB, !Info)
+        Result = ivsr_continue(cs_none, InstA, InstB)
     ).
 
-:- pred handle_inst_var_subs_2(calculate_sub::in,
-    inst_matches_pred::in(inst_matches_pred),
-    inst_matches_pred::in(inst_matches_pred),
-    mer_type::in, mer_inst::in, mer_inst::in,
+:- pred handle_inst_var_subs_2(calculate_sub_dir::in, mer_type::in,
+    mer_inst::in, mer_inst::in, inst_var_subs_result::out,
     inst_match_info::in, inst_match_info::out) is semidet.
 
-handle_inst_var_subs_2(CalcSub, Recurse, Continue, Type, InstA, InstB,
-        !Info) :-
+handle_inst_var_subs_2(CalcSubDir, Type, InstA, InstB, Result, !Info) :-
     ( if InstB = constrained_inst_vars(InstVarsB, SubInstB) then
         % Add the substitution InstVarsB => InstA `glb` SubInstB
         % (see get_subst_inst in dmo's thesis, page 78).
@@ -1447,10 +1453,11 @@ handle_inst_var_subs_2(CalcSub, Recurse, Continue, Type, InstA, InstB,
         % to InstB.
         ( if UnifyInst = constrained_inst_vars(InstVarsB, UnifySubInst) then
             % Avoid infinite regress.
-            Recurse(CalcSub, Type, InstA, UnifySubInst, !Info)
+            swap_insts_back(CalcSubDir, InstA, UnifySubInst, Inst1, Inst2)
         else
-            Recurse(CalcSub, Type, InstA, UnifyInst, !Info)
-        )
+            swap_insts_back(CalcSubDir, InstA, UnifyInst, Inst1, Inst2)
+        ),
+        Result = ivsr_recurse(Inst1, Inst2)
     else if InstA = constrained_inst_vars(_InstVarsA, SubInstA) then
         % XXX The code for InstB being constrained_inst_vars unifies
         % SubInstB with InstA, and records the resulting UnifyInst against
@@ -1461,9 +1468,27 @@ handle_inst_var_subs_2(CalcSub, Recurse, Continue, Type, InstA, InstB,
         %
         % NOTE: our *caller* *may* end up unifying SubInstA with InstB,
         % but it has no access to _InstVarsA, since we throw it away here.
-        Recurse(CalcSub, Type, SubInstA, InstB, !Info)
+        swap_insts_back(CalcSubDir, SubInstA, InstB, Inst1, Inst2),
+        Result = ivsr_recurse(Inst1, Inst2)
     else
-        Continue(CalcSub, Type, InstA, InstB, !Info)
+        swap_insts_back(CalcSubDir, InstA, InstB, Inst1, Inst2),
+        Result = ivsr_continue(cs_forward, Inst1, Inst2)
+    ).
+
+:- pred swap_insts_back(calculate_sub_dir::in,
+    mer_inst::in, mer_inst::in, mer_inst::out, mer_inst::out) is det.
+
+swap_insts_back(CalcSubDir, InstA, InstB, Inst1, Inst2) :-
+    (
+        CalcSubDir = cs_forward,
+        % handle_inst_var_subs did not swap InstA and InstB; no swap-back.
+        Inst1 = InstA,
+        Inst2 = InstB
+    ;
+        CalcSubDir = cs_reverse,
+        % handle_inst_var_subs *did* swap InstA and InstB; swap them back.
+        Inst1 = InstB,
+        Inst2 = InstA
     ).
 
 %-----------------------------------------------------------------------------%
