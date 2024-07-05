@@ -1,0 +1,3 @@
+coerce_same_var.m:017: In clause for predicate `main'/2:
+coerce_same_var.m:017:   error: the type of [38;5;87m`X'[39;49m is [38;5;203munresolved;[39;49m cannot coerce
+coerce_same_var.m:017:   from `V_2' to `V_2'.

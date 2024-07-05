@@ -128,6 +128,7 @@ BORING_SINGLEMODULE_PROGS = \
 	coerce_non_du \
 	coerce_recursive_inst \
 	coerce_recursive_type \
+	coerce_same_var \
 	coerce_syntax \
 	coerce_type_error \
 	coerce_unify_tvars \

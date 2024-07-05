@@ -1819,8 +1819,14 @@ typecheck_coerce_2(Context, FromVar, ToVar, TypeAssign0,
             TypeAssign2 = TypeAssign1
         ;
             MaybeToType = no,
-            type_assign_fresh_type_var(ToVar, ToType,
-                TypeAssign1, TypeAssign2)
+            % Handle X = coerce(X).
+            ( if ToVar = FromVar then
+                ToType = FromType,
+                TypeAssign2 = TypeAssign1
+            else
+                type_assign_fresh_type_var(ToVar, ToType,
+                    TypeAssign1, TypeAssign2)
+            )
         ),
         Coercion = coerce_constraint(FromType, ToType, Context, FromVar,
             need_to_check),
