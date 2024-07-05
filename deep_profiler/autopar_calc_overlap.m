@@ -127,18 +127,18 @@ calculate_parallel_cost_step(Info, NumMiddleGoals, Conjunct, !ConjNum,
         IsLastConjunct = not_last_par_conjunct
     ),
     Conjunct = seq_conj(Conjuncts),
-    calculate_parallel_cost_step(Info, SharedVars, IsLastConjunct, Conjuncts,
+    calculate_parallel_cost_step_2(Info, SharedVars, IsLastConjunct, Conjuncts,
         !ConjNum, PM0, PM, Overlap0, Overlap, Metrics0, Metrics),
     !:CostData = parallelisation_cost_data(SharedVars, Overlap, Metrics, PM).
 
-:- pred calculate_parallel_cost_step(implicit_parallelism_info::in,
+:- pred calculate_parallel_cost_step_2(implicit_parallelism_info::in,
     set(var_rep)::in, is_last_par_conjunct::in, list(pard_goal_detail)::in,
     int::in, int::out, map(var_rep, float)::in, map(var_rep, float)::out,
     parallel_execution_overlap::in, parallel_execution_overlap::out,
     parallel_exec_metrics_incomplete::in,
     parallel_exec_metrics_incomplete::out) is det.
 
-calculate_parallel_cost_step(Info, AllSharedVars, IsLastConjunct, Conjunct,
+calculate_parallel_cost_step_2(Info, AllSharedVars, IsLastConjunct, Conjunct,
         !ConjNum, !ProductionsMap, !Overlap, !Metrics) :-
     Algorithm = Info ^ ipi_opts ^ cpcp_parallelise_dep_conjs,
 
@@ -182,7 +182,7 @@ calculate_parallel_cost_step(Info, AllSharedVars, IsLastConjunct, Conjunct,
 
         % Determine how the parallel conjuncts overlap.
         list.foldl5(
-            calculate_dependent_parallel_cost_2(Info, !.ProductionsMap),
+            calculate_dependent_parallel_cost(Info, !.ProductionsMap),
             ConsumptionsAndProductionsList, 0.0, LastSeqConsumeTime,
             StartTime, LastParConsumeTime, StartTime, LastResumeTime,
             [], RevExecution0, map.init, ConsumptionsMap),
@@ -191,7 +191,7 @@ calculate_parallel_cost_step(Info, AllSharedVars, IsLastConjunct, Conjunct,
         % and complete the RevExecutions structure.
         list.reverse(RevExecution, Execution),
         CostBParElapsed = LastParConsumeTime + (CostB - LastSeqConsumeTime),
-        RevExecution = [ (LastResumeTime - CostBParElapsed) | RevExecution0 ],
+        RevExecution = [(LastResumeTime - CostBParElapsed) | RevExecution0],
 
         CostSignals = float(Info ^ ipi_opts ^ cpcp_future_signal_cost *
             count(RightProducedVars)),
@@ -230,7 +230,7 @@ calculate_parallel_cost_step(Info, AllSharedVars, IsLastConjunct, Conjunct,
     !:Overlap = peo_conjunction(!.Overlap, DepConjExec, Vars),
     !:ConjNum = !.ConjNum + 1.
 
-    % calculate_dependent_parallel_cost_2(Info, ProductionsMap,
+    % calculate_dependent_parallel_cost(Info, ProductionsMap,
     %   Var - SeqConsTime, !PrevSeqConsumeTime, !PrevParConsumeTime,
     %   !ResumeTime, !RevExecution, !ConsumptionsMap).
     %
@@ -242,7 +242,7 @@ calculate_parallel_cost_step(Info, AllSharedVars, IsLastConjunct, Conjunct,
     % * Var: The current variable under consideration.
     %
     % * SeqConsTime: The type of event for this variable in this conjunct and
-    %   the time at which it occurs.  It is either consumed or produced by this
+    %   the time at which it occurs. It is either consumed or produced by this
     %   conjunct.
     %
     % * !PrevSeqConsumeTime: Accumulates the time of the previous consumption
@@ -250,27 +250,27 @@ calculate_parallel_cost_step(Info, AllSharedVars, IsLastConjunct, Conjunct,
     %   beginning of sequential execution (0.0).
     %
     % * !PrevParConsumeTime: Accumulates the time of the previous consumption
-    %   during parallel execution.  Or if there is none this represents the
+    %   during parallel execution. Or if there is none this represents the
     %   tame that the parallel conjunct first begun execution.
     %
     % * !ResumeTime: Accumulates the time that execution last resumed if it
     %   became blocked, or the beginning of the parallel conjunct's execution.
     %
     % * !RevExecution: Accumulates a list of pairs, each pair stores the time
-    %   that execution begun and the time that it pasted.  This never includes
-    %   the remaining execution after all variables have been consumed.  This
-    %   is used by our caller to calculate the production times of this
+    %   that execution begun and the time that it pasted. This never includes
+    %   the remaining execution after all variables have been consumed.
+    %   This is used by our caller to calculate the production times of this
     %   conjunct for later ones.
     %
     % * !ConsumptionsMap: Accumulates a map of variable consumptions.
     %
-:- pred calculate_dependent_parallel_cost_2(implicit_parallelism_info::in,
+:- pred calculate_dependent_parallel_cost(implicit_parallelism_info::in,
     map(var_rep, float)::in, pair(var_rep, production_or_consumption)::in,
     float::in, float::out, float::in, float::out, float::in, float::out,
     assoc_list(float, float)::in, assoc_list(float, float)::out,
     map(var_rep, float)::in, map(var_rep, float)::out) is det.
 
-calculate_dependent_parallel_cost_2(Info, ProductionsMap, Var - SeqEventTime,
+calculate_dependent_parallel_cost(Info, ProductionsMap, Var - SeqEventTime,
         !PrevSeqConsumeTime, !PrevParConsumeTime, !ResumeTime,
         !RevExecution, !ConsumptionsMap) :-
     (
@@ -365,7 +365,7 @@ graph_do_lookup(Lookup, Graph, GoalNum, Deps) :-
     % foldl(get_productions_map(Goals, 0,0, _, Vars, _, map.init, Map).
     %
     % If Goals is semidet this can produce incorrect values in the !Time
-    % accumulator that lead to exceptions.  This is prevented by only
+    % accumulator that lead to exceptions. This is prevented by only
     % attempting to parallelise goals that are det or cc_multi.
     %
     % Build a map of variable productions in Goals.
@@ -411,7 +411,7 @@ adjust_time_for_waits(!Time, !Executions) :-
 
 adjust_time_for_waits_2(LastEnd, !Time, !Executions) :-
     (
-        !.Executions = [ Execution | NextExecution ],
+        !.Executions = [Execution | NextExecution],
         ( Start - End ) = Execution,
 
         % Do the adjustment.
@@ -439,7 +439,7 @@ adjust_time_for_waits_2(LastEnd, !Time, !Executions) :-
 
 adjust_time_for_waits_epsilon = 0.0001.
 
-    % Calculate the time spend during execution and the time spent between
+    % Calculate the time spent during execution and the time spent between
     % executions (dead time).
     %
 :- pred calc_cost_and_dead_time(assoc_list(float, float)::in, float::out,
@@ -463,7 +463,7 @@ calc_cost_and_dead_time_2([Start - Stop | Executions], LastStop,
     % var_production_time_to_map(TimeBefore, Goal, Var, !Map).
     %
     % Find the latest production time of Var in Goal, and add TimeBefore + the
-    % production time to the map.  An exception is thrown if a duplicate map
+    % production time to the map. An exception is thrown if a duplicate map
     % entry is found, our caller must prevent this.
     %
 :- pred var_production_time_to_map(float::in, pard_goal_detail::in,
@@ -473,7 +473,7 @@ var_production_time_to_map(TimeBefore, Goal, Var, !Map) :-
     var_first_use_time(find_production, TimeBefore, Goal, Var, Time),
     map.det_insert(Var, Time, !Map).
 
-    % Either a production or consumption time.  Consumptions should sort before
+    % Either a production or consumption time. Consumptions should sort before
     % productions.
     %
 :- type production_or_consumption
