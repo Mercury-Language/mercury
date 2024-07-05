@@ -5145,7 +5145,7 @@ options_help_aux_output(Stream, !IO) :-
         "\tpredicate or function, and each node has edges linking it to the",
         "\tnodes of the other local predicates and functions it directly",
         "\trefers to. Write out to `<module>.local_call_tree' a list of",
-        "\tthese nodes. tPut these nodes into the order in which they are",
+        "\tthese nodes. Put these nodes into the order in which they are",
         "\tencountered by a depth-first left-to-right traversal of the bodies",
         "\t(as reordered by mode analysis), of the first procedure of",
         "\teach predicate or function, starting the traversal at the",
