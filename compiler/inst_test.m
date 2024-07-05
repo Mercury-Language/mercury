@@ -195,12 +195,16 @@
 :- pred var_inst_contains_any(module_info::in, instmap::in, prog_var::in)
     is semidet.
 
-:- pred inst_contains_higher_order(module_info::in, mer_inst::in) is semidet.
+%---------------------------------------------------------------------------%
 
     % Return true if the given inst may restrict the set of function symbols
     % that may be successfully unified with the variable that has this inst.
     %
 :- func inst_may_restrict_cons_ids(module_info, mer_inst) = bool.
+
+%---------------------------------------------------------------------------%
+
+:- pred inst_contains_higher_order(module_info::in, mer_inst::in) is semidet.
 
 %-----------------------------------------------------------------------------%
 %-----------------------------------------------------------------------------%
@@ -1435,6 +1439,28 @@ var_inst_contains_any(ModuleInfo, Instmap, Var) :-
 
 %---------------------------------------------------------------------------%
 
+inst_may_restrict_cons_ids(ModuleInfo, Inst) = MayRestrict :-
+    (
+        ( Inst = any(_, _)
+        ; Inst = bound(_, _, _)
+        ; Inst = inst_var(_)
+        ; Inst = constrained_inst_vars(_, _)    % XXX is this right?
+        ),
+        MayRestrict = yes
+    ;
+        ( Inst = free
+        ; Inst = not_reached
+        ; Inst = ground(_, _)
+        ),
+        MayRestrict = no
+    ;
+        Inst = defined_inst(InstName),
+        inst_lookup(ModuleInfo, InstName, NewInst),
+        MayRestrict = inst_may_restrict_cons_ids(ModuleInfo, NewInst)
+    ).
+
+%---------------------------------------------------------------------------%
+
 inst_contains_higher_order(ModuleInfo, Inst) :-
     set.init(Expansions),
     inst_contains_higher_order_2(ModuleInfo, Inst, Expansions) = yes.
@@ -1520,28 +1546,6 @@ ho_inst_info_contains_higher_order(HOInstInfo) = ContainsHO :-
     ;
         HOInstInfo = none_or_default_func,
         ContainsHO = no
-    ).
-
-%---------------------------------------------------------------------------%
-
-inst_may_restrict_cons_ids(ModuleInfo, Inst) = MayRestrict :-
-    (
-        ( Inst = any(_, _)
-        ; Inst = bound(_, _, _)
-        ; Inst = inst_var(_)
-        ; Inst = constrained_inst_vars(_, _)    % XXX is this right?
-        ),
-        MayRestrict = yes
-    ;
-        ( Inst = free
-        ; Inst = not_reached
-        ; Inst = ground(_, _)
-        ),
-        MayRestrict = no
-    ;
-        Inst = defined_inst(InstName),
-        inst_lookup(ModuleInfo, InstName, NewInst),
-        MayRestrict = inst_may_restrict_cons_ids(ModuleInfo, NewInst)
     ).
 
 %-----------------------------------------------------------------------------%

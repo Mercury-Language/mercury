@@ -829,9 +829,7 @@ instmap_changed_vars_loop(ModuleInfo, VarTable, [VarB | VarBs],
     instmap_lookup_var(InstMapA, VarB, InitialInst),
     instmap_lookup_var(InstMapB, VarB, FinalInst),
     lookup_var_type(VarTable, VarB, Type),
-    ( if
-        inst_matches_final_typed(ModuleInfo, Type, InitialInst, FinalInst)
-    then
+    ( if inst_matches_final(ModuleInfo, Type, InitialInst, FinalInst) then
         ChangedVars = ChangedVars0
     else
         set_of_var.insert(VarB, ChangedVars0, ChangedVars)

@@ -368,7 +368,7 @@ record_var_if_bound(ModuleInfo, VarTable, InstMap0, InstMap, Var,
     instmap_lookup_var(InstMap0, Var, Inst0),
     instmap_lookup_var(InstMap, Var, Inst),
     lookup_var_type(VarTable, Var, Type),
-    ( if inst_matches_final_typed(ModuleInfo, Type, Inst0, Inst) then
+    ( if inst_matches_final(ModuleInfo, Type, Inst0, Inst) then
         true
     else
         set_of_var.insert(Var, !BoundVars),
