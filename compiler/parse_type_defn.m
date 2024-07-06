@@ -1370,7 +1370,7 @@ parse_where_type_is_abstract_noncanonical(Term) =
 :- func parse_where_pred_is(module_name, varset, term) = maybe1(sym_name).
 
 parse_where_pred_is(ModuleName, VarSet, Term) = MaybeSymName :-
-    parse_implicitly_qualified_symbol_name(ModuleName, VarSet, Term,
+    parse_implicitly_qualified_sym_name(ModuleName, VarSet, Term,
         MaybeSymName).
 
 :- func parse_where_inst_is(module_name, varset, cord(format_piece), term)

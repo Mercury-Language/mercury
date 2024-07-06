@@ -111,35 +111,29 @@
 :- pred try_to_implicitly_qualify_sym_name(module_name::in,
     sym_name::in, sym_name::out) is semidet.
 
-    % A SymbolName is one of
+    % A SymName is one of
     %   Name
-    %       Matches symbols with the specified name in the
-    %       current namespace.
+    %       Matches symbols with the specified name in the current namespace.
     %   Module.Name
     %       Matches symbols with the specified name exported
-    %       by the specified module (where Module is itself a SymbolName).
+    %       by the specified module (where Module is itself a SymName).
     %
     % We also allow the syntax `Module__Name' as an alternative
     % for `Module.Name'.
     %
-:- pred parse_symbol_name(varset(T)::in, term(T)::in, maybe1(sym_name)::out)
+:- pred parse_sym_name(varset(T)::in, term(T)::in, maybe1(sym_name)::out)
     is det.
-:- pred try_parse_symbol_name(term(T)::in, sym_name::out) is semidet.
+:- pred try_parse_sym_name(term(T)::in, sym_name::out) is semidet.
 
-:- pred parse_implicitly_qualified_symbol_name(module_name::in, varset::in,
+:- pred parse_implicitly_qualified_sym_name(module_name::in, varset::in,
     term::in, maybe1(sym_name)::out) is det.
 
-:- type sym_name_specifier
-    --->    sym_name_specifier_name(sym_name)
-    ;       sym_name_specifier_name_arity(sym_name, user_arity).
+:- type sym_name_maybe_arity
+    --->    sym_name_only(sym_name)
+    ;       sym_name_with_arity(sym_name, user_arity).
 
-    % A SymbolNameSpecifier is one of
-    %   SymbolName
-    %   SymbolName/Arity
-    %       Matches only symbols of the specified arity.
-    %
-:- pred parse_symbol_name_specifier(varset::in, term::in,
-    maybe1(sym_name_specifier)::out) is det.
+:- pred parse_sym_name_maybe_arity(varset::in, term::in,
+    maybe1(sym_name_maybe_arity)::out) is det.
 
 %-----------------------------------------------------------------------------e
 
@@ -156,7 +150,7 @@ parse_sym_name_and_args(VarSet, ContextPieces, Term, MaybeSymNameAndArgs) :-
     %
     %   parse_sym_name_and_args
     %   parse_sym_name_and_no_args
-    %   parse_symbol_name
+    %   parse_sym_name
     %
     % should be kept as close to each other as possible.
     ( if
@@ -166,7 +160,7 @@ parse_sym_name_and_args(VarSet, ContextPieces, Term, MaybeSymNameAndArgs) :-
     then
         ( if NameArgsTerm = term.functor(term.atom(Name), Args, _) then
             varset.coerce(VarSet, GenericVarSet),
-            parse_symbol_name(GenericVarSet, ModuleTerm, MaybeModule),
+            parse_sym_name(GenericVarSet, ModuleTerm, MaybeModule),
             (
                 MaybeModule = ok1(Module),
                 MaybeSymNameAndArgs = ok2(qualified(Module, Name), Args)
@@ -204,7 +198,7 @@ try_parse_sym_name_and_args_from_f_args(Functor, FunctorArgs, SymName, Args) :-
         FunctorName = ".",
         FunctorArgs = [ModuleTerm, NameArgsTerm]
     then
-        try_parse_symbol_name(ModuleTerm, ModuleSymName),
+        try_parse_sym_name(ModuleTerm, ModuleSymName),
         try_parse_sym_name_and_args(NameArgsTerm, SubSymName, Args),
         SymName = glue_sym_names(ModuleSymName, SubSymName)
     else
@@ -217,7 +211,7 @@ parse_sym_name_and_no_args(VarSet, ContextPieces, Term, MaybeSymName) :-
     %
     %   parse_sym_name_and_args
     %   parse_sym_name_and_no_args
-    %   parse_symbol_name
+    %   parse_sym_name
     %
     % should be kept as close to each other as possible.
     ( if
@@ -227,7 +221,7 @@ parse_sym_name_and_no_args(VarSet, ContextPieces, Term, MaybeSymName) :-
     then
         ( if NameArgsTerm = term.functor(term.atom(Name), Args, _) then
             varset.coerce(VarSet, GenericVarSet),
-            parse_symbol_name(GenericVarSet, ModuleTerm, MaybeModule),
+            parse_sym_name(GenericVarSet, ModuleTerm, MaybeModule),
             (
                 MaybeModule = ok1(Module),
                 SymName = qualified(Module, Name),
@@ -275,7 +269,7 @@ try_parse_sym_name_and_no_args(Term, SymName) :-
         FunctorArgs = [ModuleTerm, NameArgsTerm]
     then
         NameArgsTerm = term.functor(term.atom(Name), [], _),
-        try_parse_symbol_name(ModuleTerm, Module),
+        try_parse_sym_name(ModuleTerm, Module),
         SymName = qualified(Module, Name)
     else
         FunctorArgs = [],
@@ -371,12 +365,12 @@ try_to_implicitly_qualify_sym_name(DefaultModuleName, SymName0, SymName) :-
 
 %-----------------------------------------------------------------------------e
 
-parse_symbol_name(VarSet, Term, MaybeSymName) :-
+parse_sym_name(VarSet, Term, MaybeSymName) :-
     % The implementations of
     %
     %   parse_sym_name_and_args
     %   parse_sym_name_and_no_args
-    %   parse_symbol_name
+    %   parse_sym_name
     %
     % should be kept as close to each other as possible.
     ( if
@@ -385,7 +379,7 @@ parse_symbol_name(VarSet, Term, MaybeSymName) :-
         FunctorArgs = [ModuleTerm, NameTerm]
     then
         ( if NameTerm = term.functor(term.atom(Name), [], _) then
-            parse_symbol_name(VarSet, ModuleTerm, MaybeModule),
+            parse_sym_name(VarSet, ModuleTerm, MaybeModule),
             (
                 MaybeModule = ok1(Module),
                 MaybeSymName = ok1(qualified(Module, Name))
@@ -412,10 +406,10 @@ parse_symbol_name(VarSet, Term, MaybeSymName) :-
         )
     ).
 
-try_parse_symbol_name(Term, SymName) :-
+try_parse_sym_name(Term, SymName) :-
     ( if Term = term.functor(term.atom("."), [ModuleTerm, NameTerm], _) then
-        try_parse_symbol_name(ModuleTerm, ModuleSymName),
-        try_parse_symbol_name(NameTerm, SubSymName),
+        try_parse_sym_name(ModuleTerm, ModuleSymName),
+        try_parse_sym_name(NameTerm, SubSymName),
         SymName = glue_sym_names(ModuleSymName, SubSymName)
     else
         Term = term.functor(term.atom(Name), [], _),
@@ -448,9 +442,9 @@ glue_sym_names(ModuleSymName, SubSymName) = SymName :-
 
 %-----------------------------------------------------------------------------e
 
-parse_implicitly_qualified_symbol_name(DefaultModuleName, VarSet, Term,
+parse_implicitly_qualified_sym_name(DefaultModuleName, VarSet, Term,
         MaybeSymName) :-
-    parse_symbol_name(VarSet, Term, MaybeSymName0),
+    parse_sym_name(VarSet, Term, MaybeSymName0),
     (
         MaybeSymName0 = ok1(SymName0),
         implicitly_qualify_sym_name(DefaultModuleName, Term,
@@ -462,9 +456,9 @@ parse_implicitly_qualified_symbol_name(DefaultModuleName, VarSet, Term,
 
 %-----------------------------------------------------------------------------e
 
-parse_symbol_name_specifier(VarSet, Term, MaybeSymNameArity) :-
+parse_sym_name_maybe_arity(VarSet, Term, MaybeSymNameArity) :-
     ( if Term = term.functor(term.atom("/"), [NameTerm, ArityTerm], _) then
-        parse_symbol_name(VarSet, NameTerm, MaybeName),
+        parse_sym_name(VarSet, NameTerm, MaybeName),
         ( if term_int.decimal_term_to_int(ArityTerm, Arity) then
             ( if Arity >= 0 then
                 (
@@ -474,7 +468,7 @@ parse_symbol_name_specifier(VarSet, Term, MaybeSymNameArity) :-
                     MaybeName = ok1(Name),
                     UserArity = user_arity(Arity),
                     MaybeSymNameArity =
-                        ok1(sym_name_specifier_name_arity(Name, UserArity))
+                        ok1(sym_name_with_arity(Name, UserArity))
                 )
             else
                 AritySpec = report_negative_arity(ArityTerm, Arity),
@@ -487,13 +481,13 @@ parse_symbol_name_specifier(VarSet, Term, MaybeSymNameArity) :-
             MaybeSymNameArity = error1(Specs)
         )
     else
-        parse_symbol_name(VarSet, Term, MaybeSymbolName),
+        parse_sym_name(VarSet, Term, MaybeSymName),
         (
-            MaybeSymbolName = error1(Specs),
+            MaybeSymName = error1(Specs),
             MaybeSymNameArity = error1(Specs)
         ;
-            MaybeSymbolName = ok1(SymbolName),
-            MaybeSymNameArity = ok1(sym_name_specifier_name(SymbolName))
+            MaybeSymName = ok1(SymName),
+            MaybeSymNameArity = ok1(sym_name_only(SymName))
         )
     ).
 

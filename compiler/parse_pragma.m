@@ -483,7 +483,7 @@ parse_pragma_external(ModuleName, VarSet, ErrorTerm, PragmaName, PragmaTerms,
 
 parse_symname_arity(VarSet, PredTerm, ContextPieces, MaybeSymNameArity) :-
     ( if PredTerm = term.functor(term.atom("/"), [NameTerm, ArityTerm], _) then
-        parse_symbol_name(VarSet, NameTerm, MaybeSymName),
+        parse_sym_name(VarSet, NameTerm, MaybeSymName),
         ( if term_int.decimal_term_to_int(ArityTerm, ArityPrime) then
             MaybeArity = ok1(ArityPrime)
         else

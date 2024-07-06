@@ -725,7 +725,7 @@ unravel_var_functor_unification(XVar, YFunctor, YArgTerms0, YFunctorContext,
                 YArgTerms = [ModuleNameTerm, NameArgsTerm]
             then
                 NameArgsTerm = term.functor(term.atom(Name), NameArgTerms, _),
-                try_parse_symbol_name(ModuleNameTerm, ModuleName),
+                try_parse_sym_name(ModuleNameTerm, ModuleName),
                 FunctorName = qualified(ModuleName, Name),
                 % We have done state variable name expansion at the top
                 % level of Args, but not at the level of NameArgTerms.

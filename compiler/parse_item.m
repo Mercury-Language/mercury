@@ -635,7 +635,7 @@ parse_attributed_decl(ModuleName, VarSet, Term, IsInClass, _Context, SeqNum,
 parse_module_marker(ArgTerms, Context, SeqNum, MaybeIOM) :-
     ( if
         ArgTerms = [ModuleNameTerm],
-        try_parse_symbol_name(ModuleNameTerm, ModuleName)
+        try_parse_sym_name(ModuleNameTerm, ModuleName)
     then
         Marker = iom_marker_module_start(ModuleName, Context, SeqNum),
         MaybeIOM = ok1(Marker)
@@ -655,7 +655,7 @@ parse_module_marker(ArgTerms, Context, SeqNum, MaybeIOM) :-
 parse_end_module_marker(ArgTerms, Context, SeqNum, MaybeIOM) :-
     ( if
         ArgTerms = [ModuleNameTerm],
-        try_parse_symbol_name(ModuleNameTerm, ModuleName)
+        try_parse_sym_name(ModuleNameTerm, ModuleName)
     then
         Marker = iom_marker_module_end(ModuleName, Context, SeqNum),
         MaybeIOM = ok1(Marker)
@@ -847,7 +847,7 @@ parse_version_numbers_marker(ModuleName, Functor, ArgTerms,
         ArgTerms = [VNTerm, ModuleNameTerm, VersionNumbersTerm],
         ( if term_int.decimal_term_to_int(VNTerm, VN) then
             ( if VN = module_item_version_numbers_version_number then
-                ( if try_parse_symbol_name(ModuleNameTerm, ModuleName) then
+                ( if try_parse_sym_name(ModuleNameTerm, ModuleName) then
                     recompilation.version.parse_module_item_version_numbers(
                         VersionNumbersTerm, MaybeVersionNumbers),
                     (
@@ -2137,7 +2137,7 @@ desugar_field_access(Term) = DesugaredTerm :-
     maybe1(module_name)::out) is det.
 
 parse_module_name(VarSet, Term, MaybeModuleName) :-
-    parse_symbol_name(VarSet, Term, MaybeModuleName).
+    parse_sym_name(VarSet, Term, MaybeModuleName).
 
     % A ModuleName is an implicitly-quantified sym_name.
     %
@@ -2163,7 +2163,7 @@ parse_implicitly_qualified_module_name(DefaultModuleName, VarSet, Term,
         MaybeModule = error1([Spec])
     ;
         Term = term.functor(_, _, _),
-        parse_implicitly_qualified_symbol_name(DefaultModuleName, VarSet,
+        parse_implicitly_qualified_sym_name(DefaultModuleName, VarSet,
             Term, MaybeModule)
     ).
 

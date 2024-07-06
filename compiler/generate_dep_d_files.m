@@ -877,7 +877,7 @@ parse_trans_opt_deps_spec_term(VarSet, Term, !EdgesToRemove, !Specs) :-
         ;
             AtomName = "module_disallow_deps"
         ),
-        try_parse_symbol_name(LeftTerm, SourceName)
+        try_parse_sym_name(LeftTerm, SourceName)
     then
         parse_trans_opt_deps_spec_module_list(VarSet, RightTerm,
             cord.init, TargetCord0, [], EntrySpecs),
@@ -970,7 +970,7 @@ parse_trans_opt_deps_spec_module_list(VarSet, Term, !ModuleNameCord, !Specs) :-
 parse_trans_opt_deps_spec_module_names(_VarSet, [], !ModuleNameCord, !Specs).
 parse_trans_opt_deps_spec_module_names(VarSet, [Term | Terms],
         !ModuleNameCord, !Specs) :-
-    ( if try_parse_symbol_name(Term, ModuleName) then
+    ( if try_parse_sym_name(Term, ModuleName) then
         cord.snoc(get_term_context(Term) - ModuleName, !ModuleNameCord)
     else
         TermStr = describe_error_term(VarSet, Term),

@@ -73,14 +73,14 @@
 parse_initialise_item(_ModuleName, VarSet, ArgTerms, Context, SeqNum,
         MaybeIOM) :-
     ( if ArgTerms = [Term] then
-        parse_symbol_name_specifier(VarSet, Term, MaybeSymNameSpecifier),
+        parse_sym_name_maybe_arity(VarSet, Term, MaybeSymNameMaybeArity),
         (
-            MaybeSymNameSpecifier = error1(Specs),
+            MaybeSymNameMaybeArity = error1(Specs),
             MaybeIOM = error1(Specs)
         ;
-            MaybeSymNameSpecifier = ok1(SymNameSpecifier),
+            MaybeSymNameMaybeArity = ok1(SymNameMaybeArity),
             (
-                SymNameSpecifier = sym_name_specifier_name(_),
+                SymNameMaybeArity = sym_name_only(_),
                 TermStr = describe_error_term(VarSet, Term),
                 Pieces = [words("Error in"), decl("initialise"),
                     words("declaration:"), words("expected")] ++
@@ -91,8 +91,7 @@ parse_initialise_item(_ModuleName, VarSet, ArgTerms, Context, SeqNum,
                     get_term_context(Term), Pieces),
                 MaybeIOM = error1([Spec])
             ;
-                SymNameSpecifier =
-                    sym_name_specifier_name_arity(SymName, UserArity),
+                SymNameMaybeArity = sym_name_with_arity(SymName, UserArity),
                 UserArity = user_arity(UserArityInt),
                 ( if ( UserArityInt = 0 ; UserArityInt = 2 ) then
                     ItemInitialise = item_initialise_info(SymName,
@@ -128,14 +127,14 @@ parse_initialise_item(_ModuleName, VarSet, ArgTerms, Context, SeqNum,
 parse_finalise_item(_ModuleName, VarSet, ArgTerms, Context, SeqNum,
         MaybeIOM) :-
     ( if ArgTerms = [Term] then
-        parse_symbol_name_specifier(VarSet, Term, MaybeSymNameSpecifier),
+        parse_sym_name_maybe_arity(VarSet, Term, MaybeSymNameMaybeArity),
         (
-            MaybeSymNameSpecifier = error1(Specs),
+            MaybeSymNameMaybeArity = error1(Specs),
             MaybeIOM = error1(Specs)
         ;
-            MaybeSymNameSpecifier = ok1(SymNameSpecifier),
+            MaybeSymNameMaybeArity = ok1(SymNameMaybeArity),
             (
-                SymNameSpecifier = sym_name_specifier_name(_),
+                SymNameMaybeArity = sym_name_only(_),
                 TermStr = describe_error_term(VarSet, Term),
                 Pieces = [words("Error in"), decl("finalise"),
                     words("declaration:"), words("expected")] ++
@@ -147,8 +146,7 @@ parse_finalise_item(_ModuleName, VarSet, ArgTerms, Context, SeqNum,
                     get_term_context(Term), Pieces),
                 MaybeIOM = error1([Spec])
             ;
-                SymNameSpecifier =
-                    sym_name_specifier_name_arity(SymName, UserArity),
+                SymNameMaybeArity = sym_name_with_arity(SymName, UserArity),
                 UserArity = user_arity(UserArityInt),
                 ( if ( UserArityInt = 0 ; UserArityInt = 2 ) then
                     ItemFinalise = item_finalise_info(SymName, UserArity,
