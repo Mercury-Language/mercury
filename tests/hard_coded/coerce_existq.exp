@@ -1,0 +1,18 @@
+box(foo(0), 1, "two", 3.333, {"four", 5})
+    arg 1: foo
+    arg 2: int
+    arg 3: string
+    arg 4: float
+    arg 5: {}(string, int)
+
+Calling methods: owt, 333.3
+
+box(foo(0), 1, "two", 3.333, {"four", 5})
+    arg 1: foo
+    arg 2: int
+    arg 3: string
+    arg 4: float
+    arg 5: {}(string, int)
+
+Calling methods: owt, 333.3
+

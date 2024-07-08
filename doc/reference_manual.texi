@@ -8551,25 +8551,38 @@ then we require @var{TypeX} =< @var{TypeY}.
 Let @var{InstY} = @var{InstX}.
 
 @item
-Otherwise, if @var{InstX} is a @code{bound} node,
-then each of the function symbols listed in the @code{bound} inst
-must name a constructor in @var{TypeCtorY}.
-Let @var{InstY} be a @code{bound} inst containing the same
-function symbols;
-the insts for the arguments of each function symbol
-are then checked and constructed recursively.
+Otherwise, if @var{InstX} is a @code{bound} node:
+
+    @itemize
+    @item
+    If @var{TypeX} is an existentially quantified type variable,
+    then @var{InstY} = @var{InstX}.
+
+    @item
+    If @var{TypeX} is not an existentially quantified type variable,
+    then each of the function symbols listed in @var{InstX}
+    must name a constructor in @var{TypeCtorY}.
+    Let @var{InstY} be a @code{bound} inst containing those same
+    function symbols;
+    the insts for the arguments of each function symbol
+    are then checked and constructed recursively.
+    @end itemize
 
 @item
-Otherwise, if @var{InstX} is a @code{ground} node
-and @var{TypeX} = @var{TypeY},
-then @var{InstY} = @var{InstX}.
-@c This includes higher-order types.
+Otherwise, if @var{InstX} is a @code{ground} node:
 
-@item
-Otherwise, if @var{InstX} is a @code{ground} node
-and @var{TypeX} < @var{TypeY}, then
-let @var{InstY} be the @code{bound} node constructed
-using the process below.
+    @itemize
+    @item
+    If @var{TypeX} = @var{TypeY},
+    or if @var{TypeX} is an existentially quantified type variable,
+    then let @var{InstY} = @var{InstX}.
+    @c This includes higher-order types.
+
+    @item
+    If @var{TypeX} < @var{TypeY}, then
+    let @var{InstY} be the @code{bound} node constructed
+    using the process below.
+    @end itemize
 
 @item
 Otherwise,

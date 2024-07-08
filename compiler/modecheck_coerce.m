@@ -1,7 +1,7 @@
 %---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
-% Copyright (C) 2021 The Mercury team.
+% Copyright (C) 2021, 2024 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -142,10 +142,11 @@ modecheck_coerce_vars(ModuleInfo0, X, Y, TypeX, TypeY, InstX, InstY, Result,
         BothLive = is_dead
     ),
 
+    ExistQTVars = [],
     RevTermPath0 = [],
     set.init(ExpandedInsts0),
-    modecheck_coerce_make_inst(ModuleInfo0, TVarSet, LiveX, RevTermPath0,
-        TypeX, TypeY, ExpandedInsts0, InstX, MaybeFinalInstY),
+    modecheck_coerce_make_inst(ModuleInfo0, TVarSet, LiveX, ExistQTVars,
+        RevTermPath0, TypeX, TypeY, ExpandedInsts0, InstX, MaybeFinalInstY),
     (
         MaybeFinalInstY = ok1(FinalInstY),
         ( if
@@ -206,12 +207,16 @@ create_fresh_var(VarType, Var, !ModeInfo) :-
     % where InstY is the final inst of the result term.
     % If there is a mode error, Result is bound to 'coerce_error(Error)'.
     %
+    % ConsExistQTVars are the existentially quantified type variables
+    % from the constructor that we are currently following.
+    %
 :- pred modecheck_coerce_make_inst(module_info::in, tvarset::in, is_live::in,
-    rev_term_path::in, mer_type::in, mer_type::in, expanded_insts::in,
-    mer_inst::in, maybe_coerce_error(mer_inst)::out) is det.
+    existq_tvars::in, rev_term_path::in, mer_type::in, mer_type::in,
+    expanded_insts::in, mer_inst::in, maybe_coerce_error(mer_inst)::out)
+    is det.
 
-modecheck_coerce_make_inst(ModuleInfo, TVarSet, LiveX, RevTermPath0,
-        TypeX, TypeY, ExpandedInsts0, InstX, Result) :-
+modecheck_coerce_make_inst(ModuleInfo, TVarSet, LiveX, ConsExistQTVars,
+        RevTermPath0, TypeX, TypeY, ExpandedInsts0, InstX, Result) :-
     (
         InstX = free,
         unexpected($pred, "free inst")
@@ -219,16 +224,17 @@ modecheck_coerce_make_inst(ModuleInfo, TVarSet, LiveX, RevTermPath0,
         InstX = any(_, _),
         unexpected($pred, "any inst")
     ;
-        InstX = bound(UniqX, _InstResultsX, BoundInstsX),
+        InstX = bound(_UniqX, _InstResultsX, _BoundInstsX),
         modecheck_coerce_from_bound_make_bound_inst(ModuleInfo, TVarSet, LiveX,
-            UniqX, RevTermPath0, TypeX, TypeY, ExpandedInsts0, InstX,
-            BoundInstsX, Result)
+            ConsExistQTVars, RevTermPath0, TypeX, TypeY, ExpandedInsts0,
+            InstX, Result)
     ;
         InstX = ground(UniqX, HOInstInfoX),
         (
             HOInstInfoX = none_or_default_func,
             modecheck_coerce_from_ground_make_inst(ModuleInfo, TVarSet, LiveX,
-                UniqX, RevTermPath0, TypeX, TypeY, InstX, Result)
+                UniqX, ConsExistQTVars, RevTermPath0, TypeX, TypeY,
+                InstX, Result)
         ;
             HOInstInfoX = higher_order(_PredInstInfoX),
             UniqY = uniqueness_for_coerce_result(LiveX, UniqX),
@@ -248,8 +254,8 @@ modecheck_coerce_make_inst(ModuleInfo, TVarSet, LiveX, RevTermPath0,
         % The input term of TypeX is approximated by a ground inst SubInstX.
         % After conversion, the result term of TypeY must be approximated by
         % a ground inst SubInstY.
-        modecheck_coerce_make_inst(ModuleInfo, TVarSet, LiveX, RevTermPath0,
-            TypeX, TypeY, ExpandedInsts0, SubInstX, SubResult),
+        modecheck_coerce_make_inst(ModuleInfo, TVarSet, LiveX, ConsExistQTVars,
+            RevTermPath0, TypeX, TypeY, ExpandedInsts0, SubInstX, SubResult),
         (
             SubResult = ok1(SubInstY),
             InstY = constrained_inst_vars(InstVars, SubInstY),
@@ -267,7 +273,8 @@ modecheck_coerce_make_inst(ModuleInfo, TVarSet, LiveX, RevTermPath0,
         then
             inst_lookup(ModuleInfo, InstNameX, InstX1),
             modecheck_coerce_make_inst(ModuleInfo, TVarSet, LiveX,
-                RevTermPath0, TypeX, TypeY, ExpandedInsts1, InstX1, Result)
+                ConsExistQTVars, RevTermPath0, TypeX, TypeY, ExpandedInsts1,
+                InstX1, Result)
         else
             % If we would enter an infinite loop, return the inst unexpanded.
             % A recursive check, by definition, cannot find any errors that the
@@ -346,16 +353,17 @@ is_user_inst(InstName) :-
     % if the conversion is valid.
     %
 :- pred modecheck_coerce_from_bound_make_bound_inst(module_info::in,
-    tvarset::in, is_live::in, uniqueness::in, rev_term_path::in,
-    mer_type::in, mer_type::in, expanded_insts::in, mer_inst::in,
-    list(bound_inst)::in, maybe_coerce_error(mer_inst)::out) is det.
+    tvarset::in, is_live::in, existq_tvars::in, rev_term_path::in,
+    mer_type::in, mer_type::in, expanded_insts::in,
+    mer_inst::in(mer_inst_is_bound), maybe_coerce_error(mer_inst)::out) is det.
 
-modecheck_coerce_from_bound_make_bound_inst(ModuleInfo, TVarSet, LiveX, UniqX,
-        RevTermPath0, TypeX, TypeY, ExpandedInsts0, InstX, BoundInstsX,
-        Result) :-
+modecheck_coerce_from_bound_make_bound_inst(ModuleInfo, TVarSet, LiveX,
+        ConsExistQTVars, RevTermPath0, TypeX, TypeY, ExpandedInsts0,
+        InstX, Result) :-
+    InstX = bound(UniqX, _InstResultsX, BoundInstsX),
     modecheck_coerce_from_bound_make_bound_functors(ModuleInfo, TVarSet, LiveX,
-        RevTermPath0, TypeX, TypeY, ExpandedInsts0, BoundInstsX, BoundInstsY,
-        BadConsIdErrors, [], DeeperErrors),
+        ConsExistQTVars, RevTermPath0, TypeX, TypeY, ExpandedInsts0,
+        BoundInstsX, BoundInstsY, BadConsIdErrors, [], DeeperErrors),
     (
         BadConsIdErrors = [],
         (
@@ -389,13 +397,14 @@ modecheck_coerce_from_bound_make_bound_inst(ModuleInfo, TVarSet, LiveX, UniqX,
     ).
 
 :- pred modecheck_coerce_from_bound_make_bound_functors(module_info::in,
-    tvarset::in, is_live::in, rev_term_path::in, mer_type::in, mer_type::in,
-    expanded_insts::in, list(bound_inst)::in, list(bound_inst)::out,
+    tvarset::in, is_live::in, existq_tvars::in, rev_term_path::in,
+    mer_type::in, mer_type::in, expanded_insts::in,
+    list(bound_inst)::in, list(bound_inst)::out,
     list(bound_inst_cons_id_error)::out,
     list(coerce_error)::in, list(coerce_error)::out) is det.
 
 modecheck_coerce_from_bound_make_bound_functors(ModuleInfo, TVarSet, LiveX,
-        RevTermPath0, TypeX, TypeY, ExpandedInsts0,
+        ConsExistQTVars, RevTermPath0, TypeX, TypeY, ExpandedInsts0,
         BoundInstsX, BoundInstsY, BadConsIdErrors, !Errors) :-
     (
         BoundInstsX = [],
@@ -404,12 +413,12 @@ modecheck_coerce_from_bound_make_bound_functors(ModuleInfo, TVarSet, LiveX,
     ;
         BoundInstsX = [HeadBoundInstX | TailBoundInstsX],
         modecheck_coerce_from_bound_make_bound_functor(ModuleInfo, TVarSet,
-            LiveX, RevTermPath0, TypeX, TypeY, ExpandedInsts0,
+            LiveX, ConsExistQTVars, RevTermPath0, TypeX, TypeY, ExpandedInsts0,
             HeadBoundInstX, MaybeHeadBoundInstY, !Errors),
         % Check remaining functors in this `bound()' inst so that we can
         % report multiple invalid functors together.
         modecheck_coerce_from_bound_make_bound_functors(ModuleInfo, TVarSet,
-            LiveX, RevTermPath0, TypeX, TypeY, ExpandedInsts0,
+            LiveX, ConsExistQTVars, RevTermPath0, TypeX, TypeY, ExpandedInsts0,
             TailBoundInstsX, TailBoundInstsY, TailBadConsIdErrors, !Errors),
         (
             MaybeHeadBoundInstY = bioe_ok(HeadBoundInstY),
@@ -432,14 +441,70 @@ modecheck_coerce_from_bound_make_bound_functors(ModuleInfo, TVarSet, LiveX,
     ;       bioe_other_error.    % error kept separately
 
 :- pred modecheck_coerce_from_bound_make_bound_functor(module_info::in,
-    tvarset::in, is_live::in, rev_term_path::in, mer_type::in, mer_type::in,
-    expanded_insts::in, bound_inst::in, bound_inst_or_error::out,
+    tvarset::in, is_live::in, existq_tvars::in, rev_term_path::in,
+    mer_type::in, mer_type::in, expanded_insts::in,
+    bound_inst::in, bound_inst_or_error::out,
     list(coerce_error)::in, list(coerce_error)::out) is det.
 
 modecheck_coerce_from_bound_make_bound_functor(ModuleInfo, TVarSet, LiveX,
-        RevTermPath0, TypeX, TypeY, ExpandedInsts0, BoundInstX,
-        MaybeBoundInstY, !Errors) :-
+        ConsExistQTVars, RevTermPath0, TypeX, TypeY, ExpandedInsts0,
+        BoundInstX, MaybeBoundInstY, !Errors) :-
     BoundInstX = bound_functor(ConsIdX, ArgInstsX),
+    (
+        ( ConsIdX = du_data_ctor(_)
+        ; ConsIdX = tuple_cons(_)
+        ; ConsIdX = some_int_const(_)
+        ; ConsIdX = float_const(_)
+        ; ConsIdX = char_const(_)
+        ; ConsIdX = string_const(_)
+        ),
+        ( if existq_tvars_contains(ConsExistQTVars, TypeX) then
+            % TypeX is an existential type. We can assume that TypeX = TypeY,
+            % so BoundInstX is acceptable for the result term as well.
+            % The only thing we do is to remove uniqueness in the result inst
+            % if the input remains live (might not be strictly necessary).
+            copy_bound_inst_for_coerce_result(LiveX, BoundInstX, BoundInstY),
+            MaybeBoundInstY = bioe_ok(BoundInstY)
+        else
+            modecheck_coerce_from_bound_make_bound_functor_not_existq(
+                ModuleInfo, TVarSet, LiveX, RevTermPath0, TypeX, TypeY,
+                ExpandedInsts0, ConsIdX, ArgInstsX, MaybeBoundInstY, !Errors)
+        )
+    ;
+        ( ConsIdX = closure_cons(_)
+        ; ConsIdX = impl_defined_const(_)
+        ; ConsIdX = type_ctor_info_const(_, _, _)
+        ; ConsIdX = base_typeclass_info_const(_, _, _, _)
+        ; ConsIdX = type_info_cell_constructor(_)
+        ; ConsIdX = type_info_const(_)
+        ; ConsIdX = typeclass_info_cell_constructor
+        ; ConsIdX = typeclass_info_const(_)
+        ; ConsIdX = ground_term_const(_, _)
+        ; ConsIdX = tabling_info_const(_)
+        ; ConsIdX = table_io_entry_desc(_)
+        ; ConsIdX = deep_profiling_proc_layout(_)
+        ),
+        unexpected($pred, "unsupported cons_id")
+    ).
+
+:- inst supported_cons_id for cons_id/0
+    --->    du_data_ctor(ground)
+    ;       tuple_cons(ground)
+    ;       some_int_const(ground)
+    ;       float_const(ground)
+    ;       char_const(ground)
+    ;       string_const(ground).
+
+:- pred modecheck_coerce_from_bound_make_bound_functor_not_existq(
+    module_info::in, tvarset::in, is_live::in, rev_term_path::in,
+    mer_type::in, mer_type::in, expanded_insts::in,
+    cons_id::in(supported_cons_id), list(mer_inst)::in,
+    bound_inst_or_error::out, list(coerce_error)::in, list(coerce_error)::out)
+    is det.
+
+modecheck_coerce_from_bound_make_bound_functor_not_existq(ModuleInfo, TVarSet,
+        LiveX, RevTermPath0, TypeX, TypeY, ExpandedInsts0,
+        ConsIdX, ArgInstsX0, MaybeBoundInstY, !Errors) :-
     % The user may have provided an inst that does not make sense for the type.
     % The compiler *should* check for that elsewhere, in types_into_modes.m,
     % but neither wangp nor I (zs) are confident that it guarantees catching
@@ -452,15 +517,24 @@ modecheck_coerce_from_bound_make_bound_functor(ModuleInfo, TVarSet, LiveX,
         ConsIdY = du_data_ctor(DuCtorY),
         (
             GetArgTypesRes = arg_types(ArgTypesX, ArgTypesY, Arity),
+            get_ctor_existq_tvars_det(ModuleInfo, TypeX, DuCtorX,
+                ConsExistQTVars, NumExtraArgs),
+            % Separate out insts for type_infos and type_class_infos from
+            % actual constructor arguments.
+            list.det_split_list(NumExtraArgs, ArgInstsX0,
+                ExtraArgsInsts, ArgInstsX),
             list.length(ArgInstsX, NumArgInstsX),
             ( if NumArgInstsX = Arity then
                 modecheck_coerce_from_bound_make_bound_functor_arg_insts(
                     ModuleInfo, TVarSet, LiveX, RevTermPath0, ExpandedInsts0,
-                    ConsIdX, 1, ArgTypesX, ArgTypesY,
+                    ConsIdX, ConsExistQTVars, 1, ArgTypesX, ArgTypesY,
                     ArgInstsX, OkArgInstsY, ErrorsY),
                 (
                     ErrorsY = [],
-                    BoundInstY = bound_functor(ConsIdY, OkArgInstsY),
+                    % Add back the insts for type_infos and type_class_infos
+                    % that were separated out.
+                    BoundInstY = bound_functor(ConsIdY,
+                        ExtraArgsInsts ++ OkArgInstsY),
                     MaybeBoundInstY = bioe_ok(BoundInstY)
                 ;
                     ErrorsY = [_ | _],
@@ -480,9 +554,8 @@ modecheck_coerce_from_bound_make_bound_functor(ModuleInfo, TVarSet, LiveX,
             MaybeBoundInstY = bioe_cons_id_error(bad_cons_id_result(ConsIdY))
         )
     ;
-        ConsIdX = tuple_cons(_),
-        % XXX post-typecheck does not replace occurrences of
-        % cons(unqualified("{}"), ...) with tuple_cons yet.
+        ConsIdX = tuple_cons(_Arity),
+        % XXX tuple_cons actually does occur.
         sorry($pred, "tuple_cons")
     ;
         ( ConsIdX = some_int_const(_)
@@ -493,28 +566,13 @@ modecheck_coerce_from_bound_make_bound_functor(ModuleInfo, TVarSet, LiveX,
         ( if cons_id_matches_builtin_type(ConsIdX, TypeX) then
             expect(unify(TypeX, TypeY), $pred,
                 "coercion between different builtin types"),
-            expect(unify(ArgInstsX, []), $pred,
+            expect(unify(ArgInstsX0, []), $pred,
                 "bound functor literal has arguments"),
-            BoundInstY = BoundInstX,
+            BoundInstY = bound_functor(ConsIdX, ArgInstsX0),
             MaybeBoundInstY = bioe_ok(BoundInstY)
         else
             MaybeBoundInstY = bioe_cons_id_error(bad_cons_id_input(ConsIdX))
         )
-    ;
-        ( ConsIdX = closure_cons(_)
-        ; ConsIdX = impl_defined_const(_)
-        ; ConsIdX = type_ctor_info_const(_, _, _)
-        ; ConsIdX = base_typeclass_info_const(_, _, _, _)
-        ; ConsIdX = type_info_cell_constructor(_)
-        ; ConsIdX = type_info_const(_)
-        ; ConsIdX = typeclass_info_cell_constructor
-        ; ConsIdX = typeclass_info_const(_)
-        ; ConsIdX = ground_term_const(_, _)
-        ; ConsIdX = tabling_info_const(_)
-        ; ConsIdX = table_io_entry_desc(_)
-        ; ConsIdX = deep_profiling_proc_layout(_)
-        ),
-        unexpected($pred, "unsupported cons_id")
     ).
 
 :- type get_arg_types_result
@@ -535,8 +593,7 @@ get_bound_functor_cons_and_arg_types(ModuleInfo, TypeX, TypeY,
         ( if
             % This fails if the input type does not actually have the
             % functor given in a `bound' inst.
-            get_ctor_arg_types_do_subst(ModuleInfo, TypeX, DuCtorX,
-                ArgTypesX)
+            get_ctor_arg_types_do_subst(ModuleInfo, TypeX, DuCtorX, ArgTypesX)
         then
             ( if
                 TypeY = defined_type(_, _, _),
@@ -615,13 +672,13 @@ get_bound_functor_cons_and_arg_types(ModuleInfo, TypeX, TypeY,
 
 :- pred modecheck_coerce_from_bound_make_bound_functor_arg_insts(
     module_info::in, tvarset::in, is_live::in, rev_term_path::in,
-    expanded_insts::in, cons_id::in, int::in,
-    list(mer_type)::in, list(mer_type)::in,
+    expanded_insts::in, cons_id::in, existq_tvars::in,
+    int::in, list(mer_type)::in, list(mer_type)::in,
     list(mer_inst)::in, list(mer_inst)::out, list(coerce_error)::out) is det.
 
 modecheck_coerce_from_bound_make_bound_functor_arg_insts(ModuleInfo, TVarSet,
-        LiveX, RevTermPath0, ExpandedInsts0, ConsIdX, CurArgNum,
-        ArgTypesX, ArgTypesY, ArgInstsX, OkArgInstsY, Errors) :-
+        LiveX, RevTermPath0, ExpandedInsts0, ConsIdX, ConsExistQTVars,
+        CurArgNum, ArgTypesX, ArgTypesY, ArgInstsX, OkArgInstsY, Errors) :-
     ( if
         ArgTypesX = [],
         ArgTypesY = [],
@@ -636,12 +693,13 @@ modecheck_coerce_from_bound_make_bound_functor_arg_insts(ModuleInfo, TVarSet,
     then
         Step = coerce_error_term_path_step(ConsIdX, CurArgNum),
         RevTermPath1 = [Step | RevTermPath0],
-        modecheck_coerce_make_inst(ModuleInfo, TVarSet, LiveX, RevTermPath1,
-            HeadArgTypeX, HeadArgTypeY, ExpandedInsts0,
+        modecheck_coerce_make_inst(ModuleInfo, TVarSet, LiveX, ConsExistQTVars,
+            RevTermPath1, HeadArgTypeX, HeadArgTypeY, ExpandedInsts0,
             HeadArgInstX, MaybeHeadArgInstY),
         modecheck_coerce_from_bound_make_bound_functor_arg_insts(ModuleInfo,
             TVarSet, LiveX, RevTermPath0, ExpandedInsts0,
-            ConsIdX, CurArgNum + 1, TailArgTypesX, TailArgTypesY,
+            ConsIdX, ConsExistQTVars, CurArgNum + 1,
+            TailArgTypesX, TailArgTypesY,
             TailArgInstsX, OkTailArgInstsY, TailErrors),
         (
             MaybeHeadArgInstY = ok1(HeadArgInstY),
@@ -680,13 +738,17 @@ cons_id_matches_builtin_type(ConsId, Type) :-
     % conversion is valid.
     %
 :- pred modecheck_coerce_from_ground_make_inst(module_info::in, tvarset::in,
-    is_live::in, uniqueness::in, rev_term_path::in, mer_type::in, mer_type::in,
-    mer_inst::in, maybe_coerce_error(mer_inst)::out) is det.
+    is_live::in, uniqueness::in, existq_tvars::in, rev_term_path::in,
+    mer_type::in, mer_type::in, mer_inst::in,
+    maybe_coerce_error(mer_inst)::out) is det.
 
 modecheck_coerce_from_ground_make_inst(ModuleInfo, TVarSet, LiveX, UniqX,
-        RevTermPath0, TypeX, TypeY, InstX, MaybeInstY) :-
-    ( if TypeX = TypeY then
-        % This should be a common case.
+        ExistQTVars, RevTermPath0, TypeX, TypeY, InstX, MaybeInstY) :-
+    ( if
+        ( TypeX = TypeY
+        ; existq_tvars_contains(ExistQTVars, TypeX)
+        )
+    then
         UniqY = uniqueness_for_coerce_result(LiveX, UniqX),
         InstY = ground(UniqY, none_or_default_func),
         MaybeInstY = ok1(InstY)
@@ -770,8 +832,7 @@ modecheck_coerce_from_ground_make_bound_functor(ModuleInfo, TVarSet,
     % type_constructors already substituted type args into CtorArgsX.
     get_ctor_arg_types(CtorArgsX, ArgTypesX),
     ( if
-        get_ctor_arg_types_do_subst(ModuleInfo, TypeY, DuCtorY,
-            ArgTypesY0)
+        get_ctor_arg_types_do_subst(ModuleInfo, TypeY, DuCtorY, ArgTypesY0)
     then
         ArgTypesY = ArgTypesY0
     else
@@ -824,16 +885,97 @@ get_ctor_arg_types_do_subst(ModuleInfo, Type, DuCtor, CtorArgTypes) :-
     module_info_get_cons_table(ModuleInfo, ConsTable),
     search_cons_table_of_type_ctor(ConsTable, TypeCtor, DuCtor,
         ConsDefn),
-    ConsDefn = hlds_cons_defn(_TypeCtor, _TVarSet, TypeParams, _KindMap,
-        _MaybeExistConstraints, CtorArgs, _Context),
-    get_ctor_arg_types(CtorArgs, CtorArgTypes0),
+    require_det (
+        ConsDefn = hlds_cons_defn(_TypeCtor, _TVarSet, TypeParams, _KindMap,
+            _MaybeExistConstraints, CtorArgs, _Context),
+        get_ctor_arg_types(CtorArgs, CtorArgTypes0),
+        (
+            TypeParams = [],
+            CtorArgTypes = CtorArgTypes0
+        ;
+            TypeParams = [_ | _],
+            map.from_corresponding_lists(TypeParams, TypeArgs, Subst),
+            apply_subst_to_type_list(Subst, CtorArgTypes0, CtorArgTypes)
+        )
+    ).
+
+:- pred get_ctor_existq_tvars_det(module_info::in, mer_type::in, du_ctor::in,
+    existq_tvars::out, int::out) is det.
+
+get_ctor_existq_tvars_det(ModuleInfo, Type, DuCtor,
+        ConsExistQTVars, NumExtraArgs) :-
+    type_to_ctor_det(Type, TypeCtor),
+    module_info_get_cons_table(ModuleInfo, ConsTable),
+    lookup_cons_table_of_type_ctor(ConsTable, TypeCtor, DuCtor, ConsDefn),
+    ConsDefn = hlds_cons_defn(_TypeCtor, _TVarSet, _TypeParams, _KindMap,
+        MaybeExistConstraints, _CtorArgs, _Context),
     (
-        TypeParams = [],
-        CtorArgTypes = CtorArgTypes0
+        MaybeExistConstraints = no_exist_constraints,
+        ConsExistQTVars = [],
+        NumExtraArgs = 0
     ;
-        TypeParams = [_ | _],
-        map.from_corresponding_lists(TypeParams, TypeArgs, Subst),
-        apply_subst_to_type_list(Subst, CtorArgTypes0, CtorArgTypes)
+        MaybeExistConstraints = exist_constraints(ConsExistConstraints),
+        ConsExistConstraints = cons_exist_constraints(ConsExistQTVars,
+            _Constraints, UnconstrainedTVars, ConstrainedTVars),
+        % Count the extra arguments added by
+        % polymorphism_process_existq_unify_functor.
+        list.length(UnconstrainedTVars, NumTypeInfoArgs),
+        list.length(ConstrainedTVars, NumTypeClassInfoArgs),
+        NumExtraArgs = NumTypeInfoArgs + NumTypeClassInfoArgs,
+        list.length(ConsExistQTVars, NumExistQTVars),
+        expect(unify(NumExtraArgs, NumExistQTVars), $pred,
+            "NumExtraArgs != NumExistQTVars")
+    ).
+
+:- pred existq_tvars_contains(existq_tvars::in, mer_type::in) is semidet.
+
+existq_tvars_contains(ExistQTVars, Type) :-
+    Type = type_variable(TVar, _),
+    list.contains(ExistQTVars, TVar).
+
+%---------------------------------------------------------------------------%
+
+:- pred copy_bound_inst_for_coerce_result(is_live::in,
+    bound_inst::in, bound_inst::out) is det.
+
+copy_bound_inst_for_coerce_result(LiveX, BoundInstX, BoundInstY) :-
+    BoundInstX = bound_functor(ConsId, ArgInstsX),
+    list.map(copy_inst_for_coerce_result(LiveX), ArgInstsX, ArgInstsY),
+    BoundInstY = bound_functor(ConsId, ArgInstsY).
+
+:- pred copy_inst_for_coerce_result(is_live::in, mer_inst::in, mer_inst::out)
+    is det.
+
+copy_inst_for_coerce_result(LiveX, InstX, InstY) :-
+    (
+        InstX = ground(UniqX, HOInstInfo),
+        UniqY = uniqueness_for_coerce_result(LiveX, UniqX),
+        InstY = ground(UniqY, HOInstInfo)
+    ;
+        InstX = bound(UniqX, InstResults, BoundInstsX),
+        UniqY = uniqueness_for_coerce_result(LiveX, UniqX),
+        list.map(copy_bound_inst_for_coerce_result(LiveX),
+            BoundInstsX, BoundInstsY),
+        InstY = bound(UniqY, InstResults, BoundInstsY)
+    ;
+        InstX = defined_inst(InstName),
+        InstY = defined_inst(InstName)
+    ;
+        InstX = constrained_inst_vars(InstVars, SubInstX),
+        copy_inst_for_coerce_result(LiveX, SubInstX, SubInstY),
+        InstY = constrained_inst_vars(InstVars, SubInstY)
+    ;
+        InstX = not_reached,
+        InstY = not_reached
+    ;
+        InstX = free,
+        unexpected($pred, "free inst")
+    ;
+        InstX = any(_, _),
+        unexpected($pred, "any inst")
+    ;
+        InstX = inst_var(_),
+        unexpected($pred, "uninstantiated inst parameter")
     ).
 
 %---------------------------------------------------------------------------%
