@@ -1229,6 +1229,10 @@ Changes to the Mercury language
 Changes to the Mercury compiler
 -------------------------------
 
+* We now enforce a (previously unstated) requirement that existentially
+  quantified type variables and existential class constraints in a subtype
+  definition are listed in the same order as in the supertype definition.
+
 * We have fixed a bug where the compiler generated incorrect code in
   C# and Java grades when a subtype type definition did not repeat the field
   names of its base type.

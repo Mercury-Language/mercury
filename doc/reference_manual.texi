@@ -3386,16 +3386,16 @@ And this is an example of the second:
 
 (There are more examples below.)
 
-If the subtype retains a constructor from the super type
+If the subtype retains a constructor from the supertype
 that has one or more existentially quantified type variables,
-then there must be a one-to-one mapping between
-the existentially quantified type variables
-for the constructor in the subtype definition
-and the same constructor in the supertype definition.
-The subtype constructor must repeat
-exactly the same set of existential class constraints
-on its existentially quantified type variables as in the supertype;
-the subtype constructor cannot add or remove any existential class constraints.
+then the subtype constructor must repeat
+the list of existentially quantified type variables
+from the supertype constructor,
+and all existential class constraints,
+with no additions, removals, or reordering.
+(The type variables do not need to have the same names
+in the subtype as the supertype,
+but, stylistically, it makes more sense if they do.)
 
 As mentioned above,
 any universally quantified type variable

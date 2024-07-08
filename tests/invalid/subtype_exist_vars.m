@@ -11,7 +11,8 @@
     --->    apple(A)
     ;       some [O] orange(O)
     ;       some [T, U] lemon(T, T, foo(U))
-    ;       some [T, U] pear(T, U).
+    ;       some [T, U] pear(T, U)
+    ;       some [T, T] nondistinct(T, T). % weird
 
 :- type foo(T)
     --->    foo(T).
@@ -33,3 +34,12 @@
 
 :- type exist_vars_mismatch3 =< fruit
     --->    some [A] pear(A, A).
+
+:- type exist_vars_mismatch4 =< fruit
+    --->    some [A, B] pear(B, A). % order of quantified vars is significant
+
+:- type nondistinct_allowed =< fruit
+    --->    some [A, A] nondistinct(A, A).
+
+:- type nondistinct_mismatch =< fruit
+    --->    some [A, B] nondistinct(A, B).

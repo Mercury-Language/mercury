@@ -24,3 +24,15 @@
 
 :- type extra_constraint =< fruit
     --->    some [L] lemon(L) => (sour(L), sweet(L)).
+
+:- type foo
+    --->    some [A, B, C, D] foo(A, B, C, D) => (sweet(B), sour(C)).
+
+:- type constraints_same_order =< foo
+    --->    some [X4, X3, X2, X1] foo(X4, X3, X2, X1) => (sweet(X3), sour(X2)).
+
+:- type constraints_differ =< foo
+    --->    some [X4, X3, X2, X1] foo(X4, X3, X2, X1) => (sweet(X2), sour(X3)).
+
+:- type constraints_different_order =< foo
+    --->    some [X4, X3, X2, X1] foo(X4, X3, X2, X1) => (sour(X2), sweet(X3)).

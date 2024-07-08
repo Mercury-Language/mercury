@@ -1696,64 +1696,152 @@ check_subtype_ctor(TypeTable, TVarSet, TypeStatus, Ctor, SuperCtor,
     Ctor = ctor(_, MaybeExistConstraints, CtorSymName, Args, Arity, Context),
     SuperCtor = ctor(_, MaybeSuperExistConstraints, _SuperCtorName, SuperArgs,
         _SuperArity, _SuperContext),
-    list.foldl4_corresponding(
-        check_subtype_ctor_arg(TypeTable, TVarSet, TypeStatus,
-            CtorSymName, MaybeExistConstraints, MaybeSuperExistConstraints),
-        Args, SuperArgs,
-        1, _, bimap.init, ExistQVarsMapping,
-        did_not_find_invalid_type, FoundInvalidType, !Specs),
+    CtorSymNameArity = sym_name_arity(CtorSymName, Arity),
+    check_subtype_ctor_exist_constraints(CtorSymNameArity, Context,
+        MaybeExistConstraints, MaybeSuperExistConstraints, Result),
     (
-        FoundInvalidType = did_not_find_invalid_type,
+        Result = ok1(ExistQVarsMapping),
+        list.foldl3_corresponding(
+            check_subtype_ctor_arg(TypeTable, TVarSet, TypeStatus,
+                CtorSymName, ExistQVarsMapping),
+            Args, SuperArgs,
+            1, _, did_not_find_invalid_type, FoundInvalidType, !Specs),
         (
-            MaybeExistConstraints = no_exist_constraints,
-            MaybeSuperExistConstraints = no_exist_constraints
+            FoundInvalidType = did_not_find_invalid_type
         ;
-            MaybeExistConstraints = exist_constraints(Constraints),
-            MaybeSuperExistConstraints = exist_constraints(SuperConstraints),
-            CtorSymNameArity = sym_name_arity(CtorSymName, Arity),
-            check_subtype_ctor_exist_constraints(CtorSymNameArity,
-                Constraints, SuperConstraints, ExistQVarsMapping, Context,
-                !FoundInvalidType, !Specs)
-        ;
-            MaybeExistConstraints = no_exist_constraints,
-            MaybeSuperExistConstraints = exist_constraints(_),
-            unexpected($pred, "exist_constraints mismatch")
-        ;
-            MaybeExistConstraints = exist_constraints(_),
-            MaybeSuperExistConstraints = no_exist_constraints,
-            unexpected($pred, "exist_constraints mismatch")
+            FoundInvalidType = found_invalid_type,
+            !:FoundInvalidType = FoundInvalidType
         )
     ;
-        FoundInvalidType = found_invalid_type,
-        !:FoundInvalidType = FoundInvalidType
+        Result = error1(Spec),
+        !:Specs = [Spec | !.Specs],
+        !:FoundInvalidType = found_invalid_type
     ).
 
 %---------------------%
 
-    % A map from existential type variable in the supertype constructor
+    % A map from an existential type variable in the supertype constructor
     % to an existential type variable in the subtype constructor.
     %
 :- type existq_tvar_mapping == bimap(tvar, tvar).
 
-:- pred check_subtype_ctor_arg(type_table::in, tvarset::in, type_status::in,
-    sym_name::in,
+:- pred check_subtype_ctor_exist_constraints(sym_name_arity::in,
+    prog_context::in,
     maybe_cons_exist_constraints::in, maybe_cons_exist_constraints::in,
-    constructor_arg::in, constructor_arg::in,
-    int::in, int::out, existq_tvar_mapping::in, existq_tvar_mapping::out,
+    maybe1(existq_tvar_mapping, error_spec)::out) is det.
+
+check_subtype_ctor_exist_constraints(CtorSymNameArity, Context,
+        MaybeExistConstraints, MaybeSuperExistConstraints, Result) :-
+    (
+        MaybeExistConstraints = no_exist_constraints,
+        ExistQVars = [],
+        Constraints = []
+    ;
+        MaybeExistConstraints = exist_constraints(ExistConstraints),
+        ExistConstraints = cons_exist_constraints(ExistQVars, Constraints, _, _)
+    ),
+    (
+        MaybeSuperExistConstraints = no_exist_constraints,
+        SuperExistQVars = [],
+        SuperConstraints = []
+    ;
+        MaybeSuperExistConstraints = exist_constraints(SuperExistConstraints),
+        SuperExistConstraints = cons_exist_constraints(SuperExistQVars,
+            SuperConstraints, _, _)
+    ),
+    list.length(ExistQVars, NumExistQVars),
+    list.length(SuperExistQVars, NumSuperExistQVars),
+    ( if NumExistQVars = NumSuperExistQVars then
+        ( if
+            list.foldl_corresponding(build_existq_tvars_mapping,
+                ExistQVars, SuperExistQVars, bimap.init, ExistQVarsMapping)
+        then
+            check_subtype_ctor_exist_constraints(CtorSymNameArity, Context,
+                ExistQVarsMapping, Constraints, SuperConstraints, Result)
+        else
+            Pieces =
+                [words("Error: existentially quantified type variables"),
+                words("for")] ++
+                color_as_subject([unqual_sym_name_arity(CtorSymNameArity)]) ++
+                color_as_incorrect([words("do not correspond")]) ++
+                [words("one-to-one in the subtype and supertype."), nl],
+            Spec = spec($pred, severity_error, phase_pt2h, Context, Pieces),
+            Result = error1(Spec)
+        )
+    else
+        Pieces = [words("Error:")] ++
+            color_as_subject([unqual_sym_name_arity(CtorSymNameArity)]) ++
+            [words("has wrong number of"),
+            words("existentially quantified type variables (expected")] ++
+            color_as_correct([int_fixed(NumSuperExistQVars)]) ++
+            [suffix(","), words("got")] ++
+            color_as_incorrect([int_fixed(NumExistQVars)]) ++
+            [suffix(")."), nl],
+        Spec = spec($pred, severity_error, phase_pt2h, Context, Pieces),
+        Result = error1(Spec)
+    ).
+
+:- pred build_existq_tvars_mapping(tvar::in, tvar::in,
+    existq_tvar_mapping::in, existq_tvar_mapping::out) is semidet.
+
+build_existq_tvars_mapping(VarA, VarB, !ExistQVarsMapping) :-
+    ( if bimap.insert(VarB, VarA, !ExistQVarsMapping) then
+        true
+    else
+        % The reference manual does not require distinct type variables in a
+        % existential quantifier list of a constructor definition (whether or
+        % not a du type is a subtype). This is most likely an oversight.
+        % For now, this allows duplicate variables in subtype constructor
+        % definitions as well.
+        bimap.forward_search(!.ExistQVarsMapping, VarB, VarA)
+    ).
+
+:- pred check_subtype_ctor_exist_constraints(sym_name_arity::in,
+    prog_context::in, existq_tvar_mapping::in,
+    list(prog_constraint)::in, list(prog_constraint)::in,
+    maybe1(existq_tvar_mapping, error_spec)::out) is det.
+
+check_subtype_ctor_exist_constraints(CtorSymNameArity, Context,
+        ExistQVarsMapping, Constraints, SuperConstraints0, Result) :-
+    ExistQVarsRenaming = bimap.forward_map(ExistQVarsMapping),
+    apply_variable_renaming_to_prog_constraint_list(ExistQVarsRenaming,
+        SuperConstraints0, SuperConstraints),
+    ( if Constraints = SuperConstraints then
+        Result = ok1(ExistQVarsMapping)
+    else
+        % It would be better to report which constraints differ.
+        Pieces0 = [words("Error: existential class constraints for")] ++
+            color_as_subject([unqual_sym_name_arity(CtorSymNameArity)]) ++
+            color_as_incorrect([words("differ")]),
+        list.sort(Constraints, SortedConstraints),
+        list.sort(SuperConstraints, SortedSuperConstraints),
+        ( if SortedConstraints = SortedSuperConstraints then
+            Pieces = Pieces0 ++
+                [words("in order in the subtype and supertype."), nl]
+        else
+            Pieces = Pieces0 ++
+                [words("in the subtype and supertype."), nl]
+        ),
+        Spec = spec($pred, severity_error, phase_pt2h, Context, Pieces),
+        Result = error1(Spec)
+    ).
+
+%---------------------%
+
+:- pred check_subtype_ctor_arg(type_table::in, tvarset::in, type_status::in,
+    sym_name::in, existq_tvar_mapping::in,
+    constructor_arg::in, constructor_arg::in, int::in, int::out,
     found_invalid_type::in, found_invalid_type::out,
     list(error_spec)::in, list(error_spec)::out) is det.
 
 check_subtype_ctor_arg(TypeTable, TVarSet, OrigTypeStatus, CtorSymName,
-        MaybeExistConstraints, MaybeSuperExistConstraints,
-        CtorArg, SuperCtorArg,
-        ArgNum, ArgNum + 1, !ExistQVarsMapping, !FoundInvalidType, !Specs) :-
+        ExistQVarsMapping, CtorArg, SuperCtorArg, ArgNum, ArgNum + 1,
+        !FoundInvalidType, !Specs) :-
     CtorArg = ctor_arg(_FieldName, ArgType, Context),
     SuperCtorArg = ctor_arg(_SuperFieldName, SuperArgType, _SuperContext),
     ( if
-        check_is_subtype(TypeTable, TVarSet, OrigTypeStatus,
-            ArgType, SuperArgType,
-            MaybeExistConstraints, MaybeSuperExistConstraints,
-            !ExistQVarsMapping)
+        check_is_subtype(TypeTable, TVarSet, OrigTypeStatus, ExistQVarsMapping,
+            ArgType, SuperArgType)
     then
         true
     else
@@ -1779,12 +1867,10 @@ check_subtype_ctor_arg(TypeTable, TVarSet, OrigTypeStatus, CtorSymName,
 %---------------------%
 
 :- pred check_is_subtype(type_table::in, tvarset::in, type_status::in,
-    mer_type::in, mer_type::in,
-    maybe_cons_exist_constraints::in, maybe_cons_exist_constraints::in,
-    existq_tvar_mapping::in, existq_tvar_mapping::out) is semidet.
+    existq_tvar_mapping::in, mer_type::in, mer_type::in) is semidet.
 
-check_is_subtype(TypeTable, TVarSet0, OrigTypeStatus, TypeA, TypeB,
-        MaybeExistConstraintsA, MaybeExistConstraintsB, !ExistQVarsMapping) :-
+check_is_subtype(TypeTable, TVarSet0, OrigTypeStatus, ExistQVarsMapping,
+        TypeA, TypeB) :-
     require_complete_switch [TypeA]
     (
         TypeA = builtin_type(BuiltinType),
@@ -1792,8 +1878,7 @@ check_is_subtype(TypeTable, TVarSet0, OrigTypeStatus, TypeA, TypeB,
     ;
         TypeA = type_variable(VarA, Kind),
         TypeB = type_variable(VarB, Kind),
-        check_is_subtype_var_var(VarA, VarB,
-            MaybeExistConstraintsA, MaybeExistConstraintsB, !ExistQVarsMapping)
+        check_is_subtype_var_var(ExistQVarsMapping, VarA, VarB)
     ;
         TypeA = defined_type(NameA, ArgTypesA, Kind),
         TypeB = defined_type(NameB, ArgTypesB, Kind),
@@ -1806,9 +1891,7 @@ check_is_subtype(TypeTable, TVarSet0, OrigTypeStatus, TypeA, TypeB,
             % TypeA and TypeB have the same type constructor.
             % Check their corresponding argument types.
             check_corresponding_args_are_subtype(TypeTable, TVarSet0,
-                OrigTypeStatus, ArgTypesA, ArgTypesB,
-                MaybeExistConstraintsA, MaybeExistConstraintsB,
-                !ExistQVarsMapping)
+                OrigTypeStatus, ExistQVarsMapping, ArgTypesA, ArgTypesB)
         else
             % TypeA and TypeB have different type constructors.
             % Find a subtype definition s(S1, ..., Sn) =< t(T1, ..., Tk)
@@ -1839,9 +1922,7 @@ check_is_subtype(TypeTable, TVarSet0, OrigTypeStatus, TypeA, TypeB,
 
             % Check that t(T1', ..., Tk') =< TypeB.
             check_is_subtype(TypeTable, TVarSet, OrigTypeStatus,
-                RenamedSuperTypeA, TypeB,
-                MaybeExistConstraintsA, MaybeExistConstraintsB,
-                !ExistQVarsMapping)
+                ExistQVarsMapping, RenamedSuperTypeA, TypeB)
         )
     ;
         TypeA = tuple_type(ArgTypesA, Kind),
@@ -1849,8 +1930,7 @@ check_is_subtype(TypeTable, TVarSet0, OrigTypeStatus, TypeA, TypeB,
         list.length(ArgTypesA, Arity),
         list.length(ArgTypesB, Arity),
         check_corresponding_args_are_subtype(TypeTable, TVarSet0,
-            OrigTypeStatus, ArgTypesA, ArgTypesB,
-            MaybeExistConstraintsA, MaybeExistConstraintsB, !ExistQVarsMapping)
+            OrigTypeStatus, ExistQVarsMapping, ArgTypesA, ArgTypesB)
     ;
         TypeA = higher_order_type(PredOrFunc, ArgTypesA, HOInstInfoA, Purity),
         TypeB = higher_order_type(PredOrFunc, ArgTypesB, HOInstInfoB, Purity),
@@ -1872,94 +1952,51 @@ check_is_subtype(TypeTable, TVarSet0, OrigTypeStatus, TypeA, TypeB,
             MaybeArgModesB = no
         ),
         check_is_subtype_higher_order(TypeTable, TVarSet0, OrigTypeStatus,
-            ArgTypesA, ArgTypesB, MaybeArgModesA, MaybeArgModesB,
-            MaybeExistConstraintsA, MaybeExistConstraintsB, !ExistQVarsMapping)
+            ExistQVarsMapping, ArgTypesA, ArgTypesB,
+            MaybeArgModesA, MaybeArgModesB)
     ;
         TypeA = apply_n_type(_, _, _),
         fail
     ;
         TypeA = kinded_type(TypeA1, Kind),
         TypeB = kinded_type(TypeB1, Kind),
-        check_is_subtype(TypeTable, TVarSet0, OrigTypeStatus, TypeA1, TypeB1,
-            MaybeExistConstraintsA, MaybeExistConstraintsB, !ExistQVarsMapping)
+        check_is_subtype(TypeTable, TVarSet0, OrigTypeStatus,
+            ExistQVarsMapping, TypeA1, TypeB1)
     ).
 
-:- pred check_is_subtype_var_var(tvar::in, tvar::in,
-    maybe_cons_exist_constraints::in, maybe_cons_exist_constraints::in,
-    existq_tvar_mapping::in, existq_tvar_mapping::out) is semidet.
-
-check_is_subtype_var_var(VarA, VarB,
-        MaybeExistConstraintsA, MaybeExistConstraintsB, !ExistQVarsMapping) :-
-    ( if VarA = VarB then
-        % Double check that VarA (and VarB) are universally quantified.
-        is_univ_quantified(MaybeExistConstraintsA, VarA)
-    else
-        % VarA and VarB should both be existentially quantified.
-        % There must be a one-to-one correspondence between existentially
-        % quantified type variables in the subtype and the supertype.
-        ( if bimap.forward_search(!.ExistQVarsMapping, VarB, PrevVar) then
-            % VarB was seen already; it should be mapped to VarA.
-            PrevVar = VarA
-        else
-            % VarB was not seen yet.
-            MaybeExistConstraintsA = exist_constraints(ExistConstraintsA),
-            MaybeExistConstraintsB = exist_constraints(ExistConstraintsB),
-            ExistConstraintsA = cons_exist_constraints(_ExistQVarsA,
-                _ConstraintsA, UnconstrainedExistQVarsA, ConstrainedExistQVarsA),
-            ExistConstraintsB = cons_exist_constraints(_ExistQVarsB,
-                _ConstraintsB, UnconstrainedExistQVarsB, ConstrainedExistQVarsB),
-            % VarA and VarB should both be unconstrained, or both be
-            % constrained.
-            (
-                list.contains(UnconstrainedExistQVarsA, VarA),
-                list.contains(UnconstrainedExistQVarsB, VarB)
-            ;
-                list.contains(ConstrainedExistQVarsA, VarA),
-                list.contains(ConstrainedExistQVarsB, VarB)
-            ),
-            % Record the correspondence between VarB and VarA.
-            % This fails if another type variable was mapped to VarA already.
-            bimap.insert(VarB, VarA, !ExistQVarsMapping)
-        )
-    ).
-
-:- pred is_univ_quantified(maybe_cons_exist_constraints::in, tvar::in)
+:- pred check_is_subtype_var_var(existq_tvar_mapping::in, tvar::in, tvar::in)
     is semidet.
 
-is_univ_quantified(MaybeExistConstraints, TVar) :-
-    (
-        MaybeExistConstraints = no_exist_constraints
-    ;
-        MaybeExistConstraints = exist_constraints(ExistConstraints),
-        ExistQVars = ExistConstraints ^ cons_existq_tvars,
-        not list.contains(ExistQVars, TVar)
+check_is_subtype_var_var(ExistQVarsMapping, VarA, VarB) :-
+    ( if VarA = VarB then
+        % Double check that VarA and VarB are universally quantified.
+        not bimap.forward_search(ExistQVarsMapping, VarB, _)
+    else
+        % Check that VarA and VarB are corresponding existentially quantified
+        % type variables.
+        bimap.forward_search(ExistQVarsMapping, VarB, VarA)
     ).
 
 :- pred check_corresponding_args_are_subtype(type_table::in, tvarset::in,
-    type_status::in, list(mer_type)::in, list(mer_type)::in,
-    maybe_cons_exist_constraints::in, maybe_cons_exist_constraints::in,
-    existq_tvar_mapping::in, existq_tvar_mapping::out) is semidet.
+    type_status::in, existq_tvar_mapping::in,
+    list(mer_type)::in, list(mer_type)::in) is semidet.
 
 check_corresponding_args_are_subtype(_TypeTable, _TVarSet, _OrigTypeStatus,
-        [], [],
-        _MaybeExistConstraintsA, _MaybeExistConstraintsB, !ExistQVarsMapping).
+        _ExistQVarsMapping, [], []).
 check_corresponding_args_are_subtype(TypeTable, TVarSet, OrigTypeStatus,
-        [TypeA | TypesA], [TypeB | TypesB],
-        MaybeExistConstraintsA, MaybeExistConstraintsB, !ExistQVarsMapping) :-
-    check_is_subtype(TypeTable, TVarSet, OrigTypeStatus, TypeA, TypeB,
-        MaybeExistConstraintsA, MaybeExistConstraintsB, !ExistQVarsMapping),
+        ExistQVarsMapping, [TypeA | TypesA], [TypeB | TypesB]) :-
+    check_is_subtype(TypeTable, TVarSet, OrigTypeStatus, ExistQVarsMapping,
+        TypeA, TypeB),
     check_corresponding_args_are_subtype(TypeTable, TVarSet, OrigTypeStatus,
-        TypesA, TypesB, MaybeExistConstraintsA, MaybeExistConstraintsB,
-        !ExistQVarsMapping).
+        ExistQVarsMapping, TypesA, TypesB).
 
 :- pred check_is_subtype_higher_order(type_table::in, tvarset::in,
-    type_status::in, list(mer_type)::in, list(mer_type)::in,
-    maybe(list(mer_mode))::in, maybe(list(mer_mode))::in,
-    maybe_cons_exist_constraints::in, maybe_cons_exist_constraints::in,
-    existq_tvar_mapping::in, existq_tvar_mapping::out) is semidet.
+    type_status::in, existq_tvar_mapping::in,
+    list(mer_type)::in, list(mer_type)::in,
+    maybe(list(mer_mode))::in, maybe(list(mer_mode))::in) is semidet.
 
 check_is_subtype_higher_order(_TypeTable, _TVarSet, _OrigTypeStatus,
-        [], [], MaybeModesA, MaybeModesB, _, _, !ExistQVarsMapping) :-
+        _ExistQVarsMapping, [], [], MaybeModesA, MaybeModesB) :-
     (
         MaybeModesA = no,
         MaybeModesB = no
@@ -1968,14 +2005,14 @@ check_is_subtype_higher_order(_TypeTable, _TVarSet, _OrigTypeStatus,
         MaybeModesB = yes([])
     ).
 check_is_subtype_higher_order(TypeTable, TVarSet, OrigTypeStatus,
-        [TypeA | TypesA], [TypeB | TypesB], MaybeModesA0, MaybeModesB0,
-        MaybeExistConstraintsA, MaybeExistConstraintsB, !ExistQVarsMapping) :-
+        ExistQVarsMapping,
+        [TypeA | TypesA], [TypeB | TypesB], MaybeModesA0, MaybeModesB0) :-
     % Check arguments of higher order term have the same type.
     % This could be more efficient, but should be rarely used anyway.
-    check_is_subtype(TypeTable, TVarSet, OrigTypeStatus, TypeA, TypeB,
-        MaybeExistConstraintsA, MaybeExistConstraintsB, !ExistQVarsMapping),
-    check_is_subtype(TypeTable, TVarSet, OrigTypeStatus, TypeB, TypeA,
-        MaybeExistConstraintsA, MaybeExistConstraintsB, !ExistQVarsMapping),
+    check_is_subtype(TypeTable, TVarSet, OrigTypeStatus, ExistQVarsMapping,
+        TypeA, TypeB),
+    check_is_subtype(TypeTable, TVarSet, OrigTypeStatus, ExistQVarsMapping,
+        TypeB, TypeA),
 
     % Argument modes, if available, must match exactly.
     (
@@ -1993,38 +2030,7 @@ check_is_subtype_higher_order(TypeTable, TVarSet, OrigTypeStatus,
     ),
 
     check_is_subtype_higher_order(TypeTable, TVarSet, OrigTypeStatus,
-        TypesA, TypesB, MaybeModesA, MaybeModesB,
-        MaybeExistConstraintsA, MaybeExistConstraintsB, !ExistQVarsMapping).
-
-%---------------------%
-
-:- pred check_subtype_ctor_exist_constraints(sym_name_arity::in,
-    cons_exist_constraints::in, cons_exist_constraints::in,
-    existq_tvar_mapping::in, prog_context::in,
-    found_invalid_type::in, found_invalid_type::out,
-    list(error_spec)::in, list(error_spec)::out) is det.
-
-check_subtype_ctor_exist_constraints(CtorSymNameArity,
-        ExistConstraints, SuperExistConstraints, ExistQVarsMapping, Context,
-        !FoundInvalidType, !Specs) :-
-    ExistConstraints = cons_exist_constraints(_, Constraints, _, _),
-    SuperExistConstraints = cons_exist_constraints(_, SuperConstraints0, _, _),
-    ExistQVarsRenaming = bimap.forward_map(ExistQVarsMapping),
-    apply_variable_renaming_to_prog_constraint_list(ExistQVarsRenaming,
-        SuperConstraints0, SuperConstraints),
-    list.sort(Constraints, SortedConstraints),
-    list.sort(SuperConstraints, SortedSuperConstraints),
-    ( if SortedConstraints = SortedSuperConstraints then
-        true
-    else
-        Pieces = [words("Error: existential class constraints for")] ++
-            color_as_subject([unqual_sym_name_arity(CtorSymNameArity)]) ++
-            color_as_incorrect([words("differ")]) ++
-            [words("in the subtype and supertype."), nl],
-        Spec = spec($pred, severity_error, phase_pt2h, Context, Pieces),
-        !:Specs = [Spec | !.Specs],
-        !:FoundInvalidType = found_invalid_type
-    ).
+        ExistQVarsMapping, TypesA, TypesB, MaybeModesA, MaybeModesB).
 
 %---------------------%
 
