@@ -1350,7 +1350,7 @@ This is a bug-fix release.
   documentation to fail on Cygwin.
 
 * We have increased the C stack size for the compiler on 64-bit Cygwin systems,
-  due to stack overflows occuring with the default size.
+  due to stack overflows occurring with the default size.
 
 * We have fixed a bug in the debugger, which, in some rare circumstances, could
   cause it to print terms to the wrong stream.
