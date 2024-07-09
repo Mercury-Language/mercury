@@ -511,13 +511,19 @@ modecheck_coerce_from_bound_make_bound_functor_not_existq(ModuleInfo, TVarSet,
     % all such errors (mostly because it may not be *invoked* on every inst
     % that should be checked).
     (
-        ConsIdX = du_data_ctor(DuCtorX),
-        get_bound_functor_cons_and_arg_types(ModuleInfo, TypeX, TypeY,
-            DuCtorX, DuCtorY, GetArgTypesRes),
-        ConsIdY = du_data_ctor(DuCtorY),
         (
-            GetArgTypesRes = arg_types(ArgTypesX, ArgTypesY, Arity),
-            get_ctor_existq_tvars_det(ModuleInfo, TypeX, DuCtorX,
+            ConsIdX = du_data_ctor(DuCtorX),
+            get_bound_functor_cons_and_arg_types(ModuleInfo, TypeX, TypeY,
+                DuCtorX, DuCtorY, GetConsArgsResult),
+            ConsIdY = du_data_ctor(DuCtorY)
+        ;
+            ConsIdX = tuple_cons(ConsArity),
+            get_tuple_cons_arg_types(TypeX, TypeY, ConsArity,
+                GetConsArgsResult),
+            ConsIdY = tuple_cons(ConsArity)
+        ),
+        (
+            GetConsArgsResult = cons_args(ArgTypesX, ArgTypesY, Arity,
                 ConsExistQTVars, NumExtraArgs),
             % Separate out insts for type_infos and type_class_infos from
             % actual constructor arguments.
@@ -547,16 +553,12 @@ modecheck_coerce_from_bound_make_bound_functor_not_existq(ModuleInfo, TVarSet,
                 MaybeBoundInstY = bioe_cons_id_error(ConsIdError)
             )
         ;
-            GetArgTypesRes = bad_cons_id_for_input_type,
+            GetConsArgsResult = bad_cons_id_for_input_type,
             MaybeBoundInstY = bioe_cons_id_error(bad_cons_id_input(ConsIdX))
         ;
-            GetArgTypesRes = bad_cons_id_for_result_type,
+            GetConsArgsResult = bad_cons_id_for_result_type,
             MaybeBoundInstY = bioe_cons_id_error(bad_cons_id_result(ConsIdY))
         )
-    ;
-        ConsIdX = tuple_cons(_Arity),
-        % XXX tuple_cons actually does occur.
-        sorry($pred, "tuple_cons")
     ;
         ( ConsIdX = some_int_const(_)
         ; ConsIdX = float_const(_)
@@ -576,7 +578,13 @@ modecheck_coerce_from_bound_make_bound_functor_not_existq(ModuleInfo, TVarSet,
     ).
 
 :- type get_arg_types_result
-    --->    arg_types(list(mer_type), list(mer_type), int)
+    --->    cons_args(
+                arg_types_x         :: list(mer_type),
+                arg_types_y         :: list(mer_type),
+                arity               :: int,
+                cons_existq_tvars   :: existq_tvars,
+                num_extra_args      :: int
+            )
     ;       bad_cons_id_for_input_type
     ;       bad_cons_id_for_result_type.
 
@@ -606,7 +614,10 @@ get_bound_functor_cons_and_arg_types(ModuleInfo, TypeX, TypeY,
                     list.length(ArgTypesX, Arity),
                     list.length(ArgTypesY, Arity)
                 then
-                    Result = arg_types(ArgTypesX, ArgTypesY, Arity)
+                    get_ctor_existq_tvars_det(ModuleInfo, TypeX, DuCtorX,
+                        ConsExistQTVars, NumExtraArgs),
+                    Result = cons_args(ArgTypesX, ArgTypesY, Arity,
+                        ConsExistQTVars, NumExtraArgs)
                 else
                     unexpected($pred, "arg types length mismatch")
                 )
@@ -617,19 +628,9 @@ get_bound_functor_cons_and_arg_types(ModuleInfo, TypeX, TypeY,
             Result = bad_cons_id_for_input_type
         )
     ;
-        TypeX = tuple_type(ArgTypesX, _),
-        ( if
-            DuCtorX = du_ctor(unqualified("{}"), Arity, _),
-            list.length(ArgTypesX, Arity)
-        then
-            ( if
-                TypeY = tuple_type(ArgTypesY, _),
-                list.length(ArgTypesY, Arity)
-            then
-                Result = arg_types(ArgTypesX, ArgTypesY, Arity)
-            else
-                unexpected($pred, "tuple type mismatch")
-            )
+        TypeX = tuple_type(_, _),
+        ( if DuCtorX = du_ctor(unqualified("{}"), Arity, _) then
+            get_tuple_cons_arg_types(TypeX, TypeY, Arity, Result)
         else
             Result = bad_cons_id_for_input_type
         )
@@ -643,7 +644,10 @@ get_bound_functor_cons_and_arg_types(ModuleInfo, TypeX, TypeY,
             ( if Arity = 0 then
                 ArgTypesX = [],
                 ArgTypesY = [],
-                Result = arg_types(ArgTypesX, ArgTypesY, Arity)
+                ConsExistQTVars = [],
+                NumExtraArgs = 0,
+                Result = cons_args(ArgTypesX, ArgTypesY, Arity,
+                    ConsExistQTVars, NumExtraArgs)
             else
                 Result = bad_cons_id_for_input_type
             )
@@ -667,6 +671,29 @@ get_bound_functor_cons_and_arg_types(ModuleInfo, TypeX, TypeY,
         ; TypeX = higher_order_type(_, _, _, _)
         ; TypeX = apply_n_type(_, _, _)
         ),
+        Result = bad_cons_id_for_input_type
+    ).
+
+:- pred get_tuple_cons_arg_types(mer_type::in, mer_type::in, int::in,
+    get_arg_types_result::out) is det.
+
+get_tuple_cons_arg_types(TypeX, TypeY, Arity, Result) :-
+    ( if
+        TypeX = tuple_type(ArgTypesX, _),
+        list.length(ArgTypesX, Arity)
+    then
+        ( if
+            TypeY = tuple_type(ArgTypesY, _),
+            list.length(ArgTypesY, Arity)
+        then
+            ConsExistQTVars = [],
+            NumExtraArgs = 0,
+            Result = cons_args(ArgTypesX, ArgTypesY, Arity,
+                ConsExistQTVars, NumExtraArgs)
+        else
+            unexpected($pred, "tuple type mismatch")
+        )
+    else
         Result = bad_cons_id_for_input_type
     ).
 

@@ -1,0 +1,16 @@
+coerce_tuple.m:031: In clause for `bad1':
+coerce_tuple.m:031:   in coerce expression:
+coerce_tuple.m:031:   mode error: cannot convert the [38;5;87mcoerced term[39;49m from type
+coerce_tuple.m:031:   `coerce_tuple.basket(coerce_tuple.fruit)' to
+coerce_tuple.m:031:   `coerce_tuple.basket(coerce_tuple.citrus)' because it has
+coerce_tuple.m:031:   instantiatedness [38;5;203m`unique',[39;49m and
+coerce_tuple.m:031:   [38;5;203m`coerce_tuple.basket(coerce_tuple.fruit)'[39;49m is not a
+coerce_tuple.m:031:   subtype of `coerce_tuple.basket(coerce_tuple.citrus)'.
+coerce_tuple.m:037: In clause for `bad2':
+coerce_tuple.m:037:   in coerce expression:
+coerce_tuple.m:037:   mode error: cannot convert the [38;5;87mcoerced term[39;49m from type
+coerce_tuple.m:037:   `coerce_tuple.basket(coerce_tuple.fruit)' to
+coerce_tuple.m:037:   `coerce_tuple.citrus_basket' because it has
+coerce_tuple.m:037:   instantiatedness [38;5;203m`unique',[39;49m and
+coerce_tuple.m:037:   [38;5;203m`coerce_tuple.basket(coerce_tuple.fruit)'[39;49m is not a
+coerce_tuple.m:037:   subtype of `coerce_tuple.citrus_basket'.
