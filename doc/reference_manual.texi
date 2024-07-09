@@ -3357,8 +3357,9 @@ It may change the types of some of the arguments of some of the constructors,
 
 Formally, this means that
 if the supertype @samp{t} has a constructor @samp{f(T1, ..., Tn)},
-and the subtype @samp{s =< t} has a constructor @samp{f(S1, ..., Sn)}.
-then for each @var{Si}, the condition @samp{Si =< Ti} must hold.
+and the subtype @samp{s =< t} has a constructor @samp{f(S1, ..., Sn)},
+then for each @var{Si}, the condition @samp{Si =< Ti} must hold,
+where @samp{=<} is the subtype relation below.
 @end itemize
 
 This is an example of the first kind of difference:
@@ -3415,24 +3416,20 @@ that does not occur in @var{supertype}.
 (In the following discussion,
 we assume that all equivalence types have been expanded out.)
 
-Mercury considers it possible
-for a type @samp{S} to be a subtype of type @samp{T}, where @samp{S != T},
-in two cases:
-where @samp{S} and @samp{T} are both discriminated union type,
-and where they are both higher order types.
-In every other case,
-@samp{S} is a subtype of @samp{T}, denoted @samp{S =< T},
-if and only if @samp{S} and @samp{T} are syntactically identical,
-i.e.@ @samp{S = T}.
+The subtype relation @samp{S =< T} has four cases to consider:
+when @samp{S} and @samp{T} are both discriminated union types,
+when they are both tuple types,
+when they are both higher-order types,
+and all other types.
 
-A discriminated union type @samp{S}
-can be a subtype of another discriminated union type @samp{T}
-in two distinct ways:
-
+@c Manually numbered as @enumerate introduces another level of indentation
+@c and leaves too little space between the items.
+@noindent
+1. For discriminated union types @samp{S} and @samp{T}:
 @itemize
 @item
 If @samp{S} and @samp{T} have the same principal type constructor,
-say @var{f/n}, which implies that
+say @samp{f/n}, which implies that
 @samp{S = f(S1, ..., Sn)} and @samp{T = f(T1, ..., Tn)},
 then @samp{S =< T} holds if and only if
 for all @var{i} in @samp{1..n}, @samp{Si =< Ti}.
@@ -3453,11 +3450,21 @@ are replaced by the corresponding for @var{Si} to give @var{Usub},
 then @samp{Usub =< T} must hold.
 @end itemize
 
-A higher order type @samp{S}
-can be a subtype of another higher order type @samp{T}
+@noindent
+2. For two tuple types
+@samp{S = @{S1, ..., Sn@}} and @samp{T = @{T1, ..., Tn@}},
+@samp{S =< T} holds if and only if
+@samp{Si =< Ti} for all @samp{i} in @samp{1..n}.
+This is analogous to the case for discriminated union types
+with the same principal type constructor.
+
+@noindent
+3. A higher-order type @samp{S}
+can be a subtype of another higher-order type @samp{T}
 in only one way.
-Since subtype definitions do not apply to higher order types,
-this way is analogous to the first way above.
+Since subtype definitions do not apply to higher-order types,
+this way is analogous to the case for discriminated union types
+with the same principal type constructor.
 
 @itemize
 @item
@@ -3476,13 +3483,16 @@ if and only if all of the following conditions hold:
     @item
     if either of @var{P} and @var{Q} has higher-order inst information,
     then @var{P} and @var{Q} must have
-    the @emph{same} higher order inst information,
-    i.e.@ their higher order inst information must specify
+    the @emph{same} higher-order inst information,
+    i.e.@ their higher-order inst information must specify
     the same argument modes, determinism, and purity.
     @end itemize
 @end itemize
 
-In every case not covered above, @samp{S =< T} if and only if @samp{S = T}.
+@noindent
+4. For all other types,
+@samp{S =< T} if and only if @samp{S = T},
+i.e.@ they are syntactically identical.
 
 A subtype may be exported as an abstract type
 by declaring only the name of the subtype in the
@@ -8473,13 +8483,13 @@ if the two types are the same
 
 @item
 @samp{Si < Ti}
-if @var{Si} is a subtype of @var{Ti},
-according to visible subtype definitions
+if @var{Si} is a subtype of @var{Ti}
+by the relation below
 
 @item
 @samp{Ti < Si}
-if @var{Ti} is a subtype of @var{Si},
-according to visible subtype definitions
+if @var{Ti} is a subtype of @var{Si}
+by the relation below
 @end itemize
 
 Otherwise, the @code{coerce} expression is not type-correct.
@@ -8506,6 +8516,19 @@ in a solver type
 @item
 in a discriminated union type,
 other than a recursive type of the exact form @samp{base(B1, ..., Bn)}
+@end itemize
+
+The relation @samp{S < T} is true when @samp{S != T} and either:
+@itemize
+@item
+@samp{S} and @samp{T} are both discriminated union types,
+and @samp{S} is a subtype of @samp{T} by visible subtype definitions;
+or
+
+@item
+@samp{S} and @samp{T} are both tuple types of the same arity,
+and for each pair of corresponding argument types @samp{Si} and @samp{Ti},
+@samp{Si < Ti} is true.
 @end itemize
 
 @heading Mode checking
