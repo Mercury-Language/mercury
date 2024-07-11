@@ -50,8 +50,11 @@
 :- import_module int.
 :- import_module map.
 :- import_module maybe.
+:- import_module one_or_more.
+:- import_module one_or_more_map.
 :- import_module pair.
 :- import_module string.
+:- import_module uint.
 :- import_module uint8.
 
 %---------------------------------------------------------------------------%
@@ -196,67 +199,124 @@ peephole_match(InvalidPatterns, Instr0, Instrs0, Instrs) :-
 
 peephole_match_computed_goto(SelectorRval, MaybeLabels, Comment0,
         Instrs0, Instrs) :-
-    build_computed_goto_target_map(MaybeLabels, 0, map.init, LabelMap),
-    map.to_assoc_list(LabelMap, LabelValsList),
+    build_computed_goto_target_map(MaybeLabels, 0,
+        one_or_more_map.init, LabelMap),
+    one_or_more_map.to_assoc_list(LabelMap, LabelValsList),
     ( if
         LabelValsList = [Label - _]
     then
         GotoInstr = llds_instr(goto(code_label(Label)), Comment0),
         Instrs = [GotoInstr | Instrs0]
     else if
-        LabelValsList = [LabelVals1, LabelVals2],
-        peephole_pick_one_val_label(LabelVals1, LabelVals2, OneValLabel,
-            Val, OtherLabel)
+        LabelValsList = [LabelValsA, LabelValsB]
     then
-        CondRval = binop(eq(int_type_int), SelectorRval,
-            const(llconst_int(Val))),
+        % The only info we have about which label execution will go to
+        % more often at runtime is the number of values associated with
+        % each label. Assuming, in absence of any contradicting evidence
+        % (or, indeed, of any evidence at all :-) that all values are
+        % equally likely to occur, we prefer arrange the code generate
+        % so that the branch away is less likely than the fallthrough.
+        % This is because the fallthrough consists of instructions
+        % that the CPU is more likely to have fetched then the target
+        % of the branch-away if_val.
+        %
+        % Note that subsequent LLDS->LLDS optimizations may effectively
+        % reverse this decision. This can happen e.g. when the instruction
+        % following GotoInstr is in fact FewerValsLabel, with the replacement
+        % of one conditional and one unconditional branch with just one
+        % conditional branch effectively trumping the pipeline considerations
+        % above.
+        peephole_pick_fewer_vals_label(LabelValsA, LabelValsB,
+            FewerValsLabel, FewerOoMVals, OtherLabel),
+        FewerOoMVals = one_or_more(FirstVal, LaterVals),
+        (
+            LaterVals = [],
+            CondRval = binop(eq(int_type_int), SelectorRval,
+                const(llconst_int(FirstVal)))
+        ;
+            LaterVals = [_ | _],
+            build_offset_mask([FirstVal | LaterVals], 0u, Mask),
+            SelectorRvalUint = cast(lt_int(int_type_uint), SelectorRval),
+            QueryRval = binop(
+                unchecked_left_shift(int_type_uint, shift_by_uint),
+                const(llconst_uint(1u)), SelectorRvalUint),
+            SelectedBitUintRval = binop(bitwise_and(int_type_uint),
+                const(llconst_uint(Mask)), QueryRval),
+            CondRval = binop(ne(int_type_uint),
+                SelectedBitUintRval, const(llconst_uint(0u)))
+        ),
         CommentInstr = llds_instr(comment(Comment0), ""),
-        BranchInstr = llds_instr(if_val(CondRval, code_label(OneValLabel)),
-            ""),
-        GotoInstr = llds_instr(goto(code_label(OtherLabel)), Comment0),
+        BranchUinstr = if_val(CondRval, code_label(FewerValsLabel)),
+        BranchInstr = llds_instr(BranchUinstr, Comment0 ++ " part 1"),
+        GotoUinstr = goto(code_label(OtherLabel)),
+        GotoInstr = llds_instr(GotoUinstr, Comment0 ++ " part 2"),
         Instrs = [CommentInstr, BranchInstr, GotoInstr | Instrs0]
     else
         fail
     ).
 
     % Build a map that associates each label in a computed goto with the
-    % values of the switch rval that cause a jump to it.
+    % values of the switch rval that cause a jump to it. Fail if any of the
+    % targets is not there.
     %
 :- pred build_computed_goto_target_map(list(maybe(label))::in, int::in,
-    map(label, list(int))::in, map(label, list(int))::out) is semidet.
+    one_or_more_map(label, int)::in,
+    one_or_more_map(label, int)::out) is det.
 
 build_computed_goto_target_map([], _, !LabelMap).
 build_computed_goto_target_map([MaybeLabel | MaybeLabels], Val, !LabelMap) :-
-    MaybeLabel = yes(Label),
-    ( if map.search(!.LabelMap, Label, Vals0) then
-        map.det_update(Label, [Val | Vals0], !LabelMap)
-    else
-        map.det_insert(Label, [Val], !LabelMap)
+    (
+        MaybeLabel = yes(Label),
+        one_or_more_map.add(Label, Val, !LabelMap)
+    ;
+        MaybeLabel = no
+        % Missing labels represent unreachable cases.
     ),
     build_computed_goto_target_map(MaybeLabels, Val + 1, !LabelMap).
 
-    % If one of the two labels has only one associated value, return it and
-    % the associated value as the first two output arguments, and the
-    % remaining label as the last output argument.
+    % Return the label that has fewer associated values.
+    % If the two lavels have the same number of values, which label
+    % we return shouldn't matter.
     %
-:- pred peephole_pick_one_val_label(pair(label, list(int))::in,
-    pair(label, list(int))::in, label::out, int::out, label::out) is semidet.
+:- pred peephole_pick_fewer_vals_label(
+    pair(label, one_or_more(int))::in,
+    pair(label, one_or_more(int))::in,
+    label::out, one_or_more(int)::out, label::out) is det.
 
-peephole_pick_one_val_label(LabelVals1, LabelVals2, OneValLabel, Val,
-        OtherLabel) :-
-    LabelVals1 = Label1 - Vals1,
-    LabelVals2 = Label2 - Vals2,
-    ( if Vals1 = [Val1] then
-        OneValLabel = Label1,
-        Val = Val1,
-        OtherLabel = Label2
-    else if Vals2 = [Val2] then
-        OneValLabel = Label2,
-        Val = Val2,
-        OtherLabel = Label1
+peephole_pick_fewer_vals_label(LabelValsA, LabelValsB,
+        FewerValsLabel, FewerOoMVals, OtherLabel) :-
+    LabelValsA = LabelA - OoMValsA,
+    LabelValsB = LabelB - OoMValsB,
+    ValsA = one_or_more_to_list(OoMValsA),
+    ValsB = one_or_more_to_list(OoMValsB),
+    list.length(ValsA, NumValsA),
+    list.length(ValsB, NumValsB),
+    ( if NumValsA =< NumValsB then
+        FewerValsLabel = LabelA,
+        FewerOoMVals = OoMValsA,
+        OtherLabel = LabelB
     else
-        fail
+        FewerValsLabel = LabelB,
+        FewerOoMVals = OoMValsB,
+        OtherLabel = LabelA
     ).
+
+:- pred build_offset_mask(list(int)::in, uint::in, uint::out) is semidet.
+
+build_offset_mask([], !Mask).
+build_offset_mask([Val | Vals], !Mask) :-
+    ValUint = uint.cast_from_int(Val),
+    % Fail if the mask would be required to set a bit that does not exist.
+    % We could make this test against 64u on 64-bit platforms, or we could
+    % use Val - MinVal (where of course MinVal is the smallest Val)
+    % as the shift amount, but I (zs) believe it is not worth the bother.
+    % This is because even this test should almost always succeed, because
+    % (a) most computed gotos are on primary tags, which cannot be bigger
+    % than seven, and (b) even though computed gotos on secondary tags
+    % can have more than 32 values, this is quite rare.
+    ValUint < 32u,
+    !:Mask = !.Mask \/ (1u <<u ValUint),
+    build_offset_mask(Vals, !Mask).
 
 %---------------------%
 
