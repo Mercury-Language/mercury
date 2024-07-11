@@ -236,7 +236,7 @@ output_first_opt_debug(Info, FileName, ProcLabel, Instrs0, Counter, !IO) :-
         (
             Res = ok(FileStream),
             counter.allocate(NextLabel, Counter, _),
-            opt_debug.msg(FileStream, yes, NextLabel,
+            llds_proc_dump_msg(FileStream, yes, NextLabel,
                 "before optimization", !IO),
             AutoComments = Info ^ lopt_auto_comments,
             opt_debug.maybe_write_instrs(FileStream, yes, AutoComments,
@@ -263,11 +263,11 @@ num_to_str(N) =
         string.int_to_string(N)
     ).
 
-:- pred maybe_opt_debug(llds_opt_info::in, list(instruction)::in, counter::in,
-    string::in, string::in, proc_label::in,
+:- pred maybe_dump_proc_code(llds_opt_info::in, list(instruction)::in,
+    counter::in, string::in, string::in, proc_label::in,
     opt_debug_info::in, opt_debug_info::out) is det.
 
-maybe_opt_debug(Info, Instrs, Counter, Suffix, Msg, ProcLabel,
+maybe_dump_proc_code(Info, Instrs, Counter, Suffix, Msg, ProcLabel,
         !OptDebugInfo) :-
     (
         !.OptDebugInfo = opt_debug_info(BaseName, OptNum0, _OptFileName0,
@@ -291,7 +291,7 @@ maybe_opt_debug(Info, Instrs, Counter, Suffix, Msg, ProcLabel,
             (
                 Res = ok(FileStream),
                 counter.allocate(NextLabel, Counter, _),
-                opt_debug.msg(FileStream, yes, NextLabel, Msg, !IO),
+                llds_proc_dump_msg(FileStream, yes, NextLabel, Msg, !IO),
                 (
                     Same = yes,
                     io.write_string(FileStream,
@@ -353,7 +353,7 @@ optimize_initial(Info, LayoutLabelSet, ProcLabel, CodeModel, MayAlterRtti,
         ),
         frameopt_keep_nondet_frame(ProcLabel, LayoutLabelSet,
             !LabelNumCounter, !Instrs, _Mod),
-        maybe_opt_debug(Info, !.Instrs, !.LabelNumCounter, "ndframeopt",
+        maybe_dump_proc_code(Info, !.Instrs, !.LabelNumCounter, "ndframeopt",
             "after nondet frame opt", ProcLabel, !OptDebugInfo)
     else
         true
@@ -420,7 +420,7 @@ optimize_repeated(Info, Final, LayoutLabelSet, ProcLabel, MayAlterRtti,
         optimize_jumps_in_proc(LayoutLabelSet, MayAlterRtti, ProcLabel,
             OptFullJump, Final, PessimizeTailCalls, CheckedNondetTailCalls,
             !LabelNumCounter, !Instrs, Mod1),
-        maybe_opt_debug(Info, !.Instrs, !.LabelNumCounter,
+        maybe_dump_proc_code(Info, !.Instrs, !.LabelNumCounter,
             "jump", "after jump opt", ProcLabel, !OptDebugInfo)
     ;
         OptJump = do_not_opt_jumps,
@@ -442,7 +442,7 @@ optimize_repeated(Info, Final, LayoutLabelSet, ProcLabel, MayAlterRtti,
         GC_Method = Info ^ lopt_gc_method,
         OptPeepMkword = Info ^ lopt_opt_peep_mkword,
         peephole_optimize(GC_Method, OptPeepMkword, !Instrs, Mod2),
-        maybe_opt_debug(Info, !.Instrs, !.LabelNumCounter,
+        maybe_dump_proc_code(Info, !.Instrs, !.LabelNumCounter,
             "peep", "after peephole", ProcLabel, !OptDebugInfo)
     ;
         Peephole = do_not_opt_peep,
@@ -462,7 +462,7 @@ optimize_repeated(Info, Final, LayoutLabelSet, ProcLabel, MayAlterRtti,
             VeryVerbose = no
         ),
         labelopt_main(Final, LayoutLabelSet, !Instrs, Mod3),
-        maybe_opt_debug(Info, !.Instrs, !.LabelNumCounter,
+        maybe_dump_proc_code(Info, !.Instrs, !.LabelNumCounter,
             "label", "after label opt", ProcLabel, !OptDebugInfo)
     ;
         OptLabels = do_not_opt_labels,
@@ -482,7 +482,7 @@ optimize_repeated(Info, Final, LayoutLabelSet, ProcLabel, MayAlterRtti,
             VeryVerbose = no
         ),
         dupelim_main(ProcLabel, !LabelNumCounter, !Instrs),
-        maybe_opt_debug(Info, !.Instrs, !.LabelNumCounter,
+        maybe_dump_proc_code(Info, !.Instrs, !.LabelNumCounter,
             "dup", "after duplicates", ProcLabel, !OptDebugInfo)
     ;
         DupElim = do_not_opt_dups
@@ -527,13 +527,13 @@ optimize_middle(Info, Final, LayoutLabelSet, ProcLabel, CodeModel,
             ; CodeModel = model_semi
             ),
             frameopt_main_det_stack(ProcLabel, !LabelNumCounter, !Instrs,
-                FrameOptComments, Mod1)
+                FrameOptComments, FrameModified)
         ;
             CodeModel = model_non,
             frameopt_main_nondet_stack(ProcLabel, !LabelNumCounter, !Instrs,
-                FrameOptComments, Mod1)
+                FrameOptComments, FrameModified)
         ),
-        maybe_opt_debug(Info, !.Instrs, !.LabelNumCounter,
+        maybe_dump_proc_code(Info, !.Instrs, !.LabelNumCounter,
             "frame", "after frame opt", ProcLabel, !OptDebugInfo),
         Statistics = Info ^ lopt_detailed_statistics,
         trace [io(!IO)] (
@@ -546,7 +546,7 @@ optimize_middle(Info, Final, LayoutLabelSet, ProcLabel, CodeModel,
         CheckedNondetTailCalls = Info ^ lopt_checked_nondet_tailcalls,
         ( if
             ( OptFullJump = opt_fulljumps
-            ; Mod1 = yes
+            ; FrameModified = yes
             )
         then
             (
@@ -561,14 +561,27 @@ optimize_middle(Info, Final, LayoutLabelSet, ProcLabel, CodeModel,
             ),
             optimize_jumps_in_proc(LayoutLabelSet, MayAlterRtti, ProcLabel,
                 OptFullJump, Final, PessimizeTailCalls, CheckedNondetTailCalls,
-                !LabelNumCounter, !Instrs, _Mod2),
-            maybe_opt_debug(Info, !.Instrs, !.LabelNumCounter,
+                !LabelNumCounter, !Instrs, JumpModified),
+            % Some jump optimization, such as the one that replaces two
+            % separate semidet epilogs (one assigning false and one assigning
+            % true to r1) with one semidet epilog that assigns to r1
+            % the value of a boolean expression, can leave dead code
+            % in !:Insts. We need to execute the following passes
+            % to eliminate that dead code.
+            %
+            % NOTE: We ignored JumpModified for almost three decades,
+            % so such situations must be *extremely* rare. It would therefore
+            % be nice if jumpopt could tell us not just whether it made
+            % *any* modifications (which is what JumpModified does), but also
+            % whether it made any modifications that *require* cleanup.
+            bool.or(FrameModified, JumpModified, FrameOrJumpModified),
+            maybe_dump_proc_code(Info, !.Instrs, !.LabelNumCounter,
                 "jump", "after jumps", ProcLabel, !OptDebugInfo)
         else
-            true
+            FrameOrJumpModified = FrameModified
         ),
         (
-            Mod1 = yes,
+            FrameOrJumpModified = yes,
             (
                 VeryVerbose = yes,
                 trace [io(!IO)] (
@@ -580,13 +593,13 @@ optimize_middle(Info, Final, LayoutLabelSet, ProcLabel, CodeModel,
                 VeryVerbose = no
             ),
             labelopt_main(Final, LayoutLabelSet, !Instrs, _Mod3),
-            maybe_opt_debug(Info, !.Instrs, !.LabelNumCounter,
+            maybe_dump_proc_code(Info, !.Instrs, !.LabelNumCounter,
                 "label", "after labels", ProcLabel, !OptDebugInfo)
         ;
-            Mod1 = no
+            FrameOrJumpModified = no
         ),
         (
-            Mod1 = yes,
+            FrameOrJumpModified = yes,
             (
                 VeryVerbose = yes,
                 trace [io(!IO)] (
@@ -600,10 +613,10 @@ optimize_middle(Info, Final, LayoutLabelSet, ProcLabel, CodeModel,
             GC_Method = Info ^ lopt_gc_method,
             OptPeepMkword = Info ^ lopt_opt_peep_mkword,
             peephole_optimize(GC_Method, OptPeepMkword, !Instrs, _Mod),
-            maybe_opt_debug(Info, !.Instrs, !.LabelNumCounter,
+            maybe_dump_proc_code(Info, !.Instrs, !.LabelNumCounter,
                 "peep", "after peephole", ProcLabel, !OptDebugInfo)
         ;
-            Mod1 = no
+            FrameOrJumpModified = no
         )
     ;
         OptFrames = do_not_opt_frames
@@ -626,7 +639,7 @@ optimize_middle(Info, Final, LayoutLabelSet, ProcLabel, CodeModel,
         AutoComments = Info ^ lopt_auto_comments,
         use_local_vars_proc(!Instrs, NumRealRRegs, AccessThreshold,
             AutoComments, ProcLabel, !LabelNumCounter),
-        maybe_opt_debug(Info, !.Instrs, !.LabelNumCounter, "use_local",
+        maybe_dump_proc_code(Info, !.Instrs, !.LabelNumCounter, "use_local",
             "after use_local_vars", ProcLabel, !OptDebugInfo)
     ;
         UseLocalVars = do_not_use_local_vars
@@ -665,7 +678,7 @@ optimize_last(Info, LayoutLabelSet, ProcLabel,
             VeryVerbose = no
         ),
         labelopt_main(no, LayoutLabelSet, !Instrs, _Mod1),
-        maybe_opt_debug(Info, !.Instrs, !.LabelNumCounter,
+        maybe_dump_proc_code(Info, !.Instrs, !.LabelNumCounter,
             "label", "after label opt", ProcLabel, !OptDebugInfo)
     else
         true
@@ -683,7 +696,7 @@ optimize_last(Info, LayoutLabelSet, ProcLabel,
             VeryVerbose = no
         ),
         remove_reassign(!Instrs),
-        maybe_opt_debug(Info, !.Instrs, !.LabelNumCounter,
+        maybe_dump_proc_code(Info, !.Instrs, !.LabelNumCounter,
             "reassign", "after reassign", ProcLabel, !OptDebugInfo)
     ;
         Reassign = do_not_opt_reassign
@@ -701,7 +714,7 @@ optimize_last(Info, LayoutLabelSet, ProcLabel,
             VeryVerbose = no
         ),
         fill_branch_delay_slot(!Instrs),
-        maybe_opt_debug(Info, !.Instrs, !.LabelNumCounter,
+        maybe_dump_proc_code(Info, !.Instrs, !.LabelNumCounter,
             "delay_slot", "after delay slots", ProcLabel, !OptDebugInfo)
     ;
         DelaySlot = do_not_opt_delay_slot
@@ -717,7 +730,7 @@ optimize_last(Info, LayoutLabelSet, ProcLabel,
         VeryVerbose = no
     ),
     combine_decr_sp(!Instrs),
-    maybe_opt_debug(Info, !.Instrs, !.LabelNumCounter,
+    maybe_dump_proc_code(Info, !.Instrs, !.LabelNumCounter,
         "decr_sp", "after combine decr_sp", ProcLabel, !OptDebugInfo),
     (
         StdLabels = standardize_labels,
@@ -732,7 +745,7 @@ optimize_last(Info, LayoutLabelSet, ProcLabel,
             VeryVerbose = no
         ),
         standardize_labels(!Instrs, !LabelNumCounter),
-        maybe_opt_debug(Info, !.Instrs, !.LabelNumCounter,
+        maybe_dump_proc_code(Info, !.Instrs, !.LabelNumCounter,
             "stdlabel", "after standard labels", ProcLabel, !OptDebugInfo)
     ;
         StdLabels = do_not_standardize_labels
@@ -750,7 +763,7 @@ optimize_last(Info, LayoutLabelSet, ProcLabel,
             VeryVerbose = no
         ),
         wrap_blocks(!Instrs),
-        maybe_opt_debug(Info, !.Instrs, !.LabelNumCounter,
+        maybe_dump_proc_code(Info, !.Instrs, !.LabelNumCounter,
             "wrapblocks", "after wrap blocks", ProcLabel, !.OptDebugInfo, _)
     ;
         UseLocalVars = do_not_use_local_vars

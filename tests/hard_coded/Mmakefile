@@ -191,6 +191,7 @@ ORDINARY_PROGS = \
 	functor_ho_inst_float_reg \
 	getopt_maybe_option \
 	getopt_test \
+	gh133 \
 	gh72 \
 	gh72a \
 	gh72b \

@@ -38,8 +38,8 @@
 
 %-----------------------------------------------------------------------------%
 
-:- pred msg(io.text_output_stream::in, bool::in, int::in, string::in,
-    io::di, io::uo) is det.
+:- pred llds_proc_dump_msg(io.text_output_stream::in, bool::in,
+    int::in, string::in, io::di, io::uo) is det.
 
     % maybe_write_instrs(Stream, OptDebug, AutoComments, MaybeProcLabel,
     %   Instrs, !IO):
@@ -122,7 +122,7 @@
 
 :- func dump_label(maybe(proc_label), label) = string.
 
-:- func dump_labels_or_not_reached(maybe(proc_label), list(maybe(label)))
+:- func dump_computed_goto_targets(maybe(proc_label), int, list(maybe(label)))
     = string.
 
 :- func dump_labels(maybe(proc_label), list(label)) = string.
@@ -173,18 +173,15 @@
 :- import_module string.
 :- import_module term.
 
-msg(Stream, OptDebug, LabelNo, Msg, !IO) :-
+llds_proc_dump_msg(Stream, OptDebug, LabelNumber, Msg, !IO) :-
     (
         OptDebug = yes,
-        io.write_string(Stream, "\n", !IO),
-        io.write_string(Stream, Msg, !IO),
-        ( if LabelNo >= 0 then
-            io.write_string(Stream, ", next label no: ", !IO),
-            io.write_int(Stream, LabelNo, !IO)
+        ( if LabelNumber >= 0 then
+            io.format(Stream, "%s, next label number: %d\n\n",
+                [s(Msg), i(LabelNumber)], !IO)
         else
-            true
-        ),
-        io.write_string(Stream, "\n", !IO)
+            io.format(Stream, "%s, no next label\n\n", [s(Msg)], !IO)
+        )
     ;
         OptDebug = no
     ).
@@ -1031,8 +1028,9 @@ dump_label(MaybeProcLabel, Label) = Str :-
         )
     ).
 
-dump_labels_or_not_reached(_, []) = "".
-dump_labels_or_not_reached(MaybeProcLabel, [MaybeLabel | MaybeLabels]) = Str :-
+dump_computed_goto_targets(_, _TagVal, []) = "".
+dump_computed_goto_targets(MaybeProcLabel, TagVal, [MaybeLabel | MaybeLabels])
+        = Str :-
     (
         MaybeLabel = yes(Label),
         LabelStr = dump_label(MaybeProcLabel, Label)
@@ -1040,8 +1038,10 @@ dump_labels_or_not_reached(MaybeProcLabel, [MaybeLabel | MaybeLabels]) = Str :-
         MaybeLabel = no,
         LabelStr = dump_code_addr(MaybeProcLabel, do_not_reached)
     ),
-    Str = " " ++ LabelStr ++
-        dump_labels_or_not_reached(MaybeProcLabel, MaybeLabels).
+    string.format("        %d -> %s\n", [i(TagVal), s(LabelStr)], HeadStr),
+    TailStr =
+        dump_computed_goto_targets(MaybeProcLabel, TagVal + 1, MaybeLabels),
+    Str = HeadStr ++ TailStr.
 
 dump_labels(_, []) = "".
 dump_labels(MaybeProcLabel, [Label | Labels]) =
@@ -1172,8 +1172,8 @@ dump_instr(MaybeProcLabel, AutoComments, Instr) = Str :-
         Str = "goto " ++ dump_code_addr(MaybeProcLabel, CodeAddr)
     ;
         Instr = computed_goto(Rval, MaybeLabels),
-        Str = "computed_goto " ++ dump_rval(MaybeProcLabel, Rval) ++ ":"
-            ++ dump_labels_or_not_reached(MaybeProcLabel, MaybeLabels)
+        Str = "computed_goto " ++ dump_rval(MaybeProcLabel, Rval) ++ ":\n"
+            ++ dump_computed_goto_targets(MaybeProcLabel, 0, MaybeLabels)
     ;
         Instr = arbitrary_c_code(AL, _, Code),
         Str = "arbitrary_c_code(" ++ dump_affects_liveness(AL) ++ "\n" ++

@@ -846,16 +846,17 @@ jump_opt_if_val(Uinstr0, Comment0, Instrs0, _PrevInstr, JumpOptInfo,
                 % Attempt to transform code such as
                 %
                 %       if (Cond) L1
-                %       r1 = MR_TRUE
+                %       r1 = MR_FALSE           (or MR_TRUE)
+                % when followed by
                 %       <epilog>
                 %       ...
                 %     L1:
-                %       r1 = MR_FALSE
+                %       r1 = MR_TRUE            (or MR_FALSE)
                 %       <epilog>
                 %
                 % into
                 %
-                %       r1 = Cond
+                %       r1 = Cond               (or r1 = !Cond)
                 %       <epilog>
                 %
                 opt_util.is_sdproceed_next(Instrs0, BetweenFT),
@@ -882,7 +883,8 @@ jump_opt_if_val(Uinstr0, Comment0, Instrs0, _PrevInstr, JumpOptInfo,
                 ),
                 Proceed = llds_instr(goto(code_succip), "shortcircuit"),
                 NewInstrs = [NewAssign | Between] ++ [Proceed],
-                NewRemain = nr_specified(NewInstrs, Instrs0)
+                skip_to_next_label(Instrs0, _DeadInstrs, LiveInstrs0),
+                NewRemain = nr_specified(NewInstrs, LiveInstrs0)
             else if
                 % Try to short-circuit the destination.
                 TargetLabel \= DestLabel

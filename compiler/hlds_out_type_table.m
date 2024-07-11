@@ -190,29 +190,6 @@ format_type_body(Info, _TypeCtor, TypeBody, TVarSet, !State) :-
             MaybeRepn = yes(Repn),
             Repn = du_type_repn(CtorRepns, CtorRepnMap, CheaperTagTest,
                 DuTypeKind, MaybeDirectArgCtors),
-            format_constructor_repns(TVarSet, CtorRepns, !State),
-            (
-                CheaperTagTest = no_cheaper_tag_test
-            ;
-                CheaperTagTest = cheaper_tag_test(ExpDuCtor, ExpConsTag,
-                    CheapDuCtor, CheapConsTag),
-                ExpDuCtorStr = du_ctor_and_arity_to_string(
-                    unqual_du_ctor(ExpDuCtor)),
-                CheapDuCtorStr = du_ctor_and_arity_to_string(
-                    unqual_du_ctor(CheapDuCtor)),
-                string.builder.format("%s%% cheaper tag test:\n",
-                    [s(IndentStr)], !State),
-                string.builder.format("%s%%   from %s\n",
-                    [s(IndentStr), s(ExpDuCtorStr)], !State),
-                string.builder.format("%s%%      %s\n",
-                    [s(IndentStr), s(du_cons_tag_to_string(ExpConsTag))],
-                    !State),
-                string.builder.format("%s%%   to %s\n",
-                    [s(IndentStr), s(CheapDuCtorStr)], !State),
-                string.builder.format("%s%%      %s\n",
-                    [s(IndentStr), s(du_cons_tag_to_string(CheapConsTag))],
-                    !State)
-            ),
             (
                 DuTypeKind = du_type_kind_mercury_enum,
                 string.builder.format("%s%% KIND enumeration\n",
@@ -243,6 +220,29 @@ format_type_body(Info, _TypeCtor, TypeBody, TVarSet, !State) :-
                 DuTypeKind = du_type_kind_general,
                 string.builder.format("%s%% KIND general\n",
                     [s(IndentStr)], !State)
+            ),
+            format_constructor_repns(TVarSet, CtorRepns, !State),
+            (
+                CheaperTagTest = no_cheaper_tag_test
+            ;
+                CheaperTagTest = cheaper_tag_test(ExpDuCtor, ExpConsTag,
+                    CheapDuCtor, CheapConsTag),
+                ExpDuCtorStr = du_ctor_and_arity_to_string(
+                    unqual_du_ctor(ExpDuCtor)),
+                CheapDuCtorStr = du_ctor_and_arity_to_string(
+                    unqual_du_ctor(CheapDuCtor)),
+                string.builder.format("%s%% cheaper tag test:\n",
+                    [s(IndentStr)], !State),
+                string.builder.format("%s%%   from %s\n",
+                    [s(IndentStr), s(ExpDuCtorStr)], !State),
+                string.builder.format("%s%%      %s\n",
+                    [s(IndentStr), s(du_cons_tag_to_string(ExpConsTag))],
+                    !State),
+                string.builder.format("%s%%   to %s\n",
+                    [s(IndentStr), s(CheapDuCtorStr)], !State),
+                string.builder.format("%s%%      %s\n",
+                    [s(IndentStr), s(du_cons_tag_to_string(CheapConsTag))],
+                    !State)
             ),
             mercury_format_where_attributes(MercInfo, TVarSet,
                 MaybeSolverTypeDetails, MaybeUserEqComp, MaybeDirectArgCtors,
@@ -771,14 +771,14 @@ format_arg_pos_width(IndentStr, CurArgNum, ArgPosWidth, !State) :-
     string.builder.append_string(IndentStr, !State),
     (
         ArgPosWidth = apw_full(ArgOnlyOffset, CellOffset),
-        ArgOnlyOffset = arg_only_offset(AOWordNum),
-        CellOffset = cell_offset(CellWordNum),
-        string.builder.format("%% arg %d: full word, offset %d/%d\n",
-            [i(CurArgNum), i(AOWordNum), i(CellWordNum)], !State)
+        OffsetsStr = format_cell_offsets(one_offset,
+            ArgOnlyOffset, CellOffset),
+        string.builder.format("%% arg %d: full word, %s\n",
+            [i(CurArgNum), s(OffsetsStr)], !State)
     ;
         ArgPosWidth = apw_double(ArgOnlyOffset, CellOffset, DoubleWordKind),
-        ArgOnlyOffset = arg_only_offset(AOWordNum),
-        CellOffset = cell_offset(CellWordNum),
+        OffsetsStr = format_cell_offsets(two_offsets,
+            ArgOnlyOffset, CellOffset),
         (
             DoubleWordKind = dw_float,
             KindStr = "float"
@@ -789,10 +789,8 @@ format_arg_pos_width(IndentStr, CurArgNum, ArgPosWidth, !State) :-
             DoubleWordKind = dw_uint64,
             KindStr = "uint64"
         ),
-        string.builder.format(
-            "%% arg %d: double word %s, offsets %d/%d to %d/%d\n",
-            [i(CurArgNum), s(KindStr), i(AOWordNum), i(CellWordNum),
-            i(AOWordNum + 1), i(CellWordNum + 1)], !State)
+        string.builder.format("%% arg %d: double word %s, %s\n",
+            [i(CurArgNum), s(KindStr), s(OffsetsStr)], !State)
     ;
         (
             ArgPosWidth = apw_partial_first(ArgOnlyOffset, CellOffset, Shift,
@@ -803,26 +801,58 @@ format_arg_pos_width(IndentStr, CurArgNum, ArgPosWidth, !State) :-
                 NumBits, Mask, FillKind),
             FirstShifted = "later"
         ),
-        ArgOnlyOffset = arg_only_offset(AOWordNum),
-        CellOffset = cell_offset(CellWordNum),
+        OffsetsStr = format_cell_offsets(one_offset,
+            ArgOnlyOffset, CellOffset),
         Shift = arg_shift(ShiftInt),
         NumBits = arg_num_bits(NumBitsInt),
         Mask = arg_mask(MaskInt),
         FillStr = fill_kind_to_string(FillKind),
-        string.builder.format("%% arg %d: partial %s, " ++
-            "offset %d/%d, shift %2d #bits %2d mask %x %s\n",
-            [i(CurArgNum), s(FirstShifted), i(AOWordNum), i(CellWordNum),
+        string.builder.format("%% arg %d: partial %s, %s, " ++
+            "shift %2d #bits %2d mask %x %s\n",
+            [i(CurArgNum), s(FirstShifted), s(OffsetsStr),
             i(ShiftInt), i(NumBitsInt), i(MaskInt), s(FillStr)], !State)
     ;
         ArgPosWidth = apw_none_shifted(ArgOnlyOffset, CellOffset),
-        ArgOnlyOffset = arg_only_offset(AOWordNum),
-        CellOffset = cell_offset(CellWordNum),
-        string.builder.format("%% arg %d: none shifted, offset %d/%d\n",
-            [i(CurArgNum), i(AOWordNum), i(CellWordNum)], !State)
+        OffsetsStr = format_cell_offsets(two_offsets,
+            ArgOnlyOffset, CellOffset),
+        string.builder.format("%% arg %d: none shifted, %s\n",
+            [i(CurArgNum), s(OffsetsStr)], !State)
     ;
         ArgPosWidth = apw_none_nowhere,
         string.builder.format("%% arg %d: none_nowhere\n",
             [i(CurArgNum)], !State)
+    ).
+
+:- type num_offsets
+    --->    one_offset
+    ;       two_offsets.
+
+:- func format_cell_offsets(num_offsets, arg_only_offset, cell_offset)
+    = string.
+
+format_cell_offsets(NumOffsets, ArgOnlyOffset, CellOffset) = OffsetsStr :-
+    ArgOnlyOffset = arg_only_offset(AOWordNum),
+    CellOffset = cell_offset(CellWordNum),
+    ( if AOWordNum = CellWordNum then
+        (
+            NumOffsets = one_offset,
+            string.format("offset %d", [i(CellWordNum)], OffsetsStr)
+        ;
+            NumOffsets = two_offsets,
+            string.format("offsets %d to %d",
+                [i(CellWordNum), i(CellWordNum + 1)], OffsetsStr)
+        )
+    else
+        (
+            NumOffsets = one_offset,
+            string.format("arg only offset %d, cell offset %d",
+                [i(AOWordNum), i(CellWordNum)], OffsetsStr)
+        ;
+            NumOffsets = two_offsets,
+            string.format("arg only offsets %d to %d, cell offsets %d to %d",
+                [i(AOWordNum), i(AOWordNum + 1),
+                i(CellWordNum), i(CellWordNum + 1)], OffsetsStr)
+        )
     ).
 
 :- func fill_kind_to_string(fill_kind) = string.
