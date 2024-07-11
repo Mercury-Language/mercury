@@ -1,17 +1,17 @@
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % vim: ft=mercury ts=4 sw=4 et
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 % Copyright (C) 1994-1998,2002-2007, 2010-2011 The University of Melbourne.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 %
 % File: peeophole.m:
 % Authors: fjh, zs.
 %
 % Local LLDS to LLDS optimizations based on pattern-matching.
 %
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- module ll_backend.peephole.
 :- interface.
@@ -29,10 +29,13 @@
 :- pred peephole_optimize(gc_method::in, maybe_opt_peep_mkword::in,
     list(instruction)::in, list(instruction)::out, bool::out) is det.
 
+    % A peephole optimization completely separate from peephole_optimize.
+    % It is invoked only from optimize.m.
+    %
 :- pred combine_decr_sp(list(instruction)::in, list(instruction)::out) is det.
 
-%-----------------------------------------------------------------------------%
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 :- implementation.
 
@@ -51,7 +54,7 @@
 :- import_module string.
 :- import_module uint8.
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % Patterns that can be switched off.
     %
@@ -68,6 +71,32 @@
 peephole_optimize(GC_Method, OptPeepMkword, Instrs0, Instrs, Mod) :-
     invalid_peephole_opts(GC_Method, OptPeepMkword, InvalidPatterns),
     peephole_optimize_loop(InvalidPatterns, Instrs0, Instrs, Mod).
+
+    % Given a GC method, return the list of invalid peephole optimizations.
+    %
+:- pred invalid_peephole_opts(gc_method::in, maybe_opt_peep_mkword::in,
+    list(pattern)::out) is det.
+
+invalid_peephole_opts(GC_Method, OptPeepMkword, InvalidPatterns) :-
+    (
+        GC_Method = gc_accurate,
+        InvalidPatterns0 = [pattern_incr_sp]
+    ;
+        ( GC_Method = gc_automatic
+        ; GC_Method = gc_none
+        ; GC_Method = gc_boehm
+        ; GC_Method = gc_boehm_debug
+        ; GC_Method = gc_hgc
+        ),
+        InvalidPatterns0 = []
+    ),
+    (
+        OptPeepMkword = opt_peep_mkword,
+        InvalidPatterns = InvalidPatterns0
+    ;
+        OptPeepMkword = do_not_opt_peep_mkword,
+        InvalidPatterns = [pattern_mkword | InvalidPatterns0]
+    ).
 
 :- pred peephole_optimize_loop(list(pattern)::in, list(instruction)::in,
     list(instruction)::out, bool::out) is det.
@@ -114,7 +143,81 @@ peephole_opt_window_at_instr(InvalidPatterns, Instr0, Instrs0, Instrs, Mod) :-
         Mod = no
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
+
+    % Look for code patterns that can be optimized, and optimize them.
+    % Unlike peephole_match_norepeat, this predicate guarantees that the
+    % instruction sequence it returns on success won't be transformable
+    % by the same transformation as it applies. This allows
+    % peephole_opt_window_at_instr to call peephole_match repeatedly
+    % until it fails without the possibility of an infinite loop.
+    %
+:- pred peephole_match(list(pattern)::in,
+    instruction::in, list(instruction)::in, list(instruction)::out) is semidet.
+
+peephole_match(InvalidPatterns, Instr0, Instrs0, Instrs) :-
+    Instr0 = llds_instr(Uinstr0, Comment0),
+    (
+        Uinstr0 = computed_goto(SelectorRval, MaybeLabels),
+        peephole_match_computed_goto(SelectorRval, MaybeLabels, Comment0,
+            Instrs0, Instrs)
+    ;
+        Uinstr0 = if_val(Rval, CodeAddr),
+        peephole_match_if_val(Rval, CodeAddr, Comment0, Instrs0, Instrs)
+    ;
+        Uinstr0 = mkframe(NondetFrameInfo, MaybeRedoip0),
+        peephole_match_mkframe(NondetFrameInfo, MaybeRedoip0, Comment0,
+            Instr0, Instrs0, Instrs)
+    ;
+        Uinstr0 = store_ticket(Lval),
+        peephole_match_store_ticket(Lval, Comment0, Instrs0, Instrs)
+    ;
+        Uinstr0 = assign(TargetLval, SourceRval),
+        peephole_match_assign(TargetLval, SourceRval, Comment0,
+            Instrs0, Instrs)
+    ;
+        Uinstr0 = incr_sp(N, _, _),
+        not list.member(pattern_incr_sp, InvalidPatterns),
+        peephole_match_incr_sp(N, Instrs0, Instrs)
+    ).
+
+%---------------------------------------------------------------------------%
+
+    % A `computed_goto' with all branches pointing to the same label
+    % can be replaced with an unconditional goto.
+    %
+    % A `computed_goto' with all branches but one pointing to the same label
+    % can be replaced with a conditional branch followed by an unconditional
+    % goto.
+    %
+:- pred peephole_match_computed_goto(rval::in, list(maybe(label))::in,
+    string::in, list(instruction)::in, list(instruction)::out) is semidet.
+:- pragma inline(pred(peephole_match_computed_goto/5)).
+
+peephole_match_computed_goto(SelectorRval, MaybeLabels, Comment0,
+        Instrs0, Instrs) :-
+    build_computed_goto_target_map(MaybeLabels, 0, map.init, LabelMap),
+    map.to_assoc_list(LabelMap, LabelValsList),
+    ( if
+        LabelValsList = [Label - _]
+    then
+        GotoInstr = llds_instr(goto(code_label(Label)), Comment0),
+        Instrs = [GotoInstr | Instrs0]
+    else if
+        LabelValsList = [LabelVals1, LabelVals2],
+        peephole_pick_one_val_label(LabelVals1, LabelVals2, OneValLabel,
+            Val, OtherLabel)
+    then
+        CondRval = binop(eq(int_type_int), SelectorRval,
+            const(llconst_int(Val))),
+        CommentInstr = llds_instr(comment(Comment0), ""),
+        BranchInstr = llds_instr(if_val(CondRval, code_label(OneValLabel)),
+            ""),
+        GotoInstr = llds_instr(goto(code_label(OtherLabel)), Comment0),
+        Instrs = [CommentInstr, BranchInstr, GotoInstr | Instrs0]
+    else
+        fail
+    ).
 
     % Build a map that associates each label in a computed goto with the
     % values of the switch rval that cause a jump to it.
@@ -155,79 +258,7 @@ peephole_pick_one_val_label(LabelVals1, LabelVals2, OneValLabel, Val,
         fail
     ).
 
-%-----------------------------------------------------------------------------%
-
-    % Look for code patterns that can be optimized, and optimize them.
-    % Unlike peephole_match_norepeat, this predicate guarantees that the
-    % instruction sequence it returns on success won't be transformable
-    % by the same transformation as it applies. This allows
-    % peephole_opt_window_at_instr to call peephole_match repeatedly
-    % until it fails without the possibility of an infinite loop.
-    %
-:- pred peephole_match(list(pattern)::in,
-    instruction::in, list(instruction)::in, list(instruction)::out) is semidet.
-
-peephole_match(InvalidPatterns, Instr0, Instrs0, Instrs) :-
-    Instr0 = llds_instr(Uinstr0, Comment0),
-    (
-        Uinstr0 = computed_goto(SelectorRval, MaybeLabels),
-        peephole_match_computed_goto(SelectorRval, MaybeLabels, Comment0,
-            Instrs0, Instrs)
-    ;
-        Uinstr0 = if_val(Rval, CodeAddr),
-        peephole_match_if_val(Rval, CodeAddr, Comment0, Instrs0, Instrs)
-    ;
-        Uinstr0 = mkframe(NondetFrameInfo, MaybeRedoip0),
-        peephole_match_mkframe(NondetFrameInfo, MaybeRedoip0, Comment0,
-            Instr0, Instrs0, Instrs)
-    ;
-        Uinstr0 = store_ticket(Lval),
-        peephole_match_store_ticket(Lval, Comment0, Instrs0, Instrs)
-    ;
-        Uinstr0 = assign(TargetLval, SourceRval),
-        peephole_match_assign(TargetLval, SourceRval, Comment0,
-            Instrs0, Instrs)
-    ;
-        Uinstr0 = incr_sp(N, _, _),
-        not list.member(pattern_incr_sp, InvalidPatterns),
-        peephole_match_incr_sp(N, Instrs0, Instrs)
-    ).
-
-    % A `computed_goto' with all branches pointing to the same label
-    % can be replaced with an unconditional goto.
-    %
-    % A `computed_goto' with all branches but one pointing to the same label
-    % can be replaced with a conditional branch followed by an unconditional
-    % goto.
-    %
-:- pred peephole_match_computed_goto(rval::in, list(maybe(label))::in,
-    string::in, list(instruction)::in, list(instruction)::out) is semidet.
-:- pragma inline(pred(peephole_match_computed_goto/5)).
-
-peephole_match_computed_goto(SelectorRval, MaybeLabels, Comment0,
-        Instrs0, Instrs) :-
-    build_computed_goto_target_map(MaybeLabels, 0, map.init, LabelMap),
-    map.to_assoc_list(LabelMap, LabelValsList),
-    ( if
-        LabelValsList = [Label - _]
-    then
-        GotoInstr = llds_instr(goto(code_label(Label)), Comment0),
-        Instrs = [GotoInstr | Instrs0]
-    else if
-        LabelValsList = [LabelVals1, LabelVals2],
-        peephole_pick_one_val_label(LabelVals1, LabelVals2, OneValLabel,
-            Val, OtherLabel)
-    then
-        CondRval = binop(eq(int_type_int), SelectorRval,
-            const(llconst_int(Val))),
-        CommentInstr = llds_instr(comment(Comment0), ""),
-        BranchInstr = llds_instr(if_val(CondRval, code_label(OneValLabel)),
-            ""),
-        GotoInstr = llds_instr(goto(code_label(OtherLabel)), Comment0),
-        Instrs = [CommentInstr, BranchInstr, GotoInstr | Instrs0]
-    else
-        fail
-    ).
+%---------------------%
 
     % A conditional branch whose condition is constant
     % can be either eliminated or replaced by an unconditional goto.
@@ -267,6 +298,8 @@ peephole_match_if_val(Rval, CodeAddr, Comment0, Instrs0, Instrs) :-
     else
         fail
     ).
+
+%---------------------%
 
     % If a `mkframe' is followed by an assignment to its redoip slot,
     % with the instructions in between containing only straight-line code,
@@ -415,6 +448,8 @@ peephole_match_mkframe(NondetFrameInfo, MaybeRedoip0, Comment0,
         fail
     ).
 
+%---------------------%
+
     % If a `store_ticket' is followed by a `reset_ticket',
     % we can delete the `reset_ticket'.
     %
@@ -431,6 +466,8 @@ peephole_match_store_ticket(Lval, Comment0, Instrs0, Instrs) :-
     Instr1 = llds_instr(reset_ticket(lval(Lval), _Reason), _Comment1),
     NewInstr2 = llds_instr(store_ticket(Lval), Comment0),
     Instrs = [NewInstr2 | Instrs2].
+
+%---------------------%
 
     % If an assignment to a redoip slot is followed by another, with
     % the instructions in between containing only straight-line code
@@ -476,6 +513,8 @@ peephole_match_assign(TargetLval, SourceRval, Comment0, Instrs0, Instrs) :-
         fail
     ).
 
+%---------------------%
+
     % If a decr_sp follows an incr_sp of the same amount, with the code
     % in between not referencing the stack, except possibly for a
     % restoration of succip, then the two cancel out. Assignments to
@@ -501,7 +540,7 @@ peephole_match_incr_sp(N, Instrs0, Instrs) :-
         fail
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
     % Look for code patterns that can be optimized, and optimize them.
     % See the comment at the top of peephole_match for the difference
@@ -510,6 +549,7 @@ peephole_match_incr_sp(N, Instrs0, Instrs) :-
 :- pred peephole_match_norepeat(list(pattern)::in,
     instruction::in, list(instruction)::in, list(instruction)::out) is semidet.
 
+peephole_match_norepeat(InvalidPatterns, Instr0, Instrs0, Instrs) :-
     % If none of the instructions in brackets can affect Lval, then
     % we can transform references to tag(Lval) to Ptag and body(Lval, Ptag)
     % to Base.
@@ -519,15 +559,12 @@ peephole_match_incr_sp(N, Instrs0, Instrs) :-
     %   ... tag(Lval) ...               ... Ptag ...
     %   ... body(Lval, Ptag) ...        ... Base ...
     %
-peephole_match_norepeat(InvalidPatterns, Instr0, Instrs0, Instrs) :-
     Instr0 = llds_instr(Uinstr0, _),
     Uinstr0 = assign(Lval, mkword(Ptag, Base)),
     not list.member(pattern_mkword, InvalidPatterns),
     replace_tagged_ptr_components_in_instrs(Lval, Ptag, Base,
         Instrs0, Instrs1),
     Instrs = [Instr0 | Instrs1].
-
-%-----------------------------------------------------------------------------%
 
 :- pred replace_tagged_ptr_components_in_instrs(lval::in, ptag::in, rval::in,
     list(instruction)::in, list(instruction)::out) is det.
@@ -767,35 +804,7 @@ replace_tagged_ptr_components_in_rval(OldLval, OldPtag, OldBase,
         Rval = Rval0
     ).
 
-%-----------------------------------------------------------------------------%
-
-    % Given a GC method, return the list of invalid peephole optimizations.
-    %
-:- pred invalid_peephole_opts(gc_method::in, maybe_opt_peep_mkword::in,
-    list(pattern)::out) is det.
-
-invalid_peephole_opts(GC_Method, OptPeepMkword, InvalidPatterns) :-
-    (
-        GC_Method = gc_accurate,
-        InvalidPatterns0 = [pattern_incr_sp]
-    ;
-        ( GC_Method = gc_automatic
-        ; GC_Method = gc_none
-        ; GC_Method = gc_boehm
-        ; GC_Method = gc_boehm_debug
-        ; GC_Method = gc_hgc
-        ),
-        InvalidPatterns0 = []
-    ),
-    (
-        OptPeepMkword = opt_peep_mkword,
-        InvalidPatterns = InvalidPatterns0
-    ;
-        OptPeepMkword = do_not_opt_peep_mkword,
-        InvalidPatterns = [pattern_mkword | InvalidPatterns0]
-    ).
-
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 
 combine_decr_sp([], []).
 combine_decr_sp([Instr0 | Instrs0], Instrs) :-
@@ -815,6 +824,6 @@ combine_decr_sp([Instr0 | Instrs0], Instrs) :-
         Instrs = [Instr0 | Instrs1]
     ).
 
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
 :- end_module ll_backend.peephole.
-%-----------------------------------------------------------------------------%
+%---------------------------------------------------------------------------%
