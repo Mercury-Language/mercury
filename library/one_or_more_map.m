@@ -413,7 +413,7 @@ add(!.OneOrMoreMap, Key, Value) = !:OneOrMoreMap :-
 add(Key, Value, !OneOrMoreMap) :-
     ( if map.search(!.OneOrMoreMap, Key, Values0) then
         Values = one_or_more.cons(Value, Values0),
-        map.set(Key, Values, !OneOrMoreMap)
+        map.det_update(Key, Values, !OneOrMoreMap)
     else
         map.det_insert(Key, one_or_more(Value, []), !OneOrMoreMap)
     ).
