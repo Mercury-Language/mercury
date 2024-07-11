@@ -551,12 +551,14 @@ record_whole_ptag(Ptag, PtagNumFunctors, CaseRep, !GroupMap) :-
             CaseRep0),
         expect(unify(CaseRep, CaseRep0), $pred, "CaseRep != CaseRep0"),
         % This is quadratic, but this does not matter, because
-        % we can append to the list at most 6 time. The reason is:
+        % we can append to the list at most six times. The reason is:
         %
         % - a type can have at most eight ptags;
+        %
         % - you can't have a switch in which all eight map to the same
         %   CaseRep, because that would be a switch with only one arm,
         %   which we simplify away, and
+        %
         % - for the first ptag, the map.search fails, and does not
         %   require an append.
         TailPtags = TailPtags0 ++ [Ptag],
@@ -596,7 +598,7 @@ cord_to_one_or_more(Cord) = OoM :-
 
 wrap_whole_ptags_info(WholeInfo) = one_or_more_whole_ptags(WholeInfo).
 
-:- func wrap_shared_ptag_info(shared_ptag_info(CaseRep)) = 
+:- func wrap_shared_ptag_info(shared_ptag_info(CaseRep)) =
     ptag_case_group(CaseRep).
 
 wrap_shared_ptag_info(SharedInfo) = one_shared_ptag(SharedInfo).
@@ -699,7 +701,7 @@ record_specialized_versions(CaseRep, [Ptag | Ptags], !SpecificMap) :-
                 % Terms using this primary tags have their secondary tags,
                 % if any, in the location indicated by this field.
                 sectag_locn,
-                
+
                 % The maximum value of the secondary tag, or -1
                 % if this ptag has no secondary tag.
                 %
