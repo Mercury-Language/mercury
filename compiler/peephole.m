@@ -67,15 +67,16 @@
     %
 peephole_optimize(GC_Method, OptPeepMkword, Instrs0, Instrs, Mod) :-
     invalid_peephole_opts(GC_Method, OptPeepMkword, InvalidPatterns),
-    peephole_optimize_2(InvalidPatterns, Instrs0, Instrs, Mod).
+    peephole_optimize_loop(InvalidPatterns, Instrs0, Instrs, Mod).
 
-:- pred peephole_optimize_2(list(pattern)::in, list(instruction)::in,
+:- pred peephole_optimize_loop(list(pattern)::in, list(instruction)::in,
     list(instruction)::out, bool::out) is det.
 
-peephole_optimize_2(_, [], [], no).
-peephole_optimize_2(InvalidPatterns, [Instr0 | Instrs0], Instrs, Mod) :-
-    peephole_optimize_2(InvalidPatterns, Instrs0, Instrs1, Mod0),
-    peephole_opt_instr(Instr0, Instrs1, InvalidPatterns, Instrs, Mod1),
+peephole_optimize_loop(_, [], [], no).
+peephole_optimize_loop(InvalidPatterns, [Instr0 | Instrs0], Instrs, Mod) :-
+    peephole_optimize_loop(InvalidPatterns, Instrs0, Instrs1, Mod0),
+    peephole_opt_window_at_instr(InvalidPatterns, Instr0, Instrs1,
+        Instrs, Mod1),
     ( if Mod0 = no, Mod1 = no then
         Mod = no
     else
@@ -85,24 +86,26 @@ peephole_optimize_2(InvalidPatterns, [Instr0 | Instrs0], Instrs, Mod) :-
     % Try to optimize the beginning of the given instruction sequence.
     % If successful, try it again.
     %
-:- pred peephole_opt_instr(instruction::in, list(instruction)::in,
-    list(pattern)::in, list(instruction)::out, bool::out) is det.
+:- pred peephole_opt_window_at_instr(list(pattern)::in,
+    instruction::in, list(instruction)::in,
+    list(instruction)::out, bool::out) is det.
 
-peephole_opt_instr(Instr0, Instrs0, InvalidPatterns, Instrs, Mod) :-
+peephole_opt_window_at_instr(InvalidPatterns, Instr0, Instrs0, Instrs, Mod) :-
     opt_util.skip_comments(Instrs0, Instrs1),
     ( if
-        peephole_match(Instr0, Instrs1, InvalidPatterns, Instrs2)
+        peephole_match(InvalidPatterns, Instr0, Instrs1, Instrs2)
     then
         (
             Instrs2 = [Instr2 | Instrs3],
-            peephole_opt_instr(Instr2, Instrs3, InvalidPatterns, Instrs, _)
+            peephole_opt_window_at_instr(InvalidPatterns, Instr2, Instrs3,
+                Instrs, _)
         ;
             Instrs2 = [],
             Instrs = Instrs2
         ),
         Mod = yes
     else if
-        peephole_match_norepeat(Instr0, Instrs1, InvalidPatterns, Instrs2)
+        peephole_match_norepeat(InvalidPatterns, Instr0, Instrs1, Instrs2)
     then
         Instrs = Instrs2,
         Mod = yes
@@ -116,18 +119,18 @@ peephole_opt_instr(Instr0, Instrs0, InvalidPatterns, Instrs, Mod) :-
     % Build a map that associates each label in a computed goto with the
     % values of the switch rval that cause a jump to it.
     %
-:- pred build_peephole_jump_label_map(list(maybe(label))::in, int::in,
+:- pred build_computed_goto_target_map(list(maybe(label))::in, int::in,
     map(label, list(int))::in, map(label, list(int))::out) is semidet.
 
-build_peephole_jump_label_map([], _, !LabelMap).
-build_peephole_jump_label_map([MaybeLabel | MaybeLabels], Val, !LabelMap) :-
+build_computed_goto_target_map([], _, !LabelMap).
+build_computed_goto_target_map([MaybeLabel | MaybeLabels], Val, !LabelMap) :-
     MaybeLabel = yes(Label),
     ( if map.search(!.LabelMap, Label, Vals0) then
         map.det_update(Label, [Val | Vals0], !LabelMap)
     else
         map.det_insert(Label, [Val], !LabelMap)
     ),
-    build_peephole_jump_label_map(MaybeLabels, Val + 1, !LabelMap).
+    build_computed_goto_target_map(MaybeLabels, Val + 1, !LabelMap).
 
     % If one of the two labels has only one associated value, return it and
     % the associated value as the first two output arguments, and the
@@ -157,12 +160,38 @@ peephole_pick_one_val_label(LabelVals1, LabelVals2, OneValLabel, Val,
     % Look for code patterns that can be optimized, and optimize them.
     % Unlike peephole_match_norepeat, this predicate guarantees that the
     % instruction sequence it returns on success won't be transformable
-    % by the same transformation as it applies. This allows peephole_opt_instr
-    % to call peephole_match repeatedly until it fails without the possibility
-    % of an infinite loop.
+    % by the same transformation as it applies. This allows
+    % peephole_opt_window_at_instr to call peephole_match repeatedly
+    % until it fails without the possibility of an infinite loop.
     %
-:- pred peephole_match(instruction::in, list(instruction)::in,
-    list(pattern)::in, list(instruction)::out) is semidet.
+:- pred peephole_match(list(pattern)::in,
+    instruction::in, list(instruction)::in, list(instruction)::out) is semidet.
+
+peephole_match(InvalidPatterns, Instr0, Instrs0, Instrs) :-
+    Instr0 = llds_instr(Uinstr0, Comment0),
+    (
+        Uinstr0 = computed_goto(SelectorRval, MaybeLabels),
+        peephole_match_computed_goto(SelectorRval, MaybeLabels, Comment0,
+            Instrs0, Instrs)
+    ;
+        Uinstr0 = if_val(Rval, CodeAddr),
+        peephole_match_if_val(Rval, CodeAddr, Comment0, Instrs0, Instrs)
+    ;
+        Uinstr0 = mkframe(NondetFrameInfo, MaybeRedoip0),
+        peephole_match_mkframe(NondetFrameInfo, MaybeRedoip0, Comment0,
+            Instr0, Instrs0, Instrs)
+    ;
+        Uinstr0 = store_ticket(Lval),
+        peephole_match_store_ticket(Lval, Comment0, Instrs0, Instrs)
+    ;
+        Uinstr0 = assign(TargetLval, SourceRval),
+        peephole_match_assign(TargetLval, SourceRval, Comment0,
+            Instrs0, Instrs)
+    ;
+        Uinstr0 = incr_sp(N, _, _),
+        not list.member(pattern_incr_sp, InvalidPatterns),
+        peephole_match_incr_sp(N, Instrs0, Instrs)
+    ).
 
     % A `computed_goto' with all branches pointing to the same label
     % can be replaced with an unconditional goto.
@@ -171,10 +200,13 @@ peephole_pick_one_val_label(LabelVals1, LabelVals2, OneValLabel, Val,
     % can be replaced with a conditional branch followed by an unconditional
     % goto.
     %
-peephole_match(Instr0, Instrs0, _, Instrs) :-
-    Instr0 = llds_instr(Uinstr0, Comment0),
-    Uinstr0 = computed_goto(SelectorRval, Labels),
-    build_peephole_jump_label_map(Labels, 0, map.init, LabelMap),
+:- pred peephole_match_computed_goto(rval::in, list(maybe(label))::in,
+    string::in, list(instruction)::in, list(instruction)::out) is semidet.
+:- pragma inline(pred(peephole_match_computed_goto/5)).
+
+peephole_match_computed_goto(SelectorRval, MaybeLabels, Comment0,
+        Instrs0, Instrs) :-
+    build_computed_goto_target_map(MaybeLabels, 0, map.init, LabelMap),
     map.to_assoc_list(LabelMap, LabelValsList),
     ( if
         LabelValsList = [Label - _]
@@ -206,9 +238,11 @@ peephole_match(Instr0, Instrs0, _, Instrs) :-
     % A conditional branch to a label followed by that label
     % can be eliminated.
     %
-peephole_match(Instr0, Instrs0, _, Instrs) :-
-    Instr0 = llds_instr(Uinstr0, Comment0),
-    Uinstr0 = if_val(Rval, CodeAddr),
+:- pred peephole_match_if_val(rval::in, code_addr::in,
+    string::in, list(instruction)::in, list(instruction)::out) is semidet.
+:- pragma inline(pred(peephole_match_if_val/5)).
+
+peephole_match_if_val(Rval, CodeAddr, Comment0, Instrs0, Instrs) :-
     ( if
         opt_util.is_const_condition(Rval, Taken)
     then
@@ -287,9 +321,14 @@ peephole_match(Instr0, Instrs0, _, Instrs) :-
     % none, and both patterns apply, we prefer to apply the fourth pattern's
     % transformation.
     %
-peephole_match(Instr0, Instrs0, _, Instrs) :-
-    Instr0 = llds_instr(Uinstr0, Comment0),
-    Uinstr0 = mkframe(NondetFrameInfo, yes(Redoip0)),
+:- pred peephole_match_mkframe(nondet_frame_info::in, maybe(code_addr)::in,
+    string::in, instruction::in, list(instruction)::in,
+    list(instruction)::out) is semidet.
+:- pragma inline(pred(peephole_match_mkframe/6)).
+
+peephole_match_mkframe(NondetFrameInfo, MaybeRedoip0, Comment0,
+        Instr0, Instrs0, Instrs) :-
+    MaybeRedoip0 = yes(Redoip0),
     ( if
         % A mkframe sets curfr to point to the new frame
         % only for ordinary frames, not temp frames.
@@ -382,10 +421,11 @@ peephole_match(Instr0, Instrs0, _, Instrs) :-
     %   store_ticket(Lval)          =>  store_ticket(Lval)
     %   reset_ticket(Lval, _R)
     %
-peephole_match(Instr0, Instrs0, _, Instrs) :-
-    Instr0 = llds_instr(Uinstr0, Comment0),
-    Uinstr0 = store_ticket(Lval),
+:- pred peephole_match_store_ticket(lval::in,
+    string::in, list(instruction)::in, list(instruction)::out) is semidet.
+:- pragma inline(pred(peephole_match_store_ticket/4)).
 
+peephole_match_store_ticket(Lval, Comment0, Instrs0, Instrs) :-
     opt_util.skip_comments(Instrs0, Instrs1),
     Instrs1 = [Instr1 | Instrs2],
     Instr1 = llds_instr(reset_ticket(lval(Lval), _Reason), _Comment1),
@@ -407,17 +447,21 @@ peephole_match(Instr0, Instrs0, _, Instrs) :-
     % straight-line instructions, then we can discard the nondet stack
     % frame early.
     %
-peephole_match(Instr0, Instrs0, _, Instrs) :-
-    Instr0 = llds_instr(Uinstr0, Comment0),
-    Uinstr0 = assign(redoip_slot(lval(Base)), Redoip0),
+:- pred peephole_match_assign(lval::in, rval::in,
+    string::in, list(instruction)::in, list(instruction)::out) is semidet.
+:- pragma inline(pred(peephole_match_assign/5)).
+
+peephole_match_assign(TargetLval, SourceRval, Comment0, Instrs0, Instrs) :-
+    TargetLval = redoip_slot(lval(Base)),
+    SourceRval = Redoip0,
     ( if
         opt_util.next_assign_to_redoip(Instrs0, [Base], [], Redoip1,
             Skipped, Rest),
         opt_util.touches_nondet_ctrl(Skipped) = no
     then
         Instrs1 = Skipped ++ Rest,
-        RedoipInstr = llds_instr(assign(redoip_slot(lval(Base)),
-            const(llconst_code_addr(Redoip1))), Comment0),
+        RedoipUinstr = assign(TargetLval, const(llconst_code_addr(Redoip1))),
+        RedoipInstr = llds_instr(RedoipUinstr, Comment0),
         Instrs = [RedoipInstr | Instrs1]
     else if
         Base = curfr,
@@ -446,10 +490,11 @@ peephole_match(Instr0, Instrs0, _, Instrs) :-
     %   succip = detstackvar(N)
     %   decr_sp N
     %
-peephole_match(Instr0, Instrs0, InvalidPatterns, Instrs) :-
-    Instr0 = llds_instr(Uinstr0, _Comment0),
-    Uinstr0 = incr_sp(N, _, _),
-    not list.member(pattern_incr_sp, InvalidPatterns),
+:- pred peephole_match_incr_sp(int::in,
+    list(instruction)::in, list(instruction)::out) is semidet.
+:- pragma inline(pred(peephole_match_incr_sp/3)).
+
+peephole_match_incr_sp(N, Instrs0, Instrs) :-
     ( if opt_util.no_stackvars_til_decr_sp(Instrs0, N, Between, Remain) then
         Instrs = Between ++ Remain
     else
@@ -462,8 +507,8 @@ peephole_match(Instr0, Instrs0, InvalidPatterns, Instrs) :-
     % See the comment at the top of peephole_match for the difference
     % between the two predicates.
     %
-:- pred peephole_match_norepeat(instruction::in, list(instruction)::in,
-    list(pattern)::in, list(instruction)::out) is semidet.
+:- pred peephole_match_norepeat(list(pattern)::in,
+    instruction::in, list(instruction)::in, list(instruction)::out) is semidet.
 
     % If none of the instructions in brackets can affect Lval, then
     % we can transform references to tag(Lval) to Ptag and body(Lval, Ptag)
@@ -474,7 +519,7 @@ peephole_match(Instr0, Instrs0, InvalidPatterns, Instrs) :-
     %   ... tag(Lval) ...               ... Ptag ...
     %   ... body(Lval, Ptag) ...        ... Base ...
     %
-peephole_match_norepeat(Instr0, Instrs0, InvalidPatterns, Instrs) :-
+peephole_match_norepeat(InvalidPatterns, Instr0, Instrs0, Instrs) :-
     Instr0 = llds_instr(Uinstr0, _),
     Uinstr0 = assign(Lval, mkword(Ptag, Base)),
     not list.member(pattern_mkword, InvalidPatterns),
