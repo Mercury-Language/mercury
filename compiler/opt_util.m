@@ -1360,24 +1360,33 @@ is_const_condition(TestRval, Taken) :-
 
 %---------------------%
 
-livevals_addr(code_label(Label)) = Result :-
+livevals_addr(CodeAddr) = IsCallProceedOrSucceed :-
     (
-        Label = internal_label(_, _),
-        Result = no
+        CodeAddr = code_label(Label),
+        (
+            Label = internal_label(_, _),
+            IsCallProceedOrSucceed = no
+        ;
+            Label = entry_label(_, _),
+            IsCallProceedOrSucceed = yes
+        )
     ;
-        Label = entry_label(_, _),
-        Result = yes
+        ( CodeAddr = code_imported_proc(_)
+        ; CodeAddr = code_succip
+        ; CodeAddr = do_succeed(_)
+        ; CodeAddr = do_call_closure(_)
+        ; CodeAddr = do_call_class_method(_)
+        ),
+        IsCallProceedOrSucceed = yes
+    ;
+        ( CodeAddr = do_redo
+        ; CodeAddr = do_fail
+        ; CodeAddr = do_trace_redo_fail_shallow
+        ; CodeAddr = do_trace_redo_fail_deep
+        ; CodeAddr = do_not_reached
+        ),
+        IsCallProceedOrSucceed = no
     ).
-livevals_addr(code_imported_proc(_)) = yes.
-livevals_addr(code_succip) = yes.
-livevals_addr(do_succeed(_)) = yes.
-livevals_addr(do_redo) = no.
-livevals_addr(do_fail) = no.
-livevals_addr(do_trace_redo_fail_shallow) = no.
-livevals_addr(do_trace_redo_fail_deep) = no.
-livevals_addr(do_call_closure(_)) = yes.
-livevals_addr(do_call_class_method(_)) = yes.
-livevals_addr(do_not_reached) = no.
 
 %---------------------------------------------------------------------------%
 %
@@ -1389,100 +1398,90 @@ count_temps_instr_list([llds_instr(Uinstr, _Comment) | Instrs], !R, !F) :-
     count_temps_instr(Uinstr, !R, !F),
     count_temps_instr_list(Instrs, !R, !F).
 
-count_temps_instr(comment(_), !R, !F).
-count_temps_instr(livevals(_), !R, !F).
-count_temps_instr(block(_, _, _), !R, !F).
-count_temps_instr(assign(Lval, Rval), !R, !F) :-
-    count_temps_lval(Lval, !R, !F),
-    count_temps_rval(Rval, !R, !F).
-count_temps_instr(keep_assign(Lval, Rval), !R, !F) :-
-    count_temps_lval(Lval, !R, !F),
-    count_temps_rval(Rval, !R, !F).
-count_temps_instr(llcall(_, _, _, _, _, _), !R, !F).
-count_temps_instr(mkframe(_, _), !R, !F).
-count_temps_instr(label(_), !R, !F).
-count_temps_instr(goto(_), !R, !F).
-count_temps_instr(computed_goto(Rval, _), !R, !F) :-
-    count_temps_rval(Rval, !R, !F).
-count_temps_instr(if_val(Rval, _), !R, !F) :-
-    count_temps_rval(Rval, !R, !F).
-count_temps_instr(arbitrary_c_code(_, _, _), !R, !F).
-count_temps_instr(save_maxfr(Lval), !R, !F) :-
-    count_temps_lval(Lval, !R, !F).
-count_temps_instr(restore_maxfr(Lval), !R, !F) :-
-    count_temps_lval(Lval, !R, !F).
-count_temps_instr(incr_hp(Lval, _, _, Rval, _, _, MaybeRegionRval,
-        MaybeReuse), !R, !F) :-
-    count_temps_lval(Lval, !R, !F),
-    count_temps_rval(Rval, !R, !F),
+count_temps_instr(Uinstr, !R, !F) :-
     (
-        MaybeRegionRval = yes(RegionRval),
-        count_temps_rval(RegionRval, !R, !F)
-    ;
-        MaybeRegionRval = no
-    ),
-    (
-        MaybeReuse = llds_reuse(ReuseRval, MaybeFlagLval),
-        count_temps_rval(ReuseRval, !R, !F),
-        (
-            MaybeFlagLval = yes(FlagLval),
-            count_temps_lval(FlagLval, !R, !F)
-        ;
-            MaybeFlagLval = no
+        ( Uinstr = comment(_)
+        ; Uinstr = livevals(_)
+        ; Uinstr = block(_, _, _)
+        ; Uinstr = llcall(_, _, _, _, _, _)
+        ; Uinstr = mkframe(_, _)
+        ; Uinstr = label(_)
+        ; Uinstr = goto(_)
+        ; Uinstr = arbitrary_c_code(_, _, _)
+        ; Uinstr = push_region_frame(_, _)
+        ; Uinstr = discard_ticket
+        ; Uinstr = prune_ticket
+        ; Uinstr = incr_sp(_, _, _)
+        ; Uinstr = decr_sp(_)
+        ; Uinstr = decr_sp_and_return(_)
+        ; Uinstr = use_and_maybe_pop_region_frame(_, _)
         )
     ;
-        MaybeReuse = no_llds_reuse
+        ( Uinstr = save_maxfr(Lval)
+        ; Uinstr = restore_maxfr(Lval)
+        ; Uinstr = mark_hp(Lval)
+        ; Uinstr = store_ticket(Lval)
+        ; Uinstr = mark_ticket_stack(Lval)
+        ; Uinstr = init_sync_term(Lval, _, _)
+        ; Uinstr = fork_new_child(Lval, _)
+        ; Uinstr = join_and_continue(Lval, _)
+        ; Uinstr = lc_create_loop_control(_, Lval)
+        ),
+        count_temps_lval(Lval, !R, !F)
+    ;
+        ( Uinstr = computed_goto(Rval, _)
+        ; Uinstr = if_val(Rval, _)
+        ; Uinstr = restore_hp(Rval)
+        ; Uinstr = free_heap(Rval)
+        ; Uinstr = region_set_fixed_slot(_, _, Rval)
+        ; Uinstr = reset_ticket(Rval, _)
+        ; Uinstr = prune_tickets_to(Rval)
+        ),
+        count_temps_rval(Rval, !R, !F)
+    ;
+        ( Uinstr = assign(Lval, Rval)
+        ; Uinstr = keep_assign(Lval, Rval)
+        ; Uinstr = lc_wait_free_slot(Rval, Lval, _)
+        ),
+        count_temps_lval(Lval, !R, !F),
+        count_temps_rval(Rval, !R, !F)
+    ;
+        ( Uinstr = lc_spawn_off(RvalA, RvalB, _)
+        ; Uinstr = lc_join_and_terminate(RvalA, RvalB)
+        ),
+        count_temps_rval(RvalA, !R, !F),
+        count_temps_rval(RvalB, !R, !F)
+    ;
+        Uinstr = region_fill_frame(_, _, Rval, LvalA, LvalB),
+        count_temps_rval(Rval, !R, !F),
+        count_temps_lval(LvalA, !R, !F),
+        count_temps_lval(LvalB, !R, !F)
+    ;
+        Uinstr = incr_hp(Lval, _, _, Rval, _, _, MaybeRegionRval, MaybeReuse),
+        count_temps_lval(Lval, !R, !F),
+        count_temps_rval(Rval, !R, !F),
+        (
+            MaybeRegionRval = yes(RegionRval),
+            count_temps_rval(RegionRval, !R, !F)
+        ;
+            MaybeRegionRval = no
+        ),
+        (
+            MaybeReuse = llds_reuse(ReuseRval, MaybeFlagLval),
+            count_temps_rval(ReuseRval, !R, !F),
+            (
+                MaybeFlagLval = yes(FlagLval),
+                count_temps_lval(FlagLval, !R, !F)
+            ;
+                MaybeFlagLval = no
+            )
+        ;
+            MaybeReuse = no_llds_reuse
+        )
+    ;
+        Uinstr = foreign_proc_code(_, Comps, _, _, _, _, _, _, _, _),
+        count_temps_components(Comps, !R, !F)
     ).
-count_temps_instr(mark_hp(Lval), !R, !F) :-
-    count_temps_lval(Lval, !R, !F).
-count_temps_instr(restore_hp(Rval), !R, !F) :-
-    count_temps_rval(Rval, !R, !F).
-count_temps_instr(free_heap(Rval), !R, !F) :-
-    count_temps_rval(Rval, !R, !F).
-count_temps_instr(push_region_frame(_StackId, _EmbeddedStackFrame), !R, !F).
-count_temps_instr(region_fill_frame(_FillOp, _EmbeddedStackFrame, IdRval,
-        NumLval, AddrLval), !R, !F) :-
-    count_temps_rval(IdRval, !R, !F),
-    count_temps_lval(NumLval, !R, !F),
-    count_temps_lval(AddrLval, !R, !F).
-count_temps_instr(region_set_fixed_slot(_SetlOp, _EmbeddedStackFrame,
-        ValueRval), !R, !F) :-
-    count_temps_rval(ValueRval, !R, !F).
-count_temps_instr(use_and_maybe_pop_region_frame(_UseOp, _EmbeddedStackFrame),
-        !R, !F).
-count_temps_instr(store_ticket(Lval), !R, !F) :-
-    count_temps_lval(Lval, !R, !F).
-count_temps_instr(reset_ticket(Rval, _Reason), !R, !F) :-
-    count_temps_rval(Rval, !R, !F).
-count_temps_instr(discard_ticket, !R, !F).
-count_temps_instr(prune_ticket, !R, !F).
-count_temps_instr(mark_ticket_stack(Lval), !R, !F) :-
-    count_temps_lval(Lval, !R, !F).
-count_temps_instr(prune_tickets_to(Rval), !R, !F) :-
-    count_temps_rval(Rval, !R, !F).
-count_temps_instr(incr_sp(_, _, _), !R, !F).
-count_temps_instr(decr_sp(_), !R, !F).
-count_temps_instr(decr_sp_and_return(_), !R, !F).
-count_temps_instr(foreign_proc_code(_, Comps, _, _, _, _, _, _, _, _),
-        !R, !F) :-
-    count_temps_components(Comps, !R, !F).
-count_temps_instr(init_sync_term(Lval, _, _), !R, !F) :-
-    count_temps_lval(Lval, !R, !F).
-count_temps_instr(fork_new_child(Lval, _), !R, !F) :-
-    count_temps_lval(Lval, !R, !F).
-count_temps_instr(join_and_continue(Lval, _), !R, !F) :-
-    count_temps_lval(Lval, !R, !F).
-count_temps_instr(lc_create_loop_control(_, Lval), !R, !F) :-
-    count_temps_lval(Lval, !R, !F).
-count_temps_instr(lc_wait_free_slot(Rval, Lval, _), !R, !F) :-
-    count_temps_rval(Rval, !R, !F),
-    count_temps_lval(Lval, !R, !F).
-count_temps_instr(lc_spawn_off(LCRval, LCSRval, _), !R, !F) :-
-    count_temps_rval(LCRval, !R, !F),
-    count_temps_rval(LCSRval, !R, !F).
-count_temps_instr(lc_join_and_terminate(LCRval, LCSRval), !R, !F) :-
-    count_temps_rval(LCRval, !R, !F),
-    count_temps_rval(LCSRval, !R, !F).
 
 :- pred count_temps_components(list(foreign_proc_component)::in,
     int::in, int::out, int::in, int::out) is det.
