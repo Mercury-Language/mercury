@@ -132,7 +132,7 @@ generate_dense_switch(TaggedCases, VarRval, VarName, CodeModel, SwitchGoalInfo,
     ( if FirstVal = 0 then
         IndexRval = VarRval
     else
-        IndexRval = binop(int_sub(int_type_int), VarRval,
+        IndexRval = binop(int_arith(int_type_int, ao_sub), VarRval,
             const(llconst_int(FirstVal)))
     ),
     % Check that the value of the variable lies within the appropriate range
@@ -141,7 +141,8 @@ generate_dense_switch(TaggedCases, VarRval, VarName, CodeModel, SwitchGoalInfo,
         NeedRangeCheck = need_range_check,
         Difference = LastVal - FirstVal,
         fail_if_rval_is_false(
-            binop(unsigned_le, IndexRval, const(llconst_int(Difference))),
+            binop(int_as_uint_cmp(le),
+                IndexRval, const(llconst_int(Difference))),
             RangeCheckCode, !CI, !CLD)
     ;
         NeedRangeCheck = dont_need_range_check,

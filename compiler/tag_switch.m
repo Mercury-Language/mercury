@@ -657,7 +657,7 @@ generate_primary_binary_search(VarRval, PtagRval, SectagReg,
             [u8(EqHiRangeMin), u8(MaxPtag)], EqHiLabelComment),
         % XXX ARG_PACK We should do the comparison on uint8s, not ints.
         LoRangeMaxConst = const(llconst_int(uint8.cast_to_int(LoRangeMax))),
-        TestRval = binop(int_gt(int_type_int), PtagRval, LoRangeMaxConst),
+        TestRval = binop(int_cmp(int_type_int, gt), PtagRval, LoRangeMaxConst),
         IfLoCode = singleton(
             llds_instr(if_val(TestRval, code_label(EqHiLabel)), IfLoComment)
         ),
@@ -1051,7 +1051,8 @@ generate_secondary_binary_search(SectagRval, MaybeFailLabel,
         string.format("code for sectags %u to %u",
             [u(EqHiRangeMin), u(MaxSectag)], LabelComment),
         LoRangeMaxConst = const(llconst_uint(LoRangeMax)),
-        TestRval = binop(int_gt(int_type_int), SectagRval, LoRangeMaxConst),
+        TestRval = binop(int_cmp(int_type_int, gt),
+            SectagRval, LoRangeMaxConst),
         IfCode = singleton(
             llds_instr(if_val(TestRval, code_label(NewLabel)), IfComment)
         ),
@@ -1273,7 +1274,7 @@ test_ptag_is_in_set(PtagRval, MainPtag, OtherPtags, TestRval) :-
     (
         OtherPtags = [],
         MainPtag = ptag(MainPtagUint8),
-        TestRval = binop(eq(int_type_int), PtagRval,
+        TestRval = binop(int_cmp(int_type_int, eq), PtagRval,
             const(llconst_int(uint8.cast_to_int(MainPtagUint8))))
     ;
         OtherPtags = [_ | _],
@@ -1283,7 +1284,7 @@ test_ptag_is_in_set(PtagRval, MainPtag, OtherPtags, TestRval) :-
             const(llconst_uint(1u)), PtagRval),
         SelectedBitRval = binop(bitwise_and(int_type_uint),
             SelectedBitMaskRval, const(llconst_uint(Bitmap))),
-        TestRval = binop(ne(int_type_uint),
+        TestRval = binop(int_cmp(int_type_uint, ne),
             SelectedBitRval, const(llconst_uint(0u)))
     ).
 
@@ -1431,7 +1432,7 @@ test_sectag_is_in_bitmaps(WordSize, SectagRval, HeadBitmap, TailBitmaps,
             SubtractCost = 0
         else
             Bitmap = Bitmap0,
-            SubOp = int_sub(int_type_uint),
+            SubOp = int_arith(int_type_uint, ao_sub),
             StartOffsetInt = uint.cast_to_int(StartOffset),
             OffsetInWordRval = binop(SubOp,
                 SectagRval, const(llconst_int(StartOffsetInt))),
@@ -1442,7 +1443,7 @@ test_sectag_is_in_bitmaps(WordSize, SectagRval, HeadBitmap, TailBitmaps,
             const(llconst_uint(1u)), OffsetInWordRval),
         SelectedBitRval = binop(bitwise_and(int_type_uint),
             SelectedBitMaskRval, const(llconst_uint(Bitmap))),
-        HeadTestRval = binop(ne(int_type_uint),
+        HeadTestRval = binop(int_cmp(int_type_uint, ne),
             SelectedBitRval, const(llconst_uint(0u))),
         HeadTestRvalCost = SubtractCost + cost_of_bitmap_test
     ),
@@ -1476,7 +1477,7 @@ cost_of_logical_or = 1.
 
 make_sectag_eq_test(SectagRval, Sectag) = TestRval :-
     SectagInt = uint.cast_to_int(Sectag),
-    TestRval = binop(eq(int_type_int),
+    TestRval = binop(int_cmp(int_type_int, eq),
         SectagRval, const(llconst_int(SectagInt))).
 
 %---------------------------------------------------------------------------%

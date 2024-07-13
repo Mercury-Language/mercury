@@ -863,37 +863,42 @@ unop_to_strcord(UnOp) = Cord :-
 
 binop_to_strcord(BinOp) = Cord :-
     (
-        ( BinOp = int_add(IntType), OpStr = "add"
-        ; BinOp = int_sub(IntType), OpStr = "sub"
-        ; BinOp = int_mul(IntType), OpStr = "mul"
-        ; BinOp = int_div(IntType), OpStr = "div"
-        ; BinOp = int_mod(IntType), OpStr = "mod"
-        ; BinOp = unchecked_left_shift(IntType, shift_by_int),
+        (
+            BinOp = int_arith(IntType, ArithOp),
+            OpStr = dump_arith_op(ArithOp)
+        ;
+            BinOp = int_cmp(IntType, CmpOp),
+            OpStr = dump_cmp_op(CmpOp)
+        ;
+            BinOp = unchecked_left_shift(IntType, shift_by_int),
             OpStr = "raw_left_shift"
-        ; BinOp = unchecked_left_shift(IntType, shift_by_uint),
+        ;
+            BinOp = unchecked_left_shift(IntType, shift_by_uint),
             OpStr = "raw_left_ushift"
-        ; BinOp = unchecked_right_shift(IntType, shift_by_int),
+        ;
+            BinOp = unchecked_right_shift(IntType, shift_by_int),
             OpStr = "raw_right_shift"
-        ; BinOp = unchecked_right_shift(IntType, shift_by_uint),
+        ;
+            BinOp = unchecked_right_shift(IntType, shift_by_uint),
             OpStr = "raw_right_ushift"
-        ; BinOp = bitwise_and(IntType), OpStr = "bitwise_and"
-        ; BinOp = bitwise_or(IntType),  OpStr = "bitwise_or"
-        ; BinOp = bitwise_xor(IntType), OpStr = "bitwise_xor"
-        ; BinOp = eq(IntType),      OpStr = "eq"
-        ; BinOp = ne(IntType),      OpStr = "ne"
-        ; BinOp = int_lt(IntType),  OpStr = "lt"
-        ; BinOp = int_gt(IntType),  OpStr = "gt"
-        ; BinOp = int_le(IntType),  OpStr = "le"
-        ; BinOp = int_ge(IntType),  OpStr = "ge"
+        ;
+            BinOp = bitwise_and(IntType), OpStr = "bitwise_and"
+        ;
+            BinOp = bitwise_or(IntType),  OpStr = "bitwise_or"
+        ;
+            BinOp = bitwise_xor(IntType), OpStr = "bitwise_xor"
         ),
         Cord = strcord(OpStr) ++
             strcord("<") ++ int_type_to_strcord(IntType) ++ strcord(">")
     ;
-        BinOp = unsigned_lt,
-        Cord = strcord("unsigned_lt")
-    ;
-        BinOp = unsigned_le,
-        Cord = strcord("unsigned_le")
+        BinOp = int_as_uint_cmp(CmpOp),
+        (
+            CmpOp = lt,
+            Cord = strcord("unsigned_lt")
+        ;
+            CmpOp = le,
+            Cord = strcord("unsigned_le")
+        )
     ;
         BinOp = logical_and,
         Cord = strcord("logical_and")
@@ -922,56 +927,20 @@ binop_to_strcord(BinOp) = Cord :-
                 intcord(Size) ++ strcord(">")
         )
     ;
-        BinOp = str_eq,
-        Cord = strcord("str_eq")
+        BinOp = str_cmp(CmpOp),
+        OpStr = dump_cmp_op(CmpOp),
+        Cord = strcord("str_" ++ OpStr)
     ;
-        BinOp = str_ne,
-        Cord = strcord("str_ne")
+        BinOp = str_nzp,
+        Cord = strcord("str_nzp")
     ;
-        BinOp = str_lt,
-        Cord = strcord("str_lt")
+        BinOp = float_arith(ArithOp),
+        OpStr = dump_arith_op(coerce(ArithOp)),
+        Cord = strcord("float_" ++ OpStr)
     ;
-        BinOp = str_gt,
-        Cord = strcord("str_gt")
-    ;
-        BinOp = str_le,
-        Cord = strcord("str_le")
-    ;
-        BinOp = str_ge,
-        Cord = strcord("str_ge")
-    ;
-        BinOp = str_cmp,
-        Cord = strcord("str_cmp")
-    ;
-        BinOp = float_add,
-        Cord = strcord("float_add")
-    ;
-        BinOp = float_sub,
-        Cord = strcord("float_sub")
-    ;
-        BinOp = float_mul,
-        Cord = strcord("float_mul")
-    ;
-        BinOp = float_div,
-        Cord = strcord("float_div")
-    ;
-        BinOp = float_eq,
-        Cord = strcord("float_eq")
-    ;
-        BinOp = float_ne,
-        Cord = strcord("float_ne")
-    ;
-        BinOp = float_lt,
-        Cord = strcord("float_lt")
-    ;
-        BinOp = float_gt,
-        Cord = strcord("float_gt")
-    ;
-        BinOp = float_le,
-        Cord = strcord("float_le")
-    ;
-        BinOp = float_ge,
-        Cord = strcord("float_ge")
+        BinOp = float_cmp(CmpOp),
+        OpStr = dump_cmp_op(CmpOp),
+        Cord = strcord("float_" ++ OpStr)
     ;
         BinOp = float_from_dword,
         Cord = strcord("float_from_dword")

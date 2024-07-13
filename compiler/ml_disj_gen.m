@@ -366,15 +366,15 @@ ml_gen_lookup_disj(OutVars, Solns, Context, Stmts, !Info) :-
 
     IncrSlotVarStmt = ml_stmt_atomic(
         assign(SlotVarLval,
-            ml_binop(int_add(int_type_int), SlotVarRval,
-                ml_const(mlconst_int(1)))),
+            ml_binop(int_arith(int_type_int, ao_add),
+                SlotVarRval, ml_const(mlconst_int(1)))),
         Context),
 
     LoopBodyStmt = ml_stmt_block([], [],
         LookupStmts ++ [CallContStmt, IncrSlotVarStmt], Context),
 
-    LoopCond = ml_binop(int_lt(int_type_int), SlotVarRval,
-        ml_const(mlconst_int(NumRows))),
+    LoopCond = ml_binop(int_cmp(int_type_int, lt),
+        SlotVarRval, ml_const(mlconst_int(NumRows))),
     LoopStmt = ml_stmt_while(loop_at_least_once, LoopCond, LoopBodyStmt,
         [SlotVar], Context),
 

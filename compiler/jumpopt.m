@@ -581,7 +581,7 @@ jump_opt_llcall(Uinstr0, Comment0, Instrs0, PrevInstr, JumpOptInfo,
             NewLabel = internal_label(LabelNum, ProcLabel),
             NewInstrs = [
                 llds_instr(if_val(binop(
-                    ne(int_type_int), lval(curfr), lval(maxfr)),
+                    int_cmp(int_type_int, ne), lval(curfr), lval(maxfr)),
                     code_label(NewLabel)),
                     "branch around if cannot tail call"),
                 llds_instr(assign(maxfr, lval(prevfr_slot(lval(curfr)))),
@@ -1028,7 +1028,8 @@ needs_workaround(Lval, Cond) :-
         Cond = unop(logical_not, lval(Lval))
     ;
         Cond = binop(Op, Left, Right),
-        ( Op = eq(_) ; Op = ne(_) ),
+        Op = int_cmp(_, CmpOp),
+        ( CmpOp = eq ; CmpOp = ne ),
         (
             Right = lval(Lval),
             ( Left = const(llconst_int(0))

@@ -59,13 +59,42 @@
     --->    no_size
     ;       size(int).
 
+    % The int_cmp operations eq and ne are used not just on integers,
+    % but also on characters and enumerations.
+    % XXX These two uses are not covered by int_type, but for now we use
+    % the convention that they should use `int_type_int'.
+    % XXX Which is a historical artifact; we *should* be using int_type_uint
+    % for them instead.
+:- type cmp_op
+    --->    eq
+    ;       ne
+    ;       lt
+    ;       le
+    ;       gt
+    ;       ge.
+
+:- type int_as_uint_cmp_op =< cmp_op
+    --->    lt
+    ;       le.
+
+    % NOTE The ao_ prefix on these function symbols is there because
+    % "div" and "rem" are operators.
+:- type arith_op
+    --->    ao_add
+    ;       ao_sub
+    ;       ao_mul
+    ;       ao_div     % Assumed to truncate toward zero.
+    ;       ao_rem.    % Remainder with respect to truncating integer division.
+
+    % The remainder operation does not make any sense for floats.
+:- type float_arith_op =< arith_op
+    --->    ao_add
+    ;       ao_sub
+    ;       ao_mul
+    ;       ao_div.
+
 :- type binary_op
-    --->    int_add(int_type)
-    ;       int_sub(int_type)
-    ;       int_mul(int_type)
-    ;       int_div(int_type) % Assumed to truncate toward zero.
-    ;       int_mod(int_type) % Remainder (w.r.t. truncating integer division).
-                              % XXX `mod' should be renamed `rem'
+    --->    int_arith(int_type, arith_op)
             % For shifts, the first argument specifies the type of
             % the value being shifted, while the second specifies
             % the type of the shift amount.
@@ -76,12 +105,7 @@
     ;       bitwise_xor(int_type)
     ;       logical_and
     ;       logical_or
-            % The following type are primarily used with integers, but also
-            % with characters and enumerations.
-            % XXX the latter two uses are not covered by int_type, for now we
-            % use the convention that they should use `int_type_int'.
-    ;       eq(int_type)      % ==
-    ;       ne(int_type)      % !=
+    ;       int_cmp(int_type, cmp_op)
     ;       body
     ;       array_index(array_elem_type)
             % The element type does not seem to be used. It could probably
@@ -89,13 +113,8 @@
             % that currently fills in this slot in case some backend ever
             % *does* start needing to know the element type.
     ;       string_unsafe_index_code_unit
-    ;       str_eq  % string comparisons
-    ;       str_ne
-    ;       str_lt
-    ;       str_gt
-    ;       str_le
-    ;       str_ge
-    ;       str_cmp % returns -ve, 0, or +ve
+    ;       str_cmp(cmp_op)
+    ;       str_nzp     % returns negative, zero or positive
 
     ;       offset_str_eq(int, maybe_size)
             % offset_str_eq(Offset, MaybeSize)
@@ -129,29 +148,21 @@
             % against zero. However, we don't do that; instead, we simply
             % avoid generating this operation.
 
-    ;       int_lt(int_type)  % integer comparisons
-    ;       int_gt(int_type)
-    ;       int_le(int_type)
-    ;       int_ge(int_type)
-
-    ;       unsigned_lt % less than
-    ;       unsigned_le % less than or equal
-            % The arguments to `unsigned_lt/le' are just ordinary (signed)
+    ;       int_as_uint_cmp(int_as_uint_cmp_op)
+            % The arguments to these ops are just ordinary (signed)
             % Mercury ints, but the comparison is done *after* casting both
             % arguments to the uint type. This means that e.g. the expression
-            % binary(unsigned_le, int_const(1), int_const(-1)) returns true,
-            % since (MR_Unsigned) 1 <= (MR_Unsigned) -1.
+            % binary(int_as_uint_cmp_op(le), int_const(1), int_const(-1))
+            % returns true, since (MR_Unsigned) 1 <= (MR_Unsigned) -1.
 
-    ;       float_add
-    ;       float_sub
-    ;       float_mul
-    ;       float_div
-    ;       float_eq
-    ;       float_ne
-    ;       float_lt
-    ;       float_gt
-    ;       float_le
-    ;       float_ge
+    ;       float_arith(float_arith_op)
+    ;       float_cmp(cmp_op)
+            % Note that we do not have primitive operations in library/float.m
+            % for comparing floats for equality and inequality, since the
+            % approximate nature of floats makes such operations "iffy".
+            % However, it is possible to unify float variables, and it is
+            % of course possible to negate such goals, so we need both
+            % the eq and ne cmp_ops for floats as well as for other types.
     ;       float_from_dword
     ;       int64_from_dword
     ;       uint64_from_dword
@@ -165,21 +176,13 @@
             % XXX The only backend that used these was erlang, which
             % has been deleted.
 
-:- inst int_binary_op for binary_op/0
-    --->    int_add(ground)
-    ;       int_sub(ground)
-    ;       int_mul(ground)
-    ;       int_div(ground)
-    ;       int_mod(ground)
-    ;       unchecked_left_shift(ground, ground)
+:- inst int_misc_binary_op for binary_op/0
+    --->    unchecked_left_shift(ground, ground)
     ;       unchecked_right_shift(ground, ground)
     ;       bitwise_and(ground)
     ;       bitwise_or(ground)
-    ;       bitwise_xor(ground)
-    ;       int_lt(ground)
-    ;       int_gt(ground)
-    ;       int_le(ground)
-    ;       int_ge(ground).
+    ;       bitwise_xor(ground).
+    % ;       int_cmp(ground, ground).    % ZZZ did not include eq/ne
 
     % For the MLDS back-end, we need to know the element type for each
     % array_index operation.
@@ -196,6 +199,14 @@
     --->    scalar_elem_string    % ml_string_type
     ;       scalar_elem_int       % mlds_native_int_type
     ;       scalar_elem_generic.  % mlds_generic_type
+
+:- func negate_cmp_op(cmp_op) = cmp_op.
+
+:- func dump_arith_op(arith_op) = string.
+:- func dump_cmp_op(cmp_op) = string.
+
+:- func arith_op_c_operator(arith_op) = string.
+:- func cmp_op_c_operator(cmp_op) = string.
 
     % test_if_builtin(ModuleName, PredName, PredFormArity):
     %
@@ -283,6 +294,41 @@
 
 %-----------------------------------------------------------------------------%
 
+negate_cmp_op(eq) = ne.
+negate_cmp_op(ne) = eq.
+negate_cmp_op(lt) = ge.
+negate_cmp_op(le) = gt.
+negate_cmp_op(gt) = le.
+negate_cmp_op(ge) = lt.
+
+dump_arith_op(ao_add) = "add".
+dump_arith_op(ao_sub) = "sub".
+dump_arith_op(ao_mul) = "mul".
+dump_arith_op(ao_div) = "div".
+dump_arith_op(ao_rem) = "rem".
+
+dump_cmp_op(eq) = "eq".
+dump_cmp_op(ne) = "ne".
+dump_cmp_op(lt) = "lt".
+dump_cmp_op(le) = "le".
+dump_cmp_op(gt) = "gt".
+dump_cmp_op(ge) = "ge".
+
+arith_op_c_operator(ao_add) = "+".
+arith_op_c_operator(ao_sub) = "-".
+arith_op_c_operator(ao_mul) = "*".
+arith_op_c_operator(ao_div) = "/".
+arith_op_c_operator(ao_rem) = "%".
+
+cmp_op_c_operator(eq) = "==".
+cmp_op_c_operator(ne) = "!=".
+cmp_op_c_operator(lt) = "<".
+cmp_op_c_operator(le) = "<=".
+cmp_op_c_operator(gt) = ">".
+cmp_op_c_operator(ge) = ">=".
+
+%-----------------------------------------------------------------------------%
+
 test_if_builtin(FullyQualifiedModule, PredName, Arity) :-
     is_std_lib_module_name(FullyQualifiedModule, ModuleName),
     % The value of the ProcNum argument does not influence the test
@@ -346,28 +392,33 @@ builtin_translation(ModuleName, PredName, ProcNum, Args, Code) :-
             % builtin_translation.
             Code = assign(Y, assign_copy(X))
         ;
-            ( PredName = "builtin_int_gt",    CmpOp = int_gt(int_type_int)
-            ; PredName = "builtin_int_lt",    CmpOp = int_lt(int_type_int)
-            ; PredName = "builtin_int8_gt",   CmpOp = int_gt(int_type_int8)
-            ; PredName = "builtin_int8_lt",   CmpOp = int_lt(int_type_int8)
-            ; PredName = "builtin_int16_gt",  CmpOp = int_gt(int_type_int16)
-            ; PredName = "builtin_int16_lt",  CmpOp = int_lt(int_type_int16)
-            ; PredName = "builtin_int32_gt",  CmpOp = int_gt(int_type_int32)
-            ; PredName = "builtin_int32_lt",  CmpOp = int_lt(int_type_int32)
-            ; PredName = "builtin_int64_gt",  CmpOp = int_gt(int_type_int64)
-            ; PredName = "builtin_int64_lt",  CmpOp = int_lt(int_type_int64)
-            ; PredName = "builtin_uint_gt",   CmpOp = int_gt(int_type_uint)
-            ; PredName = "builtin_uint_lt",   CmpOp = int_lt(int_type_uint)
-            ; PredName = "builtin_uint8_gt",  CmpOp = int_gt(int_type_uint8)
-            ; PredName = "builtin_uint8_lt",  CmpOp = int_lt(int_type_uint8)
-            ; PredName = "builtin_uint16_gt", CmpOp = int_gt(int_type_uint16)
-            ; PredName = "builtin_uint16_lt", CmpOp = int_lt(int_type_uint16)
-            ; PredName = "builtin_uint32_gt", CmpOp = int_gt(int_type_uint32)
-            ; PredName = "builtin_uint32_lt", CmpOp = int_lt(int_type_uint32)
-            ; PredName = "builtin_uint64_gt", CmpOp = int_gt(int_type_uint64)
-            ; PredName = "builtin_uint64_lt", CmpOp = int_lt(int_type_uint64)
-            ; PredName = "unsigned_lt",       CmpOp = unsigned_lt
-            ; PredName = "unsigned_le",       CmpOp = unsigned_le
+            ( PredName = "builtin_int_gt",    Type = int_type_int,    Cmp = gt
+            ; PredName = "builtin_int_lt",    Type = int_type_int,    Cmp = lt
+            ; PredName = "builtin_int8_gt",   Type = int_type_int8,   Cmp = gt
+            ; PredName = "builtin_int8_lt",   Type = int_type_int8,   Cmp = lt
+            ; PredName = "builtin_int16_gt",  Type = int_type_int16,  Cmp = gt
+            ; PredName = "builtin_int16_lt",  Type = int_type_int16,  Cmp = lt
+            ; PredName = "builtin_int32_gt",  Type = int_type_int32,  Cmp = gt
+            ; PredName = "builtin_int32_lt",  Type = int_type_int32,  Cmp = lt
+            ; PredName = "builtin_int64_gt",  Type = int_type_int64,  Cmp = gt
+            ; PredName = "builtin_int64_lt",  Type = int_type_int64,  Cmp = lt
+            ; PredName = "builtin_uint_gt",   Type = int_type_uint,   Cmp = gt
+            ; PredName = "builtin_uint_lt",   Type = int_type_uint,   Cmp = lt
+            ; PredName = "builtin_uint8_gt",  Type = int_type_uint8,  Cmp = gt
+            ; PredName = "builtin_uint8_lt",  Type = int_type_uint8,  Cmp = lt
+            ; PredName = "builtin_uint16_gt", Type = int_type_uint16, Cmp = gt
+            ; PredName = "builtin_uint16_lt", Type = int_type_uint16, Cmp = lt
+            ; PredName = "builtin_uint32_gt", Type = int_type_uint32, Cmp = gt
+            ; PredName = "builtin_uint32_lt", Type = int_type_uint32, Cmp = lt
+            ; PredName = "builtin_uint64_gt", Type = int_type_uint64, Cmp = gt
+            ; PredName = "builtin_uint64_lt", Type = int_type_uint64, Cmp = lt
+            ),
+            CmpOp = int_cmp(Type, Cmp),
+            ProcNum = 0, Args = [X, Y],
+            Code = test(binary_test(CmpOp, X, Y))
+        ;
+            ( PredName = "unsigned_lt",       CmpOp = int_as_uint_cmp(lt)
+            ; PredName = "unsigned_le",       CmpOp = int_as_uint_cmp(le)
             ),
             ProcNum = 0, Args = [X, Y],
             Code = test(binary_test(CmpOp, X, Y))
@@ -392,18 +443,18 @@ builtin_translation(ModuleName, PredName, ProcNum, Args, Code) :-
     ;
         ModuleName = "term_size_prof_builtin",
         PredName = "term_size_plus", ProcNum = 0, Args = [X, Y, Z],
-        Code = assign(Z, assign_binary(int_add(int_type_int), X, Y))
+        Code = assign(Z, assign_binary(int_arith(int_type_int, ao_add), X, Y))
     ;
-        ( ModuleName = "int",    IntType = int_type_int
-        ; ModuleName = "int8",   IntType = int_type_int8
-        ; ModuleName = "int16",  IntType = int_type_int16
-        ; ModuleName = "int32",  IntType = int_type_int32
-        ; ModuleName = "int64",  IntType = int_type_int64
-        ; ModuleName = "uint",   IntType = int_type_uint
-        ; ModuleName = "uint8",  IntType = int_type_uint8
-        ; ModuleName = "uint16", IntType = int_type_uint16
-        ; ModuleName = "uint32", IntType = int_type_uint32
-        ; ModuleName = "uint64", IntType = int_type_uint64
+        ( ModuleName = "int",    IT = int_type_int
+        ; ModuleName = "int8",   IT = int_type_int8
+        ; ModuleName = "int16",  IT = int_type_int16
+        ; ModuleName = "int32",  IT = int_type_int32
+        ; ModuleName = "int64",  IT = int_type_int64
+        ; ModuleName = "uint",   IT = int_type_uint
+        ; ModuleName = "uint8",  IT = int_type_uint8
+        ; ModuleName = "uint16", IT = int_type_uint16
+        ; ModuleName = "uint32", IT = int_type_uint32
+        ; ModuleName = "uint64", IT = int_type_uint64
         ),
         (
             PredName = "+",
@@ -411,13 +462,16 @@ builtin_translation(ModuleName, PredName, ProcNum, Args, Code) :-
                 Args = [X, Y, Z],
                 (
                     ProcNum = 0,
-                    Code = assign(Z, assign_binary(int_add(IntType), X, Y))
+                    Code = assign(Z,
+                        assign_binary(int_arith(IT, ao_add), X, Y))
                 ;
                     ProcNum = 1,
-                    Code = assign(X, assign_binary(int_sub(IntType), Z, Y))
+                    Code = assign(X,
+                        assign_binary(int_arith(IT, ao_sub), Z, Y))
                 ;
                     ProcNum = 2,
-                    Code = assign(Y, assign_binary(int_sub(IntType), Z, X))
+                    Code = assign(Y,
+                        assign_binary(int_arith(IT, ao_sub), Z, X))
                 )
             ;
                 Args = [X, Y],
@@ -430,64 +484,71 @@ builtin_translation(ModuleName, PredName, ProcNum, Args, Code) :-
                 Args = [X, Y, Z],
                 (
                     ProcNum = 0,
-                    Code = assign(Z, assign_binary(int_sub(IntType), X, Y))
+                    Code = assign(Z,
+                        assign_binary(int_arith(IT, ao_sub), X, Y))
                 ;
                     ProcNum = 1,
-                    Code = assign(X, assign_binary(int_add(IntType), Y, Z))
+                    Code = assign(X,
+                        assign_binary(int_arith(IT, ao_add), Y, Z))
                 ;
                     ProcNum = 2,
-                    Code = assign(Y, assign_binary(int_sub(IntType), X, Z))
+                    Code = assign(Y,
+                        assign_binary(int_arith(IT, ao_sub), X, Z))
                 )
             ;
                 Args = [X, Y],
                 ProcNum = 0,
-                IntZeroConst = make_int_zero_const(IntType),
+                IntZeroConst = make_int_zero_const(IT),
                 Code = assign(Y,
-                    assign_binary_lc(int_sub(IntType), IntZeroConst, X))
+                    assign_binary_lc(int_arith(IT, ao_sub), IntZeroConst, X))
             )
         ;
             PredName = "xor", Args = [X, Y, Z],
             (
                 ProcNum = 0,
-                Code = assign(Z, assign_binary(bitwise_xor(IntType), X, Y))
+                Code = assign(Z, assign_binary(bitwise_xor(IT), X, Y))
             ;
                 ProcNum = 1,
-                Code = assign(Y, assign_binary(bitwise_xor(IntType), X, Z))
+                Code = assign(Y, assign_binary(bitwise_xor(IT), X, Z))
             ;
                 ProcNum = 2,
-                Code = assign(X, assign_binary(bitwise_xor(IntType), Y, Z))
+                Code = assign(X, assign_binary(bitwise_xor(IT), Y, Z))
             )
         ;
-            ( PredName = "plus",  ArithOp = int_add(IntType)
-            ; PredName = "minus", ArithOp = int_sub(IntType)
-            ; PredName = "*", ArithOp = int_mul(IntType)
-            ; PredName = "times", ArithOp = int_mul(IntType)
-            ; PredName = "unchecked_quotient", ArithOp = int_div(IntType)
-            ; PredName = "unchecked_rem", ArithOp = int_mod(IntType)
-            ; PredName = "unchecked_left_shift",
-                ArithOp = unchecked_left_shift(IntType, shift_by_int)
+            ( PredName = "plus",                ArithOp = ao_add
+            ; PredName = "minus",               ArithOp = ao_sub
+            ; PredName = "*",                   ArithOp = ao_mul
+            ; PredName = "times",               ArithOp = ao_mul
+            ; PredName = "unchecked_quotient",  ArithOp = ao_div
+            ; PredName = "unchecked_rem",       ArithOp = ao_rem
+            ),
+            ProcNum = 0, Args = [X, Y, Z],
+            Code = assign(Z, assign_binary(int_arith(IT, ArithOp), X, Y))
+        ;
+            ( PredName = "unchecked_left_shift",
+                ArithOp = unchecked_left_shift(IT, shift_by_int)
             ; PredName = "unchecked_left_ushift",
-                ArithOp = unchecked_left_shift(IntType, shift_by_uint)
+                ArithOp = unchecked_left_shift(IT, shift_by_uint)
             ; PredName = "unchecked_right_shift",
-                ArithOp = unchecked_right_shift(IntType, shift_by_int)
+                ArithOp = unchecked_right_shift(IT, shift_by_int)
             ; PredName = "unchecked_right_ushift",
-                ArithOp = unchecked_right_shift(IntType, shift_by_uint)
-            ; PredName = "/\\", ArithOp = bitwise_and(IntType)
-            ; PredName = "\\/", ArithOp = bitwise_or(IntType)
+                ArithOp = unchecked_right_shift(IT, shift_by_uint)
+            ; PredName = "/\\", ArithOp = bitwise_and(IT)
+            ; PredName = "\\/", ArithOp = bitwise_or(IT)
             ),
             ProcNum = 0, Args = [X, Y, Z],
             Code = assign(Z, assign_binary(ArithOp, X, Y))
         ;
             PredName = "\\", ProcNum = 0, Args = [X, Y],
-            Code = assign(Y, assign_unary(bitwise_complement(IntType), X))
+            Code = assign(Y, assign_unary(bitwise_complement(IT), X))
         ;
-            ( PredName = ">", CmpOp = int_gt(IntType)
-            ; PredName = "<", CmpOp = int_lt(IntType)
-            ; PredName = ">=", CmpOp = int_ge(IntType)
-            ; PredName = "=<", CmpOp = int_le(IntType)
+            ( PredName = ">",  CmpOp = gt
+            ; PredName = "<",  CmpOp = lt
+            ; PredName = ">=", CmpOp = ge
+            ; PredName = "=<", CmpOp = le
             ),
             ProcNum = 0, Args = [X, Y],
-            Code = test(binary_test(CmpOp, X, Y))
+            Code = test(binary_test(int_cmp(IT ,CmpOp), X, Y))
         )
     ;
         ModuleName = "float",
@@ -500,7 +561,7 @@ builtin_translation(ModuleName, PredName, ProcNum, Args, Code) :-
             ;
                 Args = [X, Y, Z],
                 ProcNum = 0,
-                Code = assign(Z, assign_binary(float_add, X, Y))
+                Code = assign(Z, assign_binary(float_arith(ao_add), X, Y))
             )
         ;
             PredName = "-",
@@ -508,26 +569,26 @@ builtin_translation(ModuleName, PredName, ProcNum, Args, Code) :-
                 Args = [X, Y],
                 ProcNum = 0,
                 Code = assign(Y,
-                    assign_binary_lc(float_sub, float_const(0.0), X))
+                    assign_binary_lc(float_arith(ao_sub), float_const(0.0), X))
             ;
                 Args = [X, Y, Z],
                 ProcNum = 0,
-                Code = assign(Z, assign_binary(float_sub, X, Y))
+                Code = assign(Z, assign_binary(float_arith(ao_sub), X, Y))
             )
         ;
-            ( PredName = "*", ArithOp = float_mul
-            ; PredName = "unchecked_quotient", ArithOp = float_div
+            ( PredName = "*",                   ArithOp = ao_mul
+            ; PredName = "unchecked_quotient",  ArithOp = ao_div
             ),
             ProcNum = 0, Args = [X, Y, Z],
-            Code = assign(Z, assign_binary(ArithOp, X, Y))
+            Code = assign(Z, assign_binary(float_arith(ArithOp), X, Y))
         ;
-            ( PredName = ">",  CmpOp = float_gt
-            ; PredName = "<",  CmpOp = float_lt
-            ; PredName = ">=", CmpOp = float_ge
-            ; PredName = "=<", CmpOp = float_le
+            ( PredName = ">",  CmpOp = gt
+            ; PredName = "<",  CmpOp = lt
+            ; PredName = ">=", CmpOp = ge
+            ; PredName = "=<", CmpOp = le
             ),
             ProcNum = 0, Args = [X, Y],
-            Code = test(binary_test(CmpOp, X, Y))
+            Code = test(binary_test(float_cmp(CmpOp), X, Y))
         )
     ).
 

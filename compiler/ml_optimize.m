@@ -220,7 +220,7 @@ optimize_in_stmt(OptInfo, Stmt0, Stmt) :-
                 % Mercury compiler generating such code.
                 SourceRval = ml_binop(BinOp, RvalA, RvalB),
                 RvalA = RvalB,
-                BinOp = eq(_)
+                BinOp = int_cmp(_, eq)
             then
                 Result = ml_const(mlconst_true),
                 Atomic = assign(TargetLval, Result),
@@ -443,13 +443,8 @@ peephole_opt_statement(Stmt0, Stmt1, Stmts2, Stmts) :-
         Stmt0 = ml_stmt_atomic(Atomic0, Context0),
         Atomic0 = assign(Lval, ml_binop(CompareOp, CmpRvalA, CmpRvalB)),
 
-        ( CompareOp = eq(IntType), NegCompareOp = ne(IntType)
-        ; CompareOp = ne(IntType), NegCompareOp = eq(IntType)
-        ; CompareOp = int_lt(IntType), NegCompareOp = int_ge(IntType)
-        ; CompareOp = int_le(IntType), NegCompareOp = int_gt(IntType)
-        ; CompareOp = int_gt(IntType), NegCompareOp = int_le(IntType)
-        ; CompareOp = int_ge(IntType), NegCompareOp = int_lt(IntType)
-        )
+        CompareOp = int_cmp(IntType, CmpOp),
+        NegCompareOp = int_cmp(IntType, negate_cmp_op(CmpOp))
     then
         Atomic = assign(Lval, ml_binop(NegCompareOp, CmpRvalA, CmpRvalB)),
         Stmt = ml_stmt_atomic(Atomic, Context0),

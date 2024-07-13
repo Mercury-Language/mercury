@@ -869,31 +869,17 @@ dump_binop(offset_str_eq(Offset, no_size)) =
 dump_binop(offset_str_eq(Offset, size(Size))) =
     "offset_strn_eq(" ++ string.int_to_string(Offset) ++ ", " ++
     string.int_to_string(Size) ++ ")".
-dump_binop(str_eq) = "str==".
-dump_binop(str_ne) = "str!=".
-dump_binop(str_le) = "str<=".
-dump_binop(str_ge) = "str>=".
-dump_binop(str_lt) = "str<".
-dump_binop(str_gt) = "str>".
-dump_binop(unsigned_lt) = "unsigned<".
-dump_binop(unsigned_le) = "unsigned<=".
-dump_binop(float_add) = "fl+".
-dump_binop(float_sub) = "fl-".
-dump_binop(float_mul) = "fl*".
-dump_binop(float_div) = "fl/".
-dump_binop(float_eq) = "fl==".
-dump_binop(float_ne) = "fl!=".
-dump_binop(float_le) = "fl<=".
-dump_binop(float_ge) = "fl>=".
-dump_binop(float_lt) = "fl<".
-dump_binop(float_gt) = "fl>".
+dump_binop(int_cmp(_, CmpOp)) = cmp_op_c_operator(CmpOp).
+dump_binop(str_cmp(CmpOp)) = "str" ++ cmp_op_c_operator(CmpOp).
+dump_binop(float_cmp(CmpOp)) = "fl" ++ cmp_op_c_operator(CmpOp).
+dump_binop(int_as_uint_cmp(CmpOp)) =
+    "unsigned" ++ cmp_op_c_operator(coerce(CmpOp)).
+dump_binop(int_arith(_, ArithOp)) = arith_op_c_operator(ArithOp).
+dump_binop(float_arith(ArithOp)) =
+    "fl" ++ arith_op_c_operator(coerce(ArithOp)).
 dump_binop(float_from_dword) = "float_from_dword".
 dump_binop(int64_from_dword) = "int64_from_dword".
 dump_binop(uint64_from_dword) = "uint64_from_dword".
-dump_binop(int_add(_)) = "+".
-dump_binop(int_sub(_)) = "-".
-dump_binop(int_mul(_)) = "*".
-dump_binop(int_div(_)) = "/".
 dump_binop(unchecked_left_shift(_, shift_by_int)) = "unchecked<<".
 dump_binop(unchecked_left_shift(_, shift_by_uint)) = "unchecked<<u".
 dump_binop(unchecked_right_shift(_, shift_by_int)) = "unchecked>>".
@@ -901,16 +887,9 @@ dump_binop(unchecked_right_shift(_, shift_by_uint)) = "unchecked>>u".
 dump_binop(bitwise_and(_)) = "&".
 dump_binop(bitwise_or(_)) = "|".
 dump_binop(bitwise_xor(_)) = "^".
-dump_binop(int_mod(_)) = "%".
-dump_binop(eq(_)) = "==".
-dump_binop(ne(_)) = "!=".
 dump_binop(logical_and) = "&&".
 dump_binop(logical_or) = "||".
-dump_binop(int_lt(_)) = "<".
-dump_binop(int_gt(_)) = ">".
-dump_binop(int_le(_)) = "<=".
-dump_binop(int_ge(_)) = ">=".
-dump_binop(str_cmp) = "strcmp".
+dump_binop(str_nzp) = "str_nzp".
 dump_binop(body) = "body".
 dump_binop(pointer_equal_conservative) = "pointer_equal_conservative".
 

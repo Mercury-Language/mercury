@@ -1765,11 +1765,7 @@ unop_arg_type(dword_int64_get_word1,  lt_int(int_type_int64)).
 unop_arg_type(dword_uint64_get_word0, lt_int(int_type_uint64)).
 unop_arg_type(dword_uint64_get_word1, lt_int(int_type_uint64)).
 
-binop_return_type(int_add(IntType), lt_int(IntType)).
-binop_return_type(int_sub(IntType), lt_int(IntType)).
-binop_return_type(int_mul(IntType), lt_int(IntType)).
-binop_return_type(int_div(IntType), lt_int(IntType)).
-binop_return_type(int_mod(IntType), lt_int(IntType)).
+binop_return_type(int_arith(IntType, _), lt_int(IntType)).
 binop_return_type(unchecked_left_shift(IntType, _), lt_int(IntType)).
 binop_return_type(unchecked_right_shift(IntType, _), lt_int(IntType)).
 binop_return_type(bitwise_and(IntType), lt_int(IntType)).
@@ -1777,34 +1773,15 @@ binop_return_type(bitwise_or(IntType), lt_int(IntType)).
 binop_return_type(bitwise_xor(IntType), lt_int(IntType)).
 binop_return_type(logical_and, lt_bool).
 binop_return_type(logical_or, lt_bool).
-binop_return_type(eq(_), lt_bool).
-binop_return_type(ne(_), lt_bool).
+binop_return_type(int_cmp(_, _), lt_bool).
 binop_return_type(array_index(_Type), lt_word).
 binop_return_type(string_unsafe_index_code_unit, lt_int(int_type_int)).
 binop_return_type(offset_str_eq(_, _), lt_bool).
-binop_return_type(str_eq, lt_bool).
-binop_return_type(str_ne, lt_bool).
-binop_return_type(str_lt, lt_bool).
-binop_return_type(str_gt, lt_bool).
-binop_return_type(str_le, lt_bool).
-binop_return_type(str_ge, lt_bool).
-binop_return_type(str_cmp, lt_int(int_type_int)).
-binop_return_type(int_lt(_), lt_bool).
-binop_return_type(int_gt(_), lt_bool).
-binop_return_type(int_le(_), lt_bool).
-binop_return_type(int_ge(_), lt_bool).
-binop_return_type(unsigned_lt, lt_bool).
-binop_return_type(unsigned_le, lt_bool).
-binop_return_type(float_add, lt_float).
-binop_return_type(float_sub, lt_float).
-binop_return_type(float_mul, lt_float).
-binop_return_type(float_div, lt_float).
-binop_return_type(float_eq, lt_bool).
-binop_return_type(float_ne, lt_bool).
-binop_return_type(float_lt, lt_bool).
-binop_return_type(float_gt, lt_bool).
-binop_return_type(float_le, lt_bool).
-binop_return_type(float_ge, lt_bool).
+binop_return_type(str_cmp(_), lt_bool).
+binop_return_type(str_nzp, lt_int(int_type_int)).
+binop_return_type(int_as_uint_cmp(_), lt_bool).
+binop_return_type(float_arith(_), lt_float).
+binop_return_type(float_cmp(_), lt_bool).
 binop_return_type(float_from_dword,  lt_float).
 binop_return_type(int64_from_dword,  lt_int(int_type_int64)).
 binop_return_type(uint64_from_dword, lt_int(int_type_uint64)).

@@ -186,18 +186,18 @@ generate_test_rval_has_cons_tag(CI, VarRval, ConsTag, TestRval) :-
     (
         ConsTag = int_tag(IntTag),
         int_tag_to_const_and_int_type(IntTag, Const, IntType),
-        TestRval = binop(eq(IntType), VarRval, const(Const))
+        TestRval = binop(int_cmp(IntType, eq), VarRval, const(Const))
     ;
         ConsTag = float_tag(Float),
-        TestRval = binop(float_eq, VarRval, const(llconst_float(Float)))
+        TestRval = binop(float_cmp(eq), VarRval, const(llconst_float(Float)))
     ;
         ConsTag = string_tag(String),
-        TestRval = binop(str_eq, VarRval, const(llconst_string(String)))
+        TestRval = binop(str_cmp(eq), VarRval, const(llconst_string(String)))
     ;
         ConsTag = foreign_tag(ForeignLang, ForeignVal),
         expect(unify(ForeignLang, lang_c), $pred,
             "foreign tag for language other than C"),
-        TestRval = binop(eq(int_type_int), VarRval,
+        TestRval = binop(int_cmp(int_type_int, eq), VarRval,
             const(llconst_foreign(ForeignVal, lt_int(int_type_int))))
     ;
         ( ConsTag = dummy_tag
@@ -210,7 +210,7 @@ generate_test_rval_has_cons_tag(CI, VarRval, ConsTag, TestRval) :-
         VarPtag = unop(tag, VarRval),
         Ptag = ptag(PtagUint8),
         PtagConstRval = const(llconst_int(uint8.cast_to_int(PtagUint8))),
-        TestRval = binop(eq(int_type_int), VarPtag, PtagConstRval)
+        TestRval = binop(int_cmp(int_type_int, eq), VarPtag, PtagConstRval)
     ;
         ConsTag = remote_args_tag(RemoteArgsTagInfo),
         (
@@ -222,13 +222,14 @@ generate_test_rval_has_cons_tag(CI, VarRval, ConsTag, TestRval) :-
             VarPtag = unop(tag, VarRval),
             Ptag = ptag(PtagUint8),
             PtagConstRval = const(llconst_int(uint8.cast_to_int(PtagUint8))),
-            TestRval = binop(eq(int_type_int), VarPtag, PtagConstRval)
+            TestRval = binop(int_cmp(int_type_int, eq), VarPtag, PtagConstRval)
         ;
             RemoteArgsTagInfo = remote_args_shared(Ptag, RemoteSectag),
             VarPtag = unop(tag, VarRval),
             Ptag = ptag(PtagUint8),
             ConstPtagRval = const(llconst_int(uint8.cast_to_int(PtagUint8))),
-            PtagTestRval = binop(eq(int_type_int), VarPtag, ConstPtagRval),
+            PtagTestRval = binop(int_cmp(int_type_int, eq),
+                VarPtag, ConstPtagRval),
             VarSectagWordRval =
                 lval(field(yes(Ptag), VarRval, const(llconst_int(0)))),
             RemoteSectag = remote_sectag(SecTagUint, SectagSize),
@@ -242,7 +243,7 @@ generate_test_rval_has_cons_tag(CI, VarRval, ConsTag, TestRval) :-
                     VarSectagWordRval, const(llconst_uint(SectagMask)))
             ),
             ConstSectagRval = const(llconst_int(uint.cast_to_int(SecTagUint))),
-            SectagTestRval = binop(eq(int_type_int),
+            SectagTestRval = binop(int_cmp(int_type_int, eq),
                 VarSectagRval, ConstSectagRval),
             TestRval = binop(logical_and, PtagTestRval, SectagTestRval)
         ;
@@ -270,7 +271,7 @@ generate_test_rval_has_cons_tag(CI, VarRval, ConsTag, TestRval) :-
             MaskedVarRval = binop(bitwise_and(int_type_uint),
                 VarRval, const(llconst_uint(PrimSecMask))),
 
-            TestRval = binop(eq(int_type_uint),
+            TestRval = binop(int_cmp(int_type_uint, eq),
                 MaskedVarRval, ConstPrimSecRval)
         )
     ;
@@ -279,7 +280,8 @@ generate_test_rval_has_cons_tag(CI, VarRval, ConsTag, TestRval) :-
         ConstPrimSecRval = const(llconst_int(uint.cast_to_int(PrimSec))),
         (
             MustMask = lsectag_always_rest_of_word,
-            TestRval = binop(eq(int_type_int), VarRval, ConstPrimSecRval)
+            TestRval = binop(int_cmp(int_type_int, eq),
+                VarRval, ConstPrimSecRval)
         ;
             MustMask = lsectag_must_be_masked,
             % We generate the same test as for shared_local_tag_with_args.
@@ -289,7 +291,7 @@ generate_test_rval_has_cons_tag(CI, VarRval, ConsTag, TestRval) :-
             PrimSecMask = (1u << NumPtagSectagBits) - 1u,
             MaskedVarRval = binop(bitwise_and(int_type_uint),
                 VarRval, const(llconst_uint(PrimSecMask))),
-            TestRval = binop(eq(int_type_uint),
+            TestRval = binop(int_cmp(int_type_uint, eq),
                 MaskedVarRval, ConstPrimSecRval)
         )
     ;

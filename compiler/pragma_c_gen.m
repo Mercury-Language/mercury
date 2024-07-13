@@ -419,7 +419,7 @@ generate_runtime_cond_code(Expr, CondRval, !CI) :-
         set_used_env_vars(UsedEnvVars, !CI),
         EnvVarRval = lval(global_var_ref(env_var_ref(EnvVar))),
         ZeroRval = const(llconst_int(0)),
-        CondRval = binop(ne(int_type_int), EnvVarRval, ZeroRval)
+        CondRval = binop(int_cmp(int_type_int, ne), EnvVarRval, ZeroRval)
     ;
         Expr = trace_not(ExprA),
         generate_runtime_cond_code(ExprA, RvalA, !CI),

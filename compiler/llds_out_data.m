@@ -826,11 +826,8 @@ output_record_rval_decls_format(Info, Stream, Rval, FirstIndent, LaterIndent,
         % then for each float constant which we might want to box, we declare
         % a static const variable holding that constant.
         (
-            ( Op = float_add, OpStr = "+"
-            ; Op = float_sub, OpStr = "-"
-            ; Op = float_mul, OpStr = "*"
-            ; Op = float_div, OpStr = "/"
-            ),
+            Op = float_arith(ArithOp),
+            OpStr = arith_op_c_operator(coerce(ArithOp)),
             UnboxFloat = Info ^ lout_unboxed_float,
             StaticGroundFloats = Info ^ lout_static_ground_floats,
             ( if
@@ -851,54 +848,32 @@ output_record_rval_decls_format(Info, Stream, Rval, FirstIndent, LaterIndent,
                 % issues regarding floating point accuracy when doing
                 % cross-compilation.
                 output_rval_as_type(Info, SubRvalA, lt_float, Stream, !IO),
-                io.write_string(Stream, " ", !IO),
-                io.write_string(Stream, OpStr, !IO),
-                io.write_string(Stream, " ", !IO),
+                io.format(Stream, " %s ", [s(OpStr)], !IO),
                 output_rval_as_type(Info, SubRvalB, lt_float, Stream, !IO),
                 io.write_string(Stream, ";\n", !IO)
             else
                 true
             )
         ;
-            ( Op = array_index(_)
-            ; Op = string_unsafe_index_code_unit
-            ; Op = pointer_equal_conservative
-            ; Op = compound_lt
-            ; Op = compound_eq
-            ; Op = str_eq
-            ; Op = str_ne
-            ; Op = str_le
-            ; Op = str_ge
-            ; Op = str_lt
-            ; Op = str_gt
-            ; Op = unsigned_lt
-            ; Op = unsigned_le
-            ; Op = float_eq
-            ; Op = float_ne
-            ; Op = float_le
-            ; Op = float_ge
-            ; Op = float_lt
-            ; Op = float_gt
-            ; Op = int_add(_)
-            ; Op = int_sub(_)
-            ; Op = int_mul(_)
-            ; Op = int_div(_)
+            ( Op = int_arith(_, _)
+            ; Op = int_cmp(_, _)
+            ; Op = int_as_uint_cmp(_)
+            ; Op = float_cmp(_)
+            ; Op = str_cmp(_)
+            ; Op = str_nzp
             ; Op = unchecked_left_shift(_, _)
             ; Op = unchecked_right_shift(_, _)
             ; Op = bitwise_and(_)
             ; Op = bitwise_or(_)
             ; Op = bitwise_xor(_)
-            ; Op = int_mod(_)
-            ; Op = eq(_)
-            ; Op = ne(_)
             ; Op = logical_and
             ; Op = logical_or
-            ; Op = int_lt(_)
-            ; Op = int_gt(_)
-            ; Op = int_le(_)
-            ; Op = int_ge(_)
-            ; Op = str_cmp
             ; Op = offset_str_eq(_, _)
+            ; Op = array_index(_)
+            ; Op = string_unsafe_index_code_unit
+            ; Op = pointer_equal_conservative
+            ; Op = compound_lt
+            ; Op = compound_eq
             ; Op = body
             ; Op = float_from_dword
             ; Op = int64_from_dword
@@ -1239,13 +1214,8 @@ output_rval_binop(Stream, Info, Op, SubRvalA, SubRvalB, !IO) :-
         % the now-deleted Erlang backend.
         unexpected($file, $pred, "compound_compare_binop")
     ;
-        ( Op = str_eq, OpStr = "=="
-        ; Op = str_ne, OpStr = "!="
-        ; Op = str_le, OpStr = "<="
-        ; Op = str_ge, OpStr = ">="
-        ; Op = str_lt, OpStr = "<"
-        ; Op = str_gt, OpStr = ">"
-        ),
+        Op = str_cmp(CmpOp),
+        OpStr = cmp_op_c_operator(CmpOp),
         io.write_string(Stream, "(strcmp(", !IO),
         ( if SubRvalA = const(llconst_string(SubRvalAConst)) then
             output_rval_const(Info, llconst_string(SubRvalAConst), Stream, !IO)
@@ -1260,90 +1230,86 @@ output_rval_binop(Stream, Info, Op, SubRvalA, SubRvalB, !IO) :-
             io.write_string(Stream, "(char *) ", !IO),
             output_rval_as_type(Info, SubRvalB, lt_data_ptr, Stream, !IO)
         ),
-        io.write_string(Stream, ")", !IO),
-        io.write_string(Stream, " ", !IO),
-        io.write_string(Stream, OpStr, !IO),
-        io.write_string(Stream, " ", !IO),
-        io.write_string(Stream, "0)", !IO)
+        io.format(Stream, ") %s 0)", [s(OpStr)], !IO)
     ;
-        ( Op = float_eq,    OpStr = "=="
-        ; Op = float_ne,    OpStr = "!="
-        ; Op = float_le,    OpStr = "<="
-        ; Op = float_ge,    OpStr = ">="
-        ; Op = float_lt,    OpStr = "<"
-        ; Op = float_gt,    OpStr = ">"
-        ; Op = float_add,   OpStr = "+"
-        ; Op = float_sub,   OpStr = "-"
-        ; Op = float_mul,   OpStr = "*"
-        ; Op = float_div,   OpStr = "/"
+        (
+            Op = float_cmp(CmpOp),
+            OpStr = cmp_op_c_operator(CmpOp)
+        ;
+            Op = float_arith(ArithOp),
+            OpStr = arith_op_c_operator(coerce(ArithOp))
         ),
         io.write_string(Stream, "(", !IO),
         output_rval_as_type(Info, SubRvalA, lt_float, Stream, !IO),
-        io.write_string(Stream, " ", !IO),
-        io.write_string(Stream, OpStr, !IO),
-        io.write_string(Stream, " ", !IO),
+        io.format(Stream, " %s ", [s(OpStr)], !IO),
         output_rval_as_type(Info, SubRvalB, lt_float, Stream, !IO),
         io.write_string(Stream, ")", !IO)
     ;
-        Op = unsigned_lt,
+        Op = int_as_uint_cmp(CmpOp),
+        OpStr = cmp_op_c_operator(coerce(CmpOp)),
+        Uint = lt_int(int_type_uint),
         io.write_string(Stream, "(", !IO),
-        output_rval_as_type(Info, SubRvalA, lt_int(int_type_uint),
-            Stream, !IO),
-        io.write_string(Stream, " < ", !IO),
-        output_rval_as_type(Info, SubRvalB, lt_int(int_type_uint),
-            Stream, !IO),
+        output_rval_as_type(Info, SubRvalA, Uint, Stream, !IO),
+        io.format(Stream, " %s ", [s(OpStr)], !IO),
+        output_rval_as_type(Info, SubRvalB, Uint, Stream, !IO),
         io.write_string(Stream, ")", !IO)
     ;
-        Op = unsigned_le,
-        io.write_string(Stream, "(", !IO),
-        output_rval_as_type(Info, SubRvalA, lt_int(int_type_uint),
-            Stream, !IO),
-        io.write_string(Stream, " <= ", !IO),
-        output_rval_as_type(Info, SubRvalB, lt_int(int_type_uint),
-            Stream, !IO),
-        io.write_string(Stream, ")", !IO)
-    ;
-        ( Op = int_add(IntType), OpStr = "+"
-        ; Op = int_sub(IntType), OpStr = "-"
-        ; Op = int_mul(IntType), OpStr = "*"
-        ),
+        Op = int_arith(IntType, ArithOp),
         (
-            (
-                IntType = int_type_int,
-                SignedType = "MR_Integer",
-                UnsignedType = "MR_Unsigned"
-            ;
-                IntType = int_type_int8,
-                SignedType = "int8_t",
-                UnsignedType = "uint8_t"
-            ;
-                IntType = int_type_int16,
-                SignedType = "int16_t",
-                UnsignedType = "uint16_t"
-            ;
-                IntType = int_type_int32,
-                SignedType = "int32_t",
-                UnsignedType = "uint32_t"
-            ;
-                IntType = int_type_int64,
-                SignedType = "int64_t",
-                UnsignedType = "uint64_t"
+            ( ArithOp = ao_add, OpStr = "+"
+            ; ArithOp = ao_sub, OpStr = "-"
+            ; ArithOp = ao_mul, OpStr = "*"
             ),
-            % We used to handle X + (-C) (for constant C) specially, by
-            % converting it to X - C, but we no longer do that since it
-            % would overflow in the case where C == min_int.
-            io.format(Stream, "(%s) ((%s) ",
-                [s(SignedType), s(UnsignedType)], !IO),
-            output_rval_as_type(Info, SubRvalA, lt_int(IntType), Stream, !IO),
-            io.format(Stream, " %s (%s) ", [s(OpStr), s(UnsignedType)], !IO),
-            output_rval_as_type(Info, SubRvalB, lt_int(IntType), Stream, !IO),
-            io.write_string(Stream, ")", !IO)
+            (
+                (
+                    IntType = int_type_int,
+                    SignedType = "MR_Integer",
+                    UnsignedType = "MR_Unsigned"
+                ;
+                    IntType = int_type_int8,
+                    SignedType = "int8_t",
+                    UnsignedType = "uint8_t"
+                ;
+                    IntType = int_type_int16,
+                    SignedType = "int16_t",
+                    UnsignedType = "uint16_t"
+                ;
+                    IntType = int_type_int32,
+                    SignedType = "int32_t",
+                    UnsignedType = "uint32_t"
+                ;
+                    IntType = int_type_int64,
+                    SignedType = "int64_t",
+                    UnsignedType = "uint64_t"
+                ),
+                Type = lt_int(IntType),
+                % We used to handle X + (-C) (for constant C) specially, by
+                % converting it to X - C, but we no longer do that since it
+                % would overflow in the case where C == min_int.
+                io.format(Stream, "(%s) ((%s) ",
+                    [s(SignedType), s(UnsignedType)], !IO),
+                output_rval_as_type(Info, SubRvalA, Type, Stream, !IO),
+                io.format(Stream, " %s (%s) ",
+                    [s(OpStr), s(UnsignedType)], !IO),
+                output_rval_as_type(Info, SubRvalB, Type, Stream, !IO),
+                io.write_string(Stream, ")", !IO)
+            ;
+                ( IntType = int_type_uint
+                ; IntType = int_type_uint8
+                ; IntType = int_type_uint16
+                ; IntType = int_type_uint32
+                ; IntType = int_type_uint64
+                ),
+                Type = lt_int(IntType),
+                io.write_string(Stream, "(", !IO),
+                output_rval_as_type(Info, SubRvalA, Type, Stream, !IO),
+                io.format(Stream, " %s ", [s(OpStr)], !IO),
+                output_rval_as_type(Info, SubRvalB, Type, Stream, !IO),
+                io.write_string(Stream, ")", !IO)
+            )
         ;
-            ( IntType = int_type_uint
-            ; IntType = int_type_uint8
-            ; IntType = int_type_uint16
-            ; IntType = int_type_uint32
-            ; IntType = int_type_uint64
+            ( ArithOp = ao_div, OpStr = "/"
+            ; ArithOp = ao_rem, OpStr = "%"
             ),
             io.write_string(Stream, "(", !IO),
             output_rval_as_type(Info, SubRvalA, lt_int(IntType), Stream, !IO),
@@ -1352,24 +1318,14 @@ output_rval_binop(Stream, Info, Op, SubRvalA, SubRvalB, !IO) :-
             io.write_string(Stream, ")", !IO)
         )
     ;
-        ( Op = int_div(IntType),        OpStr = "/"
-        ; Op = int_mod(IntType),        OpStr = "%"
-        ; Op = eq(IntType),             OpStr = "=="
-        ; Op = ne(IntType),             OpStr = "!="
-        ; Op = int_lt(IntType),         OpStr = "<"
-        ; Op = int_gt(IntType),         OpStr = ">"
-        ; Op = int_le(IntType),         OpStr = "<="
-        ; Op = int_ge(IntType),         OpStr = ">="
-        ; Op = bitwise_and(IntType),    OpStr = "&"
-        ; Op = bitwise_or(IntType),     OpStr = "|"
-        ; Op = bitwise_xor(IntType),    OpStr = "^"
-        ),
+        Op = int_cmp(IntType, CmpOp),
+        OpStr = cmp_op_c_operator(CmpOp),
         ( if
             % Special-case equality ops to avoid some unnecessary casts --
             % there is no difference between signed and unsigned equality,
             % so if both args are unsigned, we don't need to cast them to
             % MR_Integer.
-            ( Op = eq(_) ; Op = ne(_) ),
+            ( CmpOp = eq ; CmpOp = ne ),
             require_complete_switch [IntType]
             (
                 ( IntType = int_type_int
@@ -1404,29 +1360,33 @@ output_rval_binop(Stream, Info, Op, SubRvalA, SubRvalB, !IO) :-
         then
             io.write_string(Stream, "(", !IO),
             output_rval(Info, SubRvalA, Stream, !IO),
-            io.write_string(Stream, " ", !IO),
-            io.write_string(Stream, OpStr, !IO),
-            io.write_string(Stream, " ", !IO),
+            io.format(Stream, " %s ", [s(OpStr)], !IO),
             output_rval(Info, SubRvalB, Stream, !IO),
             io.write_string(Stream, ")", !IO)
         else
             io.write_string(Stream, "(", !IO),
             output_rval_as_type(Info, SubRvalA, lt_int(IntType), Stream, !IO),
-            io.write_string(Stream, " ", !IO),
-            io.write_string(Stream, OpStr, !IO),
-            io.write_string(Stream, " ", !IO),
+            io.format(Stream, " %s ", [s(OpStr)], !IO),
             output_rval_as_type(Info, SubRvalB, lt_int(IntType), Stream, !IO),
             io.write_string(Stream, ")", !IO)
         )
+    ;
+        ( Op = bitwise_and(IntType),    OpStr = "&"
+        ; Op = bitwise_or(IntType),     OpStr = "|"
+        ; Op = bitwise_xor(IntType),    OpStr = "^"
+        ),
+        io.write_string(Stream, "(", !IO),
+        output_rval_as_type(Info, SubRvalA, lt_int(IntType), Stream, !IO),
+        io.format(Stream, " %s ", [s(OpStr)], !IO),
+        output_rval_as_type(Info, SubRvalB, lt_int(IntType), Stream, !IO),
+        io.write_string(Stream, ")", !IO)
     ;
         ( Op = logical_and, OpStr = "&&"
         ; Op = logical_or,  OpStr = "||"
         ),
         io.write_string(Stream, "(", !IO),
         output_test_rval(Info, SubRvalA, Stream, !IO),
-        io.write_string(Stream, " ", !IO),
-        io.write_string(Stream, OpStr, !IO),
-        io.write_string(Stream, " ", !IO),
+        io.format(Stream, " %s ", [s(OpStr)], !IO),
         output_test_rval(Info, SubRvalB, Stream, !IO),
         io.write_string(Stream, ")", !IO)
     ;
@@ -1437,9 +1397,7 @@ output_rval_binop(Stream, Info, Op, SubRvalA, SubRvalB, !IO) :-
         ),
         io.write_string(Stream, "(", !IO),
         output_rval_as_type(Info, SubRvalA, lt_int(IntType), Stream, !IO),
-        io.write_string(Stream, " ", !IO),
-        io.write_string(Stream, OpStr, !IO),
-        io.write_string(Stream, " ", !IO),
+        io.format(Stream, " %s ", [s(OpStr)], !IO),
         (
             ShiftType = shift_by_int
         ;
@@ -1449,7 +1407,7 @@ output_rval_binop(Stream, Info, Op, SubRvalA, SubRvalB, !IO) :-
         output_rval_as_type(Info, SubRvalB, lt_int(int_type_int), Stream, !IO),
         io.write_string(Stream, ")", !IO)
     ;
-        Op = str_cmp,
+        Op = str_nzp,
         io.write_string(Stream, "MR_strcmp(", !IO),
         output_rval_as_type(Info, SubRvalA, lt_data_ptr, Stream, !IO),
         io.write_string(Stream, ", ", !IO),
@@ -1891,8 +1849,9 @@ do_output_test_rval(Stream, Info, MaybeNegated, TestRval, !IO) :-
                     TestRval, !IO)
             )
         ;
-            ( Binop = eq(IntType), Negated0 = no
-            ; Binop = ne(IntType), Negated0 = yes
+            Binop = int_cmp(IntType, CmpOp),
+            ( CmpOp = eq, Negated0 = no
+            ; CmpOp = ne, Negated0 = yes
             ),
             ( if
                 args_are_of_ptag_test(SubRvalA, SubRvalB, VarRval, Ptag)
@@ -1950,10 +1909,11 @@ do_output_test_rval(Stream, Info, MaybeNegated, TestRval, !IO) :-
                     TestRval, !IO)
             )
         ;
-            ( Binop = int_lt(IntType), PosM = "MR_INT_LT", NegM = "MR_INT_GE"
-            ; Binop = int_gt(IntType), PosM = "MR_INT_GT", NegM = "MR_INT_LT"
-            ; Binop = int_le(IntType), PosM = "MR_INT_LE", NegM = "MR_INT_GT"
-            ; Binop = int_ge(IntType), PosM = "MR_INT_GE", NegM = "MR_INT_LT"
+            Binop = int_cmp(IntType, CmpOp),
+            ( CmpOp = lt, PosM = "MR_INT_LT", NegM = "MR_INT_GE"
+            ; CmpOp = gt, PosM = "MR_INT_GT", NegM = "MR_INT_LT"
+            ; CmpOp = le, PosM = "MR_INT_LE", NegM = "MR_INT_GT"
+            ; CmpOp = ge, PosM = "MR_INT_GE", NegM = "MR_INT_LT"
             ),
             ( if
                 SubRvalB = const(llconst_int(ConstB)),
@@ -1973,11 +1933,13 @@ do_output_test_rval(Stream, Info, MaybeNegated, TestRval, !IO) :-
                     TestRval, !IO)
             )
         ;
-            ( Binop = int_add(_)
-            ; Binop = int_sub(_)
-            ; Binop = int_mul(_)
-            ; Binop = int_div(_)
-            ; Binop = int_mod(_)
+            ( Binop = int_arith(_, _)
+            ; Binop = float_arith(_)
+            ; Binop = int_as_uint_cmp(_)
+            ; Binop = float_cmp(_)
+            ; Binop = str_cmp(_)
+            ; Binop = str_nzp
+            ; Binop = offset_str_eq(_, _)
             ; Binop = unchecked_left_shift(_, _)
             ; Binop = unchecked_right_shift(_, _)
             ; Binop = bitwise_and(_)
@@ -1987,26 +1949,6 @@ do_output_test_rval(Stream, Info, MaybeNegated, TestRval, !IO) :-
             ; Binop = body
             ; Binop = array_index(_)
             ; Binop = string_unsafe_index_code_unit
-            ; Binop = str_eq
-            ; Binop = str_ne
-            ; Binop = str_lt
-            ; Binop = str_gt
-            ; Binop = str_le
-            ; Binop = str_ge
-            ; Binop = str_cmp
-            ; Binop = offset_str_eq(_, _)
-            ; Binop = unsigned_lt
-            ; Binop = unsigned_le
-            ; Binop = float_add
-            ; Binop = float_sub
-            ; Binop = float_mul
-            ; Binop = float_div
-            ; Binop = float_eq
-            ; Binop = float_ne
-            ; Binop = float_lt
-            ; Binop = float_gt
-            ; Binop = float_le
-            ; Binop = float_ge
             ; Binop = float_from_dword
             ; Binop = int64_from_dword
             ; Binop = uint64_from_dword
@@ -2045,18 +1987,19 @@ do_output_test_rval_base(Stream, Info, MaybeNegated, Test0, !IO) :-
 
 is_ptag_test(TestRval, VarRval, Ptag, Negated) :-
     TestRval = binop(BinOp, SubRvalA, SubRvalB),
+    BinOp = int_cmp(_IntType, CmpOp),
     args_are_of_ptag_test(SubRvalA, SubRvalB, VarRval, Ptag),
     (
-        BinOp = eq(_),
+        CmpOp = eq,
         Negated = no
     ;
-        BinOp = ne(_),
+        CmpOp = ne,
         Negated = yes
     ).
 
 :- pred args_are_of_ptag_test(rval::in, rval::in, rval::out, ptag::out)
     is semidet.
-    
+
 args_are_of_ptag_test(SubRvalA, SubRvalB, VarRval, Ptag) :-
     SubRvalA = unop(tag, VarRval),
     SubRvalB = const(llconst_int(PtagInt)),
@@ -2067,7 +2010,7 @@ args_are_of_ptag_test(SubRvalA, SubRvalB, VarRval, Ptag) :-
     is semidet.
 
 is_remote_stag_test(Test, VarRval, Ptag, Sectag) :-
-    Test = binop(eq(int_type_int), Left, Right),
+    Test = binop(int_cmp(int_type_int, eq), Left, Right),
     Left = lval(field(yes(Ptag), VarRval, Zero)),
     Zero = const(llconst_int(0)),
     Right = const(llconst_int(SectagInt)),
@@ -2135,7 +2078,8 @@ float_const_expr_name(Expr, Name) :-
     string::out) is semidet.
 
 float_const_binop_expr_name(Op, Arg1, Arg2, Name) :-
-    float_op_name(Op, OpName),
+    Op = float_arith(ArithOp),
+    float_arith_op_name(ArithOp, OpName),
     float_const_expr_name(Arg1, Arg1Name),
     float_const_expr_name(Arg2, Arg2Name),
     % We use prefix notation (operator, argument, argument) rather than infix,
@@ -2160,12 +2104,12 @@ float_literal_name(Float, FloatName) :-
     % type is float; bind the output string to a name for that operator
     % that is suitable for use in a C identifier
     %
-:- pred float_op_name(binary_op::in, string::out) is semidet.
+:- pred float_arith_op_name(float_arith_op::in, string::out) is det.
 
-float_op_name(float_add, "fadd").
-float_op_name(float_sub, "fsub").
-float_op_name(float_mul, "fmul").
-float_op_name(float_div, "fdiv").
+float_arith_op_name(ao_add, "fadd").
+float_arith_op_name(ao_sub, "fsub").
+float_arith_op_name(ao_mul, "fmul").
+float_arith_op_name(ao_div, "fdiv").
 
 %----------------------------------------------------------------------------%
 

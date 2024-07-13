@@ -687,29 +687,20 @@ mlds_output_binop(Opts, Stream, Op, X, Y, !IO) :-
         mlds_output_rval(Opts, Y, Stream, !IO),
         io.write_string(Stream, "))", !IO)
     ;
-        ( Op = str_eq, OpStr = "=="
-        ; Op = str_ne, OpStr = "!="
-        ; Op = str_le, OpStr = "<="
-        ; Op = str_ge, OpStr = ">="
-        ; Op = str_lt, OpStr = "<"
-        ; Op = str_gt, OpStr = ">"
-        ),
+        Op = str_cmp(CmpOp),
+        OpStr = cmp_op_c_operator(CmpOp),
         io.write_string(Stream, "(strcmp(", !IO),
         mlds_output_rval(Opts, X, Stream, !IO),
         io.write_string(Stream, ", ", !IO),
         mlds_output_rval(Opts, Y, Stream, !IO),
         io.format(Stream, ") %s 0)", [s(OpStr)], !IO)
     ;
-        ( Op = float_eq, OpStr = "=="
-        ; Op = float_ne, OpStr = "!="
-        ; Op = float_le, OpStr = "<="
-        ; Op = float_ge, OpStr = ">="
-        ; Op = float_lt, OpStr = "<"
-        ; Op = float_gt, OpStr = ">"
-        ; Op = float_add, OpStr = "+"
-        ; Op = float_sub, OpStr = "-"
-        ; Op = float_mul, OpStr = "*"
-        ; Op = float_div, OpStr = "/"
+        (
+            Op = float_cmp(CmpOp),
+            OpStr = cmp_op_c_operator(CmpOp)
+        ;
+            Op = float_arith(ArithOp),
+            OpStr = arith_op_c_operator(coerce(ArithOp))
         ),
         io.write_string(Stream, "(", !IO),
         mlds_output_bracketed_rval(Opts, Stream, X, !IO),
@@ -717,65 +708,80 @@ mlds_output_binop(Opts, Stream, Op, X, Y, !IO) :-
         mlds_output_bracketed_rval(Opts, Stream, Y, !IO),
         io.write_string(Stream, ")", !IO)
     ;
-        ( Op = unsigned_lt, OpStr = "<"
-        ; Op = unsigned_le, OpStr = "<="
-        ),
+        Op = int_as_uint_cmp(CmpOp),
+        OpStr = cmp_op_c_operator(coerce(CmpOp)),
         io.write_string(Stream, "(((MR_Unsigned) ", !IO),
         mlds_output_rval_as_unsigned_op_arg(Opts, Stream, 2147483647, X, !IO),
         io.format(Stream, ") %s ((MR_Unsigned) ", [s(OpStr)], !IO),
         mlds_output_rval_as_unsigned_op_arg(Opts, Stream, 2147483647, Y, !IO),
         io.write_string(Stream, "))", !IO)
     ;
-        ( Op = int_add(IntType), OpStr = "+"
-        ; Op = int_sub(IntType), OpStr = "-"
-        ; Op = int_mul(IntType), OpStr = "*"
-        ),
+        Op = int_arith(IntType, ArithOp),
         (
-            % Max is the maximum signed integer of the given size
-            % that can be converted to the target unsigned type
-            % on all platforms.
-            (
-                IntType = int_type_int,
-                SignedType = "MR_Integer",
-                UnsignedType = "MR_Unsigned",
-                Max = 2147483647
-            ;
-                IntType = int_type_int8,
-                SignedType = "int8_t",
-                UnsignedType = "uint8_t",
-                Max = 127
-            ;
-                IntType = int_type_int16,
-                SignedType = "int16_t",
-                UnsignedType = "uint16_t",
-                Max = 32767
-            ;
-                IntType = int_type_int32,
-                SignedType = "int32_t",
-                UnsignedType = "uint32_t",
-                Max = 2147483647
-            ;
-                IntType = int_type_int64,
-                SignedType = "int64_t",
-                UnsignedType = "uint64_t",
-                Max = 2147483647            % for 32 bit platforms
-            ),
-            io.format(Stream, "(%s) ((%s) ",
-                [s(SignedType), s(UnsignedType)], !IO),
-            mlds_output_rval_as_unsigned_op_arg(Opts, Stream, Max, X, !IO),
-            io.format(Stream, " %s (%s) ", [s(OpStr), s(UnsignedType)], !IO),
-            mlds_output_rval_as_unsigned_op_arg(Opts, Stream, Max, Y, !IO),
-            io.write_string(Stream, ")", !IO)
-        ;
-            ( IntType = int_type_uint
-            ; IntType = int_type_uint8
-            ; IntType = int_type_uint16
-            ; IntType = int_type_uint32
-            ; IntType = int_type_uint64
+            ( ArithOp = ao_add, OpStr = "+"
+            ; ArithOp = ao_sub, OpStr = "-"
+            ; ArithOp = ao_mul, OpStr = "*"
             ),
             % We could treat X + (-const) specially, but we do not.
             % The reason is documented in the equivalent code in
             % llds_out_data.m.
+            (
+                % Max is the maximum signed integer of the given size
+                % that can be converted to the target unsigned type
+                % on all platforms.
+                (
+                    IntType = int_type_int,
+                    SignedType = "MR_Integer",
+                    UnsignedType = "MR_Unsigned",
+                    Max = 2147483647
+                ;
+                    IntType = int_type_int8,
+                    SignedType = "int8_t",
+                    UnsignedType = "uint8_t",
+                    Max = 127
+                ;
+                    IntType = int_type_int16,
+                    SignedType = "int16_t",
+                    UnsignedType = "uint16_t",
+                    Max = 32767
+                ;
+                    IntType = int_type_int32,
+                    SignedType = "int32_t",
+                    UnsignedType = "uint32_t",
+                    Max = 2147483647
+                ;
+                    IntType = int_type_int64,
+                    SignedType = "int64_t",
+                    UnsignedType = "uint64_t",
+                    Max = 2147483647            % for 32 bit platforms
+                ),
+                io.format(Stream, "(%s) ((%s) ",
+                    [s(SignedType), s(UnsignedType)], !IO),
+                mlds_output_rval_as_unsigned_op_arg(Opts, Stream, Max, X, !IO),
+                io.format(Stream, " %s (%s) ",
+                    [s(OpStr), s(UnsignedType)], !IO),
+                mlds_output_rval_as_unsigned_op_arg(Opts, Stream, Max, Y, !IO),
+                io.write_string(Stream, ")", !IO)
+            ;
+                ( IntType = int_type_uint
+                ; IntType = int_type_uint8
+                ; IntType = int_type_uint16
+                ; IntType = int_type_uint32
+                ; IntType = int_type_uint64
+                ),
+                % We could treat X + (-const) specially, but we do not.
+                % The reason is documented in the equivalent code in
+                % llds_out_data.m.
+                io.write_string(Stream, "(", !IO),
+                mlds_output_rval_as_op_arg(Opts, Stream, X, !IO),
+                io.format(Stream, " %s ", [s(OpStr)], !IO),
+                mlds_output_rval_as_op_arg(Opts, Stream, Y, !IO),
+                io.write_string(Stream, ")", !IO)
+            )
+        ;
+            ( ArithOp = ao_div, OpStr = "/"
+            ; ArithOp = ao_rem, OpStr = "%"
+            ),
             io.write_string(Stream, "(", !IO),
             mlds_output_rval_as_op_arg(Opts, Stream, X, !IO),
             io.format(Stream, " %s ", [s(OpStr)], !IO),
@@ -783,22 +789,13 @@ mlds_output_binop(Opts, Stream, Op, X, Y, !IO) :-
             io.write_string(Stream, ")", !IO)
         )
     ;
-        ( Op = int_div(_), OpStr = "/"
-        ; Op = int_mod(_), OpStr = "%"
-        ; Op = eq(_), OpStr = "=="
-        ; Op = ne(_), OpStr = "!="
-        ; Op = int_lt(_), OpStr = "<"
-        ; Op = int_gt(_), OpStr = ">"
-        ; Op = int_le(_), OpStr = "<="
-        ; Op = int_ge(_), OpStr = ">="
-        ; Op = bitwise_and(_), OpStr = "&"
-        ; Op = bitwise_or(_), OpStr = "|"
-        ; Op = bitwise_xor(_), OpStr = "^"
-        ; Op = logical_and, OpStr = "&&"
-        ; Op = logical_or, OpStr = "||"
+        ( Op = int_cmp(_, CmpOp),   OpStr = cmp_op_c_operator(CmpOp)
+        ; Op = bitwise_and(_),      OpStr = "&"
+        ; Op = bitwise_or(_),       OpStr = "|"
+        ; Op = bitwise_xor(_),      OpStr = "^"
+        ; Op = logical_and,         OpStr = "&&"
+        ; Op = logical_or,          OpStr = "||"
         ),
-        % We could treat X + (-const) specially, but we do not.
-        % The reason is documented in the equivalent code in llds_out_data.m.
         io.write_string(Stream, "(", !IO),
         mlds_output_rval_as_op_arg(Opts, Stream, X, !IO),
         io.format(Stream, " %s ", [s(OpStr)], !IO),
@@ -828,7 +825,7 @@ mlds_output_binop(Opts, Stream, Op, X, Y, !IO) :-
         ),
         io.write_string(Stream, ")", !IO)
     ;
-        Op = str_cmp,
+        Op = str_nzp,
         io.write_string(Stream, "MR_strcmp(", !IO),
         mlds_output_rval_as_op_arg(Opts, Stream, X, !IO),
         io.write_string(Stream, ", ", !IO),

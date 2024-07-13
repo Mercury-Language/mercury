@@ -472,25 +472,28 @@ output_binop_for_java(Info, Stream, Op, X, Y, !IO) :-
         output_rval_for_java(Info, Y, Stream, !IO),
         io.write_string(Stream, "]", !IO)
     ;
-        Op = str_eq,
-        output_rval_for_java(Info, X, Stream, !IO),
-        io.write_string(Stream, ".equals(", !IO),
-        output_rval_for_java(Info, Y, Stream, !IO),
-        io.write_string(Stream, ")", !IO)
+        Op = str_cmp(CmpOp),
+        (
+            CmpOp = eq,
+            output_rval_for_java(Info, X, Stream, !IO),
+            io.write_string(Stream, ".equals(", !IO),
+            output_rval_for_java(Info, Y, Stream, !IO),
+            io.write_string(Stream, ")", !IO)
+        ;
+            ( CmpOp = ne, OpStr = "!="
+            ; CmpOp = lt, OpStr = "<"
+            ; CmpOp = gt, OpStr = ">"
+            ; CmpOp = le, OpStr = "<="
+            ; CmpOp = ge, OpStr = ">="
+            ),
+            io.write_string(Stream, "(", !IO),
+            output_rval_for_java(Info, X, Stream, !IO),
+            io.write_string(Stream, ".compareTo(", !IO),
+            output_rval_for_java(Info, Y, Stream, !IO),
+            io.format(Stream, ") %s 0)", [s(OpStr)], !IO)
+        )
     ;
-        ( Op = str_ne, OpStr = "!="
-        ; Op = str_lt, OpStr = "<"
-        ; Op = str_gt, OpStr = ">"
-        ; Op = str_le, OpStr = "<="
-        ; Op = str_ge, OpStr = ">="
-        ),
-        io.write_string(Stream, "(", !IO),
-        output_rval_for_java(Info, X, Stream, !IO),
-        io.write_string(Stream, ".compareTo(", !IO),
-        output_rval_for_java(Info, Y, Stream, !IO),
-        io.format(Stream, ") %s 0)", [s(OpStr)], !IO)
-    ;
-        Op = str_cmp,
+        Op = str_nzp,
         io.write_string(Stream, "(", !IO),
         output_rval_for_java(Info, X, Stream, !IO),
         io.write_string(Stream, ".compareTo(", !IO),
@@ -504,27 +507,30 @@ output_binop_for_java(Info, Stream, Op, X, Y, !IO) :-
         output_rval_for_java(Info, Y, Stream, !IO),
         io.write_string(Stream, ") ", !IO)
     ;
-        ( Op = int_add(_)
-        ; Op = int_sub(_)
-        ; Op = int_mul(_)
-        ; Op = int_div(_)
-        ; Op = int_mod(_)
-        ; Op = unchecked_left_shift(_, _)
+        Op = int_arith(IntType, ArithOp),
+        % Handle these in a separate predicate to reduce gcc memory
+        % requirements, particularly when building in deep profiling grades.
+        output_int_arith_binop_for_java(Info, Stream, IntType, ArithOp,
+            X, Y, !IO)
+    ;
+        Op = int_cmp(IntType, CmpOp),
+        % Handle these in a separate predicate to reduce gcc memory
+        % requirements, particularly when building in deep profiling grades.
+        output_int_cmp_binop_for_java(Info, Stream, IntType, CmpOp, X, Y, !IO)
+    ;
+        ( Op = unchecked_left_shift(_, _)
         ; Op = unchecked_right_shift(_, _)
         ; Op = bitwise_and(_)
         ; Op = bitwise_or(_)
         ; Op = bitwise_xor(_)
-        ; Op = int_lt(_)
-        ; Op = int_gt(_)
-        ; Op = int_le(_)
-        ; Op = int_ge(_)
         ),
-        % Handle these in a separate switch to reduce gcc memory requirements,
-        % particularly when building in deep profiling grades.
-        output_int_binop_for_java(Info, Stream, Op, X, Y, !IO)
+        % Handle these in a separate predicate to reduce gcc memory
+        % requirements, particularly when building in deep profiling grades.
+        output_int_misc_binop_for_java(Info, Stream, Op, X, Y, !IO)
     ;
-        ( Op = unsigned_lt, OpStr = "<"
-        ; Op = unsigned_le, OpStr = "<="
+        Op = int_as_uint_cmp(CmpOp),
+        ( CmpOp = lt, OpStr = "<"
+        ; CmpOp = le, OpStr = "<="
         ),
         ( if rval_is_enum_object(X) then
             % The bit masking won't be needed in the vast majority of cases,
@@ -545,20 +551,11 @@ output_binop_for_java(Info, Stream, Op, X, Y, !IO) :-
             io.write_string(Stream, " & 0xffffffffL))", !IO)
         )
     ;
-        ( Op = logical_and,     OpStr = "&&"
-        ; Op = logical_or,      OpStr = "||"
-        ; Op = eq(_),           OpStr = "=="
-        ; Op = ne(_),           OpStr = "!="
-        ; Op = float_add,       OpStr = "+"
-        ; Op = float_sub,       OpStr = "-"
-        ; Op = float_mul,       OpStr = "*"
-        ; Op = float_div,       OpStr = "/"
-        ; Op = float_eq,        OpStr = "=="
-        ; Op = float_ne,        OpStr = "!="
-        ; Op = float_lt,        OpStr = "<"
-        ; Op = float_gt,        OpStr = ">"
-        ; Op = float_le,        OpStr = "<="
-        ; Op = float_ge,        OpStr = ">="
+        ( Op = logical_and,             OpStr = "&&"
+        ; Op = logical_or,              OpStr = "||"
+        ; Op = float_arith(ArithOp),    OpStr =
+                                        arith_op_c_operator(coerce(ArithOp))
+        ; Op = float_cmp(CmpOp),        OpStr = cmp_op_c_operator(CmpOp)
         ),
         output_basic_binop_maybe_with_enum_for_java(Info, Stream,
             OpStr, X, Y, !IO)
@@ -575,16 +572,16 @@ output_binop_for_java(Info, Stream, Op, X, Y, !IO) :-
         unexpected($pred, "invalid binary operator")
     ).
 
-:- pred output_int_binop_for_java(java_out_info::in, io.text_output_stream::in,
-    binary_op::in(int_binary_op), mlds_rval::in, mlds_rval::in, io::di, io::uo)
-    is det.
-:- pragma no_inline(pred(output_int_binop_for_java/7)).
+:- pred output_int_arith_binop_for_java(java_out_info::in,
+    io.text_output_stream::in, int_type::in, arith_op::in,
+    mlds_rval::in, mlds_rval::in, io::di, io::uo) is det.
+:- pragma no_inline(pred(output_int_arith_binop_for_java/8)).
 
-output_int_binop_for_java(Info, Stream, Op, X, Y, !IO) :-
+output_int_arith_binop_for_java(Info, Stream, Type, Op, X, Y, !IO) :-
     (
-        ( Op = int_add(Type),   OpStr = "+"
-        ; Op = int_sub(Type),   OpStr = "-"
-        ; Op = int_mul(Type),   OpStr = "*"
+        ( Op = ao_add,  OpStr = "+"
+        ; Op = ao_sub,  OpStr = "-"
+        ; Op = ao_mul,  OpStr = "*"
         ),
         (
             ( Type = int_type_int
@@ -609,8 +606,8 @@ output_int_binop_for_java(Info, Stream, Op, X, Y, !IO) :-
                 OpStr, X, Y, !IO)
         )
     ;
-        ( Op = int_div(Type),   OpStr = "/"
-        ; Op = int_mod(Type),   OpStr = "%"
+        ( Op = ao_div,  OpStr = "/"
+        ; Op = ao_rem,  OpStr = "%"
         ),
         (
             ( Type = int_type_int
@@ -641,17 +638,31 @@ output_int_binop_for_java(Info, Stream, Op, X, Y, !IO) :-
             % We could compute FuncName along with OpStr above,
             % but int64 operands are rare enough that it is better
             % not to burden the non-int64 code path with recording FuncName.
-            ( Op = int_div(_), FuncName = "java.lang.Long.divideUnsigned"
-            ; Op = int_mod(_), FuncName = "java.lang.Long.remainderUnsigned"
+            ( Op = ao_div,  FuncName = "java.lang.Long.divideUnsigned"
+            ; Op = ao_rem,  FuncName = "java.lang.Long.remainderUnsigned"
             ),
             output_binop_func_call_for_java(Info, Stream,
                 FuncName, X, Y, !IO)
         )
+    ).
+
+:- pred output_int_cmp_binop_for_java(java_out_info::in,
+    io.text_output_stream::in, int_type::in, cmp_op::in,
+    mlds_rval::in, mlds_rval::in, io::di, io::uo) is det.
+:- pragma no_inline(pred(output_int_cmp_binop_for_java/8)).
+
+output_int_cmp_binop_for_java(Info, Stream, Type, Op, X, Y, !IO) :-
+    (
+        ( Op = eq,    OpStr = "=="
+        ; Op = ne,    OpStr = "!="
+        ),
+        output_basic_binop_maybe_with_enum_for_java(Info, Stream,
+            OpStr, X, Y, !IO)
     ;
-        ( Op = int_lt(Type),    OpStr = "<"
-        ; Op = int_gt(Type),    OpStr = ">"
-        ; Op = int_le(Type),    OpStr = "<="
-        ; Op = int_ge(Type),    OpStr = ">="
+        ( Op = lt,    OpStr = "<"
+        ; Op = gt,    OpStr = ">"
+        ; Op = le,    OpStr = "<="
+        ; Op = ge,    OpStr = ">="
         ),
         (
             ( Type = int_type_int
@@ -677,7 +688,15 @@ output_int_binop_for_java(Info, Stream, Op, X, Y, !IO) :-
                 "java.lang.Long.compareUnsigned", X, Y, !IO),
             io.format(Stream, " %s 0)", [s(OpStr)], !IO)
         )
-    ;
+    ).
+
+:- pred output_int_misc_binop_for_java(java_out_info::in,
+    io.text_output_stream::in, binary_op::in(int_misc_binary_op),
+    mlds_rval::in, mlds_rval::in, io::di, io::uo) is det.
+:- pragma no_inline(pred(output_int_misc_binop_for_java/7)).
+
+output_int_misc_binop_for_java(Info, Stream, Op, X, Y, !IO) :-
+    (
         ( Op = bitwise_and(Type),   OpStr = "&"
         ; Op = bitwise_or(Type),    OpStr = "|"
         ; Op = bitwise_xor(Type),   OpStr = "^"

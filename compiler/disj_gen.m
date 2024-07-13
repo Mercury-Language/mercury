@@ -284,12 +284,13 @@ generate_lookup_disj(ResumeVars, LookupDisjInfo, Code, !CI, !CLD) :-
     TestMoreSolnsCode = from_list([
         llds_instr(assign(LaterBaseReg, lval(CurSlot)),
             "Init later base register"),
-        llds_instr(if_val(binop(int_ge(int_type_int), lval(LaterBaseReg),
-            const(llconst_int(MaxSlot))),
+        llds_instr(if_val(
+            binop(int_cmp(int_type_int, ge),
+                lval(LaterBaseReg), const(llconst_int(MaxSlot))),
             code_label(UndoLabel)),
             "Jump to undo hijack code if there are no more solutions"),
         llds_instr(assign(CurSlot,
-            binop(int_add(int_type_int), lval(CurSlot),
+            binop(int_arith(int_type_int, ao_add), lval(CurSlot),
             const(llconst_int(NumOutVars)))),
             "Update current slot"),
         llds_instr(goto(code_label(AfterUndoLabel)),

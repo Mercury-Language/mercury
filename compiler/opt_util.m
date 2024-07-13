@@ -1353,7 +1353,7 @@ is_const_condition(TestRval, Taken) :-
         bool.not(SubTaken, Taken)
     ;
         TestRval = binop(Op, SubRvalA, SubRvalB),
-        Op = eq(_),
+        Op = int_cmp(_, eq),
         SubRvalA = SubRvalB,
         Taken = yes
     ).

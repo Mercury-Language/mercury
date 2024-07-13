@@ -346,7 +346,7 @@ generate_nested_trie_try_chain(Info, _, [], !TryChainCode, !CI) :-
 generate_nested_trie_try_chain(Info, CodeUnitRval,
         [CodeUnitToAction | CodeUnitToActions], !TryChainCode, !CI) :-
     CodeUnitToAction = code_unit_to_action(CodeUnit, Action),
-    CondRval = binop(eq(int_type_int),
+    CondRval = binop(int_cmp(int_type_int, eq),
         CodeUnitRval, const(llconst_int(CodeUnit))),
     (
         Action = action_nested_trie(NestedTrieNodeLabel),
@@ -382,7 +382,7 @@ generate_nested_trie_binary_search(Info, CodeUnitRval,
         HeadCodeUnitToActions = code_unit_to_action(LeastCodeUnitR, _),
         code_info.get_next_label(LabelR, !CI),
 
-        TestRvalLR = binop(int_ge(int_type_int),
+        TestRvalLR = binop(int_cmp(int_type_int, ge),
             CodeUnitRval, const(llconst_int(LeastCodeUnitR))),
         CommentLR = "binary search on code unit",
         TestCodeLR = singleton(
@@ -472,7 +472,7 @@ generate_string_trie_lookup_switch(VarRval, LookupSwitchInfo, CanFail,
     ;
         CanFail = can_fail,
         get_next_label(NonFailLabel, !CI),
-        CaseNumIsValid = binop(int_ge(int_type_int),
+        CaseNumIsValid = binop(int_cmp(int_type_int, ge),
             lval(CaseNumRegLval), const(llconst_int(0))),
         TestForFailCode = singleton(
             llds_instr(if_val(CaseNumIsValid, code_label(NonFailLabel)),
@@ -1228,7 +1228,7 @@ generate_string_hash_switch_search(Info, VarRval, TableAddrRval,
             MultiplyInstrs = [
                 llds_instr(
                     assign(RowStartReg,
-                        binop(int_mul(int_type_int),
+                        binop(int_arith(int_type_int, ao_mul),
                             lval(SlotReg), const(llconst_int(NumColumns)))),
                     "find the start of the row")
             ]
@@ -1251,9 +1251,9 @@ generate_string_hash_switch_search(Info, VarRval, TableAddrRval,
                 llds_instr(
                     if_val(
                         binop(logical_or,
-                            binop(eq(int_type_int),
+                            binop(int_cmp(int_type_int, eq),
                                 lval(StringReg), const(llconst_int(0))),
-                            binop(str_ne, lval(StringReg), VarRval)),
+                            binop(str_cmp(ne), lval(StringReg), VarRval)),
                     code_label(FailLabel)),
                     "did we find a match? nofulljump")
             ]) ++
@@ -1275,7 +1275,7 @@ generate_string_hash_switch_search(Info, VarRval, TableAddrRval,
                     "begin hash chain loop, nofulljump"),
                 llds_instr(
                     assign(RowStartReg,
-                        binop(int_mul(int_type_int),
+                        binop(int_arith(int_type_int, ao_mul),
                             lval(SlotReg), const(llconst_int(NumColumns)))),
                     "find the start of the row"),
                 llds_instr(
@@ -1286,9 +1286,9 @@ generate_string_hash_switch_search(Info, VarRval, TableAddrRval,
                 llds_instr(
                     if_val(
                         binop(logical_or,
-                            binop(eq(int_type_int),
+                            binop(int_cmp(int_type_int, eq),
                                 lval(StringReg), const(llconst_int(0))),
-                            binop(str_ne, lval(StringReg), VarRval)),
+                            binop(str_cmp(ne), lval(StringReg), VarRval)),
                         code_label(NoMatchLabel)),
                     "did we find a match? nofulljump")
             ]) ++
@@ -1300,12 +1300,12 @@ generate_string_hash_switch_search(Info, VarRval, TableAddrRval,
                     assign(SlotReg,
                         binop(array_index(ArrayElemType),
                             TableAddrRval,
-                            binop(int_add(int_type_int),
+                            binop(int_arith(int_type_int, ao_add),
                                 lval(RowStartReg), const(llconst_int(1))))),
                     "get next slot in hash chain"),
                 llds_instr(
                     if_val(
-                        binop(int_ge(int_type_int),
+                        binop(int_cmp(int_type_int, ge),
                             lval(SlotReg), const(llconst_int(0))),
                         code_label(LoopStartLabel)),
                     "if not at the end of the chain, keep searching"),
@@ -1358,8 +1358,8 @@ generate_string_binary_jump_switch(VarRval, VarName, TaggedCases,
             computed_goto(
                 binop(array_index(ArrayElemType),
                     TableAddrRval,
-                    binop(int_add(int_type_int),
-                        binop(int_mul(int_type_int),
+                    binop(int_arith(int_type_int, ao_add),
+                        binop(int_arith(int_type_int, ao_mul),
                             lval(MidReg),
                             const(llconst_int(NumColumns))),
                         const(llconst_int(1)))),
@@ -1674,33 +1674,34 @@ generate_string_binary_switch_search(Info, VarRval, TableAddrRval,
                 "begin table search loop, nofulljump"),
             llds_instr(
                 if_val(
-                    binop(int_gt(int_type_int), lval(LoReg), lval(HiReg)),
+                    binop(int_cmp(int_type_int, gt), lval(LoReg), lval(HiReg)),
                     code_label(FailLabel)),
                 "have we searched all of the table?"),
             llds_instr(
                 assign(MidReg,
-                    binop(int_div(int_type_int),
-                        binop(int_add(int_type_int), lval(LoReg), lval(HiReg)),
+                    binop(int_arith(int_type_int, ao_div),
+                        binop(int_arith(int_type_int, ao_add),
+                            lval(LoReg), lval(HiReg)),
                         const(llconst_int(2)))), ""),
             llds_instr(
                 assign(ResultReg,
-                    binop(str_cmp,
+                    binop(str_nzp,
                         VarRval,
                         binop(array_index(ArrayElemType),
                             TableAddrRval,
-                            binop(int_mul(int_type_int),
+                            binop(int_arith(int_type_int, ao_mul),
                                 lval(MidReg),
                                 const(llconst_int(NumColumns)))))),
                 "compare with the middle element"),
             llds_instr(
                 if_val(
-                    binop(int_ge(int_type_int),
+                    binop(int_cmp(int_type_int, ge),
                         lval(ResultReg), const(llconst_int(0))),
                     code_label(GtEqLabel)),
                 "branch away unless key is in lo half"),
             llds_instr(
                 assign(HiReg,
-                    binop(int_sub(int_type_int),
+                    binop(int_arith(int_type_int, ao_sub),
                         lval(MidReg), const(llconst_int(1)))),
                 ""),
             llds_instr(goto(code_label(LoopStartLabel)),
@@ -1710,13 +1711,13 @@ generate_string_binary_switch_search(Info, VarRval, TableAddrRval,
             llds_instr(label(GtEqLabel), "nofulljump"),
             llds_instr(
                 if_val(
-                    binop(int_le(int_type_int),
+                    binop(int_cmp(int_type_int, le),
                         lval(ResultReg), const(llconst_int(0))),
                     code_label(EqLabel)),
                 "branch away unless key is in hi half"),
             llds_instr(
                 assign(LoReg,
-                    binop(int_add(int_type_int),
+                    binop(int_arith(int_type_int, ao_add),
                         lval(MidReg), const(llconst_int(1)))),
                 ""),
             llds_instr(goto(code_label(LoopStartLabel)),

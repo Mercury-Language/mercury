@@ -387,24 +387,15 @@ natural_negate_rval(TestRval0, TestRval) :-
         TestRval0 = binop(Binop0, SubTestRvalA0, SubTestRvalB0),
         require_complete_switch [Binop0]
         (
-            ( Binop0 = eq(T),       Binop = ne(T)
-            ; Binop0 = ne(T),       Binop = eq(T)
-            ; Binop0 = int_lt(T),   Binop = int_ge(T)
-            ; Binop0 = int_le(T),   Binop = int_gt(T)
-            ; Binop0 = int_gt(T),   Binop = int_le(T)
-            ; Binop0 = int_ge(T),   Binop = int_lt(T)
-            ; Binop0 = str_eq,      Binop = str_ne
-            ; Binop0 = str_ne,      Binop = str_eq
-            ; Binop0 = str_lt,      Binop = str_ge
-            ; Binop0 = str_le,      Binop = str_gt
-            ; Binop0 = str_gt,      Binop = str_le
-            ; Binop0 = str_ge,      Binop = str_lt
-            ; Binop0 = float_eq,    Binop = float_ne
-            ; Binop0 = float_ne,    Binop = float_eq
-            ; Binop0 = float_lt,    Binop = float_ge
-            ; Binop0 = float_le,    Binop = float_gt
-            ; Binop0 = float_gt,    Binop = float_le
-            ; Binop0 = float_ge,    Binop = float_lt
+            (
+                Binop0 = int_cmp(IntType, Cmp),
+                Binop = int_cmp(IntType, negate_cmp_op(Cmp))
+            ;
+                Binop0 = float_cmp(Cmp),
+                Binop = float_cmp(negate_cmp_op(Cmp))
+            ;
+                Binop0 = str_cmp(Cmp),
+                Binop = str_cmp(negate_cmp_op(Cmp))
             ),
             TestRval = binop(Binop, SubTestRvalA0, SubTestRvalB0)
         ;
@@ -418,11 +409,7 @@ natural_negate_rval(TestRval0, TestRval) :-
             natural_negate_rval(SubTestRvalB0, SubTestRvalB),
             TestRval = binop(logical_and, SubTestRvalA, SubTestRvalB)
         ;
-            ( Binop0 = int_add(_)
-            ; Binop0 = int_sub(_)
-            ; Binop0 = int_mul(_)
-            ; Binop0 = int_div(_)
-            ; Binop0 = int_mod(_)
+            ( Binop0 = int_arith(_, _)
             ; Binop0 = unchecked_left_shift(_, _)
             ; Binop0 = unchecked_right_shift(_, _)
             ; Binop0 = bitwise_and(_)
@@ -431,14 +418,10 @@ natural_negate_rval(TestRval0, TestRval) :-
             ; Binop0 = body
             ; Binop0 = array_index(_)
             ; Binop0 = string_unsafe_index_code_unit
-            ; Binop0 = str_cmp
+            ; Binop0 = str_nzp
             ; Binop0 = offset_str_eq(_, _)
-            ; Binop0 = unsigned_lt
-            ; Binop0 = unsigned_le
-            ; Binop0 = float_add
-            ; Binop0 = float_sub
-            ; Binop0 = float_mul
-            ; Binop0 = float_div
+            ; Binop0 = int_as_uint_cmp(_)
+            ; Binop0 = float_arith(_)
             ; Binop0 = float_from_dword
             ; Binop0 = int64_from_dword
             ; Binop0 = uint64_from_dword

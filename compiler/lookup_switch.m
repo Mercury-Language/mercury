@@ -507,8 +507,8 @@ generate_int_lookup_switch(VarRval, LookupSwitchInfo, EndLabel,
     ( if StartVal = 0 then
         IndexRval = VarRval
     else
-        IndexRval = binop(int_sub(int_type_int), VarRval,
-            const(llconst_int(StartVal)))
+        IndexRval = binop(int_arith(int_type_int, ao_sub),
+            VarRval, const(llconst_int(StartVal)))
     ),
 
     % If the switch is not locally deterministic, we may need to check that
@@ -516,8 +516,8 @@ generate_int_lookup_switch(VarRval, LookupSwitchInfo, EndLabel,
     (
         NeedRangeCheck = need_range_check,
         Difference = EndVal - StartVal,
-        CmpRval = binop(unsigned_le, IndexRval,
-            const(llconst_int(Difference))),
+        CmpRval = binop(int_as_uint_cmp(le),
+            IndexRval, const(llconst_int(Difference))),
         fail_if_rval_is_false(CmpRval, RangeCheckCode, !CI, CLD0, CLD)
     ;
         NeedRangeCheck = dont_need_range_check,
@@ -697,7 +697,7 @@ acquire_and_setup_lookup_base_reg(MainTableDataId, EndBranch, MainRowSelect,
         ( if MainNumColumns = 1 then
             MainRowStartOffsetRval = MainRowNumRval
         else
-            MainRowStartOffsetRval = binop(int_mul(int_type_int),
+            MainRowStartOffsetRval = binop(int_arith(int_type_int, ao_mul),
                 MainRowNumRval, const(llconst_int(MainNumColumns)))
         )
     ;
@@ -801,7 +801,7 @@ generate_table_lookup_code_for_each_kind(CaseConstsSeveralLlds, Kind, Kinds,
         !MaybeEnd, !CI) :-
     (
         Kind = kind_zero_solns,
-        SkipToNextKindTestOp = int_ge(int_type_int),
+        SkipToNextKindTestOp = int_cmp(int_type_int, ge),
         some [!CLD] (
             reset_to_position(BranchStart, !.CI, !:CLD),
             release_reg(BaseRegLval, !CLD),
@@ -809,7 +809,7 @@ generate_table_lookup_code_for_each_kind(CaseConstsSeveralLlds, Kind, Kinds,
         )
     ;
         Kind = kind_one_soln,
-        SkipToNextKindTestOp = ne(int_type_int),
+        SkipToNextKindTestOp = int_cmp(int_type_int, ne),
         NumSeveralColumns = 2,
         generate_table_lookup_code_for_kind_one_soln(NumPrevColumns,
             NumSeveralColumns, OutVars, BranchStart, EndLabel, BaseRegLval,
@@ -885,7 +885,7 @@ generate_table_lookup_code_for_kind_several_solns(CaseConstsSeveralLlds,
         NumPrevColumns, OutVars, BranchStart, EndLabel, BaseRegLval,
         CurSlot, MaxSlot, LaterSolnsTableAddrRval, TestOp, EndBranch,
         KindCode, !MaybeEnd, !CI) :-
-    TestOp = int_le(int_type_int),
+    TestOp = int_cmp(int_type_int, le),
     get_globals(!.CI, Globals),
     some [!CLD] (
         reset_to_position(BranchStart, !.CI, !:CLD),
@@ -970,12 +970,12 @@ generate_table_lookup_code_for_kind_several_solns(CaseConstsSeveralLlds,
             llds_instr(assign(LaterBaseRegLval, lval(CurSlot)),
                 "Init later base register"),
             llds_instr(
-                if_val(binop(int_ge(int_type_int),
+                if_val(binop(int_cmp(int_type_int, ge),
                     lval(LaterBaseRegLval), lval(MaxSlot)),
                 code_label(UndoLabel)),
                 "Jump to undo hijack code if there are no more solutions"),
             llds_instr(assign(CurSlot,
-                binop(int_add(int_type_int),
+                binop(int_arith(int_type_int, ao_add),
                     lval(CurSlot),
                     const(llconst_int(NumOutVars)))),
                 "Update current slot in the later solution array"),

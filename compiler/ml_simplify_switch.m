@@ -294,8 +294,8 @@ generate_dense_switch(Cases, Default, FirstVal, LastVal, NeedRangeCheck,
     ( if FirstVal = 0 then
         Index = Rval
     else
-        Index = ml_binop(int_sub(int_type_int), Rval,
-            ml_const(mlconst_int(FirstVal)))
+        Index = ml_binop(int_arith(int_type_int, ao_sub),
+            Rval, ml_const(mlconst_int(FirstVal)))
     ),
 
     % Now generate the jump table.
@@ -331,7 +331,7 @@ generate_dense_switch(Cases, Default, FirstVal, LastVal, NeedRangeCheck,
     (
         NeedRangeCheck = need_range_check,
         Difference = LastVal - FirstVal,
-        InRange = ml_binop(unsigned_le,
+        InRange = ml_binop(int_as_uint_cmp(le),
             Index, ml_const(mlconst_int(Difference))),
         Else = yes(ml_stmt_block([], [], DefaultStmts, Context)),
         SwitchBody = ml_stmt_block([], [], [DoJump | CasesCode], Context),
@@ -498,11 +498,11 @@ ml_gen_case_match_conds([Cond1, Cond2 | Conds], SwitchRval) =
 :- func ml_gen_case_match_cond(mlds_case_match_cond, mlds_rval) = mlds_rval.
 
 ml_gen_case_match_cond(match_value(CaseRval), SwitchRval) =
-    ml_binop(eq(int_type_int), CaseRval, SwitchRval).
+    ml_binop(int_cmp(int_type_int, eq), CaseRval, SwitchRval).
 ml_gen_case_match_cond(match_range(MinRval, MaxRval), SwitchRval) =
     ml_binop(logical_and,
-        ml_binop(int_gt(int_type_int), SwitchRval, MinRval),
-        ml_binop(int_le(int_type_int), SwitchRval, MaxRval)).
+        ml_binop(int_cmp(int_type_int, gt), SwitchRval, MinRval),
+        ml_binop(int_cmp(int_type_int, le), SwitchRval, MaxRval)).
 
 %---------------------------------------------------------------------------%
 :- end_module ml_backend.ml_simplify_switch.

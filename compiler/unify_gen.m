@@ -157,20 +157,20 @@ generate_simple_test_unification(VarA, VarB, Code, !CI, !CLD) :-
         ( if Type = builtin_type(BuiltinType) then
             (
                 BuiltinType = builtin_type_string,
-                EqOp = str_eq
+                EqOp = str_cmp(eq)
             ;
                 BuiltinType = builtin_type_float,
-                EqOp = float_eq
+                EqOp = float_cmp(eq)
             ;
                 BuiltinType = builtin_type_char,
-                EqOp = eq(int_type_int)
+                EqOp = int_cmp(int_type_int, eq)
             ;
                 BuiltinType = builtin_type_int(IntType),
-                EqOp = eq(IntType)
+                EqOp = int_cmp(IntType, eq)
             )
         else
             % The else branch handles enumerations.
-            EqOp = eq(int_type_int)
+            EqOp = int_cmp(int_type_int, eq)
         ),
         produce_variable(VarA, VarCodeA, VarRvalA, !CLD),
         produce_variable(VarB, VarCodeB, VarRvalB, !CLD),

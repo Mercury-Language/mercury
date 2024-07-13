@@ -269,7 +269,8 @@ ml_gen_int_max_32_lookup_switch(SwitchVar, TaggedCases, LookupSwitchInfo,
         IndexRval = SwitchVarRval
     else
         StartRval = ml_const(mlconst_int(StartVal)),
-        IndexRval = ml_binop(int_sub(int_type_int), SwitchVarRval, StartRval)
+        IndexRval = ml_binop(int_arith(int_type_int, ao_sub),
+            SwitchVarRval, StartRval)
     ),
     (
         CaseIdConstMap = all_one_soln(CaseIdValueMap),
@@ -373,7 +374,7 @@ ml_gen_simple_atomic_lookup_switch(IndexRval, OutVars, OutTypes, CaseValues,
         ;
             NeedRangeCheck = need_range_check,
             Difference = EndVal - StartVal,
-            RangeCheckCond = ml_binop(unsigned_le, IndexRval,
+            RangeCheckCond = ml_binop(int_as_uint_cmp(le), IndexRval,
                 ml_const(mlconst_int(Difference))),
             ml_gen_set_success(ml_const(mlconst_false), Context,
                 SetSuccessFalseStmt, !Info),
@@ -481,7 +482,7 @@ ml_gen_several_soln_atomic_lookup_switch(IndexRval, OutVars, OutTypes,
     ;
         NeedRangeCheck = need_range_check,
         Difference = EndVal - StartVal,
-        RangeCheckCond = ml_binop(unsigned_le, IndexRval,
+        RangeCheckCond = ml_binop(int_as_uint_cmp(le), IndexRval,
             ml_const(mlconst_int(Difference))),
         Stmt = ml_stmt_if_then_else(RangeCheckCond, InRangeStmt, no, Context)
     ).
@@ -537,7 +538,7 @@ ml_gen_several_soln_lookup_code(Context, SlotVarRval,
     LaterLookupSucceedStmt = ml_stmt_block([], [],
         LaterSolnLookupStmts ++ [CallContStmt, IncrLaterSlotVarStmt], Context),
 
-    MoreSolnsLoopCond = ml_binop(int_lt(int_type_int),
+    MoreSolnsLoopCond = ml_binop(int_cmp(int_type_int, lt),
         LaterSlotVarRval, LimitVarRval),
     MoreSolnsLoopStmt = ml_stmt_while(may_loop_zero_times, MoreSolnsLoopCond,
         LaterLookupSucceedStmt, [LaterSlotVarName], Context),
@@ -554,7 +555,7 @@ ml_gen_several_soln_lookup_code(Context, SlotVarRval,
         OneOrMoreSolnsBlockStmt =
             ml_stmt_block([], [], OneOrMoreSolnsStmts, Context),
 
-        AnySolnsCond = ml_binop(int_ge(int_type_int),
+        AnySolnsCond = ml_binop(int_cmp(int_type_int, ge),
             NumLaterSolnsVarRval, ml_const(mlconst_int(0))),
         ZeroOrMoreSolnsStmt = ml_stmt_if_then_else(AnySolnsCond,
             OneOrMoreSolnsBlockStmt, no, Context),
@@ -592,11 +593,11 @@ make_several_soln_lookup_vars(Context, SeveralSolnLookupVars, !Info) :-
     LaterSlotVarRval = ml_lval(LaterSlotVarLval),
     NumLaterSolnsVarRval = ml_lval(NumLaterSolnsVarLval),
     LimitAssign = assign(LimitVarLval,
-        ml_binop(int_add(int_type_int),
+        ml_binop(int_arith(int_type_int, ao_add),
             LaterSlotVarRval, NumLaterSolnsVarRval)),
     LimitAssignStmt = ml_stmt_atomic(LimitAssign, Context),
     IncrLaterSlotVar = assign(LaterSlotVarLval,
-        ml_binop(int_add(int_type_int), LaterSlotVarRval,
+        ml_binop(int_arith(int_type_int, ao_add), LaterSlotVarRval,
             ml_const(mlconst_int(1)))),
     IncrLaterSlotVarStmt = ml_stmt_atomic(IncrLaterSlotVar, Context),
 

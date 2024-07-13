@@ -452,27 +452,29 @@ output_binop_for_csharp(Info, Stream, Op, X, Y, !IO) :-
         output_rval_for_csharp(Info, Y, Stream, !IO),
         io.write_string(Stream, "]", !IO)
     ;
-        Op = str_eq,
-        output_rval_for_csharp(Info, X, Stream, !IO),
-        io.write_string(Stream, ".Equals(", !IO),
-        output_rval_for_csharp(Info, Y, Stream, !IO),
-        io.write_string(Stream, ")", !IO)
+        Op = str_cmp(CmpOp),
+        (
+            CmpOp = eq,
+            output_rval_for_csharp(Info, X, Stream, !IO),
+            io.write_string(Stream, ".Equals(", !IO),
+            output_rval_for_csharp(Info, Y, Stream, !IO),
+            io.write_string(Stream, ")", !IO)
+        ;
+            ( CmpOp = ne,   OpStr = "!="
+            ; CmpOp = lt,   OpStr = "<"
+            ; CmpOp = gt,   OpStr = ">"
+            ; CmpOp = le,   OpStr = "<="
+            ; CmpOp = ge,   OpStr = ">="
+            ),
+            io.write_string(Stream, "(", !IO),
+            output_rval_for_csharp(Info, X, Stream, !IO),
+            io.write_string(Stream, ".CompareOrdinal(", !IO),
+            output_rval_for_csharp(Info, Y, Stream, !IO),
+            io.write_string(Stream, ") ", !IO),
+            io.format(Stream, ") %s 0)", [s(OpStr)], !IO)
+        )
     ;
-        ( Op = str_ne, OpStr = "!="
-        ; Op = str_lt, OpStr = "<"
-        ; Op = str_gt, OpStr = ">"
-        ; Op = str_le, OpStr = "<="
-        ; Op = str_ge, OpStr = ">="
-        ),
-        io.write_string(Stream, "(", !IO),
-        output_rval_for_csharp(Info, X, Stream, !IO),
-        io.write_string(Stream, ".CompareOrdinal(", !IO),
-        output_rval_for_csharp(Info, Y, Stream, !IO),
-        io.write_string(Stream, ") ", !IO),
-        io.write_string(Stream, OpStr, !IO),
-        io.write_string(Stream, " 0)", !IO)
-    ;
-        Op = str_cmp,
+        Op = str_nzp,
         io.write_string(Stream, "(", !IO),
         output_rval_for_csharp(Info, X, Stream, !IO),
         io.write_string(Stream, ".CompareOrdinal(", !IO),
@@ -486,25 +488,25 @@ output_binop_for_csharp(Info, Stream, Op, X, Y, !IO) :-
         output_rval_for_csharp(Info, Y, Stream, !IO),
         io.write_string(Stream, ")", !IO)
     ;
-        ( Op = int_add(_)
-        ; Op = int_sub(_)
-        ; Op = int_mul(_)
-        ; Op = int_div(_)
-        ; Op = int_mod(_)
-        ; Op = unchecked_left_shift(_, _)
+        Op = int_arith(IntType, ArithOp),
+        output_int_arith_binop_for_csharp(Info, Stream, IntType, ArithOp,
+            X, Y, !IO)
+    ;
+        Op = int_cmp(_IntType, CmpOp),
+        OpStr = cmp_op_c_operator(CmpOp),
+        output_basic_binop_for_csharp(Info, Stream, OpStr, X, Y, !IO)
+    ;
+        ( Op = unchecked_left_shift(_, _)
         ; Op = unchecked_right_shift(_, _)
         ; Op = bitwise_and(_)
         ; Op = bitwise_or(_)
         ; Op = bitwise_xor(_)
-        ; Op = int_lt(_)
-        ; Op = int_gt(_)
-        ; Op = int_le(_)
-        ; Op = int_ge(_)
         ),
-        output_int_binop_for_csharp(Info, Stream, Op, X, Y, !IO)
+        output_int_misc_binop_for_csharp(Info, Stream, Op, X, Y, !IO)
     ;
-        ( Op = unsigned_lt, OpStr = "<"
-        ; Op = unsigned_le, OpStr = "<="
+        Op = int_as_uint_cmp(CmpOp),
+        ( CmpOp = lt, OpStr = "<"
+        ; CmpOp = le, OpStr = "<="
         ),
         io.write_string(Stream, "((uint) ", !IO),
         output_rval_for_csharp(Info, X, Stream, !IO),
@@ -514,18 +516,9 @@ output_binop_for_csharp(Info, Stream, Op, X, Y, !IO) :-
     ;
         ( Op = logical_and, OpStr = "&&"
         ; Op = logical_or,  OpStr = "||"
-        ; Op = eq(_),       OpStr = "=="
-        ; Op = ne(_),       OpStr = "!="
-        ; Op = float_add,   OpStr = "+"
-        ; Op = float_sub,   OpStr = "-"
-        ; Op = float_mul,   OpStr = "*"
-        ; Op = float_div,   OpStr = "/"
-        ; Op = float_eq,    OpStr = "=="
-        ; Op = float_ne,    OpStr = "!="
-        ; Op = float_lt,    OpStr = "<"
-        ; Op = float_gt,    OpStr = ">"
-        ; Op = float_le,    OpStr = "<="
-        ; Op = float_ge,    OpStr = ">="
+        ; Op = float_arith(ArithOp),    OpStr =
+                                        arith_op_c_operator(coerce(ArithOp))
+        ; Op = float_cmp(CmpOp),        OpStr = cmp_op_c_operator(CmpOp)
         ),
         output_basic_binop_for_csharp(Info, Stream, OpStr, X, Y, !IO)
     ;
@@ -541,19 +534,35 @@ output_binop_for_csharp(Info, Stream, Op, X, Y, !IO) :-
         unexpected($pred, "invalid binary operator")
     ).
 
-:- pred output_int_binop_for_csharp(csharp_out_info::in,
-    io.text_output_stream::in, binary_op::in(int_binary_op),
+:- pred output_int_arith_binop_for_csharp(csharp_out_info::in,
+    io.text_output_stream::in, int_type::in, arith_op::in,
     mlds_rval::in, mlds_rval::in, io::di, io::uo) is det.
-:- pragma no_inline(pred(output_int_binop_for_csharp/7)).
+:- pragma no_inline(pred(output_int_arith_binop_for_csharp/8)).
 
-output_int_binop_for_csharp(Info, Stream, Op, X, Y, !IO) :-
+output_int_arith_binop_for_csharp(Info, Stream, Type, Op, X, Y, !IO) :-
+    ( Type = int_type_int,      Cast = ""
+    ; Type = int_type_int8,     Cast = "(sbyte) "
+    ; Type = int_type_int16,    Cast = "(short) "
+    ; Type = int_type_int32,    Cast = ""
+    ; Type = int_type_int64,    Cast = ""
+    ; Type = int_type_uint,     Cast = ""
+    ; Type = int_type_uint8,    Cast = "(byte) "
+    ; Type = int_type_uint16,   Cast = "(ushort) "
+    ; Type = int_type_uint32,   Cast = ""
+    ; Type = int_type_uint64,   Cast = ""
+    ),
+    OpStr = arith_op_c_operator(Op),
+    io.write_string(Stream, Cast, !IO),
+    output_basic_binop_for_csharp(Info, Stream, OpStr, X, Y, !IO).
+
+:- pred output_int_misc_binop_for_csharp(csharp_out_info::in,
+    io.text_output_stream::in, binary_op::in(int_misc_binary_op),
+    mlds_rval::in, mlds_rval::in, io::di, io::uo) is det.
+:- pragma no_inline(pred(output_int_misc_binop_for_csharp/7)).
+
+output_int_misc_binop_for_csharp(Info, Stream, Op, X, Y, !IO) :-
     (
-        ( Op = int_add(Type),       OpStr = "+"
-        ; Op = int_sub(Type),       OpStr = "-"
-        ; Op = int_mul(Type),       OpStr = "*"
-        ; Op = int_div(Type),       OpStr = "/"
-        ; Op = int_mod(Type),       OpStr = "%"
-        ; Op = bitwise_and(Type),   OpStr = "&"
+        ( Op = bitwise_and(Type),   OpStr = "&"
         ; Op = bitwise_xor(Type),   OpStr = "^"
         ),
         ( Type = int_type_int,      Cast = ""
@@ -604,13 +613,6 @@ output_int_binop_for_csharp(Info, Stream, Op, X, Y, !IO) :-
             output_rval_for_csharp(Info, Y, Stream, !IO),
             io.write_string(Stream, ")", !IO)
         )
-    ;
-        ( Op = int_lt(_Type),   OpStr = "<"
-        ; Op = int_gt(_Type),   OpStr = ">"
-        ; Op = int_le(_Type),   OpStr = "<="
-        ; Op = int_ge(_Type),   OpStr = ">="
-        ),
-        output_basic_binop_for_csharp(Info, Stream, OpStr, X, Y, !IO)
     ;
         ( Op = unchecked_left_shift(Type, ShiftType),  OpStr = "<<"
         ; Op = unchecked_right_shift(Type, ShiftType), OpStr = ">>"

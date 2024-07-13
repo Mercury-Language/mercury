@@ -87,7 +87,7 @@ ml_generate_runtime_cond_code(Expr, CondRval, !Info) :-
         ml_gen_info_add_env_var_name(EnvVar, !Info),
         EnvVarRval = ml_lval(ml_target_global_var_ref(env_var_ref(EnvVar))),
         ZeroRval = ml_const(mlconst_int(0)),
-        CondRval = ml_binop(ne(int_type_int), EnvVarRval, ZeroRval)
+        CondRval = ml_binop(int_cmp(int_type_int, ne), EnvVarRval, ZeroRval)
     ;
         Expr = trace_not(ExprA),
         ml_generate_runtime_cond_code(ExprA, RvalA, !Info),

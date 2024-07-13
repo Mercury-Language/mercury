@@ -231,8 +231,8 @@ peephole_match_computed_goto(SelectorRval, MaybeLabels, Comment0,
         FewerOoMVals = one_or_more(FirstVal, LaterVals),
         (
             LaterVals = [],
-            CondRval = binop(eq(int_type_int), SelectorRval,
-                const(llconst_int(FirstVal)))
+            CondRval = binop(int_cmp(int_type_int, eq),
+                SelectorRval, const(llconst_int(FirstVal)))
         ;
             LaterVals = [_ | _],
             build_offset_mask([FirstVal | LaterVals], 0u, Mask),
@@ -242,7 +242,7 @@ peephole_match_computed_goto(SelectorRval, MaybeLabels, Comment0,
                 const(llconst_uint(1u)), SelectorRvalUint),
             SelectedBitUintRval = binop(bitwise_and(int_type_uint),
                 const(llconst_uint(Mask)), QueryRval),
-            CondRval = binop(ne(int_type_uint),
+            CondRval = binop(int_cmp(int_type_uint, ne),
                 SelectedBitUintRval, const(llconst_uint(0u)))
         ),
         CommentInstr = llds_instr(comment(Comment0), ""),

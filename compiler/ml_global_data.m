@@ -562,11 +562,7 @@ ml_specialize_generic_array_rval(!Rval) :-
 
 ml_specialize_generic_array_binop(Op, IsFloat) :-
     (
-        ( Op = int_add(_)
-        ; Op = int_sub(_)
-        ; Op = int_mul(_)
-        ; Op = int_div(_)
-        ; Op = int_mod(_)
+        ( Op = int_arith(_, _)
         ; Op = unchecked_left_shift(_, _)
         ; Op = unchecked_right_shift(_, _)
         ; Op = bitwise_and(_)
@@ -574,28 +570,12 @@ ml_specialize_generic_array_binop(Op, IsFloat) :-
         ; Op = bitwise_xor(_)
         ; Op = logical_and
         ; Op = logical_or
-        ; Op = eq(_)
-        ; Op = ne(_)
+        ; Op = int_cmp(_, _)
+        ; Op = int_as_uint_cmp(_)
+        ; Op = float_cmp(_)
+        ; Op = str_cmp(_)
         ; Op = offset_str_eq(_, _)
-        ; Op = str_eq
-        ; Op = str_ne
-        ; Op = str_lt
-        ; Op = str_gt
-        ; Op = str_le
-        ; Op = str_ge
-        ; Op = str_cmp
-        ; Op = int_lt(_)
-        ; Op = int_gt(_)
-        ; Op = int_le(_)
-        ; Op = int_ge(_)
-        ; Op = unsigned_lt
-        ; Op = unsigned_le
-        ; Op = float_eq
-        ; Op = float_ne
-        ; Op = float_lt
-        ; Op = float_gt
-        ; Op = float_le
-        ; Op = float_ge
+        ; Op = str_nzp
         ; Op = body
         ; Op = array_index(_)   % should not be an initializer anyway
         ; Op = string_unsafe_index_code_unit
@@ -607,10 +587,7 @@ ml_specialize_generic_array_binop(Op, IsFloat) :-
         ),
         IsFloat = no
     ;
-        ( Op = float_add
-        ; Op = float_sub
-        ; Op = float_mul
-        ; Op = float_div
+        ( Op = float_arith(_)
         ; Op = float_from_dword
         ),
         IsFloat = yes
