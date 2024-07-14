@@ -1134,9 +1134,9 @@ remap_instr(GlobalDataRemap, Instr0, Instr) :-
             FixNoLayout, FixLayout, FixOnlyLayout, NoFix,
             HashDefnLabel, StackSlotRef, MaybeDup)
     ;
-        Instr0 = computed_goto(Rval0, MaybeLabels),
+        Instr0 = computed_goto(Rval0, MaybeMaxIndex, MaybeLabels),
         remap_rval(StaticCellRemap, Rval0, Rval),
-        Instr = computed_goto(Rval, MaybeLabels)
+        Instr = computed_goto(Rval, MaybeMaxIndex, MaybeLabels)
     ;
         Instr0 = save_maxfr(Lval0),
         remap_lval(StaticCellRemap, Lval0, Lval),

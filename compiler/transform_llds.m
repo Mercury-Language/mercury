@@ -170,7 +170,7 @@ transform_instructions([], [], !C, _, _).
 transform_instructions([Instr0 | Instrs0], Instrs, !C, ProcLabel, MaxSize) :-
     transform_instructions(Instrs0, InstrsTail, !C, ProcLabel, MaxSize),
     ( if
-        Instr0 = llds_instr(computed_goto(Rval, Targets), Comment),
+        Instr0 = llds_instr(computed_goto(Rval, _, Targets), Comment),
         list.length(Targets, NumTargets),
         NumTargets > MaxSize
     then
@@ -194,7 +194,7 @@ transform_instructions([Instr0 | Instrs0], Instrs, !C, ProcLabel, MaxSize) :-
 split_computed_goto(Rval, Targets, Comment, Instrs, !C, MaxSize, NumTargets,
         ProcLabel) :-
     ( if NumTargets =< MaxSize then
-        Instrs = [llds_instr(computed_goto(Rval, Targets), Comment)]
+        Instrs = [llds_instr(computed_goto(Rval, no, Targets), Comment)]
     else
         counter.allocate(LabelNum, !C),
         Mid = NumTargets // 2,

@@ -233,7 +233,7 @@ livemap_do_build_instr(Instr0, !Instrs, !Livevals, !ContainsBadUserCode,
             MaybeSpecial = no
         )
     ;
-        Uinstr0 = computed_goto(Rval, MaybeLabels),
+        Uinstr0 = computed_goto(Rval, _MaybeMaxIndex, MaybeLabels),
         livemap.make_live_in_rvals([Rval], set.init, !:Livevals),
         list.foldl(livemap_insert_maybe_label_livevals(!.Livemap), MaybeLabels,
             !Livevals)

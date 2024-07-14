@@ -333,7 +333,7 @@ jump_opt_instr_list([Instr0 | Instrs0], PrevInstr, JumpOptInfo,
         jump_opt_goto(Uinstr0, Comment0, Instrs0, PrevInstr, JumpOptInfo,
             !CheckedNondetTailCallInfo, NewRemain)
     ;
-        Uinstr0 = computed_goto(Index, MaybeTargets0),
+        Uinstr0 = computed_goto(IndexRval, MaybeMaxIndex, MaybeTargets0),
         InstrMap = JumpOptInfo ^ joi_instr_map,
         % Short-circuit all the destination labels.
         short_circuit_maybe_labels(InstrMap, MaybeTargets0, MaybeTargets),
@@ -341,8 +341,8 @@ jump_opt_instr_list([Instr0 | Instrs0], PrevInstr, JumpOptInfo,
             NewRemain = nr_usual_case
         else
             Shorted = Comment0 ++ " (some shortcircuits)",
-            NewInstrs =
-                [llds_instr(computed_goto(Index, MaybeTargets), Shorted)],
+            NewInstrs = [llds_instr(computed_goto(IndexRval,
+                MaybeMaxIndex, MaybeTargets), Shorted)],
             NewRemain = nr_specified(NewInstrs, Instrs0)
         )
     ;

@@ -1470,7 +1470,7 @@ find_while_labels_to_define([Instr0 | Instrs0], MaybeCurWhileLabel0,
         ),
         MaybeCurWhileLabel = no
     ;
-        Uinstr0 = computed_goto(Rval, MaybeTargets),
+        Uinstr0 = computed_goto(Rval, _MaybeMaxIndex, MaybeTargets),
         rval_addrs(Rval, RvalCodeAddrs, _),
         delete_any_labels(RvalCodeAddrs, !UndefWhileLabels),
         delete_any_maybe_labels(MaybeTargets, !UndefWhileLabels),

@@ -1200,11 +1200,11 @@ analyze_block(Label, FollowingLabels, FirstLabel, ProcLabel,
             LastInstr = llds_instr(LastUinstr, Comment),
             BlockInstrs = AllButLastInstrs ++ [LastInstr]
         else if
-            LastUinstr0 = computed_goto(Rval, GotoTargets0)
+            LastUinstr0 = computed_goto(Rval, MaybeMaxIndex, GotoTargets0)
         then
             replace_labels_maybe_label_list(GotoTargets0, GotoTargets,
                 PreExitDummyLabelMap),
-            LastUinstr = computed_goto(Rval, GotoTargets),
+            LastUinstr = computed_goto(Rval, MaybeMaxIndex, GotoTargets),
             LastInstr = llds_instr(LastUinstr, Comment),
             BlockInstrs = AllButLastInstrs ++ [LastInstr]
         else if

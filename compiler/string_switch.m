@@ -821,10 +821,11 @@ generate_string_hash_jump_switch(VarRval, VarName, TaggedCases,
     ArrayElemType = array_elem_struct(ArrayElemTypes),
 
     SlotReg = HashSwitchInfo ^ shsi_slot_reg,
+    MaxIndex = list.length(MaybeTargets) - 1,
     MatchCode = from_list([
         % See the comment at the top of the module about why we use
         % a computed_goto here.
-        llds_instr(computed_goto(lval(SlotReg), MaybeTargets),
+        llds_instr(computed_goto(lval(SlotReg), yes(MaxIndex), MaybeTargets),
             "jump to the corresponding code")
     ]),
 
@@ -1363,6 +1364,7 @@ generate_string_binary_jump_switch(VarRval, VarName, TaggedCases,
                             lval(MidReg),
                             const(llconst_int(NumColumns))),
                         const(llconst_int(1)))),
+                yes(TableSize),
                 Targets),
             "jump to the matching case")
     ),

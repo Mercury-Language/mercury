@@ -570,7 +570,7 @@ instr_rvals_and_lvals(llcall(_, _, _, _, _, _), set.init, set.init).
 instr_rvals_and_lvals(mkframe(_, _), set.init, set.init).
 instr_rvals_and_lvals(label(_), set.init, set.init).
 instr_rvals_and_lvals(goto(_), set.init, set.init).
-instr_rvals_and_lvals(computed_goto(Rval, _), make_singleton_set(Rval),
+instr_rvals_and_lvals(computed_goto(Rval, _, _), make_singleton_set(Rval),
     set.init).
 instr_rvals_and_lvals(arbitrary_c_code(_, _, _), set.init, set.init).
 instr_rvals_and_lvals(if_val(Rval, _), make_singleton_set(Rval), set.init).

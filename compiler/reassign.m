@@ -187,7 +187,7 @@ remove_reassign_loop([Instr0 | Instrs0], !.KnownContentsMap, !.DepLvalMap,
             % We don't know what is stored where at the instructions that
             % jump here.
         ; Uinstr0 = goto(_)
-        ; Uinstr0 = computed_goto(_, _)
+        ; Uinstr0 = computed_goto(_, _, _)
             % The value of !:KnownContentsMap doesn't really matter since
             % the next instruction (which must be a label) will reset it
             % to empty anyway.

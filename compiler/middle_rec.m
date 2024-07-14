@@ -600,7 +600,7 @@ find_used_registers_instr(Uinstr, !Used) :-
         Uinstr = foreign_proc_code(_, Components, _, _, _, _, _, _, _, _),
         find_used_registers_components(Components, !Used)
     ;
-        ( Uinstr = computed_goto(Rval, _)
+        ( Uinstr = computed_goto(Rval, _, _)
         ; Uinstr = if_val(Rval, _)
         ; Uinstr = restore_hp(Rval)
         ; Uinstr = free_heap(Rval)

@@ -304,8 +304,10 @@ generate_tag_switch(VarRval, VarType, VarName, TaggedCases, CodeModel, CanFail,
         generate_primary_jump_table(CaseLabelMap, VarRval, SectagReg,
             MaybeFailLabel, PtagGroups, 0u8, MaxPtagUint8,
             TargetMaybeLabels, TableCode, !CI),
+        MaxPtag = uint8.cast_to_int(MaxPtagUint8),
         SwitchCode = singleton(
-            llds_instr(computed_goto(PtagRval, TargetMaybeLabels),
+            llds_instr(
+                computed_goto(PtagRval, yes(MaxPtag), TargetMaybeLabels),
                 "switch on ptag")
         ),
         CasesCode = SwitchCode ++ TableCode
@@ -711,7 +713,8 @@ generate_secondary_switch(VarRval, SectagReg, MaybeFailLabel,
     SharedInfo = shared_ptag_info(_Ptag, _SharedSectagLocn, MaxSectag,
         SectagSwitchComplete, _NF, SectagToLabelMap, LabelToSectagsMap),
     get_globals(!.CI, Globals),
-    Method = choose_switch_method(Globals, uint.cast_to_int(MaxSectag) + 1),
+    MaxSectagInt = uint.cast_to_int(MaxSectag),
+    Method = choose_switch_method(Globals, MaxSectagInt + 1),
     compute_sectag_rval(Globals, VarRval, SectagReg, SharedInfo,
         Method, SectagRval, SectagRvalCode),
     (
@@ -779,7 +782,9 @@ generate_secondary_switch(VarRval, SectagReg, MaybeFailLabel,
         generate_secondary_jump_table(MaybeSecFailLabel, SectagToLabelAL,
             0u, MaxSectag, TargetMaybeLabels),
         CasesCode = singleton(
-            llds_instr(computed_goto(SectagRval, TargetMaybeLabels),
+            llds_instr(
+                computed_goto(SectagRval, yes(MaxSectagInt),
+                    TargetMaybeLabels),
                 "switch on secondary tag")
         )
     ;

@@ -213,9 +213,9 @@ apply_dup_proc_map_in_instr(Instr, StdInstr, DupProcMap) :-
         apply_dup_proc_map_in_code_addr(Target, StdTarget, DupProcMap),
         StdInstr = goto(StdTarget)
     ;
-        Instr = computed_goto(Rval, Targets),
+        Instr = computed_goto(Rval, MaybeMaxIndex, Targets),
         apply_dup_proc_map_in_maybe_labels(Targets, StdTargets, DupProcMap),
-        StdInstr = computed_goto(Rval, StdTargets)
+        StdInstr = computed_goto(Rval, MaybeMaxIndex, StdTargets)
     ;
         Instr = if_val(Rval, Target),
         apply_dup_proc_map_in_rval(Rval, StdRval, DupProcMap),

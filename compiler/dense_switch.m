@@ -137,12 +137,12 @@ generate_dense_switch(TaggedCases, VarRval, VarName, CodeModel, SwitchGoalInfo,
     ),
     % Check that the value of the variable lies within the appropriate range
     % if necessary.
+    LastFirstValDifference = LastVal - FirstVal,
     (
         NeedRangeCheck = need_range_check,
-        Difference = LastVal - FirstVal,
         fail_if_rval_is_false(
             binop(int_as_uint_cmp(le),
-                IndexRval, const(llconst_int(Difference))),
+                IndexRval, const(llconst_int(LastFirstValDifference))),
             RangeCheckCode, !CI, !CLD)
     ;
         NeedRangeCheck = dont_need_range_check,
@@ -166,7 +166,8 @@ generate_dense_switch(TaggedCases, VarRval, VarName, CodeModel, SwitchGoalInfo,
     generate_dense_jump_table(FirstVal, LastVal, IndexPairs, Targets,
         no, MaybeFailLabel, !CI),
     JumpCode = singleton(
-        llds_instr(computed_goto(IndexRval, Targets),
+        llds_instr(
+            computed_goto(IndexRval, yes(LastFirstValDifference), Targets),
             "switch (using dense jump table)")
     ),
 

@@ -772,7 +772,7 @@ substitute_lval_in_instr_until_defn_2(OldLval, NewLval, !Instr, !Instrs, !N) :-
         exprn_aux.substitute_lval_in_instr(OldLval, NewLval, !Instr, !N),
         substitute_lval_in_instr_until_defn(OldLval, NewLval, !Instrs, !N)
     ;
-        Uinstr0 = computed_goto(_, _),
+        Uinstr0 = computed_goto(_, _, _),
         exprn_aux.substitute_lval_in_instr(OldLval, NewLval, !Instr, !N)
     ;
         ( Uinstr0 = label(_)

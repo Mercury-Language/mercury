@@ -952,7 +952,7 @@ touches_nondet_ctrl_instr(Uinstr) = Touch :-
     ;
         ( Uinstr = mkframe(_, _)
         ; Uinstr = goto(_)
-        ; Uinstr = computed_goto(_, _)
+        ; Uinstr = computed_goto(_, _, _)
         ; Uinstr = llcall(_, _, _, _, _, _) % This is a safe approximation.
         ; Uinstr = if_val(_, _)
         ; Uinstr = arbitrary_c_code(_, _, _)
@@ -1179,7 +1179,7 @@ can_instr_branch_away(Uinstr) = CanBranchAway :-
         ( Uinstr = block(_, _, _)
         ; Uinstr = llcall(_, _, _, _, _, _)
         ; Uinstr = goto(_)
-        ; Uinstr = computed_goto(_, _)
+        ; Uinstr = computed_goto(_, _, _)
         ; Uinstr = if_val(_, _)
         ; Uinstr = decr_sp_and_return(_)
         ; Uinstr = join_and_continue(_, _)
@@ -1245,7 +1245,7 @@ can_instr_fall_through(llcall(_, _, _, _, _, _)) = no.
 can_instr_fall_through(mkframe(_, _)) = yes.
 can_instr_fall_through(label(_)) = yes.
 can_instr_fall_through(goto(_)) = no.
-can_instr_fall_through(computed_goto(_, _)) = no.
+can_instr_fall_through(computed_goto(_, _, _)) = no.
 can_instr_fall_through(arbitrary_c_code(_, _, _)) = yes.
 can_instr_fall_through(if_val(_, _)) = yes.
 can_instr_fall_through(save_maxfr(_)) = yes.
@@ -1300,7 +1300,7 @@ can_use_livevals(llcall(_, _, _, _, _, _), yes).
 can_use_livevals(mkframe(_, _), no).
 can_use_livevals(label(_), no).
 can_use_livevals(goto(_), yes).
-can_use_livevals(computed_goto(_, _), no).
+can_use_livevals(computed_goto(_, _, _), no).
 can_use_livevals(arbitrary_c_code(_, _, _), no).
 can_use_livevals(if_val(_, _), yes).
 can_use_livevals(save_maxfr(_), no).
@@ -1429,7 +1429,7 @@ count_temps_instr(Uinstr, !R, !F) :-
         ),
         count_temps_lval(Lval, !R, !F)
     ;
-        ( Uinstr = computed_goto(Rval, _)
+        ( Uinstr = computed_goto(Rval, _, _)
         ; Uinstr = if_val(Rval, _)
         ; Uinstr = restore_hp(Rval)
         ; Uinstr = free_heap(Rval)
@@ -1722,7 +1722,7 @@ instr_labels_2(Uinstr, Labels, CodeAddrs) :-
         Uinstr = block(_, _, Instrs),
         instr_list_labels(Instrs, Labels, CodeAddrs)
     ;
-        Uinstr = computed_goto(_, MaybeLabels),
+        Uinstr = computed_goto(_, _, MaybeLabels),
         possible_targets_maybe_labels(MaybeLabels, [], RevLabels),
         list.reverse(RevLabels, Labels),
         CodeAddrs = []
@@ -1819,7 +1819,7 @@ possible_targets(Uinstr, Labels, CodeAddrs) :-
         Uinstr = block(_, _, _),
         unexpected($pred, "block")
     ;
-        Uinstr = computed_goto(_, MaybeLabels),
+        Uinstr = computed_goto(_, _, MaybeLabels),
         possible_targets_maybe_labels(MaybeLabels, [], RevLabels),
         list.reverse(RevLabels, Labels),
         CodeAddrs = []
@@ -2020,7 +2020,7 @@ instr_refers_to_stack(llds_instr(Uinstr, _)) = Refers :-
         ),
         Refers = lval_refers_stackvars(Lval)
     ;
-        ( Uinstr = computed_goto(Rval, _Labels)
+        ( Uinstr = computed_goto(Rval, _, _Labels)
         ; Uinstr = restore_hp(Rval)
         ; Uinstr = free_heap(Rval)
         ; Uinstr = reset_ticket(Rval, _Reason)
@@ -2257,7 +2257,7 @@ replace_labels_instr(Uinstr0, Uinstr, ReplMap, ReplData) :-
         replace_labels_code_addr(Target0, Target, ReplMap),
         Uinstr = goto(Target)
     ;
-        Uinstr0 = computed_goto(Rval0, MaybeLabels0),
+        Uinstr0 = computed_goto(Rval0, MaybeMaxIndex, MaybeLabels0),
         (
             ReplData = yes,
             replace_labels_rval(Rval0, Rval, ReplMap)
@@ -2266,7 +2266,7 @@ replace_labels_instr(Uinstr0, Uinstr, ReplMap, ReplData) :-
             Rval = Rval0
         ),
         replace_labels_maybe_label_list(MaybeLabels0, MaybeLabels, ReplMap),
-        Uinstr = computed_goto(Rval, MaybeLabels)
+        Uinstr = computed_goto(Rval, MaybeMaxIndex, MaybeLabels)
     ;
         Uinstr0 = arbitrary_c_code(AffectsLiveness, Lvals0, Code),
         (

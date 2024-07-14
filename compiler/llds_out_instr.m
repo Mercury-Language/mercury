@@ -169,7 +169,7 @@ output_record_instr_decls(Info, Stream, Instr, !DeclSet, !IO) :-
         Instr = goto(CodeAddr),
         output_record_code_addr_decls(Info, Stream, CodeAddr, !DeclSet, !IO)
     ;
-        Instr = computed_goto(Rval, _MaybeLabels),
+        Instr = computed_goto(Rval, _MaybeMaxIndex, _MaybeLabels),
         output_record_rval_decls(Info, Stream, Rval, !DeclSet, !IO)
     ;
         Instr = if_val(Rval, Target),
@@ -663,7 +663,7 @@ output_instruction(Info, Stream, Instr, LabelOutputInfo, !IO) :-
         io.write_string(Stream, "\t", !IO),
         output_goto(Info, Stream, CodeAddr, CallerLabel, !IO)
     ;
-        Instr = computed_goto(Rval, MaybeLabels),
+        Instr = computed_goto(Rval, _MaybeMaxIndex, MaybeLabels),
         io.write_string(Stream, "\tMR_COMPUTED_GOTO(", !IO),
         output_rval_as_type(Info, Rval, lt_int(int_type_uint), Stream, !IO),
         io.write_string(Stream, ",\n\t\t", !IO),

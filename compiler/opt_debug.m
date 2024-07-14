@@ -1150,9 +1150,17 @@ dump_instr(MaybeProcLabel, AutoComments, Instr) = Str :-
         Instr = goto(CodeAddr),
         Str = "goto " ++ dump_code_addr(MaybeProcLabel, CodeAddr)
     ;
-        Instr = computed_goto(Rval, MaybeLabels),
-        Str = "computed_goto " ++ dump_rval(MaybeProcLabel, Rval) ++ ":\n"
-            ++ dump_computed_goto_targets(MaybeProcLabel, 0, MaybeLabels)
+        Instr = computed_goto(Rval, MaybeMaxIndex, MaybeLabels),
+        (
+            MaybeMaxIndex = no,
+            MaxIndexStr = ""
+        ;
+            MaybeMaxIndex = yes(MaxIndex),
+            string.format(" (max index %d)", [i(MaxIndex)], MaxIndexStr)
+        ),
+        Str = "computed_goto " ++ dump_rval(MaybeProcLabel, Rval) ++
+            MaxIndexStr ++ ":\n" ++
+            dump_computed_goto_targets(MaybeProcLabel, 0, MaybeLabels)
     ;
         Instr = arbitrary_c_code(AL, _, Code),
         Str = "arbitrary_c_code(" ++ dump_affects_liveness(AL) ++ "\n" ++

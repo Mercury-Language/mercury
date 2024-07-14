@@ -161,9 +161,9 @@ peephole_opt_window_at_instr(InvalidPatterns, Instr0, Instrs0, Instrs, Mod) :-
 peephole_match(InvalidPatterns, Instr0, Instrs0, Instrs) :-
     Instr0 = llds_instr(Uinstr0, Comment0),
     (
-        Uinstr0 = computed_goto(SelectorRval, MaybeLabels),
-        peephole_match_computed_goto(SelectorRval, MaybeLabels, Comment0,
-            Instrs0, Instrs)
+        Uinstr0 = computed_goto(SelectorRval, MaybeMaxIndex, MaybeLabels),
+        peephole_match_computed_goto(SelectorRval, MaybeMaxIndex, MaybeLabels,
+            Comment0, Instrs0, Instrs)
     ;
         Uinstr0 = if_val(Rval, CodeAddr),
         peephole_match_if_val(Rval, CodeAddr, Comment0, Instrs0, Instrs)
@@ -186,6 +186,10 @@ peephole_match(InvalidPatterns, Instr0, Instrs0, Instrs) :-
 
 %---------------------------------------------------------------------------%
 
+:- type computed_goto_method
+    --->    method_bitmap
+    ;       method_or(int).
+
     % A `computed_goto' with all branches pointing to the same label
     % can be replaced with an unconditional goto.
     %
@@ -193,12 +197,13 @@ peephole_match(InvalidPatterns, Instr0, Instrs0, Instrs) :-
     % can be replaced with a conditional branch followed by an unconditional
     % goto.
     %
-:- pred peephole_match_computed_goto(rval::in, list(maybe(label))::in,
-    string::in, list(instruction)::in, list(instruction)::out) is semidet.
-:- pragma inline(pred(peephole_match_computed_goto/5)).
+:- pred peephole_match_computed_goto(rval::in, maybe(int)::in,
+    list(maybe(label))::in, string::in,
+    list(instruction)::in, list(instruction)::out) is semidet.
+:- pragma inline(pred(peephole_match_computed_goto/6)).
 
-peephole_match_computed_goto(SelectorRval, MaybeLabels, Comment0,
-        Instrs0, Instrs) :-
+peephole_match_computed_goto(SelectorRval, MaybeMaxIndex, MaybeLabels,
+        Comment0, Instrs0, Instrs) :-
     build_computed_goto_target_map(MaybeLabels, 0,
         one_or_more_map.init, LabelMap),
     one_or_more_map.to_assoc_list(LabelMap, LabelValsList),
@@ -208,7 +213,22 @@ peephole_match_computed_goto(SelectorRval, MaybeLabels, Comment0,
         GotoInstr = llds_instr(goto(code_label(Label)), Comment0),
         Instrs = [GotoInstr | Instrs0]
     else if
-        LabelValsList = [LabelValsA, LabelValsB]
+        LabelValsList = [LabelValsA, LabelValsB],
+        peephole_pick_fewer_vals_label(LabelValsA, LabelValsB,
+            FewerValsLabel, FewerOoMVals, OtherLabel),
+        FewerOoMVals = one_or_more(FirstVal, LaterVals),
+        ( if
+            MaybeMaxIndex = yes(MaxIndex),
+            MaxIndex < 32
+        then
+            Method = method_bitmap
+        else if
+            LaterVals = [LaterVal0]
+        then
+            Method = method_or(LaterVal0)
+        else
+            fail
+        )
     then
         % The only info we have about which label execution will go to
         % more often at runtime is the number of values associated with
@@ -226,24 +246,31 @@ peephole_match_computed_goto(SelectorRval, MaybeLabels, Comment0,
         % of one conditional and one unconditional branch with just one
         % conditional branch effectively trumping the pipeline considerations
         % above.
-        peephole_pick_fewer_vals_label(LabelValsA, LabelValsB,
-            FewerValsLabel, FewerOoMVals, OtherLabel),
-        FewerOoMVals = one_or_more(FirstVal, LaterVals),
         (
             LaterVals = [],
             CondRval = binop(int_cmp(int_type_int, eq),
                 SelectorRval, const(llconst_int(FirstVal)))
         ;
             LaterVals = [_ | _],
-            build_offset_mask([FirstVal | LaterVals], 0u, Mask),
-            SelectorRvalUint = cast(lt_int(int_type_uint), SelectorRval),
-            QueryRval = binop(
-                unchecked_left_shift(int_type_uint, shift_by_uint),
-                const(llconst_uint(1u)), SelectorRvalUint),
-            SelectedBitUintRval = binop(bitwise_and(int_type_uint),
-                const(llconst_uint(Mask)), QueryRval),
-            CondRval = binop(int_cmp(int_type_uint, ne),
-                SelectedBitUintRval, const(llconst_uint(0u)))
+            (
+                Method = method_bitmap,
+                build_offset_mask([FirstVal | LaterVals], 0u, Mask),
+                SelectorRvalUint = cast(lt_int(int_type_uint), SelectorRval),
+                QueryRval = binop(
+                    unchecked_left_shift(int_type_uint, shift_by_uint),
+                    const(llconst_uint(1u)), SelectorRvalUint),
+                SelectedBitUintRval = binop(bitwise_and(int_type_uint),
+                    const(llconst_uint(Mask)), QueryRval),
+                CondRval = binop(int_cmp(int_type_uint, ne),
+                    SelectedBitUintRval, const(llconst_uint(0u)))
+            ;
+                Method = method_or(LaterVal),
+                CondRvalA = binop(int_cmp(int_type_int, eq),
+                    SelectorRval, const(llconst_int(FirstVal))),
+                CondRvalB = binop(int_cmp(int_type_int, eq),
+                    SelectorRval, const(llconst_int(LaterVal))),
+                CondRval = binop(logical_or, CondRvalA, CondRvalB)
+            )
         ),
         CommentInstr = llds_instr(comment(Comment0), ""),
         BranchUinstr = if_val(CondRval, code_label(FewerValsLabel)),
@@ -677,10 +704,10 @@ replace_tagged_ptr_components_in_instr(OldLval, OldPtag, OldBase,
             MaybeInstr = yes(Instr)
         )
     ;
-        Uinstr0 = computed_goto(Rval0, Targets),
+        Uinstr0 = computed_goto(Rval0, MaybeMaxIndex, Targets),
         replace_tagged_ptr_components_in_rval(OldLval, OldPtag, OldBase,
             Rval0, Rval),
-        Uinstr = computed_goto(Rval, Targets),
+        Uinstr = computed_goto(Rval, MaybeMaxIndex, Targets),
         Instr = llds_instr(Uinstr, Comment),
         MaybeInstr = yes(Instr)
     ;

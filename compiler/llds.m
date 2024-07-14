@@ -363,8 +363,8 @@
             % do_redo, etc can get optimized into invocations of the macros
             % fail(), redo(), etc.
 
-    ;       computed_goto(rval, list(maybe(label)))
-            % Evaluate rval, which should be an integer, and jump to the
+    ;       computed_goto(rval, maybe(int), list(maybe(label)))
+            % Evaluate the rval, which should be an integer, and jump to the
             % (rval+1)th label in the list. e.g. computed_goto(2, [A, B, C, D])
             % will branch to label C. A label that isn't there implicitly means
             % "not reached".

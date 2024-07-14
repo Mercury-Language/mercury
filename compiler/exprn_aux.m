@@ -32,6 +32,9 @@
 :- pred vars_in_rval(rval::in, list(prog_var)::out) is det.
 :- pred vars_in_lval(lval::in, list(prog_var)::out) is det.
 
+:- type transform_lval(T)   == pred(lval, lval, T, T).
+:- inst transform_lval      == (pred(in, out, in, out) is det).
+
     % transform_lval_in_instr(Transform, !Instr, !Acc):
     %
     % Transform all lvals in !.Instr with the predicate Transform.
@@ -42,9 +45,6 @@
 
 :- pred transform_lval_in_rval(transform_lval(T)::in(transform_lval),
     rval::in, rval::out, T::in, T::out) is det.
-
-:- type transform_lval(T)   == pred(lval, lval, T, T).
-:- inst transform_lval      == (pred(in, out, in, out) is det).
 
     % substitute_lval_in_instr(OldLval, NewLval, !Instr, !SubstCount):
     %
@@ -313,9 +313,9 @@ transform_lval_in_uinstr(Transform, Uinstr0, Uinstr, !Acc) :-
         transform_lval_in_rval(Transform, Rval0, Rval, !Acc),
         Uinstr = keep_assign(Lval, Rval)
     ;
-        Uinstr0 = computed_goto(Rval0, Labels),
+        Uinstr0 = computed_goto(Rval0, MaybeMaxIndex, Labels),
         transform_lval_in_rval(Transform, Rval0, Rval, !Acc),
-        Uinstr = computed_goto(Rval, Labels)
+        Uinstr = computed_goto(Rval, MaybeMaxIndex, Labels)
     ;
         Uinstr0 = arbitrary_c_code(AffectsLiveness, LiveLvals0, Code),
         transform_lval_in_live_lval_info(Transform, LiveLvals0, LiveLvals,
