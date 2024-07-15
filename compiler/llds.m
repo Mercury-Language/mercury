@@ -368,6 +368,16 @@
             % (rval+1)th label in the list. e.g. computed_goto(2, [A, B, C, D])
             % will branch to label C. A label that isn't there implicitly means
             % "not reached".
+            %
+            % The code that constructs this instructions should set the
+            % second argument to contain
+            %
+            % - either yes(MaxIndex), if the maximum possible value of
+            %   the rval argument is known at compile time (and is MaxIndex),
+            % - or no, if this maximum value is not known at compile time.
+            %
+            % The info in this field is used to check the validity of an
+            % optimization performed on computed_gotos by peeohole.m.
 
     ;       arbitrary_c_code(proc_affects_liveness, c_code_live_lvals, string)
             % Do whatever is specified by the string, which can be any piece

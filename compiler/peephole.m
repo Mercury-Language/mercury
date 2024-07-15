@@ -218,6 +218,14 @@ peephole_match_computed_goto(SelectorRval, MaybeMaxIndex, MaybeLabels,
             FewerValsLabel, FewerOoMVals, OtherLabel),
         FewerOoMVals = one_or_more(FirstVal, LaterVals),
         ( if
+            % The bitmap method below uses a word-sized bitmap.
+            % Indexing into it without undefined behavior requires
+            % that the index (i.e. SelectorRval) be guaranteed
+            % to be less than a wordsize. For simplicity, we use
+            % a 32-bit bitmap on both 32- and 64-bit platforms.
+            % The most frequent use case where the maximum index value
+            % is known is when that value comes from a primary or
+            % secondary tag, and those tend to be small.
             MaybeMaxIndex = yes(MaxIndex),
             MaxIndex < 32
         then
@@ -256,6 +264,9 @@ peephole_match_computed_goto(SelectorRval, MaybeMaxIndex, MaybeLabels,
                 Method = method_bitmap,
                 build_offset_mask([FirstVal | LaterVals], 0u, Mask),
                 SelectorRvalUint = cast(lt_int(int_type_uint), SelectorRval),
+                % This operation is safe because SelectorRval as the index
+                % value must be definition be less than MaxIndex, and above
+                % we have checked that MaxIndex < 32.
                 QueryRval = binop(
                     unchecked_left_shift(int_type_uint, shift_by_uint),
                     const(llconst_uint(1u)), SelectorRvalUint),
