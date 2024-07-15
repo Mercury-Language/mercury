@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1997-2012 The University of Melbourne.
-% Copyright (C) 2015 The Mercury team.
+% Copyright (C) 2015, 2024 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -377,11 +377,12 @@ pred_inst_info_default_func_mode(Arity) = PredInstInfo :-
 
 %---------------------------------------------------------------------------%
 
-get_cons_id_arg_types_for_bound_inst(ModuleInfo, Type, BoundInst, Types) :-
+get_cons_id_arg_types_for_bound_inst(ModuleInfo, Type, BoundInst, ArgTypes) :-
     BoundInst = bound_functor(ConsId, ArgInsts),
-    get_cons_id_arg_types_for_inst(ModuleInfo, Type, ConsId, ArgInsts, Types).
+    get_cons_id_arg_types_for_inst(ModuleInfo, Type, ConsId,
+        ArgInsts, ArgTypes).
 
-get_cons_id_arg_types_for_inst(ModuleInfo, Type, ConsId, ArgInsts, Types) :-
+get_cons_id_arg_types_for_inst(ModuleInfo, Type, ConsId, ArgInsts, ArgTypes) :-
     list.length(ArgInsts, Arity),
     ( if ConsId = du_data_ctor(DuCtor) then
         ( if
@@ -404,28 +405,28 @@ get_cons_id_arg_types_for_inst(ModuleInfo, Type, ConsId, ArgInsts, Types) :-
             % insts incorrectly (since such insts are the one difference
             % between inst preserving and regular append).
             get_du_ctor_non_existential_arg_types(ModuleInfo, Type,
-                DuCtor, ArgTypes),
-            list.length(ArgTypes, Arity)
+                DuCtor, ArgTypes0),
+            list.length(ArgTypes0, Arity)
         then
-            Types = ArgTypes
+            ArgTypes = ArgTypes0
         else if
             % For tuple types, the cons_id is sometimes not tuple_cons/1,
             % but cons/1, with unqualified("{}")/2 as the data constructor.
-            type_to_ctor_and_args(Type, TypeCtor, TypeArgs),
+            type_to_ctor_and_args(Type, TypeCtor, ArgTypes0),
             type_ctor_is_tuple(TypeCtor)
         then
-            Types = TypeArgs
+            ArgTypes = ArgTypes0
         else
-            list.duplicate(Arity, no_type_available, Types)
+            list.duplicate(Arity, no_type_available, ArgTypes)
         )
     else if ConsId = tuple_cons(_) then
-        ( if type_to_ctor_and_args(Type, _TypeCtor, TypeArgs) then
-            Types = TypeArgs
+        ( if type_to_ctor_and_args(Type, _TypeCtor, ArgTypes0) then
+            ArgTypes = ArgTypes0
         else
-            list.duplicate(Arity, no_type_available, Types)
+            list.duplicate(Arity, no_type_available, ArgTypes)
         )
     else
-        Types = []
+        ArgTypes = []
     ).
 
 get_higher_order_arg_types(Type, Arity, Types) :-

@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %---------------------------------------------------------------------------%
 % Copyright (C) 1995-1998, 2000-2012 The University of Melbourne.
-% Copyright (C) 2015 The Mercury team.
+% Copyright (C) 2015, 2024 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %---------------------------------------------------------------------------%
@@ -813,8 +813,9 @@ bound_inst_list_matches_final(CalcSub, Type,
     BoundInstY = bound_functor(ConsIdY, ArgInstsY),
     ( if equivalent_cons_ids(ConsIdX, ConsIdY) then
         get_cons_id_arg_types_for_bound_inst(!.Info ^ imi_module_info, Type,
-            BoundInstX, Types),
-        inst_list_matches_final(CalcSub, Types, ArgInstsX, ArgInstsY, !Info),
+            BoundInstX, ArgTypes),
+        inst_list_matches_final(CalcSub, ArgTypes,
+            ArgInstsX, ArgInstsY, !Info),
         bound_inst_list_matches_final(CalcSub, Type,
             BoundInstXs, BoundInstYs, !Info)
     else
@@ -832,10 +833,10 @@ bound_inst_list_matches_final(CalcSub, Type,
     inst_match_info::in, inst_match_info::out) is semidet.
 
 inst_list_matches_final(_, [], [], [], !Info).
-inst_list_matches_final(CalcSub, [Type | Types],
+inst_list_matches_final(CalcSub, [ArgType | ArgTypes],
         [ArgInstA | ArgInstsA], [ArgInstB | ArgInstsB], !Info) :-
-    inst_matches_final_mt(CalcSub, Type, ArgInstA, ArgInstB, !Info),
-    inst_list_matches_final(CalcSub, Types, ArgInstsA, ArgInstsB, !Info).
+    inst_matches_final_mt(CalcSub, ArgType, ArgInstA, ArgInstB, !Info),
+    inst_list_matches_final(CalcSub, ArgTypes, ArgInstsA, ArgInstsB, !Info).
 
 %---------------------------------------------------------------------------%
 
@@ -1032,8 +1033,9 @@ bound_inst_list_matches_binding(CalcSub, Type,
     BoundInstY = bound_functor(ConsIdY, ArgInstsY),
     ( if equivalent_cons_ids(ConsIdX, ConsIdY) then
         get_cons_id_arg_types_for_bound_inst(!.Info ^ imi_module_info, Type,
-            BoundInstX, Types),
-        inst_list_matches_binding(CalcSub, Types, ArgInstsX, ArgInstsY, !Info),
+            BoundInstX, ArgTypes),
+        inst_list_matches_binding(CalcSub, ArgTypes,
+            ArgInstsX, ArgInstsY, !Info),
         bound_inst_list_matches_binding(CalcSub, Type,
             BoundInstXs, BoundInstYs, !Info)
     else
@@ -1051,10 +1053,10 @@ bound_inst_list_matches_binding(CalcSub, Type,
     inst_match_info::in, inst_match_info::out) is semidet.
 
 inst_list_matches_binding(_, [], [], [], !Info).
-inst_list_matches_binding(CalcSub, [Type | Types],
+inst_list_matches_binding(CalcSub, [ArgType | ArgTypes],
         [ArgInstA | ArgInstsA], [ArgInstB | ArgInstsB], !Info) :-
-    inst_matches_binding_mt(CalcSub, Type, ArgInstA, ArgInstB, !Info),
-    inst_list_matches_binding(CalcSub, Types, ArgInstsA, ArgInstsB, !Info).
+    inst_matches_binding_mt(CalcSub, ArgType, ArgInstA, ArgInstB, !Info),
+    inst_list_matches_binding(CalcSub, ArgTypes, ArgInstsA, ArgInstsB, !Info).
 
 %---------------------------------------------------------------------------%
 
