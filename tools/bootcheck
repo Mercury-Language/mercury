@@ -2,7 +2,7 @@
 # vim: ts=4 sw=4 et ft=sh
 #---------------------------------------------------------------------------#
 # Copyright (C) 1995-2008, 2010-2011 The University of Melbourne.
-# Copyright (C) 2013-2022 The Mercury team.
+# Copyright (C) 2013-2024 The Mercury team.
 # This file may only be copied under the terms of the GNU General
 # Public License - see the file COPYING in the Mercury distribution.
 #---------------------------------------------------------------------------#
@@ -88,11 +88,14 @@ Options:
         Don't build the check_namespace targets in the runtime,
         trace, browser, ssdb, mdbcomp and library directories.
     -t-, --no-test-suite
-        By default, bootcheck will also run the test quite.
+        By default, bootcheck will also run the test suite.
         This option prevents that.
     --skip-stage-2
         Take the existing stage 2 directory as given; do not run mmake
         in it.
+    --skip-stage-3
+        Skip building the stage 3 directory, and the comparison to the
+        stage 2 directory.
     -2, --keep-stage-2
         Don't rebuild the stage 2 directory from scratch after
         building stage 1. Instead use the existing stage 2 directory
@@ -104,6 +107,9 @@ Options:
     --no-test-params
         When executing the test suite, do not use the stage 2 Mmake.params
         file.
+    --test-with-stage-1-compiler
+        Use the stage 1 compiler when executing the test suite.
+        By default, the stage 2 compiler is used.
     --keep-success-log-files
         Keep every test case's .log file, renamed as a .kept_log file,
         even if the test passes. It can be useful to compare these files
@@ -199,11 +205,13 @@ use_gradedir=false
 target=c
 test_grade=
 test_params=true
+test_with_stage_1_compiler=false
 copy_runtime=false
 copy_boehm_gc=false
 copy_slice=true
 copy_profilers=true
-mmake_stage_2=true
+build_stage_2=true
+build_stage_3=true
 keep_stage_2=false
 keep_stage_3=false
 stop_after_stage_2=false
@@ -398,7 +406,12 @@ do
 
         --skip-stage-2)
             keep_stage_2=true
-            mmake_stage_2=false
+            build_stage_2=false
+            ;;
+
+        --skip-stage-3)
+            keep_stage_3=true
+            build_stage_3=false
             ;;
 
         -2|--keep-stage-2)
@@ -415,6 +428,10 @@ do
 
         --no-test-params)
             test_params=false
+            ;;
+
+        --test-with-stage-1-compiler)
+            test_with_stage_1_compiler=true
             ;;
 
         --keep-success-log-files)
@@ -799,13 +816,13 @@ then
     test -d ${stage2dir} || mkdir ${stage2dir}
     if ${keep_stage_2}
     then
-        echo keeping existing stage2
+        echo keeping existing stage 2
     else
         /bin/rm -fr "${root:?}/${stage2dir}" < /dev/null
         mkdir "${root}/${stage2dir}"
     fi
 
-    if ${mmake_stage_2}
+    if ${build_stage_2}
     then
         set +x
         echo linking stage 2... 1>&2
@@ -1476,566 +1493,572 @@ EOF
     test -d ${stage3dir} || mkdir ${stage3dir}
     if ${keep_stage_3}
     then
-        echo keeping existing stage3
+        echo keeping existing stage 3
     else
         /bin/rm -fr "${root:?}/${stage3dir}" < /dev/null
         mkdir "${root}/${stage3dir}"
     fi
 
-    echo linking stage 3... 1>&2
-    set +x
-
-    cd "${stage3dir}"
-    mkdir compiler
-    cd compiler
-    # Break up the links into several chunks.
-    # This is needed to cope with small limits
-    # on the size of argument vectors.
-    ${LN_S} "${root}"/compiler/[a-h]*.m .
-    ${LN_S} "${root}"/compiler/[i-o]*.m .
-    ${LN_S} "${root}"/compiler/[p-s]*.m .
-    ${LN_S} "${root}"/compiler/[t-z]*.m .
-    ${LN_S} "${root}"/compiler/notes .
-    cp "${root}"/compiler/Mmake* "${root}"/compiler/Mercury.options .
-    cp "${root}"/compiler/*_FLAGS.in .
-    cp "${root}"/compiler/.mgnu* .
-
-    cd "${root}/${stage3dir}"
-    mkdir library
-    cd library
-    ${LN_S} "${root}"/library/[a-l]*.m .
-    ${LN_S} "${root}"/library/[m-z]*.m .
-    ${LN_S} "${root}"/library/print_extra_inits .
-    ${LN_S} "${root}"/library/library_strong_name.sn .
-    ${LN_S} "${root}"/library/MODULES_DOC .
-    ${LN_S} "${root}"/library/MODULES_UNDOC .
-    cp "${root}"/library/Mmake* "${root}"/library/Mercury.options .
-    cp "${root}"/library/*_FLAGS.in .
-    cp "${root}"/library/INTER_FLAGS* .
-    cp "${root}"/library/mer_std.trans_opt_deps_spec .
-    cp "${root}"/library/.mgnu* .
-    ${LN_S} "${root}"/library/${STD_LIB_NAME}.init .
-
-    cd "${root}/${stage3dir}"
-    mkdir mdbcomp
-    cd mdbcomp
-    ${LN_S} "${root}"/mdbcomp/*.m .
-    cp "${root}"/mdbcomp/Mmake* "${root}"/mdbcomp/Mercury.options .
-    cp "${root}"/mdbcomp/*_FLAGS.in .
-    cp "${root}"/mdbcomp/.mgnu* .
-    ${LN_S} "${root}"/mdbcomp/${MDBCOMP_LIB_NAME}.init .
-
-    cd "${root}/${stage3dir}"
-    mkdir browser
-    cd browser
-    ${LN_S} "${root}"/browser/*.m .
-    cp "${root}"/browser/Mmake* "${root}"/browser/Mercury.options .
-    cp "${root}"/browser/*_FLAGS.in .
-    cp "${root}"/browser/.mgnu* .
-    ${LN_S} "${root}"/browser/${BROWSER_LIB_NAME}.init .
-
-    cd "${root}/${stage3dir}"
-    mkdir ssdb
-    cd ssdb
-    ${LN_S} "${root}"/ssdb/*.m .
-    cp "${root}"/ssdb/Mmake* "${root}"/ssdb/Mercury.options .
-    cp "${root}"/ssdb/*_FLAGS.in .
-    cp "${root}"/ssdb/.mgnu* .
-    ${LN_S} "${root}"/ssdb/${SSDB_LIB_NAME}.init .
-
-    cd "${root}/${stage3dir}"
-    ${LN_S} "${root}"/${stage2dir}/boehm_gc .
-    ${LN_S} "${root}"/${stage2dir}/java .
-    ${LN_S} "${root}"/bindist .
-    ${LN_S} "${root}"/doc .
-    ${LN_S} "${root}"/${stage2dir}/runtime .
-    ${LN_S} "${root}"/${stage2dir}/trace .
-    ${LN_S} "${root}"/${stage2dir}/robdd .
-    ${LN_S} "${root}"/scripts .
-    ${LN_S} "${root}"/tools .
-    ${LN_S} "${root}"/util .
-
-    cd "${root}/${stage3dir}"
-    mkdir grade_lib
-    cd grade_lib
-    ${LN_S} "${root}"/grade_lib/*.m .
-    cp "${root}"/grade_lib/Mmake* "${root}"/grade_lib/Mercury.options .
-    cp "${root}"/grade_lib/*_FLAGS.in .
-    cp "${root}"/grade_lib/.mgnu* .
-
-    cd "${root}/${stage3dir}"
-    mkdir slice
-    cd slice
-    ${LN_S} "${root}"/slice/*.m .
-    cp "${root}"/slice/Mmake* "${root}"/slice/Mercury.options .
-    cp "${root}"/slice/*_FLAGS.in .
-    cp "${root}"/slice/.mgnu* .
-
-    cd "${root}/${stage3dir}"
-    mkdir profiler
-    cd profiler
-    ${LN_S} "${root}"/profiler/*.m .
-    cp "${root}"/profiler/Mmake* "${root}"/profiler/Mercury.options .
-    cp "${root}"/profiler/*_FLAGS.in .
-    cp "${root}"/profiler/.mgnu* .
-
-    cd "${root}/${stage3dir}"
-    mkdir deep_profiler
-    cd deep_profiler
-    ${LN_S} "${root}"/deep_profiler/*.m .
-    cp "${root}"/deep_profiler/Mmake* "${root}"/deep_profiler/Mercury.options .
-    cp "${root}"/deep_profiler/*_FLAGS.in .
-    cp "${root}"/deep_profiler/.mgnu* .
-
-    cd "${root}/${stage3dir}"
-    mkdir mfilterjavac
-    cd mfilterjavac
-    ${LN_S} "${root}"/mfilterjavac/*.m .
-    cp "${root}"/mfilterjavac/Mmake* "${root}"/mfilterjavac/Mercury.options .
-    cp "${root}"/mfilterjavac/*_FLAGS.in .
-    cp "${root}"/mfilterjavac/.mgnu* .
-
-    cd "${root}/${stage3dir}"
-    ${LN_S} "${root}"/conf* .
-    ${LN_S} "${root}"/aclocal.m4 .
-    ${LN_S} "${root}"/m4 .
-    ${LN_S} "${root}"/VERSION .
-    ${LN_S} "${root}"/install-sh .
-    ${LN_S} "${root}"/.*.in .
-    rm -f config*.log
-    cp "${root}"/${stage2dir}/Mmake* "${root}"/${stage2dir}/Mercury.options .
-    cd "${root}"
-    # set -x
-
-    MMAKE_VPATH=.
-    export MMAKE_VPATH
-    MMAKE_DIR="${root}"/scripts
-    export MMAKE_DIR
-
-    # Use the new mmake to build stage 3.
-    MMAKE=${MMAKE_DIR}/mmake
-
-    # This setting is ignored unless the stage 2 was compiled with
-    # -DMR_HO_CALL_STATS.
-    HO_CALL_STATS="${root}/HO_CALL_STATS"
-    export HO_CALL_STATS
-
-    if test "${type_stats}" != ""
+    if ${build_stage_3}
     then
-        # Start collecting statistics from stage 3 with a clean slate,
-        # while making sure that the existing stats are not lost.
-        # Note: we do not have to go to any great lengths to restore
-        # the old stats if bootcheck fails, since the save files
-        # can easily be recovered outside bootcheck.
+        echo linking stage 3... 1>&2
+        set +x
 
-        cat "${type_stats}" >> "${type_stats}".save.$$
-        cp /dev/null "${type_stats}"
-    fi
+        cd "${stage3dir}"
+        mkdir compiler
+        cd compiler
+        # Break up the links into several chunks.
+        # This is needed to cope with small limits
+        # on the size of argument vectors.
+        ${LN_S} "${root}"/compiler/[a-h]*.m .
+        ${LN_S} "${root}"/compiler/[i-o]*.m .
+        ${LN_S} "${root}"/compiler/[p-s]*.m .
+        ${LN_S} "${root}"/compiler/[t-z]*.m .
+        ${LN_S} "${root}"/compiler/notes .
+        cp "${root}"/compiler/Mmake* "${root}"/compiler/Mercury.options .
+        cp "${root}"/compiler/*_FLAGS.in .
+        cp "${root}"/compiler/.mgnu* .
 
-    case ${use_mmc_make} in
-        yes)
-            # The rules to generate *_FLAGS files from *_FLAGS.in files
-            # will not run if we are using `mmc --make', so run them now.
-            if (cd ${stage3dir} && \
-                ${MMAKE} \
-                    library/LIB_FLAGS \
-                    mdbcomp/MDBCOMP_FLAGS \
-                    browser/MDB_FLAGS \
-                    ssdb/SSDB_FLAGS \
-                    grade_lib/GRADE_LIB_FLAGS \
-                    compiler/COMP_FLAGS \
-                    slice/SLICE_FLAGS \
-                    profiler/PROF_FLAGS \
-                    deep_profiler/DEEP_FLAGS \
-                    mfilterjavac/MFILTERJAVAC_FLAGS)
-            then
-                echo "building of stage 3 flags files successful"
-            else
-                echo "building of stage 3 flags files not successful"
-                exit 1
-            fi
-            ;;
-    esac
+        cd "${root}/${stage3dir}"
+        mkdir library
+        cd library
+        ${LN_S} "${root}"/library/[a-l]*.m .
+        ${LN_S} "${root}"/library/[m-z]*.m .
+        ${LN_S} "${root}"/library/print_extra_inits .
+        ${LN_S} "${root}"/library/library_strong_name.sn .
+        ${LN_S} "${root}"/library/MODULES_DOC .
+        ${LN_S} "${root}"/library/MODULES_UNDOC .
+        cp "${root}"/library/Mmake* "${root}"/library/Mercury.options .
+        cp "${root}"/library/*_FLAGS.in .
+        cp "${root}"/library/INTER_FLAGS* .
+        cp "${root}"/library/mer_std.trans_opt_deps_spec .
+        cp "${root}"/library/.mgnu* .
+        ${LN_S} "${root}"/library/${STD_LIB_NAME}.init .
 
-    if (cd ${stage3dir} && \
-        ${MMAKE} ${mmake_opts} \
-            dep_library \
-            dep_mdbcomp \
-            dep_browser dep_browser_aux \
-            dep_ssdb \
-            dep_compiler \
-            dep_grade_lib \
-            dep_slice \
-            dep_profiler dep_profiler_aux \
-            dep_deep_profiler \
-            dep_mfilterjavac)
-    then
-        echo "building of stage 3 dependencies successful"
-    else
-        echo "building of stage 3 dependencies not successful"
-        exit 1
-    fi
+        cd "${root}/${stage3dir}"
+        mkdir mdbcomp
+        cd mdbcomp
+        ${LN_S} "${root}"/mdbcomp/*.m .
+        cp "${root}"/mdbcomp/Mmake* "${root}"/mdbcomp/Mercury.options .
+        cp "${root}"/mdbcomp/*_FLAGS.in .
+        cp "${root}"/mdbcomp/.mgnu* .
+        ${LN_S} "${root}"/mdbcomp/${MDBCOMP_LIB_NAME}.init .
 
-    if (cd ${stage3dir}/library &&
-        ${MMAKE} ${mmake_opts} ${mmake_jobs} all-ints &&
-        ${MMAKE} ${mmake_opts} ${mmake_jobs} ${collective_target})
-    then
-        echo "building of stage 3 library successful"
-    else
-        echo "building of stage 3 library initially not successful"
-        df .
-        # Try again, in case the failure cause was transient.
+        cd "${root}/${stage3dir}"
+        mkdir browser
+        cd browser
+        ${LN_S} "${root}"/browser/*.m .
+        cp "${root}"/browser/Mmake* "${root}"/browser/Mercury.options .
+        cp "${root}"/browser/*_FLAGS.in .
+        cp "${root}"/browser/.mgnu* .
+        ${LN_S} "${root}"/browser/${BROWSER_LIB_NAME}.init .
+
+        cd "${root}/${stage3dir}"
+        mkdir ssdb
+        cd ssdb
+        ${LN_S} "${root}"/ssdb/*.m .
+        cp "${root}"/ssdb/Mmake* "${root}"/ssdb/Mercury.options .
+        cp "${root}"/ssdb/*_FLAGS.in .
+        cp "${root}"/ssdb/.mgnu* .
+        ${LN_S} "${root}"/ssdb/${SSDB_LIB_NAME}.init .
+
+        cd "${root}/${stage3dir}"
+        ${LN_S} "${root}"/${stage2dir}/boehm_gc .
+        ${LN_S} "${root}"/${stage2dir}/java .
+        ${LN_S} "${root}"/bindist .
+        ${LN_S} "${root}"/doc .
+        ${LN_S} "${root}"/${stage2dir}/runtime .
+        ${LN_S} "${root}"/${stage2dir}/trace .
+        ${LN_S} "${root}"/${stage2dir}/robdd .
+        ${LN_S} "${root}"/scripts .
+        ${LN_S} "${root}"/tools .
+        ${LN_S} "${root}"/util .
+
+        cd "${root}/${stage3dir}"
+        mkdir grade_lib
+        cd grade_lib
+        ${LN_S} "${root}"/grade_lib/*.m .
+        cp "${root}"/grade_lib/Mmake* "${root}"/grade_lib/Mercury.options .
+        cp "${root}"/grade_lib/*_FLAGS.in .
+        cp "${root}"/grade_lib/.mgnu* .
+
+        cd "${root}/${stage3dir}"
+        mkdir slice
+        cd slice
+        ${LN_S} "${root}"/slice/*.m .
+        cp "${root}"/slice/Mmake* "${root}"/slice/Mercury.options .
+        cp "${root}"/slice/*_FLAGS.in .
+        cp "${root}"/slice/.mgnu* .
+
+        cd "${root}/${stage3dir}"
+        mkdir profiler
+        cd profiler
+        ${LN_S} "${root}"/profiler/*.m .
+        cp "${root}"/profiler/Mmake* "${root}"/profiler/Mercury.options .
+        cp "${root}"/profiler/*_FLAGS.in .
+        cp "${root}"/profiler/.mgnu* .
+
+        cd "${root}/${stage3dir}"
+        mkdir deep_profiler
+        cd deep_profiler
+        ${LN_S} "${root}"/deep_profiler/*.m .
+        cp "${root}"/deep_profiler/Mmake* "${root}"/deep_profiler/Mercury.options .
+        cp "${root}"/deep_profiler/*_FLAGS.in .
+        cp "${root}"/deep_profiler/.mgnu* .
+
+        cd "${root}/${stage3dir}"
+        mkdir mfilterjavac
+        cd mfilterjavac
+        ${LN_S} "${root}"/mfilterjavac/*.m .
+        cp "${root}"/mfilterjavac/Mmake* "${root}"/mfilterjavac/Mercury.options .
+        cp "${root}"/mfilterjavac/*_FLAGS.in .
+        cp "${root}"/mfilterjavac/.mgnu* .
+
+        cd "${root}/${stage3dir}"
+        ${LN_S} "${root}"/conf* .
+        ${LN_S} "${root}"/aclocal.m4 .
+        ${LN_S} "${root}"/m4 .
+        ${LN_S} "${root}"/VERSION .
+        ${LN_S} "${root}"/install-sh .
+        ${LN_S} "${root}"/.*.in .
+        rm -f config*.log
+        cp "${root}"/${stage2dir}/Mmake* "${root}"/${stage2dir}/Mercury.options .
+        cd "${root}"
+        # set -x
+
+        MMAKE_VPATH=.
+        export MMAKE_VPATH
+        MMAKE_DIR="${root}"/scripts
+        export MMAKE_DIR
+
+        # Use the new mmake to build stage 3.
+        MMAKE=${MMAKE_DIR}/mmake
+
+        # This setting is ignored unless the stage 2 was compiled with
+        # -DMR_HO_CALL_STATS.
+        HO_CALL_STATS="${root}/HO_CALL_STATS"
+        export HO_CALL_STATS
+
+        if test "${type_stats}" != ""
+        then
+            # Start collecting statistics from stage 3 with a clean slate,
+            # while making sure that the existing stats are not lost.
+            # Note: we do not have to go to any great lengths to restore
+            # the old stats if bootcheck fails, since the save files
+            # can easily be recovered outside bootcheck.
+
+            cat "${type_stats}" >> "${type_stats}".save.$$
+            cp /dev/null "${type_stats}"
+        fi
+
+        case ${use_mmc_make} in
+            yes)
+                # The rules to generate *_FLAGS files from *_FLAGS.in files
+                # will not run if we are using `mmc --make', so run them now.
+                if (cd ${stage3dir} && \
+                    ${MMAKE} \
+                        library/LIB_FLAGS \
+                        mdbcomp/MDBCOMP_FLAGS \
+                        browser/MDB_FLAGS \
+                        ssdb/SSDB_FLAGS \
+                        grade_lib/GRADE_LIB_FLAGS \
+                        compiler/COMP_FLAGS \
+                        slice/SLICE_FLAGS \
+                        profiler/PROF_FLAGS \
+                        deep_profiler/DEEP_FLAGS \
+                        mfilterjavac/MFILTERJAVAC_FLAGS)
+                then
+                    echo "building of stage 3 flags files successful"
+                else
+                    echo "building of stage 3 flags files not successful"
+                    exit 1
+                fi
+                ;;
+        esac
+
+        if (cd ${stage3dir} && \
+            ${MMAKE} ${mmake_opts} \
+                dep_library \
+                dep_mdbcomp \
+                dep_browser dep_browser_aux \
+                dep_ssdb \
+                dep_compiler \
+                dep_grade_lib \
+                dep_slice \
+                dep_profiler dep_profiler_aux \
+                dep_deep_profiler \
+                dep_mfilterjavac)
+        then
+            echo "building of stage 3 dependencies successful"
+        else
+            echo "building of stage 3 dependencies not successful"
+            exit 1
+        fi
+
         if (cd ${stage3dir}/library &&
             ${MMAKE} ${mmake_opts} ${mmake_jobs} all-ints &&
             ${MMAKE} ${mmake_opts} ${mmake_jobs} ${collective_target})
         then
             echo "building of stage 3 library successful"
         else
-            echo "building of stage 3 library not successful"
-            exit 1
-        fi
-    fi
-
-    # We delay deleting the stage 2 compiler objects until now,
-    # so that if (a) an error manifests itself during the creation
-    # of the stage 3 library, and (b) this error can be fixed by
-    # changing the runtime, a bootcheck -2, which requires a relink,
-    # will not have to expensively recreate the stage 2 compiler objects.
-
-    if ${keep_objs}
-    then
-        true
-    else
-        find "${root}/${stage2dir}/compiler" -name "*.o" -print |
-        xargs /bin/rm -f
-    fi
-
-    if (cd ${stage3dir}/mdbcomp &&
-        ${MMAKE} ${mmake_opts} ${mmake_jobs} all-ints &&
-        ${MMAKE} ${mmake_opts} ${mmake_jobs} ${collective_target})
-    then
-        echo "building of stage 3 mdbcomp successful"
-    else
-        echo "building of stage 3 mdbcomp initially not successful"
-        df .
-        # Try again, in case the failure cause was transient.
-        if (cd ${stage3dir}/mdbcomp && \
-            ${MMAKE} ${mmake_opts} ${mmake_jobs} ${collective_target})
-        then
-            echo "building of stage 3 mdbcomp successful"
-        else
-            echo "building of stage 3 mdbcomp not successful"
-            exit 1
-        fi
-    fi
-
-    if (cd ${stage3dir}/browser &&
-        ${MMAKE} ${mmake_opts} ${mmake_jobs} all-ints &&
-        ${MMAKE} ${mmake_opts} ${mmake_jobs} ${collective_target})
-    then
-        echo "building of stage 3 browser successful"
-    else
-        echo "building of stage 3 browser initially not successful"
-        df .
-        # Try again, in case the failure cause was transient.
-        if (cd ${stage3dir}/browser && \
-            ${MMAKE} ${mmake_opts} ${mmake_jobs} ${collective_target})
-        then
-            echo "building of stage 3 browser successful"
-        else
-            echo "building of stage 3 browser not successful"
-            exit 1
-        fi
-    fi
-
-    if (cd ${stage3dir}/ssdb &&
-        ${MMAKE} ${mmake_opts} ${mmake_jobs} all-ints &&
-        ${MMAKE} ${mmake_opts} ${mmake_jobs} ${collective_target})
-    then
-        echo "building of stage 3 ssdb successful"
-    else
-        echo "building of stage 3 ssdb initially not successful"
-        df .
-        # Try again, in case the failure cause was transient.
-        if (cd ${stage3dir}/ssdb && \
-            ${MMAKE} ${mmake_opts} ${mmake_jobs} ${collective_target})
-        then
-            echo "building of stage 3 ssdb successful"
-        else
-            echo "building of stage 3 ssdb not successful"
-            exit 1
-        fi
-    fi
-
-    if (cd ${stage3dir}/compiler && \
-        ${MMAKE} ${mmake_opts} ${mmake_jobs} ${collective_target})
-    then
-        echo "building of stage 3 compiler successful"
-    else
-        echo "building of stage 3 compiler initially not successful"
-        df .
-        # Try again, in case the failure cause was transient.
-        if (cd ${stage3dir}/compiler && \
-            ${MMAKE} ${mmake_opts} ${mmake_jobs} ${collective_target})
-        then
-            echo "building of stage 3 compiler successful"
-        else
-            echo "building of stage 3 compiler not successful"
-            exit 1
-        fi
-    fi
-
-    if (cd ${stage3dir}/grade_lib && \
-        unset MMAKE && \
-        unset MMAKE_VPATH && \
-        unset MMAKE_DIR && \
-        unset MERCURY_CONFIG_DIR && \
-        unset MERCURY_STDLIB_DIR && \
-        mmake ${mmake_opts} ${mmake_jobs} ${collective_target})
-    then
-        echo "building of stage 3 grade_lib successful"
-    else
-        echo "building of stage 3 grade_lib not successful"
-        exit 1
-    fi
-
-    if (cd ${stage3dir}/slice && \
-        unset MMAKE && \
-        unset MMAKE_VPATH && \
-        unset MMAKE_DIR && \
-        unset MERCURY_CONFIG_DIR && \
-        unset MERCURY_STDLIB_DIR && \
-        mmake ${mmake_opts} ${mmake_jobs} ${collective_target})
-    then
-        echo "building of stage 3 slice successful"
-    else
-        echo "building of stage 3 slice not successful"
-        exit 1
-    fi
-
-    if (cd ${stage3dir}/profiler && \
-        unset MMAKE && \
-        unset MMAKE_VPATH && \
-        unset MMAKE_DIR && \
-        unset MERCURY_CONFIG_DIR && \
-        unset MERCURY_STDLIB_DIR && \
-        mmake ${mmake_opts} ${mmake_jobs} ${collective_target})
-    then
-        echo "building of stage 3 profiler successful"
-    else
-        echo "building of stage 3 profiler not successful"
-        exit 1
-    fi
-
-    if (cd ${stage3dir}/deep_profiler && \
-        unset MMAKE && \
-        unset MMAKE_VPATH && \
-        unset MMAKE_DIR && \
-        unset MERCURY_CONFIG_DIR && \
-        unset MERCURY_STDLIB_DIR && \
-        mmake ${mmake_opts} ${mmake_jobs} ${collective_target})
-    then
-        echo "building of stage 3 deep profiler successful"
-    else
-        echo "building of stage 3 deep profiler not successful"
-        exit 1
-    fi
-
-    if (cd ${stage3dir}/mfilterjavac && \
-        unset MMAKE && \
-        unset MMAKE_VPATH && \
-        unset MMAKE_DIR && \
-        unset MERCURY_CONFIG_DIR && \
-        unset MERCURY_STDLIB_DIR && \
-        mmake ${mmake_opts} ${mmake_jobs} ${collective_target})
-    then
-        echo "building of stage 3 mfilterjavac successful"
-    else
-        echo "building of stage 3 mfilterjavac not successful"
-        exit 1
-    fi
-
-    if test "${type_stats}" != ""
-    then
-        echo "Saving stage 3 stats in ${type_stats}.stage3.$$"
-        mv "${type_stats}" "${type_stats}".stage3.$$
-        cp /dev/null "${type_stats}"
-    fi
-
-    diff_status=0
-
-    exec 3>&1       # save stdout in fd 3
-    if test -n "${outfile}"
-    then
-        exec > "${outfile}"   # redirect stdout to ${outfile}
-    fi
-
-    for dir in \
-        library \
-        mdbcomp \
-        browser \
-        ssdb \
-        compiler \
-        grade_lib \
-        slice \
-        profiler \
-        deep_profiler \
-        mfilterjavac
-    do
-        # `mmake all_cs' in the compiler directory doesn't build
-        # `mercury_compile_init.c', so we only compare the `.c'
-        # files present in the stage 3 directory.
-        for file in ${stage3dir}/${dir}/${target_subdir}*.${target_ext}
-        do
-            # In the C# and Java grades, some modules have expected differences
-            # between the code generated for them in stage 2 and stage 3,
-            # due to stage 2 being (usually) generated by a 64 bit compiler,
-            # but stage 3 being generated by a compiler in which native
-            # integers are 32 bits.
-            compare_file=true
-            base_file=$(basename "${file}")
-            case "${grade}" in
-                java*)
-                    case "${dir},${base_file}" in
-                        library,mr_float.java)
-                            compare_file=false
-                            ;;
-                        library,bitmap.java)
-                            compare_file=false
-                            ;;
-                        library,fat_sparse_bitset.java)
-                            compare_file=false
-                            ;;
-                        library,fatter_sparse_bitset.java)
-                            compare_file=false
-                            ;;
-                        library,sparse_bitset.java)
-                            compare_file=false
-                            ;;
-                        library,test_bitset.java)
-                            compare_file=false
-                            ;;
-                        library,tree_bitset.java)
-                            compare_file=false
-                            ;;
-                        library,version_bitmap.java)
-                            compare_file=false
-                            ;;
-                        profiler,snapshots.java)
-                            compare_file=false
-                            ;;
-                        deep_profiler,display_report.java)
-                            compare_file=false
-                            ;;
-                        deep_profiler,measurement_units.java)
-                            compare_file=false
-                            ;;
-                        deep_profiler,read_profile.java)
-                            compare_file=false
-                            ;;
-                    esac
-                    ;;
-                csharp*)
-                    case "${dir},${base_file}" in
-                        library,bitmap.cs)
-                            compare_file=false
-                            ;;
-                        library,fat_sparse_bitset.cs)
-                            compare_file=false
-                            ;;
-                        library,fatter_sparse_bitset.cs)
-                            compare_file=false
-                            ;;
-                        library,sparse_bitset.cs)
-                            compare_file=false
-                            ;;
-                        library,test_bitmap.cs)
-                            compare_file=false
-                            ;;
-                        library,test_bitset.cs)
-                            compare_file=false
-                            ;;
-                        library,tree_bitset.cs)
-                            compare_file=false
-                            ;;
-                        library,version_bitmap.cs)
-                            compare_file=false
-                            ;;
-                        profiler,snapshots.cs)
-                            compare_file=false
-                            ;;
-                        deep_profiler,display_report.cs)
-                            compare_file=false
-                            ;;
-                        deep_profiler,measurement_units.cs)
-                            compare_file=false
-                            ;;
-                        deep_profiler,read_profile.cs)
-                            compare_file=false
-                            ;;
-                    esac
-                    ;;
-            esac
-            if ${compare_file}
+            echo "building of stage 3 library initially not successful"
+            df .
+            # Try again, in case the failure cause was transient.
+            if (cd ${stage3dir}/library &&
+                ${MMAKE} ${mmake_opts} ${mmake_jobs} all-ints &&
+                ${MMAKE} ${mmake_opts} ${mmake_jobs} ${collective_target})
             then
-                diff -u "${stage2dir}/${dir}/${target_subdir}${base_file}" \
-                    "${file}" \
-                || diff_status=1
+                echo "building of stage 3 library successful"
+            else
+                echo "building of stage 3 library not successful"
+                exit 1
             fi
-        done
-    done
-
-    exec >&3        # restore stdout from fd 3
-    if test ${diff_status} -ne 0
-    then
-        echo "** error - stage 2 and stage 3 have unexpected differences!"
-    else
-        echo "stage 2 and stage 3 compare ok"
-        if test -d ${stage3dir}/library/ComplexityArgs
-        then
-            mv ${stage3dir}/library/ComplexityArgs \
-                "${root}"/stage3_library_ComplexityArgs
-        fi
-        if test -d ${stage3dir}/library/ComplexityData
-        then
-            mv ${stage3dir}/library/ComplexityData \
-                "${root}"/stage3_library_ComplexityData
-        fi
-        if test -d ${stage3dir}/compiler/ComplexityArgs
-        then
-            mv ${stage3dir}/compiler/ComplexityArgs \
-                "${root}"/stage3_compiler_ComplexityArgs
-        fi
-        if test -d ${stage3dir}/compiler/ComplexityData
-        then
-            mv ${stage3dir}/compiler/ComplexityData \
-                "${root}"/stage3_compiler_ComplexityData
         fi
 
-        echo "removing stage 3..."
-        /bin/rm -fr "${root:?}/${stage3dir}" < /dev/null
+        # We delay deleting the stage 2 compiler objects until now,
+        # so that if (a) an error manifests itself during the creation
+        # of the stage 3 library, and (b) this error can be fixed by
+        # changing the runtime, a bootcheck -2, which requires a relink,
+        # will not have to expensively recreate the stage 2 compiler objects.
 
         if ${keep_objs}
         then
             true
         else
-            case "${grade}" in
-                *debug*)
-                    # These files take up a lot of disk space, so we compress
-                    # them. This reduces the probability that running the tests
-                    # will run out of disk space, while still allowing the
-                    # original files to be reconstructed relatively quickly.
-                    gzip "${root}"/${stage2dir}/library/*.c
-                    gzip "${root}"/${stage2dir}/mdbcomp/*.c
-                    gzip "${root}"/${stage2dir}/browser/*.c
-                    gzip "${root}"/${stage2dir}/ssdb/*.c
-                    gzip "${root}"/${stage2dir}/compiler/*.c
-                    ;;
-            esac
+            find "${root}/${stage2dir}/compiler" -name "*.o" -print |
+            xargs /bin/rm -f
         fi
-    fi
 
-    echo "finishing stage 3 at $(date)"
+        if (cd ${stage3dir}/mdbcomp &&
+            ${MMAKE} ${mmake_opts} ${mmake_jobs} all-ints &&
+            ${MMAKE} ${mmake_opts} ${mmake_jobs} ${collective_target})
+        then
+            echo "building of stage 3 mdbcomp successful"
+        else
+            echo "building of stage 3 mdbcomp initially not successful"
+            df .
+            # Try again, in case the failure cause was transient.
+            if (cd ${stage3dir}/mdbcomp && \
+                ${MMAKE} ${mmake_opts} ${mmake_jobs} ${collective_target})
+            then
+                echo "building of stage 3 mdbcomp successful"
+            else
+                echo "building of stage 3 mdbcomp not successful"
+                exit 1
+            fi
+        fi
+
+        if (cd ${stage3dir}/browser &&
+            ${MMAKE} ${mmake_opts} ${mmake_jobs} all-ints &&
+            ${MMAKE} ${mmake_opts} ${mmake_jobs} ${collective_target})
+        then
+            echo "building of stage 3 browser successful"
+        else
+            echo "building of stage 3 browser initially not successful"
+            df .
+            # Try again, in case the failure cause was transient.
+            if (cd ${stage3dir}/browser && \
+                ${MMAKE} ${mmake_opts} ${mmake_jobs} ${collective_target})
+            then
+                echo "building of stage 3 browser successful"
+            else
+                echo "building of stage 3 browser not successful"
+                exit 1
+            fi
+        fi
+
+        if (cd ${stage3dir}/ssdb &&
+            ${MMAKE} ${mmake_opts} ${mmake_jobs} all-ints &&
+            ${MMAKE} ${mmake_opts} ${mmake_jobs} ${collective_target})
+        then
+            echo "building of stage 3 ssdb successful"
+        else
+            echo "building of stage 3 ssdb initially not successful"
+            df .
+            # Try again, in case the failure cause was transient.
+            if (cd ${stage3dir}/ssdb && \
+                ${MMAKE} ${mmake_opts} ${mmake_jobs} ${collective_target})
+            then
+                echo "building of stage 3 ssdb successful"
+            else
+                echo "building of stage 3 ssdb not successful"
+                exit 1
+            fi
+        fi
+
+        if (cd ${stage3dir}/compiler && \
+            ${MMAKE} ${mmake_opts} ${mmake_jobs} ${collective_target})
+        then
+            echo "building of stage 3 compiler successful"
+        else
+            echo "building of stage 3 compiler initially not successful"
+            df .
+            # Try again, in case the failure cause was transient.
+            if (cd ${stage3dir}/compiler && \
+                ${MMAKE} ${mmake_opts} ${mmake_jobs} ${collective_target})
+            then
+                echo "building of stage 3 compiler successful"
+            else
+                echo "building of stage 3 compiler not successful"
+                exit 1
+            fi
+        fi
+
+        if (cd ${stage3dir}/grade_lib && \
+            unset MMAKE && \
+            unset MMAKE_VPATH && \
+            unset MMAKE_DIR && \
+            unset MERCURY_CONFIG_DIR && \
+            unset MERCURY_STDLIB_DIR && \
+            mmake ${mmake_opts} ${mmake_jobs} ${collective_target})
+        then
+            echo "building of stage 3 grade_lib successful"
+        else
+            echo "building of stage 3 grade_lib not successful"
+            exit 1
+        fi
+
+        if (cd ${stage3dir}/slice && \
+            unset MMAKE && \
+            unset MMAKE_VPATH && \
+            unset MMAKE_DIR && \
+            unset MERCURY_CONFIG_DIR && \
+            unset MERCURY_STDLIB_DIR && \
+            mmake ${mmake_opts} ${mmake_jobs} ${collective_target})
+        then
+            echo "building of stage 3 slice successful"
+        else
+            echo "building of stage 3 slice not successful"
+            exit 1
+        fi
+
+        if (cd ${stage3dir}/profiler && \
+            unset MMAKE && \
+            unset MMAKE_VPATH && \
+            unset MMAKE_DIR && \
+            unset MERCURY_CONFIG_DIR && \
+            unset MERCURY_STDLIB_DIR && \
+            mmake ${mmake_opts} ${mmake_jobs} ${collective_target})
+        then
+            echo "building of stage 3 profiler successful"
+        else
+            echo "building of stage 3 profiler not successful"
+            exit 1
+        fi
+
+        if (cd ${stage3dir}/deep_profiler && \
+            unset MMAKE && \
+            unset MMAKE_VPATH && \
+            unset MMAKE_DIR && \
+            unset MERCURY_CONFIG_DIR && \
+            unset MERCURY_STDLIB_DIR && \
+            mmake ${mmake_opts} ${mmake_jobs} ${collective_target})
+        then
+            echo "building of stage 3 deep profiler successful"
+        else
+            echo "building of stage 3 deep profiler not successful"
+            exit 1
+        fi
+
+        if (cd ${stage3dir}/mfilterjavac && \
+            unset MMAKE && \
+            unset MMAKE_VPATH && \
+            unset MMAKE_DIR && \
+            unset MERCURY_CONFIG_DIR && \
+            unset MERCURY_STDLIB_DIR && \
+            mmake ${mmake_opts} ${mmake_jobs} ${collective_target})
+        then
+            echo "building of stage 3 mfilterjavac successful"
+        else
+            echo "building of stage 3 mfilterjavac not successful"
+            exit 1
+        fi
+
+        if test "${type_stats}" != ""
+        then
+            echo "Saving stage 3 stats in ${type_stats}.stage3.$$"
+            mv "${type_stats}" "${type_stats}".stage3.$$
+            cp /dev/null "${type_stats}"
+        fi
+
+        diff_status=0
+
+        exec 3>&1       # save stdout in fd 3
+        if test -n "${outfile}"
+        then
+            exec > "${outfile}"   # redirect stdout to ${outfile}
+        fi
+
+        for dir in \
+            library \
+            mdbcomp \
+            browser \
+            ssdb \
+            compiler \
+            grade_lib \
+            slice \
+            profiler \
+            deep_profiler \
+            mfilterjavac
+        do
+            # `mmake all_cs' in the compiler directory doesn't build
+            # `mercury_compile_init.c', so we only compare the `.c'
+            # files present in the stage 3 directory.
+            for file in ${stage3dir}/${dir}/${target_subdir}*.${target_ext}
+            do
+                # In the C# and Java grades, some modules have expected differences
+                # between the code generated for them in stage 2 and stage 3,
+                # due to stage 2 being (usually) generated by a 64 bit compiler,
+                # but stage 3 being generated by a compiler in which native
+                # integers are 32 bits.
+                compare_file=true
+                base_file=$(basename "${file}")
+                case "${grade}" in
+                    java*)
+                        case "${dir},${base_file}" in
+                            library,mr_float.java)
+                                compare_file=false
+                                ;;
+                            library,bitmap.java)
+                                compare_file=false
+                                ;;
+                            library,fat_sparse_bitset.java)
+                                compare_file=false
+                                ;;
+                            library,fatter_sparse_bitset.java)
+                                compare_file=false
+                                ;;
+                            library,sparse_bitset.java)
+                                compare_file=false
+                                ;;
+                            library,test_bitset.java)
+                                compare_file=false
+                                ;;
+                            library,tree_bitset.java)
+                                compare_file=false
+                                ;;
+                            library,version_bitmap.java)
+                                compare_file=false
+                                ;;
+                            profiler,snapshots.java)
+                                compare_file=false
+                                ;;
+                            deep_profiler,display_report.java)
+                                compare_file=false
+                                ;;
+                            deep_profiler,measurement_units.java)
+                                compare_file=false
+                                ;;
+                            deep_profiler,read_profile.java)
+                                compare_file=false
+                                ;;
+                        esac
+                        ;;
+                    csharp*)
+                        case "${dir},${base_file}" in
+                            library,bitmap.cs)
+                                compare_file=false
+                                ;;
+                            library,fat_sparse_bitset.cs)
+                                compare_file=false
+                                ;;
+                            library,fatter_sparse_bitset.cs)
+                                compare_file=false
+                                ;;
+                            library,sparse_bitset.cs)
+                                compare_file=false
+                                ;;
+                            library,test_bitmap.cs)
+                                compare_file=false
+                                ;;
+                            library,test_bitset.cs)
+                                compare_file=false
+                                ;;
+                            library,tree_bitset.cs)
+                                compare_file=false
+                                ;;
+                            library,version_bitmap.cs)
+                                compare_file=false
+                                ;;
+                            profiler,snapshots.cs)
+                                compare_file=false
+                                ;;
+                            deep_profiler,display_report.cs)
+                                compare_file=false
+                                ;;
+                            deep_profiler,measurement_units.cs)
+                                compare_file=false
+                                ;;
+                            deep_profiler,read_profile.cs)
+                                compare_file=false
+                                ;;
+                        esac
+                        ;;
+                esac
+                if ${compare_file}
+                then
+                    diff -u "${stage2dir}/${dir}/${target_subdir}${base_file}" \
+                        "${file}" \
+                    || diff_status=1
+                fi
+            done
+        done
+
+        exec >&3        # restore stdout from fd 3
+        if test ${diff_status} -ne 0
+        then
+            echo "** error - stage 2 and stage 3 have unexpected differences!"
+        else
+            echo "stage 2 and stage 3 compare ok"
+            if test -d ${stage3dir}/library/ComplexityArgs
+            then
+                mv ${stage3dir}/library/ComplexityArgs \
+                    "${root}"/stage3_library_ComplexityArgs
+            fi
+            if test -d ${stage3dir}/library/ComplexityData
+            then
+                mv ${stage3dir}/library/ComplexityData \
+                    "${root}"/stage3_library_ComplexityData
+            fi
+            if test -d ${stage3dir}/compiler/ComplexityArgs
+            then
+                mv ${stage3dir}/compiler/ComplexityArgs \
+                    "${root}"/stage3_compiler_ComplexityArgs
+            fi
+            if test -d ${stage3dir}/compiler/ComplexityData
+            then
+                mv ${stage3dir}/compiler/ComplexityData \
+                    "${root}"/stage3_compiler_ComplexityData
+            fi
+
+            echo "removing stage 3..."
+            /bin/rm -fr "${root:?}/${stage3dir}" < /dev/null
+
+            if ${keep_objs}
+            then
+                true
+            else
+                case "${grade}" in
+                    *debug*)
+                        # These files take up a lot of disk space, so we compress
+                        # them. This reduces the probability that running the tests
+                        # will run out of disk space, while still allowing the
+                        # original files to be reconstructed relatively quickly.
+                        gzip "${root}"/${stage2dir}/library/*.c
+                        gzip "${root}"/${stage2dir}/mdbcomp/*.c
+                        gzip "${root}"/${stage2dir}/browser/*.c
+                        gzip "${root}"/${stage2dir}/ssdb/*.c
+                        gzip "${root}"/${stage2dir}/compiler/*.c
+                        ;;
+                esac
+            fi
+        fi
+
+        echo "finishing stage 3 at $(date)"
+    else
+        diff_status=0
+        echo "building of stage 3 skipped"
+    fi
 else
     MMAKE_USE_SUBDIRS=${use_subdirs}
     export MMAKE_USE_SUBDIRS
@@ -2060,7 +2083,12 @@ then
     # in which case use everything from stage 1, trusting the user
     # that the grade of the tests and the grade of stage 1 are compatible.
 
-    MERCURY_COMPILER=${root}/${stage2dir}/compiler/mercury_compile
+    if test "${test_with_stage_1_compiler}" = true
+    then
+        MERCURY_COMPILER=${root}/compiler/mercury_compile
+    else
+        MERCURY_COMPILER=${root}/${stage2dir}/compiler/mercury_compile
+    fi
     export MERCURY_COMPILER
 
     # now in FLAGS files
