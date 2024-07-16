@@ -708,10 +708,11 @@ output_atomic_stmt_for_csharp(Info, Stream, Indent, AtomicStmt,
         ),
         LineNumbers = Info ^ csoi_line_numbers,
         IndentStr = indent2_string(Indent),
+        Indent2Str = indent2_string(Indent + 1u),
 
         io.format(Stream, "%s{\n", [s(IndentStr)], !IO),
         cs_output_context(Stream, LineNumbers, Context, !IO),
-        io.format(Stream, "%s  ", [s(IndentStr)], !IO),
+        io.format(Stream, "%s", [s(Indent2Str)], !IO),
         output_lval_for_csharp(Info, Target, Stream, !IO),
         % Generate class constructor name.
         type_to_string_and_dims_for_csharp(Info, Type, TypeStr0, ArrayDims),
@@ -740,8 +741,8 @@ output_atomic_stmt_for_csharp(Info, Stream, Indent, AtomicStmt,
         ;
             ArgRvalsTypes = [HeadArgRvalType | TailArgRvalsTypes],
             io.format(Stream, "%s\n", [s(LParen)], !IO),
-            Indent2Str = indent2_string(Indent + 1u),
-            output_init_args_for_csharp(Info, Stream, Indent2Str,
+            Indent3Str = indent2_string(Indent + 2u),
+            output_init_args_for_csharp(Info, Stream, Indent3Str,
                 HeadArgRvalType, TailArgRvalsTypes, !IO),
             io.format(Stream, "%s  %s;\n", [s(IndentStr), s(RParen)], !IO)
         ),

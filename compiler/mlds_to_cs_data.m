@@ -991,7 +991,7 @@ output_initializer_body_for_csharp(Info, Stream, InitStart, Indent,
         init_arg_wrappers_cs_java(ArrayDims, LParen, RParen),
         (
             FieldInits = [],
-            io.format(Stream, "%snew %s%s%s%s",
+            io.format(Stream, "%snew %s%s%s%s\n",
                 [s(IndentStr), s(TypeStr), s(LParen), s(RParen), s(Suffix)],
                 !IO)
         ;

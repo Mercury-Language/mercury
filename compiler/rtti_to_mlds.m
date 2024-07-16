@@ -40,13 +40,15 @@
     rtti_data::in, ml_global_data::in, ml_global_data::out) is det.
 
     % Given a list of MLDS RTTI data definitions, return the definitions
-    % such that if X appears in the initialiser for Y then X appears earlier in
-    % the list than Y.
+    % as a list of SCCs, such that if X appears in the initialiser for Y,
+    % but not vice versa, then X appears in an earlier SCC in the list
+    % than the SCC containing Y. If X appears in the initialiser for Y
+    % *and* vice versa, then X and Y will be in the same SCC, and their
+    % relative order is not guaranteed. This may, or may not, be a problem,
+    % but at least the existence of a non-singleton SCC points out
+    % the possible issue.
     %
-    % This function returns a list of cliques so that problems with ordering
-    % within cliques, if any, may be easier to discover.
-    %
-:- func order_mlds_rtti_defns(list(mlds_global_var_defn)) =
+:- func order_mlds_rtti_defns_into_sccs(list(mlds_global_var_defn)) =
     list(list(mlds_global_var_defn)).
 
 %-----------------------------------------------------------------------------%
@@ -1758,15 +1760,16 @@ gen_init_type_ctor_rep(TypeCtorData) = Initializer :-
 % Ordering RTTI definitions.
 %
 
-order_mlds_rtti_defns(Defns) = OrdDefns :-
+order_mlds_rtti_defns_into_sccs(Defns) = OrdSccDefns :-
     some [!Graph] (
         digraph.init(!:Graph),
         list.foldl2(add_rtti_defn_nodes, Defns, !Graph, map.init, NameMap),
         list.foldl(add_rtti_defn_arcs, Defns, !Graph),
-        OrdSets = digraph.return_sccs_in_to_from_order(!.Graph)
+        OrdSccSets = digraph.return_sccs_in_to_from_order(!.Graph)
     ),
-    list.map(set.to_sorted_list, OrdSets, OrdLists),
-    list.map(list.filter_map(map.search(NameMap)), OrdLists, OrdDefns).
+    list.map(set.to_sorted_list, OrdSccSets, OrdSccLists),
+    list.filter_map(keep_only_defns_in_name_map(NameMap),
+        OrdSccLists, OrdSccDefns).
 
 :- pred add_rtti_defn_nodes(mlds_global_var_defn::in,
     digraph(mlds_global_var_name)::in, digraph(mlds_global_var_name)::out,
@@ -1898,6 +1901,16 @@ add_rtti_defn_arcs_const(DefnGlobalVarName, Const, !Graph) :-
         ; Const = mlconst_null(_)
         )
     ).
+
+:- pred keep_only_defns_in_name_map(
+    map(mlds_global_var_name, mlds_global_var_defn)::in,
+    list(mlds_global_var_name)::in, list(mlds_global_var_defn)::out)
+    is semidet.
+
+keep_only_defns_in_name_map(NameMap, SccDefns0, SccDefns) :-
+    list.filter_map(map.search(NameMap), SccDefns0, SccDefns),
+    % DO not return SCCs that contain zero definitions.
+    SccDefns = [_ | _].
 
 %-----------------------------------------------------------------------------%
 :- end_module ml_backend.rtti_to_mlds.

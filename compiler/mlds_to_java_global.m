@@ -125,7 +125,7 @@ output_global_var_assignments_for_java(Info, Stream, Indent,
 
     % Call the individual methods.
     IndentStr = indent2_string(Indent),
-    io.format(Stream, "%sstatic {\n", [s(IndentStr)], !IO),
+    io.format(Stream, "\n%sstatic {\n", [s(IndentStr)], !IO),
     int.fold_up(
         output_call_init_global_var_method_for_java(Stream, Indent + 1u),
         0, NumChunks - 1, !IO),
@@ -180,18 +180,18 @@ output_scalar_common_data_for_java(Info, Stream, Indent,
     % separately in a static initialisation block, and we must ensure that
     % elements which are referenced by other elements are initialised first.
     map.foldl3(output_scalar_defns_for_java(Info, Stream, Indent),
-        ScalarCellGroupMap, digraph.init, Graph, map.init, Map, !IO),
+        ScalarCellGroupMap, map.init, InitMap, digraph.init, DepGraph, !IO),
 
-    ( if digraph.return_vertices_in_from_to_order(Graph, SortedScalars0) then
+    ( if digraph.return_vertices_in_to_from_order(DepGraph, ToFromScalars) then
         % Divide into small methods to avoid running into the maximum method
         % size limit.
-        list.reverse(SortedScalars0, SortedScalars),
-        list.chunk(SortedScalars, 1000, ScalarChunks),
+        list.chunk(ToFromScalars, 1000, ScalarChunks),
         list.foldl2(
-            output_scalar_init_method_for_java(Info, Stream, Indent, Map),
+            output_scalar_init_method_for_java(Info, Stream, Indent, InitMap),
             ScalarChunks, 0, NumChunks, !IO),
 
         % Call the individual methods.
+        io.nl(Stream, !IO),
         IndentStr = indent2_string(Indent),
         io.format(Stream, "%sstatic {\n", [s(IndentStr)], !IO),
         int.fold_up(
@@ -205,12 +205,13 @@ output_scalar_common_data_for_java(Info, Stream, Indent,
 :- pred output_scalar_defns_for_java(java_out_info::in,
     io.text_output_stream::in, indent::in,
     ml_scalar_common_type_num::in, ml_scalar_cell_group::in,
-    digraph(mlds_scalar_common)::in, digraph(mlds_scalar_common)::out,
     map(mlds_scalar_common, mlds_initializer)::in,
-    map(mlds_scalar_common, mlds_initializer)::out, io::di, io::uo) is det.
+    map(mlds_scalar_common, mlds_initializer)::out,
+    digraph(mlds_scalar_common)::in, digraph(mlds_scalar_common)::out,
+    io::di, io::uo) is det.
 
 output_scalar_defns_for_java(Info, Stream, Indent, TypeNum, CellGroup,
-        !Graph, !Map, !IO) :-
+        !InitMap, !DepGraph, !IO) :-
     TypeNum = ml_scalar_common_type_num(TypeRawNum),
     CellGroup = ml_scalar_cell_group(Type, _InitArraySize, _Counter, _Members,
         RowInitsCord),
@@ -225,20 +226,20 @@ output_scalar_defns_for_java(Info, Stream, Indent, TypeNum, CellGroup,
         yes(ArrayType), ";", !IO),
 
     MLDS_ModuleName = Info ^ joi_module_name,
-    list.foldl3(add_scalar_inits(MLDS_ModuleName, Type, TypeNum),
-        RowInits, 0, _, !Graph, !Map).
+    record_scalar_inits_build_dep_graph(MLDS_ModuleName, Type, TypeNum,
+        RowInits, 0, _, !InitMap, !DepGraph).
 
 :- pred output_scalar_init_method_for_java(java_out_info::in,
     io.text_output_stream::in, indent::in,
     map(mlds_scalar_common, mlds_initializer)::in,
     list(mlds_scalar_common)::in, int::in, int::out, io::di, io::uo) is det.
 
-output_scalar_init_method_for_java(Info, Stream, Indent, Map, Scalars,
+output_scalar_init_method_for_java(Info, Stream, Indent, InitMap, Scalars,
         ChunkNum, ChunkNum + 1, !IO) :-
     IndentStr = indent2_string(Indent),
-    io.format(Stream, "%sprivate static void MR_init_scalars_%d() {\n",
+    io.format(Stream, "\n%sprivate static void MR_init_scalars_%d() {\n",
         [s(IndentStr), i(ChunkNum)], !IO),
-    list.foldl(output_scalar_init_for_java(Info, Stream, Indent + 1u, Map),
+    list.foldl(output_scalar_init_for_java(Info, Stream, Indent + 1u, InitMap),
         Scalars, !IO),
     io.format(Stream, "%s}\n", [s(IndentStr)], !IO).
 
@@ -247,9 +248,9 @@ output_scalar_init_method_for_java(Info, Stream, Indent, Map, Scalars,
     map(mlds_scalar_common, mlds_initializer)::in, mlds_scalar_common::in,
     io::di, io::uo) is det.
 
-output_scalar_init_for_java(Info, Stream, Indent, Map, Scalar, !IO) :-
+output_scalar_init_for_java(Info, Stream, Indent, InitMap, Scalar, !IO) :-
     IndentStr = indent2_string(Indent),
-    map.lookup(Map, Scalar, Initializer),
+    map.lookup(InitMap, Scalar, Initializer),
     Scalar = mlds_scalar_common(_, Type, TypeNum, RowNum),
     TypeNum = ml_scalar_common_type_num(TypeRawNum),
     io.format(Stream, "%sMR_scalar_common_%d[%d] =\n",
@@ -304,26 +305,159 @@ output_rtti_assignments_for_java(Info, Stream, Indent, GlobalVarDefns, !IO) :-
         GlobalVarDefns = []
     ;
         GlobalVarDefns = [_ | _],
-        OrderedDefns = order_mlds_rtti_defns(GlobalVarDefns),
+        OrderedDefnSccs = order_mlds_rtti_defns_into_sccs(GlobalVarDefns),
+        output_rtti_defn_chunk_assignments_for_java(Info, Stream, Indent,
+            1, OrderedDefnSccs, [], RevChunkCalls, !IO),
+        list.reverse(RevChunkCalls, ChunkCalls),
         IndentStr = indent2_string(Indent),
-        io.format(Stream, "%sstatic {\n", [s(IndentStr)], !IO),
-        list.foldl(
-            output_rtti_defns_assignments_for_java(Info, Stream, Indent + 1u),
-            OrderedDefns, !IO),
+        io.format(Stream, "\n%sstatic {\n", [s(IndentStr)], !IO),
+        list.foldl(io.write_string(Stream), ChunkCalls, !IO),
         io.format(Stream, "%s}\n", [s(IndentStr)], !IO)
     ).
 
-:- pred output_rtti_defns_assignments_for_java(java_out_info::in,
-    io.text_output_stream::in, indent::in,
-    list(mlds_global_var_defn)::in, io::di, io::uo) is det.
+:- pred output_rtti_defn_chunk_assignments_for_java(java_out_info::in,
+    io.text_output_stream::in, indent::in, int::in,
+    list(list(mlds_global_var_defn))::in,
+    list(string)::in, list(string)::out, io::di, io::uo) is det.
 
-output_rtti_defns_assignments_for_java(Info, Stream, Indent,
-        GlobalVarDefns, !IO) :-
-    % Separate cliques.
+output_rtti_defn_chunk_assignments_for_java(Info, Stream, Indent, ChunkNum,
+        Sccs, !RevChunkCalls, !IO) :-
     IndentStr = indent2_string(Indent),
-    io.format(Stream, "%s//\n", [s(IndentStr)], !IO),
-    list.foldl(output_rtti_defn_assignments_for_java(Info, Stream, Indent),
-        GlobalVarDefns, !IO).
+    gather_global_var_sccs_for_chunk(Sccs, 0, NumDefns, 0u, ChunkSizeEstimate,
+        [], RevChunkSccs, LeftOverSccs),
+    list.reverse(RevChunkSccs, ChunkSccs),
+    (
+        ChunkSccs = []
+    ;
+        ChunkSccs = [_ | _],
+        list.length(ChunkSccs, NumSccs),
+        io.format(Stream,
+            "\n%s// chunk #%d, #sccs = %d, #defns = %d size estimate %u\n",
+            [s(IndentStr), i(ChunkNum), i(NumSccs), i(NumDefns),
+            u(ChunkSizeEstimate)], !IO),
+        string.format("rtti_init_%d", [i(ChunkNum)], ChunkMethodName),
+        string.format("%s  %s();\n", [s(IndentStr), s(ChunkMethodName)],
+            ChunkCall),
+        !:RevChunkCalls = [ChunkCall | !.RevChunkCalls],
+        io.format(Stream, "%sprivate static void %s() {\n",
+            [s(IndentStr), s(ChunkMethodName)], !IO),
+        list.foldl(
+            output_rtti_defns_assignments_for_java(Info, Stream, Indent + 1u),
+            ChunkSccs, !IO),
+        io.format(Stream, "%s}\n", [s(IndentStr)], !IO),
+
+        output_rtti_defn_chunk_assignments_for_java(Info, Stream, Indent,
+            ChunkNum + 1, LeftOverSccs, !RevChunkCalls, !IO)
+    ).
+
+:- pred gather_global_var_sccs_for_chunk(list(list(mlds_global_var_defn))::in,
+    int::in, int::out, uint::in, uint::out,
+    list(list(mlds_global_var_defn))::in,
+    list(list(mlds_global_var_defn))::out,
+    list(list(mlds_global_var_defn))::out) is det.
+
+gather_global_var_sccs_for_chunk([], !NumDefns, !ChunkSizeSoFar,
+        !RevChunkDefns, []).
+gather_global_var_sccs_for_chunk([Scc | Sccs], !NumDefns,
+        ChunkSizeSoFar0, ChunkSizeSoFar, !RevChunkSccDefns,
+        LeftOverSccDefns) :-
+    list.foldl(acc_estimate_size_of_global_var_defn, Scc,
+        0u, SccSizeEstimate),
+    ChunkSizeSoFar1 = ChunkSizeSoFar0 + SccSizeEstimate,
+    % This arbitrary figure, plucked out of the air, is intended to limit
+    % the each chunk to a size that fits into 64 Kb of JVM bytecode.
+    % It seems to work.
+    ( if ChunkSizeSoFar1 < 5000u then
+        !:NumDefns = !.NumDefns + list.length(Scc),
+        !:RevChunkSccDefns = [Scc | !.RevChunkSccDefns],
+        gather_global_var_sccs_for_chunk(Sccs, !NumDefns,
+            ChunkSizeSoFar1, ChunkSizeSoFar,
+            !RevChunkSccDefns, LeftOverSccDefns)
+    else
+        (
+            !.RevChunkSccDefns = [],
+            % We get here if Scc exceeds the size limit all by itself.
+            % We *could* try to make it come in under the limit by breaking
+            % its first definition off from the rest, but most SCCs contain
+            % one global var definition anyway.
+            !:NumDefns = list.length(Scc),
+            ChunkSizeSoFar = SccSizeEstimate,
+            !:RevChunkSccDefns = [Scc],
+            LeftOverSccDefns = Sccs
+        ;
+            !.RevChunkSccDefns = [_ | _],
+            ChunkSizeSoFar = ChunkSizeSoFar0,
+            LeftOverSccDefns = [Scc | Sccs]
+        )
+    ).
+
+:- pred acc_estimate_size_of_global_var_defn(mlds_global_var_defn::in,
+    uint::in, uint::out) is det.
+
+acc_estimate_size_of_global_var_defn(Defn, !TotalSizeEstimate) :-
+    estimate_size_of_global_var_defn(Defn, SizeEstimate),
+    !:TotalSizeEstimate = !.TotalSizeEstimate + SizeEstimate.
+
+:- pred estimate_size_of_global_var_defn(mlds_global_var_defn::in,
+    uint::out) is det.
+
+estimate_size_of_global_var_defn(Defn, SizeEstimate) :-
+    Defn = mlds_global_var_defn(_, _, _, _, Initializer, _),
+    % The absolute values of the size estimates do not matter.
+    % All that matters is the *relationship* to the chunk limit size
+    % in gather_global_var_sccs_for_chunk.
+    %
+    % Our metric tries to predict the size of the JVM bytecode needed
+    % for the global var definition. It does not have to accurate, as long as
+    % its errors fall on the conservative side, and/or as long as its
+    % underestimates are counterbalanced by the conservative limit in
+    % gather_global_var_sccs_for_chunk.
+    (
+        Initializer = no_initializer,
+        SizeEstimate = 0u
+    ;
+        Initializer = init_obj(_),
+        SizeEstimate = 5u
+    ;
+        Initializer = init_struct(_StructType, FieldInits),
+        list.length(FieldInits, NumFieldInits),
+        SizeEstimate = 5u + 5u * uint.cast_from_int(NumFieldInits)
+    ;
+        Initializer = init_array(ElementInits),
+        list.length(ElementInits, NumElementInits),
+        SizeEstimate = 5u + 5u * uint.cast_from_int(NumElementInits)
+    ).
+
+:- pred output_rtti_defns_assignments_for_java(java_out_info::in,
+    io.text_output_stream::in, indent::in, list(mlds_global_var_defn)::in,
+    io::di, io::uo) is det.
+
+output_rtti_defns_assignments_for_java(Info, Stream, Indent, SccDefns,
+        !IO) :-
+    IndentStr = indent2_string(Indent),
+    (
+        SccDefns = [],
+        unexpected($pred, "SccDefns = []")
+    ;
+        SccDefns = [HeadSccDefn | TailSccDefns],
+        output_rtti_defn_assignments_for_java(Info, Stream, Indent,
+            HeadSccDefn, !IO),
+        (
+            TailSccDefns = []
+        ;
+            TailSccDefns = [_ | _],
+            list.length(SccDefns, NumSccDefns),
+            ( if NumSccDefns > 1 then
+                io.format(Stream, "%s// scc size %d\n",
+                    [s(IndentStr), i(NumSccDefns)], !IO)
+            else
+                true
+            ),
+            list.foldl(
+                output_rtti_defn_assignments_for_java(Info, Stream, Indent),
+                TailSccDefns, !IO)
+        )
+    ).
 
 :- pred output_rtti_defn_assignments_for_java(java_out_info::in,
     io.text_output_stream::in, indent::in,
@@ -333,8 +467,12 @@ output_rtti_defn_assignments_for_java(Info, Stream, Indent,
         GlobalVarDefn, !IO) :-
     GlobalVarDefn = mlds_global_var_defn(GlobalVarName, _Context, _Flags,
         _Type, Initializer, _),
+    GlobalVarNameStr = global_var_name_to_string_for_java(GlobalVarName),
     (
-        Initializer = no_initializer
+        Initializer = no_initializer,
+        IndentStr = indent2_string(Indent),
+        io.format(Stream, "%s// no initializer for %s\n",
+            [s(IndentStr), s(GlobalVarNameStr)], !IO)
     ;
         Initializer = init_obj(_),
         % Not encountered in practice.
@@ -346,8 +484,6 @@ output_rtti_defn_assignments_for_java(Info, Stream, Indent,
         (
             ArrayDims = [],
             IndentStr = indent2_string(Indent),
-            GlobalVarNameStr =
-                global_var_name_to_string_for_java(GlobalVarName),
             io.format(Stream, "%s%s.init(\n",
                 [s(IndentStr), s(GlobalVarNameStr)], !IO),
             output_nonempty_initializer_body_list_for_java(Info, Stream,
@@ -362,18 +498,17 @@ output_rtti_defn_assignments_for_java(Info, Stream, Indent,
         Initializer = init_array(ElementInits),
         list.foldl2(
             output_rtti_array_assignments_for_java(Info, Stream, Indent,
-                GlobalVarName),
+                GlobalVarNameStr),
             ElementInits, 0, _Index, !IO)
     ).
 
 :- pred output_rtti_array_assignments_for_java(java_out_info::in,
-    io.text_output_stream::in, indent::in, mlds_global_var_name::in,
+    io.text_output_stream::in, indent::in, string::in,
     mlds_initializer::in, int::in, int::out, io::di, io::uo) is det.
 
-output_rtti_array_assignments_for_java(Info, Stream, Indent, GlobalVarName,
+output_rtti_array_assignments_for_java(Info, Stream, Indent, GlobalVarNameStr,
         ElementInit, Index, Index + 1, !IO) :-
     IndentStr = indent2_string(Indent),
-    GlobalVarNameStr = global_var_name_to_string_for_java(GlobalVarName),
     io.format(Stream, "%s%s[%d] =\n",
         [s(IndentStr), s(GlobalVarNameStr), i(Index)],  !IO),
     output_initializer_body_for_java(Info, Stream, at_start_of_line,

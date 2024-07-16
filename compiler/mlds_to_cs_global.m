@@ -147,16 +147,15 @@ output_scalar_common_data_for_csharp(Info, Stream, Indent,
     % separately in a static initialisation block, and we must ensure that
     % elements which are referenced by other elements are initialised first.
     map.foldl3(output_scalar_defns_for_csharp(Info, Stream, Indent),
-        ScalarCellGroupMap, digraph.init, Graph, map.init, Map, !IO),
+        ScalarCellGroupMap, map.init, InitMap, digraph.init, DepGraph, !IO),
 
-    ( if digraph.return_vertices_in_from_to_order(Graph, FromToScalars) then
-        list.reverse(FromToScalars, ToFromScalars),
+    ( if digraph.return_vertices_in_to_from_order(DepGraph, ToFromScalars) then
         IndentStr = indent2_string(Indent),
         io.format(Stream,
             "%sprivate static void MR_init_scalar_common_data() {\n",
             [s(IndentStr)], !IO),
         list.foldl(
-            output_scalar_init_for_csharp(Info, Stream, Indent + 1u, Map),
+            output_scalar_init_for_csharp(Info, Stream, Indent + 1u, InitMap),
             ToFromScalars, !IO),
         io.format(Stream, "%s}\n", [s(IndentStr)], !IO)
     else
@@ -166,12 +165,13 @@ output_scalar_common_data_for_csharp(Info, Stream, Indent,
 :- pred output_scalar_defns_for_csharp(csharp_out_info::in,
     io.text_output_stream::in, indent::in,
     ml_scalar_common_type_num::in, ml_scalar_cell_group::in,
-    digraph(mlds_scalar_common)::in, digraph(mlds_scalar_common)::out,
     map(mlds_scalar_common, mlds_initializer)::in,
-    map(mlds_scalar_common, mlds_initializer)::out, io::di, io::uo) is det.
+    map(mlds_scalar_common, mlds_initializer)::out,
+    digraph(mlds_scalar_common)::in, digraph(mlds_scalar_common)::out,
+    io::di, io::uo) is det.
 
 output_scalar_defns_for_csharp(Info, Stream, Indent, TypeNum, CellGroup,
-        !Graph, !Map, !IO) :-
+        !InitMap, !DepGraph, !IO) :-
     TypeNum = ml_scalar_common_type_num(TypeRawNum),
     CellGroup = ml_scalar_cell_group(Type, _InitArraySize, _Counter, _Members,
         RowInitsCord),
@@ -186,8 +186,8 @@ output_scalar_defns_for_csharp(Info, Stream, Indent, TypeNum, CellGroup,
         init_array(RowInits), yes(ArrayType), ";", !IO),
 
     MLDS_ModuleName = Info ^ csoi_module_name,
-    list.foldl3(add_scalar_inits(MLDS_ModuleName, Type, TypeNum),
-        RowInits, 0, _, !Graph, !Map).
+    record_scalar_inits_build_dep_graph(MLDS_ModuleName, Type, TypeNum,
+        RowInits, 0, _, !InitMap, !DepGraph).
 
 :- pred output_scalar_init_for_csharp(csharp_out_info::in,
     io.text_output_stream::in, indent::in,
@@ -262,22 +262,43 @@ output_vector_cell_init_for_csharp(Info, Stream, Indent, TypeNum,
 output_rtti_assignments_for_csharp(Info, Stream, Indent, Defns, !IO) :-
     IndentStr = indent2_string(Indent),
     io.format(Stream, "%sstatic void MR_init_rtti() {\n", [s(IndentStr)], !IO),
-    OrderedDefns = order_mlds_rtti_defns(Defns),
+    OrderedDefnSccs = order_mlds_rtti_defns_into_sccs(Defns),
     list.foldl(
-        output_rtti_defns_assignments_for_csharp(Info, Stream, Indent + 1u),
-        OrderedDefns, !IO),
+        output_rtti_defn_scc_assignments_for_csharp(Info, Stream, Indent + 1u),
+        OrderedDefnSccs, !IO),
     io.format(Stream, "%s}\n", [s(IndentStr)], !IO).
 
-:- pred output_rtti_defns_assignments_for_csharp(csharp_out_info::in,
+:- pred output_rtti_defn_scc_assignments_for_csharp(csharp_out_info::in,
     io.text_output_stream::in, indent::in, list(mlds_global_var_defn)::in,
     io::di, io::uo) is det.
 
-output_rtti_defns_assignments_for_csharp(Info, Stream, Indent, Defns, !IO) :-
-    % Separate cliques.
+output_rtti_defn_scc_assignments_for_csharp(Info, Stream, Indent, SccDefns,
+        !IO) :-
     IndentStr = indent2_string(Indent),
-    io.format(Stream, "%s//\n", [s(IndentStr)], !IO),
-    list.foldl(output_rtti_defn_assignments_for_csharp(Info, Stream, Indent),
-        Defns, !IO).
+    (
+        SccDefns = [],
+        unexpected($pred, "SccDefns = []")
+    ;
+        SccDefns = [HeadSccDefn | TailSccDefns],
+        % The most common size of an scc *by far * is one.
+        output_rtti_defn_assignments_for_csharp(Info, Stream, Indent,
+            HeadSccDefn, !IO),
+        (
+            TailSccDefns = []
+        ;
+            TailSccDefns = [_ | _],
+            list.length(SccDefns, NumSccDefns),
+            ( if NumSccDefns > 1 then
+                io.format(Stream, "%s// scc size %d\n",
+                    [s(IndentStr), i(NumSccDefns)], !IO)
+            else
+                true
+            ),
+            list.foldl(
+                output_rtti_defn_assignments_for_csharp(Info, Stream, Indent),
+                TailSccDefns, !IO)
+        )
+    ).
 
 :- pred output_rtti_defn_assignments_for_csharp(csharp_out_info::in,
     io.text_output_stream::in, indent::in, mlds_global_var_defn::in,
@@ -287,8 +308,12 @@ output_rtti_defn_assignments_for_csharp(Info, Stream, Indent,
         GlobalVarDefn, !IO) :-
     GlobalVarDefn = mlds_global_var_defn(GlobalVarName, _Context, _Flags,
         _Type, Initializer, _),
+    GlobalVarNameStr = global_var_name_to_ll_string_for_csharp(GlobalVarName),
     (
-        Initializer = no_initializer
+        Initializer = no_initializer,
+        IndentStr = indent2_string(Indent),
+        io.format(Stream, "%s// no initializer for %s\n",
+            [s(IndentStr), s(GlobalVarNameStr)], !IO)
     ;
         Initializer = init_obj(_),
         % Not encountered in practice.
@@ -300,8 +325,6 @@ output_rtti_defn_assignments_for_csharp(Info, Stream, Indent,
         (
             ArrayDims = [],
             IndentStr = indent2_string(Indent),
-            GlobalVarNameStr =
-                global_var_name_to_ll_string_for_csharp(GlobalVarName),
             io.format(Stream, "%s%s.init(\n",
                 [s(IndentStr), s(GlobalVarNameStr)], !IO),
             output_nonempty_initializer_body_list_for_csharp(Info, Stream,
@@ -315,20 +338,18 @@ output_rtti_defn_assignments_for_csharp(Info, Stream, Indent,
     ;
         Initializer = init_array(ElementInits),
         list.foldl2(
-            output_rtti_array_assignments_for_csharp(Info, Stream, Indent,
-                GlobalVarName),
+            output_rtti_array_assignments_for_csharp(Info, Stream,
+                Indent, GlobalVarNameStr),
             ElementInits, 0, _Index, !IO)
     ).
 
 :- pred output_rtti_array_assignments_for_csharp(csharp_out_info::in,
-    io.text_output_stream::in, indent::in,
-    mlds_global_var_name::in, mlds_initializer::in,
+    io.text_output_stream::in, indent::in, string::in, mlds_initializer::in,
     int::in, int::out, io::di, io::uo) is det.
 
-output_rtti_array_assignments_for_csharp(Info, Stream, Indent, GlobalVarName,
-        ElementInit, Index, Index + 1, !IO) :-
+output_rtti_array_assignments_for_csharp(Info, Stream, Indent,
+        GlobalVarNameStr, ElementInit, Index, Index + 1, !IO) :-
     IndentStr = indent2_string(Indent),
-    GlobalVarNameStr = global_var_name_to_ll_string_for_csharp(GlobalVarName),
     io.format(Stream, "%s%s[%d] =\n",
         [s(IndentStr), s(GlobalVarNameStr), i(Index)], !IO),
     output_initializer_body_for_csharp(Info, Stream, at_start_of_line,

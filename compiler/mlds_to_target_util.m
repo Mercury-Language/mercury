@@ -215,11 +215,12 @@
 
 %---------------------------------------------------------------------------%
 
-:- pred add_scalar_inits(mlds_module_name::in, mlds_type::in,
-    ml_scalar_common_type_num::in, mlds_initializer::in, int::in, int::out,
-    digraph(mlds_scalar_common)::in, digraph(mlds_scalar_common)::out,
+:- pred record_scalar_inits_build_dep_graph(mlds_module_name::in,
+    mlds_type::in, ml_scalar_common_type_num::in,
+    list(mlds_initializer)::in, int::in, int::out,
     map(mlds_scalar_common, mlds_initializer)::in,
-    map(mlds_scalar_common, mlds_initializer)::out) is det.
+    map(mlds_scalar_common, mlds_initializer)::out,
+    digraph(mlds_scalar_common)::in, digraph(mlds_scalar_common)::out) is det.
 
 %---------------------------------------------------------------------------%
 
@@ -531,34 +532,50 @@ output_auto_gen_comment(Stream, SourceFileName, !IO)  :-
 
 %---------------------------------------------------------------------------%
 
-add_scalar_inits(MLDS_ModuleName, Type, TypeNum, Initializer,
-        RowNum, RowNum + 1, !Graph, !Map) :-
-    Scalar = mlds_scalar_common(MLDS_ModuleName, Type, TypeNum, RowNum),
-    map.det_insert(Scalar, Initializer, !Map),
-    digraph.add_vertex(Scalar, _Key, !Graph),
-    add_scalar_deps(Scalar, Initializer, !Graph).
+record_scalar_inits_build_dep_graph(_, _, _,
+        [], !RowNum, !InitMap, !DepGraph).
+record_scalar_inits_build_dep_graph(MLDS_ModuleName, Type, TypeNum,
+        [Initializer | Initializers], !RowNum, !InitMap, !DepGraph) :-
+    Scalar = mlds_scalar_common(MLDS_ModuleName, Type, TypeNum, !.RowNum),
+    map.det_insert(Scalar, Initializer, !InitMap),
+    digraph.add_vertex(Scalar, _Key, !DepGraph),
+    add_scalar_initializer_deps(Scalar, Initializer, !DepGraph),
 
-:- pred add_scalar_deps(mlds_scalar_common::in, mlds_initializer::in,
+    !:RowNum = !.RowNum + 1,
+    record_scalar_inits_build_dep_graph(MLDS_ModuleName, Type, TypeNum,
+        Initializers, !RowNum, !InitMap, !DepGraph).
+
+:- pred add_scalar_initializer_deps(mlds_scalar_common::in,
+    mlds_initializer::in,
     digraph(mlds_scalar_common)::in, digraph(mlds_scalar_common)::out) is det.
 
-add_scalar_deps(FromScalar, Initializer, !Graph) :-
+add_scalar_initializer_deps(FromScalar, Initializer, !DepGraph) :-
     (
         Initializer = init_obj(Rval),
-        add_scalar_deps_rval(FromScalar, Rval, !Graph)
+        add_scalar_rval_deps(FromScalar, Rval, !DepGraph)
     ;
-        Initializer = init_struct(_Type, Initializers),
-        list.foldl(add_scalar_deps(FromScalar), Initializers, !Graph)
-    ;
-        Initializer = init_array(Initializers),
-        list.foldl(add_scalar_deps(FromScalar), Initializers, !Graph)
+        ( Initializer = init_struct(_Type, Initializers)
+        ; Initializer = init_array(Initializers)
+        ),
+        add_scalar_initializers_deps(FromScalar, Initializers, !DepGraph)
     ;
         Initializer = no_initializer
     ).
 
-:- pred add_scalar_deps_rval(mlds_scalar_common::in, mlds_rval::in,
+:- pred add_scalar_initializers_deps(mlds_scalar_common::in,
+    list(mlds_initializer)::in,
     digraph(mlds_scalar_common)::in, digraph(mlds_scalar_common)::out) is det.
 
-add_scalar_deps_rval(FromScalar, Rval, !Graph) :-
+add_scalar_initializers_deps(_FromScalar, [], !DepGraph).
+add_scalar_initializers_deps(FromScalar, [Initializer | Initializers],
+        !DepGraph) :-
+    add_scalar_initializer_deps(FromScalar, Initializer, !DepGraph),
+    add_scalar_initializers_deps(FromScalar, Initializers, !DepGraph).
+
+:- pred add_scalar_rval_deps(mlds_scalar_common::in, mlds_rval::in,
+    digraph(mlds_scalar_common)::in, digraph(mlds_scalar_common)::out) is det.
+
+add_scalar_rval_deps(FromScalar, Rval, !DepGraph) :-
     (
         ( Rval = ml_mkword(_, SubRvalA)
         ; Rval = ml_box(_, SubRvalA)
@@ -567,16 +584,16 @@ add_scalar_deps_rval(FromScalar, Rval, !Graph) :-
         ; Rval = ml_unop(_, SubRvalA)
         ; Rval = ml_vector_common_row_addr(_, SubRvalA)
         ),
-        add_scalar_deps_rval(FromScalar, SubRvalA, !Graph)
+        add_scalar_rval_deps(FromScalar, SubRvalA, !DepGraph)
     ;
         Rval = ml_binop(_, SubRvalA, SubRvalB),
-        add_scalar_deps_rval(FromScalar, SubRvalA, !Graph),
-        add_scalar_deps_rval(FromScalar, SubRvalB, !Graph)
+        add_scalar_rval_deps(FromScalar, SubRvalA, !DepGraph),
+        add_scalar_rval_deps(FromScalar, SubRvalB, !DepGraph)
     ;
         ( Rval = ml_scalar_common(ToScalar)
         ; Rval = ml_scalar_common_addr(ToScalar)
         ),
-        digraph.add_vertices_and_edge(FromScalar, ToScalar, !Graph)
+        digraph.add_vertices_and_edge(FromScalar, ToScalar, !DepGraph)
     ;
         Rval = ml_const(_)
     ;
