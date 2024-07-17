@@ -150,7 +150,7 @@ Options:
     --coverage-test
         Collect counts of the number of times each label is executed
         in modules compiled with debugging, and put the raw data needed
-        by the mct script into a bunch of files in the coverage directory.
+        by the mtc script into a bunch of files in the coverage directory.
     -W, --windows
         Translate paths into the Microsoft Windows format. This is
         automatically selected when using MSYS2.
