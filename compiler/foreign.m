@@ -531,6 +531,7 @@ extrude_pragma_implementation([TargetLang | TargetLangs], _PragmaVars,
         _PredName, _PredOrFunc, _Context, !ModuleInfo, !Attributes, !Impl) :-
     % We just use the first target language for now, it might be nice
     % to try a few others if the backend supports multiple ones.
+    % NOTE None of the backends do.
     ForeignLanguage = get_foreign_language(!.Attributes),
 
     % If the foreign language is available as a target language,
@@ -551,10 +552,11 @@ extrude_pragma_implementation([TargetLang | TargetLangs], _PragmaVars,
 extrude_pragma_implementation_2(TargetLanguage, ForeignLanguage,
         !ModuleInfo, !Impl) :-
     % This isn't finished yet, and we probably won't implement it for C
-    % calling MC++.  For C calling normal C++ we would generate a proxy
+    % calling MC++. For C calling normal C++ we would generate a proxy
     % function in C++ (implemented in a piece of C++ body code) with C
-    % linkage, and import that function.  The backend would spit the C++
+    % linkage, and import that function. The backend would spit the C++
     % body code into a separate file.
+    % NOTE None of that will happen.
     (
         TargetLanguage = lang_c,
         (
