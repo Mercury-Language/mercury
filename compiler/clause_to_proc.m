@@ -277,6 +277,8 @@ select_matching_unify_clauses_acc(MaybeInInMode, ProcId, [Clause | Clauses],
     ApplicableProcIds = Clause ^ clause_applicable_procs,
     (
         ApplicableProcIds = all_modes,
+        % A clause in a unification predicate may have all_modes as its
+        % ApplicableProcIds.
         !:RevMatchingClauses = [Clause | !.RevMatchingClauses]
     ;
         ApplicableProcIds = selected_modes(_),
