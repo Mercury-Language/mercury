@@ -589,8 +589,7 @@ parse_tree_to_hlds(ProgressStream, AugCompUnit, Globals, DumpBaseFileName,
     % constructor table.
     check_preds_if_field_access_function(!.ModuleInfo, PredDecls, !Specs),
 
-    ModuleItemVersionNumbers =
-        AugCompUnit ^ acu_module_item_version_numbers_map,
+    ModuleItemVersionNumbers = AugCompUnit ^ acu_item_version_map,
     map.foldl(add_module_item_version_numbers, ModuleItemVersionNumbers,
         !QualInfo),
 

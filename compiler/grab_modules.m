@@ -1479,23 +1479,23 @@ update_opt_error_status_on_success(ModuleErrors, !Specs, !Error) :-
 %---------------------%
 
 aug_compilation_unit_add_ancestor_int_spec(X, !AugCompUnit) :-
-    Map0 = !.AugCompUnit ^ acu_ancestor_int_specs,
+    Map0 = !.AugCompUnit ^ acu_ancestor_ints,
     X = ancestor_int0(PT0, _),
     MN = PT0 ^ pti0_module_name,
     map.det_insert(MN, X, Map0, Map),
-    !AugCompUnit ^ acu_ancestor_int_specs := Map.
+    !AugCompUnit ^ acu_ancestor_ints := Map.
 
 aug_compilation_unit_add_direct_int1_spec(X, !AugCompUnit) :-
-    Map0 = !.AugCompUnit ^ acu_direct_int1_specs,
+    Map0 = !.AugCompUnit ^ acu_direct_int1s,
     X = direct_int1(PT1, _), MN = PT1 ^ pti1_module_name,
     map.det_insert(MN, X, Map0, Map),
-    !AugCompUnit ^ acu_direct_int1_specs := Map.
+    !AugCompUnit ^ acu_direct_int1s := Map.
 
 aug_compilation_unit_add_indirect_int2_spec(X, !AugCompUnit) :-
-    Map0 = !.AugCompUnit ^ acu_indirect_int2_specs,
+    Map0 = !.AugCompUnit ^ acu_indirect_int2s,
     X = indirect_int2(PT2, _), MN = PT2 ^ pti2_module_name,
     map.det_insert(MN, X, Map0, Map),
-    !AugCompUnit ^ acu_indirect_int2_specs := Map.
+    !AugCompUnit ^ acu_indirect_int2s := Map.
 
 aug_compilation_unit_add_plain_opt(X, !AugCompUnit) :-
     Map0 = !.AugCompUnit ^ acu_plain_opts,
@@ -1510,19 +1510,19 @@ aug_compilation_unit_add_trans_opt(X, !AugCompUnit) :-
     !AugCompUnit ^ acu_trans_opts := Map.
 
 aug_compilation_unit_add_int_for_opt_spec(X, !AugCompUnit) :-
-    Map0 = !.AugCompUnit ^ acu_int_for_opt_specs,
+    Map0 = !.AugCompUnit ^ acu_int_for_opts,
     ( X = for_opt_int0(PT0, _), MN = PT0 ^ pti0_module_name
     ; X = for_opt_int1(PT1, _), MN = PT1 ^ pti1_module_name
     ; X = for_opt_int2(PT2, _), MN = PT2 ^ pti2_module_name
     ),
     map.det_insert(MN, X, Map0, Map),
-    !AugCompUnit ^ acu_int_for_opt_specs := Map.
+    !AugCompUnit ^ acu_int_for_opts := Map.
 
 aug_compilation_unit_add_type_repn_spec(X, !AugCompUnit) :-
-    Map0 = !.AugCompUnit ^ acu_type_repn_specs,
+    Map0 = !.AugCompUnit ^ acu_type_repns,
     X = type_repn_spec_int1(PT1), MN = PT1 ^ pti1_module_name,
     map.det_insert(MN, X, Map0, Map),
-    !AugCompUnit ^ acu_type_repn_specs := Map.
+    !AugCompUnit ^ acu_type_repns := Map.
 
 aug_compilation_unit_maybe_add_module_version_numbers(ModuleName,
         MaybeVersionNumbers, !AugCompUnit) :-
@@ -1530,12 +1530,10 @@ aug_compilation_unit_maybe_add_module_version_numbers(ModuleName,
         MaybeVersionNumbers = no_version_numbers
     ;
         MaybeVersionNumbers = version_numbers(VersionNumbers),
-        ModuleVersionNumbersMap0 =
-            !.AugCompUnit ^ acu_module_item_version_numbers_map,
+        ModuleVersionNumbersMap0 = !.AugCompUnit ^ acu_item_version_map,
         map.det_insert(ModuleName, VersionNumbers,
             ModuleVersionNumbersMap0, ModuleVersionNumbersMap),
-        !AugCompUnit ^ acu_module_item_version_numbers_map :=
-            ModuleVersionNumbersMap
+        !AugCompUnit ^ acu_item_version_map := ModuleVersionNumbersMap
     ).
 
 %---------------------------------------------------------------------------%
@@ -1566,22 +1564,22 @@ init_aug_make_int_unit(ParseTreeModuleSrc, AugMakeIntUnit) :-
 %---------------------%
 
 aug_make_int_unit_add_ancestor_int(PT0, !AugMakeIntUnit) :-
-    Map0 = !.AugMakeIntUnit ^ amiu_ancestor_int_specs,
+    Map0 = !.AugMakeIntUnit ^ amiu_ancestor_ints,
     MN = PT0 ^ pti0_module_name,
     map.det_insert(MN, PT0, Map0, Map),
-    !AugMakeIntUnit ^ amiu_ancestor_int_specs := Map.
+    !AugMakeIntUnit ^ amiu_ancestor_ints := Map.
 
 aug_make_int_unit_add_direct_int3_spec(X, !AugMakeIntUnit) :-
-    Map0 = !.AugMakeIntUnit ^ amiu_direct_int3_specs,
+    Map0 = !.AugMakeIntUnit ^ amiu_direct_int3s,
     X = direct_int3(PT3, _), MN = PT3 ^ pti3_module_name,
     map.det_insert(MN, X, Map0, Map),
-    !AugMakeIntUnit ^ amiu_direct_int3_specs := Map.
+    !AugMakeIntUnit ^ amiu_direct_int3s := Map.
 
 aug_make_int_unit_add_indirect_int3_spec(X, !AugMakeIntUnit) :-
-    Map0 = !.AugMakeIntUnit ^ amiu_indirect_int3_specs,
+    Map0 = !.AugMakeIntUnit ^ amiu_indirect_int3s,
     X = indirect_int3(PT3, _), MN = PT3 ^ pti3_module_name,
     map.det_insert(MN, X, Map0, Map),
-    !AugMakeIntUnit ^ amiu_indirect_int3_specs := Map.
+    !AugMakeIntUnit ^ amiu_indirect_int3s := Map.
 
 aug_make_int_unit_maybe_add_module_version_numbers(ModuleName,
         MaybeVersionNumbers, !AugMakeIntUnit) :-
@@ -1589,12 +1587,10 @@ aug_make_int_unit_maybe_add_module_version_numbers(ModuleName,
         MaybeVersionNumbers = no_version_numbers
     ;
         MaybeVersionNumbers = version_numbers(VersionNumbers),
-        ModuleVersionNumbersMap0 =
-            !.AugMakeIntUnit ^ amiu_module_item_version_numbers_map,
+        ModuleVersionNumbersMap0 = !.AugMakeIntUnit ^ amiu_item_version_map,
         map.det_insert(ModuleName, VersionNumbers,
             ModuleVersionNumbersMap0, ModuleVersionNumbersMap),
-        !AugMakeIntUnit ^ amiu_module_item_version_numbers_map :=
-            ModuleVersionNumbersMap
+        !AugMakeIntUnit ^ amiu_item_version_map := ModuleVersionNumbersMap
     ).
 
 %---------------------------------------------------------------------------%

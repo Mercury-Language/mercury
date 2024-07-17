@@ -739,35 +739,35 @@
 
 :- type parse_tree_plain_opt
     --->    parse_tree_plain_opt(
-                ptpo_module_name            :: module_name,
+                ptpo_module_name    :: module_name,
 
                 % The context of the `:- module' declaration.
-                ptpo_module_name_context    :: prog_context,
+                ptpo_module_name_context :: prog_context,
 
                 % `:- use_module' (not `:- import_module') declarations.
-                ptpo_uses                   :: module_names_contexts,
-                ptpo_fims                   :: set(fim_spec),
-                ptpo_type_defns             :: list(item_type_defn_info),
-                ptpo_foreign_enums          :: list(item_foreign_enum_info),
-                ptpo_inst_defns             :: list(item_inst_defn_info),
-                ptpo_mode_defns             :: list(item_mode_defn_info),
-                ptpo_typeclasses            :: list(item_typeclass_info),
-                ptpo_instances              :: list(item_instance_info),
-                ptpo_pred_decls             :: list(item_pred_decl_info),
-                ptpo_mode_decls             :: list(item_mode_decl_info),
-                ptpo_clauses                :: list(item_clause_info),
-                ptpo_foreign_procs          :: list(item_foreign_proc_info),
-                ptpo_promises               :: list(item_promise_info),
+                ptpo_uses           :: module_names_contexts,
+                ptpo_fims           :: set(fim_spec),
+                ptpo_type_defns     :: list(item_type_defn_info),
+                ptpo_foreign_enums  :: list(item_foreign_enum_info),
+                ptpo_inst_defns     :: list(item_inst_defn_info),
+                ptpo_mode_defns     :: list(item_mode_defn_info),
+                ptpo_typeclasses    :: list(item_typeclass_info),
+                ptpo_instances      :: list(item_instance_info),
+                ptpo_pred_decls     :: list(item_pred_decl_info),
+                ptpo_mode_decls     :: list(item_mode_decl_info),
+                ptpo_clauses        :: list(item_clause_info),
+                ptpo_foreign_procs  :: list(item_foreign_proc_info),
+                ptpo_promises       :: list(item_promise_info),
 
-                ptpo_decl_markers       :: list(item_decl_marker_info_opt),
-                ptpo_impl_markers       :: list(item_impl_marker_info_opt),
-                ptpo_type_specs         :: list(decl_pragma_type_spec_info),
-                ptpo_unused_args        :: list(gen_pragma_unused_args_info),
-                ptpo_termination        :: list(decl_pragma_termination_info),
-                ptpo_termination2       :: list(decl_pragma_termination2_info),
-                ptpo_exceptions         :: list(gen_pragma_exceptions_info),
-                ptpo_trailing           :: list(gen_pragma_trailing_info),
-                ptpo_mm_tabling         :: list(gen_pragma_mm_tabling_info),
+                ptpo_decl_markers   :: list(item_decl_marker_info_opt),
+                ptpo_impl_markers   :: list(item_impl_marker_info_opt),
+                ptpo_type_specs     :: list(decl_pragma_type_spec_info),
+                ptpo_unused_args    :: list(gen_pragma_unused_args_info),
+                ptpo_termination    :: list(decl_pragma_termination_info),
+                ptpo_termination2   :: list(decl_pragma_termination2_info),
+                ptpo_exceptions     :: list(gen_pragma_exceptions_info),
+                ptpo_trailing       :: list(gen_pragma_trailing_info),
+                ptpo_mm_tabling     :: list(gen_pragma_mm_tabling_info),
                 ptpo_struct_sharing :: list(decl_pragma_struct_sharing_info),
                 ptpo_struct_reuse   :: list(decl_pragma_struct_reuse_info)
             ).
@@ -902,68 +902,56 @@
 :- type aug_compilation_unit
     --->    aug_compilation_unit(
                 % The source code of the module.
-                acu_module_src                  :: parse_tree_module_src,
+                acu_module_src      :: parse_tree_module_src,
 
                 % The interface files of the ancestors of this module.
                 % (If we have e.g. module foo.bar among the modules
                 % we import int_for_opt, we also need to grab its ancestor foo,
                 % but such .int0 files also go into the int_for_opt field.
-                acu_ancestor_int_specs          :: map(module_name,
-                                                    ancestor_int_spec),
+                acu_ancestor_ints   :: map(module_name, ancestor_int_spec),
 
                 % The interface files of directly imported modules.
-                acu_direct_int1_specs           :: map(module_name,
-                                                    direct_int1_spec),
+                acu_direct_int1s    :: map(module_name, direct_int1_spec),
 
                 % The interface files of indirectly imported modules.
-                acu_indirect_int2_specs         :: map(module_name,
-                                                    indirect_int2_spec),
+                acu_indirect_int2s  :: map(module_name, indirect_int2_spec),
 
                 % The optimization files of directly or indirectly
                 % imported modules.
-                acu_plain_opts                  :: map(module_name,
-                                                    parse_tree_plain_opt),
-                acu_trans_opts                  :: map(module_name,
-                                                    parse_tree_trans_opt),
+                acu_plain_opts      :: map(module_name, parse_tree_plain_opt),
+                acu_trans_opts      :: map(module_name, parse_tree_trans_opt),
 
                 % The interface files needed to make sense
                 % of those optimization files.
-                acu_int_for_opt_specs           :: map(module_name,
-                                                    int_for_opt_spec),
+                acu_int_for_opts    :: map(module_name, int_for_opt_spec),
 
                 % Interface files that we read in only for the type
                 % representation information they contain
-                acu_type_repn_specs             :: map(module_name,
-                                                    type_repn_spec),
+                acu_type_repns      :: map(module_name, type_repn_spec),
 
                 % The module_version_numbers records in all the imported
                 % interface files.
-                acu_module_item_version_numbers_map ::
-                                                module_item_version_numbers_map
+                acu_item_version_map:: module_item_version_numbers_map
             ).
 
 :- type aug_make_int_unit
     --->    aug_make_int_unit(
                 % The source code of the module.
-                amiu_module_src                 :: parse_tree_module_src,
+                amiu_module_src     :: parse_tree_module_src,
 
                 % The interface files of the ancestors of this module.
                 % (The read_why_int0 is always implicitly rwi0_section.)
-                amiu_ancestor_int_specs         :: map(module_name,
-                                                    parse_tree_int0),
+                amiu_ancestor_ints  :: map(module_name, parse_tree_int0),
 
                 % The interface files of directly imported modules.
-                amiu_direct_int3_specs          :: map(module_name,
-                                                    direct_int3_spec),
+                amiu_direct_int3s   :: map(module_name, direct_int3_spec),
 
                 % The interface files of indirectly imported modules.
-                amiu_indirect_int3_specs        :: map(module_name,
-                                                    indirect_int3_spec),
+                amiu_indirect_int3s :: map(module_name, indirect_int3_spec),
 
                 % The module_version_numbers records in all the imported
                 % interface files.
-                amiu_module_item_version_numbers_map ::
-                                                module_item_version_numbers_map
+                amiu_item_version_map:: module_item_version_numbers_map
             ).
 
     % init_aug_compilation_unit(ParseTreeModuleSrc, AugCompUnit):

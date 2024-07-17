@@ -338,7 +338,7 @@ generate_d_file(Globals, BurdenedAugCompUnit, IntermodDeps,
     (
         IntermodDeps = no_intermod_deps,
         map.keys_as_set(ParseTreeModuleSrc ^ ptms_import_use_map, LongDeps0),
-        IndirectIntSpecs = AugCompUnit ^ acu_indirect_int2_specs,
+        IndirectIntSpecs = AugCompUnit ^ acu_indirect_int2s,
         map.keys_as_set(IndirectIntSpecs, IndirectDeps)
     ;
         IntermodDeps = intermod_deps(IntDeps, ImpDeps, IndirectDeps, _FIMDeps,
