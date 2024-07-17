@@ -234,23 +234,23 @@
 %---------------------------------------------------------------------------%
 
 % The psqueue data structure is based on the idea of a knockout tournament
-% between the priority/key tuple in the queue. Pairs of priority/key tuples
-% play matches, with the loser dropping out of the tournament, while
-% the winner plays matches with other winners. Eventually, there is
-% only one priority/key tuple left, the champion.
+% between the priority/key pairs in the queue. Priority/key pairs play matches,
+% with the loser dropping out of the tournament, while the winner plays
+% matches with other winners. Eventually, there is only one priority/key pair
+% left, the champion.
 %
 % In this view, the champion does not lose any matches, while every other
-% tuple loses exactly one match. The representation of psqueues is based
+% pair loses exactly one match. The representation of psqueues is based
 % on this fact. When representing nonempty queues, it stores the champion
-% tuple in the w_prio/w_key fields of the winner structure of the
-% psqueue type, while it stores all the other tuples in the l_prio/l_key
+% pair in the w_prio/w_key fields of the winner structure of the
+% psqueue type, while it stores all the other pairs in the l_prio/l_key
 % fields of loser_node structures in the loser_tree type.
 %
 % In a binary tree representing a knockout tournament, each winner of a match
 % is represented at least twice in the tree: as the winner, and as one of the
 % players. The loser_tree type is designed to avoid this redundancy. The idea
 % is to have a tree, the loser_tree, whose structure is identical to the
-% structure of the binary tree representing the matched of the knockout
+% structure of the binary tree representing the matches of the knockout
 % tournament, but to store information about each player in the node
 % that corresponds to the match that the player LOST. Since the champion
 % does not lose any matches, its details cannot be stored in such a tree,
@@ -283,11 +283,12 @@
                 % w_prio/w_key fields.
                 w_losers    :: loser_tree(P, K),
 
-                % The w_max_key contains the highest key in the queue;
-                % it must be equal to either w_key here, or to l_key
+                % The w_max_key contains the highest key in the queue.
+                % It must be equal to either w_key here, or to l_key
                 % in one of the nodes of the tree in the w_losers field.
-                % *somewhere* in the entire psqueue. This is first half of
-                % the *key condition*.
+                % This is first half of the *key condition*.
+                % (The second half is documented just before the l_sort_key
+                % field below.)
                 w_max_key   :: K
             ).
 
