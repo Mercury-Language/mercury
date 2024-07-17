@@ -16,10 +16,10 @@
 --no-halt-at-warn-make-opt
 --no-mercury-stdlib-dir
 --no-detect-libgrades
--I../../library
--I../../browser
 -I../../ssdb
+-I../../browser
 -I../../mdbcomp
+-I../../library
 --c-include-directory ../../boehm_gc
 --c-include-directory ../../boehm_gc/include
 --c-include-directory ../../runtime

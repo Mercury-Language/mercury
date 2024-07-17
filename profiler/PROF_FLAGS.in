@@ -17,10 +17,10 @@
 --no-allow-ho-insts-as-modes
 --no-mercury-stdlib-dir
 --no-detect-libgrades
--I../library
+-I../ssdb
 -I../browser
 -I../mdbcomp
--I../ssdb
+-I../library
 --c-include-directory ../boehm_gc
 --c-include-directory ../boehm_gc/include
 --c-include-directory ../runtime

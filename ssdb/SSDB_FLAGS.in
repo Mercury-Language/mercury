@@ -21,9 +21,9 @@
 --force-disable-ssdebug
 --no-libgrade
 --generate-mmc-deps
--I../library
--I../mdbcomp
 -I../browser
+-I../mdbcomp
+-I../library
 --c-include-directory ../boehm_gc
 --c-include-directory ../boehm_gc/include
 --c-include-directory ../runtime
