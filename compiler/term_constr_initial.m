@@ -104,8 +104,8 @@
 %   - the predicate is imported and there is no other source of information
 %   - about it (termination_info pragmas, terminates pragmas, builtin).
 %
-% XXX This does the wrong thing for copy/2 & typed_unify/2. In both
-% cases the constraints should that |HeadVar__1| = |HeadVar__2|.
+% XXX This does the wrong thing for copy/2 & typed_unify/2. In both cases,
+% the constraints should show that |HeadVar__1| = |HeadVar__2|, but they don't.
 % Also look at builtin_compound_eq, builtin_compound_lt.
 
 term2_preprocess_module(!ModuleInfo) :-
@@ -217,7 +217,7 @@ create_substitution_map(Ids, IdToProgVar, SizeVarMap, IdToSizeVar) :-
     list.foldl(
         ( pred(Id::in, !.Map::in, !:Map::out) is det :-
             map.lookup(IdToProgVar, Id, ProgVar),
-            SizeVar = map.lookup(SizeVarMap, ProgVar),
+            map.lookup(SizeVarMap, ProgVar, SizeVar),
             map.set(Id, SizeVar, !Map)
         ), Ids, map.init, IdToSizeVar).
 

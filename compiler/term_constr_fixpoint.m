@@ -114,12 +114,11 @@ do_fixpoint_calculation(Options, SCC, Iteration, [], !ModuleInfo) :-
             _, !ModuleInfo)
     ;
         ChangeFlag = no,
-        % If one of the polyhedra in the SCC has `false' as its
-        % argument size constraint then the analysis failed.  In that
-        % case set the argument size constraints for every procedure
+        % If one of the polyhedra in the SCC has `false' as
+        % its argument size constraint, then the analysis failed.
+        % In that case, set the argument size constraints for every procedure
         % in the SCC to `true'.
         % XXX Should this be happening?
-        %
         ( if
             list.member(OneInfo, IterationInfos),
             polyhedron.is_empty(OneInfo ^ ii_arg_size_poly)
@@ -227,8 +226,8 @@ term_iterate_over_abstract_proc(ModuleInfo, Options, Iteration, Proc,
         % obtained by the *previous* iteration -- which may in fact be `empty'
         % (i.e. false).
         (
-            % If there were no constraints for the procedure then
-            % we are at the beginning of the analysis.
+            % If there were no constraints for the procedure,
+            % then we are at the beginning of the analysis.
             ArgSizeInfo = no,
             OldPolyhedron = polyhedron.empty
         ;
@@ -242,7 +241,7 @@ term_iterate_over_abstract_proc(ModuleInfo, Options, Iteration, Proc,
                 unexpected($pred, "old polyhedron is empty")
             )
         else
-            % If the procedure is not recursive then we need only perform one
+            % If the procedure is not recursive, then we need only perform one
             % pass over the AR - subsequent iterations will yield the same
             % result.
             ( if Proc ^ ap_recursion = none then
@@ -291,7 +290,7 @@ term_traverse_abstract_goal(Info, Goal, !Polyhedron) :-
         % - Take the intersection each disjunct with the constraints
         %   before the disjunction and compute the convex hull of that.
         %   This is more accurate but slower. (XXX There is some code for this
-        %   in term_constr_data.m but it needs to be moved here). To do this
+        %   in term_constr_data.m but it needs to be moved here). To do this,
         %   you need to add the constraints that occur to left of the
         %   disjunctions to `PriorConstraints'.
         %

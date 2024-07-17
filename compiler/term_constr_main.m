@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
 % Copyright (C) 1997,2002-2011 The University of Melbourne.
-% Copyright (C) 2017 The Mercury Team.
+% Copyright (C) 2017, 2024 The Mercury Team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %----------------------------------------------------------------------------%
@@ -10,9 +10,9 @@
 % File: term_constr_main.m.
 % Main author: juliensf.
 %
-% This module contains the top level of a termination analyser for Mercury.
-% It is responsible for setting up the relevant data structures and invoking
-% all the other passes.
+% This module is the main module of the second termination analyser
+% in the Mercury compiler. It is responsible for setting up
+% the relevant data structures and invoking all the other passes.
 %
 % --------
 % Overview
@@ -23,11 +23,16 @@
 %
 % The analysis is carried out in three passes:
 %
-% * Pass 0 - initial pass.
-%   Setup information for builtin predicates and process any information
-%   from user annotations like termination pragmas and foreign proc attributes.
-%   Also, set up information imported from `.opt' and `.trans_opt' files.
-%   (See term_constr_initial.m.)
+% * Pass 0 - the initial pass.
+%
+%   This pass fills in the argument size and termination properties of
+%   builtin predicates, and also sets the termination properties of
+%   predicates that have either termination pragmas, or have termination
+%   assertions among their foreign_proc attributes. It also sets up
+%   information imported from `.opt' and `.trans_opt' files. ("sets up"
+%   in what sense?"
+%
+%   This pass is in term_constr_initial.m.
 %
 % Each of passes 1 and 2 are run consecutively on each SCC of the
 % program call-graph. This is done in bottom-up order.
@@ -35,12 +40,16 @@
 % * Pass 1 - interargument size relationship (IR) analysis.
 %
 %   (a) Build pass. Convert HLDS to the abstract representation (AR)
-%       defined in term_constr_data.m. (See term_constr_build.m.)
+%       defined in term_constr_data.m.
 %
-%   (b) Fixpoint pass. Perform fixpoint calculation to derive IR
-%       information. (See term_constr_fixpoint.m.)
+%       This part of this pass is in term_constr_build.m.
 %
-% * Pass 2 - termination.
+%   (b) Fixpoint pass. Perform fixpoint calculation to derive IR information.
+%
+%       This part of this pass is in term_constr_fixpoint.m.
+%
+% * Pass 2 - termination analysis.
+%
 %   Use the information from pass 1 to attempt to find a proof that the
 %   procedures in a SCC terminate. There is an example of such a proof
 %   finder in term_constr_pass2.m, although we will probably end up with
@@ -148,7 +157,7 @@ term2_analyse_module(!ModuleInfo, Specs) :-
     % attributes.
     term2_preprocess_module(!ModuleInfo),
 
-    % Analyse the module SCC-bySCC in a bottom-up order.
+    % Analyse the module SCC-by-SCC in a bottom-up order.
     module_info_ensure_dependency_info(!ModuleInfo, DepInfo),
     get_bottom_up_sccs_with_entry_points(!.ModuleInfo, DepInfo,
         BottomUpSCCsEntryPoints),

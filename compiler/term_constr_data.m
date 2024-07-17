@@ -2,7 +2,7 @@
 % vim: ft=mercury ts=4 sw=4 et
 %-----------------------------------------------------------------------------%
 % Copyright (C) 2002, 2005-2011 The University of Melbourne.
-% Copyright (C) 2015-2023 The Mercury team.
+% Copyright (C) 2015-2024 The Mercury team.
 % This file may only be copied under the terms of the GNU General
 % Public License - see the file COPYING in the Mercury distribution.
 %-----------------------------------------------------------------------------%
@@ -11,7 +11,7 @@
 % Main author: juliensf.
 %
 % This module defines data structures that are common to all modules in the
-% termination analyser.
+% second termination analyser.
 %
 % The main data structure defined here is the abstract representation (AR),
 % which is an abstraction of a Mercury program in terms of linear arithmetic
@@ -81,12 +81,12 @@
 %
 % A HLDS negation is abstracted as an AR primitive.
 % The analyser tries to infer bounds upon the sizes of any input variables
-% of the negated goal when if fails.
+% of the negated goal when it fails.
 %
 % 6. scopes
 %
-% Scope goals, such as existential quantifications, that do not
-% affect term size are ignored.
+% Scope reasons, such as existential quantifications, are ignored unless
+% they affect term size.
 %
 % 8. if-then-else.
 %
@@ -535,13 +535,13 @@ simplify_abstract_rep(Goal0, Goal) :-
     %
     % e.g if we have
     %
-    %   [ P1, P2, P3, NP1, NP2, P4, P5, NP3, P6, P7 ]
+    %   [P1, P2, P3, NP1, NP2, P4, P5, NP3, P6, P7]
     %
-    %   where Px is a primitive goal and NPx is a non-primitive
+    %   where Px is a primitive goal and NPx is a non-primitive goal,
     %
     % then simplify this to:
     %
-    %   [ ( P1 /\ P2 /\ P3), NP1, NP2, ( P4 /\ P5), NP3, (P6 /\ P7) ]
+    %   [(P1 /\ P2 /\ P3), NP1, NP2, (P4 /\ P5), NP3, (P6 /\ P7)]
     %
     %   where `/\' is the intersection of the primitive goals.
     %
